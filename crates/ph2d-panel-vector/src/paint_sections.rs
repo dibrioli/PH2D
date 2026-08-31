@@ -8,6 +8,7 @@
 //! calls — no behavioral change.
 
 use crate::ids;
+use crate::section_scope as scope;
 use crate::state;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
@@ -240,49 +241,57 @@ impl BodyCtx<'_> {
     /// linha órfã. A última (Path) fecha sem separador de rodapé.
     pub(crate) fn paint_body(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
         let mut y = y;
-        y = self.step(y, |b, y| b.tool_section(snap, y));
-        y = self.step(y, |b, y| b.shape_catalog_section(snap, y));
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |b, y| b.tool_section(snap, y));
+        y = self.step_in(y, snap.mode, scope::CATALOG, |b, y| {
+            b.shape_catalog_section(snap, y)
+        });
         // O LÁPIS entra aqui, entre a fileira TOOL e os parâmetros da forma: os três respondem
         // "o que estou desenhando, e como". Some inteira fora do modo Pencil.
-        y = self.step(y, |b, y| b.pencil_section(snap, y));
+        y = self.step_in(y, snap.mode, scope::PENCIL, |b, y| {
+            b.pencil_section(snap, y)
+        });
         // A SIMETRIA vem logo depois: ela é uma OPÇÃO das ferramentas de desenho (o outro lado
         // do traço nasce derivado enquanto está ligada), então mora ao lado do que decide o que se
         // desenha — e não entre os deformadores, que é onde ela estava quando era um efeito.
-        y = self.step(y, |b, y| b.symmetry_section(snap, y));
+        y = self.step_in(y, snap.mode, scope::symmetry(snap), |b, y| {
+            b.symmetry_section(snap, y)
+        });
         // A MOLDURA vem logo depois da simetria: as duas são propriedades do OBJETO que se
         // acabou de desenhar, e a seção some inteira quando a seleção não é moldura.
-        y = self.step(y, |b, y| b.frame_section(y));
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |b, y| b.frame_section(y));
         // O RECORTE vem logo depois, e é irmã da Frame por assunto — mas com alcance MAIOR: ela
         // aparece sobre qualquer forma fechada, e uma moldura recebe as duas (2026-08-21).
-        y = self.step(y, |b, y| b.clip_section(y));
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |b, y| b.clip_section(y));
         // O AUTO LAYOUT vem logo DEPOIS da moldura, e a ordem é o assunto: a seção Frame diz o
         // que o contêiner É, esta diz o que ele FAZ com o conteúdo. Some inteira quando não há
         // moldura na seleção nem um filho dentro de um fluxo.
-        y = self.step(y, |b, y| b.layout_section(y));
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |b, y| b.layout_section(y));
         // AS ÂNCORAS vêm logo a seguir ao layout, e são a OUTRA metade da mesma pergunta
         // (*o que este filho faz quando a moldura muda de tamanho?*): o layout responde por quem
         // está num fluxo, esta por quem não está. Elas nunca aparecem juntas — a shell só publica
         // a regra para um filho cujo pai NÃO flui.
-        y = self.step(y, |b, y| b.anchors_section(y));
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |b, y| b.anchors_section(y));
         // OS COMPONENTES (plano UI/UX W5): o prefab. Depois das ÂNCORAS porque uma instância é
         // primeiro uma forma (pose, moldura, regra) e só depois uma cópia de outra coisa.
-        y = self.step(y, |b, y| b.component_section(y));
-        y = self.step(y, |b, y| b.widget_skin_section(y));
-        y = self.step(y, |b, y| b.ui_states_section(y));
-        y = self.step(y, |b, y| b.shape_params_section(snap, y));
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |b, y| b.component_section(y));
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |b, y| b.widget_skin_section(y));
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |b, y| b.ui_states_section(y));
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |b, y| {
+            b.shape_params_section(snap, y)
+        });
         // Os parâmetros do CONECTOR selecionado — irmã da seção acima (mesma estética,
         // mesmos widgets), logo abaixo dela: as duas respondem "o que é este objeto que
         // eu selecionei, e como o afino?". Some inteira sem conector na seleção.
-        y = self.step(y, Self::connector_section);
-        y = self.step(y, Self::text_section);
-        y = self.step(y, Self::font_section);
-        y = self.step(y, Self::paragraph_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::connector_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::text_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::font_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::paragraph_section);
         // Text on Path fica com as outras seções de TEXTO (Font / Paragraph / Axes) e não com
         // os deformadores: o artista a procura onde afina o texto, e ela não deforma glyph
         // nenhum — os glyphs continuam rígidos (plano 22 §1, caso A).
-        y = self.step(y, Self::textpath_section);
-        y = self.step(y, Self::axes_section);
-        y = self.step(y, |b, y| b.stroke_style(snap, y));
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::textpath_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::axes_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |b, y| b.stroke_style(snap, y));
         // ⭐⭐ **A secção PATTERN do TRAÇO** (tinta 1) — Enio, 2026-08-28: *"cada seção deve ter seus
         // ajustes próprios"*. Logo abaixo da secção que descreve a mesma linha, e só sobe quando o
         // traço TEM padrão.
@@ -291,52 +300,66 @@ impl BodyCtx<'_> {
         // e o `SectionFold` estourou (*"aberto e nunca fechado: o recorte da cena ficou pendurado"*)
         // — uma dobra não aninha, e o `return` de uma secção vazia deixaria a de fora por fechar.
         // *A UI que se quer ali é uma secção a seguir, não uma secção dentro.*
-        y = self.step(y, |s, y| s.texture_pattern_section(1, y));
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |s, y| {
+            s.texture_pattern_section(1, y)
+        });
         // ⭐⭐⭐ E a do PINCEL (plano 36, W4), ao lado da do padrão do traço: as duas descrevem a
         // mesma linha, e só sobe a que o traço de facto tem.
-        y = self.step(y, Self::brush_section);
-        y = self.step(y, |b, y| b.fill_style(snap, y));
-        y = self.step(y, Self::fill_type_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::brush_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |b, y| b.fill_style(snap, y));
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::fill_type_section);
         // A lei do PADRÃO fica colada ao selector que a escolhe: o artista carrega no chip
         // `Pattern` e os controles dele aparecem logo abaixo. Ela só sobe quando a forma TEM um
         // padrão, então numa forma sólida não custa uma linha.
         // ⭐ A secção do PREENCHIMENTO (tinta 0); a do TRAÇO é irmã da *Stroke*, logo acima.
-        y = self.step(y, |s, y| s.texture_pattern_section(0, y));
-        y = self.step(y, Self::snap_section);
-        y = self.step(y, Self::transform_section);
-        y = self.step(y, Self::vertex_section);
-        y = self.step(y, Self::boolean_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |s, y| {
+            s.texture_pattern_section(0, y)
+        });
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::snap_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::transform_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::vertex_section);
+        y = self.step_in(y, snap.mode, scope::WHEN_SELECTED, Self::boolean_section);
         // Expand é irmã da Boolean: comandos destrutivos sobre a seleção, mesmo motor.
-        y = self.step(y, Self::expand_section);
-        y = self.step(y, |b, y| b.blend_section(snap, y));
-        y = self.step(y, |b, y| b.morph_section(y));
+        y = self.step_in(y, snap.mode, scope::WHEN_SELECTED, Self::expand_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |b, y| b.blend_section(snap, y));
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |b, y| b.morph_section(y));
         // ⭐ A MÁQUINA do Morph (plano 32 W7) — logo abaixo da seção que cria o objecto, porque a
         // ordem é o assunto: ali *o que ele é*, aqui *como ele decide em que forma está*.
         // ⛔ Seção PRÓPRIA e não uma sub-lista da `ui_states_section`: ver `paint_morph_states`.
-        y = self.step(y, |b, y| b.morph_states_section(y));
+        y = self.step_in(y, snap.mode, scope::ALWAYS, |b, y| {
+            b.morph_states_section(y)
+        });
         // O Envelope fica junto dos outros deformadores não-destrutivos (Blend/Morph): os três
         // produzem geometria DERIVADA de uma relação viva, e o artista os procura no mesmo lugar.
-        y = self.step(y, Self::envelope_section);
+        y = self.step_in(y, snap.mode, scope::WHEN_SELECTED, Self::envelope_section);
         // Pattern on Path é da MESMA família (geometria derivada de uma relação: motivo + guia).
         // Só sobe quando há vínculo ou a seleção o permite (plano 23), então não vira ruído.
-        y = self.step(y, Self::patternpath_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::patternpath_section);
         // Contour fecha a família da geometria derivada, e fica ao lado do Pattern on Path pelo
         // mesmo critério: os anéis são desenho, a forma autorada segue intocada. Some inteira
         // sem contour vivo nem seleção que o permita.
-        y = self.step(y, Self::contour_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::contour_section);
         // Effects fica logo depois dos deformadores: os três são não-destrutivos, e a
         // pilha é a generalização deles (ADR-0132).
-        y = self.step(y, Self::effects_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::effects_section);
         // Filters (FX raster, plano 24) — logo após Effects, mas de OUTRA natureza: pixels, não
         // geometria. Some inteira sem forma selecionada e sem filtro vivo.
-        y = self.step(y, Self::filters_section);
-        y = self.step(y, Self::align_section);
-        y = self.step(y, Self::arrange_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::filters_section);
+        y = self.step_in(y, snap.mode, scope::ALWAYS, Self::align_section);
+        y = self.step_in(y, snap.mode, scope::WHEN_SELECTED, Self::arrange_section);
         // ⚠️ **A última NÃO passa pelo `step`** (ela fecha sem separador de rodapé), então a dobra
         //    dela fecha aqui — pela MESMA porta, nunca por uma cópia. Sem esta linha o escopo
         //    ficaria pendurado e o `Drop` do `SectionFold` gritaria em debug.
         self.open_fold = None;
-        let after = self.path_section(y);
+        // ⚠️ **A ÚNICA fora do `step_in`, e o escopo dela entra à mão** — ela fecha a dobra sozinha
+        //    (é a última e não leva separador de rodapé). Os seis botões dela morrem todos numa
+        //    guarda de seleção, então é `WHEN_SELECTED` como as outras quatro; o gate nomeia esta
+        //    excepção pelo nome, e um segundo nome ali significa que alguém copiou o contrato.
+        let after = if scope::WHEN_SELECTED.covers(snap.mode, state::current_selection_count()) {
+            self.path_section(y)
+        } else {
+            y
+        };
         self.close_fold(after)
     }
 
@@ -348,6 +371,31 @@ impl BodyCtx<'_> {
             Some(fold) => fold.finish(self.store, self.scene, self.hit_index, after),
             None => after,
         }
+    }
+
+    /// ⭐⭐⭐ **Um passo do corpo QUE PERGUNTA DE QUEM É A SEÇÃO** — o irmão do [`Self::step`] com a
+    /// tabela ([`crate::section_scope`]) no caminho.
+    ///
+    /// Report do Enio (2026-08-31): *"deixar no painel apenas o que é útil para a ferramenta em
+    /// uso"*. ⚠️ **Medido: das 39 seções, UMA consultava o modo** — e a lei já estava escrita e
+    /// honrada uma fileira acima, dentro da seção TOOL (o Marquee só no modo Node, o Cut só no modo
+    /// Cut). *Ela não atravessava a fronteira da seção porque vivia escrita à mão dentro de cada
+    /// uma, onde 38 podem esquecê-la.*
+    ///
+    /// ⚠️ Uma seção fora do escopo devolve o `y` INTACTO, então o `step` não pinta separador e ela
+    /// some inteira — cabeçalho, corpo e linha. É a mesma porta das seções condicionais, e é por
+    /// isso que a decisão mora aqui e não dentro de cada uma.
+    pub(crate) fn step_in(
+        &mut self,
+        y: f32,
+        mode: ph2d_tool_vector::params::DrawMode,
+        scope: crate::section_scope::Scope,
+        f: impl FnOnce(&mut Self, f32) -> f32,
+    ) -> f32 {
+        if !scope.covers(mode, state::current_selection_count()) {
+            return y;
+        }
+        self.step(y, f)
     }
 
     /// Um passo do corpo: pinta a seção e, **se ela pintou** (o `y` andou), fecha com o

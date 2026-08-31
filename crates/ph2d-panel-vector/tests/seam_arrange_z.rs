@@ -23,7 +23,13 @@ const VIEWPORT: Rect = Rect {
 };
 
 /// O topo da fileira de z-order com (ou sem) o Z publicado.
+///
+/// ⚠️ **A SELEÇÃO faz parte da premissa** (2026-08-31): a seção Arrange é um COMANDO sobre a
+/// seleção — os nove botões dela morrem numa guarda de seleção — e some inteira com a seleção
+/// vazia (`section_scope::WHEN_SELECTED`). Aqui há sempre um caminho selecionado; o que varia é
+/// só o Z, que é o que esta fixture mede.
 fn to_back_y(z: Option<f32>) -> f32 {
+    state::set_current_selection_count(1);
     state::set_z_index(z);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
@@ -50,8 +56,13 @@ fn the_z_field_takes_a_row_of_its_own() {
 
 /// **Sem resposta única, sem linha** — a metade da AUSÊNCIA.
 ///
-/// ⚠️ Uma seleção múltipla (ou nenhuma) não tem UM Z; um campo ali escreveria numa forma que o
-/// artista não nomeou.
+/// ⚠️ Uma seleção múltipla não tem UM Z; um campo ali escreveria numa forma que o artista não
+/// nomeou.
+///
+/// ⚠️⚠️ **E o caso «nenhuma» ficou MAIS FORTE em 2026-08-31**: sem seleção não é a LINHA do Z que
+/// some, é a seção Arrange inteira — os nove botões dela morrem numa guarda de seleção, então um
+/// cabeçalho ali seria uma promessa que nenhum clique cumpre. A 2ª metade deste gate afirma isso,
+/// e é ela que impede a seção de voltar a subir vazia.
 #[test]
 fn no_selection_paints_no_z_row() {
     let a = to_back_y(None);
@@ -62,7 +73,18 @@ fn no_selection_paints_no_z_row() {
     );
     // E com o Z publicado ele muda — o controle que torna o gate acima não-vazio.
     assert!(to_back_y(Some(0.0)) > a);
+
+    // A metade nova: com a seleção VAZIA nem o `To Back` existe.
+    state::set_current_selection_count(0);
     state::set_z_index(None);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_ARRANGE_TO_BACK)
+            .is_none(),
+        "a secao Arrange subiu com a selecao vazia — todos os nove botoes dela so' sabem recusar"
+    );
+    state::set_current_selection_count(1);
 }
 
 /// **O campo está VIVO sob o mouse.**
@@ -73,6 +95,7 @@ fn no_selection_paints_no_z_row() {
 /// morto. O oráculo é o clique REAL sobre o retângulo que o paint devolveu.
 #[test]
 fn the_z_field_answers_a_pointer() {
+    state::set_current_selection_count(1);
     state::set_z_index(Some(3.0));
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;

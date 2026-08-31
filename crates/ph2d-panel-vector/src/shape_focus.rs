@@ -15,10 +15,16 @@
 //!
 //! 1. **Há forma VIVA em foco** ⇒ os campos são dela (e a editam, mesmo na ferramenta
 //!    Select — é o ciclo Live Shape).
-//! 2. **A seleção está VAZIA** ⇒ os campos são os da forma ATIVA do catálogo: o default do
-//!    **próximo** traço, que é a única coisa que eles poderiam significar sem alvo.
-//! 3. **Senão** ⇒ a seção **SOME**. Foi selecionado algo que não é forma viva, e um campo
-//!    editável que não edita nada é pior que campo nenhum.
+//! 2. **A ferramenta na mão DESENHA uma forma** (Forma ou Moldura) ⇒ os campos são os da forma
+//!    ARMADA: o default do **próximo** traço.
+//! 3. **Senão** ⇒ a seção **SOME**. Um campo editável que não edita nada é pior que campo nenhum.
+//!
+//! ⚠️⚠️ **A resposta 2 era *"a seleção está VAZIA"*, e isso pôs os campos em toda ferramenta.**
+//! Report do Enio de 2026-08-31, com foto: na ferramenta **Select** e sem nada selecionado, o
+//! painel oferecia *"ROUND / Radius"* — os parâmetros do próximo traço numa ferramenta que não
+//! desenha traço nenhum. *A pergunta certa nunca foi quantos objetos estão selecionados; é se a
+//! ferramenta na mão vai desenhar uma forma* — e a resposta disso é a mesma porta que a semente da
+//! shell já usava (`DrawMode::shape_kind`).
 //!
 //! ## A exceção que a regra precisa: o modo Shape
 //!
@@ -38,21 +44,15 @@
 
 use crate::state;
 use ph2d_tool_vector::VectorStyleSnapshot;
-use ph2d_tool_vector::params::DrawMode;
 use ph2d_vec_scene::ShapeKind;
 
 /// A forma cujos parâmetros o painel desenha — `None` ⇒ **a seção não existe**.
 ///
-/// Função pura (os quatro fatos entram como argumento) para o gate poder varrer a tabela
-/// inteira de combinações sem montar um painel.
+/// A forma VIVA em foco, ou a forma ARMADA, ou ninguém. Função pura (os dois fatos entram como
+/// argumento) para o gate poder varrer a tabela inteira sem montar um painel.
 #[must_use]
-pub(crate) fn shape_focus(
-    published: Option<ShapeKind>,
-    active: ShapeKind,
-    selection: usize,
-    drawing_shape: bool,
-) -> Option<ShapeKind> {
-    published.or_else(|| (selection == 0 || drawing_shape).then_some(active))
+pub(crate) fn shape_focus(live: Option<ShapeKind>, armed: Option<ShapeKind>) -> Option<ShapeKind> {
+    live.or(armed)
 }
 
 /// A forma em foco NESTE frame, a partir do que a shell publicou (forma viva + contagem da
@@ -61,48 +61,46 @@ pub(crate) fn shape_focus(
 /// o foco à sua maneira, um botão pintado por um seria recusado pelo outro.
 #[must_use]
 pub(crate) fn resolved(snap: &VectorStyleSnapshot) -> Option<ShapeKind> {
-    shape_focus(
-        state::current_shape_focus(),
-        armed_kind(snap),
-        state::current_selection_count(),
-        snap.mode == DrawMode::Shape,
-    )
+    shape_focus(state::current_shape_focus(), armed_kind(snap))
 }
 
-/// **A forma que o GESTO deste modo desenha** — não o botão aceso do catálogo.
+/// **A forma que o GESTO desta ferramenta vai desenhar** — `None` quando ela não desenha forma
+/// nenhuma, e é isso que faz a seção sumir fora da Forma e da Moldura.
 ///
-/// ⚠️ **É a mesma porta que a semente usa** (`DrawMode::shape_kind`, via
+/// ⚠️ **É a mesma porta que a semente da shell usa** (`DrawMode::shape_kind`, via
 /// `vector_bridge::shape_catalog`), e tem de ser: sem alvo vivo, a shell escreve nas caixas os
-/// VALORES do kind efectivo enquanto esta secção pintava os CAMPOS do kind cru. No modo
-/// **Moldura** — o único em que os dois divergem — o painel oferecia *"Estrela: Pontas"* com o raio
-/// de quina do `RoundRect` dentro, e nenhum gate os comparava porque cada metade estava certa
+/// VALORES do kind efectivo enquanto esta secção pintava os CAMPOS do botão aceso do catálogo. No
+/// modo **Moldura** — o único em que os dois divergem — o painel oferecia *"Estrela: Pontas"* com o
+/// raio de quina do `RoundRect` dentro, e nenhum gate os comparava porque cada metade estava certa
 /// sozinha.
 #[must_use]
-fn armed_kind(snap: &VectorStyleSnapshot) -> ShapeKind {
-    snap.mode.shape_kind(snap.shape).unwrap_or(snap.shape)
+fn armed_kind(snap: &VectorStyleSnapshot) -> Option<ShapeKind> {
+    snap.mode.shape_kind(snap.shape)
 }
 
 #[cfg(test)]
 mod tests {
     use super::shape_focus;
+    use crate::section_scope::DRAWS_A_SHAPE;
+    use ph2d_tool_vector::VectorStyleSnapshot;
+    use ph2d_tool_vector::params::DrawMode;
     use ph2d_vec_scene::ShapeKind;
 
-    /// O caso que define a feature: em Select (que não tem forma própria), a forma viva
+    /// O caso que define a feature: em Select (que não desenha forma nenhuma), a forma viva
     /// selecionada traz os campos dela — é assim que se edita um polígono já desenhado.
     #[test]
     fn a_selected_live_shape_shows_its_fields_even_in_select() {
         assert_eq!(
-            shape_focus(Some(ShapeKind::Polygon), ShapeKind::Rectangle, 1, false),
+            shape_focus(Some(ShapeKind::Polygon), None),
             Some(ShapeKind::Polygon)
         );
     }
 
-    /// Sem NADA selecionado, os campos são os da forma ATIVA do catálogo — o default do
-    /// próximo traço.
+    /// Sem forma viva, os campos são os da forma ARMADA — o default do próximo traço.
     #[test]
-    fn without_a_selection_the_fields_are_the_active_shapes() {
+    fn without_a_live_shape_the_fields_are_the_armed_ones() {
         assert_eq!(
-            shape_focus(None, ShapeKind::Star, 0, false),
+            shape_focus(None, Some(ShapeKind::Star)),
             Some(ShapeKind::Star)
         );
     }
@@ -112,43 +110,65 @@ mod tests {
     /// um objeto que não tem parâmetro nenhum.
     #[test]
     fn a_selected_non_shape_hides_the_section_instead_of_falling_back_to_the_catalog() {
-        assert_eq!(
-            shape_focus(None, ShapeKind::Star, 1, false),
-            None,
-            "sem forma viva E com algo selecionado, os campos nao sao de ninguem"
-        );
-        // E não é um caso: vale para qualquer seleção não-vazia sem forma viva.
-        assert_eq!(shape_focus(None, ShapeKind::Star, 7, false), None);
+        assert_eq!(shape_focus(None, None), None);
     }
 
-    /// A exceção: no modo **Shape** o usuário está armado para desenhar, e os campos são o
-    /// default do PRÓXIMO traço — mesmo com algo selecionado (escolher a forma no catálogo
-    /// já põe a tool em Shape, sem limpar a seleção).
-    #[test]
-    fn arming_a_shape_shows_the_catalog_fields_even_with_something_selected() {
-        assert_eq!(
-            shape_focus(None, ShapeKind::Star, 1, true),
-            Some(ShapeKind::Star)
-        );
-    }
-
-    /// Conflito (catálogo em Polygon, estrela selecionada): a SELEÇÃO manda — o painel
-    /// mostra o que está na tela, não o que a caneta faria a seguir.
+    /// Conflito (armada a Estrela, um Polígono vivo em foco): a forma VIVA manda — o painel mostra
+    /// o que está na tela.
     ///
-    /// ⚠️⚠️ **E no modo Shape a shell NUNCA publica um foco vivo** (`vec_shape_params::
-    /// shape_field_target`): armado para desenhar, o artista não está a editar a selecção, e a
-    /// caixa que ele digita move o default do próximo traço. A 2.ª asserção desta função afirmava
-    /// o contrário — `(Some(Star), Polygon, 1, true) == Some(Star)` — e era um estado que o produto
-    /// não produz, mas que o `or_else` abaixo ainda honra. *Um teste puro sobre um estado
-    /// inalcançável documenta a lei ao contrário*: foi ele, e não o código, que fez o painel ficar
-    /// nos parâmetros da forma anterior ao trocar de forma no catálogo (report do Enio,
-    /// 2026-08-31). A lei do modo mora na shell porque a ESCRITA também precisa dela, e a escrita
-    /// não alcança um `pub(crate)` deste crate.
+    /// ⚠️⚠️ **E no modo Forma a shell nunca publica um foco vivo enquanto o artista está ARMADO**
+    /// (`vec_shape_params::shape_field_target`): armar é dizer *"vou desenhar isto"*, e a caixa que
+    /// ele digita move o default do próximo traço. A lei do latch mora na shell porque a ESCRITA
+    /// também precisa dela, e a escrita não alcança um `pub(crate)` deste crate.
     #[test]
-    fn the_selection_wins_over_the_active_shape() {
+    fn the_live_shape_wins_over_the_armed_one() {
         assert_eq!(
-            shape_focus(Some(ShapeKind::Star), ShapeKind::Polygon, 1, false),
+            shape_focus(Some(ShapeKind::Star), Some(ShapeKind::Polygon)),
             Some(ShapeKind::Star)
         );
+    }
+
+    /// ⭐⭐ **O CENSO da resposta 2: quem ARMA uma forma é exactamente [`DRAWS_A_SHAPE`].**
+    ///
+    /// ⚠️ Sem isto, a tabela de escopo e a lei de foco poderiam discordar sobre quais ferramentas
+    /// desenham uma forma — e o sintoma seria uma seção pintada com os campos de ninguém, ou uma
+    /// escondida onde o gesto de facto arma. *Duas listas que respondem a mesma pergunta divergem
+    /// no dia em que um modo novo entra numa e não na outra.*
+    #[test]
+    fn the_modes_that_arm_a_shape_are_exactly_the_ones_the_scope_table_names() {
+        let todos = [
+            DrawMode::Select,
+            DrawMode::Node,
+            DrawMode::Pen,
+            DrawMode::Pencil,
+            DrawMode::Shape,
+            DrawMode::Text,
+            DrawMode::Build,
+            DrawMode::Connect,
+            DrawMode::PickBlend,
+            DrawMode::Fillet,
+            DrawMode::Chamfer,
+            DrawMode::Width,
+            DrawMode::Cut,
+            DrawMode::Frame,
+        ];
+        // A fixture CONTÉM o fenômeno: se a lista acima encolher, o censo deixa de varrer o que diz.
+        assert_eq!(
+            todos.len(),
+            14,
+            "o vocabulario de modos mudou — reveja a tabela"
+        );
+        for m in todos {
+            let snap = VectorStyleSnapshot {
+                mode: m,
+                shape: ShapeKind::Star,
+                ..VectorStyleSnapshot::default()
+            };
+            assert_eq!(
+                super::armed_kind(&snap).is_some(),
+                DRAWS_A_SHAPE.contains(&m),
+                "o modo {m:?} discorda entre a lei de foco e a tabela de escopo"
+            );
+        }
     }
 }

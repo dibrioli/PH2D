@@ -153,6 +153,10 @@ mod paint_transform;
 pub mod populate;
 /// De QUEM são os campos de parâmetro deste frame — e quando eles não são de ninguém (a
 /// seção some). Irmão de `state` (teto de LOC).
+/// ⭐⭐⭐ **De que FERRAMENTA é cada seção do corpo** — a tabela que o orquestrador consulta antes
+/// de pintar (report do Enio, 2026-08-31: *"deixar no painel apenas o que é útil para a ferramenta
+/// em uso"*).
+mod section_scope;
 mod shape_focus;
 pub mod state;
 /// O que a shell OBSERVOU sobre a simetria da seleção — irmão de `state` (teto de LOC).

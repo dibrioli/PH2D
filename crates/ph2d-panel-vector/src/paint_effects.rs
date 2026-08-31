@@ -39,13 +39,23 @@ const ICON_PX: f32 = 22.0; // LITERAL-PX-OK: lado do glifo, espelha o `BTN_W` do
 impl BodyCtx<'_> {
     /// A seção Effects. Devolve o `y` intocado quando não há caminho único selecionado — é o
     /// que faz o `step` não emitir separador órfão.
+    ///
+    /// ⚠️⚠️ **E a guarda estava DEPOIS do cabeçalho, o que fazia este doc-comment mentir**: o
+    /// `section_header` já tinha avançado o `y`, então com a seleção vazia o painel pintava o
+    /// título *EFFECTS*, o separador de rodapé — e corpo nenhum. Foi a única das 39 a fazê-lo, e a
+    /// nota que a descreve estava certa sobre a intenção e errada sobre o código
+    /// (report do Enio, 2026-08-31: *"deixar no painel apenas o que é útil"*).
+    /// *Um cabeçalho que promete um corpo que não existe é pior que uma seção ausente.*
     pub(crate) fn effects_section(&mut self, y: f32) -> f32 {
+        if !state::has_target() {
+            return y;
+        }
         let (mut y, collapsed) = self.section_header(
             ids::VECTOR_SECTION_EFFECTS,
             tr("panel.vector.section.effects"),
             y,
         );
-        if collapsed || !state::has_target() {
+        if collapsed {
             return y;
         }
         let stack = state::stack();

@@ -5,8 +5,8 @@
 use ph2d_i18n::tr;
 use ph2d_tool_vector::VectorStyleSnapshot;
 use ph2d_tool_vector::params::{
-    DrawMode, PENCIL_FIDELITY_DEFAULT_PX, PENCIL_STABILIZER_DEFAULT,
-    PENCIL_STABILIZER_SLIDER_SCALE, fidelity_px_to_slider,
+    PENCIL_FIDELITY_DEFAULT_PX, PENCIL_STABILIZER_DEFAULT, PENCIL_STABILIZER_SLIDER_SCALE,
+    fidelity_px_to_slider,
 };
 
 use crate::ids;
@@ -36,9 +36,6 @@ impl BodyCtx<'_> {
     /// *Stabilizer* filtra o tremor (na ENTRADA — que mão o lápis escuta). O decimador preserva
     /// extremos locais de propósito, e um tremor é um extremo local: nenhuma Fidelity o remove.
     pub(crate) fn pencil_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
-        if snap.mode != DrawMode::Pencil {
-            return y;
-        }
         let (mut y, collapsed) = self.section_header(
             ids::VECTOR_SECTION_PENCIL,
             tr("panel.vector.section.pencil"),

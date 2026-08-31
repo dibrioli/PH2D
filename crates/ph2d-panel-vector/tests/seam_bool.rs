@@ -39,6 +39,10 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 
 /// Clica de verdade no widget `id` e devolve se o Click chegou ao barramento.
 fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
+    // ⚠️ **A SELEÇÃO faz parte da premissa desta fixture** (2026-08-31): Boolean / Expand /
+    // Envelope / Arrange / Path são COMANDOS sobre a seleção — todo controle delas morre numa
+    // guarda de seleção — e somem inteiras com a seleção vazia (`section_scope::WHEN_SELECTED`).
+    ph2d_panel_vector::state::set_current_selection_count(1);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     let r = host
@@ -89,6 +93,10 @@ fn the_apply_button_is_reachable_when_offered() {
 /// dos dois botões do corte.
 #[test]
 fn the_apply_button_appears_only_with_a_live_boolean_selected() {
+    // ⚠️ **A SELEÇÃO faz parte da premissa desta fixture** (2026-08-31): Boolean / Expand /
+    // Envelope / Arrange / Path são COMANDOS sobre a seleção — todo controle delas morre numa
+    // guarda de seleção — e somem inteiras com a seleção vazia (`section_scope::WHEN_SELECTED`).
+    ph2d_panel_vector::state::set_current_selection_count(1);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
 
@@ -115,6 +123,10 @@ fn the_apply_button_appears_only_with_a_live_boolean_selected() {
 /// de presença dos oito, que só corre com o default, nunca veria.
 #[test]
 fn the_eight_ops_survive_the_live_mode() {
+    // ⚠️ **A SELEÇÃO faz parte da premissa desta fixture** (2026-08-31): Boolean / Expand /
+    // Envelope / Arrange / Path são COMANDOS sobre a seleção — todo controle delas morre numa
+    // guarda de seleção — e somem inteiras com a seleção vazia (`section_scope::WHEN_SELECTED`).
+    ph2d_panel_vector::state::set_current_selection_count(1);
     state::set_bool_live_on(true);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
@@ -171,6 +183,10 @@ fn the_four_per_shape_verb_chips_are_reachable_and_reach_the_bus() {
 /// nenhuma a que eles se apliquem.
 #[test]
 fn the_per_shape_row_appears_only_with_a_subject() {
+    // ⚠️ **A SELEÇÃO faz parte da premissa desta fixture** (2026-08-31): Boolean / Expand /
+    // Envelope / Arrange / Path são COMANDOS sobre a seleção — todo controle delas morre numa
+    // guarda de seleção — e somem inteiras com a seleção vazia (`section_scope::WHEN_SELECTED`).
+    ph2d_panel_vector::state::set_current_selection_count(1);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
 

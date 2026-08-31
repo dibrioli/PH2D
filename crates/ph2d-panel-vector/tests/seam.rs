@@ -1018,6 +1018,12 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 /// que o sweep do Painter perdeu (Filter Stroke só existe depois de um traço).
 #[test]
 fn every_envelope_command_button_reaches_the_bus_when_clicked() {
+    // ⚠️ **A SELEÇÃO faz parte da premissa desta fixture** (2026-08-31): as seções Boolean /
+    // Expand / Envelope / Arrange / Path são COMANDOS sobre a seleção, e todo controle delas morre
+    // numa guarda de seleção — então elas somem inteiras com a seleção vazia
+    // (`section_scope::WHEN_SELECTED`, report do Enio: *"deixar no painel apenas o que é útil"*).
+    // Sem esta linha o gate mede uma seção que o produto, com razão, não desenha.
+    ph2d_panel_vector::state::set_current_selection_count(1);
     const VIEWPORT: Rect = Rect {
         x: 0.0,
         y: 0.0,
@@ -1079,6 +1085,12 @@ fn every_envelope_command_button_reaches_the_bus_when_clicked() {
 /// O **Envelope** (criar) continua lá: ele age sobre a seleção e recusa no shell com mensagem.
 #[test]
 fn the_envelope_controls_are_not_offered_without_an_envelope() {
+    // ⚠️ **A SELEÇÃO faz parte da premissa desta fixture** (2026-08-31): as seções Boolean /
+    // Expand / Envelope / Arrange / Path são COMANDOS sobre a seleção, e todo controle delas morre
+    // numa guarda de seleção — então elas somem inteiras com a seleção vazia
+    // (`section_scope::WHEN_SELECTED`, report do Enio: *"deixar no painel apenas o que é útil"*).
+    // Sem esta linha o gate mede uma seção que o produto, com razão, não desenha.
+    ph2d_panel_vector::state::set_current_selection_count(1);
     const VIEWPORT: Rect = Rect {
         x: 0.0,
         y: 0.0,
@@ -1217,6 +1229,12 @@ fn the_bend_slider_reaches_the_bus_in_document_units() {
 /// promoveu), e aí o slider não teria o que re-carimbar. Par de presença do gate acima.
 #[test]
 fn the_bend_slider_is_not_offered_without_an_active_preset() {
+    // ⚠️ **A SELEÇÃO faz parte da premissa desta fixture** (2026-08-31): as seções Boolean /
+    // Expand / Envelope / Arrange / Path são COMANDOS sobre a seleção, e todo controle delas morre
+    // numa guarda de seleção — então elas somem inteiras com a seleção vazia
+    // (`section_scope::WHEN_SELECTED`, report do Enio: *"deixar no painel apenas o que é útil"*).
+    // Sem esta linha o gate mede uma seção que o produto, com razão, não desenha.
+    ph2d_panel_vector::state::set_current_selection_count(1);
     const VIEWPORT: Rect = Rect {
         x: 0.0,
         y: 0.0,
@@ -1259,6 +1277,12 @@ fn the_bend_slider_is_not_offered_without_an_active_preset() {
 /// modelo que o outro não usa.
 #[test]
 fn the_pins_controls_and_the_cage_controls_are_exclusive() {
+    // ⚠️ **A SELEÇÃO faz parte da premissa desta fixture** (2026-08-31): as seções Boolean /
+    // Expand / Envelope / Arrange / Path são COMANDOS sobre a seleção, e todo controle delas morre
+    // numa guarda de seleção — então elas somem inteiras com a seleção vazia
+    // (`section_scope::WHEN_SELECTED`, report do Enio: *"deixar no painel apenas o que é útil"*).
+    // Sem esta linha o gate mede uma seção que o produto, com razão, não desenha.
+    ph2d_panel_vector::state::set_current_selection_count(1);
     const VIEWPORT: Rect = Rect {
         x: 0.0,
         y: 0.0,
@@ -1538,6 +1562,12 @@ fn the_effect_chip_carries_the_documents_range_not_the_normalised_track() {
 /// passaria — pintado, com hit-rect, e morto sob o mouse.
 #[test]
 fn every_expand_control_reaches_its_destination_when_clicked() {
+    // ⚠️ **A SELEÇÃO faz parte da premissa desta fixture** (2026-08-31): as seções Boolean /
+    // Expand / Envelope / Arrange / Path são COMANDOS sobre a seleção, e todo controle delas morre
+    // numa guarda de seleção — então elas somem inteiras com a seleção vazia
+    // (`section_scope::WHEN_SELECTED`, report do Enio: *"deixar no painel apenas o que é útil"*).
+    // Sem esta linha o gate mede uma seção que o produto, com razão, não desenha.
+    ph2d_panel_vector::state::set_current_selection_count(1);
     const VIEWPORT: Rect = Rect {
         x: 0.0,
         y: 0.0,
@@ -1607,6 +1637,12 @@ fn every_expand_control_reaches_its_destination_when_clicked() {
 /// faria Miter para sempre.
 #[test]
 fn clicking_a_join_chip_records_that_join() {
+    // ⚠️ **A SELEÇÃO faz parte da premissa desta fixture** (2026-08-31): as seções Boolean /
+    // Expand / Envelope / Arrange / Path são COMANDOS sobre a seleção, e todo controle delas morre
+    // numa guarda de seleção — então elas somem inteiras com a seleção vazia
+    // (`section_scope::WHEN_SELECTED`, report do Enio: *"deixar no painel apenas o que é útil"*).
+    // Sem esta linha o gate mede uma seção que o produto, com razão, não desenha.
+    ph2d_panel_vector::state::set_current_selection_count(1);
     const VIEWPORT: Rect = Rect {
         x: 0.0,
         y: 0.0,
@@ -1642,6 +1678,12 @@ fn clicking_a_join_chip_records_that_join() {
 /// o Offset Path faria sempre `Both`, e o controle de "só o furo / só a borda" cairia no chão.
 #[test]
 fn clicking_a_side_chip_records_that_side() {
+    // ⚠️ **A SELEÇÃO faz parte da premissa desta fixture** (2026-08-31): as seções Boolean /
+    // Expand / Envelope / Arrange / Path são COMANDOS sobre a seleção, e todo controle delas morre
+    // numa guarda de seleção — então elas somem inteiras com a seleção vazia
+    // (`section_scope::WHEN_SELECTED`, report do Enio: *"deixar no painel apenas o que é útil"*).
+    // Sem esta linha o gate mede uma seção que o produto, com razão, não desenha.
+    ph2d_panel_vector::state::set_current_selection_count(1);
     const VIEWPORT: Rect = Rect {
         x: 0.0,
         y: 0.0,
@@ -2399,6 +2441,12 @@ fn the_cut_buttons_need_a_blade_to_exist() {
 /// faria deste gate um espelho (encolher a tabela encolheria a lista percorrida).
 #[test]
 fn every_pathfinder_button_answers_a_real_pointer() {
+    // ⚠️ **A SELEÇÃO faz parte da premissa desta fixture** (2026-08-31): as seções Boolean /
+    // Expand / Envelope / Arrange / Path são COMANDOS sobre a seleção, e todo controle delas morre
+    // numa guarda de seleção — então elas somem inteiras com a seleção vazia
+    // (`section_scope::WHEN_SELECTED`, report do Enio: *"deixar no painel apenas o que é útil"*).
+    // Sem esta linha o gate mede uma seção que o produto, com razão, não desenha.
+    ph2d_panel_vector::state::set_current_selection_count(1);
     const VIEWPORT: Rect = Rect {
         x: 0.0,
         y: 0.0,

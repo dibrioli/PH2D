@@ -133,19 +133,58 @@ fn selecting_a_plain_curve_hides_the_shape_params_too() {
     );
 }
 
-/// O caso que a regra antiga acertava, e que a nova **não pode quebrar**: com a seleção
-/// VAZIA, os campos são os da forma ATIVA do catálogo — o default do próximo traço.
+/// Com a seleção VAZIA **e a ferramenta a desenhar uma forma**, os campos são os da forma armada
+/// — o default do próximo traço.
 #[test]
-fn with_an_empty_selection_the_catalog_fields_still_show() {
+fn with_an_empty_selection_the_armed_fields_still_show() {
     let mut hero = hero_with_vector_panel();
     set_current_connector(None);
-    publish(None, 0, DrawMode::Select, ShapeKind::Star);
+    publish(None, 0, DrawMode::Shape, ShapeKind::Star);
     paint_frame(&mut hero);
     assert!(
         shape_params_painted(&hero),
-        "sem NADA selecionado os campos sao o default do proximo traco — a secao tem de existir"
+        "armado para desenhar, os campos sao o default do proximo traco — a secao tem de existir"
     );
     assert!(first_shape_field_painted(&hero));
+}
+
+/// ⭐⭐⭐ **O REPORT (Enio, 2026-08-31, com foto):** *"Mesmo com outras ferramentas selecionadas, as
+/// Shapes ficam expostas e as propriedades das shapes também."*
+///
+/// Na ferramenta **Select**, sem nada selecionado, o painel oferecia *"ROUND / Radius"* — os
+/// parâmetros do próximo traço numa ferramenta que não desenha traço nenhum. ⚠️ A regra antiga era
+/// *"a seleção está VAZIA ⇒ mostre o catálogo"*, e **a pergunta nunca foi quantos objetos estão
+/// selecionados**: é se a ferramenta na mão vai desenhar uma forma.
+#[test]
+fn an_empty_selection_in_a_tool_that_draws_nothing_shows_no_shape_fields() {
+    let mut hero = hero_with_vector_panel();
+    set_current_connector(None);
+    for mode in [
+        DrawMode::Select,
+        DrawMode::Node,
+        DrawMode::Pen,
+        DrawMode::Pencil,
+        DrawMode::Cut,
+        DrawMode::Width,
+    ] {
+        publish(None, 0, mode, ShapeKind::Star);
+        paint_frame(&mut hero);
+        assert!(
+            !shape_params_painted(&hero),
+            "{mode:?} nao desenha forma nenhuma — os parametros da Estrela nao tem o que descrever"
+        );
+        assert!(!first_shape_field_painted(&hero));
+    }
+    // Controle: a MESMA seleção vazia nas duas ferramentas que DESENHAM uma forma mostra os
+    // campos — senão este gate passaria por a seção estar morta, e não pela lei.
+    for mode in [DrawMode::Shape, DrawMode::Frame] {
+        publish(None, 0, mode, ShapeKind::Star);
+        paint_frame(&mut hero);
+        assert!(
+            shape_params_painted(&hero),
+            "{mode:?} desenha uma forma — os campos dela tem de estar la'"
+        );
+    }
 }
 
 /// A exceção: **armado para desenhar** (modo Shape), os campos são o default do próximo traço

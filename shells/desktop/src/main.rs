@@ -678,6 +678,9 @@ mod value_time_smoke;
 mod value_unary_smoke;
 mod value_wave_smoke;
 mod value_wrap_smoke;
+/// **OS VARIANTS** (plano UI/UX W5c) — que versão do componente uma instância é. Um conjunto de
+/// variants é DERIVADO (os mestres irmãos), e os eixos saem dos NOMES: zero componente novo.
+mod variant_axes_smoke;
 /// A cena de smoke dos **VARIANTS** (`PH2D_BUILD_SMOKE=58`) — irmã de `component_pieces_smoke`.
 mod variant_smoke;
 mod vec_anchor_edit;
@@ -753,8 +756,6 @@ mod vec_transform;
 mod vec_trim;
 /// **OS VERBOS DA PELE** (plano UI/UX W6.2) — vestir, trocar de tipo, despir.
 mod vec_ui_state_edit;
-/// **OS VARIANTS** (plano UI/UX W5c) — que versão do componente uma instância é. Um conjunto de
-/// variants é DERIVADO (os mestres irmãos), e os eixos saem dos NOMES: zero componente novo.
 mod vec_variants;
 mod vec_weld;
 mod vec_widget_drive;

@@ -39,7 +39,7 @@ pub fn populate(store: &mut WidgetStore) {
     // vigente mostra: o `populate` corre uma vez e a lista muda com a selecção. ⚠️ Registar só as
     // pintadas repõe exactamente a costura que o `hit_indexed_ids_are_registered` apanhou aqui há
     // um bloco: um chip pintado e não registado **nunca** é focável, logo o Down/Up nunca dispara.
-    for &id in &ids::INSP_INSTANCE_VARIANT {
+    for &id in ids::INSP_INSTANCE_AXIS_OPTION.iter().flatten() {
         store.register(
             id,
             ph2d_editor_core::interaction::InteractiveState::Button {

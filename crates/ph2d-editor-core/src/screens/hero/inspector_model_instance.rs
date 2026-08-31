@@ -63,7 +63,10 @@ pub struct InspectorInstanceInfo {
     ///
     /// ⚠️ **Vazia com menos de dois** — a fileira não se pinta: *um valor que não leva a lado
     /// nenhum não é oferecido* (a lei do botão morto).
-    pub variants: Vec<VariantChoice>,
+    /// ⭐⭐⭐ **Uma fileira por PERGUNTA** desde 2026-08-30 (a fatia dos eixos, F4.6c): `Size`,
+    /// `State`, … — e no modo plano **um** eixo chamado `Variant`, que é exactamente a fileira de
+    /// antes. A lei vive em [`super::variant_axes`]. *Duas modalidades, uma representação.*
+    pub axes: Vec<super::variant_axes::VariantAxis>,
     /// Variantes que a tabela de ids não endereça — **escritas**, nunca truncadas em silêncio.
     pub variants_beyond: usize,
 }

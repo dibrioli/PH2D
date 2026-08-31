@@ -95,10 +95,13 @@ fn variant_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     let Some(info) = crate::state::current_inspector_instance() else {
         return false;
     };
-    let Some(i) = ids::INSP_INSTANCE_VARIANT.iter().position(|&v| v == id) else {
+    // ⚠️ **A leitura inversa vem da PORTA** (`ids::instance_axis_option`) e não de uma varredura
+    // aqui: o painel, o pintor e os gates fazem a mesma pergunta, e a escada escrita três vezes é
+    // a doença que a coluna de catálogos acabou de pagar.
+    let Some((a, v)) = ids::instance_axis_option(id) else {
         return false;
     };
-    let Some(choice) = info.variants.get(i) else {
+    let Some(choice) = info.axes.get(a).and_then(|ax| ax.options.get(v)) else {
         return false;
     };
     // ⚠️ Clicar na vigente é um **no-op silencioso**, e não uma recusa a falar: o artista carregou

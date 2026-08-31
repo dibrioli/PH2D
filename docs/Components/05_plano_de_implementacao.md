@@ -24,10 +24,14 @@
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
 | F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | 🟨 F4.1–F4.5 ✅ · F4.6a/b ✅ · **F4.7 ✅ (os 3 smoke-gates)** · **F4.6c bloqueada na F5** (ela apagaria os variants — ver §F4) · + a auditoria de 27/08 e o modo LIGADO |
-| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 (a FORMA segue o mestre) ✅** · **F5.3 (Overrides sem alvo — modelo E secção) ✅** · **variantes ✅ 2026-08-27 (critério 2: autoria + re-key + chips)** · critério 4 (*Apply to inner master*) ⬜ · troca p/ mestre não aparentado ⬜ |
-| F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ⬜ |
-| F7 | O painel Asset Browser + o arrasto único | ⬜ |
+| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 ✅** · **F5.3 ✅** (modelo; a secção mostra a CONTAGEM, não quais) · **variantes ✅ 2026-08-27** · **EIXOS de propriedade ✅ 2026-08-30** (a fatia que a F4.6c pedia) · critério 4 (*Apply to inner master*) ⬜ · troca p/ mestre não aparentado ⬜ |
+| F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ✅ 2026-08-30 (996 LOC + a taxonomia) |
+| F7 | O painel Asset Browser + o arrasto único | ✅ 2026-08-30 — etapas **A–D** do [plano 07](07_plano_do_navegador_de_assets.md); `DragPayload` com as duas famílias |
 | F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | ⬜ |
+
+> ⚠️ **Este placar esteve DESACTUALIZADO** (conferido contra o código em 2026-08-30): a F6 e a F7
+> diziam ⬜ com a crate e o painel construídos e smokados. *O §5.0 manda auditar a lista antes de
+> pegar um item dela — uma linha ⬜ sobre trabalho já pago manda alguém reconstruí-lo.*
 
 **Ordem é lei:** F1 antes de F2 (a chave do cache é o `StableId`); **F2 antes de F4** (materializar
 sem undo incremental multiplica um custo que já estoura o quadro); F4 antes de F6 (mestres são o
@@ -676,9 +680,19 @@ resolução** com a da cena. *Uma referência por faixa de linhas envelhece à v
   `vec_variants.rs`, que deriva o conjunto de *«os `VecComponentMain` irmãos do mesmo pai»* e é o
   `VecInstance` quem escolhe qual. ⇒ **matar o `VecInstance` hoje apaga os variants**, e variants
   são a **§F5** deste plano. *Uma fatia que se declara «porte» tem de contar os dois lados antes.*
-- **Medida a superfície:** `VecInstance` em **24 ficheiros**, ~1 210 LOC de produção em quatro
-  módulos (`instance_live` · `vec_component_edit` · `vec_component_pieces` · `vec_instance_follow`)
-  e **44 gates**.
+- **Medida a superfície:** `VecInstance` em **24 ficheiros**. ⛔⛔ **E os dois números que aqui
+  estavam eram os ERRADOS** (re-medido em 2026-08-30): *«~1 210 LOC de produção em quatro
+  módulos»* omite o **`vec_variants.rs` (281 LOC)**, que é **precisamente a feature que a fatia
+  existe para portar** — o núcleo são **1 658** e a superfície de produção inteira **≈ 2 961**
+  (com a UI, os ids, as duas cenas de smoke e os ~291 de pontos de toque). E *«44 gates»* são
+  **102** (92 em ficheiros de teste + 10 inline nos smokes). *Uma medição que exclui a feature que
+  a fatia nomeia orça o trabalho errado.*
+- ⛔⛔ **E a contagem de VERBOS também estava errada, nos dois lados.** *«Seis contra os quatro do
+  geral»* conta **botões**; as rotas do `ComponentEdit` são **oito** e os gestos de autoria **nove**.
+  ⚠️ As duas que a conta deixa de fora — `toggle_piece_visible` e a swatch de cor por peça — são
+  **a única porta que PRODUZ um override** no sistema vetorial. *Uma fatia que conte seis apaga a
+  porta de autoria e fica com o modelo do outro lado* — que é, ao contrário, exactamente o defeito
+  que aquele módulo nasceu a curar. E o geral tem hoje **seis** verbos de menu, não quatro.
 - ⭐ **E a lei que o plano manda re-medir DISSOLVE-SE.** O `vec_instance_follow` existe porque o
   modelo derivado perde a translação do mestre (`D(p) = (p − Tm)·I + Ti`), então uma alça ancorada
   paga a âncora numa translação que a cópia não herda. No mecanismo geral **não há delta**: a
@@ -890,9 +904,14 @@ indireto (B contém instância de V que é-a B) é recusado com mensagem; prova 
   do `project_schema_tests` **não vê este degrau** — os bytes mudaram *dentro* de um `ComponentBlob`,
   que para ela é opaco. É o mesmo cego do 98→99, e está escrito lá porque é a primeira coisa que a
   próxima pessoa vai olhar.
-- ⏳ **Falta a SECÇÃO no Inspector** que os LISTA (o *«Overrides sem alvo»* do critério 3 da F5): o
-  modelo está fechado e gateado, a superfície não existe. É a mesma família do item aberto *«nada na
-  tela mostra que campo está overridado»*.
+- ⏳ **A superfície dos órfãos existe PELA METADE** — e a nota que aqui esteve dizia *«a superfície
+  não existe»*, o que ficou falso no mesmo dia (conferido contra o código em 2026-08-30, em
+  [`sections/instance.rs`](../../crates/ph2d-panel-inspector/src/sections/instance.rs)): o cartão
+  mostra a **contagem** e o gesto (*Clear N unused override(s)*), e **não mostra QUAIS**. ⚠️ O
+  critério 3 pede que o override *«apareça na secção»*, e uma contagem responde *«há três»* à
+  pergunta *«quais três?»*. ⛔ Limpar sem ver o que se limpa é o gesto destrutivo mais barato deste
+  painel. É a mesma família do item *«nada na tela mostra que campo está overridado»*, que **fechou**
+  — os overridados aparecem, os órfãos ainda não.
 
 ---
 
@@ -965,6 +984,65 @@ indireto (B contém instância de V que é-a B) é recusado com mensagem; prova 
   FIM, onde nenhuma linha paralela escreve). ⛔ O corte óbvio — tirar o `EditorAction`, que é o que
   cresce — poria **toda** linha que acrescenta uma acção em conflito textual: *ao criar foundational,
   projecte-o para isolamento*.
+
+---
+
+## §F5-bis — ⭐⭐⭐ Os EIXOS DE PROPRIEDADE chegam ao cartão geral (2026-08-30)
+
+**O que mudou para o artista:** uma família nomeada `Size=Small, State=Idle` deixa de ser uma
+fileira plana de quatro nomes e passa a ser **duas fileiras, uma por pergunta** — e um chip muda
+**exactamente um eixo**.
+
+### Porque isto era a fatia que a F4.6c pedia
+
+O mapeamento de 2026-08-30 mediu a paridade verbo a verbo, e o sistema geral já era **igual ou
+superior** em cinco dos seis: `Create` faz mais (deixa uma cópia e cria variante), `Place` tem duas
+leis de arte, `Detach` é trivial porque a instância já é geometria real, `Revert` é por chave e por
+escopo, e o `Swap` geral tem **re-key determinístico**, sepulta órfãos e **RECUSA** um mestre não
+aparentado — onde o vetorial aceita qualquer `VecComponentMain` sem parentesco nenhum.
+
+⇒ **o que não existia era só isto**, e é o que impedia apagar a maquinaria duplicada.
+
+### ⚠️ Duas modalidades, UMA representação
+
+Quando os nomes não são combinações (ou discordam nas chaves), a família devolve **um** eixo
+chamado `Variant` com os nomes crus — que é exactamente a fileira que o cartão já desenhava. ⇒ o
+painel tem um caminho só, e a modalidade é um **facto dos dados**. ⛔ Duas representações para a
+mesma fileira seriam dois sítios a discordar sobre o que está escolhido.
+
+### ⚠️ Sem componente novo: a fonte é o `Name`
+
+⛔ Um `VariantAxisSet` guardado seria a segunda resposta a *«que versões existem?»*, e divergiria no
+dia em que alguém renomeasse um mestre. O gesto de autoria é **renomear na Hierarquia**, que já
+existe. *A estrutura é o que a estrutura diz.*
+
+### As leis, e o que cada uma impede
+
+| Lei | O que ela impede |
+|---|---|
+| **Alcançável = difere de mim só neste eixo** | um chip que muda dois eixos de uma vez sem o artista pedir |
+| **Igualdade de conjunto de chaves**, nunca interseção | perder um eixo em silêncio quando um membro declara menos |
+| Um eixo com **um valor só** não se pinta | uma pergunta sem respostas ocupando uma linha do cartão |
+| O excedente da tabela de ids é **contado e escrito** | um catálogo que some, e em que o artista deixa de confiar |
+| Sem âncora (mestre vigente fora da família) ⇒ **nada** | uma fileira que mostra opções sem dizer onde se está |
+
+### ⚠️ E a ESTRUTURA não se muda de sítio junto com a lei
+
+O shell responde *«quem é da família»* (elos no mundo, `piece_map`) e o
+[`variant_axes`](../../crates/ph2d-editor-core/src/screens/hero/variant_axes.rs) responde *«que
+perguntas ela faz»* (só nomes). Separá-las é o que torna a lei testável **sem um mundo** — e o que a
+deixa sobreviver ao apagar do sistema vetorial, de onde ela veio.
+
+⚠️ **Consequência de autoria, medida e NÃO óbvia:** agrupar três mestres numa moldura **não** os
+torna uma família aqui. No geral uma família nasce de *Make Prefab sobre uma instância* — o
+parentesco lê-se dos **elos**, não da hierarquia. É a diferença contra o vetorial (irmãos do mesmo
+pai), e ela não estava escrita em lado nenhum.
+
+**Smoke:** `PH2D_BUILD_SMOKE=79` — quatro versões, duas fileiras, e o chip medido pelo ponteiro.
+
+⏳ **O que a fatia NÃO fez:** apagar o `VecInstance`. Falta portar a **porta que PRODUZ** os
+overrides vetoriais (a lista de peças com interruptor e swatch por peça), que a medição do plano
+não contava — ver o §F4.
 
 ---
 

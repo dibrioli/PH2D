@@ -63,7 +63,7 @@ pub(super) fn build_instance_info(
     // uma lista que ninguém consegue ler duas vezes.
     overridden.sort();
 
-    let (variants, variants_beyond) =
+    let (axes, variants_beyond) =
         root_master.map_or_else(Default::default, |id| variant_family(sim, id));
 
     Some(InspectorInstanceInfo {
@@ -75,7 +75,7 @@ pub(super) fn build_instance_info(
         // ⚠️ Da RAIZ: uma peça dentro de uma variante não é ela própria uma receita, mas pertence
         // a uma — e é isso que o artista precisa de ler antes de a editar.
         is_variant: sim.world().get::<ph2d_ecs::MasterRoot>(root).is_some(),
-        variants,
+        axes,
         variants_beyond,
     })
 }
@@ -92,8 +92,7 @@ pub(super) fn build_instance_info(
 fn variant_family(
     sim: &mut SimWorld,
     current: u64,
-) -> (Vec<ph2d_editor::screens::hero::VariantChoice>, usize) {
-    use ph2d_editor::screens::hero::VariantChoice;
+) -> (Vec<ph2d_editor::screens::hero::VariantAxis>, usize) {
     // Ordenado por `StableId` — a ordem de autoria, e a única que é a mesma em toda máquina.
     let masters: Vec<u64> = {
         let mut q = sim
@@ -103,24 +102,21 @@ fn variant_family(
         v.sort_unstable();
         v
     };
-    let mut all: Vec<VariantChoice> = Vec::new();
+    let mut members: Vec<(u64, String)> = Vec::new();
     for id in masters {
         if id != current && crate::instance_variant::piece_map(sim, current, id).is_none() {
             continue;
         }
-        all.push(VariantChoice {
-            master: id,
-            label: master_named(sim, id).unwrap_or_else(|| "component".to_string()),
-            current: id == current,
-        });
+        members.push((
+            id,
+            master_named(sim, id).unwrap_or_else(|| "component".to_string()),
+        ));
     }
-    if all.len() < 2 {
-        return (Vec::new(), 0);
-    }
-    let cap = ph2d_editor::ids::MAX_INSTANCE_VARIANTS;
-    let beyond = all.len().saturating_sub(cap);
-    all.truncate(cap);
-    (all, beyond)
+    // ⭐⭐ **A ESTRUTURA sai daqui e a LEI sai de lá.** O shell responde *«quem é da família»* (elos
+    // no mundo) e o `variant_axes` responde *«que perguntas ela faz»* (só nomes). ⚠️ Separá-las é o
+    // que torna a lei testável sem um mundo — e é o que a deixa sobreviver ao apagar do sistema
+    // vetorial, de onde ela veio.
+    ph2d_editor::screens::hero::variant_axes::axes_for(&members, current)
 }
 
 /// O `Name` da entidade cujo `StableId` é `id`.

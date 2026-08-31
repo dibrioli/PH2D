@@ -24,22 +24,75 @@ pub const INSP_INSTANCE_CLEAR_ORPHANS: NodeId = hash_node_id("insp_instance_clea
 /// ⚠️ E o excedente **é escrito** no cartão, nunca truncado em silêncio.
 pub const MAX_INSTANCE_VARIANTS: usize = 8;
 
-/// Os chips da fileira **Variant** do cartão.
+/// ⭐⭐⭐ **Quantos EIXOS de propriedade o cartão endereça** — `Size`, `State`, …
 ///
-/// ⚠️ **Um chip por variante, e não um dropdown**: uma família tem tipicamente duas a quatro
-/// versões, e a fileira mostra-as todas ao mesmo tempo — que é o que deixa o artista **ver** o
-/// catálogo em vez de o abrir. É a mesma escolha que a fileira de variants do vetor.
+/// ⚠️ Teto de **TABELA DE IDS**, como o irmão abaixo: uma família pode declarar os eixos que
+/// quiser, e o excedente é **escrito** no cartão.
+pub const MAX_INSTANCE_AXES: usize = 4;
+
+/// Quantos valores por eixo. ⚠️ Mesmo teto e mesma razão do irmão do vetor.
+pub const MAX_INSTANCE_AXIS_VALUES: usize = 8;
+
+/// ⭐⭐ **Os chips do cartão, um por `(eixo, valor)`.**
+///
+/// ⚠️ **Uma fileira por PERGUNTA**, e não uma lista de nomes: com `Size` e `State` a família tem
+/// quatro versões e **duas** perguntas, e uma fileira plana obriga o artista a ler os nomes para
+/// descobrir a estrutura. No modo plano a família devolve **um** eixo chamado `Variant`, que é
+/// exactamente a fileira de antes — *duas modalidades, uma tabela*.
 ///
 /// ⚠️ **Tabela `const`, e não um hash em tempo de execução** — é o idioma dos irmãos deste
-/// directório (`INSP_SAMPLE_FILTER`, `INSP_PLAYER_MODE_IDS`), e é o que deixa o censo de ids do
-/// `hit_indexed_ids_are_registered` **ver** estes oito.
-pub const INSP_INSTANCE_VARIANT: [NodeId; MAX_INSTANCE_VARIANTS] = [
-    hash_node_id("insp_instance_variant_0"),
-    hash_node_id("insp_instance_variant_1"),
-    hash_node_id("insp_instance_variant_2"),
-    hash_node_id("insp_instance_variant_3"),
-    hash_node_id("insp_instance_variant_4"),
-    hash_node_id("insp_instance_variant_5"),
-    hash_node_id("insp_instance_variant_6"),
-    hash_node_id("insp_instance_variant_7"),
+/// directório, e é o que deixa o censo de ids do `hit_indexed_ids_are_registered` **ver** estes 32.
+pub const INSP_INSTANCE_AXIS_OPTION: [[NodeId; MAX_INSTANCE_AXIS_VALUES]; MAX_INSTANCE_AXES] = [
+    [
+        hash_node_id("insp_instance_axis_0_0"),
+        hash_node_id("insp_instance_axis_0_1"),
+        hash_node_id("insp_instance_axis_0_2"),
+        hash_node_id("insp_instance_axis_0_3"),
+        hash_node_id("insp_instance_axis_0_4"),
+        hash_node_id("insp_instance_axis_0_5"),
+        hash_node_id("insp_instance_axis_0_6"),
+        hash_node_id("insp_instance_axis_0_7"),
+    ],
+    [
+        hash_node_id("insp_instance_axis_1_0"),
+        hash_node_id("insp_instance_axis_1_1"),
+        hash_node_id("insp_instance_axis_1_2"),
+        hash_node_id("insp_instance_axis_1_3"),
+        hash_node_id("insp_instance_axis_1_4"),
+        hash_node_id("insp_instance_axis_1_5"),
+        hash_node_id("insp_instance_axis_1_6"),
+        hash_node_id("insp_instance_axis_1_7"),
+    ],
+    [
+        hash_node_id("insp_instance_axis_2_0"),
+        hash_node_id("insp_instance_axis_2_1"),
+        hash_node_id("insp_instance_axis_2_2"),
+        hash_node_id("insp_instance_axis_2_3"),
+        hash_node_id("insp_instance_axis_2_4"),
+        hash_node_id("insp_instance_axis_2_5"),
+        hash_node_id("insp_instance_axis_2_6"),
+        hash_node_id("insp_instance_axis_2_7"),
+    ],
+    [
+        hash_node_id("insp_instance_axis_3_0"),
+        hash_node_id("insp_instance_axis_3_1"),
+        hash_node_id("insp_instance_axis_3_2"),
+        hash_node_id("insp_instance_axis_3_3"),
+        hash_node_id("insp_instance_axis_3_4"),
+        hash_node_id("insp_instance_axis_3_5"),
+        hash_node_id("insp_instance_axis_3_6"),
+        hash_node_id("insp_instance_axis_3_7"),
+    ],
 ];
+
+/// O `(eixo, valor)` que este id representa — a leitura INVERSA da tabela.
+///
+/// ⚠️ **Uma porta, e não uma varredura em cada chamador**: o painel, o despachante e os gates fazem
+/// a mesma pergunta, e a escada escrita três vezes é a doença que a coluna de catálogos pagou.
+#[must_use]
+pub fn instance_axis_option(id: NodeId) -> Option<(usize, usize)> {
+    INSP_INSTANCE_AXIS_OPTION
+        .iter()
+        .enumerate()
+        .find_map(|(a, row)| row.iter().position(|c| *c == id).map(|v| (a, v)))
+}

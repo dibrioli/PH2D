@@ -438,5 +438,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::asset_menu_smoke::frame(app, f);
         return true;
     }
+    // ⭐⭐⭐ OS EIXOS DE PROPRIEDADE (=79, a fatia que a F4.6c pedia). ⚠️ Como a `=78`, ela
+    // **imprime** em vez de afirmar: o que ela mede — o chip pintado, registado e clicável — não é
+    // alcançável de um `#[test]`.
+    if level == 79 {
+        crate::variant_axes_smoke::frame(app, f);
+        return true;
+    }
     false
 }

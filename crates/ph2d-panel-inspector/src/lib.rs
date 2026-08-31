@@ -110,6 +110,7 @@ pub fn player_row_labels() -> Vec<&'static str> {
 
 /// **A grelha 3×3 da §5 9-Slice**, exposta para o gate da shell a poder LER (e não copiar).
 pub use sections::slice_grid::{CORNER_LETTERS, REGION_CELLS, is_corner_cell};
+pub use state::probe_current_instance;
 pub use state::{
     InspectorState, last_inspector_content_h, last_inspector_visible_h, open_anchor_row,
     set_current_display_unit, set_current_inspector_anchor, set_current_inspector_anim,

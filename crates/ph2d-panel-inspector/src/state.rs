@@ -232,6 +232,16 @@ pub(crate) fn current_inspector_instance()
     CURRENT_INSPECTOR_INSTANCE.with(|c| c.borrow().clone())
 }
 
+/// **Só para os roteiros de smoke:** o cartão de instância publicado neste quadro.
+///
+/// ⚠️ Ela existe porque a pergunta *«que fileiras o cartão oferece?»* não é alcançável de um
+/// `#[test]` — o modelo é publicado por um quadro real, com `AppGfx` na mão — nem legível de um
+/// pixel. *Uma cena que não sabe dizer o que o cartão tem só sabe dizer que não estourou.*
+#[must_use]
+pub fn probe_current_instance() -> Option<ph2d_editor_core::screens::hero::InspectorInstanceInfo> {
+    current_inspector_instance()
+}
+
 pub fn set_current_inspector_name(info: Option<InspectorNameInfo>) {
     CURRENT_INSPECTOR_NAME.with(|c| *c.borrow_mut() = info);
 }

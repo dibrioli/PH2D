@@ -228,21 +228,22 @@ fn the_card_lists_the_family_and_marks_the_current_one() {
     let inst = instantiate(&mut sim, &r, base);
     let info =
         super::build_instance_info(&mut sim, &r, Some(inst.to_bits())).expect("e' instancia");
-    let got: Vec<u64> = info.variants.iter().map(|v| v.master).collect();
+    // ⚠️ **Um eixo agora, e no modo plano ele chama-se `Variant`** — a fileira é a mesma; o que
+    // mudou é que ela passou a saber ter irmãs (a fatia dos eixos, 2026-08-30).
+    let all: Vec<_> = info.axes.iter().flat_map(|a| a.options.iter()).collect();
+    let got: Vec<u64> = all.iter().map(|v| v.master).collect();
     let (base_id, variant_id) = (sid(&sim, base), sid(&sim, variant));
     assert!(
         got.contains(&base_id) && got.contains(&variant_id),
         "a familia nao tem os dois mestres: {got:?}"
     );
     assert_eq!(
-        info.variants.iter().filter(|v| v.current).count(),
+        all.iter().filter(|v| v.current).count(),
         1,
         "a fileira tem de dizer onde a copia esta'"
     );
     assert!(
-        info.variants
-            .iter()
-            .any(|v| v.current && v.master == base_id),
+        all.iter().any(|v| v.current && v.master == base_id),
         "a vigente marcada nao e' o mestre da copia"
     );
 }
@@ -270,9 +271,9 @@ fn a_lonely_master_offers_no_variant_row() {
     let info =
         super::build_instance_info(&mut sim, &r, Some(inst.to_bits())).expect("e' instancia");
     assert!(
-        info.variants.is_empty(),
+        info.axes.is_empty(),
         "um mestre sem familia ofereceu chips: {:?}",
-        info.variants
+        info.axes
     );
 }
 
@@ -296,7 +297,11 @@ fn an_unrelated_master_is_not_offered_as_a_variant() {
         super::build_instance_info(&mut sim, &r, Some(inst.to_bits())).expect("e' instancia");
     let other_id = sid(&sim, other);
     assert!(
-        !info.variants.iter().any(|v| v.master == other_id),
+        !info
+            .axes
+            .iter()
+            .flat_map(|a| a.options.iter())
+            .any(|v| v.master == other_id),
         "um mestre sem antepassado comum foi oferecido — o chip recusaria ao ser clicado"
     );
 }

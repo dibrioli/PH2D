@@ -13,7 +13,9 @@
 //!
 //! Três peças, na ordem em que a shell as usa a cada frame:
 //!
-//! 1. [`panel_shape_target`] — quem é o alvo (a 1ª forma paramétrica da seleção).
+//! 1. [`shape_field_target`] — de quem são os campos (a 1ª forma paramétrica da seleção, ou
+//!    NINGUÉM quando o artista está armado para desenhar). A porta única; [`panel_shape_target`]
+//!    é a metade dela que só sabe olhar a seleção.
 //! 2. [`shape_seed_focus`] + [`seed_shape_fields`] + [`ui_values_of`] — quando o PAR
 //!    `(alvo, tipo)` muda, os campos são semeados e a tool os ADOTA (painel, tool e objeto
 //!    passam a concordar; e a próxima forma desenhada os herda — modelo Figma).
@@ -23,6 +25,7 @@
 use ph2d_ecs::{Entity, SimWorld, VecShape};
 use ph2d_editor::NodeId;
 use ph2d_editor::interaction::WidgetStore;
+use ph2d_tool_vector::params::DrawMode;
 use ph2d_tool_vector::shapes;
 use ph2d_vec_scene::{MAX_SHAPE_FIELDS, ShapeKind, ShapeValues, VecPathId, VecScene};
 
@@ -50,6 +53,45 @@ pub(crate) fn panel_shape_target(
             _ => None,
         }
     })
+}
+
+/// ⭐⭐⭐ **DE QUEM SÃO OS CAMPOS DE FORMA NESTE FRAME** — a porta ÚNICA da pergunta, e a razão
+/// de [`panel_shape_target`] não ser chamada por mais ninguém do produto.
+///
+/// ⚠️ **Um artista ARMADO não edita a selecção.** Clicar numa forma do catálogo põe a tool em
+/// [`DrawMode::Shape`] (`VectorTool::set_shape` — escolher a forma sem armar o gesto seria um
+/// clique morto): a partir daí o gesto seguinte DESENHA aquela forma, e é dela que os campos
+/// falam. Enquanto o alvo vivo vencia, trocar de forma no catálogo deixava o painel a mostrar os
+/// parâmetros da forma **anterior** até alguém desenhar — o report do Enio de 2026-08-31,
+/// *"troco de Shape na tool Shape e as propriedades não trocam imediatamente"*.
+///
+/// ⚠️⚠️ **E o que o painel PINTA e o que a caixa ESCREVE têm de sair daqui os dois.** Com a
+/// pintura a mostrar a Estrela armada e a escrita a alcançar o Polígono selecionado, digitar
+/// *"Pontas = 9"* punha **9 lados** no polígono — os slots são por ÍNDICE, então o campo `0` de
+/// uma forma cai no campo `0` da outra sem erro nenhum — *pintar por uma porta e escrever por
+/// outra é o defeito, não a divergência de valores*.
+///
+/// ⚠️⚠️ **E o MODO sozinho não responde** — foi a 1.ª redacção desta cura, e ela matava o ciclo
+/// Live Shape: *"desenhei uma estrela, deixa-me ajustar as pontas dela"* e *"armei o Polígono,
+/// mostra-me o Polígono"* são os dois `DrawMode::Shape` com uma forma viva selecionada. O que os
+/// separa é **qual gesto veio por último**, e é isso que o `armed` carrega
+/// (`App::vec_shape_armed`: a tool publica o clique, a shell apaga o latch quando a selecção
+/// muda — e desenhar selecciona a forma nova, então o ciclo volta sozinho).
+///
+/// ⛔ O modo **Moldura** NÃO entra: ali o gesto desenha um `RoundRect` e um `RoundRect`
+/// selecionado é o mesmo objeto — o alvo vivo continua a mandar, como em Select.
+#[must_use]
+pub(crate) fn shape_field_target(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    selection: &[VecPathId],
+    mode: DrawMode,
+    armed: bool,
+) -> Option<(VecPathId, Entity, ShapeKind, ShapeValues)> {
+    if armed && mode == DrawMode::Shape {
+        return None;
+    }
+    panel_shape_target(sim, map, selection)
 }
 
 /// `true` se `id` é um campo de parâmetro de forma (o que a shell captura para editar a
@@ -160,9 +202,12 @@ pub(crate) fn edit_selected_shape(
     scene: &mut VecScene,
     map: &VecEntityMap,
     selection: &[VecPathId],
+    mode: DrawMode,
+    armed: bool,
     f: impl FnOnce(ShapeKind, &mut ShapeValues) -> bool,
 ) -> bool {
-    let Some((id, entity, kind, mut values)) = panel_shape_target(sim, map, selection) else {
+    let Some((id, entity, kind, mut values)) = shape_field_target(sim, map, selection, mode, armed)
+    else {
         return false;
     };
     if !f(kind, &mut values) {

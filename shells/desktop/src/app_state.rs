@@ -1611,6 +1611,21 @@ pub(crate) struct App {
     /// os números da forma anterior (report do Enio, 2026-08-01).
     pub(crate) vec_shape_last_focus:
         Option<(Option<ph2d_vec_scene::VecPathId>, ph2d_vec_scene::ShapeKind)>,
+    /// ⭐⭐ **O artista está ARMADO para desenhar** — carregou numa forma do catálogo e ainda não
+    /// tocou noutro objeto. Enquanto isto vale (e só no modo `Shape`), os campos de parâmetro do
+    /// painel são os da forma ARMADA, e a caixa numérica NÃO alcança a forma selecionada
+    /// (`vec_shape_params::shape_field_target`).
+    ///
+    /// ⚠️ **O modo sozinho não responde**, e foi a 1.ª redacção desta cura: *"desenhei uma estrela,
+    /// deixa-me ajustar as pontas dela"* e *"armei o Polígono, mostra-me o Polígono"* são os dois o
+    /// modo `Shape` com uma forma viva selecionada — o que os separa é **qual gesto veio por
+    /// último**. A tool publica o clique ([`ph2d_tool_vector::VectorTool::take_shape_armed`]) e
+    /// [`Self::vec_shape_armed_target`] apaga o latch quando a selecção muda (desenhar selecciona a
+    /// forma nova, então o ciclo Live Shape volta sozinho).
+    pub(crate) vec_shape_armed: bool,
+    /// O alvo vivo do frame anterior — só existe para detectar a MUDANÇA que desarma o
+    /// [`Self::vec_shape_armed`].
+    pub(crate) vec_shape_armed_target: Option<ph2d_vec_scene::VecPathId>,
     /// `VecPathId` → entidade ECS que o representa na Hierarquia (ADR-0110). O
     /// invariante "um path ⟺ uma entidade" é mantido por `vec_entities::sync`.
     pub(crate) vec_entities: crate::vec_entities::VecEntityMap,

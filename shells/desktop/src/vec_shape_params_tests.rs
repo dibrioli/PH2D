@@ -8,6 +8,7 @@
 use super::*;
 use crate::vec_shape_live::recook_shape;
 use ph2d_ecs::Transform;
+use ph2d_tool_vector::DrawMode;
 use ph2d_tool_vector::shapes::FieldUnit;
 use ph2d_vec_scene::ALL_SHAPES;
 
@@ -65,9 +66,17 @@ fn a_shape_field_recooks_the_selected_live_shape_in_place() {
         live_shape(ShapeKind::Polygon, ShapeKind::Polygon.defaults(), pose);
     let before = anchors(&scene, id).len();
 
-    let edited = edit_selected_shape(&mut sim, &mut scene, &map, &[id], |k, v| {
-        apply_shape_field(k, v, field(0), 7.0, 1.0) // 7 lados
-    });
+    let edited = edit_selected_shape(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[id],
+        DrawMode::Select,
+        false,
+        |k, v| {
+            apply_shape_field(k, v, field(0), 7.0, 1.0) // 7 lados
+        },
+    );
 
     assert!(edited, "havia forma viva selecionada");
     let (_, _, kind, values) =
@@ -108,9 +117,15 @@ fn a_field_that_the_shape_does_not_have_leaves_it_alone() {
         [0.0, 0.0],
     );
     let before = anchors(&scene, id);
-    let edited = edit_selected_shape(&mut sim, &mut scene, &map, &[id], |k, v| {
-        apply_shape_field(k, v, field(0), 9.0, 1.0)
-    });
+    let edited = edit_selected_shape(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[id],
+        DrawMode::Select,
+        false,
+        |k, v| apply_shape_field(k, v, field(0), 9.0, 1.0),
+    );
     assert!(!edited, "o retangulo nao tem campo 0");
     assert_eq!(anchors(&scene, id), before, "a geometria nao foi re-cozida");
 }
@@ -265,5 +280,125 @@ fn the_seed_focus_is_the_target_or_the_catalog() {
     assert_ne!(
         shape_seed_focus(None, ShapeKind::Star),
         shape_seed_focus(None, ShapeKind::Polygon)
+    );
+}
+
+/// ⭐⭐⭐ **O BUG (Enio, 2026-08-31):** *"Troco de Shape na tool Shape e as propriedades da shape
+/// não trocam imediatamente."*
+///
+/// Desenhar deixa a forma nova SELECIONADA (`input_dispatch`, no `Up` do gesto). O alvo vivo
+/// vencia sempre, então escolher outra forma no catálogo — que põe a tool em
+/// [`DrawMode::Shape`] — deixava o painel a mostrar os parâmetros da forma **anterior** até
+/// alguém desenhar a nova. ⚠️ **A regra já estava escrita** no doc do `shape_focus` do painel
+/// (*"no modo Shape … valem mesmo com algo selecionado"*) e **não era alcançável**: o
+/// `published.or_else(…)` lê o alvo primeiro.
+#[test]
+fn arming_a_shape_hands_the_fields_to_the_catalog_even_with_a_live_shape_selected() {
+    let (sim, _scene, map, id) = live_shape(
+        ShapeKind::Polygon,
+        ShapeKind::Polygon.defaults(),
+        [0.0, 0.0],
+    );
+    let alvo = |mode, armed| shape_field_target(&sim, &map, &[id], mode, armed).is_some();
+
+    // Armado E a desenhar: os campos são o default do PRÓXIMO traço.
+    assert!(
+        !alvo(DrawMode::Shape, true),
+        "armado para desenhar, o painel tem de mostrar a forma ARMADA"
+    );
+    // Em Select o ciclo Live Shape manda, mesmo com o latch ainda aceso: o artista trocou de
+    // ferramenta, e ali não há forma armada nenhuma a mostrar.
+    assert!(
+        alvo(DrawMode::Select, true),
+        "sem isto o ciclo Live Shape morre"
+    );
+    // …e na MOLDURA também: ali o gesto desenha um RoundRect, e um RoundRect selecionado é o
+    // mesmo objeto. A cerca é o modo Shape, não «todo modo que desenha forma».
+    assert!(alvo(DrawMode::Frame, true));
+}
+
+/// ⚠️⚠️ **O MODO SOZINHO NÃO RESPONDE, e esta é a metade que a 1.ª redacção da cura partia.**
+///
+/// *"Desenhei uma estrela, deixa-me ajustar as pontas dela"* e *"armei o Polígono, mostra-me o
+/// Polígono"* são **os dois** `DrawMode::Shape` com uma forma viva selecionada — o que os separa é
+/// qual gesto veio por último. Uma cerca só no modo teria matado o ciclo Live Shape dentro da
+/// própria ferramenta que o cria, e nenhum gate desta suíte teria dito nada.
+#[test]
+fn drawing_a_shape_gives_the_fields_back_to_it_without_leaving_the_shape_tool() {
+    let (sim, _scene, map, id) = live_shape(
+        ShapeKind::Polygon,
+        ShapeKind::Polygon.defaults(),
+        [0.0, 0.0],
+    );
+    assert!(
+        shape_field_target(&sim, &map, &[id], DrawMode::Shape, false).is_some(),
+        "sem latch aceso, a forma viva manda mesmo no modo Shape — e desenhar apaga o latch \
+         (a selecao muda para o path novo)"
+    );
+}
+
+/// ⚠️⚠️ **A METADE DA ESCRITA, e ela é a perigosa.** Os slots do painel são por ÍNDICE
+/// (`vector_shape_field_id(i)`), partilhados por todas as formas — então com a pintura a mostrar
+/// a Estrela armada e a escrita a alcançar o Polígono selecionado, digitar *"Pontas = 9"* punha
+/// **9 lados** no polígono, sem erro nenhum. *Pintar por uma porta e escrever por outra é o
+/// defeito; a divergência de valores é só o sintoma.*
+#[test]
+fn an_armed_artist_does_not_write_into_the_shape_that_is_still_selected() {
+    let (mut sim, mut scene, map, id) = live_shape(
+        ShapeKind::Polygon,
+        ShapeKind::Polygon.defaults(),
+        [0.0, 0.0],
+    );
+    let before = anchors(&scene, id);
+
+    let touched = edit_selected_shape(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[id],
+        DrawMode::Shape,
+        true,
+        |k, v| apply_shape_field(k, v, field(0), 9.0, 1.0),
+    );
+    assert!(
+        !touched,
+        "armado para desenhar, a caixa NAO edita a selecao"
+    );
+    assert_eq!(
+        anchors(&scene, id),
+        before,
+        "a geometria da selecao nao move"
+    );
+
+    // Controle: a MESMA escrita com o latch APAGADO alcança a forma — senão este gate passaria
+    // por o caminho estar morto, e não pela cerca.
+    assert!(edit_selected_shape(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[id],
+        DrawMode::Shape,
+        false,
+        |k, v| apply_shape_field(k, v, field(0), 9.0, 1.0),
+    ));
+    assert_ne!(anchors(&scene, id).len(), before.len());
+}
+
+/// ⚠️ **O clique que RE-ARMA a forma já acesa também conta.** O sinal é *"o artista carregou no
+/// catálogo"*, não *"o tipo mudou"* — um diff de valor perderia o gesto de voltar a ver o que se
+/// vai desenhar, que é exactamente o report.
+#[test]
+fn clicking_the_shape_that_is_already_active_still_arms_it() {
+    let mut t = ph2d_tool_vector::VectorTool::new();
+    t.set_shape(ShapeKind::Star);
+    assert!(t.take_shape_armed(), "o 1o clique arma");
+    assert!(
+        !t.take_shape_armed(),
+        "e o evento drena — e' um EVENTO, nao um estado"
+    );
+    t.set_shape(ShapeKind::Star); // a MESMA forma
+    assert!(
+        t.take_shape_armed(),
+        "re-armar a forma ja' acesa e' um gesto, e um diff de valor nao o ve"
     );
 }

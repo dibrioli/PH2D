@@ -27,6 +27,14 @@
 //! estrela com um conector ainda selecionado é um gesto legítimo: escolher a forma no
 //! catálogo *já* põe a tool em Shape, sem limpar a seleção). Sem esta exceção, a correção
 //! do bug tiraria do usuário o jeito de configurar a forma que ele acabou de escolher.
+//!
+//! ⚠️⚠️ **A exceção estava escrita aqui e NÃO ERA ALCANÇÁVEL**, e é o report do Enio de
+//! 2026-08-31 (*"troco de Shape na tool Shape e as propriedades não trocam imediatamente"*): o
+//! `or_else` põe o `published` PRIMEIRO, então com uma forma viva selecionada — que é o estado
+//! normal logo depois de desenhar — o `drawing_shape` nunca chegava a ser lido. Quem a torna real
+//! é a shell, que no modo Shape **não publica foco vivo nenhum**
+//! (`vec_shape_params::shape_field_target`). A lei mora lá, e não aqui, porque a **ESCRITA** da
+//! caixa numérica precisa exactamente da mesma resposta — e ela vive no shell.
 
 use crate::state;
 use ph2d_tool_vector::VectorStyleSnapshot;
@@ -55,10 +63,23 @@ pub(crate) fn shape_focus(
 pub(crate) fn resolved(snap: &VectorStyleSnapshot) -> Option<ShapeKind> {
     shape_focus(
         state::current_shape_focus(),
-        snap.shape,
+        armed_kind(snap),
         state::current_selection_count(),
         snap.mode == DrawMode::Shape,
     )
+}
+
+/// **A forma que o GESTO deste modo desenha** — não o botão aceso do catálogo.
+///
+/// ⚠️ **É a mesma porta que a semente usa** (`DrawMode::shape_kind`, via
+/// `vector_bridge::shape_catalog`), e tem de ser: sem alvo vivo, a shell escreve nas caixas os
+/// VALORES do kind efectivo enquanto esta secção pintava os CAMPOS do kind cru. No modo
+/// **Moldura** — o único em que os dois divergem — o painel oferecia *"Estrela: Pontas"* com o raio
+/// de quina do `RoundRect` dentro, e nenhum gate os comparava porque cada metade estava certa
+/// sozinha.
+#[must_use]
+fn armed_kind(snap: &VectorStyleSnapshot) -> ShapeKind {
+    snap.mode.shape_kind(snap.shape).unwrap_or(snap.shape)
 }
 
 #[cfg(test)]
@@ -112,16 +133,21 @@ mod tests {
     }
 
     /// Conflito (catálogo em Polygon, estrela selecionada): a SELEÇÃO manda — o painel
-    /// mostra o que está na tela, não o que a caneta faria a seguir. Inclusive no modo
-    /// Shape: a forma viva em foco vence o catálogo.
+    /// mostra o que está na tela, não o que a caneta faria a seguir.
+    ///
+    /// ⚠️⚠️ **E no modo Shape a shell NUNCA publica um foco vivo** (`vec_shape_params::
+    /// shape_field_target`): armado para desenhar, o artista não está a editar a selecção, e a
+    /// caixa que ele digita move o default do próximo traço. A 2.ª asserção desta função afirmava
+    /// o contrário — `(Some(Star), Polygon, 1, true) == Some(Star)` — e era um estado que o produto
+    /// não produz, mas que o `or_else` abaixo ainda honra. *Um teste puro sobre um estado
+    /// inalcançável documenta a lei ao contrário*: foi ele, e não o código, que fez o painel ficar
+    /// nos parâmetros da forma anterior ao trocar de forma no catálogo (report do Enio,
+    /// 2026-08-31). A lei do modo mora na shell porque a ESCRITA também precisa dela, e a escrita
+    /// não alcança um `pub(crate)` deste crate.
     #[test]
     fn the_selection_wins_over_the_active_shape() {
         assert_eq!(
             shape_focus(Some(ShapeKind::Star), ShapeKind::Polygon, 1, false),
-            Some(ShapeKind::Star)
-        );
-        assert_eq!(
-            shape_focus(Some(ShapeKind::Star), ShapeKind::Polygon, 1, true),
             Some(ShapeKind::Star)
         );
     }

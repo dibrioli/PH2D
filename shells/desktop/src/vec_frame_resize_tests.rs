@@ -423,6 +423,8 @@ fn resizing_a_live_shape_keeps_its_recipe_in_step() {
         &mut scene,
         &map,
         &[id],
+        ph2d_tool_vector::DrawMode::Select,
+        false,
         |_k, _v| true
     ));
     assert!(
@@ -473,6 +475,8 @@ fn the_panels_width_field_keeps_the_recipe_in_step_too() {
         &mut scene,
         &map,
         &[id],
+        ph2d_tool_vector::DrawMode::Select,
+        false,
         |_k, _v| true
     ));
     let (lo, hi) = scene.path_curve_bbox(id).expect("a forma");

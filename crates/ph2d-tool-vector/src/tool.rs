@@ -154,6 +154,11 @@ pub struct VectorTool {
     blend_stack_up: bool,
     /// A forma ATIVA do catálogo (o que o modo `Shape` desenha).
     shape: ShapeKind,
+    /// ⭐ **O artista ACABOU de escolher uma forma no catálogo** — um EVENTO, drenado pela shell
+    /// ([`Self::take_shape_armed`]). A tool não sabe o que está selecionado, então não pode dizer
+    /// por quanto tempo isso vale; quem segura o nível é a shell, que apaga o latch assim que a
+    /// selecção muda. *O clique é da tool, a duração é de quem vê os dois lados.*
+    shape_armed: bool,
     /// Os parâmetros de CADA forma, na unidade de UI (px para raios), indexados pelo
     /// discriminante. Guardar por-forma é o que faz cada uma lembrar do "último usado":
     /// mexer no raio da estrela não mexe no do retângulo.
@@ -218,6 +223,7 @@ impl Default for VectorTool {
             mode: DrawMode::Select,
             blend_stack_up: true,
             shape: ShapeKind::default(),
+            shape_armed: false,
             shape_values: default_shape_values(),
             cap: StrokeCap::Butt,
             join: StrokeJoin::Miter,
@@ -299,6 +305,19 @@ impl VectorTool {
     pub fn set_shape(&mut self, shape: ShapeKind) {
         self.shape = shape;
         self.mode = DrawMode::Shape;
+        // ⚠️ **Marcado mesmo quando a forma NÃO muda.** O sinal é *"o artista carregou no
+        // catálogo"*, e um diff de valor perderia o clique que re-arma a forma que já estava
+        // acesa — que é precisamente o gesto de *"volta a mostrar-me o que vou desenhar"*.
+        self.shape_armed = true;
+    }
+
+    /// Drena o *"acabei de escolher uma forma no catálogo"*. `true` uma vez por clique.
+    ///
+    /// ⚠️ **Quem o consome tem de o guardar até a SELECÇÃO mudar** — é o que separa
+    /// *"armei o Polígono, mostra-me o Polígono"* de *"desenhei uma estrela, deixa-me ajustar as
+    /// pontas dela"*. Os dois são o modo `Shape`; só a ordem dos gestos os distingue.
+    pub fn take_shape_armed(&mut self) -> bool {
+        std::mem::take(&mut self.shape_armed)
     }
 
     /// Os parâmetros da forma `k` na unidade de UI (px para raios).

@@ -190,3 +190,54 @@ fn a_selected_live_shape_still_shows_its_own_fields() {
         "a forma viva selecionada tem de trazer os campos dela (o ciclo Live Shape)"
     );
 }
+
+/// Quantos slots de campo esta seção pintou? (Um `rect_for` por índice — é o que separa
+/// *"a seção existe"* de *"a seção é DAQUELA forma"*.)
+fn shape_fields_painted(hero: &HeroScreen) -> usize {
+    (0..ph2d_panel_vector::ids::MAX_SHAPE_FIELD_SLOTS)
+        .filter(|&i| {
+            hero.hit_index
+                .rect_for(ids::vector_shape_field_id(i))
+                .is_some()
+        })
+        .count()
+}
+
+/// ⭐⭐ **A MOLDURA desenha um `RoundRect`, e os campos têm de ser DELE** — não os do botão
+/// aceso do catálogo.
+///
+/// ⚠️ **A metade da SEMENTE já lia o kind efectivo** (`vector_bridge::shape_catalog` chama
+/// `DrawMode::shape_kind`) e esta metade lia o cru: sem alvo vivo, a shell escrevia nas caixas os
+/// VALORES do `RoundRect` enquanto a seção pintava os CAMPOS da forma do catálogo. Com o catálogo
+/// na Estrela, o painel oferecia *"Star: Points"* com o raio de quina dentro. *Cada metade estava
+/// certa sozinha, e nenhum gate as comparava.*
+#[test]
+fn the_frame_mode_shows_the_round_rect_fields_not_the_lit_catalog_buttons() {
+    use ph2d_tool_vector::shapes;
+    // A fixture CONTÉM o fenômeno: as duas formas têm contagens de campo diferentes, senão
+    // este gate passaria com o produto errado.
+    let cru = shapes::desc(ShapeKind::Rectangle).fields.len();
+    let efectivo = shapes::desc(ShapeKind::RoundRect).fields.len();
+    assert_ne!(
+        cru, efectivo,
+        "a fixture precisa de duas formas distinguiveis"
+    );
+
+    let mut hero = hero_with_vector_panel();
+    set_current_connector(None);
+    // Moldura armada, nada selecionado, e o catálogo por acaso no Rect (que NÃO tem campo nenhum).
+    publish(None, 0, DrawMode::Frame, ShapeKind::Rectangle);
+    paint_frame(&mut hero);
+
+    assert!(
+        shape_params_painted(&hero),
+        "a Moldura desenha um RoundRect: a secao tem de existir mesmo com o catalogo no Rect"
+    );
+    assert_eq!(
+        shape_fields_painted(&hero),
+        efectivo,
+        "a Moldura pintou os campos da forma CRUA do catalogo ({cru} campos) em vez dos do \
+         RoundRect que o gesto desenha ({efectivo}) — e a semente ja escrevia os valores do \
+         RoundRect nesses mesmos slots"
+    );
+}

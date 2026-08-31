@@ -1138,6 +1138,8 @@ impl App {
             vec_last_canvas_click: None,
             vec_text_last_target: None,
             vec_shape_last_focus: None,
+            vec_shape_armed: false,
+            vec_shape_armed_target: None,
             vec_entities: Default::default(),
             flip_entities: Default::default(),
             vec_sel: Default::default(),

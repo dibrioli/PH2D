@@ -6858,6 +6858,13 @@ impl crate::App {
                     vec_scene,
                     &self.vec_entities,
                     &vec_text_sel,
+                    // ⚠️ **O MESMO modo que a pintura leu**: armado para desenhar, a caixa move o
+                    // default do próximo traço e NÃO alcança a forma selecionada — senão digitar
+                    // *"Pontas"* na Estrela armada poria lados no Polígono que está na tela
+                    // (os slots são por índice). O espelho é do frame anterior, e isso basta:
+                    // trocar de modo e digitar não são o mesmo gesto.
+                    self.vec_draw_config.mode,
+                    self.vec_shape_armed,
                     |kind, values| {
                         crate::vec_shape_params::apply_shape_field(
                             kind,
@@ -8472,8 +8479,34 @@ impl crate::App {
             #[cfg(feature = "panel-vector")]
             {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
-                let target =
-                    crate::vec_shape_params::panel_shape_target(sim, &self.vec_entities, &sel);
+                // ⭐⭐ **O LATCH de «armado para desenhar».** A tool publica o clique no catálogo;
+                // a selecção que MUDA o apaga — e desenhar selecciona a forma nova, então o ciclo
+                // Live Shape volta sozinho no gesto seguinte. Sem isto, *"armei o Polígono"* e
+                // *"acabei de desenhar uma estrela"* leem-se iguais (os dois são `DrawMode::Shape`
+                // com uma forma viva na selecção) e um dos dois fica errado, seja qual for a regra.
+                // ⚠️ **O alvo CRU** (`panel_shape_target`, e não a porta): o latch tem de ver a
+                // selecção real para saber quando se apagar. Ler a porta aqui seria um laço — ela
+                // devolve `None` justamente porque o latch está aceso, e ele nunca mais cairia.
+                let alvo_vivo =
+                    crate::vec_shape_params::panel_shape_target(sim, &self.vec_entities, &sel)
+                        .map(|(id, ..)| id);
+                // ⚠️ **O DESARME primeiro, o ARME depois.** Um clique é um EVENTO drenado; a
+                // mudança de alvo é um NÍVEL comparado com o frame anterior. Se algum dia os dois
+                // caírem no mesmo frame, quem tem de ganhar é o gesto que se sabe ter acontecido.
+                if alvo_vivo != self.vec_shape_armed_target {
+                    self.vec_shape_armed_target = alvo_vivo;
+                    self.vec_shape_armed = false;
+                }
+                if vector_bridge::take_shape_armed(tools) {
+                    self.vec_shape_armed = true;
+                }
+                let target = crate::vec_shape_params::shape_field_target(
+                    sim,
+                    &self.vec_entities,
+                    &sel,
+                    self.vec_draw_config.mode,
+                    self.vec_shape_armed,
+                );
                 ph2d_panel_vector::set_current_shape_focus(target.as_ref().map(|(_, _, k, _)| *k));
                 // Semente ONE-SHOT: só quando o alvo MUDA (senão brigaria com o arrasto).
                 // Além dos campos, a TOOL adota os params — assim painel, tool e objeto

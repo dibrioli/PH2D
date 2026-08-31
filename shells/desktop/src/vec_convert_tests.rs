@@ -452,6 +452,8 @@ fn a_node_edit_on_a_live_shape_is_wiped_by_the_next_param_edit() {
         &mut scene,
         &map,
         &[id],
+        ph2d_tool_vector::DrawMode::Select,
+        false,
         |_kind, _values| true,
     );
     assert!(
@@ -483,7 +485,15 @@ fn freezing_the_recipe_at_the_press_makes_the_node_edit_survive() {
     );
     let moved = drag_node_zero(&mut scene, id);
     // O artista encosta no slider: sem receita, não há o que re-cozinhar.
-    crate::vec_shape_params::edit_selected_shape(&mut sim, &mut scene, &map, &[id], |_k, _v| true);
+    crate::vec_shape_params::edit_selected_shape(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[id],
+        ph2d_tool_vector::DrawMode::Select,
+        false,
+        |_k, _v| true,
+    );
     assert_eq!(
         scene.path(id).expect("existe").verts[0].anchor,
         moved,

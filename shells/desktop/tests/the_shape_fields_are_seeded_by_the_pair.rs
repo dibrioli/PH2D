@@ -35,11 +35,32 @@ fn the_seed_memo_is_the_pair_not_just_the_target() {
         focus < cmp,
         "o par e' computado DEPOIS de ser comparado (focus em {focus}, comparacao em {cmp})"
     );
-    // …e o campo estreito não pode ter sobrevivido em lugar nenhum: um segundo memo com a chave
-    // antiga é o defeito de volta, com a suíte verde.
+    // …e nada MAIS pode guardar a semente. ⚠️ **Esta metade proibia um NOME**
+    // (`vec_shape_last_target`) e reprovou sobre produto correcto em 2026-08-31: a cura do
+    // *"trocar de forma no catálogo"* precisa de lembrar o alvo do frame anterior para saber
+    // quando DESARMAR o latch — que é outro trabalho, no mesmo ficheiro, com o mesmo nome óbvio.
+    // *Um gate que bane uma palavra bane também a próxima pessoa que precisa dela*; o que se
+    // quer proibir é a palavra **naquela posição**. Hoje a janela é o corpo entre o PAR e a
+    // semente, e ali só o par pode decidir.
+    let seed = SRC
+        .find("crate::vec_shape_params::seed_shape_fields(&mut hero.store, focus.1, &ui);")
+        .expect("a semente");
+    let janela = &SRC[focus..seed];
+    let memos: Vec<&str> = janela
+        .match_indices("self.vec_shape_")
+        .map(|(i, _)| {
+            let campo = &janela[i + "self.".len()..];
+            let fim = campo
+                .find(|c: char| !c.is_alphanumeric() && c != '_')
+                .unwrap_or(campo.len());
+            &campo[..fim]
+        })
+        .filter(|m| *m != "vec_shape_last_focus")
+        .collect();
     assert!(
-        !SRC.contains("vec_shape_last_target"),
-        "a memo ESTREITA (so' o alvo) ainda existe — foi ela que causou o report"
+        memos.is_empty(),
+        "um segundo estado decide a semente entre o PAR e a chamada — e' o defeito de volta com \
+         a suite verde: {memos:?}"
     );
 }
 

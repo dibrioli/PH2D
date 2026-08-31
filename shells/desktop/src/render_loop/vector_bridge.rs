@@ -83,6 +83,20 @@ pub(crate) fn shape_catalog(
     Some((k, tool.shape_values(k)))
 }
 
+/// Drena o *"o artista acabou de escolher uma forma no catálogo"* da tool
+/// (`VectorTool::take_shape_armed`). `false` quando a tool não está em cena.
+///
+/// Downcast confinado a este bridge, como o [`set_mode`].
+pub(crate) fn take_shape_armed(tools: &mut ToolRegistry) -> bool {
+    tools
+        .tool_by_id_mut(&ToolId::new("vector"))
+        .and_then(|t| {
+            t.as_any_mut()
+                .downcast_mut::<ph2d_tool_vector::VectorTool>()
+        })
+        .is_some_and(ph2d_tool_vector::VectorTool::take_shape_armed)
+}
+
 pub(crate) fn adopt_shape_values(
     tools: &mut ToolRegistry,
     kind: ph2d_vec_scene::ShapeKind,

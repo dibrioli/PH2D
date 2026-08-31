@@ -444,3 +444,122 @@ fn making_a_component_leaves_the_selection_on_the_copy_not_on_the_recipe() {
         "a selecao tem de cair na COPIA, que e' uma instancia"
     );
 }
+
+/// ⭐⭐⭐ **`Instantiate` numa CÓPIA põe outra cópia** — report do Enio, 2026-08-31.
+///
+/// # ⛔⛔ Duas decisões deliberadas deste ficheiro desfaziam-se uma à outra
+///
+/// O *Make Prefab* move a selecção para a **cópia** de propósito (é o que o artista vê e continua a
+/// editar — ver o doc do `select_out`), e o *Instantiate* pedia a **receita**. ⇒ o gesto seguinte da
+/// fila recusava no caminho normal, com *«Not a prefab — pick the prefab row»*, e as duas linhas
+/// lêem-se quase igual na Hierarquia (`Casa` e `Casa (1)`).
+///
+/// ⚠️ **O oráculo é a CONTAGEM de instâncias da receita**, e não «o verbo devolveu `true`»: um
+/// verbo que criasse um objecto solto — sem `InstanceOf` — também devolveria `true`.
+///
+/// (Mutação: `master_subject` devolver sempre `clicked` ⇒ RED.)
+#[test]
+fn instantiate_on_a_copy_places_another_copy_of_its_master() {
+    let mut sim = SimWorld::new();
+    let r = reg();
+    let mut echo = MasterEcho::default();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    let master = spawn_master(&mut sim);
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    let master_id = sim
+        .world()
+        .get::<ph2d_ecs::StableId>(master)
+        .expect("stable id")
+        .0;
+
+    // A 1.ª cópia, pela receita — o estado em que o *Make Prefab* deixa o artista.
+    let mut select_out = None;
+    assert!(place(
+        &mut sim,
+        &r,
+        &mut echo,
+        &mut toasts,
+        master,
+        &mut select_out
+    ));
+    let copy = Entity::from_bits(select_out.expect("a copia nova"));
+    let before = super::instances_of(&mut sim, master_id);
+
+    // ⭐ E agora o gesto do artista: *Instantiate* **na cópia** em que ele ficou.
+    let mut select_out = None;
+    assert!(
+        place(&mut sim, &r, &mut echo, &mut toasts, copy, &mut select_out),
+        "o verbo recusou na copia — e' o defeito do report"
+    );
+    assert_eq!(
+        super::instances_of(&mut sim, master_id),
+        before + 1,
+        "a copia nova nao ficou ligada a' MESMA receita"
+    );
+    let born = Entity::from_bits(select_out.expect("a 2.a copia"));
+    assert_eq!(
+        sim.world().get::<InstanceOf>(born).map(|l| l.master),
+        Some(master_id),
+        "a copia nasceu ligada a outra coisa"
+    );
+}
+
+/// ⛔ **E uma linha que não é receita NEM cópia continua a recusar** — a cerca mudou de sítio, não
+/// caiu.
+///
+/// ⚠️ Sem esta metade, um `master_subject` que devolvesse a primeira receita do mundo passaria no
+/// gate acima: *uma cura só se prova com o caso em que ela NÃO pode agir*.
+#[test]
+fn instantiate_on_a_stranger_still_refuses() {
+    let mut sim = SimWorld::new();
+    let r = reg();
+    let mut echo = MasterEcho::default();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    let _master = spawn_master(&mut sim);
+    let stranger = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Stranger")))
+        .id();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    let mut select_out = None;
+    assert!(
+        !place(
+            &mut sim,
+            &r,
+            &mut echo,
+            &mut toasts,
+            stranger,
+            &mut select_out
+        ),
+        "um objecto que nao e' receita nem copia foi instanciado"
+    );
+    assert!(select_out.is_none());
+}
+
+/// O dreno do *Instantiate*, com os documentos vazios.
+fn place(
+    sim: &mut SimWorld,
+    r: &ph2d_ecs::scene::ComponentRegistry,
+    echo: &mut MasterEcho,
+    toasts: &mut ph2d_editor::ToastQueue,
+    entity: Entity,
+    select_out: &mut Option<u64>,
+) -> bool {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    super::drain(
+        super::Verb::Place,
+        sim,
+        r,
+        echo,
+        entity.to_bits(),
+        toasts,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+        [1.5, 0.0],
+        select_out,
+    )
+}

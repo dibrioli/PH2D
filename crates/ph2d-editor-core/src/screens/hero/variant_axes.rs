@@ -380,13 +380,35 @@ pub fn declared_axes(name: &str) -> Vec<VariantAxis> {
 ///
 /// ⚠️ **Não é o [`display_name`]**: no modo plano a família discorda das chaves, e o nome comum é o
 /// mesmo em todas — colapsá-lo daria quatro chips a dizer `Casa`. ⇒ o chip leva o **miolo** das
-/// chaves quando ele existe (`Size=Small, State=Idle`), e o nome inteiro quando não existe.
+/// chaves quando ele existe, e o nome inteiro quando não existe.
+///
+/// # ⛔⛔ E ele NÃO pode deitar fora o que vem DEPOIS das chaves
+///
+/// A 1.ª versão devolvia só o miolo, e o fluxo medido (`PH2D_BUILD_SMOKE=80`, passo 4) mostrou o
+/// preço: uma variante nasce com o nome da base mais um sufixo — `Casa {Size=Small} Variant` —,
+/// então as duas irmãs davam o **mesmo** chip, `Size=Small`, e a fileira ficava com **dois botões
+/// idênticos**. *O modo plano existe exactamente para separar quem o modo de eixos não separou;
+/// um rótulo que colapsa duas irmãs falha na única coisa que ele tem para fazer.*
+///
+/// ⚠️ A cura é **não descartar**: miolo + o que vem depois (`Size=Small Variant`, `Size=Small (1)`).
+/// ⛔ Ela não garante injectividade — nada que olhe um nome de cada vez garante —, mas deixa de
+/// **fabricar** colisões que o nome não tinha.
 #[must_use]
 pub fn chip_label(name: &str) -> String {
-    match name.split_once('{').and_then(|(_, r)| r.split_once('}')) {
-        Some((inner, _)) if !inner.trim().is_empty() => inner.trim().to_string(),
-        _ => name.to_string(),
+    let Some((_, rest)) = name.split_once('{') else {
+        return name.to_string();
+    };
+    let Some((inner, tail)) = rest.split_once('}') else {
+        return name.to_string();
+    };
+    let (inner, tail) = (inner.trim(), tail.trim());
+    if inner.is_empty() {
+        return name.to_string();
     }
+    if tail.is_empty() {
+        return inner.to_string();
+    }
+    format!("{inner} {tail}")
 }
 
 /// O modo **plano**: uma fileira `Variant` com os membros tal como se chamam.

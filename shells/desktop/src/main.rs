@@ -685,6 +685,7 @@ mod value_wrap_smoke;
 /// (auditoria de 2026-08-30): este bloco descrevia o `vec_variants`, e o módulo novo entrou por
 /// baixo dele — ficando a documentar-se com a frase de outro e sem dizer que é um smoke.
 mod variant_axes_smoke;
+mod variant_flow_smoke;
 /// A cena de smoke dos **VARIANTS** (`PH2D_BUILD_SMOKE=58`) — irmã de `component_pieces_smoke`.
 mod variant_smoke;
 mod vec_anchor_edit;

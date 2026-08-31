@@ -474,3 +474,32 @@ fn a_flat_chip_shows_what_differs_not_the_common_name() {
     assert_eq!(rows[0].name, "", "isto tinha de cair no modo plano");
     assert_eq!(labels(&rows[0]), vec!["Size=Small", "Size=Big, State=Run"]);
 }
+
+/// ⛔⛔ **O chip do modo plano NÃO colapsa duas irmãs** — o defeito medido no fluxo de 2026-08-31.
+///
+/// Uma variante nasce com o nome da base mais um sufixo (`… Variant`, `… (1)`), e a 1.ª versão do
+/// `chip_label` devolvia só o miolo das chaves ⇒ **dois botões idênticos** na fileira que existe
+/// exactamente para os separar.
+///
+/// **Mutação que deve sangrar:** voltar a devolver só o `inner`.
+#[test]
+fn a_flat_chip_never_collapses_two_sisters() {
+    use super::{chip_label, rows_for};
+    assert_eq!(
+        chip_label("Casa {Size=Small} Variant"),
+        "Size=Small Variant"
+    );
+    assert_eq!(chip_label("Casa {Size=Small} (1)"), "Size=Small (1)");
+    assert_eq!(chip_label("Casa {Size=Small}"), "Size=Small");
+    // A família que o fluxo de facto produz: base e variante, com o MESMO miolo.
+    let me = "Casa {Size=Small}";
+    let members = [m(1, me), m(2, "Casa {Size=Small} Variant")];
+    let (rows, _) = rows_for(&members, 1, me);
+    let flat = rows.iter().find(|a| a.name.is_empty()).expect("modo plano");
+    let seen = labels(flat);
+    assert_eq!(seen, vec!["Size=Small", "Size=Small Variant"]);
+    assert_ne!(
+        seen[0], seen[1],
+        "duas irmãs com o mesmo rótulo não escolhem nada"
+    );
+}

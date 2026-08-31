@@ -445,5 +445,13 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::variant_axes_smoke::frame(app, f);
         return true;
     }
+    // ⭐⭐⭐ O FLUXO INTEIRO DE CRIAR VARIAÇÕES (=80). ⚠️ Ela corre os VERBOS pela porta do menu e
+    // imprime, passo a passo, a voz do app + o que a Hierarquia e o cartão mostram. É a resposta
+    // medida à pergunta *«me mostre o fluxo inteiro»* — e o sítio onde um buraco dele aparece com
+    // o nome do passo ao lado.
+    if level == 80 {
+        crate::variant_flow_smoke::frame(app, f);
+        return true;
+    }
     false
 }

@@ -329,6 +329,30 @@ fn cascade(sim: &mut SimWorld, instance: Entity, master_id: u64, step: [f32; 2])
     }
 }
 
+/// ⭐⭐ **A RECEITA que esta linha representa** — ela própria, se for uma; a de que é cópia, se for
+/// uma cópia; ela própria (para o verbo recusar com voz) se não for nem uma coisa nem outra.
+///
+/// ⚠️ **Uma porta, e não uma escada em cada chamador**: a resolução `cópia -> receita` é a mesma
+/// travessia que o *Apply*, o *Revert* e o *Detach* já fazem (`instance_root_of`), e escrevê-la
+/// outra vez daria duas respostas a *«de que receita esta linha é?»*.
+fn master_subject(sim: &mut SimWorld, clicked: Entity) -> Entity {
+    if sim.world().get::<ph2d_ecs::MasterRoot>(clicked).is_some() {
+        return clicked;
+    }
+    let Some(root) = crate::instance_verbs::instance_root_of(sim, clicked) else {
+        return clicked;
+    };
+    let Some(master_id) = sim
+        .world()
+        .get::<ph2d_ecs::InstanceOf>(root)
+        .map(|l| l.master)
+    else {
+        return clicked;
+    };
+    crate::instance_verbs_walk::entity_for_stable_id(sim, master_id)
+        .map_or(clicked, Entity::from_bits)
+}
+
 /// **Qual dos verbos o menu pediu.**
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Verb {
@@ -444,8 +468,27 @@ pub(crate) fn drain(
             // cena ⇒ **mover o grupo passava a mover uma instância e não as outras**, e arrastar a
             // perdida de volta à mão não curava. *Uma discordância entre irmãos, não um erro do
             // motor de cópia.*
-            let parent = sim.world().get::<ph2d_ecs::ChildOf>(entity).map(|c| c.0);
-            match crate::instantiate::instantiate_master(sim, registry, entity, parent, docs, link)
+            // ⭐⭐⭐ **O SUJEITO é a receita, e a linha clicada pode ser uma CÓPIA dela**
+            // (report do Enio, 2026-08-31: *«me mostre o fluxo inteiro de criar variações»*).
+            //
+            // # ⛔⛔ Duas decisões deliberadas deste mesmo ficheiro desfaziam-se uma à outra
+            //
+            // O *Make Prefab* **move a selecção para a cópia** de propósito — é o que o artista vê
+            // e continua a editar, e o doc do `select_out` explica porquê (Figma e Unity fazem o
+            // mesmo). Depois disso, o gesto seguinte da fila — *Instantiate* — **recusava**, porque
+            // pedia a receita: *«Not a prefab — pick the prefab row»*.
+            //
+            // ⇒ o app punha o artista numa linha e o verbo seguinte só funcionava noutra. Medido no
+            // fluxo (`PH2D_BUILD_SMOKE=80`, passo 3): `mudou=false` **no caminho normal**, com as
+            // duas linhas a lerem-se quase igual na Hierarquia (`Casa` e `Casa (1)`).
+            //
+            // ⚠️ **A cerca não caiu, mudou de sítio:** *Instantiate* continua a ser sobre a
+            // RECEITA — só que agora ele sabe achá-la a partir de uma cópia dela, que é a mesma
+            // resolução que os outros quatro verbos já faziam (`instance_root_of`). ⛔ Uma linha
+            // que não é nem receita nem cópia continua a recusar, com a mesma voz.
+            let subject = master_subject(sim, entity);
+            let parent = sim.world().get::<ph2d_ecs::ChildOf>(subject).map(|c| c.0);
+            match crate::instantiate::instantiate_master(sim, registry, subject, parent, docs, link)
             {
                 Ok(inst) => {
                     // ⭐ A cópia não aterra em cima do mestre nem das irmãs — ver [`cascade`].

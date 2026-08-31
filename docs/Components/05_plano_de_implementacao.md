@@ -1172,6 +1172,74 @@ ele mostra o **miolo** das chaves (`chip_label`), que é o que difere.
 **Smoke:** `PH2D_BUILD_SMOKE=79`, agora com o objecto **solto** e o **gesto do report** (reescrever
 as chaves) nos quadros 40–52.
 
+### ⭐⭐⭐ O 4.º report — *«me mostre o fluxo inteiro de criar variações»* (2026-08-31)
+
+> *«Parece que ainda não funciona.»*
+
+⚠️ **A segunda frase é o achado, e ela não é sobre o cartão:** as chaves **DECLARAM** propriedades;
+elas **não criam** uma família. Uma família nasce dos **ELOS**, e dois objectos irmãos com chaves no
+nome não são variantes um do outro por mais parecidos que os nomes sejam. *O modelo que o artista
+tinha na cabeça e o do produto divergiam, e nada na tela dizia qual era qual.*
+
+⛔ **Não se responde a isto com uma explicação** — responde-se com o fluxo **medido**:
+`PH2D_BUILD_SMOKE=80` corre os verbos pela MESMA porta que o menu drena
+([`instance_verbs::drain`]) e imprime, a cada passo, a **voz do app** + o que a Hierarquia e o
+cartão mostram.
+
+E a 1.ª corrida achou **dois buracos, os dois reais**:
+
+#### ⛔⛔ 1. O passo 3 recusava no caminho NORMAL — duas decisões deliberadas a desfazerem-se
+
+| passo | gesto | antes | depois |
+|---|---|---|---|
+| 2 | *Make Prefab* | `Made a prefab — an instance took its place` | igual |
+| **3** | *Instantiate* | ⛔ `mudou=false` · *«Not a prefab — pick the prefab row»* | ✅ `Instantiated` |
+
+O *Make Prefab* **move a selecção para a cópia de propósito** (o doc do `select_out` explica-o: é o
+que o artista vê e continua a editar, como o Figma e a Unity). O *Instantiate* pedia a **receita**.
+⇒ *o app punha o artista numa linha e o verbo seguinte só funcionava noutra* — e as duas lêem-se
+quase igual na Hierarquia (`Casa` e `Casa (1)`).
+
+⚠️ **A cerca não caiu, mudou de sítio:** o `master_subject` resolve `cópia → receita` pela **mesma**
+travessia que o *Apply*, o *Revert* e o *Detach* já faziam. ⛔ Uma linha que não é nem receita nem
+cópia continua a recusar, com a mesma voz — e há gate com esse nome
+(`instantiate_on_a_stranger_still_refuses`), porque *uma cura só se prova com o caso em que ela NÃO
+pode agir*.
+
+#### ⛔⛔ 2. Dois chips IDÊNTICOS — e o defeito era meu, do bloco anterior
+
+No passo 4 a fileira plana dava `Size=Small` **e** `Size=Small`. Uma variante nasce com o nome da
+base mais um sufixo (`Casa {Size=Small} Variant`), e o meu `chip_label` devolvia **só o miolo das
+chaves** — deitando fora exactamente a parte que as distinguia.
+
+*O modo plano existe para separar quem o modo de eixos não separou; um rótulo que colapsa duas irmãs
+falha na única coisa que tem para fazer.* Hoje: `Size=Small` e `Size=Small Variant`.
+⛔ Isto **não** garante injectividade — nada que olhe um nome de cada vez garante —, mas deixa de
+**fabricar** colisões que o nome não tinha.
+
+#### ✅ E o fluxo, medido de ponta a ponta, fecha
+
+```
+1. «Casa {Size=Small}» — objecto normal
+2. Make Prefab            -> Made a prefab — an instance took its place
+3. Instantiate            -> Instantiated
+4. Make Prefab (na cópia) -> Made a variant — it still follows its base
+                             cartao: Variant: Size=Small [Size=Small Variant]
+5. renomear a variante    -> cartao: Size: Small [Big]      ⭐ a fileira por PROPRIEDADE
+```
+
+#### ⏳ ABERTO, medido e NÃO curado — é decisão do Enio
+
+No passo 5 a Hierarquia mostra `["Casa (1) *¹", "Casa (2) *¹", "Casa *¹", "Casa *¹"]`: **duas linhas
+lêem-se exactamente `Casa *¹`** — a receita base e a receita da variante. O selo diz **quantas**
+propriedades, e as duas têm uma; ele não diz **quais**, então as duas receitas da mesma família são
+indistinguíveis **na lista onde o artista tem de escolher qual renomear**.
+
+⚠️ **A cura contradiz o desenho que o próprio Enio pediu** (*«só o nome Casa fica aparecendo na
+hierarquia junto com um `*³`»*) — mostrar o valor (`Casa · Small` / `Casa · Big`) traz de volta o
+nome comprido que ele recusou. ⇒ *fica com ele, com o número ao lado*, e não se constrói por
+antecipação.
+
 ---
 
 ## §F6 — O índice de assets (`ph2d-asset-index`) — ADR-0165

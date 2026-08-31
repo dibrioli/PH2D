@@ -8,13 +8,32 @@
 //!
 //! ⇒ um layout **arruma painéis**. Ele não é um modo e não é uma ferramenta.
 //!
-//! # ⭐ A costura com o Modo é UM CAMPO OPCIONAL, e é a do Blender
+//! # ⭐⭐ O CANVAS TEM UM DONO, e todo layout o NOMEIA
 //!
 //! O Workspace do Blender tem um `Mode:` — *«switch to this Mode when activating the workspace»*.
-//! Ortogonais, **com um atalho declarado**; ⛔ não acoplados. Aqui é o [`TaskLayout::tool`]: escolher
-//! *Vetor* arruma os painéis **e** pega na ferramenta de vetor, porque um layout de vetor com o
-//! canvas noutro modo é uma arrumação que não serve para nada. Um layout sem ferramenta declarada
-//! **não mexe** na que está em mãos.
+//! Ortogonais, **com um atalho declarado**; ⛔ não acoplados. Aqui é o [`LayoutSpec::canvas`].
+//!
+//! ⛔⛔ **Ele era `Option<&str>`, e o `None` significava *«não mexe na ferramenta em mãos»* — o
+//! defeito que o Enio reportou em 2026-08-31:** *«se abro Nodes e depois Model, o grafo de Nodes
+//! persiste»*. A causa não é o grafo: é que **quase todo painel deste app pertence à FERRAMENTA,
+//! não ao layout** (a `motion_bridge` escreve `motion_graph`/`motion_params` a cada quadro a
+//! partir de `tools.active() == motion`), então um layout que não larga a ferramenta traz os
+//! painéis dela atrás — e a lista de abertos, que se diz **absoluta**, é reescrita pela ponte no
+//! quadro seguinte. ⚠️ Valia para **dois** dos seis (*Model* e *Animate*), e a segunda mordida
+//! via-se na foto dele: as abas *Inspector | Vector* no dock direito do *Animate*.
+//!
+//! ⇒ **não há herança.** O *Model* entrega o canvas ao modelador; o *Animate* entrega-o à
+//! ferramenta neutra (o `move`, que é o que este app tem em vez de *«nenhuma»* — ver
+//! [`CanvasOwner`]).
+//!
+//! # ⛔ E por isso a lista de abertos ENCOLHEU
+//!
+//! Um layout só pode comandar o que mais ninguém escreve. O `motion_graph`, o `vector`, o `flip`,
+//! o `painter_layers` e companhia vêm **com a ferramenta**; nomeá-los aqui era decoração que o
+//! quadro seguinte reescrevia. O que sobra — a hierarquia, a linha do tempo, o painel do
+//! modelador — é o que o layout de facto arruma. O gate que defende a fronteira vive em
+//! `shells/desktop/tests/a_layout_never_commands_a_panel_a_bridge_owns.rs`, porque o censo de quem
+//! é da ferramenta só existe nas pontes.
 //!
 //! # ⛔ DOIS dos oito não existem, e o bloqueador é de outra pessoa
 //!
@@ -44,6 +63,29 @@ pub enum TaskLayout {
     Nodes,
 }
 
+/// ⭐⭐ **Quem fica com o CANVAS quando este layout abre.** Sem `None`: ver o cabeçalho.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum CanvasOwner {
+    /// A ferramenta com este id (o do registry de ferramentas).
+    ///
+    /// ⚠️ **`Tool("move")` é o que este app tem em vez de «nenhuma»:** o registry nunca fica sem
+    /// ferramenta activa (`activate_default` no arranque, e o `set_active` exige um id), e todo
+    /// gesto de *largar* — o `CancelActiveTool`, o pill do vetor, o do motion — é escrito como
+    /// *«volta à de omissão»*. ⇒ um layout que só quer a cena pede o `move`, e não fica calado.
+    Tool(&'static str),
+    /// ⭐ O **modelador implícito** (ADR-0161). Ele não é uma `Tool` — o traçado e a navegação
+    /// moram no shell de propósito, e é isso que mantém a superfície congelada `Tool=12` fora do
+    /// caminho —, então não há `tool_id` que o exprima: quem o arma é a **visibilidade do painel**
+    /// (`field3d_smoke::set_armed_by_panel`).
+    ///
+    /// ⚠️ **E é por isso que ele não pede ferramenta nenhuma.** Quem larga a que estava em mãos é
+    /// a metade simétrica da lei do `field3d_mode` — *tomar o canvas liberta quem o tinha* —, que
+    /// corre no shell quando este painel abre, por qualquer porta (esta aba **ou** o menu
+    /// *Window*). Pedir o `move` aqui faria a ponte ler a nossa própria mão como *«outro tomou o
+    /// canvas»* e fechar o painel que a abriu.
+    Model3d,
+}
+
 /// O que um layout arruma.
 pub struct LayoutSpec {
     /// O nome na aba.
@@ -52,12 +94,16 @@ pub struct LayoutSpec {
     /// [`Slot::wire`]: renomear a variante não pode apagar a arrumação gravada de ninguém.
     pub wire: &'static str,
     /// Os painéis que ele abre — **a lista completa**, e tudo o que não está aqui fecha.
+    ///
+    /// ⛔ **Só painéis que o layout POSSUI.** Um painel cuja visibilidade uma ponte escreve a cada
+    /// quadro a partir da ferramenta activa não é comandável daqui: nomeá-lo é uma declaração que
+    /// o quadro seguinte reescreve. Ver o cabeçalho do módulo.
     pub open: &'static [&'static str],
     /// Painéis que ele põe num encaixe diferente do que eles declaram. Vazio na maioria.
     pub slots: &'static [(&'static str, Slot)],
-    /// ⭐ **A ferramenta que ele pega**, ou `None` — a costura opcional com o Modo (ver o
-    /// cabeçalho). O id é o do registry de ferramentas.
-    pub tool: Option<&'static str>,
+    /// ⭐⭐ **A quem ele entrega o canvas** — sem `None`, e é isso que impede uma tarefa de herdar
+    /// o modo da anterior. Ver [`CanvasOwner`] e o cabeçalho.
+    pub canvas: CanvasOwner,
 }
 
 impl TaskLayout {
@@ -78,54 +124,65 @@ impl TaskLayout {
     #[must_use]
     pub const fn spec(self) -> LayoutSpec {
         match self {
-            // ⚠️ A hierarquia e o inspector estão em **todos**: eles são o *que existe* e o *o que
-            // isto é*, e nenhuma tarefa deste app se faz sem os dois. Uma tarefa que os dispensasse
-            // seria o Runtime, que é um dos dois bloqueados.
+            // ⚠️ A hierarquia está em **todos**: ela é o *que existe*, e nenhuma tarefa deste app
+            // se faz sem ela. Uma tarefa que a dispensasse seria o Runtime, que é um dos dois
+            // bloqueados.
+            //
+            // ⚠️⚠️ **O `inspector` NÃO está em nenhum, e a ausência é a decisão.** Ele tem dois
+            // donos: seis pontes escrevem-no na BORDA de uma tomada (`insert("inspector",
+            // !active)` — o painel da ferramenta substitui-o visualmente), e o layout escreve-o na
+            // pintura. Como as pontes correm depois, o que o layout dissesse era desmentido no
+            // quadro seguinte em exactamente as transições que interessam. *Um campo com dois
+            // escritores e uma ordem fixa tem um dono só — e não é quem escreve primeiro.*
             Self::Drawing2d => LayoutSpec {
                 title: "Draw",
                 wire: "drawing_2d",
-                open: &["hierarchy", "inspector", "painter_layers"],
+                // ⚠️ O `painter_layers` vem COM a ferramenta (`painter_bridge`), e por isso não se
+                // nomeia aqui — ver o cabeçalho.
+                open: &["hierarchy"],
                 slots: &[],
-                tool: Some("painter"),
+                canvas: CanvasOwner::Tool("painter"),
             },
             Self::Vector => LayoutSpec {
                 title: "Vector",
                 wire: "vector",
-                open: &["hierarchy", "inspector", "vector"],
+                open: &["hierarchy"],
                 slots: &[],
-                tool: Some("vector"),
+                canvas: CanvasOwner::Tool("vector"),
             },
             Self::Flip => LayoutSpec {
                 title: "Flip",
                 wire: "flip",
-                open: &["hierarchy", "inspector", "flip", "flip_frames"],
+                open: &["hierarchy"],
                 slots: &[],
-                tool: Some("flip"),
+                canvas: CanvasOwner::Tool("flip"),
             },
             Self::Modeling3d => LayoutSpec {
                 title: "Model",
                 wire: "modeling_3d",
-                open: &["hierarchy", "inspector", "model3d"],
+                // ⚠️ Abrir o painel **é** entrar no modo (`set_armed_by_panel`) — por isso ele é do
+                // layout, e a ferramenta em mãos é largada pela lei do `field3d_mode`, no shell.
+                open: &["hierarchy", "model3d"],
                 slots: &[],
-                // ⛔ Sem ferramenta: o módulo 3D **toma o canvas** por outro caminho (o pill MODEL,
-                // hoje o menu *Window*), e activá-lo daqui seria a segunda porta para o mesmo facto.
-                tool: None,
+                canvas: CanvasOwner::Model3d,
             },
             Self::Animation => LayoutSpec {
                 title: "Animate",
                 wire: "animation",
-                open: &["hierarchy", "inspector", "timeline"],
+                open: &["hierarchy", "timeline"],
                 slots: &[],
-                tool: None,
+                canvas: CanvasOwner::Tool("move"),
             },
             Self::Nodes => LayoutSpec {
                 title: "Nodes",
                 wire: "nodes",
-                // ⚠️ O `motion_graph` é o **centro** (ele parte a área de desenho), e por isso não
-                // disputa coluna com ninguém — ver `slot_tabs` e a decisão D5.
-                open: &["hierarchy", "motion_graph", "motion_params"],
+                // ⚠️ O `motion_graph` é o **centro** (ele parte a área de desenho) e o
+                // `motion_params` é da ponte — os dois vêm com a ferramenta. A linha do tempo é
+                // nomeada porque é do layout, e a ponte do motion só a **abre** por cortesia
+                // (nunca a fecha), o que é a mesma resposta por dois caminhos.
+                open: &["hierarchy", "timeline"],
                 slots: &[],
-                tool: Some("motion"),
+                canvas: CanvasOwner::Tool("motion"),
             },
         }
     }

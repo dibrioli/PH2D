@@ -29,6 +29,22 @@
 //! |---|---|
 //! | uma **ferramenta** é pegada no rail, ou o **barro** aparece na tela | o painel MODEL **fecha** |
 //! | o pill **MODEL** é aberto | o **barro** sai da tela (pela porta do próprio módulo de escultura) |
+//! | o pill **MODEL** é aberto | a **ferramenta em mãos** volta à de omissão *(2026-08-31)* |
+//!
+//! # ⛔⛔ A terceira linha faltava, e a tabela já se dizia «simétrica»
+//!
+//! Report do Enio (2026-08-31): *«se abro Nodes e depois Model, o grafo de Nodes persiste»*. Ele
+//! chegou lá pela aba de layout nova, mas **o defeito é deste módulo e é anterior a ela**: abrir o
+//! MODEL pelo menu *Window* com o Motion em mãos deixava a `motion_bridge` a reabrir
+//! `motion_graph`/`motion_params` a cada quadro, porque nada largava a ferramenta.
+//!
+//! ⚠️ *A metade que faltava não era um caso especial — era o outro lado da mesma lei.* As duas
+//! primeiras linhas soltavam **painéis**; a terceira solta uma **ferramenta**, que é o que de
+//! facto tinha o canvas.
+//!
+//! ⚠️⚠️ **E ela não pode ser escrita sem RE-BASELINE** — ver [`model_takes_the_canvas`]. Largar a
+//! ferramenta *é* mudar o dono, e o quadro seguinte leria a nossa própria mão como *«outro tomou o
+//! canvas»* e fecharia o painel que a fez. A lei mordia-se a si própria.
 //!
 //! ⚠️ **Fechar o painel, e não só desarmar em silêncio:** o pill *é* o interruptor do módulo
 //! (`set_armed_by_panel`), então um desarme invisível deixaria o botão aceso a mentir sobre o
@@ -85,6 +101,32 @@ pub(crate) fn note_owner(now: Owner) -> bool {
         *last.borrow_mut() = now;
         took
     })
+}
+
+/// ⭐⭐ **O MODELADOR TOMOU O CANVAS: a ferramenta em mãos cede?**
+///
+/// Devolve `true` quando há de facto uma ferramenta **modal** a largar (`now.tool` não é já a
+/// neutra) — e, nesse caso, **regista já o dono novo**.
+///
+/// ⚠️⚠️ **As duas coisas são um acto só, e é por isso que vivem numa função só.** Se o registo
+/// ficasse do lado do chamador, uma mutação que o apagasse sobreviveria a toda a suíte — e o
+/// produto entraria num ciclo: o quadro seguinte compara a ferramenta nova com a guardada, lê
+/// *«outro tomou o canvas»* e fecha o painel do modelador que acabou de a largar. *Uma decisão que
+/// muda o dono tem de escrever o dono.*
+///
+/// ⚠️ O `clay` viaja de [`Owner`] para [`Owner`] intacto: largar a ferramenta não diz nada sobre
+/// o barro — quem trata dele é a linha de cima da tabela, pela porta do módulo de escultura.
+pub(crate) fn model_takes_the_canvas(now: &Owner, neutral: &ToolId) -> bool {
+    if now.tool.as_ref() == Some(neutral) {
+        return false;
+    }
+    LAST.with(|last| {
+        *last.borrow_mut() = Owner {
+            tool: Some(neutral.clone()),
+            clay: now.clay,
+        };
+    });
+    true
 }
 
 /// ⭐ **O painel MODEL acabou de ABRIR?** — a outra borda, e a metade simétrica da lei.

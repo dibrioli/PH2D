@@ -56,24 +56,69 @@ fn the_tab_titles_are_distinct_and_short() {
     }
 }
 
-/// ⛔ **Um layout que declara ferramenta declara-a por id, e dois não podem declarar a mesma.**
+/// ⛔ **Dois layouts não podem entregar o canvas ao mesmo dono.**
 ///
-/// ⚠️ Dois layouts com a mesma ferramenta não são um erro de tipo, mas são um erro de desenho:
-/// eles deixam de se distinguir no eixo que a D3 diz ser o do MODO.
+/// ⚠️ Não é um erro de tipo, é um erro de desenho: dois layouts com a mesma ferramenta deixam de
+/// se distinguir no eixo que a D3 diz ser o do MODO.
+///
+/// ⚠️ **A excepção é a ferramenta NEUTRA** (`move`, a de omissão do registry): entregar-lhe o
+/// canvas é dizer *«esta tarefa não é sobre o canvas»* — o *Animate* é sobre o tempo —, e duas
+/// tarefas podem legitimamente dizer isso. O que ela **não** pode ser é ausência: ver
+/// `CanvasOwner`.
 #[test]
-fn no_two_layouts_claim_the_same_tool() {
+fn no_two_layouts_hand_the_canvas_to_the_same_owner() {
     let mut seen = std::collections::BTreeSet::new();
-    let mut with_tool = 0usize;
+    let mut modal = 0usize;
     for l in TaskLayout::ALL {
-        if let Some(t) = l.spec().tool {
-            with_tool += 1;
-            assert!(seen.insert(t), "dois layouts pegam na ferramenta {t:?}");
+        match l.spec().canvas {
+            CanvasOwner::Tool(NEUTRAL_TOOL) => {}
+            CanvasOwner::Tool(t) => {
+                modal += 1;
+                assert!(seen.insert(t), "dois layouts pegam na ferramenta {t:?}");
+            }
+            CanvasOwner::Model3d => {
+                modal += 1;
+                assert!(
+                    seen.insert("<model3d>"),
+                    "dois layouts entregam o canvas ao modelador"
+                );
+            }
         }
     }
     assert!(
-        with_tool >= 3,
-        "só {with_tool} layouts pegam numa ferramenta — a costura opcional com o Modo evaporou"
+        modal >= 4,
+        "só {modal} layouts têm um dono próprio para o canvas — a costura com o Modo evaporou"
     );
+}
+
+/// A ferramenta de omissão do registry — o que este app tem em vez de «nenhuma».
+const NEUTRAL_TOOL: &str = "move";
+
+/// ⭐⭐ **Sair de uma tarefa MODAL solta o modo dela** — a régua do report do Enio (2026-08-31):
+/// *«se abro Nodes e depois Model, o grafo de Nodes persiste»*.
+///
+/// ⛔ A causa não estava no grafo: o `canvas` era `Option`, o *Model* e o *Animate* diziam `None`,
+/// e o `None` significava **herda** — com os painéis da ferramenta anterior atrás, porque quem os
+/// abre é a ponte DELA e não a lista de abertos. ⚠️ O gate que aqui estava
+/// (`…_one_that_does_not_leaves_the_hand_alone`) **afirmava o defeito**: ele media a decisão em vez
+/// da consequência, e por isso ficou verde durante o report inteiro.
+#[test]
+fn leaving_a_modal_layout_never_leaves_its_mode_behind() {
+    for from in TaskLayout::ALL {
+        let CanvasOwner::Tool(modal) = from.spec().canvas else {
+            continue; // o *Model* não é uma ferramenta; a saída dele é a lei do `field3d_mode`
+        };
+        if modal == NEUTRAL_TOOL {
+            continue;
+        }
+        for to in TaskLayout::ALL.into_iter().filter(|l| *l != from) {
+            assert_ne!(
+                to.spec().canvas,
+                CanvasOwner::Tool(modal),
+                "sair de {from:?} para {to:?} deixa `{modal}` em mãos — e com ela os painéis dela"
+            );
+        }
+    }
 }
 
 /// ⚠️ **O de omissão está na lista** — senão o app abre num layout que a barra não mostra.

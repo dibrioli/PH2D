@@ -1,6 +1,6 @@
 //! Os gates de **quem é dono do canvas** (W40).
 
-use super::{Owner, forget_owner, note_owner, took_the_canvas};
+use super::{Owner, forget_owner, model_takes_the_canvas, note_owner, took_the_canvas};
 use ph2d_editor::ToolId;
 
 fn tool(name: &str) -> Owner {
@@ -133,12 +133,17 @@ fn the_render_loop_actually_makes_the_modes_cede() {
 
     for needed in [
         // 1. o loop pergunta quem tomou o canvas…
-        "crate::field3d_mode::note_owner(owner)",
+        "crate::field3d_mode::note_owner(owner",
         // 2. …e FECHA o painel quando alguém tomou (não basta desarmar em silêncio)
         "insert(ph2d_panel_model3d::PANEL_ID, false)",
-        // 3. …e a metade simétrica: abrir o MODEL tira o barro da tela
-        "crate::field3d_mode::model_just_opened(model_open)",
+        // 3. …e a metade simétrica: abrir o MODEL tira o barro da tela…
+        "crate::field3d_mode::model_just_opened(",
         "scene.toggle_clay()",
+        // 4. …E LARGA A FERRAMENTA EM MÃOS (2026-08-31, a terceira linha da tabela). ⚠️ Sem esta,
+        //    abrir o MODEL com o Motion em mãos deixa a ponte dele a reabrir o grafo a cada
+        //    quadro — o report *«se abro Nodes e depois Model, o grafo de Nodes persiste»*.
+        "crate::field3d_mode::model_takes_the_canvas(&owner",
+        "tools.set_active(&neutral)",
     ] {
         assert!(
             code.contains(needed),
@@ -295,4 +300,73 @@ fn rearming_does_not_replant_the_demo_over_the_artists_piece() {
          encontra a raiz que já existe e ignora a semente"
     );
     set_armed_by_panel(false);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐ **A TERCEIRA LINHA DA TABELA** — abrir o MODEL larga a ferramenta em mãos (2026-08-31).
+// Report do Enio: *«se abro Nodes e depois Model, o grafo de Nodes persiste»*.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A ferramenta de omissão do registry — o que este app tem em vez de «nenhuma».
+fn neutral() -> ToolId {
+    ToolId::new("move")
+}
+
+/// ⭐ **Com uma ferramenta MODAL em mãos, o modelador toma-a.**
+#[test]
+fn opening_the_modeller_releases_the_modal_tool_in_hand() {
+    forget_owner();
+    assert!(
+        model_takes_the_canvas(&tool("motion"), &neutral()),
+        "o MODEL abriu com o Motion em mãos e a ferramenta não cedeu — a `motion_bridge` continua \
+         a reabrir o grafo a cada quadro, que é o report de 2026-08-31"
+    );
+}
+
+/// ⛔ **E com a NEUTRA em mãos não há nada a largar** — senão todo `Ctrl` no menu *Window* pagava
+/// um `set_active` e um toast por uma troca que não acontece.
+#[test]
+fn opening_the_modeller_with_an_empty_hand_changes_nothing() {
+    forget_owner();
+    assert!(!model_takes_the_canvas(&tool("move"), &neutral()));
+}
+
+/// ⭐⭐⭐ **E a troca NÃO se lê como «outro tomou o canvas»** — a lei não se morde a si própria.
+///
+/// ⚠️ Sem o re-baseline dentro do `model_takes_the_canvas`, o quadro seguinte compara a ferramenta
+/// neutra com a **modal** que ficou guardada, devolve `true`, e o shell fecha o painel do
+/// modelador que acabou de a largar. O produto entra em ciclo e a suíte fica verde.
+#[test]
+fn and_the_release_is_never_read_back_as_someone_taking_the_canvas() {
+    forget_owner();
+    // Quadro N: o Motion está em mãos e é registado. ⚠️ Do estado virgem (`tool: None`) pegar
+    // numa ferramenta É tomar o canvas — o que interessa aqui é a linha de BASE que ele deixa.
+    assert!(note_owner(tool("motion")));
+    // …o MODEL abre e leva a ferramenta.
+    assert!(model_takes_the_canvas(&tool("motion"), &neutral()));
+    // Quadro N+1: o shell vê a neutra em mãos e pergunta se alguém tomou o canvas.
+    assert!(
+        !note_owner(tool("move")),
+        "a troca feita PELO modelador foi lida como um terceiro a tomar o canvas — o painel que \
+         a fez seria fechado no quadro seguinte, e o MODEL nunca abriria vindo de uma ferramenta"
+    );
+}
+
+/// ⚠️ **O barro atravessa a troca intacto** — largar a ferramenta não diz nada sobre ele; quem
+/// trata do barro é a linha de cima da tabela, pela porta do módulo de escultura.
+#[test]
+fn releasing_the_tool_says_nothing_about_the_clay() {
+    forget_owner();
+    let with_clay = Owner {
+        tool: Some(ToolId::new("motion")),
+        clay: true,
+    };
+    assert!(model_takes_the_canvas(&with_clay, &neutral()));
+    assert!(
+        !note_owner(Owner {
+            tool: Some(neutral()),
+            clay: true,
+        }),
+        "o re-baseline esqueceu o barro e o quadro seguinte leu-o como se ele acabasse de entrar"
+    );
 }

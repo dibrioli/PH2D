@@ -54,134 +54,11 @@ pub const HUD_H: f32 = HUD_H_PX;
 pub const HUD_BOTTOM_PAD: f32 = HUD_BOTTOM_PAD_PX;
 pub const HIER_ROW_H: f32 = HIER_ROW_H_PX;
 
-/// Split of the center region into the scene viewport and the Motion Nodes
-/// graph, applied while the Motion tool is active (Motion Nodes M0.T4).
+/// A lei do divisor do centro — [`crate::screens::center_split`].
 ///
-/// `t` is the fraction of the center band that the **scene** occupies — the top
-/// slice in [`Self::Horizontal`], the left slice in [`Self::Vertical`] — clamped
-/// to [`Self::T_MIN`]..=[`Self::T_MAX`]. `None` = no split (the scene fills the
-/// whole center; the graph is hidden), the default for every non-Motion tool.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum CenterSplit {
-    /// No split — scene fills the center, graph hidden.
-    None,
-    /// Horizontal divider: scene on top, graph on the bottom (Cavalry layout).
-    Horizontal { t: f32 },
-    /// Vertical divider: scene on the left, graph on the right (TouchDesigner).
-    Vertical { t: f32 },
-}
-
-impl CenterSplit {
-    /// Divider clamp — the scene (and graph) always keep at least a quarter.
-    pub const T_MIN: f32 = 0.25; // LITERAL-PX-OK: split ratio (fraction of center), not a design token.
-    pub const T_MAX: f32 = 0.75; // LITERAL-PX-OK: split ratio (fraction of center), not a design token.
-    /// Default split fraction — the scene gets 55 % of the center (plan §2.1).
-    pub const T_DEFAULT: f32 = 0.55; // LITERAL-PX-OK: split ratio (fraction of center), not a design token.
-
-    /// Clamp a raw fraction into the legal divider range. NaN-aware
-    /// (`safe_clamp`): a divider drag that produced a NaN `t` collapses to the
-    /// lower bound instead of poisoning the layout.
-    pub fn clamp_t(t: f32) -> f32 {
-        crate::math::safe_clamp(t, Self::T_MIN, Self::T_MAX)
-    }
-
-    /// `true` for a horizontal or vertical split (the graph is visible).
-    pub fn is_split(self) -> bool {
-        !matches!(self, Self::None)
-    }
-
-    /// O sub-retângulo `[x, y, w, h]` (px do alvo, **ancorado no topo-esquerda**) que a
-    /// CENA ocupa quando o centro está dividido — a MESMA fração que o painel do grafo
-    /// usa (top para `Horizontal`, esquerda para `Vertical`). `None` quando não há split
-    /// (a cena é a janela cheia).
-    ///
-    /// **PORTA ÚNICA (2026-07-25):** o *render* da cena (`present`, via
-    /// `Camera2d::uniform_for_subrect` + `set_viewport`) E todo o *chrome* que mapeia
-    /// mundo↔tela sobre a cena (a grade do mundo, o gizmo de field e o drag dele)
-    /// derivam a projeção DAQUI. Antes, o present calculava o sub-retângulo e o chrome
-    /// projetava a janela CHEIA — duas cópias que discordavam, e um ponto de mundo caía
-    /// comprimido na banda (cena) e cheio (grade+gizmo). Era o **drift crônico do Motion**
-    /// (a cena divide o centro, mas a grade/gizmo ignoravam). Como o sub-retângulo é
-    /// ancorado em `(0,0)`, o chrome só precisa das DIMS: `view_proj_for_subrect(w,h)` é
-    /// idêntico a `view_proj(WindowSize{w,h})`, então passar `[r[2], r[3]]` como a janela
-    /// do `world_to_screen`/`screen_to_world` casa o chrome com o `set_viewport` da cena.
-    ///
-    /// ⚠️⚠️ **O SUB-RETÂNGULO É UMA CONTAGEM DE PIXELS, e por isso ele sai INTEIRO daqui**
-    /// (report do Enio, 2026-08-25: *«no modo motion a imagem de referência sofre um drift
-    /// no pan com o mouse»*, refinado para *«acontece para Object e Chip, não para Star»*).
-    ///
-    /// `h · t` quase nunca é inteiro — `768 · 0,55 = 422,4`, `1022 · 0,55 = 562,1` —, e a
-    /// fracção fazia esta função dar **duas respostas à mesma pergunta**:
-    ///
-    /// | quem pergunta | o que recebia |
-    /// |---|---|
-    /// | `set_viewport` do passe de sprites | **422,4** (o `f32` cru) |
-    /// | `set_scissor_rect`, ao lado dele | 422 (`as u32`) |
-    /// | `scene_camera_window` → o Vello e o pan | 422 (`as u32`) |
-    ///
-    /// ⇒ o conteúdo RASTER era desenhado com `422,4/10` pixels por unidade de mundo e o
-    /// VECTORIAL com `422/10` — uma diferença de escala de **0,095 %**. Estática ela é
-    /// sub-pixel; **num pan ela é um movimento**: a imagem anda `0,095 %` mais que o cursor
-    /// e o traço anda exacto, então as duas separam-se enquanto se arrasta e voltam a juntar-se
-    /// quando se volta. Foi exactamente o que o Enio viu, e é por isso que a `Star` (vectorial)
-    /// não derivava. Medido nos dois tamanhos de janela dos logs dele: `0,18 px` por 1000 px
-    /// de arrasto a 1022, e `0,95 px` a 768 — *quanto MENOR a janela, pior*.
-    ///
-    /// ⚠️ **A cura é o arredondamento estar AQUI e não em cada consumidor.** Um `as u32` no
-    /// `scene_camera_window` já existia e não bastou: enquanto a porta devolvesse a fracção,
-    /// quem a usasse crua discordava de quem a truncasse. *Um valor que é pixels não pode
-    /// sair fraccionário da porta que o define.*
-    #[must_use]
-    pub fn scene_viewport(self, w: f32, h: f32) -> Option<[f32; 4]> {
-        // `floor`, e não `round`: o `scene_window_wh` faz `as u32` (que trunca) sobre este
-        // mesmo número, e as duas conversões TÊM de dar o mesmo inteiro. Arredondar aqui e
-        // truncar lá reintroduziria a divergência num degrau diferente.
-        match self {
-            Self::Horizontal { t } => Some([0.0, 0.0, w, (h * t).floor().max(1.0)]),
-            Self::Vertical { t } => Some([0.0, 0.0, (w * t).floor().max(1.0), h]),
-            Self::None => None,
-        }
-    }
-
-    /// `true` for a vertical split (side-by-side, divider drawn vertically) —
-    /// the shell reads this to pick the divider's resize cursor (`EwResize` for
-    /// a vertical divider, `NsResize` for a horizontal one).
-    pub fn is_vertical(self) -> bool {
-        matches!(self, Self::Vertical { .. })
-    }
-
-    /// The current divider fraction (or [`Self::T_DEFAULT`] when not split).
-    pub fn t(self) -> f32 {
-        match self {
-            Self::Horizontal { t } | Self::Vertical { t } => t,
-            Self::None => Self::T_DEFAULT,
-        }
-    }
-
-    /// Same orientation, new (clamped) fraction. `None` stays `None`.
-    pub fn with_t(self, t: f32) -> Self {
-        let t = Self::clamp_t(t);
-        match self {
-            Self::Horizontal { .. } => Self::Horizontal { t },
-            Self::Vertical { .. } => Self::Vertical { t },
-            Self::None => Self::None,
-        }
-    }
-
-    /// Switch to a horizontal split (scene on top), preserving the fraction.
-    pub fn to_horizontal(self) -> Self {
-        Self::Horizontal {
-            t: Self::clamp_t(self.t()),
-        }
-    }
-
-    /// Switch to a vertical split (scene on the left), preserving the fraction.
-    pub fn to_vertical(self) -> Self {
-        Self::Vertical {
-            t: Self::clamp_t(self.t()),
-        }
-    }
-}
+/// ⚠️ Re-exportada aqui porque todo chamador do [`HeroLayout`] a importa junto com ele: o tipo
+/// mudou de ficheiro, não de dono.
+pub use crate::screens::center_split::CenterSplit;
 
 /// Quais colunas laterais estão ocupadas — [`crate::screens::dock_sides`].
 ///
@@ -418,9 +295,11 @@ impl HeroLayout {
         let left_rail = Rect::new(viewport.x, chrome_top, rail_w, chrome_h);
         // ⭐⭐ **AS COLUNAS SÃO FLUSH** (Enio, 2026-08-30, com foto): encostadas à borda da janela
         // de um lado e ao trilho do outro, sem o `EDGE_PAD` que as fazia ler como cartões a
-        // flutuar. ⚠️ **Só ESTA das quatro utilizações do `EDGE_PAD` mudou** — ele continua a
-        // separar a barra de topo da borda, a afastar o timeline e a dar o respiro entre a coluna
-        // e a área de desenho. Zerá-lo global seriam quatro decisões numa.
+        // flutuar. ⚠️ **Ele NÃO foi zerado global** — continua a separar a barra de topo da borda.
+        // ⚠️ Em 2026-08-31 a faixa do fundo (timeline / tira do Flip) também o perdeu, e a razão é
+        // a mesma: *duas aritméticas para a mesma borda divergem no dia em que só uma é corrigida*
+        // (a que aqui ficou tinha 20 px de buraco entre a coluna e a faixa, e o doc do
+        // `reserve_bottom_strip` já dizia que os dois coincidiam).
         // ⚠️ **A largura segue o LADO, não o painel** — sob espelho a Hierarchy muda-se para a
         // coluna da direita e herda a largura DELA. Escrever `hierarchy_w` seria a inversão que o
         // compilador não vê, e o `side_columns()` existe pelo mesmo motivo.
@@ -448,28 +327,64 @@ impl HeroLayout {
         let painter_layers = inspector;
         let hierarchy = Rect::new(hierarchy_x, chrome_top, hier_w, chrome_h);
         let canvas = Rect::new(viewport.x, viewport.y, viewport.w, viewport.h);
-        // Center split (M0.T4): partition the chrome band (chrome_top..chrome_bot,
-        // full width — panels float over it) into the scene sub-rect and the graph
-        // sub-rect. `None` keeps the legacy full-bleed scene (== canvas).
+        // Onde a coluna da esquerda acaba e a da direita começa. Sob `mirrored` os dois painéis
+        // trocam de lado, então a resposta segue o LADO e não o nome (a mesma razão do
+        // `side_columns`). ⚠️ Está aqui em cima, antes do split e das faixas do fundo, porque as
+        // TRÊS coisas que dividem a janela na horizontal — o split do centro, o timeline e a
+        // tira do Flip — vivem todas entre estas duas colunas.
+        let (left_col_right, right_col_left) = if mirrored {
+            (inspector_x + insp_w, hierarchy_x)
+        } else {
+            (hierarchy_x + hier_w, inspector_x)
+        };
+        // ⚠️ Uma coluna VAZIA não é reservada — a área cresce para dentro dela; uma OCUPADA é,
+        // seja quem for que lá esteja. Quem responde é o `DockSides::from_published`.
+        let area_x0 = if docks.left {
+            left_col_right
+        } else {
+            viewport.x + rail_w
+        };
+        let area_x1 = if docks.right {
+            right_col_left
+        } else {
+            viewport.x + viewport.w
+        };
+        let area_w = (area_x1 - area_x0).max(0.0);
+        // ⭐⭐ **O SPLIT DO CENTRO PARTE A ÁREA, NÃO A JANELA** (Enio, 2026-08-31, com foto e duas
+        // setas: *«o canvas dos Nodes deve ficar bem encaixado entre os painéis laterais como na
+        // Godot, sem espaços»*).
+        //
+        // ⛔ Ele partia `viewport.x .. viewport.x + viewport.w`, e por isso a banda do grafo
+        // atravessava o ecrã inteiro: ela nascia **por baixo** das duas colunas e — como o painel
+        // do grafo é pintado depois delas — comia o terço de baixo da Hierarquia e do dock da
+        // direita. No alvo de referência isso são **`2 × 300 × 430 px²`** de painel tapado por uma
+        // região que não é irmã de ninguém.
+        //
+        // ⇒ D5, a mesma lei da [`Self::draw_area`]: *regiões são IRMÃS numa fila, nunca camadas
+        // empilhadas.* A banda do split é a coluna da área, e as colunas laterais deixam de a
+        // partilhar por construção.
+        //
+        // ⚠️ **Só o x/w muda; o y/h fica.** A fracção `t` continua a ser a da banda de chrome na
+        // vertical, que é o que o `CenterSplit::scene_viewport` (o renderizador da cena) lê — mexer
+        // nela poria o `set_viewport` e o painel a discordar, que é o *drift* que aquele doc conta.
+        // ⚠️ E as DUAS metades encolhem juntas: o painel do grafo deteta a orientação por
+        // `rect.x > center.x` e mede o arrasto do divisor contra `center + rect`, então narrar uma
+        // só faria um split horizontal ler-se como vertical.
+        let band = Rect::new(area_x0, chrome_top, area_w, chrome_h);
         let (center_viewport, motion_graph) = match split {
-            CenterSplit::None => (canvas, Rect::new(viewport.x, chrome_top, 0.0, 0.0)),
+            CenterSplit::None => (canvas, Rect::new(band.x, band.y, 0.0, 0.0)),
             CenterSplit::Horizontal { t } => {
-                let top_h = chrome_h * CenterSplit::clamp_t(t);
+                let top_h = band.h * CenterSplit::clamp_t(t);
                 (
-                    Rect::new(viewport.x, chrome_top, viewport.w, top_h),
-                    Rect::new(viewport.x, chrome_top + top_h, viewport.w, chrome_h - top_h),
+                    Rect::new(band.x, band.y, band.w, top_h),
+                    Rect::new(band.x, band.y + top_h, band.w, band.h - top_h),
                 )
             }
             CenterSplit::Vertical { t } => {
-                let left_w = viewport.w * CenterSplit::clamp_t(t);
+                let left_w = band.w * CenterSplit::clamp_t(t);
                 (
-                    Rect::new(viewport.x, chrome_top, left_w, chrome_h),
-                    Rect::new(
-                        viewport.x + left_w,
-                        chrome_top,
-                        viewport.w - left_w,
-                        chrome_h,
-                    ),
+                    Rect::new(band.x, band.y, left_w, band.h),
+                    Rect::new(band.x + left_w, band.y, band.w - left_w, band.h),
                 )
             }
         };
@@ -486,16 +401,20 @@ impl HeroLayout {
             480.0, // LITERAL-PX-OK: HUD strip width
             HUD_H,
         );
-        // General timeline dock: bottom strip of the center band, between the two
-        // side chrome columns (so it never overlaps Inspector/Hierarchy), floating
-        // over the scene's lower edge. Side columns swap under `mirrored`.
-        let (left_col_right, right_col_left) = if mirrored {
-            (inspector_x + insp_w, hierarchy_x)
-        } else {
-            (hierarchy_x + hier_w, inspector_x)
-        };
-        let timeline_x = left_col_right + EDGE_PAD;
-        let timeline_w = (right_col_left - EDGE_PAD - timeline_x).max(0.0);
+        // ⭐⭐ **A FAIXA DO FUNDO ENCOSTA NAS COLUNAS** (Enio, 2026-08-31, com foto e duas setas:
+        // *«a timeline deve ficar bem encaixada entre os painéis laterais, sem espaços»*).
+        //
+        // ⛔ Ela era `left_col_right + EDGE_PAD` e acabava `EDGE_PAD` antes da outra coluna — dois
+        // buracos de 20 px, um de cada lado, entre o painel e a faixa. ⚠️ **É um resíduo com
+        // data:** em 2026-08-30 o `EDGE_PAD` saiu do `area_x0` (as colunas ficaram *flush*) e
+        // ficou aqui, e o doc do [`Self::reserve_bottom_strip`] escrito nesse dia já afirmava que
+        // o timeline nascia *«literalmente no `area_x0`»* — o que era falso por 20 px. *Duas
+        // aritméticas para a mesma borda divergem no dia em que só uma é corrigida.*
+        //
+        // ⚠️ Ela segue as COLUNAS e não a `draw_area`: uma coluna fechada deixa a área crescer
+        // para dentro dela, e a faixa cresce junto porque `area_x0` já responde por isso.
+        let timeline_x = area_x0;
+        let timeline_w = area_w;
         // ⭐⭐ **A ÁREA de desenho** (D5) — as regiões são IRMÃS numa fila, e é por não
         // partilharem coordenada que nada aqui pode tapar nada. Horizontalmente ela começa
         // depois da coluna da esquerda (o trilho, mais o painel **se estiver aberto**) e acaba
@@ -503,23 +422,11 @@ impl HeroLayout {
         // de topo e o HUD. ⚠️ Uma coluna fechada não é reservada: a área cresce para dentro
         // dela, senão a régua da esquerda ficaria a flutuar sobre o desenho.
         //
-        // ⚠️ Uma coluna VAZIA não é reservada — a área cresce para dentro dela; uma OCUPADA é,
-        // seja quem for que lá esteja. Quem responde é o `DockSides::from_published`.
         // ⚠️ **A área ENCOSTA na coluna** (Enio, 2026-08-30, com seta: *«a régua deve ficar
         // colada na hierarquia, e a nossa tem um espaço ruim»*). O `EDGE_PAD` que aqui estava era
         // o último dos quatro espaços mortos — e o pior, porque a régua nasce na borda da área e
-        // o buraco ficava entre ela e o painel, onde salta à vista.
-        let area_x0 = if docks.left {
-            left_col_right
-        } else {
-            viewport.x + rail_w
-        };
-        let area_x1 = if docks.right {
-            right_col_left
-        } else {
-            viewport.x + viewport.w
-        };
-        let area_w = (area_x1 - area_x0).max(0.0);
+        // o buraco ficava entre ela e o painel, onde salta à vista. (O `area_x0`/`area_w` estão
+        // calculados lá em cima, antes do split, que é o outro consumidor deles.)
         // ⭐⭐ **A FILA DE FERRAMENTAS é uma REGIÃO da área, e por isso corta a ÁREA e não a
         // janela** (spec §4, D5). Ela e a régua são irmãs numa fila vertical: a fila fica em cima,
         // a régua começa por baixo dela, e nenhuma das duas pode tapar a outra porque não
@@ -612,8 +519,9 @@ impl HeroLayout {
     /// **Uma faixa docada no FUNDO come a altura da área de desenho** — e sem isto a régua da
     /// esquerda corre por baixo dela.
     ///
-    /// ⛔ **Achado da auditoria de 2026-08-30:** o `timeline` nasce em
-    /// `timeline_x = left_col_right + EDGE_PAD`, que é **literalmente** o `area_x0`, e tem
+    /// ⛔ **Achado da auditoria de 2026-08-30:** o `timeline` nasce no `area_x0` (⚠️ *hoje* — em
+    /// 2026-08-30 ele nascia 20 px à direita dele, e este doc já afirmava a coincidência que só
+    /// passou a ser verdade em 31/08) e tem
     /// `TIMELINE_DOCK_H = 240` de altura no fundo da banda. Com os dois docks abertos ele
     /// partilhava **4 800 px² (20 × 240)** com a régua da esquerda — a mesma família de defeito
     /// que a wave existe para curar, num dock que o próprio ficheiro chama de *«General timeline

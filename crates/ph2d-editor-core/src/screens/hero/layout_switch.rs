@@ -23,7 +23,7 @@
 
 use super::HeroScreen;
 use crate::action_bus::EditorAction;
-use crate::screens::task_layout::TaskLayout;
+use crate::screens::task_layout::{CanvasOwner, TaskLayout};
 
 /// Arruma a tela para `layout`. Ver o cabeçalho do módulo.
 pub fn apply(hero: &mut HeroScreen, layout: TaskLayout) {
@@ -54,10 +54,14 @@ pub fn apply(hero: &mut HeroScreen, layout: TaskLayout) {
         }
     });
 
-    // ⭐ A costura opcional com o Modo (D3). Um layout sem ferramenta declarada **não mexe** na que
-    // está em mãos — trocar para *Animate* no meio de um traço não pode largar o pincel.
-    if let Some(tool_id) = spec.tool {
-        hero.bus.push(EditorAction::ActivateTool { tool_id });
+    // ⭐⭐ **O canvas muda de dono (D3), e não há caso de «não mexe»** — ver `CanvasOwner`. Um
+    // layout que não largasse a ferramenta traria os painéis dela atrás, porque quem os abre é a
+    // ponte da ferramenta e não esta função; foi o report de 2026-08-31.
+    match spec.canvas {
+        CanvasOwner::Tool(tool_id) => hero.bus.push(EditorAction::ActivateTool { tool_id }),
+        // ⛔ Nada a pedir: quem larga a ferramenta é a lei do `field3d_mode` no shell, acordada
+        // pelo painel que a lista de abertos acabou de abrir. Ver `CanvasOwner::Model3d`.
+        CanvasOwner::Model3d => {}
     }
 }
 

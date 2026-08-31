@@ -242,3 +242,113 @@ fn rounding_the_subrect_never_moves_the_divider_by_more_than_a_pixel() {
         );
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐ **AS FAIXAS ENCAIXAM ENTRE AS COLUNAS** (Enio, 2026-08-31, com duas fotos e quatro setas:
+// *«a timeline e o canvas dos Nodes devem ser bem encaixados entre os painéis laterais como na
+// Godot, sem espaços»*).
+//
+// São DUAS regiões e o defeito de cada uma era o oposto do da outra — e é por isso que ambas
+// precisam de gate:
+//
+// | região | o defeito | o que se via |
+// |---|---|---|
+// | `timeline` / `flip_strip` | 20 px a MENOS de cada lado (o `EDGE_PAD` que o `area_x0` perdeu em 30/08 e ela não) | um buraco entre o painel e a faixa |
+// | `motion_graph` / `center_viewport` | a janela INTEIRA em vez da área | a banda do grafo por cima do fundo das duas colunas |
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Onde a área de desenho começa e acaba, com as duas colunas abertas.
+fn area_span(l: &HeroLayout) -> (f32, f32) {
+    (l.draw_area.x, l.draw_area.x + l.draw_area.w)
+}
+
+/// ⭐ **A faixa do fundo toca as DUAS colunas** — sem buraco de nenhum lado.
+#[test]
+fn the_bottom_strip_touches_both_columns() {
+    let l = HeroLayout::for_viewport(vp());
+    let (x0, x1) = area_span(&l);
+    // Controlo: sem colunas com largura o gate mediria a janela contra ela própria.
+    assert!(
+        x0 > l.viewport.x + 1.0 && x1 < l.viewport.x + l.viewport.w - 1.0,
+        "controlo: as colunas não estão reservadas ({x0}..{x1} numa janela de {})",
+        l.viewport.w
+    );
+    for (name, r) in [("timeline", l.timeline), ("flip_strip", l.flip_strip)] {
+        assert!(
+            approx(r.x, x0),
+            "{name} começa em {} e a coluna acaba em {x0} — {} px de buraco",
+            r.x,
+            r.x - x0
+        );
+        assert!(
+            approx(r.x + r.w, x1),
+            "{name} acaba em {} e a outra coluna começa em {x1} — {} px de buraco",
+            r.x + r.w,
+            x1 - (r.x + r.w)
+        );
+    }
+}
+
+/// ⭐⭐ **A banda do grafo NÃO partilha um pixel com nenhuma coluna** — nas duas orientações.
+///
+/// ⚠️ A régua é a INTERSECÇÃO com os rects das colunas, e não `x >= area_x0`: um split vertical
+/// tem a banda encostada à direita, e só a intersecção apanha os dois lados com uma pergunta só.
+#[test]
+fn the_node_graph_never_covers_a_side_column() {
+    for split in [
+        CenterSplit::Horizontal { t: 0.55 },
+        CenterSplit::Vertical { t: 0.55 },
+    ] {
+        let l = HeroLayout::for_viewport_split(vp(), false, rail_w(), split);
+        assert!(
+            l.motion_graph.w > 1.0 && l.motion_graph.h > 1.0,
+            "controlo: {split:?} devolveu uma banda vazia e o gate mediria o nada"
+        );
+        for (name, col) in [("hierarchy", l.hierarchy), ("inspector", l.inspector)] {
+            let ox = (l.motion_graph.x + l.motion_graph.w).min(col.x + col.w)
+                - l.motion_graph.x.max(col.x);
+            let oy = (l.motion_graph.y + l.motion_graph.h).min(col.y + col.h)
+                - l.motion_graph.y.max(col.y);
+            assert!(
+                ox <= 0.5 || oy <= 0.5,
+                "{split:?}: a banda do grafo tapa {} px² de `{name}` ({ox} × {oy})",
+                ox * oy
+            );
+        }
+    }
+}
+
+/// ⚠️ **E o CENTRO encolhe com ela** — as duas metades do split são a MESMA coluna.
+///
+/// ⛔ Narrar só a banda do grafo faria o painel dele ler um split horizontal como **vertical**:
+/// a orientação é detectada por `rect.x > center.x`, e o arrasto do divisor é medido contra
+/// `center + rect`. *Duas metades de uma partição não podem sair de janelas diferentes.*
+#[test]
+fn both_halves_of_the_split_shrink_together() {
+    let l =
+        HeroLayout::for_viewport_split(vp(), false, rail_w(), CenterSplit::Horizontal { t: 0.55 });
+    let (x0, x1) = area_span(&l);
+    assert!(approx(l.center_viewport.x, x0) && approx(l.motion_graph.x, x0));
+    assert!(
+        approx(l.center_viewport.x + l.center_viewport.w, x1)
+            && approx(l.motion_graph.x + l.motion_graph.w, x1)
+    );
+    // A orientação continua a ler-se como horizontal.
+    assert!(
+        l.motion_graph.x <= l.center_viewport.x + 0.5,
+        "um split HORIZONTAL passou a ler-se como vertical (graph.x={} > center.x={})",
+        l.motion_graph.x,
+        l.center_viewport.x
+    );
+}
+
+/// ⭐ **E o timeline docado dentro do Motion herda a mesma coluna** — ele É a base da banda.
+#[test]
+fn the_timeline_docked_into_motion_keeps_the_column() {
+    let mut l =
+        HeroLayout::for_viewport_split(vp(), false, rail_w(), CenterSplit::Horizontal { t: 0.55 });
+    let (x0, x1) = area_span(&l);
+    l.dock_timeline_into_motion();
+    assert!(l.timeline.h > 1.0, "controlo: a docagem não carvou nada");
+    assert!(approx(l.timeline.x, x0) && approx(l.timeline.x + l.timeline.w, x1));
+}

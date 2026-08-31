@@ -13,6 +13,7 @@
 //! state. Caller wires real entities/scene state when integrating
 //! the screen into a project.
 
+pub mod center_split;
 pub mod dock_seam;
 pub mod dock_sides;
 pub mod hero;

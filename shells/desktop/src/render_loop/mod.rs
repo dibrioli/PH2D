@@ -7803,16 +7803,23 @@ impl crate::App {
             // módulo (a linha abaixo), então um desarme invisível deixaria o botão aceso a mentir.
             // A lei (borda, não estado contínuo) e o porquê estão em `crate::field3d_mode`.
             {
+                let clay_on = {
+                    #[cfg(feature = "sculpt3d")]
+                    {
+                        sculpt3d
+                            .as_ref()
+                            .is_some_and(crate::sculpt3d::Sculpt3dScene::clay_on_screen)
+                    }
+                    #[cfg(not(feature = "sculpt3d"))]
+                    {
+                        false
+                    }
+                };
                 let owner = crate::field3d_mode::Owner {
                     tool: tools.active().map(ph2d_editor::Tool::id),
-                    #[cfg(feature = "sculpt3d")]
-                    clay: sculpt3d
-                        .as_ref()
-                        .is_some_and(crate::sculpt3d::Sculpt3dScene::clay_on_screen),
-                    #[cfg(not(feature = "sculpt3d"))]
-                    clay: false,
+                    clay: clay_on,
                 };
-                if crate::field3d_mode::note_owner(owner)
+                if crate::field3d_mode::note_owner(owner.clone())
                     && hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID)
                 {
                     hero.panel_visibility
@@ -7821,18 +7828,40 @@ impl crate::App {
                         "Modelling stepped aside for the other tool",
                     ));
                 }
-            }
-            // ⭐ **E a metade SIMÉTRICA**: abrir o MODEL tira o barro da tela. Sem ela, o artista
-            // que entrou na escultura (e viu o MODEL ceder) e voltou ao MODEL teria os DOIS a
-            // desenhar — a mesma interferência, ao contrário.
-            //
-            // ⚠️ A saída é a **porta do próprio módulo de escultura** (`toggle_clay`), nunca uma
-            // escrita aqui: ela conhece a ordem do ciclo (sair do barro vai para a LUZ, não para o
-            // desligado), e essa ordem é uma decisão de produto com um dono.
-            #[cfg(feature = "sculpt3d")]
-            {
-                let model_open = hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID);
-                if crate::field3d_mode::model_just_opened(model_open)
+                // ⭐⭐ **E a metade SIMÉTRICA**: abrir o MODEL tira o barro da tela — e, desde
+                // 2026-08-31, também **larga a ferramenta em mãos**.
+                //
+                // ⛔⛔ **A lei dizia-se «duas metades simétricas» e só uma soltava uma FERRAMENTA.**
+                // Report do Enio: *«se abro Nodes e depois Model, o grafo de Nodes persiste»*. Ele
+                // chegou lá pela aba nova, mas o defeito é do módulo e é anterior a ela: abrir o
+                // MODEL pelo menu *Window* com o Motion em mãos deixava a `motion_bridge` a
+                // reabrir `motion_graph`/`motion_params` **a cada quadro**, porque nada largava a
+                // ferramenta. *A metade que faltava não era um caso — era o outro lado da lei.*
+                //
+                // ⚠️ **O edge é lido UMA vez e fora do `cfg`**: o `model_just_opened` CONSOME a
+                // transição (ele troca o valor guardado), então uma segunda chamada no mesmo
+                // quadro leria `false` — e, enquanto ele vivia dentro do `#[cfg(sculpt3d)]`, uma
+                // build sem aquela feature nunca o avançava.
+                let model_opened = crate::field3d_mode::model_just_opened(
+                    hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID),
+                );
+                //
+                // ⚠️ A decisão E o re-baseline vivem os dois no `model_takes_the_canvas` — são um
+                // acto só, e separá-los deixava uma mutação sobreviver com o produto em ciclo.
+                if model_opened
+                    && let Some(neutral) = tools.default_tool_id()
+                    && crate::field3d_mode::model_takes_the_canvas(&owner, &neutral)
+                {
+                    tools.set_active(&neutral);
+                    self.title_dirty = true;
+                    toasts.push(ph2d_editor::Toast::info("Modelling took the canvas"));
+                }
+                // ⚠️ A saída do BARRO é a **porta do próprio módulo de escultura**
+                // (`toggle_clay`), nunca uma escrita aqui: ela conhece a ordem do ciclo (sair do
+                // barro vai para a LUZ, não para o desligado), e essa ordem é uma decisão de
+                // produto com um dono.
+                #[cfg(feature = "sculpt3d")]
+                if model_opened
                     && let Some(scene) = sculpt3d.as_mut()
                     && scene.clay_on_screen()
                 {

@@ -772,3 +772,43 @@ fn a_fase_zero_e_invariante_a_translacao() {
         }
     }
 }
+
+/// ⭐⭐⭐ **SONDA — o CAMPO é invariante, medido nos mesmos sítios da superfície?**
+///
+/// ⚠️ Ela mede a [`super::sizing::SizingGrid`] **sozinha**, sem o remalhador pelo meio: a
+/// grelha é construída na peça em `x = 0` e na mesma peça em `x = d`, e o `at` é lido nos
+/// vértices correspondentes. *Se o campo concorda e a saída não, o defeito é do laço; se o
+/// campo já discorda, é dele.*
+#[test]
+#[ignore = "sonda -- invariancia do CAMPO"]
+fn o_campo_e_invariante_nos_mesmos_sitios() {
+    for (nome, base) in [
+        ("esfera 24x36", shapes::uv_sphere(24, 36, 1.0)),
+        ("esfera 96x144", shapes::uv_sphere(96, 144, 1.0)),
+    ] {
+        let alvo = target_edge(&base, ALPHA);
+        let g0 = super::sizing::SizingGrid::build(&base, alvo).expect("grelha");
+        for d in [0.5f32, 1.0, 2.0, 16.0] {
+            let mut m = base.clone();
+            for p in m.positions_mut() {
+                p[0] += d;
+            }
+            let g1 = super::sizing::SizingGrid::build(&m, alvo).expect("grelha");
+            let mut pior = 0.0f32;
+            let mut n_dif = 0usize;
+            for (a, b) in base.positions().iter().zip(m.positions()) {
+                let (v0, v1) = (g0.at(*a), g1.at(*b));
+                let rel = (v0 - v1).abs() / v0.max(1.0e-9);
+                if rel > 1.0e-6 {
+                    n_dif += 1;
+                }
+                pior = pior.max(rel);
+            }
+            eprintln!(
+                "   {nome} x={d}: pior desvio relativo {:.3e} | {n_dif} de {} sitios diferem",
+                pior,
+                base.positions().len()
+            );
+        }
+    }
+}

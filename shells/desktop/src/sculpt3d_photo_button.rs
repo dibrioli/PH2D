@@ -245,25 +245,31 @@ fn the_artists_piece_through_the_button() {
     // que a peça do artista de 2026-08-29 move. ⛔ Nenhuma régua de topologia ou de forma
     // a vê: uma ponta comida sai fechada, com quads bonitos.
     {
-        let reach = |m: &ph2d_mesh::Mesh| -> f32 {
-            let pos = m.positions();
-            let n = pos.len().max(1) as f32;
-            let mut c = [0.0f32; 3];
-            for q in pos {
-                for k in 0..3 {
-                    c[k] += q[k] / n;
-                }
-            }
-            pos.iter().fold(0.0f32, |acc, q| {
-                let d = [q[0] - c[0], q[1] - c[1], q[2] - c[2]];
-                acc.max(d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt())
-            })
-        };
+        // ⛔⛔ **Pela PORTA, e a porta mudou em 2026-08-31.** Esta sonda tinha a sua própria
+        // cópia do alcance, com o centroide tirado da **média dos vértices** — e imprimia
+        // `−6,5 %` na peça do dono enquanto as quatro pontas dela estavam intactas a
+        // `−0,1 %`. *O centroide por vértice mede a AMOSTRAGEM: uma retopologia
+        // redistribui vértices por construção, logo ele anda sempre.* Ver
+        // [`ph2d_quadfill::tips`].
+        let (a, b) = (ph2d_quadfill::reach(&piece), ph2d_quadfill::reach(&out));
         eprintln!(
-            "   ALCANCE: entrada {:.4} -> saida {:.4} ({:+.1} %)",
-            reach(&piece),
-            reach(&out),
-            100.0 * (reach(&out) / reach(&piece) - 1.0)
+            "   ALCANCE (centroide de AREA): entrada {a:.4} -> saida {b:.4} ({:+.1} %)",
+            100.0 * (b / a - 1.0)
+        );
+        // ⭐⭐⭐ **O DESVIO LOCAL JUNTO DE CADA PONTA** — a régua que o report de 31/08
+        // exigiu. ⛔ O suporte por ponta diz *até onde* o bico vai e **nada** sobre a
+        // espessura com que lá chega: medido, a ponta partida da peça do dono lê `−5,3 %`
+        // de suporte e fecha com um anel **4× mais gordo** que a escultura.
+        let d = ph2d_quadfill::tip_deviation(&piece, &out, r.edge);
+        eprintln!(
+            "   DESVIO na ponta: p50 {:.2} p90 {:.2} max {:.2} quad(s) | {} de {} ponta(s) acima de {:.1} {}",
+            d.p50,
+            d.p90,
+            d.max,
+            d.over,
+            d.tips,
+            ph2d_quadfill::TIP_DEVIATION_MAX,
+            if d.tips == 0 { "⛔ NAO MEDIDO" } else { "" }
         );
     }
     holes("SAIDA", &out);

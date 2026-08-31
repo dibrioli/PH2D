@@ -9,6 +9,23 @@
 use ph2d_mesh::{Face, Mesh};
 
 use super::tests::{cubo, um_quad};
+
+/// **UMA MEDIÇÃO DE PONTA VAZIA** — `tips = 0`, que a chave lê como *«não medido»* e não
+/// como *«perfeito»*. ⚠️ É o valor com que os gates das OUTRAS chaves entram: uma fixtura
+/// que trouxesse uma contagem de pontas passaria a testar a chave nova por acidente.
+fn sem() -> ph2d_quadfill::TipDeviation {
+    ph2d_quadfill::TipDeviation::default()
+}
+
+/// **UMA MEDIÇÃO DE PONTA COM `n` DE `total` ACIMA DA BARRA.**
+fn pontas(acima: usize, total: usize) -> ph2d_quadfill::TipDeviation {
+    ph2d_quadfill::TipDeviation {
+        over: acima,
+        tips: total,
+        ..ph2d_quadfill::TipDeviation::default()
+    }
+}
+
 /// **UMA NUVEM COM PONTA** — `8` quads de lado `1` perto da origem e `4` quads longe, com o
 /// lado da ponta escolhido pelo chamador.
 ///
@@ -72,11 +89,11 @@ fn a_ponta_decide_quando_as_chaves_de_defeito_empatam() {
     );
     // O mesmo `>60` e o mesmo enviesamento dos dois lados: so' a ponta pode decidir.
     assert!(
-        super::worse(&grossa, 2, 5.0, &fina, 2, 5.0),
+        super::worse(&grossa, 2, 5.0, sem(), &fina, 2, 5.0, sem()),
         "⛔ a candidata de ponta GROSSA tem de perder"
     );
     assert!(
-        !super::worse(&fina, 2, 5.0, &grossa, 2, 5.0),
+        !super::worse(&fina, 2, 5.0, sem(), &grossa, 2, 5.0, sem()),
         "⛔ e a de ponta FINA tem de ganhar"
     );
 }
@@ -103,7 +120,7 @@ fn a_ponta_nunca_ganha_de_um_furo() {
         "⛔ a nuvem de quads soltos tem de ter furos"
     );
     assert!(
-        super::worse(&fina, 2, 5.0, &fechada, 2, 5.0),
+        super::worse(&fina, 2, 5.0, sem(), &fechada, 2, 5.0, sem()),
         "⛔ a candidata com FUROS perde, por melhor que seja a ponta dela"
     );
 }
@@ -156,7 +173,7 @@ fn a_amostra_vazia_nao_ganha_de_uma_medida() {
         "⛔ a razao NAO MEDIDA e' `0,0` -- e' isso que a torna perigosa ({r_vazia:.3})"
     );
     assert!(
-        super::worse(&vazia, 2, 9.0, &medida, 2, 8.0),
+        super::worse(&vazia, 2, 9.0, sem(), &medida, 2, 8.0, sem()),
         "⛔ com a amostra vazia de um lado, quem decide e' o enviesamento -- a razao `0,0` de \
          «nao medido» NAO pode ganhar"
     );
@@ -177,11 +194,11 @@ fn uma_amostra_de_ponta_vazia_nao_decide() {
     );
     // Com a amostra vazia dos DOIS lados, quem decide tem de ser o enviesamento.
     assert!(
-        super::worse(&so_um, 2, 9.0, &so_um, 2, 8.0),
+        super::worse(&so_um, 2, 9.0, sem(), &so_um, 2, 8.0, sem()),
         "⛔ com a amostra vazia, quem decide e' o enviesamento"
     );
     assert!(
-        !super::worse(&so_um, 2, 8.0, &so_um, 2, 9.0),
+        !super::worse(&so_um, 2, 8.0, sem(), &so_um, 2, 9.0, sem()),
         "⛔ e no sentido contrario tambem"
     );
 }
@@ -250,55 +267,97 @@ fn nuvem_com_ponta_a(distancia: f32) -> Mesh {
     Mesh::from_parts(verts, faces).expect("a fixtura e' construida aqui")
 }
 
-/// ⭐⭐⭐ **GATE — a candidata AMPUTADA perde, mesmo com a forma melhor.**
+/// ⭐⭐⭐ **GATE — a candidata com MAIS pontas partidas perde, mesmo com a forma melhor.**
 ///
 /// ⛔⛔⛔ **Medido em 2026-08-31 e é a razão desta chave:** numa varredura do teto de graduação
 /// da fase zero, a célula `ADAPT_RATIO = 8` entregou uma fase zero **perfeita** (`0` de `4`
 /// pontas cortadas) e a **saída** cortou a ponta mais longa em **`−43 %`**. As duas candidatas
-/// estavam limpas na topologia e o `worse` escolheu a que comia o espinho, *porque nada olhava
-/// para o alcance*.
+/// estavam limpas na topologia e o `worse` escolheu a que comia o espinho, *porque nada aqui
+/// olhava para as pontas*.
+///
+/// ⚠️ **A régua mudou no mesmo dia, e a nova CONTA:** a primeira redacção comparava o
+/// **alcance** das duas candidatas — um extremo global, e ainda por cima tirado do centroide
+/// por vértice, que mede a amostragem. Medido na `_base_sculpt` a `Detail 0,40`, onde as duas
+/// primeiras candidatas empatam em bordo: o alcance escolhia a de `2` pontas acima da barra
+/// contra a de `1`. *Ele defendia a ponta que sobrevivia nas duas.*
 #[test]
-fn a_candidata_amputada_perde_mesmo_com_a_forma_melhor() {
+fn a_candidata_com_mais_pontas_partidas_perde_mesmo_com_a_forma_melhor() {
     let inteira = nuvem_com_ponta_a(100.0);
     let cortada = nuvem_com_ponta_a(60.0);
     // ⚠️ **O CONTROLE:** as chaves da frente TÊM de empatar.
     assert_eq!(super::open_edges(&inteira), super::open_edges(&cortada));
     assert_eq!(super::components(&inteira), super::components(&cortada));
     assert_eq!(super::bowties(&inteira), super::bowties(&cortada));
-    // A forma da amputada é dada PERFEITA e a da inteira PÉSSIMA: só o alcance pode decidir.
+    // A forma da partida é dada PERFEITA e a da inteira PÉSSIMA: só a contagem pode decidir.
     assert!(
-        super::worse(&cortada, 0, 0.0, &inteira, 999, 89.0),
-        "⛔ a candidata AMPUTADA tem de perder -- e' o espinho que o dono fotografou"
+        super::worse(
+            &cortada,
+            0,
+            0.0,
+            pontas(2, 4),
+            &inteira,
+            999,
+            89.0,
+            pontas(0, 4)
+        ),
+        "⛔ a candidata com mais pontas partidas tem de perder -- e' o espinho que o dono fotografou"
     );
     assert!(
-        !super::worse(&inteira, 999, 89.0, &cortada, 0, 0.0),
+        !super::worse(
+            &inteira,
+            999,
+            89.0,
+            pontas(0, 4),
+            &cortada,
+            0,
+            0.0,
+            pontas(2, 4)
+        ),
         "⛔ e a relacao tem de ser ANTI-SIMETRICA"
     );
 }
 
-/// ⭐⭐ **GATE — a BANDA impede que o ruído de reamostragem decida.**
+/// ⭐⭐ **GATE — um EMPATE na contagem não decide, e a chave seguinte é que fala.**
 ///
-/// ⛔ Duas candidatas cujo alcance difere por menos que [`ph2d_quadfill::TIP_CUT_PCT`] **não**
-/// são amputação: a saída tem outros vértices e o suporte cai um pouco só por a superfície ser
-/// poliédrica. *Sem banda, esta chave engoliria todas as que vêm depois dela.*
+/// ⛔ Duas candidatas com o **mesmo número** de pontas acima da barra não se distinguem por
+/// esta chave — nem quando os desvios medianos diferem. *A grandeza que ela decide é discreta
+/// de propósito: um `p50` contínuo competiria com o enviesamento em toda peça, incluindo as
+/// que não têm ponta nenhuma partida.*
 #[test]
-fn uma_diferenca_de_alcance_dentro_da_banda_nao_decide() {
+fn um_empate_na_contagem_de_pontas_nao_decide() {
     let a = nuvem_com_ponta_a(100.0);
-    // `0,5 %` mais curta -- dentro da banda de `2 %`.
     let b = nuvem_com_ponta_a(99.5);
     assert!(
-        super::worse(&a, 9, 0.0, &b, 2, 0.0),
-        "⛔ dentro da banda quem decide e' a chave seguinte (as faces `>60°`)"
+        super::worse(&a, 9, 0.0, pontas(1, 4), &b, 2, 0.0, pontas(1, 4)),
+        "⛔ com a contagem empatada quem decide e' a chave seguinte (as faces `>60°`)"
     );
     assert!(
-        !super::worse(&b, 2, 0.0, &a, 9, 0.0),
+        !super::worse(&b, 2, 0.0, pontas(1, 4), &a, 9, 0.0, pontas(1, 4)),
         "⛔ e no sentido contrario tambem"
     );
 }
 
-/// ⭐⭐ **GATE — os FUROS continuam a ganhar da amputação.**
+/// ⭐⭐ **GATE — uma medição de ponta VAZIA não decide.**
+///
+/// ⛔⛔ `tips = 0` é *«não medido»*, e `over = 0` lê-se igual a *«nenhuma ponta partida»*.
+/// *São o mesmo byte, e sem esta guarda uma candidata que a régua não conseguiu medir ganhava
+/// de uma medida e partida — que é o contrário do que a chave existe para fazer.*
 #[test]
-fn a_amputacao_nunca_ganha_de_um_furo() {
+fn uma_medicao_de_ponta_vazia_nao_decide_a_amputacao() {
+    let a = nuvem_com_ponta_a(100.0);
+    assert!(
+        super::worse(&a, 9, 0.0, sem(), &a, 2, 0.0, pontas(3, 4)),
+        "⛔ uma medicao vazia nao pode GANHAR de uma medida e partida"
+    );
+    assert!(
+        super::worse(&a, 9, 0.0, pontas(3, 4), &a, 2, 0.0, sem()),
+        "⛔ nem PERDER dela -- em ambos os sentidos decide a chave seguinte"
+    );
+}
+
+/// ⭐⭐ **GATE — os FUROS continuam a ganhar das pontas partidas.**
+#[test]
+fn as_pontas_partidas_nunca_ganham_de_um_furo() {
     let cortada_fechada = {
         let (cv, cf) = cubo(0.0);
         Mesh::from_parts(
@@ -313,7 +372,16 @@ fn a_amputacao_nunca_ganha_de_um_furo() {
     assert_eq!(super::open_edges(&cortada_fechada), 0);
     assert!(super::open_edges(&inteira_furada) > 0);
     assert!(
-        super::worse(&inteira_furada, 0, 0.0, &cortada_fechada, 999, 89.0),
-        "⛔ o FURO decide antes da amputacao -- foi a queixa mais antiga do dono"
+        super::worse(
+            &inteira_furada,
+            0,
+            0.0,
+            pontas(0, 4),
+            &cortada_fechada,
+            999,
+            89.0,
+            pontas(4, 4)
+        ),
+        "⛔ o FURO decide antes das pontas -- foi a queixa mais antiga do dono"
     );
 }

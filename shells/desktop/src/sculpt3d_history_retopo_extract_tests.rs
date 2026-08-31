@@ -16,6 +16,14 @@
 /// segura buffers de device), então um gate sobre ele é `skip` gracioso na
 /// máquina sem adapter — e *skip gracioso não é verde*. O que se pina aqui é a
 /// **decisão**, que é a única coisa que a env acrescenta ao caminho de sempre.
+/// **UMA MEDIÇÃO DE PONTA VAZIA** — `tips = 0`, que a chave da amputação lê como *«não
+/// medido»* e não como *«perfeito»*, logo não decide. ⚠️ É o valor com que os gates das
+/// OUTRAS chaves entram: uma fixtura que trouxesse uma contagem passaria a testar a chave
+/// nova por acidente.
+fn sem() -> ph2d_quadfill::TipDeviation {
+    ph2d_quadfill::TipDeviation::default()
+}
+
 #[test]
 fn o_caminho_novo_e_o_de_omissao_e_so_o_zero_o_desliga() {
     for (value, want) in [
@@ -70,21 +78,21 @@ fn a_escolha_poe_os_furos_a_frente_do_enviesamento() {
 
     // A furada e' PIOR mesmo com enviesamento perfeito contra uma fechada horrivel.
     assert!(
-        super::worse(&furada, 0, 0.0, &fechada, 999, 89.0),
+        super::worse(&furada, 0, 0.0, sem(), &fechada, 999, 89.0, sem()),
         "⛔ os FUROS tem de vir antes do enviesamento"
     );
     // Empatados nos furos, decide a contagem de faces >60.
     assert!(
-        super::worse(&fechada, 10, 0.0, &fechada, 2, 89.0),
+        super::worse(&fechada, 10, 0.0, sem(), &fechada, 2, 89.0, sem()),
         "⛔ empatados nos furos, decide o >60"
     );
     // Empatados nos dois, decide a mediana.
     assert!(
-        super::worse(&fechada, 3, 9.0, &fechada, 3, 8.0),
+        super::worse(&fechada, 3, 9.0, sem(), &fechada, 3, 8.0, sem()),
         "⛔ empatados nos dois, decide a mediana"
     );
     assert!(
-        !super::worse(&fechada, 3, 8.0, &fechada, 3, 8.0),
+        !super::worse(&fechada, 3, 8.0, sem(), &fechada, 3, 8.0, sem()),
         "⛔ iguais nao podem ser PIORES -- a comparacao tem de ser estrita"
     );
 }
@@ -221,7 +229,7 @@ fn a_escolha_ve_a_aresta_nao_manifold_e_nao_so_o_bordo() {
     // limpa horrível. Sob a lei antiga esta asserção é FALSA — o empate no bordo levava
     // a decisão para o `>60`, e ali a não-manifold ganhava.
     assert!(
-        super::worse(&tripla, 0, 0.0, &soltos, 999, 89.0),
+        super::worse(&tripla, 0, 0.0, sem(), &soltos, 999, 89.0, sem()),
         "⛔ uma aresta NAO-MANIFOLD tem de contar como furo -- o artista ve o mesmo \
          entalhe escuro que uma aresta de bordo lhe da'"
     );

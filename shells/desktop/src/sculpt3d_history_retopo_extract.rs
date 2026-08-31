@@ -173,6 +173,7 @@ impl Sculpt3dScene {
                 ph2d_quadextract::ExtractReport,
                 f32,
                 ph2d_quadfill::QuadShape,
+                ph2d_quadfill::TipDeviation,
             ),
             RemeshRefusal,
         > {
@@ -277,8 +278,9 @@ impl Sculpt3dScene {
             // ⭐⭐⭐ **CADA CANDIDATA DIZ O QUE É** — ver [`rulers::log_candidate`], que
             // mora ao lado do [`worse`] de propósito: *o registo que explica uma escolha
             // tem de ler as mesmas grandezas que a fazem.*
-            rulers::log_candidate(w, features, adaptive, &out, &shape, &round, &cut_rep);
-            Ok((out, e, round.shift_frac_max, shape))
+            let dev = ph2d_quadfill::tip_deviation(&reference, &out, target);
+            rulers::log_candidate(w, features, adaptive, &out, &shape, &round, &cut_rep, dev);
+            Ok((out, e, round.shift_frac_max, shape, dev))
         };
 
         // ⭐ **O PREÇO, MEDIDO:** a cadeia corre duas vezes. Na `sculpt_004` uma passagem
@@ -343,15 +345,17 @@ impl Sculpt3dScene {
                 || guarded(0.0, false, adaptive),
             )
         };
-        let (relief_won, (out, e, _shift_frac_max, shape)) = match (aligned, smooth) {
+        let (relief_won, (out, e, _shift_frac_max, shape, dev)) = match (aligned, smooth) {
             (Ok(a), Ok(b)) => {
                 if worse(
                     &a.0,
                     a.3.skew_over_60,
                     a.3.skew_p50,
+                    a.4,
                     &b.0,
                     b.3.skew_over_60,
                     b.3.skew_p50,
+                    b.4,
                 ) {
                     (false, b)
                 } else {
@@ -381,19 +385,21 @@ impl Sculpt3dScene {
         // ⚠️ **E ela é segura por CONSTRUÇÃO:** entra pelo mesmo [`worse`], logo só vence
         // onde é melhor. *A terceira candidata não pode piorar a escolha; só pode não ser
         // escolhida.*
-        let (relief_won, (out, e, _shift_frac_max, shape)) = if still_broken(&out)
+        let (relief_won, (out, e, _shift_frac_max, shape, dev)) = if still_broken(&out)
             && let Ok(f) = guarded(ph2d_crossfield::ALIGN_WEIGHT, true, adaptive)
             && worse(
                 &out,
                 shape.skew_over_60,
                 shape.skew_p50,
+                dev,
                 &f.0,
                 f.3.skew_over_60,
                 f.3.skew_p50,
+                f.4,
             ) {
             (relief_won, f)
         } else {
-            (relief_won, (out, e, _shift_frac_max, shape))
+            (relief_won, (out, e, _shift_frac_max, shape, dev))
         };
 
         // ⭐⭐⭐ **A QUARTA TENTATIVA — o campo adaptativo PERDE se abrir a malha.**
@@ -436,9 +442,11 @@ impl Sculpt3dScene {
                         &a.0,
                         a.3.skew_over_60,
                         a.3.skew_p50,
+                        a.4,
                         &b.0,
                         b.3.skew_over_60,
                         b.3.skew_p50,
+                        b.4,
                     ) {
                         Some((false, b))
                     } else {
@@ -452,18 +460,20 @@ impl Sculpt3dScene {
         } else {
             None
         };
-        let (relief_won, (out, e, _shift_frac_max, shape)) = if let Some((rw, u)) = uniforme
+        let (relief_won, (out, e, _shift_frac_max, shape, _dev)) = if let Some((rw, u)) = uniforme
             && worse(
                 &out,
                 shape.skew_over_60,
                 shape.skew_p50,
+                dev,
                 &u.0,
                 u.3.skew_over_60,
                 u.3.skew_p50,
+                u.4,
             ) {
             (rw, u)
         } else {
-            (relief_won, (out, e, _shift_frac_max, shape))
+            (relief_won, (out, e, _shift_frac_max, shape, dev))
         };
 
         // ⭐⭐⭐ **O VETO — a peça não pode sair PARTIDA.** Ver [`rulers::shattered`].

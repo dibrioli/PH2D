@@ -60,13 +60,16 @@ pub(super) fn edges(mesh: &Mesh) -> (f32, f32) {
 /// contra um furo** — inventá-la aqui seria escolher por conforto. O estilhaço não precisa
 /// de ganhar a chave da frente para ser apanhado: [`shattered`] veta-o **depois** da
 /// escolha, e um veto absoluto não depende de ordenação nenhuma.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn worse(
     a_mesh: &Mesh,
     a_over60: usize,
     a_skew: f32,
+    a_dev: ph2d_quadfill::TipDeviation,
     b_mesh: &Mesh,
     b_over60: usize,
     b_skew: f32,
+    b_dev: ph2d_quadfill::TipDeviation,
 ) -> bool {
     let (a_holes, b_holes) = (open_edges(a_mesh), open_edges(b_mesh));
     if a_holes != b_holes {
@@ -104,26 +107,44 @@ pub(super) fn worse(
     // ⛔ **`−43 %`**. As duas candidatas estavam limpas na topologia, e o `worse` escolheu a que
     // comia o espinho — *porque nada aqui olhava para o alcance.*
     //
-    // ⚠️ **Sem referência, de propósito:** as duas candidatas vêm da MESMA entrada, logo o
-    // alcance de uma contra a outra já é a comparação certa. *Pedir a malha de entrada aqui
-    // seria mudar a assinatura para medir o que a diferença já diz.*
+    // ⛔⛔⛔ **E ATÉ 2026-08-31 ELA MEDIA O ALCANCE, QUE É UM EXTREMO GLOBAL — e sujo.**
+    // Duas coisas mudaram no mesmo dia, as duas medidas:
     //
-    // ⚠️ **A banda é MEDIDA e é do repo** ([`ph2d_quadfill::TIP_CUT_PCT`], `−2 %`), cujo doc
-    // mostra **uma ordem de grandeza** entre pontas intactas (`−0,0 %`..`−0,4 %`) e cortadas
-    // (`−5 %`..`−22 %`). ⛔ Sem banda, o ruído de reamostragem decidiria a escolha.
+    // 1. **A régua estava contaminada.** O alcance tirava o centroide da média dos
+    //    **vértices**, que é uma propriedade da amostragem: na escultura do dono o centroide
+    //    derivava `0,2129` entre entrada e saída e a régua lia `−6,5 %` onde a verdade era
+    //    `−0,1 %`; duas densidades da mesma peça diferiam `1,06 %` contra uma banda de `2 %`.
+    //    ⚠️ E o sinal era o pior: quem **corta** a ponta perde vértices longe do corpo, o
+    //    centroide afasta-se e o alcance medido **sobe**. Curado em
+    //    [`ph2d_quadfill::reach`] (centroide de **área**), que o [`log_candidate`] imprime.
+    // 2. **Um extremo global não conta QUANTAS pontas morreram** — é a limitação que esta
+    //    linha nomeou três vezes. A régua por ponta existe agora
+    //    ([`ph2d_quadfill::tip_deviation`]) e mede a distância da **escultura** à superfície
+    //    de cada candidata junto de cada ápice, em unidades do quad pedido.
+    //
+    // ⭐⭐⭐ **E a troca MUDA uma escolha medida.** `_base_sculpt.obj` a `Detail 0,40`, onde as
+    // duas primeiras candidatas **empatam** em bordo (`4`) e a chave decide:
+    //
+    // | candidata | alcance | **pontas acima da barra** |
+    // |---|---|---|
+    // | ⛔ `w = 0,000` (a que o alcance escolhia) | `2,8644` | **`2` de `4`** |
+    // | ⭐ `w = 0,030` | `2,7869` | **`1` de `4`** |
+    //
+    // *A régua velha preferia a candidata com mais pontas partidas, porque a ponta que ela
+    // media era a que sobrevivia nas duas.*
+    //
+    // ⚠️ **A barra é o chão da discretização** ([`ph2d_quadfill::TIP_DEVIATION_MAX`] = `1`
+    // quad), não um número escolhido: medido, as pontas sãs ficam em `máximo 0,45` e a
+    // partida em `p50 1,15`.
+    //
+    // ⛔ **A amostra vazia NÃO decide** — `tips = 0` é *«não medido»*, e lê-se igual a
+    // *«perfeito»* em toda régua que devolva só a média.
     //
     // ⛔ **Depois dos FUROS e antes da forma:** um espinho cortado ao meio é mais visível que
     // uma face com canto pior que `60°`, e menos que um buraco — *que foi a queixa mais antiga
     // dele.*
-    {
-        let (a_reach, b_reach) = (reach(a_mesh), reach(b_mesh));
-        let banda = 1.0 + ph2d_quadfill::TIP_CUT_PCT / 100.0;
-        if b_reach > 1.0e-9 && a_reach < b_reach * banda {
-            return true;
-        }
-        if a_reach > 1.0e-9 && b_reach < a_reach * banda {
-            return false;
-        }
+    if a_dev.tips > 0 && b_dev.tips > 0 && a_dev.over != b_dev.over {
+        return a_dev.over > b_dev.over;
     }
     if a_over60 != b_over60 {
         return a_over60 > b_over60;
@@ -169,26 +190,23 @@ pub(super) fn worse(
     a_skew.total_cmp(&b_skew) == core::cmp::Ordering::Greater
 }
 
-/// ⭐ **O ALCANCE de uma malha** — a distância máxima ao centroide.
+/// ⭐ **O ALCANCE de uma malha** — a distância máxima ao centroide **pesado pela área**,
+/// pela porta [`ph2d_quadfill::reach`].
 ///
 /// ⚠️ É a única régua desta linha que vê **amputação**: uma ponta cortada sai com a casca
 /// fechada, quads bonitos e `χ` exacta. ⛔ *Ela é um extremo GLOBAL* — não diz **quantas**
 /// pontas morreram, e é por isso que o diagnóstico usa o suporte por ponta. Aqui, entre duas
 /// candidatas da mesma entrada, o extremo é exactamente a comparação certa.
+///
+/// ⛔⛔ **E até 2026-08-31 ela tirava o centroide da média dos VÉRTICES, que é uma
+/// propriedade da amostragem e não da forma** — medido na escultura do dono: `0,2129` de
+/// deriva do centroide, um alcance lido a **`−6,5 %`** onde a verdade era `−0,1 %`, e
+/// **`1,06 %`** de erro entre duas densidades da mesma peça contra uma banda de `2 %`.
+/// ⚠️ O sinal era o pior possível: quem **corta** a ponta perde vértices longe do corpo, o
+/// centroide afasta-se, e o alcance medido **sobe**. O mecanismo e a tabela vivem no
+/// módulo [`ph2d_quadfill::tips`].
 fn reach(mesh: &Mesh) -> f32 {
-    let pos = mesh.positions();
-    #[allow(clippy::cast_precision_loss)]
-    let n = pos.len().max(1) as f32;
-    let mut c = [0.0f32; 3];
-    for q in pos {
-        for k in 0..3 {
-            c[k] += q[k] / n;
-        }
-    }
-    pos.iter().fold(0.0f32, |acc, q| {
-        let d = [q[0] - c[0], q[1] - c[1], q[2] - c[2]];
-        acc.max(d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt())
-    })
+    ph2d_quadfill::reach(mesh)
 }
 
 /// ⚠️ **A chave da ponta está ligada?** — `PH2D_RETOPO_TIPKEY=0` desliga.
@@ -211,6 +229,7 @@ fn tip_key_on() -> bool {
 ///
 /// ⚠️ **A `ENTREGA` sai da MESMA porta que o [`worse`] consulta** ([`tip_ratio`]): um registo
 /// que medisse a grandeza de outra maneira imprimiria um número que não explica a escolha.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn log_candidate(
     w: f32,
     features: bool,
@@ -219,12 +238,14 @@ pub(super) fn log_candidate(
     shape: &ph2d_quadfill::QuadShape,
     round: &ph2d_gridmap::RoundReport,
     cut_rep: &ph2d_gridmap::CutReport,
+    dev: ph2d_quadfill::TipDeviation,
 ) {
     let (ratio, amostra) = tip_ratio(out);
     eprintln!(
         "[sculpt3d] candidata w={w:.3} feicoes={features} adapt={adaptive:.2}: {} quads | \
          bordo {} | costuras soltas {} | locais trocados {} | lados a discordar {} | >60 {} | \
-         envies p50 {:.2} p99 {:.1} | aspecto p50 {:.2} | ENTREGA {ratio:.3} (ponta {amostra})",
+         envies p50 {:.2} p99 {:.1} | aspecto p50 {:.2} | ENTREGA {ratio:.3} (ponta {amostra}) \
+         | alcance {:.4} | DESVIO p50 {:.2} ({} de {} ponta(s) acima de {:.1})",
         out.face_count(),
         boundary_edges(out),
         round.solve.loose_seams,
@@ -234,6 +255,11 @@ pub(super) fn log_candidate(
         shape.skew_p50,
         shape.skew_p99,
         shape.aspect_p50,
+        reach(out),
+        dev.p50,
+        dev.over,
+        dev.tips,
+        ph2d_quadfill::TIP_DEVIATION_MAX,
     );
 }
 
@@ -444,3 +470,10 @@ mod tests;
 #[cfg(test)]
 #[path = "sculpt3d_retopo_tip_tests.rs"]
 mod tip_tests;
+
+/// ⭐⭐⭐ **OS GATES DA CHAVE DA GRAVATA** — irmão dos outros dois pelo teto de LOC da shell
+/// (HR-18, 600), cortado por RESPONSABILIDADE: a **face que se cruza sobre si própria**, a
+/// ORDEM das quatro chaves, e a guarda que a gravata armou.
+#[cfg(test)]
+#[path = "sculpt3d_retopo_bowtie_tests.rs"]
+mod bowtie_tests;

@@ -442,6 +442,9 @@ impl Panel for AudioEditorPanel {
     const ID: &'static str = "audio_editor";
     const NODE_ID: NodeId = AEDIT_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Audio Editor";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

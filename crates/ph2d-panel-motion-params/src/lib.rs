@@ -141,6 +141,9 @@ impl Panel for MotionParamsPanel {
     const ID: &'static str = "motion_params";
     const NODE_ID: NodeId = ids::MOTION_PARAMS_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Motion Params";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(_state: &mut MotionParamsPanelState, ctx: &mut PaintCtx) {
         if !ctx.host.panel_visible(MotionParamsPanel::ID) {

@@ -79,6 +79,8 @@ pub mod menu_rows;
 mod offers;
 mod paint;
 pub mod variant_axes;
+mod pre_dispatch;
+pub mod slot_tabs;
 // ⚠️ Re-exportado para o gate `every_registered_panel_is_reachable_by_the_z_order_walk`: uma
 // lista que um teste não consegue ler é uma lista que ninguém confere — e esta já custou
 // seis defeitos.
@@ -497,9 +499,10 @@ impl HeroScreen {
     /// `apply_event` in z-order; first region that consumes the
     /// event wins. Returns true iff some region consumed it.
     pub fn apply_event(&mut self, event: WidgetEvent) -> bool {
-        // ⛔ **Antes de tudo**: uma linha da barra de menus fecha o menu. Tem de ser aqui — o
-        // registo de painéis é caminhado abaixo, e ele consome os treze ids do menu *Window*.
-        menu_bar::close_on_row_click(self, event);
+        // ⛔ **Antes de tudo** — ver `pre_dispatch`, que explica por que a ordem é load-bearing.
+        if pre_dispatch::run(self, event) {
+            return true;
+        }
         // ADR-0029 Phase D: legacy fn-pointer dispatch deleted — every
         // in-tree panel lives in `crate::panel::PANEL_REGISTRY` as a
         // typed `Panel<State>`. Walk only the typed registry.

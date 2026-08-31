@@ -45,6 +45,9 @@ impl Panel for WetTuningPanel {
     /// Closed until the Wet Paint section's Tuning checkbox opens it (the
     /// bridge mirrors the tool's authored flag every frame).
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Wet Paint";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
     /// ⭐ **DECLARA que flutua** (D1): janela FLUTUANTE de afinação, com rect próprio.
     ///
     /// ⚠️ A declaração descreve o que este painel **FAZ**, e o gate

@@ -44,6 +44,9 @@ impl Panel for UpscalePanel {
     const ID: &'static str = "upscale";
     const NODE_ID: NodeId = hash_node_id("panel.upscale");
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Upscale";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

@@ -42,6 +42,9 @@ impl Panel for WidgetGalleryPanel {
     const ID: &'static str = "widget_gallery";
     const NODE_ID: NodeId = ids::GAL_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Widget Gallery";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
     /// ⭐ **DECLARA que flutua** (D1): janela FLUTUANTE com arrasto próprio (a galeria é uma referência, não um dock).
     ///
     /// ⚠️ A declaração descreve o que este painel **FAZ**, e o gate

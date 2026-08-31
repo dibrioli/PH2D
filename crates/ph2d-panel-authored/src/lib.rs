@@ -78,6 +78,9 @@ impl Panel for AuthoredPanel {
     /// Fechado até ser pedido — o interruptor mora na seção **Frame** do painel Vector, ao lado do
     /// gesto que criou a moldura.
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Authored UI";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
     /// ⭐ **DECLARA que flutua** (D1): janela FLUTUANTE: ela lê `blender_picker_offset` + `panel_resize_delta` e clampa-os na própria crate.
     ///
     /// ⚠️ A declaração descreve o que este painel **FAZ**, e o gate

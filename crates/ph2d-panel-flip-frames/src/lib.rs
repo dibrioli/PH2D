@@ -53,6 +53,9 @@ impl Panel for FlipFramesPanel {
     const ID: &'static str = "flip_frames";
     const NODE_ID: NodeId = ph2d_editor_core::ids::FLIP_STRIP_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Frames";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::Bottom;
 
     fn paint(state: &mut state::FlipStripState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

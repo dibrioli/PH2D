@@ -57,6 +57,9 @@ impl Panel for TokensPanel {
     /// Fechado até ser pedido. Re-vestir o app é uma sessão, não o estado normal de trabalho — e
     /// um painel que se abre sozinho é chrome que se dispensa em vez de se procurar.
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Design Tokens";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(state: &mut TokensPanelState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

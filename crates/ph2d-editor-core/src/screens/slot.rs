@@ -85,6 +85,12 @@ impl SlotSet {
     /// Todos os encaixes que **não** são o centro — o default de um painel.
     pub const ANY_DOCK: Self = Self(Self::SIDES.0 | Self::BOTTOM.0);
 
+    /// O conjunto com um encaixe só.
+    #[must_use]
+    pub const fn of(slot: Slot) -> Self {
+        Self(slot.bit())
+    }
+
     /// A união de dois conjuntos.
     #[must_use]
     pub const fn union(self, other: Self) -> Self {

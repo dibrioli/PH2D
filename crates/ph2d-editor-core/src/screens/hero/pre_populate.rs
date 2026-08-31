@@ -31,6 +31,7 @@ pub fn populate_shared(store: &mut WidgetStore) {
     populate_samples(store);
     populate_global_context_menu(store);
     super::menu_bar::populate(store);
+    super::slot_tabs::populate(store);
     populate_scrollbars(store);
     populate_hierarchy_chrome(store);
 }

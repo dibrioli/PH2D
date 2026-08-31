@@ -39,6 +39,16 @@ pub trait Panel: Sized + 'static {
     /// Default `visible` value when the host doesn't supply one.
     const DEFAULT_VISIBLE: bool;
 
+    /// ⭐⭐ **O NOME que o artista lê** — a etiqueta da aba quando este painel divide um encaixe
+    /// com outro (spec §2, regra 1).
+    ///
+    /// ⛔ **Sem default, de propósito.** Um default derivado do [`Self::ID`] daria *"Tokens"* onde
+    /// o menu *Window* diz *"Design Tokens"* e *"Sculpt3d"* onde ele diz *"Sculpt 3D"* — e o
+    /// artista teria **dois nomes para o mesmo painel**, um em cada superfície. O gate
+    /// `the_tab_and_the_menu_call_a_panel_the_same_thing` mede exactamente isso, conduzido pela
+    /// tabela [`crate::screens::hero::menu_bar::MODULE_TRUTHS`].
+    const TITLE: &'static str;
+
     /// ⭐⭐ **ONDE ESTE PAINEL PODE ESTAR** (decisão **D1**).
     ///
     /// O default é [`SlotSet::ANY_DOCK`] — as duas colunas e a faixa de baixo, **nunca o centro**.
@@ -49,8 +59,18 @@ pub trait Panel: Sized + 'static {
     /// precisa de ser mais estreito que o default declara-o.
     const ALLOWED_SLOTS: crate::screens::slot::SlotSet = crate::screens::slot::SlotSet::ANY_DOCK;
 
-    /// Onde ele nasce. ⚠️ Tem de estar dentro de [`Self::ALLOWED_SLOTS`], e há gate.
-    const DEFAULT_SLOT: crate::screens::slot::Slot = crate::screens::slot::Slot::RightTop;
+    /// ⭐⭐ **Em QUAL dos seis encaixes ele está.**
+    ///
+    /// ⛔⛔ **Sem default desde 2026-08-30, e a razão é uma medição:** com um default de
+    /// `RightTop`, **20 dos 21** painéis registados declaravam-no — e **três mentiam**
+    /// (`hierarchy` publica a coluna da ESQUERDA, `timeline` e `flip_frames` a faixa de BAIXO).
+    /// *Uma declaração que ninguém confronta com a realidade é decoração*, e ela só passou a
+    /// custar quando as abas começaram a derivar dela quem divide o quê.
+    ///
+    /// ⚠️ Tem de estar dentro de [`Self::ALLOWED_SLOTS`] (gate
+    /// `every_panel_is_born_inside_its_own_allowed_slots`) **e** conter o rect que o painel
+    /// publica (gate `the_slot_a_panel_declares_is_where_it_paints`).
+    const DEFAULT_SLOT: crate::screens::slot::Slot;
 
     /// ⭐⭐ **Ele pode sair para uma janela própria?** (decisão **D1**.)
     ///

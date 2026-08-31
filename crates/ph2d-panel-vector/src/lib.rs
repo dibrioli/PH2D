@@ -204,6 +204,9 @@ impl Panel for VectorPanel {
     const ID: &'static str = "vector";
     const NODE_ID: NodeId = ph2d_editor_core::ids::VECTOR_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Vector";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(state: &mut VectorPanelState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

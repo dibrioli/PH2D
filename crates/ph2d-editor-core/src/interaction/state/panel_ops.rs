@@ -77,6 +77,17 @@ impl WidgetStore {
         &self.panel_z_order
     }
 
+    /// ⭐ **Esquece os painéis que já não estão em cena.**
+    ///
+    /// ⚠️ A ordem z era *append-only* — ela só crescia com cliques —, e isso bastava enquanto ela
+    /// respondesse apenas *«quem pinta por cima de quem?»*. Desde que a aba escolhida de um
+    /// encaixe passou a ser **o ocupante mais ao topo**, ela também responde *«qual painel se
+    /// vê?»*, e aí um painel fechado e reaberto tinha de voltar à frente em vez de ressuscitar na
+    /// posição que tinha da última vez. Ver `screens::hero::slot_tabs::reconcile_z`.
+    pub fn retain_panel_z(&mut self, keep: impl Fn(NodeId) -> bool) {
+        self.panel_z_order.retain(|id| keep(*id));
+    }
+
     /// **Onde a superfície está AGORA** — o que o pintor desenha.
     ///
     /// ⚠️ **Devolve o valor VIVO, e é por isso que os ~130 leitores herdaram a rolagem suave sem

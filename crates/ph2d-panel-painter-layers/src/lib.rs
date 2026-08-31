@@ -103,6 +103,9 @@ impl Panel for PainterLayersPanel {
     const ID: &'static str = "painter_layers";
     const NODE_ID: NodeId = ph2d_editor_core::ids::PAINTER_LAYERS_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Layers";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

@@ -41,6 +41,9 @@ impl Panel for PaddingPanel {
     const ID: &'static str = "padding";
     const NODE_ID: NodeId = ph2d_editor_core::ids::PAD_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Padding";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

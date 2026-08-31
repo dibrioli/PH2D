@@ -30,13 +30,12 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 
 /// ⛔ Os que ainda alcançam a área de desenho sem declarar que flutuam, **com o mecanismo**.
-const REACHES_PENDING: &[(&str, &str)] = &[(
-    "audio_editor",
-    "Ele encaixa-se A OESTE do Inspector (`insp.x - 240 - gap`) para poder estar aberto ao lado do \
-     Audio Mixer, que ocupa a coluna. Isso é uma SEGUNDA COLUNA da direita — e a spec §2 recusa-a \
-     por aritmética: duas colunas por lado são 89,6% da largura do alvo de 1366. ⇒ a cura é a \
-     regra 1 do modelo (`n > 1` num encaixe são ABAS), e é wave própria, não uma linha aqui.",
-)];
+///
+/// ⭐ **VAZIA desde 2026-08-30.** A única entrada era o `audio_editor`, que se encaixava a oeste do
+/// Inspector para poder estar aberto ao lado do Mixer; hoje os dois são **abas** do mesmo encaixe
+/// (`screens::hero::slot_tabs`) e ele ocupa a coluna como toda a gente. *A catraca desceu, e desceu
+/// porque a metade de obsolescência a acusou primeiro.*
+const REACHES_PENDING: &[(&str, &str)] = &[];
 
 fn overlap(a: Rect, b: Rect) -> f32 {
     let w = (a.x + a.w).min(b.x + b.w) - a.x.max(b.x);
@@ -44,21 +43,28 @@ fn overlap(a: Rect, b: Rect) -> f32 {
     if w <= 0.0 || h <= 0.0 { 0.0 } else { w * h }
 }
 
-/// Pinta três quadros com tudo aberto e devolve o hero assente.
-fn settled_frame() -> HeroScreen {
+fn all_panel_ids() -> Vec<&'static str> {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut v = Vec::new();
+    ph2d_editor_core::panel::with_registry_ref(|reg| {
+        for p in reg.panels() {
+            v.push(p.manifest.id);
+        }
+    });
+    v
+}
+
+/// Pinta três quadros com **exactamente** este painel visível.
+///
+/// ⚠️⚠️ **Era «tudo aberto», e a feature das ABAS esvaziou-o.** Com todos visíveis, treze painéis
+/// ocupam a coluna da direita e **doze ficam escondidos por abas** — a varredura passou de 18
+/// medidos para **2**, e continuaria verde. *Um gate cuja população uma feature nova esvazia
+/// passa a medir nada sem uma linha de erro*; o controlo `measured >= 10` foi o que o disse.
+fn settled_one(only: &str) -> HeroScreen {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut h = HeroScreen::new(ph2d_editor_core::NodeId(1));
-    let names: Vec<&'static str> = {
-        let mut v = Vec::new();
-        ph2d_editor_core::panel::with_registry_ref(|reg| {
-            for p in reg.panels() {
-                v.push(p.manifest.id);
-            }
-        });
-        v
-    };
-    for n in &names {
-        h.panel_visibility.insert(n, true);
+    for n in all_panel_ids() {
+        h.panel_visibility.insert(n, n == only);
     }
     let mut scene = ph2d_vector::VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
@@ -71,36 +77,48 @@ fn settled_frame() -> HeroScreen {
 
 #[test]
 fn a_panel_that_does_not_declare_floating_never_reaches_the_drawing_area() {
-    let h = settled_frame();
-    let draw = h.last_layout.expect("o quadro publicou o layout").draw_area;
-    assert!(
-        draw.w > 0.0 && draw.w < 1366.0,
-        "a área de desenho não assentou ({draw:?}) — o gate mediria o quadro transitório"
-    );
-
+    let _ = ph2d_panel_registry_init::register_all_panels();
     let mut offenders = Vec::new();
     let mut measured = 0usize;
     let mut floating = 0usize;
+    let mut floats = std::collections::BTreeSet::new();
     ph2d_editor_core::panel::with_registry_ref(|reg| {
         for p in reg.panels() {
-            let m = &p.manifest;
-            if m.can_float {
+            if p.manifest.can_float {
                 floating += 1;
-                continue;
-            }
-            let Some(rect) = h.store.panel_rect(m.panel_node_id) else {
-                continue; // não publicou rect neste quadro
-            };
-            measured += 1;
-            let o = overlap(rect, draw);
-            if o > 0.0 && !REACHES_PENDING.iter().any(|(n, _)| *n == m.id) {
-                offenders.push(format!(
-                    "{} ({o:.0} px² sobre o desenho, rect={rect:?})",
-                    m.id
-                ));
+                floats.insert(p.manifest.id);
             }
         }
     });
+
+    for name in all_panel_ids() {
+        if floats.contains(name) {
+            continue;
+        }
+        let h = settled_one(name);
+        let draw = h.last_layout.expect("o quadro publicou o layout").draw_area;
+        assert!(
+            draw.w > 0.0,
+            "{name}: a área de desenho não assentou ({draw:?})"
+        );
+        let node = ph2d_editor_core::panel::with_registry_ref(|reg| {
+            reg.panels()
+                .iter()
+                .find(|p| p.manifest.id == name)
+                .map(|p| p.manifest.panel_node_id)
+                .expect("registado")
+        });
+        let Some(rect) = h.store.panel_rect(node) else {
+            continue; // não desenha sem a ferramenta dele activa
+        };
+        measured += 1;
+        let o = overlap(rect, draw);
+        if o > 0.0 && !REACHES_PENDING.iter().any(|(n, _)| *n == name) {
+            offenders.push(format!(
+                "{name} ({o:.0} px² sobre o desenho, rect={rect:?})"
+            ));
+        }
+    }
 
     assert!(
         measured >= 10,
@@ -122,28 +140,32 @@ fn a_panel_that_does_not_declare_floating_never_reaches_the_drawing_area() {
 /// ⭐ **A metade que impede a catraca de virar licença.**
 #[test]
 fn no_pending_entry_still_describes_nothing() {
-    let h = settled_frame();
-    let draw = h.last_layout.expect("layout").draw_area;
     let mut cured = Vec::new();
-    ph2d_editor_core::panel::with_registry_ref(|reg| {
-        for (name, _) in REACHES_PENDING {
-            let Some(p) = reg.panels().iter().find(|p| p.manifest.id == *name) else {
-                cured.push(format!("{name} (já não é um painel registado)"));
-                continue;
-            };
-            if p.manifest.can_float {
-                cured.push(format!("{name} (passou a DECLARAR que flutua)"));
-                continue;
-            }
-            match h.store.panel_rect(p.manifest.panel_node_id) {
-                None => cured.push(format!("{name} (já não publica rect)")),
-                Some(r) if overlap(r, draw) == 0.0 => {
-                    cured.push(format!("{name} (já não alcança a área de desenho)"));
-                }
-                Some(_) => {}
-            }
+    for (name, _) in REACHES_PENDING {
+        let found = ph2d_editor_core::panel::with_registry_ref(|reg| {
+            reg.panels()
+                .iter()
+                .find(|p| p.manifest.id == *name)
+                .map(|p| (p.manifest.can_float, p.manifest.panel_node_id))
+        });
+        let Some((can_float, node)) = found else {
+            cured.push(format!("{name} (já não é um painel registado)"));
+            continue;
+        };
+        if can_float {
+            cured.push(format!("{name} (passou a DECLARAR que flutua)"));
+            continue;
         }
-    });
+        let h = settled_one(name);
+        let draw = h.last_layout.expect("layout").draw_area;
+        match h.store.panel_rect(node) {
+            None => cured.push(format!("{name} (já não publica rect)")),
+            Some(r) if overlap(r, draw) == 0.0 => {
+                cured.push(format!("{name} (já não alcança a área de desenho)"));
+            }
+            Some(_) => {}
+        }
+    }
     assert!(
         cured.is_empty(),
         "estas entradas da catraca já não descrevem nada — apague-as: {cured:?}"
@@ -155,6 +177,7 @@ fn no_pending_entry_still_describes_nothing() {
 fn every_panel_is_born_inside_its_own_allowed_slots() {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut bad = Vec::new();
+    let mut center_claimants = Vec::new();
     let mut seen = 0usize;
     ph2d_editor_core::panel::with_registry_ref(|reg| {
         for p in reg.panels() {
@@ -171,16 +194,35 @@ fn every_panel_is_born_inside_its_own_allowed_slots() {
                     m.id, m.default_slot
                 ));
             }
-            // ⛔ O centro é do editor: um painel que se encaixasse nele tapava a viewport por
-            // declaração (spec §2, regra 4).
+            // ⛔⛔ **O centro admite UM ocupante, e ele não pode encaixar em mais lado nenhum.**
+            //
+            // ⚠️ Esta regra era *«ninguém declara o CENTER»*, e estava errada por omissão: o
+            // `motion_graph` **é** o centro — ele parte a área de desenho em duas regiões IRMÃS
+            // (`CenterSplit`), que é literalmente o que a decisão D5 diz que uma região é. Ele
+            // declarava `RightTop` só porque o `DEFAULT_SLOT` tinha default, e as abas iriam
+            // lê-lo como ocupante da coluna da direita — onde ele nunca esteve.
+            //
+            // ⇒ o que a regra defende de facto é *nenhum painel FLUTUA sobre a viewport*: quem
+            // declara o centro declara **só** o centro, e por isso não pode docar em lado nenhum.
             if m.allowed_slots.contains(Slot::Center) {
-                bad.push(format!("{}: declara o CENTER, que é do editor", m.id));
+                center_claimants.push(m.id);
+                if m.allowed_slots != ph2d_editor_core::screens::slot::SlotSet::CENTER {
+                    bad.push(format!(
+                        "{}: declara o CENTER **e** um encaixe — o centro não é uma alternativa, \
+                         é a região que ele PARTE",
+                        m.id
+                    ));
+                }
             }
         }
     });
     assert!(
         seen >= 15,
         "só {seen} painéis vistos — o registry não é o do boot"
+    );
+    assert!(
+        center_claimants.len() <= 1,
+        "mais de um painel reclama o CENTRO, e ele não se divide entre docas: {center_claimants:?}"
     );
     assert!(bad.is_empty(), "declarações incoerentes: {bad:?}");
 }

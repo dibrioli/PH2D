@@ -111,5 +111,9 @@ pub(super) fn frame_layout(hero: &HeroScreen, viewport: Rect) -> HeroLayout {
     if hero.is_panel_visible("flip_frames") {
         layout.reserve_bottom_strip(layout.flip_strip);
     }
+    // ⭐⭐ **E as ABAS saem do encaixe, por último.** Depois da docagem do timeline e das faixas do
+    // fundo, de propósito: os dois MOVEM rects, e reservar antes reservaria sobre a geometria
+    // errada — a mesma ordem que o `reserve_bottom_strip` já exigia acima.
+    layout.reserve_slot_tabs(super::slot_tabs::counts(hero), super::slot_tabs::TAB_BAR_H);
     layout
 }

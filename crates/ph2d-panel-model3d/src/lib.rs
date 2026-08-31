@@ -62,6 +62,9 @@ impl Panel for Model3dPanel {
     /// Fechado até alguém o abrir. O módulo ainda entra por variável de ambiente, e um painel que
     /// nascesse aberto ocuparia o encaixe da direita em toda sessão que não é de modelagem.
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Model 3D";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(state: &mut Self::State, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

@@ -176,6 +176,9 @@ impl Panel for AudioMixerPanel {
     const ID: &'static str = "audio_mixer";
     const NODE_ID: NodeId = AMIX_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Audio Mixer";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

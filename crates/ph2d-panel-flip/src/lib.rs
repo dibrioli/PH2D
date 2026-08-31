@@ -55,6 +55,9 @@ impl Panel for FlipPanel {
     const ID: &'static str = "flip";
     const NODE_ID: NodeId = ph2d_editor_core::ids::FLIP_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Flip";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(state: &mut state::FlipPanelState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

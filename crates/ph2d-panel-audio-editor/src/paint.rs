@@ -31,23 +31,23 @@ use ph2d_vector::{Color as VelloColor, VectorScene};
 pub(crate) use crate::clipped_hits::ClippedHits;
 
 pub(crate) const ROW_H: f32 = 28.0; // LITERAL-PX-OK: transport button row height (chrome)
-/// Fixed width of the docked Audio Editor panel. It sits just LEFT of the shared
-/// Inspector slot so it can be open side-by-side with the Audio Mixer (which owns
-/// that slot) — the transport is compact, so it needs less width than a mixer.
-const PANEL_W: f32 = 240.0; // LITERAL-PX-OK: docked editor panel width (chrome)
 
 pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(AudioEditorPanel::ID) {
         ctx.host.store_mut().clear_panel_rect(AEDIT_PANEL);
         return;
     }
-    // Dock just LEFT of the shared Inspector slot (which the Audio Mixer owns),
-    // so MIX + WAVE can be open side-by-side. Follows the Inspector rect if the
-    // user moves/resizes that dock. Its own drag/resize is NOT wired (the compact
-    // controls don't need it; the movable part is the floating waveform overlay).
-    let insp = ctx.layout.inspector;
-    let gap = Spacing::Md.px();
-    let rect = Rect::new((insp.x - PANEL_W - gap).max(0.0), insp.y, PANEL_W, insp.h);
+    // ⭐⭐ **ELE OCUPA A COLUNA, como todo painel docado** (`Slot::RightTop`).
+    //
+    // ⛔⛔ Até 2026-08-30 ele encaixava-se **a oeste** dela (`insp.x − 240 − gap`) para poder estar
+    // aberto ao lado do Audio Mixer. Isso é uma **segunda coluna da direita**, e o modelo de áreas
+    // recusa-a por aritmética: duas colunas por lado são `89,6 %` da largura do alvo de 1366.
+    // Medido, ele publicava `168 480 px²` **por cima da área de desenho**.
+    //
+    // ⭐ O que ele queria — *MIX e WAVE abertos ao mesmo tempo* — é agora a regra 1 do modelo:
+    // dois ocupantes do mesmo encaixe são **ABAS** (`screens::hero::slot_tabs`), e a faixa delas
+    // já saiu deste rect antes de ele chegar aqui.
+    let rect = ctx.layout.inspector;
     let theme = ctx.host.theme();
     ctx.host.store_mut().set_panel_rect(AEDIT_PANEL, rect);
 

@@ -139,6 +139,9 @@ impl Panel for InspectorPanel {
     const ID: &'static str = "inspector";
     const NODE_ID: NodeId = ids::INSP_PANEL;
     const DEFAULT_VISIBLE: bool = true;
+    const TITLE: &'static str = "Inspector";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(state: &mut InspectorState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

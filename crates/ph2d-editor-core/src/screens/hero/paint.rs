@@ -116,6 +116,10 @@ pub fn paint_hero_screen(
     // A régua não tem quem lhe mantenha o `ButtonState`; sem isto a linha dela no menu *Ver*
     // nunca aparece marcada. Ver `menu_bar::publish_toggle_state`.
     super::menu_bar::publish_toggle_state(hero);
+    // ⭐⭐ **A ordem z passa a ser «os painéis visíveis, o último a aparecer no topo»** — e tem de
+    // ser reconciliada ANTES do layout, porque é dela que sai qual aba está à frente em cada
+    // encaixe (`slot_tabs`).
+    super::slot_tabs::reconcile_z(hero);
 
     let mut layout = super::frame_layout::frame_layout(hero, viewport);
     // ⭐⭐ **AS COLUNAS LATERAIS SÃO ANCORADAS** (Enio, 2026-08-30, com foto: *«só fica legal
@@ -467,8 +471,22 @@ pub fn paint_hero_screen(
     // typed `Panel<State>`. The z-order walk resolves each id to its
     // typed entry; ids that don't match (e.g. `INSP_BLENDER_PICKER`,
     // painted out-of-band below) are silently skipped.
+    // ⭐⭐⭐ **Os ocupantes que não estão à frente do seu encaixe não pintam** — é isto que faz de
+    // `n > 1` num encaixe **abas** em vez de painéis empilhados. ⚠️ Vazio enquanto cada encaixe
+    // tiver no máximo um ocupante, que é o estado de omissão do app.
+    let hidden = super::slot_tabs::hidden_by_tabs(hero);
+    // ⛔⛔ **Quem não pinta tem de LARGAR o rect que publicou.** O `paint_fn` de cada painel é
+    // quem chama `clear_panel_rect` ao ficar invisível — saltá-lo deixaria o rect do quadro
+    // anterior no store, e ele alimenta o `DockSides::from_published` (a largura da área de
+    // desenho) e o gate da D1. *Um painel escondido por uma aba continuaria a reservar coluna.*
+    for id in &hidden {
+        hero.store.clear_panel_rect(*id);
+    }
     crate::panel::with_registry_opt(|reg| {
         for panel_id in z_order {
+            if hidden.contains(&panel_id) {
+                continue;
+            }
             if let Some(idx) = reg.find_by_panel_node_id(panel_id) {
                 // Hit barrier: register the panel rect BEFORE the
                 // widgets inside `panel.paint()` so the gizmo's hit
@@ -493,6 +511,27 @@ pub fn paint_hero_screen(
             }
         }
     });
+    // ⭐⭐⭐ **AS ABAS, depois dos painéis** — o `HitIndex` caminha de trás para a frente, então
+    // registá-las aqui põe-nas acima da barreira de hit que o painel da frente instalou. A faixa
+    // é zero-altura em todo encaixe com menos de dois ocupantes.
+    for slot in crate::screens::slot::Slot::ALL {
+        let bar = layout.slot_tabs[slot as usize];
+        if bar.h <= 0.0 {
+            continue;
+        }
+        let occ = super::slot_tabs::occupants(hero, slot);
+        let selected = occ.last().map(|o| o.node);
+        super::slot_tabs::paint_slot_tabs(
+            bar,
+            &occ,
+            selected,
+            scene,
+            text_system,
+            hero.theme,
+            &mut hero.hit_index,
+            &hero.store,
+        );
+    }
     // hero/scene/text_system unborrowed for the
     // rest of paint_hero_screen (bottom HUD, picker overlay, tooltip,
     // context menu, drop overlay).

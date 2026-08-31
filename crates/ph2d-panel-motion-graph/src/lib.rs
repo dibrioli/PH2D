@@ -91,6 +91,17 @@ impl Panel for MotionGraphPanel {
     const ID: &'static str = "motion_graph";
     const NODE_ID: NodeId = ids::MOTION_GRAPH_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Motion Graph";
+    /// ⭐⭐ **O ÚNICO painel que declara o CENTRO, e não é uma excepção — é a decisão D5.**
+    ///
+    /// O grafo não FLUTUA sobre a área de desenho: ele parte-a em duas regiões **irmãs**
+    /// (`CenterSplit`), que é literalmente o que a D5 diz que uma região é. ⛔ Declarar
+    /// `RightTop` — o que ele fazia enquanto o `DEFAULT_SLOT` tinha default — era a mentira que
+    /// as abas iriam ler: ele apareceria como aba da coluna da direita, onde nunca esteve.
+    const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
+        ph2d_editor_core::screens::slot::SlotSet::CENTER;
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::Center;
 
     fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
         if !ctx.host.panel_visible(MotionGraphPanel::ID) {

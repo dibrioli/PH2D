@@ -106,6 +106,9 @@ impl Panel for TimelinePanel {
     const ID: &'static str = "timeline";
     const NODE_ID: NodeId = ph2d_editor_core::ids::TIMELINE_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Timeline";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::Bottom;
     /// ⭐ **DECLARA que flutua** (D1): faixa com rect PRÓPRIO (o dock de baixo), que o artista move — ver `CLAUDE.md` §5.
     ///
     /// ⚠️ A declaração descreve o que este painel **FAZ**, e o gate

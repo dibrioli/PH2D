@@ -63,6 +63,9 @@ impl Panel for Sculpt3dPanel {
     /// cena 3D nasce — um painel que se abrisse para todo projeto seria chrome a
     /// dispensar em vez de a encontrar, e a cena 3D não existe na maioria deles.
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Sculpt 3D";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

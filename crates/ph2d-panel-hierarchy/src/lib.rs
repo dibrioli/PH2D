@@ -44,6 +44,9 @@ impl Panel for HierarchyPanel {
     const ID: &'static str = "hierarchy";
     const NODE_ID: NodeId = ids::HIER_PANEL;
     const DEFAULT_VISIBLE: bool = true;
+    const TITLE: &'static str = "Hierarchy";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::LeftTop;
 
     fn paint(state: &mut HierarchyState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

@@ -42,6 +42,9 @@ impl Panel for EqualizeSizesPanel {
     const ID: &'static str = "equalize_sizes";
     const NODE_ID: NodeId = hash_node_id("panel.equalize_sizes");
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Equalize Sizes";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

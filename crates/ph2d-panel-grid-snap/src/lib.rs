@@ -47,6 +47,9 @@ impl Panel for GridSnapPanel {
     const ID: &'static str = "grid_snap";
     const NODE_ID: NodeId = ph2d_editor_core::ids::GS_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Grid Settings";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
     /// ⭐ **DECLARA que flutua** (D1): janela FLUTUANTE com arrasto próprio — o artista põe-na onde a grelha lhe interessa.
     ///
     /// ⚠️ A declaração descreve o que este painel **FAZ**, e o gate

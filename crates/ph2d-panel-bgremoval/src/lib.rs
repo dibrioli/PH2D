@@ -46,6 +46,9 @@ impl Panel for BgRemovalPanel {
     const ID: &'static str = "bgremoval";
     const NODE_ID: NodeId = ph2d_editor_core::ids::BGR_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Background Removal";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

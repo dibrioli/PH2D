@@ -57,6 +57,9 @@ impl Panel for PhysicsPanel {
     /// — a panel that opens itself for every project would be chrome that has
     /// to be dismissed rather than found.
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Physics";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

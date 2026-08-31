@@ -291,6 +291,10 @@ pub struct HeroLayout {
     /// of the scene. Painted only while `panel_visible("timeline")` (the shell
     /// drives that from the timeline toggle). Height [`TIMELINE_DOCK_H`].
     pub timeline: Rect,
+    /// ⭐⭐ **A faixa de ABAS de cada encaixe**, na ordem de [`crate::screens::slot::Slot::ALL`] —
+    /// **zero-altura** onde o encaixe tem menos de dois ocupantes, que é o estado de omissão do
+    /// app. Escrita por [`Self::reserve_slot_tabs`]; ver `screens::hero::slot_tabs`.
+    pub slot_tabs: [Rect; 6],
     /// Flip frame-strip slot (ADR-0114 W3) — a low bottom-docked band spanning the
     /// same column as the timeline. Painted only while the `flip` tool is active
     /// (`panel_visible("flip_frames")`, bridge-driven). Height [`FLIP_STRIP_H`].
@@ -566,6 +570,9 @@ impl HeroLayout {
             motion_timeline_slot,
             timeline,
             flip_strip,
+            // ⚠️ Sem ocupação nenhuma não há abas: quem as reserva é `reserve_slot_tabs`, que só
+            // o hero chama — os construtores públicos devolvem a geometria SEM abas, de propósito.
+            slot_tabs: [Rect::new(0.0, 0.0, 0.0, 0.0); 6],
         }
     }
 

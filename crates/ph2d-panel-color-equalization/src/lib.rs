@@ -57,6 +57,9 @@ impl Panel for ColorEqualizationPanel {
     const ID: &'static str = "color_equalization";
     const NODE_ID: NodeId = ids::CEQ_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    const TITLE: &'static str = "Color Equalization";
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
 
     fn paint(state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

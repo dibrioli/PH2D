@@ -888,3 +888,259 @@ do oráculo aprovado e `1,300` de hoje.
 `0`–`3` faces nas nossas saídas (`0/101`, `1/427`, `3/272`, `1/196`, `3/208`). *Uma razão tirada de
 `3` contra `1` não é `3×`, é ruído* — a coluna que decide aqui é a `ENTREGA`, que tem centenas de
 faces de cada lado, não a contagem de defeitos.
+
+---
+
+## §8-novendecies — ⛔⛔⛔ CORRECÇÃO AO §8-octodecies: a tabela chamou ENTRADA a uma SAÍDA
+
+O §8-octodecies concluiu que *«a peça que o dono mete no botão já tem a densidade certa nas
+pontas (`0,675`) ⇒ o trabalho não é inventar adaptação, é parar de deitar fora a que chega»*.
+⛔⛔ **Isso está errado, e o erro estava na LINHA da tabela, não na régua.**
+
+### §8-novendecies.1 — O que os cinco ficheiros do dono de facto são
+
+⭐ **Área e volume são invariantes a todo movimento rígido** e dizem que os cinco são a **mesma
+escultura** (a caixa envolvente **não** o diz — ela roda com a peça, e foi por isso que a 1.ª
+leitura os separou em «peças diferentes», o que também era falso):
+
+| ficheiro | faces | tri / quad | valência máx | área | volume | **o que é** |
+|---|---|---|---|---|---|---|
+| `_base_sculpt.obj` | `18 432` | `3 072` / `15 360` | `24` | `17,40` | `4,62` | ⭐ **ESCULTURA** (entrada) |
+| `sculpt_antes.obj` | `13 824` | `288` / `13 536` | ⭐ **`144`** | `17,13` | `4,71` | ⭐ **ESCULTURA** (entrada) |
+| `sculpt_Depois.obj` | `15 426` | `0` / `15 426` | `6` | `16,72` | `4,70` | retopologia (saída) |
+| `Sculpt_Blender.obj` | `8 291` | `0` / `8 291` | `6` | `16,96` | `4,69` | ⭐⭐⭐ retopologia **APROVADA** |
+| `sculpt_t003.obj` | `20 235` | `0` / `20 235` | `6` | `15,85` | `4,57` | ⛔ retopologia (saída) — **NÃO é entrada** |
+
+⭐⭐ **A coluna que decide é `tri / quad` + `valência máxima`:** uma escultura tem polos (`144`!) e
+mistura triângulos; uma retopologia sai **100 % quads com valência `6`**. *O `sculpt_t003.obj` tem
+`0` triângulos e valência `6` — ele é uma SAÍDA, e o §8-octodecies chamou-lhe «a entrada dele».*
+
+### §8-novendecies.2 — ⛔ E a conclusão inverte-se
+
+Com as entradas a sério, medidas pela mesma coluna `ENTREGA`:
+
+| | razão ponta/corpo |
+|---|---|
+| ⭐ `_base_sculpt.obj` (**escultura**) | ⛔ **`3,650`** |
+| ⭐ `sculpt_antes.obj` (**escultura**) | ⛔ **`2,026`** |
+| a nossa saída de `sculpt_antes` (`d=0,50`) | `1,338` |
+| `sculpt_Depois.obj` | `1,145` |
+| ⭐⭐⭐ `Sculpt_Blender.obj` (**aprovada**) | **`0,580`** |
+
+⭐⭐⭐ **A graduação NÃO chega: ela tem de ser CRIADA.** A escultura do dono tem faces **duas a
+três vezes maiores** na ponta do que no corpo — é o que uma subdivisão em espaço de parâmetro faz
+a uma agulha. ⇒ *o botão não deita fora nada que lhe chegue; ele melhora `2,026 → 1,338` e pára
+muito antes do `0,580` da referência.*
+
+⚠️ **Isto REABRE as duas recusas medidas como as únicas rotas** — o §8-octodecies fechava-as com
+o argumento de que havia uma terceira, mais barata, e essa terceira **não existe**.
+
+### §8-novendecies.3 — ⭐⭐⭐ E ONDE ela morre está medido, com controlo dos DOIS lados
+
+A coluna `ENTREGA` passou a ser impressa nos **três** pontos da cadeia (`ENTRADA` → `F1` →
+`SAIDA`) — ela só era impressa na saída, logo dizia *que* a ponta se perde e nunca *onde*:
+
+| peça | `ENTRADA` | **`F1`** | `SAIDA` | alcance |
+|---|---|---|---|---|
+| `sculpt_antes.obj` | `2,026` | ⛔ **`1,007`** | `1,338` | `−14,6 %` |
+| `sculpt_t003.obj` | `0,675` | ⛔ **`1,020`** | `0,884` | `−16,2 %` |
+
+⭐⭐⭐ **A fase zero achata a razão em `1,00` exactamente, vinda de `2,03` E de `0,68`** — de cima
+e de baixo. As cascas radiais da malha de trabalho saem `0,0649 / 0,0650 / 0,0654`: *não é uma
+tendência fraca, é um campo rigorosamente uniforme.* ⇒ **a `ph2d-remesh-iso` é o sítio, e o
+controlo dos dois lados exclui que seja coincidência.**
+
+⚠️ **A amostra da ponta na SAÍDA é pequena a `d=0,50`** (`23` e `70` faces) — a linha da `SAIDA`
+desta tabela é indicativa. As linhas da `ENTRADA` e da `F1` têm `113`–`678` e `57`–`183`, e é
+sobre elas que a conclusão assenta.
+
+### §8-novendecies.4 — ⚠️ A régua que faltava, e ela é irmã de uma que esta linha já pagou
+
+`the_local_ruler_across_files` e a sonda do botão passam a imprimir
+[`piece_signature`](../../../shells/desktop/src/sculpt3d_photo_rulers.rs) — **área, volume e
+alcance**. ⛔ *Uma tabela que compara A com B tem de dizer que A e B são comparáveis*, e nenhuma
+régua deste repo o dizia. É a irmã exacta do [ACHADO de 28/08](../quad-remesh/ACHADO_o_acabamento_e_a_regua_da_densidade.md)
+— ali a comparação com o oráculo omitia a **contagem de faces** dos dois lados; aqui omitia a
+**peça**, e as duas produziram uma conclusão confiante sobre um par que não existia.
+
+---
+
+## §8-vicies — ⭐⭐⭐ A MATRIZ `2×2`: a célula que ninguém correu é a única que ATINGE o alvo
+
+`sculpt_antes.obj`, `Detail 0,85`. ⚠️ Máquina sob carga `26`–`58` (outras linhas a correr):
+**as colunas de relógio desta corrida não valem nada** ([`CLAUDE.md` §5.0](../../../CLAUDE.md)); as
+de geometria e de topologia sim.
+
+| `PH2D_ISO_ADAPT` | `PH2D_ADAPT` | malha F1 | `ENTREGA` F1 | quads | `χ` | bordo | **`ENTREGA` saída** |
+|---|---|---|---|---|---|---|---|
+| `0` | `0` | `3 982` | `1,007` | `9 414` | `1` | `4` | `1,502` |
+| `0` | `1` | `3 982` | `1,007` | `9 414` | `1` | `4` | ⛔ **`1,502`** (byte-idêntico) |
+| `1` | `0` | ⛔ `33 156` | `0,936` | `9 740` | ⛔ `−7` | ⛔ `62` | `1,075` |
+| ⭐⭐⭐ **`1`** | **`1`** | ⛔ `33 156` | `0,936` | `9 322` | ⛔ `−5` | ⛔ `36` | ⭐⭐⭐ **`0,536`** |
+
+⭐⭐⭐ **O PAR atinge o alvo** (`0,536` contra `0,59`) e afina `−54 %` da casca interior para a
+ponta — a retopologia **aprovada** pelo dono afina `−52 %`. ⇒ *a graduação da ponta está resolvida
+no instante em que a malha fechar; o problema inteiro colapsou num ponto.*
+
+⛔⛔ **E as duas metades tinham sido medidas SOZINHAS e recusadas** (`PH2D_ISO_ADAPT` em §8-octies,
+`Follow Curvature` em §8-quater). *Cada recusa mediu meia cura* — e os dois docs delas **já
+diziam** que a cadeia inteira tem de ser consciente do sizing. Memória:
+`feedback_two_halves_of_a_cure_each_refused_alone_do_not_refute_the_cure`.
+
+## §8-unetvicies — ⛔⛔⛔ O `Follow Curvature` NÃO é fraco: ele é DESCARTADO
+
+A célula `2` é **byte-idêntica** à `1` — os `9 414` quads, as três medianas por casca
+(`0,0403 / 0,0471 / 0,0606`), as contagens (`8 544 / 717 / 153`), `dobras 76`, o alcance. *Não é
+«a adaptação move `7 %`»: é ZERO.*
+
+⭐ **A causa é uma rede de segurança a funcionar como desenhada:** a
+[`sculpt3d_history_retopo_extract.rs`](../../../shells/desktop/src/sculpt3d_history_retopo_extract.rs)
+corre a **corrida inteira sem campo** quando a saída adaptativa fica partida
+(`if adaptive > 0.0 && still_broken(&out)`), e o [`worse`] escolhe. A nossa saída tem `4` arestas
+de bordo ⇒ a rede arma **sempre** nesta peça.
+
+⛔⛔ **E o `worse` NÃO TEM CHAVE PARA A PONTA.** A ordem é `bordo+não-manifold → componentes →
+gravatas → >60° → enviesamento`. ⇒ *uma candidata que cura as pontas e traz UMA aresta de bordo a
+mais perde antes de a ponta ser sequer olhada.* ⚠️ É a quinta vez que esta linha paga a mesma
+forma — a régua que **escolhe** é cega ao eixo de que o dono se queixa.
+
+⭐ **Um empate mantém a adaptativa** (o `if worse(out, u) { u } else { out }`), e é por isso que na
+célula `4` ela sobrevive: a corrida sem campo ali é a célula `3`, com `62` bordo contra `36`.
+⇒ **o alvo operacional é a candidata adaptativa não ACRESCENTAR bordo**, não ser melhor.
+
+## §8-duoetvicies — ⭐ O QUE ESTA JANELA INSTRUMENTOU (e porquê cada peça)
+
+1. **`piece_signature`** (área · volume · alcance) nas sondas de ficheiro — §8-novendecies.
+2. **A coluna `ENTREGA` nos TRÊS pontos** (`ENTRADA` → `F1` → `SAIDA`) — ela só era impressa na
+   saída, logo dizia *que* a ponta se perde e nunca *onde*.
+3. **`[sculpt3d] candidata …`** — uma linha por tentativa com `quads · bordo · costuras soltas ·
+   locais trocados · lados a discordar · >60° · ENTREGA`. ⛔ *Sem ela, um knob descartado e um knob
+   fraco liam-se exactamente igual*, e leram durante dois dias.
+4. **`CutReport::side_patch_flips`** — mede (e **não** cura) a hipótese do §10 do
+   [plano](../quad-remesh/PLANO_a_graduacao_da_ponta.md): os dois lados de um arco são casados pela
+   **posição** na lista `across[(a,b)]`, e essa lista pode mudar de composição ao longo da cadeia.
+5. **`SolveReport::mismatched_locals`** + a guarda em `assembly.rs` — o `partners[pb][lb]` deixa de
+   **estourar** e passa a contar. ⚠️ Os dois lados são olhados **antes** de qualquer um ser
+   escrito: *um par meio-acoplado é pior que nenhum.*
+6. **`RemeshRefusal::Panicked`** — um estouro era devolvido como `TooCoarseToResolve`, e o artista
+   lia *«a malha é grossa demais: subdivida antes»* sobre um defeito nosso. A `ph2d-quadchain` já
+   distinguia (`Verdict::Panicked`) e esta porta não.
+
+## §8-teretvicies — ⭐⭐ O PANIC «SEM ENDEREÇO DESDE 26/08» ESTÁ VIVO
+
+O [`CLAUDE.md` §5](../../../CLAUDE.md) diz que ele *«não está provado curado nem provado vivo»*.
+⭐ **Está vivo**, e o reprodutor é uma linha:
+
+```
+\
+  env PH2D_PIECE=/home/enio/Downloads/sculpt_antes.obj PH2D_DETAIL=0.85 PH2D_ISO_ADAPT=1 \
+  cargo test -p ph2d-host-desktop --release --bins \
+  the_artists_piece_through_the_button -- --ignored --nocapture
+```
+
+`panicked at crates/ph2d-gridmap/src/assembly.rs:198:34` — a linha é
+`partners[pb as usize][*lb as usize]`, o **segundo** lado de uma costura (o primeiro, três linhas
+acima, passou). ⚠️ Era apanhado pelo `catch_unwind` da tentativa ⇒ **a candidata morria em
+silêncio e a recusa mentia sobre o motivo**.
+
+## §8-quateretvicies — ⭐⭐⭐ O PANIC TEM ENDEREÇO, E MATAVA DUAS DAS TRÊS TENTATIVAS
+
+O [`CLAUDE.md` §5](../../../CLAUDE.md) do módulo **3D Modeling** diz, desde 26/08, que
+*«o panic do `ph2d-gridmap` está SEM ENDEREÇO … `solve.rs:336` aponta para código que já não
+existe … não está provado curado nem provado vivo»*.
+
+⭐⭐⭐ **Está VIVO, e a nota apontava o ficheiro CERTO** — a função foi reescrita e desceu:
+
+```
+panicked at crates/ph2d-gridmap/src/solve.rs:358:38
+panicked at crates/ph2d-gridmap/src/solve.rs:359:32
+index out of bounds: the len is 10 but the index is 35
+```
+
+São as duas linhas de `measure`: `map.uv[pa][*la]` e `map.uv[pb][*lb]` — um lado de costura
+aponta para um vértice local que o patch dele **não tem**. ⚠️ *Há um irmão exacto em
+`assembly.rs:198`, o `partners[pb][*lb]`, apanhado no mesmo dia.*
+
+### ⛔⛔⛔ E o preço não é «uma sonda que reprova»
+
+Medido em `_base_sculpt.obj` — **a escultura mais recente do dono** (gravada às 20:52 de 30/08),
+`Detail 0,85`:
+
+| | |
+|---|---|
+| candidatas do botão | `3` |
+| ⛔ **candidatas que ESTOURAM** | ⛔ **`2`** |
+| a que sobra | `8 425` quads · `χ = 2` · `0` bordo · `0` não-manifold · `>60 = 0` |
+| ⛔ **alcance** | ⛔ **`3,0959 → 1,8019` (`−41,8 %`)** |
+
+⭐⭐⭐ **A saída é topologicamente PERFEITA e as pontas estão CORTADAS.** ⇒ *o report «o remesh
+amputou pontas» é, em parte, uma cadeia que escolhe entre uma candidata só* — as outras duas
+morriam antes de serem comparadas, e a rede (`catch_unwind`) devolvia-as como
+`TooCoarseToResolve`, que é uma frase sobre a peça dele.
+
+### ⭐ A cura desta janela, e o que ela NÃO é
+
+- `measure` **conta e salta** (`SolveReport::mismatched_locals`) em vez de estourar.
+- `assembly::assemble` faz o mesmo, e **olha os dois lados antes de escrever qualquer um**:
+  *um par meio-acoplado é pior que nenhum.*
+- `round::reread_shift` (o caminho `PH2D_GRIDMAP_WELD=0`) recebe a mesma guarda **mais** a
+  saída por `None` quando **todos** os pares do grupo são inválidos — *dividir por `n = 0` daria
+  `NaN` numa translação, que envenena o mapa inteiro em silêncio.*
+- ⭐⭐⭐ **E a causa a montante APARECEU no instante em que a guarda deixou a candidata viver.**
+  A hipótese com endereço — o casamento dos dois lados de um arco **por POSIÇÃO** na lista
+  `across[(a,b)]` — dá `CutReport::side_patch_flips = 0` na `sculpt_antes.obj` e ⭐ **`2`** na
+  `_base_sculpt.obj`, com `4` locais fora de limites. ⛔⛔ *A 1.ª leitura foi escrita como
+  «hipótese refutada» e tinha corrido na peça que **não** contém o fenómeno* — a mesma forma
+  que esta linha já pagou com uma cura medida numa fixtura sem o defeito.
+  ⇒ ⏳ **A cura fica nomeada:** a identidade de um lado é o par **(patch, face)**, fixada uma
+  vez e depois **casada**. ⛔ Chavear por patch não serve — o doc do `SeamSide` declara que os
+  dois lados podem ser o **mesmo** patch (a ponte que abre um anel).
+
+## §8-quinetvicies — O SMOKE desta janela
+
+```
+\
+  \
+  cargo run -p ph2d-host-desktop --release
+```
+
+Carregar a escultura, carregar em **`Quad Retopology`**, e olhar as pontas. O A/B é a mesma
+linha com `env PH2D_RETOPO_TIPKEY=0` à frente do `cargo`, que devolve a escolha anterior.
+
+⚠️ **O que muda e o que não muda** (§8-vicies e o [plano](../quad-remesh/PLANO_a_graduacao_da_ponta.md) §16):
+a chave nova só decide quando **todas** as chaves de defeito empatam, logo há peças em que a
+saída é **byte-idêntica** — e isso é o desenho, não uma falha do smoke. Na `sculpt_antes.obj` ela
+dispara e a razão ponta/corpo vai de `1,502` para `0,851`.
+
+## §8-sexetvicies — As provas de mutação, e a que SOBREVIVEU
+
+| mutação | gates que morrem |
+|---|---|
+| apagar o bloco `if tip_key_on() { … }` do [`worse`] | ⭐ `a_ponta_decide_quando_as_chaves_de_defeito_empatam` · `a_ponta_decide_depois_das_faces_ruins_e_antes_do_enviesamento` |
+| apagar `a_n > 0 && b_n > 0` | ⛔ **SOBREVIVEU** à 1.ª redacção · ⭐ morre com `a_amostra_vazia_nao_ganha_de_uma_medida` |
+
+⛔⛔ **A 1.ª versão do gate da amostra vazia usava a MESMA malha dos dois lados.** Com a
+amostra vazia nos dois, as razões valem `0,0` as duas, a comparação dá `Equal` e o código cai
+no enviesamento **com ou sem a guarda** — *o gate media um caminho em que a guarda é
+irrelevante.*
+
+⭐ A cura é o par **assimétrico**: `quads_coincidentes()` (amostra `0`) contra
+`nuvem_com_ponta(0.5)` (amostra `4`), **empatadas** em furos, peças e gravatas. Sem a guarda, o
+`0,0` de «não medido» ganha a comparação — e o gate morde.
+
+⚠️ **É a 4.ª ocorrência da família «escrevo a guarda certa e não a gateio»**, com um modo novo:
+*uma fixtura simétrica prova que a lei é reflexiva, não que a guarda existe.*
+
+## §8-septetvicies — Os TRÊS cortes por LOC que esta janela pagou
+
+O portão `shell_files_respect_hr18_loc_cap` (600) acusou três ficheiros. ⛔ **Nenhum foi
+resolvido por excepção** — os três foram cortados por **responsabilidade**:
+
+| ficheiro | era | é | o corte |
+|---|---|---|---|
+| `sculpt3d_photo_rulers.rs` | `663` | `594` | `sculpt3d_photo_piece.rs` — *«são a mesma peça?»* é a pergunta ANTERIOR a *«esta malha é boa?»* |
+| `sculpt3d_history_retopo_extract.rs` | `626` | `595` | o registo por candidata foi para o `rulers`, ao lado do [`worse`] — *o registo que explica uma escolha lê as mesmas grandezas que a fazem* |
+| `sculpt3d_retopo_rulers_tests.rs` | `747` | `589` | `sculpt3d_retopo_tip_tests.rs` — as chaves de **defeito** e a de **cobertura** são duas perguntas |
+
+⚠️ E o `crates/ph2d-gridmap/src/cut.rs` bateu no tecto de `700` da workspace: **o doc do campo
+novo foi comprimido**, não o código.

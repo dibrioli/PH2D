@@ -59,6 +59,8 @@
 
 /// **O esqueleto vira RAMOS** — a metade da lei do varrimento que vive dentro do nó (a outra é
 /// da shell, que tem o motor de traço). Pública porque a shell a chama.
+/// **O ALFABETO como DADO** — o que cada símbolo faz, para quem escreve a gramática (HR-18).
+pub mod alphabet;
 pub mod branch;
 mod manifest;
 pub use manifest::{MANIFEST, param};

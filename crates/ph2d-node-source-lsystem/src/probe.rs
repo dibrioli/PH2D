@@ -330,3 +330,71 @@ pub fn probe_param_prints(
 pub fn grammar_complaints(rules: &str) -> Vec<grammar::Complaint> {
     grammar::parse_rules_reporting(rules).1
 }
+
+/// **DUAS GRAMÁTICAS DESENHAM DIFERENTE?** — a régua de que o par `[ ]` precisa.
+///
+/// ⚠️ Ele não se mede como os outros: `[]` vazio é um **no-op exacto** (empilha e desempilha),
+/// então o que se compara é o efeito de RESTAURAR — `F[+F]F` contra `F+FF`, os mesmos módulos
+/// sem os parênteses.
+#[must_use]
+pub fn probe_two_grammars_differ(a: &str, b: &str) -> bool {
+    stream_fingerprint(&probe_build("X", a, 3.0, &[]))
+        != stream_fingerprint(&probe_build("X", b, 3.0, &[]))
+}
+
+/// **ESTE SÍMBOLO AGE?** — a porta que mede o alfabeto pelo COMPORTAMENTO.
+///
+/// Compara a mesma gramática com `sym` no meio contra a mesma com um módulo **mudo** no lugar
+/// dele. `true` = o interpretador faz alguma coisa com ele.
+///
+/// ⚠️⚠️ **Comportamental e não textual, de propósito.** A alternativa era um gate a varrer o
+/// fonte do `walk` à procura de braços `b'X' =>` — e um gate que PARSEIA o fonte tem de saber
+/// TODAS as formas em que aquilo se escreve, senão acusa o errado e cega o certo. Perguntar ao
+/// produto não tem esse problema.
+///
+/// ⚠️ **A fixtura evita duas armadilhas medidas** (2026-08-31): o símbolo do AXIOMA age por ser
+/// reescrito (não por ser interpretado), e um `]` desemparelhado não fecha nada. Por isso o
+/// axioma é `X`, o par `[ ]` viaja junto, e o controlo é a letra muda `Q`.
+#[must_use]
+pub fn probe_symbol_acts(sym: &str) -> bool {
+    let com = format!("X -> FF[+F]{sym}FF");
+    let sem = "X -> FF[+F]QFF";
+    let fp = |r: &str| stream_fingerprint(&probe_build("X", r, 3.0, &[]));
+    fp(&com) != fp(sem)
+}
+
+/// A impressão digital de um stream, pelos BITS de todas as colunas, ordenadas pelo nome.
+///
+/// ⚠️ **Uma função e não duas cópias:** as duas réguas do alfabeto (o símbolo solto e o par
+/// `[ ]`) fazem a mesma pergunta, e a lei do que conta como «mudou» não pode viver escrita duas
+/// vezes — no dia em que uma passasse a ignorar uma coluna, as duas discordariam em silêncio.
+fn stream_fingerprint(s: &ph2d_nodegraph::attr::Stream) -> u64 {
+    {
+        let mut cols: Vec<_> = s.columns().collect();
+        cols.sort_by(|a, b| a.0.cmp(b.0));
+        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+        let mut eat = |x: u32| {
+            h ^= u64::from(x);
+            h = h.wrapping_mul(0x0100_0000_01b3);
+        };
+        eat(s.count() as u32);
+        for (n, col) in cols {
+            for b in n.as_bytes() {
+                eat(u32::from(*b));
+            }
+            match col {
+                ph2d_nodegraph::attr::Column::Scalar(v) => v.iter().for_each(|x| eat(x.to_bits())),
+                ph2d_nodegraph::attr::Column::Vec2(v) => {
+                    v.iter().flatten().for_each(|x| eat(x.to_bits()));
+                }
+                ph2d_nodegraph::attr::Column::Vec3(v) => {
+                    v.iter().flatten().for_each(|x| eat(x.to_bits()));
+                }
+                ph2d_nodegraph::attr::Column::Vec4(v) => {
+                    v.iter().flatten().for_each(|x| eat(x.to_bits()));
+                }
+            }
+        }
+        h
+    }
+}

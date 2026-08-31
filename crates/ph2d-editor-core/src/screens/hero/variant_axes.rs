@@ -302,6 +302,93 @@ fn multi_axis(
     axes
 }
 
+/// ⭐⭐⭐ **AS FILEIRAS DO CARTÃO DE PROPRIEDADES** — o que a família PERGUNTA mais o que o nome
+/// DECLARA.
+///
+/// # ⛔⛔ O buraco que isto fecha (report do Enio, 2026-08-31)
+///
+/// *«quando mudo o conteúdo entre `{}` o inspector não muda»* — e estava certo. As chaves tinham
+/// **dois leitores** e só isso: o selo da Hierarquia, e o [`axes_for`], que exige uma família de
+/// **duas ou mais receitas**. Fora desse caso — um objecto solto, ou uma cópia de um mestre único —
+/// o Inspector não lia as chaves de lado nenhum, e reescrevê-las não mudava um pixel.
+///
+/// *Uma declaração sem leitor é decoração*, e esta tinha um selo na Hierarquia a prometer que
+/// alguém a lia.
+///
+/// ⚠️ **A pergunta e a declaração são coisas diferentes**, e o cartão mostra as duas:
+///
+/// | de onde vem | o que é | como se pinta |
+/// |---|---|---|
+/// | [`axes_for`] | *«que outras versões existem?»* | chips que **trocam** |
+/// | [`declared_axes`] | *«o que este objecto DIZ que é»* | o valor, em texto |
+///
+/// ⚠️ **A declaração NÃO substitui a pergunta** — uma chave que a família já oferece fica com os
+/// chips; só as que sobram entram como texto. *Duas fileiras com o mesmo nome seriam duas respostas
+/// à mesma pergunta, e a de baixo estaria sempre desactualizada.*
+///
+/// `declared_by` é o nome de quem DECLARA: o do mestre quando isto é uma cópia (a propriedade é do
+/// componente, não do exemplar), e o próprio nome quando não há mestre nenhum.
+#[must_use]
+pub fn rows_for(
+    members: &[(u64, String)],
+    me: u64,
+    declared_by: &str,
+) -> (Vec<VariantAxis>, usize) {
+    let (mut axes, mut beyond) = axes_for(members, me);
+    for row in declared_axes(declared_by) {
+        if axes.iter().any(|a| a.name == row.name) {
+            continue;
+        }
+        // ⚠️ **O teto é o da TABELA DE IDS** e vale para as duas espécies de fileira: uma fileira de
+        // texto não regista chips, mas conta para a altura do cartão e para a ordem — e um cartão
+        // que cresce sem limite é a parede que os eixos existem para evitar.
+        if axes.len() >= ids::MAX_INSTANCE_AXES {
+            beyond += 1;
+            continue;
+        }
+        axes.push(row);
+    }
+    (axes, beyond)
+}
+
+/// ⭐⭐ **As propriedades que ESTE nome declara** — uma fileira por chave, com **um** valor.
+///
+/// `"Casa {Size=Small, State=Idle}"` → duas fileiras, `Size` = `Small` e `State` = `Idle`.
+///
+/// ⚠️ **O `master` é `0` e o `current` é `true`**: não há para onde ir. O cartão pinta uma fileira
+/// de um valor como TEXTO — sem botão, sem hit-rect —, que é a mesma lei do chip único (*um valor
+/// que não leva a lado nenhum não é oferecido*). ⛔ Pintá-la como botão aceso convidaria ao clique
+/// que não faz nada, que é a definição de um controlo morto.
+#[must_use]
+pub fn declared_axes(name: &str) -> Vec<VariantAxis> {
+    parse_combo(name).map_or_else(Vec::new, |combo| {
+        combo
+            .into_iter()
+            .map(|(k, v)| VariantAxis {
+                name: k,
+                options: vec![VariantChoice {
+                    master: 0,
+                    label: v,
+                    current: true,
+                }],
+            })
+            .collect()
+    })
+}
+
+/// ⭐ **O rótulo de um chip do modo PLANO** — o que distingue esta versão das irmãs.
+///
+/// ⚠️ **Não é o [`display_name`]**: no modo plano a família discorda das chaves, e o nome comum é o
+/// mesmo em todas — colapsá-lo daria quatro chips a dizer `Casa`. ⇒ o chip leva o **miolo** das
+/// chaves quando ele existe (`Size=Small, State=Idle`), e o nome inteiro quando não existe.
+#[must_use]
+pub fn chip_label(name: &str) -> String {
+    match name.split_once('{').and_then(|(_, r)| r.split_once('}')) {
+        Some((inner, _)) if !inner.trim().is_empty() => inner.trim().to_string(),
+        _ => name.to_string(),
+    }
+}
+
 /// O modo **plano**: uma fileira `Variant` com os membros tal como se chamam.
 ///
 /// ⚠️ É a fileira que o cartão já desenhava antes dos eixos — e continua a ser o caminho de omissão
@@ -318,7 +405,9 @@ fn flat_axis(members: &[(u64, String)], me: u64) -> Vec<VariantAxis> {
             .iter()
             .map(|(id, name)| VariantChoice {
                 master: *id,
-                label: name.clone(),
+                // ⚠️ **O miolo das chaves, não o nome cru** — ver [`chip_label`]: no modo plano o
+                // nome comum é o mesmo em toda a família, e o chip tem de mostrar o que difere.
+                label: chip_label(name),
                 current: *id == me,
             })
             .collect(),

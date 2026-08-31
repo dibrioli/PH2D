@@ -391,6 +391,14 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-inspector/src/paint.rs",
         "orquestrador puro desde a F5; a moldura vive no `paint_body.rs` e cada secao emite o a11y dela",
     ),
+    // ⭐ **O irmão de 2026-08-31**: os dois CARTOES do topo sairam do `paint.rs` (tecto de 200 LOC
+    // por funcao) e levaram com eles o mesmo trabalho — ZERO. Ele nao pinta um pixel: chama
+    // `paint_instance_card` e `paint_properties_card`, e o a11y de cada chip e' emitido la' dentro,
+    // pelo `paint_button` canonico. *A ausencia aqui e' a consequencia de o ficheiro so' ordenar.*
+    (
+        "ph2d-panel-inspector/src/paint_cards.rs",
+        "orquestrador puro; os dois cartoes emitem o a11y deles pelo `paint_button` canonico",
+    ),
     // ⚠️ **A miniatura de um cartão não é um WIDGET — ela é o CORPO de um.** O cartão inteiro é o
     // alvo do gesto (`paint_card` regista o rect e o `InteractiveState::Button`), e esta função só
     // desenha pixels dentro dele: ela **não regista hit-rect nenhum** e não tem estado próprio.

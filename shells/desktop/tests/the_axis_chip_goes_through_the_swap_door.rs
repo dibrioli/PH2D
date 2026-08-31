@@ -32,7 +32,7 @@ fn strip_comments(s: &str) -> String {
 
 /// ⭐ **O chip resolve o alvo pelo modelo que o PINTOU.**
 ///
-/// ⚠️ O `axes` do `InspectorInstanceInfo` é a lista que o cartão desenhou **neste quadro**; uma
+/// ⚠️ O `rows` do `InspectorPropertiesInfo` é a lista que o cartão desenhou **neste quadro**; uma
 /// segunda travessia (recalcular a família aqui) daria uma ordem que pode divergir, e o chip `Big`
 /// escolheria `Medium`. É a lição literal do `addressed_pieces` do vetor.
 #[test]
@@ -53,7 +53,7 @@ fn the_axis_chip_reads_the_model_that_painted_it() {
          quarta cópia da mesma lei"
     );
     assert!(
-        body.contains("info.axes.get(a).and_then(|ax| ax.options.get(v))"),
+        body.contains("info.rows.get(a).and_then(|ax| ax.options.get(v))"),
         "o braço não resolve o chip no modelo que o pintou"
     );
     assert!(
@@ -78,13 +78,53 @@ fn the_inspector_never_writes_the_master_link_by_hand() {
         )
         .expect("event.rs do inspector"),
     );
-    for forbidden in ["InstanceOf {", "InstanceOf::new(", ".master ="] {
+    for forbidden in ["InstanceOf {", "InstanceOf::new("] {
         assert!(
             !body.contains(forbidden),
             "o painel escreve o vínculo por `{forbidden}` — o re-key das excepções vive dentro do \
              `instance_variant::swap`, e uma segunda escrita pula-o em silêncio"
         );
     }
+    assert!(
+        !assigns_field(&body, ".master"),
+        "o painel escreve o vínculo por `.master =` — o re-key das excepções vive dentro do \
+         `instance_variant::swap`, e uma segunda escrita pula-o em silêncio"
+    );
+}
+
+/// ⛔⛔ **`.master =` casava DENTRO de `.master == 0`** (achado de 2026-08-31).
+///
+/// Um gate textual que proíbe uma **atribuição** tem de saber distingui-la de uma **comparação** —
+/// senão ele acusa quem escreveu um `if`, com uma mensagem sobre re-key de excepções que não tem
+/// nada a ver, e o autor seguinte aprende a ignorá-lo. *Um portão que acusa o inocente deixa de ser
+/// lido.*
+///
+/// ⚠️ Ele exige o `=` **não** seguido de `=` — e aceita qualquer espaço entre o campo e o sinal,
+/// porque o `cargo fmt` decide isso e não o autor.
+fn assigns_field(body: &str, field: &str) -> bool {
+    let b = body.as_bytes();
+    let mut from = 0;
+    while let Some(i) = body[from..].find(field) {
+        let mut j = from + i + field.len();
+        while b.get(j) == Some(&b' ') {
+            j += 1;
+        }
+        if b.get(j) == Some(&b'=') && b.get(j + 1) != Some(&b'=') {
+            return true;
+        }
+        from += i + field.len();
+    }
+    false
+}
+
+/// ⚠️ **O CONTROLO do detector** — sem ele, um `assigns_field` que devolvesse sempre `false`
+/// deixaria o gate acima verde para sempre, e ele diria exactamente o mesmo que diz hoje.
+#[test]
+fn the_assignment_detector_tells_an_assignment_from_a_comparison() {
+    assert!(assigns_field("link.master = other;", ".master"));
+    assert!(assigns_field("link.master   = other;", ".master"));
+    assert!(!assigns_field("if choice.master == 0 {", ".master"));
+    assert!(!assigns_field("let m = choice.master;", ".master"));
 }
 
 /// ⭐⭐ **E o shell dreno passa pela porta do `swap`.**

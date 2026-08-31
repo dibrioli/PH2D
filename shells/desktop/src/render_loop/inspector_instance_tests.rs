@@ -227,10 +227,13 @@ fn the_card_lists_the_family_and_marks_the_current_one() {
     let (mut sim, r, base, variant) = family();
     let inst = instantiate(&mut sim, &r, base);
     let info =
-        super::build_instance_info(&mut sim, &r, Some(inst.to_bits())).expect("e' instancia");
+        super::super::inspector_properties::build_properties_info(&mut sim, Some(inst.to_bits()))
+            .expect("o cartao de propriedades");
     // ⚠️ **Um eixo agora, e no modo plano ele chama-se `Variant`** — a fileira é a mesma; o que
     // mudou é que ela passou a saber ter irmãs (a fatia dos eixos, 2026-08-30).
-    let all: Vec<_> = info.axes.iter().flat_map(|a| a.options.iter()).collect();
+    // ⚠️ **E ela MUDOU-SE de cartão** (2026-08-31): as fileiras são do cartão de PROPRIEDADES, que
+    // existe sem o de instância. Ver o cabeçalho do `inspector_properties`.
+    let all: Vec<_> = info.rows.iter().flat_map(|a| a.options.iter()).collect();
     let got: Vec<u64> = all.iter().map(|v| v.master).collect();
     let (base_id, variant_id) = (sid(&sim, base), sid(&sim, variant));
     assert!(
@@ -269,11 +272,12 @@ fn a_lonely_master_offers_no_variant_row() {
     ph2d_ecs::assign_master_pieces(sim.world_mut());
     let inst = instantiate(&mut sim, &r, master);
     let info =
-        super::build_instance_info(&mut sim, &r, Some(inst.to_bits())).expect("e' instancia");
+        super::super::inspector_properties::build_properties_info(&mut sim, Some(inst.to_bits()));
+    // ⚠️ **`None`, e não «uma lista vazia»**: `Solo` não declara propriedade nenhuma e não tem
+    // família, então não há cartão — que é a lei da F3 (*o Inspector mostra o que o objeto TEM*).
     assert!(
-        info.axes.is_empty(),
-        "um mestre sem familia ofereceu chips: {:?}",
-        info.axes
+        info.is_none(),
+        "um mestre sem familia e sem chaves pintou um cartao: {info:?}"
     );
 }
 
@@ -294,11 +298,12 @@ fn an_unrelated_master_is_not_offered_as_a_variant() {
     ph2d_ecs::assign_master_pieces(sim.world_mut());
     let inst = instantiate(&mut sim, &r, base);
     let info =
-        super::build_instance_info(&mut sim, &r, Some(inst.to_bits())).expect("e' instancia");
+        super::super::inspector_properties::build_properties_info(&mut sim, Some(inst.to_bits()))
+            .expect("o cartao de propriedades");
     let other_id = sid(&sim, other);
     assert!(
         !info
-            .axes
+            .rows
             .iter()
             .flat_map(|a| a.options.iter())
             .any(|v| v.master == other_id),

@@ -1121,6 +1121,57 @@ ponta-a-ponta é o smoke, que só imprime.
 overrides vetoriais (a lista de peças com interruptor e swatch por peça), que a medição do plano
 não contava — ver o §F4.
 
+### ⭐⭐⭐ O 3.º report — **as chaves não tinham LEITOR no Inspector** (2026-08-31)
+
+> *«quando mudo o conteúdo entre `{}` o inspector não muda»*
+
+E estava certo. Medido no código antes de tocar em nada, as chaves tinham **dois** leitores em todo
+o app:
+
+| leitor | condição para existir |
+|---|---|
+| o selo `*²` da Hierarquia | nenhuma — basta o nome |
+| a fileira de troca do cartão de instância | `InstanceOf` **e** uma família de **≥ 2** receitas |
+
+⇒ num objecto **solto**, ou numa cópia de um **mestre único**, reescrever as chaves não mudava um
+pixel. E o selo prometia, na linha ao lado, que alguém as lia. *Uma declaração sem leitor é
+decoração* — a mesma lei que a memória já tinha por outro caminho
+([`feedback_a_declaration_with_a_default_is_decoration…`](../../project-memory/feedback_a_declaration_with_a_default_is_decoration_until_something_reads_it.md)).
+
+**A cura:** um **cartão de PROPRIEDADES** próprio
+([`sections/properties.rs`](../../crates/ph2d-panel-inspector/src/sections/properties.rs) +
+[`inspector_properties.rs`](../../shells/desktop/src/render_loop/inspector_properties.rs)), que
+existe sempre que o nome declara alguma coisa **ou** a família pergunta alguma coisa.
+
+⚠️ **As fileiras MUDARAM DE DONO — não foram duplicadas.** Deixá-las no cartão de instância e
+acrescentar uma cópia aqui poria os **mesmos ids** registados por dois pintores no mesmo quadro: o
+segundo `register` ganha, e o artista clicaria num chip para ver outro acender. ⇒ o
+`InspectorInstanceInfo` **perdeu** `axes`/`variants_beyond`.
+
+| de onde vem a fileira | o que é | como se pinta |
+|---|---|---|
+| `axes_for` (a família) | *«que outras versões existem?»* | chips que **trocam** |
+| `declared_axes` (o nome) | *«o que este objecto DIZ que é»* | o valor, em **texto** |
+
+⛔ **Um valor único é TEXTO, nunca um botão aceso** — pintá-lo como chip seria um controlo morto da
+1.ª espécie da caça de 30/08: o clique existe, o artista carrega, e nada acontece.
+
+⚠️ **A pergunta vence a declaração na MESMA chave** — nunca duas fileiras com o mesmo nome, senão a
+de baixo está sempre desactualizada.
+
+⚠️ **A declaração é do MESTRE, não do exemplar.** Uma propriedade é do componente: renomear a cópia
+para `Bob` não pode apagar as propriedades dela. Gate com esse nome inteiro.
+
+⭐ **E isto fecha o aberto que o 2.º report deixou** — *«o selo diz QUANTAS, não QUAIS»*. O selo
+continua a dizer quantas; o Inspector passa a dizer **quais**, que é onde a pergunta pertence.
+
+⭐ **Efeito colateral medido:** no modo plano o chip mostrava o nome **cru** — `Casa {Size=Small}` —
+e com o nome comum igual em toda a família isso dava quatro chips a dizer `Casa` mais ruído. Hoje
+ele mostra o **miolo** das chaves (`chip_label`), que é o que difere.
+
+**Smoke:** `PH2D_BUILD_SMOKE=79`, agora com o objecto **solto** e o **gesto do report** (reescrever
+as chaves) nos quadros 40–52.
+
 ---
 
 ## §F6 — O índice de assets (`ph2d-asset-index`) — ADR-0165

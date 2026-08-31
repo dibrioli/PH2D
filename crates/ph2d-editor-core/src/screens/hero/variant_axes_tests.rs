@@ -155,10 +155,9 @@ fn members_that_disagree_on_the_keys_fall_back_to_plain_names() {
     let (axes, _) = axes_for(&fam, 1);
     assert_eq!(axes.len(), 1);
     assert_eq!(axes[0].name, "");
-    assert_eq!(
-        labels(&axes[0]),
-        ["Casa {Size=Small}", "Casa {Size=Big, State=Run}"]
-    );
+    // ⚠️ **O rótulo é o MIOLO das chaves** (2026-08-31, ver `chip_label`): o nome comum é o mesmo
+    // em toda a família, e mostrá-lo daria dois chips a dizer `Casa`. Aqui é o que DIFERE.
+    assert_eq!(labels(&axes[0]), ["Size=Small", "Size=Big, State=Run"]);
 }
 
 /// ⚠️ **Menos de dois membros não é um conjunto.**
@@ -381,4 +380,97 @@ fn the_badge_counts_the_hidden_definitions() {
     // ⚠️ E um nome que **não parseia** não promete nada: `{}` vazio, ou um lado em falta.
     assert_eq!(row_label("Casa {}"), "Casa");
     assert_eq!(row_label("Casa {Size=}"), "Casa");
+}
+
+/// ⭐⭐⭐ **UM OBJECTO SOLTO MOSTRA O QUE DECLARA** — o report do Enio de 2026-08-31.
+///
+/// *«quando mudo o conteúdo entre `{}` o inspector não muda»*: as chaves eram lidas pelo selo da
+/// Hierarquia e pelo [`axes_for`], que exige **duas ou mais** receitas. Sem família — um objecto
+/// solto, ou uma cópia de um mestre único — nada no Inspector as lia.
+///
+/// ⚠️ **O oráculo é o VALOR, não a contagem de fileiras:** um construtor que devolvesse duas
+/// fileiras vazias passaria num gate que só contasse.
+///
+/// **Mutação que deve sangrar:** `rows_for` devolver só o `axes_for`.
+#[test]
+fn a_lone_object_shows_what_its_name_declares() {
+    use super::rows_for;
+    let (rows, beyond) = rows_for(&[], 0, "Casa {Size=Small, State=Idle}");
+    assert_eq!(beyond, 0);
+    let got: Vec<(&str, Vec<&str>)> = rows.iter().map(|a| (a.name.as_str(), labels(a))).collect();
+    assert_eq!(
+        got,
+        vec![("Size", vec!["Small"]), ("State", vec!["Idle"])],
+        "as propriedades declaradas não chegaram ao cartão"
+    );
+    // ⛔ **Um valor só, e ele é o VIGENTE** — o pintor lê isso para o desenhar como texto em vez de
+    // um botão aceso que não leva a lado nenhum.
+    assert!(
+        rows.iter()
+            .all(|a| a.options.len() == 1 && a.options[0].current)
+    );
+    // ⚠️ E `master: 0` — não há a quem pedir uma troca. O despachante honra-o.
+    assert!(rows.iter().all(|a| a.options[0].master == 0));
+}
+
+/// ⛔ **Um nome sem chaves não declara nada** — e aí o cartão não existe (a lei da F3).
+#[test]
+fn a_name_with_no_braces_declares_no_rows() {
+    use super::rows_for;
+    assert!(rows_for(&[], 0, "Casa").0.is_empty());
+    assert!(rows_for(&[], 0, "Casa {}").0.is_empty());
+}
+
+/// ⭐⭐ **A PERGUNTA vence a DECLARAÇÃO na mesma chave** — nunca duas fileiras com o mesmo nome.
+///
+/// Com uma família a oferecer `Size`, a fileira de `Size` são os chips; o `State`, que a família
+/// **não** pergunta (todos os membros o têm igual), entra como o valor declarado.
+///
+/// ⚠️ *Duas fileiras com o mesmo nome seriam duas respostas à mesma pergunta, e a de baixo estaria
+/// sempre desactualizada.*
+///
+/// **Mutação que deve sangrar:** apagar o `if axes.iter().any(|a| a.name == row.name)`.
+#[test]
+fn a_family_question_wins_over_the_same_declared_key() {
+    use super::rows_for;
+    let me = "Casa {Size=Small, State=Idle}";
+    let members = [m(1, me), m(2, "Casa {Size=Big, State=Idle}")];
+    let (rows, _) = rows_for(&members, 1, me);
+    let got: Vec<(&str, Vec<&str>)> = rows.iter().map(|a| (a.name.as_str(), labels(a))).collect();
+    assert_eq!(
+        got,
+        vec![("Size", vec!["Small", "Big"]), ("State", vec!["Idle"])],
+        "a chave que a família pergunta tem de vir dos CHIPS, e a outra do nome"
+    );
+}
+
+/// ⛔ **O teto é o da tabela de ids, e o que passa dele é ESCRITO** — nunca truncado em silêncio.
+///
+/// **Mutação que deve sangrar:** `beyond += 1` virar `continue` seco.
+#[test]
+fn the_declared_rows_beyond_the_id_table_are_counted() {
+    use super::rows_for;
+    let name = "X {A=1, B=2, C=3, D=4, E=5, F=6}";
+    let (rows, beyond) = rows_for(&[], 0, name);
+    assert_eq!(rows.len(), crate::ids::MAX_INSTANCE_AXES);
+    assert_eq!(beyond, 2, "as fileiras que não cabem têm de ser contadas");
+}
+
+/// ⭐ **No modo PLANO o chip mostra o que DIFERE** — o miolo das chaves, não o nome comum.
+///
+/// ⚠️ Colapsar pelo [`super::display_name`] daria quatro chips todos a dizer `Casa`.
+///
+/// **Mutação que deve sangrar:** `chip_label` devolver o nome inteiro.
+#[test]
+fn a_flat_chip_shows_what_differs_not_the_common_name() {
+    use super::{chip_label, rows_for};
+    assert_eq!(chip_label("Casa {Size=Small}"), "Size=Small");
+    assert_eq!(chip_label("Casa"), "Casa");
+    assert_eq!(chip_label("Casa {}"), "Casa {}");
+    // A família discorda das chaves ⇒ modo plano, e os chips têm de continuar distinguíveis.
+    let me = "Casa {Size=Small}";
+    let members = [m(1, me), m(2, "Casa {Size=Big, State=Run}")];
+    let (rows, _) = rows_for(&members, 1, me);
+    assert_eq!(rows[0].name, "", "isto tinha de cair no modo plano");
+    assert_eq!(labels(&rows[0]), vec!["Size=Small", "Size=Big, State=Run"]);
 }

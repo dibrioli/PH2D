@@ -1078,6 +1078,11 @@ pub(super) fn publish(
         component_registry,
         hero.gizmo.selection,
     );
+    // ⭐⭐⭐ **E o CARTÃO DE PROPRIEDADES** (report do Enio, 2026-08-31) — *«o que este objecto DIZ
+    // que é»*, lido das chaves do nome. ⚠️ **Ele NÃO depende de ser cópia**: é exactamente o caso
+    // que faltava, e era por isso que reescrever as chaves não mudava nada no Inspector.
+    let inspector_properties =
+        super::inspector_properties::build_properties_info(sim, hero.gizmo.selection);
     // W3: the Join gesture needs exactly TWO bodies, and only the shell can
     // see the selection — the panel is handed one entity at a time. Asked once
     // here, so the painter (which offers the button) and the event handler
@@ -1223,6 +1228,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_slice(inspector_slice);
         ph2d_panel_inspector::set_current_inspector_anchor(inspector_anchor);
         ph2d_panel_inspector::set_current_inspector_instance(inspector_instance);
+        ph2d_panel_inspector::set_current_inspector_properties(inspector_properties);
         ph2d_panel_inspector::set_current_inspector_anim(inspector_anim);
         ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
         ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);

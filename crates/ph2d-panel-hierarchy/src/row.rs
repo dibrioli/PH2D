@@ -345,6 +345,47 @@ pub(crate) fn paint_hierarchy_row(
     } else {
         ColorToken::Text1
     };
+    paint_row_name(
+        scene,
+        text_system,
+        theme,
+        entity,
+        rect,
+        name_x,
+        right_x,
+        name_color,
+    );
+}
+
+/// ⭐⭐ **O NOME da linha** — o que o artista lê, recortado ao espaço que sobra.
+///
+/// ⚠️ **Função irmã, e não um bloco no meio do pintor** (teto de 200 LOC por função): o rótulo
+/// deixou de ser o `Name` cru quando as propriedades passaram a viajar entre chaves, e a lei disso
+/// precisa de um sítio onde seja lida por quem for mexer nela.
+///
+/// # ⭐⭐⭐ A linha mostra o que o objecto É, não as propriedades dele
+///
+/// Enio, 2026-08-30: *«os nomes ficam grandes demais e nem cabem direito na hierarquia»*.
+/// `Casa {Size=Small, State=Idle} (1)` desenha-se **`Casa (1) *²`** — o nome curto, o sufixo de
+/// cópia intacto, e o selo do que ficou escondido.
+///
+/// ⚠️ **Derivado, e o documento guarda o nome INTEIRO** — é isso que mantém a renomeação a editar
+/// as chaves (ela semeia do `Name` da entidade, não desta linha) e a busca a encontrar por valor de
+/// propriedade. *O que se guarda é a autoria; o que se mostra é uma leitura dela.*
+///
+/// ⚠️ **E o `*²` diz QUANTAS, nunca QUAIS** — quem responde *quais* é o cartão de propriedades do
+/// Inspector (`ph2d-panel-inspector/src/sections/properties.rs`), que é onde a pergunta pertence.
+#[allow(clippy::too_many_arguments)]
+fn paint_row_name(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    entity: &fixture::HierarchyEntity,
+    rect: Rect,
+    name_x: f32,
+    right_x: f32,
+    name_color: ColorToken,
+) {
     // Hard clip ao espaço entre name_x e o icon cluster — sem clip,
     // `paint_text` faz wrap quando a string excede a largura (nomes
     // longos quebravam em 2 linhas E invadiam os ícones). Com clip,
@@ -354,32 +395,25 @@ pub(crate) fn paint_hierarchy_row(
     // Reservar gap pequeno antes do primeiro ícone (não colado).
     let name_right_limit = right_x - Spacing::Xxs.px();
     let name_w = (name_right_limit - name_x).max(0.0);
-    if name_w > 0.0 {
-        let name_clip = ph2d_vector::Rect::new(
-            name_x as f64,
-            rect.y as f64,
-            (name_x + name_w) as f64,
-            (rect.y + rect.h) as f64,
-        );
-        scene.push_clip(&name_clip);
-        // ⭐⭐⭐ **A linha mostra o que o objecto É, não as propriedades dele** (Enio, 2026-08-30:
-        // *«os nomes ficam grandes demais e nem cabem direito na hierarquia»*).
-        //
-        // `Casa {Size=Small, State=Idle} (1)` desenha-se **`Casa (1) *²`** — o nome curto, o
-        // sufixo de cópia intacto, e o selo do que ficou escondido. ⚠️ **Derivado, e o documento
-        // guarda o nome INTEIRO** — é isso que mantém a renomeação a editar as chaves (ela semeia
-        // do `Name` da entidade, não desta linha) e a busca a encontrar por valor de propriedade.
-        // *O que se guarda é a autoria; o que se mostra é uma leitura dela.*
-        paint_text(
-            text_system,
-            scene,
-            &ph2d_editor_core::screens::hero::variant_axes::row_label(&entity.name),
-            name_x,
-            rect.y + (rect.h - TypeToken::Sm.px()) * 0.5,
-            TypeToken::Sm.px(),
-            name_w,
-            resolve(name_color, theme),
-        );
-        scene.pop_layer();
+    if name_w <= 0.0 {
+        return;
     }
+    let name_clip = ph2d_vector::Rect::new(
+        name_x as f64,
+        rect.y as f64,
+        (name_x + name_w) as f64,
+        (rect.y + rect.h) as f64,
+    );
+    scene.push_clip(&name_clip);
+    paint_text(
+        text_system,
+        scene,
+        &ph2d_editor_core::screens::hero::variant_axes::row_label(&entity.name),
+        name_x,
+        rect.y + (rect.h - TypeToken::Sm.px()) * 0.5,
+        TypeToken::Sm.px(),
+        name_w,
+        resolve(name_color, theme),
+    );
+    scene.pop_layer();
 }

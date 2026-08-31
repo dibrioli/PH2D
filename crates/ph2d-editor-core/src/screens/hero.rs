@@ -65,6 +65,7 @@ mod inspector_model_physics;
 /// §14 Platform Player — irmão dos dois acima: a §11 diz que CORPO é este, a
 /// §14 diz que COMPORTAMENTO ele tem.
 mod inspector_model_player;
+mod inspector_model_properties;
 mod inspector_model_slice;
 /// O tique da UI viva (o `motion` + a corda) — irmão, e não corpo do `HeroScreen`: aquele diz o
 /// que uma tela É, este diz o que ela FAZ a cada quadro.
@@ -88,6 +89,7 @@ pub use inspector_model_joint::*;
 pub use inspector_model_ordering::*;
 pub use inspector_model_physics::*;
 pub use inspector_model_player::*;
+pub use inspector_model_properties::*;
 pub use inspector_model_slice::*;
 pub use paint::*;
 pub use variant_axes::VariantAxis;

@@ -53,22 +53,6 @@ pub struct InspectorInstanceInfo {
     /// ⚠️ É lido da **raiz**, e não da peça selecionada: uma peça dentro de uma variante pertence
     /// à variante, e a pergunta *«de que sou cópia?»* é sempre da raiz.
     pub is_variant: bool,
-    /// ⭐⭐⭐ **A família de VARIANTES a que esta cópia pode pertencer** (F5, critério 2).
-    ///
-    /// ⚠️ **Derivada, nunca declarada** — é a mesma lei da fileira de variants do vetor: *um
-    /// conjunto de variantes é o que a estrutura diz*. Aqui a estrutura são os **elos**: um mestre
-    /// entra na lista quando partilha um antepassado com o mestre desta cópia, e isso lê-se do
-    /// `InstanceOf` de cada um. Um marcador `VariantSet` seria uma segunda resposta à mesma
-    /// pergunta, e divergiria no dia em que alguém agrupasse dois mestres sem o pôr.
-    ///
-    /// ⚠️ **Vazia com menos de dois** — a fileira não se pinta: *um valor que não leva a lado
-    /// nenhum não é oferecido* (a lei do botão morto).
-    /// ⭐⭐⭐ **Uma fileira por PERGUNTA** desde 2026-08-30 (a fatia dos eixos, F4.6c): `Size`,
-    /// `State`, … — e no modo plano **um** eixo chamado `Variant`, que é exactamente a fileira de
-    /// antes. A lei vive em [`super::variant_axes`]. *Duas modalidades, uma representação.*
-    pub axes: Vec<super::variant_axes::VariantAxis>,
-    /// Variantes que a tabela de ids não endereça — **escritas**, nunca truncadas em silêncio.
-    pub variants_beyond: usize,
 }
 
 /// Uma versão do componente que esta cópia pode passar a ser.
@@ -104,7 +88,7 @@ impl InspectorInstanceInfo {
     /// entre *«não mexi nesta»* e *«mexi e não vejo onde»*, que era exactamente o que faltava.
     #[must_use]
     pub fn summary(&self) -> String {
-        let base = match (self.overridden.len(), self.orphans) {
+        match (self.overridden.len(), self.orphans) {
             // ⚠️ Numa variante a palavra é a mesma e o sujeito é outro: ela segue a **base**. Dizer
             // «segue o componente» sobre uma receita seria a mesma ambiguidade um nível acima.
             (0, 0) if self.is_variant => "Follows its base".to_string(),
@@ -112,18 +96,6 @@ impl InspectorInstanceInfo {
             (0, n) => format!("Follows the component \u{b7} {n} unused"),
             (k, 0) => format!("{k} override(s) on this piece"),
             (k, n) => format!("{k} override(s) on this piece \u{b7} {n} unused"),
-        };
-        // ⚠️ **O que a tabela de ids não endereça é ESCRITO** — nunca truncado em silêncio. É a
-        // mesma lei do `beyond` da fileira de variants do vetor: *um catálogo que some é um
-        // catálogo em que o artista deixa de confiar.*
-        if self.variants_beyond > 0 {
-            // ⚠️ **«opções», e não «variantes»** (auditoria de 2026-08-30): com eixos, o que a
-            // tabela de ids deixa de fora pode ser uma **pergunta inteira**, e o mesmo mestre pode
-            // aparecer em dois eixos. *«Variantes» prometia uma contagem de versões distintas que
-            // este número nunca foi.* No modo plano as opções **são** as versões, e a frase
-            // continua verdadeira.
-            return format!("{base} \u{b7} {} more option(s)", self.variants_beyond);
         }
-        base
     }
 }

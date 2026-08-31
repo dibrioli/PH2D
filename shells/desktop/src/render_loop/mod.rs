@@ -285,6 +285,7 @@ mod inspector_commits_sprite;
 /// ⭐ **A seção COMPONENT do Inspector** (ADR-0164 / F5) — o que esta cópia tem de diferente
 /// da receita, e o gesto que limpa as excepções sem alvo.
 mod inspector_instance;
+mod inspector_properties;
 mod inspector_slice;
 /// Qual receita está a ser EDITADA — o passe que carimba a marca derivada.
 // ⚠️ `pub(crate)` porque o gate do anel de objeto vazio (`group_gizmo_view_tests`) acende a

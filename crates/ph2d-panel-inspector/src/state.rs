@@ -99,6 +99,12 @@ thread_local! {
         Option<ph2d_editor_core::screens::hero::InspectorInstanceInfo>,
     > = const { std::cell::RefCell::new(None) };
 
+    /// ⭐ **O CARTÃO DE PROPRIEDADES** (report do Enio, 2026-08-31). `RefCell` pela mesma razão da
+    /// irmã acima: as fileiras carregam nomes.
+    pub(crate) static CURRENT_INSPECTOR_PROPERTIES: std::cell::RefCell<
+        Option<ph2d_editor_core::screens::hero::InspectorPropertiesInfo>,
+    > = const { std::cell::RefCell::new(None) };
+
     /// §12 Physics Joint. A `RefCell`, unlike its `Cell` siblings, because the
     /// info carries the two bodies' NAMES and so is not `Copy`.
     pub(crate) static CURRENT_INSPECTOR_JOINT: std::cell::RefCell<Option<InspectorJointInfo>> =
@@ -240,6 +246,26 @@ pub(crate) fn current_inspector_instance()
 #[must_use]
 pub fn probe_current_instance() -> Option<ph2d_editor_core::screens::hero::InspectorInstanceInfo> {
     current_inspector_instance()
+}
+
+/// ⭐⭐⭐ **O CARTÃO DE PROPRIEDADES** — o que o nome do objecto (ou o do mestre dele) declara.
+pub fn set_current_inspector_properties(
+    info: Option<ph2d_editor_core::screens::hero::InspectorPropertiesInfo>,
+) {
+    CURRENT_INSPECTOR_PROPERTIES.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_properties()
+-> Option<ph2d_editor_core::screens::hero::InspectorPropertiesInfo> {
+    CURRENT_INSPECTOR_PROPERTIES.with(|c| c.borrow().clone())
+}
+
+/// **Só para os roteiros de smoke:** o cartão de propriedades publicado neste quadro. Mesma razão
+/// da irmã [`probe_current_instance`].
+#[must_use]
+pub fn probe_current_properties() -> Option<ph2d_editor_core::screens::hero::InspectorPropertiesInfo>
+{
+    current_inspector_properties()
 }
 
 pub fn set_current_inspector_name(info: Option<InspectorNameInfo>) {

@@ -20,26 +20,6 @@
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorInstanceInfo;
 
-/// Que fatia da largura o NOME do eixo leva.
-///
-/// ⚠️ **Uma fracção com tecto, e não um número fixo**: num painel estreito um rótulo fixo comeria
-/// a fileira toda e os chips ficariam ilegíveis; num painel largo um rótulo proporcional afastaria
-/// a pergunta das respostas. ⇒ ele cresce até caber `Size`/`State` e pára.
-const AXIS_LABEL_FRACTION: f32 = 0.28; // LITERAL-PX-OK: proporção do rótulo, domínio do cartão
-
-/// ⭐ **O rótulo do modo PLANO** — o nome que a fileira leva quando a família não se declara em
-/// eixos.
-///
-/// ⚠️ **Ele mora AQUI, e não na lei** (HR-15, auditoria de 2026-08-30): a lei devolve o nome vazio
-/// e o painel nomeia-o, porque é o painel que o portão da HR-15 varre. Pô-lo em
-/// `screens/hero/variant_axes.rs` era uma string de UI numa camada fora do alcance do gate — *uma
-/// regra fora do caminho de quem executa não existe*. ⏳ Ele migra com os irmãos deste ficheiro
-/// quando o Fluent chegar; a `ph2d-panel-inspector` não depende do `ph2d-i18n` hoje.
-const FLAT_AXIS_LABEL: &str = "Variant";
-
-/// O tecto do rótulo, em px.
-const AXIS_LABEL_MAX_PX: f32 = 72.0; // LITERAL-PX-OK: tecto do rótulo, domínio do cartão
-
 /// A margem de dentro do cartão — o que separa o texto da borda dele.
 const CARD_PAD: f32 = 8.0; // LITERAL-PX-OK: inset do cartão, irmão do BODY_PAD do corpo
 
@@ -62,8 +42,7 @@ pub(crate) fn paint_instance_card(
     // ⚠️ **A altura é MEDIDA antes de pintar**, e não somada enquanto se desenha: o fundo do cartão
     // tem de ser desenhado PRIMEIRO (senão cobre o texto), e por isso ele precisa de saber onde
     // acaba. *Um fundo pintado depois do conteúdo é o conteúdo apagado.*
-    let variant_rows = info.axes.len();
-    let rows = 2 + info.overridden.len() + usize::from(info.orphans > 0) + variant_rows;
+    let rows = 2 + info.overridden.len() + usize::from(info.orphans > 0);
     let card_h = CARD_PAD * 2.0 + line * rows as f32;
     let card = Rect::new(x, y, w, card_h);
     fill_rounded_rect(
@@ -116,62 +95,6 @@ pub(crate) fn paint_instance_card(
             tw,
             resolve(ColorToken::Text1, theme),
         );
-        ty += line;
-    }
-
-    // ⭐⭐⭐ **A fileira das VARIANTES** (F5, critério 2) — que versão do componente esta cópia é.
-    //
-    // ⚠️ **Ela só existe com DUAS ou mais**, e a decisão está a montante (o construtor devolve a
-    // lista vazia): um chip único, já escolhido, não escolhe nada. *Um valor que não leva a lado
-    // nenhum não é oferecido.*
-    // ⭐⭐⭐ **UMA FILEIRA POR PERGUNTA** (a fatia dos eixos, 2026-08-30) — `Size`, `State`, … e no
-    // modo plano uma só chamada `Variant`, que é exactamente a fileira de antes.
-    //
-    // ⚠️ **O NOME do eixo é pintado à esquerda da fileira**, e não é decoração: sem ele duas
-    // fileiras de chips são duas listas sem pergunta. ⛔ No modo plano ele diz `Variant`, que é o
-    // que a família de nomes crus de facto oferece.
-    for (a, ax) in info.axes.iter().enumerate() {
-        let Some(row_ids) = ids::INSP_INSTANCE_AXIS_OPTION.get(a) else {
-            break;
-        };
-        let label_w = (tw * AXIS_LABEL_FRACTION).min(AXIS_LABEL_MAX_PX);
-        let axis_label = if ax.name.is_empty() {
-            FLAT_AXIS_LABEL
-        } else {
-            ax.name.as_str()
-        };
-        paint_text(
-            text_system,
-            scene,
-            axis_label,
-            tx,
-            ty + (line - small) * 0.5,
-            small,
-            label_w,
-            resolve(ColorToken::Text2, theme),
-        );
-        let chips_x = tx + label_w;
-        let chips_w = (tw - label_w).max(0.0);
-        let n = ax.options.len();
-        let gap = Spacing::Xs.px();
-        let cw = ((chips_w - gap * (n.saturating_sub(1)) as f32) / n as f32).max(0.0);
-        for (i, v) in ax.options.iter().enumerate() {
-            let Some(&id) = row_ids.get(i) else {
-                break;
-            };
-            let host = Rect::new(chips_x + (cw + gap) * i as f32, ty, cw, line);
-            hit_index.register(id, host);
-            let button = Button::new(id, v.label.clone())
-                // ⚠️ A vigente é `Accent` — é o **estado**, e não uma decoração: sem ela a fileira
-                // mostra as opções e esconde a resposta.
-                .kind(if v.current {
-                    ButtonKind::Accent
-                } else {
-                    ButtonKind::Default
-                })
-                .visual(store.button_visual(id));
-            paint_button(&button, host, scene, text_system, theme);
-        }
         ty += line;
     }
 

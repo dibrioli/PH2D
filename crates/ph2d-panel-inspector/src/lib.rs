@@ -31,6 +31,7 @@ mod event_wheel;
 mod paint;
 /// ⭐ A MOLDURA do corpo — irmã do `paint_frame` pelo tecto de 600 LOC.
 mod paint_body;
+mod paint_cards;
 mod paint_frame;
 mod paint_frame_shared;
 mod paint_head;
@@ -110,17 +111,17 @@ pub fn player_row_labels() -> Vec<&'static str> {
 
 /// **A grelha 3×3 da §5 9-Slice**, exposta para o gate da shell a poder LER (e não copiar).
 pub use sections::slice_grid::{CORNER_LETTERS, REGION_CELLS, is_corner_cell};
-pub use state::probe_current_instance;
 pub use state::{
     InspectorState, last_inspector_content_h, last_inspector_visible_h, open_anchor_row,
     set_current_display_unit, set_current_inspector_anchor, set_current_inspector_anim,
     set_current_inspector_blend, set_current_inspector_instance, set_current_inspector_joint,
     set_current_inspector_name, set_current_inspector_ordering, set_current_inspector_physics,
-    set_current_inspector_player, set_current_inspector_sampling, set_current_inspector_slice,
-    set_current_inspector_sprite, set_current_inspector_transform,
+    set_current_inspector_player, set_current_inspector_properties, set_current_inspector_sampling,
+    set_current_inspector_slice, set_current_inspector_sprite, set_current_inspector_transform,
     set_current_inspector_visibility, set_current_inspector_visibility_section,
     set_current_inspector_wheel,
 };
+pub use state::{probe_current_instance, probe_current_properties};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;

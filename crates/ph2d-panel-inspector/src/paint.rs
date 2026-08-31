@@ -121,28 +121,26 @@ fn paint_inspector(
         wheel_info,
         player_info,
         instance_info,
+        properties_info,
         name_present,
         any_section,
     } = crate::paint_frame::LiveSnapshots::fetch();
     let y = body_top_y + Spacing::Xs.px();
 
-    // ⭐⭐⭐ **O CARTÃO de instância vem PRIMEIRO, e não é uma seção** — o porquê das duas coisas
-    // (incluindo o argumento que a 1.ª versão usou ao contrário) vive no cabeçalho de
-    // [`crate::sections::instance`], que é onde ele é lido por quem for mexer no cartão.
-    let mut y = y;
-    if let Some(info) = instance_info.as_ref() {
-        y = crate::sections::instance::paint_instance_card(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            info,
-            inner_x,
-            inner_w,
-            y,
-        );
-    }
+    // ⭐⭐ **Os dois CARTÕES do topo** — o porquê de eles não serem seções, e de saírem daqui
+    // juntos, vive no cabeçalho de [`crate::paint_cards`].
+    let mut y = crate::paint_cards::paint_top_cards(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        instance_info.as_ref(),
+        properties_info.as_ref(),
+        inner_x,
+        inner_w,
+        y,
+    );
     let (notes_per_section, trailing_notes) = crate::paint_frame::split_notes(store);
     // Section macro: paints the section, then the outline (if any),
     // then notes anchored to THIS section (at the END, before the

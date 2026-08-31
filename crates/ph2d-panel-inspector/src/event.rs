@@ -102,15 +102,22 @@ fn variant_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     let Some((a, v)) = ids::instance_axis_option(id) else {
         return false;
     };
-    let Some(info) = crate::state::current_inspector_instance() else {
+    let Some(info) = crate::state::current_inspector_properties() else {
         return false;
     };
-    let Some(choice) = info.axes.get(a).and_then(|ax| ax.options.get(v)) else {
+    let Some(choice) = info.rows.get(a).and_then(|ax| ax.options.get(v)) else {
         return false;
     };
     // ⚠️ Clicar na vigente é um **no-op silencioso**, e não uma recusa a falar: o artista carregou
     // no botão que diz onde ele já está.
     if choice.current {
+        return true;
+    }
+    // ⛔ **Sem raiz não há a quem pedir a troca** — é o estado de um objecto que DECLARA
+    // propriedades sem ser cópia de nada. O cartão pinta essas fileiras como texto, então este
+    // braço não é alcançável pelo ponteiro; ele existe para que a ausência não vire um `root_bits`
+    // de `0` a viajar no barramento.
+    if info.root_bits == 0 || choice.master == 0 {
         return true;
     }
     host.bus_mut().push(EditorAction::InspectorSwapVariant {

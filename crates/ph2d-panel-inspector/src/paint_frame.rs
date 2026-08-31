@@ -502,6 +502,10 @@ pub(crate) struct LiveSnapshots {
     /// instância tem sempre `Transform`, logo o `transform_info` já a representa — contá-la
     /// outra vez não mudaria a resposta.
     pub instance_info: Option<ph2d_editor_core::screens::hero::InspectorInstanceInfo>,
+    /// ⭐ **O CARTÃO DE PROPRIEDADES** — `Some` quando o nome do objecto (ou o do mestre dele)
+    /// declara alguma. ⚠️ **Não entra no `any_section`**, pela razão dos irmãos: quem tem
+    /// propriedades tem `Transform`, logo já está representado.
+    pub properties_info: Option<ph2d_editor_core::screens::hero::InspectorPropertiesInfo>,
     pub name_present: bool,
     /// Alguma seção viva? ⚠️ A §5 9-Slice, a §11 Animation e a §12 Sockets **não** entram nesta
     /// conta, e é deliberado: as três só existem sobre uma sprite, que já está representada pelo
@@ -520,6 +524,7 @@ impl LiveSnapshots {
         let blend_info = crate::state::current_inspector_blend();
         let (physics_info, joint_info, wheel_info, player_info) = physics_family_infos();
         let instance_info = crate::state::current_inspector_instance();
+        let properties_info = crate::state::current_inspector_properties();
         let name_present = crate::state::current_inspector_name_is_some();
         let any_section = any_live_section([
             transform_info.is_some(),
@@ -549,6 +554,7 @@ impl LiveSnapshots {
             wheel_info,
             player_info,
             instance_info,
+            properties_info,
             name_present,
             any_section,
         }

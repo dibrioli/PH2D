@@ -63,9 +63,6 @@ pub(super) fn build_instance_info(
     // uma lista que ninguém consegue ler duas vezes.
     overridden.sort();
 
-    let (axes, variants_beyond) =
-        root_master.map_or_else(Default::default, |id| variant_family(sim, id));
-
     Some(InspectorInstanceInfo {
         entity_bits: entity.to_bits(),
         master_name,
@@ -75,8 +72,6 @@ pub(super) fn build_instance_info(
         // ⚠️ Da RAIZ: uma peça dentro de uma variante não é ela própria uma receita, mas pertence
         // a uma — e é isso que o artista precisa de ler antes de a editar.
         is_variant: sim.world().get::<ph2d_ecs::MasterRoot>(root).is_some(),
-        axes,
-        variants_beyond,
     })
 }
 
@@ -87,12 +82,9 @@ pub(super) fn build_instance_info(
 /// respostas a «isto é uma variante disto?» divergem no dia em que uma delas for escrita sozinha* —
 /// e o sintoma seria um chip que o artista clica e que recusa.
 ///
-/// ⚠️ **Com menos de dois a lista sai VAZIA**: um chip único que já está escolhido não escolhe
-/// nada, e a fileira não se pinta.
-fn variant_family(
-    sim: &mut SimWorld,
-    current: u64,
-) -> (Vec<ph2d_editor::screens::hero::VariantAxis>, usize) {
+/// ⚠️ **Ela devolve a ESTRUTURA, e não as fileiras**: quem decide se um membro vira chip, texto ou
+/// nada é a lei (`variant_axes`), que é pura e se testa sem um mundo.
+pub(super) fn family_members(sim: &mut SimWorld, current: u64) -> Vec<(u64, String)> {
     // Ordenado por `StableId` — a ordem de autoria, e a única que é a mesma em toda máquina.
     let masters: Vec<u64> = {
         let mut q = sim
@@ -116,11 +108,11 @@ fn variant_family(
     // no mundo) e o `variant_axes` responde *«que perguntas ela faz»* (só nomes). ⚠️ Separá-las é o
     // que torna a lei testável sem um mundo — e é o que a deixa sobreviver ao apagar do sistema
     // vetorial, de onde ela veio.
-    ph2d_editor::screens::hero::variant_axes::axes_for(&members, current)
+    members
 }
 
 /// O `Name` da entidade cujo `StableId` é `id`.
-fn master_named(sim: &mut SimWorld, id: u64) -> Option<String> {
+pub(super) fn master_named(sim: &mut SimWorld, id: u64) -> Option<String> {
     let mut q = sim
         .world_mut()
         .query::<(&ph2d_ecs::StableId, &ph2d_ecs::Name)>();

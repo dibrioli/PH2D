@@ -1454,3 +1454,110 @@ repor a visibilidade.
   registry**, que é arbitrária. No arranque isso decide qual aba o artista vê primeiro. Uma ordem
   autorada (a última à frente, gravada) é wave pequena e ainda não existe.
 - **A ordem das abas** continua a ser a ordem z e não viaja no ficheiro.
+
+---
+
+## §21 — ⭐⭐⭐ OS LAYOUTS POR TAREFA: a D7 (entrega 26)
+
+Commit `bfa2707f7`. O eixo que a **D3** separa dos outros dois:
+
+> | eixo | quem decide | onde vive | o que muda |
+> |---|---|---|---|
+> | **Layout** | o **utilizador** | barra de cima (abas) | que **áreas** existem e que editor está em cada |
+
+### §21.1 — Seis abas, à direita da barra de menus
+
+**Draw · Vector · Flip · Model · Animate · Nodes.** Escolher uma arruma a tela: os painéis daquele
+layout abrem, **todos os outros fecham**, e a ferramenta opcional é pegada.
+
+⭐ **Elas ocupam o espaço que já estava vazio** — os cinco menus gastam ~250 px de 1366. É onde o
+Blender põe as dele (*workspace tabs*, na topbar). ⛔ **Não é uma segunda faixa:** ela custaria mais
+28 px permanentes ao alvo de 1024 pontos, que é precisamente o que a barra de menus evitou.
+
+⚠️ **As abas recusam-se a pintar se não couberem** sem tocar nos títulos dos menus. *Uma aba por
+cima de um menu é um clique que troca de tarefa quando o artista queria abrir o ficheiro.*
+
+### §21.2 — ⭐ A costura com o MODO é UM CAMPO, e é a do Blender
+
+O Workspace dele tem um `Mode:` — *«switch to this Mode when activating the workspace»*. Ortogonais,
+**com um atalho declarado**; ⛔ não acoplados. Aqui é o `LayoutSpec::tool`: *Vector* arruma **e** pega
+na ferramenta de vetor, porque um layout de vetor com o canvas noutro modo é uma arrumação que não
+serve para nada.
+
+⚠️ Um layout que **não** declara ferramenta **não mexe** na que está em mãos — trocar para *Animate*
+a meio de um traço não pode largar o pincel.
+
+### §21.3 — ⛔ A lista de abertos é ABSOLUTA, não um diff
+
+Um layout que só *acrescentasse* painéis acumularia o que a tarefa anterior deixou: *Nodes* depois de
+*Draw* daria o grafo **mais** as camadas do pintor. *Um layout é o estado da tela, não um passo sobre
+ele.* Pela mesma razão a troca **limpa as excepções de encaixe** — elas pertencem à arrumação de quem
+as fez.
+
+⚠️ **A largura das colunas NÃO é reposta**, de propósito: ela é a **medida da mão** de quem usa o
+ecrã, não da tarefa. Ela viaja com o layout no ficheiro, para quem a quiser diferente por tarefa.
+
+### §21.4 — ⛔ Dois dos oito não existem, e o bloqueador é de outra pessoa
+
+| layout | bloqueador |
+|---|---|
+| **Código** | não há editor de texto neste app |
+| **Runtime** | `shells/game` / R1, **adiado pelo Enio** |
+
+⇒ eles **não são abas mudas**. *Uma aba que não faz nada é o controlo morto que este repo mais
+paga.* Entram no dia em que o bloqueador cair.
+
+### §21.5 — O ficheiro ganha SECÇÕES
+
+```
+active=vector
+
+[vector]
+dock_w_left=280
+```
+
+⚠️ **Uma arrumação POR layout, e é o que a D7 obriga:** quem alarga a coluna no *Vector* não a quer
+alargada no *Animate*. ⭐ E um layout que o artista **nunca mexeu não tem secção** — é isso que o
+deixa receber uma mudança futura na tabela de fábrica; quem tem secção fica preso ao que gravou, e é
+o que se quer, mas só para quem de facto mexeu.
+
+### §21.6 — ⛔⛔ Duas mutações SOBREVIVERAM, e as duas eram buracos meus
+
+1. **A troca deixar de limpar os encaixes** — nada movia um painel antes de trocar de tarefa.
+2. **A composição apagar a arrumação dos OUTROS layouts** — nada exercitava **dois** layouts. ⇒ a
+   composição saiu do hook e virou `compose(...)`, uma função com nome.
+
+⚠️ **É a segunda vez nesta jornada** que uma decisão dentro de um hook se prova indefensável (a
+primeira foi o `should_save`, §19.4). *Uma decisão dentro de um hook é uma afirmação que ninguém pode
+contradizer.*
+
+### §21.7 — ⚠️ E um gate teve de escolher o ORÁCULO certo
+
+`every_panel_a_layout_names_is_a_crate_that_exists` pergunta à **pasta** e não ao registry: esta build
+de teste corre com as features de omissão da `panel-registry-init` e a do **app** liga mais três
+(`painter_layers`, `flip`, `flip_frames`). Perguntar ao registry acusaria **três ids correctos** de
+não existir.
+
+> *Uma ausência por feature e um erro de escrita leem-se iguais num registry; só a árvore os separa.*
+
+⭐ O irmão `every_named_panel_that_this_build_registers_actually_opens` mede o **produto** naquilo que
+esta build tem. Os dois são precisos.
+
+### §21.8 — Verificação
+
+`ph2d-editor-core` **1353** ✓ · `ph2d-host-desktop` **4784** ✓ · `ph2d-panel-registry-init` 0 falhas ·
+`check` e `clippy --workspace --all-targets` limpos · fmt · **8 mutações mortas** com controlo.
+
+⚠️ Tecto de LOC: o `hero.rs` bateu **701/700** e o corte foi por responsabilidade —
+`hero/panel_host.rs` (*o que o hero **empresta***, contra *o que ele **é***). A superfície do
+`PanelHostInternal` só cresce com a migração dos painéis (ADR-0029), e crescer ali empurrava o tecto
+de quem não tem nada a ver com painéis.
+
+### §21.9 — ⏳ O que fica nomeado
+
+- **Os dois layouts bloqueados** (§21.4).
+- **A tabela de fábrica é minha, não dele.** A D7 diz *para que serve* cada layout; que painéis cada
+  um abre foi derivado disso mais o que existe hoje. É a primeira coisa a re-smokar.
+- **Nenhum atalho de teclado** abre um layout. O Blender tem `Ctrl+PgUp/PgDn`; aqui não há.
+- **Quem fica à frente quando dois painéis abrem no mesmo quadro** continua a ser a ordem do
+  registry (§20.7) — e agora ela decide qual aba de painel o artista vê ao trocar de layout.

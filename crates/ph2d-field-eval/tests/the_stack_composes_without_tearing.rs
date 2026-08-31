@@ -113,9 +113,98 @@ fn worst_gradient(doc: &FieldDoc, steps: i32) -> f64 {
 ///
 /// | par | mecanismo | idade |
 /// |---|---|---|
-/// | ~~`[Taper, Radial]`~~ | ✅ **CURADO em 2026-08-30**: `730,5 → 0,6822`. A cura era a que esta nota já prescrevia — derivar **quantas** fatias a pegada deformada exige (`stack::radial_slices`), em vez de olhar três. | era pré-existente desde a W18 |
-/// | `[Twist, Bend]` | dois deformadores encadeados: o segundo lê um envelope que o primeiro já deformou | nasceu com a dobra |
-const TOLERADOS: &[(&str, f64)] = &[("[Twist, Bend]", 44.6)];
+/// | ~~`[Taper, Radial]`~~ | ✅ **CURADO**: `730,5 → 0,6822`, pela janela de fatias medida (`stack::RADIAL_WINDOW`) | era pré-existente desde a W18 |
+/// | ~~`[Twist, Bend]`~~ | ✅ **CURADO**: `44,6 → 0,2657`. A causa não era «o segundo lê um envelope que o primeiro deformou» — era a **parede da dobra medida contra a bola errada** (ver `stack::bend_curvature`) | nasceu com a dobra |
+///
+/// ⭐⭐⭐ **A LISTA ESTÁ VAZIA** — e ficar vazia é a única coisa que uma catraca pode fazer de bom.
+const TOLERADOS: &[(&str, f64)] = &[];
+
+/// ⭐⭐⭐ **UM MODIFICADOR SOZINHO, EM TODA A FAIXA DO PARÂMETRO DELE** — o ponto cego que faltava.
+///
+/// # ⛔⛔ Nenhum gate deste ficheiro media UM modificador
+///
+/// O irmão varre **pares**, e por isso `[Bend]` sozinha nunca foi medida. Ela **rasgava**:
+/// `‖∇f‖ = 1,7210` a `0,12` voltas, `1,2357` a `0,50` — um clique do nascimento.
+///
+/// ⚠️ **E o par escondia-o**: `[Bend, Bend]` tem um envelope maior, logo um divisor maior, logo
+/// mede-se **segura**. *Compor duas coisas pode CURAR o defeito de uma delas, e aí a sonda de pares
+/// dá verde ao que a de uma só reprovaria.*
+///
+/// ⚠️ A faixa é do parâmetro de cada natureza, e o `match` é **exaustivo**: uma natureza nova não
+/// compila até alguém dizer em que faixa ela se mede.
+#[test]
+fn every_modifier_alone_keeps_the_field_marchable() {
+    const SLACK: f64 = 1.02;
+    let mut maus = Vec::new();
+    let mut medidos = 0;
+    for k in UnaryKind::ALL {
+        let faixa: Vec<Unary> = match k {
+            UnaryKind::Shell => [0.02f32, 0.06, 0.2, 0.5]
+                .iter()
+                .map(|&t| Unary::Shell { thickness: t })
+                .collect(),
+            UnaryKind::Offset => [0.02f32, 0.05, 0.2, 0.5]
+                .iter()
+                .map(|&d| Unary::Offset { distance: d })
+                .collect(),
+            UnaryKind::Mirror => vec![Unary::Mirror],
+            UnaryKind::MirrorY => vec![Unary::MirrorY],
+            UnaryKind::MirrorZ => vec![Unary::MirrorZ],
+            UnaryKind::Array => [2u32, 3, 8, 64]
+                .iter()
+                .map(|&count| Unary::Array {
+                    count,
+                    spacing: 0.5,
+                    joint: ph2d_field::Joint::SHARP,
+                })
+                .collect(),
+            UnaryKind::Radial => [2u32, 6, 12, 64]
+                .iter()
+                .map(|&count| Unary::Radial {
+                    count,
+                    joint: ph2d_field::Joint::SHARP,
+                })
+                .collect(),
+            UnaryKind::Taper => [0.1f32, 0.6, 1.2, 2.0]
+                .iter()
+                .map(|&slope| Unary::Taper { slope })
+                .collect(),
+            UnaryKind::Twist => [0.05f32, 0.35, 1.0, 2.0]
+                .iter()
+                .map(|&turns| Unary::Twist {
+                    turns,
+                    lower: -2.0,
+                    upper: 2.0,
+                    falloff: 0.1,
+                })
+                .collect(),
+            UnaryKind::Bend => [0.05f32, 0.12, 0.25, 0.5, 1.0]
+                .iter()
+                .map(|&turns| Unary::Bend {
+                    turns,
+                    lower: -2.0,
+                    upper: 2.0,
+                    falloff: 0.1,
+                })
+                .collect(),
+        };
+        for m in faixa {
+            medidos += 1;
+            let g = worst_gradient(&peca(vec![m]), 32);
+            if g > SLACK {
+                maus.push(format!("{m:?} → {g:.4}"));
+            }
+        }
+    }
+    assert!(
+        medidos >= 30,
+        "só {medidos} exemplares — a lista derivada de `UnaryKind::ALL` partiu-se"
+    );
+    assert!(
+        maus.is_empty(),
+        "estes modificadores rasgam o campo SOZINHOS, a um clique do nascimento: {maus:?}"
+    );
+}
 
 /// ⭐⭐⭐ **A REPETIÇÃO RADIAL VARRIDA EM TODA A FAIXA DE `count`** — e ela existe porque o gate
 /// irmão testa **uma** contagem.
@@ -133,14 +222,13 @@ const TOLERADOS: &[(&str, f64)] = &[("[Twist, Bend]", 44.6)];
 #[test]
 fn the_radial_repetition_holds_over_every_count() {
     const SLACK: f64 = 1.02;
-    /// ⛔⛔ **MEDIDO E NOMEADO (2026-08-30): a DOBRA antes da radial rasga a partir de `16`**, e
-    /// ⚠️ **isso NÃO é a janela de fatias** — o número é **invariante** a ela: `245,7732` com `n` de
-    /// `3` a `count/2` (a janela inteira). ⇒ a causa está a montante, no divisor da dobra, que se
-    /// mede contra o **envelope** da pilha — e o envelope da radial muda com `count`.
+    /// ⛔ **A DOBRA antes da radial ainda rasga acima de `32`** — e o que sobra é MUITO menos do que
+    /// era: `245,7732` → **`1,90`–`2,01`**, depois de a parede da dobra passar a medir-se contra o
+    /// envelope (`stack::bend_curvature`). As contagens `16` e `24` saíram desta lista.
     ///
-    /// *A cura é outra wave, e a primeira coisa que ela tem de saber é que alargar a janela já foi
-    /// tentado e não faz nada.*
-    const TOLERADAS: &[u32] = &[16, 24, 32, 48, 64];
+    /// ⚠️ **Alargar a janela de fatias JÁ FOI TENTADO e não faz nada**: o `245,7732` era invariante
+    /// a ela, de `n = 3` até `count/2`. *A próxima wave começa sabendo isso.*
+    const TOLERADAS: &[u32] = &[32, 48, 64];
     /// ⚠️ **A grelha do irmão (`20`) é CEGA a isto** — medido: a dobra a `count = 16` lê `0,17` a
     /// `20³` e **`245,77`** a `40³` e a `80³`. *Um extremo procurado numa grelha grossa mede a
     /// grelha.*

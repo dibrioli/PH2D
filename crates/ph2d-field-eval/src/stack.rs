@@ -95,7 +95,9 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
                 falloff,
             } => bend(
                 &acc,
-                bend_curvature(turns, ball),
+                // ⛔ **A parede da dobra mede-se contra o ENVELOPE**, que é a caixa que a marcha
+                // percorre — ver [`bend_curvature`]. Com a bola local, `[Bend]` sozinha rasgava.
+                bend_curvature(turns, final_ball),
                 f64::from(lower),
                 f64::from(upper),
                 f64::from(falloff),
@@ -171,6 +173,32 @@ pub(crate) fn step_divisor(m: Unary, ball: crate::bounds::Ball) -> f64 {
 /// rápido.*
 ///
 /// ⚠️ **Satura, não recusa** — é a lei da porta deste módulo (o `set_dim` do prisma já a paga).
+///
+/// # ⛔⛔ A BOLA É A DO ENVELOPE, e ler a local era um vermelho de UM CLIQUE (2026-08-30)
+///
+/// A parede existe para o mapa inverso não passar pelo **centro do arco** (`ρ = 1/κ`), onde ele é
+/// singular. Quem decide onde o mapa é avaliado não é a peça: é a **caixa de recorte da marcha**,
+/// que é a AABB do envelope da pilha. Com a bola **local** a parede garantia `κ·W_local < 0,9` e o
+/// avaliador ia até `W_env`, muito maior — e ali `κ·W > 1`: **o mapa dobra-se e o campo devolve
+/// lixo**.
+///
+/// Medido, `‖∇f‖` dentro do recorte, numa caixa `0,35³` com a dobra **sozinha**:
+///
+/// | voltas | com a bola local | com o envelope |
+/// |---|---:|---:|
+/// | `0,05` | `0,83` | `0,83` |
+/// | `0,12` | **`1,72`** | `0,49` |
+/// | `0,25` | `0,95` | `0,48` |
+/// | `0,50` | **`1,24`** | `0,48` |
+///
+/// ⭐⭐ **E o slider deixa de MORRER.** Com a bola local a saturação era fixa, e numa barra fina a
+/// ponta parava em `0,3817` a partir de `0,25` voltas — `0,25`, `0,50` e `1,00` davam **a mesma
+/// peça**. Com o envelope a parede acompanha a dobra e a ponta continua a andar
+/// (`0,2633 → 0,3083 → 0,3417`).
+///
+/// ⚠️ **O preço, dito com número:** no meio da faixa a dobra fica **~30 % mais fraca** (a ponta de
+/// uma barra fina a `0,12` voltas vai de `0,2983` para `0,2100`). A cura que devolveria a força sem
+/// devolver o lixo é o **ombro** — a mesma que a torção já usa —, e é wave própria.
 pub(crate) fn bend_curvature(turns: f32, ball: crate::bounds::Ball) -> f64 {
     let k = f64::from(turns) * std::f64::consts::TAU;
     let w = bend_reach(ball);

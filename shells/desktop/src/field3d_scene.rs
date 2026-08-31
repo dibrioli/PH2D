@@ -423,10 +423,15 @@ pub(crate) fn sync_scene_and_birth(
     // mesma forma inválida — um remendo no drenar do arrasto deixaria os outros de fora.
     ph2d_field_ecs::promote_leaf_hosts(world, root);
 
-    // ⭐ O alcance do gesto é **o que cabe no quadro**: uma dimensão maior do que ele é uma cujo
-    // efeito não se vê. O campo numérico continua sem teto, porque digitar 1000 é uma afirmação
-    // sobre a peça e não sobre a janela.
-    publish_snapshot(world, root, selection, cam.half_extent * 2.0, last_trace_ms);
+    // ⛔⛔ **O alcance do gesto é da PEÇA, e não da câmera** — ver [`panel::gesture_span`] e o
+    // report do Enio de 2026-08-30 (*«o ZOOM muda os parâmetros do objeto no painel»*).
+    publish_snapshot(
+        world,
+        root,
+        selection,
+        panel::gesture_span(panel::piece_radius()),
+        last_trace_ms,
+    );
     // ⚠️ Uma peça inválida (um raio que deixou de caber porque a escala do pai mudou) devolve
     // `None` aqui, e a tela mostra o que o cozimento **de facto** produziu. Guardar o último
     // documento válido faria a tela mentir sobre a cena — que é exatamente o defeito que este

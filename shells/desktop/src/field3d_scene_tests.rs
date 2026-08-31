@@ -554,6 +554,11 @@ mod edit;
 #[path = "field3d_scene_gesture_tests.rs"]
 mod gesture;
 
+/// ⭐ **O alcance dos controlos** — de quem ele é. Irmão por assunto; ver
+/// [`field3d_scene_span_tests`](self::span).
+#[path = "field3d_scene_span_tests.rs"]
+mod span;
+
 /// ⭐⭐ **A costura do VERBO e do RAIO DE JUNÇÃO** — vive no irmão, e é um **filho** deste módulo
 /// para lhe usar as fixturas. Ver [`field3d_verb_seam_tests`](self::verb_seam).
 ///

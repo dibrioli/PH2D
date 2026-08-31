@@ -147,6 +147,60 @@ pub(crate) fn publish_snapshot(
     });
 }
 
+/// ⭐ **O raio da peça do quadro ANTERIOR** — o insumo do [`gesture_span`].
+///
+/// ⚠️ **Do quadro anterior de propósito:** a peça deste ainda não foi cozida quando o painel é
+/// publicado. Um quadro de atraso num ALCANCE é invisível; ler a câmera era visível a cada roda.
+///
+/// `0` quando não há peça — o piso do [`gesture_span`] responde por isso.
+pub(crate) fn piece_radius() -> f32 {
+    crate::field3d_smoke::with_smoke(|s| {
+        s.doc.as_ref().and_then(|d| {
+            ph2d_field_eval::bounds::bounding_ball(d, &ph2d_field_eval::hybrid::Registry::new())
+                .map(|b| b.radius)
+        })
+    })
+    .flatten()
+    .unwrap_or(0.0)
+}
+
+/// ⭐⭐⭐ **O ALCANCE DO GESTO É DA PEÇA, E EM OITAVAS** — nunca da câmera.
+///
+/// # ⛔⛔ O report que a obrigou (Enio, 2026-08-30)
+///
+/// *«o ZOOM muda os parâmetros do objeto no painel»* — e mudava mesmo. O alcance dos sliders saía de
+/// `cam.half_extent * 2.0`, com a nota ao lado a explicá-lo: *«uma dimensão maior do que o quadro é
+/// uma cujo efeito não se vê»*. A razão é boa e a consequência é inaceitável: **aproximar a câmera —
+/// um gesto que não toca no objeto — move todos os controlos dele**, e quem estiver a arrastar um
+/// deles vê o número mudar de escala debaixo do dedo.
+///
+/// ⚠️ **E é o mesmo defeito do outro report do mesmo dia** (*«Bend não funcionou e esticou a
+/// peça»*): a banda da dobra (`from`/`to`) é uma posição, e uma posição é `Span::Free` — a faixa
+/// dela vinha inteira da câmera. Ajustar a banda com um enquadramento e voltar com outro dá dois
+/// resultados para o mesmo gesto.
+///
+/// # A lei que fica
+///
+/// O alcance é `4×` o raio da peça, **arredondado para cima até à potência de dois**. As duas
+/// metades são precisas:
+///
+/// - **da PEÇA**: a câmera deixa de ter voto, e é isso que o report pede;
+/// - **em OITAVAS**: um alcance contínuo na peça teria o defeito simétrico — arrastar uma largura
+///   mudaria o alcance, e o botão fugiria do dedo
+///   ([`ph2d_field::Span`] não sabe disto; quem sabe é este sítio). Com a oitava, uma largura pode
+///   dobrar antes de o alcance se mexer, e quando se mexe é **uma vez**, entre gestos.
+///
+/// ⚠️ **O piso existe porque uma peça pode ser minúscula** — sem ele, uma esfera de raio `0,001`
+/// daria um slider cujo curso inteiro é invisível.
+pub(crate) fn gesture_span(piece_radius: f32) -> f32 {
+    const PISO: f32 = 1.0;
+    const ALCANCE: f32 = 4.0;
+    let alvo = (piece_radius * ALCANCE).max(PISO);
+    // `exp2(ceil(log2 x))` — a menor potência de dois que cobre o alvo.
+    let oitava = alvo.log2().ceil();
+    oitava.exp2().max(PISO)
+}
+
 /// ⭐ **Os números do objeto selecionado** — o painel é o inspetor da seleção.
 ///
 /// ⚠️ **Mudou de forma na W10.** Antes era uma linha por nó com o raio dele — uma segunda vista da

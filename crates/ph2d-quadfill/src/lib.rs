@@ -71,6 +71,8 @@ pub mod report;
 pub mod shape;
 /// **A COSTURA** — amostragem partilhada e montagem — ver [`stitch`].
 pub mod stitch;
+/// ⭐⭐⭐ **AS DUAS RÉGUAS DA PONTA que o suporte não podia dar** — ver [`tips`].
+pub mod tips;
 /// ⭐⭐ **OS PESOS DO ACHATAMENTO** — valor médio e cotangente — ver [`weights`].
 mod weights;
 
@@ -95,3 +97,4 @@ pub use relax::{
 pub use report::{FillError, FillReport, Provenance};
 pub use shape::{QuadShape, quad_shape, quad_shape_of, skew_by_fan, skew_by_provenance};
 pub use stitch::{SMOOTHING_ROUNDS, fill, fill_with};
+pub use tips::{TIP_DEVIATION_MAX, TipDeviation, area_centroid, reach, tip_deviation};

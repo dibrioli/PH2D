@@ -332,12 +332,12 @@ fn centroid(pos: &[[f32; 3]], f: &Face) -> [f32; 3] {
     [c[0] / n, c[1] / n, c[2] / n]
 }
 
-fn dist(a: [f32; 3], b: [f32; 3]) -> f32 {
+pub(crate) fn dist(a: [f32; 3], b: [f32; 3]) -> f32 {
     let d = sub(a, b);
     d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt()
 }
 
-fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+pub(crate) fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
     [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 }
 
@@ -345,7 +345,7 @@ fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
     a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
 }
 
-fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+pub(crate) fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
     [
         a[1].mul_add(b[2], -(a[2] * b[1])),
         a[2].mul_add(b[0], -(a[0] * b[2])),
@@ -419,6 +419,62 @@ pub fn tip_body_ratio(points: &[[f32; 3]], values: &[f32]) -> (f32, usize) {
     (ratio, shells[SHELLS - 1].len())
 }
 
+/// ⭐⭐⭐ **A LEI DE «O QUE É UMA PONTA», numa PORTA** — o centroide por vértice e a lista
+/// de ápices, ordenada do mais longo para o mais curto e cortada em `12`.
+///
+/// ⛔⛔ **Ela é uma função e não um bloco copiado porque duas réguas a consultam** —
+/// [`tip_survival`] (o suporte) e [`super::tip_deviation`] (o desvio local). *Uma lei
+/// escrita em dois sítios ainda não é uma lei; só uma porta é* — e o modo de falha aqui é
+/// silencioso: as duas réguas mediriam **pontas diferentes** e as tabelas leriam-se como
+/// se falassem da mesma.
+///
+/// ⚠️ **O centroide é o dos VÉRTICES, de propósito, e é o mesmo para a entrada e para a
+/// saída.** Ele não é usado como medida de forma nenhuma — só para ordenar raios *dentro
+/// da mesma malha* e para fixar as direcções que a saída depois responde. ⛔ Para medir a
+/// **forma** (o alcance) o centroide tem de ser o da área: ver [`super::reach`].
+///
+/// ⚠️ **Um ápice é um MÁXIMO LOCAL no grafo**, com um piso de `0,55` do raio máximo — não
+/// um limiar de raio. *Numa peça com espinhos de comprimentos diferentes, um limiar
+/// apanharia dois vértices do mais longo e nenhum do mais curto.*
+#[must_use]
+pub(crate) fn apices(input: &Mesh) -> ([f32; 3], Vec<usize>) {
+    const FLOOR: f32 = 0.55;
+    const MAX_TIPS: usize = 12;
+    let pos = input.positions();
+    if pos.is_empty() {
+        return ([0.0; 3], Vec::new());
+    }
+    let mut c = [0.0f64; 3];
+    for p in pos {
+        for k in 0..3 {
+            c[k] += f64::from(p[k]);
+        }
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let n = pos.len() as f64;
+    #[allow(clippy::cast_possible_truncation)]
+    let mid = [(c[0] / n) as f32, (c[1] / n) as f32, (c[2] / n) as f32];
+    let r: Vec<f32> = pos.iter().map(|p| dist(*p, mid)).collect();
+    let far = r.iter().copied().fold(0.0f32, f32::max).max(1.0e-9);
+
+    let mut nbr: Vec<Vec<u32>> = vec![Vec::new(); pos.len()];
+    for f in input.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k] as usize, v[(k + 1) % v.len()] as usize);
+            nbr[a].push(v[(k + 1) % v.len()]);
+            nbr[b].push(v[k]);
+        }
+    }
+    let mut apex: Vec<usize> = (0..pos.len())
+        .filter(|&i| r[i] >= FLOOR * far)
+        .filter(|&i| nbr[i].iter().all(|&j| r[j as usize] <= r[i]))
+        .collect();
+    apex.sort_by(|&a, &b| r[b].total_cmp(&r[a]));
+    apex.truncate(MAX_TIPS);
+    (mid, apex)
+}
+
 /// **QUANTAS PONTAS A CADEIA CORTOU** — ver [`tip_survival`].
 #[derive(Debug, Clone, Copy, Default)]
 pub struct TipSurvival {
@@ -459,38 +515,11 @@ pub const TIP_CUT_PCT: f32 = -2.0;
 /// não se correspondem entre entrada e saída, as **direcções** sim.
 #[must_use]
 pub fn tip_survival(input: &Mesh, output: &Mesh) -> TipSurvival {
-    const FLOOR: f32 = 0.55;
-    const MAX_TIPS: usize = 12;
     let pos = input.positions();
     if pos.is_empty() || output.positions().is_empty() {
         return TipSurvival::default();
     }
-    let mut c = [0.0f64; 3];
-    for p in pos {
-        for k in 0..3 {
-            c[k] += f64::from(p[k]);
-        }
-    }
-    #[allow(clippy::cast_precision_loss)]
-    let n = pos.len() as f64;
-    let mid = [(c[0] / n) as f32, (c[1] / n) as f32, (c[2] / n) as f32];
-    let r: Vec<f32> = pos.iter().map(|p| dist(*p, mid)).collect();
-    let far = r.iter().copied().fold(0.0f32, f32::max).max(1.0e-9);
-
-    let mut nbr: Vec<Vec<u32>> = vec![Vec::new(); pos.len()];
-    for f in input.faces() {
-        let v = f.verts();
-        for k in 0..v.len() {
-            let (a, b) = (v[k] as usize, v[(k + 1) % v.len()] as usize);
-            nbr[a].push(v[(k + 1) % v.len()]);
-            nbr[b].push(v[k]);
-        }
-    }
-    let mut apex: Vec<usize> = (0..pos.len())
-        .filter(|&i| r[i] >= FLOOR * far)
-        .filter(|&i| nbr[i].iter().all(|&j| r[j as usize] <= r[i]))
-        .collect();
-    apex.sort_by(|&a, &b| r[b].total_cmp(&r[a]));
+    let (mid, apex) = apices(input);
 
     let support = |m: &Mesh, d: [f32; 3]| -> f32 {
         m.positions()
@@ -502,8 +531,8 @@ pub fn tip_survival(input: &Mesh, output: &Mesh) -> TipSurvival {
             .fold(f32::MIN, f32::max)
     };
     let mut s = TipSurvival::default();
-    for &i in apex.iter().take(MAX_TIPS) {
-        let len = r[i].max(1.0e-9);
+    for &i in &apex {
+        let len = dist(pos[i], mid).max(1.0e-9);
         let d = [
             (pos[i][0] - mid[0]) / len,
             (pos[i][1] - mid[1]) / len,

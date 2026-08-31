@@ -85,12 +85,31 @@ use ph2d_a11y::NodeId;
 /// reproduz-se com `cargo test -p ph2d-panel-motion-params --release measure_screen_build --
 /// --ignored --nocapture` (ver [`crate::measure_row_cap`]).
 ///
+/// ⚠️ **`30 → 33` no mesmo dia, a QUINTA vez por medição** — o `source.lsystem` ganhou o
+/// tamanho final da folha e os dois sorteios (report: *"não temos parâmetros para o tamanho
+/// final da folha nem jitter de scale e posição"*).
+///
+/// ⛔⛔ **E a primeira tentativa de medir isto foi LIXO, por um viés que eu próprio criei:** a
+/// leitura de `33` vinha sempre logo depois de uma recompilação, então ela media a compilação.
+/// Dois pares seguidos deram `261 → 412` e `289 → 287` — contraditórios. A medição que vale
+/// separa o `--no-run` do relógio e **espera a carga descer** (a workstation esteve a `load 33`
+/// durante a jornada, e o §5 do `CLAUDE.md` diz que nada acima de `~5` vale):
+///
+/// | `MAX_PARAM_ROWS` | mínimo de 5×500 (µs/construção) | `load` |
+/// |---|---|---|
+/// | 30 | 239,7 | 2,29 |
+/// | **33** | 264,4 | 2,35 |
+///
+/// ⇒ **~8 µs por slot**, a terceira leitura consistente (~11 · ~10 · ~8). ⭐ E a leitura de `33`
+/// a `load 9,63` deu `264,1` — a poucas décimas da leitura calma, o que é o contra-prova de que
+/// o número é do trabalho e não da carga.
+///
 /// ⇒ **~11 µs por slot**, uma vez por construção de tela e **não por quadro** — a mesma unidade
 /// em que o salto do [`MAX_ENUM_OPTIONS`] foi aceite (22,0 → 107,2 µs).
 ///
 /// ⚠️ **E continua colado ao pior caso**: `25` é exactamente o que o pior nó pede hoje, sem
 /// folga, pela razão do parágrafo acima.
-pub const MAX_PARAM_ROWS: usize = 30;
+pub const MAX_PARAM_ROWS: usize = 33;
 
 /// Max named options a single segmented selector paints — an `Enum` row's `labels`, a
 /// `Channels` row's channels **plus its trailing "Custom…"**, and the live-column chips.

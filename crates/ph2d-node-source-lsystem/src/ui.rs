@@ -115,6 +115,37 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Slider,
     },
     ParamUiHint {
+        param: param::LEAF_SIZE,
+        label: "Leaf Size",
+        min: 0.0,
+        // ⚠️ **`8` é o tecto do SLIDER, não do modelo** — a caixa aceita mais, e o `step` de
+        // `0,01` dá o tecto digitável derivado (doc 91). Uma folha `8×` já é maior que o ramo
+        // que a segura.
+        max: 8.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: param::LEAF_SIZE_JITTER,
+        label: "Size Jitter",
+        min: 0.0,
+        // `1` = de metade ao dobro; acima disto a folha pode ficar em zero, e uma folha
+        // invisível não é uma variação, é uma folha perdida.
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: param::LEAF_POS_JITTER,
+        label: "Position Jitter",
+        min: 0.0,
+        // Em FRACÇÃO do tamanho da folha: `1` = ±meia folha, que é o quanto se pode empurrar
+        // antes de ela se descolar do ramo que a plantou.
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
         param: param::LEAF_EFFECTS,
         label: "Effects Reach Leaves",
         min: 0.0,
@@ -453,6 +484,9 @@ pub(crate) static PARAM_GROUPS: &[ph2d_node_registry::ParamGroup] = &[
     ph2d_node_registry::ParamGroup::new(param::LEAF_SPREAD, "Leaves").folded(),
     ph2d_node_registry::ParamGroup::new(param::LEAF_FRONT, "Leaves").folded(),
     ph2d_node_registry::ParamGroup::new(param::LEAF_EFFECTS, "Leaves").folded(),
+    ph2d_node_registry::ParamGroup::new(param::LEAF_SIZE, "Leaves").folded(),
+    ph2d_node_registry::ParamGroup::new(param::LEAF_SIZE_JITTER, "Leaves").folded(),
+    ph2d_node_registry::ParamGroup::new(param::LEAF_POS_JITTER, "Leaves").folded(),
     ph2d_node_registry::ParamGroup::new(param::BRANCHES, "Shape"),
     ph2d_node_registry::ParamGroup::new(param::SEGMENTS, "Shape"),
     ph2d_node_registry::ParamGroup::new(param::ANGLE, "Shape"),

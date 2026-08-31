@@ -192,6 +192,24 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: param::LEAF_EFFECTS,
             default: 0.0,
         },
+        // ⭐ **O TAMANHO FINAL E OS DOIS SORTEIOS** (report do Enio, 2026-08-30): *"não temos
+        // parâmetros para o tamanho final da folha nem jitter de scale e posição"*.
+        //
+        // ⚠️ **Os três nascem NEUTROS** — `1` e `0` e `0` — e o caminho de omissão é byte a
+        // byte o que shipou antes deles: um multiplicador `1` é a identidade exacta em `f32`, e
+        // um sorteio de amplitude `0` não é sequer avaliado.
+        ParamSpec {
+            name: param::LEAF_SIZE,
+            default: 1.0,
+        },
+        ParamSpec {
+            name: param::LEAF_SIZE_JITTER,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::LEAF_POS_JITTER,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -239,4 +257,10 @@ pub mod param {
     pub const LEAF_FRONT: &str = "leaf_front";
     /// `0` = os efeitos a jusante NÃO alcançam as folhas · `1` = alcançam.
     pub const LEAF_EFFECTS: &str = "leaf_effects";
+    /// O multiplicador do tamanho FINAL da folha (`1` = o tamanho do objecto, ao bit).
+    pub const LEAF_SIZE: &str = "leaf_size";
+    /// A variação aleatória do tamanho, `0..1` — `0,4` dá folhas entre `0,8×` e `1,2×`.
+    pub const LEAF_SIZE_JITTER: &str = "leaf_size_jitter";
+    /// O empurrão aleatório da posição, em FRACÇÃO do tamanho da folha (`1` = ±meia folha).
+    pub const LEAF_POS_JITTER: &str = "leaf_pos_jitter";
 }

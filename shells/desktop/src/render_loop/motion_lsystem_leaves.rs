@@ -79,10 +79,9 @@ pub(crate) type Job = (
     Vec<ls::branch::Branch>,
     Vec<Anchor>,
     [String; 3],
-    // A fracção à frente dos galhos · `true` = as folhas mantêm a cor · o 1.º nível com folha.
+    // O 1.º nível com folha, e o resto do aspecto delas.
     f32,
-    bool,
-    f32,
+    LeafLook,
 );
 
 /// A aparência que um objecto NOMEADO publicou — `(size, tint, uv_rect, texture_id, premul)`.
@@ -323,9 +322,9 @@ pub(crate) fn plant_and_leaves(
     anchors: &[Anchor],
     names: &[String; 3],
     cook: &ph2d_nodegraph::cook::Cook,
-    front: f32,
-    keep_own_colour: bool,
+    look_law: LeafLook,
 ) -> Stream {
+    let (front, keep_own_colour) = (look_law.front, look_law.keep_own_colour);
     let looks: Vec<_> = names.iter().map(|n| named_appearance(cook, n)).collect();
     // **Uma linha**, antes de saber em que ordem ela entra.
     struct Row {
@@ -367,9 +366,15 @@ pub(crate) fn plant_and_leaves(
         if a.grow <= GROW_FLOOR {
             continue;
         }
+        // ⭐ **O tamanho final e os dois sorteios** (report do Enio, 2026-08-30).
+        let (scale, shove) = look_law.at(i);
+        let sized = [sz[0] * a.grow * scale, sz[1] * a.grow * scale];
         let row = Row {
-            p: a.p,
-            size: [sz[0] * a.grow, sz[1] * a.grow],
+            // ⚠️ **O empurrão é em FRACÇÃO do tamanho da folha**, e não em unidades de mundo:
+            // uma planta a `0,3` de passo e outra a `3` teriam de ser afinadas à mão, e o que
+            // o artista quer dizer é *«desencostada do ramo por meia folha»*.
+            p: [a.p[0] + shove[0] * sized[0], a.p[1] + shove[1] * sized[1]],
+            size: sized,
             rot: a.rot,
             // ⚠️ `0` = SEM geometria vectorial ⇒ a linha vai pelo caminho do quad. É a mesma
             // convenção que o `source.object` usa para separar um vector vivo de uma sprite.
@@ -457,10 +462,64 @@ fn is_in_front(index: usize, front: f32) -> bool {
     hash01(index) < front
 }
 
+/// **O TAMANHO E O EMPURRÃO de cada folha** — o que o painel pede, resolvido por marca.
+///
+/// ⛔ Report do Enio (2026-08-30): *"não temos parâmetros para o tamanho final da folha nem
+/// jitter de scale e posição"*.
+///
+/// ⚠️ **Os três são NEUTROS no default** (`1`, `0`, `0`), e o neutro é exacto: um `× 1.0` é a
+/// identidade em `f32` e um sorteio de amplitude `0` nem é avaliado — o caminho de omissão é
+/// byte a byte o que shipou antes deles.
+#[derive(Clone, Copy)]
+pub(crate) struct LeafLook {
+    /// A fracção desenhada à frente dos galhos.
+    ///
+    /// ⚠️ **Ela mora aqui e não num argumento à parte** porque o clippy tem razão: sete
+    /// argumentos posicionais já são um em que ninguém confia. Um `bool` e três `f32` seguidos
+    /// numa chamada é uma troca à espera de acontecer.
+    pub(crate) front: f32,
+    /// `true` = as folhas mantêm a cor delas (os efeitos a jusante não as alcançam).
+    pub(crate) keep_own_colour: bool,
+    pub(crate) size: f32,
+    pub(crate) size_jitter: f32,
+    pub(crate) pos_jitter: f32,
+}
+
+impl LeafLook {
+    /// `(multiplicador de tamanho, empurrão em fracções do tamanho)` para a marca `i`.
+    ///
+    /// ⚠️ **Três LANES do mesmo hash, e não três chamadas iguais:** com uma lane só, o tamanho
+    /// e o empurrão de uma folha seriam o MESMO número — as maiores todas para o mesmo lado,
+    /// que é um padrão visível e não um sorteio.
+    pub(crate) fn at(self, i: usize) -> (f32, [f32; 2]) {
+        let scale = if self.size_jitter == 0.0 {
+            self.size
+        } else {
+            // `±jitter/2` em torno de `1`, logo `jitter = 1` dá de metade ao dobro.
+            self.size * (1.0 + (hash01_lane(i, 1) - 0.5) * self.size_jitter)
+        };
+        let shove = if self.pos_jitter == 0.0 {
+            [0.0, 0.0]
+        } else {
+            [
+                (hash01_lane(i, 2) - 0.5) * self.pos_jitter,
+                (hash01_lane(i, 3) - 0.5) * self.pos_jitter,
+            ]
+        };
+        (scale, shove)
+    }
+}
+
 /// `[0, 1)` a partir de um índice — o mesmo avalanche splitmix que o resto da casa usa.
 fn hash01(i: usize) -> f32 {
+    hash01_lane(i, 0)
+}
+
+/// O mesmo, numa LANE — sorteios distintos para perguntas distintas sobre a mesma marca.
+fn hash01_lane(i: usize, lane: u32) -> f32 {
     let mut h = (i as u32)
         .wrapping_mul(0x9e37_79b9)
+        .wrapping_add(lane.wrapping_mul(0xc2b2_ae35))
         .wrapping_add(0x1eaf_1eaf);
     h ^= h >> 16;
     h = h.wrapping_mul(0x7feb_352d);
@@ -477,3 +536,7 @@ mod tests;
 #[cfg(test)]
 #[path = "motion_lsystem_says_tests.rs"]
 mod says_tests;
+
+#[cfg(test)]
+#[path = "motion_lsystem_look_tests.rs"]
+mod look_tests;

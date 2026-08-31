@@ -391,6 +391,62 @@ quadro.
 
 ---
 
+## §9 — *"Leaves in front não funciona"*: o padrão-ouro, e o que o BLOQUEIA (re-medido)
+
+Enio, 2026-08-30: *"Leaves in front não funciona"* e, depois de eu lhe dar as três saídas com o
+preço: *"faça o que for o padrão ouro, o estado da arte"*.
+
+### 9.1 — A implementação está certa; a CENA é que não a alcança
+
+O `draw_shared_instances` desenha as instâncias vectoriais **por ordem de linha** (o cache dele
+é por `geometry_id`, não uma reordenação), e a membrana põe as folhas «à frente» depois da linha
+da planta. ⇒ com uma folha que é uma **forma desenhada**, o knob funciona, e há gate.
+
+⛔ **Mas a cena `=108` não tem forma desenhada nenhuma** — ali só há sprites, e para um sprite
+isto é impossível (ver abaixo). *Construí uma feature que o smoke onde ele testa não pode
+exercitar*, e o único sinal disso é uma linha no terminal.
+
+### 9.2 — ⛔⛔ Por que um SPRITE nunca fica à frente: re-medido na versão de HOJE
+
+A ordem de composição de um quadro é:
+
+| passe | alvo |
+|---|---|
+| 1 — sprites | `game_rt`, **`Rgba16Float` HDR** |
+| 2 — tonemap | LDR |
+| 3 — Vello (chrome **+ o vector do documento**) | intermediário `Rgba8Unorm`, α=0 |
+| 4 — compositor | os dois, para a swap chain |
+
+⇒ **tudo o que é vector fica por cima de tudo o que é sprite**, por construção.
+
+⚠️ **A nota que dizia isto citava o `vello` 0.8, e o stack subiu para o 0.10 em 2026-08-29** —
+o §0.0 exige reconferir uma impossibilidade quando alguém mexe no número que a sustentava.
+Reconferido no fonte da versão instalada: `Renderer::render_to_texture` continua a exigir
+`TextureFormat::Rgba8Unorm` + `STORAGE_BINDING`/`COPY_SRC`. **O alvo HDR continua fora do
+alcance dele.** A separação não é uma escolha nossa: é a biblioteca.
+
+### 9.3 — O padrão-ouro é FOLHA COMO CARTA, e ele tem endereço
+
+O que SpeedTree, o *Sapling* do Blender e todo gerador de vegetação sério fazem: **uma folha é
+geometria com textura** (um *card*), não um sprite separado — e é exactamente por isso que ela
+se intercala com os ramos sem uma segunda passagem.
+
+Aqui isso quer dizer: a folha vira um quad `VecPath` com `Paint::Pattern` +
+`PatternSource::Image(AssetId)` (as duas peças **já existem**, do plano 33 da `line/Vector`),
+internado no mesmo store da planta e desenhado na mesma passagem. ⇒ o `Leaves In Front` passa a
+valer para **qualquer** folha, com um só aspecto.
+
+⛔ **E é uma wave com espec própria, não um remate:** falta o encanamento do `AssetId` até à
+membrana (a corrente publicada leva `uv_rect`+`texture_id`, que são de GPU) e o preço do assador
+de padrão por folha, que não está medido.
+
+⛔⛔ **A saída INTERMÉDIA foi medida e REJEITADA:** desenhar só as folhas da frente como imagens
+na cena Vello (o `draw_image_rgba_premultiplied_transformed` existe) poria **metade da copa
+depois do tonemap e metade antes** — as duas metades da mesma folhagem com cores diferentes. Uma
+cura que introduz uma inconsistência visível não é a cura.
+
+---
+
 ## ⛔ Recusas MEDIDAS (deste estudo)
 
 | Item | Motivo |
@@ -405,6 +461,8 @@ quadro.
 | Esconder o `Tropism Angle` quando o `Tropism` é `0` | O `ParamGate` da casa compara com uma lista de INTEIROS e a condição é *«diferente de zero»* num slider contínuo; e a linha desapareceria no estado de FÁBRICA, que é onde o artista estava quando reportou. A cura é o app DIZER, e só quando há fio |
 | Usar o `falloff` para livrar as folhas do tint | ⛔ **PARTIU a planta**: o `falloff` é a máscara de TODOS os modificadores, e o `motion.move` faz `P' = P + (dx, dy) · falloff` ⇒ as folhas ficavam paradas enquanto a árvore andava. A cura é uma coluna própria (`attr::TINT_MASK_COLUMN`) |
 | Um `First Level` único para todos os moldes | ⛔ **Esvaziava o `Sprig`** (10 marcas, todas na profundidade 1). O molde carrega o seu, como os outros quatro números de enquadramento |
+| Folhas da frente como imagem na cena Vello | ⛔ Poria metade da copa DEPOIS do tonemap e metade antes — as duas metades da mesma folhagem com cores diferentes |
+| Desenhar o vector do documento na passagem HDR das sprites | ⛔ **Re-medido no `vello` 0.10** (a nota citava o 0.8): o `render_to_texture` exige `Rgba8Unorm`; o alvo HDR está fora do alcance da biblioteca |
 | Filtrar `sym` com `motion.cull` | Ele só faz *Fraction* e *Falloff*; a rota por atributo pede 6-7 nós e o código ASCII da letra |
 
 ---

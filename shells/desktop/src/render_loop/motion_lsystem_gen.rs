@@ -362,13 +362,18 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
             bs,
             anchors,
             names,
-            get(ls::param::LEAF_FRONT),
-            get(ls::param::LEAF_EFFECTS).round() as i32 == 0,
             get(ls::param::LEAF_FIRST_LEVEL),
+            super::motion_lsystem_leaves::LeafLook {
+                front: get(ls::param::LEAF_FRONT),
+                keep_own_colour: get(ls::param::LEAF_EFFECTS).round() as i32 == 0,
+                size: get(ls::param::LEAF_SIZE),
+                size_jitter: get(ls::param::LEAF_SIZE_JITTER),
+                pos_jitter: get(ls::param::LEAF_POS_JITTER),
+            },
         ));
     }
 
-    for (key, bs, anchors, names, front, keep_own_colour, first_level) in jobs {
+    for (key, bs, anchors, names, first_level, look_law) in jobs {
         let used = &bs[..];
         // ⚠️ **A origem da planta é o primeiro ponto do primeiro ramo**, e a geometria inteira é
         // local a ela: a pose viaja na instância, como em toda a casa, e duas plantas iguais em
@@ -406,20 +411,12 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
                 say_if_the_leaf_cannot_go_in_front(
                     &key,
                     &names,
-                    &std::array::from_fn(|i| {
+                    &core::array::from_fn(|i| {
                         super::motion_lsystem_leaves::named_appearance(&motion.pump.cook, &names[i])
                     }),
-                    front,
+                    look_law.front,
                 );
-                plant_and_leaves(
-                    origin,
-                    h,
-                    &anchors,
-                    &names,
-                    &motion.pump.cook,
-                    front,
-                    keep_own_colour,
-                )
+                plant_and_leaves(origin, h, &anchors, &names, &motion.pump.cook, look_law)
             }
             None => Stream::new(0),
         };

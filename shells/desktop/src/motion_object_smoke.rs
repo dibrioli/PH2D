@@ -42,6 +42,11 @@ mod pose;
 /// (este ficheiro diz *qual modo liga o quê*; o irmão diz *o que existe para ser ligado*).
 #[path = "motion_object_smoke_art.rs"]
 mod art;
+
+/// ⭐ A cena `=12` — a FOLHA à frente dos galhos, com uma folha DESENHADA (a única media que
+/// pode ficar acima do vector; ver o cabeçalho do módulo).
+#[path = "motion_object_smoke_leaf.rs"]
+mod leaf;
 use art::{
     child_at, find_group, flip_rect, name_vector_entity, name_vector_entity_as, spawn_flip_object,
     spawn_flip_object_named, spawn_sprite, star_shape,
@@ -250,6 +255,17 @@ impl crate::App {
             // O RITMO (`=11`): dois flipbooks, o mesmo `speed`, e só um com poses seguras.
             // ⚠️ A arte é a MESMA da `=9` — quatro quadrantes de cores distintas — porque é a
             // única fixtura desta casa em que uma célula de sub-UV é inconfundível.
+            // ⭐⭐ **=12 — A FOLHA A' FRENTE DOS GALHOS** (report do Enio, 2026-08-30). A
+            // `=108` nao pode mostrar isto: la' as folhas sao IMAGENS, e todo sprite desenha
+            // ANTES de todo vector, por construcao do quadro. Ver [`super::motion_object_smoke_leaf`].
+            12 if f == 3 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                gfx.vec_scene.push_path(leaf::leaf_shape());
+            }
+            12 if f == 6 => {
+                let map = self.vec_entities.clone();
+                leaf::run(self.gfx.as_mut().expect("gfx"), &map);
+            }
             11 if f == 3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 holds::spawn_art(&mut gfx.flip);

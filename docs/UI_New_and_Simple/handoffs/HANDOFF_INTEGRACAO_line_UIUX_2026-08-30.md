@@ -1725,3 +1725,155 @@ partição não podem sair de janelas diferentes.*
   docagem da cena (A2), não aqui.
 - ⏳ Continuam de fora as duas abas bloqueadas (**Código**: falta um editor de texto · **Runtime**:
   o `shells/game`/R1, adiado pelo Enio).
+
+---
+
+## §23 — ⛔⛔ O INSPECTOR FECHADO e a faixa que SE SOLTAVA da banda (entrega 28)
+
+> Enio, 2026-08-31, com duas fotos: *«em animate o inspector está sendo escondido. Por padrão deve
+> ficar visível. Em nodes, arrastar a timeline na vertical deve ajustar o canvas dos nós e não
+> deixar espaços vazios nem sobrepor os nodes.»*
+
+### §23.1 — ⛔⛔ «Não comandar» e «comandar fechado» são a MESMA linha de código
+
+Na entrega 27 tirei o `inspector` de **todas** as listas de abertos, com o argumento — correcto —
+de que ele tem dois escritores e que o layout perde sempre a corrida. ⇒ **e fechei-o em toda
+parte**, porque o `layout_switch::apply` é absoluto sobre o registry inteiro:
+
+```rust
+for p in reg.panels() {
+    hero.panel_visibility.insert(p.manifest.id, spec.open.contains(&p.manifest.id));
+}
+```
+
+> *«O layout não o comanda» e «o layout comanda-o fechado» leem-se igual num campo ausente, e só a
+> segunda é o que o código faz.*
+
+⭐ **A lei certa é derivável dos dois lados**, e substitui o gate que eu tinha escrito
+(`no_layout_claims_the_inspector_…`, que defendia o defeito):
+
+| a ferramenta do layout escreve `insert("inspector", !active)`? | o layout… |
+|---|---|
+| **sim** (motion · vector · flip · upscale · equalize_sizes · color_equalization) | **não** o nomeia — a ponte substitui-o na coluna e desmentiria a tabela |
+| **não** (painter · move · o modelador) | **nomeia-o** — senão ele fecha e não há quem o reabra |
+
+⇒ *Draw*, *Model* e *Animate* voltam a mostrá-lo. O censo das seis pontes sai do **nome do
+ficheiro** (`<tool>_bridge.rs`), que é a convenção daquele directório.
+
+### §23.2 — ⛔⛔⛔ A faixa não era arrastada: o PAINEL soltava-se dela
+
+A costura do timeline chamava `geom::resized(...)` e escrevia **`TimelinePanelState::rect`** — um
+rect LIVRE. A partir do primeiro toque na borda o painel deixava de ler a faixa que o layout lhe
+dava:
+
+| sentido do arrasto | o que se via |
+|---|---|
+| para baixo | **espaço vazio** por cima do painel (a faixa ficou onde estava; o painel foi-se) |
+| para cima | o painel **por cima** do grafo |
+
+> *Uma borda de painel docado que devolve um rect livre é um painel que deixa de estar docado
+> quando se lhe toca.*
+
+⭐⭐ **A cura é a mesma forma das colunas: a borda escreve uma MEDIDA.**
+`WidgetStore::dock_bottom_h` é a irmã VERTICAL de `dock_width` — mesma porta, mesmo clamp, mesma
+distinção `…_choice()` para o que se grava —, e `ChromeBands::bottom_dock_h` leva-a ao layout. Quem
+partilha a banda (o grafo, por `dock_timeline_into_motion`) segue **por construção**, não por uma
+segunda conta que possa discordar.
+
+⛔⛔ **E `MOTION_TIMELINE_H` teve de MORRER.** Ela dizia que o timeline é *«mais baixo dentro do
+Motion»* e era uma **segunda altura** ao lado da autorada: com ela, arrastar a costura dentro do
+Nodes não mexia nada — quem mandava ali era uma constante. Hoje `dock_timeline_into_motion` lê
+`self.timeline.h`. *A faixa tem UMA altura; docá-la dentro do split não pode inventar outra.*
+
+⚠️ **Três coisas foram RETIRADAS com ela**, e a retirada é a decisão:
+
+| o que saiu | porquê |
+|---|---|
+| 7 dos 8 agarres (3 bordas + 4 cantos) | numa faixa docada os lados são as costuras das **colunas** e o fundo é a borda da **janela** — eram gestos inexprimíveis |
+| `TimelinePanelState::rect` | era a segunda ideia de *«onde o timeline está»*, e ganhava à do layout |
+| `geom::resized` + os 4 gates dela | *uma função que só sobrevive nos próprios testes é a última prova de que a capacidade que ela servia foi retirada* |
+
+⚠️ O gate `corners_are_registered_after_the_edges_they_overlap` **ordenava agarres que não deviam
+existir** — ele foi substituído por `the_only_grip_is_the_top_seam`.
+
+### §23.3 — O que fica
+
+- A altura autorada **viaja no ficheiro** (`dock_h_bottom`, por layout) e entra no hash do
+  detector, como as duas larguras.
+- ⚠️ A banda nova aparece **um quadro depois** do arrasto — o `ctx.slot` daquele quadro já estava
+  calculado. É a mesma latência das larguras de coluna, e invisível a 60 fps.
+- ⏳ O tecto de `MOTION_TIMELINE_MAX_FRAC` (45 % da banda) continua a ser um número **escolhido**,
+  não medido: ele existe para o editor de nós não virar uma fita. Se o Enio quiser a faixa maior do
+  que isso dentro do Nodes, o que se mexe é o divisor da cena, não este tecto.
+
+### §23.4 — ⛔⛔⛔ E o portão desta linha estava a correr sobre a build POBRE
+
+O fecho desta entrega correu `cargo test -p ph2d-panel-registry-init -p ph2d-host-desktop …` **numa
+invocação só** — e dois gates que passavam há uma entrega inteira ficaram vermelhos:
+
+| corrida | `flip_frames` registado? | veredito |
+|---|---|---|
+| `-p ph2d-panel-registry-init` (as entregas 21–27) | **não** — a feature não está nas de omissão dele | ✅ verde |
+| `-p ph2d-panel-registry-init -p ph2d-host-desktop` | **sim** — o shell liga-a, e o cargo **unifica** as features | ❌ dois vermelhos |
+
+> *Uma suíte verde crate-a-crate não é a suíte do produto: é a suíte da build mais pobre que aquele
+> crate consegue ter.*
+
+⚠️ **E o ✗ lê-se como flake** (passa sozinho, reprova em conjunto). Não é: o que muda é a
+**população**, não a carga. O sinal que os separa — um flake de carga muda de teste entre corridas;
+este reprova sempre o mesmo caso com o mesmo número.
+
+**O que estava escondido lá dentro (defeito meu, da entrega 23):** a tira do Flip pintava
+`(0, 732, 1366, 292)` numa banda de `240` — **147 528 px² de painel por cima da área de desenho**,
+que é literalmente a foto 2 da D1.
+
+⭐ **Duas causas, uma por cada metade:**
+
+1. **O painel inflava-se para fora da banda.** Ele somava `TIMELINE_DOCK_H` (para *«empilhar acima
+   do timeline»*) e `grow` (a barra que quebra em linhas). ⚠️ **As duas premissas dissolveram por
+   baixo dele e a nota nunca foi reconferida:** o timeline e a tira declaram o **mesmo encaixe**, e
+   desde as abas de encaixe (entrega 21) dois painéis no mesmo sítio são **abas** — nunca duas
+   faixas ao mesmo tempo; e a altura da banda passou a ser **autorada**, então a constante somada
+   descrevia um número que o artista move.
+2. **A reserva da área de desenho lia um rect que ninguém pintava.** `layout.flip_strip` (132 px)
+   era a geometria que a tira **declarava** na entrega 22 e não a que ela **pinta** desde a 23
+   (`ctx.slot`). ⇒ a área ficava reservada até 132 px do fundo e a tira ocupava 240.
+   *Reservar a geometria que um painel declarava, em vez da que ele pinta, é reservar o sítio
+   errado com toda a confiança.*
+
+⇒ `HeroLayout::flip_strip` e `FLIP_STRIP_H` **morreram**, e a reserva passou a ser **uma só, sobre
+a banda `Bottom`**, quando qualquer um dos dois painéis está visível.
+
+⚠️ **Passa a ser regra do fecho desta linha:** o portão corre os crates de gate **na mesma
+invocação do shell**, nunca `-p <crate>` um a um.
+
+### §23.5 — ⛔⛔ E o TECTO da faixa matava metade do gesto que ele pediu
+
+A docagem no Motion cortava a faixa a `0,45 × a banda` — **`202` px** no alvo de referência —, e a
+faixa nasce com **`240`**. ⇒ a costura nascia **já no tecto**: arrastar para BAIXO funcionava,
+arrastar para CIMA era inerte, e nada na tela dizia porquê.
+
+> *Um limite que corta o valor de fábrica não é um limite: é metade do controlo desligada de
+> origem.*
+
+⭐ O tecto passou a defender o **hospedeiro** e não a ser uma fracção: o grafo nunca fica com menos
+do que o **piso de uma faixa docada** (`120` px, o mesmo `DOCK_H_MIN` abaixo do qual um dock deixa
+de ser usável). No alvo de referência isso dá `330` de tecto e `120` de piso — **os dois lados
+vivos**, com a de fábrica a `240` no meio. Gate:
+`the_seam_has_travel_in_both_directions_from_the_factory_height`, provado por mutação (repor a
+fracção mata-o).
+
+### §23.6 — O que fica aberto desta entrega
+
+- ⏳ **A tira do Flip e o timeline são ABAS no mesmo encaixe, e ninguém decidiu isso** — foi o que
+  a entrega 21 tornou verdade sem que a tira o soubesse (ela ainda tinha código para *empilhar*).
+  Hoje funciona (uma aba de cada vez), mas é uma decisão de produto por tomar: no Flip, ver os
+  quadros **e** a linha do tempo ao mesmo tempo pode ser o que se quer, e isso pede um segundo
+  encaixe inferior — que a D1 recusou por medição (12 encaixes = 89,6 % do alvo).
+- ⏳ **A tira do Flip já não CRESCE com a barra que quebra** — ela fica na banda, e uma barra em
+  duas linhas come das células. Quem quiser mais arrasta a costura. ⚠️ Não foi medido quantas
+  linhas a barra quebra numa janela de 1366; se for mais de duas, o piso da banda pode ficar curto.
+- ⏳ O `MOTION_GRAPH_MIN_H` (`120`) é o piso de uma faixa docada **emprestado** ao grafo. É
+  defensável (abaixo dele um painel deixa de ser usável) mas não foi medido **no grafo** — o número
+  certo é *o cabeçalho + um cartão de nó*, e isso mora noutra crate.
+- ⏳ Continuam de fora as duas abas bloqueadas (**Código** · **Runtime**) e os itens do §22.7.

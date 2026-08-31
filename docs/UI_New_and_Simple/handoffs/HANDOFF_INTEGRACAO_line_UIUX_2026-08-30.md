@@ -1933,3 +1933,84 @@ fora do domínio mede a cerca e chama-lhe defeito.*
 ⚠️ **Sexto tecto de LOC desta linha** (`interact.rs`, 622/600): a lei do divisor mudou-se para
 `split.rs`. O corte é por responsabilidade — aquele ficheiro **despacha** gestos, e isto é **uma
 lei**, a única deste painel que tem de ser a inversa exacta de código noutra crate.
+
+---
+
+## §25 — ⭐⭐⭐ O CABEÇALHO DA ÁREA: a metade 2 da D2 (entrega 30)
+
+> *«Barra global para o que é do aplicativo inteiro; cabeçalho por área para o que é da
+> ferramenta.»* — D2
+
+O degrau que o [`spec/02 §3`](../spec/02_o_que_falta_para_comecar.md) põe entre o `C` e o `G`, e que
+o §7 deste handoff listava como **ausente** desde a entrega 15 (`area_header`/`AreaHeader`/
+`editor_header` → zero ocorrências na árvore).
+
+### §25.1 — Ele é uma REGIÃO, com tudo o que isso obriga
+
+`HeroLayout::area_header` — a **primeira** região da área, de cima para baixo. A ordem passa a ser
+a do modelo (`spec/01 §4`): **cabeçalho → ferramentas → régua → conteúdo**, e cada faixa
+**subtrai** da seguinte.
+
+⛔ *Uma faixa que continuasse a flutuar reproduziria, num modelo novo, o defeito de **86,8 %** que a
+`D` curou.* Gate: `the_header_subtracts_from_the_area_it_heads` — a fila e a área de desenho descem
+exactamente a altura do cabeçalho, e a altura total desce com elas.
+
+### §25.2 — ⭐ Os dois primeiros inquilinos são REALOJADOS, não construídos
+
+| comando | morava em | âmbito real |
+|---|---|---|
+| **Rulers** | menu *View* (o app inteiro) | as réguas **desta** área de desenho |
+| **Statistics** | menu *Look* (tema/chrome) | o HUD **desta** área |
+
+⚠️ **Eles SAEM de lá** — *«existe UM sítio canónico para cada comando»* é a frase da D2, e uma
+entrada repetida em dois menus é a tabela paralela com o sintoma pior: os dois estados a discordar
+à vista. Gate: `no_display_option_of_the_area_is_still_in_an_app_menu`, que varre os seis menus.
+
+⭐ Cada um leva **o id que já tinha**, logo o handler é o mesmo (`chrome::menu_bar` e
+`chrome::view_toggles`): não há porta nova. E o `active` sai da **tabela de verdade** dos menus
+(`ModuleTruth`, que ganha a variante `Stats`) — nunca de um estado de botão local, que é o defeito
+que a entrega 18 pagou.
+
+⚠️ O censo `every_toggle_row_of_the_bar_is_marked_by_its_own_state` desce de **16 para 15**. ⛔ Não é
+afrouxar: o que ele mede é que nenhuma linha de alternância ficou **sem marca**, e uma linha que se
+mudou de sítio deixa de ser uma linha daquele menu. O sítio novo tem gate próprio.
+
+### §25.3 — ⛔⛔ Uma mutação SOBREVIVEU, e ela destapou DOIS defeitos meus
+
+Apagar o `area_header::populate` deixou a suíte **verde**. Duas coisas por trás disso:
+
+1. **O `populate` era duplicado.** Os dois ids já são registados pelo `pre_populate` do hero, que
+   os conhece como linhas de menu desde antes desta faixa existir. *Um `register` a mais não falha;
+   ele só faz o gate mentir sobre quem mantém o controlo vivo.* ⇒ apagado.
+2. ⭐⭐ **E o realce de HOVER que eu tinha pintado não podia disparar.** Para estes ids o
+   `ButtonState` **não significa «sob o rato»**: o `menu_bar::publish_toggle_state` reescreve-o em
+   **todo quadro** com `Pressed`/`Normal` tirado da tabela de verdade — e escreve **depois**.
+
+   > *Dois significados no mesmo campo, e ganha quem escreve por último.*
+
+   ⇒ a faixa mostra só o estado que ela de facto sabe (**ligado**). Um realce que nunca acende é o
+   controlo morto **pintado**, que é pior do que a ausência dele. Gate a fixar o achado:
+   `the_button_state_of_a_display_option_is_the_truth_and_never_the_hover` — ele reprova no dia em
+   que o campo voltar a ser do hover, e nesse dia a faixa pode voltar a ter realce.
+
+### §25.4 — O gate que importa carrega num PIXEL
+
+`ph2d-panel-registry-init/tests/the_area_header_owns_the_areas_display_options.rs`: `Down` + `Up` no
+pixel de cada opção, pela porta do produto. ⚠️ Um `apply_event(Click(id))` sintético passaria com o
+controlo **morto sob o dedo** — ele salta exactamente a metade que falha (o `HitIndex` resolver o
+ponto). Provado por mutação: apagar o `hit_index.register` mata-o.
+
+### §25.5 — ⏳ O que fica aberto
+
+- ⏳ **Os itens 1 a 3 da ordem do HIG** (selector de editor · **mode toggle** · pulldowns do
+  editor) continuam por existir. ⛔ O *mode toggle* **não pode nascer ainda**: a D6 precisa de
+  partir o `DrawMode` em modo + ferramenta, que é **decisão do Enio** (`spec/02 §5`), e *um modo
+  declarado que não muda nada é o controlo morto que este repo mais paga*.
+- ⏳ **Os 11 comandos de câmera do painel 3D Model** são o inquilino que o plano nomeia para o
+  pulldown do editor (D2, `view.*`+`camera.*`+`frame.*`). ⭐ O caminho está limpo: o **shell**
+  é que constrói aquele snapshot (`field3d_scene_panel.rs`), e o painel é gerado por **tabela**.
+  ⚠️ O que falta desenhar é o **despacho**: os ids são do painel, e um clique no cabeçalho tem hoje
+  de chegar ao `ph2d_panel_model3d::event`.
+- ⏳ O preço: a faixa custa `ROW_H_PX + 2·Xxs` de altura permanente à área. É o preço que a D2
+  nomeia (*«a barra global come uma faixa de altura permanente»*), agora pago uma segunda vez —
+  e é a `G` (esvaziar os painéis) que o devolve, com **94,4 %** medidos.

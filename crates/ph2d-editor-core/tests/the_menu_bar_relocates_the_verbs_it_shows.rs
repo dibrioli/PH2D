@@ -379,11 +379,16 @@ fn both_bars_swallow_every_pixel_they_paint() {
     }
 }
 
-/// ⭐ **As dezasseis linhas de alternância mostram o próprio estado.**
+/// ⭐ **Toda linha de alternância mostra o próprio estado.**
 ///
 /// ⚠️ *«Fiar o clique não é fiar o ESTADO»* — a lei que o `context_menu_overlay` documenta, paga
 /// na unidade de ângulo, e que a 1.ª versão desta barra repetiu **dezasseis vezes**: o menu
 /// *Window* dizia exactamente a mesma coisa com o Vector aberto e fechado.
+///
+/// ⚠️ **Foram 16 e são 15** desde 2026-08-31: o `Rulers` **saiu** do menu *View* para o cabeçalho
+/// da área (D2, metade 2). ⛔ O piso desce com a mudança, não é afrouxado — o que ele mede é que
+/// nenhuma linha de alternância FICOU sem marca, e uma linha que se mudou de sítio deixa de ser
+/// uma linha deste menu. O sítio novo tem gate próprio (`hero::area_header`).
 #[test]
 fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
     let mut covered = 0usize;
@@ -391,8 +396,7 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
         for (id, label, _) in menu_rows(kind) {
             let is_toggle = kind == ContextMenuKind::MenuBarWindow
                 || *id == ids::RAIL_SHOW_HIERARCHY
-                || *id == ids::RAIL_SHOW_INSPECTOR
-                || *id == ids::MENUBAR_VIEW_RULERS;
+                || *id == ids::RAIL_SHOW_INSPECTOR;
             assert_eq!(
                 menu_bar::row_is_marked_by_button_state(*id),
                 is_toggle,
@@ -402,8 +406,8 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
         }
     }
     assert_eq!(
-        covered, 16,
-        "esperadas 16 linhas de alternância, vi {covered}"
+        covered, 15,
+        "esperadas 15 linhas de alternância, vi {covered}"
     );
 }
 

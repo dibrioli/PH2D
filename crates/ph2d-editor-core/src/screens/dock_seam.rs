@@ -34,6 +34,11 @@ pub struct ChromeBands {
     /// viewport. É a spec §4: a toolbar é uma REGIÃO da área, irmã da régua, e por isso vive entre
     /// as colunas em vez de atravessar o ecrã.
     pub tool_bar_h: f32,
+    /// ⭐⭐ Altura do **CABEÇALHO DA ÁREA** (D2, metade 2) — a faixa do editor, por cima da fila de
+    /// ferramentas. `0` = fora.
+    ///
+    /// ⚠️ Como a fila, ela sai da **ÁREA** e não da janela: é uma região, não uma barra.
+    pub area_header_h: f32,
     /// ⭐ Altura da **faixa do fundo** (o timeline, ou a tira do Flip por baixo dele).
     ///
     /// ⚠️ Ela é AUTORADA como as duas colunas (`WidgetStore::dock_bottom_h`) — o topo dela é uma
@@ -53,6 +58,9 @@ impl ChromeBands {
         // tem o trilho VERTICAL. A fila horizontal é o chrome de produção, e quem a mede é o
         // `hero/paint.rs` — ela depende do preset de tamanho do chip, que é autorado.
         tool_bar_h: 0.0,
+        // ⚠️ **ZERO no mockup**, pela razão da fila: o `DEFAULT` descreve a referência de desenho,
+        // e o cabeçalho é chrome de produção — quem o mede é o `hero/frame_layout.rs`.
+        area_header_h: 0.0,
         bottom_dock_h: TIMELINE_DOCK_H,
     };
 }

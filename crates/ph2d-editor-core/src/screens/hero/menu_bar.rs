@@ -176,7 +176,12 @@ pub enum ModuleTruth {
     /// O modo das ferramentas de imagem (`ImageEditState::mode_on`).
     ImageMode,
     /// O interruptor das réguas (`ViewState::rulers_visible`).
+    ///
+    /// ⚠️ Desde 2026-08-31 o sítio canónico dele é o **cabeçalho da área** (D2), não um menu — mas
+    /// a VERDADE continua a sair daqui, que é o que impede uma segunda ideia de «está ligado?».
     Rulers,
+    /// ⭐ O HUD de estatísticas (`ViewState::stats_visible`) — a outra opção de exibição da área.
+    Stats,
     /// ⚠️ **Quem publica é a SHELL, e não escrevemos por cima.** O `sculpt3d` não tem flag: a
     /// verdade dele é *«há barro no ecrã»*, que só a shell vê (`sculpt3d_mode::sync`), e o
     /// doc-comment do handler explica porque ler o estado do botão ali daria a resposta errada
@@ -193,6 +198,7 @@ impl ModuleTruth {
             Self::Tool(id) => hero.image_edit.active_tool_id == Some(id),
             Self::ImageMode => hero.image_edit.mode_on,
             Self::Rulers => hero.view.rulers_visible,
+            Self::Stats => hero.view.stats_visible,
             Self::ShellOwned => return None,
         })
     }
@@ -200,7 +206,7 @@ impl ModuleTruth {
 
 /// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
 /// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
-pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 16] = [
+pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 17] = [
     (ids::TOPBAR_VECTOR, ModuleTruth::Tool("vector")),
     (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
     (ids::TOPBAR_FLIP, ModuleTruth::Tool("flip")),
@@ -220,6 +226,7 @@ pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 16] = [
     (ids::RAIL_SHOW_HIERARCHY, ModuleTruth::Panel("hierarchy")),
     (ids::RAIL_SHOW_INSPECTOR, ModuleTruth::Panel("inspector")),
     (ids::MENUBAR_VIEW_RULERS, ModuleTruth::Rulers),
+    (ids::CTX_MENU_SHOW_STATS, ModuleTruth::Stats),
 ];
 
 /// ⭐ **Este módulo está LIGADO?** — a pergunta que um toggle faz para escolher a direcção.

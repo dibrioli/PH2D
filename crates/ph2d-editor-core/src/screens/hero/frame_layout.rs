@@ -12,7 +12,10 @@ use crate::screens::layout::HeroLayout;
 use crate::zones::Rect;
 
 /// Resolve o layout deste quadro a partir do estado do hero.
-pub(super) fn frame_layout(hero: &HeroScreen, viewport: Rect) -> HeroLayout {
+/// ⚠️ **Pública desde 2026-08-31**: ela é uma função **pura** do hero e de uma viewport, e é a
+/// única resposta a *«onde está a região X neste quadro?»*. Um acessor só-para-gate ao lado dela
+/// seria a segunda porta para o mesmo facto — e a que envelhece.
+pub fn frame_layout(hero: &HeroScreen, viewport: Rect) -> HeroLayout {
     // Rail width follows the user's Themes-menu rail-button-size
     // preset (Small / Medium / Large; default Small). Switching size
     // shifts Inspector/Hierarchy x-positions accordingly.
@@ -84,6 +87,10 @@ pub(super) fn frame_layout(hero: &HeroScreen, viewport: Rect) -> HeroLayout {
             flat.draw_area.w,
         );
         bands.tool_bar_h = super::tool_bar::tool_bar_h(hero.store.rail_button_size(), lines);
+        // ⭐⭐ **O CABEÇALHO DA ÁREA** (D2, metade 2) — a primeira região da área, por cima da
+        // fila. ⚠️ A altura não depende da largura (é uma linha de controlo), então ela entra na
+        // mesma passagem que a fila, sem uma terceira.
+        bands.area_header_h = super::area_header::area_header_h();
     }
     let mut layout = HeroLayout::for_viewport_bands(
         viewport,

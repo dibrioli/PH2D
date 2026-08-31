@@ -516,7 +516,14 @@ fn the_dock_overflow_is_named_not_discovered() {
         // número**: três linhas custariam ~84 px e o que entrou foram **27** — o cabeçalho da
         // secção. *Dobrar não tira a linha do orçamento do `MAX_PARAM_ROWS` (o slot existe), mas
         // tira-a da ALTURA, que é o que o dock mede.*
-        ("source.lsystem", 736.0),
+        // ⭐ **RE-MEDIDO em 2026-08-31: `736 → 668`, e desta vez o número DESCEU.** Os dois
+        // gates de MODO novos (`Step Scale` e `Grow Angle`, doc 96 §1.2) escondem no modo
+        // guiado — que é o de fábrica, e portanto o que este censo mede — dois knobs que a
+        // gramática derivada não sabe ler. `68 px` são exactamente **duas linhas** do corpo.
+        //
+        // ⚠️ *Um portrait escrito à mão é uma catraca que só sobe até alguém a fazer descer* —
+        // e este gate exigiu a re-medição nas duas direcções, que é a razão de ele existir.
+        ("source.lsystem", 668.0),
     ];
     let body = inspector_body_h();
     let census = height_census();

@@ -320,3 +320,119 @@ fn no_knob_is_dead_across_the_whole_corpus_unless_something_hides_it() {
          pinta-os na mesma: {mortos_de_fabrica:#?}"
     );
 }
+
+/// ⭐⭐⭐ **O MODO GUIADO TAMBÉM É UMA GRAMÁTICA, E O PAINEL TEM DE A LER** — o buraco que a
+/// auditoria de seis lentes achou nesta própria bancada (doc 96 §1.2).
+///
+/// # Por que os dois gates de cima não podiam ver isto
+///
+/// Eles percorrem `ls::PRESETS` (oito moldes) e isentam o `PRESET_CUSTOM` em bloco, com o
+/// argumento *«no Custom a gramática é a que o artista escreveu, então esconder ali é
+/// adivinhar»*.
+///
+/// ⚠️⚠️ **O argumento é verdade para uma gramática ESCRITA À MÃO e falso para a GUIADA.** No
+/// modo guiado o app **deriva** a gramática de quatro sliders — ele sabe exactamente qual é. E
+/// como `Custom` é o preset de fábrica e `Guided` o modo de fábrica, o que a isenção deixava
+/// passar não era uma esquina: era **o primeiro ecrã de um nó recém-largado**.
+///
+/// ⇒ o `Custom` deixa de ser uma isenção em bloco. Ele é *«escrita à mão»* (isento, porque
+/// ninguém a pode ler) **ou** *«derivada dos sliders»* (medível, e medida aqui).
+///
+/// # A régua: TODO o espaço que os sliders alcançam, não os defaults
+///
+/// Um knob escondido num modo tem de estar morto em **todo** ele — bastava uma combinação de
+/// sliders que refinasse para o `Grow Angle` ter sujeito, e escondê-lo apagaria um controlo
+/// vivo. Medido em `branches × segments × variation × bend`, geração inteira **e** fraccionária.
+#[test]
+fn the_guided_grammar_hides_exactly_the_knobs_it_cannot_read() {
+    let reg = registry();
+    let hints = reg.param_ui(ls::MANIFEST.id).expect("hints");
+    let gates = reg.param_gates(ls::MANIFEST.id).expect("gates");
+    let default_of = |n: &str| {
+        ls::MANIFEST
+            .params
+            .iter()
+            .find(|p| p.name == n)
+            .map_or(0.0, |p| p.default)
+    };
+
+    // O que o painel MOSTRA no estado guiado de fábrica: `mode = Guided`, `preset = Custom`.
+    let visivel = |name: &str| {
+        gates.iter().all(|g| {
+            g.param != name
+                || if g.when == ls::param::MODE {
+                    g.values.contains(&ls::MODE_GUIDED)
+                } else if g.when == ls::param::PRESET {
+                    g.values.contains(&(ls::PRESET_CUSTOM as i32))
+                } else {
+                    // Os outros sujeitos (geometry…) ficam no default do manifesto.
+                    g.values.contains(&(default_of(g.when).round() as i32))
+                }
+        })
+    };
+
+    let mut acusados: Vec<String> = Vec::new();
+    let mut celulas = 0usize;
+    // ⚠️ **Os CANTOS e o meio, não a grelha cheia.** A grelha 3×3×3×3 mede o mesmo e custa
+    // `34 s`; um knob que só age numa combinação interior teria de agir sem agir em nenhum
+    // extremo, e a lei que o decide (paramétrica? refina?) é estrutural, não contínua.
+    for b in [1.0f32, 3.0, 5.0] {
+        for sg in [1.0f32, 6.0] {
+            for var in [0.0f32, 1.0] {
+                for bend in [-30.0f32, 30.0] {
+                    let sh = ls::shape::Shape {
+                        branches: b,
+                        segments: sg,
+                        variation: var,
+                        bend,
+                    };
+                    let rules = ls::shape::rules(&sh);
+                    celulas += 1;
+                    for spec in ls::MANIFEST.params {
+                        let name = spec.name;
+                        if SHELL_SIDE.contains(&name) || STRUCTURAL.contains(&name) {
+                            continue;
+                        }
+                        let Some(hint) = hints.iter().find(|h| h.param == name) else {
+                            continue;
+                        };
+                        let vals = samples(hint, spec.default);
+                        let base = [(ls::param::GEOMETRY, ls::GEOMETRY_BRANCHES as f32)];
+                        let vivo = [5.0f32, 5.5].iter().any(|g| {
+                            ls::probe_param_prints(
+                                ls::DEFAULT_AXIOM,
+                                &rules,
+                                *g,
+                                &base,
+                                name,
+                                &vals,
+                            ) > 1
+                        });
+                        if vivo && !visivel(name) {
+                            acusados.push(format!(
+                                "`{name}` AGE e está escondido (b={b} s={sg} v={var} bend={bend})"
+                            ));
+                        }
+                        if !vivo
+                            && visivel(name)
+                            && (name == ls::param::STEP_SCALE
+                                || name == ls::param::CONTINUOUS_ANGLE)
+                        {
+                            acusados.push(format!("`{name}` é pintado e MORTO"));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert!(
+        celulas >= 24,
+        "só {celulas} células do espaço guiado — a varredura apanhou pouco"
+    );
+    acusados.sort();
+    acusados.dedup();
+    assert!(
+        acusados.is_empty(),
+        "no modo GUIADO o painel discorda da gramática que o próprio app derivou: {acusados:#?}"
+    );
+}

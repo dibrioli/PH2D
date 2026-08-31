@@ -472,6 +472,35 @@ pub(crate) static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
         when: param::PRESET,
         values: PRESETS_GROWING_BY_REFINEMENT,
     },
+    // ⛔⛔ **E OS MESMOS DOIS, TAMBÉM PELO MODO** — o defeito que a auditoria de seis lentes
+    // achou na cura de ontem (doc 96 §1.2).
+    //
+    // Os gates por molde acima incluem o `PRESET_CUSTOM`, com o argumento *«no Custom a
+    // gramática é a que o artista escreveu, então esconder ali é adivinhar»*. ⚠️⚠️ **Esse
+    // argumento é verdade para uma gramática ESCRITA À MÃO e falso para a GUIADA** — e o
+    // `Custom` é o preset de fábrica, o `Guided` é o modo de fábrica, logo os dois nasciam
+    // pintados e mortos **no primeiro ecrã de um nó recém-largado**.
+    //
+    // ⭐ **No modo guiado o app DERIVA a gramática, e sabe exactamente qual é**: ela é sempre
+    // paramétrica (`F(s)`, o comprimento viaja no módulo ⇒ o `Setup::step` nunca é lido) e
+    // cresce sempre pela PONTA (⇒ o braço do `build` faz `ang_frac = frac` e nunca lê o
+    // `Grow Angle`). ⚠️ **Medido em TODO o espaço que os sliders alcançam** — 750 células de
+    // `branches × segments × variation × bend`, em geração inteira e fraccionária: **zero**
+    // refinam, **zero** em que qualquer um dos dois mexa um bit.
+    //
+    // ⚠️ **Duas entradas para o mesmo param compõem por E** (`Visibility::shows` esconde se
+    // QUALQUER gate reprovar), que é o que deixa a pergunta ser feita em duas metades
+    // independentes: *o molde lê isto?* e *este modo lê isto?*
+    ph2d_node_registry::ParamGate {
+        param: param::STEP_SCALE,
+        when: param::MODE,
+        values: &[MODE_GRAMMAR],
+    },
+    ph2d_node_registry::ParamGate {
+        param: param::CONTINUOUS_ANGLE,
+        when: param::MODE,
+        values: &[MODE_GRAMMAR],
+    },
 ];
 
 /// **A ponta só afina onde há puxão** — `Tropism Direction` sem `Tropism` não tem o que virar.

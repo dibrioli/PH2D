@@ -27,6 +27,16 @@ use ph2d_editor_core::screens::hero::InspectorInstanceInfo;
 /// a pergunta das respostas. ⇒ ele cresce até caber `Size`/`State` e pára.
 const AXIS_LABEL_FRACTION: f32 = 0.28; // LITERAL-PX-OK: proporção do rótulo, domínio do cartão
 
+/// ⭐ **O rótulo do modo PLANO** — o nome que a fileira leva quando a família não se declara em
+/// eixos.
+///
+/// ⚠️ **Ele mora AQUI, e não na lei** (HR-15, auditoria de 2026-08-30): a lei devolve o nome vazio
+/// e o painel nomeia-o, porque é o painel que o portão da HR-15 varre. Pô-lo em
+/// `screens/hero/variant_axes.rs` era uma string de UI numa camada fora do alcance do gate — *uma
+/// regra fora do caminho de quem executa não existe*. ⏳ Ele migra com os irmãos deste ficheiro
+/// quando o Fluent chegar; a `ph2d-panel-inspector` não depende do `ph2d-i18n` hoje.
+const FLAT_AXIS_LABEL: &str = "Variant";
+
 /// O tecto do rótulo, em px.
 const AXIS_LABEL_MAX_PX: f32 = 72.0; // LITERAL-PX-OK: tecto do rótulo, domínio do cartão
 
@@ -125,10 +135,15 @@ pub(crate) fn paint_instance_card(
             break;
         };
         let label_w = (tw * AXIS_LABEL_FRACTION).min(AXIS_LABEL_MAX_PX);
+        let axis_label = if ax.name.is_empty() {
+            FLAT_AXIS_LABEL
+        } else {
+            ax.name.as_str()
+        };
         paint_text(
             text_system,
             scene,
-            &ax.name,
+            axis_label,
             tx,
             ty + (line - small) * 0.5,
             small,

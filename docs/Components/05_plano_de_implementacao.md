@@ -1040,6 +1040,36 @@ pai), e ela não estava escrita em lado nenhum.
 
 **Smoke:** `PH2D_BUILD_SMOKE=79` — quatro versões, duas fileiras, e o chip medido pelo ponteiro.
 
+### A auditoria (2026-08-30) — **duas REGRESSÕES minhas, e duas leis perdidas no porte**
+
+| # | Achado | Mecanismo | Cura |
+|---|---|---|---|
+| **A1** | ⛔⛔ uma família de DUAS versões «na diagonal» perdia a fileira **inteira** | com `Small/Idle` + `Big/Run` nenhuma é alcançável **num passo**, os dois eixos caem por ter um valor só ⇒ cartão **sem fileira**. *O artista tinha duas versões e nenhuma superfície para trocar* — e a fileira plana de ontem mostrava-as | o modo plano passa a ser a **REDE**: matriz esparsa demais para perguntas volta a ser uma lista. Pior de ler, e **alcançável** |
+| **A2** | ⛔⛔ a truncagem podia deixar a fileira **sem vigente aceso** | o `current` é um `bool` por opção; truncar às cegas com o mestre corrente depois do teto apagava a resposta — *«mostra as opções e esconde a resposta»*, a frase que o pintor tem escrita | o vigente **sobrevive ao corte** |
+| **A3** | o `beyond` contava opções e a frase dizia *«variant(s)»* | com eixos, o que se perde pode ser uma **pergunta inteira**, e o vigente era contado como *«mais uma versão»* sobre ele próprio | conta sem o vigente; a frase diz **«option(s)»** |
+| **A4** | a cerca da âncora só existia em **metade** da lei | o modo plano devolvia a lista inteira com nenhum chip aceso | a âncora é a mesma pergunta nos dois modos |
+| **A6** | HR-15: `"Variant"` era literal **fora do alcance do gate** | o `hr15_no_hardcoded_ui_strings` varre `widget/` e `ph2d-panel-*`; o literal estava em `screens/hero/` | a lei devolve o nome **vazio** e o painel nomeia-o — que é o que o original já fazia |
+| **A7** | `MAX_INSTANCE_VARIANTS` ficou **órfão** | o `INSP_INSTANCE_VARIANT` que ele media foi apagado; sobrou uma constante sem um único leitor | apagada (⛔ órfão ≠ knob morto: a cura é apagar, não religar) |
+
+⛔⛔ **E DUAS das seis são leis que se perderam NO PORTE, não buracos novos.** O `vec_variants.rs`
+carrega exactamente duas correcções — `ax.selected.min(cap−1)` e o `unwrap_or(0)` do modo plano — e
+**nenhuma veio**. Três das quatro funções foram portadas quase verbatim; as duas linhas que o
+ficheiro original tinha aprendido a duras penas ficaram para trás, sem nota. ⚠️ *Um porte que copia
+a forma e deixa as correcções é um porte que re-descobre os defeitos.*
+
+⚠️ **E o gate da truncagem escolhia `me = 0`** — o primeiro valor, que nunca cai fora do teto: *uma
+fixtura ordenada a favor da lei*, a mesma classe que esta fatia já tinha corrigido uma vez no
+mesmo dia (`a_chip_changes_exactly_one_axis` passava pela ORDEM da família).
+
+**Medido e ILIBADO:** a altura do cartão cabe (50→118 px com 4 eixos) · os chips **não** colapsam a
+zero (seria preciso um painel de 91 px contra um mínimo de 220) · a porta `instance_axis_option`
+custa **3 ns** · o gate `table_driven_chips_are_registered_too` **vê** a grelha de 32 ids · e o
+smoke não tem passo que perturbe o que o seguinte mede.
+
+⏳ **Aberto e nomeado:** o rótulo do eixo come **25 %** da fileira (8 chips ficam com 11,6–19,2 px
+no painel mínimo) · o cartão de instância inteiro **não tem um único `seam_*`** — a prova
+ponta-a-ponta é o smoke, que só imprime.
+
 ⏳ **O que a fatia NÃO fez:** apagar o `VecInstance`. Falta portar a **porta que PRODUZ** os
 overrides vetoriais (a lista de peças com interruptor e swatch por peça), que a medição do plano
 não contava — ver o §F4.

@@ -14,16 +14,6 @@ use ph2d_a11y::NodeId;
 /// do artista em silêncio. ⇒ o gesto existe, e é explícito.
 pub const INSP_INSTANCE_CLEAR_ORPHANS: NodeId = hash_node_id("insp_instance_clear_orphans");
 
-/// ⭐⭐ **Quantas VARIANTES a fileira de chips endereça** (F5, critério 2).
-///
-/// ⚠️ **Teto de TABELA DE IDS, e ele diz de que recurso é** — o mesmo idioma do
-/// [`super::chrome::vector_components::MAX_VARIANT_VALUES`]: o `populate` regista este intervalo
-/// num laço e o roteador varre o mesmo. **Não é teto do catálogo**: uma família pode ter as
-/// variantes que quiser, e as que passam daqui continuam a existir e a funcionar.
-///
-/// ⚠️ E o excedente **é escrito** no cartão, nunca truncado em silêncio.
-pub const MAX_INSTANCE_VARIANTS: usize = 8;
-
 /// ⭐⭐⭐ **Quantos EIXOS de propriedade o cartão endereça** — `Size`, `State`, …
 ///
 /// ⚠️ Teto de **TABELA DE IDS**, como o irmão abaixo: uma família pode declarar os eixos que

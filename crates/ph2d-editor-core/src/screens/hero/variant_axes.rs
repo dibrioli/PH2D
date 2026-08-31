@@ -53,6 +53,11 @@ pub fn parse_combo(name: &str) -> Option<Vec<(String, String)>> {
         if k.is_empty() || v.is_empty() || v.contains('=') {
             return None;
         }
+        // ⚠️ **Uma chave REPETIDA não é uma combinação** — `"Size=Small, Size=Big"` daria duas
+        // fileiras chamadas `Size` com as mesmas opções, e clicar numa mexeria na outra.
+        if out.iter().any(|(existing, _)| existing == k) {
+            return None;
+        }
         out.push((k.to_string(), v.to_string()));
     }
     (!out.is_empty()).then_some(out)
@@ -95,23 +100,62 @@ pub fn axes_for(members: &[(u64, String)], me: u64) -> (Vec<VariantAxis>, usize)
     if members.len() < 2 {
         return (Vec::new(), 0);
     }
+    // ⛔⛔ **A ÂNCORA é a mesma pergunta nos DOIS modos** (auditoria de 2026-08-30). Ela estava só
+    // no multi-eixo, e o modo plano devolvia a fileira inteira **sem nenhum chip aceso** — que é
+    // exactamente *«mostra as opções e esconde a resposta»*, a frase que o pintor tem escrita.
+    if !members.iter().any(|(id, _)| *id == me) {
+        return (Vec::new(), 0);
+    }
     let combos: Vec<Option<Vec<(String, String)>>> =
         members.iter().map(|(_, n)| parse_combo(n)).collect();
     let mut axes = match shared_keys(&combos) {
         Some(keys) => multi_axis(members, &combos, &keys, me),
-        None => flat_axis(members, me),
+        None => Vec::new(),
     };
+    // ⛔⛔⛔ **O MODO PLANO É A REDE, e sem ele isto era uma REGRESSÃO** (auditoria de 2026-08-30).
+    //
+    // A lei da alcançabilidade pode esvaziar TODOS os eixos: com `Size=Small, State=Idle` e
+    // `Size=Big, State=Run` — duas versões, nada mais — nenhuma é alcançável **num passo**, os dois
+    // eixos caem por ter um valor só, e o cartão ficava **sem fileira nenhuma**. *O artista tinha
+    // duas versões do componente e nenhuma superfície para trocar*, quando a fileira plana de
+    // ontem as mostrava as duas.
+    //
+    // ⇒ quando a matriz é esparsa demais para perguntas, a família volta a ser uma **lista**. É
+    // pior de ler e é **alcançável**, e essa é a ordem certa das duas.
+    if axes.is_empty() {
+        axes = flat_axis(members, me);
+    }
     // ⚠️ **O corte é aqui e é ESCRITO** — o `populate` regista `AXES × VALUES` chips e o roteador
     // varre o mesmo intervalo.
     let mut beyond = 0;
     for (a, ax) in axes.iter_mut().enumerate() {
         if a >= ids::MAX_INSTANCE_AXES {
-            beyond += ax.options.len();
+            // ⚠️ **O vigente não conta como perdido** — ele aparece como opção em TODO eixo, e
+            // contá-lo dizia ao artista *«mais uma versão»* sobre ele próprio (auditoria de
+            // 2026-08-30).
+            beyond += ax.options.iter().filter(|o| !o.current).count();
             continue;
         }
         if ax.options.len() > ids::MAX_INSTANCE_AXIS_VALUES {
-            beyond += ax.options.len() - ids::MAX_INSTANCE_AXIS_VALUES;
-            ax.options.truncate(ids::MAX_INSTANCE_AXIS_VALUES);
+            // ⛔⛔ **O VIGENTE sobrevive ao corte** (auditoria de 2026-08-30). Truncar às cegas
+            // deixava a fileira **sem nenhum chip aceso** quando o mestre corrente estava depois do
+            // teto — e o doc do pintor diz o que isso significa: *«mostra as opções e esconde a
+            // resposta»*.
+            //
+            // ⚠️ **A lei perdeu-se no PORTE**: o original vetorial cura o mesmo caso com
+            // `ax.selected = ax.selected.min(cap - 1)`, a única correcção que aquele ficheiro
+            // carregava, e ela não veio. ⭐ Aqui a cura é melhor que a de lá: o vetorial acende o
+            // chip **errado**, e este mantém o certo dentro da janela.
+            let cap = ids::MAX_INSTANCE_AXIS_VALUES;
+            beyond += ax.options.len() - cap;
+            let cur = ax.options.iter().position(|o| o.current);
+            if let Some(i) = cur.filter(|i| *i >= cap) {
+                let mine = ax.options.remove(i);
+                ax.options.truncate(cap - 1);
+                ax.options.push(mine);
+            } else {
+                ax.options.truncate(cap);
+            }
         }
     }
     axes.truncate(ids::MAX_INSTANCE_AXES);
@@ -176,7 +220,12 @@ fn multi_axis(
 /// para toda família cujos nomes não sejam combinações.
 fn flat_axis(members: &[(u64, String)], me: u64) -> Vec<VariantAxis> {
     vec![VariantAxis {
-        name: "Variant".to_string(),
+        // ⚠️ **VAZIO, e quem o nomeia é o PAINEL** (HR-15, auditoria de 2026-08-30): um `"Variant"`
+        // aqui é string de UI em inglês numa camada que o `hr15_no_hardcoded_ui_strings` **não
+        // varre** — ele lê `widget/` e `ph2d-panel-*`. ⭐ É a escolha que o original vetorial já
+        // tinha feito, com a chave de i18n do lado do painel, e o porte tinha-a trocado por um
+        // literal. *Uma regra fora do caminho de quem executa não existe.*
+        name: String::new(),
         options: members
             .iter()
             .map(|(id, name)| VariantChoice {

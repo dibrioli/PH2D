@@ -92,13 +92,17 @@ fn variant_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     let WidgetEvent::Click(id) = ev else {
         return false;
     };
-    let Some(info) = crate::state::current_inspector_instance() else {
-        return false;
-    };
     // ⚠️ **A leitura inversa vem da PORTA** (`ids::instance_axis_option`) e não de uma varredura
     // aqui: o painel, o pintor e os gates fazem a mesma pergunta, e a escada escrita três vezes é
     // a doença que a coluna de catálogos acabou de pagar.
+    //
+    // ⚠️ **E ela vem ANTES do estado** (auditoria de 2026-08-30): este braço corre em TODO clique
+    // do Inspector, e o `current_inspector_instance()` **clona** o cartão inteiro. Perguntar
+    // primeiro o que custa 3 ns e só depois o que aloca é a ordem certa das duas.
     let Some((a, v)) = ids::instance_axis_option(id) else {
+        return false;
+    };
+    let Some(info) = crate::state::current_inspector_instance() else {
         return false;
     };
     let Some(choice) = info.axes.get(a).and_then(|ax| ax.options.get(v)) else {

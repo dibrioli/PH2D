@@ -678,8 +678,12 @@ mod value_time_smoke;
 mod value_unary_smoke;
 mod value_wave_smoke;
 mod value_wrap_smoke;
-/// **OS VARIANTS** (plano UI/UX W5c) — que versão do componente uma instância é. Um conjunto de
-/// variants é DERIVADO (os mestres irmãos), e os eixos saem dos NOMES: zero componente novo.
+/// ⭐⭐ **A cena dos EIXOS DE PROPRIEDADE** — `PH2D_BUILD_SMOKE=79`: uma família nomeada
+/// `Size=…, State=…` vira uma fileira por pergunta, e um chip muda exactamente um eixo.
+///
+/// ⚠️ Ela tem doc próprio porque inserir um módulo no meio de um doc-comment **muda o dono dele**
+/// (auditoria de 2026-08-30): este bloco descrevia o `vec_variants`, e o módulo novo entrou por
+/// baixo dele — ficando a documentar-se com a frase de outro e sem dizer que é um smoke.
 mod variant_axes_smoke;
 /// A cena de smoke dos **VARIANTS** (`PH2D_BUILD_SMOKE=58`) — irmã de `component_pieces_smoke`.
 mod variant_smoke;
@@ -756,6 +760,12 @@ mod vec_transform;
 mod vec_trim;
 /// **OS VERBOS DA PELE** (plano UI/UX W6.2) — vestir, trocar de tipo, despir.
 mod vec_ui_state_edit;
+/// **OS VARIANTS** (plano UI/UX W5c) — que versão do componente uma instância é. Um conjunto de
+/// variants é DERIVADO (os mestres irmãos), e os eixos saem dos NOMES: zero componente novo.
+///
+/// ⚠️ **Este doc voltou para cá** (auditoria de 2026-08-30): o módulo da cena de smoke dos eixos
+/// entrou por baixo dele e **herdou-o**, deixando este ficheiro — o que a F4.6c vai apagar — sem a
+/// única linha que dizia o que ele é. *Um comentário separado do seu item muda de dono.*
 mod vec_variants;
 mod vec_weld;
 mod vec_widget_drive;

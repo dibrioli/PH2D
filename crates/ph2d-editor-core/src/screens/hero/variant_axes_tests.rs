@@ -126,7 +126,9 @@ fn plain_names_fall_back_to_one_flat_row() {
     let fam = [m(1, "Hero"), m(2, "Hero Angry"), m(3, "Hero Sad")];
     let (axes, _) = axes_for(&fam, 2);
     assert_eq!(axes.len(), 1);
-    assert_eq!(axes[0].name, "Variant");
+    // ⚠️ **O nome é VAZIO e quem o escreve é o painel** (HR-15): um rótulo em inglês aqui é uma
+    // string de UI numa camada que o portão da HR-15 não varre.
+    assert_eq!(axes[0].name, "");
     assert_eq!(labels(&axes[0]), ["Hero", "Hero Angry", "Hero Sad"]);
     assert!(axes[0].options[1].current);
 }
@@ -140,7 +142,7 @@ fn members_that_disagree_on_the_keys_fall_back_to_plain_names() {
     let fam = [m(1, "Size=Small"), m(2, "Size=Big, State=Run")];
     let (axes, _) = axes_for(&fam, 1);
     assert_eq!(axes.len(), 1);
-    assert_eq!(axes[0].name, "Variant");
+    assert_eq!(axes[0].name, "");
     assert_eq!(labels(&axes[0]), ["Size=Small", "Size=Big, State=Run"]);
 }
 
@@ -170,4 +172,104 @@ fn what_the_id_table_cannot_address_is_counted() {
 fn a_current_master_outside_the_family_offers_nothing() {
     let fam = [m(1, "Size=Small, State=Idle"), m(2, "Size=Big, State=Idle")];
     assert_eq!(axes_for(&fam, 99).0.len(), 0);
+}
+
+// ── Os achados da auditoria de 2026-08-30 ──────────────────────────────────────────────────────
+
+/// ⛔⛔⛔ **DUAS versões «na diagonal» continuam a ter uma travessia** — e sem isto era uma
+/// REGRESSÃO contra a fileira plana de antes.
+///
+/// ⚠️ Com `Small/Idle` e `Big/Run` nenhuma é alcançável **num passo**, os dois eixos caem por ter um
+/// valor só, e o cartão ficava **sem fileira nenhuma**: o artista tinha duas versões do componente
+/// e nenhuma superfície para trocar. ⇒ quando a matriz é esparsa demais para perguntas, a família
+/// volta a ser uma **lista** — pior de ler, e alcançável.
+///
+/// **Mutação que deve sangrar:** tirar o `if axes.is_empty() { axes = flat_axis(..) }`.
+#[test]
+fn a_family_of_two_on_the_diagonal_still_offers_a_way_across() {
+    let fam = [m(1, "Size=Small, State=Idle"), m(2, "Size=Big, State=Run")];
+    let (axes, _) = axes_for(&fam, 1);
+    assert_eq!(axes.len(), 1, "a família ficou sem fileira nenhuma");
+    assert_eq!(axes[0].name, "", "a rede é o modo plano");
+    assert_eq!(labels(&axes[0]).len(), 2, "as duas versões têm de aparecer");
+    assert!(
+        axes[0].options.iter().any(|o| o.current),
+        "a fileira mostra as opções e esconde a resposta"
+    );
+}
+
+/// ⛔⛔ **O VIGENTE sobrevive ao corte da tabela de ids.**
+///
+/// ⚠️ Truncar às cegas deixava a fileira **sem nenhum chip aceso** quando o mestre corrente estava
+/// depois do teto. ⚠️ E o gate que media a truncagem escolhia `me = 0` — *uma fixtura ordenada a
+/// favor da lei*, que é a mesma classe de defeito que esta wave já tinha corrigido uma vez.
+///
+/// **Mutação que deve sangrar:** voltar a `ax.options.truncate(cap)` sem tratar o vigente.
+#[test]
+fn the_current_option_survives_the_id_table_cap() {
+    let cap = crate::ids::MAX_INSTANCE_AXIS_VALUES;
+    let fam: Vec<(u64, String)> = (0u64..=(cap as u64))
+        .map(|i| (i, format!("Size=S{i}")))
+        .collect();
+    // O vigente é o ÚLTIMO — exactamente o que cai fora do teto.
+    let me = cap as u64;
+    let (axes, beyond) = axes_for(&fam, me);
+    assert_eq!(axes.len(), 1);
+    assert_eq!(axes[0].options.len(), cap);
+    assert_eq!(beyond, 1);
+    let cur = axes[0]
+        .options
+        .iter()
+        .find(|o| o.current)
+        .expect("a fileira ficou SEM vigente — mostra as opções e esconde a resposta");
+    assert_eq!(cur.master, me);
+}
+
+/// ⚠️ **O excedente não conta o próprio artista.**
+///
+/// O vigente aparece como opção em TODO eixo; contá-lo dizia *«mais uma versão»* sobre ele próprio.
+///
+/// **Mutação que deve sangrar:** `beyond += ax.options.len()` no ramo dos eixos.
+#[test]
+fn the_overflow_does_not_count_the_current_master() {
+    // Cinco eixos, contra um teto de quatro. Cada um tem duas opções: eu e um vizinho.
+    let mut fam = vec![m(0, "A=1, B=1, C=1, D=1, E=1")];
+    for (i, k) in ["A", "B", "C", "D", "E"].iter().enumerate() {
+        let name: String = ["A", "B", "C", "D", "E"]
+            .iter()
+            .map(|x| format!("{x}={}", if x == k { 2 } else { 1 }))
+            .collect::<Vec<_>>()
+            .join(", ");
+        fam.push(m(i as u64 + 1, &name));
+    }
+    let (axes, beyond) = axes_for(&fam, 0);
+    assert_eq!(axes.len(), crate::ids::MAX_INSTANCE_AXES, "o teto de eixos");
+    assert_eq!(
+        beyond, 1,
+        "o 5.º eixo tinha DUAS opções e uma delas sou eu — só a outra se perdeu"
+    );
+}
+
+/// ⛔ **Sem âncora não há fileira, TAMBÉM no modo plano.**
+///
+/// ⚠️ A cerca existia só no multi-eixo, e o plano devolvia a lista inteira com nenhum chip aceso.
+///
+/// **Mutação que deve sangrar:** tirar a guarda `members.iter().any(|(id, _)| *id == me)`.
+#[test]
+fn a_current_master_outside_the_family_offers_nothing_in_plain_mode_either() {
+    let fam = [m(1, "Hero"), m(2, "Hero Sad")];
+    assert_eq!(
+        axes_for(&fam, 99).0.len(),
+        0,
+        "a fileira plana apareceu sem dizer onde a cópia está"
+    );
+}
+
+/// ⚠️ **Uma chave REPETIDA não é uma combinação** — ela daria duas fileiras com o mesmo nome e as
+/// mesmas opções, e clicar numa mexeria na outra.
+#[test]
+fn a_repeated_key_is_not_a_combination() {
+    assert_eq!(parse_combo("Size=Small, Size=Big"), None);
+    // ⚠️ O controlo: sem a repetição, a mesma forma parseia.
+    assert!(parse_combo("Size=Small, State=Big").is_some());
 }

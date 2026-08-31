@@ -117,7 +117,12 @@ impl InspectorInstanceInfo {
         // mesma lei do `beyond` da fileira de variants do vetor: *um catálogo que some é um
         // catálogo em que o artista deixa de confiar.*
         if self.variants_beyond > 0 {
-            return format!("{base} \u{b7} {} more variant(s)", self.variants_beyond);
+            // ⚠️ **«opções», e não «variantes»** (auditoria de 2026-08-30): com eixos, o que a
+            // tabela de ids deixa de fora pode ser uma **pergunta inteira**, e o mesmo mestre pode
+            // aparecer em dois eixos. *«Variantes» prometia uma contagem de versões distintas que
+            // este número nunca foi.* No modo plano as opções **são** as versões, e a frase
+            // continua verdadeira.
+            return format!("{base} \u{b7} {} more option(s)", self.variants_beyond);
         }
         base
     }

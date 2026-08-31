@@ -30,6 +30,34 @@ use ph2d_mesh::Mesh;
 pub(crate) struct SizingGrid {
     cell: f32,
     fallback: f32,
+    /// ⭐⭐⭐ **A ORIGEM DA GRELHA — e ela é da PEÇA, nunca do MUNDO (2026-08-31).**
+    ///
+    /// ⛔⛔⛔ **Sem ela esta grelha punha a retopologia a depender de ONDE o objecto está na
+    /// cena.** O [`Self::key_of`] dividia a coordenada de mundo pela célula, logo mover a
+    /// peça movia as fronteiras dos baldes — e como cada balde guarda o **mínimo** e o
+    /// [`Self::at`] lê o mínimo de 27, um deslocamento muda que região herda a finura de uma
+    /// agulha.
+    ///
+    /// ⚠️ **Medido na `uv_sphere(96, 144)`, a mesma malha só transladada em `x`:**
+    ///
+    /// | | `0` | `½` | `1` | `2` | dispersão |
+    /// |---|---|---|---|---|---|
+    /// | ⛔ chave de mundo | `2 633` | `2 712` | `2 679` | `2 586` | **`4,9 %`** |
+    /// | ⭐ ancorada na peça | `2 687` | `2 687` | `2 687` | `2 687` | **`0,0 %`** |
+    ///
+    /// ⚠️ **O canto MÍNIMO da caixa, e não o centroide:** o centroide dos vértices é uma
+    /// propriedade da *amostragem* (é o defeito que a `reach` do shell pagou no mesmo dia); um
+    /// extremo da caixa é função só da forma, e acompanha-a exactamente numa translação.
+    ///
+    /// ⛔ **E o report que a exigiu é do dono:** *«o remesh deve funcionar perfeitamente em
+    /// qualquer lugar»* — depois de a MESMA escultura dar `0` de `4` pontas cortadas na
+    /// origem e `2` de `4` onde o importador a ancora (`IMPORT_SPAN`, fora da origem).
+    ///
+    /// ⚠️ **O que ela NÃO compra, dito:** bit-exactidão a qualquer distância. A subtracção
+    /// `p − origin` perde bits quando a peça está longe, e o remalhador é **iterativo** — um
+    /// bit muda uma decisão de corte e a diferença cascateia. A `16` unidades a dispersão
+    /// volta, e o gate declara essa cerca em vez de a esconder.
+    origin: [f32; 3],
     want: std::collections::BTreeMap<(i32, i32, i32), f32>,
 }
 
@@ -80,12 +108,21 @@ impl SizingGrid {
         let mut want: std::collections::BTreeMap<(i32, i32, i32), f32> =
             std::collections::BTreeMap::new();
         let pos = mesh.positions();
+        let mut origin = [f32::INFINITY; 3];
+        for p in pos {
+            for k in 0..3 {
+                origin[k] = origin[k].min(p[k]);
+            }
+        }
+        if !origin.iter().all(|v| v.is_finite()) {
+            origin = [0.0; 3];
+        }
         let mut per_vertex: Vec<f32> = Vec::with_capacity(pos.len());
         for (v, p) in pos.iter().enumerate() {
             let k = curv.get(v).copied().unwrap_or(0.0).abs().max(1.0e-9);
             let h = target * (median / k).clamp(1.0 / ADAPT_RATIO, 1.0);
             per_vertex.push(h);
-            let key = Self::key_of(*p, cell);
+            let key = Self::key_of(*p, origin, cell);
             let slot = want.entry(key).or_insert(h);
             if h < *slot {
                 *slot = h;
@@ -120,6 +157,7 @@ impl SizingGrid {
         let mut grid = Self {
             cell,
             fallback: target,
+            origin,
             want,
         };
         let s = grid.count_factor(mesh, target);
@@ -183,18 +221,23 @@ impl SizingGrid {
         }
     }
 
+    /// ⚠️ **Relativa à [`Self::origin`]** — ver o doc dela. ⛔ E os DOIS lados têm de a usar:
+    /// mudar só a construção (ou só a consulta) faz as chaves nunca casarem, o [`Self::at`]
+    /// cai no `fallback` constante e o campo **morre** — que se lê como perfeitamente
+    /// invariante em qualquer régua que só meça dispersão. *Duas mutações sobreviveram ao
+    /// gate por isso, até ele passar a exigir também que a graduação MUDE a malha.*
     #[allow(clippy::cast_possible_truncation)]
-    fn key_of(p: [f32; 3], cell: f32) -> (i32, i32, i32) {
+    fn key_of(p: [f32; 3], origin: [f32; 3], cell: f32) -> (i32, i32, i32) {
         (
-            (p[0] / cell).floor() as i32,
-            (p[1] / cell).floor() as i32,
-            (p[2] / cell).floor() as i32,
+            ((p[0] - origin[0]) / cell).floor() as i32,
+            ((p[1] - origin[1]) / cell).floor() as i32,
+            ((p[2] - origin[2]) / cell).floor() as i32,
         )
     }
 
     /// O alvo local: o **mínimo** entre a célula e as 26 vizinhas.
     pub(crate) fn at(&self, p: [f32; 3]) -> f32 {
-        let (x, y, z) = Self::key_of(p, self.cell);
+        let (x, y, z) = Self::key_of(p, self.origin, self.cell);
         let mut best = f32::INFINITY;
         for dx in -1..=1 {
             for dy in -1..=1 {

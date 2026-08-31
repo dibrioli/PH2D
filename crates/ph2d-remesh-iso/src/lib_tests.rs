@@ -2,7 +2,7 @@
 
 use ph2d_mesh::shapes;
 
-use super::{ALPHA, Report, remesh_isotropic, target_edge};
+use super::{ALPHA, Report, remesh_isotropic, remesh_isotropic_graded, target_edge};
 
 fn mean_edge(mesh: &ph2d_mesh::Mesh) -> f32 {
     let p = mesh.positions();
@@ -656,4 +656,119 @@ fn a_banda_da_grelha_engrossa_onde_a_forma_e_chapada() {
         "⛔ e tem de ENGROSSAR onde a forma e' chapada, senao ela acrescenta trabalho em vez \
          de o mover (o tecto `1` foi o que a fez inflar 8,3x)"
     );
+}
+
+/// ⭐⭐⭐ **GATE — a fase zero não depende de ONDE a peça está na cena.**
+///
+/// ⛔⛔⛔ **Ordem do dono, 2026-08-31: *«o remesh deve funcionar perfeitamente em qualquer
+/// lugar»*.** Ela nasceu de um report com foto: a MESMA escultura, o mesmo `Detail`, a mesma
+/// `Curvature`, dava `0` de `4` pontas cortadas na origem e `2` de `4` onde o importador a
+/// põe (`sculpt3d_import::IMPORT_SPAN` ancora toda peça importada fora da origem).
+///
+/// ⭐ **A causa era esta crate:** a [`super::sizing::SizingGrid`] indexava por coordenada de
+/// **mundo** (`p / cell`), logo mover a peça movia as fronteiras dos baldes — e como cada
+/// balde guarda o **mínimo** e o `at` lê o mínimo de 27, um deslocamento muda que região
+/// herda a finura de uma agulha. Hoje a grelha é ancorada no canto da caixa da **peça**.
+///
+/// ⚠️ **Medido na `uv_sphere(96, 144)`, `x ∈ {0, ½, 1, 2}`:**
+///
+/// | | antes | **depois** |
+/// |---|---|---|
+/// | vértices | `2 633` · `2 712` · `2 679` · `2 586` | ⭐ **`2 687` nas quatro** |
+/// | dispersão | `4,9 %` | **`0,0 %`** |
+///
+/// ⚠️ **O CONTROLO é o caminho SEM graduação**, que tem de ser **exactamente** igual nas
+/// quatro: ele não tem campo, logo não tem fronteiras — *é ele que prova que o remalhador
+/// em si já era invariante e que o defeito era do campo.*
+///
+/// ⛔ **`x = 16` fica FORA da barra de propósito:** a `16` unidades de distância com feições
+/// de `0,03`, a subtracção `p − origem` perde bits e o remalhador é iterativo — um bit muda
+/// uma decisão de corte e a diferença cascateia. *A cerca é honesta: esta crate garante
+/// invariância na escala em que uma cena vive, não bit-exactidão a qualquer distância.*
+#[test]
+fn a_fase_zero_nao_depende_de_onde_a_peca_esta() {
+    let base = shapes::uv_sphere(96, 144, 1.0);
+    let corrida = |graded: bool| -> Vec<usize> {
+        [0.0f32, 0.5, 1.0, 2.0]
+            .iter()
+            .map(|d| {
+                let mut m = base.clone();
+                for p in m.positions_mut() {
+                    p[0] += d;
+                }
+                if graded {
+                    remesh_isotropic_graded(&mut m, ALPHA).verts_after
+                } else {
+                    remesh_isotropic(&mut m, ALPHA).verts_after
+                }
+            })
+            .collect()
+    };
+    let liso = corrida(false);
+    assert!(
+        liso.iter().all(|v| *v == liso[0]),
+        "CONTROLO: sem graduacao o remalhador ja' era invariante, e deu {liso:?}"
+    );
+    let grad = corrida(true);
+    // ⛔⛔⛔ **A METADE QUE FALTAVA, e duas mutações sobreviveram sem ela:** desligar a
+    // ancoragem só na CONSULTA (ou só na CONSTRUÇÃO) faz as chaves nunca casarem, o `at`
+    // cai no `fallback` constante, o campo **morre** — e um campo morto é perfeitamente
+    // invariante. *«Invariante porque ancorada» e «invariante porque não existe» lêem-se
+    // igual em qualquer régua que só meça dispersão.*
+    assert_ne!(
+        grad[0], liso[0],
+        "a graduacao tem de MUDAR a malha, senao a invariancia acima e' a de um campo morto"
+    );
+    let (lo, hi) = (
+        *grad.iter().min().expect("quatro corridas"),
+        *grad.iter().max().expect("quatro corridas"),
+    );
+    #[expect(clippy::cast_precision_loss, reason = "milhares de vertices")]
+    let dispersao = (hi - lo) as f32 / lo.max(1) as f32;
+    assert!(
+        dispersao <= 0.01,
+        "a graduacao tem de ser invariante a' translacao: {grad:?} -> dispersao {:.1} %          (antes da ancoragem da grelha eram 4,9 %)",
+        100.0 * dispersao
+    );
+}
+
+/// ⭐⭐⭐ **SONDA — a fase zero é invariante a uma TRANSLAÇÃO?**
+///
+/// ⛔ Ordem do dono, 2026-08-31: *«o remesh deve funcionar perfeitamente em qualquer
+/// lugar»*. Esta é a primeira pergunta da cadeia: se o F1 já muda, tudo a jusante muda.
+///
+/// ```text
+/// cargo test -p ph2d-remesh-iso --release a_fase_zero_e_invariante_a_translacao -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda -- invariancia a translacao da fase zero"]
+fn a_fase_zero_e_invariante_a_translacao() {
+    for (nome, base) in [
+        ("esfera 24x36", shapes::uv_sphere(24, 36, 1.0)),
+        ("esfera 96x144", shapes::uv_sphere(96, 144, 1.0)),
+    ] {
+        for graded in [false, true] {
+            let mut linha = Vec::new();
+            for d in [0.0f32, 0.5, 1.0, 2.0, 16.0] {
+                let mut m = base.clone();
+                for p in m.positions_mut() {
+                    p[0] += d;
+                }
+                let r = if graded {
+                    remesh_isotropic_graded(&mut m, ALPHA)
+                } else {
+                    remesh_isotropic(&mut m, ALPHA)
+                };
+                linha.push((d, r.verts_after, m.face_count()));
+            }
+            eprintln!(
+                "   {nome} graded={graded}: {}",
+                linha
+                    .iter()
+                    .map(|(d, v, f)| format!("x={d} -> {v}v {f}f"))
+                    .collect::<Vec<_>>()
+                    .join(" | ")
+            );
+        }
+    }
 }

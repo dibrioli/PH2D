@@ -49,6 +49,7 @@ fn the_four_sharers() -> Vec<(&'static str, ParamRow, &'static str)> {
                 name: "expr",
                 label: "Expression".into(),
                 value: "sin(t)".into(),
+                problem: None,
             }),
             "sin(t)",
         ),

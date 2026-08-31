@@ -171,8 +171,63 @@ pub(super) fn push_text_rows(
             rows.push(if h.widget == ParamWidget::Curve {
                 ParamRow::Curve(CurveRow { name, label, value })
             } else {
-                ParamRow::Text(TextRow { name, label, value })
+                let problem = text_param_problem(motion, nid, name, &value);
+                ParamRow::Text(TextRow {
+                    name,
+                    label,
+                    value,
+                    problem,
+                })
             });
         }
     }
+}
+
+/// ⭐⭐⭐ **O QUE ESTÁ MAL NO TEXTO QUE O ARTISTA ESCREVEU** — a porta ÚNICA por onde uma row de
+/// texto ganha um aviso.
+///
+/// # Por que a shell, e não o painel
+///
+/// O painel resolve primitivos e **não depende do registo** de propósito (a mesma razão por que
+/// o `FileRow` não carrega a espécie de ficheiro). Quem sabe ler uma gramática de L-System é o
+/// nó, e quem sabe **qual** nó está debaixo do rato é a shell — ela é a única das três que pode
+/// pôr as duas coisas na mesma frase.
+///
+/// # Por que UMA função e não um `if` no laço
+///
+/// ⚠️ O segundo nó com texto que possa estar errado (uma expressão, uma curva escrita à mão)
+/// acrescenta um braço **aqui**. Um `if` no meio do construtor faria o terceiro nascer noutro
+/// sítio, e aí um deles pintaria o aviso e o outro não — que é literalmente a família de
+/// defeito que a caça aos controlos mortos deste repo nomeia.
+///
+/// ⚠️ **Um texto VAZIO nunca se queixa**, e não é um caso especial escondido: o nó lê o vazio
+/// como *«usa a gramática de fábrica»*, então não há nada de errado com ele. É por isso que a
+/// pergunta vai ao nó em vez de ser respondida aqui.
+fn text_param_problem(
+    motion: &MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    param: &str,
+    value: &str,
+) -> Option<String> {
+    let inst = motion.doc.graph.node(nid)?;
+    if inst.type_name != ph2d_node_source_lsystem::MANIFEST.name
+        || param != ph2d_node_source_lsystem::RULES_PARAM
+    {
+        return None;
+    }
+    let queixas = ph2d_node_source_lsystem::grammar_complaints(value);
+    let primeira = queixas.first()?;
+    // ⚠️ **UMA queixa, e a PRIMEIRA** — não a lista. Uma linha por regra empurraria o painel
+    // para fora do corpo enquanto o artista escreve, que é precisamente quando ele tem várias
+    // regras a meio. A primeira é a que ele corrige primeiro, e ao corrigi-la a seguinte aparece.
+    Some(if queixas.len() > 1 {
+        format!(
+            "«{}»: {} (+{} outra(s))",
+            primeira.rule,
+            primeira.problem.say(),
+            queixas.len() - 1
+        )
+    } else {
+        format!("«{}»: {}", primeira.rule, primeira.problem.say())
+    })
 }

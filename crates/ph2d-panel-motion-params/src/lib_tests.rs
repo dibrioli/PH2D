@@ -82,6 +82,7 @@ fn text_row_and_set_text_param_intent_round_trip() {
             name: "expr",
             label: "Formula".into(),
             value: "sin(t)".into(),
+            problem: None,
         })],
     }));
     let got = current_params().expect("published");

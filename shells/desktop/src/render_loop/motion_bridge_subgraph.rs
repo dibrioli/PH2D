@@ -452,6 +452,7 @@ pub(super) fn params_snapshot(
             name: "title",
             label: "Name".to_string(),
             value: s.title.clone(),
+            problem: None,
         })],
     })
 }

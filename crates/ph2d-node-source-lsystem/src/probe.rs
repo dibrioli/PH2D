@@ -306,3 +306,27 @@ pub fn probe_param_prints(
     }
     prints.len()
 }
+
+/// ⭐⭐⭐ **O QUE ESTÁ MAL NA GRAMÁTICA** — a porta pela qual o painel deixa de mentir.
+///
+/// # Por que ela existe
+///
+/// Report registado desde 2026-08-29 e aberto até aqui: *o feedback ao vivo de uma regra
+/// malformada — hoje ela cai em silêncio*. A política de erro está certa e é deliberada (o que
+/// não se entende **descarta a regra**, senão um erro de digitação apagava a planta enquanto se
+/// escreve a segunda regra), mas descartar em silêncio faz o artista ler o resultado como *a
+/// gramática que ele escreveu*. ⚠️ **A mais cara é a condição:** ela é o travão da recursão, e
+/// `n <= 6` que não compila dá `16 384` módulos onde `n < 6` dá `32` — a planta muda de forma e
+/// nada diz porquê.
+///
+/// ⚠️ **A lista sai do MESMO percurso que descarta as regras** ([`grammar::parse_rules_reporting`]),
+/// nunca de um segundo leitor do texto: um contador escrito ao lado do parser é exactamente o
+/// defeito que o gate dos pesos deste nó já pagou — *dois leitores do mesmo texto, e quem decide
+/// é o que o artista não vê*.
+///
+/// ⚠️ **Vazio quer dizer «não há queixa»**, e não «não sei»: um axioma sem regras nenhumas é
+/// legítimo (desenha o axioma), então a ausência de regras não é um erro.
+#[must_use]
+pub fn grammar_complaints(rules: &str) -> Vec<grammar::Complaint> {
+    grammar::parse_rules_reporting(rules).1
+}

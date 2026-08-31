@@ -55,6 +55,11 @@ mod tests_range;
 #[path = "lib_scroll_tests.rs"]
 mod tests_scroll;
 
+/// A QUEIXA de uma row de texto chega a pixel — a metade que um gate de dados não alcança.
+#[cfg(test)]
+#[path = "lib_problem_tests.rs"]
+mod tests_problem;
+
 /// A afordância de **reverter ao default** — as quatro condições de UI dela.
 #[cfg(test)]
 #[path = "lib_reset_tests.rs"]

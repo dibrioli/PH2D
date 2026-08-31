@@ -244,15 +244,95 @@ pub(crate) fn parse_succ(s: &str) -> Vec<SuccModule> {
     out
 }
 
+/// **POR QUE uma regra foi descartada** — as cinco saídas do [`parse_one`], nomeadas.
+///
+/// ⚠️ **Um enum e não uma `String`**, porque quem escolhe as palavras é quem sabe para quem
+/// fala: o painel diz a CURA ao artista, e um gate compara a espécie. Uma frase pronta aqui
+/// obrigaria os dois a casar texto.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RuleProblem {
+    /// Não há `->` — sem seta não há regra, só texto.
+    NoArrow,
+    /// O predecessor (o que está à esquerda) não é um símbolo legível.
+    BadPredecessor,
+    /// A condição depois de `:` não compila. ⚠️ **É a mais cara de todas em silêncio:** ela é o
+    /// travão da recursão, e um `n <= 6` que não compila dá `16 384` módulos onde `n < 6` dá 32.
+    BadCondition,
+    /// O peso entre parênteses não é um número finito positivo.
+    BadWeight,
+    /// Abriu `(` para o peso e nunca fechou.
+    UnclosedWeight,
+}
+
+impl RuleProblem {
+    /// **O que o artista lê** — e diz a CURA, nunca só o sintoma.
+    ///
+    /// ⚠️ Em português e em linguagem de artista: o leitor desta frase é o dono do produto a
+    /// escrever uma gramática, não a próxima LLM (CLAUDE.md §0.8).
+    #[must_use]
+    pub const fn say(self) -> &'static str {
+        match self {
+            Self::NoArrow => "falta o `->` entre o símbolo e o que ele vira",
+            Self::BadPredecessor => "o símbolo antes do `->` não é uma letra sozinha",
+            Self::BadCondition => "a condição depois do `:` não faz sentido (ex.: use `n < 6`)",
+            Self::BadWeight => "o peso entre parênteses tem de ser um número maior que zero",
+            Self::UnclosedWeight => "abriu `(` para o peso e não fechou o `)`",
+        }
+    }
+}
+
+/// Uma regra que foi deitada fora, e porquê.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Complaint {
+    /// O texto da regra, como o artista o escreveu — é assim que ele a encontra.
+    pub rule: String,
+    pub problem: RuleProblem,
+}
+
 /// **Todas as regras de um text param** — separadas por `;`, malformadas descartadas.
 pub(crate) fn parse_rules(src: &str) -> Vec<Rule> {
+    parse_rules_reporting(src).0
+}
+
+/// ⭐⭐⭐ **AS REGRAS E AS QUEIXAS, do MESMO percurso** — o que faz o painel deixar de mentir.
+///
+/// # Por que é uma função e não duas
+///
+/// ⚠️⚠️ **Um contador de queixas escrito ao lado do parser seria um SEGUNDO leitor do mesmo
+/// texto**, e este repo já pagou esse defeito: o gate dos pesos lia-os com um
+/// `str::parse::<f32>()` próprio e ficava verde sobre uma soma que o motor nunca calculava.
+/// Aqui a queixa nasce **no mesmo `return Err`** que descarta a regra ⇒ ela não pode discordar
+/// do produto, nem hoje nem depois de alguém acrescentar uma sexta razão.
+///
+/// ⚠️ **Uma regra vazia não é uma queixa** — `A -> B ;` acaba em `;` e a última fatia é vazia,
+/// que é pontuação e não erro. Acusá-la poria um aviso permanente em toda gramática bem escrita,
+/// e um aviso que está sempre lá deixa de ser lido.
+pub(crate) fn parse_rules_reporting(src: &str) -> (Vec<Rule>, Vec<Complaint>) {
     let mut out = Vec::new();
+    let mut queixas = Vec::new();
     for raw in src.split(';') {
         if raw.trim().is_empty() {
             continue;
         }
+        match parse_one(raw) {
+            Ok(r) => out.push(r),
+            Err(problem) => queixas.push(Complaint {
+                rule: raw.trim().to_string(),
+                problem,
+            }),
+        }
+    }
+    (out, queixas)
+}
+
+/// UMA regra — `Ok` ou a razão exacta pela qual ela não conta.
+///
+/// ⚠️ **Cada `return Err` está onde estava um `continue`**, e a política não mudou: o que não se
+/// entende **descarta a regra**. O que mudou é que agora a razão sai daqui em vez de se perder.
+fn parse_one(raw: &str) -> Result<Rule, RuleProblem> {
+    {
         let Some(arrow) = find_arrow(raw) else {
-            continue;
+            return Err(RuleProblem::NoArrow);
         };
         let (head, tail) = (&raw[..arrow], &raw[arrow + 2..]);
 
@@ -270,7 +350,7 @@ pub(crate) fn parse_rules(src: &str) -> Vec<Rule> {
             None => (rest, None),
         };
         let Some(pred) = parse_pred(pred_src) else {
-            continue;
+            return Err(RuleProblem::BadPredecessor);
         };
         // ⚠️⚠️ **FALHA FECHADA, como o predecessor logo acima** — auditoria de 2026-08-29.
         //
@@ -294,7 +374,7 @@ pub(crate) fn parse_rules(src: &str) -> Vec<Rule> {
             None => None,
             Some(c) => match ph2d_expr_parse::parse(c) {
                 Ok(e) => Some(e),
-                Err(_) => continue,
+                Err(_) => return Err(RuleProblem::BadCondition),
             },
         };
 
@@ -319,23 +399,22 @@ pub(crate) fn parse_rules(src: &str) -> Vec<Rule> {
                     //
                     // O `%` é o **corte** e o `-`/`+` viram a tartaruga: o texto do peso vira
                     // desenho. ⇒ mesma política do predecessor e da condição.
-                    _ => continue,
+                    _ => return Err(RuleProblem::BadWeight),
                 },
-                None => continue,
+                None => return Err(RuleProblem::UnclosedWeight),
             },
             None => (1.0, t),
         };
         let succ = parse_succ(succ_src);
-        out.push(Rule {
+        Ok(Rule {
             left: left_src.and_then(parse_pred),
             pred,
             right: right_src.and_then(parse_pred),
             cond,
             weight,
             succ,
-        });
+        })
     }
-    out
 }
 
 #[cfg(test)]

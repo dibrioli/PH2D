@@ -177,6 +177,24 @@ pub struct TextRow {
     pub label: String,
     /// The current formula (the text-param override, else empty).
     pub value: String,
+    /// ⭐⭐ **O que está mal no que o artista escreveu** — uma linha por baixo do campo, ou
+    /// nada.
+    ///
+    /// # Por que ela é um campo desta row e não uma espécie nova
+    ///
+    /// A pergunta *"o que escrevi está mal?"* só existe onde há texto livre, e é exactamente
+    /// esta row que o tem. Uma `ParamRow::Note` genérica seria uma variante nova em **104
+    /// sítios** — incluindo o painel de outro módulo — para servir um caso que vive aqui.
+    ///
+    /// ⚠️ **`None` e vazio querem dizer a mesma coisa e só um é representável**: a row nasce
+    /// sem queixa, e quem a preenche é quem sabe ler aquele texto (a shell, que conhece o nó).
+    /// O painel não interpreta a string — ele pinta-a.
+    ///
+    /// ⚠️ **Um aviso que aparece sobre produto correcto ensina a ignorar avisos**, e depois
+    /// disso ele não existe. Quem escreve aqui tem de ter medido que a gramática certa não se
+    /// queixa (é o que o gate `a_grammar_that_is_right_never_complains` do nó faz, sobre os
+    /// oito moldes).
+    pub problem: Option<String>,
 }
 
 /// An angle row: a number box with a `deg` unit chip. **Degrees end to end** —

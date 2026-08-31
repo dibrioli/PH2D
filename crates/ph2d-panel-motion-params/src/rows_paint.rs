@@ -14,6 +14,7 @@ use super::{
 };
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::resolve;
+use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
 use ph2d_editor_core::widget::{
     Checkbox, CheckboxValue, ColorSwatch, DEFAULT_LABEL_W, SwatchSize, paint_checkbox,
@@ -141,6 +142,40 @@ fn paint_one_row(
                 text_system,
                 theme,
             );
+        }
+        // ⭐ A row de TEXTO é a única que pode estar ERRADA — ela é a única com texto livre.
+        // Pinta a mesma caixa das irmãs e, se houver queixa, mais UMA linha por baixo.
+        ParamRow::Text(text) if text.problem.is_some() => {
+            let used = number::paint_box_row(
+                row,
+                i,
+                inner_x,
+                inner_w,
+                y,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            )
+            .expect("o braço e a porta casam por construção");
+            y += used;
+            let msg = text.problem.as_deref().unwrap_or_default();
+            // ⚠️ **Alinhada com o CAMPO, não com a margem** — ela fala do que está na caixa, e
+            // uma linha à esquerda do rótulo leria-se como outra propriedade.
+            paint_text_elided(
+                text_system,
+                scene,
+                msg,
+                inner_x + DEFAULT_LABEL_W,
+                y + (ROW_H_PX - label_font) * 0.5,
+                label_font,
+                (inner_w - DEFAULT_LABEL_W).max(0.0),
+                resolve(ColorToken::Danger, theme),
+            );
+            // ⚠️ **Nada é registado no `HitIndex`**: um aviso não se clica. Registá-lo poria um
+            // alvo mudo por cima do campo, que é o defeito que a caça aos knobs mortos nomeia.
+            y += ROW_H_PX + row_gap;
         }
         ParamRow::Angle(_) | ParamRow::Seed(_) | ParamRow::Text(_) => {
             // As rows-CAIXA: uma altura de row, um `Rect` explícito.

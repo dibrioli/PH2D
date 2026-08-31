@@ -48,6 +48,10 @@ mod enumcap_tests;
 mod library_tests;
 /// O selector de MOLDES do `source.lsystem` — a resposta ao *"Axiom e Rules não são nada
 /// intuitivos"* (Enio, 2026-08-28).
+/// A costura da queixa: uma regra que o parser deita fora chega à row do painel.
+#[path = "motion_bridge_lsystem_complaint_tests.rs"]
+mod lsystem_complaint_tests;
+
 #[path = "motion_bridge_lsystem_preset_tests.rs"]
 mod lsystem_preset_tests;
 

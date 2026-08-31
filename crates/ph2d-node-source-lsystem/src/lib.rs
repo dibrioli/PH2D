@@ -81,6 +81,7 @@ mod turtle;
 /// **A FACE DO NÓ** — o que o painel mostra da lei (HR-18).
 mod ui;
 
+pub use grammar::{Complaint, RuleProblem};
 use growth::{growth_generations, measure_ratio};
 use params::Params;
 pub use presets::*;

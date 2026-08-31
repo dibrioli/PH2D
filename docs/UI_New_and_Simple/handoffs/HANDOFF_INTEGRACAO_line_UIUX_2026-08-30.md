@@ -1561,3 +1561,167 @@ de quem não tem nada a ver com painéis.
 - **Nenhum atalho de teclado** abre um layout. O Blender tem `Ctrl+PgUp/PgDn`; aqui não há.
 - **Quem fica à frente quando dois painéis abrem no mesmo quadro** continua a ser a ordem do
   registry (§20.7) — e agora ela decide qual aba de painel o artista vê ao trocar de layout.
+
+---
+
+## §22 — ⛔⛔⛔ «O GRAFO DE NODES PERSISTE» + as faixas encaixadas (entrega 27)
+
+> Enio, 2026-08-31, com três fotos (uma delas do Godot como referência):
+> *«gostei da idéia, muito boa! Temos alguns bugs: se abro Nodes e depois Model o grafo de Nodes
+> persiste. Procure outros problemas similares. Outra coisa: a timeline e o canvas dos Nodes devem
+> ser bem encaixados entre os painéis laterais como na godot (sem espaços).»*
+
+### §22.1 — A causa NÃO era o grafo: **quase todo painel deste app pertence à FERRAMENTA**
+
+O `layout_switch::apply` fecha tudo o que a lista de abertos não nomeia. Ele corre na **pintura**
+(fim do quadro). As pontes das ferramentas correm **antes** da pintura do quadro seguinte, e
+reescrevem a visibilidade dos painéis delas a partir de `tools.active()`:
+
+```text
+motion_bridge:  panel_visibility.insert("motion_params",  motion_active)     // TODO o quadro
+vector_bridge:  panel_visibility.insert("vector",         vector_active)
+painter_bridge: panel_visibility.insert("painter_layers", painter_is_active)
+flip_bridge:    panel_visibility.insert("flip",           flip_active)
+```
+
+⇒ **a lista «absoluta» não é a última palavra.** Enquanto o `LayoutSpec::tool` fosse
+`Option<&'static str>` com `None = «não mexe na ferramenta em mãos»`, um layout que não largasse a
+ferramenta trazia os painéis dela de volta **um quadro depois** de os fechar.
+
+⚠️ **Valia para DOIS dos seis**, e a segunda mordida estava na foto do próprio Enio antes de ele a
+notar: no *Animate* (`tool: None`, vindo do *Vector*) o dock direito mostrava as abas
+**`Inspector | Vector`** — a ponte do vetor a reabrir o painel dela num layout que a não pediu.
+
+| layout | `tool` era | consequência |
+|---|---|---|
+| `Modeling3d` | `None` | o grafo do Motion persistia por cima da peça — **o report** |
+| `Animation` | `None` | o painel do Vector (ou o do pintor) sobrevivia à troca |
+
+### §22.2 — ⭐⭐ A cura nº1: **o canvas tem um dono, e todo layout o nomeia**
+
+`LayoutSpec::tool: Option<&str>` → `LayoutSpec::canvas: CanvasOwner`:
+
+```rust
+pub enum CanvasOwner { Tool(&'static str), Model3d }
+```
+
+- ⚠️ **`Tool("move")` é o que este app tem em vez de «nenhuma».** O registry nunca fica sem
+  ferramenta activa (`activate_default` no arranque; o `set_active` exige um id), e **todo** gesto
+  de largar deste app — o `CancelActiveTool`, o pill do vetor, o do motion — já era escrito como
+  *«volta à de omissão»*. ⇒ o *Animate* pede o `move`, e não fica calado.
+  ⛔ *A linha `Some(x) → None` da tabela do `field3d_mode::took_the_canvas` descreve um estado que
+  nenhum gesto deste app produz.*
+- ⚠️ **`Model3d` não pede ferramenta nenhuma**, e isso é load-bearing — ver §22.3.
+
+### §22.3 — ⭐⭐⭐ A cura nº2: a lei do `field3d_mode` dizia-se **simétrica** e só uma metade soltava uma FERRAMENTA
+
+⛔⛔ **O defeito é do módulo 3D e é ANTERIOR às abas.** Abrir o MODEL pelo menu *Window* com o
+Motion em mãos tinha exactamente o mesmo resultado: nada largava a ferramenta, e a `motion_bridge`
+reabria o grafo a cada quadro. A aba nova só o tornou fácil de alcançar.
+
+A tabela do módulo ganha a **terceira linha**:
+
+| quem entra | quem cede |
+|---|---|
+| uma ferramenta é pegada, ou o barro aparece | o painel MODEL **fecha** |
+| o MODEL é aberto | o **barro** sai da tela |
+| o MODEL é aberto | a **ferramenta em mãos** volta à de omissão *(novo)* |
+
+⚠️⚠️ **E ela não pode ser escrita sem RE-BASELINE, senão a lei morde-se a si própria.** Largar a
+ferramenta *é* mudar o dono do canvas: o `note_owner` do quadro seguinte compararia a neutra com a
+modal guardada, leria *«outro tomou o canvas»* e **fecharia o painel que a largou**. O produto
+entraria em ciclo e a suíte ficaria verde.
+
+⇒ a decisão **e** o registo vivem numa função só, `field3d_mode::model_takes_the_canvas(now,
+neutral)` — que devolve `true` e escreve o dono novo no mesmo acto. Com o registo do lado do
+chamador, a mutação que o apagasse sobrevivia. **Provado**: apagar o `LAST.with` mata dois gates.
+
+⚠️ **Terceiro achado, de graça:** o `model_just_opened` vivia **dentro** de
+`#[cfg(feature = "sculpt3d")]` — uma build sem aquela feature nunca avançava a borda. Hoje é lido
+uma vez, fora do `cfg` (ele **consome** a transição: uma segunda chamada no mesmo quadro devolve
+`false`).
+
+### §22.4 — ⭐⭐ A cura nº3: **um layout só comanda o que nenhuma ponte possui**
+
+A lista de abertos encolheu, e a fronteira tem gate derivado da árvore
+(`shells/desktop/tests/a_layout_never_commands_a_panel_a_bridge_owns.rs`). A classificação é
+**mecânica**:
+
+| o que a ponte escreve | é… | porquê |
+|---|---|---|
+| `insert(<id>, <identificador>)` | **POSSE** | um facto sobre a ferramenta, recalculado a cada quadro |
+| `insert(<id>, true/false)` | **empurrão** | uma decisão tomada UMA vez, numa borda |
+| `insert(<id>, !x)` | **empurrão** | a tomada de conta do inspector, também de borda |
+
+*Um empurrão pode ser desfeito por quem quer que seja depois; uma posse não.* É por isso que o
+`timeline` (que a `motion_bridge` **abre** por cortesia e nunca fecha) continua a ser do layout, e
+o `motion_graph` não. Censo medido: **12 posses**, e o gate exige três nomes conhecidos lá dentro.
+
+⚠️ **O `inspector` sai da tabela por um motivo próprio: ele tem DOIS escritores com uma ordem
+fixa.** Seis pontes escrevem-no na borda de uma tomada, **depois** de o layout ter pintado. *Um
+campo com dois escritores e uma ordem fixa tem um dono só, e não é quem escreve primeiro.*
+
+| layout | `open` | `canvas` |
+|---|---|---|
+| Draw | `hierarchy` | `Tool("painter")` |
+| Vector | `hierarchy` | `Tool("vector")` |
+| Flip | `hierarchy` | `Tool("flip")` |
+| Model | `hierarchy`, `model3d` | `Model3d` |
+| Animate | `hierarchy`, `timeline` | `Tool("move")` |
+| Nodes | `hierarchy`, `timeline` | `Tool("motion")` |
+
+### §22.5 — ⛔⛔ E um gate **afirmava o defeito**
+
+`a_layout_that_declares_a_tool_asks_for_it_and_one_that_does_not_leaves_the_hand_alone` ficou
+**verde durante o report inteiro**: ele media a *decisão* (*«o Animate não declara ferramenta, logo
+não pede nenhuma»*) em vez da *consequência* (*«e por isso a tela dele fica com os painéis da
+tarefa anterior»*).
+
+> *Um gate escrito a partir da intenção do código pina o que o código faz, não o que ele deve.*
+
+Substituído por `every_layout_hands_the_canvas_over_and_none_inherits_it`, que varre os seis e
+confronta cada um com o `CanvasOwner` dele.
+
+### §22.6 — ⭐⭐ As faixas encaixam entre as colunas (o segundo pedido)
+
+**São DUAS regiões, e o defeito de cada uma era o oposto do da outra:**
+
+| região | o defeito | o que se via |
+|---|---|---|
+| `timeline` / `flip_strip` | 20 px a **MENOS** de cada lado | um buraco entre o painel e a faixa |
+| `motion_graph` + `center_viewport` | a janela **INTEIRA** em vez da área | a banda do grafo por cima do fundo das duas colunas |
+
+- **A faixa do fundo** era `left_col_right + EDGE_PAD`, e acabava `EDGE_PAD` antes da outra coluna.
+  ⚠️ **É um resíduo com data:** em 2026-08-30 o `EDGE_PAD` saiu do `area_x0` (as colunas ficaram
+  *flush*) e ficou aqui — e o doc do `reserve_bottom_strip`, escrito **nesse mesmo dia**, já
+  afirmava que o timeline nascia *«literalmente no `area_x0`»*, o que era falso por 20 px.
+  *Duas aritméticas para a mesma borda divergem no dia em que só uma é corrigida.*
+- **O split do centro** partia `viewport.x .. viewport.x + viewport.w`. ⇒ a banda do grafo nascia
+  **por baixo** das duas colunas e, como o painel dela é pintado depois, comia o terço de baixo da
+  Hierarquia e do dock da direita (~`2 × 300 × 430 px²` no alvo de referência). Hoje ela é a coluna
+  da **área** — D5, a mesma lei da `draw_area`: *regiões são IRMÃS numa fila.*
+
+⚠️ **Só o x/w mudou; o y/h ficou.** A fracção `t` continua a ser a da banda de chrome na vertical,
+que é o que o `CenterSplit::scene_viewport` (o renderizador da cena) lê — mexer nela poria o
+`set_viewport` e o painel a discordar, que é o *drift* que aquele doc conta.
+
+⚠️⚠️ **E as DUAS metades do split tiveram de encolher juntas.** O painel do grafo deteja a
+orientação por `rect.x > center.x` e mede o arrasto do divisor contra `center + rect`: narrar só a
+banda do grafo faria um split **horizontal** ler-se como **vertical**. *Duas metades de uma
+partição não podem sair de janelas diferentes.*
+
+### §22.7 — O que ficou aberto, nomeado
+
+- ⏳ **O modelo de posse é o que a D4 vai ter de mudar.** Hoje quase todo painel pertence a uma
+  ferramenta, e a D4 diz que *o artista escolhe qual painel vai onde* — enquanto a ponte reescrever
+  a visibilidade a cada quadro, o artista não pode fechar o painel do pintor com o pintor em mãos.
+  ⛔ Reescrever as 12 pontes é wave própria e mexe em módulos de outras linhas.
+- ⏳ **A tomada de conta do inspector é legado dos docks sem abas.** Ela existe porque, antes das
+  abas, dois painéis no dock direito sobrepunham-se; hoje eles tabulam. Retirá-la é decisão de
+  produto (e devolveria o `inspector` à tabela dos layouts).
+- ⏳ Sob split **vertical**, a cena é renderizada em `w·t` da **janela** e a banda do grafo mede
+  `t` da **área** — a cena visível fica ligeiramente mais estreita do que a fracção diz. É a mesma
+  família do *«a cena é full-bleed por baixo do chrome»* que o `draw_area` já nomeia, e fecha com a
+  docagem da cena (A2), não aqui.
+- ⏳ Continuam de fora as duas abas bloqueadas (**Código**: falta um editor de texto · **Runtime**:
+  o `shells/game`/R1, adiado pelo Enio).

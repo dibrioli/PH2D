@@ -463,7 +463,7 @@ fn the_remesh_keeps_the_rim_where_the_artist_put_it() {
          indistinguivel: viragem media {turn:.1}°"
     );
 
-    super::remesh_with(&mut mesh, ALPHA, true);
+    super::remesh_with(&mut mesh, ALPHA, true, false);
     let (loops1, len1) = border(&mesh);
     eprintln!("rebordo: {loops0} lacos / {len0:.4} ⇒ {loops1} lacos / {len1:.4}");
     assert_eq!(loops1, 1, "⛔ o remalhe partiu ou fechou o laco de bordo");
@@ -517,10 +517,143 @@ fn a_reprojeccao_que_respeita_a_normal_nasce_desligada() {
 /// de `4` para `62`, `6×` o relógio). ⚠️ *É a segunda vez que uma cura de fase zero mede assim
 /// — e é por isso que a decisão vive numa função com gate.*
 #[test]
-fn a_cerca_por_sitio_nasce_desligada() {
+fn a_cerca_por_sitio_nasce_ligada() {
     assert!(
-        !super::adaptive_on(),
-        "⛔ sem a env ela tem de estar DESLIGADA -- ligada, a peca do artista sai com 62 \
-         arestas de bordo e demora 167 s"
+        super::adaptive_on(),
+        "⛔ ela passou a nascer LIGADA em 2026-08-31 -- ver a tabela no doc de `adaptive_on`"
+    );
+}
+
+/// ⭐⭐⭐ **GATE — a grelha por sítio PRESERVA O ORÇAMENTO.**
+///
+/// ⛔⛔⛔ **É a lei que a wave de 31/08 comprou.** Até essa data o campo só afinava (o tecto
+/// era `1`), logo ele **acrescentava** trabalho: a malha de trabalho da peça do artista ia de
+/// `3 982` para `33 156` faces (`8,3×`), e era essa inflação — e não a graduação — que a
+/// jusante não digeria. *A adaptação move os quads; ela não os cria.*
+///
+/// A régua é a contagem que o campo prevê, `N = Σ_face área / h²`, com o `h` lido **pela
+/// própria grelha** (o `at()` leva o mínimo dos 27 vizinhos).
+#[test]
+fn a_grelha_por_sitio_preserva_o_orcamento() {
+    // Uma esfera com uma banda de curvatura muito maior que a mediana: sem contraste de
+    // curvatura a grelha e' constante e o gate nao mede nada.
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(48, 72, 1.0);
+    {
+        let pos = mesh.positions_mut();
+        for p in pos.iter_mut() {
+            // Uma crista fina em torno do equador.
+            let d = p[1].abs();
+            if d < 0.06 {
+                let k = 1.0 + 0.35 * (1.0 - d / 0.06);
+                p[0] *= k;
+                p[2] *= k;
+            }
+        }
+    }
+    mesh.rebuild();
+    let target = super::target_edge(&mesh, super::ALPHA);
+    let grid = super::SizingGrid::build(&mesh, target).expect("a fixtura tem curvatura");
+
+    // ⚠️ **O CONTROLE:** a grelha tem de VARIAR, senao o que este gate mede e' o campo
+    // uniforme e a renormalizacao seria trivialmente `1`.
+    let (mut lo, mut hi) = (f32::INFINITY, 0.0f32);
+    for f in mesh.faces() {
+        let v = f.verts();
+        let pos = mesh.positions();
+        let mid = [
+            (pos[v[0] as usize][0] + pos[v[1] as usize][0] + pos[v[2] as usize][0]) / 3.0,
+            (pos[v[0] as usize][1] + pos[v[1] as usize][1] + pos[v[2] as usize][1]) / 3.0,
+            (pos[v[0] as usize][2] + pos[v[1] as usize][2] + pos[v[2] as usize][2]) / 3.0,
+        ];
+        let h = grid.at(mid);
+        lo = lo.min(h);
+        hi = hi.max(h);
+    }
+    assert!(
+        hi / lo > 1.5,
+        "⛔ a fixtura nao produz contraste de tamanho ({lo:.5}..{hi:.5}) -- o gate nao mede nada"
+    );
+
+    // ⭐ A contagem prevista contra a que o alvo escalar pede.
+    let (mut pred, mut area) = (0.0f64, 0.0f64);
+    let pos = mesh.positions();
+    for f in mesh.faces() {
+        let v = f.verts();
+        let (a, b, c) = (pos[v[0] as usize], pos[v[1] as usize], pos[v[2] as usize]);
+        let u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+        let w = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+        let n = [
+            u[1] * w[2] - u[2] * w[1],
+            u[2] * w[0] - u[0] * w[2],
+            u[0] * w[1] - u[1] * w[0],
+        ];
+        let tri = f64::from((n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt()) * 0.5;
+        let mid = [
+            (a[0] + b[0] + c[0]) / 3.0,
+            (a[1] + b[1] + c[1]) / 3.0,
+            (a[2] + b[2] + c[2]) / 3.0,
+        ];
+        let h = f64::from(grid.at(mid).max(1.0e-9));
+        pred += tri / (h * h);
+        area += tri;
+    }
+    let want = area / f64::from(target).powi(2);
+    let razao = pred / want;
+    assert!(
+        (razao - 1.0).abs() < 0.05,
+        "⛔ a grelha nao preserva o orcamento: previstos {pred:.0} para {want:.0} pedidos \
+         (razao {razao:.3}) -- a renormalizacao caiu?"
+    );
+}
+
+/// ⭐⭐ **GATE — a grelha AFINA e ENGROSSA, e o «engrossa» vem da RENORMALIZAÇÃO.**
+///
+/// ⛔ A lei por vértice tem tecto `1` (*«nunca mais grossa que o alvo»*) — é o factor
+/// `√(N_previsto/N_pedido)`, que sai `> 1`, que empurra as regiões chapadas para cima do alvo.
+/// *Sem ele o campo só afina, e um campo que só afina não redistribui um orçamento: aumenta-o.*
+///
+/// ⚠️ **Este gate e o [`a_grelha_por_sitio_preserva_o_orcamento`] morrem da MESMA mutação**
+/// (apagar o `*= s`) e são mantidos os dois de propósito: um mede a **contagem**, o outro o
+/// **intervalo**, e uma renormalização errada pode acertar num e falhar no outro.
+///
+/// ⛔⛔ **Uma banda simétrica (`[alvo/√R, alvo·√R]`) foi construída e REVERTIDA** — a mutação
+/// que a apagava sobrevivia a este gate, e o A/B ponta a ponta deu-lhe a resposta pela régua
+/// por ponta (ver o doc de [`super::adaptive_on`]).
+#[test]
+fn a_banda_da_grelha_engrossa_onde_a_forma_e_chapada() {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(48, 72, 1.0);
+    {
+        let pos = mesh.positions_mut();
+        for p in pos.iter_mut() {
+            let d = p[1].abs();
+            if d < 0.06 {
+                let k = 1.0 + 0.35 * (1.0 - d / 0.06);
+                p[0] *= k;
+                p[2] *= k;
+            }
+        }
+    }
+    mesh.rebuild();
+    let target = super::target_edge(&mesh, super::ALPHA);
+    let grid = super::SizingGrid::build(&mesh, target).expect("a fixtura tem curvatura");
+    let mut mais_grosso = false;
+    let mut mais_fino = false;
+    for p in mesh.positions() {
+        let h = grid.at(*p);
+        if h > target * 1.05 {
+            mais_grosso = true;
+        }
+        if h < target * 0.95 {
+            mais_fino = true;
+        }
+    }
+    assert!(
+        mais_fino,
+        "⛔ a grelha tem de AFINAR onde a forma aperta -- e' a razao de ela existir"
+    );
+    assert!(
+        mais_grosso,
+        "⛔ e tem de ENGROSSAR onde a forma e' chapada, senao ela acrescenta trabalho em vez \
+         de o mover (o tecto `1` foi o que a fez inflar 8,3x)"
     );
 }

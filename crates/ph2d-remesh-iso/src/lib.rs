@@ -231,7 +231,25 @@ pub fn target_edge(mesh: &Mesh, alpha: f32) -> f32 {
 /// pentágono), e deixar a recusa chegar ao chamador seria transformar um detalhe
 /// de representação numa condição de erro do produto.
 pub fn remesh_isotropic(mesh: &mut Mesh, alpha: f32) -> Report {
-    remesh_with(mesh, alpha, border_law_on())
+    remesh_with(mesh, alpha, border_law_on(), false)
+}
+
+/// ⭐⭐⭐ **O MESMO PASSE, com a densidade a SEGUIR A FORMA** — ver [`sizing::SizingGrid`].
+///
+/// O orçamento de faces é o **mesmo** do [`remesh_isotropic`] (a grelha é renormalizada); o que
+/// muda é **onde** ele é gasto: fino onde a forma aperta, grosso onde ela é chapada. É isso que
+/// deixa uma agulha sobreviver ao passe de colapso.
+///
+/// ⛔⛔ **Porta SEPARADA e não uma env lida lá dentro, e a razão é medida (2026-08-31):** a 1.ª
+/// versão desta wave lia `PH2D_ISO_ADAPT` **dentro** do laço, logo ela alcançava **todos** os
+/// chamadores — e o gate `the_ear_does_not_ship_an_edge_across_the_piece`, que corre o motor
+/// **legado** (preenchimento por patch), reprovou. ⚠️ *O doc do [`remesh_with`] já escrevia a lei
+/// que essa versão violava:* «por argumento e não por variável de ambiente — uma bandeira global é
+/// uma corrida escrita à mão».
+///
+/// ⇒ **Quem grada é quem chama.** Hoje é a cadeia de extracção do botão, e mais ninguém.
+pub fn remesh_isotropic_graded(mesh: &mut Mesh, alpha: f32) -> Report {
+    remesh_with(mesh, alpha, border_law_on(), true)
 }
 
 /// O passe com a [`BORDER_LAW`] **explícita**.
@@ -239,7 +257,7 @@ pub fn remesh_isotropic(mesh: &mut Mesh, alpha: f32) -> Report {
 /// ⚠️ **Por argumento e não por variável de ambiente:** os testes desta crate correm em
 /// paralelo no mesmo processo, e uma env lida lá dentro faria um gate decidir o resultado do
 /// outro. *Uma bandeira global é uma corrida escrita à mão.*
-fn remesh_with(mesh: &mut Mesh, alpha: f32, rim_law: bool) -> Report {
+fn remesh_with(mesh: &mut Mesh, alpha: f32, rim_law: bool, graded: bool) -> Report {
     let verts_before = mesh.vert_count();
     mesh.triangulate();
 
@@ -273,9 +291,7 @@ fn remesh_with(mesh: &mut Mesh, alpha: f32, rim_law: bool) -> Report {
 
         // ⭐⭐⭐ **A CERCA POR SÍTIO entra nos DOIS passes** — ver [`SizingGrid`]. Ela é
         // reconstruída a cada ronda porque a malha muda, e é isso que a mantém honesta.
-        let grid = adaptive_on()
-            .then(|| SizingGrid::build(mesh, target))
-            .flatten();
+        let grid = graded.then(|| SizingGrid::build(mesh, target)).flatten();
         let split = grid
             .as_ref()
             .map(|g| move |p: [f32; 3]| g.at(p) * SPLIT_FACTOR);
@@ -426,7 +442,8 @@ mod sizing;
 pub use project::{project_facing, project_onto};
 
 use border::{border_lambda, border_law_on, border_polyline, project_onto_polyline};
-use sizing::{SizingGrid, adaptive_on, facing_on};
+pub use sizing::adaptive_on;
+use sizing::{SizingGrid, facing_on};
 
 fn relax_and_project(mesh: &mut Mesh, reference: &Mesh, target: f32, rim_law: bool) {
     let n = mesh.vert_count();

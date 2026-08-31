@@ -35,8 +35,36 @@ pub(crate) struct SizingGrid {
 
 impl SizingGrid {
     /// ⭐ O alvo local sai da **curvatura normalizada pela mediana** — a mesma lei livre de
-    /// escala que a `ph2d_quadflow::ScaleField` usa. ⚠️ **O tecto é `1`**: esta grelha nunca
-    /// grosseira, então não pode piorar nenhuma região que o laço já resolveu.
+    /// escala que a `ph2d_quadflow::ScaleField` usa.
+    ///
+    /// # ⭐⭐⭐ A CONTAGEM É RENORMALIZADA (2026-08-31)
+    ///
+    /// ⛔⛔⛔ **Até esta data o tecto era `1`** — *«esta grelha nunca engrossa, então não pode
+    /// piorar nenhuma região que o laço já resolveu»*. ⚠️ **Essa frase descrevia a intenção e
+    /// escondia o preço:** um campo que só afina **acrescenta** trabalho em vez de o mover, e
+    /// a malha de trabalho ia de `3 982` para **`33 156`** faces (`8,3×`). *É essa inflação —
+    /// e não a graduação — que a jusante não digere*, e é o que as TRÊS recusas desta fase
+    /// têm em comum (ver [`adaptive_on`], [`facing_on`] e o `PH2D_F1_TARGET` do shell).
+    ///
+    /// ⭐ A lei nova é a que a irmã um nível acima já tem e já é gateada
+    /// (`ph2d_quadflow::ScaleField` + a renormalização da `sizing_field` do shell): *a
+    /// adaptação **move** os quads; ela não os cria.*
+    ///
+    /// ⇒ o campo é escalado por `√(N_previsto / N_pedido)`, medido **pela própria grelha**
+    /// ([`Self::count_factor`]) e não pelo campo por vértice.
+    ///
+    /// ⚠️ **A consequência honesta:** o factor sai `> 1` (o campo só afina, logo ele prevê mais
+    /// faces que o alvo escalar), então a grelha passa a ser **mais grossa que o alvo** nas
+    /// regiões chapadas. *Esse é exactamente o invariante que a fazia inflar* — e o que se
+    /// compra com ele é a agulha, que é o que o dono fotografou.
+    ///
+    /// ⛔⛔ **E uma BANDA SIMÉTRICA foi construída, MEDIDA e REVERTIDA no mesmo dia.** A ideia
+    /// era `[alvo/√R, alvo·√R]` em vez do tecto `1`; a mutação que a apagava **sobreviveu aos
+    /// dois gates** (com a renormalização por cima, o tecto deixa de ser observável no
+    /// intervalo), e o A/B ponta a ponta deu-lhe a resposta: pela régua **por ponta**, o tecto
+    /// `1` é melhor nas duas peças do dono — `_base_sculpt` pior corte `−24,3 % → −8,4 %`,
+    /// `sculpt_antes` `2/6 → 1/6` cortadas. *Uma mutação que sobrevive pode ser código inerte;
+    /// aqui ela era código que fazia a coisa errada.*
     pub(crate) fn build(mesh: &Mesh, target: f32) -> Option<Self> {
         let curv = mesh.curvatures();
         if curv.is_empty() {
@@ -61,11 +89,70 @@ impl SizingGrid {
                 *slot = h;
             }
         }
-        Some(Self {
+        let mut grid = Self {
             cell,
             fallback: target,
             want,
-        })
+        };
+        let s = grid.count_factor(mesh, target);
+        if s.is_finite() && s > 0.0 && (s - 1.0).abs() > 1.0e-6 {
+            for h in grid.want.values_mut() {
+                *h *= s;
+            }
+            grid.fallback = target * s;
+        }
+        Some(grid)
+    }
+
+    /// ⭐⭐⭐ **O factor que repõe o ORÇAMENTO** — `√(N_previsto / N_pedido)`, com
+    /// `N = Σ_face área / h²`.
+    ///
+    /// ⛔⛔ **Ele mede a GRELHA, não o campo por vértice**, e a diferença não é cosmética: o
+    /// [`Self::at`] leva o **mínimo dos 27 vizinhos** (para não haver degrau no limiar de
+    /// colapso), logo a resposta da grelha é sistematicamente mais fina que o campo de que
+    /// ela nasceu. *Normalizar uma coisa e consultar outra deixaria a inflação de pé, mais
+    /// pequena.*
+    ///
+    /// ⚠️ **Uma passagem chega:** a escala é uniforme, e `at()` é um mínimo — logo
+    /// `at_escalado ≡ s · at`, exactamente.
+    fn count_factor(&self, mesh: &Mesh, target: f32) -> f32 {
+        let pos = mesh.positions();
+        let (mut pred, mut area) = (0.0f64, 0.0f64);
+        for f in mesh.faces() {
+            let v = f.verts();
+            for k in 1..v.len().saturating_sub(1) {
+                let (a, b, c) = (
+                    pos[v[0] as usize],
+                    pos[v[k] as usize],
+                    pos[v[k + 1] as usize],
+                );
+                let u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+                let w = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+                let n = [
+                    u[1].mul_add(w[2], -(u[2] * w[1])),
+                    u[2].mul_add(w[0], -(u[0] * w[2])),
+                    u[0].mul_add(w[1], -(u[1] * w[0])),
+                ];
+                let tri =
+                    f64::from(n[0].mul_add(n[0], n[1].mul_add(n[1], n[2] * n[2])).sqrt()) * 0.5;
+                let mid = [
+                    (a[0] + b[0] + c[0]) / 3.0,
+                    (a[1] + b[1] + c[1]) / 3.0,
+                    (a[2] + b[2] + c[2]) / 3.0,
+                ];
+                let h = f64::from(self.at(mid).max(1.0e-9));
+                pred += tri / (h * h);
+                area += tri;
+            }
+        }
+        let want = area / f64::from(target.max(1.0e-9)).powi(2);
+        if pred > 0.0 && want > 0.0 {
+            #[allow(clippy::cast_possible_truncation)]
+            let k = (pred / want).sqrt() as f32;
+            k
+        } else {
+            1.0
+        }
     }
 
     #[allow(clippy::cast_possible_truncation)]
@@ -98,43 +185,49 @@ impl SizingGrid {
     }
 }
 
-/// ⭐⭐⭐ **A CERCA POR SÍTIO está ligada?** — `PH2D_ISO_ADAPT=1` liga.
+/// ⭐⭐⭐ **A CERCA POR SÍTIO está ligada?** — LIGADA por omissão; `PH2D_ISO_ADAPT=0` desliga.
 ///
-/// # ⭐ Ela CURA a agulha, e a medição é dramática
+/// # ⛔⛔ A tabela de recusa que estava aqui descrevia um comportamento que JÁ NÃO EXISTE
 ///
-/// Alcance perdido pela fase zero, na fixtura de espinhos (sem → com):
+/// Até 2026-08-31 esta porta nascia **desligada**, com a medição *«cura a agulha e parte a
+/// cadeia»* (`χ` de `1` para `−7`, bordo de `4` para `62`, `6×` o relógio). ⚠️ **O que a
+/// partia era a INFLAÇÃO, não a graduação:** o campo só afinava (o tecto era `1`), logo ele
+/// **acrescentava** trabalho — a malha de trabalho ia de `3 982` para `33 156` faces.
+/// Com a banda simétrica e a renormalização da contagem ([`SizingGrid::build`]) o orçamento
+/// fica, e a avaria desaparece.
 ///
-/// | `σ` | sem | com |
-/// |---|---|---|
-/// | `0,30` | `+0,1 %` | `+0,3 %` |
-/// | `0,20` | `−0,9 %` | ⭐ `+0,8 %` |
-/// | `0,14` | `−1,6 %` | ⭐ `+0,8 %` |
-/// | `0,10` | `−5,8 %` | ⭐ **`−0,8 %`** |
-/// | `0,07` | `−12,9 %` | ⭐ **`−1,3 %`** |
-/// | `0,05` | ⛔ `−15,8 %` | ⭐⭐⭐ **`−0,8 %`** |
+/// # ⭐⭐⭐ A medição de 2026-08-31 — `Detail 0,85`, o botão de ponta a ponta
 ///
-/// ⭐ E a topologia da malha de trabalho fica **perfeita** (`χ = 2`, zero bordo, zero
-/// não-manifold, valência máxima `10`). *A agulha sobrevive.*
+/// A régua da amputação é o **suporte POR PONTA** (a distância que a superfície alcança na
+/// direcção de cada ápice). ⛔ *O ALCANCE é um extremo global e esconde uma ponta cortada
+/// atrás de outra que sobreviveu* — na `sculpt_antes` ele **piora** enquanto as pontas
+/// cortadas caem de `3` para `1`.
 ///
-/// # ⛔⛔⛔ E PARTE A CADEIA A JUSANTE — a mesma lei do [`facing_on`], um nível mais fundo
+/// | peça | pontas cortadas (desl. → lig.) | furos na saída | alcance |
+/// |---|---|---|---|
+/// | `espinhos:6 σ=0,30` | `0/6` → `0/6` | `0` → `0` | `+2,8 %` → `+1,8 %` |
+/// | ⭐ `espinhos:6 σ=0,14` | **`5/6` → `0/6`** | `0` → `0` | `+3,7 %` → `+0,3 %` |
+/// | ⭐⭐⭐ `espinhos:6 σ=0,07` | `6/6` pior `−20,5 %` → **`−7,6 %`** | ⛔ `4` → ⭐ **`0`** | `−15,5 %` → ⭐ **`−3,5 %`** |
+/// | ⭐⭐ `_base_sculpt` (a escultura do dono) | `3/4` pior `−41,2 %` → **`−8,4 %`** | `0` → `0` | ⭐⭐ `−41,8 %` → **`−11,1 %`** |
+/// | ⭐ `sculpt_antes` | **`3/6` → `1/6`** | ⭐ `4` → **`0`** | ⚠️ `−13,6 %` → `−16,8 %` |
 ///
-/// Medida de ponta a ponta **pelo botão**, na peça do artista, `Detail 0,85`:
+/// ⭐⭐⭐ **Cinco de cinco melhoram ou empatam nas pontas cortadas E nos furos**, e a agulha
+/// mais fina — que antes saía com `χ = 1` e `4` arestas de bordo — passa a fechar (`χ = 2`,
+/// zero bordo).
 ///
-/// | | alcance final | `χ` | bordo | não-manif. | dobras | relógio |
-/// |---|---|---|---|---|---|---|
-/// | ⭐ desligada (o que shipa) | `−12,4 %` | `1` | **`4`** | `0` | `76` | **`27,8 s`** |
-/// | ⛔ ligada | ⛔ `−17,3 %` | ⛔ `−7` | ⛔ **`62`** | ⛔ `2` | `101` | ⛔ **`167 s`** |
+/// ⭐ **O preço de contagem:** `+7 %` a `+15 %` de faces na malha de trabalho, contra os
+/// `7`–`8×` da versão anterior.
 ///
-/// ⚠️ **O mecanismo é o mesmo das duas vezes:** a malha de trabalho passa de `3 982` para
-/// `33 156` faces e deixa de ser **isotrópica**; o campo cruzado, o traçado e o mapa — que
-/// dependem de uma triangulação bem comportada — perdem-se nela, e o alcance FINAL até piora.
+/// ⚠️ **A única coluna que piora numa peça é o ALCANCE da `sculpt_antes`**, e a régua por
+/// ponta diz o contrário na mesma corrida (`3` cortadas → `1`): *um máximo global move-se com
+/// a pior ponta, e a pior ponta mudou de identidade.*
 ///
-/// ⭐⭐⭐ **A lei, agora confirmada DUAS vezes:** *uma fase medida sozinha pode melhorar e
-/// piorar o produto.* ⇒ a cadeia inteira tem de ser consciente do sizing, e isso é a wave do
-/// **factor de escala conforme** que a `sizing_field` do shell já nomeia — não uma cerca só
-/// no F1.
-pub(crate) fn adaptive_on() -> bool {
-    std::env::var("PH2D_ISO_ADAPT").as_deref() == Ok("1")
+/// ⇒ ⏳ **A forma FINAL desta cura não é um interruptor global:** a fase zero graduada devia
+/// ser mais uma **candidata** da corrida do botão, com o `worse` a decidir por peça — e para
+/// isso o `worse` precisa de uma chave de **amputação**, que ele não tem. Ver
+/// `docs/3D/quad-remesh/PLANO_a_graduacao_da_ponta.md` §22-§27.
+pub fn adaptive_on() -> bool {
+    std::env::var("PH2D_ISO_ADAPT").as_deref() != Ok("0")
 }
 
 /// ⭐ **Quantas vezes o alvo pode encolher onde a forma aperta.**

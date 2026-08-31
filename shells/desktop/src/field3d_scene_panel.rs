@@ -174,6 +174,12 @@ pub(crate) fn publish_snapshot(
         isolated: isolated_name(world, &all),
         node_count: all.len(),
         last_trace_ms: ms,
+        // ⭐ **A face do pulldown da área** — o rótulo NU da vista (`Front`, `User`), derivado da
+        // câmera. ⚠️ É a chave `viewport.*` e não a `panel.*`: a do painel traz o atalho entre
+        // parênteses (`Front (1)`), e um `(1)` dentro de um chip de 36 px é ruído — o atalho vive
+        // nas linhas do menu que ele abre.
+        view_label: with_smoke(|s| crate::field3d_views::label_key(&s.vp().cam))
+            .unwrap_or("viewport.model3d.view.user"),
     });
 }
 

@@ -206,7 +206,28 @@ pub fn paint_context_menu_overlay(
     };
     // ⚠️ A tabela mora no `menu_rows` desde que a paleta de comandos passou a oferecer os
     // mesmos verbos: uma segunda lista aqui divergiria da que a paleta lê.
-    let items: &[(NodeId, &str, Option<[u8; 4]>)] = super::menu_rows::menu_rows(req.kind);
+    //
+    // ⭐⭐⭐ **A ÚNICA excepção são as rows da ÁREA**, e ela é de natureza: quem as tem é o módulo
+    // que está com o canvas, e ele publica-as no store uma vez por quadro
+    // (`WidgetStore::area_entries`). Uma tabela estática teria de conhecer os ids de todo módulo do
+    // app — o acoplamento que a **D2** existe para não ter.
+    //
+    // ⚠️ O `Vec` vive nesta função de propósito: o empréstimo é do `store`, que sobrevive a ela, e
+    // o laço de rows a seguir é o MESMO. *A row continua a ser `(id, rótulo, swatch)`.*
+    let area_rows: Vec<(NodeId, &str, Option<[u8; 4]>)>;
+    let items: &[(NodeId, &str, Option<[u8; 4]>)] =
+        if matches!(req.kind, ContextMenuKind::AreaCommands) {
+            // ⚠️ `filter_map` e não `map`: o `Divider` não tem id nem rótulo, e uma linha de menu
+            // sem verbo seria um alvo que consome o clique e não faz nada.
+            area_rows = store
+                .area_entries()
+                .iter()
+                .filter_map(|e| Some((e.node_id()?, e.label()?, None)))
+                .collect();
+            &area_rows
+        } else {
+            super::menu_rows::menu_rows(req.kind)
+        };
 
     if matches!(req.kind, ContextMenuKind::SceneList) {
         paint_scene_list(req, scene, text_system, theme, hit_index, store, viewport);

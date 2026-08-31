@@ -2081,3 +2081,113 @@ A altura da faixa dependia da largura da área ⇒ o `frame_layout` resolvia o l
 **segunda passagem morreu** — e com ela a `tool_bar_lines`, que só sobrevivia nos próprios testes.
 
 *A cura de um defeito de espaço apagou uma circularidade que ninguém tinha ido lá buscar.*
+
+---
+
+## §28 — ⭐⭐⭐ O PAINEL DEIXA DE SER O DEPÓSITO: o pulldown da ÁREA (entrega 33)
+
+> Enio, 2026-08-31, depois de smokar o `⋯`: *«Smoke OK. Qual a próxima?»*
+
+O degrau **`G`** do plano (`spec/02 §3`), que a restrição de ecrã pôs em primeira prioridade: *«o
+painel deixa de ser o depósito por omissão»*. A medição da **D2** é dura — o painel `3D Model` tem
+**74 entradas** e só **8** são propriedades do objecto; as outras **66 têm outro dono** — e o
+sintoma não é uma opinião: aquele painel precisou de **barra de rolagem** (report do Enio,
+2026-08-27), porque não cabia.
+
+### §28.1 — A metade 2 da D2 volta, e sem faixa nova
+
+O *cabeçalho por área* foi construído na entrega 30 e **revertido na 31** (`28 px` permanentes,
+`−1,5` ponto de área de desenho). O âmbito ficou de pé; o que faltava era um sítio.
+
+⇒ **a FILA é o cabeçalho da área.** Ela já é uma região da área (não da janela), já subtrai a altura
+que subtrai, e desde a entrega 32 já sabe transbordar. O módulo que tem o canvas publica os comandos
+dele e a fila ganha **um chip** no fim, depois de um divisor.
+
+| peça | onde |
+|---|---|
+| o campo `area_entries` + `area_face` | `interaction::state` (`set_area_commands`, lido em todo quadro) |
+| o chip na fila | `hero::tool_bar::bar_rail` (`ids::AREA_COMMANDS`) |
+| o menu | `ContextMenuKind::AreaCommands` — rows **dinâmicas**, montadas no `context_menu_overlay` |
+| o interruptor | `chrome::tool_bar_overflow` (tabela `BAR_MENUS`, agora com **dois** chips) |
+| quem publica | `ph2d_panel_model3d::publish_area_bar`, chamado pelo `render_loop` em todo quadro |
+
+⚠️ **Rows dinâmicas são a ÚNICA excepção do `menu_rows`**, e é de natureza: uma tabela estática ali
+teria de conhecer os ids de todo módulo do app — o acoplamento que a D2 existe para não ter.
+
+### §28.2 — ⛔⛔ UM chip e não nove, e o número é MEDIDO
+
+A tentação era pôr as nove entradas cruas na fila. **Mutação 6**: com elas a fila precisa de
+**2 linhas até no iPad 12,9\"** — o maior dos três alvos — e ainda transborda `2` chips para o `⋯`.
+
+> *Poupar altura gastando largura não poupa nada.*
+
+⇒ um **pulldown**, cuja face é a **leitura** da vista actual (`Front`, `User`, …) — que é uma coisa
+que o painel nunca chegou a dar: as seis fileiras dele acendiam o chip certo, mas só com o painel
+aberto.
+
+### §28.3 — Os ids são os MESMOS, e é isso que faz o clique chegar
+
+`HeroScreen::apply_event` entrega todo evento a **todo** painel do registry e o braço decide por
+**id**, nunca por posição. ⇒ um chip pintado na fila despacha para o mesmo `ModelIntent::SetView` de
+sempre, **sem uma segunda porta**. O `event.rs` do painel não mudou uma linha; o `populate` continua
+a registar as duas famílias (é o registo que as mantém vivas sob o dedo), e só o `paint` deixou de
+as desenhar.
+
+### §28.4 — ⛔⛔⛔ DUAS redacções erradas sobre quem fecha o menu, e a mutação é que o disse
+
+A 1.ª versão desta wave escreveu, com confiança, que *«o painel consome o clique antes do chrome,
+logo o menu nunca fecharia»* — e pôs uma cura no `pre_dispatch`. **Mutação 2: apagar essa cura
+deixou todos os gates verdes.**
+
+A 2.ª versão concluiu então que o interruptor do `apply` é que fechava. **Mutação 3: apagar o
+interruptor também deixou tudo verde.**
+
+⭐ **O que de facto fecha, sob o dedo, é uma regra genérica do store, um nível abaixo:**
+`dispatch::pointer_down` fecha todo menu aberto num **Down** primário que não *pertença* a ele
+(`click_belongs_to_the_open_menu`). Medido: depois do Down no chip o menu **já está fechado**, e o
+Up seguinte não levanta `Click` nenhum. E **não há fonte de `Click` sem um Down antes** — o
+`focus.rs` é o caminho do Up do ponteiro, e nenhuma tecla emite `Click`.
+
+⇒ a cura do `pre_dispatch` foi **retirada** (era a terceira cópia de uma lei que já existe), e a do
+`apply` **fica** — mas por outro motivo, e agora com gate:
+
+⚠️ **a paleta de comandos global (`global_palette`) chama `apply_event(Click(id))` sem ponteiro
+nenhum**, e ela projecta a lista que a fila pinta. Por esse caminho o fecho genérico nunca corre, e
+sem o interruptor escolher o chip **re-abriria** um menu já aberto. Gate:
+`the_palette_path_toggles_the_menu_because_it_has_no_pointer_down` (mutação 4 mata-o).
+
+> ⭐⭐ *Uma metade que «obviamente» faz alguma coisa pode ser inerte porque a lei já vive num nível
+> abaixo — e a única forma de saber é apagá-la.* Nesta wave isso aconteceu **três vezes seguidas**,
+> e a terceira revelou o consumidor real (a paleta), que nenhuma das duas primeiras tinha visto.
+
+### §28.5 — Gates (4 novos) e as 6 mutações
+
+`crates/ph2d-panel-registry-init/tests/the_area_hands_its_view_commands_to_the_bar.rs`
+
+| gate | o que prende |
+|---|---|
+| `the_area_pulldown_opens_serves_a_view_and_closes` | Down/Up REAIS: o chip abre · a vista pede `SetView` · o menu fecha; e **antes de abrir os ids não estão em lado nenhum** (prova que saíram do painel em vez de ganharem um 2.º sítio) |
+| `closing_the_module_takes_the_pulldown_off_the_bar` | publicado em todo quadro, vazio incluído |
+| `the_area_costs_one_chip_and_the_bar_is_still_one_line` | **1** chip nos três tablets, e a fila numa linha |
+| `the_palette_path_toggles_the_menu_because_it_has_no_pointer_down` | o caminho sintético, que é o único em que o interruptor é load-bearing |
+
+| # | mutação | resultado |
+|---|---|---|
+| 1 | `AREA_COMMANDS` sai do `left_rail::populate` | ✗ *(nasce morto sob o dedo)* |
+| 2 | o fecho sai do `pre_dispatch` | **SOBREVIVEU** ⇒ a cura era inerte, e foi retirada |
+| 3 | o interruptor sai do `apply` | **SOBREVIVEU** ao gate de gesto ⇒ levou ao gate da paleta |
+| 4 | idem, com o gate da paleta | ✗ |
+| 5 | desarmar deixa de limpar | ✗ |
+| 6 | os nove chips crus voltam à fila | ✗ *(2 linhas até no 12,9")* |
+
+### §28.6 — O que fica ABERTO no degrau `G`
+
+O painel `3D Model` perdeu **9** das 74. Faltam, com o dono já escrito na D2:
+
+- `export.*` (3) → **menu Arquivo** (barra global — é do app, não do editor);
+- `add.*` (20) → o pulldown da área (⚠️ hoje é **um** chip que abre a paleta de formas — conferir se
+  já não está resolvido antes de o mover);
+- `kind`/`act`/`verb`/`op`/`mode` (17) → o pulldown da área, **como pulldowns separados** ou secções
+  de um só — ⚠️ isto é a pergunta de desenho que a próxima wave tem de responder ANTES de mover:
+  um único pulldown com 40 linhas é um depósito com outro nome.
+- ⏳ e os **outros painéis** ainda não foram censados — o número «66 de 74» é do `3D Model` só.

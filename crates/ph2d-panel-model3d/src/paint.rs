@@ -174,14 +174,17 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // que a tese do módulo mais aparece (ver `ph2d_field::mods`).
     y = paint_chips(ctx, &snapshot.mods, ids::model3d_mod_button, x, w, y);
     y = paint_chips(ctx, &snapshot.acts, ids::model3d_act_button, x, w, y);
-    // ⭐⭐ **A CÂMERA passa a ser alcançável** (W47) — as seis vistas nomeadas, a lente e o
-    // enquadrar. ⚠️ Até aqui os três gestos existiam **só como teclas** (`Numpad1/3/7`, `Numpad5`,
-    // `Home`), isto é, para quem já sabia que existem — e as vistas nem sequer existiam.
+    // ⛔⛔ **A CÂMERA SAIU DAQUI em 2026-08-31** — as seis vistas nomeadas e os três gestos de
+    // câmera pintam-se agora na **fila de ferramentas** (`crate::area_bar`), que é a região da
+    // área e onde a altura já se paga.
     //
-    // ⚠️ Elas ficam **depois** das ações e antes da exportação de propósito: são sobre *olhar*, e o
-    // que está acima é sobre *fazer*. O último bloco continua a ser a porta de saída.
-    y = paint_chips(ctx, &snapshot.views, ids::model3d_view_button, x, w, y);
-    y = paint_chips(ctx, &snapshot.camera, ids::model3d_camera_button, x, w, y);
+    // ⚠️ **Elas nunca foram propriedades de nada**: são sobre *olhar*, e este painel é o inspector
+    // do objecto escolhido. Eram 9 das 74 entradas que fizeram este painel precisar de barra de
+    // rolagem — a **D2** ao pé da letra (*o painel deixa de ser o depósito por omissão*).
+    //
+    // ⚠️ **O `populate` continua a registá-las**, e tem de continuar: o registo é o que as mantém
+    // vivas sob o dedo, e quem as pinta agora é a fila. O braço do `event.rs` não mudou uma linha —
+    // ele decide por **id**, e o id é o mesmo.
     // ⭐ **A porta de SAÍDA**, no fim: é o último gesto de uma peça, e é a primeira vez que o módulo
     // troca resolução infinita por um número de triângulos (ver `crate::field3d_export` no shell).
     y = paint_chips(ctx, &snapshot.exports, ids::model3d_export_button, x, w, y);

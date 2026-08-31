@@ -127,4 +127,32 @@ impl WidgetStore {
     pub fn tool_overflow(&self) -> &[crate::widget::ToolRailEntry] {
         &self.tool_overflow
     }
+
+    /// ⭐⭐⭐ **Publica os comandos da ÁREA que tem o canvas** — ver os dois campos.
+    ///
+    /// `face` é o que o pulldown MOSTRA (a leitura); `entries` é o que ele ABRE.
+    ///
+    /// ⚠️ **Chamado em todo quadro, vazio incluído.** Escrever só quando há módulo armado deixaria
+    /// o chip do 3D na fila depois de o módulo fechar — pintado, e a despachar para um painel que
+    /// já não existe.
+    pub fn set_area_commands(
+        &mut self,
+        face: impl Into<String>,
+        entries: Vec<crate::widget::ToolRailEntry>,
+    ) {
+        self.area_face = face.into();
+        self.area_entries = entries;
+    }
+
+    /// Os comandos que a área contribui neste quadro — o corpo do pulldown.
+    #[must_use]
+    pub fn area_entries(&self) -> &[crate::widget::ToolRailEntry] {
+        &self.area_entries
+    }
+
+    /// A face do pulldown da área — vazia quando não há módulo a contribuir.
+    #[must_use]
+    pub fn area_face(&self) -> &str {
+        &self.area_face
+    }
 }

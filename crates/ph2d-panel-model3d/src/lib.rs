@@ -25,12 +25,14 @@
 
 pub mod state;
 
+mod area_bar;
 mod event;
 mod paint;
 /// As três formas de uma linha do painel — ver [`paint_rows`].
 mod paint_rows;
 mod populate;
 
+pub use area_bar::publish as publish_area_bar;
 pub use populate::{CHIP_FAMILY_COUNT, MAX_MODES, MAX_ROWS};
 
 /// O identificador do painel — a **chave de visibilidade** que o shell usa para o abrir.

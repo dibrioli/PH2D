@@ -7881,6 +7881,16 @@ impl crate::App {
             crate::field3d_smoke::set_armed_by_panel(
                 hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID),
             );
+            // ⭐⭐⭐ **A FILA É O CABEÇALHO DA ÁREA** — as vistas e a câmera saíram do painel e
+            // pintam-se na fila de ferramentas, que já é uma região da área e já subtrai a altura
+            // que subtrai (`ph2d_panel_model3d::area_bar`).
+            //
+            // ⚠️ **Escrito em TODO quadro, desarmado incluído** — é a mesma lei do transbordo do
+            // `⋯`: quem fecha o módulo deixa de contribuir e a fila volta ao que era **no mesmo
+            // quadro**. Sem o ramo vazio, nove chips ficavam na fila a despachar para um painel
+            // que já não está lá.
+            let model_armed = hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID);
+            ph2d_panel_model3d::publish_area_bar(&mut hero.store, model_armed);
             // ⭐ A seleção do app é a do gizmo 3D: clicar numa linha da Hierarquia é o que faz as
             // setas aparecerem no objeto. Uma seleção própria deste módulo seria uma segunda ideia
             // de "o que está selecionado" no mesmo app.

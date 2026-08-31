@@ -86,6 +86,22 @@ para dar casa a dois interruptores.
 que foi recusado é a **faixa própria**. ⇒ se a metade 2 voltar, ela tem de caber **onde já se paga
 altura** (a fila de ferramentas, ou um popover à direita dela), nunca numa banda nova.
 
+### ✅ E ela VOLTOU assim (2026-08-31, entrega 33) — um **pulldown** no fim da fila
+
+O módulo que tem o canvas publica os comandos dele, e a fila mostra-os **num chip só** cuja face é a
+**leitura** do estado (`Front`, `User`, …). Custo de altura: **zero** — a faixa já existia e continua
+a ser uma linha.
+
+⛔⛔ **UM chip, e o número é MEDIDO, não estimado:** com os nove comandos crus na fila ela precisa de
+**2 linhas até no iPad 12,9"**, o maior dos três alvos, e ainda transborda `2` chips para o `⋯`
+(mutação 6 do gate `the_area_costs_one_chip_and_the_bar_is_still_one_line`).
+*Poupar altura gastando largura não poupa nada.*
+
+**Primeiro inquilino — o painel `3D Model` perde as 9 primeiras das 74 entradas:** as seis vistas
+nomeadas e os três gestos de câmera. Elas nunca foram propriedades do objecto — são sobre *olhar*.
+⚠️ **Os ids são os MESMOS**, então o clique continua a chegar ao mesmo braço do painel: *um comando
+com dois ids tem dois sítios a apodrecer em separado.*
+
 ⭐ E o preço deixou de ser uma nota: ele é um **gate** com a área medida nos três tablets —
 [`medicoes/06`](medicoes/06_o_orcamento_de_ecra_em_tablet.md).
 

@@ -53,6 +53,8 @@ fn scene_with_one_union() {
         isolated: None,
         node_count: 4,
         last_trace_ms: 9.0,
+        // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
+        view_label: "",
     });
 }
 
@@ -235,6 +237,8 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
         isolated: None,
         node_count: 4,
         last_trace_ms: 0.0,
+        // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
+        view_label: "",
     });
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -321,6 +325,8 @@ fn clicking_a_verb_reaches_the_gizmo_intent() {
         isolated: None,
         node_count: 0,
         last_trace_ms: 0.0,
+        // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
+        view_label: "",
     });
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -366,6 +372,8 @@ fn a_verb_slot_with_no_verb_behind_it_does_nothing() {
         isolated: None,
         node_count: 0,
         last_trace_ms: 0.0,
+        // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
+        view_label: "",
     });
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -422,6 +430,8 @@ fn the_axis_selector_is_its_own_family() {
         isolated: None,
         node_count: 0,
         last_trace_ms: 0.0,
+        // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
+        view_label: "",
     });
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -486,6 +496,8 @@ fn the_selectors_never_answer_for_each_other() {
         isolated: None,
         node_count: 0,
         last_trace_ms: 0.0,
+        // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
+        view_label: "",
     });
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -577,6 +589,8 @@ fn scene_with_one_position_row() {
         isolated: None,
         node_count: 1,
         last_trace_ms: 0.0,
+        // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
+        view_label: "",
     });
 }
 
@@ -910,6 +924,8 @@ fn every_painted_button_answers_a_real_click() {
         isolated: None,
         node_count: 1,
         last_trace_ms: 0.0,
+        // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
+        view_label: "",
     });
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -984,6 +1000,8 @@ fn a_click_on_a_camera_chip_dispatches_that_exact_slot() {
         isolated: None,
         node_count: 1,
         last_trace_ms: 0.0,
+        // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
+        view_label: "",
     });
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     let mut panel_state = Model3dPanelState;
@@ -1064,6 +1082,8 @@ fn a_click_on_a_verb_chip_dispatches_that_slot_and_never_the_group_op() {
         isolated: None,
         node_count: 1,
         last_trace_ms: 0.0,
+        // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
+        view_label: "",
     });
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     let mut panel_state = Model3dPanelState;
@@ -1140,6 +1160,8 @@ fn a_click_on_a_character_chip_dispatches_that_slot_and_never_the_verb() {
         isolated: None,
         node_count: 1,
         last_trace_ms: 0.0,
+        // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
+        view_label: "",
     });
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     let mut panel_state = Model3dPanelState;

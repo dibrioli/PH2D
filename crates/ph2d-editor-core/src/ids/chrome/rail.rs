@@ -17,6 +17,19 @@ pub const TOOL_HOME: NodeId = hash_node_id("tool_home");
 /// desenho, justamente quando o ecrã faz falta
 /// (`docs/UI_New_and_Simple/medicoes/06_o_orcamento_de_ecra_em_tablet.md`).
 pub const TOOL_BAR_OVERFLOW: NodeId = hash_node_id("tool_bar_overflow");
+/// ⭐⭐⭐ **O PULLDOWN DA ÁREA** — os comandos do editor que tem o canvas, num chip só.
+///
+/// É a metade 2 da **D2** (*cabeçalho por área*) a aterrar **onde já se paga altura**: a faixa
+/// própria foi construída e revertida em 2026-08-31 (`28 px`, `−1,5` ponto de área de desenho).
+///
+/// ⛔⛔ **E é UM chip, não nove — o número é MEDIDO.** Com as nove entradas cruas na fila (as seis
+/// vistas nomeadas e os três gestos de câmera do módulo 3D) ela precisa de **2 linhas até no iPad
+/// 12,9"**, o maior dos três alvos, e ainda transborda `2` chips para o `⋯`
+/// (`the_area_costs_one_chip_and_the_bar_is_still_one_line`, mutação 6).
+/// *Poupar altura gastando largura não poupa nada.*
+///
+/// ⚠️ A face dele é uma **leitura** (qual é a vista agora), não um rótulo fixo.
+pub const AREA_COMMANDS: NodeId = hash_node_id("area_commands");
 
 pub const TOOL_UNDO: NodeId = hash_node_id("tool_undo");
 pub const TOOL_REDO: NodeId = hash_node_id("tool_redo");

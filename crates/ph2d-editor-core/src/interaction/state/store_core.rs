@@ -95,6 +95,8 @@ impl WidgetStore {
             dock_w_left: None,
             dock_w_right: None,
             tool_overflow: Vec::new(),
+            area_entries: Vec::new(),
+            area_face: String::new(),
             dock_h_bottom: None,
             present_vsync: true,
             hierarchy_order: Vec::new(),

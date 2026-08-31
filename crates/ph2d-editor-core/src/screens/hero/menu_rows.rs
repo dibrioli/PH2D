@@ -262,6 +262,11 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
         // ⭐ **Desenha o próprio corpo** (ver o doc desta função): os chips que não couberam na
         // fila, com os MESMOS ids — ver `context_menu_overlay::paint_tool_bar_overflow`.
         ContextMenuKind::ToolBarOverflow => &[],
+        // ⭐⭐⭐ **As rows são DINÂMICAS** — quem as publica é o módulo que tem o canvas
+        // (`WidgetStore::area_entries`), e o pintor monta-as ali. ⛔ Uma tabela estática aqui teria
+        // de conhecer os ids de TODO módulo do app, que é o acoplamento que a **D2** existe para
+        // não ter.
+        ContextMenuKind::AreaCommands => &[],
         // The palette-rename modal paints a TextInput + Rename button in its own branch below.
         ContextMenuKind::RenamePaletteDialog => &[],
         // The New-image modal paints its size/bg radios + Create in its own branch below.

@@ -127,6 +127,8 @@ pub fn populate(store: &mut WidgetStore) {
         // arma o `active` e o Up nunca emite `Click`. Foi exactamente isso que o gate de gesto
         // apanhou quando ele chegou (`the_dots_open_the_rest_and_a_pick_closes_them`).
         ids::TOOL_BAR_OVERFLOW,
+        // ⭐ **O pulldown da ÁREA** — pelo mesmo motivo, e o gate de gesto é o mesmo.
+        ids::AREA_COMMANDS,
     ] {
         store.register(
             id,

@@ -204,8 +204,8 @@ Medido nos três tablets ([`medicoes/06`](../medicoes/06_o_orcamento_de_ecra_em_
 
 | degrau | estado |
 |---|---|
-| **`F` — cabeçalho por área** | ⛔ **a FAIXA foi recusada** (construída na entrega 30, revertida na 31): `28 px` permanentes por dois interruptores. O **âmbito** da D2 fica; o inquilino tem de caber onde já se paga altura |
-| **`G` — esvaziar os painéis** | ⭐⭐ **sobe para primeira prioridade.** É o único degrau que DEVOLVE ecrã, e a medição confirma: recolher as duas colunas dá `89–92 %` |
+| **`F` — cabeçalho por área** | ✅ **RESOLVIDO na entrega 33, sem faixa nova**: o inquilino é um **pulldown** no fim da fila de ferramentas, cuja face é a leitura do estado. A faixa (entrega 30, revertida na 31) custava `28 px` permanentes; esta custa `0`. ⛔ **UM** chip e não nove — com os nove crus a fila vai a **2 linhas até no iPad 12,9"** (medido por mutação) |
+| **`G` — esvaziar os painéis** | ⭐⭐ **primeira prioridade, e COMEÇOU** (entrega 33): o painel `3D Model` perdeu **9 das 74** entradas (as vistas e a câmera) para o pulldown da área. Faltam as outras — `export.*` para o menu *Arquivo*, `add.*`/`kind`/`act`/`verb`/`op`/`mode` para o pulldown. Recolher as duas colunas dá `89–92 %` |
 | ⏳ **um gesto de RECOLHER** | **não existe** — hoje são dois itens de menu, um por coluna. É a melhor razão custo/benefício que a medição achou, e é decisão de produto |
 | ⛔ **a fila de ferramentas** | ela **DOBRA** (`54 → 108 px`) no iPad 11 e no mini com o pincel em mãos. A restrição escolhe entre as duas curas que o handoff listava: **a faixa não cresce; o excesso vai para um transbordo** |
 

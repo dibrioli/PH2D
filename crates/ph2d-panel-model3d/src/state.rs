@@ -231,6 +231,16 @@ pub struct ModelSnapshot {
     /// ⭐ É o número que responde *"isto ainda é interativo?"*, e é por isso que ele fica **no
     /// painel** e não só no terminal: quem mexe num raio é quem paga o traçado seguinte.
     pub last_trace_ms: f32,
+    /// ⭐⭐ **A CHAVE i18n do rótulo da vista actual** (`Front`, `User`, …) — a face do pulldown da
+    /// área (ver [`crate::area_bar`]).
+    ///
+    /// ⚠️ **É uma LEITURA, e é derivada da CÂMERA**, nunca do último botão apertado: orbitar a
+    /// vista de cima faz dela *User*, que é o que ela passou a ser. Quem a resolve é o shell
+    /// (`field3d_views::label_key`), porque só ele tem a câmera.
+    ///
+    /// ⚠️ Vazia por omissão — um retrato que ninguém publicou não tem vista para nomear, e o
+    /// `area_bar` cai num rótulo genérico em vez de pedir `tr("")`.
+    pub view_label: &'static str,
 }
 
 /// Uma edição que o painel pede e o shell executa.

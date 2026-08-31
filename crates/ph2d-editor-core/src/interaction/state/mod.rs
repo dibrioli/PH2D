@@ -475,6 +475,29 @@ pub struct WidgetStore {
     ///
     /// ⚠️ Escrito **em todo quadro**, vazio incluído: um mapa que o tique apaga não envelhece.
     pub(super) tool_overflow: Vec<crate::widget::ToolRailEntry>,
+    /// ⭐⭐⭐ **O QUE A ÁREA CONTRIBUI PARA A FILA** — os comandos do editor que tem o canvas,
+    /// atrás dos das ferramentas e antes do `⋯`.
+    ///
+    /// É a metade 2 da **D2** (*cabeçalho por área*) a aterrar **onde já se paga altura**: a faixa
+    /// própria foi construída e recusada em 2026-08-31 (`−1,5` ponto de área de desenho no alvo),
+    /// e a fila já existe, já é uma região da área, e já sabe transbordar.
+    ///
+    /// ⚠️ **Publicado pela SHELL em todo quadro, vazio incluído** — mesma lei do
+    /// [`Self::tool_overflow`]: um mapa que o tique apaga não envelhece. Quem fecha o módulo deixa
+    /// de o escrever e a fila volta ao que era **no mesmo quadro**.
+    ///
+    /// ⛔ Os ids são os do PAINEL dono (ex.: `ids::model3d_view_button(n)`), e é isso que faz o
+    /// clique continuar a chegar ao mesmo braço de `apply_event` sem uma segunda porta: o
+    /// `HeroScreen::apply_event` entrega todo evento a todo painel do registry, por **id**, nunca
+    /// por posição. *Um comando com dois ids tem dois sítios a apodrecer em separado.*
+    pub(super) area_entries: Vec<crate::widget::ToolRailEntry>,
+    /// ⭐ **A FACE do pulldown da área** — o que o chip mostra sem se abrir.
+    ///
+    /// ⚠️ **Ela é uma LEITURA, não um rótulo:** diz *qual é a vista agora* (`Front`, `User`…), que
+    /// é precisamente o que o painel nunca chegou a dizer — as seis fileiras dele acendiam o chip
+    /// certo, mas só enquanto o painel estivesse aberto. Vazia ⇒ nenhum módulo contribui e a fila
+    /// não ganha chip nenhum.
+    pub(super) area_face: String,
     /// ⭐ Altura AUTORADA da faixa do FUNDO (`None` = a de fábrica). Ver
     /// [`WidgetStore::dock_bottom_h`] — o irmão vertical das duas de cima, e o que faz a costura
     /// do topo do timeline redimensionar a BANDA em vez de soltar o painel dela.

@@ -1,14 +1,41 @@
 // ph2d-chrome-sync:z=45 (dispatch priority, ADR-0107; lower = earlier)
-//! ⭐⭐⭐ **O `⋯` DA FILA DE FERRAMENTAS** — abre o que não coube, e fecha-se ao servir.
+//! ⭐⭐⭐ **OS DOIS MENUS DA FILA DE FERRAMENTAS** — abrem, e fecham-se ao servir.
 //!
 //! > Enio, 2026-08-31: *«esse app tem tablets e iPad como alvo. Não podemos ir perdendo espaço.»*
 //!
-//! # ⚠️ O z é `45`, entre os toggles de vista (`40`) e os do trilho (`50`)
+//! São dois chips no fim da faixa, com a MESMA lei:
 //!
-//! E a razão é a segunda metade deste ficheiro: quando o menu de transbordo está aberto, **um
-//! clique em qualquer outra coisa fecha-o e DEIXA PASSAR** (`return false`). Ele tem de correr
-//! antes dos handlers do trilho — que são quem de facto executa o verbo do chip escolhido — para
-//! que o menu já esteja fechado quando o verbo acontece.
+//! | chip | abre | quem publica o corpo |
+//! |---|---|---|
+//! | `⋯` ([`ids::TOOL_BAR_OVERFLOW`]) | o que não coube na linha | `tool_bar::bar_split` |
+//! | o pulldown da área ([`ids::AREA_COMMANDS`]) | os comandos do editor com o canvas | o módulo |
+//!
+//! ⚠️ **UMA tabela, e não dois ficheiros.** A metade que se esquece ao copiar é a segunda — *servir
+//! é fechar* —, e um menu que não fecha ao servir fica por cima do que o clique acabou de fazer.
+//!
+//! # ⭐⭐⭐ **SERVIR É FECHAR — e sob o DEDO quem o faz não é este ficheiro**
+//!
+//! ⛔⛔ **Medido por mutação em 2026-08-31, e duas redacções desta wave estavam erradas.** Apagar o
+//! fecho deste ficheiro deixa **todos** os gates de gesto verdes, incluindo o do segundo toque.
+//! Quem fecha, sob o ponteiro, é a **regra genérica do store** um nível abaixo: o
+//! `dispatch::pointer_down` fecha todo menu aberto num **Down** primário que não *pertença* a ele
+//! (`click_belongs_to_the_open_menu`) — e mede-se: depois do Down no chip o menu já está fechado, e
+//! o Up seguinte não levanta `Click` nenhum.
+//!
+//! ⇒ isso vale de graça para os chips do `⋯` (ids do trilho) **e** para os comandos da área (ids de
+//! um PAINEL, que o registry consome antes do chrome). ⚠️ Uma cura escrita no `pre_dispatch` para
+//! «o painel consome e o menu fica aberto» foi construída nesta wave e **retirada**: era a terceira
+//! cópia de uma lei que já existe.
+//!
+//! # ⚠️ Então por que o interruptor abaixo FICA
+//!
+//! Porque há uma fonte de `WidgetEvent::Click` **sem Down nenhum**: a **paleta de comandos global**
+//! (`global_palette`) chama `HeroScreen::apply_event(Click(id))` directamente, e ela projecta a
+//! lista que a fila pinta — estes dois chips incluídos. Por esse caminho o fecho genérico nunca
+//! corre, e sem a metade de baixo escolher o chip na paleta **re-abriria** um menu já aberto.
+//! O gate que o prende é `the_palette_path_toggles_the_menu_because_it_has_no_pointer_down`.
+//!
+//! # ⚠️ O z é `45`, entre os toggles de vista (`40`) e os do trilho (`50`)
 //!
 //! ⛔ **Um chip do transbordo não tem handler próprio, e é essa a decisão.** Os ids dentro do menu
 //! são **os mesmos** da fila, logo quem despacha continua a ser o `chrome::rail_*`. Um verbo
@@ -20,16 +47,33 @@ use crate::ids;
 use crate::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
 use crate::screens::hero::HeroScreen;
 
+/// Os dois chips e o menu que cada um abre. ⚠️ Acrescentar um terceiro é **uma linha**.
+const BAR_MENUS: [(ph2d_a11y::NodeId, ContextMenuKind); 2] = [
+    (ids::TOOL_BAR_OVERFLOW, ContextMenuKind::ToolBarOverflow),
+    (ids::AREA_COMMANDS, ContextMenuKind::AreaCommands),
+];
+
+/// Está algum destes menus aberto?
+fn open_bar_menu(hero: &HeroScreen) -> Option<ContextMenuKind> {
+    let open = hero.store.context_menu()?.kind;
+    BAR_MENUS
+        .iter()
+        .any(|(_, kind)| *kind == open)
+        .then_some(open)
+}
+
 pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let WidgetEvent::Click(id) = event else {
         return false;
     };
-    if id == ids::TOOL_BAR_OVERFLOW {
-        // ⚠️ Um segundo clique no `⋯` FECHA — é um interruptor, não uma porta de sentido único.
-        if matches!(
-            hero.store.context_menu().map(|r| r.kind),
-            Some(ContextMenuKind::ToolBarOverflow)
-        ) {
+    for (chip, kind) in BAR_MENUS {
+        if id != chip {
+            continue;
+        }
+        // ⚠️ Um segundo clique no MESMO chip FECHA — é um interruptor, não uma porta de sentido
+        // único. ⛔ E com o OUTRO menu aberto, este clique tem de o trocar, não de o empilhar: o
+        // `open_context_menu` substitui, que é o que dá a troca.
+        if open_bar_menu(hero) == Some(kind) {
             hero.store.close_context_menu();
             return true;
         }
@@ -37,22 +81,11 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         // acerto do quadro anterior, que é onde o chip de facto ficou.
         let (x, y) = hero
             .hit_index
-            .rect_for(ids::TOOL_BAR_OVERFLOW)
+            .rect_for(chip)
             .map_or((0.0, hero.last_viewport.y), |r| (r.x, r.y + r.h));
-        hero.store.open_context_menu(ContextMenuRequest {
-            x,
-            y,
-            kind: ContextMenuKind::ToolBarOverflow,
-        });
+        hero.store
+            .open_context_menu(ContextMenuRequest { x, y, kind });
         return true;
-    }
-    // ⭐ **Servir é fechar.** Qualquer outro clique com o transbordo aberto fecha-o — e devolve
-    // `false`, para o verbo escolhido continuar até quem o executa.
-    if matches!(
-        hero.store.context_menu().map(|r| r.kind),
-        Some(ContextMenuKind::ToolBarOverflow)
-    ) {
-        hero.store.close_context_menu();
     }
     false
 }

@@ -175,6 +175,26 @@ pub fn bar_rail(store: &WidgetStore, painter_active: bool, image_tools_on: bool)
             entries.extend(tools);
         }
     }
+    // ⭐⭐⭐ **E o PULLDOWN da área, no fim** — ver `ids::AREA_COMMANDS`.
+    //
+    // ⛔⛔ **UM chip, não N — e o número é MEDIDO.** Com os nove comandos crus a fila precisa de
+    // **2 linhas até no iPad 12,9"** e transborda `2` chips (mutação 6 de 2026-08-31). *Poupar
+    // altura gastando largura não poupa nada.*
+    //
+    // ⚠️ **No FIM de propósito.** Se nem ele couber, quem transborda é ele e não uma ferramenta: o
+    // gesto do minuto a minuto é pegar numa ferramenta, e ele já está a um clique por natureza.
+    //
+    // ⚠️ A FACE é uma leitura (*qual é a vista agora*), e é por isso que ela vem do store em vez de
+    // ser o rótulo: um chip que diz sempre a mesma coisa não distingue os estados que abre.
+    if !store.area_entries().is_empty() {
+        entries.push(crate::widget::ToolRailEntry::Divider);
+        entries.push(crate::widget::ToolRailEntry::compound(
+            ids::AREA_COMMANDS,
+            "View",
+            store.area_face(),
+            "",
+        ));
+    }
     ToolRail::new(NodeId(203), "Editor tools", entries)
 }
 

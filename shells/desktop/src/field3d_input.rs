@@ -182,10 +182,9 @@ impl App {
     /// item nunca chegava ao handler da paleta: ela não registava o pick (**nada era criado**) e não
     /// se fechava (**quem a fecha é o mesmo handler**).
     ///
-    /// ⚠️ **A guarda que já existia não bastava, e é instrutivo porquê:** o
-    /// `cursor_over_hero_chrome` pergunta *«há um painel por cima?»*, e um painel publica um
-    /// `panel_rect`. Um **modal** não é um painel — ele não publica rect nenhum, e a pergunta
-    /// respondia «não» com o modal a tapar tudo.
+    /// ⚠️ **A guarda que já existia não bastava, e é instrutivo porquê:** a porta da moldura
+    /// pergunta *«o chrome pintou algo aqui?»*. Um **modal** de tela cheia não publica `panel_rect`
+    /// nem regista fundo, e a pergunta respondia «não» com o modal a tapar tudo.
     ///
     /// ⭐ **Uma porta, quatro leitores** (`pointer_down`, `pointer_move`, `wheel`, `field3d_keys`).
     /// A lei escrita em quatro sítios seria a lei escrita em nenhum: a quinta entrada nasceria
@@ -199,6 +198,11 @@ impl App {
     /// **antes** deste no mesmo despacho e tem exactamente a mesma forma — com o `Ctrl+K` ou a
     /// biblioteca do Motion abertos sobre o módulo de escultura armado, o clique morre ali. A
     /// `line/sculpt3d` é a dona daquele módulo; está nomeado no handoff.
+    ///
+    /// ⭐⭐ **E o OUTRO irmão — a moldura — ficou curado nos dois de uma vez em 2026-08-30**, porque
+    /// a cura não foi uma nota: foi apagar a segunda porta. Os dois módulos passaram a perguntar a
+    /// `chrome_hit::pointer_over_chrome`, e um doc-comment a nomear um irmão por curar é
+    /// precisamente o que **não** cura nada (gate `the_scene_asks_the_one_chrome_door.rs`).
     pub(crate) fn field3d_yields_to_modal(&self) -> bool {
         self.command_palette_open()
     }
@@ -208,10 +212,18 @@ impl App {
             return false;
         }
         let pos = self.last_pointer;
-        // ⚠️ **A moldura do app não é da cena.** A mesma lei do `sculpt3d_pointer_down`, e pelo
-        // mesmo motivo medido lá: painel é só uma espécie de UI — a faixa do topo e o rail não
-        // publicam `panel_rect`, e sem esta pergunta a cena engoliria o clique em todo pill do topo.
-        if crate::forwarding::cursor_over_hero_chrome(self.gfx.as_ref(), pos.0, pos.1) {
+        // ⛔⛔ **A moldura do app não é da cena, e a pergunta tem de ser a do RESTO DO APP.**
+        //
+        // Isto chamava `forwarding::cursor_over_hero_chrome`, uma LISTA de quatro ids de fundo
+        // escrita à mão. Ela apodreceu quando a barra de pills saiu: três entradas deixaram de ser
+        // pintadas e a barra de menus, a fila de ferramentas e as ABAS nasceram fora dela ⇒ Enio,
+        // 2026-08-30: *«quando coloco Model, não consigo mais clicar nos menus superiores nem nas
+        // abas. É como se tudo fosse canvas.»*
+        //
+        // ⭐ O `chrome_hit::pointer_over_chrome` pergunta ao ÍNDICE DE ACERTO — o que o chrome
+        // pintou neste quadro — logo cobre uma faixa nova no dia em que ela é pintada, e sabe
+        // excluir o gizmo (que é desenhado SOBRE a obra e não é moldura).
+        if crate::chrome_hit::pointer_over_chrome(self.gfx.as_ref(), pos.0, pos.1) {
             return false;
         }
         let fallback = match button {
@@ -531,7 +543,7 @@ impl App {
         let pos = self.last_pointer;
         // A pergunta é feita INTEIRA e neste arquivo de propósito — quem decide de quem é o gesto é
         // o módulo da cena, não o roteador (a nota do `sculpt3d_wheel`).
-        if crate::forwarding::cursor_over_hero_chrome(self.gfx.as_ref(), pos.0, pos.1) {
+        if crate::chrome_hit::pointer_over_chrome(self.gfx.as_ref(), pos.0, pos.1) {
             return false;
         }
         with_smoke(|s| {

@@ -144,7 +144,7 @@ fn the_scene_never_takes_a_click_that_belongs_to_the_chrome() {
         "controle positivo: o dono do gesto mudou de arquivo e este gate varreria o vazio"
     );
     assert_eq!(
-        src.matches("cursor_over_hero_chrome").count(),
+        src.matches("chrome_hit::pointer_over_chrome").count(),
         2,
         "as DUAS portas da cena (o botão e a roda) têm de perguntar pela moldura inteira"
     );
@@ -153,13 +153,28 @@ fn the_scene_never_takes_a_click_that_belongs_to_the_chrome() {
         "a cena voltou a perguntar só pelos PAINÉIS: os pills do topo morrem sob o mouse com o \
          barro na tela"
     );
+    assert!(
+        !src.contains("cursor_over_hero_chrome"),
+        "a cena voltou à LISTA de fundos escrita à mão — ela apodreceu em 2026-08-30 e levou \
+         consigo o menu superior e as abas"
+    );
 }
 
-/// **Todo fundo de moldura é conhecido pela cena.**
+/// **Todo fundo de moldura é conhecido por quem contorna a moldura.**
 ///
-/// ⚠️ **Uma lista escrita à mão apodrece; esta é conferida contra a FONTE dos ids.** Um `*_BACKDROP`
-/// novo (uma quarta faixa no topo, um segundo rail) nasceria fora da recusa e a cena voltaria a
-/// comer os cliques dele — em silêncio, porque nada além do smoke o notaria.
+/// ⛔⛔ **ESTE GATE JÁ FALHOU EM SILÊNCIO, e a lição é do tamanho do report.** Ele existia
+/// exactamente para impedir que um `*_BACKDROP` novo nascesse fora da lista — e o
+/// `MENUBAR_BACKDROP` nasceu fora dela na mesma semana, **sem o gate se mexer**, porque a varredura
+/// lia **um subdiretório** (`ids/chrome/`) e o id novo foi escrito em `ids/menubar.rs`, uma casa
+/// acima. *Um gate que varre um DIRETÓRIO afirma sobre o diretório, não sobre o repo.*
+///
+/// ⚠️ **E o piso `found >= N` não o salvou**: ele foi satisfeito pelos quatro fundos LEGADOS, que
+/// continuam declarados mesmo já não sendo pintados por ninguém. *Um piso contado sobre DECLARAÇÕES
+/// não nota que as declarações deixaram de ter consumidor.*
+///
+/// ⇒ hoje a varredura é da **árvore inteira** de ids, e a lista já não é a porta da cena 3D — é a
+/// lista de obstáculos que o gizmo de navegação contorna (a porta é
+/// `chrome_hit::pointer_over_chrome`, ver `the_scene_asks_the_one_chrome_door.rs`).
 ///
 /// ⚠️ **E ele lê o BLOCO da constante, nunca o arquivo inteiro** — a 1ª versão casava com o
 /// arquivo, e o nome do fundo do topo aparece no doc-comment ao lado da lista: a mutação que o
@@ -175,13 +190,26 @@ fn every_chrome_backdrop_is_known_to_the_scene() {
         .split_once("];")
         .expect("a lista não fecha: o bloco a conferir é o literal, não o arquivo")
         .0;
-    let dir = "../../crates/ph2d-editor-core/src/ids/chrome";
-    let mut found = 0usize;
-    for entry in fs::read_dir(dir).expect("os ids da moldura existem") {
-        let path = entry.expect("entrada legível").path();
-        if path.extension().is_none_or(|e| e != "rs") {
-            continue;
+    let root = "../../crates/ph2d-editor-core/src/ids";
+    let mut files = Vec::new();
+    let mut stack = vec![std::path::PathBuf::from(root)];
+    while let Some(dir) = stack.pop() {
+        for entry in fs::read_dir(&dir).expect("os ids da moldura existem") {
+            let path = entry.expect("entrada legível").path();
+            if path.is_dir() {
+                stack.push(path);
+            } else if path.extension().is_some_and(|e| e == "rs") {
+                files.push(path);
+            }
         }
+    }
+    assert!(
+        files.len() >= 10,
+        "controlo: só {} ficheiros de id varridos — a árvore mudou de casa",
+        files.len()
+    );
+    let mut found = 0usize;
+    for path in files {
         let ids = fs::read_to_string(&path).expect("arquivo de ids legível");
         for line in ids.lines() {
             let Some((name, _)) = line
@@ -197,13 +225,13 @@ fn every_chrome_backdrop_is_known_to_the_scene() {
             found += 1;
             assert!(
                 door.contains(name),
-                "o fundo de moldura `{name}` não está em `CHROME_BACKDROPS`: a cena 3D come os \
-                 cliques que caírem nele"
+                "o fundo de moldura `{name}` não está em `CHROME_BACKDROPS`: o gizmo de navegação \
+                 não o contorna e vai esconder-se debaixo dele"
             );
         }
     }
     assert!(
-        found >= 4,
+        found >= 5,
         "controle positivo: a varredura achou {found} fundos — os ids mudaram de casa e este gate \
          ficou verde por vácuo"
     );

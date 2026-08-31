@@ -126,16 +126,19 @@ fn a_click_on_the_chrome_is_not_a_click_on_the_model() {
     // Sem esta pergunta a cena 3D engolia TODO botão do app — ela devolvia
     // `true` incondicionalmente e o dispatch 2D nunca via o evento.
     //
-    // ⚠️ **O gate perguntava pelo ENDEREÇO e o endereço estava estreito demais.**
-    // Ele exigia `cursor_over_hero_panel(`, e painel é só uma espécie de UI: a
-    // faixa do topo e o rail não publicam `panel_rect`, então este gate ficava
-    // VERDE enquanto todo pill do topo morria sob o mouse com o barro na tela
-    // (Enio, 2026-08-09). Hoje ele afirma a PROPRIEDADE — *o Down recusa o que é
-    // da moldura* — e a porta que a responde cobre as duas espécies.
+    // ⚠️⚠️ **O ENDEREÇO já estava errado DUAS vezes.** Primeiro ele exigia
+    // `cursor_over_hero_panel(` — e painel é só uma espécie de UI, então o gate
+    // ficava VERDE enquanto todo pill do topo morria sob o mouse (Enio,
+    // 2026-08-09). Depois passou a exigir `cursor_over_hero_chrome(`, que era uma
+    // LISTA de quatro ids de fundo escrita à mão — e apodreceu quando a barra de
+    // pills saiu: o menu superior e as abas nasceram fora dela (Enio, 2026-08-30:
+    // *«é como se tudo fosse canvas»*). ⭐ Hoje o endereço é a porta ÚNICA do app,
+    // que pergunta ao índice de acerto; a lei geral está em
+    // `the_scene_asks_the_one_chrome_door.rs`.
     let src = sculpt_src();
     let down = function_body(&src, "sculpt3d_pointer_down");
     assert!(
-        down.contains("cursor_over_hero_chrome("),
+        down.contains("chrome_hit::pointer_over_chrome("),
         "o Down tem de recusar um clique que é da moldura do app"
     );
     // ⚠️ E o Move/Up NÃO podem fazer a mesma pergunta: um arrasto em curso
@@ -145,7 +148,8 @@ fn a_click_on_the_chrome_is_not_a_click_on_the_model() {
     for port in ["sculpt3d_pointer_move", "sculpt3d_pointer_up"] {
         let body = function_body(&src, port);
         assert!(
-            !body.contains("cursor_over_hero_chrome(") && !body.contains("cursor_over_hero_panel("),
+            !body.contains("chrome_hit::pointer_over_chrome(")
+                && !body.contains("cursor_over_hero_panel("),
             "`{port}` não pode largar um arrasto em curso ao cruzar a moldura"
         );
     }

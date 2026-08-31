@@ -74,7 +74,7 @@ impl App {
         // O `Move` e o `Up` NÃO a fazem de propósito: um arrasto em curso continua
         // sendo do gesto que o abriu, mesmo que o cursor passeie por cima de um
         // painel (a regra de captura que todo gizmo deste shell segue).
-        if crate::forwarding::cursor_over_hero_chrome(self.gfx.as_ref(), pos.0, pos.1) {
+        if crate::chrome_hit::pointer_over_chrome(self.gfx.as_ref(), pos.0, pos.1) {
             return false;
         }
         let mods = self.modifiers;
@@ -438,7 +438,7 @@ impl App {
         // o módulo da cena, não o roteador. Sem isto, rolar sobre a barra do topo
         // dá DOLLY na escultura por baixo, em silêncio.
         let pos = self.last_pointer;
-        if crate::forwarding::cursor_over_hero_chrome(self.gfx.as_ref(), pos.0, pos.1) {
+        if crate::chrome_hit::pointer_over_chrome(self.gfx.as_ref(), pos.0, pos.1) {
             return false;
         }
         let Some(scene) = self.sculpt3d_scene_mut() else {

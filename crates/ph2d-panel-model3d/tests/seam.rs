@@ -533,6 +533,10 @@ fn an_empty_operation_row_dispatches_nothing() {
 /// O piso e o teto de uma linha de **posição**: simétricos, e o de baixo é negativo.
 const FLOOR: f32 = -1.2;
 const CEILING: f32 = 1.2;
+/// ⚠️ **NÃO é zero, e a diferença é o gate**: com o valor da linha em `0` o campo numérico nasce
+/// com o mesmo `0` que o `populate` regista, e um gate sobre a semeadura passaria **por acidente**.
+/// *Uma fixtura sem o fenómeno mede o programa que não tem o defeito.*
+const ROW_VALUE: f32 = 0.8;
 
 /// Uma cena de uma linha só, com a faixa de uma **posição**.
 fn scene_with_one_position_row() {
@@ -551,7 +555,7 @@ fn scene_with_one_position_row() {
             entity: THE_UNION,
             param: ph2d_field::Param::Pos(0),
             key: "field.dim.pos_x",
-            value: 0.0,
+            value: ROW_VALUE,
             lo: FLOOR,
             live: true,
             integral: false,
@@ -640,13 +644,25 @@ fn the_dispatched_value_is_the_one_the_painted_mapping_promises() {
     );
 }
 
-/// ⭐ **O campo numérico aceita a faixa INTEIRA da linha** — o lado do teclado da mesma lei.
+/// ⭐⭐⭐ **O PRIMEIRO ARRASTO DE UM CAMPO PARTE DO VALOR DO DOCUMENTO** — auditoria de 2026-08-30,
+/// achado F2.
 ///
-/// ⚠️ O caminho do arrasto e o da digitação são distintos: o campo tem a sua própria faixa
-/// registada, e é ela que decide se um número escrito sobrevive ao espelho. Com o mínimo em zero,
-/// `-0,5` voltava a `0` **em silêncio** — pintado, digitável, e sem efeito.
+/// # ⛔⛔ Ele partia de ZERO, e nenhum gate deste ficheiro o via
+///
+/// O `populate` regista o chip com `0.0`; a pintura só **desenha** o número (recebe-o por
+/// argumento) e nunca o escrevia no store. E o arrasto do campo é **incremental** — ele lê a base
+/// do store. ⇒ com o documento em `0,80`, os dois primeiros gestos despachavam
+/// `SetParam { value: 0.0 }`. Numa **posição** isso atira o objecto para a origem; numa largura
+/// despacha um zero que a porta recusa, e o número salta e volta.
+///
+/// ⚠️ **E os gates existentes eram verdes porque ENCENAVAM a pré-condição em falta:** todos os que
+/// tocam num valor fazem `host.set_slider_value(...)` **antes** de despachar — que é exactamente a
+/// semeadura que a produção nunca fazia. *Um arnês que semeia o store mede um programa que não
+/// existe.*
+///
+/// ⇒ este gate **pinta e arrasta**, e não toca no store entre as duas coisas.
 #[test]
-fn the_typed_range_admits_the_whole_span_of_the_row() {
+fn the_first_drag_of_a_number_starts_from_the_document() {
     scene_with_one_position_row();
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     host.set_panel_visible(Model3dPanel::ID, true);
@@ -654,17 +670,67 @@ fn the_typed_range_admits_the_whole_span_of_the_row() {
     let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
     let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
 
+    let chip = ids::model3d_radius_chip(0);
+    let store_value = match host.store().get(chip) {
+        Some(ph2d_editor_core::interaction::InteractiveState::NumberInput { value, .. }) => *value,
+        outro => panic!("o chip tinha de ser um campo numérico: {outro:?}"),
+    };
+    assert!(
+        (store_value - f64::from(ROW_VALUE)).abs() < 1e-4,
+        "o campo guarda {store_value} e o documento diz {ROW_VALUE} — o primeiro arrasto vai partir \
+         do número errado"
+    );
+}
+
+/// ⭐⭐⭐ **UMA PAREDE CLAMPA A DIGITAÇÃO; UMA SUGESTÃO NÃO** — o lado do teclado da mesma lei.
+///
+/// ⚠️ O caminho do arrasto e o da digitação são distintos: o campo tem a sua própria faixa
+/// registada, e é ela que decide se um número escrito sobrevive ao espelho. Com o mínimo em zero,
+/// `-0,5` voltava a `0` **em silêncio** — pintado, digitável, e sem efeito. O **piso** continua a
+/// ser essa lei.
+///
+/// # ⛔⛔ E o TECTO era a mesma lei aplicada ao caso errado (auditoria de 2026-08-30, achado F4)
+///
+/// Este gate afirmava `max == CEILING` — isto é, que o campo **honra** o tecto da linha. ⚠️ Mas o
+/// tecto de uma linha sem parede é o alcance do **GESTO** que a vista escolheu, não um facto da
+/// peça: medido, numa linha de `Bound::Soft(1,0)`, digitar `5.0` escrevia **`1.0`**. Com uma peça
+/// pequena era **impossível digitar** uma largura maior.
+///
+/// ⇒ a régua passa a ser a **variante**: `Hard`/`Wrap` clampam (são paredes do documento e da
+/// representação), `Soft` não. *Um gate que afirma o comportamento errado é pior do que a ausência
+/// dele — ele defende o defeito.*
+#[test]
+fn a_wall_clamps_what_is_typed_and_a_suggestion_does_not() {
+    scene_with_one_position_row();
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    host.set_panel_visible(Model3dPanel::ID, true);
+    let mut panel_state = Model3dPanelState;
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
+
+    let chip = ids::model3d_radius_chip(0);
     let (min, max, step) = host
         .store()
-        .number_range(ids::model3d_radius_chip(0))
+        .number_range(chip)
         .expect("a linha registou a faixa do campo");
     assert!(
         (min - f64::from(FLOOR)).abs() < 1e-5,
         "o mínimo do campo é {min} e o piso da linha é {FLOOR} — um número abaixo dele é reescrito \
          sem aviso"
     );
-    assert!((max - f64::from(CEILING)).abs() < 1e-5, "o teto: {max}");
     assert!(step > 0.0, "sem passo o arrasto do campo escorrega");
+    // A fixtura é uma POSIÇÃO, cujo tecto é `Soft` — o alcance do gesto.
+    assert!(
+        max > f64::from(CEILING) * 10.0,
+        "o tecto do campo é {max} e o da linha é {CEILING}: uma SUGESTÃO está a clampar a \
+         digitação, e um valor legítimo fica indigitável"
+    );
+    // ⭐ **E o arrasto não fica sem escala**: com o tecto aberto, a proporção sobre o intervalo
+    // deixa de fazer sentido e o `rate` é quem calibra o pixel.
+    assert!(
+        host.store().number_drag_rate(chip).is_some(),
+        "sem `rate`, um campo de tecto aberto anda milhares por pixel"
+    );
 }
 
 /// ⭐ **Uma linha inerte não regista NADA para clicar.**

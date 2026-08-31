@@ -429,7 +429,7 @@ pub(crate) fn sync_scene_and_birth(
         world,
         root,
         selection,
-        panel::gesture_span(panel::piece_radius()),
+        panel::latched_span(selection.first().copied()),
         last_trace_ms,
     );
     // ⚠️ Uma peça inválida (um raio que deixou de caber porque a escala do pai mudou) devolve

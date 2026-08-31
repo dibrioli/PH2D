@@ -97,7 +97,7 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
                 &acc,
                 // ⛔ **A parede da dobra mede-se contra o ENVELOPE**, que é a caixa que a marcha
                 // percorre — ver [`bend_curvature`]. Com a bola local, `[Bend]` sozinha rasgava.
-                bend_curvature(turns, final_ball),
+                bend_curvature(turns, ball),
                 f64::from(lower),
                 f64::from(upper),
                 f64::from(falloff),

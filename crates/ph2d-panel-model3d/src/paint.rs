@@ -23,6 +23,13 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 use crate::state::{self, Model3dPanelState, ParamRow};
 use crate::{Model3dPanel, populate::MAX_MODES, populate::MAX_ROWS};
 
+/// ⭐⭐ **O tecto de uma linha SEM parede, para efeito de DIGITAÇÃO.**
+///
+/// ⚠️ Ele não é uma parede nova: é um número grande o bastante para nunca ser a resposta a um gesto
+/// real, e finito para o campo continuar a ter uma faixa (o stepper e o piso saem dela). *Um tecto
+/// que só existe para não haver tecto tem de dizê-lo.*
+const TETO_DIGITAVEL: f64 = 1.0e6;
+
 /// A goteira do rótulo. Os rótulos aqui são o **tipo do nó** ("Union", "Cylinder"), não uma frase.
 const LABEL_COL_W: f32 = 72.0; // LITERAL-PX-OK: panel grid metric (label gutter width)
 
@@ -353,7 +360,48 @@ fn paint_row(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y: f
     {
         let store = ctx.host.store_mut();
         store.link_slider_number_mapped(slider, chip, scale, lo);
-        store.set_number_range(chip, f64::from(lo), f64::from(hi), f64::from(step));
+        // ⭐⭐⭐ **UMA PAREDE CLAMPA; UMA SUGESTÃO NÃO** (auditoria de 2026-08-30, achado F4).
+        //
+        // ⛔ As duas viravam a mesma faixa, e o campo numérico clampava as duas. Medido: numa linha
+        // de tecto `Soft(1,0)`, digitar `5.0` escrevia **`1.0`** — e o `Soft` é, por definição, *o
+        // alcance do GESTO que a vista escolheu*, não um facto da peça. ⇒ com uma peça pequena era
+        // **impossível digitar** uma largura maior, e o único caminho era arrastar até ao fim e
+        // esperar que o alcance crescesse — isto é, usar o laço que o report do Enio é.
+        //
+        // ⚠️ **Com o tecto aberto, o arrasto precisa de uma escala própria**: sem o `rate` ele seria
+        // uma proporção sobre um intervalo que não termina, e um pixel andaria milhares. O `rate` é
+        // o **mesmo passo** que o stepper usa, e vence o alcance no `pointer_move` — é a combinação
+        // que o doc do `set_number_drag_rate` chama de certa.
+        //
+        // ⭐ E é aqui que a distinção do [`Bound`] ganha o consumidor que o doc do
+        // [`bound_is_wall`] esperava.
+        let parede = bound_is_wall(row.bound);
+        let teto = if parede {
+            f64::from(hi)
+        } else {
+            TETO_DIGITAVEL
+        };
+        store.set_number_range(chip, f64::from(lo), teto, f64::from(step));
+        if parede {
+            store.clear_number_drag_rate(chip);
+        } else {
+            store.set_number_drag_rate(chip, f64::from(step));
+        }
+        // ⭐⭐⭐ **O VALOR DO CAMPO SEMEIA-SE DO DOCUMENTO, TODO QUADRO** (auditoria de 2026-08-30,
+        // achado F2) — a mesma lei que a trilha do slider já seguia, e que o campo nunca teve.
+        //
+        // ⛔ O `populate` regista o chip com `0.0` e nada o corrigia: a pintura só **desenha** o
+        // número (recebe-o por argumento). E o arrasto do campo é **incremental** — ele lê a base do
+        // store, não do documento. ⇒ o **primeiro** arrasto de qualquer campo partia de `0`:
+        // medido, com o documento em `0,80`, os dois primeiros gestos despachavam `SetParam { value:
+        // 0.0 }`. Numa posição isso atira o objecto para a origem; numa largura despacha um zero que
+        // a porta recusa, e o número salta e volta.
+        //
+        // ⚠️ **A porta preserva a edição em curso**: ela não reescreve o buffer com o campo em foco
+        // nem a âncora de rollback durante um arrasto (ver `set_number_value`). *Semear todo quadro
+        // é o que mantém o controlo honesto quando o valor muda de outro lado* — um desfazer, um
+        // ficheiro aberto, o gizmo.
+        store.set_number_value(chip, f64::from(row.value));
     }
 
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -504,10 +552,12 @@ fn paint_footer(ctx: &mut PaintCtx, snap: &state::ModelSnapshot, x: f32, w: f32,
 
 /// A parte de um limite que a UI precisa de saber: o topo, e se ele é parede.
 ///
-/// ⚠️ Existe para o dia em que o painel **desenhar** a diferença (uma parede e uma sugestão não se
-/// pintam igual). Hoje as duas viram a mesma faixa, e isto é o registo de que a distinção existe no
-/// documento e ainda não chegou ao pixel.
-#[allow(dead_code)]
+/// ⭐⭐ **Ela decide se o campo numérico CLAMPA** — ver a nota no registo da faixa. Uma parede é um
+/// facto da peça (um filete que não cabe); uma sugestão é o alcance do gesto que a vista escolheu, e
+/// clampar a digitação nela torna um valor legítimo indigitável.
+///
+/// ⚠️ Falta ainda **desenhar** a diferença (uma parede e uma sugestão não se pintam igual); isso é
+/// outra wave.
 fn bound_is_wall(b: Bound) -> bool {
     matches!(b, Bound::Hard(_))
 }

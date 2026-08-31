@@ -280,6 +280,16 @@ impl WidgetStore {
         self.number_drag_rate.insert(id, rate);
     }
 
+    /// Tira o rate de `id` — volta ao modelo proporcional do alcance.
+    ///
+    /// ⚠️ **Ela existe porque uma linha de painel é RE-REGISTADA todo quadro** e pode mudar de
+    /// natureza entre eles (uma parede vira sugestão quando o documento muda). Sem esta porta, o
+    /// rate de um quadro sobrevivia para sempre e a caixa ficava com dois modelos de arrasto
+    /// misturados — *um registo por quadro precisa de saber desfazer-se*.
+    pub fn clear_number_drag_rate(&mut self, id: NodeId) {
+        self.number_drag_rate.remove(&id);
+    }
+
     /// The registered unbounded drag rate for `id`, if any.
     #[must_use]
     pub fn number_drag_rate(&self, id: NodeId) -> Option<f64> {

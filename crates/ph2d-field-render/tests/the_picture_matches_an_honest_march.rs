@@ -257,3 +257,56 @@ fn the_deformed_rosette_agrees_with_an_honest_march() {
          modificadores está a devolver um campo que a marcha lê de outra maneira"
     );
 }
+
+/// ⭐⭐⭐ **A DOBRA DESENHA O QUE A MARCHA HONESTA DESENHA** — e este gate existe porque uma medição
+/// sem consumidor me fez estragar uma feature que funcionava.
+///
+/// # ⛔⛔ O que aconteceu (2026-08-30)
+///
+/// O `‖∇f‖` da dobra sozinha media `1,72` dentro da caixa de recorte — acima de `1`, o número que
+/// diz *«a marcha pode atravessar a superfície»*. Curei-o apertando a parede da curvatura contra o
+/// envelope da pilha, e a peça **deixou de dobrar**: num bloco, `0,3`, `0,6` e `1,0` voltas passaram
+/// a dar a mesma coisa. Report do Enio: *«VC danificou o Bend que funcionava antes das últimas
+/// mudanças»* — e ele tinha razão.
+///
+/// ⭐ **A régua que faltava é esta.** Com a lei que ele tinha, a imagem concorda com o oráculo
+/// **exactamente**: `0` de `1 678` / `1 672` / `4 274` / `4 274` pixels fora de `12°`, com o pior
+/// desvio em `0,0°`–`5,1°`. ⇒ *o `1,72` é real e **não tem consumidor**: onde os raios de facto
+/// passam, o campo continua a ser um minorante.*
+///
+/// ⚠️ **A lição não é «o gradiente não importa»** — é que um gate de gradiente diz *«pode furar»*, e
+/// só a imagem diz *«fura»*. Quando os dois discordam, quem manda é a imagem, e a dívida do outro
+/// fica escrita ([`ph2d_field_eval`], `every_modifier_alone_keeps_the_field_marchable`).
+#[test]
+fn the_bend_draws_what_an_honest_march_draws() {
+    for (nome, half, turns) in [
+        ("barra", [0.10f32, 0.10, 0.80], 0.12f32),
+        ("barra forte", [0.10, 0.10, 0.80], 1.0),
+        ("bloco", [0.35, 0.35, 0.30], 0.3),
+        ("bloco forte", [0.35, 0.35, 0.30], 1.0),
+    ] {
+        let doc = doc_with_mods(
+            Primitive::Box {
+                half,
+                round: 0.0,
+                chamfer: 0.0,
+            },
+            vec![Unary::Bend {
+                turns,
+                lower: -2.0,
+                upper: 2.0,
+                falloff: 0.1,
+            }],
+        );
+        let (mal, medidos, pior) = disagreeing_pixels_of(&doc, &yaws(), 12.0);
+        assert!(
+            medidos > 1_000,
+            "⛔ o CONTROLE falhou em «{nome}»: só {medidos} pixels de interior"
+        );
+        assert_eq!(
+            mal, 0,
+            "«{nome}» com {turns} voltas: {mal} de {medidos} pixels divergem do oráculo (pior \
+             {pior:.1}°) — a dobra passou a desenhar o que a marcha honesta não desenha"
+        );
+    }
+}

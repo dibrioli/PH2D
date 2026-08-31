@@ -164,6 +164,58 @@ pub(crate) fn piece_radius() -> f32 {
     .unwrap_or(0.0)
 }
 
+thread_local! {
+    /// ⭐⭐⭐ **O alcance TRAVADO, e a seleção para quem ele foi calculado.**
+    ///
+    /// Ver [`latched_span`]. `None` = ainda não há nenhum.
+    static ALCANCE: std::cell::Cell<Option<(u64, f32)>> = const { std::cell::Cell::new(None) };
+}
+
+/// ⭐⭐⭐ **O ALCANCE NÃO SE MEXE ENQUANTO A MÃO ESTÁ NO CONTROLO** — e foi um report que o obrigou.
+///
+/// # ⛔⛔ A 1.ª versão desta wave era o defeito ESPELHADO
+///
+/// Ela tirou o alcance da câmera (report do zoom) e pô-lo na **peça**, em oitavas — e a oitava
+/// resolvia o caso comum: arrastar uma largura dentro de uma não mexe no alcance. ⛔ **Mas quando
+/// ela vira, vira para o DOBRO**, a meio do arrasto: a `scale` do mapeamento cursor→valor
+/// **metade**, e o número salta. Report do Enio, no mesmo dia: *«arrastar os sliders ficou bizarro
+/// mudando valores aos pulos»*.
+///
+/// ⚠️ **Trocar um incómodo contínuo por um salto discreto é pior**, e é o que a oitava fez sozinha:
+/// com a câmera, o alcance ao menos era **constante durante o arrasto** (a roda não gira enquanto o
+/// dedo arrasta).
+///
+/// # A lei que fica
+///
+/// O alcance é calculado **uma vez por seleção** e travado. Enquanto o artista mexe naquele objeto,
+/// ele é uma constante — venha o que vier à peça. Escolher outro objeto (ou o mesmo outra vez)
+/// re-ajusta.
+///
+/// ⚠️ **O preço, nomeado:** quem arrastar uma largura muito para além do que ela era chega ao fim do
+/// curso do slider. ⭐ O campo numérico ao lado **não tem esse teto** — e voltar a clicar no objeto
+/// re-ajusta o slider à peça nova. *Um alcance que persegue o valor que ele próprio escreve é a
+/// definição de um controlo não idempotente.*
+pub(crate) fn latched_span(selected: Option<bevy_ecs::entity::Entity>) -> f32 {
+    let chave = selected.map_or(u64::MAX, bevy_ecs::entity::Entity::to_bits);
+    latched_span_for(chave, piece_radius())
+}
+
+/// A lei da [`latched_span`] com os dois insumos à vista — a porta que o gate atravessa.
+///
+/// ⚠️ **Uma função-irmã que o teste chama é a única forma de medir a trava**: pela porta de cima o
+/// raio vem do traçado, que num teste não existe, e as duas chamadas dariam o mesmo por acidente —
+/// o gate passaria sem nada a defender.
+pub(crate) fn latched_span_for(chave: u64, raio: f32) -> f32 {
+    ALCANCE.with(|c| match c.get() {
+        Some((k, v)) if k == chave => v,
+        _ => {
+            let v = gesture_span(raio);
+            c.set(Some((chave, v)));
+            v
+        }
+    })
+}
+
 /// ⭐⭐⭐ **O ALCANCE DO GESTO É DA PEÇA, E EM OITAVAS** — nunca da câmera.
 ///
 /// # ⛔⛔ O report que a obrigou (Enio, 2026-08-30)

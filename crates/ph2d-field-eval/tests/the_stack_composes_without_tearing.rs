@@ -117,7 +117,24 @@ fn worst_gradient(doc: &FieldDoc, steps: i32) -> f64 {
 /// | ~~`[Twist, Bend]`~~ | ✅ **CURADO**: `44,6 → 0,2657`. A causa não era «o segundo lê um envelope que o primeiro deformou» — era a **parede da dobra medida contra a bola errada** (ver `stack::bend_curvature`) | nasceu com a dobra |
 ///
 /// ⭐⭐⭐ **A LISTA ESTÁ VAZIA** — e ficar vazia é a única coisa que uma catraca pode fazer de bom.
-const TOLERADOS: &[(&str, f64)] = &[];
+/// # ⛔⛔ A CURA DO `[Twist, Bend]` FOI CONSTRUÍDA, SHIPADA E **REJEITADA PELO DONO** (2026-08-30)
+///
+/// Apertar a parede da dobra contra o envelope (`stack::bend_curvature(turns, final_ball)`) levava
+/// este par a `0,2657`, `[Bend]` sozinha de `1,72` a `0,49` e `[Bend, Radial 16]` de `245,8` a
+/// `0,23`. ⛔ **E fazia a peça deixar de dobrar**: num bloco, `0,3`, `0,6` e `1,0` voltas passavam a
+/// dar a mesma coisa. Report do Enio: *«VC danificou o Bend que funcionava antes das últimas
+/// mudanças»*.
+///
+/// ⭐⭐⭐ **E a imagem deu-lhe razão com número**: o gate
+/// `ph2d_field_render::the_bend_draws_what_an_honest_march_draws` mede a dobra contra uma marcha
+/// honesta e acha **`0` de `1 678`/`1 672`/`4 274`/`4 274` pixels** fora de `12°`, com o pior desvio
+/// em `0,0°`–`5,1°`. ⇒ *o `‖∇f‖` acima de `1` é real e **NÃO TEM CONSUMIDOR**: onde os raios de
+/// facto passam, o campo continua a ser um minorante.*
+///
+/// ⚠️ **A cura verdadeira é o OMBRO** — a mesma que a torção já usa: tornar o mapa seguro para além
+/// da parede, em vez de encolher a curvatura. É wave própria, e a primeira coisa que ela tem de
+/// saber é que **reduzir `κ` já foi tentado e o dono recusou**.
+const TOLERADOS: &[(&str, f64)] = &[("[Twist, Bend]", 44.6)];
 
 /// ⭐⭐⭐ **UM MODIFICADOR SOZINHO, EM TODA A FAIXA DO PARÂMETRO DELE** — o ponto cego que faltava.
 ///
@@ -135,7 +152,17 @@ const TOLERADOS: &[(&str, f64)] = &[];
 #[test]
 fn every_modifier_alone_keeps_the_field_marchable() {
     const SLACK: f64 = 1.02;
+    /// ⛔⛔ **A DOBRA é tolerada, e a cura dela foi REJEITADA PELO DONO** (2026-08-30).
+    ///
+    /// `1,3327` a `0,12` voltas e `1,3310` a `1,0` — reais, e **sem consumidor**: o gate
+    /// `ph2d_field_render::the_bend_draws_what_an_honest_march_draws` mede a imagem contra uma
+    /// marcha honesta e acha `0` de `1 678`–`4 274` pixels fora de `12°`. Apertar a parede curava o
+    /// número e fazia a peça **deixar de dobrar** — ver o `TOLERADOS` deste ficheiro.
+    ///
+    /// ⚠️ **Ela só ENCOLHE**: se a dobra passar a caber, esta linha reprova e sai.
+    const DOBRA_TOLERADA: f64 = 1.40;
     let mut maus = Vec::new();
+    let mut pior_dobra = 0.0f64;
     let mut medidos = 0;
     for k in UnaryKind::ALL {
         let faixa: Vec<Unary> = match k {
@@ -191,7 +218,15 @@ fn every_modifier_alone_keeps_the_field_marchable() {
         for m in faixa {
             medidos += 1;
             let g = worst_gradient(&peca(vec![m]), 32);
-            if g > SLACK {
+            // ⚠️ **O censo da tolerância olha o PIOR da dobra, não cada exemplar**: alguns valores
+            // de volta cabem na barra e outros não, e reprovar por um que cabe apagaria a
+            // tolerância que os outros ainda precisam.
+            if matches!(m, Unary::Bend { .. }) {
+                pior_dobra = pior_dobra.max(g);
+                if g > DOBRA_TOLERADA {
+                    maus.push(format!("{m:?} → {g:.4}"));
+                }
+            } else if g > SLACK {
                 maus.push(format!("{m:?} → {g:.4}"));
             }
         }
@@ -203,6 +238,10 @@ fn every_modifier_alone_keeps_the_field_marchable() {
     assert!(
         maus.is_empty(),
         "estes modificadores rasgam o campo SOZINHOS, a um clique do nascimento: {maus:?}"
+    );
+    assert!(
+        pior_dobra > SLACK,
+        "a dobra já cabe na barra (pior {pior_dobra:.4}) — APAGUE a `DOBRA_TOLERADA`"
     );
 }
 
@@ -228,7 +267,11 @@ fn the_radial_repetition_holds_over_every_count() {
     ///
     /// ⚠️ **Alargar a janela de fatias JÁ FOI TENTADO e não faz nada**: o `245,7732` era invariante
     /// a ela, de `n = 3` até `count/2`. *A próxima wave começa sabendo isso.*
-    const TOLERADAS: &[u32] = &[32, 48, 64];
+    /// ⛔⛔ **E a cura que curava isto foi REJEITADA PELO DONO** — ver a nota do `TOLERADOS`:
+    /// apertar a parede da dobra levava as contagens `16` e `24` a `0,23`/`0,35` e fazia a peça
+    /// deixar de dobrar. A próxima wave é o **ombro**, e começa sabendo que as duas saídas óbvias
+    /// (alargar a janela · encolher a curvatura) já foram medidas e recusadas.
+    const TOLERADAS: &[u32] = &[16, 24, 32, 48, 64];
     /// ⚠️ **A grelha do irmão (`20`) é CEGA a isto** — medido: a dobra a `count = 16` lê `0,17` a
     /// `20³` e **`245,77`** a `40³` e a `80³`. *Um extremo procurado numa grelha grossa mede a
     /// grelha.*

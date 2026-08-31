@@ -537,6 +537,9 @@ impl crate::App {
             Some(bits) => self.resolve_hover_outline(bits),
             None => Vec::new(),
         };
+        // ⭐⭐⭐ **O pedaço que o Trim aponta** (plano 38) — ao lado do realce de proveniência, que
+        // responde à mesma pergunta noutra tinta. Fora do modo Trim ele LIMPA-SE.
+        self.refresh_trim_hover(pointer);
         // PH2D_PAINT_PERF: whole-frame timer (aggregated on scope exit, paired with the dispatch info).
         let _paint_frame_timer = PaintFrameTimer(paint_perf::on().then(std::time::Instant::now));
         // Phase 2.1: drop finished-sample Arcs on the main thread (HR-3).
@@ -9879,6 +9882,14 @@ impl crate::App {
                 && !hero.gizmo.iter_selected().any(|s| s == bits)
             {
                 ph2d_vec_render::draw_hover_outline(&self.hover_outline, cam_affine, vector_scene);
+            }
+            // ⭐⭐⭐ **O REALCE DO TRIM** (plano 38): o pedaço que o clique vai apagar, a vermelho,
+            // como no Fusion. ⚠️ **A geometria vem da MESMA porta que o corte** — ela é calculada
+            // no dreno do ponteiro e guardada, então o que acende neste quadro é literalmente o que
+            // o `vec_trim::apply` vai comer. Uma segunda conta aqui seria a divergência mais cara
+            // que uma ferramenta destrutiva pode ter.
+            if !self.vec_trim_piece.is_empty() {
+                ph2d_vec_render::draw_trim_piece(&self.vec_trim_piece, cam_affine, vector_scene);
             }
             if overlay.edit {
                 // ⚠️ A gaiola do Envelope SUBSTITUI a edição de nós. Quando a seleção é um envelope,

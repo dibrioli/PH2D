@@ -66,6 +66,9 @@ impl VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_WIDTH => {
                 self.mode = DrawMode::Width;
             }
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_TRIM => {
+                self.mode = DrawMode::Trim;
+            }
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_CUT => {
                 self.mode = DrawMode::Cut;
             }

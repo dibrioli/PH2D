@@ -72,6 +72,19 @@ pub enum DrawMode {
     /// âncoras — uma parada de multiplicador pequeno senta a milímetros da curva, ou seja em
     /// cima delas. O Illustrator também o faz uma ferramenta (Shift+W).
     Width,
+    /// ⭐⭐⭐ **Aparar** (plano 38): passa o cursor sobre um pedaço de caminho, o pedaço entre as
+    /// duas FRONTEIRAS mais próximas acende, e o clique apaga-o.
+    ///
+    /// É o `Trim` do Fusion 360 — *"trims to the nearest **crossing or node**"* —, e o *"or node"*
+    /// é o *"entre pontos"* do pedido. As quatro espécies de fronteira (cruzamento com outro
+    /// caminho · auto-cruzamento · nó · ponta aberta) vivem numa lista só
+    /// ([`ph2d_vec_scene::trim_tool::boundaries`]).
+    ///
+    /// ⚠️ **Não é o [`DrawMode::Cut`], e a diferença é o SUJEITO.** O Corte pede uma lâmina
+    /// AUTORADA (desenha-se a linha, e um botão corta com ela); o Trim não pede nada — *tudo o que
+    /// está na tela já corta*, e o único gesto é apontar o pedaço. A Autodesk fez exactamente esta
+    /// troca no `TRIM` em 2021, e deixou o modelo da lâmina escolhida atrás de uma variável.
+    Trim,
     /// **Corte** (plano 25 §7, W4): desenha-se uma **LINHA DE CORTE** — com a caneta, exatamente
     /// como se desenha qualquer curva — e um botão do painel corta com ela.
     ///
@@ -108,6 +121,34 @@ pub enum DrawMode {
 }
 
 impl DrawMode {
+    /// ⭐⭐⭐ **O VOCABULÁRIO INTEIRO** — a lista de onde todo censo de modo se deriva.
+    ///
+    /// ⚠️⚠️ **Ela nasceu porque três censos escritos à mão deixaram passar o 15º modo em silêncio**
+    /// (2026-08-31, a wave do Trim): um deles até dizia *"um modo novo tem de passar por aqui"*, e
+    /// tinha um `assert_eq!(lista.len(), 14)` ao lado — que mede o comprimento da PRÓPRIA lista, e
+    /// portanto concorda consigo mesma para sempre. *Um censo que se verifica contra a sua própria
+    /// cópia não é um censo.*
+    ///
+    /// ⛔ Um `match` exaustivo protege quem **decide por variante**; não protege quem **itera**. Esta
+    /// constante é a resposta para os segundos, e o gate abaixo prende-a ao `match`.
+    pub const ALL: &'static [Self] = &[
+        Self::Select,
+        Self::Node,
+        Self::Pen,
+        Self::Pencil,
+        Self::Shape,
+        Self::Text,
+        Self::Build,
+        Self::Connect,
+        Self::PickBlend,
+        Self::Fillet,
+        Self::Chamfer,
+        Self::Width,
+        Self::Trim,
+        Self::Cut,
+        Self::Frame,
+    ];
+
     /// **A forma que ESTE modo desenha** — `None` quando o gesto não produz forma nenhuma.
     ///
     /// ⚠️ **Uma porta só, e é o campo de VALORES que a exige.** O gesto de forma lê o `kind`
@@ -189,5 +230,47 @@ impl MarqueeShape {
     #[must_use]
     pub fn for_gesture(sticky: Self, ctrl: bool) -> Self {
         if ctrl { sticky.other() } else { sticky }
+    }
+}
+
+#[cfg(test)]
+mod all_tests {
+    use super::DrawMode;
+
+    /// ⭐⭐ **A lista e o `match` contam a MESMA população.**
+    ///
+    /// A prova é um `match` exaustivo sobre um valor tirado da lista: acrescentar uma variante ao
+    /// enum sem a pôr no [`DrawMode::ALL`] deixa este `match` com um braço a mais do que a lista
+    /// alcança, e o `assert_eq!` do comprimento acusa. ⛔ Sem a contagem, o `match` sozinho passaria
+    /// — ele é exaustivo sobre o ENUM, e a lista pode ser um subconjunto.
+    #[test]
+    fn the_list_and_the_enum_agree_on_the_population() {
+        let mut vistos = 0usize;
+        for m in DrawMode::ALL {
+            vistos += match m {
+                DrawMode::Select
+                | DrawMode::Node
+                | DrawMode::Pen
+                | DrawMode::Pencil
+                | DrawMode::Shape
+                | DrawMode::Text
+                | DrawMode::Build
+                | DrawMode::Connect
+                | DrawMode::PickBlend
+                | DrawMode::Fillet
+                | DrawMode::Chamfer
+                | DrawMode::Width
+                | DrawMode::Trim
+                | DrawMode::Cut
+                | DrawMode::Frame => 1,
+            };
+        }
+        assert_eq!(vistos, 15, "o vocabulario mudou — reveja quem o itera");
+        // …e sem repetidos: uma variante duplicada na lista faria todo censo medi-la duas vezes.
+        let mut ordenada: Vec<String> = DrawMode::ALL.iter().map(|m| format!("{m:?}")).collect();
+        ordenada.sort();
+        let antes = ordenada.len();
+        ordenada.dedup();
+        assert_eq!(antes, ordenada.len(), "ha' um modo repetido na lista");
     }
 }

@@ -33,6 +33,11 @@ pub const VECTOR_VERT_AVERAGE: NodeId = hash_node_id("vector.vert.average");
 /// registrado que nada pinta é a podridão que os Rake/Random do Paper viraram no Painter.
 pub const VECTOR_MODE_CUT: NodeId = hash_node_id("vector.mode.cut");
 
+/// ⭐⭐⭐ **Aparar** — o 15º modo (plano 38). Vizinho do Corte de propósito: os dois removem
+/// geometria, e a diferença é quem manda no CORTE. O Corte quer uma lâmina autorada; o Trim usa o
+/// que já está na tela e só pede que se aponte o pedaço.
+pub const VECTOR_MODE_TRIM: NodeId = hash_node_id("vector.mode.trim");
+
 /// **Cut** — executa o corte com a linha desenhada. Só é oferecido quando ela existe: um botão
 /// que não tem lâmina para usar é um botão morto.
 pub const VECTOR_CUT_APPLY: NodeId = hash_node_id("vector.cut.apply");

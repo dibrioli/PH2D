@@ -404,5 +404,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::paint_opacity_smoke::frame(app, f);
         return true;
     }
+    // ⭐⭐⭐ A ferramenta TRIM (=80, plano 38) — irmã `trim_smoke`. Quatro casos, um por espécie de
+    // fronteira: a cruz (cruzamento) · o rectângulo (nós) · o zigue-zague (parte em dois) · a reta
+    // solta (a peça toda ⇒ some).
+    if level == 80 {
+        crate::trim_smoke::frame(app, f);
+        return true;
+    }
     false
 }

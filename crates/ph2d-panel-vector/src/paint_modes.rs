@@ -121,6 +121,14 @@ impl BodyCtx<'_> {
                 tr("panel.vector.mode.cut"),
                 DrawMode::Cut,
             ),
+            // **Aparar** — o 15º pill, colado no Corte: os dois REMOVEM geometria, e ler-se um ao
+            // lado do outro é o que faz o artista perceber a diferença (o Corte pede uma lâmina
+            // autorada; o Trim usa o que já está na tela).
+            (
+                ids::VECTOR_MODE_TRIM,
+                tr("panel.vector.mode.trim"),
+                DrawMode::Trim,
+            ),
             // **Moldura** — o 14º pill, e fica no FIM porque é o único que produz um CONTÊINER:
             // os anteriores desenham ou editam uma forma, este cria o lugar onde as formas moram.
             (

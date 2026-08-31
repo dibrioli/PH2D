@@ -181,6 +181,12 @@ pub mod fx_warp_presets;
 /// distância. Rida o esqueleto de reamostragem do `fx_warp_presets`. Módulo irmão.
 pub mod fx_twist;
 
+/// ⭐⭐⭐ **Cortar um contorno por ARCO** — a porta única do Knot e da ferramenta Trim (plano 38).
+mod arc_cut;
+
+/// ⭐⭐⭐ **A ferramenta TRIM** (plano 38) — o pedaço entre as duas fronteiras mais próximas.
+pub mod trim_tool;
+
 /// **Knot** — o entrelace celta: nas travessias, a fita de baixo ganha um vão. Rida o corte por
 /// arco do `fx_trim`. Módulo irmão.
 pub mod fx_knot;

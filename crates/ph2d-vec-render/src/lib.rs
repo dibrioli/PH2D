@@ -60,7 +60,7 @@ mod marquee;
 mod standalone;
 mod stroke_uniform;
 pub use cut_line::draw_cut_line;
-pub use hover_outline::draw_hover_outline;
+pub use hover_outline::{draw_hover_outline, draw_trim_piece};
 pub use marquee::{draw_lasso, draw_marquee};
 pub use standalone::{draw_path_isolated, draw_path_standalone};
 pub use stroke_uniform::{is_conformal, stroke_uniform, uniform_scale};

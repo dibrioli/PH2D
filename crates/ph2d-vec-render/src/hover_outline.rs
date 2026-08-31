@@ -30,15 +30,37 @@ const OUTLINE: Color = Color::from_rgba8(120, 200, 255, 170);
 /// viva o mapa vivo está **vazio**, e o contorno certo é a pegada PRÓPRIA dela — que é exactamente
 /// a forma que a linha da Hierarquia nomeia.
 pub fn draw_hover_outline(world: &[VecPath], camera: Affine, target: &mut VectorScene) {
+    stroke_all(world, camera, target, OUTLINE, OUTLINE_PX);
+}
+
+/// A espessura do realce do **Trim**, em px de TELA. Mais grossa que o contorno de proveniência de
+/// propósito: aquele responde *"o que é isto"*, este responde *"isto vai SUMIR"*.
+const TRIM_PX: f64 = 3.0;
+
+/// A tinta do pedaço que o Trim vai apagar. ⚠️ **Vermelha, como no Fusion** — e a mesma nota do
+/// [`OUTLINE`] vale: os overlays desta crate desenham em tinta própria porque não alcançam o tema.
+const TRIM: Color = Color::from_rgba8(255, 82, 82, 220);
+
+/// ⭐⭐⭐ **Desenha o PEDAÇO que o Trim vai apagar** (plano 38), já em coordenadas de MUNDO.
+///
+/// ⚠️ **A geometria vem da MESMA porta que o corte usa** (`trim_tool::piece_geometry`, o
+/// complemento exacto do `sever`) — construí-la aqui por outra conta acenderia uma coisa e apagaria
+/// outra, que é o pior defeito possível numa ferramenta destrutiva.
+pub fn draw_trim_piece(world: &[VecPath], camera: Affine, target: &mut VectorScene) {
+    stroke_all(world, camera, target, TRIM, TRIM_PX);
+}
+
+/// O traçado partilhado dos dois realces — px de TELA sob `Affine::IDENTITY` (a lei do cabeçalho).
+fn stroke_all(world: &[VecPath], camera: Affine, target: &mut VectorScene, tinta: Color, px: f64) {
     for path in world {
         let screen = camera * super::build::build_bezpath(path);
         if screen.elements().is_empty() {
             continue;
         }
         target.inner_mut().stroke(
-            &Stroke::new(OUTLINE_PX),
+            &Stroke::new(px),
             Affine::IDENTITY,
-            &Brush::Solid(OUTLINE),
+            &Brush::Solid(tinta),
             None,
             &screen,
         );

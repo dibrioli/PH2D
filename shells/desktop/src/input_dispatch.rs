@@ -4246,6 +4246,42 @@ impl App {
                     //
                     // O que o modo muda é só o que a caneta PRODUZ: o caminho nasce marcado como
                     // lâmina (`vec_cut_line::adopt_new_path`, depois do `sync`).
+                    // ⭐⭐⭐ **APARAR** (plano 38): o clique apaga o pedaço que o realce está a
+                    // mostrar. ⚠️ **O pedaço vem do estado do QUADRO** (`vec_trim_hit`), e não de
+                    // um cálculo feito aqui: o que o artista vê a vermelho é literalmente o que
+                    // some. Recalcular no clique abriria a porta para o cursor ter andado um pixel
+                    // entre o desenho e o gesto — e numa ferramenta destrutiva isso é apagar outra
+                    // coisa.
+                    //
+                    // ⚠️ **A forma VIVA congela a receita AQUI**, como no Fillet/Chamfer: um corte
+                    // não sobrevive ao `recook_into`, então sem isto o pedaço voltaria no quadro
+                    // seguinte e a ferramenta leria como *"não funciona"*.
+                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Trim {
+                        if let Some(hit) = self.vec_trim_hit
+                            && let Some(gfx) = self.gfx.as_mut()
+                        {
+                            self.vec_history.begin(&gfx.vec_scene);
+                            crate::vec_convert::freeze_shape_recipe(
+                                &mut gfx.sim,
+                                &self.vec_entities,
+                                hit.path,
+                            );
+                            if crate::vec_trim::apply(&mut gfx.vec_scene, &hit) {
+                                // A selecção pode ter deixado de existir (a peça toda saiu).
+                                if gfx.vec_scene.path(hit.path).is_none() {
+                                    self.vec_pen.select(None);
+                                }
+                                self.vec_history.commit_if_changed(&gfx.vec_scene);
+                            } else {
+                                self.vec_history.cancel();
+                            }
+                            self.vec_trim_hit = None;
+                            self.vec_trim_piece.clear();
+                        }
+                        // ⛔ Consome o press SEMPRE que a ferramenta está na mão: um clique no
+                        // vazio não pode cair na cadeia de baixo e começar a desenhar uma forma.
+                        return;
+                    }
                     if self.vec_draw_config.mode.is_corner_tool() {
                         let chamfer = self.vec_draw_config.mode.corner_is_chamfer();
                         let px_to_world = self.vec_px_to_world();

@@ -27,24 +27,13 @@ use std::sync::Once;
 
 const SRC: &str = include_str!("../src/paint_sections.rs");
 
-/// As 14 ferramentas. ⚠️ Escrita à mão de propósito, com um gate de contagem ao lado: um modo novo
-/// tem de passar por aqui e por uma decisão de escopo, e não entrar em silêncio.
-const TODAS: [DrawMode; 14] = [
-    DrawMode::Select,
-    DrawMode::Node,
-    DrawMode::Pen,
-    DrawMode::Pencil,
-    DrawMode::Shape,
-    DrawMode::Text,
-    DrawMode::Build,
-    DrawMode::Connect,
-    DrawMode::PickBlend,
-    DrawMode::Fillet,
-    DrawMode::Chamfer,
-    DrawMode::Width,
-    DrawMode::Cut,
-    DrawMode::Frame,
-];
+/// **As ferramentas, DERIVADAS do vocabulário** ([`DrawMode::ALL`]).
+///
+/// ⚠️⚠️ **Era uma lista escrita à mão de 14, com um `assert_eq!(len, 14)` ao lado — e ela deixou
+/// passar o 15.º modo (o Trim) em SILÊNCIO.** A asserção media o comprimento da própria lista, logo
+/// concordava consigo mesma para sempre. *Um censo que se verifica contra a sua própria cópia não é
+/// um censo*: a população tem de vir de quem a define.
+const TODAS: &[DrawMode] = DrawMode::ALL;
 
 fn hero_with_vector_panel() -> HeroScreen {
     static INIT: Once = Once::new();
@@ -87,7 +76,7 @@ fn snap_of(mode: DrawMode) -> VectorStyleSnapshot {
 #[test]
 fn the_shape_catalog_belongs_to_the_shape_tool_and_to_no_other() {
     let mut hero = hero_with_vector_panel();
-    for m in TODAS {
+    for &m in TODAS {
         paint_in(&mut hero, snap_of(m));
         assert_eq!(
             painted(&hero, ids::VECTOR_SECTION_SHAPE),
@@ -102,7 +91,7 @@ fn the_shape_catalog_belongs_to_the_shape_tool_and_to_no_other() {
 #[test]
 fn the_pencil_knobs_belong_to_the_pencil() {
     let mut hero = hero_with_vector_panel();
-    for m in TODAS {
+    for &m in TODAS {
         paint_in(&mut hero, snap_of(m));
         assert_eq!(
             painted(&hero, ids::VECTOR_SECTION_PENCIL),
@@ -128,7 +117,7 @@ fn the_symmetry_hides_outside_drawing_but_never_while_it_is_on() {
         DrawMode::Shape,
         DrawMode::Frame,
     ];
-    for m in TODAS {
+    for &m in TODAS {
         paint_in(&mut hero, snap_of(m));
         assert_eq!(
             painted(&hero, ids::VECTOR_SECTION_SYMMETRY),
@@ -137,7 +126,7 @@ fn the_symmetry_hides_outside_drawing_but_never_while_it_is_on() {
         );
     }
     // …e ligada, ela aparece em TODAS — inclusive nas que não desenham nada.
-    for m in TODAS {
+    for &m in TODAS {
         let mut snap = snap_of(m);
         snap.symmetry.on = true;
         paint_in(&mut hero, snap);
@@ -153,7 +142,7 @@ fn the_symmetry_hides_outside_drawing_but_never_while_it_is_on() {
 #[test]
 fn the_tool_row_survives_every_scope() {
     let mut hero = hero_with_vector_panel();
-    for m in TODAS {
+    for &m in TODAS {
         paint_in(&mut hero, snap_of(m));
         assert!(
             painted(&hero, ids::VECTOR_SECTION_TOOL),

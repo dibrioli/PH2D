@@ -1623,6 +1623,13 @@ pub(crate) struct App {
     /// [`Self::vec_shape_armed_target`] apaga o latch quando a selecção muda (desenhar selecciona a
     /// forma nova, então o ciclo Live Shape volta sozinho).
     pub(crate) vec_shape_armed: bool,
+    /// ⭐⭐⭐ **O PEDAÇO que o Trim vai apagar** (plano 38) — o que o cursor aponta neste quadro, e
+    /// `None` quando ele não aponta nada. O realce desenha-o e o clique apaga-o, **pela mesma
+    /// resposta**: numa ferramenta destrutiva, acender uma coisa e apagar outra é o pior defeito
+    /// possível.
+    pub(crate) vec_trim_hit: Option<crate::vec_trim::TrimHit>,
+    /// A geometria do realce, em MUNDO — derivada do [`Self::vec_trim_hit`] no mesmo quadro.
+    pub(crate) vec_trim_piece: Vec<ph2d_vec_scene::VecPath>,
     /// O alvo vivo do frame anterior — só existe para detectar a MUDANÇA que desarma o
     /// [`Self::vec_shape_armed`].
     pub(crate) vec_shape_armed_target: Option<ph2d_vec_scene::VecPathId>,

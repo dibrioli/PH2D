@@ -586,6 +586,9 @@ mod token_smoke;
 mod tokens_smoke;
 mod transform_family_smoke;
 mod transport;
+/// ⭐⭐⭐ **A ferramenta TRIM** (plano 38) — a costura entre o ponteiro e a lei da crate.
+/// A cena de smoke do **Trim** — `PH2D_BUILD_SMOKE=80` (plano 38).
+mod trim_smoke;
 /// A cena de smoke do Twist (o remoinho + o Falloff a modulá-lo) — irmão de `build_smoke`.
 mod twist_smoke;
 /// A metade do CHROME da poeira de impacto — a lei vive na `ph2d-editor-core`.
@@ -705,6 +708,7 @@ mod vec_text_object;
 mod vec_text_reopen;
 mod vec_text_ride;
 mod vec_transform;
+mod vec_trim;
 /// **OS VERBOS DA PELE** (plano UI/UX W6.2) — vestir, trocar de tipo, despir.
 mod vec_ui_state_edit;
 /// **OS VARIANTS** (plano UI/UX W5c) — que versão do componente uma instância é. Um conjunto de
@@ -1139,6 +1143,8 @@ impl App {
             vec_text_last_target: None,
             vec_shape_last_focus: None,
             vec_shape_armed: false,
+            vec_trim_hit: None,
+            vec_trim_piece: Vec::new(),
             vec_shape_armed_target: None,
             vec_entities: Default::default(),
             flip_entities: Default::default(),

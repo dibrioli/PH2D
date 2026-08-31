@@ -136,29 +136,12 @@ mod tests {
     /// no dia em que um modo novo entra numa e não na outra.*
     #[test]
     fn the_modes_that_arm_a_shape_are_exactly_the_ones_the_scope_table_names() {
-        let todos = [
-            DrawMode::Select,
-            DrawMode::Node,
-            DrawMode::Pen,
-            DrawMode::Pencil,
-            DrawMode::Shape,
-            DrawMode::Text,
-            DrawMode::Build,
-            DrawMode::Connect,
-            DrawMode::PickBlend,
-            DrawMode::Fillet,
-            DrawMode::Chamfer,
-            DrawMode::Width,
-            DrawMode::Cut,
-            DrawMode::Frame,
-        ];
-        // A fixture CONTÉM o fenômeno: se a lista acima encolher, o censo deixa de varrer o que diz.
-        assert_eq!(
-            todos.len(),
-            14,
-            "o vocabulario de modos mudou — reveja a tabela"
-        );
-        for m in todos {
+        // ⚠️ **DERIVADO do vocabulário** (`DrawMode::ALL`): a lista escrita à mão que estava aqui
+        // deixou passar o 15.º modo em silêncio, com um `assert_eq!(len, 14)` ao lado que só se
+        // comparava consigo mesma.
+        let todos = DrawMode::ALL;
+        assert!(todos.len() >= 14, "o vocabulario de modos encolheu");
+        for &m in todos {
             let snap = VectorStyleSnapshot {
                 mode: m,
                 shape: ShapeKind::Star,

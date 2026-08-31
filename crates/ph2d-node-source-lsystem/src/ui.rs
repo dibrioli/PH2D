@@ -450,7 +450,46 @@ pub(crate) static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
         when: param::PRESET,
         values: PRESETS_READING_LENGTH_SCALE,
     },
+    // ⭐⭐ **OS TRÊS QUE A CAÇA DE 2026-08-31 ACHOU** — report do Enio: *"descubra para cada
+    // Preset quais os parâmetros que não são usados e esconda do painel"*.
+    //
+    // ⚠️ **Nenhum dos três tem um SÍMBOLO a denunciá-lo**, e é isso que os separa dos dois
+    // acima: o `Width Scale` morre onde não há `!` e o `Length Scale` onde não há `"`, que um
+    // scanner de texto ([`Reads::of`]) vê. Estes três morrem por **como o `build` os lê**, e só
+    // o produto responde — ver `tests/no_preset_shows_a_knob_its_grammar_cannot_read.rs`.
+    ph2d_node_registry::ParamGate {
+        param: param::STEP_SCALE,
+        when: param::PRESET,
+        values: PRESETS_READING_STEP_SCALE,
+    },
+    ph2d_node_registry::ParamGate {
+        param: param::CONTINUOUS_LENGTH,
+        when: param::PRESET,
+        values: PRESETS_GROWING_BY_TIP,
+    },
+    ph2d_node_registry::ParamGate {
+        param: param::CONTINUOUS_ANGLE,
+        when: param::PRESET,
+        values: PRESETS_GROWING_BY_REFINEMENT,
+    },
 ];
+
+/// **A ponta só afina onde há puxão** — `Tropism Direction` sem `Tropism` não tem o que virar.
+///
+/// ⚠️ **Ele estava morto no instante em que o painel abre**, e não numa esquina: o `tropism`
+/// nasce em `0`, e a lei sai por `if set.tropism == 0.0 { return 0.0 }` — medido inerte nos
+/// **nove** moldes. *Um knob que não faz nada com os defaults de fábrica é o pior dos mortos:
+/// ele é o primeiro que o artista experimenta.*
+///
+/// ⛔ **E a cura NÃO é escondê-lo por molde** — a medição diz que ele acorda em TODOS assim que
+/// o vizinho sai de zero. Uma lista de moldes ali apagaria um controlo vivo em nove sítios; o
+/// que a pergunta pede é um limiar, que é precisamente o que este irmão do [`ParamGate`] é.
+pub(crate) static PARAM_GATES_ABOVE: &[ph2d_node_registry::ParamGateAbove] =
+    &[ph2d_node_registry::ParamGateAbove {
+        param: param::TROPISM_ANGLE,
+        when: param::TROPISM,
+        above: 0.0,
+    }];
 
 /// Os índices de molde cuja gramática contém `!` — mais o [`PRESET_CUSTOM`].
 ///
@@ -462,6 +501,47 @@ pub(crate) static PRESETS_READING_WIDTH_SCALE: &[i32] = &[0, 1, 4, 7, PRESET_CUS
 /// Os índices cuja gramática contém `"`. **Nenhum molde o tem** — só o `Custom`, que é onde o
 /// modo guiado e o texto assado vivem.
 pub(crate) static PRESETS_READING_LENGTH_SCALE: &[i32] = &[PRESET_CUSTOM as i32];
+
+/// **Onde o `Step Scale` tem sujeito** — Bush · Weed · Koch · Dragon, mais o `Custom`.
+///
+/// # O mecanismo (⛔ não é a mesma pergunta que as duas de cima, apesar de a resposta coincidir)
+///
+/// O param entra por `step: p.step * step_scale^gerações`, que alimenta o `Setup::step` — e o
+/// `Setup::step` é lido por um módulo de desenho **sem parâmetro** (`F`). Numa gramática
+/// PARAMÉTRICA (`A(s) -> F(s)…`) o comprimento viaja dentro do módulo e sai da expressão, que
+/// lê o `step` CRU pela ponte `Params::by_name` — o expoente nunca é aplicado.
+///
+/// ⇒ *o `Step Scale` é o controlo de comprimento das gramáticas clássicas, e nas paramétricas
+/// quem manda é o `s` que a regra escreve.*
+///
+/// ⚠️⚠️ **A coincidência com [`PRESETS_GROWING_BY_REFINEMENT`] é ACIDENTE, e por isso são duas
+/// constantes e não um alias.** As perguntas são outras — *«há um `F` sem parâmetro?»* contra
+/// *«a figura refina ou cresce pela ponta?»* — e hoje as duas partem o corpus no mesmo sítio
+/// porque as quatro clássicas são exactamente as quatro que refinam. Um molde paramétrico que
+/// refinasse (ou o contrário) separá-las-ia, e um alias faria a segunda resposta seguir a
+/// primeira **em silêncio**. *Duas leis com a mesma tabela hoje continuam a ser duas leis.*
+pub(crate) static PRESETS_READING_STEP_SCALE: &[i32] = &[2, 3, 5, 6, PRESET_CUSTOM as i32];
+
+/// **Onde o `Grow Length` tem sujeito** — os que crescem pela PONTA, mais o `Custom`.
+///
+/// # O mecanismo, e por que estes dois são COMPLEMENTARES
+///
+/// O `build` pergunta `grows_by_refining()` e **cada braço lê um interruptor só**:
+/// - cresce pela ponta ⇒ `(if want_len { frac } else { 1.0 }, frac)` — a viragem é `frac`
+///   sempre, e o `Grow Angle` **nunca é lido**;
+/// - refina ⇒ `if want_ang { … } else { (1.0, 1.0) }` — o `Grow Length` **nunca é lido**.
+///
+/// ⇒ os dois nunca estão vivos ao mesmo tempo, e o painel mostrava sempre os dois. *Metade de
+/// um par exclusivo é um knob morto em todo molde, o tempo todo.*
+///
+/// ⚠️ **A prova de que não são um só param com dois nomes** está no braço da ponta: ali a
+/// viragem contínua não é *desligada*, é **obrigatória** (`ang_frac = frac`). Fundi-los daria ao
+/// artista de um refinador o poder de desligar o que nas outras é lei.
+pub(crate) static PRESETS_GROWING_BY_TIP: &[i32] = &[0, 1, 4, 7, PRESET_CUSTOM as i32];
+
+/// **Onde o `Grow Angle` tem sujeito** — os que REFINAM, mais o `Custom`.
+/// Ver [`PRESETS_GROWING_BY_TIP`] para o mecanismo, que é o mesmo lido do outro lado.
+pub(crate) static PRESETS_GROWING_BY_REFINEMENT: &[i32] = &[2, 3, 5, 6, PRESET_CUSTOM as i32];
 
 /// **AS SEÇÕES** — quatro perguntas, e cada uma responde-se sem ler as outras.
 ///

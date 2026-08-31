@@ -88,7 +88,7 @@ pub use probe::*;
 // ⚠️ Re-exportado sob o nome de sempre: `ph2d_node_source_lsystem::ribbon_key` continua a
 // resolver, então o corte por LOC não mudou o endereço de ninguém.
 pub use ribbons::*;
-use ui::{PARAM_GATES, PARAM_GROUPS, PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
+use ui::{PARAM_GATES, PARAM_GATES_ABOVE, PARAM_GROUPS, PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
 
 use ph2d_node_registry::{
     NodeRegistry, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
@@ -464,6 +464,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_gates_above(MANIFEST.id, PARAM_GATES_ABOVE);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     Ok(())
 }

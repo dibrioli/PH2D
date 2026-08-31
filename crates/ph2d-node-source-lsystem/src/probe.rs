@@ -233,3 +233,76 @@ pub fn probe_build(
 ) -> ph2d_nodegraph::attr::Stream {
     build(axiom, rules, &probe_params(generations, overrides))
 }
+
+/// **A IMPRESSÃO DIGITAL de um stream** — todas as colunas, pelos BITS.
+///
+/// ⚠️ Os bits e não o decimal: duas larguras que se imprimem iguais podem diferir, e um param
+/// que só mexesse na 8.ª casa seria declarado morto por um `to_string`.
+///
+/// ⚠️ **Ordenada pelo NOME da coluna** — a ordem de iteração de um mapa não é a pergunta, e
+/// deixá-la entrar faria a impressão mudar sem o produto mudar.
+fn fingerprint(s: &ph2d_nodegraph::attr::Stream) -> u64 {
+    use ph2d_nodegraph::attr::Column;
+    let mut cols: Vec<(&String, &Column)> = s.columns().collect();
+    cols.sort_by(|a, b| a.0.cmp(b.0));
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut eat = |x: u32| {
+        h ^= u64::from(x);
+        h = h.wrapping_mul(0x0100_0000_01b3);
+    };
+    eat(s.count() as u32);
+    for (name, col) in cols {
+        for b in name.as_bytes() {
+            eat(u32::from(*b));
+        }
+        match col {
+            Column::Scalar(v) => v.iter().for_each(|x| eat(x.to_bits())),
+            Column::Vec2(v) => v.iter().flatten().for_each(|x| eat(x.to_bits())),
+            Column::Vec3(v) => v.iter().flatten().for_each(|x| eat(x.to_bits())),
+            Column::Vec4(v) => v.iter().flatten().for_each(|x| eat(x.to_bits())),
+        }
+    }
+    h
+}
+
+/// ⭐⭐⭐ **QUANTAS SAÍDAS DISTINTAS este param produz** — a régua do knob morto, numa porta só.
+///
+/// `1` ⇒ varrer aquele param pela faixa toda não mexeu um bit: ele **não tem sujeito** naquela
+/// gramática, com aqueles números. Qualquer valor acima de `1` ⇒ ele age.
+///
+/// ⚠️⚠️ **Porta ÚNICA de propósito.** A bancada (`examples/dead_params_report.rs`) e o portão
+/// (`tests/no_preset_shows_a_knob_its_grammar_cannot_read.rs`) fazem a MESMA pergunta, e a lei
+/// que a responde — *o que conta como «mudou»* — não pode viver escrita duas vezes: no dia em
+/// que uma delas passasse a ignorar uma coluna, a bancada e o portão discordariam **em silêncio**
+/// e o portão continuaria verde. *Uma lei escrita em dois sítios ainda não é uma lei.*
+///
+/// ⚠️ **O `generations` entra pelo ARGUMENTO, não pelos overrides** — [`probe_params`] recusa-o
+/// (ele escolhe QUANTO se deriva, não como se interpreta), e sem este braço varrê-lo estouraria.
+///
+/// ⚠️ **Quem chama escolhe os VALORES**, e é isso que separa uma leitura honesta de uma acusação
+/// fabricada: um param cujo sujeito outro param cria (o `tropism_angle` sem `tropism`) mede-se
+/// morto com os defaults e vivo com o vizinho aceso. Ver o veredito da bancada, que faz as duas
+/// leituras e **nunca** manda esconder pela primeira sozinha.
+#[must_use]
+pub fn probe_param_prints(
+    axiom: &str,
+    rules: &str,
+    generations: f32,
+    base: &[(&str, f32)],
+    param: &str,
+    values: &[f32],
+) -> usize {
+    let mut prints = std::collections::BTreeSet::new();
+    for v in values {
+        let mut ov: Vec<(&str, f32)> = base.to_vec();
+        let mut gens = generations;
+        if param == param::GENERATIONS {
+            gens = *v;
+        } else {
+            ov.retain(|(n, _)| *n != param);
+            ov.push((param, *v));
+        }
+        prints.insert(fingerprint(&probe_build(axiom, rules, gens, &ov)));
+    }
+    prints.len()
+}

@@ -173,6 +173,28 @@ pub(super) fn boundary_edges(mesh: &Mesh) -> usize {
     edge_census(mesh).0
 }
 
+/// ⭐⭐⭐ **A SAÍDA AINDA ESTÁ PARTIDA?** — a condição que ARMA as tentativas extra do botão.
+///
+/// ⚠️ **Ela é «as chaves da frente do [`worse`] ainda não estão satisfeitas»**, e não um limiar
+/// escolhido: bordo/não-manifold (`1.ª`) e faces auto-intersectadas (`3.ª`). ⛔ A `2.ª` — a
+/// contagem de peças — fica de fora **porque não é absoluta**: ela só significa alguma coisa
+/// contra a entrada (ver [`shattered`]), e aqui não há entrada.
+///
+/// ⛔⛔ **As gravatas entram aqui em 2026-08-30 e a razão é o report do dono** (*«destruiu
+/// completamente a malha»*): uma saída com faces cruzadas sobre si próprias tem de fazer o botão
+/// **tentar outra vez**, não entregá-la.
+///
+/// ⭐⭐ **E isto é estritamente melhor que um VETO, com risco ZERO de trancar o botão:** as
+/// candidatas extra entram todas pelo mesmo [`worse`], logo *só vencem onde são melhores*. Se
+/// **todas** as tentativas saírem cruzadas, ainda se escolhe a menos má e o artista recebe
+/// alguma coisa. *Uma recusa absoluta transformaria um defeito raro numa ferramenta inutilizável,
+/// e a prova de corpus que a justificaria ainda não existe* — medido em `5` corridas (3 peças ×
+/// 3 níveis, `1 353`..`9 598` quads): **`0` gravatas em todas**, o que é evidência a favor e não
+/// prova.
+pub(super) fn still_broken(mesh: &Mesh) -> bool {
+    open_edges(mesh) > 0 || bowties(mesh) > 0
+}
+
 /// ⭐⭐ **Quantas faces se AUTO-INTERSECTAM** — pela porta de [`ph2d_quadfill::local_shape`].
 ///
 /// ⚠️ **Pela porta e não reimplementada aqui:** a lei do quad em oito vive naquela crate com

@@ -46,7 +46,12 @@ mod rulers;
 // ⚠️ **Os `use` são o que mantém `super::worse` e `super::boundary_edges` a resolver**
 // no `mod tests` irmão: ele chama tudo pelo prefixo, de propósito, e um nome trazido para
 // cá por `use` continua a ser alcançável por `super::`.
-use rulers::{boundary_edges, edges, irregular, open_edges, span, worse};
+// ⚠️ **`open_edges` SAIU daqui em 2026-08-30, e não é limpeza cosmética:** este ficheiro deixou
+// de o chamar quando as duas condições de armar passaram pela porta [`still_broken`]. ⛔ O `mod
+// tests` irmão chamava-o por `super::` e **parte** — a cura é apontá-lo ao dono
+// (`super::rulers::open_edges`), nunca reter aqui um `use` morto nem calar o aviso. *Um import
+// que só existe para um teste o alcançar é uma dependência invisível entre dois ficheiros.*
+use rulers::{boundary_edges, edges, irregular, span, still_broken, worse};
 use target::{f1_follows_target, sizing_field};
 
 impl Sculpt3dScene {
@@ -356,7 +361,11 @@ impl Sculpt3dScene {
             (Err(e), Err(_)) => return Err(e),
         };
 
-        // ⭐⭐⭐ **A TERCEIRA TENTATIVA — e ela corre SÓ SE AINDA HÁ FURO.**
+        // ⭐⭐⭐ **A TERCEIRA TENTATIVA — e ela corre SÓ SE A SAÍDA AINDA ESTÁ PARTIDA.**
+        //
+        // ⚠️ **«Partida» são DUAS coisas desde 30/08** ([`still_broken`]): furo **ou** face
+        // cruzada sobre si própria. *A condição sempre foi «a chave da frente do critério ainda
+        // não está satisfeita» — o que mudou foi quantas chaves há à frente.*
         //
         // ⛔⛔ As linhas de feição por curvatura **custam bordo** na maioria das peças
         // (`sculpt_t001` `4 → 14`, `sculpt_t002` `14 → 18`, `sculpt_hooked` `0 → 4`), e é por
@@ -370,7 +379,7 @@ impl Sculpt3dScene {
         // ⚠️ **E ela é segura por CONSTRUÇÃO:** entra pelo mesmo [`worse`], logo só vence
         // onde é melhor. *A terceira candidata não pode piorar a escolha; só pode não ser
         // escolhida.*
-        let (relief_won, (out, e, _shift_frac_max, shape)) = if open_edges(&out) > 0
+        let (relief_won, (out, e, _shift_frac_max, shape)) = if still_broken(&out)
             && let Ok(f) = guarded(ph2d_crossfield::ALIGN_WEIGHT, true, adaptive)
             && worse(
                 &out,
@@ -396,17 +405,18 @@ impl Sculpt3dScene {
         // ninguém usa* — a fixtura sintética de espinhos já tinha avisado (bordo `0 → 4`) e a
         // leitura foi «na peça dele fica limpo», que era verdade só naquele ponto.
         //
-        // ⇒ **A cura tem a forma da terceira tentativa acima, e a mesma garantia:** se ainda
-        // há furo e o knob estava ligado, corre-se mais uma vez **sem** o campo, e a decisão
+        // ⇒ **A cura tem a forma da terceira tentativa acima, e a mesma garantia:** se a saída
+        // ainda está partida ([`still_broken`]: furo **ou** face cruzada) e o knob estava
+        // ligado, corre-se mais uma vez **sem** o campo, e a decisão
         // passa pelo mesmo [`worse`]. *A adaptação não pode piorar a escolha; só pode não ser
         // escolhida.* ⭐ Ela é **de graça** quando o knob está desligado (a condição exige
-        // `adaptive > 0`) e quando a saída já fecha.
+        // `adaptive > 0`) e quando a saída já sai sã.
         // ⚠️⚠️ **A recaída corre a CORRIDA INTEIRA, não uma variante.** A 1.ª versão
         // desta guarda pediu **uma** candidata sem campo (a do `w` que tinha vencido) e a
         // peça continuou com `4` bordo: *a linha de base não é uma corrida, são duas — a
         // alinhada e a suave — e é o [`worse`] entre elas que dá a malha limpa.* Pedir só
         // metade do caminho de omissão devolve algo que não é o caminho de omissão.
-        let uniforme = if adaptive > 0.0 && open_edges(&out) > 0 {
+        let uniforme = if adaptive > 0.0 && still_broken(&out) {
             let (a, b) = if std::env::var("PH2D_RETOPO_SERIAL").as_deref() == Ok("1") {
                 (
                     guarded(ph2d_crossfield::ALIGN_WEIGHT, false, 0.0),

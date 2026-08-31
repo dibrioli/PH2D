@@ -479,3 +479,92 @@ fn a_ordem_das_chaves_e_furos_pecas_gravatas_forma() {
          qualidade"
     );
 }
+
+/// ⭐⭐⭐ **GATE — a face em OITO ARMA outra tentativa, e a régua antiga não a armava.**
+///
+/// ⛔⛔ **É a metade da cura de 30/08 que o [`super::worse`] sozinho não dá.** O `worse` só
+/// ordena as candidatas que **existem**; se a primeira sair cruzada e nenhuma outra for pedida,
+/// o artista recebe-a na mesma. A condição que pede mais uma tentativa é [`super::still_broken`],
+/// e até este dia ela era **só** o bordo.
+///
+/// ⭐⭐ **E isto é estritamente melhor que uma RECUSA:** as candidatas extra passam todas pelo
+/// `worse`, logo *só vencem onde são melhores* — se todas saírem cruzadas ainda se entrega a
+/// menos má. *Uma recusa absoluta transformaria um defeito raro numa ferramenta inutilizável*, e
+/// a prova de corpus que a justificaria ainda não existe (medido: `0` gravatas em `5` corridas
+/// sobre `3` peças — evidência a favor, não prova).
+#[test]
+fn a_face_em_oito_arma_outra_tentativa() {
+    let boa = um_quad(false);
+    let torta = um_quad(true);
+
+    // ⛔ O CONTROLE: pela régua ANTIGA (só o bordo) as duas armam igual — as duas têm bordo,
+    // por serem quads soltos, logo a fixtura tem de o dizer explicitamente para o gate não
+    // ficar verde por acaso.
+    assert_eq!(super::open_edges(&boa), super::open_edges(&torta));
+
+    // ⭐ E uma malha FECHADA e sã não arma nada — é o que torna a condição barata.
+    let fechada = cubos(1);
+    assert_eq!(super::open_edges(&fechada), 0);
+    assert_eq!(super::bowties(&fechada), 0);
+    assert!(
+        !super::still_broken(&fechada),
+        "⛔ uma peca fechada e sa' nao pode pedir mais uma tentativa -- isso seria pagar sempre"
+    );
+
+    // ⭐⭐ Agora a mesma malha fechada, com UMA face cruzada: tem de armar.
+    let fechada_torta = {
+        let (v, f) = cubo(0.0);
+        let mut faces: Vec<Face> = f
+            .into_iter()
+            .map(|q| Face::quad(q[0], q[1], q[2], q[3]))
+            .collect();
+        let c = faces[0].verts().to_vec();
+        faces[0] = Face::quad(c[0], c[1], c[3], c[2]);
+        Mesh::from_parts(v, faces).expect("a fixtura e' construida aqui")
+    };
+    assert!(
+        super::bowties(&fechada_torta) > 0,
+        "⛔ a fixtura tem de CONTER o fenomeno"
+    );
+    assert!(
+        super::still_broken(&fechada_torta),
+        "⛔ uma face cruzada sobre si propria tem de pedir outra tentativa"
+    );
+}
+
+/// ⭐⭐⭐ **GATE — os DOIS sítios que armam tentativa extra passam pela MESMA porta.**
+///
+/// ⛔ O botão arma uma 3.ª e uma 4.ª candidata, e as duas perguntam a mesma coisa. ⚠️ **Enquanto
+/// a pergunta era a do bordo sozinho ela estava escrita duas vezes** — e uma lei escrita em dois
+/// sítios não é uma lei, é uma coincidência à espera de divergir (a 3.ª chave entrar numa e não
+/// na outra teria sido exactamente isso). *Uma porta, dois chamadores.*
+///
+/// ⛔⛔ **E a metade que PROÍBE a forma antiga tem de DESCASCAR OS COMENTÁRIOS**, senão o
+/// primeiro que **documentar** a mudança — escrevendo a forma velha para dizer que ela morreu —
+/// reprova o portão. *É a armadilha de todo gate textual, e o ficheiro medido documenta
+/// precisamente essa mudança, ao lado do `use` que ela esvaziou.*
+#[test]
+fn os_dois_sitios_que_armam_perguntam_pela_mesma_porta() {
+    let src = include_str!("sculpt3d_history_retopo_extract.rs");
+    assert_eq!(
+        src.matches("still_broken(&out)").count(),
+        2,
+        "⛔ os dois sitios que armam tentativa extra tem de chamar a MESMA funcao"
+    );
+    let codigo: Vec<&str> = src
+        .lines()
+        .map(|l| l.split("//").next().unwrap_or(""))
+        .collect();
+    let codigo = codigo.join("\n");
+    assert!(
+        !codigo.contains("open_edges(&out) > 0"),
+        "⛔ ficou um sitio a perguntar so' pelo bordo -- a 3.a chave nao o alcanca"
+    );
+    // ⛔ O CONTROLE do descascador: ele tem de continuar a ver o CÓDIGO, senão a asserção de
+    // cima passaria sobre um ficheiro vazio e não mediria nada.
+    assert_eq!(
+        codigo.matches("still_broken(&out)").count(),
+        2,
+        "⛔ o descascador comeu o codigo -- a assercao de cima ficaria vacua"
+    );
+}

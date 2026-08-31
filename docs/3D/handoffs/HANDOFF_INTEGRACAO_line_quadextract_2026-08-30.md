@@ -773,3 +773,48 @@ esta linha ainda não tem, e inventar um limiar sem medir é o que o §0.0 proí
   o `Shattered`).
 - ⏳ **«demorou minutos»** — medido `57,7 s → 80,1 s` no arnês; o relógio dele é maior. Não
   investigado: a obra fica desligada e o caminho de omissão não a paga.
+
+### §8-sexdecies.4 — ⭐⭐⭐ A OUTRA METADE: as gravatas ARMAM outra tentativa
+
+⛔ **O [`worse`] sozinho não chega, e a distinção é a que decide se o dono vê o estrago:** ele
+**ordena** as candidatas que existem; se a primeira sair cruzada e nenhuma outra for pedida, a
+cruzada é o que se entrega. Quem pede mais uma é a condição de **armar**, e até 30/08 ela era
+**só** o bordo (`open_edges(&out) > 0`, escrito em **dois** sítios).
+
+⇒ Nasce `sculpt3d_retopo_rulers::still_broken` = *«as chaves da frente do `worse` ainda não estão
+satisfeitas»* — bordo/não-manifold **ou** faces auto-intersectadas. ⛔ A contagem de **peças**
+fica de fora **por não ser absoluta**: ela só significa algo contra a entrada ([`shattered`]), e
+aqui não há entrada.
+
+⭐⭐ **É estritamente melhor que um VETO, com risco ZERO de trancar o botão:** as candidatas extra
+passam todas pelo `worse`, logo *só vencem onde são melhores*; se **todas** saírem cruzadas ainda
+se entrega a menos má. *Uma recusa absoluta transformaria um defeito raro numa ferramenta
+inutilizável.*
+
+**A evidência de corpus que ficou** (`the_artists_piece_through_the_button`, caminho de omissão):
+
+| peça | `Detail` | quads | **gravatas** | lascas |
+|---|---|---|---|---|
+| `espinhos:6` | `0,50` | `1 361` | ⭐ `0` | `0` |
+| `espinhos:6` | `0,85` | `9 469` | ⭐ `0` | `0` |
+| `espinhos:12` | `0,70` | `3 367` | ⭐ `0` | `0` |
+| peça do artista | `0,50` | `1 353` | ⭐ `0` | `0` |
+| peça do artista | `0,85` | `9 598` | ⭐ `0` | `0` |
+
+⚠️ **`5` corridas sobre `3` peças não são «o corpus»** — é evidência a favor, não prova, e é por
+isso que o veto **não** entrou. ⏳ A bancada (`ph2d-quadbench/`) **não existe nesta worktree**;
+quem a tiver e medir `0` em todas as peças pode promover a guarda a `RemeshRefusal`, no molde do
+`Shattered`.
+
+**Gates (2, os dois red-first):**
+- `a_face_em_oito_arma_outra_tentativa` — com **dois** controles: a malha fechada **sã** não arma
+  (senão pagava-se sempre) e a mesma fechada **com uma face cruzada** arma.
+- `os_dois_sitios_que_armam_perguntam_pela_mesma_porta` — conta `2` chamadas a `still_broken` e
+  **zero** `open_edges(&out) > 0`. ⚠️ *A pergunta estava escrita duas vezes, e a 3.ª chave a
+  entrar só numa delas era precisamente a divergência que este gate impede.*
+
+⚠️ **E o compilador apanhou uma dependência invisível:** tirar `open_edges` do `use` do ficheiro
+pai **partiu gates noutro ficheiro** (o `mod tests` irmão chamava-o por `super::`). ⛔ A cura é
+apontá-lo ao dono (`super::rulers::open_edges`) — **nunca** reter um `use` morto para um teste o
+alcançar, nem calar o aviso. *Um import que só existe para um teste chegar a um nome é um fio
+entre dois ficheiros que ninguém vê.*

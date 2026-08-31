@@ -207,12 +207,12 @@ fn a_escolha_ve_a_aresta_nao_manifold_e_nao_so_o_bordo() {
          aresta nao-manifold"
     );
     assert_eq!(
-        super::open_edges(&tripla),
+        super::rulers::open_edges(&tripla),
         super::boundary_edges(&tripla) + 1,
         "⛔ a fixtura tripla tem de CONTER exactamente uma aresta nao-manifold"
     );
     assert_eq!(
-        super::open_edges(&soltos),
+        super::rulers::open_edges(&soltos),
         super::boundary_edges(&soltos),
         "⛔ a fixtura de triangulos soltos nao pode ter nenhuma"
     );
@@ -440,11 +440,16 @@ fn o_alisamento_converge_mesmo_quando_o_pedido_alterna() {
 /// ⚠️ **A 2.ª asserção é a que a 1.ª versão da cura falhou:** ela pedia **uma** candidata
 /// sem campo, e a peça continuou com `4` bordo. *A linha de base não é uma corrida, são
 /// duas* — a alinhada e a suave — e é o `worse` entre elas que dá a malha limpa.
+///
+/// ⚠️ **A condição ALARGOU em 2026-08-30 e este gate seguiu-a:** ela era `open_edges(&out) > 0`
+/// e passou a [`super::still_broken`] (bordo **ou** face cruzada sobre si própria). *Um gate que
+/// nomeia a guarda pelo TEXTO dela reprova quando o texto muda — e é para isso que ele serve:
+/// obrigar quem mexe na guarda a vir aqui dizer que sabia.*
 #[test]
 fn o_campo_adaptativo_recua_quando_abre_a_malha() {
     let src = include_str!("sculpt3d_history_retopo_extract.rs");
     assert!(
-        src.contains("if adaptive > 0.0") && src.contains(concat!("open_", "edges(&out) > 0")),
+        src.contains("if adaptive > 0.0") && src.contains("still_broken(&out)"),
         "⛔ a recaida do campo adaptativo desapareceu: sem ela o `Follow Curvature` volta a \
          poder abrir furos que o caminho de omissao nao tem"
     );

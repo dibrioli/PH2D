@@ -316,7 +316,7 @@ pub fn probe_param_prints(
 /// não se entende **descarta a regra**, senão um erro de digitação apagava a planta enquanto se
 /// escreve a segunda regra), mas descartar em silêncio faz o artista ler o resultado como *a
 /// gramática que ele escreveu*. ⚠️ **A mais cara é a condição:** ela é o travão da recursão, e
-/// `n <= 6` que não compila dá `16 384` módulos onde `n < 6` dá `32` — a planta muda de forma e
+/// `n <= 6` que não compila **descarta a regra** e a planta fica pelo axioma — a forma muda e
 /// nada diz porquê.
 ///
 /// ⚠️ **A lista sai do MESMO percurso que descarta as regras** ([`grammar::parse_rules_reporting`]),

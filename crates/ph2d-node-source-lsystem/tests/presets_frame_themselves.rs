@@ -48,6 +48,14 @@ fn shoot(p: &ls::Preset, over: &[(&str, f32)]) -> Stream {
     ls::probe_build(p.axiom, p.rules, p.generations, &o)
 }
 
+/// Uma coluna escalar do esqueleto, ou vazia.
+fn scalar(s: &Stream, name: &str) -> Vec<f32> {
+    match s.get(name) {
+        Some(Column::Scalar(v)) => v.clone(),
+        _ => Vec::new(),
+    }
+}
+
 /// `(largura, altura)` da caixa.
 fn bbox(s: &Stream) -> (f32, f32) {
     match s.get("P") {
@@ -316,4 +324,83 @@ fn the_factory_guided_mode_expresses_the_factory_grammar_bit_for_bit() {
         p(&a)[a.count() - 1],
         "o `length_scale` nao mexe no guiado — a identidade acima seria um acidente"
     );
+}
+
+/// ⛔⛔⛔ **O CENSO DAS MARCAS DE CADA MOLDE — DERIVADO, e não escrito ao lado do valor.**
+///
+/// # Por que este gate existe
+///
+/// Auditoria de seis lentes, doc 96 §5.2. Cada `leaf_first_level` da tabela levava um comentário
+/// com números contados à mão, e **cinco de oito não se reproduziam**:
+///
+/// | molde | o comentário dizia | medido |
+/// |---|---|---|
+/// | **Bush** | `121` marcas, `1..5`, sobram `96` | **`156`**, `1..4`, sobram **`48`** ← *os números do Weed* |
+/// | **Dragon** | `512` marcas | **`2 048`** (4×) |
+/// | **Fern** | `2..5`, `16 de 26` | `1..5`, `16` de **`31`** |
+///
+/// Consequência prática: quem lê o comentário do `Bush` espera que `First Level = 3` mostre
+/// **96 de 121** folhas (79 %); o produto mostra **48 de 156** (31 %).
+///
+/// ⚠️⚠️ **O gate que existia não podia acusar isto:** `no_preset_silences_its_own_leaves` afirma
+/// só `!marcas.is_empty()` e `vivas > 0`, e **uma contagem 4× errada não move nenhum dos dois
+/// predicados**. É a mesma cegueira que o doc-comment DELE acusa no gate anterior (*«uma
+/// contagem é a única grandeza que SOBE com este defeito»*), reaparecida um nível acima.
+///
+/// # A cura é a FORMA, não os números
+///
+/// ⛔ Reescrever os comentários com os valores certos compra um dia. O que impede a próxima
+/// deriva é a **propriedade**, e ela é a razão de o campo existir: *o `First Level` de cada
+/// molde tem de deixar folhas vivas **e** calar as do tronco*. Ambos os lados, medidos, para os
+/// oito. Os números exactos saem da sonda irmã (`preset_report`), que ninguém copia para um
+/// comentário.
+#[test]
+fn every_presets_first_level_keeps_leaves_alive_and_silences_the_trunk() {
+    for p in ls::PRESETS {
+        let s = shoot(p, &[]);
+        let sym = scalar(&s, "sym");
+        let depth = scalar(&s, "depth");
+        assert_eq!(
+            sym.len(),
+            depth.len(),
+            "`{}`: colunas desalinhadas",
+            p.label
+        );
+
+        let marcas: Vec<u16> = sym
+            .iter()
+            .zip(&depth)
+            .filter(|(c, _)| ls::LEAF_SYMBOLS.contains(&(**c as i32 as u8)))
+            .map(|(_, d)| *d as u16)
+            .collect();
+        assert!(
+            !marcas.is_empty(),
+            "`{}` não emite marca nenhuma — o campo `leaf_first_level` dele não tem sujeito",
+            p.label
+        );
+        let first = p.leaf_first_level as u16;
+        let vivas = marcas.iter().filter(|d| **d >= first).count();
+        let caladas = marcas.len() - vivas;
+        let (dmin, dmax) = (
+            marcas.iter().copied().min().unwrap_or(0),
+            marcas.iter().copied().max().unwrap_or(0),
+        );
+
+        // 1. O molde tem de ficar com folhas — foi isto que esvaziou o `Sprig` uma vez.
+        assert!(
+            vivas > 0,
+            "`{}`: `First Level = {first}` apaga TODAS as {} marcas (profundidades {dmin}..{dmax})",
+            p.label,
+            marcas.len()
+        );
+        // 2. E o `first` tem de descrever a planta: ou ele cala alguma coisa, ou ele é `1` —
+        //    que é a resposta honesta para uma figura sem tronco (as curvas têm as marcas todas
+        //    na profundidade 1, e ali não há por onde discriminar).
+        assert!(
+            caladas > 0 || first <= dmin,
+            "`{}`: `First Level = {first}` não cala nada e não é o mínimo ({dmin}) — ele descreve \
+             uma planta que este molde não é",
+            p.label
+        );
+    }
 }

@@ -164,6 +164,16 @@ levando a âncora com ela: o campo *Leaf (J)* ficava cheio e nada nascia.
 
 ### 5.1 — Os moldes de PLANTA passam a trazer a âncora
 
+> ⛔⛔ **ESTA SECÇÃO DESCREVE O ESTADO DE 30/08 E FOI SUPERADA — leia-a como história.**
+> A §11 e a §12.1 deste mesmo documento registam o que a medição desmentiu, e o
+> [§15](#15--uma-recusa-viva-sobre-trabalho-já-feito-custa-uma-janela-inteira) explica por que
+> ela ficou por marcar. Em resumo, três das afirmações abaixo já não valem:
+> **os OITO moldes trazem a âncora** (não três) · **o `DEFAULT_RULES` também a traz** (não fica
+> intocado) · **o preço é ~2×** (não ~3×). E a que sobra ganhou uma excepção: a âncora é
+> visualmente neutra em sete moldes e **não** no `Wild`, que é estocástico.
+>
+> ⚠️ *Um leitor que entre pelo §5 — que é a ordem do documento — saía com a resposta errada.*
+
 `Tree`, `Fern` e `Wild`. Medições que decidiram a forma:
 
 | pergunta | número |
@@ -702,6 +712,28 @@ não sabem fazer.
 
 ---
 
+## §15 — Uma recusa VIVA sobre trabalho já feito custa uma janela inteira
+
+Auditoria de seis lentes, doc 96 §5.4.
+
+O `CLAUDE.md` §5.0 manda **consultar a tabela de recusas antes de propor qualquer mudança de
+desenho**. É a regra que impede refazer trabalho já pago — e ela tem um custo simétrico que
+ninguém tinha nomeado: **uma recusa que descreve trabalho já FEITO faz a próxima janela
+recusar-se a fazer o que já está no `main`.**
+
+A entrada *«Âncora no `DEFAULT_RULES`»* estava viva, sem rasura, e a revogação dela estava **duas
+linhas abaixo, na mesma tabela** (*«Deixar o `DEFAULT_RULES` sem âncora… ⛔ Revertido no mesmo
+dia»*). As duas descreviam o mesmo facto em sentidos opostos — e **discordavam também sobre o
+preço** (`~3×` contra `~2×`; a medição diz **2×**).
+
+⚠️ **A mesma recusa estava escrita uma TERCEIRA vez, também viva**, no §5.1 deste documento.
+
+⇒ **quem reverte uma recusa rasura-a no mesmo commit.** O precedente de formatação já existia
+nesta tabela — a do `Tropism Angle`, rasurada em [§14.3](#143--uma-recusa-minha-tinha-a-premissa-errada-no-dia-em-que-a-escrevi) —, e foi por isso que
+esta se lê como um esquecimento e não como uma decisão.
+
+---
+
 ## ⛔ Recusas MEDIDAS (deste estudo)
 
 | Item | Motivo |
@@ -709,7 +741,7 @@ não sabem fazer.
 | Emitir a fita como quads no próprio interpretador | Separa-se esqueleto de superfície nas quatro referências; e o varrimento serve também os cinco `rig.*` (doc 92 §2 item 8) |
 | Portas de geometria `J`/`K`/`M` à la Houdini | O nó tem `inputs: &[]` e a casa nomeia objectos por **nome** (`fx.glow`, `motion.path`), com chips já alcançáveis no painel. Portas seriam um segundo idioma |
 | Tabela de «objeto por fase de crescimento» | A fase é a regra que dispara; a letra é o objecto. Nenhuma das quatro referências tem tabela de fase — e nós já emitimos `gen` para quem quiser filtrar |
-| Âncora no `DEFAULT_RULES` | Ele é o oráculo do modo guiado (gate compara os dois ao bit) e o default de fábrica — obrigaria a pôr a âncora na derivação guiada e a pagar ~3× a contagem em toda planta que nunca terá folha |
+| ~~Âncora no `DEFAULT_RULES`~~ | ⛔⛔ **REVOGADA — ela descreve trabalho JÁ FEITO**, e a revogação estava duas linhas abaixo, por rasurar. Ver [§15](#15--uma-recusa-viva-sobre-trabalho-já-feito-custa-uma-janela-inteira) |
 | Terminar a recursão para não acumular (`A(s) : s <= k -> F(s)J`) | Medido: **muda a planta** — `64` elementos em vez de `256` a `g = 8`. Não é a mesma planta com folhas |
 | O cruza-fade entre duas gerações (peso `f` / `1 − f`) | Comprava «só as pontas» numa planta parada e fazia **cada folha encolher até sumir** durante o crescimento — *«só as pontas» e «uma folha não encolhe» não cabem na mesma lei, porque uma ponta vira interior*. Veredito do Enio: *«bem bizarro»* |
 | ~~Esconder o `Tropism Angle` quando o `Tropism` é `0`~~ | ⛔⛔ **REVOGADA em 2026-08-31 — a premissa técnica estava ERRADA quando foi escrita.** Ver [§14.3](#143--uma-recusa-minha-tinha-a-premissa-errada-no-dia-em-que-a-escrevi) |
@@ -718,7 +750,7 @@ não sabem fazer.
 | Folhas da frente como imagem na cena Vello | ⛔ Poria metade da copa DEPOIS do tonemap e metade antes — as duas metades da mesma folhagem com cores diferentes |
 | Desenhar o vector do documento na passagem HDR das sprites | ⛔ **Re-medido no `vello` 0.10** (a nota citava o 0.8): o `render_to_texture` exige `Rgba8Unorm`; o alvo HDR está fora do alcance da biblioteca |
 | «Curar» a oscilação do Dragon | ⛔ Medido: a motricidade é CONTÍNUA (o degrau encolhe ~4× quando a amostragem afina 4×, que é a assinatura de movimento e não de salto), e as gerações inteiras são monótonas. O que oscila é a EXTENSÃO da figura enquanto as juntas abrem — curá-la seria mentir sobre a curva |
-| Deixar o `DEFAULT_RULES` sem âncora para poupar ~2× elementos | ⛔ Revertido no mesmo dia: a poupança tornava a feature **inalcançável do estado em que o nó nasce** (*"em custom não funciona"*) |
+| Deixar o `DEFAULT_RULES` sem âncora para poupar ~2× elementos | ⛔ Revertido no mesmo dia: a poupança tornava a feature **inalcançável do estado em que o nó nasce** (*"em custom não funciona"*). ⚠️ É esta que manda, e o preço certo é **~2×** — não os `~3×` da linha revogada acima |
 | Filtrar `sym` com `motion.cull` | Ele só faz *Fraction* e *Falloff*; a rota por atributo pede 6-7 nós e o código ASCII da letra |
 
 ---

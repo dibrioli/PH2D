@@ -35,14 +35,18 @@ use super::*;
 /// |---|---|---|---|
 /// | Tree   |   2,7 | 1,34 | — |
 /// | Fern   |   3,9 | 1,93 | — |
-/// | Wild   |   3,7 | 1,84 | — |
-/// | Sprig  |   3,4 | 1,68 | o `Angle` é **byte-inerte** (família C da auditoria) |
+/// | Wild   |   **3,1** | **1,565** | ⚠️ re-medido 31/08 — o `[J]` mudou os sorteios deste molde |
+/// | Sprig  |   **3,49** | **1,746** | o `Angle` era **byte-inerte** (família C da auditoria) |
 /// | Dragon |  25,2 | 12,59 | pede **90°** e chegava a 25 |
 /// | Weed   |  60,1 | 30,07 | — |
 /// | Bush   | 243,0 | 121,50 | — |
 /// | Koch   | 2581,8 | **1290,90** | pede **90°**; 322× a coluna da cena |
 ///
 /// ⭐ **963× entre dois itens do mesmo selector**, e uma coluna da cena `=108` tem ~4 unidades.
+///
+/// ⚠️ **Duas linhas desta tabela foram re-medidas em 2026-08-31** (doc 96 §5.3): ela descreve o
+/// estado ANTES da cura, e duas das oito deixaram de o descrever — o `Wild` porque a âncora
+/// `[J]` lhe mudou os sorteios, e o `Sprig` que já divergia. O `963×` continua exacto.
 ///
 /// ⇒ O molde passa a carregar o **enquadramento**: o ângulo que a figura exige, as gerações em
 /// que ela se lê, e o par `step`/`width` que a põe do mesmo tamanho dos irmãos.
@@ -89,6 +93,19 @@ pub struct Preset {
     ///
     /// ⚠️ É o mesmo padrão dos outros quatro números de enquadramento (ângulo · gerações ·
     /// passo · espessura): **o molde carrega o seu**, e trocar de molde escreve-o.
+    ///
+    /// ⛔⛔ **AS CONTAGENS À MÃO SAÍRAM DAQUI em 2026-08-31** (doc 96 §5.2). Cada entrada levava
+    /// um comentário com o número de marcas, a faixa de profundidades e quantas sobrevivem — e
+    /// **cinco de oito não se reproduziam**: o do `Bush` carregava os números do `Weed`
+    /// (`121`/`96` contra `156`/`48` reais) e o do `Dragon` dizia `512` onde são **`2 048`**.
+    /// Quem lesse o do `Bush` esperava 79 % das folhas vivas; o produto dá **31 %**.
+    ///
+    /// ⇒ o que fica escrito é o **porquê** de cada valor (uma curva não tem tronco; o `J` do
+    /// `Sprig` vive num ramo lateral); os NÚMEROS saem da sonda `examples/preset_report.rs`, e a
+    /// PROPRIEDADE que eles justificavam é gateada por
+    /// `every_presets_first_level_keeps_leaves_alive_and_silences_the_trunk`.
+    /// *Um número contado à mão ao lado do valor que ele descreve é uma segunda fonte, e é
+    /// sempre ela que envelhece.*
     pub leaf_first_level: f32,
 }
 
@@ -125,48 +142,44 @@ impl Reads {
     }
 }
 
-/// **O molde `Tree`** — o de fábrica MAIS as âncoras de folha.
+/// **O molde `Tree`** — hoje BYTE-IDÊNTICO ao [`DEFAULT_RULES`], e isso é um facto e não um
+/// descuido.
 ///
-/// ⛔⛔ **Texto PRÓPRIO, e não o [`DEFAULT_RULES`]** — report do Enio (2026-08-30): *"só apareceu
-/// em seu exemplo, ao trocar o tipo de árvore não aparece mais"*. Os moldes de PLANTA passam a
-/// trazer o `J`, senão o campo *Leaf (J)* fica cheio e não desenha nada — um controlo morto com
-/// o valor lá dentro.
+/// ⛔⛔ **ESTE BLOCO FOI REESCRITO EM 2026-08-31: ele tinha CINCO afirmações desmentidas pelo
+/// código à volta dele** (auditoria de seis lentes, doc 96 §5.1). Ficam registadas porque a
+/// forma como envelheceram é a lição:
 ///
-/// ⚠️ **O `DEFAULT_RULES` fica INTOCADO** porque ele é o ORÁCULO do modo guiado (o gate
-/// `the_guided_plant_draws_exactly_what_the_factory_grammar_draws` compara os dois ao bit) e o
-/// default de fábrica do nó. Pôr a âncora nele obrigaria a pô-la também na derivação guiada, e a
-/// pagar o preço abaixo em toda planta que nunca terá folha.
+/// | dizia | e a medição diz |
+/// |---|---|
+/// | *«Texto PRÓPRIO, e não o `DEFAULT_RULES`»* | **byte-idênticos** |
+/// | *«O `DEFAULT_RULES` fica INTOCADO… pô-la nele obrigaria a pô-la também na derivação guiada»* | as **duas** coisas aconteceram (`lib.rs` e `shape.rs`) |
+/// | *«A âncora é VISUALMENTE NEUTRA — `0` posições novas»* | verdade em 7 moldes; **falsa no `Wild`** (32 novas, −15,6 %) |
+/// | *«O preço é a CONTAGEM, e é ~3× (`32 → 94`; `256 → 766`)»* | **`32 → 63`** (1,97×) e `256 → 511` |
+/// | *«A âncora só entra em `Tree`, `Fern`, `Wild`»* | **os oito** a têm |
 ///
-/// ⚠️ **A âncora é VISUALMENTE NEUTRA — medido, não deduzido:** ela nasce na posição do PAI e com
-/// a largura dele, então em `Segments` o ponto que ela desenha cai exactamente em cima de um que
-/// já lá estava (sonda de 2026-08-30 sobre esta gramática: `16 → 46` elementos, **`0` posições
-/// novas**).
+/// ⚠️⚠️ **Três delas tinham IRMÃ A DISCORDAR dentro da mesma crate** — o preço certo (`~2×`)
+/// estava em `lib_marks_tests.rs`, 340 linhas abaixo, e a lista de moldes também. *Duas
+/// afirmações sobre o mesmo facto no mesmo repositório, e a que se lê primeiro é a que está mais
+/// perto do valor.*
 ///
-/// ⚠️ **O preço é a CONTAGEM, e é ~3×** (`32 → 94` elementos a `g = 5`; `256 → 766` a `g = 8`):
-/// um `J` não é reescrito, então ACUMULA por geração. ⛔ A forma que NÃO acumula — a regra
-/// condicional `A(s) : s <= k -> F(s)J` — foi medida e **muda a planta**: ela termina a recursão
-/// no limiar, e a `g = 8` a árvore fica com `64` elementos em vez de `256`. *Não é a mesma planta
-/// com folhas; é outra planta.*
+/// ⇒ **A forma comum a todas: o commit que pôs `[J]` nas oito gramáticas mudou a FIXTURA, e
+/// nenhuma das medições escritas sobre a fixtura antiga foi re-corrida.**
 ///
-/// ⛔⛔ **A âncora só entra nos moldes que CRESCEM PELA PONTA — `Tree`, `Fern`, `Wild`.**
+/// # O que é verdade hoje
 ///
-/// Os que REFINAM (`Bush`, `Weed`) e as CURVAS (`Koch`, `Dragon`) ficam de fora, e é decisão de
-/// PRODUTO com mecanismo medido: numa gramática de refinamento **todo módulo que desenha renasce
-/// a cada geração** e a silhueta inteira muda, enquanto um `J` não é reescrito e ACUMULA — a
-/// `g = 5` o `Bush` fica com uma folha em cada bifurcação que ele já teve, espalhadas pelo tronco
-/// em vez de nas pontas. Numa curva (`Koch`, `Dragon`) não há ponta nenhuma onde pendurar.
-///
-/// ⚠️ **A 1.ª redacção desta nota dava outra razão, e ela DISSOLVEU no mesmo dia:** era que a
-/// âncora mudava a FAMÍLIA de crescimento do molde (dois gates das leis de crescimento trocavam
-/// de valor com o `J` no `Bush`). Isso era um defeito da PERGUNTA, não do molde — ela contava
-/// marcas de instância como se desenhassem —, e a cura foi estreitá-la para
-/// [`crate::turtle::draws`], com gate próprio
-/// (`hanging_a_leaf_on_a_grammar_does_not_change_its_growth_family`). *Quem move o número que
-/// tornava algo inalcançável tem de reconferir a nota* — e o que sobra depois de a reconferir é
-/// só o argumento estético acima, que é do Enio, não meu.
-///
-/// ⇒ o sítio de pedir uma folha num refinador é a gramática do artista, e o painel **diz** quando
-/// o nome está posto e a letra não existe (`motion_lsystem_gen::unanswered_slots`).
+/// - **Os oito moldes trazem a âncora**, e o `DEFAULT_RULES` também — senão o campo *Leaf (J)*
+///   fica cheio e não desenha nada, que é um controlo morto com o valor lá dentro (report do
+///   Enio, 2026-08-30: *«só apareceu em seu exemplo, ao trocar o tipo de árvore não aparece
+///   mais»*, e depois *«em custom não funciona»*).
+/// - **O preço é a contagem, e é ~2×** (`32 → 63` a `g = 5`; `256 → 511` a `g = 8`): um `J` não
+///   é reescrito, então ACUMULA por geração. O número vive gateado em `lib_marks_tests`, e não
+///   aqui.
+/// - ⛔ **A forma que NÃO acumula foi medida e RECUSADA:** a regra condicional
+///   `A(s) : s <= k -> F(s)J` termina a recursão no limiar, e a `g = 8` a árvore fica com `64`
+///   elementos em vez de `256`. *Não é a mesma planta com folhas; é outra planta.*
+/// - ⚠️ **Pendurar uma marca num molde ESTOCÁSTICO muda a figura dele** — foi o que aconteceu ao
+///   `Wild`, e o `step` dele teve de ser re-derivado. Um `[J]` não é uma marca invisível quando
+///   há sorteio no meio.
 const TREE_WITH_LEAVES: &str = "A(s) -> F(s)[J]![+A(s*0.7)][-A(s*0.7)]";
 
 /// ⚠️ **O ÍNDICE `CUSTOM` é o último, e ele não é um molde** — é *"nenhum destes"*.
@@ -189,7 +202,7 @@ pub const PRESETS: &[Preset] = &[
         step: 0.658,
         width: 0.212,
         reads: Reads::of(DEFAULT_RULES),
-        // Tree: as marcas estao em `1..5` (`1 · 2 · 4 · 8 · 16`) e as duas setas da foto do Enio apontam para os niveis `1` e `2`.
+        // Tree: as duas setas da foto do Enio apontam para os niveis `1` e `2`.
         leaf_first_level: 3.0,
     },
     Preset {
@@ -201,7 +214,6 @@ pub const PRESETS: &[Preset] = &[
         step: 0.456,
         width: 0.147,
         reads: Reads::of("A(s) -> F(s)[+B(s*0.55)]!A(s*0.87) ; B(s) -> F(s)[-B(s*0.72)]B(s*0.8)"),
-        // Fern: marcas em `2..5`; a `3` sobram 16 de 26 e nenhuma no caule.
         leaf_first_level: 3.0,
     },
     // ABOP fig. 1.24: o arbusto clássico lê-se a **4** gerações (a 5 são 3 126 módulos), e o
@@ -215,7 +227,6 @@ pub const PRESETS: &[Preset] = &[
         step: 0.022,
         width: 0.007,
         reads: Reads::of("F -> F[+F][J]F[-F]F"),
-        // Bush: com o `[J]` sao 121 marcas em `1..5`; a `3` sobram 96 e nenhuma no caule.
         leaf_first_level: 3.0,
     },
     // ABOP fig. 1.24d — 20°.
@@ -228,7 +239,6 @@ pub const PRESETS: &[Preset] = &[
         step: 0.029,
         width: 0.009,
         reads: Reads::of("X -> F[+X][J]F[-X]+X ; F -> FF"),
-        // Weed: idem — 121 marcas em `1..5`.
         leaf_first_level: 3.0,
     },
     Preset {
@@ -251,7 +261,6 @@ pub const PRESETS: &[Preset] = &[
         step: 0.566,
         width: 0.182,
         reads: Reads::of("A(s) -> (0.4) F(s)![+A(s*0.72)][-A(s*0.72)]"),
-        // Wild: marcas em `1..5`; a `3` sobram 12 de 18.
         leaf_first_level: 3.0,
     },
     // ⚠️ A ilha de Koch quadrática é **90° por definição** — a 25 ela não é a figura, é um
@@ -265,9 +274,9 @@ pub const PRESETS: &[Preset] = &[
         step: 0.022,
         width: 0.007,
         reads: Reads::of("F -> F[J]+F-F-F+F"),
-        // Koch: ⚠️ as 156 marcas estao TODAS na profundidade 1 — uma curva nao tem tronco,
-        // logo o `First Level` nao tem por onde discriminar. `1` mostra-as todas, que e' a
-        // unica resposta honesta: quem escreve um nome numa curva quer decoracao, nao copa.
+        // Koch: ⚠️ uma CURVA nao tem tronco, logo as marcas estao todas na mesma
+        // profundidade e o `First Level` nao tem por onde discriminar. `1` mostra-as todas,
+        // que e' a unica resposta honesta: quem escreve um nome numa curva quer decoracao.
         leaf_first_level: 1.0,
     },
     // ⚠️ A curva do dragão: 90°, e só se lê como dragão a partir de ~10 iterações.
@@ -280,7 +289,7 @@ pub const PRESETS: &[Preset] = &[
         step: 0.019,
         width: 0.006,
         reads: Reads::of("F -> F[J]+G ; G -> F-G"),
-        // Dragon: idem (512 marcas, todas na profundidade 1).
+        // Dragon: idem — curva, sem tronco.
         leaf_first_level: 1.0,
     },
     // ⚠️ O `[+F(s*0.35)J]` e não o `[+J]` da 1.ª redacção: uma MARCA lê o osso do PAI e não o
@@ -296,7 +305,8 @@ pub const PRESETS: &[Preset] = &[
         step: 0.524,
         width: 0.168,
         reads: Reads::of("A(s) -> F(s)[+F(s*0.35)J][-F(s*0.35)J]!A(s*0.8) ; J -> J"),
-        // Sprig: ⛔ MEDIDO: as 10 marcas dele estao TODAS na profundidade 1 (o `J` vive num ramo lateral de 1.o nivel), entao um `3` esvaziava-o.
+        // Sprig: ⛔ MEDIDO: as marcas dele estao TODAS na profundidade 1 (o `J` vive num
+        // ramo lateral de 1.o nivel), entao um `3` esvaziava-o.
         leaf_first_level: 1.0,
     },
 ];

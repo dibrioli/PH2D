@@ -52,7 +52,12 @@ use super::*;
 ///
 /// ⚠️ **`t = 1` devolve `G` EXACTAMENTE**, e é isso que torna o param aditivo: no default nada
 /// nesta casa se mexe. ⚠️ E com `r ≈ 1` (as que crescem pela PONTA, cuja razão medida está
-/// hoje entre **`1,053`** e **`1,154`** — ⛔ não o `1,06` que aqui estava, que descrevia uma
+/// hoje entre **`1,0971`** (o `Sprig`) e **`1,1542`** (o `Fern`) — ⛔⛔ **não o `1,053 .. 1,154`
+/// que aqui esteve**: aquele piso era o `Wild` ANTES de ele ganhar a âncora `[J]`, e o molde
+/// estocástico mudou de razão quando a gramática mudou (hoje `1,0992`). ⚠️ Ele estava a
+/// **`0,3 %`** da guarda `r > 1.05` logo abaixo, e a nota que documentava a distância à cerca
+/// era a que estava errada sobre o membro mais perto dela. ⛔ E também não o `1,06` de antes,
+/// que descrevia uma
 /// delas) o logaritmo degenera — aí a rampa linear já é a certa, e é ela que se usa.
 ///
 /// ⚠️ O `r` é MEDIDO por quem chama (duas derivações baratas), nunca contado da gramática:

@@ -319,7 +319,16 @@ impl Derived {
     /// para **`1,2502`**, ou seja **`0,017 %`** acima do limiar: mexer o `Length Scale` de
     /// `0,89` para `0,90` (o default do painel!) saltava o tamanho **`+15,4 %`**.
     ///
-    /// ⚠️ E não havia limiar melhor: varridas **8 100** combinações dos knobs do guiado, o
+    /// ⚠️ E não havia limiar melhor. ⛔⛔ **O NÚMERO QUE AQUI ESTAVA ERRAVA A SUBESTIMAR**
+    /// (doc 96 §5.3): ele dizia *«varridas 8 100 combinações … 3,5 % de separação»*, medido
+    /// sobre uma faixa mais curta que a que o `ui.rs` de facto oferece. Re-varrido sobre as
+    /// faixas do produto (`branches 1..5` · `segments 1..6` · `variation 0..1` ·
+    /// `bend −30..30` · `length_scale`/`width_scale` `0,1..1,5`) são **33 750** células, o
+    /// máximo do guiado é **`1,9028`** contra o `1,4791` do Dragon, e **8 100 delas (24 %)
+    /// ficam ACIMA** dele. ⇒ as classes não «tocam-se»: **sobrepõem-se num quarto do espaço**.
+    /// *A conclusão sai reforçada; quem lia `3,5 %` imaginava uma fronteira apertada.*
+    ///
+    /// A leitura antiga, para referência: varridas 8 100 combinações dos knobs do guiado, o
     /// máximo dele é **`1,4294`**, e o refinador mais fraco do corpus (Dragon) é **`1,4791`**
     /// — **`3,5 %`** de separação. *Um discriminador cujas duas classes se tocam não é um
     /// discriminador, e afinar o número só muda de que lado cai o precipício.*

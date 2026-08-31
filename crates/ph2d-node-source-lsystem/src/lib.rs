@@ -211,10 +211,16 @@ pub const DEFAULT_AXIOM: &str = "A(step)";
 
 /// As regras de fábrica: uma árvore binária paramétrica que **converge**.
 ///
-/// `A(s) -> F(s) ! [ +A(s*0.7) ] [ -A(s*0.7) ]` — o `F(s)` desenha, o `!` afina a espessura
-/// para os filhos (depois do tronco, para o tronco sair cheio), e o `0.7` faz a altura
-/// somar `s/(1−0.7) ≈ 3,3·step` em vez de crescer sem limite. É o exemplo mínimo que exibe as
-/// três coisas que este nó tem e um gerador de pontos não tem: parâmetro, espessura, e árvore.
+/// `A(s) -> F(s) [J] ! [ +A(s*0.7) ] [ -A(s*0.7) ]` — o `F(s)` desenha, o `[J]` pousa a ÂNCORA
+/// onde uma folha pode nascer, o `!` afina a espessura para os filhos (depois do tronco, para o
+/// tronco sair cheio), e o `0.7` faz a altura somar `s/(1−0.7) ≈ 3,3·step` em vez de crescer sem
+/// limite. É o exemplo mínimo que exibe as **quatro** coisas que este nó tem e um gerador de
+/// pontos não tem: parâmetro, espessura, árvore, e um sítio onde pendurar um objecto.
+///
+/// ⚠️ **O `[J]` e a contagem «quatro» entraram em 2026-08-31** (doc 96 §5.3): a constante ganhou
+/// a âncora em `01cf89536` e este doc-comment — **quatro linhas acima dela** — continuou a
+/// soletrar a regra sem ela e a dizer «três». *Um comentário que soletra o valor que documenta
+/// é uma segunda cópia dele, e é sempre a cópia que envelhece.*
 pub const DEFAULT_RULES: &str = "A(s) -> F(s)[J]![+A(s*0.7)][-A(s*0.7)]";
 
 /// Quantas gerações derivar, e quanto da mais nova já cresceu.

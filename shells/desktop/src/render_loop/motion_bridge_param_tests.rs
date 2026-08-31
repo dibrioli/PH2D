@@ -573,3 +573,85 @@ fn the_channel_picker_fits_the_panels_ceiling() {
     );
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }
+
+/// ⛔⛔⛔ **NENHUMA CHAVE DERIVADA APARECE NO SELECTOR DE OBJECTOS** — a cerca que já existia e
+/// que quem cunha chaves de CONTEÚDO não estava a cumprir.
+///
+/// # O defeito
+///
+/// Auditoria de seis lentes, doc 96 §5.5. As membranas publicam a geometria derivada na **mesma
+/// tabela de externos** de que o picker de objectos tira as opções — e o filtro dele é
+/// `!is_reserved(k)`. Sem o prefixo `$`, cada planta, forma, texto e tabela derivada aparecia ao
+/// artista como uma *"Drawn shape"* escolhível: na cena `=108` são **cinco chips de lixo**, com
+/// a gramática crua lá dentro, e clicar num planta a **PRÓPRIA planta** como folha dela.
+///
+/// ⚠️ O doc do `RESERVED_PREFIX` já dizia as duas metades da regra — *«o editor publica DENTRO
+/// do namespace, e recusa publicar um nome do artista que já esteja nele»*. A **primeira** é que
+/// não estava a ser cumprida.
+///
+/// # A régua: o que o PICKER mostra, não o que a tabela contém
+///
+/// ⚠️ **É uma família, não um caso** (`$lsysrib` · `$shape` · `$text` · `$table:`), então o gate
+/// pergunta pela porta do produto (`publish_all` + `source_options`) em vez de nomear um
+/// prefixo. Um cunhador NOVO que esqueça o `$` fica vermelho aqui sem ninguém o acrescentar a
+/// uma lista.
+#[test]
+fn no_derived_key_is_offered_as_a_drawn_shape() {
+    use crate::render_loop::motion_lsystem_testkit::{key_of, plant, publish_object};
+    let (mut state, n) = plant(ph2d_node_source_lsystem::GEOMETRY_BRANCHES);
+    // Um objecto de VERDADE, nomeado pelo artista — o controlo do próprio filtro: sem ele um
+    // `source_options` vazio passaria calado.
+    publish_object(&mut state, "folha", 7);
+    // ⚠️ **A FAMÍLIA INTEIRA na cena, e não só a planta.** A 1.ª redacção publicava só um
+    // `source.lsystem`, e as mutações que tiram o `$` das chaves da FORMA e do TEXTO
+    // **sobreviveram** — a população não continha o fenómeno delas.
+    for ty in ["source.shape", "source.text"] {
+        state.doc.graph.add_node(ty);
+    }
+
+    // ⛔⛔ **O QUE AS MEMBRANAS PUBLICARAM, medido pela DIFERENÇA — e não pelo prefixo.**
+    //
+    // A 2.ª redacção iterava as chaves `is_reserved(...)` e exigia que nenhuma estivesse no
+    // selector. ⚠️ **Isso é vacuoso exactamente no caso que interessa:** uma chave que perca o
+    // `$` sai da população do laço e entra nas opções sem ninguém olhar — *o gate tinha a mesma
+    // forma do defeito que caça*. As três mutações sobreviveram assim.
+    //
+    // ⇒ a régua é o CONJUNTO que a publicação acrescentou, capturado antes e depois. Ela não
+    // depende da propriedade sob teste.
+    let antes: std::collections::BTreeSet<String> =
+        state.pump.cook.externals().keys().cloned().collect();
+    crate::render_loop::motion_externals::publish_all(&mut state, 0.0);
+    let derivadas: Vec<String> = state
+        .pump
+        .cook
+        .externals()
+        .keys()
+        .filter(|k| !antes.contains(*k))
+        .cloned()
+        .collect();
+
+    let key = key_of(&mut state, n);
+    let opcoes = super::params::source_options_for_tests(&state);
+    assert!(
+        opcoes.iter().any(|o| o == "folha"),
+        "o objecto que o ARTISTA nomeou tem de estar no selector: {opcoes:?}"
+    );
+    assert!(
+        !opcoes.contains(&key),
+        "a chave de conteúdo da planta está no selector — clicar nela planta a própria planta \
+         como folha dela. Opções: {opcoes:?}"
+    );
+    // ⚠️ O controlo do próprio censo: três membranas na cena têm de ter publicado três chaves.
+    assert!(
+        derivadas.len() >= 3,
+        "só {} chave(s) derivada(s) — a fixtura perdeu uma membrana: {derivadas:?}",
+        derivadas.len()
+    );
+    for d in &derivadas {
+        assert!(
+            !opcoes.contains(d),
+            "`{d}` foi publicada por uma MEMBRANA e está no selector de objectos do artista. \
+              Derivadas: {derivadas:?}"
+        );
+    }
+}

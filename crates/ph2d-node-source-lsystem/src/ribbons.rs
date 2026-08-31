@@ -37,7 +37,21 @@ pub const GEOMETRY_LABELS: &[&str] = &["Segments", "Branches"];
 /// geometria ANTIGA depois de o artista mexer nele.
 #[must_use]
 pub fn ribbon_key(get: impl Fn(&str) -> f32, axiom: &str, rules: &str) -> String {
-    let mut k = String::from("lsysrib");
+    // ⛔⛔⛔ **O `$` NÃO É DECORAÇÃO — ele é a cerca que mantém isto FORA do selector.**
+    //
+    // Auditoria de seis lentes, doc 96 §5.5. Esta chave é publicada na MESMA tabela de externos
+    // de que o picker de objectos tira as opções (`source_options`), e o filtro dele é
+    // `!is_reserved(k)`. Sem o prefixo, cada planta/forma/texto/tabela derivada aparecia ao
+    // artista como uma *"Drawn shape"* escolhível — na cena `=108` são **cinco chips de lixo**,
+    // com a gramática crua lá dentro, e clicar num planta a PRÓPRIA planta como folha dela.
+    //
+    // ⚠️ O doc do `RESERVED_PREFIX` já dizia as duas metades: *«o editor publica DENTRO do
+    // namespace, e recusa publicar um nome do artista que já esteja nele»*. A primeira metade é
+    // que não estava a ser cumprida por quem cunha chaves de CONTEÚDO.
+    //
+    // ⚠️ **Mudar o prefixo é seguro porque a chave é opaca:** quem a cunha e quem a lê chamam
+    // esta mesma função, e ela não é persistida em lado nenhum (é derivada a cada quadro).
+    let mut k = String::from("$lsysrib");
     for spec in MANIFEST.params {
         k.push(':');
         // Os BITS, não o decimal: `to_string` de um `f32` arredonda, e duas larguras que se

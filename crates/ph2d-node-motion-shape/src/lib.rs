@@ -402,7 +402,22 @@ fn unit_value(get: &impl Fn(&str) -> f32, name: &str, scale: f32) -> f32 {
 #[must_use]
 pub fn shape_key(get: impl Fn(&str) -> f32) -> String {
     let scale = scale_of(&get);
-    let mut k = String::from("shape");
+
+    // ⛔⛔⛔ **O `$` NÃO É DECORAÇÃO — ele é a cerca que mantém isto FORA do selector.**
+    //
+    // Auditoria de seis lentes, doc 96 §5.5. Esta chave é publicada na MESMA tabela de externos
+    // de que o picker de objectos tira as opções (`source_options`), e o filtro dele é
+    // `!is_reserved(k)`. Sem o prefixo, cada planta/forma/texto/tabela derivada aparecia ao
+    // artista como uma *"Drawn shape"* escolhível — na cena `=108` são **cinco chips de lixo**,
+    // com a gramática crua lá dentro, e clicar num planta a PRÓPRIA planta como folha dela.
+    //
+    // ⚠️ O doc do `RESERVED_PREFIX` já dizia as duas metades: *«o editor publica DENTRO do
+    // namespace, e recusa publicar um nome do artista que já esteja nele»*. A primeira metade é
+    // que não estava a ser cumprida por quem cunha chaves de CONTEÚDO.
+    //
+    // ⚠️ **Mudar o prefixo é seguro porque a chave é opaca:** quem a cunha e quem a lê chamam
+    // esta mesma função, e ela não é persistida em lado nenhum (é derivada a cada quadro).
+    let mut k = String::from("$shape");
     for name in param::ALL {
         k.push(':');
         k.push_str(&unit_value(&get, name, scale).to_bits().to_string());

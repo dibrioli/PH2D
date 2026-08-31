@@ -105,6 +105,7 @@ pub fn sd_gear(
     let meia = passo * 0.5 * tooth.clamp(0.05, 0.95);
     let corpo = disco(root);
     let mut dentes: Option<Tree> = None;
+    let mut pecas: Vec<Tree> = Vec::new();
     for k in 0..n {
         let phi = passo * f64::from(k);
         // Os dois flancos, como meias-fatias normalizadas que passam pela origem: manter o lado
@@ -118,26 +119,61 @@ pub fn sd_gear(
         // ⭐ **Os cantos do DENTE (flanco↔ponta) levam os dois recuos** — eles são arestas da peça
         // tanto quanto o aro, e ficaram sem chanfro na 1.ª versão desta wave. Foi o que a sonda por
         // PONTO acusou: `79,9 %` dos vincos cortados contra `≥ 92,8 %` em dezoito das vinte formas.
-        let dente = crate::ops_joint::intersection_joint(
-            &intersection(&f1, &f2, Blended::Exact(0.0)),
-            &ponta,
-            crate::ops_joint::Edge { round, chamfer },
-        );
-        dentes = Some(dentes.map_or_else(
-            || dente.clone(),
-            |w: Tree| {
-                crate::ops_joint::union_joint(&w, &dente, crate::ops_joint::Edge { round, chamfer })
-            },
-        ));
+        let e = crate::ops_joint::Edge { round, chamfer };
+        // ⭐⭐ **Com chanfro o dente é uma CHAPA feita das três peças dele** — os dois flancos e a
+        // ponta —, e não um dente 2D já composto que a mistura do aro receberia inteiro. Ver
+        // [`crate::ops_joint::intersection_joint_n`]: a costura interna de uma composta aflora na
+        // aresta seguinte, e aqui ela aflorava no aro, na ponta do dente.
+        //
+        // ⚠️ **Sem chanfro o caminho é o de sempre, ao bit** — o dente fica 2D e a laje entra uma
+        // vez só, no fim. *Mudar a rota de omissão para arrumar a nova seria pagar a feature nova
+        // com a peça que já estava certa.*
+        let dente = if chamfer <= 0.0 {
+            crate::ops_joint::intersection_joint(
+                &intersection(&f1, &f2, Blended::Exact(0.0)),
+                &ponta,
+                e,
+            )
+        } else {
+            crate::ops::plate_joint_n(
+                &[f1.clone(), f2.clone(), ponta.clone()],
+                &[(f1, ponta.clone()), (f2, ponta)],
+                half_height,
+                e,
+            )
+        };
+        if chamfer <= 0.0 {
+            dentes = Some(dentes.map_or_else(
+                || dente.clone(),
+                |w: Tree| crate::ops_joint::union_joint(&w, &dente, e),
+            ));
+        } else {
+            pecas.push(dente);
+        }
     }
-    let dentes = dentes.unwrap_or_else(|| Tree::constant(0.0));
+    let e = crate::ops_joint::Edge { round, chamfer };
     // ⚠️ O corpo entra por `union` ARREDONDADA: é ali que nasce o vale entre dois dentes, e ele é
     // uma quina **côncava** — a que o artista mais vê numa engrenagem.
-    slab_and_walls(
-        &crate::ops_joint::union_joint(&corpo, &dentes, crate::ops_joint::Edge { round, chamfer }),
-        half_height,
-        crate::ops_joint::Edge { round, chamfer },
-    )
+    if chamfer <= 0.0 {
+        let dentes = dentes.unwrap_or_else(|| Tree::constant(0.0));
+        return slab_and_walls(
+            &crate::ops_joint::union_joint(&corpo, &dentes, e),
+            half_height,
+            e,
+        );
+    }
+    // ⭐⭐ **Os dentes e o corpo entram numa UNIÃO N-ÁRIA, e não numa dobra** — ver
+    // [`crate::ops_joint::union_joint_n`]: dobrar `n` uniões compunha a inflação `n` vezes, e a
+    // engrenagem de doze dentes chegou a `passo × ‖∇f‖ = 1,33` — acima de `1`, a marcha atravessa
+    // a superfície. Numa união n-ária o tecto é `√(activas)`, e num anel de dentes nunca há mais
+    // de dois perto.
+    //
+    // ⚠️ **O corpo também é uma chapa**, senão o disco composto voltava a entrar inteiro no aro.
+    let vales: Vec<(Tree, Tree)> = (0..pecas.len())
+        .map(|i| (pecas[i].clone(), pecas[(i + 1) % pecas.len()].clone()))
+        .collect();
+    pecas.push(crate::ops::plate_joint_n(&[corpo], &[], half_height, e));
+    crate::ops_joint::union_joint_n(&pecas, &vales, e)
 }
 
 /// ⭐ **CRUZ / mais** — `arm` é o meio-comprimento do braço e `width` a meia-largura.
@@ -148,17 +184,54 @@ pub fn sd_gear(
 pub fn sd_cross(arm: f64, width: f64, half_height: f64, round: f64, chamfer: f64) -> Tree {
     // ⚠️ **Os braços chegam JÁ arredondados** — ver [`rect_round`]: as oito quinas verticais deles
     // não são aro, e o `slab_and_walls` não lhes toca.
-    let horizontal = rect_round(arm, width, round);
-    let vertical = rect_round(width, arm, round);
-    slab_and_walls(
-        &crate::ops_joint::union_joint(
-            &horizontal,
-            &vertical,
-            crate::ops_joint::Edge { round, chamfer },
-        ),
-        half_height,
-        crate::ops_joint::Edge { round, chamfer },
-    )
+    let e = crate::ops_joint::Edge { round, chamfer };
+    if chamfer <= 0.0 {
+        let horizontal = rect_round(arm, width, round);
+        let vertical = rect_round(width, arm, round);
+        return slab_and_walls(
+            &crate::ops_joint::union_joint(&horizontal, &vertical, e),
+            half_height,
+            e,
+        );
+    }
+    // ⭐⭐⭐ **CADA BRAÇO É UMA CHAPA FEITA DE MEIOS-PLANOS**, e não um rectângulo já arredondado.
+    //
+    // ⛔ Com o `rect_round` composto a entrar na mistura do aro, a costura interna dele (a bissetriz
+    // da quina, que num braço fino está a `largura` da superfície) aflorava **no aro, na ponta do
+    // braço** — o pior desalinho do catálogo: `15,95×` o giro que o mesmo filete sozinho dá, contra
+    // um bando de `0,90`–`2,40`. Ver [`crate::ops_joint::intersection_joint_n`].
+    let braco = |hx: f64, hy: f64| {
+        let corpo = [
+            Tree::x() - Tree::constant(hx),
+            -Tree::x() - Tree::constant(hx),
+            Tree::y() - Tree::constant(hy),
+            -Tree::y() - Tree::constant(hy),
+        ];
+        let dobra = [
+            Tree::x().abs() - Tree::constant(hx),
+            Tree::y().abs() - Tree::constant(hy),
+        ];
+        // ⚠️ A mesma cerca da caixa: separar a dobra de um lado FINO come material a dobrar.
+        let arestas: Vec<(Tree, Tree)> = if chamfer + round < 2.0 * hx.min(hy) {
+            vec![
+                (corpo[0].clone(), corpo[2].clone()),
+                (corpo[0].clone(), corpo[3].clone()),
+                (corpo[1].clone(), corpo[2].clone()),
+                (corpo[1].clone(), corpo[3].clone()),
+            ]
+        } else {
+            vec![(dobra[0].clone(), dobra[1].clone())]
+        };
+        let usa: Vec<Tree> = if chamfer + round < 2.0 * hx.min(hy) {
+            corpo.to_vec()
+        } else {
+            dobra.to_vec()
+        };
+        crate::ops::plate_joint_n(&usa, &arestas, half_height, e)
+    };
+    // ⚠️ **A união fica ARREDONDADA**: as quatro quinas CÔNCAVAS do cruzamento são o carácter da
+    // forma, e um `min` duro deixá-las-ia vivas.
+    crate::ops_joint::union_joint(&braco(arm, width), &braco(width, arm), e)
 }
 
 /// ⭐⭐ **CORAÇÃO** — `size` é o meio-lado do losango que forma a ponta de baixo.
@@ -334,14 +407,20 @@ pub fn sd_trapezoid(
     let flanco = (Tree::x().abs() - Tree::constant(a) - Tree::y() * Tree::constant(m))
         * Tree::constant(norm);
     let bases = Tree::y().abs() - Tree::constant(half_width);
-    slab_and_walls(
-        &crate::ops_joint::intersection_joint(
-            &flanco,
-            &bases,
-            crate::ops_joint::Edge { round, chamfer },
-        ),
+    let e = crate::ops_joint::Edge { round, chamfer };
+    if chamfer <= 0.0 {
+        return slab_and_walls(
+            &crate::ops_joint::intersection_joint(&flanco, &bases, e),
+            half_height,
+            e,
+        );
+    }
+    // ⭐ O perfil é uma INTERSECÇÃO de duas peças — elas entram inteiras. Ver [`plate_joint_n`].
+    crate::ops::plate_joint_n(
+        &[flanco.clone(), bases.clone()],
+        &[(flanco, bases)],
         half_height,
-        crate::ops_joint::Edge { round, chamfer },
+        e,
     )
 }
 
@@ -351,11 +430,15 @@ pub fn sd_trapezoid(
 pub fn sd_vesica(radius: f64, offset: f64, half_height: f64, round: f64, chamfer: f64) -> Tree {
     let a = disco_em(-offset, 0.0, radius);
     let b = disco_em(offset, 0.0, radius);
-    slab_and_walls(
-        &crate::ops_joint::intersection_joint(&a, &b, crate::ops_joint::Edge { round, chamfer }),
-        half_height,
-        crate::ops_joint::Edge { round, chamfer },
-    )
+    let e = crate::ops_joint::Edge { round, chamfer };
+    if chamfer <= 0.0 {
+        return slab_and_walls(
+            &crate::ops_joint::intersection_joint(&a, &b, e),
+            half_height,
+            e,
+        );
+    }
+    crate::ops::plate_joint_n(&[a.clone(), b.clone()], &[(a, b)], half_height, e)
 }
 
 #[cfg(test)]

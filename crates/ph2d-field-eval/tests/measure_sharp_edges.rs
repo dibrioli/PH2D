@@ -1238,44 +1238,45 @@ fn the_fillet_leaves_no_curvature_ridge() {
 ///
 /// Pedir *«o filete arredonda»* em graus absolutos não funciona: uma ponta de estrela e uma quina de
 /// caixa começam em sítios diferentes, e uma barra única ou branqueia a caixa ou reprova a estrela.
-/// O que o artista de facto diz é **«com chanfro fica pior do que sem»** — e isso é a razão entre o
-/// pior giro da normal com os dois recuos e o mesmo filete sozinho.
+/// O que o artista diz é **«com chanfro fica pior do que sem»** — e isso é a razão entre o pior giro
+/// da normal com os dois recuos e o **mesmo filete** sozinho.
 ///
 /// ⚠️ **A régua é o GIRO DA NORMAL, e não o volume** — um chanfro deslocado tira o mesmo volume que
 /// um arredondado. É a mesma lição que o 2.º report já tinha cobrado.
 ///
-/// # ⛔⛔ A CATRACA, com censo de obsolescência
+/// # ⛔⛔ A 1.ª versão media no ponto DEGENERADO, e a lista de toleradas era um artefacto disso
 ///
-/// Doze formas ainda pioram, e o mecanismo está nomeado: o `walls` que elas entregam ao
-/// [`ph2d_field_eval::ops`] é o **perfil 2D composto** delas, e uma mistura que recebe uma composta
-/// herda a costura interna dela (ver `ops_joint::intersection_joint_n`). Curá-las é decompor cada
-/// perfil, uma a uma.
+/// Ela punha `filete = chanfro`, que é onde o filete já consumiu a faceta inteira do chanfro e não
+/// há arestas distintas para arredondar. Onze formas apareciam «pioradas» e **a maior parte era a
+/// geometria do pedido, não um defeito**. A varredura da razão mostra-o:
 ///
-/// ⚠️ **A lista só ENCOLHE, e o gate reprova se uma entrada ficar obsoleta** — se a forma passar a
-/// caber na barra, ou se a razão piorar além do registado. *Uma catraca sem censo de obsolescência
-/// vira licença.*
+/// | | `r=0,25c` | `r=0,5c` | `r=0,75c` | `r=c` |
+/// |---|---:|---:|---:|---:|
+/// | bando (as outras 18) | `0,92`–`3,37` | **`0,90`–`2,40`** | `0,92`–`2,36` | `0,85`–`2,41` |
+/// | as 20, **depois** | `0,92`–`3,37` | **`0,90`–`2,40`** | `0,92`–`2,36` | `0,85`–`5,33` |
+/// | cruz, **antes** | `16,16` | `15,95` | `11,18` | `9,31` |
+/// | engrenagem, **antes** | `3,83` | `3,78` | `2,72` | `2,27` |
+///
+/// ⇒ a medição vale em **`r = 0,5c`**, e ali os dois destoantes eram estruturais (perfis feitos por
+/// UNIÃO, cuja composta entrava inteira na mistura do aro) — curados, o catálogo cabe todo no bando
+/// e a lista de toleradas ficou **VAZIA**.
+///
+/// # ⚠️ As duas barras, e de que elas são
+///
+/// `2,60` é o máximo MEDIDO do bando (`2,40`, o **ápice do cone** — uma feição que já mede `16,1°`
+/// só com filete) mais `8 %`. `6,00` é o máximo medido na **saturação** (`5,33`, o arco de toro com
+/// `r = c`) mais `13 %`. ⚠️ São barras de **corpus sobre uma lista FECHADA** (`PrimitiveKind::ALL`):
+/// é exactamente o caso em que isso é a coisa certa — uma primitiva nova que as estoure é o que se
+/// quer ver acusado.
 #[test]
 fn the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone() {
-    /// A folga sobre o filete sozinho. As quatro formas curadas medem `0,85`–`1,12`.
-    const BARRA: f64 = 1.30;
+    /// A folga sobre o filete sozinho, no ponto de trabalho `r = 0,5c`.
+    const BARRA: f64 = 2.60;
+    /// A mesma pergunta na SATURAÇÃO (`r = c`), onde o filete já comeu a faceta do chanfro.
+    const BARRA_SATURADA: f64 = 6.00;
     /// Abaixo disto o giro é ruído de amostragem e a razão deixa de significar alguma coisa.
     const PISO_GRAUS: f64 = 3.0;
-    /// ⛔ **Só encolhe.** `(forma, razão MEDIDA em 2026-08-30)` — o mecanismo está no doc acima.
-    const TOLERADOS: &[(&str, f64)] = &[
-        ("Cone", 2.41),
-        ("Wedge", 3.98),
-        ("TorusArc", 5.33),
-        ("Octahedron", 9.18),
-        ("HollowDome", 1.81),
-        ("Gear", 2.27),
-        ("Cross", 9.31),
-        ("Moon", 1.40),
-        ("Drop", 1.46),
-        ("Trapezoid", 3.56),
-        ("Vesica", 3.59),
-    ];
     let mut piores = Vec::new();
-    let mut obsoletos = Vec::new();
     let mut medidas = 0;
     for k in PrimitiveKind::ALL {
         let Some(base) = representative(k) else {
@@ -1284,18 +1285,12 @@ fn the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone() {
         let Some(limite) = ph2d_field::round_limit(&base) else {
             continue;
         };
-        let meio = limite * 0.5;
+        let c = limite * 0.5;
         let escreve = |p: &Primitive, chave: &str, v: f32| -> Option<Primitive> {
             let mut p = p.clone();
             let i = ph2d_field::dims(&p).iter().position(|d| d.key == chave)?;
             ph2d_field::set_dim(&mut p, 0, i, v).ok()?;
             Some(p)
-        };
-        let Some(so_filete) = escreve(&base, "field.dim.round", meio) else {
-            continue;
-        };
-        let Some(par) = escreve(&so_filete, "field.dim.chamfer", meio) else {
-            continue;
         };
         let pior = |p: &Primitive| {
             traverse(p, 2048, 6)
@@ -1304,27 +1299,27 @@ fn the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone() {
                 .map(|(_, a)| *a)
                 .fold(0.0f64, f64::max)
         };
+        let Some(so_filete) = escreve(&base, "field.dim.round", c) else {
+            continue;
+        };
         medidas += 1;
-        let (a, b) = (pior(&so_filete), pior(&par));
-        let razao = b / a.max(1.0e-9);
-        let nome = format!("{k:?}");
-        let cabe = b <= PISO_GRAUS || razao <= BARRA;
-        match TOLERADOS.iter().find(|(n, _)| *n == nome) {
-            Some((_, registada)) => {
-                if cabe {
-                    obsoletos.push(format!("{nome} cabe na barra agora ({razao:.2}x)"));
-                } else if razao > registada * 1.10 {
-                    piores.push(format!(
-                        "{nome} piorou: {razao:.2}x contra as {registada:.2}x registadas"
-                    ));
-                }
-            }
-            None => {
-                if !cabe {
-                    piores.push(format!(
-                        "{nome}: {a:.1}° só com filete e {b:.1}° com chanfro ({razao:.2}x)"
-                    ));
-                }
+        let base_graus = pior(&so_filete);
+        for (fracao, barra, onde) in [
+            (0.5f32, BARRA, "no ponto de trabalho"),
+            (1.0, BARRA_SATURADA, "na saturação"),
+        ] {
+            let Some(par) = escreve(&base, "field.dim.round", c * fracao)
+                .and_then(|p| escreve(&p, "field.dim.chamfer", c))
+            else {
+                continue;
+            };
+            let b = pior(&par);
+            let razao = b / base_graus.max(1.0e-9);
+            if b > PISO_GRAUS && razao > barra {
+                piores.push(format!(
+                    "{k:?} {onde}: {base_graus:.1}° só com filete e {b:.1}° com chanfro \
+                     ({razao:.2}x, barra {barra:.2}x)"
+                ));
             }
         }
     }
@@ -1335,9 +1330,5 @@ fn the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone() {
     assert!(
         piores.is_empty(),
         "o chanfro piorou arestas que ele não pode piorar: {piores:?}"
-    );
-    assert!(
-        obsoletos.is_empty(),
-        "APAGUE estas linhas de `TOLERADOS` — elas já não descrevem nada: {obsoletos:?}"
     );
 }

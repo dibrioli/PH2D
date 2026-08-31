@@ -161,6 +161,20 @@ pub fn intersection_joint_n(corpo: &[Tree], arestas: &[(Tree, Tree)], e: Edge) -
     ops::intersection_round_n(&pecas, e.round)
 }
 
+/// ⭐⭐ **O DUAL: as peças de uma UNIÃO e os chanfros dos vales que elas formam, numa mistura só.**
+///
+/// ⚠️ **Ela existe por um custo MEDIDO, não por simetria.** Dobrar `n` uniões duas a duas compõe a
+/// lei de Cauchy–Schwarz `n` vezes: a engrenagem de doze dentes subiu para `‖∇f‖ = 1,887` sobre o
+/// campo já dividido (`passo × ‖∇f‖ = 1,33`, acima de `1`) e a marcha **atravessaria a superfície**.
+/// Numa união n-ária o tecto é `√(activas)` — e num anel de dentes nunca há mais de dois perto.
+pub fn union_joint_n(corpo: &[Tree], arestas: &[(Tree, Tree)], e: Edge) -> Tree {
+    let mut pecas: Vec<Tree> = corpo.to_vec();
+    for (a, b) in arestas {
+        pecas.push(corte(a, b, e.chamfer, Sentido::Uniao));
+    }
+    ops::union_round_n(&pecas, e.round)
+}
+
 /// De que lado o corte a 45° recua — o único sinal que separa as duas leis acima.
 #[derive(Clone, Copy)]
 enum Sentido {

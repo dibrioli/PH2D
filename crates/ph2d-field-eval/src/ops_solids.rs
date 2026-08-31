@@ -67,37 +67,71 @@ pub fn sd_octahedron(radius: f64, round: f64, chamfer: f64) -> Tree {
     // O meio-ângulo interno entre duas faces vizinhas: `cos ψ = 1/3` ⇒ `α = (π − ψ)/2`.
     let alfa = (std::f64::consts::PI - (1.0_f64 / 3.0).acos()) * 0.5;
     let raio = sharp_corner_radius(alfa, round);
-    let mut faces: Option<Tree> = None;
-    for &sx in &[1.0_f64, -1.0] {
-        for &sy in &[1.0_f64, -1.0] {
-            for &sz in &[1.0_f64, -1.0] {
-                let f = (Tree::x() * Tree::constant(sx)
-                    + Tree::y() * Tree::constant(sy)
-                    + Tree::z() * Tree::constant(sz)
-                    - Tree::constant(r))
-                    * Tree::constant(inv);
-                faces = Some(faces.map_or_else(
-                    || f.clone(),
-                    // ⚠️ **O filete entra COMPENSADO e o chanfro entra CRU**, e a assimetria é
-                    // medida: a compensação existe porque o operador de filete só é um arco a 90°
-                    // (ver `ops::sd_star`), e o plano do chanfro **é** exacto — ele recua `c` em
-                    // cada face seja qual for o ângulo. Compensar os dois daria um chanfro que não
-                    // entrega o número pedido.
-                    |w: Tree| {
-                        crate::ops_joint::intersection_joint(
-                            &w,
-                            &f,
-                            crate::ops_joint::Edge {
-                                round: raio,
-                                chamfer,
-                            },
-                        )
-                    },
-                ));
+    let sinais: Vec<[f64; 3]> = [1.0_f64, -1.0]
+        .iter()
+        .flat_map(|&sx| {
+            [1.0_f64, -1.0]
+                .iter()
+                .flat_map(move |&sy| [1.0_f64, -1.0].iter().map(move |&sz| [sx, sy, sz]))
+        })
+        .collect();
+    let face = |s: [f64; 3]| {
+        (Tree::x() * Tree::constant(s[0])
+            + Tree::y() * Tree::constant(s[1])
+            + Tree::z() * Tree::constant(s[2])
+            - Tree::constant(r))
+            * Tree::constant(inv)
+    };
+    if chamfer <= 0.0 {
+        // ⭐ **O caminho de sempre, ao bit** — ver a nota da assimetria abaixo.
+        let mut faces: Option<Tree> = None;
+        for &s in &sinais {
+            let f = face(s);
+            faces = Some(faces.map_or_else(
+                || f.clone(),
+                // ⚠️ **O filete entra COMPENSADO e o chanfro entra CRU**, e a assimetria é
+                // medida: a compensação existe porque o operador de filete só é um arco a 90°
+                // (ver `ops::sd_star`), e o plano do chanfro **é** exacto — ele recua `c` em
+                // cada face seja qual for o ângulo. Compensar os dois daria um chanfro que não
+                // entrega o número pedido.
+                |w: Tree| {
+                    crate::ops_joint::intersection_joint(
+                        &w,
+                        &f,
+                        crate::ops_joint::Edge {
+                            round: raio,
+                            chamfer,
+                        },
+                    )
+                },
+            ));
+        }
+        return faces.unwrap_or_else(|| Tree::constant(0.0));
+    }
+    // ⭐⭐⭐ **AS OITO FACES E AS DOZE ARESTAS NUMA MISTURA SÓ** — ver
+    // [`crate::ops_joint::intersection_joint_n`]. Dobrar as faces duas a duas fazia cada junta
+    // receber a composta das anteriores, e a costura dela aflorava na aresta seguinte: medido
+    // `19,9°` de giro da normal contra `2,3°` só com filete.
+    //
+    // ⚠️ **Duas faces de um octaedro partilham uma aresta quando os sinais diferem em EXACTAMENTE
+    // uma componente** — `8 × 3 / 2 = 12`, que é o número de arestas que a forma tem. Uma lista
+    // escrita à mão aqui seria a segunda resposta a *«quais são as arestas»*.
+    let corpo: Vec<Tree> = sinais.iter().map(|&s| face(s)).collect();
+    let mut arestas: Vec<(Tree, Tree)> = Vec::new();
+    for (i, a) in sinais.iter().enumerate() {
+        for (j, b) in sinais.iter().enumerate().skip(i + 1) {
+            let difere = (0..3).filter(|&k| (a[k] - b[k]).abs() > 0.5).count();
+            if difere == 1 {
+                arestas.push((corpo[i].clone(), corpo[j].clone()));
             }
         }
     }
-    faces.unwrap_or_else(|| Tree::constant(0.0))
+    debug_assert_eq!(arestas.len(), 12, "um octaedro tem doze arestas");
+    crate::ops_joint::intersection_joint_n(
+        &corpo,
+        &arestas,
+        crate::ops_joint::Edge { round, chamfer },
+    )
 }
 
 /// ⭐⭐⭐ **CONE DE PONTAS ARREDONDADAS** — o casco convexo de duas esferas, e a forma mais útil

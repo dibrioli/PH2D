@@ -229,6 +229,44 @@ pub(crate) fn slab_and_walls(walls: &Tree, half_height: f64, e: crate::ops_joint
     )
 }
 
+/// ⭐⭐⭐ **UMA CHAPA INTEIRA NUMA MISTURA SÓ** — as peças do perfil 2D, as arestas que elas formam,
+/// e as duas tampas.
+///
+/// # ⛔ Ela é a [`slab_and_walls`] sem o encaixe
+///
+/// A [`slab_and_walls`] recebe o perfil **já composto**, e por isso a mistura do aro herda a costura
+/// interna dele e põe-na no aro — é o defeito que o 3.º report do Enio nomeou. Quando o perfil é uma
+/// **intersecção** de peças, o chamador tem-nas na mão e pode entregá-las: aí não há composta
+/// nenhuma a entrar, e o aro sai tão liso quanto o filete sozinho o faria.
+///
+/// ⚠️ **Só serve a perfis que são INTERSECÇÃO.** Um perfil feito por **união** (a cruz, a
+/// engrenagem, o coração) não é exprimível numa intersecção arredondada, e continua a entrar
+/// composto pela [`slab_and_walls`] — está nomeado na catraca do
+/// `the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone`.
+///
+/// ⚠️ **As tampas entram com SINAL**, e cada peça do perfil forma uma aresta com cada uma delas: um
+/// perfil de `k` peças dá `k` arestas laterais implícitas mais `2k` de aro.
+pub(crate) fn plate_joint_n(
+    corpo2d: &[Tree],
+    arestas2d: &[(Tree, Tree)],
+    half_height: f64,
+    e: crate::ops_joint::Edge,
+) -> Tree {
+    let tampa = [
+        Tree::z() - Tree::constant(half_height),
+        -Tree::z() - Tree::constant(half_height),
+    ];
+    let mut corpo = corpo2d.to_vec();
+    corpo.extend(tampa.iter().cloned());
+    let mut arestas = arestas2d.to_vec();
+    for p in corpo2d {
+        for t in &tampa {
+            arestas.push((p.clone(), t.clone()));
+        }
+    }
+    crate::ops_joint::intersection_joint_n(&corpo, &arestas, e)
+}
+
 /// A meia-fatia da parede inclinada de um cone, **normalizada**: `(ρ − a − m·z)/√(1+m²)`.
 ///
 /// `radial` é a coordenada radial da secção (o `length2(x,y)` de um cone, o `|x|` de uma parede
@@ -381,11 +419,20 @@ pub fn sd_wedge(half: [f64; 3], round: f64, chamfer: f64) -> Tree {
     let plano = Tree::x() * Tree::constant(nx) + Tree::z() * Tree::constant(nz);
     // ⭐ **Os dois números atravessam as DUAS juntas da cunha** — as arestas da caixa e o corte
     // inclinado —, senão chanfrar uma cunha deixaria metade das arestas por chanfrar.
-    crate::ops_joint::intersection_joint(
-        &sd_box(half, round, chamfer),
-        &plano,
-        crate::ops_joint::Edge { round, chamfer },
-    )
+    let e = crate::ops_joint::Edge { round, chamfer };
+    if chamfer <= 0.0 {
+        return crate::ops_joint::intersection_joint(&sd_box(half, round, chamfer), &plano, e);
+    }
+    // ⭐ **As peças da caixa E o plano do corte, numa mistura só** — ver
+    // [`crate::ops_box::box_pieces`]. Passar a caixa já composta punha a costura interna dela na
+    // aresta do corte: medido `23,5°` de giro da normal contra `5,9°` só com filete.
+    let (mut corpo, mut arestas) =
+        crate::ops_box::box_pieces(&Tree::x(), &Tree::y(), &Tree::z(), half, round, chamfer);
+    for p in &corpo {
+        arestas.push((p.clone(), plano.clone()));
+    }
+    corpo.push(plano);
+    crate::ops_joint::intersection_joint_n(&corpo, &arestas, e)
 }
 
 /// Arco de toro no plano XY, centrado no `+X`, com abertura total `angle`.
@@ -408,11 +455,20 @@ pub fn sd_torus_arc(major: f64, minor: f64, angle: f64, round: f64, chamfer: f64
     // Dentro do sector os dois são ≤ 0.
     let n1 = Tree::x() * Tree::constant(-s) + Tree::y() * Tree::constant(c);
     let n2 = Tree::x() * Tree::constant(-s) + Tree::y() * Tree::constant(-c);
-    let setor = if angle <= std::f64::consts::PI {
-        n1.max(n2)
+    let interseccao = angle <= std::f64::consts::PI;
+    let setor = if interseccao {
+        n1.clone().max(n2.clone())
     } else {
-        n1.min(n2)
+        n1.clone().min(n2.clone())
     };
+    // ⛔⛔ **MEDIDO E RETIRADO (2026-08-30):** dar ao arco as peças em vez do sector composto
+    // — os dois semiplanos até meia volta, dois meios-arcos acima dela — foi construído, e a prova
+    // de mutação **SOBREVIVEU**: `0,95×` no ponto de trabalho e `5,33×` na saturação, com e sem.
+    //
+    // ⚠️ A razão é geométrica: a aresta que a composição encaixada estragaria é a do corte contra o
+    // **tubo**, e o tubo é uma superfície lisa — não há costura interna para aflorar. *A lei só
+    // morde quando a composta tem um vinco a menos de `r` da superfície.* O que sobra na saturação
+    // é o filete a ter comido a faceta inteira do chanfro, que é a geometria do pedido.
     // ⭐⭐ **Os DOIS aros do corte arredondam** (W104): a sonda de arestas media `30 %` da superfície
     // deste arco sobre um vinco de `88°`, e ele **não tinha controle de filete nenhum** — era a
     // única forma do catálogo com aresta autorada e sem o slider que a trata.

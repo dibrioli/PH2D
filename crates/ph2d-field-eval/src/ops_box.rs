@@ -137,6 +137,48 @@ pub(crate) fn box_with_edge(
     )
 }
 
+/// ⭐⭐ **AS PEÇAS DE UMA CAIXA CHANFRADA, para quem precisa de as MISTURAR com mais alguma coisa.**
+///
+/// ⚠️ Ela existe porque a [`crate::ops::sd_wedge`] é *«uma caixa cortada por um plano»*, e passar-lhe
+/// a caixa **já composta** punha a costura interna da caixa na aresta do corte — o defeito que o 3.º
+/// report do Enio nomeou. *Quem mistura precisa das peças, não do resultado.*
+pub(crate) fn box_pieces(
+    px: &Tree,
+    py: &Tree,
+    pz: &Tree,
+    half: [f64; 3],
+    round: f64,
+    chamfer: f64,
+) -> (Vec<Tree>, Vec<(Tree, Tree)>) {
+    let q = [
+        px.abs() - Tree::constant(half[0]),
+        py.abs() - Tree::constant(half[1]),
+        pz.abs() - Tree::constant(half[2]),
+    ];
+    let eixo = [px.clone(), py.clone(), pz.clone()];
+    let face: Vec<Tree> = (0..3)
+        .flat_map(|i| {
+            [
+                eixo[i].clone() - Tree::constant(half[i]),
+                -eixo[i].clone() - Tree::constant(half[i]),
+            ]
+        })
+        .collect();
+    let mut arestas: Vec<(Tree, Tree)> = Vec::new();
+    for (i, j) in [(0usize, 1usize), (1, 2), (0, 2)] {
+        if chamfer + round < 2.0 * half[i].min(half[j]) {
+            for si in 0..2 {
+                for sj in 0..2 {
+                    arestas.push((face[2 * i + si].clone(), face[2 * j + sj].clone()));
+                }
+            }
+        } else {
+            arestas.push((q[i].clone(), q[j].clone()));
+        }
+    }
+    (vec![q[0].clone(), q[1].clone(), q[2].clone()], arestas)
+}
+
 /// ⭐⭐ **A gaiola de uma caixa** — as 12 arestas de secção quadrada, em **três** vigas dobradas.
 ///
 /// ⭐ Cada família de quatro vigas paralelas é **uma** caixa no espaço dobrado por `abs` nos dois

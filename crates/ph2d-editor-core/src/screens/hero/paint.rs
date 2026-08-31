@@ -460,8 +460,6 @@ pub fn paint_hero_screen(
     // active tool is the Painter (mirrored shell-side into `active_tool_id`),
     // which swaps the transform block for the paint tools.
     let painter_active = hero.rail_shows_painter_tools();
-    // ⚠️ Resolvido ANTES do empréstimo mutável do índice de acerto — ver `area_header::option_states`.
-    let header_states = super::area_header::option_states(hero);
     if hero.view.legacy_chrome {
         paint_left_rail(
             &layout,
@@ -474,16 +472,6 @@ pub fn paint_hero_screen(
             &hero.motion,
         );
     } else {
-        // ⭐⭐⭐ **O CABEÇALHO DA ÁREA** (D2, metade 2) — a primeira região da área, acima da fila.
-        // ⚠️ Só no chrome novo: no legado o trilho é vertical e a área não tem cabeçalho.
-        super::area_header::paint(
-            layout.area_header,
-            header_states,
-            scene,
-            text_system,
-            hero.theme,
-            &mut hero.hit_index,
-        );
         // ⭐ **A FILA** — os mesmos chips, deitados, na região que a área lhes reservou.
         super::tool_bar::paint_tool_bar(
             &layout,

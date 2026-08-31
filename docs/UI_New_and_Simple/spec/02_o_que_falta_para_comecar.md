@@ -184,3 +184,36 @@ não se refaz barato é a **derivação** — e o §1 diz que sem ela a migraç�
 
 ⏳ **E fazer `B` em paralelo, num commit próprio** — é zero-pixel, provável, e tira 16 slots de cor
 de circulação antes de alguém construir sobre eles.
+
+
+---
+
+## §8 — ⛔⛔ A RESTRIÇÃO DE ECRÃ (2026-08-31), e o que ela fecha
+
+> Enio: *«esse app tem tablets e iPad como alvo. Não podemos ir perdendo espaço.»*
+
+Medido nos três tablets ([`medicoes/06`](../medicoes/06_o_orcamento_de_ecra_em_tablet.md)):
+
+| alvo | colunas abertas | a pintar | colunas fechadas |
+|---|---:|---:|---:|
+| iPad 12.9 | 50,8 % | 50,8 % | 92,0 % |
+| iPad 11 | 44,0 % | **40,8 %** | 90,2 % |
+| iPad mini | 40,9 % | **37,6 %** | 89,0 % |
+
+### O que isto muda na ordem deste documento
+
+| degrau | estado |
+|---|---|
+| **`F` — cabeçalho por área** | ⛔ **a FAIXA foi recusada** (construída na entrega 30, revertida na 31): `28 px` permanentes por dois interruptores. O **âmbito** da D2 fica; o inquilino tem de caber onde já se paga altura |
+| **`G` — esvaziar os painéis** | ⭐⭐ **sobe para primeira prioridade.** É o único degrau que DEVOLVE ecrã, e a medição confirma: recolher as duas colunas dá `89–92 %` |
+| ⏳ **um gesto de RECOLHER** | **não existe** — hoje são dois itens de menu, um por coluna. É a melhor razão custo/benefício que a medição achou, e é decisão de produto |
+| ⛔ **a fila de ferramentas** | ela **DOBRA** (`54 → 108 px`) no iPad 11 e no mini com o pincel em mãos. A restrição escolhe entre as duas curas que o handoff listava: **a faixa não cresce; o excesso vai para um transbordo** |
+
+### ⛔ E a largura do chrome não escala — o que agrava, não alivia
+
+As duas colunas são `612 px` **absolutos**: `44,8 %` da largura no 12,9" e **`54,0 %`** no mini.
+O [`spec/01 §6`](01_modelo_de_areas.md) declara que a largura do encaixe **não escala com o alvo de
+toque** — e não dizia nada sobre ecrãs mais pequenos, onde o mesmo número custa mais.
+
+⚠️ **Toda proposta de UI nova passa a nomear o que custa em ALTURA e em LARGURA, nos três alvos.**
+O gate que o exige é `the_chrome_never_eats_more_of_a_tablet_than_this`.

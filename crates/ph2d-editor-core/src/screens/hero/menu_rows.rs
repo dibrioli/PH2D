@@ -83,8 +83,7 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             ),
             (ids::CTX_MENU_RAIL_SIZE_LARGE, "— Rail Buttons: Large", None),
             (ids::CTX_MENU_MIRROR_UI, "— Mirror UI", None),
-            // ⭐⭐ **`Show Statistics` SAIU daqui em 2026-08-31** (D2, metade 2): o HUD é um
-            // *overlay desta área*, e estava num menu de TEMA. Ver o cabeçalho da área.
+            (ids::CTX_MENU_SHOW_STATS, "— Show Statistics", None),
             // ⭐ **Repor a arrumação** (Enio, 2026-08-30). ⚠️ Um VERBO no meio de estados: o `—` que
             // os outros levam marca *«isto é um sub-estado do Look»*, e este não é um estado.
             (ids::MENUBAR_VIEW_RESET_LAYOUT, "Reset Panel Layout", None),
@@ -132,14 +131,10 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
         // vivem no `ThemeSelector`, que esta linha abre como categoria. Uma entrada repetida em
         // dois menus é a tabela paralela outra vez, com o sintoma pior: os dois estados a
         // discordar à vista.
-        // ⭐⭐ **`Rulers` SAIU daqui em 2026-08-31** (D2, metade 2): o âmbito dele é *esta área de
-        // desenho*, não o app, e o sítio canónico dele passou a ser o **cabeçalho da área**
-        // (`hero::area_header`). ⛔ Ele não fica nos dois: *«existe UM sítio canónico para cada
-        // comando»* — e uma entrada repetida em dois menus é a tabela paralela com o sintoma pior,
-        // os dois estados a discordar à vista.
         ContextMenuKind::MenuBarView => &[
             (ids::RAIL_SHOW_HIERARCHY, "Hierarchy", None),
             (ids::RAIL_SHOW_INSPECTOR, "Inspector", None),
+            (ids::MENUBAR_VIEW_RULERS, "Rulers", None),
             (ids::MENUBAR_VIEW_THEME, "Theme\u{2026}", None),
         ],
         // ⭐ **Os treze toggles de módulo.** Entre a retirada da barra de pills (2026-08-30) e

@@ -73,6 +73,22 @@ um ficheiro cujo doc-comment é *"os itens do menu Ficheiro"* (`chrome/io_menu.r
 ⚠️ **O preço que o Enio aceitou:** a barra global come uma faixa de altura permanente. No alvo
 iPad (1024 pontos de altura) isso é caro, e soma-se aos 51 % de largura já medidos.
 
+### ⛔⛔ CORRECÇÃO (2026-08-31) — o preço vale para UMA faixa, e a segunda foi RECUSADA
+
+> Enio: *«Lembre-se que esse app tem tablets e iPad como alvo. Não podemos ir perdendo espaço.
+> Desfaça isso.»*
+
+O **cabeçalho por área** foi construído (entrega 30) e **revertido no mesmo dia**. Ele custava
+**28 px** de altura permanente — `−1,5` ponto percentual de área de desenho no alvo declarado —
+para dar casa a dois interruptores.
+
+⚠️ **A decisão sobre o ÂMBITO fica de pé**: um comando do editor não pertence a um menu do app. O
+que foi recusado é a **faixa própria**. ⇒ se a metade 2 voltar, ela tem de caber **onde já se paga
+altura** (a fila de ferramentas, ou um popover à direita dela), nunca numa banda nova.
+
+⭐ E o preço deixou de ser uma nota: ele é um **gate** com a área medida nos três tablets —
+[`medicoes/06`](medicoes/06_o_orcamento_de_ecra_em_tablet.md).
+
 ---
 
 ## D3 — **LAYOUTS por tarefa** · e MODOS são per-objecto (⚠️ **CORRIGIDA**)

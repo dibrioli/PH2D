@@ -27,7 +27,6 @@
 /// ⭐⭐ **O fantasma do arrasto** — o primeiro deste editor a seguir o cursor (plano
 /// `docs/Components/07`, B4).
 mod asset_drag_ghost;
-pub mod area_header;
 pub mod bottom_hud;
 pub mod canvas;
 pub mod chrome;
@@ -36,7 +35,7 @@ mod context_menu_dialogs;
 pub mod context_menu_overlay;
 pub mod file_menu;
 pub mod fixture;
-pub mod frame_layout;
+mod frame_layout;
 pub mod global_palette;
 pub mod panel_ids;
 /// O MODELO do menu radial (E4) — a vista de OITO direcções da mesma lista da paleta.

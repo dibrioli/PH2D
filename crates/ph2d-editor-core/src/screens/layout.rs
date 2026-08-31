@@ -138,12 +138,6 @@ pub struct HeroLayout {
     /// todo consumidor lê só as DIMS) — dar-lhe uma ORIGEM é a obra da docagem (A2), e está
     /// nomeada com esse preço. Aqui a cena continua full-bleed, por baixo das réguas.
     pub draw_area: Rect,
-    /// ⭐⭐⭐ **O CABEÇALHO DA ÁREA** (D2, metade 2) — a faixa do editor, a primeira região da área
-    /// de cima para baixo. Zero-altura enquanto ninguém a pede.
-    ///
-    /// ⚠️ Ela é irmã da fila e da régua, não da barra de menus: sai da **área**, entre as colunas.
-    /// A ordem do modelo (`spec/01 §4`) é **cabeçalho → ferramentas → régua → conteúdo**.
-    pub area_header: Rect,
     /// ⭐ **A fila de ferramentas** — a faixa que os chips do trilho ocupam quando estão na
     /// horizontal, por cima da área de desenho (Godot). Zero-altura enquanto ninguém a pede.
     ///
@@ -315,7 +309,6 @@ impl HeroLayout {
             left_dock_w,
             right_dock_w,
             tool_bar_h,
-            area_header_h,
             bottom_dock_h,
         } = bands;
         // ⭐⭐ **A BARRA DE TOPO É FLUSH e a BANDA vai até ao fundo** (Enio, 2026-08-30, com
@@ -470,21 +463,12 @@ impl HeroLayout {
         // a régua começa por baixo dela, e nenhuma das duas pode tapar a outra porque não
         // partilham coordenada. ⛔ Uma barra de ferramentas que atravessasse o ecrã passaria por
         // cima das colunas — que é o modelo que o trilho `x = 0` tinha, e o defeito que ele deu.
-        // ⭐⭐ **A ORDEM da área é cabeçalho → ferramentas → régua → conteúdo** (`spec/01 §4`), e
-        // cada uma SUBTRAI da seguinte. ⛔ Uma faixa que flutuasse sobre a de baixo reproduziria,
-        // num modelo novo, o defeito das duas réguas que o modelo existe para curar.
-        let area_header = Rect::new(area_x0, chrome_top, area_w, area_header_h.min(chrome_h));
-        let tool_bar = Rect::new(
-            area_x0,
-            chrome_top + area_header.h,
-            area_w,
-            tool_bar_h.min((chrome_h - area_header.h).max(0.0)),
-        );
+        let tool_bar = Rect::new(area_x0, chrome_top, area_w, tool_bar_h.min(chrome_h));
         let draw_area = Rect::new(
             area_x0,
-            chrome_top + area_header.h + tool_bar.h,
+            chrome_top + tool_bar.h,
             area_w,
-            (chrome_h - area_header.h - tool_bar.h).max(0.0),
+            (chrome_h - tool_bar.h).max(0.0),
         );
         // ⭐ A altura é a AUTORADA (a costura do topo escreve-a), apertada contra a banda de
         // chrome — numa janela baixa a faixa não pode ser mais alta do que o sítio onde vive.
@@ -511,7 +495,6 @@ impl HeroLayout {
             bottom_hud,
             canvas,
             draw_area,
-            area_header,
             tool_bar,
             docks,
             center_viewport,

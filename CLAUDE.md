@@ -433,10 +433,20 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   cada traço**. ⚠️ A arte de um pincel é uma **FORMA do documento** (gesto de duas mãos, ⛔ sem
   diálogo de ficheiro), e o motor já estava pago desde o plano 23 — faltava **endereçá-lo como
   propriedade do traço**. ⚠️ Tetos MEDIDOS: `MAX_DASHES = 4096` (o joelho está entre 4 103 traços a
-  6,32 ms e 8 205 a 12,08, contra o *kill* de 8). ⏳ Falta a **W5, as QUINAS** — os 4 modos
-  automáticos do Illustrator medidos lado a lado antes de escolher o nosso; hoje um contorno com
-  quina viva mostra as cópias a saltar no canto, e as cenas de smoke são de curvas suaves por isso.
-  Cenas **`=76`** (a estampa) e **`=77`** (o pincel) ·
+  6,32 ms e 8 205 a 12,08, contra o *kill* de 8). ✅ **A W5 (as QUINAS) FECHOU** — *o avanço encaixa na
+  **PEÇA***, e uma peça é delimitada por vão de tracejado **ou por quina**; ⛔ os 5 ladrilhos de quina
+  autorados do Illustrator ficam FORA por MEDIÇÃO (os fóruns dele dizem que é impossível fazê-los
+  casar à mão). ⚠️ **A metade A é FOUNDATIONAL** (`ph2d-arclen`: velocidade zero deixou de ser lida
+  como direção ausente) e muda o desenho do **Zig Zag** e do **texto em caminho** — a segunda tinha
+  gate a DEFENDER o comportamento antigo, e ele foi invertido com a tabela do custo dentro.
+  ⭐⭐ **GRUPOS** existem na Hierarquia, e um grupo pode ser a arte de uma estampa **e** de um pincel.
+  ⭐⭐ **O painel mostra o que serve à FERRAMENTA na mão**
+  ([`section_scope.rs`](crates/ph2d-panel-vector/src/section_scope.rs) — **1 de 39** seções
+  consultava o modo), e os campos de forma são da forma VIVA, ou da ARMADA, ou de ninguém.
+  ⚠️ **`PROJECT_SCHEMA` 103 → 106, e o 106 foi CONTADO**: a `line/3DModeling` e a `line/components`
+  escreveram **105 as duas** — quem as integrar tem de recontar.
+  [Handoff de 31/08](docs/Vector%20Module/handoffs/HANDOFF_INTEGRACAO_line_Vector_2026-08-31.md).
+  Cenas **`=76`** (a estampa) · **`=77`** (o pincel) · **`=78`** (as quinas) ·
   ✅ **o `n`/folga do *tether* e o `DRAG_RATE_X = 50` NUNCA foram «feel sem medição» — a NOTA é que
   envelheceu** (conferido 24/08, mecanismo no [estudo §6.6](docs/Vector%20Module/Estudos/ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md)):
   o `50` é o atalho de **último recurso** de uma caixa **sem intervalo nenhum**, e acima dele está a `ScrubLaw` · ⏸️ abrir/fechar painel **nunca** foi

@@ -586,6 +586,122 @@ instante mais rápido (~3×), e isso é a mesma geometria.
 
 ---
 
+## §13 — *"descubra para cada Preset quais os parâmetros que não são usados e esconda do painel"*
+
+Report do Enio, 2026-08-31: *"Não quero parâmetros mortos"*.
+
+### 13.1 — A régua é o PRODUTO, e um scanner de símbolos responde por 2 knobs de 29
+
+O único gate por-molde deste género comparava a lista de visibilidade com `Reads::of`, que procura
+`!` e `"` no **texto**. Os três que esta caça achou **não têm símbolo nenhum a denunciá-los** —
+eles morrem por *como o `build` os lê*:
+
+| knob | por que morre | onde vive |
+|---|---|---|
+| `Step Scale` | entra por `step · step_scale^g`, que alimenta o `Setup::step` — lido **só** por um `F` SEM parâmetro. Numa gramática paramétrica (`A(s)`) o comprimento viaja no módulo e sai da expressão, que lê o `step` **cru** | `lib.rs` |
+| `Grow Length` | o braço do refinamento **nunca lê** o `want_len` | `lib.rs`, `grows_by_refining()` |
+| `Grow Angle` | o braço da ponta faz `ang_frac = frac` **sempre** — a viragem contínua ali não é desligável, é lei | idem |
+
+⇒ os dois interruptores do crescimento suave são **complementares por construção**, e o painel
+mostrava sempre os dois. *Metade de um par exclusivo é um knob morto em todo molde, o tempo todo.*
+
+A porta é `probe_param_prints` — quantas saídas **distintas ao bit** o nó emite ao varrer o param
+pela faixa do próprio `ParamUiHint`. A bancada (`examples/dead_params_report.rs`) e o portão
+chamam-na: *uma lei escrita em dois sítios ainda não é uma lei.*
+
+### 13.2 — ⚠️⚠️ UMA leitura só FABRICA uma lista de dívida: 12 acusados, 9 reais
+
+Um param cujo sujeito é criado por **outro** mede-se morto com os defaults. Cada célula passa a ser
+medida **duas** vezes — o enquadramento do molde, e o contexto **aceso** (vizinhos ligados + geração
+**fraccionária**, que é o estado em que o `Generations` está a ser animado):
+
+| param | dorme em | acorda com | veredito |
+|---|---|---|---|
+| `tropism_angle` | **9 de 9** | `tropism` | morto de FÁBRICA ⇒ `ParamGateAbove` |
+| `seed` | 8 de 9 | `leaf_spread` | vivo no `Wild` (gramática estocástica) ⇒ **isento** |
+| `tropism` | 1 de 9 | `root_angle` | no `Sprig` a cadeia persistente é exactamente vertical, logo **anti-paralela** ao puxão ⇒ isento |
+
+⇒ dos três que caíram, **esconder qualquer um teria apagado um controlo vivo.**
+
+⛔ **E a cura do `seed` NÃO é um limiar sobre o `Leaf Spread`** — o único despertador que esta régua
+vê. Ele é também semeado pelo `Leaf Size Jitter` e pelo `Leaf Pos Jitter`, que a **shell** lê e o
+`build` não: um limiar sobre um dos três apagaria o knob para quem usasse os outros dois.
+*Uma isenção medida é mais barata que um gate errado.*
+
+### 13.3 — A terceira metade do portão, e por que a isenção sozinha era licença
+
+1. toda lista de visibilidade bate com a medição (com o controlo do próprio filtro);
+2. todo par (param, molde) inerte está **explicado**, e a explicação não é um nome numa lista — é
+   uma afirmação que se volta a medir (o dependente tem de **acordar** na 2.ª leitura);
+3. ⭐ **nenhum knob dorme no corpus INTEIRO sem que algo o esconda.** Sem esta, a isenção do
+   dependente era uma licença — e era ela que deixava o `Tropism Direction` morto nos nove moldes.
+
+⚠️ **O `Custom` nunca esconde nada, e agora é LEI com gate:** ali a gramática é a que o artista
+escreveu, e esconder é adivinhar.
+
+⚠️ `PRESETS_READING_STEP_SCALE` e `PRESETS_GROWING_BY_REFINEMENT` têm a **mesma tabela hoje** e são
+duas constantes de propósito: as perguntas são outras (*«há um `F` sem parâmetro?»* contra *«refina
+ou cresce pela ponta?»*), e um alias faria a segunda resposta seguir a primeira em silêncio.
+
+**Medido:** o painel passa de **28 para 20** controlos em todo molde (`Custom`, 23).
+
+---
+
+## §14 — *"o feedback ao vivo de uma regra malformada"* (aberto desde 2026-08-29)
+
+### 14.1 — A política de erro não muda; o silêncio é que sai
+
+O que não se entende continua a descartar **aquela** regra e a deixar as outras vivas — recusar a
+gramática inteira apagaria a planta enquanto o artista escreve a segunda regra, que é o estado
+normal de quem autora.
+
+⚠️ **A mais cara em silêncio é a CONDIÇÃO:** ela é o travão da recursão, e um `n <= 6` que não
+compila dá **16 384** módulos onde `n < 6` dá **32**. A planta muda de forma e nada diz porquê.
+
+### 14.2 — UM percurso, DUAS saídas — e por que não podiam ser duas funções
+
+`parse_rules_reporting → (Vec<Rule>, Vec<Complaint>)`, com `parse_rules` a ser o `.0`. Cada
+`return Err` está exactamente onde estava um `continue`.
+
+⚠️⚠️ Um contador de queixas escrito **ao lado** do parser seria um segundo leitor do mesmo texto, e
+este nó já pagou esse defeito: o gate dos pesos lia-os com um `str::parse::<f32>()` próprio e ficava
+verde sobre uma soma que o motor nunca calculava.
+
+⛔ **E não há `ParamRow::Note`:** uma variante nova custaria **104 sítios em 19 ficheiros**, incluindo
+o painel de outro módulo, para servir um caso que vive onde há **texto livre** — e é a `TextRow` que
+o tem. `TextRow.problem` custou **6** sítios de construção.
+
+⚠️ A queixa **não entra no `HitIndex`** (um aviso não se clica), e é **uma** — a primeira, não a
+lista: uma linha por regra empurraria o painel para fora do dock precisamente quando o artista tem
+várias regras a meio.
+
+⚠️ **Três gates, porque são três defeitos diferentes** — a queixa nascer certa, chegar à row, e
+chegar a **pixel**. Sem o terceiro, um `match` que caísse no braço das irmãs deixava os outros dois
+verdes e o artista sem aviso: *um controlo nunca pintado e um morto sob o dedo dão o mesmo report.*
+A régua dele é a **altura publicada**, porque um aviso que não se clica não deixa marca no
+hit-index.
+
+### 14.3 — ⚠️⚠️ Uma recusa minha tinha a premissa errada no dia em que a escrevi
+
+A tabela abaixo dizia, em **2026-08-30**, que esconder o `Tropism Angle` era inexprimível: *«o
+`ParamGate` da casa compara com uma lista de INTEIROS e a condição é "diferente de zero" num slider
+contínuo»*.
+
+⛔ **O `ParamGateAbove` — que existe exactamente para essa pergunta — shipou em 2026-08-21**, nove
+dias ANTES. A recusa não dissolveu com o tempo: ela **nunca foi verdade**, e eu escrevi-a sem
+procurar o irmão do gate que estava a usar.
+
+A segunda razão dela (*«a linha desapareceria no estado de fábrica»*) era uma opinião de produto, e
+o dono revogou-a por escrito: *"Não quero parâmetros mortos"*. A terceira cláusula (*«a cura é o app
+DIZER, e só quando há fio»*) **continua válida e não foi tocada** — ela é sobre um param **conduzido
+por fio** que está inerte, que é outro defeito, com outro diagnóstico.
+
+⇒ *Antes de declarar que uma pergunta é inexprimível nesta casa, procure o irmão do mecanismo que
+está a usar* — o `ParamGate` tem três, e o doc-comment de cada um nomeia a pergunta que os outros
+não sabem fazer.
+
+---
+
 ## ⛔ Recusas MEDIDAS (deste estudo)
 
 | Item | Motivo |
@@ -596,7 +712,7 @@ instante mais rápido (~3×), e isso é a mesma geometria.
 | Âncora no `DEFAULT_RULES` | Ele é o oráculo do modo guiado (gate compara os dois ao bit) e o default de fábrica — obrigaria a pôr a âncora na derivação guiada e a pagar ~3× a contagem em toda planta que nunca terá folha |
 | Terminar a recursão para não acumular (`A(s) : s <= k -> F(s)J`) | Medido: **muda a planta** — `64` elementos em vez de `256` a `g = 8`. Não é a mesma planta com folhas |
 | O cruza-fade entre duas gerações (peso `f` / `1 − f`) | Comprava «só as pontas» numa planta parada e fazia **cada folha encolher até sumir** durante o crescimento — *«só as pontas» e «uma folha não encolhe» não cabem na mesma lei, porque uma ponta vira interior*. Veredito do Enio: *«bem bizarro»* |
-| Esconder o `Tropism Angle` quando o `Tropism` é `0` | O `ParamGate` da casa compara com uma lista de INTEIROS e a condição é *«diferente de zero»* num slider contínuo; e a linha desapareceria no estado de FÁBRICA, que é onde o artista estava quando reportou. A cura é o app DIZER, e só quando há fio |
+| ~~Esconder o `Tropism Angle` quando o `Tropism` é `0`~~ | ⛔⛔ **REVOGADA em 2026-08-31 — a premissa técnica estava ERRADA quando foi escrita.** Ver [§14.3](#143--uma-recusa-minha-tinha-a-premissa-errada-no-dia-em-que-a-escrevi) |
 | Usar o `falloff` para livrar as folhas do tint | ⛔ **PARTIU a planta**: o `falloff` é a máscara de TODOS os modificadores, e o `motion.move` faz `P' = P + (dx, dy) · falloff` ⇒ as folhas ficavam paradas enquanto a árvore andava. A cura é uma coluna própria (`attr::TINT_MASK_COLUMN`) |
 | Um `First Level` único para todos os moldes | ⛔ **Esvaziava o `Sprig`** (10 marcas, todas na profundidade 1). O molde carrega o seu, como os outros quatro números de enquadramento |
 | Folhas da frente como imagem na cena Vello | ⛔ Poria metade da copa DEPOIS do tonemap e metade antes — as duas metades da mesma folhagem com cores diferentes |

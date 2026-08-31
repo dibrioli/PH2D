@@ -38,7 +38,7 @@ fn cena(aponta_para_si: bool) -> (VecScene, VecPathId, VecPathId) {
 #[test]
 fn the_brush_art_resolves_keyed_by_its_host() {
     let (scene, hospedeira, _) = cena(false);
-    let mapa = resolve(&scene);
+    let mapa = resolve(&scene, &|id| vec![id]);
     assert!(
         mapa.contains_key(&hospedeira),
         "a arte do pincel nao foi resolvida para a forma hospedeira"
@@ -55,14 +55,14 @@ fn the_brush_art_resolves_keyed_by_its_host() {
 #[test]
 fn a_shape_can_never_be_its_own_brush() {
     let (scene, hospedeira, _) = cena(true);
-    let mapa = resolve(&scene);
+    let mapa = resolve(&scene, &|id| vec![id]);
     assert!(
         !mapa.contains_key(&hospedeira),
         "uma forma resolveu-se como o proprio pincel - o desenho entraria em recursao"
     );
     // CONTROLO: com a arte a apontar para OUTRA forma, ela resolve — senão este gate ficaria verde
     // sobre uma resolução que nunca devolve nada.
-    assert!(resolve(&cena(false).0).contains_key(&hospedeira));
+    assert!(resolve(&cena(false).0, &|id| vec![id]).contains_key(&hospedeira));
 }
 
 /// ⚠️ **A arte entra COZIDA, não como foi digitada.**
@@ -79,13 +79,13 @@ fn the_art_enters_cooked_not_as_authored() {
             v.corner_radius = 0.25;
         }
     }
-    let mapa = resolve(&scene);
+    let mapa = resolve(&scene, &|id| vec![id]);
     let resolvida = mapa.get(&hospedeira).expect("resolve");
     assert!(
-        resolvida.verts.len() > crus,
+        resolvida[0].verts.len() > crus,
         "a arte entrou AUTORADA ({} vertices, os mesmos da fonte) - um motivo com quina viva \
          repetir-se-ia com a quina afiada",
-        resolvida.verts.len()
+        resolvida[0].verts.len()
     );
 }
 
@@ -99,5 +99,67 @@ fn a_scene_without_brushes_costs_nothing() {
         stroke: Some(StrokeSpec::new(Rgba8::new(1, 2, 3, 255), 0.5)),
         ..VecPath::default()
     });
-    assert!(resolve(&scene).is_empty());
+    assert!(resolve(&scene, &|id| vec![id]).is_empty());
+}
+
+/// ⭐⭐⭐ **A ARTE DE UM PINCEL PODE SER UM GRUPO, e a recusa de ciclo é sobre PERTENÇA.**
+///
+/// Report do Enio (2026-08-30) — ele pediu-o para a estampa, e o pincel é a mesma metade noutra
+/// tinta. O documento endereça a arte por um `VecPathId` e um grupo **não tem um**: o que muda é a
+/// **resolução**, e ela passa pela porta que a estampa já usa
+/// ([`crate::texture_pattern_live::art_members`]).
+///
+/// # As duas metades
+///
+/// **Expandir**: um id que pertence a um grupo traz o grupo INTEIRO.
+///
+/// **Recusar**: e a recusa deixou de ser `art == host` — com um grupo, o anfitrião pode ser um
+/// **membro** da arte. Desenhá-lo exigiria as cópias, as cópias exigiriam a arte, e a arte seria
+/// ele. ⚠️ *O sintoma não seria um erro: seria o app a parar.*
+///
+/// ⚠️ **A segunda metade é o CONTROLO da primeira**: uma expansão que devolvesse sempre tudo
+/// passaria a primeira e reprovaria esta.
+#[test]
+fn a_group_is_a_brush_art_and_the_cycle_refusal_is_about_membership() {
+    let (scene, hospedeira, arte) = cena(false);
+    // Um irmão da arte: os dois formam o grupo.
+    let mut scene = scene;
+    let irmao = scene.push_path(VecPath {
+        verts: quadrado(2.0),
+        closed: true,
+        ..VecPath::default()
+    });
+    let grupo_da_arte = move |id: VecPathId| {
+        if id == arte || id == irmao {
+            vec![arte, irmao]
+        } else {
+            vec![id]
+        }
+    };
+    let mapa = resolve(&scene, &grupo_da_arte);
+    assert_eq!(
+        mapa.get(&hospedeira).map(Vec::len),
+        Some(2),
+        "a arte do pincel nao expandiu o GRUPO - so' o caminho apontado chegou ao desenho"
+    );
+    // ⚠️ CONTROLO: sem a expansão, o mesmo pedido dá UM — a fixtura contém o fenómeno.
+    assert_eq!(
+        resolve(&scene, &|id| vec![id])
+            .get(&hospedeira)
+            .map(Vec::len),
+        Some(1)
+    );
+    // ⛔ E o grupo que CONTÉM o anfitrião é recusado inteiro: é o ciclo que pararia o app.
+    let grupo_com_o_host = move |id: VecPathId| {
+        if id == arte || id == hospedeira {
+            vec![arte, hospedeira]
+        } else {
+            vec![id]
+        }
+    };
+    assert!(
+        !resolve(&scene, &grupo_com_o_host).contains_key(&hospedeira),
+        "um grupo que contem o proprio anfitriao foi aceite - desenha-lo exige as copias, e as \
+         copias exigem a arte: o app PARA"
+    );
 }

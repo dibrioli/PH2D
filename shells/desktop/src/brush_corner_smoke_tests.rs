@@ -97,7 +97,7 @@ fn no_copy_in_the_corner_smoke_sits_on_a_corner() {
     for (i, forma) in formas.iter().enumerate() {
         let g = ph2d_vec_scene::arc_path::ArcPath::from_contour(&forma.verts, true)
             .expect("guia com comprimento");
-        let copias = ph2d_vec_scene::brush_along_path(forma, &art, &s);
+        let copias = ph2d_vec_scene::brush_along_path(forma, std::slice::from_ref(&art), &s);
         assert!(copias.len() > 6, "forma {i}: so' {} copias", copias.len());
         let centros: Vec<[f64; 2]> = copias.iter().map(centro_de).collect();
         // O avanço EFECTIVO desta forma: a mediana do passo entre centros consecutivos.

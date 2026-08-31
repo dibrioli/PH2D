@@ -57,8 +57,12 @@ fn measure_how_far_a_corner_throws_the_copies_off_the_guide() {
 
     for w in [1.0, 1.3, 1.7, 2.0] {
         let art = arte(w, 1.0);
-        let quad = brush_along_path(&quadrado(7.0), &art, &s);
-        let circ = brush_along_path(&crate::ellipse([0.0, 0.0], raio, raio), &art, &s);
+        let quad = brush_along_path(&quadrado(7.0), std::slice::from_ref(&art), &s);
+        let circ = brush_along_path(
+            &crate::ellipse([0.0, 0.0], raio, raio),
+            std::slice::from_ref(&art),
+            &s,
+        );
         let guia = guia_de(&quadrado(7.0));
         let pior = quad
             .iter()
@@ -82,7 +86,7 @@ fn measure_how_far_a_corner_throws_the_copies_off_the_guide() {
         let art = arte(1.3, 1.0);
         let quad = quadrado(lado);
         let guia = guia_de(&quad);
-        let copias = brush_along_path(&quad, &art, &s);
+        let copias = brush_along_path(&quad, &[art], &s);
         if copias.is_empty() {
             println!("  lado {lado:>5.1}  ·  SEM COPIAS");
             continue;
@@ -179,7 +183,7 @@ fn a_square_gets_every_copy_the_fit_asks_for() {
             .map(|w| (w[1] - w[0]) / 1.3)
             .map(|n| n.round().max(1.0) as usize)
             .sum();
-        let emitidas = brush_along_path(&forma, &art, &s).len();
+        let emitidas = brush_along_path(&forma, std::slice::from_ref(&art), &s).len();
         assert_eq!(
             emitidas, esperadas,
             "o quadrado de lado {lado} recebeu {emitidas} copias e o encaixe pediu {esperadas} - \
@@ -277,7 +281,7 @@ fn measure_what_a_corner_costs_in_coverage() {
         ),
     ] {
         let guia = guia_de(&forma);
-        let copias = brush_along_path(&forma, &art, &s);
+        let copias = brush_along_path(&forma, std::slice::from_ref(&art), &s);
         #[allow(clippy::cast_precision_loss)]
         let avanco = guia.total() / copias.len() as f64;
         let mut piores: Vec<f64> = (0..copias.len())
@@ -500,7 +504,7 @@ fn the_art_never_cuts_a_corner() {
         ("estrela", estrela),
     ] {
         let guia = guia_de(&forma);
-        let copias = brush_along_path(&forma, &art, &s);
+        let copias = brush_along_path(&forma, std::slice::from_ref(&art), &s);
         assert!(copias.len() > 8, "{nome}: so' {} copias", copias.len());
         // As fatias que o produto de facto usou: as peças entre quinas, cada uma com o avanço
         // dela. Reconstruí-las aqui é a única forma de medir a MESMA divisão que o motor fez.
@@ -600,7 +604,7 @@ fn the_guide_is_covered_by_the_copies_the_product_emitted() {
         ("circulo", crate::ellipse([0.0, 0.0], 4.456, 4.456), 0.25),
     ] {
         let guia = guia_de(&forma);
-        let copias = brush_along_path(&forma, &art, &s);
+        let copias = brush_along_path(&forma, std::slice::from_ref(&art), &s);
         assert!(copias.len() > 8, "{nome}: so' {} copias", copias.len());
         // A espinha de cada cópia: os dois vértices extremos do losango (índices 0 e 2 do
         // `arte`), que a colocação rígida leva ao mundo.

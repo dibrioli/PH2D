@@ -82,7 +82,7 @@ const MIN_ADVANCE: f64 = 1e-3;
 /// **para no meio da curva, sem aviso**. Isso é conhecido e NÃO está resolvido: a saída natural é
 /// um cache por-params (plano 23 §0) que tire o re-cook do frame e liberte o teto, não subir o
 /// número com o custo onde está.
-const MAX_COPIES: usize = 4096;
+pub(crate) const MAX_COPIES: usize = 4096;
 
 /// Folga de encaixe, em **frações de fatia** (unidades de `k`), na fronteira "a cópia cabe exato".
 ///
@@ -222,10 +222,10 @@ impl Rotor {
 ///
 /// Com `rot` identidade (`rotation_deg == 0`) os pontos passam intactos e o resultado é o mesmo
 /// número, ao bit, de antes de existir rotação.
-fn motif_bbox(motif: &VecPath, rot: Rotor) -> (f64, [f64; 2]) {
+fn motif_bbox(motif: &[VecPath], rot: Rotor) -> (f64, [f64; 2]) {
     let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
     let mut seen = false;
-    for v in motif.verts_all() {
+    for v in motif.iter().flat_map(VecPath::verts_all) {
         for p in [v.anchor, v.in_handle, v.out_handle] {
             seen = true;
             let p = rot.apply(p);
@@ -285,13 +285,60 @@ fn map_vert(v: &VecVertex, frame: &GlyphFrame, rot: Rotor, center: [f64; 2]) -> 
 /// ângulo que ninguém autorou.
 #[must_use]
 pub fn pattern_along(motif: &VecPath, guide: &ArcPath, spec: &PatternSpec) -> Vec<VecPath> {
+    pattern_along_in(
+        motif,
+        guide,
+        spec,
+        motif_frame(std::slice::from_ref(motif), spec.rotation_deg),
+        MAX_COPIES,
+    )
+}
+
+/// ⭐⭐⭐ **O REFERENCIAL de um motivo** — a largura e o centro dele, no espaço já rodado.
+///
+/// # Porque isto é público, e o que ele destrava
+///
+/// Era o `motif_bbox`, privado, calculado **dentro** da [`pattern_along`] a partir do único caminho
+/// que ela recebia. Era isso — e só isso — que prendia o *Pattern Brush* a **uma** forma: um grupo
+/// tem de ser desenhado membro a membro (cada cópia carrega a tinta do SEU motivo, e fundi-los num
+/// `VecPath` colapsaria o azul e o laranja numa cor só), mas os membros têm de ser colocados no
+/// referencial do **conjunto**, senão cada um centra-se na guia e eles empilham-se uns sobre os
+/// outros em vez de manterem a disposição que o artista desenhou.
+///
+/// ⇒ quem tem um grupo mede o referencial **uma vez** e passa-o a cada membro.
+#[must_use]
+pub fn motif_frame(motif: &[VecPath], rotation_deg: f64) -> (f64, [f64; 2]) {
+    motif_bbox(motif, Rotor::new(rotation_deg))
+}
+
+/// A [`pattern_along`] com o referencial **dado** e um **tecto de emissão** próprio.
+///
+/// ⛔⛔ **O `budget` existe porque o [`MAX_COPIES`] passou a ser POR MEMBRO no dia em que a arte
+/// pôde ser um grupo** (auditoria de 2026-08-30) — e o doc dele mede o orçamento em cópias
+/// **EMITIDAS**: *"4096 cópias custam 7,53 ms contra o kill de 8 ms"*. Com `N` membros a chamar
+/// esta porta, o total emitido era `N × 4096`. Medido em release: `8` membros → `32 768` cópias e
+/// **14,46 ms** (1,8× o kill); `16` → `65 536` e **30,17 ms** (3,8×).
+///
+/// ⚠️ *Um número que guarda um orçamento deixa de o guardar no instante em que alguém multiplica o
+/// que ele conta — e nenhuma linha do doc dele muda.*
+///
+/// ⇒ quem emite `N` vezes reparte: o teto é do CONJUNTO.
+#[must_use]
+pub fn pattern_along_in(
+    motif: &VecPath,
+    guide: &ArcPath,
+    spec: &PatternSpec,
+    frame: (f64, [f64; 2]),
+    budget: usize,
+) -> Vec<VecPath> {
     let total = guide.total();
     if total <= 0.0 {
         return Vec::new();
     }
-    // O rotor UMA vez por re-cook; a medida do motivo sai do referencial DELE (§ do módulo).
+    // O rotor UMA vez por re-cook; a medida do motivo vem de FORA (ver [`motif_frame`]) — para uma
+    // forma sozinha é a dela, para um grupo é a do conjunto.
     let rot = Rotor::new(spec.rotation_deg);
-    let (width, center) = motif_bbox(motif, rot);
+    let (width, center) = frame;
     let mut advance = (width * spec.spacing).max(MIN_ADVANCE);
     // ⭐⭐ **O ENCAIXE, pela porta do tracejado.** O `dash_fit::fit` escala um `[traço, vão]` para
     // caber um número INTEIRO de vezes; um avanço é o mesmo problema com o vão a zero, e a
@@ -332,7 +379,7 @@ pub fn pattern_along(motif: &VecPath, guide: &ArcPath, spec: &PatternSpec) -> Ve
         return Vec::new();
     }
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let count = ((k_hi - k_lo + 1.0).min(MAX_COPIES as f64)) as usize;
+    let count = ((k_hi - k_lo + 1.0).min(budget as f64)) as usize;
 
     let map_contour = |verts: &[VecVertex], frame: &GlyphFrame| -> Vec<VecVertex> {
         verts

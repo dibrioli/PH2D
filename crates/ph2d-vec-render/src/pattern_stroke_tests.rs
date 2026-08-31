@@ -583,7 +583,7 @@ fn a_brushed_stroke_draws_the_copies_and_falls_back_to_the_colour() {
     let id = scene.paths()[0].id;
     let art = arte_do_pincel();
     let mut brushes = crate::BrushArts::new();
-    brushes.insert(id, art);
+    brushes.insert(id, vec![art]);
 
     let com = desenha_com(&scene, &crate::PatternTiles::new(), &brushes);
     let sem = desenha_com(
@@ -640,7 +640,7 @@ fn a_dashed_brush_draws_fewer_copies_because_the_gaps_are_empty() {
     let mut scene = so_traco_com_pincel(ph2d_vec_scene::VecPathId::from(7u64));
     let id = scene.paths()[0].id;
     let mut brushes = crate::BrushArts::new();
-    brushes.insert(id, arte_do_pincel());
+    brushes.insert(id, vec![arte_do_pincel()]);
     let cheio = desenha_com(&scene, &crate::PatternTiles::new(), &brushes);
 
     // O MESMO traço, tracejado: `(4, 2)` múltiplos de uma largura de `1` ⇒ traço de 4, vão de 2.

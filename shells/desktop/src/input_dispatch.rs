@@ -2375,12 +2375,27 @@ impl App {
             // ⚠️ O `guide == pick.source()` logo acima já barra o ciclo — e a `brush_live::art_of`
             // barra-o outra vez, porque o documento pode chegar lá por outro caminho (um save, um
             // replay). *Duas metades porque as duas portas existem.*
-            crate::vec_pick::PathPick::BrushArt(host) => crate::vec_stroke_paint::set_art(
-                &mut gfx.vec_scene,
-                &mut self.vec_history,
-                host,
-                guide,
-            ),
+            crate::vec_pick::PathPick::BrushArt(host) => {
+                // ⚠️ A recusa é sobre PERTENÇA (a arte pode ser um GRUPO), e por isso a porta
+                // precisa da expansão de objecto — a MESMA que a resolução usa.
+                //
+                // ⚠️ A expansão é medida ANTES do empréstimo mutável — a porta só pergunta pelo
+                // `guide` (é ele a arte), e o `&mut scene` da escrita não coexiste com o `&scene`
+                // que a expansão lê.
+                let membros = crate::vec_entities::object_selection_for(
+                    &gfx.sim,
+                    &gfx.vec_scene,
+                    &self.vec_entities,
+                    guide,
+                );
+                crate::vec_stroke_paint::set_art(
+                    &mut gfx.vec_scene,
+                    &mut self.vec_history,
+                    host,
+                    guide,
+                    &|_| membros.clone(),
+                )
+            }
             // **O vínculo da row** (W8b.3): a fonte é o WIDGET, o clicado é a forma dirigida.
             crate::vec_pick::PathPick::WidgetBind(widget) => {
                 crate::vec_widget_edit::bind(&mut gfx.sim, &self.vec_entities, widget, guide)

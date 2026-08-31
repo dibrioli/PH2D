@@ -56,7 +56,7 @@ fn moving_the_shape_does_not_rebake_but_rotating_and_editing_do() {
 fn the_thumbnail_is_bounded_and_keeps_aspect() {
     let (w, h) = (600u32, 200u32);
     let rgba = vec![255u8; (w * h * 4) as usize]; // opaque white
-    let t = thumbnail(&rgba, w, h);
+    let t = crate::motion_object_thumb::thumbnail(&rgba, w, h);
     assert_eq!(t.w.max(t.h), THUMB_MAX, "long side capped at THUMB_MAX");
     assert!(
         (t.w as f32 / t.h as f32 - 3.0).abs() < 0.05,
@@ -79,7 +79,7 @@ fn the_thumbnail_is_bounded_and_keeps_aspect() {
 fn a_small_tile_is_never_upscaled() {
     let (w, h) = (10u32, 8u32);
     let rgba = vec![128u8; (w * h * 4) as usize];
-    let t = thumbnail(&rgba, w, h);
+    let t = crate::motion_object_thumb::thumbnail(&rgba, w, h);
     assert_eq!(
         (t.w, t.h),
         (w, h),
@@ -100,7 +100,7 @@ fn the_downsample_does_not_bleed_a_halo_into_a_transparent_edge() {
         let i = (x * 4) as usize;
         rgba[i..i + 4].copy_from_slice(&[255, 0, 0, 255]); // opaque red; odd stays transparent
     }
-    let t = thumbnail(&rgba, w, h);
+    let t = crate::motion_object_thumb::thumbnail(&rgba, w, h);
     assert_eq!(t.w, THUMB_MAX, "downsampled 2:1");
     for p in t.rgba.chunks(4) {
         assert_eq!(
@@ -240,6 +240,7 @@ fn the_baked_tile_is_upright() {
         id,
         &gpu,
         wgpu::TextureFormat::Rgba8UnormSrgb,
+        &|id| vec![id],
     )
     .expect("bake produced a tile");
 
@@ -308,6 +309,7 @@ fn a_group_bakes_into_one_tile_with_both_members_in_it() {
         a,
         &gpu,
         wgpu::TextureFormat::Rgba8UnormSrgb,
+        &|id| vec![id],
     )
     .expect("um membro assa");
     let (rgba, w, h, _) = super::bake_rgba_many(
@@ -318,6 +320,7 @@ fn a_group_bakes_into_one_tile_with_both_members_in_it() {
         &[a, b],
         &gpu,
         wgpu::TextureFormat::Rgba8UnormSrgb,
+        &|id| vec![id],
     )
     .expect("o grupo assa");
 

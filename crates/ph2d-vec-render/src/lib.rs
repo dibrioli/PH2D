@@ -226,7 +226,14 @@ pub type PatternTiles = std::collections::BTreeMap<(VecPathId, PatternSlot), Pat
 ///
 /// Vazio = nenhum pincel resolvido, e todo traço de pincel pinta a **cor de recurso** dele — que é
 /// desenho CERTO, não desistência.
-pub type BrushArts = std::collections::BTreeMap<VecPathId, ph2d_vec_scene::VecPath>;
+/// ⭐⭐⭐ **A arte de um pincel é uma LISTA**, porque ela pode ser um GRUPO (report do Enio,
+/// 2026-08-30, na estampa; o pincel é a mesma metade noutra tinta).
+///
+/// ⛔ **Fundir os membros num `VecPath` colapsaria as tintas**: cada cópia carrega o `fill`/`stroke`
+/// do SEU motivo, e um `VecPath` tem um de cada — um triângulo azul com um círculo laranja sairia
+/// de uma cor só. ⇒ a lista, e um referencial partilhado
+/// ([`ph2d_vec_scene::pattern_path::motif_frame`]) para que os membros mantenham a disposição.
+pub type BrushArts = std::collections::BTreeMap<VecPathId, Vec<ph2d_vec_scene::VecPath>>;
 
 /// Os FX raster deste frame, por forma. Vazio = nenhum FX na cena, e o desenho é o de sempre —
 /// **byte-idêntico** ao mundo pré-FX (o caminho comum não paga nada).
@@ -320,7 +327,7 @@ pub fn dispatch(
                 let tile = patterns.get(&(path.id, PatternSlot::Fill));
                 let stroke_tile = patterns.get(&(path.id, PatternSlot::Stroke));
                 // ⭐ **A arte do PINCEL, pelo id da FONTE — a mesma lei do ladrilho logo acima.**
-                let art = brushes.get(&path.id);
+                let art = brushes.get(&path.id).map(Vec::as_slice);
                 if let Some(items) = live.get(&path.id) {
                     for item in items {
                         draw_path_tiled(
@@ -448,7 +455,7 @@ pub(crate) fn draw_path_tiled(
     target: &mut VectorScene,
     tile: Option<&PatternTile>,
     stroke_tile: Option<&PatternTile>,
-    brush_art: Option<&ph2d_vec_scene::VecPath>,
+    brush_art: Option<&[ph2d_vec_scene::VecPath]>,
 ) {
     let tess = path_tess(path);
     draw_path_with(path, &tess, transform, target, tile, stroke_tile, brush_art);
@@ -467,7 +474,7 @@ pub(crate) fn draw_path_with(
     target: &mut VectorScene,
     tile: Option<&PatternTile>,
     stroke_tile: Option<&PatternTile>,
-    brush_art: Option<&ph2d_vec_scene::VecPath>,
+    brush_art: Option<&[ph2d_vec_scene::VecPath]>,
 ) {
     let fill_bp = tess.fill_bp.as_ref();
     if let Some(fill) = &path.fill {

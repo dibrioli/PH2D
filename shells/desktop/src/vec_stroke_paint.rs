@@ -152,14 +152,25 @@ pub(crate) fn set_kind(
 /// ⛔ **Uma forma não pode ser o próprio pincel** — a recusa é a primeira linha, e há uma segunda,
 /// PURA, no `brush_live`. *Duas metades porque as duas portas existem: esta autora, aquela resolve.*
 ///
+/// ⛔⛔ **E a recusa é sobre PERTENÇA desde que a arte pode ser um GRUPO** (auditoria de
+/// 2026-08-30). Ela era `art == host`, e com um grupo o anfitrião pode ser um **irmão** do que se
+/// clicou: aí esta porta aceitava, escrevia o documento e **empurrava um passo de undo**, o botão
+/// passava a dizer *"Change Shape…"* — e a resolução recusava, deixando o traço numa cor chapada
+/// **sem mensagem nenhuma**.
+///
+/// ⚠️ *É o defeito EXACTO que a estampa curou no mesmo dia* (`texture_pattern_live::art_members`:
+/// *"tinha DOIS leitores e só um a obedecia"*), e ele voltou aqui porque a lei mudou de forma numa
+/// porta e não nas outras. ⇒ as três leem a MESMA função.
+///
 /// `true` se o documento mudou (um passo de undo).
 pub(crate) fn set_art(
     scene: &mut VecScene,
     history: &mut History,
     host: ph2d_vec_scene::VecPathId,
     art: ph2d_vec_scene::VecPathId,
+    object_of: &dyn Fn(ph2d_vec_scene::VecPathId) -> Vec<ph2d_vec_scene::VecPathId>,
 ) -> bool {
-    if art == host {
+    if crate::texture_pattern_live::art_members(host, art, object_of).is_empty() {
         return false;
     }
     let Some(cur) = scene

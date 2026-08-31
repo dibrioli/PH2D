@@ -412,7 +412,7 @@ impl FlipObjectBake {
         }
         // The card thumbnail (doc 86 A5) from the SAME composed bytes, via the shared
         // downsampler the vector bake uses — one twin, one look.
-        let thumb = crate::motion_object_bake::thumbnail(&rgba[..need], wpx, hpx);
+        let thumb = crate::motion_object_thumb::thumbnail(&rgba[..need], wpx, hpx);
         let texture_id = renderer.acquire_individual(wpx, hpx, &rgba[..need]).ok()?;
         Some((texture_id, [bw, bh], thumb))
     }

@@ -32,7 +32,7 @@ fn the_smoke_dash_carries_more_than_one_copy_per_dash() {
         .expect("a elipse tem comprimento")
         .0;
     let tracos = ph2d_vec_scene::brush_spans(total, Some(dash)).len();
-    let copias = ph2d_vec_scene::brush_along_path(&forma, &arte(0.0, 0.0), &s).len();
+    let copias = ph2d_vec_scene::brush_along_path(&forma, &[arte(0.0, 0.0)], &s).len();
     assert!(
         tracos >= 3,
         "a cena so' mostra {tracos} tracos - poucos para se ler a cadencia"
@@ -45,7 +45,7 @@ fn the_smoke_dash_carries_more_than_one_copy_per_dash() {
     // ⚠️ **CONTROLO — sem tracejado a MESMA forma leva MAIS cópias.** Sem esta metade o gate
     // ficaria verde num dia em que o tracejado deixasse de tirar coisa nenhuma.
     let cheio =
-        ph2d_vec_scene::brush_along_path(&forma, &arte(0.0, 0.0), &pincel(ART, None, 0.0, false))
+        ph2d_vec_scene::brush_along_path(&forma, &[arte(0.0, 0.0)], &pincel(ART, None, 0.0, false))
             .len();
     assert!(
         cheio > copias,

@@ -22,7 +22,7 @@
 //! pincel tem de correr sobre a mesma — senão a arte anda por um caminho que ninguém vê.
 
 use crate::arc_path::ArcPath;
-use crate::pattern_path::{PatternSpec, pattern_along};
+use crate::pattern_path::PatternSpec;
 use crate::{BrushStroke, Contour, StrokeSpec, VecPath};
 
 /// Teto de TRAÇOS que um contorno oferece ao pincel — **o recurso é TEMPO**, e o número é medido.
@@ -101,7 +101,7 @@ pub fn brush_height(b: &BrushStroke, width: f64) -> f64 {
 /// `None` quando a arte não tem altura que se meça (um ponto, um caminho vazio): não há factor
 /// honesto, e desenhar nada é melhor que dividir por quase-zero.
 #[must_use]
-fn art_at_height(art: &VecPath, h: f64) -> Option<VecPath> {
+fn art_at_height(art: &[VecPath], h: f64) -> Option<Vec<VecPath>> {
     // ⚠️ `<=` e não `!(_ > _)`: os dois recusam o NaN, e é a forma que o `dash_fit`
     // desta crate já escolheu — *duas formas de recusar a mesma coisa lêem-se como duas leis*.
     if h <= 0.0 || h.is_nan() {
@@ -109,7 +109,7 @@ fn art_at_height(art: &VecPath, h: f64) -> Option<VecPath> {
     }
     let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
     let mut seen = false;
-    for v in art.verts_all() {
+    for v in art.iter().flat_map(VecPath::verts_all) {
         for p in [v.anchor, v.in_handle, v.out_handle] {
             seen = true;
             for k in 0..2 {
@@ -125,7 +125,6 @@ fn art_at_height(art: &VecPath, h: f64) -> Option<VecPath> {
     let k = h / alt;
     let c = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
     let map = |p: [f64; 2]| [(p[0] - c[0]) * k, (p[1] - c[1]) * k];
-    let mut out = art.clone();
     let escala = |verts: &mut Vec<crate::VecVertex>| {
         for v in verts.iter_mut() {
             v.anchor = map(v.anchor);
@@ -136,9 +135,15 @@ fn art_at_height(art: &VecPath, h: f64) -> Option<VecPath> {
             v.corner_radius *= k;
         }
     };
-    escala(&mut out.verts);
-    for c in &mut out.subpaths {
-        escala(&mut c.verts);
+    // ⭐⭐ **A caixa é a do CONJUNTO e o factor é UM SÓ** — é isso que preserva a disposição que o
+    // artista desenhou. Escalar cada membro pela caixa dele espalharia o grupo: o triângulo e o
+    // círculo passariam os dois a ter a altura do pincel, e a composição desapareceria.
+    let mut out = art.to_vec();
+    for p in &mut out {
+        escala(&mut p.verts);
+        for c in &mut p.subpaths {
+            escala(&mut c.verts);
+        }
     }
     Some(out)
 }
@@ -207,7 +212,7 @@ pub fn brush_spans(total: f64, dash: Option<[f64; 2]>) -> Vec<(f64, f64)> {
 #[must_use]
 pub fn brush_copies(
     guia: &Contour,
-    art: &VecPath,
+    art: &[VecPath],
     b: &BrushStroke,
     width: f64,
     dash: Option<[f64; 2]>,
@@ -227,7 +232,22 @@ pub fn brush_copies(
     // ⚠️ **Sem guarda de `< 255`, de propósito:** `(255·255 + 127)/255` é `255`, logo o topo da
     // barra é a identidade **pela própria conta**. Um `if` a proteger o que a aritmética já protege
     // é uma segunda lei a manter em sincronia com a primeira.
-    crate::paint_bind::fade(&mut escalada, b.fallback.a);
+    for p in &mut escalada {
+        crate::paint_bind::fade(p, b.fallback.a);
+    }
+    // ⭐⭐⭐ **O REFERENCIAL É DO CONJUNTO, medido UMA vez** (a arte de um pincel pode ser um GRUPO).
+    //
+    // ⚠️ É a única coisa que prendia o pincel a uma forma. Cada cópia carrega a tinta do SEU motivo
+    // — fundir os membros num `VecPath` colapsaria o azul e o laranja numa cor —, mas eles têm de
+    // ser colocados no referencial do CONJUNTO: com o referencial próprio, cada membro centra-se na
+    // guia e eles empilham-se uns sobre os outros em vez de manterem a disposição desenhada.
+    let frame = crate::pattern_path::motif_frame(&escalada, b.rotation_deg);
+    // ⛔⛔ **O TECTO DE CÓPIAS É DO CONJUNTO, e reparte-se pelos membros** (auditoria de
+    // 2026-08-30). O `MAX_COPIES` mede o orçamento em cópias **emitidas** (o doc dele: *"4096
+    // custam 7,53 ms contra o kill de 8"*), e emitir `N` vezes multiplicava-o por `N`: medido, `8`
+    // membros davam `32 768` cópias e **14,46 ms**. *Um número que guarda um orçamento deixa de o
+    // guardar no instante em que alguém multiplica o que ele conta.*
+    let orcamento = crate::pattern_path::MAX_COPIES / escalada.len().max(1);
     let Some(arc) = ArcPath::from_contour(&guia.verts, guia.closed) else {
         return Vec::new();
     };
@@ -236,23 +256,26 @@ pub fn brush_copies(
     let mut out = Vec::new();
     for (inicio, fim) in brush_spans(total, dash) {
         for (p0, p1) in cut_at(inicio, fim, &cortes) {
-            out.extend(pattern_along(
-                &escalada,
-                &arc,
-                &PatternSpec {
-                    spacing: b.spacing,
-                    offset: b.offset,
-                    flip: b.flip,
-                    rotation_deg: b.rotation_deg,
-                    // ⭐⭐⭐ **O avanço encaixa na PEÇA** (W5) — e uma peça é um trecho que a arte
-                    // tem de preencher de ponta a ponta. A W3-bis dizia *"encaixa no TRAÇO"*; a
-                    // quina acrescenta a outra fronteira, e a lei é a mesma frase com a palavra
-                    // certa.
-                    fit_span: Some(p1 - p0),
-                    start_offset: p0,
-                    end_offset: p1,
-                },
-            ));
+            let spec = PatternSpec {
+                spacing: b.spacing,
+                offset: b.offset,
+                flip: b.flip,
+                rotation_deg: b.rotation_deg,
+                // ⭐⭐⭐ **O avanço encaixa na PEÇA** (W5) — e uma peça é um trecho que a arte
+                // tem de preencher de ponta a ponta. A W3-bis dizia *"encaixa no TRAÇO"*; a
+                // quina acrescenta a outra fronteira, e a lei é a mesma frase com a palavra
+                // certa.
+                fit_span: Some(p1 - p0),
+                start_offset: p0,
+                end_offset: p1,
+            };
+            // ⚠️ **Membro a membro, no MESMO referencial** — e a ordem é a do documento, que é a de
+            // z: emitir ao contrário poria o membro de trás por cima em toda cópia.
+            for membro in &escalada {
+                out.extend(crate::pattern_path::pattern_along_in(
+                    membro, &arc, &spec, frame, orcamento,
+                ));
+            }
         }
     }
     out
@@ -296,7 +319,7 @@ fn cut_at(inicio: f64, fim: f64, cortes: &[f64]) -> Vec<(f64, f64)> {
 /// Vazio quando o traço não é um pincel — a pergunta *"que cópias este traço põe?"* não tem resposta
 /// num traço sólido, e devolver as de um pincel inventado seria pior que devolver nada.
 #[must_use]
-pub fn brush_along_path(path: &VecPath, art: &VecPath, s: &StrokeSpec) -> Vec<VecPath> {
+pub fn brush_along_path(path: &VecPath, art: &[VecPath], s: &StrokeSpec) -> Vec<VecPath> {
     let Some(b) = s.brush() else {
         return Vec::new();
     };
@@ -323,6 +346,10 @@ mod tests;
 #[cfg(test)]
 #[path = "brush_corner_tests.rs"]
 mod corner_tests;
+// ⚠️ Irmão por RESPONSABILIDADE: o de cima mede a QUINA, este mede o motivo de vários MEMBROS.
+#[cfg(test)]
+#[path = "brush_group_tests.rs"]
+mod group_tests;
 
 #[cfg(test)]
 #[path = "brush_opacity_tests.rs"]

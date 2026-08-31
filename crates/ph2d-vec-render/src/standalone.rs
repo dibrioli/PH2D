@@ -93,7 +93,7 @@ pub fn draw_path_isolated(
 ) {
     let tile = patterns.get(&(id, crate::PatternSlot::Fill));
     let stroke_tile = patterns.get(&(id, crate::PatternSlot::Stroke));
-    let art = brushes.get(&id);
+    let art = brushes.get(&id).map(Vec::as_slice);
     if let Some(items) = live.get(&id) {
         for item in items {
             crate::draw_path_tiled(item, offset * camera, target, tile, stroke_tile, art);

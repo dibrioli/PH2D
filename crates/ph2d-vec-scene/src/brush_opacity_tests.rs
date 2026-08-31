@@ -68,7 +68,7 @@ fn alfas_de_fill(copias: &[VecPath]) -> Vec<u8> {
 fn the_opacity_slider_reaches_the_brush_copies() {
     let copias = brush_along_path(
         &quadrado(4.0),
-        &arte_pintada(255, 255),
+        &[arte_pintada(255, 255)],
         &traco(&pincel_a(128), 1.0, None),
     );
     assert!(!copias.is_empty(), "sem copias nao ha' o que medir");
@@ -89,7 +89,11 @@ fn the_opacity_slider_reaches_the_brush_copies() {
 #[test]
 fn a_fully_opaque_brush_leaves_the_art_byte_identical() {
     let art = arte_pintada(255, 200);
-    let opaco = brush_along_path(&quadrado(4.0), &art, &traco(&pincel_a(255), 1.0, None));
+    let opaco = brush_along_path(
+        &quadrado(4.0),
+        std::slice::from_ref(&art),
+        &traco(&pincel_a(255), 1.0, None),
+    );
     assert!(!opaco.is_empty());
     for c in &opaco {
         assert_eq!(
@@ -114,7 +118,7 @@ fn a_fully_opaque_brush_leaves_the_art_byte_identical() {
 fn the_opacity_scales_the_arts_own_alpha_it_does_not_replace_it() {
     let copias = brush_along_path(
         &quadrado(4.0),
-        &arte_pintada(200, 255),
+        &[arte_pintada(200, 255)],
         &traco(&pincel_a(128), 1.0, None),
     );
     for a in alfas_de_fill(&copias) {
@@ -131,7 +135,7 @@ fn the_opacity_scales_the_arts_own_alpha_it_does_not_replace_it() {
 fn the_arts_own_stroke_fades_with_its_fill() {
     let copias = brush_along_path(
         &quadrado(4.0),
-        &arte_pintada(255, 255),
+        &[arte_pintada(255, 255)],
         &traco(&pincel_a(64), 1.0, None),
     );
     assert!(!copias.is_empty());
@@ -165,7 +169,7 @@ fn the_live_fade_reaches_the_copies_through_the_fallback() {
     let vista = forma.painted(Some(&bound));
     let copias = brush_along_path(
         &vista,
-        &art,
+        std::slice::from_ref(&art),
         vista.stroke.as_ref().expect("o traco sobrevive"),
     );
     assert!(!copias.is_empty());
@@ -174,7 +178,11 @@ fn the_live_fade_reaches_the_copies_through_the_fallback() {
         assert_eq!(a, 64, "a opacidade de vista nao compos com a autorada");
     }
     // CONTROLO: sem sobreposição, a autorada sozinha manda.
-    let sem = brush_along_path(&forma, &art, forma.stroke.as_ref().unwrap());
+    let sem = brush_along_path(
+        &forma,
+        std::slice::from_ref(&art),
+        forma.stroke.as_ref().unwrap(),
+    );
     for a in alfas_de_fill(&sem) {
         assert_eq!(a, 128);
     }

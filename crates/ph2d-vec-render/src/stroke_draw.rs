@@ -28,7 +28,7 @@ pub(crate) fn draw_stroke_with(
     transform: Affine,
     target: &mut VectorScene,
     tile: Option<&PatternTile>,
-    brush_art: Option<&VecPath>,
+    brush_art: Option<&[VecPath]>,
 ) {
     let fill_bp = tess.fill_bp.as_ref();
     let stroke_own = tess.stroke_bp.as_ref();

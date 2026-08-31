@@ -7389,22 +7389,42 @@ impl crate::App {
             crate::texture_pattern_edit::log_selection(vec_scene, &self.vec_pen);
             // ⭐ A lei do PINCEL da selecção (plano 36, W4) — `None` esconde a secção *Brush*.
             ph2d_panel_vector::set_current_brush(
-                self.vec_pen
-                    .selected()
-                    .and_then(|sel| vec_scene.path(sel))
-                    .and_then(|p| p.stroke.as_ref())
-                    .and_then(ph2d_vec_scene::StrokeSpec::brush)
-                    .map(|b| ph2d_panel_vector::BrushRow {
-                        // ⚠️ *"Tem arte?"* é uma pergunta sobre a CENA, não sobre o campo: um id que
-                        // aponta para uma forma apagada é um pincel sem arte, e o rótulo do botão
-                        // tem de o dizer.
-                        has_art: b.art.is_some_and(|a| vec_scene.path(a).is_some()),
-                        spacing: b.spacing,
-                        scale: b.scale,
-                        offset: b.offset,
-                        rotation_deg: b.rotation_deg,
-                        flip: b.flip,
-                    }),
+                // ⚠️ O `sel` fica ATADO até ao fim: a pergunta *"tem arte?"* precisa do
+                // ANFITRIÃO (a recusa é sobre pertença), e a redacção anterior consumia-o no
+                // primeiro `and_then`.
+                self.vec_pen.selected().and_then(|sel| {
+                    vec_scene
+                        .path(sel)
+                        .and_then(|p| p.stroke.as_ref())
+                        .and_then(ph2d_vec_scene::StrokeSpec::brush)
+                        .map(|b| ph2d_panel_vector::BrushRow {
+                            // ⚠️ *"Tem arte?"* é uma pergunta sobre a CENA, não sobre o campo: um id que
+                            // aponta para uma forma apagada é um pincel sem arte, e o rótulo do botão
+                            // tem de o dizer.
+                            //
+                            // ⛔⛔ **E ela vai pela porta que RESOLVE** (auditoria de 2026-08-30). Um
+                            // `scene.path(a).is_some()` escrito aqui é uma SEGUNDA resposta: desde que
+                            // a arte pode ser um grupo, a recusa é sobre **pertença** — o caminho pode
+                            // existir e a arte ser recusada na mesma, e o botão dizia *"Change
+                            // Shape…"* sobre um traço que pinta a cor de recurso, sem mensagem.
+                            has_art: b.art.is_some_and(|a| {
+                                !crate::texture_pattern_live::art_members(sel, a, &|id| {
+                                    crate::vec_entities::object_selection_for(
+                                        sim,
+                                        vec_scene,
+                                        &self.vec_entities,
+                                        id,
+                                    )
+                                })
+                                .is_empty()
+                            }),
+                            spacing: b.spacing,
+                            scale: b.scale,
+                            offset: b.offset,
+                            rotation_deg: b.rotation_deg,
+                            flip: b.flip,
+                        })
+                }),
             );
             ph2d_panel_vector::state::set_stroke_paint_kind(
                 crate::vec_stroke_paint::selected_stroke_paint_kind(vec_scene, &self.vec_pen),
@@ -9488,6 +9508,7 @@ impl crate::App {
                     &object_of(id),
                     surface.gpu(),
                     surface.format(),
+                    &object_of,
                 )
                 .map(|(rgba, w, h, _)| (w, h, rgba))
             };
@@ -9680,7 +9701,14 @@ impl crate::App {
                 // ⭐ **A arte dos PINCÉIS deste quadro** (plano 36, W3) — resolvida aqui pela
                 // mesma razão que o ladrilho do padrão o é: a crate de desenho não alcança a cena,
                 // e o guarda de ciclo tem de viver onde se pode medir.
-                &crate::brush_live::resolve(vec_scene),
+                &crate::brush_live::resolve(vec_scene, &|id| {
+                    crate::vec_entities::object_selection_for(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        id,
+                    )
+                }),
                 cam_affine,
                 vector_scene,
             );

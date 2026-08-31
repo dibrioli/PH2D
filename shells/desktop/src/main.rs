@@ -336,6 +336,8 @@ mod motion_object_bake;
 /// Irmão do acima por RESPONSABILIDADE: ele produz pixels (GPU), este diz quantos (CPU).
 mod motion_object_bake_dims;
 mod motion_object_smoke;
+/// Irmã das duas acima: reduz um assado ao cartão do painel.
+mod motion_object_thumb;
 mod motion_path_smoke;
 /// O tile de uma forma PARAMÉTRICA (`source.shape`) — irmão do `motion_object_bake`,
 /// e a metade que faz o glow alcançar as formas (bug do Enio, 2026-08-20).

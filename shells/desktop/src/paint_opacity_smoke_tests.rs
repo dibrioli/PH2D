@@ -99,7 +99,11 @@ fn the_copies_the_product_emits_actually_fade() {
     let art = art.expect("a arte do pincel existe na cena");
     let mut visto = Vec::new();
     for p in pinceis(&s) {
-        let copias = ph2d_vec_scene::brush_along_path(p, &art, p.stroke.as_ref().unwrap());
+        let copias = ph2d_vec_scene::brush_along_path(
+            p,
+            std::slice::from_ref(&art),
+            p.stroke.as_ref().unwrap(),
+        );
         assert!(
             !copias.is_empty(),
             "uma coluna do pincel nao emitiu copia nenhuma"

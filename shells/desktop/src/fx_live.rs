@@ -166,6 +166,12 @@ impl FxLive {
                 .iter()
                 .map(|&i| (jobs[i].key.w, jobs[i].key.h))
                 .collect();
+            // ⭐ **A arte dos pincéis, UMA vez por re-cook** — e com a expansão de objecto, que só
+            // aqui é alcançável (o `cook_batch` não recebe o mundo). Resolvê-la por LOTE seria a
+            // mesma resposta N vezes.
+            let brushes = crate::brush_live::resolve(scene, &|id| {
+                crate::vec_entities::object_selection_for(sim, scene, map, id)
+            });
             for batch in crate::fx_atlas::pack(&sizes, MAX_FX_SIDE) {
                 if self.cook_batch(
                     gpu,
@@ -175,6 +181,7 @@ impl FxLive {
                     xforms,
                     live,
                     patterns,
+                    &brushes,
                     sil,
                     camera,
                     &jobs,
@@ -255,6 +262,9 @@ impl FxLive {
         live: &LiveGeometry,
         // Ver o `recook`: sem o ladrilho a forma sai com a cor de recurso.
         patterns: &ph2d_vec_render::PatternTiles,
+        // ⭐ Resolvidas UMA vez no `recook`, que é quem tem o mundo — a expansão de objecto (um
+        // grupo pode ser a arte de um pincel) é a lei de SELECÇÃO, e ela vive no ECS.
+        brushes: &ph2d_vec_render::BrushArts,
         sil: &LiveGeometry,
         camera: Affine,
         jobs: &[Job],
@@ -288,7 +298,7 @@ impl FxLive {
                 // exactamente isto, com o padrão no lugar do pincel. A imagem de FX **toma o
                 // lugar** do desenho, então uma forma cuja rasterização ignore o pincel perde-o ao
                 // ligar um filtro. *Uma segunda porta de desenho esquece a tinta seguinte.*
-                &crate::brush_live::resolve(scene),
+                brushes,
                 job.id,
                 camera,
                 Affine::translate((

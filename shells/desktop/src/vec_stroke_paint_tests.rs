@@ -307,11 +307,11 @@ fn pincel_de(scene: &VecScene, id: VecPathId) -> ph2d_vec_scene::BrushStroke {
 fn the_two_handed_gesture_sets_the_brush_art_by_id() {
     let (mut scene, _pen, id, arte) = cena_pincel(false);
     let mut h = History::default();
-    assert!(set_art(&mut scene, &mut h, id, arte));
+    assert!(set_art(&mut scene, &mut h, id, arte, &|id| vec![id]));
     assert_eq!(pincel_de(&scene, id).art, Some(arte));
     assert_eq!(h.undo_len(), 1, "por a arte e' UM passo de undo");
     // ⚠️ O MESMO valor não grava passo — re-armar e escolher a mesma forma encheria a pilha.
-    assert!(!set_art(&mut scene, &mut h, id, arte));
+    assert!(!set_art(&mut scene, &mut h, id, arte, &|id| vec![id]));
     assert_eq!(h.undo_len(), 1);
 }
 
@@ -323,7 +323,7 @@ fn the_two_handed_gesture_sets_the_brush_art_by_id() {
 fn a_shape_can_never_author_itself_as_its_own_brush() {
     let (mut scene, _pen, id, _) = cena_pincel(false);
     let mut h = History::default();
-    assert!(!set_art(&mut scene, &mut h, id, id));
+    assert!(!set_art(&mut scene, &mut h, id, id, &|id| vec![id]));
     assert_eq!(h.undo_len(), 0);
     assert_ne!(pincel_de(&scene, id).art, Some(id));
 }
@@ -401,4 +401,62 @@ fn the_brush_controls_map_to_their_commands_and_nothing_else_does() {
     // ⛔ Um slider do PADRÃO não pode cair aqui: seria a secção do pincel a consumir o clique do
     // vizinho, e o padrão deixaria de responder sem uma mensagem sequer.
     assert_eq!(slider_cmd_for_id(i::VECTOR_DASH, 1.0), None);
+}
+
+/// ⛔⛔ **AS TRÊS PORTAS DO PINCEL LEEM A MESMA RECUSA** — achado da auditoria de 2026-08-30, e era
+/// uma REGRESSÃO da própria wave que o descobriu.
+///
+/// # O defeito, e porque ele era SILENCIOSO
+///
+/// A recusa passou a ser sobre **PERTENÇA** quando a arte pôde ser um grupo (o anfitrião pode ser um
+/// **irmão** do que se clicou). A resolução obedeceu; esta porta e o rótulo do botão ficaram na lei
+/// velha (`art == host`). ⇒ clicar um irmão do próprio grupo do anfitrião **escrevia o documento**,
+/// **empurrava um passo de undo**, o botão passava a dizer *"Change Shape…"* — e o traço pintava a
+/// cor de recurso chapada, **sem uma palavra**.
+///
+/// ⚠️ *É o defeito EXACTO que esta mesma jornada curou na estampa* (`art_members`: *"tinha DOIS
+/// leitores e só um a obedecia"*), a voltar do outro lado. Uma lei que muda de forma numa porta e
+/// não nas outras não mudou: partiu-se.
+///
+/// ⚠️ **O CONTROLO é a arte legítima**: sem ele, uma porta que recusasse tudo passaria a metade de
+/// cima e a feature ficaria inalcançável.
+#[test]
+fn setting_a_brush_art_refuses_a_group_that_contains_its_own_host() {
+    let mut scene = VecScene::default();
+    let quad = |x: f64| VecPath {
+        verts: [[x, 0.0], [x + 1.0, 0.0], [x + 1.0, 1.0], [x, 1.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        ..VecPath::default()
+    };
+    let host = scene.push_path(quad(0.0));
+    let irmao = scene.push_path(quad(2.0));
+    let de_fora = scene.push_path(quad(9.0));
+    if let Some(p) = scene.path_mut(host) {
+        let mut s = ph2d_vec_scene::StrokeSpec::new(Rgba8::new(1, 2, 3, 255), 0.5);
+        s.paint = ph2d_vec_scene::StrokePaint::Brush(Box::default());
+        p.stroke = Some(s);
+    }
+    // O grupo do ANFITRIÃO: tocar no irmão apanha os dois.
+    let grupo = move |id: ph2d_vec_scene::VecPathId| {
+        if id == host || id == irmao {
+            vec![host, irmao]
+        } else {
+            vec![id]
+        }
+    };
+    let mut h = History::default();
+    assert!(
+        !set_art(&mut scene, &mut h, host, irmao, &grupo),
+        "a porta aceitou um grupo que CONTEM o anfitriao - ela escreve o documento e empurra undo, \
+         o botao passa a dizer `Change Shape...`, e o traco pinta a cor de recurso sem uma palavra"
+    );
+    assert_eq!(h.undo_len(), 0, "a recusa gravou um passo de undo");
+    // ⚠️ CONTROLO: uma forma de FORA do grupo do anfitrião é aceite.
+    assert!(
+        set_art(&mut scene, &mut h, host, de_fora, &grupo),
+        "a porta recusou uma arte legitima - a feature fica inalcancavel"
+    );
+    assert_eq!(h.undo_len(), 1);
 }

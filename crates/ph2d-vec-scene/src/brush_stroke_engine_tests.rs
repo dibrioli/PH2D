@@ -12,7 +12,7 @@ use crate::{Rgba8, VecVertex};
 fn a_brush_lays_copies_along_the_contour() {
     let c = brush_along_path(
         &quadrado(4.0),
-        &arte(1.0, 1.0),
+        &[arte(1.0, 1.0)],
         &traco(&pincel(), 1.0, None),
     );
     assert!(
@@ -24,7 +24,7 @@ fn a_brush_lays_copies_along_the_contour() {
     assert!(
         brush_along_path(
             &quadrado(4.0),
-            &arte(1.0, 0.0),
+            &[arte(1.0, 0.0)],
             &traco(&pincel(), 1.0, None)
         )
         .is_empty()
@@ -33,7 +33,7 @@ fn a_brush_lays_copies_along_the_contour() {
     assert!(
         brush_along_path(
             &quadrado(4.0),
-            &arte(1.0, 1.0),
+            &[arte(1.0, 1.0)],
             &traco(&pincel(), 0.0, None)
         )
         .is_empty()
@@ -44,7 +44,7 @@ fn a_brush_lays_copies_along_the_contour() {
     assert!(
         brush_along_path(
             &quadrado(4.0),
-            &arte(1.0, 1.0),
+            &[arte(1.0, 1.0)],
             &crate::StrokeSpec::new(Rgba8::new(1, 2, 3, 255), 1.0)
         )
         .is_empty(),
@@ -61,12 +61,12 @@ fn a_brush_lays_copies_along_the_contour() {
 fn the_brush_art_scales_with_the_stroke_width() {
     let fino = brush_along_path(
         &quadrado(8.0),
-        &arte(1.0, 1.0),
+        &[arte(1.0, 1.0)],
         &traco(&pincel(), 0.5, None),
     );
     let grosso = brush_along_path(
         &quadrado(8.0),
-        &arte(1.0, 1.0),
+        &[arte(1.0, 1.0)],
         &traco(&pincel(), 2.0, None),
     );
     assert!(!fino.is_empty() && !grosso.is_empty());
@@ -80,7 +80,7 @@ fn the_brush_art_scales_with_the_stroke_width() {
         scale: 2.0,
         ..pincel()
     };
-    let c = brush_along_path(&quadrado(8.0), &arte(1.0, 1.0), &traco(&dobro, 0.5, None));
+    let c = brush_along_path(&quadrado(8.0), &[arte(1.0, 1.0)], &traco(&dobro, 0.5, None));
     assert!(
         (altura(&c) / a - 2.0).abs() < 1e-9,
         "o `scale` nao multiplica a altura derivada"
@@ -100,7 +100,7 @@ fn on_a_closed_contour_the_copies_close_exactly() {
     // Perímetro 4·7 = 28; a arte mede 1 de largura ⇒ o avanço nominal é 1, que já divide 28.
     // ⇒ a fixtura tem de conter o fenómeno: uma largura de arte que NÃO divide o perímetro.
     let art = arte(1.3, 1.0);
-    let copias = brush_along_path(&quadrado(7.0), &art, &traco(&pincel(), 1.0, None));
+    let copias = brush_along_path(&quadrado(7.0), &[art], &traco(&pincel(), 1.0, None));
     assert!(copias.len() > 2, "sem cópias não há o que medir");
     let (a, b) = (centro(&copias[0]), centro(&copias[1]));
     let passo = (b[0] - a[0]).hypot(b[1] - a[1]);
@@ -137,10 +137,10 @@ fn every_contour_of_a_compound_gets_its_own_copies() {
     });
     let so_fora = brush_along_path(
         &quadrado(8.0),
-        &arte(1.0, 1.0),
+        &[arte(1.0, 1.0)],
         &traco(&pincel(), 1.0, None),
     );
-    let com_furo = brush_along_path(&p, &arte(1.0, 1.0), &traco(&pincel(), 1.0, None));
+    let com_furo = brush_along_path(&p, &[arte(1.0, 1.0)], &traco(&pincel(), 1.0, None));
     assert!(
         com_furo.len() > so_fora.len(),
         "o contorno de dentro nao recebeu copias ({} contra {})",
@@ -251,7 +251,7 @@ fn measure_the_brush_recook() {
     let n = 20;
     let mut total = 0usize;
     for _ in 0..n {
-        total += brush_along_path(&guia, &art, &traco(&b, 1.0, None)).len();
+        total += brush_along_path(&guia, std::slice::from_ref(&art), &traco(&b, 1.0, None)).len();
     }
     let ms = t.elapsed().as_secs_f64() * 1000.0 / f64::from(n);
     println!(
@@ -285,7 +285,7 @@ fn the_art_lives_inside_the_dashes_and_the_gaps_stay_empty() {
     // segunda conta.
     let [d, g] = crate::dash_fit::dash_lengths_for(&guia, &s).expect("a fixtura tem tracejado");
     let periodo = d + g;
-    let copias = brush_along_path(&guia, &arte(1.0, 1.0), &s);
+    let copias = brush_along_path(&guia, &[arte(1.0, 1.0)], &s);
     assert!(copias.len() >= 4, "sem cópias não há o que medir");
     // ⚠️ Meia largura de cópia de folga: a cópia inteira cabe na fatia, então o CENTRO dela está
     // pelo menos a meia cópia de cada borda — a régua é sobre onde a arte caiu, não sobre um
@@ -301,7 +301,7 @@ fn the_art_lives_inside_the_dashes_and_the_gaps_stay_empty() {
     // ⚠️⚠️ **CONTROLO — a fixtura CONTÉM o fenómeno.** Sem o tracejado, o mesmo pincel enche a reta
     // toda e cópias caem exactamente onde os vãos estariam. Sem esta metade, o gate ficaria verde
     // sobre um pincel que não desenhasse nada.
-    let sem = brush_along_path(&guia, &arte(1.0, 1.0), &traco(&pincel(), 1.0, None));
+    let sem = brush_along_path(&guia, &[arte(1.0, 1.0)], &traco(&pincel(), 1.0, None));
     assert!(
         sem.iter().any(|c| centro(c)[0] % periodo > d + 1e-9),
         "sem tracejado nenhuma copia cai onde um vao estaria - a fixtura nao contem o fenomeno"
@@ -323,7 +323,7 @@ fn every_dash_carries_the_same_rhythm() {
     let guia = segmento(20.0);
     let s = traco(&pincel(), 1.0, Some((2.0, 2.0)));
     let [d, _] = crate::dash_fit::dash_lengths_for(&guia, &s).expect("a fixtura tem tracejado");
-    let copias = brush_along_path(&guia, &arte(1.0, 1.0), &s);
+    let copias = brush_along_path(&guia, &[arte(1.0, 1.0)], &s);
     let xs: Vec<f64> = copias.iter().map(|c| centro(c)[0]).collect();
     assert!(xs.len() >= 4);
     // Dentro de um traço o passo entre cópias é o avanço encaixado; ele tem de ser o MESMO em
@@ -398,12 +398,16 @@ fn a_solid_brush_stroke_is_untouched_by_the_dash_law() {
             verts: guia.verts.clone(),
             closed: true,
         },
-        &art,
+        std::slice::from_ref(&art),
         &pincel(),
         1.0,
         None,
     );
-    let agora = brush_along_path(&guia, &art, &traco(&pincel(), 1.0, None));
+    let agora = brush_along_path(
+        &guia,
+        std::slice::from_ref(&art),
+        &traco(&pincel(), 1.0, None),
+    );
     assert_eq!(
         antes.len(),
         agora.len(),
@@ -457,7 +461,7 @@ fn measure_the_dashed_brush_recook() {
         let n = 20;
         let mut total = 0usize;
         for _ in 0..n {
-            total += brush_along_path(&guia, &art, &s).len();
+            total += brush_along_path(&guia, std::slice::from_ref(&art), &s).len();
         }
         let ms = t.elapsed().as_secs_f64() * 1000.0 / f64::from(n);
         println!(

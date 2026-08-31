@@ -1152,3 +1152,43 @@ sensibilidade — ele tem de ser sobre a **qualidade**, e sobre o **botão**.
 ⛔ **E uma cerca nova, medida:** qualquer cura que suavize o campo tem de mostrar a **régua
 por ponta**, não a dispersão — foi a dispersão que fez a cura de §58 parecer progresso
 enquanto ela destruía o bico.
+
+## §60 — ⛔ TIRAR OUTRA CARTA: construído, medido, RECUSADO — e o que ele expôs vale mais
+
+A §59 mandava estabilizar o laço. Antes disso foi tentada a saída barata, que usa a máquina
+que já existe: **armar mais uma tentativa quando a escolhida tem uma ponta comida**
+(`needs_another_try = still_broken || dev.over > 0`, custo **zero** quando a peça sai limpa).
+
+⛔ **Recusado, porque não há ganho líquido.** Nas seis posições (`Detail 0,75 · Curvature 1`):
+
+| | como está | com a carta extra |
+|---|---|---|
+| `x = 0` · `0,5` · `2` · `16` | — | **iguais** |
+| ⭐ `x = 4` | `1/4`, pior `−10,4 %` | `1/4`, pior **`−2,6 %`**, `0` acima da barra |
+| ⛔ `x = 1` | `2/4`, pior `−8,4 %` | `1/4`, pior ⛔ **`−46,6 %`** |
+
+*Uma lotaria com mais bilhetes continua a ser uma lotaria*: ganha numa posição e perde noutra,
+e a perda é catastrófica. ⇒ revertido.
+
+⚠️ **E a razão de a carta má ganhar é estrutural:** a chave da ponta vive **depois** dos
+furos, e a candidata que come o espinho tinha menos bordo. Pô-la à frente contradiz a ordem
+que o dono estabeleceu por três reports seguidos — e não existe medição que a reordene.
+
+## §61 — ⭐⭐⭐ E ELE EXPÔS UM PONTO CEGO NA RÉGUA QUE NASCEU HOJE
+
+⛔⛔ **Uma ponta comida POR INTEIRO não tem superfície junto do ápice ⇒ não há amostra ⇒ a
+1.ª redacção do `tip_deviation` SALTAVA-A.** O relatório dizia `0 de 3 pontas acima da barra`
+sobre a peça com o espinho amputado em **`−46,6 %`**.
+
+⚠️ *É a família do balde vazio — «não medido» e «perfeito» são o mesmo byte — e desta vez foi
+construída no ficheiro que nasceu hoje para curar exactamente essa cegueira.*
+
+⇒ **Curado e gateado:** sem faces perto do ápice, a ponta conta como partida e regista o
+**raio da busca** (o piso do que se sabe: *«mais longe do que eu olhei»*). ⛔ O caso vizinho —
+a **ENTRADA** sem vértices junto do próprio ápice — continua a saltar de propósito: aí é a
+fixtura que não tem amostra, e acusar mediria a fixtura.
+
+⚠️ **A lição de método:** *a régua nova tem de ser exercitada pelo caso EXTREMO antes de
+alimentar uma decisão.* Ela foi escrita a partir das pontas **parcialmente** cortadas — as que
+a foto mostrava — e o caso total, que é o pior, nunca lhe foi apresentado até um selector o
+produzir.

@@ -376,3 +376,106 @@ fn a_recusa_do_estilhaco_diz_a_contagem_e_manda_desfazer() {
         "⛔ e tem de dizer que a peca dele NAO se perdeu: {frase}"
     );
 }
+
+/// **UM QUAD SÓ**, plano — em ordem (`false`) ou trocado em OITO (`true`).
+///
+/// ⚠️ **Um quad solto e não um cubo, e a 1.ª redacção pagou por isso:** permutar os cantos de
+/// uma face **muda as arestas que ela contribui**, e num cubo isso abre `4` arestas de bordo ⇒ o
+/// controlo *«a topologia fica intacta»* reprovava `0` contra `4`. Solto, as duas versões têm as
+/// mesmas `4` arestas de bordo e a mesma peça única — *a única coisa que muda é a face cruzar-se
+/// a si própria*, que é exactamente o que este gate quer isolar.
+fn um_quad(gravata: bool) -> Mesh {
+    let verts = vec![
+        [0.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+    ];
+    let f = if gravata {
+        Face::quad(0, 1, 3, 2)
+    } else {
+        Face::quad(0, 1, 2, 3)
+    };
+    Mesh::from_parts(verts, vec![f]).expect("a fixtura e' construida aqui")
+}
+
+/// ⭐⭐⭐ **GATE — a face em OITO perde, e a régua antiga era CEGA a ela.**
+///
+/// ⛔⛔⛔ **É o gate do report de 2026-08-30** (*«destruiu completamente a malha»*, com foto). A
+/// régua que via aquele estrago — [`ph2d_quadfill::local_shape`] — **já existia numa crate do
+/// produto** e o único leitor dela era a **sonda**. As colunas que o [`super::worse`] lia diziam
+/// apenas *pior* (`χ` de `1` para `0`, bordo de `4` para `12`), e o que o dono viu foi uma peça
+/// rasgada de alto a baixo: `0` faces auto-intersectadas no caminho de omissão contra **`125`**.
+///
+/// ⚠️ *Uma régua na prateleira não protege ninguém* — é a família do §5.0 do `CLAUDE.md`
+/// (**nenhum instrumento pergunta se o valor chega a um CONSUMIDOR**), e desta vez o consumidor
+/// em falta era o próprio botão.
+#[test]
+fn a_face_em_oito_perde_e_a_regua_antiga_nao_a_via() {
+    let boa = um_quad(false);
+    let torta = um_quad(true);
+
+    // ⛔ O CONTROLE: sob as DUAS chaves anteriores elas são indistinguíveis.
+    assert_eq!(super::open_edges(&boa), super::open_edges(&torta));
+    assert_eq!(super::components(&boa), super::components(&torta));
+
+    // ⭐ E a régua nova separa-as, com zero natural de um lado.
+    assert_eq!(super::bowties(&boa), 0);
+    assert!(
+        super::bowties(&torta) > 0,
+        "⛔ a fixtura tem de CONTER o fenomeno, senao este gate nao prova nada"
+    );
+
+    // ⭐⭐ A forma é dada PERFEITA na torta e PÉSSIMA na boa — o desempate que escolheria o
+    // estrago se a chave nova não existisse.
+    assert!(
+        super::worse(&torta, 0, 0.0, &boa, 999, 89.0),
+        "⛔ uma malha com faces auto-intersectadas e' PIOR que uma feia mas sa'"
+    );
+    assert!(
+        !super::worse(&boa, 999, 89.0, &torta, 0, 0.0),
+        "⛔ e a relacao tem de ser ANTI-SIMETRICA"
+    );
+}
+
+/// ⭐⭐⭐ **GATE — a ORDEM das quatro chaves, lida onde ela de facto vive.**
+///
+/// ⚠️ **No fonte e não por fixtura, e a razão é medida:** construir um par que empate em bordo
+/// **e** difira em peças **e** em gravatas exige uma malha fechada com uma face cruzada, e
+/// cruzar uma face de um sólido **abre bordo** (foi o que reprovou a 1.ª fixtura deste bloco).
+/// *Quando a fixtura que isolaria a chave não existe, a ordem lê-se onde ela está escrita.*
+///
+/// ⛔ Furos e peças decidem primeiro — *o que o artista vê antes de tudo é um buraco ou um pedaço
+/// a flutuar*. Uma face em oito é estrago de **superfície**, e vem a seguir. Quem achar a chave
+/// nova a mais importante e a subir desfaz as duas leis que os reports anteriores compraram.
+#[test]
+fn a_ordem_das_chaves_e_furos_pecas_gravatas_forma() {
+    let src = include_str!("sculpt3d_retopo_rulers.rs");
+    let ini = src
+        .find("pub(super) fn worse(")
+        .expect("a funcao mudou de nome");
+    // ⚠️ **Do CORPO, não da assinatura.** A 1.ª redacção fatiava a partir do `fn` e a lista de
+    // parâmetros nomeia `a_over60` **antes** de tudo ⇒ o gate reprovava sobre a ordem certa.
+    // *Um gate que lê o fonte tem de saber onde acaba a declaração.*
+    let corpo = &src[ini..];
+    let abre = corpo
+        .find(") -> bool {")
+        .expect("a assinatura de worse mudou");
+    let corpo = &corpo[abre..];
+    let fim = corpo.find("\n}").expect("o corpo de worse nao fecha");
+    let corpo = &corpo[..fim];
+    let em = |agulha: &str| corpo.find(agulha).expect(agulha);
+    assert!(
+        em("a_holes") < em("a_parts"),
+        "⛔ os furos decidem antes das pecas"
+    );
+    assert!(
+        em("a_parts") < em("a_bow"),
+        "⛔ as pecas decidem antes das gravatas"
+    );
+    assert!(
+        em("a_bow") < em("a_over60"),
+        "⛔ as gravatas decidem antes da forma -- uma face cruzada nao e' um gradiente de \
+         qualidade"
+    );
+}

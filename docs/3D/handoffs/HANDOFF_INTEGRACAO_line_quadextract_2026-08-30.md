@@ -711,3 +711,65 @@ gates, entre eles os dois lados do interruptor: `nasce_desligado_e_a_tabela_da_r
 (o default **e** os números que o justificam) e `a_porta_do_produto_esta_atras_da_env` (que o
 caminho do produto **consulta** o interruptor, e que a chamada corre **antes** da escada — *um
 interruptor que o produto não consulta é decorativo*).
+
+---
+
+## §8-sexdecies — ⛔⛔⛔ O VEREDITO DO DONO, e a régua que via o estrago estava NA PRATELEIRA
+
+**Report (Enio, 30/08, 2 fotos):** *«destruiu completamente a malha e demorou minutos»*. A saída
+com `PH2D_GRIDMAP_INJECTIVE=1` vem **rasgada de alto a baixo** — bandas contínuas de faces viradas
+do avesso, pretas no ecrã. ⇒ **a obra fica DESLIGADA, sem apelo**, e a tabela do §8-quindecies.3
+passa a levar este veredito ao lado (já está no doc de [`injective_solve::enabled`]).
+
+### §8-sexdecies.1 — ⛔ O erro foi meu, e foi de LEITURA da severidade
+
+Os números que eu tinha diziam-no e eu li-os como *«pior»*:
+
+| coluna | controlo | com a obra | como se lê |
+|---|---|---|---|
+| gravatas (faces auto-intersectadas) | **`0`** | **`125`** | ⛔ **zero natural de um lado** |
+| torção máxima | `105,8°` | **`180,0°`** | ⛔ **extremo saturado** = quad do avesso |
+| defeitos locais | `0,48 %` | `4,83 %` | ⚠️ `10×`, e **concentrados em bandas** |
+
+⇒ ⭐ *Uma coluna com zero natural, um extremo saturado, ou uma razão acima de `2×` numa coluna de
+qualidade **não descreve um troco — descreve uma recusa**.* Eu escrevi-lhe um smoke de 4 passos a
+pedir julgamento sobre um troco que a minha própria medição já tinha decidido. Memória:
+`feedback_do_not_ask_the_owner_to_judge_a_trade_already_measured_as_destroyed`.
+
+### §8-sexdecies.2 — ⭐⭐⭐ E a CURA que fica: o botão passa a consultar a régua que já existia
+
+⛔⛔⛔ **`ph2d_quadfill::local_shape` vive numa crate do PRODUTO desde 30/08 e o único leitor dela
+era a SONDA da foto.** O [`sculpt3d_retopo_rulers::worse`] — que escolhe entre as tentativas do
+botão — lia bordo, peças, `>60°` e enviesamento, e **nenhuma delas vê uma face cruzada**.
+
+⇒ `worse` ganha a **3.ª chave**: `bordo → peças → gravatas → forma`, via
+`sculpt3d_retopo_rulers::bowties`, **pela porta** da crate (⛔ a lei não é reimplementada no shell:
+uma 2.ª cópia divergiria no dia em que uma fosse corrigida).
+
+⚠️ **ORDINAL e não veto, de propósito:** uma tentativa com gravatas perde sempre para uma sem, mas
+se **todas** as tiverem ainda se escolhe a menos má. *Um veto absoluto pede prova de corpus que
+esta linha ainda não tem, e inventar um limiar sem medir é o que o §0.0 proíbe.*
+
+**Gates (2, os dois red-first, com prova de mutação):**
+- `a_face_em_oito_perde_e_a_regua_antiga_nao_a_via` — fixtura de **um quad solto** em ordem contra
+  trocado em oito, com **controlo** de que as duas chaves anteriores empatam, e a forma dada
+  **perfeita na torta** e péssima na sã (o desempate que escolheria o estrago). ⚠️ **A 1.ª fixtura
+  era um CUBO e reprovou:** permutar os cantos de uma face **muda as arestas que ela contribui** e
+  abre `4` de bordo ⇒ o controlo lia `0` contra `4`. *Uma fixtura que também mexe na chave anterior
+  não isola a nova.* Mutação: apagar o bloco da chave ⇒ **vermelho**; restaurar ⇒ verde.
+- `a_ordem_das_chaves_e_furos_pecas_gravatas_forma` — a ordem lida **no fonte**, porque a fixtura
+  que a isolaria não existe (uma malha fechada com face cruzada **abre bordo**, como acima).
+  ⚠️ **E a 1.ª redacção deste gate fatiava a partir do `fn`**, e a lista de parâmetros nomeia
+  `a_over60` antes de tudo ⇒ reprovava sobre a ordem certa. *Um gate que lê o fonte tem de saber
+  onde acaba a declaração.*
+
+### §8-sexdecies.3 — ⏳ O que fica ABERTO
+
+- ⛔ A obra injectiva **fica no repo, desligada, com a tabela** — ela é a maquinaria que a wave
+  seguinte precisa (barreira **somada** ao objectivo do G3), e reconstruí-la é a despesa que a lei
+  das recusas medidas existe para evitar.
+- ⏳ **O veto absoluto sobre gravatas** espera prova de corpus: se o caminho de omissão der `0` em
+  todas as peças da bancada, ele passa de ordinal a recusa (com o `RemeshRefusal` a nomeá-lo, como
+  o `Shattered`).
+- ⏳ **«demorou minutos»** — medido `57,7 s → 80,1 s` no arnês; o relógio dele é maior. Não
+  investigado: a obra fica desligada e o caminho de omissão não a paga.

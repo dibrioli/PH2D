@@ -76,6 +76,26 @@ pub(super) fn worse(
     if a_parts != b_parts {
         return a_parts > b_parts;
     }
+    // ⭐⭐⭐ **AS FACES QUE SE AUTO-INTERSECTAM — a 3.ª chave, e o report de 30/08 é a razão.**
+    //
+    // ⛔⛔⛔ **A régua que via a destruição JÁ EXISTIA e o produto não a consultava.**
+    // [`ph2d_quadfill::local_shape`] vive numa crate do produto desde 30/08 e o seu único
+    // leitor era a **sonda** da foto. Medido no A/B daquele dia: o caminho de omissão dá
+    // **`0`** gravatas e o caminho novo dá **`125`** — e o dono descreveu a saída como
+    // *«destruiu completamente a malha»*, enquanto as colunas que esta função lia diziam
+    // apenas *pior* (`χ` `1 → 0`, bordo `4 → 12`, que se leem como brandos).
+    //
+    // ⚠️ **É a família do §5.0 do `CLAUDE.md`:** *nenhum instrumento do repo pergunta se o
+    // valor chega a um consumidor.* Uma régua na prateleira não protege ninguém.
+    //
+    // ⚠️ **Aqui ela é ORDINAL, não veto**, e de propósito: uma tentativa com gravatas perde
+    // sempre para uma sem, mas se **todas** as tentativas as tiverem ainda se escolhe a menos
+    // má. *Um veto absoluto pede prova de corpus que esta linha ainda não tem* — e inventar
+    // um limiar sem medir é o que o §0.0 proíbe.
+    let (a_bow, b_bow) = (bowties(a_mesh), bowties(b_mesh));
+    if a_bow != b_bow {
+        return a_bow > b_bow;
+    }
     if a_over60 != b_over60 {
         return a_over60 > b_over60;
     }
@@ -151,6 +171,15 @@ pub(super) fn shattered(out: &Mesh, reference: &Mesh) -> Option<(usize, usize)> 
 
 pub(super) fn boundary_edges(mesh: &Mesh) -> usize {
     edge_census(mesh).0
+}
+
+/// ⭐⭐ **Quantas faces se AUTO-INTERSECTAM** — pela porta de [`ph2d_quadfill::local_shape`].
+///
+/// ⚠️ **Pela porta e não reimplementada aqui:** a lei do quad em oito vive naquela crate com
+/// os gates dela, e uma segunda cópia divergiria da primeira no dia em que uma fosse
+/// corrigida. *O que faltava não era a lei — era um consumidor.*
+pub(super) fn bowties(mesh: &Mesh) -> usize {
+    ph2d_quadfill::local_shape(mesh).0.bowties
 }
 
 /// ⭐⭐⭐ **AS DUAS FORMAS DE A CASCA NÃO FECHAR, somadas** — a chave da frente de [`worse`].

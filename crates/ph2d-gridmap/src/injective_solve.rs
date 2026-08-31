@@ -106,6 +106,17 @@ pub struct InjectiveReport {
 /// ⚠️ **Duas colunas MELHORARAM, e não se apagam da tabela:** a peça perde **menos** pontas
 /// (`1` contra `2`) e a fidelidade à escultura fica **`4,4×` melhor**. *A direcção está certa;
 /// o que falta é não pagar por ela na forma dos quads.*
+///
+/// ⛔⛔⛔ **O VEREDITO DO DONO (30/08, com foto): «destruiu completamente a malha e demorou
+/// minutos».** A peça sai **rasgada de alto a baixo**, com bandas contínuas de faces viradas do
+/// avesso — muito além do que a tabela acima faz supor.
+///
+/// ⚠️⚠️ **E a lição é sobre a LEITURA da tabela, não sobre a tabela:** `4,83 %` de faces
+/// defeituosas lê-se como moderado **e os defeitos concentram-se em BANDAS**, não espalhados;
+/// `torção 180°` não é «um quad torto», é um quad **virado do avesso**, que renderiza preto; e
+/// `125` faces **auto-intersectadas** contra `0` é uma coluna com **zero natural** de um lado.
+/// *Uma coluna com zero natural, um extremo saturado ou uma razão acima de `2×` não descreve um
+/// troco — descreve uma recusa.* ⛔ Não volte a levar isto a um smoke.
 #[must_use]
 pub fn enabled() -> bool {
     std::env::var("PH2D_GRIDMAP_INJECTIVE").as_deref() == Ok("1")

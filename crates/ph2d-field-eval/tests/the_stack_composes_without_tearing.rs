@@ -113,12 +113,87 @@ fn worst_gradient(doc: &FieldDoc, steps: i32) -> f64 {
 ///
 /// | par | mecanismo | idade |
 /// |---|---|---|
-/// | `[Taper, Radial]` | a inclinação alarga a forma por **mais de uma fatia**, e a repetição radial olha três | **pré-existente desde a W18** |
+/// | ~~`[Taper, Radial]`~~ | ✅ **CURADO em 2026-08-30**: `730,5 → 0,6822`. A cura era a que esta nota já prescrevia — derivar **quantas** fatias a pegada deformada exige (`stack::radial_slices`), em vez de olhar três. | era pré-existente desde a W18 |
 /// | `[Twist, Bend]` | dois deformadores encadeados: o segundo lê um envelope que o primeiro já deformou | nasceu com a dobra |
+const TOLERADOS: &[(&str, f64)] = &[("[Twist, Bend]", 44.6)];
+
+/// ⭐⭐⭐ **A REPETIÇÃO RADIAL VARRIDA EM TODA A FAIXA DE `count`** — e ela existe porque o gate
+/// irmão testa **uma** contagem.
 ///
-/// ⛔ Nenhum dos dois se cura com mais uma fatia — medido. A cura é derivar **quantas** fatias a
-/// pegada deformada exige, e isso é wave própria, com o preço medido.
-const TOLERADOS: &[(&str, f64)] = &[("[Taper, Radial]", 730.5), ("[Twist, Bend]", 44.6)];
+/// # ⛔⛔ O que uma contagem só esconde
+///
+/// A exigência da janela de fatias **não é monótona em `count`**: com `n = 1` as contagens `5`, `6`,
+/// `7`, `10` e `12` rasgam (até `3 684`) e a partir de `16` está limpo — as cópias ficam tão densas
+/// que a união é quase um sólido de revolução. Um gate que medisse só `count = 6` daria verde à
+/// `12`, e um que medisse só `32` daria verde a tudo. *Uma família parametrizada mede-se na faixa,
+/// não num ponto.*
+///
+/// ⚠️ **Os deformadores também**: `Taper` a `0,6` e no máximo, e `Twist` — os três limpos com
+/// `RADIAL_WINDOW = 3`.
+#[test]
+fn the_radial_repetition_holds_over_every_count() {
+    const SLACK: f64 = 1.02;
+    /// ⛔⛔ **MEDIDO E NOMEADO (2026-08-30): a DOBRA antes da radial rasga a partir de `16`**, e
+    /// ⚠️ **isso NÃO é a janela de fatias** — o número é **invariante** a ela: `245,7732` com `n` de
+    /// `3` a `count/2` (a janela inteira). ⇒ a causa está a montante, no divisor da dobra, que se
+    /// mede contra o **envelope** da pilha — e o envelope da radial muda com `count`.
+    ///
+    /// *A cura é outra wave, e a primeira coisa que ela tem de saber é que alargar a janela já foi
+    /// tentado e não faz nada.*
+    const TOLERADAS: &[u32] = &[16, 24, 32, 48, 64];
+    /// ⚠️ **A grelha do irmão (`20`) é CEGA a isto** — medido: a dobra a `count = 16` lê `0,17` a
+    /// `20³` e **`245,77`** a `40³` e a `80³`. *Um extremo procurado numa grelha grossa mede a
+    /// grelha.*
+    const GRELHA: i32 = 40;
+    let mut maus = Vec::new();
+    let mut obsoletas = Vec::new();
+    for count in [3u32, 4, 5, 6, 7, 8, 10, 12, 16, 24, 32, 48, 64] {
+        for (nome, def) in [
+            ("Taper 0,6", Unary::Taper { slope: 0.6 }),
+            (
+                "Twist",
+                Unary::Twist {
+                    turns: 0.35,
+                    lower: -2.0,
+                    upper: 2.0,
+                    falloff: 0.1,
+                },
+            ),
+            (
+                "Bend",
+                Unary::Bend {
+                    turns: 0.12,
+                    lower: -2.0,
+                    upper: 2.0,
+                    falloff: 0.1,
+                },
+            ),
+        ] {
+            let doc = peca(vec![
+                def,
+                Unary::Radial {
+                    count,
+                    joint: ph2d_field::Joint::SHARP,
+                },
+            ]);
+            let g = worst_gradient(&doc, GRELHA);
+            let tolerada = nome == "Bend" && TOLERADAS.contains(&count);
+            if tolerada && g <= SLACK {
+                obsoletas.push(format!("Bend × {count} já não rasga ({g:.4})"));
+            } else if !tolerada && g > SLACK {
+                maus.push(format!("{nome} × {count}: {g:.4}"));
+            }
+        }
+    }
+    assert!(
+        maus.is_empty(),
+        "a repetição radial rasga o campo nestas combinações: {maus:?}"
+    );
+    assert!(
+        obsoletas.is_empty(),
+        "APAGUE estas contagens de `TOLERADAS`: {obsoletas:?}"
+    );
+}
 
 /// ⭐⭐⭐ **TODO PAR de modificadores, nas DUAS ordens** — derivado do `UnaryKind::ALL`.
 ///

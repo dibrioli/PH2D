@@ -485,6 +485,44 @@ pub(crate) fn twist_with(inner: &Tree, k: f64, safety: f64) -> Tree {
 /// ⚠️ **No eixo (`x = y = 0`) não há ângulo**, e é por isso que a conta não divide por `r`: ela
 /// reconstrói o ponto por `r·cos θ'` / `r·sin θ'`, e em `r = 0` isso é a origem — a resposta certa,
 /// sem caso especial e sem `NaN`.
+/// ⭐⭐⭐ **QUANTAS FATIAS A JANELA TEM DE OLHAR de cada lado** — e o número é MEDIDO, sobre a faixa
+/// inteira de `count`.
+///
+/// # ⛔⛔ O defeito que ela cura
+///
+/// A janela `[raw−n, raw+n]` **desliza com o ponto**. Se uma cópia de fora dela ainda puder ser a
+/// mais próxima, o `min` troca de membros quando `raw` salta e o campo **descontinua** — e o que o
+/// artista vê é a peça **estilhaçada**, com lascas soltas e buracos, a dois cliques do nascimento.
+/// `[Taper, Radial]` media `‖∇f‖ = 730,5`, dívida desde a W18.
+///
+/// # ⚠️ A derivação geométrica está ERRADA, e a medição é que o disse
+///
+/// A conta óbvia — meia-largura angular `asin(R/d)`, e `π` quando a pegada contém o eixo — dá
+/// `count/2` para toda forma nascida na origem, que é **toda** forma (a pilha corre em coordenadas
+/// locais, antes da pose). Isso custa `count` avaliações da subárvore: medido a `640×360`,
+/// **`79,4 ms`** num `taper + radial 64` contra `2 ms` sem deformador.
+///
+/// ⭐ E é conservador de mais. A matriz medida (`‖∇f‖` dentro do recorte, caixa `0,35³` com
+/// `Taper 0,6`, grelha `40³`):
+///
+/// | janela | `c=5` | `c=6` | `c=7` | `c=10` | `c=12` | `c≥16` |
+/// |---|---:|---:|---:|---:|---:|---:|
+/// | `n = 1` | `561,6` | `730,5` | `1 327,5` | `1 198,7` | `3 684,7` | `0,47` |
+/// | `n = 2` | `0,68` | `0,69` | `736,3` | `1 562,0` | `10 698,9` | `0,64` |
+/// | **`n = 3`** | **`0,68`** | **`0,69`** | **`0,60`** | **`0,68`** | **`0,67`** | **`0,64`** |
+///
+/// ⚠️ **A exigência NÃO é monótona em `n`** (a `c=12` o `n=2` é pior que o `n=1`) nem em `count` (a
+/// `c≥16` as cópias ficam tão densas que a união é quase um sólido de revolução e qualquer fatia
+/// responde o mesmo). *Uma lei derivada de geometria não descreve isto; a varredura descreve.*
+///
+/// ⇒ `3` é o menor que limpa **toda** a faixa `3..=64` (o `MAX_ARRAY_COUNT` inteiro) em três
+/// deformadores — `Taper 0,6`, `Taper` no máximo e `Twist`. É uma barra de corpus sobre um domínio
+/// **FECHADO**, e o gate varre-o.
+///
+/// ⚠️ **Tecto em `count/2`**: `wedge(k)` e `wedge(k + count)` rodam o mesmo ângulo, então além de
+/// meia volta as fatias repetem-se.
+const RADIAL_WINDOW: u32 = 3;
+
 fn radial(inner: &Tree, count: u32, joint: ph2d_field::Joint, deformado: bool) -> Tree {
     if count <= 1 {
         return inner.clone();
@@ -531,8 +569,19 @@ fn radial(inner: &Tree, count: u32, joint: ph2d_field::Joint, deformado: bool) -
     //
     // ⚠️ **Só quando um deformador passou**: a terceira fatia custa mais uma cópia da forma na
     // árvore, e cobrá-la a quem não a precisa seria o caminho lento a mandar no rápido.
-    duas.min(wedge(raw - Tree::constant(1.0)))
-        .min(wedge(raw_mais))
+    let _ = raw_mais;
+    // ⭐ **Quantas** — ver [`RADIAL_WINDOW`]. Com `n = 1` isto é exactamente as duas fatias
+    // vizinhas que a wave anterior já olhava.
+    let n = RADIAL_WINDOW.clamp(1, (count / 2).max(1));
+    let mut acc = duas;
+    for k in 1..=i64::from(n) {
+        #[allow(clippy::cast_precision_loss)]
+        let f = k as f64;
+        acc = acc
+            .min(wedge(raw.clone() - Tree::constant(f)))
+            .min(wedge(raw.clone() + Tree::constant(f)));
+    }
+    acc
 }
 
 /// ⭐ **A matriz linear**: `count` cópias espaçadas de `spacing` no X, **sem N cópias da árvore**.

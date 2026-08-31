@@ -28,7 +28,7 @@
 //! contrário nas duas marchas, e a peça está correcta. *Uma barra que tem de tolerar o contorno não
 //! consegue ser apertada no interior, que é onde o defeito vive.*
 
-use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, Primitive, Xform};
+use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, Primitive, Unary, Xform};
 use ph2d_field_eval::{Field, hybrid::Registry};
 use ph2d_field_render::{Orbit, Screen, trace_with_threads};
 
@@ -63,6 +63,14 @@ fn doc_of(p: Primitive) -> FieldDoc {
     .expect("a peça")
 }
 
+/// A mesma peça com uma PILHA de modificadores — ver
+/// [`the_deformed_rosette_agrees_with_an_honest_march`].
+fn doc_with_mods(p: Primitive, mods: Vec<Unary>) -> FieldDoc {
+    let mut n = Node::new(Xform::IDENTITY, NodeKind::Leaf(p));
+    n.mods = mods;
+    FieldDoc::new(vec![n], NodeId(0)).expect("a peça")
+}
+
 /// A marcha do ORÁCULO: `f64`, passo do campo, e a normal por diferença central. `None` = fundo.
 fn honest(f: &Field, o: [f64; 3], d: [f64; 3]) -> Option<[f64; 3]> {
     let mut t = 0.0f64;
@@ -92,7 +100,11 @@ fn honest(f: &Field, o: [f64; 3], d: [f64; 3]) -> Option<[f64; 3]> {
 
 /// Quantos pixels do INTERIOR o produto pinta com uma normal a mais de `limite` graus do oráculo.
 fn disagreeing_pixels(p: &Primitive, yaws: &[f32], limite_graus: f64) -> (usize, usize, f64) {
-    let doc = doc_of(p.clone());
+    disagreeing_pixels_of(&doc_of(p.clone()), yaws, limite_graus)
+}
+
+fn disagreeing_pixels_of(doc: &FieldDoc, yaws: &[f32], limite_graus: f64) -> (usize, usize, f64) {
+    let doc = doc.clone();
     let f = Field::new(&doc);
     let reg = Registry::new();
     let screen = Screen::new(SIDE, SIDE, 0.85);
@@ -203,5 +215,45 @@ fn the_traced_prism_agrees_with_an_honest_march() {
     assert_eq!(
         mal, 0,
         "{mal} de {medidos} pixels do INTERIOR divergem do oráculo (pior {pior:.1}°)"
+    );
+}
+
+/// ⭐⭐ **A ROSETA DEFORMADA** — um `Taper` antes de uma repetição radial, que é a pilha que rasgava.
+///
+/// ⛔ Com a janela de fatias a `1` o campo lia `‖∇f‖ = 730,5` e a peça saía **estilhaçada**: lascas
+/// soltas a flutuar e buracos. ⚠️ **Nenhuma régua de silhueta a apanharia** — uma roseta é côncava,
+/// então «fundo rodeado de peça» é o aspecto NORMAL dela. O que a apanha é a imagem contra a marcha
+/// honesta.
+#[test]
+fn the_deformed_rosette_agrees_with_an_honest_march() {
+    let doc = doc_with_mods(
+        Primitive::Box {
+            half: [0.35, 0.35, 0.30],
+            round: 0.0,
+            chamfer: 0.0,
+        },
+        vec![
+            Unary::Taper { slope: 0.6 },
+            Unary::Radial {
+                count: 6,
+                joint: ph2d_field::Joint::SHARP,
+            },
+        ],
+    );
+    let (mal, medidos, pior) = disagreeing_pixels_of(&doc, &yaws(), 12.0);
+    assert!(
+        medidos > 1_000,
+        "⛔ o CONTROLE falhou: só {medidos} pixels de interior — a roseta não está a ser desenhada"
+    );
+    // ⚠️ **Aqui a barra NÃO é zero, e a razão é a forma:** uma roseta de junta VIVA tem vincos
+    // côncavos no interior, e sobre um vinco meio pixel de profundidade vira a normal nas duas
+    // marchas — é a mesma razão pela qual a silhueta é excluída, um nível para dentro.
+    //
+    // Medido: curada **`6` de `6 844`** (`0,09 %`, pior `20,5°`); com a janela de fatias a `1`,
+    // **`34` de `6 140`** (`0,55 %`, pior `94,6°`). A barra de `0,2 %` fica entre as duas.
+    assert!(
+        mal * 500 <= medidos,
+        "{mal} de {medidos} pixels do INTERIOR divergem do oráculo (pior {pior:.1}°) — a pilha de \
+         modificadores está a devolver um campo que a marcha lê de outra maneira"
     );
 }

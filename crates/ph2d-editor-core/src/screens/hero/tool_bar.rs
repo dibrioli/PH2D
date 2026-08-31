@@ -51,22 +51,87 @@ pub fn tool_bar_h(size: RailButtonSize, lines: usize) -> f32 {
         + (lines - 1.0) * Spacing::Xs.px()
 }
 
-/// **De quantas linhas a fila precisa nesta área** — a pergunta que o layout faz antes de
-/// reservar a faixa.
+// ⛔⛔ **`tool_bar_lines` MORREU em 2026-08-31.** Ela respondia *«de quantas linhas a fila
+// precisa?»* — uma pergunta que só existe enquanto a faixa PODE crescer, e ela já não pode. *Uma
+// função que só sobrevive nos próprios testes é a última prova de que a capacidade que ela servia
+// foi retirada.*
+//
+// ⚠️ E com ela caiu a **segunda passagem** do `frame_layout` (ver lá): a altura da faixa deixou de
+// depender da largura da área.
+
+/// ⭐⭐⭐ **O QUE CABE NUMA LINHA, e o que fica atrás do `⋯`** — a porta ÚNICA do transbordo.
 ///
-/// ⚠️ **A largura da área não depende da altura da faixa**, logo não há circularidade: o
-/// `frame_layout` resolve o layout uma vez com a faixa a zero, lê a largura, e resolve outra vez
-/// com a altura certa. Duas passagens de aritmética pura.
+/// Devolve `(a fila que se pinta, o que transbordou)`. A fila devolvida **já leva o chip `⋯` no
+/// fim** quando há transbordo, e é por isso que o pintor, o registo de hit e o menu não podem
+/// discordar: os três leem esta função.
+///
+/// # ⛔⛔ Por que a faixa não cresce
+///
+/// > Enio, 2026-08-31: *«esse app tem tablets e iPad como alvo. Não podemos ir perdendo espaço.»*
+///
+/// Ela crescia: `54 → 108 px` no iPad 11 e no mini **no instante em que o pincel entrava em mãos**
+/// (10 entradas em repouso, **18** com o Painter), e isso é `−3,3` pontos de área de desenho,
+/// permanentes, justamente quando o ecrã faz falta
+/// (`docs/UI_New_and_Simple/medicoes/06_o_orcamento_de_ecra_em_tablet.md`).
+///
+/// ⚠️ **A terceira saída ficou fora, e a recusa é antiga:** encolher o chip **mente sobre o preset
+/// de tamanho** que o artista escolheu no menu.
+///
+/// # ⚠️ O `⋯` reserva o lugar dele ANTES de a conta correr
+///
+/// Senão a última entrada caberia por um triz, o `⋯` nasceria por cima dela, e o alvo do dedo
+/// ficaria ambíguo. ⇒ a largura disponível já desconta o chip, e só depois se pergunta o que cabe.
 #[must_use]
-pub fn tool_bar_lines(
+pub fn bar_split(
     store: &WidgetStore,
     painter_active: bool,
     image_tools_on: bool,
     area_w: f32,
-) -> usize {
+) -> (ToolRail, Vec<crate::widget::ToolRailEntry>) {
     let rail = bar_rail(store, painter_active, image_tools_on);
+    let size = store.rail_button_size();
     let content_w = (area_w - Spacing::Xs.px() * 2.0).max(0.0);
-    crate::widget::horizontal_lines(&rail, content_w, store.rail_button_size())
+    let gap = Spacing::Xs.px();
+    let chip = size.chip_px();
+    // Cabe tudo? Então não há `⋯` nenhum — e um chip de transbordo vazio seria um controlo morto.
+    if crate::widget::horizontal_lines(&rail, content_w, size) <= 1 {
+        return (rail, Vec::new());
+    }
+    let budget = (content_w - chip - gap).max(0.0);
+    let mut fits: Vec<crate::widget::ToolRailEntry> = Vec::new();
+    let mut over: Vec<crate::widget::ToolRailEntry> = Vec::new();
+    let mut along = 0.0_f32;
+    for entry in rail.entries {
+        let advance = crate::widget::entry_advance(&entry, chip);
+        let next = if fits.is_empty() {
+            advance
+        } else {
+            along + gap + advance
+        };
+        if over.is_empty() && next <= budget {
+            along = next;
+            fits.push(entry);
+        } else {
+            over.push(entry);
+        }
+    }
+    // ⚠️ Um divisor no FIM da fila que fica não separa nada — ele iria sozinho contra a borda.
+    while matches!(fits.last(), Some(crate::widget::ToolRailEntry::Divider)) {
+        fits.pop();
+    }
+    // …e um divisor no PRINCÍPIO do transbordo também não.
+    while matches!(over.first(), Some(crate::widget::ToolRailEntry::Divider)) {
+        over.remove(0);
+    }
+    fits.push(
+        crate::widget::ToolRailEntry::icon(
+            ids::TOOL_BAR_OVERFLOW,
+            "More",
+            crate::icons::IconId::MoreHorizontal,
+        )
+        .with_sub(""),
+    );
+    (ToolRail::new(NodeId(203), "Editor tools", fits), over)
 }
 
 /// **O rectângulo em que os chips de facto correm** — a faixa menos o respiro.
@@ -130,7 +195,10 @@ pub fn paint_tool_bar(
     if bar.w <= 0.0 || bar.h <= 0.0 {
         return;
     }
-    let rail = bar_rail(store, painter_active, image_tools_on);
+    // ⭐ **A porta ÚNICA** — o que cabe numa linha, com o `⋯` já no fim quando algo transbordou.
+    // O menu do transbordo lê a MESMA função (`context_menu_overlay::paint_tool_bar_overflow`).
+    let (rail, _over) = bar_split(store, painter_active, image_tools_on, bar.w);
+    // (a publicação do transbordo faz-se no `publish_overflow`, que o hero chama com `&mut store`)
     let size = store.rail_button_size();
     // A faixa inteira leva o fundo do trilho — é o mesmo chrome, deitado.
     scene.fill_rect(
@@ -276,4 +344,27 @@ fn paint_flyout_below(
             hit_index.register(id, slot.rect);
         }
     }
+}
+
+/// ⭐ **Publica o que não coube** para o corpo do menu de transbordo o desenhar.
+///
+/// ⚠️ **Chamado em TODO quadro, vazio incluído** — um mapa que o tique apaga não envelhece; um que
+/// só se escreve quando há transbordo deixaria chips fantasma atrás do `⋯` depois de a janela
+/// crescer.
+///
+/// ⚠️ Separado do [`paint_tool_bar`] por empréstimo: o pintor tem `&WidgetStore` e isto precisa de
+/// `&mut`. A CONTA é a mesma ([`bar_split`]), e é essa a garantia que interessa.
+pub fn publish_overflow(
+    store: &mut WidgetStore,
+    layout: &HeroLayout,
+    painter_active: bool,
+    image_tools_on: bool,
+) {
+    let bar = layout.tool_bar;
+    if bar.w <= 0.0 || bar.h <= 0.0 {
+        store.set_tool_overflow(Vec::new());
+        return;
+    }
+    let (_, over) = bar_split(store, painter_active, image_tools_on, bar.w);
+    store.set_tool_overflow(over);
 }

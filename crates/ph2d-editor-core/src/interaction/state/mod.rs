@@ -466,6 +466,15 @@ pub struct WidgetStore {
     /// [`WidgetStore::dock_width`].
     pub(super) dock_w_left: Option<f32>,
     pub(super) dock_w_right: Option<f32>,
+    /// ⭐⭐ **O que a FILA de ferramentas não conseguiu mostrar neste quadro** — os chips que ficam
+    /// atrás do `⋯`.
+    ///
+    /// ⚠️ **Publicado por quem o CALCULA** (`hero::tool_bar::bar_split`, uma vez por quadro) e lido
+    /// por quem o desenha (o corpo do menu de transbordo). ⛔ Uma segunda conta do lado do menu
+    /// poria um chip nos dois sítios, ou em nenhum — e a faixa é a única que sabe a largura dela.
+    ///
+    /// ⚠️ Escrito **em todo quadro**, vazio incluído: um mapa que o tique apaga não envelhece.
+    pub(super) tool_overflow: Vec<crate::widget::ToolRailEntry>,
     /// ⭐ Altura AUTORADA da faixa do FUNDO (`None` = a de fábrica). Ver
     /// [`WidgetStore::dock_bottom_h`] — o irmão vertical das duas de cima, e o que faz a costura
     /// do topo do timeline redimensionar a BANDA em vez de soltar o painel dela.

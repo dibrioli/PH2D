@@ -60,11 +60,16 @@ pub enum ContextMenuKind {
     },
     /// Right-clicked on a section header. Menu offers 5 highlight
     /// outline colors for the section.
-    SectionOutline { section: NodeId },
+    SectionOutline {
+        section: NodeId,
+    },
     /// Right-clicked on an existing note. Menu offers 5 highlight
     /// background colors. `panel` is the note's host; `note_index`
     /// is the index into `notes_per_panel[panel]`.
-    NoteBackground { panel: NodeId, note_index: u8 },
+    NoteBackground {
+        panel: NodeId,
+        note_index: u8,
+    },
     /// ⭐⭐ **Os quatro menus da BARRA DE MENUS** (D2, 2026-08-30) — *File · Edit · View ·
     /// Window*. Abrem ancorados por baixo do próprio título, pela mesma tabela que os pinta
     /// ([`crate::screens::hero::menu_bar::MENUS`]).
@@ -77,6 +82,12 @@ pub enum ContextMenuKind {
     /// Ver [`Self::MenuBarFile`].
     MenuBarEdit,
     /// Ver [`Self::MenuBarFile`].
+    /// ⭐⭐ **O transbordo da FILA de ferramentas** — o corpo é desenhado por ela própria
+    /// (`&[]` no `menu_rows`), com os MESMOS chips e os MESMOS ids que a faixa pintaria.
+    ///
+    /// ⚠️ *Os ids são os mesmos de propósito*: quem despacha continua a ser o `chrome::rail_*`, e
+    /// uma cópia de verbo aqui seria a segunda porta que o `CLAUDE.md` §5.0 cataloga.
+    ToolBarOverflow,
     MenuBarView,
     /// Ver [`Self::MenuBarFile`]. Hospeda os **toggles de módulo** — os treze que, entre a
     /// retirada da barra de pills (2026-08-30) e esta barra, só a tecla `F9` alcançava.
@@ -155,7 +166,9 @@ pub enum ContextMenuKind {
     /// those slots each frame and applies the ECS mutation. Rename
     /// is deferred (needs inline TextInput state-machine) and not
     /// surfaced in this menu yet.
-    HierarchyRow { row: NodeId },
+    HierarchyRow {
+        row: NodeId,
+    },
     /// ⭐⭐ **Botão direito num CARTÃO da biblioteca de assets** (plano 07, etapa C).
     ///
     /// ⚠️ **Carrega a CÉLULA, não o asset** — e isso é a cerca desta crate: o endereço de um asset
@@ -208,12 +221,17 @@ pub enum ContextMenuKind {
     /// selection, so its identity rides in the menu (`target` bits + index `i`, like
     /// `TimelineTrackPath`); the chrome handler parks `(target, i, kind)` (wire u8 `0/1/2`)
     /// in `HeroScreen.pending_motion_path_handle` for the shell → `set_path_tangent_kind`.
-    MotionPathAnchor { target: u64, i: u32 },
+    MotionPathAnchor {
+        target: u64,
+        i: u32,
+    },
     /// Right-clicked a timeline key (its dope-sheet diamond or its graph anchor),
     /// or a Summary column. Menu offers the presets for the interpolation LEAVING
     /// the keys in `scope` (W3.E4): Hold / Linear / three easing cascades /
     /// Custom.
-    TimelineSegment { scope: TimelineInterpScope },
+    TimelineSegment {
+        scope: TimelineInterpScope,
+    },
     /// The easing-family submenu of [`ContextMenuKind::TimelineSegment`], opened
     /// by one of its three cascade rows. `mode` is the wire encoding of the mode
     /// that row stands for (`ids::TL_EASE_MODE_*`); the shell pairs it with the
@@ -226,24 +244,35 @@ pub enum ContextMenuKind {
     /// offers whole-track actions (`ids::TIMELINE_TRACK_MENU`, currently Delete
     /// Track). `target` is the row's raw `AnimTarget` — opaque here; the
     /// timeline panel resolves it against its snapshot and raises the intent.
-    TimelineTrack { target: u64 },
+    TimelineTrack {
+        target: u64,
+    },
     /// O menu de uma track de **EIXO** (`TranslationX`/`Y`): tem *Convert to Motion
     /// Path* (ADR-0141 §5), que canal nenhum dos outros tem.
-    TimelineTrackAxis { target: u64 },
+    TimelineTrackAxis {
+        target: u64,
+    },
     /// O mesmo, para uma track de **TRAJETÓRIA** (`PropKind::Position`): o menu dela
     /// tem duas linhas a mais — o **Auto-Orient** e o *Convert to Separate Axes*
     /// (ADR-0141) —, que não existem em canal nenhum dos outros. Variante própria e não
     /// um campo, porque o overlay dispacha a TABELA por variante, e é a tabela que
     /// difere.
-    TimelineTrackPath { target: u64 },
+    TimelineTrackPath {
+        target: u64,
+    },
     /// A **Time Remap** track menu (`ids::TIMELINE_TIMEREMAP_TRACK_MENU`): Delete
     /// Track only. Its own clock (`remap_through`) makes per-track extrapolation
     /// inert, so the menu omits the cascades — a table of its own.
-    TimelineTrackTimeRemap { target: u64 },
+    TimelineTrackTimeRemap {
+        target: u64,
+    },
     /// The extrapolation-mode submenu (plan §6), opened by a track menu's Pre/Post
     /// cascade. `target` is the raw `AnimTarget`; `side` is `0` = Pre, `1` = Post.
     /// The panel resolves it and raises `SetTrackExtrap`.
-    TimelineExtrap { target: u64, side: u8 },
+    TimelineExtrap {
+        target: u64,
+        side: u8,
+    },
     /// Right-clicked a stack lane's LABEL (`ids::TIMELINE_LANE_MENU`): how the
     /// lane enters the blend, and whether it stays at all.
     TimelineLane {
@@ -269,7 +298,9 @@ pub enum ContextMenuKind {
     /// still moves, so those stay off the menu. `index` is the marker's storage
     /// index, opaque here — the timeline panel keys its document by it (like
     /// [`Self::TimelineLane`] carries a lane index).
-    TimelineMarker { index: usize },
+    TimelineMarker {
+        index: usize,
+    },
 }
 
 impl ContextMenuKind {
@@ -308,6 +339,7 @@ impl ContextMenuKind {
             before_section: None,
         },
         Self::SectionOutline { section: NodeId(1) },
+        Self::ToolBarOverflow,
         Self::NoteBackground {
             panel: NodeId(1),
             note_index: 0,

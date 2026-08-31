@@ -2001,3 +2001,83 @@ Enio vê no 12,9").
    Decisão de produto: que gesto, que tecla, se elas voltam sozinhas.
 3. ⏳ **O transbordo da fila de ferramentas** — decidido, por fazer.
 4. ⛔ O cabeçalho por área só volta **sem faixa própria**.
+
+---
+
+## §27 — ⭐⭐⭐ A FILA NÃO CRESCE: o `⋯` (entrega 32)
+
+O item nº 1 da auditoria de espaço (§26.3), e o primeiro passo que o Enio aprovou depois dela.
+
+### §27.1 — O que estava vivo
+
+A fila resolvia o transbordo **crescendo**: `54 → 108 px` no iPad 11 e no mini, no instante em que o
+Painter entrava em mãos (**10** entradas em repouso, **18** com ele). `−3,2` e `−3,3` pontos de área
+de desenho, permanentes, *justamente quando o ecrã faz falta*.
+
+### §27.2 — ⭐ Uma PORTA decide o que cabe, e os três leem-na
+
+`tool_bar::bar_split(store, painter, image_tools, area_w) -> (fila, transbordo)` — a fila devolvida
+**já leva o `⋯` no fim**. O pintor, o registo de hit e o corpo do menu leem **a mesma** função.
+
+⚠️ **O `⋯` reserva o lugar dele ANTES de a conta correr.** Senão a última entrada cabia por um triz,
+o `⋯` nascia por cima dela, e o alvo do dedo ficava ambíguo.
+
+⚠️ **E os divisores nas costuras caem** — um no fim da fila que fica não separa nada, e um no
+princípio do transbordo também não.
+
+⚠️ **A aritmética é a MESMA** (`widget::entry_advance`, que passou a ser pública por isto): uma
+terceira cópia dela poria o `⋯` a discordar de onde os chips de facto caem.
+
+### §27.3 — ⚠️ O transbordo é PUBLICADO, não recalculado
+
+O corpo do menu vive no `context_menu_overlay`, que só tem `&WidgetStore` — sem a largura da faixa
+nem o modo do Painter. ⇒ quem **calcula** publica (`tool_bar::publish_overflow`, uma vez por
+quadro), e quem desenha lê.
+
+⛔ Uma segunda conta do lado do menu poria um chip **nos dois sítios, ou em nenhum**. ⚠️ E ele é
+escrito em **todo** quadro, vazio incluído: *um mapa que o tique apaga não envelhece* — um que só se
+escrevesse ao transbordar deixaria chips fantasma atrás do `⋯` depois de a janela crescer.
+
+### §27.4 — ⛔ E NÃO há handler novo
+
+Os ids dentro do menu são **os mesmos** da fila, logo quem despacha continua a ser o `chrome::rail_*`.
+O `chrome::tool_bar_overflow` (z=45, entre os toggles de vista e os do trilho) faz só duas coisas:
+abre/fecha o `⋯`, e **fecha o menu deixando o clique PASSAR** (`return false`) quando o artista
+escolhe um chip. *Um verbo copiado para ali seria a segunda porta que o `CLAUDE.md` §5.0 cataloga.*
+
+### §27.5 — ⛔⛔ Duas coisas que só os gates apanharam
+
+1. **O `⋯` nasceu MORTO sob o dedo.** Pintado e registado no `HitIndex`, mas sem `InteractiveState`
+   — o Down não arma o `active` e o Up nunca emite `Click`. O gate de **gesto real** apanhou-o na
+   primeira corrida; um `apply_event(Click(id))` sintético teria passado.
+2. ⭐⭐ **O gate do orçamento continuou a medir `40,8 %` depois da cura** — porque ele **reproduzia**
+   o `tool_bar_lines` em vez de perguntar o que o produto faz. *Um gate que reproduz a fórmula pina
+   a fórmula, não o produto.* Corrigido para uma linha, como o `frame_layout`.
+
+### §27.6 — ⭐⭐ E foi o TECTO da catraca que obrigou a registar o ganho
+
+Com o gate a medir o produto, o iPad 11 saltou `40,8 → 44,0` e o mini `37,6 → 40,9` — e a metade de
+**obsolescência** reprovou, exigindo que os pisos descessem para os números novos em vez de ficarem
+como folga silenciosa. *É exactamente para isto que ela existe.*
+
+| alvo | a pintar: cabem | atrás do `⋯` | área antes | área agora |
+|---|---:|---:|---:|---:|
+| iPad 12.9 | 18 | 0 | 50,8 % | 50,8 % |
+| iPad 11 | 13 | 5 | 40,8 % | **44,0 %** |
+| iPad mini | 12 | 7 | 37,6 % | **40,9 %** |
+
+### §27.7 — ⏳ O que fica
+
+- ⏳ **O `⋯` é hoje só o transbordo da fila.** Ele é também a casa que a `D2` metade 2 precisa (os
+  comandos do editor, sem faixa nova) — mas isso é wave própria: os ids daqueles comandos são de
+  painéis, e o despacho deles não passa pelo `chrome::rail_*`.
+- ⏳ O menu abre **uma coluna** de chips. Numa lista de 7 isso é `~7 × 60 px` de altura; acima de
+  ~10 pede duas colunas, e o número não foi medido.
+
+### §27.8 — ⭐⭐ E a cura apagou uma dependência circular
+
+A altura da faixa dependia da largura da área ⇒ o `frame_layout` resolvia o layout **duas vezes**
+(uma com a faixa a zero, para ler a largura; a definitiva a seguir). Com a altura constante, a
+**segunda passagem morreu** — e com ela a `tool_bar_lines`, que só sobrevivia nos próprios testes.
+
+*A cura de um defeito de espaço apagou uma circularidade que ninguém tinha ido lá buscar.*

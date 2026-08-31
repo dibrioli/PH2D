@@ -472,6 +472,14 @@ pub fn paint_hero_screen(
             &hero.motion,
         );
     } else {
+        // ⭐ **O que não coube fica publicado** para o corpo do `⋯` o desenhar — ANTES do pintor,
+        // porque o pintor toma `&hero.store` emprestado.
+        super::tool_bar::publish_overflow(
+            &mut hero.store,
+            &layout,
+            painter_active,
+            hero.image_edit.mode_on,
+        );
         // ⭐ **A FILA** — os mesmos chips, deitados, na região que a área lhes reservou.
         super::tool_bar::paint_tool_bar(
             &layout,

@@ -212,6 +212,21 @@ pub fn paint_context_menu_overlay(
         paint_scene_list(req, scene, text_system, theme, hit_index, store, viewport);
         return;
     }
+    // ⭐⭐ **O transbordo da fila** — os chips que não couberam, com os MESMOS ids. Ver
+    // `hero::tool_bar::bar_split`.
+    if matches!(req.kind, ContextMenuKind::ToolBarOverflow) {
+        paint_tool_bar_overflow(
+            req,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            motion,
+            viewport,
+        );
+        return;
+    }
     // Centered single-panel dialogs all share one painter signature — dispatch by kind.
     type DialogFn = fn(&mut VectorScene, &mut TextSystem, Theme, &mut HitIndex, &WidgetStore, Rect);
     let dialog: Option<DialogFn> = match req.kind {
@@ -472,3 +487,77 @@ fn paint_scene_list(
 
 // The centered dialog-style popovers (API-key / vector-prompt / palette-rename) live in the sibling
 // `super::context_menu_dialogs` (file-LOC split); this module dispatches to them above.
+
+/// ⭐⭐⭐ **O CORPO DO TRANSBORDO** — os chips que não couberam na fila, numa grelha.
+///
+/// > Enio, 2026-08-31: *«esse app tem tablets e iPad como alvo. Não podemos ir perdendo espaço.»*
+///
+/// ⚠️ **Os ids são os MESMOS da fila**, e é isso que torna este corpo barato: quem despacha
+/// continua a ser o `chrome::rail_*`, e um verbo copiado para aqui seria a segunda porta que o
+/// `CLAUDE.md` §5.0 cataloga como a espécie mais cara de controlo morto.
+///
+/// ⚠️ **E a lista sai da MESMA função que a faixa usa** (`tool_bar::bar_split`) — nunca de uma
+/// segunda conta. Uma cópia da aritmética poria um chip nos dois sítios, ou em nenhum.
+#[allow(clippy::too_many_arguments)]
+fn paint_tool_bar_overflow(
+    req: crate::interaction::ContextMenuRequest,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    motion: &crate::motion::UiMotion,
+    viewport: Rect,
+) {
+    // ⭐ **Publicado por quem o calculou** — a fila, uma vez por quadro (`tool_bar::bar_split`).
+    // ⛔ Uma segunda conta aqui poria um chip nos dois sítios, ou em nenhum: a faixa é a única que
+    // sabe a largura dela.
+    let over: Vec<_> = store.tool_overflow().to_vec();
+    if over.is_empty() {
+        return;
+    }
+    let size = store.rail_button_size();
+    let pad = Spacing::Sm.px();
+    // ⚠️ Uma COLUNA, e não uma grelha: o menu abre debaixo de um chip da faixa, e uma grelha larga
+    // taparia a área de desenho que esta wave existe para poupar.
+    let rail = crate::widget::ToolRail::new(
+        ph2d_a11y::NodeId(204),
+        "More tools",
+        over.into_iter().collect(),
+    );
+    // A largura de uma coluna de chips, e a altura pelo passo de linha — as mesmas contas do
+    // trilho vertical, para o menu não inventar métrica própria.
+    let inner_w = crate::widget::CHIP_X_OFFSET_PX + size.chip_px() + Spacing::Xs.px();
+    let inner_h = crate::widget::line_pitch(size.chip_px()) * rail.entries.len() as f32;
+    let rect = clamp_to_viewport(
+        req.x,
+        req.y,
+        inner_w + pad * 2.0,
+        inner_h + pad * 2.0,
+        viewport,
+    );
+    let radius = Radius::Md.px();
+    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
+    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    let content = Rect::new(rect.x + pad, rect.y + pad, inner_w, inner_h);
+    crate::widget::paint_tool_rail_axis(
+        &rail,
+        content,
+        scene,
+        text_system,
+        theme,
+        store,
+        &|id| Some(motion.get(id).unwrap_or(0.0)),
+        motion.travels(),
+        crate::widget::RailAxis::Vertical,
+    );
+    // ⚠️ O fundo ENGOLE o clique (a mesma razão do `RAIL_BACKDROP` da faixa), e vai ANTES dos
+    // chips: o `HitIndex` caminha de trás para a frente.
+    hit_index.register(ids::RAIL_BACKDROP, rect);
+    for slot in crate::widget::entry_rects(&rail, content, size, crate::widget::RailAxis::Vertical)
+    {
+        if let Some(id) = slot.id {
+            hit_index.register(id, slot.rect);
+        }
+    }
+}

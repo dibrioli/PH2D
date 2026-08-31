@@ -88,6 +88,7 @@ mod sheet_size;
 mod theme;
 mod timeline_segment;
 mod tokens_toggle;
+mod tool_bar_overflow;
 mod transport;
 mod vector_toggle;
 mod view_toggles;
@@ -147,6 +148,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || radius::apply(hero, event)
         || rail_size::apply(hero, event)
         || view_toggles::apply(hero, event)
+        || tool_bar_overflow::apply(hero, event)
         || rail_tools::apply(hero, event)
         || rail_painter_tools::apply(hero, event)
         || rail_panels::apply(hero, event)

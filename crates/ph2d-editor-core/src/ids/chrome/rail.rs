@@ -10,6 +10,14 @@ pub const TOOL_PIVOT: NodeId = hash_node_id("tool_pivot");
 pub const TOOL_SPACE: NodeId = hash_node_id("tool_space");
 pub const TOOL_PROJECTION: NodeId = hash_node_id("tool_projection");
 pub const TOOL_HOME: NodeId = hash_node_id("tool_home");
+/// ⭐⭐ **O `⋯` da FILA de ferramentas** — o que não coube numa linha vive atrás dele.
+///
+/// ⛔ Ele existe porque a faixa **não pode crescer**: o alvo é tablet, e no iPad 11 e no mini ela
+/// dobrava (`54 → 108 px`) no instante em que o pincel entrava em mãos — `−3,3` pontos de área de
+/// desenho, justamente quando o ecrã faz falta
+/// (`docs/UI_New_and_Simple/medicoes/06_o_orcamento_de_ecra_em_tablet.md`).
+pub const TOOL_BAR_OVERFLOW: NodeId = hash_node_id("tool_bar_overflow");
+
 pub const TOOL_UNDO: NodeId = hash_node_id("tool_undo");
 pub const TOOL_REDO: NodeId = hash_node_id("tool_redo");
 /// Show/Hide toggles for the side panels — top of the left rail.

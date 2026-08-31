@@ -123,6 +123,10 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOOL_HOME,
         ids::TOOL_UNDO,
         ids::TOOL_REDO,
+        // ⭐ **O `⋯` da fila** — sem estado interactivo ele nasce **morto sob o dedo**: o Down não
+        // arma o `active` e o Up nunca emite `Click`. Foi exactamente isso que o gate de gesto
+        // apanhou quando ele chegou (`the_dots_open_the_rest_and_a_pick_closes_them`).
+        ids::TOOL_BAR_OVERFLOW,
     ] {
         store.register(
             id,

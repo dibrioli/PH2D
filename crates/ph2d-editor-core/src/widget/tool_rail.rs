@@ -294,7 +294,12 @@ pub struct EntrySlot {
 /// ⚠️ **O rect devolvido é o de REPOUSO**, antes do `hover_lift`: o desenho cresce, o alvo não —
 /// um alvo que se move debaixo do dedo é um alvo que foge.
 /// Quanto uma entrada AVANÇA no eixo — a mesma lei nos dois.
-fn entry_advance(entry: &ToolRailEntry, chip_px: f32) -> f32 {
+/// ⭐ **Quanto uma entrada avança ao longo do eixo** — pública desde 2026-08-31 porque a decisão do
+/// transbordo (`hero::tool_bar::bar_split`) tem de usar **a mesma** aritmética que o
+/// [`horizontal_lines`] e o [`entry_rects`]. Uma terceira cópia dela poria o `⋯` a discordar de
+/// onde os chips de facto caem.
+#[must_use]
+pub fn entry_advance(entry: &ToolRailEntry, chip_px: f32) -> f32 {
     match entry {
         ToolRailEntry::Divider => 1.0 + DIVIDER_GAP_PX * 2.0,
         _ => chip_px,

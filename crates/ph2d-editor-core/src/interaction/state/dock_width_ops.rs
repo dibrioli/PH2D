@@ -115,3 +115,16 @@ impl WidgetStore {
     /// inteira. Numa janela baixa o layout aperta-o ainda mais contra a banda de chrome.
     const DOCK_H_MAX: f32 = 720.0; // LITERAL-PX-OK: tecto da faixa do fundo
 }
+
+impl WidgetStore {
+    /// ⭐ **Publica o que a fila de ferramentas não coube** — ver o campo.
+    pub fn set_tool_overflow(&mut self, entries: Vec<crate::widget::ToolRailEntry>) {
+        self.tool_overflow = entries;
+    }
+
+    /// O que ficou atrás do `⋯` neste quadro.
+    #[must_use]
+    pub fn tool_overflow(&self) -> &[crate::widget::ToolRailEntry] {
+        &self.tool_overflow
+    }
+}

@@ -70,20 +70,15 @@ pub(super) fn frame_layout(hero: &HeroScreen, viewport: Rect) -> HeroLayout {
     let (left_col, right_col) = probe.side_columns();
     let docks = crate::screens::layout::DockSides::from_published(left_col, right_col, published);
     if !hero.view.legacy_chrome {
-        let flat = HeroLayout::for_viewport_bands(
-            viewport,
-            hero.view.ui_mirrored,
-            bands,
-            hero.view.center_split,
-            docks,
-        );
-        let lines = super::tool_bar::tool_bar_lines(
-            &hero.store,
-            hero.rail_shows_painter_tools(),
-            hero.image_edit.mode_on,
-            flat.draw_area.w,
-        );
-        bands.tool_bar_h = super::tool_bar::tool_bar_h(hero.store.rail_button_size(), lines);
+        // ⛔⛔ **UMA linha, sempre** (Enio, 2026-08-31: *«não podemos ir perdendo espaço»*). A faixa
+        // crescia para `108 px` no iPad 11 e no mini com o pincel em mãos — `−3,3` pontos de área
+        // de desenho, permanentes. O que não cabe vai para o `⋯` (`tool_bar::bar_split`).
+        //
+        // ⭐⭐ **E com isso a SEGUNDA PASSAGEM morreu.** Ela existia porque a altura da faixa
+        // dependia da largura da área: resolvia-se o layout com a faixa a zero, lia-se a largura, e
+        // resolvia-se outra vez. Hoje a altura é constante ⇒ uma passagem só. *A cura de um defeito
+        // de espaço apagou uma dependência circular que ninguém tinha ido lá buscar.*
+        bands.tool_bar_h = super::tool_bar::tool_bar_h(hero.store.rail_button_size(), 1);
     }
     let mut layout = HeroLayout::for_viewport_bands(
         viewport,

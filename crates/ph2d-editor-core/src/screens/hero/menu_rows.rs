@@ -259,6 +259,9 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
         // below — `items` stays empty so the simple-row loop is
         // skipped.
         ContextMenuKind::SceneList => &[],
+        // ⭐ **Desenha o próprio corpo** (ver o doc desta função): os chips que não couberam na
+        // fila, com os MESMOS ids — ver `context_menu_overlay::paint_tool_bar_overflow`.
+        ContextMenuKind::ToolBarOverflow => &[],
         // The palette-rename modal paints a TextInput + Rename button in its own branch below.
         ContextMenuKind::RenamePaletteDialog => &[],
         // The New-image modal paints its size/bg radios + Create in its own branch below.

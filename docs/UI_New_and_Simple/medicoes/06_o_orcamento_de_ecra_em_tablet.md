@@ -34,10 +34,13 @@ presentes (o chrome de produção):
 | alvo | colunas abertas | colunas abertas **a pintar** | colunas fechadas |
 |---|---:|---:|---:|
 | iPad 12.9 | 50,8 % | 50,8 % | **92,0 %** |
-| iPad 11 | 44,0 % | **40,8 %** | 90,2 % |
-| iPad mini | 40,9 % | **37,6 %** | 89,0 % |
+| iPad 11 | 44,0 % | ~~40,8 %~~ → **44,0 %** | 90,2 % |
+| iPad mini | 40,9 % | ~~37,6 %~~ → **40,9 %** | 89,0 % |
 
-⇒ **no iPad mini, a pintar, com os dois painéis abertos, o artista desenha em 37,6 % do ecrã.**
+⇒ **no iPad mini, a pintar, com os dois painéis abertos, o artista desenhava em 37,6 % do ecrã.**
+
+⭐⭐ **CURADO em 2026-08-31 (entrega 32):** a coluna «a pintar» deixou de ser pior — `+3,2` pontos
+no iPad 11 e `+3,3` no mini. Ver o §3.
 
 ---
 
@@ -55,10 +58,23 @@ entre as colunas (`582` e `521 px`) não as segura numa linha, e a faixa **cresc
 ⚠️ Custo: `−3,2` pontos percentuais no iPad 11 e `−3,3` no mini — **enquanto se pinta**, que é
 precisamente quando o ecrã faz falta.
 
-⭐ **A cura fica DECIDIDA pela restrição, e não era antes.** O handoff §7 registava duas saídas —
+⭐ **A cura ficou DECIDIDA pela restrição, e não era antes.** O handoff §7 registava duas saídas —
 *«quebrar em duas linhas (a faixa cresce) ou um menu de transbordo»* — sem critério para escolher.
-O alvo tablet escolhe: **a faixa não cresce; o excesso vai para um controlo de transbordo.**
-⛔ Encolher o chip continua fora: ele mente sobre o preset de tamanho que o artista escolheu.
+O alvo tablet escolheu: **a faixa não cresce; o excesso vai para um controlo de transbordo.**
+⛔ Encolher o chip ficou fora: ele mente sobre o preset de tamanho que o artista escolheu.
+
+### ✅ FEITO (entrega 32)
+
+A faixa é **sempre uma linha**; o que não cabe vive atrás do `⋯` (`tool_bar::bar_split`, a porta
+única que o pintor, o registo de hit e o menu leem).
+
+| alvo | a pintar: cabem | atrás do `⋯` |
+|---|---:|---:|
+| iPad 12.9 | 18 | 0 |
+| iPad 11 | 13 | **5** |
+| iPad mini | 12 | **7** |
+
+⇒ `+3,2` pontos de área no iPad 11 e `+3,3` no mini, **enquanto se pinta**.
 
 ---
 

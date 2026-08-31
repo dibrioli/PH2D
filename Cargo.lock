@@ -7317,7 +7317,9 @@ dependencies = [
 name = "ph2d-panel-registry-init"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "ph2d-editor-core",
+ "ph2d-host",
  "ph2d-panel-asset-browser",
  "ph2d-panel-audio-editor",
  "ph2d-panel-audio-mixer",

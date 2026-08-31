@@ -47,6 +47,11 @@ impl Panel for BgRemovalPanel {
     const NODE_ID: NodeId = ph2d_editor_core::ids::BGR_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Background Removal";
+    /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
+    /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas
+    /// colunas, e o gesto que o levaria ao fundo não é oferecido (decisão D1).
+    const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
+        ph2d_editor_core::screens::slot::SlotSet::SIDES;
     const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
         ph2d_editor_core::screens::slot::Slot::RightTop;
 

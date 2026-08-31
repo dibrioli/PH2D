@@ -28,7 +28,7 @@ pub(crate) fn paint(state: &mut FlipStripState, ctx: &mut PaintCtx) {
     let theme = ctx.host.theme();
 
     // A tira empilha ACIMA do timeline global quando ele está aberto.
-    let base: Rect = ctx.layout.flip_strip;
+    let base: Rect = ctx.slot;
     let lift = if ctx.host.panel_visible("timeline") {
         TIMELINE_DOCK_H + Spacing::Sm.px()
     } else {

@@ -47,7 +47,7 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     // ⭐ O que ele queria — *MIX e WAVE abertos ao mesmo tempo* — é agora a regra 1 do modelo:
     // dois ocupantes do mesmo encaixe são **ABAS** (`screens::hero::slot_tabs`), e a faixa delas
     // já saiu deste rect antes de ele chegar aqui.
-    let rect = ctx.layout.inspector;
+    let rect = ctx.slot;
     let theme = ctx.host.theme();
     ctx.host.store_mut().set_panel_rect(AEDIT_PANEL, rect);
 

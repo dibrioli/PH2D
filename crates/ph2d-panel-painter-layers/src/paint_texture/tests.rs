@@ -25,6 +25,9 @@ fn painted_hit_ids_for(brush: BrushSettings) -> Vec<NodeId> {
         let mut ctx = PaintCtx {
             host: &mut host,
             layout: &layout,
+            slot: layout
+                .slot_rects(ph2d_editor_core::screens::slot::SlotSet::ANY_DOCK)
+                .get(ph2d_editor_core::screens::slot::Slot::RightTop),
             viewport,
             scene: &mut scene,
             text_system: &mut text,
@@ -59,6 +62,9 @@ fn painted_hit_ids_ramp_open(brush: BrushSettings) -> Vec<NodeId> {
         let mut ctx = PaintCtx {
             host: &mut host,
             layout: &layout,
+            slot: layout
+                .slot_rects(ph2d_editor_core::screens::slot::SlotSet::ANY_DOCK)
+                .get(ph2d_editor_core::screens::slot::Slot::RightTop),
             viewport,
             scene: &mut scene,
             text_system: &mut text,

@@ -78,7 +78,7 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
         return;
     }
 
-    let rect: Rect = ctx.layout.inspector;
+    let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();
     let snapshot = state::current();
 

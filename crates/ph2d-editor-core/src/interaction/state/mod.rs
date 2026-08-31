@@ -32,6 +32,8 @@ mod asset_drag_ops;
 mod graph_ops;
 mod number_scrub;
 mod panel_ops;
+mod slot_ops;
+pub use slot_ops::{TAB_DRAG_THRESHOLD_PX, TabDragAnchor};
 mod store_census;
 mod store_core;
 mod store_hierarchy;
@@ -182,6 +184,16 @@ pub struct WidgetStore {
     /// tag because only one resize is active at a time and the dispatch
     /// can check both Options cheaply.
     pub(super) panel_resize_anchor_bl: Option<(NodeId, f32, f32)>,
+    /// ⭐⭐ **AS EXCEPÇÕES de onde cada painel está** (decisão D4) — só quem o artista MOVEU. Quem
+    /// não está aqui responde pelo `Panel::DEFAULT_SLOT`. Ver `state::slot_ops`.
+    pub(super) panel_slot: std::collections::BTreeMap<NodeId, crate::screens::slot::Slot>,
+    /// Arrasto de uma aba em curso — ver [`TabDragAnchor`]. O início fica guardado porque é a
+    /// distância a ele que separa um **clique** (trocar de aba) de um **arrasto** (mudar de
+    /// encaixe).
+    pub(super) tab_drag: Option<TabDragAnchor>,
+    /// Onde uma aba foi largada, à espera de quem saiba julgar: o hero tem o layout e o
+    /// `ALLOWED_SLOTS`, o store não tem nenhum dos dois.
+    pub(super) tab_drop: Option<(NodeId, (f32, f32))>,
     /// Clipboard outbox — set by Cmd+C/X handlers; shell drains each
     /// frame via `take_clipboard_copy` and writes to the OS
     /// clipboard. `String` rather than a reference so the data lives

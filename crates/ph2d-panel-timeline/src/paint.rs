@@ -111,7 +111,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     let snapshot = state::current_snapshot();
     publish_view(state, &snapshot);
     let viewport = ctx.layout.viewport;
-    let docked = ctx.layout.timeline;
+    let docked = ctx.slot;
     if state.px_per_s <= 0.0 {
         state.px_per_s = state::DEFAULT_PX_PER_S;
     }

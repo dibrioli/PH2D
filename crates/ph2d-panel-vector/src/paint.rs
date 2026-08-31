@@ -254,7 +254,7 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
         return;
     }
 
-    let rect: Rect = ctx.layout.inspector;
+    let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();
     let snap = state::current_snapshot();
 

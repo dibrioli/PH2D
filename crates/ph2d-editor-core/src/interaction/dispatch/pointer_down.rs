@@ -56,6 +56,15 @@ pub(super) fn dispatch_down<'frame>(
     }
 
     let hit = hit_index.hit_with_rect(event.x, event.y);
+    // ⭐⭐ **Uma aba pode ser CLICADA ou ARRASTADA** (decisão D4: *o artista escolhe qual painel vai
+    // em cada lugar*). O Down arma as duas: só a distância percorrida decide qual foi, e ela é
+    // medida no `WidgetStore::tab_being_dragged`. Armar aqui — e não no primeiro Move — é o que
+    // guarda o PONTO DE PARTIDA, sem o qual não há limiar nenhum a medir.
+    if let Some((id, _)) = hit
+        && let Some(panel) = crate::screens::hero::slot_tabs::panel_for_tab(id)
+    {
+        store.begin_tab_drag(panel, event.x, event.y);
+    }
 
     // With a context menu open, a non-Secondary Down on a graph / timeline
     // surface is a DISMISSAL, not a gesture: the menus float OVER those

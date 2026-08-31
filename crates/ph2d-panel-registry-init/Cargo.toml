@@ -101,3 +101,6 @@ panel-widget-gallery = ["dep:ph2d-panel-widget-gallery"]
 ph2d-panel-sync = { path = "../../tools/ph2d-panel-sync" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-vector = { path = "../ph2d-vector" }
+# O gate do gesto de arrastar uma aba encena um ponteiro REAL pelo dispatch.
+ph2d-host = { path = "../ph2d-host" }
+bumpalo = { version = "3", features = ["collections"] }

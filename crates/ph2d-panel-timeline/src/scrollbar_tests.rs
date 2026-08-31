@@ -47,6 +47,11 @@ fn paint_once(armed: SliderState, scroll_y: f32) -> (SliderState, f32) {
     let mut ctx = PaintCtx {
         host: &mut host,
         layout: &layout,
+        slot: layout
+            .slot_rects(ph2d_editor_core::screens::slot::SlotSet::of(
+                ph2d_editor_core::screens::slot::Slot::Bottom,
+            ))
+            .get(ph2d_editor_core::screens::slot::Slot::Bottom),
         viewport: Rect::new(0.0, 0.0, 1280.0, 800.0),
         scene: &mut scene,
         text_system: &mut text,

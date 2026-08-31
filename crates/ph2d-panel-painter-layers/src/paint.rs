@@ -61,7 +61,7 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         return;
     }
 
-    let rect: Rect = ctx.layout.painter_layers;
+    let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();
     state::reset_frame_popovers();
 

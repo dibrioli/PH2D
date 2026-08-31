@@ -44,7 +44,7 @@ pub(crate) fn paint(_state: &mut AuthoredPanelState, ctx: &mut PaintCtx) {
         return;
     }
 
-    let insp: Rect = ctx.layout.inspector;
+    let insp: Rect = ctx.slot;
     let gap = Spacing::Xs.px();
     let base = Rect::new((insp.x - insp.w - gap).max(0.0), insp.y, insp.w, insp.h);
     let off = ctx.host.store().blender_picker_offset(ids::AUTHORED_PANEL);

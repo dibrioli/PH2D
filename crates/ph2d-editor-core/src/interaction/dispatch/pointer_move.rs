@@ -24,6 +24,9 @@ pub(super) fn dispatch_move<'frame>(
     mut ts: Option<&mut TextSystem>,
     events: &mut BumpVec<'frame, WidgetEvent>,
 ) {
+    // ⭐ O arrasto de uma aba (mudar um painel de encaixe, decisão D4) segue o cursor aqui. No-op
+    // sem arrasto em curso, e o limiar vive no `tab_being_dragged` — este sítio só transporta.
+    store.update_tab_drag(event.x, event.y);
     // While a Slider is being dragged, every Move computes a
     // fresh value from the pointer position relative to the
     // active rect. Hover tracking is suppressed (the active

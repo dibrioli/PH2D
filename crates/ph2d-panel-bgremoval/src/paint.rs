@@ -44,7 +44,7 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
         return;
     }
 
-    let rect: Rect = ctx.layout.bgremoval;
+    let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();
     let snapshot = state::current_snapshot();
 

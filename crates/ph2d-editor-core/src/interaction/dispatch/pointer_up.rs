@@ -89,6 +89,21 @@ pub(super) fn dispatch_up<'frame>(
     // silently mutate hierarchy selection on top of the rename
     // mode it just opened.
     let mut suppress_click = false;
+    // ⭐⭐ **O arrasto de uma aba fecha-se aqui, e ele NÃO suprime o clique.**
+    //
+    // ⛔⛔ **Eu escrevi a supressão com um comentário confiante, e a medição refutou-a.** O
+    // argumento era *«uma aba arrastada não é uma aba clicada»* — e o caso que ele imaginava já
+    // estava coberto: o `apply_click` só dispara com o `still_hot`, ou seja com a largada DENTRO
+    // do rect da aba onde o dedo desceu. Arrastar para outra coluna nunca produziu clique nenhum.
+    //
+    // ⚠️ O que a supressão de facto fazia era matar o **empurrão**: o limiar são poucos pixels e um
+    // dedo que carrega mexe-se sempre um pouco ⇒ trocar de aba passava a depender da firmeza da
+    // mão, que é a pior espécie de defeito de interface. Medido pelo gate
+    // `a_five_pixel_nudge_on_a_tab_still_switches_it`, que nasceu VERMELHO com ela.
+    //
+    // ⚠️ **E a mutação que a apagava SOBREVIVEU** — foi ela que mandou olhar. *Código inerte com um
+    // comentário confiante é pior que código ausente.*
+    store.end_tab_drag();
     if let Some(drag) = drag_end
         && !drag.active
         && event.timestamp_ns.saturating_sub(drag.down_timestamp_ns)

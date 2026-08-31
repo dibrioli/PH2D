@@ -51,7 +51,7 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
     }
     let snapshot = snapshot.expect("o guard acima garante");
 
-    let rect: Rect = ctx.layout.inspector;
+    let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();
 
     // Publica o rect para o dispatch de roda/clique poder rotear para este painel.

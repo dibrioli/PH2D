@@ -37,7 +37,7 @@ pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
         return;
     }
 
-    let rect: Rect = ctx.layout.inspector;
+    let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();
     let snapshot = state::current();
     // A lente do pintor recomeça a cada quadro — ver `state::PAINTED_SECTION_HEADERS`.

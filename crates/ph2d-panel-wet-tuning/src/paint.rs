@@ -37,7 +37,7 @@ pub(crate) fn paint(_state: &mut WetTuningPanelState, ctx: &mut PaintCtx) {
         ctx.host.store_mut().clear_panel_rect(ids::WET_TUNING_PANEL);
         return;
     }
-    let insp: Rect = ctx.layout.inspector;
+    let insp: Rect = ctx.slot;
     let gap = Spacing::Xs.px();
     // Docked default: beside (left of) the inspector slot. The user can then
     // drag/resize it like any floating panel — the deltas live on the store

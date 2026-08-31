@@ -120,6 +120,10 @@ pub fn paint_hero_screen(
     // ser reconciliada ANTES do layout, porque é dela que sai qual aba está à frente em cada
     // encaixe (`slot_tabs`).
     super::slot_tabs::reconcile_z(hero);
+    // ⭐⭐ **E uma aba largada muda o painel de encaixe** (decisão D4). ANTES do layout, porque é a
+    // posição nova que este quadro tem de desenhar — e a largada foi julgada contra o layout do
+    // quadro anterior, que é o que o artista estava a ver quando largou.
+    super::slot_tabs::resolve_tab_drop(hero);
 
     let mut layout = super::frame_layout::frame_layout(hero, viewport);
     // ⭐⭐ **AS COLUNAS LATERAIS SÃO ANCORADAS** (Enio, 2026-08-30, com foto: *«só fica legal
@@ -442,96 +446,7 @@ pub fn paint_hero_screen(
         hero.store.clear_panel_rect(ids::INSP_BLENDER_PICKER);
     }
 
-    // Wave 5 stage D — paint each panel via the PanelRegistry in
-    // z-order. Bottom-first, so the panel most recently clicked /
-    // dragged / opened sits on top. Panels that haven't been touched
-    // yet inherit a default order at the bottom (fallback list below
-    // also covers floating panels that have their own panel rects:
-    // GAL_PANEL + GS_PANEL).
-    //
-    // INSP_BLENDER_PICKER is intentionally NOT in the panel
-    // registry — it's painted out-of-band AFTER every floating panel
-    // (see `paint_blender_picker_demo` below) so it sits on top of
-    // every other panel regardless of z order.
-    //
-    // Each manifest's `paint_fn` owns its full per-frame logic:
-    // visibility check + lazy default rect + drag/resize clamp +
-    // chrome publish + actual paint + content_h publish + scroll
-    // clamp + stale-rect cleanup on hide. Adding a new panel needs
-    // zero edits to this iteration — drop `PANEL_MANIFEST` in the
-    // panel module + 1 line in `panel_registry::PANEL_REGISTRY`.
-    let mut z_order: Vec<ph2d_a11y::NodeId> = hero.store.panel_z_order().to_vec();
-    for &fallback in PANEL_Z_ORDER_FALLBACK {
-        if !z_order.contains(&fallback) {
-            z_order.push(fallback);
-        }
-    }
-    // ADR-0029 Phase D: legacy fn-pointer dispatch deleted. Every
-    // in-tree panel lives in `crate::panel::PANEL_REGISTRY` as a
-    // typed `Panel<State>`. The z-order walk resolves each id to its
-    // typed entry; ids that don't match (e.g. `INSP_BLENDER_PICKER`,
-    // painted out-of-band below) are silently skipped.
-    // ⭐⭐⭐ **Os ocupantes que não estão à frente do seu encaixe não pintam** — é isto que faz de
-    // `n > 1` num encaixe **abas** em vez de painéis empilhados. ⚠️ Vazio enquanto cada encaixe
-    // tiver no máximo um ocupante, que é o estado de omissão do app.
-    let hidden = super::slot_tabs::hidden_by_tabs(hero);
-    // ⛔⛔ **Quem não pinta tem de LARGAR o rect que publicou.** O `paint_fn` de cada painel é
-    // quem chama `clear_panel_rect` ao ficar invisível — saltá-lo deixaria o rect do quadro
-    // anterior no store, e ele alimenta o `DockSides::from_published` (a largura da área de
-    // desenho) e o gate da D1. *Um painel escondido por uma aba continuaria a reservar coluna.*
-    for id in &hidden {
-        hero.store.clear_panel_rect(*id);
-    }
-    crate::panel::with_registry_opt(|reg| {
-        for panel_id in z_order {
-            if hidden.contains(&panel_id) {
-                continue;
-            }
-            if let Some(idx) = reg.find_by_panel_node_id(panel_id) {
-                // Hit barrier: register the panel rect BEFORE the
-                // widgets inside `panel.paint()` so the gizmo's hit
-                // rects (registered earlier this frame) don't bleed
-                // through the panel surface. `HitIndex::hit()` walks
-                // back-to-front, so internal panel widgets registered
-                // by `paint()` below still outrank this barrier — only
-                // empty panel area falls back to it. Enio 2026-05-25:
-                // "alças do gizmo da sprite podem ser acessadas
-                // através dos painéis. Isso não pode acontecer."
-                if let Some(panel_rect) = hero.store.panel_rect(panel_id) {
-                    hero.hit_index.register(panel_id, panel_rect);
-                }
-                let mut typed_ctx = crate::panel::PaintCtx {
-                    host: hero,
-                    layout: &layout,
-                    viewport,
-                    scene,
-                    text_system,
-                };
-                reg.panels_mut()[idx].paint(&mut typed_ctx);
-            }
-        }
-    });
-    // ⭐⭐⭐ **AS ABAS, depois dos painéis** — o `HitIndex` caminha de trás para a frente, então
-    // registá-las aqui põe-nas acima da barreira de hit que o painel da frente instalou. A faixa
-    // é zero-altura em todo encaixe com menos de dois ocupantes.
-    for slot in crate::screens::slot::Slot::ALL {
-        let bar = layout.slot_tabs[slot as usize];
-        if bar.h <= 0.0 {
-            continue;
-        }
-        let occ = super::slot_tabs::occupants(hero, slot);
-        let selected = occ.last().map(|o| o.node);
-        super::slot_tabs::paint_slot_tabs(
-            bar,
-            &occ,
-            selected,
-            scene,
-            text_system,
-            hero.theme,
-            &mut hero.hit_index,
-            &hero.store,
-        );
-    }
+    panel_walk::walk(hero, &layout, viewport, scene, text_system);
     // hero/scene/text_system unborrowed for the
     // rest of paint_hero_screen (bottom HUD, picker overlay, tooltip,
     // context menu, drop overlay).

@@ -47,7 +47,7 @@ pub(crate) fn paint(state: &mut TokensPanelState, ctx: &mut PaintCtx) {
         return;
     }
 
-    let rect: Rect = ctx.layout.inspector;
+    let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();
     ctx.host.store_mut().set_panel_rect(ids::TOKENS_PANEL, rect);
 

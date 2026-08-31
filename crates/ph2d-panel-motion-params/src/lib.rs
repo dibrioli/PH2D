@@ -142,6 +142,11 @@ impl Panel for MotionParamsPanel {
     const NODE_ID: NodeId = ids::MOTION_PARAMS_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Motion Params";
+    /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
+    /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas
+    /// colunas, e o gesto que o levaria ao fundo não é oferecido (decisão D1).
+    const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
+        ph2d_editor_core::screens::slot::SlotSet::SIDES;
     const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
         ph2d_editor_core::screens::slot::Slot::RightTop;
 
@@ -152,7 +157,7 @@ impl Panel for MotionParamsPanel {
                 .clear_panel_rect(ids::MOTION_PARAMS_PANEL);
             return;
         }
-        let rect = ctx.layout.inspector;
+        let rect = ctx.slot;
         let theme = ctx.host.theme();
         ctx.host
             .store_mut()

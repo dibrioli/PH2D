@@ -51,6 +51,7 @@ use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetEvent, Wid
 use ph2d_editor_core::interaction::{dispatch_key, dispatch_pointer, dispatch_text_input};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHost, PanelHostInternal};
 use ph2d_editor_core::project::ProjectSettings;
+use ph2d_editor_core::screens::slot::SlotSet;
 use ph2d_editor_core::screens::{HeroLayout, HeroSelection};
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
@@ -404,6 +405,19 @@ impl MockPanelHost {
         let mut ctx = PaintCtx {
             host: self,
             layout: &layout,
+            // ⚠️ **O arnês entrega o encaixe que o painel DECLARA.** Ele não corre o hero, logo não
+            // há mapa de excepções nem faixa de abas — e é isso que se quer aqui: um teste de
+            // painel mede o painel na casa dele, não uma arrumação que o artista fez.
+            //
+            // ⛔⛔ **`SlotSet::of(…)`, NUNCA `ANY_DOCK`.** O `ANY_DOCK` contém as DUAS metades de
+            // cada coluna, e a lei do `slot_rects` é *«a metade só existe quando a irmã está
+            // ocupada»* ⇒ pedir `ANY_DOCK` **parte a coluna ao meio**. Medido: o corpo do painel do
+            // Motion caiu para `346 px` e 26 nós passaram a «transbordar» sem uma linha de produto
+            // se mexer. *Um conjunto de ocupação não é uma lista de sítios possíveis: é quem lá
+            // está.*
+            slot: layout
+                .slot_rects(SlotSet::of(P::DEFAULT_SLOT))
+                .get(P::DEFAULT_SLOT),
             viewport,
             scene: &mut scene,
             text_system: &mut text_system,
@@ -472,6 +486,9 @@ impl MockPanelHost {
             let mut ctx = PaintCtx {
                 host: self,
                 layout: &layout,
+                slot: layout
+                    .slot_rects(SlotSet::of(P::DEFAULT_SLOT))
+                    .get(P::DEFAULT_SLOT),
                 viewport,
                 scene: &mut scene,
                 text_system: &mut text_system,

@@ -54,6 +54,11 @@ impl Panel for FlipFramesPanel {
     const NODE_ID: NodeId = ph2d_editor_core::ids::FLIP_STRIP_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Frames";
+    /// ⚠️ **Uma TIRA não cabe numa coluna.** Ela é larga e baixa: numa coluna de 304 px
+    /// ela mostraria dois quadros. ⇒ a faixa de baixo é o único encaixe que a exprime, e o
+    /// gesto que a arrastaria para uma coluna é **inexprimível** (decisão D1).
+    const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
+        ph2d_editor_core::screens::slot::SlotSet::BOTTOM;
     const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
         ph2d_editor_core::screens::slot::Slot::Bottom;
 

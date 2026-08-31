@@ -47,7 +47,7 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
         return;
     }
 
-    let rect: Rect = ctx.layout.padding;
+    let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();
     let snapshot = state::current_snapshot();
 

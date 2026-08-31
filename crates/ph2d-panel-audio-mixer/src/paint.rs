@@ -83,7 +83,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     }
     // Right-docked in the shared Inspector slot (already clamped + drag/resize
     // applied by the orchestrator into `layout.inspector`).
-    let rect: Rect = ctx.layout.inspector;
+    let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();
     ctx.host.store_mut().set_panel_rect(AMIX_PANEL, rect);
 

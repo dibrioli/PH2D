@@ -34,6 +34,9 @@ fn painted_hit_ids(method: StrokeMethod) -> Vec<NodeId> {
         let mut ctx = PaintCtx {
             host: &mut host,
             layout: &layout,
+            slot: layout
+                .slot_rects(ph2d_editor_core::screens::slot::SlotSet::ANY_DOCK)
+                .get(ph2d_editor_core::screens::slot::Slot::RightTop),
             viewport,
             scene: &mut scene,
             text_system: &mut text,
@@ -61,6 +64,9 @@ fn painted_hit_rects(method: StrokeMethod, content_w: f32) -> Vec<(NodeId, Rect)
         let mut ctx = PaintCtx {
             host: &mut host,
             layout: &layout,
+            slot: layout
+                .slot_rects(ph2d_editor_core::screens::slot::SlotSet::ANY_DOCK)
+                .get(ph2d_editor_core::screens::slot::Slot::RightTop),
             viewport,
             scene: &mut scene,
             text_system: &mut text,
@@ -461,6 +467,9 @@ fn save_as_object_button_shows_only_when_a_curve_is_drawn() {
             let mut ctx = PaintCtx {
                 host: &mut host,
                 layout: &layout,
+                slot: layout
+                    .slot_rects(ph2d_editor_core::screens::slot::SlotSet::ANY_DOCK)
+                    .get(ph2d_editor_core::screens::slot::Slot::RightTop),
                 viewport,
                 scene: &mut scene,
                 text_system: &mut text,

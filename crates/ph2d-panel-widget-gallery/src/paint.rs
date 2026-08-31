@@ -37,11 +37,7 @@ pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) {
     let base_rect = match state.rect {
         Some(r) => r,
         None => {
-            let r = default_rect(
-                ctx.layout.viewport.w,
-                ctx.layout.viewport.h,
-                ctx.layout.inspector.w,
-            );
+            let r = default_rect(ctx.layout.viewport.w, ctx.layout.viewport.h, ctx.slot.w);
             state.rect = Some(r);
             r
         }

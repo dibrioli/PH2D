@@ -56,7 +56,7 @@ pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
     let store = ctx.host.store_mut();
     store.set_hierarchy_row_ids(row_set);
     store.set_panel_content_h(ids::HIER_PANEL, content_h);
-    let visible_h = (ctx.layout.hierarchy.h - 60.0).max(0.0); // LITERAL-PX-OK: header+scrollbar reserve composite (chrome dim)
+    let visible_h = (ctx.slot.h - 60.0).max(0.0); // LITERAL-PX-OK: header+scrollbar reserve composite (chrome dim)
     let max_scroll = (content_h - visible_h).max(0.0);
     let cur = store.panel_scroll(ids::HIER_PANEL);
     if cur > max_scroll {

@@ -660,3 +660,203 @@ recebe só as duas candidatas —, e isso é uma mudança de assinatura com o se
 
 ⇒ ⏳ **Fica NOMEADO**, e a régua já existe (`ph2d_quadfill::tip_survival`, que conta pontas
 cortadas contra uma referência).
+
+---
+
+# ⭐⭐⭐ PARTE IV — «Estamos perto da perfeição» (Enio, 2026-08-31, duas fotos e uma seta)
+
+## §34 — O report, e o que ele pedia primeiro
+
+Duas fotos da mesma peça em duas densidades, a segunda com uma **seta vermelha** no bico de um
+espinho, e uma frase: *«estamos perto da perfeição»*. ⇒ ele não está a acusar a topologia (que
+fecha) nem a forma (que bate o oráculo): está a apontar **um bico**.
+
+⛔⛔ **E o §5.0 do `CLAUDE.md` já dizia o que fazer primeiro:** *«NENHUMA RÉGUA O VÊ … a próxima
+janela constrói a régua LOCAL antes de tocar em código»*. Esta parte é essa janela.
+
+## §35 — ⛔⛔⛔ A PRIMEIRA MEDIÇÃO ACUSOU A PRÓPRIA RÉGUA: o `ALCANCE` mede a AMOSTRAGEM
+
+A sonda do botão, na escultura do dono a `Detail 0,85`, imprimia **duas linhas que não podem
+ser as duas verdade**:
+
+| linha | o que dizia |
+|---|---|
+| `PONTAS` (suporte por ponta) | `0` de `4` cortadas, a pior **`−0,4 %`** |
+| `ALCANCE` | entrada `3,0959` → saída `2,8943`, ⛔ **`−6,5 %`** |
+
+⭐ **A causa é o CENTROIDE.** As duas réguas medem a distância máxima ao centroide, e o
+`ALCANCE` tirava-o da **média dos vértices** — que é uma propriedade de *onde estão os
+vértices*, não de *que forma eles descrevem*:
+
+| centroide | deriva entrada→saída | alcance lido |
+|---|---|---|
+| ⛔ média dos **vértices** | `0,2129` | **`−6,5 %`** |
+| ⭐ pesado pela **área** | `0,0037` (`58×` menos) | `+0,0 %` |
+| a verdade (referencial comum) | — | `−0,1 %` |
+
+⛔⛔ **E isto estava no CAMINHO DO PRODUTO, não numa sonda:** a *chave de amputação* que a
+§31 acrescentou ao `worse` compara `reach(a)` com `reach(b)`, com a banda `TIP_CUT_PCT = −2 %`.
+Medido: as saídas a `Detail 0,50` e `0,85` da **mesma** peça diferem **`1,06 %`** nessa régua e
+`0,09 %` na verdade — *metade da banda, sem uma ponta se mexer.*
+
+⚠️⚠️ **E o sinal é o pior possível.** Uma candidata que **corta** a ponta perde vértices longe
+do corpo ⇒ o centroide dela **afasta-se** da ponta ⇒ o alcance medido **sobe**. *A régua
+defendia exactamente a candidata que devia acusar.*
+
+⇒ `ph2d_quadfill::reach` (novo, centroide pesado pela **área**), com a média dos vértices como
+último recurso para uma malha sem área. As duas cópias — a do `worse` e a da sonda — passam a
+chamá-la. **Gate:** `a_mesma_forma_amostrada_de_duas_maneiras_tem_o_mesmo_alcance`, e ele
+carrega **o controlo**: a régua velha, na mesma fixtura, erra mais de `5 %`.
+
+## §36 — ⭐⭐⭐ A VARREDURA: sempre a MESMA ponta, e monótona no tamanho do quad
+
+`_base_sculpt.obj`, o botão, sete densidades. `F1` é a fase zero; `pior` é o suporte da pior
+ponta.
+
+| `Detail` | alvo do quad | `F1` | saída | pior |
+|---|---|---|---|---|
+| `0,40` | `0,1383` | `0/4` (`−0,5 %`) | `3/4` | ⛔ `−19,6 %` |
+| `0,45` | `0,1205` | `0/4` | `3/4` | `−9,4 %` |
+| `0,50` | `0,1049` | `0/4` | `1/4` | `−5,3 %` |
+| `0,55` | `0,0914` | `0/4` | `1/4` | `−4,7 %` |
+| `0,60` | `0,0796` | `0/4` | `1/4` | `−3,1 %` |
+| `0,70` | `0,0604` | `0/4` | ⭐ `0/4` | `−1,2 %` |
+| `0,85` | `0,0399` | `0/4` | ⭐ `0/4` | `−0,4 %` |
+
+⭐⭐ **Três leituras que só a varredura dá:**
+
+1. **A fase zero está ILIBADA em todas as sete linhas** — `0/4` sempre, com a pior a `−0,5 %`.
+   *A amputação que sobra é 100 % a jusante do F1*, e a wave do `ADAPT_RATIO` fez o seu
+   trabalho inteiro.
+2. **É sempre a ponta `3`** — a vítima não muda com a densidade. Não é sorteio de fase da
+   grade.
+3. **O corte vale UMA CÉLULA**: `0,91` · `0,93` · `0,69` · `0,36` quads para `Detail` de `0,50`
+   a `0,70` (e `2,55` a `0,40`). *O bico morre porque a última célula não cabe nele.*
+
+## §37 — ⭐⭐⭐ E O SUPORTE NÃO VÊ METADE DO DEFEITO: o bico é curto **e GORDO**
+
+A `Detail 0,50` a ponta `3` lê `−5,3 %` de suporte, e a superfície da saída mais próxima do
+ápice está a **`0,2133`** — *duas células*. A saída fecha o espinho com um anel de raio `≈0,19`
+onde a escultura tem `≈0,05`. ⛔ **A função de suporte é `max(v·d)`: ela diz *até onde* a peça
+vai naquela direcção e NADA sobre a espessura com que lá chega.** É o «funil» das fotos de
+30/08, e nenhuma régua desta linha o mede.
+
+⇒ ⭐ **`ph2d_quadfill::tip_deviation`** — para cada ápice da entrada, a distância dos vértices
+da entrada a menos de `3 × alvo` do ápice até à **superfície** da saída, dividida pelo `alvo`.
+
+| | `Detail 0,50` | `Detail 0,85` |
+|---|---|---|
+| ponta 0 | `p50 0,13` `p90 0,22` | `0,19` / `0,37` |
+| ponta 1 | `0,08` / `0,15` | `0,08` / `0,16` |
+| ponta 2 | `0,13` / `0,30` | `0,30` / `0,44` |
+| ⛔ ponta 3 | **`1,15`** / **`2,02`** | `0,20` / `0,30` |
+
+⭐ **A barra é `TIP_DEVIATION_MAX = 1,0` e ela é o CHÃO DA DISCRETIZAÇÃO, não um número
+escolhido**: uma grade de passo `h` não pode seguir uma superfície melhor que `h`. As pontas sãs
+medem `máximo 0,45`; a partida mede `p50 1,15` — um vazio de `2,6×`, e a barra vive nele.
+
+⚠️ **É ponto→FACE e não ponto→vértice**, e a diferença decidiu o desenho: com vértices a
+população sã lê `p50 0,28`–`0,35` (o erro é meia aresta da saída) e com faces lê `0,08`–`0,30`.
+*Uma régua cujo valor «são» é feito do artefacto da própria régua não tem onde pôr uma barra.*
+
+⚠️ **E é ADIMENSIONAL** (dividida pelo alvo), que é o que permite pôr as duas densidades na
+mesma tabela — uma medida em unidades de mundo diria que a saída mais fina é sempre melhor, o
+que é verdade por construção e não informa nada.
+
+## §38 — ⛔⛔ DUAS CURAS CONSTRUÍDAS, MEDIDAS E REFUTADAS — a falta é de CONECTIVIDADE
+
+Com a régua na mão, as duas curas óbvias foram medidas antes de escritas em Rust.
+
+**(a) Puxar o vértice mais avançado até ao ápice.** ⛔ Refutada: para a ponta `3` o défice de
+*suporte* é `0,0952`, mas o vértice mais avançado **naquela direcção** está a **`0,6198`** do
+ápice — o deslocamento leva o aspecto do quad a `12,11` e o enviesamento a `85°`.
+
+**(b) *Shrinkwrap* da região da ponta** (mover todo vértice da saída a menos de `3` quads de um
+ápice para a superfície da entrada). ⛔ Refutada, e o número é duplo: a malha é **destruída**
+(aspecto `1,9·10⁸` — dois vértices colapsam no mesmo sítio) e a régua **mal se move**
+(`p90 2,03 → 1,55`).
+
+⭐⭐⭐ **É o achado da parte IV:** *mover vértices `76×` não cura, logo o que falta não são
+POSIÇÕES — são CÉLULAS.* A grade não tem resolução para representar o último centímetro do
+espinho, e nenhuma pós-passagem de posição inventa conectividade.
+
+⇒ a cura de fundo é a que o `CLAUDE.md` §5 já nomeia: o **factor de escala conforme por
+construção** (`Δ log h` contra a curvatura de Gauss), que é wave com espec própria. ⛔ Não é
+afinação, não é acabamento, e não é o `finish_extracted`.
+
+## §39 — ⭐ O que o dono pode fazer HOJE, medido
+
+`Detail ≥ 0,70` na escultura dele dá **`0` de `4`** pontas cortadas. É a resposta honesta
+enquanto a wave do factor conforme não existir — e ⛔ **não** é «suba sempre o slider»: a
+`0,85` a peça sai com `9 730` quads contra `1 381` a `0,50`.
+
+## §40 — ⚠️ O que a fixtura dos gates ensinou, e é uma propriedade da LEI
+
+Ao construir o cone de teste, a 1.ª e a 2.ª redacção mediram **uma peça sem pontas**:
+
+- **1.ª:** os anéis densos junto do ápice puxam o centroide para cima ⇒ o próprio ápice cai
+  abaixo do piso de `0,55 × raio máximo` e a lei deixa de o ver. *O corpo tem de ter mais
+  população que o bico — como uma escultura real tem.*
+- **2.ª:** com `12` vértices no anel da base, os doze **empatam** em raio (a lei aceita
+  empate), ficam à frente do bico na ordenação e enchem o `MAX_TIPS = 12` — ⛔ **o espinho era
+  o 13.º**, a medição saía `12` pontas todas a zero, e lia-se como *«a peça está perfeita»*.
+
+⚠️ **Um corte por posto é uma decisão sobre QUEM não é medido**, e um empate de doze
+preenche-o inteiro.
+
+## §41 — As provas de mutação (4 aplicadas, 1 SOBREVIVEU e o gate que faltava)
+
+| mutação | veredito |
+|---|---|
+| o centroide de área vira a média dos vértices | ✗ morta |
+| o `p50` deixa de acumular o pior entre as pontas | ✗ morta |
+| a guarda do alvo não positivo desaparece | ✗ morta |
+| ⛔ a região **interior** do ponto-triângulo vira «a distância ao canto `a`» | ⚠️ **SOBREVIVEU** |
+
+⭐ **A sobrevivente diz o que faltava:** nenhuma fixtura dos quatro gates põe uma amostra sobre
+o **meio** de uma face — e a cadeia real põe quase só isso (o quad a `0,10` contra a escultura a
+`0,03`). ⇒ o gate novo é o da **propriedade que a função promete**, medida onde ela é definida:
+`a_distancia_e_ao_interior_da_face_e_nao_ao_canto` (a perpendicular sobre o baricentro vale `1`
+e a distância ao canto mais próximo vale `1,374`). Com ele, as quatro mutações morrem.
+
+## §42 — ⭐⭐⭐ E A CHAVE DO SELECTOR TROCA DE RÉGUA — medida, e muda uma escolha
+
+A chave de amputação da §31 comparava o **alcance** de duas candidatas. Com a régua nova na
+mão, a pergunta *«ela escolhe bem?»* passou a ter resposta: o `log_candidate` passou a
+imprimir o alcance **e** o desvio por ponta de cada candidata, e a varredura correu.
+
+⚠️ **Só há um sítio onde a chave chega a falar:** ela vem depois de furos, peças e gravatas,
+e nas quatro células medidas as candidatas empatam em bordo **uma vez** — `_base_sculpt` a
+`Detail 0,40` (as outras três são decididas por bordo, e a chave nunca é consultada).
+
+| `_base_sculpt`, `Detail 0,40` | quads | bordo | alcance | **pontas acima da barra** |
+|---|---|---|---|---|
+| ⛔ `w = 0,000` (a que o **alcance** escolhia) | `774` | `4` | `2,8644` | **`2` de `4`** |
+| ⭐ `w = 0,030` (a que o **desvio** escolhe) | `804` | `4` | `2,7869` | **`1` de `4`** |
+
+⭐⭐ *A régua velha preferia a candidata com MAIS pontas partidas* — porque a ponta que ela
+media (a mais longa) sobrevivia nas duas, e a que morria não entrava na conta.
+
+**Confirmado pelo produto**, correndo o botão depois da troca: o clique passa a devolver
+`804` quads, a pior ponta vai de **`−19,6 %` para `−9,9 %`**, e o desvio de `p50 3,01`
+(`2` acima) para `p50 2,78` (`1` acima).
+
+⚠️ **O preço, dito inteiro:** o enviesamento mediano sobe de `7,48°` para `9,33°` e o aspecto
+de `1,12` para `1,14`. ⭐ É a troca que a **ordem** desta função já declarava desde 30/08 —
+*pontas antes da mediana do enviesamento, porque foi das pontas que o dono se queixou três
+vezes e a mediana é a única das três que ele nunca nomeou.*
+
+⚠️ **A chave é DISCRETA (a contagem), de propósito.** Um `p50` contínuo competiria com o
+enviesamento em **toda** peça, incluindo as que não têm ponta partida nenhuma; a contagem só
+fala quando há uma diferença de facto.
+
+⛔ **A amostra vazia não decide** (`tips = 0` é *«não medido»* e lê-se igual a *«perfeito»*),
+e o `reach` **fica** — já não como chave, mas como coluna do registo, agora honesta.
+
+⚠️ **O que NÃO foi re-medido, dito:** a célula `ADAPT_RATIO = 8` que fez a chave nascer
+(`−43 %` na ponta longa) já não é reproduzível com o teto em `16`. A chave nova cobre-a por
+construção — uma candidata que come o espinho passa a barra naquele ápice e conta `+1` —,
+mas isso é **raciocínio**, não uma medição, e vai escrito assim.
+
+**Provas de mutação (3, todas mortas):** a chave decide ao contrário · a guarda da amostra
+vazia desaparece · a chave desaparece.

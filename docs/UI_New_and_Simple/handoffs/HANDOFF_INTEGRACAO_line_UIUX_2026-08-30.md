@@ -39,7 +39,7 @@ virou **código**.
 | 17 | `eb2013fc5` | ⛔⛔⛔ **A AUDITORIA achou SETE defeitos, e o dominante era meu** (§12) |
 | 18 | `165d6a096` | ⛔⛔ **UMA TABELA para a verdade de cada módulo** — e o `if` com um lado morto (§13) |
 | 19 | `9bda8e3de` | ⭐ **A FUGA DO GIZMO ficou inerte** — a `D1` cumprida sem apagar a lei (§14) |
-| 20 | *(a seguir)* | ⭐⭐ **OS SEIS ENCAIXES e a declaração de cada painel** — a `D1` como tipo (§15) |
+| 20 | `ce7814813` | ⭐⭐ **OS SEIS ENCAIXES e a declaração de cada painel** — a `D1` como tipo (§15) |
 
 ---
 
@@ -342,6 +342,15 @@ esta wave cura é o chrome **docado**; a cerca que proíbe o resto é a `allowed
 | dois gates ainda fazem `include_str!` do `paint.rs` | são de **presença**: falham alto (§11.5) |
 | o hit do trilho **vertical** sem gate comportamental | ele já não consegue derivar (pergunta à porta), e só pinta sob `F9` (§11.6) |
 | o `cluster_painter::paint_topbar_rail_chip` continua a ser uma **cópia verbatim** da matriz de tinta do chip | o doc dele di-lo (*«Matriz copiada verbatim — DO NOT diverge»*). Com o `RailAxis` ele passa a ser dispensável; ⛔ não foi tocado porque é chrome legado a caminho de sair |
+
+### ⏳ O que a obra dos encaixes (§15) deixou nomeado
+
+| item | estado |
+|---|---|
+| **`audio_editor` é uma 2.ª coluna da direita** | ⛔ na catraca `REACHES_PENDING` com o mecanismo. A cura é a **regra 1** do modelo — `n > 1` num encaixe são **ABAS** —, que é a wave seguinte natural e serve `mixer + editor` de uma vez |
+| **os rects dos seis encaixes** | o vocabulário existe; `HeroLayout` ainda **não** os resolve (hoje há uma coluna por lado, não duas metades). A metade de cima/baixo só ganha sentido quando um encaixe hospedar mais de um painel |
+| **a cena ainda é full-bleed** | dar ORIGEM à cena é a parte cara da docagem (§11), e continua por fazer: o desenho corre por baixo das colunas, e é o chrome que se muda |
+| **o piscar de 1 quadro** | a área nasce com a largura toda e encolhe no quadro seguinte (§15.4). Medido, nomeado, não curado |
 
 ### As três decisões que continuam a ser do Enio
 Como partir o `DrawMode` nos dois eixos · adoptar o campo `Mode` do Workspace · o que acontece

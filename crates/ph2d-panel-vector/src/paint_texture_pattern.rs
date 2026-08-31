@@ -78,7 +78,11 @@ impl BodyCtx<'_> {
         y = self.action_button(kid(ids::TexPatKnob::Source), "Source...", y);
         // ⭐ **A ARTE pode ser uma FORMA do documento** (W7) — o modelo do Figma. O gesto é o de
         // duas mãos que a casa já tem: aperta, e o clique seguinte no canvas escolhe.
-        y = self.action_button(kid(ids::TexPatKnob::PickShape), "Use Shape...", y);
+        y = self.action_button(
+            kid(ids::TexPatKnob::PickShape),
+            crate::art_vocabulary::USE,
+            y,
+        );
 
         // ⭐⭐ **UM PARÂMETRO QUE O MODO NÃO USA NÃO APARECE** (Enio, 2026-08-27) — e a lei é do
         // PARÂMETRO, nunca do modo.
@@ -233,7 +237,7 @@ impl BodyCtx<'_> {
     ///
     /// ⚠️ Um pincel na mesma situação **não** ganha aviso: lá o `art` é um `Option`, e a casa já
     /// decidiu que *"um id que aponta para uma forma apagada é um pincel sem arte"* — o rótulo do
-    /// botão muda para *"Pick Shape…"* e diz o estado sozinho.
+    /// botão volta a `art_vocabulary::PICK` e diz o estado sozinho.
     ///
     /// ⛔⛔ **E a nota que estava aqui dizia que a estampa não podia ter essa saída, *"porque o
     /// `PatternSource` não tem variante vazia"*.** Ela deixou de ser verdade em 2026-08-30: a

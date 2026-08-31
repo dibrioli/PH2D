@@ -293,9 +293,16 @@ fn ui_snapshot_round_trips_style() {
     assert_eq!(s.stroke_width_px, t.stroke_width_px());
     assert_eq!(s.mode, DrawMode::Shape, "escolher a forma arma o desenho");
     assert_eq!(s.shape, ShapeKind::Polygon);
+    // ⛔⛔ **O `s.values` MORREU, e este assert era o ÚNICO leitor dele** (2026-08-31). O campo
+    // existia no `VectorStyleSnapshot` com um doc-comment a prometer que *"o painel pinta os campos
+    // a partir disto"* — e o painel lê-os do `WidgetStore`, semeado pela shell. *Um gate que afirma
+    // o round-trip de um campo que nenhum produto consome não protege nada: ele DEFENDE a
+    // decoração*, e é o que faz a próxima pessoa mantê-la em sincronia com a fonte de verdade.
+    // ⇒ A afirmação mudou-se para onde o valor de facto viaja: o `draw_config`, que é o que o GESTO
+    // cozinha — e ali ela morde, porque o kind é o EFECTIVO do modo, não o botão aceso.
     assert!(
-        (s.values[0] - 7.0).abs() < 1e-9,
-        "o snapshot leva os valores"
+        (t.draw_config().values[0] - 7.0).abs() < 1e-9,
+        "o valor autorado tem de chegar ao que o GESTO cozinha"
     );
 }
 

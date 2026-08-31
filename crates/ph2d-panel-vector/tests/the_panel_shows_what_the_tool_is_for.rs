@@ -295,3 +295,67 @@ fn the_blend_and_morph_survive_an_empty_selection_because_picks_are_a_second_sel
     assert!(painted(&hero, ids::VECTOR_SECTION_BLEND));
     assert!(painted(&hero, ids::VECTOR_SECTION_MORPH));
 }
+
+/// ⭐⭐ **OS TRÊS BOTÕES DE ARTE FALAM UMA PALAVRA SÓ, e ela não é "Shape".**
+///
+/// Os dois modelos aceitam **um grupo** desde 2026-08-30 (`20881b0b0` na estampa, `59a80bd6e` no
+/// pincel) e os rótulos continuaram a dizer *"Shape"* — prometendo **menos** do que a porta aceita.
+/// ⚠️ Esse defeito **não dá erro**: ele apaga a feature para quem lê o botão.
+///
+/// ⛔ E eram três literais em dois ficheiros para **um** gesto (clicar numa forma do documento) —
+/// dois nomes para um gesto são dois conceitos aos olhos de quem aprende. A porta é
+/// `art_vocabulary`.
+#[test]
+fn the_art_pickers_speak_one_word() {
+    // ⚠️⚠️ **DESCASCAR OS COMENTÁRIOS É OBRIGATÓRIO, e a 1.ª redacção deste gate não o fazia** — ele
+    // reprovou sobre produto CORRECTO, acusando um doc-comment que **documentava a cura** (*"o
+    // rótulo do botão muda para «Pick Shape…»"*). *Um gate textual que não descasca comentários
+    // proíbe que a cura seja explicada.*
+    let so_codigo = |fonte: &str| -> String {
+        fonte
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("//"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    for (ficheiro, bruto) in [
+        ("paint_brush.rs", include_str!("../src/paint_brush.rs")),
+        (
+            "paint_texture_pattern.rs",
+            include_str!("../src/paint_texture_pattern.rs"),
+        ),
+    ] {
+        let fonte = so_codigo(bruto);
+        // ⚠️ Só o LITERAL de rótulo, não a palavra: os doc-comments destes ficheiros falam de
+        // formas o tempo todo, com razão. O que se proíbe é um botão novo a nascer com nome próprio.
+        for proibido in [
+            "\"Pick Shape",
+            "\"Change Shape",
+            "\"Use Shape",
+            "\"Pick Art",
+            "\"Use Art",
+        ] {
+            assert!(
+                !fonte.contains(proibido),
+                "{ficheiro} escreve o rotulo {proibido}…\" a' mao — ele tem de vir do \
+                 `art_vocabulary`, senao os dois paineis divergem no primeiro ajuste"
+            );
+        }
+        assert!(
+            fonte.contains("crate::art_vocabulary::"),
+            "{ficheiro} deixou de consultar a porta do vocabulario"
+        );
+    }
+    // A fixtura contém o fenômeno: a porta de facto NÃO diz "Shape".
+    let porta = include_str!("../src/art_vocabulary.rs");
+    for label in ["PICK", "CHANGE", "USE"] {
+        let i = porta
+            .find(&format!("const {label}: &str = \""))
+            .unwrap_or_else(|| panic!("a porta perdeu o rotulo {label}"));
+        let valor = &porta[i..porta[i..].find('\n').unwrap() + i];
+        assert!(
+            !valor.contains("Shape"),
+            "o rotulo {label} voltou a prometer uma forma sozinha: {valor}"
+        );
+    }
+}

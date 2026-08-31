@@ -56,9 +56,9 @@ impl BodyCtx<'_> {
         y = self.action_button(
             ids::VECTOR_BRUSH_PICK_SHAPE,
             if b.has_art {
-                "Change Shape..."
+                crate::art_vocabulary::CHANGE
             } else {
-                "Pick Shape..."
+                crate::art_vocabulary::PICK
             },
             y,
         );

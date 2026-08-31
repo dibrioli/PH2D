@@ -2,7 +2,7 @@
 //! teto de 700 LOC, e o corte é por responsabilidade: aqui mora o que a tool **PUBLICA** para o
 //! painel pintar; no irmão, o que ela guarda e as conversões de unidade dos knobs.
 
-use ph2d_vec_scene::{Marker, ShapeKind, ShapeValues, StrokeAlign};
+use ph2d_vec_scene::{Marker, ShapeKind, StrokeAlign};
 
 use super::params::*;
 
@@ -28,10 +28,20 @@ pub struct VectorStyleSnapshot {
     /// **A forma PEGAJOSA do marquee** (`Box | Lasso`) — o painel pinta os dois chips a partir
     /// disto. A tool é a dona; o Ctrl do gesto compõe com ela na shell.
     pub marquee: MarqueeShape,
-    /// A forma ATIVA do catálogo + os parâmetros dela (unidade de UI) — o painel pinta o
-    /// seletor e os campos a partir disto, sem saber que formas existem.
+    /// A forma ATIVA do catálogo — o painel pinta o seletor a partir disto, sem saber que formas
+    /// existem.
+    ///
+    /// ⛔⛔ **E os VALORES dela NÃO viajam aqui.** Havia um `values: ShapeValues` ao lado, e este
+    /// doc-comment prometia que *"o painel pinta os campos a partir disto"* — **falso**: os campos
+    /// saem do `WidgetStore`, semeados pela shell (`vec_shape_params::seed_shape_fields`). Medido em
+    /// 2026-08-31: **zero leitores no produto**, e o único que existia era um **gate** a afirmar o
+    /// round-trip dele. *Uma declaração com um default é decoração até alguém a ler* — e um teste
+    /// que afirma o round-trip de um campo que nenhum produto consome não protege nada: ele DEFENDE
+    /// a decoração, e é o que faz a próxima pessoa mantê-la em sincronia com a fonte de verdade.
+    ///
+    /// ⚠️ ⛔ **Não confundir com o `VectorDrawConfig::values`**, que é vivo e é o que o GESTO cozinha
+    /// — aquele sai do kind EFECTIVO do modo (`DrawMode::shape_kind`), não do botão aceso.
     pub shape: ShapeKind,
-    pub values: ShapeValues,
     pub cap: StrokeCap,
     pub join: StrokeJoin,
     /// Dash as a multiple of stroke width (`0` = solid).
@@ -86,7 +96,6 @@ impl Default for VectorStyleSnapshot {
             symmetry: ph2d_symmetry::SymmetryStyle::default(),
             marquee: MarqueeShape::default(),
             shape: ShapeKind::Rectangle,
-            values: ShapeKind::Rectangle.defaults(),
             cap: StrokeCap::Butt,
             align: StrokeAlign::Centre,
             join: StrokeJoin::Miter,

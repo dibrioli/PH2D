@@ -25,6 +25,10 @@
 #![forbid(unsafe_code)]
 
 /// Os mapas track↔valor do **Contour** — porta única de cada um (ver o módulo).
+/// ⭐⭐ **O nome do que um pincel percorre e do que uma estampa revela** — a porta única dos três
+/// rótulos que escolhem a arte (report implícito: eles diziam *"Shape"* sobre uma porta que aceita
+/// um GRUPO desde 2026-08-30).
+mod art_vocabulary;
 mod contour_params;
 /// Os três inversos, para a shell reescrever os controles quando a forma espelhada muda.
 ///

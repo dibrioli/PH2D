@@ -84,31 +84,55 @@ de limpeza levou junto).
 10. ⭐ **Uma suíte verde não diz que nada se perdeu** — diz que nada *do que ela corre* se perdeu
     (`aaa082f1e`: nove ficheiros apagados, suíte verde, porque eram `#[ignore]`/medição).
 11. ⛔ **Um cabeçalho que promete um corpo que não existe é pior que uma seção ausente** (Effects).
+12. ⭐⭐ **Um rótulo que promete MENOS do que a porta aceita não dá erro — ele APAGA a feature para
+    quem o lê.** Três botões diziam *"Shape"* sobre portas que aceitam um grupo desde 30/08.
+13. ⛔⛔ **Um item «ABERTO» herdado de um commit sem verificação manda a próxima pessoa reconstruir
+    trabalho pago** — e ela não tem como saber. Ver §3: quatro dos seis já estavam curados, e a
+    primeira redacção desta secção copiou-os do sítio onde eram verdade *naquele dia*.
+14. ⛔⛔ **Um teste que afirma o round-trip de um campo que nenhum produto consome DEFENDE a
+    decoração** — foi o único leitor de `VectorStyleSnapshot::values`, e fez o campo parecer vivo.
+15. ⚠️ **Um gate TEXTUAL que não descasca comentários proíbe que a cura seja explicada** — o
+    `the_art_pickers_speak_one_word` reprovou sobre produto correcto, acusando o doc-comment que
+    documentava a própria cura.
 
-## §3 — ⏳ ABERTO (auditado contra o código em 31/08 — ⛔ não o copie dos commits)
+## §3 — ⏳ ABERTO (auditado contra o CÓDIGO em 31/08)
 
-- **A rota do desenho com esticão** — ✅ **FECHADA** por `0e688e316` (`PatternFrame`: a colocação
-  calcula-se na forma des-esticada e volta pela parte conforme). O bloco *"ABERTO e nomeado"* de
-  `a14b6a0cb` **já não descreve o código**.
-- ⏳ **`resolve` do pincel é `O(P × G)` por quadro, sem memo** (`render_loop`): o `cooked()` corre G
-  vezes por pincel por quadro. ⛔ **Sem relógio** — a acusação é a complexidade com endereço, não uma
-  medição. O `fx_live` foi ao contrário e ganhou.
-- ⏳ **Um membro de grupo SEM geometria emite caminhos vazios** ao renderer. Latente.
-- ⏳ **Sem gate:** tracejado, quinas, `rotation_deg`, `flip` e opacidade **com grupo** — os quatro
-  foram MEDIDOS pela auditoria e estão CERTOS; falta o gate.
-- ⏳ **O botão diz "Pick Shape…", no singular**, sobre uma feature que aceita um grupo — produto.
-- ⏳ **Um padrão cuja arte é uma FORMA nasce com `size` quadrado** (a proporção do grupo é medida; a
-  da forma solta não).
+⛔⛔ **A 1.ª redacção desta secção listava SEIS itens e QUATRO já estavam curados.** Eu copiei-os dos
+blocos *"Aberto"* das mensagens de commit — que estavam certos **no dia em que foram escritos** — e o
+documento avisa, três linhas acima, para não fazer isso. *Um item «aberto» herdado sem verificação
+manda a próxima pessoa reconstruir trabalho pago, e ela não tem como saber.* Ficam registados os
+quatro, com quem os fechou, porque **um falso aberto é mais caro que um aberto**:
+
+| dizia | quem fechou |
+|---|---|
+| `resolve` do pincel é `O(P × G)` **sem memo** | `60a137395` — memo com chave `(conteúdo, pose)`; paga-se **881–1484×**, com a tabela em [`brush_live.rs`](shells/desktop/src/brush_live.rs) |
+| um membro **sem geometria** emite caminhos vazios | `671fef2cc` — a guarda vive no EMISSOR (`pattern_path.rs`), porque *uma cópia de nada é nada* nos dois consumidores |
+| **sem gate:** tracejado · quinas · `rotation_deg` · `flip` · opacidade **com grupo** | `59a80bd6e` — `a_group_survives_dashes_corners_rotation_flip_and_opacity_as_one_unit` |
+| um padrão cuja arte é uma **FORMA** nasce com `size` quadrado | `010a128c0` — `art_dims` responde pelas DUAS espécies e é a porta única |
+
+⭐ E os DOIS que sobravam foram curados nesta sessão:
+
+- ✅ **O botão dizia *"Pick Shape…"* sobre uma porta que aceita um GRUPO.** Eram **três** literais em
+  **dois** ficheiros para **um** gesto. Hoje é [`art_vocabulary.rs`](crates/ph2d-panel-vector/src/art_vocabulary.rs)
+  (*Pick / Change / Use **Art**…*), com gate. ⚠️ **Um rótulo que promete MENOS do que a porta aceita
+  não dá erro — ele apaga a feature para quem o lê.**
+- ✅ **`VectorStyleSnapshot::values` não tinha leitor no PRODUTO** e o doc-comment ao lado prometia
+  que *"o painel pinta os campos a partir disto"* (os campos saem do `WidgetStore`). Removido.
+  ⚠️⚠️ **O único leitor era um GATE**, a afirmar o round-trip dele — *um teste que afirma o
+  round-trip de um campo que nenhum produto consome não protege nada: ele DEFENDE a decoração.*
+  A afirmação mudou-se para o `VectorDrawConfig::values`, que é vivo e é o que o GESTO cozinha, e
+  ali ela morde (o kind é o EFECTIVO do modo, não o botão aceso).
+
+### O que fica genuinamente ABERTO
+
 - ⏳ **As rotas que desenham SEM arte de pincel** (instância do Motion, blend overlay, …) estão
-  **censadas e não curadas** (`0e688e316`): a arte é endereçada pela forma hospedeira, e aquelas rotas
-  não têm hospedeira. Curar é **mudança de modelo**, com uma pergunta de produto dentro. O gate
-  `the_artless_draw_routes_are_declared` impede a lista de crescer em silêncio **e** de ficar depois
-  de curada.
-- ⏳ **`VectorStyleSnapshot::values` não tem UM leitor** em todo o workspace (medido 31/08) — o painel
-  lê os valores do `WidgetStore`. Decoração, não fonte.
-- ⏳ **`vec_blend_picks` é uma segunda seleção INVISÍVEL** (`blend_pick_at` nunca toca o `PenTool`).
-  ⛔ É a razão de *Blend* e *Morph* ficarem de fora do `Scope::WhenSelected`, e qualquer regra futura
-  sobre "a seleção" tem de a nomear.
+  **censadas e não curadas** (`0e688e316`, gate `the_artless_draw_routes_are_declared`): a arte é
+  endereçada pela forma HOSPEDEIRA, e aquelas rotas não têm hospedeira. ⛔ Curar é **mudança de
+  modelo** (a arte viaja com a geometria), **com uma pergunta de produto dentro** — é do dono.
+  O gate impede a lista de crescer em silêncio **e** de ficar depois de curada.
+- ⚠️ **`vec_blend_picks` é uma segunda seleção INVISÍVEL** (`blend_pick_at` nunca toca o `PenTool`).
+  Não é defeito — é a razão de *Blend* e *Morph* ficarem de fora do `Scope::WhenSelected`, e qualquer
+  regra futura sobre *"a seleção"* tem de a nomear.
 
 ## §4 — O que uma leitura rápida do diff entende ao contrário
 

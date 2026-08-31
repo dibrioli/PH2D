@@ -510,7 +510,6 @@ impl VectorTool {
             symmetry: self.symmetry,
             marquee: self.marquee,
             shape: self.shape,
-            values: self.shape_values(self.shape),
             cap: self.cap,
             join: self.join,
             align: self.align,

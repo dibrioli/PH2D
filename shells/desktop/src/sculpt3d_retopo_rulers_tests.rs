@@ -15,7 +15,7 @@ use ph2d_mesh::{Face, Mesh};
 
 /// Um cubo fechado de quads, deslocado em `x` — `12` arestas, cada uma com exactamente
 /// duas faces.
-fn cubo(dx: f32) -> (Vec<[f32; 3]>, Vec<[u32; 4]>) {
+pub(super) fn cubo(dx: f32) -> (Vec<[f32; 3]>, Vec<[u32; 4]>) {
     let v = vec![
         [dx, 0.0, 0.0],
         [dx + 1.0, 0.0, 0.0],
@@ -384,7 +384,7 @@ fn a_recusa_do_estilhaco_diz_a_contagem_e_manda_desfazer() {
 /// controlo *«a topologia fica intacta»* reprovava `0` contra `4`. Solto, as duas versões têm as
 /// mesmas `4` arestas de bordo e a mesma peça única — *a única coisa que muda é a face cruzar-se
 /// a si própria*, que é exactamente o que este gate quer isolar.
-fn um_quad(gravata: bool) -> Mesh {
+pub(super) fn um_quad(gravata: bool) -> Mesh {
     let verts = vec![
         [0.0, 0.0, 0.0],
         [1.0, 0.0, 0.0],

@@ -99,7 +99,122 @@ pub(super) fn worse(
     if a_over60 != b_over60 {
         return a_over60 > b_over60;
     }
+    // ⭐⭐⭐ **A DENSIDADE DA PONTA — a chave que faltava, e a medição que a exige.**
+    //
+    // ⛔⛔⛔ **A cura do report de 28-29/08 já estava a ser produzida e era DEITADA FORA
+    // aqui.** Medido em 2026-08-30 (`sculpt_antes.obj`, `Detail 0,85`), as candidatas do
+    // caminho de omissão, **sem knob nenhum**:
+    //
+    // | candidata | quads | bordo | `>60°` | **`ENTREGA`** |
+    // |---|---|---|---|---|
+    // | campo liso | `9 484` | `28` | `2` | `1,585` |
+    // | ⛔ campo alinhado (**a escolhida**) | `9 414` | `4` | `2` | `1,502` |
+    // | ⭐ **campo com linhas de feição** | `9 121` | `4` | `2` | ⭐ **`0,851`** |
+    //
+    // ⭐⭐⭐ **A terceira EMPATA em furos, peças, gravatas e faces `>60°`** — ela perdia
+    // **só** no enviesamento mediano, que era a última chave. *O eixo de que o dono se
+    // queixou três vezes não estava na função que escolhe*, e o desempate era feito por uma
+    // grandeza que ele não vê.
+    //
+    // ⚠️ **O lugar é DEPOIS de `>60°` e ANTES do enviesamento**, e isso é uma decisão: uma
+    // face com canto pior que `60°` é um defeito local visível, uma ponta grosseira é um
+    // defeito de **cobertura** (o dono fotografou-a), e a mediana do enviesamento é a única
+    // das três que ele nunca nomeou.
+    //
+    // ⛔ **Nunca à frente dos FUROS.** Com `Follow Curvature` ligado, a candidata de feições
+    // chega a `0,543` — o alvo é `0,59` — mas traz `6` arestas de bordo contra `4`. *Buracos
+    // foram a queixa dele três vezes; esta chave não os compra.*
+    //
+    // ⚠️ **Menor é melhor, e sem banda** — pela mesma razão que a chave seguinte (o
+    // enviesamento) não tem: inventar um limiar aqui seria escolher um número sem o medir.
+    // ⛔ **A amostra vazia NÃO decide** (`0,0` de «não medido» lê-se como o melhor resultado
+    // possível — é a armadilha que o doc do [`ph2d_quadfill::tip_body_ratio`] nomeia).
+    //
+    // ⚠️ `PH2D_RETOPO_TIPKEY=0` desliga a chave, para bissectar.
+    if tip_key_on() {
+        let ((a_tip, a_n), (b_tip, b_n)) = (tip_ratio(a_mesh), tip_ratio(b_mesh));
+        if a_n > 0 && b_n > 0 && a_tip.total_cmp(&b_tip) != core::cmp::Ordering::Equal {
+            return a_tip > b_tip;
+        }
+    }
     a_skew.total_cmp(&b_skew) == core::cmp::Ordering::Greater
+}
+
+/// ⚠️ **A chave da ponta está ligada?** — `PH2D_RETOPO_TIPKEY=0` desliga.
+///
+/// ⭐ **Ela nasce LIGADA**, ao contrário do costume desta linha, e a razão é medida: ela não
+/// acrescenta um caminho novo — ela **escolhe entre candidatas que a cadeia já produzia**, e
+/// a que ela passa a escolher empata em toda chave de topologia com a que ganhava antes.
+/// *O que se liga aqui é uma decisão, não um algoritmo.*
+fn tip_key_on() -> bool {
+    std::env::var("PH2D_RETOPO_TIPKEY").as_deref() != Ok("0")
+}
+
+/// ⭐⭐⭐ **CADA CANDIDATA DIZ O QUE É** — e ela mora aqui, com o [`worse`], de propósito.
+///
+/// ⛔⛔ **Ela existe por uma medição de 2026-08-30.** Com `Follow Curvature` a `1` a saída da
+/// peça do artista é **byte-idêntica** à de `0` (mesmos `9 414` quads, mesmas medianas por
+/// casca, mesmas dobras) — porque a guarda `uniforme` da porta recorre e o [`worse`] escolhe a
+/// corrida sem campo. ⚠️ **E não havia como o saber:** nada registava as candidatas, então um
+/// knob **descartado** e um knob **fraco** liam-se exactamente igual.
+///
+/// ⚠️ **A `ENTREGA` sai da MESMA porta que o [`worse`] consulta** ([`tip_ratio`]): um registo
+/// que medisse a grandeza de outra maneira imprimiria um número que não explica a escolha.
+pub(super) fn log_candidate(
+    w: f32,
+    features: bool,
+    adaptive: f32,
+    out: &Mesh,
+    shape: &ph2d_quadfill::QuadShape,
+    round: &ph2d_gridmap::RoundReport,
+    cut_rep: &ph2d_gridmap::CutReport,
+) {
+    let (ratio, amostra) = tip_ratio(out);
+    eprintln!(
+        "[sculpt3d] candidata w={w:.3} feicoes={features} adapt={adaptive:.2}: {} quads | \
+         bordo {} | costuras soltas {} | locais trocados {} | lados a discordar {} | >60 {} | \
+         envies p50 {:.2} p99 {:.1} | aspecto p50 {:.2} | ENTREGA {ratio:.3} (ponta {amostra})",
+        out.face_count(),
+        boundary_edges(out),
+        round.solve.loose_seams,
+        round.solve.mismatched_locals,
+        cut_rep.side_patch_flips,
+        shape.skew_over_60,
+        shape.skew_p50,
+        shape.skew_p99,
+        shape.aspect_p50,
+    );
+}
+
+/// ⭐ **A RAZÃO PONTA/CORPO desta malha** — a mesma porta que as sondas usam
+/// ([`ph2d_quadfill::tip_body_ratio`]), com a contagem da amostra ao lado.
+///
+/// ⚠️ **Pela porta partilhada e não recalculada aqui:** duas leis para a mesma grandeza dão
+/// dois números que ninguém pode comparar, e é o defeito que esta linha já pagou três vezes.
+pub(super) fn tip_ratio(mesh: &Mesh) -> (f32, usize) {
+    let pos = mesh.positions();
+    let mut cent: Vec<[f32; 3]> = Vec::with_capacity(mesh.face_count());
+    let mut raiz: Vec<f32> = Vec::with_capacity(mesh.face_count());
+    for f in mesh.faces() {
+        let v = f.verts();
+        let mut c = [0.0f32; 3];
+        let mut s = [0.0f32; 3];
+        for k in 0..v.len() {
+            let a = pos[v[k] as usize];
+            let b = pos[v[(k + 1) % v.len()] as usize];
+            for j in 0..3 {
+                c[j] += a[j];
+            }
+            s[0] += a[1].mul_add(b[2], -(a[2] * b[1]));
+            s[1] += a[2].mul_add(b[0], -(a[0] * b[2]));
+            s[2] += a[0].mul_add(b[1], -(a[1] * b[0]));
+        }
+        #[allow(clippy::cast_precision_loss)]
+        let n = v.len() as f32;
+        cent.push([c[0] / n, c[1] / n, c[2] / n]);
+        raiz.push((0.5 * s[0].mul_add(s[0], s[1].mul_add(s[1], s[2] * s[2])).sqrt()).sqrt());
+    }
+    ph2d_quadfill::tip_body_ratio(&cent, &raiz)
 }
 
 /// ⭐⭐⭐ **EM QUANTAS PEÇAS a malha é** — componentes ligados por **ARESTA**.
@@ -271,3 +386,10 @@ pub(super) fn span(mesh: &Mesh) -> f32 {
 #[cfg(test)]
 #[path = "sculpt3d_retopo_rulers_tests.rs"]
 mod tests;
+
+/// ⭐⭐⭐ **OS GATES DA CHAVE DA PONTA** — irmão do [`tests`] pelo teto de LOC da shell
+/// (HR-18, 600), cortado por RESPONSABILIDADE: aquele defende as chaves de **defeito**
+/// (furos · peças · gravatas), este a chave de **cobertura** e a fronteira entre as duas.
+#[cfg(test)]
+#[path = "sculpt3d_retopo_tip_tests.rs"]
+mod tip_tests;

@@ -55,3 +55,27 @@ fn the_union_is_the_union() {
     assert_eq!(SlotSet::LEFT.union(SlotSet::RIGHT), SlotSet::SIDES);
     assert_eq!(SlotSet::NONE.union(SlotSet::BOTTOM), SlotSet::BOTTOM);
 }
+
+/// ⭐ **A ida-e-volta do nome de ficheiro, e a unicidade.**
+///
+/// ⚠️ Uma lei em dois sentidos escrita como duas tabelas divergiria em silêncio: o `from_wire` é
+/// DERIVADO do `wire`, e este gate é o que impede alguém de os separar «para ficar mais rápido».
+#[test]
+fn every_slot_survives_a_round_trip_through_its_wire_name() {
+    let mut seen = std::collections::BTreeSet::new();
+    for s in Slot::ALL {
+        assert_eq!(Slot::from_wire(s.wire()), Some(s), "{s:?} não voltou");
+        assert!(
+            seen.insert(s.wire()),
+            "dois encaixes partilham o nome {:?} — a arrumação gravada leria o errado",
+            s.wire()
+        );
+        assert!(
+            s.wire().chars().all(|c| c.is_ascii_lowercase() || c == '_'),
+            "{s:?} tem um nome de ficheiro que não é snake_case ASCII: {:?}",
+            s.wire()
+        );
+    }
+    assert_eq!(Slot::from_wire("um_encaixe_de_2030"), None);
+    assert_eq!(Slot::from_wire(""), None);
+}

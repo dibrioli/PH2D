@@ -54,6 +54,31 @@ impl Slot {
         Self::Center,
     ];
 
+    /// ⭐ **O nome com que este encaixe viaja para fora do processo** — o ficheiro de arrumação
+    /// (`~/.ph2d/layout.txt`), e mais nada.
+    ///
+    /// ⚠️ **`snake_case` e não o `Debug`**: o `Debug` é para humanos a ler um erro e muda quando
+    /// alguém renomeia a variante para ficar mais bonita — e nesse dia toda arrumação já gravada
+    /// deixaria de ser lida, em silêncio, caindo no default.
+    #[must_use]
+    pub const fn wire(self) -> &'static str {
+        match self {
+            Self::LeftTop => "left_top",
+            Self::LeftBottom => "left_bottom",
+            Self::RightTop => "right_top",
+            Self::RightBottom => "right_bottom",
+            Self::Bottom => "bottom",
+            Self::Center => "center",
+        }
+    }
+
+    /// A volta de [`Self::wire`]. `None` para o que não se reconhece — **um nome de um build mais
+    /// novo cai no default do painel**, que é o comportamento certo para uma preferência.
+    #[must_use]
+    pub fn from_wire(s: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|v| v.wire() == s)
+    }
+
     /// O bit deste encaixe num [`SlotSet`].
     #[must_use]
     pub const fn bit(self) -> u8 {

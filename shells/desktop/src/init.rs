@@ -402,6 +402,11 @@ pub(crate) fn build_initial_state(
         hero.motion.set_character(prefs.character);
         hero.motion.set_reduced_motion(prefs.reduced_motion);
         hero.ui_sound = prefs.ui_sound;
+        // ⭐⭐ **A ARRUMAÇÃO do artista** (`~/.ph2d/layout.txt`, decisão D4): que painel está em
+        // que encaixe e a largura das colunas. ⚠️ Antes do primeiro quadro, pela mesma razão das
+        // preferências — instalar depois faria o primeiro quadro desenhar a arrumação de omissão e
+        // saltar para a do artista no seguinte.
+        crate::layout_persist::install(&mut hero, &crate::layout_persist::load());
         Some(hero)
     } else {
         None

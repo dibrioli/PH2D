@@ -57,7 +57,24 @@ pub(super) fn prefs_if_changed(hero: &ph2d_editor::HeroScreen) {
     }
 }
 
+/// Persiste a ARRUMAÇÃO (`~/.ph2d/layout.txt`) quando — e só quando — ela muda.
+///
+/// ⚠️ **Terceiro inquilino com a MESMA forma** que os dois acima: o facto tem um dono vivo (o
+/// `WidgetStore`), o ficheiro é uma **projecção** dele, a mudança é **detectada** e a escrita é
+/// best-effort. É isso que faz o gesto de arrastar uma aba nascer coberto sem emitir intent nenhum.
+pub(super) fn layout_if_changed(hero: &ph2d_editor::HeroScreen) {
+    let now = crate::layout_persist::current(hero);
+    let h = crate::layout_persist::hash(&now);
+    let previous = LAST_LAYOUT_HASH.with(|c| c.replace(Some(h)));
+    if crate::layout_persist::should_save(previous, h) {
+        crate::layout_persist::save(&now);
+    }
+}
+
 thread_local! {
+    /// Último hash da arrumação observada. `None` = ainda não observada nesta sessão.
+    static LAST_LAYOUT_HASH: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
+
     /// Last-saved FNV hash of the named-palette set, so [`palettes_if_changed`] writes only on
     /// a real change instead of every pointer event.
     static LAST_PALETTE_HASH: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };

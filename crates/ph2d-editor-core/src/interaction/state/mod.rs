@@ -29,6 +29,7 @@ mod radial_ops;
 pub use kinds::{InteractiveState, NamedPalette};
 
 mod asset_drag_ops;
+mod dock_width_ops;
 mod graph_ops;
 mod number_scrub;
 mod panel_ops;

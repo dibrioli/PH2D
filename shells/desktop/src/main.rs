@@ -344,6 +344,7 @@ mod ktx2_smoke;
 mod label_live;
 mod lasso_smoke;
 mod layout_live;
+mod layout_persist;
 mod layout_reorder;
 /// `layout_scroll_gesture`: a roda que rola uma moldura (o motor e' o `layout_live::scroll`).
 mod layout_scroll_gesture;

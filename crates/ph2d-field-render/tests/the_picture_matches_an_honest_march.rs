@@ -164,6 +164,49 @@ fn disagreeing_pixels_of(doc: &FieldDoc, yaws: &[f32], limite_graus: f64) -> (us
     (mal, medidos, pior)
 }
 
+/// ⭐⭐⭐ **Quantos pixels o ORÁCULO acerta e o produto deixa VAZIOS** — a outra pergunta, e a que
+/// apanhou o report de 2026-08-31.
+///
+/// ⚠️ **`disagreeing_pixels_of` é cega a isto de propósito:** ela compara NORMAIS, e para isso só
+/// olha pixels que **os dois** acertaram. Uma peça que o produto simplesmente **não desenha** não
+/// tem normal para comparar — ela some da população em vez de reprovar.
+///
+/// ⛔ O oráculo não tem caixa de recorte, e o produto tem. Quando um deformador estende a peça para
+/// além do que o bordo dela previu, é aqui que se vê: `604` pixels num corte **rectilíneo**, que é
+/// a fronteira do recorte a cortar uma cauda que ninguém sabia que existia.
+fn pixels_the_product_misses(doc: &FieldDoc, yaws: &[f32]) -> (usize, usize) {
+    let doc = doc.clone();
+    let f = Field::new(&doc);
+    let reg = Registry::new();
+    let screen = Screen::new(SIDE, SIDE, 0.85);
+    let (mut faltam, mut oraculo) = (0usize, 0usize);
+    for &a in yaws {
+        let (sy, cy) = (a * 0.5).sin_cos();
+        let cam = Orbit {
+            half_extent: 0.85,
+            rotation: [0.0, sy, 0.0, cy],
+            ..Orbit::default()
+        };
+        let g = trace_with_threads(&doc, &reg, &cam, SIDE, SIDE, true);
+        for y in 0..SIDE {
+            for x in 0..SIDE {
+                let (sx, sy2) = screen.plane_at(x as f32 + 0.5, y as f32 + 0.5);
+                let (o, d) = cam.ray_at_plane(sx, sy2);
+                let of = [f64::from(o[0]), f64::from(o[1]), f64::from(o[2])];
+                let df = [f64::from(d[0]), f64::from(d[1]), f64::from(d[2])];
+                if honest(&f, of, df).is_none() {
+                    continue;
+                }
+                oraculo += 1;
+                if !g.hit[(y * SIDE + x) as usize] {
+                    faltam += 1;
+                }
+            }
+        }
+    }
+    (faltam, oraculo)
+}
+
 /// As vistas: **a girar**, porque um campo desonesto só morde onde o raio raspa a superfície.
 fn yaws() -> Vec<f32> {
     (0..4).map(|i| 0.37 + 0.42 * i as f32).collect()
@@ -309,4 +352,84 @@ fn the_bend_draws_what_an_honest_march_draws() {
              {pior:.1}°) — a dobra passou a desenhar o que a marcha honesta não desenha"
         );
     }
+}
+
+/// ⭐⭐⭐ **A BANDA DA DOBRA, VARRIDA — e o produto desenha o que o oráculo desenha.**
+///
+/// # ⛔⛔ O parâmetro que nenhuma medição percorria
+///
+/// Todo gate deste repo — e o próprio nascimento do modificador — dá à banda uma faixa que **cobre
+/// a peça inteira** (`[−2, 2]`, `[−9, 9]`). As duas linhas que o Enio arrastou na foto de
+/// 2026-08-31 (`From` e `To`) são exactamente esse parâmetro, e fora do ponto testado o mapa
+/// **congelava**: com a banda escrita no `z` de entrada, `x` e `z` deixam de depender do eixo e o
+/// campo fica constante — a peça ganha uma cauda semi-infinita que a caixa de recorte corta por um
+/// plano.
+///
+/// ⛔⛔ **Prova de mutação (2026-08-31):** devolver a `ph2d_field_eval::stack_bend::bend` à lei
+/// anterior leva este gate de **`0`** pixels em falta para **`4 084` de `31 538`** (`13,0 %`), com
+/// `4` das `10` configurações a reprovar — até `1 868` pixels numa só. ⚠️ O irmão
+/// `a_bent_piece_never_starves_the_march` **SOBREVIVE** à mesma mutação: *a cauda não mata a marcha
+/// à fome (ela cabe no orçamento), ela é cortada pela caixa de recorte.*
+///
+/// ⚠️ **As acusadoras são as bandas ESTREITAS** (`[−0,02, 0,02]` e a degenerada), e não a da foto —
+/// e a razão é geométrica: quanto mais estreita a banda, mais matéria fica na secção congelada, e
+/// mais gorda é a cauda. A banda larga e assimétrica da foto (`[−0,187, 0,048]`) congela uma lasca,
+/// que a `72²` desta grelha dá menos de `1 %`. *Ela fica na lista na mesma — é a reprodução.*
+///
+/// ⚠️ **A barra não é zero**: meio pixel de silhueta cai de lados diferentes nas duas marchas, e
+/// isso é a peça a estar certa. Medido curado: `0`–`3` por configuração.
+#[test]
+fn the_band_of_the_bend_draws_what_an_honest_march_draws() {
+    let vistas = [0.37f32, 1.21];
+    let mut maus = Vec::new();
+    let (mut soma_falta, mut soma_oraculo) = (0usize, 0usize);
+    for (lo, up, fall) in [
+        // A banda EXACTA da foto, e as vizinhas.
+        (-0.187f32, 0.048f32, 0.072f32),
+        (-0.02, 0.02, 0.01),
+        // Inteiramente FORA da matéria — o pior caso do congelamento.
+        (0.20, 0.40, 0.05),
+        // Degenerada (largura zero) e a que COBRE a peça.
+        (0.0, 0.0, 0.0),
+        (-2.0, 2.0, 0.1),
+    ] {
+        for turns in [0.05f32, ph2d_field::mods::MAX_BEND_TURNS] {
+            let doc = doc_with_mods(
+                // ⚠️ **A chapa alta e fina do report**: a dobra age no `Z`, que aqui é a dimensão
+                // curta, então toda banda que o artista arraste cai fora da matéria.
+                Primitive::Box {
+                    half: [0.207, 0.5025, 0.036],
+                    round: 0.02,
+                    chamfer: 0.0,
+                },
+                vec![Unary::Bend {
+                    turns,
+                    lower: lo,
+                    upper: up,
+                    falloff: fall,
+                }],
+            );
+            let (faltam, oraculo) = pixels_the_product_misses(&doc, &vistas);
+            soma_falta += faltam;
+            soma_oraculo += oraculo;
+            if faltam * 100 > oraculo {
+                maus.push(format!(
+                    "{turns} voltas, banda [{lo}, {up}] fall {fall}: {faltam} de {oraculo} pixels \
+                     que o oráculo acerta saem VAZIOS"
+                ));
+            }
+        }
+    }
+    // ⛔ **O CONTROLE**: sem peça na tela o gate acima passaria por não haver pixels.
+    assert!(
+        soma_oraculo > 8_000,
+        "só {soma_oraculo} pixels de peça em 10 configurações — a chapa não está a ser desenhada"
+    );
+    assert!(
+        maus.is_empty(),
+        "{} configuração(ões) de banda desenham menos peça que a marcha honesta (total {soma_falta} \
+         de {soma_oraculo}) — a peça está a ser cortada pela caixa de recorte: {}",
+        maus.len(),
+        maus.join(" · ")
+    );
 }

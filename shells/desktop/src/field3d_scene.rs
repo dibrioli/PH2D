@@ -429,7 +429,7 @@ pub(crate) fn sync_scene_and_birth(
         world,
         root,
         selection,
-        panel::latched_span(selection.first().copied()),
+        span::latched_span(selection.first().copied()),
         last_trace_ms,
     );
     // ⚠️ Uma peça inválida (um raio que deixou de caber porque a escala do pai mudou) devolve
@@ -496,6 +496,10 @@ mod intents;
 
 #[path = "field3d_scene_panel.rs"]
 mod panel;
+
+/// **Até onde cada controlo vai** vive no irmão [`field3d_scene_span`](self::span).
+#[path = "field3d_scene_span.rs"]
+mod span;
 
 /// ⭐⭐⭐ **O VERBO por forma** — a fileira do painel e o selo da Hierarquia — vive no irmão. Ver
 /// [`field3d_scene_verb`](self::verb).

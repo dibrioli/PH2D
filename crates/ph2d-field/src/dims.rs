@@ -134,6 +134,27 @@ pub enum Span {
     /// Simétrica e sem parede nenhuma: uma **posição**. As duas pontas são o alcance da vista, e a
     /// de baixo é negativa — a origem não é um canto do mundo.
     Free,
+    /// ⭐⭐⭐ **Uma posição AO LONGO DO EIXO DE UM DEFORMADOR** — a banda de uma torção ou de uma
+    /// dobra. Simétrica como a [`Span::Free`], e **muito mais apertada**: o alcance útil dela nunca
+    /// sai da peça, porque fora da peça a banda não tem matéria em que agir.
+    ///
+    /// # ⛔⛔ O report que a obrigou (Enio, 2026-08-31)
+    ///
+    /// *«resultados bizarros, veja um cubo fino e alto com Bend»*, com as setas em `From` e `To`.
+    /// Aquela chapa tem `0,072` de espessura no eixo da dobra e a peça inteira dá um alcance de
+    /// gesto de `4` — ⇒ a banda vivia em **`0,9 %` do curso do slider**, menos de um pixel numa
+    /// barra de 100. *Um controlo cujo intervalo útil não chega a um pixel não oferece o que o
+    /// gesto faz*, que é a lei que este módulo já tinha escrita.
+    ///
+    /// ⚠️ **`Free` fica como está, e a distinção é o que ela protege:** a posição de um objeto quer
+    /// alcance PARA ALÉM da peça (afastar uma coisa da origem é um gesto legítimo); a borda de uma
+    /// banda, não — além da peça ela é um no-op.
+    ///
+    /// ⏳ **O que ainda falta, dito com número:** o alcance certo é a extensão da peça **naquele
+    /// eixo**, e o app só sabe calcular o **raio** dela. O raio majora a meia-extensão de qualquer
+    /// eixo, então esta faixa é honesta e cobre sempre a peça — mas naquela chapa ela sobra `15×`.
+    /// Fechar isso pede uma caixa alinhada aos eixos, que hoje não existe em `ph2d-field-eval`.
+    Along,
     /// **Periódica**: um ângulo. As pontas são `±half` e são a própria **representação** — nem o
     /// documento nem a vista têm voto, e um número além delas não é recusado, é renomeado.
     Turn(f32),

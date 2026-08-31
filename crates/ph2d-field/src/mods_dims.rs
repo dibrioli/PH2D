@@ -151,12 +151,12 @@ impl Unary {
                 crate::Dim {
                     key: "field.mod.from",
                     value: lower,
-                    span: Span::Free,
+                    span: Span::Along,
                 },
                 crate::Dim {
                     key: "field.mod.to",
                     value: upper,
-                    span: Span::Free,
+                    span: Span::Along,
                 },
                 // ⚠️ **`FromZero` e não `Positive`**: o zero é uma resposta (o corte duro), e não
                 // uma recusa — é a mesma cerca que o cone fechado já usa.
@@ -181,12 +181,12 @@ impl Unary {
                 crate::Dim {
                     key: "field.mod.from",
                     value: lower,
-                    span: Span::Free,
+                    span: Span::Along,
                 },
                 crate::Dim {
                     key: "field.mod.to",
                     value: upper,
-                    span: Span::Free,
+                    span: Span::Along,
                 },
                 crate::Dim {
                     key: "field.mod.falloff",

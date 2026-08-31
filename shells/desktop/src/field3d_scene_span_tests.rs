@@ -28,7 +28,7 @@ fn the_panel_span_never_reads_the_camera() {
     let chamada = &fonte[i..fonte[i..].find(");").map_or(fonte.len(), |j| i + j)];
     assert!(
         chamada.contains("latched_span"),
-        "o alcance dos sliders tem de vir da PEÇA e vir TRAVADO (`panel::latched_span`): {chamada}"
+        "o alcance dos sliders tem de vir da PEÇA e vir TRAVADO (`span::latched_span`): {chamada}"
     );
     assert!(
         !chamada.contains("cam"),
@@ -43,7 +43,7 @@ fn the_panel_span_never_reads_the_camera() {
 /// uma, o alcance é uma constante.
 #[test]
 fn the_gesture_span_holds_still_inside_an_octave() {
-    use crate::field3d_scene::panel::gesture_span;
+    use crate::field3d_scene::span::gesture_span;
     // ⚠️ **Uma oitava de verdade**: com `4×` de folga, os raios cujo alvo cai em `(1, 2]` são
     // `(0,25 · 0,5]` — e a 1.ª versão deste gate metia `0,55` no meio deles, que já é a oitava
     // seguinte. *A fixtura é que estava errada, e o gate acusou-a antes do código.*
@@ -91,7 +91,7 @@ fn the_gesture_span_holds_still_inside_an_octave() {
 /// por um salto discreto é pior* — com a câmera, o alcance ao menos era constante durante o gesto.
 #[test]
 fn the_span_holds_while_the_hand_is_on_the_control() {
-    use crate::field3d_scene::panel::{gesture_span, latched_span_for};
+    use crate::field3d_scene::span::{gesture_span, latched_span_for};
     // Uma seleção qualquer, e uma peça que CRESCE muito durante o arrasto.
     let alvo = 7_u64;
     let inicial = latched_span_for(alvo, 0.30);
@@ -140,7 +140,8 @@ fn the_span_holds_while_the_hand_is_on_the_control() {
 /// fechada** (valor → peça → alcance → valor) a mostra.
 #[test]
 fn the_value_is_a_fixed_point_when_the_hand_does_not_move() {
-    use crate::field3d_scene::panel::{latched_span_for, param_rows};
+    use crate::field3d_scene::panel::param_rows;
+    use crate::field3d_scene::span::latched_span_for;
     let _ = ph2d_panel_model3d::drain_intents();
     let mut sim = a_world();
     sync_scene(&mut sim, Some(&scene(1)), 0.0);
@@ -188,5 +189,75 @@ fn the_value_is_a_fixed_point_when_the_hand_does_not_move() {
         "com a mão PARADA o valor andou de {primeiro} para {ultimo} em {} quadros — o alcance do \
          slider está a ser derivado do valor que o próprio slider escreve",
         valores.len()
+    );
+}
+
+/// ⭐⭐⭐ **A BANDA DE UM DEFORMADOR ALCANÇA A PEÇA E NÃO MUITO MAIS** — report do Enio, 2026-08-31:
+/// *«resultados bizarros, veja um cubo fino e alto com Bend»*, com as setas em `From` e `To`.
+///
+/// # ⛔⛔ O número que faz disto um defeito e não um gosto
+///
+/// A chapa da foto tem `0,072` de espessura no eixo da dobra e um raio de `0,544`, que dá um
+/// alcance de gesto de **`4`**. As duas bordas da banda eram [`ph2d_field::Span::Free`] — a mesma
+/// faixa de uma **posição** —, logo corriam de `−4` a `+4`: a peça inteira cabia em **`0,9 %`** do
+/// curso, menos de um pixel numa barra de 100. *Um controlo cujo intervalo útil não chega a um
+/// pixel não oferece o que o gesto faz*, que é a lei que este módulo já tinha escrita
+/// (`field3d_reach_tests`).
+///
+/// ⚠️ **A régua tem de ter as DUAS metades**, e a de baixo é a que impede a cura fácil de mentir:
+/// apertar a banda até ela deixar de alcançar a peça faria bordas inalcançáveis, que é um defeito
+/// pior. ⇒ mais apertada que a posição **e** a cobrir a peça.
+///
+/// ⛔⛔ **Prova de mutação (2026-08-31):** devolver as quatro linhas de banda de
+/// `ph2d_field::mods_dims` a `Span::Free` deixa as duas faixas iguais e a primeira metade reprova.
+#[test]
+fn the_band_of_a_deformer_reaches_the_piece_and_not_much_more() {
+    use crate::field3d_scene::panel::param_rows;
+    let _ = ph2d_panel_model3d::drain_intents();
+    let mut sim = a_world();
+    sync_scene(&mut sim, Some(&scene(1)), 0.0);
+    let root = the_root(&mut sim);
+    let world = sim.world_mut();
+    let alvo = ph2d_field_ecs::walk(world, root)
+        .into_iter()
+        .map(|(e, _)| e)
+        .nth(1)
+        .expect("a cena tem um filho");
+    // A dobra da foto: uma banda estreita numa peça fina.
+    assert!(
+        ph2d_field_ecs::add_mod(world, alvo, ph2d_field::UnaryKind::Bend),
+        "a dobra tem de entrar — sem ela não há linha de banda para medir"
+    );
+    // ⚠️ **O alcance vem da PEÇA, pela mesma porta da produção.** A 1.ª versão deste gate escrevia
+    // `4.0` à mão e reprovava — não sobre o produto, sobre a fixtura: aquela peça tem raio `2,02` e
+    // um alcance de `4` não a cobre. *Uma fixtura cujo alcance não corresponde à sua peça mede a
+    // fixtura.*
+    let cozida = ph2d_field_ecs::cook(world, root)
+        .expect("há peça")
+        .expect("a peça coze");
+    let raio =
+        ph2d_field_eval::bounds::bounding_ball(&cozida, &ph2d_field_eval::hybrid::Registry::new())
+            .map_or(0.0, |b| b.radius);
+    let span = crate::field3d_scene::span::gesture_span(raio);
+    let linhas = param_rows(world, Some(alvo), span);
+    let de = |k: &str| {
+        linhas
+            .iter()
+            .find(|r| r.key == k)
+            .map(|r| r.bound.value() - r.lo)
+    };
+    let banda = de("field.mod.from").expect("a dobra tem a linha `From`");
+    let posicao = de("field.dim.pos_x").expect("a peça tem uma posição");
+    assert!(
+        banda * 2.0 <= posicao,
+        "a banda corre {banda} e uma posição corre {posicao} — a borda de uma banda não precisa de \
+         alcance para além da peça, e com a faixa de uma posição ela fica inarrastável numa peça \
+         fina"
+    );
+    // ⛔ **A METADE DE BAIXO**: uma banda que não alcança a peça tem bordas inexprimíveis.
+    assert!(
+        banda * 0.5 >= raio,
+        "a banda corre {banda} e a peça tem raio {raio} — meia faixa não chega ao bordo dela, e \
+         uma borda de banda inalcançável é pior do que uma imprecisa"
     );
 }

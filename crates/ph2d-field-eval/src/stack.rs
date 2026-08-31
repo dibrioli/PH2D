@@ -7,8 +7,12 @@
 //! completa e fechada dentro dela, com as três constantes medidas do [`taper`] ao lado — e o
 //! arquivo passou dos **700** do gate de LOC da workspace. ⚠️ **A cura é partir para irmão, nunca
 //! uma entrada na allowlist.**
+//!
+//! ⚠️ E partiu **duas** vezes: a família da dobra vive hoje na [`crate::stack_bend`], porque as
+//! duas medições que a defendem (a parede e o piso de ponto) precisam de ser lidas por extenso.
 
 use crate::ops;
+use crate::stack_bend::{BEND_FOLD_MARGIN, bend, bend_curvature, bend_reach};
 use fidget::context::Tree;
 use ph2d_field::Unary;
 
@@ -161,117 +165,6 @@ pub(crate) fn step_divisor(m: Unary, ball: crate::bounds::Ball) -> f64 {
         | Unary::Array { .. }
         | Unary::Radial { .. } => 1.0,
     }
-}
-
-/// ⭐⭐⭐ **A CURVATURA que a dobra de facto aplica, já SATURADA na parede da peça.**
-///
-/// ⛔ **A parede é do DOCUMENTO, não uma escolha:** acima de `κ·W = 1` (com `W` a meia-largura na
-/// direcção do centro do arco) a matéria dobra-se sobre si própria, o mapa deixa de ser injectivo e
-/// o campo devolve lixo **nos dois sentidos** — fura e deixa fantasma. Só quem vê a peça pode
-/// impô-la, e é por isso que ela mora aqui e não num `MAX_*`: *uma vara fina aguenta muito mais
-/// dobra do que um bloco atarracado, e um teto escrito à mão seria o caminho lento a mandar no
-/// rápido.*
-///
-/// ⚠️ **Satura, não recusa** — é a lei da porta deste módulo (o `set_dim` do prisma já a paga).
-///
-/// # ⛔⛔ A BOLA É A DO ENVELOPE, e ler a local era um vermelho de UM CLIQUE (2026-08-30)
-///
-/// A parede existe para o mapa inverso não passar pelo **centro do arco** (`ρ = 1/κ`), onde ele é
-/// singular. Quem decide onde o mapa é avaliado não é a peça: é a **caixa de recorte da marcha**,
-/// que é a AABB do envelope da pilha. Com a bola **local** a parede garantia `κ·W_local < 0,9` e o
-/// avaliador ia até `W_env`, muito maior — e ali `κ·W > 1`: **o mapa dobra-se e o campo devolve
-/// lixo**.
-///
-/// Medido, `‖∇f‖` dentro do recorte, numa caixa `0,35³` com a dobra **sozinha**:
-///
-/// | voltas | com a bola local | com o envelope |
-/// |---|---:|---:|
-/// | `0,05` | `0,83` | `0,83` |
-/// | `0,12` | **`1,72`** | `0,49` |
-/// | `0,25` | `0,95` | `0,48` |
-/// | `0,50` | **`1,24`** | `0,48` |
-///
-/// ⭐⭐ **E o slider deixa de MORRER.** Com a bola local a saturação era fixa, e numa barra fina a
-/// ponta parava em `0,3817` a partir de `0,25` voltas — `0,25`, `0,50` e `1,00` davam **a mesma
-/// peça**. Com o envelope a parede acompanha a dobra e a ponta continua a andar
-/// (`0,2633 → 0,3083 → 0,3417`).
-///
-/// ⚠️ **O preço, dito com número:** no meio da faixa a dobra fica **~30 % mais fraca** (a ponta de
-/// uma barra fina a `0,12` voltas vai de `0,2983` para `0,2100`). A cura que devolveria a força sem
-/// devolver o lixo é o **ombro** — a mesma que a torção já usa —, e é wave própria.
-pub(crate) fn bend_curvature(turns: f32, ball: crate::bounds::Ball) -> f64 {
-    let k = f64::from(turns) * std::f64::consts::TAU;
-    let w = bend_reach(ball);
-    if w <= 0.0 || !w.is_finite() {
-        return k;
-    }
-    let tecto = BEND_FOLD_MARGIN / w;
-    k.clamp(-tecto, tecto)
-}
-
-/// Quão longe a peça chega na direcção em que a dobra a comprime (o `X` local).
-pub(crate) fn bend_reach(b: crate::bounds::Ball) -> f64 {
-    f64::from(b.center[0].abs() + b.radius.max(0.0))
-}
-
-/// Quanto da parede do vinco a dobra pode usar.
-///
-/// ⚠️ **Não é um épsilon de gosto:** em `κ·W = 1` o lado de dentro colapsa no centro do arco e o
-/// divisor `1/(1−κW)` vai a infinito. Nove décimos deixa a dobra ir bem além do que um artista pede
-/// (um `U` fechado) e mantém o divisor abaixo de `10`.
-const BEND_FOLD_MARGIN: f64 = 0.9;
-
-/// ⭐⭐⭐ **A DOBRA** — o eixo `Z` curva-se no plano `XZ`, com curvatura `κ`.
-///
-/// Mapa inverso, com `ρ = 1/κ` e o centro do arco em `(ρ, 0, 0)`:
-///
-/// ```text
-/// a = ρ − X ;  b = banda(Z) ;  Rr = ‖(a, b)‖
-/// x = ρ − Rr ;  z = atan2(b, a)·ρ ;  y = Y
-/// ```
-///
-/// ⚠️ **A banda entra no `b`, e não no `z` de saída**: é ela que faz a dobra agir só num troço, e
-/// fora dele o resto da peça segue **recto** em vez de continuar a curvar.
-///
-/// ⚠️ **As duas linhas do bloco 2×2 do jacobiano são ORTOGONAIS**, com normas `1` e `ρ/Rr` — logo os
-/// valores singulares são exactamente `{1, ρ/Rr, 1}` e o tecto é `max(1, ρ/Rr)`. *Ao contrário da
-/// torção, a esticadela é anisotrópica, e por isso nenhuma correcção escalar a torna exacta.*
-fn bend(inner: &Tree, k: f64, lower: f64, upper: f64, falloff: f64, reach: f64) -> Tree {
-    if k == 0.0 || !k.is_finite() || !(lower.is_finite() && upper.is_finite()) {
-        // ⭐ **IDENTIDADE AO BIT** — e aqui ela é obrigatória por mais uma razão: `κ = 0` dá
-        // `ρ = ∞`, e a conta abaixo seria `0/0`.
-        return inner.clone();
-    }
-    // ⛔⛔ **O SINAL, e ele custou um vermelho:** com `κ < 0` o centro do arco fica em `ρ < 0`, e as
-    // DUAS contas trocam de sentido — `ρ − Rr` manda o ponto para `−6,4` em vez de `0`, e o
-    // `atan2(0, negativo)` devolve `π` em vez de `0`. A peça **desaparecia** ao dobrar para um dos
-    // lados, e só para um. *Quem escreve «e sabe para que lado» num gate é quem o apanha.*
-    //
-    // ⇒ dobra-se sempre para `+X` sobre o eixo **espelhado**, e espelha-se de volta: para `κ > 0` é
-    // a identidade, e para `κ < 0` é a mesma conta na peça reflectida.
-    let s = if k < 0.0 { -1.0 } else { 1.0 };
-    let rho = (1.0 / k).abs();
-    let banda = soft_clamp(
-        &Tree::z(),
-        lower.min(upper),
-        upper.max(lower),
-        falloff.max(0.0),
-    );
-    let a = Tree::constant(rho) - Tree::x() * Tree::constant(s);
-    // ⛔⛔ **O PISO DO RAIO, e ele é obrigatório** — a lei do [`TAPER_FLOOR`], pela mesma razão.
-    //
-    // A bola de bordo **cresce** com a dobra, e a marcha é presa à AABB dela: o recorte passa a
-    // conter o **centro do arco**, onde `Rr → 0` e `σ = ρ/Rr → ∞`. Sem o piso, o campo devolve lixo
-    // ali e o gradiente estoura — medido `‖∇f‖ = 1,0983` já **dentro** da caixa de recorte.
-    //
-    // ⭐ O piso é a parede da própria peça (`ρ − W`): dentro dela a conta é exacta, e além dela a
-    // secção fica **congelada**, que é uma forma e não um defeito. Com ele o tecto passa a valer em
-    // TODO o recorte, por maior que a caixa fique.
-    let piso = (rho - reach.abs()).max(rho * (1.0 - BEND_FOLD_MARGIN));
-    let rr = crate::ops::safe_sqrt(a.clone().square() + banda.clone().square()).max(piso);
-    let x = (Tree::constant(rho) - rr) * Tree::constant(s);
-    let z = banda.atan2(a) * Tree::constant(rho);
-    inner.remap_xyz(x, Tree::y(), z)
 }
 
 /// Quão longe do **eixo Z local** a peça chega — o `R` de que a torção tira o divisor.
@@ -428,7 +321,7 @@ const TAPER_SAFETY: f64 = 2.0;
 ///
 /// ⚠️ **A meia-largura é limitada a metade da banda**: acima disso os dois ombros misturam-se e o
 /// `smin`/`smax` come o meio da rampa, que é o operador a mentir sobre o ângulo total.
-fn soft_clamp(z: &Tree, lo: f64, hi: f64, w: f64) -> Tree {
+pub(crate) fn soft_clamp(z: &Tree, lo: f64, hi: f64, w: f64) -> Tree {
     let meia = (hi - lo).abs() * 0.5;
     let w = w.min(meia);
     if w <= 0.0 || !w.is_finite() {

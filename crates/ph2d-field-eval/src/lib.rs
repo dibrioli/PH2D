@@ -31,6 +31,7 @@ pub mod profile;
 pub mod profile_index;
 /// ⭐ A pilha de modificadores de um nó — ver [`stack`].
 pub(crate) mod stack;
+pub(crate) mod stack_bend;
 
 /// ⭐ **A porta da SONDA para a torção** — ela existe porque a lei tem de ser medida **antes** de o
 /// modificador nascer: a constante de segurança dela é o que decide se a peça fura.

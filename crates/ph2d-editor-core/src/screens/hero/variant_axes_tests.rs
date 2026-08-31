@@ -16,7 +16,7 @@ fn labels(ax: &VariantAxis) -> Vec<&str> {
 #[test]
 fn the_grammar_is_strict_on_purpose() {
     assert_eq!(
-        parse_combo("Size=Small, State=Idle"),
+        parse_combo("Casa {Size=Small, State=Idle}"),
         Some(vec![
             ("Size".into(), "Small".into()),
             ("State".into(), "Idle".into())
@@ -25,7 +25,16 @@ fn the_grammar_is_strict_on_purpose() {
     );
     // ⚠️ **As recusas são a razão de a gramática servir para decidir**: um nome meio-parseado daria
     // um eixo com um valor só, que é uma fileira que não escolhe nada.
-    for bad in ["Hero", "=Small", "Size=", "Size==Small", ""] {
+    for bad in [
+        "Hero",
+        "Casa {=Small}",
+        "Casa {Size=}",
+        "Casa {Size==Small}",
+        "Casa {}",
+        // ⭐ **Sem chaves não há propriedades** — é o que faz um objecto chamado `A=B` ser um
+        // objecto chamado `A=B`, e não um eixo.
+        "Size=Small, State=Idle",
+    ] {
         assert_eq!(parse_combo(bad), None, "«{bad}» devia ser recusado");
     }
 }
@@ -39,10 +48,10 @@ fn the_grammar_is_strict_on_purpose() {
 #[test]
 fn a_matrix_of_names_becomes_one_row_per_question() {
     let fam = [
-        m(1, "Size=Small, State=Idle"),
-        m(2, "Size=Small, State=Run"),
-        m(3, "Size=Big, State=Idle"),
-        m(4, "Size=Big, State=Run"),
+        m(1, "Casa {Size=Small, State=Idle}"),
+        m(2, "Casa {Size=Small, State=Run}"),
+        m(3, "Casa {Size=Big, State=Idle}"),
+        m(4, "Casa {Size=Big, State=Run}"),
     ];
     let (axes, beyond) = axes_for(&fam, 1);
     assert_eq!(beyond, 0);
@@ -70,10 +79,10 @@ fn a_chip_changes_exactly_one_axis() {
     // guarda o primeiro, e o primeiro calha ser o certo. ⇒ o `Big/Run` vem PRIMEIRO, e aí a
     // mutação escolhe-o e o gate sangra. *Uma fixtura ordenada a favor da lei não a testa.*
     let fam = [
-        m(1, "Size=Small, State=Idle"),
-        m(2, "Size=Small, State=Run"),
-        m(3, "Size=Big, State=Run"),
-        m(4, "Size=Big, State=Idle"),
+        m(1, "Casa {Size=Small, State=Idle}"),
+        m(2, "Casa {Size=Small, State=Run}"),
+        m(3, "Casa {Size=Big, State=Run}"),
+        m(4, "Casa {Size=Big, State=Idle}"),
     ];
     let (axes, _) = axes_for(&fam, 1); // estou em Small/Idle
     let big = axes[0]
@@ -93,9 +102,9 @@ fn a_chip_changes_exactly_one_axis() {
 fn a_hole_in_the_matrix_is_an_absent_chip_not_an_error() {
     // Não existe `Big/Run`.
     let fam = [
-        m(1, "Size=Small, State=Idle"),
-        m(2, "Size=Small, State=Run"),
-        m(3, "Size=Big, State=Idle"),
+        m(1, "Casa {Size=Small, State=Idle}"),
+        m(2, "Casa {Size=Small, State=Run}"),
+        m(3, "Casa {Size=Big, State=Idle}"),
     ];
     let (axes, _) = axes_for(&fam, 2); // estou em Small/Run
     // ⚠️ **De `Small/Run` o eixo `Size` DESAPARECE** — `Big/Run` não existe, e o único valor que
@@ -139,17 +148,23 @@ fn plain_names_fall_back_to_one_flat_row() {
 /// segundo e o artista perderia um eixo **sem nada a dizer porquê**. No plano tudo aparece.
 #[test]
 fn members_that_disagree_on_the_keys_fall_back_to_plain_names() {
-    let fam = [m(1, "Size=Small"), m(2, "Size=Big, State=Run")];
+    let fam = [
+        m(1, "Casa {Size=Small}"),
+        m(2, "Casa {Size=Big, State=Run}"),
+    ];
     let (axes, _) = axes_for(&fam, 1);
     assert_eq!(axes.len(), 1);
     assert_eq!(axes[0].name, "");
-    assert_eq!(labels(&axes[0]), ["Size=Small", "Size=Big, State=Run"]);
+    assert_eq!(
+        labels(&axes[0]),
+        ["Casa {Size=Small}", "Casa {Size=Big, State=Run}"]
+    );
 }
 
 /// ⚠️ **Menos de dois membros não é um conjunto.**
 #[test]
 fn a_family_of_one_offers_nothing() {
-    assert_eq!(axes_for(&[m(1, "Size=Small")], 1).0.len(), 0);
+    assert_eq!(axes_for(&[m(1, "Casa {Size=Small}")], 1).0.len(), 0);
     assert_eq!(axes_for(&[], 1).0.len(), 0);
 }
 
@@ -159,7 +174,9 @@ fn a_family_of_one_offers_nothing() {
 #[test]
 fn what_the_id_table_cannot_address_is_counted() {
     // Nove valores num eixo, contra um teto de oito.
-    let fam: Vec<(u64, String)> = (0u64..9).map(|i| (i, format!("Size=S{i}"))).collect();
+    let fam: Vec<(u64, String)> = (0u64..9)
+        .map(|i| (i, format!("Casa {{Size=S{i}}}")))
+        .collect();
     let (axes, beyond) = axes_for(&fam, 0);
     assert_eq!(axes.len(), 1);
     assert_eq!(axes[0].options.len(), crate::ids::MAX_INSTANCE_AXIS_VALUES);
@@ -170,7 +187,10 @@ fn what_the_id_table_cannot_address_is_counted() {
 /// em vez de uma fileira que mostra opções sem dizer onde se está.
 #[test]
 fn a_current_master_outside_the_family_offers_nothing() {
-    let fam = [m(1, "Size=Small, State=Idle"), m(2, "Size=Big, State=Idle")];
+    let fam = [
+        m(1, "Casa {Size=Small, State=Idle}"),
+        m(2, "Casa {Size=Big, State=Idle}"),
+    ];
     assert_eq!(axes_for(&fam, 99).0.len(), 0);
 }
 
@@ -187,7 +207,10 @@ fn a_current_master_outside_the_family_offers_nothing() {
 /// **Mutação que deve sangrar:** tirar o `if axes.is_empty() { axes = flat_axis(..) }`.
 #[test]
 fn a_family_of_two_on_the_diagonal_still_offers_a_way_across() {
-    let fam = [m(1, "Size=Small, State=Idle"), m(2, "Size=Big, State=Run")];
+    let fam = [
+        m(1, "Casa {Size=Small, State=Idle}"),
+        m(2, "Casa {Size=Big, State=Run}"),
+    ];
     let (axes, _) = axes_for(&fam, 1);
     assert_eq!(axes.len(), 1, "a família ficou sem fileira nenhuma");
     assert_eq!(axes[0].name, "", "a rede é o modo plano");
@@ -209,7 +232,7 @@ fn a_family_of_two_on_the_diagonal_still_offers_a_way_across() {
 fn the_current_option_survives_the_id_table_cap() {
     let cap = crate::ids::MAX_INSTANCE_AXIS_VALUES;
     let fam: Vec<(u64, String)> = (0u64..=(cap as u64))
-        .map(|i| (i, format!("Size=S{i}")))
+        .map(|i| (i, format!("Casa {{Size=S{i}}}")))
         .collect();
     // O vigente é o ÚLTIMO — exactamente o que cai fora do teto.
     let me = cap as u64;
@@ -233,14 +256,14 @@ fn the_current_option_survives_the_id_table_cap() {
 #[test]
 fn the_overflow_does_not_count_the_current_master() {
     // Cinco eixos, contra um teto de quatro. Cada um tem duas opções: eu e um vizinho.
-    let mut fam = vec![m(0, "A=1, B=1, C=1, D=1, E=1")];
+    let mut fam = vec![m(0, "Casa {A=1, B=1, C=1, D=1, E=1}")];
     for (i, k) in ["A", "B", "C", "D", "E"].iter().enumerate() {
         let name: String = ["A", "B", "C", "D", "E"]
             .iter()
             .map(|x| format!("{x}={}", if x == k { 2 } else { 1 }))
             .collect::<Vec<_>>()
             .join(", ");
-        fam.push(m(i as u64 + 1, &name));
+        fam.push(m(i as u64 + 1, &format!("Casa {{{name}}}")));
     }
     let (axes, beyond) = axes_for(&fam, 0);
     assert_eq!(axes.len(), crate::ids::MAX_INSTANCE_AXES, "o teto de eixos");
@@ -269,7 +292,50 @@ fn a_current_master_outside_the_family_offers_nothing_in_plain_mode_either() {
 /// mesmas opções, e clicar numa mexeria na outra.
 #[test]
 fn a_repeated_key_is_not_a_combination() {
-    assert_eq!(parse_combo("Size=Small, Size=Big"), None);
+    assert_eq!(parse_combo("Casa {Size=Small, Size=Big}"), None);
     // ⚠️ O controlo: sem a repetição, a mesma forma parseia.
-    assert!(parse_combo("Size=Small, State=Big").is_some());
+    assert!(parse_combo("Casa {Size=Small, State=Big}").is_some());
+}
+
+// ── As CHAVES (Enio, 2026-08-30) ───────────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐ **A hierarquia mostra o que o objecto É.**
+///
+/// ⛔ Report do Enio: *«criar nomes de objetos que não exprimem o que o objeto realmente é é muito
+/// estranho»* e *«os nomes ficam grandes demais e nem cabem direito na hierarquia»*. As duas
+/// queixas são do mesmo defeito: eu portei os nomes `k=v` do Figma e **não portei o contêiner** que
+/// lá os mantém um nível abaixo.
+///
+/// **Mutação que deve sangrar:** devolver o nome inteiro.
+#[test]
+fn the_hierarchy_shows_what_the_object_is_not_its_properties() {
+    use super::display_name;
+    assert_eq!(display_name("Casa {Size=Small, State=Idle}"), "Casa");
+    // ⚠️ **O espaço antes da chaveta é aparado** — senão a linha desenha `"Casa "` e o realce de
+    // busca mede um caractere a mais.
+    assert_eq!(display_name("Casa  {Size=Small}"), "Casa");
+    // Sem chaves, o nome é o nome.
+    assert_eq!(display_name("Casa"), "Casa");
+    assert_eq!(display_name("A=B"), "A=B");
+}
+
+/// ⛔⛔ **Sem chaves NÃO há propriedades** — e é isto que as chaves compram sobre a convenção do
+/// Figma: um objecto legitimamente chamado `A=B` era lido como um eixo.
+#[test]
+fn a_name_without_braces_declares_no_properties() {
+    assert_eq!(parse_combo("Size=Small, State=Idle"), None);
+    assert_eq!(parse_combo("A=B"), None);
+    // ⚠️ O controlo: com chaves, a mesma forma parseia.
+    assert!(parse_combo("Casa {Size=Small, State=Idle}").is_some());
+}
+
+/// ⚠️ **O nome comum não entra nos eixos** — ele é a identidade, e misturá-lo daria uma fileira
+/// chamada `Casa`.
+#[test]
+fn the_common_name_never_becomes_an_axis() {
+    let fam = [m(1, "Casa {Size=Small}"), m(2, "Casa {Size=Big}")];
+    let (axes, _) = axes_for(&fam, 1);
+    assert_eq!(axes.len(), 1);
+    assert_eq!(axes[0].name, "Size");
+    assert_eq!(labels(&axes[0]), ["Small", "Big"]);
 }

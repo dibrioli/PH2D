@@ -362,10 +362,17 @@ pub(crate) fn paint_hierarchy_row(
             (rect.y + rect.h) as f64,
         );
         scene.push_clip(&name_clip);
+        // ⭐⭐⭐ **A linha mostra o que o objecto É, não as propriedades dele** (Enio, 2026-08-30:
+        // *«os nomes ficam grandes demais e nem cabem direito na hierarquia»*).
+        //
+        // `Casa {Size=Small, State=Idle}` desenha-se **`Casa`**. ⚠️ **Derivado, e o documento
+        // guarda o nome INTEIRO** — é isso que mantém a renomeação a editar as chaves (ela semeia
+        // do `Name` da entidade, não desta linha) e a busca a encontrar por valor de propriedade.
+        // *O que se guarda é a autoria; o que se mostra é uma leitura dela.*
         paint_text(
             text_system,
             scene,
-            &entity.name,
+            ph2d_editor_core::screens::hero::variant_axes::display_name(&entity.name),
             name_x,
             rect.y + (rect.h - TypeToken::Sm.px()) * 0.5,
             TypeToken::Sm.px(),

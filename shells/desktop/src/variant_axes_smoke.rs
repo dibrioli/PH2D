@@ -48,7 +48,7 @@ fn build(app: &mut crate::App) {
         .world_mut()
         .spawn((
             ph2d_ecs::Transform::IDENTITY,
-            ph2d_ecs::Name::new("Size=Small, State=Idle"),
+            ph2d_ecs::Name::new("Casa {Size=Small, State=Idle}"),
             ph2d_ecs::MasterRoot,
         ))
         .id();
@@ -70,9 +70,9 @@ fn build(app: &mut crate::App) {
 
     // As outras três versões: instanciar a base e promover a cópia a receita.
     for name in [
-        "Size=Small, State=Run",
-        "Size=Big, State=Idle",
-        "Size=Big, State=Run",
+        "Casa {Size=Small, State=Run}",
+        "Casa {Size=Big, State=Idle}",
+        "Casa {Size=Big, State=Run}",
     ] {
         let mut docs = crate::instance_docs::OwnedDocs {
             vec_scene: &mut gfx.vec_scene,
@@ -120,9 +120,11 @@ fn build(app: &mut crate::App) {
         hero.gizmo.clear_all_selection();
         hero.gizmo.add_to_selection(copy.to_bits());
     }
-    eprintln!(
-        "[axes] f=3 cena — base StableId={base_id}, 4 versões nomeadas por eixos, cópia escolhida"
-    );
+    eprintln!("[axes] f=3 cena — base StableId={base_id}, 4 versões «Casa {{…}}», cópia escolhida");
+    // ⭐ O que a HIERARQUIA mostra de cada uma — a metade que o report do Enio nomeia.
+    let shown =
+        ph2d_editor::screens::hero::variant_axes::display_name("Casa {Size=Small, State=Idle}");
+    eprintln!("[axes] f=3 a hierarquia mostra «{shown}» (esperado: «Casa», não o nome inteiro)");
 }
 
 /// O que o cartão OFERECE agora — lido do modelo que ele pinta.

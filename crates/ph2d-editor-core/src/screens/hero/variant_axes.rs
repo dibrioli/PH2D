@@ -37,16 +37,52 @@ pub struct VariantAxis {
     pub options: Vec<VariantChoice>,
 }
 
-/// **`"Size=Small, State=Idle"` → `[("Size","Small"), ("State","Idle")]`.**
+/// ⭐⭐⭐ **O NOME COMUM** — o que o objecto É, sem as propriedades.
 ///
-/// `None` quando o nome não é uma combinação: sem `=`, com `=` a mais, ou com um lado vazio.
+/// `"Casa {Size=Small, State=Idle}"` → `"Casa"`. Sem chaves, o nome inteiro.
+///
+/// # ⛔⛔ Porque as chaves existem (Enio, 2026-08-30)
+///
+/// A 1.ª versão lia as propriedades do nome **inteiro** — `Size=Small, State=Idle` **era** o nome
+/// do objecto, que é o que o Figma faz. O report foi imediato e está certo em dois pontos:
+///
+/// 1. *«criar nomes de objetos que não exprimem o que o objeto realmente é é muito estranho»* — o
+///    objecto é uma **Casa**; `Size=Small` é uma propriedade dela.
+/// 2. *«os nomes ficam grandes demais e nem cabem direito na hierarquia»*.
+///
+/// ⚠️ **E o Figma não tem o 2.º problema por uma razão que eu não portei:** lá aqueles nomes vivem
+/// **dentro de um contêiner** (o *component set*), cujo nome é o comum — na lista de camadas
+/// vê-se `Casa` fechado. Eu portei os nomes e **não o contêiner**, e foi isso que pôs os nomes
+/// compridos no primeiro nível.
+///
+/// ⇒ as chaves fazem o trabalho do contêiner **sem o contêiner**: o nome comum viaja no mesmo
+/// campo, e a hierarquia mostra só ele. ⭐ E resolvem uma ambiguidade que o Figma tem: um objecto
+/// legitimamente chamado `A=B` era lido como eixo, e agora não é.
+#[must_use]
+pub fn display_name(name: &str) -> &str {
+    match name.split_once('{') {
+        Some((head, _)) => head.trim_end(),
+        None => name,
+    }
+}
+
+/// **`"Casa {Size=Small, State=Idle}"` → `[("Size","Small"), ("State","Idle")]`.**
+///
+/// `None` quando não há chaves, ou quando o que está dentro delas não é uma combinação: sem `=`,
+/// com `=` a mais, com um lado vazio, ou com uma chave repetida.
 ///
 /// ⚠️ **Deliberadamente ESTRITA** — um nome meio-parseado daria um eixo com um valor só, que é uma
 /// fileira que não escolhe nada. É a porta que decide entre as duas modalidades.
 #[must_use]
 pub fn parse_combo(name: &str) -> Option<Vec<(String, String)>> {
+    // ⚠️ **Só o que está entre chaves.** Sem elas não há propriedades — e é isso que faz um objecto
+    // chamado `A=B` ser um objecto chamado `A=B`.
+    let (_, rest) = name.split_once('{')?;
+    let inner = rest
+        .strip_suffix('}')
+        .or_else(|| rest.split_once('}').map(|(i, _)| i))?;
     let mut out = Vec::new();
-    for part in name.split(',') {
+    for part in inner.split(',') {
         let mut it = part.splitn(2, '=');
         let k = it.next()?.trim();
         let v = it.next()?.trim();

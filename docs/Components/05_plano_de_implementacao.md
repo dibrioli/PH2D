@@ -1040,6 +1040,38 @@ pai), e ela não estava escrita em lado nenhum.
 
 **Smoke:** `PH2D_BUILD_SMOKE=79` — quatro versões, duas fileiras, e o chip medido pelo ponteiro.
 
+### ⭐⭐⭐ As CHAVES — o report do Enio que corrigiu o desenho (2026-08-30)
+
+A 1.ª versão lia as propriedades do nome **inteiro**: `Size=Small, State=Idle` **era** o nome do
+objecto. Report imediato, e certo em dois pontos:
+
+1. *«criar nomes de objetos que não exprimem o que o objeto realmente é é muito estranho»*
+2. *«os nomes ficam grandes demais e nem cabem direito na hierarquia»*
+
+⛔⛔ **E o Figma não tem o 2.º problema por uma razão que o porte deixou de fora.** Lá aqueles nomes
+existem — a sintaxe `Propriedade=Valor` é dele —, mas vivem **dentro de um contêiner** (o
+*component set*), cujo nome é o comum: na lista de camadas vê-se `Casa` fechado, e os nomes
+compridos só aparecem ao abrir. *Eu portei os nomes e não portei o contêiner.*
+
+⇒ **a autoria passa a ser `Casa {Size=Small, State=Idle}`** (ideia do Enio), e a hierarquia mostra
+**`Casa`**. As chaves fazem o trabalho do contêiner **sem o contêiner** — nenhuma estrutura nova,
+nenhum gesto novo.
+
+⭐ **E elas resolvem uma ambiguidade que o Figma tem:** um objecto legitimamente chamado `A=B` era
+lido como um eixo. Sem chaves, não há propriedades.
+
+⚠️ **O documento guarda o nome INTEIRO; só o pintor da linha deriva o curto.** É isso que mantém a
+renomeação a editar as chaves (ela semeia do `Name` da entidade, não da linha) e a busca a
+encontrar por valor de propriedade. ⛔ Nenhum dos 9 sítios que constroem uma linha da Hierarquia
+mudou — *o que se guarda é a autoria; o que se mostra é uma leitura dela*.
+
+⏳ **Aberto, com o custo à vista:** quatro versões da mesma casa desenham-se **`Casa`** nas quatro
+linhas, e a hierarquia não as distingue. O Figma resolve-o com o contêiner. As duas saídas baratas
+— um selo com a contagem (`Casa *³`, a ideia do Enio) ou mostrar **o que difere** (`Casa · Small,
+Idle`) — estão desenhadas e **não** implementadas: decisão dele, adiada.
+
+---
+
 ### A auditoria (2026-08-30) — **duas REGRESSÕES minhas, e duas leis perdidas no porte**
 
 | # | Achado | Mecanismo | Cura |

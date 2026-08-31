@@ -19,8 +19,12 @@ mod hits;
 mod interact;
 mod paint;
 mod paint_chrome;
+mod split;
 /// O id de hit de um chip da barra, para o gate de costura que mede a pintura.
 pub use paint_chrome::chrome_hit_id_for_tests;
+/// ⭐ A lei do arrasto do divisor — pública porque o gate dela é de **ida-e-volta** e tem de
+/// atravessar as duas crates (a fórmula aqui, a aplicação no `HeroLayout`).
+pub use split::split_fraction;
 mod probe;
 mod rename;
 mod snapshot;

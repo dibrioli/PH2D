@@ -168,12 +168,13 @@ pub(crate) fn chip_tooltip(id: u16) -> &'static str {
 pub(crate) fn draw_split_chrome(
     ctx: &mut PaintCtx,
     rect: Rect,
-    center: Rect,
+    // A banda que o divisor parte — aqui só para saber a ORIENTAÇÃO (`HeroLayout::split_band`).
+    split_band: Rect,
     theme: Theme,
     hits: &mut Vec<(NodeId, GraphHitKind, Rect)>,
     state: ChromeState,
 ) {
-    let vertical = rect.x > center.x + 0.5;
+    let vertical = rect.x > split_band.x + 0.5;
     // Divider line + a forgiving grab band straddling the boundary edge.
     let (line, band) = if vertical {
         (

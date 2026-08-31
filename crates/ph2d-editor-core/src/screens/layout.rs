@@ -157,6 +157,28 @@ pub struct HeroLayout {
     /// Motion Nodes graph sub-rect — the complement of [`Self::center_viewport`]
     /// in the center band. Zero-sized when the split is `None`.
     pub motion_graph: Rect,
+    /// ⭐⭐⭐ **A BANDA que o divisor parte** — e a única régua contra a qual a fracção `t` se
+    /// mede.
+    ///
+    /// ⛔⛔ **Sem ela, o arrasto do divisor tinha OFFSET e TREMOR** (Enio, 2026-08-31: *«segurar e
+    /// arrastar o topo do canvas de nós tem um bug, um offset e um tremor»*). O painel do grafo
+    /// reconstruía a banda somando `center_viewport + motion_graph` — o que era verdade até a
+    /// **timeline docar dentro do split** (W4.T4) e passar a comer o fundo do `motion_graph`:
+    ///
+    /// | quem | denominador de `t` |
+    /// |---|---|
+    /// | o painel, ao arrastar | `chrome_h − altura_da_timeline` |
+    /// | o layout, ao aplicar (`top_h = band.h · t`) | `chrome_h` |
+    ///
+    /// ⇒ **offset** de `chrome_h / (chrome_h − 240) ≈ 1,32` no alvo de referência (arrastar para o
+    /// meio punha o divisor a 66 %), e **tremor** porque a altura da timeline é ela própria
+    /// clampada pela altura do grafo: mover o divisor mudava o denominador, que movia o divisor.
+    /// *Uma fracção medida contra uma banda RECONSTRUÍDA oscila assim que uma das parcelas
+    /// depender do resultado.*
+    ///
+    /// ⚠️ Ela existe mesmo sem split (é a coluna da área) — quem não divide nada simplesmente não
+    /// a lê.
+    pub split_band: Rect,
     /// The timeline's band **inside the Motion workspace** (W4.T4). Zero-height until
     /// [`Self::dock_timeline_into_motion`] carves it out of the bottom of
     /// [`Self::motion_graph`] — which is what the shell does when the Motion tool and the
@@ -477,6 +499,7 @@ impl HeroLayout {
             docks,
             center_viewport,
             motion_graph,
+            split_band: band,
             motion_timeline_slot,
             timeline,
             // ⚠️ Sem ocupação nenhuma não há abas: quem as reserva é `reserve_slot_tabs`, que só

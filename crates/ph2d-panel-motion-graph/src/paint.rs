@@ -154,13 +154,13 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
         state.fit_selection = false;
     }
 
-    // The scene half of the center split — the divider drag maps the pointer to a
-    // split fraction against the full center band (`center` + `rect`), and the
-    // toolbar highlights the active orientation (E9).
-    let center = ctx.layout.center_viewport;
+    // ⭐ **A BANDA que o divisor parte** — a régua da fracção, publicada pelo layout. ⛔ Não é
+    // `center_viewport + rect`: com a timeline docada dentro do split essa soma não é a banda, e
+    // era daí que vinham o offset e o tremor do arrasto (ver `HeroLayout::split_band`).
+    let band = ctx.layout.split_band;
 
     // Fold this frame's gestures/zoom/keys into the state before drawing.
-    crate::interact::process(state, ctx, rect, center, &snap);
+    crate::interact::process(state, ctx, rect, band, &snap);
 
     // Publish the selection so the shell bridge can build the params snapshot for
     // the selected node (M1.P1) — or for the selected backdrop (F2: the params
@@ -264,7 +264,7 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     crate::paint_chrome::draw_split_chrome(
         ctx,
         rect,
-        center,
+        band,
         theme,
         &mut hits,
         crate::paint_chrome::ChromeState {

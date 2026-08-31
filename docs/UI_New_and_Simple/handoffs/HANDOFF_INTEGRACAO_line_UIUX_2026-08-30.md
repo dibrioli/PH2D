@@ -1877,3 +1877,59 @@ fracção mata-o).
   defensável (abaixo dele um painel deixa de ser usável) mas não foi medido **no grafo** — o número
   certo é *o cabeçalho + um cartão de nó*, e isso mora noutra crate.
 - ⏳ Continuam de fora as duas abas bloqueadas (**Código** · **Runtime**) e os itens do §22.7.
+
+---
+
+## §24 — ⛔⛔⛔ O DIVISOR do canvas de nós: offset de 96 px e um tremor de 6,7 px (entrega 29)
+
+> Enio, 2026-08-31: *«segurar e arrastar o topo do canvas de nós tem um bug, um offset e um
+> tremor.»*
+
+### §24.1 — Duas contas para a mesma banda
+
+O painel do grafo escrevia a fracção do divisor **reconstruindo a banda**:
+
+```rust
+let t = (g.y - center.y) / (rect.y + rect.h - center.y);   // center_viewport + motion_graph
+```
+
+Isso É a banda — **até a timeline docar dentro do split** (W4.T4) e passar a comer o fundo do
+`motion_graph`. A partir daí:
+
+| quem | denominador de `t` |
+|---|---|
+| o painel, ao arrastar | `chrome_h − altura_da_timeline` |
+| o layout, ao aplicar (`top_h = band.h · t`) | `chrome_h` |
+
+⇒ **as duas metades do report, e as duas medidas** (alvo de referência 1366 × 1024, com a timeline
+docada):
+
+| sintoma | medida |
+|---|---|
+| **offset** | o dedo larga em `352` e o divisor vai para `448` — **96 px** |
+| **tremor** | com o dedo **parado**, o divisor oscila `672 → 665,3 → 670,9 → 666,2 …` — **6,7 px** |
+
+⭐ O tremor não é ruído: a altura da timeline é ela própria **clampada pela altura do grafo**, logo
+o denominador depende do resultado. *Uma fracção medida contra uma grandeza que depende dela não
+converge — ela vibra.*
+
+### §24.2 — A cura: a banda tem um DONO, e ele publica-a
+
+`HeroLayout::split_band` — a região que o divisor parte, escrita onde ela é decidida. O painel
+mede contra ela (`split_fraction(band, rect, pointer)`, pura e exportada) e mais ninguém a
+reconstrói.
+
+⚠️ **O gate tem de ser de IDA-E-VOLTA e atravessar as duas crates** — medir só a fórmula
+confirmaria a fórmula, e o que estava errado era ela **não ser a inversa de quem a aplica**:
+`crates/ph2d-panel-motion-graph/tests/the_divider_lands_where_the_pointer_is.rs`, com a docagem da
+timeline **obrigatória** (sem ela o gate mede o caso que nunca falhou) e um irmão que segura o dedo
+parado por dez quadros.
+
+⚠️ **E a 1.ª redacção do gate acusou a CERCA**: com alvos em px fixos (`300`), `t = 0,246` cai fora
+do `T_MIN = 0,25` e o `clamp_t` movia o divisor 4 px — um offset real, mas do clamp, não da conta.
+Os alvos saem agora da própria banda, dentro da faixa legal. *Um gate de ida-e-volta que amostra
+fora do domínio mede a cerca e chama-lhe defeito.*
+
+⚠️ **Sexto tecto de LOC desta linha** (`interact.rs`, 622/600): a lei do divisor mudou-se para
+`split.rs`. O corte é por responsabilidade — aquele ficheiro **despacha** gestos, e isto é **uma
+lei**, a única deste painel que tem de ser a inversa exacta de código noutra crate.

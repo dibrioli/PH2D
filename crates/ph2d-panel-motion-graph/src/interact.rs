@@ -60,7 +60,7 @@ pub(crate) fn process(
     state: &mut MotionGraphPanelState,
     ctx: &mut PaintCtx,
     rect: Rect,
-    center: Rect,
+    band: Rect,
     snap: &GraphViewSnapshot,
 ) {
     let panel = ids::MOTION_GRAPH_PANEL;
@@ -93,7 +93,7 @@ pub(crate) fn process(
     }
     let gestures: Vec<GraphGesture> = ctx.host.store_mut().drain_graph_gestures().collect();
     for g in gestures {
-        apply_gesture(state, g, rect, center, snap);
+        apply_gesture(state, g, rect, band, snap);
     }
 
     crate::rename::settle_focus(state, ctx);
@@ -117,7 +117,7 @@ fn apply_gesture(
     state: &mut MotionGraphPanelState,
     g: GraphGesture,
     rect: Rect,
-    center: Rect,
+    band: Rect,
     snap: &GraphViewSnapshot,
 ) {
     // Right-button opens the add-node menu at the cursor — on the PRESS (Begin),
@@ -177,19 +177,21 @@ fn apply_gesture(
                 y,
             });
         }
-        // Split divider (E9): drag maps the pointer to a split fraction against
-        // the full center band (scene `center` + graph `rect`). Begin/Update both
-        // emit so the split tracks the cursor live; the shell clamps `t`.
+        // ⭐⭐ **Split divider (E9): a fracção mede-se contra a BANDA, que o layout publica.**
+        //
+        // ⛔⛔ Ela era reconstruída somando `center_viewport + motion_graph` — verdade até a
+        // timeline docar DENTRO do split e comer o fundo do grafo. A partir daí o denominador do
+        // arrasto era `chrome_h − altura_da_timeline` e o do layout era `chrome_h`: **offset** de
+        // ~1,32 e **tremor**, porque a altura da timeline depende da do grafo, que depende do `t`
+        // que se está a escrever. Ver `HeroLayout::split_band`.
+        //
+        // Begin/Update ambos emitem, para o divisor seguir o cursor ao vivo; quem clampa é o shell.
         GraphHitKind::SplitDivider
             if matches!(g.phase, GesturePhase::Begin | GesturePhase::Update) =>
         {
-            let vertical = rect.x > center.x + 0.5;
-            let t = if vertical {
-                (g.x - center.x) / (rect.x + rect.w - center.x).max(1.0)
-            } else {
-                (g.y - center.y) / (rect.y + rect.h - center.y).max(1.0)
-            };
-            push_intent(GraphIntent::SetSplit { t });
+            push_intent(GraphIntent::SetSplit {
+                t: crate::split::split_fraction(band, rect, (g.x, g.y)),
+            });
         }
         // Toolbar chips (E9): SplitH / SplitV flip orientation; Fit re-fits;
         // Backdrop frames the selection (F2).

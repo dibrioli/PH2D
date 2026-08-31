@@ -154,7 +154,17 @@ impl EntityNodeMap {
                         IconId::Sprite
                     },
                     indent: entry.depth,
-                    badge: None,
+                    // ⭐⭐⭐ **O selo `PRF` diz que a linha é uma RECEITA** (report do Enio com foto,
+                    // 2026-08-31). Sem ele, a receita base e a da variante lêem-se **exactamente
+                    // igual** na Hierarquia (`Casa *¹`), e o passo do fluxo que faz a variante
+                    // valer alguma coisa — renomear a receita dela — era um palpite: no report o
+                    // artista renomeou uma CÓPIA e nada mudou.
+                    //
+                    // ⚠️ **O código já existia e ninguém o produzia:** o `badge_tone` da Hierarquia
+                    // conhece `PRF` (tom `Accent`) desde que existe. *Um canal declarado sem
+                    // produtor é decoração — e este esteve a decorar enquanto o artista não achava
+                    // a linha.*
+                    badge: entry.is_master.then(|| "PRF".to_string()),
                     swatch: None,
                     visible: entry.visible,
                     selected: false,
@@ -190,6 +200,7 @@ mod tests {
             locked: false,
             group_locked: false,
             vec_path: None,
+            is_master: false,
         }
     }
 
@@ -261,6 +272,37 @@ mod tests {
         assert_ne!(ordered_b[1], ordered_b[0]);
     }
 
+    /// ⭐⭐⭐ **A linha de uma RECEITA leva o selo `PRF`** — report do Enio com foto, 2026-08-31.
+    ///
+    /// Sem ele a receita base e a da variante lêem-se **exactamente igual** (`Casa *¹`), e o passo
+    /// que faz a variante valer alguma coisa — renomear a receita dela — é um palpite entre duas
+    /// linhas iguais. No report, o artista renomeou uma CÓPIA.
+    ///
+    /// ⚠️ **E a cópia NÃO o leva** — sem esta metade, um selo posto em toda a linha não distingue
+    /// coisa nenhuma, que é exactamente o defeito que ele existe para curar.
+    ///
+    /// (Mutação: `badge: None` ⇒ RED.)
+    #[test]
+    fn a_recipe_row_carries_the_prefab_seal() {
+        let mut m = EntityNodeMap::new();
+        let mut recipe = entry(1, "Casa {Size=Small}", None, 0);
+        recipe.is_master = true;
+        let snap = HierarchySnapshot {
+            entries: vec![recipe, entry(2, "Casa {Size=Small} (1)", None, 0)],
+        };
+        let (ordered, entries) = m.sync_from_snapshot(&snap);
+        assert_eq!(
+            entries.get(&ordered[0]).unwrap().badge.as_deref(),
+            Some("PRF"),
+            "a receita nao leva selo — as duas linhas da familia ficam indistinguiveis"
+        );
+        assert_eq!(
+            entries.get(&ordered[1]).unwrap().badge,
+            None,
+            "a copia levou o selo da receita"
+        );
+    }
+
     #[test]
     fn nameless_entity_gets_hex_placeholder() {
         let mut m = EntityNodeMap::new();
@@ -274,6 +316,7 @@ mod tests {
                 locked: false,
                 group_locked: false,
                 vec_path: None,
+                is_master: false,
             }],
         };
         let (ordered, entries) = m.sync_from_snapshot(&snap);

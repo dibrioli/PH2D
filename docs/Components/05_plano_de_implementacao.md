@@ -1235,10 +1235,62 @@ lêem-se exactamente `Casa *¹`** — a receita base e a receita da variante. O 
 propriedades, e as duas têm uma; ele não diz **quais**, então as duas receitas da mesma família são
 indistinguíveis **na lista onde o artista tem de escolher qual renomear**.
 
-⚠️ **A cura contradiz o desenho que o próprio Enio pediu** (*«só o nome Casa fica aparecendo na
-hierarquia junto com um `*³`»*) — mostrar o valor (`Casa · Small` / `Casa · Big`) traz de volta o
-nome comprido que ele recusou. ⇒ *fica com ele, com o número ao lado*, e não se constrói por
-antecipação.
+⚠️ **Mostrar o VALOR na linha contradiz o desenho que o próprio Enio pediu** (*«só o nome Casa
+fica aparecendo na hierarquia junto com um `*³`»*) — traz de volta o nome comprido que ele recusou.
+
+### ⭐⭐⭐ O 5.º report (foto) — e ele achou o **furo do fluxo**, não um defeito do cartão
+
+> *«Após renomear para big, Big não mudou o Botão que continua mostrando Small Variant. Card com
+> Labels emboladas. Label dos botões emboladas»*
+
+**Três defeitos numa foto, e o primeiro é o que interessa.**
+
+#### ⛔⛔⛔ 1. Ele renomeou a CÓPIA — porque a receita era inalcançável
+
+O cartão dizia `Instance of "Canvas{Size=Small} Variant"` e a caixa do nome dizia
+`Canvas{Size=Big} (2)`. ⇒ ele renomeou **a cópia**, e o cartão continuou a mostrar `Small`
+— **correctamente**: uma propriedade é do COMPONENTE, e a cópia herda-a.
+
+⚠️ **Isto não é erro dele; é o preço do aberto que o bloco acima nomeou.** As duas receitas da
+mesma família lêem-se `Casa *¹` e `Casa *¹`, e o passo do fluxo que faz uma variante valer alguma
+coisa — *renomear a receita dela* — era um **palpite entre duas linhas iguais**.
+
+⭐⭐ **A cura não alonga nome nenhum: é um SELO.** `HierarchyEntry::is_master` (campo novo, no fim
+da struct) → o `hero_bridge` põe `badge: Some("PRF")`. ⛔ **O código já existia e ninguém o
+produzia** — o `badge_tone` da Hierarquia conhece `PRF` (tom `Accent`) desde que existe, e o único
+`badge: Some(…)` de todo o repo estava numa **fixtura de teste**. *Um canal declarado sem produtor
+é decoração, e este esteve a decorar exactamente enquanto o artista não achava a linha.*
+
+⭐ **E a segunda metade: o cartão passa a dizer DE QUEM são as propriedades** (`Properties of
+"Canvas"`), porque na tela liam-se um nome a dizer `Big` e uma linha a dizer `Small` sem nada entre
+os dois. ⛔ A alternativa — ler o nome da cópia — quebraria a lei que faz os chips funcionarem (a
+família compara nomes de RECEITAS) e daria a cada cópia uma verdade própria.
+
+#### ⛔⛔ 2. «Card com Labels emboladas» — uma altura CONTADA sobre um texto que quebra
+
+`Instance of "Canvas{Size=Small} Variant"` não cabia na largura do cartão e desenhava **duas**
+linhas; a altura era `line * rows`, com uma linha por frase ⇒ o resumo era pintado **por cima da
+segunda**. *Uma altura contada em linhas mente sobre todo texto que pode quebrar.*
+
+⇒ duas curas, e as duas são precisas: a frase passa a usar o **nome curto** (a mesma lei da
+Hierarquia — as propriedades já vivem no cartão de baixo) **e** a altura das duas primeiras linhas
+passa a ser **medida** (`text_system.layout(...).height()`), com o avanço do `y` a sair da mesma
+medida. ⚠️ As linhas dos componentes overridados ficam na conta: são nomes de catálogo, curtos por
+construção.
+
+#### ⛔⛔ 3. «Label dos botões emboladas» — e a regra certa é do CONJUNTO
+
+Eu mandava `Size=Small Variant` para um botão de meia largura. ⚠️ **As duas regras plausíveis
+falham sozinhas, cada uma no caso da outra:**
+
+| regra | falha quando |
+|---|---|
+| `display_name` (curto) | a família partilha o nome comum ⇒ chips todos iguais |
+| `chip_label` (o miolo) | as irmãs partilham o miolo ⇒ chips iguais **e** compridos |
+
+⇒ o `flat_axis` tenta o **curto** e só cai no longo quando ele de facto **colide**. *A informação
+que decide — «estes dois são iguais?» — só existe onde os membros estão todos à mão; uma função que
+olha um nome de cada vez não pode responder.* Na família do fluxo: `Casa` e `Casa Variant`.
 
 ---
 

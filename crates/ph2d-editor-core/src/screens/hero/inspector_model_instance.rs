@@ -72,6 +72,14 @@ impl InspectorInstanceInfo {
     /// ⚠️ **Duas palavras, e a diferença não é cosmética:** *Instance* é uma cópia que a receita
     /// alcança; *Variant* é ela própria uma receita, que a base alcança e que alcança as cópias
     /// dela. Editar as duas tem consequências diferentes, e é o painel que tem de o dizer.
+    /// ⛔⛔ **E o nome vem CURTO** (report do Enio com foto, 2026-08-31: *«Card com Labels
+    /// emboladas»*). O `master_name` é o `Name` cru da receita — `Canvas{Size=Small} Variant` —, e
+    /// a frase inteira **quebrava em duas linhas** dentro de um cartão cuja altura é contada em
+    /// linhas de texto: a 2.ª linha da proveniência e o resumo eram pintados no MESMO `y`.
+    ///
+    /// ⚠️ **A cura é a mesma lei da Hierarquia** ([`super::variant_axes::display_name`]): o que o
+    /// artista lê é o nome comum. As propriedades da receita já vivem no cartão de propriedades,
+    /// logo abaixo — repeti-las aqui era dizer duas vezes a coisa que rebentava a caixa.
     #[must_use]
     pub fn provenance(&self) -> String {
         let what = if self.is_variant {
@@ -79,7 +87,8 @@ impl InspectorInstanceInfo {
         } else {
             "Instance"
         };
-        format!("{what} of \u{201c}{}\u{201d}", self.master_name)
+        let name = super::variant_axes::display_name(&self.master_name);
+        format!("{what} of \u{201c}{name}\u{201d}")
     }
 
     /// A linha que resume o estado, para quem não quer ler a lista.

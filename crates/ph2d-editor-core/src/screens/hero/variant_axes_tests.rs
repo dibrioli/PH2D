@@ -491,15 +491,38 @@ fn a_flat_chip_never_collapses_two_sisters() {
     );
     assert_eq!(chip_label("Casa {Size=Small} (1)"), "Size=Small (1)");
     assert_eq!(chip_label("Casa {Size=Small}"), "Size=Small");
-    // A família que o fluxo de facto produz: base e variante, com o MESMO miolo.
+    // ⭐⭐ **A família que o fluxo de facto produz** — base e variante, com o MESMO miolo. Aqui o
+    // nome CURTO já as separa, então é ele que o chip leva: `Casa` e `Casa Variant`.
+    //
+    // ⚠️ **Report do Enio com foto (2026-08-31): *«Label dos botões emboladas»*.** O rótulo longo
+    // (`Size=Small Variant`) não cabia em meia largura de painel e transbordava o botão — e ele
+    // era desnecessário, porque o curto distinguia.
     let me = "Casa {Size=Small}";
     let members = [m(1, me), m(2, "Casa {Size=Small} Variant")];
     let (rows, _) = rows_for(&members, 1, me);
     let flat = rows.iter().find(|a| a.name.is_empty()).expect("modo plano");
+    assert_eq!(labels(flat), vec!["Casa", "Casa Variant"]);
+}
+
+/// ⛔⛔ **E quando o CURTO colide, o chip cai no longo** — a metade sem a qual a cura acima seria
+/// uma regressão.
+///
+/// Com `Casa {A=1}` e `Casa {B=2}` os dois nomes curtos são `Casa`: o rótulo tem de crescer, não
+/// colapsar. *Uma das duas regras falha no caso da outra; a escolha é do CONJUNTO.*
+///
+/// **Mutação que deve sangrar:** usar `short[i]` sempre.
+#[test]
+fn the_flat_chip_grows_only_when_the_short_name_collides() {
+    use super::rows_for;
+    let me = "Casa {A=1}";
+    let members = [m(1, me), m(2, "Casa {B=2}")];
+    let (rows, _) = rows_for(&members, 1, me);
+    let flat = rows.iter().find(|a| a.name.is_empty()).expect("modo plano");
     let seen = labels(flat);
-    assert_eq!(seen, vec!["Size=Small", "Size=Small Variant"]);
-    assert_ne!(
-        seen[0], seen[1],
-        "duas irmãs com o mesmo rótulo não escolhem nada"
+    assert_eq!(
+        seen,
+        vec!["A=1", "B=2"],
+        "o curto colidia e o chip tinha de crescer"
     );
+    assert_ne!(seen[0], seen[1]);
 }

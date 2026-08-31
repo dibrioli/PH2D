@@ -34,4 +34,18 @@ pub struct InspectorPropertiesInfo {
     pub rows: Vec<super::variant_axes::VariantAxis>,
     /// O que a tabela de ids não endereça — **escrito**, nunca truncado em silêncio.
     pub beyond: usize,
+    /// ⭐⭐⭐ **DE QUEM são estas propriedades** — o nome curto do componente, quando o objecto é
+    /// uma cópia. `None` quando elas são do próprio objecto.
+    ///
+    /// # ⛔⛔ O cartão contradizia o nome que o artista tinha acabado de escrever
+    ///
+    /// Report do Enio com foto (2026-08-31): ele renomeou uma **cópia** para `Canvas{Size=Big}` e
+    /// o cartão continuou a dizer `Size  Small`. **O cartão estava certo** — uma propriedade é do
+    /// COMPONENTE, e a cópia herda-a — mas na tela liam-se, um por cima do outro, um nome a dizer
+    /// `Big` e uma linha a dizer `Small`, sem nada a explicar a diferença.
+    ///
+    /// ⚠️ *Um valor que discorda do que o artista escreveu tem de dizer de onde vem.* ⛔ A
+    /// alternativa — passar a ler o nome da cópia — quebraria a lei que faz os chips funcionarem
+    /// (a família compara nomes de RECEITAS) e daria a cada cópia uma verdade própria.
+    pub source_name: Option<String>,
 }

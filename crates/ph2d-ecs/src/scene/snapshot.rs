@@ -58,6 +58,21 @@ pub struct HierarchyEntry {
     /// são entidades comuns com filhos). O painel usa isto para o ícone
     /// da linha, e a shell para achar o path sem um segundo mapa.
     pub vec_path: Option<u64>,
+    /// ⭐⭐⭐ **Esta linha é uma RECEITA** (`MasterRoot`) — report do Enio com foto, 2026-08-31.
+    ///
+    /// # ⛔⛔ O artista não conseguia achar a receita para a renomear
+    ///
+    /// Depois de *Make Prefab* + *Make Prefab na cópia*, a Hierarquia mostra a receita base, a
+    /// receita da variante e as cópias — e as duas receitas lêem-se **exactamente igual**
+    /// (`Casa *¹`), porque o selo das propriedades diz *quantas*, não *quais*. O passo do fluxo
+    /// que faz a variante valer alguma coisa é **renomear a receita dela**, e ele era um palpite:
+    /// no report, o artista renomeou uma CÓPIA e o botão não mudou — corretamente, porque as
+    /// propriedades são do componente.
+    ///
+    /// ⚠️ **É um FACTO da entidade, e o painel decide como o mostrar** — aqui não se escolhe selo
+    /// nem cor. O `badge_tone` da Hierarquia já conhecia o código `PRF` e **ninguém o produzia**:
+    /// o canal existia inteiro, à espera deste bit.
+    pub is_master: bool,
 }
 
 /// DFS-ordered flat view of the sim hierarchy. Each `build_*` pass
@@ -105,6 +120,7 @@ type HierarchyChainFetch = (
     Option<&'static crate::Locked>,
     Option<&'static crate::GroupedChildren>,
     Option<&'static crate::VecPathRef>,
+    Option<&'static crate::MasterRoot>,
 );
 
 /// Pre-built query state for [`build_hierarchy_snapshot`]. One per
@@ -125,6 +141,7 @@ impl HierarchyWalkState {
                 Option<&crate::Locked>,
                 Option<&crate::GroupedChildren>,
                 Option<&crate::VecPathRef>,
+                Option<&crate::MasterRoot>,
             )>(),
         }
     }
@@ -171,7 +188,7 @@ pub fn build_hierarchy_snapshot(
     }
 
     while let Some((entity, depth, parent)) = scratch.pop() {
-        let Ok((name, children, vis, lk, grp, vp)) = state.chain.get(sim_w, entity) else {
+        let Ok((name, children, vis, lk, grp, vp, mr)) = state.chain.get(sim_w, entity) else {
             continue;
         };
         out.entries.push(HierarchyEntry {
@@ -183,6 +200,7 @@ pub fn build_hierarchy_snapshot(
             locked: lk.is_some(),
             group_locked: grp.is_some(),
             vec_path: vp.map(|v| v.0),
+            is_master: mr.is_some(),
         });
         if let Some(children) = children {
             // Push children in reverse so DFS visits the first child

@@ -416,6 +416,28 @@ pub fn chip_label(name: &str) -> String {
 /// ⚠️ É a fileira que o cartão já desenhava antes dos eixos — e continua a ser o caminho de omissão
 /// para toda família cujos nomes não sejam combinações.
 fn flat_axis(members: &[(u64, String)], me: u64) -> Vec<VariantAxis> {
+    // ⭐⭐⭐ **O rótulo escolhe-se sobre o CONJUNTO, não um nome de cada vez** (report do Enio com
+    // foto, 2026-08-31: *«Label dos botões emboladas»*).
+    //
+    // As duas regras plausíveis falham sozinhas, cada uma no caso da outra:
+    //
+    // | regra | falha quando |
+    // |---|---|
+    // | [`display_name`] (curto) | a família toda partilha o nome comum ⇒ chips todos iguais |
+    // | [`chip_label`] (o miolo) | as irmãs partilham o miolo ⇒ chips iguais **e** compridos |
+    //
+    // ⇒ tenta-se o CURTO primeiro e só se cai no longo quando ele de facto colide. *A informação
+    // que decide — «estes dois são iguais?» — só existe aqui, onde os membros estão todos à mão;
+    // uma função que olha um nome de cada vez não pode responder.*
+    let short: Vec<String> = members.iter().map(|(_, n)| display_name(n)).collect();
+    let distinct = {
+        let mut seen: Vec<&str> = Vec::with_capacity(short.len());
+        short.iter().all(|l| {
+            let new = !seen.contains(&l.as_str());
+            seen.push(l.as_str());
+            new
+        })
+    };
     vec![VariantAxis {
         // ⚠️ **VAZIO, e quem o nomeia é o PAINEL** (HR-15, auditoria de 2026-08-30): um `"Variant"`
         // aqui é string de UI em inglês numa camada que o `hr15_no_hardcoded_ui_strings` **não
@@ -425,11 +447,15 @@ fn flat_axis(members: &[(u64, String)], me: u64) -> Vec<VariantAxis> {
         name: String::new(),
         options: members
             .iter()
-            .map(|(id, name)| VariantChoice {
+            .enumerate()
+            .map(|(i, (id, name))| VariantChoice {
                 master: *id,
-                // ⚠️ **O miolo das chaves, não o nome cru** — ver [`chip_label`]: no modo plano o
-                // nome comum é o mesmo em toda a família, e o chip tem de mostrar o que difere.
-                label: chip_label(name),
+                // ⚠️ **O curto quando ele chega, o miolo quando não chega** — ver o bloco acima.
+                label: if distinct {
+                    short[i].clone()
+                } else {
+                    chip_label(name)
+                },
                 current: *id == me,
             })
             .collect(),

@@ -411,3 +411,34 @@ fn the_card_calls_a_variant_a_variant_and_a_copy_a_copy() {
         "uma peca dentro de uma variante leu-se como copia comum — a pergunta e' da RAIZ"
     );
 }
+
+/// ⛔⛔ **A proveniência lê o nome CURTO** — report do Enio com foto, 2026-08-31: *«Card com Labels
+/// emboladas»*.
+///
+/// `Instance of "Canvas{Size=Small} Variant"` quebrava em duas linhas num cartão cuja altura era
+/// contada em linhas de texto ⇒ o resumo era pintado **por cima da segunda**. A frase passa a
+/// mostrar o que a Hierarquia mostra, e as propriedades ficam no cartão que existe para elas.
+///
+/// ⚠️ **O oráculo é a AUSÊNCIA das chaves na frase**, e não o comprimento: um corte cego que
+/// truncasse a `N` caracteres também encurtaria, e mentiria sobre o nome.
+///
+/// (Mutação: `provenance` voltar a usar `master_name` cru ⇒ RED.)
+#[test]
+fn the_provenance_line_reads_the_short_name() {
+    let info = ph2d_editor::screens::hero::InspectorInstanceInfo {
+        master_name: "Canvas {Size=Small} Variant".into(),
+        is_variant: false,
+        ..Default::default()
+    };
+    assert_eq!(
+        info.provenance(),
+        "Instance of \u{201c}Canvas Variant\u{201d}"
+    );
+    // ⚠️ E um nome SEM chaves atravessa intacto — a cura não pode comer nome nenhum.
+    let plain = ph2d_editor::screens::hero::InspectorInstanceInfo {
+        master_name: "Badge".into(),
+        is_variant: true,
+        ..Default::default()
+    };
+    assert_eq!(plain.provenance(), "Variant of \u{201c}Badge\u{201d}");
+}

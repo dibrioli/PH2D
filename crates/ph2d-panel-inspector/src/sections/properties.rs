@@ -79,10 +79,17 @@ pub(crate) fn paint_properties_card(
     let tx = x + CARD_PAD;
     let tw = (w - CARD_PAD * 2.0).max(0.0);
     let mut ty = y + CARD_PAD;
+    // ⭐⭐⭐ **O título NOMEIA a fonte quando ela não é o próprio objecto** — ver o doc de
+    // `InspectorPropertiesInfo::source_name`. Sem isto, uma cópia renomeada mostra um nome a dizer
+    // `Big` e uma linha a dizer `Small`, sem nada a explicar a diferença.
+    let title = match info.source_name.as_deref() {
+        Some(n) => format!("{CARD_TITLE} of \u{201c}{n}\u{201d}"),
+        None => CARD_TITLE.to_string(),
+    };
     paint_text(
         text_system,
         scene,
-        CARD_TITLE,
+        &title,
         tx,
         ty,
         small,

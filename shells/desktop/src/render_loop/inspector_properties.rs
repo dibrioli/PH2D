@@ -59,6 +59,10 @@ pub(super) fn build_properties_info(
         root_bits: root.map_or(0, Entity::to_bits),
         rows,
         beyond,
+        // ⚠️ **Só quando NÃO é do próprio objecto** — ver o doc do campo. Num objecto solto a
+        // declaração é dele, e nomear a fonte seria dizer-lhe o nome dele próprio.
+        source_name: root_master
+            .map(|_| ph2d_editor::screens::hero::variant_axes::display_name(&declared_by)),
     })
 }
 

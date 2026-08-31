@@ -61,6 +61,8 @@ fn info() -> InspectorPropertiesInfo {
             },
         ],
         beyond: 0,
+        // A fixtura é uma CÓPIA (tem `root_bits`), então as propriedades são do componente.
+        source_name: Some("Casa".into()),
     }
 }
 

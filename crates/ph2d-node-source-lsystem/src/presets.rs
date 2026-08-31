@@ -239,8 +239,17 @@ pub const PRESETS: &[Preset] = &[
                 A(s) -> (0.25) F(s)[J]!F(s*0.8)[+A(s*0.6)]",
         angle: 25.0,
         generations: 5.0,
-        step: 0.478,
-        width: 0.154,
+        // ⛔⛔ **RE-DERIVADO em 2026-08-31, e a causa é o `[J]`** (auditoria de seis lentes,
+        // doc 96 §1.1). O `Wild` é o **único molde ESTOCÁSTICO** — três produções com peso —, e
+        // inserir um módulo desloca o fluxo de sorteios: produções diferentes são escolhidas.
+        // Os outros sete deram **zero** posições novas com a âncora; este deu **32**, e saía
+        // **15 % mais pequeno** que os irmãos (`1,4963` contra a mediana `1,7726`).
+        //
+        // ⚠️ *A lei desta tabela é que o `step` se CONTA* (`step_base · alvo ÷ razão_medida`) —
+        // e quem muda a gramática muda a razão medida. Um `[J]` num molde sorteado não é uma
+        // marca invisível: é outra planta.
+        step: 0.566,
+        width: 0.182,
         reads: Reads::of("A(s) -> (0.4) F(s)![+A(s*0.72)][-A(s*0.72)]"),
         // Wild: marcas em `1..5`; a `3` sobram 12 de 18.
         leaf_first_level: 3.0,

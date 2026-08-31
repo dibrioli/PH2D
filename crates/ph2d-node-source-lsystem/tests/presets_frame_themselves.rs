@@ -65,16 +65,36 @@ fn bbox(s: &Stream) -> (f32, f32) {
 /// ⭐⭐⭐ **OS OITO SAEM DO MESMO TAMANHO** — a cura do report.
 ///
 /// A barra é uma RAZÃO entre os moldes, nunca um literal: o alvo é a mediana e cada um tem de
-/// ficar dentro de `[1/k, k]` dela. ⚠️ **`k` sai da dispersão que os quatro paramétricos já
-/// tinham** (`2,7 .. 3,9` ⇒ `1,44×` entre o menor e o maior), com folga para o arredondamento
-/// do `step` a três casas — não de um número escolhido para o teste passar.
+/// ficar dentro de `[1/k, k]` dela.
+///
+/// # ⛔⛔ A barra APERTOU de `1,6` para `1,10` em 2026-08-31, e o motivo é o que ela deixou passar
+///
+/// A 1.ª redacção tirava `k` da **dispersão que os quatro paramétricos já tinham** — *«`2,7 .. 3,9`
+/// ⇒ `1,44×` entre o menor e o maior»*. ⚠️⚠️ **Isso é a dispersão ANTES da cura**, ou seja a
+/// medida da doença que este gate existe para curar: ela admitia ±60 %, e em 2026-08-30 deixou
+/// passar o `Wild` a **−15,6 %** sem se mexer (auditoria de seis lentes, doc 96 §1.1).
+/// *Uma barra tirada da doença que se está a curar tolera a doença a voltar.*
+///
+/// # De onde sai o `1,10`
+///
+/// Da dispersão MEDIDA depois da cura, com a mediana em `1,777` unidades de mundo:
+///
+/// | molde | Tree | Fern | Bush | Weed | Wild | Koch | Dragon | Sprig |
+/// |---|---|---|---|---|---|---|---|---|
+/// | × mediana | 0,99 | 0,99 | 1,00 | 0,99 | **1,00** | 1,00 | 1,02 | 1,03 |
+///
+/// ⚠️ **E o que impede de apertar mais é MECÂNICO, não gosto:** o `step` de cada molde é gravado
+/// com **três casas decimais**, e no menor deles (`Dragon`, `0,019`) isso é ±`2,6 %` de erro de
+/// arredondamento sozinho. O `1,10` é ~3× o pior desvio observado e ~4× esse chão — apertado o
+/// bastante para apanhar a classe de regressão que o `Wild` foi, largo o bastante para não
+/// reprovar sobre a casa decimal.
 #[test]
 fn every_preset_frames_itself_like_its_siblings() {
     // ⚠️ **A régua aqui é a CAIXA (`max(w, h)`), e continua certa** — desde 2026-08-30 a lei do
     // crescimento usa outra (a largura média de Cauchy), mas a pergunta deste gate é o
     // ENQUADRAMENTO: quanto da tela o molde ocupa, que é a caixa. Ele corre em gerações
     // INTEIRAS, onde a lei do crescimento é inerte.
-    const K: f32 = 1.6;
+    const K: f32 = 1.10;
     let sizes: Vec<(&str, f32)> = ls::PRESETS
         .iter()
         .map(|p| {

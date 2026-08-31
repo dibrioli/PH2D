@@ -186,6 +186,19 @@ pub struct SolveReport {
     pub pairs: usize,
     /// ⛔ Costuras sem salto lido — **não acopladas**, e por isso contadas.
     pub loose_seams: usize,
+    /// ⛔⛔⛔ **Pares de costura em que um dos lados aponta para um vértice local que o
+    /// patch dele NÃO TEM** — ver [`crate::cut::CutReport::side_patch_flips`].
+    ///
+    /// ⛔ **Até 2026-08-30 isto era um `panic!` de índice** (`partners[pb][lb]`), apanhado
+    /// lá em cima pelo `catch_unwind` do botão e devolvido como *«a malha é grossa demais»*
+    /// — *uma mensagem sobre a peça do artista para um defeito nosso*. Reproduzido com
+    /// `PH2D_ISO_ADAPT=1` na peça dele.
+    ///
+    /// ⚠️ **Contar e saltar não é silenciar:** o par não é acoplado (a costura fica mais
+    /// fraca ali, exactamente como um [`Self::loose_seams`]), e o número sai no relatório
+    /// para quem quiser a causa. *A alternativa era continuar a matar a tentativa inteira e
+    /// a mentir sobre o motivo.*
+    pub mismatched_locals: usize,
     /// ⭐⭐⭐ **O DESVIO DO ALINHAMENTO**, em fracção do alvo (`0` = o gradiente é
     /// exactamente `X/h`). Mediana e `p95` sobre os triângulos.
     pub align_p50: f32,
@@ -342,8 +355,32 @@ pub(crate) fn measure(
             let (Some(la), Some(lb)) = (la, lb) else {
                 continue;
             };
-            let za = turn2(map.uv[pa][*la as usize], k);
-            let zb = map.uv[pb][*lb as usize];
+            // ⛔⛔⛔ **AS DUAS LINHAS ABAIXO ERAM O ESTOURO QUE O `CLAUDE.md` §5 diz estar
+            // «sem endereço desde 26/08»** — e ele estava neste ficheiro o tempo todo (a nota
+            // procurava `solve.rs:336`, e a função foi reescrita para baixo).
+            //
+            // ⭐ **Reproduzido em 2026-08-30** na peça mais recente do artista
+            // (`_base_sculpt.obj`, `Detail 0,85`): `index out of bounds: the len is 10 but the
+            // index is 35` — **DUAS das TRÊS candidatas do botão morriam aqui**, e a que
+            // sobrava cortava `41,8 %` do alcance. *O report «o remesh amputou pontas» é, em
+            // parte, uma cadeia a escolher entre uma candidata só.*
+            //
+            // ⚠️ **Contar e saltar, como o irmão em [`crate::assembly`]** (a régua é um
+            // percentil de resíduos de costura: um par a menos não a envenena, e um `panic`
+            // mata a tentativa inteira). ⛔ **A causa a montante continua por achar** — o
+            // `CutReport::side_patch_flips` deu `0` em todas as candidatas que chegaram a
+            // imprimir, logo **não** é o casamento por posição da tabela de costuras. *Este
+            // contador é o que torna a causa mensurável em vez de fatal.*
+            let (Some(row_a), Some(row_b)) = (map.uv.get(pa), map.uv.get(pb)) else {
+                rep.mismatched_locals += 1;
+                continue;
+            };
+            let (Some(&ua), Some(&ub)) = (row_a.get(*la as usize), row_b.get(*lb as usize)) else {
+                rep.mismatched_locals += 1;
+                continue;
+            };
+            let za = turn2(ua, k);
+            let zb = ub;
             let d = [zb[0] - za[0] - t[0], zb[1] - za[1] - t[1]];
             seam.push(d[0].mul_add(d[0], d[1] * d[1]).sqrt());
         }

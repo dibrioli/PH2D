@@ -462,11 +462,30 @@ impl<'a> Relaxer<'a> {
         }
         let (mut acc, mut n) = ([0.0f32; 2], 0.0f32);
         for &(pa, la, pb, lb) in pairs {
-            let za = turn2(map.uv[pa as usize][la as usize], *k);
-            let zb = map.uv[pb as usize][lb as usize];
+            // ⛔ **O MESMO índice fora de limites que matava a [`crate::solve::measure`]** —
+            // ver o comentário lá, que traz a reprodução e o contador
+            // ([`crate::solve::SolveReport::mismatched_locals`]). ⚠️ **Aqui não há relatório
+            // por onde o contar**, e este é o caminho de bissecção (`PH2D_GRIDMAP_WELD=0`),
+            // não o de omissão — *deixar o estouro de pé num caminho porque ele é o menos
+            // corrido seria guardar a mesma armadilha para quem for bissectar.* A média
+            // aguenta um termo a menos; um `panic` mata a tentativa inteira.
+            let (Some(row_a), Some(row_b)) = (map.uv.get(pa as usize), map.uv.get(pb as usize))
+            else {
+                continue;
+            };
+            let (Some(&ua), Some(&ub)) = (row_a.get(la as usize), row_b.get(lb as usize)) else {
+                continue;
+            };
+            let za = turn2(ua, *k);
+            let zb = ub;
             acc[0] += zb[0] - za[0];
             acc[1] += zb[1] - za[1];
             n += 1.0;
+        }
+        // ⚠️ **`n` pode ter ficado a zero** se todos os pares deste grupo forem inválidos —
+        // dividir daria `NaN`, e um `NaN` numa translação envenena o mapa inteiro em silêncio.
+        if n <= 0.0 {
+            return None;
         }
         Some([acc[0] / n, acc[1] / n])
     }

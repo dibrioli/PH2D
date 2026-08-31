@@ -188,6 +188,22 @@ pub(crate) fn assemble(
             let (Some(la), Some(lb)) = (la, lb) else {
                 continue;
             };
+            // ⛔⛔⛔ **OS DOIS LADOS SÃO OLHADOS ANTES DE QUALQUER UM SER ESCRITO** — ver
+            // [`SolveReport::mismatched_locals`]. Até 2026-08-30 estas duas linhas eram
+            // indexação directa, e a segunda **estourava** quando o lado `b` trazia um
+            // índice local de outro patch. ⚠️ *Escrever o primeiro e só depois descobrir
+            // que o segundo não existe deixaria um par meio-acoplado*, que é pior que
+            // nenhum: o vértice `a` passaria a ser puxado por um parceiro que não o puxa
+            // de volta.
+            let has = |p: u32, l: u32| {
+                partners
+                    .get(p as usize)
+                    .is_some_and(|v| (l as usize) < v.len())
+            };
+            if !has(pa, *la) || !has(pb, *lb) {
+                rep.mismatched_locals += 1;
+                continue;
+            }
             partners[pa as usize][*la as usize].push(Partner {
                 patch: pb,
                 local: *lb,

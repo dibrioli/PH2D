@@ -115,6 +115,19 @@ pub struct CutReport {
     /// ⭐⭐⭐ **Quantos patches EXTRA nasceram de partir um patch desligado** — ver
     /// [`split_disconnected`]. `0` é o caso normal.
     pub split_patches: usize,
+    /// ⭐⭐⭐ **Quantas arestas da cadeia discordaram do PATCH que o lado já tinha** — os dois
+    /// lados de um arco são casados pela **POSIÇÃO** na lista `across[(a,b)]`, e um patch com
+    /// duas faces a tocar a mesma aresta empurra duas entradas: a posição `1` deixa de ser o
+    /// mesmo patch, e o lado fica com o da **última** aresta e locais de **vários** patches.
+    ///
+    /// ⭐⭐ **MEDIDO em 2026-08-30, e é REAL — mas só em algumas peças:** `0` na
+    /// `sculpt_antes.obj` e **`2`** na `_base_sculpt.obj`, que é exactamente a peça em que o
+    /// `map.uv[p][l]` da [`crate::solve`] estourava (`4` locais fora de limites — ver
+    /// [`crate::solve::SolveReport::mismatched_locals`]). ⛔⛔ **A 1.ª leitura deu `0` e foi
+    /// escrita como «hipótese refutada»:** ela correu na peça que **não** contém o fenómeno.
+    /// *Uma refutação vale sobre a fixtura em que correu.* Tabelas:
+    /// `docs/3D/quad-remesh/PLANO_a_graduacao_da_ponta.md` §10 e §12.
+    pub side_patch_flips: usize,
 }
 
 /// ⛔⛔⛔ **FALSE — partir os patches desligados foi construído, MEDIDO e REJEITADO como
@@ -630,6 +643,10 @@ pub fn cut_along_patches(mesh: &Mesh, layout: &PatchLayout) -> (CutMesh, CutRepo
                 let Some((sp, marks)) = sides.get_mut(slot_i) else {
                     continue;
                 };
+                // ⭐ **Conta e NÃO cura** — ver [`CutReport::side_patch_flips`].
+                if *sp != p {
+                    rep.side_patch_flips += 1;
+                }
                 *sp = p;
                 let v = mesh.faces()[f as usize].verts();
                 for g in [w[0], w[1]] {

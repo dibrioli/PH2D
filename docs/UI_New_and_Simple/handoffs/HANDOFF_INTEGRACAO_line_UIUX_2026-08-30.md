@@ -1275,3 +1275,91 @@ não o gate** (§18.3.1 e §18.4).
 - **A largura da coluna não muda com o conteúdo**: mover um painel largo para uma coluna estreita
   dá-lhe a largura da coluna. A D4 promete arrastar a **divisória**, e isso já existe
   (`DOCK_SEAM_PX`).
+
+---
+
+## §19 — ⭐⭐ A ARRUMAÇÃO SOBREVIVE AO FECHO (entrega 24)
+
+Commit `7e64b09d4`. `~/.ph2d/layout.txt` — a frase da **D4** ao pé da letra (*«um layout é
+`{encaixe → [painéis], posição das divisórias}`»*), e a metade que o §18.6 nomeava como aberta.
+
+### §19.1 — O ficheiro, e onde ele mora
+
+`slot.<painel>=<encaixe>` — **só as excepções**, quem o artista moveu — mais `dock_w_left` /
+`dock_w_right`, a divisória que ele arrastou. Instalado **antes do primeiro quadro**; gravado
+quando muda.
+
+⚠️ **Guardar só as excepções** é o que faz um painel que nasce amanhã ir para onde ele próprio
+declara, **sem uma linha de migração**.
+
+**Por que um ficheiro próprio e não uma chave no `prefs.txt`:** o `Prefs` é `Copy` (três escalares) e
+o espelho que decide *«isto mudou?»* é um `Cell<Option<Prefs>>`. Uma arrumação é uma **colecção** de
+tamanho variável — pô-la ali obrigaria o tipo a deixar de ser `Copy`. ⇒ o irmão certo é o
+`palette_persist`, que já resolve esta classe. ⚠️ *Não é uma casa nova: é a terceira gaveta da que já
+existe* (mesma pasta, texto, std-only, best-effort, espelho por hash FNV).
+
+### §19.2 — ⛔ A validação vive na LEITURA, nunca na escrita
+
+Um encaixe que o painel **já não permite** é saltado ao instalar; um painel que já não existe também.
+O ficheiro é do artista, mas o `ALLOWED_SLOTS` é do **produto**: se uma wave estreitar o que um
+painel aceita, uma arrumação gravada não pode ressuscitar um sítio onde ele deixou de caber.
+*O ficheiro pode ser mais velho que a regra.*
+
+### §19.3 — ⚠️ `dock_width` e `dock_width_choice` não são a mesma leitura
+
+| leitura | devolve |
+|---|---|
+| `dock_width(side)` | **sempre um número** — o default quando ninguém arrastou |
+| `dock_width_choice(side)` | **a escolha**, ou `None` |
+
+⛔ Persistir a primeira escreveria o default **como se fosse uma decisão do artista** — e no dia em
+que o default mudasse, toda arrumação gravada continuaria a prender a coluna no número velho sem
+ninguém ter pedido nada. Mutação a provar.
+
+### §19.4 — ⛔⛔ Um comentário meu dizia o CONTRÁRIO do que o código fazia
+
+Escrevi *«o primeiro quadro NÃO grava»* com a condição inline `c.get() != Some(h)` e o espelho a
+arrancar em `None` — o que é **sempre verdade**. ⇒ o ficheiro era reescrito no arranque de **toda**
+sessão, inclusive de uma em que o artista não tocou em nada (e com o disco cheio, um erro por sessão
+sobre um facto que ninguém mudou).
+
+⭐ A cura não foi corrigir a condição: foi dar-lhe **nome** (`should_save`), que é o que a torna
+gateável. O gate `the_first_observation_of_a_session_never_writes` é hoje o dono da frase.
+
+⚠️ **É a segunda vez na mesma jornada** que um comentário confiante meu descreveu o oposto do código
+(a outra: a supressão do clique, §18.3.1). As duas foram apanhadas por coisas diferentes — uma por
+mutação, outra por reler ao escrever o gate — e a lição comum é a mesma: *uma decisão dentro de um
+hook não é gateável, e por isso não é confrontada.*
+
+### §19.5 — Gates
+
+| gate | onde | o que afirma |
+|---|---|---|
+| 8 em `src/layout_persist_tests.rs` | shell | ida-e-volta · **cada campo move o hash** · lixo saltado sem envenenar o resto · ficheiro ausente = omissão · ordem normalizada · a primeira observação não grava · a arrumação volta **mas o encaixe proibido não** · o que está instalado é o que se grava |
+| 3 em `tests/the_arrangement_is_read_at_boot_and_written_on_change.rs` | shell (FONTE) | alguém **instala** antes do primeiro quadro · alguém **grava** no hook dos outros dois inquilinos · a decisão tem nome |
+| `every_slot_survives_a_round_trip_through_its_wire_name` | editor-core | ⚠️ o nome de ficheiro é `snake_case` e **não** o `Debug`, que muda quando alguém renomeia a variante — e nesse dia toda arrumação gravada cairia no default, em silêncio |
+
+⛔ **A segunda linha é a que impede a feature de não existir:** o `layout_persist` podia estar
+inteiro, testado e correcto, e o artista continuar a perder a arrumação — bastava ninguém o chamar.
+
+**Cinco mutações mortas** com controlo: a validação do `ALLOWED_SLOTS` na leitura · a ordem deixar de
+ser normalizada · as larguras saírem do hash · o `current` gravar a largura efectiva em vez da
+escolha · a primeira observação passar a gravar.
+
+### §19.6 — Verificação
+
+`ph2d-editor-core` **1345** ✓ · `ph2d-host-desktop` **4776** ✓ · `ph2d-panel-registry-init` 0 falhas ·
+`check --workspace --all-targets` e clippy limpos · fmt.
+
+⚠️ O `chrome_ops.rs` bateu **706/700** e o corte foi por responsabilidade
+(`state/dock_width_ops.rs` — *a largura das duas colunas*). ⚠️ **E a minha inserção tinha caído ENTRE
+um doc-comment e a função dele, em dois sítios** — os dois reparados no mesmo corte. *Um `///` órfão
+não falha nada e passa a descrever o vizinho errado.*
+
+### §19.7 — ⏳ O que fica nomeado
+
+- **A arrumação é UMA.** A D7 pede **oito LAYOUTS** nomeados por tarefa (*Editor 2D · Editor de
+  Texto · Runtime · …*), e o ficheiro de hoje guarda um só. O formato aguenta a extensão (uma secção
+  por layout), e o que falta é o **selector** — que é a decisão D3 e wave própria.
+- **A ordem das abas** continua a ser a ordem z e não é gravada: reabrir o app mostra os ocupantes na
+  ordem do registry, com o último raiz à frente.

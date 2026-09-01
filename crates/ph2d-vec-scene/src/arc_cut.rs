@@ -67,6 +67,34 @@ impl Geom {
         })
     }
 
+    /// ⭐⭐⭐ **O ERRO DA AMOSTRAGEM** — a maior distância entre a curva verdadeira e a corda que a
+    /// [`Self::edges`] usa no lugar dela. É a flecha máxima, medida no meio de cada corda.
+    ///
+    /// ⚠️ **Existe para haver uma tolerância MEDIDA em vez de escolhida.** Um ponto que está sobre
+    /// a curva pode estar a até isto da poligonal — e foi exactamente esse o report do Enio de
+    /// 2026-08-31: a ponta de um arco aparado ficava a `0,0323` da poligonal do círculo vizinho
+    /// (que tem flecha `0,12`), e por isso não era reconhecida como fronteira.
+    ///
+    /// ⛔ Um número fixo não serviria: a flecha cresce com o raio e com o ângulo de cada segmento —
+    /// um círculo de 2 âncoras erra **4×** o de 4 âncoras, para o mesmo raio.
+    pub(crate) fn sampling_error(&self) -> f64 {
+        let mut pior: f64 = 0.0;
+        for seg in &self.segs {
+            for j in 0..SAMPLES_PER_SEG {
+                #[allow(clippy::cast_precision_loss)]
+                let (t0, t1) = (
+                    j as f64 / SAMPLES_PER_SEG as f64,
+                    (j + 1) as f64 / SAMPLES_PER_SEG as f64,
+                );
+                let (a, b) = (point_at(seg, t0), point_at(seg, t1));
+                let m = point_at(seg, (t0 + t1) * 0.5);
+                let corda = [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5];
+                pior = pior.max((m[0] - corda[0]).hypot(m[1] - corda[1]));
+            }
+        }
+        pior
+    }
+
     /// A poligonal de detecção: arestas `(p0, p1, f0, f1)` com as frações de arco de cada ponta.
     /// A aresta de EMENDA de um fechado vai de `f_last` a `1.0` (não a 0), para o `lerp` da fração
     /// ser monótono na travessia perto da costura.

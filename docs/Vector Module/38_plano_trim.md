@@ -34,7 +34,18 @@ peça toda.
 1. um **cruzamento** com outro caminho visível;
 2. um **auto-cruzamento** do próprio caminho;
 3. um **nó** (âncora) do próprio caminho;
-4. uma **ponta aberta** do caminho.
+4. uma **ponta aberta** do caminho;
+5. ⭐ um **TOQUE** — a ponta de OUTRO caminho que pousa sobre este.
+
+⛔⛔ **A 5.ª nasceu do 1.º smoke** (Enio, 31/08, com foto): *"os pontos do círculo cortado estão
+sobre o outro círculo, mas este outro não reconhece os pontos"*. ⚠️ **Uma ponta que TERMINA sobre
+outra curva não é um CRUZAMENTO** — um cruzamento é a travessia de duas cordas que continuam para
+os dois lados, e um arco aparado **acaba** ali. Medido: depois de aparar um de dois círculos
+sobrepostos, o outro ficava com **UMA** fronteira onde tinha duas.
+⚠️ **A tolerância é MEDIDA e não escolhida** (`Geom::sampling_error`): um ponto que está sobre a
+curva pode estar a até a **flecha da amostragem** da poligonal que a representa — no caso, `0,0323`
+contra uma flecha de `0,12`. Um número fixo não serviria: a flecha cresce com o raio e com o ângulo
+de cada segmento.
 
 ⭐ **É exactamente o *"entre pontos ou entre linhas sobrepostas"* do pedido**, e é a regra do Fusion
 com o *"or node"* dentro.

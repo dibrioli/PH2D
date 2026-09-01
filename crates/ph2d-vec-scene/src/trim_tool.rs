@@ -89,8 +89,13 @@ pub fn piece_at(fronteiras: &[f64], closed: bool, cursor: f64) -> Option<(f64, f
         return None;
     }
     let c = cursor.clamp(0.0, 1.0);
+    // ⚠️⚠️ **O CURSOR EM CIMA DE UMA FRONTEIRA** (achado pela sonda do report de 31/08): com uma
+    // folga simétrica, `antes` e `depois` acham a MESMA e o pedaço nasce de largura ZERO — o
+    // realce não aparece e o clique não faz nada, que lê como *"a ferramenta não pega aqui"*.
+    // A folga é para TRÁS num lado e para a FRENTE no outro: o pedaço passa a ser sempre o que
+    // está **à frente** do cursor, e um cursor em cima de um nó escolhe o lado seguinte.
     let antes = fronteiras.iter().rev().find(|&&f| f <= c + EPS).copied();
-    let depois = fronteiras.iter().find(|&&f| f >= c - EPS).copied();
+    let depois = fronteiras.iter().find(|&&f| f > c + EPS).copied();
     if closed {
         // A volta: sem fronteira antes, a anterior é a ÚLTIMA (pela emenda); sem fronteira depois, a
         // seguinte é a PRIMEIRA. Com uma fronteira só, o pedaço é a volta inteira.
@@ -206,6 +211,45 @@ pub fn crossings_against(
         }
         if c.b.0 == 0 {
             out.push(c.b.1);
+        }
+    }
+    out.extend(touches(&geoms[0], outros));
+    out
+}
+
+/// ⭐⭐⭐ **OS TOQUES: as pontas de OUTROS contornos que POUSAM sobre este.**
+///
+/// # O report que isto existe para curar (Enio, 2026-08-31, com foto)
+///
+/// *"Os pontos do círculo cortado estão sobre o outro círculo, mas este outro não reconhece os
+/// pontos … e desse modo não me permite deletar o segmento entre os pontos."*
+///
+/// ⚠️⚠️ **Uma ponta que TERMINA sobre a outra curva não é um CRUZAMENTO.** Um cruzamento é a
+/// travessia de duas cordas que continuam para os dois lados; um arco aparado **acaba** ali, e não
+/// há segunda metade para atravessar. Medido no report: depois de aparar um dos círculos, o outro
+/// ficava com **UMA** fronteira onde tinha duas.
+///
+/// ⚠️ **A tolerância é MEDIDA, não escolhida**: é o erro de amostragem do próprio contorno
+/// ([`Geom::sampling_error`]). Um ponto que está sobre a curva pode estar a até isso da poligonal
+/// que a representa — no caso do report, `0,0323` contra uma flecha de `0,12`.
+///
+/// ⛔ **Só as PONTAS, e só de contornos ABERTOS.** Uma âncora interior de outra curva que pouse
+/// aqui já é apanhada pelo cruzamento (a curva dela continua para os dois lados), e um contorno
+/// fechado não tem ponta. *Alargar isto a toda âncora poria fronteira em cada vizinho que passa
+/// perto, e o pedaço encolheria até ao ruído.*
+fn touches(alvo: &Geom, outros: &[(Vec<VecVertex>, bool)]) -> Vec<f64> {
+    let tol = alvo.sampling_error();
+    let mut out = Vec::new();
+    for (verts, closed) in outros {
+        if *closed || verts.len() < 2 {
+            continue;
+        }
+        for ponta in [verts[0].anchor, verts[verts.len() - 1].anchor] {
+            if let Some((frac, dist)) = nearest_fraction(&alvo.verts, alvo.closed, ponta)
+                && dist <= tol
+            {
+                out.push(frac);
+            }
         }
     }
     out

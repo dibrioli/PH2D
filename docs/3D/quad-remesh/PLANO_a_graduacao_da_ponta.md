@@ -1192,3 +1192,59 @@ fixtura que não tem amostra, e acusar mediria a fixtura.
 alimentar uma decisão.* Ela foi escrita a partir das pontas **parcialmente** cortadas — as que
 a foto mostrava — e o caso total, que é o pior, nunca lhe foi apresentado até um selector o
 produzir.
+
+## §62 — ⛔ CONSTRUIR O CAMPO UMA VEZ, DA REFERÊNCIA: o amplificador certo, a cura errada
+
+⭐ **O amplificador foi encontrado, e o mecanismo é limpo:** a `SizingGrid` era reconstruída **a
+cada ronda**, a partir da malha que o laço está a modificar. *Isso é realimentação*: a ronda 1
+vê um campo que difere de `10⁻⁷`, produz uma malha ligeiramente outra, e a ronda 2 constrói o
+campo **sobre essa malha** — o desvio deixa de ser `10⁻⁷` e passa a ser a diferença entre duas
+malhas.
+
+Construí-lo **uma vez, da referência**, quebra a realimentação — e a esfera grossa passou a
+invariante nas **cinco** posições, `x = 16` incluída (a ancoragem sozinha não conseguia).
+
+⛔⛔ **E o produto piorou muito.** No botão, as seis posições deram `1`·`2`·`3`·`3`·`1`·`2`
+pontas cortadas, com piores de **`−48,6 %`**, `−47,5 %`, `−43,4 %`, `−21,4 %` — contra
+`−4,2 %`..`−10,5 %` de como está. A fase zero subiu de `~1 841` para `~2 182` vértices: o
+campo tirado da referência densa está calibrado para a população errada.
+
+⇒ revertido. ⚠️ *O mecanismo estava certo e a cura estava errada — e as duas coisas cabem na
+mesma frase sem se contradizerem.*
+
+## §63 — ⭐⭐⭐ A SAÍDA É A OPOSTA: dar FOLGA à ponta (`ADAPT_RATIO` `16 → 64`)
+
+Depois de **três** curas de estabilidade construídas e revertidas — todas a comerem a agulha —,
+a leitura é uma só: **a nitidez da ponta vive exactamente do que se estava a suavizar.**
+
+⇒ em vez de tirar o ruído, **tirar a ponta do alcance dele**: com resolução de sobra no bico,
+uma decisão de corte que vira deixa de decidir se ele vive. Medido em **8 células**:
+
+| célula | `16` | ⭐ **`64`** |
+|---|---|---|
+| origem | `1/4` · `−4,2 %` | ⭐ **`0/4` · `−0,5 %`** |
+| `x = ½` | `3/4` · `−10,5 %` | ⭐ **`0/4` · `−0,3 %`** |
+| `x = 1` | `2/4` · `−8,4 %` | `1/4` · `−4,1 %` |
+| `x = 2` (o importador põe a peça aqui) | `2/4` · `−6,3 %` | ⭐ **`0/4` · `−1,9 %`** |
+| `x = 4` | `1/4` · `−10,4 %` | ⭐ **`0/4` · `−1,7 %`** |
+| ⛔ `x = 16` | `2/4` · `−7,1 %` (casca ABERTA) | `1/4` · `−24,2 %` (fecha, `1` não-manifold) |
+| `sculpt_antes` `d = 0,85` | `2/6` · `−18,9 %` | `2/6` · `−17,1 %` |
+| `_base_sculpt` `d = 0,85` | `1/4` · `−4,1 %` | `1/4` · `−4,6 %` |
+
+⭐ **Melhor ou igual em `7` de `8`, quatro células a ZERO pontas cortadas**, e o relógio não
+sobe — a renormalização mantém o orçamento, logo a folga **move** os quads em vez de os criar.
+
+⚠️ **Não é invariância**: é a ponta a deixar de depender do sorteio. A saída ainda difere entre
+posições; o que deixou de diferir, em 5 das 6, é **se o bico sobrevive** — que é a pergunta do
+dono.
+
+## §64 — ⏳ O QUE FICA
+
+1. ⛔ **`x = 16` continua mau nas duas configurações** (`16` abre a casca, `64` deixa um
+   não-manifold). É a posição extrema e nenhuma peça de artista vive lá — mas é a prova de que
+   a folga **mascara** a instabilidade em vez de a curar.
+2. ⏳ **O gate de sensibilidade sobre o BOTÃO**, com a barra em *pontas cortadas* — ainda por
+   escrever, e agora ele tem um número honesto para exigir (`0` cortadas em `x ≤ 4`).
+3. ⏳ **O laço** continua a amplificar. As duas técnicas nomeadas na §59 — histerese na banda de
+   split/collapse e ordem de visita por conteúdo — **continuam por tentar**, e agora com a
+   vantagem de que a ponta já não depende delas para sobreviver.

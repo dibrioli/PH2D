@@ -371,7 +371,11 @@ fn every_pair_of_modifiers_keeps_the_field_marchable() {
         for b in UnaryKind::ALL {
             let mods = vec![vivo(a), vivo(b)];
             let nome = format!("[{a:?}, {b:?}]");
-            let g = worst_gradient(&peca(mods), 20);
+            // ⛔⛔ **A grelha era `20`, e o irmão logo abaixo declara-a CEGA** (auditoria de
+            // 2026-08-30): `[Bend, Twist]` lia `0,5630` a `20³` e `1,3448` a `40³`. *Um gate que
+            // usa a grelha que o vizinho chama de cega mede a grelha.* Hoje os 100 pares estão a
+            // `0` em ambas, e a barra corre na que vê.
+            let g = worst_gradient(&peca(mods), 40);
             if g > pior.0 {
                 pior = (g, nome.clone());
             }

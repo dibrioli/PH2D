@@ -13,6 +13,7 @@
 
 use crate::ops;
 use crate::stack_bend::{BEND_FOLD_MARGIN, bend, bend_curvature, bend_reach};
+use crate::stack_taper::{taper, taper_divisor, taper_floor, taper_reach};
 use fidget::context::Tree;
 use ph2d_field::Unary;
 
@@ -54,9 +55,35 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
     // `min`/`max` preservam Lipschitz, então o tecto da pilha inteira continua a ser o produto dos
     // `σ` — e o número que o artista escreveu volta a valer o que diz.
     let mut divisor = 1.0f64;
-    // ⛔⛔ **Já passou um DEFORMADOR DE ESPAÇO por aqui?** — a pergunta que a repetição radial tem de
-    // fazer, e que ela não podia fazer sozinha. Ver [`radial`].
-    let mut deformado = false;
+    // ⛔⛔⛔ **HÁ UM DEFORMADOR DE ESPAÇO NESTA PILHA?** — e a pergunta é sobre a pilha INTEIRA, não
+    // sobre o que já passou (2026-08-31).
+    //
+    // ⚠️ É a mesma lei que o `divisor` aprendeu três linhas acima, e ela mordeu de novo por
+    // **falta de a aplicar aqui**: a caixa de recorte da marcha é o envelope do FIM da pilha, então
+    // um deformador **posterior** alarga a região onde a repetição é avaliada — e ali a lei das duas
+    // células deixa de bastar. Um `deformado` que só olha para trás vê o mundo de antes.
+    //
+    // Medido, os MESMOS modificadores com a ordem trocada:
+    //
+    // | pilha | `‖∇f‖` a `40³` |
+    // |---|---:|
+    // | `[Shell, Array, Twist]` (deformador **depois**) | **`2 224,31`** |
+    // | `[Shell, Twist, Array]` (deformador **antes**) | `0,38` |
+    // | `[Radial, Bend, Radial]` | **`507,09`** |
+    // | `[Bend, Radial, Radial]` | `0,28` |
+    //
+    // ⇒ **`5 000×` de diferença, e a única coisa que muda é a ordem.**
+    //
+    // ⭐ **Uma pilha sem deformador nenhum continua byte-idêntica** — a bandeira fica `false` do
+    // princípio ao fim, que é o caso de omissão. E onde a lei das duas células já estava certa, as
+    // células a mais entram por `min` e **não mexem na superfície**: elas só revelam matéria que
+    // estava a ser perdida.
+    let deformado = mods.iter().any(|m| {
+        matches!(
+            m,
+            Unary::Twist { .. } | Unary::Bend { .. } | Unary::Taper { .. }
+        )
+    });
     for m in mods {
         acc = match *m {
             // ⭐ A casca inteira: o módulo de uma distância É a distância à mesma superfície vista
@@ -86,9 +113,14 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
                     radial(t, count, joint, deformado)
                 })
             }
+            // ⚠️ **O piso do `k` sai da bola LOCAL, e não da corrente** — ver [`taper_floor`].
             Unary::Taper { slope, axis } => {
+                let piso = taper_floor(
+                    f64::from(slope),
+                    local.to_canonical(axis.shift_to(ph2d_field::mods::TAPER_AXIS)),
+                );
                 conjugado(&acc, axis, ph2d_field::mods::TAPER_AXIS, |t| {
-                    taper(t, f64::from(slope))
+                    taper(t, f64::from(slope), piso)
                 })
             }
             // ⚠️ O `reach` é lido do bordo **antes** deste passo — é o pior raio-xy que o avaliador
@@ -137,10 +169,6 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
             }
         };
         divisor *= step_divisor(*m, final_ball);
-        deformado |= matches!(
-            m,
-            Unary::Twist { .. } | Unary::Bend { .. } | Unary::Taper { .. }
-        );
         ball = crate::bounds::step_mod(ball, *m);
     }
     if divisor == 1.0 {
@@ -246,90 +274,6 @@ pub(crate) fn step_divisor(m: Unary, ball: crate::bounds::Ball) -> f64 {
 pub(crate) fn axis_reach(b: crate::bounds::Ball) -> f64 {
     f64::from(b.center[0].hypot(b.center[1]) + b.radius.max(0.0))
 }
-
-/// ⭐ **A inclinação (draft/taper)** — e o **primeiro operador deste módulo que não é exato**.
-///
-/// A secção transversal escala por `k(y) = 1 + slope·y`: o ponto vai para o espaço não-inclinado
-/// (`x/k`, `y`, `z/k`) e o valor volta multiplicado por `k` — a mesma receita de duas metades que a
-/// [`place`] usa para a escala uniforme, e pela mesma razão (sem a segunda metade o campo deixa de
-/// ser uma distância).
-///
-/// # ⚠️ Por que ele não pode ser exato, e o que se paga em vez disso
-///
-/// A escala **varia com `y`**, e é essa variação que estraga: `∇g` ganha um termo de ordem
-/// `slope·f` que a multiplicação por `k` não cancela. Perto da superfície (`f ≈ 0`) o erro
-/// desaparece — que é onde a marcha mais precisa dele —, mas longe ele **superestima**, e
-/// superestimar é o erro que faz o raio saltar por cima da peça.
-///
-/// A cura é dividir por `1 + |slope|`, o que torna o campo um **bound conservador**: ele nunca
-/// passa da distância verdadeira, e a marcha continua correta. O preço é o número de passos, e ele
-/// está medido em `measure_taper_cost` — é dali que sai o
-/// [`ph2d_field::mods::MAX_TAPER_SLOPE`].
-///
-/// ⚠️ **O piso em `k` impede a inversão.** Em `y = −1/slope` a secção colapsa e, passando disso,
-/// ela **vira do avesso** — a peça sairia com o interior para fora. Preso a [`TAPER_FLOOR`], o que
-/// acontece além do ápice é a secção ficar congelada nele, que é uma forma e não um defeito.
-fn taper(inner: &Tree, slope: f64) -> Tree {
-    if slope == 0.0 || !slope.is_finite() {
-        return inner.clone();
-    }
-    let k = (Tree::constant(1.0) + Tree::y() * Tree::constant(slope)).max(TAPER_FLOOR);
-    let shrunk = inner.remap_xyz(Tree::x() / k.clone(), Tree::y(), Tree::z() / k.clone());
-    // ⚠️ **A divisão saiu daqui e é feita UMA vez no fim da pilha** — ver [`stacked`], e a medição
-    // que a obrigou. O factor continua a ser este, e continua a ser dele.
-    shrunk * k
-}
-
-/// Por quanto a inclinação divide — ver [`TAPER_SAFETY`] e o doc do [`taper`].
-///
-/// ⛔⛔ **O `alcance` entrou em 2026-08-30, e ele faltava desde a W18.** A tabela que escolheu o
-/// `TAPER_SAFETY` foi medida numa peça **centrada e de tamanho um**; o termo que ela corrige cresce
-/// com a distância ao eixo `Y` (é `x·s/k²` que reentra no gradiente), logo uma peça larga — ou uma
-/// **matriz** antes da inclinação — passa por cima dele. Medido: `[Array, Taper]` dava
-/// `‖∇f‖ = 1,5049` **dentro da caixa de recorte**, alcançável em dois cliques.
-///
-/// ⚠️ **`max(1, alcance)`**: nunca menos do que a tabela original concedeu, senão a cura tornaria
-/// uma peça pequena MENOS segura do que ela é hoje.
-pub(crate) fn taper_divisor(slope: f64, alcance: f64) -> f64 {
-    if slope == 0.0 || !slope.is_finite() {
-        1.0
-    } else {
-        TAPER_SAFETY.mul_add(slope.abs() * alcance.abs().max(1.0), 1.0)
-    }
-}
-
-/// Quão longe do **eixo Y** a peça chega — a inclinação escala `x` e `z` em torno dele.
-///
-/// ⚠️ Irmão do [`axis_reach`], e num eixo diferente: cada modificador nomeia o seu, que é a lei que
-/// as primitivas deste módulo já seguem.
-pub(crate) fn taper_reach(b: crate::bounds::Ball) -> f64 {
-    f64::from(b.center[0].hypot(b.center[2]) + b.radius.max(0.0))
-}
-
-/// O menor fator de secção que a inclinação admite — ver [`taper`].
-///
-/// ⚠️ Não é um épsilon de gosto: abaixo dele o `x/k` explode e o campo passa a devolver números que
-/// a marcha lê como "muito longe" dentro da própria peça. Um centésimo é duas ordens de grandeza
-/// abaixo da secção nominal, o que põe o ápice bem fora de qualquer peça enquadrada.
-const TAPER_FLOOR: f64 = 0.01;
-
-/// Quanto o divisor da inclinação cresce por unidade de declive — **medido, e a primeira tentativa
-/// estava errada**.
-///
-/// ⚠️ A conta que eu escrevi primeiro dividia por `1 + |slope|`, derivada à mão. A sonda
-/// `measure_taper_cost` **refutou-a**: `‖∇f‖` continuava acima de 1 em todo o alcance, ou seja o
-/// campo **superestimava** — exatamente a falha que a divisão existe para evitar.
-///
-/// | declive | `‖∇f‖` máx com `1 + s` | com `1 + 2s` |
-/// |---|---|---|
-/// | 0,25 | **1,12** ⛔ | 0,93 ✅ |
-/// | 0,50 | **1,20** ⛔ | 0,90 ✅ |
-/// | 1,00 | **1,30** ⛔ | 0,87 ✅ |
-/// | 2,00 | **1,40** ⛔ | 0,84 ✅ |
-///
-/// *Uma derivação à mão é uma hipótese; a tabela é o facto.* O `2` é o degrau que a medição deu —
-/// com ele `‖∇f‖ ≤ 1` em todo o alcance, que é a condição de a marcha não atravessar a peça.
-const TAPER_SAFETY: f64 = 2.0;
 
 /// ⭐⭐⭐ **A TORÇÃO (twist)** — o segundo operador de espaço deste módulo, e o irmão do [`taper`].
 ///

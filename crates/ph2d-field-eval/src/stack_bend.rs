@@ -71,6 +71,31 @@ pub(crate) fn bend_reach(b: crate::bounds::Ball) -> f64 {
 /// ⚠️ **Não é um épsilon de gosto:** em `κ·W = 1` o lado de dentro colapsa no centro do arco e o
 /// divisor `1/(1−κW)` vai a infinito. Nove décimos deixa a dobra ir bem além do que um artista pede
 /// (um `U` fechado) e mantém o divisor abaixo de `10`.
+/// # ⛔⛔⛔ E ELE TEM PREÇO, medido em 2026-08-31 (report do Enio: *«algumas combinações muito lentas»*)
+///
+/// Ele fixa **dois** números de uma vez: quanta dobra a peça aceita **e** quanto a marcha paga. O
+/// divisor da dobra é `1/(1 − margem)` no instante em que a parede morde — logo `0,9` cobra **`10×`
+/// em toda dobra, sempre**. Varrido (barra `0,10 × 0,10 × 0,80`, `160²`):
+///
+/// | margem | ponta a `0,25`/`0,50` voltas | divisor | passos/raio (`[Bend]`) |
+/// |---:|---|---:|---:|
+/// | **`0,90`** | `0,3800` | `10,00` | `72,2` |
+/// | `0,88` | `0,3800` | `8,33` | `60,9` |
+/// | `0,86` | `0,3600` | `7,14` | `52,7` |
+/// | `0,80` | `0,3400` | `5,00` | `37,7` |
+/// | `0,75` | `0,3400` | `4,00` | `30,6` |
+/// | `0,60` | `0,2800` | `2,50` | `19,8` |
+///
+/// ⇒ de `0,90` para `0,75`: **`17 %` menos dobra por `2,4×` menos custo**. ⚠️ `0,80` é
+/// **estritamente dominado** por `0,75` (mesma ponta, `19 %` mais caro).
+///
+/// ⛔ **Fica em `0,9` até o dono decidir** — é uma troca de PRODUTO (quanto a peça dobra contra
+/// quanto ela custa a desenhar), e não um defeito. *Um número que só o dono pode escolher não se
+/// escolhe sozinho.*
+///
+/// ⭐ E ele **não é a cura da lentidão**: o desperdício grande é o **produto** dos divisores
+/// (`24,7×` de folga provada em `[Bend, Twist, Taper]`), e a cura dele é o divisor por região —
+/// ver `ph2d_field_render::what_a_stack_of_deformers_costs_the_march`.
 pub(crate) const BEND_FOLD_MARGIN: f64 = 0.9;
 
 /// ⭐⭐⭐ **A DOBRA** — o eixo `Z` curva-se no plano `XZ`, com curvatura `κ`.

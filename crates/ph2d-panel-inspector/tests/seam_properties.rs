@@ -68,6 +68,7 @@ fn info() -> InspectorPropertiesInfo {
         // própria fixtura, e uma fileira a mais aqui moveria os rects dos chips.
         pending: 0,
         declared: vec!["Size".into(), "State".into()],
+        follows: Some("Small".into()),
         // A fixtura é uma CÓPIA (tem `root_bits`), então as propriedades são do componente.
         source_name: Some("Casa".into()),
     }
@@ -146,8 +147,9 @@ fn the_save_button_opens_the_form_and_the_gesture_reaches_the_bus() {
     assert!(
         sent.iter().any(|a| matches!(
             a,
-            EditorAction::InspectorSaveVariation { entity_bits, property, value, .. }
-                if *entity_bits == ENTITY && property == "Size" && value == "Big"
+            EditorAction::InspectorVariation(
+                ph2d_editor_core::action_bus::VariationRequest::Save { entity_bits, property, value, .. }
+            ) if *entity_bits == ENTITY && property == "Size" && value == "Big"
         )),
         "o gesto nao chegou ao barramento: {sent:?}"
     );
@@ -457,6 +459,7 @@ fn a_selection_change_abandons_the_field_and_a_late_blur_writes_nothing() {
         beyond: 0,
         pending: 0,
         declared: Vec::new(),
+        follows: None,
         source_name: Some("Outra".into()),
     }));
     let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -534,6 +537,7 @@ fn a_flat_lit_chip_never_opens_the_field() {
         beyond: 0,
         pending: 0,
         declared: Vec::new(),
+        follows: None,
         source_name: Some("Casa".into()),
     }));
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
@@ -590,6 +594,7 @@ fn a_blur_between_publish_and_paint_never_writes_into_the_new_object() {
         beyond: 0,
         pending: 0,
         declared: Vec::new(),
+        follows: None,
         source_name: Some("Outra".into()),
     }));
     let _ = host.apply_panel_event::<InspectorPanel>(
@@ -600,6 +605,92 @@ fn a_blur_between_publish_and_paint_never_writes_into_the_new_object() {
     assert!(
         sent.is_empty(),
         "o texto de A foi gravado na receita de B pela janela publish→paint: {sent:?}"
+    );
+    clear();
+}
+
+/// ⭐⭐⭐ **O CHIP DE UMA COMBINAÇÃO QUE NÃO EXISTE CRIA-A** — pelo ponteiro.
+///
+/// Plano §2.3-bis: numa grelha `Size × Color` o artista quase nunca enche as casas todas. ⛔ As
+/// três alternativas foram pesadas e recusadas — não fazer nada é o chip morto sob o dedo (o
+/// report que ele já fez quatro vezes), aproximar faz o app acender um valor e mostrar outro, e
+/// recusar manda-o fazer à mão o que a app sabe fazer.
+///
+/// **Mutação que deve sangrar:** apagar o braço `choice.missing` do `chip_click` — o chip volta a
+/// ser mudo, e nenhum gate puro o vê.
+#[test]
+fn a_chip_of_a_combination_that_does_not_exist_creates_it() {
+    let mut i = info();
+    i.rows[0].options.push(VariantChoice {
+        master: 0,
+        label: "Red".into(),
+        current: false,
+        missing: true,
+    });
+    let (mut host, mut state) = host_with(i);
+    press(
+        &mut host,
+        &mut state,
+        ids::INSP_INSTANCE_AXIS_OPTION[0][2],
+        "o chip «Red +»",
+    );
+    let sent = host.drained_actions();
+    assert!(
+        sent.iter().any(|a| matches!(
+            a,
+            EditorAction::InspectorVariation(
+                ph2d_editor_core::action_bus::VariationRequest::Create { root_bits, property, value }
+            ) if *root_bits == ROOT && property == "Size" && value == "Red"
+        )),
+        "o chip em falta ficou mudo: {sent:?}"
+    );
+    clear();
+}
+
+/// ⭐⭐ **ATUALIZAR a versão vigente é alcançável do cartão** — sem ele, gravar uma correcção
+/// obriga a criar uma versão a mais.
+///
+/// ⚠️ **O verbo já existia** (`Verb::Apply`) e só se alcançava pelo menu de uma linha da
+/// Hierarquia — outro sítio do que aquele onde o artista está a olhar.
+///
+/// **Mutação que deve sangrar:** apagar o braço `INSP_INSTANCE_UPDATE_VERSION` do despachante.
+#[test]
+fn the_update_button_reaches_the_bus() {
+    let (mut host, mut state) = host_with(info_pending());
+    press(
+        &mut host,
+        &mut state,
+        ids::INSP_INSTANCE_UPDATE_VERSION,
+        "Update «Small»",
+    );
+    let sent = host.drained_actions();
+    assert!(
+        sent.iter().any(|a| matches!(
+            a,
+            EditorAction::InspectorVariation(
+                ph2d_editor_core::action_bus::VariationRequest::Update { entity_bits }
+            ) if *entity_bits == ENTITY
+        )),
+        "o botao de atualizar nao chegou ao barramento: {sent:?}"
+    );
+    clear();
+}
+
+/// ⛔ **Sem versão nomeada não há botão de ATUALIZAR** — não há o que actualizar, e um botão que
+/// não faz nada é a espécie que a caça aos knobs mortos nomeia.
+#[test]
+fn with_no_version_to_follow_there_is_no_update_button() {
+    let i = InspectorPropertiesInfo {
+        follows: None,
+        ..info_pending()
+    };
+    let (mut host, mut state) = host_with(i);
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    assert!(
+        !rects
+            .iter()
+            .any(|(n, _)| *n == ids::INSP_INSTANCE_UPDATE_VERSION),
+        "o botao de atualizar foi pintado sem versao a actualizar"
     );
     clear();
 }

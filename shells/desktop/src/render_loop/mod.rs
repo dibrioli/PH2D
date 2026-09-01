@@ -3473,6 +3473,7 @@ impl crate::App {
             // ⭐ O pedido de renomear o VALOR de uma propriedade — `(receita, chave, valor)`.
             let mut rename_variant_value: Option<(u64, String, String, u64)> = None;
             let mut save_variation: Option<(u64, String, String, String)> = None;
+            let mut update_version: Option<u64> = None;
             // ⭐ A entidade cujo campo de nome fechou neste quadro.
             let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
             // §12 joints (W3). Kept out of `inspector_commits::dispatch`: that
@@ -4701,14 +4702,35 @@ impl crate::App {
                     // ⚠️ O sujeito é a RECEITA; o gesto nasce sobre a cópia, que é onde o artista
                     // está a olhar. Ver `ph2d-panel-inspector/src/event_value.rs`.
                     // ⭐⭐⭐ **GRAVAR A VARIAÇÃO** (Enio, 2026-09-01) — o botão do cartão.
-                    EditorAction::InspectorSaveVariation {
-                        entity_bits,
-                        property,
-                        value,
-                        existing,
-                    } => {
-                        save_variation.get_or_insert((entity_bits, property, value, existing));
-                    }
+                    // ⭐⭐⭐ **O gesto de VARIAÇÃO, nas três formas** — e a do chip em falta vai
+                    // pela MESMA porta da de gravar: criar a casa vazia da grelha É gravar uma
+                    // variação a partir da versão vigente, sem excepções a absorver. *Uma lei nova
+                    // ali seria a segunda resposta à mesma pergunta.*
+                    EditorAction::InspectorVariation(req) => match req {
+                        ph2d_editor::action_bus::VariationRequest::Save {
+                            entity_bits,
+                            property,
+                            value,
+                            existing,
+                        } => {
+                            save_variation.get_or_insert((entity_bits, property, value, existing));
+                        }
+                        ph2d_editor::action_bus::VariationRequest::Create {
+                            root_bits,
+                            property,
+                            value,
+                        } => {
+                            save_variation.get_or_insert((
+                                root_bits,
+                                property,
+                                value,
+                                String::new(),
+                            ));
+                        }
+                        ph2d_editor::action_bus::VariationRequest::Update { entity_bits } => {
+                            update_version.get_or_insert(entity_bits);
+                        }
+                    },
                     EditorAction::InspectorRenameVariantValue {
                         master,
                         key,
@@ -10822,6 +10844,29 @@ impl crate::App {
             // olhar — e ele tentou pelo nome da cópia quatro vezes, com o modelo a ignorá-lo
             // correctamente as quatro.
             //
+            // ⭐⭐ **ATUALIZAR a versão que a cópia segue** — o *Apply to Master*, alcançável do
+            // cartão. ⚠️ O verbo já existia e só se alcançava pelo menu de uma linha da
+            // Hierarquia; o gesto não é novo, o SÍTIO dele é.
+            if let Some(bits) = update_version {
+                let registry = crate::init::build_component_registry();
+                let mut select_out = None;
+                let _ = crate::instance_verbs::drain(
+                    crate::instance_verbs::Verb::Apply,
+                    sim,
+                    &registry,
+                    &mut self.instance_echo,
+                    bits,
+                    toasts,
+                    &mut crate::instance_docs::OwnedDocs {
+                        vec_scene,
+                        vec_entities: &mut self.vec_entities,
+                    },
+                    // ⚠️ O passo da cascata é do *Instantiate*; o `Apply` não o lê.
+                    [0.0, 0.0],
+                    &mut select_out,
+                );
+                self.title_dirty = true;
+            }
             // ⭐⭐⭐ **GRAVAR A VARIAÇÃO** — a cópia modificada vira uma versão com nome.
             //
             // ⚠️ **Todo caminho fala.** Um gesto que come o clique em silêncio é pior que um botão

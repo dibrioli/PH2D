@@ -63,6 +63,9 @@ const EXISTING_LABEL: &str = "Current is";
 const VALUE_LABEL: &str = "This one is";
 const SAVE_CONFIRM_LABEL: &str = "Save";
 const SAVE_CANCEL_LABEL: &str = "Cancel";
+const UPDATE_LABEL: &str = "Update";
+/// ⚠️ **O sinal de que o clique CRIA em vez de escolher** — *acender é escolher; `+` é criar*.
+const MISSING_SUFFIX: &str = " +";
 
 /// ⭐⭐⭐ **O campo que reescreve o valor vigente**, no rect do chip que ele substitui.
 ///
@@ -289,7 +292,17 @@ pub(crate) fn paint_properties_card(
             // sonda de «pintado?» lê errado — só não mordia porque o campo, registado depois no
             // mesmo rect, ganhava por ser o de cima.
             hit_index.register(id, host);
-            let label = ph2d_editor_core::text_elide::fit(text_system, &v.label, font, cw);
+            // ⭐⭐⭐ **A combinação que não existe vem com `+`** (plano §2.3-bis): o clique CRIA-a a
+            // partir da versão vigente. ⛔ As três alternativas foram pesadas — não fazer nada é o
+            // chip morto sob o dedo; aproximar faz o app acender um valor e mostrar outro; recusar
+            // manda o artista fazer à mão o que a app sabe fazer. *Esmaecido com `+` é o que impede
+            // o gesto de ser uma surpresa.*
+            let shown = if v.missing {
+                format!("{}{MISSING_SUFFIX}", v.label)
+            } else {
+                v.label.clone()
+            };
+            let label = ph2d_editor_core::text_elide::fit(text_system, &shown, font, cw);
             let button = Button::new(id, label)
                 // ⚠️ A vigente é `Accent` — é o **estado**, e não uma decoração: sem ela a fileira
                 // mostra as opções e esconde a resposta.
@@ -371,11 +384,34 @@ fn paint_save(
         if info.pending == 0 {
             return;
         }
-        let host = Rect::new(tx, ty, tw, line);
+        // ⭐⭐⭐ **DOIS botões, e o par é a resposta certa** (plano §2.3, passo 7): sem o *Update*,
+        // gravar uma correcção obriga a criar uma versão a mais; sem o *Save*, toda experiência
+        // sobrescreve a versão que já existia. ⚠️ O *Update* só aparece quando há uma versão
+        // NOMEADA a actualizar.
+        let gap = Spacing::Xs.px();
+        let (update_w, save_x) = match info.follows.as_deref() {
+            Some(_) => (((tw - gap) * 0.5).max(0.0), tx + (tw + gap) * 0.5),
+            None => (0.0, tx),
+        };
+        if let Some(name) = info.follows.as_deref() {
+            let host = Rect::new(tx, ty, update_w, line);
+            hit_index.register(ids::INSP_INSTANCE_UPDATE_VERSION, host);
+            let raw = format!("{UPDATE_LABEL} \u{201c}{name}\u{201d}");
+            let b = Button::new(
+                ids::INSP_INSTANCE_UPDATE_VERSION,
+                ph2d_editor_core::text_elide::fit(text_system, &raw, font, update_w),
+            )
+            .visual(store.button_visual(ids::INSP_INSTANCE_UPDATE_VERSION));
+            paint_button(&b, host, scene, text_system, theme);
+        }
+        let host = Rect::new(save_x, ty, tw - (save_x - tx), line);
         hit_index.register(ids::INSP_INSTANCE_SAVE_VARIATION, host);
-        let b = Button::new(ids::INSP_INSTANCE_SAVE_VARIATION, SAVE_VARIATION_LABEL)
-            .kind(ButtonKind::Accent)
-            .visual(store.button_visual(ids::INSP_INSTANCE_SAVE_VARIATION));
+        let b = Button::new(
+            ids::INSP_INSTANCE_SAVE_VARIATION,
+            ph2d_editor_core::text_elide::fit(text_system, SAVE_VARIATION_LABEL, font, host.w),
+        )
+        .kind(ButtonKind::Accent)
+        .visual(store.button_visual(ids::INSP_INSTANCE_SAVE_VARIATION));
         paint_button(&b, host, scene, text_system, theme);
         return;
     };

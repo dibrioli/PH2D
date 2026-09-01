@@ -550,17 +550,9 @@ pub enum EditorAction {
     /// ⭐⭐ **Renomear o VALOR de uma propriedade** — o campo que o clique no chip aceso abre.
     /// O sujeito é a **RECEITA**, porque é lá que o valor vive; o porquê vive no
     /// `ph2d-panel-inspector/src/event_value.rs`.
-    /// ⭐⭐⭐ **Gravar a cópia modificada como uma VERSÃO nova** (Enio, 2026-09-01).
-    ///
-    /// `existing` é *«como se chama o que já existe»* — obrigatório quando `property` **nasce
-    /// agora**, e ignorado quando a família já a tem. ⚠️ A validação mora na lei
-    /// (`variant_save::save_variation`), nunca no painel.
-    InspectorSaveVariation {
-        entity_bits: u64,
-        property: String,
-        value: String,
-        existing: String,
-    },
+    /// ⭐⭐⭐ **O gesto de VARIAÇÃO** — gravar, criar a casa em falta, atualizar.
+    /// Formas e porquês: [`VariationRequest`] e `shells/desktop/src/variant_save.rs`.
+    InspectorVariation(VariationRequest),
 
     InspectorRenameVariantValue {
         master: u64,
@@ -704,7 +696,9 @@ pub use super::action_bus_queue::ActionBus;
 /// ⚠️ Os **vocabulários** que as acções carregam vivem no irmão [`super::action_bus_kinds`] e são
 /// re-exportados aqui: quem escreve `action_bus::TransportCmd` continua a escrevê-lo. Ver o
 /// cabeçalho de lá para o porquê do corte.
-pub use super::action_bus_kinds::{AssetCardAction, CatalogVerb, SelectModifier, TransportCmd};
+pub use super::action_bus_kinds::{
+    AssetCardAction, CatalogVerb, SelectModifier, TransportCmd, VariationRequest,
+};
 
 #[cfg(test)]
 #[path = "action_bus_tests.rs"]

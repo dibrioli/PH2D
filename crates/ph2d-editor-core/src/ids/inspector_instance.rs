@@ -38,6 +38,14 @@ pub const INSP_INSTANCE_VALUE_EDIT: NodeId = hash_node_id("insp_instance_value_e
 /// não faz nada é a espécie que a caça aos knobs mortos nomeia.
 pub const INSP_INSTANCE_SAVE_VARIATION: NodeId = hash_node_id("insp_instance_save_variation");
 
+/// ⭐⭐⭐ **ATUALIZAR a versão que esta cópia segue** — o *Apply to Master* alcançável do cartão.
+///
+/// ⚠️ **Sem ele, gravar uma correção obriga a criar uma versão a mais.** O verbo já existia
+/// (`instance_verbs::Verb::Apply`) e só era alcançável pelo menu de uma linha da Hierarquia — que
+/// é outro sítio do que aquele onde o artista está a olhar. *A mesma doença do valor: o gesto
+/// existia e vivia longe do dedo.*
+pub const INSP_INSTANCE_UPDATE_VERSION: NodeId = hash_node_id("insp_instance_update_version");
+
 /// ⭐⭐ **A propriedade escolhida no formulário** — as que a família já tem, mais *«Nova…»*.
 ///
 /// ⚠️ **`MAX_INSTANCE_AXES + 1`**: o `+1` é a entrada *«Nova propriedade…»*, que é o que torna

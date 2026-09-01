@@ -47,6 +47,12 @@ pub struct InspectorPropertiesInfo {
     /// é uma FILEIRA (um chip único não escolhe nada) mas continua a ser uma propriedade — e é
     /// justamente a ela que o artista quer acrescentar o segundo valor.
     pub declared: Vec<String>,
+    /// ⭐⭐ **Como se chama a versão que esta cópia segue** — o rótulo do botão *Update «…»*.
+    ///
+    /// ⚠️ **UMA fonte, decidida no construtor:** o valor vigente da primeira propriedade
+    /// declarada, e o `Name` da receita quando ela não declara nada. Escolher aqui e no pintor
+    /// seriam dois sítios a discordar sobre como a versão se chama.
+    pub follows: Option<String>,
     /// ⭐⭐⭐ **O NOME DO OBJECTO SELECIONADO**, como a Hierarquia o mostra — o título do cartão.
     ///
     /// # ⚠️ Este campo já significou o CONTRÁRIO, e a decisão é do dono

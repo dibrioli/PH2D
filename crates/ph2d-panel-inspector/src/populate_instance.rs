@@ -55,6 +55,7 @@ pub(super) fn populate(store: &mut WidgetStore) {
     // é outra pergunta, e é esta lista que a responde.*
     for &id in ids::INSP_INSTANCE_SAVE_PROP.iter().chain(&[
         ids::INSP_INSTANCE_SAVE_VARIATION,
+        ids::INSP_INSTANCE_UPDATE_VERSION,
         ids::INSP_INSTANCE_SAVE_CONFIRM,
         ids::INSP_INSTANCE_SAVE_CANCEL,
     ]) {

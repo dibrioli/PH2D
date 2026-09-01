@@ -61,9 +61,20 @@ pub(super) fn build_properties_info(
         // ⚠️ **`0` quando não há cópia**, e o clique honra-o: sem raiz não há a quem pedir a troca.
         // Nesse estado nenhuma fileira tem mais de um valor, então nem chega a haver chip.
         root_bits: root.map_or(0, Entity::to_bits),
-        rows,
         beyond,
         pending,
+        // ⚠️ **UMA fonte para o nome da versão**: o valor vigente da 1.ª propriedade declarada, e
+        // o `Name` da receita quando ela não declara nada. Decidir isto aqui E no pintor seriam
+        // dois sítios a discordar sobre como a versão se chama.
+        follows: rows
+            .iter()
+            .find(|r| !r.name.is_empty())
+            .and_then(|r| r.options.iter().find(|o| o.current))
+            .map(|o| o.label.clone())
+            .or_else(|| {
+                root_master.and_then(|id| super::inspector_instance::master_named(sim, id))
+            }),
+        rows,
         declared,
         // ⭐⭐⭐ **O nome do objecto SELECIONADO, como a Hierarquia o mostra** (report do Enio,
         // 2026-08-31: *«Properties of "Nome do objeto na Hierarquia"»*).

@@ -102,3 +102,34 @@ pub enum CatalogVerb {
         catalog: Option<u128>,
     },
 }
+
+/// ⭐⭐⭐ **O que o gesto de VARIAÇÃO pede** (Enio, 2026-09-01) — as três formas de uma família só.
+///
+/// # ⚠️ Uma acção e não três, e o corte é por RESPONSABILIDADE
+///
+/// Elas partilham o sujeito (*uma cópia e a versão que ela segue*), a lei que as honra
+/// (`shells/desktop/src/variant_save.rs`) e o dreno. Escritas como três variantes soltas custavam
+/// ao `action_bus.rs` o teto de 700 LOC — e este ficheiro existe exactamente para os vocabulários
+/// que as acções carregam. *Quando N variantes têm a mesma forma, a forma é que é o dado.*
+///
+/// ⛔ **O porquê de cada uma — e as três saídas recusadas do chip em falta — vive na LEI**, não
+/// aqui: o transporte não é o sítio onde se explica o gesto.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VariationRequest {
+    /// Gravar a cópia modificada como versão nova. `existing` é *«como se chama o que já
+    /// existe»*, obrigatório só quando `property` nasce agora.
+    Save {
+        entity_bits: u64,
+        property: String,
+        value: String,
+        existing: String,
+    },
+    /// Criar a combinação que a grelha ainda não tem — o chip com `+`.
+    Create {
+        root_bits: u64,
+        property: String,
+        value: String,
+    },
+    /// Atualizar a versão que esta cópia segue — as modificações dela viram o padrão.
+    Update { entity_bits: u64 },
+}

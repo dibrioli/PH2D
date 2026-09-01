@@ -3,10 +3,14 @@
 //! # Porque ele existe
 //!
 //! Report do Enio (2026-08-31): *«parece que ainda não funciona. Me mostre o fluxo inteiro de
-//! criar variações»*. ⚠️ **A segunda frase é o achado.** As chaves do nome DECLARAM propriedades;
-//! elas **não criam** uma família. Uma família nasce dos ELOS — *Make Prefab* · *Instantiate* ·
-//! *Make Prefab* outra vez sobre a cópia —, e dois objectos irmãos com chaves no nome não são
-//! variantes um do outro, por mais parecidos que os nomes sejam.
+//! criar variações»*. ⚠️ **A segunda frase é o achado.** Uma família nasce dos ELOS — *Make
+//! Prefab* · *Instantiate* —, e dois objectos irmãos parecidos não são variantes um do outro.
+//!
+//! ⛔⛔⛔ **E o fluxo MUDOU em 2026-09-01, por ordem dele:** *«Não vamos mais usar as chaves no
+//! nome… Vamos usar o Card com botões específicos para cada função»*. Os passos 1 e 5 são hoje o
+//! contrário do que eram — o nome nasce **limpo**, e a versão é gravada pela porta do botão
+//! *Salvar Variação…*. ⚠️ **O passo 6 é o que a wave inteira compra:** renomear tudo, com chaves
+//! e tudo, e o cartão **não se mexe**.
 //!
 //! ⛔ **Isto imprime; não é um gate.** Ele corre os verbos pela MESMA porta que o menu drena
 //! ([`crate::instance_verbs::drain`]) e, a cada passo, diz **o que o artista veria**: a voz do
@@ -30,7 +34,9 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
         24 => step_4_make_variant(app),
         28 => report(app, "4. depois de *Make Prefab* na cópia (= variante)"),
         32 => step_5_save_variation(app),
-        36 => report(app, "5. depois de renomear a variante"),
+        36 => report(app, "5. depois de GRAVAR a variacao"),
+        40 => step_6_rename_everything(app),
+        44 => report(app, "6. depois de RENOMEAR tudo (nada pode mudar)"),
         _ => {}
     }
 }
@@ -43,7 +49,8 @@ fn step_1_build(app: &mut crate::App) {
         .world_mut()
         .spawn((
             ph2d_ecs::Transform::IDENTITY,
-            ph2d_ecs::Name::new("Casa {Size=Small}"),
+            // ⚠️ **Nome LIMPO** — desde 2026-09-01 as chaves não declaram nada.
+            ph2d_ecs::Name::new("Casa"),
             ph2d_render::Sprite::atlas(0, [64.0, 64.0], [1.0; 4]),
         ))
         .id();
@@ -54,7 +61,7 @@ fn step_1_build(app: &mut crate::App) {
         hero.gizmo.clear_all_selection();
         hero.gizmo.add_to_selection(e.to_bits());
     }
-    eprintln!("[fluxo] 1. nasceu «Casa {{Size=Small}}» — um objecto NORMAL, sem receita nenhuma");
+    eprintln!("[fluxo] 1. nasceu «Casa» — um objecto NORMAL, sem receita nenhuma");
 }
 
 fn step_2_make_prefab(app: &mut crate::App) {
@@ -197,4 +204,38 @@ fn report(app: &mut crate::App, when: &str) {
             }
         }
     }
+}
+
+/// ⭐⭐⭐ **6. RENOMEAR TUDO, com chaves — e nada se mexe.**
+///
+/// É o que a wave inteira compra, e o inverso do que este smoke media até 31/08. ⚠️ **A fixtura
+/// carrega o fenómeno de propósito**: os nomes novos têm chaves lá dentro, que é o que a lei velha
+/// lia. *Com nomes limpos este passo ficaria verde sem provar nada.*
+fn step_6_rename_everything(app: &mut crate::App) {
+    let Some(gfx) = app.gfx.as_mut() else { return };
+    let masters: Vec<u64> = {
+        let mut q = gfx
+            .sim
+            .world_mut()
+            .query_filtered::<ph2d_ecs::Entity, bevy_ecs::prelude::With<ph2d_ecs::MasterRoot>>();
+        q.iter(gfx.sim.world())
+            .map(ph2d_ecs::Entity::to_bits)
+            .collect()
+    };
+    for (n, bits) in masters.iter().enumerate() {
+        gfx.sim
+            .world_mut()
+            .entity_mut(ph2d_ecs::Entity::from_bits(*bits))
+            .insert(ph2d_ecs::Name::new(format!("Renomeada {n} {{Size=Zzz}}")));
+    }
+    let live = LIVE.with(std::cell::Cell::get);
+    gfx.sim
+        .world_mut()
+        .entity_mut(ph2d_ecs::Entity::from_bits(live))
+        .insert(ph2d_ecs::Name::new("Bob {Size=Nada}"));
+    eprintln!(
+        "[fluxo] 6. renomeei as {} receitas e a copia, TODAS com chaves — o cartao abaixo tem de \
+         estar IGUAL ao do passo 5",
+        masters.len()
+    );
 }

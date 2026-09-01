@@ -140,6 +140,14 @@ fn save_click(
             .set_focus(Some(ids::INSP_INSTANCE_SAVE_VALUE));
         return true;
     }
+    if id == ids::INSP_INSTANCE_UPDATE_VERSION {
+        host.bus_mut().push(EditorAction::InspectorVariation(
+            ph2d_editor_core::action_bus::VariationRequest::Update {
+                entity_bits: info.entity_bits,
+            },
+        ));
+        return true;
+    }
     if id == ids::INSP_INSTANCE_SAVE_CANCEL {
         abandon(state, host.store_mut());
         return true;
@@ -211,12 +219,14 @@ fn confirm(
     };
     let value = text_of(host, ids::INSP_INSTANCE_SAVE_VALUE);
     host.store_mut().set_focus(None);
-    host.bus_mut().push(EditorAction::InspectorSaveVariation {
-        entity_bits: info.entity_bits,
-        property,
-        value,
-        existing,
-    });
+    host.bus_mut().push(EditorAction::InspectorVariation(
+        ph2d_editor_core::action_bus::VariationRequest::Save {
+            entity_bits: info.entity_bits,
+            property,
+            value,
+            existing,
+        },
+    ));
 }
 
 /// ⭐⭐ **O chip: trocar de versão, ou abrir o vigente para escrita.**
@@ -242,6 +252,25 @@ fn chip_click(
     let Some(choice) = info.rows.get(a).and_then(|ax| ax.options.get(v)) else {
         return false;
     };
+    // ⭐⭐⭐ **A combinação que não existe CRIA-SE** (plano §2.3-bis) — o chip com `+`.
+    //
+    // ⚠️ **Antes do braço do aceso e do da troca**, porque um chip em falta não é nem uma coisa
+    // nem outra: `master == 0` faria o `swap` não ter alvo, e sem este braço o clique seria mudo
+    // — o chip morto sob o dedo que as outras duas saídas evitam pior.
+    if choice.missing {
+        if info.root_bits != 0
+            && let Some(ax) = info.rows.get(a)
+        {
+            host.bus_mut().push(EditorAction::InspectorVariation(
+                ph2d_editor_core::action_bus::VariationRequest::Create {
+                    root_bits: info.root_bits,
+                    property: ax.name.clone(),
+                    value: choice.label.clone(),
+                },
+            ));
+        }
+        return true;
+    }
     if choice.current {
         // ⛔⛔ **No modo PLANO o chip aceso NÃO abre campo nenhum** (auditoria de 2026-08-31): o
         // eixo plano não tem chave, então o `commit` recusaria — e um campo que abre, aceita

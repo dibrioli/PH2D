@@ -34,7 +34,7 @@ fn code(rel: &str) -> String {
 fn the_drain_calls_the_save_door() {
     let s = code("src/render_loop/mod.rs");
     for needle in [
-        "EditorAction::InspectorSaveVariation",
+        "EditorAction::InspectorVariation(",
         "crate::variant_save::save_variation(",
         "crate::variant_save::rename_value(",
     ] {

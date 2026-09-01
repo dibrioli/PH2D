@@ -34,9 +34,38 @@
 //! - **culpar um dos três**: cada factor é honesto sozinho (`[Bend]` = `2,5×` de folga, `[Twist]` e
 //!   `[Taper]` = `1,3×`). *Nenhum deles está errado; o que está errado é somá-los como se fossem.*
 //!
-//! ⭐ **A cura de fundo é o divisor POR REGIÃO** — a marcha já especializa a árvore por ladrilho ×
-//! fatia de profundidade, e num ladrilho longe do centro do arco o divisor da dobra é ~`1`. É wave
-//! própria, e o número que ela persegue está aqui: **`24,7×`**.
+//! # ⛔⛔⛔ E A CURA ÓBVIA — O DIVISOR POR REGIÃO — ESTÁ REFUTADA POR MEDIÇÃO
+//!
+//! A ideia era natural: a marcha já especializa a árvore por **ladrilho × fatia de profundidade**,
+//! e num ladrilho longe do centro do arco o divisor da dobra devia ser ~`1`. ⇒ medi o `‖∇f‖` do
+//! envelope inteiro contra o de cada **oitavo** dele:
+//!
+//! | região | `‖∇f‖` |
+//! |---|---:|
+//! | o envelope inteiro | `0,0405` |
+//! | o **pior** oitavo | `0,0416` |
+//! | o melhor oitavo | `0,0173` |
+//!
+//! ⇒ **o pior oitavo mede o mesmo que a caixa toda.** *O desperdício não é espacial:* o campo é
+//! `24×` pequeno demais **em todo o lado**, não num canto. Cortar o domínio não compra nada.
+//!
+//! ⚠️ **E havia um segundo bloqueador que a mesma sonda encontrou:** a
+//! `ph2d_field_eval::RegionCompiler::is_worth_it` devolve `false` sem uma forma de **perfil**, então
+//! numa caixa com deformadores a especialização por ladrilho está **desligada por inteiro**. Quem
+//! for por este caminho tem de a ligar primeiro — e agora sabe que não vale a pena.
+//!
+//! # ⭐ Onde a folga de facto está: o BOUND é frouxo, e a frouxidão MULTIPLICA
+//!
+//! | pilha | cobrado | de facto preciso | folga |
+//! |---|---:|---:|---:|
+//! | `[Bend]` | `10,00` | `4,0` | `2,5×` |
+//! | `[Bend, Twist]` | `33,82` | `7,3` | `4,6×` |
+//! | `[Bend, Twist, Taper]` | `240,29` | `9,9` | **`24,7×`** |
+//!
+//! Cada factor é frouxo por pouco (`1,3×`–`2,5×`); três frouxos multiplicam-se em `24,7×`. ⭐ E o
+//! elo mais solto é a **dobra**: ela cobra `ρ/piso = 1/(1 − 0,9) = 10` e o pior ponto real
+//! corresponde a `1/(1 − 0,75) = 4`. *Apertar isso é demonstrar um bound melhor para o mapa da
+//! dobra — trabalho de matemática, não um botão.*
 
 use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, Primitive, Unary, UnaryKind, Xform};
 use ph2d_field_eval::{hybrid::Registry, safe_march_step};

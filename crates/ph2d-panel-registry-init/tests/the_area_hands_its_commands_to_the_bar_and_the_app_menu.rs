@@ -275,6 +275,44 @@ fn the_rail_verb_lights_up_from_the_scene_not_from_the_click() {
     );
 }
 
+/// ⛔⛔⛔ **O `PIVOT` APAGA-SE quando o 3D toma o trilho — e ele NÃO é um chip morto.**
+///
+/// ⚠️ **Correcção de 2026-09-01:** a entrega 36 afirmou que o `TOOL_PIVOT` não tinha leitor nenhum.
+/// **Tem dois**, e o `grep` que os devia ter mostrado foi cortado por um `head -20`:
+/// `input_dispatch.rs` lê o `ButtonState` dele para armar o arrasto **MovePivot**, e o
+/// `render_loop/snapshots.rs` para realçar o ponto do pivô.
+///
+/// ⛔ **E daí sai um defeito que a entrega 36 CRIOU:** com o módulo armado o painel consome os
+/// verbos **antes** do `chrome::rail_tools`, logo o rádio exclusivo dele não corre — e um `PIVOT`
+/// aceso de antes **fica aceso**. Dois chips acesos ao mesmo tempo, e pior: a ferramenta de pivô do
+/// editor 2D continua **armada** por baixo de um canvas que é do 3D.
+///
+/// ⇒ quem publica o estado do trilho apaga-o. *O gizmo deste módulo tem três verbos; o pivô não é
+/// um deles, logo ele não pode ser o activo.*
+#[test]
+fn the_pivot_chip_goes_dark_when_the_module_takes_the_rail() {
+    let (mut h, _vp) = hero(1194.0, 834.0, true);
+    // Alguém escolheu `PIVOT` no editor 2D antes de abrir o módulo.
+    if let Some(ph2d_editor_core::interaction::InteractiveState::Button { state }) =
+        h.store.get_mut(ph2d_editor_core::ids::TOOL_PIVOT)
+    {
+        *state = ph2d_editor_core::widget::ButtonState::Pressed;
+    }
+    ph2d_panel_model3d::publish_area_bar(&mut h.store, true);
+
+    assert_eq!(
+        h.store.button_state(ph2d_editor_core::ids::TOOL_PIVOT),
+        Some(ph2d_editor_core::widget::ButtonState::Normal),
+        "o `PIVOT` ficou aceso com o 3D a conduzir o trilho — dois chips acesos, e a ferramenta de \
+         pivo do 2D armada por baixo de um canvas que nao e' dela"
+    );
+    assert_eq!(
+        h.store.button_state(ph2d_editor_core::ids::TOOL_ROTATE),
+        Some(ph2d_editor_core::widget::ButtonState::Pressed),
+        "controlo: o verbo do retrato tem de continuar aceso"
+    );
+}
+
 /// ⭐⭐⭐ **E a ÁREA não oferece uma segunda porta para o gizmo.**
 ///
 /// ⛔⛔ Este gate existe porque a 1.ª versão desta obra **construiu** um pulldown *Gizmo* ao lado dos

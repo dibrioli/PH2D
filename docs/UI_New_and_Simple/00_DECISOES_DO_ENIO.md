@@ -138,8 +138,11 @@ para o ausente constrói-se, para o morto **liga-se**. Construir por cima de um 
 `model3d_mode_button` / `model3d_frame_button`: *ligar os que existem e apagar os duplicados é UMA
 obra, não duas.* O gate `the_area_offers_no_second_door_for_the_gizmo` impede a reconstrução.
 
-⛔ **O `PIVOT` fica de fora, e é uma ausência declarada:** o gizmo deste módulo tem três verbos e
-nenhum é *mover o pivô*. Ele continua a ser o que era.
+⛔ **O `PIVOT` fica de fora:** o gizmo deste módulo tem três verbos e nenhum é *mover o pivô*.
+⚠️ **Mas ele NÃO é um dos mortos** — a 1.ª redacção disto disse que era, e o `grep` que a devia ter
+desmentido foi cortado por um `head -20`. Ele tem dois leitores no shell (arma o arrasto do pivô e
+realça o ponto dele), e por isso **apaga-se** enquanto o 3D conduz o trilho: dois chips acesos
+quebraria a promessa do rádio, e deixaria a ferramenta de pivô do 2D armada sob um canvas do 3D.
 
 ⭐ **E o orçamento de chips de área é MEDIDO: `3`** (sonda de 2026-09-01 sobre `bar_split` +
 `horizontal_lines`, com o módulo armado):

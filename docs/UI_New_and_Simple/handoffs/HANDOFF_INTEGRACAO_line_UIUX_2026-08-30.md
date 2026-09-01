@@ -2413,7 +2413,8 @@ construiu foi **apagado**, e no lugar dele os chips que já existiam passaram a 
 
 | controlo | escreve | **quem lê** |
 |---|---|---|
-| `TOOL_TRANSLATE` · `TOOL_ROTATE` · `TOOL_SCALE` · `TOOL_PIVOT` | o próprio `ButtonState` | **o pintor do chip, e mais ninguém** |
+| `TOOL_TRANSLATE` · `TOOL_ROTATE` · `TOOL_SCALE` | o próprio `ButtonState` | **o pintor do chip, e mais ninguém** |
+| ~~`TOOL_PIVOT`~~ | o próprio `ButtonState` | ⛔ **ERRADO — ele tem DOIS leitores.** Ver §32 |
 | `TOOL_SPACE` | `store.tool_space_local` | **a face do próprio chip, e mais ninguém** |
 
 ⛔⛔ **São a 2.ª espécie de controlo morto do `CLAUDE.md` §5.0** — *o clique chega, a luz acende, e o
@@ -2454,9 +2455,12 @@ entrega todo evento a **todo** painel do registry, visível ou não — sem ela 
 roubaria o `MOVE` ao editor 2D. ⛔ Deduzi-la do retrato não serve: o retrato sobrevive ao fecho, e
 um retrato velho responderia *«sim»* para sempre.
 
-⛔ **O `PIVOT` fica de fora, e é uma ausência DECLARADA:** o gizmo deste módulo tem três verbos
-(`Mode::ALL`) e nenhum é *mover o pivô*. Inventar-lhe um destino seria pior do que a ausência — há
-gate a afirmá-lo (`a_rail_chip_with_no_verb_behind_it_does_nothing`).
+⛔ **O `PIVOT` fica de fora:** o gizmo deste módulo tem três verbos (`Mode::ALL`) e nenhum é *mover
+o pivô*. Inventar-lhe um destino seria pior do que a ausência — há gate a afirmá-lo
+(`a_rail_chip_with_no_verb_behind_it_does_nothing`).
+
+⛔⛔ **CORRECÇÃO (§32): o `PIVOT` NÃO é um dos mortos, e esta secção disse que era.** Ele tem dois
+leitores no shell. Mecanismo do meu erro e a cura: §32.
 
 ### §31.4 — ⭐ Ligar e apagar é UMA obra, não duas
 
@@ -2488,3 +2492,91 @@ com o controlo é cobertura perdida.*
   (`TOOL_HOME`) empurra `SetViewFocus` e está vivo; os outros quatro só ficam vivos **enquanto o
   módulo 3D tem o canvas**. *Uma varredura de controlos mortos no trilho é wave própria, e esta
   entrega mediu o primeiro caso dela.*
+
+---
+
+## §32 — ⭐⭐⭐ O INSTRUMENTO QUE FALTAVA, e a correcção que o obrigou (entrega 37)
+
+### §32.1 — ⛔⛔ Primeiro, o meu erro: `head -20` disse «zero leitores» e eu acreditei
+
+A §31 afirmou que os **quatro** verbos de transformação não tinham consumidor. São **três**. O
+`TOOL_PIVOT` tem **dois**, os dois no shell:
+
+| ficheiro | o que faz com o valor |
+|---|---|
+| `shells/desktop/src/input_dispatch.rs` | lê o `ButtonState` para armar o arrasto **`GizmoDragKind::MovePivot`** |
+| `shells/desktop/src/render_loop/snapshots.rs` | lê o mesmo para **realçar o ponto do pivô** |
+
+O censo que os devia ter mostrado foi:
+
+```
+grep -rn "TOOL_TRANSLATE\|TOOL_ROTATE\|TOOL_SCALE\|TOOL_PIVOT" … | grep -v tests | head -20
+```
+
+⛔⛔ **O `head -20` cortou exactamente a linha do shell.** *Um `grep` truncado devolve «zero
+consumidores» com a mesma cara de um `grep` completo* — é a família do
+`feedback_a_swallowed_panic_silently_shrinks_the_candidate_set`, com outro instrumento a encolher a
+população em silêncio.
+
+⚠️ **Regra:** um censo que vai decidir se algo está MORTO corre **sem `head`** e **conta**. Se a
+saída for grande, agrupe (`| sed 's|:.*||' | sort | uniq -c`) — nunca trunque.
+
+### §32.2 — ⛔ E o erro tinha custado um DEFEITO, que este commit cura
+
+Com o módulo 3D armado o painel consome os verbos **antes** do `chrome::rail_tools`, logo o rádio
+exclusivo dele não corre — e um `PIVOT` aceso de antes **ficava aceso**. Dois chips acesos ao mesmo
+tempo, e pior: a ferramenta de pivô do editor 2D continuava **armada** por baixo de um canvas do 3D.
+
+⇒ `area_bar::publish_rail_state` apaga-o. *Quem toma o rádio herda a promessa dele: exactamente um
+aceso.* Gate red-first: `the_pivot_chip_goes_dark_when_the_module_takes_the_rail`.
+
+### §32.3 — ⭐⭐⭐ E o instrumento: `the_rail_names_a_consumer_for_every_chip`
+
+> `CLAUDE.md` §5.0: *«⛔ Nenhum instrumento do repo pergunta se o VALOR chega a um consumidor.»*
+
+Agora há um, para a fila. Ele não pergunta *«este id existe?»* nem *«alguém despacha este clique?»*
+— os dois já têm gate. Pergunta o **terceiro passo**: *o que este chip escreve é LIDO por alguém que
+decide?*
+
+| metade | como |
+|---|---|
+| a **população** | **derivada** de `left_rail::rail_entries`, nos dois modos |
+| o **veredito** | a tabela `RAIL_CONSUMERS`, uma linha por chip: `ReadBy(<ficheiro>)` ou `DeadOnPurpose(<mecanismo>)` |
+| ⭐ a **prova** | o ficheiro declarado é **aberto e procurado** pelo nome do chip — a linha morre se o leitor sair |
+| o **censo de obsolescência** | nenhuma linha descreve um chip que a fila já não pinta |
+| o **controle positivo** | a população não pode vir vazia, e a regra do «morto de propósito» é exercida por um caso |
+
+⭐⭐ **É a terceira metade que o torna um instrumento em vez de um comentário.** Uma tabela que só
+afirmasse *«este tem consumidor»* envelheceria no dia em que o consumidor saísse — que é exactamente
+como o rádio do trilho chegou a 2026 sem ninguém a lê-lo.
+
+⭐ **O CENSO, medido:** **`20` chips da fila, `20` com consumidor, `0` declarados mortos.** Antes
+desta jornada eram **quatro** sem leitor (`MOVE`/`ROT`/`SCALE` e o `SPACE`) — e ninguém sabia, porque
+nada perguntava.
+
+⚠️ **O `⋯` e os pulldowns de área ficam FORA da população, e é justo:** eles não saem do
+`rail_entries` (o `⋯` vem do `bar_split` quando a linha transborda; os pulldowns vêm do módulo que
+tem o canvas). Pô-los na tabela e não na população faria o censo de obsolescência acusá-los para
+sempre. Cada um tem o gate dele.
+
+⛔ **E o `DeadOnPurpose` tem barra:** o motivo tem de trazer o **mecanismo** da ausência (≥ 8
+palavras, o critério do `WIDGET_OPT_OUT` da galeria). *«Ainda não ligámos» descreve um controlo
+morto, não uma decisão.* ⚠️ A variante é mantida viva pelo **controle positivo**, não por um
+`#[allow(dead_code)]`: *a cura de um aviso não é silenciá-lo, é dar-lhe o consumidor que falta.*
+
+### §32.4 — As duas MUTAÇÕES
+
+| # | o que se apagou | quem morreu |
+|---|---|---|
+| K | toda menção a `TOOL_TRANSLATE` no ficheiro declarado como consumidor dele | `every_declared_consumer_really_reads_its_chip` (*«declarado como consumidor e não menciona o chip»*) |
+| L | o caminho do consumidor do `PIVOT` aponta para um ficheiro inexistente | idem (*«o ficheiro … não existe»*) |
+
+### §32.5 — O que fica ABERTO
+
+- ⏳ **A §5.0 do `CLAUDE.md` precisa de uma linha na integração:** ela declara que *nenhum*
+  instrumento pergunta pelo consumidor, e isso deixou de ser verdade **para a fila**. ⛔ Continua
+  verdade para os painéis, a topbar e os menus — a frase não se apaga, ganha um «excepto».
+- ⏳ **A mesma sonda para a TOPBAR e para os menus** é a wave seguinte óbvia, e é onde o número de
+  controlos é maior (148 itens `CTX_MENU_*`).
+- ⏳ Do degrau `G`: as **operações booleanas** e as **acções** do painel 3D continuam sem destino
+  decidido, e nenhum outro painel foi censado.

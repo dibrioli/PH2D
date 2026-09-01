@@ -110,9 +110,10 @@ fn menus(snap: &state::ModelSnapshot) -> [MenuPlan<'_>; 1] {
 ///
 /// ⛔⛔ **Eles eram CONTROLOS MORTOS, e a espécie é a 2.ª do `CLAUDE.md` §5.0:** o clique chegava
 /// (o `chrome::rail_tools` fazia deles um rádio exclusivo), a luz acendia — e o valor **não chegava
-/// a consumidor nenhum**. Medido em 2026-09-01: fora o próprio pintor, `TOOL_TRANSLATE`/`ROTATE`/
-/// `SCALE` e o `tool_space_local` do `SPACE` não têm um único leitor na árvore. *Nenhuma sonda
-/// deste repo pergunta se o VALOR de um controlo chega a um efeito.*
+/// a consumidor nenhum**. Censo de 2026-09-01, sobre a árvore inteira e **sem `head`**: fora o
+/// próprio pintor, `TOOL_TRANSLATE`/`ROTATE`/`SCALE` e o `tool_space_local` do `SPACE` não têm um
+/// único leitor. *Nenhuma sonda deste repo pergunta se o VALOR de um controlo chega a um efeito* —
+/// o `the_rail_names_a_consumer_for_every_chip` é a primeira que o faz, e nasceu deste erro.
 ///
 /// ⇒ com o módulo 3D no canvas, **estes chips SÃO o selector do gizmo**. Um id, um sítio.
 ///
@@ -122,9 +123,16 @@ fn menus(snap: &state::ModelSnapshot) -> [MenuPlan<'_>; 1] {
 /// shell. Uma tabela `[TOOL_TRANSLATE → 0, …]` aqui seria uma **segunda contagem**: acrescentar um
 /// verbo lá dentro faria o `SCALE` mandar rodar, e nada acusaria.
 ///
-/// ⛔ **O `PIVOT` fica de fora, e é uma AUSÊNCIA declarada:** o gizmo deste módulo tem três verbos
-/// (`Mode::ALL`) e nenhum deles é *mover o pivô*. Inventar-lhe um destino seria pior do que
-/// deixá-lo como está — ele continua a ser o que era, um chip que só acende.
+/// ⛔⛔ **O `PIVOT` fica de fora — e ele NÃO é um dos mortos.** ⚠️ *Correcção de 2026-09-01: a 1.ª
+/// redacção desta nota dizia que ele também não tinha leitor, e o `grep` que o devia ter mostrado
+/// foi cortado por um `head -20`.* Ele tem **dois** consumidores no shell: o `input_dispatch` lê o
+/// `ButtonState` dele para armar o arrasto **MovePivot**, e o `render_loop::snapshots` para realçar
+/// o ponto do pivô.
+///
+/// ⇒ o gizmo deste módulo tem três verbos (`Mode::ALL`) e nenhum é *mover o pivô*, logo ele não
+/// entra na tabela — mas **apaga-se** enquanto o módulo conduz o trilho (ver
+/// [`publish_rail_state`]): dois chips acesos ao mesmo tempo seria a promessa do rádio quebrada, e
+/// pior, a ferramenta de pivô do editor 2D ficaria **armada** por baixo de um canvas que é do 3D.
 fn rail_verb_key(id: ph2d_a11y::NodeId) -> Option<&'static str> {
     RAIL_VERBS
         .iter()
@@ -173,6 +181,12 @@ fn publish_rail_state(store: &mut WidgetStore, snap: &state::ModelSnapshot) {
                 ButtonState::Normal
             };
         }
+    }
+    // ⛔⛔ **E o `PIVOT` apaga-se** — ver [`rail_verb_key`]. Com o módulo armado o painel consome os
+    // verbos ANTES do `chrome::rail_tools`, logo o rádio exclusivo dele não corre e um `PIVOT` aceso
+    // de antes ficaria aceso. *Quem toma o rádio herda a promessa dele: exactamente um aceso.*
+    if let Some(InteractiveState::Button { state }) = store.get_mut(ids::TOOL_PIVOT) {
+        *state = ButtonState::Normal;
     }
     if let Some(key) = active_key(&snap.frames) {
         store.set_tool_space_local(key == LOCAL_FRAME_KEY);

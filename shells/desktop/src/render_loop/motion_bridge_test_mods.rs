@@ -65,6 +65,11 @@ mod param_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_plumbing_tests.rs"]
 mod plumbing_tests;
+/// O censo dos RÓTULOS de porta — cortado do `dock_height_tests` no teto de LOC, no corte que a
+/// pergunta desenha: lá *cabe no dock?*, aqui *este nome é legível?*.
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_port_label_tests.rs"]
+mod port_label_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_range_tests.rs"]
 mod range_tests;
@@ -91,6 +96,11 @@ mod shape_link_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_shape_reach_tests.rs"]
 mod shape_reach_tests;
+/// De onde vem o valor de uma linha — cortado do `param_tests` no teto de LOC: lá *que FORMA
+/// tem esta linha?*, aqui *de onde sai o valor dela?*.
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_source_tests.rs"]
+mod source_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_subgraph_ports_tests.rs"]
 mod subgraph_ports_tests;

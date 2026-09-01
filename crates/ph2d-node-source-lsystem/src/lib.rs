@@ -361,8 +361,14 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
     } else {
         youngest
     };
-    // O `Setup` de uma travessia de MEDIÇÃO — as duas fracções à escolha de quem mede.
-    let base = |len: f32, ang: f32, youngest: (u16, f32)| turtle::Setup {
+    // O `Setup` de uma travessia de MEDIÇÃO — as TRÊS fracções à escolha de quem mede.
+    //
+    // ⚠️ O `lat` entra MULTIPLICANDO o mesmo `len * youngest.1` que o eixo recebe, e não como
+    // um número independente: é isso que mantém a largura medida **homogénea** em `len`
+    // (`W(s·A, s·A·lat) = s·W(A, A·lat)`) e portanto o solve do factor de comprimento uma
+    // divisão, como sempre foi. *Uma lei nova que quebrasse a homogeneidade trocaria a
+    // normalização por uma raiz.*
+    let base = |len: f32, ang: f32, youngest: (u16, f32), lat: f32| turtle::Setup {
         angle: p.angle,
         step: p.step * p.step_scale.max(1e-4).powf(generations.clamp(0.0, 64.0)),
         width: p.width,
@@ -373,6 +379,7 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
         tropism_angle: p.tropism_angle,
         angle_frac: ang,
         youngest: (youngest.0, len * youngest.1),
+        newborn: len * youngest.1 * lat,
         orient_world: p.orient.round() as i32 == 0,
         leaf_first_level: p.leaf_first_level,
         leaf_angle: p.leaf_angle,
@@ -419,27 +426,48 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
     let want_len = p.continuous_length.round() as i32 != 0;
     let want_ang = p.continuous_angle.round() as i32 != 0;
 
-    let (len_frac, ang_frac) = if frac >= 1.0 {
+    // ⭐⭐⭐ **A TERCEIRA FRACÇÃO — a lei do recém-nascido** (2026-08-31, report do Enio: *"dá
+    // pequenos pulos, não é perfeitamente liso"*).
+    //
+    // Até aqui a geração nova crescia TODA com o mesmo número. O ABOP (§6.2.2) separa-a em
+    // duas: a eq. (6.10) manda o comprimento do pai **repartir-se** pelos filhos que continuam
+    // o eixo — eles retraçam o que já estava desenhado, e por isso a figura não muda no
+    // instante da divisão —, e a eq. (6.11) manda um ramo lateral acabado de formar nascer com
+    // comprimento **zero**.
+    //
+    // ⛔⛔ **Sem isso a tinta APARECE de uma vez, e nenhuma régua desta linha o via**: o
+    // `probe_flicker` e o `probe_drift` medem um escalar de TAMANHO, e é exactamente o tamanho
+    // que a normalização abaixo põe na rampa recta — *a régua partilhava a lei do produto*.
+    // Medido pela imagem (`probe_pops.rs`): no `Bush` a tinta salta `+69,5 %` **num passo do
+    // arrasto**, contra `1 %` do passo típico.
+    //
+    // ⚠️ **Só o braço que REFINA a usa.** Nos outros três `lat = 1` e a fracção do
+    // recém-nascido é a do eixo — a lei fica inerte, byte a byte.
+    let (len_frac, ang_frac, lat_frac) = if frac >= 1.0 {
         // Geração inteira: não há nada a interpolar, e nada se mede.
-        (1.0, 1.0)
+        (1.0, 1.0, 1.0)
     } else if !grows_by_refining {
         // Cresce pela PONTA: o rebento estica de zero (a lei de sempre, e a cura do
         // pisca-pisca de 28/08). A viragem é inerte aqui por construção — ver `turtle`.
-        (if want_len { frac } else { 1.0 }, frac)
+        // ⚠️ Aqui a lei do recém-nascido seria REDUNDANTE: tudo o que é novo já estica de
+        // zero, e um `lat` a multiplicar daria `frac²` — outro perfil, não outra lei.
+        (if want_len { frac } else { 1.0 }, frac, 1.0)
     } else if want_ang {
         // REFINA: normaliza pelo que se mede, para a rampa sair recta.
-        let antes = turtle::mean_width(&d.previous, &base(1.0, 1.0, (d.generations, 1.0)));
-        let cheia = turtle::mean_width(&d.chain, &base(1.0, 1.0, (d.generations, 1.0)));
-        let agora = turtle::mean_width(&d.chain, &base(1.0, frac, (d.generations, 1.0)));
+        let antes = turtle::mean_width(&d.previous, &base(1.0, 1.0, (d.generations, 1.0), 1.0));
+        let cheia = turtle::mean_width(&d.chain, &base(1.0, 1.0, (d.generations, 1.0), 1.0));
+        // ⚠️ A travessia que MEDE tem de correr a MESMA lei da que desenha — com `lat = 1`
+        // aqui, o factor sairia de uma figura que o produto nunca desenha.
+        let agora = turtle::mean_width(&d.chain, &base(1.0, frac, (d.generations, 1.0), frac));
         let alvo = antes + (cheia - antes) * frac;
         if agora > 1e-6 && alvo > 0.0 {
-            ((alvo / agora).clamp(0.02, 4.0), frac)
+            ((alvo / agora).clamp(0.02, 4.0), frac, frac)
         } else {
-            (1.0, frac)
+            (1.0, frac, frac)
         }
     } else {
         // ⛔ O `Grow Angle` desligado é o degrau inteiro de sempre, byte a byte.
-        (1.0, 1.0)
+        (1.0, 1.0, 1.0)
     };
 
     turtle::walk(
@@ -476,6 +504,7 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
             tropism: p.tropism,
             tropism_angle: p.tropism_angle,
             youngest: (youngest.0, len_frac),
+            newborn: len_frac * lat_frac,
             angle_frac: ang_frac,
             // `0` = mundo (o desenho alinha com o ramo). Qualquer outro valor é o local.
             orient_world: p.orient.round() as i32 == 0,

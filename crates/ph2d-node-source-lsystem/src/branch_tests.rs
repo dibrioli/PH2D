@@ -222,6 +222,7 @@ fn a_real_branching_plant_becomes_few_ribbons_not_one_per_segment() {
         tropism: 0.0,
         tropism_angle: -90.0,
         youngest: (0, 1.0),
+        newborn: 1.0,
         angle_frac: 1.0,
         orient_world: true,
         leaf_first_level: 0.0,

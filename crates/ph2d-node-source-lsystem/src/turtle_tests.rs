@@ -19,6 +19,10 @@ fn setup() -> Setup {
         tropism: 0.0,
         tropism_angle: -90.0,
         youngest: (0, 1.0),
+        // ⚠️ **Igual ao `youngest.1` ⇒ a lei do recém-nascido fica INERTE nesta fixtura**, que é
+        // o que ela quer: os gates daqui medem uma lei de cada vez sobre uma cadeia escrita à
+        // mão. Quem contém o fenómeno do recém-nascido é `tests/newborn_law.rs`.
+        newborn: 1.0,
         angle_frac: 1.0,
         // ⚠️ **Os defaults do PRODUTO**, e a assimetria é a decisão de 2026-08-29: o
         // comprimento cresce (é o que sempre shipou) e o ângulo **não** (ver a recusa

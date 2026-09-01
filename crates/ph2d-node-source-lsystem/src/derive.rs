@@ -256,6 +256,10 @@ fn rewrite(
                 nm.args[k] = eval(a, &env);
             }
             nm.nargs = n as u8;
+            // ⭐ **A metade da lei do recém-nascido que só o REESCRITOR sabe** — ver
+            // [`grammar::Module::from_drawing`]. É aqui, e não na travessia, porque aqui existe
+            // o predecessor.
+            nm.from_drawing = crate::turtle::draws(m.sym);
             out.push(nm);
         }
     }

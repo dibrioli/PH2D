@@ -62,6 +62,17 @@ pub(crate) struct Module {
     /// possíveis: só os mais novos crescem enquanto o número sobe.
     pub born: u16,
     pub nargs: u8,
+    /// **O meu PRODUTOR desenhava?** — a metade da lei do recém-nascido (ABOP §6.2.2 eq. 6.10)
+    /// que a estrutura da cadeia não responde.
+    ///
+    /// ⚠️ Um `F` que nasce da reescrita de outro `F` **retraça** material que já estava
+    /// desenhado; um `F` que nasce de um `X` (um ápice que não desenha nada) é tinta NOVA. Os
+    /// dois lêem-se iguais na cadeia — o mesmo símbolo, a mesma geração, a mesma profundidade
+    /// de encaixe —, e é por isso que isto viaja no módulo em vez de se deduzir na travessia.
+    ///
+    /// `true` para o axioma e para quem passa intacto: quem não é da geração mais nova nunca é
+    /// perguntado.
+    pub from_drawing: bool,
     pub args: [f32; MAX_ARGS],
 }
 
@@ -71,6 +82,7 @@ impl Module {
             sym,
             born,
             nargs: 0,
+            from_drawing: true,
             args: [0.0; MAX_ARGS],
         }
     }

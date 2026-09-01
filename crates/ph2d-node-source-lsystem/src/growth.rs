@@ -131,6 +131,9 @@ pub(crate) fn raw_ratio_and_family(axiom_src: &str, rules_src: &str, p: &Params)
                 tropism_angle: p.tropism_angle,
                 angle_frac: 1.0,
                 youngest: (d.generations, 1.0),
+                // Geração INTEIRA nas duas amostras (`1.0` em toda a parte): a razão de
+                // expansão é entre gerações fechadas, e a lei do recém-nascido não a toca.
+                newborn: 1.0,
                 orient_world: true,
                 leaf_first_level: p.leaf_first_level,
                 leaf_angle: p.leaf_angle,

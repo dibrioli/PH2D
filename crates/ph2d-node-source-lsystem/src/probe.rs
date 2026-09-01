@@ -49,7 +49,12 @@ pub fn probe_anchor(axiom: &str, rules: &str, generations: f32, overrides: &[(&s
     if d.previous.is_empty() {
         return 1.0;
     }
-    let setup = |ang: f32| turtle::Setup {
+    // ⚠️ **O `lat` viaja junto com o `ang` desde 2026-08-31**, e tinha de viajar: a âncora é o
+    // valor da normalização em `frac → 0`, e nesse instante o [`build`] mede a figura com o
+    // material NOVO a zero (a lei do recém-nascido, ABOP §6.2.2 eq. 6.11). Medir aqui com ele
+    // a cheio devolveria a âncora de um produto que já não existe — *o mesmo defeito que o
+    // parágrafo acima descreve para os overrides, um ano-luz mais subtil.*
+    let setup = |ang: f32, lat: f32| turtle::Setup {
         angle: p.angle,
         step: p.step,
         width: p.width,
@@ -60,6 +65,7 @@ pub fn probe_anchor(axiom: &str, rules: &str, generations: f32, overrides: &[(&s
         tropism_angle: p.tropism_angle,
         angle_frac: ang,
         youngest: (d.generations, 1.0),
+        newborn: lat,
         orient_world: true,
         leaf_first_level: p.leaf_first_level,
         leaf_angle: p.leaf_angle,
@@ -67,7 +73,7 @@ pub fn probe_anchor(axiom: &str, rules: &str, generations: f32, overrides: &[(&s
         leaf_effects: p.leaf_effects.round() as i32 != 0,
         seed: p.seed,
     };
-    let antes = turtle::mean_width(&d.previous, &setup(1.0));
+    let antes = turtle::mean_width(&d.previous, &setup(1.0, 1.0));
     // ⚠️ **Com as dobras FECHADAS** — é a pose de onde a interpolação parte.
     //
     // ⛔⛔ **A NOTA QUE AQUI ESTAVA FOI REFUTADA em 2026-08-30** (auditoria adversarial). Ela
@@ -78,7 +84,7 @@ pub fn probe_anchor(axiom: &str, rules: &str, generations: f32, overrides: &[(&s
     //
     // ⇒ quem guarda esta linha é a fixtura do Weed no gate da âncora (não auto-semelhante), e
     // a pose tem gate próprio em `turtle_tests::the_newest_generation_opens_its_folds…`.
-    let achatada = turtle::mean_width(&d.chain, &setup(0.0));
+    let achatada = turtle::mean_width(&d.chain, &setup(0.0, 0.0));
     if antes > 1e-6 && achatada > 1e-6 {
         (antes / achatada).clamp(0.02, 1.0)
     } else {

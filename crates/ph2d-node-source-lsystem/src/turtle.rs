@@ -76,6 +76,17 @@ pub(crate) struct Setup {
     /// A geração mais nova e quanto dela já cresceu, `(geração, fracção)`. `fracção = 1`
     /// significa geração inteira.
     pub youngest: (u16, f32),
+    /// ⭐⭐⭐ **Com que comprimento nasce quem NÃO retraça material já desenhado** — o
+    /// `g(b, 0) = 0` do ABOP (§6.2.2, eq. 6.11).
+    ///
+    /// O `youngest.1` é a fracção de quem CONTINUA o eixo do módulo que o produziu: ele
+    /// retraça o que já estava lá, e por isso chega ao mundo com o comprimento do pai
+    /// repartido. Este é a fracção de quem é material **novo** — um ramo lateral que a
+    /// produção acabou de abrir, ou um segmento que nasceu de um ápice que não desenhava.
+    ///
+    /// ⚠️ **Igual ao `youngest.1` ⇒ inerte**, e é assim que três dos quatro braços do
+    /// [`crate::build`] o passam. Só o braço que REFINA com o `Grow Angle` ligado os separa.
+    pub newborn: f32,
     /// **O que a coluna `rot` quer dizer** — e a pergunta tem dois donos.
     ///
     /// ⚠️⚠️ **Report do Enio, 2026-08-28: *"as shapes não rotacionam, mas parece que deveriam
@@ -118,6 +129,13 @@ struct State {
     /// O elemento que está NESTA posição, ou `-1` se a tartaruga saltou para aqui.
     cur: i32,
     depth: u16,
+    /// **Estou dentro de um ramo que a geração mais nova acabou de abrir?**
+    ///
+    /// ⚠️ Viaja no `State` de propósito: o `[`/`]` já empilha e desempilha o estado inteiro,
+    /// então a pergunta herda-se para dentro e restaura-se na saída **sem uma linha de
+    /// contabilidade** — e um ramo aberto há três gerações que contenha um ramo novo responde
+    /// certo nos dois níveis.
+    lateral: bool,
 }
 
 /// As colunas em construção.
@@ -258,6 +276,29 @@ pub(crate) fn mark_weight(sym: u8, born: u16, depth: u16, youngest: (u16, f32), 
 /// que é um osso.
 pub(crate) fn draws(sym: u8) -> bool {
     matches!(sym, b'F' | b'G')
+}
+
+/// ⚗️ **Qual metade da lei do recém-nascido está a valer** — `0` a lei de antes de 2026-08-31,
+/// `1` só o material lateral, `2` (o que shipa) lateral **e** filho de produtor que não desenha.
+///
+/// ⚠️ Existe para a bancada [`examples/probe_pops.rs`](../../examples/probe_pops.rs) poder
+/// medir as três, e a tabela que ela imprimiu está no doc 97. *Uma lei com três metades
+/// candidatas mede-se; não se escolhe.*
+const NEWBORN_LAW: u8 = 2;
+
+/// **Este módulo da geração mais nova é tinta NOVA, ou retraça o que já lá estava?**
+///
+/// ⭐⭐⭐ É a pergunta que separa as duas equações do ABOP §6.2.2: a (6.10) diz que ao longo do
+/// eixo o comprimento do pai se REPARTE pelos filhos (logo eles nascem a somar o pai, e nada
+/// aparece); a (6.11) diz que um ápice lateral acabado de formar tem comprimento **zero** e
+/// taxa de crescimento **zero**. Sem esta separação toda a geração nova nasce com a mesma
+/// fracção — e a tinta que ninguém retraça **aparece de uma vez**.
+fn newborn_law(lateral: bool, from_drawing: bool) -> bool {
+    match NEWBORN_LAW {
+        1 => lateral,
+        2 => lateral || !from_drawing,
+        _ => false,
+    }
 }
 
 /// `(cos, sin, 1/‖(cos, sin)‖)` na direcção `heading` — os **três** separados, e a separação
@@ -473,6 +514,7 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
         width: set.width,
         cur: -1,
         depth: 0,
+        lateral: false,
     };
     // A raiz da planta nasce ANTES do primeiro símbolo: sem ela um axioma que comece por
     // `[` não teria a que se pendurar, e o primeiro ramo sairia solto.
@@ -498,9 +540,14 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
     let mut i = 0usize;
     while i < chain.len() {
         let m = &chain[i];
-        // Quanto desta geração já cresceu: `1` para tudo o que não é a mais nova.
+        // Quanto desta geração já cresceu: `1` para tudo o que não é a mais nova, e quem é
+        // pergunta primeiro se RETRAÇA alguma coisa — ver [`Setup::newborn`] e [`NEWBORN_LAW`].
         let grow = if m.born == youngest.0 {
-            youngest.1
+            if newborn_law(st.lateral, m.from_drawing) {
+                set.newborn
+            } else {
+                youngest.1
+            }
         } else {
             1.0
         };
@@ -582,6 +629,8 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
             b'[' => {
                 stack.push(st);
                 st.depth = st.depth.saturating_add(1);
+                // Um ramo aberto pela geração mais nova é material NOVO da ponta à raiz dele.
+                st.lateral |= m.born == youngest.0;
             }
             b']' => {
                 if let Some(prev) = stack.pop() {

@@ -97,53 +97,53 @@ fn duplicate_cuts_collapse_into_one() {
 }
 
 /// ⭐⭐⭐ **A FUSÃO é o que separa «dividir» de «soldar»** (report do Enio, 2026-08-31).
-///
-/// ⚠️ **A fixtura tem de ser CURVA.** Com duas retas cruzando em coordenadas redondas os dois lados
-/// já calculam o MESMO ponto por acaso, e o gate passaria com a fusão desligada — foi a primeira
-/// redacção deste teste, e três mutações sobreviveram a ela. *A fixtura mais azarada possível é a
-/// que aprova.*
+/// ⭐ **O aglomerado é o NÓ, e o nó é o CENTROIDE.**
 #[test]
-fn fusing_turns_two_near_points_into_one_and_a_lone_end_is_not_a_joint() {
-    // Duas pontas PERTO mas diferentes — o que o corte de dois contornos curvos produz.
-    let mut arcos = vec![
-        (vec![v(0.0, 0.0), v(10.0, 0.0)], false),
-        (vec![v(10.0, 0.03), v(20.0, 5.0)], false),
-        (vec![v(80.0, 80.0), v(90.0, 80.0)], false), // sozinha, longe de tudo
-    ];
-    let antes = (arcos[0].0[1].anchor, arcos[1].0[0].anchor);
-    assert_ne!(
-        antes.0, antes.1,
-        "a fixtura precisa de duas pontas DIFERENTES"
-    );
-
-    let juntas = fuse_endpoints(&mut arcos, 0.1);
-
-    assert_eq!(juntas, 1, "uma junta, e a ponta solitaria NAO conta");
-    assert_eq!(
-        arcos[0].0[1].anchor, arcos[1].0[0].anchor,
-        "as duas pontas tem de virar o MESMO ponto, bit a bit"
-    );
-    // …e é o CENTROIDE, não uma das duas: escolher uma faria a solda depender da ordem.
-    assert!((arcos[0].0[1].anchor[1] - 0.015).abs() < 1e-12);
-    // A solitária não se mexeu.
-    assert_eq!(arcos[2].0[0].anchor, [80.0, 80.0]);
+fn two_points_within_the_tolerance_become_one_node_at_their_middle() {
+    let (de_quem, nos) = cluster_endpoints(&[[0.0, 0.0], [0.3, -0.2]], 1.0);
+    assert_eq!(nos.len(), 1);
+    assert_eq!(de_quem, vec![Some(0), Some(0)]);
+    assert!((nos[0][0] - 0.15).abs() < 1e-12 && (nos[0][1] + 0.1).abs() < 1e-12);
 }
 
-/// ⚠️ **A alça acompanha a âncora** — mover só a âncora mudaria a CURVA em vez de a deslocar, e o
-/// arco descolaria da forma que tinha.
+/// ⛔ **Uma ponta sozinha não é junta de nada** — e é isso que impede a solda de mover uma ponta
+/// livre para "o sítio dela".
 #[test]
-fn fusing_carries_the_handles_with_the_anchor() {
-    let mut a = v(10.0, 0.0);
-    a.out_handle = [12.0, 3.0];
-    let mut arcos = vec![
-        (vec![v(0.0, 0.0), a], false),
-        (vec![v(10.0, 0.04), v(20.0, 0.0)], false),
-    ];
-    fuse_endpoints(&mut arcos, 0.1);
-    let f = &arcos[0].0[1];
-    assert!(
-        (f.out_handle[1] - (3.0 + 0.02)).abs() < 1e-12,
-        "a alca nao andou com a ancora: {:?}",
-        f.out_handle
-    );
+fn a_lone_point_belongs_to_no_node() {
+    let (de_quem, nos) = cluster_endpoints(&[[0.0, 0.0], [50.0, 0.0]], 1.0);
+    assert!(nos.is_empty());
+    assert_eq!(de_quem, vec![None, None]);
+}
+
+/// ⚠️ **A folga é a cerca**: as mesmas duas pontas, com o ímã apertado, ficam duas.
+#[test]
+fn the_tolerance_is_a_fence_and_it_holds() {
+    let (de_quem, nos) = cluster_endpoints(&[[0.0, 0.0], [0.3, -0.2]], 0.1);
+    assert!(nos.is_empty());
+    assert_eq!(de_quem, vec![None, None]);
+}
+
+/// ⚠️ **Dois nós distintos numa lista só** — o agrupamento não é global, é por vizinhança.
+#[test]
+fn two_separate_meetings_give_two_nodes() {
+    let (de_quem, nos) =
+        cluster_endpoints(&[[0.0, 0.0], [0.1, 0.0], [90.0, 0.0], [90.1, 0.0]], 1.0);
+    assert_eq!(nos.len(), 2);
+    assert_eq!(de_quem, vec![Some(0), Some(0), Some(1), Some(1)]);
+}
+
+/// ⚠️ **A alça acompanha a âncora.** Mover só a âncora mudaria a CURVA em vez de a deslocar.
+#[test]
+fn moving_an_endpoint_carries_its_handles() {
+    let mut v = VecVertex {
+        anchor: [10.0, 10.0],
+        in_handle: [8.0, 10.0],
+        out_handle: [12.0, 11.0],
+        kind: crate::VertexKind::Smooth,
+        corner_radius: 0.0,
+    };
+    mover_ponta(&mut v, [20.0, 30.0]);
+    assert_eq!(v.anchor, [20.0, 30.0]);
+    assert_eq!(v.in_handle, [18.0, 30.0]);
+    assert_eq!(v.out_handle, [22.0, 31.0]);
 }

@@ -411,5 +411,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::trim_smoke::frame(app, f);
         return true;
     }
+    // ⭐⭐⭐ SOLDAR (=81, plano 39) — irmã `weld_smoke`. Três pares: pontas que se encontram · duas
+    // que se cruzam · duas longe uma da outra (a cerca). O anel VERDE é o nó partilhado, e arrastá-lo
+    // é a metade do teste que a coordenada sozinha não mostra.
+    if level == 81 {
+        crate::weld_smoke::frame(app, f);
+        return true;
+    }
     false
 }

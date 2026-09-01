@@ -722,6 +722,7 @@ mod vec_widget_value;
 /// A costura do gizmo dos deformadores de quadrilátero com o ponteiro.
 mod warp_gizmo_drag;
 mod warp_smoke;
+mod weld_smoke;
 mod wetpaint_smoke;
 /// **O DESENHO É O GLIFO** — a porta única que normaliza a forma de um `IconButton` na caixa de
 /// 24×24. Ela é UMA porque o canvas e o codegen precisam do mesmo glifo por motivos diferentes.

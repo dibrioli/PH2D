@@ -52,6 +52,72 @@ afastei os pontos)"*. Ele estava certo, e a falta eram **duas** coisas:
 junta é a coincidência, e quem a cria é o Weld, o Join ou o encaixe. E o modelo completo da Figma (a
 aresta com identidade, que sobrevive a qualquer edição) continua fora.
 
+## §2-bis — ⭐⭐⭐ **CRUZAR NÃO É A ÚNICA FORMA DE SE ENCONTRAR** (report de 2026-09-01)
+
+> Enio: *"ainda não consegue conectar as duas curvas. 2 curvas geram outras duas linhas com
+> aparência igual ou diferente. mas as linhas não compartilham o mesmo nó"*.
+
+⚠️ **Medido antes de mexer, e a sonda percorreu o CAMINHO REAL DO FRAME** (entidades ECS,
+`settle_origins`, `vec_transform::build`, `PenTool::set_xforms`): duas curvas **cruzadas** dão 4
+arcos, com o nó partilhado bit a bit e `welded_with` a devolver 3 juntas em cada ponta do meio — *o
+caminho do cruzamento estava certo de ponta a ponta*. ⛔ Uma varredura de 8 configurações
+encontrou o buraco noutro sítio: **duas curvas ponta-com-ponta a `0,36` de distância faziam o
+comando recusar-se** (*"nada se cruza"*).
+
+⇒ A lei ganha a segunda metade:
+
+> **Duas pontas que se encontram são um nó, tanto quanto duas curvas que se atravessam.**
+
+- **A folga é o ÍMÃ DO ENCAIXE** (`vec_snap::vec_weld_tolerance` = `SNAP_PX` × zoom), com piso na
+  flecha dobrada do cruzamento. ⚠️ *O app já decide, a cada traço desenhado, que duas coisas a menos
+  de 10 px de tela são para ficar no mesmo sítio* — soldar reusa esse veredito em vez de inventar um
+  segundo número. ⛔ **Não é o `WELD_TOL`** (`1e-6`, exacto): um mede **intenção**, o outro mede um
+  **facto** já consumado.
+- **Um caminho que só empresta a ponta NÃO se dissolve** — mantém id, estilo, pose e efeitos, e só
+  a âncora se muda (descendo ao espaço local dele). *Dissolver um traço que ninguém cortou seria
+  cobrar o preço do corte por uma ligação.*
+- ⛔ **Quem tem EFEITOS fica de fora**: o que se vê nele é geometria cozida e os vértices autorados
+  já não são as pontas que a medição encontrou.
+- ⚠️ **As pontas vêm de DOIS substratos** (um arco recém-cortado num vector · um caminho da cena com
+  pose e id) ⇒ quem as agrupa é **uma porta só**, `weld::cluster_endpoints`; cada chamador escreve o
+  resultado no seu substrato. O `fuse_endpoints` da wave anterior **morreu** ao ficar sem consumidor.
+
+### ⛔⛔ E a régua da flecha estava a medir uma curvatura que não existe
+
+O gate da cerca reprovou imprimindo `folga 0,5493` sobre **duas retas**. A causa: `sampling_error`
+media a distância do ponto do meio ao **ponto médio da corda**, o que conta o deslize **tangencial**
+como se fosse desvio — e uma reta autorada com as alças em cima das âncoras é uma cúbica
+**degenerada**, que percorre o segmento exacto com velocidade `3t² − 2t³`.
+
+⇒ Hoje mede a distância ao **SEGMENTO** (`arc_cut::dist_to_segment`). ⚠️ **É uma régua PARTILHADA**:
+ela responde *"este ponto está SOBRE a curva?"* ao Trim (`touches`) e *"estas duas pontas são o
+mesmo nó?"* ao Soldar — as duas eram generosas **em proporção ao tamanho do traço**. ⛔ Num círculo
+de raio 100 ela **não muda** (`0,119`), que é o número com que o gate dos dois círculos foi
+calibrado.
+
+### ⭐⭐⭐ E o nó agora VÊ-SE
+
+⚠️ **A metade que faltava do report não era código, era leitura**: uma coordenada partilhada não se
+desenha — duas pontas coincidentes e duas pontas a um pixel pintam **o mesmo quadradinho**, e o
+único instrumento era arrastar, que é um teste destrutivo para responder a uma pergunta de leitura.
+
+⇒ `ph2d_vec_render::draw_weld_marks`: um **anel verde** em cada nó partilhado.
+
+- **FIGURA, não cor** — o vocabulário que a crate já usa nas guias de encaixe (*afirmações
+  diferentes recebem figuras diferentes*). As âncoras são quadrados; o anel é a única forma que não
+  colide com nenhuma, e é a marca de coincidência do desenho de CAD.
+- ⚠️ **A LEI é a do arrasto** (`PenTool::welded_nodes`, mesmo predicado e mesma `WELD_TOL` do
+  `welded_with`), com gate nos **dois** sentidos: *"todo nó marcado tem juntas"* passaria com uma
+  lista vazia. ⛔ Uma segunda régua acenderia o anel onde o dedo não arrasta junto, e o instrumento
+  que existe para ensinar a lei ensinaria a errada.
+- ⚠️ **A projecção é a MESMA do overlay** (`overlay_transform`), senão o anel pousa ao lado da
+  âncora que ele afirma abraçar — e justamente sob auto layout, onde conferir a olho é mais difícil.
+- ⚠️ **Ordenado por `x` antes de agrupar**: o passe corre por quadro, e `n²` sobre as pontas de um
+  documento grande não é aceitável.
+
+**Cena de smoke: `PH2D_BUILD_SMOKE=81`** — três pares (pontas que se encontram · cruzadas · longe uma
+da outra), com gate a provar que a cena faz o que a mensagem dela promete.
+
 ## §3 — O que reusou
 
 Tudo o que o **Trim** (plano 38) pagou: `trim_tool::crossings_against` (cruzamentos + **toques**),
@@ -83,5 +149,8 @@ não escolhe as perguntas que se fazem.* Dois gates novos no `trim_tool`.
   cria (o encaixe cria, o Join cria, o Weld cria). Soldar outra vez resolve.
 - ⏳ **Um composto soldado perde o buraco**: depois da solda os contornos são arcos, e um arco não
   tem dentro. É o preço declarado de *"consome os originais"*.
+- ⏳ **A régua do anel não conhece o `layout_pose`** — `welded_with`/`welded_nodes` agrupam pelo
+  `xform` do pen, e o overlay projecta com `layout_pose ∘ xform`. Sob auto layout as duas divergem;
+  é pré-existente (o arrasto já divergia) e não foi tocado aqui.
 - ⏳ **Custo não medido** — `O(contornos²)` em arestas de amostragem, sobre a selecção. É um verbo
   de clique, não um laço de quadro; sem número, a acusação seria palpite.

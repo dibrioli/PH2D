@@ -87,8 +87,18 @@ pub fn split_at(
     arcos
 }
 
-/// ⭐⭐⭐ **FUNDE as pontas que caem quase no mesmo sítio** — cada aglomerado passa a ter **UMA**
-/// coordenada, bit a bit igual em todos os arcos que o partilham.
+/// ⭐⭐⭐ **A PONTA MUDA-SE PARA O NÓ** — e a alça vai com ela.
+///
+/// ⚠️ Mover só a âncora mudaria a CURVA em vez de a deslocar, e o arco descolaria da forma que
+/// tinha. É a mesma lei do `shift_vert` da edição, escrita aqui porque esta crate não a alcança.
+pub fn mover_ponta(v: &mut VecVertex, no: [f64; 2]) {
+    let d = [no[0] - v.anchor[0], no[1] - v.anchor[1]];
+    v.anchor = no;
+    v.in_handle = [v.in_handle[0] + d[0], v.in_handle[1] + d[1]];
+    v.out_handle = [v.out_handle[0] + d[0], v.out_handle[1] + d[1]];
+}
+
+/// ⭐⭐⭐ **QUAIS PONTAS SÃO O MESMO NÓ** — a porta única da pergunta.
 ///
 /// # Porque não basta cortar
 ///
@@ -98,70 +108,58 @@ pub fn split_at(
 /// avalia a **sua** cúbica ali. Os dois pontos ficam perto e **não iguais** — e dois pontos perto
 /// não são um nó, são dois nós.
 ///
-/// ⚠️ **A tolerância é o erro de AMOSTRAGEM** (`trim_tool::sampling_error`), a mesma régua que diz
-/// se uma ponta está *sobre* uma curva. Um número escolhido colaria pontas que o artista quis
-/// separadas, ou deixaria de colar as que ele quis juntas.
+/// ⚠️ **Uma fixtura que prove isto tem de ser CURVA.** Com duas retas cruzando em coordenadas
+/// redondas os dois lados já calculam o MESMO ponto por acaso, e o gate passa com a fusão
+/// desligada — foi a primeira redacção dos gates de 31/08, e três mutações sobreviveram a ela.
+/// *A fixtura mais azarada possível é a que aprova.*
 ///
-/// ⛔ Só PONTAS: um vértice interior de um arco não é junta de nada.
-pub fn fuse_endpoints(arcos: &mut [(Vec<VecVertex>, bool)], tol: f64) -> usize {
-    // Onde está cada ponta: `(índice do arco, índice do vértice)`.
-    let mut pontas: Vec<(usize, usize)> = Vec::new();
-    for (i, (verts, closed)) in arcos.iter().enumerate() {
-        if *closed || verts.len() < 2 {
-            continue;
-        }
-        pontas.push((i, 0));
-        pontas.push((i, verts.len() - 1));
-    }
+/// Devolve, para cada ponta de entrada, **o índice do nó a que ela pertence** (`None` = está
+/// sozinha, e uma ponta sozinha não é junta de nada), mais **a coordenada de cada nó**.
+///
+/// ⚠️ **O CENTROIDE, e não a primeira**: escolher uma das pontas faria a junta depender da ordem
+/// em que os arcos saíram, e a mesma solda dava geometria diferente conforme a ordem da selecção.
+///
+/// ⚠️⚠️ **Existe separada do [`fuse_endpoints`] porque as pontas de um nó podem vir de DOIS
+/// substratos**: de um arco recém-cortado (que vive num vector) e de um caminho que ninguém cortou
+/// (que vive na cena, com pose própria e id a preservar). *Duas contas de "quem é o mesmo nó"
+/// divergiriam no dia em que uma delas mudasse de tolerância* — aqui a resposta é uma só, e cada
+/// chamador escreve o resultado no seu substrato.
+#[must_use]
+pub fn cluster_endpoints(pontas: &[[f64; 2]], tol: f64) -> (Vec<Option<usize>>, Vec<[f64; 2]>) {
     let t2 = tol * tol;
-    let mut visto = vec![false; pontas.len()];
-    let mut fundidos = 0usize;
+    let mut de_quem: Vec<Option<usize>> = vec![None; pontas.len()];
+    let mut nos: Vec<[f64; 2]> = Vec::new();
     for a in 0..pontas.len() {
-        if visto[a] {
+        if de_quem[a].is_some() {
             continue;
         }
-        let pa = arcos[pontas[a].0].0[pontas[a].1].anchor;
         let mut grupo = vec![a];
-        for (b, vb) in visto.iter().enumerate().skip(a + 1) {
-            if *vb {
+        for (b, alvo) in de_quem.iter().enumerate().skip(a + 1) {
+            if alvo.is_some() {
                 continue;
             }
-            let pb = arcos[pontas[b].0].0[pontas[b].1].anchor;
-            if (pa[0] - pb[0]).powi(2) + (pa[1] - pb[1]).powi(2) <= t2 {
+            let d = [pontas[a][0] - pontas[b][0], pontas[a][1] - pontas[b][1]];
+            if d[0].mul_add(d[0], d[1] * d[1]) <= t2 {
                 grupo.push(b);
             }
-        }
-        for &g in &grupo {
-            visto[g] = true;
         }
         if grupo.len() < 2 {
             continue; // uma ponta sozinha não é junta
         }
-        // ⚠️ **O CENTROIDE, e não a primeira**: escolher uma das pontas faria a junta depender da
-        // ordem em que os arcos saíram, e a mesma solda dava geometria diferente conforme a ordem
-        // da selecção.
         let (mut sx, mut sy) = (0.0, 0.0);
         for &g in &grupo {
-            let p = arcos[pontas[g].0].0[pontas[g].1].anchor;
-            sx += p[0];
-            sy += p[1];
+            sx += pontas[g][0];
+            sy += pontas[g][1];
         }
         #[allow(clippy::cast_precision_loss)]
         let n = grupo.len() as f64;
-        let no = [sx / n, sy / n];
+        let no = nos.len();
+        nos.push([sx / n, sy / n]);
         for &g in &grupo {
-            let (ai, vi) = pontas[g];
-            // ⚠️ **A alça acompanha a âncora** — mover só a âncora mudaria a CURVA em vez de a
-            // deslocar, e o arco descolaria da forma que ele tinha.
-            let v = &mut arcos[ai].0[vi];
-            let d = [no[0] - v.anchor[0], no[1] - v.anchor[1]];
-            v.anchor = no;
-            v.in_handle = [v.in_handle[0] + d[0], v.in_handle[1] + d[1]];
-            v.out_handle = [v.out_handle[0] + d[0], v.out_handle[1] + d[1]];
+            de_quem[g] = Some(no);
         }
-        fundidos += 1;
     }
-    fundidos
+    (de_quem, nos)
 }
 
 #[cfg(test)]

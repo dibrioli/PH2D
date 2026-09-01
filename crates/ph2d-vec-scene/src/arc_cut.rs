@@ -88,8 +88,7 @@ impl Geom {
                 );
                 let (a, b) = (point_at(seg, t0), point_at(seg, t1));
                 let m = point_at(seg, (t0 + t1) * 0.5);
-                let corda = [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5];
-                pior = pior.max((m[0] - corda[0]).hypot(m[1] - corda[1]));
+                pior = pior.max(dist_to_segment(m, a, b));
             }
         }
         pior
@@ -353,4 +352,30 @@ pub(crate) fn strands_uniform(
             .collect()
     };
     strands_of(g, &gaps)
+}
+
+/// ⭐⭐⭐ **A DISTÂNCIA DE UM PONTO À CORDA** — ao SEGMENTO, e não ao ponto médio dele.
+///
+/// ⚠️⚠️ **Medir contra o ponto médio conta o deslize TANGENCIAL como se fosse desvio.** Uma recta
+/// autorada com as alças em cima das âncoras é uma cúbica **degenerada**: ela desenha o segmento
+/// exacto, mas percorre-o com velocidade `3t² − 2t³`, então o ponto do meio em `t` não é o ponto do
+/// meio em COMPRIMENTO. A conta antiga lia esse deslize como flecha e devolvia **`0,5493`** para
+/// duas rectas de 100 unidades — uma curvatura que não existe.
+///
+/// ⚠️ **Isto é uma régua PARTILHADA**: ela responde *"este ponto está SOBRE a curva?"* ao Trim
+/// (`touches`) e *"duas pontas de um cruzamento são o mesmo nó?"* ao Soldar. Sobre-estimar fazia as
+/// duas serem generosas de mais, **em proporção ao TAMANHO do traço**.
+///
+/// ⛔ Num círculo de raio 100 amostrado a 16 pontos por segmento ela **não muda** (`0,119`): ali a
+/// parametrização é quase uniforme e o desvio é mesmo perpendicular — que é a medida com que o gate
+/// dos dois círculos foi calibrado.
+fn dist_to_segment(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
+    let ab = [b[0] - a[0], b[1] - a[1]];
+    let ap = [p[0] - a[0], p[1] - a[1]];
+    let len2 = ab[0].mul_add(ab[0], ab[1] * ab[1]);
+    if len2 <= f64::EPSILON {
+        return ap[0].hypot(ap[1]);
+    }
+    let t = (ap[0].mul_add(ab[0], ap[1] * ab[1]) / len2).clamp(0.0, 1.0);
+    (ap[0] - t * ab[0]).hypot(ap[1] - t * ab[1])
 }

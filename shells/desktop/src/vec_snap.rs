@@ -31,6 +31,22 @@ use ph2d_vec_scene::VecPathId;
 /// (8 era tímido p/ mouse); Alt ignora o snap quando atrapalha.
 const SNAP_PX: f64 = 10.0;
 
+/// ⭐⭐ **A FOLGA COM QUE SOLDAR DECIDE QUE DUAS PONTAS SÃO O MESMO NÓ** — em unidades de MUNDO.
+///
+/// ⚠️ **É o MESMO ímã do encaixe, e a razão é uma só resposta por pergunta.** O app já decide, a
+/// cada traço desenhado, que duas coisas a menos de [`SNAP_PX`] na tela são para ficar no mesmo
+/// sítio; soldar reusa esse veredito em vez de inventar um segundo número que divergiria dele no
+/// dia em que um dos dois mudasse. Report do Enio (2026-09-01): *"ainda não consegue conectar as
+/// duas curvas … as linhas não compartilham o mesmo nó"*.
+///
+/// ⛔ **Não é o `WELD_TOL`** (`1e-6`, exacto), que responde a outra pergunta: *estas duas pontas JÁ
+/// são o mesmo nó?* — depois de a solda as ter fundido numa coordenada só. Uma delas mede intenção,
+/// a outra mede um facto.
+#[must_use]
+pub(crate) fn vec_weld_tolerance(px_to_world: f64) -> f64 {
+    SNAP_PX * px_to_world
+}
+
 /// Ajustes de snap do módulo vetorial. Só o encaixe em FORMAS — a grade é do
 /// subsistema universal.
 #[derive(Copy, Clone, Debug, PartialEq)]

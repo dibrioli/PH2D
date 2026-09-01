@@ -6677,6 +6677,7 @@ impl crate::App {
                     &mut self.vec_history,
                     &mut self.vec_pen,
                     &xf,
+                    crate::vec_snap::vec_weld_tolerance(vec_px_to_world),
                 );
             }
             // **O CORTE e o DESCARTE da lâmina.** Mesmo par `begin`/`commit_if_changed` das três
@@ -9932,6 +9933,32 @@ impl crate::App {
                         cam_affine,
                         vector_scene,
                     );
+                    // ⭐⭐⭐ **A MARCA DO NÓ SOLDADO** (plano 39). Report do Enio (2026-09-01):
+                    // *"as linhas não compartilham o mesmo nó"* — e ele **não tinha como ver**:
+                    // duas pontas coincidentes e duas pontas a um pixel pintam o mesmo quadrado.
+                    //
+                    // ⚠️ **A LEI é a do arrasto** (`welded_nodes`, mesma `WELD_TOL` e mesmo
+                    // predicado do `welded_with`); o que se decide AQUI é só o que se vê: um
+                    // caminho escondido não mostra marca, como não mostra âncora.
+                    //
+                    // ⚠️ **E a projecção é a MESMA do overlay** (`overlay_transform`) — um segundo
+                    // caminho poria o anel ao lado da âncora que ele afirma abraçar, e justamente
+                    // sob auto layout, onde conferir a olho é mais difícil.
+                    let marcas: Vec<[f64; 2]> = self
+                        .vec_pen
+                        .welded_nodes(vec_scene)
+                        .into_iter()
+                        .filter(|(id, _)| !vec_view.is_hidden(*id))
+                        .filter_map(|(id, i)| {
+                            let v = vec_scene.path(id)?.vert(i)?;
+                            let t = ph2d_vec_render::overlay_transform(
+                                &vec_view, &vec_xf, id, cam_affine,
+                            );
+                            let p = t * ph2d_vector::Point::new(v.anchor[0], v.anchor[1]);
+                            Some([p.x, p.y])
+                        })
+                        .collect();
+                    ph2d_vec_render::draw_weld_marks(&marcas, hero.theme, vector_scene);
                 }
                 // NOTA: as alças de raio de quina (Live Corners) não são mais desenhadas — o
                 // arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer (o gesto de

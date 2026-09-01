@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**51 handoffs** · **10** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**52 handoffs** · **11** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 > ⚠️ **Reconciliado em 2026-08-18, e a diferença era OITO.** O índice parou em 09/08 e
@@ -69,6 +69,7 @@
 | 2026-08-24 |  | [HANDOFF_INTEGRACAO_line_motion_value_CONFERENCIA_2026-08-24.md](HANDOFF_INTEGRACAO_line_motion_value_CONFERENCIA_2026-08-24.md) | integração | Fecho da linha: folhas 01–07 e a conferência a 33 P2 / ZERO P1; cenas `=90..=95`; Bug #6 (o mar) curado e Bug #7 aberto |
 | 2026-08-26 |  | [HANDOFF_INTEGRACAO_line_motion_value_CONFERENCIA_2026-08-26.md](HANDOFF_INTEGRACAO_line_motion_value_CONFERENCIA_2026-08-26.md) | integração | A conferência dos nós de 22 P2 para 2 — cinco folhas fecharam inteiras (06 · 08 · 13 · 15 · 17)…
 | 2026-08-29 |  | [HANDOFF_INTEGRACAO_line_motion_value_2026-08-29.md](HANDOFF_INTEGRACAO_line_motion_value_2026-08-29.md) | integração | O nó `source.lsystem` (ABOP completo) com **modo GUIADO por omissão**, os oito moldes a carregar o próprio enquadramento, o param `Growth`, e a auditoria multiagêntica de 49 agentes que os achou — cena `=108` |
+| 2026-09-01 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-09-01.md](HANDOFF_INTEGRACAO_line_motion_value_2026-09-01.md) | integração | Os RAMOS (tronco contínuo), as FOLHAS por letra (`J`/`K`/`M`), a Data Source (CSV/JSON), a auditoria de seis lentes (24 achados, 14 curados) e as DUAS leis do crescimento — a do recém-nascido (os «pequenos pulos» eram TINTA a aparecer) e a da ESCADA de tamanhos (suave e linear eram duas perguntas) |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

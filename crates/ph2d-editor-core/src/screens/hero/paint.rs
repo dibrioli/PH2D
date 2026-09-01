@@ -198,15 +198,21 @@ pub fn paint_hero_screen(
     // vez de carregar no botão**. Pintar e agarrar leem a MESMA fonte, que é o que impede a
     // metade visível e a metade do dedo de divergirem.
     hero.last_canvas = layout.draw_area;
+    // ⭐⭐⭐ **E o que sobra DEPOIS das réguas** — ver `HeroScreen::last_content`.
+    //
+    // ⚠️ **A condição é HOISTADA e usada duas vezes**, e tem de ser: se este rect fosse derivado de
+    // `rulers_live()` sozinho, um quadro sem `grid.view` publicaria um recuo de `20 px` contra uma
+    // régua que não chegou a ser pintada. *Um rect que promete um recuo que a tela não tem é a
+    // mesma doença de duas metades a divergir, com o sinal trocado.*
+    let rulers_on = hero.rulers_live() && hero.grid.view.is_some();
+    hero.last_content = crate::ruler::content(layout.draw_area, rulers_on);
     // E o layout INTEIRO, para o gesto de largura das colunas ler os mesmos rects (ver o
     // doc do campo).
     hero.last_layout = Some(layout);
     // **As RÉGUAS** (plano 25 §9, a W6.2), por cima da grade e por baixo de tudo o mais: elas
     // são chrome de borda, e a arte passa por baixo delas como passa por baixo do Inspector.
     // O zero é a origem da GRADE — um número, dois consumidores.
-    if hero.rulers_live()
-        && let Some(view) = hero.grid.view
-    {
+    if rulers_on && let Some(view) = hero.grid.view {
         // ⭐ **A ÁREA de desenho, e não o canvas** — é o que faz as réguas deixarem de partilhar
         // coordenada com o trilho e com a barra (D5). ⚠️ A PROJEÇÃO não se mexe: ela deriva de
         // `window_w`/`window_h`, nunca deste rect, então um traço marcado em 100 continua a cair

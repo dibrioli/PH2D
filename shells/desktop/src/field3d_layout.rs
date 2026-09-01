@@ -92,6 +92,41 @@ impl Split {
     }
 }
 
+/// ⭐⭐⭐ **QUAL ÁREA O MÓDULO 3D HABITA** — o que sobra depois do chrome **e das réguas**.
+///
+/// ⛔⛔⛔ **Report do Enio, 2026-08-31, com duas setas:** *«a viewport ainda não se encaixa na área
+/// correta para ela — veja que atravessa as réguas. Tente encaixar corretamente, inclusive com as
+/// 4 viewports ao mesmo tempo.»*
+///
+/// O desenho recebia a **JANELA INTEIRA** (`render_loop`, o `viewport` cru), e os quatro
+/// quadrantes ladrilhavam-na: por baixo da barra de menus, da fila de ferramentas, da coluna da
+/// esquerda e das duas réguas. Com a divisão aberta o efeito era o dobro — as costuras caíam onde
+/// não há área, e a moldura do activo saía pela borda do ecrã.
+///
+/// ⚠️ **É uma PORTA e não três linhas no laço**, exactamente pela razão que a versão anterior desta
+/// função (no `field3d_navball`) já documentava: *um gate sobre a lei não é um gate sobre quem a
+/// alimenta* — a mutação que devolve a janela ao produto **sobrevive** a um gate que passa o rect
+/// à mão.
+///
+/// ⚠️ E ela mudou-se para aqui **do `field3d_navball`**: o dono de *«que rectângulos o canvas 3D
+/// ocupa»* é este módulo, e o gizmo é só um dos consumidores. *Uma porta com o nome de um dos seus
+/// clientes convida à segunda cópia.*
+///
+/// ⚠️ `last_content` **é** a `draw_area` publicada pelo quadro anterior, já sem as réguas — e sem
+/// elas na tela ela é a própria `draw_area`. No primeiro quadro é degenerada, e aí vale a janela,
+/// que é o comportamento de sempre.
+pub(crate) fn area(
+    hero: &ph2d_editor::screens::hero::HeroScreen,
+    viewport: EditorRect,
+) -> EditorRect {
+    let published = hero.last_content;
+    if published.w > 0.0 && published.h > 0.0 {
+        EditorRect::new(published.x, published.y, published.w, published.h)
+    } else {
+        viewport
+    }
+}
+
 /// Os retângulos de uma divisão — sem alocar, porque isto corre em todo quadro.
 pub(crate) struct Rects {
     itens: [EditorRect; 4],
@@ -236,3 +271,9 @@ pub(crate) fn hit(rects: impl IntoIterator<Item = EditorRect>, p: [f32; 2]) -> O
 #[cfg(test)]
 #[path = "field3d_layout_tests.rs"]
 mod tests;
+
+// ⚠️ **O irmão**: os gates de *«que área é esta»*, cortados daqui pelo tecto de LOC — ver o
+// cabeçalho dele.
+#[cfg(test)]
+#[path = "field3d_area_tests.rs"]
+mod area_tests;

@@ -507,9 +507,18 @@ fn the_ruler_is_painted_with_the_canvas_the_layout_resolved() {
         .find("crate::ruler::paint_rulers(")
         .expect("as réguas são pintadas");
     let head = &src[..call];
+    // ⭐⭐⭐ **A condição é HOISTADA e vale para DUAS coisas** (2026-08-31): ela decide pintar as
+    // réguas **e** decide o recuo do `last_content` que o módulo 3D habita. ⛔ Se cada metade
+    // perguntasse por si, um quadro publicaria um recuo de `20 px` contra uma régua que não foi
+    // pintada — a mesma doença de duas metades a divergir, com o sinal trocado.
+    assert!(
+        src.contains("let rulers_on = hero.rulers_live() && hero.grid.view.is_some();"),
+        "a condição das réguas deixou de ser UMA — quem pinta e quem recua a área têm de ler a \
+         mesma resposta"
+    );
     let block = head
-        .rfind("if hero.rulers_live()")
-        .expect("o desenho pergunta a PORTA ÚNICA, não uma condição própria");
+        .rfind("if rulers_on")
+        .expect("o desenho pergunta a condição HOISTADA, não uma condição própria");
     assert!(
         head[block..].contains("canvas: layout.draw_area,"),
         "a régua recebe a ÁREA DE DESENHO resolvida pelo layout, não o retângulo de fachada do \
@@ -533,6 +542,56 @@ fn the_ruler_is_painted_with_the_canvas_the_layout_resolved() {
         src.contains("hero.last_canvas = layout.draw_area;"),
         "a área de desenho resolvida é publicada para quem trata ponteiro; sem isto o gesto da \
          régua teria de espelhar a aritmética do layout — e pintar e agarrar divergiriam"
+    );
+    // ⭐⭐⭐ **E o que sobra DEPOIS delas** — o rect que o módulo 3D habita. Report do Enio,
+    // 2026-08-31: *«a viewport ainda não se encaixa na área correta para ela — veja que atravessa
+    // as réguas»*.
+    assert!(
+        src.contains("hero.last_content = crate::ruler::content(layout.draw_area, rulers_on);"),
+        "o recuo das réguas deixou de ser publicado, ou deixou de sair da MESMA condição que as \
+         pinta — o 3D volta a desenhar por baixo delas"
+    );
+}
+
+/// ⭐⭐⭐ **QUEM ALIMENTA O DESENHO DO 3D É A PORTA DA ÁREA, NUNCA A JANELA.**
+///
+/// # ⛔⛔⛔ O report, com duas setas (Enio, 2026-08-31)
+///
+/// > *«A viewport ainda não se encaixa na área correta para ela. Veja que atravessa as réguas.
+/// > Tente encaixar corretamente, inclusive com as 4 viewports ao mesmo tempo.»*
+///
+/// A chamada era `field3d_smoke::draw(Rect::new(viewport.x, viewport.y, …))` — o **ecrã inteiro**.
+/// Os quatro quadrantes ladrilhavam-no por baixo da barra de menus, da fila de ferramentas, da
+/// coluna da esquerda e das duas réguas.
+///
+/// ⚠️ **Gate de FONTE, e tem de ser:** o `field3d_layout::area` é lei pura e os gates dela passam o
+/// rect à mão — *um gate sobre a lei não é um gate sobre quem a alimenta*, e é exactamente por isso
+/// que a mutação «devolve a janela ao produto» sobrevive a todos eles. É a nota que a própria porta
+/// carrega, herdada do gizmo de navegação, e o defeito de hoje é a segunda vez que ela morde.
+#[test]
+fn the_three_d_module_is_drawn_into_the_area_never_into_the_window() {
+    let src = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop/mod.rs"),
+    )
+    .expect("render_loop/mod.rs");
+    let call = src
+        .find("crate::field3d_smoke::draw(")
+        .expect("o modulo 3D e' desenhado");
+    // A janela dos argumentos: do nome da função até ao fim da chamada.
+    let args = &src[call..call + 400];
+    assert!(
+        args.contains("crate::field3d_layout::area("),
+        "o desenho do 3D voltou a receber um rect que nao vem da porta da area — com a janela crua \
+         ele ladrilha por baixo das reguas e do chrome"
+    );
+    // ⛔ E o controlo do outro lado: a janela **é** passada, mas só como o fallback do primeiro
+    // quadro, DENTRO da porta. Um `viewport.x` fora dela é a chamada antiga de volta.
+    let before_door = &args[..args
+        .find("crate::field3d_layout::area(")
+        .expect("a porta esta' na chamada")];
+    assert!(
+        !before_door.contains("viewport.x"),
+        "a janela crua voltou a ser o 1.o argumento do desenho"
     );
 }
 

@@ -370,8 +370,8 @@ fn the_product_feeds_the_gizmo_the_drawing_area() {
 
     // (a) com um quadro publicado, a área é a DE DESENHO.
     let drawing = ph2d_editor::zones::Rect::new(308.0, 28.0, 754.0, 996.0);
-    hero.last_canvas = drawing;
-    let got = super::area_for(&hero, viewport);
+    hero.last_content = drawing;
+    let got = crate::field3d_layout::area(&hero, viewport);
     assert_eq!(
         (got.x, got.y, got.w, got.h),
         (drawing.x, drawing.y, drawing.w, drawing.h),
@@ -379,8 +379,8 @@ fn the_product_feeds_the_gizmo_the_drawing_area() {
     );
 
     // (b) no PRIMEIRO quadro ainda não há área publicada, e aí vale a janela.
-    hero.last_canvas = ph2d_editor::zones::Rect::new(0.0, 0.0, 0.0, 0.0);
-    let got = super::area_for(&hero, viewport);
+    hero.last_content = ph2d_editor::zones::Rect::new(0.0, 0.0, 0.0, 0.0);
+    let got = crate::field3d_layout::area(&hero, viewport);
     assert_eq!(
         (got.w, got.h),
         (viewport.w, viewport.h),

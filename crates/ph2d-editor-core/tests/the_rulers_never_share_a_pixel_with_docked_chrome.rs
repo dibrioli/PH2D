@@ -387,3 +387,68 @@ fn the_rulers_are_not_scoped_to_one_tool() {
          (a faixa invisivel debaixo do chrome), que a area de desenho curou"
     );
 }
+
+/// ⭐⭐⭐ **E O QUE SOBRA DEPOIS DELAS NÃO PARTILHA UM PIXEL COM NENHUMA** — a lei do
+/// [`ph2d_editor_core::ruler::content`].
+///
+/// # ⛔⛔ Ela nasceu de um report, não de uma simetria
+///
+/// > Enio, 2026-08-31: *«A viewport ainda não se encaixa na área correta para ela. Veja que
+/// > atravessa as réguas.»*
+///
+/// O módulo 3D é um **viewport com moldura e divisão**, não arte de cena: uma régua de coordenadas
+/// 2D por cima dele não é chrome de borda, é uma faixa a comer a imagem. ⚠️ A cena 2D continua
+/// *full-bleed* de propósito (a `draw_area` declara-o), e por isso a lei vive numa função à parte —
+/// quem a quer, pede-a.
+#[test]
+fn the_content_area_never_shares_a_pixel_with_either_ruler() {
+    use ph2d_editor_core::ruler;
+    use ph2d_editor_core::zones::Rect;
+    let mut measured = 0usize;
+    for canvas in [
+        Rect::new(0.0, 0.0, 1366.0, 1024.0),
+        Rect::new(308.0, 88.0, 754.0, 900.0),
+        Rect::new(10.5, 20.5, 999.0, 555.0),
+        Rect::new(-3.25, 7.75, 640.5, 361.5),
+    ] {
+        let inner = ruler::content(canvas, true);
+        let (top, left) = ruler::live_bands(canvas).expect("controlo: a area comporta reguas");
+        for (name, band) in [("de cima", top), ("da esquerda", left)] {
+            assert!(
+                !(inner.x < band.x + band.w
+                    && inner.x + inner.w > band.x
+                    && inner.y < band.y + band.h
+                    && inner.y + inner.h > band.y),
+                "o conteudo atravessa a regua {name} em {canvas:?}"
+            );
+        }
+        // ⛔ E não pode encolher MAIS do que as faixas: um recuo generoso seria uma faixa morta.
+        assert!(
+            (inner.w - (canvas.w - ruler::RULER_PX)).abs() < 0.001
+                && (inner.h - (canvas.h - ruler::RULER_PX)).abs() < 0.001,
+            "o conteudo perdeu mais do que as duas reguas em {canvas:?}"
+        );
+        measured += 1;
+    }
+    assert_eq!(measured, 4, "controlo: a varredura ficou vazia");
+}
+
+/// ⭐ **Uma área menor que a própria régua não perde nada** — a mesma porta do predicado
+/// ([`ph2d_editor_core::ruler::live_bands`]), senão o recuo devolvia uma largura negativa.
+#[test]
+fn an_area_too_small_for_a_ruler_keeps_all_of_itself() {
+    use ph2d_editor_core::ruler::{self, RULER_PX};
+    use ph2d_editor_core::zones::Rect;
+    for canvas in [
+        Rect::new(0.0, 0.0, RULER_PX, 500.0),
+        Rect::new(0.0, 0.0, 500.0, RULER_PX),
+        Rect::new(0.0, 0.0, 4.0, 4.0),
+    ] {
+        let inner = ruler::content(canvas, true);
+        assert_eq!(
+            (inner.w, inner.h),
+            (canvas.w, canvas.h),
+            "uma area sem espac,o para regua encolheu na mesma"
+        );
+    }
+}

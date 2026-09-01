@@ -125,6 +125,42 @@ pub fn live_bands(canvas: Rect) -> Option<(Rect, Rect)> {
     Some((top_band(canvas), left_band(canvas)))
 }
 
+/// ⭐⭐⭐ **O QUE SOBRA DA ÁREA DEPOIS DAS RÉGUAS** — a porta única do *«onde é que o conteúdo de
+/// facto começa?»*.
+///
+/// ⛔⛔ **Ela existe porque um consumidor DESENHOU por baixo das réguas** (report do Enio,
+/// 2026-08-31, com seta: *«a viewport ainda não se encaixa na área correta para ela — veja que
+/// atravessa as réguas»*). O módulo 3D recebia a **janela inteira** e ladrilhava os quatro
+/// viewports sobre ela: por baixo das réguas, por baixo da fila de ferramentas e por baixo da
+/// coluna da esquerda.
+///
+/// ⚠️ **A cena 2D continua *full-bleed* de propósito**, e isso não é uma incoerência: o
+/// [`crate::screens::layout::HeroLayout::draw_area`] declara-o (*«a cena continua full-bleed, por
+/// baixo das réguas»* — dar-lhe uma origem é a obra da docagem, nomeada com esse preço). O 3D é
+/// outra coisa: ele **é** um viewport com moldura e divisão, e uma régua de coordenadas 2D por
+/// cima dele não é *chrome de borda*, é uma faixa a comer a imagem.
+///
+/// ⚠️ **`rulers_on` é uma resposta, não uma opinião:** quem chama tem de passar a MESMA condição
+/// com que o quadro decidiu pintá-las. Sem réguas na tela, o conteúdo é a área inteira — e um
+/// recuo de `20 px` contra uma régua que não existe seria uma faixa morta.
+#[must_use]
+pub fn content(canvas: Rect, rulers_on: bool) -> Rect {
+    if !rulers_on {
+        return canvas;
+    }
+    // ⚠️ **A MESMA porta do predicado** ([`live_bands`]): numa área menor que a própria régua não
+    // há faixa nenhuma a descontar, e recuar mesmo assim devolveria uma largura negativa.
+    let Some((top, left)) = live_bands(canvas) else {
+        return canvas;
+    };
+    Rect::new(
+        canvas.x + left.w,
+        canvas.y + top.h,
+        (canvas.w - left.w).max(0.0),
+        (canvas.h - top.h).max(0.0),
+    )
+}
+
 /// Sobre qual régua o ponteiro está, se alguma.
 ///
 /// ⚠️ O **canto** (onde as duas faixas se cruzam) pertence à de CIMA, e a escolha é arbitrária

@@ -2191,3 +2191,80 @@ O painel `3D Model` perdeu **9** das 74. Faltam, com o dono já escrito na D2:
   de um só — ⚠️ isto é a pergunta de desenho que a próxima wave tem de responder ANTES de mover:
   um único pulldown com 40 linhas é um depósito com outro nome.
 - ⏳ e os **outros painéis** ainda não foram censados — o número «66 de 74» é do `3D Model` só.
+
+---
+
+## §29 — ⛔⛔⛔ O 3D DESENHAVA NA JANELA INTEIRA: a área e as réguas (entrega 34)
+
+> Enio, 2026-08-31, com duas setas na foto: *«A viewport ainda não se encaixa na área correta para
+> ela. Veja que atravessa as réguas. Tente encaixar corretamente, inclusive com as 4 viewports ao
+> mesmo tempo.»*
+
+### §29.1 — A causa, em uma linha
+
+`render_loop/mod.rs` chamava `field3d_smoke::draw(Rect::new(viewport.x, viewport.y, …))` — **o
+ecrã inteiro**. A porta da divisão (`field3d_layout::rects`) ladrilha o que recebe **exactamente**
+(há gate desde a W90), então ela ladrilhava a *janela*: por baixo da barra de menus, da fila de
+ferramentas, da coluna da esquerda e das duas réguas. Com a divisão aberta o efeito duplica — as
+costuras caem onde não há área e a moldura do activo sai pela borda do ecrã.
+
+⚠️ **A divisão nunca esteve errada.** O que estava errado era o rectângulo a que ela era aplicada —
+e é por isso que o corte de responsabilidade dos gates (§29.5) separa *«como a área se divide»* de
+*«que área é essa»*.
+
+### §29.2 — A cura: uma porta, e ela responde depois das RÉGUAS
+
+| peça | onde |
+|---|---|
+| a lei | `ph2d_editor_core::ruler::content(canvas, rulers_on)` |
+| o rect publicado | `HeroScreen::last_content`, escrito no `hero/paint.rs` |
+| a porta do módulo | `field3d_layout::area(hero, viewport)` |
+| os consumidores | o **desenho** (os 4 viewports) e o **gizmo de navegação** |
+
+⭐ **A porta mudou-se do `field3d_navball` para o `field3d_layout`**: o dono de *«que rectângulos o
+canvas 3D ocupa»* é este módulo, e o gizmo é só um dos clientes. *Uma porta com o nome de um dos
+seus clientes convida à segunda cópia.*
+
+⚠️ **E o pointer sai de graça:** `viewport_at`/`canvas_area`/`divider_cursor` derivam tudo das áreas
+que os viewports guardaram, que vêm do mesmo `rects(area, split)`. Um call site, quatro consumidores.
+
+### §29.3 — ⚠️ Por que o 3D recua e a cena 2D não
+
+A `HeroLayout::draw_area` **declara** que a cena 2D é *full-bleed*, por baixo das réguas (dar-lhe uma
+origem é a obra da docagem, nomeada com o preço). Isso não é incoerência: o 3D **é** um viewport com
+moldura e divisão, e uma régua de coordenadas 2D por cima dele não é *chrome de borda* — é uma faixa
+a comer a imagem. ⇒ a lei vive numa **função à parte** (`ruler::content`), e quem a quer, pede-a.
+
+### §29.4 — ⚠️ A condição foi HOISTADA, e é a parte que podia apodrecer
+
+`rulers_on = hero.rulers_live() && hero.grid.view.is_some()` passou a ser **uma** ligação, lida por
+quem pinta as réguas **e** por quem publica o recuo. ⛔ Se cada metade perguntasse por si, um quadro
+sem `grid.view` publicaria `20 px` de recuo contra uma régua que não foi pintada — a mesma doença de
+duas metades a divergir, com o sinal trocado. O gate de fonte que já existia
+(`the_ruler_is_painted_with_the_canvas_the_layout_resolved`) foi **alargado** para exigir as duas
+metades da mesma ligação.
+
+### §29.5 — Gates (5 novos/alargados) e as 3 mutações
+
+| gate | onde | o que prende |
+|---|---|---|
+| `the_content_area_never_shares_a_pixel_with_either_ruler` | core | a LEI, em 4 rects, e que ela não encolhe **mais** do que as faixas |
+| `an_area_too_small_for_a_ruler_keeps_all_of_itself` | core | a mesma porta do predicado (`live_bands`) |
+| `the_module_lives_inside_the_rulers_and_the_four_pieces_stay_there` | shell | a porta lê `last_content`, e os **4** quadrantes ficam dentro em 3 posições da costura |
+| `with_the_rulers_off_the_module_takes_the_whole_drawing_area` | shell | sem réguas não há recuo |
+| `the_three_d_module_is_drawn_into_the_area_never_into_the_window` | shell (FONTE) | **quem alimenta** — a única que apanha o defeito do report |
+
+| # | mutação | resultado |
+|---|---|---|
+| A | a porta volta a ler `last_canvas` (as réguas dentro) | ✗ |
+| B | o desenho volta a receber `viewport` (o defeito) | ✗ *(só o gate de fonte o vê)* |
+| — | o gate de fonte alargado | ✗ com a condição não-hoistada |
+
+⚠️ **A mutação B é a lição repetida:** os gates de `field3d_layout` passam o rect **à mão**, então
+todos ficam verdes com o produto a alimentar a janela. *Um gate sobre a lei não é um gate sobre quem
+a alimenta* — é a nota que a porta já carregava do gizmo, e esta é a **segunda** vez que ela morde.
+
+### §29.6 — ⚠️ O tecto de LOC cortou o ficheiro de gates, e o corte é por responsabilidade
+
+`field3d_layout_tests.rs` foi a `657/600`. ⇒ `field3d_area_tests.rs` (irmão): *«que área é esta»*
+saiu de *«como ela se divide»*. ⛔ Não uma excepção na lista.

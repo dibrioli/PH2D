@@ -259,6 +259,16 @@ pub struct HeroScreen {
     /// onde as faixas de régua estão — duas respostas para *onde fica o canvas?*, que divergem
     /// no dia em que um painel muda de largura.
     pub last_canvas: Rect,
+    /// ⭐⭐⭐ **O que sobra do canvas depois das RÉGUAS** — onde o conteúdo de facto começa.
+    ///
+    /// ⛔⛔ Existe porque o módulo 3D desenhava por baixo delas (report do Enio, 2026-08-31). Ele é
+    /// um viewport com moldura e divisão, não arte de cena: uma régua de coordenadas 2D por cima
+    /// dele não é chrome de borda, é uma faixa a comer a imagem.
+    ///
+    /// ⚠️ **Escrito no MESMO sítio e sob a MESMA condição que decide pintar as réguas** — se as
+    /// duas se separassem, este rect prometeria um recuo que a tela não tem (ou o contrário).
+    /// Igual ao [`Self::last_canvas`] quando elas estão desligadas.
+    pub last_content: Rect,
     /// ⭐ **O layout que o último quadro resolveu** — para quem trata PONTEIRO ler os mesmos rects
     /// que o desenho usou, em vez de os re-derivar.
     ///
@@ -377,6 +387,7 @@ impl HeroScreen {
             stats: BottomHudStats::default(),
             last_viewport: Rect::new(0.0, 0.0, 0.0, 0.0),
             last_canvas: Rect::new(0.0, 0.0, 0.0, 0.0),
+            last_content: Rect::new(0.0, 0.0, 0.0, 0.0),
             last_layout: None,
             pending_falloff_point_handle: None,
             pending_curve_point_handle: None,

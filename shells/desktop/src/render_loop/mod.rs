@@ -10737,7 +10737,7 @@ impl crate::App {
                 // ⚠️ `last_canvas` **é** a `HeroLayout::draw_area` publicada pelo quadro anterior
                 // (ver `screens/hero/paint.rs`); no primeiro quadro ela é degenerada, e aí vale a
                 // janela — que é o comportamento de sempre.
-                let area = crate::field3d_navball::area_for(
+                let area = crate::field3d_layout::area(
                     hero,
                     ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
                 );
@@ -10768,8 +10768,21 @@ impl crate::App {
                 let t = hero.motion.animate(id, 1.0, crate::field3d_flight::ROLE);
                 crate::field3d_smoke::note_flight_progress(t);
             }
+            // ⭐⭐⭐ **A ÁREA, e não a JANELA** (report do Enio, 2026-08-31: *«a viewport ainda não
+            // se encaixa na área correta para ela — veja que atravessa as réguas»*).
+            //
+            // ⛔⛔ Isto era `viewport` cru, então os quadrantes ladrilhavam o ecrã inteiro: por
+            // baixo da barra de menus, da fila de ferramentas, da coluna da esquerda e das duas
+            // réguas — e com a divisão aberta as costuras caíam onde não há área nenhuma.
+            //
+            // ⚠️ **A MESMA porta que alimenta o gizmo de navegação** (`field3d_layout::area`), e é
+            // por isso que os dois se encaixam: um segundo rect aqui seria a fonte por onde a
+            // imagem e a moldura voltavam a discordar.
             crate::field3d_smoke::draw(
-                ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
+                crate::field3d_layout::area(
+                    hero,
+                    ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
+                ),
                 hero.theme,
                 paint_ctx.text,
                 vector_scene,

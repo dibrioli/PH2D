@@ -43,6 +43,7 @@ fn node_with_text(problem: Option<&str>) -> ParamsSnapshot {
             label: "Rules".into(),
             value: "A -> (40%) F".into(),
             problem: problem.map(str::to_string),
+            help: None,
         })],
     }
 }
@@ -98,5 +99,78 @@ fn the_complaint_never_steals_a_click() {
     assert!(
         mudo > 0,
         "a row de texto tem de registar o campo — senão este gate não mede nada"
+    );
+}
+
+/// ⛔⛔⛔ **A AJUDA CHEGA AO STORE, SOB O ID QUE O RATO USA** — e não a uma tabela qualquer.
+///
+/// # A costura que este gate mede
+///
+/// O `paint_hover_tooltip` (que corre depois de TODOS os painéis, sobre o viewport inteiro) lê
+/// `store.tooltip_for(store.hot_id())`, e o `hot_id` vem do **hit-index**. A row de texto
+/// regista o campo dela sob `param_text_id(i)`.
+///
+/// ⚠️⚠️ **Registar a dica noutro id seria uma dica que existe e ninguém alcança** — é a forma de
+/// gate vazio que a auditoria deste repo apanhou dezenas de vezes, e é por isso que a régua é o
+/// id, e não a presença.
+///
+/// ⚠️ E a metade oposta: uma row **sem** ajuda não pode deixar uma dica para trás — o painel
+/// re-semeia a cada quadro, e uma dica órfã apareceria sobre o campo do nó seguinte.
+#[test]
+fn the_help_reaches_the_store_under_the_id_the_hover_reads() {
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    const AJUDA: &str = "F G anda e desenha · [ ] abre / fecha um ramo";
+
+    let com = ParamsSnapshot {
+        node: 7,
+        title: "Fixture".into(),
+        modified: Default::default(),
+        sections: Vec::new(),
+        folded_by_default: std::collections::BTreeSet::new(),
+        rows: vec![ParamRow::Text(TextRow {
+            name: "rules",
+            label: "Rules".into(),
+            value: "F -> FF".into(),
+            problem: None,
+            help: Some(AJUDA.to_string()),
+        })],
+    };
+    set_current_params(Some(com));
+    let mut state = MotionParamsPanelState;
+    let rects = host.paint::<MotionParamsPanel>(&mut state, VIEWPORT);
+
+    let id = crate::snapshot::param_text_id(0);
+    assert!(
+        rects.iter().any(|(r, _)| *r == id),
+        "o campo da row 0 tem de estar no hit-index sob `param_text_id(0)` — senão o `hot_id` \
+         nunca é esse e a dica é inalcançável"
+    );
+    assert_eq!(
+        host.store().tooltip_for(id),
+        Some(AJUDA),
+        "a ajuda não chegou ao store sob o id que o hover lê"
+    );
+
+    // ⚠️ A metade oposta: sem ajuda, nada fica para trás.
+    let sem = ParamsSnapshot {
+        node: 8,
+        title: "Fixture".into(),
+        modified: Default::default(),
+        sections: Vec::new(),
+        folded_by_default: std::collections::BTreeSet::new(),
+        rows: vec![ParamRow::Text(TextRow {
+            name: "expr",
+            label: "Formula".into(),
+            value: "sin(t)".into(),
+            problem: None,
+            help: None,
+        })],
+    };
+    set_current_params(Some(sem));
+    host.paint::<MotionParamsPanel>(&mut state, VIEWPORT);
+    assert_eq!(
+        host.store().tooltip_for(id),
+        None,
+        "a dica do nó ANTERIOR sobreviveu — ela apareceria sobre o campo deste"
     );
 }

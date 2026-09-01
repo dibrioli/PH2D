@@ -172,11 +172,13 @@ pub(super) fn push_text_rows(
                 ParamRow::Curve(CurveRow { name, label, value })
             } else {
                 let problem = text_param_problem(motion, nid, name, &value);
+                let help = text_param_help(motion, nid, name);
                 ParamRow::Text(TextRow {
                     name,
                     label,
                     value,
                     problem,
+                    help,
                 })
             });
         }
@@ -230,4 +232,45 @@ fn text_param_problem(
     } else {
         format!("«{}»: {}", primeira.rule, primeira.problem.say())
     })
+}
+
+/// ⭐⭐ **A AJUDA de uma caixa de texto livre** — o que ela aceita, ao passar o rato.
+///
+/// # Por que a shell, e por que um balão
+///
+/// Mesma repartição do irmão [`text_param_problem`]: o painel resolve primitivos e não conhece
+/// o nó; o nó conhece o alfabeto dele e não sabe quem está seleccionado; **a shell é a única das
+/// três que pode pôr as duas coisas na mesma frase.**
+///
+/// ⚠️ **Medido antes de escolher a superfície** (2026-08-31): a coluna da row tem **~35
+/// caracteres** e a legenda do L-System tem **~100** — uma linha fixa sairia cortada a um terço;
+/// nove linhas próprias estouravam o `MAX_PARAM_ROWS`. O balão não tem nenhum dos dois limites e
+/// custa **zero** linhas.
+///
+/// ⚠️⚠️ **E a facilidade já existia.** A 1.ª medição desta wave concluiu *«a dica só é pintada
+/// na barra do topo»* — a partir de **onde a função vive**, não de **onde ela corre**. O
+/// `paint_hover_tooltip` corre depois de TODOS os painéis, sobre o viewport inteiro, e o painel
+/// do grafo já o usava. *Uma ausência afirmada pelo endereço do código é um palpite com cara de
+/// medição, e esta foi minha, no mesmo dia em que auditei quatro iguais.*
+fn text_param_help(
+    motion: &MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    param: &str,
+) -> Option<String> {
+    let inst = motion.doc.graph.node(nid)?;
+    if inst.type_name != ph2d_node_source_lsystem::MANIFEST.name {
+        return None;
+    }
+    // ⚠️ As DUAS caixas de gramática, e não só as regras: quem escreve o axioma escreve os
+    // mesmos símbolos.
+    if param != ph2d_node_source_lsystem::RULES_PARAM
+        && param != ph2d_node_source_lsystem::AXIOM_PARAM
+    {
+        return None;
+    }
+    Some(format!(
+        "{} · {}",
+        ph2d_node_source_lsystem::alphabet::legend_one_line(),
+        ph2d_node_source_lsystem::alphabet::MUTE
+    ))
 }

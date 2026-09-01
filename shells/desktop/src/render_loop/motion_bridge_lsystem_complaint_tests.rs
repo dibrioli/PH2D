@@ -185,3 +185,76 @@ fn only_the_lsystem_rules_box_can_carry_a_complaint() {
         "nenhum outro nó da casa tem row de texto — o laço acima não mediu nada"
     );
 }
+
+/// ⛔⛔ **A LEGENDA DO ALFABETO CHEGA ÀS DUAS CAIXAS DE GRAMÁTICA, E SÓ A ELAS.**
+///
+/// # A decisão que está por trás
+///
+/// Decisão do dono (2026-08-31), depois de medidas as quatro superfícies: a legenda é um
+/// **balão**, porque a coluna da row tem ~35 caracteres e ela tem ~100, e nove linhas próprias
+/// estouravam o `MAX_PARAM_ROWS`.
+///
+/// ⚠️ **O texto sai do NÓ** (`alphabet::ALPHABET`, com gate a mantê-lo igual ao que o
+/// interpretador lê nos dois sentidos), e quem o coloca é a shell — a única das três que sabe
+/// qual nó está seleccionado.
+#[test]
+fn the_alphabet_legend_reaches_both_grammar_boxes_and_nothing_else() {
+    let mut motion = MotionState::new();
+    let n = lsystem_with(&mut motion, ls::PRESETS[0].rules);
+    ph2d_panel_motion_graph::set_graph_selection(vec![n.0]);
+    let snap = build_params_snapshot(&motion, ProjectSettings::default()).expect("snapshot");
+
+    let mut com_ajuda = Vec::new();
+    for row in &snap.rows {
+        if let ParamRow::Text(t) = row {
+            match &t.help {
+                Some(h) => {
+                    // Ela tem de NOMEAR o alfabeto, não ser um texto qualquer.
+                    for g in ls::alphabet::ALPHABET {
+                        assert!(
+                            h.contains(g.symbols),
+                            "a legenda de `{}` não nomeia `{}`",
+                            t.name,
+                            g.symbols
+                        );
+                    }
+                    assert!(
+                        h.contains(ls::alphabet::MUTE),
+                        "a legenda não diz que as outras letras estruturam sem desenhar — sem \
+                         isso o artista não sabe que pode inventar as dele"
+                    );
+                    com_ajuda.push(t.name);
+                }
+                None => assert_ne!(
+                    t.name,
+                    ls::RULES_PARAM,
+                    "a caixa de REGRAS ficou sem legenda"
+                ),
+            }
+        }
+    }
+    com_ajuda.sort_unstable();
+    assert_eq!(
+        com_ajuda,
+        vec![ls::AXIOM_PARAM, ls::RULES_PARAM],
+        "a legenda tem de chegar às DUAS caixas de gramática (quem escreve o axioma escreve os \
+         mesmos símbolos) e a mais nenhuma"
+    );
+
+    // ⚠️ **A guarda do NOME DO PARAM é DEFENSIVA e não é falsificável hoje** — e diz-se em vez
+    // de se fingir: o `source.lsystem` tem exactamente **duas** rows de texto (`axiom` e
+    // `rules`; os três slots de folha são `ParamWidget::Source`, outra espécie de row), então
+    // removê-la não muda nada. A igualdade acima é a afirmação mais forte que a população
+    // permite, e passa a morder no dia em que este nó ganhar uma terceira caixa de texto.
+
+    // ⛔ E nenhum OUTRO nó a herda — o mesmo par de guardas do irmão da queixa.
+    let e = motion.doc.graph.add_node("motion.expression");
+    motion.doc.graph.set_text_param(e, "expr", "sin(t)*2");
+    ph2d_panel_motion_graph::set_graph_selection(vec![e.0]);
+    let snap = build_params_snapshot(&motion, ProjectSettings::default()).expect("snapshot");
+    for row in &snap.rows {
+        if let ParamRow::Text(t) = row {
+            assert_eq!(t.help, None, "`{}` de outro nó herdou a legenda", t.name);
+        }
+    }
+}

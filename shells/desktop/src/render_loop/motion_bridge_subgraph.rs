@@ -453,6 +453,8 @@ pub(super) fn params_snapshot(
             label: "Name".to_string(),
             value: s.title.clone(),
             problem: None,
+            // O título de um subgrafo é texto livre: não há alfabeto que explicar.
+            help: None,
         })],
     })
 }

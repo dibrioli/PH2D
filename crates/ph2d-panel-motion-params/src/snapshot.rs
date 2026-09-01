@@ -195,6 +195,27 @@ pub struct TextRow {
     /// queixa (é o que o gate `a_grammar_that_is_right_never_complains` do nó faz, sobre os
     /// oito moldes).
     pub problem: Option<String>,
+    /// ⭐⭐ **A AJUDA que aparece ao passar o rato** — o que este texto livre aceita.
+    ///
+    /// # Por que ela é um BALÃO e não uma linha
+    ///
+    /// Medido (2026-08-31): a coluna desta row tem **~35 caracteres** (`304 px` de inspector
+    /// menos `70` de rótulo), e a legenda do alfabeto do L-System tem **~100**. Uma linha fixa
+    /// sairia cortada a um terço; nove linhas próprias estouravam o `MAX_PARAM_ROWS` (aquele nó
+    /// está em `31` de `33`).
+    ///
+    /// ⭐ **O balão não tem nenhum dos dois limites**: ele mede o texto, cabe-se no viewport, e
+    /// custa **zero** linhas do painel.
+    ///
+    /// ⚠️⚠️ **E a facilidade JÁ EXISTIA** — o `paint_hover_tooltip` corre depois de TODOS os
+    /// painéis, sobre o viewport inteiro, e acha o widget sob o rato sozinho. A 1.ª medição
+    /// desta wave concluiu *«só é pintado na barra do topo»* a partir de **onde a função vive**
+    /// em vez de **onde ela corre** — e o painel do grafo já a usava. *Uma ausência afirmada
+    /// pelo endereço do código é um palpite com cara de medição.*
+    ///
+    /// ⚠️ **Uma linha só** (o `Tooltip` é single-line por contrato), e quem a escreve é quem
+    /// conhece o nó — o painel pinta-a, não a interpreta.
+    pub help: Option<String>,
 }
 
 /// An angle row: a number box with a `deg` unit chip. **Degrees end to end** —

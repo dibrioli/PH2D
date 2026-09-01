@@ -151,6 +151,8 @@ pub(super) fn params_snapshot(
                 value: b.title.clone(),
                 // Um título de backdrop é texto livre: não há nada que possa estar "errado".
                 problem: None,
+                // O título de um backdrop é texto livre: não há alfabeto que explicar.
+                help: None,
             }),
             ParamRow::Enum(EnumRow {
                 name: "color",

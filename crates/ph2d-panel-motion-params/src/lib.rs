@@ -237,6 +237,31 @@ impl Panel for MotionParamsPanel {
                 }
             }
         }
+        // ⭐⭐ **AS DICAS, antes de as rows serem pintadas.** O `populate` não serve: ele regista
+        // os widgets de TODOS os slots antes de saber que nó está seleccionado. Aqui o snapshot
+        // já existe, e o `store_mut` também.
+        //
+        // ⚠️ **O id tem de ser o MESMO que o hover usa** — o `paint_hover_tooltip` lê
+        // `tooltip_for(hot_id())`, e o `hot_id` vem do hit-index, que a row regista sob
+        // `param_text_id(i)`. Uma dica noutro id seria uma dica que existe e ninguém alcança.
+        {
+            let store = ctx.host.store_mut();
+            // ⛔⛔ **TODOS os slots, e a AUSÊNCIA escreve-se** — o gate apanhou a 1.ª redacção,
+            // que só escrevia quando havia ajuda. O painel re-semeia a cada quadro sobre um
+            // POOL de ids partilhado por todos os nós: a dica do nó anterior sobrevivia e
+            // pairava sobre o campo do seguinte. *Um cache por slot posicional tem de ser
+            // escrito na ausência, senão ele não é um cache — é um resíduo.*
+            //
+            // ⚠️ Uma string vazia REMOVE (contrato do `set_tooltip`), então a ausência tem a
+            // mesma porta que a presença.
+            for slot in 0..MAX_PARAM_ROWS {
+                let help = match snap.rows.get(slot) {
+                    Some(ParamRow::Text(t)) => t.help.clone().unwrap_or_default(),
+                    _ => String::new(),
+                };
+                store.set_tooltip(param_text_id(slot), help);
+            }
+        }
         let (curve_widgets, gradient_widgets, content_h) = {
             let scene = &mut *ctx.scene;
             let text_system = &mut *ctx.text_system;

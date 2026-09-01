@@ -37,6 +37,37 @@ pub(crate) enum GpuRoute {
     Hybrid,
 }
 
+/// ⭐⭐ **A ROTA, DITA EM VOZ ALTA** — `PH2D_MOTION_ROUTE_LOG=1`.
+///
+/// ⛔⛔ **Por que ela existe** (auditoria de performance, [doc 98 §2.3](../../../../docs/Motion%20Nodes/98_auditoria_de_performance_2026-09-01.md)):
+/// o device faz **4,19 M objectos em 3,85 ms** contra **195,9 ms da CPU** — `50,9×` — e
+/// **69,7% das cenas que este produto expõe caem para a CPU**. Até esta linha existir,
+/// [`GpuOutcome::FellThrough`] era consumido pela ponte e **não acendia nada**: um grafo no
+/// device e o mesmo grafo num núcleo só têm exactamente a mesma aparência na UI. *Um custo de
+/// 50× que nenhuma superfície nomeia não é uma escolha de ninguém — é um acidente que se repete.*
+///
+/// ⚠️ **Disparo por BORDA, e a borda regista-se mesmo com o log desligado** — senão ligar a
+/// variável a meio de uma sessão ficaria calado até à próxima mudança de rota. O que a variável
+/// governa é a IMPRESSÃO, não o registo. (Um aviso chaveado por conteúdo imprimiria a 60 Hz;
+/// esta linha pagou-se noutra wave deste módulo.)
+pub(super) fn say_route(motion: &mut MotionState, reason: &'static str) {
+    if motion.route_said == Some(reason) {
+        return;
+    }
+    motion.route_said = Some(reason);
+    if std::env::var_os("PH2D_MOTION_ROUTE_LOG").is_some_and(|v| v != "0") {
+        eprintln!("[motion-route] {reason}");
+    }
+}
+
+/// **Toda saída para a CPU passa por AQUI e nomeia-se.** ⛔ Um `return
+/// GpuOutcome::FellThrough` cru é a forma que tornou o §2.3 possível: cinco recusas, cada uma
+/// com o seu motivo, e nenhuma delas alcançável de fora.
+fn fell(motion: &mut MotionState, reason: &'static str) -> GpuOutcome {
+    say_route(motion, reason);
+    GpuOutcome::FellThrough
+}
+
 /// Choose the cook route from the plan and this frame's flags — the one place
 /// the "fully vs hybrid vs CPU" policy lives.
 ///
@@ -178,8 +209,17 @@ pub(super) fn cook_gpu(
 ) -> GpuOutcome {
     motion.gpu_live = false;
     // Fast-path guard so a GPU-off or multi-sink document never plans.
-    if !motion.gpu_enabled || motion.sinks.len() != 1 {
-        return GpuOutcome::FellThrough;
+    // ⚠️ **Os dois motivos separam-se aqui de propósito:** eles leem-se iguais numa recusa
+    // («a CPU desenhou») e um deles é uma ESCOLHA do artista (`PH2D_GPU_COOK=0`) enquanto o
+    // outro é uma escada que ele não pediu e cujo preço é `50,9×`.
+    if !motion.gpu_enabled {
+        return fell(motion, "CPU: o device esta desligado (PH2D_GPU_COOK=0)");
+    }
+    if motion.sinks.len() != 1 {
+        return fell(
+            motion,
+            "CPU: mais de UM sink -- a escada do doc 98 §2, ~50x a contagem de objectos",
+        );
     }
     // A document that brings in a live vector SHAPE (`source.shape`) recuses to
     // the CPU render — the GPU cook has no `geometry_id` route and would draw it
@@ -188,7 +228,10 @@ pub(super) fn cook_gpu(
     // prefix). An OBJECT source (`source.object`) is NOT recused here — the GPU
     // cook draws it; the count-changing cerca below is its only guard.
     if graph_has_live_vector_source(&motion.doc.graph, &motion.registry) {
-        return GpuOutcome::FellThrough;
+        return fell(
+            motion,
+            "CPU: o grafo traz uma FORMA vectorial viva (source.shape)",
+        );
     }
     // A `source.object` that resolves to a live VECTOR publishes a `geometry_id`
     // external (ADR-0154 reused for objects, so a stamped vector stays crisp). The
@@ -199,7 +242,10 @@ pub(super) fn cook_gpu(
     if graph_has_object_source(&motion.doc.graph, &motion.registry)
         && cook_publishes_live_geometry(&motion.pump.cook)
     {
-        return GpuOutcome::FellThrough;
+        return fell(
+            motion,
+            "CPU: um source.object resolveu para geometria vectorial viva",
+        );
     }
     // **O ritmo deste grafo** (doc 89, folha 13): de quantas sub-passadas o plano marcha. ⚠️ NÃO
     // há recusa aqui, e é por construção: o ritmo é do GRAFO — a mesma porta que o pump da CPU
@@ -227,7 +273,10 @@ pub(super) fn cook_gpu(
     if graph_has_object_source(&motion.doc.graph, &motion.registry)
         && plan.suffix_changes_count(&motion.registry)
     {
-        return GpuOutcome::FellThrough;
+        return fell(
+            motion,
+            "CPU: sob um source.object, o sufixo de GPU muda a contagem",
+        );
     }
     let route = gpu_route(
         motion.gpu_enabled,
@@ -237,7 +286,14 @@ pub(super) fn cook_gpu(
         plan.dispatching_stages(&motion.registry),
     );
     match route {
-        GpuRoute::Cpu => GpuOutcome::FellThrough,
+        GpuRoute::Cpu if !scopes.is_empty() => fell(
+            motion,
+            "CPU: escopo de tempo (motion.time_remap) -- a escada do doc 98 §2",
+        ),
+        GpuRoute::Cpu => fell(
+            motion,
+            "CPU: fronteira sem estagio de GPU que despache (so o output passa-through)",
+        ),
         GpuRoute::FullyGpu => {
             // A stateless plan is `f(params, playhead)` — one cook at the target
             // tick's time, as F1.1 always did. A plan that drives a `pre` loop
@@ -276,9 +332,10 @@ pub(super) fn cook_gpu(
             });
             // A cook that errored leaves `gpu_live` false → let the CPU pump draw.
             if motion.gpu_live {
+                say_route(motion, "device: o plano inteiro (fully-GPU)");
                 GpuOutcome::Handled
             } else {
-                GpuOutcome::FellThrough
+                fell(motion, "CPU: o cook no device ERROU -- o pump desenha")
             }
         }
         GpuRoute::Hybrid => {
@@ -367,6 +424,10 @@ pub(super) fn cook_gpu(
             // the same tick and leave `instances` holding the boundary lowering).
             // A GPU failure here renders nothing this frame rather than corrupt
             // the pump's clock.
+            say_route(
+                motion,
+                "device: HIBRIDO -- prefixo na CPU, sufixo no device",
+            );
             GpuOutcome::Handled
         }
     }

@@ -77,15 +77,28 @@ fn the_recusals_run_in_the_right_place_relative_to_the_plan() {
          (changes@{changes_count} vs plan@{plan}, route@{route})"
     );
 
-    // Cada recusa de vetor vivo cai para o pump da CPU (`FellThrough`), não
-    // `Handled`. As duas vivem entre a chamada do predicado e o plano.
+    // Cada recusa de vetor vivo cai para o pump da CPU, não `Handled`. As duas vivem entre a
+    // chamada do predicado e o plano.
+    //
+    // ⚠️⚠️ **A FORMA mudou em 2026-09-01 e este gate reprovou sobre produto correcto** — ele
+    // procurava o literal `GpuOutcome::FellThrough`, e a auditoria de performance
+    // (doc 98 §2.3) pôs **toda** recusa a passar por `fell`, que a NOMEIA para o
+    // `PH2D_MOTION_ROUTE_LOG`. O que este gate quer dizer é *«cai para a CPU, não é
+    // `Handled`»*, e hoje quem diz isso é `fell(`.
+    //
+    // ⛔ **E há um gate IRMÃO que proíbe exactamente o literal que este exigia**
+    // (`every_fall_through_to_the_cpu_names_itself`): dois gates textuais sobre o mesmo
+    // ficheiro, um a pedir uma forma e o outro a bani-la, são a maneira de um deles ficar
+    // impossível de satisfazer. Este pede a PORTA; o irmão garante que ela é única — juntos
+    // afirmam mais do que o literal afirmava, e não menos.
+    const CAI: &str = "fell(";
     assert!(
-        body[live_vector..plan].contains("GpuOutcome::FellThrough"),
-        "the live-vector recusals must return GpuOutcome::FellThrough (fall to the CPU render)"
+        body[live_vector..plan].contains(CAI),
+        "the live-vector recusals must fall to the CPU render through `fell(motion, …)`"
     );
     // A cerca de contagem cai entre a checagem de contagem e o `gpu_route`.
     assert!(
-        body[changes_count..route].contains("GpuOutcome::FellThrough"),
-        "the count-changing cerca must return GpuOutcome::FellThrough (fall to the CPU render)"
+        body[changes_count..route].contains(CAI),
+        "the count-changing cerca must fall to the CPU render through `fell(motion, …)`"
     );
 }

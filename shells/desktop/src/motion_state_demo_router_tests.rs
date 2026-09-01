@@ -376,3 +376,102 @@ fn the_sweep_ceiling_is_the_highest_arm_the_router_actually_has() {
          existem e nunca sao diagnosticadas"
     );
 }
+
+/// ⭐⭐⭐ **QUE ROTA CADA CENA DO PRODUTO TOMA** — a sonda que a auditoria de performance de
+/// 2026-09-01 pediu, e a única que responde à pergunta que decide o teto do módulo.
+///
+/// ⛔⛔ **Por que ela existe.** A ponte cozinha no DEVICE por omissão, e o device faz **4,19 M
+/// partículas em 3,85 ms** (23% de um quadro) contra **195,9 ms da CPU** — `50,9×`, medido pelo
+/// `emitter_sim_ceiling_probe` nesta máquina. Mas o roteamento tem escadas-abismo
+/// ([`crate::render_loop::motion_bridge::gpu::gpu_route`]): **dois sinks** derrubam o grafo
+/// inteiro para a CPU, um **escopo de tempo** também, e uma fronteira sem estágio que despache
+/// também. E **nada na tela diz que aconteceu** — `GpuOutcome::FellThrough` é consumido pela
+/// ponte e não acende nada.
+///
+/// ⚠️ **Ela IMPRIME e não julga.** Uma cena na CPU não é um defeito por si: a `=107` tem dois
+/// sinks de propósito, e uma cena com `motion.time_remap` **tem de** recuar. O que a sonda
+/// entrega é o CENSO — quantas das cenas que o produto expõe correm no caminho rápido —, para
+/// que ninguém volte a afirmar «GPU-resident por omissão» sem o número ao lado.
+///
+/// `cargo test -p ph2d-host-desktop --bins motion_route_census -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda de rota, não um gate — `-- --ignored --nocapture`"]
+fn motion_route_census() {
+    use crate::render_loop::motion_bridge::gpu::{GpuRoute, gpu_route};
+    let (mut full, mut hybrid, mut cpu) = (0u32, 0u32, 0u32);
+    let (mut multi_total, mut multi_todos_gpu, mut multi_alguns_gpu) = (0u32, 0u32, 0u32);
+    let mut porques: std::collections::BTreeMap<&'static str, Vec<u32>> =
+        std::collections::BTreeMap::new();
+    for level in 1..=MAX_DEMO_LEVEL {
+        let mut state = MotionState::new();
+        let sinks = build_level(Some(&level.to_string()), &mut state.doc, &state.registry);
+        if sinks.is_empty() {
+            continue;
+        }
+        let scopes = ph2d_node_motion_time_remap::time_scopes(&state.doc.graph, &state.registry);
+        let plan =
+            ph2d_gpu_cook::plan(&state.doc.graph, &state.registry, &state.registry, sinks[0]);
+        let route = gpu_route(
+            true,
+            sinks.len(),
+            scopes.is_empty(),
+            &plan.boundaries,
+            plan.dispatching_stages(&state.registry),
+        );
+        // ⚠️ **A razão é a PRIMEIRA que morde**, na ordem em que o `gpu_route` as pergunta —
+        // uma cena pode ter duas, e nomear a segunda mandaria alguém curar a errada.
+        let porque = match route {
+            GpuRoute::FullyGpu => "1. device inteiro",
+            GpuRoute::Hybrid => "2. híbrido (prefixo na CPU)",
+            GpuRoute::Cpu if sinks.len() != 1 => "3. CPU: mais de UM sink",
+            GpuRoute::Cpu if !scopes.is_empty() => "4. CPU: escopo de tempo (time_remap)",
+            GpuRoute::Cpu => "5. CPU: fronteira sem estágio que despache",
+        };
+        porques.entry(porque).or_default().push(level);
+        // ⭐⭐ **O que a escada do multi-sink CUSTA a levantar**: se cada sink, planeado
+        // SOZINHO, já é reclamado pelo device, então a barreira não é o trabalho — é só a
+        // COMPOSIÇÃO de dois planos num buffer. Sem este número, «F2+ territory» é uma nota
+        // sobre um preço que ninguém mediu (§0.0).
+        if sinks.len() > 1 {
+            multi_total += 1;
+            let cada: Vec<_> = sinks
+                .iter()
+                .map(|&s| {
+                    ph2d_gpu_cook::plan(&state.doc.graph, &state.registry, &state.registry, s)
+                })
+                .collect();
+            if cada.iter().all(ph2d_gpu_cook::GpuPlan::is_fully_gpu) {
+                multi_todos_gpu += 1;
+            } else if cada.iter().any(ph2d_gpu_cook::GpuPlan::is_fully_gpu) {
+                multi_alguns_gpu += 1;
+            }
+        }
+        match route {
+            GpuRoute::FullyGpu => full += 1,
+            GpuRoute::Hybrid => hybrid += 1,
+            GpuRoute::Cpu => cpu += 1,
+        }
+    }
+    let total = full + hybrid + cpu;
+    eprintln!("=== CENSO DE ROTA · {total} cenas com sinks, de 1..={MAX_DEMO_LEVEL} ===");
+    for (porque, cenas) in &porques {
+        eprintln!(
+            "  {porque:<36} │ {:>3} cenas ({:>4.1}%)",
+            cenas.len(),
+            cenas.len() as f64 * 100.0 / total as f64
+        );
+        eprintln!("      {cenas:?}");
+    }
+    eprintln!("  ─────");
+    eprintln!(
+        "  device (inteiro ou híbrido) │ {:>3} ({:.1}%)   ·   CPU serial │ {cpu} ({:.1}%)",
+        full + hybrid,
+        (full + hybrid) as f64 * 100.0 / total as f64,
+        cpu as f64 * 100.0 / total as f64
+    );
+    eprintln!("  ─── a escada do MULTI-SINK, se alguem a levantar ───");
+    eprintln!(
+        "  cenas multi-sink │ {multi_total}   ·   TODOS os sinks ja seriam device │ {multi_todos_gpu} ({:.1}%)   ·   alguns │ {multi_alguns_gpu}",
+        multi_todos_gpu as f64 * 100.0 / multi_total.max(1) as f64
+    );
+}

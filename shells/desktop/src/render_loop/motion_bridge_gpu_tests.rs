@@ -240,3 +240,80 @@ fn a_boundary_with_no_dispatching_suffix_recuses_to_cpu() {
     // uploading the sink stream just to lower it — so it stays on the CPU.
     assert_eq!(gpu_route(true, 1, true, &[(node(), 0)], 0), GpuRoute::Cpu);
 }
+
+/// ⭐⭐ **TODA saída para a CPU tem de se NOMEAR** — o gate da auditoria de performance
+/// ([doc 98 §2.3](../../../../docs/Motion%20Nodes/98_auditoria_de_performance_2026-09-01.md)).
+///
+/// ⛔⛔ **O defeito que ele fecha:** havia SEIS `return GpuOutcome::FellThrough` crus, cada um
+/// com o seu motivo, e nenhum deles alcançável de fora — então um grafo que perdia `50,9×` de
+/// contagem de objectos ficava exactamente igual a um que não perdia. Um `FellThrough` cru é a
+/// forma que torna isso possível de novo.
+///
+/// ⚠️ **Ele lê o FONTE, e por isso descasca comentários** — os doc-comments desta jornada
+/// NOMEIAM `GpuOutcome::FellThrough` para explicar a cura, e um gate textual ingénuo reprovaria
+/// sobre a própria documentação da cura
+/// ([[feedback_a_textual_gate_must_strip_comments_or_documenting_the_cure_fails_it]]).
+#[test]
+fn every_fall_through_to_the_cpu_names_itself() {
+    let src = include_str!("motion_bridge_gpu.rs");
+    let mut acusadas = Vec::new();
+    let mut dentro_do_fell = false;
+    for (n, linha) in src.lines().enumerate() {
+        let t = linha.trim_start();
+        if t.starts_with("//") || t.starts_with('*') {
+            continue; // comentário: a cura documenta-se a si mesma
+        }
+        // A porta única — é ela que TEM de conter o literal.
+        if t.starts_with("fn fell(") {
+            dentro_do_fell = true;
+        } else if dentro_do_fell && t == "}" {
+            dentro_do_fell = false;
+            continue;
+        }
+        if dentro_do_fell {
+            continue;
+        }
+        if linha.contains("GpuOutcome::FellThrough") {
+            acusadas.push(format!("  linha {}: {}", n + 1, linha.trim()));
+        }
+    }
+    assert!(
+        acusadas.is_empty(),
+        "toda recusa ao device tem de passar por `fell(motion, \"…\")`, que a NOMEIA — \
+         um `GpuOutcome::FellThrough` cru volta a esconder um custo de ~50× (doc 98 §2.3):\n{}",
+        acusadas.join("\n")
+    );
+}
+
+/// **O registo da rota é por BORDA, e regista mesmo com o log desligado.**
+///
+/// ⚠️ As duas metades são independentes e as duas mordem: sem a borda o terminal cospe a mesma
+/// linha a 60 Hz (esta linha já se pagou noutra wave deste módulo); e se o registo dependesse
+/// da variável, ligá-la a meio de uma sessão ficaria calado até a rota mudar sozinha.
+#[test]
+fn the_route_is_recorded_on_the_edge_and_recorded_even_when_silent() {
+    // ⚠️ Sem tocar na variável de ambiente: o que se mede é o REGISTO, não a impressão.
+    let mut motion = crate::motion_state::MotionState::new();
+    assert_eq!(
+        motion.route_said, None,
+        "um documento novo ainda não roteou"
+    );
+
+    super::say_route(&mut motion, "A");
+    assert_eq!(motion.route_said, Some("A"));
+    super::say_route(&mut motion, "A");
+    assert_eq!(
+        motion.route_said,
+        Some("A"),
+        "a mesma rota não re-arma nada"
+    );
+    super::say_route(&mut motion, "B");
+    assert_eq!(motion.route_said, Some("B"), "uma rota nova é uma BORDA");
+    super::say_route(&mut motion, "A");
+    assert_eq!(
+        motion.route_said,
+        Some("A"),
+        "voltar à rota anterior também é uma borda — senão um grafo que oscila entre duas \
+         rotas ficaria mudo depois da primeira volta"
+    );
+}

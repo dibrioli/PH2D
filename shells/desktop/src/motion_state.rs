@@ -258,6 +258,15 @@ pub(crate) struct MotionState {
     /// binds `gpu_cook.instances()` directly (zero readback) and
     /// `pump.instances` is stale — set/cleared by the bridge every frame.
     pub(crate) gpu_live: bool,
+    /// **A última rota que a ponte NOMEOU** — o registo por borda do
+    /// [`crate::render_loop::motion_bridge::gpu::say_route`] (`PH2D_MOTION_ROUTE_LOG=1`).
+    ///
+    /// ⚠️ **Ele escreve-se sempre, imprima-se ou não**: é o detector de borda, e governá-lo
+    /// pela variável faria ligá-la a meio de uma sessão ficar calado até a rota mudar.
+    ///
+    /// ⛔ **É VISTA, nunca documento** — não entra na captura, no undo nem no ficheiro; é a
+    /// mesma lei do `gpu_live` acima. `None` = a ponte ainda não roteou este documento.
+    pub(crate) route_said: Option<&'static str>,
     /// The GPU cook path — **ON by default** since the editor learned to read a
     /// GPU-resident frame (the tap feeds the readouts/probe/digest, Fase 4);
     /// `PH2D_GPU_COOK=0` opts back out. The CPU pump remains the CANONICAL
@@ -390,6 +399,7 @@ impl MotionState {
             level: None,
             gpu_cook: ph2d_gpu_cook::GpuCook::new(),
             gpu_live: false,
+            route_said: None,
             // **ON by default** (GPU/M5, 2026-07-18). It was opt-in for one
             // reason and the reason is gone: a GPU-resident cook does not feed
             // the CPU memo, so the graph panel's readouts, postage stamps, wire

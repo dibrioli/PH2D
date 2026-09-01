@@ -33,8 +33,24 @@ novo, nenhum contrato mexido.
 **sobrepor** dois traços. É um verbo sobre a selecção (o botão **Weld**, colado no *Join*: aquele
 solda duas pontas, este solda os cruzamentos).
 
-⛔ **O que a solda NÃO promete:** arrastar um nó depois **separa** outra vez as duas pontas. Manter
-a rede soldada durante a edição é o modelo da Figma, e é modelo novo — está nomeado, não construído.
+⭐⭐⭐ **E o nó SOBREVIVE ao dedo** — report do Enio, com foto: *"weld dividiu e não soldou (eu que
+afastei os pontos)"*. Ele estava certo, e a falta eram **duas** coisas:
+
+1. **Cortar não é soldar.** As duas metades de um cruzamento nascem de contornos DIFERENTES: cada um
+   converte a mesma travessia para a SUA fracção e avalia a SUA cúbica ali — os pontos ficam perto e
+   **não iguais**. *Dois pontos perto não são um nó, são dois nós.* ⇒ `weld::fuse_endpoints` funde
+   cada aglomerado numa coordenada só (o **centroide**, para a solda não depender da ordem da
+   selecção), e a alça acompanha a âncora.
+   ⚠️ **A folga é DUAS vezes a flecha da amostragem**, não uma: cada lado erra a sua, em direcções
+   opostas. Medido em dois círculos de raio 100 — as pontas a `0,1376` com flecha de `0,12`, e com
+   uma flecha só a solda **não pegava**.
+2. **Arrastar tem de levar todos.** `PenTool::welded_with` responde *"quem mais partilha esta
+   ponta"* (comparação **exacta**, `WELD_TOL`), e o arrasto de âncora move a união *selecção ∪
+   juntas*. É a lei do esboço de CAD: **duas pontas no mesmo sítio são UM nó**.
+
+⛔ **O que a solda ainda NÃO promete:** *acrescentar* uma linha nova ao nó depois não a solda — a
+junta é a coincidência, e quem a cria é o Weld, o Join ou o encaixe. E o modelo completo da Figma (a
+aresta com identidade, que sobrevive a qualquer edição) continua fora.
 
 ## §3 — O que reusou
 
@@ -63,7 +79,8 @@ não escolhe as perguntas que se fazem.* Dois gates novos no `trim_tool`.
 ## §5 — ⏳ Aberto
 
 - ⏳ **O balde** — é o consumidor desta rede, e a razão de ela existir.
-- ⏳ **A rede não sobrevive à edição** (§2). Modelo novo, nomeado.
+- ⏳ **Uma linha DESENHADA depois não entra no nó** — a junta é a coincidência, e desenhar não a
+  cria (o encaixe cria, o Join cria, o Weld cria). Soldar outra vez resolve.
 - ⏳ **Um composto soldado perde o buraco**: depois da solda os contornos são arcos, e um arco não
   tem dentro. É o preço declarado de *"consome os originais"*.
 - ⏳ **Custo não medido** — `O(contornos²)` em arestas de amostragem, sobre a selecção. É um verbo

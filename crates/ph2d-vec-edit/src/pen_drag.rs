@@ -6,6 +6,7 @@
 //! e puxar a alça de raio de quina.
 
 use super::{Part, PenTool, VecScene, VertexKind, corner_handle};
+use ph2d_vec_scene::VecPathId;
 
 impl PenTool {
     /// Arrasto: puxa os handles do vértice em desenho, OU move o elemento agarrado.
@@ -48,26 +49,35 @@ impl PenTool {
                 // dedo. É a mesma lei do `nudge`, que já convertia por forma.
                 let gw = xf.apply(anchor);
                 let dw = [p[0] - gw[0], p[1] - gw[1]];
-                if !self.selected_verts.contains(&(g.path, g.vert)) {
-                    let d = inv.apply_vec(dw);
-                    let Some(path) = scene.path_mut(g.path) else {
-                        return false;
+                // ⭐⭐⭐ **O NÓ SOLDADO ANDA INTEIRO** (plano 39, report do Enio de 2026-08-31:
+                // *"weld dividiu e não soldou"*). Duas pontas no MESMO sítio são um nó — é a lei do
+                // esboço de CAD, e é o que faz a rede sobreviver ao dedo. ⛔ Sem isto, soldar
+                // produzia arcos que se separavam ao primeiro arrasto, e o verbo prometia mais do
+                // que entregava.
+                //
+                // ⚠️ **O grupo é a união** *selecção ∪ juntas*, com repetidos fora: uma ponta que
+                // esteja nos dois andaria o dobro.
+                let mut alvos: Vec<(VecPathId, usize)> =
+                    if self.selected_verts.contains(&(g.path, g.vert)) {
+                        self.vert_paths()
+                            .into_iter()
+                            .flat_map(|id| self.verts_in(id).map(move |i| (id, i)))
+                            .collect()
+                    } else {
+                        vec![(g.path, g.vert)]
                     };
-                    if let Some(v) = path.vert_mut(g.vert) {
-                        crate::selection::shift_vert(v, d);
+                for j in self.welded_with(scene, g.path, g.vert) {
+                    if !alvos.contains(&j) {
+                        alvos.push(j);
                     }
-                    return true;
                 }
-                for id in self.vert_paths() {
+                for (id, i) in alvos {
                     let d = self.delta_to_local(id, dw);
-                    let idxs: Vec<usize> = self.verts_in(id).collect();
                     let Some(path) = scene.path_mut(id) else {
                         continue;
                     };
-                    for i in idxs {
-                        if let Some(v) = path.vert_mut(i) {
-                            crate::selection::shift_vert(v, d);
-                        }
+                    if let Some(v) = path.vert_mut(i) {
+                        crate::selection::shift_vert(v, d);
                     }
                 }
                 return true;

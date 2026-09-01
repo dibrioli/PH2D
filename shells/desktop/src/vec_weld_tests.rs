@@ -158,3 +158,77 @@ fn a_cross_inside_a_square_becomes_a_network_of_arcs() {
         "depois de soldado nao sobra anel — tudo e' arco"
     );
 }
+
+/// ⭐⭐⭐ **O REPORT (Enio, 2026-08-31, com foto):** *"weld dividiu e não soldou (eu que afastei os
+/// pontos)"*.
+///
+/// ⚠️ **A fixtura são dois CÍRCULOS**, e não duas retas: com retas cruzando em coordenadas redondas
+/// os dois lados calculam o mesmo ponto por acaso, e o gate passaria com a solda desligada. *Foi a
+/// primeira redacção deste teste, e três mutações sobreviveram a ela.*
+///
+/// As duas metades: as pontas de um nó são **a mesma coordenada**, e **arrastar uma leva as
+/// outras** — que é literalmente o teste que ele fez.
+#[test]
+fn the_welded_node_is_one_point_and_dragging_it_moves_every_arc() {
+    let (mut scene, mut hist, mut pen) = cena();
+    let a = scene.push_path(ph2d_vec_scene::ellipse([0.0, 0.0], 100.0, 100.0));
+    let b = scene.push_path(ph2d_vec_scene::ellipse([120.0, 0.0], 100.0, 100.0));
+    pen.select_many(&[a, b]);
+    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new());
+    assert_eq!(
+        scene.paths().len(),
+        4,
+        "dois circulos que se cruzam dao 4 arcos"
+    );
+
+    // METADE 1 — no nó de cima, as duas pontas são **a mesma coordenada**, bit a bit.
+    let cima: Vec<[f64; 2]> = scene
+        .paths()
+        .iter()
+        .flat_map(|p| [p.verts[0].anchor, p.verts[p.verts.len() - 1].anchor])
+        .filter(|p| p[1] > 50.0)
+        .collect();
+    // ⚠️ **QUATRO, e não duas**: cada círculo dá DOIS arcos, e cada arco tem uma ponta em cada
+    // nó — logo o nó de cima recebe uma ponta de cada um dos quatro arcos. (A minha primeira
+    // contagem dizia duas.)
+    assert_eq!(cima.len(), 4, "o no' de cima tem quatro pontas: {cima:?}");
+    assert!(
+        cima.windows(2).all(|w| w[0] == w[1]),
+        "as pontas do no' nao sao o MESMO ponto — isto e' dividir, nao soldar: {cima:?}"
+    );
+
+    // METADE 2 — o ARRASTO. Agarra uma ponta do nó e leva-a; as duas têm de ir juntas.
+    let no = cima[0];
+    // ⚠️ `on_press_node`, e não `on_press`: aquele é a CANETA (desenha/insere), este é a seta
+    // branca — a ferramenta que agarra um nó, que é o gesto do report.
+    let ptw = 0.1; // raio de captura ≈ 1 unidade de mundo, longe de apanhar o vizinho
+    let clique = pen.on_press_node(&mut scene, no, ptw, false);
+    assert!(
+        matches!(clique, ph2d_vec_edit::PenClick::Grabbed),
+        "o press tem de AGARRAR a ponta do no', e deu {clique:?}"
+    );
+    let destino = [no[0] + 30.0, no[1] + 40.0];
+    assert!(pen.on_drag(&mut scene, destino, &mut |p| p));
+    pen.on_release();
+
+    let no_destino = scene
+        .paths()
+        .iter()
+        .flat_map(|p| [p.verts[0].anchor, p.verts[p.verts.len() - 1].anchor])
+        .filter(|p| (p[0] - destino[0]).abs() < 1e-6 && (p[1] - destino[1]).abs() < 1e-6)
+        .count();
+    assert_eq!(
+        no_destino, 4,
+        "arrastar uma ponta tem de levar as outras TRES — o no' e' partilhado"
+    );
+}
+
+/// ⚠️ **Uma ponta SOZINHA não é junta** — e sem esta metade o gate acima passaria com um
+/// `welded_with` que devolvesse tudo o que está perto.
+#[test]
+fn a_lone_endpoint_is_not_a_joint() {
+    let (mut scene, _h, pen) = cena();
+    let a = reta(&mut scene, [0.0, 0.0], [10.0, 0.0]);
+    let _b = reta(&mut scene, [0.0, 50.0], [10.0, 50.0]);
+    assert!(pen.welded_with(&scene, a, 0).is_empty());
+}

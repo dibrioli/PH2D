@@ -30,8 +30,11 @@ pub use pencil::Pencil;
 mod pen_support;
 pub use pen_support::{History, PenStyle};
 
-/// Selection + the document ops that act on it (sibling module, LOC cap).
 mod selection;
+/// Selection + the document ops that act on it (sibling module, LOC cap).
+/// ⭐⭐⭐ **O nó soldado** (plano 39) — quem mais partilha uma ponta. Irmão do `selection` pelo
+/// tecto de LOC, cortado por responsabilidade.
+mod weld_joint;
 
 /// **As três operações de NÓ da W4** — Join · Average · Reverse. Irmão de `selection.rs` pelo teto
 /// de LOC: lá mora *quem está selecionado*, aqui *o que se faz com a seleção* quando a resposta

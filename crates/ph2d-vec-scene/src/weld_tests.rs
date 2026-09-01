@@ -95,3 +95,55 @@ fn duplicate_cuts_collapse_into_one() {
     let out = split_at(&verts, false, &[0.5, 0.5 + 1e-12, 0.5 - 1e-12]);
     assert_eq!(out.len(), 2, "um corte so': {} arcos", out.len());
 }
+
+/// ⭐⭐⭐ **A FUSÃO é o que separa «dividir» de «soldar»** (report do Enio, 2026-08-31).
+///
+/// ⚠️ **A fixtura tem de ser CURVA.** Com duas retas cruzando em coordenadas redondas os dois lados
+/// já calculam o MESMO ponto por acaso, e o gate passaria com a fusão desligada — foi a primeira
+/// redacção deste teste, e três mutações sobreviveram a ela. *A fixtura mais azarada possível é a
+/// que aprova.*
+#[test]
+fn fusing_turns_two_near_points_into_one_and_a_lone_end_is_not_a_joint() {
+    // Duas pontas PERTO mas diferentes — o que o corte de dois contornos curvos produz.
+    let mut arcos = vec![
+        (vec![v(0.0, 0.0), v(10.0, 0.0)], false),
+        (vec![v(10.0, 0.03), v(20.0, 5.0)], false),
+        (vec![v(80.0, 80.0), v(90.0, 80.0)], false), // sozinha, longe de tudo
+    ];
+    let antes = (arcos[0].0[1].anchor, arcos[1].0[0].anchor);
+    assert_ne!(
+        antes.0, antes.1,
+        "a fixtura precisa de duas pontas DIFERENTES"
+    );
+
+    let juntas = fuse_endpoints(&mut arcos, 0.1);
+
+    assert_eq!(juntas, 1, "uma junta, e a ponta solitaria NAO conta");
+    assert_eq!(
+        arcos[0].0[1].anchor, arcos[1].0[0].anchor,
+        "as duas pontas tem de virar o MESMO ponto, bit a bit"
+    );
+    // …e é o CENTROIDE, não uma das duas: escolher uma faria a solda depender da ordem.
+    assert!((arcos[0].0[1].anchor[1] - 0.015).abs() < 1e-12);
+    // A solitária não se mexeu.
+    assert_eq!(arcos[2].0[0].anchor, [80.0, 80.0]);
+}
+
+/// ⚠️ **A alça acompanha a âncora** — mover só a âncora mudaria a CURVA em vez de a deslocar, e o
+/// arco descolaria da forma que tinha.
+#[test]
+fn fusing_carries_the_handles_with_the_anchor() {
+    let mut a = v(10.0, 0.0);
+    a.out_handle = [12.0, 3.0];
+    let mut arcos = vec![
+        (vec![v(0.0, 0.0), a], false),
+        (vec![v(10.0, 0.04), v(20.0, 0.0)], false),
+    ];
+    fuse_endpoints(&mut arcos, 0.1);
+    let f = &arcos[0].0[1];
+    assert!(
+        (f.out_handle[1] - (3.0 + 0.02)).abs() < 1e-12,
+        "a alca nao andou com a ancora: {:?}",
+        f.out_handle
+    );
+}

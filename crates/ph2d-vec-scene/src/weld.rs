@@ -87,6 +87,83 @@ pub fn split_at(
     arcos
 }
 
+/// ⭐⭐⭐ **FUNDE as pontas que caem quase no mesmo sítio** — cada aglomerado passa a ter **UMA**
+/// coordenada, bit a bit igual em todos os arcos que o partilham.
+///
+/// # Porque não basta cortar
+///
+/// Report do Enio (2026-08-31, com foto): *"weld dividiu e não soldou (eu que afastei os pontos)"*.
+/// E ele estava certo — **cortar não é soldar**. As duas metades de um cruzamento nascem de
+/// contornos DIFERENTES: cada um converte a mesma travessia para a **sua** fracção de arco e depois
+/// avalia a **sua** cúbica ali. Os dois pontos ficam perto e **não iguais** — e dois pontos perto
+/// não são um nó, são dois nós.
+///
+/// ⚠️ **A tolerância é o erro de AMOSTRAGEM** (`trim_tool::sampling_error`), a mesma régua que diz
+/// se uma ponta está *sobre* uma curva. Um número escolhido colaria pontas que o artista quis
+/// separadas, ou deixaria de colar as que ele quis juntas.
+///
+/// ⛔ Só PONTAS: um vértice interior de um arco não é junta de nada.
+pub fn fuse_endpoints(arcos: &mut [(Vec<VecVertex>, bool)], tol: f64) -> usize {
+    // Onde está cada ponta: `(índice do arco, índice do vértice)`.
+    let mut pontas: Vec<(usize, usize)> = Vec::new();
+    for (i, (verts, closed)) in arcos.iter().enumerate() {
+        if *closed || verts.len() < 2 {
+            continue;
+        }
+        pontas.push((i, 0));
+        pontas.push((i, verts.len() - 1));
+    }
+    let t2 = tol * tol;
+    let mut visto = vec![false; pontas.len()];
+    let mut fundidos = 0usize;
+    for a in 0..pontas.len() {
+        if visto[a] {
+            continue;
+        }
+        let pa = arcos[pontas[a].0].0[pontas[a].1].anchor;
+        let mut grupo = vec![a];
+        for (b, vb) in visto.iter().enumerate().skip(a + 1) {
+            if *vb {
+                continue;
+            }
+            let pb = arcos[pontas[b].0].0[pontas[b].1].anchor;
+            if (pa[0] - pb[0]).powi(2) + (pa[1] - pb[1]).powi(2) <= t2 {
+                grupo.push(b);
+            }
+        }
+        for &g in &grupo {
+            visto[g] = true;
+        }
+        if grupo.len() < 2 {
+            continue; // uma ponta sozinha não é junta
+        }
+        // ⚠️ **O CENTROIDE, e não a primeira**: escolher uma das pontas faria a junta depender da
+        // ordem em que os arcos saíram, e a mesma solda dava geometria diferente conforme a ordem
+        // da selecção.
+        let (mut sx, mut sy) = (0.0, 0.0);
+        for &g in &grupo {
+            let p = arcos[pontas[g].0].0[pontas[g].1].anchor;
+            sx += p[0];
+            sy += p[1];
+        }
+        #[allow(clippy::cast_precision_loss)]
+        let n = grupo.len() as f64;
+        let no = [sx / n, sy / n];
+        for &g in &grupo {
+            let (ai, vi) = pontas[g];
+            // ⚠️ **A alça acompanha a âncora** — mover só a âncora mudaria a CURVA em vez de a
+            // deslocar, e o arco descolaria da forma que ele tinha.
+            let v = &mut arcos[ai].0[vi];
+            let d = [no[0] - v.anchor[0], no[1] - v.anchor[1]];
+            v.anchor = no;
+            v.in_handle = [v.in_handle[0] + d[0], v.in_handle[1] + d[1]];
+            v.out_handle = [v.out_handle[0] + d[0], v.out_handle[1] + d[1]];
+        }
+        fundidos += 1;
+    }
+    fundidos
+}
+
 #[cfg(test)]
 #[path = "weld_tests.rs"]
 mod tests;

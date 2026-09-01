@@ -85,6 +85,41 @@ pub(crate) fn apply_vec_weld(
         return;
     }
 
+    // ⭐⭐⭐ **E AGORA SOLDA.** Cortar não é soldar: as duas metades de um cruzamento nascem de
+    // contornos DIFERENTES, cada um converte a mesma travessia para a SUA fracção e avalia a SUA
+    // cúbica ali — os pontos ficam perto e não iguais. *Dois pontos perto não são um nó, são dois
+    // nós*, e foi isso que o report do Enio mostrou («weld dividiu e não soldou»).
+    //
+    // ⚠️ A tolerância é o **erro de amostragem** do pior contorno que entrou — a mesma régua que
+    // diz se uma ponta está *sobre* uma curva. ⛔ Um número escolhido colaria pontas que o artista
+    // quis separadas.
+    // ⚠️⚠️ **DUAS vezes a flecha, e não uma.** As duas pontas de um cruzamento vêm de contornos
+    // diferentes, e **cada um erra a SUA flecha, em direcções opostas** — a separação de pior caso
+    // é a SOMA. Medido em dois círculos de raio 100: as pontas ficaram a `0,1376` com uma flecha de
+    // `0,12`, e com a folga de uma flecha só a solda **não pegava**. O gate acusou-o com os quatro
+    // pontos impressos ao lado.
+    let tol = 2.0
+        * por_caminho
+            .iter()
+            .flat_map(|(_, cs)| cs.iter())
+            .map(|c| trim_tool::sampling_error(&c.verts, c.closed))
+            .fold(0.0_f64, f64::max);
+    // ⚠️⚠️ **A fusão é sobre TODOS os arcos de uma vez, e não por caminho.** As quatro pontas de um
+    // cruzamento vêm **duas de cada** caminho — fundir dentro de um só nunca juntaria as metades
+    // que importam. (Foi a 1.ª redacção desta linha, e ela deixava o report do Enio de pé.)
+    let mut todos: Vec<Arco> = Vec::new();
+    let mut donos: Vec<(u64, usize)> = Vec::new(); // (caminho, quantos arcos dele)
+    for (id, arcos) in &cortados {
+        donos.push((*id, arcos.len()));
+        todos.extend(arcos.iter().cloned());
+    }
+    let juntas = weld::fuse_endpoints(&mut todos, tol);
+    let mut it = todos.into_iter();
+    let cortados: Vec<(u64, Vec<Arco>)> = donos
+        .into_iter()
+        .map(|(id, n)| (id, it.by_ref().take(n).collect()))
+        .collect();
+
     let pre = scene.clone();
     // A fatia de z da base é a do caminho cortado mais ao fundo: a rede não salta para o topo.
     let at = cortados
@@ -114,7 +149,10 @@ pub(crate) fn apply_vec_weld(
     }
     history.push_undo(pre);
     pen.select_many(&novos);
-    eprintln!("[ph2d-vec] soldar: ok ({} arco[s])", novos.len());
+    eprintln!(
+        "[ph2d-vec] soldar: ok ({} arco[s], {juntas} junta[s])",
+        novos.len()
+    );
 }
 
 /// A diagonal da caixa de tudo o que entra — a régua com que duas travessias quase-coincidentes

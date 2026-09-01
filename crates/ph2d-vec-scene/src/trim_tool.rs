@@ -255,6 +255,16 @@ fn touches(alvo: &Geom, outros: &[(Vec<VecVertex>, bool)]) -> Vec<f64> {
     out
 }
 
+/// **O ERRO DA AMOSTRAGEM deste contorno** — a maior distância entre a curva verdadeira e a corda
+/// que a poligonal de detecção usa no lugar dela.
+///
+/// É a régua de *"este ponto está SOBRE a curva"*, e é medida em vez de escolhida: a flecha cresce
+/// com o raio e com o ângulo de cada segmento.
+#[must_use]
+pub fn sampling_error(verts: &[VecVertex], closed: bool) -> f64 {
+    Geom::of(verts, closed).map_or(0.0, |g| g.sampling_error())
+}
+
 /// **A GEOMETRIA DO PEDAÇO** — o que vai ser apagado, para se poder DESENHAR antes de o ser.
 ///
 /// ⚠️⚠️ **É a mesma porta que o [`sever`] usa, do outro lado.** O corte fica com o COMPLEMENTO de

@@ -163,20 +163,13 @@ pub(crate) fn make_master(
     // nome antigo passa a resolver para a cópia — que é o objeto que continua na cena.
     if let Some(base_id) = base_link {
         let base_name = master_named(sim, base_id).unwrap_or_else(|| "Prefab".to_string());
-        // ⭐⭐⭐ **Uma variante nasce com um VALOR próprio** (report do Enio, 2026-08-31:
-        // *«Variant deveria ser Size. Nos botões deveríamos ter Small e Big»*).
-        //
-        // Enquanto ela herdava `<base> Variant`, as duas receitas declaravam a MESMA combinação, o
-        // eixo ficava com uma resposta só e caía — e o cartão descia ao modo plano, a mostrar
-        // NOMES. *O app criava uma versão nova e não lhe dava o que a torna uma versão.*
-        //
-        // ⚠️ **O sufixo `Variant` FICA para quem não declara propriedades** — é o idioma do Unity,
-        // e continua a ser a resposta certa para uma família sem chaves. A lei escolhe qual dos
-        // dois: ver [`variant_name`].
-        let taken = crate::instance_verbs_walk::master_names(sim);
-        let vname = ph2d_editor::screens::hero::variant_axes::variant_name(&base_name, &taken)
-            .unwrap_or_else(|| format!("{base_name} Variant"));
-        let vname = crate::name_unique::unique_name_excluding(sim, &vname, entity);
+        // ⚠️ **O nome é só um NOME** (Enio, 2026-09-01): o sufixo `Variant` é o idioma do Unity e
+        // serve de rótulo no modo plano. ⛔ A DECLARAÇÃO (`Size = Big`) não se escreve aqui — ela é
+        // [`ph2d_ecs::VariantValues`], e quem a escreve é a porta com o nome que o artista deu
+        // ([`crate::variant_save::save_variation`]). *Foi pôr a declaração no nome que obrigou todo
+        // gesto a reescrevê-lo, e custou seis reports.*
+        let vname =
+            crate::name_unique::unique_name_excluding(sim, &format!("{base_name} Variant"), entity);
         sim.world_mut().entity_mut(entity).insert(Name::new(vname));
         if let Some(original) = original_name {
             let cname = crate::name_unique::unique_name_excluding(sim, &original, instance);
@@ -185,18 +178,9 @@ pub(crate) fn make_master(
                 .insert(Name::new(cname));
         }
     }
-    // ⭐⭐⭐ **A cópia que fica no lugar passa a DECLARAR o que ela segue** (auditoria
-    // multiagêntica de 2026-08-31, sonda C — a 3.ª porta sem espelho).
-    //
-    // Num *Make Variant* a cópia mantém o nome do artista (decisão de 27/08) — que declara a
-    // combinação da BASE — e o elo dela aponta a VARIANTE nova. Com a lei «as chaves mandam», o
-    // `follow` da mudança de seleção via a discordância e devolvia a cópia à base **no quadro
-    // seguinte ao gesto**: a variante nascia e perdia a única cópia. *Todo gesto que muda o elo
-    // escreve nas chaves* — este mudava e não escrevia.
-    //
-    // ⚠️ No *Make Prefab* simples é um no-op ao byte (o nome da cópia já declara o combo da
-    // receita), e é por isso que a chamada não é condicional.
-    crate::instance_declared_value::mirror_onto_copy(sim, instance);
+    // ⛔ **O espelho MORREU aqui em 2026-09-01.** Ele existia porque a declaração vivia no `Name`
+    // e todo gesto que mexesse no elo tinha de a reescrever — hoje a declaração é um componente da
+    // RECEITA, e mudar o elo de uma cópia não tem nome nenhum a acertar.
     Ok((entity, instance))
 }
 

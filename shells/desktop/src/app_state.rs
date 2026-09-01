@@ -769,15 +769,6 @@ pub(crate) struct App {
     /// como o sync sabe QUEM se mexeu. Cache de sessão: perdê-la só custa não atribuir um
     /// override no primeiro passe seguinte, e nunca um valor errado.
     pub(crate) instance_echo: crate::instance_sync::MasterEcho,
-    /// ⭐ A última seleção sobre a qual o [`crate::instance_declared_value::follow`] correu.
-    ///
-    /// ⛔⛔ **O `follow` corria a CADA QUADRO, e a auditoria multiagêntica de 2026-08-31 mediu o
-    /// preço:** o campo de nome do Inspector escreve o `Name` no mundo a cada TECLA, então a lei
-    /// «as chaves mandam» agia a meio da palavra (apagar o `2` de `Small 2` passava por `Small` e
-    /// trocava o elo no primeiro backspace); e o *Make Variant* era desfeito no quadro seguinte.
-    /// ⇒ ele corre UMA vez por mudança de seleção — o bastante para curar a etiqueta velha que se
-    /// acabou de abrir, sem agir enquanto o artista digita.
-    pub(crate) followed_selection: Option<u64>,
     /// Draw collider outlines over the canvas. **Default ON**, like Unity's
     /// scene gizmos: a collider is invisible, and an invisible thing you are
     /// authoring cannot be judged. Costs nothing and shows nothing in a scene

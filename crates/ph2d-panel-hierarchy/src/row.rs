@@ -408,7 +408,7 @@ fn paint_row_name(
     paint_text(
         text_system,
         scene,
-        &ph2d_editor_core::screens::hero::variant_axes::row_label(&entity.name),
+        &entity.name,
         name_x,
         rect.y + (rect.h - TypeToken::Sm.px()) * 0.5,
         TypeToken::Sm.px(),

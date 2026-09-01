@@ -84,7 +84,10 @@ pub(super) fn build_instance_info(
 ///
 /// ⚠️ **Ela devolve a ESTRUTURA, e não as fileiras**: quem decide se um membro vira chip, texto ou
 /// nada é a lei (`variant_axes`), que é pura e se testa sem um mundo.
-pub(crate) fn family_members(sim: &mut SimWorld, current: u64) -> Vec<(u64, String)> {
+pub(crate) fn family_members(
+    sim: &mut SimWorld,
+    current: u64,
+) -> Vec<ph2d_editor::screens::hero::variant_axes::VariantMember> {
     // Ordenado por `StableId` — a ordem de autoria, e a única que é a mesma em toda máquina.
     let masters: Vec<u64> = {
         let mut q = sim
@@ -94,18 +97,20 @@ pub(crate) fn family_members(sim: &mut SimWorld, current: u64) -> Vec<(u64, Stri
         v.sort_unstable();
         v
     };
-    let mut members: Vec<(u64, String)> = Vec::new();
+    let mut members: Vec<ph2d_editor::screens::hero::variant_axes::VariantMember> = Vec::new();
     for id in masters {
         if id != current && crate::instance_variant::piece_map(sim, current, id).is_none() {
             continue;
         }
-        members.push((
-            id,
-            master_named(sim, id).unwrap_or_else(|| "component".to_string()),
-        ));
+        members.push(ph2d_editor::screens::hero::variant_axes::VariantMember {
+            master: id,
+            name: master_named(sim, id).unwrap_or_else(|| "component".to_string()),
+            // ⭐⭐⭐ **A DECLARAÇÃO vem do componente, não do nome** (Enio, 2026-09-01).
+            values: crate::variant_save::values_of(sim, id),
+        });
     }
     // ⭐⭐ **A ESTRUTURA sai daqui e a LEI sai de lá.** O shell responde *«quem é da família»* (elos
-    // no mundo) e o `variant_axes` responde *«que perguntas ela faz»* (só nomes). ⚠️ Separá-las é o
+    // e declarações no mundo) e o `variant_axes` responde *«que perguntas ela faz»*. ⚠️ Separá-las é o
     // que torna a lei testável sem um mundo — e é o que a deixa sobreviver ao apagar do sistema
     // vetorial, de onde ela veio.
     members

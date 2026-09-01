@@ -540,7 +540,6 @@ pub(super) fn dispatch(
         hero,
         hero_live,
         sim,
-        echo,
         toasts,
     );
 

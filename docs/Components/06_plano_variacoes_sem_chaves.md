@@ -169,11 +169,15 @@ que é para o que foram construídos.
   intactas — esta wave mexe em `ph2d-ecs` (componente novo), `ph2d-editor-core` (modelo do cartão),
   `ph2d-panel-inspector` (pintura) e `shells/desktop` (verbos). **Prova por grep antes do commit:**
   `git diff --name-only | grep -E 'ph2d-vector-doc|ph2d-vector-traits|nodegraph'` tem de vir vazio.
-- **`PROJECT_SCHEMA` SOBE** (hoje `105`): `VariantValues` é registado e persistido. ⚠️ Os **três**
-  sítios (`project_schema.rs`, a escada, e a tripla em `project_schema_tests.rs`) — nunca um só.
-  ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 (não há projectos gravados), e o bump
-  fica porque o postcard é **posicional**: sem ele um ficheiro velho seria lido errado **em
-  silêncio**, e com ele o load recusa em voz alta.
+- ⛔⛔⛔ **O `PROJECT_SCHEMA` NÃO se move — esta linha do plano estava ERRADA, e a medição corrigiu-a**
+  (2026-09-01). O plano mandava subir de `105` *«porque o postcard é posicional»*. **O precedente v86
+  já respondia**: um componente é **name-keyed** e só o BLOB dele é posicional — o `type_id` é
+  `stable_type_id(canonical_name)`, o hash do nome. ⇒ `VariantValues` estreia um id que **nenhum
+  ficheiro antigo contém**, o restauro é por chave, e um projeto v105 simplesmente não traz o
+  componente. ⚠️ E a **ausência já tem o significado certo**: sem declaração, modo plano.
+  *Um bump aqui teria recusado todo ficheiro gravado, em nome de uma incompatibilidade que não
+  existe* — a diferença entre «acrescentar um tipo» e «mudar o layout de um tipo», que é a lei que
+  os degraus v6/v7/v8 e v86 escreveram.
 
 ---
 

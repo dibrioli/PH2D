@@ -122,6 +122,60 @@ pub struct ObjectInstance {
     pub orphans: std::collections::BTreeMap<OverrideKey, Vec<u8>>,
 }
 
+/// ⭐⭐⭐ **O que esta RECEITA declara** — propriedade → valor (`Size` → `Big`).
+///
+/// # ⛔⛔⛔ Isto substitui as CHAVES NO NOME, e a substituição é uma ordem
+///
+/// Enio, 2026-09-01: *«Não vamos mais usar as chaves no nome… Vamos tirar do nome o mecanismo de
+/// criação de variações»*. Até 31/08 a declaração era lida do `Name` (`Casa {Size=Big}`), e o preço
+/// foi seis reports com foto: quando o nome manda, **renomear deixa de ser renomear** e passa a ser
+/// uma operação estrutural, e um nome fora da gramática produz propriedades fantasma sem erro
+/// nenhum.
+///
+/// ⚠️ **A indústria já tinha demovido esse desenho:** o Figma reconhece `Propriedade=Valor` no nome
+/// da camada, mas só para **semear** um conjunto — a fonte autoritativa dele é a tabela de
+/// propriedades do painel. *Nós construímos exactamente a versão que eles abandonaram.*
+///
+/// # Onde vive, e o que NÃO é
+///
+/// Na **raiz da receita** (`MasterRoot`). ⛔ **Não é o elo de família** — esse continua a ser o
+/// [`InstanceOf`] que já existia: uma variante é `MasterRoot` **e** `InstanceOf { master: base }`.
+/// Inventar um segundo ponteiro daria duas respostas à pergunta *«de quem isto deriva?»*.
+///
+/// ⚠️ **Vazio é legítimo e significa modo PLANO**: uma versão sem propriedade declarada é
+/// simplesmente *outra versão*, identificada pelo nome dela no chip — que é o que o Unity faz com
+/// os *Prefab Variants*. O nome ali é **rótulo**, nunca mecanismo: ninguém o parseia.
+///
+/// ⚠️ **`BTreeMap`, nunca `HashMap`** — a serialização tem de ser determinística (HR-5), e a ordem
+/// das fileiras do cartão sai daqui.
+#[derive(Component, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct VariantValues {
+    /// Propriedade → valor. Vazio = esta receita não declara nada (modo plano).
+    pub values: BTreeMap<String, String>,
+}
+
+impl VariantValues {
+    /// O valor declarado para esta propriedade, se houver.
+    #[must_use]
+    pub fn get(&self, key: &str) -> Option<&str> {
+        self.values.get(key).map(String::as_str)
+    }
+
+    /// ⭐ **Esta receita concorda com aquela em TODAS as chaves menos numa.**
+    ///
+    /// É a pergunta que a grelha faz ao trocar de valor numa fileira: *«qual das versões é esta
+    /// mesma, mas com `Color = Red`?»*. ⚠️ A comparação corre sobre a UNIÃO das duas chaves — uma
+    /// receita a que falte a chave não é «igual em todas as outras», é diferente nela.
+    #[must_use]
+    pub fn matches_except(&self, other: &Self, except: &str) -> bool {
+        self.values
+            .keys()
+            .chain(other.values.keys())
+            .filter(|k| k.as_str() != except)
+            .all(|k| self.values.get(k) == other.values.get(k))
+    }
+}
+
 /// ⭐⭐⭐ **Esta peça DIVIDE a arte do mestre** — o *Duplicate Linked* do Blender (Enio, 2026-08-27).
 ///
 /// # As duas leis, e porque são a MESMA

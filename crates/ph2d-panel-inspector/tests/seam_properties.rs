@@ -40,6 +40,8 @@ fn choice(master: u64, label: &str, current: bool) -> VariantChoice {
         master,
         label: label.into(),
         current,
+        // ⚠️ Esta fixtura pinta chips que EXISTEM; a combinação em falta tem gate próprio.
+        missing: false,
     }
 }
 

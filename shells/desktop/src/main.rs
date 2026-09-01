@@ -306,7 +306,6 @@ mod input_map_drag;
 #[path = "inspector_presence_tests.rs"]
 mod inspector_presence_tests;
 /// ⭐ **As travessias que os verbos partilham** — irmão por assunto, ver o cabeçalho de lá.
-mod instance_declared_value;
 mod instance_diag;
 mod instance_docs;
 mod instance_live;
@@ -687,6 +686,7 @@ mod value_wrap_smoke;
 /// baixo dele — ficando a documentar-se com a frase de outro e sem dizer que é um smoke.
 mod variant_axes_smoke;
 mod variant_flow_smoke;
+mod variant_save;
 /// A cena de smoke dos **VARIANTS** (`PH2D_BUILD_SMOKE=58`) — irmã de `component_pieces_smoke`.
 mod variant_smoke;
 mod vec_anchor_edit;
@@ -1007,7 +1007,6 @@ impl App {
             physics_smoke_done: false,
             instance_smoke_done: false,
             instance_echo: Default::default(),
-            followed_selection: None,
             show_colliders: true,
             onion_ghosts: Vec::new(),
             emissive_instances: Vec::new(),

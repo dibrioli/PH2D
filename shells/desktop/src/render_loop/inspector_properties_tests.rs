@@ -1,9 +1,18 @@
 //! Os gates do cartão de PROPRIEDADES ([`super`]).
 //!
 //! ⚠️ **O oráculo é o que o artista LÊ.** Os gates puros da lei (`variant_axes_tests`) medem a
-//! derivação a partir de nomes; o que só se mede aqui é **de que nome ela parte**.
+//! derivação a partir de dados; o que só se mede aqui é **de onde esses dados são lidos**.
 
-use ph2d_ecs::{ChildOf, Entity, MasterRoot, Name, SimWorld, Transform};
+use ph2d_ecs::{ChildOf, Entity, MasterRoot, Name, SimWorld, Transform, VariantValues};
+
+fn values(pairs: &[(&str, &str)]) -> VariantValues {
+    VariantValues {
+        values: pairs
+            .iter()
+            .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
+            .collect(),
+    }
+}
 
 fn spawn_named(sim: &mut SimWorld, name: &str) -> Entity {
     let e = sim
@@ -14,48 +23,120 @@ fn spawn_named(sim: &mut SimWorld, name: &str) -> Entity {
     e
 }
 
-/// ⭐⭐⭐ **UM OBJECTO SOLTO TEM CARTÃO** — o report do Enio de 2026-08-31.
-///
-/// *«quando mudo o conteúdo entre `{}` o inspector não muda»*: o construtor da seção COMPONENT sai
-/// por `?` no `InstanceOf`, então sobre um objecto que não é cópia de nada **não havia superfície
-/// nenhuma** a ler as chaves. O selo `*²` da Hierarquia prometia que alguém as lia.
-///
-/// **Mutação que deve sangrar:** exigir `InstanceOf` no `build_properties_info`.
+/// Uma família com duas versões e uma cópia da base. Devolve `(base, variante, cópia)`.
+fn family(sim: &mut SimWorld) -> (Entity, Entity, Entity) {
+    let r = crate::init::build_component_registry();
+    let base = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            Name::new("Casa"),
+            MasterRoot,
+            values(&[("Size", "Small")]),
+        ))
+        .id();
+    sim.world_mut().spawn((
+        Transform::IDENTITY,
+        Name::new("Box"),
+        ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+        ChildOf(base),
+    ));
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let mut docs = crate::instance_docs::OwnedDocs {
+        vec_scene: &mut sc,
+        vec_entities: &mut mp,
+    };
+    let variant = crate::instantiate::instantiate_master(
+        sim,
+        &r,
+        base,
+        None,
+        &mut docs,
+        crate::instantiate::ArtLink::Own,
+    )
+    .expect("instanciou a variante");
+    sim.world_mut().entity_mut(variant).insert((
+        MasterRoot,
+        Name::new("Casa Variant"),
+        values(&[("Size", "Big")]),
+    ));
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    let copy = crate::instantiate::instantiate_master(
+        sim,
+        &r,
+        base,
+        None,
+        &mut docs,
+        crate::instantiate::ArtLink::Own,
+    )
+    .expect("instanciou a copia");
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    (base, variant, copy)
+}
+
+/// ⭐⭐⭐ **O cartão sai da FAMÍLIA, e as fileiras são as propriedades declaradas.**
 #[test]
-fn an_object_that_is_no_copy_still_shows_its_properties() {
+fn the_card_comes_from_the_family_declarations() {
     let mut sim = SimWorld::new();
-    let e = spawn_named(&mut sim, "Casa {Size=Small, State=Idle}");
-    let info = super::build_properties_info(&mut sim, Some(e.to_bits())).expect("o cartao");
-    let got: Vec<(&str, &str)> = info
+    let (_base, _variant, copy) = family(&mut sim);
+    let info = super::build_properties_info(&mut sim, Some(copy.to_bits())).expect("o cartao");
+    let got: Vec<(&str, Vec<&str>)> = info
         .rows
         .iter()
-        .map(|r| (r.name.as_str(), r.options[0].label.as_str()))
+        .map(|r| {
+            (
+                r.name.as_str(),
+                r.options.iter().map(|o| o.label.as_str()).collect(),
+            )
+        })
         .collect();
-    assert_eq!(got, vec![("Size", "Small"), ("State", "Idle")]);
-    // ⛔ Sem cópia não há raiz — e é isso que impede um `root_bits` inventado de viajar no
-    // barramento se alguém alcançar o braço da troca.
-    assert_eq!(info.root_bits, 0);
+    assert_eq!(got, vec![("Size", vec!["Small", "Big"])]);
+    // ⚠️ E a raiz viaja — é dela que a troca de versão precisa.
+    assert_ne!(info.root_bits, 0);
 }
 
-/// ⛔ **Reescrever as chaves REESCREVE o cartão** — é literalmente o report.
+/// ⛔⛔⛔ **RENOMEAR SEJA O QUE FOR NÃO MEXE NO CARTÃO** — a ordem do Enio de 2026-09-01.
 ///
-/// ⚠️ **Duas leituras do MESMO construtor**, e não uma comparação com uma constante: um cartão
-/// congelado num cache passaria num gate que só olhasse a 1.ª leitura.
+/// Até 31/08 este ficheiro tinha o gate CONTRÁRIO (`rewriting_the_braces_rewrites_the_card`), e a
+/// lei que ele defendia custou seis reports com foto: pôr a declaração no `Name` faz de renomear
+/// uma operação estrutural.
+///
+/// ⚠️ **A fixtura carrega o fenómeno**: os nomes novos têm chaves lá dentro, que é o que a lei
+/// velha lia. *Com nomes limpos este gate ficaria verde sem provar nada.*
+///
+/// (Mutação: voltar a derivar a fileira do `Name` ⇒ RED.)
 #[test]
-fn rewriting_the_braces_rewrites_the_card() {
+fn renaming_anything_never_changes_the_card() {
     let mut sim = SimWorld::new();
-    let e = spawn_named(&mut sim, "Casa {Size=Small}");
-    let before = super::build_properties_info(&mut sim, Some(e.to_bits())).expect("antes");
-    sim.world_mut()
-        .entity_mut(e)
-        .insert(Name::new("Casa {Size=Big, State=Run}"));
-    let after = super::build_properties_info(&mut sim, Some(e.to_bits())).expect("depois");
-    assert_eq!(before.rows.len(), 1);
-    assert_eq!(after.rows.len(), 2);
-    assert_eq!(after.rows[0].options[0].label, "Big");
+    let (base, variant, copy) = family(&mut sim);
+    let before = super::build_properties_info(&mut sim, Some(copy.to_bits())).expect("antes");
+    for (e, n) in [
+        (base, "Outra {Size=Zzz}"),
+        (variant, "Mais outra {Size=Nada, State=Nada}"),
+        (copy, "Bob {Size=Big}"),
+    ] {
+        sim.world_mut().entity_mut(e).insert(Name::new(n));
+    }
+    let after = super::build_properties_info(&mut sim, Some(copy.to_bits())).expect("depois");
+    assert_eq!(before.rows, after.rows, "renomear mexeu numa fileira");
 }
 
-/// ⛔ **Um nome sem chaves e sem família não pinta cartão** — a lei da F3.
+/// ⛔ **Um objecto que não é cópia de nada não pinta cartão** — uma propriedade é do COMPONENTE.
+///
+/// ⚠️ Até 31/08 o gate era o oposto: um objecto solto com chaves no nome tinha cartão. Aquele
+/// desenho morreu com a gramática — sem família não há segunda versão, logo não há o que escolher.
+#[test]
+fn a_lone_object_paints_no_card() {
+    let mut sim = SimWorld::new();
+    let e = spawn_named(&mut sim, "Casa {Size=Small, State=Idle}");
+    assert!(super::build_properties_info(&mut sim, Some(e.to_bits())).is_none());
+}
+
+/// ⛔ **Um nome comum e sem família também não pinta** — a lei da F3.
 #[test]
 fn a_plain_name_paints_no_card() {
     let mut sim = SimWorld::new();
@@ -63,121 +144,37 @@ fn a_plain_name_paints_no_card() {
     assert!(super::build_properties_info(&mut sim, Some(e.to_bits())).is_none());
 }
 
-/// ⭐⭐⭐ **A DECLARAÇÃO é do MESTRE, não do exemplar.**
+/// ⭐⭐⭐ **A declaração é do MESTRE, não do exemplar** — renomear a cópia não lhe tira as
+/// propriedades do componente dela.
 ///
-/// Uma propriedade é do componente. Se o artista renomear a cópia para `Bob`, ela continua a ser a
-/// `Casa {Size=Small}` — e ler o nome próprio faria as propriedades **desaparecerem** ao renomear.
-///
-/// **Mutação que deve sangrar:** ler sempre o `Name` da entidade selecionada.
+/// **Mutação que deve sangrar:** ler a declaração da entidade selecionada.
 #[test]
 fn the_declaration_is_read_from_the_master_not_from_the_copy() {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
-    let master = sim
-        .world_mut()
-        .spawn((
-            Transform::IDENTITY,
-            Name::new("Casa {Size=Small, State=Idle}"),
-            MasterRoot,
-        ))
-        .id();
-    sim.world_mut().spawn((
-        Transform::IDENTITY,
-        Name::new("Box"),
-        ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
-        ChildOf(master),
-    ));
-    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    ph2d_ecs::assign_master_pieces(sim.world_mut());
-    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
-    let copy = crate::instantiate::instantiate_master(
-        &mut sim,
-        &r,
-        master,
-        None,
-        &mut crate::instance_docs::OwnedDocs {
-            vec_scene: &mut sc,
-            vec_entities: &mut mp,
-        },
-        crate::instantiate::ArtLink::Own,
-    )
-    .expect("instanciou");
+    let (_base, _variant, copy) = family(&mut sim);
     sim.world_mut().entity_mut(copy).insert(Name::new("Bob"));
     let info = super::build_properties_info(&mut sim, Some(copy.to_bits())).expect("o cartao");
     let got: Vec<&str> = info.rows.iter().map(|r| r.name.as_str()).collect();
     assert_eq!(
         got,
-        vec!["Size", "State"],
-        "uma cópia renomeada perdeu as propriedades do componente dela"
+        vec!["Size"],
+        "uma copia renomeada perdeu as propriedades do componente dela"
     );
-    // ⚠️ E a raiz viaja — é dela que a troca de variante precisa quando houver para onde ir.
-    assert_ne!(info.root_bits, 0);
 }
 
-/// ⭐⭐⭐ **O título nomeia o objecto SELECIONADO, como a Hierarquia o mostra.**
+/// ⭐⭐⭐ **O título nomeia o objecto SELECIONADO, e VERBATIM** (Enio, 2026-08-31 + 2026-09-01).
 ///
-/// # ⚠️ Este gate mudou de lado, e a decisão é do dono
-///
-/// A versão anterior afirmava o CONTRÁRIO — que o título nomeia o **componente**, a fonte das
-/// propriedades — para explicar por que o cartão diz `Small` sobre uma cópia que o artista
-/// renomeou para `Big`. Enio (2026-08-31): *«Properties of "Nome do objeto na Hierarquia"»*.
-///
-/// ⛔ **Um gate que sobrevive a uma decisão revertida transforma-a em regressão silenciosa** — ele
-/// ficaria vermelho sobre o produto CERTO, e a reacção seguinte seria desfazer o que o dono pediu.
-/// *Quando a decisão vira, o gate vira com ela — e diz que virou.*
-///
-/// ⚠️ E o nome é o **curto**, o mesmo que a linha da Hierarquia mostra: um título que trouxesse as
-/// chaves seria a frase comprida que o report anterior já tinha recusado.
+/// ⚠️ Ele já cortou as chaves, porque elas eram mecanismo e faziam a frase estourar. Hoje não há o
+/// que cortar — e comer pedaços de um nome que o artista escreveu seria o app a corrigi-lo.
 ///
 /// (Mutação: `source_name` fixo em `None` ⇒ RED.)
 #[test]
-fn the_card_title_names_the_selected_object_as_the_hierarchy_shows_it() {
+fn the_card_title_names_the_selected_object_verbatim() {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
-    let master = sim
-        .world_mut()
-        .spawn((
-            Transform::IDENTITY,
-            Name::new("Canvas {Size=Small}"),
-            MasterRoot,
-        ))
-        .id();
-    sim.world_mut().spawn((
-        Transform::IDENTITY,
-        Name::new("Box"),
-        ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
-        ChildOf(master),
-    ));
-    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    ph2d_ecs::assign_master_pieces(sim.world_mut());
-    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
-    let copy = crate::instantiate::instantiate_master(
-        &mut sim,
-        &r,
-        master,
-        None,
-        &mut crate::instance_docs::OwnedDocs {
-            vec_scene: &mut sc,
-            vec_entities: &mut mp,
-        },
-        crate::instantiate::ArtLink::Own,
-    )
-    .expect("instanciou");
+    let (_base, _variant, copy) = family(&mut sim);
     sim.world_mut()
         .entity_mut(copy)
         .insert(Name::new("Canvas {Size=Big} (2)"));
     let info = super::build_properties_info(&mut sim, Some(copy.to_bits())).expect("o cartao");
-    assert_eq!(
-        info.source_name.as_deref(),
-        Some("Canvas (2)"),
-        "o titulo nao nomeia o objecto seleccionado como a Hierarquia o mostra"
-    );
-    // ⛔ E sem as chaves — o nome CURTO, nunca o cru.
-    assert!(!info.source_name.unwrap().contains('{'));
-
-    // ⚠️ **E num objecto SOLTO ele também nomeia** — o cartão é sempre sobre quem está
-    // seleccionado, e não há aqui um caso «sem nome».
-    let lone = spawn_named(&mut sim, "Muro {Size=Small}");
-    let lone_info = super::build_properties_info(&mut sim, Some(lone.to_bits())).expect("cartao");
-    assert_eq!(lone_info.source_name.as_deref(), Some("Muro"));
+    assert_eq!(info.source_name.as_deref(), Some("Canvas {Size=Big} (2)"));
 }

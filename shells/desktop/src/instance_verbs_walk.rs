@@ -9,7 +9,7 @@
 //! do FIM, onde ninguém escreve. O `drain` cresce por acrescento de braço **no meio**, e movê-lo
 //! poria toda linha paralela que acrescenta um verbo em conflito textual com esta.
 
-use ph2d_ecs::{Children, Entity, InstanceOf, MasterRoot, Name, SimWorld, StableId};
+use ph2d_ecs::{Children, Entity, InstanceOf, MasterRoot, SimWorld, StableId};
 
 /// `StableId → entidade`, do mundo inteiro.
 pub(crate) fn stable_index(sim: &mut SimWorld) -> std::collections::BTreeMap<u64, Entity> {
@@ -78,15 +78,6 @@ pub(crate) fn subtree(sim: &SimWorld, root: Entity) -> Vec<Entity> {
         }
     }
     out
-}
-
-/// Os `Name` de todas as receitas vivas — o que a [`variant_name`] precisa para não repetir uma
-/// combinação que já existe.
-pub(crate) fn master_names(sim: &mut SimWorld) -> Vec<String> {
-    let mut q = sim
-        .world_mut()
-        .query_filtered::<&Name, bevy_ecs::prelude::With<MasterRoot>>();
-    q.iter(sim.world()).map(|n| n.0.clone()).collect()
 }
 
 /// ⭐⭐ **A RECEITA que esta linha representa** — ela própria, se for uma; a de que é cópia, se for

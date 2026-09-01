@@ -6,7 +6,7 @@
 //! outra.
 //!
 //! ⚠️ **A ordem é load-bearing:** o `Name` é escrito ANTES de as chaves valerem, porque a lei
-//! ([`crate::instance_declared_value`]) lê o **mundo** e não o texto do campo.
+//! ⚠️ Desde 2026-09-01 este ficheiro **só renomeia**: a declaração de variação saiu do `Name`.
 
 use crate::HeroLive;
 use ph2d_ecs::{Name, SimWorld};
@@ -19,7 +19,6 @@ pub(super) fn drain(
     hero: &mut HeroScreen,
     hero_live: &Option<HeroLive>,
     sim: &mut SimWorld,
-    echo: &mut crate::instance_sync::MasterEcho,
     toasts: &mut ToastQueue,
 ) -> bool {
     let mut title_dirty = false;
@@ -73,12 +72,9 @@ pub(super) fn drain(
             }
             title_dirty = true;
         }
-        // ⭐ **E as CHAVES do nome valem** — lei em [`crate::instance_declared_value`]; aqui
-        // DEPOIS de o `Name` estar escrito, porque ela lê o mundo e não o campo.
-        crate::instance_declared_value::speak(
-            crate::instance_declared_value::apply(sim, echo, entity),
-            toasts,
-        );
+        // ⛔ **Renomear é INERTE desde 2026-09-01** (Enio: *«Vamos tirar do nome o mecanismo de
+        // criação de variações»*). Aqui havia a lei que lia as chaves do nome e trocava o elo —
+        // pôr uma operação estrutural no caminho de renomear foi o que custou seis reports.
         // Clear the rename TextInput buffer for next session.
         if let Some(ph2d_editor::interaction::InteractiveState::TextInput {
             text,

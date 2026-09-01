@@ -412,19 +412,20 @@ fn the_card_calls_a_variant_a_variant_and_a_copy_a_copy() {
     );
 }
 
-/// ⛔⛔ **A proveniência lê o nome CURTO** — report do Enio com foto, 2026-08-31: *«Card com Labels
-/// emboladas»*.
+/// ⛔⛔ **A proveniência mostra o nome TAL COMO ELE É** (Enio, 2026-09-01).
 ///
-/// `Instance of "Canvas{Size=Small} Variant"` quebrava em duas linhas num cartão cuja altura era
-/// contada em linhas de texto ⇒ o resumo era pintado **por cima da segunda**. A frase passa a
-/// mostrar o que a Hierarquia mostra, e as propriedades ficam no cartão que existe para elas.
+/// Até 31/08 ela **cortava** as chaves (`Canvas {Size=Small} Variant` → `Canvas Variant`), porque
+/// a declaração vivia no nome e a frase inteira quebrava em duas linhas num cartão cuja altura é
+/// contada em linhas de texto. Hoje a declaração é [`ph2d_ecs::VariantValues`] e ⇒ **não há nada a
+/// cortar**: um nome comprido é agora escolha do artista, e comer-lhe pedaços seria o app a
+/// corrigir o que ele escreveu.
 ///
-/// ⚠️ **O oráculo é a AUSÊNCIA das chaves na frase**, e não o comprimento: um corte cego que
-/// truncasse a `N` caracteres também encurtaria, e mentiria sobre o nome.
+/// ⚠️ **A fixtura carrega chaves de propósito** — é o que a lei velha comia. Com um nome limpo
+/// este gate ficaria verde sem provar nada.
 ///
-/// (Mutação: `provenance` voltar a usar `master_name` cru ⇒ RED.)
+/// (Mutação: reintroduzir um corte por `{` ⇒ RED.)
 #[test]
-fn the_provenance_line_reads_the_short_name() {
+fn the_provenance_line_shows_the_name_verbatim() {
     let info = ph2d_editor::screens::hero::InspectorInstanceInfo {
         master_name: "Canvas {Size=Small} Variant".into(),
         is_variant: false,
@@ -432,13 +433,6 @@ fn the_provenance_line_reads_the_short_name() {
     };
     assert_eq!(
         info.provenance(),
-        "Instance of \u{201c}Canvas Variant\u{201d}"
+        "Instance of \u{201c}Canvas {Size=Small} Variant\u{201d}"
     );
-    // ⚠️ E um nome SEM chaves atravessa intacto — a cura não pode comer nome nenhum.
-    let plain = ph2d_editor::screens::hero::InspectorInstanceInfo {
-        master_name: "Badge".into(),
-        is_variant: true,
-        ..Default::default()
-    };
-    assert_eq!(plain.provenance(), "Variant of \u{201c}Badge\u{201d}");
 }

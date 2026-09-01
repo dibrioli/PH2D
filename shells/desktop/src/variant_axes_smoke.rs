@@ -32,12 +32,10 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
         28 => report_axes(app, "depois do chip"),
         32 => click_axis_chip(app, 1, 1, "State -> o segundo valor"),
         36 => report_axes(app, "depois do segundo chip"),
-        // ⭐ E o caso que motivou o cartão: um objecto que não é cópia de nada.
-        40 => select_lone(app),
-        44 => report_axes(app, "no objecto SOLTO"),
-        // ⭐⭐⭐ **O gesto do report**: reescrever o que está entre chaves.
-        48 => rename_lone(app, "Casa {Size=Big, State=Run, Tag=City}"),
-        52 => report_axes(app, "depois de REESCREVER as chaves"),
+        // ⭐⭐⭐ **RENOMEAR TUDO, e nada pode mexer-se** (Enio, 2026-09-01: *«Vamos tirar do nome
+        // o mecanismo de criação de variações»*). É o inverso do que este smoke media até 31/08.
+        40 => rename_everything(app),
+        44 => report_axes(app, "depois de RENOMEAR tudo"),
         _ => {}
     }
 }
@@ -60,8 +58,17 @@ fn build(app: &mut crate::App) {
         .world_mut()
         .spawn((
             ph2d_ecs::Transform::IDENTITY,
-            ph2d_ecs::Name::new("Casa {Size=Small, State=Idle}"),
+            ph2d_ecs::Name::new("Casa"),
             ph2d_ecs::MasterRoot,
+            // ⭐⭐⭐ **A declaração é DADO desde 2026-09-01** — o nome é só um nome.
+            ph2d_ecs::VariantValues {
+                values: [
+                    ("Size".to_string(), "Small".to_string()),
+                    ("State".to_string(), "Idle".to_string()),
+                ]
+                .into_iter()
+                .collect(),
+            },
         ))
         .id();
     gfx.sim.world_mut().spawn((
@@ -81,10 +88,10 @@ fn build(app: &mut crate::App) {
         .map_or(0, |s| s.0);
 
     // As outras três versões: instanciar a base e promover a cópia a receita.
-    for name in [
-        "Casa {Size=Small, State=Run}",
-        "Casa {Size=Big, State=Idle}",
-        "Casa {Size=Big, State=Run}",
+    for (name, size, state) in [
+        ("Casa Run", "Small", "Run"),
+        ("Casa Big", "Big", "Idle"),
+        ("Casa Big Run", "Big", "Run"),
     ] {
         let mut docs = crate::instance_docs::OwnedDocs {
             vec_scene: &mut gfx.vec_scene,
@@ -101,10 +108,18 @@ fn build(app: &mut crate::App) {
             eprintln!("[axes] f=3 ⚠️ não consegui instanciar «{name}»");
             continue;
         };
-        gfx.sim
-            .world_mut()
-            .entity_mut(copy)
-            .insert((ph2d_ecs::MasterRoot, ph2d_ecs::Name::new(name)));
+        gfx.sim.world_mut().entity_mut(copy).insert((
+            ph2d_ecs::MasterRoot,
+            ph2d_ecs::Name::new(name),
+            ph2d_ecs::VariantValues {
+                values: [
+                    ("Size".to_string(), size.to_string()),
+                    ("State".to_string(), state.to_string()),
+                ]
+                .into_iter()
+                .collect(),
+            },
+        ));
         ph2d_ecs::assign_missing_stable_ids(gfx.sim.world_mut());
         ph2d_ecs::assign_master_pieces(gfx.sim.world_mut());
     }
@@ -129,65 +144,49 @@ fn build(app: &mut crate::App) {
     };
     COPY.with(|c| c.set(copy.to_bits()));
 
-    // ⭐ E o objecto SOLTO — sem `MasterRoot`, sem `InstanceOf`, só o nome com chaves.
-    let lone = gfx
-        .sim
-        .world_mut()
-        .spawn((
-            ph2d_ecs::Transform::from_translation(ph2d_core::Vec2::new(3.0, 0.0)),
-            ph2d_ecs::Name::new("Casa {Size=Small, State=Idle}"),
-            ph2d_render::Sprite::atlas(0, [64.0, 64.0], [1.0; 4]),
-        ))
-        .id();
-    ph2d_ecs::assign_missing_stable_ids(gfx.sim.world_mut());
-    ph2d_ecs::assign_missing_root_order(gfx.sim.world_mut());
-    LONE.with(|c| c.set(lone.to_bits()));
     if let Some(hero) = gfx.hero_screen.as_mut() {
         hero.gizmo.clear_all_selection();
         hero.gizmo.add_to_selection(copy.to_bits());
     }
-    eprintln!("[axes] f=3 cena — base StableId={base_id}, 4 versões «Casa {{…}}», cópia escolhida");
-    // ⭐ O que a HIERARQUIA mostra — a metade que os dois reports do Enio nomeiam. ⚠️ Ela lê o
-    // rótulo pela MESMA porta que o pintor da linha usa; uma conta paralela aqui mediria esta
-    // função em vez do produto.
-    for full in [
-        "Casa {Size=Small, State=Idle}",
-        "Casa {Size=Small, State=Idle} (1)",
-        "Casa",
-    ] {
-        let shown = ph2d_editor::screens::hero::variant_axes::row_label(full);
-        eprintln!("[axes] f=3 a hierarquia mostra «{shown}»   (nome: «{full}»)");
-    }
+    eprintln!(
+        "[axes] f=3 cena — base StableId={base_id}, 4 versões declaradas por DADO, cópia escolhida"
+    );
 }
 
-/// ⭐⭐ **Escolhe o objecto SOLTO** — ele declara `Size`/`State` no nome e não pertence a família
-/// nenhuma, que é exactamente o estado em que o Inspector não lia as chaves de lado nenhum.
-fn select_lone(app: &mut crate::App) {
-    let bits = LONE.with(std::cell::Cell::get);
-    let Some(gfx) = app.gfx.as_mut() else {
-        return;
-    };
-    if let Some(hero) = gfx.hero_screen.as_mut() {
-        hero.gizmo.clear_all_selection();
-        hero.gizmo.add_to_selection(bits);
-    }
-    eprintln!("[axes] f=40 escolhido o objecto SOLTO «Casa {{Size=Small, State=Idle}}»");
-}
-
-/// ⭐⭐⭐ **Reescreve o nome do objecto solto** — o gesto literal do report do Enio de 2026-08-31.
+/// ⭐⭐⭐ **Renomeia TODA a família e a cópia** — incluindo com chaves lá dentro.
 ///
-/// ⚠️ **Ele escreve no `Name` do ECS**, que é onde a Hierarquia e o Inspector gravam: medir isto
-/// noutro sítio mediria esta função em vez do produto.
-fn rename_lone(app: &mut crate::App, to: &str) {
-    let bits = LONE.with(std::cell::Cell::get);
+/// ⚠️ **É o inverso do que este smoke media até 2026-08-31.** Ali, reescrever as chaves TINHA de
+/// mudar o cartão; aqui, renomear seja o que for **não pode mexer numa fileira** — a declaração é
+/// [`ph2d_ecs::VariantValues`], e o nome voltou a ser um nome. *Uma fixtura com nomes limpos não
+/// provaria isto: é preciso que os nomes novos tenham chaves.*
+fn rename_everything(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
+    let masters: Vec<u64> = {
+        let mut q = gfx
+            .sim
+            .world_mut()
+            .query_filtered::<ph2d_ecs::Entity, bevy_ecs::prelude::With<ph2d_ecs::MasterRoot>>();
+        q.iter(gfx.sim.world())
+            .map(ph2d_ecs::Entity::to_bits)
+            .collect()
+    };
+    for (n, bits) in masters.iter().enumerate() {
+        gfx.sim
+            .world_mut()
+            .entity_mut(ph2d_ecs::Entity::from_bits(*bits))
+            .insert(ph2d_ecs::Name::new(format!("Renomeada {n} {{Size=Zzz}}")));
+    }
+    let copy = COPY.with(std::cell::Cell::get);
     gfx.sim
         .world_mut()
-        .entity_mut(ph2d_ecs::Entity::from_bits(bits))
-        .insert(ph2d_ecs::Name::new(to));
-    eprintln!("[axes] f=48 o objecto solto passou a chamar-se «{to}»");
+        .entity_mut(ph2d_ecs::Entity::from_bits(copy))
+        .insert(ph2d_ecs::Name::new("Bob {Size=Nada, State=Nada}"));
+    eprintln!(
+        "[axes] f=40 renomeei as {} receitas e a cópia, TODAS com chaves no nome",
+        masters.len()
+    );
 }
 
 /// O que o cartão OFERECE agora — lido do modelo que ele pinta.

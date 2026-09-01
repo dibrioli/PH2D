@@ -3473,7 +3473,6 @@ impl crate::App {
             // ⭐ O pedido de renomear o VALOR de uma propriedade — `(receita, chave, valor)`.
             let mut rename_variant_value: Option<(u64, String, String, u64)> = None;
             // ⭐ A entidade cujo campo de nome fechou neste quadro.
-            let mut name_committed: Option<u64> = None;
             let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
             // §12 joints (W3). Kept out of `inspector_commits::dispatch`: that
             // signature is already the length its own doc-comment warns about,
@@ -4707,11 +4706,6 @@ impl crate::App {
                         root_bits,
                     } => {
                         rename_variant_value.get_or_insert((master, key, value, root_bits));
-                    }
-                    // ⭐⭐⭐ **O campo do nome fechou** — as chaves que ele declara passam a valer.
-                    // Ver `crate::instance_declared_value` para a lei e a decisão do Enio.
-                    EditorAction::InspectorNameCommitted { entity_bits } => {
-                        name_committed.get_or_insert(entity_bits);
                     }
 
                     // §11 Physics Body. Fans out over a BulkSelect like its
@@ -10818,107 +10812,38 @@ impl crate::App {
             // olhar — e ele tentou pelo nome da cópia quatro vezes, com o modelo a ignorá-lo
             // correctamente as quatro.
             //
-            // ⚠️ **A lei da reescrita vive no `variant_axes::with_value`**, não aqui: o que muda é
-            // UM valor dentro das chaves, e o resto do nome (o comum, o sufixo de cópia) fica
-            // intacto. Um `format!` aqui seria a segunda resposta a *«como se escreve uma
-            // combinação»*.
+            // ⭐⭐⭐ **RENOMEAR O VALOR de uma versão** — o campo que o clique no chip aceso abre.
             //
-            // ⛔ **Recusa em voz alta.** Um valor vazio, ou com `=`/`{`/`}`/`,` dentro, partiria a
-            // gramática — e um campo que come o texto em silêncio é o defeito que este gesto
-            // existe para curar.
-            // ⭐⭐⭐ **AS CHAVES DO NOME VALEM** (decisão do Enio, 2026-08-31: *«tem que
-            // funcionar»*). ⚠️ **Depois do dreno**, como a troca de variante e pela mesma razão: a
-            // lei precisa do **eco** para o esquecer se acabar numa troca.
-            // ⭐⭐⭐ **O ELO SEGUE AS CHAVES na MUDANÇA de seleção** (report do Enio: *«o objeto
-            // deve ler o que está nas Chaves»* — e a auditoria multiagêntica de 2026-08-31, que
-            // mediu por que «todo quadro» era errado; ver o doc de `App::followed_selection`).
-            //
-            // ⚠️ **`follow`, e não `apply`:** este caminho não é um commit — só pode TROCAR.
-            if hero.gizmo.selection != self.followed_selection {
-                self.followed_selection = hero.gizmo.selection;
-                if let Some(bits) = hero.gizmo.selection {
-                    let _ = crate::instance_declared_value::follow(
-                        sim,
-                        &mut self.instance_echo,
-                        ph2d_ecs::Entity::from_bits(bits),
-                    );
-                }
-            }
-            if let Some(bits) = name_committed {
-                crate::instance_declared_value::speak(
-                    crate::instance_declared_value::apply(
-                        sim,
-                        &mut self.instance_echo,
-                        ph2d_ecs::Entity::from_bits(bits),
-                    ),
-                    toasts,
-                );
-            }
+            // ⚠️ **A TROCA vence a ESCRITA** quando o valor digitado já existe na família:
+            // escrever por cima criaria DUAS receitas a declarar a mesma combinação, a fileira
+            // colapsaria para um valor só e o cartão desceria ao modo plano. A lei mora numa
+            // função ([`crate::variant_save::rename_value`]) e é ela que escolhe — ⛔ não este
+            // dreno, senão a escolha ficava inalcançável de um teste.
             if let Some((master, key, value, root_bits)) = rename_variant_value {
-                let target = crate::instance_verbs_walk::entity_for_stable_id(sim, master)
-                    .map(ph2d_ecs::Entity::from_bits);
-                let current =
-                    target.and_then(|e| sim.world().get::<ph2d_ecs::Name>(e).map(|n| n.0.clone()));
-                match (target, current) {
-                    (Some(e), Some(name)) => {
-                        match ph2d_editor::screens::hero::variant_axes::with_value(
-                            &name, &key, &value,
-                        ) {
-                            // ⭐⭐⭐ **A TROCA vence a AUTORIA** quando o valor digitado já existe
-                            // na família (auditoria de 2026-08-31, achado 5): renomear a receita
-                            // por cima criaria DUAS receitas com a mesma combinação — o eixo cai,
-                            // o cartão desce ao modo plano, e é o colapso que a wave inteira
-                            // existe para curar. É a MESMA preferência que a porta do nome
-                            // (`apply`) já tinha; as duas portas passam a dizer uma lei só.
-                            Some(next)
-                                if root_bits != 0
-                                    && crate::instance_declared_value::family_declares(
-                                        sim, master, &next,
-                                    )
-                                    .is_some() =>
-                            {
-                                let sibling = crate::instance_declared_value::family_declares(
-                                    sim, master, &next,
-                                )
-                                .expect("acabou de responder Some");
-                                let root = ph2d_ecs::Entity::from_bits(root_bits);
-                                if crate::instance_variant::swap(
-                                    sim,
-                                    &mut self.instance_echo,
-                                    root,
-                                    sibling,
-                                )
-                                .is_ok()
-                                {
-                                    crate::instance_declared_value::mirror_onto_copy(sim, root);
-                                    toasts.push(Toast::success("Switched to that version"));
-                                    self.title_dirty = true;
-                                }
-                            }
-                            Some(next) if next != name => {
-                                sim.world_mut()
-                                    .entity_mut(e)
-                                    .insert(ph2d_ecs::Name::new(next));
-                                // ⭐⭐ **E as cópias que a seguem passam a dizê-lo** — senão a
-                                // etiqueta delas apontaria para um valor que já não existe, e o
-                                // `follow` não o pode curar (não há a quem trocar).
-                                crate::instance_declared_value::mirror_onto_copies_of(sim, master);
-                                toasts.push(Toast::success(format!("{key} \u{2192} {value}")));
-                                self.title_dirty = true;
-                            }
-                            // ⚠️ Igual ao que já lá estava: o artista carregou, escreveu o mesmo e
-                            // saiu. Nada a dizer, e nada a gravar.
-                            Some(_) => {}
-                            None => {
-                                toasts.push(Toast::warning(
-                                    "A property value cannot be empty or contain = { } ,",
-                                ));
-                            }
+                match crate::variant_save::rename_value(sim, master, &key, &value) {
+                    crate::variant_save::Renamed::Written => {
+                        toasts.push(Toast::success(format!("{key} \u{2192} {value}")));
+                        self.title_dirty = true;
+                    }
+                    crate::variant_save::Renamed::Switch(sibling) if root_bits != 0 => {
+                        if crate::instance_variant::swap(
+                            sim,
+                            &mut self.instance_echo,
+                            ph2d_ecs::Entity::from_bits(root_bits),
+                            sibling,
+                        )
+                        .is_ok()
+                        {
+                            toasts.push(Toast::success("Switched to that version"));
+                            self.title_dirty = true;
                         }
                     }
-                    _ => {
-                        toasts.push(Toast::warning("That component is gone"));
+                    // ⚠️ Sem cópia não há a quem trocar — e o artista escreveu um valor que já
+                    // existe, então dizer «feito» seria mentir.
+                    crate::variant_save::Renamed::Switch(_) => {
+                        toasts.push(Toast::warning("That version already exists"));
                     }
+                    crate::variant_save::Renamed::Nothing => {}
                 }
             }
             if let Some((root_bits, master)) = swap_variant {
@@ -10929,13 +10854,6 @@ impl crate::App {
                     master,
                 ) {
                     Ok(r) => {
-                        // ⭐⭐⭐ **E as CHAVES da cópia passam a dizer o que ela agora É** — sem
-                        // isto o `follow` veria o nome antigo no quadro seguinte e trocaria de
-                        // volta, todo quadro. Ver `crate::instance_declared_value`.
-                        crate::instance_declared_value::mirror_onto_copy(
-                            sim,
-                            ph2d_ecs::Entity::from_bits(root_bits),
-                        );
                         toasts.push(Toast::success(if r.dropped > 0 {
                             format!(
                                 "Switched variant \u{2014} {} override(s) kept, {} piece(s) unused",

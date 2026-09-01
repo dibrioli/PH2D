@@ -1371,3 +1371,123 @@ campo em todo o lado e sem a instabilidade que a folga global traz. É wave com 
 
 ⛔ **Não voltar a subir o `ADAPT_RATIO` sem re-medir as amputações na peça RECENTRADA** — é o
 que foi feito e revertido em 31/08.
+
+---
+
+# Parte X — a AMPUTAÇÃO tem causa, e a cerca que a cura estava DESLIGADA (2026-09-01)
+
+> Ordem do dono, verbatim: *«não está assim. Estava melhor. A ponta tem que ficar boa. Auditoria
+> com agentes»*. As duas lentes correram; o que se segue é o que elas acharam, o que a medição
+> confirmou e o que a medição **refutou**.
+
+## §74 — A reprodução, e ela é EXACTA
+
+A saída que ele exportou (`_remesh_sculpt.obj`, `Detail 0,75`) trazida ao referencial da entrada
+dele (escala `1,7178`, dos três eixos a `±0,3 %`) e medida pela régua da ponta **sobre TODOS os
+máximos locais de raio**:
+
+| | ápices medidos | acima da barra | a pior |
+|---|---|---|---|
+| **a saída DELE** | `42` | **`1`** | ponta `15909` · `p50 1,43` · `p90 3,00` |
+| **a nossa, `Detail 0,75`** | `42` | **`1`** | ponta `15909` · `p50 2,39` · `p90 2,82` |
+| a nossa, `Detail 1,00` | `42` | `0` | ponta `15909` · `p50 0,47` |
+
+⭐⭐⭐ **É a MESMA ponta nas duas saídas, e é a única partida das 42.** *«Amputa 1 ponta»* é
+literal, e a peça não tem nenhum outro defeito de ponta em nenhuma das duas densidades.
+
+## §75 — O que a ponta `15909` tem de diferente: ela é uma AGULHA
+
+Medindo o raio da secção a `d` quads **de caminho sobre a superfície** a partir do ápice
+(⛔ uma fatia axial atravessa a peça e apanha o outro lado — a 1.ª régua deu `25,60` numa ponta de
+raio `1,32`, que é o corpo):
+
+| ponta | raio | `1q` | `2q` | `3q` | `4q` | `8q` | |
+|---|---|---|---|---|---|---|---|
+| `9663` | `3,096` | `0,90` | `1,30` | `1,62` | `1,71` | `1,74` | sobrevive |
+| `1463` | `1,875` | `1,23` | `1,94` | `2,58` | `3,20` | `5,44` | sobrevive |
+| `12074` | `1,832` | `1,24` | `1,52` | `1,62` | `2,13` | `3,71` | sobrevive |
+| ⛔ **`15909`** | `1,801` | `0,78` | `1,07` | `1,19` | `1,22` | **`1,53`** | **parte** |
+| `15341` | `1,319` | `1,23` | `1,96` | `2,61` | `3,38` | `6,13` | sobrevive |
+
+⇒ A `8` quads de caminho, a agulha ainda mede `1,53` quads de raio contra `3,7`–`6,1` das que
+sobrevivem. ⚠️ **E a `Detail 1,00` o mesmo espinho tem o dobro da espessura em unidades do quad —
+e sobrevive.** *A amputação é uma função da RESOLUÇÃO relativa ao espinho, não da peça.*
+
+## §76 — ⛔⛔⛔ A causa: a cerca de viagem do acabamento estava a `f32::INFINITY`
+
+[`ph2d_quadfill::square_relax_capped`] intitula-se, no doc dela, *«a relaxação com cerca de
+viagem — **a porta do produto**»*, traz a tabela que mostra o relevo a ir de `11,9°` a `19,1°`
+sem cerca ao fim de `1 280` rondas, e **não tinha um único chamador**. O produto corria
+`finish_extracted_with(..., f32::INFINITY)` com o tecto em `EXTRACT_MAX_ROUNDS = 1 200`.
+
+⚠️ **E a aceitação do acabamento não podia apanhá-lo:** `acceptable`/`better` lêem enviesamento e
+aspecto, que é exactamente o que a relaxação sem cerca **melhora** enquanto desliza a grade ponta
+abaixo. *Uma ronda que come o espinho e endireita os quads é aceite por unanimidade.*
+
+Varredura na configuração em que o defeito **existe** (peça recentrada, `Detail 0,75`,
+`Follow Curvature 1`):
+
+| cerca (arestas) | ponta `p50` | pontas acima da barra | enviesamento `p50` | `>60°` |
+|---|---|---|---|---|
+| ⛔ `∞` (o que shipava) | **`2,39`** | `1` | `3,2°` | `2` |
+| `4` | `2,39` | `1` | `3,2°` | `2` |
+| `2` | `1,69` | `1` | `3,8°` | `2` |
+| `1` | `1,06` | `1` | `5,2°` | `4` |
+| ⭐ **`0,5`** | **`0,67`** | **`0`** | `6,3°` | `5` |
+| *(acabamento desligado)* | `0,74` | `0` | `9,4°` | `48` |
+
+⭐⭐ **A cerca é estritamente melhor que o interruptor:** cura a ponta **mais** que desligar o
+acabamento e paga **um quinto** das faces `>60°`. ⇒ *o A/B «acabamento ligado/desligado» de 31/08
+não ilibou o acabamento — ele comparou duas configurações ambas erradas.*
+
+## §77 — ⛔⛔ E a porta que ARMA as tentativas não conhecia a amputação
+
+A 4.ª chave do [`worse`] (a amputação) nasceu em 31/08 e o [`still_broken`] — a condição que arma
+a 3.ª e a 4.ª tentativas — **não foi actualizada com ela**. ⇒ na peça do dono, cuja saída é
+**topologicamente impecável** com **uma ponta comida**, o botão entregava a primeira candidata
+**sem tentar mais nada**. *É exactamente a forma do report.* Curado: `still_broken` conta
+`dev.over > 0`, e o log passa de `2` candidatas para `6`.
+
+## §78 — E a chave da amputação deitava fora a GRAVIDADE
+
+`worse` lia só `dev.over` (**quantas**), nunca `p50/p90/max` (**quão**) — os três eram calculados
+e impressos, e nada os lia. Uma candidata que come uma ponta por inteiro (`p90 3,0`, o piso do
+*«mais longe do que eu olhei»*) empatava com uma que a arranha (`p90 1,02`), e a escolha caía
+para as chaves da beleza. Curado: desempate por `p90` **depois** da contagem.
+
+## §79 — A cura, e o que ela custa
+
+A cerca entra como **5.ª tentativa**, armada pela mesma porta — o molde que a casa já usa, com a
+mesma garantia (*só vence onde é melhor*). Medido na peça do dono, um binário, determinista:
+
+| | `Detail 0,75` antes | depois | `Detail 1,00` antes | depois |
+|---|---|---|---|---|
+| pontas acima da barra | `1` de `4` | ⭐ **`0`** | `0` | `0` |
+| desvio `p50` da pior | `2,39` | ⭐ **`0,67`** | `0,47` | `0,47` |
+| suporte da pior | `−4,1 %` | `−2,7 %` | `−0,5 %` | `−0,5 %` |
+| bordo · não-manifold | `0` · `1` | `0` · `1` | `0` · `0` | `0` · `0` |
+| enviesamento `p50` | `3,2°` | `6,3°` | `4,2°` | `4,2°` |
+
+⭐ **A `Detail 1,00` a saída é byte-idêntica** — a tentativa não arma, porque não há ponta partida.
+⚠️ **A aresta não-manifold JÁ ESTAVA na candidata antiga** (verificado com
+`PH2D_EXTRACT_TRAVEL=1e30`, que reproduz `2,39` / `−4,1 %` exactamente): as duas empatam na chave
+da frente, e foi a chave da ponta que decidiu — ⛔ *a cerca não compra a ponta com um furo.*
+⚠️ O preço é o enviesamento mediano a dobrar, **dentro da barra do oráculo** (`4,8°`–`7,1°`).
+
+## §80 — ⛔ REFUTADO: o piso de `55 %` da régua não era o culpado
+
+`apices()` só mede máximos locais acima de `0,55 × raio máximo`, depois trunca em `12`. Na peça do
+dono isso é **`4` de `42`** — e o piso é uma fracção de **um extremo global** que um único espinho
+domina (`3,096` contra `1,875` do segundo). *Parecia a explicação inteira.* ⛔ **Não é:** medidas
+as `42`, as `38` invisíveis estão **todas** limpas (a pior a `p90 0,36`, melhor que duas das
+visíveis) nas duas saídas e nas duas densidades. ⇒ **o ponto cego existe e está VAZIO nesta peça**;
+fica nomeado como dívida da régua, ⛔ e não se constrói cura para um defeito medido como ausente.
+
+## §81 — Erro de método a registar
+
+Numa fase da caça pus o `CARGO_TARGET_DIR` de uma worktree de bissecção a apontar para o `target/`
+da worktree principal. As reconstruções de commits antigos passaram a substituir o binário que as
+corridas «de agora» executavam ⇒ resultados que pareciam **não-determinismo** (`17016`/`21084`
+alternando) e que cheguei a comunicar ao dono como dependência de carga da máquina. **É falso e o
+erro é meu.** Três corridas limpas depois: perfeitamente determinista. ⛔ *Uma bissecção partilha o
+`target/` com ninguém.*

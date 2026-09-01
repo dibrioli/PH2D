@@ -80,8 +80,8 @@ pub use aligned::{INTERIOR, Interior};
 pub use coverage::{COVERAGE_DEFECT, COVERAGE_SHELL, Coverage, coverage};
 pub use finish::smooth;
 pub use finish_extract::{
-    EXTRACT_MAX_ROUNDS, EXTRACT_RELIEF_PULL, EXTRACT_SETTLE, FinishReport, finish_extracted,
-    finish_extracted_with,
+    EXTRACT_MAX_ROUNDS, EXTRACT_RELIEF_PULL, EXTRACT_SETTLE, EXTRACT_TRAVEL, EXTRACT_TRAVEL_RESCUE,
+    FinishReport, finish_extracted, finish_extracted_travel, finish_extracted_with,
 };
 pub use local::{
     FaceLocal, LocalShape, QuadKind, TIP_CUT_PCT, TipSurvival, local_shape, local_shape_of,

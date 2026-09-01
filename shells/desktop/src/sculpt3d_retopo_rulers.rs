@@ -143,8 +143,33 @@ pub(super) fn worse(
     // ⛔ **Depois dos FUROS e antes da forma:** um espinho cortado ao meio é mais visível que
     // uma face com canto pior que `60°`, e menos que um buraco — *que foi a queixa mais antiga
     // dele.*
-    if a_dev.tips > 0 && b_dev.tips > 0 && a_dev.over != b_dev.over {
-        return a_dev.over > b_dev.over;
+    // ⛔⛔⛔ **E A CONTAGEM SOZINHA DEITA FORA A GRAVIDADE — corrigido em 2026-09-01.**
+    //
+    // A `over` conta **quantas** pontas passaram da barra e não diz **quão** longe. Uma
+    // candidata que come uma ponta *por inteiro* (`p90 = 3,0`, que é o piso do «mais longe do
+    // que eu olhei» de [`ph2d_quadfill::tip_deviation`]) e uma que a arranha (`p90 = 1,02`)
+    // contam **`1` as duas**: empatam aqui, e a escolha cai para as chaves da beleza — faces
+    // `>60°` e enviesamento —, que é decidir uma amputação por quão quadrados ficaram os quads.
+    //
+    // ⚠️ **A barra da `over` é a MEDIANA da ponta** (`TIP_DEVIATION_MAX`), logo meia ponta
+    // comida não a arma sequer; a gravidade é a única coluna que a vê. *Os três números já
+    // eram calculados e impressos no log — nada aqui os lia.*
+    //
+    // ⚠️ **`p90` e não `max`**: o `max` é o vértice mais afastado de uma amostra, e um único
+    // ponto da escultura que caia numa fenda entre dois quads move-o sem que nada esteja
+    // amputado. O `p90` é o mesmo extremo com a cauda de amostragem aparada, e continua a
+    // separar `3,0` de `1,02` por larga margem.
+    //
+    // ⛔ **Depois da contagem, nunca à frente:** duas pontas partidas de raspão são um defeito
+    // pior que uma partida a fundo — foi por «amputa **uma** ponta» / «amputou **2**» que o
+    // dono nomeou os dois reports, nessa ordem.
+    if a_dev.tips > 0 && b_dev.tips > 0 {
+        if a_dev.over != b_dev.over {
+            return a_dev.over > b_dev.over;
+        }
+        if (a_dev.p90 - b_dev.p90).abs() > 1.0e-3 {
+            return a_dev.p90.total_cmp(&b_dev.p90) == std::cmp::Ordering::Greater;
+        }
     }
     if a_over60 != b_over60 {
         return a_over60 > b_over60;
@@ -390,8 +415,20 @@ pub(super) fn boundary_edges(mesh: &Mesh) -> usize {
 /// botão, tem `2`. ⇒ *«uma face cruzada é inaceitável» é uma barra que a ferramenta de
 /// referência não cumpre*, e um veto teria recusado a malha que ele elogiou. ⛔ **Não volte a
 /// propô-lo sem re-medir esses três ficheiros.**
-pub(super) fn still_broken(mesh: &Mesh) -> bool {
-    open_edges(mesh) > 0 || bowties(mesh) > 0
+///
+/// ⛔⛔⛔ **E A AMPUTAÇÃO ENTRA AQUI EM 2026-09-01, porque ela era a chave da frente que esta
+/// porta NÃO consultava.** A 4.ª chave do [`worse`] nasceu em 31/08 e esta condição não foi
+/// actualizada com ela — resultado medido na peça do dono: uma saída **topologicamente
+/// impecável** (`0` furos, `0` gravatas) com **uma ponta comida** nunca armava a 3.ª nem a 4.ª
+/// tentativa. *É exactamente a forma do report* (*«amputa uma ponta»* — foto, 31/08): o botão
+/// entregava a primeira candidata sem sequer tentar outra vez.
+///
+/// ⚠️ **A promessa de segurança é a MESMA e não enfraquece:** as candidatas extra entram todas
+/// pelo mesmo [`worse`], logo só vencem onde são melhores. Armar mais vezes custa **relógio**,
+/// nunca qualidade. ⛔ E o custo é limitado por construção: uma peça sã não paga nada, porque
+/// as três condições são todas `0`.
+pub(super) fn still_broken(mesh: &Mesh, dev: ph2d_quadfill::TipDeviation) -> bool {
+    open_edges(mesh) > 0 || bowties(mesh) > 0 || dev.over > 0
 }
 
 /// ⭐⭐ **Quantas faces se AUTO-INTERSECTAM** — pela porta de [`ph2d_quadfill::local_shape`].

@@ -226,12 +226,19 @@ fn a_round_that_worsens_any_column_against_round_zero_is_refused() {
 fn the_relief_pull_is_not_inert() {
     let (quads, surface) = jittered_torus();
     let (mut blind, mut aligned) = (quads.clone(), quads);
-    super::finish_extracted_with(&mut blind, &surface, 0.0, super::EXTRACT_SETTLE);
+    super::finish_extracted_with(
+        &mut blind,
+        &surface,
+        0.0,
+        super::EXTRACT_SETTLE,
+        super::EXTRACT_TRAVEL,
+    );
     super::finish_extracted_with(
         &mut aligned,
         &surface,
         super::EXTRACT_RELIEF_PULL,
         super::EXTRACT_SETTLE,
+        super::EXTRACT_TRAVEL,
     );
     let moved = blind
         .positions()
@@ -283,7 +290,13 @@ fn the_blind_law_only_gets_its_turn_when_the_aligned_one_did_not_move() {
 #[test]
 fn the_patience_gives_up_instead_of_spending_the_whole_net() {
     let (mut quads, surface) = spiked();
-    let rep = super::finish_extracted_with(&mut quads, &surface, super::EXTRACT_RELIEF_PULL, 0.0);
+    let rep = super::finish_extracted_with(
+        &mut quads,
+        &surface,
+        super::EXTRACT_RELIEF_PULL,
+        0.0,
+        super::EXTRACT_TRAVEL,
+    );
     assert!(
         rep.rounds < EXTRACT_MAX_ROUNDS,
         "sem assentamento a corrida gastou a rede inteira ({} rondas) -- a paciencia nao \

@@ -457,20 +457,25 @@ fn o_alisamento_converge_mesmo_quando_o_pedido_alterna() {
 fn o_campo_adaptativo_recua_quando_abre_a_malha() {
     let src = include_str!("sculpt3d_history_retopo_extract.rs");
     assert!(
-        src.contains("if adaptive > 0.0") && src.contains("still_broken(&out)"),
+        src.contains("if adaptive > 0.0") && src.contains("still_broken(&out, dev)"),
         "⛔ a recaida do campo adaptativo desapareceu: sem ela o `Follow Curvature` volta a \
          poder abrir furos que o caminho de omissao nao tem"
     );
     let (_, recaida) = src
         .split_once("let uniforme = if adaptive > 0.0")
         .expect("a recaida tem de existir e chamar-se assim");
-    let recaida = &recaida[..recaida.len().min(1200)];
+    // ⚠️ **A janela subiu de `1200` para `1600` em 2026-09-01, e não é afrouxar:** as quatro
+    // chamadas de `guarded` desta recaída ganharam o argumento da **cerca de viagem**
+    // (`ph2d_quadfill::EXTRACT_TRAVEL`), o que alonga o bloco em ~`160` bytes sem lhe mudar a
+    // forma. ⛔ A janela tem de conter as DUAS corridas dos DOIS ramos — se ela as cortasse, as
+    // contagens abaixo liam `1` e `1` e o gate reprovava sobre código correcto.
+    let recaida = &recaida[..recaida.len().min(1600)];
     // ⚠️ **CONTAGEM e não `contains`** — a 1.ª versão deste gate perguntava se as duas
     // candidatas *apareciam*, e a mutação que apagava metade da corrida **sobreviveu**:
     // o ramo SERIAL (`PH2D_RETOPO_SERIAL=1`) tem as mesmas duas linhas, então a string
     // continuava lá. *Um `contains` sobre um fonte com dois ramos mede o ramo que sobrou.*
     let alinhadas = recaida.matches("ALIGN_WEIGHT").count();
-    let suaves = recaida.matches("guarded(0.0, false, 0.0)").count();
+    let suaves = recaida.matches("guarded(0.0, false, 0.0,").count();
     assert!(
         alinhadas >= 2 && suaves >= 2,
         "⛔ a recaida tem de correr a CORRIDA INTEIRA (a alinhada E a suave) nos DOIS ramos \

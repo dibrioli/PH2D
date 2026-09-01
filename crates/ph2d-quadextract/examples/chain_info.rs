@@ -1114,7 +1114,13 @@ entrada fraccionarios · pior |coef| {:.3}",
                     let clock = std::time::Instant::now();
                     let mut m = unfinished.clone();
                     let rep = if settle > 0.0 {
-                        ph2d_quadfill::finish_extracted_with(&mut m, &raw, pull, settle)
+                        ph2d_quadfill::finish_extracted_with(
+                            &mut m,
+                            &raw,
+                            pull,
+                            settle,
+                            ph2d_quadfill::EXTRACT_TRAVEL,
+                        )
                     } else {
                         ph2d_quadfill::smooth(&mut m, &raw, ph2d_quadfill::SMOOTHING_ROUNDS);
                         ph2d_quadfill::FinishReport::default()

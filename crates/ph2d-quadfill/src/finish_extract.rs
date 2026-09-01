@@ -77,6 +77,37 @@ pub const EXTRACT_SETTLE: f32 = 1.0e-3;
 /// rondas nas células do corpus, então este número **não** é o que manda.
 pub const EXTRACT_MAX_ROUNDS: usize = 1_200;
 
+/// ⭐⭐⭐ **A CERCA DE VIAGEM DESTE CAMINHO**, em unidades da aresta mediana da malha extraída.
+///
+/// ⛔⛔⛔ **Até 2026-09-01 este caminho passava `f32::INFINITY` e a cerca estava DESLIGADA no
+/// produto** — enquanto [`crate::square_relax_capped`], a porta cujo doc se intitula *«a porta
+/// do produto»*, ficava **sem um único chamador**. A tabela que justifica a cerca está escrita
+/// lá e mede exactamente a configuração que corria aqui: sem cerca, `1280` rondas levam o
+/// relevo de `11,9°` a `19,1°` — e `22,5°` é o valor de uma grade que ignora o relevo. Este
+/// laço corre até [`EXTRACT_MAX_ROUNDS`] `= 1 200`.
+///
+/// ⚠️ **E a aceitação não podia apanhá-lo:** [`acceptable`] e [`better`] lêem enviesamento e
+/// aspecto, que é precisamente o que a relaxação sem cerca **melhora** enquanto desliza a grade
+/// para fora do sítio. *Uma ronda que come a ponta e endireita os quads é aceite por unanimidade.*
+///
+/// ⚠️ **A unidade é a aresta, e isso é a lei da porta**, não uma conveniência: a taxa de
+/// convergência depende do tamanho da malha, então um tecto de rondas seria uma cerca cujo
+/// tamanho muda com a peça.
+pub const EXTRACT_TRAVEL: f32 = f32::INFINITY;
+
+/// ⭐⭐⭐ **A CERCA DA TENTATIVA DE SOCORRO** — meia aresta, e o número saiu de uma varredura.
+///
+/// ⚠️ **Ela NÃO é o valor de omissão, e isso é uma decisão medida.** Na peça do dono a
+/// `Detail 1,00` não tem ponta partida, e ali a cerca **piora** a forma sem comprar nada
+/// (enviesamento mediano `4,22° → 6,7°`); a `Detail 0,75`, onde uma ponta é comida, ela leva o
+/// desvio da ponta de `2,39` para **`0,67`** quads — abaixo da barra. ⇒ o preço só se paga onde
+/// há defeito, e quem chama arma-a **só** quando [`crate::tip_deviation`] acusa.
+///
+/// ⭐ **A varredura completa e a leitura vivem no sítio da chamada**
+/// (`sculpt3d_history_retopo_extract.rs`), ao lado da condição que a arma — *uma tabela que
+/// justifica uma escolha tem de estar onde a escolha é feita.*
+pub const EXTRACT_TRAVEL_RESCUE: f32 = 0.5;
+
 /// ⭐⭐⭐ **QUANTAS RONDAS SEM ACEITAR NADA ANTES DE DESISTIR** — ver [`give_up`].
 ///
 /// ⛔⛔ **Ela existe por uma medição, não por prudência.** Na `sculpt_hooked` **fina** o
@@ -214,9 +245,25 @@ fn median_edge(mesh: &Mesh) -> f32 {
 /// *Reprojectar sobre a remalhada somaria os dois erros* — a mesma lei que o
 /// [`crate::fill`] escreve com o defeito de 2026-08-21 ao lado.
 pub fn finish_extracted(mesh: &mut Mesh, surface: &Mesh) -> FinishReport {
+    finish_extracted_travel(mesh, surface, EXTRACT_TRAVEL)
+}
+
+/// A mesma lei com a **cerca de viagem** à vista — ver [`EXTRACT_TRAVEL`].
+///
+/// ⚠️ **Existe pela mesma razão que [`finish_extracted_with`]:** a afirmação *«a cerca protege
+/// a ponta»* é uma COMPARAÇÃO, e uma comparação precisa dos dois lados. ⛔ E a escolha é do
+/// **chamador** — uma variável de ambiente lida aqui dentro alcançaria a cadeia de bancada, os
+/// gates e o produto de uma vez.
+pub fn finish_extracted_travel(mesh: &mut Mesh, surface: &Mesh, travel: f32) -> FinishReport {
     // ── A lei ALINHADA primeiro: onde ela se mexe, o relevo fica guardado.
     let mut aligned = mesh.clone();
-    let ra = finish_extracted_with(&mut aligned, surface, EXTRACT_RELIEF_PULL, EXTRACT_SETTLE);
+    let ra = finish_extracted_with(
+        &mut aligned,
+        surface,
+        EXTRACT_RELIEF_PULL,
+        EXTRACT_SETTLE,
+        travel,
+    );
     if ra.kept > 0 {
         *mesh = aligned;
         return ra;
@@ -239,7 +286,7 @@ pub fn finish_extracted(mesh: &mut Mesh, surface: &Mesh) -> FinishReport {
     // ⚠️ E a suavização do campo de direções (`quality::HINT_SMOOTH_ROUNDS`) foi construída
     // para curar isto **e não curou** — a hipótese do ruído por face está REFUTADA.
     let mut blind = mesh.clone();
-    let rb = finish_extracted_with(&mut blind, surface, 0.0, EXTRACT_SETTLE);
+    let rb = finish_extracted_with(&mut blind, surface, 0.0, EXTRACT_SETTLE, travel);
     if use_blind(&ra, &rb) {
         *mesh = blind;
         return FinishReport { blind: true, ..rb };
@@ -274,11 +321,16 @@ pub(crate) fn use_blind(aligned: &FinishReport, blind: &FinishReport) -> bool {
 /// ronda zero à frente, e a mesma fracção deu `23` rondas em vez das `93` da tabela — *o
 /// Laplaciano pré-condiciona a malha, o movimento começa menor, e o mesmo limiar chega mais
 /// cedo.* Um limiar só se escolhe na configuração em que ele corre.
+///
+/// ⚠️ **`travel_frac` é a cerca de viagem** ([`EXTRACT_TRAVEL`]), em unidades da aresta
+/// mediana. Um valor não-finito ou `<= 0` desliga-a — que é o que este caminho fazia sem o
+/// saber até 2026-09-01.
 pub fn finish_extracted_with(
     mesh: &mut Mesh,
     surface: &Mesh,
     pull: f32,
     settle_frac: f32,
+    travel_frac: f32,
 ) -> FinishReport {
     // ── Ronda zero: exactamente o que shipava em 2026-08-26.
     crate::finish::smooth(mesh, surface, crate::SMOOTHING_ROUNDS);
@@ -297,6 +349,14 @@ pub fn finish_extracted_with(
         return rep;
     }
     let settle = unit * settle_frac;
+    // ⚠️ **A cerca desliga-se por valor, e o `NaN` cai do lado seguro** — `!(x > 0.0)` é
+    // verdadeiro para `NaN`, o que devolveria a cerca **fechada a zero** e congelaria a malha.
+    // Por isso a pergunta é feita ao contrário, e o não-finito vai para `INFINITY`.
+    let max_travel = if travel_frac.is_finite() && travel_frac > 0.0 {
+        unit * travel_frac
+    } else {
+        f32::INFINITY
+    };
     let hint = if pull > 0.0 {
         crate::quality::surface_hint(surface, mesh)
     } else {
@@ -321,16 +381,7 @@ pub fn finish_extracted_with(
     for r in 0..EXTRACT_MAX_ROUNDS {
         let seed = if r == 0 { floor } else { 1.0e-6 };
         let mv = crate::relax_rounds::round(
-            &mut pos,
-            &faces,
-            &topo,
-            surface,
-            &hint,
-            pull,
-            &origin,
-            f32::INFINITY,
-            seed,
-            &mut fnorm,
+            &mut pos, &faces, &topo, surface, &hint, pull, &origin, max_travel, seed, &mut fnorm,
             &mut vnorm,
         );
         rep.rounds = r + 1;

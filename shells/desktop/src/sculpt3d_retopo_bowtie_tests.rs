@@ -120,9 +120,28 @@ fn a_face_em_oito_arma_outra_tentativa() {
     let fechada = cubos(1);
     assert_eq!(super::open_edges(&fechada), 0);
     assert_eq!(super::bowties(&fechada), 0);
+    let sa = ph2d_quadfill::TipDeviation::default();
     assert!(
-        !super::still_broken(&fechada),
+        !super::still_broken(&fechada, sa),
         "⛔ uma peca fechada e sa' nao pode pedir mais uma tentativa -- isso seria pagar sempre"
+    );
+
+    // ⭐⭐⭐ **E A AMPUTAÇÃO ARMA-A SOZINHA** — a 3.ª condição, acrescentada em 2026-09-01.
+    //
+    // ⛔ **Esta é a metade que faltava e a que o report do dono descreve:** a MESMA malha
+    // fechada e sã, com uma ponta comida, tem de pedir outra tentativa. Sem esta linha o gate
+    // ficaria verde com a condição a ler só topologia — que é exactamente o estado que passou
+    // despercebido desde 31/08.
+    assert!(
+        super::still_broken(
+            &fechada,
+            ph2d_quadfill::TipDeviation {
+                tips: 4,
+                over: 1,
+                ..sa
+            }
+        ),
+        "⛔⛔ uma ponta amputada tem de armar outra tentativa mesmo com a topologia impecavel"
     );
 
     // ⭐⭐ Agora a mesma malha fechada, com UMA face cruzada: tem de armar.
@@ -141,14 +160,18 @@ fn a_face_em_oito_arma_outra_tentativa() {
         "⛔ a fixtura tem de CONTER o fenomeno"
     );
     assert!(
-        super::still_broken(&fechada_torta),
+        super::still_broken(&fechada_torta, sa),
         "⛔ uma face cruzada sobre si propria tem de pedir outra tentativa"
     );
 }
 
-/// ⭐⭐⭐ **GATE — os DOIS sítios que armam tentativa extra passam pela MESMA porta.**
+/// ⭐⭐⭐ **GATE — os TRÊS sítios que armam tentativa extra passam pela MESMA porta.**
 ///
-/// ⛔ O botão arma uma 3.ª e uma 4.ª candidata, e as duas perguntam a mesma coisa. ⚠️ **Enquanto
+/// ⚠️ **Eram DOIS até 2026-09-01**, quando a cerca de viagem do acabamento entrou como **5.ª
+/// tentativa** ([`ph2d_quadfill::EXTRACT_TRAVEL_RESCUE`]) — e o número aqui subiu **porque este
+/// gate reprovou primeiro**, que é o serviço que ele presta.
+///
+/// ⛔ O botão arma uma 3.ª, uma 4.ª e uma 5.ª candidata, e as três perguntam a mesma coisa. ⚠️ **Enquanto
 /// a pergunta era a do bordo sozinho ela estava escrita duas vezes** — e uma lei escrita em dois
 /// sítios não é uma lei, é uma coincidência à espera de divergir (a 3.ª chave entrar numa e não
 /// na outra teria sido exactamente isso). *Uma porta, dois chamadores.*
@@ -158,12 +181,12 @@ fn a_face_em_oito_arma_outra_tentativa() {
 /// reprova o portão. *É a armadilha de todo gate textual, e o ficheiro medido documenta
 /// precisamente essa mudança, ao lado do `use` que ela esvaziou.*
 #[test]
-fn os_dois_sitios_que_armam_perguntam_pela_mesma_porta() {
+fn os_tres_sitios_que_armam_perguntam_pela_mesma_porta() {
     let src = include_str!("sculpt3d_history_retopo_extract.rs");
     assert_eq!(
-        src.matches("still_broken(&out)").count(),
-        2,
-        "⛔ os dois sitios que armam tentativa extra tem de chamar a MESMA funcao"
+        src.matches("still_broken(&out, dev)").count(),
+        3,
+        "⛔ os tres sitios que armam tentativa extra tem de chamar a MESMA funcao"
     );
     let codigo: Vec<&str> = src
         .lines()
@@ -174,12 +197,22 @@ fn os_dois_sitios_que_armam_perguntam_pela_mesma_porta() {
         !codigo.contains("open_edges(&out) > 0"),
         "⛔ ficou um sitio a perguntar so' pelo bordo -- a 3.a chave nao o alcanca"
     );
-    // ⛔ O CONTROLE do descascador: ele tem de continuar a ver o CÓDIGO, senão a asserção de
-    // cima passaria sobre um ficheiro vazio e não mediria nada.
+    // ⛔⛔ **E a forma SEM a régua da ponta não pode voltar.** Em 2026-08-31 a 4.ª chave do
+    // `worse` (a amputação) nasceu e esta porta **não foi actualizada com ela**: uma saída
+    // topologicamente impecável com uma ponta comida não armava tentativa nenhuma — que é a
+    // forma exacta do report do dono (*«amputa 1 ponta»*, 31/08). *A guarda tem de RECEBER a
+    // régua para a poder ler*, e uma chamada sem o argumento é o regresso do defeito.
     assert_eq!(
         codigo.matches("still_broken(&out)").count(),
-        2,
-        "⛔ o descascador comeu o codigo -- a assercao de cima ficaria vacua"
+        0,
+        "⛔⛔ ficou um sitio a armar sem consultar a amputacao -- ele nunca dispara na peca do dono"
+    );
+    // ⛔ O CONTROLE do descascador: ele tem de continuar a ver o CÓDIGO, senão as asserções de
+    // cima passariam sobre um ficheiro vazio e não mediriam nada.
+    assert_eq!(
+        codigo.matches("still_broken(&out, dev)").count(),
+        3,
+        "⛔ o descascador comeu o codigo -- as assercoes de cima ficariam vacuas"
     );
 }
 

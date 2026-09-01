@@ -166,7 +166,8 @@ impl Sculpt3dScene {
         // dele três vezes seguidas.
         let attempt = |w: f32,
                        features: bool,
-                       adaptive: f32|
+                       adaptive: f32,
+                       travel: f32|
          -> Result<
             (
                 ph2d_mesh::Mesh,
@@ -269,8 +270,20 @@ impl Sculpt3dScene {
             // ⚠️ **O ganho, medido na densidade que este botão usa** (`sculpt_eared`, 524
             // quads): enviesamento mediano `10,4° → 3,8°`, aspecto `1,14 → 1,07`, faces
             // péssimas `0 → 0`, e o preço `21 ms → ~400 ms` numa cadeia de segundos.
+            // ⭐⭐⭐ **A CERCA DE VIAGEM é escolhida AQUI, no chamador** — ver
+            // [`ph2d_quadfill::EXTRACT_TRAVEL`]. ⛔ Lida dentro da biblioteca, ela alcançava a
+            // bancada, os gates e o produto de uma vez; aqui é uma escolha deste botão, e o
+            // ramo de omissão fica com a chamada que o gate do fonte pina, letra por letra.
+            let travel = std::env::var("PH2D_EXTRACT_TRAVEL")
+                .ok()
+                .and_then(|v| v.parse::<f32>().ok())
+                .unwrap_or(travel);
             if std::env::var("PH2D_EXTRACT_FINISH").as_deref() != Ok("0") {
-                ph2d_quadfill::finish_extracted(&mut out, &reference);
+                if travel.is_finite() {
+                    ph2d_quadfill::finish_extracted_travel(&mut out, &reference, travel);
+                } else {
+                    ph2d_quadfill::finish_extracted(&mut out, &reference);
+                }
             }
             let out = out;
 
@@ -324,9 +337,9 @@ impl Sculpt3dScene {
         //
         // ⚠️ **`AssertUnwindSafe` é honesto aqui:** a `attempt` não escreve em nada partilhado
         // — ela lê `work`/`reference`/`dual` e devolve uma malha nova.
-        let guarded = |w: f32, features: bool, adaptive: f32| {
+        let guarded = |w: f32, features: bool, adaptive: f32, travel: f32| {
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                attempt(w, features, adaptive)
+                attempt(w, features, adaptive, travel)
             }))
             // ⛔ **`Panicked` e não `TooCoarseToResolve`** — ver o doc da variante. A frase da
             // outra manda o artista **subdividir a escultura**, que é a cura de um problema
@@ -336,13 +349,25 @@ impl Sculpt3dScene {
         };
         let (aligned, smooth) = if std::env::var("PH2D_RETOPO_SERIAL").as_deref() == Ok("1") {
             (
-                guarded(ph2d_crossfield::ALIGN_WEIGHT, false, adaptive),
-                guarded(0.0, false, adaptive),
+                guarded(
+                    ph2d_crossfield::ALIGN_WEIGHT,
+                    false,
+                    adaptive,
+                    ph2d_quadfill::EXTRACT_TRAVEL,
+                ),
+                guarded(0.0, false, adaptive, ph2d_quadfill::EXTRACT_TRAVEL),
             )
         } else {
             rayon::join(
-                || guarded(ph2d_crossfield::ALIGN_WEIGHT, false, adaptive),
-                || guarded(0.0, false, adaptive),
+                || {
+                    guarded(
+                        ph2d_crossfield::ALIGN_WEIGHT,
+                        false,
+                        adaptive,
+                        ph2d_quadfill::EXTRACT_TRAVEL,
+                    )
+                },
+                || guarded(0.0, false, adaptive, ph2d_quadfill::EXTRACT_TRAVEL),
             )
         };
         let (relief_won, (out, e, _shift_frac_max, shape, dev)) = match (aligned, smooth) {
@@ -385,8 +410,13 @@ impl Sculpt3dScene {
         // ⚠️ **E ela é segura por CONSTRUÇÃO:** entra pelo mesmo [`worse`], logo só vence
         // onde é melhor. *A terceira candidata não pode piorar a escolha; só pode não ser
         // escolhida.*
-        let (relief_won, (out, e, _shift_frac_max, shape, dev)) = if still_broken(&out)
-            && let Ok(f) = guarded(ph2d_crossfield::ALIGN_WEIGHT, true, adaptive)
+        let (relief_won, (out, e, _shift_frac_max, shape, dev)) = if still_broken(&out, dev)
+            && let Ok(f) = guarded(
+                ph2d_crossfield::ALIGN_WEIGHT,
+                true,
+                adaptive,
+                ph2d_quadfill::EXTRACT_TRAVEL,
+            )
             && worse(
                 &out,
                 shape.skew_over_60,
@@ -424,16 +454,28 @@ impl Sculpt3dScene {
         // peça continuou com `4` bordo: *a linha de base não é uma corrida, são duas — a
         // alinhada e a suave — e é o [`worse`] entre elas que dá a malha limpa.* Pedir só
         // metade do caminho de omissão devolve algo que não é o caminho de omissão.
-        let uniforme = if adaptive > 0.0 && still_broken(&out) {
+        let uniforme = if adaptive > 0.0 && still_broken(&out, dev) {
             let (a, b) = if std::env::var("PH2D_RETOPO_SERIAL").as_deref() == Ok("1") {
                 (
-                    guarded(ph2d_crossfield::ALIGN_WEIGHT, false, 0.0),
-                    guarded(0.0, false, 0.0),
+                    guarded(
+                        ph2d_crossfield::ALIGN_WEIGHT,
+                        false,
+                        0.0,
+                        ph2d_quadfill::EXTRACT_TRAVEL,
+                    ),
+                    guarded(0.0, false, 0.0, ph2d_quadfill::EXTRACT_TRAVEL),
                 )
             } else {
                 rayon::join(
-                    || guarded(ph2d_crossfield::ALIGN_WEIGHT, false, 0.0),
-                    || guarded(0.0, false, 0.0),
+                    || {
+                        guarded(
+                            ph2d_crossfield::ALIGN_WEIGHT,
+                            false,
+                            0.0,
+                            ph2d_quadfill::EXTRACT_TRAVEL,
+                        )
+                    },
+                    || guarded(0.0, false, 0.0, ph2d_quadfill::EXTRACT_TRAVEL),
                 )
             };
             match (a, b) {
@@ -472,6 +514,68 @@ impl Sculpt3dScene {
                 u.4,
             ) {
             (rw, u)
+        } else {
+            (relief_won, (out, e, _shift_frac_max, shape, dev))
+        };
+
+        // ⭐⭐⭐ **A QUINTA TENTATIVA — A CERCA DE VIAGEM DO ACABAMENTO.**
+        //
+        // ⛔⛔⛔ **A cerca EXISTE, o doc dela intitula-se *«a porta do PRODUTO»*, e o produto
+        // passava `f32::INFINITY`** ([`ph2d_quadfill::EXTRACT_TRAVEL`]). O acabamento corre até
+        // `1 200` rondas a deslizar cada vértice **ao longo** da superfície, e é assim que um
+        // espinho encolhe: a componente *«escorregar ponta abaixo»* é tangencial, logo sobrevive
+        // ao passo, e a reprojecção repõe o vértice **mais em baixo**.
+        //
+        // ⚠️ **E a aceitação do acabamento não podia apanhá-lo:** ela lê enviesamento e aspecto,
+        // que é exactamente o que a relaxação sem cerca **melhora** enquanto desmancha a ponta.
+        // *Uma ronda que come o espinho e endireita os quads é aceite por unanimidade.*
+        //
+        // ⭐⭐⭐ **MEDIDO na peça do dono, na configuração em que o defeito EXISTE**
+        // (`_base_sculpt` recentrada, `Detail 0,75`, `Follow Curvature 1` — a que ele usa):
+        //
+        // | cerca | ponta (quads) | pontas acima da barra | enviesamento p50 | `>60°` |
+        // |---|---|---|---|---|
+        // | ⛔ `∞` (o que shipava) | **`2,39`** | `1` | `3,2°` | `2` |
+        // | `2` | `1,69` | `1` | `3,8°` | `2` |
+        // | `1` | `1,06` | `1` | `5,2°` | `4` |
+        // | ⭐ **`0,5`** | **`0,67`** | **`0`** | `6,3°` | `5` |
+        // | *(acabamento desligado)* | `0,74` | `0` | `9,4°` | `48` |
+        //
+        // ⭐⭐ **A cerca é estritamente melhor que o interruptor** — cura a ponta **mais** que
+        // desligar o acabamento (`0,67` contra `0,74`) e paga **um quinto** das faces `>60°`.
+        // *Desligar o acabamento nunca foi a alternativa certa; a cerca é.*
+        //
+        // ⚠️ **Ela é uma TENTATIVA e não uma constante nova, e a razão é medida:** a `Detail 1,00`
+        // a mesma peça não tem ponta partida, e ali a cerca **piora** a forma de graça
+        // (`4,22° → 6,7°`). ⇒ o preço só se paga onde há defeito, e quem decide continua a ser o
+        // [`worse`] — *ela não pode piorar a escolha; só pode não ser escolhida.*
+        //
+        // ⛔ **A condição é a MESMA porta das outras duas** ([`still_broken`], que desde
+        // 2026-09-01 conta a amputação). *Foi a falta dessa terceira condição que fazia esta peça
+        // — topologia impecável, uma ponta comida — nunca armar tentativa nenhuma.*
+        let apertada = if still_broken(&out, dev) {
+            guarded(
+                ph2d_crossfield::ALIGN_WEIGHT,
+                false,
+                adaptive,
+                ph2d_quadfill::EXTRACT_TRAVEL_RESCUE,
+            )
+            .ok()
+        } else {
+            None
+        };
+        let (relief_won, (out, e, _shift_frac_max, shape, _dev)) = if let Some(a) = apertada
+            && worse(
+                &out,
+                shape.skew_over_60,
+                shape.skew_p50,
+                dev,
+                &a.0,
+                a.3.skew_over_60,
+                a.3.skew_p50,
+                a.4,
+            ) {
+            (true, a)
         } else {
             (relief_won, (out, e, _shift_frac_max, shape, dev))
         };

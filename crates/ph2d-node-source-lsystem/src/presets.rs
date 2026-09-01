@@ -258,8 +258,13 @@ pub const PRESETS: &[Preset] = &[
         // ⚠️ *A lei desta tabela é que o `step` se CONTA* (`step_base · alvo ÷ razão_medida`) —
         // e quem muda a gramática muda a razão medida. Um `[J]` num molde sorteado não é uma
         // marca invisível: é outra planta.
-        step: 0.566,
-        width: 0.182,
+        //
+        // ⭐ **RE-DERIVADO OUTRA VEZ em 2026-08-31 (`0,566 → 0,585`), e pela MESMA razão** — a
+        // unificação da lei da semente (doc 96 §B2, decidida pelo dono) muda a escolha de
+        // regras, e este é o único molde estocástico: `42 → 51` elementos. *Toda mudança que
+        // toque no SORTEIO deste molde reabre este número*, e é a segunda vez em dois dias.
+        step: 0.585,
+        width: 0.188,
         reads: Reads::of("A(s) -> (0.4) F(s)![+A(s*0.72)][-A(s*0.72)]"),
         leaf_first_level: 3.0,
     },

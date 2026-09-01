@@ -551,7 +551,11 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
                 let spread = if set.leaf_spread == 0.0 {
                     0.0
                 } else {
-                    (crate::hash::hash3(set.seed.to_bits(), out.parent.len() as u32, 0x1eaf) - 0.5)
+                    (crate::hash::hash3(
+                        crate::seed_bits(set.seed),
+                        out.parent.len() as u32,
+                        0x1eaf,
+                    ) - 0.5)
                         * set.leaf_spread
                 };
                 let turn = set.leaf_angle + spread;

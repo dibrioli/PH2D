@@ -404,3 +404,59 @@ fn every_presets_first_level_keeps_leaves_alive_and_silences_the_trunk() {
         );
     }
 }
+
+/// ⛔⛔⛔ **A SEMENTE ENTRA NO PRODUTO POR UMA PORTA SÓ** — e o gate mede a CONSEQUÊNCIA, não
+/// a chamada.
+///
+/// # O defeito
+///
+/// Auditoria de seis lentes, doc 96 §B2. A semente era lida de duas maneiras — `abs() as u32`
+/// para a escolha de regras e `to_bits()` para a folha — e o resultado não era
+/// não-determinismo, era **duas identidades sob um nome**: arrastá-la mudava as folhas
+/// continuamente e a estrutura em degraus, e `−1` dava a mesma planta que `+1`.
+///
+/// # A régua
+///
+/// ⚠️ **Não «as duas chamam `seed_bits`»** — isso seria um gate textual, e um `to_bits` novo
+/// escrito à mão passaria por ele. A régua é o que a lei COMPRA: sementes que diferem só na
+/// fracção, ou só no sinal, têm de dar plantas **diferentes**. Com a truncagem, não davam.
+#[test]
+fn the_seed_has_one_law_and_every_distinct_value_is_a_distinct_plant() {
+    // O `Wild` é o único molde ESTOCÁSTICO — os outros sete ignoram a semente na estrutura.
+    let w = ls::PRESETS
+        .iter()
+        .find(|p| p.label == "Wild")
+        .expect("o molde estocástico");
+    let figura = |seed: f32| {
+        let s = shoot(w, &[(ls::param::SEED, seed)]);
+        let (a, b) = bbox(&s);
+        (s.count(), a.to_bits(), b.to_bits())
+    };
+    // 1. ⭐ A FRACÇÃO conta — a truncagem comia-a, e quatro sementes davam a mesma planta.
+    let base = figura(1.0);
+    let mut distintas = std::collections::BTreeSet::new();
+    for k in 0..8u8 {
+        distintas.insert(figura(1.0 + f32::from(k) * 0.125));
+    }
+    assert!(
+        distintas.len() >= 6,
+        "oito sementes entre `1,0` e `1,875` deram só {} plantas distintas — a lei está a \
+         deitar fora a fracção",
+        distintas.len()
+    );
+    // 2. ⭐ E o SINAL conta — o `abs` fazia `−1` e `+1` a mesma planta.
+    assert_ne!(
+        figura(-1.0),
+        base,
+        "`−1` e `+1` dão a MESMA planta — a lei está a deitar fora o sinal"
+    );
+    // 3. ⚠️ A metade oposta: a mesma semente reproduz, senão «distintas» seria satisfeito por
+    //    não-determinismo, que é o defeito contrário e igualmente mau.
+    assert_eq!(figura(1.0), base, "a mesma semente tem de reproduzir");
+    // 4. ⛔ E um não-finito não escolhe regra nenhuma — ele cai no `0`, não num lixo.
+    assert_eq!(
+        figura(f32::NAN),
+        figura(f32::INFINITY),
+        "`NaN` e `∞` têm de cair na MESMA semente neutra"
+    );
+}

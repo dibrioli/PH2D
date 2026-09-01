@@ -225,6 +225,41 @@ pub const DEFAULT_AXIOM: &str = "A(step)";
 /// é uma segunda cópia dele, e é sempre a cópia que envelhece.*
 pub const DEFAULT_RULES: &str = "A(s) -> F(s)[J]![+A(s*0.7)][-A(s*0.7)]";
 
+/// ⭐⭐⭐ **A SEMENTE COMO NÚMERO — UMA lei, e uma PORTA para não poder haver uma terceira.**
+///
+/// # O defeito que ela cura
+///
+/// Até 2026-08-31 a semente era lida de **duas maneiras** (auditoria de seis lentes, doc 96
+/// §B2): `p.seed.abs() as u32` para a escolha estocástica de regras, e `seed.to_bits()` para a
+/// abertura da folha. *Não era não-determinismo — eram **duas identidades sob um nome**.*
+///
+/// Medido, com a mesma gramática:
+///
+/// | `seed` | a ESTRUTURA | as FOLHAS |
+/// |---|---|---|
+/// | `1,00` · `1,25` · `1,50` · `1,75` | **a mesma** (a truncagem come a fracção) | quatro diferentes |
+/// | `−1,00` | **a mesma que `+1,00`** (o `abs` come o sinal) | outra |
+/// | `2,00` | outra | outra |
+///
+/// ⇒ arrastar a semente por um fio mudava as folhas **continuamente** e a estrutura **em
+/// degraus**, e `−1` dava a mesma planta que `+1` com outras folhas.
+///
+/// # Por que os BITS e não a truncagem
+///
+/// O `to_bits` usa o float inteiro — sinal e fracção incluídos —, logo **cada valor distinto do
+/// slider é uma semente distinta**. A truncagem desperdiça o que o widget `Seed` oferece.
+///
+/// ⚠️ **Preço, medido e aceite pelo dono (2026-08-31):** só o `Wild` responde à escolha de
+/// regras (é o único molde estocástico), e ele passa a ser **outra planta** — `42 → 51`
+/// elementos, `−3,2 %` de tamanho. Os outros **sete são byte-idênticos com qualquer semente**.
+/// O `step` dele foi re-derivado no mesmo commit.
+///
+/// ⚠️ **Não-finito ⇒ `0`**, como antes: um `NaN` de um fio não pode escolher uma regra.
+#[must_use]
+pub fn seed_bits(seed: f32) -> u32 {
+    if seed.is_finite() { seed.to_bits() } else { 0 }
+}
+
 /// Quantas gerações derivar, e quanto da mais nova já cresceu.
 ///
 /// ⚠️ Um `generations` **fraccionário** deriva `ceil` e faz a mais nova crescer por `frac` —
@@ -317,11 +352,7 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
         p.generations
     };
     let (gens, youngest) = generation_plan(generations);
-    let seed = if p.seed.is_finite() {
-        p.seed.abs() as u32
-    } else {
-        0
-    };
+    let seed = seed_bits(p.seed);
     let d = derive::derive(&axiom, &rules, gens, seed, MAX_MODULES, &params);
     // ⚠️ Se o orçamento saturou, a geração mais nova que EXISTE já é inteira — fazê-la
     // crescer por `frac` encolheria uma geração que ninguém pediu para encolher.

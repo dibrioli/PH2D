@@ -444,7 +444,7 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
                 pos_jitter: get(ls::param::LEAF_POS_JITTER),
                 // ⭐ A semente do painel, pela lei que a casa já usa para a FOLHA
                 // (`to_bits`, como o `Leaf Spread` na tartaruga) — ver `LeafLook::seed`.
-                seed: get(ls::param::SEED).to_bits(),
+                seed: ls::seed_bits(get(ls::param::SEED)),
             },
         ));
     }

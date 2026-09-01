@@ -2168,7 +2168,7 @@ sem o interruptor escolher o chip **re-abriria** um menu já aberto. Gate:
 |---|---|
 | `the_area_pulldown_opens_serves_a_view_and_closes` | Down/Up REAIS: o chip abre · a vista pede `SetView` · o menu fecha; e **antes de abrir os ids não estão em lado nenhum** (prova que saíram do painel em vez de ganharem um 2.º sítio) |
 | `closing_the_module_takes_the_pulldown_off_the_bar` | publicado em todo quadro, vazio incluído |
-| `the_area_costs_one_chip_and_the_bar_is_still_one_line` | **1** chip nos três tablets, e a fila numa linha |
+| `the_area_costs_two_chips_and_the_bar_is_still_one_line` | **1** chip nos três tablets, e a fila numa linha |
 | `the_palette_path_toggles_the_menu_because_it_has_no_pointer_down` | o caminho sintético, que é o único em que o interruptor é load-bearing |
 
 | # | mutação | resultado |
@@ -2268,3 +2268,130 @@ a alimenta* — é a nota que a porta já carregava do gizmo, e esta é a **segu
 
 `field3d_layout_tests.rs` foi a `657/600`. ⇒ `field3d_area_tests.rs` (irmão): *«que área é esta»*
 saiu de *«como ela se divide»*. ⛔ Não uma excepção na lista.
+
+---
+
+## §30 — ⭐⭐⭐ O `3D Model` ESVAZIA-SE: dois pulldowns e o menu File (entrega 35)
+
+**Commit:** ver `git log`. **Degrau do plano:** `G` (*esvaziar os painéis*), a continuação da §28.
+
+### §30.1 — O que mudou de sítio, e por que para DOIS sítios
+
+| fileira | nº | destino | critério da **D2** |
+|---|---:|---|---|
+| verbos do gizmo (`Move`/`Rotate`/`Size`) + referencial (`Global`/`Local`) | 5 | **2.º pulldown de área** (*Gizmo*) | vale só naquele editor |
+| níveis de exportação (`Draft`/`Fine`/`Max`) | 3 | **menu global → File** | escrever um arquivo vale em **todo o app** |
+
+⇒ com a §28 (9 entradas), o painel perdeu **17 das 74**.
+
+⛔ **O corte é por ÂMBITO, e não por quem foi o último a mexer no assunto.** A exportação é do
+módulo 3D — e mesmo assim não é do editor 3D: ela escreve um ficheiro, que é uma operação do app. A
+tabela de destino da D2 (`00_DECISOES_DO_ENIO.md` §D2) já dizia *«barra global → Arquivo»*.
+
+### §30.2 — ⭐⭐ DOIS pulldowns e não um: o critério é a FACE
+
+O `AreaMenu` tem **três** campos, e cada um responde a uma pergunta diferente:
+
+| campo | pergunta | exemplo |
+|---|---|---|
+| `label` | *o que é este grupo?* | `View` · `Gizmo` |
+| `face` | ***qual é o estado AGORA?*** | `Front` · `Rotate` |
+| `rows` | *o que ele abre* | as 6 vistas + os 3 gestos de câmera |
+
+⭐ **É a `face` que faz um chip valer o lugar FECHADO.** Um chip cuja face não distingue nada custa
+a mesma largura e não informa. ⇒ **dois grupos com a mesma face seriam um grupo só** — e catorze
+linhas atrás de uma face única seriam o depósito da foto 3 mudado de sítio, que é literalmente o
+defeito que o degrau `G` existe para curar.
+
+⭐ **E o referencial fica com o VERBO, não com a vista.** *«Um referencial sem verbo não quer dizer
+nada»* — é o que o `paint.rs` do painel já dizia quando as duas fileiras eram vizinhas. A tabela da
+D2 agrupava-o com `view.*`/`camera.*` (o `11`); separá-lo do verbo poria metade de uma lei num sítio
+e metade noutro.
+
+### §30.3 — ⭐ O ORÇAMENTO DE CHIPS DA ÁREA É `3`, e foi MEDIDO antes de o desenho ser escolhido
+
+Sonda sobre `tool_bar::bar_split` + `widget::horizontal_lines`, módulo armado, os três alvos:
+
+| alvo | largura da área | 1 chip | 2 | 3 | 4 |
+|---|---:|---|---|---|---|
+| iPad 12,9" | `754,0` | 1 linha | 1 | 1 | 1 |
+| iPad 11 | `582,0` | 1 linha | 1 | 1 | **2** |
+| iPad mini | `521,0` | 1 linha | 1 | 1 | **2** |
+
+⭐⭐ **A medição DECIDIU o desenho, e não o contrário.** A pergunta em aberto era se os três verbos
+do gizmo podiam ser chips CRUS na fila (um clique, como no Godot). A resposta é **não**: `1 + 3 = 4`
+chips de área põem os dois alvos pequenos em duas linhas. ⇒ um 2.º **pulldown**, que cabe.
+
+⚠️ O `MAX_AREA_MENUS = 4` é um tecto de **REGISTO** (quantos ids o `left_rail` cunha às cegas), não
+o limite real — quem manda é a largura, e quem a mede é o gate, que corre com o que o módulo de
+facto publicou. Ultrapassar não parte nada (o `⋯` absorve); custa a 2.ª linha.
+
+### §30.4 — ⭐⭐ UMA aritmética para os dois destinos
+
+O pintor do menu passou a somar **estáticas + contribuídas** para **todo** `ContextMenuKind`:
+
+```rust
+let statics = menu_rows::menu_rows(req.kind);           // a tabela do app
+let contrib = match req.kind {                          // o que o módulo publicou
+    ContextMenuKind::AreaCommands { slot } => store.area_menu_rows(slot),
+    kind => store.menu_contrib(kind),
+};
+```
+
+⭐ **Um pulldown de área é simplesmente o caso em que as estáticas são `&[]`**, e o *File* é o caso
+em que as duas existem. ⛔ A versão anterior tinha um `if` só para o `AreaCommands` — a segunda
+porta que apodrece.
+
+⚠️ **`ContextMenuKind::AreaCommands` ganhou `slot: u8`, e a identidade tinha de estar ali:** com os
+dois chips a abrir o mesmo `kind`, o pintor teria de guardar *qual deles* nalgum sítio à parte, e
+essa segunda verdade divergiria do chip que o dedo carregou. **Mutação A** prova-o.
+
+### §30.5 — ⚠️ Três correcções ao que a tabela da D2 dizia
+
+1. **A célula `add.*` (20) já estava FECHADA e a tabela não sabia.** A paleta de formas (W100)
+   reduziu-a a **um** chip que abre o catálogo genérico da casa (busca, categorias, rolagem).
+   ⛔ Quem for pegar nela pelo número `20` reconstrói trabalho já pago.
+2. **A tabela contradiz o próprio critério no `verb`/`kind`.** Ela manda `mod.*` ficar no painel
+   *«porque é propriedade do objecto»* — e o **verbo** (com que operação esta forma dobra sobre o
+   resto) e o **carácter** da mistura são propriedades do objecto pela mesma régua. Ficam.
+3. **O `11` não é uma unidade.** Ele é `view(6) + camera(3)` num pulldown e `frame(2)` noutro, pela
+   razão do §30.2.
+
+### §30.6 — ⛔ `AreaMenu` NÃO vive em `src/widget/`, e dois opt-outs foram o sinal
+
+A 1.ª versão pô-lo no `widget/tool_rail.rs`. Isso disparou **três** portões, em cadeia:
+
+| portão | o que disse |
+|---|---|
+| `widget_primitives_under_loc_cap` | `tool_rail.rs` a `523/500` |
+| `every_widget_is_shown_or_explicitly_opted_out` | `area_menu` não aparece na galeria |
+| `every_widget_file_wires_a11y` | `area_menu.rs` não liga semântica nenhuma |
+
+⭐⭐ **Dois opt-outs para o MESMO ficheiro é o sinal de que ele está no sítio errado, não de que os
+gates são chatos.** O `AreaMenu` não pinta nada e não tem semântica de acessibilidade — o chip que
+o mostra é um `ToolRailEntry::Compound`, que a galeria já cobre. ⇒ ele vive em
+`interaction/area_menu.rs`, ao lado do `types_menu` (*que menu a área contribui* é a mesma pergunta
+que o `ContextMenuKind` responde do outro lado), e **os três portões ficam verdes sem uma folga**.
+
+### §30.7 — As cinco MUTAÇÕES
+
+| # | o que se apagou | quem morreu |
+|---|---|---|
+| A | `slot: u8::try_from(slot)` → `slot: 0` (os dois chips abrem o mesmo menu) | `the_gizmo_pulldown_is_a_second_menu_and_serves_the_verb_and_the_frame` |
+| B | a contribuição para o `MenuBarFile` → `Vec::new()` | `the_file_menu_serves_an_export_and_the_module_owns_it` |
+| C | o merge deixa de somar as estáticas (`statics.iter().copied()` → `empty()`) | idem, na asserção *«as linhas que o menu já tinha desapareceram»* |
+| D | o 2.º pulldown passa a usar a face do 1.º | `each_pulldown_wears_its_own_reading` (`["Right","Right"]` contra `["Right","Rotate"]`) |
+| E | o ramo `!armed` deixa de escrever vazio | `closing_the_module_takes_the_commands_off_the_bar_and_off_the_file_menu` |
+
+⚠️ O gate de gesto carrega em **pixels** (Down + Up pelo `dispatch_pointer`) — um `Click` sintético
+passaria com o chip morto sob o dedo, que é como o `⋯` nasceu.
+
+### §30.8 — O que fica ABERTO
+
+- ⏳ **As operações booleanas e as acções** (duplicar/apagar/isolar) não têm destino decidido. Elas
+  são gestos **sobre a selecção**, o que não é nem *propriedade do objecto* nem *comando do editor*
+  no vocabulário limpo da D2 — a 3.ª categoria que a tabela dela não tem.
+- ⛔ **Nenhum outro painel foi censado.** O `66 de 74` é do `3D Model` e só dele; qualquer número
+  para os outros 24 painéis seria inventado.
+- ⏳ O 3.º slot de área está livre e **medido** (cabe). O primeiro módulo que o queira herda a
+  tabela do §30.3 — e a linha do gate que a imprime.

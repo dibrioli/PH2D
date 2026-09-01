@@ -175,25 +175,30 @@ pub fn bar_rail(store: &WidgetStore, painter_active: bool, image_tools_on: bool)
             entries.extend(tools);
         }
     }
-    // ⭐⭐⭐ **E o PULLDOWN da área, no fim** — ver `ids::AREA_COMMANDS`.
+    // ⭐⭐⭐ **E os PULLDOWNS da área, no fim** — ver `ids::area_menu_button`.
     //
-    // ⛔⛔ **UM chip, não N — e o número é MEDIDO.** Com os nove comandos crus a fila precisa de
-    // **2 linhas até no iPad 12,9"** e transborda `2` chips (mutação 6 de 2026-08-31). *Poupar
-    // altura gastando largura não poupa nada.*
+    // ⛔⛔ **PULLDOWNS, nunca os comandos crus — e o número é MEDIDO.** Com os nove comandos crus a
+    // fila precisa de **2 linhas até no iPad 12,9"** e transborda `2` chips (mutação 6 de
+    // 2026-08-31). *Poupar altura gastando largura não poupa nada.* O orçamento medido em
+    // 2026-09-01 é de **3** chips de área (o 4.º põe o iPad 11 e o mini em duas linhas).
     //
-    // ⚠️ **No FIM de propósito.** Se nem ele couber, quem transborda é ele e não uma ferramenta: o
-    // gesto do minuto a minuto é pegar numa ferramenta, e ele já está a um clique por natureza.
+    // ⚠️ **No FIM de propósito.** Se nem eles couberem, quem transborda são eles e não uma
+    // ferramenta: o gesto do minuto a minuto é pegar numa ferramenta, e um pulldown já está a um
+    // clique por natureza.
     //
-    // ⚠️ A FACE é uma leitura (*qual é a vista agora*), e é por isso que ela vem do store em vez de
-    // ser o rótulo: um chip que diz sempre a mesma coisa não distingue os estados que abre.
-    if !store.area_entries().is_empty() {
+    // ⚠️ A FACE de cada um é uma leitura (*qual é a vista agora*, *qual é o verbo do gizmo*), e é
+    // por isso que ela vem do store em vez de ser o rótulo: um chip que diz sempre a mesma coisa
+    // não distingue os estados que abre.
+    if !store.area_menus().is_empty() {
         entries.push(crate::widget::ToolRailEntry::Divider);
-        entries.push(crate::widget::ToolRailEntry::compound(
-            ids::AREA_COMMANDS,
-            "View",
-            store.area_face(),
-            "",
-        ));
+        for (slot, menu) in store.area_menus().iter().enumerate() {
+            entries.push(crate::widget::ToolRailEntry::compound(
+                ids::area_menu_button(u32::try_from(slot).unwrap_or(ids::MAX_AREA_MENUS)),
+                menu.label.clone(),
+                menu.face.clone(),
+                "",
+            ));
+        }
     }
     ToolRail::new(NodeId(203), "Editor tools", entries)
 }

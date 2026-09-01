@@ -126,12 +126,30 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // morder.*
     ctx.host.hit_index_mut().push_clip(body_rect);
     let mut y = body_top - scroll;
-    // ⭐ **O seletor do verbo, no topo** — é a porta que se encontra sem saber que existe. As
-    // teclas `G`/`R`/`S` são a outra, e são para quem já sabe.
-    y = paint_chips(ctx, &snapshot.modes, ids::model3d_mode_button, x, w, y);
-    // ⭐ **Em que eixos** — do mundo, ou do próprio objeto. Fica por baixo do verbo porque ele
-    // qualifica o verbo: um referencial sem verbo não quer dizer nada.
-    y = paint_chips(ctx, &snapshot.frames, ids::model3d_frame_button, x, w, y);
+    // ⛔⛔ **O GIZMO SAIU DAQUI em 2026-09-01** — os três verbos e os dois referenciais pintam-se
+    // agora no **2.º pulldown da área** (`crate::area_bar`), cuja face é o verbo em mãos.
+    //
+    // ⚠️ **Eles nunca foram propriedades do objecto**: são *como a mão o move*, e este painel é o
+    // inspector do que está escolhido. E os dois viajam JUNTOS porque *um referencial sem verbo não
+    // quer dizer nada* — era o que esta secção já dizia quando as duas fileiras eram vizinhas.
+    // ⚠️ As teclas `G`/`R`/`S` continuam a ser a outra porta, para quem já sabe.
+    //
+    // ⚠️ **O `populate` continua a registá-los**, e tem de continuar: o registo é o que os mantém
+    // vivos sob o dedo, e quem os pinta agora é a fila. O braço do `event.rs` não mudou uma linha.
+
+    // ⏳⏳ **ABERTO, e nomeado na integracao de 2026-09-04: a fileira do LAÇO fica AQUI, sozinha.**
+    //
+    // ⚠️ **As duas linhas invocaram a MESMA lei e cairam em lados opostos.** A `line/UIUX` tirou o
+    // gizmo daqui porque *«nunca foram propriedades do objecto: sao como a mao o move»*; a
+    // `line/3DModeling` acrescentou esta fileira dizendo, por palavras dela, que *«os dois
+    // qualificam um GESTO do canvas, e nao a forma escolhida»*. ⇒ pela lei que as duas escrevem,
+    // esta fileira devia ter ido com o gizmo.
+    //
+    // ⛔ **Ela nao foi, e a razao e' de PROCESSO, nao de desenho:** poe-la no pulldown e' obra
+    // (a face dele e' o verbo em maos, e um terceiro grupo pede um desenho que ninguem fez), e
+    // apagar-lhe a pintura faria um controlo VIVO e REGISTADO deixar de ser pintado -- que e'
+    // exactamente o «knob morto» do CLAUDE.md §5.0, a pior das saidas. ⇒ o integrador manteve o
+    // que FUNCIONA e deixou a decisao a quem ve^ o painel.
     // ⭐⭐ **O que o LAÇO faz ao que apanha** (W112), logo abaixo do referencial — os dois
     // qualificam um GESTO do canvas, e não a forma escolhida. ⚠️ A nota vem antes porque «Add» e
     // «Subtract» sozinhos não dizem *a quê*: um chip sem sujeito lê-se ao contrário.
@@ -185,9 +203,14 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // ⚠️ **O `populate` continua a registá-las**, e tem de continuar: o registo é o que as mantém
     // vivas sob o dedo, e quem as pinta agora é a fila. O braço do `event.rs` não mudou uma linha —
     // ele decide por **id**, e o id é o mesmo.
-    // ⭐ **A porta de SAÍDA**, no fim: é o último gesto de uma peça, e é a primeira vez que o módulo
-    // troca resolução infinita por um número de triângulos (ver `crate::field3d_export` no shell).
-    y = paint_chips(ctx, &snapshot.exports, ids::model3d_export_button, x, w, y);
+    // ⛔⛔ **E a SAÍDA saiu daqui no mesmo dia** — os três níveis de exportação são linhas do menu
+    // **File**, e a **D2** nomeia-o (`00_DECISOES_DO_ENIO.md` §D2, a tabela de destino:
+    // *«export.* → barra global → Arquivo»*). *Escrever um arquivo vale em todo o app; o corte da
+    // D2 é por ÂMBITO, não por quem foi o último a tocar no assunto.*
+    //
+    // ⚠️ **Contribuídas, e não linhas fixas do menu:** o módulo publica-as enquanto tem o canvas
+    // (`crate::area_bar::publish`), e com ele fechado o *File* volta exactamente ao que era. Uma
+    // linha *Export Draft* permanente seria um alvo que consome o clique e não faz nada.
     // ⭐ **ESTÁ ISOLADO, e quem o diz é a VISTA** (W44) — logo abaixo dos controles e acima dos
     // números, porque é uma afirmação sobre *o que se está a ver*, não sobre o que está escolhido.
     //

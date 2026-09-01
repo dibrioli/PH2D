@@ -490,14 +490,26 @@ pub struct WidgetStore {
     /// clique continuar a chegar ao mesmo braço de `apply_event` sem uma segunda porta: o
     /// `HeroScreen::apply_event` entrega todo evento a todo painel do registry, por **id**, nunca
     /// por posição. *Um comando com dois ids tem dois sítios a apodrecer em separado.*
-    pub(super) area_entries: Vec<crate::widget::ToolRailEntry>,
-    /// ⭐ **A FACE do pulldown da área** — o que o chip mostra sem se abrir.
+    /// ⭐⭐ **E são N, agrupados por LEITURA** — cada um traz a própria face (ver
+    /// [`crate::interaction::AreaMenu`]). ⛔ Não é uma lista só: a face de um pulldown é o que ele
+    /// **diz** fechado, e uma lista de 14 linhas com uma face só volta a ser o depósito da foto 3,
+    /// mudado de sítio. O orçamento medido é `3` chips ([`crate::ids::area_menu_button`]).
+    pub(super) area_menus: Vec<crate::interaction::AreaMenu>,
+    /// ⭐⭐⭐ **O QUE O MÓDULO ACRESCENTA A UM MENU QUE JÁ EXISTE** — a metade 1 da **D2**.
     ///
-    /// ⚠️ **Ela é uma LEITURA, não um rótulo:** diz *qual é a vista agora* (`Front`, `User`…), que
-    /// é precisamente o que o painel nunca chegou a dizer — as seis fileiras dele acendiam o chip
-    /// certo, mas só enquanto o painel estivesse aberto. Vazia ⇒ nenhum módulo contribui e a fila
-    /// não ganha chip nenhum.
-    pub(super) area_face: String,
+    /// O corte da D2 é por **âmbito**: *vale em todo o app ⇒ barra global; vale só naquele editor
+    /// ⇒ a área*. Escrever um arquivo é do app — então os três níveis de exportação do módulo 3D
+    /// vão ao menu **File**, e não a um pulldown de área
+    /// (`docs/UI_New_and_Simple/00_DECISOES_DO_ENIO.md` §D2, a tabela de destino).
+    ///
+    /// ⚠️ **Contribuição, e não uma linha na tabela estática** ([`super::super::screens::hero::menu_rows`]):
+    /// aquelas linhas existem sempre, e uma linha *Export Draft* com o módulo fechado seria um alvo
+    /// que consome o clique e não faz nada. ⇒ o módulo publica-as enquanto tem o canvas, e a lei do
+    /// [`Self::tool_overflow`] vale igual: escrito em todo quadro, vazio incluído.
+    pub(super) menu_contrib: Vec<(
+        crate::interaction::ContextMenuKind,
+        Vec<crate::widget::ToolRailEntry>,
+    )>,
     /// ⭐ Altura AUTORADA da faixa do FUNDO (`None` = a de fábrica). Ver
     /// [`WidgetStore::dock_bottom_h`] — o irmão vertical das duas de cima, e o que faz a costura
     /// do topo do timeline redimensionar a BANDA em vez de soltar o painel dela.

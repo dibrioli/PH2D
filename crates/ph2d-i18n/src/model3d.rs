@@ -28,6 +28,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // escolha — quem já modela sabe o que elas querem dizer sem experimentar.
         "panel.model3d.frame.global" => "Global",
         "panel.model3d.frame.local" => "Local",
+        // ⭐⭐ Os RÓTULOS dos dois pulldowns que este módulo põe na fila de ferramentas (D2, a
+        // metade do cabeçalho de área — ver `ph2d_panel_model3d::area_bar`).
+        //
+        // ⚠️ **O rótulo diz o GRUPO; a face diz o ESTADO** (`Front`, `Move`). São perguntas
+        // diferentes e por isso são dois textos: um chip cujo rótulo repetisse a face não
+        // distinguiria os dois pulldowns quando os dois estivessem no mesmo estado de omissão.
+        "panel.model3d.area.view" => "View",
+        "panel.model3d.area.gizmo" => "Gizmo",
         // ⭐⭐⭐ A PORTA DE CRIAR (W100) — um botão, que abre a paleta de formas.
         //
         // ⚠️ As reticências dizem "isto abre alguma coisa" (a convenção que o `Sculpt…` já usava), e

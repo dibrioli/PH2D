@@ -8,7 +8,7 @@
 //! | chip | abre | quem publica o corpo |
 //! |---|---|---|
 //! | `⋯` ([`ids::TOOL_BAR_OVERFLOW`]) | o que não coube na linha | `tool_bar::bar_split` |
-//! | o pulldown da área ([`ids::AREA_COMMANDS`]) | os comandos do editor com o canvas | o módulo |
+//! | os pulldowns da área ([`ids::area_menu_button`]) | os comandos do editor com o canvas | o módulo |
 //!
 //! ⚠️ **UMA tabela, e não dois ficheiros.** A metade que se esquece ao copiar é a segunda — *servir
 //! é fechar* —, e um menu que não fecha ao servir fica por cima do que o clique acabou de fazer.
@@ -47,26 +47,35 @@ use crate::ids;
 use crate::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
 use crate::screens::hero::HeroScreen;
 
-/// Os dois chips e o menu que cada um abre. ⚠️ Acrescentar um terceiro é **uma linha**.
-const BAR_MENUS: [(ph2d_a11y::NodeId, ContextMenuKind); 2] = [
-    (ids::TOOL_BAR_OVERFLOW, ContextMenuKind::ToolBarOverflow),
-    (ids::AREA_COMMANDS, ContextMenuKind::AreaCommands),
-];
+/// **Os chips desta faixa e o menu que cada um abre** — o `⋯` mais um por pulldown de área.
+///
+/// ⚠️ **Derivada, e não escrita à mão:** a lista de pulldowns é do módulo, e uma tabela fixa aqui
+/// ficaria com um chip a mais no dia em que um módulo publicasse menos. Ver
+/// [`crate::ids::area_menu_button`].
+fn bar_menus() -> impl Iterator<Item = (ph2d_a11y::NodeId, ContextMenuKind)> {
+    std::iter::once((ids::TOOL_BAR_OVERFLOW, ContextMenuKind::ToolBarOverflow)).chain(
+        (0..ids::MAX_AREA_MENUS).map(|slot| {
+            (
+                ids::area_menu_button(slot),
+                ContextMenuKind::AreaCommands {
+                    slot: u8::try_from(slot).unwrap_or(u8::MAX),
+                },
+            )
+        }),
+    )
+}
 
 /// Está algum destes menus aberto?
 fn open_bar_menu(hero: &HeroScreen) -> Option<ContextMenuKind> {
     let open = hero.store.context_menu()?.kind;
-    BAR_MENUS
-        .iter()
-        .any(|(_, kind)| *kind == open)
-        .then_some(open)
+    bar_menus().any(|(_, kind)| kind == open).then_some(open)
 }
 
 pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let WidgetEvent::Click(id) = event else {
         return false;
     };
-    for (chip, kind) in BAR_MENUS {
+    for (chip, kind) in bar_menus() {
         if id != chip {
             continue;
         }

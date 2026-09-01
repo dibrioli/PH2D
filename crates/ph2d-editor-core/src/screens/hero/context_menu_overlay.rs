@@ -214,20 +214,32 @@ pub fn paint_context_menu_overlay(
     //
     // ⚠️ O `Vec` vive nesta função de propósito: o empréstimo é do `store`, que sobrevive a ela, e
     // o laço de rows a seguir é o MESMO. *A row continua a ser `(id, rótulo, swatch)`.*
-    let area_rows: Vec<(NodeId, &str, Option<[u8; 4]>)>;
-    let items: &[(NodeId, &str, Option<[u8; 4]>)] =
-        if matches!(req.kind, ContextMenuKind::AreaCommands) {
-            // ⚠️ `filter_map` e não `map`: o `Divider` não tem id nem rótulo, e uma linha de menu
-            // sem verbo seria um alvo que consome o clique e não faz nada.
-            area_rows = store
-                .area_entries()
-                .iter()
-                .filter_map(|e| Some((e.node_id()?, e.label()?, None)))
-                .collect();
-            &area_rows
-        } else {
-            super::menu_rows::menu_rows(req.kind)
-        };
+    let merged: Vec<(NodeId, &str, Option<[u8; 4]>)>;
+    let statics = super::menu_rows::menu_rows(req.kind);
+    // ⭐⭐ **As duas metades da D2 caem na MESMA aritmética.** Um pulldown de área é o caso em que
+    // as estáticas são `&[]` (ver `menu_rows`), e o *File* é o caso em que as duas existem — as
+    // linhas do app primeiro, o que o módulo acrescenta depois. ⛔ Um `if` por menu seria a segunda
+    // porta a apodrecer.
+    let contrib: &[crate::widget::ToolRailEntry] = match req.kind {
+        ContextMenuKind::AreaCommands { slot } => store.area_menu_rows(slot),
+        kind => store.menu_contrib(kind),
+    };
+    let items: &[(NodeId, &str, Option<[u8; 4]>)] = if contrib.is_empty() {
+        statics
+    } else {
+        // ⚠️ `filter_map` e não `map`: o `Divider` não tem id nem rótulo, e uma linha de menu
+        // sem verbo seria um alvo que consome o clique e não faz nada.
+        merged = statics
+            .iter()
+            .copied()
+            .chain(
+                contrib
+                    .iter()
+                    .filter_map(|e| Some((e.node_id()?, e.label()?, None))),
+            )
+            .collect();
+        &merged
+    };
 
     if matches!(req.kind, ContextMenuKind::SceneList) {
         paint_scene_list(req, scene, text_system, theme, hit_index, store, viewport);

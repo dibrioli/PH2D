@@ -30,6 +30,7 @@
 //! The bench `tests/interaction_no_alloc.rs` enforces this with
 //! `dhat-rs`.
 
+mod area_menu;
 pub mod dispatch;
 pub mod drag;
 /// ⭐ **O que ATRAVESSA um painel** (plano `docs/Components/07`, B1) — a carga de um arrasto que
@@ -74,5 +75,6 @@ pub use types::{
     TimelineHitKind, TimelineInterpPick, TimelineInterpScope, TimelineWheel,
 };
 // `ContextMenuKind`/`Request` live with `TrackMenuKind` (the menu-kind vocabulary).
+pub use area_menu::AreaMenu;
 pub use types_menu::{ContextMenuKind, ContextMenuRequest, TrackMenuKind};
 pub use util::{format_number, hsv_to_color_value};

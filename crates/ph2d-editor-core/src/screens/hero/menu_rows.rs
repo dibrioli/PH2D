@@ -263,10 +263,14 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
         // fila, com os MESMOS ids — ver `context_menu_overlay::paint_tool_bar_overflow`.
         ContextMenuKind::ToolBarOverflow => &[],
         // ⭐⭐⭐ **As rows são DINÂMICAS** — quem as publica é o módulo que tem o canvas
-        // (`WidgetStore::area_entries`), e o pintor monta-as ali. ⛔ Uma tabela estática aqui teria
-        // de conhecer os ids de TODO módulo do app, que é o acoplamento que a **D2** existe para
-        // não ter.
-        ContextMenuKind::AreaCommands => &[],
+        // (`WidgetStore::area_menus`), e o pintor acrescenta-as a estas. ⛔ Uma tabela estática
+        // aqui teria de conhecer os ids de TODO módulo do app, que é o acoplamento que a **D2**
+        // existe para não ter.
+        //
+        // ⚠️ E o `&[]` deixou de ser um caso especial: o pintor soma `estáticas + contribuídas`
+        // para **todo** menu, e um pulldown de área é simplesmente aquele cuja metade estática é
+        // vazia. É o mesmo mecanismo que põe *Export Draft* no `MenuBarFile` abaixo.
+        ContextMenuKind::AreaCommands { .. } => &[],
         // The palette-rename modal paints a TextInput + Rename button in its own branch below.
         ContextMenuKind::RenamePaletteDialog => &[],
         // The New-image modal paints its size/bg radios + Create in its own branch below.

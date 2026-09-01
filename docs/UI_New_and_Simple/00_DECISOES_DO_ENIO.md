@@ -94,7 +94,7 @@ a ser uma linha.
 
 ⛔⛔ **UM chip, e o número é MEDIDO, não estimado:** com os nove comandos crus na fila ela precisa de
 **2 linhas até no iPad 12,9"**, o maior dos três alvos, e ainda transborda `2` chips para o `⋯`
-(mutação 6 do gate `the_area_costs_one_chip_and_the_bar_is_still_one_line`).
+(mutação 6 do gate `the_area_costs_two_chips_and_the_bar_is_still_one_line`).
 *Poupar altura gastando largura não poupa nada.*
 
 **Primeiro inquilino — o painel `3D Model` perde as 9 primeiras das 74 entradas:** as seis vistas
@@ -104,6 +104,50 @@ com dois ids tem dois sítios a apodrecer em separado.*
 
 ⭐ E o preço deixou de ser uma nota: ele é um **gate** com a área medida nos três tablets —
 [`medicoes/06`](medicoes/06_o_orcamento_de_ecra_em_tablet.md).
+
+### ✅ E as DUAS metades fecharam para o `3D Model` (2026-09-01, entrega 35)
+
+**O que sobrou do painel mudou-se, e para DOIS sítios diferentes — porque o corte da D2 é por
+âmbito, não por quem foi o último a mexer no assunto:**
+
+| fileira | nº | destino | porquê |
+|---|---:|---|---|
+| verbos do gizmo + referencial | 5 | **2.º pulldown de área** (*Gizmo*) | é sobre **mover com a mão** |
+| níveis de exportação | 3 | **menu global → File** | escrever um arquivo vale em **todo o app** |
+
+⇒ o painel perdeu **17 das 74** entradas em duas entregas, e o que lá fica são os **números do
+objecto escolhido** e as leituras — que é o que um painel de propriedades é.
+
+⭐⭐ **São DOIS pulldowns e não um, e o critério é a FACE.** O rótulo diz o *grupo* (`View`,
+`Gizmo`) e a face diz o *estado agora* (`Front`, `Rotate`) — duas grandezas independentes não
+cabem numa palavra, e catorze linhas atrás de uma face só seriam o depósito da foto 3 mudado de
+sítio. ⇒ dois grupos com a mesma face seriam um grupo só.
+
+⭐ **E o orçamento é MEDIDO, não estimado: `3` chips de área** (sonda de 2026-09-01 sobre
+`bar_split` + `horizontal_lines`, com o módulo armado):
+
+| alvo | largura da área | 1 chip | 2 | 3 | 4 |
+|---|---:|---|---|---|---|
+| iPad 12,9" | `754,0` | 1 linha | 1 | 1 | 1 |
+| iPad 11 | `582,0` | 1 linha | 1 | 1 | **2** |
+| iPad mini | `521,0` | 1 linha | 1 | 1 | **2** |
+
+Usam-se **2**, com um de folga. ⛔ Ultrapassar não parte nada (o `⋯` absorve) — custa a 2.ª linha
+nos dois alvos pequenos, que é exactamente o que a entrega 32 existe para não pagar.
+
+⚠️ **As linhas do *File* são CONTRIBUÍDAS, não fixas:** o módulo publica-as enquanto tem o canvas, e
+com ele fechado o menu volta byte a byte ao que era. *Uma linha `Export Draft` permanente seria um
+alvo que consome o clique e não faz nada.*
+
+⚠️ **A célula `add.*` (20) desta tabela já estava FECHADA e a tabela não sabia:** a paleta de formas
+(W100) reduziu-a a **um** chip que abre o catálogo genérico da casa — com busca, categorias e
+rolagem. ⛔ Quem for pegar nela pelo número `20` reconstrói trabalho já pago.
+
+⏳ **O que sobra do `kind/act/verb/op`:** o **verbo** e o **carácter** da mistura são **propriedades
+do objecto** pelo critério desta própria decisão (o mesmo que manda o `mod.*` ficar) — a tabela
+acima mandava-os para um pulldown e **contradizia-se**. Ficam no painel. Sobram as **operações
+booleanas** e as **acções** (duplicar/apagar/isolar), que são gestos sobre a selecção e ainda não
+têm destino decidido.
 
 ---
 

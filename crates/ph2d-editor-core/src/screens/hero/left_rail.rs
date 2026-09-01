@@ -127,9 +127,16 @@ pub fn populate(store: &mut WidgetStore) {
         // arma o `active` e o Up nunca emite `Click`. Foi exactamente isso que o gate de gesto
         // apanhou quando ele chegou (`the_dots_open_the_rest_and_a_pick_closes_them`).
         ids::TOOL_BAR_OVERFLOW,
-        // ⭐ **O pulldown da ÁREA** — pelo mesmo motivo, e o gate de gesto é o mesmo.
-        ids::AREA_COMMANDS,
-    ] {
+    ]
+    .into_iter()
+    // ⭐ **Os pulldowns da ÁREA** — pelo mesmo motivo, e o gate de gesto é o mesmo.
+    //
+    // ⚠️ **Todos os `MAX_AREA_MENUS`, às cegas.** Registar só os que o módulo publicou HOJE faria o
+    // registo depender de um retrato que muda a cada quadro — e o chip do 2.º pulldown nasceria
+    // morto no quadro em que o módulo abre. É a lei do `populate` de todo painel desta casa: cunha
+    // a família inteira, e quem corta é quem pinta.
+    .chain((0..ids::MAX_AREA_MENUS).map(ids::area_menu_button))
+    {
         store.register(
             id,
             InteractiveState::Button {

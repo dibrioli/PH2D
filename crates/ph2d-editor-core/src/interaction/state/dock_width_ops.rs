@@ -128,31 +128,56 @@ impl WidgetStore {
         &self.tool_overflow
     }
 
-    /// ⭐⭐⭐ **Publica os comandos da ÁREA que tem o canvas** — ver os dois campos.
+    /// ⭐⭐⭐ **Publica o que o módulo com o canvas contribui neste quadro** — ver os dois campos.
     ///
-    /// `face` é o que o pulldown MOSTRA (a leitura); `entries` é o que ele ABRE.
+    /// `menus` são os **pulldowns da fila** (a metade 2 da D2); `contrib` é o que ele acrescenta a
+    /// menus que **já existem** (a metade 1 — hoje o *File*).
+    ///
+    /// ⚠️ **UMA porta para as duas metades, de propósito.** Elas são a mesma pergunta da D2 lida
+    /// duas vezes (*este comando é do app ou do editor?*), e duas portas dariam duas leis do
+    /// «escrito em todo quadro» a envelhecer em separado.
     ///
     /// ⚠️ **Chamado em todo quadro, vazio incluído.** Escrever só quando há módulo armado deixaria
     /// o chip do 3D na fila depois de o módulo fechar — pintado, e a despachar para um painel que
-    /// já não existe.
+    /// já não existe — e uma linha *Export Draft* no menu *File* que não exporta nada.
     pub fn set_area_commands(
         &mut self,
-        face: impl Into<String>,
-        entries: Vec<crate::widget::ToolRailEntry>,
+        menus: Vec<crate::interaction::AreaMenu>,
+        contrib: Vec<(
+            crate::interaction::ContextMenuKind,
+            Vec<crate::widget::ToolRailEntry>,
+        )>,
     ) {
-        self.area_face = face.into();
-        self.area_entries = entries;
+        self.area_menus = menus;
+        self.menu_contrib = contrib;
     }
 
-    /// Os comandos que a área contribui neste quadro — o corpo do pulldown.
+    /// Os pulldowns que a área contribui neste quadro — um chip por cada, na ordem.
     #[must_use]
-    pub fn area_entries(&self) -> &[crate::widget::ToolRailEntry] {
-        &self.area_entries
+    pub fn area_menus(&self) -> &[crate::interaction::AreaMenu] {
+        &self.area_menus
     }
 
-    /// A face do pulldown da área — vazia quando não há módulo a contribuir.
+    /// O corpo do pulldown `slot`, ou vazio se não há tal pulldown neste quadro.
+    ///
+    /// ⚠️ Vazio e não `panic`: o `slot` vem de um `ContextMenuRequest` que sobrevive ao quadro em
+    /// que foi aberto, e fechar o módulo com o menu aberto é um gesto legítimo.
     #[must_use]
-    pub fn area_face(&self) -> &str {
-        &self.area_face
+    pub fn area_menu_rows(&self, slot: u8) -> &[crate::widget::ToolRailEntry] {
+        self.area_menus
+            .get(usize::from(slot))
+            .map_or(&[], |m| &m.rows)
+    }
+
+    /// O que um módulo acrescenta a `kind` neste quadro — vazio quando ninguém contribui.
+    #[must_use]
+    pub fn menu_contrib(
+        &self,
+        kind: crate::interaction::ContextMenuKind,
+    ) -> &[crate::widget::ToolRailEntry] {
+        self.menu_contrib
+            .iter()
+            .find(|(k, _)| *k == kind)
+            .map_or(&[], |(_, rows)| rows)
     }
 }

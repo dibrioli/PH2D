@@ -88,12 +88,19 @@ pub enum ContextMenuKind {
     /// ⚠️ *Os ids são os mesmos de propósito*: quem despacha continua a ser o `chrome::rail_*`, e
     /// uma cópia de verbo aqui seria a segunda porta que o `CLAUDE.md` §5.0 cataloga.
     ToolBarOverflow,
-    /// ⭐⭐⭐ **O PULLDOWN DA ÁREA** — os comandos do editor que tem o canvas.
+    /// ⭐⭐⭐ **UM PULLDOWN DA ÁREA** — os comandos do editor que tem o canvas, pela POSIÇÃO na
+    /// lista que o módulo publicou (`WidgetStore::area_menus`).
     ///
-    /// O corpo é a lista que o módulo publicou (`WidgetStore::area_entries`), com os ids do
-    /// **painel dono**: um clique numa linha levanta exactamente o `Click` que o `apply_event`
-    /// daquele painel já trata. ⛔ Um verbo novo aqui seria um comando com dois sítios.
-    AreaCommands,
+    /// O corpo traz os ids do **painel dono**: um clique numa linha levanta exactamente o `Click`
+    /// que o `apply_event` daquele painel já trata. ⛔ Um verbo novo aqui seria um comando com
+    /// dois sítios.
+    ///
+    /// ⚠️ **O `slot` é a identidade, e é por isso que ele está no `kind`**: dois pulldowns abertos
+    /// pelo mesmo `kind` obrigariam o pintor a guardar *qual deles* nalgum sítio à parte — e essa
+    /// segunda verdade divergiria do chip que o dedo carregou.
+    AreaCommands {
+        slot: u8,
+    },
     MenuBarView,
     /// Ver [`Self::MenuBarFile`]. Hospeda os **toggles de módulo** — os treze que, entre a
     /// retirada da barra de pills (2026-08-30) e esta barra, só a tecla `F9` alcançava.
@@ -346,7 +353,7 @@ impl ContextMenuKind {
         },
         Self::SectionOutline { section: NodeId(1) },
         Self::ToolBarOverflow,
-        Self::AreaCommands,
+        Self::AreaCommands { slot: 0 },
         Self::NoteBackground {
             panel: NodeId(1),
             note_index: 0,

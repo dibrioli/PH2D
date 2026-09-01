@@ -384,8 +384,8 @@ fn trace_inner_tiles(
     // ⚠️ **E é o que torna a paridade uma paridade.** Se só o ladrilho recortasse, as duas marchas
     // começariam em `t` diferentes, parariam em pontos ligeiramente diferentes, e numa **quina viva**
     // a normal salta — a diferença lida como defeito da especialização sem o ser.
-    let bbox =
-        ph2d_field_eval::bounds::bounding_ball(doc, reg).map(ph2d_field_eval::bounds::Ball::aabb);
+    let bbox = ph2d_field_eval::bounds::bounding_ball(doc, reg)
+        .map(ph2d_field_eval::bounds_clip::march_clip);
     let scene = Scene {
         clip: bbox,
         ..scene

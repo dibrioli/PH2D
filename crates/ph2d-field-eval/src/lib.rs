@@ -17,6 +17,10 @@
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
 pub mod bounds;
+/// ⭐ A caixa da peça DOBRADA — ver [`bounds_bend`].
+pub(crate) mod bounds_bend;
+/// ⭐ A caixa que a MARCHA percorre — ver [`bounds_clip`].
+pub mod bounds_clip;
 pub mod extract;
 pub mod hybrid;
 pub mod ops;

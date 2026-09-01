@@ -101,10 +101,13 @@ impl ExportLevel {
 ///
 /// # ⚠️ Por que NÃO é o bordo da grade
 ///
-/// Há dois números disponíveis e eles não são o mesmo. O bordo
-/// ([`ph2d_field_eval::bounds::bounding_ball`], W33) é o cubo que envolve a **esfera** que contém a
-/// peça, mais 5 % de folga: ele é **andaime**, conservador por construção, e **cúbico** — numa peça
-/// fina o eixo curto sai mais de uma ordem de grandeza maior do que a peça. Dizê-lo seria responder
+/// Há dois números disponíveis e eles não são o mesmo. A grade da exportação
+/// (`ph2d_field_eval::extract::Grid`) é o cubo do **raio** da esfera de bordo
+/// ([`ph2d_field_eval::bounds::bounding_ball`], W33), mais 5 % de folga: ele é **andaime**,
+/// conservador por construção, e **cúbico** — numa peça fina o eixo curto sai mais de uma ordem de
+/// grandeza maior do que a peça. ⚠️ **Note o `radius`, e não o `Ball::aabb`**: este desde
+/// 2026-09-01 devolve as meias-extensões, que são justas e **não** são o que a grade constrói.
+/// Dizê-lo seria responder
 /// *"que tamanho tem a caixa em que eu desenhei"* a quem perguntou *"que tamanho tem a peça"*.
 ///
 /// O que se diz é a caixa da **malha que de facto foi escrita no arquivo** — o mesmo número que o

@@ -50,7 +50,7 @@ fn mesh_of(doc: &FieldDoc, depth: u8) -> ph2d_mesh::Mesh {
 ///
 /// | candidato | o que é | por que NÃO serve |
 /// |---|---|---|
-/// | a caixa do **bordo** (`bounds::bounding_ball().aabb()`) | o cubo que envolve a **esfera** que contém a peça — e a grade ainda lhe soma `PAD_FRACTION` (5 %) por cima | é **andaime**: conservador por construção, e cúbico — um objeto fino reporta o lado maior nos três eixos |
+/// | a caixa da **grade** (`bounds::bounding_ball().radius`, mais `PAD_FRACTION`) | o **cubo** que envolve a esfera de bordo — é o que a `extract::Grid::new` constrói | é **andaime**: cúbico por construção, então um objeto fino reporta o lado maior nos três eixos |
 /// | a caixa da **malha** (`Mesh::bounds()`) | o que de facto foi escrito no arquivo | ⭐ é a resposta à pergunta *"que tamanho isto tem no Blender?"* |
 ///
 /// Rode com `--ignored --nocapture`.
@@ -76,8 +76,11 @@ fn measure_the_grid_box_against_the_real_piece() {
     );
     for (name, doc) in cases {
         let ball = ph2d_field_eval::bounds::bounding_ball(&doc, &reg).expect("tem geometria");
-        let (lo, hi) = ball.aabb();
-        let grid = [hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]];
+        // ⚠️ **O NÚMERO DA GRADE É O CUBO DO RAIO, e esta sonda lia o `aabb`** — que desde
+        // 2026-09-01 devolve as meias-extensões. Enquanto os dois eram a mesma coisa ninguém notou;
+        // hoje ler o `aabb` seria medir um andaime que a `extract::Grid::new` não constrói.
+        let lado = 2.0 * ball.radius * 1.05;
+        let grid = [lado, lado, lado];
         let b = mesh_of(&doc, 7).bounds();
         let real = [
             b.max[0] - b.min[0],
@@ -124,15 +127,20 @@ fn the_reported_size_is_the_mesh_that_shipped_not_the_grid_that_built_it() {
             "o eixo {k} disse {s} e a malha mede {real}"
         );
     }
-    // ⭐ O eixo CURTO é o que separa as duas respostas: a caixa da grade é cúbica.
+    // ⭐ O eixo CURTO é o que separa as duas respostas: a caixa da grade é **cúbica**, tirada do
+    // RAIO da esfera de bordo (`extract::Grid::new`), e não das meias-extensões.
+    //
+    // ⚠️ **Esta linha lia o `Ball::aabb`, e ele deixou de ser esse cubo em 2026-09-01** — passou a
+    // devolver a caixa justa. A sonda continuava verde porque os dois eram o mesmo número; hoje o
+    // `aabb` do eixo curto desta peça é `0,04` e a grade continua a ser `0,84`. *Um gate que lê um
+    // número parecido com o que o produto usa passa até ao dia em que os dois se separam.*
     let reg = crate::field3d_smoke::sampled_registry();
     let ball = ph2d_field_eval::bounds::bounding_ball(&doc, &reg).expect("tem geometria");
-    let (lo, hi) = ball.aabb();
+    let lado = 2.0 * ball.radius * 1.05;
     assert!(
-        (hi[2] - lo[2]) > said[2] * 5.0,
+        lado > said[2] * 5.0,
         "esta fixture existe para os dois números DIVERGIREM no eixo curto — \
-         grade {} contra malha {}; se convergiram, ela deixou de provar o que prova",
-        hi[2] - lo[2],
+         grade {lado} contra malha {}; se convergiram, ela deixou de provar o que prova",
         said[2]
     );
 }

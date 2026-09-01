@@ -31,7 +31,7 @@ pub fn trace_tiled_for_test(
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
     let rc = ph2d_field_eval::RegionCompiler::new(doc);
     let bbox = ph2d_field_eval::bounds::bounding_ball(doc, reg)
-        .map(ph2d_field_eval::bounds::Ball::aabb)?;
+        .map(ph2d_field_eval::bounds_clip::march_clip)?;
     if shape.sampled_count() != 0 || !rc.is_worth_it() {
         return None;
     }
@@ -122,7 +122,7 @@ pub fn trace_tiled_with_cache_for_test(
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
     let rc = ph2d_field_eval::RegionCompiler::new(doc);
     let bbox = ph2d_field_eval::bounds::bounding_ball(doc, reg)
-        .map(ph2d_field_eval::bounds::Ball::aabb)?;
+        .map(ph2d_field_eval::bounds_clip::march_clip)?;
     if shape.sampled_count() != 0 || !rc.is_worth_it() {
         return None;
     }

@@ -241,17 +241,16 @@ pub fn field_shrink(doc: &FieldDoc, reg: &crate::hybrid::Registry) -> f32 {
     let mut pior = 1.0f64;
     for (i, node) in doc.nodes().iter().enumerate() {
         let local = balls[i].unwrap_or(crate::bounds::Ball::EMPTY);
-        // ⚠️ A MESMA bola que a `stacked` usa — o ENVELOPE da pilha. Ver a nota lá.
-        let fim = crate::bounds::envelope(local, &node.mods);
         // ⭐ O divisor da ARESTA da forma entra aqui pela mesma porta dos deformadores — ver
         // `ph2d_field::edge_shrink`, e o report do Enio de 2026-08-30 que o obrigou.
         let mut aqui = match &node.kind {
             NodeKind::Leaf(p) => f64::from(ph2d_field::edge_shrink(p)),
             _ => 1.0,
         };
-        for m in &node.mods {
-            aqui *= crate::stack::step_divisor(*m, fim);
-        }
+        // ⭐⭐⭐ **A MESMA função que a `stacked` aplica à árvore** (2026-09-01). Este laço era uma
+        // **segunda** travessia — ele lia só o envelope, e a dobra tira a curvatura da bola de
+        // ANTES de cada passo: as duas respostas divergiam sem que nada as obrigasse a concordar.
+        aqui *= crate::stack::stack_divisor(&node.mods, local);
         pior = pior.max(aqui);
     }
     #[allow(clippy::cast_possible_truncation)]

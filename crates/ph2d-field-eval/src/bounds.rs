@@ -77,16 +77,30 @@ impl Ball {
     /// lado. *Uma mudança que se diz aditiva tem de deixar o número antigo onde ele estava.*
     ///
     /// ⚠️ O `half` é preso ao raio: uma caixa maior do que a esfera que a contém é uma contradição.
+    ///
+    /// # ⭐⭐⭐ E o raio é preso à CAIXA — a outra metade, que faltava (2026-09-01)
+    ///
+    /// A regra acima só andava num sentido. Mas a caixa também **fala sobre a esfera**: se a peça
+    /// cabe em `centro ± half`, então cabe na esfera que passa pelo canto dessa caixa, de raio
+    /// `‖half‖`. ⇒ toda lei que sabe os eixos aperta o raio **de graça**, e a que não sabe
+    /// ([`Ball::new`], com `half = [r, r, r]`) fica **inalterada ao bit** — ali `‖half‖ = r√3 > r`.
+    ///
+    /// ⚠️ Isto não é um atalho para a nota do topo do ficheiro: a esfera **continua** a ser a moeda
+    /// da composição (ela é invariante à rotação e a caixa não). O que muda é que ela deixa de ser
+    /// a única coisa que uma lei sabe dizer.
     #[must_use]
     pub fn of(center: [f32; 3], radius: f32, half: [f32; 3]) -> Self {
+        let h = [
+            half[0].min(radius),
+            half[1].min(radius),
+            half[2].min(radius),
+        ];
+        let canto = h[0].hypot(h[1]).hypot(h[2]);
+        let radius = radius.min(canto);
         Ball {
             center,
             radius,
-            half: [
-                half[0].min(radius),
-                half[1].min(radius),
-                half[2].min(radius),
-            ],
+            half: [h[0].min(radius), h[1].min(radius), h[2].min(radius)],
         }
     }
 
@@ -140,13 +154,42 @@ impl Ball {
         }
     }
 
-    /// A caixa alinhada aos eixos que a contém — o que a grade do extrator precisa.
+    /// ⭐⭐⭐ **A CAIXA alinhada aos eixos que contém a peça** — o recorte da marcha e a grade do
+    /// exportador.
+    ///
+    /// ⛔⛔⛔ **Ela era o CUBO circunscrito à esfera, e isso custava duas coisas de uma vez**
+    /// (report do Enio, 2026-09-01: *«muitíssimo lento»*). O doc do
+    /// `field3d_export_tests` já o nomeava — *«cúbico: um objeto fino reporta o lado maior nos
+    /// três eixos»* — e o preço não era só resolução:
+    ///
+    /// | quem lê | o que o cubo custava |
+    /// |---|---|
+    /// | a marcha (`Scene::clip`) | o raio entra mais cedo e sai mais tarde, e **todo** `*_reach` dos deformadores é medido nele |
+    /// | a grade do exportador | a resolução gasta-se em vazio |
+    ///
+    /// ⇒ ela devolve as **meias-extensões**, que é o que a peça de facto ocupa. ⚠️ **É seguro por
+    /// construção**: `half[i] ≤ radius` (invariante da estrutura) e a caixa contém a peça (gate
+    /// `the_box_of_a_bound_contains_the_piece_through_the_whole_stack`, 60 fixturas). Quem não
+    /// sabe os eixos nasce por [`Ball::new`], cujo `half` **é** o raio — e aí ela é o cubo de
+    /// sempre, ao bit.
     #[must_use]
     pub fn aabb(self) -> ([f32; 3], [f32; 3]) {
-        let r = self.radius.max(0.0);
+        let h = [
+            self.half[0].max(0.0),
+            self.half[1].max(0.0),
+            self.half[2].max(0.0),
+        ];
         (
-            [self.center[0] - r, self.center[1] - r, self.center[2] - r],
-            [self.center[0] + r, self.center[1] + r, self.center[2] + r],
+            [
+                self.center[0] - h[0],
+                self.center[1] - h[1],
+                self.center[2] - h[2],
+            ],
+            [
+                self.center[0] + h[0],
+                self.center[1] + h[1],
+                self.center[2] + h[2],
+            ],
         )
     }
 
@@ -388,6 +431,26 @@ pub(crate) fn axis_shift_of(m: Unary) -> usize {
     }
 }
 
+/// ⭐⭐⭐ **Quão longe de um EIXO a bola chega** — a grandeza que a torção varre, que a repetição
+/// radial varre e de que a inclinação tira o factor de secção. Uma lei, três leitores.
+///
+/// ⛔ **Cada um deles escrevia `‖(c_a, c_b)‖ + raio`, e o raio não é uma extensão de eixo**
+/// (2026-09-01). Numa peça achatada no plano que interessa a esfera responde pela **espessura no
+/// terceiro eixo**, que não participa: uma barra `0,05 × 0,05 × 0,80` centrada dizia `0,80` de braço
+/// e o braço verdadeiro é `0,07` — **11×**, e o erro ia direito ao divisor da torção
+/// (`σ = t/2 + √(1 + t²/4)` com `t = κ·R`), que é multiplicativo.
+///
+/// ⚠️ **As DUAS respostas são majorantes, e fica-se com a menor**: a da caixa ganha numa peça
+/// achatada, a da esfera ganha numa peça longe do eixo (ali a caixa paga `√2` pelo canto).
+#[must_use]
+pub(crate) fn axis_distance(b: Ball, eixo: usize) -> f32 {
+    let h = b.half();
+    let (u, v) = ((eixo + 1) % 3, (eixo + 2) % 3);
+    let pela_caixa = (b.center[u].abs() + h[u]).hypot(b.center[v].abs() + h[v]);
+    let pela_esfera = b.center[u].hypot(b.center[v]) + b.radius.max(0.0);
+    pela_caixa.min(pela_esfera)
+}
+
 /// A lei de cada modificador, **no eixo canónico dele** — ver [`step_mod`], que é a porta.
 fn canonical_step(b: Ball, m: Unary) -> Ball {
     match m {
@@ -437,26 +500,29 @@ fn canonical_step(b: Ball, m: Unary) -> Ball {
         // bola já centrada no eixo fica **inalterada ao bit**; uma descentrada varre o círculo que o
         // centro descreve. *Não se escreve lei nova: aponta-se para a que existe.*
         Unary::Radial { joint, .. } => {
-            let arm = b.center[0].hypot(b.center[1]);
             // ⭐ Pela razão da matriz acima — a costura entre as cópias enche o vinco.
             //
             // ⭐⭐ **O varrimento é no plano XY; o Z não se mexe** — e é isso que a caixa diz e a
             // esfera não dizia.
             let h = b.half();
             let j = joint.reach();
-            let raio_xy = arm + b.radius + j;
+            let raio_xy = axis_distance(b, 2) + j;
+            let meia_z = h[2] + j;
             Ball::of(
                 [0.0, 0.0, b.center[2]],
-                raio_xy,
-                [raio_xy, raio_xy, h[2] + j],
+                raio_xy.hypot(meia_z),
+                [raio_xy, raio_xy, meia_z],
             )
         }
         Unary::Twist { .. } => {
-            let arm = b.center[0].hypot(b.center[1]);
             // ⭐⭐ Como a radial: o giro é no plano XY e o Z é preservado **ao bit**.
             let h = b.half();
-            let raio_xy = arm + b.radius;
-            Ball::of([0.0, 0.0, b.center[2]], raio_xy, [raio_xy, raio_xy, h[2]])
+            let raio_xy = axis_distance(b, 2);
+            Ball::of(
+                [0.0, 0.0, b.center[2]],
+                raio_xy.hypot(h[2]),
+                [raio_xy, raio_xy, h[2]],
+            )
         }
         // A secção cresce `slope` por unidade de altura, e a altura é no máximo o próprio raio.
         // ⛔⛔ **ELA IGNORAVA O CENTRO DA BOLA, e a peça saía da caixa do mundo** (auditoria de
@@ -479,7 +545,10 @@ fn canonical_step(b: Ball, m: Unary) -> Ball {
                 return b;
             }
             let s = slope.abs();
-            let k_max = s.mul_add(b.center[1].abs() + b.radius, 1.0);
+            // ⭐ **A altura é a do EIXO Y, e não o raio** (2026-09-01) — `k(y) = 1 + slope·y` só
+            // pergunta pelo `y`, e a esfera responde pelo maior dos três eixos. Numa chapa larga e
+            // baixa isso inflava o factor de secção inteiro.
+            let k_max = s.mul_add(b.center[1].abs() + b.half()[1], 1.0);
             let fora_do_eixo = b.center[0].hypot(b.center[2]);
             // ⭐⭐ **A secção escala em X e Z; o Y não se mexe** — a inclinação é o exemplo mais
             // claro de uma lei que a esfera obrigava a arredondar para cima nos três eixos.
@@ -505,8 +574,18 @@ fn canonical_step(b: Ball, m: Unary) -> Ball {
         //
         // ⚠️ **Conservadora de propósito nos dois casos** (a assimetria do ficheiro: um bordo a mais
         // custa resolução, um bordo a menos **corta a peça e não diz nada**).
-        Unary::Bend { turns, .. } => {
-            let k = f64::from(turns) * std::f64::consts::TAU;
+        Unary::Bend {
+            turns,
+            lower,
+            upper,
+            falloff,
+            ..
+        } => {
+            // ⛔⛔ **A CURVATURA EFECTIVA, e não a pedida** (2026-09-01). A árvore dobra por
+            // `bend_curvature`, que **satura** contra a parede da peça — e uma caixa calculada
+            // sobre a curvatura crua descreve um arco que ninguém desenhou. *Um bordo tem de
+            // responder pela geometria que a árvore produz, não pela que o slider pede.*
+            let k = crate::stack_bend::bend_curvature(turns, b);
             if k == 0.0 || !k.is_finite() {
                 return b;
             }
@@ -532,9 +611,32 @@ fn canonical_step(b: Ball, m: Unary) -> Ball {
             // ⚠️ O centro fica onde estava: a bola é grande o suficiente para conter o arco, e
             // mover o centro exigiria a imagem dele — que é a conta que se está a evitar.
             //
-            // ⚠️ **E a caixa cresce no plano da dobra (X e Z); o Y é preservado** — a dobra não toca
-            // no eixo perpendicular ao arco.
-            Ball::of(b.center, raio, [raio, h[1], raio])
+            // ⭐⭐⭐ **E a CAIXA é a do arco, não o cubo do raio** (2026-09-01) — ver
+            // [`crate::bounds_bend`]. Ela era `[raio, h₁, raio]`, e numa caixa `0,35³` a `0,12`
+            // voltas isso é `0,957` contra os `0,376` que a peça dobrada de facto ocupa: **`2,5×`
+            // em dois eixos**, herdados por toda a pilha a jusante.
+            //
+            // ⚠️ **A lei antiga fica como tecto**: a nova nunca é aceite se for mais folgada, e
+            // quando o arco é pequeno demais para ser distinguível da identidade ela devolve a
+            // pergunta. *Uma cerca nova entra por `min` com a que já defendia o sítio.*
+            let largo = |e: usize| if e == 1 { h[1] } else { raio };
+            let meia = crate::bounds_bend::bent_extent(
+                b.center,
+                h,
+                k,
+                f64::from(lower),
+                f64::from(upper),
+                f64::from(falloff),
+            )
+            .map_or([largo(0), largo(1), largo(2)], |(lo, hi)| {
+                std::array::from_fn(|e| {
+                    let c = f64::from(b.center[e]);
+                    #[allow(clippy::cast_possible_truncation)]
+                    let m = (hi[e] - c).abs().max((lo[e] - c).abs()) as f32;
+                    m.min(largo(e))
+                })
+            });
+            Ball::of(b.center, raio, meia)
         }
     }
 }

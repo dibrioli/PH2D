@@ -83,7 +83,7 @@ fn peca(mods: Vec<Unary>) -> FieldDoc {
 fn worst_gradient_eps(doc: &FieldDoc, steps: i32, eps: f64) -> f64 {
     let reg = ph2d_field_eval::hybrid::Registry::default();
     let bola = ph2d_field_eval::bounds::bounding_ball(doc, &reg).expect("bordo");
-    let (lo, hi_box) = bola.aabb();
+    let (lo, hi_box) = ph2d_field_eval::bounds_clip::march_clip(bola);
     let f = Field::new(doc);
     let mut hi = 0.0f64;
     for i in 0..=steps {
@@ -494,6 +494,72 @@ fn the_bound_contains_the_piece_even_far_from_the_origin() {
             "{nome}: a peça chega a {fora:.4} do centro e o bordo diz {:.4} — a exportação corta em \
              silêncio, e o divisor da torção bebe deste número",
             bola.radius
+        );
+    }
+}
+
+/// ⭐ **ONDE está o pior gradiente** — a sonda que diz se o excesso vive na peça, na casca da
+/// margem, ou no canto do recorte. `--ignored --nocapture`.
+#[test]
+#[ignore = "sonda"]
+fn where_the_worst_gradient_lives() {
+    let reg = ph2d_field_eval::hybrid::Registry::default();
+    for turns in [0.12f32, 0.25, 1.0] {
+        let doc = peca(vec![Unary::Bend {
+            turns,
+            lower: -2.0,
+            upper: 2.0,
+            falloff: 0.1,
+            axis: ph2d_field::mods::BEND_AXIS,
+        }]);
+        let bola = ph2d_field_eval::bounds::bounding_ball(&doc, &reg).expect("bordo");
+        let (lo, hi) = ph2d_field_eval::bounds_clip::march_clip(bola);
+        let (jlo, jhi) = bola.aabb();
+        let f = Field::new(&doc);
+        let n = 48;
+        let mut pior = (0.0f64, [0.0f64; 3], 0.0f64);
+        for i in 0..=n {
+            for j in 0..=n {
+                for k in 0..=n {
+                    let p = |t: i32, e: usize| {
+                        f64::from(lo[e]) + f64::from(t) / f64::from(n) * f64::from(hi[e] - lo[e])
+                    };
+                    let q = [p(i, 0), p(j, 1), p(k, 2)];
+                    let g = f.gradient_norm(q[0], q[1], q[2], 1.0e-5);
+                    if g.is_finite() && g > pior.0 {
+                        pior = (g, q, f.at(q[0], q[1], q[2]));
+                    }
+                }
+            }
+        }
+        let dentro = (0..3).all(|e| {
+            pior.1[e] >= f64::from(jlo[e]) - 1e-9 && pior.1[e] <= f64::from(jhi[e]) + 1e-9
+        });
+        println!(
+            "voltas {turns}: grad {:.4} em ({:.3}, {:.3}, {:.3}) campo {:.4} | {} | caixa justa \
+             x[{:.3},{:.3}] z[{:.3},{:.3}] · recorte x[{:.3},{:.3}] z[{:.3},{:.3}] · raio {:.3} \
+             half {:?} · shrink {:.3}",
+            pior.0,
+            pior.1[0],
+            pior.1[1],
+            pior.1[2],
+            pior.2,
+            if dentro {
+                "DENTRO da caixa justa"
+            } else {
+                "na CASCA da margem"
+            },
+            jlo[0],
+            jhi[0],
+            jlo[2],
+            jhi[2],
+            lo[0],
+            hi[0],
+            lo[2],
+            hi[2],
+            bola.radius,
+            bola.half(),
+            ph2d_field_eval::field_shrink(&doc, &reg),
         );
     }
 }

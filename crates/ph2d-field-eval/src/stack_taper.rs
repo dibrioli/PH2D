@@ -100,6 +100,17 @@ pub(crate) fn taper_divisor(slope: f64, alcance: f64) -> f64 {
 ///
 /// ⚠️ Irmão do [`axis_reach`], e num eixo diferente: cada modificador nomeia o seu, que é a lei que
 /// as primitivas deste módulo já seguem.
+///
+/// # ⛔ Apertá-lo para a CAIXA não compra nada, e carrega o risco do irmão (2026-09-01)
+///
+/// A `bounds::axis_distance` sabe ler a caixa, e daria `0,658` onde a esfera dá `0,780`. ⛔ Medido:
+/// o divisor da inclinação **não se mexe** (`2,20` nos dois), porque o `max(1, alcance)` do
+/// [`taper_divisor`] domina em qualquer peça enquadrada. ⇒ zero ganho.
+///
+/// ⚠️ E o preço é o mesmo que o [`axis_reach`] pagou no mesmo dia: o [`TAPER_SAFETY`] foi **medido**
+/// numa peça centrada e de tamanho um, com esta esfera lá dentro. *Apertar a entrada de uma
+/// constante calibrada consome a margem que a fazia bastar* — e ali o resultado foi um pixel a
+/// furar. Uma mudança sem ganho e com risco não se faz.
 pub(crate) fn taper_reach(b: crate::bounds::Ball) -> f64 {
     f64::from(b.center[0].hypot(b.center[2]) + b.radius.max(0.0))
 }

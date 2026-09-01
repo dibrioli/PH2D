@@ -29,32 +29,6 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
     // eixo a peça chega **naquele ponto da pilha**, e um `Array` antes dela muda essa resposta.
     // ⚠️ A lei de cada passo é a do [`crate::bounds::step_mod`], e não uma segunda cópia dela.
     let mut ball = local;
-    // ⛔⛔⛔ **O DIVISOR DE UM PASSO MEDE-SE CONTRA A CAIXA QUE A MARCHA PERCORRE** — e ela é a do
-    // **FIM** da pilha, não a corrente (2026-08-30, e eu aprendi isto três vezes no mesmo dia).
-    //
-    // O recorte da marcha é a AABB da bola final (`Scene::clip`), e um modificador **posterior** pode
-    // aumentá-la: o campo de um passo anterior passa a ser avaliado mais longe do que o bordo dele
-    // dizia. Medido: `[Taper, Array]` lia `‖∇f‖ = 1,0572` **dentro do recorte** — e não é artefacto
-    // de grelha, porque o número **não muda** de `ε = 1e-3` para `1e-5`.
-    //
-    // ⛔⛔ **E não é a bola do FIM, é o ENVELOPE**: a repetição radial re-centra no eixo, logo a
-    // pilha não é monótona — com a do fim, `[Taper, Radial]` foi a `730,5`.
-    let final_ball = crate::bounds::envelope(local, mods);
-    // ⭐⭐⭐ **O DIVISOR ACUMULA E APLICA-SE UMA VEZ, NO FIM** (2026-08-30) — e isto é uma CURA.
-    //
-    // ⛔ Enquanto cada deformador dividia na hora, ele mudava a **unidade** do campo, e todo número
-    // GEOMÉTRICO a jusante atravessava a conversão sem saber: `|f/L| − t/2` cruza zero onde
-    // `|f| = L·t/2`, ⇒ **parede `L·t`**. Medido (`measure_the_wall_after_a_warp`, parede pedida
-    // `0,060`): `Taper 1,0 + Shell` entregava **`0,180`** — `1 + 2·declive` exacto —, e
-    // `Twist 1,0 + Shell` entregava **`0,337`**, `5,62×`.
-    //
-    // ⚠️ **É defeito PRÉ-EXISTENTE**: a inclinação carrega-o desde a W18, e o filete e o afastamento
-    // depois dela erram pelo mesmo factor. A torção só o tornou grande.
-    //
-    // ⭐ Dividir no fim é correcto **e** mais apertado: o `Shell` (`|f|−t`), o `Offset` (`f−d`) e o
-    // `min`/`max` preservam Lipschitz, então o tecto da pilha inteira continua a ser o produto dos
-    // `σ` — e o número que o artista escreveu volta a valer o que diz.
-    let mut divisor = 1.0f64;
     // ⛔⛔⛔ **HÁ UM DEFORMADOR DE ESPAÇO NESTA PILHA?** — e a pergunta é sobre a pilha INTEIRA, não
     // sobre o que já passou (2026-08-31).
     //
@@ -168,9 +142,12 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
                 })
             }
         };
-        divisor *= step_divisor(*m, final_ball);
         ball = crate::bounds::step_mod(ball, *m);
     }
+    // ⭐⭐⭐ **O DIVISOR SAI DA PORTA, e não de um segundo laço** — a [`stack_divisor`] é a mesma
+    // função que o `field_shrink` chama, e ela faz a mesma travessia da bola que este laço faz.
+    // *Enquanto eram duas contas, a curvatura da dobra podia ser uma aqui e outra lá — e era.*
+    let divisor = stack_divisor(mods, local);
     if divisor == 1.0 {
         // ⭐ **IDENTIDADE AO BIT** numa pilha sem deformador — a divisão por `1,0` seria exacta em
         // `f64`, mas a árvore ganharia um nó, e o gate de forma da fita mede a árvore.
@@ -230,12 +207,45 @@ fn conjugado(
 /// ⚠️ **A bola é a de ANTES deste passo**, como no [`crate::bounds::step_mod`]: é dela que a torção
 /// tira o alcance do eixo.
 /// ⚠️ **A `ball` é a do FIM da pilha**, e não a de antes deste passo — ver a nota na [`stacked`].
-pub(crate) fn step_divisor(m: Unary, ball: crate::bounds::Ball) -> f64 {
+/// ⭐⭐⭐ **O DIVISOR DA PILHA INTEIRA — a porta, e a mesma travessia que a [`stacked`] faz.**
+///
+/// ⛔⛔⛔ **Ela existe porque havia DUAS contas** (2026-09-01): a [`stacked`] acumulava a dela num
+/// laço e o `field_shrink` acumulava a dele noutro, e nada as obrigava a concordar. A dobra tira a
+/// **curvatura** da bola de ANTES de cada passo, e o segundo laço só tinha o envelope: enquanto o
+/// bordo era folgado as duas saturavam no tecto de `10` e concordavam **por acidente**; com o bordo
+/// apertado nada satura e o campo passou a furar (`‖∇f‖ = 1,29` numa dobra de um clique).
+///
+/// # ⛔⛔ O DIVISOR DE UM PASSO MEDE-SE CONTRA A CAIXA QUE A MARCHA PERCORRE
+///
+/// E ela é o **ENVELOPE** da pilha, não a bola corrente nem a do fim (2026-08-30). O recorte da
+/// marcha é a AABB da bola final (`Scene::clip`), e um modificador **posterior** pode aumentá-la: o
+/// campo de um passo anterior passa a ser avaliado mais longe do que o bordo dele dizia. Medido:
+/// `[Taper, Array]` lia `‖∇f‖ = 1,0572` **dentro do recorte** — e não é artefacto de grelha, porque
+/// o número não muda de `ε = 1e-3` para `1e-5`. ⛔ E não é a bola do FIM: a repetição radial
+/// **re-centra** no eixo, logo a pilha não é monótona — com a do fim, `[Taper, Radial]` foi a `730,5`.
+///
+/// ⇒ **duas bolas por passo**: o `fim` (o envelope, onde o passo é avaliado) e a `corrente` (onde a
+/// árvore está quando aquele modificador é aplicado). *Escrever só uma é o que deixava as duas
+/// contas divergirem.*
+pub(crate) fn stack_divisor(mods: &[Unary], local: crate::bounds::Ball) -> f64 {
+    let fim = crate::bounds::envelope(local, mods);
+    let mut corrente = local;
+    let mut d = 1.0f64;
+    for m in mods {
+        d *= step_divisor(*m, fim, corrente);
+        corrente = crate::bounds::step_mod(corrente, *m);
+    }
+    d
+}
+
+fn step_divisor(m: Unary, ball: crate::bounds::Ball, corrente: crate::bounds::Ball) -> f64 {
     // ⛔⛔ **A BOLA LÊ-SE NO REFERENCIAL CANÓNICO DO MODIFICADOR** (Enio, 2026-08-31) — os três
     // `*_reach` abaixo lêem `center[0]`/`center[1]`/`center[2]` **por índice**, e um índice lido no
     // eixo errado dá um `R` pequeno de menos ⇒ um divisor pequeno de menos ⇒ o campo **fura**.
     // A permutação é a MESMA da [`conjugado`] e da [`crate::bounds::step_mod`].
-    let ball = ball.to_canonical(crate::bounds::axis_shift_of(m));
+    let s = crate::bounds::axis_shift_of(m);
+    let ball = ball.to_canonical(s);
+    let corrente = corrente.to_canonical(s);
     match m {
         // ⚠️ **A extensão é a de DEPOIS do passo**, como na dobra: o avaliador é preso à AABB da bola
         // já inclinada, e ela é maior. Ler a de antes deixava `[Array, Taper]` em `1,1438`.
@@ -247,7 +257,20 @@ pub(crate) fn step_divisor(m: Unary, ball: crate::bounds::Ball) -> f64 {
         // ⭐ `σ = max(1, ρ/Rr) = max(1, 1/(1 − κ·W))` — o lado de DENTRO da dobra comprime-se no
         // espaço material, e é lá que o campo estica. A saturação da curvatura garante `κ·W < 1`.
         Unary::Bend { turns, .. } => {
-            let k = bend_curvature(turns, ball);
+            // ⛔⛔⛔ **A CURVATURA É A QUE A ÁRVORE USA, e não a que este envelope daria**
+            // (2026-09-01). A [`stacked`] dobra por `bend_curvature(turns, bola_ANTES_desta_dobra)`;
+            // este divisor lia `bend_curvature(turns, ENVELOPE)`, e as duas saturam contra paredes
+            // diferentes. Enquanto o bordo era folgado **as duas batiam no tecto de `10`** e
+            // concordavam por acidente; com o bordo apertado nada satura e a diferença aparece:
+            // `κ_árvore = 1,554` contra `κ_divisor = 1,083`, `σ` verdadeiro `5,69` contra um
+            // divisor de `2,35` ⇒ `‖∇f‖ = 1,29` numa dobra de um clique.
+            //
+            // ⭐ Com a MESMA `κ` a cobertura é demonstrável nos dois ramos do piso:
+            // `σ = ρ/max(ρ − alcance_depois, ρ/10)`, e `alcance_depois ≤ alcance_envelope` ⇒
+            // `σ ≤ 1/(1 − min(κ·W_env, margem))`, que é exactamente o que se cobra aqui.
+            //
+            // ⚠️ **Defeito PRÉ-EXISTENTE**, e a saturação dupla era o que o escondia.
+            let k = bend_curvature(turns, corrente);
             // ⛔⛔ **A extensão é a de DEPOIS da dobra, e ler a de antes foi um vermelho medido.**
             // O avaliador é preso à AABB da bola **já dobrada** (`Scene::clip`), e ela é maior: com
             // `0,05` voltas o alcance vai de `0,736` para `1,64`, e o tecto verdadeiro de `ρ/Rr`
@@ -271,6 +294,27 @@ pub(crate) fn step_divisor(m: Unary, ball: crate::bounds::Ball) -> f64 {
 ///
 /// ⚠️ O centro de uma bola pode estar fora do eixo (um `Array` empurra-o), e o que conta é o ponto
 /// mais distante: `‖(cx, cy)‖ + raio`.
+///
+/// # ⛔⛔⛔ RECUSA MEDIDA (2026-09-01): aqui a CAIXA não serve, e a esfera não é folga por acaso
+///
+/// A tentação é óbvia — a [`crate::bounds::axis_distance`] sabe ler a caixa, e numa barra
+/// `0,34 × 0,11 × 0,62` ela dá `0,505` contra os `0,717` da esfera, o que corta o divisor da torção
+/// de `9,12` para `6,50` (**`1,4×` mais barato**). ⛔ E a peça **FURA**: a duas voltas,
+/// `a_shorter_step_finds_exactly_the_same_piece` acusa **1 pixel** a mudar quando o passo é dividido
+/// por quatro. *Um pixel é toda a prova de que precisa: um passo seguro nunca acha mais peça ao ser
+/// encurtado.*
+///
+/// ⭐ **Bisectado, e a caixa de recorte está ILIBADA**: com o `aabb` a devolver as meias-extensões e
+/// este alcance de volta à esfera, o gate é verde; com este alcance na caixa e o `aabb` no cubo, é
+/// vermelho. ⇒ o defeito é deste número, e de mais nenhum.
+///
+/// ⚠️ **O mecanismo é o da nota do [`twist`]:** aquela tabela (`σ = t/2 + √(1 + t²/4)`, sem constante
+/// ajustada) foi medida com `R` **a ser esta esfera**. A álgebra do valor singular é exacta *no
+/// ponto*; o divisor é **uma constante** tirada em `R`, e a margem que fazia a constante bastar
+/// vinha de `R` ser folgado. *Uma recusa medida responde à pergunta que lhe foi feita — e a que foi
+/// feita ali tinha esta esfera dentro.*
+///
+/// ⇒ apertar isto exige **re-medir a tabela do [`twist`]**, não trocar uma linha.
 pub(crate) fn axis_reach(b: crate::bounds::Ball) -> f64 {
     f64::from(b.center[0].hypot(b.center[1]) + b.radius.max(0.0))
 }

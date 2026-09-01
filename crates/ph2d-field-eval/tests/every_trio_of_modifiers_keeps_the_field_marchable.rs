@@ -90,7 +90,7 @@ fn worst_gradient(doc: &FieldDoc, steps: i32) -> f64 {
     let Some(bola) = ph2d_field_eval::bounds::bounding_ball(doc, &reg) else {
         return 0.0;
     };
-    let (lo, hi_box) = bola.aabb();
+    let (lo, hi_box) = ph2d_field_eval::bounds_clip::march_clip(bola);
     let f = Field::new(doc);
     let mut hi = 0.0f64;
     for i in 0..=steps {

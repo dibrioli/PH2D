@@ -51,6 +51,7 @@ mod hierarchy_add_root;
 /// ⭐⭐ **O menu de um cartão da biblioteca, e a poda de selecção morta** — irmão por assunto do
 /// [`hierarchy`], ver o cabeçalho de lá.
 mod hierarchy_asset_verbs;
+mod hierarchy_rename;
 // ⚠️ **A row *Duplicate*, por ASSUNTO** — o `hierarchy.rs` voltou ao tecto de 600 LOC quando a
 // cópia ganhou as duas leis que lhe faltavam (auditoria §1.4/§1.2). Lá o dreno das intenções, aqui
 // o que duplicar quer dizer.
@@ -284,7 +285,7 @@ mod inspector_anim;
 mod inspector_commits_sprite;
 /// ⭐ **A seção COMPONENT do Inspector** (ADR-0164 / F5) — o que esta cópia tem de diferente
 /// da receita, e o gesto que limpa as excepções sem alvo.
-mod inspector_instance;
+pub(crate) mod inspector_instance;
 mod inspector_properties;
 mod inspector_slice;
 /// Qual receita está a ser EDITADA — o passe que carimba a marca derivada.
@@ -3471,6 +3472,8 @@ impl crate::App {
             let mut swap_variant: Option<(u64, u64)> = None;
             // ⭐ O pedido de renomear o VALOR de uma propriedade — `(receita, chave, valor)`.
             let mut rename_variant_value: Option<(u64, String, String)> = None;
+            // ⭐ A entidade cujo campo de nome fechou neste quadro.
+            let mut name_committed: Option<u64> = None;
             let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
             // §12 joints (W3). Kept out of `inspector_commits::dispatch`: that
             // signature is already the length its own doc-comment warns about,
@@ -4699,6 +4702,11 @@ impl crate::App {
                     // está a olhar. Ver `ph2d-panel-inspector/src/event_value.rs`.
                     EditorAction::InspectorRenameVariantValue { master, key, value } => {
                         rename_variant_value.get_or_insert((master, key, value));
+                    }
+                    // ⭐⭐⭐ **O campo do nome fechou** — as chaves que ele declara passam a valer.
+                    // Ver `crate::instance_declared_value` para a lei e a decisão do Enio.
+                    EditorAction::InspectorNameCommitted { entity_bits } => {
+                        name_committed.get_or_insert(entity_bits);
                     }
 
                     // §11 Physics Body. Fans out over a BulkSelect like its
@@ -10813,6 +10821,19 @@ impl crate::App {
             // ⛔ **Recusa em voz alta.** Um valor vazio, ou com `=`/`{`/`}`/`,` dentro, partiria a
             // gramática — e um campo que come o texto em silêncio é o defeito que este gesto
             // existe para curar.
+            // ⭐⭐⭐ **AS CHAVES DO NOME VALEM** (decisão do Enio, 2026-08-31: *«tem que
+            // funcionar»*). ⚠️ **Depois do dreno**, como a troca de variante e pela mesma razão: a
+            // lei precisa do **eco** para o esquecer se acabar numa troca.
+            if let Some(bits) = name_committed {
+                crate::instance_declared_value::speak(
+                    crate::instance_declared_value::apply(
+                        sim,
+                        &mut self.instance_echo,
+                        ph2d_ecs::Entity::from_bits(bits),
+                    ),
+                    toasts,
+                );
+            }
             if let Some((master, key, value)) = rename_variant_value {
                 let target = crate::instance_verbs_walk::entity_for_stable_id(sim, master)
                     .map(ph2d_ecs::Entity::from_bits);

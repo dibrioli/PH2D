@@ -555,11 +555,16 @@ pub enum EditorAction {
         entity_bits: u64,
         edit: crate::screens::hero::JointFieldEdit,
     },
-    /// ⭐⭐⭐ **Renomear o VALOR de uma propriedade** — o campo que o clique no chip aceso abre.
+    /// ⭐⭐ **Renomear o VALOR de uma propriedade** — o campo que o clique no chip aceso abre.
+    /// O sujeito é a **RECEITA**, porque é lá que o valor vive; o porquê vive no
+    /// `ph2d-panel-inspector/src/event_value.rs`.
+    /// ⭐⭐⭐ **O campo do NOME fechou** (Enter ou clique fora) — e as chaves que ele declara
+    /// passam a valer. Lei, decisão e o porquê de isto NÃO ser a [`Self::InspectorNameEdit`] (que
+    /// chega por TECLA): `shells/desktop/src/instance_declared_value.rs`.
     ///
-    /// O sujeito é a **RECEITA** (`master`, um `StableId`), porque é lá que o valor vive; o gesto
-    /// nasce sobre uma cópia, que é onde o artista está a olhar. ⚠️ *É por isso que ele existe:
-    /// autorar o valor obrigava a seleccionar outro objecto do que aquele que se vê.*
+    /// ⚠️ Sem texto: quem a honra lê o `Name` **do mundo**.
+    InspectorNameCommitted { entity_bits: u64 },
+
     InspectorRenameVariantValue {
         master: u64,
         key: String,

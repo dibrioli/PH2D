@@ -305,6 +305,8 @@ mod input_map_drag;
 #[cfg(test)]
 #[path = "inspector_presence_tests.rs"]
 mod inspector_presence_tests;
+/// ⭐ **As travessias que os verbos partilham** — irmão por assunto, ver o cabeçalho de lá.
+mod instance_declared_value;
 mod instance_diag;
 mod instance_docs;
 mod instance_live;
@@ -322,7 +324,6 @@ mod instance_unmake;
 mod instance_variant;
 /// ⭐ **Os VERBOS de instância** (ADR-0164 / F4.5) — criar componente, destacar, aplicar ao mestre.
 mod instance_verbs;
-/// ⭐ **As travessias que os verbos partilham** — irmão por assunto, ver o cabeçalho de lá.
 mod instance_verbs_walk;
 /// ⭐ **INSTANCIAR** (ADR-0164 / F4.2) — a porta que compõe a cópia profunda com o remap.
 mod instantiate;

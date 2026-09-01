@@ -84,7 +84,7 @@ pub(super) fn build_instance_info(
 ///
 /// ⚠️ **Ela devolve a ESTRUTURA, e não as fileiras**: quem decide se um membro vira chip, texto ou
 /// nada é a lei (`variant_axes`), que é pura e se testa sem um mundo.
-pub(super) fn family_members(sim: &mut SimWorld, current: u64) -> Vec<(u64, String)> {
+pub(crate) fn family_members(sim: &mut SimWorld, current: u64) -> Vec<(u64, String)> {
     // Ordenado por `StableId` — a ordem de autoria, e a única que é a mesma em toda máquina.
     let masters: Vec<u64> = {
         let mut q = sim

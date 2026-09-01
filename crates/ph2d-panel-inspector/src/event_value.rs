@@ -45,6 +45,20 @@ pub(crate) fn apply_value_event(
             state.value_edit = None;
             true
         }
+        // ⭐⭐⭐ **O campo do NOME fechou** — e as chaves que ele declara passam a valer (decisão
+        // do Enio, 2026-08-31). ⛔ **Aqui e não no `TextChanged`**: aquele chega por TECLA, e a
+        // consequência disto é fora do objecto que se edita. Ver `EditorAction::InspectorNameCommitted`.
+        //
+        // ⚠️ **`Ignored` de propósito** — a edição do nome em si continua a ser tratada pelo
+        // caminho de sempre; isto só ACRESCENTA o commit.
+        WidgetEvent::Submit(id) | WidgetEvent::Blur(id) if id == ids::INSP_ENTITY_NAME => {
+            if let Some(info) = crate::state::current_inspector_name() {
+                host.bus_mut().push(EditorAction::InspectorNameCommitted {
+                    entity_bits: info.entity_bits,
+                });
+            }
+            false
+        }
         _ => false,
     }
 }

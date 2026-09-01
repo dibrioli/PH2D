@@ -158,3 +158,146 @@ fn nothing_happens_when_there_is_nothing_to_do() {
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     assert!(super::apply(&mut sim, &mut echo, lone).is_none());
 }
+
+/// ⭐⭐⭐ **O ELO SEGUE AS CHAVES** — report do Enio com duas fotos, 2026-08-31:
+/// *«O objeto deve ler o que está nas Chaves. não tem porque está Small e o Botão ficar Big»*.
+///
+/// Ele fotografou o estado em que o nome dizia `{Size=Small}` e o botão aceso dizia `Big`. Elas
+/// eram fontes **independentes**: o elo mudava por clique, o nome por escrita, e nada as obrigava a
+/// concordar.
+///
+/// ⚠️ **O `follow` corre a cada quadro**, então ele tem de ser IDEMPOTENTE: a segunda corrida sobre
+/// o mesmo estado não pode fazer nada. *Sem essa metade, um gate que só chamasse uma vez deixaria
+/// passar um laço que troca ida-e-volta para sempre.*
+///
+/// (Mutação: `follow` devolver `false` sem olhar ⇒ RED.)
+#[test]
+fn the_link_follows_the_braces_and_settles() {
+    let (mut sim, base, copy) = base_and_copy("Casa {Size=Small}");
+    let mut echo = crate::instance_sync::MasterEcho::default();
+    let r = reg();
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let sibling = crate::instantiate::instantiate_master(
+        &mut sim,
+        &r,
+        base,
+        None,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+        crate::instantiate::ArtLink::Own,
+    )
+    .expect("instanciou");
+    sim.world_mut()
+        .entity_mut(sibling)
+        .insert((MasterRoot, Name::new("Casa {Size=Big}")));
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    let big = sim
+        .world()
+        .get::<ph2d_ecs::StableId>(sibling)
+        .expect("sid")
+        .0;
+
+    // O estado da FOTO: o nome diz Big, o elo aponta a base (Small).
+    sim.world_mut()
+        .entity_mut(copy)
+        .insert(Name::new("Casa {Size=Big} (1)"));
+    assert!(super::follow(&mut sim, &mut echo, copy), "nao seguiu");
+    let root = crate::instance_verbs::instance_root_of(&mut sim, copy).expect("raiz");
+    assert_eq!(
+        sim.world().get::<InstanceOf>(root).map(|l| l.master),
+        Some(big),
+        "o elo nao seguiu as chaves"
+    );
+    // ⛔ E a 2.ª corrida NÃO faz nada — ele corre a cada quadro.
+    assert!(
+        !super::follow(&mut sim, &mut echo, copy),
+        "o follow nao assentou: a cada quadro ele voltaria a trocar"
+    );
+}
+
+/// ⛔⛔ **Um clique no chip REESCREVE as chaves da cópia** — a metade sem a qual isto seria uma
+/// BRIGA.
+///
+/// Sem ela: o clique troca o elo, o `follow` vê o nome antigo no quadro seguinte e troca de volta.
+/// Todo quadro. *Uma fonte única só é única se TODO gesto escrever nela.*
+///
+/// ⚠️ **O oráculo é o par**: as chaves passam a dizer o novo valor **e** o `follow` a seguir não
+/// mexe. Só a primeira metade deixaria passar um espelho que escreve o valor errado.
+///
+/// (Mutação: `mirror_onto_copy` não fazer nada ⇒ RED na 2.ª asserção.)
+#[test]
+fn a_swap_rewrites_the_copys_braces_so_the_follow_settles() {
+    let (mut sim, base, copy) = base_and_copy("Casa {Size=Small}");
+    let mut echo = crate::instance_sync::MasterEcho::default();
+    let r = reg();
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let sibling = crate::instantiate::instantiate_master(
+        &mut sim,
+        &r,
+        base,
+        None,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+        crate::instantiate::ArtLink::Own,
+    )
+    .expect("instanciou");
+    sim.world_mut()
+        .entity_mut(sibling)
+        .insert((MasterRoot, Name::new("Casa {Size=Big}")));
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    let big = sim
+        .world()
+        .get::<ph2d_ecs::StableId>(sibling)
+        .expect("sid")
+        .0;
+
+    // O gesto do chip: trocar pela porta, e espelhar.
+    let root = crate::instance_verbs::instance_root_of(&mut sim, copy).expect("raiz");
+    crate::instance_variant::swap(&mut sim, &mut echo, root, big).expect("trocou");
+    super::mirror_onto_copy(&mut sim, root);
+    assert_eq!(
+        name_of(&sim, root),
+        "Casa {Size=Big} (1)",
+        "as chaves da copia nao acompanharam a troca"
+    );
+    assert!(
+        !super::follow(&mut sim, &mut echo, root),
+        "o follow trocou de volta — isto e' a briga que a metade do espelho existe para evitar"
+    );
+}
+
+/// ⭐⭐ **Renomear o valor de uma receita arrasta as CÓPIAS dela** — e só as dela.
+///
+/// Sem isto, `Small` → `Grande` deixa a cópia com `{Size=Small}`: um rótulo a apontar para um valor
+/// que já não existe, e o `follow` não o pode curar (não há a quem trocar). *A etiqueta mentiria
+/// para sempre — que é o que as duas fotos mostraram.*
+///
+/// (Mutação: `mirror_onto_copies_of` não fazer nada ⇒ RED.)
+#[test]
+fn renaming_a_value_drags_the_copies_that_follow_it() {
+    let (mut sim, base, copy) = base_and_copy("Casa {Size=Small}");
+    let base_id = sim.world().get::<ph2d_ecs::StableId>(base).expect("sid").0;
+    // Um estranho, com o MESMO texto no nome, que não segue esta receita.
+    let stranger = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Outro {Size=Small}")))
+        .id();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+
+    sim.world_mut()
+        .entity_mut(base)
+        .insert(Name::new("Casa {Size=Grande}"));
+    super::mirror_onto_copies_of(&mut sim, base_id);
+    assert_eq!(name_of(&sim, copy), "Casa {Size=Grande} (1)");
+    assert_eq!(
+        name_of(&sim, stranger),
+        "Outro {Size=Small}",
+        "arrastou quem nao segue esta receita"
+    );
+}

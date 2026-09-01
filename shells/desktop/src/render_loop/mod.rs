@@ -10824,6 +10824,23 @@ impl crate::App {
             // ⭐⭐⭐ **AS CHAVES DO NOME VALEM** (decisão do Enio, 2026-08-31: *«tem que
             // funcionar»*). ⚠️ **Depois do dreno**, como a troca de variante e pela mesma razão: a
             // lei precisa do **eco** para o esquecer se acabar numa troca.
+            // ⭐⭐⭐ **O ELO SEGUE AS CHAVES, todo quadro, sobre o SELECIONADO** (report do Enio
+            // com duas fotos, 2026-08-31: *«o objeto deve ler o que está nas Chaves»*).
+            //
+            // ⚠️ **Só o selecionado**, e é o que basta: é o único cujo cartão está na tela, e a
+            // varredura da cena inteira seria O(cópias) por quadro para curar rótulos que ninguém
+            // está a ler. Ao seleccionar outro, ele converge nesse quadro.
+            //
+            // ⚠️ **`follow`, e não `apply`:** o que corre sempre só pode TROCAR. Autorar aqui
+            // renomearia a receita sessenta vezes por segundo enquanto o nome declarasse um valor
+            // que não existe.
+            if let Some(bits) = hero.gizmo.selection {
+                let _ = crate::instance_declared_value::follow(
+                    sim,
+                    &mut self.instance_echo,
+                    ph2d_ecs::Entity::from_bits(bits),
+                );
+            }
             if let Some(bits) = name_committed {
                 crate::instance_declared_value::speak(
                     crate::instance_declared_value::apply(
@@ -10848,6 +10865,10 @@ impl crate::App {
                                 sim.world_mut()
                                     .entity_mut(e)
                                     .insert(ph2d_ecs::Name::new(next));
+                                // ⭐⭐ **E as cópias que a seguem passam a dizê-lo** — senão a
+                                // etiqueta delas apontaria para um valor que já não existe, e o
+                                // `follow` não o pode curar (não há a quem trocar).
+                                crate::instance_declared_value::mirror_onto_copies_of(sim, master);
                                 toasts.push(Toast::success(format!("{key} \u{2192} {value}")));
                                 self.title_dirty = true;
                             }
@@ -10874,6 +10895,13 @@ impl crate::App {
                     master,
                 ) {
                     Ok(r) => {
+                        // ⭐⭐⭐ **E as CHAVES da cópia passam a dizer o que ela agora É** — sem
+                        // isto o `follow` veria o nome antigo no quadro seguinte e trocaria de
+                        // volta, todo quadro. Ver `crate::instance_declared_value`.
+                        crate::instance_declared_value::mirror_onto_copy(
+                            sim,
+                            ph2d_ecs::Entity::from_bits(root_bits),
+                        );
                         toasts.push(Toast::success(if r.dropped > 0 {
                             format!(
                                 "Switched variant \u{2014} {} override(s) kept, {} piece(s) unused",

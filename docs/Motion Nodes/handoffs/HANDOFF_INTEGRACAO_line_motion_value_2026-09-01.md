@@ -269,6 +269,50 @@ falha. *A mesma armadilha do `CLAUDE.md §2`, pela 2.ª vez nesta linha.*
 
 ---
 
+## 12. A 2.ª metade do dia — SETE achados da auditoria fechados (por ordem do Enio)
+
+> *«Siga implementando o que está em aberto»* (Enio, 2026-09-01), depois de decidir o `Grow Angle`
+> em **abrir aos poucos** — que é o que já shipava, logo o item fecha sem uma linha de código.
+
+O censo completo está na [§8 do doc 96](../96_auditoria_do_lsystem_2026-08-31.md). Fecharam:
+**§3.2** (o molde encalhado no guiado) · **§3.3** (duas plantas a partilhar a corrente) ·
+**§3.4** (`NaN`/`Inf`) · **§3.5** (o tecto digitável a valer para o fio) · **§2.3** (o aviso a
+60 Hz) · **§2.5** (os `268 MB`) · **§4.2** (o gate de pixel).
+
+### 12.1 ⚠️ DUAS afirmações da auditoria caíram na cura
+
+- **§2.6 dissolveu sozinha** — a `measure_ratio` saiu do caminho do produto quando a escada de
+  tamanhos a substituiu, três horas antes. *A auditoria estava certa no dia em que foi escrita.*
+- **§3.5 tinha a premissa de CUSTO errada** — os *«>120 s»* não reproduzem, porque o laço quebra
+  ao saturar o orçamento. O defeito real é a gramática que **nunca satura** (`437 ms` a
+  `g = 10 000` contra `13,91 µs` a `32`). *A cura prescrita estava certa; a razão não.*
+
+### 12.2 ⭐⭐ TRÊS mutações sobreviventes nomearam costuras que nenhum gate tinha
+
+| mutação | o que ela revelou | a cura |
+|---|---|---|
+| arrancar o `sync_to` de dentro do `art` | dois gates sobre as duas metades de uma lei **não cobrem o fio entre elas** | um guarda `Synced` ⇒ esquecer a sincronização é **erro de compilação** |
+| arrancar o incremento do `epoch` do atlas | os gates mediam o cache a REAGIR a um número, e nada media que o número **andasse** | gate de monotonia em `ph2d-render`, com o controle de que consultar não move |
+| apagar a pintura da queixa | o gate media o `content_h` — a **linha reservada** — escrito por um `y +=` que não é a pintura | o arnês ganhou `paint_and_count_geometry`; ⚠️ e a 1.ª régua nova contava `n_path_segments` e leu **`42` contra `42`** (o Vello encaminha texto por `draw_glyphs`) |
+
+### 12.3 ⛔ O que fica, e por quê
+
+- ⏳ **§2.2** — arrastar o `Generations` numa planta grande passa o quadro (`17,88` contra
+  `16,67 ms`). Não tocado: a medição honesta pede a máquina calma (§5.0).
+- ⛔ **§2.4 — RECUSA MEDIDA.** O achado é verdadeiro (`0 de 237` quadros evitam uma reconstrução)
+  e a cura óbvia **reabre** o `wgpu OOM` do quadro 19706 (uma textura de GPU por `geometry_id`).
+  ⚠️ *O defeito não é a varredura: é a CHAVE mudar a 60 Hz.*
+- ⚠️ **`Step Scale ≠ 1`** continua a deixar `2,4 %` de curvatura no arrasto do `Growth`.
+
+### 12.4 ⚠️ Uma armadilha de PROCESSO, medida
+
+Uma corrida de mutação foi **morta por timeout no meio de uma mutação** e deixou-a aplicada na
+árvore. Foi apanhada pelo `assert` da corrida seguinte (o padrão já não existia) — *um script de
+mutação sem restauro garantido deixa o produto mutado e a suíte a medir a mutação*. As corridas
+seguintes foram para segundo plano, com `timeout=900` explícito.
+
+---
+
 ## ⛔ Recusas MEDIDAS (desta jornada)
 
 | Item | Motivo |
@@ -279,3 +323,8 @@ falha. *A mesma armadilha do `CLAUDE.md §2`, pela 2.ª vez nesta linha.*
 | Densidade de escada uniforme (3 degraus para todos) | ⛔ paga `3×` num refinador neutro para uma resposta que a normalização já dá a ±0,02 % |
 | Entrada de isenção para os dois tectos de LOC | ⛔ a lei da casa é **corte por responsabilidade** |
 | Semente fixa (`1`) na escada | ⛔ um molde estocástico media **outra planta** (Wild `−7,69 %`) |
+| Um período de graça na varredura do `VecPathStore` (§2.4) | ⛔ reabre o `wgpu OOM` medido do quadro **19706** — o que mata é uma textura de GPU por `geometry_id`, e `N` quadros de graça multiplicam-nas por `N` |
+| Ensinar o `Reads::of` a ler a gramática GUIADA | ⛔ ele conhece só a rota do **símbolo** (`!`/`"`), e o guiado alcança o `length_scale` por **expressão** — responderia `false` sobre um knob que move a peça `8,85`. Nos oito moldes as duas réguas concordam `8/8` |
+| Dobrar os ângulos módulo a volta no `sanitized` | ⛔ **inerte** com a faixa declarada a valer (mutação sobreviveu), e **arriscada**: `root_angle = 360` — posição legítima do slider — dobraria para `0` |
+| Pôr o `generations` no `sanitized` | ⛔ o `generation_plan` responde a um não-finito com cadeia **VAZIA** e há gate a exigi-lo; o default faria um `NaN` **desenhar uma planta** |
+| `n_path_segments` como régua de texto | ⛔ o Vello encaminha texto por `draw_glyphs` — **`42` contra `42`**, e ler o empate como acusação mandaria consertar código correto |

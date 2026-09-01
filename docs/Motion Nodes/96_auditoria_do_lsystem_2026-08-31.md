@@ -457,7 +457,68 @@ Para o «nada encontrado» ser distinguível de não ter procurado:
 | 7 | **§4.1–4.5** os cinco gates fracos | cada um deixa passar o defeito que diz guardar |
 | 8 | **§5.1–5.5** notas envelhecidas | custa uma janela à próxima linha, e a §5.4 pode fazê-la desfazer trabalho |
 
-⛔ **Nada disto foi consertado.** O protocolo desta casa é listar antes de curar, e a lista é esta.
+⛔ **Nada disto foi consertado** *no dia em que esta lista foi escrita*. O protocolo desta casa é
+listar antes de curar, e a lista é esta.
+
+---
+
+## §8 — O CENSO DA LISTA (2026-09-01) — ⚠️ leia-o ANTES de pegar um item
+
+⛔⛔ **Uma lista de achados sem censo de obsolescência é uma lista de dívida como qualquer outra:
+ela não encolhe sozinha, e ler uma velha manda alguém consertar o que já não existe** — ou, na
+direcção oposta, dar por curado o que ninguém tocou (CLAUDE.md §5.0).
+
+| item | estado | onde |
+|---|---|---|
+| §1.1 `Wild` 15 % menor | ✅ curado | `52a3b9dfc` |
+| §1.2 dois knobs mortos de fábrica | ✅ curado | `d5f691ec1` |
+| §1.3 quatro knobs inertes em `Segments` | ✅ curado | `067d6ad65` |
+| §1.4 a cena `=12` ensina o contrário | ✅ curado | `2f0f609d8` |
+| §2.1 planta parada re-deriva todo quadro | ✅ curado | `250424d4a` |
+| §2.2 o `Generations` a arrastar passa o quadro | ⏳ **ABERTO** | — |
+| §2.3 o aviso «uma vez só» a 60 Hz | ✅ curado | `b533ea354` |
+| §2.4 o memo das fitas | ⛔ **RECUSA MEDIDA** (abaixo) | — |
+| §2.5 os `268 MB` do atlas | ✅ curado | `555d9070b` |
+| §2.6 `Growth < 1` custa `2,6×`–`31×` | ⛔ **DISSOLVEU** — a `measure_ratio` saiu do caminho do produto quando a escada de tamanhos a substituiu; hoje só o `probe.rs` a chama | `cbe46810f` |
+| §3.1 `SIGABRT` por texto fundo | ✅ curado | `5f4a72ed6` |
+| §3.2 o molde encalhado no modo guiado | ✅ curado | `b533ea354` |
+| §3.3 duas plantas partilham a corrente | ✅ curado | `b533ea354` |
+| §3.4 `NaN`/`Inf` na corrente | ✅ curado | `b533ea354` |
+| §3.5 `MAX_GENERATIONS` é cerca de painel | ✅ curado — ⚠️ **e a premissa de CUSTO estava refutada** (abaixo) | `b533ea354` |
+| §4.1 · §4.3 · §4.5 os gates fracos | ✅ curados | `a8d63afd0` |
+| §4.2 o gate de pixel mede a linha reservada | ✅ curado | `3798eca1f` |
+| §4.4 o `Seed` não alcança as folhas | ✅ curado | `5a2ff1d04` |
+| §5.1–§5.5 notas envelhecidas | ✅ curadas | `c0da9965d` |
+
+### §8.1 ⛔ A §3.5 tinha a premissa de CUSTO refutada
+
+Ela previa *«100 000 módulos × 65 535 passagens ⇒ > 120 s numa cozedura»*. **Não reproduz:**
+quando a cadeia satura o `MAX_MODULES` o `rewrite` devolve `None` e o laço **quebra**.
+
+| gramática | `g = 32` | `g = 60 000` |
+|---|---:|---:|
+| `Tree` | `4,86 ms` | **`3,93 ms`** |
+| `F -> FF` | `9,73 ms` | **`9,69 ms`** |
+| `Koch` | `3,75 ms` | **`2,56 ms`** |
+
+⛔ **O defeito existe noutra gramática — a que NUNCA satura** (`F -> A` / `A -> F`): ali todas as
+passagens correm, e `10 000` custa **`437,02 ms`** (26 quadros) contra `13,91 µs` a `32`, para os
+mesmos **2** elementos. *A cura prescrita estava certa; a razão escrita ao lado dela não.*
+
+### §8.2 ⛔ RECUSA MEDIDA — o memo das fitas (§2.4) NÃO leva um período de graça
+
+O achado é verdadeiro (`0 de 237` quadros evitaram uma reconstrução), e a cura óbvia — manter as
+entradas por `N` quadros em vez de varrer no mesmo — **reabre uma recusa medida**: a varredura
+imediata existe por causa de um crash do Enio (`wgpu error: Out of Memory` no quadro **19706** da
+cena `=76`), e o que mata não é esta tabela (~500 B por entrada) mas o `motion_shape_bake`, que
+assa **uma textura de GPU por `geometry_id`**. Um período de graça de `N` quadros multiplica essas
+texturas por `N`.
+
+⚠️ **E o defeito não é a varredura: é a CHAVE mudar a 60 Hz.** *Uma chave que repete e um memo que
+acerta são coisas diferentes* — sob animação a repetição é de valores que já foram varridos, e
+nenhuma política de despejo os traz de volta. ⇒ o item fica **aberto com o mecanismo nomeado**, e
+quem lhe pegar começa por perguntar *o que pode ser endereçado por algo que não muda por quadro*,
+⛔ nunca por alargar a janela da varredura.
 
 ---
 

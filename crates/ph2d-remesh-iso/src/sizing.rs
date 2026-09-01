@@ -336,7 +336,39 @@ pub fn adaptive_on() -> bool {
 /// ponta mais longa em `−43 %`, porque a corrida trocou de vencedora e o `worse` não tinha
 /// **chave de amputação**. *A curva não é monótona — ela mede a selecção, não só a graduação*,
 /// e é por isso que a escolha correu em quatro peças e só depois de a chave existir.
-const ADAPT_RATIO: f32 = 16.0;
+/// # ⭐⭐⭐ E ELE SOBE PARA `64` EM 2026-08-31 — a folga é o que tira a ponta da LOTARIA
+///
+/// ⛔⛔⛔ **A ordem do dono foi *«o remesh deve funcionar perfeitamente em qualquer lugar»*, e
+/// TRÊS curas do mecanismo foram construídas, medidas e revertidas** (a canonicalização da
+/// pose · o campo contínuo · construir o campo uma vez da referência). Todas estabilizavam
+/// alguma coisa e **todas comiam a agulha** — porque a nitidez da ponta vive precisamente do
+/// que se estava a suavizar.
+///
+/// ⭐⭐ **A saída é a oposta: dar FOLGA à ponta.** Se o bico tiver resolução com margem, uma
+/// decisão de corte que vira deixa de decidir se ele vive. Medido em **8 células** — a mesma
+/// escultura em seis posições da cena (`Detail 0,75 · Curvature 1`) e duas peças a `0,85`:
+///
+/// | célula | `16` | ⭐ **`64`** |
+/// |---|---|---|
+/// | origem | `1/4` · `−4,2 %` | ⭐ **`0/4` · `−0,5 %`** |
+/// | `x = ½` | `3/4` · `−10,5 %` | ⭐ **`0/4` · `−0,3 %`** |
+/// | `x = 1` | `2/4` · `−8,4 %` | `1/4` · `−4,1 %` |
+/// | `x = 2` (onde o importador a põe) | `2/4` · `−6,3 %` | ⭐ **`0/4` · `−1,9 %`** |
+/// | `x = 4` | `1/4` · `−10,4 %` | ⭐ **`0/4` · `−1,7 %`** |
+/// | ⛔ `x = 16` | `2/4` · `−7,1 %` (casca ABERTA: `χ = 1`, `4` bordo) | `1/4` · `−24,2 %` (fecha, `1` não-manifold) |
+/// | `sculpt_antes` `d = 0,85` | `2/6` · `−18,9 %` | `2/6` · `−17,1 %` |
+/// | `_base_sculpt` `d = 0,85` | `1/4` · `−4,1 %` | `1/4` · `−4,6 %` |
+///
+/// ⭐ **Melhor ou igual em `7` de `8`**, e o relógio não sobe (a renormalização mantém o
+/// orçamento: a folga **move** os quads, não os cria). ⛔ A única regressão é a posição
+/// extrema `x = 16`, onde o `16` já entregava uma **casca aberta** — *as duas estão mal ali,
+/// de maneiras diferentes*, e nenhuma peça de artista vive a 16 unidades da origem com feições
+/// de `0,03`.
+///
+/// ⚠️ **A curva NÃO é monótona** (o `32` é pior que o `16` em duas células, e o `8` de uma
+/// varredura anterior cortou `−43 %`) — *ela mede a selecção inteira, não só a graduação*, e é
+/// por isso que a escolha corre em oito células e não em duas.
+const ADAPT_RATIO: f32 = 64.0;
 
 /// ⭐⭐⭐ **A reprojecção exige que o pé CONCORDE com a normal** — ver o uso.
 ///

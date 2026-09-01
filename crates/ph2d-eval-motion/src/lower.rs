@@ -208,7 +208,10 @@ pub fn lower_to_instances_onto(
     // marcou para o passe VECTORIAL (um quad texturado desenhado na cena Vello, para poder
     // ficar por CIMA de uma forma). A pergunta é UMA — [`row_medium`] — e os dois lowerings
     // lêem-na, senão a mesma linha desenhava-se duas vezes ou nenhuma.
-    if stream.get("geometry_id").is_none() && stream.get(VECTOR_PASS_COLUMN).is_none() {
+    // ⚠️ As duas colunas resolvem-se UMA vez (ver [`MediaColumns`]) — a pergunta era feita por
+    // elemento, dentro de um laço que já hasteara as outras sete.
+    let media = MediaColumns::of(stream);
+    if media.all_sprite() {
         // Nenhuma das duas colunas ⇒ o lowering original, VERBATIM ⇒ byte-idêntico para todo
         // grafo anterior à convenção.
         if n >= PAR_THRESHOLD {
@@ -220,7 +223,7 @@ pub fn lower_to_instances_onto(
     }
     // `filter` preserves order ⇒ the surviving sprite rows are byte-identical to what the
     // pre-shape lowering produced for them.
-    let is_sprite = |&i: &usize| row_medium(stream, i) == RowMedium::Sprite;
+    let is_sprite = |&i: &usize| media.at(i) == RowMedium::Sprite;
     if n >= PAR_THRESHOLD {
         out.par_extend((0..n).into_par_iter().filter(is_sprite).map(make));
     } else {
@@ -301,17 +304,75 @@ pub enum RowMedium {
     Sprite,
 }
 
-/// ⚠️ **A ordem das perguntas é a lei:** uma linha com geometria é uma FORMA, tenha ou não a
-/// bandeira — a bandeira só decide o destino de uma linha que seria sprite.
+/// **As duas colunas que decidem a média, resolvidas UMA vez** — a porta hasteada.
+///
+/// ⛔⛔ **Por que ela existe** (auditoria de performance de 2026-09-01): [`row_medium`] pergunta
+/// `stream.get("geometry_id")` e `stream.get(VECTOR_PASS_COLUMN)` a CADA chamada, e os dois
+/// lowerings chamavam-na **por elemento** — dentro de um laço que já hasteara sete outras
+/// colunas para fora. Cada pergunta é uma descida de `BTreeMap<String, _>` com comparação de
+/// string, e a resposta **não pode mudar** dentro do laço: a corrente é imutável.
+///
+/// ⚠️ **MEDIDO** (`tests/lowering_cost.rs`, RTX 5060 Ti / Ryzen 9 9950X, `load 6,4`, mediana de
+/// 5 no mesmo processo, metade das linhas com geometria):
+///
+/// | n | sprite puro | misto: sprite | misto: vector |
+/// |---|---|---|---|
+/// | 1 048 576 | 6,96 ms | **12,91 ms** | **13,98 ms** |
+/// | 4 194 304 | 27,83 ms | **41,27 ms** | **56,76 ms** |
+///
+/// O `misto: sprite` emite **metade** das linhas do `sprite puro` e custava **1,85×** —
+/// ⇒ ~73% daquele tempo eram as duas perguntas repetidas um milhão de vezes cada.
+///
+/// ⚠️ **UMA lei, dois leitores**: o [`row_medium`] público delega aqui, senão a ordem das
+/// perguntas ficaria escrita duas vezes e um lowering poderia decidir a média de outra maneira
+/// que o outro — e a mesma linha desenhar-se-ia duas vezes ou nenhuma.
+pub struct MediaColumns<'s> {
+    geometry: Option<&'s Column>,
+    vector_pass: Option<&'s Column>,
+}
+
+impl<'s> MediaColumns<'s> {
+    /// Resolve as duas colunas. **Uma vez por corrente**, nunca por elemento.
+    #[must_use]
+    pub fn of(stream: &'s Stream) -> Self {
+        Self {
+            geometry: stream.get("geometry_id"),
+            vector_pass: stream.get(VECTOR_PASS_COLUMN),
+        }
+    }
+
+    /// Nenhuma das duas colunas existe ⇒ toda linha é sprite, e o laço de decisão nem corre.
+    #[must_use]
+    pub fn all_sprite(&self) -> bool {
+        self.geometry.is_none() && self.vector_pass.is_none()
+    }
+
+    /// ⚠️ **A ordem das perguntas é a lei:** uma linha com geometria é uma FORMA, tenha ou não
+    /// a bandeira — a bandeira só decide o destino de uma linha que seria sprite.
+    #[must_use]
+    pub fn at(&self, i: usize) -> RowMedium {
+        if scalar_at(self.geometry, i, 0.0) > 0.5 {
+            RowMedium::Shape
+        } else if scalar_at(self.vector_pass, i, 0.0) > 0.5 {
+            RowMedium::VectorQuad
+        } else {
+            RowMedium::Sprite
+        }
+    }
+
+    /// O `geometry_id` cru desta linha — o mesmo gather que o `at` já fez, sem repetir o
+    /// lookup. (O lowering vectorial precisava do NÚMERO, não só da média, e pedia-o de novo.)
+    #[must_use]
+    pub fn geometry_at(&self, i: usize) -> f32 {
+        scalar_at(self.geometry, i, 0.0)
+    }
+}
+
+/// A média de uma linha, perguntada à corrente. ⚠️ **Resolve as duas colunas a cada chamada** —
+/// num laço por elemento use [`MediaColumns`], que é a mesma lei hasteada.
 #[must_use]
 pub fn row_medium(stream: &Stream, i: usize) -> RowMedium {
-    if scalar_at(stream.get("geometry_id"), i, 0.0) > 0.5 {
-        RowMedium::Shape
-    } else if scalar_at(stream.get(VECTOR_PASS_COLUMN), i, 0.0) > 0.5 {
-        RowMedium::VectorQuad
-    } else {
-        RowMedium::Sprite
-    }
+    MediaColumns::of(stream).at(i)
 }
 
 pub fn lower_to_vector_instances_onto(
@@ -329,17 +390,21 @@ pub fn lower_to_vector_instances_onto(
     let tex = stream.get("texture_id");
     let uv = stream.get("uv_rect");
     let premul = stream.get("premultiplied");
-    for i in 0..n {
-        let medium = row_medium(stream, i);
+    // ⚠️ **As duas colunas da média, hasteadas** — este laço fazia TRÊS lookups por elemento
+    // (os dois do [`row_medium`] mais o `geometry_id` repetido), ao lado de sete colunas que
+    // já estavam içadas. Ver [`MediaColumns`] para a tabela medida.
+    let media = MediaColumns::of(stream);
+    let make = |i: usize| -> Option<VectorInstance> {
+        let medium = media.at(i);
         if medium == RowMedium::Sprite {
-            continue; // lowered by `lower_to_instances_onto`
+            return None; // lowered by `lower_to_instances_onto`
         }
-        let id = scalar_at(stream.get("geometry_id"), i, 0.0);
+        let id = media.geometry_at(i);
         // Same degrees→basis edge conversion as the sprite lowering (the `rot`
         // column is the app's one authored-angle unit).
         let (sin_r, cos_r) = scalar_at(rot, i, 0.0).to_radians().sin_cos();
         let sz = vec2_at(size, i, [1.0, 1.0]);
-        out.push(VectorInstance {
+        Some(VectorInstance {
             geometry_id: if medium == RowMedium::Shape {
                 id as u32
             } else {
@@ -359,7 +424,15 @@ pub fn lower_to_vector_instances_onto(
             // ⚠️ A MESMA função que a sprite usa. `StyleReach::VECTOR` declara que esta
             // rota honra o pivô e a ordem, e NOMEIA por que não honra os outros dois.
             anchor: style.anchor_for(sz),
-        });
+        })
+    };
+    // ⚠️ **`filter_map` preserva a ordem** — acima do limiar o `par_extend` escreve o elemento
+    // `i` na fatia `i`, então a saída é **byte-idêntica** à do laço serial. É o mesmo argumento
+    // que o lowering de sprites já usava; este era o único dos dois que corria num núcleo só.
+    if n >= PAR_THRESHOLD {
+        out.par_extend((0..n).into_par_iter().filter_map(make));
+    } else {
+        out.extend((0..n).filter_map(make));
     }
 }
 

@@ -50,6 +50,48 @@ pub fn draw_trim_piece(world: &[VecPath], camera: Affine, target: &mut VectorSce
     stroke_all(world, camera, target, TRIM, TRIM_PX);
 }
 
+/// A espessura do contorno da face que o Balde vai preencher, em px de TELA.
+const BUCKET_PX: f64 = 2.0;
+
+/// Quanto da tinta do artista o realce mostra — o resto é transparência.
+///
+/// ⚠️ **Não é a tinta CHEIA**: com ela o realce e o resultado ficariam indistinguíveis, e o artista
+/// não saberia se já preencheu. ⛔ Nem é uma cor NEUTRA: o balde deposita a tinta corrente, e um
+/// realce noutra cor prometeria uma coisa e entregaria outra.
+const BUCKET_ALPHA: f64 = 0.55;
+
+/// ⭐⭐⭐ **Desenha a FACE que o Balde vai preencher** (plano 40), já em MUNDO, com a tinta que ele
+/// vai depositar.
+///
+/// ⚠️ **A geometria vem da MESMA porta que o preenchimento usa** (`Rede::geometria`): uma segunda
+/// conta aqui acenderia uma região e depositaria outra — a divergência que o Trim já documenta.
+///
+/// ⚠️ **É um PREENCHIMENTO, e não um contorno** (ao contrário dos dois acima): a pergunta que ele
+/// responde é *"que ÁREA vai ficar pintada"*, e um contorno responderia *"que linha é esta"*.
+pub fn draw_bucket_face(world: &VecPath, tinta: [u8; 4], camera: Affine, target: &mut VectorScene) {
+    let screen = camera * super::build::build_bezpath(world);
+    if screen.elements().is_empty() {
+        return;
+    }
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let a = (f64::from(tinta[3]) * BUCKET_ALPHA) as u8;
+    let cor = Color::from_rgba8(tinta[0], tinta[1], tinta[2], a);
+    target.inner_mut().fill(
+        ph2d_vector::Fill::NonZero,
+        Affine::IDENTITY,
+        &Brush::Solid(cor),
+        None,
+        &screen,
+    );
+    target.inner_mut().stroke(
+        &Stroke::new(BUCKET_PX),
+        Affine::IDENTITY,
+        &Brush::Solid(Color::from_rgba8(tinta[0], tinta[1], tinta[2], 255)),
+        None,
+        &screen,
+    );
+}
+
 /// O traçado partilhado dos dois realces — px de TELA sob `Affine::IDENTITY` (a lei do cabeçalho).
 fn stroke_all(world: &[VecPath], camera: Affine, target: &mut VectorScene, tinta: Color, px: f64) {
     for path in world {

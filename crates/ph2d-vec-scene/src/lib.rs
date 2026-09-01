@@ -183,6 +183,10 @@ pub mod fx_twist;
 
 /// ⭐⭐⭐ **Cortar um contorno por ARCO** — a porta única do Knot e da ferramenta Trim (plano 38).
 mod arc_cut;
+/// ⚠️ **A amostragem sai, o resto do módulo fica dentro.** O balde (plano 40) percorre faces sobre
+/// a MESMA polilinha com que os cruzamentos são achados — duas amostragens discordariam sobre a
+/// existência de um cruzamento. É a única coisa deste módulo que atravessa a crate.
+pub use arc_cut::detection_polyline;
 
 /// ⭐⭐⭐ **A ferramenta TRIM** (plano 38) — o pedaço entre as duas fronteiras mais próximas.
 pub mod trim_tool;

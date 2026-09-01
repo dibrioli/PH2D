@@ -39,6 +39,8 @@ pub(super) fn mode_buttons(store: &mut WidgetStore) {
     // documenta ter faltado na 1ª escrita da wave dele: sem ela o pill pinta, acende sob o mouse e
     // o clique NUNCA vira evento. *O defeito que este ficheiro já pagou quatro vezes.*
     button(store, ids::VECTOR_MODE_TRIM);
+    // **Balde** (plano 40) — o 16º pill, e a mesma linha pela mesma razão.
+    button(store, ids::VECTOR_MODE_BUCKET);
     // **A FORMA do marquee** — o par colado na fileira TOOL. Sem estas duas linhas os chips
     // pintam, acendem sob o rato e o Click morre: a falha que o `wiring_parity` existe para pegar.
     button(store, ids::VECTOR_MARQUEE_BOX);

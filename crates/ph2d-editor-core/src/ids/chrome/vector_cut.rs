@@ -38,6 +38,10 @@ pub const VECTOR_MODE_CUT: NodeId = hash_node_id("vector.mode.cut");
 /// que já está na tela e só pede que se aponte o pedaço.
 pub const VECTOR_MODE_TRIM: NodeId = hash_node_id("vector.mode.trim");
 
+/// ⭐⭐⭐ **Balde** — o 16º modo (plano 40). Vizinho do Trim e do Corte porque os três apontam uma
+/// REGIÃO que já está na tela em vez de a autorar: aqueles removem, este preenche.
+pub const VECTOR_MODE_BUCKET: NodeId = hash_node_id("vector.mode.bucket");
+
 /// ⭐⭐⭐ **Soldar** (plano 39) — os traços seleccionados partem-se nos cruzamentos e as pontas
 /// vizinhas passam a cair no mesmo sítio. Vive ao lado do `VECTOR_PATH_JOIN` de propósito: aquele
 /// solda **duas pontas**, este solda **os cruzamentos**, e lidos juntos ensinam a diferença.

@@ -83,6 +83,7 @@ mod brush_live;
 #[path = "brush_live_cost_probe.rs"]
 mod brush_live_cost_probe;
 mod brush_smoke;
+mod bucket_smoke;
 mod buffer_smoke;
 mod build_smoke;
 mod build_smoke_corner_tools;
@@ -655,6 +656,8 @@ mod vec_bool_reach_tests;
 /// **O papel de cada forma dentro de uma booleana viva** — a porta única de *"que verbo é o
 /// dela?"*, que o painel e a linha da hierarquia partilham.
 mod vec_bool_shape;
+/// ⭐⭐⭐ **SOLDAR** (plano 39) — linhas cruzadas partem-se em arcos que partilham o nó.
+mod vec_bucket;
 /// O chip *Clip content* — a projeção e a edição do RECORTE, que vale para qualquer forma
 /// vetorial FECHADA (e não só para a moldura, desde 2026-08-21).
 mod vec_clip_edit;
@@ -714,7 +717,6 @@ mod vec_ui_state_edit;
 /// **OS VARIANTS** (plano UI/UX W5c) — que versão do componente uma instância é. Um conjunto de
 /// variants é DERIVADO (os mestres irmãos), e os eixos saem dos NOMES: zero componente novo.
 mod vec_variants;
-/// ⭐⭐⭐ **SOLDAR** (plano 39) — linhas cruzadas partem-se em arcos que partilham o nó.
 mod vec_weld;
 mod vec_widget_drive;
 mod vec_widget_edit;
@@ -1148,6 +1150,8 @@ impl App {
             vec_shape_armed: false,
             vec_trim_hit: None,
             vec_trim_piece: Vec::new(),
+            vec_bucket_face: None,
+            vec_bucket_cache: None,
             vec_shape_armed_target: None,
             vec_entities: Default::default(),
             flip_entities: Default::default(),

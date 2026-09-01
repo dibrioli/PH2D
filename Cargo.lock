@@ -5459,6 +5459,7 @@ dependencies = [
  "ph2d-vec-connect",
  "ph2d-vec-edit",
  "ph2d-vec-envelope",
+ "ph2d-vec-fill",
  "ph2d-vec-layout",
  "ph2d-vec-pattern",
  "ph2d-vec-render",
@@ -8009,6 +8010,13 @@ name = "ph2d-vec-envelope"
 version = "0.0.0"
 dependencies = [
  "kurbo",
+ "ph2d-vec-scene",
+]
+
+[[package]]
+name = "ph2d-vec-fill"
+version = "0.0.0"
+dependencies = [
  "ph2d-vec-scene",
 ]
 

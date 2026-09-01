@@ -418,5 +418,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::weld_smoke::frame(app, f);
         return true;
     }
+    // ⭐⭐⭐ O BALDE (=82, plano 40) — irmã `bucket_smoke`. Três grupos: quatro linhas soltas · dois
+    // círculos sobrepostos · um círculo atravessado (a fronteira CURVA).
+    if level == 82 {
+        crate::bucket_smoke::frame(app, f);
+        return true;
+    }
     false
 }

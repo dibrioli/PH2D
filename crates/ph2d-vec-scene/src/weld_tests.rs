@@ -147,3 +147,33 @@ fn moving_an_endpoint_carries_its_handles() {
     assert_eq!(v.in_handle, [18.0, 30.0]);
     assert_eq!(v.out_handle, [22.0, 31.0]);
 }
+
+/// ⛔⛔ **Um cruzamento na EMENDA de um anel é um nó, e não lixo.**
+///
+/// A fracção `0` de um contorno fechado é um ponto interior — a emenda não é fronteira de nada. O
+/// filtro que serve a um contorno ABERTO (onde `0` e `1` são as PONTAS) apagava-o, e o anel saía
+/// com **um** arco em vez de dois. Achado pelo balde (plano 40): a `ellipse` começa em
+/// `(cx + r, cy)`, que é exactamente onde uma recta horizontal pelo centro a corta.
+#[test]
+fn a_crossing_on_the_seam_of_a_ring_still_cuts_it() {
+    let anel = crate::ellipse([0.0, 0.0], 50.0, 50.0);
+    let dois = split_at(&anel.verts, true, &[0.0, 0.5]);
+    assert_eq!(
+        dois.len(),
+        2,
+        "o corte na emenda foi descartado: {} arcos",
+        dois.len()
+    );
+    assert!(dois.iter().all(|(v, c)| !c && v.len() >= 2));
+    // E a mesma fracção escrita como `1.0` é o MESMO corte, não um segundo.
+    let mesmo = split_at(&anel.verts, true, &[1.0, 0.5]);
+    assert_eq!(mesmo.len(), 2, "`1.0` e `0.0` sao a mesma emenda");
+}
+
+/// ⚠️ **Num contorno ABERTO o filtro FICA** — ali `0` e `1` são as pontas, e cortar uma ponta
+/// devolveria um arco de comprimento zero.
+#[test]
+fn a_cut_on_the_tip_of_an_open_path_still_splits_nothing() {
+    let verts = vec![v(0.0, 0.0), v(10.0, 0.0)];
+    assert_eq!(split_at(&verts, false, &[0.0, 1.0]).len(), 1);
+}

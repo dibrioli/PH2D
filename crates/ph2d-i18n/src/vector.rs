@@ -253,6 +253,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.mode.pencil" => "Pencil",
         "panel.vector.mode.cut" => "Cut",
         "panel.vector.mode.trim" => "Trim",
+        "panel.vector.mode.bucket" => "Bucket",
         "panel.vector.mode.frame" => "Frame",
         "panel.vector.bool.union" => "Union",
         "panel.vector.bool.subtract" => "Subtract",

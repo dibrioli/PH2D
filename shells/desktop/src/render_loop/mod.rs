@@ -540,6 +540,11 @@ impl crate::App {
         // ⭐⭐⭐ **O pedaço que o Trim aponta** (plano 38) — ao lado do realce de proveniência, que
         // responde à mesma pergunta noutra tinta. Fora do modo Trim ele LIMPA-SE.
         self.refresh_trim_hover(pointer);
+        // ⭐⭐⭐ **A face que o Balde vai preencher** (plano 40) — ao lado do realce do Trim porque
+        // os dois respondem à mesma pergunta (*"o que está sob o cursor?"*) para ferramentas que
+        // apontam em vez de autorar. ⚠️ A rede é GUARDADA lá dentro: montá-la custa `3,8 ms` a 20
+        // traços, e só se refaz quando a geometria muda.
+        self.refresh_bucket_hover(pointer);
         // PH2D_PAINT_PERF: whole-frame timer (aggregated on scope exit, paired with the dispatch info).
         let _paint_frame_timer = PaintFrameTimer(paint_perf::on().then(std::time::Instant::now));
         // Phase 2.1: drop finished-sample Arcs on the main thread (HR-3).
@@ -9909,6 +9914,24 @@ impl crate::App {
             // que uma ferramenta destrutiva pode ter.
             if !self.vec_trim_piece.is_empty() {
                 ph2d_vec_render::draw_trim_piece(&self.vec_trim_piece, cam_affine, vector_scene);
+            }
+            // ⭐⭐⭐ **A FACE que o Balde vai preencher** (plano 40), na TINTA que ele vai depositar.
+            // ⚠️ A geometria vem da MESMA porta que o preenchimento usa; e a tinta é a corrente,
+            // não uma cor neutra — um realce noutra cor prometeria uma coisa e entregaria outra.
+            // ⚠️ A tinta é lida do CAMPO (`vec_pen`), e não pelo `bucket_paint()`: um método em
+            // `&self` pede o objecto INTEIRO emprestado, e aqui há um empréstimo mútuo vivo. Os
+            // campos são disjuntos; a lei do `alpha == 0` é a mesma dos dois lados.
+            let tinta_balde = self.vec_pen.style().fill;
+            if let Some(face) = self.vec_bucket_face.as_ref()
+                && tinta_balde.a != 0
+            {
+                let t = tinta_balde;
+                ph2d_vec_render::draw_bucket_face(
+                    face,
+                    [t.r, t.g, t.b, t.a],
+                    cam_affine,
+                    vector_scene,
+                );
             }
             if overlay.edit {
                 // ⚠️ A gaiola do Envelope SUBSTITUI a edição de nós. Quando a seleção é um envelope,

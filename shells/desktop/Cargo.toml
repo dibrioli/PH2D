@@ -320,6 +320,9 @@ ph2d-vec-pattern = { path = "../../crates/ph2d-vec-pattern" }
 ph2d-vec-render = { path = "../../crates/ph2d-vec-render" }
 # ADR-0108 Fase 1.1: máquinas de edição interativa (Pen agora) sobre a cena nova.
 ph2d-vec-edit = { path = "../../crates/ph2d-vec-edit" }
+# ⭐ O BALDE (plano 40) — a rede de arcos e a face que o clique aponta. Crate-folha: ela não sabe o
+# que é uma cena, uma pose ou um ponteiro.
+ph2d-vec-fill = { path = "../../crates/ph2d-vec-fill" }
 ph2d-guides = { path = "../../crates/ph2d-guides" }
 # Os ESTADOS de UI + o Smart Animate (plano UI/UX W7).
 ph2d-ui-state = { path = "../../crates/ph2d-ui-state" }

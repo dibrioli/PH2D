@@ -54,10 +54,22 @@ pub fn split_at(
     closed: bool,
     cruzamentos: &[f64],
 ) -> Vec<(Vec<VecVertex>, bool)> {
+    // ⛔⛔ **Num contorno FECHADO, a fracção `0` é um ponto INTERIOR — a emenda não é fronteira.**
+    //
+    // A 1.ª redacção filtrava `f > EPS && f < 1-EPS` para os dois casos, e num anel isso **perdia um
+    // nó inteiro**: um círculo cruzado exactamente sobre a âncora de partida devolvia o cruzamento
+    // em `0.0`, o corte era descartado, e o anel saía com **um** arco em vez de dois. Achado pelo
+    // balde (plano 40), em `ellipse` — cuja 1.ª âncora está em `(cx + r, cy)`, que é justamente
+    // onde uma recta horizontal pelo centro o corta.
+    //
+    // ⚠️ **Num contorno ABERTO o filtro continua certo**: ali `0` e `1` são as PONTAS, e cortar uma
+    // ponta não parte nada — daria um arco de comprimento zero.
     let mut cortes: Vec<f64> = cruzamentos
         .iter()
         .copied()
-        .filter(|f| f.is_finite() && *f > EPS && *f < 1.0 - EPS)
+        .filter(|f| f.is_finite())
+        .map(|f| if closed { f.rem_euclid(1.0) } else { f })
+        .filter(|f| closed || (*f > EPS && *f < 1.0 - EPS))
         .collect();
     cortes.sort_by(f64::total_cmp);
     cortes.dedup_by(|a, b| (*a - *b).abs() < EPS);

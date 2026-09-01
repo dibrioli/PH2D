@@ -103,6 +103,7 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
             || x == ids::VECTOR_MODE_WIDTH
             || x == ids::VECTOR_MODE_CUT
             || x == ids::VECTOR_MODE_TRIM
+            || x == ids::VECTOR_MODE_BUCKET
             || x == ids::VECTOR_PATH_WELD
             // A FONTE da largura do lápis (W1d) — três chips exclusivos, do mesmo assunto:
             // com que ferramenta, e como, o traço nasce.

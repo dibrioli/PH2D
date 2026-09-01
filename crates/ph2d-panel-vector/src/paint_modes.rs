@@ -129,6 +129,13 @@ impl BodyCtx<'_> {
                 tr("panel.vector.mode.trim"),
                 DrawMode::Trim,
             ),
+            // **Balde** (plano 40) — o 16º pill, ao lado do Trim: os dois apontam uma REGIÃO que já
+            // está na tela em vez de a autorar. Aquele remove o pedaço apontado, este preenche-o.
+            (
+                ids::VECTOR_MODE_BUCKET,
+                tr("panel.vector.mode.bucket"),
+                DrawMode::Bucket,
+            ),
             // **Moldura** — o 14º pill, e fica no FIM porque é o único que produz um CONTÊINER:
             // os anteriores desenham ou editam uma forma, este cria o lugar onde as formas moram.
             (

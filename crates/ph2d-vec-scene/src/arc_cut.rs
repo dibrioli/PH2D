@@ -354,6 +354,30 @@ pub(crate) fn strands_uniform(
     strands_of(g, &gaps)
 }
 
+/// ⭐⭐⭐ **A POLILINHA DE DETECÇÃO de um contorno** — os pontos, em ordem.
+///
+/// ⚠️⚠️ **É a MESMA amostragem com que os cruzamentos são achados**, e é por isso que ela é
+/// pública em vez de cada consumidor achatar por conta própria: o balde percorre faces sobre uma
+/// polilinha, e duas amostragens diferentes **discordariam sobre a existência de um cruzamento** —
+/// a face apareceria num sítio e não noutro, sem nada no código a dizer porquê.
+///
+/// Devolve vazio para um contorno degenerado (comprimento nulo).
+#[must_use]
+pub fn detection_polyline(verts: &[VecVertex], closed: bool) -> Vec<[f64; 2]> {
+    let Some(g) = Geom::of(verts, closed) else {
+        return Vec::new();
+    };
+    let arestas = g.edges();
+    let mut out: Vec<[f64; 2]> = Vec::with_capacity(arestas.len() + 1);
+    for e in &arestas {
+        out.push(e.p0);
+    }
+    if let Some(last) = arestas.last() {
+        out.push(last.p1);
+    }
+    out
+}
+
 /// ⭐⭐⭐ **A DISTÂNCIA DE UM PONTO À CORDA** — ao SEGMENTO, e não ao ponto médio dele.
 ///
 /// ⚠️⚠️ **Medir contra o ponto médio conta o deslize TANGENCIAL como se fosse desvio.** Uma recta

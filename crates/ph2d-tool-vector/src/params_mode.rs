@@ -85,6 +85,18 @@ pub enum DrawMode {
     /// está na tela já corta*, e o único gesto é apontar o pedaço. A Autodesk fez exactamente esta
     /// troca no `TRIM` em 2021, e deixou o modelo da lâmina escolhida atrás de uma variável.
     Trim,
+    /// ⭐⭐⭐ **Balde** (plano 40): aponta-se uma REGIÃO cercada por traços, ela acende, e o clique
+    /// deixa lá uma forma preenchida.
+    ///
+    /// É o *Smart Fill* do CorelDRAW — **um clique, um objecto novo** —, e não o *Live Paint* do
+    /// Illustrator (um tipo de grupo com estado próprio, que é a feature seguinte, não a primeira).
+    ///
+    /// ⚠️ **Não é o [`DrawMode::Build`], e a diferença é o SUBSTRATO.** O Shape Builder responde
+    /// *"que face é esta?"* pela definição conjuntista `região(M) = ∩M − ∪¬M`, que **não existe
+    /// para um traço aberto** — uma linha não tem dentro. O balde percorre a rede de ARCOS que o
+    /// Soldar produz, e é por isso que ele preenche *"linhas sobrepostas"* (o pedido do Enio) e o
+    /// Shape Builder não.
+    Bucket,
     /// **Corte** (plano 25 §7, W4): desenha-se uma **LINHA DE CORTE** — com a caneta, exatamente
     /// como se desenha qualquer curva — e um botão do painel corta com ela.
     ///
@@ -145,6 +157,7 @@ impl DrawMode {
         Self::Chamfer,
         Self::Width,
         Self::Trim,
+        Self::Bucket,
         Self::Cut,
         Self::Frame,
     ];
@@ -261,11 +274,12 @@ mod all_tests {
                 | DrawMode::Chamfer
                 | DrawMode::Width
                 | DrawMode::Trim
+                | DrawMode::Bucket
                 | DrawMode::Cut
                 | DrawMode::Frame => 1,
             };
         }
-        assert_eq!(vistos, 15, "o vocabulario mudou — reveja quem o itera");
+        assert_eq!(vistos, 16, "o vocabulario mudou — reveja quem o itera");
         // …e sem repetidos: uma variante duplicada na lista faria todo censo medi-la duas vezes.
         let mut ordenada: Vec<String> = DrawMode::ALL.iter().map(|m| format!("{m:?}")).collect();
         ordenada.sort();

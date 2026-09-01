@@ -4282,6 +4282,25 @@ impl App {
                         // vazio não pode cair na cadeia de baixo e começar a desenhar uma forma.
                         return;
                     }
+                    // ⭐⭐⭐ **O BALDE** (plano 40): o clique deposita a face que o realce está a
+                    // mostrar. ⚠️ **A geometria vem do estado do QUADRO** (`vec_bucket_face`), como
+                    // no Trim: o que o artista vê aceso é literalmente o que fica.
+                    //
+                    // ⛔ Consome o press SEMPRE, pela razão do Trim: um clique no vazio não pode
+                    // cair na cadeia de baixo e começar a desenhar uma forma.
+                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Bucket {
+                        let antes = self
+                            .vec_bucket_face
+                            .is_some()
+                            .then(|| self.gfx.as_ref().map(|g| g.vec_scene.clone()))
+                            .flatten();
+                        if let Some(antes) = antes
+                            && self.apply_bucket()
+                        {
+                            self.vec_history.push_undo(antes);
+                        }
+                        return;
+                    }
                     if self.vec_draw_config.mode.is_corner_tool() {
                         let chamfer = self.vec_draw_config.mode.corner_is_chamfer();
                         let px_to_world = self.vec_px_to_world();

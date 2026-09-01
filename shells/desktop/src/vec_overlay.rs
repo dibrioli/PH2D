@@ -62,10 +62,13 @@ pub(crate) fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverla
         // desenhar a LINHA DE CORTE, e desenhar sem ver os próprios nós é desenhar às cegas.
         // (O escopo do corte não é o caminho selecionado — é o que a linha atravessa —, mas
         // quem o anuncia é o próprio desenho da lâmina, não as âncoras.)
+        // ⚠️ **O Balde entra na lista dos que NÃO mostram nós** (plano 40), ao lado do Shape
+        // Builder e pela mesma razão: ele aponta uma REGIÃO, e as âncoras das linhas que a cercam
+        // são ruído por cima do realce que interessa — a face acesa.
         edit: vector_active
             && !matches!(
                 mode,
-                DrawMode::Select | DrawMode::Build | DrawMode::PickBlend
+                DrawMode::Select | DrawMode::Build | DrawMode::PickBlend | DrawMode::Bucket
             ),
         snap_guides: vector_active,
         // Node-only (mesma razão de modo do `edit`, mais estreita). Se a seleção é um envelope é

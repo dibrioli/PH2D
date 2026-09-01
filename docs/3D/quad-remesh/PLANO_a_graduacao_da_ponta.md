@@ -1311,3 +1311,63 @@ satisfeita pelo importador, e o defeito que ele vê é o original: a ponta.*
    peça dele sai **limpa** (`0` de `4`) e a `0,75` perde **uma** ponta a `−4,1 %`. ⇒ o alvo é
    essa **uma** ponta, na densidade média — e não uma lotaria de posições.
 3. ⏳ O gate de sensibilidade e o laço continuam na fila, agora **sem** urgência de produto.
+
+---
+
+# ⭐⭐ PARTE IX — «quase perfeito! 1 ponta ruim com detail 1» (Enio, 31/08, foto da TAMPA)
+
+## §70 — ⛔ AS DUAS RÉGUAS QUE EXISTIAM DÃO A PONTA POR BOA
+
+`base_recentrada` (a peça como o botão a vê), `Detail 1,00 · Curvature 1`:
+
+| régua | leitura |
+|---|---|
+| suporte por ponta | `0` de `4` cortadas, a pior `−0,5 %` |
+| desvio local | `p50 0,47` · `p90 0,59` — **barra `1,0`** |
+
+⇒ *o comprimento está certo e a superfície está pousada na escultura.* O que a foto mostra é
+outra coisa: **como o bico TERMINA** — uma tampa chata onde a forma pedia um ponto.
+
+## §71 — QUATRO RÉGUAS CONSTRUÍDAS, e o que cada uma NÃO viu
+
+| régua | o que mede | porque não vê a tampa |
+|---|---|---|
+| suporte (`tip_survival`) | até onde a peça vai | o comprimento está certo |
+| desvio (`tip_deviation`) | distância da escultura à saída | a tampa está **pousada** na escultura |
+| tampa (aresta do vértice do topo) | `0,22`–`1,20` quads nas quatro | ⛔ **não separa**: todas terminam com ~1 quad |
+| coroas 1..5 (raio por distância de grafo) | `1,20 → 2,00 → 2,81` … | ⛔ **não separa**: as quatro crescem como um cone |
+
+⚠️ *Quatro instrumentos e nenhum acusa o que o dono aponta com o dedo.* ⇒ a hipótese «a saída
+está no sítio errado» tinha de ser medida directamente.
+
+## §72 — ⭐⭐⭐ E A MEDIÇÃO DIRECTA FECHA A QUESTÃO: a tampa está no sítio CERTO
+
+| ponta | distância da tampa ao bico verdadeiro | preço de a puxar até lá |
+|---|---|---|
+| 0 | `0,58` quads | aspecto `1,47 → 2,47` · enviesamento `16° → 47°` |
+| 1 | `0,91` quads | ⛔ `1,18 → 4,52` · `9° → 43°` |
+| 2 | `0,56` quads | ⛔ `1,55 → 5,88` · `23° → 84°` |
+| 3 | `0,79` quads | `1,38 → 2,84` · `16° → 38°` |
+
+⭐ **A tampa está a menos de UM QUAD do bico em todas as pontas** — a malha está tão perto
+quanto a grade permite. ⛔ E puxá-la destrói a forma das quatro faces que a tocam: *um
+movimento de meio quad paga aspecto `4×` e enviesamento `40°`.*
+
+⇒ ⭐⭐⭐ **A tampa chata não é um erro de colocação: é o que uma grade de passo `h` faz com um
+cone quando `h` é o que é.** Para o bico convergir, a célula tem de ser mais pequena **ali** —
+e isso é o `ADAPT_RATIO`/factor de escala, não uma pós-passagem.
+
+## §73 — ⚠️ E ISSO FECHA O CICLO COM A §63, com a troca explícita
+
+Subir a folga (`16 → 64`) **afina a tampa** — e foi **rejeitado pelo dono** porque piora as
+**amputações** (`1 → 2` pontas comidas). ⇒ *a mesma alavanca melhora o que ele vê agora e piora
+o que ele viu antes*, e a ordem de preferência dele está declarada: **uma ponta amputada é pior
+que uma tampa chata.**
+
+⇒ **a única saída que não paga esse preço é a que o `CLAUDE.md` §5 já nomeia:** o **factor de
+escala conforme por construção** — mais resolução só onde a curvatura a pede, sem inflar o
+campo em todo o lado e sem a instabilidade que a folga global traz. É wave com espec própria, e
+é a primeira da fila.
+
+⛔ **Não voltar a subir o `ADAPT_RATIO` sem re-medir as amputações na peça RECENTRADA** — é o
+que foi feito e revertido em 31/08.

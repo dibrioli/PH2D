@@ -23,6 +23,26 @@ use ph2d_mesh::Mesh;
 /// (`the_adaptive_range_is_bounded`).
 pub const MAX_ADAPTIVE_RATIO: f32 = 4.0;
 
+// ⭐⭐⭐ **MEDIDO EM 2026-09-01, e as duas metades do doc acima saíram diferentes:**
+//
+// | faixa | o que o campo PEDE na ponta | o que a saída ENTREGA | `>60°` | bordo · não-manifold |
+// |---|---|---|---|---|
+// | **`4`** (este número) | `0,553` | **`1,28`** | `0` | `0` · `0` |
+// | `8` | `0,508` | `1,25` | `2` | `0` · `0` |
+// | `16` | `0,490` | `1,24` | `6` | `0` · `0` |
+// | `32` | `0,476` | `1,33` | `7` | `0` · `0` |
+//
+// ⭐ **O «rasga» NÃO foi reproduzido:** as quatro faixas dão `χ = 2`, zero bordo e zero
+// não-manifold na escultura do dono. ⚠️ *A justificação é sobre a razão entre células
+// VIZINHAS e o número é um limite GLOBAL* — quem limita o gradiente é o alisamento em log do
+// chamador (`smooth_in_log`), e é por isso que a faixa maior não parte nada.
+//
+// ⛔⛔ **E ele FICA em `4`, por medição e não por inércia:** subi-lo torna o pedido `14 %`
+// mais fino na ponta e a saída realizada **não se move** (`1,28 → 1,24`, dentro do ruído),
+// enquanto as faces com canto pior que `60°` vão de `0` a `7`. *O mapa não honra o pedido na
+// ponta, e alargar o que se pede não muda o que se recebe.* ⇒ a cura é a jusante, no G3
+// (`PLANO_a_graduacao_da_ponta.md` §89).
+
 /// **A escala de cada vértice** — o lado do quad que se quer ali, em unidades de
 /// objeto.
 #[derive(Clone, Debug, PartialEq)]
@@ -110,7 +130,7 @@ impl ScaleField {
     #[must_use]
     pub fn adaptive_with(mesh: &Mesh, edge: f32, strength: f32, floor_in_input_edges: f32) -> Self {
         let floor = resolvable_edge_range_with(mesh, floor_in_input_edges).0;
-        Self::adaptive_between(mesh, edge, strength, floor)
+        Self::adaptive_between(mesh, edge, strength, floor, MAX_ADAPTIVE_RATIO)
     }
 
     /// ⭐⭐⭐ **A MESMA LEI, com a cerca da GRADAÇÃO e mais nenhuma** — para quem extrai de
@@ -134,12 +154,28 @@ impl ScaleField {
     /// deixam de ter aresta comum»*.
     #[must_use]
     pub fn adaptive_graded(mesh: &Mesh, edge: f32, strength: f32) -> Self {
-        Self::adaptive_between(mesh, edge, strength, MIN_EDGE)
+        Self::adaptive_between(mesh, edge, strength, MIN_EDGE, MAX_ADAPTIVE_RATIO)
+    }
+
+    /// ⭐⭐⭐ **A MESMA LEI com a faixa à VISTA** — e ela existe por uma medição que ainda não
+    /// foi feita, não por gosto.
+    ///
+    /// ⛔⛔ [`MAX_ADAPTIVE_RATIO`] é um limite **GLOBAL** (`edge/2 .. 2·edge`) e o doc dele
+    /// justifica-o com uma propriedade **LOCAL**: *«duas células vizinhas cujas escalas diferem
+    /// por mais do que isto deixam de ter aresta comum»*. ⚠️ *Um campo que vá de `edge/8` numa
+    /// ponta a `2·edge` numa face chapada tem faixa global enorme e razões vizinho-a-vizinho
+    /// pequenas* — e quem as limita é o alisamento em log do chamador, não este `clamp`.
+    ///
+    /// ⇒ esta porta permite **medir** se a faixa maior rasga de facto a grade (o modo de falha
+    /// que o número declara) antes de alguém lhe tocar. ⛔ O produto continua a chamar a irmã.
+    #[must_use]
+    pub fn adaptive_ranged(mesh: &Mesh, edge: f32, strength: f32, ratio: f32) -> Self {
+        Self::adaptive_between(mesh, edge, strength, MIN_EDGE, ratio.max(1.0))
     }
 
     /// A lei, com o piso já resolvido — ver [`Self::adaptive_with`] e
     /// [`Self::adaptive_graded`], que só diferem em **qual cerca** trazem.
-    fn adaptive_between(mesh: &Mesh, edge: f32, strength: f32, floor: f32) -> Self {
+    fn adaptive_between(mesh: &Mesh, edge: f32, strength: f32, floor: f32, ratio: f32) -> Self {
         let edge = edge.max(MIN_EDGE);
         let s = strength.clamp(0.0, 1.0);
         if s == 0.0 {
@@ -186,16 +222,15 @@ impl ScaleField {
         // BAIXO fica sem curso — não há folga sob o piso. Isso é o recurso a
         // dizer o que é, não uma perda: a adaptação para CIMA (quads maiores onde
         // a forma é chapada) continua inteira, e é ela que o `hi` carrega.
-        let lo = (edge / MAX_ADAPTIVE_RATIO.sqrt()).max(floor);
-        let hi = (edge * MAX_ADAPTIVE_RATIO.sqrt()).max(lo);
+        let lo = (edge / ratio.sqrt()).max(floor);
+        let hi = (edge * ratio.sqrt()).max(lo);
         let per_vertex = curv
             .iter()
             .map(|k| {
                 // `r = 1/|κ|` normalizado pela mediana: 1 no vértice mediano,
                 // menor onde aperta, maior onde a forma é chapada.
                 let rel = if median > 1.0e-9 {
-                    (median / k.abs().max(1.0e-9))
-                        .clamp(1.0 / MAX_ADAPTIVE_RATIO.sqrt(), MAX_ADAPTIVE_RATIO.sqrt())
+                    (median / k.abs().max(1.0e-9)).clamp(1.0 / ratio.sqrt(), ratio.sqrt())
                 } else {
                     1.0
                 };

@@ -1575,3 +1575,67 @@ cinco comparações de **dez argumentos posicionais** virou uma porta (`decide::
 à mão que nenhum par estava trocado foi trabalho de auditoria neste mesmo dia.* ⚠️ **Quatro gates
 textuais reprovaram no corte**, que é o serviço deles: cada um foi repontado com a razão escrita
 ao lado.
+
+---
+
+# §89 — A ponta perde a resolução **DEPOIS** da fase zero, e três curas caíram por medição
+
+> Segunda foto do dono no mesmo dia — a tampa chata no bico, com a haste a mostrar uma grade
+> fina e regular. *«veja. não é bom»*.
+
+## §89.1 — A localização, com a régua nova nas três fases
+
+`PH2D_DUMP_F1` (porta nova) escreve a malha de trabalho, e o perfil por ponta responde de uma
+vez a pergunta que só se respondia por hipótese:
+
+| | pior bico (× a mediana) |
+|---|---|
+| a **escultura** do dono | `2,40` — ela própria é grossa nos bicos |
+| ⭐ a **fase zero** (F1) | **`0,82`** — as seis pontas ficam FINAS |
+| ⛔ a **saída** do botão | `1,55` |
+
+⇒ **`100 %` da grossura da ponta nasce a jusante do F1.** A fase zero está ilibada por
+resultado, e a hipótese *«o campo de tamanho não pede fino na ponta»* está **refutada**.
+
+## §89.2 — ⛔ REFUTADO: o alisamento do pedido
+
+A tabela que escolheu `SIZING_SMOOTH_ROUNDS = 8` foi feita com a `ENTREGA` — a régua radial que
+o §83 mostrou ser cega a uma ponta. Re-medida com a régua por ponta:
+
+| rondas | `0` | `2` | `4` | ⭐ **`8`** | `16` |
+|---|---|---|---|---|---|
+| pior bico | `1,46` | `1,37` | `1,31` | **`1,28`** | `1,32` |
+
+*O número já estava no óptimo, e a faixa inteira é `1,28`–`1,46`.* ⇒ não é a alavanca.
+
+## §89.3 — ⛔⛔ REFUTADO: o tecto da faixa (`MAX_ADAPTIVE_RATIO = 4`)
+
+O campo que vai ao mapa é grampeado em `alvo/2 .. 2·alvo`: **a ponta não pode receber um quad
+menor que metade do pedido, por construção**. Parecia a explicação inteira. Medido pela porta
+nova `ScaleField::adaptive_ranged` (`PH2D_SIZING_RATIO`):
+
+| faixa | o que o campo PEDE na ponta | o que a saída ENTREGA | `>60°` | bordo · não-manifold |
+|---|---|---|---|---|
+| **`4`** | `0,553` | **`1,28`** | `0` | `0` · `0` |
+| `8` | `0,508` | `1,25` | `2` | `0` · `0` |
+| `16` | `0,490` | `1,24` | `6` | `0` · `0` |
+| `32` | `0,476` | `1,33` | `7` | `0` · `0` |
+
+⭐⭐⭐ **O pedido fica `14 %` mais fino e a saída não se move** (`1,28 → 1,24`, dentro do
+ruído), pagando `7` faces péssimas. ⇒ *o mapa não honra o pedido na ponta, e alargar o que se
+pede não muda o que se recebe.* ⛔ O tecto **fica em `4`**: subi-lo não compra nada e custa.
+
+⭐ **E o «rasga» que o doc do tecto declara NÃO foi reproduzido** — as quatro faixas dão
+`χ = 2`, zero bordo e zero não-manifold. ⚠️ *A justificação é sobre a razão entre células
+VIZINHAS e o número é um limite GLOBAL*; quem limita o gradiente é o `smooth_in_log`.
+
+## §89.4 — ⏳ O que fica, e é substrato
+
+As três alavancas a montante estão medidas e fechadas. O que resta é o mecanismo que o §84 já
+nomeia: **as linhas de grade não se perdem escalonadamente ao longo do cone — terminam juntas,
+e o que sobra é a tampa.** ⚠️ Uma pista confirma que não é densidade: na faixa `16`, a candidata
+com linhas de feição entrega `p50 0,60` (a **mediana** das pontas fica excelente) e `pior 2,07`
+— *melhorar a densidade média das pontas não move a que colapsou.*
+
+⇒ A obra é o **factor de escala conforme** com espec própria, e o critério de aceitação dela é
+esta coluna: `GRADE NA PONTA pior` abaixo de `1,0` na peça do dono.

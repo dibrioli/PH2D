@@ -95,7 +95,17 @@ pub(super) fn sizing_field(work: &Mesh, target: f32, adaptive: f32) -> Vec<f32> 
     // ⛔⛔ **`adaptive_graded` e NÃO `adaptive_with`** — ver o doc dela. O piso da irmã é a
     // aresta média da malha de TRABALHO, que é a cerca do motor local; emprestada aqui ela
     // colapsa os dois extremos da banda no mesmo número e o campo sai constante ao bit.
-    let field = ph2d_quadflow::ScaleField::adaptive_graded(work, target, adaptive);
+    // ⭐⭐⭐ **A FAIXA é escolhida AQUI, no chamador** — ver
+    // [`ph2d_quadflow::ScaleField::adaptive_ranged`]. ⛔ `PH2D_SIZING_RATIO=<n>` é a sonda que
+    // permite MEDIR se uma faixa maior rasga a grade (o modo de falha que o tecto declara)
+    // antes de alguém lhe tocar; sem a env o produto chama a lei de sempre, ao bit.
+    let field = match std::env::var("PH2D_SIZING_RATIO")
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok())
+    {
+        Some(r) => ph2d_quadflow::ScaleField::adaptive_ranged(work, target, adaptive, r),
+        None => ph2d_quadflow::ScaleField::adaptive_graded(work, target, adaptive),
+    };
     let mut per_vertex: Vec<f32> = (0..work.vert_count()).map(|v| field.at(v)).collect();
     // ⭐⭐⭐ **O ALISAMENTO CORRE ANTES DA CONTAGEM, e a ordem é load-bearing.**
     //
@@ -324,6 +334,18 @@ pub(super) fn phase_zero(reference: &Mesh, target: f32) -> Mesh {
         ph2d_remesh_iso::remesh_isotropic(&mut w, ph2d_remesh_iso::ALPHA);
     }
     w.triangulate();
+    // ⭐ **`PH2D_DUMP_F1=<ficheiro>` escreve a malha de TRABALHO** — a sonda que separa as duas
+    // metades da pergunta *«onde a ponta perde a resolução?»*: se a fase zero já sai grossa no
+    // bico, a cura é o campo de tamanho; se ela sai fina e a saída sai grossa, é o mapa. ⛔ Sem
+    // esta porta a pergunta só se responde por hipótese.
+    if let Ok(path) = std::env::var("PH2D_DUMP_F1") {
+        let text = ph2d_mesh::write_obj(&[ph2d_mesh::ExportPiece {
+            name: Some("f1"),
+            mesh: &w,
+            pose: ph2d_mesh::Pose::default(),
+        }]);
+        let _ = std::fs::write(&path, text);
+    }
     w
 }
 

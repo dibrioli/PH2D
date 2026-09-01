@@ -537,3 +537,106 @@ fn the_newest_generation_opens_its_folds_instead_of_snapping() {
         );
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────
+// A PORTA DOS NÚMEROS — auditoria de seis lentes, doc 96 §3.4 e §3.5.
+// ─────────────────────────────────────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐ **NENHUM KNOB PÕE `NaN`/`±inf` NA CORRENTE, e a régua é o PRODUTO.**
+///
+/// ⚠️ **Um `f32` de painel é coagido; um `f32` de FIO não é.** O `EvalCtx::param` entrega o que
+/// o nó a montante produziu, e `F(s/0)` é uma gramática que o parser **ACEITA**. Medido antes da
+/// cura (`examples/probe_finite.rs`, molde `Tree` a `g = 4`): **8 de 23** knobs contaminavam a
+/// saída, `112` valores num só (`angle`).
+///
+/// | knob | `NaN` | `+inf` | `−inf` | `1e30` |
+/// |---|---|---|---|---|
+/// | `angle` | 112 | 112 | 112 | **56** |
+/// | `root_angle` | 122 | 122 | 122 | 60 |
+/// | `tropism` | 112 | 112 | 112 | 80 |
+/// | `step` · `width` · `width_scale` · `leaf_angle` · `leaf_spread` | 30–75 | idem | idem | 0–48 |
+///
+/// ⚠️⚠️ **A coluna do `1e30` é a que ensina:** o valor de ENTRADA é **finito**, e a saída não —
+/// o heading acumula até `inf` e a conversão para direcção devolve `NaN`. *Guardar a porta contra
+/// não-finitos não chega: uma grandeza ANGULAR tem de ser dobrada para a volta.*
+///
+/// ⇒ duas curas, na porta ÚNICA que todos os 27 atravessam ([`crate::params::Params::read_with`]):
+/// um valor não-finito cai no **default do manifesto** (o que o artista vê, e não um `0` que num
+/// `step` seria degenerado), e os três ângulos são reduzidos **módulo a volta**.
+#[test]
+fn no_knob_can_put_a_non_finite_number_into_the_stream() {
+    let (axiom, rules) = (crate::PRESETS[0].axiom, crate::PRESETS[0].rules);
+    let mut guilty = Vec::new();
+    for name in crate::probe::probe_params_names() {
+        for v in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, 1e30] {
+            let s = crate::probe_build(axiom, rules, 4.0, &[(name, v)]);
+            let bad = crate::probe::non_finite_count(&s);
+            if bad > 0 {
+                guilty.push(format!("{name} @ {v:e} => {bad}"));
+            }
+        }
+    }
+    // E o `generations`, que não é override mas é o argumento do plano.
+    for v in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, 1e30] {
+        let s = crate::probe_build(axiom, rules, v, &[]);
+        let bad = crate::probe::non_finite_count(&s);
+        if bad > 0 {
+            guilty.push(format!("generations @ {v:e} => {bad}"));
+        }
+    }
+    assert!(
+        guilty.is_empty(),
+        "knobs a contaminar a corrente:\n  {}",
+        guilty.join("\n  ")
+    );
+}
+
+/// ⚠️ **O CONTROLE do gate acima: a cura não pode ser «devolver nada».**
+///
+/// Uma porta que respondesse com uma corrente VAZIA a todo valor estranho passaria aquele gate
+/// inteiro e apagaria a planta. Aqui a barra é que a saída continue a ser a MESMA de um valor
+/// legítimo — o default do manifesto —, medida pela contagem e pela caixa.
+#[test]
+fn a_non_finite_knob_falls_back_to_the_default_and_not_to_nothing() {
+    let (axiom, rules) = (crate::PRESETS[0].axiom, crate::PRESETS[0].rules);
+    let want = crate::probe_build(axiom, rules, 4.0, &[]);
+    for name in [crate::param::ANGLE, crate::param::STEP, crate::param::WIDTH] {
+        let got = crate::probe_build(axiom, rules, 4.0, &[(name, f32::NAN)]);
+        assert_eq!(
+            crate::probe::fingerprint_of(&got),
+            crate::probe::fingerprint_of(&want),
+            "`{name}` a `NaN` tinha de desenhar exactamente o default"
+        );
+    }
+}
+
+/// ⭐⭐ **O TECTO DIGITÁVEL VALE PARA O FIO** — §3.5, e ⛔ **a premissa de custo dela está
+/// REFUTADA**.
+///
+/// A auditoria previa *«100 000 módulos × 65 535 passagens ⇒ > 120 s»*. **Não reproduz:** quando
+/// a cadeia satura o orçamento o `rewrite` devolve `None` e o laço **quebra**. Medido:
+/// `generations = 60 000` custa `3,93 ms` contra `4,86` a `32` no `Tree`, e `9,69` contra `9,73`
+/// num `F -> FF`. *O laço já parava; ninguém tinha medido.*
+///
+/// ⛔ **Mas o defeito EXISTE noutra gramática: a que NUNCA satura.** Um par `F -> A` / `A -> F`
+/// troca símbolos sem crescer, então o `None` nunca chega e todas as passagens correm:
+///
+/// | `generations` | elementos | relógio |
+/// |---:|---:|---:|
+/// | `32` (o tecto da caixa) | 2 | **13,91 µs** |
+/// | `1 000` | 2 | 4,02 ms |
+/// | `10 000` | 2 | **437,02 ms** — 26 quadros |
+///
+/// ⇒ o `generation_plan` passa a coagir ao [`crate::ui::MAX_GENERATIONS`]. ⚠️ **Não é um tecto
+/// novo** (§0.0): é o número que a caixa já declara, a valer também para o fio — hoje a caixa
+/// recusa `33` e um fio entrega `65 535` sem uma palavra.
+#[test]
+fn a_wire_cannot_drive_more_generations_than_the_box_accepts() {
+    let over = crate::probe_build("F", "F -> A\nA -> F", 10_000.0, &[]);
+    let at = crate::probe_build("F", "F -> A\nA -> F", crate::ui::MAX_GENERATIONS, &[]);
+    assert_eq!(
+        crate::probe::fingerprint_of(&over),
+        crate::probe::fingerprint_of(&at),
+        "um fio acima do tecto digitavel derivou mais passagens que a caixa permite"
+    );
+}

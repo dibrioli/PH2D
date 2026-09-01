@@ -216,37 +216,57 @@ fn probe_params(generations: f32, overrides: &[(&str, f32)]) -> Params {
         leaf_effects: 0.0,
     };
     for (n, v) in overrides {
-        match *n {
-            param::ANGLE => p.angle = *v,
-            param::MODE => p.mode = *v,
-            param::BRANCHES => p.branches = *v,
-            param::SEGMENTS => p.segments = *v,
-            param::VARIATION => p.variation = *v,
-            param::BEND => p.bend = *v,
-            param::CONTINUOUS_LENGTH => p.continuous_length = *v,
-            param::CONTINUOUS_ANGLE => p.continuous_angle = *v,
-            param::STEP_SCALE => p.step_scale = *v,
-            param::GROWTH => p.growth = *v,
-            param::STEP => p.step = *v,
-            param::WIDTH => p.width = *v,
-            param::WIDTH_SCALE => p.width_scale = *v,
-            param::LENGTH_SCALE => p.length_scale = *v,
-            param::ROOT_ANGLE => p.root_angle = *v,
-            param::TROPISM => p.tropism = *v,
-            param::TROPISM_ANGLE => p.tropism_angle = *v,
-            param::SEED => p.seed = *v,
-            param::ORIENT => p.orient = *v,
-            param::TIP_TAPER => p.tip_taper = *v,
-            param::GEOMETRY => p.geometry = *v,
-            param::LEAF_FIRST_LEVEL => p.leaf_first_level = *v,
-            param::LEAF_ANGLE => p.leaf_angle = *v,
-            param::LEAF_SPREAD => p.leaf_spread = *v,
-            param::LEAF_FRONT => p.leaf_front = *v,
-            param::LEAF_EFFECTS => p.leaf_effects = *v,
-            other => panic!("probe_params: param desconhecido {other}"),
-        }
+        assert!(
+            set_by_name(&mut p, n, *v),
+            "probe_params: param desconhecido {n}"
+        );
     }
     p
+}
+
+/// **A LISTA, uma vez só** — escreve `value` no campo de `name` e diz se o conheceu.
+///
+/// ⚠️ Ela existe porque a lista tem **dois** leitores: o [`probe_params`], que exige que o
+/// nome exista, e o [`probe_params_names`], que precisa de saber QUAIS existem. Escrita duas
+/// vezes, a segunda envelhece no dia em que um param novo entra — e o gate que varre «todos os
+/// knobs» passaria a varrer todos **menos esse**, em silêncio.
+///
+/// ⛔ **Os quatro params do manifesto que NÃO estão aqui não são um buraco**: o `preset` é da
+/// shell (o `build` nunca o lê) e os três de folha (`leaf_size`, `leaf_size_jitter`,
+/// `leaf_pos_jitter`) são lidos pela shell ao construir a aparência — nenhum deles tem campo
+/// no [`crate::params::Params`], que é a lista do NÓ.
+fn set_by_name(p: &mut Params, name: &str, value: f32) -> bool {
+    let v = &value;
+    match name {
+        param::ANGLE => p.angle = *v,
+        param::MODE => p.mode = *v,
+        param::BRANCHES => p.branches = *v,
+        param::SEGMENTS => p.segments = *v,
+        param::VARIATION => p.variation = *v,
+        param::BEND => p.bend = *v,
+        param::CONTINUOUS_LENGTH => p.continuous_length = *v,
+        param::CONTINUOUS_ANGLE => p.continuous_angle = *v,
+        param::STEP_SCALE => p.step_scale = *v,
+        param::GROWTH => p.growth = *v,
+        param::STEP => p.step = *v,
+        param::WIDTH => p.width = *v,
+        param::WIDTH_SCALE => p.width_scale = *v,
+        param::LENGTH_SCALE => p.length_scale = *v,
+        param::ROOT_ANGLE => p.root_angle = *v,
+        param::TROPISM => p.tropism = *v,
+        param::TROPISM_ANGLE => p.tropism_angle = *v,
+        param::SEED => p.seed = *v,
+        param::ORIENT => p.orient = *v,
+        param::TIP_TAPER => p.tip_taper = *v,
+        param::GEOMETRY => p.geometry = *v,
+        param::LEAF_FIRST_LEVEL => p.leaf_first_level = *v,
+        param::LEAF_ANGLE => p.leaf_angle = *v,
+        param::LEAF_SPREAD => p.leaf_spread = *v,
+        param::LEAF_FRONT => p.leaf_front = *v,
+        param::LEAF_EFFECTS => p.leaf_effects = *v,
+        _ => return false,
+    }
+    true
 }
 
 /// **A porta de SONDA** — derivar + interpretar com os defaults do manifesto, mudando só o
@@ -271,6 +291,43 @@ pub fn probe_build(
 ///
 /// ⚠️ **Ordenada pelo NOME da coluna** — a ordem de iteração de um mapa não é a pergunta, e
 /// deixá-la entrar faria a impressão mudar sem o produto mudar.
+/// **OS PARAMS QUE UMA SONDA PODE VARRER** — derivado do MANIFESTO, nunca escrito à mão.
+///
+/// ⚠️ O `generations` fica de fora porque **não é um override**: ele é o argumento posicional do
+/// [`probe_build`], e o [`probe_params`] entra em pânico se lho passarem. *Uma lista escrita à
+/// mão ao lado de um `match` é a segunda resposta que envelhece* — esta é a primeira.
+#[cfg(test)]
+pub(crate) fn probe_params_names() -> Vec<&'static str> {
+    let mut scratch = probe_params(1.0, &[]);
+    crate::MANIFEST
+        .params
+        .iter()
+        .map(|p| p.name)
+        .filter(|n| *n != crate::param::GENERATIONS && set_by_name(&mut scratch, n, 0.0))
+        .collect()
+}
+
+/// **Quantos valores NÃO-FINITOS a corrente carrega** — a régua da porta dos números (doc 96
+/// §3.4). Varre TODA coluna, não uma lista: uma coluna nova nasce coberta.
+#[cfg(test)]
+pub(crate) fn non_finite_count(s: &ph2d_nodegraph::attr::Stream) -> usize {
+    use ph2d_nodegraph::attr::Column;
+    s.columns()
+        .map(|(_, c)| match c {
+            Column::Scalar(v) => v.iter().filter(|x| !x.is_finite()).count(),
+            Column::Vec2(v) => v.iter().flatten().filter(|x| !x.is_finite()).count(),
+            Column::Vec3(v) => v.iter().flatten().filter(|x| !x.is_finite()).count(),
+            Column::Vec4(v) => v.iter().flatten().filter(|x| !x.is_finite()).count(),
+        })
+        .sum()
+}
+
+/// A [`fingerprint`] pelos módulos irmãos — a mesma função, um nome alcançável.
+#[cfg(test)]
+pub(crate) fn fingerprint_of(s: &ph2d_nodegraph::attr::Stream) -> u64 {
+    fingerprint(s)
+}
+
 fn fingerprint(s: &ph2d_nodegraph::attr::Stream) -> u64 {
     use ph2d_nodegraph::attr::Column;
     let mut cols: Vec<(&String, &Column)> = s.columns().collect();

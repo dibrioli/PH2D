@@ -119,6 +119,19 @@ pub(crate) fn apply_param_edits_for_tests(
     apply_param_edits(motion, store, toasts);
 }
 
+/// **O QUE O PAINEL PINTA AGORA**, para um gate que mede o ecrã em vez do valor guardado.
+///
+/// ⚠️ A mesma porta que o construtor de rows usa (`params_visible::shown_params`) — um gate
+/// que reimplementasse a conjunção dos três gates ficaria verde sobre um painel que já não
+/// concorda com ele.
+#[cfg(test)]
+pub(crate) fn shown_params_for_tests(
+    motion: &MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+) -> impl Fn(&str) -> bool + '_ {
+    params_visible::shown_params(motion, nid)
+}
+
 /// **Publish the params panel this frame** (M1.P1) — the dispatch's one call: apply the
 /// selected node's edits, rebuild its snapshot, seed the colour swatches from it, hand it
 /// to the panel. Needs BOTH motion panels (selection from the graph, rows to params); it

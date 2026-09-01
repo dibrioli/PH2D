@@ -100,6 +100,9 @@ pub(crate) type Look = ([f32; 2], [f32; 4], [f32; 4], f32, f32, f32);
 /// era precisa (doc 96 §2.1).
 pub(crate) type Job = (
     String,
+    // ⚠️ **O NÓ, e não só a chave de conteúdo** — os três `say_*` avisam sobre uma PLANTA, e a
+    // chave muda a 60 Hz quando um param é animado (doc 96 §2.3).
+    ph2d_nodegraph::graph::NodeId,
     // O axioma e as regras, e os params já resolvidos com que a chave foi cunhada.
     String,
     String,
@@ -174,11 +177,47 @@ pub(crate) fn named_appearance(cook: &ph2d_nodegraph::cook::Cook, name: &str) ->
 
 // **O QUE JÁ FOI DITO** — para o aviso sair uma vez, e não sessenta vezes por segundo.
 //
-// ⚠️ Por thread e por `(chave, slot)`: a chave é de CONTEÚDO, então mudar a gramática dá uma
-// chave nova e o aviso volta a poder sair — que é exactamente quando ele interessa.
+// ⛔⛔ **A 1.ª redacção chaveava pela CHAVE DE CONTEÚDO, e as duas metades dela estavam
+// erradas** (doc 96 §2.3). O raciocínio escrito era: *«a chave é de conteúdo, então mudar a
+// gramática dá uma chave nova e o aviso volta a poder sair — que é exactamente quando ele
+// interessa»*. Mas a chave mistura os **31 params pelos bits**, não só a gramática:
+//
+// - com o `Generations` animado ela é **nova em cada quadro** ⇒ o `eprintln!` saía **60×/s** e o
+//   `BTreeSet` crescia `~280 B/quadro`, **sem varredura**. Reproduzido: 320 quadros, 320
+//   impressões. *Um cache cuja chave pode mudar a 60 Hz não é um cache — é uma fuga com
+//   memória*, que é a frase que o doc do `VecPathStore` já tinha;
+// - e a intenção — *«voltar a poder sair quando interessa»* — não precisa de conteúdo nenhum:
+//   ela é **um flanco**. Quem entra no estado mau é avisado; quem sai dele é **esquecido**, e
+//   por isso voltar a entrar volta a avisar.
+//
+// ⇒ a chave é `(NodeId, assunto)` — limitada por nós × mensagens — e todo `say_*` **retira** a
+// entrada quando a condição deixa de valer.
 thread_local! {
     static SAID: std::cell::RefCell<std::collections::BTreeSet<String>> =
         const { std::cell::RefCell::new(std::collections::BTreeSet::new()) };
+}
+
+/// **O FLANCO** — diz `true` na transição para o estado mau, e esquece na transição de saída.
+///
+/// ⚠️ Uma porta só para os três avisos: escrita três vezes, a metade do `remove` faltaria numa
+/// delas e ninguém veria — um aviso que não volta a sair lê-se exactamente como um aviso que
+/// nunca precisou de sair.
+fn on_rising_edge(subject: String, bad: bool) -> bool {
+    SAID.with(|s| {
+        let mut s = s.borrow_mut();
+        if bad {
+            s.insert(subject)
+        } else {
+            s.remove(&subject);
+            false
+        }
+    })
+}
+
+/// Quantas entradas o registo dos avisos guarda — a régua da fuga (doc 96 §2.3).
+#[cfg(test)]
+pub(crate) fn said_len() -> usize {
+    SAID.with(|s| s.borrow().len())
 }
 
 /// **A METADE PURA da pergunta** — quais slots têm nome e não têm onde nascer.
@@ -217,12 +256,13 @@ pub(crate) fn already_said(key: &str) -> bool {
 /// ⚠️ **Só quando há FIO**, e é isso que a torna silenciosa no uso normal: um `Tropism Angle`
 /// parado no default com `Tropism = 0` é o estado de fábrica de toda planta, e avisar sobre ele
 /// seria ruído em cada quadro de cada cena.
-pub(crate) fn say_if_a_wire_drives_an_inert_param(key: &str, driven: &[&str], tropism: f32) {
-    if tropism != 0.0 || !driven.contains(&ls::param::TROPISM_ANGLE) {
-        return;
-    }
-    let once = format!("{key} inert tropism");
-    if SAID.with(|s| s.borrow_mut().insert(once)) {
+pub(crate) fn say_if_a_wire_drives_an_inert_param(
+    id: ph2d_nodegraph::graph::NodeId,
+    driven: &[&str],
+    tropism: f32,
+) {
+    let bad = tropism == 0.0 && driven.contains(&ls::param::TROPISM_ANGLE);
+    if on_rising_edge(format!("{} inert tropism", id.0), bad) {
         eprintln!(
             "[lsystem] ha' um fio a conduzir o «Tropism Angle», mas o «Tropism» esta' em 0 — o \
              angulo e' a DIRECCAO de uma forca, e uma forca de intensidade zero nao move nada. \
@@ -243,7 +283,7 @@ pub(crate) fn say_if_a_wire_drives_an_inert_param(key: &str, driven: &[&str], tr
 /// por molde). Esta mensagem é para a gramática que o **artista** escreve, onde não há tabela
 /// que o saiba por ele.
 pub(crate) fn say_if_the_level_hid_every_leaf(
-    key: &str,
+    id: ph2d_nodegraph::graph::NodeId,
     names: &[String; 3],
     anchors: &[Anchor],
     first_level: f32,
@@ -251,17 +291,12 @@ pub(crate) fn say_if_the_level_hid_every_leaf(
     for (slot, name) in names.iter().enumerate() {
         let mine: Vec<&Anchor> = anchors.iter().filter(|a| a.slot == slot).collect();
         // Sem nome ou sem âncora, quem fala é o aviso da letra — este seria ruído por cima.
-        if name.is_empty() || mine.is_empty() {
-            continue;
-        }
-        if mine
-            .iter()
-            .any(|a| a.grow > super::motion_lsystem_rows::GROW_FLOOR)
-        {
-            continue;
-        }
-        let once = format!("{key} level {slot}");
-        if SAID.with(|s| s.borrow_mut().insert(once)) {
+        let bad = !name.is_empty()
+            && !mine.is_empty()
+            && !mine
+                .iter()
+                .any(|a| a.grow > super::motion_lsystem_rows::GROW_FLOOR);
+        if on_rising_edge(format!("{} level {slot}", id.0), bad) {
             eprintln!(
                 "[lsystem] «{name}» tem {} marca(s) na gramatica e NENHUMA se desenha: o «First \
                  Level» esta' em {first_level:.0} e todas elas nascem mais perto da raiz do que \
@@ -302,11 +337,16 @@ pub(crate) fn say_if_the_level_hid_every_leaf(
 /// parece ligado.*
 ///
 /// ⚠️ **Diz a CURA, não só o sintoma** — a letra que falta é a informação que resolve.
-pub(crate) fn say_if_the_letter_is_missing(key: &str, names: &[String; 3], anchors: &[Anchor]) {
-    for slot in unanswered_slots(names, anchors) {
-        let name = &names[slot];
-        let once = format!("{key} slot {slot}");
-        let fresh = SAID.with(|s| s.borrow_mut().insert(once));
+pub(crate) fn say_if_the_letter_is_missing(
+    id: ph2d_nodegraph::graph::NodeId,
+    names: &[String; 3],
+    anchors: &[Anchor],
+) {
+    let unanswered = unanswered_slots(names, anchors);
+    // ⚠️ **Os TRÊS slots atravessam o flanco, e não só os culpados** — um slot que passou a ter
+    // resposta tem de ser ESQUECIDO, senão parti-lo outra vez é silencioso.
+    for (slot, name) in names.iter().enumerate() {
+        let fresh = on_rising_edge(format!("{} slot {slot}", id.0), unanswered.contains(&slot));
         if fresh {
             eprintln!(
                 "[lsystem] «{name}» esta' no slot {letra}, mas a gramatica nao emite nenhum \

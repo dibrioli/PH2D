@@ -378,3 +378,120 @@ fn the_preset_leaves_alone_the_wires_it_does_not_need() {
         );
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────
+// O MOLDE DEIXADO PARA TRÁS — auditoria de seis lentes, doc 96 §3.2.
+// ─────────────────────────────────────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐ **VOLTAR AOS SLIDERS APAGA O MOLDE, porque a gramática deixou de ser a dele.**
+///
+/// ⚠️ **A metade que existia era só a de IDA.** O `bake_lsystem_grammar` já marcava `Custom`
+/// ao converter `Guided → Grammar` (*«o texto assado não é molde nenhum»*) — e o caminho de
+/// VOLTA não marcava nada, então o `preset` ficava a nomear um molde cuja gramática **não
+/// está em uso**. Em `Guided` quem desenha é a derivada dos sliders.
+///
+/// ⛔⛔ **E não é um selector desalinhado: é o painel a ESCONDER controlos vivos, e a
+/// DESTRUIR o fio de quem os conduzia.** Os `ParamGate` do *Width Scale* e do *Length Scale*
+/// leem `param::PRESET`, que é lido em **qualquer** modo; com um molde encalhado eles
+/// respondem sobre a gramática errada, e o `Visibility::mode_hides` a `true` faz o
+/// `drop_hidden_drivers` **soltar o fio** na primeira edição seguinte, com um toast a dizer
+/// *«this shape has no such control»* sobre um controlo que a gramática LÊ.
+///
+/// ⚠️ **MEDIDO no produto** (`examples/probe_guided_reads.rs`), e os dois knobs estão vivos
+/// no guiado por rotas DIFERENTES:
+///
+/// | knob | rota | régua | medido |
+/// |---|---|---|---|
+/// | `Width Scale` | o símbolo `!`, presente em **270/270** células dos sliders | coluna `size` | `1,000 → 3,375` |
+/// | `Length Scale` | a **EXPRESSÃO** `s*length_scale` | bbox | `0,55 → 3,83` (`|Δ| = 8,85`) |
+///
+/// ⛔⛔ **E é por isso que a cura não podia ser «ensinar o `Reads::of` a ler o guiado»:** ele
+/// conhece só a rota do SÍMBOLO (`!`/`"`), e o guiado alcança o `length_scale` **pelo nome
+/// dentro de uma expressão** — ele responderia `false` sobre um knob que move a peça `8,85`.
+/// ⭐ Nos **oito moldes** as duas réguas concordam `8/8` (medido na mesma sonda), então o
+/// `Reads::of` continua certo onde é usado; o que estava errado era **perguntar-lhe sobre uma
+/// gramática que não é de molde nenhum**.
+#[test]
+fn going_back_to_the_sliders_forgets_the_preset_it_is_no_longer_drawing() {
+    let mut motion = MotionState::new();
+    let n = motion.doc.graph.add_node("source.lsystem");
+
+    // Um molde escolhido em `Grammar` — o estado de partida real.
+    dispatch(
+        &mut motion,
+        MotionParamIntent::SetParam {
+            node: n.0,
+            param: ls::param::MODE,
+            value: ls::MODE_GRAMMAR as f64,
+        },
+    );
+    dispatch(
+        &mut motion,
+        MotionParamIntent::SetParam {
+            node: n.0,
+            param: ls::param::PRESET,
+            value: 5.0,
+        },
+    );
+    assert_eq!(
+        preset_of(&motion, n),
+        5,
+        "a fixtura tem de partir num molde"
+    );
+
+    // E voltar aos sliders.
+    dispatch(
+        &mut motion,
+        MotionParamIntent::SetParam {
+            node: n.0,
+            param: ls::param::MODE,
+            value: ls::MODE_GUIDED as f64,
+        },
+    );
+    assert_eq!(
+        preset_of(&motion, n),
+        ls::PRESET_CUSTOM,
+        "o modo guiado ficou a nomear um molde cuja gramatica nao esta' em uso"
+    );
+}
+
+/// ⭐⭐ **A CONSEQUÊNCIA, medida onde o artista a vê: os dois knobs vivos são PINTADOS.**
+///
+/// ⚠️ Gate irmão e não a mesma metade — o de cima afirma o número guardado, este afirma o
+/// PAINEL. Curar só o `preset` e deixar uma lista de moldes sem o `Custom` deixaria este
+/// vermelho, e curar só a lista deixaria o outro. *Um controlo escondido e um controlo cujo
+/// fio foi solto leem-se iguais no ecrã, e só o primeiro é reversível.*
+#[test]
+fn the_sliders_mode_paints_the_two_knobs_its_own_grammar_reads() {
+    let mut motion = MotionState::new();
+    let n = motion.doc.graph.add_node("source.lsystem");
+    for (param, value) in [
+        (ls::param::MODE, ls::MODE_GRAMMAR as f64),
+        (ls::param::PRESET, 5.0),
+        (ls::param::MODE, ls::MODE_GUIDED as f64),
+    ] {
+        dispatch(
+            &mut motion,
+            MotionParamIntent::SetParam {
+                node: n.0,
+                param,
+                value,
+            },
+        );
+    }
+    let shows = crate::render_loop::motion_bridge::params::shown_params_for_tests(&motion, n);
+    for name in [ls::param::WIDTH_SCALE, ls::param::LENGTH_SCALE] {
+        assert!(
+            shows(name),
+            "o `{name}` move a peca no modo guiado e o painel nao o pinta"
+        );
+    }
+    // ⚠️ **O CONTROLE**: os dois que o guiado de facto NÃO lê continuam escondidos. Sem ele,
+    // uma cura que simplesmente parasse de gatear passaria a primeira metade.
+    for name in [ls::param::STEP_SCALE, ls::param::CONTINUOUS_ANGLE] {
+        assert!(
+            !shows(name),
+            "o `{name}` e' inerte no modo guiado (medido em 750 celulas) e foi pintado"
+        );
+    }
+}

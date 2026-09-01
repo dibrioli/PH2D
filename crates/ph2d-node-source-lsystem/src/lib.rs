@@ -135,6 +135,27 @@ pub const RULES_PARAM: &str = "rules";
 /// `gen`, que a tartaruga já emite por elemento.
 pub const LEAF_PARAMS: [&str; 3] = ["leaf_j", "leaf_k", "leaf_m"];
 
+/// ⭐⭐ **TODOS OS CANAIS DE TEXTO DESTE NÓ, numa lista só** — o irmão de `MANIFEST.params` para
+/// a metade que o manifesto congelado não pode carregar.
+///
+/// ⛔⛔ Ela existe por causa do achado §3.3 da auditoria de seis lentes: a [`ribbon_key`] iterava
+/// `MANIFEST.params` (f32) mais o axioma e as regras à mão, e os **três nomes de objecto de
+/// folha ficavam de fora** — duas plantas com os mesmos números e a mesma gramática, uma com
+/// *Leaf (J) = folha* e outra *= flor*, **partilhavam a chave** e a segunda sobrescrevia a
+/// primeira. ⚠️ O doc-comment da própria `ribbon_key` declarava a invariante que ela quebrava:
+/// *«um param novo entra na chave sozinho»* — verdade para o `f32`, falsa para o texto.
+///
+/// ⚠️ **O manifesto é `f32`-only por CONTRATO CONGELADO** (§6), então todo canal de texto tem de
+/// ser acrescentado a alguma lista. Que seja **esta**, uma só, com um gate a exigir que toda
+/// `const` de nome de text param desta crate esteja aqui.
+pub const TEXT_PARAMS: &[&str] = &[
+    AXIOM_PARAM,
+    RULES_PARAM,
+    LEAF_PARAMS[0],
+    LEAF_PARAMS[1],
+    LEAF_PARAMS[2],
+];
+
 /// As letras que [`LEAF_PARAMS`] serve, na mesma ordem — *o índice é o par*.
 ///
 /// ⚠️ **Duas listas com a mesma ordem, e um gate a dizê-lo** (`the_letters_and_their_params_are_
@@ -271,7 +292,16 @@ fn generation_plan(generations: f32) -> (u16, (u16, f32)) {
     if !generations.is_finite() || generations <= 0.0 {
         return (0, (0, 1.0));
     }
-    let g = generations.min(u16::MAX as f32);
+    // ⭐⭐ **O TECTO DIGITÁVEL VALE PARA O FIO** (doc 96 §3.5). ⚠️ **Não é um tecto novo** (§0.0):
+    // é o [`ui::MAX_GENERATIONS`] que a caixa já recusa passar, a valer também para um valor
+    // conduzido — hoje a caixa recusa `33` e um fio entrega `65 535` sem uma palavra.
+    //
+    // ⛔ **E a premissa de CUSTO da auditoria está REFUTADA**: ela previa *«100 000 módulos ×
+    // 65 535 passagens ⇒ > 120 s»*, e quando a cadeia satura o orçamento o `rewrite` devolve
+    // `None` e o laço **quebra** — `g = 60 000` custa `3,93 ms` contra `4,86` a `32`.
+    // O defeito real é a gramática que **nunca satura** (`F -> A` / `A -> F`): ali todas as
+    // passagens correm, e `10 000` custa **437 ms** — 26 quadros — contra `13,91 µs` a `32`.
+    let g = generations.min(ui::MAX_GENERATIONS);
     let whole = g.floor();
     let frac = g - whole;
     if frac <= 0.0 {
@@ -305,7 +335,16 @@ impl NodeOp for SourceLSystem {
             // escada inteira e este é um `match` que devolve `0` para o que não lista (o
             // `preset`, por exemplo). Um `0` de «não listado» na chave do nó, contra o valor real
             // na chave da shell, daria duas chaves e uma planta invisível **sem erro nenhum**.
-            let key = ribbon_key(|n| ctx.param(n), &axiom_src, &rules_src);
+            // ⚠️ O texto entra pela MESMA porta que os números: `ctx.text_param`, e a
+            // queda para o default do axioma/regras já aconteceu acima (`axiom_src`/`rules_src`).
+            let key = ribbon_key(
+                |n| ctx.param(n),
+                |n| match n {
+                    AXIOM_PARAM => axiom_src.clone(),
+                    RULES_PARAM => rules_src.clone(),
+                    other => ctx.text_param(other).unwrap_or_default().to_string(),
+                },
+            );
             let out = ctx.external(&key).clone();
             ctx.emit(out);
             return;
@@ -323,6 +362,11 @@ fn or_default<'a>(src: &'a str, fallback: &'a str) -> &'a str {
 /// Deriva e interpreta — a função inteira do nó, sem o `EvalCtx` à volta (é ela que os
 /// gates e a bancada de medição chamam).
 fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::Stream {
+    // ⭐ **A PORTA DOS NÚMEROS, antes de tudo** — ver [`Params::sanitized`]. Aqui e não em quem
+    // lê o param, pela mesma razão que a queda para o default do texto: esta é a porta que o
+    // `eval` E a bancada de sonda atravessam.
+    let sane = p.sanitized();
+    let p = &sane;
     // ⚠️ **A escolha do MODO vive aqui, pela mesma razão que a queda para o default**: esta
     // é a porta que os gates e a bancada de medição chamam, e uma decisão tomada no `eval`
     // seria inalcançável por qualquer um dos dois. No guiado o texto do artista **não é

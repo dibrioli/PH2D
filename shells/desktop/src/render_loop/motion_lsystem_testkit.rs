@@ -47,8 +47,7 @@ pub(crate) fn key_of(state: &mut MotionState, n: ph2d_nodegraph::graph::NodeId) 
     let text = |k: &str| texts.and_then(|m| m.get(k)).cloned().unwrap_or_default();
     ls::ribbon_key(
         |name: &str| resolved.get(name).copied().unwrap_or(0.0),
-        &text(ls::AXIOM_PARAM),
-        &text(ls::RULES_PARAM),
+        text,
     )
 }
 

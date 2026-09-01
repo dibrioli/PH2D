@@ -78,24 +78,27 @@ fn a_wire_on_an_inert_param_is_reported() {
     use crate::render_loop::motion_lsystem_leaves::{
         already_said, say_if_a_wire_drives_an_inert_param as say,
     };
-    let disse = |driven: &[&str], tropism: f32, chave: &str| -> bool {
-        say(chave, driven, tropism);
-        already_said(&format!("{chave} inert tropism"))
+    // ⚠️ **Um NÓ por caso**, e não uma string: o registo passou a ser chaveado pelo nó, e dois
+    // casos no mesmo nó mediriam o FLANCO do anterior em vez do próprio (doc 96 §2.3).
+    let disse = |driven: &[&str], tropism: f32, n: u32| -> bool {
+        let id = ph2d_nodegraph::graph::NodeId(n);
+        say(id, driven, tropism);
+        already_said(&format!("{n} inert tropism"))
     };
     assert!(
-        disse(&[ls::param::TROPISM_ANGLE], 0.0, "w1"),
+        disse(&[ls::param::TROPISM_ANGLE], 0.0, 1),
         "fio + forca zero tem de ser dito"
     );
     assert!(
-        !disse(&[ls::param::TROPISM_ANGLE], 30.0, "w2"),
+        !disse(&[ls::param::TROPISM_ANGLE], 30.0, 2),
         "com forca a serio o aviso mentiria"
     );
     assert!(
-        !disse(&[], 0.0, "w3"),
+        !disse(&[], 0.0, 3),
         "sem fio, o default de toda planta calaria o aviso"
     );
     assert!(
-        !disse(&[ls::param::ANGLE], 0.0, "w4"),
+        !disse(&[ls::param::ANGLE], 0.0, 4),
         "um fio NOUTRO param nao diz nada sobre o tropismo"
     );
 }
@@ -117,22 +120,82 @@ fn a_first_level_that_hides_every_leaf_is_reported() {
         slot,
     };
     let nomes = |a: &str| [a.to_string(), String::new(), String::new()];
-    let disse = |anchors: &[Anchor], chave: &str| -> bool {
-        say(chave, &nomes("folha"), anchors, 3.0);
-        already_said(&format!("{chave} level 0"))
+    let disse = |anchors: &[Anchor], n: u32| -> bool {
+        say(
+            ph2d_nodegraph::graph::NodeId(n),
+            &nomes("folha"),
+            anchors,
+            3.0,
+        );
+        already_said(&format!("{n} level 0"))
     };
     assert!(
-        disse(&[mark(0, 0.0), mark(0, 0.0)], "h1"),
+        disse(&[mark(0, 0.0), mark(0, 0.0)], 1),
         "duas marcas e nenhuma a desenhar tem de ser dito"
     );
     assert!(
-        !disse(&[mark(0, 0.0), mark(0, 1.0)], "h2"),
+        !disse(&[mark(0, 0.0), mark(0, 1.0)], 2),
         "com UMA folha a desenhar o aviso mentiria"
     );
     assert!(
-        !disse(&[], "h3"),
+        !disse(&[], 3),
         "sem marca nenhuma quem fala e' o aviso da letra"
     );
-    say("h4", &nomes(""), &[mark(0, 0.0)], 3.0);
-    assert!(!already_said("h4 level 0"), "sem nome nao ha' o que avisar");
+    say(
+        ph2d_nodegraph::graph::NodeId(4),
+        &nomes(""),
+        &[mark(0, 0.0)],
+        3.0,
+    );
+    assert!(!already_said("4 level 0"), "sem nome nao ha' o que avisar");
+}
+
+/// ⭐⭐⭐ **O REGISTO DOS AVISOS NÃO CRESCE COM O RELÓGIO** — achado §2.3 da auditoria de seis
+/// lentes.
+///
+/// ⚠️ **O defeito não era o aviso: era a CHAVE dele.** O registo era chaveado pela chave de
+/// CONTEÚDO da planta, que mistura os **31 params pelos bits** — com o `Generations` animado ela
+/// é nova em cada quadro, então o `eprintln!` saía **60×/s** e o `BTreeSet` crescia
+/// `~280 B/quadro` **sem varredura nenhuma**. Reproduzido: 320 quadros, 320 impressões.
+///
+/// A régua é a CONTAGEM de entradas, não o `stderr`: 300 quadros do mesmo nó no mesmo estado
+/// mau têm de deixar **uma** entrada.
+#[test]
+fn the_warning_ledger_does_not_grow_with_the_clock() {
+    use crate::render_loop::motion_lsystem_leaves::{
+        said_len, say_if_a_wire_drives_an_inert_param as say,
+    };
+    let id = ph2d_nodegraph::graph::NodeId(7001);
+    let antes = said_len();
+    for _ in 0..300 {
+        say(id, &[ls::param::TROPISM_ANGLE], 0.0);
+    }
+    assert_eq!(
+        said_len() - antes,
+        1,
+        "300 quadros do MESMO aviso deixaram mais de uma entrada — o registo cresce com o relogio"
+    );
+}
+
+/// ⭐⭐ **E ELE VOLTA A SAIR quando o artista parte a coisa outra vez** — a metade que o
+/// chaveamento por conteúdo comprava por acidente, e que um `insert` sozinho perderia.
+///
+/// ⚠️ *Um aviso que não volta a sair lê-se exactamente como um aviso que nunca precisou de
+/// sair.* Por isso o registo é um FLANCO: entrar no estado mau avisa, **sair esquece**.
+#[test]
+fn fixing_the_problem_lets_the_warning_speak_again_when_it_returns() {
+    use crate::render_loop::motion_lsystem_leaves::{
+        already_said, say_if_a_wire_drives_an_inert_param as say,
+    };
+    let id = ph2d_nodegraph::graph::NodeId(7002);
+    let disse = |tropism: f32| {
+        say(id, &[ls::param::TROPISM_ANGLE], tropism);
+        already_said("7002 inert tropism")
+    };
+    assert!(disse(0.0), "o 1.o aviso tem de sair");
+    assert!(!disse(30.0), "com forca a serio ele cala-se E esquece");
+    assert!(
+        disse(0.0),
+        "voltar ao estado mau tem de voltar a avisar — senao o artista parte a planta em silencio"
+    );
 }

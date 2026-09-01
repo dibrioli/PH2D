@@ -145,6 +145,32 @@ pub(super) fn apply_param_edits(
                         && param_value(motion, nid, param).round() as i32
                             != ph2d_node_source_lsystem::MODE_GRAMMAR)
                         .then(|| inst.type_name.clone());
+                    // ⭐⭐ **A METADE DE VOLTA — e ela faltava** (auditoria de seis lentes, §3.2).
+                    //
+                    // O `bake` acima já marcava `Custom` ao converter `Guided → Grammar` (*«o
+                    // texto assado não é molde nenhum»*). Ao voltar aos sliders quem desenha
+                    // passa a ser a gramática DERIVADA — que também não é molde nenhum —, e
+                    // nada repunha o `preset`.
+                    //
+                    // ⛔⛔ **Não é um selector desalinhado: os `ParamGate` do *Width Scale* e
+                    // do *Length Scale* leem `param::PRESET`, que é lido em QUALQUER modo.**
+                    // Com um molde encalhado eles respondem sobre a gramática errada, o
+                    // `Visibility::mode_hides` diz `true`, e o `drop_hidden_drivers` **solta o
+                    // fio** na primeira edição seguinte — com um toast a dizer *«this shape has
+                    // no such control»* sobre um controlo que a gramática LÊ.
+                    //
+                    // ⚠️ **Medido** (`examples/probe_guided_reads.rs`): no guiado o *Width
+                    // Scale* leva a coluna `size` de `1,000` a `3,375` (pelo `!`, presente em
+                    // 270/270 células) e o *Length Scale* move a bbox `8,85` (pela EXPRESSÃO
+                    // `s*length_scale` — rota que o `Reads::of` **não conhece**).
+                    //
+                    // ⚠️ **Só na TRANSIÇÃO**, como a ida: a cada edição com o modo já em
+                    // `Guided` isto reescreveria o `preset` do artista a cada mexida de slider.
+                    let forget_preset = (param == ph2d_node_source_lsystem::param::MODE
+                        && (value as f32).round() as i32 == ph2d_node_source_lsystem::MODE_GUIDED
+                        && param_value(motion, nid, param).round() as i32
+                            != ph2d_node_source_lsystem::MODE_GUIDED)
+                        .then(|| inst.type_name.clone());
                     // ADR-0130 D7: an edit that re-numbers the emitter's ids
                     // (rate/life/max) moves the id↔particle map, so the GPU sim's
                     // paired state would mispair the new window against the old.
@@ -164,6 +190,9 @@ pub(super) fn apply_param_edits(
                     }
                     if let Some(tn) = bake_grammar {
                         super::bake_lsystem_grammar(motion, nid, &tn);
+                    }
+                    if let Some(tn) = forget_preset {
+                        super::mark_lsystem_custom(motion, nid, &tn);
                     }
                     motion.pump.mark_dirty();
                     if renumbers_sim {

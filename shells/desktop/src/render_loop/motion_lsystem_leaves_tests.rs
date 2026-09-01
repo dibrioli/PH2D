@@ -455,3 +455,45 @@ fn the_leaves_keep_their_own_colour_and_still_travel_with_the_plant() {
     }
     let _ = mv;
 }
+
+/// ⭐⭐⭐ **DUAS PLANTAS IGUAIS COM FOLHAS DIFERENTES NÃO PARTILHAM A CORRENTE** — achado §3.3 da
+/// auditoria de seis lentes.
+///
+/// ⚠️ **A `ribbon_key` é endereçada pelo CONTEÚDO**, e a lista dele saía do `MANIFEST.params`,
+/// que é **`f32`-only por contrato congelado** (§6). Os três nomes de objecto de folha são
+/// canais de TEXTO: a shell lê-os para construir a corrente e publicava-a sob uma chave que os
+/// ignorava ⇒ duas plantas com os mesmos números e a mesma gramática, uma com *Leaf (J) = folha*
+/// e outra *= flor*, cunhavam a **mesma** chave e a segunda **sobrescrevia** a primeira.
+///
+/// ⚠️⚠️ **O doc-comment da própria função declarava a invariante que ela quebrava** — *«um param
+/// novo entra na chave sozinho»*, verdade para o `f32` e falsa para o texto. ⇒ os dois lados
+/// saem agora de listas (`MANIFEST.params` e `ls::TEXT_PARAMS`), e esta é a metade que o mede.
+#[test]
+fn two_identical_plants_with_different_leaves_do_not_share_the_stream() {
+    use crate::render_loop::motion_lsystem_testkit::{key_of, plant_with_leaves};
+    let (mut a, na) = plant_with_leaves(["folha", "", ""]);
+    let (mut b, nb) = plant_with_leaves(["flor", "", ""]);
+    assert_ne!(
+        key_of(&mut a, na),
+        key_of(&mut b, nb),
+        "duas plantas so' diferentes no OBJECTO da folha partilharam a chave da corrente"
+    );
+}
+
+/// ⚠️ **O CONTROLE do gate acima: a chave não pode passar a distinguir tudo.**
+///
+/// Uma cura que metesse, por exemplo, o id do nó na chave separaria estas duas — e mataria a
+/// razão de a chave ser de CONTEÚDO, que é duas plantas iguais partilharem o trabalho em vez de
+/// o fazerem duas vezes. Aqui a barra é que duas plantas **realmente iguais** continuem a
+/// colidir.
+#[test]
+fn two_truly_identical_plants_still_share_it() {
+    use crate::render_loop::motion_lsystem_testkit::{key_of, plant_with_leaves};
+    let (mut a, na) = plant_with_leaves(["folha", "", ""]);
+    let (mut b, nb) = plant_with_leaves(["folha", "", ""]);
+    assert_eq!(
+        key_of(&mut a, na),
+        key_of(&mut b, nb),
+        "duas plantas IGUAIS deixaram de partilhar a corrente — a chave deixou de ser de conteudo"
+    );
+}

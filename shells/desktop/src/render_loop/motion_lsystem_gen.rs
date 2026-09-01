@@ -405,7 +405,9 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
         let (axiom, rules) = (text(ls::AXIOM_PARAM), text(ls::RULES_PARAM));
         // ⚠️ A chave sai da MESMA função que o `eval` chama — dois nomes divergiriam e a planta
         // desapareceria sem erro nenhum.
-        let key = ls::ribbon_key(get, &axiom, &rules);
+        // ⚠️ O `text` entrega TODOS os canais de texto (`ls::TEXT_PARAMS`), e não só os dois
+        // da gramática — os três nomes de objecto de folha mudam a geometria (§3.3).
+        let key = ls::ribbon_key(get, text);
         let names = [
             text(ls::LEAF_PARAMS[0]),
             text(ls::LEAF_PARAMS[1]),
@@ -425,9 +427,10 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
                     .is_some_and(|m| m.contains_key(*n))
             })
             .collect();
-        say_if_a_wire_drives_an_inert_param(&key, &driven, get(ls::param::TROPISM));
+        say_if_a_wire_drives_an_inert_param(id, &driven, get(ls::param::TROPISM));
         jobs.push((
             key,
+            id,
             axiom,
             rules,
             // ⚠️ **A escada resolvida viaja com o trabalho** — a derivação (se for preciso
@@ -449,7 +452,7 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
         ));
     }
 
-    for (key, axiom, rules, resolved, names, first_level, look_law) in jobs {
+    for (key, id, axiom, rules, resolved, names, first_level, look_law) in jobs {
         let get = |name: &str| resolved.get(name).copied().unwrap_or(0.0);
         // ⛔⛔⛔ **PERGUNTAR ANTES DE DERIVAR — e até 2026-08-31 as duas metades divergiam.**
         //
@@ -475,8 +478,8 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
         };
         let stream = match (handle, motion.lsystem_memo.get(&key)) {
             (Some(h), Some(d)) => {
-                say_if_the_letter_is_missing(&key, &names, &d.anchors);
-                say_if_the_level_hid_every_leaf(&key, &names, &d.anchors, first_level);
+                say_if_the_letter_is_missing(id, &names, &d.anchors);
+                say_if_the_level_hid_every_leaf(id, &names, &d.anchors, first_level);
                 // ⛔ O 4.º `say_*` foi APAGADO — ver a nota em `motion_lsystem_leaves`. Com ele
                 // saem também as **três** consultas de aparência que ele forçava (um
                 // `array::from_fn` de `named_appearance`) e que o `plant_and_leaves` logo a

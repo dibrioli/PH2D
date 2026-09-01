@@ -35,8 +35,17 @@ pub const GEOMETRY_LABELS: &[&str] = &["Segments", "Branches"];
 /// ⚠️ **A lista de params sai do [`MANIFEST`]**, nunca de uma segunda lista escrita à mão: um
 /// param novo entra na chave sozinho, e uma chave que ignorasse um param faria a shell servir a
 /// geometria ANTIGA depois de o artista mexer nele.
+///
+/// ⛔⛔ **E a lista de TEXTO tem de vir junto — foi o achado §3.3 da auditoria de seis lentes.**
+/// A 1.ª redacção iterava `MANIFEST.params` (f32) e acrescentava o axioma e as regras **à mão**,
+/// deixando de fora os **três nomes de objecto de folha**: duas plantas com os mesmos números e
+/// a mesma gramática, uma com *Leaf (J) = folha* e outra *= flor*, partilhavam a chave e a
+/// segunda **sobrescrevia** a primeira. ⚠️ *A invariante que este doc declara — «um param novo
+/// entra na chave sozinho» — era verdadeira para o `f32` e falsa para o texto*, e o manifesto é
+/// `f32`-only por contrato congelado (§6). ⇒ os dois lados saem agora de listas: `MANIFEST.params`
+/// e [`crate::TEXT_PARAMS`].
 #[must_use]
-pub fn ribbon_key(get: impl Fn(&str) -> f32, axiom: &str, rules: &str) -> String {
+pub fn ribbon_key(get: impl Fn(&str) -> f32, text: impl Fn(&str) -> String) -> String {
     // ⛔⛔⛔ **O `$` NÃO É DECORAÇÃO — ele é a cerca que mantém isto FORA do selector.**
     //
     // Auditoria de seis lentes, doc 96 §5.5. Esta chave é publicada na MESMA tabela de externos
@@ -58,12 +67,12 @@ pub fn ribbon_key(get: impl Fn(&str) -> f32, axiom: &str, rules: &str) -> String
         // imprimem iguais dariam a mesma chave para geometrias diferentes.
         k.push_str(&get(spec.name).to_bits().to_string());
     }
-    // ⚠️ A gramática entra CRUA — ela é o que decide a forma, e um resumo dela (um hash curto)
-    // trocaria uma colisão improvável por uma planta errada sem sintoma.
-    k.push('\u{1}');
-    k.push_str(axiom);
-    k.push('\u{1}');
-    k.push_str(rules);
+    // ⚠️ O texto entra CRU — a gramática é o que decide a forma, e um resumo dela (um hash
+    // curto) trocaria uma colisão improvável por uma planta errada sem sintoma.
+    for name in crate::TEXT_PARAMS {
+        k.push('\u{1}');
+        k.push_str(&text(name));
+    }
     k
 }
 

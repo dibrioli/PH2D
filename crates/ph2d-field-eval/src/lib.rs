@@ -21,6 +21,8 @@ pub mod bounds;
 pub(crate) mod bounds_bend;
 /// ⭐ A caixa que a MARCHA percorre — ver [`bounds_clip`].
 pub mod bounds_clip;
+/// ⭐ O que um MODIFICADOR faz ao bordo — ver [`bounds_mods`].
+pub(crate) mod bounds_mods;
 pub mod extract;
 pub mod hybrid;
 pub mod ops;

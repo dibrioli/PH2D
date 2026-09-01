@@ -187,3 +187,110 @@ fn the_box_of_a_bound_contains_the_piece_through_the_whole_stack() {
         maus.join(" · ")
     );
 }
+
+/// ⭐⭐⭐ **A CAIXA DE UMA UNIÃO CONTÉM TODOS OS FILHOS** — report do Enio com foto, 2026-09-01:
+/// *«Bug no render. Os 3 cilindros cruzados viraram isso.»*
+///
+/// # ⛔⛔⛔ O ponto cego que este gate fecha
+///
+/// O irmão acima varre **um nó folha** com pilha de modificadores, com e sem pose rodada — e nunca
+/// um `Combine`. A fusão de duas bolas (`Ball::merge`) tinha um atalho *«uma contém a outra, fica a
+/// maior»* que comparava só as **esferas** e devolvia a vencedora **inteira, com o `half` dela**.
+///
+/// ⚠️ **Três cilindros cruzados são o caso exacto em que ele morde**: mesmo centro, mesmo raio, e
+/// caixas em eixos diferentes. O teste dispara à primeira, a união fica com a caixa de UM cilindro
+/// (`0,18 × 0,18 × 0,60`), e o recorte da marcha corta os outros dois braços — `754` de `2 576`
+/// pixels do interior com a normal a `172,7°` do oráculo.
+///
+/// ⚠️ **E o defeito só passou a doer quando o `Ball::aabb` deixou de ser o cubo do raio**: as três
+/// bolas têm o mesmo raio, então a esfera nunca cortou nada. *Uma resposta pode estar errada há
+/// semanas e só doer no dia em que alguém a lê.*
+///
+/// ⛔⛔ **Prova de mutação:** devolver `self`/`other` inteiros no atalho do `merge` reprova aqui em
+/// todas as rotações menos a identidade.
+#[test]
+fn the_box_of_a_union_contains_every_child() {
+    use ph2d_field::{Blend, Op};
+    let reg = Registry::default();
+    let q = std::f32::consts::FRAC_1_SQRT_2;
+    let mut maus = Vec::new();
+    let mut medidos = 0usize;
+    for junta in [0.0f32, 0.10] {
+        for poses in [
+            // ⭐ A cruz da foto: os três no MESMO centro e com o MESMO raio, que é o que faz o
+            // atalho da esfera disparar.
+            vec![
+                Xform::IDENTITY,
+                Xform {
+                    rotation: [q, 0.0, 0.0, q],
+                    ..Xform::IDENTITY
+                },
+                Xform {
+                    rotation: [0.0, q, 0.0, q],
+                    ..Xform::IDENTITY
+                },
+            ],
+            // ⚠️ E um par DESLOCADO, para o ramo geral do `merge` não ficar sem população.
+            vec![
+                Xform::IDENTITY,
+                Xform {
+                    translation: [0.4, 0.0, 0.0],
+                    rotation: [0.0, q, 0.0, q],
+                    ..Xform::IDENTITY
+                },
+            ],
+        ] {
+            let cil = Primitive::Cylinder {
+                radius: 0.18,
+                half_height: 0.6,
+                round: 0.0,
+                chamfer: 0.0,
+            };
+            let n = poses.len();
+            let mut nodes: Vec<ph2d_field::Node> = poses
+                .iter()
+                .enumerate()
+                .map(|(i, x)| {
+                    let mut no = ph2d_field::Node::new(*x, NodeKind::Leaf(cil.clone()));
+                    if i > 0 {
+                        no.verb = Some(Op::Union(Blend::Exact { radius: junta }));
+                    }
+                    no
+                })
+                .collect();
+            nodes.push(ph2d_field::Node::new(
+                Xform::IDENTITY,
+                NodeKind::Combine {
+                    op: Op::Union(Blend::Sharp),
+                    children: (0..n).map(|i| NodeId(i as u32)).collect(),
+                },
+            ));
+            #[allow(clippy::cast_possible_truncation)]
+            let doc = FieldDoc::new(nodes, NodeId(n as u32)).expect("a união");
+            let Some(bola) = bounds::bounding_ball(&doc, &reg) else {
+                continue;
+            };
+            medidos += 1;
+            let h = bola.half();
+            let c = bola.center;
+            let alcance = alcance_por_eixo(&doc, f64::from(bola.radius) * 4.0);
+            for e in 0..3 {
+                let cabe = f64::from(c[e].abs() + h[e]) * 1.002;
+                if alcance[e] > cabe {
+                    maus.push(format!(
+                        "{n} cilindros junta {junta}: eixo {e} chega a {:.4} e a caixa diz {cabe:.4}",
+                        alcance[e]
+                    ));
+                }
+            }
+        }
+    }
+    assert!(medidos >= 4, "só {medidos} uniões — a lista partiu-se");
+    assert!(
+        maus.is_empty(),
+        "{} união(ões) CORTAM um filho — e um recorte que corta não falha, ele desenha outra peça: \
+         {}",
+        maus.len(),
+        maus.join(" · ")
+    );
+}

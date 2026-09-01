@@ -12,11 +12,18 @@
 //! | pilha | raio | caixa | divisor | `‖∇f‖` | folga | passos/raio |
 //! |---|---:|---|---:|---:|---:|---:|
 //! | `[]` | `0,579` | `0,350×0,350×0,300` | `1,00` | `1,000` | `1,0×` | `6,4` |
-//! | `[Bend]` | `0,764` | `0,484×0,350×0,476` | `1,57` | `0,897` | `1,1×` | `10,6` |
+//! | `[Bend]` | `0,764` | `0,484×0,350×0,476` | `1,59` | `0,887` | `1,1×` | `10,7` |
 //! | `[Twist]` | `0,579` | `0,495×0,495×0,300` | `1,82` | `0,776` | `1,3×` | `14,0` |
 //! | `[Taper]` | `0,658` | `0,424×0,350×0,363` | `2,20` | `0,555` | `1,8×` | `16,6` |
-//! | `[Bend, Twist]` | `0,764` | `0,597×0,597×0,476` | `3,38` | `0,568` | `1,8×` | `23,4` |
-//! | `[Bend, Twist, Taper]` | `1,037` | `0,811×0,597×0,646` | `15,35` | `0,184` | **`5,4×`** | **`89,5`** |
+//! | `[Bend, Twist]` | `0,764` | `0,597×0,597×0,476` | `3,97` | `0,497` | `2,0×` | `26,9` |
+//! | `[Bend, Twist, Taper]` | `1,037` | `0,811×0,597×0,646` | `15,85` | `0,177` | **`5,6×`** | **`91,1`** |
+//!
+//! ⛔⛔ **O `[Bend, Twist]` SUBIU de `23,4` para `26,9`, e isso é uma CORRECÇÃO a mostrar o preço**
+//! (report dos três cilindros cruzados, 2026-09-01): o atalho do `Ball::merge` deitava fora a caixa
+//! da bola perdedora, e o **envelope de uma pilha** é uma sequência de `merge`. Com a torção a
+//! preservar o raio da dobra, o atalho disparava e o envelope ficava com a caixa de um passo só —
+//! logo a parede da dobra media menos do que a região que a marcha percorre. *A catraca apanhou-o,
+//! que é o que uma catraca de duas metades existe para fazer.*
 //!
 //! ⚠️ **A tabela é DERIVADA** — corra a sonda `print_the_cost_table` (`--ignored --nocapture`) antes
 //! de a citar. Ela já foi escrita de memória duas vezes.
@@ -25,13 +32,13 @@
 //!
 //! | pilha | 30/08 (o 1.º report) | 31/08 (a bola aprende os EIXOS) | **01/09 (a caixa chega aos CONSUMIDORES)** |
 //! |---|---:|---:|---:|
-//! | `[Bend]` | `72,2` | `22,7` | **`10,6`** |
-//! | `[Bend, Twist]` | `233,1` | `55,6` | **`23,4`** |
-//! | `[Bend, Twist, Taper]` | `1 543,6` | `635,9` | **`89,5`** |
-//! | divisor do trio | `240,29` | `100,87` | **`15,35`** |
-//! | folga PROVADA do trio | `24,7×` | `22,3×` | **`5,4×`** |
+//! | `[Bend]` | `72,2` | `22,7` | **`10,7`** |
+//! | `[Bend, Twist]` | `233,1` | `55,6` | **`26,9`** |
+//! | `[Bend, Twist, Taper]` | `1 543,6` | `635,9` | **`91,1`** |
+//! | divisor do trio | `240,29` | `100,87` | **`15,85`** |
+//! | folga PROVADA do trio | `24,7×` | `22,3×` | **`5,6×`** |
 //!
-//! ⇒ **`17,2×`** mais barato do que o que o Enio reportou como *«muito lentas»*, e `7,1×` do que
+//! ⇒ **`16,9×`** mais barato do que o que o Enio reportou como *«muito lentas»*, e `7,0×` do que
 //! ficou ontem. O trio custa hoje `14×` uma caixa nua, e custava `217×`.
 //!
 //! # ⭐ A lei que as três jornadas escreveram: *o raio de uma esfera não é a extensão de um eixo*
@@ -152,9 +159,9 @@ fn passos_por_raio(doc: &FieldDoc) -> f64 {
 
 /// ⛔ **A CATRACA, medida em 2026-09-01.** Ela só ENCOLHE — ver o doc do módulo.
 const TOLERADO: &[(&str, f64)] = &[
-    ("[Bend]", 10.6),
-    ("[Bend, Twist]", 23.4),
-    ("[Bend, Twist, Taper]", 89.5),
+    ("[Bend]", 10.7),
+    ("[Bend, Twist]", 26.9),
+    ("[Bend, Twist, Taper]", 91.1),
 ];
 
 /// ⭐⭐⭐ **A TABELA DO DOC, DERIVADA** — e é por isso que ela pode ser acreditada.

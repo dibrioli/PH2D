@@ -28,7 +28,7 @@
 //! contrário nas duas marchas, e a peça está correcta. *Uma barra que tem de tolerar o contorno não
 //! consegue ser apertada no interior, que é onde o defeito vive.*
 
-use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, Primitive, Unary, Xform};
+use ph2d_field::{Blend, FieldDoc, Node, NodeId, NodeKind, Op, Primitive, Unary, Xform};
 use ph2d_field_eval::{Field, hybrid::Registry};
 use ph2d_field_render::{Orbit, Screen, trace_with_threads};
 
@@ -441,4 +441,101 @@ fn the_band_of_the_bend_draws_what_an_honest_march_draws() {
         maus.len(),
         maus.join(" · ")
     );
+}
+
+/// ⭐⭐⭐ **OS TRÊS CILINDROS CRUZADOS** — report do Enio com foto, 2026-09-01: *«Bug no render. Os 3
+/// cilindros cruzados viraram isso»* (um bolo gordo com duas cunhas escuras, em vez de três braços).
+///
+/// ⚠️ **A fixtura é a da foto:** um cilindro base e dois em `Union`, rodados `90°` em `X` e em `Y`,
+/// com o grupo a misturar. Nenhuma peça deste módulo tinha uma união de três formas **rodadas** —
+/// as fixturas de união são irmãs transladadas no mesmo eixo.
+#[test]
+fn three_crossed_cylinders_agree_with_an_honest_march() {
+    let doc = tres_cilindros_cruzados(0.10);
+    let (mal, medidos, pior) = disagreeing_pixels_of(&doc, &yaws(), 12.0);
+    assert!(
+        medidos > 1_000,
+        "⛔ o CONTROLE falhou: só {medidos} pixels de interior — a cruz não está a ser desenhada"
+    );
+    assert_eq!(
+        mal, 0,
+        "{mal} de {medidos} pixels do INTERIOR divergem do oráculo (pior {pior:.1}°)"
+    );
+}
+
+fn tres_cilindros_cruzados(junta: f32) -> FieldDoc {
+    let cil = Primitive::Cylinder {
+        radius: 0.18,
+        half_height: 0.6,
+        round: 0.0,
+        chamfer: 0.0,
+    };
+    let q = std::f32::consts::FRAC_1_SQRT_2;
+    let poses = [
+        Xform::IDENTITY,
+        Xform {
+            rotation: [q, 0.0, 0.0, q],
+            ..Xform::IDENTITY
+        },
+        Xform {
+            rotation: [0.0, q, 0.0, q],
+            ..Xform::IDENTITY
+        },
+    ];
+    let mut nodes: Vec<Node> = poses
+        .iter()
+        .enumerate()
+        .map(|(i, x)| {
+            let mut n = Node::new(*x, NodeKind::Leaf(cil.clone()));
+            if i > 0 {
+                n.verb = Some(Op::Union(Blend::Exact { radius: junta }));
+            }
+            n
+        })
+        .collect();
+    nodes.push(Node::new(
+        Xform::IDENTITY,
+        NodeKind::Combine {
+            op: Op::Union(Blend::Sharp),
+            children: vec![NodeId(0), NodeId(1), NodeId(2)],
+        },
+    ));
+    FieldDoc::new(nodes, NodeId(3)).expect("a cruz")
+}
+
+/// ⭐ **ONDE a cruz se perde** — a sonda que separa «o bordo corta» de «a marcha atravessa».
+#[test]
+#[ignore = "sonda"]
+fn measure_the_crossed_cylinders() {
+    let reg = Registry::new();
+    for junta in [0.0f32, 0.10, 0.25] {
+        let doc = tres_cilindros_cruzados(junta);
+        let bola = ph2d_field_eval::bounds::bounding_ball(&doc, &reg).expect("bordo");
+        let (lo, hi) = ph2d_field_eval::bounds_clip::march_clip(bola);
+        let f = Field::new(&doc);
+        // As pontas dos três braços, que é o que a foto perdeu.
+        let pontas = [[0.0, 0.0, 0.55], [0.0, 0.55, 0.0], [0.55, 0.0, 0.0]];
+        let dentro: Vec<String> = pontas
+            .iter()
+            .map(|p| {
+                let cabe = (0..3).all(|e| p[e] >= f64::from(lo[e]) && p[e] <= f64::from(hi[e]));
+                format!(
+                    "{:.4}{}",
+                    f.at(p[0], p[1], p[2]),
+                    if cabe { "" } else { " FORA" }
+                )
+            })
+            .collect();
+        let (mal, medidos, pior) = disagreeing_pixels_of(&doc, &yaws(), 12.0);
+        println!(
+            "junta {junta}: raio {:.3} caixa {:?} recorte x[{:.2},{:.2}] · campo nas pontas [{}]              · passo {:.4} shrink {:.3} · imagem {mal}/{medidos} pior {pior:.1}°",
+            bola.radius,
+            bola.half(),
+            lo[0],
+            hi[0],
+            dentro.join(", "),
+            ph2d_field_eval::safe_march_step(&doc),
+            ph2d_field_eval::field_shrink(&doc, &reg),
+        );
+    }
 }

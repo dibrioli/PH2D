@@ -297,7 +297,7 @@ fn step_divisor(m: Unary, ball: crate::bounds::Ball, corrente: crate::bounds::Ba
 ///
 /// # ⛔⛔⛔ RECUSA MEDIDA (2026-09-01): aqui a CAIXA não serve, e a esfera não é folga por acaso
 ///
-/// A tentação é óbvia — a [`crate::bounds::axis_distance`] sabe ler a caixa, e numa barra
+/// A tentação é óbvia — a [`crate::bounds_mods::axis_distance`] sabe ler a caixa, e numa barra
 /// `0,34 × 0,11 × 0,62` ela dá `0,505` contra os `0,717` da esfera, o que corta o divisor da torção
 /// de `9,12` para `6,50` (**`1,4×` mais barato**). ⛔ E a peça **FURA**: a duas voltas,
 /// `a_shorter_step_finds_exactly_the_same_piece` acusa **1 pixel** a mudar quando o passo é dividido

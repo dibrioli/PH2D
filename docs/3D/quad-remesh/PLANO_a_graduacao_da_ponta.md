@@ -1248,3 +1248,66 @@ dono.
 3. ⏳ **O laço** continua a amplificar. As duas técnicas nomeadas na §59 — histerese na banda de
    split/collapse e ordem de visita por conteúdo — **continuam por tentar**, e agora com a
    vantagem de que a ponta já não depende delas para sobreviver.
+
+---
+
+# ⛔⛔⛔ PARTE VIII — «piorou» (Enio, 31/08) — e a FIXTURA estava errada desde a Parte V
+
+## §65 — O veredito do dono revoga a tabela de 8 células
+
+*«Piorou. Antes amputava uma ponta. Agora amputou 2. Piorou até mesmo com Detail 1.»*
+⇒ o `ADAPT_RATIO = 64` foi **revertido no mesmo minuto**, antes de qualquer diagnóstico.
+*Nenhuma tabela minha ganha ao smoke dele.*
+
+## §66 — ⛔⛔⛔ EU DERIVEI A TRANSFORMAÇÃO DO FICHEIRO EXPORTADO EM VEZ DE LER O IMPORTADOR
+
+A saída que ele exportou vinha a `0,582×` e ancorada em `x ≈ 2`. **Concluí daí que a peça
+vivia ali quando o botão corre** — e as Partes V a VII inteiras foram construídas sobre isso.
+
+⛔ **É falso, e bastava ler [`sculpt3d_import::place`]:**
+
+1. `p.mesh.recenter()` — **a MALHA é recentrada na própria origem**, e isso mexe nos vértices;
+2. a escala (`IMPORT_SPAN / span`) e a posição vão para uma **`Pose`**, que só é usada para
+   **desenhar e exportar**.
+
+⇒ **o botão vê sempre a peça CENTRADA e na escala ORIGINAL.** O `0,582×` e o `x ≈ 2` do
+ficheiro exportado são a pose assada na exportação, e **nunca** o que a cadeia consome.
+
+⚠️ ⇒ **as 8 células da §63 mediram peças que o botão nunca vê.** A fixtura certa é
+`_base_sculpt.obj` **recentrado pela caixa** (deslocamento `0,4137 · 0,0950 · 0,5802`), escala
+`1`.
+
+## §67 — ⭐ Com a fixtura certa, o report dele reproduz À LETRA
+
+| `base_recentrada` · `Curvature 1` | `ADAPT_RATIO 16` | `64` |
+|---|---|---|
+| `Detail 1,00` | ⭐ **`0` de `4`** · `−0,5 %` | ⛔ `1` de `4` · `−2,5 %` |
+| `Detail 0,75` | `1` de `4` · `−4,1 %` | ⛔ **`2` de `4`** · `−10,1 %` |
+
+*«Antes uma, agora duas, e pior até com Detail 1»* — as duas linhas, na mesma direcção que ele
+descreveu.
+
+## §68 — ⭐⭐⭐ E O FANTASMA DA POSIÇÃO DISSOLVE-SE (mas as duas curas ficam)
+
+⚠️ **A sensibilidade à posição É REAL como propriedade do código** — as seis posições dão
+saídas diferentes, e isso está medido — ⛔ **mas o artista NUNCA a atinge**, porque a malha
+que a cadeia recebe está sempre recentrada. *A ordem «funcionar em qualquer lugar» já era
+satisfeita pelo importador, e o defeito que ele vê é o original: a ponta.*
+
+⭐ **O que ficou das Partes V–VII continua a valer, e por outros motivos:**
+
+- a `SizingGrid` indexada por coordenada de **MUNDO** é errada em si (o gate fica, e o
+  controlo — o caminho sem graduação — provou que o laço já era invariante);
+- o `reach` com centroide por **vértice** media a amostragem (defeito no caminho do produto);
+- a régua da ponta comida **por inteiro** tinha o ponto cego curado;
+- e as **quatro** curas de estabilidade recusadas continuam recusadas, com o mecanismo que as
+  explica: *a nitidez da ponta vive do que se estava a suavizar*.
+
+## §69 — ⏳ A ORDEM DE TRABALHO, corrigida
+
+1. ⛔ **Toda medição futura corre sobre `base_recentrada`** — a peça como o botão a vê. Uma
+   sonda que alimente o ficheiro cru mede outro programa (é a 4.ª vez que isto morde).
+2. ⭐ **A pergunta volta a ser a original e é mais simples do que parecia:** a `Detail 1,00` a
+   peça dele sai **limpa** (`0` de `4`) e a `0,75` perde **uma** ponta a `−4,1 %`. ⇒ o alvo é
+   essa **uma** ponta, na densidade média — e não uma lotaria de posições.
+3. ⏳ O gate de sensibilidade e o laço continuam na fila, agora **sem** urgência de produto.

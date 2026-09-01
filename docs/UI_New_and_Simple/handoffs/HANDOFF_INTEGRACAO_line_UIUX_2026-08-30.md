@@ -2580,3 +2580,95 @@ morto, não uma decisão.* ⚠️ A variante é mantida viva pelo **controle pos
   controlos é maior (148 itens `CTX_MENU_*`).
 - ⏳ Do degrau `G`: as **operações booleanas** e as **acções** do painel 3D continuam sem destino
   decidido, e nenhum outro painel foi censado.
+
+---
+
+## §33 — ⭐⭐ A SONDA DOS MENUS, e uma AUDITORIA que parou uma obra (entrega 38)
+
+Bloco pedido pelo Enio (*«siga implementando em blocos maiores»*). Ele produziu **um instrumento,
+duas medições limpas e uma obra revertida** — e a obra revertida é o achado mais caro.
+
+### §33.1 — ⛔⛔⛔ O degrau `B` foi CONSTRUÍDO e REVERTIDO: o plano e o gate discordavam
+
+O [`spec/02 §2`](../spec/02_o_que_falta_para_comecar.md) listava, na tabela *«o que pode começar
+HOJE»*: **`B` — fundir os 16 apelidos de cor · mudança de zero pixels · independente de tudo.**
+
+Re-medi a premissa e ela **continua verdadeira**: `0` divergências em `64` comparações (16 pares ×
+4 temas). Construí a fusão inteira — `40` sítios re-apontados, `16` variantes apagadas do
+`ColorToken`, `57` entradas fora do `tokens.json`. O `cargo check` partiu num gate cujo nome eu não
+tinha lido: **`the_sixteen_timeline_slots_are_pure_aliases`**, escrito por esta mesma linha, com o
+veredito no doc-comment:
+
+> *«equivalência não é desejabilidade, e é por isso que a fusão não foi feita aqui … A referência
+> que licenciámos (Adobe Spectrum) mantém tokens de COMPONENTE a apelidar os globais **de
+> propósito**: é o que deixa um componente divergir depois sem tocar nos consumidores. Fundir troca
+> 16 nomes por 58 sítios de chamada directos, e transforma «a playhead passa a ter cor própria» de
+> uma linha de token em sete de código. Essa é uma decisão de **design system**, do Enio — não uma
+> dedução que este gate autorize.»*
+
+**Revertido.** ⭐⭐⭐ **A lei:** *quando uma linha de plano e o GATE que mede o assunto discordam,
+manda o gate* — ele foi escrito por quem foi lá medir; a linha do plano é o resumo que envelhece.
+
+⚠️ E o modo de falha tem forma própria: **eu confirmei a PREMISSA e li isso como confirmação da
+OBRA.** *Provar que uma mudança é inócua não é provar que ela é desejada.*
+
+⇒ o `B` passa a estar marcado no plano como **recusa medida à espera do veredito do Enio**, ao lado
+do `I` (quantos temas).
+
+### §33.2 — E mais duas linhas do plano mandavam construir o que JÁ EXISTE
+
+| degrau | o plano dizia | a medição |
+|---|---|---|
+| **`A`** — modelo de áreas | *«pode começar hoje»* | ✅ **feito**: `Slot`(6) + `SlotSet` + `Panel::{ALLOWED_SLOTS, DEFAULT_SLOT, CAN_FLOAT, TITLE}`, com os **dois** gates que a spec §3 pedia |
+| **`E`** — remover a fuga do gizmo | *«tem de entrar no mesmo trabalho»* | ✅ **inerte por construção** desde o degrau `D`, e a fuga **fica** de propósito para quem declara `CAN_FLOAT` |
+
+⚠️ ⭐ **O `DEFAULT_SLOT` chegou a ter default e foi RETIRADO por medição:** 20 dos 21 painéis
+herdavam-no e **três mentiam**. *Uma declaração com default é decoração até alguém a confrontar.*
+
+### §33.3 — ⭐⭐ O instrumento: `every_menu_row_reaches_a_handler`
+
+A irmã da `the_rail_names_a_consumer_for_every_chip`, sobre a outra superfície. **Os dois lados são
+derivados** — não há tabela a envelhecer:
+
+| metade | como |
+|---|---|
+| população | todo `ids::NOME` no fonte do `menu_rows.rs`, menos as **8 TABELAS** da timeline |
+| veredito | varredura da árvore por um sítio que **não** seja a declaração, a tabela que pinta, o **registo** ou um teste |
+| controle positivo (população) | `≥ 100` linhas, senão o parser partiu e o gate ficaria verde por vácuo |
+| controle positivo (varredura) | um id inventado tem de dar `0`; um que existe tem de dar `> 0` |
+
+⭐ **MEDIDO: `110` linhas de menu, `0` sem sítio de despacho.** *Medir e confirmar É o resultado* —
+o trilho tinha quatro mortos, os menus têm zero, e sem a sonda as duas frases teriam o mesmo peso.
+
+⚠️ **`110` linhas e não `118` símbolos:** oito dos nomes são TABELAS de menu, e uma tabela não tem
+handler — os itens dentro dela é que têm (cada uma com gate anti-item-morto próprio na
+`ph2d-panel-timeline`).
+
+### §33.4 — ⛔⛔ A MUTAÇÃO que reprovou a 1.ª versão do gate
+
+| # | o que se apagou | resultado |
+|---|---|---|
+| M | o **braço inteiro** do *Save As…* no `chrome::io_menu` | ⛔ **SOBREVIVEU** — o gate ficou verde |
+| M′ | o mesmo, com o gate a excluir também os sítios de **REGISTO** | ✅ morre, nomeando `CTX_MENU_SAVE_AS` |
+
+⭐⭐⭐ **A causa é uma lei:** o id continuava a aparecer no `pre_populate.rs`, que **regista** o
+widget. *Um id registado é um id que EXISTE, não um id que FAZ.* ⇒ a varredura exclui as quatro
+famílias (`/ids/`, a tabela que pinta, o registo, os testes), e cada exclusão está na tabela do
+doc-comment com a razão ao lado.
+
+### §33.5 — As outras duas medições, ambas limpas
+
+- **Painéis:** os `24` painéis têm todos pelo menos um ficheiro de costura que carrega num clique
+  real (`MockPanelHost` / `apply_panel_event`). ⇒ a doença do trilho não se repete lá.
+- **Menus:** ver §33.3.
+
+### §33.6 — O que fica ABERTO, e é do Enio
+
+O plano está **esgotado de itens que eu possa decidir sozinho**:
+
+| item | o que falta |
+|---|---|
+| **`B`** — os 16 apelidos de cor | ⏳ **veredito**: fundir (paleta de 83 → 67 slots por tema) ou manter a indirecção que deixa a timeline divergir sem tocar em 58 sítios |
+| **`I`** — quantos temas | ⏳ veredito (4 → 2 perde `workshop`/`blueprint`) |
+| **o gesto de RECOLHER** | ⏸️ adiado por ele; é a maior razão custo/benefício medida (`89–92 %` de tela) |
+| **`G`** nos outros painéis | ⚠️ o Inspector é o painel de propriedades **por definição** — não é lá que o `G` ganha. O alvo seguinte tem de sair de um censo por-linha, que é uma wave por painel |

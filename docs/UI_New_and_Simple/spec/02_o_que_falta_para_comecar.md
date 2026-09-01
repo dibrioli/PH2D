@@ -26,13 +26,48 @@ de que os painéis passam a ser derivados.
 
 ## §2 — O que pode começar HOJE, sem esperar por nada
 
-| # | obra | por que não depende de nada |
-|---|---|---|
-| **A** | **O modelo de ÁREAS** — `Slot` enumerado (6), `Area`, `Region`, e o que um painel **declara** (`allowed_slots`, `can_float`, `layout_key`) | ⭐ É a peça em que as nove decisões convergem, e é foundational puro. O rascunho está em [`01_modelo_de_areas.md`](01_modelo_de_areas.md); o molde é o `EditorDock` do Godot (**MIT — portável**) |
-| **B** | **Fundir os 16 apelidos de cor** (`timeline-*` → os slots gerais) | **Mudança de zero pixels**, provada nos três temas ([`medicoes/03`](../medicoes/03_o_censo_de_cor.md)). Independente de tudo |
-| **C** | **A barra de menus** — dar um sítio aos 148 itens que já existem | Os handlers já existem (40 ficheiros de chrome). É **realojamento**, não construção |
+| # | obra | por que não depende de nada | estado |
+|---|---|---|---|
+| **A** | **O modelo de ÁREAS** — `Slot` enumerado (6), `Area`, `Region`, e o que um painel **declara** (`allowed_slots`, `can_float`, `layout_key`) | ⭐ É a peça em que as nove decisões convergem, e é foundational puro | ✅ **FEITO** |
+| **B** | **Fundir os 16 apelidos de cor** (`timeline-*` → os slots gerais) | **Mudança de zero pixels** | ⛔ **RECUSADO por medição — decisão do Enio** |
+| **C** | **A barra de menus** — dar um sítio aos 148 itens que já existem | Os handlers já existem. É **realojamento**, não construção | ✅ **FEITO** |
 
-⭐ **A, B e C são paralelizáveis** — não se tocam.
+### ⛔⛔ AUDITORIA (2026-09-01) — duas destas linhas mandavam construir o que JÁ EXISTE
+
+⚠️ **A `A` está feita, com os dois gates que a spec §3 pedia.** `Slot` (6 variantes) + `SlotSet` +
+`Panel::ALLOWED_SLOTS` / `DEFAULT_SLOT` / `CAN_FLOAT` / `TITLE` vivem em
+[`screens/slot.rs`](../../../crates/ph2d-editor-core/src/screens/slot.rs) e
+[`panel/panel_trait.rs`](../../../crates/ph2d-editor-core/src/panel/panel_trait.rs), e os gates são
+`every_panel_is_born_inside_its_own_allowed_slots` e `the_slot_a_panel_declares_is_where_it_paints`.
+⭐ O `DEFAULT_SLOT` chegou a ter default e ele foi **retirado por medição**: 20 dos 21 painéis
+herdavam-no e **três mentiam**.
+
+⛔⛔ **E a `B` é uma RECUSA MEDIDA, não uma obra pendente.** O gate que a mede
+([`the_sixteen_timeline_slots_are_pure_aliases`](../../../crates/ph2d-tokens/tests/the_sixteen_timeline_slots_are_pure_aliases.rs))
+traz o veredito no próprio doc-comment:
+
+> *«equivalência não é desejabilidade… A referência que licenciámos (Adobe Spectrum) mantém tokens
+> de COMPONENTE a apelidar os globais **de propósito**: é o que deixa um componente divergir depois
+> sem tocar nos consumidores. Fundir troca 16 nomes por 58 sítios de chamada directos, e transforma
+> «a playhead passa a ter cor própria» de uma linha de token em sete de código. Essa é uma decisão
+> de **design system**, do Enio — não uma dedução que este gate autorize.»*
+
+⚠️ **Esta linha do plano dizia «mudança de zero pixels, independente de tudo» e mandava fazê-la.**
+A equivalência foi **re-medida em 2026-09-01** (0 divergências em 64 comparações — a premissa
+continua verdadeira) e a fusão foi **construída e revertida**, porque *a pergunta nunca foi se dá o
+mesmo pixel; era se queremos perder a indirecção*. ⇒ ela espera **o veredito do Enio**, ao lado da
+`I` (quantos temas).
+
+⭐⭐ **A lei que isto deixa:** *quando uma linha de plano e o GATE que a mede discordam, manda o
+gate* — ele foi escrito por quem mediu, e a linha do plano é o resumo que envelhece.
+
+### ⛔ E a `E` também já está resolvida
+
+A metade *«remover a fuga do gizmo»* está **inerte por construção** desde que a área de desenho
+deixou de ser a janela (degrau `D`): uma coluna docada já não lhe toca a aresta. ⚠️ **A fuga FICA de
+propósito** — o que ainda a alcança são as janelas que declaram `CAN_FLOAT`, e apagá-la poria o
+gizmo por baixo de uma delas. O mecanismo está escrito no sítio
+([`render_loop/mod.rs`](../../../shells/desktop/src/render_loop/mod.rs), a montagem dos obstáculos).
 
 ---
 

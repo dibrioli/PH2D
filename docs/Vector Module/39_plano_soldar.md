@@ -115,6 +115,27 @@ desenha — duas pontas coincidentes e duas pontas a um pixel pintam **o mesmo q
 - ⚠️ **Ordenado por `x` antes de agrupar**: o passe corre por quadro, e `n²` sobre as pontas de um
   documento grande não é aceitável.
 
+### ⛔⛔ E o 1.º smoke era INEXECUTÁVEL — o motor estava certo e o GESTO que eu pedi não existia
+
+> Enio, 2026-09-01: *"o smoke não tinha nada do que vc falou e não funcionou ainda o Weld"*.
+
+A cena armava a **seta branca** (`DrawMode::Node`) e mandava `Shift`+clicar para somar a 2.ª curva.
+⚠️ **No modo Node esse gesto é tentado PRIMEIRO como *"alterna este PONTO na multi-selecção de
+pontos"*** (`input_dispatch.rs`, raio de 10 px, decisão do Enio de 2026-07-15) — e num par de curvas
+que se encontram **pelas pontas**, o sítio natural de clicar *é* um ponto. ⇒ o segundo traço nunca
+entrava na selecção, o Weld via **um** caminho, não achava cruzamento e não fazia nada.
+
+⇒ A cena arma a **seta PRETA** (`Select`), onde `Shift`+clique **soma uma forma**, e o 1.º par
+**nasce seleccionado** — sem selecção a seção Path não é pintada, logo o botão que a cena manda
+carregar não estaria sequer na tela. Ela também **activa a ferramenta de vetor** (`set_mode` escolhe
+o modo *dentro* dela e **não** a activa).
+
+⚠️ **E o motor foi ILIBADO pelo instrumento que faltava:** `seam_weld.rs` faz o gesto REAL sobre o
+botão (Down+Up no rectângulo que o painel pintou) e prova que ele vira `Click` e chega ao
+barramento — *nenhum gate desta wave atravessava o painel, e um verbo cujo botão não fala com
+ninguém lê-se exactamente como um motor partido*. É a lição que a fileira de chips da booleana já
+tinha custado (`seam_bool.rs`).
+
 **Cena de smoke: `PH2D_BUILD_SMOKE=81`** — três pares (pontas que se encontram · cruzadas · longe uma
 da outra), com gate a provar que a cena faz o que a mensagem dela promete.
 

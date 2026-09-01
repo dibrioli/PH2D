@@ -5,15 +5,32 @@
 //!
 //! 1. **AS DUAS CURVAS QUE SE ENCONTRAM PELAS PONTAS** — o report do Enio (2026-09-01):
 //!    *"ainda não consegue conectar as duas curvas … as linhas não compartilham o mesmo nó"*.
-//!    Elas ficam a `4` unidades uma da outra: **perto para o ímã, longe para o olho**, senão o
-//!    smoke não distingue *"soldou"* de *"já estava"*.
+//!    As pontas ficam a **2 unidades** uma da outra — dentro do ímã em qualquer zoom razoável, e
+//!    ⛔ **não zero**: duas pontas já coincidentes **já** são um nó, e a cena não mostraria nada a
+//!    acontecer.
 //! 2. **AS DUAS CURVAS QUE SE CRUZAM** — o caso de 31/08: partem-se em quatro arcos que partilham
 //!    o nó do meio.
 //! 3. **AS DUAS QUE NÃO SE TOCAM** — a cerca. Soldar não lhes mexe, e é isso que impede o verbo de
 //!    arrastar para o meio tudo o que estiver seleccionado.
 //!
-//! ⚠️ **A ferramenta é armada em `Node`** (a seta branca): sem ela o artista não consegue fazer a
-//! segunda metade do teste, que é **arrastar o nó** e ver os pedaços irem juntos.
+//! ⛔⛔ **A ferramenta é armada em `Select` (a seta PRETA), e a 1ª versão desta cena armava `Node`
+//! — o que a tornou impossível de seguir** (report do Enio, 2026-09-01: *"o smoke não tinha nada do
+//! que vc falou e não funcionou ainda o Weld"*).
+//!
+//! ⚠️ **Medido:** somar uma forma à selecção é `Shift`+clique, e no modo **Node** esse gesto é
+//! tentado PRIMEIRO como *"alterna este PONTO na multi-selecção de pontos"*
+//! (`input_dispatch.rs`, raio de 10 px). Num par de curvas que se encontram pelas pontas, o sítio
+//! natural de clicar **é** um ponto ⇒ o segundo traço nunca entrava na selecção, o Weld via UM
+//! caminho, não achava cruzamento nenhum e não fazia nada. *O motor estava certo e o gesto que eu
+//! pedi era inexecutável.*
+//!
+//! ⚠️ **E o par 1 nasce SELECCIONADO**: com a selecção vazia a seção Path não é pintada (ela é um
+//! comando sobre a selecção), então o botão **Weld** não estaria sequer na tela quando o smoke
+//! abre — e a primeira coisa que a cena pede é carregar nele.
+//!
+//! ⚠️ **O anel do nó é chrome de NÓ**: ele desenha-se com a seta branca, não com a preta
+//! (`vec_overlay`: o modo Select não mostra âncoras). Por isso a cena manda trocar de ferramenta
+//! depois de soldar — que é o mesmo clique de que o arrasto precisa.
 //!
 //! ⚠️ **As curvas são CURVAS, não retas.** Com retas em coordenadas redondas os dois lados de um
 //! cruzamento calculam o mesmo ponto por acaso, e a cena não distinguiria uma solda de uma
@@ -45,7 +62,50 @@ fn curva(verts: Vec<VecVertex>) -> VecPath {
     }
 }
 
-/// Monta a cena e arma a seta branca. Chamada uma vez, pelo roteador.
+/// ⭐⭐⭐ **OS TRÊS PARES — a porta ÚNICA da geometria da cena.**
+///
+/// ⚠️ **O produto e o gate leem esta MESMA lista.** A 1.ª redacção tinha a cena a empurrar os
+/// vértices e o gate a reescrevê-los no módulo de teste: *duas cópias da mesma fixtura, e a que o
+/// artista vê é a que pode envelhecer sozinha* — o gate ficaria verde sobre uma cena que já não
+/// existe.
+///
+/// 1. **PONTA COM PONTA** (vão de 2 unidades) · 2. **CRUZADAS** · 3. **LONGE** (a cerca).
+fn pares() -> [[Vec<VecVertex>; 2]; 3] {
+    [
+        [
+            vec![
+                c([-360.0, -60.0], [-360.0, -60.0], [-300.0, -160.0]),
+                c([-240.0, -100.0], [-280.0, -20.0], [-240.0, -100.0]),
+            ],
+            vec![
+                c([-238.4, -101.2], [-238.4, -101.2], [-190.0, -170.0]),
+                c([-120.0, -60.0], [-160.0, -10.0], [-120.0, -60.0]),
+            ],
+        ],
+        [
+            vec![
+                c([-40.0, -40.0], [-40.0, -40.0], [50.0, -160.0]),
+                c([170.0, -100.0], [100.0, -20.0], [170.0, -100.0]),
+            ],
+            vec![
+                c([30.0, -180.0], [30.0, -180.0], [130.0, -100.0]),
+                c([70.0, 20.0], [10.0, -30.0], [70.0, 20.0]),
+            ],
+        ],
+        [
+            vec![
+                c([-360.0, 120.0], [-360.0, 120.0], [-300.0, 60.0]),
+                c([-260.0, 120.0], [-300.0, 180.0], [-260.0, 120.0]),
+            ],
+            vec![
+                c([-140.0, 120.0], [-140.0, 120.0], [-80.0, 60.0]),
+                c([-40.0, 120.0], [-80.0, 180.0], [-40.0, 120.0]),
+            ],
+        ],
+    ]
+}
+
+/// Monta a cena, activa o vetor e arma a seta PRETA. Chamada uma vez, pelo roteador.
 pub(crate) fn frame(app: &mut crate::App, f: u32) {
     if f != 0 {
         return;
@@ -55,53 +115,29 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
     };
     let s = &mut gfx.vec_scene;
 
-    // 1. PONTA COM PONTA — o vão é de **2 unidades** de mundo.
-    //
-    // ⚠️ **É o ímã da tela que decide, e ele mede 10 PIXELS**: um vão pequeno em mundo sobrevive a
-    // qualquer zoom razoável, e um vão grande deixaria a cena a depender de onde a câmera estava
-    // quando o smoke abriu. ⛔ Zero não serve: duas pontas já coincidentes **já** são um nó, e a
-    // cena não mostraria nada a acontecer.
-    s.push_path(curva(vec![
-        c([-360.0, -60.0], [-360.0, -60.0], [-300.0, -160.0]),
-        c([-240.0, -100.0], [-280.0, -20.0], [-240.0, -100.0]),
-    ]));
-    s.push_path(curva(vec![
-        c([-238.4, -101.2], [-238.4, -101.2], [-190.0, -170.0]),
-        c([-120.0, -60.0], [-160.0, -10.0], [-120.0, -60.0]),
-    ]));
+    let mut ids: Vec<u64> = Vec::new();
+    for [a, b] in pares() {
+        ids.push(s.push_path(curva(a)));
+        ids.push(s.push_path(curva(b)));
+    }
+    let primeiro_par = ids[..2].to_vec();
 
-    // 2. CRUZADAS — quatro arcos, um nó no meio.
-    s.push_path(curva(vec![
-        c([-40.0, -40.0], [-40.0, -40.0], [50.0, -160.0]),
-        c([170.0, -100.0], [100.0, -20.0], [170.0, -100.0]),
-    ]));
-    s.push_path(curva(vec![
-        c([30.0, -180.0], [30.0, -180.0], [130.0, -100.0]),
-        c([70.0, 20.0], [10.0, -30.0], [70.0, 20.0]),
-    ]));
-
-    // 3. LONGE UMA DA OUTRA — a cerca.
-    s.push_path(curva(vec![
-        c([-360.0, 120.0], [-360.0, 120.0], [-300.0, 60.0]),
-        c([-260.0, 120.0], [-300.0, 180.0], [-260.0, 120.0]),
-    ]));
-    s.push_path(curva(vec![
-        c([-140.0, 120.0], [-140.0, 120.0], [-80.0, 60.0]),
-        c([-40.0, 120.0], [-80.0, 180.0], [-40.0, 120.0]),
-    ]));
-
-    crate::render_loop::vector_bridge::set_mode(&mut gfx.tools, ph2d_tool_vector::DrawMode::Node);
+    // ⚠️ **A ferramenta VETOR tem de estar ACTIVA, e `set_mode` não a activa** — ele só escolhe o
+    // modo DENTRO dela. Sem isto o painel do vetor pode nem estar em cena, e então a contagem de
+    // selecção que ele publica é `0` e a seção Path (com o Weld) não é pintada.
+    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    crate::render_loop::vector_bridge::set_mode(&mut gfx.tools, ph2d_tool_vector::DrawMode::Select);
+    app.vec_pen.select_many(&primeiro_par);
     eprintln!(
-        "[weld-smoke] 6 curvas montadas, em 3 pares, e a seta branca (Node) ARMADA.\n\
-         [weld-smoke]  1) par de CIMA-ESQUERDA: as pontas quase se tocam. Clique numa, Shift+clique \
-         na outra, botao 'Weld' -> nasce um ANEL VERDE no encontro: e' o no' partilhado\n\
-         [weld-smoke]  2) par do MEIO: elas CRUZAM-SE. Weld parte-as em quatro pedacos, com o anel \
-         no cruzamento\n\
-         [weld-smoke]  3) par de BAIXO-ESQUERDA: longe uma da outra. Weld NAO lhes mexe (a cerca)\n\
-         [weld-smoke]  ENTAO ARRASTE o ponto do anel: todos os pedacos tem de ir JUNTOS. Se algum \
-         ficar para tras, o no' nao esta' soldado.\n\
-         [weld-smoke]  (se o anel nao aparecer no par 1, afaste um pouco o zoom: o ima mede 10 \
-         pixels de tela)"
+        "[weld-smoke] 6 curvas em 3 pares, a seta PRETA armada, e o 1.o par JA' SELECCIONADO.\n\
+         [weld-smoke]  1) carregue em 'Weld' no painel -> as duas pontas do par de cima-esquerda\n\
+         [weld-smoke]     passam a ser UM ponto\n\
+         [weld-smoke]  2) pegue a SETA BRANCA (Node): nasce um ANEL VERDE no encontro -- e' ele que\n\
+         [weld-smoke]     diz 'aqui as duas sao uma so'. ARRASTE-O: as duas curvas vao juntas\n\
+         [weld-smoke]  3) volte a' seta PRETA, clique numa curva do par do MEIO e Shift+clique na\n\
+         [weld-smoke]     outra; 'Weld' parte-as em quatro pedacos com o anel no cruzamento\n\
+         [weld-smoke]  4) o par de BAIXO esta' longe um do outro: 'Weld' NAO lhes mexe (a cerca)\n\
+         [weld-smoke]  DEU ERRADO SE: nao aparece anel nenhum, ou ao arrastar um pedaco fica para tras"
     );
 }
 
@@ -109,49 +145,9 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
 mod tests {
     use ph2d_vec_scene::{VecScene, VecXforms};
 
-    /// Os mesmos vértices da cena, sem o `App` — a cena e o gate leem a MESMA geometria porque ela
-    /// é escrita uma vez, aqui.
-    fn pares() -> [(Vec<super::VecVertex>, Vec<super::VecVertex>); 3] {
-        use super::c;
-        [
-            (
-                vec![
-                    c([-360.0, -60.0], [-360.0, -60.0], [-300.0, -160.0]),
-                    c([-240.0, -100.0], [-280.0, -20.0], [-240.0, -100.0]),
-                ],
-                vec![
-                    c([-238.4, -101.2], [-238.4, -101.2], [-190.0, -170.0]),
-                    c([-120.0, -60.0], [-160.0, -10.0], [-120.0, -60.0]),
-                ],
-            ),
-            (
-                vec![
-                    c([-40.0, -40.0], [-40.0, -40.0], [50.0, -160.0]),
-                    c([170.0, -100.0], [100.0, -20.0], [170.0, -100.0]),
-                ],
-                vec![
-                    c([30.0, -180.0], [30.0, -180.0], [130.0, -100.0]),
-                    c([70.0, 20.0], [10.0, -30.0], [70.0, 20.0]),
-                ],
-            ),
-            (
-                vec![
-                    c([-360.0, 120.0], [-360.0, 120.0], [-300.0, 60.0]),
-                    c([-260.0, 120.0], [-300.0, 180.0], [-260.0, 120.0]),
-                ],
-                vec![
-                    c([-140.0, 120.0], [-140.0, 120.0], [-80.0, 60.0]),
-                    c([-40.0, 120.0], [-80.0, 180.0], [-40.0, 120.0]),
-                ],
-            ),
-        ]
-    }
-
     fn solda(par: usize, ima: f64) -> (VecScene, ph2d_vec_edit::PenTool) {
-        let [p1, p2] = {
-            let (a, b) = pares()[par].clone();
-            [a, b]
-        };
+        // ⚠️ **A MESMA porta que a cena usa** — a fixtura não tem uma segunda cópia.
+        let [p1, p2] = super::pares()[par].clone();
         let mut scene = VecScene::new();
         let mut hist = ph2d_vec_edit::History::default();
         let mut pen = ph2d_vec_edit::PenTool::default();
@@ -160,6 +156,41 @@ mod tests {
         pen.select_many(&[a, b]);
         crate::vec_weld::apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), ima);
         (scene, pen)
+    }
+
+    /// ⛔⛔ **A CENA ARMA A FERRAMENTA EM QUE O GESTO QUE ELA PEDE EXISTE.**
+    ///
+    /// Report do Enio (2026-09-01): *"o smoke não tinha nada do que vc falou e não funcionou ainda
+    /// o Weld"*. A 1.ª versão armava `Node` e mandava `Shift`+clicar para somar a 2.ª curva — e no
+    /// modo Node esse gesto é tentado primeiro como *"alterna este PONTO"* (raio de 10 px), que é
+    /// exactamente onde se clica num par de curvas que se encontram pelas pontas. ⇒ o segundo traço
+    /// nunca entrava na selecção e o Weld via UM caminho.
+    ///
+    /// ⚠️ **E a pré-selecção não é conforto**: sem selecção a seção Path não é pintada, então o
+    /// botão que a cena manda carregar **não estaria na tela**.
+    #[test]
+    fn the_scene_arms_the_tool_whose_gesture_it_asks_for() {
+        // ⚠️ **Só a metade de PRODUTO do ficheiro.** A 1.ª redacção varria o ficheiro inteiro e
+        // reprovou sobre produto CORRECTO: a própria mensagem de erro deste gate contém o literal
+        // que ele proíbe. *Um gate textual que se lê a si mesmo acusa-se a si mesmo* — é a mesma
+        // família do que exige descascar comentários.
+        let inteiro: &str = include_str!("weld_smoke.rs");
+        let src = &inteiro[..inteiro.find("#[cfg(test)]").expect("o modulo de teste")];
+        assert!(
+            // ⚠️ **Sem a vírgula nem o parêntese**: o `cargo fmt` colapsa e re-expande a chamada
+            // conforme o comprimento da linha, e um gate ancorado na PONTUAÇÃO reprova sobre
+            // produto correcto no primeiro `fmt` — foi o que aconteceu ao escrevê-lo.
+            src.contains("DrawMode::Select"),
+            "a cena tem de armar a seta PRETA: e' nela que Shift+clique SOMA uma forma"
+        );
+        assert!(
+            !src.contains("DrawMode::Node"),
+            "a cena voltou a armar o modo Node — o Shift+clique dela deixa de somar formas"
+        );
+        assert!(
+            src.contains("app.vec_pen.select_many(&primeiro_par);"),
+            "sem a pre-seleccao a seccao Path nao e' pintada, e o botao Weld nao esta' na tela"
+        );
     }
 
     /// ⭐⭐⭐ **A CENA ENSINA O QUE ELA DIZ** — os três pares, com o ímã que o artista tem.

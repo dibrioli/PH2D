@@ -408,3 +408,51 @@ fn white_tile_is_opaque_white_and_never_collides_with_import_keys() {
     let i = ((t0.y * side + t0.x) * 4) as usize;
     assert_ne!(&bytes[i..i + 4], &[0xff, 0xff, 0xff, 0xff]);
 }
+
+/// ⭐⭐⭐ **O ATLAS CONTA AS MUDANÇAS DELE** — o relógio de invalidação de quem guarda uma cópia
+/// em CPU (`TextureAtlas::epoch`).
+///
+/// ⛔⛔ **Ele nasceu de uma mutação SOBREVIVENTE.** Arrancar o incremento do `regen_mips` deixava
+/// a suíte inteira do shell verde: os gates de lá medem o cache a REAGIR a um número, e nada
+/// media que o número **andasse**. *Um relógio que ninguém dá corda lê-se como um objecto parado.*
+///
+/// ⚠️ **A régua é a MONOTONIA sobre uma escrita real**, e o CONTROLE é uma leitura sem escrita:
+/// um `epoch` que subisse a cada consulta faria o cache do outro lado limpar-se a cada quadro, e
+/// a leitura de `268 MB` que ele existe para evitar voltaria inteira.
+#[test]
+fn the_atlas_counts_its_own_content_writes() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let mut atlas = TextureAtlas::new(&gpu, 256);
+    let antes = atlas.epoch();
+    assert_eq!(
+        atlas.epoch(),
+        antes,
+        "consultar o epoch nao pode move^-lo — o cache do outro lado limpar-se-ia a cada quadro"
+    );
+    let rgba = vec![255u8; 32 * 32 * 4];
+    atlas.insert(&gpu, 0, 32, 32, &rgba).expect("insert ok");
+    let depois = atlas.epoch();
+    assert!(
+        depois > antes,
+        "escrever conteudo no atlas nao moveu o relogio ({antes} -> {depois}) — quem guarda uma \
+         copia em CPU dele nunca saberia que ela envelheceu"
+    );
+    // ⛔⛔ **E o `remove` NÃO move o relógio — a 1.ª redacção deste gate afirmava o contrário e
+    // reprovou.** Ele devolve o slot à *free list* e **não toca num pixel**: uma cópia em CPU
+    // tirada antes dele continua exacta. *Um relógio de invalidação conta MUDANÇAS DE CONTEÚDO,
+    // não mudanças de contabilidade* — e o `insert` que vier ocupar aquele slot passa pelo funil,
+    // que é onde a invalidação de facto é devida.
+    atlas.remove(0);
+    assert_eq!(
+        atlas.epoch(),
+        depois,
+        "remover uma regiao nao toca em pixel nenhum e nao pode invalidar a copia em CPU"
+    );
+    atlas.insert(&gpu, 1, 32, 32, &rgba).expect("insert ok");
+    assert!(
+        atlas.epoch() > depois,
+        "ocupar o slot libertado ESCREVE pixels e tem de mover o relogio"
+    );
+}

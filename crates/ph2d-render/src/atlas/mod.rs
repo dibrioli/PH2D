@@ -155,6 +155,24 @@ pub struct TextureAtlas {
     /// 8192²) and only fires on insert / replace / regrow — never per
     /// frame (the painter live preview uses individual textures).
     mip_gen: crate::mipgen::MipGenerator,
+    /// ⭐⭐ **QUANTAS VEZES OS PIXELS DESTE ATLAS MUDARAM** — o relógio de invalidação para quem
+    /// mantém uma cópia em CPU dele.
+    ///
+    /// ⛔⛔ Ele existe por causa do achado §2.5 da auditoria do `source.lsystem`: a leitura de
+    /// pixels da folha lia o atlas **INTEIRO** (`8192² × 4 = 268 MB`) e guardava-o **pela vida do
+    /// processo**, sem nunca o invalidar — *pintar na folha servia pixels velhos para sempre*.
+    /// Um cache de bytes de GPU não pode ser invalidado por tempo nem por tamanho: ele tem de ser
+    /// invalidado por **mudança**, e só o dono da textura sabe quando ela muda.
+    ///
+    /// ⚠️ Incrementado no [`Self::regen_mips`], que é o funil por onde **toda** escrita de
+    /// conteúdo passa (o `insert`, a substituição dentro dele e o `regrow_inplace`) — pendurá-lo
+    /// em cada mutador seria a lista que envelhece no seguinte.
+    ///
+    /// ⛔ **O [`Self::remove`] NÃO o move, e está certo**: ele devolve o slot à *free list* e
+    /// **não toca num pixel**. Uma cópia em CPU tirada antes dele continua exacta; o que a
+    /// invalida é o `insert` que vier ocupar aquele slot, e esse passa pelo funil. *Um relógio de
+    /// invalidação conta MUDANÇAS DE CONTEÚDO, não mudanças de contabilidade.*
+    epoch: u64,
 }
 
 impl TextureAtlas {
@@ -185,7 +203,7 @@ impl TextureAtlas {
         clear_level0_transparent(gpu, &texture);
         let sampler =
             crate::create_sprite_sampler(&gpu.device, filter, "ph2d-render atlas sampler");
-        let atlas = Self {
+        let mut atlas = Self {
             texture,
             view,
             sampler,
@@ -195,6 +213,7 @@ impl TextureAtlas {
             free_slots: BTreeMap::new(),
             max_size_px,
             mip_gen: crate::mipgen::MipGenerator::new(gpu, wgpu::TextureFormat::Rgba8UnormSrgb),
+            epoch: 0,
         };
         // Fill the (transparent) mip chain so the texture is sampleable
         // at any level before the first insert.
@@ -205,12 +224,21 @@ impl TextureAtlas {
     /// Regenerate the atlas mip chain (levels `1..`) from level 0 after a
     /// content write. Cheap enough to run on every insert/replace; never
     /// called per frame.
-    fn regen_mips(&self, gpu: &GpuContext) {
+    fn regen_mips(&mut self, gpu: &GpuContext) {
+        // ⚠️ **O contador vive AQUI**, e não em cada mutador — ver [`Self::epoch`].
+        self.epoch = self.epoch.wrapping_add(1);
         self.mip_gen.run(
             gpu,
             &self.texture,
             crate::mipgen::mip_levels(self.size_px, self.size_px),
         );
+    }
+
+    /// **O relógio de mudança dos pixels** — ver [`Self::epoch`]. Quem guarda uma cópia em CPU
+    /// deste atlas compara-o e deita a cópia fora quando ele anda.
+    #[must_use]
+    pub fn epoch(&self) -> u64 {
+        self.epoch
     }
 
     /// Maximum side length [`Self::regrow_inplace`] will allow.

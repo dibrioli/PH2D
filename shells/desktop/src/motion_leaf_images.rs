@@ -26,16 +26,86 @@ type Key = (u32, [i32; 4]);
 
 #[derive(Default)]
 pub(crate) struct LeafImages {
-    /// O atlas partilhado, lido inteiro uma vez (`texture_id == 0` amostra dele).
+    /// O atlas partilhado, lido inteiro (`texture_id == 0` amostra dele).
+    ///
+    /// ⛔⛔ **Ele já foi guardado pela VIDA DO PROCESSO, e eram `268 MB`** — achado §2.5 da
+    /// auditoria de seis lentes. Hoje é largado no fim de cada quadro
+    /// ([`LeafImages::end_frame`]), então a retenção é de **um quadro** e não da sessão.
     atlas: Option<(u32, Arc<Vec<u8>>)>,
     recortes: BTreeMap<Key, Option<Art>>,
+    /// O [`ph2d_render::TextureAtlas::epoch`] com que os `recortes` foram tirados.
+    ///
+    /// ⚠️ **A outra metade do mesmo achado: nada era INVALIDADO** — *pintar na folha servia
+    /// pixels velhos para sempre*. Um cache de bytes de GPU não se invalida por tempo nem por
+    /// tamanho; invalida-se por **mudança**, e só o dono da textura sabe quando ela muda.
+    epoch: u64,
 }
 
 impl LeafImages {
-    /// **A arte de um quad**, memoizada. `None` = esta textura não se resolve (formato que a
-    /// porta de leitura recusa, id que já não existe) — e a linha simplesmente não desenha, que
-    /// é o mesmo que a membrana faz com um nome que ninguém publicou.
-    pub(crate) fn art(
+    /// **O FIM DO QUADRO larga o atlas** — a metade da §2.5 que é sobre MEMÓRIA.
+    ///
+    /// ⚠️ **Os recortes FICAM**, e é isso que a torna barata: eles são a resposta memoizada por
+    /// `(textura, região)`, e são pequenos (a arte de uma folha). O que sai é a cópia INTEIRA do
+    /// atlas — `8192² × 4 = 268 MB` —, que só serve para RESOLVER recortes novos. Uma folha nova
+    /// paga uma leitura; nenhuma folha nova paga zero.
+    pub(crate) fn end_frame(&mut self) {
+        self.atlas = None;
+    }
+
+    /// **O CACHE CONCORDA COM A TEXTURA?** — a metade que é sobre CORRECÇÃO, separada de
+    /// propósito.
+    ///
+    /// ⚠️ **Ela não toca na GPU, e é por isso que existe sozinha.** O `resolve` recebe
+    /// `gpu`/`atlas`/`individual` e não é alcançável de um teste — *uma decisão enterrada num
+    /// método que precisa de um contexto de GPU não tem gate possível*, que é a mesma frase que
+    /// o doc do [`crop`] já dizia sobre a aritmética.
+    pub(crate) fn sync_to(&mut self, epoch: u64) {
+        if self.epoch != epoch {
+            self.epoch = epoch;
+            self.atlas = None;
+            self.recortes.clear();
+        }
+    }
+
+    /// ⭐⭐⭐ **A ÚNICA PORTA PARA A ARTE, e ela obriga a sincronizar** — a costura que a
+    /// auditoria dizia não existir (*«`resolve` recebe `gpu`/`atlas`/`individual`
+    /// directamente, sem costura»*).
+    ///
+    /// ⛔⛔ **Ela nasceu de uma mutação SOBREVIVENTE.** Enquanto o `art` chamava o
+    /// [`Self::sync_to`] por dentro, arrancar essa linha deixava os dois gates de invalidação
+    /// **verdes** — eles medem o `sync_to` sozinho, e nada media que alguém o CHAMASSE.
+    /// *Dois gates sobre as duas metades de uma lei não cobrem o fio entre elas.*
+    ///
+    /// ⇒ o `art` mudou-se para o [`Synced`], que só se obtém daqui. Hoje, esquecer a
+    /// sincronização é **erro de compilação** — que é a única forma de gate que uma mutação não
+    /// atravessa.
+    pub(crate) fn synced(&mut self, epoch: u64) -> Synced<'_> {
+        self.sync_to(epoch);
+        Synced { cache: self }
+    }
+
+    /// Quantas artes o cache guarda — `(tem o atlas inteiro?, quantos recortes)`.
+    #[cfg(test)]
+    pub(crate) fn cached(&self) -> (bool, usize) {
+        (self.atlas.is_some(), self.recortes.len())
+    }
+
+    /// **Semeia o cache sem GPU** — a porta que torna os dois gates possíveis.
+    ///
+    /// ⚠️ Ela existe porque o único caminho que enche estes mapas é o [`Self::resolve`], que
+    /// precisa de um `GpuContext`; sem ela, a lei de invalidação só seria demonstrável com
+    /// adapter, e os gates de GPU desta casa são `#[ignore]` — *skip gracioso não é verde*.
+    #[cfg(test)]
+    pub(crate) fn seed_for_tests(&mut self, epoch: u64, side: u32, recortes: usize) {
+        self.epoch = epoch;
+        self.atlas = Some((side, Arc::new(vec![0u8; 4])));
+        self.recortes.clear();
+        for i in 0..recortes {
+            self.recortes.insert((i as u32, [0; 4]), None);
+        }
+    }
+    /// A resolução propriamente dita — privada, e só alcançável pelo [`Synced`].
+    fn art_synced(
         &mut self,
         gpu: &ph2d_gpu::GpuContext,
         atlas: &ph2d_render::TextureAtlas,
@@ -61,8 +131,10 @@ impl LeafImages {
         uv: [f32; 4],
     ) -> Option<Art> {
         let (w, h, px) = if texture_id == 0 {
-            // ⚠️ **O atlas lê-se INTEIRO, e uma vez só** — ele é partilhado por toda a cena, e
-            // uma leitura por folha seria uma paragem de GPU por folha.
+            // ⚠️ **O atlas lê-se INTEIRO, e uma vez POR QUADRO** — ele é partilhado por toda a
+            // cena, e uma leitura por folha seria uma paragem de GPU por folha. ⛔ *«Uma vez
+            // só»* era o que esta nota dizia, e custava `268 MB` retidos pela vida do processo
+            // (§2.5): quem larga é o [`LeafImages::end_frame`].
             let (side, bytes) = match &self.atlas {
                 Some(hit) => (hit.0, Arc::clone(&hit.1)),
                 None => {
@@ -78,6 +150,28 @@ impl LeafImages {
             (w, h, Arc::new(bytes))
         };
         crop(w, h, &px, uv)
+    }
+}
+
+/// **O CACHE JÁ SINCRONIZADO** — ver [`LeafImages::synced`], que é a única forma de o obter.
+pub(crate) struct Synced<'c> {
+    cache: &'c mut LeafImages,
+}
+
+impl Synced<'_> {
+    /// **A arte de um quad**, memoizada. `None` = esta textura não se resolve (formato que a
+    /// porta de leitura recusa, id que já não existe) — e a linha simplesmente não desenha, que
+    /// é o mesmo que a membrana faz com um nome que ninguém publicou.
+    pub(crate) fn art(
+        &mut self,
+        gpu: &ph2d_gpu::GpuContext,
+        atlas: &ph2d_render::TextureAtlas,
+        individual: &ph2d_render::IndividualTextureStore,
+        texture_id: u32,
+        uv: [f32; 4],
+    ) -> Option<Art> {
+        self.cache
+            .art_synced(gpu, atlas, individual, texture_id, uv)
     }
 }
 

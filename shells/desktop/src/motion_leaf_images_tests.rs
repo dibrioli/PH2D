@@ -62,3 +62,62 @@ fn a_degenerate_region_returns_nothing() {
     // de `1` por um epsilon.
     assert!(crop(w, h, &px, [-0.5, -0.5, 1.5, 1.5]).is_some());
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────
+// A MEMÓRIA E A INVALIDAÇÃO — auditoria de seis lentes, doc 96 §2.5.
+// ─────────────────────────────────────────────────────────────────────────────────────────
+
+use super::LeafImages;
+
+/// ⭐⭐⭐ **O FIM DO QUADRO LARGA O ATLAS E GUARDA OS RECORTES** — as duas metades, e são
+/// opostas.
+///
+/// ⛔⛔ A cópia em CPU do atlas é `ATLAS_DEFAULT_SIZE_PX² × 4 = 8192² × 4 = 268 MB`, e ficava
+/// retida **pela vida do processo** (o doc dizia *«lê-se INTEIRO, e uma vez só»* — o que ele não
+/// dizia é que «inteiro» é um quarto de gigabyte, seja qual for o tamanho da folha).
+///
+/// ⚠️ **E os recortes têm de FICAR**: eles são a resposta memoizada por `(textura, região)` e
+/// são do tamanho de uma folha. Largá-los junto faria cada quadro voltar a ler o atlas inteiro —
+/// *a cura da memória viraria uma paragem de GPU por quadro*, que é pior que o defeito.
+#[test]
+fn the_end_of_the_frame_drops_the_atlas_and_keeps_the_crops() {
+    let mut c = LeafImages::default();
+    c.seed_for_tests(7, 8192, 5);
+    assert_eq!(c.cached(), (true, 5), "a fixtura tem de partir cheia");
+    c.end_frame();
+    assert_eq!(
+        c.cached(),
+        (false, 5),
+        "o fim do quadro tinha de largar o ATLAS e guardar os RECORTES"
+    );
+}
+
+/// ⭐⭐ **PINTAR NA FOLHA INVALIDA O CACHE** — a metade de CORRECÇÃO do mesmo achado.
+///
+/// ⛔ Nada era invalidado: *pintar na folha servia pixels velhos para sempre*. Um cache de bytes
+/// de GPU não se invalida por tempo nem por tamanho — invalida-se por **mudança**, e só o dono da
+/// textura sabe quando ela muda ([`ph2d_render::TextureAtlas::epoch`], incrementado no funil por
+/// onde toda escrita de conteúdo passa).
+///
+/// ⚠️ **E o CONTROLE está na mesma função**: um epoch igual não pode limpar nada, senão a cura
+/// da correcção apagaria o cache a cada quadro e reintroduziria a leitura de `268 MB`.
+#[test]
+fn a_changed_atlas_throws_the_stale_pixels_away_and_an_unchanged_one_does_not() {
+    let mut c = LeafImages::default();
+    c.seed_for_tests(7, 8192, 5);
+    // ⚠️ **Pela PORTA (`synced`), nunca pelo `sync_to`** — a mutação que esvaziava o corpo do
+    // `synced` SOBREVIVEU enquanto este gate chamava a metade de dentro. *Um gate que entra por
+    // baixo da porta prova a lei e não prova a porta.*
+    let _ = c.synced(7);
+    assert_eq!(
+        c.cached(),
+        (true, 5),
+        "o MESMO epoch limpou o cache — isto le' 268 MB a cada quadro"
+    );
+    let _ = c.synced(8);
+    assert_eq!(
+        c.cached(),
+        (false, 0),
+        "o atlas mudou e os pixels velhos ficaram — pintar na folha nao se veria"
+    );
+}

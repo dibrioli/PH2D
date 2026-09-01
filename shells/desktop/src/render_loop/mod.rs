@@ -10049,7 +10049,9 @@ impl crate::App {
                 // [`crate::motion_leaf_images`] porque cada leitura PARA a GPU.
                 let (gpu, atlas, individual) =
                     (surface.gpu(), renderer.atlas(), renderer.individual());
-                let cache = &mut self.motion_leaf_images;
+                // ⚠️ **O `synced` é a única porta**, e ele recebe o relógio de mudança do
+                // atlas — esquecer a sincronização é erro de compilação (§2.5).
+                let mut cache = self.motion_leaf_images.synced(atlas.epoch());
                 let mut art = |tex: u32, uv: [f32; 4]| cache.art(gpu, atlas, individual, tex, uv);
                 motion_shape_gen::encode(
                     &motion.pump.vector_instances,
@@ -10058,6 +10060,10 @@ impl crate::App {
                     cam_affine,
                     vector_scene,
                 );
+                // ⛔⛔ **LARGAR O ATLAS** (auditoria §2.5): a cópia em CPU dele é `268 MB` e
+                // ficava retida pela vida do processo. Os RECORTES ficam — eles são a resposta
+                // memoizada e são pequenos.
+                self.motion_leaf_images.end_frame();
             }
             // O **overlay** do Blend Object (ADR-0128): os passos virtuais + as fontes de cima
             // reempilhadas, na ordem de z (a última fonte por cima do último passo). Desenha depois

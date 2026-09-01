@@ -714,6 +714,8 @@ mod vec_ui_state_edit;
 /// **OS VARIANTS** (plano UI/UX W5c) — que versão do componente uma instância é. Um conjunto de
 /// variants é DERIVADO (os mestres irmãos), e os eixos saem dos NOMES: zero componente novo.
 mod vec_variants;
+/// ⭐⭐⭐ **SOLDAR** (plano 39) — linhas cruzadas partem-se em arcos que partilham o nó.
+mod vec_weld;
 mod vec_widget_drive;
 mod vec_widget_edit;
 mod vec_widget_value;

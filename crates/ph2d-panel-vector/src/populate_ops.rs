@@ -30,6 +30,9 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     // As três da W4 (Join · Reverse · Average).
     button(store, ids::VECTOR_VERT_AVERAGE);
     button(store, ids::VECTOR_PATH_JOIN);
+    // ⭐⭐⭐ **Soldar** (plano 39). Sem esta linha o botão PINTA e fica morto sob o mouse — o
+    // defeito que este ficheiro e o `populate_modes` já pagaram cinco vezes entre os dois.
+    button(store, ids::VECTOR_PATH_WELD);
     button(store, ids::VECTOR_PATH_REVERSE);
     // Os dois da LINHA DE CORTE. Registrados INCONDICIONALMENTE (a store é agnóstica de estado),
     // embora só sejam PINTADOS com lâmina desenhada — as duas perguntas são diferentes, e

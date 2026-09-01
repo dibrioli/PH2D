@@ -3224,6 +3224,8 @@ impl crate::App {
             // **As três da W4** (plano 25 §7). Ao contrário das duas acima, estas MUDAM o
             // documento — logo abrem passo de undo, e cada uma abre exatamente um.
             let mut pending_vec_join = false;
+            // ⭐⭐⭐ **Soldar** (plano 39): os traços seleccionados partem-se nos cruzamentos.
+            let mut pending_vec_weld = false;
             let mut pending_vec_cut = false;
             let mut pending_vec_symmetry_apply = false;
             let mut pending_vec_cut_discard = false;
@@ -3710,6 +3712,8 @@ impl crate::App {
                                 pending_vec_select_same = true;
                             } else if *id == ph2d_editor::ids::VECTOR_PATH_JOIN {
                                 pending_vec_join = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_PATH_WELD {
+                                pending_vec_weld = true;
                             } else if *id == ph2d_editor::ids::VECTOR_PATH_REVERSE {
                                 pending_vec_reverse = true;
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_AVERAGE {
@@ -6660,6 +6664,20 @@ impl crate::App {
                 if changed {
                     self.vec_history.commit_if_changed(vec_scene);
                 }
+            }
+            // ⭐⭐⭐ **SOLDAR** (plano 39) — ao lado das três acima, e **fora** do laço delas porque
+            // ela precisa das POSES: dois traços só se cruzam depois de o `Transform` os pôr no
+            // lugar, e medir na geometria local diria que eles não se encontram.
+            // ⚠️ O passo de undo mora dentro (`apply_vec_weld` faz `push_undo` só quando cortou):
+            // um comando que não fez nada não pode gastar um Ctrl+Z.
+            if pending_vec_weld {
+                let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                crate::vec_weld::apply_vec_weld(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &mut self.vec_pen,
+                    &xf,
+                );
             }
             // **O CORTE e o DESCARTE da lâmina.** Mesmo par `begin`/`commit_if_changed` das três
             // acima: um passo de undo por gesto, e só se algo de fato mudou (uma lâmina que não

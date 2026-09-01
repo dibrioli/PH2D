@@ -497,6 +497,15 @@ impl BodyCtx<'_> {
         if state::current_selection_count() >= 2 {
             y = self.action_button(ids::VECTOR_PATH_JOIN, "Join", y);
         }
+        // ⭐⭐⭐ **Soldar** (plano 39, ideia do Enio) — colado no *Join* porque são o mesmo verbo em
+        // dois sítios: aquele solda **duas pontas**, este solda **os cruzamentos**. Lidos juntos,
+        // ensinam a diferença sem uma linha de ajuda.
+        //
+        // ⚠️ **Sem o piso de 2**, ao contrário do *Join*: um caminho sozinho pode ter
+        // AUTO-cruzamento, e ali soldar tem o que fazer.
+        if state::current_selection_count() >= 1 {
+            y = self.action_button(ids::VECTOR_PATH_WELD, "Weld", y);
+        }
         y
     }
 }

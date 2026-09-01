@@ -269,6 +269,17 @@ pub fn piece_geometry(
     ate: f64,
 ) -> Option<Vec<VecVertex>> {
     let g = Geom::of(verts, closed)?;
+    // ⛔⛔ **A VOLTA PELA EMENDA.** O `pieces_between` quer `hi > lo` — num contorno fechado uma
+    // faixa que atravessa a costura escreve-se `hi > 1`, e não `hi < lo`. Sem esta linha um pedaço
+    // que passa pela emenda devolvia **nada**: o realce do Trim apagava-se enquanto o corte
+    // (que vai por `strands_of`, e esse normaliza) continuava a comer o pedaço certo.
+    // ⚠️ *É exactamente a divergência «acende uma coisa e apaga outra» que o gate desta wave
+    // proíbe* — e ele não a apanhou porque as duas portas só discordam sobre a emenda, e nenhuma
+    // fixtura tinha um pedaço que passasse por lá. Achada pelo gate de SOLDAR, três horas depois.
+    // ⚠️ **`<=` e não `<`**: com UMA fronteira só, o `piece_at` devolve `(f, f)` — e isso significa
+    // *a volta inteira*, não um pedaço vazio (é o que o doc dele promete e o que um anel cortado num
+    // ponto é). Com `<`, aquele caso devolvia zero arcos.
+    let ate = if closed && ate <= de { ate + 1.0 } else { ate };
     let pedacos = crate::fx_trim::pieces_between(&g.segs, &g.lens, g.total, de, ate, closed);
     let v = crate::fx_trim::rebuild(&g.verts, &g.segs, &pedacos, g.n);
     (v.len() >= 2).then_some(v)

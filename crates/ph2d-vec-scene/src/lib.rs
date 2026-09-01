@@ -187,6 +187,9 @@ mod arc_cut;
 /// ⭐⭐⭐ **A ferramenta TRIM** (plano 38) — o pedaço entre as duas fronteiras mais próximas.
 pub mod trim_tool;
 
+/// ⭐⭐⭐ **SOLDAR** (plano 39) — linhas cruzadas partem-se em arcos que partilham o nó.
+pub mod weld;
+
 /// **Knot** — o entrelace celta: nas travessias, a fita de baixo ganha um vão. Rida o corte por
 /// arco do `fx_trim`. Módulo irmão.
 pub mod fx_knot;

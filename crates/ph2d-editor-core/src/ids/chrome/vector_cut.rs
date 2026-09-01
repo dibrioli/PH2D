@@ -38,6 +38,11 @@ pub const VECTOR_MODE_CUT: NodeId = hash_node_id("vector.mode.cut");
 /// que já está na tela e só pede que se aponte o pedaço.
 pub const VECTOR_MODE_TRIM: NodeId = hash_node_id("vector.mode.trim");
 
+/// ⭐⭐⭐ **Soldar** (plano 39) — os traços seleccionados partem-se nos cruzamentos e as pontas
+/// vizinhas passam a cair no mesmo sítio. Vive ao lado do `VECTOR_PATH_JOIN` de propósito: aquele
+/// solda **duas pontas**, este solda **os cruzamentos**, e lidos juntos ensinam a diferença.
+pub const VECTOR_PATH_WELD: NodeId = hash_node_id("vector.path.weld");
+
 /// **Cut** — executa o corte com a linha desenhada. Só é oferecido quando ela existe: um botão
 /// que não tem lâmina para usar é um botão morto.
 pub const VECTOR_CUT_APPLY: NodeId = hash_node_id("vector.cut.apply");

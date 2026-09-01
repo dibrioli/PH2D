@@ -197,3 +197,50 @@ fn severing_a_subpath_leaves_the_primary_alone() {
         "o subpath cortado saiu aberto"
     );
 }
+
+/// ⛔⛔ **O PEDAÇO QUE ATRAVESSA A EMENDA** — achado pelo gate de SOLDAR, três horas depois desta
+/// wave, e é a divergência que o desenho desta ferramenta existe para proibir.
+///
+/// O corte vai por `strands_of` (que normaliza a volta) e o realce por `piece_geometry` (que não
+/// normalizava): num anel, um pedaço que passa pela costura **não acendia** e ainda assim era
+/// comido. ⚠️ **O gate de «a mesma porta» não o apanhou** porque as duas portas só discordam sobre a
+/// emenda, e nenhuma fixtura tinha um pedaço que passasse por lá. *Uma porta única prova que a
+/// resposta é a mesma; ela não escolhe as perguntas que se fazem.*
+#[test]
+fn a_piece_that_crosses_the_seam_is_drawn_and_not_only_cut() {
+    let q = quadrado();
+    // Fronteiras em 0 · ¼ · ½ · ¾ ; o cursor logo ANTES do fecho cai no pedaço `(0,75 → 0)`.
+    let b = boundaries(&q.verts, true, &[]);
+    let (de, ate) = piece_at(&b, true, 0.9).expect("ha' fronteira");
+    assert!(
+        ate < de,
+        "a fixtura precisa de um pedaco que atravesse a emenda: ({de}, {ate})"
+    );
+
+    let realce = piece_geometry(&q.verts, true, de, ate).expect("o realce tem de existir");
+    assert!(
+        realce.len() >= 2,
+        "o realce saiu vazio: {} vertices",
+        realce.len()
+    );
+
+    // …e ele é o COMPLEMENTO do que sobra: o corte deixa uma fita, o realce mostra a outra.
+    let sobra = sever(&q, 0, de, ate).expect("sobra geometria");
+    assert!(sobra.subpaths.is_empty() && !sobra.closed);
+}
+
+/// **Uma fronteira só num anel ⇒ o pedaço é a VOLTA INTEIRA**, e o realce mostra-a. Com `<` em vez
+/// de `<=` na normalização da emenda, este caso devolvia geometria nenhuma.
+#[test]
+fn a_ring_with_a_single_boundary_highlights_the_whole_loop() {
+    let anel = path_of(
+        vec![v(0.0, 0.0), v(10.0, 0.0), v(10.0, 10.0), v(0.0, 10.0)],
+        true,
+    );
+    let inteiro = piece_geometry(&anel.verts, true, 0.4, 0.4).expect("a volta inteira");
+    assert!(
+        inteiro.len() >= 4,
+        "so' {} vertices na volta inteira",
+        inteiro.len()
+    );
+}

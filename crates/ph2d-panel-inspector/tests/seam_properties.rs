@@ -1,20 +1,22 @@
-//! **Varredura de SEAM do cartão de PROPRIEDADES** (report do Enio, 2026-08-31).
+//! **Varredura de SEAM do cartão de PROPRIEDADES.**
 //!
-//! Irmã da `seam_anim.rs`, com a MESMA disciplina: todo clique passa pelo `click_at` REAL, e não
-//! por um `WidgetEvent` sintético. Um evento fabricado pula a checagem de focabilidade do store,
-//! então um widget deixado de fora do `populate` fica pintado, hit-registrado e **morto sob o
-//! mouse**, com um teste verde ao lado.
+//! Todo clique passa pelo `click_at` REAL, e não por um `WidgetEvent` sintético: um evento
+//! fabricado pula a checagem de focabilidade do store, então um widget deixado de fora do
+//! `populate` fica pintado, hit-registrado e **morto sob o ponteiro**, com um teste verde ao lado.
 //!
-//! # ⚠️ O que só se mede aqui
+//! # ⛔ O que este ficheiro já mediu, e por que encolheu (2026-09-01)
 //!
-//! A lei (`variant_axes_tests`) diz **que fileiras** o cartão tem; os gates da shell dizem **de que
-//! nome** elas saem. Nenhum dos dois responde: *o chip é pintado? está no hit-index? o clique nasce
-//! e chega ao `swap`?* — e o cartão mudou de dono nesta wave, que é exactamente quando essa metade
-//! se perde.
+//! Ele chegou a ter quinze gates — o campo que renomeia o valor de uma propriedade, o formulário
+//! de *Salvar Variação…*, o chip da combinação em falta, o botão de actualizar. O mecanismo de
+//! propriedades foi **adiado** pelo dono, e o código saiu inteiro; os gates dele saíram com ele.
+//! *Um gate sobre uma superfície que não existe é uma afirmação sobre nada.*
+//!
+//! ⚠️ **O que ele apanhou fica registado**: as duas primeiras corridas dele acusaram um botão
+//! **morto sob o ponteiro** (fora do `populate`) e um chip com **id posicional** que mudava de
+//! identidade com o tamanho da família. Nenhum gate unitário via qualquer um dos dois.
 
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::screens::hero::{
     InspectorNameInfo, InspectorPropertiesInfo, VariantChoice, variant_axes::VariantAxis,
 };
@@ -40,45 +42,20 @@ fn choice(master: u64, label: &str, current: bool) -> VariantChoice {
         master,
         label: label.into(),
         current,
-        // ⚠️ Esta fixtura pinta chips que EXISTEM; a combinação em falta tem gate próprio.
-        missing: false,
     }
 }
 
-/// Uma fileira que PERGUNTA (`Size`, dois valores) e uma que só DECLARA (`State`, um valor).
-///
-/// ⚠️ **As duas na mesma fixtura, de propósito**: com só uma, um pintor que tratasse as duas
-/// espécies igual ficaria verde por não haver a outra para onde errar.
+/// A fileira das VERSÕES, com duas — que é quando ela existe.
 fn info() -> InspectorPropertiesInfo {
     InspectorPropertiesInfo {
         entity_bits: ENTITY,
         root_bits: ROOT,
-        rows: vec![
-            VariantAxis {
-                name: "Size".into(),
-                options: vec![choice(MINE, "Small", true), choice(OTHER, "Big", false)],
-            },
-            VariantAxis {
-                name: "State".into(),
-                options: vec![choice(0, "Idle", true)],
-            },
-        ],
+        rows: vec![VariantAxis {
+            name: String::new(),
+            options: vec![choice(MINE, "Casa", true), choice(OTHER, "Casa Big", false)],
+        }],
         beyond: 0,
-        // ⚠️ **Sem nada por gravar**, de propósito: os gates do gesto de gravar constroem a sua
-        // própria fixtura, e uma fileira a mais aqui moveria os rects dos chips.
-        pending: 0,
-        declared: vec!["Size".into(), "State".into()],
-        follows: Some("Small".into()),
-        // A fixtura é uma CÓPIA (tem `root_bits`), então as propriedades são do componente.
         source_name: Some("Casa".into()),
-    }
-}
-
-/// A mesma família, com uma modificação por gravar — é o que faz o botão existir.
-fn info_pending() -> InspectorPropertiesInfo {
-    InspectorPropertiesInfo {
-        pending: 3,
-        ..info()
     }
 }
 
@@ -94,186 +71,29 @@ fn host_with(i: InspectorPropertiesInfo) -> (MockPanelHost, InspectorState) {
     (host, state)
 }
 
-/// Carrega no widget `id` pelo PONTEIRO e devolve os eventos. Falha alto se ele não foi pintado.
-fn press(host: &mut MockPanelHost, state: &mut InspectorState, id: ph2d_a11y::NodeId, what: &str) {
-    let rects = host.paint::<InspectorPanel>(state, VIEWPORT);
-    let rect = rects
-        .iter()
-        .find(|(n, _)| *n == id)
-        .map(|(_, r)| *r)
-        .unwrap_or_else(|| panic!("«{what}» nunca foi pintado nem registado"));
-    let events = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
-    assert!(
-        !events.is_empty(),
-        "«{what}» esta' morto sob o ponteiro (fora do `populate`)"
-    );
-    for ev in events {
-        let _ = host.apply_panel_event::<InspectorPanel>(state, ev);
-    }
-}
-
-/// ⭐⭐⭐ **O BOTÃO EXISTE, ABRE O FORMULÁRIO, E O GESTO CHEGA AO BARRAMENTO** — pelo ponteiro.
-///
-/// Enio, 2026-09-01: *«Ao criar e modificar uma instância surge no card um botão do tipo "Salvar
-/// Variação"… com o momento de colocar o nome que vai gerar o botão seletor da variação»*.
-///
-/// ⚠️ **É a 3.ª e a 4.ª condições de uma superfície**, e as duas que os gates puros nunca vêem: um
-/// `WidgetEvent` sintético passa com o botão morto sob o dedo.
-///
-/// **Mutações que devem sangrar:** apagar o `hit_index.register` do botão · o braço do
-/// `save_click` no despachante · o `push` do `confirm`.
-#[test]
-fn the_save_button_opens_the_form_and_the_gesture_reaches_the_bus() {
-    let (mut host, mut state) = host_with(info_pending());
-    press(
-        &mut host,
-        &mut state,
-        ids::INSP_INSTANCE_SAVE_VARIATION,
-        "Save Variation…",
-    );
-    assert!(
-        state.save_draft.is_some(),
-        "o clique no botao nao abriu o formulario"
-    );
-    // O artista escreve o nome da versão e confirma.
-    host.set_text(ids::INSP_INSTANCE_SAVE_VALUE, "Big");
-    press(
-        &mut host,
-        &mut state,
-        ids::INSP_INSTANCE_SAVE_CONFIRM,
-        "Save",
-    );
-    let sent = host.drained_actions();
-    assert!(
-        sent.iter().any(|a| matches!(
-            a,
-            EditorAction::InspectorVariation(
-                ph2d_editor_core::action_bus::VariationRequest::Save { entity_bits, property, value, .. }
-            ) if *entity_bits == ENTITY && property == "Size" && value == "Big"
-        )),
-        "o gesto nao chegou ao barramento: {sent:?}"
-    );
-    clear();
-}
-
-/// ⛔⛔ **SEM MODIFICAÇÃO NÃO HÁ BOTÃO** — e não é decoração: um botão que não faz nada é a
-/// espécie que a caça aos knobs mortos nomeia.
-///
-/// ⚠️ **A metade de PRESENÇA vive no gate acima** — um gate de ausência sozinho fica verde sobre
-/// um pintor que nunca desenha o botão.
-///
-/// **Mutação que deve sangrar:** o pintor deixar de perguntar `info.pending == 0`.
-#[test]
-fn with_nothing_to_save_there_is_no_button() {
-    let (mut host, mut state) = host_with(info());
-    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    assert!(
-        !rects
-            .iter()
-            .any(|(n, _)| *n == ids::INSP_INSTANCE_SAVE_VARIATION),
-        "o botao foi pintado sem nada por gravar"
-    );
-    clear();
-}
-
-/// ⭐⭐⭐ **«Nova propriedade…» faz crescer os DOIS campos que faltam** — e é o que torna criar a
-/// primeira e criar a segunda o mesmo gesto.
-///
-/// **Mutação que deve sangrar:** o pintor desenhar os campos sem olhar ao `property.is_none()`.
-#[test]
-fn choosing_a_new_property_grows_the_two_missing_fields() {
-    let (mut host, mut state) = host_with(info_pending());
-    press(
-        &mut host,
-        &mut state,
-        ids::INSP_INSTANCE_SAVE_VARIATION,
-        "Save Variation…",
-    );
-    // Com a família a declarar `Size`/`State`, ele abre numa delas — os dois campos não existem.
-    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    assert!(
-        !rects
-            .iter()
-            .any(|(n, _)| *n == ids::INSP_INSTANCE_SAVE_EXISTING),
-        "«Current is» apareceu numa propriedade que ja' existe"
-    );
-    press(
-        &mut host,
-        &mut state,
-        ids::INSP_INSTANCE_SAVE_PROP[ids::MAX_INSTANCE_AXES],
-        "New…",
-    );
-    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    for id in [
-        ids::INSP_INSTANCE_SAVE_NEW_PROP,
-        ids::INSP_INSTANCE_SAVE_EXISTING,
-    ] {
-        assert!(
-            rects.iter().any(|(n, _)| *n == id),
-            "escolher «Nova...» nao fez nascer o campo {id:?}"
-        );
-    }
-    clear();
-}
-
-/// ⛔ **Desistir fecha o formulário** — sem saída, o artista tem de gravar algo para se ver livre.
-#[test]
-fn cancel_closes_the_form() {
-    let (mut host, mut state) = host_with(info_pending());
-    press(
-        &mut host,
-        &mut state,
-        ids::INSP_INSTANCE_SAVE_VARIATION,
-        "Save Variation…",
-    );
-    press(
-        &mut host,
-        &mut state,
-        ids::INSP_INSTANCE_SAVE_CANCEL,
-        "Cancel",
-    );
-    assert!(
-        state.save_draft.is_none(),
-        "desistir nao fechou o formulario"
-    );
-    clear();
-}
-
-fn host() -> (MockPanelHost, InspectorState) {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
-    let mut state = InspectorState::default();
-    set_current_inspector_name(Some(InspectorNameInfo {
-        entity_bits: ENTITY,
-        name: "Casa {Size=Small, State=Idle}".into(),
-    }));
-    set_current_inspector_properties(Some(info()));
-    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    (host, state)
-}
-
 fn clear() {
     set_current_inspector_properties(None);
     set_current_inspector_name(None);
 }
 
-/// ⭐⭐⭐ **O chip de uma pergunta CHEGA ao `swap`, pelo ponteiro.**
+/// ⭐⭐⭐ **O chip de uma versão CHEGA ao `swap`, pelo ponteiro.**
 ///
-/// **Mutação que deve sangrar:** apagar o `hit_index.register(id, host)` do pintor, ou o braço do
-/// `variant_click` no despachante.
+/// **Mutação que deve sangrar:** apagar o `hit_index.register(id, host)` do pintor, o registo do
+/// `populate`, ou o braço do `chip_click` no despachante.
 #[test]
-fn a_chip_of_a_real_question_reaches_the_swap() {
-    let (mut host, mut state) = host();
+fn a_chip_of_another_version_reaches_the_swap() {
+    let (mut host, mut state) = host_with(info());
     let id = ids::INSP_INSTANCE_AXIS_OPTION[0][1];
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let rect = rects
         .iter()
         .find(|(n, _)| *n == id)
         .map(|(_, r)| *r)
-        .expect("o chip «Big» nunca foi pintado nem registado");
+        .expect("o chip «Casa Big» nunca foi pintado nem registado");
     let events = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
     assert!(
         !events.is_empty(),
-        "clicar no chip não produziu evento — ele está morto sob o mouse (fora do `populate`)"
+        "clicar no chip nao produziu evento — ele esta' morto sob o ponteiro"
     );
     for ev in events {
         let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
@@ -285,46 +105,43 @@ fn a_chip_of_a_real_question_reaches_the_swap() {
             EditorAction::InspectorSwapVariant { root_bits, master }
                 if *root_bits == ROOT && *master == OTHER
         )),
-        "o clique não chegou ao swap com o mestre certo: {sent:?}"
+        "o clique nao chegou ao swap com o mestre certo: {sent:?}"
     );
     clear();
 }
 
-/// ⛔⛔ **UM VALOR SÓ NÃO É UM BOTÃO** — ele não entra no hit-index, logo não há clique a morrer.
+/// ⛔⛔ **UMA VERSÃO SÓ NÃO É UM BOTÃO** — ela não entra no hit-index, logo não há clique a morrer.
 ///
 /// *Um controlo que se pode carregar e que não faz nada é a 1.ª espécie de knob morto da caça de
-/// 2026-08-30* — e aqui ela seria sistemática: toda propriedade declarada de todo objecto solto.
+/// 2026-08-30.*
 ///
 /// **Mutação que deve sangrar:** o pintor desenhar o valor único como `Button` + `register`.
 #[test]
-fn a_declared_value_is_text_and_never_a_dead_button() {
-    let (mut host, mut state) = host();
+fn a_single_version_is_text_and_never_a_dead_button() {
+    let i = InspectorPropertiesInfo {
+        rows: vec![VariantAxis {
+            name: String::new(),
+            options: vec![choice(0, "Casa", true)],
+        }],
+        ..info()
+    };
+    let (mut host, mut state) = host_with(i);
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    let id = ids::INSP_INSTANCE_AXIS_OPTION[1][0];
     assert!(
-        !rects.iter().any(|(n, _)| *n == id),
-        "a fileira de UM valor registou um hit-rect — é um botão que o artista carrega para nada"
+        !rects
+            .iter()
+            .any(|(n, _)| *n == ids::INSP_INSTANCE_AXIS_OPTION[0][0]),
+        "uma versao unica foi registada como botao — um clique que nao faz nada"
     );
     clear();
 }
 
-/// ⭐⭐⭐ **CARREGAR NO VALOR ACESO ABRE-O PARA ESCRITA, E O ENTER GRAVA NA RECEITA.**
-///
-/// # ⛔⛔⛔ O gesto que faltava era um clique MORTO
-///
-/// Report do Enio (2026-08-31, a quarta vez): *«Que inferno!!!»*. Ele escrevia `{Size=Big}` no nome
-/// da **cópia** para dar nome ao valor, e o modelo ignorava-o — correctamente, porque uma
-/// propriedade é do COMPONENTE. *O defeito é que autorar o valor obrigava a seleccionar OUTRO
-/// objecto do que aquele que se está a olhar.*
-///
-/// E o clique no chip já aceso era um **no-op silencioso** — exactamente onde o dedo dele estava.
-///
-/// ⚠️ **Pelo `click_at` REAL**: um `WidgetEvent` sintético salta a checagem de focabilidade do
-/// store, e um campo que nasce sem foco come as teclas sem as mostrar.
+/// ⛔ **Carregar na versão VIGENTE não publica nada** — o artista carregou no botão que diz onde
+/// ele já está, e a ausência de resposta é a resposta certa.
 #[test]
-fn clicking_the_current_value_opens_it_for_writing_and_enter_saves_it() {
-    let (mut host, mut state) = host();
-    let id = ids::INSP_INSTANCE_AXIS_OPTION[0][0]; // o `Small`, que é o VIGENTE
+fn clicking_the_current_version_publishes_nothing() {
+    let (mut host, mut state) = host_with(info());
+    let id = ids::INSP_INSTANCE_AXIS_OPTION[0][0];
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let rect = rects
         .iter()
@@ -336,361 +153,7 @@ fn clicking_the_current_value_opens_it_for_writing_and_enter_saves_it() {
     }
     assert!(
         host.drained_actions().is_empty(),
-        "carregar no vigente nao pode levantar uma TROCA — ele ja' esta' escolhido"
-    );
-
-    // ⭐ O campo nasce com o valor dentro e SELECCIONADO — a lição do `CatalogHeroes`.
-    match host.store().get(ids::INSP_INSTANCE_VALUE_EDIT) {
-        Some(InteractiveState::TextInput {
-            text,
-            selection_anchor,
-            ..
-        }) => {
-            assert_eq!(text, "Small");
-            assert_eq!(*selection_anchor, Some(0), "abriu sem seleccionar o valor");
-        }
-        other => panic!("o campo nao abriu: {other:?}"),
-    }
-    // E ele é pintado, no lugar do chip.
-    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    assert!(
-        rects
-            .iter()
-            .any(|(n, _)| *n == ids::INSP_INSTANCE_VALUE_EDIT),
-        "o campo nao foi pintado nem registado"
-    );
-
-    // ⭐⭐ O Enter grava — **na RECEITA vigente**, e com a chave da FILEIRA.
-    // ⚠️ Escreve pelo mesmo caminho que uma tecla escreveria — o arnês não expõe o store mutável,
-    // e é bom que não exponha: um gate que semeia por dentro mede o que ele próprio pôs lá.
-    host.set_text(ids::INSP_INSTANCE_VALUE_EDIT, "Big");
-    let _ = host.apply_panel_event::<InspectorPanel>(
-        &mut state,
-        WidgetEvent::Submit(ids::INSP_INSTANCE_VALUE_EDIT),
-    );
-    let sent = host.drained_actions();
-    assert!(
-        sent.iter().any(|a| matches!(
-            a,
-            EditorAction::InspectorRenameVariantValue { master, key, value, .. }
-                if *master == MINE && key == "Size" && value == "Big"
-        )),
-        "o Enter nao gravou o valor na receita: {sent:?}"
-    );
-    clear();
-}
-
-/// ⛔⛔ **Trocar de versão FECHA o campo.**
-///
-/// ⚠️ Sem isto ele ficaria aberto sobre um valor que já não é o vigente, e o `Blur` seguinte
-/// gravaria o texto na propriedade **errada** — um defeito que só aparece no segundo gesto.
-#[test]
-fn switching_versions_closes_the_open_field() {
-    let (mut host, mut state) = host();
-    // abre no vigente…
-    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    let cur = rects
-        .iter()
-        .find(|(n, _)| *n == ids::INSP_INSTANCE_AXIS_OPTION[0][0])
-        .map(|(_, r)| *r)
-        .expect("o vigente");
-    for ev in host.click_at(cur.x + cur.w * 0.5, cur.y + cur.h * 0.5) {
-        let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
-    }
-    let _ = host.drained_actions();
-    // …e carrega no OUTRO.
-    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    let other = rects
-        .iter()
-        .find(|(n, _)| *n == ids::INSP_INSTANCE_AXIS_OPTION[0][1])
-        .map(|(_, r)| *r)
-        .expect("o outro");
-    for ev in host.click_at(other.x + other.w * 0.5, other.y + other.h * 0.5) {
-        let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
-    }
-    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    assert!(
-        !rects
-            .iter()
-            .any(|(n, _)| *n == ids::INSP_INSTANCE_VALUE_EDIT),
-        "o campo ficou aberto depois de trocar de versao"
-    );
-    clear();
-}
-
-/// ⛔⛔⛔ **A TROCA DE SELEÇÃO LARGA O CAMPO — e um Blur tardio não grava no objecto novo.**
-///
-/// Auditoria de 2026-08-31 (A1): abrir o campo no objecto A, trocar a seleção para B e clicar em
-/// qualquer coisa gravava **o texto de A na receita de B** — o `commit` relia o snapshot vigente e
-/// endereçava por índice. As duas metades da cura: o `sync` abandona na troca, e o `commit`
-/// confere a IDENTIDADE (entidade + nome do eixo).
-///
-/// (Mutações: tirar o `abandon` do sync ⇒ RED na 2.ª asserção; tirar a conferência de identidade
-/// do commit ⇒ RED na 3.ª.)
-#[test]
-fn a_selection_change_abandons_the_field_and_a_late_blur_writes_nothing() {
-    let (mut host, mut state) = host();
-    // Abre no vigente de A…
-    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    let cur = rects
-        .iter()
-        .find(|(n, _)| *n == ids::INSP_INSTANCE_AXIS_OPTION[0][0])
-        .map(|(_, r)| *r)
-        .expect("o vigente");
-    for ev in host.click_at(cur.x + cur.w * 0.5, cur.y + cur.h * 0.5) {
-        let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
-    }
-    let _ = host.drained_actions();
-    assert!(state.value_edit.is_some(), "o campo nem abriu");
-
-    // …e o mundo troca para o objecto B (outra entidade, outro cartão).
-    let b_entity = 0x5EED_00FF_u64;
-    set_current_inspector_name(Some(InspectorNameInfo {
-        entity_bits: b_entity,
-        name: "Outra {Color=Red}".into(),
-    }));
-    set_current_inspector_properties(Some(InspectorPropertiesInfo {
-        entity_bits: b_entity,
-        root_bits: 0x5EED_0100,
-        rows: vec![VariantAxis {
-            name: "Color".into(),
-            options: vec![choice(33, "Red", true), choice(34, "Blue", false)],
-        }],
-        beyond: 0,
-        pending: 0,
-        declared: Vec::new(),
-        follows: None,
-        source_name: Some("Outra".into()),
-    }));
-    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    // O sync viu a entidade mudar ⇒ o campo foi LARGADO.
-    assert!(
-        state.value_edit.is_none(),
-        "o campo sobreviveu à troca de seleção — hibernaria com o texto de A"
-    );
-    // E um Blur tardio não grava NADA — nem em A nem em B.
-    let _ = host.apply_panel_event::<InspectorPanel>(
-        &mut state,
-        WidgetEvent::Blur(ids::INSP_INSTANCE_VALUE_EDIT),
-    );
-    let sent = host.drained_actions();
-    assert!(
-        sent.is_empty(),
-        "um Blur tardio gravou depois da troca de seleção: {sent:?}"
-    );
-    clear();
-}
-
-/// ⛔⛔ **O painel ESCONDIDO larga o campo e o foco** — senão um `TextInput` invisível come as
-/// teclas do app inteiro (auditoria de 2026-08-31, A3; é a porta homóloga do molde do navegador
-/// de assets).
-///
-/// (Mutação: tirar o `abandon` do ramo escondido do `paint` ⇒ RED.)
-#[test]
-fn hiding_the_panel_abandons_the_field_and_releases_the_keyboard() {
-    let (mut host, mut state) = host();
-    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    let cur = rects
-        .iter()
-        .find(|(n, _)| *n == ids::INSP_INSTANCE_AXIS_OPTION[0][0])
-        .map(|(_, r)| *r)
-        .expect("o vigente");
-    for ev in host.click_at(cur.x + cur.w * 0.5, cur.y + cur.h * 0.5) {
-        let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
-    }
-    let _ = host.drained_actions();
-    assert!(state.value_edit.is_some());
-    assert_eq!(host.store().focus_id(), Some(ids::INSP_INSTANCE_VALUE_EDIT));
-
-    host.paint_hidden::<InspectorPanel>(&mut state, VIEWPORT);
-    assert!(
-        state.value_edit.is_none(),
-        "fechar o painel deixou o campo armado"
-    );
-    assert_ne!(
-        host.store().focus_id(),
-        Some(ids::INSP_INSTANCE_VALUE_EDIT),
-        "fechar o painel deixou um TextInput invisivel com o teclado"
-    );
-    clear();
-}
-
-/// ⛔ **No modo PLANO o chip aceso NÃO abre campo nenhum** — um campo que abre, aceita texto e
-/// nunca grava é um controlo que come trabalho em silêncio (auditoria de 2026-08-31, A4: a decisão
-/// de ABRIR e a de GRAVAR têm de ler a mesma pergunta).
-///
-/// (Mutação: tirar o filtro do plano do `chip_click` ⇒ RED.)
-#[test]
-fn a_flat_lit_chip_never_opens_the_field() {
-    // Um cartão em modo PLANO: eixo sem nome, chips com nomes de receita.
-    set_current_inspector_name(Some(InspectorNameInfo {
-        entity_bits: ENTITY,
-        name: "Casa".into(),
-    }));
-    set_current_inspector_properties(Some(InspectorPropertiesInfo {
-        entity_bits: ENTITY,
-        root_bits: ROOT,
-        rows: vec![VariantAxis {
-            name: String::new(),
-            options: vec![choice(MINE, "Casa", true), choice(OTHER, "Outra", false)],
-        }],
-        beyond: 0,
-        pending: 0,
-        declared: Vec::new(),
-        follows: None,
-        source_name: Some("Casa".into()),
-    }));
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
-    let mut state = InspectorState::default();
-    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    let cur = rects
-        .iter()
-        .find(|(n, _)| *n == ids::INSP_INSTANCE_AXIS_OPTION[0][0])
-        .map(|(_, r)| *r)
-        .expect("o chip plano vigente");
-    for ev in host.click_at(cur.x + cur.w * 0.5, cur.y + cur.h * 0.5) {
-        let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
-    }
-    assert!(
-        state.value_edit.is_none(),
-        "o chip plano abriu um campo que o commit recusaria em silencio"
-    );
-    clear();
-}
-
-/// ⛔⛔ **A conferência de ENTIDADE do commit tem o SEU caso** — e ele não é o do abandono do sync.
-///
-/// A mutação que a apagava sobreviveu: com o abandono do sync no lugar, a troca de seleção limpa o
-/// campo antes de qualquer Blur. A janela que SÓ ela cobre: o snapshot novo é publicado e o `Blur`
-/// chega **antes do paint seguinte** (o sync ainda não correu) — e o objecto B tem um eixo com o
-/// MESMO nome (`Size`), então a busca por nome não salva. Sem a conferência, o texto de A ia para
-/// a receita de B.
-///
-/// (Mutação: tirar o `info.entity_bits != edit.entity_bits` do commit ⇒ RED.)
-#[test]
-fn a_blur_between_publish_and_paint_never_writes_into_the_new_object() {
-    let (mut host, mut state) = host();
-    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    let cur = rects
-        .iter()
-        .find(|(n, _)| *n == ids::INSP_INSTANCE_AXIS_OPTION[0][0])
-        .map(|(_, r)| *r)
-        .expect("o vigente");
-    for ev in host.click_at(cur.x + cur.w * 0.5, cur.y + cur.h * 0.5) {
-        let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
-    }
-    let _ = host.drained_actions();
-    host.set_text(ids::INSP_INSTANCE_VALUE_EDIT, "Enorme");
-
-    // B chega — com um eixo chamado «Size» TAMBÉM — e o Blur corre ANTES do paint.
-    let b_entity = 0x5EED_0BB0_u64;
-    set_current_inspector_properties(Some(InspectorPropertiesInfo {
-        entity_bits: b_entity,
-        root_bits: 0x5EED_0BB1,
-        rows: vec![VariantAxis {
-            name: "Size".into(),
-            options: vec![choice(55, "Mini", true), choice(56, "Maxi", false)],
-        }],
-        beyond: 0,
-        pending: 0,
-        declared: Vec::new(),
-        follows: None,
-        source_name: Some("Outra".into()),
-    }));
-    let _ = host.apply_panel_event::<InspectorPanel>(
-        &mut state,
-        WidgetEvent::Blur(ids::INSP_INSTANCE_VALUE_EDIT),
-    );
-    let sent = host.drained_actions();
-    assert!(
-        sent.is_empty(),
-        "o texto de A foi gravado na receita de B pela janela publish→paint: {sent:?}"
-    );
-    clear();
-}
-
-/// ⭐⭐⭐ **O CHIP DE UMA COMBINAÇÃO QUE NÃO EXISTE CRIA-A** — pelo ponteiro.
-///
-/// Plano §2.3-bis: numa grelha `Size × Color` o artista quase nunca enche as casas todas. ⛔ As
-/// três alternativas foram pesadas e recusadas — não fazer nada é o chip morto sob o dedo (o
-/// report que ele já fez quatro vezes), aproximar faz o app acender um valor e mostrar outro, e
-/// recusar manda-o fazer à mão o que a app sabe fazer.
-///
-/// **Mutação que deve sangrar:** apagar o braço `choice.missing` do `chip_click` — o chip volta a
-/// ser mudo, e nenhum gate puro o vê.
-#[test]
-fn a_chip_of_a_combination_that_does_not_exist_creates_it() {
-    let mut i = info();
-    i.rows[0].options.push(VariantChoice {
-        master: 0,
-        label: "Red".into(),
-        current: false,
-        missing: true,
-    });
-    let (mut host, mut state) = host_with(i);
-    press(
-        &mut host,
-        &mut state,
-        ids::INSP_INSTANCE_AXIS_OPTION[0][2],
-        "o chip «Red +»",
-    );
-    let sent = host.drained_actions();
-    assert!(
-        sent.iter().any(|a| matches!(
-            a,
-            EditorAction::InspectorVariation(
-                ph2d_editor_core::action_bus::VariationRequest::Create { root_bits, property, value }
-            ) if *root_bits == ROOT && property == "Size" && value == "Red"
-        )),
-        "o chip em falta ficou mudo: {sent:?}"
-    );
-    clear();
-}
-
-/// ⭐⭐ **ATUALIZAR a versão vigente é alcançável do cartão** — sem ele, gravar uma correcção
-/// obriga a criar uma versão a mais.
-///
-/// ⚠️ **O verbo já existia** (`Verb::Apply`) e só se alcançava pelo menu de uma linha da
-/// Hierarquia — outro sítio do que aquele onde o artista está a olhar.
-///
-/// **Mutação que deve sangrar:** apagar o braço `INSP_INSTANCE_UPDATE_VERSION` do despachante.
-#[test]
-fn the_update_button_reaches_the_bus() {
-    let (mut host, mut state) = host_with(info_pending());
-    press(
-        &mut host,
-        &mut state,
-        ids::INSP_INSTANCE_UPDATE_VERSION,
-        "Update «Small»",
-    );
-    let sent = host.drained_actions();
-    assert!(
-        sent.iter().any(|a| matches!(
-            a,
-            EditorAction::InspectorVariation(
-                ph2d_editor_core::action_bus::VariationRequest::Update { entity_bits }
-            ) if *entity_bits == ENTITY
-        )),
-        "o botao de atualizar nao chegou ao barramento: {sent:?}"
-    );
-    clear();
-}
-
-/// ⛔ **Sem versão nomeada não há botão de ATUALIZAR** — não há o que actualizar, e um botão que
-/// não faz nada é a espécie que a caça aos knobs mortos nomeia.
-#[test]
-fn with_no_version_to_follow_there_is_no_update_button() {
-    let i = InspectorPropertiesInfo {
-        follows: None,
-        ..info_pending()
-    };
-    let (mut host, mut state) = host_with(i);
-    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    assert!(
-        !rects
-            .iter()
-            .any(|(n, _)| *n == ids::INSP_INSTANCE_UPDATE_VERSION),
-        "o botao de atualizar foi pintado sem versao a actualizar"
+        "carregar na versao vigente publicou uma accao"
     );
     clear();
 }

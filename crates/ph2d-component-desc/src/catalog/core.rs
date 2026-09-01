@@ -274,20 +274,6 @@ pub const DESCS: &[D] = &[
         O::IMAGE,
         &[],
     ),
-    // ⭐⭐⭐ **O que uma RECEITA declara** (`Size` → `Big`) — a substituta das chaves no nome
-    // (Enio, 2026-09-01).
-    //
-    // ⚠️ **`Intrinsic` pela razão do `MasterRoot`:** ela chega pelo gesto *Salvar Variação*, que
-    // faz muito mais do que pôr o componente (cria a receita a partir da cópia, liga-a à base,
-    // absorve as excepções e batiza o que já existia em toda a família). Oferecê-la na paleta
-    // daria uma entidade a declarar `Size = Big` sem ser versão de coisa nenhuma — uma fileira
-    // que o cartão nunca mostra, porque a família dela não existe.
-    D::intrinsic(
-        "ph2d::ecs::VariantValues",
-        "Variant Values",
-        C::Instancing,
-        &[],
-    ),
     D::authored(
         "ph2d::ecs::Visibility",
         "Visibility",

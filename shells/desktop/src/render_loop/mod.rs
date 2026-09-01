@@ -3471,9 +3471,6 @@ impl crate::App {
             // ⭐ A troca de variante pedida neste quadro: `(raiz da instância, StableId do mestre)`.
             let mut swap_variant: Option<(u64, u64)> = None;
             // ⭐ O pedido de renomear o VALOR de uma propriedade — `(receita, chave, valor)`.
-            let mut rename_variant_value: Option<(u64, String, String, u64)> = None;
-            let mut save_variation: Option<(u64, String, String, String)> = None;
-            let mut update_version: Option<u64> = None;
             // ⭐ A entidade cujo campo de nome fechou neste quadro.
             let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
             // §12 joints (W3). Kept out of `inspector_commits::dispatch`: that
@@ -4702,44 +4699,6 @@ impl crate::App {
                     // ⚠️ O sujeito é a RECEITA; o gesto nasce sobre a cópia, que é onde o artista
                     // está a olhar. Ver `ph2d-panel-inspector/src/event_value.rs`.
                     // ⭐⭐⭐ **GRAVAR A VARIAÇÃO** (Enio, 2026-09-01) — o botão do cartão.
-                    // ⭐⭐⭐ **O gesto de VARIAÇÃO, nas três formas** — e a do chip em falta vai
-                    // pela MESMA porta da de gravar: criar a casa vazia da grelha É gravar uma
-                    // variação a partir da versão vigente, sem excepções a absorver. *Uma lei nova
-                    // ali seria a segunda resposta à mesma pergunta.*
-                    EditorAction::InspectorVariation(req) => match req {
-                        ph2d_editor::action_bus::VariationRequest::Save {
-                            entity_bits,
-                            property,
-                            value,
-                            existing,
-                        } => {
-                            save_variation.get_or_insert((entity_bits, property, value, existing));
-                        }
-                        ph2d_editor::action_bus::VariationRequest::Create {
-                            root_bits,
-                            property,
-                            value,
-                        } => {
-                            save_variation.get_or_insert((
-                                root_bits,
-                                property,
-                                value,
-                                String::new(),
-                            ));
-                        }
-                        ph2d_editor::action_bus::VariationRequest::Update { entity_bits } => {
-                            update_version.get_or_insert(entity_bits);
-                        }
-                    },
-                    EditorAction::InspectorRenameVariantValue {
-                        master,
-                        key,
-                        value,
-                        root_bits,
-                    } => {
-                        rename_variant_value.get_or_insert((master, key, value, root_bits));
-                    }
-
                     // §11 Physics Body. Fans out over a BulkSelect like its
                     // siblings — "make all of these physical" is the gesture
                     // an artist actually performs.
@@ -10844,103 +10803,6 @@ impl crate::App {
             // olhar — e ele tentou pelo nome da cópia quatro vezes, com o modelo a ignorá-lo
             // correctamente as quatro.
             //
-            // ⭐⭐ **ATUALIZAR a versão que a cópia segue** — o *Apply to Master*, alcançável do
-            // cartão. ⚠️ O verbo já existia e só se alcançava pelo menu de uma linha da
-            // Hierarquia; o gesto não é novo, o SÍTIO dele é.
-            if let Some(bits) = update_version {
-                let registry = crate::init::build_component_registry();
-                let mut select_out = None;
-                let _ = crate::instance_verbs::drain(
-                    crate::instance_verbs::Verb::Apply,
-                    sim,
-                    &registry,
-                    &mut self.instance_echo,
-                    bits,
-                    toasts,
-                    &mut crate::instance_docs::OwnedDocs {
-                        vec_scene,
-                        vec_entities: &mut self.vec_entities,
-                    },
-                    // ⚠️ O passo da cascata é do *Instantiate*; o `Apply` não o lê.
-                    [0.0, 0.0],
-                    &mut select_out,
-                );
-                self.title_dirty = true;
-            }
-            // ⭐⭐⭐ **GRAVAR A VARIAÇÃO** — a cópia modificada vira uma versão com nome.
-            //
-            // ⚠️ **Todo caminho fala.** Um gesto que come o clique em silêncio é pior que um botão
-            // ausente — a mesma lei que o menu dos verbos e o Revert já pagaram.
-            if let Some((bits, property, value, existing)) = save_variation {
-                let registry = crate::init::build_component_registry();
-                let mut docs = crate::instance_docs::OwnedDocs {
-                    vec_scene,
-                    vec_entities: &mut self.vec_entities,
-                };
-                match crate::variant_save::save_variation(
-                    sim,
-                    &registry,
-                    &mut docs,
-                    bits,
-                    &property,
-                    &value,
-                    (!existing.trim().is_empty()).then_some(existing.as_str()),
-                ) {
-                    Ok(saved) => {
-                        toasts.push(Toast::success(format!(
-                            "Saved \u{201c}{}\u{201d} \u{2014} {} change(s) kept",
-                            saved.value, saved.absorbed
-                        )));
-                        self.title_dirty = true;
-                    }
-                    Err(crate::variant_save::SaveRefusal::Empty) => {
-                        toasts.push(Toast::warning("Give the version a name first"));
-                    }
-                    Err(crate::variant_save::SaveRefusal::Duplicate) => {
-                        toasts.push(Toast::warning("That version already exists"));
-                    }
-                    Err(crate::variant_save::SaveRefusal::NotAnInstance) => {
-                        toasts.push(Toast::warning("Only a copy of a component can be saved"));
-                    }
-                    Err(crate::variant_save::SaveRefusal::Verb(_)) => {
-                        toasts.push(Toast::warning("This object cannot become a version"));
-                    }
-                }
-            }
-            // ⭐⭐⭐ **RENOMEAR O VALOR de uma versão** — o campo que o clique no chip aceso abre.
-            //
-            // ⚠️ **A TROCA vence a ESCRITA** quando o valor digitado já existe na família:
-            // escrever por cima criaria DUAS receitas a declarar a mesma combinação, a fileira
-            // colapsaria para um valor só e o cartão desceria ao modo plano. A lei mora numa
-            // função ([`crate::variant_save::rename_value`]) e é ela que escolhe — ⛔ não este
-            // dreno, senão a escolha ficava inalcançável de um teste.
-            if let Some((master, key, value, root_bits)) = rename_variant_value {
-                match crate::variant_save::rename_value(sim, master, &key, &value) {
-                    crate::variant_save::Renamed::Written => {
-                        toasts.push(Toast::success(format!("{key} \u{2192} {value}")));
-                        self.title_dirty = true;
-                    }
-                    crate::variant_save::Renamed::Switch(sibling) if root_bits != 0 => {
-                        if crate::instance_variant::swap(
-                            sim,
-                            &mut self.instance_echo,
-                            ph2d_ecs::Entity::from_bits(root_bits),
-                            sibling,
-                        )
-                        .is_ok()
-                        {
-                            toasts.push(Toast::success("Switched to that version"));
-                            self.title_dirty = true;
-                        }
-                    }
-                    // ⚠️ Sem cópia não há a quem trocar — e o artista escreveu um valor que já
-                    // existe, então dizer «feito» seria mentir.
-                    crate::variant_save::Renamed::Switch(_) => {
-                        toasts.push(Toast::warning("That version already exists"));
-                    }
-                    crate::variant_save::Renamed::Nothing => {}
-                }
-            }
             if let Some((root_bits, master)) = swap_variant {
                 match crate::instance_variant::swap(
                     sim,

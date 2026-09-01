@@ -60,15 +60,6 @@ fn build(app: &mut crate::App) {
             ph2d_ecs::Transform::IDENTITY,
             ph2d_ecs::Name::new("Casa"),
             ph2d_ecs::MasterRoot,
-            // ⭐⭐⭐ **A declaração é DADO desde 2026-09-01** — o nome é só um nome.
-            ph2d_ecs::VariantValues {
-                values: [
-                    ("Size".to_string(), "Small".to_string()),
-                    ("State".to_string(), "Idle".to_string()),
-                ]
-                .into_iter()
-                .collect(),
-            },
         ))
         .id();
     gfx.sim.world_mut().spawn((
@@ -88,11 +79,7 @@ fn build(app: &mut crate::App) {
         .map_or(0, |s| s.0);
 
     // As outras três versões: instanciar a base e promover a cópia a receita.
-    for (name, size, state) in [
-        ("Casa Run", "Small", "Run"),
-        ("Casa Big", "Big", "Idle"),
-        ("Casa Big Run", "Big", "Run"),
-    ] {
+    for name in ["Casa Run", "Casa Big", "Casa Big Run"] {
         let mut docs = crate::instance_docs::OwnedDocs {
             vec_scene: &mut gfx.vec_scene,
             vec_entities,
@@ -108,18 +95,10 @@ fn build(app: &mut crate::App) {
             eprintln!("[axes] f=3 ⚠️ não consegui instanciar «{name}»");
             continue;
         };
-        gfx.sim.world_mut().entity_mut(copy).insert((
-            ph2d_ecs::MasterRoot,
-            ph2d_ecs::Name::new(name),
-            ph2d_ecs::VariantValues {
-                values: [
-                    ("Size".to_string(), size.to_string()),
-                    ("State".to_string(), state.to_string()),
-                ]
-                .into_iter()
-                .collect(),
-            },
-        ));
+        gfx.sim
+            .world_mut()
+            .entity_mut(copy)
+            .insert((ph2d_ecs::MasterRoot, ph2d_ecs::Name::new(name)));
         ph2d_ecs::assign_missing_stable_ids(gfx.sim.world_mut());
         ph2d_ecs::assign_master_pieces(gfx.sim.world_mut());
     }
@@ -157,8 +136,9 @@ fn build(app: &mut crate::App) {
 ///
 /// ⚠️ **É o inverso do que este smoke media até 2026-08-31.** Ali, reescrever as chaves TINHA de
 /// mudar o cartão; aqui, renomear seja o que for **não pode mexer numa fileira** — a declaração é
-/// [`ph2d_ecs::VariantValues`], e o nome voltou a ser um nome. *Uma fixtura com nomes limpos não
-/// provaria isto: é preciso que os nomes novos tenham chaves.*
+/// um DADO — e desde 2026-09-01 nem isso: o mecanismo de propriedades está adiado, e o nome é
+/// puro rótulo. *Uma fixtura com nomes limpos não provaria isto: é preciso que os novos tenham
+/// chaves.*
 fn rename_everything(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;

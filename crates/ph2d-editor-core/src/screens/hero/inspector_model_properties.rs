@@ -34,25 +34,6 @@ pub struct InspectorPropertiesInfo {
     pub rows: Vec<super::variant_axes::VariantAxis>,
     /// O que a tabela de ids não endereça — **escrito**, nunca truncado em silêncio.
     pub beyond: usize,
-    /// ⭐⭐⭐ **Quantas modificações a cópia escolhida tem por gravar** — `0` esconde o botão
-    /// *Salvar Variação…*.
-    ///
-    /// ⚠️ **É a pergunta que decide se o botão EXISTE**, e não uma decoração: sem modificação não
-    /// há versão a criar, e um botão que não faz nada é a espécie que a caça aos knobs mortos
-    /// nomeia. *A decisão de MOSTRAR e a de GRAVAR leem a mesma pergunta.*
-    pub pending: usize,
-    /// ⭐⭐ **As propriedades que a família JÁ declara** — o selector do formulário.
-    ///
-    /// ⛔ **Não é `rows.iter().map(name)`**: uma propriedade em que todas as versões concordam não
-    /// é uma FILEIRA (um chip único não escolhe nada) mas continua a ser uma propriedade — e é
-    /// justamente a ela que o artista quer acrescentar o segundo valor.
-    pub declared: Vec<String>,
-    /// ⭐⭐ **Como se chama a versão que esta cópia segue** — o rótulo do botão *Update «…»*.
-    ///
-    /// ⚠️ **UMA fonte, decidida no construtor:** o valor vigente da primeira propriedade
-    /// declarada, e o `Name` da receita quando ela não declara nada. Escolher aqui e no pintor
-    /// seriam dois sítios a discordar sobre como a versão se chama.
-    pub follows: Option<String>,
     /// ⭐⭐⭐ **O NOME DO OBJECTO SELECIONADO**, como a Hierarquia o mostra — o título do cartão.
     ///
     /// # ⚠️ Este campo já significou o CONTRÁRIO, e a decisão é do dono

@@ -550,20 +550,6 @@ pub enum EditorAction {
     /// ⭐⭐ **Renomear o VALOR de uma propriedade** — o campo que o clique no chip aceso abre.
     /// O sujeito é a **RECEITA**, porque é lá que o valor vive; o porquê vive no
     /// `ph2d-panel-inspector/src/event_value.rs`.
-    /// ⭐⭐⭐ **O gesto de VARIAÇÃO** — gravar, criar a casa em falta, atualizar.
-    /// Formas e porquês: [`VariationRequest`] e `shells/desktop/src/variant_save.rs`.
-    InspectorVariation(VariationRequest),
-
-    InspectorRenameVariantValue {
-        master: u64,
-        key: String,
-        value: String,
-        /// A RAIZ da cópia em cujo cartão o campo abriu — `0` quando não há cópia. ⚠️ É o que
-        /// permite ao dreno **preferir a TROCA**: se o valor digitado já existe na família, o
-        /// artista quer *aquela versão*, e renomear a receita por cima criaria duas receitas com a
-        /// mesma combinação — o estado que colapsa o eixo (auditoria de 2026-08-31, achado 5).
-        root_bits: u64,
-    },
 
     /// Inspector → shell channel for a §13 Pulley Wheel field (W-Pulley W1).
     /// The `entity_bits` are the WHEEL object's — a roldana é uma entidade, e
@@ -696,9 +682,7 @@ pub use super::action_bus_queue::ActionBus;
 /// ⚠️ Os **vocabulários** que as acções carregam vivem no irmão [`super::action_bus_kinds`] e são
 /// re-exportados aqui: quem escreve `action_bus::TransportCmd` continua a escrevê-lo. Ver o
 /// cabeçalho de lá para o porquê do corte.
-pub use super::action_bus_kinds::{
-    AssetCardAction, CatalogVerb, SelectModifier, TransportCmd, VariationRequest,
-};
+pub use super::action_bus_kinds::{AssetCardAction, CatalogVerb, SelectModifier, TransportCmd};
 
 #[cfg(test)]
 #[path = "action_bus_tests.rs"]

@@ -64,13 +64,6 @@ pub struct VariantChoice {
     pub label: String,
     /// Esta é a versão vigente.
     pub current: bool,
-    /// ⭐⭐⭐ **A combinação que ainda NÃO existe** (`master == 0`).
-    ///
-    /// Numa grelha `Size × Color` o artista quase nunca enche todas as casas. O chip vem
-    /// esmaecido com `+`, e o clique **cria** a versão a partir da vigente — ⛔ nunca fica mudo
-    /// (é o chip morto sob o dedo) nem aproxima para o «mais parecido» (o app acenderia um valor
-    /// e mostraria outro). Ver [`super::variant_axes::axes_for`].
-    pub missing: bool,
 }
 
 impl InspectorInstanceInfo {
@@ -84,9 +77,10 @@ impl InspectorInstanceInfo {
     /// a frase inteira **quebrava em duas linhas** dentro de um cartão cuja altura é contada em
     /// linhas de texto: a 2.ª linha da proveniência e o resumo eram pintados no MESMO `y`.
     ///
-    /// ⚠️ **Desde 2026-09-01 o nome já vem curto de origem**: as propriedades saíram do `Name` e
-    /// viraram [`ph2d_ecs::VariantValues`], então não há nada a cortar — a frase comprida que
-    /// rebentava a caixa deixou de poder existir. *A cura passou a ser a representação.*
+    /// ⚠️ **O nome atravessa VERBATIM.** Ele já foi cortado — quando as propriedades viviam no
+    /// `Name`, a frase inteira rebentava a caixa. O mecanismo foi recusado e está adiado; sem
+    /// gramática não há nada a cortar, e comer pedaços de um nome que o artista escreveu seria o
+    /// app a corrigi-lo.
     #[must_use]
     pub fn provenance(&self) -> String {
         let what = if self.is_variant {

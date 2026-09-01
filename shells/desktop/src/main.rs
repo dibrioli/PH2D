@@ -686,7 +686,6 @@ mod value_wrap_smoke;
 /// baixo dele — ficando a documentar-se com a frase de outro e sem dizer que é um smoke.
 mod variant_axes_smoke;
 mod variant_flow_smoke;
-mod variant_save;
 /// A cena de smoke dos **VARIANTS** (`PH2D_BUILD_SMOKE=58`) — irmã de `component_pieces_smoke`.
 mod variant_smoke;
 mod vec_anchor_edit;

@@ -1,4 +1,33 @@
-# As variações saem do NOME e viram DADO — plano
+# As variações saem do NOME e viram DADO — plano ⏸️ **ADIADO**
+
+> ## ⛔⛔⛔ ADIADO PARA O FIM DO PLANO (Enio, 2026-09-01)
+>
+> *«não ficou bom e não funcionou. Limpe o código dessa implementação e vamos adiar para o fim do
+> plano.»*
+>
+> As quatro waves foram implementadas e **o código saiu inteiro do fonte** — não ficou comentado,
+> não ficou atrás de bandeira, não ficou meio-ligado. ⚠️ *Meio-feito é pior que não começar, e uma
+> feature adiada que fica no fonte é a que volta sozinha.*
+>
+> **O que fica no produto** é o que existia antes das duas tentativas e ninguém recusou (F5
+> critério 2, 27/08): a família é um conjunto de receitas aparentadas, e o cartão oferece **uma
+> fileira com o nome de cada versão** — o modelo dos *Prefab Variants* do Unity, derivação sem
+> eixos. O nome é **rótulo**, e há censo executável a prová-lo
+> ([`the_name_declares_nothing.rs`](../../shells/desktop/tests/the_name_declares_nothing.rs)).
+>
+> ### ⛔ Recusas MEDIDAS — não as reconstrua sem ler
+>
+> | O que foi recusado | Quando | Pelo quê |
+> |---|---|---|
+> | A gramática no `Name` (`Casa {Size=Big}`) | 2026-08-31 | seis reports com foto; renomear virava operação estrutural, e um nome fora da gramática dava propriedade fantasma sem erro |
+> | A propriedade como DADO + botão *Salvar Variação…* | 2026-09-01 | veredito do dono sobre o produto pronto e gateado: *«não ficou bom e não funcionou»* |
+>
+> ⚠️ **A 2.ª recusa é de PRODUTO e não tem mecanismo nomeado.** Uma 3.ª tentativa começa
+> perguntando ao dono *o que ficou pior*, e ⛔ **não** reconstruindo o desenho abaixo — que é o
+> erro que a nota do `value.pattern` (§5.1, Motion) existe para impedir. O que está escrito aqui
+> continua a valer como **pesquisa** (§1) e como **inventário de saídas medidas** (§2.3-bis).
+>
+> **Onde o código viveu:** `145712199` (W1) · `938260a55` (W2) · `526043320` (W3+W4).
 
 > **Ordem do Enio, 2026-09-01:** *«nós realmente não conseguimos nos entender e precisamos mudar o
 > modo de criar Variações. Não vamos mais usar as chaves no nome. Vamos usar o Card com botões

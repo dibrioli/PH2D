@@ -1,128 +1,63 @@
-//! ⭐⭐⭐ **As fileiras de propriedade do cartão** — derivadas de DADO, nunca do nome.
+//! ⭐⭐ **A fileira de VERSÕES do cartão** — um chip por receita da família.
 //!
-//! # ⛔⛔⛔ A gramática de chaves MORREU aqui (Enio, 2026-09-01)
+//! # ⛔⛔⛔ O mecanismo de PROPRIEDADES foi ADIADO (Enio, 2026-09-01)
 //!
-//! Até 31/08 este módulo **parseava** `Casa {Size=Big}`: `parse_combo`, `display_name`,
-//! `with_value`, `variant_name`, `chip_label`, `hidden_count`, `row_label` e `declared_axes` liam e
-//! escreviam uma gramática dentro do `Name`. Ordem do dono: *«Não vamos mais usar as chaves no
-//! nome… Vamos tirar do nome o mecanismo de criação de variações»*.
+//! Este módulo já teve duas encarnações, e as duas foram recusadas pelo dono:
 //!
-//! A declaração passou a ser [`ph2d_ecs::VariantValues`] na raiz da receita. ⇒ **renomear é
-//! inerte**, que era o pedido — e o nome volta a ser aquilo que o artista quis dizer.
+//! 1. **As chaves no nome** (`Casa {Size=Big}`) — uma gramática dentro do `Name`, com oito funções
+//!    a lê-la e a escrevê-la. Custou seis reports com foto: quando o nome manda, renomear deixa de
+//!    ser renomear e passa a ser uma operação estrutural.
+//! 2. **A propriedade como DADO** + o botão *Salvar Variação…* — o desenho do Figma com o gesto do
+//!    XD. *«não ficou bom e não funcionou»* ⇒ **adiado para o fim do plano**, e o código saiu
+//!    inteiro. ⚠️ Ele não está comentado nem desligado por bandeira: *meio-feito é pior que não
+//!    começar*, e uma feature adiada que fica no fonte é a que volta sozinha.
 //!
-//! ⚠️ **O nome continua a aparecer nos CHIPS do modo plano, e isso não é a lei velha**: ali ele é
-//! *rótulo* de uma versão que não declara propriedade nenhuma (o modelo dos *Prefab Variants* do
-//! Unity). Ninguém o lê para decidir coisa nenhuma. *A doença era o nome ser MECANISMO, não o nome
-//! ser mostrado.*
+//! ⇒ o que fica é o que existia **antes das duas** e ninguém recusou (F5 critério 2, 27/08): a
+//! família é o conjunto de receitas aparentadas, e o cartão oferece **uma fileira com o nome de
+//! cada versão**. É o modelo dos *Prefab Variants* do Unity — derivação, sem eixos.
 //!
-//! # As duas modalidades, e porque são a mesma função
-//!
-//! - **PLANO** — nenhuma receita da família declara nada: uma fileira sem nome, um chip por versão,
-//!   rotulado pelo nome dela.
-//! - **PROPRIEDADE** — uma fileira por chave declarada, um chip por valor distinto.
-//!
-//! Uma função só, porque a modalidade é um **facto dos dados** e não um modo escolhido: duas
-//! funções seriam dois sítios a discordar sobre o que está aceso.
+//! ⚠️ **O nome no chip é RÓTULO, e não mecanismo.** Ninguém o parseia; ele é lido para se mostrar,
+//! como a Hierarquia o mostra. *A doença era o nome DECIDIR, nunca o nome aparecer.*
 
 use super::inspector_model_instance::VariantChoice;
 use crate::ids;
-use std::collections::{BTreeMap, BTreeSet};
 
-/// Uma pergunta que a família faz — `Size`, `State`, ou a fileira sem nome do modo plano.
+/// A fileira de versões. ⚠️ O `name` é **vazio** e quem lhe chama *Variant* é o painel (HR-15).
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct VariantAxis {
-    /// O rótulo da fileira. **Vazio** no modo plano — quem lhe chama *Variant* é o painel (HR-15).
+    /// Vazio — ver acima.
     pub name: String,
-    /// As respostas alcançáveis **daqui**. Ver [`axes_for`].
+    /// As versões alcançáveis daqui.
     pub options: Vec<VariantChoice>,
 }
 
 /// ⭐ **Uma versão da família, como o cartão precisa de a ver.**
 ///
-/// A shell extrai isto do mundo (`MasterRoot` + [`ph2d_ecs::VariantValues`]) e passa-o para cá —
-/// é o que mantém esta crate sem ECS.
+/// A shell extrai isto do mundo (as raízes `MasterRoot` aparentadas) e passa-o para cá — é o que
+/// mantém esta crate sem ECS.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct VariantMember {
-    /// O `StableId` da receita.
+    /// O `StableId` da receita — **a identidade**, que é o que a troca precisa de saber.
     pub master: u64,
-    /// O `Name` dela — **rótulo** do chip no modo plano, nada mais.
+    /// O `Name` dela, que é o que o artista lê na Hierarquia.
     pub name: String,
-    /// O que ela declara. Vazio = modo plano.
-    pub values: BTreeMap<String, String>,
 }
 
-impl VariantMember {
-    /// Concorda com `other` em todas as chaves **menos** `except` — a pergunta da grelha.
-    ///
-    /// ⚠️ Corre sobre a UNIÃO das chaves: a quem falte uma chave, falta — não é «igual nas outras».
-    fn matches_except(&self, other: &Self, except: &str) -> bool {
-        self.values
-            .keys()
-            .chain(other.values.keys())
-            .filter(|k| k.as_str() != except)
-            .all(|k| self.values.get(k) == other.values.get(k))
-    }
-}
-
-/// ⭐⭐⭐ **As fileiras que esta versão pode oferecer.**
+/// ⭐⭐ **As versões que esta cópia pode escolher.**
 ///
-/// `members` é a família inteira (a base e as variantes dela), **ordenada por `master`** — a ordem
-/// é a que o artista vê, e ordenar por id é o que a torna estável entre quadros. `me` é a versão
-/// vigente.
+/// `members` é a família inteira, **ordenada por `master`** — a ordem é a que o artista vê, e
+/// ordenar por id é o que a torna estável entre quadros. `me` é a versão vigente.
 ///
-/// Devolve as fileiras e quantas ficaram **de fora** do teto da tabela de ids — ⛔ escrito, nunca
-/// truncado em silêncio.
+/// Devolve a fileira e quantas versões ficaram **de fora** do teto da tabela de ids — ⛔ escrito,
+/// nunca truncado em silêncio.
 ///
-/// # ⚠️ Uma fileira com um valor só NÃO é oferecida
-///
-/// É derivação, não uma regra à parte: a fileira existe quando a família declara **dois ou mais**
-/// valores distintos naquela chave. Um chip único é um controlo que não escolhe nada — a espécie
-/// que a caça aos knobs mortos nomeia —, e como a fileira é derivada ela **desaparece sozinha**
-/// quando os valores voltam a concordar. *Uma fileira derivada não pode ficar morta.*
-///
-/// # A GRELHA, e a combinação que não existe
-///
-/// Com duas propriedades a família é uma grelha `n × m` que o artista quase nunca enche. O chip de
-/// um valor cujo alvo não existe vem com `master == 0` e [`VariantChoice::missing`] — o painel
-/// pinta-o esmaecido com `+`, e o clique **cria** a combinação a partir da versão vigente.
-/// ⛔ As outras três saídas foram pesadas e recusadas no
-/// [plano](../../../../../docs/Components/06_plano_variacoes_sem_chaves.md) §2.3-bis: não fazer
-/// nada é o chip morto sob o dedo; aproximar faz o app acender um valor e mostrar outro; recusar
-/// manda o artista fazer à mão o que a app sabe fazer.
+/// ⚠️ **Com menos de duas versões não há fileira**: um chip único é um controlo que não escolhe
+/// nada, e a fileira é derivada — ela aparece e desaparece com a família.
 #[must_use]
 pub fn axes_for(members: &[VariantMember], me: u64) -> (Vec<VariantAxis>, usize) {
     if members.len() < 2 {
-        // Uma versão só: não há nada a escolher. ⚠️ E isto é o caso comum de uma receita simples.
         return (Vec::new(), 0);
     }
-    let keys: BTreeSet<&str> = members
-        .iter()
-        .flat_map(|m| m.values.keys().map(String::as_str))
-        .collect();
-    if keys.is_empty() {
-        return (flat(members, me), 0);
-    }
-    let Some(mine) = members.iter().find(|m| m.master == me) else {
-        // A versão vigente não é da família — não há combinação a partir da qual perguntar.
-        return (Vec::new(), 0);
-    };
-    let mut axes = Vec::new();
-    let mut beyond = 0usize;
-    for key in keys {
-        let Some(axis) = row_for(members, mine, key) else {
-            continue;
-        };
-        if axes.len() >= ids::MAX_INSTANCE_AXES {
-            beyond += 1;
-            continue;
-        }
-        axes.push(axis);
-    }
-    (axes, beyond)
-}
-
-/// Modo PLANO: um chip por versão, rotulado pelo nome dela.
-fn flat(members: &[VariantMember], me: u64) -> Vec<VariantAxis> {
     let options: Vec<VariantChoice> = members
         .iter()
         .take(ids::MAX_INSTANCE_AXIS_VALUES)
@@ -130,52 +65,16 @@ fn flat(members: &[VariantMember], me: u64) -> Vec<VariantAxis> {
             master: m.master,
             label: m.name.clone(),
             current: m.master == me,
-            missing: false,
         })
         .collect();
-    vec![VariantAxis {
-        name: String::new(),
-        options,
-    }]
-}
-
-/// A fileira de UMA chave, vista a partir de `mine`. `None` quando não há o que escolher.
-fn row_for(members: &[VariantMember], mine: &VariantMember, key: &str) -> Option<VariantAxis> {
-    // Valores distintos, na ordem em que a família os apresenta (que é a ordem por `master`).
-    let mut values: Vec<&str> = Vec::new();
-    for m in members {
-        if let Some(v) = m.values.get(key)
-            && !values.contains(&v.as_str())
-        {
-            values.push(v.as_str());
-        }
-    }
-    if values.len() < 2 {
-        return None;
-    }
-    let current = mine.values.get(key).map(String::as_str);
-    let options: Vec<VariantChoice> = values
-        .into_iter()
-        .take(ids::MAX_INSTANCE_AXIS_VALUES)
-        .map(|v| {
-            // ⚠️ **O alvo é quem concorda em TUDO menos nesta chave** — não é «quem tem este
-            // valor». Numa grelha, `Color=Red` sozinho é ambíguo: há um por cada `Size`.
-            let target = members
-                .iter()
-                .filter(|m| m.values.get(key).map(String::as_str) == Some(v))
-                .find(|m| m.matches_except(mine, key));
-            VariantChoice {
-                master: target.map_or(0, |m| m.master),
-                label: v.to_string(),
-                current: current == Some(v),
-                missing: target.is_none(),
-            }
-        })
-        .collect();
-    Some(VariantAxis {
-        name: key.to_string(),
-        options,
-    })
+    let beyond = members.len().saturating_sub(options.len());
+    (
+        vec![VariantAxis {
+            name: String::new(),
+            options,
+        }],
+        beyond,
+    )
 }
 
 #[cfg(test)]

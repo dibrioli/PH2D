@@ -158,15 +158,11 @@ fn register_ecs_components_populates_registry() {
     //   esta peca divide a arte do mestre, entao a edicao dela SOBE em vez de virar excepcao.
     // + 1 do PREENCHIMENTO do balde (VecBucketFill, plano 40, 2026-09-01) -- a RECEITA (o
     //   ponto apontado), nunca a area: a area e' re-cozida quando as linhas mudam.
-    // + 1 da DECLARACAO de uma receita (VariantValues, Enio 2026-09-01) -- `Size` -> `Big`,
-    //   a substituta das chaves no nome. ⚠️ Ela e' do MESTRE, e a ausencia dela significa
-    //   *modo plano* (uma versao que nao declara nada), que e' porque nenhum ficheiro ja'
-    //   gravado precisa de degrau: o componente e' name-keyed e estreia um id novo.
-    // ⚠️⚠️ **`80` CONTADO na integração de 2026-09-04, e as DUAS linhas tinham escrito `79`.**
-    // A `line/Vector` acrescentou o `VecBucketFill` e a `line/components` o `VariantValues`,
-    // as duas sobre uma base de `78`. ⛔ *Um número que soma entre linhas conta-se, nunca se
-    // escolhe* — e se os dois lados escrevem o MESMO literal a colisão funde **muda**.
-    assert_eq!(reg.len(), 80);
+    // ⚠️ **O `VariantValues` desta linha foi REVERTIDO por ela mesma** (o mecanismo de
+    //   propriedades saiu inteiro do fonte, adiado para o fim do plano) ⇒ a conta volta a
+    //   `79`, que e' o `VecBucketFill` da `line/Vector`, ja' no main. ⛔ *Um numero que
+    //   soma entre linhas conta-se; e um que a linha DESFEZ nao se soma.*
+    assert_eq!(reg.len(), 79);
     assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());

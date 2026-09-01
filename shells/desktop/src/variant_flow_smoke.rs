@@ -6,11 +6,13 @@
 //! criar variações»*. ⚠️ **A segunda frase é o achado.** Uma família nasce dos ELOS — *Make
 //! Prefab* · *Instantiate* —, e dois objectos irmãos parecidos não são variantes um do outro.
 //!
-//! ⛔⛔⛔ **E o fluxo MUDOU em 2026-09-01, por ordem dele:** *«Não vamos mais usar as chaves no
-//! nome… Vamos usar o Card com botões específicos para cada função»*. Os passos 1 e 5 são hoje o
-//! contrário do que eram — o nome nasce **limpo**, e a versão é gravada pela porta do botão
-//! *Salvar Variação…*. ⚠️ **O passo 6 é o que a wave inteira compra:** renomear tudo, com chaves
-//! e tudo, e o cartão **não se mexe**.
+//! ⛔⛔⛔ **E o mecanismo de PROPRIEDADES está ADIADO** (Enio, 2026-09-01: *«não ficou bom e não
+//! funcionou… vamos adiar para o fim do plano»*). As duas encarnações dele — as chaves no nome e
+//! o botão *Salvar Variação…* — saíram do fonte inteiras.
+//!
+//! ⇒ o que este smoke passeia é a família como ela é hoje: **versões nomeadas, e a troca entre
+//! elas**. ⚠️ **O passo 5 é o que sobra da lição:** renomear tudo, com chaves e tudo, e o cartão
+//! **não se mexe** — *o nome é rótulo, nunca mecanismo*.
 //!
 //! ⛔ **Isto imprime; não é um gate.** Ele corre os verbos pela MESMA porta que o menu drena
 //! ([`crate::instance_verbs::drain`]) e, a cada passo, diz **o que o artista veria**: a voz do
@@ -33,10 +35,8 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
         20 => report(app, "3. depois de *Instantiate*"),
         24 => step_4_make_variant(app),
         28 => report(app, "4. depois de *Make Prefab* na cópia (= variante)"),
-        32 => step_5_save_variation(app),
-        36 => report(app, "5. depois de GRAVAR a variacao"),
-        40 => step_6_rename_everything(app),
-        44 => report(app, "6. depois de RENOMEAR tudo (nada pode mudar)"),
+        32 => step_5_rename_everything(app),
+        36 => report(app, "5. depois de RENOMEAR tudo (nada pode mudar)"),
         _ => {}
     }
 }
@@ -78,49 +78,6 @@ fn step_4_make_variant(app: &mut crate::App) {
         crate::instance_verbs::Verb::Make,
         "Make Prefab (na cópia)",
     );
-}
-
-/// ⭐⭐⭐ **5. GRAVAR A VARIAÇÃO pela porta do produto** (Enio, 2026-09-01).
-///
-/// Ele modifica a cópia — sem excepção não há o que gravar, e o botão nem aparece — e chama a
-/// MESMA função que o botão **Salvar Variação…** chama ([`crate::variant_save::save_variation`]).
-///
-/// ⚠️ **A versão de 31/08 escrevia `{Size=Big}` no NOME.** A gramática morreu; se alguém a
-/// reintroduzir, este passo é o primeiro sítio onde isso se lê.
-fn step_5_save_variation(app: &mut crate::App) {
-    let bits = LIVE.with(std::cell::Cell::get);
-    let registry = crate::init::build_component_registry();
-    let vec_entities = &mut app.vec_entities;
-    let Some(gfx) = app.gfx.as_mut() else { return };
-    let e = ph2d_ecs::Entity::from_bits(bits);
-    if let Some(root) = crate::instance_verbs::instance_root_of(&mut gfx.sim, e) {
-        gfx.sim
-            .world_mut()
-            .entity_mut(root)
-            .insert(ph2d_ecs::Transform::from_translation(ph2d_core::Vec2::new(
-                1.5, 0.0,
-            )));
-    }
-    let mut docs = crate::instance_docs::OwnedDocs {
-        vec_scene: &mut gfx.vec_scene,
-        vec_entities,
-    };
-    match crate::variant_save::save_variation(
-        &mut gfx.sim,
-        &registry,
-        &mut docs,
-        bits,
-        "Size",
-        "Big",
-        // ⭐ A propriedade NASCE agora, então o que já existia precisa de nome.
-        Some("Small"),
-    ) {
-        Ok(saved) => eprintln!(
-            "[fluxo] 5. gravei a variacao «{}={}» — absorveu {} excepcao(oes), receita {}",
-            saved.property, saved.value, saved.absorbed, saved.recipe
-        ),
-        Err(r) => eprintln!("[fluxo] 5. ⚠️ recusado: {r:?}"),
-    }
 }
 
 /// Corre um verbo pela porta do menu e imprime a VOZ que o artista ouviria.
@@ -206,12 +163,12 @@ fn report(app: &mut crate::App, when: &str) {
     }
 }
 
-/// ⭐⭐⭐ **6. RENOMEAR TUDO, com chaves — e nada se mexe.**
+/// ⭐⭐⭐ **5. RENOMEAR TUDO, com chaves — e nada se mexe.**
 ///
 /// É o que a wave inteira compra, e o inverso do que este smoke media até 31/08. ⚠️ **A fixtura
 /// carrega o fenómeno de propósito**: os nomes novos têm chaves lá dentro, que é o que a lei velha
 /// lia. *Com nomes limpos este passo ficaria verde sem provar nada.*
-fn step_6_rename_everything(app: &mut crate::App) {
+fn step_5_rename_everything(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else { return };
     let masters: Vec<u64> = {
         let mut q = gfx
@@ -234,8 +191,8 @@ fn step_6_rename_everything(app: &mut crate::App) {
         .entity_mut(ph2d_ecs::Entity::from_bits(live))
         .insert(ph2d_ecs::Name::new("Bob {Size=Nada}"));
     eprintln!(
-        "[fluxo] 6. renomeei as {} receitas e a copia, TODAS com chaves — o cartao abaixo tem de \
-         estar IGUAL ao do passo 5",
+        "[fluxo] 5. renomeei as {} receitas e a copia, TODAS com chaves — o cartao abaixo tem de \
+         estar IGUAL ao do passo 4",
         masters.len()
     );
 }

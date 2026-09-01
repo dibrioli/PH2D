@@ -1,29 +1,21 @@
-//! ⭐⭐⭐ **O VALOR de uma propriedade: escolher um, e RENOMEAR o vigente.**
+//! ⭐⭐ **Escolher a VERSÃO de uma instância** — o chip do cartão de propriedades.
 //!
-//! # ⛔⛔⛔ Ele tentou quatro vezes, e o app nunca o deixou
+//! # ⛔⛔⛔ O que este ficheiro já teve, e por que saiu (Enio, 2026-09-01)
 //!
-//! Report do Enio (2026-08-31): *«Que inferno!!!»* — depois de escrever `Canvas{Size=Big}` no nome
-//! de uma **cópia** pela quarta vez, à espera de que o botão passasse a dizer `Big`.
+//! Ele chegou a ter o campo que renomeia o valor de uma propriedade e o formulário de *Salvar
+//! Variação…*. As duas encarnações do mecanismo de propriedades foram recusadas pelo dono — a das
+//! chaves no nome em 31/08, a do dado + botão em 01/09 (*«não ficou bom e não funcionou»*) — e o
+//! mecanismo está **adiado para o fim do plano**.
 //!
-//! ⚠️ **O modelo estava certo as quatro vezes:** uma propriedade é do COMPONENTE, e a cópia
-//! herda-a. O defeito é outro, e é de fluxo: **autorar o valor obrigava a seleccionar OUTRO
-//! objecto** (a receita, escondida entre linhas quase iguais) do que aquele que se está a olhar.
-//! *O artista olha para o cartão, o valor está no cartão, e o sítio onde ele se muda estava noutra
-//! linha da Hierarquia.*
+//! ⚠️ **O código saiu inteiro; ele não ficou comentado nem atrás de bandeira.** *Meio-feito é pior
+//! que não começar*, e uma feature adiada que fica no fonte é a que volta sozinha.
 //!
-//! ⭐ **E o gesto não é novo: era um clique MORTO.** Carregar no chip já aceso era um no-op
-//! silencioso, e é exactamente onde o dedo dele estava. Hoje abre o campo.
-//!
-//! # ⚠️ Irmão do `event_anchor` e do `event_anim`, e pela mesma razão
-//!
-//! Ele precisa do `InspectorState` — *qual eixo está aberto* é estado de painel, não uma edição da
-//! cena —, e o `apply_event_impl` só vê o `host`.
+//! ⇒ o que resta é o gesto que já existia e ninguém recusou: **carregar num chip troca a versão**.
 
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
+use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::widget::TextInputState;
 
 use crate::state::InspectorState;
 
@@ -33,213 +25,19 @@ pub(crate) fn apply_value_event(
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> bool {
+    let _ = state;
     match ev {
-        WidgetEvent::Click(id) => save_click(state, host, id) || chip_click(state, host, id),
-        // ⚠️ **Enter e o clique-fora GRAVAM; o Esc abandona** — o idioma dos outros campos em
-        // linha desta casa. O `take` faz do segundo de um par `Submit`+`Blur` um no-op.
-        WidgetEvent::Submit(id) | WidgetEvent::Blur(id) if id == ids::INSP_INSTANCE_VALUE_EDIT => {
-            commit(state, host);
-            true
-        }
-        WidgetEvent::Cancel(id) if id == ids::INSP_INSTANCE_VALUE_EDIT => {
-            state.value_edit = None;
-            true
-        }
-        // ⭐ **Enter em qualquer campo do formulário GRAVA** — o artista escreve o nome e carrega
-        // em Enter; obrigá-lo a apontar ao botão seria o gesto a meio.
-        WidgetEvent::Submit(id)
-            if id == ids::INSP_INSTANCE_SAVE_VALUE
-                || id == ids::INSP_INSTANCE_SAVE_NEW_PROP
-                || id == ids::INSP_INSTANCE_SAVE_EXISTING =>
-        {
-            if let Some(info) = crate::state::current_inspector_properties() {
-                confirm(state, host, &info);
-            }
-            true
-        }
-        // ⚠️ **O Esc larga o formulário INTEIRO** — ele é um gesto só, e fechar um campo de cada
-        // vez deixaria o artista com dois campos órfãos.
-        WidgetEvent::Cancel(id)
-            if id == ids::INSP_INSTANCE_SAVE_VALUE
-                || id == ids::INSP_INSTANCE_SAVE_NEW_PROP
-                || id == ids::INSP_INSTANCE_SAVE_EXISTING =>
-        {
-            abandon(state, host.store_mut());
-            true
-        }
-        // ⛔ **O commit do NOME deixou de ter consequência** (Enio, 2026-09-01): aqui ficava a
-        // porta que fazia as chaves do nome valerem. A declaração é agora um componente da
-        // receita, e fechar o campo do nome só… renomeia.
+        WidgetEvent::Click(id) => chip_click(host, id),
         _ => false,
     }
 }
 
-/// ⭐⭐⭐ **Largar o campo sem gravar** — a porta que TODA saída anormal chama.
-///
-/// # ⛔⛔ O molde tem TRÊS portas destas, e a 1.ª versão não tinha NENHUMA
-///
-/// A auditoria de 2026-08-31 (A1/A3) mediu o preço: trocar a seleção deixava um campo com cara de
-/// focado e teclado morto; fechar o painel deixava um `TextInput` focado e **invisível a comer as
-/// teclas do app inteiro** — o defeito que o `paint_catalog_rename` do navegador de assets nomeia
-/// letra a letra e abandona por três portas (coluna colapsada · painel fechado · alvo sumido).
-///
-/// ⚠️ **O foco só se larga se for NOSSO** — largar o foco alheio roubaria a caixa que o artista
-/// acabou de clicar noutra secção.
-pub(crate) fn abandon(
-    state: &mut InspectorState,
-    store: &mut ph2d_editor_core::interaction::WidgetStore,
-) {
-    if state.value_edit.take().is_some() && store.focus_id() == Some(ids::INSP_INSTANCE_VALUE_EDIT)
-    {
-        store.set_focus(None);
-    }
-    // ⭐⭐⭐ **E o formulário de gravar também se larga** — ele tem TRÊS campos, e um deles focado
-    // num painel escondido come as teclas do app inteiro. *A cura tem de cobrir a família toda, e
-    // não só o campo que a auditoria calhou de nomear.*
-    if state.save_draft.take().is_some()
-        && store.focus_id().is_some_and(|f| {
-            f == ids::INSP_INSTANCE_SAVE_NEW_PROP
-                || f == ids::INSP_INSTANCE_SAVE_EXISTING
-                || f == ids::INSP_INSTANCE_SAVE_VALUE
-        })
-    {
-        store.set_focus(None);
-    }
-}
-
-/// ⭐⭐⭐ **Os cliques do gesto de GRAVAR** — abrir, escolher a propriedade, confirmar, desistir.
-///
-/// Devolve `true` quando o clique era desta família.
-fn save_click(
-    state: &mut InspectorState,
-    host: &mut dyn PanelHostInternal,
-    id: ph2d_a11y::NodeId,
-) -> bool {
-    let Some(info) = crate::state::current_inspector_properties() else {
-        return false;
-    };
-    if id == ids::INSP_INSTANCE_SAVE_VARIATION {
-        // ⛔ **A decisão de ABRIR lê a MESMA pergunta que a de GRAVAR** — sem modificação não há
-        // versão a criar, e um formulário que abre e nunca grava come trabalho em silêncio.
-        if info.pending == 0 {
-            return true;
-        }
-        // ⚠️ Sem propriedade nenhuma na família ele abre já em «nova» — não há o que escolher.
-        state.save_draft = Some(crate::state::SaveDraft {
-            entity_bits: info.entity_bits,
-            property: (!info.declared.is_empty()).then_some(0),
-        });
-        for f in [
-            ids::INSP_INSTANCE_SAVE_NEW_PROP,
-            ids::INSP_INSTANCE_SAVE_EXISTING,
-            ids::INSP_INSTANCE_SAVE_VALUE,
-        ] {
-            seed(host, f);
-        }
-        host.store_mut()
-            .set_focus(Some(ids::INSP_INSTANCE_SAVE_VALUE));
-        return true;
-    }
-    if id == ids::INSP_INSTANCE_UPDATE_VERSION {
-        host.bus_mut().push(EditorAction::InspectorVariation(
-            ph2d_editor_core::action_bus::VariationRequest::Update {
-                entity_bits: info.entity_bits,
-            },
-        ));
-        return true;
-    }
-    if id == ids::INSP_INSTANCE_SAVE_CANCEL {
-        abandon(state, host.store_mut());
-        return true;
-    }
-    if let Some(i) = ids::INSP_INSTANCE_SAVE_PROP.iter().position(|c| *c == id) {
-        if let Some(draft) = state.save_draft.as_mut() {
-            let shown = info.declared.len().min(ids::MAX_INSTANCE_AXES);
-            draft.property = (i < shown).then_some(i);
-        }
-        return true;
-    }
-    if id == ids::INSP_INSTANCE_SAVE_CONFIRM {
-        confirm(state, host, &info);
-        return true;
-    }
-    false
-}
-
-/// Abre um campo do formulário VAZIO.
-///
-/// ⚠️ **Vazio de propósito** — o nome da versão é o que o artista tem para dizer, e semear com o
-/// valor de outra versão convidaria a gravar uma repetida, que a porta recusa.
-fn seed(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) {
-    host.store_mut().register(
-        id,
-        InteractiveState::TextInput {
-            state: TextInputState::Focused,
-            text: String::new(),
-            caret: 0,
-            selection_anchor: None,
-        },
-    );
-    // O Esc aborta — quem o diz é o CAMPO, como no irmão do valor.
-    host.store_mut().mark_cancel_on_escape(id);
-}
-
-fn text_of(host: &dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> String {
-    match host.store().get(id) {
-        Some(InteractiveState::TextInput { text, .. }) => text.clone(),
-        _ => String::new(),
-    }
-}
-
-/// ⭐⭐⭐ **Confirmar** — publica o pedido e fecha o formulário.
-///
-/// ⚠️ **A IDENTIDADE decide**, como no campo de valor: o cartão vigente pode já ser de outro
-/// objecto. ⛔ E a validação de vazio mora na LEI (`variant_save::save_variation`), nunca aqui —
-/// duas respostas à mesma pergunta divergiriam no dia em que uma fosse corrigida.
-fn confirm(
-    state: &mut InspectorState,
-    host: &mut dyn PanelHostInternal,
-    info: &ph2d_editor_core::screens::hero::InspectorPropertiesInfo,
-) {
-    let Some(draft) = state.save_draft.take() else {
-        return;
-    };
-    if draft.entity_bits != info.entity_bits {
-        return;
-    }
-    let (property, existing) = match draft.property {
-        Some(i) => (
-            info.declared.get(i).cloned().unwrap_or_default(),
-            String::new(),
-        ),
-        None => (
-            text_of(host, ids::INSP_INSTANCE_SAVE_NEW_PROP),
-            text_of(host, ids::INSP_INSTANCE_SAVE_EXISTING),
-        ),
-    };
-    let value = text_of(host, ids::INSP_INSTANCE_SAVE_VALUE);
-    host.store_mut().set_focus(None);
-    host.bus_mut().push(EditorAction::InspectorVariation(
-        ph2d_editor_core::action_bus::VariationRequest::Save {
-            entity_bits: info.entity_bits,
-            property,
-            value,
-            existing,
-        },
-    ));
-}
-
-/// ⭐⭐ **O chip: trocar de versão, ou abrir o vigente para escrita.**
+/// ⭐⭐ **O chip: trocar de versão.**
 ///
 /// ⚠️ **O painel manda o `StableId` do mestre, e não o índice do chip.** O índice é uma posição
-/// numa lista que o construtor refaz por quadro; se ela reordenar entre o pintar e o clicar, o
-/// artista escolhe `Large` e recebe `Medium` — **sem erro nenhum**. *A identidade viaja; a posição
-/// fica no painel.*
-fn chip_click(
-    state: &mut InspectorState,
-    host: &mut dyn PanelHostInternal,
-    id: ids::NodeId,
-) -> bool {
+/// numa lista que o construtor refaz por quadro, e uma reordenação entre o pintar e o clicar
+/// escolheria a versão errada sem erro nenhum. *A identidade viaja; a posição fica no painel.*
+fn chip_click(host: &mut dyn PanelHostInternal, id: ids::NodeId) -> bool {
     // ⚠️ **A leitura inversa vem da PORTA** (`ids::instance_axis_option`), e ela vem ANTES do
     // estado: este braço corre em TODO clique do Inspector, e o `current_inspector_properties()`
     // **clona** o cartão inteiro. Perguntar primeiro o que custa 3 ns é a ordem certa das duas.
@@ -252,68 +50,9 @@ fn chip_click(
     let Some(choice) = info.rows.get(a).and_then(|ax| ax.options.get(v)) else {
         return false;
     };
-    // ⭐⭐⭐ **A combinação que não existe CRIA-SE** (plano §2.3-bis) — o chip com `+`.
-    //
-    // ⚠️ **Antes do braço do aceso e do da troca**, porque um chip em falta não é nem uma coisa
-    // nem outra: `master == 0` faria o `swap` não ter alvo, e sem este braço o clique seria mudo
-    // — o chip morto sob o dedo que as outras duas saídas evitam pior.
-    if choice.missing {
-        if info.root_bits != 0
-            && let Some(ax) = info.rows.get(a)
-        {
-            host.bus_mut().push(EditorAction::InspectorVariation(
-                ph2d_editor_core::action_bus::VariationRequest::Create {
-                    root_bits: info.root_bits,
-                    property: ax.name.clone(),
-                    value: choice.label.clone(),
-                },
-            ));
-        }
-        return true;
-    }
-    if choice.current {
-        // ⛔⛔ **No modo PLANO o chip aceso NÃO abre campo nenhum** (auditoria de 2026-08-31): o
-        // eixo plano não tem chave, então o `commit` recusaria — e um campo que abre, aceita
-        // texto e nunca grava é um controlo que come trabalho em silêncio. A decisão de ABRIR e a
-        // de GRAVAR têm de ler a MESMA pergunta.
-        if info.rows.get(a).is_none_or(|ax| ax.name.is_empty()) || choice.master == 0 {
-            return true;
-        }
-        // ⭐ **Nasce cheio e SELECCIONADO** — a lição do `CatalogHeroes`: um campo aberto por um
-        // gesto que diz *«muda isto»* já sabe que o artista quer OUTRO texto.
-        let seed = choice.label.clone();
-        host.store_mut().register(
-            ids::INSP_INSTANCE_VALUE_EDIT,
-            InteractiveState::TextInput {
-                state: TextInputState::Focused,
-                caret: seed.len(),
-                selection_anchor: Some(0),
-                text: seed,
-            },
-        );
-        host.store_mut()
-            .set_focus(Some(ids::INSP_INSTANCE_VALUE_EDIT));
-        // O Esc aborta — quem o diz é o CAMPO, não uma lista de ids dentro do `dispatch_key`.
-        host.store_mut()
-            .mark_cancel_on_escape(ids::INSP_INSTANCE_VALUE_EDIT);
-        state.value_edit = Some(crate::state::ValueEdit {
-            entity_bits: info.entity_bits,
-            axis: info
-                .rows
-                .get(a)
-                .map(|ax| ax.name.clone())
-                .unwrap_or_default(),
-        });
-        return true;
-    }
-    // ⚠️ **Trocar de versão FECHA o campo**: aberto sobre um valor que já não é o vigente, o
-    // `Blur` seguinte gravaria o texto na propriedade errada.
-    state.value_edit = None;
-    // ⛔ **Sem raiz não há a quem pedir a troca** — é o estado de um objecto que DECLARA
-    // propriedades sem ser cópia de nada. O cartão pinta essas fileiras como texto, então este
-    // braço não é alcançável pelo ponteiro; ele existe para que a ausência não vire um `root_bits`
-    // de `0` a viajar no barramento.
-    if info.root_bits == 0 || choice.master == 0 {
+    // ⛔ Carregar na versão vigente é um no-op — e a ausência de resposta é a resposta certa: o
+    // artista carregou no botão que diz onde ele já está.
+    if choice.current || choice.master == 0 || info.root_bits == 0 {
         return true;
     }
     host.bus_mut().push(EditorAction::InspectorSwapVariant {
@@ -321,49 +60,4 @@ fn chip_click(
         master: choice.master,
     });
     true
-}
-
-/// ⭐⭐⭐ **A gravação: o sujeito é a RECEITA, e a chave é o NOME DA FILEIRA.**
-///
-/// ⚠️ **Nada acontece sem os dois** — o eixo aberto tem de continuar a existir (o cartão refaz-se
-/// por quadro, e uma troca de selecção pode tê-lo levado) e ele tem de ter um vigente com mestre.
-/// *Um campo cujo alvo desapareceu abandona; ele não grava no que sobrou.*
-fn commit(state: &mut InspectorState, host: &mut dyn PanelHostInternal) {
-    let Some(edit) = state.value_edit.take() else {
-        return;
-    };
-    let Some(InteractiveState::TextInput { text, .. }) =
-        host.store().get(ids::INSP_INSTANCE_VALUE_EDIT)
-    else {
-        return;
-    };
-    let value = text.clone();
-    let Some(info) = crate::state::current_inspector_properties() else {
-        return;
-    };
-    // ⛔⛔⛔ **A IDENTIDADE decide, nunca a posição** (auditoria de 2026-08-31, achados A1/A5): o
-    // `Blur` chega com o snapshot VIGENTE, que pode já ser de OUTRO objecto (a seleção mudou) ou
-    // ter as fileiras reordenadas. Um índice gravava o texto de A na receita de B, ou na chave
-    // errada do mesmo A. ⇒ o campo só grava se o cartão ainda for da MESMA entidade e o eixo com
-    // AQUELE nome ainda existir; senão, ABANDONA — *um campo cujo alvo desapareceu não grava no
-    // que sobrou*.
-    if info.entity_bits != edit.entity_bits {
-        return;
-    }
-    let Some(axis) = info.rows.iter().find(|ax| ax.name == edit.axis) else {
-        return;
-    };
-    let Some(current) = axis.options.iter().find(|o| o.current) else {
-        return;
-    };
-    if axis.name.is_empty() || current.master == 0 {
-        return;
-    }
-    host.bus_mut()
-        .push(EditorAction::InspectorRenameVariantValue {
-            master: current.master,
-            key: axis.name.clone(),
-            value,
-            root_bits: info.root_bits,
-        });
 }

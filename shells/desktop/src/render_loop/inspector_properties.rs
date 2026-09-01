@@ -3,10 +3,9 @@
 //!
 //! # ⚠️ Quem DECLARA não é quem está selecionado
 //!
-//! Uma propriedade é do **componente**, não do exemplar: numa cópia a família lê-se a partir do
-//! MESTRE da raiz ([`ph2d_ecs::VariantValues`] de cada receita), e só quando não há mestre nenhum
-//! se olha para a própria entidade. *Perguntar ao exemplar faria uma cópia renomeada pelo artista
-//! («Bob») perder as propriedades que ela de facto tem.*
+//! A família é do **componente**, não do exemplar: numa cópia ela lê-se a partir do MESTRE da
+//! raiz, e só quando não há mestre nenhum se olha para a própria entidade. *Perguntar ao exemplar
+//! faria uma cópia renomeada pelo artista («Bob») perder a família a que ela pertence.*
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_editor::screens::hero::InspectorPropertiesInfo;
@@ -38,22 +37,7 @@ pub(super) fn build_properties_info(
         &members,
         root_master.or(subject).unwrap_or_default(),
     );
-    // ⭐⭐ **As propriedades DECLARADAS** — todas, mesmo as em que a família concorda: é a elas que
-    // o artista acrescenta o segundo valor, e uma propriedade sem duas respostas não é fileira.
-    let mut declared: Vec<String> = members
-        .iter()
-        .flat_map(|m| m.values.keys().cloned())
-        .collect();
-    declared.sort_unstable();
-    declared.dedup();
-    // ⭐⭐⭐ **O que há por gravar** — as excepções da RAIZ da cópia (ADR-0164 / F4.4).
-    let pending = root
-        .and_then(|r| sim.world().get::<ph2d_ecs::ObjectInstance>(r))
-        .map_or(0, |o| o.overrides.len());
-    // ⚠️ **O cartão existe se houver fileira OU algo por gravar** — sem esta segunda metade, a
-    // PRIMEIRA variação de uma família seria inalcançável: uma receita sozinha não tem fileira
-    // nenhuma, e é exactamente aí que o artista precisa do botão.
-    if rows.is_empty() && pending == 0 {
+    if rows.is_empty() {
         return None;
     }
     Some(InspectorPropertiesInfo {
@@ -62,20 +46,7 @@ pub(super) fn build_properties_info(
         // Nesse estado nenhuma fileira tem mais de um valor, então nem chega a haver chip.
         root_bits: root.map_or(0, Entity::to_bits),
         beyond,
-        pending,
-        // ⚠️ **UMA fonte para o nome da versão**: o valor vigente da 1.ª propriedade declarada, e
-        // o `Name` da receita quando ela não declara nada. Decidir isto aqui E no pintor seriam
-        // dois sítios a discordar sobre como a versão se chama.
-        follows: rows
-            .iter()
-            .find(|r| !r.name.is_empty())
-            .and_then(|r| r.options.iter().find(|o| o.current))
-            .map(|o| o.label.clone())
-            .or_else(|| {
-                root_master.and_then(|id| super::inspector_instance::master_named(sim, id))
-            }),
         rows,
-        declared,
         // ⭐⭐⭐ **O nome do objecto SELECIONADO, como a Hierarquia o mostra** (report do Enio,
         // 2026-08-31: *«Properties of "Nome do objeto na Hierarquia"»*).
         //

@@ -164,10 +164,9 @@ pub(crate) fn make_master(
     if let Some(base_id) = base_link {
         let base_name = master_named(sim, base_id).unwrap_or_else(|| "Prefab".to_string());
         // ⚠️ **O nome é só um NOME** (Enio, 2026-09-01): o sufixo `Variant` é o idioma do Unity e
-        // serve de rótulo no modo plano. ⛔ A DECLARAÇÃO (`Size = Big`) não se escreve aqui — ela é
-        // [`ph2d_ecs::VariantValues`], e quem a escreve é a porta com o nome que o artista deu
-        // ([`crate::variant_save::save_variation`]). *Foi pôr a declaração no nome que obrigou todo
-        // gesto a reescrevê-lo, e custou seis reports.*
+        // serve de rótulo do chip. ⛔ **Nada de propriedades aqui** — o mecanismo (`Size = Big`) foi
+        // recusado duas vezes e está adiado para o fim do plano. *Foi pôr a declaração no nome que
+        // obrigou todo gesto a reescrevê-lo, e custou seis reports.*
         let vname =
             crate::name_unique::unique_name_excluding(sim, &format!("{base_name} Variant"), entity);
         sim.world_mut().entity_mut(entity).insert(Name::new(vname));

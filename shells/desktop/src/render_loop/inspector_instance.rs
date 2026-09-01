@@ -105,12 +105,10 @@ pub(crate) fn family_members(
         members.push(ph2d_editor::screens::hero::variant_axes::VariantMember {
             master: id,
             name: master_named(sim, id).unwrap_or_else(|| "component".to_string()),
-            // ⭐⭐⭐ **A DECLARAÇÃO vem do componente, não do nome** (Enio, 2026-09-01).
-            values: crate::variant_save::values_of(sim, id),
         });
     }
-    // ⭐⭐ **A ESTRUTURA sai daqui e a LEI sai de lá.** O shell responde *«quem é da família»* (elos
-    // e declarações no mundo) e o `variant_axes` responde *«que perguntas ela faz»*. ⚠️ Separá-las é o
+    // ⭐⭐ **A ESTRUTURA sai daqui e a LEI sai de lá.** O shell responde *«quem é da família»*
+    // (os elos no mundo) e o `variant_axes` responde *«o que ela oferece»*. ⚠️ Separá-las é o
     // que torna a lei testável sem um mundo — e é o que a deixa sobreviver ao apagar do sistema
     // vetorial, de onde ela veio.
     members

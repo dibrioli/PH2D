@@ -42,11 +42,6 @@ pub(crate) fn sync_inspector_from_snapshots(
     let ppm = host.project().pixels_per_meter;
     let pos_for_display = |m: f32| display_unit.from_meters(m, ppm) as f64;
     if entity_changed {
-        // ⛔⛔ **A troca de seleção LARGA o campo de valor** (auditoria de 2026-08-31, A1/A2): sem
-        // isto ele hibernava com o texto do objecto antigo, reabria sozinho quando ele voltava, e
-        // um `Blur` tardio gravava o texto de A na receita de B. O `commit` também confere a
-        // identidade — as duas metades, porque a cerca fica no lado perigoso E na porta.
-        crate::event_value::abandon(inspector_state, host.store_mut());
         host.store_mut().set_focus(None);
         let _ = host.store_mut().end_number_input_drag();
         host.store_mut().end_number_stepper_hold();

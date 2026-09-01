@@ -9,9 +9,6 @@
 //! shared across panels / chrome layers and are not Inspector-specific.
 
 use ph2d_editor_core::ids;
-
-#[path = "populate_instance.rs"]
-mod populate_instance;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::widget::{
     ButtonState, CheckboxState, CheckboxValue, DropdownState, SliderOrientation, SliderState,
@@ -38,7 +35,20 @@ pub fn populate(store: &mut WidgetStore) {
             state: ph2d_editor_core::widget::ButtonState::Normal,
         },
     );
-    populate_instance::populate(store);
+    // ⭐ **Os chips da fileira de VERSÕES** — a única superfície do cartão desde que o mecanismo
+    // de propriedades foi adiado (2026-09-01).
+    //
+    // ⛔⛔ **Focabilidade.** Um widget pintado e no hit-index continua **morto sob o ponteiro** se
+    // não estiver aqui — foi assim que o botão *Salvar Variação…* nasceu, e quem o apanhou foi o
+    // `seam_properties`, na primeira corrida. *Pintado e registado não é vivo.*
+    for &id in ids::INSP_INSTANCE_AXIS_OPTION.iter().flatten() {
+        store.register(
+            id,
+            ph2d_editor_core::interaction::InteractiveState::Button {
+                state: ph2d_editor_core::widget::ButtonState::Normal,
+            },
+        );
+    }
     populate_transform_editor(store);
     populate_visibility_editor(store);
     populate_render_strategy(store);

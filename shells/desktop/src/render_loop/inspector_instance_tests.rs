@@ -416,8 +416,8 @@ fn the_card_calls_a_variant_a_variant_and_a_copy_a_copy() {
 ///
 /// Até 31/08 ela **cortava** as chaves (`Canvas {Size=Small} Variant` → `Canvas Variant`), porque
 /// a declaração vivia no nome e a frase inteira quebrava em duas linhas num cartão cuja altura é
-/// contada em linhas de texto. Hoje a declaração é [`ph2d_ecs::VariantValues`] e ⇒ **não há nada a
-/// cortar**: um nome comprido é agora escolha do artista, e comer-lhe pedaços seria o app a
+/// contada em linhas de texto. O mecanismo de propriedades foi recusado e está adiado ⇒ **não há
+/// nada a cortar**: um nome comprido é escolha do artista, e comer-lhe pedaços seria o app a
 /// corrigir o que ele escreveu.
 ///
 /// ⚠️ **A fixtura carrega chaves de propósito** — é o que a lei velha comia. Com um nome limpo

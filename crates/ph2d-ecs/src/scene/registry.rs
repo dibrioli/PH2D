@@ -346,10 +346,6 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // ⭐ **Os OVERRIDES** (ADR-0164 / F4.2..F4.4) — autoria pura: sem eles um projeto reaberto
     // perde toda excepção que o artista fez numa instância, e o sync achata-as no quadro seguinte.
     reg.register_default::<crate::ObjectInstance>("ph2d::ecs::ObjectInstance");
-    // ⭐⭐⭐ **A DECLARAÇÃO de uma receita** (`Size` → `Big`) — autoria pura, e a substituta das
-    // chaves no nome (Enio, 2026-09-01). Sem esta linha um projeto reaberto perde as propriedades
-    // de toda a família **em silêncio**, e o cartão desce ao modo plano sem que nada o diga.
-    reg.register_default::<crate::VariantValues>("ph2d::ecs::VariantValues");
     // ⭐ **A cópia LIGADA** (Enio 2026-08-27, o *Duplicate Linked* do Blender) — autoria: qual das
     // duas leis esta cópia segue é uma escolha do artista no gesto, e um projeto reaberto que a
     // perdesse passaria a guardar as edições dela como excepções em vez de as levar às irmãs.

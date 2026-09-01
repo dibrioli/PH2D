@@ -349,12 +349,23 @@ impl Derived {
     /// dá desvio `2,1 %` como ponta contra `8,8 %` como refinador — o modelo exponencial
     /// **piora-o**, que é exactamente o que a nota do limiar já dizia sobre o Tree e o Wild.
     pub(crate) fn grows_by_refining(&self) -> bool {
-        !self.previous.is_empty()
-            && !self
-                .chain
-                .iter()
-                .any(|m| m.born != self.generations && crate::turtle::draws(m.sym))
+        !self.previous.is_empty() && refines_at(&self.chain, self.generations)
     }
+}
+
+/// O espreitador de [`derive_recording`]: `(cadeia da geração, cadeia anterior, geração)`.
+pub(crate) type Peek<'a> = dyn FnMut(&[Module], &[Module], u16) + 'a;
+
+/// **Sobrou algum módulo VELHO que desenha?** — a pergunta da família, sobre UMA cadeia.
+///
+/// ⚠️ Ela vive fora da [`Derived`] para a [`crate::growth::size_ladder`] a poder fazer **a cada
+/// geração** enquanto deriva: a densidade da escada é função da família, e uma segunda cópia
+/// deste predicado responderia diferente no dia em que ele mudasse. *Um predicado é uma porta,
+/// não uma expressão.*
+pub(crate) fn refines_at(chain: &[Module], step: u16) -> bool {
+    !chain
+        .iter()
+        .any(|m| m.born != step && crate::turtle::draws(m.sym))
 }
 
 /// **Deriva `gens` gerações** a partir de `axiom`, parando ao fim do orçamento.
@@ -366,6 +377,25 @@ pub(crate) fn derive(
     budget: usize,
     params: &dyn Fn(&str) -> f32,
 ) -> Derived {
+    derive_recording(axiom, rules, gens, seed, budget, params, &mut |_, _, _| {})
+}
+
+/// **A MESMA derivação, com um espreitador a cada geração inteira** — a porta pela qual a
+/// [`crate::growth`] constrói a escada de tamanhos.
+///
+/// ⚠️⚠️ **A `derive` delega AQUI de propósito.** Uma segunda função com o mesmo laço seria uma
+/// segunda derivação, e as duas responderiam diferente no dia em que o orçamento saturasse numa
+/// e não na outra — que é precisamente o caso em que a escada importa. *Uma lei escrita em dois
+/// sítios ainda não é uma lei.*
+pub(crate) fn derive_recording(
+    axiom: &[Module],
+    rules: &[Rule],
+    gens: u16,
+    seed: u32,
+    budget: usize,
+    params: &dyn Fn(&str) -> f32,
+    peek: &mut Peek<'_>,
+) -> Derived {
     let mut chain: Vec<Module> = axiom.to_vec();
     chain.truncate(budget);
     let mut done = 0u16;
@@ -376,6 +406,7 @@ pub(crate) fn derive(
                 Some(next) => {
                     previous = std::mem::replace(&mut chain, next);
                     done = step;
+                    peek(&chain, &previous, step);
                 }
                 None => break,
             }

@@ -449,32 +449,136 @@ fn dragging_the_growth_slider_is_even_for_the_grammars_that_multiply() {
     assert!(seen >= 4, "so' {seen} gramaticas de refinamento no corpus");
 }
 
-/// ⭐⭐⭐ **E A REMAPAGEM NÃO TOCA EM QUEM CRESCE PELA PONTA** — a metade que uma barra sobre a
-/// ondulação nunca poderia afirmar.
+/// ⛔⛔⛔ **ESTE GATE AFIRMAVA O CONTRÁRIO, E A MEDIÇÃO REFUTOU-O (2026-08-31).**
 ///
-/// ⚠️ Uma gramática cuja razão CONVERGE (`1,63 → 1,06`) não é exponencial, e remapeá-la
-/// **piora-a**: medido, o Tree foi de `0,5×` para `0,8×` e o Wild de `1,8×` para `2,2×` quando
-/// o discriminador as apanhava. Aqui a inércia é afirmada como uma **identidade**: para elas,
-/// `Growth = t` tem de dar exactamente `Generations = 1 + (G−1)·t`, que é a rampa linear.
+/// Ele dizia *«a remapagem NÃO toca em quem cresce pela ponta»*, e afirmava a inércia como uma
+/// **identidade ao bit**. A justificação escrita nele era: *«remapeá-la piora-a — o Tree foi de
+/// `0,5×` para `0,8×` e o Wild de `1,8×` para `2,2×`»*.
+///
+/// ⚠️⚠️ **Aqueles números mediam ONDULAÇÃO, que é SUAVIDADE — e a pergunta é a LINEARIDADE.**
+/// Report do Enio, depois da lei do recém-nascido: *"está mais suave mas não é perfeitamente
+/// linear"*. As duas são coisas diferentes (a 1.ª é a ausência de degraus, a 2.ª é a derivada
+/// ser constante), e medida a segunda os quatro moldes de ponta iam **`+6,9 %` a `+21,3 %`**
+/// adiantados a meio do arrasto — porque **ninguém os linearizava**.
+///
+/// ⇒ A lei nova ([`growth::size_ladder`]) mede a escada de tamanhos e inverte-a, e serve as
+/// DUAS famílias. Medido, o desvio da recta:
+///
+/// | molde | sem remapagem | com a escada | razão |
+/// |---|---|---|---|
+/// | `Tree` | `11,08 %` | **`0,17 %`** | `0,015` |
+/// | `Fern` | `7,09 %` | **`0,12 %`** | `0,017` |
+/// | `Wild` | `20,20 %` | **`0,11 %`** | `0,006` |
+/// | `Sprig` | `10,98 %` | **`1,35 %`** | `0,123` |
+///
+/// ⚠️ **O `Sprig` é o pior dos quatro, e a causa está medida: a FIGURA dele tem um PATAMAR.** A
+/// ponta mais alta da planta é um galho LATERAL, e o rebento novo tem de o ultrapassar antes de
+/// a silhueta crescer — no primeiro quarto de cada geração o `y` máximo fica preso em `0,6903`
+/// enquanto a **tinta** cresce a passo constante. ⛔ Um intervalo plano **não é invertível**, e
+/// colapsá-lo faria `20 %` da tinta aparecer de uma vez — o defeito que a lei do recém-nascido
+/// acabou de curar. *A cura de uma régua seria o defeito da outra.* ⇒ a escada tem `3`
+/// sub-degraus por geração para quem cresce pela ponta (o último valor antes de o patamar a
+/// tornar ambígua) e **descarta o degrau que não sobe**, ficando localmente mais grossa onde a
+/// curva é plana.
+///
+/// *Uma recusa medida responde UMA pergunta; esta respondeu à errada durante dois dias.*
 #[test]
-fn the_remap_leaves_the_tip_growers_exactly_where_they_were() {
+fn the_remap_straightens_the_tip_growers_it_used_to_leave_bent() {
+    /// O maior afastamento da recta que une as duas pontas, em fracção do arrasto.
+    fn bend(hs: &[f32]) -> f32 {
+        let (a, b) = (hs[0], hs[hs.len() - 1]);
+        if (b - a).abs() < 1e-9 {
+            return f32::MAX;
+        }
+        hs.iter()
+            .enumerate()
+            .map(|(k, h)| ((h - a) / (b - a) - k as f32 / (hs.len() - 1) as f32).abs())
+            .fold(0.0f32, f32::max)
+    }
+    const N: usize = 24;
+    // A barra: medido, a razão `com ÷ sem` é `0,006`–`0,017` em três moldes e **`0,123`** no
+    // `Sprig` (o do patamar). `0,3` fica `2,4×` acima do pior medido e bem abaixo de `1,0`, que
+    // é «a remapagem não fez nada».
+    const BAR: f32 = 0.3;
     let mut seen = 0usize;
     for p in ls::PRESETS.iter().filter(|p| !is_refiner(p)) {
         seen += 1;
-        for k in 1..8 {
-            let t = k as f32 / 8.0;
-            let via_growth = at(p, p.generations, &[(ls::param::GROWTH, t)]);
-            let linear = at(p, 1.0 + (p.generations - 1.0) * t, &[]);
-            assert_eq!(
-                via_growth.to_bits(),
-                linear.to_bits(),
-                "{} em t = {t}: o Growth remapeou uma gramatica que CONVERGE — ela nao e' \
-                 exponencial, e o logaritmo piora-a",
+        let com = bend(&full_drag(p));
+        let sem: Vec<f32> = (0..=N)
+            .map(|k| {
+                let t = k as f32 / N as f32;
+                at(p, 1.0 + (p.generations - 1.0) * t, &[])
+            })
+            .collect();
+        let sem = bend(&sem);
+        println!(
+            "{:8} sem remapagem {:+.4}  com a escada {:+.4}  razão {:.3}",
+            p.label,
+            sem,
+            com,
+            com / sem
+        );
+        assert!(
+            com < sem * BAR,
+            "{}: a escada deixa o arrasto a {com:.4} da recta contra {sem:.4} sem ela \
+             (razão {:.3}, barra {BAR}) — a remapagem deixou de endireitar quem cresce pela ponta",
+            p.label,
+            com / sem,
+        );
+    }
+    assert!(seen >= 4, "so' {seen} gramaticas de ponta no corpus");
+}
+
+/// ⭐⭐⭐ **A ESCADA É MEDIDA COM A SEMENTE DO ARTISTA** — e este gate nasce de um defeito real.
+///
+/// ⚠️ A 1.ª redacção da [`growth::size_ladder`] derivava com a semente `1` fixa. Numa gramática
+/// **estocástica** a semente escolhe a planta, então a escada media **outra planta** e o remap
+/// punha o arrasto na recta de uma figura que ninguém vê. Medido no `Wild` (o único molde do
+/// corpus com pesos): `−7,69 %` de desvio com a semente fixa, **`−0,29 %`** com a certa.
+///
+/// ⛔ As gramáticas determinísticas são byte-idênticas a qualquer semente — é por isso que este
+/// defeito tinha **um** sujeito no corpus, e por isso que o gate tem de o procurar pela
+/// PROPRIEDADE (a escada muda com a semente) e não pelo nome do molde.
+#[test]
+fn the_size_ladder_is_measured_with_the_artists_seed() {
+    let mut sensitive = 0usize;
+    for p in ls::PRESETS {
+        let framing = |seed: f32| {
+            vec![
+                (ls::param::MODE, ls::MODE_GRAMMAR as f32),
+                (ls::param::ANGLE, p.angle),
+                (ls::param::STEP, p.step),
+                (ls::param::WIDTH, p.width),
+                (ls::param::SEED, seed),
+            ]
+        };
+        let a = ls::probe_size_ladder(p.axiom, p.rules, p.generations, &framing(1.0));
+        let b = ls::probe_size_ladder(p.axiom, p.rules, p.generations, &framing(7.0));
+        if a.len() == b.len() && a.iter().zip(&b).any(|(x, y)| x.to_bits() != y.to_bits()) {
+            sensitive += 1;
+            // ⭐ E a metade que fecha o laço: o ARRASTO também tem de mudar com a semente. Uma
+            // escada sensível cuja inversão não chegasse ao produto seria a mesma cegueira.
+            let mut o = framing(7.0);
+            o.push((ls::param::GROWTH, 0.5));
+            let com = ls::probe_build(p.axiom, p.rules, p.generations, &o);
+            let mut o1 = framing(1.0);
+            o1.push((ls::param::GROWTH, 0.5));
+            let outra = ls::probe_build(p.axiom, p.rules, p.generations, &o1);
+            assert_ne!(
+                size(&com).to_bits(),
+                size(&outra).to_bits(),
+                "{}: a escada e' sensivel a' semente e o arrasto nao — a inversao esta' a usar \
+                 outra escada",
                 p.label
             );
         }
     }
-    assert!(seen >= 4, "so' {seen} gramaticas de ponta no corpus");
+    // ⚠️ **O CONTROLE**: sem um molde estocástico no corpus este gate varre o nada e responde
+    // «está tudo bem» para sempre.
+    assert!(
+        sensitive >= 1,
+        "nenhum molde do corpus e' estocastico — o gate da semente varreu o vazio"
+    );
 }
 
 /// ⭐⭐ **`Growth = 1` É O NO-OP EXACTO** — e é isso que torna o param aditivo.
@@ -765,4 +869,139 @@ fn hanging_a_leaf_on_a_grammar_does_not_change_its_growth_family() {
         refiners += usize::from(refines);
     }
     assert_eq!(refiners, 2, "o oraculo tem de povoar as DUAS familias");
+}
+
+/// ⭐⭐⭐ **O ARRASTO INTEIRO É UMA RECTA, PARA TODO O CORPUS** — o gate do report de
+/// 2026-08-31 (*"está mais suave mas não é perfeitamente linear"*).
+///
+/// ⚠️ **É outra pergunta que a do irmão `dragging_the_growth_slider_is_even_…`**, que mede
+/// ONDULAÇÃO — a razão entre o maior e o menor passo. Ondulação é **suavidade**; esta é
+/// **linearidade**, o afastamento da recta. Um arrasto pode ser perfeitamente suave e estar
+/// `21 %` adiantado a meio, que foi exactamente o que o `Wild` fazia.
+///
+/// ⚠️ Barra derivada dos dois lados: com a escada o pior do corpus é **`1,35 %`** (`Sprig`, o
+/// do patamar) e o segundo pior `0,46 %`; sem ela o corpus ia de **`3,8 %`** (`Dragon`) a
+/// **`21,3 %`** (`Wild`). A barra fica em **`2,5 %`** — `1,9×` acima do pior medido e `1,5×`
+/// abaixo do defeito mais fraco.
+#[test]
+fn the_whole_growth_drag_is_a_straight_line_for_every_preset() {
+    fn bend(hs: &[f32]) -> f32 {
+        let (a, b) = (hs[0], hs[hs.len() - 1]);
+        if (b - a).abs() < 1e-9 {
+            return f32::MAX;
+        }
+        hs.iter()
+            .enumerate()
+            .map(|(k, h)| ((h - a) / (b - a) - k as f32 / (hs.len() - 1) as f32).abs())
+            .fold(0.0f32, f32::max)
+    }
+    const BAR: f32 = 0.025;
+    for p in ls::PRESETS {
+        let d = bend(&full_drag(p));
+        println!("{:8} desvio da recta {:.4}", p.label, d);
+        assert!(
+            d < BAR,
+            "{}: o arrasto do Growth afasta-se {d:.4} da recta (barra {BAR}) — \
+             a inversão da escada de tamanhos deixou de o endireitar",
+            p.label
+        );
+    }
+}
+
+/// ⭐⭐⭐ **UMA PLANTA CUJO TAMANHO FICA PARADO UMA GERAÇÃO INTEIRA** — a fixtura que contém o
+/// fenómeno que a rede do patamar defende.
+///
+/// ⛔⛔ **Ela existe porque a mutação SOBREVIVEU.** Apagar o filtro que descarta um degrau que
+/// não sobe deixava os 125 testes verdes: **nenhum molde do corpus tem um patamar mais largo do
+/// que `1/3` de geração**, que é a densidade da escada. Uma guarda sem sujeito é uma afirmação.
+///
+/// ⚠️ **A fixtura é construída pelo MECANISMO, não por afinação:** a ponta mais alta de um
+/// `Sprig` é um galho LATERAL, e o rebento novo só faz a silhueta crescer depois de o
+/// ultrapassar. Com galhos de `0,9·s` e um rebento de `0,8·s`, o rebento **nunca** o ultrapassa
+/// dentro de uma geração ⇒ o patamar cobre a geração inteira.
+///
+/// O que se afirma é a propriedade de que a inversão depende: **a escada SOBE sempre**, e o
+/// arrasto **nunca recua**.
+#[test]
+fn a_plant_whose_size_stalls_for_a_whole_generation_still_drags_forward() {
+    const AXIOM: &str = "A(step)";
+    const RULES: &str = "A(s) -> F(s)[+F(s*0.9)J][-F(s*0.9)J]!A(s*0.8)";
+    let ov = [
+        (ls::param::MODE, ls::MODE_GRAMMAR as f32),
+        (ls::param::ANGLE, 25.0),
+        (ls::param::STEP, 0.5),
+    ];
+    let ladder = ls::probe_size_ladder(AXIOM, RULES, 5.0, &ov);
+    assert!(
+        ladder.len() >= 3,
+        "a escada saiu com {} degraus — a fixtura nao cresceu",
+        ladder.len()
+    );
+    for w in ladder.windows(2) {
+        assert!(
+            w[1] > w[0],
+            "a escada NAO sobe ({:?}) — a rede do patamar deixou passar um degrau plano, e a \
+             inversao dele nao tem resposta unica",
+            ladder
+        );
+    }
+    // ⭐ E a metade que fecha o laço: a propriedade tem de chegar ao PRODUTO.
+    let mut prev = 0.0f32;
+    for k in 0..=24 {
+        let mut o = ov.to_vec();
+        o.push((ls::param::GROWTH, k as f32 / 24.0));
+        let w = at_raw(AXIOM, RULES, 5.0, &o);
+        assert!(
+            w >= prev - 1e-6,
+            "o arrasto RECUOU em t = {}: {prev:.5} -> {w:.5}",
+            k as f32 / 24.0
+        );
+        prev = w;
+    }
+}
+
+/// ⭐⭐ **O `Step Scale` entra na escada** — a segunda mutação sobrevivente, e pela mesma causa:
+/// os oito moldes do corpus deixam-no no default `1,0`, onde `powf` devolve `1,0` ao bit e o
+/// factor é **inerte**. *Um corpus inteiro no ponto neutro de um param não testa esse param.*
+///
+/// Com `Step Scale = 0,5` a `Koch` cresce `3 × 0,5 = 1,5` por geração em vez de `3`. Uma escada
+/// que ignorasse o factor mediria a curva `3^k` e poria o arrasto na recta de uma figura que o
+/// produto não desenha.
+#[test]
+fn the_step_scale_reaches_the_size_ladder() {
+    let koch = ls::PRESETS.iter().find(|p| p.label == "Koch").unwrap();
+    let ov = [
+        (ls::param::MODE, ls::MODE_GRAMMAR as f32),
+        (ls::param::ANGLE, koch.angle),
+        (ls::param::STEP, koch.step),
+        (ls::param::STEP_SCALE, 0.5),
+    ];
+    let hs: Vec<f32> = (0..=24)
+        .map(|k| {
+            let mut o = ov.to_vec();
+            o.push((ls::param::GROWTH, k as f32 / 24.0));
+            at_raw(koch.axiom, koch.rules, koch.generations, &o)
+        })
+        .collect();
+    let (a, b) = (hs[0], hs[hs.len() - 1]);
+    assert!(b > a * 1.2, "a fixtura nao cresce: {hs:?}");
+    let bend = hs
+        .iter()
+        .enumerate()
+        .map(|(k, h)| ((h - a) / (b - a) - k as f32 / 24.0).abs())
+        .fold(0.0f32, f32::max);
+    // ⚠️ Barra derivada dos TRÊS pontos MEDIDOS: `0,3737` com a lei de 2026-08-29 · `0,1540`
+    // com a escada de um degrau por geração · **`0,0244`** com os sub-degraus. A média
+    // geométrica das duas últimas é `0,061`, e a barra fica em **`0,06`** — `2,5×` acima do
+    // medido e `2,6×` abaixo do defeito mais fraco.
+    println!("Koch com Step Scale = 0,5: desvio da recta {bend:.4}");
+    assert!(
+        bend < 0.06,
+        "com Step Scale = 0,5 o arrasto afasta-se {bend:.4} da recta — o factor nao chegou a' escada"
+    );
+}
+
+/// O tamanho de uma gramática ARBITRÁRIA (a fixtura não é um molde do corpus).
+fn at_raw(axiom: &str, rules: &str, g: f32, over: &[(&str, f32)]) -> f32 {
+    size(&ls::probe_build(axiom, rules, g, over))
 }

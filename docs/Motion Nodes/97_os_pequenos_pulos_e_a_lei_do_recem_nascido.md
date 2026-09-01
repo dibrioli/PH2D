@@ -7,6 +7,10 @@
 > passou de **`67 %`** para **`0,27 %`**, e o discriminador salto/movimento passou de `0,966×`
 > (descontinuidade pura) para `0,125×` (o valor **teórico** de movimento). Seis dos oito moldes
 > saem **byte-idênticos**.
+>
+> ⭐ **E o report SEGUINTE, no mesmo dia** — *"está mais suave mas não é perfeitamente linear"* —
+> é a **§10**: outra lei, outra causa (duas, uma por família), e o desvio da recta cai de
+> **`+21,3 %`** para **`≤1,35 %`** no corpus inteiro.
 
 ---
 
@@ -273,6 +277,108 @@ desenhavam.
 
 ---
 
+## §10 — E o report seguinte: *"está mais suave mas não é perfeitamente linear"*
+
+> **Enio, 2026-08-31**, depois de smokar a lei do recém-nascido.
+
+⚠️⚠️ **Suave e linear são coisas diferentes, e ele nomeou a distinção.** A primeira é a ausência
+de degraus (a derivada existe); a segunda é a derivada ser **constante**. A lei do §5 curou a
+primeira; esta é a segunda.
+
+### 10.1 — Medido: DUAS causas, uma por família
+
+A régua é o desvio do tamanho em relação à recta que une as duas pontas do arrasto
+(`probe_pops.rs --linear`), e a coluna que decide é **onde** o desvio está:
+
+| família | desvio **na fronteira** de geração | no MEIO |
+|---|---|---|
+| refinam (`Koch`, `Bush`, `Weed`, `Dragon`) | **`−0,3 %`** ⇒ acerta | **`+9,5 %`** |
+| ponta (`Tree`, `Fern`, `Wild`, `Sprig`) | **`+7,2 %` · `+10,9 %` · `+8,3 %`** | idem |
+
+⭐⭐ **Quem refina erra DENTRO da geração e acerta nas inteiras — é a composição de duas leis.**
+O remap resolvia `g` supondo `tamanho = r^g`; o `build` entrega a **CORDA** entre `r^k` e
+`r^{k+1}`, porque a normalização dele é linear em `frac`. Uma corda está sempre **acima** da
+exponencial que une os mesmos dois pontos: a `r = 3`, a meio, `(1 + 2)/√3 = 1,155` ⇒ **`+15,5 %`**
+local. *Duas leis, cada uma certa sozinha.*
+
+⭐⭐ **Quem cresce pela PONTA erra nas PRÓPRIAS gerações inteiras — ninguém os linearizava.** A
+`measure_ratio` devolvia `1,0` para eles, o remap virava a rampa linear em `g`, e o tamanho deles
+é **côncavo** (a razão converge para `1`).
+
+⚠️⚠️ **E a nota que justificava essa isenção mediu a régua ERRADA.** Ela dizia *«o modelo
+exponencial piora-os — o Tree foi de `0,5×` para `0,8×` de ondulação»* — e **ondulação é
+suavidade**. *A recusa respondeu a outra pergunta, e viveu dois dias como se tivesse respondido a
+esta.*
+
+### 10.2 — A cura: inverter o que o produto ENTREGA, medido
+
+⛔ Nenhum modelo — nem exponencial, nem convergente, nem limiar. Mede-se a **escada de tamanhos**
+(`growth::size_ladder`: o tamanho em cada `g` da grelha) e **inverte-se**. A mesma lei serve as
+duas famílias, e a densidade da escada sai da **família**, medida na própria cadeia
+(`derive::refines_at`):
+
+| família | degraus por geração | porquê |
+|---|---|---|
+| refina, `Step Scale = 1` | **1** | a normalização já força a corda ⇒ um degrau descreve-a a `±0,02 %` |
+| cresce pela ponta | **3** | não há normalização; a curva curva-se dentro da geração |
+| refina, `Step Scale ≠ 1` | **3** (2 travessias cada) | o `build` mede as duas pontas no factor do instante ⇒ a corda entre degraus não é a curva |
+
+### 10.3 — O que a medição deu
+
+| molde | desvio da recta ANTES | DEPOIS |
+|---|---|---|
+| `Tree` | `+11,00 %` | **`−0,26 %`** |
+| `Fern` | `+6,88 %` | **`+0,11 %`** |
+| `Bush` | `+9,75 %` | **`+0,01 %`** |
+| `Weed` | `+5,73 %` | **`+0,02 %`** |
+| `Wild` | `+21,33 %` | **`+0,13 %`** |
+| `Koch` | `+9,76 %` | **`−0,01 %`** |
+| `Dragon` | `+3,76 %` | **`−0,46 %`** |
+| `Sprig` | `+14,17 %` | **`+1,35 %`** |
+
+**Custo** (`probe_cost.rs`, load `1,1`): arrastar o `Growth` custa `0,017`–`0,085 ms` em sete
+moldes e **`0,628 ms` no `Dragon`** (`3,8 %` de um quadro), e só enquanto o slider está abaixo de
+`1`. ⭐ É **mais barato** que a lei que substituiu: o Bush ia a `1,124 ms` e a Koch a `0,995 ms`,
+porque aquela derivava sempre até `g = 6` — a escada deriva até ao **topo do arrasto**, que é
+`4` neles. ⏳ O `Dragon` é a excepção (`0,226 → 0,628`): ali o topo é `12`.
+
+### 10.4 — Três defeitos que só a construção revelou
+
+1. ⛔ **A escada derivava com a semente `1` fixa.** Numa gramática **estocástica** a semente
+   escolhe a planta ⇒ a escada media **outra planta**. Medido no `Wild` (o único do corpus com
+   pesos): `−7,69 %` → **`−0,29 %`**. *As determinísticas são byte-idênticas a qualquer semente,
+   e é por isso que o defeito tinha um sujeito só.*
+2. ⛔⛔ **O `Sprig` tem um PATAMAR, e ele é da FIGURA.** A ponta mais alta da planta é um galho
+   **lateral**; o rebento novo tem de o ultrapassar antes de a silhueta crescer. Medido: no
+   primeiro quarto de cada geração o `y` máximo fica **exactamente** preso em `0,6903` enquanto a
+   **tinta** cresce a passo constante (`+0,0356`). ⛔ Um intervalo plano não tem inversa única, e
+   colapsá-lo faria **`20 %` da tinta aparecer de uma vez** — o defeito do §5. ⇒ `3` sub-degraus
+   (o último valor antes de o patamar tornar a curva ambígua, medido por força bruta: `M=1`
+   `−11,51 %` · `M=2` `−3,33 %` · **`M=3` `−1,40 %`** · `M=4` não-invertível) **mais** a rede que
+   descarta o degrau que não sobe.
+3. ⛔ **O `Step Scale` fora do neutro quebrava a lei, e é PRÉ-EXISTENTE.** Medido na `Koch` com
+   `0,5`: `0,3737` de desvio com a lei de 29/08 → `0,1540` com a escada de um degrau →
+   **`0,0244`** com os sub-degraus. ⏳ Fica **nomeado**: `2,4 %` contra os `≤1,35 %` do neutro.
+
+⚠️ **Os oito moldes deixam o `Step Scale` no default**, então um corpus inteiro no ponto neutro
+de um param **não testa esse param** — a mutação que o tirava da escada sobrevivia. A fixtura é
+`the_step_scale_reaches_the_size_ladder`.
+
+### 10.5 — Os gates, e as duas fixturas que uma mutação obrigou
+
+| gate | o que afirma |
+|---|---|
+| `the_whole_growth_drag_is_a_straight_line_for_every_preset` | o desvio da recta `< 2,5 %` no corpus inteiro |
+| `the_remap_straightens_the_tip_growers_it_used_to_leave_bent` | com a escada ÷ sem ela `< 0,3` (medido `0,006`–`0,123`) |
+| `the_size_ladder_is_measured_with_the_artists_seed` | a escada muda com a semente, **e o arrasto também** |
+| `a_plant_whose_size_stalls_for_a_whole_generation_still_drags_forward` | a rede do patamar, sobre uma fixtura **construída pelo mecanismo** (galhos de `0,9·s` contra um rebento de `0,8·s` ⇒ ele nunca os ultrapassa) |
+| `the_step_scale_reaches_the_size_ladder` | o factor chega à escada (`< 0,06`) |
+
+⚠️ **As duas últimas nasceram de mutações SOBREVIVENTES**, e as duas pela mesma causa: *uma
+guarda cujo fenómeno não existe no corpus não é testada por ele*. **Nove mutações, nove mortas.**
+
+---
+
 ## ⛔ Recusas MEDIDAS (deste doc)
 
 | Item | Motivo |
@@ -286,6 +392,11 @@ desenhavam.
 | R2 **por produção** (repartição proporcional do comprimento do pai) | Custa mais uma coluna no módulo e o ganho medido é de `0,27 %` para `~0` ([§7.3](#73---o-que-fica-aberto-nomeado)) |
 | Réguas de TAMANHO para acusar este defeito | ⛔ O produto **normaliza** o tamanho — a régua partilhava a lei do que julgava ([§3](#3---por-que-todas-as-réguas-desta-linha-diziam-liso)) |
 | Réguas de COBERTURA (imagem rasterizada) | Cegas à **sobreposição**: `5` segmentos colineares sobre o caminho do pai tocam as mesmas células ([§3](#3---por-que-todas-as-réguas-desta-linha-diziam-liso)) |
+| O modelo `r^g` no remap | ⛔ Ele é o modelo do REMAP, não o do PRODUTO — o `build` entrega a CORDA, e o erro a meio é `+15,5 %` a `r = 3` ([§10.1](#101--medido-duas-causas-uma-por-família)) |
+| Isentar da remapagem quem cresce pela ponta | ⛔ **Refutado**: a nota media ONDULAÇÃO (suavidade) e a pergunta é LINEARIDADE — sem remapagem eles iam `+6,9 %` a `+21,3 %` adiantados ([§10.1](#101--medido-duas-causas-uma-por-família)) |
+| Colapsar o patamar do `Sprig` para o tornar invertível | ⛔ Faria **`20 %` da tinta aparecer de uma vez** — o defeito do §5 ([§10.4](#104--três-defeitos-que-só-a-construção-revelou)) |
+| Mais de `3` sub-degraus por geração | ⛔ A `M = 4` a curva do `Sprig` tem um degrau **plano** e a inversão deixa de ter resposta única ([§10.4](#104--três-defeitos-que-só-a-construção-revelou)) |
+| Sub-degraus para quem refina no `Step Scale` neutro | ⛔ A normalização já força a corda: um degrau por geração descreve-a a `±0,02 %`, e sub-degraus custariam **2 travessias cada** ([§10.2](#102--a-cura-inverter-o-que-o-produto-entrega-medido)) |
 
 ---
 

@@ -20,8 +20,8 @@ fn ms(axiom: &str, rules: &str, g: f32, over: &[(&str, f32)]) -> (f32, usize) {
 fn main() {
     println!("orcamento de um quadro: 16,67 ms\n");
     println!(
-        "{:26} {:>8} {:>10} {:>10} {:>9}",
-        "caso", "elems", "inteira", "fraccao", "x"
+        "{:26} {:>8} {:>10} {:>10} {:>9} {:>10} {:>8}",
+        "caso", "elems", "inteira", "fraccao", "x", "Growth=.5", "x"
     );
     for p in ls::PRESETS {
         let over: Vec<(&str, f32)> = vec![
@@ -32,10 +32,17 @@ fn main() {
         let g = p.generations;
         let (whole, n) = ms(p.axiom, p.rules, g, &over);
         let (frac, _) = ms(p.axiom, p.rules, g - 0.5, &over);
+        // ⭐ **O que ARRASTAR o `Growth` custa** — a coluna que a escada de tamanhos criou
+        // (2026-08-31): abaixo de `1,0` o remap mede a escada, que é uma derivação até ao topo
+        // do arrasto mais uma travessia por geração. Em `1,0` (o default) nada disto corre.
+        let mut ov_g = over.clone();
+        ov_g.push((ls::param::GROWTH, 0.5));
+        let (grow, _) = ms(p.axiom, p.rules, g, &ov_g);
         println!(
-            "{:26} {n:>8} {whole:>9.3}ms {frac:>9.3}ms {:>8.1}x",
+            "{:26} {n:>8} {whole:>9.3}ms {frac:>9.3}ms {:>8.1}x {grow:>9.3}ms {:>7.1}x",
             p.label,
-            frac / whole.max(1e-6)
+            frac / whole.max(1e-6),
+            grow / whole.max(1e-6)
         );
     }
     // E o pior caso do teto.

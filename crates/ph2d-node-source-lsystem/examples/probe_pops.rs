@@ -351,6 +351,153 @@ fn refine(pr: &Preset) {
     );
 }
 
+/// ⭐ **O TECTO da lei da escada** — o que uma escada de densidade `M` conseguiria, medido por
+/// FORÇA BRUTA, antes de alguém a construir.
+///
+/// A bancada amostra o tamanho entregue em `g ∈ [1, G]` com passo `1/M`, inverte essa curva
+/// para achar o `g` de cada `t`, e depois **mede o tamanho nesses `g`**. O desvio que sobra é o
+/// que a lei com aquele `M` deixaria. *Uma cura provada por medição antes de existir.*
+fn ideal(pr: &Preset, m: usize) {
+    let gmax = pr.generations;
+    let ov = [
+        (param::ANGLE, pr.angle),
+        (param::STEP, pr.step),
+        (param::WIDTH, pr.width),
+    ];
+    let size = |g: f32| -> f32 {
+        let s = probe_build(pr.axiom, pr.rules, g, &ov);
+        match s.get("P") {
+            Some(Column::Vec2(v)) => mean_width(v),
+            _ => 0.0,
+        }
+    };
+    // A escada de densidade `M`, em `g = 1 .. gmax`.
+    let rungs = ((gmax - 1.0) * m as f32).round().max(1.0) as usize;
+    let gs: Vec<f32> = (0..=rungs)
+        .map(|i| 1.0 + (gmax - 1.0) * i as f32 / rungs as f32)
+        .collect();
+    let ss: Vec<f32> = gs.iter().map(|g| size(*g)).collect();
+    let backs: Vec<String> = ss
+        .windows(2)
+        .enumerate()
+        .filter(|(_, w)| w[1] <= w[0])
+        .map(|(i, w)| {
+            format!(
+                "g={:.2}→{:.2} {:.4}→{:.4} ({:+.2}%)",
+                gs[i],
+                gs[i + 1],
+                w[0],
+                w[1],
+                (w[1] / w[0] - 1.0) * 100.0
+            )
+        })
+        .collect();
+    if !backs.is_empty() {
+        println!(
+            "{:8} M={m}: ⛔ o tamanho ANDA PARA TRÁS em {} sítio(s): {}",
+            pr.label,
+            backs.len(),
+            backs.join("  ")
+        );
+        return;
+    }
+    // Inverte: para cada `t`, o `g` cujo tamanho está na recta.
+    let steps = 60usize;
+    let mut got: Vec<f32> = Vec::with_capacity(steps + 1);
+    for i in 0..=steps {
+        let t = i as f32 / steps as f32;
+        let alvo = ss[0] + t * (ss[rungs] - ss[0]);
+        let mut k = 1;
+        while k < rungs && ss[k] < alvo {
+            k += 1;
+        }
+        let f = (alvo - ss[k - 1]) / (ss[k] - ss[k - 1]);
+        got.push(size(gs[k - 1] + (gs[k] - gs[k - 1]) * f));
+    }
+    let (a, b) = (got[0], got[steps]);
+    let worst = got
+        .iter()
+        .enumerate()
+        .map(|(i, w)| (w - a) / (b - a) - i as f32 / steps as f32)
+        .fold(0.0f32, |acc, d| if d.abs() > acc.abs() { d } else { acc });
+    println!("{:8} M={m}: desvio máx {:+6.2} %", pr.label, worst * 100.0);
+}
+
+/// ⭐⭐⭐ **O ARRASTO É UMA RECTA? — a 2.ª pergunta, e é outra lei que a dos pulos.**
+///
+/// Report do Enio (2026-08-31, depois da lei do recém-nascido): *"está mais suave mas não é
+/// perfeitamente linear"*. Suave e linear são coisas diferentes: a 1.ª é a AUSÊNCIA de degraus
+/// (a derivada existe), a 2.ª é a derivada ser **CONSTANTE**.
+///
+/// ⚠️ A régua é o TAMANHO ao longo do `Growth`, contra a recta que une as duas pontas do
+/// arrasto — e a coluna que decide é a **posição** do desvio: se ele se repete **uma vez por
+/// geração**, a causa é a composição de duas leis, não ruído.
+fn linear(pr: &Preset, trace: bool) {
+    let steps = ((1.0 - T0) / STEP).round() as usize;
+    let f: Vec<Frame> = (0..=steps)
+        .map(|k| frame(pr, T0 + k as f32 * STEP))
+        .collect();
+    let w: Vec<f32> = f.iter().map(|x| mean_width(&x.p)).collect();
+    let (a, b) = (w[0], w[steps]);
+    if (b - a).abs() < 1e-6 {
+        println!("{:8} (o arrasto não cresce)", pr.label);
+        return;
+    }
+    // Normalizado: `0` no início do arrasto, `1` no fim. A recta é `k/steps`.
+    let u: Vec<f32> = w.iter().map(|x| (x - a) / (b - a)).collect();
+    let dev: Vec<f32> = u
+        .iter()
+        .enumerate()
+        .map(|(k, v)| v - k as f32 / steps as f32)
+        .collect();
+    let mut worst = (0.0f32, 0usize);
+    for (k, d) in dev.iter().enumerate() {
+        if d.abs() > worst.0.abs() {
+            worst = (*d, k);
+        }
+    }
+    // O desvio no MEIO de cada geração — a assinatura de «duas leis compostas».
+    let mut mids: Vec<(f32, f32)> = Vec::new();
+    let mut k = 0usize;
+    while k < steps {
+        let n0 = f[k].n;
+        let mut j = k + 1;
+        while j <= steps && f[j].n == n0 {
+            j += 1;
+        }
+        if j - k > 4 {
+            let m = (k + j) / 2;
+            mids.push((T0 + m as f32 * STEP, dev[m] * 100.0));
+        }
+        k = j;
+    }
+    if trace {
+        println!("\n=== {} ===", pr.label);
+        println!("     t      n   tamanho   fracção do arrasto   desvio da recta");
+        for (k, x) in u.iter().enumerate() {
+            println!(
+                "{:6.3} {:6} {:9.4} {:18.4} {:17.4}",
+                T0 + k as f32 * STEP,
+                f[k].n,
+                w[k],
+                x,
+                dev[k]
+            );
+        }
+    }
+    let mids_txt: Vec<String> = mids
+        .iter()
+        .map(|(t, d)| format!("t={t:.2}:{d:+.1}%"))
+        .collect();
+    println!(
+        "{:8} desvio máx {:+6.2} % @t {:.3}   |  no meio de cada geração: {}",
+        pr.label,
+        worst.0 * 100.0,
+        T0 + worst.1 as f32 * STEP,
+        mids_txt.join("  "),
+    );
+}
+
 /// **A VIRAGEM DA GERAÇÃO, nua** — o salto relativo da tinta ao atravessar um `G` inteiro, em
 /// dois `ε`. É a forma que o gate `tests/newborn_law.rs` usa, e existe aqui para as barras dele
 /// serem **lidas** e não escolhidas.
@@ -390,6 +537,32 @@ fn turn(pr: &Preset) {
 
 fn main() {
     let mut want: Vec<String> = std::env::args().skip(1).collect();
+    if want.first().map(String::as_str) == Some("--ideal") {
+        want.remove(0);
+        println!("o TECTO de uma escada de densidade M, por força bruta\n");
+        for p in PRESETS {
+            if want.is_empty() || want.iter().any(|w| w == p.label) {
+                for m in [1usize, 2, 3, 4, 6] {
+                    ideal(p, m);
+                }
+            }
+        }
+        return;
+    }
+    if want.first().map(String::as_str) == Some("--linear") {
+        want.remove(0);
+        let trace = !want.is_empty();
+        println!(
+            "TAMANHO ao longo do arrasto do `Growth`, contra a recta que une as duas pontas\n\
+             desvio em % do arrasto inteiro · + = a figura vai ADIANTADA · - = atrasada\n"
+        );
+        for p in PRESETS {
+            if want.is_empty() || want.iter().any(|w| w == p.label) {
+                linear(p, trace);
+            }
+        }
+        return;
+    }
     if want.first().map(String::as_str) == Some("--turn") {
         want.remove(0);
         println!(

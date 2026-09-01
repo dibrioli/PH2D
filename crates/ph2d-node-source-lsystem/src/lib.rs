@@ -84,7 +84,7 @@ mod turtle;
 mod ui;
 
 pub use grammar::{Complaint, RuleProblem};
-use growth::{growth_generations, measure_ratio};
+use growth::growth_generations;
 use params::Params;
 pub use presets::*;
 pub use probe::*;
@@ -343,11 +343,15 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
     // ⭐ **O `Growth` remapeia as gerações para o TAMANHO crescer por igual** — e em `1.0`
     // (o default) devolve `p.generations` exactamente, sem medir nada.
     let generations = if p.growth < 1.0 {
-        growth_generations(
-            p.generations,
-            p.growth,
-            measure_ratio(axiom_src, rules_src, p),
-        )
+        // ⚠️ A escada vai até ao TOPO do arrasto (`ceil(g_max)`), porque é o fim do arrasto que
+        // define a recta — não o ponto em que o slider está agora.
+        let ladder = growth::size_ladder(
+            axiom_src,
+            rules_src,
+            p,
+            p.generations.clamp(0.0, 64.0).ceil() as u16,
+        );
+        growth_generations(p.generations, p.growth, &ladder)
     } else {
         p.generations
     };

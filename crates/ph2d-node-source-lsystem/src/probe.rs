@@ -106,7 +106,7 @@ pub fn probe_anchor(axiom: &str, rules: &str, generations: f32, overrides: &[(&s
 /// `4,81` em vez de `3,00`. *Uma sonda que não recebe o estado mede outro produto.*
 #[must_use]
 pub fn probe_growth_ratio(axiom: &str, rules: &str, overrides: &[(&str, f32)]) -> f32 {
-    measure_ratio(axiom, rules, &probe_params(5.0, overrides))
+    growth::measure_ratio(axiom, rules, &probe_params(5.0, overrides))
 }
 
 /// **A razão CRUA, antes do limiar** — e o limiar em si, para um gate poder medir a FOLGA com
@@ -128,6 +128,30 @@ pub fn probe_growth_ratio_raw(axiom: &str, rules: &str, overrides: &[(&str, f32)
 #[must_use]
 pub fn probe_grows_by_refining(axiom: &str, rules: &str, overrides: &[(&str, f32)]) -> bool {
     growth::raw_ratio_and_family(axiom, rules, &probe_params(5.0, overrides)).1
+}
+
+/// **A ESCADA DE TAMANHOS que o remap do `Growth` inverte** — o tamanho da figura em cada
+/// geração INTEIRA, `1..=ceil(generations)`.
+///
+/// ⚠️ Existe para um gate poder afirmar a propriedade de que a inversão depende (a escada
+/// SOBE) em vez de confiar nela, e para a bancada poder imprimi-la quando um molde teima.
+#[must_use]
+pub fn probe_size_ladder(
+    axiom: &str,
+    rules: &str,
+    generations: f32,
+    overrides: &[(&str, f32)],
+) -> Vec<f32> {
+    let p = probe_params(generations, overrides);
+    growth::size_ladder(
+        axiom,
+        rules,
+        &p,
+        p.generations.clamp(0.0, 64.0).ceil() as u16,
+    )
+    .into_iter()
+    .map(|(_, size)| size)
+    .collect()
 }
 
 /// **OS PESOS QUE O PARSER DE FACTO DEVOLVE** — a porta de sonda que impede um gate de

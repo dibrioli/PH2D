@@ -96,6 +96,59 @@ porta do swap) continuam a valer e continuam gateadas.
    (= o verbo `Apply`, que já existe) e **`Salvar Variação…`**. *Sem os dois, gravar uma correcção
    obriga a criar uma versão a mais.*
 
+### §2.3-bis — E a SEGUNDA propriedade? (pergunta do Enio, 2026-09-01)
+
+*«e se o usuário quiser criar outros tipos de propriedades depois?»*
+
+⭐⭐⭐ **A resposta que unifica: criar a PRIMEIRA propriedade e criar a SEGUNDA são o MESMO
+gesto.** Os dois precisam exactamente das mesmas três respostas — *como se chama a propriedade* ·
+*como se chama o que já existe* · *como se chama isto que acabei de fazer*. ⇒ **uma porta só**, e o
+passo 3 do §2.3 deixa de ser um caso especial da primeira vez.
+
+O formulário do `Salvar Variação…` tem **um selector e um campo**:
+
+```
+Propriedade:  [ Size ▾ ]        ← as que a família já tem + «Nova propriedade…»
+Nome:         [ Big         ]
+```
+
+- **Valor novo numa propriedade existente** (o caso comum): escolhe `Size`, escreve `Big`. Um campo.
+- **Propriedade nova** (`Nova propriedade…` no selector): o formulário cresce para três campos —
+  *Propriedade* (`Color`), *Como se chama o que já existe* (`Normal`), *Nome desta versão* (`Red`).
+  ⚠️ **A pergunta do meio é obrigatória e é a que torna a coisa honesta:** nascer uma propriedade
+  significa que **toda receita da família** passa a declarar um valor nela, e o valor delas é o que
+  já existia — sem lhe dar nome, a fileira nova nasceria com um botão em branco.
+
+⛔⛔ **Uma propriedade NUNCA nasce sozinha, e isso é uma decisão, não uma falta.** Uma propriedade
+com um valor só é uma fileira com um botão — um controlo que não escolhe nada, que é a espécie que
+a caça aos knobs mortos nomeia. ⇒ **não há gesto de «criar propriedade vazia»**, e por isso também
+não há gesto de apagar: a fileira é **DERIVADA** — mostra-se quando a família declara **dois ou mais
+valores distintos** naquela chave, e desaparece sozinha quando os valores voltam a concordar.
+*Uma fileira derivada não pode ficar morta.*
+
+#### A MATRIZ, e a combinação que não existe
+
+Com duas propriedades a família vira uma grelha `n × m`, e o artista quase nunca a enche. Uma cópia
+está em `Size=Big, Color=Normal`; ele carrega em `Red`; a receita `{Big, Red}` **pode não existir**.
+
+⛔ **As três saídas foram pesadas:**
+
+| Saída | Porquê não |
+|---|---|
+| não fazer nada | é o **chip morto sob o dedo** — o report chega igual ao de um botão nunca pintado |
+| aproximação («o mais parecido») | o botão acende num valor e a arte mostra outro: o app **mente**, que é a doença de 31/08 outra vez |
+| recusar com aviso | honesto, mas manda o artista fazer à mão o que a app sabe fazer |
+
+⭐ **A escolhida: o clique CRIA a combinação em falta** — a partir da versão em que a cópia está,
+com o valor novo aplicado — e a voz diz o que nasceu (*«criei Big / Red»*). É **um passo de undo**
+como qualquer outro. ⚠️ O chip em falta pinta-se **esmaecido com `+`**, para que o gesto não seja
+uma surpresa: *acender é escolher; esmaecido com `+` é criar*.
+
+⚠️ **Tectos, e eles são MEDIDOS (§0.0):** hoje `MAX_INSTANCE_AXES = 4` e `MAX_INSTANCE_AXIS_VALUES`
+são cercas da **tabela de ids**, sem medição nenhuma por baixo. Com composição o número que
+interessa deixa de ser a contagem de fileiras e passa a ser o **produto** — quem os declarar mede o
+custo de pintar a grelha cheia e escreve a tabela ao lado.
+
 ### §2.4 — O que MORRE
 
 `variant_axes::{parse_combo, display_name, hidden_count, row_label, with_value, variant_name,
@@ -158,7 +211,14 @@ tabela ao lado; hoje eles não têm medição nenhuma.
 7. `no_code_reads_braces_any_more` — **textual**, sobre `crates/` e `shells/`: nenhum
    `parse_combo`/`with_value`/`{`-em-nome sobrevive. É o censo que impede a lei velha de voltar por
    uma porta esquecida.
-8. `seam_save_variation.rs` — gesto REAL (clique no pixel do botão → barramento → mundo).
+8. `a_new_property_names_what_already_existed` — nascer `Color` escreve `Color=Normal` em **todas**
+   as receitas da família; sem isso a fileira nova nasce com um botão em branco.
+9. `a_row_with_a_single_value_is_never_painted` — a fileira é derivada: colapsar os valores
+   faz a fileira **desaparecer**, e nenhuma fica com um botão só.
+10. `clicking_a_missing_combination_creates_it_and_says_so` — o oráculo é o MUNDO (a receita nova
+    existe e a cópia segue-a) **e** a voz; ⛔ e um gate irmão prova que ela nasce da versão em que a
+    cópia estava, não da base.
+11. `seam_save_variation.rs` — gesto REAL (clique no pixel do botão → barramento → mundo).
    ⛔ Um `Click` sintético passa com o botão morto sob o ponteiro (lição do §8 do doc 27 do Vector).
 
 ⚠️ **Cada cerca com o SEU gate** — duas cercas juntas escondem-se uma à outra, e a mutação que

@@ -29,3 +29,17 @@ metadata:
 - [[feedback_geometry_over_mixed_units_needs_the_consumers_conversion]] — unidades mistas: converta com a const do CONSUMIDOR
 - [[feedback_an_escape_that_never_helps_is_a_design_bug]] — escape que nunca ajuda é enfeite
 - [[feedback_a_boolean_leaves_slivers_and_a_zero_area_piece_paints_a_line]] — peça sem área pinta LINHA; oráculo = densidade
+
+## Uma lei que corre POR QUADRO age a meio de uma palavra
+
+Medido 2026-08-31 (`line/components`, auditoria multiagêntica). A lei *«o elo segue as chaves do
+nome»* corria no dreno de cada quadro. O campo de nome do Inspector escreve o `Name` **no mundo a
+cada tecla** — logo apagar o `2` de `Small 2` passava por `Small`, e a lei trocava o elo no primeiro
+backspace, antes de a palavra existir.
+
+⇒ **A cadência de uma lei tem de casar com a cadência de quem escreve a entrada dela.** A cura foi
+corrê-la por **mudança de SELEÇÃO** (`App::followed_selection`), que cobre o caso real (a etiqueta
+velha ao escolher o objecto) sem tocar na digitação; o commit fica nas portas de Enter/Blur.
+
+⚠️ E o gate disto é **textual** — um teste unitário chama a função directamente e nunca vê de que
+laço ela é chamada. Quatro mutações da FIAÇÃO desta wave sobreviveram a **6 407 testes verdes**.

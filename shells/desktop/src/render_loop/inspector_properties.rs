@@ -38,7 +38,22 @@ pub(super) fn build_properties_info(
         &members,
         root_master.or(subject).unwrap_or_default(),
     );
-    if rows.is_empty() {
+    // ⭐⭐ **As propriedades DECLARADAS** — todas, mesmo as em que a família concorda: é a elas que
+    // o artista acrescenta o segundo valor, e uma propriedade sem duas respostas não é fileira.
+    let mut declared: Vec<String> = members
+        .iter()
+        .flat_map(|m| m.values.keys().cloned())
+        .collect();
+    declared.sort_unstable();
+    declared.dedup();
+    // ⭐⭐⭐ **O que há por gravar** — as excepções da RAIZ da cópia (ADR-0164 / F4.4).
+    let pending = root
+        .and_then(|r| sim.world().get::<ph2d_ecs::ObjectInstance>(r))
+        .map_or(0, |o| o.overrides.len());
+    // ⚠️ **O cartão existe se houver fileira OU algo por gravar** — sem esta segunda metade, a
+    // PRIMEIRA variação de uma família seria inalcançável: uma receita sozinha não tem fileira
+    // nenhuma, e é exactamente aí que o artista precisa do botão.
+    if rows.is_empty() && pending == 0 {
         return None;
     }
     Some(InspectorPropertiesInfo {
@@ -48,6 +63,8 @@ pub(super) fn build_properties_info(
         root_bits: root.map_or(0, Entity::to_bits),
         rows,
         beyond,
+        pending,
+        declared,
         // ⭐⭐⭐ **O nome do objecto SELECIONADO, como a Hierarquia o mostra** (report do Enio,
         // 2026-08-31: *«Properties of "Nome do objeto na Hierarquia"»*).
         //

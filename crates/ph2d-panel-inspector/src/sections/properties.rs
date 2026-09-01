@@ -50,6 +50,20 @@ const FLAT_AXIS_LABEL: &str = "Variant";
 /// decisão anterior e por que ela virou.
 const CARD_TITLE: &str = "Properties";
 
+// ⭐⭐⭐ **Os rótulos do gesto de GRAVAR** (Enio, 2026-09-01). ⚠️ Moram aqui pela razão do
+// [`FLAT_AXIS_LABEL`]: é o painel que o portão da HR-15 varre, e ⏳ migram juntos quando o Fluent
+// chegar.
+const SAVE_VARIATION_LABEL: &str = "Save Variation…";
+const PROPERTY_LABEL: &str = "Property";
+const NEW_PROPERTY_LABEL: &str = "New…";
+const NEW_PROPERTY_NAME_LABEL: &str = "Name it";
+/// ⚠️ *«Como se chama o que já existe»* — a pergunta sem a qual a fileira nova nasce com um botão
+/// em branco, e uma fileira de um valor só nem sequer é oferecida.
+const EXISTING_LABEL: &str = "Current is";
+const VALUE_LABEL: &str = "This one is";
+const SAVE_CONFIRM_LABEL: &str = "Save";
+const SAVE_CANCEL_LABEL: &str = "Cancel";
+
 /// ⭐⭐⭐ **O campo que reescreve o valor vigente**, no rect do chip que ele substitui.
 ///
 /// ⚠️ **Quem SEMEIA é o despacho, não este pintor** — ao contrário do molde do navegador de
@@ -64,7 +78,31 @@ fn paint_value_field(
     store: &WidgetStore,
     host: Rect,
 ) {
-    let (ti_state, text, caret, anchor) = match store.get(ids::INSP_INSTANCE_VALUE_EDIT) {
+    paint_field(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        host,
+        ids::INSP_INSTANCE_VALUE_EDIT,
+    );
+}
+
+/// ⭐ **Um campo de texto do cartão** — uma porta só para os quatro que existem.
+///
+/// ⚠️ Escrever a mesma dúzia de linhas por campo seria quatro sítios a discordar sobre o que é um
+/// campo — foi o que o `paint_value_field` fez sozinho até 2026-09-01.
+fn paint_field(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    host: Rect,
+    id: ph2d_a11y::NodeId,
+) {
+    let (ti_state, text, caret, anchor) = match store.get(id) {
         Some(InteractiveState::TextInput {
             state,
             text,
@@ -73,8 +111,7 @@ fn paint_value_field(
         }) => (*state, text.clone(), *caret, *selection_anchor),
         _ => (TextInputState::Focused, String::new(), 0, None),
     };
-    let input = TextInput::new(ids::INSP_INSTANCE_VALUE_EDIT, "")
-        .visual((ti_state, store.hover_live(ids::INSP_INSTANCE_VALUE_EDIT)));
+    let input = TextInput::new(id, "").visual((ti_state, store.hover_live(id)));
     paint_text_input_with_buffer(
         &input,
         Some(text.as_str()),
@@ -85,7 +122,7 @@ fn paint_value_field(
         text_system,
         theme,
     );
-    hit_index.register(ids::INSP_INSTANCE_VALUE_EDIT, host);
+    hit_index.register(id, host);
 }
 
 /// ⭐ **A frase do título** — uma porta, porque a ALTURA e o DESENHO têm de ler a mesma.
@@ -112,6 +149,8 @@ pub(crate) fn paint_properties_card(
     // ⭐ O valor em reescrita (identidade: entidade + nome do eixo) — ver
     // `InspectorState::value_edit`.
     editing: Option<crate::state::ValueEdit>,
+    // ⭐ O formulário de *Salvar Variação…*, se aberto — ver `InspectorState::save_draft`.
+    draft: Option<crate::state::SaveDraft>,
     x: f32,
     w: f32,
     y: f32,
@@ -137,7 +176,20 @@ pub(crate) fn paint_properties_card(
         (w - CARD_PAD * 2.0).max(0.0),
         line,
     );
-    let card_h = CARD_PAD * 2.0 + title_h + line * rows as f32;
+    // ⭐⭐⭐ **O gesto de GRAVAR ocupa linhas, e elas contam-se ANTES de pintar** — a altura do
+    // cartão é medida, e uma fileira esquecida aqui é pintada por cima do que vem depois.
+    let mine = draft.as_ref().filter(|d| d.entity_bits == info.entity_bits);
+    let save_rows = if mine.is_some() {
+        // propriedade + nome + [nova: nome da propriedade e como se chama o que existe] + botões
+        if mine.is_some_and(|d| d.property.is_none()) {
+            5
+        } else {
+            3
+        }
+    } else {
+        usize::from(info.pending > 0)
+    };
+    let card_h = CARD_PAD * 2.0 + title_h + line * (rows + save_rows) as f32;
     fill_rounded_rect(
         scene,
         Rect::new(x, y, w, card_h),
@@ -266,6 +318,190 @@ pub(crate) fn paint_properties_card(
             tw,
             resolve(ColorToken::Text2, theme),
         );
+        ty += line;
     }
+    paint_save(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        info,
+        mine,
+        tx,
+        tw,
+        ty,
+        line,
+        small,
+        font,
+    );
     y + card_h + SECTION_BOTTOM_PAD_PX
+}
+
+/// ⭐⭐⭐ **O gesto de GRAVAR UMA VERSÃO** — o botão, e o formulário que ele abre.
+///
+/// Enio, 2026-09-01: *«Ao criar e modificar uma instância surge no card um botão do tipo "Salvar
+/// Variação"… com o momento de colocar o nome que vai gerar o botão seletor da variação.»*
+///
+/// # ⚠️ Criar a PRIMEIRA propriedade e criar a SEGUNDA são o MESMO formulário
+///
+/// As duas precisam das mesmas três respostas — *como se chama a propriedade* · *como se chama o
+/// que já existe* · *como se chama isto que acabei de fazer*. ⇒ o selector tem as propriedades da
+/// família mais **«New…»**, e escolher «New…» faz crescer os dois campos de cima. *Duas portas para
+/// o mesmo gesto divergiriam no dia em que uma delas fosse corrigida.*
+#[allow(clippy::too_many_arguments)]
+fn paint_save(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    info: &InspectorPropertiesInfo,
+    draft: Option<&crate::state::SaveDraft>,
+    tx: f32,
+    tw: f32,
+    mut ty: f32,
+    line: f32,
+    small: f32,
+    font: f32,
+) {
+    let label_w = (tw * AXIS_LABEL_FRACTION).min(AXIS_LABEL_MAX_PX);
+    let Some(draft) = draft else {
+        // ⛔ **O botão só existe quando há o que gravar** — sem modificação não há versão a criar.
+        if info.pending == 0 {
+            return;
+        }
+        let host = Rect::new(tx, ty, tw, line);
+        hit_index.register(ids::INSP_INSTANCE_SAVE_VARIATION, host);
+        let b = Button::new(ids::INSP_INSTANCE_SAVE_VARIATION, SAVE_VARIATION_LABEL)
+            .kind(ButtonKind::Accent)
+            .visual(store.button_visual(ids::INSP_INSTANCE_SAVE_VARIATION));
+        paint_button(&b, host, scene, text_system, theme);
+        return;
+    };
+
+    // Fileira 1 — a propriedade: as que a família tem, mais «New…».
+    paint_text(
+        text_system,
+        scene,
+        PROPERTY_LABEL,
+        tx,
+        ty + (line - small) * 0.5,
+        small,
+        label_w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let chips_x = tx + label_w;
+    let chips_w = (tw - label_w).max(0.0);
+    let shown = info.declared.len().min(ids::MAX_INSTANCE_AXES);
+    let n = shown + 1;
+    let gap = Spacing::Xs.px();
+    let cw = ((chips_w - gap * (n - 1) as f32) / n as f32).max(0.0);
+    for i in 0..n {
+        // ⛔⛔ **O «New…» tem id PRÓPRIO, e não a posição seguinte** — apanhado pelo gate de
+        // costura em 2026-09-01. Com o id posicional ele mudava de identidade conforme quantas
+        // propriedades a família tem, e numa família com quatro passava a partilhar o id da
+        // última: *dois controlos diferentes a responder pelo mesmo nome, e o dreno a escolher
+        // pelo índice.*
+        let (id, raw) = if i < shown {
+            (ids::INSP_INSTANCE_SAVE_PROP[i], info.declared[i].as_str())
+        } else {
+            (
+                ids::INSP_INSTANCE_SAVE_PROP[ids::MAX_INSTANCE_AXES],
+                NEW_PROPERTY_LABEL,
+            )
+        };
+        let host = Rect::new(chips_x + (cw + gap) * i as f32, ty, cw, line);
+        hit_index.register(id, host);
+        let current = draft.property == (i < shown).then_some(i);
+        let b = Button::new(
+            id,
+            ph2d_editor_core::text_elide::fit(text_system, raw, font, cw),
+        )
+        .kind(if current {
+            ButtonKind::Accent
+        } else {
+            ButtonKind::Default
+        })
+        .visual(store.button_visual(id));
+        paint_button(&b, host, scene, text_system, theme);
+    }
+    ty += line;
+
+    // Fileiras 2 e 3 — só quando a propriedade NASCE agora.
+    if draft.property.is_none() {
+        for (label, id) in [
+            (NEW_PROPERTY_NAME_LABEL, ids::INSP_INSTANCE_SAVE_NEW_PROP),
+            (EXISTING_LABEL, ids::INSP_INSTANCE_SAVE_EXISTING),
+        ] {
+            paint_text(
+                text_system,
+                scene,
+                label,
+                tx,
+                ty + (line - small) * 0.5,
+                small,
+                label_w,
+                resolve(ColorToken::Text2, theme),
+            );
+            paint_field(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                Rect::new(chips_x, ty, chips_w, line),
+                id,
+            );
+            ty += line;
+        }
+    }
+
+    // O NOME desta versão — é ele que vira o botão seletor.
+    paint_text(
+        text_system,
+        scene,
+        VALUE_LABEL,
+        tx,
+        ty + (line - small) * 0.5,
+        small,
+        label_w,
+        resolve(ColorToken::Text2, theme),
+    );
+    paint_field(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        Rect::new(chips_x, ty, chips_w, line),
+        ids::INSP_INSTANCE_SAVE_VALUE,
+    );
+    ty += line;
+
+    // ⚠️ **Desistir existe de propósito** — um formulário sem saída obriga o artista a gravar algo
+    // para se ver livre dele.
+    let half = ((tw - gap) * 0.5).max(0.0);
+    for (i, (id, label, kind)) in [
+        (
+            ids::INSP_INSTANCE_SAVE_CONFIRM,
+            SAVE_CONFIRM_LABEL,
+            ButtonKind::Accent,
+        ),
+        (
+            ids::INSP_INSTANCE_SAVE_CANCEL,
+            SAVE_CANCEL_LABEL,
+            ButtonKind::Default,
+        ),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let host = Rect::new(tx + (half + gap) * i as f32, ty, half, line);
+        hit_index.register(id, host);
+        let b = Button::new(id, label.to_string())
+            .kind(kind)
+            .visual(store.button_visual(id));
+        paint_button(&b, host, scene, text_system, theme);
+    }
 }

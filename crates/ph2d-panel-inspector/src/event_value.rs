@@ -34,7 +34,7 @@ pub(crate) fn apply_value_event(
     ev: WidgetEvent,
 ) -> bool {
     match ev {
-        WidgetEvent::Click(id) => chip_click(state, host, id),
+        WidgetEvent::Click(id) => save_click(state, host, id) || chip_click(state, host, id),
         // ⚠️ **Enter e o clique-fora GRAVAM; o Esc abandona** — o idioma dos outros campos em
         // linha desta casa. O `take` faz do segundo de um par `Submit`+`Blur` um no-op.
         WidgetEvent::Submit(id) | WidgetEvent::Blur(id) if id == ids::INSP_INSTANCE_VALUE_EDIT => {
@@ -43,6 +43,28 @@ pub(crate) fn apply_value_event(
         }
         WidgetEvent::Cancel(id) if id == ids::INSP_INSTANCE_VALUE_EDIT => {
             state.value_edit = None;
+            true
+        }
+        // ⭐ **Enter em qualquer campo do formulário GRAVA** — o artista escreve o nome e carrega
+        // em Enter; obrigá-lo a apontar ao botão seria o gesto a meio.
+        WidgetEvent::Submit(id)
+            if id == ids::INSP_INSTANCE_SAVE_VALUE
+                || id == ids::INSP_INSTANCE_SAVE_NEW_PROP
+                || id == ids::INSP_INSTANCE_SAVE_EXISTING =>
+        {
+            if let Some(info) = crate::state::current_inspector_properties() {
+                confirm(state, host, &info);
+            }
+            true
+        }
+        // ⚠️ **O Esc larga o formulário INTEIRO** — ele é um gesto só, e fechar um campo de cada
+        // vez deixaria o artista com dois campos órfãos.
+        WidgetEvent::Cancel(id)
+            if id == ids::INSP_INSTANCE_SAVE_VALUE
+                || id == ids::INSP_INSTANCE_SAVE_NEW_PROP
+                || id == ids::INSP_INSTANCE_SAVE_EXISTING =>
+        {
+            abandon(state, host.store_mut());
             true
         }
         // ⛔ **O commit do NOME deixou de ter consequência** (Enio, 2026-09-01): aqui ficava a
@@ -71,6 +93,130 @@ pub(crate) fn abandon(
     {
         store.set_focus(None);
     }
+    // ⭐⭐⭐ **E o formulário de gravar também se larga** — ele tem TRÊS campos, e um deles focado
+    // num painel escondido come as teclas do app inteiro. *A cura tem de cobrir a família toda, e
+    // não só o campo que a auditoria calhou de nomear.*
+    if state.save_draft.take().is_some()
+        && store.focus_id().is_some_and(|f| {
+            f == ids::INSP_INSTANCE_SAVE_NEW_PROP
+                || f == ids::INSP_INSTANCE_SAVE_EXISTING
+                || f == ids::INSP_INSTANCE_SAVE_VALUE
+        })
+    {
+        store.set_focus(None);
+    }
+}
+
+/// ⭐⭐⭐ **Os cliques do gesto de GRAVAR** — abrir, escolher a propriedade, confirmar, desistir.
+///
+/// Devolve `true` quando o clique era desta família.
+fn save_click(
+    state: &mut InspectorState,
+    host: &mut dyn PanelHostInternal,
+    id: ph2d_a11y::NodeId,
+) -> bool {
+    let Some(info) = crate::state::current_inspector_properties() else {
+        return false;
+    };
+    if id == ids::INSP_INSTANCE_SAVE_VARIATION {
+        // ⛔ **A decisão de ABRIR lê a MESMA pergunta que a de GRAVAR** — sem modificação não há
+        // versão a criar, e um formulário que abre e nunca grava come trabalho em silêncio.
+        if info.pending == 0 {
+            return true;
+        }
+        // ⚠️ Sem propriedade nenhuma na família ele abre já em «nova» — não há o que escolher.
+        state.save_draft = Some(crate::state::SaveDraft {
+            entity_bits: info.entity_bits,
+            property: (!info.declared.is_empty()).then_some(0),
+        });
+        for f in [
+            ids::INSP_INSTANCE_SAVE_NEW_PROP,
+            ids::INSP_INSTANCE_SAVE_EXISTING,
+            ids::INSP_INSTANCE_SAVE_VALUE,
+        ] {
+            seed(host, f);
+        }
+        host.store_mut()
+            .set_focus(Some(ids::INSP_INSTANCE_SAVE_VALUE));
+        return true;
+    }
+    if id == ids::INSP_INSTANCE_SAVE_CANCEL {
+        abandon(state, host.store_mut());
+        return true;
+    }
+    if let Some(i) = ids::INSP_INSTANCE_SAVE_PROP.iter().position(|c| *c == id) {
+        if let Some(draft) = state.save_draft.as_mut() {
+            let shown = info.declared.len().min(ids::MAX_INSTANCE_AXES);
+            draft.property = (i < shown).then_some(i);
+        }
+        return true;
+    }
+    if id == ids::INSP_INSTANCE_SAVE_CONFIRM {
+        confirm(state, host, &info);
+        return true;
+    }
+    false
+}
+
+/// Abre um campo do formulário VAZIO.
+///
+/// ⚠️ **Vazio de propósito** — o nome da versão é o que o artista tem para dizer, e semear com o
+/// valor de outra versão convidaria a gravar uma repetida, que a porta recusa.
+fn seed(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) {
+    host.store_mut().register(
+        id,
+        InteractiveState::TextInput {
+            state: TextInputState::Focused,
+            text: String::new(),
+            caret: 0,
+            selection_anchor: None,
+        },
+    );
+    // O Esc aborta — quem o diz é o CAMPO, como no irmão do valor.
+    host.store_mut().mark_cancel_on_escape(id);
+}
+
+fn text_of(host: &dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> String {
+    match host.store().get(id) {
+        Some(InteractiveState::TextInput { text, .. }) => text.clone(),
+        _ => String::new(),
+    }
+}
+
+/// ⭐⭐⭐ **Confirmar** — publica o pedido e fecha o formulário.
+///
+/// ⚠️ **A IDENTIDADE decide**, como no campo de valor: o cartão vigente pode já ser de outro
+/// objecto. ⛔ E a validação de vazio mora na LEI (`variant_save::save_variation`), nunca aqui —
+/// duas respostas à mesma pergunta divergiriam no dia em que uma fosse corrigida.
+fn confirm(
+    state: &mut InspectorState,
+    host: &mut dyn PanelHostInternal,
+    info: &ph2d_editor_core::screens::hero::InspectorPropertiesInfo,
+) {
+    let Some(draft) = state.save_draft.take() else {
+        return;
+    };
+    if draft.entity_bits != info.entity_bits {
+        return;
+    }
+    let (property, existing) = match draft.property {
+        Some(i) => (
+            info.declared.get(i).cloned().unwrap_or_default(),
+            String::new(),
+        ),
+        None => (
+            text_of(host, ids::INSP_INSTANCE_SAVE_NEW_PROP),
+            text_of(host, ids::INSP_INSTANCE_SAVE_EXISTING),
+        ),
+    };
+    let value = text_of(host, ids::INSP_INSTANCE_SAVE_VALUE);
+    host.store_mut().set_focus(None);
+    host.bus_mut().push(EditorAction::InspectorSaveVariation {
+        entity_bits: info.entity_bits,
+        property,
+        value,
+        existing,
+    });
 }
 
 /// ⭐⭐ **O chip: trocar de versão, ou abrir o vigente para escrita.**

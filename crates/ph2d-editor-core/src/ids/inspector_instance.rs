@@ -28,6 +28,49 @@ pub const INSP_INSTANCE_CLEAR_ORPHANS: NodeId = hash_node_id("insp_instance_clea
 /// aponta quando quer mudar o nome do valor. ⇒ um id só, porque só se edita um de cada vez.
 pub const INSP_INSTANCE_VALUE_EDIT: NodeId = hash_node_id("insp_instance_value_edit");
 
+/// ⭐⭐⭐ **SALVAR VARIAÇÃO** — o botão que aparece quando a cópia escolhida tem modificações.
+///
+/// Enio, 2026-09-01: *«Ao criar e modificar uma instância surge no card um botão do tipo "Salvar
+/// Variação". Daí o fluxo acontece da forma mais inteligente possível, com o momento de colocar o
+/// nome que vai gerar o botão seletor da variação.»*
+///
+/// ⚠️ **Só existe quando há o que gravar.** Sem modificação não há versão a criar, e um botão que
+/// não faz nada é a espécie que a caça aos knobs mortos nomeia.
+pub const INSP_INSTANCE_SAVE_VARIATION: NodeId = hash_node_id("insp_instance_save_variation");
+
+/// ⭐⭐ **A propriedade escolhida no formulário** — as que a família já tem, mais *«Nova…»*.
+///
+/// ⚠️ **`MAX_INSTANCE_AXES + 1`**: o `+1` é a entrada *«Nova propriedade…»*, que é o que torna
+/// criar a PRIMEIRA propriedade e criar a SEGUNDA o mesmo gesto — as duas precisam das mesmas três
+/// respostas, e uma porta só é o que impede as duas de divergirem.
+pub const INSP_INSTANCE_SAVE_PROP: [NodeId; MAX_INSTANCE_AXES + 1] = [
+    hash_node_id("insp_instance_save_prop_0"),
+    hash_node_id("insp_instance_save_prop_1"),
+    hash_node_id("insp_instance_save_prop_2"),
+    hash_node_id("insp_instance_save_prop_3"),
+    hash_node_id("insp_instance_save_prop_new"),
+];
+
+/// O nome da propriedade NOVA (`Color`) — só existe com *«Nova…»* escolhida.
+pub const INSP_INSTANCE_SAVE_NEW_PROP: NodeId = hash_node_id("insp_instance_save_new_prop");
+
+/// ⭐⭐⭐ **Como se chama o que JÁ EXISTE** (`Normal`) — só com *«Nova…»* escolhida, e obrigatório.
+///
+/// ⚠️ Nascer uma propriedade põe TODA receita da família a declarar um valor nela. Sem esta
+/// pergunta a fileira nova nasceria com um botão em branco — e uma fileira de um valor só nem
+/// sequer é oferecida, então o artista veria o gesto não fazer nada.
+pub const INSP_INSTANCE_SAVE_EXISTING: NodeId = hash_node_id("insp_instance_save_existing");
+
+/// O nome desta versão (`Big`) — **é ele que vira o botão seletor**.
+pub const INSP_INSTANCE_SAVE_VALUE: NodeId = hash_node_id("insp_instance_save_value");
+
+/// Confirmar o formulário.
+pub const INSP_INSTANCE_SAVE_CONFIRM: NodeId = hash_node_id("insp_instance_save_confirm");
+
+/// Desistir. ⚠️ **Existe de propósito:** um formulário sem saída obriga o artista a gravar algo
+/// para se ver livre dele.
+pub const INSP_INSTANCE_SAVE_CANCEL: NodeId = hash_node_id("insp_instance_save_cancel");
+
 /// ⭐⭐⭐ **Quantos EIXOS de propriedade o cartão endereça** — `Size`, `State`, …
 ///
 /// ⚠️ Teto de **TABELA DE IDS**, como o irmão abaixo: uma família pode declarar os eixos que

@@ -60,7 +60,10 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             store,
             &mut inspector_state.anchor_selected,
             &mut inspector_state.anim_selected,
-            inspector_state.value_edit.clone(),
+            crate::state::CardEditing {
+                value: inspector_state.value_edit.clone(),
+                draft: inspector_state.save_draft.clone(),
+            },
         );
     }
     state::set_current_display_unit(display_unit, ppm); // keep symmetric with legacy
@@ -102,7 +105,7 @@ fn paint_inspector(
     store: &WidgetStore,
     anchor_selected: &mut usize,
     anim_selected: &mut usize,
-    editing_value: Option<crate::state::ValueEdit>,
+    editing: crate::state::CardEditing,
 ) {
     // ⭐ **A moldura do corpo — superfície, alças, cabeçalho, clip e a caixa interior.**
     // Ver [`crate::paint_frame::open_body`]: nada disto é orquestração de seção, e é a mesma razão
@@ -149,7 +152,7 @@ fn paint_inspector(
         store,
         instance_info.as_ref(),
         properties_info.as_ref(),
-        editing_value,
+        editing,
         inner_x,
         inner_w,
         body_top_y + Spacing::Xs.px(),

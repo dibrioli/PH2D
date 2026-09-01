@@ -550,6 +550,18 @@ pub enum EditorAction {
     /// ⭐⭐ **Renomear o VALOR de uma propriedade** — o campo que o clique no chip aceso abre.
     /// O sujeito é a **RECEITA**, porque é lá que o valor vive; o porquê vive no
     /// `ph2d-panel-inspector/src/event_value.rs`.
+    /// ⭐⭐⭐ **Gravar a cópia modificada como uma VERSÃO nova** (Enio, 2026-09-01).
+    ///
+    /// `existing` é *«como se chama o que já existe»* — obrigatório quando `property` **nasce
+    /// agora**, e ignorado quando a família já a tem. ⚠️ A validação mora na lei
+    /// (`variant_save::save_variation`), nunca no painel.
+    InspectorSaveVariation {
+        entity_bits: u64,
+        property: String,
+        value: String,
+        existing: String,
+    },
+
     InspectorRenameVariantValue {
         master: u64,
         key: String,

@@ -64,9 +64,177 @@ fn info() -> InspectorPropertiesInfo {
             },
         ],
         beyond: 0,
+        // ⚠️ **Sem nada por gravar**, de propósito: os gates do gesto de gravar constroem a sua
+        // própria fixtura, e uma fileira a mais aqui moveria os rects dos chips.
+        pending: 0,
+        declared: vec!["Size".into(), "State".into()],
         // A fixtura é uma CÓPIA (tem `root_bits`), então as propriedades são do componente.
         source_name: Some("Casa".into()),
     }
+}
+
+/// A mesma família, com uma modificação por gravar — é o que faz o botão existir.
+fn info_pending() -> InspectorPropertiesInfo {
+    InspectorPropertiesInfo {
+        pending: 3,
+        ..info()
+    }
+}
+
+fn host_with(i: InspectorPropertiesInfo) -> (MockPanelHost, InspectorState) {
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_name(Some(InspectorNameInfo {
+        entity_bits: ENTITY,
+        name: "Casa".into(),
+    }));
+    set_current_inspector_properties(Some(i));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    (host, state)
+}
+
+/// Carrega no widget `id` pelo PONTEIRO e devolve os eventos. Falha alto se ele não foi pintado.
+fn press(host: &mut MockPanelHost, state: &mut InspectorState, id: ph2d_a11y::NodeId, what: &str) {
+    let rects = host.paint::<InspectorPanel>(state, VIEWPORT);
+    let rect = rects
+        .iter()
+        .find(|(n, _)| *n == id)
+        .map(|(_, r)| *r)
+        .unwrap_or_else(|| panic!("«{what}» nunca foi pintado nem registado"));
+    let events = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+    assert!(
+        !events.is_empty(),
+        "«{what}» esta' morto sob o ponteiro (fora do `populate`)"
+    );
+    for ev in events {
+        let _ = host.apply_panel_event::<InspectorPanel>(state, ev);
+    }
+}
+
+/// ⭐⭐⭐ **O BOTÃO EXISTE, ABRE O FORMULÁRIO, E O GESTO CHEGA AO BARRAMENTO** — pelo ponteiro.
+///
+/// Enio, 2026-09-01: *«Ao criar e modificar uma instância surge no card um botão do tipo "Salvar
+/// Variação"… com o momento de colocar o nome que vai gerar o botão seletor da variação»*.
+///
+/// ⚠️ **É a 3.ª e a 4.ª condições de uma superfície**, e as duas que os gates puros nunca vêem: um
+/// `WidgetEvent` sintético passa com o botão morto sob o dedo.
+///
+/// **Mutações que devem sangrar:** apagar o `hit_index.register` do botão · o braço do
+/// `save_click` no despachante · o `push` do `confirm`.
+#[test]
+fn the_save_button_opens_the_form_and_the_gesture_reaches_the_bus() {
+    let (mut host, mut state) = host_with(info_pending());
+    press(
+        &mut host,
+        &mut state,
+        ids::INSP_INSTANCE_SAVE_VARIATION,
+        "Save Variation…",
+    );
+    assert!(
+        state.save_draft.is_some(),
+        "o clique no botao nao abriu o formulario"
+    );
+    // O artista escreve o nome da versão e confirma.
+    host.set_text(ids::INSP_INSTANCE_SAVE_VALUE, "Big");
+    press(
+        &mut host,
+        &mut state,
+        ids::INSP_INSTANCE_SAVE_CONFIRM,
+        "Save",
+    );
+    let sent = host.drained_actions();
+    assert!(
+        sent.iter().any(|a| matches!(
+            a,
+            EditorAction::InspectorSaveVariation { entity_bits, property, value, .. }
+                if *entity_bits == ENTITY && property == "Size" && value == "Big"
+        )),
+        "o gesto nao chegou ao barramento: {sent:?}"
+    );
+    clear();
+}
+
+/// ⛔⛔ **SEM MODIFICAÇÃO NÃO HÁ BOTÃO** — e não é decoração: um botão que não faz nada é a
+/// espécie que a caça aos knobs mortos nomeia.
+///
+/// ⚠️ **A metade de PRESENÇA vive no gate acima** — um gate de ausência sozinho fica verde sobre
+/// um pintor que nunca desenha o botão.
+///
+/// **Mutação que deve sangrar:** o pintor deixar de perguntar `info.pending == 0`.
+#[test]
+fn with_nothing_to_save_there_is_no_button() {
+    let (mut host, mut state) = host_with(info());
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    assert!(
+        !rects
+            .iter()
+            .any(|(n, _)| *n == ids::INSP_INSTANCE_SAVE_VARIATION),
+        "o botao foi pintado sem nada por gravar"
+    );
+    clear();
+}
+
+/// ⭐⭐⭐ **«Nova propriedade…» faz crescer os DOIS campos que faltam** — e é o que torna criar a
+/// primeira e criar a segunda o mesmo gesto.
+///
+/// **Mutação que deve sangrar:** o pintor desenhar os campos sem olhar ao `property.is_none()`.
+#[test]
+fn choosing_a_new_property_grows_the_two_missing_fields() {
+    let (mut host, mut state) = host_with(info_pending());
+    press(
+        &mut host,
+        &mut state,
+        ids::INSP_INSTANCE_SAVE_VARIATION,
+        "Save Variation…",
+    );
+    // Com a família a declarar `Size`/`State`, ele abre numa delas — os dois campos não existem.
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    assert!(
+        !rects
+            .iter()
+            .any(|(n, _)| *n == ids::INSP_INSTANCE_SAVE_EXISTING),
+        "«Current is» apareceu numa propriedade que ja' existe"
+    );
+    press(
+        &mut host,
+        &mut state,
+        ids::INSP_INSTANCE_SAVE_PROP[ids::MAX_INSTANCE_AXES],
+        "New…",
+    );
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    for id in [
+        ids::INSP_INSTANCE_SAVE_NEW_PROP,
+        ids::INSP_INSTANCE_SAVE_EXISTING,
+    ] {
+        assert!(
+            rects.iter().any(|(n, _)| *n == id),
+            "escolher «Nova...» nao fez nascer o campo {id:?}"
+        );
+    }
+    clear();
+}
+
+/// ⛔ **Desistir fecha o formulário** — sem saída, o artista tem de gravar algo para se ver livre.
+#[test]
+fn cancel_closes_the_form() {
+    let (mut host, mut state) = host_with(info_pending());
+    press(
+        &mut host,
+        &mut state,
+        ids::INSP_INSTANCE_SAVE_VARIATION,
+        "Save Variation…",
+    );
+    press(
+        &mut host,
+        &mut state,
+        ids::INSP_INSTANCE_SAVE_CANCEL,
+        "Cancel",
+    );
+    assert!(
+        state.save_draft.is_none(),
+        "desistir nao fechou o formulario"
+    );
+    clear();
 }
 
 fn host() -> (MockPanelHost, InspectorState) {
@@ -287,6 +455,8 @@ fn a_selection_change_abandons_the_field_and_a_late_blur_writes_nothing() {
             options: vec![choice(33, "Red", true), choice(34, "Blue", false)],
         }],
         beyond: 0,
+        pending: 0,
+        declared: Vec::new(),
         source_name: Some("Outra".into()),
     }));
     let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -362,6 +532,8 @@ fn a_flat_lit_chip_never_opens_the_field() {
             options: vec![choice(MINE, "Casa", true), choice(OTHER, "Outra", false)],
         }],
         beyond: 0,
+        pending: 0,
+        declared: Vec::new(),
         source_name: Some("Casa".into()),
     }));
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
@@ -416,6 +588,8 @@ fn a_blur_between_publish_and_paint_never_writes_into_the_new_object() {
             options: vec![choice(55, "Mini", true), choice(56, "Maxi", false)],
         }],
         beyond: 0,
+        pending: 0,
+        declared: Vec::new(),
         source_name: Some("Outra".into()),
     }));
     let _ = host.apply_panel_event::<InspectorPanel>(

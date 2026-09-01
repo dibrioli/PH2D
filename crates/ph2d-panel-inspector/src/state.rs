@@ -21,6 +21,34 @@ use ph2d_editor_core::screens::hero::{
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
 /// after Phase C.1; mutated by the panel's `paint` / `apply_event` and
 /// by `sync_inspector_from_snapshots` (also panel-owned).
+/// ⭐⭐ **O que o artista tem ABERTO no cartão de propriedades**, para o pintor.
+///
+/// ⚠️ **Os dois viajam juntos porque são a mesma pergunta** — *o que está em edição neste cartão?*
+/// — e porque o teto de LOC do `paint_inspector` é uma catraca que só desce: dois parâmetros a
+/// atravessar três funções custavam a linha que este par devolve. *Quando dois valores respondem à
+/// mesma pergunta, o par é que é o dado.*
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct CardEditing {
+    /// O valor em reescrita — ver [`InspectorState::value_edit`].
+    pub value: Option<ValueEdit>,
+    /// O formulário de gravar — ver [`InspectorState::save_draft`].
+    pub draft: Option<SaveDraft>,
+}
+
+/// ⭐⭐⭐ **O formulário de *Salvar Variação…* aberto** — ver [`InspectorState::save_draft`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SaveDraft {
+    /// A entidade sobre a qual ele abriu. ⚠️ **Identidade, nunca posição** — a mesma lei do
+    /// [`ValueEdit`]: um `Blur` tardio chega com o snapshot vigente, que pode já ser de outro
+    /// objecto.
+    pub entity_bits: u64,
+    /// Qual propriedade — índice em `InspectorPropertiesInfo::declared`, ou `None` = **nova**.
+    ///
+    /// ⚠️ **`None` é o estado inicial quando a família não declara nada**, que é o caso da
+    /// PRIMEIRA variação: ali não há o que escolher, e o formulário abre já com os três campos.
+    pub property: Option<usize>,
+}
+
 /// Ver [`InspectorState::value_edit`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ValueEdit {
@@ -47,6 +75,12 @@ pub struct InspectorState {
     /// ⇒ viaja a **identidade**: os bits da entidade do cartão e o NOME do eixo. O pintor re-acha
     /// a fileira por nome; o `commit` confere os dois e **abandona** quando qualquer um mudou.
     pub value_edit: Option<ValueEdit>,
+    /// ⭐⭐⭐ **O formulário de *Salvar Variação…***, quando aberto (Enio, 2026-09-01).
+    ///
+    /// ⚠️ **Em linha, e não um diálogo** — o gesto é sobre o objecto que está no cartão, e um
+    /// modal tiraria o artista de onde ele está a olhar. Os textos vivem no `WidgetStore` como os
+    /// dos outros campos; aqui mora só *sobre quem* e *qual propriedade*.
+    pub save_draft: Option<SaveDraft>,
 
     /// Entity bits of the last selection whose snapshot seeded the 5
     /// Transform NumberInputs + the editable Name field. When the

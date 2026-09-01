@@ -327,10 +327,7 @@ fn crossings_of(
 pub fn cell_size(doc: &ph2d_field::FieldDoc, reg: &crate::hybrid::Registry, depth: u8) -> f64 {
     Grid::new(
         depth,
-        crate::bounds::bounding_ball(doc, reg).unwrap_or(crate::bounds::Ball {
-            center: [0.0; 3],
-            radius: 1.0,
-        }),
+        crate::bounds::bounding_ball(doc, reg).unwrap_or(crate::bounds::Ball::new([0.0; 3], 1.0)),
     )
     .step
 }
@@ -348,10 +345,7 @@ pub fn extract(
     // ⭐ A caixa da grade sai da PEÇA (W33) — ver `Grid::new`.
     let grid = Grid::new(
         depth,
-        crate::bounds::bounding_ball(doc, reg).unwrap_or(crate::bounds::Ball {
-            center: [0.0; 3],
-            radius: 1.0,
-        }),
+        crate::bounds::bounding_ball(doc, reg).unwrap_or(crate::bounds::Ball::new([0.0; 3], 1.0)),
     );
     let m = grid.samples();
 

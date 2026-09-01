@@ -26,11 +26,27 @@
 
 use ph2d_field::{FieldDoc, NodeId, NodeKind, Op, Unary, Xform};
 
-/// Uma esfera de bordo: centro e raio, no referencial de quem pergunta.
+/// Uma esfera de bordo: centro e raio, no referencial de quem pergunta — **mais** as meias-extensões
+/// por eixo, que são a metade que a esfera não sabe dizer.
+///
+/// # ⭐⭐⭐ Por que as DUAS, e não uma caixa em vez da esfera (2026-08-31)
+///
+/// A nota do topo deste ficheiro continua verdadeira: a esfera é **invariante à rotação** e a caixa
+/// não é, então a caixa é a moeda errada para **compor** bordos. ⇒ elas viajam **juntas**, e cada
+/// consumidor lê a que responde à pergunta dele. A caixa nunca é maior do que a esfera
+/// (`half[i] ≤ radius`, imposto na construção), então trocá-la pela esfera é sempre **seguro** —
+/// o pior que acontece é ela ser folgada.
+///
+/// ⛔ **O `half` é PRIVADO de propósito.** Um valor pequeno demais **corta a peça e não diz nada**,
+/// e um `Ball { radius: ..., ..b }` herdaria em silêncio o `half` de antes de a lei crescer a bola.
+/// Sem literal de estrutura, cada sítio tem de escolher entre [`Ball::new`] (que assume o pior, e é
+/// sempre seguro) e [`Ball::of`] (que sabe os eixos). *A cerca fica no lado perigoso.*
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Ball {
     pub center: [f32; 3],
     pub radius: f32,
+    /// ⚠️ Ver o doc da estrutura. **Nunca** maior do que o [`Ball::radius`].
+    half: [f32; 3],
 }
 
 impl Ball {
@@ -38,7 +54,64 @@ impl Ball {
     pub const EMPTY: Ball = Ball {
         center: [0.0; 3],
         radius: 0.0,
+        half: [0.0; 3],
     };
+
+    /// ⭐ **Uma bola que não sabe os eixos** — a caixa dela é o cubo circunscrito, que é o que a
+    /// esfera de facto garante. *Assumir o pior é o que torna este construtor sempre seguro.*
+    #[must_use]
+    pub fn new(center: [f32; 3], radius: f32) -> Self {
+        Ball {
+            center,
+            radius,
+            half: [radius; 3],
+        }
+    }
+
+    /// ⭐⭐⭐ **O RAIO E A CAIXA, cada um pela lei dele** — o construtor que este ficheiro usa.
+    ///
+    /// ⛔⛔ **O raio NÃO se deriva da caixa, e a 1.ª versão deste módulo fazia-o.** Numa esfera a
+    /// caixa é o cubo `[r, r, r]` e a diagonal dele é `r√3` — a bola crescia **73 %** e quatro gates
+    /// reprovaram de uma vez (*«o bordo cresceu com a composição: 1,075 para uma esfera de 0,25»*).
+    /// ⇒ cada lei mantém o **seu** raio, exactamente como antes, e a caixa é **acrescentada** ao
+    /// lado. *Uma mudança que se diz aditiva tem de deixar o número antigo onde ele estava.*
+    ///
+    /// ⚠️ O `half` é preso ao raio: uma caixa maior do que a esfera que a contém é uma contradição.
+    #[must_use]
+    pub fn of(center: [f32; 3], radius: f32, half: [f32; 3]) -> Self {
+        Ball {
+            center,
+            radius,
+            half: [
+                half[0].min(radius),
+                half[1].min(radius),
+                half[2].min(radius),
+            ],
+        }
+    }
+
+    /// ⭐ **A MESMA bola, engordada por igual em todas as direcções** — uma parede, um afastamento.
+    ///
+    /// ⚠️ É o substituto do `Ball { radius: r + d, ..b }`, e a diferença é o que ele **impede**:
+    /// aquele herdava o `half` de antes, que depois da engorda fica pequeno demais e **corta**.
+    #[must_use]
+    pub fn expanded_by(self, delta: f32) -> Self {
+        Ball {
+            center: self.center,
+            radius: self.radius + delta,
+            half: [
+                self.half[0] + delta,
+                self.half[1] + delta,
+                self.half[2] + delta,
+            ],
+        }
+    }
+
+    /// As meias-extensões por eixo. ⚠️ Nunca maiores do que o [`Ball::radius`].
+    #[must_use]
+    pub fn half(self) -> [f32; 3] {
+        self.half
+    }
 
     /// ⭐⭐⭐ **A MESMA BOLA, vista do referencial CANÓNICO de um modificador** (Enio, 2026-08-31).
     ///
@@ -50,6 +123,9 @@ impl Ball {
     pub fn to_canonical(self, s: usize) -> Self {
         Ball {
             center: ph2d_field::Axis::to_canonical(self.center, s),
+            // ⚠️ **A caixa permuta com o centro** — ela tem eixos, e esquecê-la aqui daria uma
+            // caixa do eixo errado a toda lei conjugada.
+            half: ph2d_field::Axis::to_canonical(self.half, s),
             ..self
         }
     }
@@ -59,6 +135,7 @@ impl Ball {
     pub fn from_canonical(self, s: usize) -> Self {
         Ball {
             center: ph2d_field::Axis::from_canonical(self.center, s),
+            half: ph2d_field::Axis::from_canonical(self.half, s),
             ..self
         }
     }
@@ -90,20 +167,23 @@ impl Ball {
             return other;
         }
         let radius = (dist + self.radius + other.radius) * 0.5;
-        if dist <= f32::MIN_POSITIVE {
-            return Self {
-                center: self.center,
-                radius,
-            };
-        }
-        let t = (radius - self.radius) / dist;
-        Self {
-            center: [
+        let center = if dist <= f32::MIN_POSITIVE {
+            self.center
+        } else {
+            let t = (radius - self.radius) / dist;
+            [
                 self.center[0] + d[0] * t,
                 self.center[1] + d[1] * t,
                 self.center[2] + d[2] * t,
-            ],
+            ]
+        };
+        // ⭐ **A caixa fundida contém as DUAS**, medida do centro novo, e presa ao raio — que é a
+        // invariante da estrutura. *Herdar a caixa de uma delas cortaria a outra.*
+        let alcance = |b: &Self, e: usize| (b.center[e] - center[e]).abs() + b.half[e];
+        Self {
+            center,
             radius,
+            half: std::array::from_fn(|e| alcance(&self, e).max(alcance(&other, e)).min(radius)),
         }
     }
 }
@@ -132,14 +212,16 @@ pub fn local_balls(doc: &FieldDoc, reg: &crate::hybrid::Registry) -> Vec<Option<
     let mut placed: Vec<Option<Ball>> = Vec::with_capacity(doc.nodes().len());
     for node in doc.nodes() {
         let here = match &node.kind {
-            NodeKind::Leaf(p) => Some(Ball {
-                center: [0.0; 3],
-                radius: ph2d_field::bounding_radius(p),
-            }),
-            NodeKind::Sampled { key } => reg.get(key).map(|f| Ball {
-                center: [0.0; 3],
-                radius: f.bounding_radius(),
-            }),
+            // ⭐⭐⭐ **A folha SABE os eixos** — é daqui que a caixa entra no sistema.
+            NodeKind::Leaf(p) => Some(Ball::of(
+                [0.0; 3],
+                ph2d_field::bounding_radius(p),
+                ph2d_field::bounding_half_extents(p),
+            )),
+            // ⚠️ Uma escultura só sabe dizer um raio — e o cubo circunscrito é o que ela garante.
+            NodeKind::Sampled { key } => reg
+                .get(key)
+                .map(|f| Ball::new([0.0; 3], f.bounding_radius())),
             NodeKind::Combine { op, children } => {
                 fold_children(doc, *op, children, |c| placed[c.0 as usize])
             }
@@ -204,16 +286,18 @@ fn fold_children(
 fn of_node(doc: &FieldDoc, reg: &crate::hybrid::Registry, id: NodeId) -> Option<Ball> {
     let node = doc.nodes().get(id.0 as usize)?;
     let local = match &node.kind {
-        NodeKind::Leaf(p) => Some(Ball {
-            center: [0.0; 3],
-            radius: ph2d_field::bounding_radius(p),
-        }),
+        // ⭐⭐⭐ **A folha SABE os eixos** — é daqui que a caixa entra no sistema.
+        NodeKind::Leaf(p) => Some(Ball::of(
+            [0.0; 3],
+            ph2d_field::bounding_radius(p),
+            ph2d_field::bounding_half_extents(p),
+        )),
         // ⚠️ Um nome que o registo não conhece lê como **espaço vazio** (`hybrid::ABSENT`), e um
         // vazio não ocupa lugar nenhum: o bordo dele é nada, não uma caixa inventada.
-        NodeKind::Sampled { key } => reg.get(key).map(|f| Ball {
-            center: [0.0; 3],
-            radius: f.bounding_radius(),
-        }),
+        // ⚠️ Uma escultura só sabe dizer um raio — e o cubo circunscrito é o que ela garante.
+        NodeKind::Sampled { key } => reg
+            .get(key)
+            .map(|f| Ball::new([0.0; 3], f.bounding_radius())),
         // ⭐⭐⭐ **A DOBRA, PASSO A PASSO, com o verbo EFECTIVO de cada filho** (2026-08-29).
         //
         // ⛔ **Isto perguntava `op` — o verbo DO GRUPO — e a W97 pôs um verbo em cada forma.** O
@@ -308,14 +392,8 @@ pub(crate) fn axis_shift_of(m: Unary) -> usize {
 fn canonical_step(b: Ball, m: Unary) -> Ball {
     match m {
         // A parede é centrada na superfície: metade cresce para fora.
-        Unary::Shell { thickness } => Ball {
-            radius: b.radius + thickness.abs() * 0.5,
-            ..b
-        },
-        Unary::Offset { distance } => Ball {
-            radius: b.radius + distance.max(0.0),
-            ..b
-        },
+        Unary::Shell { thickness } => b.expanded_by(thickness.abs() * 0.5),
+        Unary::Offset { distance } => b.expanded_by(distance.max(0.0)),
         // O espelho é num plano do eixo LOCAL: a cópia está com aquela coordenada trocada de
         // sinal. ⚠️ **Uma função, três eixos** — três braços com a conta escrita à mão seriam
         // três sítios onde um índice errado dá uma caixa que **corta a peça** em silêncio.
@@ -327,10 +405,9 @@ fn canonical_step(b: Ball, m: Unary) -> Ball {
             };
             let mut c = b.center;
             c[k] = -c[k];
-            b.merge(Ball {
-                center: c,
-                radius: b.radius,
-            })
+            // ⚠️ A cópia tem a **mesma** caixa — só o centro é que reflecte —, e o `merge` sabe
+            // fundir as duas.
+            b.merge(Ball::of(c, b.radius, b.half()))
         }
         // A matriz linear anda ao longo do X local.
         Unary::Array {
@@ -341,13 +418,19 @@ fn canonical_step(b: Ball, m: Unary) -> Ball {
         } => {
             let span = f32::from(u16::try_from(count.saturating_sub(1)).unwrap_or(u16::MAX))
                 * spacing.abs();
-            Ball {
-                center: [b.center[0] + span * 0.5, b.center[1], b.center[2]],
-                // ⭐ **A junta ACRESCENTA material no vinco** — um bordo que não a conte recorta a
-                // peça na marcha e na exportação, que é o defeito que a inclinação já custou a esta
-                // linha em 2026-08-30. Ver [`ph2d_field::Joint::reach`].
-                radius: b.radius + span * 0.5 + joint.reach(),
-            }
+            // ⭐ **A junta ACRESCENTA material no vinco** — um bordo que não a conte recorta a
+            // peça na marcha e na exportação, que é o defeito que a inclinação já custou a esta
+            // linha em 2026-08-30. Ver [`ph2d_field::Joint::reach`].
+            //
+            // ⭐⭐ **E a caixa cresce SÓ no eixo em que a matriz anda** — é a primeira lei deste
+            // ficheiro que a esfera não sabia exprimir.
+            let h = b.half();
+            let j = joint.reach();
+            Ball::of(
+                [b.center[0] + span * 0.5, b.center[1], b.center[2]],
+                b.radius + span * 0.5 + j,
+                [h[0] + span * 0.5 + j, h[1] + j, h[2] + j],
+            )
         }
         // ⭐ **A torção varre em torno do Z local, e a bola dela é a MESMA da matriz radial** — cada
         // fatia de `z` é uma rotação em torno da origem, logo `‖(x,y)‖` e `z` são preservados. Uma
@@ -355,18 +438,25 @@ fn canonical_step(b: Ball, m: Unary) -> Ball {
         // centro descreve. *Não se escreve lei nova: aponta-se para a que existe.*
         Unary::Radial { joint, .. } => {
             let arm = b.center[0].hypot(b.center[1]);
-            Ball {
-                center: [0.0, 0.0, b.center[2]],
-                // ⭐ Pela razão da matriz acima — a costura entre as cópias enche o vinco.
-                radius: arm + b.radius + joint.reach(),
-            }
+            // ⭐ Pela razão da matriz acima — a costura entre as cópias enche o vinco.
+            //
+            // ⭐⭐ **O varrimento é no plano XY; o Z não se mexe** — e é isso que a caixa diz e a
+            // esfera não dizia.
+            let h = b.half();
+            let j = joint.reach();
+            let raio_xy = arm + b.radius + j;
+            Ball::of(
+                [0.0, 0.0, b.center[2]],
+                raio_xy,
+                [raio_xy, raio_xy, h[2] + j],
+            )
         }
         Unary::Twist { .. } => {
             let arm = b.center[0].hypot(b.center[1]);
-            Ball {
-                center: [0.0, 0.0, b.center[2]],
-                radius: arm + b.radius,
-            }
+            // ⭐⭐ Como a radial: o giro é no plano XY e o Z é preservado **ao bit**.
+            let h = b.half();
+            let raio_xy = arm + b.radius;
+            Ball::of([0.0, 0.0, b.center[2]], raio_xy, [raio_xy, raio_xy, h[2]])
         }
         // A secção cresce `slope` por unidade de altura, e a altura é no máximo o próprio raio.
         // ⛔⛔ **ELA IGNORAVA O CENTRO DA BOLA, e a peça saía da caixa do mundo** (auditoria de
@@ -391,10 +481,15 @@ fn canonical_step(b: Ball, m: Unary) -> Ball {
             let s = slope.abs();
             let k_max = s.mul_add(b.center[1].abs() + b.radius, 1.0);
             let fora_do_eixo = b.center[0].hypot(b.center[2]);
-            Ball {
-                radius: (k_max - 1.0).mul_add(fora_do_eixo, b.radius * k_max),
-                ..b
-            }
+            // ⭐⭐ **A secção escala em X e Z; o Y não se mexe** — a inclinação é o exemplo mais
+            // claro de uma lei que a esfera obrigava a arredondar para cima nos três eixos.
+            let h = b.half();
+            let cresce = |e: usize| (k_max - 1.0).mul_add(fora_do_eixo, h[e] * k_max);
+            Ball::of(
+                b.center,
+                (k_max - 1.0).mul_add(fora_do_eixo, b.radius * k_max),
+                [cresce(0), h[1], cresce(2)],
+            )
         }
         // ⭐⭐ **A DOBRA move a peça, e é o único modificador que o faz de forma não-linear.**
         //
@@ -416,30 +511,53 @@ fn canonical_step(b: Ball, m: Unary) -> Ball {
                 return b;
             }
             let rho = (1.0 / k).abs();
-            let alcance = f64::from(b.center[0].abs() + b.radius);
-            let meia_altura = f64::from(b.center[2].abs() + b.radius);
+            let h = b.half();
+            let alcance = f64::from(b.center[0].abs() + h[0]);
+            // ⭐⭐⭐ **A meia-altura é a do EIXO DOBRADO, e não o raio** (2026-08-31). Ela entra num
+            // `sin` multiplicado por `2(ρ + alcance)`, então o exagero da esfera compõe-se: numa
+            // caixa `0,35 × 0,35 × 0,30` o raio é `0,579` contra os `0,30` do eixo — **1,93×** — e a
+            // bola saía **3,6× maior do que a peça**. Isso ia direito ao `piso` da dobra e o divisor
+            // dela ficava preso no tecto (`10`).
+            //
+            // ⭐ Medido: com a extensão axial, `[Bend]` passa de `72,2` para `27,0` passos por raio,
+            // `[Bend, Twist]` de `233,1` para `68,4` e `[Bend, Twist, Taper]` de `1 543,6` para
+            // `717,3` — e as **cinco** imagens contra a marcha honesta ficam idênticas.
+            let meia_altura = f64::from(b.center[2].abs() + h[2]);
             // A corda máxima que um ponto descreve ao varrer o ângulo da peça inteira.
             let corda = 2.0 * (rho + alcance) * (k.abs() * meia_altura * 0.5).sin().abs();
             let pela_corda = f64::from(b.radius) + corda;
             let pelo_centro = rho + alcance;
             #[allow(clippy::cast_possible_truncation)]
-            let raio = pela_corda.min(pelo_centro) as f32;
-            Ball {
-                // ⚠️ O centro fica onde estava: a bola é grande o suficiente para conter o arco, e
-                // mover o centro exigiria a imagem dele — que é a conta que se está a evitar.
-                center: b.center,
-                radius: raio.max(b.radius),
-            }
+            let raio = (pela_corda.min(pelo_centro) as f32).max(b.radius);
+            // ⚠️ O centro fica onde estava: a bola é grande o suficiente para conter o arco, e
+            // mover o centro exigiria a imagem dele — que é a conta que se está a evitar.
+            //
+            // ⚠️ **E a caixa cresce no plano da dobra (X e Z); o Y é preservado** — a dobra não toca
+            // no eixo perpendicular ao arco.
+            Ball::of(b.center, raio, [raio, h[1], raio])
         }
     }
 }
 
 /// A esfera vista do referencial do **pai** — e é aqui que a invariância à rotação se paga.
 fn place(ball: Ball, xform: Xform) -> Ball {
-    Ball {
-        center: xform.apply(ball.center),
-        radius: ball.radius * xform.scale.abs(),
-    }
+    // ⛔⛔ **A CAIXA NÃO É INVARIANTE À ROTAÇÃO, e é essa a nota do topo deste ficheiro.** Uma caixa
+    // rodada tem de ser re-envolvida, e cada re-envolvimento **cresce** — daí a esfera ser a moeda
+    // da composição. ⇒ aqui a caixa é re-envolvida pela lei exacta (`|R|·h`, a matriz dos módulos),
+    // e o `Ball::of` prende-a ao raio, que **não** cresce. *O pior que a rotação faz é devolver a
+    // caixa ao cubo circunscrito, que é o que a esfera já dizia.*
+    let r = ball.radius * xform.scale.abs();
+    let h = ball.half();
+    // ⚠️ **A base sai do próprio [`Xform::apply_dir`]**, que já leva a escala — e não de uma segunda
+    // conta da rotação. *Duas leis para a mesma matriz é como as duas metades divergem.*
+    let coluna = |j: usize| {
+        let mut e = [0.0f32; 3];
+        e[j] = 1.0;
+        xform.apply_dir(e)
+    };
+    let (cx, cy, cz) = (coluna(0), coluna(1), coluna(2));
+    let eixo = |e: usize| (cx[e].abs() * h[0] + cy[e].abs() * h[1] + cz[e].abs() * h[2]).min(r);
+    Ball::of(xform.apply(ball.center), r, [eixo(0), eixo(1), eixo(2)])
 }
 
 #[cfg(test)]

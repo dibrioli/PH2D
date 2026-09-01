@@ -1149,3 +1149,143 @@ fn the_two_doors_lower_a_leaf_the_same_way() {
          folha por outra receita, e é a do PRODUTO que o artista vê"
     );
 }
+
+/// ⭐⭐⭐ **A CAIXA POR EIXO CONTÉM A PEÇA** — a irmã do [`the_bounding_radius_contains_the_piece`],
+/// e ela existe porque três dívidas medidas vinham de a bola não ter lados (Enio, 2026-08-31).
+///
+/// ⚠️ **A régua é a MESMA** — bissectar a superfície ao longo de muitas direcções —, e o que muda é
+/// o que se colhe: de cada superfície encontrada tira-se a **coordenada** em cada eixo, e o máximo
+/// delas é o alcance daquele eixo. *Comparar a tabela nova contra o `bounding_radius` seria cego a
+/// uma mutação que mexesse nas duas.*
+///
+/// ⛔⛔ **Prova de mutação (2026-08-31):** trocar a meia-extensão axial da cápsula por `half_height`
+/// (isto é, esquecer o `+ radius` que põe a ponta no eixo) reprova aqui — é exactamente o defeito
+/// que o gate irmão já tinha apanhado no raio, um nível abaixo.
+#[test]
+fn the_bounding_half_extents_contain_the_piece() {
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else {
+            continue;
+        };
+        let meias = ph2d_field::bounding_half_extents(&p);
+        // ⚠️ **Um cabelo para fora**, pela razão do gate irmão: numa esfera a meia-extensão **é** a
+        // superfície, e o campo ali é zero a menos de um ULP.
+        let folga = [
+            f64::from(meias[0]) * 1.001,
+            f64::from(meias[1]) * 1.001,
+            f64::from(meias[2]) * 1.001,
+        ];
+        // ⛔ **E a caixa nunca pode ser MAIOR que a esfera** — se for, uma das duas está errada, e a
+        // pergunta *«qual?»* é a que esta linha obriga a fazer.
+        let r = f64::from(ph2d_field::bounding_radius(&p)) * 1.001;
+        for (e, m) in folga.iter().enumerate() {
+            assert!(
+                *m <= r,
+                "«{}»: a meia-extensão do eixo {e} é {m:.4} e o raio de contenção é {r:.4} — uma \
+                 caixa maior do que a esfera que a contém é uma contradição",
+                k.key()
+            );
+        }
+        let f = field_of(p);
+        const DIRS: usize = 96;
+        let (mut alcance, mut viu_peca) = ([0.0f64; 3], false);
+        for i in 0..DIRS {
+            for j in 0..(DIRS * 2) {
+                #[allow(clippy::cast_precision_loss)]
+                let theta = std::f64::consts::PI * (i as f64 + 0.5) / DIRS as f64;
+                #[allow(clippy::cast_precision_loss)]
+                let phi = std::f64::consts::TAU * (j as f64 + 0.5) / (DIRS * 2) as f64;
+                let d = [
+                    theta.sin() * phi.cos(),
+                    theta.sin() * phi.sin(),
+                    theta.cos(),
+                ];
+                let at = |t: f64| f.at(d[0] * t, d[1] * t, d[2] * t);
+                for n in 1..8 {
+                    if at(r * f64::from(n) / 8.0) < 0.0 {
+                        viu_peca = true;
+                        break;
+                    }
+                }
+                // ⭐ **Bissecta a SUPERFÍCIE nesta direcção** — a mesma lei do gate irmão. Se já
+                // está fora em `r`, a peça não excede a esfera e portanto não excede a caixa em
+                // direcção nenhuma... mas a **coordenada** dela pode exceder a meia-extensão de um
+                // eixo mesmo dentro da esfera, e é isso que se mede.
+                let (mut lo, mut hi) = (0.0f64, r);
+                if at(hi) < 0.0 {
+                    hi = r * 4.0;
+                }
+                for _ in 0..40 {
+                    let mid = 0.5 * (lo + hi);
+                    if at(mid) < 0.0 { lo = mid } else { hi = mid }
+                }
+                for e in 0..3 {
+                    alcance[e] = alcance[e].max((d[e] * hi).abs());
+                }
+            }
+        }
+        assert!(
+            viu_peca,
+            "«{}»: nenhuma direcção encontrou peça — a varredura não tem sujeito",
+            k.key()
+        );
+        for e in 0..3 {
+            assert!(
+                alcance[e] <= folga[e],
+                "«{}»: há peça a {:.4} no eixo {e} e a meia-extensão diz {:.4} — a caixa por eixo \
+                 CORTA a peça, e quem a lê fica com uma cerca pequena demais",
+                k.key(),
+                alcance[e],
+                meias[e]
+            );
+        }
+    }
+}
+
+/// ⛔⛔⛔ **A ENGRENAGEM CHATA** — a fixtura que o censo não tinha, e sem a qual a cura da
+/// [`ph2d_field::bounding_radius`] não teria quem a defenda.
+///
+/// O exemplar do censo tem `half_height = 0,15`, e a folga da **altura** dentro do `hyp` escondia o
+/// erro do plano: era a única das nove configurações medidas em 2026-08-31 que **não** cortava a
+/// peça. ⇒ a fixtura que morde é a **chata**, onde o plano manda sozinho.
+///
+/// ⛔⛔ **Prova de mutação:** devolver a linha da engrenagem a `hyp(outer, half_height)` reprova
+/// aqui em `3` e `5` dentes — a `3`, a peça chega a `0,5050` e o raio diz `0,4504` (`12 %` cortados,
+/// e o corte sai como um **arco preto** a atravessá-la).
+#[test]
+fn a_flat_gear_is_not_cut_by_its_own_bounding_radius() {
+    for teeth in [ph2d_field::MIN_GEAR_TEETH, 5, 7, 24] {
+        let p = ph2d_field::Primitive::Gear {
+            teeth,
+            root: 0.32,
+            outer: 0.45,
+            tooth: 0.45,
+            // ⚠️ **Chata de propósito**: com altura, o `hyp` empresta uma folga que não é do plano.
+            half_height: 0.02,
+            round: 0.0,
+            chamfer: 0.0,
+        };
+        let r = f64::from(ph2d_field::bounding_radius(&p)) * 1.001;
+        let f = field_of(p);
+        let mut alcance = 0.0f64;
+        for i in 0..2_000 {
+            #[allow(clippy::cast_precision_loss)]
+            let a = std::f64::consts::TAU * (i as f64) / 2_000.0;
+            let d = [a.cos(), a.sin()];
+            let at = |t: f64| f.at(d[0] * t, d[1] * t, 0.0);
+            let (mut lo, mut hi) = (0.0f64, 2.0f64);
+            for _ in 0..40 {
+                let m = 0.5 * (lo + hi);
+                if at(m) < 0.0 { lo = m } else { hi = m }
+            }
+            alcance = alcance.max(hi);
+        }
+        assert!(
+            alcance <= r,
+            "engrenagem de {teeth} dentes e `half_height 0,02`: há peça a {alcance:.5} e o raio de \
+             contenção diz {:.5} — a ponta de um dente é uma CORDA, e os cantos dela passam do \
+             `outer`",
+            r / 1.001
+        );
+    }
+}

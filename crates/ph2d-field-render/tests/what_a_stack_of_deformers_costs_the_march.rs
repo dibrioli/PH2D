@@ -9,15 +9,24 @@
 //!
 //! # O que a medição diz (caixa `0,35³`, `160²`, `half_extent 1,0`)
 //!
-//! | pilha | divisor | `‖∇f‖` | **folga** | passos/raio |
-//! |---|---:|---:|---:|---:|
-//! | `[]` | `1,00` | `1,000` | `1,0×` | **`7,1`** |
-//! | `[Bend]` | `10,00` | `0,399` | `2,5×` | `72,2` |
-//! | `[Bend, Twist]` | `33,82` | `0,216` | `4,6×` | `233,1` |
-//! | `[Bend, Twist, Taper]` | `240,29` | `0,041` | **`24,7×`** | **`1 543,6`** |
+//! | pilha | raio da bola | divisor | `‖∇f‖` | **folga** | passos/raio |
+//! |---|---:|---:|---:|---:|---:|
+//! | `[]` | `0,579` | `1,00` | `1,000` | `1,0×` | **`7,1`** |
+//! | `[Bend]` | `0,957` | `3,59` | `0,552` | `1,8×` | `22,7` |
+//! | `[Twist]` | `0,579` | `1,82` | `0,796` | `1,3×` | `13,6` |
+//! | `[Taper]` | `0,780` | `2,20` | `0,784` | `1,3×` | `14,5` |
+//! | `[Bend, Twist]` | `0,957` | `9,00` | `0,351` | `2,8×` | `55,6` |
+//! | `[Bend, Twist, Taper]` | `1,507` | `100,87` | `0,045` | **`22,3×`** | **`635,9`** |
 //!
-//! ⇒ **217× o custo de uma caixa**, e **`24,7×` disso é desperdício PROVADO**: o campo podia ser
-//! `24,7×` maior e continuar a ser um minorante válido.
+//! ⭐⭐⭐ **A coluna do RAIO é a que mudou tudo (2026-08-31).** O bordo passou a levar as
+//! **meias-extensões por eixo** ao lado do raio (`bounds::Ball::half`), e a dobra deixou de medir a
+//! altura do arco pelo raio da esfera: `[Bend]` de `72,2` para **`22,7`** passos/raio (`3,2×`),
+//! `[Bend, Twist]` de `233,1` para **`55,6`** (`4,2×`), o trio de `1 543,6` para **`635,9`**
+//! (`2,4×`). ⚠️ **E as cinco imagens contra a marcha honesta ficaram idênticas** — não é um
+//! afrouxamento, é o bordo a deixar de mentir sobre o tamanho da peça.
+//!
+//! ⇒ **`90×` o custo de uma caixa** (era `217×`), e **`22,3×` disso continua a ser desperdício
+//! PROVADO**: o campo podia ser `22,3×` maior e continuar a ser um minorante válido.
 //!
 //! # ⛔⛔ A causa: os divisores MULTIPLICAM-SE, e os piores casos estão em sítios DIFERENTES
 //!
@@ -58,14 +67,14 @@
 //!
 //! | pilha | cobrado | de facto preciso | folga |
 //! |---|---:|---:|---:|
-//! | `[Bend]` | `10,00` | `4,0` | `2,5×` |
-//! | `[Bend, Twist]` | `33,82` | `7,3` | `4,6×` |
-//! | `[Bend, Twist, Taper]` | `240,29` | `9,9` | **`24,7×`** |
+//! | `[Bend]` | `3,59` | `2,0` | `1,8×` |
+//! | `[Bend, Twist]` | `9,00` | `3,2` | `2,8×` |
+//! | `[Bend, Twist, Taper]` | `100,87` | `4,5` | **`22,3×`** |
 //!
-//! Cada factor é frouxo por pouco (`1,3×`–`2,5×`); três frouxos multiplicam-se em `24,7×`. ⭐ E o
-//! elo mais solto é a **dobra**: ela cobra `ρ/piso = 1/(1 − 0,9) = 10` e o pior ponto real
-//! corresponde a `1/(1 − 0,75) = 4`. *Apertar isso é demonstrar um bound melhor para o mapa da
-//! dobra — trabalho de matemática, não um botão.*
+//! Cada factor é frouxo por pouco (`1,3×`–`1,8×`); três frouxos multiplicam-se em `22,3×`. ⭐ E a
+//! folga **por factor** já não é a dobra: ela caiu de `2,5×` para `1,8×` quando o bordo aprendeu os
+//! eixos. O que sobra é a **composição**, e apertá-la é demonstrar um bound melhor para o produto
+//! dos três mapas — trabalho de matemática, não um botão.
 
 use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, Primitive, Unary, UnaryKind, Xform};
 use ph2d_field_eval::{hybrid::Registry, safe_march_step};
@@ -129,16 +138,18 @@ fn passos_por_raio(doc: &FieldDoc) -> f64 {
 /// ⛔ **A CATRACA, medida em 2026-08-31.** Ela só ENCOLHE — ver o doc do módulo para as três
 /// hipóteses já medidas e para a cura de fundo.
 const TOLERADO: &[(&str, f64)] = &[
-    ("[Bend]", 72.2),
-    ("[Bend, Twist]", 233.1),
-    ("[Bend, Twist, Taper]", 1543.6),
+    ("[Bend]", 22.7),
+    ("[Bend, Twist]", 55.6),
+    ("[Bend, Twist, Taper]", 635.9),
 ];
 
 /// ⭐⭐⭐ **O CUSTO DE CADA PILHA, com as duas metades da catraca.**
 ///
-/// ⛔⛔ **Prova de mutação (2026-08-31):** pôr o `BEND_FOLD_MARGIN` em `0,75` leva
-/// `[Bend, Twist, Taper]` de `1 543,6` a `696,3` passos/raio — e o censo de obsolescência abaixo
-/// **reprova**, obrigando quem o mudar a re-escrever a tabela. É a prova de que a catraca desce.
+/// ⛔⛔ **Prova de mutação (2026-08-31), e a catraca já desceu uma vez por ela:** devolver a
+/// meia-altura da dobra (`bounds::canonical_step`) ao **raio** da bola em vez do eixo dobrado leva
+/// `[Bend]` de `22,7` a `72,2` e o trio de `635,9` a `1 543,6` — a metade de cima do gate reprova.
+/// E a metade de baixo já reprovou a sério: foi ela que obrigou esta tabela a ser re-escrita quando
+/// a caixa por eixo entrou. *Uma catraca que só sabe subir não é uma catraca.*
 #[test]
 fn a_stack_of_deformers_never_costs_the_march_more_than_it_did() {
     let base = passos_por_raio(&peca(Vec::new()));

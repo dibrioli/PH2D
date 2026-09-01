@@ -686,4 +686,4 @@ impl Bound {
 /// ⭐ As duas tabelas por-forma — ver [`radius_tables`].
 #[path = "radius_tables.rs"]
 mod radius_tables;
-pub use radius_tables::{bounding_radius, characteristic_size};
+pub use radius_tables::{bounding_half_extents, bounding_radius, characteristic_size};

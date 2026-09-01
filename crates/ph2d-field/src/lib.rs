@@ -54,8 +54,8 @@ pub use profile::{
     coarsen_to_normal_error,
 };
 pub use radius::{
-    Bound, bounding_radius, chamfer_of, characteristic_size, edge_shrink, fillet_inflates,
-    round_limit, round_of, set_shape_radius,
+    Bound, bounding_half_extents, bounding_radius, chamfer_of, characteristic_size, edge_shrink,
+    fillet_inflates, round_limit, round_of, set_shape_radius,
 };
 pub use xform::Xform;
 

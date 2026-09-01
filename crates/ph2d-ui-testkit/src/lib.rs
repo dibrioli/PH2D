@@ -411,6 +411,53 @@ impl MockPanelHost {
         P::paint(state, &mut ctx);
     }
 
+    /// ⭐⭐⭐ **QUANTA GEOMETRIA O PAINEL DE FACTO EMITIU** — `(n_paths, n_path_segments)` da
+    /// cena Vello, depois de pintar `P`.
+    ///
+    /// ⛔⛔ **Ela existe por causa do achado §4.2 da auditoria do `source.lsystem`:** o gate que
+    /// prometia medir *«a queixa chega a PIXEL»* media o `content_h` — a **linha reservada** —,
+    /// escrito por um `y +=` que não é a pintura. *Apagar a pintura inteira deixava-o verde.*
+    /// A auditoria nomeou o buraco no arnês: *«`MockPanelHost` expõe `store()`, `paint()` e
+    /// `painted_rect()`, e nada de texto»*.
+    ///
+    /// ⚠️⚠️ **O que conta TEXTO é o número de GLIFOS, não os caminhos.** A 1.ª redacção desta
+    /// função devolvia `n_path_segments`, e o gate que a estreou leu **`42` contra `42`**: o
+    /// Vello encaminha texto por `draw_glyphs`, cuja saída vive em `resources.glyphs`, e
+    /// **nenhum glifo entra na contagem de caminhos**. *Uma régua que devolve o mesmo número dos
+    /// dois lados não distingue «não pintou» de «não vejo o que ele pintou».*
+    ///
+    /// ⚠️ E o `TextSystem` deste arnês é `without_system_fonts` — ele **empacota o Inter**, então
+    /// há glifos; mas quem usa isto deve medir também que texto MAIOR dá mais glifos, que é a
+    /// metade que prova que o balde se enche.
+    ///
+    /// Devolve `(glifos, segmentos de caminho)`.
+    pub fn paint_and_count_geometry<P: Panel>(
+        &mut self,
+        state: &mut P::State,
+        viewport: Rect,
+    ) -> (u32, u32) {
+        self.set_panel_visible(P::ID, true);
+        self.hit_index.clear_for_frame();
+        let layout = HeroLayout::for_viewport(viewport);
+        let mut scene = VectorScene::new();
+        let mut text_system = TextSystem::without_system_fonts();
+        {
+            let mut ctx = PaintCtx {
+                host: self,
+                layout: &layout,
+                viewport,
+                scene: &mut scene,
+                text_system: &mut text_system,
+            };
+            P::paint(state, &mut ctx);
+        }
+        let enc = scene.inner().encoding();
+        (
+            u32::try_from(enc.resources.glyphs.len()).unwrap_or(u32::MAX),
+            enc.n_path_segments,
+        )
+    }
+
     pub fn paint_with_layout<P: Panel>(
         &mut self,
         state: &mut P::State,

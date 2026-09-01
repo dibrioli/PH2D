@@ -58,6 +58,54 @@ fn paint_and_measure(problem: Option<&str>) -> f32 {
         .expect("o painel publica a altura do CONTEÚDO")
 }
 
+/// ⭐⭐⭐ **A QUEIXA CHEGA A TINTA — e não só a espaço reservado.**
+///
+/// ⛔⛔ **Este gate nasceu de o irmão de baixo estar errado no ponto que decidia tudo** (achado
+/// §4.2 da auditoria de seis lentes). A altura é escrita por `y += ROW_H_PX + row_gap`, que é
+/// **outra linha** que não o `paint_text_elided`: apagar a pintura inteira deixava o
+/// `a_text_row_with_a_problem_takes_more_room_than_one_without` **verde**, e o doc-comment deste
+/// ficheiro prometia ser *«a metade que prova que ela chega a pixel»*.
+///
+/// ⇒ a régua passa a ser o número de GLIFOS que o painel emite para a cena Vello: espaço
+/// reservado não emite nenhum.
+///
+/// ⚠️⚠️ **E a 1.ª redacção desta régua estava ERRADA** — ela contava `n_path_segments` e leu
+/// **`42` contra `42`**: o Vello encaminha texto por `draw_glyphs`, cuja saída vive em
+/// `resources.glyphs`, e **nenhum glifo entra na contagem de caminhos**. *Uma régua que devolve o
+/// mesmo número dos dois lados não distingue «não pintou» de «não vejo o que ele pintou», e ler
+/// aquele empate como acusação teria mandado alguém consertar código que estava certo.*
+///
+/// ⚠️⚠️ **E a METADE QUE ENCHE O BALDE é a segunda:** o arnês monta um `TextSystem` **sem fontes
+/// de sistema**, então um gate que só comparasse «com queixa» contra «sem» ficaria verde no dia
+/// em que nenhum glifo resolvesse — *os dois lados a zero, e um zero de «não medido» e um de
+/// «igual» são o mesmo byte*. Medir que uma queixa **mais longa** emite mais segmentos só passa
+/// se os glifos de facto saírem.
+#[test]
+fn the_complaint_reaches_ink_and_not_only_reserved_space() {
+    let segments = |problem: Option<&str>| -> u32 {
+        let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+        set_current_params(Some(node_with_text(problem)));
+        let mut state = MotionParamsPanelState;
+        host.paint_and_count_geometry::<MotionParamsPanel>(&mut state, VIEWPORT)
+            .0
+    };
+    let mudo = segments(None);
+    let curta = segments(Some("erro"));
+    let longa = segments(Some(
+        "«A -> (40%) F»: o peso tem de ser um numero entre zero e um",
+    ));
+    assert!(
+        curta > mudo,
+        "a queixa nao emitiu glifo nenhum ({curta} contra {mudo}) — ela ocupa a linha e nao pinta \
+         nada"
+    );
+    assert!(
+        longa > curta,
+        "uma queixa MAIS LONGA emitiu {longa} glifos contra {curta} da curta — ou os glifos nao \
+         saem, ou o que cresce e' a caixa e nao o texto"
+    );
+}
+
 #[test]
 fn a_text_row_with_a_problem_takes_more_room_than_one_without() {
     let mudo = paint_and_measure(None);

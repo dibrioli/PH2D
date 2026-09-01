@@ -73,7 +73,7 @@ pub fn probe_anchor(axiom: &str, rules: &str, generations: f32, overrides: &[(&s
         leaf_effects: p.leaf_effects.round() as i32 != 0,
         seed: p.seed,
     };
-    let antes = turtle::mean_width(&d.previous, &setup(1.0, 1.0));
+    let antes = crate::width::mean_width(&d.previous, &setup(1.0, 1.0));
     // ⚠️ **Com as dobras FECHADAS** — é a pose de onde a interpolação parte.
     //
     // ⛔⛔ **A NOTA QUE AQUI ESTAVA FOI REFUTADA em 2026-08-30** (auditoria adversarial). Ela
@@ -84,7 +84,7 @@ pub fn probe_anchor(axiom: &str, rules: &str, generations: f32, overrides: &[(&s
     //
     // ⇒ quem guarda esta linha é a fixtura do Weed no gate da âncora (não auto-semelhante), e
     // a pose tem gate próprio em `turtle_tests::the_newest_generation_opens_its_folds…`.
-    let achatada = turtle::mean_width(&d.chain, &setup(0.0, 0.0));
+    let achatada = crate::width::mean_width(&d.chain, &setup(0.0, 0.0));
     if antes > 1e-6 && achatada > 1e-6 {
         (antes / achatada).clamp(0.02, 1.0)
     } else {

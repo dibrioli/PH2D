@@ -82,6 +82,8 @@ mod trig;
 mod turtle;
 /// **A FACE DO NÓ** — o que o painel mostra da lei (HR-18).
 mod ui;
+/// A régua do TAMANHO — irmã da tartaruga, e a única consumidora dela nesta direcção.
+mod width;
 
 pub use grammar::{Complaint, RuleProblem};
 use growth::growth_generations;
@@ -458,11 +460,11 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
         (if want_len { frac } else { 1.0 }, frac, 1.0)
     } else if want_ang {
         // REFINA: normaliza pelo que se mede, para a rampa sair recta.
-        let antes = turtle::mean_width(&d.previous, &base(1.0, 1.0, (d.generations, 1.0), 1.0));
-        let cheia = turtle::mean_width(&d.chain, &base(1.0, 1.0, (d.generations, 1.0), 1.0));
+        let antes = width::mean_width(&d.previous, &base(1.0, 1.0, (d.generations, 1.0), 1.0));
+        let cheia = width::mean_width(&d.chain, &base(1.0, 1.0, (d.generations, 1.0), 1.0));
         // ⚠️ A travessia que MEDE tem de correr a MESMA lei da que desenha — com `lat = 1`
         // aqui, o factor sairia de uma figura que o produto nunca desenha.
-        let agora = turtle::mean_width(&d.chain, &base(1.0, frac, (d.generations, 1.0), frac));
+        let agora = width::mean_width(&d.chain, &base(1.0, frac, (d.generations, 1.0), frac));
         let alvo = antes + (cheia - antes) * frac;
         if agora > 1e-6 && alvo > 0.0 {
             ((alvo / agora).clamp(0.02, 4.0), frac, frac)

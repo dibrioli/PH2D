@@ -229,11 +229,11 @@ pub(crate) fn size_ladder(
                     // A MESMA conta do `build`: as duas pontas no factor do instante, e a
                     // corda entre elas. ⚠️ Duas travessias por sub-degrau, e é por isso que ela
                     // só corre fora do neutro.
-                    let antes = turtle::mean_width(previous, &set(step, 1.0, g));
-                    let cheia = turtle::mean_width(chain, &set(step, 1.0, g));
+                    let antes = width::mean_width(previous, &set(step, 1.0, g));
+                    let cheia = width::mean_width(chain, &set(step, 1.0, g));
                     antes + (cheia - antes) * f
                 } else {
-                    turtle::mean_width(chain, &set(step, f, g))
+                    width::mean_width(chain, &set(step, f, g))
                 };
                 out.push((g, size));
             }
@@ -293,7 +293,7 @@ pub(crate) fn raw_ratio_and_family(axiom_src: &str, rules_src: &str, p: &Params)
     let rules = grammar::parse_rules(rules_src);
     let at = |g: u16| {
         let d = derive::derive(&axiom, &rules, g, 1, MAX_MODULES, &params);
-        let w = turtle::mean_width(
+        let w = width::mean_width(
             &d.chain,
             &turtle::Setup {
                 angle: p.angle,

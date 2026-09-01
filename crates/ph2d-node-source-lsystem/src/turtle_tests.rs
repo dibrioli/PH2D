@@ -294,7 +294,7 @@ fn the_ruler_does_not_change_when_the_figure_turns() {
     for deg in 0..=90 {
         let mut set = setup();
         set.root_angle = deg as f32;
-        widths.push(mean_width(&chain, &set));
+        widths.push(crate::width::mean_width(&chain, &set));
     }
     let hi = widths.iter().copied().fold(f32::MIN, f32::max);
     let lo = widths.iter().copied().fold(f32::MAX, f32::min);
@@ -389,7 +389,7 @@ fn audit_probe_fixture() {
         let h = v.iter().map(|q| q[1]).fold(f32::MIN, f32::max)
             - v.iter().map(|q| q[1]).fold(f32::MAX, f32::min);
         axis.push(w.max(h));
-        prod.push(mean_width(&chain, &set));
+        prod.push(crate::width::mean_width(&chain, &set));
         k4.push(mw_k(&chain, &set, 4));
         k8.push(mw_k(&chain, &set, 8));
         k64.push(mw_k(&chain, &set, 64));
@@ -428,7 +428,7 @@ fn the_ruler_is_the_mean_width_and_a_square_proves_it() {
     set.angle = 90.0;
     set.root_angle = 90.0;
     let square = axiom_modules("F(1)+F(1)+F(1)+F(1)", &nop as &dyn Fn(&str) -> f32);
-    let w = mean_width(&square, &set);
+    let w = crate::width::mean_width(&square, &set);
     let exact = 4.0 / std::f32::consts::PI;
     let err = (w - exact).abs() / exact * 100.0;
     assert!(
@@ -458,7 +458,7 @@ fn the_ruler_is_the_mean_width_and_a_square_proves_it() {
     let mut needle = setup();
     needle.root_angle = 0.0;
     let seg = axiom_modules("F(1)", &nop as &dyn Fn(&str) -> f32);
-    let nw = mean_width(&seg, &needle);
+    let nw = crate::width::mean_width(&seg, &needle);
     let nexact = 2.0 / std::f32::consts::PI;
     let nerr = (nw - nexact).abs() / nexact * 100.0;
     assert!(

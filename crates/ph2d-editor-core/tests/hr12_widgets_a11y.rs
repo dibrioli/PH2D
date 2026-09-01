@@ -428,6 +428,18 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
     // ⚠️ **A metade de LEITOR DE TELA do mesmo report continua ABERTA e é do painel, não deste
     // ficheiro:** o hit de socket carrega `node` + índice de `port` e nunca o nome, então a
     // árvore de AccessKit diz «porta 2». Fechá-la é dar um canal de NOME ao `hits.rs`.
+    // ⭐ **A SEMENTE do painel de params — e a ausência aqui é DEMONSTRÁVEL, não prometida.**
+    // Cortado do `lib.rs` pelo tecto de LOC de função (219/200) quando a linha de queixa de uma
+    // regra malformada entrou. Ele escreve estado no `WidgetStore` (secções dobráveis, dicas de
+    // hover, `CurvePoint`/`Button` do editor de curva e de gradiente) e **não pinta um pixel**:
+    // ⚠️ `VectorScene` e `TextSystem` não estão sequer no `use` dele, então «não desenha» é uma
+    // propriedade do ficheiro e não uma promessa de quem o escreveu. Cada widget que ele regista
+    // emite o a11y no sítio onde é PINTADO (`rows_paint` e os irmãos), que é o mesmo modelo do
+    // `paint_wire.rs` invertido: ali o desenho sem hit, aqui o hit sem desenho.
+    (
+        "ph2d-panel-motion-params/src/paint_seed.rs",
+        "semente do store — nao pinta (nem `VectorScene` nem `TextSystem` no escopo); o a11y de cada widget e' emitido onde ele e' pintado",
+    ),
     (
         "ph2d-panel-motion-graph/src/paint_port_label.rs",
         "pure text drawing — the sockets' AccessKit nodes are registered in hits.rs",

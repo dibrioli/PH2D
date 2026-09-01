@@ -493,7 +493,7 @@ fn the_taper_the_panel_writes_is_the_taper_the_ribbon_gets() {
         let ((t0, a0), (t1, a1)) = (w[0], w[1]);
         assert!(
             a1 < a0,
-            "`Tip Taper` de {t0} para {t1} não ENCOLHEU o contorno ({a0:.5} → {a1:.5}) — ou o \
+            "`Tip Taper` de {t0} para {t1} não ENCOLHEU o contorno ({a0:.5} -> {a1:.5}) — ou o \
              valor do painel não chega à fita, ou chega ao contrário. Todas: {areas:?}"
         );
     }

@@ -21,6 +21,7 @@ mod gradient_row;
 #[path = "measure_row_cap.rs"]
 mod measure_row_cap;
 mod number_rows;
+mod paint_seed;
 mod palette_row;
 /// O ESTADO de uma row no store — irmão cortado pelo teto de LOC (HR-18).
 mod row_state;
@@ -227,16 +228,7 @@ impl Panel for MotionParamsPanel {
         // ⚠️ **`collapsed_choice` distingue «o artista não escolheu» de «ele escolheu
         // aberto»** — sem essa distinção este laço re-fecharia a gaveta a cada quadro, e o
         // clique de quem a abriu duraria um frame.
-        {
-            let store = ctx.host.store_mut();
-            for (title, _) in &snap.sections {
-                let id = rows_paint::sections::section_id(title);
-                store.mark_collapsible_section(id);
-                if snap.folded_by_default.contains(title) && store.collapsed_choice(id).is_none() {
-                    store.set_collapsed(id, true);
-                }
-            }
-        }
+        paint_seed::seed_sections(ctx.host.store_mut(), &snap);
         // ⭐⭐ **AS DICAS, antes de as rows serem pintadas.** O `populate` não serve: ele regista
         // os widgets de TODOS os slots antes de saber que nó está seleccionado. Aqui o snapshot
         // já existe, e o `store_mut` também.
@@ -244,24 +236,7 @@ impl Panel for MotionParamsPanel {
         // ⚠️ **O id tem de ser o MESMO que o hover usa** — o `paint_hover_tooltip` lê
         // `tooltip_for(hot_id())`, e o `hot_id` vem do hit-index, que a row regista sob
         // `param_text_id(i)`. Uma dica noutro id seria uma dica que existe e ninguém alcança.
-        {
-            let store = ctx.host.store_mut();
-            // ⛔⛔ **TODOS os slots, e a AUSÊNCIA escreve-se** — o gate apanhou a 1.ª redacção,
-            // que só escrevia quando havia ajuda. O painel re-semeia a cada quadro sobre um
-            // POOL de ids partilhado por todos os nós: a dica do nó anterior sobrevivia e
-            // pairava sobre o campo do seguinte. *Um cache por slot posicional tem de ser
-            // escrito na ausência, senão ele não é um cache — é um resíduo.*
-            //
-            // ⚠️ Uma string vazia REMOVE (contrato do `set_tooltip`), então a ausência tem a
-            // mesma porta que a presença.
-            for slot in 0..MAX_PARAM_ROWS {
-                let help = match snap.rows.get(slot) {
-                    Some(ParamRow::Text(t)) => t.help.clone().unwrap_or_default(),
-                    _ => String::new(),
-                };
-                store.set_tooltip(param_text_id(slot), help);
-            }
-        }
+        paint_seed::seed_tooltips(ctx.host.store_mut(), &snap);
         let (curve_widgets, gradient_widgets, content_h) = {
             let scene = &mut *ctx.scene;
             let text_system = &mut *ctx.text_system;
@@ -297,68 +272,12 @@ impl Panel for MotionParamsPanel {
             theme,
         );
 
-        // Phase B (mutable store) — mark each colour swatch so a Down opens the
-        // shared OKLCH picker (generic `is_picker_swatch` dispatch). Idempotent.
-        // Phase C — register the Curve editor's per-frame `CurvePoint` handles (the
-        // dispatch reads `canvas`/`index` off these to normalize a drag) + its buttons.
-        {
-            let store = ctx.host.store_mut();
-            // O collapse genérico exige DOIS sítios: o hit-rect (no paint) e a MARCA aqui.
-            // Sem a marca o cabeçalho pinta um chevron e não dobra — o título morto que o
-            // painel do Vector já pagou. Marcado na fase mutável porque os títulos são do NÓ
-            // selecionado, e o `populate` (estático) não os conhece.
-            for row in &snap.rows {
-                if let ParamRow::Color(c) = row {
-                    store.register_picker_swatch(param_swatch_id(c.channels[0]));
-                }
-            }
-            for &(id, parent, index, canvas) in &curve_widgets.points {
-                store.register(
-                    id,
-                    InteractiveState::CurvePoint {
-                        parent,
-                        channel: 0,
-                        index,
-                        canvas,
-                    },
-                );
-            }
-            for &id in &curve_widgets.buttons {
-                store.register(
-                    id,
-                    InteractiveState::Button {
-                        state: ButtonState::Normal,
-                    },
-                );
-            }
-            // Gradient editor (doc 85): the position markers are `CurvePoint` handles (the
-            // dispatch normalizes a drag off `canvas`), each stop swatch a picker swatch (a
-            // Down opens the shared OKLCH picker; seeded here from the paint's srgb so it
-            // opens on the stop's colour), and `+`/`−`/interp are buttons.
-            for &(id, parent, index, canvas) in &gradient_widgets.markers {
-                store.register(
-                    id,
-                    InteractiveState::CurvePoint {
-                        parent,
-                        channel: 0,
-                        index,
-                        canvas,
-                    },
-                );
-            }
-            for &(sid, srgb) in &gradient_widgets.swatches {
-                store.register_picker_swatch(sid);
-                store.set_widget_color(sid, srgb);
-            }
-            for &id in &gradient_widgets.buttons {
-                store.register(
-                    id,
-                    InteractiveState::Button {
-                        state: ButtonState::Normal,
-                    },
-                );
-            }
-        }
+        paint_seed::register_interactive(
+            ctx.host.store_mut(),
+            &snap,
+            &curve_widgets,
+            &gradient_widgets,
+        );
     }
 
     fn apply_event(

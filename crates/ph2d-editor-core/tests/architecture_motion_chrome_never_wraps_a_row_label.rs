@@ -65,7 +65,14 @@ const WRAPPING_DOORS: &[&str] = &["paint_text", "paint_text_title", "paint_text_
 /// Quantos rótulos usam hoje a porta que CORTA, nos ficheiros varridos. ⚠️ **Contagem EXACTA
 /// com censo**: uma folga («pelo menos N») deixaria apagar rótulos em silêncio, que é
 /// literalmente o que o controlo existe para impedir.
-const ELIDED_TODAY: usize = 26;
+///
+/// **Histórico do número** — cada subida nomeia o rótulo que a causou, senão isto é a catraca
+/// sem censo que o CLAUDE.md §5.0 proíbe:
+/// - `26` (2026-08-30) — a redacção original, o dia em que a lei passou a valer.
+/// - `27` (2026-08-31) — a linha de QUEIXA de uma regra malformada do `source.lsystem`
+///   (`rows_paint::paint_one_row`, braço `ParamRow::Text(text) if text.problem.is_some()`):
+///   texto livre do artista, comprimento sem tecto, e por isso obrigada a CORTAR.
+const ELIDED_TODAY: usize = 27;
 
 fn crates_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))

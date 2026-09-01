@@ -27,6 +27,10 @@ const SECTION_HEAD_H: f32 = ROW_H_PX;
 
 pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(InspectorPanel::ID) {
+        // ⛔⛔ **O ramo escondido LARGA o campo de valor** (auditoria de 2026-08-31, A3): sem isto,
+        // fechar o painel deixava um `TextInput` focado e invisível a comer as teclas do app
+        // inteiro — o defeito que o molde do navegador de assets nomeia na porta homóloga.
+        crate::event_value::abandon(inspector_state, ctx.host.store_mut());
         return;
     }
     sync_inspector_from_snapshots(inspector_state, ctx.host);
@@ -56,7 +60,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             store,
             &mut inspector_state.anchor_selected,
             &mut inspector_state.anim_selected,
-            inspector_state.value_edit.map(|(a, _)| a),
+            inspector_state.value_edit.clone(),
         );
     }
     state::set_current_display_unit(display_unit, ppm); // keep symmetric with legacy
@@ -98,7 +102,7 @@ fn paint_inspector(
     store: &WidgetStore,
     anchor_selected: &mut usize,
     anim_selected: &mut usize,
-    editing_value: Option<usize>,
+    editing_value: Option<crate::state::ValueEdit>,
 ) {
     // ⭐ **A moldura do corpo — superfície, alças, cabeçalho, clip e a caixa interior.**
     // Ver [`crate::paint_frame::open_body`]: nada disto é orquestração de seção, e é a mesma razão

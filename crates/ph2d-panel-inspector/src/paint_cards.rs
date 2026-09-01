@@ -37,7 +37,7 @@ pub(crate) fn paint_top_cards(
     properties_info: Option<&InspectorPropertiesInfo>,
     // ⭐ Qual eixo do cartão de propriedades está a ser reescrito, se algum — ver
     // `ids::INSP_INSTANCE_VALUE_EDIT`.
-    editing_value: Option<usize>,
+    editing_value: Option<crate::state::ValueEdit>,
     inner_x: f32,
     inner_w: f32,
     y: f32,

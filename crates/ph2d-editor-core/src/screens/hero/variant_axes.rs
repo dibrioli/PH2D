@@ -366,11 +366,14 @@ pub fn rows_for(
         // repetição existe. *Não se diz duas vezes a mesma coisa; e quando o chip diz outra, a
         // fileira declarada continua a informar.*
         let said = format!("{}={}", row.name, row.options[0].label);
+        // ⚠️ **Por SEGMENTO exacto, nunca `contains`** (auditoria de 2026-08-31): `Size=Small`
+        // está CONTIDO em `Size=Small 2`, e o contains fazia a fileira declarada `Small` sumir
+        // quando só o `Small 2` estava dito num chip.
         if axes
             .iter()
             .filter(|a| a.name.is_empty())
             .flat_map(|a| a.options.iter())
-            .any(|o| o.label.contains(&said))
+            .any(|o| o.label.split(", ").any(|seg| seg == said))
         {
             continue;
         }

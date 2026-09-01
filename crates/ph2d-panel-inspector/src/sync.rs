@@ -42,6 +42,11 @@ pub(crate) fn sync_inspector_from_snapshots(
     let ppm = host.project().pixels_per_meter;
     let pos_for_display = |m: f32| display_unit.from_meters(m, ppm) as f64;
     if entity_changed {
+        // ⛔⛔ **A troca de seleção LARGA o campo de valor** (auditoria de 2026-08-31, A1/A2): sem
+        // isto ele hibernava com o texto do objecto antigo, reabria sozinho quando ele voltava, e
+        // um `Blur` tardio gravava o texto de A na receita de B. O `commit` também confere a
+        // identidade — as duas metades, porque a cerca fica no lado perigoso E na porta.
+        crate::event_value::abandon(inspector_state, host.store_mut());
         host.store_mut().set_focus(None);
         let _ = host.store_mut().end_number_input_drag();
         host.store_mut().end_number_stepper_hold();
@@ -102,65 +107,12 @@ pub(crate) fn sync_inspector_from_snapshots(
         }
         inspector_state.last_entity = new_entity;
     } else {
-        if let Some(info) = transform {
-            // Reflect the live Transform into the boxes — but SKIP the box the user is currently
-            // editing (focused for typing OR being drag-scrubbed). Without this guard the box the drag
-            // writes gets overwritten every frame by the round-tripped ECS value (meters↔display unit
-            // isn't bit-exact), so the drag delta is applied against a moving target → the move / rot /
-            // scale TREMBLE on the canvas in real time (Enio 2026-06-26). Mirrors the Sampling /
-            // Visibility blocks below, plus a drag guard so scrub is covered even without focus.
-            let focus = host.store().focus_id();
-            let drag = host.store().number_input_drag().map(|d| d.id);
-            for (id, value) in [
-                (
-                    ids::INSP_TRANSFORM_POS_X,
-                    pos_for_display(info.translation[0]),
-                ),
-                (
-                    ids::INSP_TRANSFORM_POS_Y,
-                    pos_for_display(info.translation[1]),
-                ),
-                (
-                    ids::INSP_TRANSFORM_ROT,
-                    info.rotation_rad.to_degrees() as f64,
-                ),
-                (ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64),
-                (ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64),
-                (
-                    ids::INSP_TRANSFORM_SKEW_X,
-                    info.skew_rad[0].to_degrees() as f64,
-                ),
-                (
-                    ids::INSP_TRANSFORM_SKEW_Y,
-                    info.skew_rad[1].to_degrees() as f64,
-                ),
-            ] {
-                if focus != Some(id) && drag != Some(id) {
-                    host.store_mut().set_number_value(id, value);
-                }
-            }
-        }
-        let focused = host.store().focus_id() == Some(ids::INSP_ENTITY_NAME);
-        let pending_name_edit = host
-            .bus()
-            .iter()
-            .any(|a| matches!(a, EditorAction::InspectorNameEdit(_)));
-        if !pending_name_edit
-            && !focused
-            && let Some(info) = name.as_ref()
-            && let Some(InteractiveState::TextInput {
-                text,
-                caret,
-                selection_anchor,
-                ..
-            }) = host.store_mut().get_mut(ids::INSP_ENTITY_NAME)
-            && text.as_str() != info.name.as_str()
-        {
-            text.clear();
-            text.push_str(&info.name);
-            *caret = text.len();
-            *selection_anchor = None;
-        }
+        mirror_live_values_without_stomping_the_edit(
+            host,
+            transform,
+            name.clone(),
+            &pos_for_display,
+        );
     }
     let pending_visibility_edit = host
         .bus()
@@ -534,4 +486,81 @@ fn is_sprite_color_swatch(id: ph2d_a11y::NodeId) -> bool {
             | ids::INSP_SPRITE_CORNER_BL
             | ids::INSP_SPRITE_CORNER_BR
     )
+}
+
+/// ⭐⭐ **Espelhar o mundo VIVO nas caixas — sem pisar o que a mão está a escrever.**
+///
+/// A outra metade do [`sync_inspector_from_snapshots`]: quando a seleção **não** mudou, o painel
+/// continua a refletir o `Transform` e o `Name` do mundo, mas **salta** a caixa focada ou em
+/// arrasto. Sem essa guarda o valor ida-e-volta (metros ↔ unidade de exibição não é bit-exacto)
+/// reescreve a caixa a cada quadro e o gesto aplica-se contra um alvo móvel — o TREMOR que o Enio
+/// reportou em 2026-06-26.
+///
+/// ⚠️ Vive numa função própria porque o irmão (`entity_changed`) faz a operação CONTRÁRIA
+/// — semear —, e misturá-las levou a função-mãe ao tecto de 200 LOC.
+fn mirror_live_values_without_stomping_the_edit(
+    host: &mut dyn PanelHostInternal,
+    transform: Option<ph2d_editor_core::screens::hero::InspectorTransformInfo>,
+    name: Option<ph2d_editor_core::screens::hero::InspectorNameInfo>,
+    pos_for_display: &dyn Fn(f32) -> f64,
+) {
+    if let Some(info) = transform {
+        // Reflect the live Transform into the boxes — but SKIP the box the user is currently
+        // editing (focused for typing OR being drag-scrubbed). Without this guard the box the drag
+        // writes gets overwritten every frame by the round-tripped ECS value (meters↔display unit
+        // isn't bit-exact), so the drag delta is applied against a moving target → the move / rot /
+        // scale TREMBLE on the canvas in real time (Enio 2026-06-26). Mirrors the Sampling /
+        // Visibility blocks below, plus a drag guard so scrub is covered even without focus.
+        let focus = host.store().focus_id();
+        let drag = host.store().number_input_drag().map(|d| d.id);
+        for (id, value) in [
+            (
+                ids::INSP_TRANSFORM_POS_X,
+                pos_for_display(info.translation[0]),
+            ),
+            (
+                ids::INSP_TRANSFORM_POS_Y,
+                pos_for_display(info.translation[1]),
+            ),
+            (
+                ids::INSP_TRANSFORM_ROT,
+                info.rotation_rad.to_degrees() as f64,
+            ),
+            (ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64),
+            (ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64),
+            (
+                ids::INSP_TRANSFORM_SKEW_X,
+                info.skew_rad[0].to_degrees() as f64,
+            ),
+            (
+                ids::INSP_TRANSFORM_SKEW_Y,
+                info.skew_rad[1].to_degrees() as f64,
+            ),
+        ] {
+            if focus != Some(id) && drag != Some(id) {
+                host.store_mut().set_number_value(id, value);
+            }
+        }
+    }
+    let focused = host.store().focus_id() == Some(ids::INSP_ENTITY_NAME);
+    let pending_name_edit = host
+        .bus()
+        .iter()
+        .any(|a| matches!(a, EditorAction::InspectorNameEdit(_)));
+    if !pending_name_edit
+        && !focused
+        && let Some(info) = name.as_ref()
+        && let Some(InteractiveState::TextInput {
+            text,
+            caret,
+            selection_anchor,
+            ..
+        }) = host.store_mut().get_mut(ids::INSP_ENTITY_NAME)
+        && text.as_str() != info.name.as_str()
+    {
+        text.clear();
+        text.push_str(&info.name);
+        *caret = text.len();
+        *selection_anchor = None;
+    }
 }

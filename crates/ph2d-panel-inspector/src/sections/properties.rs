@@ -109,7 +109,9 @@ pub(crate) fn paint_properties_card(
     store: &WidgetStore,
     info: &InspectorPropertiesInfo,
     // ⭐ Qual eixo está a ser reescrito, se algum — ver `InspectorState::value_edit`.
-    editing: Option<usize>,
+    // ⭐ O valor em reescrita (identidade: entidade + nome do eixo) — ver
+    // `InspectorState::value_edit`.
+    editing: Option<crate::state::ValueEdit>,
     x: f32,
     w: f32,
     y: f32,
@@ -205,7 +207,6 @@ pub(crate) fn paint_properties_card(
                 break;
             };
             let host = Rect::new(chips_x + (cw + gap) * i as f32, ty, cw, line);
-            hit_index.register(id, host);
             // ⛔⛔ **O rótulo cabe no chip, ou é CORTADO** (auditoria de 2026-08-31, achado A3).
             //
             // O `MAX_INSTANCE_AXIS_VALUES = 8` é um tecto de **tabela de ids**, e o recurso que se
@@ -223,10 +224,19 @@ pub(crate) fn paint_properties_card(
             // ⭐⭐⭐ **E o VIGENTE, em edição, é um CAMPO** — ver o doc de
             // `ids::INSP_INSTANCE_VALUE_EDIT`. Ele ocupa o rect do chip, e é o próprio chip que
             // some: *o valor muda-se onde ele se lê.*
-            if v.current && editing == Some(a) {
+            if v.current
+                && editing
+                    .as_ref()
+                    .is_some_and(|e| e.entity_bits == info.entity_bits && e.axis == ax.name)
+            {
                 paint_value_field(scene, text_system, theme, hit_index, store, host);
                 continue;
             }
+            // ⚠️ **Regista-se só o que se PINTA** (auditoria de 2026-08-31, A7): o chip vigente
+            // em edição vira campo, e um hit-rect registado sem pintura por baixo é o que toda
+            // sonda de «pintado?» lê errado — só não mordia porque o campo, registado depois no
+            // mesmo rect, ganhava por ser o de cima.
+            hit_index.register(id, host);
             let label = ph2d_editor_core::text_elide::fit(text_system, &v.label, font, cw);
             let button = Button::new(id, label)
                 // ⚠️ A vigente é `Accent` — é o **estado**, e não uma decoração: sem ela a fileira

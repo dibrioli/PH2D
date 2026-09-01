@@ -185,6 +185,18 @@ pub(crate) fn make_master(
                 .insert(Name::new(cname));
         }
     }
+    // ⭐⭐⭐ **A cópia que fica no lugar passa a DECLARAR o que ela segue** (auditoria
+    // multiagêntica de 2026-08-31, sonda C — a 3.ª porta sem espelho).
+    //
+    // Num *Make Variant* a cópia mantém o nome do artista (decisão de 27/08) — que declara a
+    // combinação da BASE — e o elo dela aponta a VARIANTE nova. Com a lei «as chaves mandam», o
+    // `follow` da mudança de seleção via a discordância e devolvia a cópia à base **no quadro
+    // seguinte ao gesto**: a variante nascia e perdia a única cópia. *Todo gesto que muda o elo
+    // escreve nas chaves* — este mudava e não escrevia.
+    //
+    // ⚠️ No *Make Prefab* simples é um no-op ao byte (o nome da cópia já declara o combo da
+    // receita), e é por isso que a chamada não é condicional.
+    crate::instance_declared_value::mirror_onto_copy(sim, instance);
     Ok((entity, instance))
 }
 

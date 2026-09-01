@@ -1007,6 +1007,7 @@ impl App {
             physics_smoke_done: false,
             instance_smoke_done: false,
             instance_echo: Default::default(),
+            followed_selection: None,
             show_colliders: true,
             onion_ghosts: Vec::new(),
             emissive_instances: Vec::new(),

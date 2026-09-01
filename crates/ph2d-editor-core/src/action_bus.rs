@@ -29,18 +29,10 @@
 //! event; the shell drains after the per-frame `apply_event` cascade.
 //! Per-event ordering is preserved (HR-5).
 //!
-//! ## Scope of this commit (foundation only)
-//!
-//! - Defines [`EditorAction`] enum (3 representative variants —
-//!   `Trim` / `MakeSquare` / `Bgremoval`) covering the image-edit
-//!   action row Wave 2 PR 11.4 already wired via Registry.
-//! - Defines [`ActionBus`] with `push` / `drain` / `is_empty` / `len`.
-//! - Comprehensive unit tests pinning the contract.
-//!
-//! Migration of the remaining `pending_X` fields lands in follow-up
-//! PRs (11.8b — image-edit, 11.8c — hierarchy, 11.8d — inspector).
-//! Each migration removes that field from `HeroScreen` and the
-//! corresponding drain block from `main.rs` / `hero_intents.rs`.
+//! ⚠️ **O parágrafo de âmbito desta fundação MORREU em 2026-08-31**: ele prometia *«3 variantes
+//! representativas — `Trim` / `MakeSquare` / `Bgremoval`»* sobre um enum que já passa das 150, e
+//! a migração dos `pending_X` que ele anunciava está feita há muito. *Prosa que descreve o commit
+//! em vez do ficheiro envelhece sem que nada fique vermelho.*
 
 /// One outbound intent from the editor to the shell. Variants are
 /// added incrementally as `pending_X` fields migrate into the bus.
@@ -555,9 +547,6 @@ pub enum EditorAction {
         entity_bits: u64,
         edit: crate::screens::hero::JointFieldEdit,
     },
-    /// ⭐⭐ **Renomear o VALOR de uma propriedade** — o campo que o clique no chip aceso abre.
-    /// O sujeito é a **RECEITA**, porque é lá que o valor vive; o porquê vive no
-    /// `ph2d-panel-inspector/src/event_value.rs`.
     /// ⭐⭐⭐ **O campo do NOME fechou** (Enter ou clique fora) — e as chaves que ele declara
     /// passam a valer. Lei, decisão e o porquê de isto NÃO ser a [`Self::InspectorNameEdit`] (que
     /// chega por TECLA): `shells/desktop/src/instance_declared_value.rs`.
@@ -565,10 +554,18 @@ pub enum EditorAction {
     /// ⚠️ Sem texto: quem a honra lê o `Name` **do mundo**.
     InspectorNameCommitted { entity_bits: u64 },
 
+    /// ⭐⭐ **Renomear o VALOR de uma propriedade** — o campo que o clique no chip aceso abre.
+    /// O sujeito é a **RECEITA**, porque é lá que o valor vive; o porquê vive no
+    /// `ph2d-panel-inspector/src/event_value.rs`.
     InspectorRenameVariantValue {
         master: u64,
         key: String,
         value: String,
+        /// A RAIZ da cópia em cujo cartão o campo abriu — `0` quando não há cópia. ⚠️ É o que
+        /// permite ao dreno **preferir a TROCA**: se o valor digitado já existe na família, o
+        /// artista quer *aquela versão*, e renomear a receita por cima criaria duas receitas com a
+        /// mesma combinação — o estado que colapsa o eixo (auditoria de 2026-08-31, achado 5).
+        root_bits: u64,
     },
 
     /// Inspector → shell channel for a §13 Pulley Wheel field (W-Pulley W1).

@@ -7,12 +7,12 @@
 use super::Applied;
 use ph2d_ecs::{ChildOf, Entity, InstanceOf, MasterRoot, Name, SimWorld, Transform};
 
-fn reg() -> ph2d_ecs::scene::ComponentRegistry {
+pub(super) fn reg() -> ph2d_ecs::scene::ComponentRegistry {
     crate::init::build_component_registry()
 }
 
 /// Uma base com uma peça, e a cópia que o *Make Prefab* deixa no lugar.
-fn base_and_copy(base_name: &str) -> (SimWorld, Entity, Entity) {
+pub(super) fn base_and_copy(base_name: &str) -> (SimWorld, Entity, Entity) {
     let mut sim = SimWorld::new();
     let r = reg();
     let master = sim
@@ -43,7 +43,7 @@ fn base_and_copy(base_name: &str) -> (SimWorld, Entity, Entity) {
     (sim, master, copy)
 }
 
-fn name_of(sim: &SimWorld, e: Entity) -> String {
+pub(super) fn name_of(sim: &SimWorld, e: Entity) -> String {
     sim.world().get::<Name>(e).expect("nome").0.clone()
 }
 
@@ -299,5 +299,175 @@ fn renaming_a_value_drags_the_copies_that_follow_it() {
         name_of(&sim, stranger),
         "Outro {Size=Small}",
         "arrastou quem nao segue esta receita"
+    );
+}
+
+/// ⭐⭐⭐ **Renomear a RECEITA pelo commit de nome ARRASTA as cópias** — o «duas portas, duas leis»
+/// da auditoria (achado 1 do auditor 1, achado 2 do auditor 2).
+///
+/// O caminho do CHIP arrastava; o Enter da Hierarquia e o campo de nome não — e recriavam o estado
+/// das duas fotos pela porta mais óbvia.
+///
+/// (Mutação: tirar o braço `MasterRoot` do `apply` ⇒ RED.)
+#[test]
+fn renaming_a_recipe_through_the_name_commit_drags_its_copies() {
+    let (mut sim, base, copy) = base_and_copy("Casa {Size=Small}");
+    let mut echo = crate::instance_sync::MasterEcho::default();
+    // O que o `hierarchy_rename` faz: escreve o Name e chama `apply` sobre a entidade renomeada.
+    sim.world_mut()
+        .entity_mut(base)
+        .insert(Name::new("Casa {Size=Grande}"));
+    let out = super::apply(&mut sim, &mut echo, base);
+    assert!(
+        out.is_none(),
+        "sobre uma receita o apply arrasta e cala — nao troca nem autora"
+    );
+    assert_eq!(
+        name_of(&sim, copy),
+        "Casa {Size=Grande} (1)",
+        "a copia ficou com a etiqueta morta — o estado das duas fotos, pela porta da Hierarquia"
+    );
+}
+
+/// ⛔⛔ **O arrasto NÃO leva a RECEITA-VARIANTE** — ela não é uma cópia (sonda B do auditor 4).
+///
+/// Sem a cerca, renomear o valor da base fazia as DUAS receitas declararem a mesma combinação — o
+/// estado que colapsa o eixo, criado pela própria cura.
+///
+/// (Mutação: tirar o `Without<MasterRoot>` do `mirror_onto_copies_of` ⇒ RED.)
+#[test]
+fn the_drag_never_touches_a_variant_recipe() {
+    let (mut sim, base, _copy) = base_and_copy("Casa {Size=Small}");
+    let r = reg();
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let variant = crate::instantiate::instantiate_master(
+        &mut sim,
+        &r,
+        base,
+        None,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+        crate::instantiate::ArtLink::Own,
+    )
+    .expect("instanciou");
+    sim.world_mut()
+        .entity_mut(variant)
+        .insert((MasterRoot, Name::new("Casa {Size=Big}")));
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    let base_id = sim.world().get::<ph2d_ecs::StableId>(base).expect("sid").0;
+
+    sim.world_mut()
+        .entity_mut(base)
+        .insert(Name::new("Casa {Size=Grande}"));
+    super::mirror_onto_copies_of(&mut sim, base_id);
+    assert_eq!(
+        name_of(&sim, variant),
+        "Casa {Size=Big}",
+        "a variante foi arrastada como se fosse copia — duas receitas com a mesma combinacao"
+    );
+}
+
+/// ⭐⭐⭐ **O *Make Variant* escreve nas chaves da cópia que deixa** — a 3.ª porta sem espelho
+/// (sonda C do auditor 4: sem isto, o follow da seleção DESFAZIA o gesto no quadro seguinte).
+///
+/// (Mutação: tirar o `mirror_onto_copy` do `make_master` ⇒ RED na 2.ª asserção.)
+#[test]
+fn make_variant_writes_the_copys_braces_so_the_follow_settles() {
+    let (mut sim, _base, copy) = base_and_copy("Casa {Size=Small}");
+    let mut echo = crate::instance_sync::MasterEcho::default();
+    let r = reg();
+    // O verbo REAL, sobre a cópia — como o menu faz.
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let (variant, left_behind) = crate::instance_verbs::make_master(
+        &mut sim,
+        &r,
+        copy,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+    )
+    .expect("virou variante");
+    let variant_id = sim
+        .world()
+        .get::<ph2d_ecs::StableId>(variant)
+        .expect("sid")
+        .0;
+    // A cópia deixada DECLARA o que segue…
+    let n = name_of(&sim, left_behind);
+    assert!(
+        n.contains("{Size=Small 2}"),
+        "a copia nao declara o combo da variante que segue: «{n}»"
+    );
+    // …e o follow da mudança de seleção NÃO desfaz o gesto.
+    assert!(
+        !super::follow(&mut sim, &mut echo, left_behind),
+        "o follow desfez o *Make Variant* no quadro seguinte"
+    );
+    assert_eq!(
+        sim.world().get::<InstanceOf>(left_behind).map(|l| l.master),
+        Some(variant_id)
+    );
+}
+
+/// ⛔ **O espelho passa pelo funil de unicidade** — dois nomes nunca colidem (achado 4).
+///
+/// (Mutação: tirar o `unique_name_excluding` do `write_combo` ⇒ RED.)
+#[test]
+fn the_mirror_never_collides_two_names() {
+    let (mut sim, base, copy_a) = base_and_copy("Casa {Size=Small}");
+    let mut echo = crate::instance_sync::MasterEcho::default();
+    let r = reg();
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let variant = crate::instantiate::instantiate_master(
+        &mut sim,
+        &r,
+        base,
+        None,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+        crate::instantiate::ArtLink::Own,
+    )
+    .expect("instanciou");
+    sim.world_mut()
+        .entity_mut(variant)
+        .insert((MasterRoot, Name::new("Casa {Size=Big}")));
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    let big = sim
+        .world()
+        .get::<ph2d_ecs::StableId>(variant)
+        .expect("sid")
+        .0;
+    // Uma cópia da VARIANTE com o mesmo sufixo « (1)» que a da base tem.
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let copy_b = crate::instantiate::instantiate_master(
+        &mut sim,
+        &r,
+        variant,
+        None,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+        crate::instantiate::ArtLink::Own,
+    )
+    .expect("instanciou");
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+
+    // O gesto do achado: a cópia da BASE troca para Big — o espelho vai escrever «Casa {Size=Big}…»
+    let root = crate::instance_verbs::instance_root_of(&mut sim, copy_a).expect("raiz");
+    crate::instance_variant::swap(&mut sim, &mut echo, root, big).expect("trocou");
+    super::mirror_onto_copy(&mut sim, root);
+    let a = name_of(&sim, root);
+    let b = name_of(&sim, copy_b);
+    assert_ne!(
+        a, b,
+        "duas entidades ficaram com o Name byte-identico: «{a}»"
     );
 }

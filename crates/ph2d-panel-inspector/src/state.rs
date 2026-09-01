@@ -21,14 +21,32 @@ use ph2d_editor_core::screens::hero::{
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
 /// after Phase C.1; mutated by the panel's `paint` / `apply_event` and
 /// by `sync_inspector_from_snapshots` (also panel-owned).
+/// Ver [`InspectorState::value_edit`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ValueEdit {
+    /// A entidade cujo cartão o campo abriu (`InspectorPropertiesInfo::entity_bits`).
+    pub entity_bits: u64,
+    /// O NOME do eixo (`Size`) — nunca a posição da fileira.
+    pub axis: String,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct InspectorState {
-    /// ⭐⭐⭐ **O eixo cujo VALOR está a ser reescrito**, e se o campo já foi semeado.
+    /// ⭐⭐⭐ **O valor em reescrita: QUEM e QUAL eixo** — identidade, nunca um índice.
     ///
-    /// Ver [`ph2d_editor_core::ids::INSP_INSTANCE_VALUE_EDIT`] para o report que o pediu. O molde
-    /// é o `paint_catalog_rename` do navegador de assets: o despacho ABRE, o pintor SEMEIA uma vez
-    /// (re-semear a cada quadro apagaria o que o artista escreveu), e o `Submit`/`Blur` grava.
-    pub value_edit: Option<(usize, bool)>,
+    /// # ⛔⛔⛔ A 1.ª versão era `(usize, bool)` e a auditoria de 2026-08-31 mediu o preço
+    ///
+    /// O índice era uma posição num cartão que o construtor refaz por quadro, e nada ligava o
+    /// campo à entidade em que abriu: trocar a seleção com o campo aberto e clicar em qualquer
+    /// coisa **gravava o texto de A na receita de B** (o `Blur` relê o snapshot vigente); o campo
+    /// reabria sozinho quando o objecto antigo voltava; e fileiras reordenadas gravavam na CHAVE
+    /// errada — a doença que o doc do próprio `chip_click` proíbe para o swap (*«a identidade
+    /// viaja; a posição fica no painel»*), reintroduzida uma porta ao lado. E o `bool` («já
+    /// semeado») não tinha leitor nenhum.
+    ///
+    /// ⇒ viaja a **identidade**: os bits da entidade do cartão e o NOME do eixo. O pintor re-acha
+    /// a fileira por nome; o `commit` confere os dois e **abandona** quando qualquer um mudou.
+    pub value_edit: Option<ValueEdit>,
 
     /// Entity bits of the last selection whose snapshot seeded the 5
     /// Transform NumberInputs + the editable Name field. When the

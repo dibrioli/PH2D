@@ -73,46 +73,49 @@ fn step_4_make_variant(app: &mut crate::App) {
     );
 }
 
-/// 5. O gesto que FALTA a toda a gente: dar à variante o valor dela.
+/// 5. O gesto de HOJE: escrever o valor NAS CHAVES da cópia e dar o commit.
 ///
-/// ⚠️ **Ele escreve no `Name` da RECEITA da variante**, que é o que o cartão lê — e é exactamente
-/// o passo que a Hierarquia pode não oferecer, se a receita estiver escondida dela.
+/// ⚠️ **Reescrito na auditoria multiagêntica de 2026-08-31** — a versão anterior ensinava o gesto
+/// superado (renomear a receita à mão, por `insert(Name)` directo, fora das portas de commit), e
+/// **narrava o falso**: o `follow` de então já tinha devolvido a cópia à base entre os quadros 24
+/// e 32, então o passo renomeava a BASE a dizer que renomeava a variante. *Um smoke que ensina o
+/// contrário do que acontece é pior que um ausente.*
+///
+/// Hoje ele faz o que o artista faz — escreve `{Size=Big}` no nome da cópia — e commita pela
+/// MESMA porta que o Enter da Hierarquia usa (`instance_declared_value::apply`).
 fn step_5_rename_variant(app: &mut crate::App) {
     let bits = LIVE.with(std::cell::Cell::get);
     let Some(gfx) = app.gfx.as_mut() else { return };
     let e = ph2d_ecs::Entity::from_bits(bits);
-    let Some(root) = crate::instance_verbs::instance_root_of(&mut gfx.sim, e) else {
-        eprintln!("[fluxo] 5. ⚠️ a cópia viva não tem raiz de instância — o passo 4 falhou");
-        return;
-    };
-    let master_id = gfx
+    let old = gfx
         .sim
         .world()
-        .get::<ph2d_ecs::InstanceOf>(root)
-        .map(|l| l.master);
-    let Some(master_id) = master_id else {
-        eprintln!("[fluxo] 5. ⚠️ a raiz não aponta receita nenhuma");
+        .get::<ph2d_ecs::Name>(e)
+        .map(|n| n.0.clone())
+        .unwrap_or_default();
+    let Some(renamed) = ph2d_editor::screens::hero::variant_axes::with_value(&old, "Size", "Big")
+    else {
+        eprintln!("[fluxo] 5. ⚠️ o nome «{old}» não declara Size — o passo 4 falhou");
         return;
     };
-    let target = {
-        let mut q = gfx
-            .sim
-            .world_mut()
-            .query::<(ph2d_ecs::Entity, &ph2d_ecs::StableId)>();
-        q.iter(gfx.sim.world())
-            .find(|(_, s)| s.0 == master_id)
-            .map(|(e, _)| e)
-    };
-    match target {
-        Some(m) => {
-            gfx.sim
-                .world_mut()
-                .entity_mut(m)
-                .insert(ph2d_ecs::Name::new("Casa {Size=Big}"));
-            eprintln!("[fluxo] 5. a receita da variante passou a «Casa {{Size=Big}}»");
+    gfx.sim
+        .world_mut()
+        .entity_mut(e)
+        .insert(ph2d_ecs::Name::new(renamed.clone()));
+    let mut echo = crate::instance_sync::MasterEcho::default();
+    let did = crate::instance_declared_value::apply(&mut gfx.sim, &mut echo, e);
+    // ⚠️ **A voz NOMEIA qual das duas leis agiu** — o smoke é onde o Enio APRENDE a ferramenta
+    // (§0.8), e «a lei agiu» não distingue AUTORAR de TROCAR, que é a escolha inteira do desenho.
+    eprintln!(
+        "[fluxo] 5. escrevi «{renamed}» no nome da CÓPIA e commitei — {}",
+        match &did {
+            Some(crate::instance_declared_value::Applied::Authored { key, value }) =>
+                format!("AUTOROU: a família ganhou a versão «{key}={value}»"),
+            Some(crate::instance_declared_value::Applied::Switched) =>
+                "TROCOU: essa versão já existia, a cópia passou a segui-la".to_string(),
+            None => "⚠️ a lei NÃO agiu".to_string(),
         }
-        None => eprintln!("[fluxo] 5. ⚠️ não achei a entidade da receita"),
-    }
+    );
 }
 
 /// Corre um verbo pela porta do menu e imprime a VOZ que o artista ouviria.

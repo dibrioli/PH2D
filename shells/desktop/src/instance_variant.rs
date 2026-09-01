@@ -62,6 +62,15 @@ pub(crate) enum SwapRefusal {
     Already,
     /// ⛔ Sem antepassado comum: não há mapa determinístico. Ver o cabeçalho.
     Unrelated,
+    /// ⛔⛔⛔ **O alvo é a PRÓPRIA raiz** — uma variante nunca pode ser mestre de si mesma
+    /// (auditoria multiagêntica de 2026-08-31, achado P0).
+    ///
+    /// Sem esta recusa, `swap(root=variante, id=sid da variante)` escrevia
+    /// `InstanceOf {{ master: <o próprio sid> }}` e re-chaveava as peças para elos-a-si-mesmas: a
+    /// derivação base→variante era **cortada em silêncio**, a variante saía da família, e o estado
+    /// era estável (o `follow` seguinte assentava sobre a corrupção). ⚠️ E a porta era um CLIQUE —
+    /// seleccionar a linha da variante na Hierarquia bastava, via o `follow` de então.
+    ItselfAsMaster,
 }
 
 /// **O que a troca fez**, para a voz do gesto.
@@ -229,6 +238,15 @@ pub(crate) fn swap(
         .ok_or(SwapRefusal::NotAnInstance)?;
     if old == new_master_id {
         return Err(SwapRefusal::Already);
+    }
+    // ⛔⛔⛔ Ver [`SwapRefusal::ItselfAsMaster`] — a cerca fica AQUI, na porta única, e não em cada
+    // chamador: foi um chamador novo (o `follow`) que provou que a pergunta não estava feita.
+    if sim
+        .world()
+        .get::<ph2d_ecs::StableId>(root)
+        .is_some_and(|s| s.0 == new_master_id)
+    {
+        return Err(SwapRefusal::ItselfAsMaster);
     }
     let map = piece_map_with(sim, &by_id, old, new_master_id).ok_or(SwapRefusal::Unrelated)?;
 

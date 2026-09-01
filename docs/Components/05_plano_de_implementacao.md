@@ -1330,6 +1330,65 @@ anterior punha ali o nome do COMPONENTE (a fonte das propriedades) para explicar
 dizia `Small` sobre uma cópia renomeada para `Big`; ele pediu o outro. *Um título que nomeia uma
 coisa que não está seleccionada faz o artista procurar onde ela está.*
 
+### ⭐⭐⭐ A AUDITORIA MULTIAGÊNTICA (2026-08-31) — *«Ainda não está correto»*, e quatro lentes disseram porquê
+
+Quatro auditores em paralelo (fluxo medido · leitura da lei · ciclo de vida da UI · honestidade dos
+gates), a pedido do Enio. **O veredito central: as quatro mutações da FIAÇÃO sobreviveram com 6 407
+testes verdes** — os gates provavam as peças, nenhum provava a costura — e **nenhuma fixtura
+continha uma receita-variante**, que é onde tudo apodrecia.
+
+#### As três doenças-mãe, e as curas
+
+**1 (P0) · Uma variante seguia-se a SI MESMA.** Uma variante é `MasterRoot` **e** `InstanceOf`, e
+nenhuma função da lei perguntava «isto é uma receita?»: seleccionar a linha dela na Hierarquia
+bastava para o `follow` a achar como «irmã que declara isto» e ligar-lhe o elo a si própria — a
+derivação base→variante cortada em silêncio, resistente a undo. ⇒ **duas cercas com gates
+próprios**: o `follow` é no-op sobre uma raiz-receita (gate com a fixtura da GÉMEA de combinação —
+a única em que esta cerca, e não a outra, decide), e a porta do `swap` recusa
+`ItselfAsMaster`. ⚠️ **Uma terceira cerca (sobre a entidade) nasceu junto e ERA CÓDIGO MORTO** — a
+mutação que a apagava sobreviveu a treze gates porque a da raiz a subsume; saiu. *Uma cerca cuja
+mutação não mata nada é uma afirmação sobre nada.*
+
+**2 · «Todo gesto escreve nas chaves» era verdade numa porta em três.** O espelho
+(`mirror_onto_copies_of`) só corria no dreno do campo do chip. Renomear a receita pela Hierarquia,
+autorar pelo nome de uma cópia, e o próprio *Make Variant* mudavam o elo ou a receita **sem
+escrever nas chaves** — recriando o estado das duas fotos por três portas. ⇒ o `apply` sobre uma
+receita arrasta as cópias dela; o braço de autoria arrasta as irmãs; o `make_master` espelha a
+cópia que deixa (sem isto, o `follow` da seleção **desfazia o Make Variant no quadro seguinte** —
+sonda C). ⚠️ E o arrasto **salta receitas-variante** (`Without<MasterRoot>`): arrastá-las fazia
+duas receitas declararem a mesma combinação. ⚠️ E todo espelho passa pelo funil
+`unique_name_excluding` — dois nomes nunca colidem (o sufixo cai fora das chaves).
+
+**3 · O `follow` corria POR QUADRO, e o campo de nome escreve no mundo POR TECLA.** Apagar o `2`
+de `Small 2` passava por `Small` e trocava o elo no primeiro backspace — a lei agia a meio da
+palavra. ⇒ o `follow` corre **por MUDANÇA de seleção** (`App::followed_selection`), que cobre o
+caso das fotos (etiqueta velha ao seleccionar) sem tocar na digitação; os commits continuam nas
+duas portas de Enter/Blur.
+
+#### O ciclo de vida do campo (lente 3) — quatro buracos, quatro cercas com mutação sangrada
+
+`ValueEdit { entity_bits, axis }` substitui o índice `(usize, bool)` (cujo bool não tinha leitor):
+a troca de seleção **abandona** (sync), o painel escondido **abandona** (o ramo `!visible` do
+paint — sem isto um `TextInput` invisível comia as teclas do app), o chip plano **não abre** (um
+campo que abre e nunca grava come trabalho em silêncio), e o `commit` confere a **identidade** —
+com o gate da janela publish→paint, onde só a metade da entidade (e não a do nome do eixo) decide.
+⚠️ O chip fantasma sob o campo saiu do hit-index (regista-se só o que se pinta).
+
+#### E a fiação tem gate próprio
+
+[`the_braces_law_is_wired_into_every_door.rs`](../../shells/desktop/tests/the_braces_law_is_wired_into_every_door.rs)
+— textual de propósito (o molde do swap-door): cada linha é uma mutação que sobreviveu à auditoria.
+E o smoke 80 foi reescrito no passo 5 — ele ensinava o gesto superado e **narrava o falso** (o
+`follow` de então já tinha devolvido a cópia à base, e o passo renomeava a BASE a dizer que
+renomeava a variante).
+
+#### O que os auditores ilibaram (tão valioso quanto)
+
+Ping-pong genérico do undo (todo gesto shipado escreve nome+elo no mesmo quadro; o snapshot
+restaura pares consistentes) · colisão de combinações na numeração do `variant_name` (compara
+combos VIVOS) · pares `Submit`+`Blur`/`Cancel`+`Blur` (o `take()` segura) · a rolagem do campo
+(preso ao corpo por construção).
+
 ---
 
 ## §F6 — O índice de assets (`ph2d-asset-index`) — ADR-0165

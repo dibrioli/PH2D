@@ -3471,7 +3471,7 @@ impl crate::App {
             // ⭐ A troca de variante pedida neste quadro: `(raiz da instância, StableId do mestre)`.
             let mut swap_variant: Option<(u64, u64)> = None;
             // ⭐ O pedido de renomear o VALOR de uma propriedade — `(receita, chave, valor)`.
-            let mut rename_variant_value: Option<(u64, String, String)> = None;
+            let mut rename_variant_value: Option<(u64, String, String, u64)> = None;
             // ⭐ A entidade cujo campo de nome fechou neste quadro.
             let mut name_committed: Option<u64> = None;
             let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
@@ -4700,8 +4700,13 @@ impl crate::App {
                     // ⭐⭐⭐ **Renomear o VALOR de uma propriedade** (report do Enio, 2026-08-31).
                     // ⚠️ O sujeito é a RECEITA; o gesto nasce sobre a cópia, que é onde o artista
                     // está a olhar. Ver `ph2d-panel-inspector/src/event_value.rs`.
-                    EditorAction::InspectorRenameVariantValue { master, key, value } => {
-                        rename_variant_value.get_or_insert((master, key, value));
+                    EditorAction::InspectorRenameVariantValue {
+                        master,
+                        key,
+                        value,
+                        root_bits,
+                    } => {
+                        rename_variant_value.get_or_insert((master, key, value, root_bits));
                     }
                     // ⭐⭐⭐ **O campo do nome fechou** — as chaves que ele declara passam a valer.
                     // Ver `crate::instance_declared_value` para a lei e a decisão do Enio.
@@ -10824,22 +10829,20 @@ impl crate::App {
             // ⭐⭐⭐ **AS CHAVES DO NOME VALEM** (decisão do Enio, 2026-08-31: *«tem que
             // funcionar»*). ⚠️ **Depois do dreno**, como a troca de variante e pela mesma razão: a
             // lei precisa do **eco** para o esquecer se acabar numa troca.
-            // ⭐⭐⭐ **O ELO SEGUE AS CHAVES, todo quadro, sobre o SELECIONADO** (report do Enio
-            // com duas fotos, 2026-08-31: *«o objeto deve ler o que está nas Chaves»*).
+            // ⭐⭐⭐ **O ELO SEGUE AS CHAVES na MUDANÇA de seleção** (report do Enio: *«o objeto
+            // deve ler o que está nas Chaves»* — e a auditoria multiagêntica de 2026-08-31, que
+            // mediu por que «todo quadro» era errado; ver o doc de `App::followed_selection`).
             //
-            // ⚠️ **Só o selecionado**, e é o que basta: é o único cujo cartão está na tela, e a
-            // varredura da cena inteira seria O(cópias) por quadro para curar rótulos que ninguém
-            // está a ler. Ao seleccionar outro, ele converge nesse quadro.
-            //
-            // ⚠️ **`follow`, e não `apply`:** o que corre sempre só pode TROCAR. Autorar aqui
-            // renomearia a receita sessenta vezes por segundo enquanto o nome declarasse um valor
-            // que não existe.
-            if let Some(bits) = hero.gizmo.selection {
-                let _ = crate::instance_declared_value::follow(
-                    sim,
-                    &mut self.instance_echo,
-                    ph2d_ecs::Entity::from_bits(bits),
-                );
+            // ⚠️ **`follow`, e não `apply`:** este caminho não é um commit — só pode TROCAR.
+            if hero.gizmo.selection != self.followed_selection {
+                self.followed_selection = hero.gizmo.selection;
+                if let Some(bits) = hero.gizmo.selection {
+                    let _ = crate::instance_declared_value::follow(
+                        sim,
+                        &mut self.instance_echo,
+                        ph2d_ecs::Entity::from_bits(bits),
+                    );
+                }
             }
             if let Some(bits) = name_committed {
                 crate::instance_declared_value::speak(
@@ -10851,7 +10854,7 @@ impl crate::App {
                     toasts,
                 );
             }
-            if let Some((master, key, value)) = rename_variant_value {
+            if let Some((master, key, value, root_bits)) = rename_variant_value {
                 let target = crate::instance_verbs_walk::entity_for_stable_id(sim, master)
                     .map(ph2d_ecs::Entity::from_bits);
                 let current =
@@ -10861,6 +10864,37 @@ impl crate::App {
                         match ph2d_editor::screens::hero::variant_axes::with_value(
                             &name, &key, &value,
                         ) {
+                            // ⭐⭐⭐ **A TROCA vence a AUTORIA** quando o valor digitado já existe
+                            // na família (auditoria de 2026-08-31, achado 5): renomear a receita
+                            // por cima criaria DUAS receitas com a mesma combinação — o eixo cai,
+                            // o cartão desce ao modo plano, e é o colapso que a wave inteira
+                            // existe para curar. É a MESMA preferência que a porta do nome
+                            // (`apply`) já tinha; as duas portas passam a dizer uma lei só.
+                            Some(next)
+                                if root_bits != 0
+                                    && crate::instance_declared_value::family_declares(
+                                        sim, master, &next,
+                                    )
+                                    .is_some() =>
+                            {
+                                let sibling = crate::instance_declared_value::family_declares(
+                                    sim, master, &next,
+                                )
+                                .expect("acabou de responder Some");
+                                let root = ph2d_ecs::Entity::from_bits(root_bits);
+                                if crate::instance_variant::swap(
+                                    sim,
+                                    &mut self.instance_echo,
+                                    root,
+                                    sibling,
+                                )
+                                .is_ok()
+                                {
+                                    crate::instance_declared_value::mirror_onto_copy(sim, root);
+                                    toasts.push(Toast::success("Switched to that version"));
+                                    self.title_dirty = true;
+                                }
+                            }
                             Some(next) if next != name => {
                                 sim.world_mut()
                                     .entity_mut(e)

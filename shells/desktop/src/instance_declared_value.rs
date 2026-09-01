@@ -85,6 +85,17 @@ pub(crate) fn follow(
     let Some((root, master_id, declared, mine, members)) = read(sim, entity) else {
         return false;
     };
+    // ⛔⛔⛔ **Uma RECEITA nunca se segue** (auditoria multiagêntica de 2026-08-31, o P0 dos
+    // quatro relatórios). Uma variante é `MasterRoot` **e** `InstanceOf`; sem esta cerca o `.find`
+    // abaixo achava-A (ou uma GÉMEA de combinação) como «irmã que declara isto» e trocava-lhe o
+    // elo — cortando a derivação base→variante com um clique de SELEÇÃO como porta. A cerca é
+    // sobre a RAIZ, e cobre as duas formas: a receita selecionada directamente (root == entity) e
+    // uma peça dentro dela. ⚠️ **Havia uma segunda cerca sobre a ENTIDADE e ela era código
+    // morto** — a mutação que a apagava sobreviveu a treze gates porque esta a subsume; *uma cerca
+    // cuja mutação não mata nada é uma afirmação sobre nada*, então saiu.
+    if sim.world().get::<ph2d_ecs::MasterRoot>(root).is_some() {
+        return false;
+    }
     if mine == declared {
         return false;
     }
@@ -137,6 +148,24 @@ pub(crate) fn apply(
     echo: &mut crate::instance_sync::MasterEcho,
     entity: Entity,
 ) -> Option<Applied> {
+    // ⭐⭐⭐ **Sobre uma RECEITA, o commit de nome ARRASTA as cópias dela** (auditoria de
+    // 2026-08-31, achado «duas portas, duas leis»). Renomear a base pela Hierarquia ou pelo campo
+    // de nome escrevia o `Name` e saía calado — o `apply` devolvia `None` porque uma base não tem
+    // `InstanceOf` — e toda cópia ficava com a etiqueta velha: *o estado das duas fotos,
+    // reconstruído pela porta mais óbvia*. ⚠️ Vale para a base E para a variante-receita (as
+    // cópias DELA), e é por isso que a cerca vem antes do `follow`.
+
+    // ⭐⭐⭐ **Sobre uma RECEITA, o commit de nome ARRASTA as cópias dela** (auditoria de
+    // 2026-08-31, achado «duas portas, duas leis»). Renomear a base pela Hierarquia ou pelo campo
+    // de nome escrevia o `Name` e saía calado — o `apply` devolvia `None` porque uma base não tem
+    // `InstanceOf` — e toda cópia ficava com a etiqueta velha: *o estado das duas fotos,
+    // reconstruído pela porta mais óbvia*. ⚠️ Vale para a base E para a variante-receita (as
+    // cópias DELA), e é por isso que a cerca vem antes do `follow`.
+    if sim.world().get::<ph2d_ecs::MasterRoot>(entity).is_some() {
+        let sid = sim.world().get::<ph2d_ecs::StableId>(entity).map(|s| s.0)?;
+        mirror_onto_copies_of(sim, sid);
+        return None;
+    }
     // 1) Alguém na família já é isto? ⇒ troca. (A metade idempotente vive no [`follow`].)
     if follow(sim, echo, entity) {
         return Some(Applied::Switched);
@@ -163,6 +192,11 @@ pub(crate) fn apply(
     sim.world_mut()
         .entity_mut(target)
         .insert(ph2d_ecs::Name::new(name));
+    // ⭐⭐ **E as cópias IRMÃS acompanham** (auditoria de 2026-08-31): esta é a mesma operação
+    // semântica do campo do chip — *a receita passa a chamar o valor de outro modo* — e o espelho
+    // estava ligado só naquela porta. Com duas cópias, autorar pelo nome de uma deixava a outra
+    // com a etiqueta velha, incurável pelo `follow` (ninguém declara o valor antigo).
+    mirror_onto_copies_of(sim, master_id);
     Some(Applied::Authored { key, value })
 }
 
@@ -224,8 +258,14 @@ pub(crate) fn mirror_onto_copies_of(sim: &mut SimWorld, master_id: u64) {
     else {
         return;
     };
+    // ⛔⛔ **Uma RECEITA-VARIANTE não é uma cópia** (auditoria de 2026-08-31, sonda B): ela é
+    // `InstanceOf(base)` E `MasterRoot`, e arrastá-la ao renomear o valor da base fazia as DUAS
+    // receitas declararem a mesma combinação — o estado que colapsa o eixo, criado pela própria
+    // cura. O nome de uma receita só muda por gesto do artista.
     let roots: Vec<Entity> = {
-        let mut q = sim.world_mut().query::<(Entity, &ph2d_ecs::InstanceOf)>();
+        let mut q = sim
+            .world_mut()
+            .query_filtered::<(Entity, &ph2d_ecs::InstanceOf), bevy_ecs::prelude::Without<ph2d_ecs::MasterRoot>>();
         q.iter(sim.world())
             .filter(|(_, l)| l.master == master_id)
             .map(|(e, _)| e)
@@ -252,10 +292,30 @@ fn write_combo(sim: &mut SimWorld, root: Entity, combo: &[(String, String)]) {
         }
     }
     if next != name {
+        // ⚠️ **Pelo funil de unicidade, como TODA outra porta de rename da casa** (auditoria de
+        // 2026-08-31): sem ele, um espelho podia deixar duas entidades com o `Name` byte-idêntico
+        // — e a autoria por nome deste app (juntas de física, bindings) resolveria ambíguo. O
+        // sufixo ` (n)` cai FORA das chaves, então a combinação sobrevive intacta.
+        let unique = crate::name_unique::unique_name_excluding(sim, &next, root);
         sim.world_mut()
             .entity_mut(root)
-            .insert(ph2d_ecs::Name::new(next));
+            .insert(ph2d_ecs::Name::new(unique));
     }
+}
+
+/// ⭐⭐ **Quem na família de `master_id` (excepto ele) declara exactamente a combinação de
+/// `name`?** — a pergunta da preferência pela troca, numa porta só.
+///
+/// ⚠️ Os dois consumidores — o `apply` (porta do nome) e o dreno do campo do chip — têm de a fazer
+/// **igual**, senão as duas portas divergem sobre quando um valor «já existe» (auditoria de
+/// 2026-08-31, achado 5).
+pub(crate) fn family_declares(sim: &mut SimWorld, master_id: u64, name: &str) -> Option<u64> {
+    let combo = variant_axes::parse_combo(name)?;
+    let members = crate::render_loop::inspector_instance::family_members(sim, master_id);
+    members
+        .iter()
+        .find(|(id, n)| *id != master_id && variant_axes::parse_combo(n).as_ref() == Some(&combo))
+        .map(|(id, _)| *id)
 }
 
 /// ⭐ **A voz** — uma porta, porque as DUAS entradas (o `Enter` da Hierarquia e o campo do
@@ -280,3 +340,7 @@ pub(crate) fn speak(applied: Option<Applied>, toasts: &mut ph2d_editor::ToastQue
 #[cfg(test)]
 #[path = "instance_declared_value_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "instance_declared_value_fence_tests.rs"]
+mod fence_tests;

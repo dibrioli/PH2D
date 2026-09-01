@@ -63,6 +63,27 @@ pub(crate) fn apply_value_event(
     }
 }
 
+/// ⭐⭐⭐ **Largar o campo sem gravar** — a porta que TODA saída anormal chama.
+///
+/// # ⛔⛔ O molde tem TRÊS portas destas, e a 1.ª versão não tinha NENHUMA
+///
+/// A auditoria de 2026-08-31 (A1/A3) mediu o preço: trocar a seleção deixava um campo com cara de
+/// focado e teclado morto; fechar o painel deixava um `TextInput` focado e **invisível a comer as
+/// teclas do app inteiro** — o defeito que o `paint_catalog_rename` do navegador de assets nomeia
+/// letra a letra e abandona por três portas (coluna colapsada · painel fechado · alvo sumido).
+///
+/// ⚠️ **O foco só se larga se for NOSSO** — largar o foco alheio roubaria a caixa que o artista
+/// acabou de clicar noutra secção.
+pub(crate) fn abandon(
+    state: &mut InspectorState,
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+) {
+    if state.value_edit.take().is_some() && store.focus_id() == Some(ids::INSP_INSTANCE_VALUE_EDIT)
+    {
+        store.set_focus(None);
+    }
+}
+
 /// ⭐⭐ **O chip: trocar de versão, ou abrir o vigente para escrita.**
 ///
 /// ⚠️ **O painel manda o `StableId` do mestre, e não o índice do chip.** O índice é uma posição
@@ -87,6 +108,13 @@ fn chip_click(
         return false;
     };
     if choice.current {
+        // ⛔⛔ **No modo PLANO o chip aceso NÃO abre campo nenhum** (auditoria de 2026-08-31): o
+        // eixo plano não tem chave, então o `commit` recusaria — e um campo que abre, aceita
+        // texto e nunca grava é um controlo que come trabalho em silêncio. A decisão de ABRIR e a
+        // de GRAVAR têm de ler a MESMA pergunta.
+        if info.rows.get(a).is_none_or(|ax| ax.name.is_empty()) || choice.master == 0 {
+            return true;
+        }
         // ⭐ **Nasce cheio e SELECCIONADO** — a lição do `CatalogHeroes`: um campo aberto por um
         // gesto que diz *«muda isto»* já sabe que o artista quer OUTRO texto.
         let seed = choice.label.clone();
@@ -104,7 +132,14 @@ fn chip_click(
         // O Esc aborta — quem o diz é o CAMPO, não uma lista de ids dentro do `dispatch_key`.
         host.store_mut()
             .mark_cancel_on_escape(ids::INSP_INSTANCE_VALUE_EDIT);
-        state.value_edit = Some((a, true));
+        state.value_edit = Some(crate::state::ValueEdit {
+            entity_bits: info.entity_bits,
+            axis: info
+                .rows
+                .get(a)
+                .map(|ax| ax.name.clone())
+                .unwrap_or_default(),
+        });
         return true;
     }
     // ⚠️ **Trocar de versão FECHA o campo**: aberto sobre um valor que já não é o vigente, o
@@ -130,7 +165,7 @@ fn chip_click(
 /// por quadro, e uma troca de selecção pode tê-lo levado) e ele tem de ter um vigente com mestre.
 /// *Um campo cujo alvo desapareceu abandona; ele não grava no que sobrou.*
 fn commit(state: &mut InspectorState, host: &mut dyn PanelHostInternal) {
-    let Some((a, _)) = state.value_edit.take() else {
+    let Some(edit) = state.value_edit.take() else {
         return;
     };
     let Some(InteractiveState::TextInput { text, .. }) =
@@ -142,14 +177,21 @@ fn commit(state: &mut InspectorState, host: &mut dyn PanelHostInternal) {
     let Some(info) = crate::state::current_inspector_properties() else {
         return;
     };
-    let Some(axis) = info.rows.get(a) else {
+    // ⛔⛔⛔ **A IDENTIDADE decide, nunca a posição** (auditoria de 2026-08-31, achados A1/A5): o
+    // `Blur` chega com o snapshot VIGENTE, que pode já ser de OUTRO objecto (a seleção mudou) ou
+    // ter as fileiras reordenadas. Um índice gravava o texto de A na receita de B, ou na chave
+    // errada do mesmo A. ⇒ o campo só grava se o cartão ainda for da MESMA entidade e o eixo com
+    // AQUELE nome ainda existir; senão, ABANDONA — *um campo cujo alvo desapareceu não grava no
+    // que sobrou*.
+    if info.entity_bits != edit.entity_bits {
+        return;
+    }
+    let Some(axis) = info.rows.iter().find(|ax| ax.name == edit.axis) else {
         return;
     };
     let Some(current) = axis.options.iter().find(|o| o.current) else {
         return;
     };
-    // ⛔ O modo PLANO não tem chave — ali os chips são NOMES de receita, e renomear um valor não
-    // é a mesma operação. O campo nem chega a abrir com sentido, e a gravação recusa.
     if axis.name.is_empty() || current.master == 0 {
         return;
     }
@@ -158,5 +200,6 @@ fn commit(state: &mut InspectorState, host: &mut dyn PanelHostInternal) {
             master: current.master,
             key: axis.name.clone(),
             value,
+            root_bits: info.root_bits,
         });
 }

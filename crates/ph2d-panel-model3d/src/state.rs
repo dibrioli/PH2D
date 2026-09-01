@@ -17,6 +17,28 @@ thread_local! {
     static CURRENT: RefCell<Option<ModelSnapshot>> = const { RefCell::new(None) };
     static INTENTS: RefCell<Vec<ModelIntent>> = const { RefCell::new(Vec::new()) };
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
+    /// ⭐⭐⭐ **O módulo tem o canvas?** — ver [`set_armed`].
+    static ARMED: Cell<bool> = const { Cell::new(false) };
+}
+
+/// ⭐⭐⭐ **Declara se este módulo é o dono do canvas neste quadro.**
+///
+/// ⛔⛔ **Ele existe porque o painel consome ids do TRILHO** (`MOVE`/`ROT`/`SCALE`/`SPACE`, ver
+/// [`crate::area_bar`]), e o `HeroScreen::apply_event` entrega todo evento a **todo** painel do
+/// registry — visível ou não. Sem esta bandeira, um módulo 3D fechado roubaria aqueles cliques ao
+/// editor 2D, que é o dono deles quando ninguém mais os pede.
+///
+/// ⚠️ **Escrito em TODO quadro** pelo `area_bar::publish`, que é a única chamada que já recebe a
+/// verdade. ⛔ Deduzi-la do retrato não serve: o retrato sobrevive ao fecho do módulo, e um retrato
+/// velho responderia *«sim»* para sempre.
+pub fn set_armed(armed: bool) {
+    ARMED.with(|a| a.set(armed));
+}
+
+/// O módulo tem o canvas? Ver [`set_armed`].
+#[must_use]
+pub fn armed() -> bool {
+    ARMED.with(Cell::get)
 }
 
 /// Uma linha do painel: **uma dimensão do objeto selecionado**.

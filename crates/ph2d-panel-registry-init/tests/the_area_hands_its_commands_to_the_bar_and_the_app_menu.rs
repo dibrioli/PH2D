@@ -7,19 +7,29 @@
 //! sintoma não é uma opinião: aquele painel precisou de **barra de rolagem** (report do Enio,
 //! 2026-08-27), porque não cabia.
 //!
-//! # ⭐ E o corte da D2 é por ÂMBITO, o que dá DOIS destinos e não um
+//! # ⭐ E o corte da D2 é por ÂMBITO, o que dá TRÊS destinos e não um
 //!
 //! | fileiras | nº | vai para | porquê |
 //! |---|---:|---|---|
-//! | vistas + câmera | 9 | pulldown de área **0** (*View*) | é sobre **olhar** |
-//! | verbos do gizmo + referencial | 5 | pulldown de área **1** (*Gizmo*) | é sobre **mover com a mão** |
+//! | vistas + câmera | 9 | o pulldown de área (*View*) | é sobre **olhar** |
+//! | verbos do gizmo + referencial | 5 | os chips `MOVE`/`ROT`/`SCALE`/`SPACE` **que já existiam** | é sobre **mover com a mão** |
 //! | níveis de exportação | 3 | menu **File** | escrever um arquivo vale em **todo o app** |
 //!
-//! ⛔ **Os três destinos não são gosto:** a D2 diz *«se o comando vale em todo o app vai à barra;
-//! se vale só naquele editor vai ao cabeçalho dele»*, e a tabela de destino dela nomeia o *Arquivo*
-//! para o `export.*`.
+//! ⛔ **Os destinos não são gosto:** a D2 diz *«se o comando vale em todo o app vai à barra; se vale
+//! só naquele editor vai ao cabeçalho dele»*, e a tabela de destino dela nomeia o *Arquivo* para o
+//! `export.*`.
 //!
-//! # ⚠️ E são DOIS pulldowns, não um — a face é o critério
+//! # ⛔⛔ E o GIZMO não ganhou controlo novo — os dele estavam MORTOS
+//!
+//! > Enio, 2026-09-01 (com foto): *«esses botões de mover, rot e scale já existiam. só não estavam
+//! > ligados a cada modo.»*
+//!
+//! Um 2.º pulldown *Gizmo* foi construído e **apagado no mesmo dia**. Os chips do trilho eram a 2.ª
+//! espécie de controlo morto do `CLAUDE.md` §5.0: o clique chegava, a luz acendia, e o valor não
+//! alcançava consumidor nenhum. *Um controlo morto e um controlo ausente dão o mesmo report, e as
+//! curas são opostas.*
+//!
+//! # ⚠️ E a fila não cresce
 //!
 //! > Enio, 2026-08-31: *«esse app tem tablets e iPad como alvo. Não podemos ir perdendo espaço.»*
 //!
@@ -29,9 +39,7 @@
 //! *Poupar altura gastando largura não poupa nada.*
 //!
 //! ⭐ **O orçamento medido é `3` chips de área** (sonda de 2026-09-01: com `4` o iPad 11 e o mini
-//! passam a duas linhas), e usam-se `2`. ⛔ **Um pulldown só com as catorze linhas seria o depósito
-//! mudado de sítio** — e a **face deixaria de ser uma leitura**, porque *qual é a vista* e *qual é
-//! o verbo* são duas grandezas que não cabem numa palavra.
+//! passam a duas linhas), e usa-se `1`.
 //!
 //! # ⚠️ E o gate carrega num PIXEL, duas vezes
 //!
@@ -59,8 +67,8 @@ const TABLETS: [(&str, f32, f32); 3] = [
     ("iPad mini", 1133.0, 744.0),
 ];
 
-/// O retrato completo do que saiu do painel: as duas fileiras de vista, as duas do gizmo, e a
-/// saída para arquivo.
+/// O retrato completo: as duas fileiras da vista (que vão ao pulldown), as duas do gizmo (que vão
+/// aos chips do trilho) e a saída para arquivo (que vai ao menu *File*).
 fn snapshot_with_area_commands() -> ModelSnapshot {
     let chip = |key, active| ModeChip { key, active };
     ModelSnapshot {
@@ -199,53 +207,98 @@ fn the_view_pulldown_opens_serves_a_view_and_closes() {
     );
 }
 
-/// ⭐⭐⭐ **O SEGUNDO pulldown existe, é OUTRO menu, e serve o gizmo** — o verbo E o referencial.
+/// ⭐⭐⭐ **OS CHIPS DO TRILHO CONDUZEM O GIZMO** — os que já existiam, com o dedo.
 ///
-/// ⛔ **A metade que a mutação mata é a `slot`:** com os dois chips a abrir o mesmo `kind`, o
-/// segundo pinta o corpo do primeiro e o `model3d_frame_button` nunca chega ao índice de acerto.
+/// > Enio, 2026-09-01 (com foto): *«esses botões de mover, rot e scale já existiam. só não estavam
+/// > ligados a cada modo.»*
+///
+/// ⛔⛔ **Eles eram a 2.ª espécie de controlo morto do `CLAUDE.md` §5.0:** o clique chegava, a luz
+/// acendia, e o valor não alcançava consumidor nenhum — medido, `TOOL_TRANSLATE`/`ROTATE`/`SCALE` e
+/// o `tool_space_local` do `SPACE` não tinham um único leitor na árvore.
 #[test]
-fn the_gizmo_pulldown_is_a_second_menu_and_serves_the_verb_and_the_frame() {
+fn the_rail_verbs_drive_the_gizmo_and_so_does_the_space_chip() {
     let (mut h, vp) = hero(1194.0, 834.0, true);
     let _ = ph2d_panel_model3d::drain_intents();
     paint(&mut h, vp);
 
-    open_area_menu(&mut h, vp, 1);
+    let rot = h
+        .hit_index
+        .rect_for(ph2d_editor_core::ids::TOOL_ROTATE)
+        .expect("o `ROT` do trilho nao esta' no indice de acerto");
+    click_at(&mut h, rot);
+    let intents = ph2d_panel_model3d::drain_intents();
     assert!(
-        matches!(
-            h.store.context_menu().map(|r| r.kind),
-            Some(ContextMenuKind::AreaCommands { slot: 1 })
-        ),
-        "o 2.o chip nao abriu o pulldown 1 — os dois chips abrem o MESMO menu"
+        intents
+            .iter()
+            .any(|i| matches!(i, ModelIntent::SetGizmoMode { slot: 1 })),
+        "carregar no `ROT` nao pediu o verbo ao shell — o chip voltou a ser morto: {intents:?}"
     );
 
-    // O REFERENCIAL vive neste pulldown, e é o que prova que ele não é uma cópia do primeiro.
-    let row = h
+    let space = h
         .hit_index
-        .rect_for(ph2d_editor_core::ids::model3d_frame_button(1))
-        .expect("o referencial `Local` nao foi pintado no pulldown do gizmo");
-    click_at(&mut h, row);
+        .rect_for(ph2d_editor_core::ids::TOOL_SPACE)
+        .expect("o `SPACE` do trilho nao esta' no indice de acerto");
+    click_at(&mut h, space);
     let intents = ph2d_panel_model3d::drain_intents();
     assert!(
         intents
             .iter()
             .any(|i| matches!(i, ModelIntent::SetGizmoFrame { slot: 1 })),
-        "carregar no referencial nao pediu nada ao shell: {intents:?}"
+        "carregar no `SPACE` nao pediu o referencial — com `Global` activo ele pede o SEGUINTE: \
+         {intents:?}"
     );
+}
 
-    // E o verbo, pela mesma porta.
-    open_area_menu(&mut h, vp, 1);
-    let row = h
-        .hit_index
-        .rect_for(ph2d_editor_core::ids::model3d_mode_button(2))
-        .expect("o verbo `Size` nao foi pintado no pulldown do gizmo");
-    click_at(&mut h, row);
-    let intents = ph2d_panel_model3d::drain_intents();
-    assert!(
-        intents
-            .iter()
-            .any(|i| matches!(i, ModelIntent::SetGizmoMode { slot: 2 })),
-        "carregar no verbo nao pediu nada ao shell: {intents:?}"
+/// ⭐⭐ **A LUZ do chip vem da CENA, e a FACE do `SPACE` também.**
+///
+/// ⚠️ Com o módulo armado o `chrome::rail_tools` **nunca corre** para estes ids (o painel consome-os
+/// antes), logo o rádio que os acendia está desligado — quem os acende é o retrato.
+/// *Fiar o clique não é fiar o ESTADO.*
+#[test]
+fn the_rail_verb_lights_up_from_the_scene_not_from_the_click() {
+    let (h, _vp) = hero(1194.0, 834.0, true);
+    // O retrato diz `rotate` activo (ver `snapshot_with_area_commands`).
+    assert_eq!(
+        h.store.button_state(ph2d_editor_core::ids::TOOL_ROTATE),
+        Some(ph2d_editor_core::widget::ButtonState::Pressed),
+        "o `ROT` nao acendeu com o gizmo em rotacao"
     );
+    assert_eq!(
+        h.store.button_state(ph2d_editor_core::ids::TOOL_TRANSLATE),
+        Some(ph2d_editor_core::widget::ButtonState::Normal),
+        "o `MOVE` ficou aceso com o gizmo em rotacao — os chips deixaram de ser exclusivos"
+    );
+    // E a face do `SPACE` lê o referencial: o retrato diz `Global`.
+    assert!(
+        !h.store.tool_space_local(),
+        "a face do `SPACE` diz `Local` com o gizmo em `Global`"
+    );
+}
+
+/// ⭐⭐⭐ **E a ÁREA não oferece uma segunda porta para o gizmo.**
+///
+/// ⛔⛔ Este gate existe porque a 1.ª versão desta obra **construiu** um pulldown *Gizmo* ao lado dos
+/// chips que já faziam a pergunta. *Um controlo morto e um controlo ausente dão o mesmo report, e as
+/// curas são opostas* — quem reconstruir a segunda porta parte aqui.
+#[test]
+fn the_area_offers_no_second_door_for_the_gizmo() {
+    let (h, _vp) = hero(1194.0, 834.0, true);
+    let faces: Vec<&str> = h.store.area_menus().iter().map(|m| &*m.face).collect();
+    assert_eq!(
+        h.store.area_menus().len(),
+        1,
+        "a area publicou mais do que o pulldown da VISTA ({faces:?}) — o gizmo tem chips no trilho"
+    );
+    let verbs = ["Move", "Rotate", "Size", "Global", "Local"];
+    for menu in h.store.area_menus() {
+        for row in &menu.rows {
+            let label = row.label().unwrap_or("");
+            assert!(
+                !verbs.contains(&label),
+                "`{label}` esta' num pulldown da area E no trilho — dois sitios para o mesmo verbo"
+            );
+        }
+    }
 }
 
 /// ⭐⭐ **A FACE de cada pulldown é a LEITURA do estado** — e as duas são leituras DIFERENTES.
@@ -258,14 +311,14 @@ fn each_pulldown_wears_its_own_reading() {
     let faces: Vec<&str> = h.store.area_menus().iter().map(|m| &*m.face).collect();
     assert_eq!(
         faces,
-        vec!["Right", "Rotate"],
-        "as faces nao sao a leitura do retrato (vista `right`, verbo `rotate`)"
+        vec!["Right"],
+        "a face nao e' a leitura do retrato (a vista `right`)"
     );
     let labels: Vec<&str> = h.store.area_menus().iter().map(|m| &*m.label).collect();
     assert_eq!(
         labels,
-        vec!["View", "Gizmo"],
-        "os rotulos nao nomeiam o grupo que cada chip abre"
+        vec!["View"],
+        "o rotulo nao nomeia o grupo que o chip abre"
     );
 }
 
@@ -364,10 +417,10 @@ fn closing_the_module_takes_the_commands_off_the_bar_and_off_the_file_menu() {
 
 /// ⭐⭐⭐ **A faixa continua a ser UMA linha nos três tablets, com o módulo armado.**
 ///
-/// ⚠️ E o gate imprime **quantos** chips a área acrescenta: se um dia forem nove em vez de dois,
+/// ⚠️ E o gate imprime **quantos** chips a área acrescenta: se um dia forem nove em vez de um,
 /// esta é a linha que o diz antes de a largura o dizer. ⭐ O orçamento medido em 2026-09-01 é `3`.
 #[test]
-fn the_area_costs_two_chips_and_the_bar_is_still_one_line() {
+fn the_area_costs_one_chip_and_the_bar_is_still_one_line() {
     for (name, w, ht) in TABLETS {
         let (h, vp) = hero(w, ht, true);
         let bands = ph2d_editor_core::screens::layout::ChromeBands {
@@ -401,8 +454,9 @@ fn the_area_costs_two_chips_and_the_bar_is_still_one_line() {
             over.len()
         );
         assert_eq!(
-            added, 2,
-            "{name}: a area pos {added} chips na fila — o orcamento MEDIDO e' 3, e o desenho usa 2"
+            added, 1,
+            "{name}: a area pos {added} chips na fila — o orcamento MEDIDO e' 3, e o desenho usa 1 \
+             (o gizmo vive nos chips do trilho)"
         );
         let lines =
             ph2d_editor_core::widget::horizontal_lines(&rail, area_w - 16.0, RailButtonSize::Small);

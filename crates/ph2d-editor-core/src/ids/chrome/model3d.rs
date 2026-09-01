@@ -26,24 +26,14 @@ pub const MODEL3D_PANEL: NodeId = hash_node_id("model3d.panel");
 /// O botão de fechar (X).
 pub const MODEL3D_CLOSE: NodeId = hash_node_id("model3d.close");
 
-/// ⭐ **O botão de um VERBO do gizmo** (mover / rodar / escalar), pela posição no seletor.
-///
-/// ⚠️ Pela POSIÇÃO, e não pelo nome do verbo: o `populate` corre antes de o gizmo existir e cunha a
-/// família às cegas, exatamente como faz com as linhas de raio. Quem escolhe o verbo é o retrato
-/// publicado, que diz o que cada posição significa naquele quadro.
-#[must_use]
-pub fn model3d_mode_button(slot: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.mode.{slot}"))
-}
-
-/// ⭐ **O botão de um REFERENCIAL de eixos** (global / local), pela posição no seletor.
-///
-/// ⚠️ Família própria, e não a dos verbos: os dois seletores coexistem no painel, e partilhar a
-/// família faria um clique em «Local» disparar o verbo da mesma posição.
-#[must_use]
-pub fn model3d_frame_button(slot: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.frame.{slot}"))
-}
+// ⛔⛔ **`model3d_mode_button` e `model3d_frame_button` MORRERAM em 2026-09-01.** Elas eram o
+// seletor de verbo e o de eixos DENTRO do painel — e o trilho já tinha os chips `MOVE`/`ROT`/
+// `SCALE` e o `SPACE` a fazer a mesma pergunta, pintados e sem consumidor nenhum (Enio, com foto:
+// *«esses botões já existiam. só não estavam ligados a cada modo»*).
+//
+// ⚠️ **Ligar os que existem e apagar estes é UMA obra, não duas.** Ficar com as duas famílias
+// deixaria o app com dois sítios para o mesmo verbo, e o que apodrece é o que ninguém relê. Quem
+// conduz o gizmo hoje é `ph2d_panel_model3d::area_bar::rail_verb_slot`, pela CHAVE do verbo.
 
 /// ⭐⭐ **O botão do MODO DO LAÇO** (somar / subtrair à seleção), pela posição no seletor.
 ///

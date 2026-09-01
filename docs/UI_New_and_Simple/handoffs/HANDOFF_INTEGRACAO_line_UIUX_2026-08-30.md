@@ -2168,7 +2168,7 @@ sem o interruptor escolher o chip **re-abriria** um menu já aberto. Gate:
 |---|---|
 | `the_area_pulldown_opens_serves_a_view_and_closes` | Down/Up REAIS: o chip abre · a vista pede `SetView` · o menu fecha; e **antes de abrir os ids não estão em lado nenhum** (prova que saíram do painel em vez de ganharem um 2.º sítio) |
 | `closing_the_module_takes_the_pulldown_off_the_bar` | publicado em todo quadro, vazio incluído |
-| `the_area_costs_two_chips_and_the_bar_is_still_one_line` | **1** chip nos três tablets, e a fila numa linha |
+| `the_area_costs_one_chip_and_the_bar_is_still_one_line` | **1** chip nos três tablets, e a fila numa linha |
 | `the_palette_path_toggles_the_menu_because_it_has_no_pointer_down` | o caminho sintético, que é o único em que o interruptor é load-bearing |
 
 | # | mutação | resultado |
@@ -2395,3 +2395,96 @@ passaria com o chip morto sob o dedo, que é como o `⋯` nasceu.
   para os outros 24 painéis seria inventado.
 - ⏳ O 3.º slot de área está livre e **medido** (cabe). O primeiro módulo que o queira herda a
   tabela do §30.3 — e a linha do gate que a imprime.
+
+---
+
+## §31 — ⛔⛔⛔ O GIZMO JÁ TINHA CONTROLOS, E ELES ESTAVAM MORTOS (entrega 36)
+
+> Enio, 2026-09-01, com foto do trilho: *«esses botões de mover, rot e scale já existiam. só não
+> estavam ligados a cada modo.»*
+
+**Isto é uma CORRECÇÃO da §30, não uma wave nova.** O 2.º pulldown de área (*Gizmo*) que a §30
+construiu foi **apagado**, e no lugar dele os chips que já existiam passaram a conduzir o gizmo.
+
+### §31.1 — A medição que o report obrigou a fazer, e que eu não tinha feito
+
+`chrome/rail_tools.rs` faz dos quatro chips um **rádio exclusivo**… que só escreve o próprio
+`ButtonState`. Censo em toda a árvore:
+
+| controlo | escreve | **quem lê** |
+|---|---|---|
+| `TOOL_TRANSLATE` · `TOOL_ROTATE` · `TOOL_SCALE` · `TOOL_PIVOT` | o próprio `ButtonState` | **o pintor do chip, e mais ninguém** |
+| `TOOL_SPACE` | `store.tool_space_local` | **a face do próprio chip, e mais ninguém** |
+
+⛔⛔ **São a 2.ª espécie de controlo morto do `CLAUDE.md` §5.0** — *o clique chega, a luz acende, e o
+valor não alcança consumidor nenhum*. E são-no **nos dois modos**: o gizmo 2D também não os lê.
+
+### §31.2 — ⭐⭐⭐ A LEI, e ela custou uma entrega inteira
+
+> **Um controlo MORTO e um controlo AUSENTE produzem o mesmo report — e as curas são OPOSTAS.**
+> Para o ausente constrói-se; para o morto **liga-se**. Construir por cima de um morto deixa o app
+> com **dois** sítios para o mesmo verbo, e o que apodrece é o que ninguém relê.
+
+⇒ **antes de dar casa nova a um comando, procure o controlo que já a tem.** O sintoma que eu li
+(*«o painel 3D tem uma fileira de verbos que não devia estar num painel de propriedades»*) estava
+certo; a conclusão (*«logo, faça-lhe um pulldown»*) saltou a pergunta *«e quem mais já faz esta
+pergunta na tela?»*.
+
+⚠️ **Nenhuma sonda deste repo faz essa pergunta**, e a §5.0 já o dizia: o
+`architecture_panel_wiring_parity` mede *focalizabilidade*, os `seam_*` provam que o clique **chega
+à ferramenta** — nenhum pergunta se a **escrita** dele chega a um **efeito**.
+
+### §31.3 — O que a ligação é, mecanicamente
+
+| chip | intent | ponte |
+|---|---|---|
+| `MOVE` / `ROT` / `SCALE` | `SetGizmoMode { slot }` | a **CHAVE i18n** do verbo → posição em `ModelSnapshot::modes` |
+| `SPACE` | `SetGizmoFrame { slot }` | *o referencial SEGUINTE* — ele é um interruptor e a fileira é uma lista |
+
+⚠️ **Pela CHAVE, nunca pelo índice.** Uma tabela `[TOOL_TRANSLATE → 0, …]` seria uma **segunda
+contagem**: acrescentar um verbo ao `Mode::ALL` do shell faria o `SCALE` mandar rodar, e nada
+acusaria. `RAIL_VERBS` é **uma** tabela, lida pela luz **e** pelo clique.
+
+⭐ **A LUZ vem da CENA.** Com o módulo armado o painel consome estes ids **antes** do
+`chrome::dispatch_all`, logo o rádio do `rail_tools` nunca corre — quem acende é
+`area_bar::publish_rail_state`, do retrato. *Fiar o clique não é fiar o ESTADO.*
+
+⚠️ **A bandeira `armed` é obrigatória e é nova** (`state::set_armed`): o `HeroScreen::apply_event`
+entrega todo evento a **todo** painel do registry, visível ou não — sem ela um módulo 3D fechado
+roubaria o `MOVE` ao editor 2D. ⛔ Deduzi-la do retrato não serve: o retrato sobrevive ao fecho, e
+um retrato velho responderia *«sim»* para sempre.
+
+⛔ **O `PIVOT` fica de fora, e é uma ausência DECLARADA:** o gizmo deste módulo tem três verbos
+(`Mode::ALL`) e nenhum é *mover o pivô*. Inventar-lhe um destino seria pior do que a ausência — há
+gate a afirmá-lo (`a_rail_chip_with_no_verb_behind_it_does_nothing`).
+
+### §31.4 — ⭐ Ligar e apagar é UMA obra, não duas
+
+As famílias `model3d_mode_button` e `model3d_frame_button` **morreram**, com os dois braços de
+`event.rs`, as duas linhas do `CHIP_FAMILIES` e as duas fileiras do `paint.rs`. Ficar com as duas
+famílias deixaria ids registados que nada pinta — a **3.ª** coisa que a §5.0 cataloga (*o id
+ÓRFÃO*), cuja cura é apagar e cujo sintoma se lê igual ao do morto.
+
+⚠️ **Os gates de costura foram RE-APONTADOS, não apagados:** eles carregam agora no `ROT` e no
+`SPACE` do trilho, que é o gesto real. *Um gate que segue o controlo é cobertura; um gate apagado
+com o controlo é cobertura perdida.*
+
+### §31.5 — As quatro MUTAÇÕES
+
+| # | o que se apagou | quem morreu |
+|---|---|---|
+| F | `RAIL_VERBS` faz o `ROT` apontar para o verbo `move` | `clicking_a_verb_reaches_the_gizmo_intent` (slot `0` em vez de `1`) |
+| G | a chamada a `publish_rail_state` | `the_rail_verb_lights_up_from_the_scene_not_from_the_click` |
+| H | a guarda `state::armed()` no braço do verbo | `clicking_a_verb_reaches_the_gizmo_intent`, na metade *«módulo fechado não rouba o clique»* |
+| I | um 2.º pulldown de área com os verbos lá dentro | `the_area_offers_no_second_door_for_the_gizmo` **e** `the_area_costs_one_chip_and_the_bar_is_still_one_line` **e** `each_pulldown_wears_its_own_reading` |
+
+⭐ A mutação **I** é o gate contra repetir **o meu próprio erro** desta jornada.
+
+### §31.6 — O que fica ABERTO (inalterado da §30)
+
+- ⏳ As **operações booleanas** e as **acções** (duplicar/apagar/isolar) não têm destino decidido.
+- ⛔ Nenhum outro painel foi censado — o `66 de 74` é do `3D Model` e só dele.
+- ⏳ **O `PIVOT`, o `VIEW` e os chips do trilho no editor 2D continuam sem consumidor.** O `VIEW`
+  (`TOOL_HOME`) empurra `SetViewFocus` e está vivo; os outros quatro só ficam vivos **enquanto o
+  módulo 3D tem o canvas**. *Uma varredura de controlos mortos no trilho é wave própria, e esta
+  entrega mediu o primeiro caso dela.*

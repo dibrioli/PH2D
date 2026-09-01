@@ -69,8 +69,6 @@ pub const MAX_MODES: u32 = 16;
 /// pintar** e exige que cada um responda a um clique de verdade — ela apanha esta falha e as outras
 /// duas que o cabeçalho daquele arquivo já nomeava.
 const CHIP_FAMILIES: &[fn(u32) -> ph2d_a11y::NodeId] = &[
-    ids::model3d_mode_button,
-    ids::model3d_frame_button,
     ids::model3d_select_button,
     ids::model3d_add_button,
     ids::model3d_op_button,

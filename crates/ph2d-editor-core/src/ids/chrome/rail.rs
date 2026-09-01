@@ -26,7 +26,7 @@ pub const TOOL_BAR_OVERFLOW: NodeId = hash_node_id("tool_bar_overflow");
 /// ⛔⛔ **São PULLDOWNS, nunca os comandos crus — e o número é MEDIDO.** Com as nove entradas cruas
 /// na fila (as seis vistas nomeadas e os três gestos de câmera do módulo 3D) ela precisa de
 /// **2 linhas até no iPad 12,9"**, o maior dos três alvos, e ainda transborda `2` chips para o `⋯`
-/// (`the_area_costs_two_chips_and_the_bar_is_still_one_line`, mutação 6).
+/// (`the_area_costs_one_chip_and_the_bar_is_still_one_line`, mutação 6).
 /// *Poupar altura gastando largura não poupa nada.*
 ///
 /// ⭐ **E o ORÇAMENTO de chips da área é `3`, medido em 2026-09-01** (sonda sobre `bar_split` +
@@ -42,6 +42,11 @@ pub const TOOL_BAR_OVERFLOW: NodeId = hash_node_id("tool_bar_overflow");
 /// facto é a **largura**, e quem a mede é o gate — que corre com o que o módulo publicou, não com
 /// este número. ⛔ Passar de 3 não parte nada (o `⋯` absorve), mas custa a 2.ª linha nos dois
 /// alvos pequenos, que é precisamente o que a entrega 32 existe para não pagar.
+///
+/// ⛔⛔ **E o orçamento é o TECTO, não o alvo: hoje usa-se `1`.** A 1.ª versão desta obra gastou um
+/// 2.º chip num pulldown *Gizmo* — e os verbos do gizmo já tinham os chips `MOVE`/`ROT`/`SCALE` do
+/// trilho, **mortos por falta de consumidor** (Enio, 2026-09-01, com foto). *Espaço que cabe não é
+/// razão para o gastar: procure primeiro o controlo que já faz a pergunta.*
 ///
 /// ⚠️ A face de cada um é uma **leitura** (qual é a vista agora, qual é o verbo do gizmo), não um
 /// rótulo fixo — é isso que faz o chip valer o lugar dele mesmo fechado.

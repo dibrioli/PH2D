@@ -331,25 +331,43 @@ fn clicking_a_verb_reaches_the_gizmo_intent() {
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     let mut panel_state = Model3dPanelState;
-    let outcome = host.apply_panel_event::<Model3dPanel>(
-        &mut panel_state,
-        WidgetEvent::Click(ids::model3d_mode_button(1)),
-    );
+    // ⭐⭐ **O chip do TRILHO, e não um id de painel** — os `MOVE`/`ROT`/`SCALE` já existiam e o que
+    // lhes faltava era consumidor (Enio, 2026-09-01, com foto). ⚠️ E a bandeira `armed` é parte do
+    // gesto: sem ela um módulo fechado roubaria o clique ao editor 2D.
+    state::set_armed(true);
+    let outcome = host
+        .apply_panel_event::<Model3dPanel>(&mut panel_state, WidgetEvent::Click(ids::TOOL_ROTATE));
     assert_eq!(
         outcome,
         EventOutcome::Consumed,
-        "o painel ignorou um clique REAL num verbo — falta o braço em `event.rs` ou o id saiu da \
-         família"
+        "o painel ignorou um clique REAL no `ROT` do trilho — o chip voltou a ser um controlo morto"
     );
-    assert_eq!(drain_intents(), vec![ModelIntent::SetGizmoMode { slot: 1 }]);
+    assert_eq!(
+        drain_intents(),
+        vec![ModelIntent::SetGizmoMode { slot: 1 }],
+        "o `ROT` tem de pedir a POSIÇÃO do verbo no retrato — se vier outra, a ponte deixou de ser \
+         pela chave e virou um índice escrito à mão"
+    );
+
+    // ⛔ **E com o módulo FECHADO o mesmo clique não é nosso.**
+    state::set_armed(false);
+    let outcome = host
+        .apply_panel_event::<Model3dPanel>(&mut panel_state, WidgetEvent::Click(ids::TOOL_ROTATE));
+    assert_eq!(
+        outcome,
+        EventOutcome::Ignored,
+        "o modulo 3D fechado roubou o `ROT` ao editor 2D"
+    );
+    assert!(drain_intents().is_empty());
 }
 
-/// ⚠️ **Um slot da família SEM verbo no retrato não despacha nada.**
+/// ⛔ **Um chip do trilho SEM verbo por trás não despacha nada** — o `PIVOT`.
 ///
-/// A família tem `MAX_MODES` ids e o shell publica três. Sem esta guarda, um clique num slot vazio
-/// (que nada pintou) mandaria o shell trocar para um modo que não existe.
+/// O gizmo deste módulo tem três verbos (`Mode::ALL`) e nenhum é *mover o pivô*. ⚠️ **A ausência é
+/// declarada, não um esquecimento:** inventar-lhe um destino seria pior — ele continua a ser o que
+/// sempre foi, um chip que só acende.
 #[test]
-fn a_verb_slot_with_no_verb_behind_it_does_nothing() {
+fn a_rail_chip_with_no_verb_behind_it_does_nothing() {
     let _ = drain_intents();
     publish(ModelSnapshot {
         modes: vec![state::ModeChip {
@@ -378,12 +396,15 @@ fn a_verb_slot_with_no_verb_behind_it_does_nothing() {
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     let mut panel_state = Model3dPanelState;
-    let outcome = host.apply_panel_event::<Model3dPanel>(
-        &mut panel_state,
-        WidgetEvent::Click(ids::model3d_mode_button(5)),
-    );
+    state::set_armed(true);
+    // ⛔ **O `PIVOT` é o chip do trilho que NÃO tem verbo por trás** — o gizmo deste módulo tem três
+    // (`Mode::ALL`) e nenhum é *mover o pivô*. Ele continua a ser o que era; inventar-lhe um
+    // destino seria pior do que a ausência.
+    let outcome = host
+        .apply_panel_event::<Model3dPanel>(&mut panel_state, WidgetEvent::Click(ids::TOOL_PIVOT));
     assert_eq!(outcome, EventOutcome::Ignored);
     assert!(drain_intents().is_empty());
+    state::set_armed(false);
 }
 
 /// ⭐ **O seletor de EIXOS é uma família de ids própria**, e o clique nele não dispara o verbo.
@@ -436,16 +457,18 @@ fn the_axis_selector_is_its_own_family() {
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     let mut panel_state = Model3dPanelState;
-    let outcome = host.apply_panel_event::<Model3dPanel>(
-        &mut panel_state,
-        WidgetEvent::Click(ids::model3d_frame_button(1)),
-    );
+    state::set_armed(true);
+    // ⭐ **O `SPACE` do trilho, que é um INTERRUPTOR** — ele pede o referencial SEGUINTE, e com o
+    // retrato em `Global` (slot 0) isso é o `1`.
+    let outcome = host
+        .apply_panel_event::<Model3dPanel>(&mut panel_state, WidgetEvent::Click(ids::TOOL_SPACE));
     assert_eq!(outcome, EventOutcome::Consumed);
     assert_eq!(
         drain_intents(),
         vec![ModelIntent::SetGizmoFrame { slot: 1 }],
-        "o clique no eixo tem de pedir o EIXO — se vier `SetGizmoMode`, as famílias colidiram"
+        "o clique no `SPACE` tem de pedir o EIXO — se vier `SetGizmoMode`, os dois braços colidiram"
     );
+    state::set_armed(false);
 }
 
 /// ⭐ **Os cinco seletores são cinco famílias**, e um clique em cada chega ao intent certo.
@@ -504,8 +527,6 @@ fn the_selectors_never_answer_for_each_other() {
     let mut panel_state = Model3dPanelState;
     let mut click =
         |id| host.apply_panel_event::<Model3dPanel>(&mut panel_state, WidgetEvent::Click(id));
-    assert_eq!(click(ids::model3d_mode_button(1)), EventOutcome::Consumed);
-    assert_eq!(click(ids::model3d_frame_button(1)), EventOutcome::Consumed);
     assert_eq!(click(ids::model3d_add_button(1)), EventOutcome::Consumed);
     assert_eq!(click(ids::model3d_op_button(1)), EventOutcome::Consumed);
     assert_eq!(click(ids::model3d_mod_button(1)), EventOutcome::Consumed);
@@ -515,8 +536,9 @@ fn the_selectors_never_answer_for_each_other() {
     assert_eq!(
         drain_intents(),
         vec![
-            ModelIntent::SetGizmoMode { slot: 1 },
-            ModelIntent::SetGizmoFrame { slot: 1 },
+            // ⛔ **O verbo e o eixo saíram desta lista em 2026-09-01** — eles deixaram de ter
+            // família de id própria e passaram a ser os chips `MOVE`/`ROT`/`SCALE`/`SPACE` do
+            // TRILHO, que já existiam. Os gates deles vivem nos testes de gesto acima.
             // ⚠️ **Sem `slot`, e essa é a diferença** (W100): esta fileira deixou de escolher uma
             // forma e passou a ABRIR a paleta, onde a escolha acontece.
             ModelIntent::OpenShapes,

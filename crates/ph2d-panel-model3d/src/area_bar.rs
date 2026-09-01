@@ -78,43 +78,110 @@ struct MenuPlan<'a> {
     rows: Vec<Row<'a>>,
 }
 
-/// ⭐⭐⭐ **OS DOIS PULLDOWNS, e o critério do agrupamento é a FACE.**
+/// ⭐⭐ **O PULLDOWN DA ÁREA — um, e é o da VISTA.**
 ///
 /// | pulldown | rótulo | face (a leitura) | fileiras |
 /// |---|---|---|---|
 /// | 0 | *View* | a vista actual (`Front`…) | as 6 vistas nomeadas + os 3 gestos de câmera |
-/// | 1 | *Gizmo* | o verbo actual (`Move`…) | os 3 verbos + os 2 referenciais |
 ///
-/// ⛔ **NÃO é um pulldown só com as cinco fileiras.** Catorze linhas atrás de uma face só é o
-/// depósito da foto 3 mudado de sítio — e a face **deixaria de ser uma leitura**, porque duas
-/// grandezas independentes não cabem numa palavra.
+/// ⛔⛔ **E o GIZMO não é um segundo pulldown — ele já tem chips na fila.** Enio, 2026-09-01 (com
+/// foto): *«esses botões de mover, rot e scale já existiam. só não estavam ligados a cada modo.»*
+/// Um pulldown *Gizmo* foi construído e **apagado no mesmo dia**: os `MOVE`/`ROT`/`SCALE` e o
+/// `SPACE` do trilho estavam ali, pintados e a acender-se — e o que lhes faltava era um
+/// **consumidor**. Ver [`rail_verb_key`].
 ///
-/// ⭐ **E o referencial fica com o VERBO, não com a vista.** *"Um referencial sem verbo não quer
-/// dizer nada"* — é o que o `paint.rs` já dizia quando as duas fileiras eram vizinhas no painel, e
-/// separá-las agora poria a metade num sítio e a outra noutro.
+/// ⚠️ *Um controlo morto e um controlo ausente dão o mesmo report, e as curas são opostas:*
+/// construir a segunda porta faz o app ter **dois** sítios para o mesmo verbo, e o que apodrece é
+/// o que ninguém relê.
 ///
-/// ⚠️ **O orçamento medido é `3` chips** ([`ids::area_menu_button`]) e são usados `2`: o 4.º põe o
-/// iPad 11 e o mini em duas linhas.
-fn menus(snap: &state::ModelSnapshot) -> [MenuPlan<'_>; 2] {
-    [
-        MenuPlan {
-            label: "panel.model3d.area.view",
-            face: view_face(snap),
-            rows: vec![
-                (&snap.views[..], ids::model3d_view_button as Family),
-                (&snap.camera[..], ids::model3d_camera_button as Family),
-            ],
-        },
-        MenuPlan {
-            label: "panel.model3d.area.gizmo",
-            face: active_key(&snap.modes).unwrap_or(FALLBACK_GIZMO_FACE),
-            rows: vec![
-                (&snap.modes[..], ids::model3d_mode_button as Family),
-                (&snap.frames[..], ids::model3d_frame_button as Family),
-            ],
-        },
-    ]
+/// ⚠️ **O orçamento medido é `3` chips** ([`ids::area_menu_button`]) e é usado `1`.
+fn menus(snap: &state::ModelSnapshot) -> [MenuPlan<'_>; 1] {
+    [MenuPlan {
+        label: "panel.model3d.area.view",
+        face: view_face(snap),
+        rows: vec![
+            (&snap.views[..], ids::model3d_view_button as Family),
+            (&snap.camera[..], ids::model3d_camera_button as Family),
+        ],
+    }]
 }
+
+/// ⭐⭐⭐ **OS CHIPS DO TRILHO QUE JÁ EXISTIAM, e a chave do verbo de cada um.**
+///
+/// ⛔⛔ **Eles eram CONTROLOS MORTOS, e a espécie é a 2.ª do `CLAUDE.md` §5.0:** o clique chegava
+/// (o `chrome::rail_tools` fazia deles um rádio exclusivo), a luz acendia — e o valor **não chegava
+/// a consumidor nenhum**. Medido em 2026-09-01: fora o próprio pintor, `TOOL_TRANSLATE`/`ROTATE`/
+/// `SCALE` e o `tool_space_local` do `SPACE` não têm um único leitor na árvore. *Nenhuma sonda
+/// deste repo pergunta se o VALOR de um controlo chega a um efeito.*
+///
+/// ⇒ com o módulo 3D no canvas, **estes chips SÃO o selector do gizmo**. Um id, um sítio.
+///
+/// # ⚠️ A ligação é pela CHAVE i18n, nunca pelo índice
+///
+/// O `slot` do intent é a posição em `ModelSnapshot::modes`, que é derivada de `Mode::ALL` no
+/// shell. Uma tabela `[TOOL_TRANSLATE → 0, …]` aqui seria uma **segunda contagem**: acrescentar um
+/// verbo lá dentro faria o `SCALE` mandar rodar, e nada acusaria.
+///
+/// ⛔ **O `PIVOT` fica de fora, e é uma AUSÊNCIA declarada:** o gizmo deste módulo tem três verbos
+/// (`Mode::ALL`) e nenhum deles é *mover o pivô*. Inventar-lhe um destino seria pior do que
+/// deixá-lo como está — ele continua a ser o que era, um chip que só acende.
+fn rail_verb_key(id: ph2d_a11y::NodeId) -> Option<&'static str> {
+    RAIL_VERBS
+        .iter()
+        .find(|(chip, _)| *chip == id)
+        .map(|(_, key)| *key)
+}
+
+/// A tabela do [`rail_verb_key`] — chip do trilho ⟷ chave do verbo.
+///
+/// ⚠️ `LazyLock` e não `const`: os ids do trilho são `hash_node_id` em tempo de compilação, mas a
+/// chave é `&'static str` e o par tem de viver num sítio só. ⛔ Duas listas (uma para a luz, outra
+/// para o clique) divergiriam no dia em que um verbo mudasse de nome.
+static RAIL_VERBS: std::sync::LazyLock<[(ph2d_a11y::NodeId, &'static str); 3]> =
+    std::sync::LazyLock::new(|| {
+        [
+            (ids::TOOL_TRANSLATE, "panel.model3d.mode.move"),
+            (ids::TOOL_ROTATE, "panel.model3d.mode.rotate"),
+            (ids::TOOL_SCALE, "panel.model3d.mode.scale"),
+        ]
+    });
+
+/// A posição, no retrato, do verbo que este chip do trilho pede — ou `None` se o chip não é um
+/// verbo ou o retrato não o tem.
+pub(crate) fn rail_verb_slot(id: ph2d_a11y::NodeId, snap: &state::ModelSnapshot) -> Option<usize> {
+    let key = rail_verb_key(id)?;
+    snap.modes.iter().position(|c| c.key == key)
+}
+
+/// ⭐ **A luz dos chips do trilho vem da CENA, não do clique.**
+///
+/// ⚠️ Enquanto o módulo está armado, o `chrome::rail_tools` nunca corre para estes ids (o painel
+/// consome-os antes) — logo o rádio que os acendia está desligado, e quem os acende é isto. *Fiar o
+/// clique não é fiar o ESTADO.*
+///
+/// ⚠️ E o `SPACE` é uma **face**, não um botão de estado: ele lê `store.tool_space_local()`, então
+/// publicar o referencial é escrever esse campo. ⛔ Sem isto o chip diria *Global* para sempre com
+/// o gizmo em local, porque o clique deixou de passar por quem escrevia o campo.
+fn publish_rail_state(store: &mut WidgetStore, snap: &state::ModelSnapshot) {
+    let active = active_key(&snap.modes);
+    for (chip, key) in RAIL_VERBS.iter() {
+        let (chip, on) = (*chip, Some(*key) == active);
+        if let Some(InteractiveState::Button { state }) = store.get_mut(chip) {
+            *state = if on {
+                ButtonState::Pressed
+            } else {
+                ButtonState::Normal
+            };
+        }
+    }
+    if let Some(key) = active_key(&snap.frames) {
+        store.set_tool_space_local(key == LOCAL_FRAME_KEY);
+    }
+}
+
+/// ⚠️ A chave do referencial LOCAL — a face do `SPACE` é booleana (`Global`/`Local`) e o retrato é
+/// uma fileira, então a ponte entre os dois é esta chave e não um índice.
+const LOCAL_FRAME_KEY: &str = "panel.model3d.frame.local";
 
 /// ⭐ **Publica os pulldowns da área e o que o módulo põe no menu *File*, com o estado de cada
 /// linha.**
@@ -127,11 +194,17 @@ fn menus(snap: &state::ModelSnapshot) -> [MenuPlan<'_>; 2] {
 /// não está lá, e a roubar lugar às ferramentas — e uma linha *Export Draft* no menu *File* que
 /// não exporta nada. *Um mapa que o tique apaga não envelhece.*
 pub fn publish(store: &mut WidgetStore, armed: bool) {
+    // ⭐⭐ **Quem responde *«o gizmo é meu?»* é ESTA chamada, e é a única que sabe.** O `event.rs`
+    // consome os ids do TRILHO (`MOVE`/`ROT`/`SCALE`/`SPACE`), e um painel do registry vê todo
+    // evento mesmo fechado — sem esta bandeira ele roubaria aqueles cliques ao editor 2D. ⚠️ Ela
+    // é escrita em todo quadro pela mesma porta que já recebe a verdade.
+    state::set_armed(armed);
     if !armed {
         store.set_area_commands(Vec::new(), Vec::new());
         return;
     }
     let snap = state::current();
+    publish_rail_state(store, &snap);
     let out = menus(&snap)
         .into_iter()
         .map(|plan| AreaMenu {
@@ -200,5 +273,3 @@ fn active_key(chips: &[ModeChip]) -> Option<&'static str> {
 /// O que a face diz quando ainda não há retrato — o nome da vista livre, que é o que uma câmera
 /// acabada de nascer de facto é.
 const FALLBACK_FACE: &str = "viewport.model3d.view.user";
-/// E o verbo de omissão do gizmo, pela mesma razão.
-const FALLBACK_GIZMO_FACE: &str = "panel.model3d.mode.move";

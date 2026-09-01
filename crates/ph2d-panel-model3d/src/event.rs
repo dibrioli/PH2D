@@ -120,23 +120,44 @@ pub(crate) fn apply_event(
                 _ => false,
             }
         }
-        // ⭐ Os dois seletores. ⚠️ A POSIÇÃO é o que viaja: o painel não conhece os enums do
-        // gizmo, e uma cópia deles aqui seria uma segunda contagem a envelhecer.
-        WidgetEvent::Click(id) if slot_in(id, ids::model3d_mode_button).is_some() => {
-            let slot = slot_in(id, ids::model3d_mode_button).unwrap_or(0);
-            // Um slot da família sem verbo no retrato: ignorar é a resposta certa.
-            slot < state::current().modes.len() && {
-                state::push_intent(ModelIntent::SetGizmoMode { slot });
-                true
-            }
+        // ⚠️ **A `line/UIUX` TROCOU estes dois braços** (o verbo e o referencial passaram para os
+        // chips do TRILHO, que já existiam e estavam MORTOS) e a `line/3DModeling` acrescentou dois
+        // vizinhos — a fileira de ESCOLHA de uma linha e o modo do LAÇO. ⇒ na integração de
+        // 2026-09-04 ficam os dois que ela acrescentou (ninguém os moveu para lado nenhum) e os da
+        // outra pelo braço NOVO. ⛔ Manter também os antigos daria DUAS portas para o mesmo verbo.
+        // ⭐⭐⭐ **OS CHIPS DO TRILHO QUE JÁ EXISTIAM** — `MOVE`/`ROT`/`SCALE` conduzem o verbo do
+        // gizmo, e o `SPACE` o referencial.
+        //
+        // > Enio, 2026-09-01 (com foto): *«esses botões de mover, rot e scale já existiam. só não
+        // > estavam ligados a cada modo.»*
+        //
+        // ⛔⛔ **Eles eram controlos MORTOS** (a 2.ª espécie do `CLAUDE.md` §5.0): o clique chegava,
+        // a luz acendia, e o valor não alcançava consumidor nenhum. ⇒ ligá-los é a cura; construir
+        // um selector NOVO ao lado seria a segunda porta.
+        //
+        // ⚠️ **A guarda `armed` é obrigatória:** o registry entrega todo evento a todo painel,
+        // fechado incluído, e sem ela um módulo 3D fora de cena roubaria estes cliques ao editor
+        // 2D. Ver [`state::set_armed`].
+        WidgetEvent::Click(id)
+            if state::armed()
+                && crate::area_bar::rail_verb_slot(id, &state::current()).is_some() =>
+        {
+            let snap = state::current();
+            let slot = crate::area_bar::rail_verb_slot(id, &snap).unwrap_or(0);
+            state::push_intent(ModelIntent::SetGizmoMode { slot });
+            true
         }
-        WidgetEvent::Click(id) if slot_in(id, ids::model3d_frame_button).is_some() => {
-            let slot = slot_in(id, ids::model3d_frame_button).unwrap_or(0);
-            slot < state::current().frames.len() && {
-                state::push_intent(ModelIntent::SetGizmoFrame { slot });
-                true
-            }
-        }
+        // ⚠️ **O `SPACE` é um INTERRUPTOR e o referencial é uma FILEIRA** — a ponte é *avançar para
+        // o próximo*, e não um índice fixo: com dois referenciais isso é exactamente alternar, e
+        // com um terceiro continua a ser o que o chip promete (cada toque muda para o seguinte).
+        WidgetEvent::Click(id) if state::armed() && id == ids::TOOL_SPACE => {
+            let snap = state::current();
+            let n = snap.frames.len();
+            n > 0 && {
+                let active = snap.frames.iter().position(|c| c.active).unwrap_or(0);
+                state::push_intent(ModelIntent::SetGizmoFrame {
+                    slot: (active + 1) % n,
+                });
         WidgetEvent::Click(id) if slot_in(id, ids::model3d_select_button).is_some() => {
             let slot = slot_in(id, ids::model3d_select_button).unwrap_or(0);
             slot < state::current().selects.len() && {

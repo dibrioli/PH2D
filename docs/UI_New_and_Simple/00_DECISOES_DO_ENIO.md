@@ -94,7 +94,7 @@ a ser uma linha.
 
 ⛔⛔ **UM chip, e o número é MEDIDO, não estimado:** com os nove comandos crus na fila ela precisa de
 **2 linhas até no iPad 12,9"**, o maior dos três alvos, e ainda transborda `2` chips para o `⋯`
-(mutação 6 do gate `the_area_costs_two_chips_and_the_bar_is_still_one_line`).
+(mutação 6 do gate `the_area_costs_one_chip_and_the_bar_is_still_one_line`).
 *Poupar altura gastando largura não poupa nada.*
 
 **Primeiro inquilino — o painel `3D Model` perde as 9 primeiras das 74 entradas:** as seis vistas
@@ -105,26 +105,44 @@ com dois ids tem dois sítios a apodrecer em separado.*
 ⭐ E o preço deixou de ser uma nota: ele é um **gate** com a área medida nos três tablets —
 [`medicoes/06`](medicoes/06_o_orcamento_de_ecra_em_tablet.md).
 
-### ✅ E as DUAS metades fecharam para o `3D Model` (2026-09-01, entrega 35)
+### ✅ E as DUAS metades fecharam para o `3D Model` (2026-09-01, entregas 35 + 36)
 
-**O que sobrou do painel mudou-se, e para DOIS sítios diferentes — porque o corte da D2 é por
-âmbito, não por quem foi o último a mexer no assunto:**
+**O que sobrou do painel mudou-se, e para TRÊS sítios, porque o corte da D2 é por âmbito:**
 
 | fileira | nº | destino | porquê |
 |---|---:|---|---|
-| verbos do gizmo + referencial | 5 | **2.º pulldown de área** (*Gizmo*) | é sobre **mover com a mão** |
+| verbos do gizmo + referencial | 5 | os chips **`MOVE`/`ROT`/`SCALE`/`SPACE` que já existiam** | é sobre **mover com a mão** |
 | níveis de exportação | 3 | **menu global → File** | escrever um arquivo vale em **todo o app** |
 
-⇒ o painel perdeu **17 das 74** entradas em duas entregas, e o que lá fica são os **números do
-objecto escolhido** e as leituras — que é o que um painel de propriedades é.
+⇒ o painel perdeu **17 das 74** entradas, e o que lá fica são os **números do objecto escolhido** e
+as leituras — que é o que um painel de propriedades é.
 
-⭐⭐ **São DOIS pulldowns e não um, e o critério é a FACE.** O rótulo diz o *grupo* (`View`,
-`Gizmo`) e a face diz o *estado agora* (`Front`, `Rotate`) — duas grandezas independentes não
-cabem numa palavra, e catorze linhas atrás de uma face só seriam o depósito da foto 3 mudado de
-sítio. ⇒ dois grupos com a mesma face seriam um grupo só.
+### ⛔⛔⛔ CORRECÇÃO (2026-09-01) — o gizmo NÃO precisava de controlo novo: os dele estavam MORTOS
 
-⭐ **E o orçamento é MEDIDO, não estimado: `3` chips de área** (sonda de 2026-09-01 sobre
-`bar_split` + `horizontal_lines`, com o módulo armado):
+> Enio, com foto: *«esses botões de mover, rot e scale já existiam. só não estavam ligados a cada
+> modo.»*
+
+A 1.ª entrega desta metade construiu um **2.º pulldown de área** (*Gizmo*) — e os chips
+`MOVE`/`ROT`/`SCALE`/`PIVOT` e `SPACE` estavam no trilho desde sempre, pintados, clicáveis e a
+acender-se. **Medido:** fora o próprio pintor, `TOOL_TRANSLATE`/`ROTATE`/`SCALE` e o
+`tool_space_local` do `SPACE` **não tinham um único leitor na árvore** — eles eram a 2.ª espécie de
+controlo morto do `CLAUDE.md` §5.0 (*o clique chega, a luz acende, e o valor não alcança
+consumidor*).
+
+⭐⭐⭐ **A regra que fica:** *antes de dar casa nova a um comando, procure o controlo que já a tem.*
+Um controlo **morto** e um controlo **ausente** produzem o mesmo report — e as curas são opostas:
+para o ausente constrói-se, para o morto **liga-se**. Construir por cima de um morto deixa o app com
+**dois** sítios para o mesmo verbo, e o que apodrece é o que ninguém relê.
+
+⇒ o pulldown *Gizmo* foi **apagado** no mesmo dia, e com ele as famílias de id
+`model3d_mode_button` / `model3d_frame_button`: *ligar os que existem e apagar os duplicados é UMA
+obra, não duas.* O gate `the_area_offers_no_second_door_for_the_gizmo` impede a reconstrução.
+
+⛔ **O `PIVOT` fica de fora, e é uma ausência declarada:** o gizmo deste módulo tem três verbos e
+nenhum é *mover o pivô*. Ele continua a ser o que era.
+
+⭐ **E o orçamento de chips de área é MEDIDO: `3`** (sonda de 2026-09-01 sobre `bar_split` +
+`horizontal_lines`, com o módulo armado):
 
 | alvo | largura da área | 1 chip | 2 | 3 | 4 |
 |---|---:|---|---|---|---|
@@ -132,12 +150,13 @@ sítio. ⇒ dois grupos com a mesma face seriam um grupo só.
 | iPad 11 | `582,0` | 1 linha | 1 | 1 | **2** |
 | iPad mini | `521,0` | 1 linha | 1 | 1 | **2** |
 
-Usam-se **2**, com um de folga. ⛔ Ultrapassar não parte nada (o `⋯` absorve) — custa a 2.ª linha
-nos dois alvos pequenos, que é exactamente o que a entrega 32 existe para não pagar.
+Usa-se **1** (a vista). ⛔ Ultrapassar não parte nada (o `⋯` absorve) — custa a 2.ª linha nos dois
+alvos pequenos, que é exactamente o que a entrega 32 existe para não pagar.
 
 ⚠️ **As linhas do *File* são CONTRIBUÍDAS, não fixas:** o módulo publica-as enquanto tem o canvas, e
 com ele fechado o menu volta byte a byte ao que era. *Uma linha `Export Draft` permanente seria um
-alvo que consome o clique e não faz nada.*
+alvo que consome o clique e não faz nada.* ⚠️ **E a mesma bandeira decide quem é dono dos chips do
+trilho** — sem ela um módulo 3D fechado roubaria o `MOVE` ao editor 2D.
 
 ⚠️ **A célula `add.*` (20) desta tabela já estava FECHADA e a tabela não sabia:** a paleta de formas
 (W100) reduziu-a a **um** chip que abre o catálogo genérico da casa — com busca, categorias e

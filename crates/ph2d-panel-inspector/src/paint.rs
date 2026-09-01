@@ -56,6 +56,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             store,
             &mut inspector_state.anchor_selected,
             &mut inspector_state.anim_selected,
+            inspector_state.value_edit.map(|(a, _)| a),
         );
     }
     state::set_current_display_unit(display_unit, ppm); // keep symmetric with legacy
@@ -74,6 +75,19 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
 }
 
 #[allow(clippy::too_many_arguments)]
+/// # Os TRÊS que são estado do PAINEL, e não da cena
+///
+/// ⚠️ A prosa deles mudou-se do meio da lista de parâmetros para aqui em 2026-08-31, quando o
+/// terceiro empurrou a função sobre o teto de 200 LOC: comentários dentro do corpo contam, e o
+/// idioma do Rust para documentar um parâmetro é o doc-comment da função. *A tolerância desceu
+/// junto — ela só anda nessa direcção.*
+///
+/// - `anchor_selected` — §12: qual linha da lista de âncoras está aberta. Saturado dentro de
+///   `paint_anchor_section` contra o tamanho da lista: apagar a última âncora não o pode deixar a
+///   apontar para o vazio.
+/// - `anim_selected` — §11: qual animação está aberta no editor. Mesmo contrato.
+/// - `editing_value` — qual eixo do cartão de propriedades está a ser **reescrito**; ver
+///   [`ph2d_editor_core::ids::INSP_INSTANCE_VALUE_EDIT`] para o report que o pediu.
 fn paint_inspector(
     layout: &HeroLayout,
     selection: Option<&HeroSelection>,
@@ -82,12 +96,9 @@ fn paint_inspector(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    // §12: qual linha da lista de âncoras está aberta. **Estado do painel**, saturado dentro
-    // de `paint_anchor_section` contra o tamanho da lista — apagar a última âncora não o pode
-    // deixar a apontar para o vazio.
     anchor_selected: &mut usize,
-    // §11: qual animação está aberta no editor. Mesmo contrato do `anchor_selected`.
     anim_selected: &mut usize,
+    editing_value: Option<usize>,
 ) {
     // ⭐ **A moldura do corpo — superfície, alças, cabeçalho, clip e a caixa interior.**
     // Ver [`crate::paint_frame::open_body`]: nada disto é orquestração de seção, e é a mesma razão
@@ -125,10 +136,7 @@ fn paint_inspector(
         name_present,
         any_section,
     } = crate::paint_frame::LiveSnapshots::fetch();
-    let y = body_top_y + Spacing::Xs.px();
-
-    // ⭐⭐ **Os dois CARTÕES do topo** — o porquê de eles não serem seções, e de saírem daqui
-    // juntos, vive no cabeçalho de [`crate::paint_cards`].
+    // ⭐⭐ Os dois CARTÕES do topo — o porquê vive no cabeçalho de [`crate::paint_cards`].
     let mut y = crate::paint_cards::paint_top_cards(
         scene,
         text_system,
@@ -137,9 +145,10 @@ fn paint_inspector(
         store,
         instance_info.as_ref(),
         properties_info.as_ref(),
+        editing_value,
         inner_x,
         inner_w,
-        y,
+        body_top_y + Spacing::Xs.px(),
     );
     let (notes_per_section, trailing_notes) = crate::paint_frame::split_notes(store);
     // Section macro: paints the section, then the outline (if any),

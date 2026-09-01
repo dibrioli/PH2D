@@ -23,6 +23,13 @@ use ph2d_editor_core::screens::hero::{
 /// by `sync_inspector_from_snapshots` (also panel-owned).
 #[derive(Clone, Debug, Default)]
 pub struct InspectorState {
+    /// ⭐⭐⭐ **O eixo cujo VALOR está a ser reescrito**, e se o campo já foi semeado.
+    ///
+    /// Ver [`ph2d_editor_core::ids::INSP_INSTANCE_VALUE_EDIT`] para o report que o pediu. O molde
+    /// é o `paint_catalog_rename` do navegador de assets: o despacho ABRE, o pintor SEMEIA uma vez
+    /// (re-semear a cada quadro apagaria o que o artista escreveu), e o `Submit`/`Blur` grava.
+    pub value_edit: Option<(usize, bool)>,
+
     /// Entity bits of the last selection whose snapshot seeded the 5
     /// Transform NumberInputs + the editable Name field. When the
     /// current snapshot's entity bits differ, the panel force-rewrites

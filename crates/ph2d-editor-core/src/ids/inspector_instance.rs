@@ -14,6 +14,20 @@ use ph2d_a11y::NodeId;
 /// do artista em silêncio. ⇒ o gesto existe, e é explícito.
 pub const INSP_INSTANCE_CLEAR_ORPHANS: NodeId = hash_node_id("insp_instance_clear_orphans");
 
+/// ⭐⭐⭐ **O CAMPO que renomeia o valor vigente**, aberto por um clique no chip aceso.
+///
+/// # ⛔⛔⛔ O clique no chip aceso não fazia NADA, e era o gesto que faltava
+///
+/// Report do Enio (2026-08-31, a quarta vez): ele escrevia `{Size=Big}` no nome da **cópia** para
+/// dar nome ao valor, e o modelo ignorava-o — correctamente, porque uma propriedade é do
+/// COMPONENTE. *O defeito é que autorar o valor obrigava a seleccionar OUTRO objecto do que aquele
+/// que se está a olhar.*
+///
+/// ⭐ **O gesto não é novo: era um clique MORTO.** Carregar no valor já aceso era um no-op
+/// silencioso («o artista carregou no botão que diz onde ele já está»), e é exactamente onde ele
+/// aponta quando quer mudar o nome do valor. ⇒ um id só, porque só se edita um de cada vez.
+pub const INSP_INSTANCE_VALUE_EDIT: NodeId = hash_node_id("insp_instance_value_edit");
+
 /// ⭐⭐⭐ **Quantos EIXOS de propriedade o cartão endereça** — `Size`, `State`, …
 ///
 /// ⚠️ Teto de **TABELA DE IDS**, como o irmão abaixo: uma família pode declarar os eixos que

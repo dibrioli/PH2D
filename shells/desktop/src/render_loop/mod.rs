@@ -3469,6 +3469,8 @@ impl crate::App {
             let mut add_component_for: Option<u64> = None;
             // ⭐ A troca de variante pedida neste quadro: `(raiz da instância, StableId do mestre)`.
             let mut swap_variant: Option<(u64, u64)> = None;
+            // ⭐ O pedido de renomear o VALOR de uma propriedade — `(receita, chave, valor)`.
+            let mut rename_variant_value: Option<(u64, String, String)> = None;
             let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
             // §12 joints (W3). Kept out of `inspector_commits::dispatch`: that
             // signature is already the length its own doc-comment warns about,
@@ -4691,6 +4693,12 @@ impl crate::App {
                     // o ponto de aplicação tem, adia-se — não se duplica o estado.*
                     EditorAction::InspectorSwapVariant { root_bits, master } => {
                         swap_variant = Some((root_bits, master));
+                    }
+                    // ⭐⭐⭐ **Renomear o VALOR de uma propriedade** (report do Enio, 2026-08-31).
+                    // ⚠️ O sujeito é a RECEITA; o gesto nasce sobre a cópia, que é onde o artista
+                    // está a olhar. Ver `ph2d-panel-inspector/src/event_value.rs`.
+                    EditorAction::InspectorRenameVariantValue { master, key, value } => {
+                        rename_variant_value.get_or_insert((master, key, value));
                     }
 
                     // §11 Physics Body. Fans out over a BulkSelect like its
@@ -10790,6 +10798,53 @@ impl crate::App {
             // os dois à mão — a troca tem de o esquecer, senão o passe seguinte lê a diferença
             // contra o mestre NOVO como *«a instância mexeu-se»* e congela a cópia com o valor do
             // mestre VELHO ([`crate::instance_variant::swap`]).
+            // ⭐⭐⭐ **RENOMEAR O VALOR de uma propriedade** (report do Enio, 2026-08-31).
+            //
+            // ⚠️ **O sujeito é a RECEITA, e o gesto nasceu sobre a CÓPIA.** É a razão de existir:
+            // autorar o valor obrigava a seleccionar outro objecto do que aquele que se está a
+            // olhar — e ele tentou pelo nome da cópia quatro vezes, com o modelo a ignorá-lo
+            // correctamente as quatro.
+            //
+            // ⚠️ **A lei da reescrita vive no `variant_axes::with_value`**, não aqui: o que muda é
+            // UM valor dentro das chaves, e o resto do nome (o comum, o sufixo de cópia) fica
+            // intacto. Um `format!` aqui seria a segunda resposta a *«como se escreve uma
+            // combinação»*.
+            //
+            // ⛔ **Recusa em voz alta.** Um valor vazio, ou com `=`/`{`/`}`/`,` dentro, partiria a
+            // gramática — e um campo que come o texto em silêncio é o defeito que este gesto
+            // existe para curar.
+            if let Some((master, key, value)) = rename_variant_value {
+                let target = crate::instance_verbs_walk::entity_for_stable_id(sim, master)
+                    .map(ph2d_ecs::Entity::from_bits);
+                let current =
+                    target.and_then(|e| sim.world().get::<ph2d_ecs::Name>(e).map(|n| n.0.clone()));
+                match (target, current) {
+                    (Some(e), Some(name)) => {
+                        match ph2d_editor::screens::hero::variant_axes::with_value(
+                            &name, &key, &value,
+                        ) {
+                            Some(next) if next != name => {
+                                sim.world_mut()
+                                    .entity_mut(e)
+                                    .insert(ph2d_ecs::Name::new(next));
+                                toasts.push(Toast::success(format!("{key} \u{2192} {value}")));
+                                self.title_dirty = true;
+                            }
+                            // ⚠️ Igual ao que já lá estava: o artista carregou, escreveu o mesmo e
+                            // saiu. Nada a dizer, e nada a gravar.
+                            Some(_) => {}
+                            None => {
+                                toasts.push(Toast::warning(
+                                    "A property value cannot be empty or contain = { } ,",
+                                ));
+                            }
+                        }
+                    }
+                    _ => {
+                        toasts.push(Toast::warning("That component is gone"));
+                    }
+                }
+            }
             if let Some((root_bits, master)) = swap_variant {
                 match crate::instance_variant::swap(
                     sim,

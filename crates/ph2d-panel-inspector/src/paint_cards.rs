@@ -35,6 +35,9 @@ pub(crate) fn paint_top_cards(
     store: &WidgetStore,
     instance_info: Option<&InspectorInstanceInfo>,
     properties_info: Option<&InspectorPropertiesInfo>,
+    // ⭐ Qual eixo do cartão de propriedades está a ser reescrito, se algum — ver
+    // `ids::INSP_INSTANCE_VALUE_EDIT`.
+    editing_value: Option<usize>,
     inner_x: f32,
     inner_w: f32,
     y: f32,
@@ -61,6 +64,7 @@ pub(crate) fn paint_top_cards(
             hit_index,
             store,
             info,
+            editing_value,
             inner_x,
             inner_w,
             y,

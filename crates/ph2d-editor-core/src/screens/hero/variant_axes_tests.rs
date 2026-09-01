@@ -612,3 +612,51 @@ fn the_born_variant_makes_the_axis_a_real_question() {
     assert_eq!(labels(&rows[0]), vec!["Small", "Small 2"]);
     assert!(rows[0].options[0].current);
 }
+
+/// ⭐⭐⭐ **Reescrever UM valor não toca no resto do nome** — a porta que o campo do cartão usa.
+///
+/// Report do Enio (2026-08-31, a quarta vez): *«Que inferno!!!»*. Autorar o valor obrigava a
+/// seleccionar a RECEITA, e ele escrevia as chaves na cópia. Hoje o cartão deixa mudar o valor
+/// onde ele se lê, e o texto que se escreve vem por aqui.
+///
+/// **Mutação que deve sangrar:** devolver o nome sem trocar nada.
+#[test]
+fn one_value_is_rewritten_and_the_rest_of_the_name_survives() {
+    use super::with_value;
+    assert_eq!(
+        with_value("Casa {Size=Small 2, State=Idle}", "Size", "Big"),
+        Some("Casa {Size=Big, State=Idle}".into())
+    );
+    // ⚠️ O que está FORA das chaves é do artista — o nome comum e o sufixo de cópia ficam.
+    assert_eq!(
+        with_value("Casa {Size=Small} (1)", "Size", "Big"),
+        Some("Casa {Size=Big} (1)".into())
+    );
+    // ⛔ Não se inventa uma propriedade a partir de uma edição.
+    assert_eq!(with_value("Casa {Size=Small}", "State", "Idle"), None);
+    assert_eq!(with_value("Casa", "Size", "Big"), None);
+}
+
+/// ⛔⛔ **E a gramática é defendida na PORTA** — um valor que a partiria é recusado, não gravado.
+///
+/// ⚠️ Sem esta metade, escrever `Big=2` no campo produziria `{Size=Big=2}`, que o `parse_combo`
+/// deixa de reconhecer: *a propriedade desapareceria da linha e do cartão de uma vez, por causa de
+/// uma tecla*.
+///
+/// **Mutação que deve sangrar:** apagar a guarda dos caracteres.
+#[test]
+fn a_value_that_would_break_the_grammar_is_refused() {
+    use super::{parse_combo, with_value};
+    for bad in ["", "   ", "Big=2", "Big,Small", "Big{", "Big}"] {
+        assert_eq!(
+            with_value("Casa {Size=Small}", "Size", bad),
+            None,
+            "«{bad}» devia ser recusado"
+        );
+    }
+    // ⚠️ E o que passa continua a parsear — a guarda não pode deixar entrar o que ela existe para
+    // barrar.
+    let ok = with_value("Casa {Size=Small}", "Size", "  Big  ").expect("aparado e aceite");
+    assert_eq!(ok, "Casa {Size=Big}");
+    assert!(parse_combo(&ok).is_some());
+}

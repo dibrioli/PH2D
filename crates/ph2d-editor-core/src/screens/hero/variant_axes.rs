@@ -462,6 +462,49 @@ pub fn variant_name(base: &str, taken: &[String]) -> Option<String> {
     })
 }
 
+/// ⭐⭐⭐ **O mesmo nome com UM valor trocado** — a porta que o artista usa sem saber que existe.
+///
+/// # ⛔⛔⛔ Ele tentou quatro vezes, e o app nunca o deixou (report do Enio, 2026-08-31)
+///
+/// *«Que inferno!!!»* — depois de escrever `Canvas{Size=Big}` no nome de uma **cópia** pela quarta
+/// vez. E o modelo estava certo as quatro: uma propriedade é do COMPONENTE, e a cópia herda-a.
+///
+/// ⇒ **o defeito é que autorar o valor obrigava a seleccionar OUTRO objecto** (a receita) do que
+/// aquele que se está a olhar. *O artista olha para o cartão, o valor está no cartão, e o sítio
+/// onde ele se muda estava noutra linha da Hierarquia.* Hoje o cartão deixa: carregar no valor
+/// aceso abre-o para escrita, e o que se escreve vem aqui.
+///
+/// `None` quando o nome não declara `key` — não se inventa uma propriedade a partir de uma edição.
+#[must_use]
+pub fn with_value(name: &str, key: &str, value: &str) -> Option<String> {
+    let combo = parse_combo(name)?;
+    if !combo.iter().any(|(k, _)| k == key) {
+        return None;
+    }
+    let value = value.trim();
+    // ⛔ Um valor vazio apagaria a chave e mudaria a FORMA da família — o campo recusa em vez de
+    // destruir; quem quer tirar a propriedade edita o nome.
+    if value.is_empty()
+        || value.contains('=')
+        || value.contains('{')
+        || value.contains('}')
+        || value.contains(',')
+    {
+        return None;
+    }
+    let next: Vec<(String, String)> = combo
+        .into_iter()
+        .map(|(k, v)| {
+            if k == key {
+                (k, value.to_string())
+            } else {
+                (k, v)
+            }
+        })
+        .collect();
+    Some(rename_combo(name, &next))
+}
+
 /// O mesmo nome, com a combinação substituída — o de fora das chaves fica intacto.
 fn rename_combo(base: &str, combo: &[(String, String)]) -> String {
     let head = base.split_once('{').map_or("", |(h, _)| h);

@@ -49,6 +49,12 @@ pub(crate) fn apply_event(
     if crate::event_anim::apply_anim_event(state, host, ev) {
         return EventOutcome::Consumed;
     }
+    // ⭐⭐⭐ **O VALOR de uma propriedade** — a terceira família que precisa do estado do painel:
+    // carregar no chip aceso abre um campo, e *qual* eixo está aberto é estado de painel, não uma
+    // edição da cena. Ver `crate::event_value`.
+    if crate::event_value::apply_value_event(state, host, ev) {
+        return EventOutcome::Consumed;
+    }
     EventOutcome::from_bool(apply_event_impl(host, ev))
 }
 
@@ -79,51 +85,6 @@ fn clear_orphans_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> boo
     };
     host.bus_mut()
         .push(EditorAction::InspectorClearUnusedOverrides { root_bits });
-    true
-}
-
-/// ⭐⭐⭐ **Trocar a VARIANTE** (ADR-0164 / F5, critério 2) — que versão do componente esta cópia é.
-///
-/// ⚠️ **O painel manda o `StableId` do mestre, e não o índice do chip.** O índice é uma posição
-/// numa lista que o construtor refaz por quadro; se ela reordenar entre o pintar e o clicar, o
-/// artista escolhe `Large` e recebe `Medium` — **sem erro nenhum**. *A identidade viaja; a posição
-/// fica no painel.*
-fn variant_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    let WidgetEvent::Click(id) = ev else {
-        return false;
-    };
-    // ⚠️ **A leitura inversa vem da PORTA** (`ids::instance_axis_option`) e não de uma varredura
-    // aqui: o painel, o pintor e os gates fazem a mesma pergunta, e a escada escrita três vezes é
-    // a doença que a coluna de catálogos acabou de pagar.
-    //
-    // ⚠️ **E ela vem ANTES do estado** (auditoria de 2026-08-30): este braço corre em TODO clique
-    // do Inspector, e o `current_inspector_instance()` **clona** o cartão inteiro. Perguntar
-    // primeiro o que custa 3 ns e só depois o que aloca é a ordem certa das duas.
-    let Some((a, v)) = ids::instance_axis_option(id) else {
-        return false;
-    };
-    let Some(info) = crate::state::current_inspector_properties() else {
-        return false;
-    };
-    let Some(choice) = info.rows.get(a).and_then(|ax| ax.options.get(v)) else {
-        return false;
-    };
-    // ⚠️ Clicar na vigente é um **no-op silencioso**, e não uma recusa a falar: o artista carregou
-    // no botão que diz onde ele já está.
-    if choice.current {
-        return true;
-    }
-    // ⛔ **Sem raiz não há a quem pedir a troca** — é o estado de um objecto que DECLARA
-    // propriedades sem ser cópia de nada. O cartão pinta essas fileiras como texto, então este
-    // braço não é alcançável pelo ponteiro; ele existe para que a ausência não vire um `root_bits`
-    // de `0` a viajar no barramento.
-    if info.root_bits == 0 || choice.master == 0 {
-        return true;
-    }
-    host.bus_mut().push(EditorAction::InspectorSwapVariant {
-        root_bits: info.root_bits,
-        master: choice.master,
-    });
     true
 }
 
@@ -184,7 +145,6 @@ fn sheet_grid_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool
 const SINGLE_ID_CLICKS: &[fn(&mut dyn PanelHostInternal, WidgetEvent) -> bool] = &[
     add_component_click,
     clear_orphans_click,
-    variant_click,
     section_color_click,
 ];
 

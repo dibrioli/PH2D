@@ -555,6 +555,16 @@ pub enum EditorAction {
         entity_bits: u64,
         edit: crate::screens::hero::JointFieldEdit,
     },
+    /// ⭐⭐⭐ **Renomear o VALOR de uma propriedade** — o campo que o clique no chip aceso abre.
+    ///
+    /// O sujeito é a **RECEITA** (`master`, um `StableId`), porque é lá que o valor vive; o gesto
+    /// nasce sobre uma cópia, que é onde o artista está a olhar. ⚠️ *É por isso que ele existe:
+    /// autorar o valor obrigava a seleccionar outro objecto do que aquele que se vê.*
+    InspectorRenameVariantValue {
+        master: u64,
+        key: String,
+        value: String,
+    },
 
     /// Inspector → shell channel for a §13 Pulley Wheel field (W-Pulley W1).
     /// The `entity_bits` are the WHEEL object's — a roldana é uma entidade, e

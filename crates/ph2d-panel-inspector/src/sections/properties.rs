@@ -50,6 +50,44 @@ const FLAT_AXIS_LABEL: &str = "Variant";
 /// decisão anterior e por que ela virou.
 const CARD_TITLE: &str = "Properties";
 
+/// ⭐⭐⭐ **O campo que reescreve o valor vigente**, no rect do chip que ele substitui.
+///
+/// ⚠️ **Quem SEMEIA é o despacho, não este pintor** — ao contrário do molde do navegador de
+/// assets, aqui o valor a semear (`v.label`) está em mãos no sítio do clique, e semear aqui
+/// obrigaria a re-semear ou a guardar uma bandeira de «já abri». *O campo nasce cheio e
+/// seleccionado, e o pintor só o desenha.*
+fn paint_value_field(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    host: Rect,
+) {
+    let (ti_state, text, caret, anchor) = match store.get(ids::INSP_INSTANCE_VALUE_EDIT) {
+        Some(InteractiveState::TextInput {
+            state,
+            text,
+            caret,
+            selection_anchor,
+        }) => (*state, text.clone(), *caret, *selection_anchor),
+        _ => (TextInputState::Focused, String::new(), 0, None),
+    };
+    let input = TextInput::new(ids::INSP_INSTANCE_VALUE_EDIT, "")
+        .visual((ti_state, store.hover_live(ids::INSP_INSTANCE_VALUE_EDIT)));
+    paint_text_input_with_buffer(
+        &input,
+        Some(text.as_str()),
+        Some(caret),
+        anchor,
+        host,
+        scene,
+        text_system,
+        theme,
+    );
+    hit_index.register(ids::INSP_INSTANCE_VALUE_EDIT, host);
+}
+
 /// ⭐ **A frase do título** — uma porta, porque a ALTURA e o DESENHO têm de ler a mesma.
 ///
 /// ⚠️ Enquanto ela estava escrita no meio do pintor, medir era impossível sem a repetir — e duas
@@ -70,6 +108,8 @@ pub(crate) fn paint_properties_card(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     info: &InspectorPropertiesInfo,
+    // ⭐ Qual eixo está a ser reescrito, se algum — ver `InspectorState::value_edit`.
+    editing: Option<usize>,
     x: f32,
     w: f32,
     y: f32,
@@ -179,6 +219,14 @@ pub(crate) fn paint_properties_card(
             // ⚠️ **Cortar não substitui medir o tecto** — ele continua a ser de ids, e a largura
             // continua a ser o recurso a apertar quando alguém quiser mais de 8. Isto garante só
             // que o cartão nunca desenha por cima de si próprio.
+            //
+            // ⭐⭐⭐ **E o VIGENTE, em edição, é um CAMPO** — ver o doc de
+            // `ids::INSP_INSTANCE_VALUE_EDIT`. Ele ocupa o rect do chip, e é o próprio chip que
+            // some: *o valor muda-se onde ele se lê.*
+            if v.current && editing == Some(a) {
+                paint_value_field(scene, text_system, theme, hit_index, store, host);
+                continue;
+            }
             let label = ph2d_editor_core::text_elide::fit(text_system, &v.label, font, cw);
             let button = Button::new(id, label)
                 // ⚠️ A vigente é `Accent` — é o **estado**, e não uma decoração: sem ela a fileira

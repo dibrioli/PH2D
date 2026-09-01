@@ -11,6 +11,11 @@
 //! uma segunda escrita não se mede correndo o caminho certo.
 //!
 //! ⛔ Ele descasca comentários antes de varrer: documentar a cura não pode reprovar o portão.
+//!
+//! ⚠️ **O alvo mudou de ficheiro em 2026-08-31** (`event.rs` → `event_value.rs`): o braço passou a
+//! precisar do estado do painel — *qual eixo está aberto para escrita* — e essa família corre antes
+//! do `apply_event_impl`, com o `InspectorState` na mão, como o `event_anchor` e o `event_anim`.
+//! *Um gate textual segue o código; ele não o prende ao ficheiro em que nasceu.*
 
 use std::path::Path;
 
@@ -43,9 +48,9 @@ fn the_axis_chip_reads_the_model_that_painted_it() {
                 .parent()
                 .and_then(Path::parent)
                 .expect("raiz do repo")
-                .join("crates/ph2d-panel-inspector/src/event.rs"),
+                .join("crates/ph2d-panel-inspector/src/event_value.rs"),
         )
-        .expect("event.rs do inspector"),
+        .expect("event_value.rs do inspector"),
     );
     assert!(
         body.contains("ids::instance_axis_option(id)"),
@@ -74,9 +79,9 @@ fn the_inspector_never_writes_the_master_link_by_hand() {
                 .parent()
                 .and_then(Path::parent)
                 .expect("raiz do repo")
-                .join("crates/ph2d-panel-inspector/src/event.rs"),
+                .join("crates/ph2d-panel-inspector/src/event_value.rs"),
         )
-        .expect("event.rs do inspector"),
+        .expect("event_value.rs do inspector"),
     );
     for forbidden in ["InstanceOf {", "InstanceOf::new("] {
         assert!(

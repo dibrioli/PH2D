@@ -20,6 +20,13 @@ pub(super) fn sem() -> ph2d_quadfill::TipDeviation {
     ph2d_quadfill::TipDeviation::default()
 }
 
+/// **UMA MEDIÇÃO DE DENSIDADE DA PONTA VAZIA** — a irmã da [`sem`] para a 5.ª chave
+/// (2026-09-01). ⚠️ Pela mesma razão: `tips = 0` é *«não medido»*, logo a chave da grade na
+/// ponta não decide, e os gates das outras chaves continuam a medir o que sempre mediram.
+pub(super) fn sem_den() -> ph2d_quadfill::TipDensity {
+    ph2d_quadfill::TipDensity::default()
+}
+
 /// Um cubo fechado de quads, deslocado em `x` — `12` arestas, cada uma com exactamente
 /// duas faces.
 pub(super) fn cubo(dx: f32) -> (Vec<[f32; 3]>, Vec<[u32; 4]>) {
@@ -113,12 +120,34 @@ fn a_peca_partida_perde_para_a_inteira_mesmo_com_a_forma_perfeita() {
     let inteira = cubos(1);
     let partida = cubos(2);
     assert!(
-        super::worse(&partida, 0, 0.0, sem(), &inteira, 999, 89.0, sem()),
+        super::super::decide::worse(
+            &partida,
+            0,
+            0.0,
+            sem(),
+            sem_den(),
+            &inteira,
+            999,
+            89.0,
+            sem(),
+            sem_den()
+        ),
         "⛔ uma peca em dois pedacos e' PIOR que uma inteira feia -- o artista ve' o pedaco a \
          flutuar"
     );
     assert!(
-        !super::worse(&inteira, 999, 89.0, sem(), &partida, 0, 0.0, sem()),
+        !super::super::decide::worse(
+            &inteira,
+            999,
+            89.0,
+            sem(),
+            sem_den(),
+            &partida,
+            0,
+            0.0,
+            sem(),
+            sem_den()
+        ),
         "⛔ e a relacao tem de ser ANTI-SIMETRICA: se a partida e' pior, a inteira nao e'"
     );
 }
@@ -147,15 +176,17 @@ fn os_furos_continuam_a_decidir_antes_das_pecas() {
     assert_eq!(super::open_edges(&partida_fechada), 0);
 
     assert!(
-        super::worse(
+        super::super::decide::worse(
             &inteira_furada,
             0,
             0.0,
             sem(),
+            sem_den(),
             &partida_fechada,
             999,
             89.0,
-            sem()
+            sem(),
+            sem_den()
         ),
         "⛔ o FURO decide antes da contagem de pecas -- pos a chave nova a' frente?"
     );

@@ -60,161 +60,6 @@ pub(super) fn edges(mesh: &Mesh) -> (f32, f32) {
 /// contra um furo** — inventá-la aqui seria escolher por conforto. O estilhaço não precisa
 /// de ganhar a chave da frente para ser apanhado: [`shattered`] veta-o **depois** da
 /// escolha, e um veto absoluto não depende de ordenação nenhuma.
-#[allow(clippy::too_many_arguments)]
-pub(super) fn worse(
-    a_mesh: &Mesh,
-    a_over60: usize,
-    a_skew: f32,
-    a_dev: ph2d_quadfill::TipDeviation,
-    b_mesh: &Mesh,
-    b_over60: usize,
-    b_skew: f32,
-    b_dev: ph2d_quadfill::TipDeviation,
-) -> bool {
-    let (a_holes, b_holes) = (open_edges(a_mesh), open_edges(b_mesh));
-    if a_holes != b_holes {
-        return a_holes > b_holes;
-    }
-    let (a_parts, b_parts) = (components(a_mesh), components(b_mesh));
-    if a_parts != b_parts {
-        return a_parts > b_parts;
-    }
-    // ⭐⭐⭐ **AS FACES QUE SE AUTO-INTERSECTAM — a 3.ª chave, e o report de 30/08 é a razão.**
-    //
-    // ⛔⛔⛔ **A régua que via a destruição JÁ EXISTIA e o produto não a consultava.**
-    // [`ph2d_quadfill::local_shape`] vive numa crate do produto desde 30/08 e o seu único
-    // leitor era a **sonda** da foto. Medido no A/B daquele dia: o caminho de omissão dá
-    // **`0`** gravatas e o caminho novo dá **`125`** — e o dono descreveu a saída como
-    // *«destruiu completamente a malha»*, enquanto as colunas que esta função lia diziam
-    // apenas *pior* (`χ` `1 → 0`, bordo `4 → 12`, que se leem como brandos).
-    //
-    // ⚠️ **É a família do §5.0 do `CLAUDE.md`:** *nenhum instrumento do repo pergunta se o
-    // valor chega a um consumidor.* Uma régua na prateleira não protege ninguém.
-    //
-    // ⚠️ **Aqui ela é ORDINAL, não veto**, e de propósito: uma tentativa com gravatas perde
-    // sempre para uma sem, mas se **todas** as tentativas as tiverem ainda se escolhe a menos
-    // má. *Um veto absoluto pede prova de corpus que esta linha ainda não tem* — e inventar
-    // um limiar sem medir é o que o §0.0 proíbe.
-    let (a_bow, b_bow) = (bowties(a_mesh), bowties(b_mesh));
-    if a_bow != b_bow {
-        return a_bow > b_bow;
-    }
-    // ⭐⭐⭐ **A AMPUTAÇÃO — e ela vem ANTES da forma, porque é o que o dono fotografou.**
-    //
-    // ⛔⛔⛔ **Medida em 2026-08-31, e é a razão de esta chave existir:** numa varredura do teto
-    // de graduação da fase zero, a célula `ADAPT_RATIO = 8` entregou uma fase zero **perfeita**
-    // (`0` de `4` pontas cortadas, pior `−0,5 %`) e a **saída** cortou a ponta mais longa em
-    // ⛔ **`−43 %`**. As duas candidatas estavam limpas na topologia, e o `worse` escolheu a que
-    // comia o espinho — *porque nada aqui olhava para o alcance.*
-    //
-    // ⛔⛔⛔ **E ATÉ 2026-08-31 ELA MEDIA O ALCANCE, QUE É UM EXTREMO GLOBAL — e sujo.**
-    // Duas coisas mudaram no mesmo dia, as duas medidas:
-    //
-    // 1. **A régua estava contaminada.** O alcance tirava o centroide da média dos
-    //    **vértices**, que é uma propriedade da amostragem: na escultura do dono o centroide
-    //    derivava `0,2129` entre entrada e saída e a régua lia `−6,5 %` onde a verdade era
-    //    `−0,1 %`; duas densidades da mesma peça diferiam `1,06 %` contra uma banda de `2 %`.
-    //    ⚠️ E o sinal era o pior: quem **corta** a ponta perde vértices longe do corpo, o
-    //    centroide afasta-se e o alcance medido **sobe**. Curado em
-    //    [`ph2d_quadfill::reach`] (centroide de **área**), que o [`log_candidate`] imprime.
-    // 2. **Um extremo global não conta QUANTAS pontas morreram** — é a limitação que esta
-    //    linha nomeou três vezes. A régua por ponta existe agora
-    //    ([`ph2d_quadfill::tip_deviation`]) e mede a distância da **escultura** à superfície
-    //    de cada candidata junto de cada ápice, em unidades do quad pedido.
-    //
-    // ⭐⭐⭐ **E a troca MUDA uma escolha medida.** `_base_sculpt.obj` a `Detail 0,40`, onde as
-    // duas primeiras candidatas **empatam** em bordo (`4`) e a chave decide:
-    //
-    // | candidata | alcance | **pontas acima da barra** |
-    // |---|---|---|
-    // | ⛔ `w = 0,000` (a que o alcance escolhia) | `2,8644` | **`2` de `4`** |
-    // | ⭐ `w = 0,030` | `2,7869` | **`1` de `4`** |
-    //
-    // *A régua velha preferia a candidata com mais pontas partidas, porque a ponta que ela
-    // media era a que sobrevivia nas duas.*
-    //
-    // ⚠️ **A barra é o chão da discretização** ([`ph2d_quadfill::TIP_DEVIATION_MAX`] = `1`
-    // quad), não um número escolhido: medido, as pontas sãs ficam em `máximo 0,45` e a
-    // partida em `p50 1,15`.
-    //
-    // ⛔ **A amostra vazia NÃO decide** — `tips = 0` é *«não medido»*, e lê-se igual a
-    // *«perfeito»* em toda régua que devolva só a média.
-    //
-    // ⛔ **Depois dos FUROS e antes da forma:** um espinho cortado ao meio é mais visível que
-    // uma face com canto pior que `60°`, e menos que um buraco — *que foi a queixa mais antiga
-    // dele.*
-    // ⛔⛔⛔ **E A CONTAGEM SOZINHA DEITA FORA A GRAVIDADE — corrigido em 2026-09-01.**
-    //
-    // A `over` conta **quantas** pontas passaram da barra e não diz **quão** longe. Uma
-    // candidata que come uma ponta *por inteiro* (`p90 = 3,0`, que é o piso do «mais longe do
-    // que eu olhei» de [`ph2d_quadfill::tip_deviation`]) e uma que a arranha (`p90 = 1,02`)
-    // contam **`1` as duas**: empatam aqui, e a escolha cai para as chaves da beleza — faces
-    // `>60°` e enviesamento —, que é decidir uma amputação por quão quadrados ficaram os quads.
-    //
-    // ⚠️ **A barra da `over` é a MEDIANA da ponta** (`TIP_DEVIATION_MAX`), logo meia ponta
-    // comida não a arma sequer; a gravidade é a única coluna que a vê. *Os três números já
-    // eram calculados e impressos no log — nada aqui os lia.*
-    //
-    // ⚠️ **`p90` e não `max`**: o `max` é o vértice mais afastado de uma amostra, e um único
-    // ponto da escultura que caia numa fenda entre dois quads move-o sem que nada esteja
-    // amputado. O `p90` é o mesmo extremo com a cauda de amostragem aparada, e continua a
-    // separar `3,0` de `1,02` por larga margem.
-    //
-    // ⛔ **Depois da contagem, nunca à frente:** duas pontas partidas de raspão são um defeito
-    // pior que uma partida a fundo — foi por «amputa **uma** ponta» / «amputou **2**» que o
-    // dono nomeou os dois reports, nessa ordem.
-    if a_dev.tips > 0 && b_dev.tips > 0 {
-        if a_dev.over != b_dev.over {
-            return a_dev.over > b_dev.over;
-        }
-        if (a_dev.p90 - b_dev.p90).abs() > 1.0e-3 {
-            return a_dev.p90.total_cmp(&b_dev.p90) == std::cmp::Ordering::Greater;
-        }
-    }
-    if a_over60 != b_over60 {
-        return a_over60 > b_over60;
-    }
-    // ⭐⭐⭐ **A DENSIDADE DA PONTA — a chave que faltava, e a medição que a exige.**
-    //
-    // ⛔⛔⛔ **A cura do report de 28-29/08 já estava a ser produzida e era DEITADA FORA
-    // aqui.** Medido em 2026-08-30 (`sculpt_antes.obj`, `Detail 0,85`), as candidatas do
-    // caminho de omissão, **sem knob nenhum**:
-    //
-    // | candidata | quads | bordo | `>60°` | **`ENTREGA`** |
-    // |---|---|---|---|---|
-    // | campo liso | `9 484` | `28` | `2` | `1,585` |
-    // | ⛔ campo alinhado (**a escolhida**) | `9 414` | `4` | `2` | `1,502` |
-    // | ⭐ **campo com linhas de feição** | `9 121` | `4` | `2` | ⭐ **`0,851`** |
-    //
-    // ⭐⭐⭐ **A terceira EMPATA em furos, peças, gravatas e faces `>60°`** — ela perdia
-    // **só** no enviesamento mediano, que era a última chave. *O eixo de que o dono se
-    // queixou três vezes não estava na função que escolhe*, e o desempate era feito por uma
-    // grandeza que ele não vê.
-    //
-    // ⚠️ **O lugar é DEPOIS de `>60°` e ANTES do enviesamento**, e isso é uma decisão: uma
-    // face com canto pior que `60°` é um defeito local visível, uma ponta grosseira é um
-    // defeito de **cobertura** (o dono fotografou-a), e a mediana do enviesamento é a única
-    // das três que ele nunca nomeou.
-    //
-    // ⛔ **Nunca à frente dos FUROS.** Com `Follow Curvature` ligado, a candidata de feições
-    // chega a `0,543` — o alvo é `0,59` — mas traz `6` arestas de bordo contra `4`. *Buracos
-    // foram a queixa dele três vezes; esta chave não os compra.*
-    //
-    // ⚠️ **Menor é melhor, e sem banda** — pela mesma razão que a chave seguinte (o
-    // enviesamento) não tem: inventar um limiar aqui seria escolher um número sem o medir.
-    // ⛔ **A amostra vazia NÃO decide** (`0,0` de «não medido» lê-se como o melhor resultado
-    // possível — é a armadilha que o doc do [`ph2d_quadfill::tip_body_ratio`] nomeia).
-    //
-    // ⚠️ `PH2D_RETOPO_TIPKEY=0` desliga a chave, para bissectar.
-    if tip_key_on() {
-        let ((a_tip, a_n), (b_tip, b_n)) = (tip_ratio(a_mesh), tip_ratio(b_mesh));
-        if a_n > 0 && b_n > 0 && a_tip.total_cmp(&b_tip) != core::cmp::Ordering::Equal {
-            return a_tip > b_tip;
-        }
-    }
-    a_skew.total_cmp(&b_skew) == core::cmp::Ordering::Greater
-}
-
 /// ⭐ **O ALCANCE de uma malha** — a distância máxima ao centroide **pesado pela área**,
 /// pela porta [`ph2d_quadfill::reach`].
 ///
@@ -240,7 +85,7 @@ fn reach(mesh: &Mesh) -> f32 {
 /// acrescenta um caminho novo — ela **escolhe entre candidatas que a cadeia já produzia**, e
 /// a que ela passa a escolher empata em toda chave de topologia com a que ganhava antes.
 /// *O que se liga aqui é uma decisão, não um algoritmo.*
-fn tip_key_on() -> bool {
+pub(super) fn tip_key_on() -> bool {
     std::env::var("PH2D_RETOPO_TIPKEY").as_deref() != Ok("0")
 }
 
@@ -264,13 +109,15 @@ pub(super) fn log_candidate(
     round: &ph2d_gridmap::RoundReport,
     cut_rep: &ph2d_gridmap::CutReport,
     dev: ph2d_quadfill::TipDeviation,
+    den: ph2d_quadfill::TipDensity,
 ) {
     let (ratio, amostra) = tip_ratio(out);
     eprintln!(
         "[sculpt3d] candidata w={w:.3} feicoes={features} adapt={adaptive:.2}: {} quads | \
          bordo {} | costuras soltas {} | locais trocados {} | lados a discordar {} | >60 {} | \
          envies p50 {:.2} p99 {:.1} | aspecto p50 {:.2} | ENTREGA {ratio:.3} (ponta {amostra}) \
-         | alcance {:.4} | DESVIO p50 {:.2} ({} de {} ponta(s) acima de {:.1})",
+         | alcance {:.4} | DESVIO p50 {:.2} ({} de {} ponta(s) acima de {:.1}) \
+         | GRADE NA PONTA pior {:.2} p50 {:.2} ({} de {} acima de {:.1})",
         out.face_count(),
         boundary_edges(out),
         round.solve.loose_seams,
@@ -285,6 +132,11 @@ pub(super) fn log_candidate(
         dev.over,
         dev.tips,
         ph2d_quadfill::TIP_DEVIATION_MAX,
+        den.worst,
+        den.p50,
+        den.over,
+        den.tips,
+        ph2d_quadfill::TIP_DENSITY_MAX,
     );
 }
 
@@ -427,8 +279,20 @@ pub(super) fn boundary_edges(mesh: &Mesh) -> usize {
 /// pelo mesmo [`worse`], logo só vencem onde são melhores. Armar mais vezes custa **relógio**,
 /// nunca qualidade. ⛔ E o custo é limitado por construção: uma peça sã não paga nada, porque
 /// as três condições são todas `0`.
-pub(super) fn still_broken(mesh: &Mesh, dev: ph2d_quadfill::TipDeviation) -> bool {
-    open_edges(mesh) > 0 || bowties(mesh) > 0 || dev.over > 0
+///
+/// ⭐⭐⭐ **E a QUARTA entra em 2026-09-01, pelo report da foto com seta** (*«a ponta fica cada
+/// vez menos densa em polígonos»*): uma saída cuja grade **termina antes do bico**
+/// ([`ph2d_quadfill::tip_density`]) também pede outra tentativa. ⚠️ Medido na peça do dono, a
+/// tentativa da cerca de viagem leva a densidade da ponta de `1,70` para **`1,11 ×`** o quad
+/// pedido a `Detail 0,90` e de `1,60` para `1,12` a `0,85` — *ela era a melhor candidata nessa
+/// coluna e nem sempre chegava a correr.* ⛔ Sem número novo: a barra é a
+/// [`ph2d_quadfill::TIP_DENSITY_MAX`], derivada das duas populações medidas.
+pub(super) fn still_broken(
+    mesh: &Mesh,
+    dev: ph2d_quadfill::TipDeviation,
+    den: ph2d_quadfill::TipDensity,
+) -> bool {
+    open_edges(mesh) > 0 || bowties(mesh) > 0 || dev.over > 0 || den.over > 0
 }
 
 /// ⭐⭐ **Quantas faces se AUTO-INTERSECTAM** — pela porta de [`ph2d_quadfill::local_shape`].

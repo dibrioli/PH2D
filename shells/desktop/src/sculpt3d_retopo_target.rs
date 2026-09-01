@@ -326,3 +326,7 @@ pub(super) fn phase_zero(reference: &Mesh, target: f32) -> Mesh {
     w.triangulate();
     w
 }
+
+#[cfg(test)]
+#[path = "sculpt3d_retopo_target_tests.rs"]
+mod tests;

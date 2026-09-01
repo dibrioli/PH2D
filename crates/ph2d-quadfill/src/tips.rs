@@ -298,3 +298,147 @@ fn axpy(a: [f32; 3], d: [f32; 3], t: f32) -> [f32; 3] {
         d[2].mul_add(t, a[2]),
     ]
 }
+
+/// ⭐⭐⭐ **A DENSIDADE DA GRADE JUNTO DE CADA PONTA** — ver [`tip_density`].
+#[derive(Debug, Clone, Copy, Default)]
+pub struct TipDensity {
+    /// O maior tamanho de quad junto de um ápice, em unidades do quad pedido.
+    pub worst: f32,
+    /// A mediana entre as pontas medidas.
+    pub p50: f32,
+    /// Quantas pontas foram medidas.
+    pub tips: usize,
+    /// Quantas delas recebem quads maiores que [`TIP_DENSITY_MAX`] vezes o pedido.
+    pub over: usize,
+}
+
+/// ⚠️ **A BARRA, e ela sai do que a régua MEDE nas duas populações**, não de gosto.
+///
+/// ⭐ Medido na escultura do dono e na saída que ele exportou em 2026-09-01: as pontas em
+/// que a grade chega ao bico entregam `0,38`–`0,52 ×` o quad pedido (**mais fina** que o
+/// pedido, que é o que uma ponta afiada exige), e as duas em que ela termina a meio
+/// entregam `1,43×` e `3,85×`. *Há um vazio de quase `3×` entre as duas populações.*
+///
+/// ⛔ **`1,5` e não `1,0`:** uma ponta que receba exactamente o quad pedido está a cumprir
+/// o pedido — não é defeito. O que se acusa é a grade a **engrossar** onde a forma afina.
+pub const TIP_DENSITY_MAX: f32 = 1.5;
+
+/// ⭐⭐⭐ **O TAMANHO DO QUAD JUNTO DE CADA PONTA, em unidades do quad pedido.**
+///
+/// # ⛔⛔⛔ Por que esta régua teve de existir (report do dono, 2026-09-01, com foto e seta)
+///
+/// *«essa área deveria ser levada à ponta, mas veja que ela fica a meio caminho e a ponta
+/// fica cada vez menos densa em polígonos»* — e ele tinha razão com um factor de **`3,85×`**.
+/// ⚠️ **O relatório do botão dizia o CONTRÁRIO**, porque a régua que ele tinha
+/// ([`super::tip_body_ratio`], a `ENTREGA`) mede **cinco coroas radiais à volta do centroide
+/// e faz média de todas as pontas**: cinco pontas certas afogam uma que colapsou, e ela
+/// imprimia `0,553` (*«afina na ponta»*) sobre a peça da foto.
+///
+/// ⭐ *É a terceira vez que esta linha paga o mesmo mecanismo* — o `edge_max` global era cego
+/// ao quad de `0,02 × 0,30`, o `χ` era cego à almofada, e a `ENTREGA` é cega à ponta que
+/// engrossou. **Um extremo ou uma média sobre a peça inteira nunca vê UMA ponta.**
+///
+/// # O que ela mede
+///
+/// Para cada ápice da **entrada** ([`apices`], a porta partilhada), toma-se o vértice da
+/// **saída** mais próximo e mede-se, dos vértices da saída a menos de `RINGS` quads de
+/// **caminho pela malha** dele, a aresta incidente média. O valor vai dividido por `target`.
+///
+/// ⚠️ **A distância é de CAMINHO e não em linha recta**, e isso não é preciosismo: uma
+/// vizinhança esférica sobre um espinho fino apanha o **outro lado** do corpo. Medido numa
+/// versão anterior desta régua: uma ponta de raio `1,32` leu `25,60` porque a fatia
+/// atravessava a peça.
+///
+/// ⛔ **Devolve o zero-de-`Default` quando não há o que medir** — `tips == 0` é *«não
+/// medido»*, e quem lê tem de o distinguir de *«perfeito»*.
+#[must_use]
+pub fn tip_density(input: &Mesh, output: &Mesh, target: f32) -> TipDensity {
+    /// Quantos quads de caminho à volta do ápice entram na medida. ⚠️ `1` mediria só o anel
+    /// que fecha o bico (poucas amostras, e numa ponta são ele é degenerado por construção);
+    /// muito mais e a medida dilui-se no corpo, que é onde a cadeia acerta sempre.
+    const RINGS: f32 = 3.0;
+    let mut out = TipDensity::default();
+    let opos = output.positions();
+    if input.positions().is_empty() || opos.is_empty() || !target.is_finite() || target <= 0.0 {
+        return out;
+    }
+    let (_mid, apex) = apices(input);
+    if apex.is_empty() {
+        return out;
+    }
+    // A adjacência da SAÍDA, e a aresta incidente média de cada vértice dela.
+    let mut nbr: Vec<Vec<u32>> = vec![Vec::new(); opos.len()];
+    for f in output.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k] as usize, v[(k + 1) % v.len()] as usize);
+            nbr[a].push(v[(k + 1) % v.len()]);
+            nbr[b].push(v[k]);
+        }
+    }
+    let mean_edge: Vec<f32> = (0..opos.len())
+        .map(|i| {
+            if nbr[i].is_empty() {
+                return 0.0;
+            }
+            #[allow(clippy::cast_precision_loss)]
+            let n = nbr[i].len() as f32;
+            nbr[i]
+                .iter()
+                .map(|&j| dist(opos[i], opos[j as usize]))
+                .sum::<f32>()
+                / n
+        })
+        .collect();
+
+    let ipos = input.positions();
+    let mut vals: Vec<f32> = Vec::new();
+    for &a in &apex {
+        let p = ipos[a];
+        // O vértice da saída mais próximo do ápice da entrada — o bico, tal como a saída o
+        // realizou. ⚠️ Uma ponta AMPUTADA não tem vértice perto, e aí esta régua não tem
+        // nada a dizer: quem acusa a amputação é a [`tip_deviation`], e misturar as duas
+        // faria uma acusação depender da outra.
+        let Some(seed) =
+            (0..opos.len()).min_by(|&i, &j| dist(p, opos[i]).total_cmp(&dist(p, opos[j])))
+        else {
+            continue;
+        };
+        // Dijkstra curto sobre as arestas da saída — o raio é em unidades do quad PEDIDO,
+        // logo a vizinhança é a mesma em todas as candidatas, independentemente do que cada
+        // uma entregou.
+        let lim = RINGS * target;
+        let mut seen: std::collections::BTreeMap<usize, f32> =
+            std::collections::BTreeMap::from([(seed, 0.0)]);
+        let mut fila: Vec<(usize, f32)> = vec![(seed, 0.0)];
+        while let Some((u, du)) = fila.pop() {
+            if du > seen.get(&u).copied().unwrap_or(f32::MAX) {
+                continue;
+            }
+            for &v in &nbr[u] {
+                let v = v as usize;
+                let nd = du + dist(opos[u], opos[v]);
+                if nd <= lim && nd < seen.get(&v).copied().unwrap_or(f32::MAX) {
+                    seen.insert(v, nd);
+                    fila.push((v, nd));
+                }
+            }
+        }
+        let n = seen.len();
+        if n == 0 {
+            continue;
+        }
+        #[allow(clippy::cast_precision_loss)]
+        let media = seen.keys().map(|&v| mean_edge[v]).sum::<f32>() / n as f32 / target;
+        vals.push(media);
+    }
+    if vals.is_empty() {
+        return out;
+    }
+    vals.sort_by(f32::total_cmp);
+    out.tips = vals.len();
+    out.p50 = vals[vals.len() / 2];
+    out.worst = vals[vals.len() - 1];
+    out.over = vals.iter().filter(|v| **v > TIP_DENSITY_MAX).count();
+    out
+}

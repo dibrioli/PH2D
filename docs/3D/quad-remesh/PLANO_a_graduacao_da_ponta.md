@@ -1491,3 +1491,87 @@ corridas «de agora» executavam ⇒ resultados que pareciam **não-determinismo
 alternando) e que cheguei a comunicar ao dono como dependência de carga da máquina. **É falso e o
 erro é meu.** Três corridas limpas depois: perfeitamente determinista. ⛔ *Uma bissecção partilha o
 `target/` com ninguém.*
+
+---
+
+# Parte XI — a GRADE TERMINA ANTES DO BICO, e nenhuma régua o via (2026-09-01, tarde)
+
+> Report do dono, com foto e seta, e ele traz o **diagnóstico**: *«essa área deveria ser levada
+> à ponta, mas veja que ela fica a meio caminho e a ponta fica cada vez menos densa em
+> polígonos»*. Ficheiro: `sculpt_Depois.obj`, exportado às 16:56 da build nova.
+
+## §82 — Ele tinha razão por um factor de `3,85×`
+
+Medindo, na saída **dele**, a aresta média em anéis de caminho sobre a superfície a partir de
+cada bico (`perfil_ponta.py`):
+
+| distância do bico | `1q` | `3q` | `6q` | `12q` | `20q` | `32q` | `48q` |
+|---|---|---|---|---|---|---|---|
+| ⛔ ponta `3990` | **`3,85`** | `3,65` | `3,15` | `2,50` | `1,54` | `0,75` | `0,74` |
+| ponta `128` | `1,44` | `1,46` | `1,33` | `1,00` | `0,85` | `0,99` | `0,96` |
+| ✅ ponta `2295` | `0,38` | `0,51` | `0,79` | `0,93` | `0,97` | `1,00` | `1,16` |
+
+*O quad no bico é quase quatro vezes o mediano e **encolhe** à medida que se afasta* — o
+contrário do que uma ponta afiada exige, e exactamente o que a foto mostra.
+
+## §83 — ⛔⛔⛔ E o relatório dizia o CONTRÁRIO — pela terceira vez o mesmo mecanismo
+
+A régua que devia vê-lo é a **`ENTREGA`** (`ph2d_quadfill::tip_body_ratio`), e ela mede **cinco
+coroas radiais à volta do centroide, com média de todas as pontas**: imprimia `0,553`
+(*«afina na ponta»*) sobre a peça da foto. ⇒ *o `edge_max` global era cego ao quad de
+`0,02 × 0,30`, o `χ` era cego à almofada, e a `ENTREGA` é cega à ponta que engrossou.* **Um
+extremo ou uma média sobre a peça inteira nunca vê UMA ponta.**
+
+## §84 — O mecanismo: a grade não converge, TERMINA
+
+| ponta | quad no bico | vértices a `≤6q` | irregulares aí | valência do ápice |
+|---|---|---|---|---|
+| ⛔ `3990` | `3,85×` | **`8`** | **`37,5 %`** | `3` |
+| ⛔ `128` | `1,43×` | `26` | `11,5 %` | `3` |
+| ✅ `2295` | `0,41×` | `246` | `1,2 %` | `4` |
+| ✅ `132` | `0,50×` | `183` | `1,6 %` | `4` |
+
+As pontas boas têm **~30× mais vértices** na mesma vizinhança física. Nas más as linhas de
+grade **acabam todas de uma vez, a meio do espinho**, deixando uma tampa grosseira. ⚠️ A peça
+tem `0,23 %` de irregulares no total — **classe do oráculo**; o defeito não é *quantos*, é
+*onde*: concentrados num colapso em vez de escalonados ao longo do cone.
+
+## §85 — O que ficou construído
+
+- ⭐ **`ph2d_quadfill::tip_density`** — por ápice, o quad junto do bico em unidades do quad
+  **pedido**, por distância de **caminho** (⛔ uma vizinhança esférica sobre um espinho fino
+  apanha o outro lado: uma versão anterior leu `25,60` numa ponta de raio `1,32`). Barra
+  `TIP_DENSITY_MAX = 1,5`, do vazio medido entre as duas populações (`0,38`–`0,52` contra
+  `1,43`–`3,85`).
+- ⭐ **A coluna `GRADE NA PONTA` em cada candidata do log** — *um knob descartado e um knob
+  fraco liam-se exactamente igual.*
+- ⭐ **A 5.ª chave do `worse`**, a seguir à amputação: ela impede a candidata de `4,14×` de
+  vencer (a `Detail 1,00` ela perde por bordo hoje, mas nada o garantia).
+- ⭐ **A 4.ª condição de `still_broken`** — uma grade que termina antes do bico arma as
+  tentativas de socorro, e a da cerca de viagem é a melhor nessa coluna (`1,70 → 1,11` a
+  `Detail 0,90`; `1,60 → 1,12` a `0,85`).
+
+## §86 — ⛔ REFUTADO: carregar repetidamente não piora
+
+*«cada vez menos densa»* lê-se como uma afirmação sobre cliques repetidos, e não é: `1` clique
+dá pior bico `1,15×`, `2` cliques dão **`0,89×`**. ⚠️ E a medição apanhou a doença do `take(N)`
+**na minha própria régua**: com as `4` pontas mais altas em vez de `6` ela perdia a pior
+(`1,15` contra `1,55`).
+
+## §87 — ⏳ ABERTO, e é o que o dono descreve
+
+A coarsening **branda** que fica (`1,28×` a `Detail 1,00`, `1,40×` a `0,95`) está **abaixo da
+barra**, logo nenhuma tentativa arma, e é ela que a foto mostra quando a peça está boa no
+resto. ⇒ **a cura não é de selecção — é de substrato**: as linhas de grade têm de perder-se
+**escalonadamente** ao longo do cone em vez de terminarem juntas. É a wave do **factor de
+escala conforme** que o `CLAUDE.md` §5 já nomeia, com espec própria.
+
+## §88 — Cortes de LOC que esta wave forçou (HR-18)
+
+O ficheiro do caminho chegou a `694` linhas. ⛔ Sem tolerância: **três cortes por
+responsabilidade** — `sculpt3d_retopo_one.rs` (correr UMA candidata), `sculpt3d_retopo_decide.rs`
+(escolher entre duas) e `sculpt3d_retopo_target_tests.rs` (os gates do alvo). ⭐ E a cascata de
+cinco comparações de **dez argumentos posicionais** virou uma porta (`decide::melhor`) — *conferir
+à mão que nenhum par estava trocado foi trabalho de auditoria neste mesmo dia.* ⚠️ **Quatro gates
+textuais reprovaram no corte**, que é o serviço deles: cada um foi repontado com a razão escrita
+ao lado.

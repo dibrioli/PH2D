@@ -10,7 +10,7 @@
 
 use ph2d_mesh::{Face, Mesh};
 
-use super::tests::{cubo, cubos, sem, um_quad};
+use super::tests::{cubo, cubos, sem, sem_den, um_quad};
 
 /// ⭐⭐⭐ **GATE — a face em OITO perde, e a régua antiga era CEGA a ela.**
 ///
@@ -42,11 +42,33 @@ fn a_face_em_oito_perde_e_a_regua_antiga_nao_a_via() {
     // ⭐⭐ A forma é dada PERFEITA na torta e PÉSSIMA na boa — o desempate que escolheria o
     // estrago se a chave nova não existisse.
     assert!(
-        super::worse(&torta, 0, 0.0, sem(), &boa, 999, 89.0, sem()),
+        super::super::decide::worse(
+            &torta,
+            0,
+            0.0,
+            sem(),
+            sem_den(),
+            &boa,
+            999,
+            89.0,
+            sem(),
+            sem_den()
+        ),
         "⛔ uma malha com faces auto-intersectadas e' PIOR que uma feia mas sa'"
     );
     assert!(
-        !super::worse(&boa, 999, 89.0, sem(), &torta, 0, 0.0, sem()),
+        !super::super::decide::worse(
+            &boa,
+            999,
+            89.0,
+            sem(),
+            sem_den(),
+            &torta,
+            0,
+            0.0,
+            sem(),
+            sem_den()
+        ),
         "⛔ e a relacao tem de ser ANTI-SIMETRICA"
     );
 }
@@ -63,7 +85,11 @@ fn a_face_em_oito_perde_e_a_regua_antiga_nao_a_via() {
 /// nova a mais importante e a subir desfaz as duas leis que os reports anteriores compraram.
 #[test]
 fn a_ordem_das_chaves_e_furos_pecas_gravatas_forma() {
-    let src = include_str!("sculpt3d_retopo_rulers.rs");
+    // ⚠️ **O ficheiro medido mudou em 2026-09-01:** a ESCOLHA passou para o irmão
+    // [`super::super::decide`] quando o tecto de LOC do `rulers` estourou (`614`). *Um gate
+    // que lê o fonte segue o fonte — e é por isso que ele reprova no corte em vez de ficar
+    // mudo a medir um ficheiro que já não tem a função.*
+    let src = include_str!("sculpt3d_retopo_decide.rs");
     let ini = src
         .find("pub(super) fn worse(")
         .expect("a funcao mudou de nome");
@@ -122,7 +148,7 @@ fn a_face_em_oito_arma_outra_tentativa() {
     assert_eq!(super::bowties(&fechada), 0);
     let sa = ph2d_quadfill::TipDeviation::default();
     assert!(
-        !super::still_broken(&fechada, sa),
+        !super::still_broken(&fechada, sa, sem_den()),
         "⛔ uma peca fechada e sa' nao pode pedir mais uma tentativa -- isso seria pagar sempre"
     );
 
@@ -139,9 +165,27 @@ fn a_face_em_oito_arma_outra_tentativa() {
                 tips: 4,
                 over: 1,
                 ..sa
-            }
+            },
+            sem_den(),
         ),
         "⛔⛔ uma ponta amputada tem de armar outra tentativa mesmo com a topologia impecavel"
+    );
+
+    // ⭐⭐⭐ **E A GRADE QUE TERMINA ANTES DO BICO ARMA-A TAMBÉM** — a 4.ª condição, do report
+    // de 2026-09-01 (*«a ponta fica cada vez menos densa em polígonos»*). ⛔ Sem esta linha a
+    // condição ficaria a ler topologia e amputação, e a peça da foto — fechada, sem ponta
+    // cortada, com a grade a acabar a meio do espinho — não pedia tentativa nenhuma.
+    assert!(
+        super::still_broken(
+            &fechada,
+            sa,
+            ph2d_quadfill::TipDensity {
+                tips: 4,
+                over: 1,
+                ..sem_den()
+            },
+        ),
+        "⛔⛔ uma grade que termina antes do bico tem de armar outra tentativa"
     );
 
     // ⭐⭐ Agora a mesma malha fechada, com UMA face cruzada: tem de armar.
@@ -160,7 +204,7 @@ fn a_face_em_oito_arma_outra_tentativa() {
         "⛔ a fixtura tem de CONTER o fenomeno"
     );
     assert!(
-        super::still_broken(&fechada_torta, sa),
+        super::still_broken(&fechada_torta, sa, sem_den()),
         "⛔ uma face cruzada sobre si propria tem de pedir outra tentativa"
     );
 }
@@ -184,7 +228,7 @@ fn a_face_em_oito_arma_outra_tentativa() {
 fn os_tres_sitios_que_armam_perguntam_pela_mesma_porta() {
     let src = include_str!("sculpt3d_history_retopo_extract.rs");
     assert_eq!(
-        src.matches("still_broken(&out, dev)").count(),
+        src.matches("still_broken(&out, dev, den)").count(),
         3,
         "⛔ os tres sitios que armam tentativa extra tem de chamar a MESMA funcao"
     );
@@ -202,15 +246,21 @@ fn os_tres_sitios_que_armam_perguntam_pela_mesma_porta() {
     // topologicamente impecável com uma ponta comida não armava tentativa nenhuma — que é a
     // forma exacta do report do dono (*«amputa 1 ponta»*, 31/08). *A guarda tem de RECEBER a
     // régua para a poder ler*, e uma chamada sem o argumento é o regresso do defeito.
-    assert_eq!(
-        codigo.matches("still_broken(&out)").count(),
-        0,
-        "⛔⛔ ficou um sitio a armar sem consultar a amputacao -- ele nunca dispara na peca do dono"
-    );
+    // ⚠️ **As DUAS formas antigas, e não só a última:** a guarda ganhou a régua da amputação
+    // em 2026-09-01 de manhã e a da densidade da ponta à tarde, e cada uma delas foi um report
+    // do dono. *Uma chamada com menos argumentos é o regresso do defeito que a acrescentou.*
+    for velha in ["still_broken(&out)", "still_broken(&out, dev)"] {
+        assert_eq!(
+            codigo.matches(velha).count(),
+            0,
+            "⛔⛔ ficou um sitio a armar por `{velha}` -- ele nao ve' metade do que o dono \
+             fotografou"
+        );
+    }
     // ⛔ O CONTROLE do descascador: ele tem de continuar a ver o CÓDIGO, senão as asserções de
     // cima passariam sobre um ficheiro vazio e não mediriam nada.
     assert_eq!(
-        codigo.matches("still_broken(&out, dev)").count(),
+        codigo.matches("still_broken(&out, dev, den)").count(),
         3,
         "⛔ o descascador comeu o codigo -- as assercoes de cima ficariam vacuas"
     );

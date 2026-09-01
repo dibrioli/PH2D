@@ -43,6 +43,14 @@ mod target;
 #[path = "sculpt3d_retopo_rulers.rs"]
 mod rulers;
 
+/// ⭐⭐ **UMA TENTATIVA, de ponta a ponta** — irmão pela mesma razão: ver [`one`].
+#[path = "sculpt3d_retopo_one.rs"]
+mod one;
+
+/// ⭐⭐⭐ **A ESCOLHA entre duas candidatas** — irmão pela mesma razão: ver [`decide`].
+#[path = "sculpt3d_retopo_decide.rs"]
+mod decide;
+
 // ⚠️ **Os `use` são o que mantém `super::worse` e `super::boundary_edges` a resolver**
 // no `mod tests` irmão: ele chama tudo pelo prefixo, de propósito, e um nome trazido para
 // cá por `use` continua a ser alcançável por `super::`.
@@ -51,8 +59,8 @@ mod rulers;
 // tests` irmão chamava-o por `super::` e **parte** — a cura é apontá-lo ao dono
 // (`super::rulers::open_edges`), nunca reter aqui um `use` morto nem calar o aviso. *Um import
 // que só existe para um teste o alcançar é uma dependência invisível entre dois ficheiros.*
-use rulers::{boundary_edges, edges, irregular, span, still_broken, worse};
-use target::sizing_field;
+use decide::worse;
+use rulers::{boundary_edges, edges, irregular, span, still_broken};
 
 impl Sculpt3dScene {
     /// **A RETOPOLOGIA POR MAPA DE GRADE INTEIRA.** Devolve o mesmo
@@ -123,18 +131,6 @@ impl Sculpt3dScene {
         // tentativa**: a 3.ª candidata, corrida **só quando as duas primeiras ainda deixam
         // furo**. `PH2D_FEATURE_EDGES=1` força-a na primeira.
         let dual = dual;
-        let with_features = |d: &ph2d_crossfield::Dual| {
-            let mut d = d.clone();
-            // ⚠️ **O `h` é o `target`**, e não uma medida da malha: a lei da feição mede-se
-            // em múltiplos do **passo alvo da grade**, que é exactamente o número que o G3
-            // recebe três blocos abaixo. *Medi-lo outra vez daria duas respostas à mesma
-            // pergunta, e a que envelhece é a que ninguém vê.*
-            let (fd, _) =
-                ph2d_mesh::feature_dirs(&work, target, ph2d_mesh::FeatureOptions::default());
-            let (fe, _) = ph2d_mesh::feature_edges(&work, &fd, ph2d_mesh::FEATURE_EDGE_MIN_COS);
-            d.constrain(&work, &fe);
-            d
-        };
         // ⭐⭐⭐ **AS DUAS CORREM, E A MEDIÇÃO ESCOLHE — o alinhamento ao relevo deixou de
         // ser uma aposta única.**
         //
@@ -164,136 +160,17 @@ impl Sculpt3dScene {
         // ⚠️ **A ORDEM do critério é: furos, depois faces `>60°`, depois o enviesamento
         // mediano.** Os furos vêm primeiro porque são o que o artista **vê** — foi a queixa
         // dele três vezes seguidas.
-        let attempt = |w: f32,
-                       features: bool,
-                       adaptive: f32,
-                       travel: f32|
-         -> Result<
-            (
-                ph2d_mesh::Mesh,
-                ph2d_quadextract::ExtractReport,
-                f32,
-                ph2d_quadfill::QuadShape,
-                ph2d_quadfill::TipDeviation,
-            ),
-            RemeshRefusal,
-        > {
-            let owned;
-            let dual: &ph2d_crossfield::Dual =
-                if features || super::retopo_extract::features_requested() {
-                    owned = with_features(&dual);
-                    &owned
-                } else {
-                    &dual
-                };
-            let (field, _) = if (w - ph2d_crossfield::ALIGN_WEIGHT).abs() < f32::EPSILON {
-                ph2d_crossfield::solve_miq(dual)
-            } else {
-                ph2d_crossfield::solve_miq_aligned(dual, ph2d_crossfield::Rounding::default(), w)
-            };
-            let layout = ph2d_trace::trace_patches(&work, dual, &field);
-            let (cut, cut_rep) = ph2d_gridmap::cut_along_patches(&work, &layout);
-            let (combed, _) = ph2d_gridmap::comb_patches(&work, &layout, &cut);
-
-            // ⭐ As singularidades saem do CAMPO — o índice por-vértice é um facto dele, e
-            // pedir à `ph2d-gridmap` que o re-derive seria reconstruir o que já existe.
-            let singular: Vec<u32> = ph2d_crossfield::vertex_index(&work, dual, &field)
-                .into_iter()
-                .enumerate()
-                .filter(|(_, k)| *k != 0)
-                .filter_map(|(v, _)| u32::try_from(v).ok())
-                .collect();
-
-            // ── G3 + G5. O mapa, e o arredondamento uma-a-uma que o torna inteiro.
-            // ⭐ O G3 soldado é o default DENTRO deste caminho (que já shipa desligado);
-            // `PH2D_GRIDMAP_WELD=0` volta ao penalizado, para bissecar.
-            let welded = ph2d_gridmap::welded_enabled();
-            let opts = ph2d_gridmap::RoundOptions::default();
-            // ⭐⭐⭐ **A DENSIDADE SEGUE A FORMA** — ver [`sizing_field`]. Com
-            // `adaptive == 0` o campo é constante e o passo é o escalar de sempre.
-            let sizing = sizing_field(&work, target, adaptive);
-            let step = ph2d_gridmap::Step {
-                h: target,
-                per_vertex: &sizing,
-            };
-            let (map, round) = if welded {
-                ph2d_gridmap::round_welded(&work, &cut, &combed, step, opts, &singular)
-            } else {
-                ph2d_gridmap::round_to_integers(&work, &cut, &combed, step, opts, &singular)
-            };
-
-            // ── A extracção das isolinhas.
-            let (tris, uv) = ph2d_gridmap::corner_map(&cut, &map);
-            let cm = ph2d_quadextract::CornerMap {
-                pos: work.positions(),
-                tris: &tris,
-                uv: &uv,
-            };
-            let (mut out, e) =
-                ph2d_quadextract::extract(&cm, None).map_err(RemeshRefusal::Extract)?;
-            if out.faces().is_empty() {
-                return Err(RemeshRefusal::TooCoarseToResolve);
-            }
-
-            // ⭐⭐⭐ **O ACABAMENTO — e este caminho não o tinha.**
-            //
-            // ⛔⛔ O irmão dele, o `ph2d_quadfill::fill`, corre [`ph2d_quadfill::SMOOTHING_ROUNDS`]
-            // passos de Laplaciano tangencial com reprojeção **desde sempre**; a extracção
-            // entregava a malha **crua**. *Dois caminhos para o mesmo botão, e só um com
-            // acabamento.*
-            //
-            // ⚠️ **A superfície é a `reference` — a escultura — e nunca a `work`.** É a mesma lei
-            // que o doc do `fill` escreve com o defeito de 2026-08-21 ao lado: reprojectar sobre a
-            // remalhada somaria os dois erros.
-            //
-            // Medido 2026-08-26 na `sculpt_t003` do artista, na densidade fina:
-            //
-            // | régua | cru | **com acabamento** |
-            // |---|---|---|
-            // | distância à ESCULTURA p95 | `0,106 %` | ⭐ **`0,000 %`** |
-            // | enviesamento p99 · `>60°` | `39,3°` · `18` | ⭐ **`29,1°` · `1`** |
-            // | aspecto p99 · `>4×` | `2,05` · `7` | ⭐ **`1,63` · `0`** |
-            //
-            // ⚠️ **Ele NÃO alisa a superfície, e isso é o achado:** a rugosidade fica onde estava
-            // (`14,2° ⇒ 14,3°`) porque a reprojecção repõe os vértices na peça. *A aspereza que o
-            // artista vê é a da escultura dele — a grade fina RESOLVE-A, a cadeia não a inventa.*
-            // ⭐ **O preço, medido:** `425 ms` sobre `7 750` quads numa cadeia de `7,0 s` —
-            // **6 %**, na densidade mais fina medida (melhor de 3, `6 979` contra `7 404 ms`).
-            // ⚠️ `PH2D_EXTRACT_FINISH=0` desliga, para bissecar.
-            //
-            // ⭐⭐⭐ **E DESDE 2026-08-28 O ACABAMENTO É UMA PORTA, não uma linha aqui** — a
-            // mesma que a `ph2d-quadchain` chama, porque *duas ordens para o mesmo botão com
-            // acabamentos diferentes é uma lei que gate nenhum defende*. Ela corre o
-            // Laplaciano como **ronda zero** e depois o ajuste de quadrado **alinhado ao
-            // relevo**, e entrega a MELHOR ronda — ver `ph2d_quadfill::finish_extract`.
-            //
-            // ⚠️ **O ganho, medido na densidade que este botão usa** (`sculpt_eared`, 524
-            // quads): enviesamento mediano `10,4° → 3,8°`, aspecto `1,14 → 1,07`, faces
-            // péssimas `0 → 0`, e o preço `21 ms → ~400 ms` numa cadeia de segundos.
-            // ⭐⭐⭐ **A CERCA DE VIAGEM é escolhida AQUI, no chamador** — ver
-            // [`ph2d_quadfill::EXTRACT_TRAVEL`]. ⛔ Lida dentro da biblioteca, ela alcançava a
-            // bancada, os gates e o produto de uma vez; aqui é uma escolha deste botão, e o
-            // ramo de omissão fica com a chamada que o gate do fonte pina, letra por letra.
-            let travel = std::env::var("PH2D_EXTRACT_TRAVEL")
-                .ok()
-                .and_then(|v| v.parse::<f32>().ok())
-                .unwrap_or(travel);
-            if std::env::var("PH2D_EXTRACT_FINISH").as_deref() != Ok("0") {
-                if travel.is_finite() {
-                    ph2d_quadfill::finish_extracted_travel(&mut out, &reference, travel);
-                } else {
-                    ph2d_quadfill::finish_extracted(&mut out, &reference);
-                }
-            }
-            let out = out;
-
-            let shape = ph2d_quadfill::quad_shape(&out);
-            // ⭐⭐⭐ **CADA CANDIDATA DIZ O QUE É** — ver [`rulers::log_candidate`], que
-            // mora ao lado do [`worse`] de propósito: *o registo que explica uma escolha
-            // tem de ler as mesmas grandezas que a fazem.*
-            let dev = ph2d_quadfill::tip_deviation(&reference, &out, target);
-            rulers::log_candidate(w, features, adaptive, &out, &shape, &round, &cut_rep, dev);
-            Ok((out, e, round.shift_frac_max, shape, dev))
+        // ⭐⭐⭐ **UMA TENTATIVA corre no IRMÃO** — ver [`one`]. ⚠️ A `attempt` fica aqui
+        // como closure de propósito: é ela que o `catch_unwind` embrulha, e o que ela
+        // fecha é exactamente o que uma tentativa pode ler sem escrever.
+        let cx = one::Ctx {
+            work: &work,
+            reference: &reference,
+            dual: &dual,
+            target,
+        };
+        let attempt = |w: f32, features: bool, adaptive: f32, travel: f32| {
+            one::one(&cx, w, features, adaptive, travel)
         };
 
         // ⭐ **O PREÇO, MEDIDO:** a cadeia corre duas vezes. Na `sculpt_004` uma passagem
@@ -370,17 +247,19 @@ impl Sculpt3dScene {
                 || guarded(0.0, false, adaptive, ph2d_quadfill::EXTRACT_TRAVEL),
             )
         };
-        let (relief_won, (out, e, _shift_frac_max, shape, dev)) = match (aligned, smooth) {
+        let (relief_won, (out, e, _shift_frac_max, shape, dev, den)) = match (aligned, smooth) {
             (Ok(a), Ok(b)) => {
                 if worse(
                     &a.0,
                     a.3.skew_over_60,
                     a.3.skew_p50,
                     a.4,
+                    a.5,
                     &b.0,
                     b.3.skew_over_60,
                     b.3.skew_p50,
                     b.4,
+                    b.5,
                 ) {
                     (false, b)
                 } else {
@@ -410,27 +289,23 @@ impl Sculpt3dScene {
         // ⚠️ **E ela é segura por CONSTRUÇÃO:** entra pelo mesmo [`worse`], logo só vence
         // onde é melhor. *A terceira candidata não pode piorar a escolha; só pode não ser
         // escolhida.*
-        let (relief_won, (out, e, _shift_frac_max, shape, dev)) = if still_broken(&out, dev)
-            && let Ok(f) = guarded(
-                ph2d_crossfield::ALIGN_WEIGHT,
-                true,
-                adaptive,
-                ph2d_quadfill::EXTRACT_TRAVEL,
-            )
-            && worse(
-                &out,
-                shape.skew_over_60,
-                shape.skew_p50,
-                dev,
-                &f.0,
-                f.3.skew_over_60,
-                f.3.skew_p50,
-                f.4,
-            ) {
-            (relief_won, f)
-        } else {
-            (relief_won, (out, e, _shift_frac_max, shape, dev))
-        };
+        let feicoes = still_broken(&out, dev, den)
+            .then(|| {
+                guarded(
+                    ph2d_crossfield::ALIGN_WEIGHT,
+                    true,
+                    adaptive,
+                    ph2d_quadfill::EXTRACT_TRAVEL,
+                )
+                .ok()
+            })
+            .flatten();
+        let (relief_won, (out, e, _shift_frac_max, shape, dev, den)) = decide::melhor(
+            relief_won,
+            (out, e, _shift_frac_max, shape, dev, den),
+            feicoes,
+            relief_won,
+        );
 
         // ⭐⭐⭐ **A QUARTA TENTATIVA — o campo adaptativo PERDE se abrir a malha.**
         //
@@ -454,7 +329,7 @@ impl Sculpt3dScene {
         // peça continuou com `4` bordo: *a linha de base não é uma corrida, são duas — a
         // alinhada e a suave — e é o [`worse`] entre elas que dá a malha limpa.* Pedir só
         // metade do caminho de omissão devolve algo que não é o caminho de omissão.
-        let uniforme = if adaptive > 0.0 && still_broken(&out, dev) {
+        let uniforme = if adaptive > 0.0 && still_broken(&out, dev, den) {
             let (a, b) = if std::env::var("PH2D_RETOPO_SERIAL").as_deref() == Ok("1") {
                 (
                     guarded(
@@ -485,10 +360,12 @@ impl Sculpt3dScene {
                         a.3.skew_over_60,
                         a.3.skew_p50,
                         a.4,
+                        a.5,
                         &b.0,
                         b.3.skew_over_60,
                         b.3.skew_p50,
                         b.4,
+                        b.5,
                     ) {
                         Some((false, b))
                     } else {
@@ -502,21 +379,13 @@ impl Sculpt3dScene {
         } else {
             None
         };
-        let (relief_won, (out, e, _shift_frac_max, shape, _dev)) = if let Some((rw, u)) = uniforme
-            && worse(
-                &out,
-                shape.skew_over_60,
-                shape.skew_p50,
-                dev,
-                &u.0,
-                u.3.skew_over_60,
-                u.3.skew_p50,
-                u.4,
-            ) {
-            (rw, u)
-        } else {
-            (relief_won, (out, e, _shift_frac_max, shape, dev))
-        };
+        let uniforme_won = uniforme.as_ref().is_some_and(|(rw, _)| *rw);
+        let (relief_won, (out, e, _shift_frac_max, shape, dev, den)) = decide::melhor(
+            relief_won,
+            (out, e, _shift_frac_max, shape, dev, den),
+            uniforme.map(|(_, u)| u),
+            uniforme_won,
+        );
 
         // ⭐⭐⭐ **A QUINTA TENTATIVA — A CERCA DE VIAGEM DO ACABAMENTO.**
         //
@@ -553,7 +422,7 @@ impl Sculpt3dScene {
         // ⛔ **A condição é a MESMA porta das outras duas** ([`still_broken`], que desde
         // 2026-09-01 conta a amputação). *Foi a falta dessa terceira condição que fazia esta peça
         // — topologia impecável, uma ponta comida — nunca armar tentativa nenhuma.*
-        let apertada = if still_broken(&out, dev) {
+        let apertada = if still_broken(&out, dev, den) {
             guarded(
                 ph2d_crossfield::ALIGN_WEIGHT,
                 false,
@@ -564,21 +433,12 @@ impl Sculpt3dScene {
         } else {
             None
         };
-        let (relief_won, (out, e, _shift_frac_max, shape, _dev)) = if let Some(a) = apertada
-            && worse(
-                &out,
-                shape.skew_over_60,
-                shape.skew_p50,
-                dev,
-                &a.0,
-                a.3.skew_over_60,
-                a.3.skew_p50,
-                a.4,
-            ) {
-            (true, a)
-        } else {
-            (relief_won, (out, e, _shift_frac_max, shape, dev))
-        };
+        let (relief_won, (out, e, _shift_frac_max, shape, _dev, _den)) = decide::melhor(
+            relief_won,
+            (out, e, _shift_frac_max, shape, dev, den),
+            apertada,
+            true,
+        );
 
         // ⭐⭐⭐ **O VETO — a peça não pode sair PARTIDA.** Ver [`rulers::shattered`].
         //

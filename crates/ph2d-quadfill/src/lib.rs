@@ -97,4 +97,7 @@ pub use relax::{
 pub use report::{FillError, FillReport, Provenance};
 pub use shape::{QuadShape, quad_shape, quad_shape_of, skew_by_fan, skew_by_provenance};
 pub use stitch::{SMOOTHING_ROUNDS, fill, fill_with};
-pub use tips::{TIP_DEVIATION_MAX, TipDeviation, area_centroid, reach, tip_deviation};
+pub use tips::{
+    TIP_DENSITY_MAX, TIP_DEVIATION_MAX, TipDensity, TipDeviation, area_centroid, reach,
+    tip_density, tip_deviation,
+};

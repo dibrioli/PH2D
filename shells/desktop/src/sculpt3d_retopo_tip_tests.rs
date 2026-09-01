@@ -17,6 +17,13 @@ fn sem() -> ph2d_quadfill::TipDeviation {
     ph2d_quadfill::TipDeviation::default()
 }
 
+/// **UMA MEDIÇÃO DE DENSIDADE DA PONTA VAZIA** — a irmã da [`sem`] para a 5.ª chave
+/// (2026-09-01). ⚠️ Pela mesma razão: `tips = 0` é *«não medido»*, logo a chave da grade na
+/// ponta não decide, e os gates das outras chaves continuam a medir o que sempre mediram.
+fn sem_den() -> ph2d_quadfill::TipDensity {
+    ph2d_quadfill::TipDensity::default()
+}
+
 /// **UMA MEDIÇÃO DE PONTA COM `n` DE `total` ACIMA DA BARRA.**
 fn pontas(acima: usize, total: usize) -> ph2d_quadfill::TipDeviation {
     ph2d_quadfill::TipDeviation {
@@ -89,11 +96,33 @@ fn a_ponta_decide_quando_as_chaves_de_defeito_empatam() {
     );
     // O mesmo `>60` e o mesmo enviesamento dos dois lados: so' a ponta pode decidir.
     assert!(
-        super::worse(&grossa, 2, 5.0, sem(), &fina, 2, 5.0, sem()),
+        super::super::decide::worse(
+            &grossa,
+            2,
+            5.0,
+            sem(),
+            sem_den(),
+            &fina,
+            2,
+            5.0,
+            sem(),
+            sem_den()
+        ),
         "⛔ a candidata de ponta GROSSA tem de perder"
     );
     assert!(
-        !super::worse(&fina, 2, 5.0, sem(), &grossa, 2, 5.0, sem()),
+        !super::super::decide::worse(
+            &fina,
+            2,
+            5.0,
+            sem(),
+            sem_den(),
+            &grossa,
+            2,
+            5.0,
+            sem(),
+            sem_den()
+        ),
         "⛔ e a de ponta FINA tem de ganhar"
     );
 }
@@ -120,7 +149,18 @@ fn a_ponta_nunca_ganha_de_um_furo() {
         "⛔ a nuvem de quads soltos tem de ter furos"
     );
     assert!(
-        super::worse(&fina, 2, 5.0, sem(), &fechada, 2, 5.0, sem()),
+        super::super::decide::worse(
+            &fina,
+            2,
+            5.0,
+            sem(),
+            sem_den(),
+            &fechada,
+            2,
+            5.0,
+            sem(),
+            sem_den()
+        ),
         "⛔ a candidata com FUROS perde, por melhor que seja a ponta dela"
     );
 }
@@ -173,7 +213,18 @@ fn a_amostra_vazia_nao_ganha_de_uma_medida() {
         "⛔ a razao NAO MEDIDA e' `0,0` -- e' isso que a torna perigosa ({r_vazia:.3})"
     );
     assert!(
-        super::worse(&vazia, 2, 9.0, sem(), &medida, 2, 8.0, sem()),
+        super::super::decide::worse(
+            &vazia,
+            2,
+            9.0,
+            sem(),
+            sem_den(),
+            &medida,
+            2,
+            8.0,
+            sem(),
+            sem_den()
+        ),
         "⛔ com a amostra vazia de um lado, quem decide e' o enviesamento -- a razao `0,0` de \
          «nao medido» NAO pode ganhar"
     );
@@ -194,11 +245,33 @@ fn uma_amostra_de_ponta_vazia_nao_decide() {
     );
     // Com a amostra vazia dos DOIS lados, quem decide tem de ser o enviesamento.
     assert!(
-        super::worse(&so_um, 2, 9.0, sem(), &so_um, 2, 8.0, sem()),
+        super::super::decide::worse(
+            &so_um,
+            2,
+            9.0,
+            sem(),
+            sem_den(),
+            &so_um,
+            2,
+            8.0,
+            sem(),
+            sem_den()
+        ),
         "⛔ com a amostra vazia, quem decide e' o enviesamento"
     );
     assert!(
-        !super::worse(&so_um, 2, 8.0, sem(), &so_um, 2, 9.0, sem()),
+        !super::super::decide::worse(
+            &so_um,
+            2,
+            8.0,
+            sem(),
+            sem_den(),
+            &so_um,
+            2,
+            9.0,
+            sem(),
+            sem_den()
+        ),
         "⛔ e no sentido contrario tambem"
     );
 }
@@ -210,7 +283,11 @@ fn uma_amostra_de_ponta_vazia_nao_decide() {
 /// que afirma seis coisas de uma vez não diz qual delas partiu.*
 #[test]
 fn a_ponta_decide_depois_das_faces_ruins_e_antes_do_enviesamento() {
-    let src = include_str!("sculpt3d_retopo_rulers.rs");
+    // ⚠️ **O ficheiro medido mudou em 2026-09-01:** a ESCOLHA passou para o irmão
+    // [`super::super::decide`] quando o tecto de LOC do `rulers` estourou (`614`). *Um gate
+    // que lê o fonte segue o fonte — e é por isso que ele reprova no corte em vez de ficar
+    // mudo a medir um ficheiro que já não tem a função.*
+    let src = include_str!("sculpt3d_retopo_decide.rs");
     let ini = src
         .find("pub(super) fn worse(")
         .expect("a funcao mudou de nome");
@@ -290,28 +367,32 @@ fn a_candidata_com_mais_pontas_partidas_perde_mesmo_com_a_forma_melhor() {
     assert_eq!(super::bowties(&inteira), super::bowties(&cortada));
     // A forma da partida é dada PERFEITA e a da inteira PÉSSIMA: só a contagem pode decidir.
     assert!(
-        super::worse(
+        super::super::decide::worse(
             &cortada,
             0,
             0.0,
             pontas(2, 4),
-            &inteira,
-            999,
-            89.0,
-            pontas(0, 4)
-        ),
-        "⛔ a candidata com mais pontas partidas tem de perder -- e' o espinho que o dono fotografou"
-    );
-    assert!(
-        !super::worse(
+            sem_den(),
             &inteira,
             999,
             89.0,
             pontas(0, 4),
+            sem_den()
+        ),
+        "⛔ a candidata com mais pontas partidas tem de perder -- e' o espinho que o dono fotografou"
+    );
+    assert!(
+        !super::super::decide::worse(
+            &inteira,
+            999,
+            89.0,
+            pontas(0, 4),
+            sem_den(),
             &cortada,
             0,
             0.0,
-            pontas(2, 4)
+            pontas(2, 4),
+            sem_den()
         ),
         "⛔ e a relacao tem de ser ANTI-SIMETRICA"
     );
@@ -328,11 +409,33 @@ fn um_empate_na_contagem_de_pontas_nao_decide() {
     let a = nuvem_com_ponta_a(100.0);
     let b = nuvem_com_ponta_a(99.5);
     assert!(
-        super::worse(&a, 9, 0.0, pontas(1, 4), &b, 2, 0.0, pontas(1, 4)),
+        super::super::decide::worse(
+            &a,
+            9,
+            0.0,
+            pontas(1, 4),
+            sem_den(),
+            &b,
+            2,
+            0.0,
+            pontas(1, 4),
+            sem_den()
+        ),
         "⛔ com a contagem empatada quem decide e' a chave seguinte (as faces `>60°`)"
     );
     assert!(
-        !super::worse(&b, 2, 0.0, pontas(1, 4), &a, 9, 0.0, pontas(1, 4)),
+        !super::super::decide::worse(
+            &b,
+            2,
+            0.0,
+            pontas(1, 4),
+            sem_den(),
+            &a,
+            9,
+            0.0,
+            pontas(1, 4),
+            sem_den()
+        ),
         "⛔ e no sentido contrario tambem"
     );
 }
@@ -346,11 +449,33 @@ fn um_empate_na_contagem_de_pontas_nao_decide() {
 fn uma_medicao_de_ponta_vazia_nao_decide_a_amputacao() {
     let a = nuvem_com_ponta_a(100.0);
     assert!(
-        super::worse(&a, 9, 0.0, sem(), &a, 2, 0.0, pontas(3, 4)),
+        super::super::decide::worse(
+            &a,
+            9,
+            0.0,
+            sem(),
+            sem_den(),
+            &a,
+            2,
+            0.0,
+            pontas(3, 4),
+            sem_den()
+        ),
         "⛔ uma medicao vazia nao pode GANHAR de uma medida e partida"
     );
     assert!(
-        super::worse(&a, 9, 0.0, pontas(3, 4), &a, 2, 0.0, sem()),
+        super::super::decide::worse(
+            &a,
+            9,
+            0.0,
+            pontas(3, 4),
+            sem_den(),
+            &a,
+            2,
+            0.0,
+            sem(),
+            sem_den()
+        ),
         "⛔ nem PERDER dela -- em ambos os sentidos decide a chave seguinte"
     );
 }
@@ -372,15 +497,17 @@ fn as_pontas_partidas_nunca_ganham_de_um_furo() {
     assert_eq!(super::open_edges(&cortada_fechada), 0);
     assert!(super::open_edges(&inteira_furada) > 0);
     assert!(
-        super::worse(
+        super::super::decide::worse(
             &inteira_furada,
             0,
             0.0,
             pontas(0, 4),
+            sem_den(),
             &cortada_fechada,
             999,
             89.0,
-            pontas(4, 4)
+            pontas(4, 4),
+            sem_den()
         ),
         "⛔ o FURO decide antes das pontas -- foi a queixa mais antiga do dono"
     );

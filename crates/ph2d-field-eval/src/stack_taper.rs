@@ -20,7 +20,8 @@ use fidget::context::Tree;
 /// ⚠️ **O [`TAPER_FLOOR`] fica como última rede**, para o caso em que a própria peça já passa do
 /// ápice (`slope·alcance > 1`): ali não há valor positivo que a matéria produza, e a única coisa a
 /// fazer é não inverter.
-pub(crate) fn taper_floor(slope: f64, b: crate::bounds::Ball) -> f64 {
+#[doc(hidden)]
+pub fn taper_floor(slope: f64, b: crate::bounds::Ball) -> f64 {
     let alcance = f64::from(b.center[1].abs() + b.radius.max(0.0));
     slope.abs().mul_add(-alcance, 1.0).max(TAPER_FLOOR)
 }

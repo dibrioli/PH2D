@@ -51,7 +51,8 @@ use fidget::context::Tree;
 /// matéria passa pelo centro do arco. ⏳ O preço — a metade de cima do slider a não mover a peça
 /// numa barra fina — é real e **não está curado**; a cura publicada é o **ombro** (a mesma que a
 /// torção usa), e é wave própria.
-pub(crate) fn bend_curvature(turns: f32, ball: crate::bounds::Ball) -> f64 {
+#[doc(hidden)]
+pub fn bend_curvature(turns: f32, ball: crate::bounds::Ball) -> f64 {
     let k = f64::from(turns) * std::f64::consts::TAU;
     let w = bend_wall(ball);
     if w <= 0.0 || !w.is_finite() {
@@ -69,21 +70,19 @@ pub(crate) fn bend_curvature(turns: f32, ball: crate::bounds::Ball) -> f64 {
 /// raio `1,507` e extensão em X de `0,671` — **2,2×**, e bastava para pôr `κW` acima da margem e
 /// cobrar `10` onde a conta honesta cobra `2,0`.
 ///
-/// ⚠️ **A caixa é lícita aqui porque é ela que a marcha recorta** — ver [`crate::bounds::Ball::aabb`],
-/// que desde a mesma data devolve as meias-extensões e não o cubo. *Ler a caixa com um recorte
-/// cúbico seria uma parede dentro da região avaliada, e uma parede dentro do recorte fura.*
-/// ⛔⛔⛔ **E ele mede o RECORTE, margem incluída** — não a caixa justa (2026-09-01).
+/// ⛔⛔⛔ **E ele mede o RECORTE, margem incluída** — nem o raio, nem a caixa justa.
 ///
 /// Esta grandeza é a **parede**: o `piso = ρ − W` congela a secção além dela, e o divisor cobra
 /// `ρ/piso`. Se `W` for menor do que a região que o avaliador percorre, a parede cai **dentro** dela
-/// e o campo estica onde ninguém cobrou. Medido ao ler a caixa justa com a margem de `1 %` já
-/// activa: `[Bend]` a `0,25`/`0,5`/`1,0` voltas dá `‖∇f‖ = 1,2699` e `[Array, Bend]` dá `1,5037`.
+/// e o campo estica onde ninguém cobrou. Medido com a caixa justa e a margem de `1 %` já activa:
+/// `[Bend]` a `0,25`/`0,5`/`1,0` voltas dá `‖∇f‖ = 1,2699` e `[Array, Bend]` dá `1,5037`.
 ///
-/// ⚠️ *Uma parede tem de estar no fim da região avaliada, e a região avaliada é a que a
-/// [`crate::bounds_clip::march_clip`] devolve.* É a mesma lei que o `deformado` e o divisor já
-/// tinham aprendido — **medir contra a caixa que a marcha percorre**, e não contra uma mais
-/// pequena.
-pub(crate) fn bend_reach(b: crate::bounds::Ball) -> f64 {
+/// ⚠️ *Uma parede tem de estar no FIM da região avaliada*, e essa região é exactamente a que a
+/// [`crate::bounds_clip::march_clip`] devolve — a mesma lei que o `deformado` e o divisor já
+/// tinham aprendido.
+///
+#[doc(hidden)]
+pub fn bend_reach(b: crate::bounds::Ball) -> f64 {
     let (lo, hi) = crate::bounds_clip::march_clip(b);
     f64::from(hi[0].abs().max(lo[0].abs()))
 }

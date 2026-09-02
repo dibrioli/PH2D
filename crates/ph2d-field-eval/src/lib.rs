@@ -21,6 +21,10 @@ pub mod bounds;
 pub(crate) mod bounds_bend;
 /// ⭐ A caixa que a MARCHA percorre — ver [`bounds_clip`].
 pub mod bounds_clip;
+/// ⭐ Intervalos com derivada — o substrato do bound da composição.
+pub(crate) mod bounds_iv;
+/// ⭐ O bound da COMPOSIÇÃO — ver [`bounds_lip`].
+pub(crate) mod bounds_lip;
 /// ⭐ O que um MODIFICADOR faz ao bordo — ver [`bounds_mods`].
 pub(crate) mod bounds_mods;
 pub mod extract;
@@ -283,7 +287,13 @@ pub use hull::{probe_hull_uv, probe_in_hull};
 #[path = "step.rs"]
 mod step;
 #[doc(hidden)]
+pub use bounds_lip::stack_lipschitz as stack_lipschitz_probe;
+#[doc(hidden)]
 pub use stack::stack_divisor_factors;
+#[doc(hidden)]
+pub use stack_bend::{bend_curvature, bend_reach};
+#[doc(hidden)]
+pub use stack_taper::taper_floor;
 pub use step::{field_shrink, gradient_bound, safe_march_step};
 
 #[cfg(test)]

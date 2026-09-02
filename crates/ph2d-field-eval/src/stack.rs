@@ -245,14 +245,17 @@ pub fn stack_divisor_factors(mods: &[Unary], local: crate::bounds::Ball) -> Vec<
 }
 
 pub(crate) fn stack_divisor(mods: &[Unary], local: crate::bounds::Ball) -> f64 {
-    let fim = crate::bounds::envelope(local, mods);
-    let mut corrente = local;
-    let mut d = 1.0f64;
-    for m in mods {
-        d *= step_divisor(*m, fim, corrente);
-        corrente = crate::bounds::step_mod(corrente, *m);
+    let produto: f64 = stack_divisor_factors(mods, local).iter().product();
+    // ⭐⭐⭐ **E o bound da COMPOSIÇÃO entra por `min`** (2026-09-02) — ver [`crate::bounds_lip`].
+    //
+    // O produto acima cobra `σ(J₀)·…·σ(Jₙ)`, cada um no pior ponto da caixa **independentemente**
+    // dos outros; a verdade é o `σ_max` do PRODUTO das matrizes. ⛔ O `min` é a cerca: a lei nova
+    // nunca pode ser pior do que a que já defende o sítio, e ela **abstém-se** (`None`) em toda
+    // pilha que não saiba modelar.
+    match crate::bounds_lip::stack_lipschitz(mods, local) {
+        Some(novo) if novo < produto => novo,
+        _ => produto,
     }
-    d
 }
 
 fn step_divisor(m: Unary, ball: crate::bounds::Ball, corrente: crate::bounds::Ball) -> f64 {

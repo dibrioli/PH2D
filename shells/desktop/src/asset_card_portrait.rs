@@ -264,9 +264,16 @@ fn blit(acc: &mut [f32], w: u32, h: u32, p: &Placed, min: [f32; 2], s: f32) {
             let ly = min[1] + (h as f32 - y as f32 - 0.5) / s;
             let (dx, dy) = (lx - p.center[0], ly - p.center[1]);
             let (rx, ry) = (dx * cos - dy * sin, dx * sin + dy * cos);
+            // ⛔⛔ **O teste de «está dentro do quad?» corre sobre o valor CRU, nos DOIS eixos.**
+            //
+            // Report do Enio (2026-09-01, 3.ª foto, *«ainda não representa fielmente o objeto»*):
+            // o `v` era RECORTADO a `[0, 1]` antes do teste, então o teste vertical nunca recusava
+            // — cada peça manchava a coluna inteira do retrato de alto a baixo, e o branco de 32 px
+            // aparecia como uma barra. *Um `clamp` antes de um teste de intervalo apaga o teste.*
             let u = (rx / p.half[0] + 1.0) * 0.5;
-            let v = (1.0 - (ry / p.half[1] + 1.0) * 0.5).clamp(0.0, 1.0);
-            if !(0.0..=1.0).contains(&u) || !(0.0..1.0).contains(&(1.0 - v)) {
+            // ⚠️ O Y local cresce para CIMA e o V da imagem para BAIXO — daí o `1 −`.
+            let v = 1.0 - (ry / p.half[1] + 1.0) * 0.5;
+            if !(0.0..1.0).contains(&u) || !(0.0..1.0).contains(&v) {
                 continue;
             }
             // ⭐⭐ **O espelho autorado, e depois a JANELA** — nesta ordem: espelhar depois de

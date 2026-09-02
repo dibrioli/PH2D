@@ -305,3 +305,120 @@ fn a_non_centered_piece_is_placed_where_the_screen_places_it() {
         "a peca CENTRADA sumiu — as duas caíram no mesmo sitio, logo o pivô foi ignorado"
     );
 }
+
+/// ⭐⭐⭐ **A CENA DO REPORT, reproduzida com os construtores REAIS — e gravada como imagem.**
+///
+/// Report do Enio (2026-09-01, 3.ª foto): *«ainda não representa fielmente o objeto»*. Um objecto
+/// vazio com três filhos de átlas: um quadrado preto de 128 px, um branco de 64 a sair pela borda
+/// de baixo, um branco de 32 a sair pela de cima.
+///
+/// ⚠️ **Este gate existe para eu OLHAR**, não só para afirmar: ele grava o retrato em
+/// `PH2D_PORTRAIT_DUMP` quando a variável estiver definida, ampliado 4× para se ler. As
+/// afirmações abaixo são as que a foto refuta — e cada uma nasceu VERMELHA contra o código que a
+/// foto mostrava.
+#[test]
+fn the_reported_scene_composes_faithfully() {
+    const PPM: f32 = 100.0;
+    let mut sim = SimWorld::new();
+    let root = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, ph2d_ecs::MasterRoot))
+        .id();
+    // (chave de átlas, lado em px, centro em mundo)
+    let specs: [(u32, u32, [f32; 2]); 3] = [
+        (0, 128, [0.0, 0.0]),
+        (1, 64, [0.0, -0.64 - 0.1]),
+        (2, 32, [0.0, 0.64]),
+    ];
+    let mut pieces = Vec::new();
+    for (key, side, at) in specs {
+        let m = side as f32 / PPM;
+        pieces.push(
+            sim.world_mut()
+                .spawn((
+                    Transform::from_translation(ph2d_core::Vec2::new(at[0], at[1])),
+                    ph2d_render::Sprite::atlas(key, [m, m], [1.0; 4]),
+                    ChildOf(root),
+                ))
+                .id(),
+        );
+    }
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    // As miniaturas REAIS que a cache daria: o preto reduzido a 96, os brancos ao tamanho deles.
+    let art_for = |side: u32, c: [u8; 4]| Thumb {
+        rgba: std::sync::Arc::new(c.repeat((side * side) as usize)),
+        w: side,
+        h: side,
+    };
+    let black = art_for(96, [0, 0, 0, 255]);
+    let w64 = art_for(64, [255, 255, 255, 255]);
+    let w32 = art_for(32, [255, 255, 255, 255]);
+    let (p0, p1, p2) = (pieces[0], pieces[1], pieces[2]);
+    let t = compose(&sim, root, &pieces, PPM, |e| {
+        Some(if e == p0 {
+            black.clone()
+        } else if e == p1 {
+            w64.clone()
+        } else if e == p2 {
+            w32.clone()
+        } else {
+            unreachable!()
+        })
+    })
+    .expect("o retrato");
+
+    if let Ok(dir) = std::env::var("PH2D_PORTRAIT_DUMP") {
+        let k = 4u32;
+        let mut big = vec![0u8; (t.w * k * t.h * k * 4) as usize];
+        for y in 0..t.h * k {
+            for x in 0..t.w * k {
+                let src = (((y / k) * t.w + (x / k)) * 4) as usize;
+                let dst = ((y * t.w * k + x) * 4) as usize;
+                big[dst..dst + 4].copy_from_slice(&t.rgba[src..src + 4]);
+            }
+        }
+        let path = std::path::Path::new(&dir).join("portrait_repro.png");
+        image::save_buffer(&path, &big, t.w * k, t.h * k, image::ColorType::Rgba8)
+            .expect("gravar o retrato");
+        eprintln!("[retrato] {}x{} gravado em {}", t.w, t.h, path.display());
+    }
+
+    // A caixa: 1,28 de largura; altura = do fundo do branco de baixo (−0,74−0,32) ao topo do de
+    // cima (0,64+0,16) ⇒ 1,86 ⇒ o retrato é mais ALTO que largo.
+    assert!(
+        t.h > t.w,
+        "a caixa envolvente e' mais alta que larga: {}x{}",
+        t.w,
+        t.h
+    );
+    // ⛔ **A mancha vertical**: um pixel do preto, fora das colunas dos brancos, tem de ser PRETO —
+    // e um pixel ACIMA do branco de cima (mas dentro da caixa) tem de ser TRANSPARENTE.
+    let s = t.h as f32 / 1.86;
+    let col_left = 2; // coluna de borda: so' o preto vive aqui
+    let y_mid = t.h / 2;
+    let px = pixel(&t, col_left, y_mid);
+    assert_eq!(px, [0, 0, 0, 255], "a borda do preto nao e' preta: {px:?}");
+    // O branco de cima ocupa x ∈ [−0,16, 0,16] ⇒ colunas centrais; y de 0,48 a 0,80. Um pixel na
+    // coluna central a MEIA ALTURA do preto (y=0) tem de ser preto, nao branco.
+    let col_mid = t.w / 2;
+    let y_zero = ((0.80 - 0.0) * s) as u32; // y=0 em mundo, contado do topo da caixa
+    let px = pixel(&t, col_mid, y_zero);
+    assert_eq!(
+        px,
+        [0, 0, 0, 255],
+        "o branco de cima MANCHOU a coluna central ate' ao meio do preto: {px:?}"
+    );
+    // E o branco de cima ocupa metade fora do preto: um pixel em y=0,72 na coluna central e' BRANCO
+    // e um pixel na mesma altura mas na coluna da borda e' TRANSPARENTE (fora de toda peça).
+    let y_top_white = ((0.80 - 0.72) * s) as u32;
+    assert_eq!(
+        pixel(&t, col_mid, y_top_white)[0],
+        255,
+        "o branco de cima nao esta' la'"
+    );
+    assert_eq!(
+        pixel(&t, col_left, y_top_white)[3],
+        0,
+        "ha' tinta fora de todas as pecas (acima do preto, na borda)"
+    );
+}

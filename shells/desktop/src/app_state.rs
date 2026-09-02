@@ -1633,13 +1633,16 @@ pub(crate) struct App {
     /// ⭐⭐⭐ **A FACE que o Balde vai preencher** (plano 40) — a região sob o cursor neste quadro,
     /// em MUNDO, e `None` quando ele não aponta região nenhuma. O realce desenha-a e o clique
     /// deposita-a, **pela mesma resposta**.
-    pub(crate) vec_bucket_face: Option<ph2d_vec_scene::VecPath>,
+    pub(crate) vec_bucket_face: Option<crate::vec_bucket::BucketHit>,
     /// A rede de arcos guardada, com a chave do documento que a produziu.
     ///
     /// ⚠️ **Guardada porque montá-la custa `3,8 ms` a 20 traços e `188 ms` a 80** (medido), contra
     /// `0,08–0,35 ms` para achar a face nela. Montar por quadro está refutado; achar a face por
     /// quadro é de graça.
     pub(crate) vec_bucket_cache: Option<crate::vec_bucket::BucketCache>,
+    /// Os preenchimentos que nasceram neste quadro e ainda esperam a ENTIDADE: `(caminho,
+    /// semente)`. Drenados logo depois do `vec_entities::sync`, que é quem a cria.
+    pub(crate) vec_bucket_new: Vec<(u64, [f32; 2])>,
     /// O alvo vivo do frame anterior — só existe para detectar a MUDANÇA que desarma o
     /// [`Self::vec_shape_armed`].
     pub(crate) vec_shape_armed_target: Option<ph2d_vec_scene::VecPathId>,

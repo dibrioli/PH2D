@@ -1152,6 +1152,7 @@ impl App {
             vec_trim_piece: Vec::new(),
             vec_bucket_face: None,
             vec_bucket_cache: None,
+            vec_bucket_new: Vec::new(),
             vec_shape_armed_target: None,
             vec_entities: Default::default(),
             flip_entities: Default::default(),

@@ -108,7 +108,53 @@ cruzamento, que calculam o mesmo ponto com resíduo de `~1e-15`, **não se junta
 desligada e não há face nenhuma. O piso é uma **fracção da diagonal** da arte (`1e-5`), que é a lei
 que o `ph2d-flip-fill` já usa para a mesma pergunta.
 
-## §7 — ⏳ Nomeado e fora da v1
+## §7 — ⭐⭐⭐ O REPORT DE 2026-09-01 (com fotos) — três defeitos, e o 2.º muda o modelo
+
+> Enio: *"Ficou interessante mas muito limitado. 1) ao usar o balde nas áreas coloridas, ele para de
+> funcionar nas áreas não coloridas. 2) se movo os nós da linha, o preenchimento não acompanha. A
+> área deveria permanecer perfeitamente preenchida mesmo modificando o path. 3) o preenchimento está
+> acima do stroke, mas deveria estar abaixo."*
+
+### 1. ⛔⛔ Um preenchimento não é uma PAREDE
+
+A forma depositada tem por fronteira **os mesmos arcos** que as linhas. De volta à rede, ela punha
+lá arestas **coincidentes**, com direcção de saída idêntica — e o passeio de faces passava a
+escolher entre duas meias-arestas indistinguíveis. As regiões vizinhas deixavam de fechar.
+
+⇒ Quem tem `VecBucketFill` **não entra na rede**. *Uma parede é o que o artista desenhou; um
+preenchimento é o que ele pediu.* ⚠️ A exclusão vive numa **porta com nome** (`fora_da_rede`), e não
+num fecho no sítio da chamada: a 1.ª redacção tinha-a inline, e a mutação que apagava o termo do
+preenchimento **sobreviveu** — o gate media o fecho que o **teste** construía.
+
+### 2. ⭐⭐⭐ O preenchimento é VIVO, e a receita é o PONTO
+
+⚠️ **Guardar a lista de ARCOS não resolveria**: um arco nasce de um corte em fracções, e mover um nó
+**muda os cruzamentos**, logo muda a própria lista. *Qualquer receita feita de pedaços da rede é uma
+receita sobre uma rede que já não existe.*
+
+⇒ A receita é o que o artista de facto fez: **apontou ali**. `VecBucketFill { seed }` guarda o ponto,
+e a área é a resposta de hoje — re-cozida sempre que a rede muda, **em qualquer ferramenta** (ele
+arrasta um nó com a seta branca). ⚠️ Uma semente que deixou de cair em face nenhuma **congela** a
+forma onde ela está, em vez de a fazer sumir — a escolha do conector e do morph.
+
+⭐ **Isto é o Live Paint do Illustrator com outro substrato** — e sem o tipo de objecto novo que o §1
+recusou: lá a face é estado vivo de um grupo especial; aqui é uma pergunta que se refaz.
+
+### 3. ⛔ O `insert_path(0, …)` NÃO é o fundo
+
+Quem manda no desenho é o **`RootOrder` da ENTIDADE**, e o `vec_entities::sync` dá a toda entidade
+nova **o maior** — a frente. *O índice na cena e a ordem de desenho são duas listas, e a que o olho
+vê é a segunda.* ⇒ a forma é mandada para o fundo (`ZOrder::ToBack`) na mesma passagem em que a
+receita lhe é presa, logo depois do `sync` (no clique a entidade ainda não existe).
+
+### ⚠️ E o INSTRUMENTO mentiu, no meio disto
+
+O arnês de mutação restaurava o ficheiro com `mv`, e o mtime voltava **para trás**: o cargo ficava
+com o **mutante compilado** e a fonte curada no disco, e as corridas seguintes mediam o mutante.
+Sintoma: uma função com gate **verde na sua própria crate** devolvia o comportamento **antigo** a
+quem dependia dela. ⇒ o arnês faz `touch` depois de restaurar.
+
+## §8 — ⏳ Nomeado e fora da v1
 
 - **Vazamento**: se o clique cai na face externa (a região não fecha), o balde **recusa e diz
   porquê**. ⛔ Fechar vãos automaticamente é a lei do `ph2d-flip-fill` (bola presa + extensão de

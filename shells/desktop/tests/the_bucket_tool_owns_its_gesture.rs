@@ -95,13 +95,69 @@ fn the_click_deposits_what_the_highlight_showed() {
     );
 }
 
-/// **A forma nasce ATRÁS de tudo** — as linhas que a cercam continuam visíveis.
+/// ⛔⛔ **A forma nasce ATRÁS de tudo, e quem manda nisso é a ENTIDADE.**
+///
+/// Report do Enio (2026-09-01): *"o preenchimento está acima do stroke, mas deveria estar abaixo"*.
+/// O `insert_path(0, …)` põe a forma no início da CENA e não muda nada no desenho: a ordem que o
+/// olho vê é o `RootOrder`, e o `vec_entities::sync` dá a toda entidade nova **o maior**.
 #[test]
 fn the_filled_shape_is_born_behind_the_lines() {
-    let f = at(BUCKET, "fn apply_bucket(", "o vec_bucket");
+    let f = at(BUCKET, "fn arm_new_fills(", "o vec_bucket");
+    let corpo = &BUCKET[f..];
     assert!(
-        BUCKET[f..].contains("insert_path(0, nova)"),
-        "a forma do Balde nao entra no fundo da pilha — ela taparia o desenho"
+        corpo.contains("ZOrder::ToBack"),
+        "a forma do Balde nao e' mandada para o fundo — ela taparia o desenho"
+    );
+    // …e a receita é presa na MESMA passagem: a entidade só existe aqui.
+    assert!(
+        corpo.contains("VecBucketFill::new(seed)"),
+        "a receita (a semente) nao e' presa a' entidade — o preenchimento nao seria vivo"
+    );
+    let sync = at(LOOP, "crate::vec_entities::sync(", "o render_loop");
+    let arma = at(LOOP, "crate::vec_bucket::arm_new_fills(", "o render_loop");
+    assert!(
+        sync < arma,
+        "o `arm_new_fills` corre ANTES do `sync` — a entidade ainda nao existe"
+    );
+}
+
+/// ⭐⭐⭐ **O UPKEEP corre em QUALQUER ferramenta** — é ele que mantém o preenchimento vivo.
+///
+/// Report do Enio (2026-09-01): *"se movo os nós da linha, o preenchimento não acompanha"*. O
+/// artista arrasta um nó com a seta BRANCA; se o re-cozimento vivesse dentro do modo Balde, ele
+/// nunca correria.
+#[test]
+fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
+    let up = at(LOOP, "self.bucket_upkeep();", "o render_loop");
+    let hover = at(LOOP, "self.refresh_bucket_hover(pointer);", "o render_loop");
+    assert!(
+        up < hover,
+        "o upkeep tem de correr ANTES do realce, que le a rede dele"
+    );
+    // A guarda de MODO vive no realce, nunca no upkeep.
+    let f = at(BUCKET, "fn bucket_upkeep(", "o vec_bucket");
+    let fim = BUCKET[f..]
+        .find("fn refresh_bucket_hover(")
+        .unwrap_or(BUCKET.len() - f)
+        + f;
+    assert!(
+        !BUCKET[f..fim].contains("!= ph2d_tool_vector::DrawMode::Bucket"),
+        "o upkeep saiu cedo fora do modo Balde — o preenchimento deixaria de acompanhar as linhas"
+    );
+    // E ele RE-COZE: a face de cada semente vira a geometria do caminho.
+    assert!(
+        BUCKET[f..fim].contains("rede.face_em(*seed)"),
+        "o upkeep nao re-coze os preenchimentos a partir da semente"
+    );
+    assert!(
+        BUCKET[f..fim].contains("p.verts = verts;"),
+        "o upkeep calcula a area nova e nao a ESCREVE — o preenchimento ficaria parado"
+    );
+    // ⚠️ E a exclusão passa pela porta ÚNICA, com os DOIS termos: um fecho escrito à mão aqui foi
+    // o que deixou a mutação `o-fill-entra-na-rede` sobreviver.
+    assert!(
+        BUCKET[f..fim].contains("fora_da_rede(vista.is_hidden(id), so_fill.contains(&id))"),
+        "a exclusao nao passa pela porta unica, ou perdeu um dos dois termos"
     );
 }
 
@@ -120,9 +176,12 @@ fn leaving_the_tool_clears_the_highlight_and_the_cache() {
         corpo[..fim].contains("self.vec_bucket_face = None;"),
         "sair do Balde nao apaga o realce"
     );
+    // ⚠️ A rede guardada NÃO morre aqui: ela serve os preenchimentos vivos em toda ferramenta. O
+    // que a apaga é o upkeep, quando não há preenchimento nenhum **e** o balde não está na mão.
+    let up = at(BUCKET, "fn bucket_upkeep(", "o vec_bucket");
     assert!(
-        corpo[..fim].contains("self.vec_bucket_cache = None;"),
-        "a rede guardada sobrevive a' troca de ferramenta"
+        BUCKET[up..].contains("if fills.is_empty() && !armado {"),
+        "o upkeep nao sai de graca quando nao ha' nada a fazer — quem nao usa o balde pagaria"
     );
 }
 
@@ -132,7 +191,7 @@ fn leaving_the_tool_clears_the_highlight_and_the_cache() {
 fn the_network_is_cached_not_rebuilt_every_frame() {
     let chave = at(
         BUCKET,
-        "if self.vec_bucket_cache.as_ref().is_none_or(|c| c.chave != k) {",
+        "if self.vec_bucket_cache.as_ref().is_some_and(|c| c.chave == k) {",
         "o vec_bucket",
     );
     let monta = at(BUCKET, "ph2d_vec_fill::rede(&contornos)", "o vec_bucket");

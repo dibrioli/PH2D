@@ -129,3 +129,79 @@ fn the_filled_shape_keeps_the_curve_not_a_polygon() {
         f.area
     );
 }
+
+/// ⭐⭐⭐ **A RECEITA É O PONTO, e é por isso que o preenchimento pode ser VIVO.**
+///
+/// Report do Enio (2026-09-01): *"se movo os nós da linha, o preenchimento não acompanha. A área
+/// deveria permanecer perfeitamente preenchida mesmo modificando o path."*
+///
+/// ⚠️ **Guardar a lista de ARCOS não resolveria**: um arco nasce de um corte em fracções, e mover
+/// um nó **muda os cruzamentos**, logo muda a própria lista. *Qualquer receita feita de pedaços da
+/// rede é uma receita sobre uma rede que já não existe.* O ponto sobrevive.
+#[test]
+fn the_same_seed_names_the_new_face_after_a_wall_moves() {
+    let quadro = |dir: f64| {
+        vec![
+            (vec![v(-60.0, -20.0), v(dir, -20.0)], false),
+            (vec![v(-60.0, 20.0), v(dir, 20.0)], false),
+            (vec![v(-20.0, -60.0), v(-20.0, 60.0)], false),
+            (vec![v(20.0, -60.0), v(20.0, 60.0)], false),
+        ]
+    };
+    let semente = [0.0, 0.0];
+    let antes = rede(&quadro(60.0))
+        .face_em(semente)
+        .expect("o miolo existe antes");
+    // A parede de cima sobe: o miolo passa a ser mais alto.
+    //
+    // ⚠️ **A alça acompanha a âncora** — a 1.ª redacção mexeu só na âncora e a recta virou uma
+    // CURVA a abaular para dentro (área `1 862` em vez de `2 600`). É a mesma lei que o
+    // `weld::mover_ponta` escreve, e uma fixtura que a ignora mede outra coisa.
+    let mut movido = quadro(60.0);
+    movido[1].0 = vec![v(-60.0, 45.0), v(60.0, 45.0)];
+    let r2 = rede(&movido);
+    let depois = r2.face_em(semente).expect("o miolo ainda existe depois");
+    assert!(
+        depois.area > antes.area * 1.5,
+        "a face nao acompanhou a parede: {} contra {}",
+        depois.area,
+        antes.area
+    );
+    // …e a área nova continua a conter o ponto que a nomeia — senão a receita perder-se-ia.
+    assert!(
+        r2.face_em(semente).is_some(),
+        "a semente deixou de nomear a regiao que ela mesma produziu"
+    );
+}
+
+/// ⛔⛔ **UM PREENCHIMENTO NÃO É PAREDE** — e este gate mede o mecanismo, não a política.
+///
+/// Report do Enio (2026-09-01): *"ao usar o balde nas áreas coloridas, ele para de funcionar nas
+/// áreas não coloridas."* A forma depositada tem por fronteira os MESMOS arcos que as linhas; posta
+/// de volta na rede, ela põe lá arestas **coincidentes** — e o passeio de faces passa a escolher
+/// entre duas meias-arestas com a mesma direcção de saída.
+///
+/// A régua: com a cópia dentro, uma região vizinha deixa de ser achada (ou muda de área). A shell
+/// exclui-a pelo componente [`ph2d_ecs::VecBucketFill`]; aqui prova-se **por que** ela tem de o
+/// fazer.
+#[test]
+fn a_duplicate_of_a_face_poisons_its_neighbours() {
+    let base = vec![
+        (vec![v(-60.0, -20.0), v(60.0, -20.0)], false),
+        (vec![v(-60.0, 20.0), v(60.0, 20.0)], false),
+        (vec![v(-20.0, -60.0), v(-20.0, 60.0)], false),
+        (vec![v(20.0, -60.0), v(20.0, 60.0)], false),
+    ];
+    let r = rede(&base);
+    let miolo = r.face_em([0.0, 0.0]).expect("o miolo");
+    // A "forma preenchida": a própria face, de volta à lista de paredes.
+    let mut envenenada = base.clone();
+    envenenada.push((r.geometria(&miolo), true));
+    let r2 = rede(&envenenada);
+    let depois = r2.face_em([0.0, 0.0]);
+    assert!(
+        depois.is_none_or(|f| (f.area - miolo.area).abs() > 1.0),
+        "a cópia coincidente passou despercebida — se um dia passar, esta wave pode simplificar; \
+         até lá, o preenchimento fica FORA da rede"
+    );
+}

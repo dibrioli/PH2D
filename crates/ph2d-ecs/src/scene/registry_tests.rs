@@ -156,7 +156,9 @@ fn register_ecs_components_populates_registry() {
     //   `(peca, componente)` que a instancia possui contra o mestre.
     // + 1 da COPIA LIGADA (LinkedArt, Enio 2026-08-27) -- o *Duplicate Linked* do Blender:
     //   esta peca divide a arte do mestre, entao a edicao dela SOBE em vez de virar excepcao.
-    assert_eq!(reg.len(), 78);
+    // + 1 do PREENCHIMENTO do balde (VecBucketFill, plano 40, 2026-09-01) -- a RECEITA (o
+    //   ponto apontado), nunca a area: a area e' re-cozida quando as linhas mudam.
+    assert_eq!(reg.len(), 79);
     assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());

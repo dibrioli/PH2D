@@ -384,4 +384,24 @@
 /// `line/components` **as duas em 105** — o mesmo literal em duas linhas, que é a colisão que funde
 /// **muda**, porque o git não sabe o que o número significa. Esta linha toma o primeiro livre acima
 /// do maior. *Quem integrar aquelas duas tem de recontar; este degrau não as desconflita.*
-pub(crate) const PROJECT_SCHEMA: u32 = 106;
+/// # 107 — o PREENCHIMENTO do balde é um componente REGISTADO (plano 40, 2026-09-01)
+///
+/// O `VecBucketFill` entrou no `ComponentRegistry` (`ph2d::ecs::VecBucketFill`): ele guarda a
+/// **receita** de uma área preenchida — o ponto que o artista apontou —, e é o que a torna VIVA
+/// (a área é re-cozida quando as linhas mudam).
+///
+/// ⚠️ **A tripla `(PROJECT, FLIP_DOC, VEC_SCENE)` NÃO vê este degrau**, e é o mesmo caso do 99 e do
+/// 100: um componente viaja dentro de um `ComponentBlob` **opaco**, chaveado por nome. A forma da
+/// `VecScene` não se mexeu.
+///
+/// ⚠️ **O degrau existe para o caminho INVERSO**, como o do `JointKind::Weld`: um ficheiro gravado
+/// aqui traz um nome de componente que um binário anterior não conhece. Do lado aditivo (um v106
+/// lido por v107) não há nada a fazer — o componente simplesmente não está lá, e uma área
+/// preenchida antes deste degrau volta como forma **estática**, que é o que ela era.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08 (*"não há projetos salvos"*).
+///
+/// ⚠️ **E o 107 foi CONTADO**: `106` era o desta árvore em 2026-09-01, e a nota do 106 continua a
+/// valer — a `line/3DModeling` e a `line/components` escreveram **105 as duas**, e quem as integrar
+/// tem de recontar.
+pub(crate) const PROJECT_SCHEMA: u32 = 107;

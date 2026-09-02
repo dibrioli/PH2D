@@ -487,6 +487,9 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // no meio da forma, com o offset do usuário perdido.
     // O Morph vivo (o irmão animável do Blend). Mesma razão: sem o registro, o snapshot o
     // DESCARTA e o undo/save perderiam o vínculo morph↔fontes — e o `t` autorado junto.
+    // ⭐ **O preenchimento do BALDE** (plano 40) — a receita (o ponto apontado), não a área. Ele
+    // entra aqui pela mesma razão dos irmãos: undo e save cobrem-no sem uma linha a mais.
+    reg.register::<crate::VecBucketFill>("ph2d::ecs::VecBucketFill");
     reg.register::<crate::VecMorph>("ph2d::ecs::VecMorph");
     // ⭐ O GRAFO da maquina de estados do Morph (plano 32). Mesma razao de todos acima: sem o
     // registo, o snapshot o DESCARTA e o undo/save perderiam as setas que o artista desenhou.

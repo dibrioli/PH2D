@@ -41,6 +41,7 @@ pub const DESCS: &[D] = &[
     g("ph2d::ecs::VecBlend", "Blend"),
     g("ph2d::ecs::VecBoolGroup", "Boolean Group"),
     g("ph2d::ecs::VecBoolOp", "Boolean Op"),
+    g("ph2d::ecs::VecBucketFill", "Bucket Fill"),
     g("ph2d::ecs::VecClipContent", "Clip Content"),
     // A instância vetorial de hoje — subsumida pela F4 (ADR-0164 §4).
     D::machinery(

@@ -81,15 +81,16 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
     eprintln!(
         "[bucket-smoke] 3 grupos montados e o BALDE armado.\n\
          [bucket-smoke]  1) passe o cursor no MIOLO das quatro linhas (esq.): a regiao acende na\n\
-         [bucket-smoke]     cor de preenchimento. Clique -> nasce uma forma ali\n\
-         [bucket-smoke]  2) nos DOIS CIRCULOS (centro): a lente do meio e as duas luas sao TRES\n\
-         [bucket-smoke]     regioes diferentes. Encha as tres\n\
-         [bucket-smoke]  3) no CIRCULO CORTADO (dir.): as duas metades tem borda CURVA -- amplie e\n\
-         [bucket-smoke]     confira que ela e' curva mesmo, nao uma escada de segmentos\n\
-         [bucket-smoke]  A forma nasce ATRAS das linhas: elas continuam visiveis por cima.\n\
+         [bucket-smoke]     cor de preenchimento. Clique -> nasce uma forma ali, ATRAS das linhas\n\
+         [bucket-smoke]  2) encha a regiao AO LADO dessa: continuar a funcionar e' o teste\n\
+         [bucket-smoke]  3) nos DOIS CIRCULOS (centro): a lente do meio e as duas luas sao TRES\n\
+         [bucket-smoke]     regioes. Encha as tres\n\
+         [bucket-smoke]  4) no CIRCULO CORTADO (dir.): as metades tem borda CURVA -- amplie e veja\n\
+         [bucket-smoke]  5) pegue a SETA BRANCA e ARRASTE um no' de uma linha ja' preenchida: a\n\
+         [bucket-smoke]     area tem de ACOMPANHAR, sem buraco e sem sobra\n\
          [bucket-smoke]  Ctrl+Z desfaz cada preenchimento.\n\
-         [bucket-smoke]  DEU ERRADO SE: nada acende; ou acende uma regiao e nasce outra; ou a\n\
-         [bucket-smoke]  forma tapa as linhas"
+         [bucket-smoke]  DEU ERRADO SE: encher uma regiao impede de encher a vizinha; ou a forma\n\
+         [bucket-smoke]  tapa as linhas; ou ela nao acompanha o no' arrastado"
     );
 }
 

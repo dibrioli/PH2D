@@ -544,6 +544,10 @@ impl crate::App {
         // os dois respondem à mesma pergunta (*"o que está sob o cursor?"*) para ferramentas que
         // apontam em vez de autorar. ⚠️ A rede é GUARDADA lá dentro: montá-la custa `3,8 ms` a 20
         // traços, e só se refaz quando a geometria muda.
+        // ⭐⭐⭐ **O upkeep corre ANTES do realce e em QUALQUER ferramenta** (plano 40): ele refaz a
+        // rede quando a geometria muda e RE-COZE os preenchimentos vivos — o artista arrasta um nó
+        // com a seta branca, e a área tem de acompanhar. O realce só lê a rede já guardada.
+        self.bucket_upkeep();
         self.refresh_bucket_hover(pointer);
         // PH2D_PAINT_PERF: whole-frame timer (aggregated on scope exit, paired with the dispatch info).
         let _paint_frame_timer = PaintFrameTimer(paint_perf::on().then(std::time::Instant::now));
@@ -8174,6 +8178,13 @@ impl crate::App {
             // entidades (path novo ⇒ entidade; entidade apagada ⇒ path), projeta a
             // ordem de z da árvore na pilha, e lê visibilidade/trava herdadas.
             crate::vec_entities::sync(sim, vec_scene, &mut self.vec_entities);
+            // ⭐⭐⭐ **O BALDE** (plano 40): a entidade do preenchimento acabou de nascer — é agora
+            // que a RECEITA (a semente) lhe é presa e que ele vai para o FUNDO. ⚠️ O
+            // `insert_path(0, …)` NÃO é o fundo: quem manda no desenho é o `RootOrder` da entidade,
+            // e o `sync` dá a toda entidade nova **o maior**.
+            if !self.vec_bucket_new.is_empty() {
+                crate::vec_bucket::arm_new_fills(sim, &self.vec_entities, &mut self.vec_bucket_new);
+            }
             // OS COMPONENTES (plano UI/UX W5): o caminho que o **Place** empurrou já tem
             // entidade — é agora que o vínculo pousa. Mesmo sítio, e pela mesma razão, em que o
             // `make_committed_shape_live` faz uma forma recém-desenhada nascer viva.
@@ -9927,7 +9938,7 @@ impl crate::App {
             {
                 let t = tinta_balde;
                 ph2d_vec_render::draw_bucket_face(
-                    face,
+                    &face.face,
                     [t.r, t.g, t.b, t.a],
                     cam_affine,
                     vector_scene,

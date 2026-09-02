@@ -68,6 +68,13 @@ pub fn draw_overlays(
         if view.is_hidden(path.id) {
             continue; // um path escondido não mostra âncoras
         }
+        // ⛔⛔ **Uma forma DERIVADA não tem nós próprios** (`VecViewState::derived`, lei do Enio de
+        // 2026-09-01): a geometria dela é escrita por um motor, e alças desenhadas ali seriam um
+        // segundo conjunto empilhado sobre o das linhas que a produzem — o dedo agarraria o mais
+        // próximo, o traço não se mexeria, e o re-cozimento seguinte apagaria a edição.
+        if view.is_derived(path.id) {
+            continue;
+        }
         let transform = overlay_transform(view, xforms, path.id, camera);
         let is_sel = Some(path.id) == selected;
         // Any path in the OBJECT selection set is highlighted; the primary also shows

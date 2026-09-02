@@ -114,7 +114,22 @@ fn chave(contornos: &[(Vec<VecVertex>, bool)]) -> u64 {
     for (verts, closed) in contornos {
         h = h.wrapping_mul(0x0100_0000_01b3) ^ u64::from(*closed);
         for v in verts {
-            for x in [v.anchor[0], v.anchor[1], v.out_handle[0], v.out_handle[1]] {
+            // ⭐⭐⭐ **AS DUAS ALÇAS, e a lei é do Enio** (2026-09-01): *"o nó de uma solda é um só
+            // para todas as linhas; as alças daquele nó devem servir simultaneamente para o stroke
+            // e para os preenchimentos, senão é impossível que sejam transformados juntos."*
+            //
+            // ⛔ A 1.ª redacção lia só a de SAÍDA. Arrastar a alça de ENTRADA de um nó mudava o
+            // traço e a chave **não via** — a rede não era refeita, e a área ficava com a curva de
+            // antes. *As duas alças de um vértice são dois graus de liberdade, e ler um é medir
+            // metade da curva.*
+            for x in [
+                v.anchor[0],
+                v.anchor[1],
+                v.in_handle[0],
+                v.in_handle[1],
+                v.out_handle[0],
+                v.out_handle[1],
+            ] {
                 h = h.wrapping_mul(0x0100_0000_01b3) ^ x.to_bits();
             }
         }

@@ -172,6 +172,30 @@ câmara; um desvio por-forma é a pose de cada uma.*
 estava errado: ali a entidade ainda nem existe — e é por isso que o defeito aparecia *"ao nascer"*,
 que é o primeiro re-cozimento.
 
+### 5. ⭐⭐⭐ A LEI, escrita pelo Enio (2026-09-01)
+
+> *"O nó de uma solda é um só para todas as linhas. As alças daquele nó devem servir
+> simultaneamente para o stroke e para os preenchimentos, senão é impossível que sejam
+> transformados juntos."*
+
+Ela tinha **dois** buracos, e nenhum era o desenho — eram omissões:
+
+⛔ **A alça de ENTRADA não entrava na chave do cache.** Arrastar a alça de saída refazia a rede e a
+área acompanhava; arrastar a de entrada mudava o traço e o preenchimento **ficava com a curva de
+antes**. ⚠️ E o gate que devia apanhá-lo media **uma das duas** (`the_key_sees_a_handle_move`) —
+*um gate que mede metade da população aprova a metade que não mediu.* As duas alças de um vértice
+são dois graus de liberdade.
+
+⛔⛔ **E o preenchimento mostrava alças PRÓPRIAS.** Ele tem a mesma fronteira que os traços, então
+cada nó tinha **dois** conjuntos empilhados: o dedo agarrava o mais próximo, o traço não se mexia, e
+o re-cozimento seguinte apagava a edição. *Duas alças no mesmo sítio não são um nó partilhado: são
+duas coisas que discordam.*
+
+⇒ `VecViewState::derived` — **uma lista, dois leitores**: o desenho dos gizmos (`draw_overlays`
+salta-a) e o `is_pickable` (não se agarra). ⭐ **É a lei que a gaiola do Envelope já escrevia** (a
+forma sob ela é a saída do warp, e os nós dela não se desenham); aqui ela deixa de ser um caso
+especial da shell e passa a ser uma propriedade da vista.
+
 ## §8 — ⏳ Nomeado e fora da v1
 
 - **Vazamento**: se o clique cai na face externa (a região não fecha), o balde **recusa e diz

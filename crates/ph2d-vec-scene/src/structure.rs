@@ -23,6 +23,24 @@ use crate::{VecPath, VecPathId, VecScene};
 pub struct VecViewState {
     pub hidden: Vec<VecPathId>,
     pub locked: Vec<VecPathId>,
+    /// ⭐⭐⭐ **As formas DERIVADAS** — as que um motor reescreve, e que por isso não têm nós
+    /// próprios para agarrar.
+    ///
+    /// # A lei, e de quem ela é
+    ///
+    /// Enio, 2026-09-01: *"o nó de uma solda é um só para todas as linhas. As alças daquele nó
+    /// devem servir simultaneamente para o stroke e para os preenchimentos, senão é impossível que
+    /// sejam transformados juntos."*
+    ///
+    /// ⛔ Um preenchimento do balde tem a **mesma fronteira** que os traços que o cercam. Se ele
+    /// mostrasse alças próprias, cada nó teria **DOIS** conjuntos empilhados — o dedo agarraria o
+    /// que estivesse mais perto, o traço não se mexeria, e o re-cozimento seguinte apagaria a
+    /// edição. *Duas alças no mesmo sítio não são um nó partilhado: são duas coisas que discordam.*
+    ///
+    /// ⚠️ **É a lei que a gaiola do Envelope já escrevia** (a forma sob ela é a SAÍDA do warp, e os
+    /// nós dela não se desenham) — aqui ela deixa de ser um caso especial da shell e passa a ser
+    /// uma propriedade da vista, com dois leitores: o desenho dos gizmos e o [`Self::is_pickable`].
+    pub derived: Vec<VecPathId>,
     /// As MOLDURAS que recortam neste frame (`ph2d_ecs::VecFrame`), já resolvidas para o
     /// intervalo que cada uma ocupa na pilha de z. Vazio = nenhuma moldura recorta, e o desenho é
     /// **byte-idêntico** ao mundo pré-moldura.
@@ -157,7 +175,13 @@ impl VecViewState {
     /// contrário tornaria impossível recuperar algo que se arrastou para fora por engano.
     #[must_use]
     pub fn is_pickable(&self, id: VecPathId) -> bool {
-        !self.hidden.contains(&id) && !self.locked.contains(&id)
+        !self.hidden.contains(&id) && !self.locked.contains(&id) && !self.is_derived(id)
+    }
+
+    /// A geometria deste path é escrita por um motor — ela não tem nós próprios ([`Self::derived`]).
+    #[must_use]
+    pub fn is_derived(&self, id: VecPathId) -> bool {
+        self.derived.contains(&id)
     }
 
     /// As molduras cujo intervalo ABRE neste path — ou seja, as que **são** este path.

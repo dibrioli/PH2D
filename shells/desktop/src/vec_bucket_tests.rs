@@ -22,14 +22,31 @@ fn the_cache_key_follows_the_geometry_not_the_count() {
     assert_eq!(chave(&a), chave(&a.clone()), "a chave tem de ser estavel");
 }
 
-/// ⚠️ **A ALÇA entra na chave.** Um param de forma pode mover só as alças (a curva muda, as âncoras
-/// não) — e a face muda com ela.
+/// ⭐⭐⭐ **AS DUAS ALÇAS entram na chave** — a lei que o Enio nomeou em 2026-09-01:
+///
+/// > *"O nó de uma solda é um só para todas as linhas. As alças daquele nó devem servir
+/// > simultaneamente para o stroke e para os preenchimentos, senão é impossível que sejam
+/// > transformados juntos."*
+///
+/// ⛔⛔ **A 1.ª redacção deste gate media UMA das duas** (`out_handle`), e o produto tinha
+/// exactamente esse buraco: arrastar a alça de ENTRADA de um nó mudava o traço e o preenchimento
+/// **não sabia** — a chave do cache não via a mudança, a rede não era refeita, e a área ficava com
+/// a curva de antes. *Um gate que mede metade da população aprova a metade que não mediu.*
 #[test]
-fn the_key_sees_a_handle_move() {
-    let mut a = vec![(vec![v(0.0, 0.0), v(10.0, 0.0)], false)];
-    let antes = chave(&a);
-    a[0].0[0].out_handle = [3.0, 4.0];
-    assert_ne!(antes, chave(&a));
+fn the_key_sees_both_handles_move() {
+    let base = vec![(vec![v(0.0, 0.0), v(10.0, 0.0)], false)];
+    let antes = chave(&base);
+    let mut saida = base.clone();
+    saida[0].0[0].out_handle = [3.0, 4.0];
+    assert_ne!(antes, chave(&saida), "a alca de SAIDA nao entra na chave");
+    let mut entrada = base.clone();
+    entrada[0].0[1].in_handle = [7.0, -4.0];
+    assert_ne!(
+        antes,
+        chave(&entrada),
+        "a alca de ENTRADA nao entra na chave — o traco muda e o preenchimento fica com a curva \
+         de antes"
+    );
 }
 
 /// ⛔ **Um caminho ESCONDIDO não cerca nada** — ele estaria a preencher contra uma parede
@@ -145,4 +162,35 @@ fn the_recooked_area_comes_down_to_the_paths_own_space() {
         para_local(mundo.clone(), &ph2d_vec_scene::Xform::IDENTITY),
         Some(mundo)
     );
+}
+
+/// ⛔⛔ **O preenchimento é DERIVADO, e a vista di-lo** — a outra metade da lei do Enio
+/// (2026-09-01). Sem esta linha, os nós dele desenham-se e agarram-se: um segundo conjunto de
+/// alças empilhado sobre o das linhas que o produzem.
+#[test]
+fn a_bucket_fill_is_published_as_derived_and_is_not_pickable() {
+    use ph2d_ecs::{Name, SimWorld, Transform, VecBucketFill, VecPathRef};
+    let mut sim = SimWorld::default();
+    let mut map = crate::vec_entities::VecEntityMap::new();
+    let (parede, area) = (7u64, 9u64);
+    for (id, fill) in [(parede, false), (area, true)] {
+        let mut e = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, Name::new("P"), VecPathRef(id)));
+        if fill {
+            e.insert(VecBucketFill::new([0.0, 0.0]));
+        }
+        map.insert(id, e.id().to_bits());
+    }
+    let view = crate::vec_entities::view_state(&sim, &map);
+    assert!(
+        view.is_derived(area),
+        "o preenchimento nao foi publicado como derivado"
+    );
+    assert!(!view.is_derived(parede), "a parede nao pode ser derivada");
+    assert!(
+        !view.is_pickable(area),
+        "os nos do preenchimento continuam agarraveis"
+    );
+    assert!(view.is_pickable(parede), "a parede deixou de ser agarravel");
 }

@@ -82,3 +82,43 @@ fn the_overlay_matches_the_owner_not_just_the_index() {
         "comparar so' o indice acenderia tambem o no' 0 de B"
     );
 }
+
+/// ⛔⛔ **Uma forma DERIVADA não desenha nós** — a lei do Enio (2026-09-01):
+///
+/// > *"O nó de uma solda é um só para todas as linhas. As alças daquele nó devem servir
+/// > simultaneamente para o stroke e para os preenchimentos, senão é impossível que sejam
+/// > transformados juntos."*
+///
+/// Um preenchimento do balde tem a MESMA fronteira que os traços que o cercam; alças próprias ali
+/// seriam um **segundo** conjunto empilhado sobre o primeiro.
+#[test]
+fn a_derived_shape_draws_no_nodes() {
+    let mut scene = ph2d_vec_scene::VecScene::new();
+    let id = scene.push_path(ph2d_vec_scene::rectangle([0.0, 0.0], [10.0, 10.0]));
+    let contados = |view: &ph2d_vec_scene::VecViewState| {
+        PICKED_DRAWN.with(|c| c.set(0));
+        let mut alvo = ph2d_vector::VectorScene::new();
+        super::draw_overlays(
+            &scene,
+            view,
+            Some(id),
+            &[id],
+            &[(id, 0)],
+            &ph2d_vec_scene::VecXforms::new(),
+            ph2d_vector::Affine::IDENTITY,
+            &mut alvo,
+        );
+        PICKED_DRAWN.with(std::cell::Cell::get)
+    };
+    let comum = ph2d_vec_scene::VecViewState::default();
+    assert!(contados(&comum) > 0, "controle: um path comum desenha nos");
+    let derivada = ph2d_vec_scene::VecViewState {
+        derived: vec![id],
+        ..Default::default()
+    };
+    assert_eq!(
+        contados(&derivada),
+        0,
+        "a forma derivada desenhou nos — eles empilham-se sobre os do traco que a produz"
+    );
+}

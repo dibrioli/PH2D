@@ -185,6 +185,11 @@ pub(crate) fn view_state(sim: &SimWorld, map: &VecEntityMap) -> VecViewState {
         if ph2d_ecs::is_locked_for_edit(w, e) {
             view.locked.push(id);
         }
+        // ⭐ **O preenchimento do balde é DERIVADO** (plano 40): a área é re-cozida a partir das
+        // linhas, então ela não tem nós próprios para agarrar — as alças do nó são as do traço.
+        if w.get::<ph2d_ecs::VecBucketFill>(e).is_some() {
+            view.derived.push(id);
+        }
     }
     view
 }

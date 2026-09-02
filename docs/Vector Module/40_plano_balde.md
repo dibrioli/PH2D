@@ -154,6 +154,24 @@ com o **mutante compilado** e a fonte curada no disco, e as corridas seguintes m
 Sintoma: uma função com gate **verde na sua própria crate** devolvia o comportamento **antigo** a
 quem dependia dela. ⇒ o arnês faz `touch` depois de restaurar.
 
+### 4. ⛔ E a área re-cozida saía DESLOCADA — pelo próprio centro
+
+> Enio, 2026-09-01 (com foto): *"o preenchimento está nascendo deslocado para fora do stroke."*
+
+⚠️⚠️ **A rede fala MUNDO e o documento guarda LOCAL** — a regra-mãe do módulo, e o re-cozimento
+esquecia-a. A forma **nasce certa** (uma entidade nova está na identidade); no quadro seguinte o
+`settle_origins` muda a **origem** dela para o centro da própria caixa, e a partir daí escrever
+mundo naquele `VecPath` desloca-o **pelo centro dele**.
+
+⭐ **A foto confirma o mecanismo antes de uma linha de código:** cada área estava desviada por um
+vector DIFERENTE, e cada vector era o centro da sua própria região — a de cima-esquerda para cima e
+para a esquerda, a da direita para a direita, a de baixo para baixo. *Um desvio constante seria uma
+câmara; um desvio por-forma é a pose de cada uma.*
+
+⇒ `para_local` desce a área ao espaço do caminho antes de a escrever. ⛔ O `apply_bucket` **não**
+estava errado: ali a entidade ainda nem existe — e é por isso que o defeito aparecia *"ao nascer"*,
+que é o primeiro re-cozimento.
+
 ## §8 — ⏳ Nomeado e fora da v1
 
 - **Vazamento**: se o clique cai na face externa (a região não fecha), o balde **recusa e diz

@@ -67,6 +67,33 @@ fn contornos_mundo(
     out
 }
 
+/// ⭐⭐⭐ **A ÁREA RE-COZIDA DESCE AO ESPAÇO DO CAMINHO.**
+///
+/// Report do Enio (2026-09-01, com foto): *"o preenchimento está nascendo deslocado para fora do
+/// stroke"*.
+///
+/// ⚠️⚠️ **A rede fala MUNDO e o documento guarda LOCAL** — a regra-mãe do módulo. A forma nasce
+/// certa porque uma entidade nova está na identidade; mas no quadro seguinte o `settle_origins`
+/// muda a **origem** dela para o centro da própria caixa (e recua a geometria o mesmo tanto), e a
+/// partir daí escrever mundo naquele `VecPath` desloca-o **pelo centro dele**. Era por isso que
+/// cada área saía com um desvio DIFERENTE — o desvio era o centro de cada uma.
+///
+/// ⛔ **Não é o `apply_bucket` que estava errado**: ali a entidade ainda nem existe. É o
+/// RE-COZIMENTO, que só corre depois de a pose ter sido assentada — e é por isso que o defeito
+/// aparecia *"ao nascer"*: o primeiro re-cozimento acontece no quadro seguinte ao clique.
+fn para_local(verts: Vec<VecVertex>, xf: &ph2d_vec_scene::Xform) -> Option<Vec<VecVertex>> {
+    if xf.is_identity() {
+        return Some(verts);
+    }
+    let inv = xf.inverse()?;
+    let mut p = VecPath {
+        verts,
+        ..VecPath::default()
+    };
+    ph2d_vec_scene::bake_xform(&mut p, &inv);
+    Some(p.verts)
+}
+
 /// ⭐⭐⭐ **AS DUAS RAZÕES para um contorno não ser PAREDE**, numa porta só.
 ///
 /// ⚠️ **Ela existe porque um fecho escrito no sítio da chamada não é gateável**: a 1.ª redacção
@@ -182,7 +209,12 @@ impl crate::App {
             .filter_map(|(id, _, seed)| {
                 let f = rede.face_em(*seed)?;
                 let g = rede.geometria(&f);
-                (g.len() >= 2).then_some((*id, g))
+                if g.len() < 2 {
+                    return None;
+                }
+                // ⚠️ **A área desce ao espaço do CAMINHO** — ver [`para_local`]. Escrever mundo num
+                // caminho já assentado desloca-o pelo centro dele.
+                para_local(g, &ph2d_vec_scene::xform_of(&xf, *id)).map(|v| (*id, v))
             })
             .collect();
         if let Some(gfx) = self.gfx.as_mut() {

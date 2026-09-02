@@ -153,6 +153,13 @@ fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
         BUCKET[f..fim].contains("p.verts = verts;"),
         "o upkeep calcula a area nova e nao a ESCREVE — o preenchimento ficaria parado"
     );
+    // ⚠️ **E ela DESCE ao espaço do caminho antes de ser escrita.** A rede fala MUNDO; um
+    // `VecPath` já assentado tem pose própria, e escrever mundo nele desloca-o pelo centro dele —
+    // o report de 2026-09-01 (*"nascendo deslocado para fora do stroke"*).
+    assert!(
+        BUCKET[f..fim].contains("para_local(g, &ph2d_vec_scene::xform_of(&xf, *id))"),
+        "a area re-cozida e' escrita em MUNDO num caminho que tem pose — ela sai deslocada"
+    );
     // ⚠️ E a exclusão passa pela porta ÚNICA, com os DOIS termos: um fecho escrito à mão aqui foi
     // o que deixou a mutação `o-fill-entra-na-rede` sobreviver.
     assert!(

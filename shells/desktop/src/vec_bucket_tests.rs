@@ -118,3 +118,31 @@ fn a_bucket_fill_is_not_a_wall() {
         "a parede que sobrou tem de ser a linha ABERTA"
     );
 }
+
+/// ⭐⭐⭐ **A ÁREA RE-COZIDA DESCE AO ESPAÇO DO CAMINHO** (report do Enio, 2026-09-01, com foto:
+/// *"o preenchimento está nascendo deslocado para fora do stroke"*).
+///
+/// ⚠️ A rede fala MUNDO; o documento guarda LOCAL. Depois de o `settle_origins` mudar a origem da
+/// entidade para o centro da caixa dela, escrever mundo naquele `VecPath` desloca-o **pelo centro
+/// dele** — e era por isso que cada área saía com um desvio DIFERENTE.
+#[test]
+fn the_recooked_area_comes_down_to_the_paths_own_space() {
+    let mundo = vec![v(100.0, 50.0), v(140.0, 50.0), v(140.0, 90.0)];
+    // A pose que o assentamento deixa: a origem no centro da caixa.
+    let xf = ph2d_vec_scene::Xform([1.0, 0.0, 0.0, 1.0, 120.0, 70.0]);
+    let local = para_local(mundo.clone(), &xf).expect("a pose e' invertivel");
+    assert_eq!(
+        local[0].anchor,
+        [-20.0, -20.0],
+        "a area nao desceu ao local"
+    );
+    // …e de volta ao mundo pela pose, ela está EXACTAMENTE onde a rede a pôs.
+    for (l, m) in local.iter().zip(&mundo) {
+        assert_eq!(xf.apply(l.anchor), m.anchor, "o ida-e-volta nao fecha");
+    }
+    // ⚠️ Identidade é o caminho comum (a forma acabada de nascer) e não paga nada.
+    assert_eq!(
+        para_local(mundo.clone(), &ph2d_vec_scene::Xform::IDENTITY),
+        Some(mundo)
+    );
+}

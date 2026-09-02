@@ -228,6 +228,40 @@ afastada da borda). Assim a parede tem de varrer o **miolo** para a perder — q
 de facto deixou de existir. O gate mede os dois lados: com re-semeadura a varredura inteira
 sobrevive; sem ela, não.
 
+### 7. ⛔⛔ *"…o preenchimento AINDA some"* (2026-09-02) — e a causa era uma regressão MINHA
+
+A fixtura é a foto dele: um rectângulo arredondado e uma curva que sai do lado direito e volta a
+ele, fechando uma **bolsa**. Varrida a posição da ponta da curva à volta da parede:
+
+| ponta em `x` (parede em `100`) | a bolsa é região? |
+|---|---|
+| `100,00` | sim |
+| `100,05` · `100,5` · `101` · `102` | **não** |
+| `99,9` | não — e o rectângulo **funde-se** com a bolsa |
+
+⚠️⚠️ **Uma ponta que POUSA numa parede (a junção em «T») só contava como toque a menos da flecha
+da parede** — e a flecha, corrigida no dia anterior para medir só o desvio perpendicular, é **zero
+numa recta**. Meio pixel fora, e a bolsa abria; mexer no nó fazia a topologia **piscar** entre «uma
+região» e «duas» conforme a ponta oscilava. *A flecha antiga, errada, dava `0,55` de folga por
+acidente — e era esse acidente que segurava as junções em T.* Explica as duas fotos de ontem: na
+primeira o vão estava aberto e um preenchimento cobria rectângulo **e** bolsa como uma região só;
+na segunda a ponta encostou, a região partiu-se, e o preenchimento ficou com a metade da semente.
+
+⇒ **`aproximar_pontas`**: uma ponta solta a menos de `folga` de uma parede (ou de outra ponta) vai
+até lá, com as alças a acompanhar, **antes** de a rede ser cortada — e daí em diante a rede é
+exacta. É o *Gap Detection* do Illustrator na forma mais simples que fecha o vão: a projecção sobre a
+parede mais próxima.
+
+⭐ **A folga é do DOCUMENTO, nunca do zoom** — a largura do traço mais grosso entre as paredes. ⛔
+O ímã do Soldar (pixels de tela) serve a um verbo de um clique; um preenchimento é **VIVO**, e uma
+folga que dependesse do zoom abriria e fecharia regiões ao rodar a roda do rato. *Se a tinta da linha
+cobre o vão, o olho já vê as duas coladas.* A folga entra na chave do cache (ela entra na topologia).
+
+⏳ Uma ponta que pousa no **próprio** contorno (o «P» num traço só) fica de fora: ela está a
+distância zero do primeiro segmento dela própria, e separar o toque do trivial pede uma régua de
+arco que esta wave não mediu. ⏳ E o Soldar ainda não leva uma ponta até à parede (só até outra
+ponta) — a mesma lei serviria lá.
+
 ## §8 — ⏳ Nomeado e fora da v1
 
 - **Vazamento**: se o clique cai na face externa (a região não fecha), o balde **recusa e diz

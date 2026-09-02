@@ -18,8 +18,16 @@ fn v(x: f64, y: f64) -> VecVertex {
 fn the_cache_key_follows_the_geometry_not_the_count() {
     let a = vec![(vec![v(0.0, 0.0), v(10.0, 0.0)], false)];
     let b = vec![(vec![v(0.0, 0.0), v(10.0, 0.5)], false)];
-    assert_ne!(chave(&a), chave(&b), "mover uma ponta nao mudou a chave");
-    assert_eq!(chave(&a), chave(&a.clone()), "a chave tem de ser estavel");
+    assert_ne!(
+        chave(&a, 0.0),
+        chave(&b, 0.0),
+        "mover uma ponta nao mudou a chave"
+    );
+    assert_eq!(
+        chave(&a, 0.0),
+        chave(&a.clone(), 0.0),
+        "a chave tem de ser estavel"
+    );
 }
 
 /// ⭐⭐⭐ **AS DUAS ALÇAS entram na chave** — a lei que o Enio nomeou em 2026-09-01:
@@ -35,15 +43,19 @@ fn the_cache_key_follows_the_geometry_not_the_count() {
 #[test]
 fn the_key_sees_both_handles_move() {
     let base = vec![(vec![v(0.0, 0.0), v(10.0, 0.0)], false)];
-    let antes = chave(&base);
+    let antes = chave(&base, 0.0);
     let mut saida = base.clone();
     saida[0].0[0].out_handle = [3.0, 4.0];
-    assert_ne!(antes, chave(&saida), "a alca de SAIDA nao entra na chave");
+    assert_ne!(
+        antes,
+        chave(&saida, 0.0),
+        "a alca de SAIDA nao entra na chave"
+    );
     let mut entrada = base.clone();
     entrada[0].0[1].in_handle = [7.0, -4.0];
     assert_ne!(
         antes,
-        chave(&entrada),
+        chave(&entrada, 0.0),
         "a alca de ENTRADA nao entra na chave — o traco muda e o preenchimento fica com a curva \
          de antes"
     );

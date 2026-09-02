@@ -79,8 +79,15 @@ pub struct Face {
 /// **A rede de uma lista de contornos** — já cozidos e no MUNDO.
 ///
 /// Cada contorno é `(vértices, fecha?)`. Contornos degenerados são ignorados.
+///
+/// `folga` é o **vão que o artista não desenhou de propósito**, em unidades de MUNDO: uma ponta
+/// solta a menos disto de uma parede (ou de outra ponta) é levada até lá ANTES de a rede ser
+/// cortada — ver [`aproximar_pontas`]. `0` desliga.
 #[must_use]
-pub fn rede(contornos: &[(Vec<VecVertex>, bool)]) -> Rede {
+pub fn rede(contornos: &[(Vec<VecVertex>, bool)], folga: f64) -> Rede {
+    let mut contornos: Vec<(Vec<VecVertex>, bool)> = contornos.to_vec();
+    aproximar_pontas(&mut contornos, folga);
+    let contornos: &[(Vec<VecVertex>, bool)] = &contornos;
     let esc = escala(contornos);
     // ── 1. CORTAR nos cruzamentos.
     let mut geom: Vec<(Vec<VecVertex>, bool)> = Vec::new();
@@ -154,6 +161,117 @@ pub fn rede(contornos: &[(Vec<VecVertex>, bool)]) -> Rede {
         .map(|(v, _)| detection_polyline(v, false))
         .collect();
     descartar_duplicados(Rede { arcos, nos, poly }, tol)
+}
+
+/// ⭐⭐⭐ **AS PONTAS SOLTAS VÃO ATÉ AO QUE O ARTISTA QUIS TOCAR** — antes de a rede ser cortada.
+///
+/// # O report (Enio, 2026-09-02): *"a depender da posição dos pontos o preenchimento ainda some"*
+///
+/// ⚠️⚠️ **Medido, e a causa era uma REGRESSÃO minha.** Uma ponta que POUSA numa parede (a junção em
+/// «T» — a curva que fecha a bolsa da foto dele) só contava como toque se estivesse a menos da
+/// **flecha da parede** dela. E a flecha, corrigida no dia anterior para medir só o desvio
+/// perpendicular, é **ZERO numa recta**: a ponta de uma curva a `0,05` de uma aresta recta — meio
+/// pixel — deixou de tocar nela. A bolsa abria, a região fundia-se com o exterior ou com a vizinha, e
+/// mexer no nó fazia a topologia **piscar** entre «uma região» e «duas» conforme a ponta oscilava
+/// à volta da parede. *A flecha antiga, errada, dava `0,55` de folga por acidente — e era esse
+/// acidente que segurava as junções em T.*
+///
+/// # A lei
+///
+/// > Uma ponta solta a menos de `folga` de uma parede (ou de outra ponta solta) **é** o toque que
+/// > o artista quis — ela vai até lá, com as alças a acompanhar, e daí em diante a rede é exacta.
+///
+/// É o *Gap Detection* do Illustrator (um vão em unidades do DOCUMENTO, nunca de tela), feito na
+/// forma mais simples que o fecha: a projecção sobre a parede mais próxima. ⛔ **Não é o ímã do
+/// zoom** (o do Soldar): um preenchimento é VIVO, e uma topologia que dependesse do zoom abriria e
+/// fecharia regiões ao rodar a roda do rato.
+///
+/// ⚠️ Duas pontas que se encontram vão as duas para o **meio** (a mesma escolha do Soldar — a
+/// junta não pode depender da ordem). ⚠️ As duas pontas do MESMO contorno também se colam: um anel
+/// desenhado à mão com um vão pequeno é um anel.
+///
+/// ⏳ Uma ponta que pousa no **próprio** contorno (o «P» desenhado num traço só) fica de fora: a
+/// ponta está a distância zero do primeiro segmento dela própria, e separar o toque do trivial pede
+/// uma régua de arco que esta wave não mediu.
+pub fn aproximar_pontas(contornos: &mut [(Vec<VecVertex>, bool)], folga: f64) {
+    if folga <= 0.0 {
+        return;
+    }
+    let f2 = folga * folga;
+    let polys: Vec<Vec<[f64; 2]>> = contornos
+        .iter()
+        .map(|(v, c)| detection_polyline(v, *c))
+        .collect();
+    let mut pontas: Vec<(usize, usize)> = Vec::new();
+    for (i, (v, c)) in contornos.iter().enumerate() {
+        if !*c && v.len() >= 2 {
+            pontas.push((i, 0));
+            pontas.push((i, v.len() - 1));
+        }
+    }
+    let mut feito = vec![false; pontas.len()];
+    for a in 0..pontas.len() {
+        if feito[a] {
+            continue;
+        }
+        let (ia, va) = pontas[a];
+        let pa = contornos[ia].0[va].anchor;
+        // (1) Outra PONTA solta dentro da folga: as duas vão para o meio.
+        let mut irma: Option<(usize, f64)> = None;
+        for (b, done) in feito.iter().enumerate().skip(a + 1) {
+            if *done {
+                continue;
+            }
+            let (ib, vb) = pontas[b];
+            let pb = contornos[ib].0[vb].anchor;
+            let d = [pa[0] - pb[0], pa[1] - pb[1]];
+            let d2 = d[0].mul_add(d[0], d[1] * d[1]);
+            if d2 <= f2 && irma.is_none_or(|(_, m)| d2 < m) {
+                irma = Some((b, d2));
+            }
+        }
+        if let Some((b, _)) = irma {
+            let (ib, vb) = pontas[b];
+            let pb = contornos[ib].0[vb].anchor;
+            let meio = [(pa[0] + pb[0]) * 0.5, (pa[1] + pb[1]) * 0.5];
+            weld::mover_ponta(&mut contornos[ia].0[va], meio);
+            weld::mover_ponta(&mut contornos[ib].0[vb], meio);
+            feito[a] = true;
+            feito[b] = true;
+            continue;
+        }
+        // (2) A PAREDE mais próxima dentro da folga: a ponta vai até ela.
+        let mut alvo: Option<([f64; 2], f64)> = None;
+        for (j, poly) in polys.iter().enumerate() {
+            if j == ia {
+                continue;
+            }
+            for w in poly.windows(2) {
+                let (q, d) = projectar(pa, w[0], w[1]);
+                if d * d <= f2 && alvo.is_none_or(|(_, m)| d < m) {
+                    alvo = Some((q, d));
+                }
+            }
+        }
+        if let Some((q, _)) = alvo {
+            weld::mover_ponta(&mut contornos[ia].0[va], q);
+            feito[a] = true;
+        }
+    }
+}
+
+/// O ponto do SEGMENTO `a..b` mais próximo de `p`, e a distância até ele.
+fn projectar(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> ([f64; 2], f64) {
+    let ab = [b[0] - a[0], b[1] - a[1]];
+    let ap = [p[0] - a[0], p[1] - a[1]];
+    let len2 = ab[0].mul_add(ab[0], ab[1] * ab[1]);
+    let t = if len2 <= f64::EPSILON {
+        0.0
+    } else {
+        (ap[0].mul_add(ab[0], ap[1] * ab[1]) / len2).clamp(0.0, 1.0)
+    };
+    let q = [a[0] + t * ab[0], a[1] + t * ab[1]];
+    (q, (p[0] - q[0]).hypot(p[1] - q[1]))
 }
 
 /// ⛔⛔ **DOIS ARCOS SOBREPOSTOS destroem o passeio — e não só a região deles.**

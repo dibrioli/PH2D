@@ -163,6 +163,23 @@ fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
     // ⭐ **E a semente RE-SEMEIA-SE no ponto mais fundo da face** (report de 2026-09-01: *"a
     // depender da posição dos pontos o preenchimento some"*): o clique cai onde o dedo caiu, e uma
     // semente encostada à borda é perdida pela primeira parede que passa por cima dela.
+    // ⭐ **E a folga vem do DOCUMENTO, nunca do zoom** (report de 2026-09-02): um vão em pixels de
+    // tela abriria e fecharia regiões ao rodar a roda do rato, porque o preenchimento é VIVO.
+    assert!(
+        BUCKET[f..fim].contains("let folga = folga_do_documento(&gfx.vec_scene, &xf, &fora);"),
+        "a folga da rede nao vem do documento — ou nao existe, e uma ponta a meio pixel da parede \
+         abre a regiao"
+    );
+    assert!(
+        !BUCKET[f..fim].contains("vec_px_to_world")
+            && !BUCKET[f..fim].contains("vec_weld_tolerance"),
+        "a folga do preenchimento VIVO nao pode depender do zoom"
+    );
+    assert!(
+        BUCKET[f..fim].contains("chave(&contornos, folga)"),
+        "a folga entra na topologia e nao entra na chave do cache — a rede ficaria velha ao mudar \
+         a largura de um traco"
+    );
     assert!(
         BUCKET[f..fim].contains("rede.interior_point(&f)"),
         "a semente nao e' re-semeada — ela fica colada ao ponto do clique e perde-se"
@@ -212,7 +229,11 @@ fn the_network_is_cached_not_rebuilt_every_frame() {
         "if self.vec_bucket_cache.as_ref().is_some_and(|c| c.chave == k) {",
         "o vec_bucket",
     );
-    let monta = at(BUCKET, "ph2d_vec_fill::rede(&contornos)", "o vec_bucket");
+    let monta = at(
+        BUCKET,
+        "ph2d_vec_fill::rede(&contornos, folga)",
+        "o vec_bucket",
+    );
     assert!(
         chave < monta,
         "a rede e' montada ANTES da comparacao de chave — isso e' montar por quadro, e custa \

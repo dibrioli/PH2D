@@ -108,9 +108,34 @@ fn fora_da_rede(escondido: bool, e_preenchimento: bool) -> bool {
     escondido || e_preenchimento
 }
 
-/// A chave do documento: o conteúdo das âncoras e das alças, e não a contagem.
-fn chave(contornos: &[(Vec<VecVertex>, bool)]) -> u64 {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+/// ⭐⭐⭐ **O VÃO que o artista não desenhou de propósito**, em unidades de MUNDO — a largura do
+/// traço mais grosso entre as paredes.
+///
+/// Report do Enio (2026-09-02): *"a depender da posição dos pontos o preenchimento ainda some"*.
+/// Uma ponta pousada a meio pixel de uma parede não contava como toque, e a região abria.
+///
+/// ⚠️ **Derivada do DOCUMENTO, nunca do zoom.** É o *Gap Detection* do Illustrator (um vão em
+/// pontos, não em pixels de tela), e a razão é que o preenchimento é VIVO: uma folga que dependesse
+/// do zoom abriria e fecharia regiões ao rodar a roda do rato. ⚠️ A largura do traço é a régua
+/// honesta que o desenho oferece — *se a tinta da linha cobre o vão, o olho já vê as duas coladas*.
+/// ⛔ É por isso que ela DIVERGE do ímã do Soldar (`vec_weld_tolerance`, em pixels de tela): aquele
+/// é um verbo de um clique, cujo resultado o artista vê e desfaz; este corre a cada quadro.
+fn folga_do_documento(scene: &VecScene, xforms: &VecXforms, fora: &dyn Fn(u64) -> bool) -> f64 {
+    scene
+        .paths()
+        .iter()
+        .filter(|p| !fora(p.id))
+        .filter_map(|p| {
+            let w = p.stroke.as_ref()?.width;
+            Some(w * ph2d_vec_scene::xform_of(xforms, p.id).mean_scale())
+        })
+        .fold(0.0_f64, f64::max)
+}
+
+/// A chave do documento: o conteúdo das âncoras e das alças, e não a contagem — **e a folga**, que
+/// entra na topologia.
+fn chave(contornos: &[(Vec<VecVertex>, bool)], folga: f64) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325 ^ folga.to_bits();
     for (verts, closed) in contornos {
         h = h.wrapping_mul(0x0100_0000_01b3) ^ u64::from(*closed);
         for v in verts {
@@ -206,14 +231,14 @@ impl crate::App {
         let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
         let vista = crate::vec_entities::view_state(&gfx.sim, &self.vec_entities);
         let so_fill: std::collections::BTreeSet<u64> = fills.iter().map(|(id, _, _)| *id).collect();
-        let contornos = contornos_mundo(&gfx.vec_scene, &xf, &|id| {
-            fora_da_rede(vista.is_hidden(id), so_fill.contains(&id))
-        });
-        let k = chave(&contornos);
+        let fora = |id: u64| fora_da_rede(vista.is_hidden(id), so_fill.contains(&id));
+        let contornos = contornos_mundo(&gfx.vec_scene, &xf, &fora);
+        let folga = folga_do_documento(&gfx.vec_scene, &xf, &fora);
+        let k = chave(&contornos, folga);
         if self.vec_bucket_cache.as_ref().is_some_and(|c| c.chave == k) {
             return; // nada mudou: nem rede nova, nem re-cozedura
         }
-        let rede = ph2d_vec_fill::rede(&contornos);
+        let rede = ph2d_vec_fill::rede(&contornos, folga);
         // ⭐⭐⭐ **RE-COZER os preenchimentos**: a receita é o ponto, e a área é a resposta de hoje.
         //
         // ⚠️ **Uma semente que deixou de cair em face nenhuma CONGELA a forma onde ela está**, em

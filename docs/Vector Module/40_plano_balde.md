@@ -228,39 +228,56 @@ afastada da borda). Assim a parede tem de varrer o **miolo** para a perder — q
 de facto deixou de existir. O gate mede os dois lados: com re-semeadura a varredura inteira
 sobrevive; sem ela, não.
 
-### 7. ⛔⛔ *"…o preenchimento AINDA some"* (2026-09-02) — e a causa era uma regressão MINHA
+### 7. ⛔⛔⛔ A FOLGA DE VÃO foi construída, shipada e **REVERTIDA** (2026-09-02)
 
-A fixtura é a foto dele: um rectângulo arredondado e uma curva que sai do lado direito e volta a
-ele, fechando uma **bolsa**. Varrida a posição da ponta da curva à volta da parede:
+> Enio, 2026-09-02, sobre o report *"a depender da posição dos pontos o preenchimento ainda some"*:
+> depois da cura — **"o comportamento piorou"**. ⇒ revertida em `e5b2fb0a1` (revert), com a árvore de
+> volta ao estado de `5f80b6fef`.
 
-| ponta em `x` (parede em `100`) | a bolsa é região? |
+**O que foi medido e continua verdade** (a fixtura é a foto dele: rectângulo arredondado + curva que
+sai do lado direito e volta a ele, fechando uma bolsa; varre-se a ponta à volta da parede `x = 100`):
+
+| ponta em `x` | a bolsa é região? |
 |---|---|
 | `100,00` | sim |
 | `100,05` · `100,5` · `101` · `102` | **não** |
 | `99,9` | não — e o rectângulo **funde-se** com a bolsa |
 
-⚠️⚠️ **Uma ponta que POUSA numa parede (a junção em «T») só contava como toque a menos da flecha
-da parede** — e a flecha, corrigida no dia anterior para medir só o desvio perpendicular, é **zero
-numa recta**. Meio pixel fora, e a bolsa abria; mexer no nó fazia a topologia **piscar** entre «uma
-região» e «duas» conforme a ponta oscilava. *A flecha antiga, errada, dava `0,55` de folga por
-acidente — e era esse acidente que segurava as junções em T.* Explica as duas fotos de ontem: na
-primeira o vão estava aberto e um preenchimento cobria rectângulo **e** bolsa como uma região só;
-na segunda a ponta encostou, a região partiu-se, e o preenchimento ficou com a metade da semente.
+⚠️ A causa daquele quadro é real: uma ponta que POUSA numa parede (a junção em «T») só conta como
+toque a menos da **flecha** da parede, e a flecha — corrigida em 01/09 para medir só o desvio
+perpendicular — é **zero numa recta**. *A flecha antiga, errada, dava `0,55` de folga por acidente, e
+era esse acidente que segurava as junções em T.*
 
-⇒ **`aproximar_pontas`**: uma ponta solta a menos de `folga` de uma parede (ou de outra ponta) vai
-até lá, com as alças a acompanhar, **antes** de a rede ser cortada — e daí em diante a rede é
-exacta. É o *Gap Detection* do Illustrator na forma mais simples que fecha o vão: a projecção sobre a
-parede mais próxima.
+**A cura tentada:** `aproximar_pontas` — toda ponta solta a menos de `folga` de uma parede (ou de
+outra ponta) era **movida** até lá antes de a rede ser cortada, com `folga` = a **largura do traço
+mais grosso do documento**.
 
-⭐ **A folga é do DOCUMENTO, nunca do zoom** — a largura do traço mais grosso entre as paredes. ⛔
-O ímã do Soldar (pixels de tela) serve a um verbo de um clique; um preenchimento é **VIVO**, e uma
-folga que dependesse do zoom abriria e fecharia regiões ao rodar a roda do rato. *Se a tinta da linha
-cobre o vão, o olho já vê as duas coladas.* A folga entra na chave do cache (ela entra na topologia).
+#### ⛔ Por que ela piorou, e o que a minha bancada não podia ver
 
-⏳ Uma ponta que pousa no **próprio** contorno (o «P» num traço só) fica de fora: ela está a
-distância zero do primeiro segmento dela própria, e separar o toque do trivial pede uma régua de
-arco que esta wave não mediu. ⏳ E o Soldar ainda não leva uma ponta até à parede (só até outra
-ponta) — a mesma lei serviria lá.
+⚠️⚠️ **A cena de smoke NUNCA dispara a regra.** Medido nas 10 pontas soltas dela: a parede mais
+próxima de qualquer uma está a **30 unidades**, e a folga do documento é `3`. Com `folga` até `14`,
+**zero** pontas se moveriam. *Uma fixtura em que a feature nunca dispara não pode mostrar o que ela
+parte* — o gate ficou verde sobre um produto que muda o desenho do artista noutro sítio.
+
+**Os quatro perigos, nomeados:**
+
+1. ⛔ **A folga é o MÁXIMO do documento inteiro.** Um traço grosso num canto define a tolerância de
+   toda ponta do desenho. Num desenho denso (o dele), isso é uma regra global com raio grande.
+2. ⛔ **Ela MOVE geometria.** A fronteira do preenchimento deixa de coincidir com o traço que o
+   artista vê — até uma largura de traço fora.
+3. ⛔ **A parede mais próxima ganha**, e à escala da largura do traço é fácil a mais próxima ser a
+   errada: a ponta cola-se a outra linha que passava por perto.
+4. ⛔ **Duas pontas soltas dentro da folga vão para o meio**, fechando um vão que o artista podia
+   querer aberto — e juntando duas regiões numa.
+
+#### ⏳ O que fica desenhado, e não construído
+
+A saída estreita **não move geometria nenhuma**: usar a folga só para (a) reconhecer o toque em «T»
+(`trim_tool::touches`, cuja tolerância é hoje a flecha) e (b) fundir a IDENTIDADE do nó
+(`cluster_endpoints`) — os arcos ficam exactamente onde estão e só o **grafo** muda. A fronteira
+emitida teria um salto invisível (`0,05`) em cada junção, e nada no traço se mexe.
+⚠️ **E a folga precisa de uma régua que a bancada consiga disparar**: uma fixtura com pontas a
+`0,05`–`2` de uma parede tem de entrar no corpus **antes** de a regra voltar.
 
 ## §8 — ⏳ Nomeado e fora da v1
 

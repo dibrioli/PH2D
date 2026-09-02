@@ -102,7 +102,7 @@ mod tests {
     /// (`CLAUDE.md` §5.0). Cada promessa da mensagem é uma linha deste gate.
     #[test]
     fn the_three_groups_of_the_scene_do_what_the_message_promises() {
-        let r = ph2d_vec_fill::rede(&super::grupos(), 0.0);
+        let r = ph2d_vec_fill::rede(&super::grupos());
         // 1 — o miolo das quatro linhas é um quadrado de 80×80.
         let miolo = r
             .face_em([-360.0, -20.0])

@@ -67,3 +67,4 @@ metadata:
 - [[feedback_a_state_nobody_writes_and_someone_reads_is_an_if_with_a_dead_side]] — estado sem escritor: a marca em falta é o sintoma barato; o ramo morto de quem o lê é o caro
 - [[feedback_a_symptom_remedy_is_cured_by_the_right_input_not_by_deletion]] — remédio-de-sintoma cura-se dando a ENTRADA certa: inerte onde a causa caiu, vivo onde ela fica (2 gates + controlo)
 
+- [[feedback_a_textual_census_that_cannot_tell_prose_from_code_lies_both_ways]] — censo de fonte que não separa prosa de código acusa a prosa e absolve o código

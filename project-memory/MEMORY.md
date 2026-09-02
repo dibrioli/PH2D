@@ -103,6 +103,7 @@
 - [Costura de UI (15)](reference_topic_ui_seam_discipline.md) — ⭐ [o hit rect é também o DENOMINADOR](feedback_a_hit_rect_is_also_the_denominator_not_only_the_target.md) · [seção partilhada regride quem chegou primeiro](feedback_a_shared_section_header_is_a_regression_to_whoever_arrived_first.md)
 - [Ofício de gate — mais 6 (mutação que não mata · mudar o modelo · metade justa · feito≠entregue · marca≠fim · 2 falhas refutam a família)](reference_topic_gate_discipline.md)
 - [Gate que pergunta ao ESTADO do produtor é cego a um SEGUNDO produtor ao lado — pergunte à SAÍDA](feedback_a_gate_that_asks_the_producers_state_is_blind_to_a_second_producer.md)
+- [Ofício de gate — mais 1 (censo textual que não separa prosa de código mente nos DOIS sentidos)](reference_topic_gate_discipline.md)
 - [Provas de mutação (7) — 3 controles no arnês](reference_topic_mutation_proofs.md) · [escrevo a guarda certa e não a gateio (3×)](feedback_i_write_the_right_guard_and_do_not_gate_it.md) · [filtro que casa ZERO imprime «SOBREVIVEU»](feedback_a_mutation_proof_needs_a_control_on_its_own_filter.md)
 - [Oráculo (10)](reference_topic_oracle_discipline.md) · [fixture (6)](reference_topic_fixture_discipline.md) · [onde os objetos NASCEM](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md)
 - [Protocolo de auditoria (6)](reference_topic_audit_protocol.md)

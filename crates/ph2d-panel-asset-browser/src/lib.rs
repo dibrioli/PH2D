@@ -35,6 +35,8 @@ mod paint;
 /// ⭐⭐ A COLUNA DE CATÁLOGOS (wave A3) — irmão por assunto do [`paint`].
 mod paint_catalog;
 mod paint_catalog_rename;
+/// ⭐⭐ A faixa da pergunta de relação (D9) — irmã por assunto do [`paint`], ver o cabeçalho de lá.
+mod paint_related;
 /// ⭐⭐ A miniatura de um cartão e o memo de textura que ela obriga — irmão por assunto do
 /// [`paint`], ver o cabeçalho de lá.
 mod paint_thumb;
@@ -49,7 +51,8 @@ pub use paint::{default_rect, probe_query};
 pub use state::{
     AssetBrowserState, CELL_DEFAULT_PX, CELL_MAX_PX, CELL_MIN_PX, CatalogPick, CatalogRename,
     catalog_row_pick, last_content_h, last_visible_h, payload_at, probe_catalogs,
-    probe_first_texture, probe_index_summary, set_current_catalogs, set_current_index,
+    probe_first_texture, probe_index_summary, probe_painted_at, set_current_catalogs,
+    set_current_index,
 };
 
 use ph2d_a11y::NodeId;

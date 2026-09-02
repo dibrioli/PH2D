@@ -8,7 +8,7 @@
 use crate::AssetBrowserPanel;
 use crate::ids;
 use crate::state::AssetBrowserState;
-use ph2d_asset_index::{AssetRef, SortBy};
+use ph2d_asset_index::{AssetRef, Relation, SortBy};
 use ph2d_editor_core::action_bus::{AssetCardAction, EditorAction};
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::interaction::drag_payload::DragPayload;
@@ -94,6 +94,46 @@ pub(crate) fn apply_event(
             Some(AssetRef::Texture { .. }) | None => EventOutcome::Ignored,
         },
 
+        // ── ⭐⭐ AS DUAS PERGUNTAS DE RELAÇÃO (D9) ─────────────────────────────────────────────
+        //
+        // ⚠️⚠️ **Elas saem do MESMO menu dos três verbos e NÃO vão ao barramento**, e a fronteira
+        // é o que cada uma toca: os três mudam o MUNDO (instanciam, seleccionam, removem); estas
+        // duas mudam **o que a grade mostra**, que é vista deste painel — como o chip de família.
+        // *Levar ao shell uma decisão que só o painel tem é o caminho por onde a vista ganha uma
+        // segunda fonte de verdade.*
+        //
+        // ⛔ **Este braço vem ANTES do dos verbos de propósito:** os dois consomem o pedido de
+        // menu, e o `card_verb_of` não conhece estes ids — pô-lo primeiro deixaria o `Click` cair
+        // no `event_catalog` com o pedido ainda pendente.
+        WidgetEvent::Click(id) if relation_of(id).is_some() => {
+            let Some(dir) = relation_of(id) else {
+                return EventOutcome::Ignored;
+            };
+            let Some(req) = host.store_mut().consume_last_context_menu() else {
+                return EventOutcome::Ignored;
+            };
+            let ph2d_editor_core::interaction::ContextMenuKind::AssetCard { cell } = req.kind
+            else {
+                return EventOutcome::Ignored;
+            };
+            // ⚠️ A mesma janela de obsolescência do braço abaixo: sem asset na célula não há
+            // âncora, e ancorar na célula seguinte responderia sobre o asset errado.
+            let Some(anchor) = cell_target_of(cell) else {
+                return EventOutcome::Ignored;
+            };
+            state.related = Some((anchor, dir));
+            reset_scroll(host);
+            EventOutcome::Consumed
+        }
+
+        // ⭐⭐ **Largar o filtro** — o `✕` da faixa. Ver [`crate::paint_related`] para o porquê de
+        // ele existir: um filtro que só um menu liga tem de trazer o próprio interruptor.
+        WidgetEvent::Click(id) if id == ids::ASSET_RELATED_CLEAR => {
+            state.related = None;
+            reset_scroll(host);
+            EventOutcome::Consumed
+        }
+
         // ── ⭐⭐ O MENU DO CARTÃO (etapa C) ─────────────────────────────────────────────────────
         //
         // ⚠️ **Consumir o pedido de menu é destrutivo, e por isso a guarda é o ID primeiro.** O
@@ -164,6 +204,21 @@ fn card_verb_of(id: ph2d_a11y::NodeId) -> Option<AssetCardAction> {
         i if i == core_ids::CTX_MENU_ASSET_INSTANTIATE => Some(AssetCardAction::Instantiate),
         i if i == core_ids::CTX_MENU_ASSET_SELECT_USERS => Some(AssetCardAction::SelectUsers),
         i if i == core_ids::CTX_MENU_ASSET_REMOVE => Some(AssetCardAction::RemoveFromLibrary),
+        _ => None,
+    }
+}
+
+/// O SENTIDO que este id de menu pede, se for um dos dois de relação (D9).
+///
+/// ⚠️ **Tabela irmã da [`card_verb_of`], e deliberadamente SEPARADA dela:** as duas famílias de
+/// item vivem no mesmo menu e têm destinos diferentes (a vista deste painel · o mundo, pelo
+/// barramento). Uma tabela só, com um `Option` a decidir por onde sair, esconderia essa fronteira
+/// exactamente onde ela precisa de se ver.
+fn relation_of(id: ph2d_a11y::NodeId) -> Option<Relation> {
+    use ph2d_editor_core::ids as core_ids;
+    match id {
+        i if i == core_ids::CTX_MENU_ASSET_USES => Some(Relation::Uses),
+        i if i == core_ids::CTX_MENU_ASSET_USED_BY => Some(Relation::UsedBy),
         _ => None,
     }
 }

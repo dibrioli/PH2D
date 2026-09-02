@@ -316,7 +316,7 @@ fn stage_card_menu(host: &mut MockPanelHost, cell: ph2d_a11y::NodeId) {
     host.store_mut().close_context_menu();
 }
 
-/// ⭐⭐ **Toda linha do menu de um cartão despacha alguma coisa.**
+/// ⭐⭐ **Toda linha do menu de um cartão chega a um EFEITO.**
 ///
 /// ⚠️ **A fonte é a TABELA** (`menu_rows(AssetCard)` — a mesma que o overlay pinta), nunca uma
 /// lista aqui dentro: um verbo novo entra neste gate no dia em que é pintado, sem ninguém se
@@ -324,7 +324,19 @@ fn stage_card_menu(host: &mut MockPanelHost, cell: ph2d_a11y::NodeId) {
 /// pela mesma doença medida: um item pintado e morto lê-se, do lado do artista, como um app
 /// partido.
 ///
-/// **Mutação que deve sangrar:** apagar um braço do `card_verb_of` no `event.rs`.
+/// ⛔⛔ **O ORÁCULO DESTE GATE FOI ALARGADO EM 2026-09-02, e a 1.ª versão mandava a cura ERRADA.**
+/// Ela perguntava *«empurrou para o barramento?»* — o único destino que existia quando foi escrita
+/// —, e por isso acusou de mortos os dois itens de relação (D9), que estão **vivos e correctos**:
+/// eles mudam a VISTA deste painel e não têm nada a dizer ao mundo. A mensagem chegava a nomear o
+/// ficheiro do shell onde «drenar a acção». *Um gate que presume o destino de um efeito acusa de
+/// morto quem tem outro — e a mensagem dele manda alguém construir a doença.*
+/// ⇒ a pergunta passa a ser *«alguma coisa mudou?»*: o barramento **ou** o estado do painel.
+///
+/// ⚠️ A comparação é por `{:?}` de propósito, e não por um campo escolhido à mão: assim um campo
+/// de vista **novo** entra neste oráculo sozinho, que é a mesma razão de a fonte ser a tabela.
+///
+/// **Mutação que deve sangrar:** apagar um braço do `card_verb_of` **ou** do `relation_of` no
+/// `event.rs`.
 #[test]
 fn every_asset_card_menu_entry_dispatches_something() {
     use ph2d_editor_core::interaction::ContextMenuKind;
@@ -345,16 +357,21 @@ fn every_asset_card_menu_entry_dispatches_something() {
             stable_id: 77,
         }]);
         stage_card_menu(&mut host, ids::asset_cell_id(0));
+        let before = format!("{st:?}");
         let out = host.apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(*id));
-        if out != EventOutcome::Consumed || host.bus().is_empty() {
+        let touched_the_world = !host.bus().is_empty();
+        let touched_the_view = format!("{st:?}") != before;
+        if out != EventOutcome::Consumed || !(touched_the_world || touched_the_view) {
             dead.push(label);
         }
     }
     assert!(
         dead.is_empty(),
-        "linhas do menu do cartão que são PINTADAS e não despacham nada: {dead:?}.\n\
-         Ligue cada uma no `card_verb_of` de `crates/ph2d-panel-asset-browser/src/event.rs` e \
-         drene a acção no `shells/desktop/src/asset_card_verbs.rs`."
+        "linhas do menu do cartão que são PINTADAS e não chegam a efeito nenhum: {dead:?}.\n\
+         Um item que toca no MUNDO liga-se no `card_verb_of` de \
+         `crates/ph2d-panel-asset-browser/src/event.rs` e drena em \
+         `shells/desktop/src/asset_card_verbs.rs`; um que só muda a VISTA da grade liga-se no \
+         `relation_of` do mesmo ficheiro e escreve no `AssetBrowserState`."
     );
 }
 

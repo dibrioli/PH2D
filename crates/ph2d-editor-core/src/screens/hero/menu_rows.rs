@@ -299,6 +299,11 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
         ContextMenuKind::AssetCard { .. } => &[
             (ids::CTX_MENU_ASSET_INSTANTIATE, "Instantiate", None),
             (ids::CTX_MENU_ASSET_SELECT_USERS, "Select users", None),
+            // ⭐⭐ As duas metades de D9. ⚠️ Elas ficam DEPOIS do *Select users* de propósito: a
+            // pergunta da cena vem antes da da biblioteca, que é a ordem em que o artista repara
+            // que precisa da segunda.
+            (ids::CTX_MENU_ASSET_USES, "Show what it uses", None),
+            (ids::CTX_MENU_ASSET_USED_BY, "Show what uses it", None),
             (ids::CTX_MENU_ASSET_REMOVE, "Remove from Library", None),
         ],
         // Painter Falloff curve point handle (Blender per-point handle types).

@@ -144,6 +144,15 @@ pub fn payload_at(
     }
 }
 
+/// **Só para os gates:** o endereço que a célula `index` desenhou neste quadro.
+///
+/// ⚠️ Ela existe porque a costura *estado → consulta → grade* só é mensurável no que o `paint`
+/// deixou: uma `Query` montada num teste passa por cima do sítio onde o painel a constrói.
+#[must_use]
+pub fn probe_painted_at(index: usize) -> Option<ph2d_asset_index::AssetRef> {
+    painted_at(index)
+}
+
 /// O asset que a célula `index` desenhou neste quadro.
 pub(crate) fn painted_at(index: usize) -> Option<ph2d_asset_index::AssetRef> {
     PAINTED.with(|c| c.borrow().get(index).copied())
@@ -174,6 +183,17 @@ pub struct AssetBrowserState {
     /// ⚠️ **É VISTA** — como a linha escolhida, morre com a sessão e não atravessa o
     /// barramento. O que atravessa é o nome, no fim.
     pub renaming: Option<CatalogRename>,
+    /// ⭐⭐ **A pergunta de RELAÇÃO que a grade está a responder** (plano 07 D9): *o que este asset
+    /// usa*, ou *o que o usa*. `None` = a biblioteca inteira.
+    ///
+    /// ⚠️ **VISTA, e por isso vive aqui e não no barramento** — ela muda o que a grade mostra,
+    /// exactamente como o chip de família e a linha de catálogo. ⛔ Os três verbos vizinhos do
+    /// mesmo menu vão ao shell porque tocam no MUNDO; este não toca em nada.
+    ///
+    /// ⚠️ **A âncora é o ENDEREÇO, nunca o índice da célula.** A grade re-filtra no quadro
+    /// seguinte e a célula que abriu o menu passa a desenhar outro asset — guardar o índice faria
+    /// a faixa dizer um nome e a grade responder por outro.
+    pub related: Option<(ph2d_asset_index::AssetRef, ph2d_asset_index::Relation)>,
 }
 
 /// O campo de renomear aberto: **quem**, e se o buffer já foi semeado.
@@ -207,6 +227,7 @@ impl Default for AssetBrowserState {
             show_catalogs: true,
             pick: CatalogPick::All,
             renaming: None,
+            related: None,
         }
     }
 }

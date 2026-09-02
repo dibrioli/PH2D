@@ -45,8 +45,10 @@ fn read_search(
     }
 }
 
-/// Espaçamento interno do painel.
-fn pad() -> f32 {
+/// Espaçamento interno do painel. ⚠️ `pub(crate)` porque os irmãos por assunto (a coluna, a
+/// faixa) têm de medir com a MESMA régua — uma segunda constante de padding desalinharia as
+/// fileiras entre si sem nenhum erro.
+pub(crate) fn pad() -> f32 {
     Spacing::Md.px()
 }
 
@@ -113,7 +115,10 @@ pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
         store.set_panel_rect(ids::ASSET_PANEL, rect);
     }
     paint_chrome(ctx, rect);
-    let body_top = paint_controls(state, ctx, rect);
+    let controls_bottom = paint_controls(state, ctx, rect);
+    // ⭐⭐ A faixa da pergunta de relação (D9) empurra o corpo para baixo quando existe, e devolve
+    // o mesmo `y` quando não — ver o cabeçalho do [`crate::paint_related`].
+    let body_top = crate::paint_related::paint(state, ctx, rect, controls_bottom);
     // ⭐⭐ A coluna de catálogos devolve a largura que ocupou — e a grade cede a partir daí. Ver o
     // cabeçalho do `paint_catalog` para o porquê de a largura ser DERIVADA.
     let col_w = crate::paint_catalog::paint(state, ctx, rect, body_top);
@@ -315,6 +320,8 @@ fn paint_grid(
         // ⭐⭐ **O escopo do catálogo escolhido, expandido no quadro** — ele e os descendentes.
         catalog: crate::paint_catalog::scope_of(state.pick),
         sort: state.sort,
+        // ⭐⭐ A pergunta de relação (D9) é mais um FILTRO desta consulta — uma travessia só.
+        related: state.related,
     };
 
     // ⚠️ **Uma consulta, uma travessia**: o que se pinta e o que se despacha saem da MESMA lista.
@@ -359,12 +366,19 @@ fn paint_grid(
     if cards.is_empty() {
         // ⚠️ **Vazio e por-publicar dizem coisas diferentes.** Um balde que ninguém encheu lê-se
         // como «não tenho nada», e é o defeito que a memória `a_bucket_nobody_fills` nomeia.
+        // ⚠️ **A relação fala PRIMEIRO, e antes da busca.** Com o filtro ligado, «Nothing matches
+        // this search» seria verdade e inútil: a grade está vazia porque a RESPOSTA é vazia, e é
+        // essa a informação — *este prefab não usa imagem nenhuma* é um facto sobre o asset.
         let msg = if !is_published() {
             "Loading assets\u{2026}"
         } else if total == 0 {
             "No assets yet \u{2014} right-click an object and choose Make Prefab"
         } else {
-            "Nothing matches this search"
+            match state.related {
+                Some((_, ph2d_asset_index::Relation::Uses)) => "This asset uses nothing else",
+                Some((_, ph2d_asset_index::Relation::UsedBy)) => "Nothing in the library uses this",
+                None => "Nothing matches this search",
+            }
         };
         paint_text_centered(
             ctx.text_system,

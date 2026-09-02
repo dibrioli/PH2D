@@ -419,6 +419,8 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         // que é o defeito nº 1 da auditoria da etapa A, uma camada acima.
         ids::CTX_MENU_ASSET_INSTANTIATE,
         ids::CTX_MENU_ASSET_SELECT_USERS,
+        ids::CTX_MENU_ASSET_USES,
+        ids::CTX_MENU_ASSET_USED_BY,
         ids::CTX_MENU_ASSET_REMOVE,
         ids::CTX_MENU_CATALOG_RENAME,
         ids::CTX_MENU_CATALOG_DELETE,

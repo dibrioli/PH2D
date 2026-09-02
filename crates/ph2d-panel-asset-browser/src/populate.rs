@@ -41,6 +41,23 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             state: ButtonState::Normal,
         },
     );
+    // ⛔⛔ **O `✕` da faixa de relação entra AQUI, e o censo `hit_indexed_ids_are_registered` foi
+    // quem o apanhou** (2026-09-02): ele era pintado e hit-indexado pelo `paint_related` e **não
+    // tinha `InteractiveState`** ⇒ `is_focusable` falso, o `Down` não arma, e o `Click` **nunca
+    // nasce**. Ele estava morto sob o dedo com os meus cinco gates verdes — porque um `Click`
+    // sintético num teste não passa pelo store.
+    //
+    // ⚠️ **É FIXO ainda que a faixa seja condicional.** O registo é *«este id existe e é um
+    // botão»*, não *«ele está no ecrã agora»*; quem decide se ele é alcançável é o `HitIndex`, que
+    // o paint só enche quando a faixa existe. O gémeo — registar no paint — reintroduziria o
+    // `register` a substituir o `Pressed` do quadro anterior, que é o defeito que os cartões já
+    // pagaram.
+    store.register(
+        ids::ASSET_RELATED_CLEAR,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
     for id in ids::ASSET_KIND.iter().take(ids::ASSET_KIND_FILTERS) {
         store.register(
             *id,

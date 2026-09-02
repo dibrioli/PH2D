@@ -234,8 +234,7 @@ faixa de arrasto faz o gate novo sangrar.
   `vello` 0.10 tem atlas persistente — quem recozinha pixels tem de marcar a textura suja, senão a
   imagem **congela em silêncio**. É uma wave com medição própria, e o cartão colorido é o que a
   substitui **com informação** até lá.
-- ⏳ **`Dependencies` / `Owners` no menu de contexto** (D9): o índice **responde** aos dois sentidos
-  com gate, e falta o menu que os mostra.
+- ✅ **`Dependencies` / `Owners` no menu de contexto** (D9) — **feito em 2026-09-02**, ver §13.
 - ⏳ **Imagens de 16 bits ficam com a cor neutra** — a média delas pede a descodificação inteira, e
   pagá-la por um quadrado de 24 px é o oposto do que a cache existe para fazer. Declarado no `_` do
   `swatch_for`.
@@ -586,3 +585,88 @@ fica onde tem de ficar — ela é a única coisa que carrega o mecanismo da cerc
   sem GPU e sem tocar no atlas. A linha do §9.1 que a dá por pendente envelheceu.
 - ✅ **Imagens de 16 bits com a cor neutra** — **fechada**: o `swatch_for` passou a ir pela porta
   `image_rgba8`, que cobre as duas variantes.
+
+<a id="13"></a>
+## §13 — ⭐⭐ **AS DUAS PERGUNTAS DE RELAÇÃO** (D9, 2026-09-02)
+
+**O que o artista ganha:** botão direito num cartão → **Show what it uses** / **Show what uses it**.
+A grade estreita-se para a resposta, com uma faixa por cima a dizer qual é a pergunta e um `✕` para
+a largar. É a pergunta que precede *mudar* e *apagar*.
+
+### §13.1 — ⚠️ *Show what uses it* **não é** *Select users*, e a diferença decide um gesto
+
+| Item | Responde | Onde estão |
+|---|---|---|
+| **Select users** (já existia) | que **objectos da CENA** usam isto | no canvas — e por isso ele **selecciona** |
+| **Show what uses it** (novo) | que **receitas da BIBLIOTECA** usam isto | em lado nenhum da cena ⇒ nenhuma selecção as alcança |
+
+⇒ um artista que vai mudar uma textura precisa **das duas**, e elas nunca dão a mesma resposta. Foi
+por isso que a metade nova não pôde reusar o verbo que existia.
+
+### §13.2 — Onde cada decisão vive, e porquê
+
+- **A relação é um FILTRO da consulta que já existia** (`Query::related`), e não uma segunda
+  consulta. A grade tem **uma travessia** — o que se pinta e o que se arrasta saem da mesma lista —
+  e uma `deps()` chamada à parte devolveria outra ordem e outro recorte de catálogo.
+- ⛔ **Ela NÃO passa pelo barramento**, ao contrário dos três verbos vizinhos do mesmo menu. A
+  fronteira é o que cada um toca: aqueles mudam o **mundo**; estes mudam **o que a grade mostra**,
+  que é vista do painel — como o chip de família.
+- ⚠️ **Compõe com a busca e o catálogo em vez de os substituir.** Um modo que desligasse controlos
+  visíveis deixá-los-ia a mentir no ecrã.
+- ⛔⛔ **Âncora que já não existe ⇒ resposta VAZIA, nunca a biblioteca inteira.** O asset pode sair
+  da biblioteca entre o clique no menu e o quadro seguinte; um filtro que se desligasse sozinho
+  devolveria tudo **por baixo de uma faixa a dizer «o que usa X»** — a resposta errada com a
+  etiqueta certa. Gate: `an_anchor_that_left_the_library_answers_nothing_not_everything`.
+- ⚠️ **A faixa traz o próprio `✕`**, e não é decoração: os outros dois filtros da grade têm controlo
+  permanente no cabeçalho, este nasce de um menu. *Um filtro que só um menu liga tem de trazer o
+  próprio interruptor de desligar.*
+- ⚠️ **A grade vazia FALA a relação primeiro** (*«This asset uses nothing else»*), antes de *«nothing
+  matches this search»* — com o filtro ligado, o vazio **é** a resposta, e é um facto sobre o asset.
+
+### §13.3 — ⭐⭐⭐ O gate que acusou de mortos dois itens VIVOS, e mandava a cura errada
+
+`every_asset_card_menu_entry_dispatches_something` — o censo que garante que nenhuma linha do menu
+é pintada e morta — **reprovou** os dois itens novos, com a mensagem *«ligue cada uma no
+`card_verb_of` e drene a acção no `asset_card_verbs.rs`»*.
+
+Ele estava a perguntar **«empurrou para o barramento?»**, que era o único destino que existia quando
+foi escrito. Os dois itens estão vivos e correctos: eles escrevem no `AssetBrowserState`.
+
+⇒ *Um gate que presume o **destino** de um efeito acusa de morto quem tem outro — e a mensagem dele
+manda alguém construir a doença.* A pergunta passou a ser **«alguma coisa mudou?»** (o barramento
+**ou** o estado do painel), comparado por `{:?}` para que um campo de vista novo entre no oráculo
+sozinho — a mesma razão de a fonte ser a tabela do menu.
+
+### §13.4 — ⛔⛔ E o `✕` estava MORTO SOB O DEDO com cinco gates verdes
+
+O censo da workspace (`hit_indexed_ids_are_registered`) apanhou o que os meus gates não viam: o
+botão era **pintado e hit-indexado** pelo `paint_related` e **não tinha `InteractiveState` no
+store** ⇒ `is_focusable` falso, o `Down` não arma, e o **`Click` nunca nasce**.
+
+⚠️ **Os cinco gates desta fatia passavam**, e um deles chamava-se *«o `✕` larga o filtro»*: um
+`Click` sintético num teste **não passa pelo store**, então ele media o braço do `apply_event` e
+nunca a costura que o precede. ⇒ o gate ganhou a segunda metade (`store().get(…)` é um `Button`), e
+o registo vive no `populate` — **fixo, ainda que a faixa seja condicional**: registar no paint
+reintroduziria o `register` a apagar o `Pressed` do quadro anterior, que é o defeito que os cartões
+já pagaram.
+
+### §13.4-bis — E o mesmo `✕` era MUDO para a acessibilidade
+
+O gate da **HR-12** (`every_widget_file_wires_a11y`) acusou o ficheiro novo: o `✕` era um
+`paint_icon` cru, e um ícone desenhado à mão não fala à árvore de acessibilidade **nem veste o
+hover vivo** — ele nasceria a pintar uma cor dura no meio de vizinhos que deslizam.
+
+⛔ **A lista de dispensa do gate não era a cura.** Ela serve um ficheiro *sem semântica de
+utilizador*; isto é um botão. ⇒ ele passa pela primitiva canónica (`paint_icon_button`), que traz as
+duas coisas de graça. ⚠️ Note-se que o `✕` do CABEÇALHO deste mesmo painel continua a ser um
+`paint_icon` cru e o gate não o vê — o ficheiro dele satisfaz a regra por usar `paint_button`
+noutro sítio. *Um gate por FICHEIRO absolve todo controlo cru que partilhe ficheiro com um
+canónico* — nomeado, não curado, e fora desta fatia.
+
+### §13.5 — E o gate da grade media o próprio arnês
+
+A 1.ª versão de `the_question_reaches_what_the_grid_actually_paints` montava uma `Query` à mão e
+passava-a ao `probe_query` — o que prova que o **índice** filtra (a `index_law` já o provava) e não
+que o painel liga o `state.related` à consulta que ele constrói. A régua passou a ser o
+`probe_painted_at`: **o que o `paint` de facto desenhou**. *Um gate que fabrica o alcance mede o seu
+próprio arnês.*

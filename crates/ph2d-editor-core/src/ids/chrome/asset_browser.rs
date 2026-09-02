@@ -25,6 +25,14 @@ pub const ASSET_CLOSE: NodeId = hash_node_id("asset_browser.close");
 /// cuja cura é oposta à do knob morto.
 pub const ASSET_SEARCH: NodeId = hash_node_id("asset_browser.search");
 
+/// ⭐⭐ **Largar o filtro de relação** — o `✕` da faixa que diz *o que usa X* / *o que X usa*.
+///
+/// ⚠️ **Um modo sem saída visível é uma armadilha**, e este tem-na porque a faixa é o único sítio
+/// onde o filtro se vê: ao contrário do chip de família e da linha de catálogo, ele não tem
+/// controlo permanente no cabeçalho — ele nasce de um menu e desaparece quando se larga. *Um
+/// filtro que só um menu liga tem de trazer o próprio interruptor de desligar.*
+pub const ASSET_RELATED_CLEAR: NodeId = hash_node_id("asset_browser.related.clear");
+
 /// O slider do tamanho do cartão (plano 07 D3 — **um slider, não presets**, que é o
 /// `thumbnail_size_slider` do Godot).
 pub const ASSET_SIZE: NodeId = hash_node_id("asset_browser.size");

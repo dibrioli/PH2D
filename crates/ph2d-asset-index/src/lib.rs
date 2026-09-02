@@ -243,6 +243,19 @@ impl SortBy {
     pub const ALL: &'static [SortBy] = &[SortBy::Name, SortBy::Kind, SortBy::Recent];
 }
 
+/// ⭐⭐ **O SENTIDO de uma relação entre assets** (plano 07 D9).
+///
+/// As duas metades da mesma aresta, e a segunda é a que o Godot chama *Owners* e o Blender não
+/// tem. ⚠️ **Elas não são simétricas em utilidade:** *o que isto usa* explica uma peça; *o que usa
+/// isto* é a pergunta que precede **apagar** ou **mudar**, e é a cara.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Relation {
+    /// De que a âncora depende — as texturas que as peças de uma receita desenham.
+    Uses,
+    /// Quem depende da âncora — as receitas que desenham esta textura.
+    UsedBy,
+}
+
 /// O que o painel está a pedir ao índice.
 #[derive(Clone, Debug, Default)]
 pub struct Query {
@@ -256,6 +269,16 @@ pub struct Query {
     pub catalog: CatalogScope,
     /// A ordem.
     pub sort: SortBy,
+    /// ⭐⭐ **Só o que se relaciona com esta âncora** (D9). `None` = a biblioteca inteira.
+    ///
+    /// ⚠️ **É um FILTRO da mesma consulta, e não uma segunda consulta.** A grade tem uma travessia
+    /// só — o que se pinta e o que se arrasta saem da mesma lista —, e uma `deps()` chamada à parte
+    /// devolveria uma lista com outra ordem e outro recorte de catálogo. *Duas portas para «o que a
+    /// grade mostra» é o defeito que este painel já pagou uma vez.*
+    ///
+    /// ⚠️ Ele **compõe** com o texto, a família e o catálogo, em vez de os substituir: um modo que
+    /// desliga controlos visíveis deixa-os a mentir no ecrã.
+    pub related: Option<(AssetRef, Relation)>,
 }
 
 /// O índice — a junção das duas fontes, reconstruída pelo shell.
@@ -341,6 +364,7 @@ impl AssetIndex {
                 CatalogScope::These(ids) => e.catalog.is_some_and(|c| ids.contains(&c)),
             })
             .filter(|e| e.matches(&needle))
+            .filter(|e| self.relates(e, q.related.as_ref()))
             .collect();
         match q.sort {
             SortBy::Name => hits.sort_by(|a, b| {
@@ -358,6 +382,37 @@ impl AssetIndex {
             SortBy::Recent => hits.sort_by_key(|e| std::cmp::Reverse(e.seq)),
         }
         hits
+    }
+
+    /// O predicado da relação, para a [`Self::query`].
+    ///
+    /// ⛔⛔ **Uma âncora que já não existe nunca devolve TUDO** — ela pode desaparecer entre o
+    /// clique no menu e o quadro seguinte (alguém tirou o asset da biblioteca), e um `None` tratado
+    /// como *«sem filtro»* devolveria a biblioteca inteira **por baixo de uma faixa que diz «o que
+    /// usa X»**: a resposta errada com a etiqueta certa.
+    ///
+    /// ⚠️⚠️ **E os dois sentidos chegam lá por caminhos DIFERENTES — a simetria é aparente.**
+    /// - `Uses` **tem** de consultar a âncora (é a lista de dependências DELA), e é por isso que
+    ///   o `is_some_and` é load-bearing: um `map_or(true, …)` aqui abre a comporta.
+    /// - `UsedBy` pergunta a cada entrada, e por isso é fechado **por construção** — sem âncora
+    ///   nenhuma, nenhuma entrada a nomeia.
+    ///
+    /// ⭐ E daí sai um comportamento que **não é um defeito**: um endereço que saiu da biblioteca
+    /// mas que algumas receitas ainda nomeiam devolve **essas receitas** no `UsedBy`. É a resposta
+    /// honesta — *ainda há quem aponte para isto* — e a única que ajuda quem vai reparar o buraco.
+    fn relates(&self, e: &AssetEntry, related: Option<&(AssetRef, Relation)>) -> bool {
+        let Some((anchor, dir)) = related else {
+            return true;
+        };
+        // ⚠️ Nada se relaciona consigo próprio — sem isto a âncora aparecia sempre na própria
+        // resposta, e o artista lia-a como um utilizador dela mesma.
+        if e.key == *anchor {
+            return false;
+        }
+        match dir {
+            Relation::Uses => self.get(anchor).is_some_and(|a| a.deps.contains(&e.key)),
+            Relation::UsedBy => e.deps.contains(anchor),
+        }
     }
 
     /// **De que `key` depende** (plano 07 D9, um dos dois sentidos).

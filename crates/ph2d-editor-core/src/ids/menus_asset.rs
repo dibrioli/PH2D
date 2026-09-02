@@ -24,6 +24,24 @@ pub const CTX_MENU_ASSET_INSTANTIATE: NodeId = hash_node_id("ctx_menu_asset_inst
 /// ⚠️ Ela **selecciona** os utilizadores na cena em vez de os listar: uma lista diz um número, uma
 /// selecção põe o artista em cima deles, com o gizmo e o Inspector já apontados.
 pub const CTX_MENU_ASSET_SELECT_USERS: NodeId = hash_node_id("ctx_menu_asset_select_users");
+/// ⭐⭐ **O que este asset USA** — a metade *Dependencies* do plano 07 D9.
+///
+/// ⚠️ **Ela FILTRA a grade em vez de listar num diálogo**, e a razão é a irmã da do
+/// [`CTX_MENU_ASSET_SELECT_USERS`]: uma lista diz nomes; a grade filtrada entrega **os cartões**,
+/// sobre os quais todos os outros gestos (arrastar, o menu, o duplo-clique) continuam a valer.
+/// *A resposta a «quem são?» tem de ser accionável, senão é um relatório.*
+///
+/// ⛔ **Não passa pelo barramento**, ao contrário dos três verbos vizinhos: ele muda **o que a
+/// grade mostra**, que é vista do painel — como o chip de família e a linha de catálogo. Levá-lo
+/// ao shell seria pedir ao mundo uma decisão que só o painel tem.
+pub const CTX_MENU_ASSET_USES: NodeId = hash_node_id("ctx_menu_asset_uses");
+/// ⭐⭐ **O que USA este asset** — a metade *Owners* de D9, em termos de BIBLIOTECA.
+///
+/// ⚠️⚠️ **Não é o [`CTX_MENU_ASSET_SELECT_USERS`], e a diferença decide um gesto.** Aquele responde
+/// *que objectos da CENA usam isto* (e selecciona-os no canvas); este responde *que RECEITAS da
+/// biblioteca usam isto* — e uma receita não está na cena, logo nenhuma selecção a alcança. Um
+/// artista que vai mudar uma textura precisa das duas, e elas nunca têm a mesma resposta.
+pub const CTX_MENU_ASSET_USED_BY: NodeId = hash_node_id("ctx_menu_asset_used_by");
 /// ⭐⭐ **Tirar da biblioteca** (report do Enio, 2026-08-30: *«não dá para tirar um asset da
 /// biblioteca. Ele entra e fica»*). A lei das duas metades — as cópias destacam-se e a receita
 /// dissolve-se, **ou** ela volta à cena por ser a última cópia — vive em

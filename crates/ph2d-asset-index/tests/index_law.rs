@@ -3,7 +3,9 @@
 //! ⚠️ Cada um afirma uma LEI que uma implementação plausível quebraria, não que o código compila.
 
 use ph2d_asset_index::CatalogScope;
-use ph2d_asset_index::{AssetEntry, AssetIndex, AssetKind, AssetRef, CatalogId, Query, SortBy};
+use ph2d_asset_index::{
+    AssetEntry, AssetIndex, AssetKind, AssetRef, CatalogId, Query, Relation, SortBy,
+};
 
 fn comp(id: u64, name: &str) -> AssetEntry {
     AssetEntry::new(AssetRef::Component { stable_id: id }, name)
@@ -170,4 +172,142 @@ fn a_dependency_on_something_absent_resolves_to_nothing() {
     wall.deps = vec![AssetRef::Texture { asset: [9; 32] }];
     ix.push(wall);
     assert!(ix.deps(&AssetRef::Component { stable_id: 1 }).is_empty());
+}
+
+// ── ⭐⭐ AS DUAS METADES DE UMA RELAÇÃO (plano 07 D9) ────────────────────────────────────────────
+
+/// Uma receita que desenha duas texturas, e uma terceira textura que ninguém usa.
+fn library_with_one_prefab() -> AssetIndex {
+    let mut ix = AssetIndex::new();
+    let a = AssetRef::Texture { asset: [1; 32] };
+    let b = AssetRef::Texture { asset: [2; 32] };
+    ix.push(tex(1, "bark"));
+    ix.push(tex(2, "leaf"));
+    ix.push(tex(3, "unrelated"));
+    let mut house = comp(10, "house");
+    house.deps = vec![a, b];
+    ix.push(house);
+    ix
+}
+
+fn names(hits: &[&AssetEntry]) -> Vec<String> {
+    let mut v: Vec<String> = hits.iter().map(|e| e.name.clone()).collect();
+    v.sort();
+    v
+}
+
+/// ⭐ **«O que isto usa»** devolve as dependências, e só elas.
+#[test]
+fn the_uses_filter_shows_exactly_what_the_anchor_depends_on() {
+    let ix = library_with_one_prefab();
+    let q = Query {
+        related: Some((AssetRef::Component { stable_id: 10 }, Relation::Uses)),
+        ..Query::default()
+    };
+    assert_eq!(names(&ix.query(&q)), vec!["bark", "leaf"]);
+}
+
+/// ⭐ **«O que usa isto»** é o outro sentido, e ele é DERIVADO por inversão — ninguém o guarda.
+#[test]
+fn the_used_by_filter_shows_exactly_who_depends_on_the_anchor() {
+    let ix = library_with_one_prefab();
+    let q = Query {
+        related: Some((AssetRef::Texture { asset: [1; 32] }, Relation::UsedBy)),
+        ..Query::default()
+    };
+    assert_eq!(names(&ix.query(&q)), vec!["house"]);
+
+    // E a textura que ninguém usa devolve vazio — não «todas».
+    let q = Query {
+        related: Some((AssetRef::Texture { asset: [3; 32] }, Relation::UsedBy)),
+        ..Query::default()
+    };
+    assert!(ix.query(&q).is_empty(), "ninguem usa a `unrelated`");
+}
+
+/// ⚠️ **Nada se relaciona consigo próprio.** Sem esta lei a âncora aparecia na própria resposta, e
+/// o artista lia-a como um utilizador dela mesma.
+#[test]
+fn the_anchor_is_never_in_its_own_answer() {
+    let ix = library_with_one_prefab();
+    for dir in [Relation::Uses, Relation::UsedBy] {
+        let anchor = AssetRef::Component { stable_id: 10 };
+        let q = Query {
+            related: Some((anchor, dir)),
+            ..Query::default()
+        };
+        assert!(
+            !ix.query(&q).iter().any(|e| e.key == anchor),
+            "{dir:?}: a ancora entrou na propria resposta"
+        );
+    }
+}
+
+/// ⛔⛔ **A ÂNCORA QUE JÁ NÃO EXISTE nunca devolve a biblioteca inteira.**
+///
+/// É a direcção de falha que decide: a âncora pode sair da biblioteca entre o clique no menu e o
+/// quadro seguinte, e um filtro que se desligasse sozinho devolveria **tudo** por baixo de uma
+/// faixa a dizer *«o que usa X»* — a resposta errada com a etiqueta certa.
+///
+/// ⚠️⚠️ **A 1.ª versão deste gate percorria os DOIS sentidos a exigir vazio, e só um deles podia
+/// sangrar.** O `UsedBy` é fechado por construção (ninguém nomeia uma âncora inexistente), então
+/// aquele laço dava a impressão de medir duas leis e media uma. E a régua estava **errada** para o
+/// outro caso, que é o interessante — ver o gate irmão abaixo.
+///
+/// **Mutação que deve sangrar:** trocar o `is_some_and` do `relates` por `map_or(true, …)`.
+#[test]
+fn a_missing_anchor_never_opens_the_uses_filter() {
+    let ix = library_with_one_prefab();
+    let ghost = AssetRef::Component { stable_id: 999 };
+    let q = Query {
+        related: Some((ghost, Relation::Uses)),
+        ..Query::default()
+    };
+    assert!(
+        ix.query(&q).is_empty(),
+        "uma ancora ausente devolveu {} entradas em `Uses`",
+        ix.query(&q).len()
+    );
+}
+
+/// ⭐⭐ **E um endereço que saiu da biblioteca mas que alguém ainda NOMEIA devolve quem o nomeia.**
+///
+/// ⚠️ **Não é uma fuga da lei de cima — é a resposta honesta**, e a única que ajuda quem vai
+/// reparar o buraco: *estas receitas ainda apontam para uma coisa que já não está cá*. Um vazio
+/// aqui esconderia exactamente a informação que se foi buscar.
+#[test]
+fn a_dangling_address_still_answers_who_points_at_it() {
+    let mut ix = AssetIndex::new();
+    let gone = AssetRef::Texture { asset: [42; 32] };
+    let mut house = comp(10, "house");
+    house.deps = vec![gone];
+    ix.push(house);
+    ix.push(tex(3, "unrelated"));
+    assert!(
+        ix.get(&gone).is_none(),
+        "a fixtura tem de ter o endereco FORA"
+    );
+
+    let q = Query {
+        related: Some((gone, Relation::UsedBy)),
+        ..Query::default()
+    };
+    assert_eq!(names(&ix.query(&q)), vec!["house"]);
+}
+
+/// ⚠️ **A relação COMPÕE com os outros filtros em vez de os substituir** — um modo que desligasse
+/// a busca deixaria a caixa de texto a mentir no ecrã.
+#[test]
+fn the_relation_composes_with_the_search_instead_of_replacing_it() {
+    let ix = library_with_one_prefab();
+    let q = Query {
+        text: "leaf".to_string(),
+        related: Some((AssetRef::Component { stable_id: 10 }, Relation::Uses)),
+        ..Query::default()
+    };
+    assert_eq!(
+        names(&ix.query(&q)),
+        vec!["leaf"],
+        "a busca tem de continuar a estreitar dentro da relacao"
+    );
 }

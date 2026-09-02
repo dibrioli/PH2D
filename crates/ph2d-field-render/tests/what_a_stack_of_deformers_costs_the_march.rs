@@ -170,12 +170,38 @@ fn vivo(k: UnaryKind) -> Unary {
             falloff: 0.1,
             axis: TWIST_AXIS,
         },
-        _ => Unary::Bend {
+        UnaryKind::Bend => Unary::Bend {
             turns: 0.12,
             lower: -2.0,
             upper: 2.0,
             falloff: 0.1,
             axis: BEND_AXIS,
+        },
+        // ⛔⛔ **EXAUSTIVO de propósito, e ele era um `_ => Bend`** (2026-09-01). Enquanto só três
+        // naturezas chegavam aqui ninguém notava; a sonda da composição passou-lhe o
+        // `UnaryKind::ALL` e a tabela saiu com `[Shell, Shell, Shell]` a medir três dobras.
+        // *Um catch-all numa fixtura não devolve um erro — devolve a peça errada com o nome certo.*
+        UnaryKind::Shell => Unary::Shell { thickness: 0.06 },
+        UnaryKind::Offset => Unary::Offset { distance: 0.05 },
+        UnaryKind::Mirror => Unary::Mirror,
+        UnaryKind::MirrorY => Unary::MirrorY,
+        UnaryKind::MirrorZ => Unary::MirrorZ,
+        UnaryKind::Array => Unary::Array {
+            count: 3,
+            spacing: 0.5,
+            joint: ph2d_field::Joint {
+                chamfer: 0.0,
+                fillet: 0.06,
+            },
+            axis: ph2d_field::mods::ARRAY_AXIS,
+        },
+        UnaryKind::Radial => Unary::Radial {
+            count: 6,
+            joint: ph2d_field::Joint {
+                chamfer: 0.0,
+                fillet: 0.06,
+            },
+            axis: ph2d_field::mods::RADIAL_AXIS,
         },
     }
 }
@@ -394,5 +420,146 @@ fn where_the_frame_goes_in_a_deformer_stack() {
             amostras / raios,
             ns / base_ns
         );
+    }
+}
+
+/// ⭐⭐⭐ **O BOUND COMPOSTO É O PRODUTO OU O MÁXIMO?** — o spike que escolhe a forma da cura
+/// (Enio, 2026-09-01: *«a matemática, e leva o tempo que levar»*).
+///
+/// A folga do trio é `5,6×`, e ela mora na COMPOSIÇÃO. A pista: `2,61 × 2,66 × 2,24 = 15,85`
+/// cobrados contra `2,81` verdadeiros — e `max(2,61, 2,66, 2,24) = 2,66`. ⇒ *se a verdade for o
+/// máximo e não o produto, as três esticadelas são quase ortogonais entre si, e o bound certo é o
+/// `σ_max` do PRODUTO das matrizes, não o produto dos `σ_max`.*
+///
+/// ⚠️ **A verdade aqui é `divisor × ‖∇f‖ medido`, e ela é um MINORANTE da verdade** (um máximo
+/// amostrado não é um máximo). ⇒ este spike pode confirmar a hipótese, nunca refutá-la sozinho: se
+/// `verdade > max`, a hipótese cai; se `verdade ≈ max`, ela sobrevive e vale construir.
+#[test]
+#[ignore = "spike: escolhe a forma do bound"]
+fn is_the_composed_bound_the_product_or_the_max() {
+    use ph2d_field::UnaryKind;
+    let reg = Registry::default();
+    let (mut pior_razao, mut nome_pior) = (0.0f64, String::new());
+    let mut linhas = 0usize;
+    println!("| pilha | Π σ (cobrado) | max σ | verdade | verdade/max | Π/verdade |");
+    for a in UnaryKind::ALL {
+        for b in UnaryKind::ALL {
+            for c in UnaryKind::ALL {
+                let ms = vec![a, b, c];
+                let doc = peca(ms.clone());
+                let Some(bola) = ph2d_field_eval::bounds::local_balls(&doc, &reg)
+                    .first()
+                    .copied()
+                    .flatten()
+                else {
+                    continue;
+                };
+                let vivos: Vec<_> = ms.iter().map(|k| vivo(*k)).collect();
+                let fs = ph2d_field_eval::stack_divisor_factors(&vivos, bola);
+                let prod: f64 = fs.iter().product();
+                let maxi = fs.iter().copied().fold(1.0f64, f64::max);
+                if prod < 1.05 {
+                    continue;
+                }
+                let g = worst_gradient(&doc, 32);
+                let verdade = prod * g;
+                linhas += 1;
+                let razao = verdade / maxi;
+                if razao > pior_razao {
+                    pior_razao = razao;
+                    nome_pior = format!("{ms:?}");
+                }
+                if linhas <= 14 || razao > 1.05 {
+                    println!(
+                        "| `{ms:?}` | {prod:.2} | {maxi:.2} | {verdade:.2} | {razao:.2} | {:.1}× |",
+                        prod / verdade.max(1e-9)
+                    );
+                }
+            }
+        }
+    }
+    println!(
+        "\n⇒ {linhas} pilhas. PIOR verdade/max = {pior_razao:.3} em {nome_pior} \
+         (≤ 1 ⇒ a verdade é o MÁXIMO; ≫ 1 ⇒ é preciso mais do que o máximo)"
+    );
+}
+
+/// ⛔⛔⛔ **UMA JUNTA VIVA NUMA REPETIÇÃO DEPOIS DE UM DEFORMADOR** — o que a sonda da composição
+/// tropeçou (2026-09-01), e o gate dos trios não vê porque a fixtura dele é `Joint::SHARP`.
+#[test]
+#[ignore = "sonda"]
+fn does_a_live_joint_on_a_repetition_tear_the_field() {
+    use ph2d_field::{Joint, UnaryKind};
+    let reg = Registry::default();
+    println!("| pilha | junta | divisor | ‖∇f‖ | passos/raio |");
+    for (nome, ms) in [
+        (
+            "[Bend, Radial, Radial]",
+            vec![UnaryKind::Bend, UnaryKind::Radial, UnaryKind::Radial],
+        ),
+        (
+            "[Bend, Array, Array]",
+            vec![UnaryKind::Bend, UnaryKind::Array, UnaryKind::Array],
+        ),
+        (
+            "[Bend, Twist, Radial]",
+            vec![UnaryKind::Bend, UnaryKind::Twist, UnaryKind::Radial],
+        ),
+        ("[Radial]", vec![UnaryKind::Radial]),
+        ("[Bend, Radial]", vec![UnaryKind::Bend, UnaryKind::Radial]),
+        (
+            "[Radial, Radial]",
+            vec![UnaryKind::Radial, UnaryKind::Radial],
+        ),
+    ] {
+        for (rot, junta) in [
+            (
+                "viva",
+                Joint {
+                    chamfer: 0.0,
+                    fillet: 0.06,
+                },
+            ),
+            ("SHARP", Joint::SHARP),
+        ] {
+            let vivos: Vec<Unary> = ms
+                .iter()
+                .map(|k| match vivo(*k) {
+                    Unary::Array {
+                        count,
+                        spacing,
+                        axis,
+                        ..
+                    } => Unary::Array {
+                        count,
+                        spacing,
+                        joint: junta,
+                        axis,
+                    },
+                    Unary::Radial { count, axis, .. } => Unary::Radial {
+                        count,
+                        joint: junta,
+                        axis,
+                    },
+                    outro => outro,
+                })
+                .collect();
+            let mut n = ph2d_field::Node::new(
+                Xform::IDENTITY,
+                NodeKind::Leaf(Primitive::Box {
+                    half: [0.35, 0.35, 0.30],
+                    round: 0.0,
+                    chamfer: 0.0,
+                }),
+            );
+            n.mods = vivos;
+            let doc = FieldDoc::new(vec![n], NodeId(0)).expect("peça");
+            println!(
+                "| `{nome}` | {rot} | {:.2} | {:.4} | {:.1} |",
+                f64::from(ph2d_field_eval::field_shrink(&doc, &reg)),
+                worst_gradient(&doc, 40),
+                passos_por_raio(&doc),
+            );
+        }
     }
 }

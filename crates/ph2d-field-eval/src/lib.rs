@@ -282,6 +282,8 @@ pub use hull::{probe_hull_uv, probe_in_hull};
 
 #[path = "step.rs"]
 mod step;
+#[doc(hidden)]
+pub use stack::stack_divisor_factors;
 pub use step::{field_shrink, gradient_bound, safe_march_step};
 
 #[cfg(test)]

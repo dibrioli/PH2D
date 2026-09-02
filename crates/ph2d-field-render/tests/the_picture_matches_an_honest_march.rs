@@ -539,3 +539,91 @@ fn measure_the_crossed_cylinders() {
         );
     }
 }
+
+/// ⛔⛔⛔ **UMA JUNTA VIVA NUMA REPETIÇÃO, DEPOIS DE UM DEFORMADOR** — achado em 2026-09-01 pela
+/// sonda da composição, e o gate dos `1 000` trios **não o vê**: a fixtura dele é `Joint::SHARP`.
+///
+/// Medido `‖∇f‖` na caixa de recorte, com o resto da pilha igual:
+///
+/// | pilha | junta VIVA | `Joint::SHARP` |
+/// |---|---:|---:|
+/// | `[Bend, Radial, Radial]` | **`2 249,6`** | `0,56` |
+/// | `[Bend, Array, Array]` | **`745,6`** | `0,14` |
+/// | `[Bend, Twist, Radial]` | **`328,7`** | `0,39` |
+/// | `[Radial]` | `1,414` | `1,000` |
+///
+/// ⚠️ **O `[Radial]` sozinho já diz o mecanismo:** a costura entre cópias é uma **união arredondada**
+/// e vale `√2`, e o `step_divisor` cobra `1,00` por uma repetição. Quem paga é o
+/// `gradient_bound` — **uma vez**. Duas repetições encaixadas com junta viva pagam muito mais do que
+/// isso, e um deformador antes delas alarga a janela de células que cada uma combina.
+///
+/// ⭐ *A régua é a imagem*: um `‖∇f‖` grande diz **pode furar**, e só isto diz **fura**.
+#[test]
+fn a_live_joint_on_a_repetition_draws_what_an_honest_march_draws() {
+    use ph2d_field::{Joint, Op as FOp};
+    let _ = FOp::Union(Blend::Sharp);
+    for (nome, mods) in [
+        (
+            "[Bend, Radial, Radial]",
+            vec![
+                bend_vivo(),
+                radial_vivo(Joint {
+                    chamfer: 0.0,
+                    fillet: 0.06,
+                }),
+                radial_vivo(Joint {
+                    chamfer: 0.0,
+                    fillet: 0.06,
+                }),
+            ],
+        ),
+        (
+            "[Radial]",
+            vec![radial_vivo(Joint {
+                chamfer: 0.0,
+                fillet: 0.06,
+            })],
+        ),
+    ] {
+        let doc = doc_with_mods(
+            Primitive::Box {
+                half: [0.35, 0.35, 0.30],
+                round: 0.0,
+                chamfer: 0.0,
+            },
+            mods,
+        );
+        let (mal, medidos, pior) = disagreeing_pixels_of(&doc, &yaws(), 12.0);
+        assert!(
+            medidos > 500,
+            "⛔ o CONTROLE falhou em «{nome}»: só {medidos} pixels de interior"
+        );
+        // ⚠️ **A MESMA barra do irmão da roseta (`0,2 %`), e pela MESMA razão**: uma repetição de
+        // junta viva tem vincos **côncavos** no interior, e sobre um vinco meio pixel de
+        // profundidade vira a normal nas duas marchas. Medido aqui: `[Radial]` dá `2` de `5 342`
+        // (`0,04 %`, pior `40,1°`) e o trio dá **zero**. ⛔ Uma barra a zero mediria a espessura do
+        // vinco, não a marcha.
+        assert!(
+            mal * 500 <= medidos,
+            "«{nome}»: {mal} de {medidos} pixels do INTERIOR divergem do oráculo (pior {pior:.1}°)"
+        );
+    }
+}
+
+fn bend_vivo() -> Unary {
+    Unary::Bend {
+        turns: 0.12,
+        lower: -2.0,
+        upper: 2.0,
+        falloff: 0.1,
+        axis: ph2d_field::mods::BEND_AXIS,
+    }
+}
+
+fn radial_vivo(joint: ph2d_field::Joint) -> Unary {
+    Unary::Radial {
+        count: 6,
+        joint,
+        axis: ph2d_field::mods::RADIAL_AXIS,
+    }
+}

@@ -19,6 +19,35 @@
 //! ⇒ **`0` de `1 000` depois das duas curas**, e o gate dos pares subiu de `20³` para `40³` na mesma
 //! jornada.
 //!
+//! # ⛔⛔ O PONTO CEGO DESTA FIXTURA, medido em 2026-09-01 — e ele NÃO é um defeito de produto
+//!
+//! O `vivo` aqui dá `Joint::SHARP` à matriz e à repetição radial, então **nenhum dos `1 000` trios
+//! exercita uma junta VIVA numa repetição** — e o gate irmão da caixa
+//! (`the_box_of_a_bound_contains_the_piece`) já tinha aprendido a lição oposta, com o comentário
+//! *«uma junta VIVA, e não a SHARP — a mutação que a apagava SOBREVIVEU»*. *Dois gates irmãos, um
+//! com o fenómeno e outro sem.*
+//!
+//! Medido com o resto da pilha igual e só a junta trocada:
+//!
+//! | pilha | junta VIVA | `Joint::SHARP` |
+//! |---|---:|---:|
+//! | `[Bend, Radial, Radial]` | **`2 249,6`** | `0,56` |
+//! | `[Bend, Array, Array]` | **`745,6`** | `0,14` |
+//! | `[Bend, Twist, Radial]` | **`328,7`** | `0,39` |
+//! | `[Radial]` sozinho | `1,414` (`= √2`) | `1,000` |
+//!
+//! ⭐⭐⭐ **E a IMAGEM diz que não fura**: `[Bend, Radial, Radial]` com junta viva desenha o que a
+//! marcha honesta desenha, **zero** pixels divergentes
+//! (`a_live_joint_on_a_repetition_draws_what_an_honest_march_draws`). ⇒ o `2 249` é real e **não tem
+//! consumidor** — ele vive nos cantos do recorte, onde nenhum raio passa. É a mesma conclusão que o
+//! `the_bend_draws_what_an_honest_march_draws` pagou em 30/08: *um gate de gradiente diz «pode
+//! furar», e só a imagem diz «fura»; quando os dois discordam, manda a imagem.*
+//!
+//! ⚠️ **Por isso a fixtura fica SHARP**: alargá-la para a junta viva não acrescentaria cobertura —
+//! poria esta barra (`‖∇f‖ ≤ 1,02`) a medir uma grandeza que ela não governa. Quem governa a família
+//! da junta viva é o `safe_march_step` (que paga `√2` por costura, ver `gradient_bound`) e a imagem.
+//! *A dívida fica escrita em vez de esquecida.*
+//!
 //! ⚠️ **Ele é caro de propósito** (`1 000` docs × `20³` amostras, ~1 min). É um gate de **fecho**,
 //! não do laço interno — a mesma natureza do irmão dos pares.
 

@@ -227,6 +227,23 @@ fn conjugado(
 /// ⇒ **duas bolas por passo**: o `fim` (o envelope, onde o passo é avaliado) e a `corrente` (onde a
 /// árvore está quando aquele modificador é aplicado). *Escrever só uma é o que deixava as duas
 /// contas divergirem.*
+/// ⭐ **Os factores do divisor, um por passo** — a porta da sonda que mede a ESTRUTURA da folga.
+///
+/// ⚠️ Ela existe porque a pergunta *«o bound composto é o produto ou o máximo?»* não se responde com
+/// o produto já colapsado num número. Ver `what_a_stack_of_deformers_costs_the_march`.
+#[doc(hidden)]
+#[must_use]
+pub fn stack_divisor_factors(mods: &[Unary], local: crate::bounds::Ball) -> Vec<f64> {
+    let fim = crate::bounds::envelope(local, mods);
+    let mut corrente = local;
+    let mut out = Vec::with_capacity(mods.len());
+    for m in mods {
+        out.push(step_divisor(*m, fim, corrente));
+        corrente = crate::bounds::step_mod(corrente, *m);
+    }
+    out
+}
+
 pub(crate) fn stack_divisor(mods: &[Unary], local: crate::bounds::Ball) -> f64 {
     let fim = crate::bounds::envelope(local, mods);
     let mut corrente = local;

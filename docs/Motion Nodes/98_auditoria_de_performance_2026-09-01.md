@@ -196,6 +196,72 @@ e uma cena de flocking com dois sinks é exactamente o que um jogo autora.
 
 ---
 
+## §4.2 — ⛔⛔⛔ O report do Enio, no mesmo dia: `motion.duplicator` depois do emissor
+
+> *«o simples facto de tentar colocar um duplicator logo após o Emitter já quebra a cena … trava
+> … automaticamente o fio do emitter entra no input errado do duplicator (o da shape ou objeto)»*
+
+**São TRÊS defeitos e um deles é meu.** A reprodução é `the_enio_duplicator_after_emitter`
+(`shells/desktop`, `#[ignore]`), que monta o gesto REAL — o mesmo `splice_node` que o menu chama.
+
+### (a) O fio entrava na porta errada, e o TIPO não podia acusar
+
+`splice_into_wire` ligava **sempre à porta 0**. Para 133 dos 134 tipos isso está certo. Para o
+`motion.duplicator` a porta 0 é `shape` e a 1 é `points` — **as duas `INST_VEC2`**, logo o
+`validate` do trial aceita ambas e o erro é **silencioso**.
+
+⇒ side-metadata no **REGISTRY**, nunca no contrato (§6: o `NodeManifest` está congelado):
+`NodeRegistry::register_primary_input`. Ausente ⇒ `0`, o literal que estava cravado ⇒ os outros
+tipos ficam byte-idênticos. Gate `a_spliced_wire_enters_the_port_the_type_declares`, com as duas
+metades e as duas mutações mortas.
+
+⚠️ **CENSO:** **32** tipos têm a porta 0 a partilhar o tipo com outra entrada — a população onde
+nem o tipo nem o `validate` desambiguam. Na quase totalidade a porta 0 chama-se `in`/`in0`/`a` e
+**está certa**; o irmão claro do duplicator é o **`value.switch`**, cuja porta 0 é `select` (um
+fio inserido ali vira o CONTROLO, não os dados). ⏳ Não declarado — falta a medição do gesto.
+⚠️ A 1.ª régua deste censo dizia **74** porque a regex apanhava as portas de SAÍDA.
+
+### (b) A cena ficar VAZIA é aceitável — porque o app diz porquê
+
+Medido: com o fio nos `points`, a saída é **0 linhas**. Isso REFUTOU a minha 1.ª leitura de que a
+mudança era obviamente melhor. O que a torna defensável é que o `Deficit::MissingInput` **já
+existia** e o duplicator **já declara** `shape`/`points` como obrigatórias ⇒ o selo ⚠ aparece
+(`MissingInput("shape")`, verificado na sonda) com cura clicável. E fica a **um** fio do que o
+artista quer, contra três pela porta antiga.
+
+| | linhas emitidas |
+|---|---:|
+| só o emissor | 21 |
+| depois do splice (fio nos `points`) | **0** + selo ⚠ `MissingInput("shape")` |
+| emissor nas DUAS portas | 441 |
+
+### (c) O CONGELAMENTO: um orçamento que a máquina não consegue pagar
+
+`points_within_budget` honra `RECOMMENDED_MAX_ELEMENTS = 1 << 24` **saturando o produto no
+tecto** — qualquer fonte de tamanho médio dá 16,7 M elementos. E `motion.duplicator` **não
+declara `GpuKernel`** e era **serial** (um dos 41 do §4).
+
+| formas | pontos pedidos | aceites | total | antes | **depois** | % de um quadro |
+|---:|---:|---:|---:|---:|---:|---:|
+| 512 | 512 | 512 | 262 144 | 1,9 ms | 1,9 | 11% |
+| 4 096 | 4 096 | 4 096 | **16 777 216** | 133,6 ms | **44,9** | **270%** |
+| 78 124 | 78 124 | **214** | 16 718 536 | 132,5 ms | **45,5** | 273% |
+| 262 144 | 262 144 | **64** | 16 777 216 | 129,6 ms | **47,5** | 285% |
+
+⭐ `par_build` nos cinco laços (`pairs_for`, `pos`, `rot`, `Index`, `spread`) dá **3,0×** — ⚠️ e
+**não 16×**, porque a lista de pares é `Vec<(usize,usize)>` de 16,7 M = **268 MB** percorrida
+quatro vezes: o nó é **limitado por largura de banda**, não por cálculo.
+
+⛔ **NÃO CURADO, e são dois:**
+1. **O tecto continua a custar 2,7 quadros.** `1 << 24` nomeia *«a multiplicação não pode
+   estourar a alocação»* — um recurso REAL, mas **não o orçamento do quadro**, e nada guarda esse.
+   ⛔ Baixar o número é decisão de produto: ele já trunca, e ver o ponto 2.
+2. **A truncagem é MUDA.** 78 124 pontos pedidos ⇒ **214** aceites (`0,27 %`), sem nada na tela.
+   *Um knob que entrega 0,27% do que lhe pedem e não o diz é um knob que mente* — e a casa tem o
+   vocabulário para o dizer (o `Deficit` com selo ⚠), que este caso não usa.
+
+---
+
 ## §5 — Os tetos: auditados contra o §0.0, e estão bons
 
 | teto | valor | nomeia recurso? |
@@ -234,3 +300,6 @@ escreveu — está na escada que **ninguém escreveu como número**.
 | *«os tetos do módulo são palpites»* | **Refutado**: os cinco auditados nomeiam o recurso e trazem tabela (§5) |
 | *«a CPU ser `O(N²)` em boids/collide/proximity é um defeito»* | **Não é**, enquanto o grafo for para o device — os três registam `GridSpec` (§4.1) |
 | *«1 de 134 crates de nó usa rayon»* | **Régua errada**: os nós não dependem de `rayon`, chamam `par_build` do substrato — são **22** (§4) |
+| *«pôr o fio do duplicator nos `points` é obviamente melhor»* | **Refutado e depois re-justificado**: a saída fica em **0 linhas**. Só se sustenta porque o selo ⚠ `MissingInput("shape")` já existia e aparece (§4.2b) |
+| *«32 tipos têm a porta 0 errada»* | **Não**: em quase todos a porta 0 é `in`/`in0`/`a` e está certa. O irmão claro é o `value.switch` (§4.2a). E a 1.ª contagem, **74**, media as portas de SAÍDA |
+| *«paralelizar o duplicator resolve o congelamento»* | **Não**: `3,0×`, e sobram `2,7` quadros. Ele é limitado por LARGURA DE BANDA (268 MB de pares), não por cálculo (§4.2c) |

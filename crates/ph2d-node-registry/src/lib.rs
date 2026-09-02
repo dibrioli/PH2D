@@ -74,6 +74,10 @@ pub struct NodeRegistry {
     /// para *"apareça quando aquela grandeza sair do zero"*. Mesmo molde: ausente
     /// ⇒ nada gateado.
     param_gates_above: BTreeMap<NodeTypeId, &'static [ParamGateAbove]>,
+    /// **Qual porta de entrada é o FIO PRINCIPAL deste tipo** — ver
+    /// [`NodeRegistry::register_primary_input`]. Ausente ⇒ `0`, que é o que todo chamador
+    /// cravava antes ⇒ nenhum tipo que não a declare muda de comportamento.
+    primary_input: BTreeMap<NodeTypeId, u16>,
     /// GPU/M5 Fase 1 (ADR-0126) — per-type WGSL compute kernel, keyed the same
     /// way and kept OUT of the frozen `NodeManifest` exactly like the UI
     /// metadata. Opt-in: a node without one runs its CPU `eval` (the canonical
@@ -312,6 +316,31 @@ impl NodeRegistry {
     #[must_use]
     pub fn text_defaults(&self, id: NodeTypeId) -> &'static [(&'static str, &'static str)] {
         self.text_defaults.get(&id).copied().unwrap_or(&[])
+    }
+
+    /// ⭐⭐⭐ **QUAL PORTA UM FIO DEVE TOMAR quando alguém insere este nó numa ligação** — o
+    /// *fio principal*, side-metadata no REGISTRY e nunca no contrato (§6: o `NodeManifest`
+    /// está congelado, e um campo novo ali pedia um ADR).
+    ///
+    /// ⛔⛔ **Por que existe** (report do Enio, 2026-09-01: *«automaticamente o fio do emitter
+    /// entra no input errado do duplicator»*): o splice ligava **sempre à porta 0**, e para um
+    /// nó cujo fluxo principal não é a porta 0 isso dá o significado trocado — sem erro, sem
+    /// aviso. No `motion.duplicator` as duas entradas são `INST_VEC2`, então **o tipo não
+    /// desambigua**: um fio que chega tem de ir aos *points* (o que se multiplica), e ir ao
+    /// *shape* põe o fluxo grande no lado que entra no PRODUTO — 16,7 M elementos, ~2,7
+    /// quadros só neste nó.
+    ///
+    /// ⚠️ **Ausente ⇒ `0`** — o literal que o splice cravava —, logo os 133 tipos que não a
+    /// declaram ficam byte-idênticos.
+    pub fn register_primary_input(&mut self, id: NodeTypeId, port: u16) {
+        self.primary_input.insert(id, port);
+    }
+
+    /// A porta que um fio deve tomar ao ser inserido neste tipo. `0` quando o tipo não
+    /// declara nada — ver [`Self::register_primary_input`].
+    #[must_use]
+    pub fn primary_input(&self, id: NodeTypeId) -> u16 {
+        self.primary_input.get(&id).copied().unwrap_or(0)
     }
 
     /// Register a node type's conditional-visibility gates ([`ParamGate`]).

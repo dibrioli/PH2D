@@ -59,7 +59,7 @@
 //! element count, which is structural, not a per-element map).
 
 use ph2d_node_registry::{NodeRegistry, ParamGate, ParamUiHint, ParamWidget, RegistryError};
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{
@@ -293,11 +293,13 @@ fn rot_at(c: Option<&Column>, i: usize) -> f32 {
 /// at `pairs[k].0`. This is how the appearance replicates — the same tile / size
 /// / tint on every stamp that chose it.
 fn spread(col: &Column, pairs: &[(usize, usize)]) -> Column {
-    fn go<T: Copy + Default>(v: &[T], pairs: &[(usize, usize)]) -> Vec<T> {
-        pairs
-            .iter()
-            .map(|&(si, _)| v.get(si).copied().unwrap_or_default())
-            .collect()
+    fn go<T: Copy + Default + Send + Sync>(v: &[T], pairs: &[(usize, usize)]) -> Vec<T> {
+        // ⚠️ `par_build` acima de `PAR_THRESHOLD`, **byte-idêntico** ao serial por construção
+        // (o `collect` indexado do rayon escreve o elemento `i` na fatia `i`) — e este é um
+        // gather puro, sem redução. Ver o report do Enio de 2026-09-01 no `pairs_for`.
+        par_build(pairs.len(), |i| {
+            v.get(pairs[i].0).copied().unwrap_or_default()
+        })
     }
     match col {
         Column::Scalar(v) => Column::Scalar(go(v, pairs)),
@@ -324,17 +326,16 @@ fn pairs_for(
 ) -> Vec<(usize, usize)> {
     let ns = shape.count();
     if mode == Pick::Off {
-        let mut v = Vec::with_capacity(ns * np);
-        for si in 0..ns {
-            for pi in 0..np {
-                v.push((si, pi));
-            }
+        // ⚠️ **O par é ARITMÉTICA, não um percurso** — em ordem shape-major o elemento `i` é
+        // `(i / np, i % np)`, que é exactamente o que o duplo laço empilhava. Construído em
+        // paralelo é **byte-idêntico** (índice `i` na fatia `i`) e deixa de ser o único passo
+        // serial antes de 16,7 M pares.
+        if np == 0 {
+            return Vec::new();
         }
-        return v;
+        return par_build(ns * np, |i| (i / np, i % np));
     }
-    (0..np)
-        .map(|pi| (pick_shape(mode, points, pi, ns, seed), pi))
-        .collect()
+    par_build(np, |pi| (pick_shape(mode, points, pi, ns, seed), pi))
 }
 
 /// Clamp the point count so the stamped total stays within `max` (and so the
@@ -383,29 +384,26 @@ fn duplicate(
 
     // `P` always exists on an Instances stream (the port type guarantees Vec2);
     // sum shape + point in shape-major order.
-    let mut pos = Vec::with_capacity(total);
-    for &(si, pi) in &pairs {
+    let pos = par_build(total, |i| {
+        let (si, pi) = pairs[i];
         let sp = p_at(shape_p, si);
         let pp = p_at(point_p, pi);
-        pos.push([sp[0] + pp[0], sp[1] + pp[1]]);
-    }
+        [sp[0] + pp[0], sp[1] + pp[1]]
+    });
     out.set(P, Column::Vec2(pos));
 
     // `rot` only if either side authored one (else the lowering's default 0 is
     // the right answer, and an empty column would be noise).
     if has_rot {
-        let mut rot = Vec::with_capacity(total);
-        for &(si, pi) in &pairs {
-            rot.push(rot_at(shape_rot, si) + rot_at(point_rot, pi));
-        }
+        let rot = par_build(total, |i| {
+            let (si, pi) = pairs[i];
+            rot_at(shape_rot, si) + rot_at(point_rot, pi)
+        });
         out.set(ROT, Column::Scalar(rot));
     }
 
     // Continuous global index/count so a downstream ramp reads one 0..total run.
-    out.set(
-        INDEX,
-        Column::Scalar((0..total).map(|i| i as f32).collect()),
-    );
+    out.set(INDEX, Column::Scalar(par_build(total, |i| i as f32)));
     out.set(COUNT, Column::Scalar(vec![total as f32; total]));
 
     // Every OTHER shape column is appearance — replicate it across the points.
@@ -528,6 +526,18 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    // ⭐⭐ **O fio que chega vai aos PONTOS, não à forma** (report do Enio, 2026-09-01).
+    //
+    // ⚠️ **As duas entradas são `INST_VEC2`, então o tipo não desambigua** — só a semântica
+    // o faz: este nó CARIMBA a forma em cada ponto, e um fluxo que atravessa a cadeia
+    // (partículas de um emissor, ramos de uma planta) é o que se multiplica. Ligá-lo ao
+    // `shape` põe-no no lado que ENTRA NO PRODUTO: o orçamento satura em 16,7 M e o nó
+    // sozinho custa ~2,7 quadros.
+    //
+    // ⚠️ E é a porta que deixa o nó INERTE quando o outro lado está vazio, que é o que uma
+    // inserção numa ligação tem de garantir: sem forma, `ns == 0` ⇒ a corrente DESAPARECE;
+    // sem pontos, o `duplicate` devolve a forma tal e qual.
+    reg.register_primary_input(MANIFEST.id, 1);
     // Both inputs are REQUIRED (ADR-0155): with no `shape` there is nothing to copy, with
     // no `points` there is nowhere to put it — either empty and the node is a silent no-op.
     // A PORT requirement, not a column one, so it is declared (unlike `motion.integrate`,

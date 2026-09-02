@@ -81,10 +81,21 @@ fn splice_into_wire(
     let node = trial.add_node(type_name.to_string());
     trial.set_pos(node, Pos { x, y });
     trial.disconnect(edge.to.0, edge.to.1);
+    // ⭐⭐ **O fio entra pela porta que o TIPO declara como principal**, não pela `0`.
+    //
+    // ⛔⛔ Report do Enio (2026-09-01): *«automaticamente o fio do emitter entra no input
+    // errado do duplicator (o da shape ou objeto)»*. O `0` cravado aqui é certo para os 133
+    // tipos cujo fluxo principal É a primeira porta — e **silenciosamente errado** para o
+    // `motion.duplicator`, cujas duas entradas são do MESMO tipo (`INST_VEC2`), de modo que
+    // nem o `validate` nem o tipo podem acusar. Ver
+    // [`ph2d_node_registry::NodeRegistry::register_primary_input`]: ausente ⇒ `0`.
+    let entrada = motion
+        .registry
+        .primary_input(ph2d_nodegraph::node::NodeTypeId::of(type_name));
     let ok = trial
         .connect(Edge {
             from: edge.from,
-            to: (node, 0),
+            to: (node, entrada),
             delayed: false,
         })
         .is_ok()

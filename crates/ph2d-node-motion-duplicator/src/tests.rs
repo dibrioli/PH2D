@@ -367,3 +367,50 @@ fn points_without_a_size_column_leave_the_stamp_alone() {
     };
     assert_eq!(v, &vec![[2.0, 2.0]; 2], "a escala da forma, replicada");
 }
+
+/// ⛔⛔⛔ **O QUE O ORÇAMENTO PERMITE, EM MILISSEGUNDOS** — a sonda do report do Enio de
+/// 2026-09-01 (*«colocar um duplicator logo após o Emitter já quebra a cena / trava»*).
+///
+/// O `RECOMMENDED_MAX_ELEMENTS` é `1 << 24` = **16 777 216**, e o `points_within_budget`
+/// honra-o: com `ns` formas ele deixa passar `max / ns` pontos, ou seja **satura o produto no
+/// tecto**. ⚠️ Mas `1 << 24` é uma **CONTAGEM**, não um recurso que esta máquina consiga pagar
+/// num quadro — e este nó é **CPU-only e serial** (não declara `GpuKernel`).
+///
+/// A régua que falta é *quanto custa o tecto que o próprio nó autoriza?* — e o orçamento de
+/// 60 fps é `16,7 ms`.
+///
+/// `cargo test -p ph2d-node-motion-duplicator --release -- --ignored --nocapture what_the_budget_costs`
+#[test]
+#[ignore = "perf probe"]
+fn what_the_budget_costs() {
+    let stream_of = |n: usize| {
+        let mut s = Stream::new(n);
+        s.set(P, Column::Vec2((0..n).map(|i| [i as f32, 0.0]).collect()));
+        s.set(ROT, Column::Scalar(vec![0.0; n]));
+        s
+    };
+    eprintln!(
+        "   formas │   pontos pedidos │ pontos aceites │      total │      ms │ % de um quadro"
+    );
+    // ⚠️ **`ns` sai de fontes REAIS**: um emissor no default (`max = 512`), um L-System de
+    // conferência (dezenas de milhares de ramos), e um emissor a meio caminho.
+    for &(ns, np_pedido) in &[
+        (512usize, 512usize),
+        (4_096, 4_096),
+        (78_124, 78_124),
+        (262_144, 262_144),
+    ] {
+        let shape = stream_of(ns);
+        let points = stream_of(np_pedido);
+        let np = points_within_budget(Pick::Off, ns, np_pedido, RECOMMENDED_MAX_ELEMENTS);
+        let t = std::time::Instant::now();
+        let out = duplicate(&shape, &points, np, Pick::Off, 0, 1.0, Transfer::of(0.0));
+        let ms = t.elapsed().as_secs_f64() * 1000.0;
+        eprintln!(
+            "{ns:>9} │ {np_pedido:>16} │ {np:>14} │ {:>10} │ {ms:>7.1} │ {:>6.0}%",
+            out.count(),
+            ms * 100.0 / 16.67
+        );
+    }
+    eprintln!("  (o orçamento de 60 fps é 16,7 ms — e este nó é CPU-only e SERIAL)");
+}

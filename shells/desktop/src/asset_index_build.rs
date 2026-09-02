@@ -176,22 +176,25 @@ pub(crate) fn build(
         {
             entry.swatch = rgba;
         }
-        // ⭐⭐ **A miniatura de um Prefab é a da PEÇA MAIOR dele** (wave A6).
+        // ⭐⭐⭐ **O RETRATO de um Prefab são as PEÇAS dele, compostas** (wave A6, 2026-09-01).
         //
-        // ⚠️ **Isto não é o retrato do prefab, e a diferença está declarada.** O retrato a sério é
-        // um render offscreen da sub-árvore, e ele está BLOQUEADO por uma medição: esta função
-        // corre sem `gpu`, sem `renderer` e sem `vello_pass` em mãos (o índice é construído no
-        // `snapshots::publish`), então um retrato teria de nascer noutra fase e ser **consultado**
-        // daqui — o molde é o `ObjectBake::thumbnail_for`, e é wave própria.
+        // ⛔⛔ **O bloqueio que esta nota declarava DISSOLVEU-SE, e a razão é onde os pixels
+        // vivem.** Ela dizia: *«o retrato a sério é um render offscreen da sub-árvore, e ele está
+        // BLOQUEADO — esta função corre sem `gpu`, sem `renderer` e sem `vello_pass` em mãos»*.
+        // Verdade sobre o render, e **irrelevante para o retrato**: as peças são sprites, os
+        // pixels delas já estão descodificados, e a miniatura por textura já os reduziu. ⇒ o
+        // retrato **compõe-se** ([`crate::asset_card_portrait`]), e não se renderiza.
         //
-        // ⭐ O que isto compra hoje: **no caso comum um prefab é UMA peça**, e aí a peça maior *é*
-        // o prefab — a miniatura fica exacta. Num prefab de várias peças ela é parcial, e o que a
-        // torna honesta é a linha de detalhe ao lado dizer *«N pieces»*.
+        // ⚠️ **A composição não descodifica nada de novo** — ela lê as miniaturas que a cache já
+        // tem, pela porta do `thumb_for`. Um prefab de N peças custa N acertos de memo.
         //
-        // ⚠️ **Maior por ÁREA do `Sprite`, com desempate pelo `StableId`** — sem o desempate, duas
-        // peças do mesmo tamanho fariam o cartão trocar de imagem entre quadros ao sabor da ordem
-        // de arquétipo.
-        entry.thumb = face.and_then(|id| thumb_for(db, id, swatches, &mut budget));
+        // ⚠️ **E a queda para a PEÇA MAIOR fica**, para quando não há retrato (nenhuma peça com
+        // pixels em cache neste quadro, porque o orçamento acabou): *um cartão que perde a imagem
+        // que já mostrava é uma regressão visível.*
+        entry.thumb = crate::asset_card_portrait::compose(sim, entity, &pieces, |id| {
+            thumb_for(db, id, swatches, &mut budget)
+        })
+        .or_else(|| face.and_then(|id| thumb_for(db, id, swatches, &mut budget)));
         entry.deps = deps;
         entry.catalog = catalogs.catalog_of(&entry.key);
         index.push(entry);

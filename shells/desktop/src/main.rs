@@ -55,6 +55,7 @@ mod ase_smoke;
 /// RECUSAS, que são o corpo dele: o painel não tem voz, então quem decide e fala é o shell.
 /// ⭐⭐ **O que um cartão DESENHA** (a cor, a miniatura) e a memória por conteúdo disso.
 mod asset_card_art;
+mod asset_card_portrait;
 mod asset_card_verbs;
 /// ⭐⭐ **Os verbos de CATÁLOGO** (plano 07, wave A3) — criar, renomear, apagar, atribuir.
 mod asset_catalog_verbs;

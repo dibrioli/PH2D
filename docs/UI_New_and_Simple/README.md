@@ -48,6 +48,7 @@ E três defeitos concretos, com foto:
 | ⭐ **Modo vs Layout vs Ferramenta — os TRÊS eixos** | [`pesquisa/04_modo_layout_e_ferramenta.md`](pesquisa/04_modo_layout_e_ferramenta.md) |
 | **«Pintar sobre vetor» — metade já existe** | [`pesquisa/05_pintar_sobre_vetor.md`](pesquisa/05_pintar_sobre_vetor.md) |
 | ⭐⭐ **A engine é 2.5D — e o que isso resolve** | [`pesquisa/06_a_engine_e_2_5d.md`](pesquisa/06_a_engine_e_2_5d.md) |
+| ⭐⭐⭐ **Redesenhar os widgets: plano, minimalista e COMPACTO** (o orçamento de 154 px, a lei do estreito, os 44 widgets) | [`pesquisa/07_o_redesenho_dos_widgets.md`](pesquisa/07_o_redesenho_dos_widgets.md) |
 | **Baixar as referências numa máquina nova** | `bash fetch-referencias.sh` |
 
 ## ⚠️ `referencias/` é gitignorada — e isso é a decisão, não um esquecimento

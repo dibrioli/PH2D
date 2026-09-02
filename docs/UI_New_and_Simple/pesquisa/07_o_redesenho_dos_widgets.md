@@ -1,0 +1,453 @@
+# O redesenho dos widgets — plano e minimalista, e COMPACTO (2026-09-01)
+
+> **Fase de PESQUISA.** Nada aqui está construído. O Enio pediu quatro coisas numa mensagem só, e
+> este documento responde às quatro com número ao lado, para a discussão que vem a seguir.
+>
+> Irmãos: [`01_o_que_a_subida_abriu.md`](01_o_que_a_subida_abriu.md) (o que o stack novo trouxe) ·
+> [`03_diagnostico_e_principios.md`](03_diagnostico_e_principios.md) (o diagnóstico das três fotos) ·
+> [`medicoes/03_o_censo_de_cor.md`](../medicoes/03_o_censo_de_cor.md) ·
+> [`medicoes/06_o_orcamento_de_ecra_em_tablet.md`](../medicoes/06_o_orcamento_de_ecra_em_tablet.md)
+
+## §0 — O pedido, em quatro perguntas
+
+| # | o pedido (palavras dele) | responde-se em |
+|---|---|---|
+| P1 | *"redesenho de cada Widget do app buscando um padrão mais plano e minimalista como godot e blender"* | §1, §3, §7 |
+| P2 | *"como construir os widgets de forma que os painéis tenham boa aparência e bom funcionamento mesmo se forem extremamente estreitos"* | §2, §4, §5, §6 |
+| P3 | *"embora planos e simples precisamos estudar a beleza dos widgets. Quero um app bonito"* | §7 |
+| P4 | *"Atualizamos o Vello/WGPU. O que há neles de mais moderno que pode nos ajudar?"* | §8 |
+
+⚠️ **O exemplo que ele deu é o eixo de tudo**, e está medido no §2:
+
+```
+nosso    [ Opacity ]  [ ═══════════○────── ]  [ 100 ▲▼ ]     ← três colunas
+Blender  [ Normal Offset            0 m     ]                 ← duas, o número DENTRO
+alvo     [ Opacity                  100     ]                 ← UMA, rótulo E número dentro
+```
+
+---
+
+## §1 — ⭐⭐⭐ O diagnóstico: a nossa linguagem é a do **Procreate**, e ele está a pedir a do **Blender**
+
+Isto não é opinião — está escrito no código e nos tokens.
+
+**A prova textual.** O doc-comment do nosso slider abre assim
+([`slider.rs:1-8`](../../../crates/ph2d-editor-core/src/widget/slider.rs)):
+
+> *"Procreate uses sliders for brush size, opacity, flow. Same pattern as Button."*
+
+**A prova numérica.** Raio de canto, nós contra a referência que ele nomeou:
+
+| | raio do painel | raio do controlo | fonte |
+|---|---:|---:|---|
+| **nós** | **16 px** | 4–12 px, e `full: 999` para pílulas | `tokens.json` `chrome.panel-radius`, `radius.*` |
+| **Godot** (editor) | **4 px** | 4 px (tema *Classic*: **3**) | `editor_theme_manager.h:89` `default_corner_radius = 4` |
+
+⇒ **os nossos painéis são 4× mais redondos que os do Godot**, e temos uma família inteira de
+pílulas a `999` que a linguagem-alvo simplesmente não tem.
+
+**A prova de espaçamento.** O Godot deriva TUDO de um número (`base_spacing`), com três presets:
+
+| preset Godot | `base_spacing` | `extra_spacing` | botão de diálogo |
+|---|---:|---:|---|
+| Compact | 2 | 2 | 90 × 26 |
+| Default | 4 | 0 | 105 × 34 |
+| Spacious | 6 | 2 | 112 × 36 |
+
+Nós temos **nove** degraus de espaçamento (`2 4 6 8 12 16 24 32 48`) e **três** de densidade
+(`22 / 26 / 32`), e ⚠️ **o default é `Comfortable` (32 px)** — o mais gordo dos três.
+
+⭐ **A conclusão do §1:** o pedido não é «mudar umas cores». É **trocar a família tipológica** — de
+uma linguagem *touch-first, redonda, com ar* (Procreate/iOS) para uma *density-first, quadrada,
+sem ar* (Blender/Godot). ⚠️ E há uma tensão real, declarada já: **o alvo é tablet**, onde o alvo de
+toque quer ser grande. O §6 resolve-a separando **altura de linha** (que é toque) de **cromo
+horizontal** (que é desperdício).
+
+---
+
+## §2 — ⭐⭐⭐ O orçamento MEDIDO de uma linha de propriedade
+
+A linha da foto é [`slider_with_chip.rs`](../../../crates/ph2d-editor-core/src/widget/slider_with_chip.rs).
+As constantes são dela:
+
+| peça | px | constante |
+|---|---:|---|
+| coluna do rótulo | **70** | `DEFAULT_LABEL_W` |
+| folga | 6 | `Spacing::Sm` |
+| **trilho** (o controlo) | *o que sobrar* | — |
+| folga | 6 | `Spacing::Sm` |
+| caixa numérica | **72** | `DEFAULT_CHIP_W` = `number_input::MIN_W_PX` |
+| trilho mínimo antes de partir | 60 | `SLIDER_CHIP_MIN_SLIDER_W` |
+
+⇒ **cromo fixo = 70 + 6 + 6 + 72 = `154 px`**, e o limiar de empilhamento é `154 + 60 = `**`214 px`**.
+
+O corpo do Inspector é `inner_w = largura − 2×10 (BODY_PAD) − 16 (barra de rolagem)`. Logo:
+
+| painel | `inner_w` | trilho | **% da linha que é controlo** | resultado |
+|---:|---:|---:|---:|---|
+| 308 (Hierarquia) | 272 | 118 | 43,4 % | uma linha |
+| **304 (Inspector, o default)** | **268** | **114** | **42,5 %** | uma linha |
+| 260 | 224 | 70 | 31,2 % | uma linha |
+| **220 (`PANEL_MIN_W`)** | **184** | — | — | ⛔ **EMPILHA: 2 linhas** |
+| 180 | 144 | — | — | ⛔ empilha |
+
+### ⛔⛔ Os três achados
+
+1. **No tamanho de omissão, 57,5 % da linha é cromo.** O artista arrasta 114 px de 268.
+2. **⛔ Na largura mínima que o próprio app permite (`220`), TODO slider já está em duas linhas.**
+   O `PANEL_MIN_W_PX = 220` e o limiar de empilhamento é `214` sobre `inner_w` — que a 220 vale
+   `184`. *A cura de estreiteza que temos hoje custa o dobro da altura*, que é o recurso mais
+   escasso num painel de tablet.
+3. **⛔⛔ O `Vector3Editor` não tem cura nenhuma e fura o próprio mínimo declarado.**
+   `field_rects` divide por três com `.max(0.0)` e **sem piso**
+   ([`vector3_editor.rs:62`](../../../crates/ph2d-editor-core/src/widget/vector3_editor.rs)):
+   precisa de `3×72 + 2×8 = 228 px` e a `220` recebe `184` ⇒ cada campo fica com **56 px**,
+   **22 % abaixo** do `MIN_W_PX = 72` que a própria casa declara. O `Rect2Editor` em linha precisa
+   de `306` — ele foi salvo por ter ganho um `Grid2x2` próprio.
+
+### ⛔ E o achado estrutural: **não existe LEI do estreito**
+
+Censo das 44 fontes de widget, por menção de vocabulário de adaptação
+(`adaptive|is_stacked|narrow|reflow|Grid2x2|demote|overflow`):
+
+| widget | menções | tem mesmo um caminho? |
+|---|---:|---|
+| `segmented_adaptive` | 35 | ✅ reflui |
+| `slider_with_chip` | 20 | ✅ empilha (e é o que custa altura) |
+| `rect2_editor` | 13 | ✅ `Grid2x2` |
+| `scrollbar` | 11 | ✅ |
+| `panel_chrome` · `command_palette` · `status_bar` · `number_input` · `skin` | 2–5 | parcial |
+| **os outros ~35** | **0** | ⛔ **nenhum** |
+
+⇒ **quatro widgets inventaram cada um a sua cura, e trinta e cinco não têm nenhuma.** É por isso
+que «painel estreito» hoje não é uma propriedade do sistema — é uma lotaria por widget.
+
+---
+
+## §3 — O que as referências FAZEM (medido nas fontes vendorizadas)
+
+### 3.1 — Blender, do manual dele (`referencias/blender-manual/.../buttons/fields.rst`)
+
+> *"**Sliders**, a second type of number field, have a **colored bar in the background** to display
+> values over a range."*
+
+> *"The first type of number field shows triangles pointing left (<) and right (>) on the sides of
+> the field **when mouse pointer is over the field**."*
+
+⭐⭐ **Duas leis, as duas directamente úteis:**
+- **um slider NÃO é um controlo diferente de um campo numérico** — é o mesmo campo com uma barra
+  colorida atrás. Uma caixa, não três. *É literalmente o que o Enio desenhou na mensagem.*
+- **os steppers (▲▼) só existem no hover.** Nós pintamo-los sempre, e eles são parte dos 72 px.
+
+E o resto do mesmo ficheiro, que é o que torna a caixa única **suficiente**:
+- arrastar sobre o campo edita (não é preciso um trilho separado);
+- `Ctrl` = passos discretos, `Shift` = precisão;
+- clicar/`Return` transforma-o num campo de texto — **o mesmo pixel é o trilho e a caixa**;
+- aceita **expressões** (`3*2`, `sqrt(2)`) e **unidades** (`1m 3mm`, `2ft`);
+- edição **multi-valor**: premir e arrastar na vertical por vários campos edita-os todos.
+
+⚠️ E o ponto ao lado da caixa na foto dele **tem nome**: é um **decorator**
+(`buttons/decorators.rst`) — um botão minúsculo à direita que mostra se a propriedade é animada,
+e que grava keyframe ao clique. *Não é decoração: é a coluna de animação.* Nós temos timeline e
+não temos essa coluna.
+
+### 3.2 — Godot, do fonte dele (`referencias/godot-editor-src`)
+
+- `default_corner_radius = 4` (`editor_theme_manager.h:89`), *Classic* = 3.
+- Todo o tema deriva de `base_spacing` + `extra_spacing` (§1), incluindo
+  `separation_margin`, `popup_margin = base×2.4`, `window_border_margin`.
+- `forced_even_separation = increased_margin + 6`, **forçado a par** — com o comentário a dizer
+  porquê: *"if the vsep is odd … it will be lopsided"*. ⭐ *Um sistema de espaçamento que se
+  preocupa com a paridade do pixel é o nível de cuidado que «plano» exige* — sem sombra e sem
+  gradiente, o desalinhamento de 1 px passa a ser a única coisa que se vê.
+- `border_width` é `CLAMP(0..2)` — a borda é **0, 1 ou 2 px**, nunca 1,5.
+  ⚠️ Nós temos `stroke.default = 1.5`.
+
+⏳ **Buraco nomeado:** o `EditorSpinSlider` — o widget do Godot que é exactamente o alvo (rótulo
+dentro à esquerda, valor dentro à direita, barra fina de preenchimento) — **não está na árvore
+vendorizada** (só `scene/gui/`, não `editor/gui/`). O `fetch-referencias.sh` existe; se quisermos
+citar a anatomia dele com números em vez de memória, é um `fetch` de um ficheiro.
+
+---
+
+## §4 — ⭐⭐⭐ A lei da compactação, e o widget unificado
+
+### 4.1 — A lei, numa frase
+
+> **Uma linha de propriedade é UMA caixa. O rótulo, o valor e o controlo vivem DENTRO dela;
+> o que não cabe encolhe pela ordem `rótulo → unidade → valor`, e o controlo nunca encolhe,
+> porque o controlo É a caixa.**
+
+O que ela troca, medido contra o §2:
+
+| | hoje | com a lei |
+|---|---:|---:|
+| cromo horizontal fixo | **154 px** | **~16 px** (o padding da caixa) |
+| % da linha que é arrastável a 304 | 42,5 % | **100 %** |
+| largura mínima antes de partir | 214 px | *não parte* — degrada por conteúdo (§6) |
+| altura a `PANEL_MIN_W = 220` | **2 linhas** | **1 linha** |
+
+⇒ num Inspector com 12 sliders a `220 px`, a altura gasta cai de ~24 linhas para **12**.
+
+### 4.2 — A anatomia proposta
+
+```
+┌───────────────────────────────────────────┐ ·
+│▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│ ·   ← 1. a barra de valor É o fundo
+│  Opacity                            100 % │ ·   ← 2. rótulo à esquerda, valor à direita
+└───────────────────────────────────────────┘ ·   ← 3. decorator, FORA, 1 coluna de ~14 px
+      ↑ arrastar aqui edita          ↑ clicar aqui escreve
+```
+
+1. **O preenchimento é o fundo**, não um trilho separado (Blender). Sem `track`, sem `thumb`.
+   ⚠️ **O thumb morre** — e é ele que hoje obriga a `SLIDER_CHIP_MIN_SLIDER_W = 60`.
+2. **Rótulo e valor são duas âncoras de texto na mesma linha de base**, dentro do mesmo rect.
+3. **O decorator é uma coluna do FORMULÁRIO, não do widget** — largura fixa, opcional por painel.
+   ⭐ É onde a nossa timeline finalmente encosta na Inspector (hoje não há coluna de animação).
+
+### 4.3 — ⛔ O que se perde, dito antes de alguém descobrir
+
+| perda | é real? | mitigação |
+|---|---|---|
+| o valor deixa de ser um alvo de clique separado | **sim** | clique curto = editar (Blender); arrastar = escorregar. É um **gesto por duração**, não por região |
+| não há mais ▲▼ permanentes | sim | aparecem no hover (Blender) — ⛔ **e num tablet não há hover**: ver §6.4 |
+| rótulos longos sobre valores longos colidem | **sim** | §6.2 (a escada de degradação) e §7.3 (o esbatimento) |
+| um slider e um campo numérico passam a ser o MESMO widget | é o objectivo | ⭐ mata `slider_with_chip` (497 LOC) e funde-o com `number_input` (459) |
+
+### 4.4 — O raio de explosão, contado
+
+| porta | chamadas | ficheiros |
+|---|---:|---:|
+| `paint_slider_with_chip*` | **70** | **39** |
+| `paint_number_input` / `NumberInput::new` | **92** | — |
+
+⇒ **162 sítios**. ⚠️ **E é por isso que a forma da obra importa mais que o desenho:** se a
+assinatura se mantiver, os 162 herdam o desenho novo sem serem tocados. *A porta única já existe
+e já foi a cura de um bug desta família* (o doc-comment do `slider_with_chip` diz que ele nasceu
+porque *"the slider in panel X looks different from the one in panel Y"*).
+
+---
+
+## §5 — O estudo da compactação, widget a widget
+
+Os **44** ficheiros de `widget/` mais os 10 sub-módulos. Coluna «hoje» = medido; coluna
+«compacto» = **proposta**, não medida.
+
+### 5.1 — Numéricos — *onde está quase todo o ganho*
+
+| widget | hoje | compacto | perde |
+|---|---|---|---|
+| `slider` + `slider_with_chip` + `number_input` | 3 widgets, 3 colunas, 154 px de cromo | ⭐⭐⭐ **um só**: rótulo+valor dentro da barra (§4) | thumb, steppers permanentes |
+| `numeric_input_with_unit` | campo + sufixo de unidade | a unidade entra no texto do valor (`100 %`, `1,5 m`) — ⭐ é o que o Blender faz | uma coluna |
+| `vector3_editor` | 3 campos em linha, **sem piso** (§2) | 3 caixas unificadas; abaixo de `3×MIN` **empilha em 3 linhas rotuladas `X Y Z`** | largura por campo |
+| `rect2_editor` | `Row` \| `Grid2x2` | mesma escada, mas com a caixa unificada o `Grid2x2` chega muito mais tarde | — |
+| `bitmask_grid32` | grelha 4×8 fixa | 8×4 quando mais alto que largo | — |
+
+### 5.2 — Escolha — *o segundo maior ganho*
+
+| widget | hoje | compacto | perde |
+|---|---|---|---|
+| `checkbox` | caixa 18 px **+ rótulo à direita** | ⭐ **a linha inteira é o alvo**, marca à direita (padrão Blender/GNOME) — o rótulo deixa de ter coluna própria | nada |
+| `toggle` | interruptor deslizante | ⭐ vira **caixa de verificação**: um interruptor custa ~2× a largura e diz o mesmo | a animação de deslizar |
+| `radio_group` | N linhas | **segmentado** quando N≤4 e couber; senão dropdown | — |
+| `tabs` / `segmented_adaptive` | já reflui | manter; unificar com `radio_group` (são o mesmo modelo) | — |
+| `dropdown` / `combobox` | caixa + seta | seta de 8 px, rótulo esbate no fim (§7.3) | — |
+| `pill_group` | pílulas `radius: 999` | ⛔ **`999` sai** — 4 px, e as pílulas viram segmentos encostados | o look «iOS» |
+
+### 5.3 — Contentores e cromo — *onde a linguagem se vê*
+
+| widget | hoje | compacto |
+|---|---|---|
+| `card` | superfície + cabeçalho + corpo + moldura | ⭐ **a moldura desaparece**: um cartão passa a ser um cabeçalho + um recuo. Blender não desenha caixas dentro de painéis |
+| `section_header` | cabeçalho | ⭐ **chevron + maiúsculas + 1 px de linha**, e **recolhível** — a peça que falta para painéis estreitos |
+| `divider` | linha 1 px | manter; é a única moldura que sobrevive |
+| `panel_chrome` | raio **16** | **4** (§1) |
+| `modal` / `popover` / `tooltip` | flutuam | manter; sombra é o único sítio onde ela se justifica (§7.4) |
+| `scrollbar` | 10 px sempre | ⭐ **2 px em repouso, 10 no hover/arrasto** — devolve 8 px a cada painel, em TODOS eles |
+
+### 5.4 — Listas, texto, estado
+
+| widget | hoje | compacto |
+|---|---|---|
+| `list_item` / `tree_view` / `context_menu` | linha com ícone+texto+acessório | ⭐ o **recuo** da árvore cai de nível para `8 px`; ícone só se distinguir |
+| `key_value_list` | chave \| valor \| remover | duas caixas unificadas + remover no hover |
+| `text_input` / `text_area` | moldura permanente | ⭐ **fundo, sem moldura**; a moldura só no foco |
+| `progress_bar` / `level_meter` / `spinner` | — | já são planos; só perdem raio |
+| `tag` / `avatar` / `color_swatch` | `radius: 999` / círculo | 4 px — ⚠️ **excepto `avatar`**, onde o círculo é semântico |
+| `status_bar` | pílula | barra encostada |
+| `radial_menu` · `command_palette` · `variant_editor` · `skin` · `color_picker` | — | ⛔ **fora deste estudo**: não vivem em painel estreito |
+
+### 5.5 — ⭐ O que este estudo APAGA
+
+Se a lei do §4 passar, três widgets deixam de existir por fusão
+(`slider` + `slider_with_chip` + `number_input` → um) e dois por absorção
+(`toggle` → `checkbox`, `radio_group` → `segmented_adaptive`).
+⇒ **de 20 `WidgetKind` para ~16**, com menos código e uma linguagem mais estreita.
+⚠️ **Mas `WidgetKind::code()` é um número que viaja no documento** e o doc-comment dele proíbe
+reciclar códigos: a fusão é **de pintura**, e os códigos velhos ficam a apontar para o pintor novo.
+
+---
+
+## §6 — A lei do ESTREITO: os degraus
+
+⚠️ Hoje a nossa única resposta a «estreito» é **empilhar**, e empilhar troca a largura (que falta)
+pela altura (que falta mais). A escada proposta gasta altura **por último**.
+
+### 6.1 — Os degraus, por ordem de aplicação
+
+| # | degrau | custo | exemplo |
+|---|---|---|---|
+| 1 | **fundir colunas** | zero | o slider do §4 |
+| 2 | **encolher o rótulo** (abreviar, depois esbater) | zero | `Geometry Offset` → `Geom. Offset` → `Geometry Off⋯` |
+| 3 | **esconder o acessório** (steppers, unidade, decorator) | zero | §3.1 |
+| 4 | **refluir** (N em linha → grelha) | pouca altura | `Rect2Layout::Grid2x2`, que já existe |
+| 5 | **empilhar** | **dobra a altura** | o que fazemos hoje, em primeiro |
+| 6 | **recolher a secção** | esconde | `section_header` do §5.3 |
+
+### 6.2 — O rótulo é o que cede, e cede por uma ordem
+
+⛔ **O valor NUNCA se trunca** — um número cortado é um número errado. Trunca-se o rótulo, porque
+o utilizador sabe em que secção está. *É a inversão exacta do que fazemos hoje*, onde o rótulo tem
+uma coluna fixa de 70 px e o trilho é que encolhe até desaparecer.
+
+### 6.3 — ⭐ E daqui sai um número que ainda não temos
+
+`PANEL_MIN_W_PX = 220` foi escolhido **antes** de haver alvo tablet. Com a lei do §4 o mínimo
+funcional passa a ser *"cabe o valor mais largo + um rótulo de 3 caracteres"*, que é da ordem de
+**~120 px**. ⏳ **Isso é para MEDIR, não para escrever de memória** — e a medição precisa do
+`TextSystem`, porque depende da fonte.
+
+### 6.4 — ⛔⛔ A tensão do tablet, declarada
+
+O Blender esconde no **hover**, e **num tablet não há hover**. Três saídas, nenhuma medida:
+
+| saída | preço |
+|---|---|
+| acessórios sempre visíveis em toque | perde o ganho do degrau 3 |
+| acessórios no **toque longo** | um gesto a mais para aprender |
+| ⭐ acessórios ligados ao **modo de densidade** (`Comfortable` = sempre; `Compact` = hover) | o `Density` já existe e já é preferência do artista |
+
+⇒ a terceira é a que reaproveita máquina que temos. **É decisão de produto.**
+
+### 6.5 — E a altura NÃO segue a largura
+
+⚠️ `Density` default é `Comfortable = 32 px` **por causa do Pencil**, e isso está certo. A
+compactação deste estudo é **horizontal**. ⛔ Não se corta altura de linha para caber num tablet —
+corta-se cromo lateral, que não é alvo de toque de ninguém.
+
+---
+
+## §7 — A beleza, quando a caixa desaparece
+
+> *"Embora planos e simples precisamos estudar a beleza dos widgets. Quero um app bonito."*
+
+⭐⭐⭐ **A tese:** num desenho plano não há sombra, gradiente nem moldura para esconder erro.
+Sobram **quatro** portadores de beleza, e os quatro são medíveis.
+
+### 7.1 — O alinhamento é a decoração
+
+Sem molduras, a única coisa que dá ordem é **as coisas alinharem**. É por isso que o Godot força a
+paridade do espaçamento (§3.2). ⇒ **uma grelha vertical de 4 px** para tudo, e cada linha de
+propriedade com a **mesma linha de base de texto** — hoje o rótulo (num rect de altura de linha) e
+o chip (centrado no seu próprio rect) são centrados **separadamente**, e basta 1 px de diferença
+para a coluna parecer suja.
+
+### 7.2 — A cor faz o trabalho da moldura, e faz-se por passos IGUAIS
+
+Sem moldura, a hierarquia é **luminância**. ⭐ **E nós já temos a máquina certa:**
+`ph2d_tokens::{oklch_to_srgb, srgb_to_oklch, ColorValue::from_oklch}` (`color.rs`), com **45
+ficheiros** a referi-la. ⇒ os degraus de fundo (`bg` → `bg-elev` → `bg-input`) e os estados
+(hover, press, disabled) podem ser **`ΔL` constante em Oklch** em vez de hex escolhidos à mão.
+
+⚠️ **O censo de cor já disse que isto é uma dívida**: 83 slots por tema, **16 são apelidos puros**,
+e o tema `workshop` prova que 16 declarações chegam. *Um sistema plano precisa de menos cores e de
+passos mais exactos, que é exactamente a mesma obra.*
+
+### 7.3 — ⭐⭐ O esbatimento em vez do `…`
+
+O degrau 2 do §6.1 pede truncar o rótulo. Um `…` é feio e come 3 caracteres.
+**O `vello` 0.10 tem a peça exacta e não a usamos: `Scene::push_luminance_mask_layer`**
+(`scene.rs:154`) — o texto desaparece num gradiente de alfa nos últimos ~16 px da caixa.
+⇒ nada de `…`, nada de recontar caracteres, e lê-se melhor. **Zero consumidores hoje.**
+
+### 7.4 — A sombra passa a ser rara, e por isso tem de ser boa
+
+Num desenho plano só **três** coisas flutuam: `modal`, `popover`, `tooltip`.
+⭐ `Scene::draw_blurred_rounded_rect` / `_in` (`scene.rs:256`/`282`) faz sombra desfocada
+**nativamente**, sem textura e sem passe extra. **Zero consumidores hoje.**
+
+### 7.5 — E o texto pequeno tem de ser NÍTIDO
+
+A 10–13 px (toda a nossa escala: `xxs 10 … base 13`) a beleza **é** a nitidez. Já temos o eixo
+(`TypePreset` com `hint` + snap-X, `paint_text.rs:152`), e ⚠️ **o `hint` do `vello` tem default
+`false`** — quem pintar texto por fora daquela porta perde-o em silêncio.
+
+---
+
+## §8 — O que a subida do stack dá a ESTE trabalho
+
+> Complementa o [`01_o_que_a_subida_abriu.md`](01_o_que_a_subida_abriu.md), que mediu a subida em
+> geral. Aqui só o que serve **ao redesenho dos widgets**. Consumo verificado por `grep` hoje.
+
+| capacidade | crate | serve para | usamos? |
+|---|---|---|:--:|
+| `push_luminance_mask_layer` | vello 0.10 | ⭐⭐ o **esbatimento** do rótulo truncado (§7.3) — a peça que a lei do estreito precisa | ⛔ **0** |
+| `draw_blurred_rounded_rect(_in)` | vello 0.10 | sombra nativa para as 3 superfícies que flutuam (§7.4) | ⛔ **0** |
+| `push_clip_layer` com **`Stroke`** | vello 0.10 | recortar por um **contorno** — anéis de foco e realces sem segunda geometria | ⛔ **0** |
+| `OverflowWrap` · `TextWrapMode` · `WordBreak` | parley 0.11 | a escada de degradação do rótulo (§6.2) sem contar caracteres à mão | ⛔ **0** |
+| `Cluster::from_point_exact` | parley 0.11 | ⭐ clicar dentro da caixa unificada e cair no **carácter certo** (§4.2 põe o cursor de texto onde antes havia trilho) | ⛔ **0** |
+| `RunMetrics::cap_height` / `x_height` | parley 0.11 | ⭐⭐ o **alinhamento óptico** do §7.1 — centrar por altura de maiúscula, não por caixa da fonte | ⛔ **0** |
+| `PlainEditor` (`parley::editing`) | parley 0.11 | a metade «editar» da caixa unificada, já paga | ⛔ **0** |
+| `HueDirection` · `lerp` em qualquer espaço · `gradient()` | color 0.3 | ⭐⭐ os degraus de estado por `ΔL` em Oklch (§7.2) | ⛔ **0** (mas temos Oklch próprio) |
+| `font_embolden` | vello 0.10 | 2.ª alavanca de peso a 11 px (a 1.ª é o eixo `wght`) | ⛔ **0** |
+| gradiente em alfa não-pré-multiplicado | vello 0.10 | o esbatimento do §7.3 não escurece a meio | ⭐ de graça |
+| binning > 256 bins | vello 0.10 | uma UI densa **é** uma cena grande — era um defeito alcançável | ⭐ de graça |
+| `SurfaceConfiguration::color_space` | wgpu 29 | gama larga / HDR | ⛔ **0**, e ⛔ **fora desta etapa** |
+
+⭐⭐⭐ **A resposta ao P4, em uma frase:** *a subida quase não trouxe formas novas de desenhar
+caixas — trouxe o motor de TEXTO e o de COR, que são exactamente os dois materiais de que uma UI
+plana é feita.* Os três itens marcados ⭐⭐ acima (`cap_height`, `luminance_mask`, Oklch) são as
+peças que fazem a diferença entre «plano» e «plano e bonito», e **nenhum está a ser usado**.
+
+---
+
+## §9 — O que está MEDIDO, o que é PROPOSTA, e o que falta medir
+
+⚠️ Separado de propósito: este documento vai ser lido por quem implementa.
+
+**Medido** (número + ficheiro no texto): o cromo de 154 px e o limiar de 214 · a tabela de larguras
+de painel · os 42,5 % · o empilhamento a `PANEL_MIN_W` · o `Vector3Editor` sem piso · o censo dos
+35 widgets sem caminho estreito · os raios 16 vs 4 · os presets de espaçamento do Godot · as duas
+leis do manual do Blender · os 162 sítios de chamada · o consumo zero das 9 capacidades do §8 · o
+Oklch que já temos.
+
+**Proposta** (desenho, não medição): a anatomia do §4.2 · a escada do §6.1 · a tabela por widget do
+§5 · as fusões do §5.5 · os quatro portadores de beleza do §7.
+
+⏳ **Por medir, e cada um bloqueia uma decisão:**
+
+| o que | porque bloqueia |
+|---|---|
+| a largura real dos nossos rótulos com o `TextSystem` | o `~120 px` do §6.3 é uma estimativa, e o mínimo do painel sai daí |
+| ⛔ o gesto **clique-curto vs arrasto** num tablet com Pencil | é a fundação do §4.2; se falhar, a caixa unificada não pode ser editável por texto |
+| o `EditorSpinSlider` do Godot (não vendorizado, §3.2) | citaríamos a anatomia com número em vez de memória |
+| o custo de um `push_luminance_mask_layer` por linha de painel | 25 painéis × N linhas é muita camada; pode ser preciso limitá-lo a quem trunca |
+| quantas das 70+92 chamadas passam um `label_w`/`chip_w` próprio | decide se a obra é uma porta ou 162 sítios |
+
+---
+
+## §10 — Para a discussão (as perguntas que são dele)
+
+1. **A caixa unificada é o alvo?** (§4.2) — é a mudança de que tudo o resto depende.
+2. **Quão longe vai o «plano»?** Raio `16 → 4` é o Godot. ⚠️ As pílulas a `999` e o `toggle`
+   deslizante são as duas peças mais «Procreate» que temos: saem?
+3. **A coluna de animação** (o *decorator* do Blender, §3.1) — queremo-la? É a ponte entre o
+   Inspector e a timeline, e reserva largura em todos os painéis.
+4. **O gesto de acessório em tablet** (§6.4): sempre visível, toque longo, ou ligado à densidade?
+5. **Ordem da obra.** A recomendação da linha é: **(a)** a caixa unificada (§4) — é onde está o
+   ganho e ela sozinha resolve o §2 inteiro; **(b)** a escada do estreito (§6) como **lei com gate**,
+   não como cura por widget; **(c)** os tokens (raio, espaçamento, Oklch) — ⚠️ que tocam **tudo** e
+   por isso vêm depois de a forma estar decidida, não antes.
+
+⛔ **Nada disto começa antes de ele escolher** — o §5 apaga widgets e o §9 diz o que ainda não foi
+medido.

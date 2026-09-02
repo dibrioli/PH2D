@@ -52,6 +52,14 @@ pub(crate) enum DropTarget {
         /// `None` = a linha *Unassigned* (tirar de qualquer catálogo).
         catalog: Option<u128>,
     },
+    /// ⭐⭐⭐ **Sobre a RANHURA DA TEXTURA do Inspector** (plano `docs/Components/07`, wave B3).
+    ///
+    /// ⚠️ **Alvo próprio, e não uma excepção dentro do [`DropTarget::Chrome`]** — é o que o
+    /// comentário do `Chrome` prometia desde a wave A3 (*«quando um campo souber receber, ele
+    /// entra aqui como alvo próprio»*), e é a lei D7 do plano: *a queda decide pelo TIPO DO ALVO*.
+    ///
+    /// `entity_bits` é a sprite que a ranhura descreve — resolvida pelo painel que a pintou.
+    InspectorTexture { entity_bits: u64 },
     /// Sobre o chrome (um painel, a barra, o rail) — nada aqui sabe receber um asset.
     Chrome,
     /// ⭐ **De volta ao painel de onde saiu** — isto é um CANCELAR, não uma recusa.
@@ -115,10 +123,10 @@ impl DropAction {
 
 /// ⭐ **A LEI.** Pura e total.
 ///
-/// ⚠️ **Exaustiva no que importa:** os dois braços de `Canvas` casam a carga **por variante**, então
-/// um `DragPayload` novo é **erro de compilação** aqui — que é a propriedade que interessa. Os dois
-/// `_` que existem são sobre o ALVO (`Source`, `Chrome`), onde a carga de facto não muda a
-/// resposta: desistir é desistir e recusar é recusar, venha o que vier.
+/// ⚠️ **Exaustiva no que importa:** os braços de `Canvas` e os da ranhura casam a carga **por
+/// variante**, então um `DragPayload` novo é **erro de compilação** aqui — que é a propriedade que
+/// interessa. Os dois `_` que existem são sobre o ALVO (`Source`, `Chrome`), onde a carga de facto
+/// não muda a resposta: desistir é desistir e recusar é recusar, venha o que vier.
 ///
 /// ⛔ A 1.ª redacção deste doc dizia *«sem um `_` no match»* — e havia dois. *Uma afirmação sobre a
 /// forma do código envelhece no primeiro braço que alguém acrescenta; a que vale é sobre a
@@ -136,9 +144,19 @@ pub(crate) fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
             DropAction::Filecatalog { payload, catalog }
         }
 
-        // ⛔ Fora do canvas e das linhas de catálogo nada sabe receber — hoje. Quando um campo do
-        // Inspector souber, ele entra aqui como alvo próprio, e não como uma excepção espalhada
-        // pelo despachante.
+        // ⭐⭐⭐ **A RANHURA recebe uma IMAGEM, e é a MESMA acção que a queda sobre a sprite no
+        // canvas** (wave B3): o efeito é *«esta sprite passa a mostrar isto»*, e ele não muda por o
+        // gesto ter chegado pelo painel. *Uma segunda acção com o mesmo efeito seria dois sítios a
+        // discordar no dia em que um deles for corrigido.*
+        (DragPayload::Image { asset }, DropTarget::InspectorTexture { entity_bits }) => {
+            DropAction::RetextureSprite { entity_bits, asset }
+        }
+
+        // ⛔ **Um prefab na ranhura RECUSA** — e a recusa vê-se. Uma receita não é uma imagem, e
+        // «pôr um componente dentro do campo de textura» não é um gesto que exista.
+        (DragPayload::Prefab { .. }, DropTarget::InspectorTexture { .. }) => DropAction::Refuse,
+
+        // ⛔ Fora do canvas, das linhas de catálogo e da ranhura, nada sabe receber.
         (_, DropTarget::Chrome) => DropAction::Refuse,
 
         (DragPayload::Prefab { stable_id }, DropTarget::Canvas { world, .. }) => {
@@ -374,5 +392,95 @@ mod catalog_target_tests {
         );
         assert_eq!(resolve(p, DropTarget::Chrome), DropAction::Refuse);
         assert_eq!(resolve(p, DropTarget::Source), DropAction::Cancel);
+    }
+}
+
+/// Os gates da RANHURA DA TEXTURA (wave B3). ⚠️ Módulo irmão do `catalog_target_tests`, e pela
+/// mesma razão: cada alvo novo traz os seus, e um ficheiro de testes que cresce sem costura é o
+/// que faz ninguém achar o gate que interessa.
+#[cfg(test)]
+mod texture_slot_target_tests {
+    use super::*;
+
+    /// ⭐⭐⭐ **Uma IMAGEM na ranhura retextura a sprite que ela descreve** (wave B3) — e é a MESMA
+    /// acção que a queda sobre a sprite no canvas.
+    ///
+    /// ⚠️ **O oráculo é a IGUALDADE das duas**, e não o valor de uma: se um dia elas divergirem, o
+    /// mesmo gesto passa a ter dois significados conforme o sítio por onde chegou.
+    #[test]
+    fn an_image_on_the_slot_is_the_same_action_as_on_the_sprite() {
+        let asset = [7u8; 32];
+        let by_slot = resolve(
+            DragPayload::Image { asset },
+            DropTarget::InspectorTexture { entity_bits: 42 },
+        );
+        let by_canvas = resolve(
+            DragPayload::Image { asset },
+            DropTarget::Canvas {
+                world: [0.0, 0.0],
+                over: Some(DropOver {
+                    entity_bits: 42,
+                    is_sprite: true,
+                }),
+            },
+        );
+        assert_eq!(by_slot, by_canvas);
+        assert_eq!(
+            by_slot,
+            DropAction::RetextureSprite {
+                entity_bits: 42,
+                asset
+            }
+        );
+    }
+
+    /// ⛔ **Um prefab na ranhura RECUSA** — e a recusa nomeia onde ele servia.
+    ///
+    /// ⚠️ ⛔ **Não é `Cancel`:** desistir é voltar ao painel de origem; isto é largar num sítio que
+    /// não sabe receber, e tem de se ver.
+    #[test]
+    fn a_prefab_on_the_slot_is_refused_out_loud() {
+        assert_eq!(
+            resolve(
+                DragPayload::Prefab { stable_id: 9 },
+                DropTarget::InspectorTexture { entity_bits: 42 },
+            ),
+            DropAction::Refuse
+        );
+        assert!(
+            DropAction::refusal_line(DragPayload::Prefab { stable_id: 9 }).contains("canvas"),
+            "a recusa tem de dizer onde um prefab servia"
+        );
+    }
+
+    /// ⛔ **O alvo novo não mudou as respostas dos antigos** — o irmão do gate homónimo da wave A3.
+    ///
+    /// ⚠️ *Um braço acrescentado a um `match` pode capturar o que ia para outro*, e a ordem dos
+    /// braços é a lei: sem este gate, uma queda no canvas passaria a ser recusada e ninguém saberia
+    /// dizer quando.
+    #[test]
+    fn the_slot_did_not_change_the_answers_of_the_old_targets() {
+        let asset = [3u8; 32];
+        assert_eq!(
+            resolve(
+                DragPayload::Image { asset },
+                DropTarget::Canvas {
+                    world: [1.0, 2.0],
+                    over: None
+                }
+            ),
+            DropAction::SpawnImage {
+                asset,
+                world: [1.0, 2.0]
+            }
+        );
+        assert_eq!(
+            resolve(DragPayload::Image { asset }, DropTarget::Chrome),
+            DropAction::Refuse
+        );
+        assert_eq!(
+            resolve(DragPayload::Image { asset }, DropTarget::Source),
+            DropAction::Cancel
+        );
     }
 }

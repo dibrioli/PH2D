@@ -34,6 +34,19 @@
 //! a migração dos `pending_X` que ele anunciava está feita há muito. *Prosa que descreve o commit
 //! em vez do ficheiro envelhece sem que nada fique vermelho.*
 
+/// ⛔⛔⛔ **MEDIDO 2026-09-01: acrescentar UMA variante a este enum custa +78 LINHAS.**
+///
+/// Não é o conteúdo — é o `rustfmt`. Com as variantes-estrutura em linha o ficheiro é estável a
+/// 676; **uma variante nova (com carga ou sem ela) faz o formatador reflow-ar as 37 variantes de
+/// estrutura para multi-linha de uma vez**, e o ficheiro salta para ~754, acima do tecto de 700.
+/// ⚠️ **Um comentário acrescentado NÃO o dispara** (676 → 677), então o que o move é a contagem de
+/// variantes, e não o tamanho.
+///
+/// ⇒ **quem acrescentar a próxima paga o corte**, e o corte por responsabilidade que falta está
+/// nomeado: a família `Hier*` são **33** variantes com o mesmo sujeito (uma `row`) e o mesmo dreno
+/// — ela vira `EditorAction::Hierarchy(HierRequest)` num irmão, como a `VariationRequest` fez.
+/// ⛔ Não subir o tecto: *a cura de um teto estourado é o corte; subir o número é adiar com juros.*
+///
 /// One outbound intent from the editor to the shell. Variants are
 /// added incrementally as `pending_X` fields migrate into the bus.
 /// Each variant carries enough payload that the shell can dispatch
@@ -52,7 +65,9 @@ pub enum EditorAction {
     /// `mode_on` gate for image tools applies at the shell side, not
     /// in the variant. Adding a new modal tool does not require a new
     /// variant.
-    ActivateTool { tool_id: &'static str },
+    ActivateTool {
+        tool_id: &'static str,
+    },
 
     /// Apply a one-shot or stateful-bake image edit on `entity_bits`,
     /// dispatched by `tool_id` (the manifest id). Generic image-edit
@@ -97,19 +112,7 @@ pub enum EditorAction {
     /// panels' Cancel buttons (BgRemoval + Padding).
     CancelActiveTool,
 
-    /// **Entra ou sai do modo escultura 3D** (ADR-0150). Levantada pelo pill SCULPT
-    /// (`chrome::sculpt3d_toggle`); o shell drena pondo o barro na tela — ou tirando-o.
-    ///
-    /// ⚠️ **Não é [`Self::ActivateTool`], e a diferença é a que o ADR-0150 protege:** a cena 3D
-    /// **não é uma [`crate::tool::Tool`]** (a navegação orbital mora no shell de propósito, e é
-    /// isso que mantém a superfície congelada `Tool=12` fora do caminho), então não há `tool_id`
-    /// que a registry saiba ativar. Uma variante própria é o canal honesto.
-    ///
-    /// ⚠️ **Sem carga útil, e é deliberado:** *o que* "entrar" significa — criar a cena se não
-    /// houver, pôr o papel no barro se houver — é conhecimento do shell, o único lado que tem o
-    /// device, o tamanho da superfície e a escultura. Um `bool` aqui obrigaria o pill a saber o
-    /// estado da cena para dizer o oposto dele, e as duas metades divergiriam no primeiro frame
-    /// em que o `D` mudasse o papel.
+    /// ⭐ **Ligar/desligar o módulo 3D.** Porquê e o que ele arma: `docs/3D/` + ADR-0150.
     ToggleSculpt3d,
 
     /// Re-decode the entity's sprite source asset at the current
@@ -118,7 +121,9 @@ pub enum EditorAction {
     /// Raised by the Inspector's "Reimport at current px/m" button
     /// (`INSP_RENDER_SOURCE_REIMPORT`). Texture itself unchanged;
     /// only `Sprite.size` is recomputed.
-    Reimport { entity_bits: u64 },
+    Reimport {
+        entity_bits: u64,
+    },
 
     /// **Converter a PRECISÃO dos pixels de um sprite** — plano
     /// `docs/Sprite_projeto/18` W5. Levantada pelo par `RGBA8 / RGBA16` da seção Render Source.
@@ -145,7 +150,10 @@ pub enum EditorAction {
     /// ⚠️ **Intensidade zero REMOVE o componente**, em vez de o deixar a zero. Uma sprite que não
     /// emite não tem por que carregar a linha no ficheiro, e o quadro tem de voltar a ser
     /// byte-idêntico ao de antes de alguém ter mexido no slider.
-    InspectorSpriteEmissiveChange { entity_bits: u64, intensity: f32 },
+    InspectorSpriteEmissiveChange {
+        entity_bits: u64,
+        intensity: f32,
+    },
 
     /// Undo the most recent image-edit (Trim Transparency / Make
     /// Square / Bg Removal). No payload — the shell owns the
@@ -162,77 +170,9 @@ pub enum EditorAction {
     /// `UndoImageEdit` — o undo de IMAGEM, single-level — enquanto o atalho desfazia o
     /// projeto. Mover uma forma e clicar em Undo não fazia nada. E o botão **Redo não
     /// despachava coisa alguma**: era pintado, clicável, e órfão.
-    UndoStep { redo: bool },
-
-    /// Toggle the `Visibility` component on the entity backing the
-    /// hierarchy row whose eye-icon was just clicked. Payload: the
-    /// row's `NodeId`. The shell resolves NodeId → Entity via
-    /// `HeroLive::bridge.entity_for(row)` and flips `Visibility.hidden`
-    /// on `SimWorld`.
-    HierToggleVisibility { row: ph2d_a11y::NodeId },
-
-    /// 2026-05-26 — user clicked the per-row lock icon. Shell drains
-    /// and flips presence of `ph2d_ecs::Locked` on the row's entity
-    /// (only the entity is locked; descendants remain editable).
-    HierToggleLock { row: ph2d_a11y::NodeId },
-
-    /// 2026-05-26 — user clicked the per-row "group lock" (folder)
-    /// icon. Shell drains and flips presence of
-    /// `ph2d_ecs::GroupedChildren` on the row's entity (descendants
-    /// locked; the entity itself remains editable).
-    HierToggleGroup { row: ph2d_a11y::NodeId },
-
-    /// Drag-and-drop reparent for a hierarchy row. Payload mirrors
-    /// the `WidgetEvent::HierReparent` event one-to-one. `new_parent
-    /// = None` is a root-level drop; `before`/`after` position the
-    /// dragged entity relative to a target sibling. The shell
-    /// resolves NodeIds → Entities via the bridge and runs
-    /// `hero_intents::drain_reparent` which rebuilds the bevy_ecs
-    /// `Children` ordering by re-inserting `ChildOf` in sequence.
-    HierReparent(crate::screens::hero::HierReparentIntent),
-
-    /// Duplicate the entity backing the hierarchy row. Payload: the
-    /// row's `NodeId`. Shell copies Transform / Sprite / Name /
-    /// ChildOf onto a freshly-spawned entity, suffixes the name
-    /// with `_copy`, and toasts on success. Raised by the row's
-    /// right-click → Duplicate menu entry.
-    HierDuplicate { row: ph2d_a11y::NodeId },
-
-    /// Despawn the entity backing the hierarchy row. Payload: the
-    /// row's `NodeId`. Cascades through bevy_ecs 0.19's `ChildOf`
-    /// relation, taking descendants with it. Also clears
-    /// `gizmo_selection` if it pointed at the deleted entity.
-    /// Raised by the row's right-click → Delete menu entry.
-    HierDelete { row: ph2d_a11y::NodeId },
-
-    /// Reset the entity's `Transform` to `Transform::IDENTITY`.
-    /// Payload: the row's `NodeId`. Raised by the row's right-click
-    /// → Reset Transform menu entry.
-    HierResetTransform { row: ph2d_a11y::NodeId },
-
-    /// ⭐ **Devolver a instância à receita** (ADR-0164 / F4.4) — apaga TODAS as excepções desta
-    /// cópia. Payload: a `NodeId` da linha. Levantada pelo botão direito → *Revert to Master*.
-    HierRevertToMaster { row: ph2d_a11y::NodeId },
-
-    /// ⭐ **A seleção vira RECEITA** e uma instância fica no lugar dela (ADR-0164 / F4.5).
-    HierMakeComponent { row: ph2d_a11y::NodeId },
-
-    /// ⭐ **Instanciar** a receita desta linha (ADR-0164 / F4.5).
-    HierInstantiate { row: ph2d_a11y::NodeId },
-
-    /// ⭐ **Instanciar LIGADO** (Enio, 2026-08-27) — a cópia divide a ARTE da receita.
-    HierInstantiateLinked { row: ph2d_a11y::NodeId },
-
-    /// ⭐ **Destacar** — a instância deixa de seguir a receita (ADR-0164 / F4.5).
-    HierDetach { row: ph2d_a11y::NodeId },
-
-    /// ⭐ **Aplicar ao mestre** — a excepção vira o padrão (ADR-0164 / F4.5).
-    HierApplyToMaster { row: ph2d_a11y::NodeId },
-
-    /// Spawn a new child entity (identity transform, name "Child")
-    /// under the hierarchy row. Payload: the parent row's `NodeId`.
-    /// Raised by the row's right-click → Add Child menu entry.
-    HierAddChild { row: ph2d_a11y::NodeId },
+    UndoStep {
+        redo: bool,
+    },
 
     /// ⭐⭐⭐ **Agrupar / desagrupar a selecção** (Enio, 2026-08-30).
     ///
@@ -244,88 +184,9 @@ pub enum EditorAction {
     /// ⚠️ **O verbo já existia em `Ctrl+G` e era inalcançável** — sem menu, sem botão, sem entrada
     /// de paleta, e cercado à ferramenta Vector. Este par de acções é o alcance dele.
     HierGroup { row: ph2d_a11y::NodeId },
+
     /// O gémeo — ver [`Self::HierGroup`].
     HierUngroup { row: ph2d_a11y::NodeId },
-
-    /// ⭐ **Um objeto VAZIO na raiz** — o botão **Add** do cabeçalho da Hierarquia (ADR-0166 / F3).
-    ///
-    /// ⚠️ **Sem payload, e é isso que o distingue do [`Self::HierAddChild`]:** aquele nasce de uma
-    /// LINHA (o pai), este de um botão que não pertence a linha nenhuma. Dar-lhe um `row` seria
-    /// inventar um pai para o objeto que o artista pediu **sem** pai.
-    ///
-    /// ⚠️ O botão existia, era pintado e registado desde a Fase C.2 — e **nada o consumia**. Um
-    /// botão morto sob o dedo e um botão ausente dão o mesmo report; este é o primeiro dos dois.
-    HierAddRoot,
-
-    /// Composite the current multi-selection (≥ 2 sprites) into one new Individual-texture sprite at
-    /// the union bbox, then despawn the originals. Payload: the right-clicked row's `NodeId` (visual
-    /// anchor — the merge inherits its parent / z). Drain toasts when < 2 sprites are selected (no-op).
-    HierMergeSprites { row: ph2d_a11y::NodeId },
-
-    /// **Fundir em CAMADAS** — plano `docs/Sprite_projeto/18` W10 (Enio, 2026-08-21).
-    ///
-    /// ⚠️ Mesma geometria da [`Self::HierMergeSprites`]; o que muda é que cada fonte fica também
-    /// numa camada do documento do Painter. Uma variante própria, e não um `bool` na de cima,
-    /// porque o menu tem **duas linhas** e cada uma tem de dizer o que faz pelo nome.
-    HierMergeToLayers { row: ph2d_a11y::NodeId },
-
-    /// **Exportar UMA sprite** para o formato que a extensão escolhida nomear — plano
-    /// `docs/Sprite_projeto/18` W9 (Enio, 2026-08-21).
-    ///
-    /// ⚠️ Levantar não é exportar: o painel não tem o `ExporterRegistry`, nem o renderer, nem os
-    /// pixels. O shell tem os três.
-    HierExportImage { row: ph2d_a11y::NodeId },
-
-    /// "Pack into Sheet" — o mesmo verbo do pill `[SHEET]`, levantado do menu de contexto de uma
-    /// linha da hierarquia (Enio 2026-08-19). Payload: a `NodeId` da linha clicada, que a shell
-    /// resolve em entidade e usa como **âncora**: se ela pertence à seleção, a folha leva a
-    /// seleção inteira; se não, leva só ela — a mesma lei do [`Self::HierMergeSprites`] vizinho,
-    /// de propósito (duas semânticas de seleção no mesmo menu seriam adivinhação).
-    ///
-    /// ⚠️ Dois verbos, escolhidos pelo alvo: sobre sprites CRIA a folha, sobre uma folha
-    /// RE-ARRANJA os filhos dela.
-    HierPackSheet { row: ph2d_a11y::NodeId },
-
-    /// "Auto-Arrange Pieces" — re-encaixa os filhos da folha DENTRO da resolução dela
-    /// (Enio 2026-08-19). Payload: a `NodeId` da linha clicada, que tem de ser uma folha.
-    ///
-    /// ⚠️ **Não redimensiona.** A resolução foi escolhida no modal quando a folha nasceu; este
-    /// gesto é *arrume*, não *redimensione*. O que não couber acende a moldura.
-    HierArrangeSheet { row: ph2d_a11y::NodeId },
-
-    /// "Bake Sheet" — compõe os filhos numa imagem e reata cada um a uma região dela: N sprites,
-    /// uma textura, um draw call (plano §7.3, W5.2). Muda o documento.
-    HierBakeSheet { row: ph2d_a11y::NodeId },
-
-    /// "Export Sheet" — grava `<nome>.png` + `<nome>.json` ao lado do projeto. ⚠️ **Compõe sem
-    /// reatar**: exportar não é editar.
-    HierExportSheet { row: ph2d_a11y::NodeId },
-
-    /// "Remove from Sheet" — a peça deixa a folha e volta a ser objeto de raiz, **onde está**
-    /// (Enio 2026-08-19). Payload: a `NodeId` da linha clicada.
-    ///
-    /// ⚠️ A shell serve-a pelo MESMO caminho do arrasto-para-a-raiz da hierarquia
-    /// (`HierReparentIntent { new_parent: None }`), que já preserva a pose de mundo e reatribui o
-    /// `RootOrder`. Uma segunda implementação da mesma saída seria a que se esqueceria do
-    /// `RootOrder`.
-    HierRemoveFromSheet { row: ph2d_a11y::NodeId },
-
-    /// "Use as Brush Grain" — shell resolves row → pixels → `set_brush_texture_image` (Enio 2026-06-24).
-    HierUseAsBrushTexture { row: ph2d_a11y::NodeId },
-    /// "Use as Brush Shape" — shell resolves row → pixels → `set_brush_shape_image` (Enio 2026-06-25).
-    HierUseAsBrushShape { row: ph2d_a11y::NodeId },
-    /// "Use as Watercolor Paper" — shell resolves row → pixels → `use_layers_as_watercolor_paper`
-    /// (`docs/Painter/10…` §5).
-    HierUseAsPaper { row: ph2d_a11y::NodeId },
-    /// "Use as Granulation" — shell resolves row → pixels → `use_layers_as_granulation`.
-    HierUseAsGranulation { row: ph2d_a11y::NodeId },
-
-    /// Sync `gizmo_selection` to the entity backing the clicked
-    /// hierarchy row — cross-panel selection sync from the
-    /// hierarchy panel to the canvas gizmo. Payload: the row's
-    /// `NodeId`. Live (ECS) mode only; fixture-only rows don't
-    /// raise this.
-    HierRowClick { row: ph2d_a11y::NodeId },
 
     /// Canvas multi-select event (Fase 0b). Raised by the desktop
     /// shell's canvas pick handler after resolving the click to its
@@ -341,53 +202,11 @@ pub enum EditorAction {
         modifier: SelectModifier,
     },
 
-    /// Hierarchy-panel multi-select event (Fase 0b). Twin of
-    /// [`Self::SelectSprite`] but keyed by the row's `NodeId` —
-    /// `ph2d-panel-hierarchy` does not have a `NodeId → Entity`
-    /// resolver, so the shell does the lookup via the live bridge
-    /// before applying the same `GizmoStateGroup` mutation. Replaces
-    /// the legacy [`Self::HierRowClick`] for new emitters; the legacy
-    /// variant stays in the enum for now to avoid churning shell
-    /// drain logic outside Fase 0e.
-    HierSelectRow {
-        row: ph2d_a11y::NodeId,
-        modifier: SelectModifier,
-    },
-
-    /// Hierarchy-panel range select (Fase 0b). Shift-click on a live
-    /// row with a primary already set: shell walks the hierarchy row
-    /// order from the current primary's row to `row` and calls
-    /// `add_to_selection` on every entity in between (inclusive). No-op
-    /// when nothing is selected (no anchor). Canvas clicks have no
-    /// natural linear order so they do not emit this variant.
-    HierRangeSelect { row: ph2d_a11y::NodeId },
-
     /// Drop primary + extras in one go (Fase 0b). Raised by canvas
     /// click on an empty area without modifier, and by pressing Esc
     /// while a selection is active. Shell drains by calling
     /// `GizmoStateGroup::clear_all_selection`.
     ClearSelection,
-
-    /// One-shot seed of the rename TextInput buffer when inline-
-    /// rename mode opens. Payload: the row's `NodeId`. Shell reads
-    /// the entity's current `Name`, fills `HIER_RENAME_INPUT.text`,
-    /// and selects all. Without the one-shot semantic, subsequent
-    /// Backspace edits would get clobbered back to the original
-    /// name on every frame. Raised by right-click → Rename and by
-    /// long-press on the row.
-    HierRenameSeed { row: ph2d_a11y::NodeId },
-
-    /// Finalized rename commit (Enter / blur on the rename
-    /// TextInput). Payload: the row's `NodeId` + the trimmed new
-    /// name. Shell writes the new `Name` component on the entity
-    /// and toasts confirmation, then clears the rename TextInput
-    /// buffer. `String` owned-data payload is fine — `EditorAction`
-    /// is `Clone` (not `Copy`); see the `editor_action_is_clone_and_partial_eq`
-    /// test below.
-    HierRenameCommit {
-        row: ph2d_a11y::NodeId,
-        new_name: String,
-    },
 
     /// Reframe the camera. Payload: which mode to fire (Selected
     /// focuses the current `gizmo_selection`; Camera resets to the
@@ -518,7 +337,9 @@ pub enum EditorAction {
     /// vive numa crate-folha e o registo vive na shell), e a paleta precisa dos dois para saber o
     /// que oferecer: o TIPO do objeto, o que ele já tem, e o que o registo sabe construir. Quem
     /// tem essas três respostas é a shell — o painel só diz *quem* perguntou.
-    InspectorAddComponentRequested { entity_bits: u64 },
+    InspectorAddComponentRequested {
+        entity_bits: u64,
+    },
 
     /// ⭐ **Limpar as excepções SEM ALVO de uma instância** (ADR-0164 / F5.3).
     ///
@@ -528,7 +349,9 @@ pub enum EditorAction {
     /// ⛔ Existe porque eles **nunca** se apagam sozinhos (a lei do *«unused overrides»* do
     /// Unity): sair por causa de um `Delete` no mestre é perder trabalho do artista em
     /// silêncio. ⇒ o gesto é explícito, e é este.
-    InspectorClearUnusedOverrides { root_bits: u64 },
+    InspectorClearUnusedOverrides {
+        root_bits: u64,
+    },
 
     /// ⭐⭐⭐ **Trocar a VARIANTE de uma instância** (ADR-0164 / F5, critério 2).
     ///
@@ -538,7 +361,18 @@ pub enum EditorAction {
     ///
     /// ⚠️ A shell é quem sabe se os dois mestres são aparentados; o painel só oferece o que o
     /// construtor já filtrou pela MESMA pergunta.
-    InspectorSwapVariant { root_bits: u64, master: u64 },
+    /// ⭐⭐⭐ **O que a HIERARQUIA pede** — as 33 formas numa família só.
+    /// Porquê e cada uma delas: [`HierRequest`].
+    Hierarchy(HierRequest),
+
+    /// ⭐⭐ **Mostrar a biblioteca** — *«o que é que eu posso pôr aqui?»*, o clique na ranhura da
+    /// textura. Porquê: `crates/ph2d-panel-inspector/src/populate.rs`.
+    OpenAssetBrowser,
+
+    InspectorSwapVariant {
+        root_bits: u64,
+        master: u64,
+    },
 
     /// Inspector → shell channel for a §12 Physics Joint field (W3). The
     /// `entity_bits` are the JOINT object's, not a body's — a joint is an
@@ -589,7 +423,9 @@ pub enum EditorAction {
     /// vsync pacing). The shell owns the swap chain and calls
     /// `SurfaceContext::set_present_mode`. Raised by clicking a row in
     /// the `SettingsDisplaySubmenu`.
-    SetPresentMode { vsync: bool },
+    SetPresentMode {
+        vsync: bool,
+    },
 
     /// Inspector → shell channel for entity-`Name` edits. Payload:
     /// the snapshot `(entity_bits, new_name)`. Shell drains and
@@ -621,19 +457,9 @@ pub enum EditorAction {
     /// three chips drive every time-based subsystem at once.
     Transport(TransportCmd),
 
-    /// ⭐⭐ **Pôr na cena o componente que o artista escolheu no navegador de assets**
-    /// (plano `docs/Components/07`, wave A7 — *o verbo de USAR sem arrastar*).
-    ///
-    /// ⚠️ **Não é a [`Self::HierInstantiate`], e a diferença é o SUJEITO.** Aquela chega com uma
-    /// `row` da Hierarquia, que a ponte do shell resolve numa entidade — e o navegador **não tem
-    /// linhas**: ele endereça a receita pelo `StableId`, que é a identidade que sobrevive ao
-    /// respawn do undo. Reutilizar a variante obrigaria o painel a inventar uma `row` para um
-    /// objecto que pode nem estar visível na Hierarquia (uma receita está escondida por
-    /// construção).
-    ///
-    /// O shell drena resolvendo `stable_id → Entity` e chamando o **mesmo**
-    /// `instance_verbs::drain(Verb::Place, …)` da Hierarquia — a lei de instanciar continua com um
-    /// dono só.
+    /// ⭐⭐ **Instanciar a partir da biblioteca**, no ponto de mundo `at`. ⚠️ Irmã da
+    /// `HierInstantiate` e NÃO a mesma: ali chega uma `row`, aqui um `StableId`. A lei da
+    /// queda vive em `shells/desktop/src/asset_drop.rs`.
     AssetInstantiate {
         /// O `StableId` da raiz da receita.
         stable_id: u64,
@@ -645,20 +471,6 @@ pub enum EditorAction {
         /// no dia em que o verbo ganhasse um passo.
         at: Option<[f32; 2]>,
     },
-    /// ⭐⭐ **UM ITEM DO MENU DE UM CARTÃO** da biblioteca (plano 07, etapa C).
-    ///
-    /// ⚠️⚠️ **Uma acção com o verbo DENTRO, e não três acções — porque o painel não tem voz.**
-    /// O [`crate::panel::PanelHostInternal`] dá store, bus e selecção; **não** dá `ToastQueue`. Um
-    /// painel que decidisse ali *«uma Imagem não se instancia»* teria de recusar em **silêncio**,
-    /// que é exactamente a doença que a tabela plana deste menu existe para evitar. ⇒ o painel
-    /// **transporta** o par (endereço, verbo) e quem **decide e fala** é o shell, que é o único
-    /// lado que sabe quantos objectos usam aquela imagem.
-    /// ⭐⭐ **Tirar da biblioteca, a partir de uma LINHA da Hierarquia** (etapa C).
-    ///
-    /// ⚠️ **Não é a [`Self::AssetCardVerb`], e a diferença é o SUJEITO** — a mesma razão que separa
-    /// a `HierInstantiate` da `AssetInstantiate`: aqui chega uma `row`, que só o shell resolve em
-    /// entidade; ali chega o endereço do asset.
-    HierRemoveFromLibrary { row: ph2d_a11y::NodeId },
     /// ⭐⭐ **UM VERBO DE CATÁLOGO** (plano 07, wave A3).
     ///
     /// ⚠️ **O id é um `u128` CRU, e não o `CatalogId`:** este barramento é chrome, e ele não
@@ -683,6 +495,10 @@ pub use super::action_bus_queue::ActionBus;
 /// re-exportados aqui: quem escreve `action_bus::TransportCmd` continua a escrevê-lo. Ver o
 /// cabeçalho de lá para o porquê do corte.
 pub use super::action_bus_kinds::{AssetCardAction, CatalogVerb, SelectModifier, TransportCmd};
+
+/// ⚠️ A família da **Hierarquia** vive no irmão [`super::action_bus_hier`] e é re-exportada aqui:
+/// quem escreve `action_bus::HierRequest` continua a escrevê-lo.
+pub use super::action_bus_hier::HierRequest;
 
 #[cfg(test)]
 #[path = "action_bus_tests.rs"]

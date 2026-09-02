@@ -16,7 +16,7 @@
 //! This test runs the full path the desktop shell runs, headless:
 //!   populate → Click(lock-companion) → apply_event → bus → drain → assert.
 
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{EditorAction, HierRequest};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
@@ -25,7 +25,7 @@ use ph2d_panel_hierarchy::state::HierarchyState;
 use ph2d_ui_testkit::MockPanelHost;
 
 /// Click a hierarchy row's lock-toggle companion and prove the panel emits the
-/// exact `EditorAction::HierToggleLock { row }` onto the bus.
+/// exact `EditorAction::Hierarchy(HierRequest::ToggleLock { row })` onto the bus.
 ///
 /// The lock companion is the cleanest unconditional driver: `apply_event`
 /// recovers the row id from the companion bit (`hier_lock_companion_to_row`)
@@ -55,7 +55,7 @@ fn lock_companion_click_emits_hier_toggle_lock() {
     // it to the ECS world. Assert the EXACT variant the click must produce.
     let actions = host.drained_actions();
     assert!(
-        actions.contains(&EditorAction::HierToggleLock { row }),
+        actions.contains(&EditorAction::Hierarchy(HierRequest::ToggleLock { row })),
         "lock click never reached the bus as HierToggleLock {{ row: {row:?} }} — the Hierarchy panel→shell seam is dead. Drained: {actions:?}"
     );
 }
@@ -84,7 +84,7 @@ fn the_add_button_emits_hier_add_root() {
     );
     let actions = host.drained_actions();
     assert!(
-        actions.contains(&EditorAction::HierAddRoot),
+        actions.contains(&EditorAction::Hierarchy(HierRequest::AddRoot)),
         "o clique no Add nunca chegou ao barramento. Drenado: {actions:?}"
     );
 }

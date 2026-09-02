@@ -3470,6 +3470,7 @@ impl crate::App {
             let mut add_component_for: Option<u64> = None;
             // ⭐ A troca de variante pedida neste quadro: `(raiz da instância, StableId do mestre)`.
             let mut swap_variant: Option<(u64, u64)> = None;
+            let mut open_asset_browser = false;
             // ⭐ O pedido de renomear o VALOR de uma propriedade — `(receita, chave, valor)`.
             // ⭐ A entidade cujo campo de nome fechou neste quadro.
             let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
@@ -4358,22 +4359,34 @@ impl crate::App {
                     // espera o fim do frame (`post_frame_undo`) porque `undo_or_redo`
                     // precisa de `&mut self` e o `gfx` está emprestado aqui.
                     EditorAction::UndoStep { redo } => self.undo_button = Some(redo),
-                    EditorAction::HierToggleVisibility { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::ToggleVisibility { row },
+                    ) => {
                         visibility_toggle_row.get_or_insert(row);
                     }
-                    EditorAction::HierToggleLock { row } => {
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::ToggleLock {
+                        row,
+                    }) => {
                         lock_toggle_row.get_or_insert(row);
                     }
-                    EditorAction::HierToggleGroup { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::ToggleGroup { row },
+                    ) => {
                         group_toggle_row.get_or_insert(row);
                     }
-                    EditorAction::HierReparent(intent) => {
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Reparent(
+                        intent,
+                    )) => {
                         reparent_intent.get_or_insert(intent);
                     }
-                    EditorAction::HierDuplicate { row } => {
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Duplicate {
+                        row,
+                    }) => {
                         duplicate_row.get_or_insert(row);
                     }
-                    EditorAction::HierAddChild { row } => {
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::AddChild {
+                        row,
+                    }) => {
                         add_child_row.get_or_insert(row);
                     }
                     EditorAction::HierGroup { row } => {
@@ -4382,19 +4395,27 @@ impl crate::App {
                     EditorAction::HierUngroup { row } => {
                         group_row.get_or_insert((row, false));
                     }
-                    EditorAction::HierAddRoot => {
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::AddRoot) => {
                         add_root = true;
                     }
-                    EditorAction::HierResetTransform { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::ResetTransform { row },
+                    ) => {
                         reset_transform_row.get_or_insert(row);
                     }
-                    EditorAction::HierRevertToMaster { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::RevertToMaster { row },
+                    ) => {
                         revert_to_master_row.get_or_insert(row);
                     }
-                    EditorAction::HierMakeComponent { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::MakeComponent { row },
+                    ) => {
                         instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Make));
                     }
-                    EditorAction::HierInstantiate { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::Instantiate { row },
+                    ) => {
                         instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Place));
                     }
                     // ⭐ **O verbo de USAR do navegador de assets** (plano `docs/Components/07`,
@@ -4417,62 +4438,98 @@ impl crate::App {
                     EditorAction::AssetCatalogVerb(v) => {
                         catalog_verbs.push(v);
                     }
-                    EditorAction::HierInstantiateLinked { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::InstantiateLinked { row },
+                    ) => {
                         instance_verb_row
                             .get_or_insert((row, crate::instance_verbs::Verb::PlaceLinked));
                     }
-                    EditorAction::HierDetach { row } => {
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Detach {
+                        row,
+                    }) => {
                         instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Detach));
                     }
                     // ⭐⭐ *Remove from Library* pela linha da Hierarquia — o MESMO verbo do cartão,
                     // com o outro sujeito. Ele resolve a receita a partir de uma cópia
                     // (`instance_unmake::recipe_root_of`), que é o que torna esta porta útil.
-                    EditorAction::HierRemoveFromLibrary { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::RemoveFromLibrary { row },
+                    ) => {
                         instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Unmake));
                     }
-                    EditorAction::HierApplyToMaster { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::ApplyToMaster { row },
+                    ) => {
                         instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Apply));
                     }
-                    EditorAction::HierDelete { row } => {
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Delete {
+                        row,
+                    }) => {
                         delete_row.get_or_insert(row);
                     }
-                    EditorAction::HierMergeSprites { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::MergeSprites { row },
+                    ) => {
                         merge_sprites_row.get_or_insert(row);
                     }
-                    EditorAction::HierMergeToLayers { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::MergeToLayers { row },
+                    ) => {
                         merge_to_layers_row.get_or_insert(row);
                     }
-                    EditorAction::HierPackSheet { row } => {
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::PackSheet {
+                        row,
+                    }) => {
                         pack_sheet_row.get_or_insert(row);
                     }
-                    EditorAction::HierArrangeSheet { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::ArrangeSheet { row },
+                    ) => {
                         arrange_sheet_row.get_or_insert(row);
                     }
-                    EditorAction::HierBakeSheet { row } => {
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::BakeSheet {
+                        row,
+                    }) => {
                         bake_sheet_row.get_or_insert(row);
                     }
-                    EditorAction::HierExportSheet { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::ExportSheet { row },
+                    ) => {
                         export_sheet_row.get_or_insert(row);
                     }
-                    EditorAction::HierExportImage { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::ExportImage { row },
+                    ) => {
                         export_image_row.get_or_insert(row);
                     }
-                    EditorAction::HierRemoveFromSheet { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::RemoveFromSheet { row },
+                    ) => {
                         remove_from_sheet_row.get_or_insert(row);
                     }
-                    EditorAction::HierUseAsBrushTexture { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::UseAsBrushTexture { row },
+                    ) => {
                         use_as_brush_texture_row.get_or_insert(row);
                     }
-                    EditorAction::HierUseAsBrushShape { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::UseAsBrushShape { row },
+                    ) => {
                         use_as_brush_shape_row.get_or_insert(row);
                     }
-                    EditorAction::HierUseAsPaper { row } => {
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::UseAsPaper {
+                        row,
+                    }) => {
                         use_as_paper_row.get_or_insert(row);
                     }
-                    EditorAction::HierUseAsGranulation { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::UseAsGranulation { row },
+                    ) => {
                         use_as_granulation_row.get_or_insert(row);
                     }
-                    EditorAction::HierRowClick { row } => {
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::RowClick {
+                        row,
+                    }) => {
                         hierarchy_row_click.get_or_insert(row);
                     }
                     // Fase 0e: multi-select-aware hierarchy click +
@@ -4482,16 +4539,20 @@ impl crate::App {
                     // mutation. Range overrides Row when both arrive
                     // in the same frame (the user can only be in one
                     // selection-gesture at a time).
-                    EditorAction::HierSelectRow { row, modifier }
-                        if !matches!(
-                            hierarchy_select_intent,
-                            Some(hierarchy::HierarchySelectIntent::Range { .. })
-                        ) =>
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::SelectRow {
+                        row,
+                        modifier,
+                    }) if !matches!(
+                        hierarchy_select_intent,
+                        Some(hierarchy::HierarchySelectIntent::Range { .. })
+                    ) =>
                     {
                         hierarchy_select_intent =
                             Some(hierarchy::HierarchySelectIntent::Row { row, modifier });
                     }
-                    EditorAction::HierRangeSelect { row } => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::RangeSelect { row },
+                    ) => {
                         hierarchy_select_intent =
                             Some(hierarchy::HierarchySelectIntent::Range { row });
                     }
@@ -4516,10 +4577,14 @@ impl crate::App {
                     EditorAction::ClearSelection => {
                         hero.gizmo.clear_all_selection();
                     }
-                    EditorAction::HierRenameSeed { row } => {
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::RenameSeed {
+                        row,
+                    }) => {
                         rename_seed_row.get_or_insert(row);
                     }
-                    EditorAction::HierRenameCommit { row, new_name } if rename_commit.is_none() => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor::action_bus::HierRequest::RenameCommit { row, new_name },
+                    ) if rename_commit.is_none() => {
                         rename_commit = Some((row, new_name));
                     }
                     EditorAction::SetViewFocus { kind } => {
@@ -4692,6 +4757,13 @@ impl crate::App {
                     // uma só: a troca precisa do **eco** (`self.instance_echo`) para o esquecer, e
                     // aqui dentro o `self` já está emprestado. *Um gesto que precisa de mais do que
                     // o ponto de aplicação tem, adia-se — não se duplica o estado.*
+                    // ⭐⭐ **Mostrar a biblioteca** — o clique na ranhura da textura. ⚠️ Ele
+                    // **abre**, nunca alterna: o gesto é *«mostra-me o que cabe aqui»*, e
+                    // fechar um painel que o artista acabou de pedir seria responder ao
+                    // contrário.
+                    EditorAction::OpenAssetBrowser => {
+                        open_asset_browser = true;
+                    }
                     EditorAction::InspectorSwapVariant { root_bits, master } => {
                         swap_variant = Some((root_bits, master));
                     }
@@ -10803,6 +10875,13 @@ impl crate::App {
             // olhar — e ele tentou pelo nome da cópia quatro vezes, com o modelo a ignorá-lo
             // correctamente as quatro.
             //
+            if open_asset_browser {
+                <_ as ph2d_editor::panel::PanelHostInternal>::set_panel_visible(
+                    hero,
+                    ph2d_panel_asset_browser::PANEL_ID,
+                    true,
+                );
+            }
             if let Some((root_bits, master)) = swap_variant {
                 match crate::instance_variant::swap(
                     sim,

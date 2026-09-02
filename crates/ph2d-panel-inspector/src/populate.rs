@@ -35,6 +35,19 @@ pub fn populate(store: &mut WidgetStore) {
             state: ph2d_editor_core::widget::ButtonState::Normal,
         },
     );
+    // ⭐⭐⭐ **A RANHURA DA TEXTURA** (plano `docs/Components/07`, wave B3) — ela recebe QUEDAS e
+    // responde a CLIQUES, e as duas metades são obrigatórias.
+    //
+    // ⛔⛔ **A 1.ª versão dela era hit-indexada e inerte**, com a inércia declarada num doc e uma
+    // entrada no `HIT_PARITY_ALLOW`. **Dois censos independentes recusaram-na** — o da paridade
+    // (*«o que está no hit-index está registado»*) e o do alcance (*«o que é pintado pode ser
+    // clicado»*). *A lei deste app é que o que está no índice de acertos é um CONTROLO*, e uma
+    // zona que só recebe quedas não é uma coisa que ele tenha. ⇒ ela virou um, e o clique abre a
+    // biblioteca.
+    store.register(
+        ids::INSP_RENDER_TEXTURE_SLOT,
+        ph2d_editor_core::interaction::InteractiveState::Plain,
+    );
     // ⭐ **Os chips da fileira de VERSÕES** — a única superfície do cartão desde que o mecanismo
     // de propriedades foi adiado (2026-09-01).
     //

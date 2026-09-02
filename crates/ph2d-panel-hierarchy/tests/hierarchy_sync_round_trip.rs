@@ -20,7 +20,7 @@
 
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::NodeId;
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{EditorAction, HierRequest};
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{ErasedPanel, EventOutcome, Panel, PanelRegistry};
@@ -255,9 +255,9 @@ fn hierarchy_row_click_raises_pending_for_live_entries() {
     // modifier emits Replace — selection swaps to just this row.
     assert_eq!(
         drained,
-        vec![EditorAction::HierSelectRow {
+        vec![EditorAction::Hierarchy(HierRequest::SelectRow {
             row: row_id,
             modifier: ph2d_editor_core::action_bus::SelectModifier::Replace,
-        }]
+        })]
     );
 }

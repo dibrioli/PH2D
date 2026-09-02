@@ -88,6 +88,19 @@ fn clear_orphans_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> boo
     true
 }
 
+/// ⭐⭐ **A RANHURA DA TEXTURA abre a biblioteca** — *«o que é que eu posso pôr aqui?»*.
+///
+/// ⚠️ **Ela recebe QUEDAS e responde a CLIQUES**, e as duas metades são obrigatórias: um id
+/// hit-indexado que não despacha é um controlo morto, e dois censos deste repo o dizem. O clique é
+/// o que torna a queda **descoberta** — o artista abre, vê as imagens, e arrasta uma.
+fn texture_slot_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    if ev != WidgetEvent::Click(ids::INSP_RENDER_TEXTURE_SLOT) {
+        return false;
+    }
+    host.bus_mut().push(EditorAction::OpenAssetBrowser);
+    true
+}
+
 fn add_component_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     if ev != WidgetEvent::Click(ids::INSP_ADD_COMPONENT) {
         return false;
@@ -146,6 +159,7 @@ const SINGLE_ID_CLICKS: &[fn(&mut dyn PanelHostInternal, WidgetEvent) -> bool] =
     add_component_click,
     clear_orphans_click,
     section_color_click,
+    texture_slot_click,
 ];
 
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {

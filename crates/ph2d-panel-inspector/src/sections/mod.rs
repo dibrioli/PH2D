@@ -138,3 +138,13 @@ pub(crate) fn text_h(
     let h = text_system.layout(text, font_size, max_w).height();
     h.max(line)
 }
+
+/// A espessura da moldura de uma RANHURA de asset. LITERAL-PX-OK: contorno de 1 px, o mesmo que o
+/// `stroke_rect` usa por omissão em todo o chrome.
+pub(crate) const SLOT_BORDER_PX: f32 = 1.0;
+
+/// O rótulo da ranhura da textura. ⏳ Migra com os irmãos quando o Fluent chegar (HR-15).
+pub(crate) const STORAGE_LABEL: &str = "Storage";
+
+/// O rótulo do tamanho de origem. ⏳ Migra com os irmãos quando o Fluent chegar (HR-15).
+pub(crate) const SOURCE_SIZE_LABEL: &str = "Source";

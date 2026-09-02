@@ -1,4 +1,4 @@
-//! Hierarchy drag-reparent drain (`EditorAction::HierReparent`).
+//! Hierarchy drag-reparent drain (`EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Reparent)`).
 //!
 //! Wave 3.1 stage A — extracted from `hero_intents.rs` as part of
 //! the HR-18 closeout split. Behavior-preserving lift.

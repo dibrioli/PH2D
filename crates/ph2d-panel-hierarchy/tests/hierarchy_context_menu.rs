@@ -4,7 +4,7 @@
 
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::NodeId;
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{EditorAction, HierRequest};
 use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
 use ph2d_editor_core::panel::{ErasedPanel, EventOutcome, Panel, PanelRegistry};
 use ph2d_editor_core::screens::hero::ids;
@@ -59,7 +59,10 @@ fn hier_menu_duplicate_sets_pending_duplicate() {
     );
     assert!(consumed);
     let drained: Vec<_> = hero.bus.drain().collect();
-    assert_eq!(drained, vec![EditorAction::HierDuplicate { row }]);
+    assert_eq!(
+        drained,
+        vec![EditorAction::Hierarchy(HierRequest::Duplicate { row })]
+    );
     assert!(hero.store.last_context_menu().is_none());
 }
 
@@ -76,7 +79,10 @@ fn hier_menu_add_child_sets_pending_add_child() {
     );
     assert!(consumed);
     let drained: Vec<_> = hero.bus.drain().collect();
-    assert_eq!(drained, vec![EditorAction::HierAddChild { row }]);
+    assert_eq!(
+        drained,
+        vec![EditorAction::Hierarchy(HierRequest::AddChild { row })]
+    );
 }
 
 #[test]
@@ -92,7 +98,10 @@ fn hier_menu_reset_transform_sets_pending() {
     );
     assert!(consumed);
     let drained: Vec<_> = hero.bus.drain().collect();
-    assert_eq!(drained, vec![EditorAction::HierResetTransform { row }]);
+    assert_eq!(
+        drained,
+        vec![EditorAction::Hierarchy(HierRequest::ResetTransform { row })]
+    );
 }
 
 #[test]
@@ -108,7 +117,10 @@ fn hier_menu_delete_sets_pending_delete() {
     );
     assert!(consumed);
     let drained: Vec<_> = hero.bus.drain().collect();
-    assert_eq!(drained, vec![EditorAction::HierDelete { row }]);
+    assert_eq!(
+        drained,
+        vec![EditorAction::Hierarchy(HierRequest::Delete { row })]
+    );
 }
 
 #[test]
@@ -146,7 +158,10 @@ fn hier_menu_one_action_per_drain() {
     let drained: Vec<_> = hero.bus.drain().collect();
     // Only Duplicate — the second Click consumed but found no
     // snapshot to attach a row to, so no Delete variant pushed.
-    assert_eq!(drained, vec![EditorAction::HierDuplicate { row }]);
+    assert_eq!(
+        drained,
+        vec![EditorAction::Hierarchy(HierRequest::Duplicate { row })]
+    );
 }
 
 /// "Pack into Sheet" — a 2ª porta do verbo do pill `[SHEET]` (Enio, 2026-08-19: *«coloque a mesma
@@ -169,7 +184,10 @@ fn hier_menu_pack_sheet_raises_pack_with_the_clicked_row() {
     );
     assert!(consumed);
     let drained: Vec<_> = hero.bus.drain().collect();
-    assert_eq!(drained, vec![EditorAction::HierPackSheet { row }]);
+    assert_eq!(
+        drained,
+        vec![EditorAction::Hierarchy(HierRequest::PackSheet { row })]
+    );
     assert!(hero.store.last_context_menu().is_none());
 }
 
@@ -228,7 +246,12 @@ fn hier_menu_remove_from_sheet_raises_remove_with_the_clicked_row() {
     );
     assert!(consumed);
     let drained: Vec<_> = hero.bus.drain().collect();
-    assert_eq!(drained, vec![EditorAction::HierRemoveFromSheet { row }]);
+    assert_eq!(
+        drained,
+        vec![EditorAction::Hierarchy(HierRequest::RemoveFromSheet {
+            row
+        })]
+    );
 }
 
 /// "Auto-Arrange Pieces" — o verbo que ESTAVA escondido dentro do "Pack into Sheet", agora com
@@ -247,7 +270,10 @@ fn hier_menu_arrange_sheet_raises_arrange_with_the_clicked_row() {
     );
     assert!(consumed);
     let drained: Vec<_> = hero.bus.drain().collect();
-    assert_eq!(drained, vec![EditorAction::HierArrangeSheet { row }]);
+    assert_eq!(
+        drained,
+        vec![EditorAction::Hierarchy(HierRequest::ArrangeSheet { row })]
+    );
 }
 
 /// ⚠️ **Os verbos da folha são AÇÕES distintas, um por item.** Enquanto "arrumar" vivia dentro de
@@ -273,10 +299,26 @@ fn every_sheet_verb_raises_its_own_action() {
         let mut drained: Vec<_> = hero.bus.drain().collect();
         assert_eq!(drained.len(), 1, "cada item levanta UMA acao");
         let action = drained.remove(0);
+        // ⚠️ **A régua desceu um nível em 2026-09-01, com a lei que ela defende.** Ela comparava o
+        // discriminante do `EditorAction`, e isso deixou de distinguir: as 33 ações da Hierarquia
+        // são hoje **uma** variante (`Hierarchy(HierRequest)`), então três verbos diferentes
+        // passariam a ler-se como o mesmo. ⇒ compara-se o discriminante do que de facto os
+        // distingue, que é o `HierRequest` lá dentro.
+        //
+        // ⛔ **O portão apanhou isto na primeira corrida depois do corte**, e é o que ele existe
+        // para fazer: *quando a representação muda, a régua que a media tem de mudar com ela — e
+        // dizer que mudou.*
+        let kind = |a: &EditorAction| match a {
+            EditorAction::Hierarchy(r) => Some(std::mem::discriminant(r)),
+            _ => None,
+        };
+        let mine = kind(&action);
         assert!(
-            !seen
-                .iter()
-                .any(|a| std::mem::discriminant(a) == std::mem::discriminant(&action)),
+            mine.is_some(),
+            "um item da folha levantou algo que nao e' um pedido da Hierarquia: {action:?}"
+        );
+        assert!(
+            !seen.iter().any(|a| kind(a) == mine),
             "dois items da folha levantam a MESMA acao ({action:?}) — o rotulo deixaria de \
              prometer o que o item faz, e qual dos dois corre passaria a depender do alvo"
         );

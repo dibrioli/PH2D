@@ -429,6 +429,14 @@ pub const INSP_VIS_MASK: [NodeId; 3] = [
 /// Mask alpha-cutoff NumberInput (shown when Mask != None).
 pub const INSP_VIS_ALPHA_CUTOFF: NodeId = hash_node_id("insp_vis_alpha_cutoff");
 /// "Mask Source (Mask2D)" toggle — makes this sprite a mask source.
+/// ⭐⭐⭐ **A RANHURA DA TEXTURA** — a linha *Storage* da §3, que recebe uma imagem largada da
+/// biblioteca e, ao clique, abre-a (plano `docs/Components/07`, wave B3).
+///
+/// ⚠️ **O porquê vive com quem o honra**: a affordance em `sections/render_source.rs`, a lei da
+/// queda em `shells/desktop/src/asset_drop.rs`, e a razão de ela ser um CONTROLO — e não uma zona
+/// inerte — no `populate.rs` do painel. *O transporte não é o sítio onde se explica o gesto.*
+pub const INSP_RENDER_TEXTURE_SLOT: NodeId = hash_node_id("insp_render_texture_slot");
+
 pub const INSP_VIS_MASK_SOURCE: NodeId = hash_node_id("insp_vis_mask_source");
 /// Collapsible sub-header for the Visibility Layer 4×8 bitmask grid — a
 /// `mark_collapsible_section` id so clicking the row folds the grid.

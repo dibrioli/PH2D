@@ -122,7 +122,7 @@ pub use state::{
     set_current_inspector_visibility, set_current_inspector_visibility_section,
     set_current_inspector_wheel,
 };
-pub use state::{probe_current_instance, probe_current_properties};
+pub use state::{probe_current_instance, probe_current_properties, texture_slot_pick};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;

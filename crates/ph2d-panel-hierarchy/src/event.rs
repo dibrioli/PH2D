@@ -12,7 +12,7 @@
 //! the typed `state` parameter directly.
 
 use crate::state;
-use ph2d_editor_core::action_bus::{EditorAction, SelectModifier};
+use ph2d_editor_core::action_bus::{EditorAction, HierRequest, SelectModifier};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{ContextMenuKind, InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
@@ -77,69 +77,97 @@ fn try_context_menu_row(
     {
         if id == ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE {
             host.bus_mut()
-                .push(EditorAction::HierUseAsBrushTexture { row });
+                .push(EditorAction::Hierarchy(HierRequest::UseAsBrushTexture {
+                    row,
+                }));
         } else if id == ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE {
             host.bus_mut()
-                .push(EditorAction::HierUseAsBrushShape { row });
+                .push(EditorAction::Hierarchy(HierRequest::UseAsBrushShape {
+                    row,
+                }));
         } else if id == ids::CTX_MENU_HIER_USE_AS_PAPER {
-            host.bus_mut().push(EditorAction::HierUseAsPaper { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::UseAsPaper { row }));
         } else if id == ids::CTX_MENU_HIER_USE_AS_GRANULATION {
             host.bus_mut()
-                .push(EditorAction::HierUseAsGranulation { row });
+                .push(EditorAction::Hierarchy(HierRequest::UseAsGranulation {
+                    row,
+                }));
         } else if id == ids::CTX_MENU_HIER_DUPLICATE {
-            host.bus_mut().push(EditorAction::HierDuplicate { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::Duplicate { row }));
         } else if id == ids::CTX_MENU_HIER_ADD_CHILD {
-            host.bus_mut().push(EditorAction::HierAddChild { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::AddChild { row }));
         } else if id == ids::CTX_MENU_HIER_MAKE_COMPONENT {
-            host.bus_mut().push(EditorAction::HierMakeComponent { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::MakeComponent { row }));
         } else if id == ids::CTX_MENU_HIER_INSTANTIATE {
-            host.bus_mut().push(EditorAction::HierInstantiate { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::Instantiate { row }));
         } else if id == ids::CTX_MENU_HIER_INSTANTIATE_LINKED {
             host.bus_mut()
-                .push(EditorAction::HierInstantiateLinked { row });
+                .push(EditorAction::Hierarchy(HierRequest::InstantiateLinked {
+                    row,
+                }));
         } else if id == ids::CTX_MENU_HIER_REMOVE_FROM_LIBRARY {
             // ⭐⭐ A metade do `Verb::Unmake` que era INALCANÇÁVEL até 2026-08-30: ele já aceitava uma
             // cópia como sujeito, e o único produtor era o cartão do navegador, que endereça sempre a
             // receita. Ver `ids::CTX_MENU_HIER_REMOVE_FROM_LIBRARY`.
             host.bus_mut()
-                .push(EditorAction::HierRemoveFromLibrary { row });
+                .push(EditorAction::Hierarchy(HierRequest::RemoveFromLibrary {
+                    row,
+                }));
         } else if id == ids::CTX_MENU_HIER_DETACH {
-            host.bus_mut().push(EditorAction::HierDetach { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::Detach { row }));
         } else if id == ids::CTX_MENU_HIER_APPLY_TO_MASTER {
-            host.bus_mut().push(EditorAction::HierApplyToMaster { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::ApplyToMaster { row }));
         } else if id == ids::CTX_MENU_HIER_REVERT_TO_MASTER {
             host.bus_mut()
-                .push(EditorAction::HierRevertToMaster { row });
+                .push(EditorAction::Hierarchy(HierRequest::RevertToMaster { row }));
         } else if id == ids::CTX_MENU_HIER_RESET_TRANSFORM {
             host.bus_mut()
-                .push(EditorAction::HierResetTransform { row });
+                .push(EditorAction::Hierarchy(HierRequest::ResetTransform { row }));
         } else if id == ids::CTX_MENU_HIER_DELETE {
-            host.bus_mut().push(EditorAction::HierDelete { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::Delete { row }));
         } else if id == ids::CTX_MENU_HIER_GROUP {
             host.bus_mut().push(EditorAction::HierGroup { row });
         } else if id == ids::CTX_MENU_HIER_UNGROUP {
             host.bus_mut().push(EditorAction::HierUngroup { row });
         } else if id == ids::CTX_MENU_HIER_MERGE_SPRITES {
-            host.bus_mut().push(EditorAction::HierMergeSprites { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::MergeSprites { row }));
         } else if id == ids::CTX_MENU_HIER_MERGE_TO_LAYERS {
-            host.bus_mut().push(EditorAction::HierMergeToLayers { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::MergeToLayers { row }));
         } else if id == ids::CTX_MENU_HIER_PACK_SHEET {
-            host.bus_mut().push(EditorAction::HierPackSheet { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::PackSheet { row }));
         } else if id == ids::CTX_MENU_HIER_ARRANGE_SHEET {
-            host.bus_mut().push(EditorAction::HierArrangeSheet { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::ArrangeSheet { row }));
         } else if id == ids::CTX_MENU_HIER_BAKE_SHEET {
-            host.bus_mut().push(EditorAction::HierBakeSheet { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::BakeSheet { row }));
         } else if id == ids::CTX_MENU_HIER_EXPORT_SHEET {
-            host.bus_mut().push(EditorAction::HierExportSheet { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::ExportSheet { row }));
         } else if id == ids::CTX_MENU_HIER_EXPORT_IMAGE {
-            host.bus_mut().push(EditorAction::HierExportImage { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::ExportImage { row }));
         } else if id == ids::CTX_MENU_HIER_REMOVE_FROM_SHEET {
             host.bus_mut()
-                .push(EditorAction::HierRemoveFromSheet { row });
+                .push(EditorAction::Hierarchy(HierRequest::RemoveFromSheet {
+                    row,
+                }));
         } else if id == ids::CTX_MENU_HIER_RENAME {
             ph2d_editor_core::screens::hero::open_rename_public(host.store_mut());
             state.rename_target_row = Some(row);
-            host.bus_mut().push(EditorAction::HierRenameSeed { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::RenameSeed { row }));
         }
     }
     true
@@ -160,12 +188,14 @@ pub(crate) fn apply_event(
     } = ev
     {
         host.bus_mut()
-            .push(EditorAction::HierReparent(HierReparentIntent {
-                dragged,
-                new_parent,
-                before,
-                after,
-            }));
+            .push(EditorAction::Hierarchy(HierRequest::Reparent(
+                HierReparentIntent {
+                    dragged,
+                    new_parent,
+                    before,
+                    after,
+                },
+            )));
         return EventOutcome::Consumed;
     }
     if let WidgetEvent::Click(id) = ev {
@@ -174,13 +204,16 @@ pub(crate) fn apply_event(
         // ⚠️ Ele é pintado e registado desde a Fase C.2 e **nunca teve consumidor**: até esta
         // linha, clicar nele não fazia nada. É o primeiro passo do smoke da F3.
         if id == ids::HIERARCHY_ADD {
-            host.bus_mut().push(EditorAction::HierAddRoot);
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::AddRoot));
             return EventOutcome::Consumed;
         }
         // M14.6A — eye-toggle companion id.
         if let Some(row_id) = ids::hier_eye_companion_to_row(id) {
             host.bus_mut()
-                .push(EditorAction::HierToggleVisibility { row: row_id });
+                .push(EditorAction::Hierarchy(HierRequest::ToggleVisibility {
+                    row: row_id,
+                }));
             return EventOutcome::Consumed;
         }
         // M14.6C — expand-toggle companion id (chevron click).
@@ -193,12 +226,16 @@ pub(crate) fn apply_event(
         // ECS component on the row's entity.
         if let Some(row_id) = ids::hier_lock_companion_to_row(id) {
             host.bus_mut()
-                .push(EditorAction::HierToggleLock { row: row_id });
+                .push(EditorAction::Hierarchy(HierRequest::ToggleLock {
+                    row: row_id,
+                }));
             return EventOutcome::Consumed;
         }
         if let Some(row_id) = ids::hier_group_companion_to_row(id) {
             host.bus_mut()
-                .push(EditorAction::HierToggleGroup { row: row_id });
+                .push(EditorAction::Hierarchy(HierRequest::ToggleGroup {
+                    row: row_id,
+                }));
             return EventOutcome::Consumed;
         }
         // M14.6 F — per-row right-click context menu actions.
@@ -224,7 +261,9 @@ pub(crate) fn apply_event(
             let cmd = store.cmd_held();
             if shift && !cmd {
                 host.bus_mut()
-                    .push(EditorAction::HierRangeSelect { row: id });
+                    .push(EditorAction::Hierarchy(HierRequest::RangeSelect {
+                        row: id,
+                    }));
             } else {
                 let modifier = if cmd {
                     SelectModifier::Toggle
@@ -232,7 +271,10 @@ pub(crate) fn apply_event(
                     SelectModifier::Replace
                 };
                 host.bus_mut()
-                    .push(EditorAction::HierSelectRow { row: id, modifier });
+                    .push(EditorAction::Hierarchy(HierRequest::SelectRow {
+                        row: id,
+                        modifier,
+                    }));
             }
         }
         if let Some(entry) = state::live_entry_for(id) {
@@ -262,10 +304,11 @@ pub(crate) fn apply_event(
         && let Some(row_id) = ids::hier_icon_companion_to_row(id)
         && state::live_entries_contains(row_id)
     {
-        host.bus_mut().push(EditorAction::HierSelectRow {
-            row: row_id,
-            modifier: SelectModifier::Replace,
-        });
+        host.bus_mut()
+            .push(EditorAction::Hierarchy(HierRequest::SelectRow {
+                row: row_id,
+                modifier: SelectModifier::Replace,
+            }));
         host.bus_mut().push(EditorAction::SetViewFocus {
             kind: ViewFocusKind::Selected,
         });
@@ -281,7 +324,7 @@ pub(crate) fn apply_event(
         ph2d_editor_core::screens::hero::open_rename_public(host.store_mut());
         state.rename_target_row = Some(id);
         host.bus_mut()
-            .push(EditorAction::HierRenameSeed { row: id });
+            .push(EditorAction::Hierarchy(HierRequest::RenameSeed { row: id }));
         return EventOutcome::Consumed;
     }
     // Inline-rename commit (Enter / Submit on HIER_RENAME_INPUT).
@@ -295,10 +338,11 @@ pub(crate) fn apply_event(
         };
         let trimmed = buf.trim().to_owned();
         if !trimmed.is_empty() {
-            host.bus_mut().push(EditorAction::HierRenameCommit {
-                row,
-                new_name: trimmed,
-            });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::RenameCommit {
+                    row,
+                    new_name: trimmed,
+                }));
         }
         return EventOutcome::Consumed;
     }
@@ -323,10 +367,11 @@ pub(crate) fn apply_event(
         };
         let trimmed = buf.trim().to_owned();
         if !trimmed.is_empty() {
-            host.bus_mut().push(EditorAction::HierRenameCommit {
-                row,
-                new_name: trimmed,
-            });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::RenameCommit {
+                    row,
+                    new_name: trimmed,
+                }));
         }
         return EventOutcome::Observed;
     }

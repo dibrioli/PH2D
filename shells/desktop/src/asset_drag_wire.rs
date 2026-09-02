@@ -71,6 +71,7 @@ impl crate::App {
         // ⚠️ Resolvido ANTES de pegar o `gfx` mutável — o alvo é uma leitura, e adiá-la para
         // dentro do bloco mutável seria pedir dois empréstimos do mesmo `self`.
         let catalog_row = self.catalog_row_under(x, y);
+        let inspector_slot = self.inspector_slot_under(x, y);
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -95,7 +96,12 @@ impl crate::App {
         // ⭐⭐ **Uma LINHA DE CATÁLOGO ganha ao «de volta ao painel»** (wave A3), e a ordem é a
         // lei: sem ela, largar numa gaveta caía no `Source` — *desistir* — e o gesto que o plano
         // nomeia seria silenciosamente indistinguível de não fazer nada.
-        let target = if let Some(catalog) = catalog_row {
+        // ⭐⭐⭐ **A RANHURA DA TEXTURA ganha à «volta ao painel» e ao chrome** (wave B3), pela
+        // mesma lei de ordem que a linha de catálogo já paga: um alvo que sabe receber tem de ser
+        // perguntado ANTES dos que só desistem ou recusam.
+        let target = if let Some(entity_bits) = inspector_slot {
+            DropTarget::InspectorTexture { entity_bits }
+        } else if let Some(catalog) = catalog_row {
             DropTarget::CatalogRow { catalog }
         } else if panel == Some(ph2d_editor::ids::ASSET_PANEL) {
             DropTarget::Source
@@ -129,6 +135,17 @@ impl crate::App {
             // *«tira do catálogo»* seria inventar um gesto a partir de um alvo que só filtra.
             ph2d_panel_asset_browser::CatalogPick::All => None,
         }
+    }
+
+    /// ⭐⭐ **A sprite cuja RANHURA DE TEXTURA está debaixo do cursor** (wave B3).
+    ///
+    /// ⚠️ **Duas perguntas, e cada uma ao seu dono:** o `HitIndex` responde *«que widget está
+    /// aqui»* — a porta única, e é dela que vêm de graça o recorte do corpo do painel e a oclusão
+    /// —, e o **Inspector** responde *«aquele id é a minha ranhura, e de que sprite»*. A shell
+    /// conhecer o literal do id seria conhecer a tabela de outro painel.
+    fn inspector_slot_under(&self, x: f32, y: f32) -> Option<u64> {
+        let hero = self.gfx.as_ref()?.hero_screen.as_ref()?;
+        ph2d_panel_inspector::texture_slot_pick(hero.hit_index.hit(x, y)?)
     }
 
     /// O objecto debaixo do cursor, no resumo de que a lei precisa.

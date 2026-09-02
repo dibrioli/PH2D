@@ -54,70 +54,10 @@ pub(crate) fn paint_render_source_section(
     // No inner separator — orchestrator draws it AFTER section content.
     let mut cur_y = y + header_h;
 
-    // Adaptive label/value row: when there's room, paint inline
-    // ("Storage   Atlas · key 0"); else fall back to stacked
-    // (label above, value below). User feedback 2026-05-24:
-    // "coloque numa mesma linha melhor escrito e formatado, e
-    // tambem capaz de se adaptar a largura do painel".
-    let paint_pair = |scene: &mut VectorScene,
-                      text_system: &mut TextSystem,
-                      label: &str,
-                      value: &str,
-                      yy: f32|
-     -> f32 {
-        let gap = Spacing::Md.px();
-        let label_w = text_system.layout(label, label_font, f32::INFINITY).width();
-        let value_w_natural = text_system.layout(value, line_font, f32::INFINITY).width();
-        if label_w + gap + value_w_natural <= w {
-            // Inline: label LEFT (Text2), value flush after the gap (Text1).
-            paint_text(
-                text_system,
-                scene,
-                label,
-                x,
-                yy,
-                label_font,
-                label_w,
-                resolve(ColorToken::Text2, theme),
-            );
-            paint_text(
-                text_system,
-                scene,
-                value,
-                x + label_w + gap,
-                yy,
-                line_font,
-                w - label_w - gap,
-                resolve(ColorToken::Text1, theme),
-            );
-            yy + line_font + row_gap
-        } else {
-            // Stacked: label above, value below.
-            paint_text(
-                text_system,
-                scene,
-                label,
-                x,
-                yy,
-                label_font,
-                w,
-                resolve(ColorToken::Text2, theme),
-            );
-            let yy2 = yy + label_font + 2.0;
-            paint_text(
-                text_system,
-                scene,
-                value,
-                x,
-                yy2,
-                line_font,
-                w,
-                resolve(ColorToken::Text1, theme),
-            );
-            yy2 + row_h + row_gap
-        }
-    };
-
+    // ⛔ **A fileira adaptativa MORREU aqui em 2026-09-01.** Ela empilhava rótulo e valor quando
+    // não cabiam lado a lado, e existia **só** para as duas linhas de proveniência — que hoje são
+    // a ranhura da textura e a irmã do tamanho, ambas desenhadas por [`paint_provenance`]. *Uma
+    // abstracção sem consumidor é código que a próxima pessoa lê e tenta perceber.*
     cur_y = paint_strategy_row(
         scene,
         text_system,
@@ -130,9 +70,19 @@ pub(crate) fn paint_render_source_section(
         cur_y,
         label_font,
     );
-    cur_y = paint_storage_rows(info, cur_y, |label, value, yy| {
-        paint_pair(scene, text_system, label, value, yy)
-    });
+    cur_y = paint_provenance(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        info,
+        x,
+        w,
+        cur_y,
+        label_font,
+        row_h,
+        row_gap,
+    );
 
     // A amostragem de REGIÃO mora num irmão — ver [`paint_region_rows`].
     cur_y = paint_region_rows(
@@ -360,29 +310,45 @@ fn paint_region_num_cell(
     );
 }
 
-/// As duas linhas de PROVENIÊNCIA — de onde os pixels vêm e que tamanho tinham na origem.
+/// ⭐⭐⭐ **A PROVENIÊNCIA** — a ranhura de *de onde os pixels vêm* (e onde se largam outros),
+/// mais o tamanho que eles tinham na origem.
 ///
-/// Saiu do corpo de [`paint_render_source_section`] pelo cap de fn do painel, e é o *per-row
-/// split* que a própria nota daquele allowlist prescreve: é um bloco que não olha para mais nada
-/// da seção (nem `x`, nem `w`, nem o store), só formata dois factos e avança o `y`.
-fn paint_storage_rows(
+/// # Ela era um FACTO e passou a ser um ALVO (plano `docs/Components/07`, wave B3)
+///
+/// A linha *Storage* dizia `Individual · texture 5` e mais nada. O plano pede *«queda num campo do
+/// Inspector ⇒ preenche»*, e este é o campo: o que ele nomeia é exactamente o que uma imagem
+/// largada substitui.
+///
+/// ⚠️ **A moldura é a affordance, e ela é honesta**: uma ranhura diz *«põe aqui»* sem prometer um
+/// clique. ⛔ **Não é um `Button`** — pintá-la como botão prometeria a acção que ela não tem, que é
+/// a 1.ª espécie de knob morto da caça de 2026-08-30.
+///
+/// ⚠️ **O texto continua a ser o MESMO facto**, formatado no mesmo sítio: a ranhura não inventa um
+/// segundo vocabulário para dizer de onde vêm os pixels.
+#[allow(clippy::too_many_arguments)]
+fn paint_provenance(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
     info: &InspectorSpriteInfo,
+    x: f32,
+    w: f32,
     y: f32,
-    mut pair: impl FnMut(&str, &str, f32) -> f32,
+    label_font: f32,
+    row_h: f32,
+    row_gap: f32,
 ) -> f32 {
-    let mut cur_y = y;
-    // Cleaner phrasing — strategy name + key/id separated by middle
-    // dot (the only ASCII-safe non-ASCII glyph allowed in UI strings;
-    // vide no_tofu_glyphs gate). Pre-canon was "Atlas key: 0" /
-    // "Texture id: 5" with the strategy redundantly named.
-    let storage_detail = match info.source_kind {
-        InspectorSpriteSource::Atlas { key } => format!("Atlas \u{00b7} key {}", key),
+    // Cleaner phrasing — strategy name + key/id separated by middle dot (the only ASCII-safe
+    // non-ASCII glyph allowed in UI strings; vide no_tofu_glyphs gate).
+    let detail = match info.source_kind {
+        InspectorSpriteSource::Atlas { key } => format!("Atlas \u{00b7} key {key}"),
         InspectorSpriteSource::Individual { texture_id } => {
-            format!("Individual \u{00b7} texture {}", texture_id)
+            format!("Individual \u{00b7} texture {texture_id}")
         }
-        // ⚠️ O NOME, não os índices: é por ele que o artista reencontra o desenho no
-        // Aseprite. Os números só aparecem se o rótulo faltar (uma folha que o projeto trouxe
-        // mas a sessão não tem), e aí eles são a informação honesta que sobra.
+        // ⚠️ O NOME, não os índices: é por ele que o artista reencontra o desenho no Aseprite. Os
+        // números só aparecem se o rótulo faltar (uma folha que o projeto trouxe mas a sessão não
+        // tem), e aí eles são a informação honesta que sobra.
         InspectorSpriteSource::HandPacked { sheet, region } => match &info.sheet_label {
             Some(label) => format!("Hand-packed \u{00b7} {label}"),
             None => format!("Hand-packed \u{00b7} sheet {sheet} \u{00b7} region {region}"),
@@ -390,10 +356,71 @@ fn paint_storage_rows(
         // W2.T2: tier-cooked KTX2 — read-only marker, no key/id shown.
         InspectorSpriteSource::CookedTexture => "Cooked texture".to_string(),
     };
-    cur_y = pair("Storage", &storage_detail, cur_y);
+    paint_text(
+        text_system,
+        scene,
+        STORAGE_LABEL,
+        x,
+        y,
+        label_font,
+        w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let slot = Rect::new(x, y + label_font + row_gap, w, row_h);
+    fill_rounded_rect(
+        scene,
+        slot,
+        Radius::Sm.px(),
+        resolve(ColorToken::Bg2, theme),
+    );
+    stroke_rounded_rect(
+        scene,
+        slot,
+        Radius::Sm.px(),
+        SLOT_BORDER_PX,
+        resolve(ColorToken::Border, theme),
+    );
+    paint_text(
+        text_system,
+        scene,
+        &detail,
+        slot.x + Spacing::Xs.px(),
+        slot.y + (slot.h - label_font) * 0.5,
+        label_font,
+        (slot.w - Spacing::Xs.px() * 2.0).max(0.0),
+        resolve(ColorToken::Text1, theme),
+    );
+    // ⭐⭐⭐ **É AQUI que ela vira alvo.** O `HitIndex` é a porta única de *«o que está debaixo do
+    // cursor»*, e é ela que dá de graça o recorte do corpo e a oclusão por um painel de cima.
+    // ⛔ Sem `populate`: quem consome este id é o caminho da QUEDA, não o de clique — a mesma
+    // classe das *swatches* do picker, e o `HIT_PARITY_ALLOW` nomeia-a.
+    hit_index.register(ids::INSP_RENDER_TEXTURE_SLOT, slot);
+    let mut cur_y = slot.y + slot.h + row_gap;
+    // ⚠️ **O TAMANHO de origem fica ao lado da ranhura**, e não numa função irmã: as duas são a
+    // mesma pergunta — *de onde vêm estes pixels, e que tamanho tinham* —, e separá-las custou ao
+    // pai o tecto de 200 LOC por uma chamada.
     if let Some((pw, ph)) = info.source_pixels {
-        let px_str = format!("{} \u{00d7} {} px", pw, ph);
-        cur_y = pair("Source", &px_str, cur_y);
+        paint_text(
+            text_system,
+            scene,
+            SOURCE_SIZE_LABEL,
+            x,
+            cur_y,
+            label_font,
+            w,
+            resolve(ColorToken::Text2, theme),
+        );
+        paint_text(
+            text_system,
+            scene,
+            &format!("{pw} \u{00d7} {ph} px"),
+            x,
+            cur_y + label_font + row_gap,
+            label_font,
+            w,
+            resolve(ColorToken::Text1, theme),
+        );
+        cur_y += (label_font + row_gap) * 2.0;
     }
     cur_y
 }

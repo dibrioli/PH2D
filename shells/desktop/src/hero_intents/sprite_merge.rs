@@ -89,7 +89,7 @@ struct SrcRecord {
     world_max_y: f32,
 }
 
-/// Drain `EditorAction::HierMergeSprites`. Returns `true` if the
+/// Drain `EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::MergeSprites)`. Returns `true` if the
 /// caller should set `title_dirty` (a toast was pushed).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn drain_merge_sprites(

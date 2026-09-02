@@ -224,7 +224,7 @@ pub(crate) fn paint_hierarchy_row(
     right_x -= eye_size + icon_cluster_gap;
     // ── Group lock (folder icon) — pinta SE locked, sempre clicável.
     // À esquerda do olho. Click toggla `GroupedChildren` em SimWorld
-    // via EditorAction::HierToggleGroup (handler no shell). Enio
+    // via EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::ToggleGrou)p (handler no shell). Enio
     // 2026-05-26: "Agrupar: vc pode manipular o pai mas não os filhos".
     let icon_btn = eye_size;
     let group_rect = Rect::new(

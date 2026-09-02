@@ -456,6 +456,29 @@ pub(crate) fn set_last_inspector_visible_h(h: f32) {
     LAST_VISIBLE_H.with(|c| c.set(h));
 }
 
+/// ⭐⭐⭐ **A porta de *«este id é a ranhura da textura, e de quem?»*** (plano `docs/Components/07`,
+/// wave B3).
+///
+/// Devolve os bits da entidade cuja sprite a ranhura descreve, ou `None` quando o id é outro — ou
+/// quando não há sprite publicada (a §3 não existe, logo a ranhura também não).
+///
+/// # ⚠️ Ela vive AQUI, e o molde é o `catalog_row_pick` do navegador
+///
+/// O `HitIndex` responde *«que widget está debaixo do cursor»*; **quem sabe o que aquele id
+/// significa é o painel que o pintou**. O shell perguntar directamente pelo literal seria a shell
+/// a conhecer a tabela de ids de um painel — e a resposta envelheceria no dia em que a ranhura
+/// mudasse de secção.
+///
+/// ⚠️ **A entidade sai do MESMO snapshot que a secção pinta.** Ler a selecção por outro caminho
+/// daria duas respostas a *«de quem é este cartão?»*, e a que o artista vê é a que envelhece.
+#[must_use]
+pub fn texture_slot_pick(id: ph2d_a11y::NodeId) -> Option<u64> {
+    if id != ph2d_editor_core::ids::INSP_RENDER_TEXTURE_SLOT {
+        return None;
+    }
+    current_inspector_sprite().map(|s| s.entity_bits)
+}
+
 #[cfg(test)]
 mod tint_color_tests {
     use super::{tint_f32_to_u8, tint_u8_to_f32};

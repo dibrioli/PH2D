@@ -4,6 +4,7 @@
 //! `use super::*` e alcançam os privados do pai. Cortado quando a §14 do
 //! Inspector (W5) levou o arquivo a 708 > 700 — o corte por RESPONSABILIDADE
 //! aqui é *o que o barramento É* contra *o que ele PROVA*.
+use super::HierRequest;
 use super::*;
 
 #[test]
@@ -142,15 +143,17 @@ fn selection_variants_round_trip_through_bus() {
         entity_bits: 0xAAAA,
         modifier: SelectModifier::Replace,
     });
-    bus.push(EditorAction::HierSelectRow {
+    bus.push(EditorAction::Hierarchy(HierRequest::SelectRow {
         row: row_a,
         modifier: SelectModifier::Add,
-    });
-    bus.push(EditorAction::HierSelectRow {
+    }));
+    bus.push(EditorAction::Hierarchy(HierRequest::SelectRow {
         row: row_b,
         modifier: SelectModifier::Toggle,
-    });
-    bus.push(EditorAction::HierRangeSelect { row: row_b });
+    }));
+    bus.push(EditorAction::Hierarchy(HierRequest::RangeSelect {
+        row: row_b,
+    }));
     bus.push(EditorAction::ClearSelection);
     let drained: Vec<EditorAction> = bus.drain().collect();
     assert_eq!(
@@ -160,15 +163,15 @@ fn selection_variants_round_trip_through_bus() {
                 entity_bits: 0xAAAA,
                 modifier: SelectModifier::Replace
             },
-            EditorAction::HierSelectRow {
+            EditorAction::Hierarchy(HierRequest::SelectRow {
                 row: row_a,
                 modifier: SelectModifier::Add
-            },
-            EditorAction::HierSelectRow {
+            }),
+            EditorAction::Hierarchy(HierRequest::SelectRow {
                 row: row_b,
                 modifier: SelectModifier::Toggle
-            },
-            EditorAction::HierRangeSelect { row: row_b },
+            }),
+            EditorAction::Hierarchy(HierRequest::RangeSelect { row: row_b }),
             EditorAction::ClearSelection,
         ]
     );

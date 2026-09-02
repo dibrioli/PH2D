@@ -274,7 +274,7 @@ pub struct HeroScreen {
     // ECS mutation.
     //
     // Wave 2.5 PR 11.8c: `pending_hierarchy_row_click` migrated to
-    // `bus.push(EditorAction::HierRowClick { row })`. Same drain
+    // `bus.push(EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::RowClick { row }))`. Same drain
     // semantics: shell resolves row NodeId → sim entity via the
     // bridge and updates `gizmo.selection` so the canvas gizmo
     // follows the hierarchy click. Live (ECS) mode only.
@@ -284,8 +284,8 @@ pub struct HeroScreen {
     // cycles Selected/Camera/All), and double-click on a live row
     // (always Selected).
     // Wave 2.5 PR 11.8c: rename intents migrated to the bus.
-    //   pending_rename_seed   → EditorAction::HierRenameSeed { row }
-    //   pending_rename_commit → EditorAction::HierRenameCommit { row, new_name }
+    //   pending_rename_seed   → EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::RenameSeed { row })
+    //   pending_rename_commit → EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::RenameCommit { row, new_name })
     // Wave 2.5 PR 11.8b1-3: image-edit + bgremoval + reimport intents
     // all live on the bus. ADR-0040 TG-A/B/C genericized the per-tool
     // variants into ActivateTool / OneShotImageOp / ToolPanelEvent /

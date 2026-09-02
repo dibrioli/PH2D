@@ -34,6 +34,7 @@
 
 pub mod action_bus;
 /// Os vocabulários que as acções do [`action_bus`] carregam — o 2.º irmão por assunto.
+mod action_bus_hier;
 mod action_bus_kinds;
 /// A fila do [`action_bus`] — irmão por assunto, ver o cabeçalho de lá.
 mod action_bus_queue;

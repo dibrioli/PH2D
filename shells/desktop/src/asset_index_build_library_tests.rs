@@ -174,3 +174,77 @@ fn entry_for(id: ph2d_asset::AssetId) -> ph2d_asset_index::AssetEntry {
         String::from("fixtura"),
     )
 }
+
+/// ⛔⛔⛔ **UM PREFAB DE SPRITES DE ÁTLAS TEM COR E RETRATO** — report do Enio, 2026-09-01, com foto:
+/// *«objeto pai é o objeto vazio com 3 texturas como filhas»*, e o cartão saiu **cinzento**: nem
+/// retrato, nem cor.
+///
+/// # A causa, e por que ela é a MESMA de duas vezes anteriores
+///
+/// «Uma peça aponta para os pixels» tem **duas** formas, e o `SpritePixels` é a da **minoria** — o
+/// caminho normal de todo import e de todo canvas novo é o **átlas**. O
+/// [`super::texture_of`] existe exactamente para as unificar, e o doc dele já dizia *«UMA porta,
+/// dois leitores»*. O retrato e a cor dominante fizeram-se **terceiro e quarto leitores, com a
+/// metade errada**.
+///
+/// ⚠️ **A fixtura CARREGA O FENÓMENO**: as peças são de átlas e **não** têm `SpritePixels`. Com o
+/// carimbo raro ela ficava verde sobre o defeito que a foto mostra.
+///
+/// **Mutações que devem sangrar:** `largest_piece_texture` voltar a ler `SpritePixels` directo · o
+/// resolvedor do `compose` fazer o mesmo.
+#[test]
+fn a_prefab_of_atlas_sprites_gets_a_colour_and_a_portrait() {
+    let mut sim = ph2d_ecs::SimWorld::new();
+    // O pai é um objecto VAZIO — sem `Sprite`, como no report.
+    let root = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, ph2d_ecs::MasterRoot))
+        .id();
+    for (i, at) in [[-1.0, 0.0], [1.0, 0.0], [0.0, 1.0]]
+        .into_iter()
+        .enumerate()
+    {
+        sim.world_mut().spawn((
+            ph2d_ecs::Transform::from_translation(ph2d_core::Vec2::new(at[0], at[1])),
+            ph2d_render::Sprite::atlas(i as u32, [1.0, 1.0], [1.0; 4]),
+            ph2d_ecs::ChildOf(root),
+        ));
+    }
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+
+    // Um `AssetDb` com três imagens, e o mapa de átlas a apontar-lhes — é o que o import faz.
+    let db = ph2d_asset::AssetDb::new();
+    let mut atlas: std::collections::BTreeMap<u32, ph2d_asset::AssetId> =
+        std::collections::BTreeMap::new();
+    for i in 0..3u32 {
+        let rgba = vec![u8::try_from(60 + i * 60).unwrap_or(255); 8 * 8 * 4];
+        let id = db.insert_image_rgba8(8, 8, rgba);
+        atlas.insert(i, id);
+    }
+
+    let mut art = super::CardArt::new();
+    let mut lib = super::TextureLibrary::default();
+    let index = super::build(
+        &mut sim,
+        &db,
+        &atlas,
+        &ph2d_asset_index::CatalogTree::default(),
+        &mut art,
+        &mut lib,
+    );
+    let prefab = index
+        .entries()
+        .iter()
+        .find(|e| matches!(e.key, ph2d_asset_index::AssetRef::Component { .. }))
+        .expect("o prefab tem de estar no indice");
+    assert!(
+        prefab.thumb.is_some(),
+        "o prefab de sprites de atlas ficou SEM RETRATO — o cartao cinzento do report"
+    );
+    assert_ne!(
+        prefab.swatch,
+        ph2d_asset_index::AssetEntry::new(prefab.key, String::new()).swatch,
+        "o prefab ficou com a cor NEUTRA do construtor — nem a cor dominante foi achada"
+    );
+}

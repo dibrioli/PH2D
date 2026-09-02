@@ -29,7 +29,7 @@
 //! *Um retrato parcial com os limites escritos é outra coisa que um retrato que se diz completo.*
 
 use ph2d_asset_index::Thumb;
-use ph2d_ecs::{Entity, SimWorld, SpritePixels, StableId, Transform};
+use ph2d_ecs::{Entity, SimWorld, StableId, Transform};
 use ph2d_render::Sprite;
 
 /// O lado do retrato, em px. O mesmo tecto das miniaturas por textura — é o mesmo cartão.
@@ -47,8 +47,23 @@ struct Placed {
 
 /// ⭐⭐⭐ **Compõe o retrato**, ou `None` quando não há peça com pixels.
 ///
-/// `piece_thumb` entrega a miniatura de uma textura — é a porta da cache, e é o que garante que
-/// **nenhuma descodificação nova** acontece aqui.
+/// `piece_art` entrega a miniatura **de uma PEÇA** — é a porta da cache, e é o que garante que
+/// nenhuma descodificação nova acontece aqui.
+///
+/// # ⛔⛔⛔ Ela recebe a ENTIDADE, e não a textura — a 1.ª versão custou um report
+///
+/// Report do Enio (2026-09-01, com foto): um prefab de 4 peças ficou com o **cartão cinzento** —
+/// nem retrato, nem cor. A causa: eu lia `SpritePixels` para achar a textura de uma peça, e esse
+/// carimbo é o da **MINORIA**. O caminho normal de todo import e de todo canvas novo é o **átlas**
+/// (`Sprite { source: Atlas { key } }` + `atlas_asset_map`), e o objecto dele era exactamente
+/// isso: um objecto vazio com três texturas por baixo.
+///
+/// ⚠️ **O ficheiro vizinho já tinha pago isto duas vezes** e escreveu-o no doc do
+/// [`crate::asset_index_build::texture_of`]: *«UMA porta, dois leitores»*. Eu fiz-me o **terceiro
+/// leitor, com a metade errada** — e o sintoma foi o mesmo dos dois anteriores.
+///
+/// ⇒ o retrato deixou de saber **como** uma peça aponta para os pixels. Quem resolve é o chamador,
+/// pela porta única; uma terceira forma amanhã não volta a passar por aqui.
 ///
 /// ⚠️ **`None` é a resposta certa para um prefab sem sprites**, e o cartão fica com a cor
 /// dominante: *ele não tem retrato*, e inventar um cinzento seria dizer que tem.
@@ -56,7 +71,7 @@ pub(crate) fn compose(
     sim: &SimWorld,
     root: Entity,
     pieces: &[Entity],
-    mut piece_thumb: impl FnMut(ph2d_asset::AssetId) -> Option<Thumb>,
+    mut piece_art: impl FnMut(Entity) -> Option<Thumb>,
 ) -> Option<Thumb> {
     let root_xf = ph2d_ecs::world_transform(sim.world(), root)?;
     let mut placed: Vec<Placed> = Vec::new();
@@ -66,13 +81,10 @@ pub(crate) fn compose(
     let mut ordered: Vec<Entity> = pieces.to_vec();
     ordered.sort_by_key(|e| sim.world().get::<StableId>(*e).map_or(u64::MAX, |s| s.0));
     for &p in &ordered {
-        let (Some(sprite), Some(px)) = (
-            sim.world().get::<Sprite>(p),
-            sim.world().get::<SpritePixels>(p),
-        ) else {
+        let Some(sprite) = sim.world().get::<Sprite>(p) else {
             continue;
         };
-        let Some(thumb) = piece_thumb(px.0) else {
+        let Some(thumb) = piece_art(p) else {
             continue;
         };
         let Some(xf) = ph2d_ecs::world_transform(sim.world(), p) else {

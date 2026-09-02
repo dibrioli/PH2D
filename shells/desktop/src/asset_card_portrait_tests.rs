@@ -5,7 +5,7 @@
 
 use super::compose;
 use ph2d_asset_index::Thumb;
-use ph2d_ecs::{ChildOf, Entity, SimWorld, SpritePixels, Transform};
+use ph2d_ecs::{ChildOf, Entity, SimWorld, Transform};
 
 const RED: [u8; 4] = [255, 0, 0, 255];
 const BLUE: [u8; 4] = [0, 0, 255, 255];
@@ -32,8 +32,12 @@ fn recipe(pieces: &[([f32; 2], [u8; 4])]) -> (SimWorld, Entity, Vec<Entity>, Vec
             .world_mut()
             .spawn((
                 Transform::from_translation(ph2d_core::Vec2::new(at[0], at[1])),
-                ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
-                SpritePixels(ph2d_asset::AssetId::from_digest([i as u8; 32])),
+                // ⛔⛔ **DE ÁTLAS, e SEM `SpritePixels`** — report do Enio de 2026-09-01 com
+                // foto: *«objeto pai é o objeto vazio com 3 texturas como filhas»*, e o cartão
+                // ficou cinzento. O `SpritePixels` é o carimbo da MINORIA; o caminho normal de
+                // todo import e de todo canvas novo é o átlas. *Uma fixtura que usasse o carimbo
+                // raro ficava verde sobre o defeito que o report mostra.*
+                ph2d_render::Sprite::atlas(i as u32, [1.0, 1.0], [1.0; 4]),
                 ChildOf(root),
             ))
             .id();
@@ -44,10 +48,12 @@ fn recipe(pieces: &[([f32; 2], [u8; 4])]) -> (SimWorld, Entity, Vec<Entity>, Vec
     (sim, root, ents, colors)
 }
 
-fn art(colors: Vec<[u8; 4]>) -> impl FnMut(ph2d_asset::AssetId) -> Option<Thumb> {
-    move |id| {
-        let b = id.as_bytes()[0] as usize;
-        colors.get(b).copied().map(solid)
+/// A arte de uma peça, resolvida como o produto a resolve: **pela chave do átlas**, que é a forma
+/// que o report expôs.
+fn art(sim_pieces: Vec<Entity>, colors: Vec<[u8; 4]>) -> impl FnMut(Entity) -> Option<Thumb> {
+    move |e| {
+        let i = sim_pieces.iter().position(|p| *p == e)?;
+        colors.get(i).copied().map(solid)
     }
 }
 
@@ -64,7 +70,7 @@ fn pixel(t: &Thumb, x: u32, y: u32) -> [u8; 4] {
 #[test]
 fn both_pieces_show_up_in_the_portrait() {
     let (sim, root, pieces, colors) = recipe(&[([-1.0, 0.0], RED), ([1.0, 0.0], BLUE)]);
-    let t = compose(&sim, root, &pieces, art(colors)).expect("o retrato");
+    let t = compose(&sim, root, &pieces, art(pieces.clone(), colors)).expect("o retrato");
     let mid = t.h / 2;
     let left = pixel(&t, 1, mid);
     let right = pixel(&t, t.w - 2, mid);
@@ -88,7 +94,7 @@ fn both_pieces_show_up_in_the_portrait() {
 #[test]
 fn the_portrait_is_not_mirrored_on_either_axis() {
     let (sim, root, pieces, colors) = recipe(&[([-1.0, 1.0], RED), ([1.0, -1.0], BLUE)]);
-    let t = compose(&sim, root, &pieces, art(colors)).expect("o retrato");
+    let t = compose(&sim, root, &pieces, art(pieces.clone(), colors)).expect("o retrato");
     // A vermelha está em cima-à-esquerda no MUNDO ⇒ em cima-à-esquerda na IMAGEM (linha 0).
     let top_left = pixel(&t, 1, 1);
     let bottom_right = pixel(&t, t.w - 2, t.h - 2);
@@ -109,7 +115,7 @@ fn the_portrait_is_not_mirrored_on_either_axis() {
 #[test]
 fn a_wide_layout_does_not_stretch_the_pieces() {
     let (sim, root, pieces, colors) = recipe(&[([-4.0, 0.0], RED), ([4.0, 0.0], BLUE)]);
-    let t = compose(&sim, root, &pieces, art(colors)).expect("o retrato");
+    let t = compose(&sim, root, &pieces, art(pieces.clone(), colors)).expect("o retrato");
     assert!(
         t.w > t.h,
         "uma disposicao larga tem de dar um retrato largo: {}x{}",
@@ -148,8 +154,8 @@ fn a_recipe_with_no_pixels_has_no_portrait() {
 #[test]
 fn the_portrait_is_deterministic() {
     let (sim, root, pieces, colors) = recipe(&[([-1.0, 0.0], RED), ([1.0, 0.0], BLUE)]);
-    let a = compose(&sim, root, &pieces, art(colors.clone())).expect("a");
-    let b = compose(&sim, root, &pieces, art(colors)).expect("b");
+    let a = compose(&sim, root, &pieces, art(pieces.clone(), colors.clone())).expect("a");
+    let b = compose(&sim, root, &pieces, art(pieces.clone(), colors)).expect("b");
     assert_eq!(
         a.rgba, b.rgba,
         "duas composicoes iguais deram bytes diferentes"
@@ -163,8 +169,9 @@ fn the_portrait_is_deterministic() {
 fn a_piece_without_art_is_skipped_and_the_rest_still_draws() {
     let (sim, root, pieces, _colors) = recipe(&[([-1.0, 0.0], RED), ([1.0, 0.0], BLUE)]);
     // Só a segunda tem arte.
-    let t = compose(&sim, root, &pieces, |id| {
-        (id.as_bytes()[0] == 1).then(|| solid(BLUE))
+    let only_second = pieces[1];
+    let t = compose(&sim, root, &pieces, |e| {
+        (e == only_second).then(|| solid(BLUE))
     })
     .expect("o retrato parcial");
     assert!(t.w > 0 && t.h > 0);

@@ -170,7 +170,7 @@ pub(crate) fn build(
         //
         // ⚠️ Uma receita sem pixels nenhuns fica com a cor neutra do construtor, e isso é honesto:
         // *ela não tem cor*.
-        let face = largest_piece_texture(sim, &pieces);
+        let face = largest_piece_texture(sim, &pieces, atlas_assets);
         if let Some(id) = face
             && let Some(rgba) = swatch_for(db, id, swatches)
         {
@@ -191,7 +191,15 @@ pub(crate) fn build(
         // ⚠️ **E a queda para a PEÇA MAIOR fica**, para quando não há retrato (nenhuma peça com
         // pixels em cache neste quadro, porque o orçamento acabou): *um cartão que perde a imagem
         // que já mostrava é uma regressão visível.*
-        entry.thumb = crate::asset_card_portrait::compose(sim, entity, &pieces, |id| {
+        entry.thumb = crate::asset_card_portrait::compose(sim, entity, &pieces, |p| {
+            // ⭐⭐⭐ **A PORTA ÚNICA resolve a textura da peça** — e é ela que sabe as DUAS formas
+            // (átlas e `SpritePixels`). O retrato não as conhece, de propósito: uma terceira forma
+            // amanhã entra aqui e não volta a partir o cartão.
+            let id = texture_of(
+                sim.world().get::<SpritePixels>(p),
+                sim.world().get::<ph2d_render::Sprite>(p),
+                atlas_assets,
+            )?;
             thumb_for(db, id, swatches, &mut budget)
         })
         .or_else(|| face.and_then(|id| thumb_for(db, id, swatches, &mut budget)));
@@ -498,13 +506,25 @@ fn subtree(sim: &SimWorld, root: Entity) -> Vec<Entity> {
 /// ⚠️ Uma peça sem `Sprite` mas com `SpritePixels` conta com área `0`: ela ainda é a única
 /// candidata num prefab que só tenha essa, e devolver `None` ali daria um cartão cinzento sobre um
 /// asset que tem imagem.
-fn largest_piece_texture(sim: &SimWorld, pieces: &[Entity]) -> Option<AssetId> {
+fn largest_piece_texture(
+    sim: &SimWorld,
+    pieces: &[Entity],
+    atlas_assets: &BTreeMap<u32, AssetId>,
+) -> Option<AssetId> {
     // `(área em micro-unidades, id de desempate, textura)`. ⚠️ O cast `f64 -> u64` **satura** em
     // Rust, então duas peças acima de ~1,8e13 empatam no topo — e o desempate resolve-o. E
     // `f64::max(NaN, 0.0) == 0.0`, então uma `size` inválida pontua zero em vez de estourar.
     let mut best: Option<(u64, u64, AssetId)> = None;
     for &p in pieces {
-        let Some(px) = sim.world().get::<SpritePixels>(p) else {
+        // ⛔⛔ **PELA PORTA ÚNICA** (report do Enio, 2026-09-01): ler `SpritePixels` directamente
+        // via só a MINORIA das peças — o caminho normal é o átlas —, e um prefab de sprites de
+        // átlas ficava sem cor **e** sem retrato. É a 3.ª vez que este ficheiro paga a mesma
+        // lição; o doc do [`texture_of`] já a tinha escrita.
+        let Some(id) = texture_of(
+            sim.world().get::<SpritePixels>(p),
+            sim.world().get::<ph2d_render::Sprite>(p),
+            atlas_assets,
+        ) else {
             continue;
         };
         let area = sim.world().get::<ph2d_render::Sprite>(p).map_or(0.0, |s| {
@@ -515,7 +535,7 @@ fn largest_piece_texture(sim: &SimWorld, pieces: &[Entity]) -> Option<AssetId> {
         // acaso.
         let key = (area.max(0.0) * 1e6) as u64;
         let tie = sim.world().get::<StableId>(p).map_or(u64::MAX, |s| s.0);
-        let cand = (key, tie, px.0);
+        let cand = (key, tie, id);
         if best.is_none_or(|b| (cand.0, std::cmp::Reverse(cand.1)) > (b.0, std::cmp::Reverse(b.1)))
         {
             best = Some(cand);

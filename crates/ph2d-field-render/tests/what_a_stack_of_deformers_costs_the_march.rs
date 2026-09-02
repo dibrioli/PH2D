@@ -69,6 +69,59 @@
 //! `[Taper]` e `+0,4` no `[Twist]` — os dois **declarados**, e as únicas células desta tabela que não
 //! melhoraram desde 30/08.
 //!
+//! # ⭐⭐⭐ ONDE O QUADRO SE GASTA — e a resposta é UMA coluna (2026-09-01)
+//!
+//! Report do Enio depois da wave anterior: *«Box → + Bend → + Twist → + Taper fica extremamente
+//! lento»*. A sonda `where_the_frame_goes_in_a_deformer_stack` (`320²`, `--release`):
+//!
+//! | pilha | quadro | amostras | passos/raio | ns/amostra |
+//! |---|---:|---:|---:|---:|
+//! | `[]` | `7,6 ms` | `172 739` | `6,5` | `43,8` |
+//! | `[Bend]` | `20,9` | `423 081` | `10,4` | `49,3` |
+//! | `[Bend, Twist]` | `85,8` | `1 593 456` | `24,7` | `53,8` |
+//! | `[Bend, Twist, Taper]` | **`349,7`** | **`7 371 171`** | `84,9` | `47,4` |
+//!
+//! ⭐⭐⭐ **O `ns/amostra` é PLANO** — `43,8` para `47,4`, apenas `1,08×`. Uma pilha de três
+//! deformadores traz `atan2`, `sqrt`, `sin`, `cos` e dois clamps suaves à fita, e **isso não custa
+//! nada**: o quadro é `43×` mais caro porque tem `43×` mais AMOSTRAS. ⇒ *a cura é o número de
+//! passos, e mais nenhuma* — a outra metade da pergunta que o doc da `measure_the_shape_of_the_march`
+//! nomeia (*«caro por amostra ou caro em passos?»*) está respondida.
+//!
+//! ⚠️ **E não há contagem dupla:** o `safe_march_step` devolve `1,0000` em todas estas pilhas (os
+//! deformadores entram pelo `field_shrink`, não pelo `gradient_bound`), então o divisor é pago uma
+//! vez só.
+//!
+//! # ⛔⛔⛔ RECUSA MEDIDA (2026-09-01): a SOBRE-RELAXAÇÃO come a margem que não está provada
+//!
+//! A *Enhanced Sphere Tracing* (Keinert et al. 2014) é a saída publicada para um raio caro em
+//! passos, e o doc da sonda irmã aponta-a pelo nome. Implementada com o teste de sobreposição
+//! (`r + r_ant ≥ passo`, que é o que a torna demonstravelmente segura) e com o recuo a repor o passo
+//! que a marcha de sempre daria:
+//!
+//! | `ω` | `[]` | `[Bend]` | `[Bend, Twist]` | trio | imagem contra o oráculo |
+//! |---:|---:|---:|---:|---:|---|
+//! | `1,0` | `6,4` | `10,7` | `26,9` | `91,1` | ✅ `6/6` |
+//! | `1,6` | `7,3` | `10,5` | `20,5` | **`57,0`** | ⛔ `14` de `1 202` pixels VAZIOS |
+//! | `2,5` | `6,4` | `9,2` | `22,4` | `74,1` | ⛔ |
+//! | `4,0` | `7,7` | `10,6` | `27,9` | `92,1` | ⛔ |
+//!
+//! ⇒ o melhor caso compra **`1,6×`** e **perde peça**. ⭐ E o mecanismo é a própria razão de a folga
+//! existir: o bound da composição é optimista na direcção do recuo (um deformador EXTERIOR expande a
+//! região que o interior vê, e o divisor mede-a na caixa de recorte, não na imagem inversa dela).
+//! *A marcha de sempre sobrevive nessa folga; a sobre-relaxação é literalmente o algoritmo desenhado
+//! para a gastar.* ⛔ E acima de `ω = 2,5` ela nem sequer compra — os recuos comem o que a relaxação
+//! ganha.
+//!
+//! ⚠️ **Duas armadilhas de implementação, as duas medidas antes de qualquer conclusão** (e a 1.ª
+//! versão da tabela acima foi tirada com elas dentro, o que teria escrito uma recusa sobre um
+//! programa partido): o estado por raio **nasce onde o raio entra no recorte**, e não em zero — com
+//! `t_ant = 0` o primeiro teste de todo raio reprova e manda-o para trás da câmera (`2,0` passos por
+//! raio, peça a desaparecer) —, e o recuo tem de **reiniciar** esse estado, senão o raio volta ao
+//! mesmo ponto em ciclo.
+//!
+//! ⇒ para a sobre-relaxação valer aqui, o bound da composição tem de ser **demonstrado** primeiro.
+//! É a mesma obra que a secção abaixo nomeia, e ela paga as duas de uma vez.
+//!
 //! # ⛔⛔ A causa da folga que SOBRA: os divisores multiplicam-se
 //!
 //! Cada `step_divisor` é o pior caso do seu operador **sobre a caixa de recorte inteira**. O da
@@ -179,7 +232,9 @@ const TOLERADO: &[(&str, f64)] = &[
 #[ignore = "sonda: imprime a tabela do doc do módulo"]
 fn print_the_cost_table() {
     let reg = Registry::default();
-    println!("| pilha | raio | caixa | divisor | grad | folga | passos/raio |");
+    println!(
+        "| pilha | raio | caixa | divisor | passo | div x 1/passo | grad | folga | passos/raio |"
+    );
     for ms in [
         vec![],
         vec![UnaryKind::Bend],
@@ -194,12 +249,14 @@ fn print_the_cost_table() {
         let h = bola.half();
         let divisor = f64::from(ph2d_field_eval::field_shrink(&doc, &reg));
         let grad = worst_gradient(&doc, 40);
+        let passo = f64::from(ph2d_field_eval::safe_march_step(&doc));
         println!(
-            "| `{nome}` | {:.3} | {:.3}×{:.3}×{:.3} | {divisor:.2} | {grad:.4} | {:.1}× | {:.1} |",
+            "| `{nome}` | {:.3} | {:.3}×{:.3}×{:.3} | {divisor:.2} | {passo:.4} | {:.2} | {grad:.4} | {:.1}× | {:.1} |",
             bola.radius,
             h[0],
             h[1],
             h[2],
+            divisor / passo,
             1.0 / grad.max(1e-9),
             passos_por_raio(&doc)
         );
@@ -279,4 +336,63 @@ fn a_stack_of_deformers_never_costs_the_march_more_than_it_did() {
         "a marcha ficou MAIS BARATA — re-escreva a tabela do `TOLERADO` e o doc do módulo: {}",
         obsoletas.join(" · ")
     );
+}
+
+/// ⭐⭐⭐ **ONDE O QUADRO SE GASTA numa pilha de deformadores** — a metade do diagnóstico que faltava
+/// (report do Enio, 2026-09-01: *«Box + Bend + Twist + Taper fica extremamente lento»*).
+///
+/// O doc da sonda irmã (`measure_the_shape_of_the_march`) diz que *«um raio que dá 8 passos e um que
+/// dá 40 pedem curas OPOSTAS: o primeiro é caro por AMOSTRA, o segundo em PASSOS»*. A catraca acima
+/// mede só os passos — e uma pilha de três deformadores **também alonga a fita** (a dobra sozinha
+/// traz `atan2`, `sqrt`, `sin`, `cos` e um clamp suave). ⇒ sem esta coluna não se sabe qual das duas
+/// curas o produto pede.
+///
+/// ⚠️ **Ela lê o RELÓGIO**, logo só vale com a máquina calma (`CLAUDE.md` §5) — por isso é sonda e
+/// não gate, e por isso as duas medições correm no **mesmo processo**.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --release --test what_a_stack_of_deformers_costs_the_march \
+///     -- --ignored --nocapture where_the_frame_goes
+/// ```
+#[test]
+#[ignore = "sonda: lê o relógio"]
+fn where_the_frame_goes_in_a_deformer_stack() {
+    use std::time::Instant;
+    let reg = Registry::default();
+    let cam = Orbit {
+        half_extent: 1.0,
+        ..Orbit::default()
+    };
+    let (w, h) = (320u32, 320u32);
+    println!("| pilha | quadro ms | amostras | passos/raio | ns/amostra | vs caixa |");
+    let mut base_ns = 0.0f64;
+    for ms in [
+        vec![],
+        vec![UnaryKind::Bend],
+        vec![UnaryKind::Bend, UnaryKind::Twist],
+        vec![UnaryKind::Bend, UnaryKind::Twist, UnaryKind::Taper],
+    ] {
+        let nome = format!("{ms:?}");
+        let doc = peca(ms);
+        // ⚠️ Uma corrida a frio paga a montagem da fita; o que se mede é a segunda.
+        let _ = ph2d_field_render::trace_with(&doc, &reg, &cam, w, h, false, true);
+        STEP_SAMPLES.store(0, Ordering::Relaxed);
+        MARCH_RAYS.store(0, Ordering::Relaxed);
+        let t = Instant::now();
+        let _ = ph2d_field_render::trace_with(&doc, &reg, &cam, w, h, false, true);
+        let elapsed = t.elapsed().as_secs_f64() * 1000.0;
+        #[allow(clippy::cast_precision_loss)]
+        let amostras = STEP_SAMPLES.load(Ordering::Relaxed) as f64;
+        #[allow(clippy::cast_precision_loss)]
+        let raios = MARCH_RAYS.load(Ordering::Relaxed).max(1) as f64;
+        let ns = elapsed * 1.0e6 / amostras.max(1.0);
+        if base_ns == 0.0 {
+            base_ns = ns;
+        }
+        println!(
+            "| `{nome}` | {elapsed:.1} | {amostras:.0} | {:.1} | {ns:.1} | {:.2}x |",
+            amostras / raios,
+            ns / base_ns
+        );
+    }
 }

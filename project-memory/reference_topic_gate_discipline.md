@@ -68,3 +68,4 @@ metadata:
 - [[feedback_a_symptom_remedy_is_cured_by_the_right_input_not_by_deletion]] — remédio-de-sintoma cura-se dando a ENTRADA certa: inerte onde a causa caiu, vivo onde ela fica (2 gates + controlo)
 
 - [[feedback_a_textual_census_that_cannot_tell_prose_from_code_lies_both_ways]] — censo de fonte que não separa prosa de código acusa a prosa e absolve o código
+- [[feedback_a_gate_that_presumes_the_destination_of_an_effect_accuses_the_living]] — censo que pergunta pelo DESTINO (o barramento) acusa de morto o vivo com outro destino, e a mensagem manda construir a doença

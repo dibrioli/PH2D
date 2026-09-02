@@ -79,7 +79,9 @@ pub mod tips;
 mod weights;
 
 pub use aligned::{INTERIOR, Interior};
-pub use apex::{CONE_MAX, TIP_CUT_PCT, TipSurvival, apices, median_edge, tip_survival};
+pub use apex::{
+    CONE_MAX, TIP_CUT_PCT, TipSurvival, adjacency, apices, median_edge, path_ball, tip_survival,
+};
 pub use coverage::{COVERAGE_DEFECT, COVERAGE_SHELL, Coverage, coverage};
 pub use finish::smooth;
 pub use finish_extract::{

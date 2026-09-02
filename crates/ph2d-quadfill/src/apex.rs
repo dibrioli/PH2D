@@ -137,7 +137,7 @@ pub fn apices(input: &Mesh, unit: f32) -> ([f32; 3], Vec<usize>) {
 
 /// **A adjacência vértice→vértices**, pelas arestas de todas as faces.
 #[must_use]
-pub(crate) fn adjacency(mesh: &Mesh) -> Vec<Vec<u32>> {
+pub fn adjacency(mesh: &Mesh) -> Vec<Vec<u32>> {
     let mut nbr: Vec<Vec<u32>> = vec![Vec::new(); mesh.positions().len()];
     for f in mesh.faces() {
         let v = f.verts();
@@ -167,7 +167,7 @@ pub(crate) fn adjacency(mesh: &Mesh) -> Vec<Vec<u32>> {
 /// `f32` não negativos os bits ordenam como o valor, e o vértice desempata de forma
 /// determinista.
 #[must_use]
-pub(crate) fn path_ball(
+pub fn path_ball(
     pos: &[[f32; 3]],
     nbr: &[Vec<u32>],
     seed: usize,

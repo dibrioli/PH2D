@@ -1853,3 +1853,82 @@ correctamente, na chave da frente. Em `antes`/`1,00` **todas as nove** comem o e
    solver, **medir o campo cruzado junto de cada ápice contra as direcções principais de
    curvatura** (num cone: meridiano e anel), nas duas peças e no campo do oráculo (`*.rosy`).
 4. O relógio a `Detail 1,00` dobrou (`251 s`): o socorro arma porque a régua diz a verdade. Fica.
+
+## §101 — ⭐⭐⭐ O MECANISMO da grade que termina, MEDIDO: onde as singularidades param
+
+`PH2D_SING_DUMP=<dir>` (novo, em `one.rs`) grava as singularidades do CAMPO de cada candidata;
+`escada_campo.py` (scratch) lê, por espinho afiado, a profundidade de cada uma ao longo do eixo
+local (em quads do alvo), e ao lado a escada de vértices irregulares da SAÍDA. `_base_sculpt`,
+`Detail 1,00`, `Follow Curvature` no máximo, candidata escolhida:
+
+| espinho | campo (F2): `+¼` a … | saída: valência `3` a … | grade `3 h` |
+|---|---|---|---|
+| `9663` | `0,6 · 0,7 · 1,0 · 2,6` | `0,4 · 0,5 · 3,5 · 3,9` | `0,60` |
+| `12074` | `0,2 · 0,6 · 0,9` | `0,6 · 0,6 · 0,6 · 10,1` | `0,50` |
+| `15909` | `0,6 · 0,6 · 0,7` | `0,2 · 0,2 · 0,2 · 6,8` | `0,50` |
+| `10230` | `0,4 · 2,7 · 2,9` | `0,1 · 0,1 · 1,2` | `0,51` |
+| ⛔ **`3138`** | `0,2 · 0,9 · 1,9` (e `−¼` a `13,3 · 14,3`) | **`1,0 · 1,2 · 6,1`** | **`1,36`** |
+
+E na malha que o dono aprovou (`Sculpt_Blender.obj`), **todos** os espinhos fecham com um pólo
+`+1` — quatro valência-`3` a `≤ 2 h` do bico (`3810`: `1,6 · 1,8 · 1,9 · 1,9`; `8449`: `0,7 ·
+0,7 · 1,0 · 1,5`) — com a compensação `−¼` (valência `5`) a `8`–`15 h`. Nas saídas reprovadas
+as singularidades estão a `9`–`15 h` do bico (`9663`: `9,4 · 11,0 · 11,2`; `3138`: `9,2 · 14,1 ·
+14,9`), que é literalmente *«a grade termina a meio caminho»*.
+
+⭐⭐⭐ **A grade do bico é monótona na profundidade da TERCEIRA singularidade**: `1,2 h → 0,51`
+(`10230`) · `2,4 h → 0,88` (`8285`, outra peça) · `6,1 h → 1,36` (`3138`) · nenhuma perto →
+`3,87`–`4,50`. A calota entre o bico e a terceira é uma lente de duas linhas, e estica.
+
+⚠️ **O campo já tem as três a `≤ 1,9 h` no `3138`; é a JUSANTE que a terceira desce para `6,1 h`**
+— o mapa inteiro e a extracção não a realizam onde o campo a pôs. E a fase zero está a
+`1,28`–`2,32 ×` o alvo **nos bicos** (mediana `3,15 ×`): as singularidades vivem em vértices da
+fase zero, logo a `1`–`2` células umas das outras — o pólo de quatro do QRemeshify precisa de
+`≈ 2 h` de calota resolvida.
+
+## §102 — ⛔ EXPERIMENTO medido e NÃO adoptado: reforçar o alinhamento na CALOTA
+
+`PH2D_TIP_ALIGN=<k>` (novo, `one.rs`; `Dual::boost_align`, aditivo): multiplica a confiança do
+alinhamento ao relevo nas faces a `≤ 8 h` de caminho de cada espinho afiado. No flanco de um cone
+a anisotropia já é `1` — o que falta ao termo (`0,03 × anisotropia`) é peso, e o global foi
+medido a partir em todo o lado. `PH2D_CANDIDATE_DUMP=<dir>` (novo) grava cada candidata, e
+`candidatas.py` (scratch) lê-as todas:
+
+| `k` | candidata (`w 0,03 · adapt 1 · densidade 1`) | grade nos 5 espinhos | amputadas | bordo |
+|---|---|---|---|---|
+| — (HEAD) | `21 649` q | `0,60 · 0,50 · 0,50 · 0,51 ·` ⛔ `1,36` | `0` | `0` |
+| `3` | `21 435` q | `0,48 · 1,00 · 0,50 · 0,63 ·` ⭐ `0,66` | `0` | ⛔ `34` |
+| `5` | `21 231` q | ⭐ **`0,51 · 0,63 · 0,46 · 0,75 · 0,85`** (gaps `≤ 0,3`) | `0` | ⛔ `14` |
+| `10` | `21 294` q | `0,55 · 0,67 · 1,16 · 1,08 · 0,72` | `0` | `5` (+`2` não-manifold) |
+| `30` | `18 936` q | `5,83` | `1` | `4`, `>60 = 29` |
+
+⭐ **O campo fecha as pontas** (a `k = 10` o `3138` recebe `+¼` a `0,2 · 0,9 · 1,7 · 1,9` — o pólo
+de quatro do QRemeshify) **e as cinco réguas da grade ficam verdes a `k = 5`** — a primeira
+candidata verde nas duas réguas que esta peça já teve. ⛔ **E a extracção não fecha a calota:** as
+`14` arestas de bordo de `k = 5` são **UM laço, com `14` vértices em `0,6 h` de extensão, a `1,1 h`
+do bico da agulha `15909`** — o pólo converge para um ponto e o vértice degenerado fica por fechar.
+Os contadores de costura (`costuras soltas · locais trocados · lados a discordar`) são **`0`**: não
+é o mapa a rasgar. A `k = 5` sem densidade (`19 187` q) a topologia fecha (`bordo 0`) e a agulha é
+**comida** (`gap ∞`), e `10230` também (`4,4`–`14 h`). ⇒ *a cadeia realiza um pólo denso ou com um
+furo no bico ou comendo o bico* — o selector escolhe, e bem, a candidata sem furos, que é a de
+sempre.
+
+⛔ **Recusas desta secção:** `k ≥ 10` (holes fora dos espinhos, `>60` a subir, `k = 30` destrói) ·
+o reforço como cura (fica como instrumento) · reordenar a chave dos furos (decisão de produto que
+o dono já tomou três vezes no sentido contrário).
+
+## §103 — ⏳ A obra seguinte, com endereço e experimento desenhado
+
+A calota de um espinho afiado precisa de **`≥ 2` células resolvidas** para receber quatro `+¼`
+separadas (o que o QRemeshify tem) — e a fase zero entrega `1,3`–`2,3 ×` o alvo nos bicos. A
+`remesh_isotropic_graded` não aceita um passo por vértice; a wave é **dar-lhe uma calota por
+espinho afiado** (`apices` da referência, unidade = alvo; passo `= alvo` a `≤ 8 h`, com a
+renormalização que a `SizingGrid` já faz), e medir com `PH2D_TIP_ALIGN=5` **e** sem ele:
+
+1. escada do campo a `≤ 2 h` (`escada_campo.py`) — quatro `+¼`?
+2. `candidatas.py` — bordo `0` **e** grade `≤ 1,0` **e** gap `≤ 0,5` nos cinco espinhos, na
+   MESMA candidata;
+3. o portão `pontas_do_dono` com a nossa saída sobre `sculpt_antes` como fixtura nova — o critério
+   de aceitação é passar o que a `Sculpt_Blender.obj` passa.
+
+⚠️ `PH2D_F1_TARGET=1` (a fase zero inteira ao alvo) já foi refutado (`χ = 1`, `4` bordo, `123`
+dobras) — a afinação tem de ser **local**, e a renormalização por contagem é o que a torna barata.

@@ -367,6 +367,25 @@ impl Dual {
         self.align.get(f).copied().unwrap_or((0.0, 0.0))
     }
 
+    /// ⭐ **REFORÇA a confiança do alinhamento nas faces dadas** — multiplica a anisotropia
+    /// de cada uma por `factor`, e só isso.
+    ///
+    /// ⚠️ **É um ponto de extensão para quem sabe ONDE o relevo manda mais** (a calota de um
+    /// espinho afiado, 2026-09-02): o [`crate::ALIGN_WEIGHT`] é global e foi medido contra o
+    /// campo do oráculo na peça inteira; subir esse número em todo o lado paga singularidades
+    /// em todo o lado (`1,0` dá `48` numa peça com cristas). Uma face que já não tinha
+    /// direção (anisotropia `0`) continua sem ela — multiplicar zero é honesto.
+    pub fn boost_align(&mut self, faces: impl IntoIterator<Item = usize>, factor: f32) {
+        if !factor.is_finite() || factor <= 0.0 {
+            return;
+        }
+        for f in faces {
+            if let Some(a) = self.align.get_mut(f) {
+                a.1 *= factor;
+            }
+        }
+    }
+
     /// ⭐⭐⭐ **O CAMPO NA MÉTRICA DA DENSIDADE** — a correcção conforme do transporte.
     ///
     /// # ⛔⛔⛔ Por que ela existe: pedir mais fino NÃO entrega mais fino

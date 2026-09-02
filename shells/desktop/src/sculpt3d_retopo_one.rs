@@ -104,6 +104,51 @@ pub(super) fn one(
         }
         _ => base,
     };
+    // ⭐ **`PH2D_TIP_ALIGN=<factor>` reforça o alinhamento ao relevo SÓ na CALOTA de cada
+    // espinho afiado** — experimento de 2026-09-02 (plano, Parte XII §101). Medido na escada
+    // de singularidades: a malha que o dono aprovou fecha CADA bico com um pólo `+1` (quatro
+    // `+¼` a `≤ 2 h`); o nosso campo fecha o `3138` com `+¾` e a saída fica com `+½` perto e
+    // a terceira a `6 h` — e a grade do bico é monótona nisso (`1,2 h → 0,51` · `2,4 h → 0,88`
+    // · `6,1 h → 1,36`). No flanco de um cone a anisotropia já é `1`; o que falta é PESO, e o
+    // [`ph2d_crossfield::ALIGN_WEIGHT`] global foi medido a partir em todo o lado (`1,0` dá
+    // `48` singularidades numa peça com cristas). ⛔ Sem a env o dual é o de sempre, ao bit.
+    let owned_tip;
+    let dual: &ph2d_crossfield::Dual = match tip_align_factor() {
+        Some(factor) => {
+            let (_, apex) = ph2d_quadfill::apices(cx.reference, cx.target);
+            let rpos = cx.reference.positions();
+            let wpos = cx.work.positions();
+            let nbr = ph2d_quadfill::adjacency(cx.work);
+            let radius = TIP_ALIGN_RADIUS * cx.target;
+            let mut faces: std::collections::BTreeSet<usize> = std::collections::BTreeSet::new();
+            for &a in &apex {
+                let p = rpos[a];
+                let Some(seed) = (0..wpos.len()).min_by(|&i, &j| {
+                    let di = ph2d_quadfill_dist(wpos[i], p);
+                    let dj = ph2d_quadfill_dist(wpos[j], p);
+                    di.total_cmp(&dj)
+                }) else {
+                    continue;
+                };
+                let ball = ph2d_quadfill::path_ball(wpos, &nbr, seed, radius);
+                for (fi, f) in cx.work.faces().iter().enumerate() {
+                    if f.verts().iter().any(|v| ball.contains_key(&(*v as usize))) {
+                        faces.insert(fi);
+                    }
+                }
+            }
+            eprintln!(
+                "[sculpt3d] calota: {} espinho(s), {} faces com alinhamento x{factor:.1} a <= {TIP_ALIGN_RADIUS} h",
+                apex.len(),
+                faces.len()
+            );
+            let mut d = dual.clone();
+            d.boost_align(faces.iter().copied(), factor);
+            owned_tip = d;
+            &owned_tip
+        }
+        None => dual,
+    };
     let (field, _) = if (w - ph2d_crossfield::ALIGN_WEIGHT).abs() < f32::EPSILON {
         ph2d_crossfield::solve_miq(dual)
     } else {
@@ -115,12 +160,35 @@ pub(super) fn one(
 
     // ⭐ As singularidades saem do CAMPO — o índice por-vértice é um facto dele, e
     // pedir à `ph2d-gridmap` que o re-derive seria reconstruir o que já existe.
-    let singular: Vec<u32> = ph2d_crossfield::vertex_index(cx.work, dual, &field)
-        .into_iter()
+    let index = ph2d_crossfield::vertex_index(cx.work, dual, &field);
+    let singular: Vec<u32> = index
+        .iter()
         .enumerate()
-        .filter(|(_, k)| *k != 0)
+        .filter(|(_, k)| **k != 0)
         .filter_map(|(v, _)| u32::try_from(v).ok())
         .collect();
+    // ⭐ **`PH2D_SING_DUMP=<dir>` escreve as singularidades do CAMPO desta candidata**
+    // (`x y z índice`, uma por linha, um ficheiro por candidata) — diagnóstico de
+    // 2026-09-02. ⛔ A escada de vértices irregulares da SAÍDA mostrou que a grade termina
+    // onde as singularidades param (na malha aprovada, quatro a `≤ 2 h` do bico; nas nossas
+    // reprovadas, a `9`–`15 h`) — e só o campo diz se elas já nascem longe ou se a jusante
+    // as move. *Um dump por candidata, porque as candidatas correm em paralelo.*
+    if let Ok(dir) = std::env::var("PH2D_SING_DUMP") {
+        let pos = cx.work.positions();
+        let mut text = String::new();
+        for (v, k) in index.iter().enumerate() {
+            if *k != 0 {
+                let p = pos[v];
+                text.push_str(&format!("{} {} {} {k}\n", p[0], p[1], p[2]));
+            }
+        }
+        let name = format!(
+            "sing_w{w:.3}_f{}_a{adaptive:.2}_d{density:.1}_t{}.txt",
+            u8::from(features),
+            if travel.is_finite() { "cerca" } else { "livre" }
+        );
+        let _ = std::fs::write(std::path::Path::new(&dir).join(name), text);
+    }
 
     // ── G3 + G5. O mapa, e o arredondamento uma-a-uma que o torna inteiro.
     // ⭐ O G3 soldado é o default DENTRO deste caminho (que já shipa desligado);
@@ -224,6 +292,23 @@ pub(super) fn one(
     super::rulers::log_candidate(
         w, features, adaptive, &out, &shape, &round, &cut_rep, dev, den,
     );
+    // ⭐ **`PH2D_CANDIDATE_DUMP=<dir>` grava a malha de CADA candidata** — o par do
+    // `PH2D_SING_DUMP`. ⛔ Sem isto só a vencedora é observável, e a candidata que interessa
+    // (2026-09-02: grade `0,86` em todas as pontas, `0` amputadas, `5` arestas de bordo) perde
+    // na chave da frente e evapora — *um knob descartado e um knob fraco liam-se igual*.
+    if let Ok(dir) = std::env::var("PH2D_CANDIDATE_DUMP") {
+        let name = format!(
+            "cand_w{w:.3}_f{}_a{adaptive:.2}_d{density:.1}_t{}.obj",
+            u8::from(features),
+            if travel.is_finite() { "cerca" } else { "livre" }
+        );
+        let text = ph2d_mesh::write_obj(&[ph2d_mesh::ExportPiece {
+            name: Some("cand"),
+            mesh: &out,
+            pose: ph2d_mesh::Pose::default(),
+        }]);
+        let _ = std::fs::write(std::path::Path::new(&dir).join(name), text);
+    }
     Ok((out, e, round.shift_frac_max, shape, dev, den))
 }
 
@@ -271,6 +356,25 @@ pub(super) const FIELD_DENSITY: f32 = 1.0;
 ///
 /// ⛔ A env é lida **aqui, no chamador**, e não dentro da `ph2d-crossfield`: lá dentro ela
 /// alcançaria a bancada, os gates e o produto de uma vez.
+/// O raio da CALOTA em que o alinhamento é reforçado, em quads do alvo — a vizinhança em que
+/// a escada de singularidades da malha aprovada vive (`≤ 2 h` para as quatro `+¼`, e a
+/// compensação `−¼` a `8`–`15 h`). Experimento; ver [`tip_align_factor`].
+const TIP_ALIGN_RADIUS: f32 = 8.0;
+
+/// `PH2D_TIP_ALIGN=<factor>` — o reforço do alinhamento na calota dos espinhos afiados.
+/// `None` sem a env, ou com um factor que não seja `> 1`.
+fn tip_align_factor() -> Option<f32> {
+    std::env::var("PH2D_TIP_ALIGN")
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok())
+        .filter(|k| k.is_finite() && *k > 1.0)
+}
+
+fn ph2d_quadfill_dist(a: [f32; 3], b: [f32; 3]) -> f32 {
+    let d = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+    d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt()
+}
+
 fn field_density_strength() -> Option<f32> {
     std::env::var("PH2D_FIELD_DENSITY")
         .ok()

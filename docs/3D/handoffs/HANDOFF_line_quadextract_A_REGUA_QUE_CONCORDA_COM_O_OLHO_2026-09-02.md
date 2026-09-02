@@ -76,19 +76,34 @@ A linha a ler é `AMPUTADAS: … | GRADE NA PONTA: pior …` no fim, e a `GRADE 
 unidade = mediana da candidata no produto · alinhamento ao meridiano como discriminador · Dijkstra
 por pilha.
 
-## §5 — ⭐ Por onde eu começaria (a obra seguinte é ALGORITMO, e agora tem régua)
+## §5 — ⭐⭐⭐ A SEGUNDA WAVE desta janela: o MECANISMO está medido (plano §101–§103)
 
-1. **Meça o campo cruzado junto de cada ápice contra as direcções principais** (num cone:
-   meridiano e anel), nas duas peças e no campo do oráculo (`ph2d-quadbench/ref/*.rosy`, fora da
-   árvore). O arame (plano §96) mostra a grade a atravessar o espinho em **diagonal** onde termina e
-   a seguir o meridiano onde converge — é a única pista de mecanismo que esta janela tem, e ainda
-   **não é uma medição do campo**.
-2. O alvo mais alto é `sculpt_antes` / `4849`: a fase zero já corta `−3,0 %` (`ALVO/F1 = 0,39×`)
-   e a extracção perde o resto. É a peça de que o dono guardou a retopologia aprovada — o portão
-   `pontas_do_dono` é o critério de aceitação: **a nossa saída sobre `sculpt_antes` tem de passar a
-   mesma asserção que a `Sculpt_Blender.obj` passa.** Uma fixtura com a nossa saída pode entrar no
-   mesmo portão quando ela passar.
-3. Não reconstrua o que o §3 do handoff de 01/09 e o §99 do plano já recusaram.
+1. **A grade termina onde as singularidades param.** Com `PH2D_SING_DUMP` (novo) o campo de cada
+   candidata mostra as suas `±¼`; a escada da saída mostra os vértices de valência `≠ 4`. Na malha
+   aprovada **todo** espinho fecha com um pólo `+1` (quatro valência-`3` a `≤ 2 h`); no nosso, o
+   `3138` tem três `+¼` a `≤ 1,9 h` **no campo** e a saída fica com duas perto e a terceira a
+   `6,1 h` — e a grade do bico é **monótona** nessa profundidade (`1,2 h → 0,51 · 2,4 h → 0,88 ·
+   6,1 h → 1,36 · nenhuma → 3,9–4,5`).
+2. **Reforçar o alinhamento na calota (`PH2D_TIP_ALIGN=<k>`, novo; `Dual::boost_align`) fecha
+   as pontas no campo e deixa as CINCO réguas da grade verdes a `k = 5`** — a primeira candidata
+   verde nas duas réguas que esta peça já teve — **e a extracção não fecha a calota**: um laço de
+   `14` arestas em `0,6 h`, a `1,1 h` do bico da agulha `15909`, com os contadores de costura a
+   zero. Sem densidade, fecha e **come** a agulha. O selector escolhe (bem) a de sempre.
+   ⛔ Fica como **instrumento**, não como cura; `PH2D_CANDIDATE_DUMP=<dir>` (novo) grava cada
+   candidata para que a que perde deixe de ser invisível.
+3. **A obra seguinte tem endereço:** a calota de um espinho afiado precisa de `≥ 2` células
+   resolvidas para receber quatro `+¼` separadas, e a fase zero entrega `1,3`–`2,3 ×` o alvo nos
+   bicos (mediana `3,15 ×`). A `remesh_isotropic_graded` não aceita um passo por vértice ⇒ a wave
+   é **uma calota por espinho afiado na fase zero** (passo `= alvo` a `≤ 8 h`, com a
+   renormalização da `SizingGrid`), medida com e sem `PH2D_TIP_ALIGN=5` pelo experimento do plano
+   §103. ⛔ `PH2D_F1_TARGET=1` (a fase zero inteira ao alvo) já foi refutado — tem de ser local.
+4. O alvo mais alto continua a ser `sculpt_antes` / `4849`: a fase zero já corta `−3,0 %` e a
+   extracção perde o resto, em **todas** as nove candidatas. O portão `pontas_do_dono` é o
+   critério: a nossa saída sobre `sculpt_antes` tem de passar o que a `Sculpt_Blender.obj` passa.
+5. Não reconstrua o que o §3 do handoff de 01/09 e os §99/§102 do plano já recusaram.
+
+Instrumentos desta janela (scratch, fora da árvore — recriáveis a partir do plano):
+`regua_ponta.py` · `render_ponta.py` · `escada_campo.py` · `candidatas.py`.
 
 ## §6 — Higiene
 
@@ -99,9 +114,13 @@ por pilha.
 - **Contratos congelados encostados:** nenhum. **Foundational tocado:** `ph2d-quadfill` (módulo
   `apex` novo; `apices` passa a `pub` com parâmetro `unit`; `tip_deviation`/`tip_density` mudam a
   semântica do 3.º argumento; `TipDeviation` ganha dois campos — `..Default::default()` nos
-  literais do shell já os cobre).
+  literais do shell já os cobre; `adjacency`/`path_ball` passam a `pub`) e `ph2d-crossfield`
+  (`Dual::boost_align`, aditivo, com gates em `tests/boost_align.rs`).
 - **Ids/consts novos** (colisão na integração): `CONE_MAX` · `TIP_GAP_MAX` · `apex::*` ·
-  `median_edge` · `TipDeviation::{apex_max, cut}` · dev-dep `miniz_oxide` em `ph2d-quadfill`.
+  `median_edge` · `TipDeviation::{apex_max, cut}` · dev-dep `miniz_oxide` em `ph2d-quadfill` ·
+  `Dual::boost_align` · `TIP_ALIGN_RADIUS`/`tip_align_factor` (`one.rs`) · envs `PH2D_TIP_ALIGN`
+  · `PH2D_SING_DUMP` · `PH2D_CANDIDATE_DUMP` (as três inertes sem a env; o caminho de omissão
+  é byte-idêntico — a saída do botão nas três peças medidas é a mesma malha de antes).
 - **Portões corridos 1× no fecho:** `cargo test -p ph2d-quadfill` (67 · 19 ignorados) ·
   `cargo test -p ph2d-host-desktop` (4 786 · 268 ignorados) · `cargo clippy -p ph2d-quadfill
   -p ph2d-host-desktop --all-targets` · `cargo fmt --all --check` · `cleanroom-sweep.sh`.

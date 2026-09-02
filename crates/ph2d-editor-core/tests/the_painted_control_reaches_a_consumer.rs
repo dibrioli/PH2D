@@ -157,6 +157,22 @@ const NO_CONSUMER_PENDING: &[(&str, &str)] = &[
          (`store.get`) e filtra a arvore com `compute_match_filter` — o efeito nunca sai do \
          pintor, e o termino desta regua e' sempre FORA dele.",
     ),
+    // ⚠️ **Segunda ocorrência da família do `HIER_SEARCH`, e por isso ela fica na catraca** — a
+    // nota do cabeçalho pedia exactamente isto: que uma repetição fosse lida como família.
+    // ⭐ Mas há uma diferença que vale a pena nomear: o `HIER_SEARCH` é invisível porque o efeito
+    // **não sai do pintor**; este é invisível porque o **consumidor é GENÉRICO**. O despacho de
+    // ponteiro move qualquer `InteractiveState::Slider` sem nunca nomear um id — é o que faz o
+    // gesto da bancada ser o gesto do produto — e um consumidor que não nomeia lê-se exactamente
+    // como consumidor nenhum.
+    (
+        "LAB_LIVE_BOX",
+        "VIVO, MEDIDO: a caixa arrastavel do Widget Lab. O consumidor e' o despacho GENERICO de \
+         ponteiro (`dispatch/pointer_*`), que move todo `InteractiveState::Slider` sem nomear id \
+         nenhum; o valor volta pelo `paint.rs` via `slider_visual`. \
+         Prova: `ph2d-panel-widget-lab/tests/seam.rs::the_live_box_actually_drags` — premir a 75% \
+         da largura po^e o valor em 0,75 e o estado em `Dragging`, partindo do `populate` do \
+         proprio painel. \u{26d4} Se essa prova desaparecer, esta linha sai daqui.",
+    ),
 ];
 
 /// **Controlo NEGATIVO** — ids verificados VIVOS à mão em 2026-08-30, cada um

@@ -37,11 +37,12 @@ ph2d-panel-upscale = { path = "../ph2d-panel-upscale", optional = true }
 ph2d-panel-vector = { path = "../ph2d-panel-vector", optional = true }
 ph2d-panel-wet-tuning = { path = "../ph2d-panel-wet-tuning", optional = true }
 ph2d-panel-widget-gallery = { path = "../ph2d-panel-widget-gallery", optional = true }
+ph2d-panel-widget-lab = { path = "../ph2d-panel-widget-lab", optional = true }
 # <ph2d-panel-sync:deps:end>
 
 [features]
 default = [
-    "panel-widget-gallery", "panel-hierarchy", "panel-inspector", "panel-grid-snap",
+    "panel-widget-gallery", "panel-widget-lab", "panel-hierarchy", "panel-inspector", "panel-grid-snap",
     # ⭐ O NAVEGADOR DE ASSETS (plano `docs/Components/07`). Mesma categoria do de fisica: mundo,
     # nao tool-gated, DEFAULT_VISIBLE=false — registado sempre, pintado quando o pill Assets pede.
     "panel-asset-browser",
@@ -94,6 +95,7 @@ panel-upscale = ["dep:ph2d-panel-upscale"]
 panel-vector = ["dep:ph2d-panel-vector"]
 panel-wet-tuning = ["dep:ph2d-panel-wet-tuning"]
 panel-widget-gallery = ["dep:ph2d-panel-widget-gallery"]
+panel-widget-lab = ["dep:ph2d-panel-widget-lab"]
 # <ph2d-panel-sync:features:end>
 
 [dev-dependencies]

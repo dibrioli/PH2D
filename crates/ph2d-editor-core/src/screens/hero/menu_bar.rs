@@ -200,7 +200,7 @@ impl ModuleTruth {
 
 /// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
 /// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
-pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 16] = [
+pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 17] = [
     (ids::TOPBAR_VECTOR, ModuleTruth::Tool("vector")),
     (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
     (ids::TOPBAR_FLIP, ModuleTruth::Tool("flip")),
@@ -216,6 +216,7 @@ pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 16] = [
         ids::TOPBAR_WIDGET_GALLERY,
         ModuleTruth::Panel("widget_gallery"),
     ),
+    (ids::TOPBAR_WIDGET_LAB, ModuleTruth::Panel("widget_lab")),
     (ids::TOPBAR_GRID_SETTINGS, ModuleTruth::Panel("grid_snap")),
     (ids::RAIL_SHOW_HIERARCHY, ModuleTruth::Panel("hierarchy")),
     (ids::RAIL_SHOW_INSPECTOR, ModuleTruth::Panel("inspector")),

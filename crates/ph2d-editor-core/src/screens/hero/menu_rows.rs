@@ -153,6 +153,10 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             (ids::TOPBAR_TOKENS, "Design Tokens", None),
             (ids::TOPBAR_AUTHORED, "Authored UI", None),
             (ids::TOPBAR_WIDGET_GALLERY, "Widget Gallery", None),
+            // ⭐ A BANCADA. ⚠️ Vizinha da galeria na lista porque é onde o leitor a procura, e
+            // **separada dela** porque a galeria diz o que o editor É e esta diz o que ele pode
+            // vir a ser (`ph2d-panel-widget-lab`, doc-comment do `lib.rs`).
+            (ids::TOPBAR_WIDGET_LAB, "Widget Lab", None),
             (ids::TOPBAR_GRID_SETTINGS, "Grid Settings", None),
         ],
         // ⚠️ **O transporte é UM relógio** (`ph2d_core::Playhead`): física, Motion, Timeline e

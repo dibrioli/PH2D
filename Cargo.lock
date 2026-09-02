@@ -7346,6 +7346,7 @@ dependencies = [
  "ph2d-panel-vector",
  "ph2d-panel-wet-tuning",
  "ph2d-panel-widget-gallery",
+ "ph2d-panel-widget-lab",
  "ph2d-text",
  "ph2d-vector",
 ]
@@ -7453,6 +7454,20 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-text",
+ "ph2d-ui-testkit",
+ "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-panel-widget-lab"
+version = "0.0.0"
+dependencies = [
+ "bumpalo",
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-text",
+ "ph2d-tokens",
  "ph2d-ui-testkit",
  "ph2d-vector",
 ]

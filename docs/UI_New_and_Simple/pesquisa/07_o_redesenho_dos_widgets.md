@@ -451,3 +451,101 @@ Oklch que já temos.
 
 ⛔ **Nada disto começa antes de ele escolher** — o §5 apaga widgets e o §9 diz o que ainda não foi
 medido.
+
+---
+
+## §11 — ✅ AS DECISÕES DO ENIO (2026-09-01) e a BANCADA que elas abriram
+
+As perguntas do §10 foram respondidas no mesmo dia:
+
+| # | pergunta | resposta dele |
+|---|---|---|
+| 1 | a caixa única é o alvo? | ⭐ **"A caixa única é o alvo!"** |
+| 2 | as pílulas e o interruptor deslizante saem? | ⭐ **"podem sair"** |
+| 3 | a coluna de animação? | ⭐⭐ **"Sim. Em todas as propriedades que podem ser animadas — e nessa engine vou querer animar tudo."** |
+
+E duas instruções que mudam a **forma** da obra:
+
+> ⛔⛔ *"Fizemos um excelente trabalho com as fontes do nosso app e isso custou muito esforço e
+> tempo. Talvez a versão nova do Vello consiga resultados melhores, mas por precaução vamos manter
+> o que temos e colocar o que o Vello consegue fazer como **mais uma opção**. Cuidado para não
+> destruir o que temos."*
+
+> ⭐ *"Antes de modificar as coisas seria interessante criar um painel de testes como fizemos com
+> Widget Gallery. Vamos fazer nossos estudos num painel antes de sair mudando tudo. Precisamos de
+> um estudo sobre widgets originais, desenhos diferentes, podemos colocar no painel várias amostras
+> e várias cores e comportamentos para testar."*
+
+### 11.1 — ⭐⭐⭐ A bancada existe: `ph2d-panel-widget-lab`
+
+Menu **Window › Widget Lab**. Cinco secções, na ordem em que uma decisão de desenho se toma:
+
+| § | secção | a pergunta |
+|---|---|---|
+| 1 | os **seis desenhos** | qual é o *look* |
+| 2 | ⭐ a **régua de largura** (`268 · 184 · 140 · 110`) | ele aguenta um painel estreito? |
+| 3 | os **estados** (normal · hover · drag · off · typing) | vê-se que é interactivo |
+| 4 | as **cores** (6 acentos) | o acento funciona em todos |
+| 5 | ⭐⭐ o **widget de HOJE**, lado a lado, com o aviso `EMPILHOU` | estamos mesmo a melhorar |
+
+Mais uma **caixa viva** que se arrasta — e que é um `InteractiveState::Slider` a sério, conduzido
+pelo despacho de ponteiro do produto. *Uma bancada com arrasto próprio mediria o arrasto da bancada.*
+
+Os seis desenhos, e o que cada um TROCA (a coluna que interessa é a última):
+
+| # | nome | o preenchimento é | perde |
+|---|---|---|---|
+| 1 | `Bar` | o fundo inteiro (Blender) | o número compete com a barra |
+| 2 | `Underline` | uma linha de 2 px em baixo | a fracção fica discreta |
+| 3 | `Inset` | uma cápsula num sulco | gasta altura em molduras |
+| 4 | `Ghost` | fundo ténue + linha de base | mal se vê que arrasta |
+| 5 | `Notch` | fundo + marca vertical no valor | mais um elemento por linha |
+| 6 | `Split` | fundo, rótulo **FORA** | ⚠️ **controlo negativo** — volta a ter coluna fixa |
+
+⚠️ **A `Split` é o desenho do Blender** (duas colunas) e está lá **de propósito**: a decisão foi ir
+mais longe que ele, e tê-la ao lado torna a decisão **verificável** em vez de lembrada.
+
+### 11.2 — ⛔ O que a bancada NÃO faz, e por que isso é a metade importante
+
+**Nada nela é chamado pelo app.** Ela desenha as próprias amostras com os primitivos e ⛔ **não
+reaproveita o `slider_with_chip`** — ele é o que está a ser substituído, e herdar a geometria dele
+importaria a decisão que se quer refazer. Os **162 sítios de chamada** do produto estão intactos.
+
+⚠️ **E ela não é a Widget Gallery.** A galeria é a *fonte única de verdade* do que o editor **é** —
+agentes periféricos copiam a decoração dela. Se as propostas vivessem lá, a fonte de verdade
+passaria a conter candidatos, e a próxima linha copiaria um.
+
+### 11.3 — ⚠️ Três gates de outras linhas apanharam esta obra, e os três estavam certos
+
+*Registar um painel não o põe no ecrã*, e as três provas disso vieram de graça:
+
+| gate | o que apanhou |
+|---|---|
+| `every_registered_panel_is_reachable_by_the_z_order_walk` | o painel nascia **registado e nunca pintado** — o menu abriria uma janela invisível. **Sétima vez** que aquele ficheiro paga o mesmo defeito, e a primeira em que o gate o apanha antes do smoke |
+| `every_painted_menu_row_is_registered_and_therefore_clickable` | a linha do menu existia e o id **não estava no store** ⇒ o `Click` nunca nasceria |
+| `no_magic_numeric_in_widget_or_screens` | ⭐ ele varre **as crates-irmãs**, não só a `editor-core` — 9 literais meus |
+
+⭐ E um quarto gate ficou **melhor por ter falhado**: o `every_toggle_row_of_the_bar_is_marked_by_…`
+afirmava `covered == 16` à mão, e uma linha de menu nova punha-o vermelho **sem nada estar errado**.
+Passou a ser **derivado** (`|Window| + 3`). *Um número literal ali obriga cada painel novo a editar
+o gate de outra pessoa, e o sinal que isso produz é ruído com cara de defeito.*
+
+### 11.4 — ⛔⛔ E uma régua desta casa tem um ponto cego NOVO, com nome
+
+O `the_painted_control_reaches_a_consumer` acusou a **caixa viva** de não ter consumidor. Ela tem:
+o despacho **genérico** de ponteiro move todo `InteractiveState::Slider` **sem nomear id nenhum** —
+é precisamente isso que faz o gesto da bancada ser o gesto do produto.
+
+⇒ *um consumidor genérico lê-se exactamente como consumidor nenhum.* É a **segunda** ocorrência da
+família do `HIER_SEARCH` (que é invisível por outro motivo: o efeito não sai do pintor), e entrou na
+catraca **com a prova medida ao lado** — `the_live_box_actually_drags` premea 75 % da largura e
+verifica `0,75` + `Dragging`, partindo do `populate` do próprio painel.
+
+### 11.5 — ⏳ O que a bancada ainda NÃO estuda (nomeado, não esquecido)
+
+| item | porquê ainda não |
+|---|---|
+| **o 4.º preset de texto** (o que o Vello 0.10 permite) | ⭐ é a instrução do Enio, e o sistema já tem a porta aditiva documentada (`TextRendering`: *"Adicionar preset = novo variant + caso em `params`/`id`/`display_name`/`next`"*). ⛔ **Os três presets actuais não se tocam** |
+| o **esbatimento** do rótulo em vez de `…` | precisa de `push_luminance_mask_layer` e do custo por linha medido (§7.3, §9) |
+| checkbox de linha inteira · toggle→checkbox · scrollbar 2 px | §5.2 e §5.3 — a bancada estuda a **caixa** primeiro, que é onde está o ganho |
+| a coluna de animação com os **estados** do Blender (losango cheio/vazio, driver) | precisa da timeline, não de desenho |

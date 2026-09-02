@@ -401,11 +401,22 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
             covered += usize::from(is_toggle);
         }
     }
+    // ⚠️ **O piso é DERIVADO, não escrito à mão.** Ele era `16` e ficou vermelho no dia em que o
+    // menu *Window* ganhou a linha do Widget Lab — sem que nada estivesse errado. Um número
+    // literal aqui obriga uma linha de UI a editar o gate de outra pessoa a cada painel novo, e o
+    // sinal que isso produz (*"o teu painel partiu um gate"*) é ruído com cara de defeito.
+    // A grandeza que este gate quer mesmo é *«toda linha do Window, mais as três de fora»*.
+    let expected = menu_rows(ContextMenuKind::MenuBarWindow).len() + OUTSIDE_WINDOW_TOGGLES;
     assert_eq!(
-        covered, 16,
-        "esperadas 16 linhas de alternância, vi {covered}"
+        covered, expected,
+        "esperadas {expected} linhas de alternância, vi {covered}"
     );
 }
+
+/// As três linhas de alternância que **não** vivem no menu *Window*: as duas colunas laterais e a
+/// régua. ⚠️ Escritas como contagem porque a lista delas está no `is_toggle` acima — se lá
+/// aparecer uma quarta, este número tem de subir no mesmo commit, e o gate diz qual é a diferença.
+const OUTSIDE_WINDOW_TOGGLES: usize = 3;
 
 /// **E a régua PUBLICA o estado dela**, porque quem pinta a marca não alcança o `HeroScreen`.
 #[test]

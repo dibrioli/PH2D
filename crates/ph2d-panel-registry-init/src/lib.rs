@@ -100,6 +100,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     reg.push(ErasedPanel::new::<
         ph2d_panel_widget_gallery::WidgetGalleryPanel,
     >());
+    #[cfg(feature = "panel-widget-lab")]
+    reg.push(ErasedPanel::new::<ph2d_panel_widget_lab::WidgetLabPanel>());
     // <ph2d-panel-sync:end>
     reg
 }
@@ -211,6 +213,10 @@ mod tests {
             n += 1;
         }
         #[cfg(feature = "panel-widget-gallery")]
+        {
+            n += 1;
+        }
+        #[cfg(feature = "panel-widget-lab")]
         {
             n += 1;
         }

@@ -89,6 +89,12 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     ids::ASSET_PANEL,
     ids::INSP_BLENDER_PICKER,
     ids::GAL_PANEL,
+    // A bancada de widgets (`ph2d-panel-widget-lab`). ⚠️ **Sétima vez que este arquivo paga o
+    // mesmo defeito** — o painel nasceu registado, visível ao clique do menu, e o passeio de
+    // z-order nunca chegava a ele: nada quebra, nada avisa, e o menu abre um painel invisível.
+    // Desta vez o `every_registered_panel_is_reachable_by_the_z_order_walk` apanhou-o na primeira
+    // corrida, que é exactamente o que as seis notas acima pediam que acontecesse.
+    ids::LAB_PANEL,
     ids::AUDIO_MIXER_PANEL,
     ids::AUDIO_EDITOR_PANEL,
     crate::grid_snap::ids::GS_PANEL,

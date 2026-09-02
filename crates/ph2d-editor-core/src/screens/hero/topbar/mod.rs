@@ -46,6 +46,11 @@ pub fn populate(store: &mut WidgetStore) {
         // nasce morto sob o mouse.
         ids::TOPBAR_MODEL3D,
         ids::TOPBAR_WIDGET_GALLERY,
+        // Widget Lab — a bancada de desenho. ⚠️ **Registada aqui e SEM pill na fixture**, ao
+        // contrário dos vizinhos: os pills são o chrome legado (`F9`) e a porta de produto é a
+        // linha do menu *Window*. O que este registo compra é o clique — sem ele o id não fica
+        // `active` no Down, o `Click` nunca nasce, e a linha do menu abre um painel que nunca vê.
+        ids::TOPBAR_WIDGET_LAB,
         ids::TOPBAR_GRID_SETTINGS,
         ids::TOPBAR_SETTINGS,
         ids::TOPBAR_PROJECT,

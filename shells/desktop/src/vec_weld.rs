@@ -131,10 +131,13 @@ pub(crate) fn apply_vec_weld(
             continue;
         };
         let x = ph2d_vec_scene::xform_of(xforms, *id);
-        let n = p.verts.len();
-        for v in [0, n - 1] {
+        // ⚠️ **TODO contorno aberto empresta as suas duas pontas**, em índice PLANO. Antes eram
+        // `[0, verts.len() - 1]`, que numa rede já soldada — hoje um caminho COMPOSTO — nomeava só
+        // o primeiro arco: soldar uma linha nova à ponta de uma rede existente não pegava.
+        for v in pontas_planas(p) {
+            let Some(vt) = p.vert(v) else { continue };
             slots.push(Slot::Caminho(*id, v));
-            pontos.push(x.apply(p.verts[v].anchor));
+            pontos.push(x.apply(vt.anchor));
         }
     }
     let (de_quem, nos) = weld::cluster_endpoints(&pontos, tol);
@@ -172,48 +175,112 @@ pub(crate) fn apply_vec_weld(
         .into_iter()
         .map(|(id, n)| (id, it.by_ref().take(n).collect()))
         .collect();
+    let ids_cortados: Vec<u64> = cortados.iter().map(|(id, _)| *id).collect();
+    let n_arcos: usize = cortados.iter().map(|(_, a)| a.len()).sum();
 
-    // A fatia de z da base é a do caminho cortado mais ao fundo: a rede não salta para o topo.
-    let at = cortados
+    // ── FASE 3: ⭐⭐⭐ **UM OBJECTO**, e não um por arco.
+    //
+    // Report do Enio (2026-09-02): *"o weld cria uma grande quantidade de path na hierarquia
+    // quando na verdade deveria criar apenas 1. No canvas também deve ser transformado como se
+    // fosse um único objeto e o seu gizmo deve ser apenas 1"*.
+    //
+    // ⚠️ **Uma rede é UMA coisa.** Enquanto cada arco era um `VecPath`, cada arco era uma entidade
+    // ECS (ADR-0110) ⇒ uma linha na Hierarquia, uma pose própria e um gizmo próprio — e mover um
+    // deles **rasgava** a rede, que é precisamente o que soldar promete que não acontece. O
+    // `VecPath` já sabe carregar vários contornos (`subpaths`), e o Trim já emite contornos
+    // ABERTOS por essa porta (`trim_tool::sever`): a rede é um **caminho composto** cujos
+    // contornos são os arcos.
+    //
+    // ⚠️⚠️ **E escreve-se NO LUGAR do participante mais ao fundo**, como o Trim faz — *o id, a
+    // ordem em z e a entidade ECS que o representa têm de sobreviver à operação*. Um `insert_path`
+    // daria um objecto novo, com nome de fábrica, e o artista perderia o que tinha baptizado.
+    //
+    // ⛔ **O preço, declarado:** a rede tem **um** estilo (o do anfitrião) e **uma** pose. Os arcos
+    // que vieram de outros traços perdem cor, largura e pose próprias — é o que "um objecto"
+    // significa, e é a mesma conta que o `make_compound` já cobra.
+    let anfitriao = cortados
         .iter()
-        .filter_map(|(id, _)| scene.paths().iter().position(|p| p.id == *id))
-        .min()
-        .unwrap_or(0);
-    let mut novos: Vec<u64> = Vec::new();
-    let mut k = 0usize;
-    for (id, arcos) in cortados {
-        let molde = scene.path(id).cloned();
-        scene.remove_path(id);
-        for (verts, closed) in arcos {
-            let base = molde.clone().unwrap_or_default();
-            // ⚠️ O estilo VIAJA para cada arco (a cor, a largura, o tracejado); a pilha de efeitos
-            // e os subpaths NÃO — eles descrevem o caminho que deixou de existir.
-            let arco = VecPath {
-                verts,
+        .filter_map(|(id, _)| {
+            scene
+                .paths()
+                .iter()
+                .position(|p| p.id == *id)
+                .map(|z| (z, *id))
+        })
+        .min();
+    let mut rede: Option<u64> = None;
+    if let Some((_, host)) = anfitriao {
+        // ⚠️ **Os arcos falam MUNDO e o documento guarda LOCAL** (a regra-mãe do módulo): eles
+        // descem ao espaço do anfitrião pelo inverso da pose DELE. Com a pose na identidade — o
+        // caso comum — o inverso é a identidade e nada se mexe.
+        let inv = ph2d_vec_scene::xform_of(xforms, host).inverse();
+        let mut contornos: Vec<Contour> = cortados
+            .into_iter()
+            .flat_map(|(_, a)| a)
+            .map(|(verts, closed)| Contour {
+                verts: match inv.as_ref() {
+                    Some(i) => para_local(verts, i),
+                    None => verts,
+                },
                 closed,
-                subpaths: Vec::new(),
-                effects: Vec::new(),
-                ..base
-            };
-            novos.push(scene.insert_path(at + k, arco));
-            k += 1;
+            })
+            .filter(|c| c.verts.len() >= 2)
+            .collect();
+        // ⚠️ **Escreve NO LUGAR** (`path_mut`), e não apaga-e-insere: é o id, a fatia de z e a
+        // entidade ECS do anfitrião que sobrevivem — a mesma lei que o Trim já cumpre.
+        // ⚠️ A pilha de efeitos SAI: ela descreve um caminho que deixou de existir, e os arcos já
+        // saíram da geometria COZIDA por ela — mantê-la aplicá-la-ia uma segunda vez.
+        // ⛔ **Sem arco nenhum a rede não se escreve — e mesmo assim NÃO se sai por aqui**: a fase 2
+        // já mudou pontas na cena, e uma saída antecipada deixaria essa mudança sem Ctrl+Z.
+        if !contornos.is_empty()
+            && let Some(slot) = scene.path_mut(host)
+        {
+            let primeiro = contornos.remove(0);
+            slot.verts = primeiro.verts;
+            slot.closed = primeiro.closed;
+            slot.subpaths = contornos;
+            slot.effects = Vec::new();
+            rede = Some(host);
+        }
+        if rede.is_some() {
+            // Os OUTROS participantes são consumidos — o preço declarado de "soldar consome os
+            // traços". ⚠️ Só depois de a rede existir: apagá-los primeiro perderia a geometria se a
+            // escrita não acontecesse.
+            for id in ids_cortados {
+                if id != host {
+                    scene.remove_path(id);
+                }
+            }
         }
     }
     history.push_undo(pre);
-    // ⚠️ **A selecção final é a rede**: os arcos novos MAIS os traços que sobreviveram inteiros.
-    // Limpá-la para os arcos só faria o artista perder de vista as curvas que ele acabou de ligar.
-    let mut fica: Vec<u64> = sel
+    // ⚠️ **A selecção final é a rede**: o objecto novo MAIS os traços que sobreviveram inteiros.
+    // Limpá-la para a rede só faria o artista perder de vista as curvas que ele acabou de ligar.
+    let fica: Vec<u64> = sel
         .iter()
         .copied()
         .filter(|id| scene.path(*id).is_some())
         .collect();
-    fica.extend(novos.iter().copied());
     pen.select_many(&fica);
     eprintln!(
-        "[ph2d-vec] soldar: ok ({} arco[s] novo[s], {} no[s], folga {tol:.4})",
-        novos.len(),
+        "[ph2d-vec] soldar: ok ({} rede[s] de {n_arcos} arco[s], {} no[s], folga {tol:.4})",
+        usize::from(rede.is_some()),
         nos.len()
     );
+}
+
+/// Um contorno em MUNDO desce ao espaço LOCAL de quem o vai guardar.
+///
+/// ⚠️ Passa pelo `bake_xform`, que é a MESMA porta que subiu a geometria ao mundo na fase 1 — as
+/// alças de um vértice transformam-se com a âncora, e uma conta escrita à mão aqui deixaria as
+/// tangentes por trás numa pose com rotação.
+fn para_local(verts: Vec<VecVertex>, inv: &ph2d_vec_scene::Xform) -> Vec<VecVertex> {
+    let mut p = VecPath {
+        verts,
+        ..VecPath::default()
+    };
+    ph2d_vec_scene::bake_xform(&mut p, inv);
+    p.verts
 }
 
 /// De onde vem cada ponta que entra no agrupamento.
@@ -228,11 +295,39 @@ enum Slot {
 /// **Este caminho pode receber a ponta no sítio, sem se dissolver?**
 ///
 /// ⚠️ A pergunta não é de gosto: um caminho com **efeitos** tem a geometria que se vê COZIDA, e os
-/// vértices autorados já não são as pontas que o cruzamento mediu; um **composto** tem tantas
-/// pontas quantos subpaths, e um **fechado** não tem nenhuma. Fora destes três, mover a primeira
-/// ou a última âncora é exactamente mover a ponta — e o objecto mantém id, estilo e pose.
+/// vértices autorados já não são as pontas que o cruzamento mediu — mover o primeiro seria mover
+/// outra coisa. Fora disso, mover a primeira ou a última âncora de um contorno ABERTO é exactamente
+/// mover a ponta, e o objecto mantém id, estilo e pose.
+///
+/// ⚠️ **Um COMPOSTO passou a entrar** (2026-09-02): a rede que a solda produz É um composto, e sem
+/// isto soldar uma linha nova à ponta de uma rede existente não pegava — a rede era recusada à
+/// porta. Quem enumera as pontas dela é a [`pontas_planas`].
 fn editavel_no_sitio(p: &VecPath) -> bool {
-    !p.closed && p.subpaths.is_empty() && p.effects.is_empty() && p.verts.len() >= 2
+    p.effects.is_empty()
+}
+
+/// **As pontas de um caminho, em índice PLANO** — uma por extremo de cada contorno ABERTO.
+///
+/// ⚠️ Espelha a lei do [`ph2d_vec_edit::PenTool::welded_with`] (que a usa para decidir *quem anda
+/// junto com isto*). São duas crates, e por isso duas funções; ⛔ mas é **uma lei**, e o gate
+/// `the_mark_and_the_drag_answer_the_same_question` continua a cosê-las pelo comportamento.
+fn pontas_planas(p: &VecPath) -> Vec<usize> {
+    let mut out = Vec::new();
+    for c in 0..p.contour_count() {
+        let Some((verts, closed)) = p.contour(c) else {
+            continue;
+        };
+        if closed || verts.len() < 2 {
+            continue;
+        }
+        let n = verts.len();
+        out.extend(
+            [p.flat_vert(c, 0), p.flat_vert(c, n - 1)]
+                .into_iter()
+                .flatten(),
+        );
+    }
+    out
 }
 
 /// A diagonal da caixa de tudo o que entra — a régua com que duas travessias quase-coincidentes

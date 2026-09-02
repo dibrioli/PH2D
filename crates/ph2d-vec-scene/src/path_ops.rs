@@ -204,15 +204,27 @@ impl VecScene {
         // Sem isso, soldar uma forma pequena numa grande deixaria as quinas dela com o
         // raio do espaço errado — redondas demais ou afiadas demais, silenciosamente.
         let r_scale = src_xf.mean_scale() * inv_dst.mean_scale();
-        let mut mapped: Vec<VecVertex> = src_path
-            .verts
+        let para_dst = |v: &VecVertex| VecVertex {
+            anchor: inv_dst.apply(src_xf.apply(v.anchor)),
+            in_handle: inv_dst.apply(src_xf.apply(v.in_handle)),
+            out_handle: inv_dst.apply(src_xf.apply(v.out_handle)),
+            kind: v.kind,
+            corner_radius: v.corner_radius * r_scale,
+        };
+        let mut mapped: Vec<VecVertex> = src_path.verts.iter().map(&para_dst).collect();
+        // ⭐⭐⭐ **OS OUTROS CONTORNOS DE `src` VIAJAM** — e antes de 2026-09-02 EVAPORAVAM.
+        //
+        // ⚠️ Esta função funde o contorno PRIMÁRIO de `src` no de `dst` e depois **apaga `src`**:
+        // um `src` composto perdia todos os `subpaths` sem erro nenhum, que é o pior modo de falha
+        // que há. Passou a doer quando a solda passou a produzir uma REDE composta — juntar a rede
+        // a outro traço apagava todos os arcos menos um —, mas o defeito é **anterior** e valia
+        // para qualquer compound (o resultado de uma booleana, uma rosquinha).
+        let subs_src: Vec<crate::Contour> = src_path
+            .subpaths
             .iter()
-            .map(|v| VecVertex {
-                anchor: inv_dst.apply(src_xf.apply(v.anchor)),
-                in_handle: inv_dst.apply(src_xf.apply(v.in_handle)),
-                out_handle: inv_dst.apply(src_xf.apply(v.out_handle)),
-                kind: v.kind,
-                corner_radius: v.corner_radius * r_scale,
+            .map(|c| crate::Contour {
+                verts: c.verts.iter().map(&para_dst).collect(),
+                closed: c.closed,
             })
             .collect();
         if reverse_src {
@@ -234,6 +246,7 @@ impl VecScene {
             mapped.remove(0);
         }
         d.verts.extend(mapped);
+        d.subpaths.extend(subs_src);
         self.remove_path(src);
         true
     }

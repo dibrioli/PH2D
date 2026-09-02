@@ -202,3 +202,48 @@ fn reversing_a_compound_turns_every_contour_not_just_the_primary() {
         "o buraco virou junto"
     );
 }
+
+/// ⭐⭐⭐ **JUNTAR UM COMPOSTO NÃO EVAPORA OS OUTROS CONTORNOS DELE.**
+///
+/// ⚠️⚠️ Esta função funde o contorno PRIMÁRIO de `src` no de `dst` e depois **apaga `src`**: até
+/// 2026-09-02 um `src` composto perdia todos os `subpaths` **sem erro nenhum** — o pior modo de
+/// falha que há. O defeito é anterior à rede soldada (valia para o resultado de uma booleana, para
+/// uma rosquinha), e só passou a doer quando soldar passou a produzir um composto: juntar a rede a
+/// outro traço apagava todos os arcos menos um.
+///
+/// ⛔ A régua é a **contagem de contornos**, e não a de caminhos: `paths().len()` cai de 2 para 1
+/// nos dois mundos, e foi por isso que nenhum gate viu isto durante meses.
+#[test]
+fn joining_a_compound_does_not_evaporate_its_other_contours() {
+    let mut scene = VecScene::new();
+    let dst = scene.push_path(open(&[[0.0, 0.0], [10.0, 0.0]]));
+    let mut src = open(&[[10.0, 0.0], [20.0, 0.0]]);
+    src.subpaths.push(Contour {
+        verts: vec![v(0.0, 50.0), v(10.0, 50.0)],
+        closed: false,
+    });
+    src.subpaths.push(Contour {
+        verts: vec![v(0.0, 80.0), v(10.0, 80.0)],
+        closed: false,
+    });
+    let src = scene.push_path(src);
+
+    assert!(scene.merge_path_into(dst, src, &VecXforms::default(), false, true));
+
+    let p = scene.path(dst).expect("o destino sobrevive");
+    assert_eq!(
+        p.contour_count(),
+        3,
+        "o primario fundido + os DOIS contornos que vieram de src: {} contornos",
+        p.contour_count()
+    );
+    assert!(
+        p.subpaths.iter().any(|c| c.verts[0].anchor == [0.0, 50.0])
+            && p.subpaths.iter().any(|c| c.verts[0].anchor == [0.0, 80.0]),
+        "os dois contornos de src tem de chegar inteiros"
+    );
+    assert!(
+        p.subpaths.iter().all(|c| !c.closed),
+        "um contorno ABERTO chega aberto — a rede soldada e' feita deles"
+    );
+}

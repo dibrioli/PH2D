@@ -889,3 +889,58 @@ fn joining_at_the_far_endpoint_reverses_the_consumed_path() {
 // ferramentas Fillet / Chamfer (o gesto de clicar-e-arrastar). O comportamento do SINAL está
 // coberto por `corner_tool_tests` (o arrasto força o estilo) e `corner_live_tests` (o cozimento
 // reto vs arco). O gate do antigo `set_selected_corner_chamfer` saiu com a função.
+
+/// ⭐⭐⭐ **A CANETA A JUNTAR UM COMPOSTO NÃO EVAPORA OS OUTROS CONTORNOS DELE.**
+///
+/// ⚠️⚠️ `join_open_path` costura o contorno primário de B ao caminho activo e depois **apaga B**:
+/// até 2026-09-02 um B composto perdia todos os `subpaths` **sem erro nenhum**. É o irmão exacto do
+/// defeito em `VecScene::merge_path_into` — *duas portas para a mesma pergunta divergem em
+/// silêncio, e estas duas divergiam para o mesmo lado*.
+///
+/// ⛔ A régua é a contagem de CONTORNOS: a de caminhos cai de 2 para 1 nos dois mundos.
+#[test]
+fn the_pen_joining_a_compound_does_not_evaporate_its_other_contours() {
+    let mut scene = VecScene::new();
+    let mut pen = PenTool::new();
+    let mut b = ph2d_vec_scene::line([50.0, 0.0], [60.0, 0.0]);
+    b.subpaths.push(ph2d_vec_scene::Contour {
+        verts: ph2d_vec_scene::line([0.0, 50.0], [10.0, 50.0]).verts,
+        closed: false,
+    });
+    b.subpaths.push(ph2d_vec_scene::Contour {
+        verts: ph2d_vec_scene::line([0.0, 80.0], [10.0, 80.0]).verts,
+        closed: false,
+    });
+    scene.push_path(b);
+
+    // Desenha A e depois toca na PONTA de B — o gesto de juntar.
+    assert_eq!(
+        pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap),
+        PenClick::Started
+    );
+    pen.on_release();
+    assert_eq!(
+        pen.on_press(&mut scene, [10.0, 0.0], PTW, false, &mut nosnap),
+        PenClick::Added
+    );
+    pen.on_release();
+    assert_eq!(
+        pen.on_press(&mut scene, [50.0, 0.0], PTW, false, &mut nosnap),
+        PenClick::Added,
+        "tocar na ponta de B tem de JUNTAR"
+    );
+
+    assert_eq!(scene.paths().len(), 1, "os dois viraram um");
+    let p = &scene.paths()[0];
+    assert_eq!(
+        p.contour_count(),
+        3,
+        "o primario costurado + os DOIS contornos que vieram de B: {} contornos",
+        p.contour_count()
+    );
+    assert!(
+        p.subpaths.iter().any(|c| c.verts[0].anchor == [0.0, 50.0])
+            && p.subpaths.iter().any(|c| c.verts[0].anchor == [0.0, 80.0]),
+        "os dois contornos de B tem de chegar inteiros"
+    );
+}

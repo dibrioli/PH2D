@@ -62,10 +62,15 @@ pub enum StrokePiece<'a> {
 /// e ajustar pela fonte angulosa deixa um resíduo de traço na junta — a costura fonte≠cozido do
 /// ADR-0121, no nível do tracejado.
 ///
-/// ⚠️ **Mede o contorno PRINCIPAL, não os subpaths.** Um composto (forma com buracos) traça todos
-/// os anéis com o MESMO padrão — é um `Stroke` só —, e anéis de perímetros diferentes não têm um
-/// fator comum que feche os dois. O anel de fora é o que o olho segue; os buracos ficam como
-/// estavam. Fechá-los todos exigiria traçar anel a anel, que é outra estrutura.
+/// ⚠️ **Mede o contorno MAIS LONGO, não o primário** (`dash_fit::longest_contour`). Um composto
+/// (forma com buracos, ou uma rede soldada) traça todos os contornos com o MESMO padrão — é um
+/// `Stroke` só —, e contornos de perímetros diferentes não têm um fator comum que feche os dois. O
+/// mais longo é o que o olho segue; os outros ficam como estavam. Fechá-los todos exigiria traçar
+/// contorno a contorno, que é outra estrutura.
+///
+/// ⚠️ **Esta nota dizia «o contorno PRINCIPAL» e estava DESACTUALIZADA** (achado em 2026-09-02): o
+/// `longest_contour` percorre os `subpaths` desde que existe. *Um comentário que descreve a versão
+/// anterior manda a próxima janela procurar um defeito que não está lá.*
 ///
 /// ⚠️ **UMA lei, DUAS portas — e a diferença entre elas é só quem já cozeu.** A conta mora em
 /// [`crate::dash_fit`] (`fit` + `longest_contour`), e [`crate::dash_fit::dash_lengths_for`] é o

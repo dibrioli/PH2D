@@ -26,6 +26,34 @@ fn reta(scene: &mut VecScene, a: [f64; 2], b: [f64; 2]) -> u64 {
     })
 }
 
+/// **Todas as PONTAS da cena** — os dois extremos de cada contorno ABERTO de cada caminho.
+///
+/// ⚠️⚠️ **Uma sonda que lesse `p.verts` mediria só o PRIMEIRO arco.** Desde 2026-09-02 a rede
+/// soldada é UM caminho composto (o report do Enio: *"deveria criar apenas 1"*), e as oito pontas
+/// de duas linhas cruzadas vivem todas no mesmo objecto — a régua tem de percorrer contornos, senão
+/// chama de verde uma rede que se desfez.
+fn pontas(scene: &VecScene) -> Vec<[f64; 2]> {
+    let mut out = Vec::new();
+    for p in scene.paths() {
+        for c in 0..p.contour_count() {
+            let Some((verts, closed)) = p.contour(c) else {
+                continue;
+            };
+            if closed || verts.len() < 2 {
+                continue;
+            }
+            out.push(verts[0].anchor);
+            out.push(verts[verts.len() - 1].anchor);
+        }
+    }
+    out
+}
+
+/// Quantos contornos a cena inteira tem (a contagem de ARCOS, agora que eles não são caminhos).
+fn contornos(scene: &VecScene) -> usize {
+    scene.paths().iter().map(VecPath::contour_count).sum()
+}
+
 fn cena() -> (VecScene, ph2d_vec_edit::History, ph2d_vec_edit::PenTool) {
     (
         VecScene::new(),
@@ -36,6 +64,11 @@ fn cena() -> (VecScene, ph2d_vec_edit::History, ph2d_vec_edit::PenTool) {
 
 /// ⭐⭐⭐ **A IDEIA DO ENIO:** duas linhas cruzadas viram quatro arcos, e as quatro pontas do meio
 /// caem **no mesmo sítio** — é isso o nó partilhado.
+///
+/// ⭐⭐⭐ **E os quatro arcos são UM OBJECTO** (report de 2026-09-02: *"o weld cria uma grande
+/// quantidade de path na hierarquia quando na verdade deveria criar apenas 1"*). Um `VecPath` é uma
+/// entidade ECS (ADR-0110) ⇒ uma linha na Hierarquia, uma pose e um gizmo; quatro deles davam
+/// quatro de cada, e mover um **rasgava** a rede que soldar promete manter inteira.
 #[test]
 fn two_crossing_lines_become_four_arcs_that_meet_at_one_point() {
     let (mut scene, mut hist, mut pen) = cena();
@@ -45,26 +78,81 @@ fn two_crossing_lines_become_four_arcs_that_meet_at_one_point() {
 
     apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
 
+    assert_eq!(scene.paths().len(), 1, "a rede soldada e' UM objecto");
     assert_eq!(
-        scene.paths().len(),
+        contornos(&scene),
         4,
-        "duas linhas cruzadas dao QUATRO arcos"
+        "duas linhas cruzadas dao QUATRO arcos — um contorno cada"
     );
     // As oito pontas: quatro nas extremidades, quatro no cruzamento.
-    let no_centro = scene
-        .paths()
-        .iter()
-        .flat_map(|p| [p.verts[0].anchor, p.verts[p.verts.len() - 1].anchor])
+    let no_centro = pontas(&scene)
+        .into_iter()
         .filter(|a| a[0].abs() < 1e-6 && a[1].abs() < 1e-6)
         .count();
     assert_eq!(
         no_centro, 4,
         "as quatro pontas do meio tem de cair EXACTAMENTE no cruzamento"
     );
+    let rede = &scene.paths()[0];
+    assert!(rede.stroke.is_some(), "o estilo viaja para a rede");
     assert!(
-        scene.paths().iter().all(|p| p.stroke.is_some()),
-        "o estilo viaja para cada arco"
+        !rede.closed && rede.subpaths.iter().all(|c| !c.closed),
+        "todo contorno da rede e' um ARCO aberto"
     );
+}
+
+/// ⭐⭐⭐ **A REDE ESCREVE-SE NO LUGAR DO PARTICIPANTE MAIS AO FUNDO** — o id, a fatia de z e a
+/// entidade ECS que o representa sobrevivem, como no Trim (`vec_trim::apply`).
+///
+/// ⚠️ Sem isto o artista perde o nome que deu à linha: um `insert_path` daria um objecto novo,
+/// baptizado `Path N` pela fábrica, e a Hierarquia mostraria um estranho onde estava o traço dele.
+///
+/// ⛔ **E os outros participantes somem** — é o preço declarado de *"soldar consome os traços"*.
+#[test]
+fn the_network_is_written_in_place_of_the_bottom_most_line() {
+    let (mut scene, mut hist, mut pen) = cena();
+    let fundo = reta(&mut scene, [-10.0, 0.0], [10.0, 0.0]);
+    let topo = reta(&mut scene, [0.0, -10.0], [0.0, 10.0]);
+    pen.select_many(&[fundo, topo]);
+
+    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
+
+    assert!(
+        scene.path(fundo).is_some(),
+        "o id do participante mais ao fundo tem de sobreviver — a rede escreve-se NELE"
+    );
+    assert!(
+        scene.path(topo).is_none(),
+        "o outro participante e' consumido"
+    );
+}
+
+/// ⭐⭐⭐ **TRÊS linhas pelo mesmo ponto continuam a ser UM objecto** — e é aqui que se vê que a lei
+/// não é *"dois viram um"*, mas *"a rede é uma coisa"*.
+///
+/// ⚠️ Sem esta segunda fixtura, um emit que juntasse **pares** passaria no gate acima e deixaria
+/// dois objectos num asterisco.
+#[test]
+fn three_lines_through_one_point_are_still_one_object() {
+    let (mut scene, mut hist, mut pen) = cena();
+    let a = reta(&mut scene, [-10.0, 0.0], [10.0, 0.0]);
+    let b = reta(&mut scene, [0.0, -10.0], [0.0, 10.0]);
+    let c = reta(&mut scene, [-7.0, -7.0], [7.0, 7.0]);
+    pen.select_many(&[a, b, c]);
+
+    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
+
+    assert_eq!(scene.paths().len(), 1, "um asterisco e' UM objecto");
+    assert_eq!(
+        contornos(&scene),
+        6,
+        "tres linhas partidas ao meio: 6 arcos"
+    );
+    let no_centro = pontas(&scene)
+        .into_iter()
+        .filter(|p| p[0].abs() < 1e-6 && p[1].abs() < 1e-6)
+        .count();
+    assert_eq!(no_centro, 6, "as seis pontas caem no mesmo no'");
 }
 
 /// ⚠️ **Um caminho que não encontra ninguém NÃO é tocado** — nem o objecto, nem o id. Sem isto,
@@ -83,7 +171,12 @@ fn a_path_that_meets_nobody_keeps_its_identity() {
         scene.path(longe).is_some(),
         "o traco distante perdeu o id — ele nao cruza nada"
     );
-    assert_eq!(scene.paths().len(), 5, "4 arcos + o intocado");
+    assert_eq!(scene.paths().len(), 2, "a rede + o intocado");
+    assert_eq!(
+        contornos(&scene),
+        5,
+        "4 arcos na rede + o contorno do intocado"
+    );
 }
 
 /// ⚠️⚠️ **A POSE entra na conta.** As duas linhas só se cruzam DEPOIS de o `Transform` da segunda a
@@ -100,9 +193,17 @@ fn the_crossing_is_found_in_world_space_not_in_local() {
 
     apply_vec_weld(&mut scene, &mut hist, &mut pen, &xf, 0.0);
     assert_eq!(
-        scene.paths().len(),
+        contornos(&scene),
         4,
         "sem a pose na conta, as duas linhas nao se encontram"
+    );
+    // ⚠️ E a rede escreve-se no espaço LOCAL do anfitrião: com a pose dele na identidade, o
+    // cruzamento fica na origem — se os arcos ficassem em mundo sem descer, a rede saltaria.
+    assert!(
+        pontas(&scene)
+            .into_iter()
+            .any(|p| p[0].abs() < 1e-6 && p[1].abs() < 1e-6),
+        "o no' tem de cair na origem do espaco do anfitriao"
     );
 }
 
@@ -148,13 +249,15 @@ fn a_cross_inside_a_square_becomes_a_network_of_arcs() {
     apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
 
     // O quadrado é cortado nos dois lados e a linha nos dois cruzamentos.
+    assert_eq!(scene.paths().len(), 1, "a rede e' UM objecto");
     assert!(
-        scene.paths().len() >= 5,
-        "a rede tem de ter os arcos dos dois: {} caminhos",
-        scene.paths().len()
+        contornos(&scene) >= 5,
+        "a rede tem de ter os arcos dos dois: {} contornos",
+        contornos(&scene)
     );
+    let rede = &scene.paths()[0];
     assert!(
-        scene.paths().iter().all(|p| !p.closed),
+        !rede.closed && rede.subpaths.iter().all(|c| !c.closed),
         "depois de soldado nao sobra anel — tudo e' arco"
     );
 }
@@ -175,19 +278,15 @@ fn the_welded_node_is_one_point_and_dragging_it_moves_every_arc() {
     let b = scene.push_path(ph2d_vec_scene::ellipse([120.0, 0.0], 100.0, 100.0));
     pen.select_many(&[a, b]);
     apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
+    assert_eq!(scene.paths().len(), 1, "a rede e' UM objecto");
     assert_eq!(
-        scene.paths().len(),
+        contornos(&scene),
         4,
         "dois circulos que se cruzam dao 4 arcos"
     );
 
     // METADE 1 — no nó de cima, as duas pontas são **a mesma coordenada**, bit a bit.
-    let cima: Vec<[f64; 2]> = scene
-        .paths()
-        .iter()
-        .flat_map(|p| [p.verts[0].anchor, p.verts[p.verts.len() - 1].anchor])
-        .filter(|p| p[1] > 50.0)
-        .collect();
+    let cima: Vec<[f64; 2]> = pontas(&scene).into_iter().filter(|p| p[1] > 50.0).collect();
     // ⚠️ **QUATRO, e não duas**: cada círculo dá DOIS arcos, e cada arco tem uma ponta em cada
     // nó — logo o nó de cima recebe uma ponta de cada um dos quatro arcos. (A minha primeira
     // contagem dizia duas.)
@@ -211,10 +310,8 @@ fn the_welded_node_is_one_point_and_dragging_it_moves_every_arc() {
     assert!(pen.on_drag(&mut scene, destino, &mut |p| p));
     pen.on_release();
 
-    let no_destino = scene
-        .paths()
-        .iter()
-        .flat_map(|p| [p.verts[0].anchor, p.verts[p.verts.len() - 1].anchor])
+    let no_destino = pontas(&scene)
+        .into_iter()
         .filter(|p| (p[0] - destino[0]).abs() < 1e-6 && (p[1] - destino[1]).abs() < 1e-6)
         .count();
     assert_eq!(
@@ -427,5 +524,56 @@ fn nothing_is_marked_before_the_weld() {
         pen.welded_nodes(&scene).len(),
         1,
         "depois de ligar, o no' tem de aparecer"
+    );
+}
+
+/// ⭐⭐⭐ **UMA LINHA NOVA SOLDA-SE À PONTA DE UMA REDE QUE JÁ EXISTE.**
+///
+/// ⚠️⚠️ É o fluxo normal depois de 2026-09-02: a primeira solda deixa **um** objecto composto, e a
+/// segunda tem de o reconhecer. A porta de entrada (`editavel_no_sitio`) recusava compostos e a
+/// enumeração de pontas era `[0, verts.len() - 1]` — as duas juntas viam **só o primeiro arco**, e
+/// pendurar uma linha na ponta de uma rede simplesmente não pegava.
+///
+/// ⛔ E nada se cruza aqui: a rede **não** se dissolve, o id dela sobrevive e só a ponta da linha
+/// nova se muda.
+#[test]
+fn a_new_line_welds_onto_the_end_of_an_existing_network() {
+    let (mut scene, mut hist, mut pen) = cena();
+    let h = reta(&mut scene, [-10.0, 0.0], [10.0, 0.0]);
+    let vt = reta(&mut scene, [0.0, -10.0], [0.0, 10.0]);
+    pen.select_many(&[h, vt]);
+    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
+    let rede = scene.paths()[0].id;
+    assert!(
+        scene.path(rede).is_some_and(|p| p.contour_count() == 4),
+        "a fixtura tem de partir de uma rede COMPOSTA"
+    );
+
+    // Uma linha que nasce a 0,42 da ponta direita da rede (10, 0) e vai para longe.
+    let nova = reta(&mut scene, [10.3, 0.3], [40.0, 30.0]);
+    pen.select_many(&[rede, nova]);
+    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 1.0);
+
+    assert_eq!(
+        scene.paths().len(),
+        2,
+        "nada se cruza: a rede e a linha continuam a ser dois objectos"
+    );
+    assert!(
+        scene.path(rede).is_some_and(|p| p.contour_count() == 4),
+        "a rede nao se dissolve por emprestar uma ponta"
+    );
+    assert!(
+        !pen.welded_with(&scene, nova, 0).is_empty(),
+        "a ponta da linha nova tem de partilhar o no' com um arco da rede"
+    );
+    let ponta = scene.path(nova).unwrap().verts[0].anchor;
+    let na_rede = pontas(&scene)
+        .into_iter()
+        .filter(|p| (p[0] - ponta[0]).abs() < 1e-9 && (p[1] - ponta[1]).abs() < 1e-9)
+        .count();
+    assert_eq!(
+        na_rede, 2,
+        "a ponta da linha e a da rede sao a MESMA coordenada"
     );
 }

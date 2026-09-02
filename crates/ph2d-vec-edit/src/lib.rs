@@ -528,18 +528,53 @@ impl PenTool {
                 std::mem::swap(&mut v.in_handle, &mut v.out_handle);
             }
         }
+        // ⭐⭐⭐ **OS OUTROS CONTORNOS DE B VIAJAM** — e antes de 2026-09-02 EVAPORAVAM: esta função
+        // costura o contorno primário de B ao de A e depois **apaga B**, então um B composto perdia
+        // todos os `subpaths` sem erro nenhum. Irmão do mesmo defeito em
+        // `VecScene::merge_path_into` — *duas portas para a mesma pergunta divergem em silêncio, e
+        // estas duas divergiam para o mesmo lado.*
+        let subs_b: Vec<ph2d_vec_scene::Contour> = scene
+            .paths()
+            .iter()
+            .find(|pp| pp.id == bid)
+            .map(|pp| {
+                pp.subpaths
+                    .iter()
+                    .map(|c| ph2d_vec_scene::Contour {
+                        verts: c
+                            .verts
+                            .iter()
+                            .map(|v| VecVertex {
+                                anchor: xf_b.apply(v.anchor),
+                                in_handle: xf_b.apply(v.in_handle),
+                                out_handle: xf_b.apply(v.out_handle),
+                                kind: v.kind,
+                                corner_radius: v.corner_radius * xf_b.mean_scale(),
+                            })
+                            .collect(),
+                        closed: c.closed,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
         let inv_a = self.xf(active).inverse()?;
         let a = scene.path_mut(active)?;
-        for v in b_world {
-            a.verts.push(VecVertex {
-                anchor: inv_a.apply(v.anchor),
-                in_handle: inv_a.apply(v.in_handle),
-                out_handle: inv_a.apply(v.out_handle),
-                kind: v.kind,
-                corner_radius: v.corner_radius * inv_a.mean_scale(),
-            });
+        let para_a = |v: &VecVertex| VecVertex {
+            anchor: inv_a.apply(v.anchor),
+            in_handle: inv_a.apply(v.in_handle),
+            out_handle: inv_a.apply(v.out_handle),
+            kind: v.kind,
+            corner_radius: v.corner_radius * inv_a.mean_scale(),
+        };
+        for v in &b_world {
+            a.verts.push(para_a(v));
         }
         let last = a.verts.len().saturating_sub(1);
+        a.subpaths
+            .extend(subs_b.into_iter().map(|c| ph2d_vec_scene::Contour {
+                verts: c.verts.iter().map(&para_a).collect(),
+                closed: c.closed,
+            }));
         scene.remove_path(bid);
         self.selected_verts = vec![(active, last)];
         self.dragging = false;

@@ -5,7 +5,41 @@
 //! perguntas diferentes, e a segunda é a que faz uma rede soldada sobreviver ao dedo.
 
 use crate::PenTool;
-use ph2d_vec_scene::{VecPathId, VecScene};
+use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
+
+/// ⭐⭐⭐ **AS PONTAS DE UM CAMINHO, em índice PLANO** — uma por extremo de cada contorno ABERTO.
+///
+/// # Porque isto deixou de ser `[0, verts.len() - 1]`
+///
+/// Report do Enio (2026-09-02): *"o weld cria uma grande quantidade de path na hierarquia quando
+/// na verdade deveria criar apenas 1"*. A rede soldada passou a ser **um objecto composto** — um
+/// `VecPath` cujos contornos são os arcos —, e a partir daí *as duas pontas de um nó vivem no
+/// MESMO caminho*. Um predicado que só olhava `verts` respondia sobre o primeiro arco e era **cego
+/// aos outros**: a marca apagava-se e o arrasto rasgava a rede no primeiro dedo.
+///
+/// ⚠️ **O índice é o PLANO** ([`ph2d_vec_scene::VecPath::flat_vert`]) porque é o que o resto da
+/// edição fala — `vert`, `vert_mut`, o hit-test e a multi-selecção. Uma segunda numeração aqui
+/// poria o anel numa âncora e o arrasto noutra.
+///
+/// ⛔ **Um contorno FECHADO não entra**: ele não tem ponta, e o vértice `0` dele é uma emenda.
+fn endpoints_flat(p: &VecPath) -> Vec<usize> {
+    let mut out = Vec::new();
+    for c in 0..p.contour_count() {
+        let Some((verts, closed)) = p.contour(c) else {
+            continue;
+        };
+        if closed || verts.len() < 2 {
+            continue;
+        }
+        let n = verts.len();
+        out.extend(
+            [p.flat_vert(c, 0), p.flat_vert(c, n - 1)]
+                .into_iter()
+                .flatten(),
+        );
+    }
+    out
+}
 
 impl PenTool {
     /// ⭐⭐⭐ **AS OUTRAS PONTAS QUE PARTILHAM ESTE NÓ** (plano 39) — em coordenadas de MUNDO, e
@@ -22,8 +56,10 @@ impl PenTool {
     /// fazem o mesmo. *Uma folga generosa aqui grudaria pontas que o artista pôs perto de
     /// propósito* — o doc do `WELD_TOL` já diz que uma mão nunca chega a essa distância.
     ///
-    /// ⛔ **Um caminho FECHADO não entra**: ele não tem ponta, e o vértice `0` dele é uma emenda,
-    /// não uma junta.
+    /// ⛔ **Um contorno FECHADO não entra**: ele não tem ponta, e o vértice `0` dele é uma emenda,
+    /// não uma junta. ⚠️ **Mas um caminho COMPOSTO entra, contorno a contorno** — depois de
+    /// 2026-09-02 a rede soldada É um caminho composto, e as duas pontas de um nó dela vivem no
+    /// mesmo objecto ([`endpoints_flat`]).
     #[must_use]
     pub fn welded_with(
         &self,
@@ -42,15 +78,13 @@ impl PenTool {
         let t2 = crate::node_ops::WELD_TOL * crate::node_ops::WELD_TOL;
         let mut out = Vec::new();
         for p in scene.paths() {
-            if p.closed || !p.subpaths.is_empty() || p.verts.len() < 2 {
-                continue;
-            }
             let x = self.xf(p.id);
-            for i in [0, p.verts.len() - 1] {
+            for i in endpoints_flat(p) {
                 if p.id == path && i == vert {
-                    continue;
+                    continue; // ele próprio; ⚠️ um IRMÃO no mesmo caminho composto ENTRA
                 }
-                let q = x.apply(p.verts[i].anchor);
+                let Some(v) = p.vert(i) else { continue };
+                let q = x.apply(v.anchor);
                 if (alvo[0] - q[0]).powi(2) + (alvo[1] - q[1]).powi(2) <= t2
                     && !out.contains(&(p.id, i))
                 {
@@ -61,12 +95,10 @@ impl PenTool {
         out
     }
 
-    /// `vert` é uma PONTA deste caminho? (Aberto, sem subpaths, e no índice `0` ou no último.)
-    fn is_endpoint(p: &ph2d_vec_scene::VecPath, vert: usize) -> bool {
-        !p.closed
-            && p.subpaths.is_empty()
-            && p.verts.len() >= 2
-            && (vert == 0 || vert == p.verts.len() - 1)
+    /// `vert` é uma PONTA deste caminho? (Está num contorno ABERTO, no primeiro ou no último
+    /// vértice DELE — em índice plano.)
+    fn is_endpoint(p: &VecPath, vert: usize) -> bool {
+        endpoints_flat(p).contains(&vert)
     }
 }
 
@@ -92,12 +124,11 @@ impl PenTool {
     pub fn welded_nodes(&self, scene: &VecScene) -> Vec<(VecPathId, usize)> {
         let mut pontas: Vec<(VecPathId, usize, [f64; 2])> = Vec::new();
         for p in scene.paths() {
-            if !Self::is_endpoint(p, 0) {
-                continue; // fechado, composto, ou degenerado: não tem ponta
-            }
             let x = self.xf(p.id);
-            for i in [0, p.verts.len() - 1] {
-                pontas.push((p.id, i, x.apply(p.verts[i].anchor)));
+            for i in endpoints_flat(p) {
+                if let Some(v) = p.vert(i) {
+                    pontas.push((p.id, i, x.apply(v.anchor)));
+                }
             }
         }
         pontas.sort_by(|a, b| a.2[0].total_cmp(&b.2[0]));

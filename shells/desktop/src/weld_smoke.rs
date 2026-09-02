@@ -135,7 +135,8 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
          [weld-smoke]  2) pegue a SETA BRANCA (Node): nasce um ANEL VERDE no encontro -- e' ele que\n\
          [weld-smoke]     diz 'aqui as duas sao uma so'. ARRASTE-O: as duas curvas vao juntas\n\
          [weld-smoke]  3) volte a' seta PRETA, clique numa curva do par do MEIO e Shift+clique na\n\
-         [weld-smoke]     outra; 'Weld' parte-as em quatro pedacos com o anel no cruzamento\n\
+         [weld-smoke]     outra; 'Weld' parte-as em quatro arcos com o anel no cruzamento -- e as\n\
+         [weld-smoke]     DUAS viram UMA SO' linha na Hierarquia, com um gizmo so'\n\
          [weld-smoke]  4) o par de BAIXO esta' longe um do outro: 'Weld' NAO lhes mexe (a cerca)\n\
          [weld-smoke]  DEU ERRADO SE: nao aparece anel nenhum, ou ao arrastar um pedaco fica para tras"
     );
@@ -210,7 +211,16 @@ mod tests {
         );
         // 2 — elas cruzam-se: quatro arcos, um nó.
         let (s2, pen2) = solda(1, 3.0);
-        assert_eq!(s2.paths().len(), 4, "o par 2 tem de dar QUATRO arcos");
+        assert_eq!(
+            s2.paths().len(),
+            1,
+            "o par 2 tem de dar UM objecto (o report de 2026-09-02)"
+        );
+        assert_eq!(
+            s2.paths()[0].contour_count(),
+            4,
+            "e' UM objecto com QUATRO arcos dentro"
+        );
         assert_eq!(pen2.welded_nodes(&s2).len(), 1);
         // 3 — a cerca: longe uma da outra, nada acontece.
         let (s3, pen3) = solda(2, 3.0);

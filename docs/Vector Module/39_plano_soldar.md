@@ -175,3 +175,93 @@ não escolhe as perguntas que se fazem.* Dois gates novos no `trim_tool`.
   é pré-existente (o arrasto já divergia) e não foi tocado aqui.
 - ⏳ **Custo não medido** — `O(contornos²)` em arestas de amostragem, sobre a selecção. É um verbo
   de clique, não um laço de quadro; sem número, a acusação seria palpite.
+
+## §6 — ⭐⭐⭐ **A REDE É UM OBJECTO** (report de 2026-09-02)
+
+> *"O weld cria uma grande quantidade de path na hierarquia quando na verdade deveria criar apenas
+> 1. No canvas também deve ser transformado como se fosse um único objeto e o seu gizmo deve ser
+> apenas 1."* — Enio
+
+### §6.1 — O mecanismo, medido
+
+Cada arco era um `VecPath`, e **um `VecPath` é uma entidade ECS** (ADR-0110). A cadeia é
+determinística e foi seguida ponta a ponta:
+
+| o que o emit fazia | o que isso produz |
+|---|---|
+| `insert_path` por arco | 1 entidade por arco (`vec_entities::sync`, *"um path ⟺ uma entidade"*) |
+| 1 entidade por arco | 1 linha na Hierarquia por arco, baptizada `Path N` pela fábrica |
+| 1 entidade por arco | 1 `Transform` por arco ⇒ **a rede pode ser rasgada** por um arrasto |
+| N entidades seleccionadas | **N gizmos + 1 gizmo de união** (`snapshots.rs`, `if painted_views > 1`) |
+
+Medido nas fixturas: duas linhas cruzadas davam **4** caminhos; um X num quadrado, **5**; um
+asterisco de três linhas, **6**.
+
+⇒ *soldar prometia uma rede e entregava um monte de pedaços que só por acaso estavam encostados.*
+
+### §6.2 — A cura: um caminho COMPOSTO, escrito NO LUGAR
+
+A rede passa a ser **um** `VecPath` cujos contornos são os arcos (`verts`/`closed` = o primeiro,
+`subpaths` = os outros). ⭐ **O substrato já estava pago e já shipa:** `trim_tool::sever` emite
+contornos **ABERTOS** desde o plano 38, `build.rs`/`path_tess` desenham-nos (gate
+`an_open_contour_never_punches_a_hole_in_the_fill`), o índice **plano** de vértice (`compound.rs`)
+já é o que o hit-test, o overlay e o arrasto falam, e `path_bbox`/`for_each_vert_mut` já percorrem
+contornos.
+
+⚠️⚠️ **Escreve-se no lugar do participante mais ao FUNDO** (`path_mut`), como o Trim: *o id, a fatia
+de z e a entidade ECS têm de sobreviver à operação* — um `insert_path` daria um objecto novo, com
+nome de fábrica, e o artista perderia o que baptizou. Os arcos descem ao espaço **local** do
+anfitrião pelo inverso da pose dele (regra-mãe: a rede fala MUNDO, o documento guarda LOCAL).
+
+⭐⭐ **E é isso que dá o gizmo único de graça.** O gizmo sai da selecção **ECS**
+(`hero.gizmo.selection` + `extra_selection`), e `gizmo_prune::prune_dead` tira dela quem morreu. Ao
+consumir *todos* os participantes, a solda matava o primário e os extras e o artista ficava **sem
+gizmo nenhum**; com o anfitrião vivo, sobra exactamente **uma** entidade seleccionada ⇒ **um**
+gizmo. ⚠️ E vale nos dois sentidos de escolha: se o artista clicou primeiro no traço de cima, esse
+é o primário, morre, e a poda **promove** o anfitrião — que é o extra que restou.
+
+⛔ **O preço, declarado:** a rede tem **um** estilo e **uma** pose — os arcos que vieram de outros
+traços perdem cor, largura e pose próprias. É o que *"um objecto"* significa, e é a mesma conta que
+o `make_compound` já cobra. A pilha de efeitos do anfitrião **sai**: os arcos já saíram da geometria
+cozida por ela, e mantê-la aplicá-la-ia duas vezes.
+
+### §6.3 — ⛔⛔ O que a mudança PARTIU, e teve de ser curado junto
+
+- **A marca e o arrasto do nó ficavam CEGOS.** `PenTool::is_endpoint` era
+  `!closed && subpaths.is_empty() && (vert == 0 || vert == len-1)`: a rede recém-criada **não tinha
+  ponta nenhuma**, o anel verde apagava-se e o primeiro dedo rasgava-a. ⚠️ **E o gate
+  `the_mark_and_the_drag_answer_the_same_question` continuava VERDE** — os dois lados cegam-se
+  juntos, e um gate que cose duas respostas não vê as duas irem a zero ao mesmo tempo. Cura:
+  `endpoints_flat`, uma ponta por extremo de cada contorno ABERTO, em índice plano.
+- **A porta de entrada recusava a própria saída.** `editavel_no_sitio` recusava compostos, então
+  pendurar uma linha nova na ponta de uma rede existente não pegava — o fluxo normal a partir da
+  segunda solda. Cura: a recusa passa a ser só a dos **efeitos** (geometria cozida ≠ autorada), e a
+  enumeração de pontas é a `pontas_planas`, irmã da de cima.
+
+### §6.4 — ⛔⛔⛔ E um defeito ANTERIOR que a mudança tornou alcançável: **JUNTAR EVAPORAVA CONTORNOS**
+
+`VecScene::merge_path_into` e `PenTool::join_open_path` costuram o contorno **primário** da origem
+no destino e depois **apagam a origem**. Uma origem composta perdia todos os `subpaths` **sem erro
+nenhum** — o pior modo de falha que há.
+
+⚠️ **O defeito é anterior a este plano** (valia para o resultado de uma booleana, para uma
+rosquinha) e nenhum gate o via, porque **a régua era a contagem de CAMINHOS**: ela cai de 2 para 1
+nos dois mundos. A régua que o vê é a contagem de **CONTORNOS**. ⚠️ E eram **duas portas para a
+mesma pergunta, divergindo para o mesmo lado** — as duas foram curadas, cada uma com o seu gate.
+
+### §6.5 — ⏳ Aberto (nomeado, com o mecanismo)
+
+- ⏳ **A lâmina (Cut) recusa a rede.** `ph2d_vec_boolean::cut_open` recusa `is_compound()` — uma
+  recusa **pré-existente e declarada** (vale para toda booleana e toda rosquinha), em que a saída da
+  solda passou a cair. O verbo irmão que faz o trabalho **existe e é contour-indexed**: o **Trim**
+  (`trim_tool::sever`). Ensinar o `cut_open` o índice de contorno é wave própria.
+- ⏳ **A caneta só continua a partir do ARCO 0.** O cabeçote de desenho é `verts.last()` e
+  `reopen_endpoint` procura em `verts` — reabrir a rede por outro arco pede um cabeçote que
+  enderece **contorno**, que toca `pen_drag`/`lib.rs` em vários sítios. Benigno hoje (reverter o
+  primário não perde nada e renderiza igual), mas é uma capacidade que cada arco solto tinha.
+- ⏳ **Marcadores e alças de largura vivem no arco 0** (`marker::end_tangent`,
+  `width_handles`): setas e perfil de largura aplicam-se a um arco da rede, não à rede.
+- ⏳ **Cada área do balde continua a ser o seu próprio item na Hierarquia** — e o gizmo dela é
+  **inerte** (o re-cozimento divide a pose fora). Ou o gizmo sai, ou as áreas passam a filhas da
+  rede; é decisão de produto, e a linha da Hierarquia é hoje o **único** manípulo que o artista tem
+  sobre a cor de uma área.

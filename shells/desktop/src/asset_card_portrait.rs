@@ -35,14 +35,22 @@ use ph2d_render::Sprite;
 /// O lado do retrato, em px. O mesmo tecto das miniaturas por textura — é o mesmo cartão.
 const SIDE: u32 = crate::thumbnail::THUMB_MAX;
 
-/// Uma peça pronta a compor: a miniatura dela e onde ela cai no retrato.
+/// Uma peça pronta a compor: a miniatura dela, onde ela cai, e **que pedaço da imagem** ela mostra.
 struct Placed {
     thumb: Thumb,
-    /// Centro em espaço local da receita.
+    /// Centro do QUAD em espaço local da receita — já com o pivô (`resolve_anchor`) somado.
     center: [f32; 2],
     /// Meia-extensão do quad, em espaço local.
     half: [f32; 2],
     rotation: f32,
+    /// ⭐⭐⭐ **A janela da imagem que esta peça mostra** — `[u0, v0, u1, v1]`.
+    ///
+    /// Report do Enio (2026-09-01, 2.ª foto): *«não ficou idêntico»* — as peças saíam estreitas.
+    /// A causa: uma sprite pode mostrar **um pedaço** da sua imagem (uma célula de folha, um
+    /// sub-rectângulo de região), e o retrato desenhava a imagem INTEIRA no lugar do pedaço.
+    uv: [f32; 4],
+    /// Espelhamento autorado, `(x, y)`.
+    flip: (bool, bool),
 }
 
 /// ⭐⭐⭐ **Compõe o retrato**, ou `None` quando não há peça com pixels.
@@ -71,6 +79,8 @@ pub(crate) fn compose(
     sim: &SimWorld,
     root: Entity,
     pieces: &[Entity],
+    // Pixels por metro do projecto — o `resolve_anchor` converte o `offset` autorado com ele.
+    ppm: f32,
     mut piece_art: impl FnMut(Entity) -> Option<Thumb>,
 ) -> Option<Thumb> {
     let root_xf = ph2d_ecs::world_transform(sim.world(), root)?;
@@ -93,14 +103,29 @@ pub(crate) fn compose(
         // Posição **relativa à receita**: o mundo dela é irrelevante (uma receita está escondida,
         // e pode estar em qualquer sítio).
         let rel = local_of(&root_xf, &xf);
+        // ⭐⭐⭐ **O PIVÔ, pela porta partilhada** (`Sprite::resolve_anchor`) — o quad não está
+        // centrado na translação quando a sprite não é `centered` ou tem `offset`/`anchor`.
+        // *A 1.ª versão usava a translação e o objecto saía deslocado.*
+        let a = sprite.resolve_anchor(ppm);
+        let (sin, cos) = rel.rotation.sin_cos();
+        let (ax, ay) = (a[0] * rel.scale.x, a[1] * rel.scale.y);
+        let uv = uv_window(sim, p, &thumb);
         placed.push(Placed {
             thumb,
-            center: [rel.translation.x, rel.translation.y],
+            center: [
+                rel.translation.x + ax * cos - ay * sin,
+                rel.translation.y + ax * sin + ay * cos,
+            ],
             half: [
                 (sprite.size[0] * rel.scale.x).abs() * 0.5,
                 (sprite.size[1] * rel.scale.y).abs() * 0.5,
             ],
             rotation: rel.rotation,
+            // ⭐⭐⭐ **A JANELA, pelas MESMAS funções que a tela usa** — região e depois célula,
+            // exactamente na ordem do `sim_extract`. ⚠️ Aqui a base é o rectângulo UNITÁRIO e não
+            // a UV do átlas, porque a miniatura em mãos **é a imagem de origem**, não a página.
+            uv,
+            flip: (sprite.flip_x, sprite.flip_y),
         });
     }
     if placed.is_empty() {
@@ -143,6 +168,36 @@ pub(crate) fn compose(
         w,
         h,
     })
+}
+
+/// ⭐⭐⭐ **Que pedaço da imagem esta peça mostra** — `[u0, v0, u1, v1]`.
+///
+/// ⚠️ **Pelas MESMAS funções que o `sim_extract` usa, e na MESMA ordem** (região, depois célula da
+/// folha). Reescrever a conta aqui seria a quarta vez que este trabalho re-deriva uma lei que já
+/// tem porta — e as três anteriores custaram um report cada.
+fn uv_window(sim: &SimWorld, p: Entity, thumb: &Thumb) -> [f32; 4] {
+    let unit = [0.0, 0.0, 1.0, 1.0];
+    let after_region = match sim.world().get::<ph2d_ecs::SpriteRegion>(p) {
+        // ⚠️ **Sem `filter_clip`**: o meio-texel existe para o sampler bilinear não sangrar do
+        // átlas vizinho, e aqui a fonte é a imagem inteira — não há vizinho de onde sangrar.
+        Some(r) => crate::render_loop::sim_extract::region_subrect(
+            unit,
+            r.rect,
+            f32::from(u16::try_from(thumb.w).unwrap_or(u16::MAX)),
+            f32::from(u16::try_from(thumb.h).unwrap_or(u16::MAX)),
+            None,
+        ),
+        None => unit,
+    };
+    match sim.world().get::<ph2d_ecs::SpriteGrid>(p) {
+        Some(g) => crate::render_loop::sim_extract::sprite_sheet_subrect(
+            after_region,
+            g.hframes,
+            g.vframes,
+            g.frame,
+        ),
+        None => after_region,
+    }
 }
 
 /// A pose de `child` **relativa** a `parent` — só o que o retrato usa.
@@ -214,8 +269,14 @@ fn blit(acc: &mut [f32], w: u32, h: u32, p: &Placed, min: [f32; 2], s: f32) {
             if !(0.0..=1.0).contains(&u) || !(0.0..1.0).contains(&(1.0 - v)) {
                 continue;
             }
-            let sx = ((u * p.thumb.w as f32) as u32).min(p.thumb.w - 1);
-            let sy = ((v * p.thumb.h as f32) as u32).min(p.thumb.h - 1);
+            // ⭐⭐ **O espelho autorado, e depois a JANELA** — nesta ordem: espelhar depois de
+            // escolher a célula viraria a folha inteira em vez da célula.
+            let u = if p.flip.0 { 1.0 - u } else { u };
+            let v = if p.flip.1 { 1.0 - v } else { v };
+            let [u0, v0, u1, v1] = p.uv;
+            let (uu, vv) = (u0 + u * (u1 - u0), v0 + v * (v1 - v0));
+            let sx = ((uu * p.thumb.w as f32) as u32).min(p.thumb.w - 1);
+            let sy = ((vv * p.thumb.h as f32) as u32).min(p.thumb.h - 1);
             let si = ((sy * p.thumb.w + sx) * 4) as usize;
             let Some(src) = p.thumb.rgba.get(si..si + 4) else {
                 continue;

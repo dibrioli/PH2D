@@ -7,6 +7,9 @@ use super::compose;
 use ph2d_asset_index::Thumb;
 use ph2d_ecs::{ChildOf, Entity, SimWorld, Transform};
 
+/// Pixels por metro — o valor não importa enquanto ninguém autorar `offset`, e o gate do pivô
+/// escolhe-o de propósito.
+const PPM: f32 = 100.0;
 const RED: [u8; 4] = [255, 0, 0, 255];
 const BLUE: [u8; 4] = [0, 0, 255, 255];
 
@@ -70,7 +73,7 @@ fn pixel(t: &Thumb, x: u32, y: u32) -> [u8; 4] {
 #[test]
 fn both_pieces_show_up_in_the_portrait() {
     let (sim, root, pieces, colors) = recipe(&[([-1.0, 0.0], RED), ([1.0, 0.0], BLUE)]);
-    let t = compose(&sim, root, &pieces, art(pieces.clone(), colors)).expect("o retrato");
+    let t = compose(&sim, root, &pieces, PPM, art(pieces.clone(), colors)).expect("o retrato");
     let mid = t.h / 2;
     let left = pixel(&t, 1, mid);
     let right = pixel(&t, t.w - 2, mid);
@@ -94,7 +97,7 @@ fn both_pieces_show_up_in_the_portrait() {
 #[test]
 fn the_portrait_is_not_mirrored_on_either_axis() {
     let (sim, root, pieces, colors) = recipe(&[([-1.0, 1.0], RED), ([1.0, -1.0], BLUE)]);
-    let t = compose(&sim, root, &pieces, art(pieces.clone(), colors)).expect("o retrato");
+    let t = compose(&sim, root, &pieces, PPM, art(pieces.clone(), colors)).expect("o retrato");
     // A vermelha está em cima-à-esquerda no MUNDO ⇒ em cima-à-esquerda na IMAGEM (linha 0).
     let top_left = pixel(&t, 1, 1);
     let bottom_right = pixel(&t, t.w - 2, t.h - 2);
@@ -115,7 +118,7 @@ fn the_portrait_is_not_mirrored_on_either_axis() {
 #[test]
 fn a_wide_layout_does_not_stretch_the_pieces() {
     let (sim, root, pieces, colors) = recipe(&[([-4.0, 0.0], RED), ([4.0, 0.0], BLUE)]);
-    let t = compose(&sim, root, &pieces, art(pieces.clone(), colors)).expect("o retrato");
+    let t = compose(&sim, root, &pieces, PPM, art(pieces.clone(), colors)).expect("o retrato");
     assert!(
         t.w > t.h,
         "uma disposicao larga tem de dar um retrato largo: {}x{}",
@@ -142,7 +145,7 @@ fn a_recipe_with_no_pixels_has_no_portrait() {
         .spawn((Transform::IDENTITY, ChildOf(root)))
         .id();
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    assert!(compose(&sim, root, &[child], |_| None).is_none());
+    assert!(compose(&sim, root, &[child], PPM, |_| None).is_none());
 }
 
 /// ⛔⛔ **O retrato é DETERMINÍSTICO** — duas composições do mesmo mundo dão os mesmos bytes.
@@ -154,8 +157,15 @@ fn a_recipe_with_no_pixels_has_no_portrait() {
 #[test]
 fn the_portrait_is_deterministic() {
     let (sim, root, pieces, colors) = recipe(&[([-1.0, 0.0], RED), ([1.0, 0.0], BLUE)]);
-    let a = compose(&sim, root, &pieces, art(pieces.clone(), colors.clone())).expect("a");
-    let b = compose(&sim, root, &pieces, art(pieces.clone(), colors)).expect("b");
+    let a = compose(
+        &sim,
+        root,
+        &pieces,
+        PPM,
+        art(pieces.clone(), colors.clone()),
+    )
+    .expect("a");
+    let b = compose(&sim, root, &pieces, PPM, art(pieces.clone(), colors)).expect("b");
     assert_eq!(
         a.rgba, b.rgba,
         "duas composicoes iguais deram bytes diferentes"
@@ -170,9 +180,128 @@ fn a_piece_without_art_is_skipped_and_the_rest_still_draws() {
     let (sim, root, pieces, _colors) = recipe(&[([-1.0, 0.0], RED), ([1.0, 0.0], BLUE)]);
     // Só a segunda tem arte.
     let only_second = pieces[1];
-    let t = compose(&sim, root, &pieces, |e| {
+    let t = compose(&sim, root, &pieces, PPM, |e| {
         (e == only_second).then(|| solid(BLUE))
     })
     .expect("o retrato parcial");
     assert!(t.w > 0 && t.h > 0);
+}
+
+/// ⭐⭐⭐ **UMA PEÇA DE FOLHA MOSTRA A CÉLULA VIVA, e não a folha inteira** — report do Enio,
+/// 2026-09-01 (2.ª foto): *«não ficou idêntico»*, com as peças a saírem estreitas.
+///
+/// ⚠️ **A causa era eu desenhar a imagem INTEIRA onde a tela desenha um PEDAÇO.** Uma sprite pode
+/// mostrar uma célula de uma grelha (`SpriteGrid`) ou um sub-rectângulo (`SpriteRegion`), e o quad
+/// não muda de tamanho por isso — o que muda é a janela. Espremer a folha toda no quad encolhe o
+/// desenho na horizontal, que é exactamente o que a foto mostra.
+///
+/// ⚠️ **A fixtura CARREGA O FENÓMENO**: metade esquerda vermelha, metade direita azul, e a célula
+/// viva é a **1** (a direita). Um retrato que ignore a grelha devolve as DUAS cores.
+///
+/// **Mutação que deve sangrar:** o `uv_window` devolver sempre o rectângulo unitário.
+#[test]
+fn a_sheet_piece_shows_the_live_cell_and_not_the_whole_sheet() {
+    let mut sim = SimWorld::new();
+    let root = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, ph2d_ecs::MasterRoot))
+        .id();
+    let piece = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+            // Duas colunas, e a VIVA é a segunda.
+            ph2d_ecs::SpriteGrid {
+                hframes: 2,
+                vframes: 1,
+                frame: 1,
+            },
+            ChildOf(root),
+        ))
+        .id();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+
+    // Uma miniatura de duas metades: esquerda VERMELHA, direita AZUL.
+    let mut rgba = Vec::new();
+    for _ in 0..16 {
+        for x in 0..16 {
+            rgba.extend_from_slice(if x < 8 { &RED } else { &BLUE });
+        }
+    }
+    let half = Thumb {
+        rgba: std::sync::Arc::new(rgba),
+        w: 16,
+        h: 16,
+    };
+    let t = compose(&sim, root, &[piece], PPM, |e| {
+        (e == piece).then(|| half.clone())
+    })
+    .expect("o retrato");
+    // A célula viva é a direita ⇒ o retrato INTEIRO tem de ser azul.
+    for x in [1, t.w / 2, t.w - 2] {
+        let px = pixel(&t, x, t.h / 2);
+        assert_eq!(
+            px[2], 255,
+            "a coluna {x} nao e' da celula viva — a folha inteira foi espremida no quad: {px:?}"
+        );
+        assert_eq!(
+            px[0], 0,
+            "sobrou vermelho da celula que NAO esta' viva: {px:?}"
+        );
+    }
+}
+
+/// ⭐⭐ **O PIVÔ desloca o quad** — uma sprite não-centrada não é desenhada sobre a translação.
+///
+/// ⚠️ A lei vive no [`ph2d_render::Sprite::resolve_anchor`], que é a porta que a tela usa. A 1.ª
+/// versão do retrato usava a translação, e o objecto saía deslocado de meia peça.
+///
+/// **Mutação que deve sangrar:** ignorar o `resolve_anchor` e usar a translação.
+#[test]
+fn a_non_centered_piece_is_placed_where_the_screen_places_it() {
+    let mut sim = SimWorld::new();
+    let root = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, ph2d_ecs::MasterRoot))
+        .id();
+    // Uma peça CENTRADA na origem e outra NÃO centrada na origem: a segunda desenha-se meia peça
+    // à direita e meia para baixo, então a caixa envolvente deixa de ser simétrica.
+    let a = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+            ChildOf(root),
+        ))
+        .id();
+    let mut off = ph2d_render::Sprite::atlas(1, [1.0, 1.0], [1.0; 4]);
+    off.centered = false;
+    let b = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, off, ChildOf(root)))
+        .id();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+
+    let t = compose(&sim, root, &[a, b], PPM, |e| {
+        Some(solid(if e == a { RED } else { BLUE }))
+    })
+    .expect("o retrato");
+    // ⚠️ **O oráculo é a peça de baixo ficar VISÍVEL**, e a 1.ª redacção deste gate não o era: ela
+    // só perguntava se o canto direito era azul, e com o pivô ignorado as duas peças caem uma em
+    // cima da outra — a azul é desenhada depois e tapa a vermelha, e a resposta continuava azul.
+    // *A mutação sobreviveu, e foi ela que o disse.*
+    //
+    // Com o pivô: a centrada ocupa `[-0.5, +0.5]` e a não-centrada `[0, +1]` em x ⇒ há região onde
+    // **só** a vermelha existe. Sem o pivô elas coincidem e o vermelho desaparece do retrato.
+    let red_seen = (0..t.w).any(|x| {
+        (0..t.h).any(|y| {
+            let px = pixel(&t, x, y);
+            px[0] > 200 && px[2] < 50
+        })
+    });
+    assert!(
+        red_seen,
+        "a peca CENTRADA sumiu — as duas caíram no mesmo sitio, logo o pivô foi ignorado"
+    );
 }

@@ -156,7 +156,10 @@ fn resolve_mask_meta(sim: &World, entity: Entity, clip_group: u32, clip_meta: u3
 /// `hframes`/`vframes` floor at 1 and `frame` is clamped into the grid,
 /// so the default 1×1 sheet returns the input rect unchanged (no-op for
 /// every legacy sprite). Render-only (PresentWorld), HR-5 exempt.
-pub(super) fn sprite_sheet_subrect(
+/// ⚠️ **`pub(crate)` desde 2026-09-01: o RETRATO de um prefab é o segundo leitor.** Ele compõe as
+/// peças de uma receita e tem de mostrar **a mesma célula** que a tela mostra — sem isto, uma
+/// sprite de folha aparecia no cartão com a grelha inteira espremida na célula.
+pub(crate) fn sprite_sheet_subrect(
     uv: [f32; 4],
     hframes: u32,
     vframes: u32,
@@ -188,7 +191,8 @@ pub(super) fn sprite_sheet_subrect(
 /// by half a texel per side (Godot `region_filter_clip`) so bilinear
 /// sampling can't bleed past the region edge into neighbouring atlas
 /// content. The `htu`/`htv` are in the SAMPLED texture's UV space.
-fn region_subrect(
+/// ⚠️ **`pub(crate)` pela razão da irmã acima** — o retrato é o segundo leitor.
+pub(crate) fn region_subrect(
     uv: [f32; 4],
     region: [f32; 4],
     src_w: f32,

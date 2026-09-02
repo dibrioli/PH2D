@@ -80,6 +80,8 @@ pub(crate) fn publish_for_frame(
     db: &AssetDb,
     atlas_assets: &BTreeMap<u32, AssetId>,
     catalogs: &ph2d_asset_index::CatalogTree,
+    // Ver o parâmetro homónimo do [`build`].
+    ppm: f32,
     visible: bool,
 ) {
     if !visible {
@@ -94,6 +96,7 @@ pub(crate) fn publish_for_frame(
                 catalogs,
                 &mut sw.borrow_mut(),
                 &mut lib.borrow_mut(),
+                ppm,
             )
         })
     });
@@ -120,6 +123,9 @@ pub(crate) fn build(
     catalogs: &ph2d_asset_index::CatalogTree,
     swatches: &mut CardArt,
     remembered: &mut TextureLibrary,
+    // ⭐ Pixels por metro do projecto — o `Sprite::resolve_anchor` converte o `offset` autorado
+    // com ele, e o retrato de um prefab precisa do pivô para pôr a peça onde a tela a põe.
+    ppm: f32,
 ) -> AssetIndex {
     let mut index = AssetIndex::new();
     // O orçamento é POR QUADRO — ver [`THUMB_BUDGET_PX`].
@@ -191,7 +197,7 @@ pub(crate) fn build(
         // ⚠️ **E a queda para a PEÇA MAIOR fica**, para quando não há retrato (nenhuma peça com
         // pixels em cache neste quadro, porque o orçamento acabou): *um cartão que perde a imagem
         // que já mostrava é uma regressão visível.*
-        entry.thumb = crate::asset_card_portrait::compose(sim, entity, &pieces, |p| {
+        entry.thumb = crate::asset_card_portrait::compose(sim, entity, &pieces, ppm, |p| {
             // ⭐⭐⭐ **A PORTA ÚNICA resolve a textura da peça** — e é ela que sabe as DUAS formas
             // (átlas e `SpritePixels`). O retrato não as conhece, de propósito: uma terceira forma
             // amanhã entra aqui e não volta a partir o cartão.

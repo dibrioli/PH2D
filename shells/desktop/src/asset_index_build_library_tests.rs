@@ -64,6 +64,7 @@ fn a_texture_nobody_uses_can_leave_the_library_and_a_used_one_comes_back() {
         &no_catalogs(),
         &mut cache,
         &mut lib,
+        100.0,
     );
     assert_eq!(textures(&ix), 1, "a textura entrou pela sprite");
 
@@ -76,6 +77,7 @@ fn a_texture_nobody_uses_can_leave_the_library_and_a_used_one_comes_back() {
         &no_catalogs(),
         &mut cache,
         &mut lib,
+        100.0,
     );
     assert_eq!(
         textures(&ix),
@@ -92,6 +94,7 @@ fn a_texture_nobody_uses_can_leave_the_library_and_a_used_one_comes_back() {
         &no_catalogs(),
         &mut cache,
         &mut lib,
+        100.0,
     );
     assert_eq!(textures(&ix), 0, "ninguém a usa: ela tem de poder sair");
 }
@@ -232,6 +235,7 @@ fn a_prefab_of_atlas_sprites_gets_a_colour_and_a_portrait() {
         &ph2d_asset_index::CatalogTree::default(),
         &mut art,
         &mut lib,
+        100.0,
     );
     let prefab = index
         .entries()

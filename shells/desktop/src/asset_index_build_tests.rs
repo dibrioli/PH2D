@@ -61,6 +61,7 @@ fn one_walk_returns_both_families() {
         &no_catalogs(),
         &mut cache,
         &mut lib,
+        100.0,
     );
     let counts = index.counts();
     assert_eq!(counts.get(&AssetKind::Component), Some(&1));
@@ -81,6 +82,7 @@ fn the_component_declares_the_texture_and_the_texture_names_its_owner() {
         &no_catalogs(),
         &mut cache,
         &mut lib,
+        100.0,
     );
     let tex = AssetRef::Texture {
         asset: *id.as_bytes(),
@@ -104,7 +106,8 @@ fn deleting_the_master_removes_it_from_the_next_build() {
             &no_atlas(),
             &no_catalogs(),
             &mut cache,
-            &mut lib
+            &mut lib,
+            100.0,
         )
         .counts()
         .get(&AssetKind::Component),
@@ -124,6 +127,7 @@ fn deleting_the_master_removes_it_from_the_next_build() {
         &no_catalogs(),
         &mut cache,
         &mut lib,
+        100.0,
     );
     assert_eq!(after.counts().get(&AssetKind::Component), None);
 }
@@ -197,6 +201,7 @@ fn two_builds_of_the_same_world_agree_entry_for_entry() {
         &no_catalogs(),
         &mut cache,
         &mut lib,
+        100.0,
     )
     .entries()
     .iter()
@@ -209,6 +214,7 @@ fn two_builds_of_the_same_world_agree_entry_for_entry() {
         &no_catalogs(),
         &mut cache,
         &mut lib,
+        100.0,
     )
     .entries()
     .iter()
@@ -239,6 +245,7 @@ fn textures_the_boot_loaded_but_nobody_placed_are_not_assets() {
         &no_catalogs(),
         &mut cache,
         &mut lib,
+        100.0,
     );
     assert!(
         index.is_empty(),
@@ -264,7 +271,8 @@ fn deleting_the_sprite_does_not_delete_the_texture_from_the_library() {
             &no_atlas(),
             &no_catalogs(),
             &mut cache,
-            &mut lib
+            &mut lib,
+            100.0,
         )
         .counts()
         .get(&AssetKind::Texture),
@@ -285,6 +293,7 @@ fn deleting_the_sprite_does_not_delete_the_texture_from_the_library() {
         &no_catalogs(),
         &mut cache,
         &mut lib,
+        100.0,
     );
     assert_eq!(
         after.counts().get(&AssetKind::Texture),
@@ -317,6 +326,7 @@ fn hiding_an_object_changes_nothing_in_the_library() {
         &no_catalogs(),
         &mut cache,
         &mut lib,
+        100.0,
     )
     .entries()
     .iter()
@@ -341,6 +351,7 @@ fn hiding_an_object_changes_nothing_in_the_library() {
         &no_catalogs(),
         &mut cache,
         &mut lib,
+        100.0,
     )
     .entries()
     .iter()
@@ -377,7 +388,8 @@ fn deleting_the_copy_leaves_the_recipe_in_the_panel() {
             &no_atlas(),
             &no_catalogs(),
             &mut cache,
-            &mut lib
+            &mut lib,
+            100.0,
         )
         .counts()
         .get(&AssetKind::Component),
@@ -391,7 +403,8 @@ fn deleting_the_copy_leaves_the_recipe_in_the_panel() {
             &no_atlas(),
             &no_catalogs(),
             &mut cache,
-            &mut lib
+            &mut lib,
+            100.0,
         )
         .counts()
         .get(&AssetKind::Component),
@@ -472,7 +485,15 @@ fn an_imported_atlas_sprite_is_in_the_library_and_a_boot_one_is_not() {
 
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
-    let index = build(&mut sim, &db, &atlas, &no_catalogs(), &mut cache, &mut lib);
+    let index = build(
+        &mut sim,
+        &db,
+        &atlas,
+        &no_catalogs(),
+        &mut cache,
+        &mut lib,
+        100.0,
+    );
     let keys: Vec<AssetRef> = index.entries().iter().map(|e| e.key).collect();
     assert!(
         keys.contains(&AssetRef::Texture {
@@ -513,7 +534,15 @@ fn an_entry_carries_the_catalog_the_taxonomy_gives_it() {
     );
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
-    let index = build(&mut sim, &db, &no_atlas(), &cat, &mut cache, &mut lib);
+    let index = build(
+        &mut sim,
+        &db,
+        &no_atlas(),
+        &cat,
+        &mut cache,
+        &mut lib,
+        100.0,
+    );
     assert!(
         index.entries().iter().all(|e| e.catalog == Some(gaveta)),
         "alguma entrada chegou sem o catálogo: {:?}",

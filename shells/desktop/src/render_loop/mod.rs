@@ -350,7 +350,7 @@ pub(crate) mod sprite_anim_tick;
 pub(crate) use sprite_anim_tick::start_autoplay_animations;
 /// **Os nove quads do 9-slice** — irmão do `sim_extract`, que está no tecto de LOC.
 pub(crate) mod sheet_grid_overlay;
-mod sim_extract;
+pub(crate) mod sim_extract;
 mod sim_extract_sheet;
 mod sim_extract_slice;
 mod snapshots;

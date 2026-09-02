@@ -30,3 +30,32 @@ descartador comparava áreas com 15% de tolerância, e a forma quebrada passava 
 shoelace de um polígono que se CRUZA é soma algébrica com sinais que se cancelam, não a área
 pintada). Duas formas bem diferentes têm a mesma área; medir a **distância entre as curvas**
 separou os casos por 150×. Ver [[feedback_test_with_product_numbers_not_convenient_ones]].
+
+
+## O caso mais barato de todos: a coluna PUBLICADA com o nome que ninguém lê
+
+**L-System, 2026-08-30.** Enio: *"as folhas … sem rotação [relativa] ao galho"*. A membrana
+calculava o ângulo certo, tirava-o da coluna certa do esqueleto, e publicava-o numa coluna
+chamada **`rotation`**. A convenção de instâncias do Motion chama-lhe **`rot`**.
+
+⛔ **Um nome de coluna errado não é um erro** — num stream de colunas nomeadas, o consumidor
+pede `get("rot")`, recebe `None`, e usa o DEFAULT. Compila, corre, desenha; a rotação é a
+identidade. É a mesma família do param descartado a jusante, na sua forma mais barata: o valor
+não é *descartado por uma decisão*, é **nunca procurado**.
+
+⚠️ **E é por isso que o gate tem de atravessar até ao CONSUMIDOR.** Todos os gates que eu tinha
+liam a coluna publicada — todos passavam. O que mata a mutação é baixar a corrente pela função
+real do lowering e medir a INSTÂNCIA (aqui, a `basis`).
+
+⚠️ **Corolário, e este quase me escapou:** a mutação que troca a FONTE (ler `wrot` em vez de
+`rot`) **sobrevive** no caso comum, porque naquele default as duas colunas trazem o mesmo
+número. Só o modo em que elas divergem torna a escolha observável — foi preciso um gate no
+`Orient = Local` para a lei ter cerca.
+
+**How to apply:** ao publicar num canal com chaves por NOME (colunas de stream, externals,
+mapas de props), grepe o nome no consumidor no mesmo minuto em que o escreve — o compilador não
+o faz. E escreva pelo menos um gate que **corra o consumidor real**, não que releia o que você
+acabou de escrever. Relacionado:
+[[feedback_a_promise_that_justifies_a_decision_must_have_a_reader]] ·
+[[feedback_paint_and_dispatch_must_read_the_same_source]] ·
+[[feedback_a_dead_knob_has_two_species_no_probe_catches]].

@@ -27,4 +27,5 @@ de quadro: verde vacuoso. Asserte o enquadramento (ex.: `interior` dentro de uma
 
 Relacionadas: [[feedback_mutate_the_code_not_just_the_test]] ·
 [[feedback_render_and_look_when_a_green_gate_is_contradicted]] ·
-[[feedback_zero_alloc_gate_capacity_not_global_counter]] · [[feedback_gate_the_edges_of_the_domain]]
+[[feedback_zero_alloc_gate_capacity_not_global_counter]] · [[feedback_gate_the_edges_of_the_domain]] ·
+[[feedback_an_absence_gate_that_names_a_file_is_disarmed_in_silence]]

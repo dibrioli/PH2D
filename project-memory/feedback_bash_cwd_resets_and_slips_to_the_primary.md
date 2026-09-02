@@ -128,3 +128,177 @@ depende de eu me lembrar de qual das duas raízes é a minha.
 
 **How to apply:** escolha a marca no ficheiro que vai editar (um símbolo que a sua linha criou), e
 ponha o assert **antes** de qualquer `replace`. Ele custa uma linha e falha alto.
+
+⛔⛔⛔ **Refinamento (2026-08-30, 5ª escorregada registada) — e a lição JÁ ESTAVA ESCRITA aqui
+desde 29/07.** Um `python3` heredoc com caminhos **relativos** reescreveu **quatro ficheiros de
+produto** no `main`. ⭐ **Só foi apanhado por sorte:** um deles era um `Cargo.toml` que passou a
+referir uma crate inexistente no primário, e o `cargo` recusou a workspace **com o caminho do
+primário no erro**. ⚠️ **Fossem só `.rs`, teria compilado** — e o `main` ficava com quatro
+alterações que ninguém pediu.
+
+⇒ ⭐ **A regra do path absoluto não basta se ela não estiver no script.** O que falta é uma
+**asserção no topo de todo heredoc de escrita**: `W = Path("<worktree absoluta>"); assert (W /
+".git").exists()`, e **todo** `read_text`/`write_text` a partir de `W`. *Um `cd` no início do
+comando não protege um script que corre depois de outro comando ter mudado a cwd* — e nesta
+sessão o `cd` estava lá, no comando anterior.
+
+
+## ⛔⛔⛔ Adenda 2026-08-31 (8.ª) — a escorregadela numa corrida de LEITURA devolve **VERDE**
+
+Todos os tells desta memória **falham alto**: erro de build, busca vazia, símbolo que o compilador
+não vê, `File exists` sobre o `target/`. Eles existem porque a árvore errada não tem o meu trabalho.
+
+⛔ **Um `cargo test` de um gate que reprovou na MINHA árvore não falha nada no primário: ele passa.**
+Foi o que aconteceu — dois gates vermelhos na worktree, e ao re-corrê-los para ler a mensagem a cwd
+já tinha escorregado. Os dois disseram `test result: ok`, e a leitura natural é *«afinal era ruído do
+fan-out»* ⇒ eu quase os riscei da lista. O que os denunciou foi **uma linha de `Compiling`**:
+
+```
+Compiling ph2d-editor-core v0.0.0 (/home/enio/Documentos/Projetos/PH2D/crates/ph2d-editor-core)
+```
+
+— sem `Worktrees/line-<módulo>` no caminho.
+
+**Why:** o repo compila nas duas árvores. Uma corrida de leitura no primário mede **`main`**, e
+`main` está verde por construção. *Um verde da árvore errada é indistinguível de um verde meu*, e é
+o único sintoma desta família que não tem tell próprio.
+
+**How to apply:**
+1. ⭐⭐ **Um verde inesperado é a MESMA suspeita que uma busca vazia.** Se um gate reprovou e passa a
+   passar sem eu ter mudado a causa, a 1.ª hipótese é a cwd — não a flake de recurso.
+2. ⭐ **Leia a linha `Compiling`/`Running`** do cargo: ela imprime o caminho da crate e é a
+   confirmação mais barata que existe (não custa uma chamada extra, já está na saída).
+3. ⚠️ Um `--test <alvo>` que casa em ambas as árvores **não** dá o tell «no test target named …»
+   desta memória — esse só aparece para um alvo que só existe na worktree.
+
+
+## ⛔⛔⛔ Adenda 2026-08-31 (9.ª, **minutos depois da 8.ª**) — o tell foi o CONTEÚDO não bater
+
+Na mesma sessão em que escrevi a adenda acima, escorreguei outra vez e um `cat >> <path relativo>`
+apendou **124 linhas de gate** no ficheiro do **primário**. O `cargo test` a seguir reprovou com
+`this function takes 8 arguments but 9 were supplied` — sobre uma função cuja assinatura eu tinha
+lido (na worktree) com 9.
+
+⭐ **O que denunciou não foi o caminho: foi o TEXTO.** Ao imprimir a assinatura, o ficheiro dizia
+`"Made a component"` e `"This is already a component"`, e eu sabia que a minha linha diz
+`"Made a prefab"`. *Um ficheiro que não diz o que eu sei que ele diz é a árvore errada, antes de ser
+um bug.*
+
+⚠️ **E o erro do compilador era um FALSO diagnóstico perfeitamente plausível** — «assinatura
+diferente» lê-se como *«o meu teste está errado»*, e a reacção natural é ir mudar o teste. Duas
+árvores com a mesma função em versões diferentes produzem erros de tipos que **fazem sentido** e
+apontam para o sítio errado.
+
+**How to apply (o que muda depois da 9.ª):**
+1. ⛔⛔ **`cat >`/`cat >>` são ferramentas de EDIÇÃO** e obedecem à mesma regra dos scripts: caminho
+   ABSOLUTO + `assert` de uma marca da minha linha. A adenda da 4.ª já o dizia; eu fi-lo à mesma
+   porque estava a encadear comandos depressa. *A regra não falhou — eu é que a apliquei só aos
+   `python3`.*
+2. ⭐ **Ao ler fonte para decidir alguma coisa, confirme uma FRASE que só a sua linha tem.** É o
+   mesmo assert do ponto 1, feito com os olhos, e custa zero.
+3. ⚠️ Um erro de tipos que contradiz o que você acabou de ler é sinal de CWD — **antes** de ser um
+   sinal sobre o código.
+
+⚠️ **2026-08-31 — a 3.ª forma, e a mais silenciosa: `cat >> ficheiro` com caminho
+RELATIVO.** Um `cargo check` acusou por acaso (os caminhos que ele imprime eram
+`/PH2D/crates/...` em vez de `/PH2D/Worktrees/line-.../crates/...`), e o `cat >>`
+**CRIOU** o ficheiro na árvore errada em vez de falhar — 64 linhas de doc num ficheiro
+novo e não rastreado do primário, invisíveis ao `git status` da worktree. *Um `>>` nunca
+avisa: se o caminho não existe, ele nasce.*
+⇒ **Todo comando que ESCREVE (`cat >>`, `tee`, redirecção) leva o caminho ABSOLUTO da
+worktree**, mesmo quando o anterior correu bem: a cwd volta ao primário entre chamadas.
+
+
+## ⛔⛔⛔ Adenda 2026-08-31 (10.ª) — o `cd` de um comando em SEGUNDO PLANO não persiste, e o harness diz-o
+
+O mecanismo desta vez não foi a escorregadela lenta das outras nove: foi **causal e imediato**. Um
+comando lançado com `run_in_background: true` que começa por `cd <worktree>` devolve, no próprio
+resultado:
+
+> *Session cwd remains /home/enio/Documentos/Projetos/PH2D; directory changes made by the
+> backgrounded command do not apply to subsequent commands.*
+
+⇒ o comando de fundo corre certo, **e o turno seguinte corre no primário**. Eu li aquela linha, não
+a processei, e corri o portão de fecho — `cargo test` + `cargo clippy` sobre cinco crates — na
+árvore errada. **Deu verde**, que é o sintoma da 8.ª adenda: um verde da árvore errada é
+indistinguível do meu.
+
+⭐ **O que denunciou foi um GREP negativo com controlo:** o smoke deixou de imprimir, e
+`grep -c "level == 80" <router>` devolveu `0` para uma cena que eu tinha **comitado**. Um símbolo
+que está num commit meu e que o `grep` não vê é a árvore errada — nunca um facto sobre o código
+([[feedback_a_negative_search_needs_a_positive_control]]).
+
+**How to apply:**
+1. ⭐⭐⭐ **Todo comando de fundo que precisa da worktree leva o `cd` DENTRO dele** — e o **seguinte**
+   também, porque a sessão não herda nada. Não é «lembrar do `cd` uma vez por bloco»: é **por
+   chamada**.
+2. ⭐ **A linha «Session cwd remains …» é um AVISO, não ruído.** Ela aparece exactamente quando a
+   próxima chamada vai correr no sítio errado.
+3. ⚠️ Os scripts de edição com caminho ABSOLUTO sobreviveram intactos (as 8 curas da auditoria
+   aterraram todas na worktree) — foi só a **verificação** que se perdeu. *A disciplina do caminho
+   absoluto protege a escrita; nada protege a leitura senão o `cd` por chamada.*
+
+---
+
+## ⛔⛔⛔ Adenda 2026-08-31 (11.ª) — o tell foi um `ls` que fez o BINÁRIO ANDAR PARA TRÁS no tempo
+
+Uma build de release lançada em **background com `cd` explícito para a worktree** correu certa (o
+log dela nomeia `/…/Worktrees/line-UIUX/shells/desktop`) e saiu `exit 0`. A cwd escorregou
+**depois**, entre turnos. Então:
+
+```
+ls -la target/release/ph2d-host-desktop      # 20:11, 64 707 088 bytes   ← a WORKTREE
+… (a cwd volta ao primário) …
+ls -la target/release/ph2d-host-desktop      # 30/08 15:33, 64 600 784   ← o PRIMÁRIO
+```
+
+⛔ **O mesmo comando, duas respostas, e a segunda é ANTERIOR à primeira.** Não é um erro nem uma
+busca vazia: é um facto plausível sobre um ficheiro que existe. A leitura natural — *«a build disse
+`Finished` e o binário não mudou; o cargo não relinkou»* — é **uma teoria sobre o cargo**, e eu
+comecei a persegui-la: fui ver `target/release/deps/` e depois corri um `cargo build --release` de
+**3 min 08 s no PRIMÁRIO**, que é a escorregadela a pagar-se a si própria.
+
+⭐ **O que resolveu em UM comando foi o `ls` com path ABSOLUTO:** a worktree tinha o binário de
+`20:56`, exactamente a hora em que o background terminou. Nada estava partido.
+
+> ⚠️ *Um relógio que anda para trás entre dois comandos idênticos é sinal de CWD, nunca um facto
+> sobre a ferramenta que os produziu.* Junta-se à família: a busca vazia · a busca que responde com
+> o valor do `main` · o símbolo que o compilador não vê · o `File exists` do `target`.
+
+**How to apply:** ⚠️ **toda inspecção de artefacto de build (`ls`/`stat`/`file` sobre `target/`) usa
+path ABSOLUTO** — é uma leitura, logo não falha alto, e o `target/` é o ponto exacto onde as duas
+árvores têm o mesmo nome relativo com conteúdos diferentes. E antes de teorizar sobre o cargo,
+`pwd`.
+
+## 12.ª e 13.ª (2026-09-01) — e a 13.ª tem um modo de falha NOVO
+
+⛔⛔ **Um filtro de saída transforma «árvore errada» em VERDE VAZIO.** A corrida foi
+`cargo test -p ... --test <nome> | grep -E "^test |test result|..."`. Na árvore primária aqueles
+alvos não existem, o cargo devolve `error: no test target named ...` — e **nenhuma das linhas do
+erro casa com o filtro**. O ficheiro de saída fica com zero bytes e o pipe devolve `0`.
+
+⇒ *Um `grep` que só deixa passar sucesso não distingue «passou» de «nunca correu»*
+([[feedback_pipe_masks_script_exit_code]], [[feedback_an_automatic_tools_exit_code_says_nothing_about_what_it_produced]]).
+
+**How to apply:**
+- ⭐ **Ponha o `cd` absoluto DENTRO de cada comando**, mesmo quando o anterior já o tinha: o harness
+  avisa (`Session cwd remains ...`) só quando o comando vai para segundo plano.
+- ⭐⭐ **Todo filtro de saída tem de deixar passar `error`** (`grep -E "...|^error|no test target"`),
+  senão ele esconde exactamente a linha que diz que a corrida não aconteceu.
+- ⚠️ E a prova de que uma corrida foi na árvore CERTA é o nome de um teste que **só lá existe**
+  aparecer na saída.
+
+---
+
+⭐⭐ **12.ª (2026-09-01) — e o gatilho é ESTRUTURAL, não distracção: ESCREVER A MEMÓRIA obriga
+a ir ao primário.** O símlink `~/.claude/projects/<key>/memory` aponta para o
+`project-memory/` da árvore **primária**, e o índice `MEMORY.md` só lá existe ⇒ indexar uma
+memória nova pede `cd /…/PH2D`. O comando **seguinte** — um `python3` que editava um gate —
+herdou essa cwd e escreveu **no primário**, sobre um ficheiro que a minha worktree também tem
+no mesmo caminho relativo. Não houve erro: o `python3` achou o padrão, o `assert` de contagem
+passou, e só o aviso do harness (*«changed on disk»*, a apontar `/PH2D/shells/...`) o revelou.
+
+⇒ **Depois de todo `cd` ao primário — e escrever memória é sempre um —, o comando seguinte
+recomeça com o `cd` absoluto da worktree.** E a cura, quando acontece, é
+`git checkout -- <o ficheiro>` no primário (⛔ **nunca** `git reset --hard`), seguida do mesmo
+`python3` com o `cd` certo. Ver [[feedback_the_memory_symlink_points_at_the_primary_tree_not_your_worktree]].

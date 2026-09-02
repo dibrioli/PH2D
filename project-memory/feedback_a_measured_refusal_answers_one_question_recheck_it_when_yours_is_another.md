@@ -25,6 +25,15 @@ confira as duas coisas — a recusa pode estar certa e irrelevante.
 porque o cargo nunca coleta o artefato velho. *A pasta com mais churn não é a pasta com mais
 escrita* — meça as duas antes de escolher.
 
+**O 2.º caso (2026-08-31, L-System).** Um gate afirmava, como IDENTIDADE ao bit, que a remapagem
+do `Growth` **não toca** em quem cresce pela ponta, e a justificação escrita nele era medida: *«o
+modelo exponencial piora-os — o Tree foi de `0,5×` para `0,8×` de ondulação»*. ⚠️ **Ondulação é
+SUAVIDADE** (a razão entre o maior e o menor passo); a pergunta do report seguinte era
+**LINEARIDADE** (o afastamento da recta). Medida a segunda, os quatro moldes isentos iam `+6,9 %` a
+**`+21,3 %`** adiantados a meio do arrasto — porque a recusa os tinha isentado da única lei que os
+endireitava. *Suave e linear são duas perguntas, e um arrasto pode ser perfeitamente suave e estar
+21 % fora da recta.*
+
 **Como aplicar:** ao encontrar «medido e rejeitado», leia **o que foi medido** e **contra o quê**.
 Se a sua pergunta é outra (escrita vs velocidade, memória vs tempo), ou se o mecanismo nomeado tem
 uma cura que não existia, a recusa não se aplica — e reconferi-la é obrigação de quem move o número

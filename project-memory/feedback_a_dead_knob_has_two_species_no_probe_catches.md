@@ -44,3 +44,25 @@ dependência, **leia o fonte dela** — e pergunte se o valor **decide** alguma 
 painel, prefira **tabela**. Ver
 [[feedback_a_parameter_that_changes_nothing_is_discarded_downstream]] e
 [[feedback_a_smoke_scene_that_teaches_the_opposite_is_worse_than_no_scene]].
+
+## ⭐ Adenda 2026-09-01 — a TERCEIRA leitura: o consumidor GENÉRICO
+
+O `the_painted_control_reaches_a_consumer` acusou a caixa arrastável do Widget Lab de não ter
+consumidor. Ela **tem**: é um `InteractiveState::Slider` registado, e quem a move é o despacho de
+ponteiro **genérico** (`interaction/dispatch/pointer_*`), que move *qualquer* slider **sem nunca
+nomear um id**. Provado por medição: premir a 75 % da largura põe o valor em `0,75` e o estado em
+`Dragging`, partindo do `populate` do próprio painel.
+
+⇒ **um consumidor genérico lê-se exactamente como consumidor nenhum.** A régua só reconhece
+términos POSITIVOS (`id == X`, braço de `match`, chave de tabela), e um despacho por *tipo de
+estado* não tem nenhum — de propósito, porque é isso que faz o gesto ser o do produto.
+
+**Como distinguir das outras duas:** pergunte *como é que este controlo é servido?*
+- por um braço que **nomeia** o id → a régua vê; se não houver braço, é **morto**.
+- por um despacho que serve o **TIPO** (`Slider`, `Button`, `TextInput`) → a régua **nunca** o vai
+  ver, e a cura é uma **prova medida** na catraca, não um braço inventado só para a calar.
+- ⛔ Inventar um braço `id == X` que não faz nada só para satisfazer a régua **cria** o knob morto
+  que ela procura.
+
+Irmã da entrada `HIER_SEARCH` da mesma catraca, que é invisível por outro motivo (o efeito não sai
+do pintor). *São dois pontos cegos diferentes com o mesmo sintoma.*

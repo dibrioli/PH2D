@@ -21,3 +21,7 @@ metadata:
 - [[project_audio_multichannel_silence]] — áudio: meter vivo, sem som = mute do WirePlumber
 - [[project_painter_t19_latent_red_macos_2026_05_28]] — claimed-green ≠ seu-OS-green
 - [[project_painter_canvas_res_64_not_sim_scale]] — Painter "low-res" = canvas 64px, não escala da sim
+- ⛔ **Um serviço opcional lido de forma OBRIGATÓRIA vira requisito** — `with_registry_ref` (que faz
+  `panic!`) num caminho que corre dentro de `HeroScreen::new` matou **12 testes de chrome** que nada
+  têm com painéis; a variante `_opt` existe exactamente para isso. *Quem paga é quem nunca pediu o
+  serviço* (`line/UIUX`, 2026-08-30, entrega 21)

@@ -32,6 +32,16 @@ integração de 2026-08-24: o `rebase --continue` seguinte reportou o mesmo conf
 como «a resolução não pegou». ⇒ **nunca encadeie por `&&` a partir de um `grep`/`diff`/`test` cuja
 resposta NEGATIVA é o caso bom** — ponha um comando por linha, ou `|| true`.
 
+⚠️⚠️ **E há uma 3.ª forma, que é a mais cara das três, porque o número que ela imprime PARECE
+uma medição:** `| tail -40` sobre o portão do fecho (2026-09-01, `line/motion-value`). O `nextest`
+**cancela na primeira falha**, então o veredito que li — `exit 0` — era o do `tail`, e a suíte
+tinha parado em **1 540 de 14 551**: `13 011` testes **nunca correram**, e a linha de resumo que
+o dizia (`warning: 13011 tests were not run due to test failure`) estava *dentro* das 40 linhas,
+a três linhas do `exit 0` que eu li primeiro. ⇒ **um portão corre por redirecção para ficheiro,
+com `NO_FAIL_FAST=1`, e o `$?` capturado na mesma linha** — e o número que se reporta é o
+`X/Y` do `Summary`, nunca o exit code sozinho. *Uma suíte que passa 1 540 testes e é interrompida
+lê-se exactamente como uma suíte pequena que passou.*
+
 Corolário direto da regra-mãe da DIRETIVA (*verde-de-compilação vale zero*): **verde-de-exit-code
 também vale zero**. Ver [[feedback_no_industrial_claims_without_verification]] e
 [[project_integrator_ship_catches_latents_budget_iterations]].

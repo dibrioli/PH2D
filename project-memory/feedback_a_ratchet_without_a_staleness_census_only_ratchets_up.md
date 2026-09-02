@@ -21,6 +21,17 @@ escrever o irmão que faltava, ele acusou **três** entradas obsoletas na primei
 
 A primeira estava congelada havia **três meses** sobre um ficheiro que já não a devia.
 
+⚠️ **E a mesma doença tem uma 2.ª forma, que não é uma lista de tolerâncias: a LISTA DE ACHADOS
+de uma auditoria** (2026-09-01, `line/motion-value`). A auditoria de seis lentes do `source.lsystem`
+listava **24** achados e terminava com *«⛔ Nada disto foi consertado»*; catorze foram curados na
+mesma jornada, e o documento **nunca soube** — ele não tem censo, e um doc não se auto-mede. Pior:
+o achado **§2.6** (*«`Growth < 1` custa 2,6×–31× a derivação»*) tinha deixado de ser verdade
+**sem ninguém o curar** — a `measure_ratio` saiu do caminho do produto quando outra wave a
+substituiu pela escada de tamanhos. ⇒ *a auditoria estava certa no dia em que foi escrita*, e ler
+uma lista de dívida velha sem re-medir manda alguém consertar o que já não existe (ou, na direcção
+oposta, dá por curado o que ninguém tocou). **Uma lista de achados que sobrevive à jornada precisa
+da mesma metade que uma allowlist: o alvo ainda existe? ainda falha? o número ainda o descreve?**
+
 **Why:** um número tolerado é lido como "o tamanho certo deste ficheiro". Enquanto ele não for
 comparado com a medição, ele deixa de descrever o produto e passa a autorizá-lo — e o próximo
 autor cresce até à folga em vez de até ao cap.

@@ -73,3 +73,14 @@ um resultado — é uma pergunta*, e sem essas colunas ela não tem resposta.
 ⚠️ **E há um corolário sobre campos novos:** quem acrescenta um campo tem de o preencher
 em **todos** os `return` do construtor (eram quatro), e o compilador não ajuda quando o
 tipo tem `Default`. *O gate de presença é o que apanha o que faltou.*
+
+⚠️ **2026-08-31 — e a variante que eu própria construí, no ficheiro escrito para curar isto.**
+A régua nova (`tip_deviation`) media a distância da escultura à saída junto de cada ponta. Uma
+ponta comida **por inteiro** não tem superfície junto do ápice ⇒ não há amostra ⇒ ela era
+**saltada**, e o relatório dizia `0 de 3 pontas acima da barra` sobre um espinho amputado em
+**`−46,6 %`**. *O balde vazio não era ausência de informação: era o defeito máximo.*
+⇒ **Lei:** uma régua escrita a partir dos casos PARCIAIS (os que a foto mostrava) tem de ser
+exercitada pelo caso TOTAL antes de alimentar uma decisão — e a cura é registar o **piso do
+que se sabe** (aqui, o raio da busca: *«mais longe do que eu olhei»*), nunca `continue`.
+⚠️ E o caso **vizinho** fica a saltar de propósito: quando é a ENTRADA que não tem amostra,
+acusar mediria a fixtura. *Os dois lêem-se igual no código e são opostos.*

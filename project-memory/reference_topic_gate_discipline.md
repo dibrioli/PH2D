@@ -61,3 +61,9 @@ metadata:
 - [[feedback_counting_the_work_done_is_not_counting_the_work_delivered]] — FEITO ≠ ENTREGUE: a sonda vai no CONSUMIDOR, não no produtor
 - [[feedback_a_gate_on_the_mark_i_chose_is_green_when_the_marks_premise_is_false]] — gate sobre a MARCA que escolhi ≠ gate sobre o FIM
 - [[feedback_two_good_hypotheses_failing_refutes_the_family_not_the_two]] — duas boas hipóteses a falhar refutam a FAMÍLIA, não as duas
+- [[feedback_an_absence_gate_that_names_a_file_is_disarmed_in_silence]] — gate de AUSÊNCIA que nomeia um ficheiro fica verde-e-vazio depois de um corte; o de presença falha alto. Pergunte ao MÓDULO
+- [[feedback_a_seam_gate_must_assert_both_sides_or_it_measures_the_wrong_half]] — «todo consumidor PERGUNTA» ≠ «alguém RESPONDE»: 87% da barra deixava passar o clique com o gate verde
+- [[feedback_deleting_the_only_painter_leaves_every_registration_gate_green]] — tirar o único PINTOR de um controlo não move gate nenhum; registo e despacho continuam certos
+- [[feedback_a_state_nobody_writes_and_someone_reads_is_an_if_with_a_dead_side]] — estado sem escritor: a marca em falta é o sintoma barato; o ramo morto de quem o lê é o caro
+- [[feedback_a_symptom_remedy_is_cured_by_the_right_input_not_by_deletion]] — remédio-de-sintoma cura-se dando a ENTRADA certa: inerte onde a causa caiu, vivo onde ela fica (2 gates + controlo)
+

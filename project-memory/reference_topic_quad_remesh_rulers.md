@@ -26,3 +26,4 @@ metadata:
 - [[feedback_first_accepted_and_best_are_two_numbers_and_a_give_up_rule_must_use_the_first]] — 1ª ACEITE ≠ MELHOR: a paciência conta desde a primeira, senão apaga o maior ganho
 - [[feedback_a_blind_smoother_converges_to_a_mesh_that_forgot_the_field]] — alisador CEGO converge para uma grade que esqueceu o campo; alinhe ao relevo
 - [[feedback_a_smooth_fixture_cannot_tell_two_smoothers_apart_the_pointed_one_can]] — 3 fixturas lisas empatam 2 alisadores; a que tem PONTA é a que escolhe
+- [[feedback_a_table_that_compares_input_to_output_must_prove_they_are_a_pair]] — tabela entrada→saída tem de provar que são o MESMO sujeito: chamei ENTRADA a uma saída (0 tris, valência 6) e a conclusão inverteu-se; assine com ÁREA+VOLUME, nunca a caixa

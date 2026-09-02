@@ -50,3 +50,26 @@ rejeitar a versão meio-feita de uma coisa certa.*
 Irmã de [[feedback_a_defect_count_without_provenance_names_the_wrong_phase]] (foi
 a proveniência que explicou o zero) e de
 [[feedback_a_suite_of_topological_assertions_is_blind_to_geometry]].
+
+---
+
+## ⛔⛔ E o TERCEIRO gume: uma HIPÓTESE refutada na peça errada lê-se como fechada (2026-08-30)
+
+Instrumentei uma suspeita sobre o casamento dos dois lados de uma costura
+(`CutReport::side_patch_flips`), corri-a na `sculpt_antes.obj`, deu **`0`**, e escrevi no doc
+do campo **e** no plano: *«a hipótese está REFUTADA»*.
+
+⭐ Uma hora depois, na `_base_sculpt.obj` — a peça em que a cadeia de facto **estourava** — a
+mesma coluna deu **`2`**, com `4` índices locais fora de limites. *A suspeita estava certa; ela
+só não dispara em todas as peças.*
+
+⚠️ **E o número só apareceu porque, entretanto, eu tinha trocado o `panic` por «conta e salta»:**
+enquanto a candidata morria, ela nunca chegava a imprimir a coluna que a acusava.
+
+**How to apply:**
+- ⭐ **Uma refutação é uma afirmação sobre a fixtura em que correu**, exactamente como uma
+  confirmação. Escreva a peça no doc, sempre — *«deu 0 na peça X»*, nunca *«é falso»*.
+- ⭐⭐ **Meça a hipótese na peça que EXIBE o sintoma**, não na que está à mão. Aqui o sintoma era
+  um estouro, e a peça que estourava era outra.
+- ⚠️ **Um diagnóstico que morre antes de imprimir não é um diagnóstico.** Guarde o caminho
+  (conte e salte) antes de acreditar num zero.

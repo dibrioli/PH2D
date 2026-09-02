@@ -46,3 +46,23 @@ olha — noutro subsistema (a seleção, o motor a jusante, a timeline) ou **no 
 Ver [[feedback-a-claim-no-mutation-can-kill-is-a-claim-about-nothing]] ·
 [[feedback-counting-the-work-done-is-not-counting-the-work-delivered]] ·
 [[reference-topic-mutation-proofs]]
+
+---
+
+## ⛔ 4.ª ocorrência (2026-08-30) — e o modo novo: a fixtura SIMÉTRICA
+
+Escrevi a guarda certa (`a_n > 0 && b_n > 0` antes de comparar duas razões, para que uma
+amostra **vazia** — que devolve `0,0` — não se leia como *o melhor resultado possível*), e
+escrevi o gate. ⭐ **Escrevi a prova de mutação, e a mutação SOBREVIVEU.**
+
+A causa é a fixtura: eu usava **a mesma malha dos dois lados**. Com a amostra vazia nos dois,
+as razões valem `0,0` as duas, a comparação dá `Equal` e o código **cai no ramo seguinte de
+qualquer maneira** — com ou sem a guarda. *O gate media um caminho em que a guarda é
+irrelevante.*
+
+⭐ **A cura é o par ASSIMÉTRICO:** uma malha com amostra vazia contra uma com amostra medida,
+**empatadas em todas as chaves anteriores**. Sem a guarda, o `0,0` de «não medido» ganha uma
+comparação que devia perder — e o gate morde.
+
+⇒ **Ao gatear uma guarda de «não medido», a fixtura tem de ter o não-medido de UM LADO SÓ.**
+Um par simétrico prova que a lei é reflexiva, não que a guarda existe.

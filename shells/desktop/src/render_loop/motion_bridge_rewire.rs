@@ -317,3 +317,9 @@ mod tests;
 #[cfg(test)]
 #[path = "motion_bridge_rewire_duplicator_tests.rs"]
 mod duplicator_tests;
+
+/// Conduzir um param por fio (doc 58) — irmão cortado no teto de LOC, por RESPONSABILIDADE:
+/// um param não tem porta, então a maquinaria e a recusa dele são outras.
+#[cfg(test)]
+#[path = "motion_bridge_drive_param_tests.rs"]
+mod drive_param_tests;

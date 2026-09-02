@@ -307,6 +307,72 @@ cura como inútil**.
 
 ---
 
+## §4.4 — O 3.º e o 4.º report, e a VARREDURA que o Enio pediu
+
+### (a) *«size random para de funcionar»* — o knob EXISTE
+
+Medido (`which_emitter_properties_survive`): das oito colunas do emissor, **só o `size`** não
+chega — e volta **inteiro** (`0,107 .. 1,887`, a faixa exacta) com **`Point Scale = 1`**, que é
+um controlo que já está no painel.
+
+⛔ **Não é um defeito, é o DEFAULT** (`point_scale = 0`) — e a cura óbvia foi **construída,
+medida e REVERTIDA**: fazer a escala do ponto passar quando a forma não tem `size` apaga o peso
+interpolado do knob, e **dois gates existentes apanharam-no** (`a_point_scale_of_zero_leaves_the_stamp_exactly_as_it_shipped`
+e `the_points_scale_reaches_the_stamp_and_the_weight_interpolates`). *Eles não codificavam o
+defeito — guardavam uma feature medida.* ⇒ a pergunta que fica é se o default deve ser `1`
+agora que **tudo o resto** chega por omissão (§4.3), e essa é do dono.
+
+### (b) *«Shape em Emitter é redundante»* — é o RÓTULO, não o param
+
+O `Shape` do `motion.emitter` é o **`shape_mode`** — *onde a partícula NASCE* (ponto / caixa),
+no grupo **Origin**. Nada tem a ver com a geometria que o duplicator carimba. ⏳ O que colide é
+o rótulo, e o doc-comment do próprio param já dizia *«`shape_mode`, not `shape`: the artist
+reads the LABEL»* — e depois escolheu a palavra que colide.
+
+### (c) *«lfo nem oscillator atuam sobre Angle de Rotate»* — DOIS defeitos diferentes
+
+Medido (`what_can_drive_the_rotate_angle`), o `rot` da corrente ao longo de 8 instantes:
+
+| condutor | tal como sai da caixa | com amplitude 90 |
+|---|---|---|
+| `value.lfo` | **`−0,95 .. 0,95`** | `−85,6 .. 85,6` |
+| `motion.oscillator` | — | **⛔ `rot` fica em `0`** |
+
+1. ⏳ **O LFO FUNCIONA** e parece partido: `amplitude` nasce em **`1`**, e a conduzir um
+   ângulo em GRAUS isso é ±1°. A row veste a faixa do destino (`−180..180`, o
+   `motion_bridge_params_wire` já o faz), logo é legível — mas a primeira impressão é *«não
+   faz nada»*. ⇒ decisão do dono: um condutor deve **semear** a magnitude a partir da faixa
+   que passa a vestir?
+2. ✅ **O oscillator ligava e não fazia NADA.** `Graph::drive_param` verifica **só** que os
+   nós existem e que não se fecha um ciclo — não tem registry, logo **não pode** ver que o
+   `motion.oscillator` emite `Instances/Vec2` (uma corrente por-elemento) e que um param lê a
+   coluna `v`, que só uma saída **escalar** produz. *Um fio VISÍVEL que não age é pior que um
+   knob morto.* ⇒ a 2.ª recusa entra na porta do GESTO (`subgraph::drive`), com a **mesma**
+   régua que o menu usa. Gate `only_a_value_output_may_drive_a_param`, mutação morta.
+
+### (d) A VARREDURA — *«conferir estes bugs nos outros nós»*
+
+`which_nodes_drop_a_streams_columns`: um `motion.emitter` numa entrada, uma grelha na outra, e
+conta-se quantas das **quatro** colunas exclusivas (`id · vel · age · life`) sobrevivem.
+
+| tipo | emissor na porta 0 | emissor na porta 1 |
+|---|---|---|
+| `motion.duplicator` | ok | ok *(curado nesta jornada)* |
+| `motion.combine` · `motion.morph` | ok | ok |
+| **`motion.mixer`** | **⛔ perde as 4** | **⛔ perde as 4** |
+| **`motion.lattice`** | **⛔ perde as 4** | ⛔ |
+| `motion.clone` · `spline_wrap` · `rig.skin_deformer` · `field.shape` | ok | ⛔ |
+| `motion.integrate` | ok | só `vel` |
+
+⚠️ **A leitura é o achado:** perder na **porta 1** é quase sempre **CERTO** — ali entra uma
+jaula, um caminho, um molde, as forças. O que acusa é perder na **porta 0**, o fluxo que
+atravessa: ⏳ **`motion.mixer`** e **`motion.lattice`** ficam nomeados, por medir caso a caso.
+
+⚠️ E a 1.ª versão desta sonda punha uma **grelha dos dois lados** — que não autora coluna
+exclusiva nenhuma — e a tabela inteira saía igual: *a fixtura não continha o fenómeno*.
+
+---
+
 ## §5 — Os tetos: auditados contra o §0.0, e estão bons
 
 | teto | valor | nomeia recurso? |

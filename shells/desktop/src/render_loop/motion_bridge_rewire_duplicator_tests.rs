@@ -376,3 +376,218 @@ fn a_simulation_survives_a_duplicator_in_the_middle() {
          e o `id` (o integrador nao reconhece a particula do tique anterior)."
     );
 }
+
+/// ⛔⛔⛔ **QUE PROPRIEDADES DO EMISSOR SOBREVIVEM AO CARIMBO** — report do Enio, 2026-09-01:
+/// *«ao passar pelo emitter pelo duplicador várias propriedades do emitter param de funcionar,
+/// como size random»*.
+///
+/// ⚠️ **A régua não é *«a coluna existe?»* — é *«ela ainda VARIA?»***. Uma coluna que chega
+/// com o mesmo número em toda linha lê-se como presente e é, na prática, o knob morto: o
+/// `size_random` do emissor sorteia um tamanho por partícula, e um carimbo que o substitua
+/// pelo tamanho da FORMA entrega uma coluna cheia — de um valor só.
+///
+/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture which_emitter_properties_survive`
+#[test]
+#[ignore = "sonda de reproducao, nao um gate"]
+fn which_emitter_properties_survive() {
+    use ph2d_nodegraph::cook::Cook;
+    use std::collections::BTreeMap;
+    let colher_com = |com_dup: bool, ps: f32| -> BTreeMap<String, (f32, f32)> {
+        let mut motion = MotionState::new();
+        let g = &mut motion.doc.graph;
+        let em = g.add_node("motion.emitter".to_string());
+        g.set_param(em, "rate", 400.0);
+        g.set_param(em, "max", 4096.0);
+        // Os DOIS sorteios que o Enio nomeia, longe do neutro -- uma fixtura no ponto
+        // neutro de um knob nao testa esse knob.
+        g.set_param(em, "size", 1.0);
+        g.set_param(em, "size_random", 0.9);
+        g.set_param(em, "speed", 4.0);
+        g.set_param(em, "speed_random", 0.9);
+        let alvo = if com_dup {
+            let shape = g.add_node("motion.grid".to_string());
+            g.set_param(shape, "rows", 1.0);
+            g.set_param(shape, "cols", 1.0);
+            let dup = g.add_node("motion.duplicator".to_string());
+            g.set_param(dup, "point_scale", ps);
+            g.connect(Edge {
+                from: (shape, 0),
+                to: (dup, 0),
+                delayed: false,
+            })
+            .expect("shape");
+            g.connect(Edge {
+                from: (em, 0),
+                to: (dup, 1),
+                delayed: false,
+            })
+            .expect("points");
+            dup
+        } else {
+            em
+        };
+        let mut cook = Cook::new();
+        let mut fora = BTreeMap::new();
+        for t in 0..=20u64 {
+            let ph = t as f64 * (1.0 / 60.0);
+            cook.cook(&motion.doc.graph, &motion.registry, alvo, ph)
+                .expect("cozinha");
+            cook.advance_tick(&motion.doc.graph, &motion.registry, ph)
+                .ok();
+        }
+        if let Some(v) = cook.peek(alvo) {
+            for (nome, col) in v[0].as_stream().columns() {
+                let vals: Vec<f32> = match col {
+                    ph2d_nodegraph::attr::Column::Scalar(a) => a.clone(),
+                    ph2d_nodegraph::attr::Column::Vec2(a) => a.iter().map(|p| p[0]).collect(),
+                    ph2d_nodegraph::attr::Column::Vec3(a) => a.iter().map(|p| p[0]).collect(),
+                    ph2d_nodegraph::attr::Column::Vec4(a) => a.iter().map(|p| p[0]).collect(),
+                };
+                let lo = vals.iter().copied().fold(f32::INFINITY, f32::min);
+                let hi = vals.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+                fora.insert(nome.clone(), (lo, hi));
+            }
+        }
+        fora
+    };
+    let sem = colher_com(false, 0.0);
+    let com = colher_com(true, 0.0);
+    let com_ps = colher_com(true, 1.0);
+    eprintln!(
+        "  coluna     │  SEM duplicator (min..max)│  COM, Point Scale = 0     │  COM, Point Scale = 1     │ veredito"
+    );
+    let mut nomes: Vec<&String> = sem.keys().chain(com.keys()).collect();
+    nomes.sort_unstable();
+    nomes.dedup();
+    for n in nomes {
+        let f = |o: Option<&(f32, f32)>| match o {
+            None => "        AUSENTE       ".to_string(),
+            Some((lo, hi)) => format!("{lo:>10.3} .. {hi:<9.3}"),
+        };
+        let varia = |o: Option<&(f32, f32)>| o.is_some_and(|(lo, hi)| (hi - lo).abs() > 1e-6);
+        let veredito = match (sem.get(n), com.get(n)) {
+            (Some(_), None) => "⛔ DESAPARECEU",
+            (Some(_), Some(_)) if varia(sem.get(n)) && !varia(com.get(n)) => {
+                "⛔ ACHATADA (era sorteada)"
+            }
+            (Some(_), Some(_)) => "ok",
+            _ => "(so' no carimbo)",
+        };
+        eprintln!(
+            "  {n:<10} │ {} │ {} │ {} │ {veredito}",
+            f(sem.get(n)),
+            f(com.get(n)),
+            f(com_ps.get(n))
+        );
+    }
+    eprintln!("  (a 3.a coluna e' com `Point Scale = 1` -- o knob que JA' EXISTE no painel)");
+}
+
+/// ⭐⭐⭐ **A VARREDURA: que outros nós deitam fora as colunas de uma entrada?** — ordem do
+/// Enio, 2026-09-01: *«todos esses bugs que diagnosticamos devem ser conferidos em outros
+/// nós»*.
+///
+/// O defeito do `motion.duplicator` não era sobre aquele nó: era sobre **um nó com DUAS
+/// entradas de corrente que só propaga as colunas de UMA**. Sem `vel` não há o que integrar,
+/// sem `id` o integrador não reconhece a partícula do tique anterior.
+///
+/// ⚠️ **A fixtura TEM de conter o fenómeno**: um dos lados é um `motion.emitter`, que autora
+/// `id · vel · age · life · size` — a 1.ª versão desta sonda punha uma grelha dos dois lados,
+/// que não autora coluna exclusiva nenhuma, e **toda a tabela saía igual**
+/// ([[feedback_a_cure_measured_on_a_fixture_that_lacks_the_phenomenon_reads_as_useless]]).
+/// Cada candidato é medido com o emissor na porta 0 **e** na porta 1: um nó pode preservar
+/// um lado e deitar fora o outro, e é isso que a coluna dupla mostra.
+///
+/// ⚠️ **Uma perda pode ser CERTA** — um nó que ESCOLHE entre A e B deita fora um lado por
+/// definição, e um deformador cuja 2.ª entrada é uma jaula não copia as colunas dela. A
+/// sonda IMPRIME; quem lê decide, com o nó ao lado.
+///
+/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture which_nodes_drop_a_streams_columns`
+#[test]
+#[ignore = "sonda de varredura, nao um gate"]
+fn which_nodes_drop_a_streams_columns() {
+    use ph2d_nodegraph::cook::Cook;
+    const CANDIDATOS: &[&str] = &[
+        "motion.duplicator",
+        "motion.combine",
+        "motion.mixer",
+        "motion.morph",
+        "motion.clone",
+        "motion.lattice",
+        "motion.spline_wrap",
+        "rig.skin_deformer",
+        "field.shape",
+        "motion.integrate",
+    ];
+    // O que o emissor autora e uma grelha nao tem -- se estas sobrevivem, o no' propaga.
+    const EXCLUSIVAS: &[&str] = &["id", "vel", "age", "life"];
+    let correr = |ty: &str, porta_do_emissor: u16| -> Option<Vec<String>> {
+        let mut motion = MotionState::new();
+        let g = &mut motion.doc.graph;
+        let em = g.add_node("motion.emitter".to_string());
+        g.set_param(em, "rate", 200.0);
+        let grid = g.add_node("motion.grid".to_string());
+        g.set_param(grid, "rows", 2.0);
+        g.set_param(grid, "cols", 2.0);
+        let n = g.add_node(ty.to_string());
+        let out = g.add_node("motion.output".to_string());
+        let outra = 1 - porta_do_emissor;
+        g.connect(Edge {
+            from: (em, 0),
+            to: (n, porta_do_emissor),
+            delayed: false,
+        })
+        .ok()?;
+        g.connect(Edge {
+            from: (grid, 0),
+            to: (n, outra),
+            delayed: false,
+        })
+        .ok()?;
+        g.connect(Edge {
+            from: (n, 0),
+            to: (out, 0),
+            delayed: false,
+        })
+        .ok()?;
+        let mut cook = Cook::new();
+        for t in 0..4u64 {
+            let ph = t as f64 * (1.0 / 60.0);
+            cook.cook(&motion.doc.graph, &motion.registry, out, ph)
+                .ok()?;
+            cook.advance_tick(&motion.doc.graph, &motion.registry, ph)
+                .ok();
+        }
+        let v = cook.peek(out)?;
+        Some(v[0].as_stream().columns().map(|(k, _)| k.clone()).collect())
+    };
+    let resumo = |cols: Option<Vec<String>>| -> String {
+        match cols {
+            None => "        (nao liga)       ".to_string(),
+            Some(c) => {
+                let vivas: Vec<&str> = EXCLUSIVAS
+                    .iter()
+                    .copied()
+                    .filter(|e| c.iter().any(|k| k == e))
+                    .collect();
+                match vivas.len() {
+                    0 => "⛔ perde TODAS as 4     ".to_string(),
+                    4 => "ok  (as 4 sobrevivem)   ".to_string(),
+                    k => format!("⚠️  {k} de 4: {vivas:?}"),
+                }
+            }
+        }
+    };
+    eprintln!("  tipo                  │ emissor na porta 0      │ emissor na porta 1");
+    for ty in CANDIDATOS {
+        eprintln!(
+            "  {ty:<21} │ {} │ {}",
+            resumo(correr(ty, 0)),
+            resumo(correr(ty, 1))
+        );
+    }
+    eprintln!("  (as EXCLUSIVAS sao as que so' o emissor autora: id · vel · age · life)");
+    eprintln!(
+        "  (a sonda IMPRIME; uma perda pode ser CERTA -- um no' que ESCOLHE entre A e B larga um lado por definicao)"
+    );
+}

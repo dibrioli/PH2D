@@ -121,21 +121,57 @@ pub(super) fn drive(
     to: NodeId,
     param: &str,
 ) {
+    // ⛔⛔⛔ **A SEGUNDA RECUSA, que este doc dizia não existir** — report do Enio,
+    // 2026-09-01: *«lfo nem oscillator conseguem atuar sobre Angle de Rotate»*.
+    //
+    // Um param conduzido lê a coluna `v` do condutor (`param_source::driven_value`), e só um
+    // porto **escalar** a produz. O `Graph::drive_param` não tem registry, logo **não pode**
+    // verificar isso: ele confere que os nós existem e que não se fecha um ciclo, e aceita
+    // qualquer fonte. ⇒ ligar um `motion.oscillator` (que emite `Instances/Vec2`, uma
+    // corrente por-elemento) a um param **é aceite e não faz nada**: medido em
+    // `what_can_drive_the_rotate_angle`, o `rot` fica em `0` para sempre.
+    //
+    // ⚠️ *Um fio VISÍVEL que não age é pior que um knob morto* — o artista vê a ligação e
+    // conclui que ela age. É a mesma frase que o `param_choices` já escrevera sobre os knobs
+    // que o painel esconde, e a porta do GESTO não a honrava.
+    //
+    // ⚠️ **A regra é a MESMA que o menu usa** (`param_choices` declara o alvo como
+    // `Instances/Scalar`): uma segunda formulação seria o defeito com o sinal trocado.
+    if !source_can_drive(motion, from) {
+        toasts.push(ph2d_editor::Toast::warning(
+            "Can't drive: that output is a per-element stream, not a value",
+        ));
+        return;
+    }
     let pre = motion.doc.clone();
     match motion.doc.graph.drive_param(to, param, from) {
         Ok(()) => {
             motion.history.push_undo(pre);
             motion.pump.mark_dirty();
         }
-        // The only structural refusal a param wire can hit: it would close a loop. (A param
-        // has no "already connected" case — a second source replaces the first, exactly as
-        // re-plugging an input socket does.)
+        // A outra recusa estrutural: fecharia um laço. (Um param não tem caso «já ligado» —
+        // uma segunda fonte substitui a primeira, como re-plugar um socket de entrada.)
         Err(_) => {
             toasts.push(ph2d_editor::Toast::warning(
                 "Can't drive: that would make a loop",
             ));
         }
     }
+}
+
+/// **Esta saída produz um VALOR?** — a pergunta que separa um condutor de uma corrente.
+///
+/// ⚠️ **`Dim::Scalar` é o proxy DECLARADO** do que o cook exige (a coluna `v`): é o mesmo
+/// que o `param_choices` põe no alvo que oferece, então o menu e o gesto respondem pela
+/// mesma régua. Um nó desconhecido ou uma porta que não existe respondem **não** — o
+/// default recusa, que é o lado seguro (um fio que não aparece é uma ausência; um que
+/// aparece e não age é uma mentira).
+pub(super) fn source_can_drive(motion: &MotionState, from: (NodeId, u16)) -> bool {
+    super::fold::manifest_of(motion, from.0).is_some_and(|m| {
+        m.outputs
+            .get(from.1 as usize)
+            .is_some_and(|p| p.ty.dim == ph2d_nodegraph::port::Dim::Scalar)
+    })
 }
 
 /// The node a readout should point at when the artist probes a CARD: what the group

@@ -133,7 +133,7 @@ pub(crate) fn box_with_edge(
     crate::ops_joint::intersection_joint_n(
         &[q[0].clone(), q[1].clone(), q[2].clone()],
         &arestas,
-        crate::ops_joint::Edge { round, chamfer },
+        crate::ops_joint::Edge::square(round, chamfer),
     )
 }
 

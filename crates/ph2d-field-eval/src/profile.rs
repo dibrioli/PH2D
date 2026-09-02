@@ -179,7 +179,7 @@ pub fn extrude_from(flat: &Tree, half_height: f64, round: f64, chamfer: f64) -> 
         return crate::ops_joint::intersection_joint(
             &flat,
             &laje,
-            crate::ops_joint::Edge { round, chamfer },
+            crate::ops_joint::Edge::square(round, chamfer),
         );
     }
     if round <= 0.0 {

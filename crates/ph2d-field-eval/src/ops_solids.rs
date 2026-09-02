@@ -1,4 +1,4 @@
-//! ⭐⭐⭐ **OS SÓLIDOS QUE UM CATÁLOGO VETORIAL NÃO PODIA TER** (W106) — as formas que só existem em
+//! ⭐⭐⭐ **OS SÓLIDOS QUE UM CATÁLOGO VETORIAL NÃO PODIA TER** (W107) — as formas que só existem em
 //! três dimensões, e que a fila deste módulo **nunca chegou a contar**.
 //!
 //! # Por que este arquivo existe, e o que ele corrige
@@ -40,7 +40,7 @@
 
 use fidget::context::Tree;
 
-use crate::ops::{length2, length3, sharp_corner_radius};
+use crate::ops::{length2, length3};
 
 /// ⭐⭐ **OCTAEDRO regular** — `radius` é a distância do centro a um VÉRTICE.
 ///
@@ -58,15 +58,16 @@ use crate::ops::{length2, length3, sharp_corner_radius};
 /// ⇒ fica a construção da casa: exacta dentro, subestimador junto às quinas de fora, `‖∇f‖ ≤ 1` por
 /// definição — **a mesma troca que o prisma e o cone já fazem**, e o `round` funciona nela.
 ///
-/// ⚠️ O meio-ângulo da quina é `54,7°` (as normais vizinhas fazem `70,53°`), logo **obtuso**: o
-/// [`sharp_corner_radius`] deixa-o intocado, que é o que a medição da W104-ter pede.
+/// ⚠️ As normais de duas faces vizinhas fazem `70,53°` (`cos ψ = 1/3`), logo o diedro interno é
+/// **obtuso** (`109,5°`) — e desde a W107 o operador arredonda-o com o arco VERDADEIRO, que num
+/// obtuso é *menor* do que a lei ortogonal entregava. Ver [`crate::ops::union_round_at`].
 pub fn sd_octahedron(radius: f64, round: f64, chamfer: f64) -> Tree {
     // A face é `x + y + z = radius` no octante positivo; normalizada, `(x+y+z−r)/√3`.
     let r = radius;
     let inv = 1.0 / 3.0_f64.sqrt();
-    // O meio-ângulo interno entre duas faces vizinhas: `cos ψ = 1/3` ⇒ `α = (π − ψ)/2`.
-    let alfa = (std::f64::consts::PI - (1.0_f64 / 3.0).acos()) * 0.5;
-    let raio = sharp_corner_radius(alfa, round);
+    // ⭐ **As normais de duas faces vizinhas fazem `cos ψ = 1/3`** — e é esse o número que o
+    // operador quer, sem passar por ângulo nenhum (ver [`crate::ops::union_round_at`]).
+    const COS_FACES: f64 = 1.0 / 3.0;
     let sinais: Vec<[f64; 3]> = [1.0_f64, -1.0]
         .iter()
         .flat_map(|&sx| {
@@ -89,19 +90,15 @@ pub fn sd_octahedron(radius: f64, round: f64, chamfer: f64) -> Tree {
             let f = face(s);
             faces = Some(faces.map_or_else(
                 || f.clone(),
-                // ⚠️ **O filete entra COMPENSADO e o chanfro entra CRU**, e a assimetria é
-                // medida: a compensação existe porque o operador de filete só é um arco a 90°
-                // (ver `ops::sd_star`), e o plano do chanfro **é** exacto — ele recua `c` em
-                // cada face seja qual for o ângulo. Compensar os dois daria um chanfro que não
-                // entrega o número pedido.
+                // ⚠️ **O ÂNGULO vale para o filete e não para o chanfro**, e a assimetria é
+                // geométrica: o operador de filete media a distância com Pitágoras e por isso
+                // precisava de saber o ângulo (`ops::union_round_at`), enquanto o plano do
+                // chanfro **é** exacto — ele recua `c` em cada face seja qual for o ângulo.
                 |w: Tree| {
                     crate::ops_joint::intersection_joint(
                         &w,
                         &f,
-                        crate::ops_joint::Edge {
-                            round: raio,
-                            chamfer,
-                        },
+                        crate::ops_joint::Edge::at(round, chamfer, COS_FACES),
                     )
                 },
             ));
@@ -127,10 +124,11 @@ pub fn sd_octahedron(radius: f64, round: f64, chamfer: f64) -> Tree {
         }
     }
     debug_assert_eq!(arestas.len(), 12, "um octaedro tem doze arestas");
+    // ⚠️ O ângulo viaja, e a mistura n-ária ainda NÃO o lê — ver `ops_joint::intersection_joint`.
     crate::ops_joint::intersection_joint_n(
         &corpo,
         &arestas,
-        crate::ops_joint::Edge { round, chamfer },
+        crate::ops_joint::Edge::at(round, chamfer, COS_FACES),
     )
 }
 
@@ -199,7 +197,11 @@ pub fn sd_round_cone(bottom: f64, top: f64, half_height: f64) -> Tree {
 pub fn sd_cut_sphere(radius: f64, cut: f64, round: f64, chamfer: f64) -> Tree {
     let esfera = length3(&Tree::x(), &Tree::y(), &Tree::z()) - Tree::constant(radius);
     let plano = Tree::z() - Tree::constant(cut);
-    crate::ops_joint::intersection_joint(&esfera, &plano, crate::ops_joint::Edge { round, chamfer })
+    crate::ops_joint::intersection_joint(
+        &esfera,
+        &plano,
+        crate::ops_joint::Edge::square(round, chamfer),
+    )
 }
 
 /// ⭐⭐ **CÚPULA OCA** — uma tigela, um capacete, uma antena.
@@ -229,7 +231,11 @@ pub fn sd_cut_hollow_sphere(
     let casca = (length3(&Tree::x(), &Tree::y(), &Tree::z()) - Tree::constant(radius)).abs()
         - Tree::constant(thickness * 0.5);
     let plano = Tree::z() - Tree::constant(cut);
-    crate::ops_joint::intersection_joint(&casca, &plano, crate::ops_joint::Edge { round, chamfer })
+    crate::ops_joint::intersection_joint(
+        &casca,
+        &plano,
+        crate::ops_joint::Edge::square(round, chamfer),
+    )
 }
 
 /// ⭐⭐⭐ **ELO DE CORRENTE** — a forma que nada neste catálogo exprime, e a que mais se nota quando
@@ -272,7 +278,11 @@ pub fn sd_solid_angle(radius: f64, angle: f64, round: f64, chamfer: f64) -> Tree
     let rho = length2(&Tree::x(), &Tree::y());
     let esfera = length3(&Tree::x(), &Tree::y(), &Tree::z()) - Tree::constant(radius);
     let cone = rho * Tree::constant(c) - Tree::z() * Tree::constant(s);
-    crate::ops_joint::intersection_joint(&esfera, &cone, crate::ops_joint::Edge { round, chamfer })
+    crate::ops_joint::intersection_joint(
+        &esfera,
+        &cone,
+        crate::ops_joint::Edge::square(round, chamfer),
+    )
 }
 
 #[cfg(test)]

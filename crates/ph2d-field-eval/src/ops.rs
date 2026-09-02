@@ -16,7 +16,6 @@
 //!   fórmula a mais seria a segunda resposta à mesma pergunta.
 
 use fidget::context::Tree;
-use std::f64::consts::FRAC_1_SQRT_2;
 
 // ⚠️ Ver a nota do [`crate::ops_norm`]: o corte não pode custar uma reescrita nos chamadores.
 pub(crate) use crate::ops_norm::{length2, length3, safe_sqrt};
@@ -24,8 +23,8 @@ pub(crate) use crate::ops_norm::{length2, length3, safe_sqrt};
 // ⚠️ **O `pub use` é o que mantém `ops::union` e `ops::Blended`** — cortar um arquivo não pode
 // custar uma reescrita em cada sítio que o chamava (a mesma lei do `ph2d_field::Primitive`).
 pub use crate::ops_bool::{
-    Blended, difference, intersection, intersection_round_n, union, union_chamfer, union_round,
-    union_round_n, union_sharp, union_smooth,
+    Blended, difference, intersection, intersection_round_at, intersection_round_n, union,
+    union_chamfer, union_round, union_round_at, union_round_n, union_sharp, union_smooth,
 };
 
 // ⚠️ A mesma lei: a caixa mudou-se para o [`crate::ops_box`] e os chamadores não mexeram.
@@ -70,7 +69,7 @@ pub fn sd_cylinder(radius: f64, half_height: f64, round: f64, chamfer: f64) -> T
     slab_and_walls(
         &parede,
         half_height,
-        crate::ops_joint::Edge { round, chamfer },
+        crate::ops_joint::Edge::square(round, chamfer),
     )
 }
 
@@ -78,84 +77,6 @@ pub fn sd_cylinder(radius: f64, half_height: f64, round: f64, chamfer: f64) -> T
 pub fn sd_torus(major: f64, minor: f64) -> Tree {
     let q = length2(&Tree::x(), &Tree::y()) - Tree::constant(major);
     length2(&q, &Tree::z()) - Tree::constant(minor)
-}
-
-/// ⭐⭐⭐ **O FILETE DESTA CASA SÓ É UM ARCO A 90°, e as DUAS curas foram medidas e rejeitadas**
-/// (W104).
-///
-/// # O achado
-///
-/// A interseção arredondada publicada é `length2(r + a, r + b) − r`, e o zero dela é
-/// `(a+r)² + (b+r)² = r²` — o círculo de raio `r` à volta do ponto que dista `r` das duas faces,
-/// que é **exactamente** o centro do filete. ⚠️ Mas `length2(a, b)` só é a distância euclidiana se
-/// os dois gradientes forem **ortogonais**. ⇒ o vértice recua `(1 − 1/√2)·r/sin α` em vez do
-/// `r·(1/sin α − 1)` de um arco verdadeiro:
-///
-/// | meio-ângulo interno `α` | recuo do operador | recuo de um arco de raio `r` | razão |
-/// |---|---|---|---|
-/// | **45°** (quina recta) | `0,414 r` | `0,414 r` | **1,00** |
-/// | 30° | `0,586 r` | `1,000 r` | 1,71 |
-/// | **19,2°** (ponta de estrela) | `0,892 r` | `2,046 r` | **2,29** |
-///
-/// ⇒ o mesmo número dá filetes de tamanhos diferentes conforme o ângulo da quina, e uma ponta muito
-/// aguda arredonda **2,3× menos** do que se pediu.
-///
-/// # ⛔⛔ As duas curas, CONSTRUÍDAS e REJEITADAS pela sonda de arestas
-///
-/// A régua é `measure_sharp_edges` (fração da superfície sobre um vinco, com o filete a metade do
-/// limite):
-///
-/// | construção | prisma | estrela |
-/// |---|---|---|
-/// | **o operador, tal como shipa** | **`0,0 %` · 2°** | **`0,1 %` · 35°** |
-/// | canto **exato** (`min(max(f1,f2,corda), disco)` no referencial `(u,w)` do par de planos) | `0,4 %` · 31° | `1,8 %` · 61° |
-/// | raio **compensado** pelo ângulo (`r·(1−sin α)/(1−1/√2)`) | `5,4 %` · 50° | `0,2 %` · 48° |
-///
-/// ⭐ **O canto exato dá o arco certo e é 1-Lipschitz** — e crava no **vértice de 3 vias**, onde uma
-/// quina lateral encontra o aro: ele é `min`/`max` de ramos com troca **dura**, e os dois filetes
-/// que ali se encontram não concordam. *O operador é LISO, e a suavidade dele no vértice vale mais
-/// do que a exactidão dele na aresta.*
-///
-/// ⭐ **A compensação dá o recuo certo** — e parte o prisma pela razão simétrica: ela torna o recuo
-/// igual **fazendo a largura da mistura diferente** em cada aresta, e onde duas misturas de larguras
-/// diferentes se encontram nasce o mesmo vinco. *«Arredondar por igual» tem duas leituras — o recuo
-/// e a largura — e só uma delas sobrevive a um vértice.*
-///
-/// ⇒ fica o operador cru, e a dependência do ângulo fica **nomeada e medida**.
-/// ⭐⭐⭐ **O RAIO QUE UMA QUINA AGUDA PEDE — e SÓ quando ele ALARGA** (W104-ter).
-///
-/// # A conta
-///
-/// O operador recua o vértice `(1 − 1/√2)·r/sin α`, e um arco verdadeiro recua `r·(1/sin α − 1)`
-/// (ver a nota acima). Passar-lhe `r·(1 − sin α)/(1 − 1/√2)` iguala os dois em qualquer ângulo, e a
-/// 45° o factor é **exactamente 1** — a quina recta não se mexe um bit.
-///
-/// # ⛔⛔ Aplicá-lo aos DOIS lados foi medido e rejeitado; aplicá-lo a UM funciona
-///
-/// A W104 experimentou a compensação em **todas** as quinas e o prisma piorou de `0,0 %` para
-/// `5,4 %` de aresta viva. ⚠️ **A causa não era a compensação — era o SENTIDO dela.** Numa quina
-/// **obtusa** (`α > 45°`, como os 60° de um hexágono) o factor é **< 1**: ele *estreita* a mistura, e
-/// onde uma mistura estreita encontra a do aro, que não estreitou, nasce o vinco. Numa quina
-/// **aguda** (`α < 45°`, como os 19° da ponta de uma estrela) ele *alarga*, e uma mistura mais larga
-/// **engole** a diferença em vez de a marcar.
-///
-/// ⇒ `max(1, factor)`: compensa-se quem é agudo, e quem é obtuso fica intocado. Medido na estrela,
-/// com a sonda de **CURVATURA** — a que vê o risco no sombreado, que a de vinco não vê:
-///
-/// | | quebra de curvatura média | pontos maus na ponta |
-/// |---|---|---|
-/// | sem compensar | `3,71` | **1 940** |
-/// | **compensado** | **`1,19`** | **0** |
-///
-/// ⚠️ E a mistura alargada **cabe**: ela estende-se `comp·r` do vértice ao longo das duas arestas, e
-/// na estrela `2,29·r + r < |u|` (o comprimento da aresta) com folga de `1,5×` no filete máximo —
-/// o `star_round_limit`, que já é mais apertado, garante-o.
-pub(crate) fn sharp_corner_radius(alpha: f64, r: f64) -> f64 {
-    const RIGHT: f64 = 1.0 - FRAC_1_SQRT_2;
-    if !(1.0e-6..std::f64::consts::FRAC_PI_2).contains(&alpha) {
-        return r;
-    }
-    r * ((1.0 - alpha.sin()) / RIGHT).max(1.0)
 }
 
 /// ⭐⭐⭐ **A LEI DAS TRÊS FORMAS DA W101, numa frase:** *um sólido de parede reta é a interseção de
@@ -289,7 +210,7 @@ pub fn sd_cone(bottom: f64, top: f64, half_height: f64, round: f64, chamfer: f64
     slab_and_walls(
         &tapered_wall(&radial, bottom, top, half_height),
         half_height,
-        crate::ops_joint::Edge { round, chamfer },
+        crate::ops_joint::Edge::square(round, chamfer),
     )
 }
 
@@ -326,12 +247,13 @@ pub fn sd_prism(
     let k = beta.cos();
     let (b, t) = (bottom * k, top * k);
     let m = (t - b) / (2.0 * half_height);
-    // ⭐ **O meio-ângulo interno da quina lateral, com a inclinação dentro**: as normais de duas
-    // paredes vizinhas são `(cos φ, sin φ, −m)·k`, e o cosseno entre elas é `(cos 2β + m²)/(1 + m²)`.
-    // ⚠️ Num hexágono isto dá 60° e o [`sharp_corner_radius`] não faz nada; num **triângulo** dá 30°
-    // e ele alarga — que é onde a quina é aguda o bastante para precisar.
-    let cos_psi = ((2.0 * beta).cos() + m * m) / (1.0 + m * m);
-    let alfa_lateral = (std::f64::consts::PI - cos_psi.clamp(-1.0, 1.0).acos()) * 0.5;
+    // ⭐ **O cosseno entre as normais de duas paredes vizinhas, com a inclinação dentro**: elas são
+    // `(cos φ, sin φ, −m)·k`, logo `n_a · n_b = (cos 2β + m²)/(1 + m²)`.
+    //
+    // ⭐⭐ **É este número que o operador quer, sem passar por ângulo nenhum** — ver
+    // [`crate::ops::union_round_at`]. Num hexágono ele dá `−½` (quina obtusa de 120°) e num
+    // **triângulo** `+½` (aguda de 60°), e a mesma lei serve os dois.
+    let cos_psi = (((2.0 * beta).cos() + m * m) / (1.0 + m * m)).clamp(-1.0, 1.0);
     let parede = |i: u32| {
         let ang = std::f64::consts::TAU * (f64::from(i) + 0.5) / f64::from(n);
         let radial = Tree::x() * Tree::constant(ang.cos()) + Tree::y() * Tree::constant(ang.sin());
@@ -353,10 +275,7 @@ pub fn sd_prism(
                 crate::ops_joint::intersection_joint(
                     &w,
                     &d,
-                    crate::ops_joint::Edge {
-                        round: sharp_corner_radius(alfa_lateral, round),
-                        chamfer,
-                    },
+                    crate::ops_joint::Edge::at(round, chamfer, cos_psi),
                 )
             },
         ));
@@ -366,7 +285,7 @@ pub fn sd_prism(
         return slab_and_walls(
             &walls,
             half_height,
-            crate::ops_joint::Edge { round, chamfer },
+            crate::ops_joint::Edge::square(round, chamfer),
         );
     }
     // ⭐⭐⭐ **AS PAREDES, AS TAMPAS E TODOS OS CHANFROS NUMA MISTURA SÓ** — ver
@@ -391,7 +310,7 @@ pub fn sd_prism(
     crate::ops_joint::intersection_joint_n(
         &corpo,
         &arestas,
-        crate::ops_joint::Edge { round, chamfer },
+        crate::ops_joint::Edge::square(round, chamfer),
     )
 }
 
@@ -419,7 +338,7 @@ pub fn sd_wedge(half: [f64; 3], round: f64, chamfer: f64) -> Tree {
     let plano = Tree::x() * Tree::constant(nx) + Tree::z() * Tree::constant(nz);
     // ⭐ **Os dois números atravessam as DUAS juntas da cunha** — as arestas da caixa e o corte
     // inclinado —, senão chanfrar uma cunha deixaria metade das arestas por chanfrar.
-    let e = crate::ops_joint::Edge { round, chamfer };
+    let e = crate::ops_joint::Edge::square(round, chamfer);
     if chamfer <= 0.0 {
         return crate::ops_joint::intersection_joint(&sd_box(half, round, chamfer), &plano, e);
     }
@@ -472,7 +391,11 @@ pub fn sd_torus_arc(major: f64, minor: f64, angle: f64, round: f64, chamfer: f64
     // ⭐⭐ **Os DOIS aros do corte arredondam** (W104): a sonda de arestas media `30 %` da superfície
     // deste arco sobre um vinco de `88°`, e ele **não tinha controle de filete nenhum** — era a
     // única forma do catálogo com aresta autorada e sem o slider que a trata.
-    crate::ops_joint::intersection_joint(&torus, &setor, crate::ops_joint::Edge { round, chamfer })
+    crate::ops_joint::intersection_joint(
+        &torus,
+        &setor,
+        crate::ops_joint::Edge::square(round, chamfer),
+    )
 }
 
 /// União dura: `min(a, b)`. É aqui que nasce a quina viva.
@@ -528,12 +451,22 @@ pub fn sd_star(
     let n = points.max(3);
     let beta = std::f64::consts::PI / f64::from(n);
     // ⭐ **Os meio-ângulos das duas quinas saem da MESMA aresta** (`lado` é o comprimento dela): na
-    // ponta `sin α = inner·sin β/|u|`, no vale `sin α = outer·sin β/|u|`. São os mesmos que o
-    // [`ph2d_field::radius::star_round_limit`] usa. ⚠️ Só a **ponta** é compensada — ela é aguda; o
-    // vale é obtuso e o `max(1, ·)` do [`sharp_corner_radius`] deixa-o em paz, que é o que a medição
-    // pede (a região do vale já lê **zero** pontos de curvatura má).
+    // ponta `sin α = inner·sin β/|u|`, que é o mesmo que o
+    // [`ph2d_field::radius::star_round_limit`] usa.
+    //
+    // ⭐⭐ **E o do VALE deriva-se do da ponta, sem um segundo `asin`:** no triângulo
+    // `centro–vale–ponta` os ângulos somam `π`, e a metade do entalhe é o suplemento do ângulo em
+    // `V` ⇒ `α_vale = α_ponta + β` — ⚠️ a rota pelo `asin(outer·sin β/|u|)` devolve o **suplemento**
+    // sempre que o vale passa de `90°`, e uma estrela magra fá-lo.
+    //
+    // ⚠️ **As duas são quinas de espécie oposta e a lei é UMA:** a ponta é convexa (uma
+    // intersecção) e o vale é côncavo (uma união do entalhe), e o que o operador quer nos dois casos
+    // é o cosseno das normais exteriores da cunha que está a ser arredondada — ver
+    // [`union_round_at`].
     let lado = (outer * outer + inner * inner - 2.0 * outer * inner * beta.cos()).sqrt();
     let alfa_ponta = (inner * beta.sin() / lado).clamp(0.0, 1.0).asin();
+    let cos_ponta = -(2.0 * alfa_ponta).cos();
+    let cos_vale = -(2.0 * (alfa_ponta + beta)).cos();
     let polar = |r: f64, a: f64| [r * a.cos(), r * a.sin()];
     // ⛔ **E o disco NÃO recua com o filete** — foi tentado e a medição disse que é inerte.
     //
@@ -553,10 +486,7 @@ pub fn sd_star(
         let ponta = crate::ops_joint::intersection_joint(
             &half_plane(before, tip),
             &half_plane(tip, after),
-            crate::ops_joint::Edge {
-                round: sharp_corner_radius(alfa_ponta, round),
-                chamfer,
-            },
+            crate::ops_joint::Edge::at(round, chamfer, cos_ponta),
         );
         // ⚠️ E o SECTOR **CORTA A SECO**, de propósito: ele não é uma aresta da peça, é a divisória
         // entre duas pipas vizinhas. Arredondá-lo abriria um sulco **dentro** do sólido.
@@ -588,7 +518,11 @@ pub fn sd_star(
         pontas = Some(pontas.map_or_else(
             || pipa.clone(),
             |w: Tree| {
-                crate::ops_joint::union_joint(&w, &pipa, crate::ops_joint::Edge { round, chamfer })
+                crate::ops_joint::union_joint(
+                    &w,
+                    &pipa,
+                    crate::ops_joint::Edge::at(round, chamfer, cos_vale),
+                )
             },
         ));
     }
@@ -599,7 +533,7 @@ pub fn sd_star(
     slab_and_walls(
         &pontas.min(disco),
         half_height,
-        crate::ops_joint::Edge { round, chamfer },
+        crate::ops_joint::Edge::square(round, chamfer),
     )
 }
 

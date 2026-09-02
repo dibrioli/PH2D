@@ -5787,6 +5787,9 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅⭐⭐⭐ **UM VERBO POR FORMA** — a operação sai do grupo e entra em cada objeto (etapa **1** de 3) | a receita lê-se na Hierarquia (`UNI`/`SUB`/`INT`/`BSE`, os selos do vetorial) · ausência = **herança** · a base **semeia** e guarda o verbo dela | §93 |
 | ✅⭐⭐⭐ **(2) O RAIO POR OBJETO** — linha **Joint**, derivada, e escrever nela **materializa** o verbo | ⭐ o painel não mudou (as linhas saem do `params_of`) · ⚠️ **Fillet** = as arestas da forma · **Joint** = o encontro, e o grupo passa a dizer `Joint` (é o padrão) | §94 |
 | ✅⭐⭐⭐ **(3) O CHANFRO** — `Fillet · Chamfer · Organic`, **três** chips (a aresta viva é o raio zero) | ⭐ uma fórmula só, exacta · ⚠️ **DUAS réguas** (recuo · mordida) e nenhum carácter bate as duas: o orgânico calibra-se pela **mordida**, o chanfro **não se calibra** · ⛔ 2 mutantes sobreviveram e um era defeito VIVO | §95 |
+| ✅⭐⭐⭐ **O FILETE É UM ARCO EM QUALQUER QUINA** — o operador deixa de supor que as duas faces são perpendiculares | ⭐ o recuo passa a ser `r·(1/sin α − 1)` em todo ângulo; a estrela vai de `3,71` para **`0,66`** de quebra de curvatura · ⚠️ a lei antiga errava nos DOIS sentidos (`2,29×` a menos numa ponta, `2,19×` a MAIS numa parede de hexágono) · ⛔ a 1.ª versão deslocava a FACE | §108 |
+| ⛔ O **CHANFRO** tem a mesma mentira (`1,61×` numa ponta de estrela) | **RECUSA MEDIDA**: a lei honesta existe, tem gate e **piora** a peça — o filete depois do chanfro mistura três superfícies e a `union_round_n` supõe todos os pares ortogonais | §108.6 |
+| ⏳ O teto de `round` da **estrela** é `12,3 %` do bordo, contra `43`–`60 %` das outras | ela é a única em que a mistura é uma faixa estreita a atravessar uma face grande | §104.1 |
 
 - ⭐⭐⭐ **W97 (§93): UM VERBO POR FORMA — e o desenho já era LEI na metade 2D deste app.** Pedido do
   Enio (*«a hierarquia fica mais confusa criando vários parentescos… colocar a operação dentro de cada
@@ -10464,3 +10467,144 @@ O censo mede o **representante DELE**, escrito à mão dentro do teste. A paleta
 **construtor de cada linha** — literalmente o que o botão faz. *Onde os objectos NASCEM é a fixtura
 que os gates não têm.*
 
+
+---
+
+## §108 — W107: ⭐⭐⭐ O FILETE PASSA A SER UM ARCO EM QUALQUER QUINA — o operador aprende o ângulo (02/09)
+
+**A escolha do Enio**, posta lado a lado com mais três: *«o filete honesto»*. A §102.4 tinha medido
+que o arredondamento desta casa só é um arco de raio `r` a **90°**, e as §102.5 e §104.3 tinham
+construído e rejeitado as duas curas conhecidas. Esta wave dissolve a recusa.
+
+### §108.1 — ⛔ O achado, relido: a lei antiga erra nos DOIS sentidos
+
+A §102.4 escreveu que uma ponta aguda arredonda **de menos**. ⚠️ **A outra metade não estava
+escrita:** uma quina **obtusa** arredonda **de mais**, e pelo mesmo mecanismo.
+
+| quina | `α` | recuo do arco `r·(1/sin α − 1)` | recuo da lei antiga `(1−1/√2)·r/sin α` | erro |
+|---|---|---|---|---|
+| ponta de estrela | `19,2°` | `2,046 r` | `0,892 r` | **`2,29×` a MENOS** |
+| quina recta | `45,0°` | `0,414 r` | `0,414 r` | `1,00` |
+| aresta do octaedro | `54,7°` | `0,225 r` | `0,359 r` | **`1,60×` a MAIS** |
+| vale de estrela | `55,2°` | `0,218 r` | `0,357 r` | **`1,63×` a MAIS** |
+| parede de hexágono | `60,0°` | `0,155 r` | `0,338 r` | **`2,19×` a MAIS** |
+
+⇒ *o mesmo slider dava três tamanhos diferentes **na mesma peça***: a estrela tem a ponta, o vale e
+o aro, e os três liam o número de maneiras diferentes.
+
+### §108.2 — ⭐⭐⭐ A cura: o operador deixa de supor ortogonalidade
+
+`length2(u, v)` só é a distância euclidiana se os dois gradientes forem perpendiculares. Com
+`c = n_a·n_b` (o cosseno das normais **exteriores**, `−cos 2α` para um diedro interno `2α`), a
+distância verdadeira ao centro do filete é `√((u² + v² − 2c·u·v)/(1 − c²))`, e o recuo no vértice
+sai `r·(√(2/(1+c)) − 1) = r·(1/sin α − 1)` — **o arco, em qualquer ângulo**.
+
+⭐ **A `c = 0` a expressão é a fórmula publicada termo a termo**, e o código devolve literalmente a
+outra função ⇒ **toda forma ortogonal é byte a byte o que era**.
+
+⛔⛔ **E ela NÃO é a «compensação por raio» que a W104 rejeitou.** Aquela mexia no `r` para acertar o
+recuo, e por isso deixava a **largura** da mistura diferente em cada aresta — foi isso que partiu o
+prisma (`0,0 % → 5,4 %`). Aqui o raio **é** o raio: o que muda é a métrica com que as duas
+distâncias se combinam, e ela é a mesma dos dois lados da quina. ⇒ a lei serve **agudo e obtuso**, e
+o `max(1, ·)` que a W104-ter precisava **morreu** com os três sítios que o chamavam.
+
+### §108.3 — ⛔⛔⛔ A 1.ª versão dava o arco certo e DESLOCAVA A FACE
+
+Escrever `√((u⁺² + v⁺² − 2c·u⁺·v⁺)/(1 − c²))` passa o gate do vértice e **move a face plana**: onde
+só uma face está activa (`v⁺ = 0`) ela devolve `u/√(1−c²)` em vez de `u`.
+
+| | vinco a meio filete | quebra de curvatura (pior/média) |
+|---|---|---|
+| prisma, 1.ª versão | **`3,3 %` · `67,6°`** | `2,14` de média |
+| prisma, versão que shipa | `0,0 %` · `3,2°` | `0,18` |
+
+⭐⭐ **O `max(0)` da fórmula publicada não é «tirar o negativo» — é o ponto mais próximo do CONE**, e
+num referencial oblíquo cortar o coeficiente **não é projectar**. A cura é mudar de coordenadas:
+com `Δ = s·n_a + t·n_b`, o recorte é `s⁺ = max(s + c·min(t,0), 0)`, que degenera exactamente em `u`
+quando a outra face deixa de contar — e `s = u` na fronteira, logo as três regiões coincidem.
+
+⚠️ **Um gate sobre o VÉRTICE não vê uma face deslocada**: ele mede um ponto, e a face é todo o resto
+da peça. A metade que faltava é `the_flat_face_does_not_move_when_the_corner_knows_its_angle`.
+
+### §108.4 — A medição: ⭐ só TRÊS formas se mexem, e são as três que tinham o defeito
+
+A/B com a sonda de arestas e a de curvatura sobre as 26 formas — todas as outras são **byte a byte
+iguais**, porque as quinas delas são ortogonais e nem entram no caminho novo.
+
+| forma | vinco a meio filete | vinco no máximo | curvatura (pior/média) |
+|---|---|---|---|
+| **star** | `1,0 %` · `25,4°` → **`0,0 %` · `7,2°`** | `13,6°` → **`3,7°`** | `13,36 / 3,71` → **`8,41 / 0,66`** |
+| prism (hexágono) | `4,1°` → `3,2°` | `2,2°` → `3,7°` | `2,42 / 0,15` → `3,44 / 0,18` |
+| octahedron | `2,3°` → `3,5°` | `1,1°` → `1,8°` | `0,34 / 0,06` → `1,62 / 0,13` |
+
+⚠️⚠️ **As duas obtusas «pioram» na régua, e é o preço da honestidade:** a lei antiga arredondava-as
+`1,6×`–`2,2×` de mais, e *uma régua que conta «quanto vinco sobrou» premeia cortar demais* — ela não
+distingue «o filete está certo» de «o filete é grande demais». As duas continuam muito dentro da
+barra (`2,0` de média), e a estrela — que era o caso doente — melhora **`5,6×`**.
+
+### §108.5 — O preço, medido
+
+| forma | nós | ns/ponto |
+|---|---|---|
+| prisma hexagonal | `134 → 187` (`1,40×`) | `5,65 → 8,15` (`1,44×`) |
+| estrela de 5 pontas | `275 → 371` (`1,35×`) | `9,59 → 12,31` (`1,28×`) |
+| cilindro · caixa · esfera · toro · elipsóide | **intocados** | **intocados** |
+
+⭐ A simplificação que o pagou pela metade: `s + c·min(t, 0)` é `min(s, u)` num diedro obtuso e
+`max(s, u)` num agudo, com a escolha feita **ao compilar** (o `c` é constante da forma) ⇒ **uma**
+operação em vez de três. Sem ela seriam `212` e `416` nós.
+
+### §108.6 — ⛔⛔⛔ RECUSA MEDIDA: o CHANFRO tem a mesma mentira, e curá-la sozinha PIORA
+
+O painel promete que *Chamfer* é o recuo **ao longo de cada face**, e a lei que shipa
+(`(a + b ± c)·√½`) só o entrega a 90°: fora dali ela desce `c/sin 2α`, que numa ponta de estrela é
+**`1,61×`** o número pedido. ⚠️ **E o doc que a declarava medida tinha-a medido no aro de um
+CILINDRO** — a mesma armadilha em que o filete viveu: *uma fixtura no ponto neutro de um knob não
+testa aquele knob*.
+
+A lei honesta foi **derivada, construída e gateada** (`(a + b)/√(2(1+κ)) ∓ c·√((1−κ)/2)`, que a
+`κ = 0` é a de hoje termo a termo; o gate analítico dela passou nos seis ângulos). ⛔ **E foi
+revertida**, porque a peça piora — A/B sobre as 20 formas com chanfro, ⚠️ só a estrela se mexe:
+
+| estrela | só chanfro | `c=.5 r=.2` | `c=.4 r=.4` | `c=.3 r=.5` |
+|---|---|---|---|---|
+| a lei que shipa (corta `1,61×` a mais) | `22,97 %` | `5,02 %` | `3,80 %` | `0,59 %` |
+| a lei honesta | `26,38 %` | **`15,10 %`** | `8,65 %` | `1,14 %` |
+
+⇒ **o bloqueio tem nome:** o filete depois do chanfro mistura **três** superfícies, e a
+`union_round_n` supõe **todos** os pares ortogonais. As arestas que o corte cria têm cosseno próprio
+`√((1+κ)/2)`; generalizar aquela lei pede a matriz de Gram inteira, e o recorte que torna a lei de
+duas faces exacta **não tem forma fechada em `N ≥ 3`** — a projecção num cone de três geradores é um
+problema quadrático, não uma expressão de fita. *Meia cura desta família deixa a metade que ficou
+pior do que estava.*
+
+⭐ O gate `the_chamfer_recess_follows_the_angle_and_that_is_the_shipped_error` **afirma o erro
+medido**, para que a dívida não se perca: *uma recusa sem gate é uma frase que a próxima pessoa não
+pode confirmar.*
+
+### §108.7 — ⚠️ E um gate de RAZÃO apertou-se sozinho porque o denominador melhorou
+
+`the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone` compara o par contra o filete sozinho.
+O numerador da estrela — `45,8°` — **não mexeu um bit**; o denominador caiu de `~18°` para `7,2°`, e
+a razão saltou de `2,5×` (a passar por um fio) para `6,3×`.
+
+⇒ a entrada da estrela passa a responder a um **tecto absoluto em graus** (`RAZAO_BLOQUEADA`), que
+não se move quando o filete sozinho melhorar outra vez — e com o **censo de obsolescência** ao lado
+(`the_blocked_ratio_list_has_no_stale_entries`), que reprova se o bloqueio dissolver e a entrada
+virar licença.
+
+### §108.8 — Provas de mutação: 5 de 5 mortas — e ⛔ DUAS sobreviveram na 1.ª ronda
+
+| mutação | gate que a mata |
+|---|---|
+| o operador volta a ignorar o ângulo | `the_fillet_recess_is_the_true_arc_at_every_angle` · o gate analítico da estrela · `the_fillet_leaves_no_curvature_ridge` · o censo da razão bloqueada |
+| apagar o recorte geométrico (os dois `min(·,0)`) | **12 gates**, entre eles `the_flat_face_does_not_move_…` e os dois de caixa envolvente |
+| trocar o sinal do termo cruzado | **10 gates** |
+| ⛔ **o octaedro esquece o próprio ângulo** | **nenhum** na 1.ª ronda |
+| ⛔ **o prisma esquece o próprio ângulo** | **nenhum** na 1.ª ronda |
+
+⚠️⚠️ **As duas últimas são o mesmo achado, e é sobre mim:** a estrela tinha o gate analítico dela e a
+sonda de curvatura, e o octaedro e o prisma **não tinham ninguém** — *escrevi a guarda certa e não a
+gateei*, pela quarta ocorrência registada neste repo. A cura é
+`the_shapes_that_declare_an_angle_are_measured_by_it`, que mede o recuo das duas contra o arco
+analítico, com o controle de que sem filete elas estão nos raios autorados.

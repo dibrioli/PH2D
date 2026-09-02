@@ -119,7 +119,7 @@ pub fn sd_gear(
         // ⭐ **Os cantos do DENTE (flanco↔ponta) levam os dois recuos** — eles são arestas da peça
         // tanto quanto o aro, e ficaram sem chanfro na 1.ª versão desta wave. Foi o que a sonda por
         // PONTO acusou: `79,9 %` dos vincos cortados contra `≥ 92,8 %` em dezoito das vinte formas.
-        let e = crate::ops_joint::Edge { round, chamfer };
+        let e = crate::ops_joint::Edge::square(round, chamfer);
         // ⭐⭐ **Com chanfro o dente é uma CHAPA feita das três peças dele** — os dois flancos e a
         // ponta —, e não um dente 2D já composto que a mistura do aro receberia inteiro. Ver
         // [`crate::ops_joint::intersection_joint_n`]: a costura interna de uma composta aflora na
@@ -151,7 +151,7 @@ pub fn sd_gear(
             pecas.push(dente);
         }
     }
-    let e = crate::ops_joint::Edge { round, chamfer };
+    let e = crate::ops_joint::Edge::square(round, chamfer);
     // ⚠️ O corpo entra por `union` ARREDONDADA: é ali que nasce o vale entre dois dentes, e ele é
     // uma quina **côncava** — a que o artista mais vê numa engrenagem.
     if chamfer <= 0.0 {
@@ -184,7 +184,7 @@ pub fn sd_gear(
 pub fn sd_cross(arm: f64, width: f64, half_height: f64, round: f64, chamfer: f64) -> Tree {
     // ⚠️ **Os braços chegam JÁ arredondados** — ver [`rect_round`]: as oito quinas verticais deles
     // não são aro, e o `slab_and_walls` não lhes toca.
-    let e = crate::ops_joint::Edge { round, chamfer };
+    let e = crate::ops_joint::Edge::square(round, chamfer);
     if chamfer <= 0.0 {
         let horizontal = rect_round(arm, width, round);
         let vertical = rect_round(width, arm, round);
@@ -279,7 +279,7 @@ pub fn sd_heart(size: f64, half_height: f64, round: f64, chamfer: f64) -> Tree {
     slab_and_walls(
         &corpo,
         half_height,
-        crate::ops_joint::Edge { round, chamfer },
+        crate::ops_joint::Edge::square(round, chamfer),
     )
 }
 
@@ -303,12 +303,12 @@ pub fn sd_moon(
     let crescente = crate::ops_joint::intersection_joint(
         &cheio,
         &crate::ops::neg(&mordida),
-        crate::ops_joint::Edge { round, chamfer },
+        crate::ops_joint::Edge::square(round, chamfer),
     );
     slab_and_walls(
         &crescente,
         half_height,
-        crate::ops_joint::Edge { round, chamfer },
+        crate::ops_joint::Edge::square(round, chamfer),
     )
 }
 
@@ -347,7 +347,7 @@ pub fn sd_drop(radius: f64, height: f64, half_height: f64, round: f64, chamfer: 
     slab_and_walls(
         &bolha.min(bico),
         half_height,
-        crate::ops_joint::Edge { round, chamfer },
+        crate::ops_joint::Edge::square(round, chamfer),
     )
 }
 
@@ -381,10 +381,10 @@ pub fn sd_pie(radius: f64, angle: f64, half_height: f64, round: f64, chamfer: f6
         &crate::ops_joint::intersection_joint(
             &d,
             &sector,
-            crate::ops_joint::Edge { round, chamfer },
+            crate::ops_joint::Edge::square(round, chamfer),
         ),
         half_height,
-        crate::ops_joint::Edge { round, chamfer },
+        crate::ops_joint::Edge::square(round, chamfer),
     )
 }
 
@@ -407,7 +407,7 @@ pub fn sd_trapezoid(
     let flanco = (Tree::x().abs() - Tree::constant(a) - Tree::y() * Tree::constant(m))
         * Tree::constant(norm);
     let bases = Tree::y().abs() - Tree::constant(half_width);
-    let e = crate::ops_joint::Edge { round, chamfer };
+    let e = crate::ops_joint::Edge::square(round, chamfer);
     if chamfer <= 0.0 {
         return slab_and_walls(
             &crate::ops_joint::intersection_joint(&flanco, &bases, e),
@@ -430,7 +430,7 @@ pub fn sd_trapezoid(
 pub fn sd_vesica(radius: f64, offset: f64, half_height: f64, round: f64, chamfer: f64) -> Tree {
     let a = disco_em(-offset, 0.0, radius);
     let b = disco_em(offset, 0.0, radius);
-    let e = crate::ops_joint::Edge { round, chamfer };
+    let e = crate::ops_joint::Edge::square(round, chamfer);
     if chamfer <= 0.0 {
         return slab_and_walls(
             &crate::ops_joint::intersection_joint(&a, &b, e),

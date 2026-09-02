@@ -137,17 +137,20 @@ fn the_tips_reach_the_outer_radius_and_the_valleys_the_inner_one() {
 /// Corners`); aqui não havia dono nenhum — o artista só tem este slider. *Uma divisão de
 /// responsabilidade copiada de outra forma é uma aresta órfã quando o segundo dono não existe.*
 ///
-/// # ⭐⭐⭐ A lei, e ela diz QUAL das duas quinas é compensada
+/// # ⭐⭐⭐ A lei, e desde a W107 ela é UMA para as duas quinas
 ///
-/// O operador de filete desta casa recua o vértice `(1 − 1/√2)·r/sin α`, e um arco verdadeiro recua
-/// `r·(1/sin α − 1)` — os dois coincidem a 45° e divergem fora dali. A **ponta** é aguda (19°) e
-/// passa pelo [`ops::sharp_corner_radius`], que a compensa ⇒ ela recua o do **arco verdadeiro**. O
-/// **vale** é obtuso e o `max(1, ·)` daquela porta deixa-o em paz ⇒ ele recua o do **operador**.
+/// Um arco verdadeiro de raio `r` recua `r·(1/sin α − 1)`, e a lei ortogonal recuava
+/// `(1 − 1/√2)·r/sin α` — as duas coincidem a 45° e divergem fora dali. ⭐ **Hoje o operador SABE o
+/// ângulo** (`ops::union_round_at`), logo a **ponta** (aguda, 19°) e o **vale** (obtuso, 55°) recuam
+/// os dois o do arco, e a régua deixou de precisar de saber qual das duas é compensada.
 ///
 /// ⚠️ Os dois `sin α` saem da MESMA aresta: `inner·sin β/|u|` na ponta e `outer·sin β/|u|` no vale.
 ///
-/// ⇒ este gate mede **duas leis diferentes na mesma peça**, e é isso que o torna a prova de que a
-/// compensação é **selectiva**: trocá-la por «compensa tudo» ou «não compensa nada» reprova aqui.
+/// ⇒ **as duas metades que este gate defende mudaram de assunto**: já não é *«a compensação é
+/// selectiva»* (essa lei morreu com a compensação por raio), é *«o recuo é o do ARCO nos dois
+/// sentidos de quina»*, com o erro da lei antiga escrito ao lado em cada uma — `2,29×` a MENOS na
+/// ponta, `1,63×` a MAIS no vale. *Uma quina obtusa não era arredondada de menos: era arredondada
+/// de mais, e o mesmo slider dava três tamanhos na mesma peça.*
 #[test]
 fn the_fillet_reaches_the_tips_and_the_valleys_by_the_amount_the_operator_says() {
     let round = 0.05_f64;
@@ -161,10 +164,9 @@ fn the_fillet_reaches_the_tips_and_the_valleys_by_the_amount_the_operator_says()
     let u = (OUTER * OUTER + INNER * INNER - 2.0 * OUTER * INNER * beta.cos()).sqrt();
     let sin_ponta = INNER * beta.sin() / u;
     let sin_vale = OUTER * beta.sin() / u;
-    // ⭐ A ponta é COMPENSADA: ela recua o do arco verdadeiro.
+    // ⭐ As DUAS recuam o do arco verdadeiro — a ponta encolhendo, o vale afastando.
     let esperado_ponta = OUTER - round * (1.0 / sin_ponta - 1.0);
-    // ⭐ O vale é obtuso e NÃO é compensado: ele recua o do operador.
-    let esperado_vale = INNER + recuo * round / sin_vale;
+    let esperado_vale = INNER + round * (1.0 / sin_vale - 1.0);
 
     let f = field_of(a_star(round as f32));
     let ponta = boundary_radius(&f, 1.0, 0.0, 1.0);
@@ -177,22 +179,23 @@ fn the_fillet_reaches_the_tips_and_the_valleys_by_the_amount_the_operator_says()
         (vale - esperado_vale).abs() < 1.0e-3,
         "o vale filetado mede {vale:.6} e o operador diz {esperado_vale:.6}"
     );
-    // ⭐ **A razão da compensação, medida:** sem ela a ponta arredondaria `2,29×` menos do que o
-    // arco. É o número que o `CLAUDE.md` §0 exige — a conta, não a impressão.
-    let razao = (round * (1.0 / sin_ponta - 1.0)) / (recuo * round / sin_ponta);
-    assert!(
-        (razao - 2.29).abs() < 0.05,
-        "a compensação da ponta desta fixtura devia valer {razao:.2}×, e a conta deu outro número"
-    );
-    // ⛔ **E o VALE não é compensado** — a metade que prova que ela é SELECTIVA.
+    // ⭐⭐ **O ERRO DA LEI ANTIGA, medido nos DOIS sentidos** — é o número que o `CLAUDE.md` §0 exige,
+    // e é o que impede este gate de ser lido como um no-op: se alguém devolver o operador ortogonal,
+    // as duas razões abaixo passam a `1,00` e as duas asserções de cima reprovam.
     //
-    // ⚠️ E o sentido da desigualdade é o achado: numa quina **obtusa** o operador avança **MAIS**
-    // do que um arco verdadeiro (`0,0178` contra `0,0109` nesta fixtura), porque o factor
-    // `(1 − sin α)/(1 − 1/√2)` é `< 1` ali. É por isso que compensá-la *estreitaria* a mistura — e
-    // foi isso que partiu o prisma na W104.
+    // ⚠️ **O sinal inverte-se com o sentido da quina**, e é esse o achado que a W104 não tinha: numa
+    // ponta **aguda** a lei antiga arredondava `2,29×` a MENOS do que o número pedia; num vale
+    // **obtuso** ela avançava `1,63×` a MAIS (`0,0178` contra `0,0109` nesta fixtura). *O mesmo
+    // slider dava três tamanhos diferentes na mesma peça.*
+    let razao_ponta = (round * (1.0 / sin_ponta - 1.0)) / (recuo * round / sin_ponta);
     assert!(
-        vale > INNER + round * (1.0 / sin_vale - 1.0) + 1.0e-3,
-        "o vale avançou só o do arco verdadeiro — a compensação deixou de ser só das quinas AGUDAS"
+        (razao_ponta - 2.29).abs() < 0.05,
+        "a ponta desta fixtura devia arredondar {razao_ponta:.2}× mais do que a lei antiga dava"
+    );
+    let razao_vale = (recuo * round / sin_vale) / (round * (1.0 / sin_vale - 1.0));
+    assert!(
+        (razao_vale - 1.63).abs() < 0.05,
+        "o vale desta fixtura devia avançar {razao_vale:.2}× menos do que a lei antiga dava"
     );
     // ⛔ **O CONTROLE, e são DOIS**: sem filete os dois estão nos raios autorados, e o filete tem de
     // os mover em **sentidos opostos**. Sem esta metade, um construtor que encolhesse a estrela

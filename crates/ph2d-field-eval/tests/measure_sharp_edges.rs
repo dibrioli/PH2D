@@ -522,7 +522,7 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
         PrimitiveKind::Ellipsoid => Primitive::Ellipsoid {
             radii: [0.5, 0.2, 0.35],
         },
-        // ─────────────────────────── W106 ───────────────────────────
+        // ─────────────────────────── W107 ───────────────────────────
         // ⚠️ **Nascem com `round: 0,0`**, como todas as desta sonda: a coluna «SEM filete» é a
         // referência contra a qual as outras duas se leem, e uma peça que já chegasse arredondada
         // mediria a diferença errada.
@@ -747,7 +747,7 @@ fn where_the_creases_are() {
 /// dez formas com filete, e **`1,4 %` na estrela** — o vértice de 3 vias onde a quina lateral
 /// encontra o aro, o único sítio em que dois filetes se cruzam num ângulo agudo. ⚠️ O ângulo lá é
 /// `35°`, e não `90°`: é uma mistura mais **apertada**, não uma aresta viva.
-/// ⛔⛔ **AS TRÊS QUE TÊM UM PONTO, E UM PONTO NÃO É UMA ARESTA** (W106) — a tolerância declarada,
+/// ⛔⛔ **AS TRÊS QUE TÊM UM PONTO, E UM PONTO NÃO É UMA ARESTA** (W107) — a tolerância declarada,
 /// com o número de cada uma e o mecanismo.
 ///
 /// # Porque elas não passam, e porque isso não é um defeito por curar
@@ -1099,7 +1099,7 @@ fn the_valley_of_a_star_meets_the_cap_without_a_crease() {
 /// Medido no filete máximo: `0,04`–`0,47` em sete formas, e a estrela em **`1,19`** (era **`3,71`**
 /// antes de a ponta dela ser compensada). A barra é `2,0` — abaixo do defeito curado com `1,9×` de
 /// folga, e acima de toda forma boa com `4×`.
-/// ⛔⛔ **A JUNÇÃO TANGENTE: lisa ao olho, DESCONTÍNUA na curvatura** (W106).
+/// ⛔⛔ **A JUNÇÃO TANGENTE: lisa ao olho, DESCONTÍNUA na curvatura** (W107).
 ///
 /// # O mecanismo, e porque ele não é um defeito por curar
 ///
@@ -1268,6 +1268,84 @@ fn the_fillet_leaves_no_curvature_ridge() {
 /// `r = c`) mais `13 %`. ⚠️ São barras de **corpus sobre uma lista FECHADA** (`PrimitiveKind::ALL`):
 /// é exactamente o caso em que isso é a coisa certa — uma primitiva nova que as estoure é o que se
 /// quer ver acusado.
+/// ⛔⛔ **O TECTO ABSOLUTO das formas que a razão já não descreve** (W107).
+///
+/// A barra deste gate é uma **razão**, e a W107 melhorou o denominador dela: o filete passou a ser
+/// um arco verdadeiro em qualquer quina, e a ponta da estrela caiu de `~18°` para **`7,2°`** só com
+/// filete. O numerador — os `45,8°` da mesma estrela **com chanfro** — **não mexeu um bit**, e é
+/// exactamente o que o `main` shipava; a razão é que saltou de `2,5×` (a passar por um fio) para
+/// `6,3×`.
+///
+/// ⚠️ *Uma barra de razão aperta-se sozinha quando o denominador é uma alavanca* — e a leitura certa
+/// não é afrouxá-la, é dizer que a estrela **com chanfro** está fora dela por um motivo com nome: o
+/// filete depois do chanfro mistura TRÊS superfícies, e a `ops::union_round_n` supõe todos os pares
+/// ortogonais (mecanismo e a tabela A/B no doc da `ops_joint::corte`). O tecto abaixo é **absoluto,
+/// em graus**, e por isso não se move quando o filete sozinho melhorar outra vez.
+const RAZAO_BLOQUEADA: [(&str, f64); 1] = [("star", 48.0)];
+
+/// O tecto absoluto desta forma, se ela for uma das bloqueadas.
+fn razao_bloqueada(key: &str) -> Option<f64> {
+    RAZAO_BLOQUEADA
+        .iter()
+        .find(|(k, _)| *k == key)
+        .map(|(_, v)| *v)
+}
+
+/// ⛔⛔ **A METADE QUE IMPEDE A CATRACA DE SUBIR** — a mesma lei do
+/// [`the_chamfer_apex_list_has_no_stale_entries`], sobre a lista da [`RAZAO_BLOQUEADA`]: a entrada
+/// tem de **ainda** estourar a razão (senão o bloqueio dissolveu e ela virou licença) e de **ainda**
+/// caber no tecto absoluto que declara (senão ela regrediu e o tecto está a esconder isso).
+#[test]
+fn the_blocked_ratio_list_has_no_stale_entries() {
+    for (nome, tecto) in RAZAO_BLOQUEADA {
+        let k = PrimitiveKind::ALL
+            .iter()
+            .find(|k| k.key() == nome)
+            .unwrap_or_else(|| panic!("«{nome}» já não é uma forma — a entrada ficou órfã"));
+        let base = representative(*k).unwrap_or_else(|| panic!("«{nome}» não tem representante"));
+        let limite = ph2d_field::round_limit(&base).unwrap_or_else(|| {
+            panic!("«{nome}» deixou de ter aresta — a entrada não descreve nada")
+        });
+        let (so_filete, par) = par_de_trabalho(&base, limite * 0.5)
+            .unwrap_or_else(|| panic!("«{nome}» deixou de aceitar o par — a entrada ficou órfã"));
+        println!(
+            "  [razao-bloqueada] {nome}: {so_filete:.1}° só com filete, {par:.1}° com chanfro \
+             (tecto absoluto {tecto:.1}°)"
+        );
+        assert!(
+            par / so_filete.max(1.0e-9) > 2.60,
+            "«{nome}» já cumpre a razão normal — APAGUE a entrada, senão ela vira licença"
+        );
+        assert!(
+            par <= tecto,
+            "«{nome}» regrediu para {par:.1}°, acima do tecto absoluto de {tecto:.1}°"
+        );
+    }
+}
+
+/// O par `(só filete, chanfro + filete)` no ponto de trabalho — a mesma conta que o gate da razão
+/// faz, numa porta só. ⚠️ *Duas cópias dela deixariam a lista de excepções calibrada noutro
+/// instrumento que não o gate que ela dispensa.*
+fn par_de_trabalho(base: &Primitive, c: f32) -> Option<(f64, f64)> {
+    let escreve = |p: &Primitive, chave: &str, v: f32| -> Option<Primitive> {
+        let mut p = p.clone();
+        let i = ph2d_field::dims(&p).iter().position(|d| d.key == chave)?;
+        ph2d_field::set_dim(&mut p, 0, i, v).ok()?;
+        Some(p)
+    };
+    let pior = |p: &Primitive| {
+        traverse(p, 2048, 6)
+            .0
+            .iter()
+            .map(|(_, a)| *a)
+            .fold(0.0f64, f64::max)
+    };
+    let so_filete = escreve(base, "field.dim.round", c)?;
+    let par = escreve(base, "field.dim.round", c * 0.5)
+        .and_then(|p| escreve(&p, "field.dim.chamfer", c))?;
+    Some((pior(&so_filete), pior(&par)))
+}
+
 #[test]
 fn the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone() {
     /// A folga sobre o filete sozinho, no ponto de trabalho `r = 0,5c`.
@@ -1315,6 +1393,16 @@ fn the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone() {
             };
             let b = pior(&par);
             let razao = b / base_graus.max(1.0e-9);
+            // ⛔ A forma cujo bloqueio está NOMEADO responde a um tecto ABSOLUTO — ver
+            // [`RAZAO_BLOQUEADA`] e o censo que a impede de virar licença.
+            if let Some(tecto) = razao_bloqueada(k.key()) {
+                if b > tecto {
+                    piores.push(format!(
+                        "{k:?} {onde}: {b:.1}° com chanfro, acima do tecto absoluto {tecto:.1}°"
+                    ));
+                }
+                continue;
+            }
             if b > PISO_GRAUS && razao > barra {
                 piores.push(format!(
                     "{k:?} {onde}: {base_graus:.1}° só com filete e {b:.1}° com chanfro \

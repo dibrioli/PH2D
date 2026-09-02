@@ -88,9 +88,14 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
          [bucket-smoke]  4) no CIRCULO CORTADO (dir.): as metades tem borda CURVA -- amplie e veja\n\
          [bucket-smoke]  5) pegue a SETA BRANCA e ARRASTE um no' de uma linha ja' preenchida: a\n\
          [bucket-smoke]     area tem de ACOMPANHAR, sem buraco e sem sobra\n\
+         [bucket-smoke]  6) AGORA ATRAVESSE: leve um no' para o outro lado de uma linha vizinha.\n\
+         [bucket-smoke]     Se a area PARTIR em duas, a cor fica nas DUAS metades; se duas areas\n\
+         [bucket-smoke]     se FUNDIREM, a cor que fica e' a da maior, e a outra espera --\n\
+         [bucket-smoke]     arraste o no' de volta e ela volta sozinha\n\
          [bucket-smoke]  Ctrl+Z desfaz cada preenchimento.\n\
          [bucket-smoke]  DEU ERRADO SE: encher uma regiao impede de encher a vizinha; ou a forma\n\
-         [bucket-smoke]  tapa as linhas; ou ela nao acompanha o no' arrastado"
+         [bucket-smoke]  tapa as linhas; ou ela nao acompanha o no' arrastado; ou uma area partida\n\
+         [bucket-smoke]  perde metade da cor"
     );
 }
 

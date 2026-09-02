@@ -67,6 +67,24 @@ fn contornos_mundo(
     out
 }
 
+/// ⭐⭐⭐ **A REGIÃO QUE ESTE PREENCHIMENTO PINTOU**, achatada e em MUNDO — a receita com que ele
+/// reclama as faces de hoje ([`crate::vec_bucket_claim`]).
+///
+/// ⚠️ **Sai da mesma porta que as paredes** (`cooked` + `bake_xform` + `detection_polyline`): quem
+/// pergunta *"esta face era minha?"* tem de falar da mesma curva amostrada que decidiu onde a face
+/// começa, senão a resposta muda por erro de amostragem na fronteira.
+fn regiao_mundo(scene: &VecScene, xforms: &VecXforms, id: u64) -> Vec<Vec<[f64; 2]>> {
+    let Some(p) = scene.path(id) else {
+        return Vec::new();
+    };
+    let mut cozido = p.cooked().into_owned();
+    ph2d_vec_scene::bake_xform(&mut cozido, &ph2d_vec_scene::xform_of(xforms, id));
+    trim_tool::contours_of(&cozido)
+        .filter(|c| c.closed && c.verts.len() >= 3)
+        .map(|c| ph2d_vec_scene::detection_polyline(&c.verts, true))
+        .collect()
+}
+
 /// ⭐⭐⭐ **A ÁREA RE-COZIDA DESCE AO ESPAÇO DO CAMINHO.**
 ///
 /// Report do Enio (2026-09-01, com foto): *"o preenchimento está nascendo deslocado para fora do
@@ -92,6 +110,38 @@ fn para_local(verts: Vec<VecVertex>, xf: &ph2d_vec_scene::Xform) -> Option<Vec<V
     };
     ph2d_vec_scene::bake_xform(&mut p, &inv);
     Some(p.verts)
+}
+
+/// ⭐⭐⭐ **A FORMA DE UM PREENCHIMENTO, no espaço do caminho dele** — o contorno primário e os
+/// `subpaths`, a partir das faces que ele ganhou.
+///
+/// ⚠️⚠️ **UMA REGIÃO QUE PARTIU CONTINUA A SER UM OBJECTO**: os pedaços são contornos do MESMO
+/// caminho — o mesmo substrato que a rede soldada usa desde 2026-09-02. ⛔ Um objecto por pedaço
+/// encheria a Hierarquia à primeira travessia de nó, que é o report do mesmo dia pela outra porta.
+///
+/// ⚠️ **A área desce ao espaço do CAMINHO** — ver [`para_local`]. Escrever mundo num caminho já
+/// assentado desloca-o pelo centro dele.
+///
+/// ⚠️ **Existe como função, e não como fecho no sítio da chamada, porque o `bucket_upkeep` precisa
+/// de uma `App` viva e não é alcançável de um teste** — um fecho ali levaria esta lei com ele.
+fn geometria_local(
+    rede: &ph2d_vec_fill::Rede,
+    faces: &[ph2d_vec_fill::Face],
+    meus: &[usize],
+    xfp: &ph2d_vec_scene::Xform,
+) -> Option<(Vec<VecVertex>, Vec<ph2d_vec_scene::Contour>)> {
+    let mut cs = meus.iter().filter_map(|&i| {
+        let g = rede.geometria(faces.get(i)?);
+        (g.len() >= 2).then(|| para_local(g, xfp))?
+    });
+    let primeiro = cs.next()?;
+    let subs = cs
+        .map(|verts| ph2d_vec_scene::Contour {
+            verts,
+            closed: true,
+        })
+        .collect();
+    Some((primeiro, subs))
 }
 
 /// ⭐⭐⭐ **AS DUAS RAZÕES para um contorno não ser PAREDE**, numa porta só.
@@ -224,38 +274,76 @@ impl crate::App {
                 contornos.len()
             );
         }
-        // ⭐⭐⭐ **RE-COZER os preenchimentos**: a receita é o ponto, e a área é a resposta de hoje.
+        // ⭐⭐⭐ **RE-COZER os preenchimentos**: a receita é a REGIÃO que cada um pintou, e as faces
+        // de hoje herdam-na pela votação do [`crate::vec_bucket_claim`].
         //
-        // ⚠️ **Uma semente que deixou de cair em face nenhuma CONGELA a forma onde ela está**, em
-        // vez de a fazer sumir — a mesma escolha do conector e do morph, e a única que preserva o
-        // trabalho do artista. Ele afastou as linhas; o desfazer devolve-lhe a região.
-        #[allow(clippy::cast_possible_truncation)]
-        let novos: Vec<(u64, Entity, Vec<VecVertex>, [f32; 2])> = fills
+        // Report do Enio (2026-09-02): *"quando atravessamos uma linha com um nó, os preenchimentos
+        // se quebram"*. Com uma semente por preenchimento, partir uma região dava a tinta a **uma**
+        // das metades (a outra ficava por pintar) e fundir duas punha **as duas sementes na mesma
+        // face** — duas tintas empilhadas, e uma região sem dono.
+        //
+        // ⚠️ **Um preenchimento que não ganhou face nenhuma CONGELA a forma onde ela está**, em vez
+        // de sumir — a mesma escolha do conector e do morph, e a única que preserva o trabalho do
+        // artista. ⭐⭐ E aqui ela vale mais do que preservar: a forma congelada **é** a receita,
+        // então desfazer o gesto com o próprio dedo (arrastar o nó de volta) faz a tinta voltar
+        // sozinha. *No Live Paint do Illustrator ela não volta.*
+        //
+        // ⚠️⚠️ **E CUSTA MAIS do que custava — medido, contra o que eu tinha escrito aqui antes de
+        // medir.** A 1.ª redacção desta nota dizia *"é mais barato: o `face_em` reconstruía as
+        // faces uma vez por preenchimento"*; a construção das faces de facto deixou de se repetir,
+        // mas a votação é `faces × amostras × regiões` e paga muito mais do que isso poupa.
+        //
+        // Grelha de linhas, 8 preenchimentos, `--release`:
+        //
+        // | faces | montar a rede | 1 `face_em` por fill | a votação |
+        // |---|---|---|---|
+        // | 9 | `0,15 ms` | `0,053 ms` | `0,35 ms` |
+        // | 25 | `0,30 ms` | `0,119 ms` | `0,45 ms` |
+        // | 49 | `0,56 ms` | `0,224 ms` | **`0,64 ms`** |
+        //
+        // ⇒ ~2,9× o que a semente custava, e **3,8% de um quadro** de 16,7 ms no pior caso medido —
+        // que é o preço de a tinta sobreviver a uma travessia de nó. ⭐ Sem a rejeição por caixa do
+        // `vec_bucket_claim` o mesmo caso custava **4,53 ms** (30% do quadro): 7,1× mais.
+        let faces: Vec<ph2d_vec_fill::Face> =
+            rede.faces().into_iter().filter(|f| f.area > 0.0).collect();
+        let regioes: Vec<crate::vec_bucket_claim::Regiao> = fills
             .iter()
-            .filter_map(|(id, e, seed)| {
-                let f = rede.face_em(*seed)?;
-                let g = rede.geometria(&f);
-                if g.len() < 2 {
-                    return None;
-                }
-                // ⭐⭐⭐ **A semente RE-SEMEIA-SE no ponto mais FUNDO da face.** O clique cai onde o
-                // dedo caiu, e isso pode ser encostado à borda: arrastar essa parede por cima do
-                // ponto fazia a face deixar de o conter, e o preenchimento parava de seguir
-                // (medido). Fundo, a parede tem de varrer o miolo inteiro para o perder — que é
-                // quando a região de facto deixou de existir.
-                let novo = rede.interior_point(&f).unwrap_or(*seed);
-                // ⚠️ **A área desce ao espaço do CAMINHO** — ver [`para_local`]. Escrever mundo num
-                // caminho já assentado desloca-o pelo centro dele.
-                let v = para_local(g, &ph2d_vec_scene::xform_of(&xf, *id))?;
-                Some((*id, *e, v, [novo[0] as f32, novo[1] as f32]))
+            .map(|(id, _, seed)| crate::vec_bucket_claim::Regiao {
+                poligonos: regiao_mundo(&gfx.vec_scene, &xf, *id),
+                semente: *seed,
+            })
+            .collect();
+        let minhas = crate::vec_bucket_claim::por_preenchimento(
+            &faces,
+            &crate::vec_bucket_claim::donos(&rede, &faces, &regioes),
+            fills.len(),
+        );
+        #[allow(clippy::cast_possible_truncation)]
+        type Forma = (Vec<VecVertex>, Vec<ph2d_vec_scene::Contour>);
+        let novos: Vec<(u64, Entity, Forma, [f32; 2])> = fills
+            .iter()
+            .enumerate()
+            .filter_map(|(k, (id, e, seed))| {
+                let meus = &minhas[k];
+                let xfp = ph2d_vec_scene::xform_of(&xf, *id);
+                let (primeiro, subs) = geometria_local(&rede, &faces, meus, &xfp)?;
+                // ⭐⭐⭐ **A semente RE-SEMEIA-SE no ponto mais FUNDO da maior face.** O clique cai
+                // onde o dedo caiu, e isso pode ser encostado à borda: arrastar essa parede por
+                // cima do ponto fazia a face deixar de o conter (medido). Fundo, a parede tem de
+                // varrer o miolo inteiro para o perder.
+                let novo = rede.interior_point(&faces[meus[0]]).unwrap_or(*seed);
+                Some((*id, *e, (primeiro, subs), [novo[0] as f32, novo[1] as f32]))
             })
             .collect();
         if let Some(gfx) = self.gfx.as_mut() {
-            for (id, e, verts, seed) in novos {
-                if let Some(p) = gfx.vec_scene.path_mut(id)
-                    && p.verts != verts
-                {
-                    p.verts = verts;
+            for (id, e, (primeiro, subs), seed) in novos {
+                if let Some(p) = gfx.vec_scene.path_mut(id) {
+                    if p.verts != primeiro {
+                        p.verts = primeiro;
+                    }
+                    if p.subpaths != subs {
+                        p.subpaths = subs;
+                    }
                 }
                 // ⚠️ Só quando MUDA: uma escrita por quadro sobre o mesmo valor é ruído no diff do
                 // undo.

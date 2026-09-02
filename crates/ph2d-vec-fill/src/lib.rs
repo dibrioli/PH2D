@@ -379,15 +379,53 @@ impl Rede {
         if point_in_polygon(&poly, c) {
             return Some(c);
         }
+        let mut melhor: Option<([f64; 2], f64)> = None;
+        for p in self.interior_samples(face) {
+            let d = poly
+                .windows(2)
+                .map(|w| dist_ponto_segmento(p, w[0], w[1]))
+                .fold(f64::INFINITY, f64::min);
+            if melhor.as_ref().is_none_or(|(_, b)| d > *b) {
+                melhor = Some((p, d));
+            }
+        }
+        melhor.map(|(p, _)| p)
+    }
+
+    /// ⭐⭐⭐ **AS AMOSTRAS DO MIOLO de uma face** — com que se mede *quanto* de uma face era de quem.
+    ///
+    /// # Porque uma face precisa de MUITOS pontos, e não de um
+    ///
+    /// Report do Enio (2026-09-02): *"quando atravessamos uma linha com um nó, os preenchimentos se
+    /// quebram"*. Medido sobre um quadrado de 400 com uma linha ao meio:
+    ///
+    /// | o gesto | o que a rede passa a ter | com UMA semente |
+    /// |---|---|---|
+    /// | a linha entra e parte a região | 2 faces de `200` | a tinta fica com **uma**: metade some |
+    /// | um nó atravessa o topo e funde | `4,17` + `395,83` | as DUAS sementes caem na mesma face |
+    ///
+    /// ⇒ *uma semente diz **onde** a tinta estava; ela não diz **quanto** da face era dela.* A
+    /// resposta a «de quem é esta face?» é uma **votação**, e são estas as amostras que votam.
+    ///
+    /// ⚠️ **A grelha evita as bordas de propósito** (`(k + 1) / (N + 1)`): uma amostra em cima da
+    /// fronteira é exactamente o ponto que a contenção não sabe decidir.
+    ///
+    /// ⚠️ **Uniformes sobre a CAIXA da face**, e por isso a contagem de votos de uma região é
+    /// proporcional à **área** que ela cobre dentro desta face — que é a grandeza que a lei do
+    /// *Live Paint* pede (*"a face fundida fica com a tinta da maior"*).
+    #[must_use]
+    pub fn interior_samples(&self, face: &Face) -> Vec<[f64; 2]> {
+        let poly = self.contorno(face);
+        if poly.len() < 3 {
+            return Vec::new();
+        }
         let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
         for p in &poly {
             lo = [lo[0].min(p[0]), lo[1].min(p[1])];
             hi = [hi[0].max(p[0]), hi[1].max(p[1])];
         }
-        // ⚠️ **A grelha evita as bordas de propósito** (`(k + 1) / (N + 1)`): uma amostra em cima da
-        // fronteira é exactamente o ponto que a contenção não sabe decidir.
         const N: usize = 15;
-        let mut melhor: Option<([f64; 2], f64)> = None;
+        let mut out = Vec::new();
         for i in 0..N {
             for j in 0..N {
                 let t = |k: usize| (k as f64 + 1.0) / (N as f64 + 1.0);
@@ -395,23 +433,22 @@ impl Rede {
                     lo[0] + (hi[0] - lo[0]) * t(i),
                     lo[1] + (hi[1] - lo[1]) * t(j),
                 ];
-                if !point_in_polygon(&poly, p) {
-                    continue;
-                }
-                let d = poly
-                    .windows(2)
-                    .map(|w| dist_ponto_segmento(p, w[0], w[1]))
-                    .fold(f64::INFINITY, f64::min);
-                if melhor.as_ref().is_none_or(|(_, b)| d > *b) {
-                    melhor = Some((p, d));
+                if point_in_polygon(&poly, p) {
+                    out.push(p);
                 }
             }
         }
-        melhor.map(|(p, _)| p)
+        out
     }
 
-    /// O achatado de uma face, para medir área e contenção.
-    fn contorno(&self, face: &Face) -> Vec<[f64; 2]> {
+    /// **O achatado de uma face**, para medir área e contenção — o par plano da [`Self::geometria`],
+    /// que devolve a mesma fronteira em cúbicas.
+    ///
+    /// ⚠️ **É esta a polilinha com que a rede foi construída** (`detection_polyline`), e não uma
+    /// segunda amostragem: quem decide de quem é uma face tem de perguntar à MESMA curva que
+    /// decidiu onde ela começa.
+    #[must_use]
+    pub fn contorno(&self, face: &Face) -> Vec<[f64; 2]> {
         let mut out: Vec<[f64; 2]> = Vec::new();
         for &(i, frente) in &face.arcos {
             let p = &self.poly[i];

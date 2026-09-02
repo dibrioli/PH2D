@@ -144,28 +144,39 @@ fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
         !BUCKET[f..fim].contains("!= ph2d_tool_vector::DrawMode::Bucket"),
         "o upkeep saiu cedo fora do modo Balde — o preenchimento deixaria de acompanhar as linhas"
     );
-    // E ele RE-COZE: a face de cada semente vira a geometria do caminho.
+    // E ele RE-COZE: as faces que cada preenchimento GANHA viram a geometria do caminho.
+    //
+    // ⚠️ **Esta lista de literais mudou em 2026-09-02, e a mudança é a lição**: até aí o gate
+    // exigia `rede.face_em(*seed)` — *uma* face por semente —, que é exactamente o defeito que o
+    // report daquele dia nomeia (*"quando atravessamos uma linha com um nó, os preenchimentos se
+    // quebram"*). ⛔ Um gate textual afirma sobre a REDACÇÃO, não sobre o comportamento: o que a
+    // votação faz está medido em `vec_bucket_claim_tests`, e o que aqui se prova é só que o
+    // `bucket_upkeep` **chama** a lei e **escreve** o que ela devolve.
     assert!(
-        BUCKET[f..fim].contains("rede.face_em(*seed)"),
-        "o upkeep nao re-coze os preenchimentos a partir da semente"
+        BUCKET[f..fim].contains("crate::vec_bucket_claim::donos("),
+        "o upkeep nao pergunta de quem e' cada face — os preenchimentos nao sobreviveriam a uma \
+         mudanca de topologia"
     );
     assert!(
-        BUCKET[f..fim].contains("p.verts = verts;"),
-        "o upkeep calcula a area nova e nao a ESCREVE — o preenchimento ficaria parado"
+        BUCKET[f..fim].contains("p.verts = primeiro;")
+            && BUCKET[f..fim].contains("p.subpaths = subs;"),
+        "o upkeep calcula a area nova e nao a ESCREVE inteira — uma regiao que partiu perderia \
+         metade"
     );
     // ⚠️ **E ela DESCE ao espaço do caminho antes de ser escrita.** A rede fala MUNDO; um
     // `VecPath` já assentado tem pose própria, e escrever mundo nele desloca-o pelo centro dele —
     // o report de 2026-09-01 (*"nascendo deslocado para fora do stroke"*).
     assert!(
-        BUCKET[f..fim].contains("para_local(g, &ph2d_vec_scene::xform_of(&xf, *id))"),
+        BUCKET.contains("para_local(g, xfp)"),
         "a area re-cozida e' escrita em MUNDO num caminho que tem pose — ela sai deslocada"
     );
     // ⭐ **E a semente RE-SEMEIA-SE no ponto mais fundo da face** (report de 2026-09-01: *"a
     // depender da posição dos pontos o preenchimento some"*): o clique cai onde o dedo caiu, e uma
     // semente encostada à borda é perdida pela primeira parede que passa por cima dela.
     assert!(
-        BUCKET[f..fim].contains("rede.interior_point(&f)"),
-        "a semente nao e' re-semeada — ela fica colada ao ponto do clique e perde-se"
+        BUCKET[f..fim].contains("rede.interior_point(&faces[meus[0]])"),
+        "a semente nao e' re-semeada na MAIOR face — ela fica colada ao ponto do clique, ou vai \
+         viver na lasca de uma regiao que partiu"
     );
     assert!(
         BUCKET[f..fim].contains("er.insert(VecBucketFill::new(seed));"),

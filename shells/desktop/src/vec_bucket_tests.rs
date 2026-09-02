@@ -194,3 +194,54 @@ fn a_bucket_fill_is_published_as_derived_and_is_not_pickable() {
     );
     assert!(view.is_pickable(parede), "a parede deixou de ser agarravel");
 }
+
+/// ⭐⭐⭐ **UMA REGIÃO QUE PARTIU SAI COMO **UM** OBJECTO, com um contorno por pedaço.**
+///
+/// Report do Enio (2026-09-02): *"quando atravessamos uma linha com um nó, os preenchimentos se
+/// quebram"*. A metade da cura que se vê é esta: as duas metades chegam ao documento como o
+/// contorno **primário** e um **subpath** do mesmo caminho — ⛔ e não como dois objectos, que
+/// encheriam a Hierarquia à primeira travessia (o outro report do mesmo dia).
+#[test]
+fn a_region_that_split_comes_out_as_one_object_with_a_contour_per_piece() {
+    let quadrado = (
+        vec![
+            v(-10.0, -10.0),
+            v(10.0, -10.0),
+            v(10.0, 10.0),
+            v(-10.0, 10.0),
+        ],
+        true,
+    );
+    let linha = (vec![v(-20.0, 0.0), v(20.0, 0.0)], false);
+    let rede = ph2d_vec_fill::rede(&[quadrado, linha]);
+    let faces: Vec<_> = rede.faces().into_iter().filter(|f| f.area > 0.0).collect();
+    assert_eq!(faces.len(), 2, "a fixtura tem de partir o quadrado em duas");
+
+    let (primeiro, subs) =
+        geometria_local(&rede, &faces, &[0, 1], &ph2d_vec_scene::Xform::IDENTITY)
+            .expect("as duas faces dao geometria");
+
+    assert!(
+        primeiro.len() >= 3,
+        "o contorno primario e' uma das metades"
+    );
+    assert_eq!(
+        subs.len(),
+        1,
+        "a OUTRA metade vem como subpath do mesmo caminho"
+    );
+    assert!(subs[0].closed, "um preenchimento e' sempre fechado");
+    assert!(subs[0].verts.len() >= 3);
+}
+
+/// ⛔ **Sem face nenhuma não sai forma nenhuma** — é o que faz um preenchimento sem dono CONGELAR
+/// onde está, em vez de ser reescrito com geometria vazia.
+#[test]
+fn a_fill_that_won_no_face_produces_no_shape() {
+    let rede = ph2d_vec_fill::rede(&[(vec![v(0.0, 0.0), v(10.0, 0.0)], false)]);
+    let faces: Vec<_> = rede.faces().into_iter().filter(|f| f.area > 0.0).collect();
+    assert!(
+        geometria_local(&rede, &faces, &[], &ph2d_vec_scene::Xform::IDENTITY).is_none(),
+        "sem faces, nada a escrever"
+    );
+}

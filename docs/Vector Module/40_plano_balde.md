@@ -334,9 +334,86 @@ quina** em vez do toque. *Uma fixtura que fecha por outra razão aprova a lei qu
   porquê**. ⛔ Fechar vãos automaticamente é a lei do `ph2d-flip-fill` (bola presa + extensão de
   pontas) e pertence a uma wave própria — soldar já é o gesto que fecha o que o artista quis.
 - **Ilhas**: uma forma solta dentro da face fica por cima; ela ainda não vira buraco (subpath).
-- ⏳ **Uma região que se PARTE em duas dá a tinta a UMA das metades** (a que fica com a semente); a
-  outra fica vazia. O *Live Paint* do Illustrator dá a tinta às duas. ⚠️ A saída desenhada é uma
-  **lista** de sementes na receita (com de-duplicação por face, para que a junção as volte a
-  colapsar numa) — não foi construída porque o report que a motivaria ainda não veio: o que o de
-  2026-09-01 mostrou foi (a) e (b) acima.
+- ✅ **Uma região que se PARTE em duas dá a tinta a UMA das metades** — **FECHADO em 2026-09-02**
+  (§10). ⚠️ E a saída desenhada aqui — *"uma **lista** de sementes na receita"* — foi **recusada por
+  medição**: uma lista de pontos diz *onde* a tinta estava e continua sem dizer **quanto** da face
+  era de quem, que é exactamente o que o caso da **FUSÃO** (o outro metade do mesmo report) exige.
 - **Live Paint** (a face como estado vivo do grupo) — §1.
+
+## §10 — ⭐⭐⭐ O REPORT DE 2026-09-02: **atravessar uma linha com um nó quebrava a tinta**
+
+> *"quando levamos um nó para fora da área onde está, quando atravessamos uma linha com um nó, os
+> preenchimentos se quebram. Então veja qual a melhor solução: não permitir que os preenchimentos
+> sejam destruídos preenchendo corretamente as áreas novas que vão surgindo ou limitar a
+> movimentação dos nós de modo que se movam apenas dentro das linhas da área em que estão"* — Enio
+
+### §10.1 — ⛔ A segunda opção foi RECUSADA, e não por gosto
+
+Prender um nó à região em que ele está não existe em editor vectorial nenhum, e o motivo é
+estrutural: **o desenho manda na tinta, nunca o contrário.** O artista deixaria de poder redesenhar
+a forma que pintou; e a restrição é impossível de exprimir no instante em que a área de destino
+ainda não existe — é o nó que a cria.
+
+### §10.2 — O defeito, medido
+
+Sonda sobre um quadrado de área `400` com uma linha a atravessá-lo:
+
+| o gesto | a rede passa a ter | com UMA semente por preenchimento |
+|---|---|---|
+| a linha entra e **PARTE** a região | 2 faces de `200` | a tinta fica com **uma**: metade da cor some |
+| um nó atravessa o topo e **FUNDE** | `4,17` + `395,83` | **as duas sementes caem na MESMA face** ⇒ duas tintas empilhadas, e a lasca sem dono |
+
+⇒ *uma semente diz **onde** a tinta estava; ela não diz **quanto** da face era dela.*
+
+### §10.3 — A lei: **uma face herda a tinta da região que mais a cobria**
+
+É o *Live Paint* do Illustrator, e as duas metades da regra deles saem de **uma** lei só aqui:
+partir pinta **as duas** metades; fundir dá a face à **maior**. A receita deixa de ser um ponto e
+passa a ser a **região que o preenchimento pintou da última vez** (que é a geometria dele, já no
+documento — ⛔ nenhum campo novo, nenhum bump de schema).
+
+A implementação é uma **votação** ([`vec_bucket_claim`](../../shells/desktop/src/vec_bucket_claim.rs)):
+as amostras do miolo de cada face votam na região que as contém, e ganha a mais votada. Como as
+amostras são uniformes sobre a caixa da face, a contagem é proporcional à **área** coberta.
+
+- **Face sem voto nenhum** ⇒ fica por pintar. Uma região que ninguém tinha pintado é nova, e
+  pintá-la sozinha inventaria uma decisão do artista.
+- **Empate** ⇒ ganha quem tem a **semente** dentro desta face; persistindo, o índice mais baixo
+  (a ordem do documento). ⛔ Ao acaso, a cor piscaria entre duas enquanto a mão treme.
+- **Preenchimento sem face** ⇒ **CONGELA** (a lei que já existia). ⭐⭐ E aqui ela vale mais do que
+  preservar trabalho: a forma congelada **é** a receita, então arrastar o nó de volta faz a tinta
+  voltar sozinha. *No Live Paint do Illustrator ela não volta.*
+- **Uma região que partiu continua a ser UM objecto** — os pedaços são contornos do mesmo caminho,
+  o substrato que a rede soldada estreou no mesmo dia.
+
+⚠️ **A resolução da votação é ~`1/15` da face**: uma fila de amostras em cima da parede antiga vale
+~7% dos votos, e uma margem menor do que isso é decidida **pela grelha**, não pela área. É
+determinístico, e o perdedor congela (e volta). ⛔ *A 1.ª redacção do gate da fusão afirmava o
+vencedor com margem de 1% — estava a medir o alinhamento da grelha e chamou-lhe lei.*
+
+### §10.4 — ⛔ O CUSTO, e a afirmação que a medição DERRUBOU
+
+A 1.ª redacção do doc-comment dizia *"e isto é **mais barato** do que era: o `face_em` reconstruía
+as faces uma vez por preenchimento"*. A construção de facto deixou de se repetir — e a votação paga
+muito mais do que isso poupa. Grelha de linhas, 8 preenchimentos, `--release`:
+
+| faces | montar a rede | 1 `face_em` por fill (antes) | a votação (agora) |
+|---|---|---|---|
+| 9 | `0,15 ms` | `0,053 ms` | `0,35 ms` |
+| 25 | `0,30 ms` | `0,119 ms` | `0,45 ms` |
+| 49 | `0,56 ms` | `0,224 ms` | **`0,64 ms`** |
+
+⇒ ~2,9× o que a semente custava, e **3,8% de um quadro** de 16,7 ms no pior caso medido.
+
+⭐ **E sem a rejeição por CAIXA o mesmo caso custava `4,53 ms` — 30% do quadro, a cada quadro de um
+arrasto.** O produto é `faces × amostras × regiões`, e numa grelha cada face toca **uma** região:
+cortar o factor das regiões vale **7,1×**. ⚠️ Não é micro-optimização — é o que separa pagável de
+inaceitável.
+
+### §10.5 — ⏳ Aberto
+
+- ⏳ **Uma face nova que ninguém pintou fica por pintar** — correcto, mas o artista tem de a clicar.
+  O *Live Paint* faz o mesmo.
+- ⏳ **A margem de ~7% da votação**: uma grelha mais fina reduz o viés e paga linearmente. Sem
+  report, não há número que justifique o preço.
+- ⏳ **Uma ilha dentro de uma face** continua a não virar buraco (§9).

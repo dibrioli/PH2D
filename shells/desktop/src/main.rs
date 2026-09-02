@@ -113,6 +113,9 @@ mod build_smoke_drive;
 /// A cena de smoke do **Expand** (Outline Stroke + Offset Path) — `PH2D_BUILD_SMOKE=17`.
 mod build_smoke_expand;
 mod build_smoke_router;
+/// ⭐⭐ **A cor com que a camada de sprites é limpa** — o fundo que o artista vê no canvas, hoje
+/// derivado da porta única em vez de escrito à mão. Ver o cabeçalho de lá.
+mod canvas_clear;
 /// A lei do **zoom do canvas** — a roda escreve um destino, o quadro publica o vivo.
 mod canvas_zoom;
 mod chrome_hit;

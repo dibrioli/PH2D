@@ -468,10 +468,11 @@ fn paint_grid(
     }
 }
 
-/// **Um cartão.** Quadrado de cor + nome + detalhe.
+/// **Um cartão.** Quadrado + nome + detalhe.
 ///
-/// ⚠️ **A cor é informação, não decoração:** ela é a redução da imagem a um pixel (A2), e é o que
-/// permite reconhecer um asset antes de a miniatura verdadeira existir (A6).
+/// ⚠️ **O que fica por baixo da miniatura é o FUNDO DO CANVAS**, e a cor dominante do asset (A2)
+/// só aparece enquanto não há miniatura — a lei, com o porquê das duas metades, vive no
+/// [`crate::card_backdrop`].
 #[allow(clippy::too_many_arguments)]
 fn paint_card(
     ctx: &mut PaintCtx,
@@ -503,11 +504,14 @@ fn paint_card(
             (thumb.h - inset * 2.0).max(0.0),
         ),
         Radius::Sm.px(),
-        ph2d_vector::Color::from_rgba8(swatch[0], swatch[1], swatch[2], swatch[3]), // LITERAL-COLOR-OK: ponte — a cor É o dado do asset
+        ph2d_editor_core::paint::token_to_vello(crate::card_backdrop::card_backdrop(
+            theme,
+            swatch,
+            thumb_img.is_some(),
+        )),
     );
-    // ⭐⭐ **A miniatura por CIMA da cor** (wave A6) — e a cor fica por baixo de propósito: uma
-    // imagem com alfa mostra o fundo dela, que é a cor dominante do próprio asset, e não um
-    // xadrez nem um cinzento de chrome.
+    // ⭐⭐ **A miniatura por CIMA do fundo** (wave A6): uma imagem com alfa deixa ver o que está
+    // atrás dela, e o que está atrás é o mesmo fundo em que o objecto pousa na tela.
     if let Some(t) = thumb_img {
         crate::paint_thumb::paint_thumb(ctx, key, t, thumb, inset);
     }

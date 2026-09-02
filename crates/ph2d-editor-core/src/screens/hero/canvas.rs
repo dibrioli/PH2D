@@ -10,6 +10,28 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::{Color as VelloColor, VectorScene};
 
+/// ⭐⭐ **DE QUE COR É O FUNDO DO CANVAS — a PORTA ÚNICA da pergunta.**
+///
+/// Três sítios respondiam-na por conta própria e um deles com um literal: este painter (para o
+/// modo fixtura), o `clear` da camada de sprites no shell (o que o artista de facto vê, porque em
+/// modo vivo o fill abaixo é **saltado**) e o cartão do navegador de assets. Enquanto a resposta
+/// era copiada, *"muda a cor do canvas"* movia uns e não os outros — e nenhum gate o dizia, porque
+/// cada sítio estava certo sozinho.
+///
+/// ⚠️ **É o `Bg1`, e não o token `canvas`.** O `canvas` existe na tabela, o doc-comment dele diz
+/// exactamente esta frase — e ele **não tem consumidor nenhum** e vale `#020202` no Forge, cinco
+/// vezes mais escuro do que o que se vê. Adoptá-lo não seria ligar um órfão: seria reabrir a
+/// regressão dos *"pixelated borders"* da M14.5, que a nota do `clear` no shell descreve com o
+/// mecanismo (as bordas anti-aliased do chrome estão calibradas contra ESTE fundo).
+///
+/// ⚠️ **Devolve a cor do TOKEN (sRGB 8 bits), não a cor do vello** — de propósito. Quem pinta
+/// converte com o [`crate::paint::token_to_vello`]; quem limpa um alvo de render precisa dos
+/// bytes. Devolver já convertido obrigaria o segundo a desfazer a conversão do primeiro.
+#[must_use]
+pub fn canvas_backdrop(theme: Theme) -> ph2d_tokens::Color {
+    ColorToken::Bg1.resolve(theme)
+}
+
 pub fn paint_canvas_bg(layout: &HeroLayout, scene: &mut VectorScene, theme: Theme) {
     scene.fill_rect(
         rect_to_vello(layout.viewport),
@@ -17,7 +39,7 @@ pub fn paint_canvas_bg(layout: &HeroLayout, scene: &mut VectorScene, theme: Them
     );
     scene.fill_rect(
         rect_to_vello(layout.canvas),
-        resolve(ColorToken::Bg1, theme),
+        crate::paint::token_to_vello(canvas_backdrop(theme)),
     );
 }
 

@@ -26,15 +26,17 @@
 
 #![forbid(unsafe_code)]
 
+/// ⭐⭐ O QUE FICA POR BAIXO DA MINIATURA — a lei do fundo de um cartão, ver o cabeçalho de lá.
+pub mod card_backdrop;
 mod event;
 mod event_catalog;
 pub mod ids;
 mod paint;
-/// ⭐⭐ A miniatura de um cartão e o memo de textura que ela obriga — irmão por assunto do
-/// [`paint`], ver o cabeçalho de lá.
 /// ⭐⭐ A COLUNA DE CATÁLOGOS (wave A3) — irmão por assunto do [`paint`].
 mod paint_catalog;
 mod paint_catalog_rename;
+/// ⭐⭐ A miniatura de um cartão e o memo de textura que ela obriga — irmão por assunto do
+/// [`paint`], ver o cabeçalho de lá.
 mod paint_thumb;
 mod populate;
 pub mod state;

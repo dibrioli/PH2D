@@ -2773,21 +2773,19 @@ impl crate::App {
         // editor mode wants a static neutral surface so it doesn't
         // pulse rainbow under the chrome.
         //
-        // Why 0.047 instead of the theme-canonical 0.012:
-        // pre-M14.5 the chrome AA edges were rendered against a
-        // backdrop of `Bg1` painted by Vello as sRGB byte ~12,
-        // which the legacy wgpu blitter sampled as 12/255 ≈ 0.047
-        // *treated as linear* (the documented vello-blitter gamma
-        // confusion in `vello_pass.rs`). Anti-aliased chrome edges
-        // in `ph2d-tokens` are calibrated against that 0.047
-        // backdrop. Setting `game_rt` clear to the theme's true
-        // linear 0.012 would make the AA halos contrast strongly
-        // against the now-much-darker dst — that's exactly the
-        // "pixelated borders" regression seen in M14.5 round 2.
-        // Match the legacy backdrop value here; the chrome edges
-        // composite identically.
+        // ⭐⭐ A cor sai da PORTA (`canvas_clear::canvas_clear_rgb`),
+        // que a deriva do mesmo token que o painter do canvas e o
+        // cartão do navegador de assets lêem — era um literal
+        // `(0.047, 0.047, 0.055)`, cópia à mão do `Bg1` do Forge, e
+        // enquanto foi cópia mudar a cor do canvas movia o resto do
+        // app e deixava o canvas onde estava.
+        //
+        // ⛔ A conversão sRGB→linear continua deliberadamente por
+        // fazer (o byte divide-se por 255): é a regressão dos
+        // "pixelated borders" da M14.5 ronda 2, medida e revertida.
+        // O mecanismo inteiro está no cabeçalho do `canvas_clear`.
         let (r, g, b) = if hero_live.is_some() {
-            (0.047, 0.047, 0.055)
+            crate::canvas_clear::canvas_clear_rgb(*theme)
         } else {
             let t = self.fixed_step.tick_count() as f64 * self.fixed_step.fixed_dt();
             (

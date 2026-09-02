@@ -97,7 +97,7 @@ pub use variant_axes::VariantAxis;
 pub use state::{GizmoStateGroup, GridState, ImageEditState, ViewState};
 
 pub use bottom_hud::{BottomHudStats, paint_bottom_hud};
-pub use canvas::{paint_canvas_bg, paint_drop_overlay};
+pub use canvas::{canvas_backdrop, paint_canvas_bg, paint_drop_overlay};
 pub use color_picker_demo::paint_blender_picker_demo;
 pub use left_rail::paint_left_rail;
 pub use selection::paint_selection_overlay;

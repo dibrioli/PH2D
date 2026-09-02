@@ -526,3 +526,63 @@ frase · e nenhum `&mut self` do `CatalogTree` muta sem bump.
 Quando o dreno **recusa** o nome (vazio ou com `/`), o campo já fechou e **o texto escrito
 perde-se** — há toast a explicar, mas o artista tem de reabrir e reescrever. Curá-lo é manter o
 campo aberto sobre uma recusa, o que exige o dreno responder ao painel; hoje ele só fala por toast.
+
+<a id="12"></a>
+## §12 — ⭐⭐ **O FUNDO DE UM CARTÃO É O FUNDO DO CANVAS** (report do Enio, 2026-09-02)
+
+> *«seria interessante que o fundo do ícone do asset seja da mesma cor do fundo do canvas mesmo
+> quando se muda a cor do canvas»*
+
+### §12.1 — A cláusula que manda é a SEGUNDA
+
+Pintar o cartão com a cor que o canvas tem **hoje** satisfaz a primeira metade e falha a segunda em
+silêncio — e era exactamente a doença que já lá estava: **três sítios respondiam «de que cor é o
+fundo do canvas?» por conta própria**, e cada um estava certo **sozinho**.
+
+| Sítio | O que respondia | O que se via |
+|---|---|---|
+| `paint_canvas_bg` (editor-core) | `ColorToken::Bg1` | **só no modo fixtura** — em modo vivo este fill é **saltado** |
+| o `clear` da camada de sprites (shell) | literal `(0.047, 0.047, 0.055)` | **é este o fundo que o artista vê** |
+| o cartão do navegador | a **cor dominante do asset** (wave A2) | o objecto lia-se de uma cor no cartão e de outra na tela |
+
+⇒ A cura é a **porta única** [`canvas_backdrop(theme)`](../../crates/ph2d-editor-core/src/screens/hero/canvas.rs),
+e os três passam a lê-la. Re-vestir o token (trocar de tema **ou** autorar `bg-1` no painel de
+Tokens) move os três no mesmo quadro.
+
+### §12.2 — ⛔ O que **não** mudou, e porquê
+
+- **A conversão sRGB→linear continua por fazer** no `clear` (o byte divide-se por 255). Está errada
+  em teoria e é o que o produto precisa: as bordas anti-aliased do chrome estão calibradas contra o
+  fundo legado, e linearizar a sério é a regressão dos *"pixelated borders"* da M14.5 ronda 2 —
+  **medida e revertida**. ⭐ A cerca nunca tivera gate; agora tem
+  (`the_forge_clear_stays_where_the_chrome_anti_aliasing_was_calibrated`), e ele defende a
+  **distância** ao valor legado, não o literal.
+- ⛔ **O token `canvas` NÃO foi adoptado**, e ele é um órfão cujo doc-comment diz literalmente esta
+  frase (*«viewport background»*). Ele vale `#020202` no Forge — **cinco vezes mais escuro** do que
+  o que se vê —, então ligá-lo não seria curar um órfão: seria reabrir aquela regressão. *O token
+  que NOMEIA a pergunta e o token que a RESPONDE não eram o mesmo.*
+- ⛔ **A cor dominante (A2) não morreu.** Ela deixa de ser fundo e volta ao papel que a justificava:
+  a **cara** de um cartão que ainda não tem miniatura. O orçamento de miniaturas é por quadro, logo
+  «sem miniatura» é normal e transitório — apagar a cor ali daria uma grade de quadrados iguais.
+- ⛔ **Um xadrez é a terceira resposta, recusada.** Ele diz *"aqui há transparência"*, que é
+  informação sobre o **ficheiro**; pediu-se ver o objecto **como ele vai aparecer**, que é
+  informação sobre a **cena**.
+
+### §12.3 — ⭐⭐⭐ O gate que quase mentiu nos DOIS sentidos
+
+O censo textual de *"o `clear` sai da porta?"* ficou **VERDE com o literal reposto** — porque a nota
+histórica que eu escrevi ao lado dele **menciona o nome da porta**. E o censo irmão, *"ninguém
+escreve o fundo à mão"*, ficou **VERMELHO sobre a mesma nota**, que cita o valor legado de
+propósito.
+
+⇒ *Uma varredura de fonte que não separa prosa de código **acusa a prosa e absolve o código**.* Só a
+prova de mutação o mostrou: os dois censos passam a ler apenas linhas de código, e a nota histórica
+fica onde tem de ficar — ela é a única coisa que carrega o mecanismo da cerca da M14.5.
+
+### §12.4 — Correcções ao §9.3 desta mesma página
+
+- ✅ **A6, as miniaturas** — **feita** (2026-09-02): o retrato de um componente é composto na CPU a
+  partir das miniaturas das peças ([`asset_card_portrait.rs`](../../shells/desktop/src/asset_card_portrait.rs)),
+  sem GPU e sem tocar no atlas. A linha do §9.1 que a dá por pendente envelheceu.
+- ✅ **Imagens de 16 bits com a cor neutra** — **fechada**: o `swatch_for` passou a ir pela porta
+  `image_rgba8`, que cobre as duas variantes.

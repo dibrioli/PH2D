@@ -573,6 +573,7 @@ ignored = ["bevy_ecs"]
 default = [
     "sculpt3d",
     "panel-widget-gallery",
+    "panel-widget-lab",
     "panel-hierarchy",
     "panel-inspector",
     "panel-grid-snap",
@@ -610,6 +611,12 @@ lite = []
 # apagar o modulo do binario sem tocar em nada do 2D.
 sculpt3d = ["dep:ph2d-mesh", "dep:ph2d-mesh-render", "dep:ph2d-sculpt3d", "dep:ph2d-sdf"]
 panel-widget-gallery = ["ph2d-panel-registry-init/panel-widget-gallery"]
+# ⛔⛔ **A feature do shell é obrigatória, e a ausência dela NÃO dá erro nenhum.** O shell põe
+# `default-features = false` no `ph2d-panel-registry-init` e re-declara cada painel aqui; um painel
+# que exista no `default` DAQUELA crate e não tenha linha AQUI é **compilado para fora do binário**
+# — e a linha do menu *Window* continua pintada, clicável e **morta**. Foi exactamente o que
+# aconteceu ao Widget Lab em 2026-09-01 (report do Enio: *"Widget Lab não abriu"*).
+panel-widget-lab     = ["ph2d-panel-registry-init/panel-widget-lab"]
 panel-hierarchy      = ["ph2d-panel-registry-init/panel-hierarchy", "dep:ph2d-panel-hierarchy"]
 panel-inspector      = ["ph2d-panel-registry-init/panel-inspector", "dep:ph2d-panel-inspector"]
 panel-bgremoval      = ["ph2d-panel-registry-init/panel-bgremoval", "dep:ph2d-panel-bgremoval"]

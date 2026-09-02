@@ -530,6 +530,37 @@ afirmava `covered == 16` à mão, e uma linha de menu nova punha-o vermelho **se
 Passou a ser **derivado** (`|Window| + 3`). *Um número literal ali obriga cada painel novo a editar
 o gate de outra pessoa, e o sinal que isso produz é ruído com cara de defeito.*
 
+### 11.3-bis — ⛔⛔⛔ E o painel **não abriu**: ele estava fora do BINÁRIO
+
+Report do Enio, no mesmo dia: *«Widget Lab não abriu»*. Com **10 gates verdes**, o painel no
+`PANEL_Z_ORDER_FALLBACK`, a linha no menu e o id no `WidgetStore`.
+
+**O mecanismo:** o `shells/desktop` põe `default-features = false` no
+`ph2d-panel-registry-init` e **re-declara cada painel como feature própria**. Um painel no
+`default` *daquela* crate e sem linha no shell é **compilado para fora** — sem erro, sem aviso.
+
+⚠️ **E o que fica na tela é o pior resultado possível:** a linha do menu continua **pintada e
+clicável**, porque quem a pinta é a `ph2d-editor-core`, que não sabe nada de features do shell.
+⇒ um **botão morto produzido por um manifesto**, não por código em falta.
+
+**Por que nenhum gate o via** — os três corriam na crate onde o painel *existe*:
+
+| gate | estava | porquê |
+|---|---|---|
+| `every_window_menu_row_reaches_a_consumer` | ✅ verde | corre em `panel-registry-init`, features `default` da própria crate |
+| `every_registered_panel_is_reachable_by_the_z_order_walk` | ✅ verde | idem |
+| `build_typed_registry_matches_enabled_features` | ✅ verde | é **consistente** com um painel desligado |
+
+⭐ **A cura durável** lê os **dois manifestos** e exige `default(registry) ∩ panel-* ⊆ default(shell)`:
+`shells/desktop/tests/every_panel_the_registry_ships_reaches_the_binary.rs`. Mutação: com as duas
+linhas do shell fora — o estado exacto em que o Enio abriu o app — ele fica vermelho e **imprime a
+cura**. ⚠️ Ele nasceu com o **próprio parser partido** (dividia por vírgula antes de descascar
+comentários, perdia 6 painéis) e só o **controlo positivo do corpus** (`>= 20`) o apanhou.
+
+⛔ **A lição de diagnóstico:** *um smoke que «não abriu» pode não ser código.* Antes de depurar o
+painel, pergunte **ele está no binário?** — `strings <bin> | grep <id>` separa as duas hipóteses em
+segundos, e aqui teria dado a resposta certa antes da primeira leitura de fonte.
+
 ### 11.4 — ⛔⛔ E uma régua desta casa tem um ponto cego NOVO, com nome
 
 O `the_painted_control_reaches_a_consumer` acusou a **caixa viva** de não ter consumidor. Ela tem:

@@ -23,8 +23,8 @@
 | F1 | `StableId` + `SiblingOrder` + snapshot v2 + **a 1ª migração** + corte da Sprite | ✅ 2026-08-25 |
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
-| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | 🟨 F4.1–F4.5 ✅ · F4.6a/b ✅ · **F4.7 ✅ (os 3 smoke-gates)** · **F4.6c bloqueada na F5** (ela apagaria os variants — ver §F4) · + a auditoria de 27/08 e o modo LIGADO |
-| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 ✅** · **F5.3 ✅** (modelo; a secção mostra a CONTAGEM, não quais) · **variantes ✅ 2026-08-27** · **EIXOS de propriedade ✅ 2026-08-30** (a fatia que a F4.6c pedia) · critério 4 (*Apply to inner master*) ⬜ · troca p/ mestre não aparentado ⬜ |
+| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | 🟨 F4.1–F4.5 ✅ · F4.6a/b ✅ · **F4.7 ✅ (os 3 smoke-gates)** · **F4.6c ⬜ — o bloqueio DISSOLVEU pelo lado inesperado** (a fatia que faltava eram os eixos, e o Enio revogou-os: já não há o que portar; o que sobra é a porta de autoria — ver §F4) · + a auditoria de 27/08 e o modo LIGADO |
+| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 ✅** · **F5.3 ✅** (modelo; a secção mostra a CONTAGEM, não quais) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis abaixo descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) · critério 4 (*Apply to inner master*) ⬜ · troca p/ mestre não aparentado ⬜ |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ✅ 2026-08-30 (996 LOC + a taxonomia) |
 | F7 | O painel Asset Browser + o arrasto único | ✅ 2026-08-30 — etapas **A–D** do [plano 07](07_plano_do_navegador_de_assets.md); `DragPayload` com as duas famílias |
 | F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | ⬜ |
@@ -987,7 +987,27 @@ indireto (B contém instância de V que é-a B) é recusado com mensagem; prova 
 
 ---
 
-## §F5-bis — ⭐⭐⭐ Os EIXOS DE PROPRIEDADE chegam ao cartão geral (2026-08-30)
+## §F5-bis — ⛔ Os EIXOS DE PROPRIEDADE — **REVOGADOS, e esta seção é HISTÓRIA** (2026-08-30 → 01/09)
+
+> ⛔⛔⛔ **Tudo o que esta seção descreve SAIU DO FONTE por ordem do Enio (2026-09-01)** — as duas
+> encarnações (a gramática no `Name`; a propriedade como dado + *Salvar Variação…*) foram recusadas,
+> e a 2.ª por veredito de produto **sem mecanismo nomeado**. Fica como pesquisa e como inventário de
+> saídas medidas; ⛔ uma 3.ª tentativa começa perguntando ao dono *o que ficou pior*, e **não**
+> reconstruindo o desenho abaixo. Registo e recusas:
+> [`06_plano_variacoes_sem_chaves.md`](06_plano_variacoes_sem_chaves.md).
+>
+> ⚠️ **O que SOBREVIVE no produto** é a fileira plana de versões (um chip por receita irmã, o modelo
+> dos *Prefab Variants* do Unity), em
+> [`variant_axes.rs`](../../crates/ph2d-editor-core/src/screens/hero/variant_axes.rs) — onde o nome
+> é **rótulo** e ninguém o parseia.
+>
+> ⚠️ **E o mecanismo revogado continua VIVO num canto:** o
+> [`vec_variants.rs`](../../shells/desktop/src/vec_variants.rs) do sistema vetorial ainda lê
+> `Size=Small, State=Idle` do `Name` e pinta uma fileira por propriedade, e o censo
+> [`the_name_declares_nothing.rs`](../../shells/desktop/tests/the_name_declares_nothing.rs)
+> **não varre aquele ficheiro**. É o que a F4.6c apaga.
+
+### O desenho que foi revogado (history — não implemente a partir daqui)
 
 **O que mudou para o artista:** uma família nomeada `Size=Small, State=Idle` deixa de ser uma
 fileira plana de quatro nomes e passa a ser **duas fileiras, uma por pergunta** — e um chip muda

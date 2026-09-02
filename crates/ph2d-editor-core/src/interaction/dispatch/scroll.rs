@@ -154,6 +154,8 @@ pub(crate) fn scrollbar_panel_for_id(id: NodeId) -> Option<NodeId> {
         Some(ids::HIER_PANEL)
     } else if id == crate::widget::GALLERY_SCROLLBAR_ID {
         Some(ids::GAL_PANEL)
+    } else if id == crate::widget::LAB_SCROLLBAR_ID {
+        Some(ids::LAB_PANEL)
     } else if id == crate::widget::GRID_SETTINGS_SCROLLBAR_ID {
         Some(crate::ids::GS_PANEL)
     } else if id == crate::widget::COLOR_EQUALIZATION_SCROLLBAR_ID {

@@ -171,6 +171,15 @@ pub const ASSET_BROWSER_SCROLLBAR_ID: NodeId = NodeId(844);
 /// free id is `846`; re-read the collision note above before taking it.
 pub const ASSET_CATALOG_SCROLLBAR_ID: NodeId = NodeId(845);
 
+/// ⭐ **A bancada de widgets** (`ph2d-panel-widget-lab`) — o estudo dos quatro desenhos de slider.
+///
+/// ⚠️⚠️ **`846` foi CONTADO na integração de 2026-09-04; a `line/UIUX` escreveu `844`.** Entre o
+/// fecho dela e a fusão, a `line/components` instalou este ficheiro e gastou o `844` e o `845` no
+/// navegador de assets e nos catálogos. ⛔ *Um id que soma entre linhas conta-se, nunca se
+/// escolhe* — e as duas terem escrito o mesmo literal é a colisão que funde **muda**: o
+/// `assert_ne!` da lista de unicidade é que a acusaria, e só se alguém a mantivesse em dia.
+pub const LAB_SCROLLBAR_ID: NodeId = NodeId(846);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -215,6 +224,7 @@ mod tests {
             ("INPUT_MAP", INPUT_MAP_SCROLLBAR_ID),
             ("MODEL3D", MODEL3D_SCROLLBAR_ID),
             ("ASSET_CATALOG", ASSET_CATALOG_SCROLLBAR_ID),
+            ("LAB", LAB_SCROLLBAR_ID),
             ("ASSET_BROWSER", ASSET_BROWSER_SCROLLBAR_ID),
             ("DROPDOWN", crate::widget::DROPDOWN_SCROLLBAR_ID),
         ];

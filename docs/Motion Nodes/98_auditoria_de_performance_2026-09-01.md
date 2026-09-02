@@ -262,6 +262,51 @@ quatro vezes: o nó é **limitado por largura de banda**, não por cálculo.
 
 ---
 
+## §4.3 — ⛔⛔⛔ O 2.º report: *«entrou em points corretamente mas a simulação morreu»*
+
+Com a porta curada (§4.2a) o fio entra onde deve — e a simulação **para**. Medido
+(`a_simulation_survives_a_duplicator_in_the_middle`, a cadeia da cena `=5` com o duplicator
+enfiado no `rest`):
+
+| colunas que chegam ao integrador | |
+|---|---|
+| **sem** duplicator | `Count · Index · P · age · id · life · size · vel` |
+| **com** duplicator (antes) | **`P`** |
+| **com** duplicator (depois) | `Count · Index · P · age · id · life · vel` |
+
+**Sete das oito desapareciam.** Sem `vel` não há o que integrar; sem `id` o integrador não
+reconhece a partícula do tique anterior — e o doc-comment do `motion.integrate` **já avisava**
+que um emparelhamento posicional *«daria a cada partícula a velocidade de uma estranha»*.
+Queda máxima após 40 tiques: `0,782` sem o nó, **`0,000`** com ele.
+
+**A causa:** `Transfer::ShapeWins` (o default) saía **antes do laço** de transferência. Mas
+ler os quatro doc-comments do enum lado a lado mostra a assimetria — três dizem *«uma coluna
+só-do-ponto chega»* e o default deitava-a fora:
+
+> ⭐ **Um modo que resolve CONFLITO não decide sobre uma coluna que ninguém disputa.**
+
+⇒ o modo inerte mantém o que o nome promete (a forma vence a coluna **disputada**) e deixa de
+descartar as **não disputadas**. Queda com o duplicator: **`0,782`**, idêntica à do controlo.
+
+⚠️ **O que muda em arte já gravada:** um documento cujos PONTOS trazem uma coluna exclusiva
+(o caso que o próprio módulo mediu em 2026-08-26 — uma rampa de cor autorada nos pontos, cujo
+`tint` sumia) passa a mostrá-la. *A perda «mantinha a arte de pé — de pé e muda.»* A pergunta
+que este módulo deixou ao dono — **de quem é o valor quando os dois lados a têm** — fica
+intacta, com o mesmo default.
+
+⚠️ **E um GATE codificava o defeito como contrato** (`the_default_mode_is_the_world_that_always_shipped`,
+com *«a coluna só-do-ponto NÃO chega no modo de sempre»* escrito num `assert`). Ele foi
+reescrito, não isentado: a metade verdadeira (a forma vence a disputada) fica.
+
+⛔⛔ **E a lição de régua:** havia **quatro** gates sobre o `transfer`, todos verdes, com a
+cadeia inteira morta. Eles perguntavam *«o modo faz o que diz?»*; nenhum perguntava *«a
+simulação ainda anda?»*. O gate novo mede o **sintoma do artista** e a barra é o próprio
+caminho sem o nó. ⚠️ E a 1.ª fixtura dele usava `motion.make_point`, que sem portas ligadas
+emite **zero** — com `ns == 0` o duplicator devolve a forma tal e qual, e a fixtura **mediu a
+cura como inútil**.
+
+---
+
 ## §5 — Os tetos: auditados contra o §0.0, e estão bons
 
 | teto | valor | nomeia recurso? |

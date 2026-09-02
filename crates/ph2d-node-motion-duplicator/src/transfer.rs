@@ -129,8 +129,27 @@ fn merge(shape: &Column, point: &Column, mode: Transfer) -> Option<Column> {
 /// Escreve em `out` as colunas dos PONTOS, segundo `mode`. `reserved` são os nomes que já
 /// têm lei própria (`P`/`rot` somam, `Index`/`Count` renumeram, `size` tem o `point_scale`).
 ///
-/// No modo inerte não corre nada — nem o laço —, e é isso que mantém o caminho de sempre
-/// byte a byte.
+/// ⛔⛔⛔ **UM MODO QUE RESOLVE CONFLITO NÃO DECIDE SOBRE UMA COLUNA QUE NINGUÉM DISPUTA**
+/// — report do Enio, 2026-09-01: *«o nó entrou em points corretamente mas a simulação
+/// morreu, parou de funcionar»*.
+///
+/// O [`Transfer::ShapeWins`] saía **antes do laço**, e por isso deitava fora também as
+/// colunas que **só** o ponto tem — sobre as quais a forma não tem opinião nenhuma. Os
+/// outros três modos já as deixavam passar; ler os quatro doc-comments deste enum lado a
+/// lado mostra a assimetria: três dizem *«uma coluna só-do-ponto chega»* e o default
+/// dizia-o ao contrário sem que o nome o anunciasse.
+///
+/// ⚠️ **MEDIDO** (`the_enio_sim_died_after_the_duplicator`, uma cadeia de sim igual à da
+/// cena `=5`): das **oito** colunas que o emissor entrega ao integrador
+/// (`Count · Index · P · age · id · life · size · vel`), chegava **UMA** — o `P`, e só
+/// porque a forma também o tem. Sem `vel` não há o que integrar e sem `id` o integrador
+/// não reconhece a partícula do tique anterior ⇒ *a simulação morre*, exactamente como o
+/// doc-comment do `motion.integrate` avisa que aconteceria.
+///
+/// ⚠️ **O que NÃO mudou, de propósito:** a pergunta que este módulo deixou ao Enio é *de
+/// quem é o valor quando a coluna existe dos DOIS lados* — e continua a ser a mesma, com o
+/// mesmo default. Uma corrente cujos pontos não trazem coluna exclusiva sai **byte a byte**
+/// como antes.
 pub fn point_columns_into(
     out: &mut Stream,
     shape: &Stream,
@@ -139,21 +158,20 @@ pub fn point_columns_into(
     mode: Transfer,
     reserved: &[&str],
 ) {
-    if mode.is_inert() {
-        return;
-    }
     for (name, col) in points.columns() {
         if reserved.contains(&name.as_str()) {
             continue;
         }
-        let from_point = gather(col, pairs);
         let value = match shape.get(name.as_str()) {
-            // Só o ponto a tem: ela passa a chegar (é a metade que era um defeito).
-            None => from_point,
-            // Os dois lados a têm: o modo decide, e variantes discordantes mantêm a forma.
+            // Só o ponto a tem: **ninguém a disputa**, então ela chega em TODO modo.
+            None => gather(col, pairs),
+            // Disputada, e o modo inerte quer dizer «a forma vence» — o que a forma já
+            // escreveu pelo `spread` fica, e não se reescreve nada.
+            Some(_) if mode.is_inert() => continue,
+            // Disputada: o modo decide, e variantes discordantes mantêm a forma.
             Some(s) => {
                 let spread = super::spread(s, pairs);
-                match merge(&spread, &from_point, mode) {
+                match merge(&spread, &gather(col, pairs), mode) {
                     Some(v) => v,
                     None => continue,
                 }

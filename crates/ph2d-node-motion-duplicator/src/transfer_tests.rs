@@ -1,8 +1,10 @@
 //! Gates da **TRANSFERÊNCIA DE ATRIBUTO** (doc 89 folha 08).
 //!
-//! A lei tem quatro metades e as quatro são testadas aqui: o modo inerte não toca em nada,
-//! a coluna só-do-ponto passa a chegar, os dois lados combinam-se segundo o modo, e o `size`
-//! fica fora porque tem porta própria.
+//! A lei tem quatro metades e as quatro são testadas aqui: **uma coluna que só o ponto tem
+//! chega em TODO modo** (desde o report do Enio de 2026-09-01 — o modo inerte deixou de a
+//! deitar fora, porque um modo de CONFLITO não decide sobre o que ninguém disputa), o modo
+//! inerte deixa a forma vencer a coluna disputada, os dois lados combinam-se segundo o modo,
+//! e o `size` fica fora porque tem porta própria.
 
 use super::Transfer;
 use crate::{Pick, duplicate};
@@ -39,20 +41,26 @@ fn run(mode: Transfer) -> Stream {
     duplicate(&shape, &points, 2, Pick::Off, 0, 0.0, mode)
 }
 
-/// ⭐ **O CONTROLE, e é o que mantém toda arte já autorada de pé:** no modo de sempre a
-/// saída é exactamente a de antes deste módulo existir — a coluna do ponto não chega, e a
-/// da forma passa intacta.
+/// ⭐ **O CONTROLE do modo de sempre: a forma vence a coluna DISPUTADA.** É esta a pergunta
+/// que o [`Transfer`] responde, e ela não mudou.
+///
+/// ⛔⛔ **A 1.ª redacção deste teste afirmava também que *«a coluna só-do-ponto NÃO chega no
+/// modo de sempre»*, e isso era o DEFEITO escrito como contrato** — report do Enio,
+/// 2026-09-01: *«o nó entrou em points corretamente mas a simulação morreu»*. Um modo que
+/// resolve CONFLITO não tem opinião sobre uma coluna que ninguém disputa, e deitá-la fora
+/// custava as **sete** colunas que um emissor entrega (`id`, `vel`, `age`, `life`, …) —
+/// sem `vel` não há o que integrar e sem `id` o integrador não reconhece a partícula do
+/// tique anterior.
+///
+/// ⚠️ O doc antigo dizia que a perda *«mantém toda arte já autorada de pé»*. Mantinha — de
+/// pé e **muda**: a arte que autorava uma coluna nos pontos nunca a via.
 #[test]
-fn the_default_mode_is_the_world_that_always_shipped() {
+fn the_default_mode_still_lets_the_shape_win_the_contested_column() {
     let out = run(Transfer::ShapeWins);
     assert_eq!(
         scalar(&out, "tint"),
         Some(vec![0.25, 0.25]),
-        "a forma vence"
-    );
-    assert!(
-        out.get("only").is_none(),
-        "a coluna so'-do-ponto NAO chega no modo de sempre"
+        "disputada: a forma vence, e e' isso que o modo quer dizer"
     );
     assert_eq!(
         scalar(&out, "w"),
@@ -61,11 +69,17 @@ fn the_default_mode_is_the_world_that_always_shipped() {
     );
 }
 
-/// ⚠️ **A metade que era um DEFEITO:** uma coluna que só o ponto tem não tinha rota nenhuma
-/// — nem com knob. Nos três modos que não são o de sempre, ela chega.
+/// ⚠️ **UMA COLUNA QUE SÓ O PONTO TEM CHEGA EM **TODOS** OS MODOS** — inclusive no de
+/// sempre, desde o report do Enio de 2026-09-01. Não há com que a combinar, logo não há
+/// conflito para um modo de conflito resolver.
 #[test]
-fn a_column_only_the_point_has_reaches_the_output_in_every_live_mode() {
-    for mode in [Transfer::PointWins, Transfer::Add, Transfer::Multiply] {
+fn a_column_only_the_point_has_reaches_the_output_in_every_mode() {
+    for mode in [
+        Transfer::ShapeWins,
+        Transfer::PointWins,
+        Transfer::Add,
+        Transfer::Multiply,
+    ] {
         let out = run(mode);
         assert_eq!(
             scalar(&out, "only"),

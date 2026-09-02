@@ -310,3 +310,10 @@ pub(super) fn heal_deleted_node(motion: &mut MotionState, nid: NodeId) -> bool {
 #[cfg(test)]
 #[path = "motion_bridge_rewire_tests.rs"]
 mod tests;
+
+/// Os gates e as sondas do report do duplicator (2026-09-01) — irmão cortado do acima no
+/// teto de LOC, por RESPONSABILIDADE: aquele pergunta *«mexer num fio faz o que se pede?»* e
+/// este *«o que acontece quando o nó inserido é o `motion.duplicator`?»*.
+#[cfg(test)]
+#[path = "motion_bridge_rewire_duplicator_tests.rs"]
+mod duplicator_tests;

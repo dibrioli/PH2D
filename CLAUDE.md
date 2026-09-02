@@ -241,7 +241,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   *«o gate é a FORMA, não o relógio»*, e a forma é medida DIVIDINDO dois relógios: *um gate que se
   diz independente do relógio ainda o é, se o numerador e o denominador forem tempos*) ·
   `measure_brush_kernel` ([`ph2d-sculpt3d`](crates/ph2d-sculpt3d/tests/measure_brush_kernel.rs) —
-  cara, 34 s sozinha, no pico do fan-out por construção) · e ⚠️ **as duas de ALOCAÇÃO**, espécie
+  cara, 34 s sozinha, no pico do fan-out por construção) ·
+  `packing_a_dense_scribble_is_bounded` ([`ph2d-flip-render`](crates/ph2d-flip-render/tests/pack_perf.rs)
+  — medido 2026-09-01 numa corrida de **20 309** testes, verde **3 de 3** sozinho e com **zero
+  linhas** do diff naquela crate) · e ⚠️ **as duas de ALOCAÇÃO**, espécie
   própria: `apply_from_doc_is_zero_alloc_steady_state` (ph2d-timeline) e
   `the_trusted_len_collect_allocates_once` (ph2d-audio-edit) — um contador de alocações parece
   imune a carga e não é: sob fan-out o alocador global reutiliza arenas de outra maneira ·

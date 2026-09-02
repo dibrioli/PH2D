@@ -219,25 +219,40 @@ impl crate::App {
         // ⚠️ **Uma semente que deixou de cair em face nenhuma CONGELA a forma onde ela está**, em
         // vez de a fazer sumir — a mesma escolha do conector e do morph, e a única que preserva o
         // trabalho do artista. Ele afastou as linhas; o desfazer devolve-lhe a região.
-        let novos: Vec<(u64, Vec<VecVertex>)> = fills
+        #[allow(clippy::cast_possible_truncation)]
+        let novos: Vec<(u64, Entity, Vec<VecVertex>, [f32; 2])> = fills
             .iter()
-            .filter_map(|(id, _, seed)| {
+            .filter_map(|(id, e, seed)| {
                 let f = rede.face_em(*seed)?;
                 let g = rede.geometria(&f);
                 if g.len() < 2 {
                     return None;
                 }
+                // ⭐⭐⭐ **A semente RE-SEMEIA-SE no ponto mais FUNDO da face.** O clique cai onde o
+                // dedo caiu, e isso pode ser encostado à borda: arrastar essa parede por cima do
+                // ponto fazia a face deixar de o conter, e o preenchimento parava de seguir
+                // (medido). Fundo, a parede tem de varrer o miolo inteiro para o perder — que é
+                // quando a região de facto deixou de existir.
+                let novo = rede.interior_point(&f).unwrap_or(*seed);
                 // ⚠️ **A área desce ao espaço do CAMINHO** — ver [`para_local`]. Escrever mundo num
                 // caminho já assentado desloca-o pelo centro dele.
-                para_local(g, &ph2d_vec_scene::xform_of(&xf, *id)).map(|v| (*id, v))
+                let v = para_local(g, &ph2d_vec_scene::xform_of(&xf, *id))?;
+                Some((*id, *e, v, [novo[0] as f32, novo[1] as f32]))
             })
             .collect();
         if let Some(gfx) = self.gfx.as_mut() {
-            for (id, verts) in novos {
+            for (id, e, verts, seed) in novos {
                 if let Some(p) = gfx.vec_scene.path_mut(id)
                     && p.verts != verts
                 {
                     p.verts = verts;
+                }
+                // ⚠️ Só quando MUDA: uma escrita por quadro sobre o mesmo valor é ruído no diff do
+                // undo.
+                if let Ok(mut er) = gfx.sim.world_mut().get_entity_mut(e)
+                    && er.get::<VecBucketFill>().is_some_and(|f| f.seed != seed)
+                {
+                    er.insert(VecBucketFill::new(seed));
                 }
             }
         }

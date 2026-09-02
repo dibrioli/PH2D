@@ -174,18 +174,24 @@ fn the_same_seed_names_the_new_face_after_a_wall_moves() {
     );
 }
 
-/// ⛔⛔ **UM PREENCHIMENTO NÃO É PAREDE** — e este gate mede o mecanismo, não a política.
+/// ⛔⛔ **UMA CÓPIA COINCIDENTE JÁ NÃO ENVENENA AS VIZINHAS** — e este gate mudou de lado.
 ///
-/// Report do Enio (2026-09-01): *"ao usar o balde nas áreas coloridas, ele para de funcionar nas
-/// áreas não coloridas."* A forma depositada tem por fronteira os MESMOS arcos que as linhas; posta
-/// de volta na rede, ela põe lá arestas **coincidentes** — e o passeio de faces passa a escolher
-/// entre duas meias-arestas com a mesma direcção de saída.
+/// # A história, porque ela é a lição
 ///
-/// A régua: com a cópia dentro, uma região vizinha deixa de ser achada (ou muda de área). A shell
-/// exclui-a pelo componente [`ph2d_ecs::VecBucketFill`]; aqui prova-se **por que** ela tem de o
-/// fazer.
+/// Ele nasceu (2026-09-01) a afirmar o CONTRÁRIO: a forma que o balde depositava, posta de volta na
+/// rede, punha lá arestas coincidentes e as regiões vizinhas deixavam de fechar. Era o mecanismo que
+/// justificava manter o preenchimento **fora** da rede.
+///
+/// ⭐ Horas depois, o report *"a depender da posição dos pontos o preenchimento some"* mostrou que a
+/// mesma fraqueza tinha outra porta — **duas paredes autoradas a caírem uma em cima da outra** —, e
+/// aí ela deixou de ser tolerável: nenhum artista aceita perder o preenchimento do outro lado do
+/// desenho por ter encostado dois traços. O `descartar_duplicados` cura as duas.
+///
+/// ⇒ **A política FICA e o motivo dela mudou.** Um preenchimento continua fora da rede — mas agora
+/// por ser derivado, não por envenenar: o descarte guarda **um** dos dois arcos, e se o guardado
+/// fosse o da cópia, a rede passaria a depender de uma geometria que outro motor reescreve.
 #[test]
-fn a_duplicate_of_a_face_poisons_its_neighbours() {
+fn a_duplicate_of_a_face_no_longer_poisons_its_neighbours() {
     let base = vec![
         (vec![v(-60.0, -20.0), v(60.0, -20.0)], false),
         (vec![v(-60.0, 20.0), v(60.0, 20.0)], false),
@@ -194,14 +200,146 @@ fn a_duplicate_of_a_face_poisons_its_neighbours() {
     ];
     let r = rede(&base);
     let miolo = r.face_em([0.0, 0.0]).expect("o miolo");
-    // A "forma preenchida": a própria face, de volta à lista de paredes.
-    let mut envenenada = base.clone();
-    envenenada.push((r.geometria(&miolo), true));
-    let r2 = rede(&envenenada);
-    let depois = r2.face_em([0.0, 0.0]);
+    let mut com_copia = base.clone();
+    com_copia.push((r.geometria(&miolo), true));
+    let depois = rede(&com_copia)
+        .face_em([0.0, 0.0])
+        .expect("a copia coincidente nao pode fazer a regiao desaparecer");
     assert!(
-        depois.is_none_or(|f| (f.area - miolo.area).abs() > 1.0),
-        "a cópia coincidente passou despercebida — se um dia passar, esta wave pode simplificar; \
-         até lá, o preenchimento fica FORA da rede"
+        (depois.area - miolo.area).abs() < 1.0,
+        "a regiao mudou de area com a copia por cima: {} contra {}",
+        depois.area,
+        miolo.area
+    );
+}
+
+/// ⛔⛔ **DOIS ARCOS SOBREPOSTOS não podem destruir o passeio INTEIRO.**
+///
+/// Report do Enio (2026-09-01): *"a depender da posição dos pontos o preenchimento some."*
+/// ⚠️ **Medido:** com uma parede a cair exactamente em cima de outra, a rede passava de **3 faces a
+/// 1** — e a região do outro lado do desenho perdia o preenchimento junto, sem ter nada a ver com
+/// aquilo. *Duas meias-arestas com a mesma direcção de saída são indistinguíveis para o passeio.*
+#[test]
+fn a_wall_landing_on_another_does_not_take_the_whole_network_with_it() {
+    let base = |x: f64| {
+        vec![
+            (
+                vec![
+                    v(-60.0, -40.0),
+                    v(20.0, -40.0),
+                    v(20.0, 40.0),
+                    v(-60.0, 40.0),
+                ],
+                true,
+            ),
+            (vec![v(20.0, 40.0), v(x, 0.0), v(20.0, -40.0)], false),
+        ]
+    };
+    // Controle: com a bolsa aberta há as duas regiões.
+    let aberta = rede(&base(60.0));
+    assert!(aberta.face_em([-20.0, 0.0]).is_some(), "a de dentro");
+    assert!(aberta.face_em([25.0, 0.0]).is_some(), "a bolsa");
+    // E com a parede EM CIMA da aresta, a de dentro SOBREVIVE (a bolsa tem area zero e some).
+    let colada = rede(&base(20.0));
+    let dentro = colada
+        .face_em([-20.0, 0.0])
+        .expect("a regiao do rectangulo nao tem nada a ver com a bolsa degenerada");
+    assert!((dentro.area - 6400.0).abs() < 1.0, "area {}", dentro.area);
+}
+
+/// ⚠️ **Duas curvas DIFERENTES entre os mesmos dois nós são uma LENTE, não um duplicado.**
+///
+/// Sem esta metade, o descarte de duplicados comeria uma região legítima — e o par de nós sozinho
+/// não distingue as duas coisas.
+#[test]
+fn two_different_curves_between_the_same_nodes_are_a_lens() {
+    let arco = |k: f64| {
+        vec![
+            VecVertex {
+                anchor: [-50.0, 0.0],
+                in_handle: [-50.0, 0.0],
+                out_handle: [-20.0, k],
+                kind: VertexKind::Smooth,
+                corner_radius: 0.0,
+            },
+            VecVertex {
+                anchor: [50.0, 0.0],
+                in_handle: [20.0, k],
+                out_handle: [50.0, 0.0],
+                kind: VertexKind::Smooth,
+                corner_radius: 0.0,
+            },
+        ]
+    };
+    let r = rede(&[(arco(60.0), false), (arco(-60.0), false)]);
+    assert_eq!(r.arcos.len(), 2, "as duas curvas nao podem colapsar numa");
+    assert!(
+        r.face_em([0.0, 0.0]).is_some(),
+        "a lente entre as duas curvas e' uma regiao legitima"
+    );
+}
+
+/// ⭐⭐⭐ **A SEMENTE RE-SEMEADA SOBREVIVE a uma parede que varre por cima do clique.**
+///
+/// ⚠️ **Medido antes:** com a semente a `0,5` de uma parede, arrastá-la por cima do ponto fazia a
+/// face deixar de o conter, e o preenchimento parava de seguir. Re-semear no ponto mais **fundo**
+/// da face a cada re-cozimento mantém a receita longe da borda.
+#[test]
+fn reseeding_deep_inside_survives_a_wall_sweeping_over_the_click() {
+    let quadro = |topo: f64| {
+        vec![
+            (vec![v(-60.0, -20.0), v(60.0, -20.0)], false),
+            (vec![v(-60.0, topo), v(60.0, topo)], false),
+            (vec![v(-20.0, -60.0), v(-20.0, 60.0)], false),
+            (vec![v(20.0, -60.0), v(20.0, 60.0)], false),
+        ]
+    };
+    // O clique caiu perto do tecto (`y = 19,5`, com o tecto em `20`).
+    let mut semente = [0.0, 19.5];
+    let mut vivo = 0;
+    for topo in [20.0_f64, 18.0, 15.0, 10.0, 5.0, 0.0, -10.0] {
+        let r = rede(&quadro(topo));
+        let Some(f) = r.face_em(semente) else { break };
+        vivo += 1;
+        semente = r.interior_point(&f).expect("a face tem miolo");
+    }
+    assert_eq!(
+        vivo, 7,
+        "o preenchimento perdeu a regiao a meio da varredura (sobreviveu a {vivo} passos de 7)"
+    );
+    // ⛔ E o CONTROLE: sem re-semear, a mesma varredura perde-a.
+    let mut fixa = [0.0, 19.5];
+    let mut sem = 0;
+    for topo in [20.0_f64, 18.0, 15.0, 10.0, 5.0, 0.0, -10.0] {
+        if rede(&quadro(topo)).face_em(fixa).is_none() {
+            break;
+        }
+        sem += 1;
+    }
+    assert!(
+        sem < 7,
+        "o controle nao mede nada: a semente fixa sobreviveu a varredura toda"
+    );
+    let _ = &mut fixa;
+}
+
+/// ⚠️ **Numa face CÔNCAVA o centroide pode cair FORA** — e aí o ponto vem da grelha.
+#[test]
+fn the_interior_point_of_a_concave_face_is_inside_it() {
+    // Um "L": o centroide do contorno cai no canto que falta.
+    let l = vec![
+        v(-40.0, -40.0),
+        v(40.0, -40.0),
+        v(40.0, -20.0),
+        v(-20.0, -20.0),
+        v(-20.0, 40.0),
+        v(-40.0, 40.0),
+    ];
+    let r = rede(&[(l, true)]);
+    let f = r.face_em([-30.0, 0.0]).expect("o braco vertical do L");
+    let p = r.interior_point(&f).expect("o L tem miolo");
+    assert!(
+        r.face_em(p).is_some_and(|g| (g.area - f.area).abs() < 1.0),
+        "o ponto interior caiu fora da propria face: {p:?}"
     );
 }

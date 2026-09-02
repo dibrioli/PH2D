@@ -160,6 +160,17 @@ fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
         BUCKET[f..fim].contains("para_local(g, &ph2d_vec_scene::xform_of(&xf, *id))"),
         "a area re-cozida e' escrita em MUNDO num caminho que tem pose — ela sai deslocada"
     );
+    // ⭐ **E a semente RE-SEMEIA-SE no ponto mais fundo da face** (report de 2026-09-01: *"a
+    // depender da posição dos pontos o preenchimento some"*): o clique cai onde o dedo caiu, e uma
+    // semente encostada à borda é perdida pela primeira parede que passa por cima dela.
+    assert!(
+        BUCKET[f..fim].contains("rede.interior_point(&f)"),
+        "a semente nao e' re-semeada — ela fica colada ao ponto do clique e perde-se"
+    );
+    assert!(
+        BUCKET[f..fim].contains("er.insert(VecBucketFill::new(seed));"),
+        "o ponto novo e' calculado e nao e' GRAVADO na receita"
+    );
     // ⚠️ E a exclusão passa pela porta ÚNICA, com os DOIS termos: um fecho escrito à mão aqui foi
     // o que deixou a mutação `o-fill-entra-na-rede` sobreviver.
     assert!(

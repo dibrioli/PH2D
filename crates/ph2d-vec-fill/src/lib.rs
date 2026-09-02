@@ -149,11 +149,73 @@ pub fn rede(contornos: &[(Vec<VecVertex>, bool)]) -> Rede {
             ate: ids[i * 2 + 1],
         })
         .collect();
-    let poly = geom
+    let poly: Vec<Vec<[f64; 2]>> = geom
         .iter()
         .map(|(v, _)| detection_polyline(v, false))
         .collect();
-    Rede { arcos, nos, poly }
+    descartar_duplicados(Rede { arcos, nos, poly }, tol)
+}
+
+/// ⛔⛔ **DOIS ARCOS SOBREPOSTOS destroem o passeio — e não só a região deles.**
+///
+/// Report do Enio (2026-09-01): *"a depender da posição dos pontos o preenchimento some."*
+///
+/// ⚠️ **Medido:** com uma parede a cair **exactamente em cima** de outra (o artista arrasta um nó
+/// até a curva encostar na aresta vizinha), a rede inteira passava de **3 faces a 1** — e a região
+/// do outro lado do desenho, que nada tinha a ver, perdia o preenchimento junto. *Duas
+/// meias-arestas com a mesma direcção de saída são indistinguíveis para o passeio, e ele fecha um
+/// ciclo só, gigante.* É o mesmo mecanismo que fazia um preenchimento devolvido à rede envenenar as
+/// vizinhas.
+///
+/// ⇒ Dois arcos que ligam **o mesmo par de nós** e passam **pelo mesmo sítio** são o mesmo arco: o
+/// segundo cai. ⛔ **O par de nós sozinho não chega** — duas curvas diferentes entre os mesmos dois
+/// nós são uma lente, e ela é uma região legítima; por isso a comparação inclui o ponto do MEIO.
+fn descartar_duplicados(r: Rede, tol: f64) -> Rede {
+    let t2 = (tol.max(1e-9)) * (tol.max(1e-9));
+    let meio = |p: &[[f64; 2]]| p.get(p.len() / 2).copied().unwrap_or([0.0, 0.0]);
+    let mut fica: Vec<bool> = vec![true; r.arcos.len()];
+    for i in 0..r.arcos.len() {
+        if !fica[i] {
+            continue;
+        }
+        let (a, b) = (
+            r.arcos[i].de.min(r.arcos[i].ate),
+            r.arcos[i].de.max(r.arcos[i].ate),
+        );
+        let mi = meio(&r.poly[i]);
+        for (j, vivo) in fica.iter_mut().enumerate().skip(i + 1) {
+            if !*vivo {
+                continue;
+            }
+            let (c, d) = (
+                r.arcos[j].de.min(r.arcos[j].ate),
+                r.arcos[j].de.max(r.arcos[j].ate),
+            );
+            if (a, b) != (c, d) {
+                continue;
+            }
+            let mj = meio(&r.poly[j]);
+            let v = [mi[0] - mj[0], mi[1] - mj[1]];
+            if v[0].mul_add(v[0], v[1] * v[1]) <= t2 {
+                *vivo = false;
+            }
+        }
+    }
+    if fica.iter().all(|k| *k) {
+        return r;
+    }
+    let (mut arcos, mut poly) = (Vec::new(), Vec::new());
+    for (i, k) in fica.iter().enumerate() {
+        if *k {
+            arcos.push(r.arcos[i].clone());
+            poly.push(r.poly[i].clone());
+        }
+    }
+    Rede {
+        arcos,
+        nos: r.nos,
+        poly,
+    }
 }
 
 impl Rede {
@@ -263,6 +325,61 @@ impl Rede {
         out
     }
 
+    /// ⭐⭐⭐ **UM PONTO BEM DENTRO da face** — o sítio onde uma semente sobrevive à edição.
+    ///
+    /// ⚠️ **A semente do clique fica onde o dedo caiu, e isso pode ser encostado à borda.** Medido:
+    /// com a semente a `0,5` de uma parede, arrastar essa parede **por cima dela** faz a face
+    /// deixar de a conter, e o preenchimento perde a região que estava a seguir. Re-semear aqui a
+    /// cada re-cozimento mantém o ponto **fundo** — a parede tem de varrer o miolo inteiro para o
+    /// perder, que é quando a região de facto deixou de existir.
+    ///
+    /// O centroide serve quando cai dentro (o caso comum); numa face **côncava** ele pode cair
+    /// fora, e aí a resposta é a amostra da grelha mais **afastada da borda**.
+    #[must_use]
+    pub fn interior_point(&self, face: &Face) -> Option<[f64; 2]> {
+        let poly = self.contorno(face);
+        if poly.len() < 3 {
+            return None;
+        }
+        let n = poly.len() as f64;
+        let c = [
+            poly.iter().map(|p| p[0]).sum::<f64>() / n,
+            poly.iter().map(|p| p[1]).sum::<f64>() / n,
+        ];
+        if point_in_polygon(&poly, c) {
+            return Some(c);
+        }
+        let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
+        for p in &poly {
+            lo = [lo[0].min(p[0]), lo[1].min(p[1])];
+            hi = [hi[0].max(p[0]), hi[1].max(p[1])];
+        }
+        // ⚠️ **A grelha evita as bordas de propósito** (`(k + 1) / (N + 1)`): uma amostra em cima da
+        // fronteira é exactamente o ponto que a contenção não sabe decidir.
+        const N: usize = 15;
+        let mut melhor: Option<([f64; 2], f64)> = None;
+        for i in 0..N {
+            for j in 0..N {
+                let t = |k: usize| (k as f64 + 1.0) / (N as f64 + 1.0);
+                let p = [
+                    lo[0] + (hi[0] - lo[0]) * t(i),
+                    lo[1] + (hi[1] - lo[1]) * t(j),
+                ];
+                if !point_in_polygon(&poly, p) {
+                    continue;
+                }
+                let d = poly
+                    .windows(2)
+                    .map(|w| dist_ponto_segmento(p, w[0], w[1]))
+                    .fold(f64::INFINITY, f64::min);
+                if melhor.as_ref().is_none_or(|(_, b)| d > *b) {
+                    melhor = Some((p, d));
+                }
+            }
+        }
+        melhor.map(|(p, _)| p)
+    }
+
     /// O achatado de uma face, para medir área e contenção.
     fn contorno(&self, face: &Face) -> Vec<[f64; 2]> {
         let mut out: Vec<[f64; 2]> = Vec::new();
@@ -309,6 +426,18 @@ impl Rede {
         let k = lista.iter().position(|&x| x == gemeo).unwrap_or(0);
         lista[(k + lista.len() - 1) % lista.len()]
     }
+}
+
+/// A distância de um ponto ao SEGMENTO — a régua de *"quão fundo"*.
+fn dist_ponto_segmento(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
+    let ab = [b[0] - a[0], b[1] - a[1]];
+    let ap = [p[0] - a[0], p[1] - a[1]];
+    let len2 = ab[0].mul_add(ab[0], ab[1] * ab[1]);
+    if len2 <= f64::EPSILON {
+        return ap[0].hypot(ap[1]);
+    }
+    let t = (ap[0].mul_add(ab[0], ap[1] * ab[1]) / len2).clamp(0.0, 1.0);
+    (ap[0] - t * ab[0]).hypot(ap[1] - t * ab[1])
 }
 
 /// A área com sinal de um polígono (shoelace). Positiva = anti-horário.

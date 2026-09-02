@@ -196,10 +196,47 @@ salta-a) e o `is_pickable` (não se agarra). ⭐ **É a lei que a gaiola do Enve
 forma sob ela é a saída do warp, e os nós dela não se desenham); aqui ela deixa de ser um caso
 especial da shell e passa a ser uma propriedade da vista.
 
+### 6. ⛔⛔ *"A depender da posição dos pontos o preenchimento SOME"* (2026-09-01)
+
+**Duas perdas, medidas antes de qualquer cura.**
+
+#### (a) Uma parede a cair em cima de outra levava a REDE INTEIRA
+
+⚠️ Medido: com um traço arrastado até coincidir com a aresta vizinha, a rede passava de **3 faces a
+1** — e a região do outro lado do desenho perdia o preenchimento junto, sem ter nada a ver com
+aquilo. *Duas meias-arestas com a mesma direcção de saída são indistinguíveis para o passeio, e ele
+fecha um ciclo só, gigante.*
+
+⇒ `descartar_duplicados`: dois arcos que ligam **o mesmo par de nós** e passam **pelo mesmo sítio**
+são o mesmo arco. ⛔ **O par de nós sozinho não chega** — duas curvas diferentes entre os mesmos dois
+nós são uma **lente**, que é uma região legítima; por isso a comparação inclui o ponto do meio.
+
+⭐⭐ **E isto reabriu uma recusa:** o gate que dizia *"uma cópia coincidente envenena as vizinhas"*
+existia para justificar manter o preenchimento fora da rede. Ele **caducou** — hoje mede a cura. *A
+política fica e o motivo dela mudou*: um preenchimento continua fora por ser **derivado**, não por
+envenenar (o descarte guarda **um** dos dois arcos, e se fosse o da cópia a rede passaria a depender
+de geometria que outro motor reescreve).
+
+#### (b) A semente colada à borda perdia-se à primeira parede que passasse
+
+⚠️ Medido: com a semente a `0,5` de uma parede, arrastá-la por cima do ponto fazia `face_em`
+devolver `None` — e o preenchimento **congelava**, que na tela se lê como *"deixou de acompanhar"*.
+
+⇒ Depois de cada re-cozimento a semente **re-semeia-se no ponto mais FUNDO da face**
+(`Rede::interior_point`: o centroide quando cai dentro; numa face côncava, a amostra da grelha mais
+afastada da borda). Assim a parede tem de varrer o **miolo** para a perder — que é quando a região
+de facto deixou de existir. O gate mede os dois lados: com re-semeadura a varredura inteira
+sobrevive; sem ela, não.
+
 ## §8 — ⏳ Nomeado e fora da v1
 
 - **Vazamento**: se o clique cai na face externa (a região não fecha), o balde **recusa e diz
   porquê**. ⛔ Fechar vãos automaticamente é a lei do `ph2d-flip-fill` (bola presa + extensão de
   pontas) e pertence a uma wave própria — soldar já é o gesto que fecha o que o artista quis.
 - **Ilhas**: uma forma solta dentro da face fica por cima; ela ainda não vira buraco (subpath).
+- ⏳ **Uma região que se PARTE em duas dá a tinta a UMA das metades** (a que fica com a semente); a
+  outra fica vazia. O *Live Paint* do Illustrator dá a tinta às duas. ⚠️ A saída desenhada é uma
+  **lista** de sementes na receita (com de-duplicação por face, para que a junção as volte a
+  colapsar numa) — não foi construída porque o report que a motivaria ainda não veio: o que o de
+  2026-09-01 mostrou foi (a) e (b) acima.
 - **Live Paint** (a face como estado vivo do grupo) — §1.

@@ -59,6 +59,13 @@ pub struct Rede {
     pub arcos: Vec<Arco>,
     /// A posição de cada nó, em MUNDO.
     pub nos: Vec<[f64; 2]>,
+    /// ⛔ **O documento passou do tecto de amostragem**
+    /// ([`ph2d_vec_scene::trim_tool::MAX_SAMPLES_BATCH`]) e a rede está **vazia** — não há faces, e
+    /// quem chama tem de o DIZER em vez de agir.
+    ///
+    /// ⚠️ A resposta antiga era devolver zero cruzamentos, e é a pior possível: sem cruzamentos toda
+    /// forma volta a ser um anel inteiro, e o preenchimento **salta para a forma toda** em silêncio.
+    pub recusada: bool,
     /// A polilinha de cada arco — o achatado com que as faces são medidas.
     ///
     /// ⚠️⚠️ **É a MESMA amostragem com que os cruzamentos foram achados**
@@ -83,15 +90,24 @@ pub struct Face {
 pub fn rede(contornos: &[(Vec<VecVertex>, bool)]) -> Rede {
     let esc = escala(contornos);
     // ── 1. CORTAR nos cruzamentos.
+    //
+    // ⛔⛔ **UMA passagem, e não uma por contorno.** Perguntar por contorno é `O(n³)` — o
+    // `crossings_against` soma as arestas do alvo MAIS as de todos os outros, então o mesmo total
+    // era construído e comparado com o mesmo tecto `n` vezes. Medido em círculos que se cruzam: a
+    // `64` deles a resposta é certa e custa **764 ms**; a `65` **todos os cruzamentos desapareciam**
+    // e cada forma voltava a ser um anel inteiro, sem um aviso.
+    let Some(por_contorno) = trim_tool::crossings_all(contornos, esc) else {
+        // ⛔ Acima do tecto a resposta é uma RECUSA, e a rede sai VAZIA — sem faces. ⚠️ Devolver
+        // zero cruzamentos daria faces ERRADAS (cada forma inteira), e o preenchimento saltaria
+        // para elas em silêncio.
+        return Rede {
+            recusada: true,
+            ..Rede::default()
+        };
+    };
     let mut geom: Vec<(Vec<VecVertex>, bool)> = Vec::new();
     for (k, (verts, closed)) in contornos.iter().enumerate() {
-        let outros: Vec<(Vec<VecVertex>, bool)> = contornos
-            .iter()
-            .enumerate()
-            .filter(|(j, _)| *j != k)
-            .map(|(_, c)| c.clone())
-            .collect();
-        let mut xings = trim_tool::crossings_against(verts, *closed, &outros, esc);
+        let mut xings = por_contorno[k].clone();
         // ⚠️ **Um anel que não encontra ninguém tem de virar um LAÇO**, e não ficar fechado: um
         // contorno fechado sem ponta não tem meia-aresta, e a face que ele delimita ficaria
         // invisível para o passeio. Cortá-lo num sítio qualquer dá **um** arco aberto cujas duas
@@ -121,7 +137,12 @@ pub fn rede(contornos: &[(Vec<VecVertex>, bool)]) -> Rede {
             .iter()
             .map(|(v, c)| trim_tool::sampling_error(v, *c))
             .fold(0.0_f64, f64::max))
-    .max(esc * NODE_WELD_FRACTION);
+    .max(esc * NODE_WELD_FRACTION)
+    // ⭐⭐⭐ **E o mesmo piso do TOQUE.** Quando uma ponta pousa numa parede, a parede ganha um nó na
+    // projecção e a ponta fica a até essa folga dele — se o agrupamento não a alcançasse, o toque
+    // seria reconhecido e o NÓ ficaria partido em dois, que é o mesmo que não o reconhecer.
+    // *Duas perguntas com a mesma resposta têm de ter a mesma régua.*
+    .max(esc * ph2d_vec_scene::trim_tool::TOUCH_FRACTION);
     let pontas: Vec<[f64; 2]> = geom
         .iter()
         .flat_map(|(v, _)| [v[0].anchor, v[v.len() - 1].anchor])
@@ -153,7 +174,15 @@ pub fn rede(contornos: &[(Vec<VecVertex>, bool)]) -> Rede {
         .iter()
         .map(|(v, _)| detection_polyline(v, false))
         .collect();
-    descartar_duplicados(Rede { arcos, nos, poly }, tol)
+    descartar_duplicados(
+        Rede {
+            arcos,
+            nos,
+            poly,
+            recusada: false,
+        },
+        tol,
+    )
 }
 
 /// ⛔⛔ **DOIS ARCOS SOBREPOSTOS destroem o passeio — e não só a região deles.**
@@ -215,6 +244,7 @@ fn descartar_duplicados(r: Rede, tol: f64) -> Rede {
         arcos,
         nos: r.nos,
         poly,
+        recusada: r.recusada,
     }
 }
 

@@ -213,8 +213,106 @@ pub fn crossings_against(
             out.push(c.b.1);
         }
     }
-    out.extend(touches(&geoms[0], outros));
+    out.extend(touches(&geoms[0], outros, escala));
     out
+}
+
+/// ⭐⭐⭐ **A FOLGA DO TOQUE**, como fracção da escala da arte.
+///
+/// # ⛔⛔ Por que a flecha sozinha não chega (report do Enio, 2026-09-01/02)
+///
+/// A régua natural é o **erro de amostragem do alvo** — um ponto que está sobre a curva pode estar a
+/// até isso da poligonal que a representa. ⚠️ **Mas ela é ZERO numa RECTA**: a corda É a curva. Uma
+/// curva que termina sobre uma aresta recta tinha de a tocar **ao bit** para a fronteira existir, e
+/// meio pixel de folga fazia a região abrir. *Antes de 01/09 a flecha era calculada contra o ponto
+/// médio da corda e devolvia `0,55` numa recta de 100 — errado, e era esse erro que segurava as
+/// junções em «T».*
+///
+/// ⚠️ **Fracção da diagonal da arte, e MINÚSCULA de propósito** (`1e-3` — `0,4` num desenho de 400).
+/// Ela perdoa o tremor da mão e o resíduo de vírgula flutuante, e **não fecha um vão que se veja**.
+/// ⛔ Não é a largura do traço: essa foi construída, shipada e **revertida** — ela move geometria e
+/// fecha vãos que o artista quer abertos (plano 40 §7).
+pub const TOUCH_FRACTION: f64 = 1e-3;
+
+/// A folga com que uma ponta conta como pousada em `alvo` — ver [`TOUCH_FRACTION`].
+fn touch_tol(alvo: &Geom, escala: f64) -> f64 {
+    alvo.sampling_error().max(escala * TOUCH_FRACTION)
+}
+
+/// ⭐⭐⭐ **TODOS OS CRUZAMENTOS de uma lista de contornos, distribuídos por contorno.**
+///
+/// ⛔⛔ **Existe porque perguntar por contorno é `O(n³)`**, e o tecto de amostras transforma isso
+/// num **penhasco mudo**: o [`crossings_against`] soma as arestas do alvo **mais as de todos os
+/// outros**, então numa lista de `n` contornos o mesmo total é somado `n` vezes e comparado com o
+/// mesmo tecto. Medido em círculos que se cruzam: a `64` deles (4 096 arestas) a resposta é certa e
+/// custa **764 ms**; a `65` (4 160) **todos os cruzamentos desaparecem** e cada forma volta a ser um
+/// anel inteiro — o preenchimento salta de `2 235` para `7 844` de área, sem um aviso.
+///
+/// Aqui as arestas são construídas **uma vez**, o motor corre **uma vez**, e o tecto é comparado
+/// **uma vez** — com o número que a medição deu.
+/// ⭐⭐⭐ **O TECTO DA PASSAGEM ÚNICA**, em arestas de amostragem — MEDIDO, não escolhido.
+///
+/// | arestas | montar a rede |
+/// |---|---|
+/// | 4 096 | `11,9 ms` |
+/// | 6 144 | `25,7 ms` |
+/// | 8 192 | `45,5 ms` |
+/// | **12 288** | **`102,0 ms`** |
+/// | 16 384 | `180,6 ms` |
+/// | 32 768 | `715,4 ms` |
+///
+/// ⚠️ **É outro orçamento que não o do [`crate::arc_cut::MAX_SAMPLES`]**, e é por isso que são dois
+/// números: aquele serve o Trim, que pergunta **por quadro** (16,7 ms); este serve o balde, que
+/// monta a rede **quando o desenho muda** — um soluço de 100 ms ali é o que a mão sente como
+/// «pensou um instante», e é o mesmo critério de morte que o balde do Flip usa.
+///
+/// `12 288` arestas são **768 segmentos** no documento inteiro.
+pub const MAX_SAMPLES_BATCH: usize = 12_288;
+
+/// ⚠️ **Devolve `None` quando o documento passa do tecto — e isso é uma RECUSA, não um vazio.**
+///
+/// ⛔⛔ A resposta antiga era devolver **zero cruzamentos**, e ela é a pior possível: sem
+/// cruzamentos toda forma volta a ser um anel inteiro, e o preenchimento **salta para a forma toda**
+/// em vez de desaparecer. *Uma resposta errada em silêncio é pior que nenhuma resposta* — medido: a
+/// `64` círculos a lente mede `2 235`; a `65`, `7 844`.
+#[must_use]
+pub fn crossings_all(contornos: &[(Vec<VecVertex>, bool)], escala: f64) -> Option<Vec<Vec<f64>>> {
+    let mut out: Vec<Vec<f64>> = vec![Vec::new(); contornos.len()];
+    // ⚠️ Um contorno degenerado não entra no motor, mas continua a ocupar o índice de saída: quem
+    // chama indexa pela posição na lista que passou.
+    let mut donos: Vec<usize> = Vec::new();
+    let mut geoms: Vec<Geom> = Vec::new();
+    for (i, (v, c)) in contornos.iter().enumerate() {
+        if let Some(g) = Geom::of(v, *c) {
+            donos.push(i);
+            geoms.push(g);
+        }
+    }
+    let edges: Vec<Vec<crate::arc_cut::Edge>> = geoms.iter().map(Geom::edges).collect();
+    if edges.iter().map(Vec::len).sum::<usize>() > MAX_SAMPLES_BATCH {
+        return None;
+    }
+    for c in crate::arc_cut::crossings(&geoms, &edges, escala) {
+        out[donos[c.a.0]].push(c.a.1);
+        out[donos[c.b.0]].push(c.b.1);
+    }
+    // Os TOQUES: a ponta de um contorno ABERTO que pousa sobre outro.
+    for (k, g) in geoms.iter().enumerate() {
+        let tol = touch_tol(g, escala);
+        for (j, (verts, closed)) in contornos.iter().enumerate() {
+            if j == donos[k] || *closed || verts.len() < 2 {
+                continue;
+            }
+            for ponta in [verts[0].anchor, verts[verts.len() - 1].anchor] {
+                if let Some((frac, dist)) = nearest_fraction(&g.verts, g.closed, ponta)
+                    && dist <= tol
+                {
+                    out[donos[k]].push(frac);
+                }
+            }
+        }
+    }
+    Some(out)
 }
 
 /// ⭐⭐⭐ **OS TOQUES: as pontas de OUTROS contornos que POUSAM sobre este.**
@@ -237,8 +335,8 @@ pub fn crossings_against(
 /// aqui já é apanhada pelo cruzamento (a curva dela continua para os dois lados), e um contorno
 /// fechado não tem ponta. *Alargar isto a toda âncora poria fronteira em cada vizinho que passa
 /// perto, e o pedaço encolheria até ao ruído.*
-fn touches(alvo: &Geom, outros: &[(Vec<VecVertex>, bool)]) -> Vec<f64> {
-    let tol = alvo.sampling_error();
+fn touches(alvo: &Geom, outros: &[(Vec<VecVertex>, bool)], escala: f64) -> Vec<f64> {
+    let tol = touch_tol(alvo, escala);
     let mut out = Vec::new();
     for (verts, closed) in outros {
         if *closed || verts.len() < 2 {

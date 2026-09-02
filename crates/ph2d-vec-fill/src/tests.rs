@@ -343,3 +343,177 @@ fn the_interior_point_of_a_concave_face_is_inside_it() {
         "o ponto interior caiu fora da propria face: {p:?}"
     );
 }
+
+/// ⭐⭐⭐ **UMA PONTA UM FIO FORA DA PAREDE AINDA FECHA A REGIÃO** — o report de 2026-09-02.
+///
+/// A fixtura é a foto do Enio: um rectângulo arredondado e uma curva que sai do lado direito e
+/// volta a ele, fechando uma bolsa. ⚠️ **Medido antes:** a folga do toque era a **flecha do alvo**,
+/// e ela é **zero numa recta** — a ponta tinha de encostar ao bit, e `0,05` fora já abria a bolsa.
+///
+/// ⚠️ **A folga é MINÚSCULA de propósito** (`1e-3` da diagonal — `0,4` neste desenho de 400): ela
+/// perdoa o tremor da mão e o resíduo de vírgula flutuante, e **não fecha um vão que se veja**. A
+/// segunda metade do gate é essa cerca. ⛔ A largura do traço foi tentada e **revertida** (§7).
+#[test]
+fn an_endpoint_a_hair_off_the_wall_still_closes_the_pocket() {
+    let rr = ph2d_vec_scene::rounded_rect([-100.0, -100.0], [100.0, 100.0], 30.0);
+    let curva = |ax: f64| {
+        vec![
+            VecVertex {
+                anchor: [ax, -50.0],
+                in_handle: [ax, -50.0],
+                out_handle: [ax + 60.0, -40.0],
+                kind: VertexKind::Smooth,
+                corner_radius: 0.0,
+            },
+            VecVertex {
+                anchor: [180.0, 0.0],
+                in_handle: [180.0, -40.0],
+                out_handle: [180.0, 40.0],
+                kind: VertexKind::Smooth,
+                corner_radius: 0.0,
+            },
+            VecVertex {
+                anchor: [ax, 50.0],
+                in_handle: [ax + 60.0, 40.0],
+                out_handle: [ax, 50.0],
+                kind: VertexKind::Smooth,
+                corner_radius: 0.0,
+            },
+        ]
+    };
+    for ax in [100.0_f64, 100.05, 100.2] {
+        let r = rede(&[(rr.verts.clone(), true), (curva(ax), false)]);
+        let bolsa = r
+            .face_em([150.0, 0.0])
+            .unwrap_or_else(|| panic!("com a ponta a {:.2} da parede a bolsa abriu", ax - 100.0));
+        assert!(
+            (bolsa.area - 6513.0).abs() < 60.0,
+            "ax={ax}: a bolsa tem de ser SO' a bolsa: {}",
+            bolsa.area
+        );
+        assert!(
+            r.face_em([0.0, 0.0])
+                .is_some_and(|f| (f.area - 39224.0).abs() < 60.0),
+            "ax={ax}: o rectangulo fundiu-se com a bolsa"
+        );
+    }
+    // ⛔ A CERCA: um vão que se VÊ continua um vão, e a bolsa fica aberta.
+    let r = rede(&[(rr.verts.clone(), true), (curva(102.0), false)]);
+    assert!(
+        r.face_em([150.0, 0.0]).is_none(),
+        "a folga fechou um vao de 2 unidades — ela e' um perdao de fio, nao uma feature"
+    );
+}
+
+/// ⛔⛔ **TRÊS LINHAS PELO MESMO PONTO mantêm os três cruzamentos.**
+///
+/// A fusão de travessias existe para colapsar *a mesma travessia vista por duas arestas vizinhas* —
+/// **dentro do par que a produziu**. Comparada contra tudo o que já saiu, ela apagava o cruzamento
+/// de um **segundo par no mesmo ponto**. ⚠️ Ficou escondida enquanto cada contorno perguntava numa
+/// chamada própria (a lista nascia vazia de cada vez); a passagem única expô-la.
+#[test]
+fn three_concurrent_lines_keep_all_their_crossings() {
+    let tres = vec![
+        (vec![v(-50.0, 0.0), v(50.0, 0.0)], false),
+        (vec![v(0.0, -50.0), v(0.0, 50.0)], false),
+        (vec![v(-40.0, -40.0), v(40.0, 40.0)], false),
+    ];
+    let xs = ph2d_vec_scene::trim_tool::crossings_all(&tres, 140.0).expect("abaixo do tecto");
+    for (i, f) in xs.iter().enumerate() {
+        assert_eq!(
+            f.len(),
+            2,
+            "a linha {i} tem de ser cortada pelas OUTRAS DUAS, e traz {f:?}"
+        );
+    }
+    // E a rede parte as três em dois arcos cada.
+    let r = rede(&tres);
+    assert_eq!(r.arcos.len(), 6, "tres linhas concorrentes dao SEIS arcos");
+    assert_eq!(r.nos.len(), 7, "um no' no centro e as seis pontas soltas");
+}
+
+/// ⛔⛔ **ACIMA DO TECTO a resposta é uma RECUSA, e não uma resposta ERRADA.**
+///
+/// ⚠️ **Medido:** a resposta antiga era devolver **zero cruzamentos**, e sem cruzamentos toda forma
+/// volta a ser um anel inteiro — a lente entre dois círculos passava de `2 235` para `7 844` de
+/// área **sem um aviso**. *Uma resposta errada em silêncio é pior que nenhuma resposta.*
+#[test]
+fn a_document_past_the_cap_is_refused_never_answered_wrong() {
+    let poucos: Vec<(Vec<VecVertex>, bool)> = (0..8)
+        .map(|i| {
+            (
+                ph2d_vec_scene::ellipse([f64::from(i) * 60.0, 0.0], 50.0, 50.0).verts,
+                true,
+            )
+        })
+        .collect();
+    let r = rede(&poucos);
+    assert!(!r.recusada);
+    let lente = r
+        .face_em([30.0, 0.0])
+        .expect("a lente entre os dois primeiros");
+    assert!((lente.area - 2235.0).abs() < 30.0, "area {}", lente.area);
+
+    // 200 círculos = 12 800 arestas, acima do tecto de 12 288.
+    let muitos: Vec<(Vec<VecVertex>, bool)> = (0..200)
+        .map(|i| {
+            (
+                ph2d_vec_scene::ellipse([f64::from(i) * 60.0, 0.0], 50.0, 50.0).verts,
+                true,
+            )
+        })
+        .collect();
+    let r = rede(&muitos);
+    assert!(r.recusada, "o tecto nao foi reconhecido");
+    assert!(r.arcos.is_empty(), "a rede recusada tem de sair VAZIA");
+    assert!(
+        r.face_em([30.0, 0.0]).is_none(),
+        "acima do tecto o balde tem de RECUSAR, e nao devolver a forma inteira"
+    );
+}
+
+/// ⭐⭐⭐ **O CASO QUE SÓ RECTAS PRODUZEM** — e que a fixtura curva não podia medir.
+///
+/// Quatro rectas a fechar um quadrado, com uma ponta a `0,2` da vizinha (o «T» quase-fechado). Aqui
+/// **a flecha é zero dos dois lados**, então o piso do agrupamento não pode vir dela: se ele não
+/// honrar a folga do TOQUE, a parede ganha o nó na projecção, a ponta fica noutro nó a `0,2` — e o
+/// nó partido em dois é o mesmo que não haver toque nenhum.
+///
+/// ⚠️ **Foi uma mutação SOBREVIVENTE que pediu este gate** (`o-agrupamento-ignora-o-toque`): a
+/// fixtura da bolsa tem curvas, e `2 ×` a flecha delas já cobria a folga por acidente.
+#[test]
+fn four_straight_walls_with_a_hair_of_a_gap_still_enclose_a_square() {
+    // ⚠️ **O vão é para DENTRO**, e é essa a fixtura certa: com a ponta a passar da parede (para
+    // fora) elas **CRUZAM-SE**, e o quadrado fecha pelo cruzamento — a 1.ª redacção deste gate media
+    // isso e passava sem o piso. *Uma fixtura que fecha por outra razão aprova a lei que não mede.*
+    let quadro = |g: f64| {
+        vec![
+            (vec![v(-50.0, -50.0), v(50.0, -50.0)], false),
+            (vec![v(50.0, -50.0 + g), v(50.0, 50.0)], false),
+            (vec![v(50.0, 50.0), v(-50.0, 50.0)], false),
+            (vec![v(-50.0, 50.0), v(-50.0, -50.0)], false),
+        ]
+    };
+    // Controle: encostadas, o miolo é 100×100.
+    let r = rede(&quadro(0.0));
+    assert!(
+        r.face_em([0.0, 0.0])
+            .is_some_and(|f| (f.area - 10_000.0).abs() < 1.0),
+        "controle: o quadrado fechado"
+    );
+    // E com a ponta a `0,1` da parede vizinha (a folga é `0,14` neste desenho) ele continua fechado.
+    let r = rede(&quadro(0.1));
+    let miolo = r
+        .face_em([0.0, 0.0])
+        .expect("uma ponta a 0,1 da parede ainda fecha o quadrado");
+    assert!(
+        (miolo.area - 10_000.0).abs() < 30.0,
+        "o miolo mede {}",
+        miolo.area
+    );
+    // ⛔ E a CERCA: um vão de `2` unidades é um vão, e o quadrado abre.
+    assert!(
+        rede(&quadro(2.0)).face_em([0.0, 0.0]).is_none(),
+        "a folga fechou um vao de 2 unidades"
+    );
+}

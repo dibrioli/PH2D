@@ -197,6 +197,13 @@ pub(crate) fn crossings(geoms: &[Geom], edges: &[Vec<Edge>], span: f64) -> Vec<C
     let mut out: Vec<Crossing> = Vec::new();
     for (ca, ea) in edges.iter().enumerate() {
         for (cb, eb) in edges.iter().enumerate().skip(ca) {
+            // ⛔⛔ **A fusão é POR PAR, e não global.** Ela existe para colapsar *a mesma travessia
+            // vista por duas arestas vizinhas* — dentro do par que a produziu. Comparada contra
+            // TUDO o que já saiu, ela apaga o cruzamento de um **segundo par no mesmo ponto**: três
+            // linhas concorrentes perdem dois dos três cruzamentos, e uma cópia coincidente rouba os
+            // do original. ⚠️ Ficou escondida enquanto cada contorno perguntava numa chamada
+            // própria (a lista nascia vazia de cada vez); a passagem única expôs-a.
+            let inicio = out.len();
             let na = ea.len();
             for (i, &u) in ea.iter().enumerate() {
                 let jstart = if ca == cb { i + 1 } else { 0 };
@@ -213,7 +220,7 @@ pub(crate) fn crossings(geoms: &[Geom], edges: &[Vec<Edge>], span: f64) -> Vec<C
                         u.p0[0] + ta * (u.p1[0] - u.p0[0]),
                         u.p0[1] + ta * (u.p1[1] - u.p0[1]),
                     ];
-                    if out
+                    if out[inicio..]
                         .iter()
                         .any(|c| (c.at[0] - at[0]).hypot(c.at[1] - at[1]) < merge)
                     {

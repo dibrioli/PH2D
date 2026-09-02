@@ -214,6 +214,16 @@ impl crate::App {
             return; // nada mudou: nem rede nova, nem re-cozedura
         }
         let rede = ph2d_vec_fill::rede(&contornos);
+        // ⛔⛔ **Acima do tecto de amostragem a rede RECUSA**, e o artista tem de saber porquê: sem
+        // isto ele vê o balde parar de acender e conclui que a ferramenta se partiu. ⚠️ A linha sai
+        // uma vez por reconstrução (a rede é guardada), não por quadro.
+        if rede.recusada {
+            eprintln!(
+                "[ph2d-vec] balde: o desenho tem linhas de mais para achar as regioes ({} \
+                 contornos) — os preenchimentos ficam como estao",
+                contornos.len()
+            );
+        }
         // ⭐⭐⭐ **RE-COZER os preenchimentos**: a receita é o ponto, e a área é a resposta de hoje.
         //
         // ⚠️ **Uma semente que deixou de cair em face nenhuma CONGELA a forma onde ela está**, em

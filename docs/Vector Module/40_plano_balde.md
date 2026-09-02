@@ -279,7 +279,56 @@ emitida teria um salto invisível (`0,05`) em cada junção, e nada no traço se
 ⚠️ **E a folga precisa de uma régua que a bancada consiga disparar**: uma fixtura com pontas a
 `0,05`–`2` de uma parede tem de entrar no corpus **antes** de a regra voltar.
 
-## §8 — ⏳ Nomeado e fora da v1
+### 8. ⭐⭐⭐ A 2.ª tentativa: **UMA PASSAGEM, uma folga MINÚSCULA, e uma RECUSA** (2026-09-02)
+
+Depois do revert, a varredura foi ampla em vez de partir de um caso sintético — e achou **três**
+defeitos, dois deles muito maiores que o do «T».
+
+#### (a) ⛔⛔ O tecto de amostragem era um PENHASCO MUDO
+
+O `crossings_against` soma as arestas do alvo **mais as de todos os outros**, e o balde perguntava
+**por contorno** — ou seja, o mesmo total era construído e comparado com o mesmo tecto `n` vezes:
+`O(n³)`. Medido em círculos que se cruzam:
+
+| círculos | arestas | montar a rede | a lente entre dois |
+|---|---|---|---|
+| 64 | 4 096 | **764 ms** | `2 235` ✓ |
+| **65** | 4 160 | 9,9 ms | **`7 844`** ⛔ |
+
+⚠️ **Acima do tecto TODOS os cruzamentos desapareciam em silêncio**, cada forma voltava a ser um anel
+inteiro, e o preenchimento saltava para a forma toda. *Uma resposta errada em silêncio é pior que
+nenhuma resposta.*
+
+⇒ `trim_tool::crossings_all`: as arestas são construídas **uma vez**, o motor corre **uma vez**, e o
+tecto é comparado **uma vez**. **64× mais rápido** (764 → 11,9 ms) e, acima do tecto, uma **recusa**
+(`Rede::recusada`, rede vazia, sem faces) que a shell **diz** em vez de agir.
+
+⭐ **E o tecto novo é MEDIDO**: `MAX_SAMPLES_BATCH = 12 288` arestas (768 segmentos no documento),
+onde o relógio marca **102 ms** — o critério de morte de um soluço numa mudança de desenho. ⚠️ **São
+dois orçamentos e por isso dois números**: o `MAX_SAMPLES = 4096` serve o Trim, que pergunta **por
+quadro**.
+
+#### (b) ⛔⛔ A fusão de travessias era GLOBAL — três linhas concorrentes perdiam duas
+
+Ela existe para colapsar *a mesma travessia vista por duas arestas vizinhas*, **dentro do par que a
+produziu**. Comparada contra tudo o que já saiu, ela apagava o cruzamento de um **segundo par no
+mesmo ponto**. ⚠️ **Ficou escondida enquanto cada contorno perguntava numa chamada própria** (a lista
+nascia vazia de cada vez) — *a passagem única expô-la, e ela vale para todo desenho com três linhas
+pelo mesmo ponto*.
+
+#### (c) A junção em «T», agora com a folga estreita e SEM mover geometria
+
+`TOUCH_FRACTION = 1e-3` da diagonal (`0,4` num desenho de 400), usada nos **dois** sítios que fazem a
+mesma pergunta: o reconhecimento do toque (`trim_tool::touches`) e o agrupamento de nós. ⛔ **Nenhuma
+geometria se move** — os arcos ficam onde estão e só o **grafo** muda; a fronteira emitida tem um
+salto invisível no nó. Medido na fixtura da foto: fecha de `0` a `~0,35` de vão, e **recusa** um vão
+de `2` unidades, que se vê.
+
+⚠️ **Duas fixturas minhas mediam outra coisa**, e as duas foram apanhadas por mutação sobrevivente:
+uma tinha curvas, cuja flecha já cobria a folga por acidente; a outra fechava por um **cruzamento na
+quina** em vez do toque. *Uma fixtura que fecha por outra razão aprova a lei que ela não mede.*
+
+## §9 — ⏳ Nomeado e fora da v1
 
 - **Vazamento**: se o clique cai na face externa (a região não fecha), o balde **recusa e diz
   porquê**. ⛔ Fechar vãos automaticamente é a lei do `ph2d-flip-fill` (bola presa + extensão de

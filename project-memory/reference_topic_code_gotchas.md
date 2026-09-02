@@ -25,3 +25,4 @@ metadata:
   `panic!`) num caminho que corre dentro de `HeroScreen::new` matou **12 testes de chrome** que nada
   têm com painéis; a variante `_opt` existe exactamente para isso. *Quem paga é quem nunca pediu o
   serviço* (`line/UIUX`, 2026-08-30, entrega 21)
+- [[feedback_a_clamp_before_a_range_test_deletes_the_test]] — `clamp` antes de `contains` apaga o `if`; teste o valor CRU

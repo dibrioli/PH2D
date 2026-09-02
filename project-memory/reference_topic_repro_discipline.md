@@ -31,3 +31,4 @@ metadata:
 - [[feedback_a_flattening_curve_may_need_more_points]] — curva de 4 pontos que achata pode ser uma de 6 que nao; nao declare 2o mecanismo cedo
 - [[feedback_a_defect_count_without_provenance_names_the_wrong_phase]] — N defeitos sem PROVENIENCIA culpa a fase errada; a decomposicao e' o plano de trabalho
 - [[feedback_two_meanings_behind_one_primitive_only_the_parameter_name_guards]] — `VecPathId` e bits de entidade sao ambos `u64`: o compilador nao separa, e um gate escrito da ASSINATURA fica verde sobre o panico
+- [[feedback_reproduce_with_the_real_constructors_and_look_at_the_image]] — foto com desenho: reproduza com os construtores reais, grave o PNG, LEIA-o antes de nomear a causa

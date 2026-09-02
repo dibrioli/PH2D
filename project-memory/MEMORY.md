@@ -93,7 +93,7 @@
 ## Auditoria (famílias — 2 saltos)
 
 - ⭐ [**Como uma RÉGUA mente** — a família inteira (70 entradas)](reference_topic_measurement_discipline.md)
-- [Reprodução/diagnóstico (18)](reference_topic_repro_discipline.md)
+- [Reprodução/diagnóstico (19)](reference_topic_repro_discipline.md)
 - [Réguas do quad remesh (14)](reference_topic_quad_remesh_rulers.md)
 - ⛔ [Barra calibrada SEM o lado aprovado mede os nossos defeitos; o PISO do censo decide o que a régua vê (4× «nenhuma melhoria»)](feedback_a_bar_calibrated_without_the_approved_side_measures_our_own_defects.md)
 - [Réguas do quad remesh — mais 5 (densidade · limiar · 1ª aceite · alisador cego · fixtura com ponta)](reference_topic_quad_remesh_rulers.md)
@@ -104,7 +104,7 @@
 - [Ofício de gate — mais 6 (mutação que não mata · mudar o modelo · metade justa · feito≠entregue · marca≠fim · 2 falhas refutam a família)](reference_topic_gate_discipline.md)
 - [Gate que pergunta ao ESTADO do produtor é cego a um SEGUNDO produtor ao lado — pergunte à SAÍDA](feedback_a_gate_that_asks_the_producers_state_is_blind_to_a_second_producer.md)
 - [Provas de mutação (7) — 3 controles no arnês](reference_topic_mutation_proofs.md) · [escrevo a guarda certa e não a gateio (3×)](feedback_i_write_the_right_guard_and_do_not_gate_it.md) · [filtro que casa ZERO imprime «SOBREVIVEU»](feedback_a_mutation_proof_needs_a_control_on_its_own_filter.md)
-- [Oráculo (9)](reference_topic_oracle_discipline.md) · [fixture (6)](reference_topic_fixture_discipline.md) · [onde os objetos NASCEM](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md)
+- [Oráculo (10)](reference_topic_oracle_discipline.md) · [fixture (6)](reference_topic_fixture_discipline.md) · [onde os objetos NASCEM](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md)
 - [Protocolo de auditoria (6)](reference_topic_audit_protocol.md)
 - [Física do impasto/sculpt (8)](reference_topic_impasto_physics.md)
 
@@ -114,7 +114,7 @@
 - [Registro de painel (5 sites)](reference_topic_panel_registration.md)
 - [Pré-multiplicada inverte o Multiply](feedback_a_premultiplied_source_breaks_the_blend_whose_identity_is_one.md) · [clone + id de ponteiro = CoW; use versão](feedback_a_held_clone_plus_pointer_identity_change_detection_forces_copy_on_write.md)
 - [Atributo separado do item por doc muda de dono](feedback_an_attribute_separated_from_its_item_by_a_doc_comment_changes_owner.md)
-- [Gotchas de código (13)](reference_topic_code_gotchas.md)
+- [Gotchas de código (14)](reference_topic_code_gotchas.md)
 
 ## Arquitetura / norte / perf
 - [Conteúdo de asset é PARTILHADO; per-objeto é QUAL asset](feedback_the_content_of_an_asset_is_shared_only_which_asset_is_per_object.md)

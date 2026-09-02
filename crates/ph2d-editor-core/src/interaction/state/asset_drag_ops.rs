@@ -56,6 +56,20 @@ impl WidgetStore {
         }
     }
 
+    /// ⭐⭐ **Escreve o veredito** — *o que aconteceria se a mão largasse agora* (wave B4).
+    ///
+    /// ⚠️ **Quem o calcula é o shell**, que é quem conhece a lei da queda (`asset_drop::resolve`) e
+    /// o alvo debaixo do cursor. Esta camada só o guarda, como já guarda o cursor: um `interaction`
+    /// que soubesse decidir quedas de asset passaria a conhecer o modelo de assets.
+    pub fn set_asset_drag_verdict(
+        &mut self,
+        verdict: crate::interaction::drag_payload::DragVerdict,
+    ) {
+        if let Some(d) = self.asset_drag.as_mut() {
+            d.verdict = verdict;
+        }
+    }
+
     /// O arrasto em curso, para quem o pinta.
     #[must_use]
     pub fn asset_drag(&self) -> Option<InFlightDrag> {

@@ -19,7 +19,7 @@
 //! ⛔ **Ele não regista rectângulo nenhum** no `HitIndex`: uma coisa que segue o cursor não pode
 //! ser clicável — ela taparia sempre o alvo que a mão está a procurar.
 
-use crate::interaction::drag_payload::InFlightDrag;
+use crate::interaction::drag_payload::{DragVerdict, InFlightDrag};
 use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
@@ -33,6 +33,12 @@ use ph2d_vector::VectorScene;
 /// artista está a mirar.
 const GHOST_OFFSET_PX: f32 = 14.0; // LITERAL-PX-OK: geometria do fantasma, não medida de design
 
+/// O que o fantasma diz quando o sítio debaixo do cursor não sabe receber.
+///
+/// ⚠️ **Uma PALAVRA, e não só uma cor** — uma diferença que só existe em cor não chega a quem não
+/// distingue vermelho de verde. ⏳ Migra com os irmãos quando o Fluent chegar (HR-15).
+const REFUSED_LABEL: &str = "Won't take this";
+
 /// Pinta o que vai na mão. No-op se não há arrasto, ou se ele **ainda não armou** (o gesto pode
 /// acabar por ser um clique, e um fantasma que pisca a cada toque é ruído).
 pub(super) fn paint_asset_drag_ghost(
@@ -44,7 +50,20 @@ pub(super) fn paint_asset_drag_ghost(
     let Some(drag) = drag.filter(|d| d.armed) else {
         return;
     };
-    let label = drag.payload.kind_label();
+    // ⭐⭐⭐ **O fantasma diz se o sítio ACEITA** (wave B4) — e não só o que vai na mão.
+    //
+    // ⛔ Até 2026-09-01 ele mostrava o mesmo cartão sobre a tela, sobre um campo que recebe e
+    // sobre a barra de cima que não. A recusa existia **depois do facto**, num toast. *Largar num
+    // sítio errado tem de se ver ANTES, senão o arrasto é uma aposta.*
+    //
+    // ⚠️ **A palavra muda com a moldura**, e não só a cor: uma diferença que só existe em cor não
+    // chega a quem não distingue vermelho de verde.
+    let refused = drag.verdict == DragVerdict::Refuse;
+    let label = if refused {
+        REFUSED_LABEL
+    } else {
+        drag.payload.kind_label()
+    };
     let font = TypeToken::Sm.px();
     let pad = Spacing::Sm.px();
     let w = text_system.layout(label, font, f32::INFINITY).width() + pad * 2.0;
@@ -66,7 +85,14 @@ pub(super) fn paint_asset_drag_ghost(
         rect,
         Radius::Sm.px(),
         StrokeToken::Default.px(),
-        resolve(ColorToken::Accent, theme),
+        resolve(
+            if refused {
+                ColorToken::Danger
+            } else {
+                ColorToken::Accent
+            },
+            theme,
+        ),
     );
     crate::paint::paint_text(
         text_system,

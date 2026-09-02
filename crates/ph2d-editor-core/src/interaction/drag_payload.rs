@@ -47,6 +47,30 @@ impl DragPayload {
     }
 }
 
+/// ⭐⭐⭐ **O que aconteceria se a mão largasse AGORA** — a voz do arrasto (plano
+/// `docs/Components/07`, wave B4).
+///
+/// # ⛔⛔ Sem ela, o artista só descobre ao soltar
+///
+/// Até 2026-09-01 o fantasma dizia **o que ia na mão** (`Prefab` / `Image`) e mais nada — o mesmo
+/// cartão sobre a tela, sobre um campo que aceita e sobre a barra de cima que não. A recusa
+/// existia, mas **depois do facto**, num toast. *Largar num sítio errado tinha de se ver ANTES, e
+/// é isso que separa um arrasto de uma aposta.*
+///
+/// ⚠️ **`Unknown` não é «recusa»**, e a diferença é a mesma que o `DropTarget::Source` já paga:
+/// voltar ao painel de origem é **desistir**, e desistir é silencioso em todo o software que o
+/// tem. Pintá-lo de vermelho acusaria o artista de um erro que ele não cometeu.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum DragVerdict {
+    /// Ainda não se sabe, ou o alvo é *desistir* — em qualquer dos casos, sem cor de aviso.
+    #[default]
+    Unknown,
+    /// Este alvo aceita o que vai na mão.
+    Accept,
+    /// Este alvo **não** sabe receber isto.
+    Refuse,
+}
+
 /// **O arrasto em curso** — o que o `WidgetStore` guarda entre o `Down` e o `Up`.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct InFlightDrag {
@@ -64,6 +88,12 @@ pub struct InFlightDrag {
     /// navegador de assets, o clique escolhe e o duplo-clique instancia. Enquanto isto for `false`
     /// o gesto ainda pode ser qualquer um dos dois, e ninguém desenha fantasma nenhum.
     pub armed: bool,
+    /// ⭐⭐⭐ **O que aconteceria se a mão largasse agora** — ver [`DragVerdict`].
+    ///
+    /// ⚠️ **Escrito a cada `Move` pela MESMA porta que o `Up` usa** (`drop_target_at` + a lei
+    /// `asset_drop::resolve`, no shell). *Duas respostas a «isto seria aceite?» divergiriam, e o
+    /// fantasma prometeria uma coisa enquanto a queda fazia outra.*
+    pub verdict: DragVerdict,
 }
 
 /// Quanto o cursor tem de andar para um `Down` virar arrasto, em px.
@@ -85,6 +115,7 @@ impl InFlightDrag {
             payload,
             cursor: at,
             armed: false,
+            verdict: DragVerdict::Unknown,
         }
     }
 

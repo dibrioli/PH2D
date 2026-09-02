@@ -15,7 +15,7 @@
 //! a lei devolver. *Uma decisão dentro da fiação seria uma decisão sem gate.*
 
 use crate::asset_drop::{DropAction, DropOver, DropTarget};
-use ph2d_editor::interaction::drag_payload::DragPayload;
+use ph2d_editor::interaction::drag_payload::{DragPayload, DragVerdict};
 
 impl crate::App {
     /// **`Down`** — se o botão caiu num cartão do navegador, semeia o arrasto.
@@ -60,6 +60,33 @@ impl crate::App {
         {
             hero.store.update_asset_drag(x, y);
         }
+        // ⭐⭐⭐ **A VOZ DO ARRASTO** (wave B4): o fantasma passa a dizer se o sítio aceita, ANTES
+        // de a mão largar. ⚠️ Pela MESMA porta e pela MESMA lei que a queda usa — é isso que
+        // impede o fantasma de prometer o que a queda não faz.
+        let Some(payload) = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .and_then(|h| h.store.asset_drag())
+            .filter(|d| d.armed)
+            .map(|d| d.payload)
+        else {
+            return;
+        };
+        let verdict = match self.drop_target_at(x, y) {
+            // ⚠️ **Desistir não é recusa.** Voltar ao painel de origem é o gesto universal de
+            // largar o assunto, e ele é silencioso em todo o software que o tem — pintá-lo de
+            // aviso acusaria o artista de um erro que ele não cometeu.
+            Some(t) => match crate::asset_drop::resolve(payload, t) {
+                crate::asset_drop::DropAction::Refuse => DragVerdict::Refuse,
+                crate::asset_drop::DropAction::Cancel => DragVerdict::Unknown,
+                _ => DragVerdict::Accept,
+            },
+            None => DragVerdict::Unknown,
+        };
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.store.set_asset_drag_verdict(verdict);
+        }
     }
 
     /// **`Up`** — resolve a queda. Devolve `true` se o gesto foi um ARRASTO (e portanto o clique
@@ -68,10 +95,10 @@ impl crate::App {
     /// ⚠️ **`false` para um gesto que não passou o limiar** — ele foi um clique, e o cartão tem de
     /// o receber (escolher; e o duplo-clique, instanciar).
     pub(crate) fn asset_drag_up(&mut self, x: f32, y: f32) -> bool {
-        // ⚠️ Resolvido ANTES de pegar o `gfx` mutável — o alvo é uma leitura, e adiá-la para
-        // dentro do bloco mutável seria pedir dois empréstimos do mesmo `self`.
-        let catalog_row = self.catalog_row_under(x, y);
-        let inspector_slot = self.inspector_slot_under(x, y);
+        // ⚠️ **A MESMA porta que o `Move` usa** — ver [`Self::drop_target_at`]. Duas respostas a
+        // *«o que aconteceria se eu largasse aqui?»* fariam o fantasma prometer uma coisa e a
+        // queda fazer outra.
+        let target = self.drop_target_at(x, y);
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -84,22 +111,44 @@ impl crate::App {
         if !drag.armed {
             return false;
         }
-        // ⭐ **Voltar ao painel de onde saiu é DESISTIR**, e desistir é calado.
-        let panel = hero.store.panel_at(x, y);
-        // ⛔⛔ **A pergunta «estou sobre a TELA?» tem DUAS metades, e a 1.ª versão só fazia uma.**
-        // O doc que aqui estava dizia *«é a MESMA que o clique faz»* e citava `panel_at` — mas o
-        // clique pergunta `panel_at(..).is_none() && hit_index.hit(..).is_none()`. O `panel_at` só
-        // conhece os 28 painéis que publicam rect; o **rail de ferramentas**, a **barra de cima**,
-        // o HUD e os menus registam só rect de acerto. ⇒ largar sobre a barra de cima caía no ramo
-        // do canvas e **re-texturava a sprite escondida por trás dela**, em silêncio.
-        let on_canvas = panel.is_none() && hero.hit_index.hit(x, y).is_none();
-        // ⭐⭐ **Uma LINHA DE CATÁLOGO ganha ao «de volta ao painel»** (wave A3), e a ordem é a
-        // lei: sem ela, largar numa gaveta caía no `Source` — *desistir* — e o gesto que o plano
-        // nomeia seria silenciosamente indistinguível de não fazer nada.
-        // ⭐⭐⭐ **A RANHURA DA TEXTURA ganha à «volta ao painel» e ao chrome** (wave B3), pela
-        // mesma lei de ordem que a linha de catálogo já paga: um alvo que sabe receber tem de ser
-        // perguntado ANTES dos que só desistem ou recusam.
-        let target = if let Some(entity_bits) = inspector_slot {
+        let Some(target) = target else {
+            return true;
+        };
+        let action = crate::asset_drop::resolve(drag.payload, target);
+        self.perform_drop(action, drag.payload);
+        true
+    }
+
+    /// ⭐⭐⭐ **O que está debaixo do cursor, na linguagem da lei da queda** — a porta ÚNICA de
+    /// *«o que aconteceria se a mão largasse aqui?»* (waves B2/B3/B4).
+    ///
+    /// ⚠️ **Ela tem DOIS chamadores e isso é o ponto:** o `Move` para o fantasma dizer se o sítio
+    /// aceita, e o `Up` para agir. Escrever a resolução duas vezes seria o fantasma a prometer uma
+    /// coisa e a queda a fazer outra — e a discordância só se veria no dia em que uma das duas
+    /// fosse corrigida.
+    ///
+    /// ⚠️ **A ORDEM é a lei**: um alvo que sabe receber pergunta-se ANTES dos que só desistem ou
+    /// recusam. A ranhura da textura e a linha de catálogo ganham ao *«de volta ao painel»* e ao
+    /// chrome — sem isso, largar numa gaveta seria indistinguível de não fazer nada.
+    fn drop_target_at(&mut self, x: f32, y: f32) -> Option<DropTarget> {
+        // ⚠️ Resolvidos ANTES de pegar o `gfx` mutável — são leituras, e adiá-las para dentro do
+        // bloco mutável seria pedir dois empréstimos do mesmo `self`.
+        let inspector_slot = self.inspector_slot_under(x, y);
+        let catalog_row = self.catalog_row_under(x, y);
+        let (panel, on_canvas, world) = {
+            let gfx = self.gfx.as_ref()?;
+            let hero = gfx.hero_screen.as_ref()?;
+            let panel = hero.store.panel_at(x, y);
+            // ⛔⛔ **A pergunta «estou sobre a TELA?» tem DUAS metades, e a 1.ª versão só fazia
+            // uma.** O `panel_at` só conhece os 28 painéis que publicam rect; o **rail de
+            // ferramentas**, a **barra de cima**, o HUD e os menus registam só rect de acerto. ⇒
+            // largar sobre a barra de cima caía no ramo do canvas e **re-texturava a sprite
+            // escondida por trás dela**, em silêncio.
+            let on_canvas = panel.is_none() && hero.hit_index.hit(x, y).is_none();
+            let world = gfx.camera.screen_to_world((x, y), gfx.surface.size());
+            (panel, on_canvas, world)
+        };
+        Some(if let Some(entity_bits) = inspector_slot {
             DropTarget::InspectorTexture { entity_bits }
         } else if let Some(catalog) = catalog_row {
             DropTarget::CatalogRow { catalog }
@@ -108,13 +157,11 @@ impl crate::App {
         } else if !on_canvas {
             DropTarget::Chrome
         } else {
-            let world = gfx.camera.screen_to_world((x, y), gfx.surface.size());
-            let over = self.pick_drop_target(x, y);
-            DropTarget::Canvas { world, over }
-        };
-        let action = crate::asset_drop::resolve(drag.payload, target);
-        self.perform_drop(action, drag.payload);
-        true
+            DropTarget::Canvas {
+                world,
+                over: self.pick_drop_target(x, y),
+            }
+        })
     }
 
     /// ⭐ **A linha de catálogo debaixo do cursor**, se houver.

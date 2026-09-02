@@ -171,6 +171,14 @@ pub(super) fn worse(
     // pior que uma partida a fundo — foi por «amputa **uma** ponta» / «amputou **2**» que o
     // dono nomeou os dois reports, nessa ordem.
     if a_dev.tips > 0 && b_dev.tips > 0 {
+        // ⭐⭐⭐ **O ÁPICE PRIMEIRO — a amputação medida no próprio bico** (2026-09-02,
+        // [`ph2d_quadfill::TIP_GAP_MAX`]). ⛔ A `over` abaixo conta pontas cuja MEDIANA de
+        // vizinhança passou de `1,0`, e a agulha da foto que ele reprovou lê `p50 0,84` com
+        // o bico a `1,11` da superfície: *a mediana afoga o ponto que define a ponta.* A
+        // contagem de bicos a mais de meia célula da saída decide antes dela.
+        if a_dev.cut != b_dev.cut {
+            return a_dev.cut > b_dev.cut;
+        }
         if a_dev.over != b_dev.over {
             return a_dev.over > b_dev.over;
         }

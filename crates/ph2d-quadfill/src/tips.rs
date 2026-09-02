@@ -41,7 +41,8 @@
 
 use ph2d_mesh::Mesh;
 
-use super::local::{apices, cross, dist, sub};
+use super::apex::{adjacency, apices, path_ball};
+use super::local::{cross, dist, sub};
 
 /// ⭐⭐⭐ **O ALCANCE DA FORMA** — a distância máxima ao centroide **pesado pela área**.
 ///
@@ -118,52 +119,86 @@ pub fn area_centroid(mesh: &Mesh) -> [f32; 3] {
 /// vive nele.*
 pub const TIP_DEVIATION_MAX: f32 = 1.0;
 
+/// ⭐⭐⭐ **A BARRA DA AMPUTAÇÃO — meia célula do ÁPICE à superfície da saída.**
+///
+/// ⛔⛔⛔ **Ela existe porque a `p50` de [`tip_deviation`] deixava passar a ponta da foto**
+/// (2026-09-02): a agulha `15909` da saída que o dono reprovou lê `p50 0,84` — abaixo da
+/// barra de `1,0` — enquanto o **ápice** dela está a `1,11` da superfície. *Uma mediana sobre
+/// a vizinhança de `3 h` afoga o bico: metade dos vértices que a compõem estão no corpo do
+/// espinho, que a saída cobre bem.* O ápice é UM ponto e é o ponto que define a ponta.
+///
+/// ⭐ **Medido nos dois lados que o dono julgou**, em unidades da aresta mediana da saída:
+///
+/// | | pior `gap` entre as pontas |
+/// |---|---|
+/// | a retopologia que ele **APROVOU** (`Sculpt_Blender.obj`, QRemeshify) | `0,19` |
+/// | a nossa a `Detail 1,00` nas pontas que **não** o incomodaram | `0,31` |
+/// | ⛔ as pontas que ele **REPROVOU** (`sculpt_Depois.obj`, `_remesh_sculpt.obj`) | `1,02` · `1,11` · `3,17` · `4,08` · `10,4` |
+///
+/// ⇒ `0,5` é **meia célula** — uma grade de passo `h` que converge no bico deixa um vértice
+/// a menos disso dele — e vive no vazio `0,31`…`1,02` com margem para os dois lados.
+pub const TIP_GAP_MAX: f32 = 0.5;
+
 /// **QUANTO A SAÍDA SE AFASTA DA ESCULTURA JUNTO DE CADA PONTA** — ver [`tip_deviation`].
 #[derive(Debug, Clone, Copy, Default)]
 pub struct TipDeviation {
-    /// O pior `p50` entre as pontas medidas, em unidades do quad pedido.
+    /// O pior `p50` entre as pontas medidas, em unidades da aresta mediana da saída.
     pub p50: f32,
-    /// O pior `p90` entre as pontas medidas, em unidades do quad pedido.
+    /// O pior `p90` entre as pontas medidas, em unidades da aresta mediana da saída.
     pub p90: f32,
-    /// O pior desvio de todos, em unidades do quad pedido.
+    /// O pior desvio de todos, em unidades da aresta mediana da saída.
     pub max: f32,
     /// Quantas pontas foram medidas.
     pub tips: usize,
     /// Quantas delas passam de [`TIP_DEVIATION_MAX`].
     pub over: usize,
+    /// ⭐ A maior distância de um **ápice** da entrada à superfície da saída, em unidades da
+    /// aresta mediana — o `gap` da amputação.
+    pub apex_max: f32,
+    /// ⭐ Quantas pontas têm o ápice a mais de [`TIP_GAP_MAX`] da superfície — **amputadas**.
+    pub cut: usize,
 }
 
-/// ⭐⭐⭐ **O DESVIO LOCAL JUNTO DE CADA PONTA, em unidades do quad pedido.**
+/// ⭐⭐⭐ **O DESVIO LOCAL JUNTO DE CADA PONTA, e a AMPUTAÇÃO — em unidades de `unit`.**
 ///
 /// Para cada ápice da **entrada** (achados por [`apices`], a mesma lei que
 /// [`super::tip_survival`] usa — ⛔ *uma lei escrita em dois sítios ainda não é uma lei*),
-/// tomam-se os vértices da entrada a menos de `3 × target` do ápice e mede-se a distância
-/// de cada um à **superfície** da saída. O resultado vai dividido por `target`, logo é
+/// tomam-se os vértices da entrada a menos de `3 × unit` do ápice e mede-se a distância
+/// de cada um à **superfície** da saída. O resultado vai dividido por `unit`, logo é
 /// **adimensional** e comparável entre densidades.
+///
+/// ⚠️ **`unit` é a aresta MEDIANA da saída** ([`super::median_edge`]) e não o alvo do
+/// slider — é o que torna a régua comparável com uma retopologia de outra ferramenta, que
+/// não tem alvo. O produto passa-a assim desde 2026-09-02.
+///
+/// ⭐ **E o ápice é medido SOZINHO** ([`TipDeviation::apex_max`], [`TipDeviation::cut`]):
+/// a distância do próprio bico à superfície da saída, contra [`TIP_GAP_MAX`]. A mediana da
+/// vizinhança não o via — ver a tabela daquela barra.
 ///
 /// ⚠️ **É ponto→FACE e não ponto→vértice.** Medido: com vértices a população sã lê
 /// `p50 0,28`–`0,35` (o erro é dominado por metade de uma aresta da saída) e com faces lê
 /// `0,08`–`0,30`. *Uma régua cujo valor «são» é feito do artefacto da própria régua não
 /// tem onde pôr uma barra.*
 ///
-/// ⚠️ **O raio de `3 × target` é a vizinhança que as duas últimas coroas da grade podiam
+/// ⚠️ **O raio de `3 × unit` é a vizinhança que as duas últimas coroas da grade podiam
 /// cobrir.** Menor que isso e uma ponta são com poucas amostras fica sem população; muito
 /// maior e a medida dilui-se no corpo, que é justamente onde a cadeia acerta sempre.
 ///
 /// ⛔ **Devolve o zero-de-`Default` quando não há o que medir** (entrada ou saída vazia,
-/// `target` não positivo, nenhum ápice) — e o `tips` fica a `0` **de propósito**, para que
+/// `unit` não positivo, nenhum ápice) — e o `tips` fica a `0` **de propósito**, para que
 /// quem lê distinga *«não medido»* de *«perfeito»*: são o mesmo byte em toda régua que só
 /// devolve a média.
 #[must_use]
-pub fn tip_deviation(input: &Mesh, output: &Mesh, target: f32) -> TipDeviation {
+pub fn tip_deviation(input: &Mesh, output: &Mesh, unit: f32) -> TipDeviation {
     let mut out = TipDeviation::default();
     let pos = input.positions();
-    // ⚠️ **`is_finite` ANTES da comparação, e não `!(target > 0.0)`**: um `NaN` faz toda
+    // ⚠️ **`is_finite` ANTES da comparação, e não `!(unit > 0.0)`**: um `NaN` faz toda
     // comparação ser falsa, então a forma negada esconde a intenção — e o clippy recusa-a.
-    if pos.is_empty() || output.positions().is_empty() || !target.is_finite() || target <= 0.0 {
+    if pos.is_empty() || output.positions().is_empty() || !unit.is_finite() || unit <= 0.0 {
         return out;
     }
-    let (_mid, apex) = apices(input);
+    let target = unit;
+    let (_mid, apex) = apices(input, unit);
     // ⚠️ **Os triângulos da saída, uma vez só** — um leque por face, como no centroide.
     let opos = output.positions();
     let mut tris: Vec<[[f32; 3]; 3]> = Vec::new();
@@ -204,10 +239,23 @@ pub fn tip_deviation(input: &Mesh, output: &Mesh, target: f32) -> TipDeviation {
         if near.is_empty() {
             out.tips += 1;
             out.over += 1;
+            out.cut += 1;
             out.p50 = out.p50.max(RADIUS);
             out.p90 = out.p90.max(RADIUS);
             out.max = out.max.max(RADIUS);
+            out.apex_max = out.apex_max.max(RADIUS);
             continue;
+        }
+        // ⭐ **O ÁPICE sozinho** — a distância do bico da escultura à superfície da saída.
+        // ⛔ A mediana abaixo afoga-o: a agulha `15909` da saída reprovada lê `p50 0,84` com o
+        // bico a `1,11` da superfície. Ver [`TIP_GAP_MAX`].
+        let gap = near
+            .iter()
+            .fold(f32::MAX, |acc, t| acc.min(point_triangle(a, t)))
+            / target;
+        out.apex_max = out.apex_max.max(gap);
+        if gap > TIP_GAP_MAX {
+            out.cut += 1;
         }
         let mut ds: Vec<f32> = pos
             .iter()
@@ -312,16 +360,29 @@ pub struct TipDensity {
     pub over: usize,
 }
 
-/// ⚠️ **A BARRA, e ela sai do que a régua MEDE nas duas populações**, não de gosto.
+/// ⚠️ **A BARRA, e ela sai do lado que o dono APROVOU — não só do que ele reprovou.**
 ///
-/// ⭐ Medido na escultura do dono e na saída que ele exportou em 2026-09-01: as pontas em
-/// que a grade chega ao bico entregam `0,38`–`0,52 ×` o quad pedido (**mais fina** que o
-/// pedido, que é o que uma ponta afiada exige), e as duas em que ela termina a meio
-/// entregam `1,43×` e `3,85×`. *Há um vazio de quase `3×` entre as duas populações.*
+/// ⛔⛔⛔ **A 1.ª barra (`1,5`, 2026-09-01) foi calibrada só com a NOSSA saída** — o vazio
+/// entre as nossas pontas boas (`0,38`–`0,52`) e as nossas más (`1,43`–`3,85`) — e nunca foi
+/// corrida sobre a retopologia que ele aprovou. Corrida em 2026-09-02, ela deixava passar,
+/// a `1,10`–`1,40`, exactamente as pontas de que ele se queixava (*«absolutamente nenhuma
+/// melhoria»*). *Uma barra calibrada sem o lado aprovado mede a distância entre os nossos
+/// próprios defeitos.*
 ///
-/// ⛔ **`1,5` e não `1,0`:** uma ponta que receba exactamente o quad pedido está a cumprir
-/// o pedido — não é defeito. O que se acusa é a grade a **engrossar** onde a forma afina.
-pub const TIP_DENSITY_MAX: f32 = 1.5;
+/// ⭐ Medido em unidades da aresta mediana da saída, a `3 h` de caminho do bico, sobre
+/// **todos** os espinhos ([`apices`] com o piso a `0,25`):
+///
+/// | | grade no bico |
+/// |---|---|
+/// | a retopologia que ele **APROVOU** (`Sculpt_Blender.obj`, 5 espinhos) | `0,55`–`0,79` |
+/// | as nossas pontas que **não** o incomodaram | `0,41`–`0,88` |
+/// | ⛔ as nossas pontas **REPROVADAS** (três saídas, duas peças) | `1,10` · `1,29` · `1,36` · `1,40` · `1,47` · `1,51` · `3,87` · `4,50` · `5,41` |
+///
+/// ⇒ **`1,0`** — *a ponta não recebe um quad mais grosso que o mediano da própria malha* —
+/// vive no vazio `0,88`…`1,10`, e é a única leitura da régua em que ela concorda com a foto.
+/// ⚠️ A grade que ele aprova **afina** para o bico (`0,5`–`0,8`); a barra não o exige, só
+/// proíbe que engrosse.
+pub const TIP_DENSITY_MAX: f32 = 1.0;
 
 /// ⭐⭐⭐ **O TAMANHO DO QUAD JUNTO DE CADA PONTA, em unidades do quad pedido.**
 ///
@@ -342,7 +403,9 @@ pub const TIP_DENSITY_MAX: f32 = 1.5;
 ///
 /// Para cada ápice da **entrada** ([`apices`], a porta partilhada), toma-se o vértice da
 /// **saída** mais próximo e mede-se, dos vértices da saída a menos de `RINGS` quads de
-/// **caminho pela malha** dele, a aresta incidente média. O valor vai dividido por `target`.
+/// **caminho pela malha** dele, a aresta incidente média. O valor vai dividido por `unit`
+/// — a aresta **mediana** da saída ([`super::median_edge`]), que é o que o olho compara e
+/// o que uma malha de outra ferramenta também tem.
 ///
 /// ⚠️ **A distância é de CAMINHO e não em linha recta**, e isso não é preciosismo: uma
 /// vizinhança esférica sobre um espinho fino apanha o **outro lado** do corpo. Medido numa
@@ -352,30 +415,23 @@ pub const TIP_DENSITY_MAX: f32 = 1.5;
 /// ⛔ **Devolve o zero-de-`Default` quando não há o que medir** — `tips == 0` é *«não
 /// medido»*, e quem lê tem de o distinguir de *«perfeito»*.
 #[must_use]
-pub fn tip_density(input: &Mesh, output: &Mesh, target: f32) -> TipDensity {
+pub fn tip_density(input: &Mesh, output: &Mesh, unit: f32) -> TipDensity {
     /// Quantos quads de caminho à volta do ápice entram na medida. ⚠️ `1` mediria só o anel
     /// que fecha o bico (poucas amostras, e numa ponta são ele é degenerado por construção);
     /// muito mais e a medida dilui-se no corpo, que é onde a cadeia acerta sempre.
     const RINGS: f32 = 3.0;
     let mut out = TipDensity::default();
     let opos = output.positions();
-    if input.positions().is_empty() || opos.is_empty() || !target.is_finite() || target <= 0.0 {
+    if input.positions().is_empty() || opos.is_empty() || !unit.is_finite() || unit <= 0.0 {
         return out;
     }
-    let (_mid, apex) = apices(input);
+    let target = unit;
+    let (_mid, apex) = apices(input, unit);
     if apex.is_empty() {
         return out;
     }
     // A adjacência da SAÍDA, e a aresta incidente média de cada vértice dela.
-    let mut nbr: Vec<Vec<u32>> = vec![Vec::new(); opos.len()];
-    for f in output.faces() {
-        let v = f.verts();
-        for k in 0..v.len() {
-            let (a, b) = (v[k] as usize, v[(k + 1) % v.len()] as usize);
-            nbr[a].push(v[(k + 1) % v.len()]);
-            nbr[b].push(v[k]);
-        }
-    }
+    let nbr = adjacency(output);
     let mean_edge: Vec<f32> = (0..opos.len())
         .map(|i| {
             if nbr[i].is_empty() {
@@ -404,26 +460,10 @@ pub fn tip_density(input: &Mesh, output: &Mesh, target: f32) -> TipDensity {
         else {
             continue;
         };
-        // Dijkstra curto sobre as arestas da saída — o raio é em unidades do quad PEDIDO,
-        // logo a vizinhança é a mesma em todas as candidatas, independentemente do que cada
-        // uma entregou.
-        let lim = RINGS * target;
-        let mut seen: std::collections::BTreeMap<usize, f32> =
-            std::collections::BTreeMap::from([(seed, 0.0)]);
-        let mut fila: Vec<(usize, f32)> = vec![(seed, 0.0)];
-        while let Some((u, du)) = fila.pop() {
-            if du > seen.get(&u).copied().unwrap_or(f32::MAX) {
-                continue;
-            }
-            for &v in &nbr[u] {
-                let v = v as usize;
-                let nd = du + dist(opos[u], opos[v]);
-                if nd <= lim && nd < seen.get(&v).copied().unwrap_or(f32::MAX) {
-                    seen.insert(v, nd);
-                    fila.push((v, nd));
-                }
-            }
-        }
+        // A bola de CAMINHO sobre as arestas da saída ([`path_ball`], a porta partilhada com
+        // a lei do ápice) — o raio é em unidades da aresta mediana, logo a vizinhança é a
+        // mesma em todas as candidatas de densidade parecida.
+        let seen = path_ball(opos, &nbr, seed, RINGS * target);
         let n = seen.len();
         if n == 0 {
             continue;

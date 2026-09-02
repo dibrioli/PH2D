@@ -260,7 +260,10 @@ fn the_artists_piece_through_the_button() {
         // exigiu. ⛔ O suporte por ponta diz *até onde* o bico vai e **nada** sobre a
         // espessura com que lá chega: medido, a ponta partida da peça do dono lê `−5,3 %`
         // de suporte e fecha com um anel **4× mais gordo** que a escultura.
-        let d = ph2d_quadfill::tip_deviation(&piece, &out, r.edge);
+        // ⚠️ **A unidade é a aresta MEDIANA da saída** (2026-09-02), a mesma que o produto
+        // passa — uma sonda que dividisse pelo alvo mediria outro número.
+        let unit = ph2d_quadfill::median_edge(&out);
+        let d = ph2d_quadfill::tip_deviation(&piece, &out, unit);
         eprintln!(
             "   DESVIO na ponta: p50 {:.2} p90 {:.2} max {:.2} quad(s) | {} de {} ponta(s) acima de {:.1} {}",
             d.p50,
@@ -270,6 +273,24 @@ fn the_artists_piece_through_the_button() {
             d.tips,
             ph2d_quadfill::TIP_DEVIATION_MAX,
             if d.tips == 0 { "⛔ NAO MEDIDO" } else { "" }
+        );
+        // ⭐⭐⭐ **A AMPUTAÇÃO no ÁPICE, e a GRADE no bico — as duas réguas que concordam com a
+        // foto** (2026-09-02): a retopologia que o dono aprovou lê `gap ≤ 0,19` e grade
+        // `≤ 0,79` em todas as pontas; cada saída que ele reprovou falha pelo menos uma.
+        let g = ph2d_quadfill::tip_density(&piece, &out, unit);
+        eprintln!(
+            "   AMPUTADAS: {} de {} ponta(s) com o bico a mais de {:.1} h da saida (pior gap {:.2} h) \
+             | GRADE NA PONTA: pior {:.2} p50 {:.2} ({} de {} acima de {:.1}) {}",
+            d.cut,
+            d.tips,
+            ph2d_quadfill::TIP_GAP_MAX,
+            d.apex_max,
+            g.worst,
+            g.p50,
+            g.over,
+            g.tips,
+            ph2d_quadfill::TIP_DENSITY_MAX,
+            if g.tips == 0 { "⛔ NAO MEDIDO" } else { "" }
         );
     }
     holes("SAIDA", &out);

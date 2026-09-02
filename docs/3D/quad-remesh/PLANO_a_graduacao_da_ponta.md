@@ -1707,3 +1707,149 @@ que escreviam o par série/paralelo à mão viraram `one::par`, e as quatro corr
 candidatas viraram `corrida` — *a divergência entre ramos que um gate desta linha vigiava tornou-se
 inexprimível*. ⚠️ E um comentário que dizia *«a cadeia corre duas vezes, ~9 s»* **mentia**: são
 até oito candidatas e `47`–`71 s`.
+
+---
+
+# Parte XII — A RÉGUA QUE CONCORDA COM O OLHO DO DONO (2026-09-02)
+
+> Ordem da janela: *«o remesh embota e amputa as pontas dos espinhos. O dono reprovou a jornada
+> inteira de 2026-09-01 com "absolutamente nenhuma melhoria" sobre medições que diziam o contrário.
+> Comece pelo §0 do handoff — a régua que concorde com a foto — e NÃO toque no algoritmo antes de a
+> ter.»* O que se segue é a régua, o que ela custou a achar, e o que ela diz do produto de hoje.
+
+## §91 — Duas coisas antes de qualquer número
+
+1. ⛔ **`Sculpt_Blender.obj` NÃO é uma retopologia de `_base_sculpt.obj`.** A caixa dela
+   (`2,970 × 2,241 × 2,664`) é a de `sculpt_antes.obj` (13 682 v), exportada cinco minutos antes
+   (29/08 10:42 → 10:47). O handoff de 01/09 emparelhava-a com a escultura do dia 30 como se fosse a
+   mesma peça. ⇒ a comparação justa é **a mesma entrada pelos dois motores**, e uma régua que valha
+   nas duas peças tem de ser normalizada pela própria malha.
+2. **As nossas saídas exportadas trazem a pose assada** (`s = 2 / 3,424240 = 0,5840711`, âncora
+   `(2, 0, 0)`), e no referencial da entrada alinham a `p50 0,000 h` — o que valida a lei do
+   importador que a Parte VII já pagara.
+
+## §92 — As réguas existentes, corridas pela PRIMEIRA vez no lado aprovado
+
+Unidade = aresta mediana da saída; ápices pela lei da casa (piso `0,55`):
+
+| par | suporte pior | desvio `p50` pior | grade a `3 h` pior | `gap` do ápice pior |
+|---|---|---|---|---|
+| ✅ `antes → Sculpt_Blender` (QRemeshify) | `−0,4 %` | `0,17` | **`0,79`** | **`0,19`** |
+| ⛔ `base → _remesh_sculpt` (31/08) | `−4,1 %` | `1,50` | `1,51` | `3,17` |
+| ⛔ `base → sculpt_Depois` (01/09) | `−9,8 %` | `∞` | `3,87` | `10,40` |
+| HEAD `base`, `Detail 1,00` | `−0,1 %` | `0,20` | `1,10` | `0,23` |
+| HEAD `antes`, `Detail 1,00` | **`−24,9 %`** | `∞` | `5,41` | `∞` |
+
+⭐ **As réguas separavam — o que nunca fora feito era corrê-las no lado aprovado.** E a HEAD, na
+entrada da malha aprovada, come o espinho principal em **`30` células** (`Detail 1,00`) e em `1,9`
+(`0,75`); a fase zero já o corta `−3,0 %` nessa peça.
+
+## §93 — ⛔⛔⛔ O piso de `0,55` ESCONDIA as pontas da foto
+
+Com o piso a `0,25` e um filtro de forma (§97), a HEAD a `Detail 1,00` na peça do dono:
+
+| ápice | raio | grade `3 h` | anéis `0–2 / 2–4 / 4–8 / 8–16 h` | visto pelo piso `0,55`? |
+|---|---|---|---|---|
+| `9663` | `1,00` | `0,60` | `0,60 / 0,56 / 0,47 / 0,54` | sim |
+| `1463` | `0,61` | `1,10` | `1,20 / 1,02 / 1,03 / 1,00` | sim |
+| `12074` · `15909` | `0,59` · `0,58` | `0,50` · `0,50` | afina para o bico | sim |
+| `10230` | `0,51` | `0,51` | `0,45 / 0,51 / 0,65 / 0,78` | **não** |
+| ⛔ **`3138`** | **`0,47`** | **`1,36`** | **`1,58 / 1,36 / 1,22 / 1,01`** — engrossa para o bico | **não** |
+| ⛔ `1943` | `0,43` | `1,29` | `1,10 / 1,29 / 1,25 / 1,16` | **não** |
+
+⇒ *a régua «GRADE NA PONTA» do produto media 4 pontas e a da foto não era nenhuma delas.* Na
+malha aprovada os cinco espinhos lêem `0,52`–`0,81` no anel `0–2 h` — a grade do QRemeshify
+**afina** para o bico; a nossa, nas más, **engrossa**.
+
+## §94 — ⛔ A barra `1,5` foi calibrada sem o lado aprovado
+
+| população (grade a `3 h`) | valores |
+|---|---|
+| aprovada, 5 espinhos | `0,55`–`0,79` |
+| nossas pontas que não o incomodaram | `0,41`–`0,88` |
+| nossas pontas reprovadas (3 saídas, 2 peças) | `1,10` · `1,29` · `1,36` · `1,40` · `1,47` · `1,51` · `3,87` · `4,50` · `5,41` |
+
+A barra de 01/09 (`1,5`) saía do vazio entre as **nossas** pontas boas e más, e deixava passar a
+`1,10`–`1,40` exactamente o que ele via. ⇒ **`TIP_DENSITY_MAX = 1,0`** — *a ponta não recebe um
+quad mais grosso que o mediano da própria malha* — no vazio `0,88 … 1,10`.
+
+## §95 — O ápice medido SOZINHO
+
+A `p50` da vizinhança de `3 h` afoga o bico: a agulha `15909` da saída reprovada lê `p50 0,84`
+(verde a `1,0`) com o ápice a **`1,11`** da superfície. ⇒ `TipDeviation::apex_max` / `cut`, barra
+**`TIP_GAP_MAX = 0,5`** (meia célula): aprovada `≤ 0,19`, nossas boas `≤ 0,31`, reprovadas
+`1,02 · 1,11 · 1,93 · 3,17 · 4,08 · 10,4`. A chave entra no `worse` **antes** da `over`, e arma
+o socorro.
+
+## §96 — O que o ARAME mostra e o número não (instrumento novo)
+
+`render_ponta.py` (scratch desta janela) desenha cada ponta de lado e de frente, entrada em cinza e
+saída em preto. O que se vê: no QRemeshify a grade **segue o espinho** (meridianos + anéis, a
+convergir no bico); nas nossas ela corre **em diagonal** através do espinho e fecha com uma tampa
+grosseira (`3138`), ou é um losango fino que chega ao bico (`9663`). Medido o ângulo mediano das
+arestas ao meridiano local (dobrado a `0–45°`): aprovada `8°`–`17°`, nossas `4°`–`34°` — **sobrepõe-se,
+não é discriminador**; fica como observação e como pista para o algoritmo (§100).
+
+## §97 — A FORMA que separa um espinho de uma bossa, e o que custou
+
+⛔ **Baixar o piso sem filtro é acusar a malha aprovada:** as bossas do corpo lêem grade
+`1,0`–`1,47` **no `Sculpt_Blender.obj`** (`8` de `21` acima de `1,0`). O censo é *load-bearing*.
+
+| tentativa | o que a medição deu |
+|---|---|
+| ⛔ cone sem `h` (anel a `2`–`6 %` do raio da peça) | não separa: o espinho `3810` da aprovada lê `1,76` e uma bossa `1,47` |
+| ⛔ razão de ÁREA (superfície a `≤ 6 h` de caminho ÷ `π(6h)²`) | pior que o cone: espinhos `≤ 0,44`, bossas desde `0,30` |
+| ⛔ cone a `2,5`–`4,5 h` (a 1.ª redacção Rust) | o botão `7328` da aprovada lê **`0,95`** e entra como espinho — com grade `1,35` **e aprovação do dono** |
+| ⭐ **a PIOR faixa de `2 h` entre `3` e `9 h`** | espinhos cónicos até fundo; botões saltam para o corpo a `4`–`5 h` |
+
+O perfil que decidiu (aprovada, `unit 0,046`, raio da secção por unidade de profundidade):
+`4454` `3,13 · 3,31 · 3,80 · 3,91 · 4,30` (`r/t` de `0,89` a `0,57`) contra `7328` `3,51 · 3,98 ·`
+**`7,28`** `· 7,20 · 7,51` — um botão de cinco células. Tabela completa em 4 densidades no doc de
+`ph2d_quadfill::apices`; **`CONE_MAX = 1,0`**. ⚠️ Limite medido: a `unit ≳ 0,15 R` o corpo esférico
+lê `cot(θ/2) < 1` e passa a espinho (a `Detail ≈ 0,5` na `sculpt_antes` uma bossa lê `0,90`).
+
+⛔ **E o Dijkstra por PILHA da régua da grade explodia com a bola maior**: o portão das fixturas
+levava `71 s` na `_remesh_sculpt` (`unit 0,056`); com heap, `0,5 s`. A bola de `16 h` só foi
+possível por isso.
+
+⚠️ **Unidade:** no produto é o **alvo** (censo idêntico entre candidatas — com a mediana de cada
+uma, `19 154` e `21 650` quads dariam listas de pontas diferentes e o `worse` compararia *3 de 8*
+com *2 de 7*); na bancada e nas sondas é a **mediana** da saída (uma malha de outra ferramenta não
+tem alvo). Diferem `~8 %` e o registo diz qual.
+
+## §98 — O produto com a régua honesta (mesmo binário, mesmas peças, `Follow Curvature` no máximo)
+
+| | escolhido | antes dizia | agora diz | relógio |
+|---|---|---|---|---|
+| `base`, `Detail 1,00` | `21 747` quads (**o mesmo**) | `0/4` · desvio `0,22` · grade `1,28 < 1,5` ⇒ verde | `0/5` amputadas · **grade `1,36` no `3138` ⇒ RED** | `103 s → 251 s` (o socorro arma) |
+| `base`, `Detail 0,75` | `5 287` (**o mesmo**) | `1/4` | `1/6` amputadas (`15909`, gap `1,02`) | `130 → 142 s` |
+| `antes`, `Detail 1,00` | `19 154` (**o mesmo**) | `1/6` | `1/4` amputadas — o espinho principal, gap `3,00` (piso «mais longe do que olhei») | `211 → 262 s` |
+
+⭐ **A saída não muda e o veredito muda — que é exactamente o que o dono disse.** Das nove
+candidatas de `base`/`1,00`, a única com grade limpa (`0,82`) amputa uma ponta (`gap 0,76`) e perde,
+correctamente, na chave da frente. Em `antes`/`1,00` **todas as nove** comem o espinho principal
+(`gap ≥ 2,85`). ⇒ *o selector já não tem onde escolher: a cura é de substrato.*
+
+## §99 — ⛔ Recusas MEDIDAS desta janela
+
+| o que | por quê |
+|---|---|
+| `TIP_DENSITY_MAX = 1,5` | calibrada sem o lado aprovado; deixa passar `1,10`–`1,40` |
+| piso `0,55` do ápice com corte em `12` | esconde `3138`/`1943`/`10230` (`0,43`–`0,51` do raio) |
+| cone sem `h` · razão de área · faixa `2,5`–`4,5 h` · `CONE_MAX = 1,5` | §97 — cada uma põe uma bossa ou um botão aprovado dentro, ou um espinho fora |
+| unidade = mediana da candidata **no produto** | censos diferentes entre candidatas do mesmo clique |
+| alinhamento ao meridiano como discriminador | `8`–`17°` contra `4`–`34°`: sobrepõe |
+| Dijkstra por pilha nas bolas de caminho | `71 s` numa fixtura; heap dá `0,5 s` |
+
+## §100 — O que fica ABERTO, com endereço
+
+1. **`3138` a `Detail 1,00`** (cone `0,63`, alto): a grade termina a meio e fecha com quads
+   `1,36`–`1,58×` — é a foto. Nenhuma candidata cura sem amputar.
+2. **`sculpt_antes`, espinho `4849`**: a fase zero corta `−3,0 %` (`ALVO/F1 = 0,39×` nessa peça) e
+   **todas** as candidatas o perdem por inteiro — é o defeito mais alto que o repo tem, e está na
+   peça de que o dono guardou a retopologia aprovada.
+3. **Pista de mecanismo, medida no arame (§96):** onde a grade converge (QRemeshify) ela é
+   meridiano + anel; onde termina (nossa) ela atravessa o espinho em diagonal. ⇒ antes de tocar no
+   solver, **medir o campo cruzado junto de cada ápice contra as direcções principais de
+   curvatura** (num cone: meridiano e anel), nas duas peças e no campo do oráculo (`*.rosy`).
+4. O relógio a `Detail 1,00` dobrou (`251 s`): o socorro arma porque a régua diz a verdade. Fica.

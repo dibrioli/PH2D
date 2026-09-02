@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**30 handoffs** · **11** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**33 handoffs** · **11** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 | Data | | Arquivo | Papel | Assunto |
@@ -43,6 +43,9 @@
 | 2026-08-26 | ◆ | [HANDOFF_INTEGRACAO_line_quadextract_2026-08-26_FECHO.md](HANDOFF_INTEGRACAO_line_quadextract_2026-08-26_FECHO.md) | integração | **o FECHO da linha**: identidade, superfície de colisão colada, o que só o `ship.sh` apanha e o que ficou **por smokar** (⚠️ três cortes de LOC). ⭐ O de conteúdo é o irmão acima |
 | 2026-08-28 | ★ ◆ | [HANDOFF_INTEGRACAO_line_quadextract_2026-08-28.md](HANDOFF_INTEGRACAO_line_quadextract_2026-08-28.md) | integração | ⛔⛔⛔ **a barra do oráculo estava a ser lida a 1/9 da densidade dele** — à densidade dele a mesma cadeia já estava dentro dela. O que faltava era o **ACABAMENTO**, agora numa porta só (`ph2d_quadfill::finish_extracted`): Laplaciano como ronda zero, ajuste de quadrado **alinhado ao relevo**, e a **melhor ronda**. ⚠️ **Quatro correcções que só a porta impôs** (o limiar calibrado no programa errado · a catraca de Pareto · a paciência a medir a coisa errada · uma cura construída e não adoptada) |
 | 2026-08-29 | ★ ◆ | [HANDOFF_INTEGRACAO_line_quadextract_2026-08-29.md](HANDOFF_INTEGRACAO_line_quadextract_2026-08-29.md) | integração | ⭐ **O FECHO da linha, por ordem do Enio**: identidade, superfície de colisão colada, o que só o `ship.sh` vê e o que ficou aberto. ⛔⛔⛔ **Quatro vermelhos que TRÊS portões desta linha nunca alcançaram** — dois tectos de LOC, o `fmt` da árvore (40 pontos em 32 ficheiros) e o gate do shell que vive em `--test` e não em `--bins`. ⇒ **cinco cortes por responsabilidade**. ⚠️ E o report de 29/08 (**buracos e faces emboladas nas pontas**) fica ABERTO, com o achado de que **nenhuma régua o vê**: a mediana de forma não sente três quads emaranhados numa ponta |
+| 2026-08-30 | ★ | [HANDOFF_INTEGRACAO_line_quadextract_2026-08-30.md](HANDOFF_INTEGRACAO_line_quadextract_2026-08-30.md) | integração | ⭐ **A cura já era produzida e o desempate deitava-a fora** — o registo por candidata, a chave da ponta no `worse`, e o `panic` do `ph2d-gridmap` com endereço (`map.uv[p][l]`). ⚠️ Estava fora deste índice até 2026-09-02 |
+| 2026-09-01 | ▣ | [HANDOFF_TROCA_line_quadextract_A_AMPUTACAO_DAS_PONTAS_2026-09-01.md](HANDOFF_TROCA_line_quadextract_A_AMPUTACAO_DAS_PONTAS_2026-09-01.md) | troca | ⛔⛔⛔ **A jornada reprovada quatro vezes num dia** — *«absolutamente nenhuma melhoria»* sobre réguas que diziam o contrário. O §0 é a ordem para a janela seguinte: *uma régua que concorde com a foto, antes de tocar no algoritmo*. ⚠️ Estava fora deste índice até 2026-09-02 |
+| 2026-09-02 | ★ | [HANDOFF_line_quadextract_A_REGUA_QUE_CONCORDA_COM_O_OLHO_2026-09-02.md](HANDOFF_line_quadextract_A_REGUA_QUE_CONCORDA_COM_O_OLHO_2026-09-02.md) | linha | ⭐⭐⭐ **A régua que concorda com o olho do dono**, calibrada pela PRIMEIRA vez no lado que ele APROVOU: o piso `0,55` do ápice escondia as pontas da foto, a barra `1,5` fora calibrada só com a nossa saída, e o ápice passa a medir-se sozinho. Portão sobre as fixturas dos dois lados (`ph2d-quadfill/tests/pontas_do_dono.rs`). ⚠️ A saída do botão não muda — o veredito é que muda, e nenhuma candidata cura |
 
 ---
 

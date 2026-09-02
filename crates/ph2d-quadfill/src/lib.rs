@@ -37,6 +37,8 @@
 
 /// ⭐⭐ **O INTERIOR DE UM PATCH SEGUE O CAMPO** — ver [`aligned`].
 pub mod aligned;
+/// ⭐ A lei do ápice — o censo das pontas e a unidade das réguas (2026-09-02).
+pub mod apex;
 /// ⭐⭐⭐ **QUANTO DA ESCULTURA FICOU PARA TRÁS** — a direcção que ninguém mede — ver [`coverage`].
 pub mod coverage;
 /// ⭐ **A FORMA DO DOMÍNIO** — o polígono da fronteira — ver [`domain`].
@@ -77,16 +79,14 @@ pub mod tips;
 mod weights;
 
 pub use aligned::{INTERIOR, Interior};
+pub use apex::{CONE_MAX, TIP_CUT_PCT, TipSurvival, apices, median_edge, tip_survival};
 pub use coverage::{COVERAGE_DEFECT, COVERAGE_SHELL, Coverage, coverage};
 pub use finish::smooth;
 pub use finish_extract::{
     EXTRACT_MAX_ROUNDS, EXTRACT_RELIEF_PULL, EXTRACT_SETTLE, EXTRACT_TRAVEL, EXTRACT_TRAVEL_RESCUE,
     FinishReport, finish_extracted, finish_extracted_travel, finish_extracted_with,
 };
-pub use local::{
-    FaceLocal, LocalShape, QuadKind, TIP_CUT_PCT, TipSurvival, local_shape, local_shape_of,
-    tip_body_ratio, tip_survival,
-};
+pub use local::{FaceLocal, LocalShape, QuadKind, local_shape, local_shape_of, tip_body_ratio};
 pub use quality::{
     Hint, detail_lost, folded_against, folded_by_neighbours, follows_relief, surface_hint,
 };
@@ -98,6 +98,6 @@ pub use report::{FillError, FillReport, Provenance};
 pub use shape::{QuadShape, quad_shape, quad_shape_of, skew_by_fan, skew_by_provenance};
 pub use stitch::{SMOOTHING_ROUNDS, fill, fill_with};
 pub use tips::{
-    TIP_DENSITY_MAX, TIP_DEVIATION_MAX, TipDensity, TipDeviation, area_centroid, reach,
-    tip_density, tip_deviation,
+    TIP_DENSITY_MAX, TIP_DEVIATION_MAX, TIP_GAP_MAX, TipDensity, TipDeviation, area_centroid,
+    reach, tip_density, tip_deviation,
 };

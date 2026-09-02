@@ -26,3 +26,7 @@ ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }
 
 [dev-dependencies]
 ph2d-crossfield = { path = "../ph2d-crossfield" }
+# A descompressao das fixturas das PONTAS (`tests/fixtures/pontas/*.obj.gz`) -- as duas
+# pecas do dono e as retopologias que ele julgou. `miniz_oxide` e nao `flate2`, pela mesma
+# razao que a `ph2d-quadextract`: ja' esta' na arvore.
+miniz_oxide = "0.8"

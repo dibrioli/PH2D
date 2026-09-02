@@ -116,7 +116,8 @@ pub(super) fn log_candidate(
         "[sculpt3d] candidata w={w:.3} feicoes={features} adapt={adaptive:.2}: {} quads | \
          bordo {} | costuras soltas {} | locais trocados {} | lados a discordar {} | >60 {} | \
          envies p50 {:.2} p99 {:.1} | aspecto p50 {:.2} | ENTREGA {ratio:.3} (ponta {amostra}) \
-         | alcance {:.4} | DESVIO p50 {:.2} ({} de {} ponta(s) acima de {:.1}) \
+         | alcance {:.4} | AMPUTADAS {} de {} (pior gap {:.2}, barra {:.1}) \
+         | DESVIO p50 {:.2} ({} de {} ponta(s) acima de {:.1}) \
          | GRADE NA PONTA pior {:.2} p50 {:.2} ({} de {} acima de {:.1})",
         out.face_count(),
         boundary_edges(out),
@@ -128,6 +129,10 @@ pub(super) fn log_candidate(
         shape.skew_p99,
         shape.aspect_p50,
         reach(out),
+        dev.cut,
+        dev.tips,
+        dev.apex_max,
+        ph2d_quadfill::TIP_GAP_MAX,
         dev.p50,
         dev.over,
         dev.tips,
@@ -292,7 +297,9 @@ pub(super) fn still_broken(
     dev: ph2d_quadfill::TipDeviation,
     den: ph2d_quadfill::TipDensity,
 ) -> bool {
-    open_edges(mesh) > 0 || bowties(mesh) > 0 || dev.over > 0 || den.over > 0
+    // ⭐ `dev.cut` é a amputação medida no ÁPICE (2026-09-02) — a `over` é a mediana da
+    // vizinhança, e ela deixava passar a agulha da foto. Ver [`ph2d_quadfill::TIP_GAP_MAX`].
+    open_edges(mesh) > 0 || bowties(mesh) > 0 || dev.cut > 0 || dev.over > 0 || den.over > 0
 }
 
 /// ⭐⭐ **Quantas faces se AUTO-INTERSECTAM** — pela porta de [`ph2d_quadfill::local_shape`].

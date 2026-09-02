@@ -3,7 +3,7 @@
 //! ⚠️ *Sem o controlo, «a régua nova acerta» é uma afirmação sobre a régua nova.* A metade
 //! que interessa é a outra: que a **antiga** erra na mesma fixtura, e por quanto.
 
-use super::{TIP_DEVIATION_MAX, area_centroid, point_triangle, reach, tip_deviation};
+use super::{TIP_DEVIATION_MAX, TIP_GAP_MAX, area_centroid, point_triangle, reach, tip_deviation};
 use ph2d_mesh::{Face, Mesh};
 
 /// ⭐⭐⭐ **GATE — a distância é ao INTERIOR da face, não ao canto mais próximo.**
@@ -220,6 +220,19 @@ fn um_bico_amputado_e_acusado_e_o_intacto_nao() {
         "o bico cortado tem de passar a barra: {cortado:?}"
     );
     assert_eq!(cortado.over, 1, "{cortado:?}");
+
+    // ⭐⭐⭐ **E o ÁPICE sozinho** (2026-09-02, [`super::TIP_GAP_MAX`]): a saída idêntica
+    // tem o bico EM CIMA da superfície, e a cortada tem-no a `(3,0 − 2,2) / 0,2 = 4` células.
+    assert_eq!(igual.cut, 0, "{igual:?}");
+    assert!(igual.apex_max < TIP_GAP_MAX, "{igual:?}");
+    assert_eq!(
+        cortado.cut, 1,
+        "⛔ o bico amputado e' UMA ponta a mais de meia celula: {cortado:?}"
+    );
+    assert!(
+        (cortado.apex_max - 4.0).abs() < 0.05,
+        "o gap do apice e' a altura cortada em celulas: {cortado:?}"
+    );
 }
 
 /// ⭐⭐⭐ **GATE — uma ponta comida POR INTEIRO é o pior caso, não um «não medido».**

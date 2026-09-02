@@ -207,12 +207,20 @@ pub(super) fn one(
     // ⭐⭐⭐ **CADA CANDIDATA DIZ O QUE É** — ver [`super::rulers::log_candidate`], que
     // mora ao lado do [`worse`] de propósito: *o registo que explica uma escolha
     // tem de ler as mesmas grandezas que a fazem.*
-    let dev = ph2d_quadfill::tip_deviation(cx.reference, &out, cx.target);
+    // ⭐⭐⭐ **A UNIDADE das réguas da ponta é o ALVO, e é a MESMA em todas as candidatas do
+    // clique** (2026-09-02). ⛔ A lei do ápice ([`ph2d_quadfill::apices`]) decide *o que é
+    // um espinho* à escala da unidade; com a aresta mediana de cada candidata, duas
+    // candidatas de `19 154` e `21 650` quads teriam censos DIFERENTES e o `worse` compararia
+    // *«3 pontas más de 8»* com *«2 de 7»*. A bancada e as sondas usam a mediana
+    // ([`ph2d_quadfill::median_edge`]) porque uma saída de outra ferramenta não tem alvo; as
+    // duas diferem `~8 %` e o registo diz qual é.
+    let unit = cx.target;
+    let dev = ph2d_quadfill::tip_deviation(cx.reference, &out, unit);
     // ⭐⭐⭐ **A GRADE NA PONTA** — o report do dono de 2026-09-01, com foto e seta:
     // *«essa área deveria ser levada à ponta, mas fica a meio caminho»*. ⛔ A `ENTREGA`
     // acima mede coroas RADIAIS e faz média das pontas todas — ver
     // [`ph2d_quadfill::tip_density`].
-    let den = ph2d_quadfill::tip_density(cx.reference, &out, cx.target);
+    let den = ph2d_quadfill::tip_density(cx.reference, &out, unit);
     super::rulers::log_candidate(
         w, features, adaptive, &out, &shape, &round, &cut_rep, dev, den,
     );

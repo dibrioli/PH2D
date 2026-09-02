@@ -495,12 +495,13 @@ pub(super) fn orientation_and_density(tag: &str, mesh: &ph2d_mesh::Mesh) {
 /// linha paga a mesma forma (o `edge_max` cego ao quad de `0,02 × 0,30`, o `χ` cego
 /// à almofada).
 ///
-/// # ⭐ Como as pontas são achadas, e por que assim
+/// # ⭐ Como as pontas são achadas — pela PORTA, desde 2026-09-02
 ///
-/// Um **ápice** é um vértice cujo raio ao centroide é maior que o de **todos** os
-/// vizinhos — um máximo local no grafo da superfície. ⚠️ *Não é um limiar de raio*:
-/// numa peça com espinhos de comprimentos diferentes, um limiar apanharia dois
-/// vértices do espinho mais longo e nenhum do mais curto.
+/// ⛔⛔ **Esta sonda tinha a SUA cópia da lei do ápice**, com o piso a `0,55` do raio
+/// máximo e o corte em `12` — e foi essa cópia que imprimiu *«0 de 4 cortadas»* sobre a
+/// peça em que o dono via três pontas embotadas: elas estavam a `0,43`–`0,47` do raio. A
+/// lei é uma só, [`ph2d_quadfill::apices`] (piso `0,25` + filtro de FORMA, o cone), e a
+/// unidade é a aresta mediana da saída.
 ///
 /// # ⭐⭐ E a comparação é a FUNÇÃO DE SUPORTE, não a distância
 ///
@@ -509,40 +510,13 @@ pub(super) fn orientation_and_density(tag: &str, mesh: &ph2d_mesh::Mesh) {
 /// outra: os vértices não se correspondem, as direcções sim.
 pub(super) fn tips(tag: &str, entrada: &ph2d_mesh::Mesh, saida: &ph2d_mesh::Mesh) {
     let pos = entrada.positions();
-    let mut c = [0.0f64; 3];
-    for p in pos {
-        for k in 0..3 {
-            c[k] += f64::from(p[k]);
-        }
-    }
-    #[allow(clippy::cast_precision_loss)]
-    let n = pos.len().max(1) as f64;
-    let mid = [(c[0] / n) as f32, (c[1] / n) as f32, (c[2] / n) as f32];
+    let unit = ph2d_quadfill::median_edge(saida);
+    let (mid, apices) = ph2d_quadfill::apices(entrada, unit);
     let raio = |p: &[f32; 3]| -> f32 {
         let d = [p[0] - mid[0], p[1] - mid[1], p[2] - mid[2]];
         d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt()
     };
-
-    let mut viz: Vec<Vec<u32>> = vec![Vec::new(); pos.len()];
-    for f in entrada.faces() {
-        let v = f.verts();
-        for k in 0..v.len() {
-            let (a, b) = (v[k] as usize, v[(k + 1) % v.len()] as usize);
-            viz[a].push(v[(k + 1) % v.len()]);
-            viz[b].push(v[k]);
-        }
-    }
     let r: Vec<f32> = pos.iter().map(raio).collect();
-    let maior = r.iter().copied().fold(0.0f32, f32::max).max(1.0e-9);
-    // ⚠️ **O piso existe para não chamar «ponta» a cada bossa do corpo.** Ele é uma
-    // fracção do maior raio, e vai impresso — *um limiar que não aparece no relatório
-    // é um número que ninguém pode contestar.*
-    const PISO: f32 = 0.55;
-    let mut apices: Vec<usize> = (0..pos.len())
-        .filter(|&i| r[i] >= PISO * maior)
-        .filter(|&i| viz[i].iter().all(|&j| r[j as usize] <= r[i]))
-        .collect();
-    apices.sort_by(|&a, &b| r[b].total_cmp(&r[a]));
 
     let suporte = |m: &ph2d_mesh::Mesh, d: [f32; 3]| -> f32 {
         m.positions()
@@ -555,13 +529,13 @@ pub(super) fn tips(tag: &str, entrada: &ph2d_mesh::Mesh, saida: &ph2d_mesh::Mesh
     };
 
     eprintln!(
-        "   {tag}: PONTAS — {} apice(s) acima de {:.0} % do raio maximo",
+        "   {tag}: PONTAS — {} espinho(s) pela lei do apice (cone <= {:.1} a 4 h, h = {unit:.4})",
         apices.len(),
-        PISO * 100.0
+        ph2d_quadfill::CONE_MAX
     );
     let mut cortadas = 0usize;
     let mut pior = 0.0f32;
-    for (k, &i) in apices.iter().take(12).enumerate() {
+    for (k, &i) in apices.iter().enumerate() {
         let p = pos[i];
         let len = r[i].max(1.0e-9);
         let d = [
@@ -589,6 +563,6 @@ pub(super) fn tips(tag: &str, entrada: &ph2d_mesh::Mesh, saida: &ph2d_mesh::Mesh
     }
     eprintln!(
         "   {tag}: PONTAS — {cortadas} de {} cortada(s), a pior {pior:+.1} %",
-        apices.len().min(12)
+        apices.len()
     );
 }

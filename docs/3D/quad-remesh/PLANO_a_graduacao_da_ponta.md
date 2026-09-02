@@ -1639,3 +1639,71 @@ com linhas de feição entrega `p50 0,60` (a **mediana** das pontas fica excelen
 
 ⇒ A obra é o **factor de escala conforme** com espec própria, e o critério de aceitação dela é
 esta coluna: `GRADE NA PONTA pior` abaixo de `1,0` na peça do dono.
+
+---
+
+# §90 — A DENSIDADE ENTRA NO CAMPO, e a tampa do bico cede (2026-09-01, ordem *«construa»*)
+
+## §90.1 — Por que nada do que se tentou podia funcionar
+
+Num mapa de grade inteira o factor de escala `σ` e o ângulo do campo `θ` são **conjugados**:
+`∇σ = J∇θ`. ⇒ **a densidade que um mapa integrável consegue entregar é ditada pelo CAMPO**, e o
+mínimo quadrado do G3 projecta fora tudo o que o campo não permite.
+
+*Isto explica de uma vez as três refutações do §89*: pedir um passo mais fino **ao mapa** — por
+alisamento, por tecto de faixa, por qualquer via — é pedir uma coisa que o mapa é obrigado a
+recusar. Não era implementação: era um teorema.
+
+## §90.2 — A correcção, e ela é exacta
+
+Pedir a métrica `g̃ = g/h²` é pedir `g̃ = e^{2s} g` com `s = −log h`. A curvatura muda por
+`K̃ = K − Δs`, e a forma de o impor ao campo é somar ao transporte a 1-forma **`α = −∗ds`**,
+cujo rotacional é exactamente `−Δs`. ⭐ **No discreto é uma linha:** a aresta dual cruza a primal
+em ângulo recto, logo `∫α` sobre a dual é a diferença de `s` sobre a **primal**
+(`ph2d_crossfield::Dual::scale_by_density`).
+
+⚠️ **A força não tem curso — é `1`.** Medido, `1,5` leva o mapa de `17` para `105` dobras e `2`
+leva o enviesamento mediano de `4,2°` a `7,7°`. ⛔ *Escolher uma força seria inventar um número
+onde a teoria já deu um*, e foi o que eu fiz nas duas primeiras varreduras.
+
+⭐ **O sinal está medido:** o negativo rasga a malha (`100` arestas de bordo).
+
+## §90.3 — Ela é CANDIDATA, e a medição obriga
+
+| `Detail` | pontas cortadas (sem · com) | desvio `p50` | dobras |
+|---|---|---|---|
+| `1,00` | `0 de 4` · `0 de 4` | `0,47` · ⭐ **`0,22`** | `17` · ⭐ **`6`** |
+| `0,95` | `0 de 4` · `0 de 4` | `0,88` · ⭐ **`0,27`** | `18` · ⭐ **`8`** |
+| ⛔ `0,75` | `1 de 4` · `1 de 4` | `0,67` · ⛔ **`3,00`** | `20` · ⛔ **`166`** |
+
+⇒ **serve onde a resolução chega para o espinho e destrói onde não chega** (a `0,75` o espinho
+mede `1,2` quads de largura e a grade não contrai tão depressa). *É a forma de coisa que o
+`worse` existe para decidir, e nunca a de uma constante.*
+
+## §90.4 — ⛔⛔ E a promessa *«só vence onde é melhor»* era FALSA — a guarda que a torna verdadeira
+
+Posta como candidata, a curada **venceu a `Detail 0,75` e o botão piorou** (`2 de 4` cortadas
+contra `1 de 4`). ⚠️ **E o critério tinha toda a razão:** ela sai com `0` furos e a de omissão
+traz `1` aresta não-manifold — e os furos são a chave da **frente**, por medição e depois de
+três queixas do dono. *A curada comprava duas pontas com um furo que não tinha.*
+
+⛔ **A cura não é reordenar o critério** (decisão de produto que ninguém mediu). É fazer valer a
+promessa: **uma candidata com densidade que ampute MAIS pontas que a melhor sem correcção não é
+oferecida.** Com a guarda, o botão fica **estritamente melhor ou idêntico**:
+
+| `Detail` | antes | agora |
+|---|---|---|
+| `1,00` | `0/4` · `−0,5 %` · `0,47` · `17` dobras | ⭐ `0/4` · **`−0,1 %`** · **`0,22`** · **`6`** |
+| `0,95` | `0/4` · `−1,2 %` · `0,88` · `18` | ⭐ `0/4` · **`−0,3 %`** · **`0,27`** · **`8`** |
+| `0,75` | `1/4` · `−2,7 %` · `0,67` · `20` | **idêntico** — a guarda barrou |
+
+⚠️ **A regressão nomeada:** o enviesamento `p99` sobe (`22,9° → 36,3°` a `Detail 1,00`). O `p50`,
+o aspecto e as dobras **melhoram**, e as faces com canto pior que `60°` ficam em `1`.
+
+## §90.5 — O que os cortes de LOC forçaram, e foi bom
+
+O ficheiro voltou a estourar duas vezes. ⭐ Os cortes foram **duplicação real**: os quatro sítios
+que escreviam o par série/paralelo à mão viraram `one::par`, e as quatro corridas de duas
+candidatas viraram `corrida` — *a divergência entre ramos que um gate desta linha vigiava tornou-se
+inexprimível*. ⚠️ E um comentário que dizia *«a cadeia corre duas vezes, ~9 s»* **mentia**: são
+até oito candidatas e `47`–`71 s`.

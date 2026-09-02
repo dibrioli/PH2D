@@ -366,6 +366,66 @@ impl Dual {
     pub fn align(&self, f: usize) -> (f32, f32) {
         self.align.get(f).copied().unwrap_or((0.0, 0.0))
     }
+
+    /// ⭐⭐⭐ **O CAMPO NA MÉTRICA DA DENSIDADE** — a correcção conforme do transporte.
+    ///
+    /// # ⛔⛔⛔ Por que ela existe: pedir mais fino NÃO entrega mais fino
+    ///
+    /// Medido em 2026-09-01 na escultura do dono, atravessando o produto: pedir um passo
+    /// `14 %` mais fino na ponta move a saída **`3 %`**, e a fase zero — que já entrega a
+    /// ponta fina (`0,82 ×` a mediana) — vê o mapa desfazê-la (`1,55 ×`).
+    ///
+    /// ⚠️ **E a razão não é uma falha de implementação — é um TEOREMA.** Num mapa de grade
+    /// inteira o factor de escala `σ` e o ângulo do campo `θ` são conjugados
+    /// (`∇σ = J∇θ`): *a densidade que um mapa integrável consegue entregar é ditada pelo
+    /// CAMPO*, e o mínimo quadrado do G3 projecta fora tudo o que o campo não permite. ⇒
+    /// **um passo por-vértice na energia do mapa é um pedido que o mapa tem de recusar.**
+    ///
+    /// # ⭐ A correcção, e ela é exacta
+    ///
+    /// Pedir a métrica `g̃ = g / h²` é pedir `g̃ = e^{2s} g` com `s = −log h`. A curvatura
+    /// muda por `K̃ = K − Δs`, e a forma de a impor ao campo é somar ao transporte a 1-forma
+    /// `α = −∗ds`, cujo rotacional é exactamente `−Δs`. ⭐⭐ **No discreto ela é uma linha:**
+    /// a aresta dual cruza a aresta primal `(a, b)` **em ângulo recto**, então `∫α` sobre a
+    /// dual é a diferença de `s` sobre a **primal**.
+    ///
+    /// ⇒ com ela, as singularidades passam a nascer onde a densidade as exige — que é o que
+    /// permite a grade **contrair** ao subir um espinho em vez de terminar de uma vez.
+    ///
+    /// `log_scale` é `s` por vértice da MESMA malha que construiu este dual; `strength`
+    /// interpola (`0` devolve o dual **ao bit**). ⛔ Uma contagem diferente é ignorada — um
+    /// campo de outra malha produziria holonomias plausíveis e erradas.
+    pub fn scale_by_density(&mut self, mesh: &Mesh, log_scale: &[f32], strength: f32) {
+        if strength == 0.0 || log_scale.len() != mesh.vert_count() {
+            return;
+        }
+        // ⚠️ **A MESMA travessia que a [`Self::build`] faz**, com a mesma chave e o mesmo
+        // `BTreeMap`: é isso que garante que o `i`-ésimo par aqui é a `i`-ésima aresta dual.
+        // ⛔ Reordenar uma das duas desalinharia as correcções em silêncio.
+        let mut owner: BTreeMap<(u32, u32), Vec<u32>> = BTreeMap::new();
+        for (fi, f) in mesh.faces().iter().enumerate() {
+            let v = f.verts();
+            for k in 0..v.len() {
+                let (a, b) = (v[k], v[(k + 1) % v.len()]);
+                let key = if a < b { (a, b) } else { (b, a) };
+                owner.entry(key).or_default().push(fi as u32);
+            }
+        }
+        let mut e = 0usize;
+        for ((a, b), who) in &owner {
+            if who.len() != 2 {
+                continue;
+            }
+            let Some(edge) = self.edges.get_mut(e) else {
+                return;
+            };
+            e += 1;
+            let (sa, sb) = (log_scale[*a as usize], log_scale[*b as usize]);
+            if sa.is_finite() && sb.is_finite() {
+                edge.kappa = wrap(strength.mul_add(sb - sa, edge.kappa));
+            }
+        }
+    }
 }
 
 /// **CONVERTE o campo por-FACE para por-VÉRTICE** — a ponte para o extrator que

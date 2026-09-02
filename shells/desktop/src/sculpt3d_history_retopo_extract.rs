@@ -169,34 +169,25 @@ impl Sculpt3dScene {
             dual: &dual,
             target,
         };
-        let attempt = |w: f32, features: bool, adaptive: f32, travel: f32| {
-            one::one(&cx, w, features, adaptive, travel)
+        let attempt = |w: f32, features: bool, adaptive: f32, travel: f32, density: f32| {
+            one::one(&cx, w, features, adaptive, travel, density)
         };
 
-        // ⭐ **O PREÇO, MEDIDO:** a cadeia corre duas vezes. Na `sculpt_004` uma passagem
-        // custa **`4 475 ms`** (melhor de 2), logo o botão passa de ~4,5 s a **~9 s**. O F1 é
-        // partilhado; o que duplica é campo + traçado + mapa + extracção.
+        // ⭐⭐ **O PREÇO, e a nota anterior MENTIA:** ela dizia *«a cadeia corre duas vezes»*
+        // e escrevia `~9 s`. Hoje a ronda de abertura são **quatro** candidatas (o campo
+        // alinhado e o liso, cada um com e sem a correcção de densidade) e as tentativas de
+        // socorro acrescentam até mais quatro. Medido na peça do dono: `57`–`71 s` a
+        // `Detail 0,75`–`1,00`. *Um comentário que descreve uma versão antiga do laço é lido
+        // como se descrevesse esta.*
         //
-        // ⛔ **A saída barata foi considerada e NÃO tomada:** sair cedo quando a primeira
-        // tentativa já é perfeita nas duas chaves da frente (`0` furos e `0` faces `>60°`)
-        // manteria o caso comum a `1×` — mas mede-se que ela **perderia** a melhoria da
-        // mediana onde ela existe (na `sculpt_eared`, `7,8° → 5,1°`, com as duas chaves da
-        // frente a zero nas duas tentativas). ⇒ *é uma troca de qualidade por espera, e a
+        // ⛔ **A saída barata continua RECUSADA por medição:** sair cedo quando a primeira
+        // candidata já é perfeita nas chaves da frente manteria o caso comum a `1×`, e
+        // perderia a melhoria da mediana onde ela existe (`sculpt_eared`, `7,8° → 5,1°`, com
+        // as chaves da frente a zero nas duas). *É uma troca de qualidade por espera, e a
         // escolha é do dono do produto* — o número está aqui para ele a poder fazer.
-        // ⭐⭐⭐ **AS DUAS EM PARALELO — o custo passa a ser o MÁXIMO, não a soma.**
         //
-        // ⛔ A nota acima ainda vale sobre a saída barata (ela perderia qualidade), e é por
-        // isso que a cura **não** é escolher uma: as duas tentativas são **independentes** —
-        // partilham só leituras (`work`, `reference`, `layout`) e não escrevem nada em comum.
-        // *Não havia troca nenhuma a fazer: havia duas coisas em série que podiam estar lado
-        // a lado.*
-        //
-        // ⚠️ **`rayon::join` e não threads à mão:** ele é a lib sancionada da casa
-        // (SKILL_Stack §919) e o *work-stealing* dele compõe com o paralelismo que já existe
-        // **dentro** de cada passagem (o acabamento), em vez de competir com ele.
-        //
-        // ⚠️ `PH2D_RETOPO_SERIAL=1` volta a correr as duas em série — é o A/B, e é o que
-        // permite dizer quanto o paralelo vale nesta máquina em vez de o supor.
+        // ⚠️ **O custo é o MÁXIMO e não a soma** — as candidatas partilham só leituras
+        // (`work`, `reference`, `dual`) e não escrevem nada em comum. Ver [`one::par`].
         // ⭐⭐⭐ **UMA TENTATIVA QUE ESTOURA É UMA TENTATIVA QUE PERDE, e não o fim da peça.**
         //
         // ⛔⛔ **Reproduzido em 2026-08-29 com a peça do artista** (a bola de espinhos): a
@@ -214,9 +205,9 @@ impl Sculpt3dScene {
         //
         // ⚠️ **`AssertUnwindSafe` é honesto aqui:** a `attempt` não escreve em nada partilhado
         // — ela lê `work`/`reference`/`dual` e devolve uma malha nova.
-        let guarded = |w: f32, features: bool, adaptive: f32, travel: f32| {
+        let guarded = |w: f32, features: bool, adaptive: f32, travel: f32, density: f32| {
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                attempt(w, features, adaptive, travel)
+                attempt(w, features, adaptive, travel, density)
             }))
             // ⛔ **`Panicked` e não `TooCoarseToResolve`** — ver o doc da variante. A frase da
             // outra manda o artista **subdividir a escultura**, que é a cura de um problema
@@ -224,29 +215,42 @@ impl Sculpt3dScene {
             // e liam-se iguais.*
             .unwrap_or(Err(RemeshRefusal::Panicked))
         };
-        let (aligned, smooth) = if std::env::var("PH2D_RETOPO_SERIAL").as_deref() == Ok("1") {
-            (
-                guarded(
-                    ph2d_crossfield::ALIGN_WEIGHT,
-                    false,
-                    adaptive,
-                    ph2d_quadfill::EXTRACT_TRAVEL,
-                ),
-                guarded(0.0, false, adaptive, ph2d_quadfill::EXTRACT_TRAVEL),
-            )
-        } else {
-            rayon::join(
+        // ⭐⭐⭐ **UMA CORRIDA são DUAS candidatas** — o campo alinhado ao relevo e o liso —, e
+        // ⛔ nenhum dos dois ganha sempre: medido em 6 peças, o liso ganha em 5 e o alinhado
+        // em 1. *A escolha não é uma constante: é uma medição por peça.* ⚠️ Escrita UMA vez
+        // porque os quatro sítios que a pediam divergiam de cada vez que um argumento novo
+        // entrava — e entraram três em dois dias (cerca de viagem, densidade, graduação).
+        let corrida = |adaptive: f32, travel: f32, density: f32| {
+            one::par(
                 || {
                     guarded(
                         ph2d_crossfield::ALIGN_WEIGHT,
                         false,
                         adaptive,
-                        ph2d_quadfill::EXTRACT_TRAVEL,
+                        travel,
+                        density,
                     )
                 },
-                || guarded(0.0, false, adaptive, ph2d_quadfill::EXTRACT_TRAVEL),
+                || guarded(0.0, false, adaptive, travel, density),
             )
         };
+        let (aligned, smooth) = corrida(adaptive, ph2d_quadfill::EXTRACT_TRAVEL, 0.0);
+        // ⭐⭐⭐ **AS DUAS CANDIDATAS COM A DENSIDADE NO CAMPO** — a cura do report de
+        // 2026-09-01 (a tampa chata no bico), ver [`ph2d_crossfield::Dual::scale_by_density`].
+        //
+        // ⛔⛔⛔ **Ela é CANDIDATA e não interruptor, e a medição é a razão.** Na escultura do
+        // dono, com a força exacta da teoria (`1`):
+        //
+        // **A tabela por densidade vive em [`one::FIELD_DENSITY`]**, ao lado do número. ⚠️ A
+        // `Detail 0,75` ela COME uma ponta inteira — o espinho mede ali `1,2` quads de largura
+        // e a grade não contrai tão depressa. *Serve onde a resolução chega para o espinho e
+        // destrói onde não chega*, que é a forma de coisa que o [`worse`] existe para decidir
+        // e ⛔ nunca a de uma constante.
+        //
+        // ⚠️ **A força é `1` e NÃO tem curso**: a correcção conforme é `α = −∗ds` exactamente.
+        // Medido, `1,5` e `2` sobre-conduzem (a `1,5` o mapa vai a `105` dobras) — *escolher
+        // uma força seria inventar um número onde a teoria já deu um.*
+        let densas = corrida(adaptive, ph2d_quadfill::EXTRACT_TRAVEL, one::FIELD_DENSITY);
         let (relief_won, (out, e, _shift_frac_max, shape, dev, den)) = match (aligned, smooth) {
             (Ok(a), Ok(b)) => {
                 if worse(
@@ -270,6 +274,35 @@ impl Sculpt3dScene {
             (Err(_), Ok(b)) => (false, b),
             (Err(e), Err(_)) => return Err(e),
         };
+
+        // ⭐⭐⭐ **E AS COM DENSIDADE NÃO PODEM COMPRAR UMA PONTA COM UM FURO.**
+        //
+        // ⛔⛔⛔ **Medido a `Detail 0,75`:** a curada sai `0` furos e come **duas** pontas; a
+        // de omissão traz `1` aresta não-manifold e come **uma**. Os furos são a chave da
+        // FRENTE — por medição, e depois de três queixas do dono —, então a curada vencia
+        // **com toda a razão do critério** e o artista perdia um espinho.
+        //
+        // ⚠️ **A cura não é reordenar o critério** — essa é decisão de produto que ninguém
+        // mediu. É fazer valer a promessa que a correcção traz escrita: *ela só entra onde é
+        // melhor*. ⚠️ `tips == 0` é «não medido» e nunca desqualifica.
+        let sem_cura = dev;
+        let so_se_nao_amputar = |c: Option<decide::Candidata>| {
+            c.filter(|x| sem_cura.tips == 0 || x.4.tips == 0 || x.4.over <= sem_cura.over)
+        };
+        // ⭐ E as duas com densidade entram pela MESMA porta — elas só vencem onde são
+        // melhores, que é a garantia que faz a cura poder ser agressiva sem risco.
+        let (relief_won, (out, e, _shift_frac_max, shape, dev, den)) = decide::melhor(
+            relief_won,
+            (out, e, _shift_frac_max, shape, dev, den),
+            so_se_nao_amputar(densas.0.ok()),
+            true,
+        );
+        let (relief_won, (out, e, _shift_frac_max, shape, dev, den)) = decide::melhor(
+            relief_won,
+            (out, e, _shift_frac_max, shape, dev, den),
+            so_se_nao_amputar(densas.1.ok()),
+            false,
+        );
 
         // ⭐⭐⭐ **A TERCEIRA TENTATIVA — e ela corre SÓ SE A SAÍDA AINDA ESTÁ PARTIDA.**
         //
@@ -296,6 +329,7 @@ impl Sculpt3dScene {
                     true,
                     adaptive,
                     ph2d_quadfill::EXTRACT_TRAVEL,
+                    0.0,
                 )
                 .ok()
             })
@@ -330,29 +364,7 @@ impl Sculpt3dScene {
         // alinhada e a suave — e é o [`worse`] entre elas que dá a malha limpa.* Pedir só
         // metade do caminho de omissão devolve algo que não é o caminho de omissão.
         let uniforme = if adaptive > 0.0 && still_broken(&out, dev, den) {
-            let (a, b) = if std::env::var("PH2D_RETOPO_SERIAL").as_deref() == Ok("1") {
-                (
-                    guarded(
-                        ph2d_crossfield::ALIGN_WEIGHT,
-                        false,
-                        0.0,
-                        ph2d_quadfill::EXTRACT_TRAVEL,
-                    ),
-                    guarded(0.0, false, 0.0, ph2d_quadfill::EXTRACT_TRAVEL),
-                )
-            } else {
-                rayon::join(
-                    || {
-                        guarded(
-                            ph2d_crossfield::ALIGN_WEIGHT,
-                            false,
-                            0.0,
-                            ph2d_quadfill::EXTRACT_TRAVEL,
-                        )
-                    },
-                    || guarded(0.0, false, 0.0, ph2d_quadfill::EXTRACT_TRAVEL),
-                )
-            };
+            let (a, b) = corrida(0.0, ph2d_quadfill::EXTRACT_TRAVEL, 0.0);
             match (a, b) {
                 (Ok(a), Ok(b)) => {
                     if worse(
@@ -422,22 +434,45 @@ impl Sculpt3dScene {
         // ⛔ **A condição é a MESMA porta das outras duas** ([`still_broken`], que desde
         // 2026-09-01 conta a amputação). *Foi a falta dessa terceira condição que fazia esta peça
         // — topologia impecável, uma ponta comida — nunca armar tentativa nenhuma.*
-        let apertada = if still_broken(&out, dev, den) {
-            guarded(
-                ph2d_crossfield::ALIGN_WEIGHT,
-                false,
-                adaptive,
-                ph2d_quadfill::EXTRACT_TRAVEL_RESCUE,
-            )
-            .ok()
+        // ⚠️ **E ela corre DUAS VEZES — com e sem a correcção de densidade** — porque a
+        // `Detail 0,75` uma salva as pontas e a outra a topologia (tabela no bloco acima):
+        // *a saída não é reordenar o critério, é produzir a candidata que tem as duas coisas.*
+        let apertadas = if still_broken(&out, dev, den) {
+            let (a, b) = one::par(
+                || {
+                    guarded(
+                        ph2d_crossfield::ALIGN_WEIGHT,
+                        false,
+                        adaptive,
+                        ph2d_quadfill::EXTRACT_TRAVEL_RESCUE,
+                        0.0,
+                    )
+                },
+                || {
+                    guarded(
+                        ph2d_crossfield::ALIGN_WEIGHT,
+                        false,
+                        adaptive,
+                        ph2d_quadfill::EXTRACT_TRAVEL_RESCUE,
+                        one::FIELD_DENSITY,
+                    )
+                },
+            );
+            (a.ok(), b.ok())
         } else {
-            None
+            (None, None)
         };
+        let (relief_won, (out, e, _shift_frac_max, shape, dev, den)) = decide::melhor(
+            relief_won,
+            (out, e, _shift_frac_max, shape, dev, den),
+            apertadas.0,
+            true,
+        );
         let (relief_won, (out, e, _shift_frac_max, shape, _dev, _den)) = decide::melhor(
             relief_won,
             (out, e, _shift_frac_max, shape, dev, den),
-            apertada,
-            true,
+            so_se_nao_amputar(apertadas.1),
+            false,
         );
 
         // ⭐⭐⭐ **O VETO — a peça não pode sair PARTIDA.** Ver [`rulers::shattered`].

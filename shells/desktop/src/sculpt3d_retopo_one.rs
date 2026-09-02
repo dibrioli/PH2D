@@ -56,15 +56,54 @@ pub(super) fn one(
     features: bool,
     adaptive: f32,
     travel: f32,
+    density: f32,
 ) -> Result<Candidata, RemeshRefusal> {
+    // ⭐⭐⭐ **O PASSO POR VÉRTICE É CALCULADO AQUI EM CIMA desde 2026-09-01**, e não já
+    // abaixo, porque ele deixou de ser só o `Step` do mapa: ele entra **no campo**.
+    let sizing = sizing_field(cx.work, cx.target, adaptive);
     let owned;
-    let dual: &ph2d_crossfield::Dual =
+    let base: &ph2d_crossfield::Dual =
         if features || super::super::retopo_extract::features_requested() {
             owned = with_features(cx);
             &owned
         } else {
             cx.dual
         };
+    // ⭐⭐⭐ **A DENSIDADE ENTRA NO CAMPO** — ver
+    // [`ph2d_crossfield::Dual::scale_by_density`], e o report do dono de 2026-09-01 (a tampa
+    // chata no bico) é a razão.
+    //
+    // ⛔⛔ **Medido: pedir ao MAPA um passo mais fino na ponta não o entrega** — `14 %` de
+    // pedido move a saída `3 %`, e a fase zero, que já entrega a ponta fina, vê o mapa
+    // desfazê-la. ⚠️ *Não é implementação: num mapa de grade inteira `∇σ = J∇θ`, logo a
+    // densidade realizável é ditada pelo CAMPO e o mínimo quadrado projecta fora o resto.*
+    //
+    // ⚠️ **`s = log(alvo / h)`** — positivo onde se quer fino. Constantes não entram (só as
+    // diferenças ao longo de cada aresta), então não há normalização a escolher.
+    //
+    // ⛔ **Nasce DESLIGADA** (`PH2D_FIELD_DENSITY=<força>`): ela move as singularidades, que é
+    // a grandeza de que todas as réguas desta linha dependem — ligar sem a tabela seria
+    // exactamente o que o §0.0 proíbe.
+    let owned_den;
+    let dual: &ph2d_crossfield::Dual = match field_density_strength().unwrap_or(density) {
+        k if k != 0.0 && !sizing.is_empty() => {
+            let mut d = base.clone();
+            let logs: Vec<f32> = sizing
+                .iter()
+                .map(|h| {
+                    if *h > 0.0 && h.is_finite() {
+                        (cx.target / h).ln()
+                    } else {
+                        0.0
+                    }
+                })
+                .collect();
+            d.scale_by_density(cx.work, &logs, k);
+            owned_den = d;
+            &owned_den
+        }
+        _ => base,
+    };
     let (field, _) = if (w - ph2d_crossfield::ALIGN_WEIGHT).abs() < f32::EPSILON {
         ph2d_crossfield::solve_miq(dual)
     } else {
@@ -90,7 +129,6 @@ pub(super) fn one(
     let opts = ph2d_gridmap::RoundOptions::default();
     // ⭐⭐⭐ **A DENSIDADE SEGUE A FORMA** — ver [`sizing_field`]. Com
     // `adaptive == 0` o campo é constante e o passo é o escalar de sempre.
-    let sizing = sizing_field(cx.work, cx.target, adaptive);
     let step = ph2d_gridmap::Step {
         h: cx.target,
         per_vertex: &sizing,
@@ -179,4 +217,55 @@ pub(super) fn one(
         w, features, adaptive, &out, &shape, &round, &cut_rep, dev, den,
     );
     Ok((out, e, round.shift_frac_max, shape, dev, den))
+}
+
+/// ⭐⭐⭐ **AS DUAS EM PARALELO, ou em série se alguém estiver a bissecar.**
+///
+/// ⛔⛔ **Ela existe porque o par estava escrito TRÊS vezes** — a ronda de abertura, as
+/// candidatas com densidade e a recaída do campo adaptativo —, cada uma com o seu `if` sobre
+/// a mesma variável de ambiente. ⚠️ *Um gate desta linha já vigia que a recaída corra as DUAS
+/// candidatas nos DOIS ramos, precisamente porque os ramos podiam divergir* — com uma porta
+/// só, não podem.
+///
+/// ⚠️ `PH2D_RETOPO_SERIAL=1` é o A/B do paralelismo, e é o que permite dizer quanto ele vale
+/// nesta máquina em vez de o supor.
+pub(super) fn par<T: Send>(a: impl FnOnce() -> T + Send, b: impl FnOnce() -> T + Send) -> (T, T) {
+    if std::env::var("PH2D_RETOPO_SERIAL").as_deref() == Ok("1") {
+        (a(), b())
+    } else {
+        rayon::join(a, b)
+    }
+}
+
+/// ⭐⭐⭐ **A FORÇA DA CORRECÇÃO CONFORME, e ela NÃO tem curso** — ver
+/// [`ph2d_crossfield::Dual::scale_by_density`].
+///
+/// ⚠️ **`1` é o valor da TEORIA, não uma afinação:** a correcção é `α = −∗ds` exactamente, e
+/// qualquer outro factor deixa de ser a métrica pedida. ⛔ Medido na escultura do dono, os
+/// valores maiores sobre-conduzem — a `1,5` o mapa passa de `17` para **`105`** dobras e a
+/// `2` o enviesamento mediano vai de `4,2°` para `7,7°`. *Escolher uma força seria inventar
+/// um número onde a teoria já deu um.*
+///
+/// # ⭐ Medido na escultura do dono, pelo botão inteiro (`sem` · `com`)
+///
+/// | `Detail` | pontas cortadas | desvio `p50` | dobras do mapa |
+/// |---|---|---|---|
+/// | `1,00` | `0 de 4` · `0 de 4` | `0,47` · ⭐ **`0,22`** | `17` · ⭐ **`6`** |
+/// | `0,95` | `0 de 4` · `0 de 4` | `0,88` · ⭐ **`0,27`** | `18` · ⭐ **`8`** |
+/// | ⛔ `0,75` | `1 de 4` · `1 de 4` | `0,67` · ⛔ **`3,00`** | `20` · ⛔ **`166`** |
+///
+/// ⇒ é por isso que ela é **candidata** e não interruptor.
+pub(super) const FIELD_DENSITY: f32 = 1.0;
+
+/// ⭐ **O OVERRIDE da força da correcção** — `None` deixa o CHAMADOR mandar. ⚠️ A env força
+/// o valor em TODAS as candidatas, o que é o que se quer de uma bissecção e ⛔ nunca do
+/// produto — ele passa a força por argumento, uma candidata de cada vez.
+///
+/// ⛔ A env é lida **aqui, no chamador**, e não dentro da `ph2d-crossfield`: lá dentro ela
+/// alcançaria a bancada, os gates e o produto de uma vez.
+fn field_density_strength() -> Option<f32> {
+    std::env::var("PH2D_FIELD_DENSITY")
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok())
+        .filter(|k| k.is_finite() && *k != 0.0)
 }

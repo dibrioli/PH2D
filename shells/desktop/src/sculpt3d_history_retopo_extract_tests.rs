@@ -352,23 +352,40 @@ fn o_campo_adaptativo_recua_quando_abre_a_malha() {
     let (_, recaida) = src
         .split_once("let uniforme = if adaptive > 0.0")
         .expect("a recaida tem de existir e chamar-se assim");
-    // ⚠️ **A janela subiu de `1200` para `1600` em 2026-09-01, e não é afrouxar:** as quatro
-    // chamadas de `guarded` desta recaída ganharam o argumento da **cerca de viagem**
-    // (`ph2d_quadfill::EXTRACT_TRAVEL`), o que alonga o bloco em ~`160` bytes sem lhe mudar a
-    // forma. ⛔ A janela tem de conter as DUAS corridas dos DOIS ramos — se ela as cortasse, as
-    // contagens abaixo liam `1` e `1` e o gate reprovava sobre código correcto.
-    let recaida = &recaida[..recaida.len().min(1600)];
-    // ⚠️ **CONTAGEM e não `contains`** — a 1.ª versão deste gate perguntava se as duas
-    // candidatas *apareciam*, e a mutação que apagava metade da corrida **sobreviveu**:
-    // o ramo SERIAL (`PH2D_RETOPO_SERIAL=1`) tem as mesmas duas linhas, então a string
-    // continuava lá. *Um `contains` sobre um fonte com dois ramos mede o ramo que sobrou.*
-    let alinhadas = recaida.matches("ALIGN_WEIGHT").count();
-    let suaves = recaida.matches("guarded(0.0, false, 0.0,").count();
+    let recaida = &recaida[..recaida.len().min(900)];
+    // ⚠️ **A PROPRIEDADE MUDOU-SE PARA UMA PORTA COM NOME, e o gate segue-a (2026-09-01).**
+    //
+    // ⛔⛔ Este gate exigia **duas** menções de cada candidata porque o par estava escrito à
+    // mão em cada sítio, e o ramo SÉRIE (`PH2D_RETOPO_SERIAL=1`) repetia as mesmas linhas —
+    // um `contains` mediria só o ramo que sobrasse. ⭐ Os **quatro** sítios que o escreviam
+    // passaram por uma porta só (`corrida`, sobre [`super::one::par`]), e a divergência que
+    // este gate vigiava tornou-se **inexprimível**.
+    //
+    // ⚠️ **O modo de falha que fica é o mesmo:** pedir só *uma* candidata na recaída. A 1.ª
+    // versão da cura fez isso e a peça do artista saiu com `4` bordo. ⇒ o gate pergunta agora
+    // (a) que a recaída chame a corrida com o campo DESLIGADO, e (b) que a corrida continue a
+    // ser as DUAS candidatas — *sem a metade (b), a (a) passaria sobre uma porta amputada.*
     assert!(
-        alinhadas >= 2 && suaves >= 2,
-        "⛔ a recaida tem de correr a CORRIDA INTEIRA (a alinhada E a suave) nos DOIS ramos \
-         -- achei {alinhadas} alinhada(s) e {suaves} suave(s). A 1.a versao pediu so' uma \
-         candidata e a peca do artista ficou com 4 bordo"
+        recaida.contains("corrida(0.0,"),
+        "⛔ a recaida tem de correr a CORRIDA INTEIRA com o campo desligado -- pedir so' uma \
+         candidata deixou a peca do artista com 4 bordo"
+    );
+    let (_, porta) = src
+        .split_once("let corrida = |adaptive: f32")
+        .expect("a corrida tem de existir e chamar-se assim");
+    let porta = &porta[..porta.len().min(400)];
+    assert!(
+        porta.contains("ALIGN_WEIGHT") && porta.contains("guarded(0.0,"),
+        "⛔⛔ a `corrida` deixou de correr as DUAS candidatas -- e com ela amputada TODOS os \
+         quatro sitios que a chamam passam a pedir metade"
+    );
+    // ⛔ E o ramo escrito à mão não pode voltar: ele era a porta pela qual os dois lados
+    // divergiam em silêncio.
+    assert_eq!(
+        src.matches("if std::env::var(\"PH2D_RETOPO_SERIAL\")")
+            .count(),
+        0,
+        "⛔ voltou um ramo serie/paralelo escrito a' mao -- ele vive em `one::par`"
     );
     assert!(
         recaida.contains("worse("),

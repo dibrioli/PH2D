@@ -370,3 +370,16 @@ linha, ela tinha morrido sem deixar rasto.*
    `git checkout --` sem perder nada.
 3. ⚠️ E o tell desta variante é **um erro de símbolo em cascata**: vários símbolos que a linha criou
    a desaparecerem de uma vez é *o `main` a chegar por cima*, nunca um refactor mal feito.
+
+## 12.ª e 13.ª da `line/components` (2026-09-01) — a escorregadela apanhou um comando que ESCREVE
+As dez primeiras foram leituras — e a lição delas era *«uma leitura na árvore errada devolve
+VERDE»*. Estas duas foram piores em espécie:
+- **12.ª:** `cargo test` de dois censos na primária devolveu **verde** sobre uma feature que só
+  existe na worktree. Eu li e reportei o verde. As falhas do portão eram reais.
+- **13.ª:** um `cargo fmt --all` + `git add` + `git commit` correram na primária. O `fmt` **escreve**
+  — só não deixou estrago porque a primária já estava formatada, e o commit não fez nada porque não
+  havia o que comitar. *A ausência de dano foi sorte, não desenho.*
+⇒ **A regra endurece: TODO comando começa com `cd <worktree> && pwd &&`** — não só os de escrita. E
+o `pwd` na primeira linha é o instrumento: sem ele, um verde e um verde-na-árvore-errada são o mesmo
+byte. ⚠️ Confirmar que a primária ficou intacta (`git -C <primária> status --short -- crates shells`)
+faz parte de reparar a escorregadela, e não é opcional.

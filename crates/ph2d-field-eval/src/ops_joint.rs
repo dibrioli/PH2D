@@ -146,6 +146,16 @@ impl Edge {
 /// nem a mistura das três o lêem, e as duas ausências estão **medidas** — a do plano no [`corte`],
 /// a da mistura porque a [`ops::union_round_n`] supõe todos os pares ortogonais e generalizá-la
 /// pede a matriz de Gram inteira, cujo recorte não tem forma fechada em `N ≥ 3`.
+///
+/// ⚠️⚠️ **E há uma TERCEIRA saída que NÃO foi medida — a recusa do [`corte`] responde só à primeira.**
+/// O plano do chanfro corta a aresta `a ∩ b` fora, logo as arestas que restam são `a ∩ plano` e
+/// `b ∩ plano`, **disjuntas**, e cada uma tem o mesmo cosseno `√((1+κ)/2)`. ⇒ um
+/// `max(intersection_round_at(a, plano, r, κ'), intersection_round_at(b, plano, r, κ'))` daria o
+/// ângulo certo às duas **sem** matriz nenhuma, e `max` de 1-Lipschitz é 1-Lipschitz (⛔ *não* é a
+/// «mistura encaixada» que a [`intersection_joint_n`] mede e recusa — aquela é ANINHADA, esta é
+/// paralela). ⛔ **O preço dela é o VÉRTICE**: a forma n-ária arredonda o canto onde três peças se
+/// encontram e uma decomposição por pares deixa-o vivo. *As duas leis acertam metades diferentes, e
+/// nenhuma das duas foi medida contra a outra* — quem abrir esta wave começa por aí, não por código.
 pub fn intersection_joint(a: &Tree, b: &Tree, e: Edge) -> Tree {
     let (chamfer, fillet) = (e.chamfer, e.round);
     if chamfer <= 0.0 {

@@ -10582,6 +10582,15 @@ pior do que estava.*
 medido**, para que a dívida não se perca: *uma recusa sem gate é uma frase que a próxima pessoa não
 pode confirmar.*
 
+⚠️⚠️ **E a recusa acima responde a UMA pergunta — há uma terceira saída por medir.** O plano do
+chanfro corta a aresta `a ∩ b` fora, logo as que restam são `a ∩ plano` e `b ∩ plano`, **disjuntas**
+e as duas com o mesmo cosseno `√((1+κ)/2)`. Um `max` das duas misturas **por par** daria o ângulo
+certo sem matriz nenhuma, e `max` de funções 1-Lipschitz é 1-Lipschitz — ⛔ *não* é a «mistura
+encaixada» que a `intersection_joint_n` já mediu e recusou, que é **aninhada**. O preço dela é o
+**vértice**: a forma n-ária arredonda o canto onde três peças se encontram e a decomposição por
+pares deixa-o vivo. *As duas acertam metades diferentes e nunca foram medidas uma contra a outra* —
+quem abrir esta wave começa pela medição, não pelo código.
+
 ### §108.7 — ⚠️ E um gate de RAZÃO apertou-se sozinho porque o denominador melhorou
 
 `the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone` compara o par contra o filete sozinho.
@@ -10608,3 +10617,65 @@ sonda de curvatura, e o octaedro e o prisma **não tinham ninguém** — *escrev
 gateei*, pela quarta ocorrência registada neste repo. A cura é
 `the_shapes_that_declare_an_angle_are_measured_by_it`, que mede o recuo das duas contra o arco
 analítico, com o controle de que sem filete elas estão nos raios autorados.
+
+---
+
+## §109 — W108: ⛔⛔⛔ O DIVISOR POR REGIÃO DE MARCHA — medido e REFUTADO, por dois mecanismos (02/09)
+
+A alavanca de performance que sobrava com mecanismo nomeado: um deformador divide o campo pelo pior
+factor de Lipschitz **da peça toda**, e a marcha paga `σ×` mais passos em todo lado por causa do
+pior sítio — enquanto o traçado **já especializa a árvore por ladrilho × fatia** (W56e) e essa fita
+só é avaliada dentro da região dela.
+
+⭐ **E seria seguro por construção:** dividir um campo por uma constante positiva não move o zero
+nem a normal (`∇(f/σ)` normalizado é `∇f` normalizado). Duas regiões vizinhas com divisores
+diferentes desenham **exactamente** a mesma superfície — o que muda é só o tamanho do passo, logo
+não há costura de ladrilho possível.
+
+⛔ **A recusa de 01/09 respondia a outra pergunta** (octantes do envelope, `1/8` da peça). Uma região
+de marcha é `~1/200`, e é isso que esta sonda mede — `the_divisor_is_global_but_the_march_is_local`.
+
+### §109.1 — A tabela
+
+Barra `0,3 × 0,3 × 0,9` com `[Bend, Twist, Taper]`, divisor da peça inteira `271,2`:
+
+| granularidade | regiões | pior | mediana | média | ganho na média | relógio |
+|---|---:|---:|---:|---:|---:|---:|
+| octante (a recusa de 01/09) | `8` | `306,5` | `306,5` | `299,9` | **`0,90×`** | `26 ms` |
+| `1/32` da peça | `32` | `348,3` | `263,8` | `275,0` | `0,99×` | `105 ms` |
+| ~ladrilho × fatia | `256` | `448,4` | `150,0` | `179,5` | `1,51×` | `856 ms` |
+| `TILE = 24` num quadro de `320` | `676` | `470,4` | `137,0` | `171,6` | `1,58×` | **`2 176 ms`** |
+
+### §109.2 — ⛔ O primeiro mecanismo: o RELÓGIO
+
+O bound é uma ramificação-e-poda de `3,2 ms` por chamada (§ do bound da composição). À granularidade
+que compra alguma coisa são `676` chamadas por quadro = **`2,2 s`**, contra um orçamento de `16,7`.
+⚠️ **E a cache de fitas não salva:** ela corta para `~44` compilações por quadro, o que ainda são
+`140 ms` — `8×` o quadro inteiro — para comprar `1,58×` no tamanho do passo. *Uma optimização que
+custa mais do que o trabalho que poupa não é uma optimização.*
+
+### §109.3 — ⭐⭐⭐ O segundo, e é o achado: o divisor NÃO É MONÓTONO no domínio
+
+O pior octante pede `306,5` contra os `271,2` da peça inteira, e a pior região de ladrilho `470,4`.
+⚠️ **Uma sub-região pode precisar de um divisor MAIOR que a peça toda.**
+
+| pilha | peça inteira | pior região | média | ganho |
+|---|---:|---:|---:|---:|
+| `[Bend]` | `3,29` | **`10,00`** | `5,14` | **`0,64×`** |
+| `[Twist]` | `3,09` | `2,65` | `2,19` | `1,41×` |
+| `[Taper]` | `2,39` | `2,35` | `2,18` | `1,10×` |
+| `[Bend, Twist]` | `21,40` | **`48,06`** | `34,11` | **`0,63×`** |
+
+⭐⭐⭐ **O mecanismo é geométrico: o estiramento de uma deformação cresce com a distância ao EIXO
+dela, e a bola da peça está CENTRADA nesse eixo** — ela ganha por simetria o que uma sub-bola do
+bordo não tem. ⇒ *«dividir para conquistar» supõe que a resposta do todo é o máximo das respostas
+das partes; aqui não é, porque a resposta do todo usa uma simetria que as partes não têm.* Para o
+`Bend` e para o par `[Bend, Twist]` localizar **piora**.
+
+⚠️ **E fica escrito o que a sonda também diz:** o ORÇAMENTO de passos é governado pelo **pior** e o
+CUSTO pela **média** — duas contas diferentes sobre o mesmo número. Quem reabrir isto tem de dizer
+qual das duas está a atacar.
+
+⇒ **A base fica onde estava:** a pilha de três deformadores custa `181 ms` num quadro de `320²`, com
+`3,2×` de folga provada contra o ideal pontual, e **não há mais nenhuma alavanca estrutural
+identificada** — o que sobra é apertar o mesmo bound, um degrau de cada vez.

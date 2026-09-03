@@ -199,3 +199,113 @@ fn what_the_socket_encoding_carries() {
     eprintln!("  (um canal que toma UM valor so' e' tinta gasta: nao distingue nada)");
     let _ = Domain::Instances;
 }
+
+/// ⛔⛔⛔ **O CENSO DOS CANAIS VISUAIS DO GRAFO** — ordem do Enio, 2026-09-02: *«MiniCavalry é
+/// nosso MVP referência, mais belo e fácil de usar que nosso produto. Faça um estudo sério»*.
+///
+/// O `visual-tokens.js` dele codifica em **cinco** canais (e o cabeçalho declara que os tirou
+/// de um doc NOSSO, «Doc PH2D §6»): cor de cabeçalho por CATEGORIA · silhueta por PAPEL · cor
+/// de pino por TIPO · forma de pino por CARDINALIDADE · **espessura de fio** por tipo.
+///
+/// ⚠️ **Ter o vocabulário não é usá-lo.** Esta sonda conta quantos valores distintos cada canal
+/// de facto toma no nosso catálogo — um canal com um valor só não distingue nada, esteja ou não
+/// declarado. É a mesma régua do `what_the_socket_encoding_carries`.
+///
+/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture what_our_visual_channels_carry`
+#[test]
+#[ignore = "sonda de censo, nao um gate"]
+fn what_our_visual_channels_carry() {
+    use std::collections::BTreeMap;
+    let motion = MotionState::new();
+    let mut sil: BTreeMap<String, usize> = BTreeMap::new();
+    let mut cat: BTreeMap<String, usize> = BTreeMap::new();
+    let (mut com_ui, mut sem_ui) = (0usize, 0usize);
+    for m in motion.registry.manifests() {
+        match motion.registry.ui_manifest(m.id) {
+            Some(u) => {
+                com_ui += 1;
+                *sil.entry(format!("{:?}", u.silhouette)).or_default() += 1;
+                *cat.entry(format!("{:?}", u.category)).or_default() += 1;
+            }
+            None => sem_ui += 1,
+        }
+    }
+    eprintln!("  {com_ui} tipos com metadados de UI · {sem_ui} SEM (caem no default)");
+    eprintln!("  --- canal SILHUETA (o papel do no' no grafo) — 7 valores possiveis ---");
+    for (k, v) in &sil {
+        eprintln!(
+            "    {k:<16} │ {v:>4} ({:>5.1}%)",
+            *v as f64 * 100.0 / com_ui as f64
+        );
+    }
+    eprintln!("  --- canal CATEGORIA (a familia) ---");
+    for (k, v) in &cat {
+        eprintln!(
+            "    {k:<20} │ {v:>4} ({:>5.1}%)",
+            *v as f64 * 100.0 / com_ui as f64
+        );
+    }
+    eprintln!("  (um canal que toma UM valor so' nao distingue nada, esteja ou nao declarado)");
+}
+
+/// ⭐⭐⭐ **QUANTO DO «LÊ / ESCREVE» NÓS CONSEGUIMOS DERIVAR** — o estudo do MiniCavalry
+/// (Enio, 2026-09-02).
+///
+/// O cartão dele mostra, por nó, os atributos que **lê** (cinza) e que **escreve** (dourado)
+/// — `src/editor/chips.js`, a partir de `def.reads_attrs`/`def.writes_attrs`, **declarados à
+/// mão em cada nó**. É exactamente a informação cuja ausência custou os reports de 01/09 (o
+/// duplicator a deitar fora `id`/`vel`/`age`/`life`).
+///
+/// ⭐ **A nossa pode ser DERIVADA e não declarada:** o `GpuKernel::bindings` diz, por coluna, o
+/// [`ph2d_nodegraph::gpu::ColumnAccess`] — e é a MESMA lista de que o gerador de código vive,
+/// logo não pode divergir do que o nó faz. Uma lista à mão pode.
+///
+/// Esta sonda mede a **cobertura**: para quantos dos 134 tipos a derivação existe hoje.
+///
+/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture how_much_reads_writes_we_can_derive`
+#[test]
+#[ignore = "sonda de censo, nao um gate"]
+fn how_much_reads_writes_we_can_derive() {
+    use ph2d_nodegraph::gpu::KernelResolver;
+    let motion = MotionState::new();
+    let (mut com_kernel, mut com_bindings, mut sem, mut com_variante) = (0usize, 0, 0, 0);
+    let mut total_cols = 0usize;
+    let mut mudos: Vec<&str> = Vec::new();
+    for m in motion.registry.manifests() {
+        match motion.registry.gpu_kernel(m.id) {
+            Some(k) => {
+                com_kernel += 1;
+                if k.variant_by_param.is_some() {
+                    com_variante += 1;
+                }
+                if k.bindings.is_empty() {
+                    mudos.push(m.name);
+                } else {
+                    com_bindings += 1;
+                    total_cols += k.bindings.len();
+                }
+            }
+            None => {
+                sem += 1;
+                mudos.push(m.name);
+            }
+        }
+    }
+    let n = com_kernel + sem;
+    eprintln!("  {n} tipos de no'");
+    eprintln!(
+        "    com kernel de device        │ {com_kernel:>4} ({:>5.1}%)",
+        com_kernel as f64 * 100.0 / n as f64
+    );
+    eprintln!(
+        "    ⭐ com BINDINGS derivaveis  │ {com_bindings:>4} ({:>5.1}%) · {total_cols} colunas declaradas",
+        com_bindings as f64 * 100.0 / n as f64
+    );
+    eprintln!("    ⚠️  cuja forma depende de PARAM (variant) │ {com_variante:>4}");
+    eprintln!(
+        "    ⛔ SEM nenhuma declaracao    │ {:>4} ({:>5.1}%)",
+        mudos.len(),
+        mudos.len() as f64 * 100.0 / n as f64
+    );
+    eprintln!("  os mudos: {}", mudos.join(" "));
+}

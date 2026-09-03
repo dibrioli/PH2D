@@ -35,7 +35,6 @@ fn node(id: u32, x: f32, y: f32) -> GraphNodeView {
         }],
         outputs: vec![],
         readout: None,
-        drops: None,
         count: None,
         hot: false,
         is_sink: false,
@@ -272,23 +271,16 @@ fn the_hot_tip_answers_for_a_socket_and_for_a_card() {
         "um id que nao esta' na lista de hits nao produz balao nenhum"
     );
 
-    // ⭐⭐⭐ **O CARTÃO diz o que o nó DEITA FORA** (doc 99 §10d) — a pergunta que custou os
-    // três reports de 2026-09-01 e que nenhuma superfície do app respondia.
+    // ⛔⛔ **E o CARTÃO não fala** — a nota «drops …» foi construída, MEDIDA sobre 40 cenas e
+    // REVERTIDA (doc 99 §10d): ela disparava em quase todo nó e quase sempre sobre
+    // comportamento correcto (`sim.step → drops accel`, `pulse.counter → drops beat_cycle`).
+    // *Uma nota quase sempre certa e quase sempre irrelevante treina o artista a ignorá-la.*
     let mut com_cartao = hits.clone();
     let card = node_hit_id(1);
     com_cartao.push((card, GraphHitKind::Node { node: 1 }, CANVAS));
-    let mut n_perde = node(1, 10.0, 10.0);
-    n_perde.drops = Some("id · vel".to_string());
-    assert_eq!(
-        tip_for_hot(&[n_perde], &com_cartao, card).as_deref(),
-        Some("drops id · vel"),
-        "o cartao de um no' que perde colunas DIZ quais"
-    );
-    // ⚠️ **E o SILÊNCIO é a resposta honesta para quem não perde nada** — um balão a dizer
-    // «drops nothing» em 134 cartões seria o mesmo ruído que a lei do rótulo já recusou.
     assert!(
         tip_for_hot(&[node(1, 10.0, 10.0)], &com_cartao, card).is_none(),
-        "um no' que nao perde nada nao diz nada"
+        "o cartao nao tem balao: a nota de perda foi medida e revertida"
     );
 
     // O fundo ESTÁ na lista, e mesmo assim não é um socket.

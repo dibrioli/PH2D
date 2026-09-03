@@ -215,7 +215,6 @@ mod tests {
             inputs: vec![],
             outputs: vec![],
             readout: None,
-            drops: None,
             count: None,
             hot: false,
             is_sink: false,

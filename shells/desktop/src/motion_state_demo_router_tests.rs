@@ -475,3 +475,58 @@ fn motion_route_census() {
         multi_todos_gpu as f64 * 100.0 / multi_total.max(1) as f64
     );
 }
+
+/// **EM QUE CENA E EM QUE NÓ o balão de perda aparece** — a sonda que o report do Enio de
+/// 2026-09-02 obrigou a escrever: *«não entendi esse teste»*.
+///
+/// ⛔⛔ **O defeito era do SMOKE, não do produto.** Eu escrevi *«passa o rato num nó; se ele
+/// perder colunas, aparece a lista»* — com uma palavra que ele não usa (*coluna*) e, pior, com
+/// uma **pré-condição que ele não tem como verificar**: sem saber QUAL nó perde, ele passaria o
+/// rato por vários, não veria nada, e concluiria que está partido. *Um smoke cuja condição o
+/// leitor não consegue avaliar reprova sobre produto correcto* (§0.8).
+///
+/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture where_the_drops_note_shows_up`
+#[test]
+#[ignore = "sonda de smoke, nao um gate"]
+fn where_the_drops_note_shows_up() {
+    // ⚠️ **A 1.ª versão varria as 109 e PENDUROU** — alguma cena coze algo enorme sob um
+    // `Cook` virgem (sem a bomba, sem o orçamento que o produto lhe dá). O alcance é uma env
+    // para quem quiser continuar a varredura por pedaços, em vez de a sonda ter de adivinhar
+    // qual cena é a cara.
+    let ate: u32 = std::env::var("PH2D_DROPS_SCAN_MAX")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(40);
+    let mut achados = 0;
+    for level in 1..=ate.min(MAX_DEMO_LEVEL) {
+        let mut state = MotionState::new();
+        let sinks = build_level(Some(&level.to_string()), &mut state.doc, &state.registry);
+        if sinks.is_empty() {
+            continue;
+        }
+        crate::render_loop::motion_externals::publish_all(&mut state, 0.0);
+        // UM cook basta: a pergunta é ESTRUTURAL (que colunas entram e saem), não temporal.
+        let mut cook = ph2d_nodegraph::cook::Cook::new();
+        if cook
+            .cook(&state.doc.graph, &state.registry, sinks[0], 0.0)
+            .is_err()
+        {
+            continue;
+        }
+        state.pump.cook = cook;
+        let ids: Vec<_> = state
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .map(|n| (n.id, n.type_name.clone()))
+            .collect();
+        for (id, ty) in ids {
+            if let Some(nota) = crate::render_loop::motion_bridge::columns::dropped_at(&state, id) {
+                eprintln!("  cena =`{level}` · no' `{ty}` -> drops {nota}");
+                achados += 1;
+            }
+        }
+    }
+    eprintln!("  {achados} nos com nota, em 1..={ate}");
+}

@@ -120,7 +120,7 @@ mod adapt;
 // e o diagnóstico do nome que não resolve.
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_columns.rs"]
-mod columns;
+pub(crate) mod columns;
 
 // ADR-0155 W2 — the setup auto-heal. Sibling of `adapt` (heal-on-gesture, not
 // heal-on-refusal): `apply_graph_intents` runs it after a constructive batch.

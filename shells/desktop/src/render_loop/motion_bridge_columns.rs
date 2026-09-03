@@ -101,9 +101,26 @@ fn describe(stream: &Stream) -> Vec<LiveColumn> {
 ///
 /// ⚠️ **`None` é o caso comum e não aloca nada** — só um nó que de facto perde colunas paga
 /// uma `String`. A comparação é feita sobre nomes EMPRESTADOS das duas correntes.
-pub(super) fn dropped_at(motion: &MotionState, node: NodeId) -> Option<String> {
+/// ⛔⛔⛔ **A SUPERFÍCIE QUE ISTO ALIMENTAVA FOI MEDIDA E REVERTIDA** — ver o doc 99 §10d. A
+/// nota no cartão disparava em **quase todo nó** e quase sempre sobre comportamento
+/// CORRECTO (`sim.step → drops accel`, `pulse.counter → drops beat_cycle · beat_primed`),
+/// mesmo depois de duas cercas medidas (só a entrada PRINCIPAL · só quando entrada e saída
+/// são da mesma espécie). *A distinção que falta é a INTENÇÃO, e essa não é derivável.*
+///
+/// ⚠️ **Fica como INSTRUMENTO** (`#[cfg(test)]`), que é o padrão desta casa para o que perde
+/// o chamador de produção: é por aqui que se investiga o próximo report desta classe — foi
+/// exactamente esta pergunta que os três de 2026-09-01 obrigaram a responder por sonda.
+#[cfg(test)]
+pub(crate) fn dropped_at(motion: &MotionState, node: NodeId) -> Option<String> {
     let saida = stream_at(motion, node, 0)?;
-    let mut perdidas: Vec<&str> = Vec::new();
+    // ⚠️ **CRU de propósito, e as duas cercas que aqui estiveram foram TIRADAS.** Elas — só a
+    // entrada principal, só quando a espécie é a mesma — nasceram para salvar a nota do
+    // cartão, e a nota foi medida e revertida (doc 99 §10d). *Um instrumento de diagnóstico
+    // quer COMPLETUDE; o filtro era uma preocupação de produto, e o produto saiu.*
+    //
+    // ⛔ E elas eram código por testar: as duas mutações que as apagavam **sobreviveram** ao
+    // gate, porque a fixtura dele não as exercitava.
+    let mut perdidas: Vec<String> = Vec::new();
     for e in motion.doc.graph.edges() {
         if e.to.0 != node {
             continue;
@@ -112,8 +129,8 @@ pub(super) fn dropped_at(motion: &MotionState, node: NodeId) -> Option<String> {
             continue;
         };
         for (nome, _) in entrada.columns() {
-            if saida.get(nome).is_none() && !perdidas.contains(&nome.as_str()) {
-                perdidas.push(nome);
+            if saida.get(nome).is_none() && !perdidas.iter().any(|p| p == nome) {
+                perdidas.push(nome.clone());
             }
         }
     }
@@ -123,6 +140,7 @@ pub(super) fn dropped_at(motion: &MotionState, node: NodeId) -> Option<String> {
 /// A corrente viva de `(node, port)`, **emprestada** — o irmão do [`at`] para quem só quer
 /// comparar e não guardar. Existe para o [`dropped_at`] não pagar uma `Vec<String>` por nó por
 /// quadro só para descobrir que não há nada a dizer.
+#[cfg(test)]
 fn stream_at(
     motion: &MotionState,
     node: NodeId,

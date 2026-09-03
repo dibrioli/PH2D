@@ -320,24 +320,22 @@ fn how_much_reads_writes_we_can_derive() {
     eprintln!("  os mudos: {}", mudos.join(" "));
 }
 
-/// ⭐⭐⭐ **O NÓ DIZ O QUE DEITA FORA** — o gate do item «chips lê/escreve» do estudo do Mini
-/// Cavalry ([doc 99 §10d](../../../../docs/Motion%20Nodes/99_estudo_do_mini_cavalry_2026-09-02.md)).
+/// ⭐⭐ **O INSTRUMENTO DE PERDA** — *que colunas entraram neste nó e não saíram*, derivado das
+/// correntes reais ([doc 99 §10d](../../../../docs/Motion%20Nodes/99_estudo_do_mini_cavalry_2026-09-02.md)).
 ///
-/// ⛔⛔⛔ **É a pergunta que custou os TRÊS reports de 2026-09-01** — o `motion.duplicator` a
-/// deitar fora `id`/`vel`/`age`/`life` (a simulação morria), o `size` que «parava de
-/// funcionar», e a varredura que teve de ser feita por SONDA porque nenhuma superfície do app
-/// respondia.
+/// ⛔⛔⛔ **A superfície que ele alimentava foi CONSTRUÍDA, MEDIDA sobre 40 cenas e REVERTIDA**:
+/// a nota no cartão disparava em quase todo nó e quase sempre sobre comportamento CORRECTO, e
+/// a distinção que lhe faltava — a INTENÇÃO — não é derivável.
 ///
-/// ⭐⭐ **E a nossa é DERIVADA das correntes reais, não declarada por nó** — ele escreve
-/// `reads_attrs`/`writes_attrs` à mão em cada um (uma segunda lista, que pode divergir do que
-/// o nó faz, e que só cobriria os 67 de 134 que declaram bindings de device). Esta lê o memo
-/// do cook e responde por **todos os 134**, sobre o documento que o artista tem à frente.
+/// ⭐ **O que fica é a FERRAMENTA, e ela é CRUA de propósito**: é por aqui que se investiga o
+/// próximo report desta classe, e foi exactamente esta pergunta que os três de 2026-09-01
+/// obrigaram a responder por sonda. Um diagnóstico quer completude.
 ///
-/// ⚠️ **A fixtura sai de uma MEDIÇÃO, não de um palpite:** o `motion.lattice` foi um dos dois
-/// que a varredura `which_nodes_drop_a_streams_columns` acusou de perder as quatro colunas
-/// exclusivas do emissor nas DUAS portas.
+/// ⚠️ **A fixtura sai de uma MEDIÇÃO** — o `motion.lattice` foi um dos dois que a varredura
+/// `which_nodes_drop_a_streams_columns` acusou de perder as quatro colunas exclusivas do
+/// emissor nas DUAS portas.
 #[test]
-fn a_node_that_drops_columns_says_which() {
+fn the_drop_instrument_names_what_a_node_loses() {
     use ph2d_nodegraph::cook::Cook;
     let mut motion = MotionState::new();
     let g = &mut motion.doc.graph;
@@ -367,8 +365,9 @@ fn a_node_that_drops_columns_says_which() {
             .ok();
     }
     motion.pump.cook = cook;
+    let d = crate::render_loop::motion_bridge::columns::dropped_at;
 
-    let nota = crate::render_loop::motion_bridge::columns::dropped_at(&motion, alvo)
+    let nota = d(&motion, alvo)
         .expect("o `motion.lattice` perde as colunas exclusivas do emissor -- medido em 01/09");
     for c in ["id", "vel", "age", "life"] {
         assert!(
@@ -377,11 +376,7 @@ fn a_node_that_drops_columns_says_which() {
         );
     }
 
-    // ⚠️ **E o SILÊNCIO é a resposta honesta para quem não perde nada.** Uma nota em todo nó
-    // seria o mesmo ruído que a lei do rótulo de porta já recusou -- e faria a nota que
-    // IMPORTA desaparecer entre 134 iguais.
-    assert!(
-        crate::render_loop::motion_bridge::columns::dropped_at(&motion, em).is_none(),
-        "uma FONTE nao tem entrada, logo nao pode perder nada"
-    );
+    // ⚠️ **Uma FONTE e' muda** -- nao tem entrada, logo nao pode perder nada. Sem esta metade,
+    // uma implementacao que devolvesse sempre `Some(..)` passaria.
+    assert!(d(&motion, em).is_none(), "uma fonte nao tem entrada");
 }

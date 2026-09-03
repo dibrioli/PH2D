@@ -289,34 +289,46 @@ que uma mudasse.
 ⚠️ Em inglês ([[feedback_app_ui_english_only]]), e o nome sai da **mesma** derivação que o
 rótulo do cartão (`PortLabel`) — uma segunda tabela de nomes seria a que envelhece.
 
-### (d) Os chips «lê / escreve» — DERIVADOS, e por isso melhores que os dele
+### (d) ⛔⛔⛔ Os chips «lê / escreve» — CONSTRUÍDOS, MEDIDOS e REVERTIDOS
 
-O cartão diz agora, ao passar o rato, **`drops id · vel · age · life`**.
+A nota `drops id · vel · age · life` no cartão foi feita, e é a resposta à pergunta que custou
+os TRÊS reports de 01/09. **A medição matou-a.**
 
-⛔⛔⛔ **É a pergunta que custou os TRÊS reports de 01/09** e que **nenhuma superfície do app
-respondia** — a varredura teve de ser feita por sonda.
+⭐ **A derivação é boa e fica como instrumento** (`motion_bridge_columns::dropped_at`,
+`#[cfg(test)]`): ele DECLARA `reads_attrs`/`writes_attrs` à mão em cada nó — uma segunda lista
+que pode divergir — e esta lê as **correntes reais** do memo (ou da tomada do device),
+respondendo por **todos os 134** sobre o documento que o artista tem à frente. ⇒ a derivação
+por `GpuKernel::bindings`, que eu media a **50%** de cobertura, deixou de ser o caminho.
 
-⭐⭐ **E a nossa não é declarada:** ele escreve `reads_attrs`/`writes_attrs` **à mão em cada
-nó** — uma segunda lista que pode divergir do que o nó faz. O `dropped_at` lê as **correntes
-reais** do memo do cook (ou da tomada do device, pela porta que já existia), compara o que
-entrou com o que saiu, e responde por **todos os 134** tipos sobre o **documento que o artista
-tem à frente**. ⇒ a derivação que eu media a `50%` de cobertura (`GpuKernel::bindings`)
-deixou de ser o caminho: aquela responde *o que o TIPO faz*, esta *o que está a acontecer*.
+⛔ **O que morreu foi a SUPERFÍCIE.** Varrida sobre as cenas `1..40`:
 
-⚠️ **Descritiva, nunca acusatória:** o `motion.integrate` consome `accel` de propósito e o
-`motion.duplicator` deitava fora sem querer — leem-se igual aqui, e é o artista que sabe qual
-queria. *Uma superfície que ACUSA precisa de saber a intenção; uma que DESCREVE não.*
+| cerca | o que sobrava |
+|---|---|
+| nenhuma (todas as entradas) | a nota disparava em **quase todo nó** — `motion.bend → drops v` acusava o **número de controlo** dele |
+| só a entrada **PRINCIPAL** (`register_primary_input`) | ainda `value.attribute`, `pulse.beat`, `value.instance_field` — **conversores**, cujo trabalho É deitar a corrente fora |
+| **+ só quando entrada e saída são da mesma espécie** | ainda `sim.step → drops accel` · `pulse.counter → drops beat_cycle · beat_primed` — **verdadeiros e inúteis** |
 
-⚠️ **`None` é o caso comum e não aloca** — a comparação é feita sobre nomes **emprestados** das
-duas correntes, e só um nó que de facto perde paga uma `String`. E o silêncio é a resposta
-honesta: uma nota em 134 cartões faria a que IMPORTA desaparecer entre iguais.
+⇒ **A distinção que falta é a INTENÇÃO** — o `motion.integrate` consome `accel` de propósito e o
+`motion.duplicator` deitava fora sem querer, e as duas leem-se exactamente igual. *Uma nota
+quase sempre certa e quase sempre irrelevante treina o artista a ignorá-la*, que é a mesma
+armadilha do knob que mente. **Nenhuma cerca derivável separa as duas**, e cada cerca a mais era
+um palpite meu sobre a intenção do nó.
 
-⚠️ **A fixtura do gate saiu de uma MEDIÇÃO** — o `motion.lattice`, um dos dois que a varredura
-`which_nodes_drop_a_streams_columns` acusou. Duas mutações, as duas mortas.
+⚠️ **E foi a PERGUNTA DO ENIO que a matou, não um gate:** *«não entendi esse teste»*. Eu escrevi
+o smoke com uma palavra que ele não usa (*coluna*) e com uma pré-condição que ele não tinha como
+verificar (*«se ele perder colunas»* — sem dizer QUAL nó perde). Ao medir onde a nota de facto
+aparecia, para lhe poder dar o passo exacto, vi que aparecia em quase todo lado. *O smoke que eu
+não conseguia escrever era o sintoma de uma feature que não sabia o que dizer.*
 
-⏳ **Falta a outra metade** — *o que ele ESCREVE*. A diferença de conjuntos vê colunas
-**acrescentadas** e **removidas**, e não distingue *ler `P` e reescrever `P`* de *deixar passar*.
-Para isso é preciso o `GpuKernel::bindings` (os 50%) ou uma declaração.
+⚠️⚠️ **E as duas cercas foram TIRADAS depois de revertida a superfície** — elas existiam para
+salvar a nota, e sem ela um instrumento de diagnóstico quer **completude**, não filtro. ⛔ Além
+disso eram **código por testar**: as duas mutações que as apagavam **sobreviveram** ao gate,
+porque a fixtura dele não as exercitava. *Uma mutação que sobrevive tem duas leituras — falta
+um gate, ou a linha era redundante — e aqui era a segunda.*
+
+⏳ **O que fica em aberto é a pergunta certa, e é OUTRA:** não *«que colunas se perderam?»* mas
+*«alguém a jusante precisava desta?»*. Essa tem dono — o `ph2d-motion-diagnose`, que já dá selo
+⚠ com cura clicável — e é onde a próxima tentativa começa.
 
 ---
 
@@ -332,3 +344,4 @@ Para isso é preciso o `GpuKernel::bindings` (os 50%) ou uma declaração.
 | *«pintar a silhueta é grátis»* | **Meu, e falso**: o contorno do CARTÃO arrasta hits e sockets. Grátis só no **cabeçalho** (§10b) |
 | *«a cor do socket é um canal com dois valores»* | **Três**: o `Clock::Event` distingue **8 portas** que nem o domínio nem a dimensão vêem (§10a) |
 | *«o balão no socket é uma wave — eles não estão no `HitIndex`»* | **Meu, e falso**: estão, e o a11y deles sai de lá. Custou **um `set_tooltip`** (§10c) |
+| ⛔ *«uma nota no cartão a dizer o que o nó deita fora»* | **Construída, medida em 40 cenas, REVERTIDA**: dispara em quase todo nó e quase sempre sobre comportamento correcto. Falta a INTENÇÃO, que não é derivável (§10d) |

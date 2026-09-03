@@ -310,15 +310,6 @@ pub(crate) fn tip_for_hot(
     let (node, port, entrada) = match kind {
         GraphHitKind::SocketIn { node, port } => (*node, *port as usize, true),
         GraphHitKind::SocketOut { node, port } => (*node, *port as usize, false),
-        // ⭐⭐⭐ **O CARTÃO diz o que o nó DEITA FORA** (doc 99 §10d) — a pergunta que custou
-        // os três reports de 2026-09-01 e que nenhuma superfície do app respondia. Vem
-        // derivada das correntes reais (`motion_bridge_columns::dropped_at`), não declarada
-        // por nó, e é `None` para todo nó que não perde nada — que é o caso comum, e o
-        // silêncio é a resposta honesta.
-        GraphHitKind::Node { node } => {
-            let n = nodes.iter().find(|n| u64::from(n.id) == *node)?;
-            return n.drops.as_ref().map(|d| format!("drops {d}"));
-        }
         _ => return None, // outra superfície: o balão daquele id é de quem o registou
     };
     let n = nodes.iter().find(|n| u64::from(n.id) == node)?;

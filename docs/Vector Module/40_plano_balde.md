@@ -605,3 +605,36 @@ substituiu, sobre a **mesma fixtura**: `the_anchors_survive_a_wall_sweeping_over
 de contenção ponto-em-polígono.
 
 ⚠️ **`PROJECT_SCHEMA` 107 → 108** — o `VecBucketFill` ganhou o campo, e o postcard é posicional.
+
+### §11.5 — ⛔⛔ A FENDA no nó arrastado: **medida, e RECUSADA porque está debaixo da tinta**
+
+> *"melhorou muitíssimo. Eu diria que restou uns 5% do mesmo problema."* — Enio, 2026-09-02
+
+Sonda `probe_deriva_ao_arrastar` (arrasta um nó soldado do desenho dele por passos, e mede a área
+de cada preenchimento e a que fica sem cor):
+
+| deslocamento | faces | área sem cor | as sete áreas |
+|---|---|---|---|
+| `0,00` | 7 | `0,000` | `0,73 0,46 2,17 0,51 3,27 7,45 3,70` |
+| `0,18` | 9 | `0,001` | `0,73 0,32 2,17 0,51 3,46 7,45 3,65` |
+| `0,60` | 10 | `0,003` | `0,73 0,14 2,17 0,51 3,78 7,45 3,53` |
+
+⭐ **Nenhuma cor salta, nenhum preenchimento se perde, e as áreas variam CONTINUAMENTE** — o modelo
+das âncoras está estável sob o dedo, que era o defeito dos quatro reports.
+
+O que sobra são **lentes de 2 arcos centradas no PRÓPRIO nó arrastado**: dois arcos que saem dele
+voltam a cruzar-se um fio adiante. Sem âncoras, ficam por pintar.
+
+⛔⛔ **E elas NÃO são o que o artista vê.** A lente mede `0,0885 × 0,0280`, e o traço que desenha a
+parede mede **`0,029`** (lido do SVG que ele exportou): *a fenda inteira cabe debaixo da tinta da
+linha.* Pintá-la ou não é **inobservável**.
+
+⚠️ **Uma cura chegou a ser escrita e foi RETIRADA** — *"uma racha rodeada por UMA cor toma essa
+cor"*. Duas razões, e ambas medidas: (1) na cena real os dois vizinhos da lente têm cores
+**diferentes** (`6` e `4`), então a regra **nunca disparava**; (2) alargá-la a *"a cor do vizinho com
+quem confina mais"* pintaria também toda região que o artista deixou vazia de propósito — a inundação
+que o §11.2 evita por construção. *Uma regra que não dispara no caso medido é uma afirmação, não uma
+cura.*
+
+⇒ **O resíduo que o Enio vê é outro, e o instrumento para o achar já existe**: um `File > Export
+SVG…` no momento exacto reproduz a cena aqui, arco a arco.

@@ -219,6 +219,107 @@ mod probe {
         (ids, d, faces)
     }
 
+    /// SONDA — arrasta um nó soldado por passos e vê se algum dono SALTA sem a topologia mudar.
+    ///
+    /// ⚠️ Move **todos** os vértices que coincidem com o escolhido, que é o que a seta branca faz
+    /// numa rede soldada: um nó é um só para todas as linhas.
+    #[test]
+    #[ignore = "sonda; roda com --ignored --nocapture"]
+    fn probe_deriva_ao_arrastar() {
+        let (ids, anc, sem) = receitas_da_base("drawing_base");
+        let b = ler("drawing_base");
+        let (cs0, tags) = paredes(&b);
+        // O nó escolhido: o primeiro vértice do primeiro contorno.
+        let alvo = cs0[0].0[0].anchor;
+        for passo in 0..=10 {
+            let d = f64::from(passo) * 0.06;
+            let mover = |q: [f64; 2]| {
+                if (q[0] - alvo[0]).hypot(q[1] - alvo[1]) < 1e-6 {
+                    [q[0] + d, q[1] - d]
+                } else {
+                    q
+                }
+            };
+            let cs: Vec<Contorno> = cs0
+                .iter()
+                .map(|(vs, c)| {
+                    (
+                        vs.iter()
+                            .map(|v| {
+                                let a = mover(v.anchor);
+                                let (dx, dy) = (a[0] - v.anchor[0], a[1] - v.anchor[1]);
+                                VecVertex {
+                                    anchor: a,
+                                    in_handle: [v.in_handle[0] + dx, v.in_handle[1] + dy],
+                                    out_handle: [v.out_handle[0] + dx, v.out_handle[1] + dy],
+                                    ..*v
+                                }
+                            })
+                            .collect(),
+                        *c,
+                    )
+                })
+                .collect();
+            let r = ph2d_vec_fill::rede(&cs);
+            let faces: Vec<_> = r.faces().into_iter().filter(|f| f.area > 0.0).collect();
+            let receitas: Vec<Receita> = anc
+                .iter()
+                .zip(&sem)
+                .map(|(ancoras, s)| Receita {
+                    ancoras,
+                    semente: *s,
+                })
+                .collect();
+            let donos = donos(&r, &faces, &tags, &receitas);
+            let area: Vec<f64> = (0..ids.len())
+                .map(|k| {
+                    faces
+                        .iter()
+                        .zip(&donos)
+                        .filter(|(_, x)| **x == Some(k))
+                        .map(|(f, _)| f.area)
+                        .sum()
+                })
+                .collect();
+            let sem_cor: f64 = faces
+                .iter()
+                .zip(&donos)
+                .filter(|(_, x)| x.is_none())
+                .map(|(f, _)| f.area)
+                .sum();
+            for (f, x) in faces.iter().zip(&donos) {
+                if x.is_none() {
+                    let poly = r.contorno(f);
+                    let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
+                    for q in &poly {
+                        lo = [lo[0].min(q[0]), lo[1].min(q[1])];
+                        hi = [hi[0].max(q[0]), hi[1].max(q[1])];
+                    }
+                    println!(
+                        "    SEM COR: area={:.5} caixa={:.4}x{:.4} centro=({:.3},{:.3}) arcos={} \
+                         no' arrastado=({:.3},{:.3})",
+                        f.area,
+                        hi[0] - lo[0],
+                        hi[1] - lo[1],
+                        f64::midpoint(lo[0], hi[0]),
+                        f64::midpoint(lo[1], hi[1]),
+                        f.arcos.len(),
+                        alvo[0] + d,
+                        alvo[1] - d
+                    );
+                }
+            }
+            println!(
+                "d={d:.2} faces={:2} sem_cor={sem_cor:6.3} areas={}",
+                faces.len(),
+                area.iter()
+                    .map(|a| format!("{a:.2}"))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            );
+        }
+    }
+
     /// ⭐⭐⭐ **CADA PREENCHIMENTO FICA COM A SUA REGIÃO — nos três estados que o Enio exportou.**
     ///
     /// A fixtura é o desenho real dele: sete preenchimentos sobre uma rede soldada de doze arcos, e

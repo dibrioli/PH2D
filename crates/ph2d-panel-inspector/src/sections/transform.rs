@@ -2,7 +2,7 @@
 //! architecture_panel_loc_cap). Logic verbatim; behavior unchanged.
 
 use super::*;
-use ph2d_editor_core::widget::SectionFold;
+use ph2d_editor_core::widget::{DECORATOR_W, SectionFold};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_transform_section(
@@ -48,10 +48,47 @@ pub(crate) fn paint_transform_section(
     let label_above_gap = SECTION_LABEL_TO_CONTROL_PX * 0.5;
     let chip_min_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
 
-    // Quão largo é um chip, e a seção inteira empilha? — ver [`chip_metrics`].
-    let (section_narrow, two_chip_w) =
-        chip_metrics(w, label_col_w, col_gap, axis_col_w, tag_box_gap, chip_min_w);
+    // ⭐⭐⭐ **A COLUNA DE ANIMAÇÃO também nesta família de linhas** (report do Enio, 2026-09-03,
+    // com foto: *«várias não receberam pontos»*).
+    //
+    // ⚠️ **Estas linhas NÃO são a caixa única** — são rótulo à esquerda + campos numéricos soltos,
+    // uma terceira família que o censo da pesquisa `07` §15.1 não contou, porque ele mediu
+    // `paint_slider_with_chip` e `paint_checkbox` e esta não passa por nenhum dos dois.
+    //
+    // ⭐ Toda a geometria da linha deriva de **uma** largura, então encolhê-la aqui serve as
+    // quatro linhas da secção de uma vez. ⛔ O cabeçalho fica com a largura inteira: ele não é uma
+    // propriedade, e a coluna é dos valores.
+    let row_w = (w - DECORATOR_W).max(1.0);
 
+    // Quão largo é um chip, e a seção inteira empilha? — ver [`chip_metrics`].
+    let (section_narrow, two_chip_w) = chip_metrics(
+        row_w,
+        label_col_w,
+        col_gap,
+        axis_col_w,
+        tag_box_gap,
+        chip_min_w,
+    );
+
+    // ⭐ A geometria da secção, calculada uma vez — ver [`transform_row::RowStyle`].
+    let st = transform_row::RowStyle {
+        x,
+        w,
+        row_w,
+        field_h,
+        label_font,
+        label_color,
+        theme,
+        store,
+        section_narrow,
+        two_chip_w,
+        col_gap,
+        axis_col_w,
+        tag_box_gap,
+        label_above_gap,
+        label_col_w,
+        axis_label_font,
+    };
     let paint_row = |scene: &mut VectorScene,
                      text_system: &mut TextSystem,
                      hit_index: &mut HitIndex,
@@ -63,104 +100,19 @@ pub(crate) fn paint_transform_section(
                      left_step: f64,
                      right: Option<(NodeId, &str, ColorToken, f64)>|
      -> f32 {
-        let chips_origin_x = if section_narrow {
-            x
-        } else {
-            x + label_col_w + col_gap
-        };
-        let label_h_used = if section_narrow { field_h } else { 0.0_f32 };
-        let total_h = if section_narrow {
-            field_h + label_above_gap + field_h
-        } else {
-            field_h
-        };
-        let chips_y = row_y + label_h_used + if section_narrow { label_above_gap } else { 0.0 };
-
-        // Label — full-width on its own row when narrow; left column when inline.
-        paint_text(
-            text_system,
+        transform_row::paint_row(
+            &st,
             scene,
+            text_system,
+            hit_index,
+            row_y,
             row_label,
-            x,
-            row_y + (field_h - label_font) * 0.5,
-            label_font,
-            if section_narrow { w } else { label_col_w },
-            label_color,
-        );
-
-        // Single-chip rows (Rotation) span from X-chip start to Y-chip end —
-        // alignment with the 2-chip rows above + below. The span must
-        // include: chip_X + col_gap + Y-tag slot + chip_Y =
-        // 2*two_chip_w + col_gap + axis_col_w + tag_box_gap.
-        // The previous formula missed `axis_col_w + tag_box_gap` and
-        // left Rotation ending short of Y-chip's right edge.
-        let single_chip = right.is_none();
-        let left_box_w = if single_chip {
-            (two_chip_w * 2.0 + col_gap + axis_col_w + tag_box_gap).max(0.0)
-        } else {
-            two_chip_w
-        };
-
-        let left_tag_x = chips_origin_x;
-        paint_text(
-            text_system,
-            scene,
+            left_id,
             left_tag,
-            left_tag_x,
-            chips_y + (field_h - axis_label_font) * 0.5,
-            axis_label_font,
-            axis_col_w,
-            resolve(left_color, theme),
-        );
-        let left_box_x = left_tag_x + axis_col_w + tag_box_gap;
-        let left_rect = Rect::new(left_box_x, chips_y, left_box_w, field_h);
-        hit_index.register(left_id, left_rect);
-        let (state, value, buffer, caret, anchor) = read_number_input(store, left_id);
-        let input = NumberInput::new(left_id, "", value)
-            .step(left_step)
-            .visual((state, store.hover_live(left_id)));
-        paint_number_input_with_buffer(
-            &input,
-            Some(buffer),
-            caret,
-            anchor,
-            left_rect,
-            scene,
-            text_system,
-            theme,
-        );
-        if let Some((right_id, right_tag, right_color, right_step)) = right {
-            let right_tag_x = left_box_x + two_chip_w + col_gap;
-            paint_text(
-                text_system,
-                scene,
-                right_tag,
-                right_tag_x,
-                chips_y + (field_h - axis_label_font) * 0.5,
-                axis_label_font,
-                axis_col_w,
-                resolve(right_color, theme),
-            );
-            let right_box_x = right_tag_x + axis_col_w + tag_box_gap;
-            let right_rect = Rect::new(right_box_x, chips_y, two_chip_w, field_h);
-            hit_index.register(right_id, right_rect);
-            let (r_state, r_value, r_buffer, r_caret, r_anchor) =
-                read_number_input(store, right_id);
-            let r_input = NumberInput::new(right_id, "", r_value)
-                .step(right_step)
-                .visual((r_state, store.hover_live(right_id)));
-            paint_number_input_with_buffer(
-                &r_input,
-                Some(r_buffer),
-                r_caret,
-                r_anchor,
-                right_rect,
-                scene,
-                text_system,
-                theme,
-            );
-        }
-        total_h
+            left_color,
+            left_step,
+            right,
+        )
     };
 
     // A unidade de ângulo: rótulo e passo. Mecanismo em [`labels_for`] e [`step_for`].

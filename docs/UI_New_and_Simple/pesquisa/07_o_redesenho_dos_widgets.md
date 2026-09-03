@@ -1159,3 +1159,55 @@ como **dois widgets com um pintor só**.
 ⏳ **O que continua por fazer** são os outros estados do Blender — losango cheio (chave neste
 quadro), losango vazio (chave noutro), ícone de driver — e o clique que põe a chave. Os quatro
 precisam da **timeline**, não de desenho.
+
+## §20 — ⛔⛔ «VÁRIAS NÃO RECEBERAM PONTOS»: o censo tinha um BURACO (2026-09-03)
+
+Report do Enio, com foto da secção Transform: as quatro linhas — Position, Rotation, Scale, Skew —
+**sem** a coluna de animação.
+
+### 20.1 — O buraco: o censo contou PINTORES, e há uma família que não passa por nenhum
+
+O §15.1 mediu `paint_slider_with_chip` (58) e `paint_checkbox` (81) e ordenou o trabalho por aí.
+⛔ Mas o Transform não é nenhum dos dois: é **rótulo à esquerda + campos numéricos soltos**, uma
+linha construída **à mão dentro do painel**, com a sua própria aritmética de larguras. Na foto
+vê-se: os campos não têm barra de preenchimento.
+
+⇒ **um censo por pintor não vê as linhas que ninguém pinta por um pintor.** E há mais três famílias
+na mesma condição — listas suspensas (36 sítios), cor (37) e segmentados (36) —, ~110 sítios que
+continuam sem a coluna.
+
+### 20.2 — A cura, e porque uma PORTA em vez de um ponto por painel
+
+⭐ Toda a geometria daquela secção deriva de **uma** largura, então encolhê-la num sítio serviu as
+quatro linhas de uma vez. E o ponto vem de `widget::paint_decorator_dot`, uma porta pública nova:
+⛔ sem ela cada painel desenharia o seu, e **a coluna que o dono pediu ficaria com um `x` por
+painel** — que é o defeito oposto ao que ela existe para curar.
+
+⚠️ **Um ponto por LINHA, não por campo:** um par `X`/`Y` é *uma* propriedade com duas componentes.
+
+### 20.3 — ⭐ E o corte que o tecto de LOC impôs revelou o que a closure escondia
+
+A `paint_transform_section` passou a folga dela (`226`), e a casa **não sobe folgas**. O corte é o
+que a mensagem do gate sugere: *o desenho de uma linha* saiu da *orquestração das linhas*
+(`transform_row.rs`).
+
+⭐⭐ **E os catorze valores que a closure CAPTURAVA viraram um `RowStyle`** — eles são a **geometria
+da secção**, calculada uma vez e igual para as quatro linhas, e enquanto viviam como capturas nada
+o dizia. *Uma closure grande esconde o modelo que os seus capturados formam.*
+
+⭐⭐⭐ **E o censo de obsolescência do próprio gate disparou a seguir:** a função caiu para **178**,
+**abaixo** do tecto, e a folga teve de ser **apagada** — não encolhida. É a lei que o `CLAUDE.md`
+§5.0 nomeia (*uma catraca sem censo não desce: vira licença*), a funcionar sozinha, no mesmo dia em
+que outra catraca deste mesmo ficheiro já a tinha aplicado.
+
+### 20.4 — E o Inspector: ele JÁ abre aberto
+
+Pedido do Enio no mesmo turno: *«o inspector deve estar aberto ao abrir o app»*. Medido: o
+`default_panel_visibility()` diz `("inspector", true)` desde sempre, e o botão do rail nasce
+`Pressed` com um comentário a dizê-lo.
+
+⇒ ficou um gate (`the_inspector_is_open_when_the_app_opens`) — não para **mudar** o comportamento,
+mas para o **pinar**: ⛔ *uma decisão de produto que só existe como um `true` numa tabela é uma
+decisão que a próxima pessoa apaga por acidente*, e o sintoma (o painel simplesmente não aparecer)
+não parte teste nenhum. Ele afirma as **duas** metades — o painel visível **e** o botão do rail que
+o diz —, porque são dois `insert` em ficheiros diferentes e nada os obriga a concordar.

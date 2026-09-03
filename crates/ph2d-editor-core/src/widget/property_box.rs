@@ -404,6 +404,20 @@ pub(crate) fn decorator_rect(rect: Rect) -> Rect {
     Rect::new(s.x + s.w, rect.y, DECORATOR_W, rect.h)
 }
 
+/// ⭐ **A porta da coluna de animação para quem NÃO usa a caixa única.**
+///
+/// ⚠️ Ela existe porque o app tem **três** famílias de linha de formulário, e só duas passam por
+/// aqui: a caixa única e a linha de verificação. A terceira — rótulo à esquerda + campos numéricos
+/// soltos, o Transform do Inspector — é construída à mão em cada painel, com a sua própria
+/// aritmética de larguras. ⛔ Sem esta porta cada uma delas desenharia o seu próprio ponto, e a
+/// coluna que o dono pediu ficaria com um `x` por painel.
+///
+/// O chamador **reserva** a coluna (encolhendo a largura das suas colunas em [`DECORATOR_W`]) e
+/// chama isto com o rect dela.
+pub fn paint_decorator_dot(scene: &mut VectorScene, theme: Theme, r: Rect) {
+    paint_decorator(scene, theme, r, false);
+}
+
 /// A coluna de animação.
 ///
 /// ⚠️ Aqui ela é só o estado «animável, sem chave» (o ponto vazio). Os outros do Blender — losango

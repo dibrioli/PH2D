@@ -79,6 +79,8 @@ pub(crate) mod slice_grid;
 pub(crate) mod slice_nine;
 mod sprite_sheet;
 mod transform;
+// ⚠️ O DESENHO de uma linha do Transform — separado da orquestração delas pelo tecto de LOC.
+mod transform_row;
 mod visibility;
 mod wheel;
 

@@ -752,3 +752,67 @@ A mutação que repõe a linha antiga sangra o censo **com o número da linha** 
 monta exactamente a cena da foto. Ele media a **cor** e o **retrato** (as duas curadas na ocorrência
 1) e não media as `deps`. *Uma fixtura que já tem o fenómeno não protege as perguntas que ninguém
 lhe faz.* Ele passa a fazer as quatro, incluindo o sentido inverso — **derivado não é medido**.
+
+<a id="14"></a>
+## §14 — ⭐⭐⭐ **AS QUATRO PERGUNTAS SOBRE UM CONTROLO** — o instrumento que faltava (2026-09-02)
+
+> Quatro dos últimos cinco defeitos deste painel foram **o Enio** que os achou, não os gates. Este
+> ficheiro é a tentativa de os achar primeiro:
+> [`every_asset_browser_control_answers.rs`](../../shells/desktop/tests/every_asset_browser_control_answers.rs).
+
+### §14.1 — As quatro, e quais tinham instrumento
+
+| # | pergunta | tinha instrumento? |
+|---|---|---|
+| 1 | **está sob o dedo?** — o `HitIndex` tem o rect | ✅ os gates de paint |
+| 2 | **o clique chega a um efeito?** — há braço no `apply_event` | ✅ os `seam_*` |
+| 3 | **está no sítio certo?** — não pisa nem é pisado | ⛔ **nenhum** (o report *«layout ruim»*) |
+| 4 | **tem ESTADO no store?** — sem ele o `Click` nunca nasce | ⛔ **nenhum** (o `✕` da faixa) |
+
+⚠️ **A 4.ª é invisível aos gates da 2.ª por construção:** um `Click` sintético num teste entra **a
+jusante** da condição que falta — ele não passa pelo store. É por isso que cinco gates verdes
+conviviam com um botão morto.
+
+⇒ o censo corre as quatro **sobre o que o painel de facto pintou**, nunca sobre uma lista escrita à
+mão. Estado do painel: **limpo nas quatro**.
+
+### §14.2 — ⛔⛔ O censo acusou CATORZE controlos vivos, e a culpa era dele
+
+A 1.ª versão reutilizava **um** painel para todos os cliques. O primeiro id da lista era o
+`ASSET_CLOSE`, que **fecha o painel** — e daí em diante todos os outros batiam na guarda *«só existe
+com o painel aberto»* e saíam `Ignored`.
+
+*Um censo que partilha estado entre casos mede o efeito colateral do caso anterior* — e este acusava
+com tanta confiança que eu quase fui procurar o defeito no painel. ⇒ **um painel fresco por id**.
+
+### §14.3 — ⛔ E o oráculo tinha três pontos cegos, cada um descoberto por uma acusação FALSA
+
+| acusado | porque não era defeito | o que o oráculo aprendeu |
+|---|---|---|
+| `ASSET_CLOSE` | o efeito dele vive no **HOST** (fecha o painel), não no estado nem no barramento | **três** canais, não dois |
+| `ASSET_SEARCH` · `ASSET_SIZE` | um campo de texto responde ao FOCO, um slider a `ValueChanged` | excepção **nomeada com o gesto real** |
+| o chip já escolhido | clicar no que já está escolhido é um no-op **correcto** | a excepção é **derivada do estado**, nunca uma lista de índices |
+
+⚠️ **O terceiro tem uma armadilha de fixtura:** com o estado de omissão, o chip *All* e o *Name*
+são os escolhidos, e clicá-los não muda nada. *Uma fixtura no estado de omissão não consegue medir
+o controlo que devolve ao estado de omissão* ⇒ ela semeia deliberadamente o não-omissão.
+
+### §14.4 — ⛔⛔ E a régua da 3.ª pergunta nasceu FORTE DEMAIS
+
+A 1.ª versão proibia **qualquer** sobreposição parcial. Ela acusou a faixa de arrasto do cabeçalho
+contra a caixa de busca: eles partilham **10 px**, a busca é registada **depois** e o `HitIndex`
+resolve de trás para a frente — portanto a busca ganha, e a consequência é a faixa de arrasto ser
+10 px mais curta do que se desenha. Nenhum controlo morto, nenhuma acção errada; e satisfazer a
+régua obrigaria a mexer no chrome de **todos** os painéis.
+
+⇒ a lei que fica é a que se mede **sem inventar um limiar**: *nenhum controlo fica INTEIRAMENTE
+debaixo de um registado depois dele* — esse é inalcançável, e o paint continua a desenhá-lo.
+
+⏳ **NOMEADO:** o report do Enio era um **rótulo** por baixo de um botão, e um rótulo não é um rect
+registado — varredura de `HitIndex` nenhuma o vê. Aquele caso tem o gate específico
+(`the_band_never_covers_the_catalog_column`); a lei geral exigiria o painel publicar a extensão do
+texto, que hoje não existe.
+
+⚠️ **Cinco gates, cinco mutações, cada uma a sangrar o certo** — e a da soterragem só ao segundo
+tento: a 1.ª (fazer o `✕` do tamanho da faixa) não soterrava nada, porque **a faixa não é um
+controlo registado**. *Uma afirmação que mutação nenhuma mata é uma afirmação sobre nada.*

@@ -371,6 +371,18 @@ impl App {
         .unwrap_or(false)
     }
 
+    /// ⭐⭐ **`Escape` fecha o menu do cabeçalho** (W109), e só ele.
+    ///
+    /// ⚠️ **Devolve `false` quando não há menu aberto**, e é isso que a mantém invisível: `Escape` é
+    /// a tecla de desistir de meio mundo, e um handler que a reclamasse sempre roubaria o cancelar
+    /// de quem vem a seguir no roteador. *Um popup só possui a tecla enquanto está aberto.*
+    pub(crate) fn field3d_view_menu_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
+        if code != winit::keyboard::KeyCode::Escape {
+            return false;
+        }
+        with_smoke(|s| s.view_menu.take().is_some()).unwrap_or(false)
+    }
+
     /// ⭐⭐ **`Numpad1/3/7` põem a câmera numa VISTA NOMEADA**, e `Ctrl` dá a oposta (W47).
     ///
     /// ⚠️ As teclas são as do Blender — **as teclas, não os eixos**: ele é Z para cima e este módulo

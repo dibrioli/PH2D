@@ -169,6 +169,8 @@ mod field3d_shapes;
 mod field3d_smoke;
 /// ADR-0161 W26 — o NUMERO digitado no meio do gesto do gizmo (o `G X 0,5` do Blender).
 mod field3d_typed;
+/// ADR-0161 W109 — o cabeçalho CLICÁVEL de cada vista: o menu que troca a câmera daquele quadrante.
+mod field3d_view_menu;
 mod field3d_views;
 /// Motion Nodes: o gizmo de canvas de um field espacial (`field.box`, …). Espelho do
 /// `flip_selection_gizmo` — `GizmoTarget::MotionField`, apply nos params do NÓ.

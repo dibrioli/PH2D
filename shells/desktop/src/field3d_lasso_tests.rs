@@ -52,7 +52,7 @@ fn balls(n: usize) -> FieldDoc {
     FieldDoc::new(nodes, NodeId(n as u32)).expect("a peça")
 }
 
-fn two_balls() -> FieldDoc {
+pub(crate) fn two_balls() -> FieldDoc {
     balls(2)
 }
 

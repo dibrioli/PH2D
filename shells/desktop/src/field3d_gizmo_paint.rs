@@ -269,9 +269,10 @@ pub(crate) fn paint_split(
 /// traçado: uma faixa reservada encolheria as quatro imagens e obrigaria a porta do layout a
 /// devolver dois retângulos por vista.
 ///
-/// ⚠️ **É um MOSTRADOR, não um controlo.** Trocar a vista de um quadrante já é alcançável — clicar
-/// nele (passa a activo) e `Numpad1/3/7` ou o botão do painel. *Antes de construir um controlo,
-/// meça se a composição já o exprime.*
+/// ⚠️ **Ele era um MOSTRADOR e passou a ser um CONTROLO** (W109): um clique nele abre o menu das
+/// seis vistas para **aquele** quadrante. ⚠️ E é por isso que ele devolve o **chip** — o alvo do
+/// clique, medido aqui, onde o texto é medido. *Estimar a largura no lado que apanha o clique daria
+/// duas respostas à mesma pergunta, e a que envelhece é a estimada.*
 ///
 /// ⚠️ O texto vem da chave i18n derivada da **câmera** ([`crate::field3d_views::label_key`]), nunca
 /// do quadrante: orbitar a vista de cima faz dela *User*, que é o que ela passou a ser.
@@ -281,23 +282,60 @@ pub(crate) fn paint_view_label(
     rect: ph2d_editor::zones::Rect,
     key: &str,
     theme: Theme,
-) {
+) -> Option<ph2d_editor::zones::Rect> {
     let line = ph2d_i18n::tr(key);
     if line.is_empty() {
-        return;
+        return None;
     }
+    let font = ph2d_tokens::TypeToken::Sm.px();
+    let chip =
+        crate::field3d_view_menu::chip(rect, LABEL_INSET_PX, text.prefix_width(line, font), font);
+    // ⭐ **O chip pinta-se por baixo do texto**, discreto: ele existe para dizer *«isto agarra-se»*,
+    // e um fundo com o peso de um botão competiria com a peça o tempo todo.
+    ph2d_editor::paint::fill_rounded_rect(
+        scene,
+        chip,
+        ph2d_tokens::Radius::Sm.px(),
+        ph2d_editor::paint::resolve(ColorToken::BgElev, theme),
+    );
     ph2d_editor::paint::paint_text_block(
         text,
         scene,
         line,
         rect.x + LABEL_INSET_PX,
         rect.y + LABEL_INSET_PX,
-        ph2d_tokens::TypeToken::Sm.px(),
+        font,
         rect.w,
         // ⚠️ **Text2 e não Text1**: ele acompanha a peça o tempo todo, e um rótulo com o mesmo peso
         // do número de um gesto competiria com o que o artista está a fazer.
         ph2d_editor::paint::resolve(ColorToken::Text2, theme),
     );
+    Some(chip)
+}
+
+/// ⭐⭐ **O MENU DO CABEÇALHO** (W109) — as seis vistas nomeadas, para o quadrante que o abriu.
+///
+/// Devolve o rectângulo que pintou, que é o que o caminho do ponteiro lê para saber onde as linhas
+/// caíram — ver [`crate::field3d_view_menu`].
+pub(crate) fn paint_view_menu(
+    scene: &mut VectorScene,
+    text: &mut ph2d_text::TextSystem,
+    chip: ph2d_editor::zones::Rect,
+    canvas: ph2d_editor::zones::Rect,
+    theme: Theme,
+) -> ph2d_editor::zones::Rect {
+    let font = ph2d_tokens::TypeToken::Sm.px();
+    let widest = crate::field3d_view_menu::widest_row(text, font);
+    let rect = crate::field3d_view_menu::menu_rect(chip, canvas, widest);
+    ph2d_editor::widget::paint_context_menu(
+        &crate::field3d_view_menu::model(),
+        rect,
+        scene,
+        text,
+        theme,
+        crate::field3d_view_menu::ROW_H_PX,
+    );
+    rect
 }
 
 /// Uma poligonal com espessura, um quadrilátero por segmento.

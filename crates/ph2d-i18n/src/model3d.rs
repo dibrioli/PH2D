@@ -311,6 +311,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "viewport.model3d.view.bottom" => "Bottom",
         // A vista que não é nenhuma das seis — o artista pôs a câmera onde quis.
         "viewport.model3d.view.user" => "User",
+        // ⭐ O TÍTULO do menu que o cabeçalho abre (W109) — ele é o nome acessível do popup, não um
+        // rótulo pintado: o [`ContextMenu`] usa-o para o `Role::Menu` do AccessKit.
+        "viewport.model3d.view.menu" => "View",
         // Os TRÊS gestos de câmera que não são uma vista.
         "panel.model3d.camera.ortho" => "Ortho (5)",
         "panel.model3d.camera.frame" => "Frame (Home)",

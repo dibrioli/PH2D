@@ -130,6 +130,8 @@ fn boot() -> Option<Smoke> {
         profile_pick: None,
         nav_hot: None,
         nav_press: None,
+        view_menu: None,
+        view_menu_rect: None,
         has_live_sculpt: false,
         matcap: Arc::new(load_matcap()),
         // ⭐ **Um viewport, que é o que o módulo sempre teve** — a divisão entra depois, e este

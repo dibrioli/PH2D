@@ -52,6 +52,13 @@ impl App {
         }
         // ADR-0161 W4: `Home` repõe a vista da janela 3D de modelagem — a volta que a
         // rotação LIVRE torna necessária (ela inclina o horizonte, de propósito).
+        // ADR-0161 W109: com o menu do cabeçalho aberto, `Escape` é dele. ⚠️ **PRIMEIRO no
+        // roteador**, e a ordem é a mesma lei do `field3d_typed_key`: enquanto um popup está aberto,
+        // a tecla de desistir pertence-lhe. Ele devolve `false` sem menu, logo é inerte no resto do
+        // tempo.
+        if self.field3d_view_menu_key(code) {
+            return true;
+        }
         // Inerte sem o smoke armado; ver a nota de `field3d_home_key` sobre o dia em
         // que isso deixar de ser a única porta.
         if self.field3d_home_key(code) {

@@ -5754,7 +5754,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅⭐⭐⭐ **O CANVAS DIVIDE-SE EM QUATRO VISTAS** (`Ctrl+Alt+Q` ou o chip *Quad View*) | o item que o plano chama *«o produto»* desde a W2; falta a outra metade da frase dele, o **cabeçalho** | §92 |
 | ✅ **E só a vista ACTIVA ficava lisa** (smoke do Enio, 27/08) | ⭐ cada viewport comparava-se com o pedido do **activo**; os 5 gates da wave mediam a GEOMETRIA e passaram todos | §92.8 |
 | ✅⭐⭐ **Cada vista diz o NOME dela**, derivado da câmera (orbitar a *Top* fá-la *User*) | a metade do cabeçalho que não rouba pixels ao traçado | §92.10 |
-| ⏳ O cabeçalho **CLICÁVEL** (menu por vista) | pede a faixa reservada, que obriga a porta do layout a devolver dois retângulos por vista | §92.10 |
+| ✅⭐⭐ **O cabeçalho é CLICÁVEL** — um menu com as seis vistas, por quadrante | ⛔ ele **não** pedia a faixa reservada: um menu precisa de um alvo de clique, e o rótulo já tinha posição · ⚠️ o gate da costura apanhou a precedência (a costura roubava metade das linhas ao menu) | §110 |
 | ✅⭐⭐⭐ **As divisórias ARRASTAM-SE** (o cruzamento move as duas) | ⚠️ e a nota que dizia depender do cabeçalho estava **errada** | §92.12 |
 | ✅⭐⭐ **O custo de uma EDIÇÃO com a divisão aberta** — medido: quatro juntas custam `3,93×` uma (elas só se fatiam) | ⭐ curado por **ORDEM**: a activa tem prioridade e chega em `64 ms` em vez de `254` | §92.9 |
 | ⛔ A **varredura linear** do `TapeCache::get` — **MEDIDA**: `3,0 %` do quadro de movimento, `10,7 %` a `640×360`, e cresce ~quadraticamente | não paga um índice **ainda**; o gatilho está nomeado | §92.11 |
@@ -10679,3 +10679,65 @@ qual das duas está a atacar.
 ⇒ **A base fica onde estava:** a pilha de três deformadores custa `181 ms` num quadro de `320²`, com
 `3,2×` de folga provada contra o ideal pontual, e **não há mais nenhuma alavanca estrutural
 identificada** — o que sobra é apertar o mesmo bound, um degrau de cada vez.
+
+---
+
+## §110 — W109: ⭐⭐ O CABEÇALHO DE CADA VISTA É CLICÁVEL — o último ⏳ do canvas (02/09)
+
+A W90d fechou a metade do cabeçalho que **diz** (o nome de cada vista, derivado da câmera) e deixou
+a que **faz**, com esta frase: *«⏳ Um cabeçalho clicável (com menu por vista) fica aberto, e é ele
+que pede a faixa reservada.»*
+
+### §110.1 — ⛔ A segunda metade daquela frase estava errada, e é por isso que a wave foi barata
+
+Uma **faixa reservada** seria precisa para uma *barra* de cabeçalho — ela encolheria as quatro
+imagens e obrigaria a porta do layout a devolver dois retângulos por vista. ⭐ Mas um **menu** precisa
+só de **um alvo de clique**, e o rótulo já tem posição e tamanho.
+
+⚠️ *Uma dependência afirmada sem a desmontar é uma feature adiada com cara de arquitectura* — a
+**terceira** vez que esta linha o escreve (a primeira: o divisor «a precisar» do cabeçalho, §92.12; a
+segunda: a divisão «a precisar» das quatro câmeras, §95).
+
+### §110.2 — ⭐ Ele não é um `ContextMenuKind`, e a porta genérica que serve é a do PINTOR
+
+Registar uma variante no `ContextMenuKind` **foundational** obrigaria a tocar o `enum`, a lista de
+amostras, a tabela de rows e o ficheiro de ids — quatro sítios de outra crate, com colisão textual
+garantida. ⭐ O `paint_context_menu` é **autónomo** (recebe um modelo e um rectângulo), e o menu vive
+**dentro** do canvas 3D, que este módulo já sabe pintar e apanhar. ⇒ **zero linhas de foundational**,
+tirando uma chave de i18n.
+
+### §110.3 — ⚠️ Os dois rectângulos são PUBLICADOS por quem pinta
+
+O chip depende da largura do texto e o menu da linha mais comprida. A lei da casa já está escrita —
+*«quem empilha texto de comprimento variável tem de perguntar ao pintor quanto ele gastou, não
+estimar»* — ⇒ o pintor mede (`TextSystem::prefix_width`) e guarda em `Viewport::label` e
+`Smoke::view_menu_rect`, exactamente como o `Viewport::area` já responde *«este clique é meu?»*.
+⭐ Com **uma** vista o rótulo não é pintado e o chip é **apagado**: um alvo invisível a aceitar
+cliques seria o «controlo morto sob o dedo» que este repo já caçou.
+
+### §110.4 — ⛔⛔ E o gate da COSTURA apanhou um defeito de precedência que a razão não tinha visto
+
+A 1.ª versão pôs o menu **depois** da costura, por analogia com a lei escrita lá (*«a costura ganha
+de tudo»*). ⚠️ **O cabeçalho do quadrante de baixo-direita nasce encostado ao cruzamento**, então o
+menu que ele abre cai por cima da banda de agarrar o divisor — e **metade das linhas dele era
+inalcançável**, com o ponteiro a virar seta de redimensionar por cima de um menu.
+
+⇒ *uma precedência escrita por analogia deixa de valer quando nasce algo que é **modal***. Hoje:
+menu aberto → costura → chip → viewport activo → gizmo. ⭐ **E a outra metade do mesmo defeito é o
+CURSOR** (`divider_cursor` devolve `None` com o menu aberto): *um ponteiro que mente é um controlo
+morto ao contrário — ele anuncia o que a mão NÃO vai conseguir fazer.*
+
+### §110.5 — Provas de mutação: 4 de 4 — e a que SOBREVIVEU era código a mais
+
+| mutação | gate que a mata |
+|---|---|
+| o pintor deixa de publicar o chip | **3** gates, entre eles a costura inteira |
+| o menu aberto volta a perder para a costura | `clicking_a_header_opens_that_quadrants_menu_and_a_row_flies_that_quadrant` |
+| o chip deixa de acertar o viewport comandado | idem |
+| ⛔ **o ramo da escolha deixa de acertar o viewport** | **nenhum** |
+
+⭐⭐ **A quarta sobreviveu porque a linha era redundante:** quem acerta o quadrante comandado é o
+clique no **chip**, e quando uma linha do menu é escolhida o activo já é o certo. *Uma segunda cura
+que nenhuma mutação mata é código que ninguém pode remover com confiança* — ela saiu, ficou uma
+`debug_assert` a dizer porquê, e o gate passou a medir o activo **logo depois de abrir**, que é onde
+a lei de facto acontece.

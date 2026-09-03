@@ -73,10 +73,19 @@ pub(crate) fn draw(
         }
         // ⭐⭐ **O RÓTULO DE CADA VISTA** (W90d) — só com a divisão aberta: com uma vista só, a
         // pergunta *«qual é qual?»* não existe, e um rótulo permanente seria ruído sobre a peça.
+        //
+        // ⚠️ **O chip é PUBLICADO aqui** (W109) — ele é o alvo do clique que abre o menu daquela
+        // vista, e a largura dele é a do texto, que só quem pinta conhece. Com **uma** vista o
+        // rótulo não aparece e o chip é apagado: um alvo invisível que aceitasse cliques seria
+        // exactamente o «controlo morto sob o dedo» que este repo já caçou.
+        for v in &mut smoke.vps {
+            v.label = None;
+        }
         if n > 1 {
             for (i, r) in quadros[..n].iter().enumerate() {
                 let key = crate::field3d_views::label_key(&smoke.vps[i].cam);
-                crate::field3d_gizmo_paint::paint_view_label(scene_out, text, *r, key, theme);
+                smoke.vps[i].label =
+                    crate::field3d_gizmo_paint::paint_view_label(scene_out, text, *r, key, theme);
             }
         }
 
@@ -141,13 +150,20 @@ pub(crate) fn draw(
         // ⚠️ Ele é desenhado **depois** do quadro traçado e **sem teste de profundidade**: uma alça
         // escondida por trás da superfície que ela move seria inalcançável exatamente quando o
         // artista precisa dela. É o que todo modelador faz, e a razão é essa.
-        if let Some(anchor) = smoke.gizmo {
+        // ⚠️ **Um bloco ROTULADO, e não um `if` com `return`** — as saídas de emergência daqui
+        // (sem projecção, sem écran) abandonavam o `draw` INTEIRO, e a partir da W109 há coisa a
+        // pintar depois deste bloco. *Um `return` no meio de um pintor é uma dependência de ordem
+        // que não se vê no sítio onde ela morde.*
+        'gizmo: {
+            let Some(anchor) = smoke.gizmo else {
+                break 'gizmo;
+            };
             // ⚠️ **A projeção é a da ÁREA e vem do dono dela** ([`crate::field3d_input::handles`]) —
             // nunca uma segunda conta a partir do tamanho do traçado. Desde a W24 os dois números
             // são diferentes enquanto a mão mexe, e uma cópia aqui poria as alças a um terço do
             // tamanho: o gizmo agarraria longe da superfície, **só durante o movimento**.
             let Some(screen) = crate::field3d_input::area_screen(smoke) else {
-                return;
+                break 'gizmo;
             };
             let handles = crate::field3d_input::handles(smoke);
             let hot = crate::field3d_input::hot_handle(smoke);
@@ -166,7 +182,7 @@ pub(crate) fn draw(
             // escreveu, e o gate `the_readout_is_the_pose_the_world_took` prende-a aqui.
             if let Some(grip) = smoke.drag_grip {
                 let Some((o2, _)) = smoke.vp().cam.project(anchor.origin, screen) else {
-                    return;
+                    break 'gizmo;
                 };
                 let at = [area.x + o2[0], area.y + o2[1]];
                 // ⭐ **A digitar, a ficha mostra o que está a ser ESCRITO** (W26) — e não o valor.
@@ -195,6 +211,21 @@ pub(crate) fn draw(
                 }
             }
             scene_out.pop_layer();
+        }
+
+        // ⭐⭐⭐ **O MENU DO CABEÇALHO, por CIMA de tudo** (W109) — é um popup, e um popup que o
+        // gizmo tapasse seria um menu que o artista não consegue ler no único sítio em que ele
+        // aparece. ⚠️ Ele é pintado a partir do chip **daquela** vista, e não da activa: o menu
+        // pertence ao quadrante cujo cabeçalho foi clicado.
+        if let Some(i) = smoke.view_menu
+            && let Some(chip) = smoke.vps.get(i).and_then(|v| v.label)
+            && let Some(canvas) = crate::field3d_smoke::canvas_area(smoke)
+        {
+            smoke.view_menu_rect = Some(crate::field3d_gizmo_paint::paint_view_menu(
+                scene_out, text, chip, canvas, theme,
+            ));
+        } else {
+            smoke.view_menu_rect = None;
         }
     });
 }

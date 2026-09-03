@@ -28,6 +28,41 @@ pub(crate) fn begin(
     additive: bool,
     pos: (f32, f32),
 ) -> bool {
+    // ⭐⭐⭐ **UM MENU ABERTO GANHA DE TUDO, e até da COSTURA** (W109).
+    //
+    // ⛔⛔ **A 1.ª versão pô-lo DEPOIS da costura, e o gate da costura apanhou-o:** o cabeçalho do
+    // quadrante de baixo-direita nasce encostado ao cruzamento, então o menu que ele abre cai **por
+    // cima da banda de agarrar o divisor** — e metade das linhas dele era inalcançável, com o
+    // ponteiro a virar seta de redimensionar por cima de um menu. *Uma precedência escrita por
+    // analogia («a costura ganha de tudo») deixa de valer quando nasce algo que é modal.*
+    //
+    // ⚠️ **Um menu aberto consome o clique seguinte, caia ele onde cair** — dentro, escolhe; fora,
+    // fecha. Deixar o clique de fora passar orbitaria a peça no mesmo gesto em que o artista só
+    // queria desistir do menu, e é o que todo o chrome desta casa já faz.
+    //
+    // ⚠️ **O quadrante é o que ABRIU o menu, não o activo:** trocar a vista do quadrante errado
+    // seria pior do que não ter menu.
+    if button == winit::event::MouseButton::Left
+        && let Some(i) = s.view_menu
+    {
+        let escolha = s
+            .view_menu_rect
+            .and_then(|m| crate::field3d_view_menu::row_at(m, [pos.0, pos.1]));
+        s.view_menu = None;
+        if let Some(v) = escolha {
+            // ⛔ **O activo JÁ é `i`, e um `s.active = i` aqui é uma SEGUNDA CURA** — quem o acertou
+            // foi o clique no chip, que é a única porta que abre este menu. A mutação que a apagava
+            // **SOBREVIVEU** a todos os gates, o que é a definição de código que ninguém pode
+            // remover com confiança. Fica a afirmação, e o gate mede o activo logo depois de abrir.
+            debug_assert_eq!(
+                s.active, i,
+                "o menu só se abre pelo chip, e o chip acerta o activo"
+            );
+            crate::field3d_input::fly_to_view(s, v);
+            s.vp_mut().manual = true;
+        }
+        return true;
+    }
     // ⭐⭐⭐ **A COSTURA GANHA DE TUDO** (W92) — ela está **entre** os viewports, e não dentro de
     // nenhum. Sem esta precedência (e antes da escolha do activo), apontar para a linha do meio
     // orbitaria a vista de um dos lados e o divisor seria inalcançável.
@@ -40,6 +75,16 @@ pub(crate) fn begin(
         s.drag = Some(Drag::Divider(v, h));
         s.last_pointer = pos;
         s.press_at = Some(pos);
+        return true;
+    }
+    // ⭐⭐ **O CHIP DO CABEÇALHO abre o menu daquela vista** (W109) — depois da costura, porque ele
+    // vive **dentro** de um viewport e ela vive entre eles.
+    if button == winit::event::MouseButton::Left
+        && let Some(i) =
+            (0..s.vps.len()).find(|&i| s.vps[i].label.is_some_and(|r| dentro_de(r, pos)))
+    {
+        s.active = i;
+        s.view_menu = Some(i);
         return true;
     }
     // ⭐⭐⭐ **O BOTÃO DESCE NUM VIEWPORT, E É ELE QUE PASSA A COMANDAR** (W90).
@@ -478,4 +523,12 @@ pub(crate) fn hot_handle(s: &Smoke) -> Option<Handle> {
         Some(Drag::Gizmo(h)) => Some(h),
         _ => s.gizmo_hot,
     }
+}
+
+/// Este ponto da janela cai dentro do rectângulo?
+///
+/// ⚠️ **Meio-aberto em cima e à esquerda, aberto em baixo e à direita** — a mesma convenção do
+/// [`crate::field3d_layout::hit`], para que dois rectângulos encostados não reclamem o mesmo pixel.
+fn dentro_de(r: ph2d_editor::zones::Rect, p: (f32, f32)) -> bool {
+    p.0 >= r.x && p.1 >= r.y && p.0 < r.x + r.w && p.1 < r.y + r.h
 }

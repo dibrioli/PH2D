@@ -140,6 +140,13 @@ impl View {
             has_live_sculpt: _,
             // ⚠️ **Cache, e não vista** — as fitas compiladas de um quadro. Deitá-las fora ao
             // fechar não custa nada: a 1.ª mão a mexer volta a enchê-las.
+            //
+            // ⚠️ **O menu do cabeçalho (W109) é CACHE pela mesma lei dos GESTOS**, e não pela das
+            // preferências de bancada: um popup é um gesto a meio, e o painel fecha *porque* outra
+            // ferramenta tomou o canvas. Reabrir com um menu pendurado poria uma lista de vistas
+            // por cima de uma peça que o artista já não estava a olhar.
+            view_menu: _,
+            view_menu_rect: _,
         } = s;
         Self {
             split: *split,

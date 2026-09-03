@@ -46,6 +46,13 @@ pub(crate) fn canvas_area(s: &Smoke) -> Option<ph2d_editor::zones::Rect> {
 /// ⚠️ **A porta é aqui e não no despacho** porque é aqui que o `Smoke` vive — e é isto que mantém a
 /// resposta a uma chamada de `with_smoke`, em vez de o despacho ter de conhecer o layout.
 pub(crate) fn divider_cursor(s: &Smoke, pos: (f32, f32)) -> Option<winit::window::CursorIcon> {
+    // ⛔⛔ **A OUTRA METADE do defeito que o gate da costura apanhou** (W109): com um menu aberto o
+    // clique é dele — e se o cursor continuasse a ser a seta de redimensionar por cima das linhas,
+    // a tela prometeria um gesto que já não existe ali. *Um ponteiro que mente é um controlo morto
+    // ao contrário: ele anuncia o que a mão NÃO vai conseguir fazer.*
+    if s.view_menu.is_some() {
+        return None;
+    }
     crate::field3d_layout::seam_cursor(canvas_area(s)?, s.split, [pos.0, pos.1])
 }
 

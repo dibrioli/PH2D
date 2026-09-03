@@ -100,6 +100,13 @@ pub(crate) struct Viewport {
     /// **A área onde o quadro foi desenhado da última vez** — é ela que responde *"este clique é
     /// meu?"*. Sem isto a cena engoliria gestos de qualquer canto da janela.
     pub(crate) area: Option<EditorRect>,
+    /// ⭐⭐ **O CHIP CLICÁVEL do rótulo desta vista** (W109), **publicado por quem o pinta**.
+    ///
+    /// ⚠️ Ele depende da largura MEDIDA do texto, e por isso é guardado em vez de derivado — a
+    /// mesma razão e o mesmo padrão do [`Viewport::area`] acima. `None` enquanto o rótulo não for
+    /// pintado, que é o caso de **uma vista só**: ali a pergunta *«qual é qual?»* não existe, o
+    /// rótulo não aparece, e um chip invisível que aceitasse cliques seria pior que nenhum.
+    pub(crate) label: Option<EditorRect>,
     /// ⭐ **O prato para de girar assim que o artista toca nele.**
     ///
     /// A lei da casa é *feature nova = auto-play*: a peça gira sozinha para provar que existe. Mas
@@ -172,6 +179,7 @@ impl Viewport {
             last_trace_ms: 0.0,
             measured: None,
             area: None,
+            label: None,
             manual,
             tapes: Arc::new(ph2d_field_render::TapeCache::new()),
         }
@@ -202,6 +210,15 @@ pub(crate) struct Smoke {
     pub(crate) vps: Vec<Viewport>,
     /// Qual viewport o gesto comanda. Ver [`Smoke::vp`].
     pub(crate) active: usize,
+    /// ⭐⭐ **De que vista o menu do cabeçalho está aberto** (W109), ou `None`.
+    ///
+    /// ⚠️ **É CACHE do quadro, não estado de VISTA** — ver [`crate::field3d_view`]: um menu aberto a
+    /// atravessar o fecho do painel reabriria por cima de uma peça que o artista já não estava a
+    /// olhar, pela mesma razão pela qual um `drag` pendurado não viaja. *Um popup é um gesto a meio.*
+    pub(crate) view_menu: Option<usize>,
+    /// O rectângulo do menu aberto, **publicado por quem o pinta** — ver
+    /// [`crate::field3d_view_menu`]. Cache, como o irmão acima.
+    pub(crate) view_menu_rect: Option<EditorRect>,
     /// ⭐⭐⭐ **Como o canvas está dividido** — ver [`crate::field3d_layout::Split`].
     ///
     /// ⚠️ **Estado de VISTA**, como a câmera: ele não toca a peça, não entra no undo e não viaja no

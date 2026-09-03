@@ -5788,7 +5788,8 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅⭐⭐⭐ **(2) O RAIO POR OBJETO** — linha **Joint**, derivada, e escrever nela **materializa** o verbo | ⭐ o painel não mudou (as linhas saem do `params_of`) · ⚠️ **Fillet** = as arestas da forma · **Joint** = o encontro, e o grupo passa a dizer `Joint` (é o padrão) | §94 |
 | ✅⭐⭐⭐ **(3) O CHANFRO** — `Fillet · Chamfer · Organic`, **três** chips (a aresta viva é o raio zero) | ⭐ uma fórmula só, exacta · ⚠️ **DUAS réguas** (recuo · mordida) e nenhum carácter bate as duas: o orgânico calibra-se pela **mordida**, o chanfro **não se calibra** · ⛔ 2 mutantes sobreviveram e um era defeito VIVO | §95 |
 | ✅⭐⭐⭐ **O FILETE É UM ARCO EM QUALQUER QUINA** — o operador deixa de supor que as duas faces são perpendiculares | ⭐ o recuo passa a ser `r·(1/sin α − 1)` em todo ângulo; a estrela vai de `3,71` para **`0,66`** de quebra de curvatura · ⚠️ a lei antiga errava nos DOIS sentidos (`2,29×` a menos numa ponta, `2,19×` a MAIS numa parede de hexágono) · ⛔ a 1.ª versão deslocava a FACE | §108 |
-| ⛔⛔ O **CHANFRO** tem a mesma mentira (`1,61×` numa ponta de estrela) | **RECUSA MEDIDA, família FECHADA** (3 saídas): a causa é um **segundo erro que compensa** — o plano subestima a distância `2,15×`, e é isso que alarga a mistura do filete e esconde o vinco. Honrar o recuo obriga a honrar a escala, e honrar a escala estreita a mistura | §108.6, §111 |
+| ✅⭐⭐⭐ **O CHANFRO recua o que o slider DIZ** — a mentira de `1,61×` numa ponta de estrela fechou | ⭐ a célula que faltava tinha **quatro** peças e nenhuma anda sozinha (recuo · normalização · filete por PARES · **limite da faceta**) · ⭐⭐ acima de `r_max = c·sin α(1+sin α)/cos α` o filete come o chanfro, e a transição **não tem degrau** porque no limite os três planos deslocados são concorrentes · ⚠️ o pior giro da estrela SOBE para `82,4°` e isso é o **vértice** que o corte antigo escondia (`arccos((κ+1)/2) = 83,81°`) — o gate trocou o tecto em graus por uma **igualdade analítica** | §112 |
+| ⏳ Pela mistura **N-ÁRIA** o corte ainda desce `c/sin 2α` — `1,15×` num prisma hexagonal, `1,06×` num octaedro | ⛔ **bloqueio NOMEADO**: generalizar a `intersection_round_n` pede a matriz de Gram inteira, cujo recorte não tem forma fechada em `N ≥ 3` · ⛔ e o plano honesto sozinho ali está **medido e recusado** (octaedro `10,03 → 15,12 %`) | §112.4 |
 | ⏳ O teto de `round` da **estrela** é `12,3 %` do bordo, contra `43`–`60 %` das outras | ela é a única em que a mistura é uma faixa estreita a atravessar uma face grande | §104.1 |
 
 - ⭐⭐⭐ **W97 (§93): UM VERBO POR FORMA — e o desenho já era LEI na metade 2D deste app.** Pedido do
@@ -10811,3 +10812,113 @@ ele que separou *«corta menos»* de *«erra a escala»*, que nenhuma leitura nu
 
 ⚠️ **E o produto não mexeu um bit**: a árvore voltou ao estado do commit anterior, e o que fica é a
 tabela.
+
+## §112 — W111: ⭐⭐⭐ O CHANFRO HONESTO — a célula que faltava tinha QUATRO peças, e nenhuma anda sozinha (03/09)
+
+> **Enio, 2026-09-03:** *«nós buscamos o padrão ouro, o estado da arte?»*
+
+A [§111](#§111) mediu duas saídas, recusou as duas **sozinhas**, e escreveu que curar isto era «wave
+com espec». A espec era esta secção. ⚠️ **A nota da recusa estava certa sobre o mecanismo e errada
+sobre o tamanho da obra:** faltava correr a célula em que as metades andam **juntas**
+([`feedback_two_halves_of_a_cure_each_refused_alone_do_not_refute_the_cure`](../../project-memory/feedback_two_halves_of_a_cure_each_refused_alone_do_not_refute_the_cure.md)).
+
+### §112.1 — As quatro peças
+
+| # | o que | onde |
+|---|---|---|
+| 1 | **o recuo** desce `c` ao longo da face, não `c/sin 2α` (`1,61×` numa ponta de estrela) | `ops_joint::corte` |
+| 2 | **a normalização** — `(a+b)/√(2+2κ)` ⇒ `‖∇plano‖ = 1`, contra `0,4644` (subestimava `2,15×`) | `ops_joint::corte` |
+| 3 | **o filete POR PARES**, com o cosseno das arestas NOVAS `√((1+κ)/2)` | `ops_joint::novo_cosseno` |
+| 4 | **o limite da faceta** — acima dele o filete come o chanfro, e a transição não tem degrau | `ops_joint::facet_fillet_limit` |
+
+⭐⭐ **A 4.ª é a que a W110 não tinha, e é ela que explica a recusa daquela vez.** A decomposição por
+pares só é exacta enquanto a faceta **sobrevive à erosão** por `r`. Erodir desloca os três planos
+para dentro; a quina das duas faces deslocadas fica em `x = r/sin α` e o corte deslocado em
+`x = c·cos α + r`, e eles coincidem em
+
+```text
+r_max = c·cos α·sin α/(1 − sin α) = c·sin α·(1 + sin α)/cos α
+```
+
+que vale **`1,7071·c` a 90°** e **`0,4628·c`** numa ponta de estrela (`α = 19,2°`).
+
+⭐⭐⭐ **No limite as duas leis dão a MESMA peça, e a continuidade não foi construída — ela cai da
+geometria:** ali os três planos deslocados são **concorrentes**, logo os centros dos dois arcos
+coincidem e os dois arcos *são o mesmo arco*, que é o filete da quina viva. Acima do limite o corte
+deslocado já não pertence ao erodido ⇒ a abertura do sólido chanfrado é **idêntica** à do sólido
+vivo, e o artista vê o arco comer o chanfro.
+
+⛔ **A alternativa — prender `r` no limite — foi recusada por DESENHO:** ela deixa o *Fillet* inerte
+acima de um ponto que nada na tela nomeia. *A lei que fica mantém os dois controlos vivos: um deles
+come o outro, à vista.*
+
+### §112.2 — A tabela A/B, e a única forma que se move
+
+Fracção de superfície sobre um vinco, nos três pontos de trabalho `c=.5 r=.2` / `.4 .4` / `.3 .5`:
+
+| plano \ filete | n-ário | por PARES | **por PARES + limite da faceta** |
+|---|---|---|---|
+| **ortogonal** (o que shipava) | `4,97` · `3,80` · `0,59` | `6,96` · `15,02` · `22,79` | — |
+| **honesto** | `15,33` · `8,66` · `1,14` | `12,30` · `17,52` · `20,06` | **`12,30` · `4,11` · `0,79`** |
+
+⭐ **Das vinte formas do catálogo, DEZANOVE são idênticas dígito a dígito** — a estrela é a única cujo
+chanfro chega ao caminho por pares com um ângulo declarado; todas as outras passam pela mistura
+n-ária (`Edge::square`), que fica intocada.
+
+### §112.3 — ⚠️ O que PIOROU, e por que a régua é que ficou honesta
+
+O pior giro da estrela sobe de **`45,8°` para `82,4°`**. ⛔ **Não é o operador: é um vértice que o
+corte antigo escondia.** Numa ponta, o chanfro do aro deixa **duas facetas** com normais
+`(nᵢ + ẑ)/√2`, e o ângulo entre elas é
+
+```text
+cos ψ = (n₁·n₂ + 1)/2 = (κ + 1)/2   ⇒   ψ = 83,81°   (κ = −0,7844)
+```
+
+e a sonda lê `82,4°`–`84,9°` **em toda a varredura do chanfro** (oito posições). *Um defeito de
+tamanho anda com o tamanho; este não anda porque é um vértice.* Os `45,8°` eram comprados a cortar a
+ponta `1,61×` mais fundo do que o slider dizia — a ponta saía romba, e o vértice já não existia
+quando o aro lá chegava.
+
+⭐⭐ **O controle que fecha a acusação:** com o **mesmo** filete pequeno e **sem** chanfro, o pior giro
+é `14,3°`. Logo não é «o filete do par é metade do outro» — é o chanfro a deixar as duas facetas.
+
+⇒ o gate deixou de ter um **tecto em graus** (`RAZAO_BLOQUEADA = 48`) e passou a ter uma
+**igualdade analítica** (`the_star_pair_crease_is_exactly_the_angle_the_two_rim_facets_make`), que
+reprova nos **dois** sentidos: encolher aquele número significa voltar a cortar a mais.
+⚠️ *Subir o tecto de `48` para `85` teria sido a catraca a virar licença* — o modo de falha que
+[esta casa mede desde 30/08](../architecture/decisions/) e que o censo irmão já apanhara três vezes.
+
+### §112.4 — ⛔ RECUSAS MEDIDAS
+
+| o quê | medição | onde |
+|---|---|---|
+| **o `cos_faces == 0` pelo caminho por pares** | a cruz vai de `3,8°` para `12,2°` de pior giro (`3,19×`, barra `2,60×`) — *um `a` que é a UNIÃO de meia peça não é uma face* | `SEM_ANGULO_FICA_N_ARIO` |
+| **o plano honesto na mistura N-ÁRIA** | o **octaedro** é a única forma cujas doze arestas partilham um ângulo, logo a única que o pode dizer: o vinco residual sobe de `10,03 %` para `15,12 %`, e nenhum gate melhora | idem |
+| **prender `r` no limite da faceta** | deixa o *Fillet* inerte sem nada na tela a dizê-lo | `facet_fillet_limit` |
+
+⏳ **ABERTO e quantificado:** pela mistura n-ária o corte continua a descer `c/sin 2α` — **`1,15×`**
+num prisma hexagonal (`α = 60°`) e **`1,06×`** num octaedro (`α = 54,7°`). O bloqueio tem nome e não
+é preguiça: generalizar a `ops::intersection_round_n` pede a **matriz de Gram inteira**, cujo recorte
+não tem forma fechada em `N ≥ 3`.
+
+### §112.5 — Gates e provas de mutação
+
+Quatro gates novos em `the_fillet_is_a_true_arc_at_every_angle`, todos sobre **seis** meio-ângulos e
+todos a atravessar o **produto** (⚠️ a versão anterior do gate do chanfro escrevia a fórmula à mão
+para não usar a função sob teste, e o preço foi ficar **verde sobre uma lei que o produto já não
+usava**):
+
+- `the_chamfer_recess_is_the_number_the_slider_says`
+- `the_chamfer_plane_is_a_true_distance_at_every_angle`
+- `a_fillet_that_outgrows_the_facet_eats_the_chamfer_without_a_step`
+- `the_star_pair_crease_is_exactly_the_angle_the_two_rim_facets_make` (+ o censo irmão)
+
+| mutação | mortes |
+|---|---|
+| **M1** o `corte` ignora o ângulo | **3** |
+| **M2** `facet_fillet_limit` = `∞` | **1** |
+| **M3** `novo_cosseno` = `0` | **1** |
+
+⚠️ **E as três sobrevivem à `measure_sharp_edges` inteira** — a sonda de formas é cega às três
+metades da cura. *Uma lei analítica precisa de um gate analítico; a sonda de corpus mede outra coisa.*

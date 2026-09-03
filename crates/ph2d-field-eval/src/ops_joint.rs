@@ -120,72 +120,75 @@ impl Edge {
 
 /// ⭐⭐⭐ **A INTERSECÇÃO com chanfro e depois filete** — a aresta convexa de uma forma.
 ///
-/// A intersecção chanfrada é `max(max(a,b), (a+b+c)·√½)` — o dual de De Morgan do
-/// [`ops::union_chamfer`] —, logo o `c` **é** o recuo ao longo de cada face, a mesma régua que os
-/// chips de carácter partilham. **Medido** (`spike_chamfer_then_fillet`, aro de cilindro): recuo
+/// A intersecção chanfrada é `max(max(a,b), plano)` — o dual de De Morgan do
+/// [`ops::union_chamfer`] —, e o `c` **é** o recuo ao longo de cada face, a mesma régua que os
+/// chips de carácter partilham. A `90°` o plano é `(a+b+c)·√½`; a lei geral está no [`corte`].
+///
+/// **Medido** (`spike_chamfer_then_fillet`, aro de cilindro): recuo
 /// pedido `0,050`/`0,100`/`0,150`/`0,200` ⇒ entregue `0,05000`/`0,10000`/`0,15000`/`0,20000` nas
 /// **duas** faces, e `‖∇f‖ = 1,0000` a `ε = 1e-5`.
 ///
 /// ⚠️⚠️ **E essa medição foi feita num aro de CILINDRO, que é ORTOGONAL** — a mesma armadilha em
-/// que o filete viveu toda a vida deste módulo. Fora dos 90° o corte desce `c/sin 2α`, que numa
-/// ponta de estrela é `1,61×` o número pedido. A lei certa está derivada, gateada e **recusada por
-/// medição** no [`corte`]; o gate que a mede é
-/// `the_chamfer_recess_follows_the_angle_and_that_is_the_shipped_error`.
+/// que o filete viveu toda a vida deste módulo. Fora dos 90° o corte descia `c/sin 2α`, que numa
+/// ponta de estrela é `1,61×` o número pedido. ⭐ **A W111 fechou-o:** o corte recua `c` em qualquer
+/// quina, e o gate que o mede — pelo caminho do produto, não por uma fórmula copiada — é
+/// `the_chamfer_recess_is_the_number_the_slider_says`.
 ///
 /// ⭐ O plano do chanfro é uma **terceira superfície**, e as arestas novas que ele cria são
 /// `a ∩ plano` e `b ∩ plano`. Arredondá-las é o filete de sempre aplicado a essas duas juntas — e a
 /// aresta velha `a ∩ b` já não está na fronteira (o plano cortou-a fora), logo o filete não lhe
 /// toca.
 ///
-/// ⚠️ **Com o filete ligado o campo passa a inflar até `√2`** (medido `1,4140`), que é o balde que o
+/// ⚠️ **Pelo caminho n-ário, com o filete ligado o campo infla até `√2`** (medido `1,4140`) — pelo
+/// caminho por PARES ele **não infla**, porque um `max` de dois campos exactos é 1-Lipschitz
+/// enquanto `a` e `b` forem distâncias. ⚠️ O `√2` é o balde que o
 /// [`crate::gradient_bound`] já paga por um arredondamento exacto. Quem der chanfro a uma primitiva
 /// tem de o dizer ao `ph2d_field::fillet_inflates`, senão a marcha anda a passo cheio sobre um campo
 /// que sobe mais depressa que a distância — e o sintoma é a peça furada.
 ///
-/// ⚠️ **O ângulo governa o FILETE SOZINHO, e só ele.** Com chanfro ligado nem o plano do [`corte`]
-/// nem a mistura das três o lêem, e as duas ausências estão **medidas** — a do plano no [`corte`],
-/// a da mistura porque a [`ops::union_round_n`] supõe todos os pares ortogonais e generalizá-la
-/// pede a matriz de Gram inteira, cujo recorte não tem forma fechada em `N ≥ 3`.
+/// # ⭐⭐⭐ W111 — a cura tem TRÊS metades, e nenhuma delas funciona sozinha
 ///
-/// # ⛔⛔⛔ E a TERCEIRA saída foi MEDIDA (W110) — a família está fechada, e a causa é outra
+/// A W110 mediu duas saídas e recusou as duas, cada uma **sozinha**. A célula que faltava era a das
+/// três juntas, e é ela que shipa:
 ///
-/// A W107 nomeou uma decomposição **por pares** (o corte tira a aresta `a ∩ b` da fronteira, logo as
-/// que restam são `a ∩ plano` e `b ∩ plano`, disjuntas e as duas com cosseno `√((1+κ)/2)`) e
-/// arriscou que o preço dela fosse o **vértice**. ⛔ **A medição refutou o prognóstico e o remédio.**
-/// A `2×2` completa, na estrela (fracção de superfície sobre um vinco, `c=.5 r=.2 / .4 .4 / .3 .5`):
+/// 1. **O recuo** — o corte desce `c` ao longo de cada face, e não `c/sin 2α` (ver [`corte`]).
+/// 2. **A normalização** — o plano passa a ser uma distância (`‖∇plano‖ = 1` contra `0,4644` numa
+///    ponta de estrela). ⚠️ Ela **tem** de vir com a 1.ª: honrar só o recuo deixa a mistura
+///    `2,15×` mais larga do que a geometria pede, e foi isso que fez a cura parcial medir pior.
+/// 3. **O filete POR PARES, com o ângulo das arestas NOVAS** — o corte tira `a ∩ b` da fronteira,
+///    logo as que restam são `a ∩ plano` e `b ∩ plano`, as duas com o [`novo_cosseno`].
 ///
-/// | plano \ filete | n-ário (o que shipa) | por PARES |
-/// |---|---|---|
-/// | **ortogonal** (o que shipa) | **`5,02` · `3,80` · `0,59`** | `6,96` · `15,02` · `22,79` |
-/// | **honesto** (com o ângulo) | `15,33` · `8,66` · `1,14` | `12,30` · `17,52` · `20,06` |
+/// ⭐⭐ **E a 4.ª peça é o que torna a 3.ª verdadeira: a faceta pode não sobreviver ao filete.**
+/// Acima do [`facet_fillet_limit`] os dois arcos sobrepunham-se e nascia uma crista — que é
+/// exactamente o que a W110 mediu na coluna «por PARES». Com o limite no sítio, a mesma coluna cai
+/// de `17,52` · `20,06` para **`4,11` · `0,79`**.
 ///
-/// ⭐ **A assinatura da decomposição por pares é PIORAR com o filete** — em ambas as linhas. Não é o
-/// vértice (num par de faces com um plano de corte não há canto de três): são os **dois arcos a
-/// sobreporem-se** numa faceta estreita, e onde eles se cruzam nasce a crista. *O preço que a nota
-/// anterior previu não era o que a medição cobrou.*
+/// A `2×2` da W110 mais a célula nova, na estrela (fracção de superfície sobre um vinco, nos três
+/// pontos de trabalho `c=.5 r=.2` / `.4 .4` / `.3 .5`):
 ///
-/// # ⭐⭐⭐ E o que faz a lei de hoje parecer boa é um SEGUNDO erro que compensa o primeiro
+/// | plano \ filete | n-ário | por PARES | **por PARES + limite da faceta** |
+/// |---|---|---|---|
+/// | **ortogonal** (o que shipava) | `5,02` · `3,80` · `0,59` | `6,96` · `15,02` · `22,79` | — |
+/// | **honesto** (com o ângulo) | `15,33` · `8,66` · `1,14` | `12,30` · `17,52` · `20,06` | **`12,30` · `4,11` · `0,79`** |
 ///
-/// Varrendo o chanfro da estrela de `1/8` a `7/8` do limite, o pior giro fica em **`~44°` na lei que
-/// shipa e `~85°` na honesta, do princípio ao fim** — a honesta **não melhora com mais chanfro**, o
-/// que exclui *«ela corta menos, logo sobra mais ponta»*.
+/// # ⚠️ O que PIOROU, e por que isso é a medição a ficar honesta
 ///
-/// A causa é a **normalização**. O plano é `(a+b)·escala`, e `‖∇(a+b)‖ = √(2+2κ)`:
+/// O pior giro da estrela sobe de `45,8°` para `82,4°`. ⛔ **Não é o operador: é o vértice que o
+/// corte antigo escondia.** Numa ponta, o chanfro do aro deixa duas facetas com normais
+/// `(nᵢ + ẑ)/√2`, e o ângulo entre elas é `arccos((κ+1)/2) = 83,81°` — a sonda lê `82,4°`–`84,9°` em
+/// **toda** a varredura do chanfro (oito posições). Os `45,8°` eram comprados a cortar a ponta
+/// `1,61×` mais fundo do que o slider dizia: *a ponta saía romba, e o vértice já não existia quando
+/// o aro lá chegava.*
 ///
-/// | | escala | `‖∇plano‖` numa ponta de estrela |
-/// |---|---|---|
-/// | a lei que shipa (`·√½`) | `0,7071` | **`0,4644`** — subestima `2,15×` |
-/// | a honesta (`/√(2(1+κ))`) | `1,5227` | **`1,0000`** — é uma distância |
+/// ⇒ o gate deixou de ter um tecto em graus e passou a ter uma **igualdade analítica**
+/// (`the_star_pair_crease_is_exactly_the_angle_the_two_rim_facets_make`), que reprova nos dois
+/// sentidos — encolher aquele número significa voltar a cortar a mais.
 ///
-/// ⇒ a região onde o filete mistura sobre o plano é `{|plano| < r}`, e um campo `2,15×` menor
-/// torna-a **`2,15×` mais larga**. *A lei que shipa esconde o vinco da ponta porque erra numa
-/// segunda coisa, na direcção que compensa a primeira.*
+/// # ⛔ O que FICA de fora, e a medição que o mantém lá
 ///
-/// ⛔ **⇒ a dívida é uma só e tem duas metades que se movem juntas:** honrar o recuo obriga a honrar
-/// a normalização, e honrar a normalização estreita a mistura `2,15×` — que é precisamente a
-/// largura de que a ponta precisa. Curar isto é **wave com espec**, não um remendo: ou a mistura
-/// n-ária aprende a matriz de Gram (sem forma fechada no recorte, `N ≥ 3`), ou o chanfro deixa de
-/// ser um plano no `max` e passa a ser geometria própria.
+/// A mistura **n-ária** ([`intersection_joint_n`], e o caso `cos_faces == 0`) continua a supor todos
+/// os pares ortogonais; generalizá-la pede a matriz de Gram inteira, cujo recorte não tem forma
+/// fechada em `N ≥ 3`. Ver [`SEM_ANGULO_FICA_N_ARIO`].
 pub fn intersection_joint(a: &Tree, b: &Tree, e: Edge) -> Tree {
     let (chamfer, fillet) = (e.chamfer, e.round);
     if chamfer <= 0.0 {
@@ -195,14 +198,25 @@ pub fn intersection_joint(a: &Tree, b: &Tree, e: Edge) -> Tree {
         }
         return ops::intersection_round_at(a, b, fillet, e.cos_faces);
     }
-    let plano = corte(a, b, chamfer, Sentido::Interseccao);
+    let plano = corte(a, b, chamfer, e.cos_faces, Sentido::Interseccao);
     if fillet <= 0.0 {
         return a.max(b.clone()).max(plano);
     }
-    // ⭐⭐⭐ **AS TRÊS DE UMA VEZ** — as duas faces e o plano do corte. Ver a nota da
-    // [`ops::intersection_round_n`] para as duas construções que foram medidas e recusadas antes
-    // desta (duas misturas encaixadas · encolher-chanfrar-deslocar).
-    ops::intersection_round_n(&[a.clone(), b.clone(), plano], fillet)
+    if e.cos_faces == 0.0 {
+        // ⭐⭐⭐ **AS TRÊS DE UMA VEZ** — ver [`SEM_ANGULO_FICA_N_ARIO`] para a medição que manda
+        // este caso ficar aqui, e a nota da [`ops::intersection_round_n`] para as duas construções
+        // recusadas antes dela.
+        return ops::intersection_round_n(&[a.clone(), b.clone(), plano], fillet);
+    }
+    if fillet >= facet_fillet_limit(chamfer, e.cos_faces) {
+        // ⭐⭐⭐ **A FACETA NÃO SOBREVIVE À EROSÃO ⇒ o plano é REDUNDANTE.** Ver o doc da
+        // [`facet_fillet_limit`]: acima do limite o filete é o da quina VIVA, e as duas leis
+        // coincidem exactamente no limite.
+        return ops::intersection_round_at(a, b, fillet, e.cos_faces);
+    }
+    let novo = novo_cosseno(e.cos_faces);
+    ops::intersection_round_at(a, &plano, fillet, novo)
+        .max(ops::intersection_round_at(b, &plano, fillet, novo))
 }
 
 /// ⭐⭐⭐ **A UNIÃO com chanfro e depois filete** — o vinco côncavo entre duas peças.
@@ -217,13 +231,76 @@ pub fn union_joint(a: &Tree, b: &Tree, e: Edge) -> Tree {
         }
         return ops::union_round_at(a, b, fillet, e.cos_faces);
     }
-    let plano = corte(a, b, chamfer, Sentido::Uniao);
+    let plano = corte(a, b, chamfer, e.cos_faces, Sentido::Uniao);
     if fillet <= 0.0 {
         return a.min(b.clone()).min(plano);
     }
-    // ⭐ O dual exacto da [`intersection_joint`]: as três de uma vez, pela mesma razão.
-    ops::union_round_n(&[a.clone(), b.clone(), plano], fillet)
+    if e.cos_faces == 0.0 {
+        return ops::union_round_n(&[a.clone(), b.clone(), plano], fillet);
+    }
+    if fillet >= facet_fillet_limit(chamfer, e.cos_faces) {
+        return ops::union_round_at(a, b, fillet, e.cos_faces);
+    }
+    // ⭐ O dual exacto da [`intersection_joint`], por De Morgan: as duas arestas NOVAS que o corte
+    // criou, cada uma com o cosseno dela, e nunca as três ao mesmo tempo.
+    let novo = novo_cosseno(e.cos_faces);
+    ops::union_round_at(a, &plano, fillet, novo).min(ops::union_round_at(b, &plano, fillet, novo))
 }
+
+/// ⭐⭐⭐ **O COSSENO DAS ARESTAS QUE O CORTE CRIA** — `n_a · n_p`, onde `n_p` é a normal do plano do
+/// chanfro.
+///
+/// Com `n_p = (n_a + n_b)/‖n_a + n_b‖` e `‖n_a + n_b‖ = √(2 + 2κ)`, sai
+/// `n_a·n_p = (1 + κ)/√(2 + 2κ) = √((1+κ)/2)` — que é o `sin α` da cunha de meio-ângulo `α`.
+///
+/// ⚠️ **É o MESMO valor nos dois sentidos.** Sob complementação as três normais viram, e um produto
+/// escalar de duas delas não muda — é por isso que a [`union_joint`] e a [`intersection_joint`] lhe
+/// passam o mesmo número.
+fn novo_cosseno(cos_faces: f64) -> f64 {
+    (0.5 * (1.0 + cos_faces.clamp(-1.0, 1.0))).sqrt()
+}
+
+/// ⭐⭐⭐ **ATÉ QUE RAIO A FACETA DO CHANFRO SOBREVIVE À EROSÃO** — `c·sin α·(1 + sin α)/cos α`.
+///
+/// # A lei, e por que ela não é uma cerca de segurança
+///
+/// Um filete de raio `r` é a **abertura** morfológica: erodir por `r`, dilatar por `r`. Erodir
+/// desloca os três planos (as duas faces e o corte) para dentro por `r`; a faceta sobrevive
+/// enquanto o plano do corte deslocado ainda cortar a quina que as duas faces deslocadas formam.
+///
+/// Com o vértice na origem e a bissectriz em `+x`, a quina das faces deslocadas está em
+/// `x = r/sin α` e o corte deslocado em `x = c·cos α + r`. Eles coincidem em
+/// `r = c·cos α·sin α/(1 − sin α)`, que é a expressão acima depois de racionalizar.
+///
+/// ⭐⭐ **E no limite as DUAS leis dão a MESMA peça, o que torna a fronteira contínua:** ali os três
+/// planos deslocados são concorrentes, logo os centros dos dois arcos coincidem e os dois arcos
+/// **são o mesmo arco** — que é exactamente o filete da quina viva. *A transição não tem degrau
+/// para haver, não porque alguém a suavizou.*
+///
+/// # ⚠️ Acima do limite o CHANFRO é que desaparece, e isso é a geometria, não uma desistência
+///
+/// Se o corte deslocado já não corta a quina deslocada, ele não pertence ao erodido — logo a
+/// abertura do sólido chanfrado é **idêntica** à abertura do sólido vivo. O artista vê o arco comer
+/// o chanfro, que é o que as ferramentas de CAD fazem e é legível.
+///
+/// ⛔ **A alternativa — prender `r` no limite — foi recusada por desenho, não por medição:** ela
+/// deixa o *Fillet* inerte acima de um ponto que nada na tela nomeia, e um controlo que pára de
+/// responder é o modo de falha que esta casa mede desde 2026-08-30. *A lei que fica mantém os dois
+/// controlos vivos: um deles come o outro, à vista.*
+///
+/// ⚠️ A `90°` isto vale `1,7071·c`, então o ponto de trabalho `r = 0,5·c` dos gates fica **dentro**
+/// da faceta em toda forma ortogonal; numa ponta de estrela (`α = 19,2°`) vale `0,4629·c`, e é por
+/// isso que ali o mesmo ponto de trabalho cai do outro lado.
+fn facet_fillet_limit(chamfer: f64, cos_faces: f64) -> f64 {
+    let c = cos_faces.clamp(-COS_FACES_MAX_JOINT, COS_FACES_MAX_JOINT);
+    let (sin_a, cos_a) = ((0.5 * (1.0 + c)).sqrt(), (0.5 * (1.0 - c)).sqrt());
+    chamfer * sin_a * (1.0 + sin_a) / cos_a
+}
+
+/// A mesma cerca da [`ops::union_round_at`], repetida aqui porque as duas leis a partilham: um
+/// `cos_faces` a `±1` é uma cunha degenerada (duas faces paralelas ou coincidentes) e o divisor
+/// `cos α` iria a zero.
+const COS_FACES_MAX_JOINT: f64 = 0.9999;
 
 /// ⭐⭐⭐ **AS PEÇAS DE UM SÓLIDO E OS CHANFROS DAS ARESTAS QUE ELAS FORMAM, NUMA MISTURA SÓ.**
 ///
@@ -258,7 +335,13 @@ pub fn union_joint(a: &Tree, b: &Tree, e: Edge) -> Tree {
 pub fn intersection_joint_n(corpo: &[Tree], arestas: &[(Tree, Tree)], e: Edge) -> Tree {
     let mut pecas: Vec<Tree> = corpo.to_vec();
     for (a, b) in arestas {
-        pecas.push(corte(a, b, e.chamfer, Sentido::Interseccao));
+        pecas.push(corte(
+            a,
+            b,
+            e.chamfer,
+            SEM_ANGULO_FICA_N_ARIO,
+            Sentido::Interseccao,
+        ));
     }
     ops::intersection_round_n(&pecas, e.round)
 }
@@ -272,65 +355,110 @@ pub fn intersection_joint_n(corpo: &[Tree], arestas: &[(Tree, Tree)], e: Edge) -
 pub fn union_joint_n(corpo: &[Tree], arestas: &[(Tree, Tree)], e: Edge) -> Tree {
     let mut pecas: Vec<Tree> = corpo.to_vec();
     for (a, b) in arestas {
-        pecas.push(corte(a, b, e.chamfer, Sentido::Uniao));
+        pecas.push(corte(
+            a,
+            b,
+            e.chamfer,
+            SEM_ANGULO_FICA_N_ARIO,
+            Sentido::Uniao,
+        ));
     }
     ops::union_round_n(&pecas, e.round)
 }
 
-/// De que lado o corte a 45° recua — o único sinal que separa as duas leis acima.
+/// ⛔⛔ **SEM O ÂNGULO, A MISTURA FICA N-ÁRIA — e a razão é MEDIDA em DOIS sítios.**
+///
+/// As duas metades da cura andam juntas: honrar o recuo do corte **exige** honrar a normalização
+/// dele, e o campo `2,15×` mais fiel estreita `2,15×` a região onde o filete mistura sobre o plano.
+/// Numa mistura **por pares** isso é exactamente o que se quer, porque o par sabe o ângulo da
+/// aresta nova. Numa mistura n-ária **não há** quem o saiba: a [`ops::intersection_round_n`] supõe
+/// todos os pares ortogonais, e a matriz de Gram de `N ≥ 3` geradores não tem recorte de forma
+/// fechada.
+///
+/// ⇒ dar-lhe o plano honesto é a célula que a W110 mediu e recusou: na estrela a fracção de
+/// superfície sobre um vinco ia de `5,02 %` para `15,33 %`. *Meia cura desta família deixa a metade
+/// que ficou pior do que estava.*
+///
+/// # ⚠️ E este valor responde por DOIS sítios, com a mesma medição
+///
+/// 1. **A [`intersection_joint_n`] e a [`union_joint_n`]** — a mistura é n-ária por construção (é a
+///    razão de elas existirem: a costura interna de uma composta aflorava na aresta seguinte), logo
+///    o plano tem de ficar ortogonal. ⛔ **Medido na forma que o exprime**, e não extrapolado da
+///    estrela: o **octaedro** é a única cujas doze arestas partilham um ângulo (`κ = 1/3`), logo é a
+///    única que pode dizer «todas as minhas arestas são assim». Com o plano honesto o vinco residual
+///    dela sobe de `10,03 %` para `15,12 %` da superfície, e nenhum gate melhora. *A mistura estreita
+///    a região onde mistura sem saber o ângulo das arestas novas — o mesmo mecanismo, um nível
+///    acima.*
+/// 2. **O `cos_faces == 0` das juntas por PARES** — que é a *ausência declarada* de ângulo
+///    ([`Edge::square`] e [`Edge::of`]). ⛔ A W111 experimentou levar também este caso à decomposição
+///    por pares e a medição recusou: a cruz foi de `3,8°` para `12,2°` de pior giro (`3,19×`, com a
+///    barra em `2,60×`). *Um `a` que é a UNIÃO de meia peça não é uma face, e o `max` de dois
+///    pares só é exacto entre superfícies.*
+///
+/// ⚠️ **Ele é `0.0` e não um `Option`, de propósito:** o sentinela já existe no contrato da
+/// [`Edge`], e um segundo vocabulário para *«não sei o ângulo»* poria duas respostas na mesma
+/// pergunta.
+const SEM_ANGULO_FICA_N_ARIO: f64 = 0.0;
+
+/// De que lado o corte recua — o único sinal que separa as duas leis acima.
 #[derive(Clone, Copy)]
 enum Sentido {
     Uniao,
     Interseccao,
 }
 
-/// O plano do chanfro: `(a + b ∓ c)·√½`.
+/// ⭐⭐⭐ **O PLANO DO CHANFRO** — `(a + b)/√(2+2κ) ± c·√((1−κ)/2)`, e a `κ = 0` isso é
+/// `(a + b ± c)·√½` termo a termo.
 ///
-/// ⚠️ **Ele é uma distância EXACTA a um plano quando as duas normais são ortogonais**, e um
-/// minorante quando o ângulo abre. É a mesma conta do [`ops::union_chamfer`], escrita uma vez para
-/// os dois sentidos — *duas cópias dela discordariam sobre o que um `c` negativo faz*.
+/// # A derivação, em duas linhas
 ///
-/// # ⛔⛔⛔ RECUSA MEDIDA (W107): o chanfro tem a MESMA mentira do filete, e curá-la SOZINHA piora
+/// Com o vértice na origem, a bissectriz em `+x` e meio-ângulo interno `α`, as normais exteriores
+/// são `(−sin α, ±cos α)`, logo `κ = n_a·n_b = −cos 2α`. O corte tem de tocar cada face à distância
+/// `c` **medida ao longo da face**, isto é, em `c·(cos α, ±sin α)`; a normal dele é
+/// `(n_a + n_b)/‖n_a + n_b‖` com `‖n_a + n_b‖ = √(2 + 2κ)`, e a distância do vértice ao plano é
+/// `c·cos α = c·√((1−κ)/2)`.
 ///
-/// A lei honesta existe e está derivada: o corte tem de tocar cada face à distância `c` da aresta
-/// **medida ao longo da face**, e numa cunha de meio-ângulo `α` esse ponto está a `b = −c·sin 2α`,
-/// logo o plano é `(a + b)/√(2(1+κ)) ∓ c·√((1−κ)/2)` — que a `κ = 0` é esta linha, termo a termo.
-/// ⭐ **Ela foi construída e o gate analítico dela passou** (recuo pedido = recuo entregue nos seis
-/// ângulos), o que mede o tamanho da mentira de hoje: **numa ponta de estrela (`α = 19,2°`) o corte
-/// desce `c/sin 2α = 1,61×` o que o número diz** — e o doc que o declarava medido tinha-o medido
-/// no aro de um CILINDRO, que é ortogonal.
+/// # ⭐⭐ As DUAS coisas que isto corrige, e por que uma sem a outra mede pior
 ///
-/// ⛔ **E a peça piora**, porque a mistura das três superfícies não sabe o ângulo das arestas
-/// **novas** que o corte cria. A/B na sonda de arestas (as 20 formas; ⚠️ só a estrela se mexe, todas
-/// as outras são byte a byte iguais):
+/// | | a lei até W110 (`·√½`) | esta |
+/// |---|---|---|
+/// | recuo ao longo da face | `c/sin 2α` — **`1,61×`** o pedido numa ponta de estrela | **`c`** |
+/// | `‖∇plano‖` na mesma ponta | `0,4644` — subestima **`2,15×`** | **`1,0000`** |
 ///
-/// | estrela | só chanfro | `c=.5 r=.2` | `c=.4 r=.4` | `c=.3 r=.5` |
-/// |---|---|---|---|---|
-/// | a lei de hoje (ortogonal, corta `1,61×` a mais) | `22,97 %` | `5,02 %` | `3,80 %` | `0,59 %` |
-/// | **a lei honesta** | `26,38 %` | **`15,10 %`** | `8,65 %` | `1,14 %` |
+/// ⛔⛔ **A W110 construiu a 1.ª metade sozinha e a medição recusou-a**, e a explicação estava na
+/// 2.ª: a região onde o filete mistura sobre o plano é `{|plano| < r}`, logo um campo `2,15×` menor
+/// torna-a `2,15×` mais larga — *a lei antiga escondia o vinco da ponta porque errava numa segunda
+/// coisa, na direcção que compensava a primeira.* A varredura que o provou está no doc da
+/// [`intersection_joint`]: com o recuo honesto e a escala antiga, o pior giro fica em `~85°` do
+/// princípio ao fim do chanfro, e *uma curva plana exclui «ela corta menos, logo sobra mais ponta»*.
 ///
-/// ⚠️ **A régua premeia cortar DEMAIS**: ela conta a fracção de superfície sobre um vinco, e um
-/// corte mais fundo apaga mais ponta. *O `22,97 → 26,38` da coluna «só chanfro» não é um defeito da
-/// lei nova — é o preço honesto de uma faceta menor.* O que **é** defeito é a coluna do par, onde o
-/// pior giro vai de `45,8°` para `84,9°`.
+/// ⚠️ **E nem as duas juntas bastam:** o filete que vem por cima tem de ser aplicado **por pares**,
+/// com o [`novo_cosseno`] das arestas que o corte cria, e travado pelo [`facet_fillet_limit`].
+/// Quatro peças, uma cura.
 ///
-/// ⇒ **O bloqueio tem nome:** a [`ops::union_round_n`] supõe **todos** os pares ortogonais, e as
-/// arestas que o corte cria têm cosseno próprio `√((1+κ)/2)`. Generalizá-la pede a matriz de Gram
-/// inteira, e o recorte que torna a lei de duas faces exacta (ver [`ops::union_round_at`]) **não
-/// tem forma fechada em `N ≥ 3`** — a projecção num cone de 3 geradores é um problema quadrático,
-/// não uma expressão de fita. *Meia cura desta família deixa a metade que ficou pior do que estava.*
+/// # ⚠️ `κ = 0` devolve a expressão ANTIGA, e não a fórmula nova avaliada em zero
 ///
-/// ⭐⭐⭐ **E a W110 mediu a causa REAL, que não é essa:** o plano de hoje **subestima a distância
-/// `2,15×`** numa ponta de estrela (`‖∇plano‖ = 0,4644` contra `1,0`), e é essa subestimação que
-/// alarga `2,15×` a mistura do filete sobre ele — *o segundo erro compensa o primeiro*. A tabela
-/// `2×2` completa e a varredura estão no doc da [`intersection_joint`].
-fn corte(a: &Tree, b: &Tree, c: f64, sentido: Sentido) -> Tree {
-    let soma = a.clone() + b.clone();
-    let deslocado = match sentido {
-        Sentido::Uniao => soma - Tree::constant(c),
-        Sentido::Interseccao => soma + Tree::constant(c),
-    };
-    deslocado * Tree::constant(std::f64::consts::FRAC_1_SQRT_2)
+/// As duas concordam em aritmética exacta e **não ao bit** — `(a+b)·s + c·s` e `(a+b+c)·s` são somas
+/// em ordens diferentes. O ramo curto mantém intocado o caminho de omissão de 25 sítios de chamada,
+/// que é o mesmo motivo por que a [`Edge::square`] existe.
+fn corte(a: &Tree, b: &Tree, c: f64, cos_faces: f64, sentido: Sentido) -> Tree {
+    if cos_faces == 0.0 {
+        // ⭐ **O caminho de sempre, ao bit** — e ele é o caso `κ = 0` da lei abaixo, termo a termo.
+        let soma = a.clone() + b.clone();
+        let deslocado = match sentido {
+            Sentido::Uniao => soma - Tree::constant(c),
+            Sentido::Interseccao => soma + Tree::constant(c),
+        };
+        return deslocado * Tree::constant(std::f64::consts::FRAC_1_SQRT_2);
+    }
+    let k = cos_faces.clamp(-COS_FACES_MAX_JOINT, COS_FACES_MAX_JOINT);
+    let escala = (2.0 + 2.0 * k).sqrt().recip();
+    let recuo = c * (0.5 * (1.0 - k)).sqrt();
+    let normalizado = (a.clone() + b.clone()) * Tree::constant(escala);
+    match sentido {
+        Sentido::Uniao => normalizado - Tree::constant(recuo),
+        Sentido::Interseccao => normalizado + Tree::constant(recuo),
+    }
 }
 
 /// ⭐⭐⭐ **A UNIÃO ENTRE DUAS CÓPIAS** — a junta que só age onde as cópias são **distintas**.

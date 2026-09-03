@@ -222,27 +222,27 @@ fn the_shapes_that_declare_an_angle_are_measured_by_it() {
     );
 }
 
-/// ⭐⭐⭐ **O CHANFRO tem a MESMA mentira, e este gate ESCREVE o tamanho dela.**
+/// ⭐⭐⭐ **O CHANFRO recua o que o slider DIZ, em qualquer quina** (W111).
 ///
-/// O painel promete que *Chamfer* é o recuo **ao longo de cada face**, e a lei que shipa —
-/// `(a + b + c)·√½` — só o entrega a `90°`: fora dali ela desce `c/sin 2α`, que numa ponta de
+/// O painel promete que *Chamfer* é o recuo **ao longo de cada face**, e a lei anterior —
+/// `(a + b + c)·√½` — só o entregava a `90°`: fora dali ela descia `c/sin 2α`, que numa ponta de
 /// estrela (`α = 19,2°`) é **`1,61×`** o número pedido.
 ///
-/// ⛔⛔ **A lei honesta foi construída, gateada e RECUSADA por medição** — o mecanismo, a tabela A/B
-/// das 20 formas e o bloqueio estão no doc da `ops_joint::corte`. ⇒ este gate afirma o **erro
-/// medido**, e não a lei certa: quem trocar o operador sabe em que direcção ele mudou, em vez de só
-/// ver vermelho. *Uma recusa sem gate é uma frase que a próxima pessoa não pode confirmar.*
+/// ⚠️ **Este gate atravessa o PRODUTO** (`ops_joint::intersection_joint`), e não uma fórmula
+/// copiada para o teste: a versão anterior dele escrevia o plano à mão para não usar a função sob
+/// teste, e o preço foi ficar **verde sobre uma lei que o produto já não usava**. *Contra um oráculo
+/// analítico, a régua tem de morder o caminho que o artista percorre.*
 #[test]
-fn the_chamfer_recess_follows_the_angle_and_that_is_the_shipped_error() {
+fn the_chamfer_recess_is_the_number_the_slider_says() {
     const C: f64 = 0.15;
     for &deg in HALF_ANGLES_DEG {
         let alpha = deg.to_radians();
-        let (a, b, _) = wedge(alpha);
-        // O plano que a `ops_joint::corte` constrói para uma intersecção, escrito aqui a partir da
-        // fórmula — ⚠️ **se fosse importado, a régua usaria a função sob teste**.
-        let plano = (a.clone() + b.clone() + Tree::constant(C))
-            * Tree::constant(std::f64::consts::FRAC_1_SQRT_2);
-        let tree = a.max(b).max(plano);
+        let (a, b, cos_faces) = wedge(alpha);
+        let tree = ph2d_field_eval::ops_joint::intersection_joint(
+            &a,
+            &b,
+            ph2d_field_eval::ops_joint::Edge::at(0.0, C, cos_faces),
+        );
         let shape = ph2d_field_eval::Engine::from(tree);
         let tape = shape.ez_float_slice_tape();
         let mut ev = ph2d_field_eval::Engine::new_float_slice_eval();
@@ -276,25 +276,138 @@ fn the_chamfer_recess_follows_the_angle_and_that_is_the_shipped_error() {
             }
         }
         let medido = 0.5 * (lo + hi);
-        let previsto = C / (2.0 * alpha).sin();
         assert!(
-            (medido - previsto).abs() <= 5.0e-4,
-            "a {deg}°: a lei que shipa devia recuar {previsto:.6} e recuou {medido:.6}"
+            (medido - C).abs() <= 5.0e-4,
+            "a {deg}°: o slider pede {C:.6} de recuo ao longo da face e o corte deu {medido:.6}"
         );
-        // ⭐ A metade que impede isto de ser lido como «está tudo bem»: a 45° o número é o pedido,
-        // e em qualquer outro ângulo ele NÃO é — que é exactamente a dívida.
-        let razao = previsto / C;
+        // ⛔ **O CONTROLE, e ele é o tamanho da mentira que isto apagou:** a lei ortogonal descia
+        // `C/sin 2α`, e fora dos 45° isso NÃO é o pedido. Sem esta metade, um operador que voltasse
+        // à fórmula antiga passaria a barra de cima em exactamente um dos seis ângulos e o gate
+        // leria «quase tudo bem».
+        let antiga = C / (2.0 * alpha).sin();
+        let razao = antiga / C;
         if (deg - 45.0).abs() < 1.0e-9 {
             assert!(
                 (razao - 1.0).abs() <= 1.0e-3,
-                "a 45° o chanfro tem de ser honesto"
+                "a 45° as duas leis TÊM de coincidir"
             );
         } else {
             assert!(
                 razao > 1.05,
-                "a {deg}° o chanfro devia cortar mais fundo do que o pedido, e a razão deu {razao:.4}"
+                "a {deg}° a lei antiga devia cortar mais fundo do que o pedido, e deu {razao:.4}"
+            );
+            assert!(
+                (medido - antiga).abs() > 5.0e-4,
+                "a {deg}° o corte devolveu o número da lei ANTIGA ({antiga:.6}) — o operador \
+                 regrediu"
             );
         }
+    }
+}
+
+/// ⭐⭐⭐ **O PLANO DO CHANFRO É UMA DISTÂNCIA** — e este era o segundo erro, o que escondia o
+/// primeiro (W110).
+///
+/// A lei anterior escalava a soma por `√½` seja qual for o ângulo, e `‖∇(a+b)‖ = √(2+2κ)`: numa
+/// ponta de estrela isso deixava `‖∇plano‖ = 0,4644`, a **subestimar `2,15×`**. Um campo `2,15×`
+/// menor torna a região `{|plano| < r}` — onde o filete mistura — `2,15×` mais larga, e era essa
+/// largura a mais que tapava o vinco da ponta.
+///
+/// ⚠️ **É por isso que as duas metades não se movem uma sem a outra**, e por que a cura de W110 que
+/// só honrava o recuo media pior: ela estreitava a mistura sem dar à mistura o ângulo das arestas
+/// novas.
+#[test]
+fn the_chamfer_plane_is_a_true_distance_at_every_angle() {
+    const C: f64 = 0.15;
+    for &deg in HALF_ANGLES_DEG {
+        let alpha = deg.to_radians();
+        let (a, b, cos_faces) = wedge(alpha);
+        let tree = ph2d_field_eval::ops_joint::intersection_joint(
+            &a,
+            &b,
+            ph2d_field_eval::ops_joint::Edge::at(0.0, C, cos_faces),
+        );
+        let shape = ph2d_field_eval::Engine::from(tree);
+        let tape = shape.ez_float_slice_tape();
+        let mut ev = ph2d_field_eval::Engine::new_float_slice_eval();
+        #[allow(clippy::cast_possible_truncation)]
+        let mut at = |x: f64, y: f64| -> f64 {
+            let v = ev
+                .eval(&tape, &[x as f32], &[y as f32], &[0.0])
+                .expect("avalia");
+            f64::from(v[0])
+        };
+        // Sobre a bissectriz, ANTES do corte, só o plano está activo. A derivada ao longo de `+x`
+        // é `−‖∇plano‖`, e o passo é grande de propósito: `f32` em diferenças finitas.
+        const H: f64 = 0.02;
+        let x0 = -0.30;
+        let grad = (at(x0, 0.0) - at(x0 + H, 0.0)) / H;
+        assert!(
+            (grad - 1.0).abs() <= 5.0e-3,
+            "a {deg}°: o plano do chanfro devia ser uma distância e mede ‖∇‖ = {grad:.4}"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **QUANDO O FILETE NÃO CABE NA FACETA, ELE COME O CHANFRO — e a transição não tem degrau.**
+///
+/// A faceta sobrevive à erosão por `r` enquanto `r < c·sin α(1 + sin α)/cos α`. No limite os três
+/// planos deslocados são concorrentes, os centros dos dois arcos coincidem e as duas leis devolvem
+/// a **mesma** peça; acima dele o plano do corte já não pertence ao erodido, logo a abertura do
+/// sólido chanfrado é **idêntica** à do sólido vivo.
+///
+/// ⚠️ **Este gate mede as duas metades da afirmação**: a continuidade no limite (as leis coincidem)
+/// e a identidade acima dele (o chanfro é invisível). ⛔ Sem a segunda, prender `r` no limite
+/// passaria a primeira — e é essa a alternativa que ficou recusada, porque deixa o *Fillet* inerte
+/// sem nada na tela a dizê-lo.
+#[test]
+fn a_fillet_that_outgrows_the_facet_eats_the_chamfer_without_a_step() {
+    const C: f64 = 0.15;
+    for &deg in HALF_ANGLES_DEG {
+        let alpha = deg.to_radians();
+        let (a, b, cos_faces) = wedge(alpha);
+        let (s, k) = (alpha.sin(), alpha.cos());
+        let limite = C * s * (1.0 + s) / k;
+        let com_chanfro = |r: f64| {
+            ph2d_field_eval::ops_joint::intersection_joint(
+                &a,
+                &b,
+                ph2d_field_eval::ops_joint::Edge::at(r, C, cos_faces),
+            )
+        };
+        let so_filete = |r: f64| {
+            ph2d_field_eval::ops_joint::intersection_joint(
+                &a,
+                &b,
+                ph2d_field_eval::ops_joint::Edge::at(r, 0.0, cos_faces),
+            )
+        };
+        // ⭐ A CONTINUIDADE: um fio abaixo do limite e um fio acima têm de dar o mesmo recuo.
+        let (abaixo, acima) = (limite * 0.999, limite * 1.001);
+        let (r_abaixo, r_acima) = (recess(&com_chanfro(abaixo)), recess(&com_chanfro(acima)));
+        assert!(
+            (r_abaixo - r_acima).abs() <= 2.0e-3,
+            "a {deg}°: a transição tem um degrau — {r_abaixo:.6} contra {r_acima:.6}"
+        );
+        // ⭐ A IDENTIDADE: acima do limite o chanfro não se vê.
+        for f in [1.001_f64, 1.5, 2.5] {
+            let r = limite * f;
+            let (com, sem) = (recess(&com_chanfro(r)), recess(&so_filete(r)));
+            assert!(
+                (com - sem).abs() <= 5.0e-4,
+                "a {deg}° com r = {f:.3}× o limite: o chanfro devia ser invisível e mede \
+                 {com:.6} contra {sem:.6}"
+            );
+        }
+        // ⛔ O CONTROLE que impede isto de ser lido como «o chanfro nunca faz nada»: bem abaixo do
+        // limite ele TEM de se ver.
+        let r = limite * 0.25;
+        let (com, sem) = (recess(&com_chanfro(r)), recess(&so_filete(r)));
+        assert!(
+            (com - sem).abs() > 5.0e-3,
+            "a {deg}° com r = 0,25× o limite o chanfro devia mudar a peça, e mede {com:.6} \
+             contra {sem:.6}"
+        );
     }
 }
 

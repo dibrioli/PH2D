@@ -1281,23 +1281,90 @@ fn the_fillet_leaves_no_curvature_ridge() {
 /// filete depois do chanfro mistura TRÊS superfícies, e a `ops::union_round_n` supõe todos os pares
 /// ortogonais (mecanismo e a tabela A/B no doc da `ops_joint::corte`). O tecto abaixo é **absoluto,
 /// em graus**, e por isso não se move quando o filete sozinho melhorar outra vez.
-const RAZAO_BLOQUEADA: [(&str, f64); 1] = [("star", 48.0)];
+/// ⭐⭐⭐ **E a W111 substituiu o TECTO por uma LEI — o número deixou de ser uma tolerância.**
+///
+/// Com o corte honesto (recuo `c`, e não `c/sin 2α`) o pior giro da estrela sobe de `45,8°` para
+/// `82,4°`, e **isso não é uma regressão do operador: é a geometria que o corte antigo escondia.**
+/// ⚠️ Os `45,8°` eram comprados a cortar a ponta `1,61×` mais fundo do que o slider dizia — a ponta
+/// saía romba, e o chanfro do aro chegava lá depois de o vértice já não existir.
+///
+/// ⭐ **A prova é analítica e fecha sozinha.** Numa ponta, o chanfro do aro deixa **duas facetas**,
+/// uma sobre cada flanco, com normais `(n_i + ẑ)/√2`. O ângulo entre elas é
+///
+/// ```text
+/// cos ψ = (n₁·n₂ + 1)/2 = (κ + 1)/2      ⇒   ψ = 83,81°   (κ = −0,7844)
+/// ```
+///
+/// e a sonda mede `82,4°`–`84,9°` **em toda a varredura do chanfro** (oito posições). *Um defeito de
+/// tamanho anda com o tamanho; este não anda porque é um vértice.*
+///
+/// ⛔ **É por isso que a entrada deixou de ser um tecto:** um tecto em graus é uma catraca que sobe
+/// quando a medição piora, e foi exactamente o que ia acontecer aqui (`48` → `85`). A lei não sobe —
+/// ela reprova tanto se o giro **crescer** como se **encolher**, e encolher significaria que alguém
+/// voltou a cortar a ponta a mais.
+const VERTICE_DE_CHANFRO: [&str; 1] = ["star"];
 
-/// O tecto absoluto desta forma, se ela for uma das bloqueadas.
-fn razao_bloqueada(key: &str) -> Option<f64> {
-    RAZAO_BLOQUEADA
-        .iter()
-        .find(|(k, _)| *k == key)
-        .map(|(_, v)| *v)
+/// Esta forma responde pela lei do vértice em vez de pela razão?
+fn vertice_de_chanfro(key: &str) -> bool {
+    VERTICE_DE_CHANFRO.contains(&key)
 }
 
-/// ⛔⛔ **A METADE QUE IMPEDE A CATRACA DE SUBIR** — a mesma lei do
-/// [`the_chamfer_apex_list_has_no_stale_entries`], sobre a lista da [`RAZAO_BLOQUEADA`]: a entrada
-/// tem de **ainda** estourar a razão (senão o bloqueio dissolveu e ela virou licença) e de **ainda**
-/// caber no tecto absoluto que declara (senão ela regrediu e o tecto está a esconder isso).
+/// O meio-ângulo da ponta de uma estrela, e daí o `cos` das normais dos dois flancos.
+///
+/// ⚠️ **Sai dos parâmetros AUTORADOS**, e não do campo — é o oráculo analítico que torna o gate
+/// abaixo uma medição contra trigonometria, e não contra outra implementação nossa.
+fn cos_faces_da_ponta(points: u32, outer: f64, inner: f64) -> f64 {
+    let beta = std::f64::consts::PI / f64::from(points.max(3));
+    let lado = (outer * outer + inner * inner - 2.0 * outer * inner * beta.cos()).sqrt();
+    let alfa = (inner * beta.sin() / lado).clamp(0.0, 1.0).asin();
+    -(2.0 * alfa).cos()
+}
+
+/// ⭐⭐⭐ **O pior giro da estrela com o par É o vértice das duas facetas do aro — nem mais, nem
+/// menos.**
+///
+/// ⚠️ **As duas metades importam.** Se ele CRESCER, o chanfro passou a deixar alguma coisa que a
+/// geometria não pede. Se ele ENCOLHER, alguém voltou a cortar a ponta mais fundo do que o número
+/// diz — que é a mentira de `1,61×` que a W111 apagou, e a única maneira de «melhorar» este número.
+/// *Uma barra só por cima premiaria exactamente o defeito que esta obra removeu.*
 #[test]
-fn the_blocked_ratio_list_has_no_stale_entries() {
-    for (nome, tecto) in RAZAO_BLOQUEADA {
+fn the_star_pair_crease_is_exactly_the_angle_the_two_rim_facets_make() {
+    /// A folga: a varredura de oito posições do chanfro leu `82,4°`–`84,9°` contra os `83,81°` da
+    /// conta, e o resíduo é a malha da sonda — ela amostra normais em pontos vizinhos, não no
+    /// vértice.
+    const FOLGA_GRAUS: f64 = 4.0;
+    let (points, outer, inner) = (5_u32, 0.45_f64, 0.18_f64);
+    let base = representative(PrimitiveKind::Star).expect("a estrela");
+    // ⛔ O controle da FIXTURA: se o representante deixar de ser esta estrela, os números acima
+    // deixam de a descrever e o gate passa a medir outra peça em silêncio.
+    assert!(
+        matches!(
+            base,
+            Primitive::Star { points: p, outer: o, inner: i, .. }
+                if p == points
+                    && (f64::from(o) - outer).abs() < 1.0e-6
+                    && (f64::from(i) - inner).abs() < 1.0e-6
+        ),
+        "o representante da estrela mudou — reconfira os números deste gate"
+    );
+    let previsto = (0.5 * (1.0 + cos_faces_da_ponta(points, outer, inner)))
+        .acos()
+        .to_degrees();
+    let limite = ph2d_field::round_limit(&base).expect("tem filete");
+    let (_, par) = par_de_trabalho(&base, limite * 0.5).expect("aceita o par");
+    println!("  [vertice] star: {par:.1}° medido, {previsto:.2}° pela conta das duas facetas");
+    assert!(
+        (par - previsto).abs() <= FOLGA_GRAUS,
+        "o pior giro da estrela com chanfro deu {par:.1}° e o vértice das duas facetas do aro pede \
+         {previsto:.2}° — se ENCOLHEU, o corte voltou a ser mais fundo do que o slider diz"
+    );
+}
+
+/// ⛔⛔ **A METADE QUE IMPEDE A LISTA DE VIRAR LICENÇA** — a entrada tem de **ainda** estourar a
+/// razão normal, senão o bloqueio dissolveu e ela deixou de descrever alguma coisa.
+#[test]
+fn the_chamfer_vertex_list_has_no_stale_entries() {
+    for nome in VERTICE_DE_CHANFRO {
         let k = PrimitiveKind::ALL
             .iter()
             .find(|k| k.key() == nome)
@@ -1308,17 +1375,10 @@ fn the_blocked_ratio_list_has_no_stale_entries() {
         });
         let (so_filete, par) = par_de_trabalho(&base, limite * 0.5)
             .unwrap_or_else(|| panic!("«{nome}» deixou de aceitar o par — a entrada ficou órfã"));
-        println!(
-            "  [razao-bloqueada] {nome}: {so_filete:.1}° só com filete, {par:.1}° com chanfro \
-             (tecto absoluto {tecto:.1}°)"
-        );
+        println!("  [vertice-censo] {nome}: {so_filete:.1}° só com filete, {par:.1}° com chanfro");
         assert!(
             par / so_filete.max(1.0e-9) > 2.60,
             "«{nome}» já cumpre a razão normal — APAGUE a entrada, senão ela vira licença"
-        );
-        assert!(
-            par <= tecto,
-            "«{nome}» regrediu para {par:.1}°, acima do tecto absoluto de {tecto:.1}°"
         );
     }
 }
@@ -1393,14 +1453,10 @@ fn the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone() {
             };
             let b = pior(&par);
             let razao = b / base_graus.max(1.0e-9);
-            // ⛔ A forma cujo bloqueio está NOMEADO responde a um tecto ABSOLUTO — ver
-            // [`RAZAO_BLOQUEADA`] e o censo que a impede de virar licença.
-            if let Some(tecto) = razao_bloqueada(k.key()) {
-                if b > tecto {
-                    piores.push(format!(
-                        "{k:?} {onde}: {b:.1}° com chanfro, acima do tecto absoluto {tecto:.1}°"
-                    ));
-                }
+            // ⛔ A forma cujo pior giro é um VÉRTICE de chanfro responde a uma **igualdade
+            // analítica** — ver [`the_star_pair_crease_is_exactly_the_angle_the_two_rim_facets_make`]
+            // e o censo que impede a entrada de virar licença.
+            if vertice_de_chanfro(k.key()) {
                 continue;
             }
             if b > PISO_GRAUS && razao > barra {
@@ -1461,5 +1517,47 @@ fn measure_the_star_chamfer_curve() {
             c * 0.5,
             pior(&par)
         );
+    }
+}
+
+/// ⭐⭐⭐ **SONDA: ONDE está o pior giro da estrela COM O PAR ligado** — em cilíndricas.
+///
+/// ⚠️ O gate irmão devolve **um número** para a forma inteira, e uma estrela tem três famílias de
+/// aresta (a ponta · o vale · o aro da tampa) cujas leis vivem em sítios diferentes do
+/// [`ph2d_field_eval::ops::sd_star`]. *Um máximo global não diz qual das três regrediu*, e sem isso
+/// a bissecção é por tentativa.
+///
+/// Leitura: `θ = 0°, ±72°, ±144°` é uma PONTA (raio `outer`), `θ = ±36°, ±108°, 180°` é um VALE
+/// (raio `inner`), e `|z| = half_height` é o aro da tampa.
+#[test]
+#[ignore = "sonda: onde fica o pior giro da estrela com chanfro + filete"]
+fn where_the_star_pair_creases_are() {
+    let base = representative(PrimitiveKind::Star).expect("a estrela");
+    let limite = ph2d_field::round_limit(&base).expect("tem filete");
+    let c = limite * 0.5;
+    for (rotulo, r, ch) in [
+        ("só filete", c, 0.0),
+        ("só filete, METADE do raio", c * 0.5, 0.0),
+        ("par (ponto de trabalho)", c * 0.5, c),
+        ("par (saturação)", c, c),
+    ] {
+        let mut p = base.clone();
+        for (chave, v) in [("field.dim.round", r), ("field.dim.chamfer", ch)] {
+            let Some(i) = ph2d_field::dims(&p).iter().position(|d| d.key == chave) else {
+                continue;
+            };
+            ph2d_field::set_dim(&mut p, 0, i, v).expect("aceita");
+        }
+        let mut pontos = traverse(&p, 2048, 6).0;
+        pontos.sort_by(|a, b| b.1.total_cmp(&a.1));
+        println!("\n  estrela — {rotulo} (r={r:.5} c={ch:.5}), piores giros:");
+        for (q, ang) in pontos.iter().take(10) {
+            let raio = (q[0] * q[0] + q[1] * q[1]).sqrt();
+            let theta = q[1].atan2(q[0]).to_degrees();
+            println!(
+                "    r={raio:.4} θ={theta:+7.1}° z={:+.4} giro={ang:6.1}°",
+                q[2]
+            );
+        }
     }
 }

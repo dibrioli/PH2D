@@ -147,15 +147,45 @@ impl Edge {
 /// a da mistura porque a [`ops::union_round_n`] supõe todos os pares ortogonais e generalizá-la
 /// pede a matriz de Gram inteira, cujo recorte não tem forma fechada em `N ≥ 3`.
 ///
-/// ⚠️⚠️ **E há uma TERCEIRA saída que NÃO foi medida — a recusa do [`corte`] responde só à primeira.**
-/// O plano do chanfro corta a aresta `a ∩ b` fora, logo as arestas que restam são `a ∩ plano` e
-/// `b ∩ plano`, **disjuntas**, e cada uma tem o mesmo cosseno `√((1+κ)/2)`. ⇒ um
-/// `max(intersection_round_at(a, plano, r, κ'), intersection_round_at(b, plano, r, κ'))` daria o
-/// ângulo certo às duas **sem** matriz nenhuma, e `max` de 1-Lipschitz é 1-Lipschitz (⛔ *não* é a
-/// «mistura encaixada» que a [`intersection_joint_n`] mede e recusa — aquela é ANINHADA, esta é
-/// paralela). ⛔ **O preço dela é o VÉRTICE**: a forma n-ária arredonda o canto onde três peças se
-/// encontram e uma decomposição por pares deixa-o vivo. *As duas leis acertam metades diferentes, e
-/// nenhuma das duas foi medida contra a outra* — quem abrir esta wave começa por aí, não por código.
+/// # ⛔⛔⛔ E a TERCEIRA saída foi MEDIDA (W110) — a família está fechada, e a causa é outra
+///
+/// A W107 nomeou uma decomposição **por pares** (o corte tira a aresta `a ∩ b` da fronteira, logo as
+/// que restam são `a ∩ plano` e `b ∩ plano`, disjuntas e as duas com cosseno `√((1+κ)/2)`) e
+/// arriscou que o preço dela fosse o **vértice**. ⛔ **A medição refutou o prognóstico e o remédio.**
+/// A `2×2` completa, na estrela (fracção de superfície sobre um vinco, `c=.5 r=.2 / .4 .4 / .3 .5`):
+///
+/// | plano \ filete | n-ário (o que shipa) | por PARES |
+/// |---|---|---|
+/// | **ortogonal** (o que shipa) | **`5,02` · `3,80` · `0,59`** | `6,96` · `15,02` · `22,79` |
+/// | **honesto** (com o ângulo) | `15,33` · `8,66` · `1,14` | `12,30` · `17,52` · `20,06` |
+///
+/// ⭐ **A assinatura da decomposição por pares é PIORAR com o filete** — em ambas as linhas. Não é o
+/// vértice (num par de faces com um plano de corte não há canto de três): são os **dois arcos a
+/// sobreporem-se** numa faceta estreita, e onde eles se cruzam nasce a crista. *O preço que a nota
+/// anterior previu não era o que a medição cobrou.*
+///
+/// # ⭐⭐⭐ E o que faz a lei de hoje parecer boa é um SEGUNDO erro que compensa o primeiro
+///
+/// Varrendo o chanfro da estrela de `1/8` a `7/8` do limite, o pior giro fica em **`~44°` na lei que
+/// shipa e `~85°` na honesta, do princípio ao fim** — a honesta **não melhora com mais chanfro**, o
+/// que exclui *«ela corta menos, logo sobra mais ponta»*.
+///
+/// A causa é a **normalização**. O plano é `(a+b)·escala`, e `‖∇(a+b)‖ = √(2+2κ)`:
+///
+/// | | escala | `‖∇plano‖` numa ponta de estrela |
+/// |---|---|---|
+/// | a lei que shipa (`·√½`) | `0,7071` | **`0,4644`** — subestima `2,15×` |
+/// | a honesta (`/√(2(1+κ))`) | `1,5227` | **`1,0000`** — é uma distância |
+///
+/// ⇒ a região onde o filete mistura sobre o plano é `{|plano| < r}`, e um campo `2,15×` menor
+/// torna-a **`2,15×` mais larga**. *A lei que shipa esconde o vinco da ponta porque erra numa
+/// segunda coisa, na direcção que compensa a primeira.*
+///
+/// ⛔ **⇒ a dívida é uma só e tem duas metades que se movem juntas:** honrar o recuo obriga a honrar
+/// a normalização, e honrar a normalização estreita a mistura `2,15×` — que é precisamente a
+/// largura de que a ponta precisa. Curar isto é **wave com espec**, não um remendo: ou a mistura
+/// n-ária aprende a matriz de Gram (sem forma fechada no recorte, `N ≥ 3`), ou o chanfro deixa de
+/// ser um plano no `max` e passa a ser geometria própria.
 pub fn intersection_joint(a: &Tree, b: &Tree, e: Edge) -> Tree {
     let (chamfer, fillet) = (e.chamfer, e.round);
     if chamfer <= 0.0 {
@@ -289,6 +319,11 @@ enum Sentido {
 /// inteira, e o recorte que torna a lei de duas faces exacta (ver [`ops::union_round_at`]) **não
 /// tem forma fechada em `N ≥ 3`** — a projecção num cone de 3 geradores é um problema quadrático,
 /// não uma expressão de fita. *Meia cura desta família deixa a metade que ficou pior do que estava.*
+///
+/// ⭐⭐⭐ **E a W110 mediu a causa REAL, que não é essa:** o plano de hoje **subestima a distância
+/// `2,15×`** numa ponta de estrela (`‖∇plano‖ = 0,4644` contra `1,0`), e é essa subestimação que
+/// alarga `2,15×` a mistura do filete sobre ele — *o segundo erro compensa o primeiro*. A tabela
+/// `2×2` completa e a varredura estão no doc da [`intersection_joint`].
 fn corte(a: &Tree, b: &Tree, c: f64, sentido: Sentido) -> Tree {
     let soma = a.clone() + b.clone();
     let deslocado = match sentido {

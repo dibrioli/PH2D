@@ -1420,3 +1420,46 @@ fn the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone() {
         "o chanfro piorou arestas que ele não pode piorar: {piores:?}"
     );
 }
+
+/// ⭐⭐⭐ **SONDA: a estrela, varrida pelo RECUO e não pelo número do slider.**
+///
+/// ⚠️ O gate irmão compara as duas leis **no mesmo valor do slider**, e elas cortam quantidades
+/// diferentes: a lei ortogonal desce `c/sin 2α` (`1,61×` numa ponta de estrela) e a honesta desce
+/// `c`. *Comparar «quanto vinco sobrou» entre duas leis que removem material diferente mede a
+/// remoção, não a lei.* Esta sonda varre o chanfro e imprime a curva, para as duas serem lidas no
+/// mesmo eixo — o RECUO efectivo.
+#[test]
+#[ignore = "sonda: a curva do chanfro da estrela"]
+fn measure_the_star_chamfer_curve() {
+    let base = representative(PrimitiveKind::Star).expect("a estrela");
+    let limite = ph2d_field::round_limit(&base).expect("tem filete");
+    let escreve = |p: &Primitive, chave: &str, v: f32| -> Option<Primitive> {
+        let mut p = p.clone();
+        let i = ph2d_field::dims(&p).iter().position(|d| d.key == chave)?;
+        ph2d_field::set_dim(&mut p, 0, i, v).ok()?;
+        Some(p)
+    };
+    let pior = |p: &Primitive| {
+        traverse(p, 2048, 6)
+            .0
+            .iter()
+            .map(|(_, a)| *a)
+            .fold(0.0f64, f64::max)
+    };
+    println!("\n  limite de filete da estrela: {limite:.4}\n");
+    println!("  chanfro | fillet | pior giro | fracção de vinco");
+    for k in 1..=8 {
+        let c = limite * (k as f32) / 8.0;
+        let Some(par) = escreve(&base, "field.dim.round", c * 0.5)
+            .and_then(|p| escreve(&p, "field.dim.chamfer", c))
+        else {
+            continue;
+        };
+        let (pct, _, _) = probe_with(&par, 2048, 6);
+        println!(
+            "  {c:7.4} | {:6.4} | {:8.1}° | {pct:6.2} %",
+            c * 0.5,
+            pior(&par)
+        );
+    }
+}

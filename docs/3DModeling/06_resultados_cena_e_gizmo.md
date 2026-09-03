@@ -5788,7 +5788,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅⭐⭐⭐ **(2) O RAIO POR OBJETO** — linha **Joint**, derivada, e escrever nela **materializa** o verbo | ⭐ o painel não mudou (as linhas saem do `params_of`) · ⚠️ **Fillet** = as arestas da forma · **Joint** = o encontro, e o grupo passa a dizer `Joint` (é o padrão) | §94 |
 | ✅⭐⭐⭐ **(3) O CHANFRO** — `Fillet · Chamfer · Organic`, **três** chips (a aresta viva é o raio zero) | ⭐ uma fórmula só, exacta · ⚠️ **DUAS réguas** (recuo · mordida) e nenhum carácter bate as duas: o orgânico calibra-se pela **mordida**, o chanfro **não se calibra** · ⛔ 2 mutantes sobreviveram e um era defeito VIVO | §95 |
 | ✅⭐⭐⭐ **O FILETE É UM ARCO EM QUALQUER QUINA** — o operador deixa de supor que as duas faces são perpendiculares | ⭐ o recuo passa a ser `r·(1/sin α − 1)` em todo ângulo; a estrela vai de `3,71` para **`0,66`** de quebra de curvatura · ⚠️ a lei antiga errava nos DOIS sentidos (`2,29×` a menos numa ponta, `2,19×` a MAIS numa parede de hexágono) · ⛔ a 1.ª versão deslocava a FACE | §108 |
-| ⛔ O **CHANFRO** tem a mesma mentira (`1,61×` numa ponta de estrela) | **RECUSA MEDIDA**: a lei honesta existe, tem gate e **piora** a peça — o filete depois do chanfro mistura três superfícies e a `union_round_n` supõe todos os pares ortogonais | §108.6 |
+| ⛔⛔ O **CHANFRO** tem a mesma mentira (`1,61×` numa ponta de estrela) | **RECUSA MEDIDA, família FECHADA** (3 saídas): a causa é um **segundo erro que compensa** — o plano subestima a distância `2,15×`, e é isso que alarga a mistura do filete e esconde o vinco. Honrar o recuo obriga a honrar a escala, e honrar a escala estreita a mistura | §108.6, §111 |
 | ⏳ O teto de `round` da **estrela** é `12,3 %` do bordo, contra `43`–`60 %` das outras | ela é a única em que a mistura é uma faixa estreita a atravessar uma face grande | §104.1 |
 
 - ⭐⭐⭐ **W97 (§93): UM VERBO POR FORMA — e o desenho já era LEI na metade 2D deste app.** Pedido do
@@ -10741,3 +10741,73 @@ clique no **chip**, e quando uma linha do menu é escolhida o activo já é o ce
 que nenhuma mutação mata é código que ninguém pode remover com confiança* — ela saiu, ficou uma
 `debug_assert` a dizer porquê, e o gate passou a medir o activo **logo depois de abrir**, que é onde
 a lei de facto acontece.
+
+---
+
+## §111 — W110: ⛔⛔⛔ O CHANFRO HONESTO — a terceira saída MEDIDA, e a causa não era a que eu previ (02/09)
+
+A W107 curou o **filete** (arco verdadeiro em qualquer quina) e deixou o **chanfro** com a mesma
+mentira: fora dos 90° o corte desce `c/sin 2α`, que numa ponta de estrela é **`1,61×`** o número
+pedido. Ela nomeou uma terceira saída — a **decomposição por pares** — e escreveu que o preço dela
+seria o *vértice*. ⛔ **A medição refutou o prognóstico E o remédio.**
+
+### §111.1 — A `2×2` completa
+
+O corte tira a aresta `a ∩ b` da fronteira, logo as que restam são `a ∩ plano` e `b ∩ plano`,
+**disjuntas** e as duas com cosseno `√((1+κ)/2)`. Um `max` das duas misturas por par daria o ângulo
+certo sem matriz nenhuma — e `max` de 1-Lipschitz é 1-Lipschitz (⛔ **não** é a mistura *aninhada*
+que a `intersection_joint_n` já mede e recusa).
+
+Fracção de superfície sobre um vinco, na **estrela**, nas três células `c=.5 r=.2 / .4 .4 / .3 .5`:
+
+| plano \ filete | n-ário (o que shipa) | por PARES |
+|---|---|---|
+| **ortogonal** (o que shipa) | **`5,02` · `3,80` · `0,59`** | `6,96` · `15,02` · `22,79` |
+| **honesto** (com o ângulo) | `15,33` · `8,66` · `1,14` | `12,30` · `17,52` · `20,06` |
+
+⭐ **A assinatura da decomposição por pares é PIORAR com o filete, nas duas linhas.** Não é o
+vértice — num par de faces com um plano de corte **não há canto de três**, a aresta `a ∩ b` foi
+cortada fora. São os **dois arcos a sobreporem-se** numa faceta estreita, e onde eles se cruzam
+nasce a crista. *O preço que a nota anterior previu não era o que a medição cobrou.*
+
+### §111.2 — ⭐⭐⭐ E a varredura matou a segunda hipótese: um SEGUNDO erro compensa o primeiro
+
+A hipótese seguinte era de RÉGUA — *«a lei honesta corta menos, logo sobra mais ponta, e a régua
+premeia cortar demais»* (a lei do §108.4). Se fosse isso, dar mais chanfro curaria. Varrendo de
+`1/8` a `7/8` do limite, com `fillet = c/2`:
+
+| chanfro | a lei que shipa | a honesta |
+|---:|---:|---:|
+| `1/8` do limite | `64,6°` | `85,3°` |
+| `3/8` | `45,5°` | `85,0°` |
+| `5/8` | `43,9°` | `83,8°` |
+| `7/8` | `43,8°` | `84,6°` |
+
+⛔ **A honesta não melhora com mais chanfro** — fica em `~85°` do princípio ao fim. Não é quantidade
+de corte.
+
+⭐⭐⭐ **A causa é a NORMALIZAÇÃO.** O plano é `(a+b)·escala`, e `‖∇(a+b)‖ = √(2+2κ)`:
+
+| | escala | `‖∇plano‖` numa ponta de estrela |
+|---|---|---|
+| a lei que shipa (`·√½`) | `0,7071` | **`0,4644`** — subestima `2,15×` |
+| a honesta (`/√(2(1+κ))`) | `1,5227` | **`1,0000`** — é uma distância |
+
+A região em que o filete mistura sobre o plano é `{|plano| < r}`, e um campo `2,15×` menor torna-a
+**`2,15×` mais larga**. ⇒ *a lei que shipa esconde o vinco da ponta porque erra numa **segunda**
+coisa, na direcção que compensa a primeira.* Subestimar é seguro para a marcha (é a doutrina desta
+crate), e aqui essa segurança estava a fazer trabalho de produto sem ninguém saber.
+
+### §111.3 — O que fica
+
+⛔ **A dívida é UMA e tem duas metades que se movem juntas:** honrar o recuo obriga a honrar a
+normalização, e honrar a normalização estreita a mistura `2,15×` — que é exactamente a largura de
+que a ponta precisa. Curá-la é **wave com espec**, não um remendo: ou a mistura n-ária aprende a
+matriz de Gram (⛔ sem forma fechada no recorte para `N ≥ 3`), ou o chanfro deixa de ser um plano
+dentro de um `max` e passa a ser geometria própria.
+
+⭐ **O instrumento fica**: `measure_the_star_chamfer_curve` varre o chanfro e imprime a curva — foi
+ele que separou *«corta menos»* de *«erra a escala»*, que nenhuma leitura num ponto só distingue.
+
+⚠️ **E o produto não mexeu um bit**: a árvore voltou ao estado do commit anterior, e o que fica é a
+tabela.

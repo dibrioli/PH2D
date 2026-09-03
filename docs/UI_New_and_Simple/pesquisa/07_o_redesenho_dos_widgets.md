@@ -953,3 +953,60 @@ porque o artista arrasta a barra a primeira vez.*
 ⚠️ A varredura acusou mais dois, e nenhum era real: `the_cost_of_depth_is_linear_not_explosive` (a
 flake de carga que o `CLAUDE.md` §5.0 nomeia — verde sozinha) e um erro de doctest sobre uma
 **árvore a meio de uma edição minha**.
+
+## §17 — ⛔ A OBRA 5 FOI RECUSADA POR MEDIÇÃO, e o buraco que ela escondia (2026-09-03)
+
+### 17.1 — A recusa: a barra fina paga-se com a rolagem
+
+O §5.3 propunha **`scrollbar` a `2 px` em repouso, `10` no hover** — *"devolve 8 px a cada painel,
+em TODOS eles"*. ⛔ **Não shipa**, e a razão é uma cerca que a proposta não leu: o
+`SCROLLBAR_W = 10` tem no doc-comment as palavras do próprio dono —
+
+> *"Wide enough to be a comfortable drag target on iPad/tablet (the user's «Fundamental para
+> ipad/tablet» requirement)"*
+
+⇒ e **num tablet não existe hover**. A barra ficaria a `2 px` para o dedo, permanentemente.
+
+⚠️ A saída óbvia — *«fino no rato, gordo no toque»* — **também não existe**: censo completo,
+`PointerSource::Touch` tem **ZERO** usos fora do `ph2d-host`. O app não consegue distinguir um dedo
+de um rato, então não há como escolher.
+
+### 17.2 — ⛔⛔ E ao verificar a cerca apareceu o buraco a sério
+
+Censo completo de quem escreve `panel_scroll` (sem `head`, todos os ficheiros): **a roda** e **o
+polegar da barra**. Mais nada — `kinetic`/`fling`/`drag_to_scroll` dão 23 acertos no repo e **todos
+são outra palavra** (*reshuffling*, *fling* de animação).
+
+⇒ **Um painel deste app só rola se houver roda de rato, ou se o dedo acertar exactamente nos
+`10 px` da barra.** O tablet é o pré-requisito declarado deste redesenho inteiro, e nele os painéis
+eram, na prática, **não-roláveis**.
+
+*Oito pixels de largura era a pergunta errada.*
+
+### 17.3 — ✅ O que se construiu: arrastar o CORPO rola o painel
+
+`BodyScrollAnchor` + três braços de despacho (`Down` arma · `Move` rola · `Up` larga).
+
+⭐ **O gatilho é `hit.is_none()`**, e é ele que torna isto seguro: **nenhum painel regista o próprio
+fundo** no `HitIndex`, então *«não acertou em nada»* é exactamente *«espaço vazio do painel»*.
+⛔ Um widget que reclame a pressão fica com ela — este gesto **nunca** rouba outro, porque só existe
+onde não havia gesto nenhum. Há gate a afirmá-lo, e a **mutação que apaga a guarda mata-o**
+(verificado: 3 verdes, o controlo vermelho).
+
+⚠️ **A lei é `1:1` e INVERTIDA, e ⛔ não a da barra.** A diferença é o que cada mão agarra: na barra
+o dedo percorre uma **trilha que representa o conteúdo inteiro** (delta proporcional,
+`content_h / track_h`); aqui ele agarra o **próprio conteúdo**, e arrastar `40 px` tem de mostrar
+`40 px`. Reciclar a conta proporcional faria o conteúdo fugir do dedo a `2,5×` num painel comprido.
+
+⚠️ **O tecto lê-se do store a cada `Move`**, não se fotografa no `Down` como o da barra: uma secção
+que se fecha a meio do arrasto encolhe o conteúdo, e um tecto velho deixaria rolar para além do fim.
+
+⭐ **O painel elegível é DERIVADO** (`WidgetStore::scrollable_panel_at`), das tabelas que o pintor
+já publica — ⛔ nunca de uma lista escrita à mão. O shell tem uma dessas para a roda
+(`cursor_over_hero_panel`) e ela **já custou um painel mudo** nesta mesma jornada (§16.5): quem
+acrescenta um painel novo não sabe que a lista existe. *Aqui, publicar `content_h`/`visible_h`
+ganha o gesto sem escrever uma linha.*
+
+⏳ **O que fica nomeado:** não há **inércia** (o conteúdo pára com o dedo) nem limiar de movimento —
+uma pressão parada em espaço vazio já arma o arrasto, e larga sem rolar nada. As duas são afinação
+de sensação, e a sensação mede-se com o dedo, não aqui.

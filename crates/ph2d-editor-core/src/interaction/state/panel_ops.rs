@@ -251,6 +251,35 @@ impl WidgetStore {
         self.scrollbar_drag = None;
     }
 
+    /// ⭐ **O painel ROLÁVEL sob `(x, y)`** — `panel_at` mais a pergunta que decide: *há mais
+    /// conteúdo do que cabe?*
+    ///
+    /// ⚠️ Derivado das tabelas que o pintor publica, **nunca de uma lista escrita à mão**. O shell
+    /// tem uma lista dessas (`cursor_over_hero_panel`, para a roda) e ela já custou um painel mudo:
+    /// quem acrescenta um painel novo não sabe que ela existe. *Aqui, um painel que publique
+    /// `content_h`/`visible_h` ganha o gesto sem escrever uma linha.*
+    #[must_use]
+    pub fn scrollable_panel_at(&self, x: f32, y: f32) -> Option<NodeId> {
+        let panel = self.panel_at(x, y)?;
+        let content_h = self.panel_content_h(panel)?;
+        let visible_h = self.panel_visible_h(panel)?;
+        (content_h > visible_h).then_some(panel)
+    }
+
+    /// Arma o arrasto no corpo. Ver [`crate::interaction::drag::BodyScrollAnchor`].
+    pub fn begin_body_scroll_drag(&mut self, anchor: crate::interaction::drag::BodyScrollAnchor) {
+        self.body_scroll_drag = Some(anchor);
+    }
+
+    #[must_use]
+    pub fn body_scroll_drag(&self) -> Option<crate::interaction::drag::BodyScrollAnchor> {
+        self.body_scroll_drag
+    }
+
+    pub fn end_body_scroll_drag(&mut self) {
+        self.body_scroll_drag = None;
+    }
+
     /// Publish the open dropdown popover that owns scroll (id + popover rect). Called each frame the
     /// popover paints; lets the wheel + `DROPDOWN_SCROLLBAR_ID` drag route to it.
     pub fn set_dropdown_popover(&mut self, id: NodeId, rect: Rect) {

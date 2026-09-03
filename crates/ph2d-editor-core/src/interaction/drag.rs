@@ -205,6 +205,32 @@ pub struct HierarchyDragState {
 /// Continua longo o suficiente pra não disparar em click normal.
 pub const LONG_PRESS_THRESHOLD_NS: u128 = 400_000_000;
 
+/// ⭐⭐⭐ **A âncora do ARRASTO NO CORPO de um painel** — o gesto que uma tela táctil precisa.
+///
+/// ⛔⛔ **Medido em 2026-09-03: um painel deste app só rolava de DUAS maneiras — a roda do rato,
+/// ou agarrar exactamente os `10 px` do polegar da barra.** Um censo completo de quem escreve
+/// `panel_scroll` confirmou-o, e `PointerSource::Touch` tem **zero** usos em todo o repo, logo nem
+/// sequer é possível distinguir um dedo de um rato. ⇒ **num tablet — o pré-requisito declarado
+/// deste redesenho — os painéis eram, na prática, não-roláveis.**
+///
+/// ⚠️ **E foi isto que matou a proposta de encolher a barra para `2 px` em repouso**
+/// (pesquisa `07` §5.3): o `SCROLLBAR_W = 10` traz uma cerca com as palavras do próprio dono
+/// (*"comfortable drag target on iPad/tablet"*), e afiná-la teria tornado a única via de rolagem
+/// táctil **cinco vezes mais fina**. *A economia de 8 px de largura pagava-se com a rolagem.*
+///
+/// A lei aqui é **1:1 e invertida** — o conteúdo segue o dedo —, e ⛔ **não** proporcional como a
+/// da [`ScrollbarDragAnchor`]: ali o dedo percorre uma TRILHA que representa o conteúdo inteiro;
+/// aqui ele agarra o próprio conteúdo.
+#[derive(Copy, Clone, Debug)]
+pub struct BodyScrollAnchor {
+    /// Painel cujo `panel_scroll` o arrasto move.
+    pub panel: NodeId,
+    /// `y` do cursor no momento do Down.
+    pub cursor_y_at_down: f32,
+    /// `panel_scroll(panel)` no momento do Down.
+    pub scroll_at_down: f32,
+}
+
 /// State of an in-progress drag on a scrollbar thumb.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ScrollbarDragAnchor {

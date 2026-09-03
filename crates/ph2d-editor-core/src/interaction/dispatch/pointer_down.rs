@@ -56,6 +56,27 @@ pub(super) fn dispatch_down<'frame>(
     }
 
     let hit = hit_index.hit_with_rect(event.x, event.y);
+
+    // ⭐⭐⭐ **A PRESSÃO QUE NINGUÉM RECLAMOU, dentro de um painel rolável, é o começo de um
+    // ARRASTO DE ROLAGEM** — o gesto que um tablet precisa e que este app não tinha.
+    //
+    // ⛔ Medido em 2026-09-03: um painel só rolava pela **roda** ou agarrando os `10 px` do
+    // polegar da barra, e `PointerSource::Touch` tem **zero** usos no repo. Num tablet — o
+    // pré-requisito declarado deste redesenho — isso é um painel não-rolável.
+    //
+    // ⚠️ **A guarda é `hit.is_none()`, e ela é a razão de isto ser seguro:** nenhum painel regista
+    // o próprio fundo no `HitIndex`, então "não acertou em nada" é exactamente "espaço vazio do
+    // painel". Um widget que reclame a pressão continua a ficar com ela — ⛔ este arrasto **nunca**
+    // rouba um gesto, porque só existe onde não havia gesto nenhum.
+    if hit.is_none()
+        && let Some(panel) = store.scrollable_panel_at(event.x, event.y)
+    {
+        store.begin_body_scroll_drag(crate::interaction::drag::BodyScrollAnchor {
+            panel,
+            cursor_y_at_down: event.y,
+            scroll_at_down: store.panel_scroll(panel),
+        });
+    }
     // ⭐⭐ **Uma aba pode ser CLICADA ou ARRASTADA** (decisão D4: *o artista escolhe qual painel vai
     // em cada lugar*). O Down arma as duas: só a distância percorrida decide qual foi, e ela é
     // medida no `WidgetStore::tab_being_dragged`. Armar aqui — e não no primeiro Move — é o que

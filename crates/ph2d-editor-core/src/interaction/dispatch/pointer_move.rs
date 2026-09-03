@@ -93,6 +93,29 @@ pub(super) fn dispatch_move<'frame>(
         let new_scroll = (anchor.scroll_at_down + scroll_delta).clamp(0.0, max);
         store.set_panel_scroll(anchor.panel, new_scroll);
     }
+    // ⭐⭐⭐ **Arrasto no CORPO do painel** — o conteúdo segue o dedo, **1:1 e invertido**.
+    //
+    // ⚠️ ⛔ **Não é a lei da barra, e a diferença é o que cada mão agarra:** na barra o dedo
+    // percorre uma TRILHA que representa o conteúdo inteiro, então o delta é proporcional
+    // (`content_h / track_h`); aqui ele agarra o **próprio conteúdo**, e arrastar `40 px` para
+    // baixo tem de mostrar exactamente os `40 px` de cima. *Reciclar a conta proporcional faria o
+    // conteúdo fugir do dedo num painel comprido.*
+    //
+    // ⚠️ O tecto é lido do STORE a cada Move (e não fotografado no Down como o da barra): o corpo
+    // pode encolher a meio do arrasto — uma secção que se fecha — e um tecto velho deixaria rolar
+    // para além do fim.
+    if let Some(anchor) = store.body_scroll_drag() {
+        let max = match (
+            store.panel_content_h(anchor.panel),
+            store.panel_visible_h(anchor.panel),
+        ) {
+            (Some(c), Some(v)) => (c - v).max(0.0),
+            _ => 0.0,
+        };
+        let new_scroll =
+            (anchor.scroll_at_down - (event.y - anchor.cursor_y_at_down)).clamp(0.0, max);
+        store.set_panel_scroll(anchor.panel, new_scroll);
+    }
     // Hierarchy drag — keep cursor + active flag updated
     // each Move so the painter can render the drop indicator.
     if store.hierarchy_drag().is_some() {

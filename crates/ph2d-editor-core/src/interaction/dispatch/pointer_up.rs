@@ -26,6 +26,7 @@ pub(super) fn dispatch_up<'frame>(
     store.end_panel_resize();
     // Same for scrollbar drag.
     store.end_scrollbar_drag();
+    store.end_body_scroll_drag();
     // M14.A: NumberInput drag-or-edit Up cleanup. If the
     // threshold was crossed, this Up *commits* the drag-slider
     // delta (already applied during Move) and clears the

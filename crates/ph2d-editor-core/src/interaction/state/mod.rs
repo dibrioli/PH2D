@@ -444,6 +444,8 @@ pub struct WidgetStore {
     /// drag stays linear even if the painter republishes them
     /// mid-drag.
     pub(super) scrollbar_drag: Option<ScrollbarDragAnchor>,
+    /// O arrasto no CORPO de um painel (o gesto tactil). Ver [`BodyScrollAnchor`].
+    pub(super) body_scroll_drag: Option<crate::interaction::drag::BodyScrollAnchor>,
     /// The currently-open dropdown popover that owns scroll: `(dropdown id, popover rect)`. Republished
     /// each frame the popover paints; lets `dispatch_wheel` + the `DROPDOWN_SCROLLBAR_ID` drag route to
     /// it (the scroll value + content/visible heights live in the `panel_scroll`/`panel_*_h` tables

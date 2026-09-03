@@ -102,6 +102,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.verb.add" => "Add",
         "panel.model3d.verb.cut" => "Cut",
         "panel.model3d.verb.common" => "Common",
+        // ⭐⭐ **O MODO DO LAÇO** (W112) — o que o rectângulo de selecção faz ao que apanha.
+        //
+        // ⚠️ **Dois e não três:** «substituir» não é alcançável por laço neste módulo (um arrasto
+        // sem modificador é o Orbit), então um chip para ele seria pintado e morto.
+        "panel.model3d.select.title" => "Lasso",
+        "panel.model3d.select.add" => "Add",
+        "panel.model3d.select.subtract" => "Subtract",
         // ⭐⭐⭐ **O CARÁTER da mistura** (W99) — a FORMA da transição, ao lado do número que diz o
         // tamanho. ⚠️ **Não há um "Sharp" aqui:** a aresta viva é o **raio zero**, e o slider já o
         // exprime — um quarto chip seria uma segunda porta para o mesmo facto, e as duas podiam

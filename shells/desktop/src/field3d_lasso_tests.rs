@@ -57,7 +57,7 @@ pub(crate) fn two_balls() -> FieldDoc {
 }
 
 /// Arma o módulo com a área publicada e a peça cozida — o estado de quem está a olhar para ela.
-fn armed<R>(f: impl FnOnce(&mut SimWorld) -> R) -> R {
+pub(super) fn armed<R>(f: impl FnOnce(&mut SimWorld) -> R) -> R {
     armed_with(&two_balls(), f)
 }
 

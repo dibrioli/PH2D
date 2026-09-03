@@ -31,7 +31,7 @@ mod paint;
 mod paint_rows;
 mod populate;
 
-pub use populate::{MAX_MODES, MAX_ROWS};
+pub use populate::{CHIP_FAMILY_COUNT, MAX_MODES, MAX_ROWS};
 
 /// O identificador do painel — a **chave de visibilidade** que o shell usa para o abrir.
 ///

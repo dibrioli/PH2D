@@ -71,6 +71,7 @@ pub const MAX_MODES: u32 = 16;
 const CHIP_FAMILIES: &[fn(u32) -> ph2d_a11y::NodeId] = &[
     ids::model3d_mode_button,
     ids::model3d_frame_button,
+    ids::model3d_select_button,
     ids::model3d_add_button,
     ids::model3d_op_button,
     ids::model3d_verb_button,
@@ -81,6 +82,14 @@ const CHIP_FAMILIES: &[fn(u32) -> ph2d_a11y::NodeId] = &[
     ids::model3d_view_button,
     ids::model3d_camera_button,
 ];
+
+/// ⭐⭐ **Quantas famílias de chip o painel regista** — derivado da lista, nunca escrito à mão.
+///
+/// ⚠️ Ele existe para o gate `every_chip_family_dispatches_its_own_intent` (`tests/seam.rs`), que é
+/// de outra crate e por isso não vê a lista. *Sem ele, a tabela daquele gate seria uma segunda
+/// contagem a envelhecer* — e a lição está a três linhas daqui, no defeito que o `CHIP_FAMILIES`
+/// curou.
+pub const CHIP_FAMILY_COUNT: usize = CHIP_FAMILIES.len();
 
 pub fn populate(store: &mut WidgetStore) {
     for slot in 0..MAX_MODES {

@@ -147,6 +147,11 @@ impl View {
             // por cima de uma peça que o artista já não estava a olhar.
             view_menu: _,
             view_menu_rect: _,
+            // ⭐⭐ **O modo do LAÇO é CACHE, e a razão é a fileira** (W112): ela só é oferecida com
+            // **duas ou mais** peças escolhidas, e o modo volta a «Add» quando ela desaparece. Um
+            // modo que sobrevivesse ao fecho ficaria **armado e invisível** — a armadilha que esta
+            // casa mede desde 30/08. *O que não se vê não se lembra.*
+            lasso_subtracts: _,
         } = s;
         Self {
             split: *split,

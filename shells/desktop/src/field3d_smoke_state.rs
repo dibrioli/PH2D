@@ -293,6 +293,12 @@ pub(crate) struct Smoke {
     /// ⚠️ É estado de **vista**, e não do documento: por isso vive aqui e não num componente. O
     /// painel mostra-o e as teclas `G`/`R`/`S` trocam-no.
     pub(crate) gizmo_mode: crate::field3d_gizmo::Mode,
+    /// ⭐⭐ **O que o LAÇO faz ao que apanha** (W112) — `false` soma à selecção, `true` tira dela.
+    ///
+    /// ⚠️ **CACHE e não vista**, ao contrário do [`Self::gizmo_mode`]: a fileira que o mostra só é
+    /// publicada com **duas ou mais** peças escolhidas, e o modo é reposto assim que ela deixa de
+    /// ser oferecida. Ver [`crate::field3d_view::View::of`].
+    pub(crate) lasso_subtracts: bool,
     /// ⭐ **Em que referencial os eixos do gizmo apontam** — do mundo, ou do próprio objeto.
     /// Estado de **vista**, como o verbo.
     pub(crate) gizmo_frame: crate::field3d_gizmo::Frame,

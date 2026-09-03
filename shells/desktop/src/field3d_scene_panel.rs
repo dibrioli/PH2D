@@ -30,7 +30,8 @@ pub(crate) fn publish_snapshot(
     let rows = param_rows(world, selection.first().copied(), view_span);
     // ⚠️ A lista de verbos é **derivada de `Mode::ALL`**, que é a fonte da contagem. O painel não
     // conhece o enum — acrescentar um verbo lá faz o seletor seguir sem uma linha de mudança.
-    let (active, frame) = with_smoke(|s| (s.gizmo_mode, s.gizmo_frame)).unwrap_or_default();
+    let (active, frame, mut subtracts) =
+        with_smoke(|s| (s.gizmo_mode, s.gizmo_frame, s.lasso_subtracts)).unwrap_or_default();
     let modes = crate::field3d_gizmo::Mode::ALL
         .iter()
         .map(|m| ph2d_panel_model3d::ModeChip {
@@ -38,6 +39,34 @@ pub(crate) fn publish_snapshot(
             active: *m == active,
         })
         .collect();
+    // ⭐⭐ **O modo do LAÇO** (W112) — dois chips, e o aceso é o que está em vigor.
+    //
+    // ⚠️ **A ordem é a lei**, e não a lista: `0` soma, `1` tira. Ela vive em UM sítio — aqui e no
+    // braço do intent — porque o painel viaja com a POSIÇÃO, nunca com o enum.
+    //
+    // ⭐⭐⭐ **Ela só aparece com DUAS ou mais peças escolhidas**, e o preço é medido: uma fileira
+    // permanente custa `+66 px` de conteúdo, **`+11,9 %`** do painel cheio, para um gesto que só
+    // faz sentido contra um CONJUNTO. ⚠️ E quando ela some, o modo **volta a somar** — senão
+    // ficaria armado e invisível, que é o modo de falha que esta casa mede desde 30/08.
+    let oferece = selection.len() >= 2;
+    if !oferece && subtracts {
+        with_smoke(|s| s.lasso_subtracts = false);
+        subtracts = false;
+    }
+    let selects = if !oferece {
+        Vec::new()
+    } else {
+        [
+            ("panel.model3d.select.add", false),
+            ("panel.model3d.select.subtract", true),
+        ]
+        .into_iter()
+        .map(|(key, sub)| ph2d_panel_model3d::ModeChip {
+            key,
+            active: sub == subtracts,
+        })
+        .collect()
+    };
     let frames = crate::field3d_gizmo::Frame::ALL
         .iter()
         .map(|f| ph2d_panel_model3d::ModeChip {
@@ -125,6 +154,7 @@ pub(crate) fn publish_snapshot(
     ph2d_panel_model3d::publish(ph2d_panel_model3d::ModelSnapshot {
         modes,
         frames,
+        selects,
         adds,
         ops,
         verbs,

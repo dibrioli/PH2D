@@ -5775,7 +5775,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⏸️ O 2.º degrau do assentar custa `504 ms` numa peça densa | a escada tirou-o do caminho; o número fica | §74.2 |
 | ⛔ Reaproveitar o avaliador na **2.ª passagem** (anti-serrilhado) | construído 2×, medido `0,97×`–`1,01×`, **revertido** | §71.4 |
 | ✅ Ladrilhar em `(u, v)` contra o paralelogramo | ⭐ **já feito na W59** (o casco); apertar mais está fora do vale | §79.1 |
-| ⏸️ Um laço que **SUBTRAI** | ✔ mecanismo medido e as 4 saídas com preço; decisão do Enio | §79.3 |
+| ✅⭐⭐ **O laço que SUBTRAI** — um chip *Add / Subtract* no painel | ⛔ a 5.ª saída (o laço a ALTERNAR) é **recusa de produto de 24/08**, não uma tecla em falta · ⭐⭐ o **preço** da fileira (`+66 px`, `+11,9 %`) mudou o desenho: ela só aparece com **2+** escolhidas e o modo **volta a somar** quando ela some · ⭐⭐⭐ uma mutação que SOBREVIVEU achou o buraco do 2.º vão da costura no painel INTEIRO | §113 |
 | ✅ Vários `VecPath` separados | ⭐ era um defeito MUDO, curado: uma peça por forma, todas ligadas | §75 |
 | ✅ Religar uma escultura que mudou de sítio | ⭐ `Relink Sculpture…`, com a chave nova escrita no nó | §77 |
 | ✅ O `Mirror` «não se consegue demonstrar» | ⭐ **demonstra-se** — o modificador na OPERAÇÃO dobra um filho fora do eixo | §79.2 |
@@ -10957,3 +10957,81 @@ quando a coisa medida se move através dele.*
 duas facetas prevê `arccos((κ_vale+1)/2) = 47,7°`. Num vale encontram-se **mais** de duas facetas (as
 duas do entalhe mais as do aro dos dois lados), logo o modelo está incompleto — ⛔ *não* está
 demonstrado que seja defeito, e **também não** que não seja. A ponta, essa, bate a conta ao décimo.
+
+## §113 — W112: ⭐⭐⭐ O LAÇO QUE SUBTRAI — e o preço da fileira mudou o desenho (03/09)
+
+> **Enio, 2026-09-03**, escolhendo da lista de abertos: *«Tirar objectos da selecção com o laço»*.
+
+⚠️ **Eu li o item errado ao oferecê-lo**, e a correcção vale a pena escrever: descrevi-o como
+*«cavar com um desenho»*. «O laço» neste módulo é a **marquise de selecção**
+(`field3d_input_pointer`, `Drag::Lasso`), e cavar com um desenho **já existe** desde a W97 — cada
+forma tem verbo próprio (*Inherit · Add · **Cut** · Common*) e o `Cut` vale para uma peça vinda de
+`+ Extrude` como para qualquer outra. *Duas vezes no mesmo dia um item «aberto» já estava feito —
+§5.0 outra vez.*
+
+### §113.1 — ⛔ A quinta saída existia, e é uma RECUSA DE PRODUTO de 24/08
+
+A [§79.3](#§79.3) lista quatro saídas para *«não há tecla livre para subtrair»*. Antes de aceitar a
+lista, ataquei a frase — e achei uma quinta que ela não tinha: **o clique já ALTERNA**
+(`SelectRequest::Toggle`) e o laço só **soma**. Fazer o laço alternar não custaria tecla nenhuma.
+
+⛔ **Já tinha sido construído (W58) e o Enio reprovou-o**, com o mecanismo escrito no
+`SelectRequest::AddMany`: *«se uma peça estiver selecionada e outra não, o retângulo não seleciona
+todas, mas inverte a seleção»*. Um rectângulo cobre vários e alternar mistura estados que o artista
+**não vê**. ⇒ *o mesmo gesto sobre a mesma tela dá resultados diferentes.*
+
+⭐ **E a recusa NÃO cobre subtrair:** tirar é **determinístico** — tudo o que o rectângulo cobre sai,
+seja qual for o estado por baixo. É por isso que todo editor sério tem **duas** operações de marquise
+e não uma que inverte.
+
+### §113.2 — ⭐⭐ O PREÇO da fileira mudou o desenho, e foi medido antes de shipar
+
+O chip era a única saída sem colisão. Medido com o painel cheio (`last_content_h`, sonda
+`measure_what_the_lasso_row_costs`): uma fileira permanente custa **`+66 px`**, **`+11,9 %`** do
+conteúdo do painel — para um gesto que só faz sentido contra um **conjunto**.
+
+⇒ duas consequências, e a segunda é a que importa:
+
+1. A fileira só é publicada com **duas ou mais** peças escolhidas.
+2. **Quando ela desaparece, o modo volta a somar.** ⛔ Sem isso o artista ficaria com um laço que
+   subtrai e **nada na tela a dizê-lo** — o modo de falha que esta casa mede desde 30/08.
+
+⚠️ E é (2) que decide a natureza do campo: `lasso_subtracts` é **CACHE**, não vista, ao contrário do
+`gizmo_mode`. *O que não se vê não se lembra.*
+
+### §113.3 — ⭐⭐⭐ Uma MUTAÇÃO que sobreviveu achou um buraco na costura do painel INTEIRO
+
+Apagar o braço do laço em `event.rs` deixou **todos** os gates verdes. A causa estava escrita nos
+próprios docs, e em dois sítios:
+
+| gate | o que prova | onde pára |
+|---|---|---|
+| `every_painted_button_answers_a_real_click` | *pintado ⇒ evento* | *«um braço em falta — ou um que despache o slot errado — passaria nela intacto»* |
+| `a_click_on_a_camera_chip_dispatches_that_exact_slot` | *evento ⇒ intenção certa* | **só a fileira da câmera** |
+
+⇒ o segundo vão tinha cura **por fileira**, logo toda fileira NOVA nascia fora dela. A cura que fica
+é genérica: `every_chip_family_dispatches_its_own_intent` varre as **doze** famílias e confere o
+`slot` exacto — e a tabela dele é medida contra `ph2d_panel_model3d::CHIP_FAMILY_COUNT`, **derivado**
+da lista do `populate`. *Uma família nova que ninguém acrescente à tabela fica vermelha, que é a
+resposta certa.*
+
+### §113.4 — Provas de mutação
+
+| mutação | veredito |
+|---|---|
+| **M1** o laço ignora o modo (sempre `AddMany`) | ✝ `the_same_lasso_asks_to_remove_when_the_mode_says_subtract` |
+| **M2** o braço do chip apagado de `event.rs` | ⛔ **SOBREVIVEU** a tudo · ✝ pelo gate novo |
+| **M3** `remove_from_selection` vira no-op | ✝ `removing_from_the_selection_promotes_an_extra_and_ignores_a_stranger` |
+| **M4** o tratador ignora o `slot` | ✝ `the_panel_chip_reaches_the_lasso_and_the_row_only_exists_when_it_serves` |
+| **M5** o braço despacha o `slot` errado | ✝ pelo gate novo (`selects[1] despachou slot 0`) |
+
+⚠️ **`remove_from_selection` foi EXTRAÍDO do `toggle_in_selection`**, não escrito ao lado: o toggle
+passa a ser literalmente *«se está dentro, tira; senão, põe»*. *Escrever a remoção duas vezes é como
+as duas metades de um alternar se afastam.*
+
+### §113.5 — ⛔ O erro de processo que esta wave pagou
+
+Cinco edições por **caminho relativo** foram para a árvore **primária** (a cwd do Bash tinha voltado
+lá), e o transplante de volta trouxe as versões do `main` para uma worktree **49 commits à frente** —
+apagando alterações locais que só o `git checkout --` recuperou. ⚠️ É a **16.ª** ocorrência
+registada da mesma armadilha, e a única edição que escapou foi a que usou caminho **absoluto**.

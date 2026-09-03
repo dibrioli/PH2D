@@ -155,6 +155,7 @@ fn boot() -> Option<Smoke> {
         lasso: None,
         pending_lasso: None,
         gizmo_mode: v.gizmo_mode,
+        lasso_subtracts: false,
         gizmo_frame: v.gizmo_frame,
     };
     // ⭐ **A lista nasce já com a divisão lembrada** (W95). Ela seria reconciliada no primeiro

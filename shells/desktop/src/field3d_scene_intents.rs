@@ -249,6 +249,14 @@ pub(super) fn apply(
                     with_smoke(|s| s.gizmo_frame = frame);
                 }
             }
+            // ⭐⭐ **O modo do LAÇO** (W112), estado de VISTA pela mesma lei. ⚠️ Um `slot` fora dos
+            // dois é ignorado — a mesma resposta que os irmãos dão, e a razão é a mesma: a família
+            // de ids tem `MAX_MODES` posições registadas sempre.
+            ph2d_panel_model3d::ModelIntent::SetLassoMode { slot } => {
+                if slot < 2 {
+                    with_smoke(|s| s.lasso_subtracts = slot == 1);
+                }
+            }
             ph2d_panel_model3d::ModelIntent::SetParam {
                 entity,
                 param,

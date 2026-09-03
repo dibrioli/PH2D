@@ -25,6 +25,7 @@ fn scene_with_one_union() {
     publish(ModelSnapshot {
         modes: Vec::new(),
         frames: Vec::new(),
+        selects: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
         verbs: Vec::new(),
@@ -219,6 +220,7 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
     publish(ModelSnapshot {
         modes: Vec::new(),
         frames: Vec::new(),
+        selects: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
         verbs: Vec::new(),
@@ -304,6 +306,7 @@ fn clicking_a_verb_reaches_the_gizmo_intent() {
             },
         ],
         frames: Vec::new(),
+        selects: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
         verbs: Vec::new(),
@@ -348,6 +351,7 @@ fn a_verb_slot_with_no_verb_behind_it_does_nothing() {
             active: true,
         }],
         frames: Vec::new(),
+        selects: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
         verbs: Vec::new(),
@@ -403,6 +407,7 @@ fn the_axis_selector_is_its_own_family() {
                 active: false,
             },
         ],
+        selects: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
         verbs: Vec::new(),
@@ -451,6 +456,7 @@ fn the_selectors_never_answer_for_each_other() {
             chip("panel.model3d.frame.global"),
             chip("panel.model3d.frame.local"),
         ],
+        selects: Vec::new(),
         adds: vec![
             chip("panel.model3d.add.box"),
             chip("panel.model3d.add.sphere"),
@@ -545,6 +551,7 @@ fn scene_with_one_position_row() {
     publish(ModelSnapshot {
         modes: Vec::new(),
         frames: Vec::new(),
+        selects: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
         verbs: Vec::new(),
@@ -866,6 +873,7 @@ fn every_painted_button_answers_a_real_click() {
             chip("panel.model3d.mode.rotate"),
         ],
         frames: vec![chip("panel.model3d.frame.global")],
+        selects: vec![chip("panel.model3d.select.add")],
         adds: vec![chip("panel.model3d.add.sphere")],
         ops: vec![chip("panel.model3d.op.union")],
         // ⭐⭐ **A fileira do VERBO entra na varredura** (W97) — e é ela que este gate existe para
@@ -961,6 +969,7 @@ fn a_click_on_a_camera_chip_dispatches_that_exact_slot() {
     publish(ModelSnapshot {
         modes: Vec::new(),
         frames: Vec::new(),
+        selects: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
         verbs: Vec::new(),
@@ -1038,6 +1047,7 @@ fn a_click_on_a_verb_chip_dispatches_that_slot_and_never_the_group_op() {
     publish(ModelSnapshot {
         modes: Vec::new(),
         frames: Vec::new(),
+        selects: Vec::new(),
         adds: Vec::new(),
         // ⚠️ As DUAS fileiras publicadas ao mesmo tempo — é essa a disposição que o artista vê com
         // uma forma escolhida, e a única em que a confusão de famílias é observável.
@@ -1112,6 +1122,7 @@ fn a_click_on_a_character_chip_dispatches_that_slot_and_never_the_verb() {
     publish(ModelSnapshot {
         modes: Vec::new(),
         frames: Vec::new(),
+        selects: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
         // As DUAS fileiras publicadas ao mesmo tempo — a disposição em que a confusão é observável.
@@ -1179,6 +1190,7 @@ fn scene_with_one_choice_row() {
     publish(ModelSnapshot {
         modes: Vec::new(),
         frames: Vec::new(),
+        selects: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
         verbs: Vec::new(),
@@ -1271,4 +1283,171 @@ fn a_choice_row_paints_no_slider_to_grab() {
              o mesmo facto"
         );
     }
+}
+
+/// ⭐⭐⭐ **TODA FAMÍLIA DE CHIP DESPACHA A INTENÇÃO DELA** — o segundo vão da costura, para o painel
+/// inteiro (W112).
+///
+/// # ⛔ O buraco que este gate fecha, e ele foi achado por uma MUTAÇÃO que sobreviveu
+///
+/// O [`every_painted_button_answers_a_real_click`] prova *pintado ⇒ evento*, e o próprio doc dele
+/// diz onde pára: *«um braço em falta — ou um que despache o slot errado — passaria nela intacto»*.
+/// A cura que existia era **por fileira** (a da câmera, a do verbo), e por isso uma fileira NOVA
+/// nascia fora dela: apagar o braço do laço em `event.rs` deixava **todos** os gates verdes.
+///
+/// ⭐ Aqui a tabela é varrida contra o [`ph2d_panel_model3d::CHIP_FAMILY_COUNT`], que é **derivado**
+/// da lista do `populate`. Uma família nova que ninguém acrescente aqui faz este gate ficar
+/// **vermelho** — que é a resposta certa, e é o que separa isto de um caso a lembrar.
+#[test]
+fn every_chip_family_dispatches_its_own_intent() {
+    let chip = |k: &'static str| ph2d_panel_model3d::ModeChip {
+        key: k,
+        active: false,
+    };
+    let cheia = |n: usize| (0..n).map(|_| chip("panel.model3d.mode.move")).collect();
+    publish(ModelSnapshot {
+        modes: cheia(2),
+        frames: cheia(2),
+        selects: cheia(2),
+        adds: cheia(1),
+        ops: cheia(3),
+        verbs: cheia(4),
+        // ⚠️ Sem sujeito o `paint` não desenha a fileira do verbo — e sem ela o braço dela não é
+        // exercido. É a mesma armadilha que o gate irmão já nomeia.
+        verb_subject: Some("Cylinder".to_string()),
+        characters: cheia(3),
+        mods: cheia(2),
+        exports: cheia(2),
+        acts: cheia(2),
+        views: cheia(6),
+        camera: cheia(2),
+        rows: Vec::new(),
+        isolated: None,
+        node_count: 1,
+        last_trace_ms: 0.0,
+    });
+    /// `(nome, família de ids, quantos slots, a intenção que cada slot TEM de despachar)`.
+    type Familia = (
+        &'static str,
+        fn(u32) -> ph2d_a11y::NodeId,
+        usize,
+        fn(usize) -> ModelIntent,
+    );
+    let familias: &[Familia] = &[
+        ("modes", ids::model3d_mode_button, 2, |slot| {
+            ModelIntent::SetGizmoMode { slot }
+        }),
+        ("frames", ids::model3d_frame_button, 2, |slot| {
+            ModelIntent::SetGizmoFrame { slot }
+        }),
+        ("selects", ids::model3d_select_button, 2, |slot| {
+            ModelIntent::SetLassoMode { slot }
+        }),
+        // ⚠️ O único que ignora o slot: ele ABRE a paleta, e a forma vem pelo canal dela.
+        ("adds", ids::model3d_add_button, 1, |_| {
+            ModelIntent::OpenShapes
+        }),
+        ("ops", ids::model3d_op_button, 3, |slot| {
+            ModelIntent::ApplyOp { slot }
+        }),
+        ("verbs", ids::model3d_verb_button, 4, |slot| {
+            ModelIntent::SetVerb { slot }
+        }),
+        ("characters", ids::model3d_character_button, 3, |slot| {
+            ModelIntent::SetCharacter { slot }
+        }),
+        ("mods", ids::model3d_mod_button, 2, |slot| {
+            ModelIntent::ToggleMod { slot }
+        }),
+        ("exports", ids::model3d_export_button, 2, |slot| {
+            ModelIntent::Export { slot }
+        }),
+        ("acts", ids::model3d_act_button, 2, |slot| {
+            ModelIntent::Act { slot }
+        }),
+        ("views", ids::model3d_view_button, 6, |slot| {
+            ModelIntent::SetView { slot }
+        }),
+        ("camera", ids::model3d_camera_button, 2, |slot| {
+            ModelIntent::Camera { slot }
+        }),
+    ];
+    assert_eq!(
+        familias.len(),
+        ph2d_panel_model3d::CHIP_FAMILY_COUNT,
+        "o `populate` regista {} famílias de chip e esta tabela conhece {} — a que falta tem um \
+         braço em `event.rs` que NENHUM gate mede",
+        ph2d_panel_model3d::CHIP_FAMILY_COUNT,
+        familias.len()
+    );
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    let mut panel_state = Model3dPanelState;
+    let mut mudas = Vec::new();
+    for (nome, familia, slots, esperada) in familias {
+        for slot in 0..*slots {
+            let _ = drain_intents();
+            host.apply_panel_event::<Model3dPanel>(
+                &mut panel_state,
+                WidgetEvent::Click(familia(u32::try_from(slot).unwrap_or(0))),
+            );
+            let saiu = drain_intents();
+            if saiu != vec![esperada(slot)] {
+                mudas.push(format!("{nome}[{slot}] despachou {saiu:?}"));
+            }
+        }
+    }
+    assert!(
+        mudas.is_empty(),
+        "⛔ fileiras cujo clique NÃO vira a intenção delas: {mudas:?}"
+    );
+}
+
+/// ⭐⭐ **SONDA: o que a fileira do laço CUSTA ao painel** (W112).
+///
+/// ⚠️ A casa exige que toda faixa permanente diga o preço dela em vez de o supor. Aqui a régua é a
+/// altura de conteúdo do painel com e sem a fileira — o painel rola, então o custo não é ecrã
+/// roubado ao canvas, é uma linha a mais de rolagem.
+#[test]
+#[ignore = "sonda: o preco em pixels da fileira do laco"]
+fn measure_what_the_lasso_row_costs() {
+    let chip = |k: &'static str| ph2d_panel_model3d::ModeChip {
+        key: k,
+        active: false,
+    };
+    let cheia = |n: usize| (0..n).map(|_| chip("panel.model3d.mode.move")).collect();
+    let mut alturas = Vec::new();
+    for selects in [Vec::new(), cheia(2)] {
+        publish(ModelSnapshot {
+            modes: cheia(3),
+            frames: cheia(2),
+            selects,
+            adds: cheia(1),
+            ops: cheia(3),
+            verbs: cheia(4),
+            verb_subject: Some("Cylinder".to_string()),
+            characters: cheia(3),
+            mods: cheia(8),
+            exports: cheia(4),
+            acts: cheia(4),
+            views: cheia(6),
+            camera: cheia(2),
+            rows: Vec::new(),
+            isolated: None,
+            node_count: 1,
+            last_trace_ms: 0.0,
+        });
+        let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+        host.set_panel_visible(Model3dPanel::ID, true);
+        let mut panel_state = Model3dPanelState;
+        let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
+        let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
+        alturas.push(ph2d_panel_model3d::last_content_h());
+    }
+    let (sem, com) = (alturas[0], alturas[1]);
+    println!(
+        "\n  altura de conteúdo do painel: {sem:.1} px sem a fileira, {com:.1} px com ela \
+         (+{:.1} px, +{:.1} %)",
+        com - sem,
+        100.0 * (com - sem) / sem.max(1.0)
+    );
 }

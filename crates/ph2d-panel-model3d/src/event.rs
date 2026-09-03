@@ -137,6 +137,13 @@ pub(crate) fn apply_event(
                 true
             }
         }
+        WidgetEvent::Click(id) if slot_in(id, ids::model3d_select_button).is_some() => {
+            let slot = slot_in(id, ids::model3d_select_button).unwrap_or(0);
+            slot < state::current().selects.len() && {
+                state::push_intent(ModelIntent::SetLassoMode { slot });
+                true
+            }
+        }
         // ⭐⭐⭐ **UM botão, e ele ABRE a paleta** (W100) — ver [`crate::ModelIntent::OpenShapes`].
         //
         // ⚠️ O `slot` continua a ser conferido contra a fileira publicada, e não é cerimónia: a

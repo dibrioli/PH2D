@@ -288,6 +288,21 @@ impl GizmoStateGroup {
     /// an extra (or as primary if nothing was selected). Drives
     /// Cmd/Ctrl-click on macOS / Windows.
     pub fn toggle_in_selection(&mut self, bits: u64) {
+        if self.is_selected(bits) {
+            self.remove_from_selection(bits);
+            return;
+        }
+        self.add_to_selection(bits);
+    }
+
+    /// Drops `bits` from the selection, keeping everything else. If it was the
+    /// primary, the oldest extra is promoted (or the selection clears). If it
+    /// was an extra, it is removed. If it was not selected, no-op.
+    ///
+    /// ⭐ Extracted from [`Self::toggle_in_selection`], which is now literally
+    /// *"if it is in, take it out; otherwise put it in"* — one law, two readers.
+    /// Writing the removal twice is how the two halves of a toggle drift apart.
+    pub fn remove_from_selection(&mut self, bits: u64) {
         if self.selection == Some(bits) {
             self.selection = if self.extra_selection.is_empty() {
                 None
@@ -298,9 +313,7 @@ impl GizmoStateGroup {
         }
         if let Some(pos) = self.extra_selection.iter().position(|&b| b == bits) {
             self.extra_selection.remove(pos);
-            return;
         }
-        self.add_to_selection(bits);
     }
 }
 

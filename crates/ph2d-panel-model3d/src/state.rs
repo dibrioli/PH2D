@@ -122,6 +122,16 @@ pub struct ModelSnapshot {
     pub modes: Vec<ModeChip>,
     /// ⭐ Os referenciais de eixo (global / local), na mesma forma e pela mesma razão.
     pub frames: Vec<ModeChip>,
+    /// ⭐⭐ **O que o LAÇO faz ao que apanha** (W112) — somar à selecção, ou tirar dela.
+    ///
+    /// ⛔ **É um chip e não um modificador, e a lista das quatro saídas está medida** (doc 06
+    /// §79.3): o `Alt` é roubado pelo gestor de janelas, o arrasto com o botão direito **é** o
+    /// Orbit, e um modificador lido a meio troca o verbo de um gesto já começado. O chip é o único
+    /// sem colisão — e o único **descobrível**, que é o que decide num módulo cujo dono aprende as
+    /// ferramentas ao usá-las.
+    ///
+    /// ⚠️ Vazio ⇒ não é pintado.
+    pub selects: Vec<ModeChip>,
     /// ⭐ **A porta de criar** — hoje **um** chip, que abre a paleta de formas (W100).
     ///
     /// ⚠️ Continua a ser uma fileira e não um `bool`, e não é indecisão: o `paint_chips` já sabe
@@ -236,6 +246,8 @@ pub enum ModelIntent {
     SetGizmoMode { slot: usize },
     /// Trocar o referencial dos eixos, pela **posição** no seletor.
     SetGizmoFrame { slot: usize },
+    /// ⭐⭐ **Trocar o que o LAÇO faz ao que apanha** (W112), pela **posição** no seletor.
+    SetLassoMode { slot: usize },
     /// ⭐⭐⭐ **ABRIR a paleta de formas** (W100) — e repare que ele **não traz forma nenhuma**.
     ///
     /// ⚠️ Ele substituiu um `AddShape { slot }`, e a diferença é a que faz o catálogo poder

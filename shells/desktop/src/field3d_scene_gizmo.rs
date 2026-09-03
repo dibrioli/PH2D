@@ -147,6 +147,7 @@ pub(super) fn resolve_lasso(
     doc: Option<&FieldDoc>,
     a: [f32; 2],
     b: [f32; 2],
+    subtracts: bool,
 ) -> Option<SelectRequest> {
     let (root, cam, screen) = pick_frame(sim, doc)?;
     let doc = doc?;
@@ -213,7 +214,14 @@ pub(super) fn resolve_lasso(
     }
     bits.sort_unstable();
     bits.dedup();
-    (!bits.is_empty()).then_some(SelectRequest::AddMany(bits))
+    // ⭐⭐ **O QUE ele apanhou é a mesma pergunta; o que se FAZ com isso é o modo** (W112). A
+    // colheita acima não sabe nem tem de saber qual dos dois vai ser — *duas colheitas seriam duas
+    // respostas a «o que está dentro do rectângulo».*
+    (!bits.is_empty()).then_some(if subtracts {
+        SelectRequest::RemoveMany(bits)
+    } else {
+        SelectRequest::AddMany(bits)
+    })
 }
 
 /// O passo do laço, em pixels de ecrã.

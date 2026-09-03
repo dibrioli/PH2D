@@ -213,6 +213,53 @@ produto. Os 3-5 são waves com desenho próprio.
 
 ---
 
+## §10 — FEITO em 2026-09-02: os dois canais grátis
+
+Ordem do Enio no mesmo dia: *«siga como sugere»*.
+
+### (a) A COR do socket passa a dizer a ESPÉCIE
+
+`socket_token` (`paint.rs`) substitui o `domain_token` no glifo. As **três** espécies que o
+módulo de facto tem, contadas:
+
+| espécie | portas | token |
+|---|---:|---|
+| pulso (`Clock::Event`) | 8 (5,8%) | `PortEvent` ⭐ **já existia e nunca fora usado** |
+| número (`Dim::Scalar`) | 45 (32,6%) | `PortValue` ⭐ **novo**, teal, matiz 190 |
+| corrente (vector) | 93 (67,4%) | `PortInstances` — **a cor de sempre** |
+
+⚠️ **O relógio pergunta-se PRIMEIRO**: um pulso escalar é um pulso, não um número. Gate
+`a_scalar_pulse_reads_as_a_pulse_and_not_as_a_number`, e a mutação que troca a ordem morre.
+⚠️ **93 das 138 portas não mudam um pixel** — uma cura que repintasse tudo seria uma mudança
+de tema disfarçada de correcção (gate `the_stream_keeps_the_colour_it_always_had`, mutação
+morta). ⚠️ **A colisão de matiz com o `port-signal` (195) está NOMEADA no token**, não
+descoberta: os dois separam-se por luminosidade e croma, e o `Domain::Signal` nunca aparece
+num grafo de Motion.
+⏳ **O FIO ainda não** — a `GraphEdgeView` só carrega `out_domain`; pintá-lo pela espécie pede
+um campo novo no snapshot.
+
+### (b) A SILHUETA passa a ser PINTADA — como selo no cabeçalho
+
+⚠️⚠️ **E a minha palavra «grátis» estava errada, corrigida por medição.** A primeira ideia era
+o contorno do CARTÃO, como ele faz — mas o corpo define os rectângulos de hit **e a posição de
+cada socket** (`geom`/`hits`), então mudar-lhe a forma arrasta a geometria toda. **O cabeçalho
+é a única superfície onde de facto é grátis.**
+
+⭐ **E o censo escolheu a lei:** `Rect` são **106 de 132 nós (80,3%)** — o modificador genérico.
+Um selo neles seria o mesmo ruído que a lei do rótulo de porta já recusou. ⇒ **`Rect` não veste
+selo**, e 106 cartões saem byte a byte como antes; os **26** que declaram outro papel pagam
+`15 px` do título (`178 → 163`, `−8,4%`), medido e gateado.
+
+Seis formas, com a tinta do TÍTULO (não uma sexta cor a competir com a categoria): ○ terminal ·
+◇ decisão · cápsula junção · trapézio-baixo fonte · trapézio-cima sink · aba I/O externo.
+⚠️ O `match` é **exaustivo sem braço `_`**: um papel novo no registry passa a ser **erro de
+compilação** no único sítio onde alguém se lembraria de lhe dar forma.
+
+⭐ Nasceu uma primitiva partilhada, `ph2d_editor_core::paint_shapes::fill_polygon` — *uma geral
+custa menos que três especiais e não convida a uma quarta*.
+
+---
+
 ## ⛔ Recusas MEDIDAS deste estudo
 
 | recusa | mecanismo |
@@ -221,4 +268,6 @@ produto. Os 3-5 são waves com desenho próprio.
 | *«ele tem mais nós»* | **Falso**: `registerNode` conta **134**; nós também |
 | *«a conversão automática é obviamente melhor»* | **Não**: ela inventa resultado que ninguém autorou. A saída superior é recusar **e oferecer** |
 | *«devíamos ficar bilingues como ele»* | ⛔ contraria a lei do próprio dono (§8) — nomeado, não proposto |
-| *«a nossa silhueta não existe»* | **Falso**: existe, está preenchida em 132 nós e tem 6 valores — só não é **pintada** |
+| *«a nossa silhueta não existe»* | **Falso**: existe, está preenchida em 132 nós e tem 6 valores — só não era **pintada** (§10b) |
+| *«pintar a silhueta é grátis»* | **Meu, e falso**: o contorno do CARTÃO arrasta hits e sockets. Grátis só no **cabeçalho** (§10b) |
+| *«a cor do socket é um canal com dois valores»* | **Três**: o `Clock::Event` distingue **8 portas** que nem o domínio nem a dimensão vêem (§10a) |

@@ -155,6 +155,7 @@ fn what_the_socket_encoding_carries() {
     let mut por_dominio: BTreeMap<String, usize> = BTreeMap::new();
     let mut por_forma: BTreeMap<&'static str, usize> = BTreeMap::new();
     let mut pares: BTreeMap<String, usize> = BTreeMap::new();
+    let mut relogios: BTreeMap<String, usize> = BTreeMap::new();
     let mut saidas = 0usize;
     let mut com_varias_saidas = 0usize;
     let mut tipos = 0usize;
@@ -166,6 +167,7 @@ fn what_the_socket_encoding_carries() {
         for p in m.outputs {
             saidas += 1;
             let dom = format!("{:?}", p.ty.domain);
+            *relogios.entry(format!("{:?}", p.ty.clock)).or_default() += 1;
             let forma = match p.ty.dim {
                 Dim::Scalar => "circulo (escalar)",
                 _ => "losango (vector)",
@@ -189,6 +191,13 @@ fn what_the_socket_encoding_carries() {
     for (k, v) in &por_forma {
         eprintln!(
             "    {k:<20} │ {v:>4} portas ({:>5.1}%)",
+            *v as f64 * 100.0 / saidas as f64
+        );
+    }
+    eprintln!("  --- canal RELOGIO (Clock) — os tokens PortEvent/PortStatic esperam-no ---");
+    for (k, v) in &relogios {
+        eprintln!(
+            "    {k:<12} │ {v:>4} portas ({:>5.1}%)",
             *v as f64 * 100.0 / saidas as f64
         );
     }

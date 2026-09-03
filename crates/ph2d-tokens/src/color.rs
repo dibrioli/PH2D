@@ -427,6 +427,25 @@ color_tokens! {
     PortEvent => "port-event",
     /// `port-static` — `Clock::Static` const (neutral).
     PortStatic => "port-static",
+    /// `port-value` — **um NÚMERO** (`Dim::Scalar` num domínio de corrente), teal.
+    ///
+    /// ⛔⛔ **Por que ele nasceu** (estudo do Mini Cavalry,
+    /// [doc 99](../../../docs/Motion%20Nodes/99_estudo_do_mini_cavalry_2026-09-02.md)): o
+    /// socket desta casa codifica em dois canais — a COR pelo `Domain` e a FORMA pelo `Dim` —
+    /// e **a cor não distinguia nada**: medido no registry, `Instances` em **100% das 138
+    /// portas** do módulo Motion. A distinção que o módulo de facto tem é *um número · uma
+    /// corrente · um pulso*, e só a forma a carregava (○ contra ◇), sem legenda em lado nenhum.
+    ///
+    /// ⇒ é a causa medida do report de 2026-09-01 (*«lfo nem oscillator conseguem atuar sobre
+    /// Angle de Rotate»*): o `value.lfo` emite escalar e o `motion.oscillator` emite vector, e
+    /// os dois sockets eram do MESMO roxo.
+    ///
+    /// ⚠️ **Matiz 190, e o vizinho é o `port-signal` (195)** — que **nunca aparece** num grafo
+    /// de Motion (o censo diz `Instances` em 100%). Se um dia um porto de `Domain::Signal`
+    /// dividir um cartão com um escalar, os dois separam-se pela **luminosidade** (`0,780`
+    /// contra `0,720`) e pela **croma** (`0,130` contra `0,110`) — não pelo matiz. *A colisão
+    /// está nomeada em vez de descoberta.*
+    PortValue => "port-value",
 
     // ── Motion Nodes: graph surfaces + wire activity ───────────────
     /// `graph-bg` — node canvas backdrop (dark in every theme).

@@ -29,6 +29,10 @@ mod paint_breadcrumb;
 mod paint_inert_badge;
 #[path = "paint_port_label.rs"]
 mod paint_port_label;
+/// A ESPÉCIE e o PAPEL: a cor de um socket e o selo do cabeçalho — irmão cortado no teto de
+/// LOC, por responsabilidade (ver o cabeçalho dele).
+#[path = "paint_role.rs"]
+mod paint_role;
 #[path = "paint_stamp.rs"]
 mod paint_stamp;
 #[path = "paint_wire.rs"]
@@ -38,6 +42,7 @@ mod paint_wires;
 use paint_inert_badge::draw_inert_badge;
 use paint_port_label::draw_port_labels;
 pub use paint_port_label::{PortLabel, input_label_budget_px};
+use paint_role::{role_glyph, role_inset_px, socket_token};
 #[path = "paint_grid.rs"]
 mod paint_grid;
 #[path = "paint_overlays.rs"]
@@ -83,10 +88,10 @@ const BYPASS_STRIKE_W: f32 = 2.5; // LITERAL-PX-OK: the strike across a muted ca
 const SOCKET_R: f32 = 5.0; // LITERAL-PX-OK: socket dot radius
 const FIT_PAD: f32 = 44.0; // LITERAL-PX-OK: fit-view margin
 const TARGET_RING_PAD: f32 = 3.0; // LITERAL-PX-OK: compatible-target ring beyond the socket
-const TITLE_PAD_X: f32 = 8.0; // LITERAL-PX-OK: card title left inset
+pub(super) const TITLE_PAD_X: f32 = 8.0; // LITERAL-PX-OK: card title left inset
 const TITLE_PAD_Y: f32 = 5.0; // LITERAL-PX-OK: card title top inset
 const TITLE_SIZE: f32 = 13.0; // LITERAL-PX-OK: card title font size
-const TITLE_INSET_R: f32 = 12.0; // LITERAL-PX-OK: card title right inset
+pub(super) const TITLE_INSET_R: f32 = 12.0; // LITERAL-PX-OK: card title right inset
 const READOUT_SIZE: f32 = 11.0; // LITERAL-PX-OK: inline readout font size (below the title's)
 const READOUT_PAD_Y: f32 = 4.0; // LITERAL-PX-OK: inline readout top inset within its row
 const PREVIEW_RADIUS: f32 = 3.0; // LITERAL-PX-OK: postage-stamp window corner radius
@@ -371,16 +376,21 @@ fn draw_card(
         stroke_rounded_rect(ctx.scene, body, r, 2.0, resolve(ColorToken::Accent, theme));
     }
 
+    // ⭐⭐⭐ **O SELO DE PAPEL** — o que este nó É no grafo (fonte · decisão · junção ·
+    // terminal · I/O), desenhado no cabeçalho. Ver [`role_glyph`].
+    let role = role_inset_px(n.silhouette);
+    role_glyph(ctx, n, view, theme);
+
     // A stamped node's title clips short of its header toggle (doc 86).
     let toggle_w = geom::PREVIEW_TOGGLE_W * f32::from(u8::from(n.preview.is_some()));
     paint_text_title_elided(
         ctx.text_system,
         ctx.scene,
         &n.display_name,
-        sx + TITLE_PAD_X * view.zoom,
+        sx + (TITLE_PAD_X + role) * view.zoom,
         sy + TITLE_PAD_Y * view.zoom,
         TITLE_SIZE * view.zoom,
-        w - (TITLE_INSET_R + toggle_w) * view.zoom,
+        w - (TITLE_INSET_R + toggle_w + role) * view.zoom,
         resolve(ColorToken::Text1, theme),
     );
 
@@ -474,7 +484,7 @@ pub(crate) fn bypass_strike(body: Rect) -> [(f32, f32); 2] {
 /// door the input AND output loops go through, so the two can never disagree on how a
 /// socket looks (the bug a second copy invites six months on).
 fn paint_socket_glyph(ctx: &mut PaintCtx, cx: f32, cy: f32, r: f32, p: &PortView, theme: Theme) {
-    let color = resolve(domain_token(p.domain), theme);
+    let color = resolve(socket_token(p), theme);
     match socket_glyph(p.dim) {
         SocketGlyph::Value => fill_circle(ctx.scene, cx, cy, r, color),
         SocketGlyph::Column => fill_diamond(ctx.scene, cx, cy, r, color),
@@ -542,7 +552,7 @@ pub fn cat_token(c: NodeUiCategory) -> ColorToken {
     }
 }
 
-fn domain_token(d: Domain) -> ColorToken {
+pub(super) fn domain_token(d: Domain) -> ColorToken {
     match d {
         Domain::Instances => ColorToken::PortInstances,
         Domain::Vector => ColorToken::PortVector,

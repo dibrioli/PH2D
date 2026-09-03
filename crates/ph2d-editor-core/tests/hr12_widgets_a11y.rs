@@ -448,6 +448,14 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-motion-graph/src/paint_wire.rs",
         "pure spline drawing — the wires' AccessKit nodes are registered in hits.rs",
     ),
+    // ⚠️ **A ESPÉCIE e o PAPEL** (estudo do Mini Cavalry, doc 99 §10) — a cor de um socket e o
+    // selo de papel do cabeçalho. Irmão dos dois acima e pela MESMA razão demonstrável: ele
+    // resolve um `ColorToken` e enche formas, e não tem `HitIndex` nem `WidgetStore` no escopo.
+    // Quem regista o socket e o cartão é o `hits.rs`, onde o a11y deles já é emitido.
+    (
+        "ph2d-panel-motion-graph/src/paint_role.rs",
+        "pure glyph drawing — the sockets' and cards' AccessKit nodes are registered in hits.rs",
+    ),
     // The add-node popup's DRAW — split from `paint.rs` for the 600-LOC cap (doc 57).
     //
     // It registers nothing because the MENU registers nothing: its rows are hit-tested

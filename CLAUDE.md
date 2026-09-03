@@ -244,7 +244,15 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   cara, 34 s sozinha, no pico do fan-out por construção) ·
   `packing_a_dense_scribble_is_bounded` ([`ph2d-flip-render`](crates/ph2d-flip-render/tests/pack_perf.rs)
   — medido 2026-09-01 numa corrida de **20 309** testes, verde **3 de 3** sozinho e com **zero
-  linhas** do diff naquela crate) · e ⚠️ **as duas de ALOCAÇÃO**, espécie
+  linhas** do diff naquela crate) ·
+  `measure_normals_parallel_speedup` ([`ph2d-mesh`](crates/ph2d-mesh/tests/measure_normals.rs) —
+  o **segundo** membro deste ficheiro; mede a razão paralelo/série sobre uma esfera de 5 M
+  triângulos)
+  ⚠️⚠️ **E o «sozinho» da assinatura quer dizer *com a CARGA MEDIDA*, não *sem filtro*** — em
+  2026-09-02 eu li `measure_normals_parallel_speedup` como **`3 de 3 VERMELHO` sozinho** e quase
+  o arquivei como defeito real; a máquina estava a **load 82** (a suíte de 20 316 ainda a
+  esvaziar). Com `load 3,2`: **3 de 3 verde**. *Imprima o `/proc/loadavg` AO LADO de cada
+  corrida de confirmação, senão a régua que desmente a flake é a própria flake.* · e ⚠️ **as duas de ALOCAÇÃO**, espécie
   própria: `apply_from_doc_is_zero_alloc_steady_state` (ph2d-timeline) e
   `the_trusted_len_collect_allocates_once` (ph2d-audio-edit) — um contador de alocações parece
   imune a carga e não é: sob fan-out o alocador global reutiliza arenas de outra maneira ·

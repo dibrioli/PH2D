@@ -124,24 +124,86 @@ impl Checkbox {
 /// Per tokens.json `chrome.checkbox-box`.
 pub const CHECKBOX_BOX_PX: f32 = CHROME_CHECKBOX_BOX;
 
-/// Square box (left) + label (right). Box fills with `Accent` when
-/// Checked, paints a check glyph; Indeterminate paints a dash glyph.
-pub fn paint_checkbox(
-    cb: &Checkbox,
+/// ⭐⭐⭐ **O pintor de uma MARCA BOOLEANA — e desde 2026-09-03 há um só no app.**
+///
+/// Pinta a superfície da linha (que acende) e a caixa com o glifo, **encostada à direita**.
+/// Devolve o rectângulo da caixa, para quem quiser desenhar à volta dela.
+///
+/// ⚠️ **Existe porque o INTERRUPTOR DESLIZANTE saiu** (decisão do Enio: *«as pílulas e o
+/// interruptor deslizante podem sair»*). ⛔ Ele **não se apaga**: o `WidgetKind::Toggle` tem
+/// `code() == 2` e esse número **viaja em documento** (`skin/kind.rs`), então um painel autorado
+/// gravado ontem tem de continuar a abrir. ⇒ a fusão é **de PINTURA**, exactamente como a pesquisa
+/// `07` §5.5 mandava: *o código velho fica a apontar para o pintor novo*.
+///
+/// ⚠️ **A semântica NÃO se funde:** o `Toggle` continua a ser `Role::Switch` para quem não vê, e o
+/// `Checkbox` continua `Role::CheckBox`. *Fundir a tinta de dois controlos não os torna o mesmo
+/// controlo* — e um leitor de ecrã que passasse a anunciar «caixa de verificação» onde o documento
+/// diz «interruptor» estaria a mentir sobre o modelo.
+pub(crate) fn paint_boolean_mark(
     rect: Rect,
+    box_px: Option<f32>,
+    value: CheckboxValue,
+    state: CheckboxState,
+    hover_t: f32,
     scene: &mut VectorScene,
-    text_system: &mut TextSystem,
     theme: Theme,
-) {
+) -> Rect {
     // A moldura é o TETO em qualquer dos dois casos (a caixa não transborda o que a contém);
     // o que `box_px` troca é a BASE — o token, ou o que o chamador mediu. `None` reduz à
     // expressão que shipava, ao bit.
-    let box_size = cb.box_px.unwrap_or(CHECKBOX_BOX_PX).min(rect.h);
+    let box_size = box_px.unwrap_or(CHECKBOX_BOX_PX).min(rect.h);
     let box_y = rect.y + (rect.h - box_size) * 0.5;
-    let box_rect = Rect::new(rect.x, box_y, box_size, box_size);
+
+    // ⭐⭐⭐ **A LINHA INTEIRA É O ALVO, e a marca vai para a DIREITA** (Enio, redesenho de
+    // 2026-09; pesquisa `07` §5.2 e §15). O padrão é o do Blender/GNOME, e a razão aqui é o
+    // ALINHAMENTO: a marca cai na **mesma coluna** em que a linha de propriedade põe o número
+    // (`property_box::value_column`), então um formulário passa a ter **uma** margem direita em vez
+    // de duas linguagens empilhadas.
+    //
+    // ⭐ **Isto é só PINTURA — nenhum chamador muda.** Medido em 2026-09-03: 17 de 19 chamadores
+    // amostrados já registam `Rect::new(x, y, w, h)` — *a linha inteira já era o alvo de clique há
+    // muito tempo; o que faltava era o desenho dizê-lo.* Os 2 restantes passam meia-linha (dois
+    // checkboxes lado a lado), e encostar à direita da meia-linha é igualmente correcto.
+    let box_rect = Rect::new(
+        crate::widget::property_box::value_column(rect, box_size, false).x,
+        box_y,
+        box_size,
+        box_size,
+    );
+
+    // ⭐ **A superfície da linha ACENDE**, e é ela que ensina que o alvo é largo. Emerge do nada
+    // (o `hover_axis` com repouso `None` faz *fade*, como o botão *ghost*) ⇒ em repouso a linha
+    // continua a não desenhar caixa nenhuma, que é a lei do §5.3: *dentro de um painel, molduras
+    // não se desenham*.
+    let row_hot = matches!(
+        state,
+        CheckboxState::Hovered | CheckboxState::Focused | CheckboxState::Pressed
+    );
+    if row_hot || hover_t < crate::motion::SETTLED {
+        if let Some(c) = crate::motion::hover_axis(
+            matches!(state, CheckboxState::Normal | CheckboxState::Hovered),
+            hover_t,
+            None,
+            Some(ColorToken::Bg2.resolve(theme)),
+        ) {
+            fill_rounded_rect(
+                scene,
+                rect,
+                crate::paint::slider_style().radius_px(),
+                crate::paint::token_to_vello(c),
+            );
+        } else if row_hot {
+            fill_rounded_rect(
+                scene,
+                rect,
+                crate::paint::slider_style().radius_px(),
+                resolve(ColorToken::Bg2, theme),
+            );
+        }
+    }
 
     let radius = Radius::Xs.px();
-    let (bg_token, border_token) = match (cb.state, cb.value) {
+    let (bg_token, border_token) = match (state, value) {
         (CheckboxState::Disabled, _) => (ColorToken::Bg2, ColorToken::Border),
         (_, CheckboxValue::Checked | CheckboxValue::Indeterminate) => {
             (ColorToken::Accent, ColorToken::Accent)
@@ -154,18 +216,18 @@ pub fn paint_checkbox(
     // ⚠️ **O eixo do hover é o par NÃO-MARCADO** (`Bg1 → Bg2`, `Border → BorderEmph`): uma caixa
     //    MARCADA é `Accent` em qualquer estado, então ali não há eixo nenhum a percorrer. O
     //    `Focused` fica de fora com o `Disabled` — é estado duro, e o traço dele mede 2 px.
-    let soft = matches!(cb.state, CheckboxState::Normal | CheckboxState::Hovered)
-        && matches!(cb.value, CheckboxValue::Unchecked);
+    let soft = matches!(state, CheckboxState::Normal | CheckboxState::Hovered)
+        && matches!(value, CheckboxValue::Unchecked);
     let bg = crate::motion::hover_axis(
         soft,
-        cb.hover_t,
+        hover_t,
         Some(ColorToken::Bg1.resolve(theme)),
         Some(ColorToken::Bg2.resolve(theme)),
     )
     .map_or_else(|| resolve(bg_token, theme), crate::paint::token_to_vello);
     let border = crate::motion::hover_axis(
         soft,
-        cb.hover_t,
+        hover_t,
         Some(ColorToken::Border.resolve(theme)),
         Some(ColorToken::BorderEmph.resolve(theme)),
     )
@@ -178,7 +240,7 @@ pub fn paint_checkbox(
         scene,
         box_rect,
         radius,
-        if cb.state == CheckboxState::Focused {
+        if state == CheckboxState::Focused {
             2.0
         } else {
             1.0
@@ -186,13 +248,13 @@ pub fn paint_checkbox(
         border,
     );
 
-    let glyph_color = if cb.state == CheckboxState::Disabled {
+    let glyph_color = if state == CheckboxState::Disabled {
         ColorToken::TextDisabled
     } else {
         ColorToken::AccentFg
     };
     let g = resolve(glyph_color, theme);
-    match cb.value {
+    match value {
         CheckboxValue::Checked => {
             paint_icon(scene, IconId::Check, box_rect, g, StrokeToken::Default.px())
         }
@@ -204,25 +266,54 @@ pub fn paint_checkbox(
         CheckboxValue::Unchecked => {}
     }
 
-    if !cb.label.is_empty() && rect.w > box_size + Spacing::Md.px() {
-        let lx = rect.x + box_size + Spacing::Md.px();
+    box_rect
+}
+
+/// Square box + label. Box fills with `Accent` when Checked, paints a check glyph; Indeterminate
+/// paints a dash glyph.
+///
+/// ⚠️ **A marca vai à DIREITA e o rótulo à esquerda** desde o redesenho de 2026-09 — ver
+/// [`paint_boolean_mark`], que é onde a geometria vive.
+pub fn paint_checkbox(
+    cb: &Checkbox,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    let box_rect = paint_boolean_mark(
+        rect, cb.box_px, cb.value, cb.state, cb.hover_t, scene, theme,
+    );
+
+    if !cb.label.is_empty() {
         let label_color = if cb.state == CheckboxState::Disabled {
             ColorToken::TextDisabled
         } else {
             ColorToken::Text1
         };
-        let font_size = TypeToken::Base.px();
+        // ⚠️ **`Sm`, e não `Base`** — medido em 2026-09-03: a linha de propriedade escreve o
+        // rótulo a `12 px` e esta escrevia a `13`. Num formulário as duas alternam, e **1 px de
+        // corpo de letra entre linhas vizinhas lê-se como desalinho**, não como ênfase.
+        let font_size = TypeToken::Sm.px();
         let ly = rect.y + (rect.h - font_size) * 0.5;
-        paint_text(
-            text_system,
-            scene,
-            &cb.label,
-            lx,
-            ly,
-            font_size,
-            (rect.x + rect.w - lx).max(0.0),
-            resolve(label_color, theme),
-        );
+        let lx = rect.x + Spacing::Md.px();
+        // O rótulo é o que CEDE — a mesma lei da caixa única, pela mesma função (pesquisa §6.2).
+        // ⛔ Nunca uma cópia: metade das linhas a truncar e a outra metade a transbordar é pior
+        // que nenhuma das duas.
+        let budget = (box_rect.x - lx - Spacing::Md.px()).max(0.0);
+        let cut = crate::widget::property_box::fit_label(text_system, &cb.label, font_size, budget);
+        if !cut.is_empty() {
+            paint_text(
+                text_system,
+                scene,
+                &cut,
+                lx,
+                ly,
+                font_size,
+                f32::INFINITY,
+                resolve(label_color, theme),
+            );
+        }
     }
 }
 

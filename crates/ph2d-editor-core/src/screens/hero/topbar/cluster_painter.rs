@@ -16,7 +16,7 @@ use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
-use crate::widget::{ButtonState, IconButtonStyle, IconGlyph, PILL_PADDING_PX, paint_icon_button};
+use crate::widget::{ButtonState, IconButtonStyle, IconGlyph, paint_icon_button};
 use crate::zones::Rect;
 
 use super::super::fixture;
@@ -44,7 +44,6 @@ pub(super) const TOPBAR_INTER_CHIP_GAP: f32 = 2.0; // LITERAL-PX-OK: inter-chip 
 
 pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
     use fixture::TopBarCluster;
-    let _ = PILL_PADDING_PX; // keep import alive; old Single width used it
     match cluster {
         TopBarCluster::Theme { .. } => 100.0, // LITERAL-PX-OK: Theme chip — narrowed 132 → 100 (PH2D + dots + chev only, user 2026-05-24)
         // Single-icon cluster = one rail-style chip column.

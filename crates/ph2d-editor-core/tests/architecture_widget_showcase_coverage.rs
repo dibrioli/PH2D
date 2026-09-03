@@ -58,7 +58,7 @@ const WIDGET_OPT_OUT: &[(&str, &str)] = &[
     ),
     (
         "icon_button",
-        "chrome-internal: TopBar action-pill / Play transport painter, covered by the running editor's TopBar (same as pill_group / tool_rail)",
+        "chrome-internal: TopBar action-pill / Play transport painter, covered by the running editor's TopBar (same as tool_rail)",
     ),
     (
         "modal",
@@ -67,10 +67,6 @@ const WIDGET_OPT_OUT: &[(&str, &str)] = &[
     (
         "panel_chrome",
         "primitive: layout helpers for every floating panel, not a standalone widget",
-    ),
-    (
-        "pill_group",
-        "compound: covered by the topbar Image Tools pill cluster on every paint",
     ),
     (
         "popover",

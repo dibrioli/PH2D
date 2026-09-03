@@ -40,6 +40,31 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
     }
 }
 
+/// ⭐⭐ **O gesto que percorre a régua: Down no INÍCIO do curso, Move até `frac`, Up.**
+///
+/// ⚠️ **Down+Up no mesmo ponto é um CLIQUE**, e desde o redesenho da linha de propriedade
+/// (2026-09, `docs/UI_New_and_Simple/pesquisa/07` §13) a **coluna do valor** — o terço direito da
+/// caixa — responde a um clique **abrindo o campo de texto**, não pondo valor. ⇒ um gate que
+/// clicasse a `0,7` ou `0,85` da linha fica vermelho sobre um slider perfeitamente vivo, que é
+/// exactamente o que aconteceu a estes três em 2026-09-03.
+///
+/// ⭐ **E o nome deles sempre disse `..._when_dragged`.** *Um gate cujo nome descreve um gesto que
+/// ele não executa é uma promessa que ninguém está a cobrar* — a mesma família do
+/// `feedback_a_click_is_a_press_that_drifted`. Agora executam-no.
+///
+/// ⚠️ O Down emite o seu próprio valor (a trilha salta para onde se carrega), então quem lê o
+/// resultado tem de ficar com o **ÚLTIMO** `SetValue`, nunca com o primeiro.
+fn drag_to(host: &mut MockPanelHost, rect: Rect, frac: f32) -> Vec<WidgetEvent> {
+    let y = rect.y + rect.h * 0.5;
+    // O Down cai no primeiro pixel da caixa — dentro da zona de arrasto em qualquer largura.
+    let x0 = rect.x + 1.0;
+    let x1 = rect.x + rect.w * frac;
+    let mut evs = host.dispatch_pointer_event(pointer(PointerKind::Down, x0, y, SEC));
+    evs.extend(host.dispatch_pointer_event(pointer(PointerKind::Move, x1, y, SEC + SEC / 200)));
+    evs.extend(host.dispatch_pointer_event(pointer(PointerKind::Up, x1, y, SEC + SEC / 100)));
+    evs
+}
+
 /// Uma linha de pilha para o fixture.
 fn row(kind: u8) -> FilterRowView {
     FilterRowView {
@@ -862,12 +887,10 @@ fn the_three_noise_knobs_reach_the_bus_when_dragged() {
             .unwrap_or_else(|| panic!("o slider {what} nao foi PINTADO"));
         // Arrasta ate ~70% do trilho: longe do valor publicado, para o evento nao poder ser
         // confundido com o estado que ja estava la.
-        let (x, y) = (rect.x + rect.w * 0.7, rect.y + rect.h * 0.5);
         // ⚠️ **O `ValueChanged` sai no DOWN**, não no Up — um gate que aplicasse só os eventos do
         // Up ficaria vermelho sobre um slider perfeitamente vivo (foi o que esta função fez na 1ª
         // versão).
-        let mut evs = host.dispatch_pointer_event(pointer(PointerKind::Down, x, y, SEC));
-        evs.extend(host.dispatch_pointer_event(pointer(PointerKind::Up, x, y, SEC + SEC / 100)));
+        let evs = drag_to(&mut host, rect, 0.7);
         for ev in evs {
             host.apply_panel_event::<VectorPanel>(&mut st, ev);
         }
@@ -904,21 +927,21 @@ fn the_three_adjust_knobs_reach_the_bus_with_a_bipolar_map_when_dragged() {
             let rect = host
                 .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
                 .expect("um slider de ajuste nao foi PINTADO");
-            let (x, y) = (rect.x + rect.w * frac, rect.y + rect.h * 0.5);
-            let mut evs = host.dispatch_pointer_event(pointer(PointerKind::Down, x, y, SEC));
-            evs.extend(host.dispatch_pointer_event(pointer(
-                PointerKind::Up,
-                x,
-                y,
-                SEC + SEC / 100,
-            )));
+            let evs = drag_to(&mut host, rect, frac);
             for ev in evs {
                 host.apply_panel_event::<VectorPanel>(&mut st, ev);
             }
-            let value = host.drained_actions().into_iter().find_map(|a| match a {
-                EditorAction::ToolPanelEvent(PanelEvent::SetValue(got, v)) if got == id => Some(v),
-                _ => None,
-            });
+            // ⚠️ O **ÚLTIMO**, não o primeiro: o Down do arrasto emite o valor do ponto de partida.
+            let value = host
+                .drained_actions()
+                .into_iter()
+                .filter_map(|a| match a {
+                    EditorAction::ToolPanelEvent(PanelEvent::SetValue(got, v)) if got == id => {
+                        Some(v)
+                    }
+                    _ => None,
+                })
+                .next_back();
             let v = value.expect("arrastar um knob de ajuste nao emitiu valor ao barramento");
             assert_eq!(
                 v < 0.0,
@@ -965,16 +988,19 @@ fn the_grow_knob_reaches_the_bus_with_a_bipolar_map_when_dragged() {
         let rect = host
             .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
             .expect("o slider Amount nao foi PINTADO");
-        let (x, y) = (rect.x + rect.w * frac, rect.y + rect.h * 0.5);
-        let mut evs = host.dispatch_pointer_event(pointer(PointerKind::Down, x, y, SEC));
-        evs.extend(host.dispatch_pointer_event(pointer(PointerKind::Up, x, y, SEC + SEC / 100)));
+        let evs = drag_to(&mut host, rect, frac);
         for ev in evs {
             host.apply_panel_event::<VectorPanel>(&mut st, ev);
         }
-        let value = host.drained_actions().into_iter().find_map(|a| match a {
-            EditorAction::ToolPanelEvent(PanelEvent::SetValue(got, v)) if got == id => Some(v),
-            _ => None,
-        });
+        // ⚠️ O **ÚLTIMO**, não o primeiro: o Down do arrasto emite o valor do ponto de partida.
+        let value = host
+            .drained_actions()
+            .into_iter()
+            .filter_map(|a| match a {
+                EditorAction::ToolPanelEvent(PanelEvent::SetValue(got, v)) if got == id => Some(v),
+                _ => None,
+            })
+            .next_back();
         let v = value.expect("arrastar o Amount nao emitiu valor nenhum ao barramento");
         assert_eq!(
             v < 0.0,

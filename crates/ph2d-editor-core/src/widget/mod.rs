@@ -35,7 +35,6 @@ mod modal;
 mod number_input;
 mod numeric_input_with_unit;
 pub mod panel_chrome;
-mod pill_group;
 mod popover;
 mod progress_bar;
 mod property_box;
@@ -103,7 +102,11 @@ pub use number_input::{
 pub use numeric_input_with_unit::{
     NumericInputWithUnit, Unit, paint_numeric_input_with_unit, parse as parse_numeric_with_unit,
 };
-pub use pill_group::{PILL_PADDING_PX, PillGroup, paint_pill_group};
+// ⛔ `pill_group` SAIU em 2026-09-03 (decisão do Enio: «as pílulas e o interruptor deslizante
+// podem sair»). ⭐ Custo ZERO: o censo mediu **zero** consumidores — nem painel, nem cromo, nem a
+// pele de canvas —, e não há `WidgetKind::Pill`, logo nenhum código viaja em documento. ⚠️ O
+// `PILL_PADDING_PX` que o topbar usa **não era deste widget**: é um token, e quem o quer importa-o
+// do `ph2d_tokens`, que é o dono.
 pub use popover::{Popover, anchor_below, paint_popover, pop_popover_clip, push_popover_clip};
 pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};
 // ⭐ A CAIXA ÚNICA — o pintor de uma linha de propriedade, e o padrão do app desde 2026-09-02.

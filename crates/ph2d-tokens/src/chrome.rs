@@ -2,7 +2,7 @@
 //!
 //! Wave 5 stage A: every fixed dimension that previously lived as a
 //! hardcoded `f32` literal in `screens/hero/style.rs` or in widget
-//! modules (`tool_rail`, `pill_group`, `checkbox`) now flows from
+//! modules (`tool_rail`, `topbar`, `checkbox`) now flows from
 //! tokens.json. Designer fully owns the dimensional side of UI.
 //!
 //! The three originals (`ROW_H_PX`, `ICON_BTN_SIZE_PX`,
@@ -69,7 +69,11 @@ pub const TOOL_CHIP_PX: f32 = crate::generated::CHROME_TOOL_CHIP;
 /// LeftRail divider gap. Per tokens.json `chrome.divider-gap`.
 pub const DIVIDER_GAP_PX: f32 = crate::generated::CHROME_DIVIDER_GAP;
 
-/// Padding inside a `PillGroup`. Per tokens.json `chrome.pill-padding`.
+/// Padding das **pílulas de acção do topbar**. Per tokens.json `chrome.pill-padding`.
+///
+/// ⚠️ O nome vem de um widget `PillGroup` que **deixou de existir** em 2026-09-03 (zero
+/// consumidores, decisão do Enio). O token FICA porque tem consumidores a sério — o
+/// `image_action_row` e o `topbar` —, e é deles que ele fala agora.
 pub const PILL_PADDING_PX: f32 = crate::generated::CHROME_PILL_PADDING;
 
 /// Checkbox box edge length. Per tokens.json `chrome.checkbox-box`.

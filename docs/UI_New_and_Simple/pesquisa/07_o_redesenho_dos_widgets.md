@@ -792,3 +792,164 @@ direita e o `clamp` entrega `1.0`. É o que o Blender faz. ⛔ Não «corrigir»
 `(estado, hover_live)` — o **relógio de hover**, que satura em `1.0` a arrastar. Lia-se como um
 valor de `1.0` perfeitamente plausível. Quem devolve o valor é `store.slider(id)`.
 *Um acessor cujo segundo campo é uma animação e não o valor é uma armadilha com nome de conveniência.*
+
+## §15 — ⭐⭐⭐ O CENSO, e a ordem do trabalho que falta (2026-09-03)
+
+*«Siga com estudo, planejamento e inteligência»* (Enio). O §5 estudou os **44** ficheiros de
+`widget/` por *categoria*; o que faltava era a **população** — e ela reordena tudo.
+
+### 15.1 — Quem o app de facto usa (contado fora de `ph2d-editor-core`)
+
+| widget | sítios | estado |
+|---|---:|---|
+| `paint_checkbox` | **81** | ⏳ **o maior lever, e por fazer** |
+| `paint_slider_with_chip` | 58 | ✅ §13 |
+| `paint_section_header` | 39 | ⏳ recolhível (§5.3) |
+| `paint_color_swatch` | 37 | ⏳ raio |
+| `paint_segmented_adaptive` | 36 | ✅ já reflui |
+| `paint_dropdown_chip` | 36 | ⏳ seta 8 px + esbatimento |
+| `paint_toggle` | ~~29~~ → **3 ficheiros** | ⏳ decisão do Enio: sai — ⚠️ ver 15.1-bis |
+| `paint_number_input` | 29 | ⏳ os chips soltos |
+| `paint_text_input` | 23 | ⏳ moldura só no foco |
+| `tabs` · `tag` · `rect2` · `radio_group` · `level_meter` | 2–4 | — |
+| `combobox` · `vector3_editor` · `tree_view` · `list_item` · `key_value_list` · `progress_bar` | **0** | ⛔ **só existem na galeria** |
+
+⭐⭐ **O slider era o nº 2.** O nº 1 é a caixa de verificação, com **40 %** mais sítios — e o §5
+dava-lhe uma linha de tabela.
+
+⭐⭐⭐ **E a `PillGroup` tem ZERO consumidores** — nem painel, nem cromo, nem a pele de canvas; só o
+`pub use` e um token. A decisão do Enio (*«as pílulas podem sair»*) **não custa nada**, e ⛔ não há
+`WidgetKind::Pill`, logo **nenhum código viaja em documento** (a cerca do `skin.rs` não se aplica).
+
+### 15.1-bis — ⛔ E o próprio censo mordeu: **um `grep` por NOME conta homónimos**
+
+A linha do `paint_toggle` dizia **29 sítios em 11 ficheiros**. Verificado um a um, os consumidores
+do widget são **três**: `ph2d-panel-grid-snap`, `-painter-layers` e `-timeline`. Os outros são
+**funções locais com o mesmo nome** — o `paint_toggle` do Audio Mixer é um *botão colorido* cujo
+`active_bg` é parâmetro, o `paint_toggle_button` do Equalize Sizes e o `paint_toggle_row` do Motion
+Params idem. ⛔ **Nenhum deles desenha o interruptor deslizante**, e trocá-los por caixas de
+verificação teria apagado três widgets diferentes que ninguém pediu para apagar.
+
+⚠️ *Um censo por nome mede a palavra, não o consumidor.* A coluna que vale é «quem **importa** o
+símbolo da crate que o define» — e essa é uma pergunta diferente, com outra resposta.
+
+⛔ **E o `WidgetKind::Toggle` tem `code() == 2`, que VIAJA em documento** (`skin/kind.rs`): o
+interruptor **não se apaga**, funde-se em PINTURA — o código velho passa a apontar para o pintor da
+caixa de verificação, que é exactamente o que o §5.5 já mandava.
+
+⚠️ **Seis widgets do catálogo não têm um único consumidor no produto.** Eles continuam vivos porque
+o gate `every_widget_is_shown_or_explicitly_opted_out` os mostra na galeria — *o que é certo, e não
+é o mesmo que serem usados*. ⛔ Compactar um deles é trabalho que ninguém vê: **a ordem segue a
+população**.
+
+### 15.2 — A ordem, e porquê
+
+| # | obra | porquê agora | risco |
+|---|---|---|---|
+| **1** | **checkbox: a linha inteira é o alvo** | 81 sítios, e ⭐ **os chamadores JÁ registam a linha** (`Rect::new(x, y, w, h)` em 17 de 19 amostrados) ⇒ é **só pintura**, zero mudanças de chamador | baixo |
+| 2 | `toggle` → `checkbox` | decisão do Enio; 11 ficheiros; apaga um widget | médio (substituição em chamadores) |
+| 3 | pílulas fora | decisão do Enio; **custo zero** (15.1) | nenhum |
+| 4 | o **ritmo da linha** | ⛔ hoje a linha de propriedade mede `22` (do `SliderStyle`) e a de checkbox `18` (literal em ~19 chamadores): um formulário alterna alturas e **não lê como grelha** | médio: mexe em chamadores |
+| 5 | scrollbar `2 px` em repouso | devolve **8 px de largura a TODOS os painéis** de uma vez (§5.3) | baixo |
+| 6 | **a coluna de animação** | ⭐ decisão nº 3 do Enio, e a premissa que a bloqueava **DISSOLVEU** — ver 15.3 | alto: precisa de consumidor |
+| 7 | o 4.º preset de fonte (Vello 0.10) | instrução dele; isolado; ⛔ **os três presets actuais não se tocam** | baixo |
+
+### 15.3 — ⭐⭐ A premissa que bloqueava a coluna de animação dissolveu-se, e foi ele que a dissolveu
+
+O §13 escreveu, no código: *«esta função não sabe se a propriedade é animável»*. Isso pressupõe que
+**a resposta VARIA por propriedade**. A decisão dele é a outra: ***«em todas as propriedades que
+podem ser animadas, e nessa engine vou querer animar tudo»*** ⇒ a resposta é **constante**, e uma
+constante não precisa de ser consultada.
+
+⚠️ **O que sobra não é o desenho, é o CONSUMIDOR.** Um ponto que se pinta e não põe uma chave é um
+controlo morto — a espécie que este repo caça (`CLAUDE.md` §5.0). O trabalho real é:
+*que identidade é que a timeline liga* (ela liga por **nome**, ADR-0141..0144), *o que o clique
+faz* (criar / remover chave no playhead) e *os três estados* (não animado · animado · com chave
+aqui). ⇒ é uma obra com plano próprio, **não um `decorator: true`**.
+
+---
+
+## §16 — ✅ AS OBRAS 1, 2 e 3 DO PLANO (2026-09-03)
+
+### 16.1 — A caixa de verificação: a linha inteira é o alvo, e a marca vai à direita
+
+O widget **nº 1 por população** (81 sítios). ⭐ **Custou zero mudanças de chamador**, e a razão é
+medida: **17 de 19** chamadores amostrados já passavam `Rect::new(x, y, w, h)` ao pintor **e**
+registavam esse mesmo rect no `HitIndex` ⇒ *a linha inteira já era o alvo de clique há muito tempo;
+o que faltava era o desenho dizê-lo*. Os 2 restantes passam meia-linha (dois checkboxes lado a
+lado), onde encostar à direita da meia-linha é igualmente correcto.
+
+Três mudanças, todas de pintura:
+
+| o quê | antes | agora |
+|---|---|---|
+| a marca | `rect.x` (esquerda) | `property_box::value_column(...)` — **a coluna do número** |
+| o rótulo | depois da caixa, `TypeToken::Base` (**13 px**) | à esquerda, `Sm` (**12 px**) — o mesmo da linha de propriedade |
+| a superfície | nenhuma | **acende** no hover, emergindo do nada (`hover_axis` com repouso `None`) |
+
+⚠️ **O corpo de letra não é cosmética:** a linha de propriedade escreve a `12` e esta escrevia a
+`13`. Num formulário as duas alternam, e **1 px de corpo entre linhas vizinhas lê-se como
+desalinho**, não como ênfase.
+
+⚠️ **A truncagem do rótulo é a MESMA função** (`property_box::fit_label`, agora `pub(crate)`) — ⛔
+não uma cópia: metade das linhas a cortar e a outra metade a transbordar é pior que nenhuma das
+duas.
+
+### 16.2 — ⛔ O ponto cego que impede um gate honesto sobre o rótulo
+
+O `TextSystem::without_system_fonts()` — o arnês de **todo** gate de widget desta casa — não tem
+glifos, e `paint_text` **não produz tinta nenhuma**. Medido: `"On"` e um rótulo de 40 caracteres
+dão `path_data` byte a byte igual. ⇒ um gate de tinta sobre o corte do rótulo ficaria **verde por
+vacuidade, com o nome de uma protecção** — a espécie que o §13.4 já pagou.
+
+O gate que existe **regista a cegueira e auto-destrói-se** quando ela acabar
+(`the_label_truncation_is_not_measurable_here_and_that_is_recorded`): ele afirma que as duas tintas
+são IGUAIS, então no dia em que o arnês ganhar uma fonte vendorizada ele fica vermelho e obriga a
+substituí-lo por um que MEÇA.
+
+### 16.3 — As pílulas saíram, e o censo tornou-o grátis
+
+`widget/pill_group.rs` **apagado** (170 LOC). ⭐ Zero consumidores em todo o repo, e ⛔ nenhum
+`WidgetKind::Pill` ⇒ nada viaja em documento.
+
+⛔⛔ **E a cerca da galeria era FALSA:** o opt-out dizia *«compound: covered by the topbar Image
+Tools pill cluster on every paint»*, e o topbar **nunca chamou** `paint_pill_group` — ele pinta as
+próprias pílulas e só usa o **token** `PILL_PADDING_PX`, que viajava por um `pub use` deste widget.
+*Uma isenção que nomeia um consumidor inexistente é uma cerca a proteger o nada* — e ela sobreviveu
+porque ninguém verifica o TEXTO de um opt-out, só a presença dele.
+⇒ o token passou a vir do dono (`ph2d_tokens`), e o `let _ = PILL_PADDING_PX; // keep import alive`
+do `cluster_painter` — um cadáver de import — morreu com ele.
+
+### 16.4 — O interruptor deslizante: fusão de PINTURA, nunca de modelo
+
+`paint_toggle` passou a chamar `checkbox::paint_boolean_mark`, o **único** pintor de um booleano no
+app. A tinta é **byte a byte igual** à da caixa, com gate a exigi-lo em 8 combinações de
+estado × valor.
+
+⛔ **O `Toggle` NÃO se apaga**, e o motivo tem endereço: `WidgetKind::Toggle` tem `code() == 2` e o
+código **viaja em documento** (`skin/kind.rs` proíbe reciclar códigos) ⇒ um painel autorado gravado
+ontem partiria. ⚠️ E o `Role::Switch` fica: *fundir a tinta de dois controlos não os torna o mesmo
+controlo*, e um leitor de ecrã a anunciar «caixa de verificação» onde o documento diz «interruptor»
+mentiria sobre o modelo.
+
+⭐ **O `thumb_circle` e os seus dois gates saíram com ele.** O que eles defendiam era real (numa
+moldura quadrada o curso era zero, numa moldura em pé era `−30` com a semântica invertida e o disco
+24 px fora do corpo) — e nada disso pode voltar, porque uma caixa quadrada não tem curso.
+*Um gate que defende geometria que já não se desenha não é uma protecção — é uma âncora.*
+
+### 16.5 — ⛔⛔ E a varredura da workspace apanhou um defeito MEU que três portões não viam
+
+`every_scrollable_panel_intercepts_the_wheel`: **a bancada publicava um polegar de rolagem e a roda
+do rato sobre ela dava ZOOM na câmera.** Isto é a segunda metade do report do Enio (*«o painel não
+tem scroll»*) — eu tinha posto a barra, que **arrasta**, e a roda continuava a atravessar o painel.
+
+⚠️ **Nenhum portão desta linha o via:** o gate vive em `shells/desktop/tests/`, onde nem a suíte da
+crate do painel nem `cargo test --bins` chegam. Só a varredura da workspace inteira o alcança — é a
+mesma família que a `line/quadextract` pagou em 29/08.
+
+*Publicar um polegar de rolagem e não interceptar a roda é meia-cura, e meia-cura passa no smoke
+porque o artista arrasta a barra a primeira vez.*
+
+⚠️ A varredura acusou mais dois, e nenhum era real: `the_cost_of_depth_is_linear_not_explosive` (a
+flake de carga que o `CLAUDE.md` §5.0 nomeia — verde sozinha) e um erro de doctest sobre uma
+**árvore a meio de uma edição minha**.

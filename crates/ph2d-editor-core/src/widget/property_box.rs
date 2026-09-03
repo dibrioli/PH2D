@@ -406,7 +406,16 @@ fn paint_decorator(scene: &mut VectorScene, theme: Theme, r: Rect, disabled: boo
 /// ⏳ A alternativa é o **esbatimento** (`Scene::push_luminance_mask_layer`, zero consumidores
 /// hoje): em vez de `…`, o rótulo desvanece nos últimos px. É mais bonito e não come letras —
 /// nomeado na pesquisa §7.3, com o custo por medir.
-fn fit_label(text_system: &mut TextSystem, label: &str, size: f32, budget: f32) -> String {
+///
+/// ⚠️ **`pub(crate)` porque a lei tem um SEGUNDO leitor desde 2026-09-03: a caixa de verificação**
+/// (o widget mais usado do app, 81 sítios). *Uma lei de truncagem copiada para o vizinho é a
+/// primeira linha de um formulário em que metade das linhas cede e a outra metade transborda.*
+pub(crate) fn fit_label(
+    text_system: &mut TextSystem,
+    label: &str,
+    size: f32,
+    budget: f32,
+) -> String {
     if budget <= 0.0 {
         return String::new();
     }

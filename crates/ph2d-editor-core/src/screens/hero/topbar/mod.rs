@@ -6,10 +6,13 @@ use super::ids;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
-use crate::widget::{ButtonState, IconGlyph, PILL_PADDING_PX, Tooltip, paint_tooltip};
+use crate::widget::{ButtonState, IconGlyph, Tooltip, paint_tooltip};
+// ⚠️ Do DONO, e não pela boleia de um widget: o `PILL_PADDING_PX` é um token, e viajava por um
+// `pub use` do `pill_group` — um widget que este cromo NUNCA chamou (censo de 2026-09-03).
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
+use ph2d_tokens::PILL_PADDING_PX;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
 use ph2d_vector::VectorScene;
 

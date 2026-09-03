@@ -50,6 +50,17 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "scrollbar_ids.rs",
         "so' a escada de ids e os dois gates de unicidade -- nao pinta nem regista nada",
     ),
+    // ⚠️ **Um FRAGMENTO de linha, não um widget** — ele não recebe `NodeId` nenhum, então não há nó
+    // que ele possa construir. Quem tem a semântica é a LINHA, e ela constrói-a:
+    // `PropertyBox::a11y_node` (`Role::Slider` + rótulo + `numeric_value`), e o campo em si continua
+    // a ser um `NumberInput` registado no store, com o `build_a11y` dele.
+    // ⛔ Um nó aqui seria o SEGUNDO a descrever o mesmo número, e um leitor de ecrã anunciá-lo-ia
+    // duas vezes. Saiu do `slider_with_chip.rs` em 2026-09-02 por tecto de LOC; a ausência de a11y
+    // é a mesma de antes, só que agora tem ficheiro próprio e por isso é vista.
+    (
+        "slider_with_chip/number_chip.rs",
+        "fragmento sem NodeId: a semantica e' da LINHA (PropertyBox::a11y_node) e do NumberInput",
+    ),
     // ⚠️ **A metade de ROLAGEM da paleta** — geometria (quanto cabe, até onde a roda vai) mais UM
     // traço indicador que **não é um controlo**: ele não se arrasta, e a decisão é explícita (um
     // alvo de arrasto ali competiria com as pílulas do cartão pelo mesmo `x`, e a roda já resolve).

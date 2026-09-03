@@ -36,7 +36,7 @@ use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use crate::widget::{
     Button, IconButtonStyle, IconGlyph, ListItem, ListItemState, TextInput, TextInputState,
     paint_button, paint_icon_button, paint_list_item, paint_scrollbar,
-    paint_slider_with_chip_layout, paint_text_input_with_buffer, slider_with_chip_is_stacked,
+    paint_slider_with_chip_layout, paint_text_input_with_buffer, slider_with_chip_min_w,
 };
 use crate::zones::Rect;
 use ph2d_i18n::tr;
@@ -419,7 +419,8 @@ pub fn paint_input_map_window(
         // ⚠️ **O trilho mínimo vem do WIDGET, não de um palpite** — `slider_with_chip_is_stacked`
         // é a mesma função que o `debug_assert` abaixo consulta, e a folga de `Xs` é o que separa
         // "cabe exactamente" de "empilha por um pixel".
-        let zone_w = (lw + cw + Spacing::Sm.px() * 2.0 + ZONE_MIN_TRACK + Spacing::Xs.px()).ceil();
+        // ⚠️ A largura da zona sai do PISO DO WIDGET, perguntado — não de um espelho local.
+        let zone_w = (lw + slider_with_chip_min_w(cw) + Spacing::Xs.px()).ceil();
         let zone_x = listen_rect.x - zone_w * 2.0 - Spacing::Sm.px();
         for (i, (sid, cid, label, v)) in [
             (
@@ -441,9 +442,16 @@ pub fn paint_input_map_window(
             #[allow(clippy::cast_precision_loss)] // LITERAL-PX-OK: indice 0/1
             let zx = zone_x + zone_w * i as f32;
             let zr = Rect::new(zx, by, zone_w - Spacing::Xs.px(), row_h);
+            // ⚠️ **Esta asserção MUDOU de instrumento em 2026-09-02, e a pergunta é a mesma.**
+            // Ela perguntava *«a janela é larga que chegue?»* pelo proxy do EMPILHAMENTO, e o proxy
+            // morreu com a caixa única (o rótulo passou a viver dentro, então não há coluna externa
+            // que deixe de caber) — `slider_with_chip_is_stacked` devolve `false` sempre, e mantê-la
+            // aqui teria deixado **uma asserção vácua a parecer protecção viva**.
+            // ⇒ o piso novo é o do widget: a coluna do valor mais uma folga de cada lado.
             debug_assert!(
-                !slider_with_chip_is_stacked(zr.w, lw, cw),
-                "o numero empilhou: a janela ficou estreita e a linha vai vazar (report de 24/08)"
+                zr.w >= slider_with_chip_min_w(cw),
+                "a janela ficou estreita: a linha do numero nao tem largura para o valor + folgas \
+                 (report de 24/08, re-instrumentado em 02/09)"
             );
             paint_slider_with_chip_layout(
                 zr,
@@ -571,4 +579,4 @@ pub use apply::apply;
 /// **ONDE AS COISAS FICAM** — a terceira irmã; ver [`layout`].
 mod layout;
 pub use layout::input_map_window_size;
-use layout::{BodyLine, ZONE_MIN_TRACK, body_lines, window_w, zone_chip_w, zone_label_w};
+use layout::{BodyLine, body_lines, window_w, zone_chip_w, zone_label_w};

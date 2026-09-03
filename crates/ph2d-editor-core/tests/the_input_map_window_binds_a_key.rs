@@ -369,21 +369,27 @@ fn dragging_the_dead_zone_past_the_press_point_shows_the_coerced_value() {
 /// **não podem** empilhar.
 #[test]
 fn the_zone_numbers_never_stack_at_the_windows_width() {
-    use ph2d_editor_core::widget::slider_with_chip_is_stacked;
+    // ⚠️⚠️ **ESTE GATE TROCOU DE INSTRUMENTO em 2026-09-02, e ficaria VÁCUO se não tivesse.**
+    // Ele perguntava pelo `slider_with_chip_is_stacked`, que com a caixa única devolve `false`
+    // sempre — o rótulo passou a viver DENTRO, então não há coluna externa que possa deixar de
+    // caber. Mantê-lo assim seria a pior espécie de gate: verde por construção, com o nome de uma
+    // protecção. ⇒ a pergunta (*«a janela é larga que chegue para a linha do número?»*) mede-se
+    // agora contra o piso que o widget declara.
+    use ph2d_editor_core::widget::slider_with_chip_min_w;
     let (w, _, _) =
         chrome::input_map_window_size(&ph2d_input::InputMap::with_player_defaults(), 1080.0);
     // A conta do pintor: dois números repartem o espaço à esquerda dos dois ícones.
     let icon_w = ph2d_tokens::Spacing::Xl2.px();
     let lw = ph2d_tokens::Spacing::Xl4.px() * 0.75;
     let cw = ph2d_tokens::Spacing::Xl4.px();
-    let zone_w =
-        (lw + cw + ph2d_tokens::Spacing::Sm.px() * 2.0 + 60.0 + ph2d_tokens::Spacing::Xs.px())
-            .ceil()
-            - ph2d_tokens::Spacing::Xs.px();
+    let zone_w = (lw + slider_with_chip_min_w(cw) + ph2d_tokens::Spacing::Xs.px()).ceil()
+        - ph2d_tokens::Spacing::Xs.px();
     assert!(
-        !slider_with_chip_is_stacked(zone_w, lw, cw),
-        "a {w} px, os numeros da zona EMPILHAM ({zone_w} px de coluna): a linha vai vazar por cima \
-         da accao seguinte, que foi exactamente o report"
+        zone_w >= slider_with_chip_min_w(cw),
+        "a {w} px, a linha do numero da zona nao tem largura para o valor + folgas ({zone_w} px de \
+         coluna contra um piso de {}): ela vai vazar por cima da accao seguinte, que foi \
+         exactamente o report de 24/08",
+        slider_with_chip_min_w(cw)
     );
     // ⚠️ E os dois têm de CABER à esquerda dos ícones — senão eles saem pela direita do cartão.
     let inner = w - ph2d_tokens::Spacing::Md.px() * 2.0;

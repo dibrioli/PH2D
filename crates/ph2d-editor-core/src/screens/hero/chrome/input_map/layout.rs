@@ -44,15 +44,17 @@ pub(super) fn zone_label_w() -> f32 {
     Spacing::Xl4.px() * 0.75 // LITERAL-PX-OK: fraccao do token
 }
 
-/// A coluna do número. Vem do próprio `number_input`, que é quem sabe quanto um número ocupa.
-/// O trilho mínimo que o `slider_with_chip` exige antes de **empilhar** o rótulo.
-///
-/// ⚠️ **É o espelho do `SLIDER_CHIP_MIN_SLIDER_W` do widget**, e está aqui porque a conta da
-/// largura da janela precisa dele ANTES de pintar. O `debug_assert` do pintor e o gate
-/// `the_zone_numbers_never_stack_at_the_windows_width` são os dois guardas de que os dois números
-/// concordam.
-pub(super) const ZONE_MIN_TRACK: f32 = 60.0; // LITERAL-PX-OK: espelho do piso do widget (ver acima)
+// ⭐ **O ESPELHO MORREU AQUI** (2026-09-02). Existia neste sítio uma `ZONE_MIN_TRACK = 60.0` cujo
+// próprio doc se declarava *"o espelho do `SLIDER_CHIP_MIN_SLIDER_W` do widget"*, com **dois gates**
+// encarregados de provar que os dois números concordavam.
+// ⛔ *Dois gates a vigiar duas cópias são a admissão de que há duas cópias.*
+//
+// Com a caixa única o piso mudou de natureza — deixou de ser *«quanto trilho sobra antes de o
+// rótulo empilhar»* e passou a ser *«cabe o valor mais as folgas»* —, e a resposta passou a ter
+// **dono**: `crate::widget::slider_with_chip_min_w`. Quem precisa dela **pergunta**, e o
+// `input_map.rs` importa-a directamente; ninguém a repete.
 
+/// A coluna do número. Vem do próprio `number_input`, que é quem sabe quanto um número ocupa.
 pub(super) fn zone_chip_w() -> f32 {
     Spacing::Xl4.px() // LITERAL-PX-OK: a coluna do numero, um degrau de token
 }

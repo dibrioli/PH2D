@@ -87,6 +87,17 @@ pub struct PropertyBox<'a> {
     pub accent: ColorToken,
     /// Desenha a coluna de animação à direita.
     pub decorator: bool,
+    /// **A largura da coluna do valor.**
+    ///
+    /// - `None` — mede o texto do `value`. É o que uma AMOSTRA quer (o laboratório, a galeria).
+    /// - `Some(w)` — reserva `w`. É o que uma **linha de formulário** quer, e não é conforto: com
+    ///   largura medida, cada linha põe o número num `x` diferente e a coluna sai **esfarrapada**.
+    ///   *Números de um formulário alinham-se, ou o olho não os compara.*
+    ///
+    /// ⚠️ Com `Some(w)` e `value` **vazio**, a caixa reserva e **não pinta** — quem pinta ali é o
+    /// chamador, no rect que esta função devolve. É assim que o produto mete lá o campo numérico de
+    /// verdade (cursor, selecção, setinhas) em vez de o reimplementar.
+    pub value_w: Option<f32>,
 }
 
 impl PropertyBox<'_> {
@@ -118,6 +129,23 @@ impl PropertyBox<'_> {
             .numeric_value_max(1.0)
             .build()
     }
+}
+
+/// ⭐⭐ **ONDE fica a coluna do valor** — a lei, num sítio só.
+///
+/// ⚠️ **Existe porque ela tem DOIS leitores**: o pintor (que reserva e devolve) e o
+/// [`slider_with_chip_chip_rect`](super::slider_with_chip_chip_rect), que é **puro** (sem
+/// `TextSystem`) e serve a quem precisa de desenhar POR CIMA do valor sem re-derivar a conta —
+/// a rachura de *"um token cobre este número"*.
+///
+/// ⛔ *Uma segunda expressão para «onde está o valor?» divergiria no primeiro dia em que a caixa
+/// ganhasse a coluna de animação, e a marca apareceria ao lado do número em vez de sobre ele.*
+#[must_use]
+pub fn value_column(rect: Rect, value_w: f32, decorator: bool) -> Rect {
+    let pad = Spacing::Md.px();
+    let right = rect.x + rect.w - if decorator { DECORATOR_W } else { 0.0 };
+    let vx = (right - pad - value_w).max(rect.x);
+    Rect::new(vx, rect.y, (right - vx).max(1.0), rect.h)
 }
 
 /// ⭐⭐⭐ **Pinta a caixa.** `style` é a aparência escolhida; `rect` é a linha inteira, decorator
@@ -162,22 +190,31 @@ pub fn paint_property_box(
     paint_surface(scene, theme, box_rect, t, b.state, accent, style);
 
     let size = TypeToken::Sm.px();
-    let value_w = text_system.layout(b.value, size, f32::INFINITY).width();
+    let measured = text_system.layout(b.value, size, f32::INFINITY).width();
     let text_h = text_system.layout(b.value, size, f32::INFINITY).height();
     let ty = box_rect.y + (box_rect.h - text_h) * 0.5;
+    // A coluna do valor: reservada pelo formulário, ou medida pelo texto da amostra.
+    let value_w = b.value_w.unwrap_or(measured);
 
-    // O valor, encostado à direita. NUNCA trunca.
-    let vx = box_rect.x + box_rect.w - pad - value_w;
-    paint_text(
-        text_system,
-        scene,
-        b.value,
-        vx,
-        ty,
-        size,
-        f32::INFINITY,
-        resolve(fg, theme),
-    );
+    // O valor, encostado à direita da coluna dele. NUNCA trunca.
+    // ⚠️ **Pela LEI, não por uma conta paralela.** Esta linha já foi
+    // `box_rect.x + box_rect.w - pad - value_w` — aritmética idêntica à da [`value_column`], e
+    // portanto a segunda expressão para a mesma pergunta. *Duas contas que hoje concordam são duas
+    // contas que amanhã divergem*, e o sítio onde isso apareceria seria o pior: o número pintado
+    // num `x` e o alvo de clique noutro.
+    let vx = value_column(rect, value_w, b.decorator).x;
+    if !b.value.is_empty() {
+        paint_text(
+            text_system,
+            scene,
+            b.value,
+            vx + (value_w - measured).max(0.0),
+            ty,
+            size,
+            f32::INFINITY,
+            resolve(fg, theme),
+        );
+    }
 
     // O rótulo, dentro à esquerda, com o que sobra depois do valor.
     let budget = (box_rect.w - pad * PAD_UNITS_BETWEEN_LABEL_AND_VALUE - value_w).max(0.0);
@@ -195,7 +232,10 @@ pub fn paint_property_box(
         );
     }
 
-    if b.state == PropertyBoxState::Editing {
+    // ⚠️ O cursor é da AMOSTRA. Quando a coluna é reservada e o texto vem de fora (a linha do
+    // produto), quem desenha o cursor — e a selecção, e o recorte — é o campo numérico real; dois
+    // cursores na mesma caixa seria o pior tipo de duplicação, porque piscam em fase diferente.
+    if b.state == PropertyBoxState::Editing && !b.value.is_empty() {
         let caret = Rect::new(
             vx + value_w + StrokeToken::Thin.px(),
             box_rect.y + Spacing::Xs.px(),
@@ -209,13 +249,8 @@ pub fn paint_property_box(
         paint_decorator(scene, theme, d, disabled);
     }
 
-    // A região do valor: do início da folga antes do número até ao bordo da caixa.
-    Rect::new(
-        (vx - pad).max(box_rect.x),
-        box_rect.y,
-        (box_rect.x + box_rect.w - (vx - pad)).max(1.0),
-        box_rect.h,
-    )
+    // **A coluna do valor** — pela LEI, não por uma segunda conta. Ver [`value_column`].
+    value_column(rect, value_w, b.decorator)
 }
 
 /// A superfície — é aqui que os quatro desenhos divergem, e **só** aqui.

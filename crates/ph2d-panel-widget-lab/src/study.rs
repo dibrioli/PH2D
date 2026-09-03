@@ -58,6 +58,11 @@ pub(crate) const SAMPLE_T: f32 = 0.62; // LITERAL-PX-OK: fraccao da amostra, nao
 /// Fracção → percentagem, para a caixa viva.
 const PERCENT: f32 = 100.0; // LITERAL-PX-OK: conversao, nao e' medida
 
+/// A coluna do valor que a bancada reserva — **a mesma que a linha do produto**
+/// (`slider_with_chip::DEFAULT_CHIP_W`). ⛔ Não é um número desta bancada: se ela reservasse outra,
+/// as cinco secções mostrariam um widget que o app não tem.
+const VALUE_W: f32 = ph2d_editor_core::widget::DEFAULT_CHIP_W;
+
 pub(crate) struct Bench<'a> {
     pub scene: &'a mut VectorScene,
     pub text: &'a mut TextSystem,
@@ -145,6 +150,10 @@ pub(crate) fn paint_study(b: &mut Bench<'_>, st: &WidgetLabState, live: (f32, bo
                 state: PropertyBoxState::Normal,
                 accent,
                 decorator: st.decorator,
+                // ⚠️ A MESMA coluna que a linha do produto reserva. Medi-la pelo texto faria a
+                // régua da §2 mentir: a `110 px` a amostra sobraria espaço que uma linha real não
+                // tem, e a bancada aprovaria um desenho que o app não consegue mostrar.
+                value_w: Some(VALUE_W),
             },
             SliderStyle { design: d, ..style },
         );
@@ -170,6 +179,10 @@ pub(crate) fn paint_study(b: &mut Bench<'_>, st: &WidgetLabState, live: (f32, bo
                 state: PropertyBoxState::Normal,
                 accent,
                 decorator: st.decorator,
+                // ⚠️ A MESMA coluna que a linha do produto reserva. Medi-la pelo texto faria a
+                // régua da §2 mentir: a `110 px` a amostra sobraria espaço que uma linha real não
+                // tem, e a bancada aprovaria um desenho que o app não consegue mostrar.
+                value_w: Some(VALUE_W),
             },
             style,
         );
@@ -198,6 +211,10 @@ pub(crate) fn paint_study(b: &mut Bench<'_>, st: &WidgetLabState, live: (f32, bo
                 state: s,
                 accent,
                 decorator: st.decorator,
+                // ⚠️ A MESMA coluna que a linha do produto reserva. Medi-la pelo texto faria a
+                // régua da §2 mentir: a `110 px` a amostra sobraria espaço que uma linha real não
+                // tem, e a bancada aprovaria um desenho que o app não consegue mostrar.
+                value_w: Some(VALUE_W),
             },
             style,
         );
@@ -224,6 +241,10 @@ pub(crate) fn paint_study(b: &mut Bench<'_>, st: &WidgetLabState, live: (f32, bo
                 state: PropertyBoxState::Normal,
                 accent: *a,
                 decorator: st.decorator,
+                // ⚠️ A MESMA coluna que a linha do produto reserva. Medi-la pelo texto faria a
+                // régua da §2 mentir: a `110 px` a amostra sobraria espaço que uma linha real não
+                // tem, e a bancada aprovaria um desenho que o app não consegue mostrar.
+                value_w: Some(VALUE_W),
             },
             style,
         );
@@ -262,6 +283,7 @@ pub(crate) fn paint_study(b: &mut Bench<'_>, st: &WidgetLabState, live: (f32, bo
             state,
             accent,
             decorator: st.decorator,
+            value_w: Some(VALUE_W),
         },
         style,
     );

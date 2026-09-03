@@ -149,6 +149,7 @@ pub use slider_with_chip::{
     DEFAULT_CHIP_W, DEFAULT_LABEL_W, paint_number_chip, paint_slider_with_chip,
     paint_slider_with_chip_layout, paint_slider_with_chip_layout_adaptive,
     slider_with_chip_chip_rect, slider_with_chip_height, slider_with_chip_is_stacked,
+    slider_with_chip_min_w,
 };
 pub use spinner::{Spinner, paint_spinner};
 pub use status_bar::{SegmentTone, StatusBar, StatusSegment, paint_status_bar};

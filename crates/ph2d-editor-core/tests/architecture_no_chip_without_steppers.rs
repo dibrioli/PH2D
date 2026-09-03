@@ -124,12 +124,19 @@ fn paint_number_chip_paints_steppers() {
     // removes the arrows (regressing to the pre-2026-05-24 pill), this
     // gate catches it before the bug ships. Cheaper + more precise
     // than a name-based heuristic on every `paint_*` in widget/.
+    // ⚠️ **O caminho seguiu o ficheiro, e o gate apanhou a mudança** — em 2026-09-02 o
+    // `slider_with_chip.rs` passou o tecto de LOC (594 > 500) e partiu-se em `mod.rs` +
+    // `number_chip.rs`, por assunto: a linha compõe-se num, o número edita-se no outro.
+    // ⛔ Um `unwrap_or_default()` aqui teria deixado o gate **verde sobre um ficheiro inexistente**,
+    // que é a forma mais barata de uma varredura mentir; o `panic!` do `unwrap_or_else` é o que fez
+    // esta mudança de sítio ser vista.
     let file = workspace_root()
         .join("crates")
         .join("ph2d-editor-core")
         .join("src")
         .join("widget")
-        .join("slider_with_chip.rs");
+        .join("slider_with_chip")
+        .join("number_chip.rs");
     let text =
         std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("read {}: {e}", file.display()));
     let code = code_only(&text);

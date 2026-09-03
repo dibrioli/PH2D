@@ -654,3 +654,77 @@ token usa para desenhar por cima do valor, e a caixa única deriva a região do 
 texto medido**. ⇒ ou a região do valor passa a ter largura fixa (`chip_w`, e o contrato mantém-se),
 ou aquela função ganha o `TextSystem` (e muda de assinatura). *Escolher isso ao fim de um bloco longo
 é como nasceram os dois defeitos que o Enio apanhou por foto nesta mesma sessão.*
+
+---
+
+## §13 — ✅ A TROCA: as linhas de propriedade do app SÃO a caixa única (2026-09-02)
+
+O §12.5 dizia que faltava, e nomeava a pergunta de contrato que a bloqueava. Ela foi respondida e a
+troca está feita: `paint_slider_with_chip_layout` — **a porta dos 70 sítios** — pinta a caixa.
+
+### 13.1 — A resposta ao contrato: a coluna do valor é FIXA
+
+| opção | e por que a que ficou |
+|---|---|
+| largura **medida** pelo texto | ⛔ cada linha põe o número num `x` diferente e a coluna sai **esfarrapada**. *Números de um formulário alinham-se, ou o olho não os compara.* |
+| largura **fixa** (`chip_w`) | ⭐ mantém o `slider_with_chip_chip_rect` **puro** (é ele que a rachura de token usa para desenhar sobre o valor) e alinha a coluna |
+
+⭐ **E a coluna do valor virou UMA LEI com dois leitores** — `property_box::value_column`. Antes eu
+tinha a aritmética escrita duas vezes (no pintor e no `chip_rect`), *idêntica*; hoje o pintor
+**pergunta**. ⛔ *Duas contas que hoje concordam são duas contas que amanhã divergem, e o sítio onde
+isso apareceria é o pior: o número pintado num `x` e o alvo de clique noutro.*
+
+### 13.2 — ⛔⛔ O achado que mudou o desenho: as SETINHAS ficam
+
+Eu ia apagá-las (Blender mostra-as só no hover). A casa recusou, com razão e com instrumento:
+
+- `store.is_chip_no_stepper` existe **precisamente** para o defeito que eu ia criar, e o
+  doc-comment dele descreve-o: *"the dispatch carves the right column out of every NumberInput's hit
+  rect by default, producing a phantom continuous-hold"*.
+- `architecture_no_chip_without_steppers` **proíbe** suprimir as setas (canon 2026-05-24).
+
+⇒ **apagar o desenho de um alvo que continua clicável é fabricar um controlo invisível** — a mesma
+família que este documento inteiro persegue. As setas vivem **dentro** da caixa, e o cromo ainda
+colapsa: o que desapareceu foram os `70 px` de rótulo, os `12` de folga e o trilho separado.
+
+### 13.3 — O que mudou para quem chama
+
+| símbolo | antes | agora |
+|---|---|---|
+| `paint_slider_with_chip*` | 3 colunas | **a caixa** — 70 sítios, **zero assinaturas mexidas** |
+| `label_w` | a coluna externa do rótulo | ⚠️ **ignorado, declarado** — é a grandeza que a caixa põe a zero; mudar 50 assinaturas para o apagar seria 50 diffs a exprimir uma decisão já exprimida |
+| `slider_with_chip_is_stacked` | `true` num painel estreito | **`false` sempre** — e é a decisão, não um bug: sem coluna externa nada pode deixar de caber |
+| `slider_with_chip_height` | `2 × row_h` a `PANEL_MIN_W` | **`row_h`** — a altura que a estreiteza cobrava |
+| `slider_with_chip_chip_rect` | conta local + caso empilhado | a **lei** (`value_column`) |
+| ⭐ `slider_with_chip_min_w` | — | **novo**: o piso honesto (*cabe o valor + folgas*) |
+
+⭐ **O arrasto passou a pegar no rótulo também** — o modelo do Blender que o Enio escolheu: *o campo
+inteiro é o controlo*. Antes a zona de arrasto era só o trilho, e num painel estreito ela chegava a
+`30 px`.
+
+### 13.4 — ⚠️ DUAS asserções ficaram vácuas, e as duas trocaram de instrumento
+
+O `debug_assert!` do `chrome::input_map` e o gate `the_zone_numbers_never_stack_at_the_windows_width`
+perguntavam *«a janela é larga que chegue?»* **pelo proxy do empilhamento** — e o proxy morreu.
+
+⛔ Mantê-las seria a pior espécie de gate: **verde por construção, com o nome de uma protecção.** As
+duas passaram a medir contra o `slider_with_chip_min_w`. *A pergunta continua boa; o instrumento é
+que deixou de a medir.*
+
+⭐ **E o mesmo movimento matou um espelho:** o `ZONE_MIN_TRACK = 60.0` do `input_map/layout.rs`
+declarava-se *"o espelho do `SLIDER_CHIP_MIN_SLIDER_W` do widget"*, com **dois gates** a provar que
+os dois números concordavam. ⛔ *Dois gates a vigiar duas cópias são a admissão de que há duas
+cópias.* Hoje quem precisa do piso **pergunta**.
+
+### 13.5 — ⚠️ E três gates de árvore apanharam a obra
+
+| gate | o que apanhou |
+|---|---|
+| `widget_primitives_under_loc_cap` | `slider_with_chip.rs` a **594** > 500 ⇒ partido por **assunto**: `mod.rs` (*como uma linha se compõe*) + `number_chip.rs` (*como um número se edita*) |
+| `paint_number_chip_paints_steppers` | o caminho do ficheiro seguiu a divisão — ⭐ e só porque ele usa `unwrap_or_else(panic!)`: um `unwrap_or_default()` teria ficado **verde sobre um ficheiro inexistente** |
+| `every_widget_file_wires_a11y` | o `number_chip.rs` é um **fragmento sem `NodeId`** ⇒ opt-out com o motivo (a semântica é da LINHA, `PropertyBox::a11y_node`) |
+
+⛔ **E eu criei duas coisas mortas no caminho**, apanhadas pelo clippy: o `SLIDER_CHIP_MIN_SLIDER_W`
+(o piso do desenho antigo) — apagado — e o `slider_with_chip_min_w` **sem consumidor**. ⭐ O segundo
+não se apagou: ele era exactamente o instrumento que as duas asserções vácuas precisavam.
+*Uma função nasceu órfã e a cura foi ligá-la ao sítio que a pedia sem saber.*

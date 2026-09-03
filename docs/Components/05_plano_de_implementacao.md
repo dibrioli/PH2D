@@ -1548,3 +1548,57 @@ componente). É o argumento que o `WorldSnapshot` já tinha feito, com o grão n
 | Um ficheiro por asset (Git) | wave própria + ADR próprio; o índice da F6 nasce compatível |
 | Thumbnails animados | depois dos estáticos; só pasta visível |
 | Bibliotecas partilhadas/instaladas | lado a lado, nunca fundidas (ADR-0165 §5) |
+
+---
+
+### ⏳ §F5.4 — **A investigação do critério 4 PAROU a meio, e o que ela estabeleceu fica escrito** (2026-09-02)
+
+**A pergunta, em palavras de artista:** *fiz uma **Roda**; fiz um **Carro** que contém uma Roda; pus
+um Carro na cena e mudei a cor daquela roda. **Aplicar ao mestre** — a que mestre?*
+
+- ao **Carro** (o que existe hoje) ⇒ todos os Carros mudam; a receita da Roda não;
+- à **Roda** (o que falta) ⇒ toda Roda em todo o lado muda.
+
+As duas são legítimas, e é por isso que o Unity oferece um submenu com **um item por nível**.
+
+#### ⭐⭐ O que a investigação ESTABELECEU (e é o mais difícil de redescobrir)
+
+**Como se monta uma cena verdadeiramente aninhada pelas portas do produto** — a receita, porque a
+óbvia está errada:
+
+```rust
+// 1. A Roda vira receita; fica uma cópia dela no lugar.
+let (inner_master, inner_copy) = make_master(sim, r, wheel, docs)?;
+// 2. ⛔ NÃO `make_master(inner_copy)` — marcar a RAIZ de uma cópia faz uma VARIANTE (F5 critério 2),
+//    que SEGUE a base. Aninhar é CONTER. São relações diferentes.
+let car_root = spawn((Transform::IDENTITY, Name::new("Carro")));
+insert(inner_copy, ChildOf(car_root));
+assign_missing_stable_ids(world);
+// 3. O Carro vira receita — e a sub-árvore dele contém uma cópia da Roda.
+let (outer_master, outer_copy) = make_master(sim, r, car_root, docs)?;
+```
+
+⚠️ **E a raiz da cópia aninhada acha-se pela definição da F4.3** — *a peça cujo `master` é um
+`MasterRoot`* — e **não** exigindo `ObjectInstance`: esse componente só existe **depois** de haver
+uma excepção, então a régua óbvia não acha a cópia numa árvore acabada de criar.
+
+#### ⏳ O que ficou POR RESPONDER, e é onde a próxima janela pega
+
+Duas sondas ficaram sem veredito, e as duas dependem de **uma** pergunta:
+
+> Uma peça pintada **dentro da sub-árvore de um mestre** chega a registar excepção?
+
+A sonda mediu `overrides = 0` na raiz da cópia aninhada depois de pintar + `sync_instances`, e ao
+mesmo tempo a cor da receita interna **chegou à cena**. As duas leituras juntas não se explicam por
+nenhuma das hipóteses óbvias (inércia do mestre · a excepção noutro sítio), e é essa contradição que
+tem de ser resolvida **antes** de se desenhar o verbo:
+
+- se uma excepção intermédia **bloqueia**, o critério 4 é real e o verbo precisa da metade que a
+  apaga (a regra do Unity);
+- se **não bloqueia**, o critério descreve outro motor e a metade não é precisa.
+
+⛔ **O código da sonda foi REMOVIDO em vez de ficar meio-feito** (`CLAUDE.md`: *meio-feito é pior que
+não começar; uma feature adiada que fica no fonte é a que volta sozinha*). O que ficou é esta
+receita, que é a parte cara de redescobrir. ⚠️ **E ela já custou duas fixturas erradas** — uma que
+media uma variante a julgar-se aninhamento, e uma régua que pedia o registo das excepções para achar
+uma cópia que ainda não tinha nenhuma. *A fixtura que falta é sempre a que não tem o fenómeno.*

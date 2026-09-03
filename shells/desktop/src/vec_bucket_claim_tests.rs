@@ -109,6 +109,38 @@ fn a_face_nobody_had_painted_stays_unpainted() {
     );
 }
 
+/// ⭐⭐⭐ **UMA REGIÃO QUE DERIVOU NÃO TIRA UMA FACE A QUEM TEM A SEMENTE LÁ DENTRO.**
+///
+/// Report do Enio (2026-09-02, com os SVG exportados): *"pintou outra área com a cor errada"*.
+///
+/// ⚠️⚠️ **A receita DERIVA**: a região que decide o quadro de hoje é o resultado do quadro de
+/// ontem, e um único quadro de topologia confusa reatribui a tinta **para sempre** — nada puxa de
+/// volta. Medido nos ficheiros dele: a partir do estado `drawing01`, o corpo do círculo direito
+/// (área `2,83`) vota **azul**, e o app tinha-o **verde** — ganho num quadro intermédio e nunca
+/// devolvido.
+///
+/// ⛔⛔ **E este gate existe porque a cura, sozinha, era INVISÍVEL.** Nos ficheiros do report o voto
+/// já concordava com a semente, então apagar a regra da semente **não reprovava nada** — a mutação
+/// SOBREVIVEU. *Uma cura sem fixtura que a distinga é uma afirmação, não um resultado.* A fixtura é
+/// a deriva em estado puro: quem tem a semente cobre `4%` da face, e quem derivou cobre `81%`.
+#[test]
+fn a_drifted_region_cannot_take_a_face_whose_seed_belongs_to_another() {
+    let (rede, faces) = faces_de(&[quadrado(10.0)]);
+    assert_eq!(faces.len(), 1);
+    // Quem CLICOU ali: a semente no miolo, e uma região pequena (o quadro anterior encolheu-a).
+    let dono = regiao([-2.0, -2.0], [2.0, 2.0], [0.0, 0.0]);
+    // Quem DERIVOU para cima da face: cobre-a quase toda, e a semente dele está longe.
+    let invasor = regiao([-9.0, -9.0], [9.0, 9.0], [100.0, 100.0]);
+
+    let d = donos(&rede, &faces, &[dono, invasor]);
+
+    assert_eq!(
+        d[0],
+        Some(0),
+        "a face e' de quem tem a SEMENTE la' dentro, por menos que a regiao dele cubra"
+    );
+}
+
 /// ⚠️ **O EMPATE é resolvido pela SEMENTE**, e tem de ser resolvido: duas regiões congruentes sobre
 /// a mesma face dão exactamente o mesmo número de votos. ⛔ Um desempate ao acaso faria a cor
 /// piscar entre duas enquanto a mão treme.
@@ -240,59 +272,118 @@ fn the_sweep_keeps_the_vote_proportional_to_the_area() {
     );
 }
 
-/// A forma antes e depois de um nó ser arrastado para fora, criando uma ESPIGA.
+/// Um contorno como a rede o recebe.
+type Contorno = (Vec<VecVertex>, bool);
+
+/// **Antes e depois de uma forma pintada CRESCER para fora de outra.**
 ///
-/// O quadrado `(0,0)-(100,0)-(100,100)-(0,100)`; o canto de cima-direita vai para `(-50, 50)`, e a
-/// aresta que vem de `(100,0)` atravessa o lado esquerdo em `(0; 33,3)` — nasce um lóbulo FORA do
-/// quadrado, colado ao corpo pelo pedaço de aresta que sobra.
-fn espiga() -> ((Vec<VecVertex>, bool), (Vec<VecVertex>, bool)) {
-    let base = ph2d_vec_scene::ellipse([0.0, 0.0], 100.0, 100.0);
-    let mut movido = base.verts.clone();
-    // O nó de CIMA é arrastado para muito abaixo do círculo: as duas curvas vizinhas atravessam o
-    // arco de BAIXO, e entre elas nasce um lóbulo que antes era fundo.
-    let alvo = [0.0, -260.0];
-    let topo = movido
-        .iter()
-        .enumerate()
-        .max_by(|a, b| a.1.anchor[1].total_cmp(&b.1.anchor[1]))
-        .map(|(i, _)| i)
-        .unwrap();
-    movido[topo].anchor = alvo;
-    movido[topo].in_handle = alvo;
-    movido[topo].out_handle = alvo;
-    ((base.verts, true), (movido, true))
+/// `A` é o quadrado grande, pintado; `B` é um quadrado pequeno **dentro** dele, pintado de outra
+/// cor. Ao arrastar o lado direito de `B` para fora de `A`, o pedaço `B − A` é **terreno novo** (era
+/// o fundo) e **faz fronteira** com `B ∩ A` pelo lado direito de `A`.
+fn cresceu_para_fora() -> (Vec<Contorno>, Vec<Contorno>) {
+    let a = (
+        vec![v(0.0, 0.0), v(100.0, 0.0), v(100.0, 100.0), v(0.0, 100.0)],
+        true,
+    );
+    let dentro = (
+        vec![v(60.0, 20.0), v(90.0, 20.0), v(90.0, 50.0), v(60.0, 50.0)],
+        true,
+    );
+    let fora = (
+        vec![v(60.0, 20.0), v(140.0, 20.0), v(140.0, 50.0), v(60.0, 50.0)],
+        true,
+    );
+    (vec![a.clone(), dentro], vec![a, fora])
 }
 
-/// ⭐⭐⭐ **UMA ÁREA NOVA, VARRIDA POR UM NÓ, HERDA DA VIZINHA COM QUEM MAIS CONFINA.**
+/// ⭐⭐⭐ **UMA ÁREA NOVA HERDA DA VIZINHA COM QUEM MAIS CONFINA** — o pedido do Enio de 2026-09-02,
+/// nas palavras dele: *"preenchendo corretamente as áreas novas que vão surgindo"*.
 ///
-/// Report do Enio (2026-09-02, cinco fotos, *"várias inconsistências"*): a mesma espiga saía ora
-/// verde, ora vermelha, ora **sem cor nenhuma**. ⚠️ **Medido, e NÃO é histerese**: o mesmo arrasto
-/// em 1, 4, 20 e 100 passos dá a MESMA resposta — o que muda entre duas fotos é a topologia. O que
-/// era constante é que o terreno **novo** nunca era reclamado, e é o que ele pediu por palavras
-/// dele: *"preenchendo corretamente as áreas novas que vão surgindo"*.
+/// ⚠️ **A fronteira tem de ser uma PAREDE.** A 1.ª redacção deste gate usava um lóbulo de contorno
+/// que se cruza — e esses tocam-se num **ponto**, não numa parede. Fazer a tinta atravessar o ponto
+/// para ele passar foi o que o report seguinte chamou de *"resíduo de preenchimento"*.
 #[test]
-fn a_new_area_swept_by_a_node_inherits_from_the_neighbour_it_borders_most() {
-    let (antes, depois) = espiga();
-    let (r0, f0) = faces_de(&[antes]);
-    assert_eq!(f0.len(), 1, "antes e' UMA face");
-    let regioes = vec![Regiao {
-        poligonos: vec![r0.contorno(&f0[0])],
-        semente: r0.interior_point(&f0[0]).unwrap(),
-    }];
-    let (r1, f1) = faces_de(&[depois]);
-    assert!(f1.len() >= 2, "a espiga tem de criar um LOBULO novo");
+fn a_new_area_that_grew_out_inherits_from_the_neighbour_it_borders_most() {
+    let (antes, depois) = cresceu_para_fora();
+    let (r0, f0) = faces_de(&antes);
+    assert_eq!(
+        f0.len(),
+        2,
+        "antes: o quadrado grande e o pequeno la' dentro"
+    );
+    let regioes: Vec<Regiao> = f0
+        .iter()
+        .map(|f| Regiao {
+            poligonos: vec![r0.contorno(f)],
+            semente: r0.interior_point(f).expect("miolo"),
+        })
+        .collect();
+    let (r1, f1) = faces_de(&depois);
+    assert_eq!(f1.len(), 3, "depois: A-B, B∩A e o pedaco NOVO fora de A");
 
     let mut d = donos(&r1, &f1, &regioes);
-    let sem_dono = d.iter().filter(|x| x.is_none()).count();
-    assert!(sem_dono >= 1, "a votacao deixa o lobulo sem dono: {d:?}");
+    let sem_dono = d.iter().position(std::option::Option::is_none);
+    let novo = sem_dono.expect("o pedaco de fora nao recebe voto — ele era o fundo");
     let nova = terreno_novo(&r1, &f1, &r0);
-    assert!(nova.iter().any(|b| *b), "o lobulo e' TERRENO NOVO");
+    assert!(nova[novo], "e ele e' TERRENO NOVO");
     let areas: Vec<f64> = f1.iter().map(|f| f.area).collect();
     herda_dos_vizinhos(&r1.adjacencias(&f1), &areas, &nova, &mut d);
 
     assert!(
         d.iter().all(std::option::Option::is_some),
-        "toda face tem de acabar com cor: {d:?} (novas {nova:?})"
+        "toda face tem de acabar com cor: {d:?}"
+    );
+    assert_eq!(
+        d[novo],
+        donos(&r1, &f1, &regioes)
+            .iter()
+            .enumerate()
+            .find(|(i, x)| *i != novo
+                && x.is_some()
+                && r1.adjacencias(&f1)[novo].iter().any(|(j, _)| j == i))
+            .and_then(|(_, x)| *x),
+        "a cor vem da vizinha com quem ele confina"
+    );
+}
+
+/// ⛔⛔ **A TINTA NÃO ATRAVESSA UM PONTO** — o *"resíduo de preenchimento"* do report de 2026-09-02.
+///
+/// Uma espiga que se cruza a si própria faz um lóbulo que toca o corpo **num ponto**. Pintá-lo põe
+/// uma farpa de cor a sair do desenho, e o artista lê isso como lixo. ⇒ ele fica por pintar, como
+/// qualquer região que o balde ainda não visitou.
+#[test]
+fn paint_never_crosses_a_single_point_into_a_lobe() {
+    let base = ph2d_vec_scene::ellipse([0.0, 0.0], 100.0, 100.0);
+    let mut movido = base.verts.clone();
+    let topo = movido
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1.anchor[1].total_cmp(&b.1.anchor[1]))
+        .map(|(i, _)| i)
+        .expect("a elipse tem vertices");
+    let alvo = [0.0, -260.0];
+    movido[topo].anchor = alvo;
+    movido[topo].in_handle = alvo;
+    movido[topo].out_handle = alvo;
+    let (r0, f0) = faces_de(&[(base.verts.clone(), true)]);
+    let regioes: Vec<Regiao> = f0
+        .iter()
+        .map(|f| Regiao {
+            poligonos: vec![r0.contorno(f)],
+            semente: r0.interior_point(f).expect("miolo"),
+        })
+        .collect();
+    let (r1, f1) = faces_de(&[(movido, true)]);
+    assert!(f1.len() >= 2, "a espiga tem de criar lobulos");
+
+    let mut d = donos(&r1, &f1, &regioes);
+    let nova = terreno_novo(&r1, &f1, &r0);
+    let areas: Vec<f64> = f1.iter().map(|f| f.area).collect();
+    herda_dos_vizinhos(&r1.adjacencias(&f1), &areas, &nova, &mut d);
+
+    assert!(
+        d.iter().any(std::option::Option::is_none),
+        "o lobulo toca o corpo num PONTO — ele nao pode ganhar cor: {d:?}"
     );
 }
 

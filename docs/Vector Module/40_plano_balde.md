@@ -476,7 +476,56 @@ queda** — com a partilha de nó a existir, uma adjacência por arco avariada c
 **nenhum gate do balde reprovaria**. Por isso o `two_faces_that_share_a_wall_are_neighbours_by_its_length`
 mede a rota por arco **sozinha**, com o comprimento (`20,0`) e não com a contagem.
 
-### §10.7 — ⏳ Aberto
+### §10.7 — ⭐⭐⭐ O QUARTO REPORT: **a receita DERIVA**, e a semente é a âncora
+
+> *"puxei um nó para esquerda e apagou a área da seta. Movi o mesmo nó para baixo e depois para cima
+> e deixou resíduo de preenchimento em uma área e pintou outra área com a cor errada."* — Enio, com
+> **três SVG exportados** (o instrumento que o plano 41 acabou de construir).
+
+⭐⭐ **Os ficheiros dele são agora FIXTURA do repo**
+([`shells/desktop/tests/fixtures/`](../../shells/desktop/tests/fixtures/)) — sete preenchimentos
+sobre uma rede soldada de doze arcos, exportados pelo artista, com `data-ph2d-fill` a dizer o que é
+tinta e o que é linha.
+
+**O que a reprodução mediu:**
+
+| passo | faces | sem cor | congelados |
+|---|---|---|---|
+| base ← base (identidade) | 7 | `0` | `0` |
+| `drawing01` ← base | 9 | `0` | `0` |
+| `drawing02` ← `drawing01` | 9 | `0` | `0` |
+
+⇒ **um passo nunca perde nada.** O app perdeu ⇒ a perda mora nos quadros **intermédios**, e a causa
+é estrutural: *a região que decide o quadro de hoje é o resultado do quadro de ontem*. A receita
+**deriva**, e um único quadro de topologia confusa reatribui a tinta **para sempre** — nada puxa de
+volta. Medido: a partir do estado `drawing01`, o corpo do círculo direito (área `2,83`) vota
+**azul**; o app tinha-o **verde**.
+
+**As duas leis novas:**
+
+1. ⭐ **A SEMENTE MANDA.** *Uma face que contém a semente de alguém é dessa pessoa*; a votação só
+   decide quando há **mais do que uma** semente lá dentro (a fusão) ou **nenhuma**. A semente é o
+   clique do artista, mantida no miolo da face do próprio preenchimento — ela acompanha a forma sem
+   passar a descrever outra. ⭐ E cura o *"nunca volta"*: um preenchimento que congelou mantém a
+   semente, e quando a região dele reaparece a semente está lá dentro outra vez.
+2. ⛔ **A TINTA ATRAVESSA UMA FRONTEIRA, NUNCA UM PONTO.** A partilha de nó (introduzida em §10.6,
+   com peso `0`) pintava exactamente os lóbulos de um contorno que se cruza — a *"farpa"* que o
+   report chama de **resíduo**. É a lei de um balde de pixels, que não vaza por um canto.
+
+### §10.8 — ⛔⛔ Duas vezes a RÉGUA mentiu, e a segunda quase deixou passar uma cura vazia
+
+- **A sonda semeava na FRONTEIRA.** A primeira redacção usava o *primeiro ponto do polígono* como
+  semente — que está em cima da borda, não dentro. Com ele, o **caso de identidade** (alimentar um
+  estado a si próprio) deixava de se reproduzir: uma face mudava de dono e um preenchimento
+  congelava. *Nada disso vinha do produto.* ⇒ o gate
+  `feeding_a_state_back_to_itself_changes_nothing` é hoje a âncora de toda esta família.
+- ⛔⛔ **E a cura da semente era INVISÍVEL nos ficheiros do report.** Apagá-la não reprovava nada: a
+  mutação **SOBREVIVEU**, porque ali o voto já concordava com a semente. Medido A/B sobre as quatro
+  transições — saída **idêntica**. *Uma cura sem fixtura que a distinga é uma afirmação, não um
+  resultado.* ⇒ entrou o `a_drifted_region_cannot_take_a_face_whose_seed_belongs_to_another`, com a
+  deriva em estado puro: quem tem a semente cobre `4%` da face, quem derivou cobre `81%`.
+
+### §10.9 — ⏳ Aberto
 
 - ⏳ **Uma face nova que ninguém pintou fica por pintar** — correcto, mas o artista tem de a clicar.
   O *Live Paint* faz o mesmo.

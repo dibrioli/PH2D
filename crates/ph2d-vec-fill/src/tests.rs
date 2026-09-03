@@ -544,11 +544,13 @@ fn two_faces_that_share_a_wall_are_neighbours_by_its_length() {
     );
 }
 
-/// ⛔ **Os dois lóbulos de um contorno que se cruza NÃO fazem fronteira — tocam-se num PONTO.**
+/// ⛔⛔ **Os dois lóbulos de um contorno que se cruza NÃO fazem fronteira — tocam-se num PONTO.**
 ///
-/// Medido no report de 2026-09-02: a espiga de um círculo dá 3 faces, e por arco **as três
-/// declaram-se sem vizinhas**. É por isso que a partilha de nó existe, e é por isso que ela entra
-/// com peso `0`: ela é a última rota, nunca a primeira.
+/// Medido no report de 2026-09-02: a espiga de um círculo dá 3 faces, e **as três declaram-se sem
+/// vizinhas**. ⚠️ **Durante um dia isto foi ao contrário**: a partilha de nó entrava com peso `0`
+/// para a tinta poder atravessar, e o report seguinte do Enio chamou ao resultado *"resíduo de
+/// preenchimento"* — uma espiga de cor a sair do desenho. ⇒ *a tinta atravessa uma FRONTEIRA, nunca
+/// um ponto*, que é a mesma lei de um balde de pixels.
 #[test]
 fn the_lobes_of_a_self_crossing_contour_meet_at_a_node_not_along_a_wall() {
     let base = ph2d_vec_scene::ellipse([0.0, 0.0], 100.0, 100.0);
@@ -570,11 +572,7 @@ fn the_lobes_of_a_self_crossing_contour_meet_at_a_node_not_along_a_wall() {
     let adj = r.adjacencias(&faces);
 
     assert!(
-        adj.iter().all(|l| l.iter().all(|(_, c)| *c == 0.0)),
-        "nenhum lobulo partilha PAREDE com outro: {adj:?}"
-    );
-    assert!(
-        adj.iter().all(|l| !l.is_empty()),
-        "e ainda assim todos tem vizinha pelo NO' — senao a tinta nao atravessa: {adj:?}"
+        adj.iter().all(std::vec::Vec::is_empty),
+        "um lobulo nao faz fronteira com ninguem — a tinta nao pode atravessar para ele: {adj:?}"
     );
 }

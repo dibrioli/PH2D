@@ -659,6 +659,7 @@ mod vec_bool_shape;
 /// ⭐⭐⭐ **SOLDAR** (plano 39) — linhas cruzadas partem-se em arcos que partilham o nó.
 mod vec_bucket;
 mod vec_bucket_claim;
+mod vec_bucket_repro;
 /// O chip *Clip content* — a projeção e a edição do RECORTE, que vale para qualquer forma
 /// vetorial FECHADA (e não só para a moldura, desde 2026-08-21).
 mod vec_clip_edit;

@@ -502,17 +502,17 @@ impl Rede {
     /// ⚠️ **A face de FORA não aparece como vizinha**: ela não está na lista (`area <= 0`), então a
     /// meia-aresta gémea dela não mapeia para face nenhuma. É isso que impede o fundo de dar tinta.
     ///
-    /// # ⭐⭐⭐ E as vizinhas que só partilham um NÓ entram com comprimento `0`
+    /// # ⛔⛔ E a partilha de um NÓ **não** é vizinhança
     ///
-    /// ⛔ **Um laço de uma curva que se cruza a si própria NÃO faz fronteira com o corpo dela** — os
-    /// dois lóbulos de um oito tocam-se num PONTO, e a gémea de cada arco do lóbulo é a face de
-    /// fora. Medido no report de 2026-09-02: a espiga de um círculo dá 3 faces e **as três
-    /// declaram-se sem vizinhas**.
+    /// **Um laço de uma curva que se cruza a si própria não faz fronteira com o corpo dela** — os
+    /// dois lóbulos de um oito tocam-se num PONTO. Medido no report de 2026-09-02: a espiga de um
+    /// círculo dá 3 faces e **as três declaram-se sem vizinhas**, e é isso mesmo.
     ///
-    /// ⚠️ E ainda assim ela é a MESMA forma para quem desenha: um contorno que se cruza tem os dois
-    /// lóbulos *dentro* pela regra `NonZero`. Por isso a partilha de nó entra na lista, com peso
-    /// `0` — quem herda prefere sempre a fronteira de comprimento, e só cai no nó quando não há
-    /// nenhuma.
+    /// ⚠️⚠️ **Isto já foi ao contrário, durante um dia.** A partilha de nó entrava com peso `0`,
+    /// para a tinta poder atravessar para o lóbulo — e o report seguinte do Enio chamou ao
+    /// resultado *"resíduo de preenchimento"*: uma espiga de cor a sair do desenho, que é
+    /// exactamente o que a regra pintava. ⇒ **a tinta atravessa uma FRONTEIRA, nunca um ponto** —
+    /// a mesma lei de um balde de pixels, que não vaza por um canto.
     #[must_use]
     pub fn adjacencias(&self, faces: &[Face]) -> Vec<Vec<(usize, f64)>> {
         let mut de_quem = vec![usize::MAX; self.arcos.len() * 2];
@@ -521,45 +521,21 @@ impl Rede {
                 de_quem[2 * i + usize::from(!frente)] = k;
             }
         }
-        // Que faces tocam cada nó.
-        let mut no_faces: Vec<Vec<usize>> = vec![Vec::new(); self.nos.len()];
-        for (k, f) in faces.iter().enumerate() {
-            for &(i, _) in &f.arcos {
-                for n in [self.arcos[i].de, self.arcos[i].ate] {
-                    if let Some(l) = no_faces.get_mut(n)
-                        && !l.contains(&k)
-                    {
-                        l.push(k);
-                    }
-                }
-            }
-        }
         faces
             .iter()
-            .enumerate()
-            .map(|(k, f)| {
+            .map(|f| {
                 let mut out: Vec<(usize, f64)> = Vec::new();
-                let soma = |out: &mut Vec<(usize, f64)>, v: usize, l: f64| {
+                for &(i, frente) in &f.arcos {
+                    let gemea = (2 * i + usize::from(!frente)) ^ 1;
+                    let v = de_quem[gemea];
+                    if v == usize::MAX {
+                        continue; // do outro lado está a face de FORA
+                    }
+                    let l = self.comprimento(i);
                     if let Some(e) = out.iter_mut().find(|(j, _)| *j == v) {
                         e.1 += l;
                     } else {
                         out.push((v, l));
-                    }
-                };
-                for &(i, frente) in &f.arcos {
-                    let gemea = (2 * i + usize::from(!frente)) ^ 1;
-                    let v = de_quem[gemea];
-                    if v != usize::MAX {
-                        soma(&mut out, v, self.comprimento(i));
-                    }
-                }
-                for &(i, _) in &f.arcos {
-                    for n in [self.arcos[i].de, self.arcos[i].ate] {
-                        for &v in no_faces.get(n).into_iter().flatten() {
-                            if v != k && !out.iter().any(|(j, _)| *j == v) {
-                                out.push((v, 0.0));
-                            }
-                        }
                     }
                 }
                 out

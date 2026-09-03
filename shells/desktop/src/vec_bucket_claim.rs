@@ -100,6 +100,38 @@ pub(crate) fn donos(rede: &Rede, faces: &[Face], regioes: &[Regiao]) -> Vec<Opti
             let candidatos: Vec<usize> = (0..regioes.len())
                 .filter(|k| caixas[*k].is_some_and(|c| cruzam(cf, c)))
                 .collect();
+            // ⭐⭐⭐ **A SEMENTE MANDA — e ela manda porque não deriva.**
+            //
+            // Report do Enio (2026-09-02, com os SVG exportados): *"deixou resíduo de preenchimento
+            // em uma área e pintou outra área com a cor errada"*. ⚠️⚠️ **A receita é a região do
+            // quadro anterior, então ela DERIVA**: o que um quadro decide vira a régua do seguinte,
+            // e um único quadro de topologia confusa reatribui a tinta **para sempre** — nada puxa
+            // de volta. Medido nos ficheiros dele: a partir do estado `drawing01`, o corpo do
+            // círculo direito (área `2,83`) vota **azul**; o app tinha-o **verde**, ganho num
+            // quadro intermédio e nunca devolvido.
+            //
+            // A semente é o **clique do artista**, mantida sempre no miolo da face do próprio
+            // preenchimento — ela acompanha a forma sem passar a descrever outra. ⇒ *uma face que
+            // contém a semente de alguém é dessa pessoa*, e a votação só decide quando há **mais do
+            // que uma** semente lá dentro (a fusão) ou **nenhuma** (o resto).
+            //
+            // ⭐ E isto cura também o «nunca volta»: um preenchimento que congelou mantém a
+            // semente, e quando a região dele reaparece a semente está lá dentro outra vez.
+            let poly = rede.contorno(f);
+            let com_semente: Vec<usize> = candidatos
+                .iter()
+                .copied()
+                .filter(|&k| point_in_polygon(&poly, regioes[k].semente))
+                .collect();
+            if com_semente.len() == 1 {
+                return com_semente.first().copied();
+            }
+            // Com várias sementes dentro, a disputa é só entre elas; com nenhuma, é entre todas.
+            let candidatos = if com_semente.is_empty() {
+                candidatos
+            } else {
+                com_semente
+            };
             let mut votos = vec![0usize; regioes.len()];
             for a in &amostras {
                 for &k in &candidatos {
@@ -112,15 +144,10 @@ pub(crate) fn donos(rede: &Rede, faces: &[Face], regioes: &[Regiao]) -> Vec<Opti
             if max == 0 {
                 return None;
             }
-            let empatados: Vec<usize> = (0..regioes.len()).filter(|k| votos[*k] == max).collect();
-            if empatados.len() == 1 {
-                return empatados.first().copied();
-            }
-            empatados
-                .iter()
-                .copied()
-                .find(|k| point_in_polygon(&poly, regioes[*k].semente))
-                .or_else(|| empatados.first().copied())
+            // ⚠️ O empate desce ao índice do documento — quem tinha semente nesta face já ganhou
+            // acima, então aqui só sobram regiões que a cobrem por igual **sem** nenhuma a ter
+            // clicado. ⛔ Ao acaso, a cor piscaria entre duas enquanto a mão treme.
+            (0..regioes.len()).filter(|k| votos[*k] == max).min()
         })
         .collect()
 }

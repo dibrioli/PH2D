@@ -101,6 +101,8 @@
 - [Ofício de gate — mais 6 (folga = ponto cego · defeito só de custo · teste lento · laço que republica · publicado ≠ dividido · denominador)](reference_topic_gate_discipline.md)
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) · [modo que não exclui ninguém é outro produtor](feedback_a_mode_whose_entry_excludes_nobody_is_just_another_producer.md)
 - [Costura de UI (15)](reference_topic_ui_seam_discipline.md) — ⭐ [o hit rect é também o DENOMINADOR](feedback_a_hit_rect_is_also_the_denominator_not_only_the_target.md) · [seção partilhada regride quem chegou primeiro](feedback_a_shared_section_header_is_a_regression_to_whoever_arrived_first.md)
+- [Costura de UI (14)](reference_topic_ui_seam_discipline.md) · [seção partilhada regride quem chegou primeiro](feedback_a_shared_section_header_is_a_regression_to_whoever_arrived_first.md)
+- [VIVO · ALCANÇÁVEL · NO SÍTIO CERTO são TRÊS perguntas — a 3.ª não tem instrumento](feedback_alive_reachable_and_in_the_wrong_place_are_three_questions.md)
 - [Ofício de gate — mais 6 (mutação que não mata · mudar o modelo · metade justa · feito≠entregue · marca≠fim · 2 falhas refutam a família)](reference_topic_gate_discipline.md)
 - [Gate que pergunta ao ESTADO do produtor é cego a um SEGUNDO produtor ao lado — pergunte à SAÍDA](feedback_a_gate_that_asks_the_producers_state_is_blind_to_a_second_producer.md)
 - [Ofício de gate — mais 1 (censo textual que não separa prosa de código mente nos DOIS sentidos)](reference_topic_gate_discipline.md)

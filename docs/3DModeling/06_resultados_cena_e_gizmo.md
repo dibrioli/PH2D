@@ -10922,3 +10922,38 @@ usava**):
 
 ⚠️ **E as três sobrevivem à `measure_sharp_edges` inteira** — a sonda de formas é cega às três
 metades da cura. *Uma lei analítica precisa de um gate analítico; a sonda de corpus mede outra coisa.*
+
+### §112.6 — ⭐⭐ O report do Enio (03/09): *«esse chamfer super complexo da estrela é o esperado?»*
+
+**Sim** — e a resposta é uma tabela, não uma opinião. ⚠️ **A sonda que existia não a podia dar:** a
+[`where_the_star_pair_creases_are`] imprime os **dez piores**, e com chanfro os dez **saturam** no
+vértice da ponta (`83,8°`). *Um top-N saturado num valor esconde tudo o que está abaixo dele* — e o
+que a foto aponta é o meio da peça. A régua nova (`the_star_creases_sorted_by_region`) classifica
+**todos** os pontos de vinco por região.
+
+| estrela | pontos de vinco | ponta | vale | aro da tampa | miolo |
+|---|---:|---|---|---|---|
+| **viva** | `4 604` | `83,6 %` · `91,6°` | `3,0 %` · `45,0°` | `13,3 %` · `53,3°` | — |
+| **só filete** | **`0`** | — | — | — | — |
+| **só chanfro** | `1 950` | `92,5 %` · `83,8°` | `4,6 %` · `63,7°` | `0,9 %` · `45,0°` | `2,1 %` · `45,0°` |
+| **par** | `838` | **`100 %`** · `82,0°` | `0` | `0` | `0` |
+
+⭐⭐⭐ **As três leituras que respondem à pergunta:**
+
+1. **A complexidade É o chanfro.** Numa estrela ele troca `10` arestas verticais e `20` de aro por
+   ~`40` facetas planas que se encontram todas. Os `45,0°` do aro e do miolo são a assinatura exacta
+   de uma aresta chanfrada — *um chanfro não apaga uma aresta, troca-a por duas de `135°`.*
+2. **Com o `Fillet` ligado sobra SÓ a ponta** (`838` pontos, `100 %` nas cinco pontas). Vales, aro e
+   meio da face ficam **limpos** — *um defeito não se arruma assim.*
+3. **Com o filete sozinho o vinco é ZERO.** O motor sabe fazer esta peça perfeitamente lisa; o
+   aspecto ocupado é o chanfro a fazer o que lhe pedem.
+
+⚠️ **Os `40` pontos de «miolo» que a estrela viva não tem são um artefacto do BALDE**, não uma aresta
+nova: a fronteira do aro é `|z| > 0,90·meia-altura = 0,225`, e a aresta nova do chanfro fica em
+`z = 0,2188` — do outro lado por `6 milésimos`. *Uma classificação por limiar inventa uma categoria
+quando a coisa medida se move através dele.*
+
+⏳ **UMA leitura fica por derivar, e está nomeada:** o vértice do **vale** mede `63,7°` e o modelo de
+duas facetas prevê `arccos((κ_vale+1)/2) = 47,7°`. Num vale encontram-se **mais** de duas facetas (as
+duas do entalhe mais as do aro dos dois lados), logo o modelo está incompleto — ⛔ *não* está
+demonstrado que seja defeito, e **também não** que não seja. A ponta, essa, bate a conta ao décimo.

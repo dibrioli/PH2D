@@ -1538,6 +1538,8 @@ fn where_the_star_pair_creases_are() {
     for (rotulo, r, ch) in [
         ("só filete", c, 0.0),
         ("só filete, METADE do raio", c * 0.5, 0.0),
+        ("SÓ CHANFRO", 0.0, c),
+        ("só chanfro, MEIO", 0.0, c * 0.5),
         ("par (ponto de trabalho)", c * 0.5, c),
         ("par (saturação)", c, c),
     ] {
@@ -1557,6 +1559,81 @@ fn where_the_star_pair_creases_are() {
             println!(
                 "    r={raio:.4} θ={theta:+7.1}° z={:+.4} giro={ang:6.1}°",
                 q[2]
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **SONDA: os vincos da estrela CLASSIFICADOS por região** — a pergunta que a foto do Enio
+/// (2026-09-03) faz, e que um máximo global não responde.
+///
+/// ⚠️ A [`where_the_star_pair_creases_are`] imprime os **dez piores**, e com chanfro os dez saturam
+/// no vértice da ponta (`83,8°`). *Um top-10 saturado esconde tudo o que está abaixo dele* — e o que
+/// o artista aponta na foto é o meio da peça, não a ponta.
+///
+/// Regiões, para uma estrela de `n` pontas: **PONTA** (`θ ≡ 0 mod 72°`), **VALE**
+/// (`θ ≡ 36 mod 72°`), **ARO DA TAMPA** (`|z|` junto à meia-altura) e **MIOLO** (o resto).
+#[test]
+#[ignore = "sonda: os vincos da estrela por regiao"]
+fn the_star_creases_sorted_by_region() {
+    let base = representative(PrimitiveKind::Star).expect("a estrela");
+    let (inner, half_h) = (0.18_f64, 0.25_f64);
+    let limite = ph2d_field::round_limit(&base).expect("tem filete");
+    let c = limite * 0.5;
+    for (rotulo, r, ch) in [
+        ("vivo", 0.0, 0.0),
+        ("só filete", c, 0.0),
+        ("só chanfro", 0.0, c),
+        ("par", c * 0.5, c),
+    ] {
+        let mut p = base.clone();
+        for (chave, v) in [("field.dim.round", r), ("field.dim.chamfer", ch)] {
+            let Some(i) = ph2d_field::dims(&p).iter().position(|d| d.key == chave) else {
+                continue;
+            };
+            ph2d_field::set_dim(&mut p, 0, i, v).expect("aceita");
+        }
+        let (pontos, _, _) = traverse(&p, 4096, 6);
+        let vincos = only_creases(&pontos);
+        // (contagem, pior) por região.
+        let mut balde = [(0_usize, 0.0_f64); 4];
+        let mut onde = [[0.0_f64; 3]; 4];
+        for (q, ang) in &vincos {
+            let raio = (q[0] * q[0] + q[1] * q[1]).sqrt();
+            let theta = q[1].atan2(q[0]).to_degrees().rem_euclid(72.0);
+            let no_aro = q[2].abs() > half_h * 0.90;
+            let i = if theta < 12.0 || theta > 60.0 {
+                0 // ponta
+            } else if (theta - 36.0).abs() < 12.0 && raio < inner * 1.6 {
+                1 // vale
+            } else if no_aro {
+                2 // aro da tampa
+            } else {
+                3 // miolo
+            };
+            balde[i].0 += 1;
+            if *ang > balde[i].1 {
+                balde[i].1 = *ang;
+                onde[i] = [raio, theta, q[2]];
+            }
+        }
+        let total = vincos.len().max(1);
+        println!(
+            "\n  estrela — {rotulo} (r={r:.5} c={ch:.5}): {} pontos de vinco",
+            vincos.len()
+        );
+        for (k, (nome, (n, pior))) in ["ponta", "vale", "aro da tampa", "miolo"]
+            .iter()
+            .zip(balde)
+            .enumerate()
+        {
+            let w = onde[k];
+            println!(
+                "    {nome:<13} {n:5} ({:5.1} %)  pior {pior:5.1}°  em r={:.4} θ°mod72={:5.1} z={:+.4}",
+                100.0 * n as f64 / total as f64,
+                w[0],
+                w[1],
+                w[2]
             );
         }
     }

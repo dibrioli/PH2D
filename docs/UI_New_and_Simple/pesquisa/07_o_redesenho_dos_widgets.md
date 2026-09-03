@@ -728,3 +728,67 @@ cópias.* Hoje quem precisa do piso **pergunta**.
 (o piso do desenho antigo) — apagado — e o `slider_with_chip_min_w` **sem consumidor**. ⭐ O segundo
 não se apagou: ele era exactamente o instrumento que as duas asserções vácuas precisavam.
 *Uma função nasceu órfã e a cura foi ligá-la ao sítio que a pedia sem saber.*
+
+## §14 — ⛔ O DEFEITO DO SMOKE: *«offset e drift em relação ao cursor»* (2026-09-03)
+
+Report do Enio, uma frase, sobre a troca do §13 já no app inteiro.
+
+### 14.1 — O mecanismo: um rect com DOIS papéis, e só um deles estava a ser visto
+
+A caixa tem duas leis de geometria, escritas em subsistemas diferentes:
+
+| quem | lei | onde |
+|---|---|---|
+| o **pintor** | `fill_w = superficie.w · t` | `widget/property_box.rs::paint_surface` |
+| o **despacho** | `t = (px − rect.x) / rect.w` | `interaction/dispatch/number_input.rs::update_drag_value` |
+
+…e o `rect` do segundo é **o que o chamador registou no `HitIndex`**.
+
+A 1.ª redacção da linha do produto registava *a caixa **menos** a coluna do valor*, por um raciocínio
+local e plausível — ***«ali em cima o clique é para escrever, logo não é para arrastar»***. Isso
+responde à pergunta **1** do hit-test (*este ponto é meu?*) e ignora que o rect responde também à
+**2** (*por quanto dividir?*).
+
+⇒ **Um rect mais estreito do que o que se pinta não RECORTA: ele ESCALA.**
+
+| linha | pintado | registado | factor |
+|---|---|---|---|
+| produto, painel a `220 px` | `220` | `220 − 12 − 72 = 136` | **1,62×** |
+| bancada, *decorator* ligado | `w − 14` | `w` | `1,07×` |
+
+⭐ **A mesma lei partida dos dois lados opostos.** É por isso que o defeito viveu meses na bancada
+sem ninguém o ver — `14 px` de discrepância contra `84` — e saltou à cara no primeiro smoke do
+produto. O erro é `0` na borda esquerda e **cresce ao longo do curso**: é literalmente *offset e
+drift*.
+
+### 14.2 — A cura: uma PORTA, `surface_rect`
+
+`ph2d_editor_core::widget::surface_rect(rect, decorator)` devolve o rectângulo que o preenchimento
+atravessa, e tem **dois leitores**: o pintor e quem regista. Os três sítios que pintam a caixa
+passaram a chamá-la (a galeria é estática e não regista nada).
+
+⭐ **Excluir a coluna do valor faz-se por ORDEM, não por largura:** o `HitIndex` resolve em `rev()`,
+então registar o chip **depois** da trilha dá-lhe a coluna do número sem tocar no denominador. O
+clique-para-escrever e as setinhas continuam exactamente onde estavam.
+⚠️ **A ordem é agora load-bearing** — trocá-la faria o número deixar de ser editável em **todo** o
+app, sem nenhum outro sinal. Tem gate (`the_value_column_still_belongs_to_the_chip`).
+
+⚠️ **O topo da faixa continua alcançável** e não por acaso: durante o arrasto o ponteiro sai pela
+direita e o `clamp` entrega `1.0`. É o que o Blender faz. ⛔ Não «corrigir» isso encolhendo o rect —
+é o defeito outra vez.
+
+### 14.3 — O gate corre o GESTO, e tem controlo
+
+`the_fill_lands_under_the_cursor.rs` (3 testes):
+
+1. carrega o ponteiro a sério (`dispatch_pointer`) em **três** pontos do curso sobre a linha do
+   produto pintada, e exige `|rect.x + rect.w·t − px| ≤ 1 px`;
+2. **o controlo** reproduz o registo estreito e exige que a barra de `1 px` o **reprove** — sem
+   isto, o gate nº 1 poderia ser duas expressões da mesma conta, verde por construção
+   ([§13.4](#134--as-duas-asserções-que-ficaram-vácuas) já tinha pago essa lição);
+3. a coluna do valor resolve para o **chip** e o rótulo para a **trilha**.
+
+⚠️ **E a 1.ª redacção do próprio gate mediu a coisa errada:** `store.slider_visual(id)` devolve
+`(estado, hover_live)` — o **relógio de hover**, que satura em `1.0` a arrastar. Lia-se como um
+valor de `1.0` perfeitamente plausível. Quem devolve o valor é `store.slider(id)`.
+*Um acessor cujo segundo campo é uma animação e não o valor é uma armadilha com nome de conveniência.*

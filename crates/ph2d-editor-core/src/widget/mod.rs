@@ -109,7 +109,11 @@ pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};
 // ⭐ A CAIXA ÚNICA — o pintor de uma linha de propriedade, e o padrão do app desde 2026-09-02.
 // ⚠️ Re-exportado por NOME (o `mod` acima é gerado e privado): o laboratório e o produto têm de
 // chamar o MESMO pintor, senão o estudo diverge do que shipa.
-pub use property_box::{DECORATOR_W, PropertyBox, PropertyBoxState, paint_property_box};
+// ⚠️ A `surface_rect` sai daqui porque **quem regista o alvo de arrasto vive noutra crate** (a
+// bancada): sem ela, cada sítio re-deriva «onde é que o preenchimento acaba» e a deriva volta.
+pub use property_box::{
+    DECORATOR_W, PropertyBox, PropertyBoxState, paint_property_box, surface_rect,
+};
 pub use radial_menu::{
     MAX_SECTORS as RADIAL_MAX_SECTORS, RadialItem, RadialOpen, dead_zone_px as radial_dead_zone_px,
     item_offset as radial_item_offset, paint_radial_menu, sector_at as radial_sector_at,

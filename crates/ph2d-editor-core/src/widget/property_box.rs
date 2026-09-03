@@ -140,6 +140,39 @@ impl PropertyBox<'_> {
 ///
 /// ⛔ *Uma segunda expressão para «onde está o valor?» divergiria no primeiro dia em que a caixa
 /// ganhasse a coluna de animação, e a marca apareceria ao lado do número em vez de sobre ele.*
+/// ⭐⭐⭐ **A SUPERFÍCIE da caixa — o rectângulo que o preenchimento atravessa, e portanto o
+/// rectângulo que o ARRASTO tem de registar.**
+///
+/// ⚠️ **Ela existe porque a lei tem DOIS leitores em subsistemas diferentes, e enquanto teve um só
+/// o app tinha deriva.** O pintor mapeia `t` sobre este rect (`fill_w = r.w * t`); o despacho de
+/// ponteiro mapeia o cursor sobre o rect que o chamador REGISTOU no `HitIndex`
+/// (`value = (px − rect.x) / rect.w`, em
+/// [`interaction::dispatch::number_input`](crate::interaction)). Se os dois rects não forem o
+/// **mesmo**, a tinta e o dedo escalam por factores diferentes: o preenchimento afasta-se do cursor
+/// **proporcionalmente à distância da borda esquerda** — ⛔ não é uma folga constante que se
+/// compense com um `+ pad`, é um **factor**, e por isso lê-se como *offset* perto do fim e como
+/// *drift* ao longo do curso.
+///
+/// Medido em 2026-09-03, report do Enio (*«temos um offset e drift em relação ao cursor»*):
+///
+/// | sítio | registava | pintava | factor |
+/// |---|---|---|---|
+/// | linha do produto | caixa **menos** a coluna do valor | caixa inteira | `w/(w−pad−chip_w)` = **1,62×** a `w = 220` |
+/// | bancada, *decorator* ligado | caixa **com** a coluna de animação | caixa **sem** ela | `w/(w−14)` = 1,07× |
+///
+/// ⚠️ **A mesma lei partida, dos dois lados opostos** — e é por isso que o defeito só apareceu no
+/// produto: `84 px` de discrepância num sítio contra `14` no outro. *Duas contas que hoje
+/// concordam são duas contas que amanhã divergem; aqui elas já divergiam e ninguém tinha um sítio
+/// onde comparar.*
+#[must_use]
+pub fn surface_rect(rect: Rect, decorator: bool) -> Rect {
+    if decorator {
+        Rect::new(rect.x, rect.y, (rect.w - DECORATOR_W).max(1.0), rect.h)
+    } else {
+        rect
+    }
+}
+
 #[must_use]
 pub fn value_column(rect: Rect, value_w: f32, decorator: bool) -> Rect {
     let pad = Spacing::Md.px();
@@ -166,15 +199,13 @@ pub fn paint_property_box(
     let pad = Spacing::Md.px();
 
     // A coluna de animação sai da direita ANTES de tudo — ela é do FORMULÁRIO, não da caixa.
-    let (box_rect, deco) = if b.decorator {
-        let w = (rect.w - DECORATOR_W).max(1.0);
-        (
-            Rect::new(rect.x, rect.y, w, rect.h),
-            Some(Rect::new(rect.x + w, rect.y, DECORATOR_W, rect.h)),
-        )
-    } else {
-        (rect, None)
-    };
+    // ⚠️ **Pela [`surface_rect`], não por uma conta local:** este rect é o que o preenchimento
+    // atravessa, e quem regista o alvo de arrasto tem de registar EXACTAMENTE o mesmo. Ver lá o
+    // mecanismo da deriva.
+    let box_rect = surface_rect(rect, b.decorator);
+    let deco = b
+        .decorator
+        .then(|| Rect::new(box_rect.x + box_rect.w, rect.y, DECORATOR_W, rect.h));
 
     let fg = if disabled {
         ColorToken::TextDisabled

@@ -161,33 +161,43 @@ pub fn paint_slider_with_chip_layout(
     // Quem pinta lá é o campo numérico REAL, logo abaixo: cursor, selecção, recorte do texto e as
     // **setinhas** continuam a ser os que o app sempre teve. ⛔ Reimplementá-los aqui seria a
     // segunda cópia de um campo de texto.
-    let chip_rect = paint_property_box(
-        scene,
-        text_system,
-        theme,
-        rect,
-        PropertyBox {
-            label,
-            value: "",
-            t: value,
-            state: box_state,
-            accent: ColorToken::Accent,
-            // ⏳ A coluna de animação fica FORA por agora: ela é do FORMULÁRIO, e esta função não
-            // sabe se a propriedade é animável — nem os ~50 chamadores reservam largura para ela.
-            // Ligá-la aqui encolheria toda linha do app em 14 px sem ninguém pedir.
-            decorator: false,
-            value_w: Some(chip_w),
-        },
-        style,
-    );
+    let b = PropertyBox {
+        label,
+        value: "",
+        t: value,
+        state: box_state,
+        accent: ColorToken::Accent,
+        // ⏳ A coluna de animação fica FORA por agora: ela é do FORMULÁRIO, e esta função não
+        // sabe se a propriedade é animável — nem os ~50 chamadores reservam largura para ela.
+        // Ligá-la aqui encolheria toda linha do app em 14 px sem ninguém pedir.
+        decorator: false,
+        value_w: Some(chip_w),
+    };
 
     if slider_id.0 != 0 {
-        // ⭐ **O arrasto pega em TUDO menos a coluna do valor** — incluindo o rótulo, que é
-        // precisamente o modelo do Blender que o Enio escolheu: *o campo inteiro é o controlo*.
-        // Antes, a zona de arrasto era só o trilho, e num painel estreito ela chegava a `30 px`.
-        let drag_w = (chip_rect.x - rect.x).max(1.0);
-        hit_index.register(slider_id, Rect::new(rect.x, rect.y, drag_w, rect.h));
+        // ⭐⭐⭐ **O alvo do arrasto é a SUPERFÍCIE — o MESMO rect que o preenchimento atravessa.**
+        //
+        // ⚠️ A 1.ª redacção registava *a caixa menos a coluna do valor*, por um raciocínio que
+        // parecia óbvio (*«ali em cima o clique é para escrever, logo não é para arrastar»*) e que
+        // está errado: o despacho não usa este rect só para decidir **se** o gesto é meu — ele
+        // divide por `rect.w` para saber **quanto** vale. Registar um rect mais estreito do que o
+        // que se pinta multiplica todo valor por `w/(w−84)` ⇒ a tinta corre à frente do dedo.
+        // Mecanismo e a tabela: [`property_box::surface_rect`].
+        //
+        // ⭐ O clique-para-escrever continua a funcionar sem carvar nada, e por uma propriedade do
+        // `HitIndex`: ele resolve em **ordem inversa de registo**, então o chip — registado LOGO
+        // ABAIXO — ganha dentro da coluna do valor. ⚠️ A ordem é load-bearing; trocá-la faz o
+        // número deixar de ser editável em todo o app.
+        //
+        // ⚠️ E o topo da faixa continua alcançável: durante o arrasto o ponteiro pode sair pela
+        // direita e o `clamp` entrega `1.0` — é o que o Blender faz.
+        hit_index.register(
+            slider_id,
+            crate::widget::property_box::surface_rect(rect, b.decorator),
+        );
     }
+
+    let chip_rect = paint_property_box(scene, text_system, theme, rect, b, style);
 
     // O campo numérico REAL na coluna que a caixa reservou — **sem superfície própria**, senão
     // seria uma caixa dentro da caixa, que é exactamente o cromo que este redesenho apaga.

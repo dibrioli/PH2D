@@ -19,7 +19,7 @@ use crate::state::WidgetLabState;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
-use ph2d_editor_core::widget::{PropertyBox, PropertyBoxState, paint_property_box};
+use ph2d_editor_core::widget::{PropertyBox, PropertyBoxState, paint_property_box, surface_rect};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{
@@ -267,7 +267,12 @@ pub(crate) fn paint_study(b: &mut Bench<'_>, st: &WidgetLabState, live: (f32, bo
     // ── A caixa VIVA ───────────────────────────────────────────────────────
     b.head("LIVE BOX \u{2014} drag it");
     let live_rect = Rect::new(b.x, b.y, b.w, row_h);
-    b.hit.register(ids::LAB_LIVE_BOX, live_rect);
+    // ⚠️ **O alvo é a SUPERFÍCIE, não a linha** — com o *decorator* ligado a caixa é `14 px` mais
+    // estreita do que o rect, e registar a linha inteira punha a tinta a correr à frente do dedo
+    // por `w/(w−14)`. Era o mesmo defeito da linha do produto, mais pequeno e do lado oposto: é
+    // por isso que ele passou meses invisível aqui. Ver `property_box::surface_rect`.
+    b.hit
+        .register(ids::LAB_LIVE_BOX, surface_rect(live_rect, st.decorator));
     let value = format!("{:.0}%", live.0 * PERCENT);
     let state = if live.1 {
         PropertyBoxState::Dragging

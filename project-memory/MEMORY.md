@@ -122,6 +122,7 @@
 
 ## Arquitetura / norte / perf
 - [Conteúdo de asset é PARTILHADO; per-objeto é QUAL asset](feedback_the_content_of_an_asset_is_shared_only_which_asset_is_per_object.md)
+- ⭐ [Porta que o VIZINHO não chama ainda não é porta — a mesma pergunta errada 4×, a última a 15 linhas dela; só o CENSO a fecha](feedback_a_door_the_neighbour_does_not_call_is_not_a_door_yet.md)
 - [«O mais recente possível» ≠ «o mais recente»: conte os TETOS](feedback_the_newest_possible_is_not_the_newest_count_the_ceilings_first.md) · [duas cópias podem ser o MECANISMO, não resíduo](feedback_two_copies_of_a_dependency_can_be_the_mechanism_not_the_residue.md)
 - [Dois motores, um estado](feedback_two_engines_one_state_is_worse_than_a_slow_engine.md) · [contrato congelado escolhe a arquitetura](feedback_frozen_contract_can_pick_the_architecture.md)
 - [Tipo em N sítios → componente opcional](feedback_widely_constructed_type_favors_optional_component_over_appended_field.md) · [a representação apaga o caso especial](feedback_the_representation_can_delete_the_special_case.md)

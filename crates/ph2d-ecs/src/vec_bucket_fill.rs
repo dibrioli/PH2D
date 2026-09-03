@@ -43,7 +43,7 @@ use crate::SimComponent;
 /// **A região preenchida.** A entidade que o carrega também tem um [`crate::VecPathRef`], e o
 /// `VecPath` dela é a área — geometria de verdade, na cena, re-escrita *em lugar* quando as linhas
 /// mudam (para pintar, exportar, animar).
-#[derive(Component, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Component, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct VecBucketFill {
     /// **Onde o artista apontou**, em coordenadas de MUNDO.
     ///
@@ -51,14 +51,49 @@ pub struct VecBucketFill {
     /// sua pose — não existe um espaço local em que a pergunta faça sentido. É a mesma razão pela
     /// qual o corte e a solda medem no mundo.
     pub seed: [f32; 2],
+    /// ⭐⭐⭐ **AS ÂNCORAS: os pedaços de linha que cercavam a região no momento do clique.**
+    ///
+    /// # Porque uma coordenada não chega
+    ///
+    /// Report do Enio (2026-09-02, quatro vezes seguidas): a tinta trocava de área, sumia e deixava
+    /// resíduo. ⚠️⚠️ **A causa não era nenhum dos defeitos um a um — era o modelo.** A receita era
+    /// *onde a região estava no quadro anterior*, então ela **derivava**: o que um quadro decidia
+    /// virava a régua do seguinte, e um único quadro de topologia confusa reatribuía a tinta para
+    /// sempre.
+    ///
+    /// Uma âncora não deriva. Ela diz *"a região que fica à esquerda do pedaço da curva `c` do
+    /// caminho `p` na fracção `f`"* — e arrastar um nó move a curva **sem mudar de que curva o
+    /// pedaço é**. ⇒ **o mesmo desenho dá sempre as mesmas cores, seja qual for o caminho por que
+    /// se lá chegou.**
+    ///
+    /// ⚠️ **Uma face tem várias, e é isso que faz o resto cair de graça:** quando a região se PARTE,
+    /// umas âncoras passam a cercar uma metade e outras a outra — e o preenchimento fica com as
+    /// duas, sem uma linha de código sobre partir.
+    ///
+    /// ⛔ **Elas só se escrevem no CLIQUE.** Reescrevê-las a cada quadro seria reintroduzir a
+    /// deriva com outro nome.
+    pub ancoras: Vec<FillAnchor>,
+}
+
+/// **Uma âncora**: o lado de um pedaço de contorno do documento.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct FillAnchor {
+    /// O `VecPathId` do caminho a que o contorno pertence.
+    pub path: u64,
+    /// O índice do contorno DENTRO desse caminho (`0` = o primário).
+    pub contorno: u16,
+    /// A fracção de arco, dentro do contorno, de um ponto do pedaço.
+    pub frac: f32,
+    /// De que lado do pedaço fica a região — `true` = o sentido em que o contorno é percorrido.
+    pub frente: bool,
 }
 
 impl SimComponent for VecBucketFill {}
 
 impl VecBucketFill {
-    /// Um preenchimento novo, semeado no ponto de mundo `seed`.
+    /// Um preenchimento novo, semeado no ponto de mundo `seed` e agarrado a `ancoras`.
     #[must_use]
-    pub fn new(seed: [f32; 2]) -> Self {
-        Self { seed }
+    pub fn new(seed: [f32; 2], ancoras: Vec<FillAnchor>) -> Self {
+        Self { seed, ancoras }
     }
 }

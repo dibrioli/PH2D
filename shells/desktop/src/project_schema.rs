@@ -404,4 +404,14 @@
 /// ⚠️ **E o 107 foi CONTADO**: `106` era o desta árvore em 2026-09-01, e a nota do 106 continua a
 /// valer — a `line/3DModeling` e a `line/components` escreveram **105 as duas**, e quem as integrar
 /// tem de recontar.
-pub(crate) const PROJECT_SCHEMA: u32 = 107;
+///
+/// # v107 → v108 — as ÂNCORAS do preenchimento (plano 40 §11)
+///
+/// O `VecBucketFill` ganhou `ancoras: Vec<FillAnchor>`, e com ele a receita de uma área deixou de
+/// ser *onde ela estava* e passou a ser *os pedaços de linha que a cercavam*. ⚠️ **O campo é
+/// APENDADO, e o postcard é posicional**: um ficheiro v107 lido por v108 chega ao fim dos bytes no
+/// campo novo, e é o número que transforma isso num erro de versão em vez de um postcard a falhar
+/// longe da causa.
+///
+/// ⛔ Sem degrau de migração, pela mesma decisão do Enio de 26/08 (*"não há projetos salvos"*).
+pub(crate) const PROJECT_SCHEMA: u32 = 108;

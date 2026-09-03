@@ -441,7 +441,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // exactamente o degrau barato que a nota do 102 previu ao desenhar a tinta como enum.
         // PROJECT 106→107: o PREENCHIMENTO do balde (plano 40). ⚠️ A tripla NAO ve^ este degrau —
         // um componente viaja num `ComponentBlob` opaco, chaveado por nome (o caso do 99 e do 100).
-        (107, 13, 18),
+        // PROJECT 107→108: as ANCORAS do preenchimento (plano 40 §11). O `VecBucketFill` ganhou um
+        // campo APENDADO, e a tripla continua a nao ver -- pela mesma razao do 107.
+        (108, 13, 18),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

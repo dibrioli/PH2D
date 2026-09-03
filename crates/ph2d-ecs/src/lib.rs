@@ -227,7 +227,7 @@ pub use vec_widget_value::VecWidgetValue;
 mod vec_bucket_fill;
 mod vec_morph;
 mod vec_morph_machine;
-pub use vec_bucket_fill::VecBucketFill;
+pub use vec_bucket_fill::{FillAnchor, VecBucketFill};
 pub use vec_morph::VecMorph;
 pub use vec_morph_machine::VecMorphMachine;
 

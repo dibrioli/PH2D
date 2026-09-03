@@ -50,6 +50,58 @@ pub struct Arco {
     /// O nó de chegada. ⚠️ **Pode ser o mesmo que [`Self::de`]**: um anel que não encontra ninguém
     /// é um LAÇO, e é assim que ele entra na rede.
     pub ate: usize,
+    /// ⭐⭐⭐ **De que CONTORNO da lista de entrada este arco é um pedaço.**
+    ///
+    /// É a metade que faz uma tinta poder agarrar-se ao desenho em vez de a uma coordenada: quem
+    /// chama sabe que contorno é de que caminho, e um arco passa a ter **nome**.
+    pub origem: usize,
+    /// A fatia do contorno que ele cobre, em fracções de arco. ⚠️ **Num contorno fechado o último
+    /// arco dá a volta pela emenda e sai com `0 > 1`** — ver [`Self::cobre`].
+    pub faixa: (f64, f64),
+}
+
+impl Arco {
+    /// **Esta fracção do contorno cai neste arco?**
+    ///
+    /// ⚠️ Honra a volta pela emenda (`de > até`), e ⛔⛔ **honra a VOLTA INTEIRA**: um contorno
+    /// fechado que não cruza ninguém entra na rede como um laço cortado num sítio qualquer, e sai
+    /// com `de == até` — que quer dizer *o contorno todo*, não *um ponto*. Medido: sem este caso,
+    /// as âncoras de uma face inteira colapsavam **todas na mesma fracção**, e partir a região dava
+    /// a tinta a uma metade só.
+    #[must_use]
+    pub fn cobre(&self, f: f64) -> bool {
+        let (a, b) = self.faixa;
+        if (a - b).abs() < f64::EPSILON {
+            return true; // a volta inteira
+        }
+        if a <= b {
+            f >= a && f <= b
+        } else {
+            f >= a || f <= b
+        }
+    }
+
+    /// A fracção do CONTORNO no parâmetro `t` da fatia (`0` = o princípio dela, `1` = o fim).
+    ///
+    /// ⚠️ Honra a volta pela emenda: com `de > até` a fatia atravessa o `1`.
+    #[must_use]
+    pub fn em(&self, t: f64) -> f64 {
+        let (a, b) = self.faixa;
+        let b = if (a - b).abs() < f64::EPSILON {
+            a + 1.0 // a volta inteira — ver `cobre`
+        } else if a <= b {
+            b
+        } else {
+            b + 1.0
+        };
+        t.mul_add(b - a, a).rem_euclid(1.0)
+    }
+
+    /// O meio da fatia, em fracções de arco.
+    #[must_use]
+    pub fn meio(&self) -> f64 {
+        self.em(0.5)
+    }
 }
 
 /// A **rede**: os arcos, os nós, e a polilinha de cada arco (a mesma da detecção de cruzamentos).
@@ -105,7 +157,7 @@ pub fn rede(contornos: &[(Vec<VecVertex>, bool)]) -> Rede {
             ..Rede::default()
         };
     };
-    let mut geom: Vec<(Vec<VecVertex>, bool)> = Vec::new();
+    let mut geom: Vec<(Vec<VecVertex>, usize, (f64, f64))> = Vec::new();
     for (k, (verts, closed)) in contornos.iter().enumerate() {
         let mut xings = por_contorno[k].clone();
         // ⚠️ **Um anel que não encontra ninguém tem de virar um LAÇO**, e não ficar fechado: um
@@ -115,9 +167,9 @@ pub fn rede(contornos: &[(Vec<VecVertex>, bool)]) -> Rede {
         if *closed && xings.is_empty() {
             xings.push(0.5);
         }
-        for (v, c) in weld::split_at(verts, *closed, &xings) {
+        for (v, c, de, ate) in weld::split_at_fracs(verts, *closed, &xings) {
             if !c && v.len() >= 2 {
-                geom.push((v, false));
+                geom.push((v, k, (de, ate)));
             }
         }
     }
@@ -145,7 +197,7 @@ pub fn rede(contornos: &[(Vec<VecVertex>, bool)]) -> Rede {
     .max(esc * ph2d_vec_scene::trim_tool::TOUCH_FRACTION);
     let pontas: Vec<[f64; 2]> = geom
         .iter()
-        .flat_map(|(v, _)| [v[0].anchor, v[v.len() - 1].anchor])
+        .flat_map(|(v, ..)| [v[0].anchor, v[v.len() - 1].anchor])
         .collect();
     let (de_quem, mut nos) = weld::cluster_endpoints(&pontas, tol);
     // ⚠️ **Uma ponta sozinha também é um nó** — ela é o fim de uma linha solta, e o passeio precisa
@@ -164,15 +216,17 @@ pub fn rede(contornos: &[(Vec<VecVertex>, bool)]) -> Rede {
     let arcos: Vec<Arco> = geom
         .iter()
         .enumerate()
-        .map(|(i, (v, _))| Arco {
+        .map(|(i, (v, origem, faixa))| Arco {
             verts: v.clone(),
             de: ids[i * 2],
             ate: ids[i * 2 + 1],
+            origem: *origem,
+            faixa: *faixa,
         })
         .collect();
     let poly: Vec<Vec<[f64; 2]>> = geom
         .iter()
-        .map(|(v, _)| detection_polyline(v, false))
+        .map(|(v, ..)| detection_polyline(v, false))
         .collect();
     descartar_duplicados(
         Rede {
@@ -273,6 +327,31 @@ impl Rede {
         melhor
     }
 
+    /// ⭐⭐⭐ **O ARCO que cobre a fracção `f` do contorno `origem`** — a metade que resolve uma
+    /// âncora de volta a um pedaço da rede de hoje.
+    ///
+    /// ⚠️ **Um arco pode ter sido partido desde que a âncora foi gravada** (uma linha nova cruzou-o)
+    /// e a fracção continua a cair num dos pedaços — é por isso que a pergunta é *"que arco COBRE
+    /// esta fracção?"* e não *"que arco tem o meio mais próximo?"*: a segunda escolhe o pedaço
+    /// errado assim que os pedaços deixam de ter o mesmo tamanho.
+    #[must_use]
+    pub fn arco_em(&self, origem: usize, f: f64) -> Option<usize> {
+        self.arcos
+            .iter()
+            .position(|a| a.origem == origem && a.cobre(f))
+    }
+
+    /// **A face que fica do lado `frente` do arco `i`.**
+    ///
+    /// A meia-aresta `2i` percorre o arco para a frente e `2i+1` para trás; cada face é o ciclo de
+    /// meias-arestas que a cerca, então a face procurada é a que tem esta no ciclo dela.
+    #[must_use]
+    pub fn face_de(&self, faces: &[Face], arco: usize, frente: bool) -> Option<usize> {
+        faces
+            .iter()
+            .position(|f| f.arcos.iter().any(|&(i, fr)| i == arco && fr == frente))
+    }
+
     /// **TODAS as faces da rede**, cada uma como o ciclo de meias-arestas que a cerca.
     ///
     /// A meia-aresta `2i` percorre o arco `i` para a frente e `2i+1` para trás; o gémeo é `h ^ 1`.
@@ -355,196 +434,13 @@ impl Rede {
         out
     }
 
-    /// ⭐⭐⭐ **UM PONTO BEM DENTRO da face** — o sítio onde uma semente sobrevive à edição.
+    /// **O comprimento do achatado do arco `i`** — a régua com que as âncoras de uma face se
+    /// espalham pela fronteira dela.
     ///
-    /// ⚠️ **A semente do clique fica onde o dedo caiu, e isso pode ser encostado à borda.** Medido:
-    /// com a semente a `0,5` de uma parede, arrastar essa parede **por cima dela** faz a face
-    /// deixar de a conter, e o preenchimento perde a região que estava a seguir. Re-semear aqui a
-    /// cada re-cozimento mantém o ponto **fundo** — a parede tem de varrer o miolo inteiro para o
-    /// perder, que é quando a região de facto deixou de existir.
-    ///
-    /// O centroide serve quando cai dentro (o caso comum); numa face **côncava** ele pode cair
-    /// fora, e aí a resposta é a amostra da grelha mais **afastada da borda**.
+    /// ⚠️ É por ele que a FUSÃO sabe quem cercava mais: a densidade de âncoras é absoluta, então uma
+    /// fronteira longa traz mais.
     #[must_use]
-    pub fn interior_point(&self, face: &Face) -> Option<[f64; 2]> {
-        let poly = self.contorno(face);
-        if poly.len() < 3 {
-            return None;
-        }
-        let n = poly.len() as f64;
-        let c = [
-            poly.iter().map(|p| p[0]).sum::<f64>() / n,
-            poly.iter().map(|p| p[1]).sum::<f64>() / n,
-        ];
-        if point_in_polygon(&poly, c) {
-            return Some(c);
-        }
-        let mut melhor: Option<([f64; 2], f64)> = None;
-        for p in self.interior_samples(face) {
-            let d = poly
-                .windows(2)
-                .map(|w| dist_ponto_segmento(p, w[0], w[1]))
-                .fold(f64::INFINITY, f64::min);
-            if melhor.as_ref().is_none_or(|(_, b)| d > *b) {
-                melhor = Some((p, d));
-            }
-        }
-        melhor.map(|(p, _)| p)
-    }
-
-    /// ⭐⭐⭐ **AS AMOSTRAS DO MIOLO de uma face** — com que se mede *quanto* de uma face era de quem.
-    ///
-    /// # Porque uma face precisa de MUITOS pontos, e não de um
-    ///
-    /// Report do Enio (2026-09-02): *"quando atravessamos uma linha com um nó, os preenchimentos se
-    /// quebram"*. Medido sobre um quadrado de 400 com uma linha ao meio:
-    ///
-    /// | o gesto | o que a rede passa a ter | com UMA semente |
-    /// |---|---|---|
-    /// | a linha entra e parte a região | 2 faces de `200` | a tinta fica com **uma**: metade some |
-    /// | um nó atravessa o topo e funde | `4,17` + `395,83` | as DUAS sementes caem na mesma face |
-    ///
-    /// ⇒ *uma semente diz **onde** a tinta estava; ela não diz **quanto** da face era dela.* A
-    /// resposta a «de quem é esta face?» é uma **votação**, e são estas as amostras que votam.
-    ///
-    /// ⚠️ **Uniformes sobre a CAIXA da face**, e por isso a contagem de votos de uma região é
-    /// proporcional à **área** que ela cobre dentro desta face — que é a grandeza que a lei do
-    /// *Live Paint* pede (*"a face fundida fica com a tinta da maior"*).
-    ///
-    /// # ⛔⛔ E porque é uma VARREDURA, e não uma grelha
-    ///
-    /// Report do Enio (2026-09-02, com fotos): *"comportamento bem melhor mas com inconsistências e
-    /// falhas"* — arrastar um nó para longe cria uma **espiga**, e as regiões dela nasciam sem cor
-    /// nenhuma. Medido, com a grelha de 15×15 sobre a caixa:
-    ///
-    /// | a região | área | densidade na caixa | amostras |
-    /// |---|---|---|---|
-    /// | espiga larga | `2000` | `6,7%` | `8` |
-    /// | espiga fina | `400` | `1,3%` | **`0`** |
-    /// | espiga finíssima | `100` | `0,3%` | **`0`** |
-    ///
-    /// ⇒ *uma região comprida e magra na diagonal não tem UM ponto da grelha dentro dela*, e uma
-    /// face sem amostra não vota, não é votada e não herda tinta nenhuma. ⛔ E o defeito lia-se como
-    /// intermitente — a grelha acerta ou falha conforme o ângulo.
-    ///
-    /// A varredura acha os **intervalos interiores** de cada linha e semeia-os na MESMA malha de
-    /// `x` — mesma densidade, mesma proporcionalidade —, e um intervalo mais estreito do que a
-    /// malha recebe o **ponto do meio** em vez de nada.
-    #[must_use]
-    pub fn interior_samples(&self, face: &Face) -> Vec<[f64; 2]> {
-        let poly = self.contorno(face);
-        if poly.len() < 3 {
-            return Vec::new();
-        }
-        let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
-        for p in &poly {
-            lo = [lo[0].min(p[0]), lo[1].min(p[1])];
-            hi = [hi[0].max(p[0]), hi[1].max(p[1])];
-        }
-        const N: usize = 15;
-        let (dx, dy) = ((hi[0] - lo[0]) / N as f64, (hi[1] - lo[1]) / N as f64);
-        let mut out = Vec::new();
-        for j in 0..N {
-            let y = lo[1] + dy * (j as f64 + 0.5);
-            // Onde a fronteira atravessa esta linha — os extremos dos intervalos INTERIORES.
-            let mut xs: Vec<f64> = Vec::new();
-            for k in 0..poly.len() {
-                let (a, b) = (poly[k], poly[(k + 1) % poly.len()]);
-                if (a[1] <= y) == (b[1] <= y) {
-                    continue;
-                }
-                let t = (y - a[1]) / (b[1] - a[1]);
-                xs.push(t.mul_add(b[0] - a[0], a[0]));
-            }
-            xs.sort_by(f64::total_cmp);
-            for par in xs.as_chunks::<2>().0 {
-                let (a, b) = (par[0], par[1]);
-                // A malha de `x` é GLOBAL (ancorada em `lo`), e não relativa a cada intervalo: é
-                // isso que mantém a densidade uniforme, e a densidade uniforme é o que faz a
-                // contagem de votos ser proporcional à ÁREA.
-                let mut i = ((a - lo[0]) / dx).floor().max(0.0);
-                let mut emitiu = false;
-                loop {
-                    let x = dx.mul_add(i + 0.5, lo[0]);
-                    if x > b {
-                        break;
-                    }
-                    if x >= a {
-                        out.push([x, y]);
-                        emitiu = true;
-                    }
-                    i += 1.0;
-                }
-                if !emitiu {
-                    // ⚠️ Um intervalo mais estreito do que a malha ficaria MUDO — e é justamente o
-                    // caso que o report de 2026-09-02 trouxe. Ele recebe o ponto do meio: pesa um
-                    // pouco mais do que a área dele, e é infinitamente melhor do que zero.
-                    out.push([f64::midpoint(a, b), y]);
-                }
-            }
-        }
-        // ⭐ **O filtro é a MESMA contenção que o resto usa.** A varredura é só um gerador de
-        // candidatos esperto; quem decide *dentro* continua a ser uma porta só, senão uma face
-        // não-simples seria amostrada por uma regra e reclamada por outra.
-        out.retain(|p| point_in_polygon(&poly, *p));
-        out
-    }
-
-    /// ⭐⭐⭐ **QUEM FAZ FRONTEIRA COM QUEM, e por quanto** — `(face vizinha, comprimento partilhado)`
-    /// para cada face da lista.
-    ///
-    /// # Porque o comprimento, e não a contagem de arcos
-    ///
-    /// É por ele que uma região nova sabe **de quem** herdar: a face com que ela mais confina é a
-    /// de que ela se destacou. Contar arcos daria o mesmo peso a uma lasca de fronteira e a meia
-    /// volta de um círculo.
-    ///
-    /// ⚠️ **A face de FORA não aparece como vizinha**: ela não está na lista (`area <= 0`), então a
-    /// meia-aresta gémea dela não mapeia para face nenhuma. É isso que impede o fundo de dar tinta.
-    ///
-    /// # ⛔⛔ E a partilha de um NÓ **não** é vizinhança
-    ///
-    /// **Um laço de uma curva que se cruza a si própria não faz fronteira com o corpo dela** — os
-    /// dois lóbulos de um oito tocam-se num PONTO. Medido no report de 2026-09-02: a espiga de um
-    /// círculo dá 3 faces e **as três declaram-se sem vizinhas**, e é isso mesmo.
-    ///
-    /// ⚠️⚠️ **Isto já foi ao contrário, durante um dia.** A partilha de nó entrava com peso `0`,
-    /// para a tinta poder atravessar para o lóbulo — e o report seguinte do Enio chamou ao
-    /// resultado *"resíduo de preenchimento"*: uma espiga de cor a sair do desenho, que é
-    /// exactamente o que a regra pintava. ⇒ **a tinta atravessa uma FRONTEIRA, nunca um ponto** —
-    /// a mesma lei de um balde de pixels, que não vaza por um canto.
-    #[must_use]
-    pub fn adjacencias(&self, faces: &[Face]) -> Vec<Vec<(usize, f64)>> {
-        let mut de_quem = vec![usize::MAX; self.arcos.len() * 2];
-        for (k, f) in faces.iter().enumerate() {
-            for &(i, frente) in &f.arcos {
-                de_quem[2 * i + usize::from(!frente)] = k;
-            }
-        }
-        faces
-            .iter()
-            .map(|f| {
-                let mut out: Vec<(usize, f64)> = Vec::new();
-                for &(i, frente) in &f.arcos {
-                    let gemea = (2 * i + usize::from(!frente)) ^ 1;
-                    let v = de_quem[gemea];
-                    if v == usize::MAX {
-                        continue; // do outro lado está a face de FORA
-                    }
-                    let l = self.comprimento(i);
-                    if let Some(e) = out.iter_mut().find(|(j, _)| *j == v) {
-                        e.1 += l;
-                    } else {
-                        out.push((v, l));
-                    }
-                }
-                out
-            })
-            .collect()
-    }
-
-    /// O comprimento do achatado do arco `i`.
-    fn comprimento(&self, i: usize) -> f64 {
+    pub fn comprimento(&self, i: usize) -> f64 {
         self.poly.get(i).map_or(0.0, |p| {
             p.windows(2)
                 .map(|w| (w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]))
@@ -604,18 +500,6 @@ impl Rede {
         let k = lista.iter().position(|&x| x == gemeo).unwrap_or(0);
         lista[(k + lista.len() - 1) % lista.len()]
     }
-}
-
-/// A distância de um ponto ao SEGMENTO — a régua de *"quão fundo"*.
-fn dist_ponto_segmento(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
-    let ab = [b[0] - a[0], b[1] - a[1]];
-    let ap = [p[0] - a[0], p[1] - a[1]];
-    let len2 = ab[0].mul_add(ab[0], ab[1] * ab[1]);
-    if len2 <= f64::EPSILON {
-        return ap[0].hypot(ap[1]);
-    }
-    let t = (ap[0].mul_add(ab[0], ap[1] * ab[1]) / len2).clamp(0.0, 1.0);
-    (ap[0] - t * ab[0]).hypot(ap[1] - t * ab[1])
 }
 
 /// A área com sinal de um polígono (shoelace). Positiva = anti-horário.

@@ -1642,7 +1642,7 @@ pub(crate) struct App {
     pub(crate) vec_bucket_cache: Option<crate::vec_bucket::BucketCache>,
     /// Os preenchimentos que nasceram neste quadro e ainda esperam a ENTIDADE: `(caminho,
     /// semente)`. Drenados logo depois do `vec_entities::sync`, que é quem a cria.
-    pub(crate) vec_bucket_new: Vec<(u64, [f32; 2])>,
+    pub(crate) vec_bucket_new: Vec<(u64, [f32; 2], Vec<ph2d_ecs::FillAnchor>)>,
     /// O alvo vivo do frame anterior — só existe para detectar a MUDANÇA que desarma o
     /// [`Self::vec_shape_armed`].
     pub(crate) vec_shape_armed_target: Option<ph2d_vec_scene::VecPathId>,

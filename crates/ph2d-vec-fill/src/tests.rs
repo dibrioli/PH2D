@@ -279,13 +279,19 @@ fn two_different_curves_between_the_same_nodes_are_a_lens() {
     );
 }
 
-/// ⭐⭐⭐ **A SEMENTE RE-SEMEADA SOBREVIVE a uma parede que varre por cima do clique.**
+/// ⭐⭐⭐ **AS ÂNCORAS SOBREVIVEM A UMA PAREDE QUE VARRE POR CIMA DO CLIQUE.**
 ///
-/// ⚠️ **Medido antes:** com a semente a `0,5` de uma parede, arrastá-la por cima do ponto fazia a
-/// face deixar de o conter, e o preenchimento parava de seguir. Re-semear no ponto mais **fundo**
-/// da face a cada re-cozimento mantém a receita longe da borda.
+/// ⚠️⚠️ **Este gate mediu, até 2026-09-02, a lei OPOSTA**: a receita era um ponto, e ele tinha de se
+/// **re-semear** no miolo da face a cada quadro para a parede não o apanhar. Re-semear é escrita
+/// derivada — e foi essa escrita, generalizada para uma REGIÃO inteira, que fez a tinta derivar e
+/// trocar de área nos quatro reports do Enio.
+///
+/// A âncora não precisa de fugir da parede: ela **é** a parede. O tecto desce dos `20` aos `−10`, o
+/// clique original (`y = 19,5`) fica para trás — e a região continua a ser reencontrada.
+///
+/// ⛔ **Com o CONTROLE**: o mesmo ponto, sozinho, perde a região a meio da varredura.
 #[test]
-fn reseeding_deep_inside_survives_a_wall_sweeping_over_the_click() {
+fn the_anchors_survive_a_wall_sweeping_over_the_click() {
     let quadro = |topo: f64| {
         vec![
             (vec![v(-60.0, -20.0), v(60.0, -20.0)], false),
@@ -294,24 +300,40 @@ fn reseeding_deep_inside_survives_a_wall_sweeping_over_the_click() {
             (vec![v(20.0, -60.0), v(20.0, 60.0)], false),
         ]
     };
-    // O clique caiu perto do tecto (`y = 19,5`, com o tecto em `20`).
-    let mut semente = [0.0, 19.5];
+    // O clique caiu perto do tecto (`y = 19,5`, com o tecto em `20`), e a receita e' gravada UMA vez.
+    let clique = [0.0, 19.5];
+    let r0 = rede(&quadro(20.0));
+    let f0 = r0.face_em(clique).expect("ha' regiao debaixo do clique");
+    let ancoras: Vec<(usize, f64, bool)> = f0
+        .arcos
+        .iter()
+        .map(|&(i, frente)| (r0.arcos[i].origem, r0.arcos[i].meio(), frente))
+        .collect();
+    assert!(ancoras.len() >= 2, "a regiao tem de dar varias ancoras");
+
     let mut vivo = 0;
     for topo in [20.0_f64, 18.0, 15.0, 10.0, 5.0, 0.0, -10.0] {
         let r = rede(&quadro(topo));
-        let Some(f) = r.face_em(semente) else { break };
+        let faces: Vec<Face> = r.faces().into_iter().filter(|f| f.area > 0.0).collect();
+        let achou = ancoras.iter().any(|&(o, f, frente)| {
+            r.arco_em(o, f)
+                .and_then(|a| r.face_de(&faces, a, frente))
+                .is_some()
+        });
+        if !achou {
+            break;
+        }
         vivo += 1;
-        semente = r.interior_point(&f).expect("a face tem miolo");
     }
     assert_eq!(
         vivo, 7,
-        "o preenchimento perdeu a regiao a meio da varredura (sobreviveu a {vivo} passos de 7)"
+        "as ancoras perderam a regiao a meio da varredura (sobreviveram a {vivo} passos de 7)"
     );
-    // ⛔ E o CONTROLE: sem re-semear, a mesma varredura perde-a.
-    let mut fixa = [0.0, 19.5];
+
+    // ⛔ O CONTROLE: o ponto do clique, sozinho, perde-a.
     let mut sem = 0;
     for topo in [20.0_f64, 18.0, 15.0, 10.0, 5.0, 0.0, -10.0] {
-        if rede(&quadro(topo)).face_em(fixa).is_none() {
+        if rede(&quadro(topo)).face_em(clique).is_none() {
             break;
         }
         sem += 1;
@@ -319,28 +341,6 @@ fn reseeding_deep_inside_survives_a_wall_sweeping_over_the_click() {
     assert!(
         sem < 7,
         "o controle nao mede nada: a semente fixa sobreviveu a varredura toda"
-    );
-    let _ = &mut fixa;
-}
-
-/// ⚠️ **Numa face CÔNCAVA o centroide pode cair FORA** — e aí o ponto vem da grelha.
-#[test]
-fn the_interior_point_of_a_concave_face_is_inside_it() {
-    // Um "L": o centroide do contorno cai no canto que falta.
-    let l = vec![
-        v(-40.0, -40.0),
-        v(40.0, -40.0),
-        v(40.0, -20.0),
-        v(-20.0, -20.0),
-        v(-20.0, 40.0),
-        v(-40.0, 40.0),
-    ];
-    let r = rede(&[(l, true)]);
-    let f = r.face_em([-30.0, 0.0]).expect("o braco vertical do L");
-    let p = r.interior_point(&f).expect("o L tem miolo");
-    assert!(
-        r.face_em(p).is_some_and(|g| (g.area - f.area).abs() < 1.0),
-        "o ponto interior caiu fora da propria face: {p:?}"
     );
 }
 
@@ -518,61 +518,91 @@ fn four_straight_walls_with_a_hair_of_a_gap_still_enclose_a_square() {
     );
 }
 
-/// ⭐⭐⭐ **DUAS FACES QUE PARTILHAM UMA PAREDE DECLARAM-SE VIZINHAS, e o peso é o COMPRIMENTO dela.**
+/// ⛔⛔ **A VOLTA INTEIRA não é um PONTO** — o defeito que quase deitou fora o modelo das âncoras.
 ///
-/// ⚠️⚠️ **Este gate existe para não deixar a adjacência por ARCO passar despercebida se partir.** A
-/// irmã dela — a partilha por NÓ, com peso `0` — cobre o mesmo pedido do consumidor, então uma
-/// adjacência por arco avariada cairia toda no nó e **nenhum gate do balde reprovaria**. *Uma
-/// segunda rota para a mesma pergunta é uma rede de segurança que esconde a queda.*
+/// Um contorno fechado que não cruza ninguém entra na rede como um **laço** cortado num sítio
+/// qualquer, e sai com `de == até`. Isso quer dizer *o contorno todo*; lido como *um ponto*, as
+/// âncoras de uma face inteira colapsavam **todas na mesma fracção** — medido: `16` âncoras, uma
+/// só posição —, e partir a região dava a tinta a **uma** das metades.
 #[test]
-fn two_faces_that_share_a_wall_are_neighbours_by_its_length() {
-    // Um quadrado de lado 20 cortado ao meio por uma linha horizontal: a parede mede 20.
-    let linha = (vec![v(-20.0, 0.0), v(20.0, 0.0)], false);
-    let r = rede(&[quadrado(20.0), linha]);
-    let faces: Vec<Face> = r.faces().into_iter().filter(|f| f.area > 0.0).collect();
-    assert_eq!(faces.len(), 2);
+fn a_full_loop_slice_means_the_whole_contour_and_never_a_point() {
+    let r = rede(&[quadrado(20.0)]);
+    assert_eq!(r.arcos.len(), 1, "um anel sozinho e' UM laco");
+    let a = &r.arcos[0];
+    assert_eq!(
+        a.faixa.0, a.faixa.1,
+        "e a fatia dele fecha-se sobre si mesma"
+    );
 
-    let adj = r.adjacencias(&faces);
-
-    assert_eq!(adj[0].len(), 1, "cada metade tem UMA vizinha: {adj:?}");
-    assert_eq!(adj[1].len(), 1);
-    assert_eq!(adj[0][0].0, 1, "e a vizinha da primeira e' a segunda");
+    let fracs: Vec<f64> = (0..8).map(|j| a.em((f64::from(j) + 0.5) / 8.0)).collect();
+    let mut distintas = fracs.clone();
+    distintas.sort_by(f64::total_cmp);
+    distintas.dedup_by(|x, y| (*x - *y).abs() < 1e-9);
+    assert_eq!(
+        distintas.len(),
+        8,
+        "as oito ancoras tem de cair em oito sitios: {fracs:?}"
+    );
     assert!(
-        (adj[0][0].1 - 20.0).abs() < 1e-6,
-        "o peso e' o COMPRIMENTO da parede partilhada, e nao a contagem: {}",
-        adj[0][0].1
+        fracs.iter().all(|f| a.cobre(*f)),
+        "e todas dentro do proprio laco"
     );
 }
 
-/// ⛔⛔ **Os dois lóbulos de um contorno que se cruza NÃO fazem fronteira — tocam-se num PONTO.**
+/// ⭐⭐⭐ **UMA ÂNCORA REENCONTRA O PEDAÇO QUE A COBRE, mesmo depois de o arco ter sido PARTIDO.**
 ///
-/// Medido no report de 2026-09-02: a espiga de um círculo dá 3 faces, e **as três declaram-se sem
-/// vizinhas**. ⚠️ **Durante um dia isto foi ao contrário**: a partilha de nó entrava com peso `0`
-/// para a tinta poder atravessar, e o report seguinte do Enio chamou ao resultado *"resíduo de
-/// preenchimento"* — uma espiga de cor a sair do desenho. ⇒ *a tinta atravessa uma FRONTEIRA, nunca
-/// um ponto*, que é a mesma lei de um balde de pixels.
+/// ⚠️⚠️ **A fixtura é DESEQUILIBRADA de propósito, e a primeira redacção não era.** Com o corte ao
+/// meio, *"que arco COBRE esta fracção?"* e *"qual tem o meio mais próximo?"* dão a mesma resposta —
+/// e a mutação que troca uma pela outra **SOBREVIVEU**. Aqui o corte fica a `0,9`: a âncora em
+/// `0,85` está no pedaço LONGO (meio `0,45`) e o meio mais próximo é o do pedaço CURTO (`0,95`).
+/// *Um gate cuja fixtura é simétrica não distingue as duas leis que ele existe para separar.*
 #[test]
-fn the_lobes_of_a_self_crossing_contour_meet_at_a_node_not_along_a_wall() {
-    let base = ph2d_vec_scene::ellipse([0.0, 0.0], 100.0, 100.0);
-    let mut verts = base.verts.clone();
-    let topo = verts
+fn an_anchor_finds_the_piece_that_covers_it_after_a_split() {
+    // Uma linha de 100 cortada por uma vertical a x = 90 ⇒ pedaços de 90% e 10%.
+    let fio = (vec![v(0.0, 0.0), v(100.0, 0.0)], false);
+    let faca = (vec![v(90.0, -10.0), v(90.0, 10.0)], false);
+    let r = rede(&[fio, faca]);
+    let pedacos: Vec<usize> = (0..r.arcos.len())
+        .filter(|i| r.arcos[*i].origem == 0)
+        .collect();
+    assert_eq!(pedacos.len(), 2, "o fio partiu-se em dois");
+    let longo = *pedacos
         .iter()
-        .enumerate()
-        .max_by(|a, b| a.1.anchor[1].total_cmp(&b.1.anchor[1]))
-        .map(|(i, _)| i)
-        .expect("a elipse tem vertices");
-    let alvo = [0.0, -260.0];
-    verts[topo].anchor = alvo;
-    verts[topo].in_handle = alvo;
-    verts[topo].out_handle = alvo;
-    let r = rede(&[(verts, true)]);
-    let faces: Vec<Face> = r.faces().into_iter().filter(|f| f.area > 0.0).collect();
-    assert!(faces.len() >= 2, "a espiga tem de criar lobulos");
-
-    let adj = r.adjacencias(&faces);
-
+        .max_by(|a, b| r.comprimento(**a).total_cmp(&r.comprimento(**b)))
+        .expect("ha' dois");
+    let curto = pedacos
+        .iter()
+        .copied()
+        .find(|i| *i != longo)
+        .expect("o outro");
     assert!(
-        adj.iter().all(std::vec::Vec::is_empty),
-        "um lobulo nao faz fronteira com ninguem — a tinta nao pode atravessar para ele: {adj:?}"
+        (r.arcos[curto].meio() - 0.85).abs() < (r.arcos[longo].meio() - 0.85).abs(),
+        "a fixtura tem de ser DESEQUILIBRADA: o meio do curto ({:.3}) tem de estar mais perto de \
+         0,85 do que o do longo ({:.3})",
+        r.arcos[curto].meio(),
+        r.arcos[longo].meio()
+    );
+
+    assert_eq!(
+        r.arco_em(0, 0.85),
+        Some(longo),
+        "a fraccao 0,85 esta' DENTRO do pedaco longo — quem responde e' a cobertura, nao a distancia"
+    );
+    assert_eq!(r.arco_em(0, 0.95), Some(curto), "e 0,95 esta' no curto");
+}
+
+/// ⭐⭐ **A FACE é a do LADO gravado** — e o lado de fora não é face nenhuma.
+#[test]
+fn the_face_is_the_one_on_the_recorded_side() {
+    let r = rede(&[quadrado(20.0)]);
+    let faces: Vec<Face> = r.faces().into_iter().filter(|f| f.area > 0.0).collect();
+    assert_eq!(faces.len(), 1);
+    let (arco, frente) = faces[0].arcos[0];
+
+    assert_eq!(r.face_de(&faces, arco, frente), Some(0), "o lado de dentro");
+    assert_eq!(
+        r.face_de(&faces, arco, !frente),
+        None,
+        "e o de fora nao e' face limitada nenhuma"
     );
 }

@@ -58,9 +58,14 @@ fn a_hidden_path_is_not_a_wall() {
         verts: vec![v(0.0, 0.0), v(10.0, 0.0)],
         ..VecPath::default()
     });
-    let todos = contornos_mundo(&scene, &VecXforms::new(), &|_| false);
+    let (todos, tags) = contornos_mundo(&scene, &VecXforms::new(), &|_| false);
+    assert_eq!(
+        tags.len(),
+        todos.len(),
+        "cada contorno tem de trazer a etiqueta dele"
+    );
     assert_eq!(todos.len(), 1);
-    let nenhum = contornos_mundo(&scene, &VecXforms::new(), &|x| x == id);
+    let (nenhum, _) = contornos_mundo(&scene, &VecXforms::new(), &|x| x == id);
     assert!(nenhum.is_empty(), "o escondido entrou na rede");
 }
 
@@ -75,7 +80,7 @@ fn the_contours_come_out_in_world_space() {
     });
     let mut xf = VecXforms::new();
     xf.insert(id, ph2d_vec_scene::Xform([1.0, 0.0, 0.0, 1.0, 100.0, 0.0]));
-    let c = contornos_mundo(&scene, &xf, &|_| false);
+    let (c, _) = contornos_mundo(&scene, &xf, &|_| false);
     assert_eq!(c[0].0[0].anchor, [100.0, 0.0], "a pose nao entrou");
 }
 
@@ -104,19 +109,19 @@ fn a_bucket_fill_is_not_a_wall() {
             .world_mut()
             .spawn((Transform::IDENTITY, Name::new("P"), VecPathRef(id)));
         if fill {
-            e.insert(VecBucketFill::new([5.0, 2.0]));
+            e.insert(VecBucketFill::new([5.0, 2.0], Vec::new()));
         }
         map.insert(id, e.id().to_bits());
     }
     let fills = preenchimentos(&sim, &map);
     assert_eq!(fills.len(), 1, "a shell nao reconheceu o preenchimento");
     assert_eq!(fills[0].0, area);
-    assert_eq!(fills[0].2, [5.0, 2.0], "a semente nao voltou inteira");
+    assert_eq!(fills[0].2.seed, [5.0, 2.0], "a semente nao voltou inteira");
 
     // ⚠️ **A MESMA porta que o produto usa** (`fora_da_rede`) — um fecho escrito aqui testaria o
     // fecho deste teste, e foi assim que a mutação que apagava o termo do preenchimento sobreviveu.
     let so_fill: std::collections::BTreeSet<u64> = fills.iter().map(|(id, _, _)| *id).collect();
-    let paredes = contornos_mundo(&scene, &VecXforms::new(), &|id| {
+    let (paredes, _) = contornos_mundo(&scene, &VecXforms::new(), &|id| {
         fora_da_rede(false, so_fill.contains(&id))
     });
     assert!(
@@ -178,7 +183,7 @@ fn a_bucket_fill_is_published_as_derived_and_is_not_pickable() {
             .world_mut()
             .spawn((Transform::IDENTITY, Name::new("P"), VecPathRef(id)));
         if fill {
-            e.insert(VecBucketFill::new([0.0, 0.0]));
+            e.insert(VecBucketFill::new([0.0, 0.0], Vec::new()));
         }
         map.insert(id, e.id().to_bits());
     }

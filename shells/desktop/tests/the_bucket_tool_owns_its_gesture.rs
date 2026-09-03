@@ -109,9 +109,12 @@ fn the_filled_shape_is_born_behind_the_lines() {
         "a forma do Balde nao e' mandada para o fundo — ela taparia o desenho"
     );
     // …e a receita é presa na MESMA passagem: a entidade só existe aqui.
+    //
+    // ⚠️ **A receita são as ÂNCORAS, e a semente é a rede** (plano 40 §11, 2026-09-02). Até aí ela
+    // era só o ponto do clique; o que a substituiu são os pedaços de linha que cercavam a região.
     assert!(
-        corpo.contains("VecBucketFill::new(seed)"),
-        "a receita (a semente) nao e' presa a' entidade — o preenchimento nao seria vivo"
+        corpo.contains("VecBucketFill::new(seed, ancoras)"),
+        "a receita (as ancoras + a semente) nao e' presa a' entidade — o preenchimento nao seria vivo"
     );
     let sync = at(LOOP, "crate::vec_entities::sync(", "o render_loop");
     let arma = at(LOOP, "crate::vec_bucket::arm_new_fills(", "o render_loop");
@@ -170,31 +173,28 @@ fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
         BUCKET.contains("para_local(g, xfp)"),
         "a area re-cozida e' escrita em MUNDO num caminho que tem pose — ela sai deslocada"
     );
-    // ⭐ **E a semente RE-SEMEIA-SE no ponto mais fundo da face** (report de 2026-09-01: *"a
-    // depender da posição dos pontos o preenchimento some"*): o clique cai onde o dedo caiu, e uma
-    // semente encostada à borda é perdida pela primeira parede que passa por cima dela.
-    assert!(
-        BUCKET[f..fim].contains("rede.interior_point(&faces[meus[0]])"),
-        "a semente nao e' re-semeada na MAIOR face — ela fica colada ao ponto do clique, ou vai \
-         viver na lasca de uma regiao que partiu"
-    );
-    assert!(
-        BUCKET[f..fim].contains("er.insert(VecBucketFill::new(seed));"),
-        "o ponto novo e' calculado e nao e' GRAVADO na receita"
-    );
-    // ⭐⭐⭐ **A herança para o terreno NOVO só corre quando o gesto foi DEFORMAR.**
+    // ⭐⭐⭐ **E o dono de cada face sai das ÂNCORAS, não de comparar com o quadro anterior.**
     //
-    // ⚠️ A guarda é a contagem de contornos de parede: um nó arrastado não a muda, desenhar ou
-    // apagar uma forma muda. ⛔ Sem ela, desenhar um círculo sobre um quadrado pintado pintaria
-    // também a parte do círculo que ficou de fora — a herança deixaria de ser *"a região cresceu"*
-    // e passaria a ser *"tudo o que encosta ganha cor"*.
+    // ⚠️⚠️ **Esta lista de literais mudou pela SEGUNDA vez, e a mudança é a lição.** Ela exigiu,
+    // sucessivamente, `rede.face_em(*seed)` (uma face por semente), depois `donos(…)` com regiões
+    // do quadro anterior, e agora a resolução por âncora — três modelos em três dias. ⛔ Um gate
+    // textual afirma sobre a REDACÇÃO, nunca sobre o comportamento: o que a lei faz está medido em
+    // `vec_bucket_claim_tests` e nos ficheiros que o Enio exportou; o que aqui se prova é só que o
+    // `bucket_upkeep` **chama** a lei e **escreve** o que ela devolve.
     assert!(
-        BUCKET[f..fim].contains("ant.contornos == contornos.len()"),
-        "a heranca para o terreno novo corre sem a guarda de DEFORMAR"
+        BUCKET[f..fim].contains("crate::vec_bucket_claim::donos(&rede, &faces, &tags, &receitas)"),
+        "o upkeep nao resolve as ancoras — a tinta voltaria a depender do quadro anterior"
     );
     assert!(
-        BUCKET[f..fim].contains("crate::vec_bucket_claim::terreno_novo("),
-        "a heranca nao pergunta o que e' TERRENO NOVO — ela inundaria as regioes deixadas vazias"
+        BUCKET[f..fim].contains("ancoras: &f.ancoras"),
+        "as receitas nao levam as ancoras do proprio preenchimento"
+    );
+    // ⛔⛔ **E a semente NÃO se re-semeia.** Reescrevê-la a cada quadro é escrita derivada, e foi
+    // essa escrita — generalizada para uma região inteira — que fez a tinta derivar e trocar de
+    // área nos quatro reports. *O gate exige a AUSÊNCIA porque a presença é o defeito.*
+    assert!(
+        !BUCKET[f..fim].contains("VecBucketFill::new("),
+        "o upkeep reescreve a receita — a deriva volta por aqui"
     );
     // ⚠️ E a exclusão passa pela porta ÚNICA, com os DOIS termos: um fecho escrito à mão aqui foi
     // o que deixou a mutação `o-fill-entra-na-rede` sobreviver.

@@ -27,13 +27,19 @@ use ph2d_ecs::{Entity, SimWorld, VecBucketFill};
 use ph2d_vec_fill::Rede;
 use ph2d_vec_scene::{VecPath, VecScene, VecVertex, VecXforms, trim_tool};
 
+/// A forma de um preenchimento no espaço do caminho dele: o contorno primário e os `subpaths`.
+type Forma = (Vec<VecVertex>, Vec<ph2d_vec_scene::Contour>);
+
+/// As PAREDES e a ETIQUETA de cada uma: `(caminho, contorno)`, que é o que dá nome a um arco.
+type Paredes = (Vec<(Vec<VecVertex>, bool)>, Vec<(u64, u16)>);
+
 /// A rede guardada, com a chave do documento que a produziu.
 pub(crate) struct BucketCache {
     chave: u64,
     rede: Rede,
-    /// Quantos contornos de PAREDE a produziram. ⚠️ É o que separa *deformar* de *autorar*: um nó
-    /// arrastado não muda a contagem; desenhar ou apagar uma forma muda.
-    contornos: usize,
+    /// De que `(caminho, contorno)` veio cada contorno que a produziu — o que dá NOME a um arco,
+    /// e por onde uma âncora o reencontra.
+    tags: Vec<(u64, u16)>,
 }
 
 /// A região sob o cursor neste quadro: a área **e** o ponto que a nomeia.
@@ -41,51 +47,38 @@ pub(crate) struct BucketCache {
 pub(crate) struct BucketHit {
     /// A geometria, em MUNDO — o que o realce desenha e o que o clique deposita.
     pub(crate) face: VecPath,
-    /// **O ponto apontado.** É ele que vira a receita ([`VecBucketFill::seed`]), e não a área.
+    /// **O ponto apontado.** A rede de segurança da receita, para quando as âncoras morrerem.
     pub(crate) seed: [f64; 2],
+    /// ⭐⭐⭐ **As ÂNCORAS da região apontada** — os pedaços de linha que a cercam, e de que lado.
+    /// É esta a receita; ver [`crate::vec_bucket_claim`].
+    pub(crate) ancoras: Vec<ph2d_ecs::FillAnchor>,
 }
 
 /// **Os contornos que são PAREDE**, no MUNDO.
 ///
 /// ⛔ Fora ficam os escondidos (uma linha que não se vê não cerca nada) e os **preenchimentos** (a
 /// nota do cabeçalho).
-fn contornos_mundo(
-    scene: &VecScene,
-    xforms: &VecXforms,
-    fora: &dyn Fn(u64) -> bool,
-) -> Vec<(Vec<VecVertex>, bool)> {
+#[allow(clippy::cast_possible_truncation)]
+fn contornos_mundo(scene: &VecScene, xforms: &VecXforms, fora: &dyn Fn(u64) -> bool) -> Paredes {
     let mut out = Vec::new();
+    let mut tags = Vec::new();
     for p in scene.paths() {
         if fora(p.id) {
             continue;
         }
         let mut cozido = p.cooked().into_owned();
         ph2d_vec_scene::bake_xform(&mut cozido, &ph2d_vec_scene::xform_of(xforms, p.id));
-        for c in trim_tool::contours_of(&cozido) {
+        for (k, c) in trim_tool::contours_of(&cozido).enumerate() {
             if c.verts.len() >= 2 {
                 out.push((c.verts.clone(), c.closed));
+                // ⭐ **A ETIQUETA é o que dá NOME a um arco.** Sem ela a rede só sabe *"o contorno
+                // nº 7 da lista"*, que muda assim que o artista acrescenta uma forma; com ela, um
+                // arco é *"um pedaço do contorno `k` do caminho `id`"* — e isso sobrevive.
+                tags.push((p.id, k as u16));
             }
         }
     }
-    out
-}
-
-/// ⭐⭐⭐ **A REGIÃO QUE ESTE PREENCHIMENTO PINTOU**, achatada e em MUNDO — a receita com que ele
-/// reclama as faces de hoje ([`crate::vec_bucket_claim`]).
-///
-/// ⚠️ **Sai da mesma porta que as paredes** (`cooked` + `bake_xform` + `detection_polyline`): quem
-/// pergunta *"esta face era minha?"* tem de falar da mesma curva amostrada que decidiu onde a face
-/// começa, senão a resposta muda por erro de amostragem na fronteira.
-fn regiao_mundo(scene: &VecScene, xforms: &VecXforms, id: u64) -> Vec<Vec<[f64; 2]>> {
-    let Some(p) = scene.path(id) else {
-        return Vec::new();
-    };
-    let mut cozido = p.cooked().into_owned();
-    ph2d_vec_scene::bake_xform(&mut cozido, &ph2d_vec_scene::xform_of(xforms, id));
-    trim_tool::contours_of(&cozido)
-        .filter(|c| c.closed && c.verts.len() >= 3)
-        .map(|c| ph2d_vec_scene::detection_polyline(&c.verts, true))
-        .collect()
+    (out, tags)
 }
 
 /// ⭐⭐⭐ **A ÁREA RE-COZIDA DESCE AO ESPAÇO DO CAMINHO.**
@@ -194,14 +187,14 @@ fn chave(contornos: &[(Vec<VecVertex>, bool)]) -> u64 {
 fn preenchimentos(
     sim: &SimWorld,
     map: &crate::vec_entities::VecEntityMap,
-) -> Vec<(u64, Entity, [f64; 2])> {
+) -> Vec<(u64, Entity, VecBucketFill)> {
     let mut out = Vec::new();
     for (&id, &bits) in map {
         let e = Entity::from_bits(bits);
         if let Ok(er) = sim.world().get_entity(e)
             && let Some(f) = er.get::<VecBucketFill>()
         {
-            out.push((id, e, [f64::from(f.seed[0]), f64::from(f.seed[1])]));
+            out.push((id, e, f.clone()));
         }
     }
     out
@@ -220,9 +213,9 @@ fn preenchimentos(
 pub(crate) fn arm_new_fills(
     sim: &mut SimWorld,
     map: &crate::vec_entities::VecEntityMap,
-    pendentes: &mut Vec<(u64, [f32; 2])>,
+    pendentes: &mut Vec<(u64, [f32; 2], Vec<ph2d_ecs::FillAnchor>)>,
 ) {
-    for (id, seed) in pendentes.drain(..) {
+    for (id, seed, ancoras) in pendentes.drain(..) {
         let Some(&bits) = map.get(&id) else {
             continue;
         };
@@ -230,7 +223,7 @@ pub(crate) fn arm_new_fills(
         if sim.world().get_entity(e).is_ok() {
             sim.world_mut()
                 .entity_mut(e)
-                .insert(VecBucketFill::new(seed));
+                .insert(VecBucketFill::new(seed, ancoras));
         }
         crate::vec_entities::zorder::reorder(sim, map, id, ph2d_vec_scene::ZOrder::ToBack);
     }
@@ -259,7 +252,7 @@ impl crate::App {
         let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
         let vista = crate::vec_entities::view_state(&gfx.sim, &self.vec_entities);
         let so_fill: std::collections::BTreeSet<u64> = fills.iter().map(|(id, _, _)| *id).collect();
-        let contornos = contornos_mundo(&gfx.vec_scene, &xf, &|id| {
+        let (contornos, tags) = contornos_mundo(&gfx.vec_scene, &xf, &|id| {
             fora_da_rede(vista.is_hidden(id), so_fill.contains(&id))
         });
         let k = chave(&contornos);
@@ -277,90 +270,39 @@ impl crate::App {
                 contornos.len()
             );
         }
-        // ⭐⭐⭐ **RE-COZER os preenchimentos**: a receita é a REGIÃO que cada um pintou, e as faces
-        // de hoje herdam-na pela votação do [`crate::vec_bucket_claim`].
+        // ⭐⭐⭐ **RE-COZER os preenchimentos**: cada um reencontra as faces dele pelas ÂNCORAS —
+        // os pedaços de linha que o cercavam quando o artista clicou ([`crate::vec_bucket_claim`]).
         //
-        // Report do Enio (2026-09-02): *"quando atravessamos uma linha com um nó, os preenchimentos
-        // se quebram"*. Com uma semente por preenchimento, partir uma região dava a tinta a **uma**
-        // das metades (a outra ficava por pintar) e fundir duas punha **as duas sementes na mesma
-        // face** — duas tintas empilhadas, e uma região sem dono.
+        // ⚠️⚠️ **É STATELESS, e essa é a mudança.** Até 2026-09-02 a receita era *a região do quadro
+        // anterior*, e o dono saía de uma votação por área contra ela — o que **deriva**: um único
+        // quadro de topologia confusa reatribuía a tinta para sempre. Agora cada quadro resolve-se
+        // do documento sozinho, e *o mesmo desenho dá sempre as mesmas cores*.
         //
-        // ⚠️ **Um preenchimento que não ganhou face nenhuma CONGELA a forma onde ela está**, em vez
-        // de sumir — a mesma escolha do conector e do morph, e a única que preserva o trabalho do
-        // artista. ⭐⭐ E aqui ela vale mais do que preservar: a forma congelada **é** a receita,
-        // então desfazer o gesto com o próprio dedo (arrastar o nó de volta) faz a tinta voltar
-        // sozinha. *No Live Paint do Illustrator ela não volta.*
-        //
-        // ⚠️⚠️ **E CUSTA MAIS do que custava — medido, contra o que eu tinha escrito aqui antes de
-        // medir.** A 1.ª redacção desta nota dizia *"é mais barato: o `face_em` reconstruía as
-        // faces uma vez por preenchimento"*; a construção das faces de facto deixou de se repetir,
-        // mas a votação é `faces × amostras × regiões` e paga muito mais do que isso poupa.
-        //
-        // Grelha de linhas, 8 preenchimentos, `--release`:
-        //
-        // | faces | montar a rede | 1 `face_em` por fill | a votação |
-        // |---|---|---|---|
-        // | 9 | `0,15 ms` | `0,053 ms` | `0,35 ms` |
-        // | 25 | `0,30 ms` | `0,119 ms` | `0,45 ms` |
-        // | 49 | `0,56 ms` | `0,224 ms` | **`0,64 ms`** |
-        //
-        // ⇒ ~2,9× o que a semente custava, e **3,8% de um quadro** de 16,7 ms no pior caso medido —
-        // que é o preço de a tinta sobreviver a uma travessia de nó. ⭐ Sem a rejeição por caixa do
-        // `vec_bucket_claim` o mesmo caso custava **4,53 ms** (30% do quadro): 7,1× mais.
+        // ⚠️ **Um preenchimento que não reencontra face nenhuma CONGELA a forma onde ela está**, em
+        // vez de sumir — a mesma escolha do conector e do morph. ⭐ E com âncoras ele **volta**
+        // sozinho: elas não se reescrevem, então quando a região reaparece elas reencontram-na.
         let faces: Vec<ph2d_vec_fill::Face> =
             rede.faces().into_iter().filter(|f| f.area > 0.0).collect();
-        let regioes: Vec<crate::vec_bucket_claim::Regiao> = fills
+        let receitas: Vec<crate::vec_bucket_claim::Receita> = fills
             .iter()
-            .map(|(id, _, seed)| crate::vec_bucket_claim::Regiao {
-                poligonos: regiao_mundo(&gfx.vec_scene, &xf, *id),
-                semente: *seed,
+            .map(|(_, _, f)| crate::vec_bucket_claim::Receita {
+                ancoras: &f.ancoras,
+                semente: [f64::from(f.seed[0]), f64::from(f.seed[1])],
             })
             .collect();
-        let mut donos = crate::vec_bucket_claim::donos(&rede, &faces, &regioes);
-        // ⭐⭐⭐ **O TERRENO NOVO herda da vizinha com quem mais confina** — o pedido do Enio de
-        // 2026-09-02 (*"preenchendo corretamente as áreas novas que vão surgindo"*), depois das
-        // cinco fotos em que a espiga saía ora verde, ora vermelha, ora sem cor nenhuma.
-        //
-        // ⚠️⚠️ **Só se o gesto foi DEFORMAR.** Com a contagem de contornos mudada o artista
-        // desenhou ou apagou uma forma, e aí uma face nova é autoria — não é a mesma região a
-        // crescer. ⛔ Sem esta guarda, desenhar um círculo sobre um quadrado pintado pintaria
-        // também a parte do círculo que está fora dele.
-        //
-        // ⚠️ E *novo* é medido contra a rede ANTERIOR, que o cache já tem: uma face cujo miolo
-        // estava DENTRO de alguma face de antes não é nova — é uma região que o artista deixou
-        // vazia de propósito, e herdar nela inundaria o desenho ao primeiro arrasto.
-        if let Some(ant) = self.vec_bucket_cache.as_ref()
-            && ant.contornos == contornos.len()
-        {
-            let nova = crate::vec_bucket_claim::terreno_novo(&rede, &faces, &ant.rede);
-            let areas: Vec<f64> = faces.iter().map(|f| f.area).collect();
-            crate::vec_bucket_claim::herda_dos_vizinhos(
-                &rede.adjacencias(&faces),
-                &areas,
-                &nova,
-                &mut donos,
-            );
-        }
+        let donos = crate::vec_bucket_claim::donos(&rede, &faces, &tags, &receitas);
         let minhas = crate::vec_bucket_claim::por_preenchimento(&faces, &donos, fills.len());
-        #[allow(clippy::cast_possible_truncation)]
-        type Forma = (Vec<VecVertex>, Vec<ph2d_vec_scene::Contour>);
-        let novos: Vec<(u64, Entity, Forma, [f32; 2])> = fills
+        let novos: Vec<(u64, Forma)> = fills
             .iter()
             .enumerate()
-            .filter_map(|(k, (id, e, seed))| {
+            .filter_map(|(k, (id, _, _))| {
                 let meus = &minhas[k];
                 let xfp = ph2d_vec_scene::xform_of(&xf, *id);
-                let (primeiro, subs) = geometria_local(&rede, &faces, meus, &xfp)?;
-                // ⭐⭐⭐ **A semente RE-SEMEIA-SE no ponto mais FUNDO da maior face.** O clique cai
-                // onde o dedo caiu, e isso pode ser encostado à borda: arrastar essa parede por
-                // cima do ponto fazia a face deixar de o conter (medido). Fundo, a parede tem de
-                // varrer o miolo inteiro para o perder.
-                let novo = rede.interior_point(&faces[meus[0]]).unwrap_or(*seed);
-                Some((*id, *e, (primeiro, subs), [novo[0] as f32, novo[1] as f32]))
+                Some((*id, geometria_local(&rede, &faces, meus, &xfp)?))
             })
             .collect();
         if let Some(gfx) = self.gfx.as_mut() {
-            for (id, e, (primeiro, subs), seed) in novos {
+            for (id, (primeiro, subs)) in novos {
                 if let Some(p) = gfx.vec_scene.path_mut(id) {
                     if p.verts != primeiro {
                         p.verts = primeiro;
@@ -369,19 +311,12 @@ impl crate::App {
                         p.subpaths = subs;
                     }
                 }
-                // ⚠️ Só quando MUDA: uma escrita por quadro sobre o mesmo valor é ruído no diff do
-                // undo.
-                if let Ok(mut er) = gfx.sim.world_mut().get_entity_mut(e)
-                    && er.get::<VecBucketFill>().is_some_and(|f| f.seed != seed)
-                {
-                    er.insert(VecBucketFill::new(seed));
-                }
             }
         }
         self.vec_bucket_cache = Some(BucketCache {
             chave: k,
             rede,
-            contornos: contornos.len(),
+            tags,
         });
     }
 
@@ -402,19 +337,20 @@ impl crate::App {
             self.vec_bucket_face = None;
             return;
         };
-        self.vec_bucket_face = cache
-            .rede
-            .face_em(world)
-            .map(|f| cache.rede.geometria(&f))
-            .filter(|g| g.len() >= 2)
-            .map(|verts| BucketHit {
+        self.vec_bucket_face = cache.rede.face_em(world).and_then(|f| {
+            let verts = cache.rede.geometria(&f);
+            (verts.len() >= 2).then(|| BucketHit {
                 face: VecPath {
                     verts,
                     closed: true,
                     ..VecPath::default()
                 },
                 seed: world,
-            });
+                // ⭐ As âncoras saem da MESMA face que o realce acende — o que o artista vê é o que
+                // a receita grava.
+                ancoras: crate::vec_bucket_claim::ancoras_da_face(&cache.rede, &cache.tags, &f),
+            })
+        });
     }
 
     /// **A tinta que o balde deposita** — a corrente da ferramenta.
@@ -453,7 +389,7 @@ impl crate::App {
         let id = gfx.vec_scene.insert_path(0, nova);
         #[allow(clippy::cast_possible_truncation)]
         self.vec_bucket_new
-            .push((id, [hit.seed[0] as f32, hit.seed[1] as f32]));
+            .push((id, [hit.seed[0] as f32, hit.seed[1] as f32], hit.ancoras));
         self.vec_pen.select(Some(id));
         // A rede não muda (um preenchimento não é parede), mas o `upkeep` tem de reconhecer o
         // caminho novo como fill — o cache cai e o próximo quadro reconstrói com ele de fora.

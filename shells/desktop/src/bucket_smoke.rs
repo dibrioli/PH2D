@@ -92,16 +92,16 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
          [bucket-smoke]     Se a area PARTIR em duas, a cor fica nas DUAS metades; se duas areas\n\
          [bucket-smoke]     se FUNDIREM, a cor que fica e' a da maior, e a outra espera --\n\
          [bucket-smoke]     arraste o no' de volta e ela volta sozinha\n\
-         [bucket-smoke]  7) PUXE um no' para bem LONGE, ate' a linha fazer uma espiga: a area nova\n\
-         [bucket-smoke]     que ela cerca nasce com a cor da vizinha de que se destacou --\n\
-         [bucket-smoke]     nunca sem cor, e nunca com uma cor de outro canto do desenho\n\
-         [bucket-smoke]  8) e uma regiao que voce deixou VAZIA de proposito CONTINUA vazia, por\n\
-         [bucket-smoke]     mais que voce mexa nos nos a' volta dela\n\
+         [bucket-smoke]  7) PUXE um no' para bem LONGE e traga-o de VOLTA, varias vezes, por\n\
+         [bucket-smoke]     caminhos diferentes: nenhuma area pode TROCAR de cor com a vizinha,\n\
+         [bucket-smoke]     e a mesma forma tem de dar sempre as mesmas cores\n\
+         [bucket-smoke]  8) uma regiao que voce deixou VAZIA de proposito CONTINUA vazia, e uma\n\
+         [bucket-smoke]     area NOVA que voce nunca pintou tambem nasce sem cor\n\
          [bucket-smoke]  Ctrl+Z desfaz cada preenchimento.\n\
          [bucket-smoke]  DEU ERRADO SE: encher uma regiao impede de encher a vizinha; ou a forma\n\
          [bucket-smoke]  tapa as linhas; ou ela nao acompanha o no' arrastado; ou uma area partida\n\
-         [bucket-smoke]  perde metade da cor; ou uma espiga nasce sem cor; ou uma regiao que voce\n\
-         [bucket-smoke]  deixou vazia ganha cor sozinha"
+         [bucket-smoke]  perde metade da cor; ou duas areas TROCAM de cor; ou a mesma forma da'\n\
+         [bucket-smoke]  cores diferentes conforme o caminho por que voce lá chegou"
     );
 }
 

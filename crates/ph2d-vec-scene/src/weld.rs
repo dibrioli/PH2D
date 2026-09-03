@@ -54,6 +54,32 @@ pub fn split_at(
     closed: bool,
     cruzamentos: &[f64],
 ) -> Vec<(Vec<VecVertex>, bool)> {
+    split_at_fracs(verts, closed, cruzamentos)
+        .into_iter()
+        .map(|(v, c, _, _)| (v, c))
+        .collect()
+}
+
+/// ⭐⭐⭐ **O MESMO CORTE, dizendo de que FATIA do contorno cada arco veio** — `(vértices, fecha?,
+/// de, até)` em fracções de arco.
+///
+/// # Porque a proveniência existe
+///
+/// Ela é a **âncora** com que uma tinta se agarra ao desenho (plano 40 §11). Uma região do balde
+/// deixou de ser descrita por *onde ela estava* — uma coordenada, que deriva a cada quadro — e
+/// passa a ser descrita pelos **arcos que a cercam**, que são pedaços das curvas que o artista
+/// desenhou e que **não derivam**: arrastar um nó move a curva, não muda de que curva o arco é.
+///
+/// ⚠️ **Num contorno FECHADO o último arco DÁ A VOLTA pela emenda** — ele sai com `de > até`, e quem
+/// pergunta *"esta fracção está neste arco?"* tem de saber disso.
+///
+/// ⚠️ **Sem corte nenhum a fatia é o contorno inteiro** (`0` a `1`), e não uma fatia degenerada.
+#[must_use]
+pub fn split_at_fracs(
+    verts: &[VecVertex],
+    closed: bool,
+    cruzamentos: &[f64],
+) -> Vec<(Vec<VecVertex>, bool, f64, f64)> {
     // ⛔⛔ **Num contorno FECHADO, a fracção `0` é um ponto INTERIOR — a emenda não é fronteira.**
     //
     // A 1.ª redacção filtrava `f > EPS && f < 1-EPS` para os dois casos, e num anel isso **perdia um
@@ -74,14 +100,14 @@ pub fn split_at(
     cortes.sort_by(f64::total_cmp);
     cortes.dedup_by(|a, b| (*a - *b).abs() < EPS);
     if cortes.is_empty() {
-        return vec![(verts.to_vec(), closed)];
+        return vec![(verts.to_vec(), closed, 0.0, 1.0)];
     }
     // As FRONTEIRAS dos arcos. Num aberto as duas pontas entram; num fechado a lista fecha-se
     // sobre si mesma e o último arco dá a volta pela emenda.
     let mut arcos = Vec::with_capacity(cortes.len() + 1);
     let mut emitir = |de: f64, ate: f64| {
         if let Some(v) = crate::trim_tool::piece_geometry(verts, closed, de, ate) {
-            arcos.push((v, false));
+            arcos.push((v, false, de, ate));
         }
     };
     if closed {

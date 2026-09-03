@@ -537,3 +537,71 @@ volta. Medido: a partir do estado `drawing01`, o corpo do círculo direito (áre
 - ⏳ **A margem de ~7% da votação**: uma grelha mais fina reduz o viés e paga linearmente. Sem
   report, não há número que justifique o preço.
 - ⏳ **Uma ilha dentro de uma face** continua a não virar buraco (§9).
+
+## §11 — ⭐⭐⭐ O MODELO TROCADO: a tinta agarra-se às **LINHAS**, não a uma coordenada
+
+> *"ainda sem solução. deseja tentar algo mais?"* — Enio, 2026-09-02, depois de quatro reports e
+> quatro curas.
+
+### §11.1 — Porque não era mais um defeito
+
+Cada report teve a sua cura medida — a amostragem cega a lascas, a herança do terreno novo, a tinta
+a atravessar um ponto, a semente contra a deriva — e o report voltava. ⚠️⚠️ **O que todas tinham em
+comum era a mesma frase: *"o dono desta face sai de comparar com o quadro anterior"*.**
+
+Isso **deriva**. O que um quadro decide vira a régua do seguinte; um único quadro de topologia
+confusa reatribui a tinta **para sempre**, porque nada puxa de volta. Medido nos SVG que ele
+exportou: a partir do estado `drawing01`, o corpo do círculo direito vota **azul**, e o app tinha-o
+**verde** — ganho num quadro intermédio e nunca devolvido. *Nenhuma heurística sobre o quadro
+anterior podia curar isso, porque a doença era ser sobre o quadro anterior.*
+
+### §11.2 — A lei nova
+
+> **Uma região é o LADO de um conjunto de pedaços de linha.**
+
+No clique, o balde grava as **âncoras** da face: por cada arco que a cerca, *de que contorno de que
+caminho ele é um pedaço*, *em que fracção*, e *de que lado*. Arrastar um nó move a curva **sem mudar
+de que curva o pedaço é** ⇒ a face segue.
+
+⭐⭐⭐ **É STATELESS.** Cada quadro resolve-se do documento sozinho: *o mesmo desenho dá sempre as
+mesmas cores, seja qual for o caminho por que se lá chegou.* É a propriedade que os quatro reports
+pediam.
+
+⭐ **E o resto cai de graça, sem uma linha de código sobre cada caso:**
+
+| o gesto | o que acontece, e porquê |
+|---|---|
+| arrastar um nó | os arcos são os mesmos pedaços ⇒ cada face volta ao dono |
+| **partir** uma região | umas âncoras passam a cercar uma metade e outras a outra ⇒ **as duas** ficam pintadas |
+| **fundir** duas | ambas as receitas apontam à mesma face ⇒ fica com quem tinha **mais fronteira** lá |
+| uma região **nova** | não tem âncora nenhuma ⇒ fica por pintar, como qualquer região por visitar |
+| o artista **refaz** as linhas | as âncoras morrem ⇒ entra a **semente** (o clique), a rede de segurança |
+
+⛔ **A semente NÃO se re-semeia.** Reescrevê-la a cada quadro é escrita derivada, e foi essa escrita
+— generalizada para uma região inteira — que fez a tinta derivar. O gate exige a **ausência** de
+`VecBucketFill::new(` no upkeep, porque a presença é o defeito.
+
+### §11.3 — ⛔⛔ Dois defeitos que só a implementação revelou
+
+- **A VOLTA INTEIRA lia-se como um PONTO.** Um contorno fechado que não cruza ninguém entra na rede
+  como um laço cortado num sítio qualquer e sai com `de == até` — que quer dizer *o contorno todo*.
+  Lido como um ponto, as **16 âncoras de uma face inteira colapsavam na mesma fracção**, e partir a
+  região dava a tinta a uma metade só. Gate: `a_full_loop_slice_means_the_whole_contour_and_never_a_point`.
+- **A densidade das âncoras não podia ser POR FACE.** Normalizada por face, toda face traz o mesmo
+  número (medido: `16` contra `16`) — e a **fusão**, que decide por *quem tem mais âncoras lá*,
+  entregaria a região fundida à tira fina tanto quanto à larga. O passo é **absoluto**, tirado do
+  comprimento total da própria rede.
+
+### §11.4 — O que SAIU, e o que isso custa
+
+Saíram, com o modelo que os pedia: a **votação por amostragem de área**, a região do quadro anterior
+(`Regiao`), a rejeição por caixa, o `terreno_novo`, o `herda_dos_vizinhos`, a adjacência entre faces,
+o `interior_point`/`interior_samples` e o `regiao_mundo`. ⚠️ **`interior_point` foi apagado porque
+ficou sem consumidor de produto** — a semente deixou de se re-semear —, e *API pública sem consumidor
+mente sobre o que o produto faz*. O gate que media a re-semeadura passou a medir a lei que a
+substituiu, sobre a **mesma fixtura**: `the_anchors_survive_a_wall_sweeping_over_the_click`.
+
+⭐ **E é mais barato:** resolver uma âncora é uma procura; a votação era `faces × amostras × regiões`
+de contenção ponto-em-polígono.
+
+⚠️ **`PROJECT_SCHEMA` 107 → 108** — o `VecBucketFill` ganhou o campo, e o postcard é posicional.

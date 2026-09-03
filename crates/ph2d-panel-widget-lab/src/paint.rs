@@ -76,7 +76,11 @@ pub(crate) fn paint(state: &mut WidgetLabState, ctx: &mut PaintCtx) {
         store.set_panel_rect(ids::LAB_PANEL, rect);
     }
     let theme = ctx.host.theme();
-    let row_h = crate::study::DENSITIES[state.density % crate::study::DENSITIES.len()].row_h_px();
+    // ⭐⭐⭐ **É AQUI que a bancada deixa de ser um estudo e vira a CUSTOMIZAÇÃO do app.** A
+    // aparência escolhida é publicada no thread-local que todo pintor de linha de propriedade lê —
+    // o mesmo canal do `set_text_rendering`. ⚠️ Antes do corpo, de propósito: publicar depois faria
+    // as amostras desta janela usarem a aparência do quadro ANTERIOR.
+    ph2d_editor_core::paint::set_slider_style(state.style);
 
     paint_panel_surface_floating(rect, ctx.scene, theme);
     paint_panel_corner_dot(rect, ctx.scene, theme);
@@ -135,7 +139,7 @@ pub(crate) fn paint(state: &mut WidgetLabState, ctx: &mut PaintCtx) {
             w: inner_w,
             y: content_top - scroll + Spacing::Xs.px(),
         };
-        paint_study(&mut b, state, row_h, (live_t, live_drag))
+        paint_study(&mut b, state, (live_t, live_drag))
     };
     ctx.scene.pop_layer();
     ctx.host.store_and_hit_index_mut().1.pop_clip();

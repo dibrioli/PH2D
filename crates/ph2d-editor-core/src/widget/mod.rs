@@ -38,6 +38,7 @@ pub mod panel_chrome;
 mod pill_group;
 mod popover;
 mod progress_bar;
+mod property_box;
 mod radial_menu;
 mod radio_group;
 mod rect2_editor;
@@ -105,6 +106,10 @@ pub use numeric_input_with_unit::{
 pub use pill_group::{PILL_PADDING_PX, PillGroup, paint_pill_group};
 pub use popover::{Popover, anchor_below, paint_popover, pop_popover_clip, push_popover_clip};
 pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};
+// ⭐ A CAIXA ÚNICA — o pintor de uma linha de propriedade, e o padrão do app desde 2026-09-02.
+// ⚠️ Re-exportado por NOME (o `mod` acima é gerado e privado): o laboratório e o produto têm de
+// chamar o MESMO pintor, senão o estudo diverge do que shipa.
+pub use property_box::{DECORATOR_W, PropertyBox, PropertyBoxState, paint_property_box};
 pub use radial_menu::{
     MAX_SECTORS as RADIAL_MAX_SECTORS, RadialItem, RadialOpen, dead_zone_px as radial_dead_zone_px,
     item_offset as radial_item_offset, paint_radial_menu, sector_at as radial_sector_at,

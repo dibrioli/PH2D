@@ -21,24 +21,19 @@ use ph2d_ui_testkit::MockPanelHost;
 /// Uma fotografia do estado que o pintor de facto lê. ⚠️ **Derivada dos campos**, não uma lista de
 /// nomes: um eixo novo no `WidgetLabState` que ninguém acrescente aqui deixa de ser vigiado, e o
 /// compilador avisa porque a desestruturação é exaustiva.
-fn snapshot(s: &WidgetLabState) -> (usize, usize, usize, usize, bool, bool) {
+fn snapshot(s: &WidgetLabState) -> (String, usize, bool, bool) {
     let WidgetLabState {
         rect: _,
-        design,
+        style,
         accent,
-        radius,
-        density,
         decorator,
         compare,
     } = s;
     (
-        ph2d_panel_widget_lab::BoxDesign::ALL
-            .iter()
-            .position(|d| d == design)
-            .unwrap_or(usize::MAX),
+        // ⚠️ A aparência inteira num texto: os TRÊS eixos de uma vez, sem uma linha por eixo que
+        // alguém possa esquecer de acrescentar quando um quarto nascer.
+        format!("{:?}|{:?}|{:?}", style.design, style.radius, style.density),
         *accent,
-        *radius,
-        *density,
         *decorator,
         *compare,
     )

@@ -95,6 +95,34 @@ pub fn set_radius_scale(scale: f32) {
     RADIUS_SCALE.with(|s| s.set(scale.max(0.0)));
 }
 
+thread_local! {
+    static SLIDER_STYLE: std::cell::Cell<ph2d_tokens::SliderStyle> =
+        const { std::cell::Cell::new(ph2d_tokens::SliderStyle {
+            design: ph2d_tokens::SliderDesign::Underline,
+            radius: ph2d_tokens::Radius::Xs,
+            density: ph2d_tokens::Density::Compact,
+        }) };
+}
+
+/// **A aparência das linhas de propriedade**, publicada uma vez por quadro pelo shell.
+///
+/// ⭐ Decisão do Enio (2026-09-02): o padrão do app é `Underline` · raio `4` · linha `22`.
+///
+/// ⚠️ **O `const` acima repete o [`SliderStyle::default()`](ph2d_tokens::SliderStyle) porque um
+/// `thread_local!` `const`-inicializado não pode chamar `Default::default()`** — e é a inicialização
+/// `const` que o torna barato. ⛔ Os dois têm de concordar, e há gate a exigi-lo
+/// (`the_paint_default_matches_the_token_default`): *duas escritas do mesmo default é exactamente a
+/// forma que diverge em silêncio.*
+pub fn set_slider_style(style: ph2d_tokens::SliderStyle) {
+    SLIDER_STYLE.with(|s| s.set(style));
+}
+
+/// Lê a aparência activa das linhas de propriedade.
+#[must_use]
+pub fn slider_style() -> ph2d_tokens::SliderStyle {
+    SLIDER_STYLE.with(std::cell::Cell::get)
+}
+
 /// Set the active text-rendering strategy for the current thread.
 /// Called by the shell once per frame, mirroring `set_radius_scale`.
 /// Delegates to `ph2d_text::set_active_text_rendering` — the canonical

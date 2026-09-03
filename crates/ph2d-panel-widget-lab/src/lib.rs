@@ -25,14 +25,12 @@
 
 #![forbid(unsafe_code)]
 
-pub mod design;
 mod event;
 mod paint;
 mod populate;
 pub mod state;
 mod study;
 
-pub use design::{BoxDesign, BoxState, BoxStyle};
 pub use paint::default_rect;
 pub use state::WidgetLabState;
 

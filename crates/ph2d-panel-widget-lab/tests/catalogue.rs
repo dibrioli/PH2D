@@ -5,7 +5,7 @@
 //! inalcançável é exactamente equivalente a não existir: o Enio decidiria entre cinco a pensar que
 //! viu seis.
 
-use ph2d_panel_widget_lab::BoxDesign;
+use ph2d_tokens::SliderDesign as BoxDesign;
 use std::collections::BTreeSet;
 
 /// `next` percorre TODOS os desenhos e volta ao princípio.
@@ -53,21 +53,28 @@ fn every_design_states_what_it_trades() {
     }
 }
 
-/// ⭐⭐ **Só a `Split` gasta coluna de rótulo.** É a grandeza inteira que a decisão do Enio põe a
-/// zero: *"a caixa única é o alvo"*. Se um segundo desenho passar a reservar coluna, a família
-/// deixou de ser a caixa única e alguém tem de dizer isso em voz alta.
+/// ⛔ **A `Split` SAIU do catálogo, e este teste é a lápide dela.**
+///
+/// Ela era o **controlo negativo** do estudo: o desenho de duas colunas (o do Blender), presente
+/// para tornar a decisão verificável em vez de lembrada. O Enio escolheu os quatro da caixa única
+/// em 2026-09-02, e ela — com a `Notch` — deixou de shipar.
+///
+/// ⚠️ **O que ela guardava passou a ser guardado noutro sítio**, e é isso que faz esta remoção ser
+/// segura: `the_customisation_offers_exactly_the_four_chosen_designs`
+/// (`ph2d-editor-core/tests/the_app_default_slider_style_is_the_one_the_owner_chose.rs`) afirma a
+/// lista pelo nome, e o `slider_style.rs` regista as duas recusas com o mecanismo de cada uma.
+/// *Apagar um gate sem dizer quem herdou a pergunta é como a propriedade se perde.*
 #[test]
-fn only_the_negative_control_spends_an_outer_label_column() {
-    let spenders: Vec<&str> = BoxDesign::ALL
-        .iter()
-        .filter(|d| d.outer_label_w() > 0.0)
-        .map(|d| d.label())
-        .collect();
-    assert_eq!(
-        spenders,
-        vec!["Split"],
-        "estes desenhos reservam coluna de rotulo FORA da caixa: {spenders:?}\n\
-         \u{26a0} A caixa unica po^e essa largura a ZERO. A `Split` esta' na lista de proposito, \
-         como controlo negativo; um segundo nome aqui significa que a familia mudou."
+fn the_negative_control_is_gone_and_its_question_has_an_heir() {
+    let names: Vec<&str> = BoxDesign::ALL.iter().map(|d| d.label()).collect();
+    assert!(
+        !names.contains(&"Split"),
+        "a `Split` voltou ao catalogo — ela reserva coluna de rotulo FORA da caixa, que e' a \
+         grandeza que a caixa unica po^e a ZERO. Se foi decisao do Enio, actualize o \
+         `slider_style.rs`, onde a recusa dela esta' registada."
+    );
+    assert!(
+        !names.contains(&"Notch"),
+        "a `Notch` voltou ao catalogo — mesma cura: registe a decisao no `slider_style.rs`."
     );
 }

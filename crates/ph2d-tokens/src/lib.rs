@@ -66,6 +66,7 @@ pub mod radius;
 /// **A chave decide a família** — a porta única por onde uma tabela de FORA (o arquivo de projeto,
 /// um `.tokens.json` DTCG) encontra o token a que pertence.
 pub mod route;
+pub mod slider_style;
 pub mod spacing;
 pub mod stroke;
 pub mod theme;
@@ -92,6 +93,7 @@ pub use layer::Layer;
 pub use motion::{Duration, Easing};
 pub use num::NumToken;
 pub use radius::Radius;
+pub use slider_style::{SLIDER_DENSITIES, SLIDER_RADII, SliderDesign, SliderStyle};
 pub use spacing::{Density, ICON_BTN_SIZE_PX, ROW_H_PX, SECTION_GAP_PX, Spacing};
 pub use stroke::StrokeToken;
 pub use theme::{PanelLayout, Theme};

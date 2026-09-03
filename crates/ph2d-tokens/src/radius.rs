@@ -12,7 +12,13 @@ pub enum Radius {
     Xs,
     /// `sm` — 6 px (compact buttons, dense inputs).
     Sm,
-    /// `md` — 8 px (default cards, inner panels).
+    /// `md` — **4 px** (default cards, inner panels).
+    ///
+    /// ⚠️ Este doc dizia **8 px** e o `tokens.json` diz `4` desde que alguém o baixou — *um
+    /// comentário velho mente com a mesma cara de um novo*, e este mentia no sítio caro: quem
+    /// escolhesse `Md` a ler «8» ficava com metade do raio que pediu. Corrigido 2026-09-02, ao
+    /// escolher o token do raio padrão dos sliders. ⛔ O valor é DERIVADO (`RADIUS_MD`); se voltar
+    /// a divergir, é este doc que está errado.
     Md,
     /// `lg` — 12 px (floating panels, modals).
     Lg,

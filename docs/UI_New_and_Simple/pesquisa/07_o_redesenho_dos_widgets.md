@@ -580,3 +580,77 @@ verifica `0,75` + `Dragging`, partindo do `populate` do próprio painel.
 | o **esbatimento** do rótulo em vez de `…` | precisa de `push_luminance_mask_layer` e do custo por linha medido (§7.3, §9) |
 | checkbox de linha inteira · toggle→checkbox · scrollbar 2 px | §5.2 e §5.3 — a bancada estuda a **caixa** primeiro, que é onde está o ganho |
 | a coluna de animação com os **estados** do Blender (losango cheio/vazio, driver) | precisa da timeline, não de desenho |
+
+---
+
+## §12 — ✅ O PADRÃO ESTÁ ESCOLHIDO (2026-09-02)
+
+Depois de ver os seis desenhos lado a lado na bancada, o Enio decidiu:
+
+> *"O padrão do APP deverá ser Sliders tipo **Underline**, **raio 4**, **linha 22**. Como opções de
+> customização vamos disponibilizar os **4 primeiros desenhos**. Também deixe como opções de
+> customização **raio** e **linha**. Obviamente tudo em **inglês**."*
+
+### 12.1 — O que isso é, em código
+
+| grandeza | valor | e é um TOKEN |
+|---|---|---|
+| desenho | `SliderDesign::Underline` | — |
+| raio | **4 px** | `Radius::Xs` — ⭐ e é o `default_corner_radius = 4` do Godot, a referência que ele nomeou |
+| altura de linha | **22 px** | `Density::Compact` |
+
+⭐ **Os três defaults exprimem-se em tokens, com zero literais.** A tabela acima não é uma
+coincidência feliz: é o design system a já conter a resposta que o dono escolheu de olho.
+
+⚠️ **`ph2d_tokens::SliderStyle` é irmão exacto do `TextRendering`** — *aparência escolhida pelo
+artista, ortogonal ao `Theme`*, publicada uma vez por quadro e lida pelo pintor. Quem acrescentar um
+terceiro eixo de aparência segue esta forma em vez de inventar a terceira.
+
+### 12.2 — ⛔ Os dois desenhos que foram construídos e NÃO shipam
+
+| desenho | por que não |
+|---|---|
+| `Notch` | recupera a precisão que a `Bar` perde, ao preço de mais um elemento por linha — **não escolhido** |
+| `Split` | ⚠️ era o **controlo negativo**: o desenho de duas colunas (o do Blender). Mantê-lo na customização deixaria o artista escolher de volta os `154 px` de cromo que este redesenho existe para apagar |
+
+Registados no `slider_style.rs` com o mecanismo de cada um, e com gate a impedir que voltem sem
+decisão (`the_customisation_offers_exactly_the_four_chosen_designs`).
+
+### 12.3 — ⭐ Uma PORTA, não duas: o estudo passou a pintar com o pintor do PRODUTO
+
+O `BoxDesign` do laboratório **morreu**; no lugar dele está
+`ph2d_editor_core::widget::paint_property_box`, que o **produto** e a **bancada** chamam. ⛔ *Um
+segundo pintor «só para a bancada» faria o estudo divergir do que shipa sem ninguém notar* — que é
+literalmente o bug que criou o `slider_with_chip` (*"the slider in panel X looks different from the
+one in panel Y"*).
+
+E a caixa entrou na **Widget Gallery**, por baixo do widget que substitui: a galeria é a fonte única
+de verdade do que o editor **É**, e ela lê a preferência viva — *uma galeria que mostrasse o default
+fixo mentiria a quem customizou*.
+
+### 12.4 — ⚠️ Quatro gates apanharam esta obra, e os quatro estavam certos
+
+| gate | o que exigiu | a cura foi |
+|---|---|---|
+| `widget_mod_block_in_sync_with_folder` | o bloco de `mod` é gerado | correr o `ph2d-widget-sync` |
+| `every_widget_is_shown_or_explicitly_opted_out` | ⭐ um widget novo **aparece na galeria** ou declara porquê não | **mostrá-lo** — não um opt-out |
+| `every_widget_file_wires_a11y` | um widget tem semântica para quem não vê | ⭐ `PropertyBox::a11y_node` (`Role::Slider` + `numeric_value`) |
+| `no_magic_numeric_in_widget_or_screens` | ele varre as crates-irmãs | o marcador na **mesma linha** |
+
+⏳ **E um buraco NOMEADO, não fingido:** o nosso `NodeBuilder` tem `label` e `numeric_value*` e
+**nenhum slot para o texto do valor** ⇒ quem não vê ouve *«Speed, 62 %»* e **perde a unidade**.
+⛔ Não o dobrei dentro do `label` (misturar duas grandezas num campo com dono); a cura é um campo no
+`ph2d-a11y`, foundational de outra gente.
+
+### 12.5 — ⛔ O que este bloco NÃO fez, e é a próxima obra
+
+**As linhas de propriedade do app continuam a usar o widget antigo.** O `paint_slider_with_chip`
+(**70 sítios**) ainda pinta as três colunas; o que existe hoje é a decisão, o pintor partilhado, a
+customização e a amostra na galeria.
+
+⚠️ **Trocá-lo é uma obra com um problema de contrato por decidir**, e por isso não entrou aqui a
+correr: o `slider_with_chip_chip_rect` é uma função **pura** (sem `TextSystem`) que a rachura de
+token usa para desenhar por cima do valor, e a caixa única deriva a região do valor **da largura do
+texto medido**. ⇒ ou a região do valor passa a ter largura fixa (`chip_w`, e o contrato mantém-se),
+ou aquela função ganha o `TextSystem` (e muda de assinatura). *Escolher isso ao fim de um bloco longo
+é como nasceram os dois defeitos que o Enio apanhou por foto nesta mesma sessão.*

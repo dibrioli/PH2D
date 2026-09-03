@@ -1,39 +1,39 @@
 //! ⭐⭐⭐ **A BANCADA** — o corpo do laboratório, secção a secção.
 //!
-//! O Enio pediu (2026-09-01): *"podemos colocar no painel várias amostras e várias cores e
-//! comportamentos para testar"*. As cinco secções abaixo são exactamente isso, e a ordem delas é
-//! a ordem em que uma decisão de desenho se toma:
+//! ⚠️ **Toda string que o artista LÊ é inglês** (regra do app, e o Enio apanhou-a na 1.ª foto:
+//! *"obviamente tudo em inglês"*). Os comentários e docs continuam em português — o leitor deles é
+//! a próxima LLM.
 //!
-//! | § | secção | a pergunta que ela responde |
+//! ⭐ **Desde 2026-09-02 a bancada é também a CUSTOMIZAÇÃO:** os três primeiros chips escrevem no
+//! [`SliderStyle`](ph2d_tokens::SliderStyle) que o app inteiro lê. Ela deixou de ser só um estudo.
+//!
+//! | § | secção | a pergunta |
 //! |---|---|---|
-//! | 1 | **os seis desenhos** | qual é o *look* |
-//! | 2 | **a régua de largura** | ⭐ ele aguenta um painel estreito? — a razão de existir de tudo isto |
-//! | 3 | **os estados** | dá para ver que é interactivo |
-//! | 4 | **as cores** | o acento funciona em todos |
-//! | 5 | **o de hoje, lado a lado** | ⭐⭐ estamos mesmo a melhorar? |
-//!
-//! ⚠️ **A §2 é a que decide.** As outras quatro são gosto; essa é medição — o desenho escolhido
-//! tem de continuar legível a `110 px`, que é abaixo do `PANEL_MIN_W = 220` de hoje e é onde uma
-//! coluna de tablet vai parar.
+//! | 1 | os **quatro desenhos** | qual é o *look* |
+//! | 2 | a **régua de largura** | ⭐ aguenta um painel estreito? — a razão de existir de tudo isto |
+//! | 3 | os **estados** | vê-se que é interactivo |
+//! | 4 | as **cores** | o acento funciona em todos |
+//! | 5 | o **widget antigo**, lado a lado | estamos mesmo a melhorar |
 
-use crate::design::{BoxDesign, BoxState, BoxStyle, DECORATOR_W, paint_box};
 use crate::state::WidgetLabState;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use ph2d_editor_core::widget::{PropertyBox, PropertyBoxState, paint_property_box};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{
+    ColorToken, Radius, SliderDesign, SliderStyle, Spacing, StrokeToken, Theme, TypeToken,
+};
 use ph2d_vector::VectorScene;
 
-/// As larguras da régua da §2. ⭐ **Contadas, não escolhidas:**
-/// `268` é o corpo do Inspector de hoje · `184` é o corpo dele à largura mínima que o app permite
-/// (`PANEL_MIN_W = 220`), onde **todo slider de hoje já está em duas linhas** · `140` e `110` são
-/// onde uma coluna de tablet vai parar quando as duas estiverem abertas.
+/// As larguras da régua da §2. ⭐ **Contadas, não escolhidas:** `268` é o corpo do Inspector de
+/// hoje · `184` é o corpo dele à largura mínima que o app permite (`PANEL_MIN_W = 220`), onde todo
+/// slider antigo já está em duas linhas · `140` e `110` são onde uma coluna de tablet vai parar.
 const RULER_WIDTHS: [f32; 4] = [268.0, 184.0, 140.0, 110.0]; // LITERAL-PX-OK: reguas medidas (pesquisa 07 §2)
 
-/// As cores que a §4 percorre. ⚠️ **`pub(crate)` de propósito** — o `event.rs` conta o
-/// comprimento DESTA tabela em vez de declarar o seu; ver a nota lá.
+/// As cores que a §4 percorre. ⚠️ `pub(crate)` — o `event.rs` conta o comprimento DESTA tabela em
+/// vez de declarar o seu.
 pub(crate) const ACCENTS: [ColorToken; 6] = [
     ColorToken::Accent,
     ColorToken::Info,
@@ -43,35 +43,20 @@ pub(crate) const ACCENTS: [ColorToken; 6] = [
     ColorToken::AccentPress,
 ];
 
-/// Os raios que o `LAB_RADIUS_CYCLE` percorre — `16` é o de hoje, `4` é o do Godot.
-pub const RADII: [f32; 4] = [16.0, 8.0, 4.0, 0.0]; // LITERAL-PX-OK: eixo de estudo do raio
-
-/// A escada de densidade que o `LAB_DENSITY_CYCLE` percorre.
-///
-/// ⚠️ **Começa no `Compact`** — ao contrário do app, cujo default é `Comfortable` por causa do
-/// Pencil. A bancada quer mostrar o caso apertado primeiro, porque é o que a decisão precisa de
-/// ver; o produto quer o alvo de toque grande. *São perguntas diferentes e por isso defaults
-/// diferentes.*
-pub const DENSITIES: [ph2d_tokens::Density; 3] = [
-    ph2d_tokens::Density::Compact,
-    ph2d_tokens::Density::Cozy,
-    ph2d_tokens::Density::Comfortable,
-];
-
 /// A amostra: um rótulo comprido de propósito, para a truncagem se ver.
 const SAMPLE_LABEL: &str = "Geometry Offset";
 const SAMPLE_VALUE: &str = "0.10 m";
 
 /// A fracção que todas as amostras mostram.
 ///
-/// ⚠️ **Uma só, e nem perto de meio.** Amostras a `0,5` fazem o preenchimento cair exactamente no
-/// centro da caixa, onde ele encosta no valor em metade dos desenhos e em nenhum se percebe se a
-/// borda está no sítio certo. E tem de ser a **mesma** nas cinco secções: duas fracções diferentes
-/// fariam dois desenhos parecer distintos por causa do valor, não do desenho.
+/// ⚠️ **Uma só, e nem perto de meio.** A `0,5` o preenchimento cai no centro da caixa, onde encosta
+/// no valor em metade dos desenhos e em nenhum se percebe se a borda está no sítio certo. E tem de
+/// ser a **mesma** nas cinco secções: duas fracções fariam dois desenhos parecer distintos por causa
+/// do valor, não do desenho.
 pub(crate) const SAMPLE_T: f32 = 0.62; // LITERAL-PX-OK: fraccao da amostra, nao e' medida de UI
 
-/// Para escrever a fracção como percentagem na caixa viva.
-const PERCENT: f32 = 100.0; // LITERAL-PX-OK: conversao de fraccao para percentagem, nao e' medida
+/// Fracção → percentagem, para a caixa viva.
+const PERCENT: f32 = 100.0; // LITERAL-PX-OK: conversao, nao e' medida
 
 pub(crate) struct Bench<'a> {
     pub scene: &'a mut VectorScene,
@@ -120,69 +105,72 @@ impl Bench<'_> {
         );
         self.y += TypeToken::Xxs.px() + Spacing::Xs.px();
     }
+
+    /// Uma amostra da caixa, com a aparência dada.
+    ///
+    /// ⚠️ Recebe o [`PropertyBox`] inteiro em vez dos seis campos soltos — a 1.ª redacção tinha
+    /// **nove** argumentos e o clippy apanhou-a. *Quando uma função de conveniência re-lista os
+    /// campos de um struct que já existe, ela é a segunda declaração do mesmo modelo.*
+    fn box_row(&mut self, r: Rect, b: PropertyBox<'_>, style: SliderStyle) {
+        paint_property_box(self.scene, self.text, self.theme, r, b, style);
+    }
 }
 
-/// Pinta a bancada inteira e devolve a altura de conteúdo usada.
+/// Pinta a bancada e devolve a altura usada.
 ///
-/// ⚠️ `live` é `(fracção, está-a-arrastar)` e vem do **store**, nunca do estado do painel: a caixa
-/// viva é um `InteractiveState::Slider` de verdade, então quem manda no valor dela é o mesmo
-/// despacho de ponteiro que manda em todos os sliders do app. *Guardar aqui uma cópia do valor
-/// seria a segunda fonte de verdade que a auditoria da §11 do Sprite já cobrou.*
-pub(crate) fn paint_study(
-    b: &mut Bench<'_>,
-    st: &WidgetLabState,
-    row_h: f32,
-    live: (f32, bool),
-) -> f32 {
+/// ⚠️ `live` é `(fracção, está-a-arrastar)` e vem do **store**: a caixa viva é um
+/// `InteractiveState::Slider` de verdade, conduzido pelo despacho de ponteiro do produto.
+pub(crate) fn paint_study(b: &mut Bench<'_>, st: &WidgetLabState, live: (f32, bool)) -> f32 {
     let top = b.y;
-    let style = BoxStyle {
-        design: st.design,
-        state: BoxState::Normal,
-        accent: ACCENTS[st.accent % ACCENTS.len()],
-        radius: RADII[st.radius % RADII.len()],
-        decorator: st.decorator,
-    };
+    let style = st.style;
+    let row_h = style.row_h_px();
+    let accent = ACCENTS[st.accent % ACCENTS.len()];
 
-    paint_controls(b, st, row_h);
+    paint_controls(b, st);
 
-    // ── §1 — os seis desenhos ──────────────────────────────────────────────
-    b.head("1 \u{b7} OS SEIS DESENHOS");
-    for d in BoxDesign::ALL {
-        let chosen = d == st.design;
-        if chosen {
-            let mark = Rect::new(b.x - Spacing::Sm.px(), b.y, 2.0, row_h); // LITERAL-PX-OK: marca do escolhido
+    // ── §1 — os quatro desenhos ────────────────────────────────────────────
+    b.head("1 \u{b7} THE FOUR DESIGNS");
+    for d in SliderDesign::ALL {
+        if d == style.design {
+            let mark = Rect::new(b.x - Spacing::Sm.px(), b.y, StrokeToken::Thick.px(), row_h);
             fill_rounded_rect(b.scene, mark, 0.0, resolve(ColorToken::Accent, b.theme));
         }
         let r = Rect::new(b.x, b.y, b.w, row_h);
-        paint_box(
-            b.scene,
-            b.text,
-            b.theme,
+        b.box_row(
             r,
-            SAMPLE_LABEL,
-            SAMPLE_VALUE,
-            SAMPLE_T,
-            BoxStyle { design: d, ..style },
+            PropertyBox {
+                label: SAMPLE_LABEL,
+                value: SAMPLE_VALUE,
+                t: SAMPLE_T,
+                state: PropertyBoxState::Normal,
+                accent,
+                decorator: st.decorator,
+            },
+            SliderStyle { design: d, ..style },
         );
         b.y += row_h + Spacing::Xxs.px();
-        b.caption(&format!("{} \u{b7} {}", d.label(), d.blurb()));
+        let blurb = format!("{} \u{b7} {}", d.label(), d.blurb());
+        b.caption(&blurb);
         b.y += Spacing::Xs.px();
     }
 
     // ── §2 — a régua de largura ────────────────────────────────────────────
-    b.head("2 \u{b7} A REGUA DE LARGURA \u{2014} o desenho escolhido, encolhido");
-    b.caption("268 = Inspector de hoje \u{b7} 184 = a largura MINIMA do app (hoje empilha) \u{b7} 140 e 110 = coluna de tablet");
+    b.head("2 \u{b7} WIDTH RULER \u{2014} the chosen design, squeezed");
+    b.caption(
+        "268 = today's Inspector \u{b7} 184 = the app's MINIMUM column \u{b7} 140 and 110 = tablet",
+    );
     for w in RULER_WIDTHS {
         let w = w.min(b.w);
-        let r = Rect::new(b.x, b.y, w, row_h);
-        paint_box(
-            b.scene,
-            b.text,
-            b.theme,
-            r,
-            SAMPLE_LABEL,
-            SAMPLE_VALUE,
-            SAMPLE_T,
+        b.box_row(
+            Rect::new(b.x, b.y, w, row_h),
+            PropertyBox {
+                label: SAMPLE_LABEL,
+                value: SAMPLE_VALUE,
+                t: SAMPLE_T,
+                state: PropertyBoxState::Normal,
+                accent,
+                decorator: st.decorator,
+            },
             style,
         );
         paint_text(
@@ -199,24 +187,25 @@ pub(crate) fn paint_study(
     }
 
     // ── §3 — os estados ────────────────────────────────────────────────────
-    b.head("3 \u{b7} OS ESTADOS");
-    for s in BoxState::ALL {
-        let r = Rect::new(b.x, b.y, b.w, row_h);
-        paint_box(
-            b.scene,
-            b.text,
-            b.theme,
-            r,
-            s.label(),
-            SAMPLE_VALUE,
-            SAMPLE_T,
-            BoxStyle { state: s, ..style },
+    b.head("3 \u{b7} STATES");
+    for s in PropertyBoxState::ALL {
+        b.box_row(
+            Rect::new(b.x, b.y, b.w, row_h),
+            PropertyBox {
+                label: s.label(),
+                value: SAMPLE_VALUE,
+                t: SAMPLE_T,
+                state: s,
+                accent,
+                decorator: st.decorator,
+            },
+            style,
         );
         b.y += row_h + Spacing::Xs.px();
     }
 
     // ── §4 — as cores ──────────────────────────────────────────────────────
-    b.head("4 \u{b7} AS CORES");
+    b.head("4 \u{b7} ACCENTS");
     let half = (b.w - Spacing::Sm.px()) * 0.5;
     for (i, a) in ACCENTS.iter().enumerate() {
         let col = i % 2;
@@ -226,68 +215,68 @@ pub(crate) fn paint_study(
             half,
             row_h,
         );
-        paint_box(
-            b.scene,
-            b.text,
-            b.theme,
+        b.box_row(
             r,
-            a.key(),
-            "62%",
-            SAMPLE_T,
-            BoxStyle {
+            PropertyBox {
+                label: a.key(),
+                value: "62%",
+                t: SAMPLE_T,
+                state: PropertyBoxState::Normal,
                 accent: *a,
-                ..style
+                decorator: st.decorator,
             },
+            style,
         );
         if col == 1 || i == ACCENTS.len() - 1 {
             b.y += row_h + Spacing::Xs.px();
         }
     }
 
-    // ── §5 — o de hoje ─────────────────────────────────────────────────────
+    // ── §5 — o widget antigo ───────────────────────────────────────────────
     if st.compare {
-        b.head("5 \u{b7} O DE HOJE, LADO A LADO");
-        b.caption("rotulo 70 + folga 6 + trilho + folga 6 + caixa 72 = 154 px de cromo fixo");
+        b.head("5 \u{b7} THE OLD WIDGET, SIDE BY SIDE");
+        b.caption("label 70 + gap 6 + track + gap 6 + box 72 = 154 px of fixed chrome");
         for w in RULER_WIDTHS {
             let w = w.min(b.w);
-            let h = paint_today(b, w, row_h);
+            let h = paint_old_widget(b, w, row_h);
             b.y += h + Spacing::Xs.px();
         }
     }
 
     // ── A caixa VIVA ───────────────────────────────────────────────────────
-    b.head("A CAIXA VIVA \u{2014} arraste-a");
+    b.head("LIVE BOX \u{2014} drag it");
     let live_rect = Rect::new(b.x, b.y, b.w, row_h);
     b.hit.register(ids::LAB_LIVE_BOX, live_rect);
-    paint_box(
-        b.scene,
-        b.text,
-        b.theme,
+    let value = format!("{:.0}%", live.0 * PERCENT);
+    let state = if live.1 {
+        PropertyBoxState::Dragging
+    } else {
+        PropertyBoxState::Normal
+    };
+    b.box_row(
         live_rect,
-        "Opacity",
-        &format!("{:.0}%", live.0 * PERCENT),
-        live.0,
-        BoxStyle {
-            state: if live.1 {
-                BoxState::Dragging
-            } else {
-                BoxState::Normal
-            },
-            ..style
+        PropertyBox {
+            label: "Opacity",
+            value: &value,
+            t: live.0,
+            state,
+            accent,
+            decorator: st.decorator,
         },
+        style,
     );
     b.y += row_h + Spacing::Xl.px();
 
     b.y - top
 }
 
-/// O widget de HOJE, redesenhado aqui em miniatura para a comparação da §5.
+/// O widget ANTIGO, redesenhado aqui em miniatura para a comparação da §5.
 ///
 /// ⚠️ **Redesenhado, não chamado.** O `paint_slider_with_chip` real precisa do `WidgetStore` e
-/// regista hits — dentro de uma bancada de comparação isso poria 8 alvos invisíveis a competir com
-/// os controlos. O que interessa comparar é a **geometria**, e ela está reproduzida à letra: 70 /
-/// 6 / 6 / 72, com o mesmo limiar de empilhamento.
-fn paint_today(b: &mut Bench<'_>, w: f32, row_h: f32) -> f32 {
+/// regista hits — dentro de uma bancada isso poria alvos invisíveis a competir com os controlos. O
+/// que interessa comparar é a **geometria**, e ela está reproduzida à letra: 70 / 6 / 6 / 72, com o
+/// mesmo limiar de empilhamento.
+fn paint_old_widget(b: &mut Bench<'_>, w: f32, row_h: f32) -> f32 {
     const LABEL_W: f32 = 70.0; // LITERAL-PX-OK: DEFAULT_LABEL_W do slider_with_chip
     const CHIP_W: f32 = 72.0; // LITERAL-PX-OK: number_input::MIN_W_PX
     const MIN_TRACK: f32 = 60.0; // LITERAL-PX-OK: SLIDER_CHIP_MIN_SLIDER_W
@@ -318,7 +307,9 @@ fn paint_today(b: &mut Bench<'_>, w: f32, row_h: f32) -> f32 {
 
     let track_x = if stacked { b.x } else { b.x + LABEL_W + gap };
     let track_w = (b.x + w - CHIP_W - gap - track_x).max(0.0);
-    let track_h = (row_h * 0.25).min(6.0); // LITERAL-PX-OK: a politica de linha do slider de hoje
+    // A politica de linha do slider ANTIGO, reproduzida a` letra: a §5 tem de medir o widget que
+    // existia, nao uma aproximacao dele.
+    let track_h = (row_h * 0.25).min(Spacing::Sm.px()); // LITERAL-PX-OK: 25% da moldura, do slider antigo
     let track = Rect::new(track_x, row_y + (row_h - track_h) * 0.5, track_w, track_h);
     fill_rounded_rect(
         b.scene,
@@ -363,7 +354,7 @@ fn paint_today(b: &mut Bench<'_>, w: f32, row_h: f32) -> f32 {
         paint_text(
             b.text,
             b.scene,
-            "\u{2191} EMPILHOU: 2 linhas",
+            "\u{2191} STACKED: 2 rows",
             b.x + w + Spacing::Sm.px(),
             b.y + (row_h - TypeToken::Xxs.px()) * 0.5,
             TypeToken::Xxs.px(),
@@ -375,32 +366,35 @@ fn paint_today(b: &mut Bench<'_>, w: f32, row_h: f32) -> f32 {
 }
 
 /// A fileira de controlos. Cada chip regista o próprio hit e é lido pelo `event.rs`.
-fn paint_controls(b: &mut Bench<'_>, st: &WidgetLabState, row_h: f32) {
+///
+/// ⭐ Os três primeiros mudam o **app**; os três últimos mudam só a bancada.
+fn paint_controls(b: &mut Bench<'_>, st: &WidgetLabState) {
+    let s = st.style;
     let chips: [(ph2d_a11y::NodeId, String); 7] = [
         (ids::LAB_VARIANT_PREV, "\u{2039}".into()),
         (
             ids::LAB_VARIANT_NEXT,
-            format!("{} \u{203a}", st.design.label()),
+            format!("{} \u{203a}", s.design.label()),
         ),
         (
             ids::LAB_RADIUS_CYCLE,
-            format!("raio {:.0}", RADII[st.radius % RADII.len()]),
+            format!("radius {:.0}", s.radius_px()),
         ),
+        (ids::LAB_DENSITY_CYCLE, format!("row {:.0}", s.row_h_px())),
         (
             ids::LAB_ACCENT_CYCLE,
             ACCENTS[st.accent % ACCENTS.len()].key().into(),
         ),
-        (ids::LAB_DENSITY_CYCLE, format!("linha {row_h:.0}")),
         (
             ids::LAB_DECORATOR_TOGGLE,
-            format!("animar {}", if st.decorator { "ON" } else { "off" }),
+            format!("animate {}", if st.decorator { "ON" } else { "off" }),
         ),
         (
             ids::LAB_COMPARE_TOGGLE,
-            format!("hoje {}", if st.compare { "ON" } else { "off" }),
+            format!("old {}", if st.compare { "ON" } else { "off" }),
         ),
     ];
-    let h = row_h.min(24.0); // LITERAL-PX-OK: altura do chip de controlo
+    let h = s.row_h_px();
     let mut cx = b.x;
     let mut cy = b.y;
     for (id, text) in chips {
@@ -441,5 +435,4 @@ fn paint_controls(b: &mut Bench<'_>, st: &WidgetLabState, row_h: f32) {
         cx += cw + Spacing::Xs.px();
     }
     b.y = cy + h + Spacing::Sm.px();
-    let _ = DECORATOR_W;
 }

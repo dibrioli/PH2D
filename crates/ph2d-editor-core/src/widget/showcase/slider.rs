@@ -49,5 +49,35 @@ pub(super) fn paint_slider_section(
         theme,
     );
     y += slider_h;
+
+    // ⭐⭐ **A CAIXA ÚNICA — o padrão do app desde 2026-09-02**, logo abaixo do widget que ela
+    // substitui, e pela razão que esta galeria existe: ela é a fonte única de verdade do que o
+    // editor **É**, e os agentes periféricos copiam a decoração daqui.
+    //
+    // ⚠️ **Amostra ESTÁTICA, sem `hit_index`.** A galeria mostra a forma; o gesto vive no produto e
+    // na bancada (`ph2d-panel-widget-lab`). Registar aqui um alvo arrastável poria dois sliders a
+    // competir pelo ponteiro dentro da mesma secção.
+    //
+    // ⚠️ E ela lê o `paint::slider_style()` — o que o artista escolheu —, então esta amostra muda
+    // com a preferência. *Uma galeria que mostrasse o default fixo mentiria a quem customizou.*
+    y += Spacing::Sm.px();
+    let style = crate::paint::slider_style();
+    let r = Rect::new(x, y, w, style.row_h_px());
+    crate::widget::paint_property_box(
+        scene,
+        text_system,
+        theme,
+        r,
+        crate::widget::PropertyBox {
+            label: "Speed",
+            value: "62%",
+            t: value,
+            state: crate::widget::PropertyBoxState::Normal,
+            accent: ColorToken::Accent,
+            decorator: true,
+        },
+        style,
+    );
+    y += style.row_h_px();
     y
 }

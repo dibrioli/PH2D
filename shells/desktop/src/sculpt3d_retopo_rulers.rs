@@ -114,13 +114,27 @@ pub(super) fn log_candidate(
     let (ratio, amostra) = tip_ratio(out);
     eprintln!(
         "[sculpt3d] candidata w={w:.3} feicoes={features} adapt={adaptive:.2}: {} quads | \
-         bordo {} | costuras soltas {} | locais trocados {} | lados a discordar {} | >60 {} | \
+         furos {} | ilhas {} | gravatas {} | costuras soltas {} | locais trocados {} | lados a discordar {} | >60 {} | \
          envies p50 {:.2} p99 {:.1} | aspecto p50 {:.2} | ENTREGA {ratio:.3} (ponta {amostra}) \
          | alcance {:.4} | AMPUTADAS {} de {} (pior gap {:.2}, barra {:.1}) \
          | DESVIO p50 {:.2} ({} de {} ponta(s) acima de {:.1}) \
          | GRADE NA PONTA pior {:.2} p50 {:.2} ({} de {} acima de {:.1})",
         out.face_count(),
-        boundary_edges(out),
+        // ⛔⛔⛔ **`open_edges` e `components` — as DUAS PRIMEIRAS CHAVES do [`super::decide::worse`]**
+        // (2026-09-03). ⚠️ Até hoje esta linha imprimia `boundary_edges`, que é **outra grandeza**
+        // (o `open_edges` soma o não-manifold), e **nunca** imprimia as ilhas. ⇒ um registo que não
+        // mostra as chaves que decidem não explica a escolha: na wave da calota apareceu uma
+        // candidata com `0` pontas amputadas e grade `0,81` que o selector deitou fora, e o log
+        // **não tinha coluna** que dissesse porquê. *O doc acima já escrevia a lei que estas duas
+        // colunas violavam.*
+        open_edges(out),
+        components(out),
+        // ⛔⛔⛔ **A TERCEIRA chave, e foi ela que decidiu a wave da calota (2026-09-03):** com as
+        // duas primeiras impressas, a candidata verde (`0` amputadas, grade `0,81`) empatava em
+        // furos e ilhas com a escolhida (`3` amputadas, grade `2,81`) — logo a decisão só podia
+        // vir daqui, e esta coluna não existia. *Um log que imprime `n−1` das `n` chaves explica
+        // todas as escolhas menos a que interessa.*
+        bowties(out),
         round.solve.loose_seams,
         round.solve.mismatched_locals,
         cut_rep.side_patch_flips,

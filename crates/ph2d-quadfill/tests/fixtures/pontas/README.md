@@ -58,3 +58,15 @@ O que o portão imprime (`cargo test -p ph2d-quadfill --test pontas_do_dono -- -
 `0,88…1,10` — o portão `as_barras_vivem_no_vazio_entre_o_aprovado_e_o_reprovado` exige a
 margem. ⚠️ Os tempos são em DEBUG; a 1.ª versão da bola de caminho (Dijkstra por pilha) levava
 `71 s` na terceira linha.*
+
+## ⭐⭐⭐ `nossa_com_calota.obj.gz` — a NOSSA saída depois da cura (2026-09-03)
+
+| | |
+|---|---|
+| o que é | a saída do botão `Quad Retopology` sobre `_base_sculpt`, na realização **do próprio dono** |
+| como foi produzida | `PH2D_PIECE=_base_sculpt.obj PH2D_RECENTER=1 PH2D_DETAIL=1.0 PH2D_ADAPT=1.0` na sonda `the_artists_piece_through_the_button`, com a **calota** da fase zero (`ph2d_remesh_iso::Cap`, `TIP_CAP_STEP = 1,0`) e o **desembaraçador** de gravatas (`ph2d_quadfill::untangle_bowties`) — plano §105 |
+| o que ela vale | `21 928` quads · `χ = 2` · `0` bordo · `0` não-manifold · **`0` de `5`** pontas amputadas (pior gap `0,47`) · grade no bico **`0,79`** |
+| ⚠️ a entrada é RECENTRADA no teste | por [`ph2d_mesh::Mesh::recenter`], a **porta do importador** — sem isso as duas malhas vivem em espaços diferentes e a régua lê `5 de 5` com o gap saturado (*uma medição entre dois referenciais mede a translação*) |
+
+⛔ **É o gate que impede a cura de se desfazer em silêncio:** a MESMA peça, no MESMO ponto do
+slider, saía como `sculpt_Depois` — a ponta maior cortada sete células abaixo do bico.

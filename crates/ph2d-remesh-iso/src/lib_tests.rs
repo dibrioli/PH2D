@@ -463,7 +463,7 @@ fn the_remesh_keeps_the_rim_where_the_artist_put_it() {
          indistinguivel: viragem media {turn:.1}°"
     );
 
-    super::remesh_with(&mut mesh, ALPHA, true, false);
+    super::remesh_with(&mut mesh, ALPHA, true, false, &[]);
     let (loops1, len1) = border(&mesh);
     eprintln!("rebordo: {loops0} lacos / {len0:.4} ⇒ {loops1} lacos / {len1:.4}");
     assert_eq!(loops1, 1, "⛔ o remalhe partiu ou fechou o laco de bordo");
@@ -552,7 +552,7 @@ fn a_grelha_por_sitio_preserva_o_orcamento() {
     }
     mesh.rebuild();
     let target = super::target_edge(&mesh, super::ALPHA);
-    let grid = super::SizingGrid::build(&mesh, target).expect("a fixtura tem curvatura");
+    let grid = super::SizingGrid::build(&mesh, target, &[]).expect("a fixtura tem curvatura");
 
     // ⚠️ **O CONTROLE:** a grelha tem de VARIAR, senao o que este gate mede e' o campo
     // uniforme e a renormalizacao seria trivialmente `1`.
@@ -635,7 +635,7 @@ fn a_banda_da_grelha_engrossa_onde_a_forma_e_chapada() {
     }
     mesh.rebuild();
     let target = super::target_edge(&mesh, super::ALPHA);
-    let grid = super::SizingGrid::build(&mesh, target).expect("a fixtura tem curvatura");
+    let grid = super::SizingGrid::build(&mesh, target, &[]).expect("a fixtura tem curvatura");
     let mut mais_grosso = false;
     let mut mais_fino = false;
     for p in mesh.positions() {
@@ -787,13 +787,13 @@ fn o_campo_e_invariante_nos_mesmos_sitios() {
         ("esfera 96x144", shapes::uv_sphere(96, 144, 1.0)),
     ] {
         let alvo = target_edge(&base, ALPHA);
-        let g0 = super::sizing::SizingGrid::build(&base, alvo).expect("grelha");
+        let g0 = super::sizing::SizingGrid::build(&base, alvo, &[]).expect("grelha");
         for d in [0.5f32, 1.0, 2.0, 16.0] {
             let mut m = base.clone();
             for p in m.positions_mut() {
                 p[0] += d;
             }
-            let g1 = super::sizing::SizingGrid::build(&m, alvo).expect("grelha");
+            let g1 = super::sizing::SizingGrid::build(&m, alvo, &[]).expect("grelha");
             let mut pior = 0.0f32;
             let mut n_dif = 0usize;
             for (a, b) in base.positions().iter().zip(m.positions()) {

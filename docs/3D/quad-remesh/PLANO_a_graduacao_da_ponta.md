@@ -1973,3 +1973,85 @@ executável do PROGRAMA (que o dono acabara de construir) e não o da sonda — 
 e a pasta temporária da sessão foi limpa a meio (reinício), levando os quatro scripts e as
 fixturas — recriados a partir deste plano. *Um instrumento fora da árvore é um instrumento que
 desaparece; o que fica é a lei escrita aqui.*
+
+## §105 — ⭐⭐⭐ A CALOTA na fase zero, e a GRAVATA que deitava fora a candidata boa (2026-09-03)
+
+O §103 pedia *«dar à fase zero uma calota por espinho afiado»*. Está feito
+([`ph2d_remesh_iso::Cap`], `remesh_isotropic_graded_capped`), e a medição partiu em **duas**
+descobertas — a segunda é que fecha o report do dono.
+
+### §105.1 — A porta, e as duas metades da lei
+
+A calota entra no campo por vértice **antes** da renormalização por contagem (logo a factura é
+paga pelo resto da peça: *a adaptação move os quads, não os cria*) e é **reclamada depois** (o
+factor sai `> 1` por construção e engrossaria a calota que se acabou de pedir). As calotas vêm de
+[`ph2d_quadfill::apices`] com unidade `= alvo` — a **mesma** lei de ápice das réguas, e é a
+`phase_zero` do shell que as calcula: *quem grada é quem chama*.
+
+⚠️ **A sonda da porta deixou de ter uma CÓPIA da fase zero** — ela espelhava a escolha do
+produto num bloco próprio, com um comentário a dizer que a espelhava, e a cópia envelheceria no
+dia em que a fase zero mudasse. Hoje chama `target::phase_zero`.
+
+### §105.2 — O que a calota faz à fase zero (`_base_sculpt`, `Detail 1`, `Curv 1`)
+
+| `PH2D_TIP_CAP` | F1 faces | aresta média | **grade no bico** (passos do alvo) | acima de `1,0` |
+|---|---|---|---|---|
+| `0` (o que shipa) | `3 642` | `0,0959` | ⛔ **`2,22`** (p50 `1,56`) | `5` de `5` |
+| `1,0 h` | `6 146` | `0,0671` | `1,15` (p50 `1,08`) | `5` de `5` |
+| `0,75 h` | `8 374` | `0,0520` | ⭐ `0,84` | `0` de `5` |
+| `0,5 h` | `15 972` | `0,0323` | ⭐ `0,55` | `0` de `5` |
+
+⭐ A porta faz **exactamente** o que promete. ⚠️ E a coluna que o diz — a grade da calota em
+**passos do alvo** — não existia em sonda nenhuma: a `tips` mede a malha contra a mediana **dela
+própria**, logo responde *«a ponta é mais grossa que o corpo?»* e nunca *«cabem duas células no
+bico?»*, que é a pergunta de que o pólo `+1` depende.
+
+⛔ **E afinar mais não é melhor:** a `0,75` e a `0,5` a cadeia a jusante deixa de digerir a
+inflação (candidatas com `7`–`48` arestas de bordo, `1` não-manifold na saída). É a mesma lei que
+a `sizing.rs` já escrevia — *o que a jusante não digere é a INFLAÇÃO, não a graduação*.
+
+### §105.3 — ⭐⭐⭐ A descoberta: UMA GRAVATA deitava fora a melhor candidata que esta peça já teve
+
+A `1,0 h` a cadeia passou a **produzir** uma candidata verde nas duas réguas de ponta — a
+primeira desta peça — e o selector escolhia outra. Com as três primeiras chaves do `worse`
+impressas pela primeira vez:
+
+| candidata | furos | ilhas | **gravatas** | amputadas | grade |
+|---|---|---|---|---|---|
+| a escolhida | `0` | `1` | **`0`** | ⛔ **`3` de `5`** | ⛔ `2,81` |
+| ⭐ a deitada fora | `0` | `1` | **`1`** | ⭐ **`0` de `5`** | ⭐ `0,81` |
+
+A chave das gravatas é a **3.ª** e a da amputação a **4.ª**: *uma face dobrada ganha a três
+pontas cortadas*. ⚠️ **E a gravata nem estava na ponta** — a `5,7` células do bico mais próximo
+(`gravatas.py`, sobre `PH2D_CANDIDATE_DUMP`), um quad dobrado solto no flanco.
+
+⛔⛔ **O log da decisão imprimia `n−1` das `n` chaves, e a que faltava era a que decidia.** Ele
+mostrava `bordo` (`boundary_edges`) enquanto o selector lê `open_edges` (bordo **+**
+não-manifold), nunca imprimiu as **ilhas**, e nunca imprimiu as **gravatas**. *Um registo que não
+mostra as chaves não explica a escolha* — e foram precisas **três** corridas para descobrir uma
+coisa que uma coluna teria dito à primeira.
+
+### §105.4 — A cura é produzir a candidata que tem as duas coisas
+
+⛔ **Reordenar as chaves está fora:** a ordem foi medida em 30/08 sobre um report do dono
+(*«destruiu completamente a malha»*, `125` gravatas), e o doc da cascata já escreve a lei — *«a
+saída não é reordenar o critério, é produzir a candidata que tem as duas coisas»*.
+
+[`ph2d_quadfill::untangle_bowties`] desfaz a gravata **no sítio**: Laplaciano tangencial sobre os
+`4` vértices da face acusada, reprojecção na escultura, cerca de viagem própria
+(`UNTANGLE_TRAVEL = 2` arestas — ⛔ *um quad só se auto-cruza quando um vértice passa PARA LÁ do
+vizinho*, logo a meia aresta do socorro tornaria a cura impossível por construção), e aceitação
+com **duas** metades: as gravatas desceram **e** a forma não piorou (a mesma `acceptable` do
+acabamento — duas leis de aceitação seriam duas respostas à mesma pergunta). Onde não há gravata
+é a **identidade ao bit**, e há gate.
+
+### §105.5 — ⭐⭐⭐ O resultado, na realização do PRÓPRIO dono
+
+| `_base_sculpt`, `Detail 1` · `Curv 1`, `PH2D_RECENTER=1` | quads | pontas amputadas | grade no bico |
+|---|---|---|---|
+| o que shipa hoje | `20 658` | ⛔ **`1` de `5`** (pior gap `3,00 h`) | ⛔ **`3,51`** |
+| ⭐ calota `1,0 h` + gravata desfeita | `21 928` | ⭐ **`0` de `5`** (pior `0,47`, barra `0,5`) | ⭐ **`0,79`** (barra `1,0`) |
+
+⚠️ **O desembaraçador sozinho não muda o caminho de omissão** (medido: `20 658` quads e o mesmo
+veredito ao bit) — a candidata vencedora de hoje não tem gravata nenhuma. *As duas metades são
+necessárias: a calota PRODUZ a candidata, o desembaraçador deixa-a GANHAR.*

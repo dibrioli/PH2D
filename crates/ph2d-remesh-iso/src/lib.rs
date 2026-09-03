@@ -231,7 +231,7 @@ pub fn target_edge(mesh: &Mesh, alpha: f32) -> f32 {
 /// pentágono), e deixar a recusa chegar ao chamador seria transformar um detalhe
 /// de representação numa condição de erro do produto.
 pub fn remesh_isotropic(mesh: &mut Mesh, alpha: f32) -> Report {
-    remesh_with(mesh, alpha, border_law_on(), false)
+    remesh_with(mesh, alpha, border_law_on(), false, &[])
 }
 
 /// ⭐⭐⭐ **O MESMO PASSE, com a densidade a SEGUIR A FORMA** — ver [`sizing::SizingGrid`].
@@ -249,7 +249,24 @@ pub fn remesh_isotropic(mesh: &mut Mesh, alpha: f32) -> Report {
 ///
 /// ⇒ **Quem grada é quem chama.** Hoje é a cadeia de extracção do botão, e mais ninguém.
 pub fn remesh_isotropic_graded(mesh: &mut Mesh, alpha: f32) -> Report {
-    remesh_with(mesh, alpha, border_law_on(), true)
+    remesh_with(mesh, alpha, border_law_on(), true, &[])
+}
+
+/// ⭐⭐⭐ **O MESMO PASSE GRADUADO, com uma CALOTA RESOLVIDA por sítio** — ver [`sizing::Cap`].
+///
+/// ⛔⛔ **Ela existe porque a graduação por curvatura + renormalização deixa o BICO a `1,3`–`2,3 ×`
+/// o passo da grade**, e o pólo `+1` que fecha um bico precisa de `≥ 2` células de calota
+/// resolvida. O mecanismo, a escada de singularidades medida e a malha aprovada pelo dono estão
+/// em `docs/3D/quad-remesh/PLANO_a_graduacao_da_ponta.md` §101–§103.
+///
+/// ⚠️ **`caps` vazio é [`remesh_isotropic_graded`] ao bit** — o caminho é o mesmo código, e há
+/// gate.
+///
+/// ⛔ **Quem sabe onde estão os bicos é quem chama** (a lei desta crate: *«quem grada é quem
+/// grada»*): esta crate não conhece a lei do ápice, e conhecê-la poria uma régua de outro
+/// subsistema dentro de um remalhador de triângulos.
+pub fn remesh_isotropic_graded_capped(mesh: &mut Mesh, alpha: f32, caps: &[Cap]) -> Report {
+    remesh_with(mesh, alpha, border_law_on(), true, caps)
 }
 
 /// O passe com a [`BORDER_LAW`] **explícita**.
@@ -257,7 +274,7 @@ pub fn remesh_isotropic_graded(mesh: &mut Mesh, alpha: f32) -> Report {
 /// ⚠️ **Por argumento e não por variável de ambiente:** os testes desta crate correm em
 /// paralelo no mesmo processo, e uma env lida lá dentro faria um gate decidir o resultado do
 /// outro. *Uma bandeira global é uma corrida escrita à mão.*
-fn remesh_with(mesh: &mut Mesh, alpha: f32, rim_law: bool, graded: bool) -> Report {
+fn remesh_with(mesh: &mut Mesh, alpha: f32, rim_law: bool, graded: bool, caps: &[Cap]) -> Report {
     let verts_before = mesh.vert_count();
     mesh.triangulate();
 
@@ -291,7 +308,9 @@ fn remesh_with(mesh: &mut Mesh, alpha: f32, rim_law: bool, graded: bool) -> Repo
 
         // ⭐⭐⭐ **A CERCA POR SÍTIO entra nos DOIS passes** — ver [`SizingGrid`]. Ela é
         // reconstruída a cada ronda porque a malha muda, e é isso que a mantém honesta.
-        let grid = graded.then(|| SizingGrid::build(mesh, target)).flatten();
+        let grid = graded
+            .then(|| SizingGrid::build(mesh, target, caps))
+            .flatten();
         let split = grid
             .as_ref()
             .map(|g| move |p: [f32; 3]| g.at(p) * SPLIT_FACTOR);
@@ -442,7 +461,7 @@ mod sizing;
 pub use project::{project_facing, project_onto};
 
 use border::{border_lambda, border_law_on, border_polyline, project_onto_polyline};
-pub use sizing::adaptive_on;
+pub use sizing::{Cap, adaptive_on};
 use sizing::{SizingGrid, facing_on};
 
 fn relax_and_project(mesh: &mut Mesh, reference: &Mesh, target: f32, rim_law: bool) {

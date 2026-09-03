@@ -36,8 +36,9 @@ use super::{RemeshRefusal, Sculpt3dScene, SculptStroke, StrokeUndo};
 
 /// **O ALVO da grade** — irmão pelo teto de LOC da shell (HR-18, 600), cortado por
 /// RESPONSABILIDADE: ver [`target`].
+/// ⚠️ **Visível ao módulo** desde 03/09: a sonda da porta tinha uma CÓPIA da fase zero, que envelheceu.
 #[path = "sculpt3d_retopo_target.rs"]
-mod target;
+pub(in crate::sculpt3d) mod target;
 
 /// **AS RÉGUAS da tentativa** — irmão pela mesma razão: ver [`rulers`].
 #[path = "sculpt3d_retopo_rulers.rs"]

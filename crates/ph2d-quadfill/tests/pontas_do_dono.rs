@@ -132,6 +132,32 @@ fn a_retopologia_que_o_dono_aprovou_passa_em_todas_as_pontas() {
     );
 }
 
+/// ⭐⭐⭐ **E A NOSSA SAÍDA CURADA passa o mesmo que a aprovada** — o critério de aceitação que o
+/// plano §103 nomeou, agora executável.
+///
+/// A fixtura é a saída do botão sobre `_base_sculpt` na realização do PRÓPRIO dono
+/// (`PH2D_RECENTER=1`, `Detail 1`, `Curv 1`) com a **calota** da fase zero
+/// ([`ph2d_remesh_iso::Cap`]) e o **desembaraçador** de gravatas
+/// ([`ph2d_quadfill::untangle_bowties`]) — plano §105.
+///
+/// ⛔⛔ **Este é o gate que impede a cura de se desfazer em silêncio.** A MESMA peça, no MESMO
+/// ponto do slider, saía com a ponta maior cortada `7` células abaixo do bico (`sculpt_Depois`,
+/// que o teste seguinte reprova) — e a única coisa entre as duas é o que esta wave construiu.
+#[test]
+fn a_nossa_saida_com_a_calota_passa_o_que_a_aprovada_passa() {
+    // ⛔⛔ **A ENTRADA PASSA PELA PORTA DO IMPORTADOR**, e não é um detalhe: a saída nasceu
+    // dentro do programa, que recentra a peça em `f32` ([`ph2d_mesh::Mesh::recenter`]) antes de
+    // tudo. Sem esta linha as duas malhas vivem em espaços diferentes e a régua lê `5 de 5`
+    // amputadas com o gap saturado — *uma medição entre dois referenciais mede a translação*.
+    // ⚠️ É a MESMA função que o programa corre, e não uma recentragem à mão (§104).
+    let mut entrada = load("_base_sculpt");
+    entrada.recenter();
+    let (dev, den) = mede("NOSSA (calota)", &entrada, &load("nossa_com_calota"));
+    assert!(dev.tips >= 5, "a peca tem cinco espinhos: {dev:?}");
+    assert_eq!(dev.cut, 0, "⛔ voltou a amputar: {dev:?}");
+    assert_eq!(den.over, 0, "⛔ voltou a engrossar no bico: {den:?}");
+}
+
 /// ⭐⭐⭐ **Cada saída que ele REPROVOU falha pelo menos uma ponta — e a da foto falha as
 /// DUAS réguas.**
 ///

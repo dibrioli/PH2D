@@ -130,20 +130,13 @@ fn the_artists_piece_through_the_button() {
         // estava a mudar a saída. *Um diagnóstico que não corre o caminho que o produto
         // corre acusa o sítio errado.* ⚠️ O `PH2D_ISO_ADAPT` já era honrado por acidente:
         // ele é lido **dentro** do `remesh_isotropic`.
-        let mut work = if std::env::var("PH2D_F1_TARGET").as_deref() == Ok("1") {
-            ph2d_quadchain::phase_zero(&reference, target)
-        } else {
-            let mut w = reference.clone();
-            // ⚠️ **Espelha a escolha do produto** (a porta graduada, ver
-            // [`ph2d_remesh_iso::remesh_isotropic_graded`]) — uma sonda que remalha de outra
-            // maneira mede outro programa.
-            if ph2d_remesh_iso::adaptive_on() {
-                ph2d_remesh_iso::remesh_isotropic_graded(&mut w, ph2d_remesh_iso::ALPHA);
-            } else {
-                ph2d_remesh_iso::remesh_isotropic(&mut w, ph2d_remesh_iso::ALPHA);
-            }
-            w
-        };
+        // ⭐⭐⭐ **É A FUNÇÃO DO PRODUTO, e não um espelho dela** (2026-09-03). ⛔ Aqui viviam
+        // dez linhas que *copiavam* a escolha da fase zero, com um comentário a dizer que a
+        // espelhavam — e a cópia envelheceu no dia em que a fase zero ganhou a **calota** dos
+        // bicos: a sonda media a malha de trabalho de um programa que já não existia. *Uma lei
+        // escrita em dois sítios ainda não é uma lei — só uma PORTA é.*
+        let mut work =
+            crate::sculpt3d::history::retopo_extract::target::phase_zero(&reference, target);
         work.triangulate();
         eprintln!(
             "   CENA: {} verts {} faces | aresta media {:.5} | alvo do slider {:.5}",
@@ -165,6 +158,20 @@ fn the_artists_piece_through_the_button() {
         // no remalhador ou a jusante dele. *Sem os dois lados, «a cadeia amputa» é uma
         // acusação sem endereço.*
         super::tips("F1", &piece, &work);
+        // ⭐⭐⭐ **A GRADE DA CALOTA MEDIDA EM PASSOS DO ALVO** (2026-09-03) — a coluna que
+        // decide a wave da calota, e que **nenhuma linha desta sonda tinha**: a `tips` acima
+        // mede a malha contra a **mediana dela própria**, logo ela responde *«a ponta é mais
+        // grossa que o corpo?»* e nunca *«cabem duas células de calota no bico?»*, que é a
+        // pergunta de que o pólo `+1` depende (plano §101).
+        let den = ph2d_quadfill::tip_density(&piece, &work, target);
+        eprintln!(
+            "   F1 CALOTA: pior {:.2} · p50 {:.2} passos do alvo | acima de {:.1}: {} de {}",
+            den.worst,
+            den.p50,
+            ph2d_quadfill::TIP_DENSITY_MAX,
+            den.over,
+            den.tips,
+        );
         islands("F1", &work);
         // ⭐⭐⭐ **O SEGUNDO dos três pontos.** ⚠️ A `ENTREGA` é uma razão entre medianas de
         // aresta-equivalente, logo ela é **adimensional** e comparável entre malhas de

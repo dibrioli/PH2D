@@ -13,6 +13,51 @@
 
 use ph2d_mesh::Mesh;
 
+/// ⭐⭐⭐ **UMA CALOTA RESOLVIDA** — o pedido de quem chama: *«aqui o passo é no máximo `step`»*.
+///
+/// # ⛔⛔⛔ Por que a curvatura sozinha não a produz
+///
+/// O campo desta grelha é **a curvatura normalizada pela mediana**, e depois **renormalizado
+/// pela contagem** ([`SizingGrid::build`]) para o orçamento não inflar. As duas leis juntas são
+/// o que faz a agulha sobreviver — e o que deixa o **bico** a `1,3`–`2,3 ×` o passo da grade de
+/// quads (medido 2026-09-02, `docs/3D/quad-remesh/PLANO_a_graduacao_da_ponta.md` §101): a
+/// renormalização engrossa tudo, e um bico é uma região **pequena**, logo ele paga a factura de
+/// uma peça inteira de superfície chapada.
+///
+/// ⚠️ **E `2 ×` o passo é o defeito que o dono fotografou duas vezes.** As singularidades do
+/// campo cruzado vivem em **vértices desta malha**; o pólo `+1` que fecha um bico (quatro
+/// `+¼` a `≤ 2 h`, que é o que a malha aprovada por ele tem) precisa de **`≥ 2` células
+/// resolvidas** de calota. Com o bico a `2 h` por vértice, não há onde as pôr — *a grade
+/// termina a meio caminho, e a extracção tapa o resto com uma face grande.*
+///
+/// ⛔ **Não é um refinamento global** (`PH2D_F1_TARGET=1`, a fase zero inteira ao alvo, foi
+/// medido e **refutado**: `χ = 1`, `4` arestas de bordo, `123` dobras): a afinação tem de ser
+/// **local**, e o orçamento reposto pela renormalização é o que a torna barata.
+///
+/// ⚠️ **Por POSIÇÃO e raio EUCLIDIANO**, como toda esta grelha: as portas de topologia
+/// renumeram (`Remap`) dentro da própria chamada, então um índice de vértice não sobrevive à
+/// ronda em que foi calculado.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Cap {
+    /// O bico — em coordenadas da malha que se remalha.
+    pub at: [f32; 3],
+    /// Até onde a calota alcança, em unidades da peça. ⛔ `≤ 0` é um no-op.
+    pub radius: f32,
+    /// O passo máximo lá dentro. ⛔ `≤ 0` é um no-op.
+    pub step: f32,
+}
+
+impl Cap {
+    /// Este pedido alcança este ponto?
+    fn covers(&self, p: [f32; 3]) -> bool {
+        if !(self.radius > 0.0 && self.step > 0.0) {
+            return false;
+        }
+        let d = [p[0] - self.at[0], p[1] - self.at[1], p[2] - self.at[2]];
+        d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])) <= self.radius * self.radius
+    }
+}
+
 /// ⭐⭐⭐ **O ALVO POR SÍTIO, numa grelha grosseira** — o que as portas de topologia consultam.
 ///
 /// ⛔⛔ **Ela existe porque um alvo ÚNICO não pode representar uma agulha.** Na peça do artista
@@ -93,7 +138,20 @@ impl SizingGrid {
     /// `1` é melhor nas duas peças do dono — `_base_sculpt` pior corte `−24,3 % → −8,4 %`,
     /// `sculpt_antes` `2/6 → 1/6` cortadas. *Uma mutação que sobrevive pode ser código inerte;
     /// aqui ela era código que fazia a coisa errada.*
-    pub(crate) fn build(mesh: &Mesh, target: f32) -> Option<Self> {
+    ///
+    /// # ⭐⭐⭐ A CALOTA entra ANTES da renormalização e é RECLAMADA depois (2026-09-03)
+    ///
+    /// Ver [`Cap`]. As duas metades são deliberadas e cada uma responde a uma pergunta:
+    ///
+    /// - **antes**: o pedido da calota entra no campo por vértice, logo a
+    ///   [`Self::count_factor`] **vê-o** e a factura dele é paga pelo resto da peça — *a
+    ///   adaptação move os quads, ela não os cria*, que é a lei desta grelha;
+    /// - **depois**: o factor sai `> 1` (o campo só afina), logo ele **engrossaria a calota
+    ///   que acabou de ser pedida** — e uma calota a `s ×` o passo não é a calota. As células
+    ///   pedidas são reclamadas ao valor pedido no fim.
+    ///
+    /// ⛔ *Sem a 1.ª metade a contagem estoura; sem a 2.ª o pedido não chega ao bico.*
+    pub(crate) fn build(mesh: &Mesh, target: f32, caps: &[Cap]) -> Option<Self> {
         let curv = mesh.curvatures();
         if curv.is_empty() {
             return None;
@@ -118,11 +176,18 @@ impl SizingGrid {
             origin = [0.0; 3];
         }
         let mut per_vertex: Vec<f32> = Vec::with_capacity(pos.len());
+        let mut capped: std::collections::BTreeMap<(i32, i32, i32), f32> =
+            std::collections::BTreeMap::new();
         for (v, p) in pos.iter().enumerate() {
             let k = curv.get(v).copied().unwrap_or(0.0).abs().max(1.0e-9);
-            let h = target * (median / k).clamp(1.0 / ADAPT_RATIO, 1.0);
-            per_vertex.push(h);
+            let mut h = target * (median / k).clamp(1.0 / ADAPT_RATIO, 1.0);
             let key = Self::key_of(*p, origin, cell);
+            for c in caps.iter().filter(|c| c.covers(*p)) {
+                h = h.min(c.step);
+                let slot = capped.entry(key).or_insert(c.step);
+                *slot = slot.min(c.step);
+            }
+            per_vertex.push(h);
             let slot = want.entry(key).or_insert(h);
             if h < *slot {
                 *slot = h;
@@ -166,6 +231,13 @@ impl SizingGrid {
                 *h *= s;
             }
             grid.fallback = target * s;
+        }
+        // ⭐⭐⭐ **A CALOTA É RECLAMADA** — ver o doc desta função. ⛔ Sem isto o pedido chega ao
+        // bico multiplicado pelo factor de contagem, que é `> 1` por construção.
+        for (key, step) in &capped {
+            if let Some(h) = grid.want.get_mut(key) {
+                *h = h.min(*step);
+            }
         }
         Some(grid)
     }

@@ -162,6 +162,8 @@ pub struct FinishReport {
     /// ⭐ **A saída veio da lei CEGA** — a alinhada não conseguiu mexer-se. Ver
     /// [`finish_extracted`].
     pub blind: bool,
+    /// ⭐⭐⭐ **Quantas GRAVATAS o acabamento desfez** — ver [`crate::untangle_bowties`].
+    pub untangled: usize,
 }
 
 /// ⭐⭐⭐ **DESISTIR: só enquanto NADA foi aceite ainda.**
@@ -202,7 +204,7 @@ const SAME: f32 = 1.0e-3;
 ///
 /// ⭐ A garantia fica a mesma e mais simples de dizer: **o que sai nunca é pior que o que
 /// shipava em nenhuma das três.**
-fn acceptable(s: &QuadShape, base: &QuadShape) -> bool {
+pub(crate) fn acceptable(s: &QuadShape, base: &QuadShape) -> bool {
     s.skew_over_60 <= base.skew_over_60
         && s.skew_p50 <= base.skew_p50 + SAME
         && s.aspect_p50 <= base.aspect_p50 + SAME
@@ -257,7 +259,7 @@ pub fn finish_extracted(mesh: &mut Mesh, surface: &Mesh) -> FinishReport {
 pub fn finish_extracted_travel(mesh: &mut Mesh, surface: &Mesh, travel: f32) -> FinishReport {
     // ── A lei ALINHADA primeiro: onde ela se mexe, o relevo fica guardado.
     let mut aligned = mesh.clone();
-    let ra = finish_extracted_with(
+    let mut ra = finish_extracted_with(
         &mut aligned,
         surface,
         EXTRACT_RELIEF_PULL,
@@ -289,10 +291,16 @@ pub fn finish_extracted_travel(mesh: &mut Mesh, surface: &Mesh, travel: f32) -> 
     let rb = finish_extracted_with(&mut blind, surface, 0.0, EXTRACT_SETTLE, travel);
     if use_blind(&ra, &rb) {
         *mesh = blind;
-        return FinishReport { blind: true, ..rb };
+        let mut rep = FinishReport { blind: true, ..rb };
+        rep.untangled = crate::untangle_bowties(mesh, surface, crate::untangle::UNTANGLE_TRAVEL);
+        return rep;
     }
     // Nenhuma das duas bateu o Laplaciano: fica ele.
     *mesh = aligned;
+    // ⭐⭐⭐ **AS GRAVATAS SAEM NO FIM, e as TRÊS saídas passam por aqui** — ver
+    // [`crate::untangle_bowties`]. ⛔ Uma delas em falta seria o defeito de sempre: a cura a
+    // viver no caminho que o produto não corre.
+    ra.untangled = crate::untangle_bowties(mesh, surface, crate::untangle::UNTANGLE_TRAVEL);
     ra
 }
 

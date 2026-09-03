@@ -200,3 +200,77 @@ fn o_alisamento_converge_mesmo_quando_o_pedido_alterna() {
         );
     }
 }
+
+/// ⭐⭐⭐ **AS CALOTAS SAEM DA LEI DO ÁPICE, e o passo é o que a constante diz** — o gate da porta
+/// que a fase zero usa desde 2026-09-03 (plano §105).
+///
+/// ⛔ Ele não mede o veredito do produto (isso é a tabela do [`super::TIP_CAP_STEP`], que corre
+/// de ponta a ponta); mede que **cada espinho afiado recebe uma calota** e que ela pede
+/// exactamente o passo da grade — *uma cura que pede outra coisa é outra cura.*
+#[test]
+fn cada_espinho_afiado_recebe_uma_calota_com_o_passo_pedido() {
+    // Uma esfera com DOIS espinhos afiados e uma bossa larga: a lei do ápice fica com os dois
+    // primeiros e recusa a terceira pelo cone.
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(64, 96, 1.0);
+    for p in mesh.positions_mut() {
+        let n = p[0].mul_add(p[0], p[1].mul_add(p[1], p[2] * p[2])).sqrt();
+        if n <= 1.0e-9 {
+            continue;
+        }
+        let u = [p[0] / n, p[1] / n, p[2] / n];
+        let mut h = 0.0f32;
+        for (eixo, alt, sigma) in [
+            ([1.0f32, 0.0, 0.0], 2.0f32, 0.15f32),
+            ([0.0, 1.0, 0.0], 2.0, 0.15),
+            ([-1.0, 0.0, 0.0], 0.5, 0.50),
+        ] {
+            let d = ((u[0] - eixo[0]) * (u[0] - eixo[0])
+                + (u[1] - eixo[1]) * (u[1] - eixo[1])
+                + (u[2] - eixo[2]) * (u[2] - eixo[2]))
+                .sqrt();
+            h += alt * (-(d * d) / (2.0 * sigma * sigma)).exp();
+        }
+        for k in 0..3 {
+            p[k] += u[k] * h;
+        }
+    }
+    mesh.rebuild();
+
+    let alvo = ph2d_quadflow::edge_for_detail_by_count(&mesh, 1.0);
+    let caps = super::tip_caps(&mesh, alvo);
+    let (_, apex) = ph2d_quadfill::apices(&mesh, alvo);
+    assert_eq!(
+        caps.len(),
+        apex.len(),
+        "uma calota por espinho AFIADO -- e a lista e' a da lei do apice"
+    );
+    assert!(
+        caps.len() >= 2,
+        "a fixtura tem dois espinhos: {}",
+        caps.len()
+    );
+    for c in &caps {
+        assert!(
+            (c.step - super::TIP_CAP_STEP * alvo).abs() < 1.0e-6,
+            "o passo pedido nao e' o da constante: {} contra {}",
+            c.step,
+            super::TIP_CAP_STEP * alvo
+        );
+        assert!(
+            (c.radius - super::TIP_CAP_RADIUS * alvo).abs() < 1.0e-6,
+            "o alcance pedido nao e' o da constante"
+        );
+    }
+    // ⛔ **A porta de saída é um no-op** — um alvo que não é positivo não pede calota nenhuma.
+    // ⚠️ O `PH2D_TIP_CAP=0` (a bissecção) NÃO se testa aqui de propósito: os testes desta shell
+    // correm no mesmo processo e uma env escrita por um decide o resultado do outro. O que
+    // defende a bissecção é o gate da crate (`uma_lista_vazia_de_calotas_e_a_porta_graduada_ao_bit`).
+    assert!(
+        super::tip_caps(&mesh, 0.0).is_empty(),
+        "alvo 0 nao pede calota"
+    );
+    assert!(
+        super::tip_caps(&mesh, -1.0).is_empty(),
+        "alvo negativo nao pede calota"
+    );
+}

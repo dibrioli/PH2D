@@ -292,6 +292,69 @@ pub(super) fn smooth_in_log(mesh: &Mesh, per_vertex: &mut [f32], rounds: usize) 
     }
 }
 
+/// ⭐⭐⭐ **O PASSO DA CALOTA de cada espinho afiado**, em múltiplos do passo da grade —
+/// [`ph2d_remesh_iso::Cap`]. `0` desliga; `PH2D_TIP_CAP=<x>` sobrepõe-se, para bissecar.
+///
+/// # ⭐⭐⭐ O `1,0` é MEDIDO, e o report do dono (03/09, com foto e seta) é a razão
+///
+/// A fase zero entregava o bico a **`2,22 ×`** o passo da grade (p50 `1,56`), e o pólo `+1` que
+/// fecha um bico precisa de `≥ 2` células de calota resolvida (plano §101). Medido de ponta a
+/// ponta com `PH2D_RECENTER=1` sobre o ficheiro cru, `Detail 1` · `Curv 1`:
+///
+/// | peça / realização | hoje | com a calota `1,0 h` |
+/// |---|---|---|
+/// | ⭐⭐ `_base_sculpt` — **a realização que o dono vê** | `1/5` amputada · gap `3,00` · grade **`3,51`** | ⭐ **`0/5`** · `0,47` · **`0,79`** |
+/// | `_base_sculpt` a `s = 0,7` | `0/5` · gap `0,45` · grade `1,66` (`3` acima) | `0/5` · **`0,38`** · **`1,07`** (**`2`**) |
+/// | `sculpt_antes` (a agulha) | `1/4` · gap `3,00` · grade `1,15` (`1` acima) | `1/4` · **`2,57`** · **`0,98`** (**`0`**) |
+///
+/// ⭐ **Três de três melhoram ou empatam em todas as colunas, e nenhuma piora** — a topologia
+/// fica `χ = 2`, zero bordo, zero não-manifold nas três.
+///
+/// ⛔⛔ **Afinar MAIS é pior, e está medido:** a `0,75` e a `0,5` a fase zero fica verde no bico
+/// (`0,84` e `0,55`) e a cadeia a jusante deixa de digerir a inflação — candidatas com `7`–`48`
+/// arestas de bordo e `1` não-manifold na saída. *O que a jusante não digere é a INFLAÇÃO.*
+///
+/// ⚠️ **E a calota sozinha não bastava:** ela **produz** a candidata verde, e quem a deixa
+/// **ganhar** é [`ph2d_quadfill::untangle_bowties`] — sem ele, uma gravata a `5,7` células do
+/// bico deitava-a fora na 3.ª chave do [`super::decide::worse`] (plano §105).
+const TIP_CAP_STEP: f32 = 1.0;
+
+/// **Até onde a calota alcança**, em múltiplos do passo da grade. `PH2D_TIP_CAP_R=<x>` sobrepõe.
+///
+/// ⚠️ **`8 h` é a mesma distância do `PH2D_TIP_ALIGN`** (plano §102) e não é coincidência: as
+/// duas experiências atacam a mesma calota — uma dá-lhe PESO no campo, esta dá-lhe RESOLUÇÃO.
+const TIP_CAP_RADIUS: f32 = 8.0;
+
+fn env_f32(key: &str) -> Option<f32> {
+    std::env::var(key).ok().and_then(|s| s.parse().ok())
+}
+
+/// ⭐⭐⭐ **AS CALOTAS que a fase zero recebe** — uma por espinho AFIADO da escultura.
+///
+/// ⛔ **A lei do ápice é a da casa** ([`ph2d_quadfill::apices`], unidade = o passo da grade):
+/// ela já filtra as bossas pelo cone, e é a MESMA que as réguas por ponta usam para decidir se
+/// a saída amputou. *Duas listas de bicos seriam duas respostas à mesma pergunta, e a que
+/// envelhece é a que o artista vê.*
+fn tip_caps(reference: &Mesh, target: f32) -> Vec<ph2d_remesh_iso::Cap> {
+    let step = env_f32("PH2D_TIP_CAP").unwrap_or(TIP_CAP_STEP);
+    // ⚠️ **`is_sign_positive` não serve** — ele diz `true` para `NaN` positivo e para `+0,0`; o que
+    // esta porta precisa é *estritamente maior que zero e finito*, que é o que o par abaixo diz.
+    if !step.is_finite() || step <= 0.0 || !target.is_finite() || target <= 0.0 {
+        return Vec::new();
+    }
+    let radius = env_f32("PH2D_TIP_CAP_R").unwrap_or(TIP_CAP_RADIUS);
+    let (_, apex) = ph2d_quadfill::apices(reference, target);
+    let pos = reference.positions();
+    apex.iter()
+        .filter_map(|&i| pos.get(i).copied())
+        .map(|at| ph2d_remesh_iso::Cap {
+            at,
+            radius: radius * target,
+            step: step * target,
+        })
+        .collect()
+}
+
 /// ⭐⭐⭐ **A FASE ZERO DO BOTÃO** — as duas decisões dela, num sítio só.
 ///
 /// Ela mora aqui e não no chamador porque as duas são sobre **o alvo da malha de trabalho**,
@@ -323,13 +386,17 @@ pub(super) fn smooth_in_log(mesh: &Mesh, per_vertex: &mut [f32], rounds: usize) 
 /// variável de ambiente — uma bandeira global é uma corrida escrita à mão».*
 ///
 /// ⚠️ `PH2D_ISO_ADAPT=0` volta ao remalhador uniforme, para bissecar.
-pub(super) fn phase_zero(reference: &Mesh, target: f32) -> Mesh {
+pub(in crate::sculpt3d) fn phase_zero(reference: &Mesh, target: f32) -> Mesh {
     if f1_follows_target() {
         return ph2d_quadchain::phase_zero(reference, target);
     }
     let mut w = reference.clone();
     if ph2d_remesh_iso::adaptive_on() {
-        ph2d_remesh_iso::remesh_isotropic_graded(&mut w, ph2d_remesh_iso::ALPHA);
+        ph2d_remesh_iso::remesh_isotropic_graded_capped(
+            &mut w,
+            ph2d_remesh_iso::ALPHA,
+            &tip_caps(reference, target),
+        );
     } else {
         ph2d_remesh_iso::remesh_isotropic(&mut w, ph2d_remesh_iso::ALPHA);
     }

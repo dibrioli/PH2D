@@ -114,7 +114,12 @@ fn painted_row(value: f32) -> (WidgetStore, HitIndex) {
 /// Onde o pintor põe a borda do preenchimento para um dado `t` — a lei do `paint_surface`,
 /// escrita aqui uma vez para o gate a poder comparar com o cursor.
 fn fill_edge_x(t: f32) -> f32 {
-    let s = surface_rect(ROW, false);
+    // ⚠️ **`FORM_ROWS_SHOW_DECORATOR`, não um `false` escrito à mão.** Este gate reprovou no dia em
+    // que a coluna de animação ligou (2026-09-03) — e estava CERTO a reprovar: o produto passou a
+    // pintar e a registar sobre uma superfície `14 px` mais estreita, e um modelo com o valor
+    // cravado media outra caixa. *Um gate que fixa uma constante do produto mede a versão dele que
+    // já não corre.*
+    let s = surface_rect(ROW, ph2d_editor_core::widget::FORM_ROWS_SHOW_DECORATOR);
     s.x + s.w * t
 }
 
@@ -164,7 +169,8 @@ fn the_narrow_registration_that_caused_the_report_would_fail_this_gate() {
     );
     let mut hits = HitIndex::default();
     // O rect da 1.ª redacção: a caixa menos a coluna do valor (`pad + chip_w`).
-    let narrow_w = ROW.w - (ph2d_tokens::Spacing::Md.px() + DEFAULT_CHIP_W);
+    let surface = surface_rect(ROW, ph2d_editor_core::widget::FORM_ROWS_SHOW_DECORATOR);
+    let narrow_w = surface.w - (ph2d_tokens::Spacing::Md.px() + DEFAULT_CHIP_W);
     hits.register(SLIDER, Rect::new(ROW.x, ROW.y, narrow_w, ROW.h));
     let _ = dispatch_pointer(&mut store, &hits, down(px, ROW.y + ROW.h * 0.5), &arena);
     let (_, t) = store.slider(SLIDER).expect("a trilha existe");

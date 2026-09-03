@@ -120,20 +120,28 @@ impl Toggle {
 pub fn paint_toggle(toggle: &Toggle, rect: Rect, scene: &mut VectorScene, theme: Theme) {
     let _ = super::checkbox::paint_boolean_mark(
         rect,
-        None,
-        if toggle.on {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
+        super::checkbox::BooleanMark {
+            value: if toggle.on {
+                CheckboxValue::Checked
+            } else {
+                CheckboxValue::Unchecked
+            },
+            state: match toggle.state {
+                ToggleState::Normal => CheckboxState::Normal,
+                ToggleState::Hovered => CheckboxState::Hovered,
+                ToggleState::Pressed => CheckboxState::Pressed,
+                ToggleState::Focused => CheckboxState::Focused,
+                ToggleState::Disabled => CheckboxState::Disabled,
+            },
+            hover_t: toggle.hover_t,
+            box_px: None,
+            // ⛔ **O interruptor NÃO leva a coluna de animação**, e não é esquecimento: os três
+            // chamadores dele (grid-snap · painter-layers · timeline) pintam o rótulo eles próprios
+            // e passam um rect **com forma de interruptor** — uma faixa estreita no fim da linha,
+            // não a linha. Reservar `14 px` ali espremia a marca sem pôr a bolinha na margem do
+            // formulário, que é o único sítio onde ela diz alguma coisa.
+            decorator: false,
         },
-        match toggle.state {
-            ToggleState::Normal => CheckboxState::Normal,
-            ToggleState::Hovered => CheckboxState::Hovered,
-            ToggleState::Pressed => CheckboxState::Pressed,
-            ToggleState::Focused => CheckboxState::Focused,
-            ToggleState::Disabled => CheckboxState::Disabled,
-        },
-        toggle.hover_t,
         scene,
         theme,
     );

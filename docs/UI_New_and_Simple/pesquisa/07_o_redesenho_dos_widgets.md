@@ -1069,3 +1069,93 @@ faz melhor, com espaçamento desenhado pelo tipógrafo.
   do rótulo por `push_luminance_mask_layer`, o `draw_blurred_rounded_rect`) continuam por medir, e
   ⚠️ este resultado ensina como: **perguntar o custo POR QUADRO antes de desenhar o que quer que
   seja**, porque num editor tudo se repinta.
+
+## §19 — ✅ A OBRA 6, na forma que o dono escolheu: **só desenhá-la** (2026-09-03)
+
+> *«A bolinha de animação — só desenhá-la»* (Enio, 2026-09-03)
+
+### 19.1 — «Só desenhá-la» é o que a mantém HONESTA
+
+A §15.3 dizia que o trabalho real não era o desenho, era o **consumidor**: um ponto que se pinta e
+não põe chave nenhuma é um **controlo morto** (`CLAUDE.md` §5.0). ⭐ A decisão do dono resolve isso
+pelo outro lado: ela **não regista hit nenhum**, logo **não é um controlo** — é um **indicador**.
+Diz *«esta propriedade é animável»*, o que é verdade para todas (*«vou querer animar tudo»*), e
+cala-se sobre o resto. ⛔ Não há clique a cair no vazio, porque não há clique.
+
+### 19.2 — A premissa que a bloqueava era sobre uma VARIÁVEL que é constante
+
+O código dizia *«esta função não sabe se a propriedade é animável»* — o que pressupõe que a resposta
+**varia**. A decisão do dono é a outra, e **uma constante não precisa de ser consultada**.
+Hoje é `property_box::FORM_ROWS_SHOW_DECORATOR`, um sítio só.
+
+### 19.3 — ⚠️ Ligá-la mexeu em TRÊS leis, não numa
+
+| o quê | porquê |
+|---|---|
+| a linha de propriedade | `decorator: true` — e a superfície recua `14 px`, logo **o alvo de arrasto recua com ela** (a `surface_rect` já recebia o mesmo `bool`, §14.2) |
+| `slider_with_chip_chip_rect` | passava `false` **cravado** ⇒ a marca de *«um token cobre este valor»* apareceria **14 px ao lado** do número que cobre. *Duas expressões da mesma lei divergem no primeiro dia em que a lei muda, e este era esse dia.* |
+| a linha de **checkbox** | tinha de reservar **a mesma coluna**, senão o alinhamento que a §16.1 comprou desfazia-se: as linhas de propriedade recuavam e as de marcar não, e o formulário voltava a ter duas margens direitas |
+
+⭐ **E quem NÃO a leva é a pele de canvas**, com a discriminação **derivada** em vez de um parâmetro
+novo em 81 chamadores: o `box_px` tem *um consumidor e um só* — a `paint_widget_skin` —, e isso já
+estava escrito no doc do campo. Ali a moldura é o que o **artista** desenhou, não uma linha de
+formulário, e uma bolinha de animação não significa nada.
+
+### 19.4 — ⭐ Um gate desta jornada reprovou, e estava CERTO a reprovar
+
+O `the_fill_lands_under_the_cursor` modelava a superfície com `surface_rect(ROW, false)` — o valor
+**cravado**. No momento em que a coluna ligou, o produto passou a pintar e a registar sobre uma
+caixa `14 px` mais estreita, e o gate mediu outra. ⇒ passou a derivar do
+`FORM_ROWS_SHOW_DECORATOR`.
+
+*Um gate que fixa uma constante do produto mede a versão dele que já não corre* — a mesma família do
+`text_rendering_cycles_three_states` (§18.4), duas vezes no mesmo dia.
+
+### 19.5 — ⛔⛔ E a 1.ª forma da discriminação PARTIU um contrato — apanhada à primeira corrida
+
+A pele de canvas não leva a coluna, e a 1.ª tentativa derivou isso de **`box_px.is_none()`**,
+aproveitando que a pele é o único sítio do app que define aquele campo (está escrito no doc dele).
+
+⛔ **Isso deu ao `box_px` um SEGUNDO significado**, e o contrato dele diz o contrário — *«pedir o
+próprio token é igual a não pedir nada»*. O gate `without_an_override_the_box_is_the_token` reprovou
+na primeira corrida, com a mensagem certa: *«o canal não é neutro»*.
+
+⇒ a coluna passou a ser **campo próprio** (`Checkbox::decorator`), a nascer ligado — logo os **81**
+chamadores não mudam uma linha, porque constroem por `Checkbox::new(..)` — e a pele **desliga-o
+explicitamente**. *Um parâmetro com dois papéis torna a chamada errada defensável.*
+
+⚠️ **E o interruptor também não a leva**, por uma razão diferente e nomeada: os três chamadores dele
+pintam o rótulo eles próprios e passam um rect **com forma de interruptor**, não a linha. Reservar
+`14 px` ali espremia a marca sem pôr a bolinha na margem do formulário, que é o único sítio onde ela
+diz alguma coisa. ⇒ o gate da fusão (§16.4) passou a comparar com a coluna **desligada dos dois
+lados**: ele afirma sobre a **marca**, não sobre a coluna.
+
+### 19.6 — ⛔ E o clippy apanhou uma asserção VÁCUA minha, no mesmo dia em que a escrevi na memória
+
+O gate novo abria com `assert!(FORM_ROWS_SHOW_DECORATOR, …)` — e o clippy disse-o em voz alta:
+*"this assertion has a constant value"*. **Afirmar que uma `const true` é verdadeira é verde por
+construção, com o nome de uma protecção.** O que prova a lei é a **tinta**: se a coluna estiver
+desligada, a linha de formulário passa a pintar o mesmo que a da pele, e o gate cai.
+
+### 19.7 — ⚠️ E ligá-la partiu o TECTO DE LOC, que é a terceira coisa que a wave cobrou
+
+O `checkbox.rs` passou de `~490` para **512** linhas. ⛔ A casa não tolera folga de tecto — parte-se
+para um irmão, e o corte é por **responsabilidade**:
+
+| ficheiro | o que mora lá |
+|---|---|
+| `checkbox/mod.rs` | *o que um booleano **É*** — estado, valor, construtor, o nó de acessibilidade |
+| `checkbox/mark.rs` | *como um booleano **se desenha*** — a marca, a coluna, o rótulo |
+
+⭐ **E os testes foram com a responsabilidade deles:** os cinco de modelo ficaram, os sete de tinta
+mudaram-se. *Um teste que pinta pertence ao ficheiro que pinta* — deixá-los no `mod.rs` obrigaria
+aquele ficheiro a importar toda a maquinaria de desenho que o corte acabara de lhe tirar.
+
+⚠️ E o clippy acusou **oito argumentos** no pintor. *«Too many arguments» não é um limite de estilo:
+é a pergunta «estes parâmetros não serão um modelo?»* — e cinco deles descreviam o mesmo booleano.
+⇒ nasceu o `BooleanMark`, irmão exacto do `PropertyBox`, e é ele que mantém a caixa e o interruptor
+como **dois widgets com um pintor só**.
+
+⏳ **O que continua por fazer** são os outros estados do Blender — losango cheio (chave neste
+quadro), losango vazio (chave noutro), ícone de driver — e o clique que põe a chave. Os quatro
+precisam da **timeline**, não de desenho.

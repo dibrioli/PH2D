@@ -33,9 +33,12 @@ const ID: NodeId = NodeId(1);
 fn mark_ink(w: f32, value: CheckboxValue) -> (Vec<u32>, Vec<u32>) {
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
-    let cb = Checkbox::new(ID, "")
+    let mut cb = Checkbox::new(ID, "")
         .state(CheckboxState::Normal)
         .value(value);
+    // ⚠️ Sem a coluna: o que se mede aqui é a ÂNCORA da marca. Com ela, a marca recuaria `14 px`
+    // em ambas as larguras e o gate continuaria verde — mas por outra razão que a que ele afirma.
+    cb.decorator = false;
     paint_checkbox(
         &cb,
         Rect::new(0.0, 0.0, w, 22.0),
@@ -171,13 +174,12 @@ fn the_switch_paints_the_very_same_mark_as_the_checkbox() {
         // ⚠️ Rótulo VAZIO: o `Toggle` nunca pintou texto (o `label` dele é só a11y), então a
         // comparação justa é contra a caixa sem rótulo. Os três painéis que o usam pintam o
         // rótulo eles próprios, ao lado.
-        paint_checkbox(
-            &Checkbox::new(ID, "").value(v).state(st),
-            r,
-            &mut scene,
-            &mut text,
-            Theme::Forge,
-        );
+        // ⚠️ `decorator: false` — a fusão é sobre a **MARCA**, não sobre a coluna de animação: o
+        // interruptor não a leva (os chamadores dele passam um rect com forma de interruptor, não
+        // uma linha de formulário). Comparar com ela ligada mediria a coluna, não o desenho.
+        let mut cb = Checkbox::new(ID, "").value(v).state(st);
+        cb.decorator = false;
+        paint_checkbox(&cb, r, &mut scene, &mut text, Theme::Forge);
         let e = scene.inner().encoding();
         (e.path_data.clone(), e.draw_data.clone())
     };
@@ -199,4 +201,67 @@ fn the_switch_paints_the_very_same_mark_as_the_checkbox() {
             );
         }
     }
+}
+
+/// ⭐⭐⭐ **A COLUNA DE ANIMAÇÃO é pintada em toda linha de formulário — e é um INDICADOR.**
+///
+/// Enio, 2026-09-03: *«a bolinha de animação — só desenhá-la»*.
+///
+/// ⚠️ **«Só desenhá-la» é uma decisão de produto, e é a que a mantém honesta:** ela **não regista
+/// hit nenhum**, logo não há clique a cair no vazio. Um ponto pintado como alvo que não pusesse
+/// chave nenhuma seria um **controlo morto** — a espécie que o `CLAUDE.md` §5.0 caça. Assim ele diz
+/// *«esta propriedade é animável»*, que é verdade para todas, e cala-se sobre o resto.
+///
+/// **Mutação que deve sangrar:** pôr `FORM_ROWS_SHOW_DECORATOR = false` — a tinta das duas linhas
+/// colapsa, e o formulário perde a coluna que o dono mandou desenhar.
+#[test]
+fn every_form_row_paints_the_animation_column() {
+    use ph2d_editor_core::widget::{DECORATOR_W, surface_rect};
+    // ⛔ **Aqui vivia `assert!(FORM_ROWS_SHOW_DECORATOR)`, e o clippy apanhou-a:**
+    // *"this assertion has a constant value"*. Afirmar que uma `const true` é verdadeira é
+    // **vácuo** — verde por construção, com o nome de uma protecção. O que prova a lei é a TINTA,
+    // logo abaixo: se a coluna estiver desligada, a linha de formulário passa a pintar o mesmo que
+    // a da pele, e o gate cai.
+    let r = Rect::new(0.0, 0.0, 240.0, 22.0);
+    assert!(
+        (surface_rect(r, true).w - (r.w - DECORATOR_W)).abs() < 0.001,
+        "a superficie nao recua a largura da coluna: ela seria pintada POR CIMA do numero"
+    );
+
+    // A tinta de uma linha de checkbox tem de diferir da mesma linha sem a coluna — é o que prova
+    // que o ponto é de facto desenhado, e não só reservado.
+    let ink = |w: f32| {
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        paint_checkbox(
+            &Checkbox::new(ID, ""),
+            Rect::new(0.0, 0.0, w, 22.0),
+            &mut scene,
+            &mut text,
+            Theme::Forge,
+        );
+        scene.inner().encoding().path_data.clone()
+    };
+    // ⚠️ O CONTROLO da própria medição: a caixa da pele de canvas (`box_px` explícito) **não**
+    // leva a coluna, e é o único sítio do app onde isso é verdade.
+    let skin_ink = {
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        let mut cb = Checkbox::new(ID, "");
+        cb.decorator = false;
+        paint_checkbox(
+            &cb,
+            Rect::new(0.0, 0.0, 240.0, 22.0),
+            &mut scene,
+            &mut text,
+            Theme::Forge,
+        );
+        scene.inner().encoding().path_data.clone()
+    };
+    assert_ne!(
+        ink(240.0),
+        skin_ink,
+        "a linha de formulario e a caixa da PELE pintaram o mesmo: ou a coluna nao e' desenhada \
+         na primeira, ou foi desenhada na segunda — e ali ela nao tem significado nenhum"
+    );
 }

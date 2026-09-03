@@ -233,6 +233,9 @@ pub fn paint_widget_skin_with(
         WidgetKind::Checkbox => {
             let mut c = Checkbox::new(id, label);
             c.box_px = Some(skin_checkbox_box_px(rect));
+            // ⛔ A pele é o que o ARTISTA desenhou, não uma linha de formulário: uma bolinha de
+            // animação aqui não indica nada, e comeria `14 px` da moldura dele.
+            c.decorator = false;
             if let Some((InteractiveState::Checkbox { state, value }, t)) = live {
                 c = c.visual((*state, t));
                 c.value = *value;

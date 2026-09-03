@@ -167,10 +167,14 @@ pub fn paint_slider_with_chip_layout(
         t: value,
         state: box_state,
         accent: ColorToken::Accent,
-        // ⏳ A coluna de animação fica FORA por agora: ela é do FORMULÁRIO, e esta função não
-        // sabe se a propriedade é animável — nem os ~50 chamadores reservam largura para ela.
-        // Ligá-la aqui encolheria toda linha do app em 14 px sem ninguém pedir.
-        decorator: false,
+        // ⭐⭐⭐ **LIGADA** (Enio, 2026-09-03: *«a bolinha de animação — só desenhá-la»*).
+        //
+        // ⚠️ A premissa que a mantinha desligada — *«esta função não sabe se a propriedade é
+        // animável»* — pressupunha que a resposta VARIA. A decisão do dono é a outra
+        // (*«vou querer animar tudo»*), e uma constante não precisa de ser consultada.
+        //
+        // ⚠️ **Custa 14 px em toda linha do app**, e é por isso que esperou por ele.
+        decorator: crate::widget::property_box::FORM_ROWS_SHOW_DECORATOR,
         value_w: Some(chip_w),
     };
 
@@ -231,7 +235,15 @@ pub fn slider_with_chip_chip_rect(rect: Rect, label_w: f32, chip_w: f32) -> Rect
     // de poder discordar do que se vê. ⛔ A versão antiga reproduzia a aritmética à mão e ainda
     // tratava do caso empilhado, que já não existe.
     let _ = label_w;
-    crate::widget::property_box::value_column(rect, chip_w, false)
+    // ⚠️ **O MESMO `decorator` que o pintor usa.** Esta função é a versão PURA da mesma pergunta, e
+    // no dia em que a coluna de animação ligou (2026-09-03) um `false` aqui punha a marca de
+    // *"um token cobre este valor"* **14 px ao lado** do número que ela cobre. *Duas expressões da
+    // mesma lei divergem no primeiro dia em que a lei muda* — e este era esse dia.
+    crate::widget::property_box::value_column(
+        rect,
+        chip_w,
+        crate::widget::property_box::FORM_ROWS_SHOW_DECORATOR,
+    )
 }
 
 /// Whether [`paint_slider_with_chip_layout_adaptive`] will STACK (demote the label to its own row) at

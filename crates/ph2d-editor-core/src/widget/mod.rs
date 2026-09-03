@@ -115,7 +115,8 @@ pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};
 // ⚠️ A `surface_rect` sai daqui porque **quem regista o alvo de arrasto vive noutra crate** (a
 // bancada): sem ela, cada sítio re-deriva «onde é que o preenchimento acaba» e a deriva volta.
 pub use property_box::{
-    DECORATOR_W, PropertyBox, PropertyBoxState, paint_property_box, surface_rect,
+    DECORATOR_W, FORM_ROWS_SHOW_DECORATOR, PropertyBox, PropertyBoxState, paint_property_box,
+    surface_rect,
 };
 pub use radial_menu::{
     MAX_SECTORS as RADIAL_MAX_SECTORS, RadialItem, RadialOpen, dead_zone_px as radial_dead_zone_px,

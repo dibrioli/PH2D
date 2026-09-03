@@ -34,6 +34,10 @@ fn the_skin_asks_for_the_whole_frame() {
     let mut want = ph2d_vector::VectorScene::new();
     let mut c = Checkbox::new(NodeId(0), "Grid");
     c.box_px = Some(tall.h.min(tall.w));
+    // ⚠️ **O oráculo tem de espelhar o que a pele PEDE, e a pele desliga a coluna de animação**
+    // (2026-09-03): ali a moldura é o que o artista desenhou, não uma linha de formulário. Sem esta
+    // linha o gate compara duas configurações diferentes e acusa a moldura — que está certa.
+    c.decorator = false;
     paint_checkbox(&c, tall, &mut want, &mut ts, Theme::Forge);
     let mut got = ph2d_vector::VectorScene::new();
     paint_widget_skin(

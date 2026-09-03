@@ -1,128 +1,17 @@
-//! [`Checkbox`] — tri-state on / off / indeterminate.
+//! **O PINTOR de uma marca booleana** — a caixa de verificação e o interruptor, um desenho só.
 //!
-//! AccessKit `Role::CheckBox` with `Toggled::True/False/Mixed`. The
-//! Indeterminate state is for "some children selected" cases (a tree
-//! row representing a group with mixed-selected leaves, etc).
+//! ⚠️ Este ficheiro nasceu de um **tecto de LOC**: o `checkbox.rs` passou os `500` quando a coluna
+//! de animação entrou. O corte é por **responsabilidade**, não por linha: aqui mora *como um
+//! booleano se desenha*; ao lado (`mod.rs`) mora *o que um booleano É* — estado, valor, construtor
+//! e o nó de acessibilidade. ⛔ A casa não tolera folga de tecto: parte-se para um irmão.
 
+use super::{CHECKBOX_BOX_PX, Checkbox, CheckboxState, CheckboxValue};
 use crate::icons::IconId;
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
-use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role, Toggled};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{
-    CHECKBOX_BOX_PX as CHROME_CHECKBOX_BOX, ColorToken, Radius, Spacing, StrokeToken, Theme,
-    TypeToken,
-};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub enum CheckboxState {
-    #[default]
-    Normal,
-    Hovered,
-    Pressed,
-    Focused,
-    Disabled,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub enum CheckboxValue {
-    #[default]
-    Unchecked,
-    Checked,
-    /// Some children selected. Painted with a horizontal dash.
-    Indeterminate,
-}
-
-#[derive(Clone, Debug)]
-pub struct Checkbox {
-    pub id: NodeId,
-    pub label: String,
-    pub state: CheckboxState,
-    /// Quanto do hover está PRESENTE (`0`..=`1`); [`crate::motion::SETTLED`] = assente no estado.
-    pub hover_t: f32,
-    pub value: CheckboxValue,
-    /// Aresta da caixa, em px. **`None` é o token** ([`CHECKBOX_BOX_PX`]) — a lei que todo
-    /// painel usa e a razão de um formulário ler como formulário: cada checkbox do app tem
-    /// exactamente o mesmo tamanho.
-    ///
-    /// ⚠️ **Isto não é um canal de ESTILO, é o TAMANHO** — a moldura já o comunica para dez dos
-    /// doze widgets do catálogo, e este é um dos dois que a recusavam. Existe um consumidor e
-    /// um só: a pele de canvas ([`crate::widget::paint_widget_skin`]), onde a moldura é o que o
-    /// artista desenhou e não a linha de um painel. Qualquer valor continua limitado pela
-    /// altura da moldura — a caixa nunca transborda o que a contém.
-    pub box_px: Option<f32>,
-}
-
-impl Checkbox {
-    pub fn new(id: NodeId, label: impl Into<String>) -> Self {
-        Self {
-            id,
-            label: label.into(),
-            state: CheckboxState::Normal,
-            hover_t: crate::motion::SETTLED,
-            value: CheckboxValue::Unchecked,
-            box_px: None,
-        }
-    }
-
-    /// **O par visual do store numa chamada** — o irmão exacto do [`super::Button::visual`].
-    ///
-    /// ⚠️ **É esta a porta, e não o `.state()` ao lado de um `.hover_t()`:** com dois métodos,
-    /// esquecer o segundo é o estado natural, e o sítio nasce silenciosamente discreto. A fonte é
-    /// [`crate::interaction::WidgetStore::checkbox_visual`]; o `.value(..)` continua a vir do
-    /// MODELO, porque quem sabe se a caixa está marcada é o painel, não o store.
-    #[must_use]
-    pub fn visual(self, v: (CheckboxState, f32)) -> Self {
-        self.state(v.0).hover_t(v.1)
-    }
-
-    /// Quanto do hover está presente. O neutro [`crate::motion::SETTLED`] pinta os tokens DUROS.
-    #[must_use]
-    pub fn hover_t(mut self, t: f32) -> Self {
-        self.hover_t = t.clamp(0.0, 1.0);
-        self
-    }
-
-    pub fn state(mut self, state: CheckboxState) -> Self {
-        self.state = state;
-        self
-    }
-
-    pub fn value(mut self, value: CheckboxValue) -> Self {
-        self.value = value;
-        self
-    }
-
-    /// Cycle Unchecked → Checked → Unchecked. Indeterminate is set
-    /// programmatically only.
-    pub fn toggle(&mut self) {
-        self.value = match self.value {
-            CheckboxValue::Unchecked | CheckboxValue::Indeterminate => CheckboxValue::Checked,
-            CheckboxValue::Checked => CheckboxValue::Unchecked,
-        };
-    }
-
-    /// Build the AccessKit node.
-    pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
-        let toggled = match self.value {
-            CheckboxValue::Checked => Toggled::True,
-            CheckboxValue::Unchecked => Toggled::False,
-            CheckboxValue::Indeterminate => Toggled::Mixed,
-        };
-        NodeBuilder::new(Role::CheckBox)
-            .label(&self.label)
-            .bounds(x, y, w, h)
-            .focusable(self.state != CheckboxState::Disabled)
-            .action(Action::Click)
-            .toggled(toggled)
-            .build()
-    }
-}
-
-/// Edge length of the box itself (label flows to the right).
-/// Per tokens.json `chrome.checkbox-box`.
-pub const CHECKBOX_BOX_PX: f32 = CHROME_CHECKBOX_BOX;
 
 /// ⭐⭐⭐ **O pintor de uma MARCA BOOLEANA — e desde 2026-09-03 há um só no app.**
 ///
@@ -139,15 +28,37 @@ pub const CHECKBOX_BOX_PX: f32 = CHROME_CHECKBOX_BOX;
 /// `Checkbox` continua `Role::CheckBox`. *Fundir a tinta de dois controlos não os torna o mesmo
 /// controlo* — e um leitor de ecrã que passasse a anunciar «caixa de verificação» onde o documento
 /// diz «interruptor» estaria a mentir sobre o modelo.
+/// O que a marca precisa de saber, e que **não** é geometria — o irmão exacto do
+/// [`crate::widget::PropertyBox`].
+///
+/// ⚠️ Ele existe porque o clippy contou **oito** argumentos: *«too many arguments»* não é um limite
+/// de estilo, é a pergunta *«estes parâmetros não serão um modelo?»* — e cinco destes descrevem o
+/// mesmo booleano. O `Checkbox` e o `Toggle` preenchem-no cada um à sua maneira, que é o que os
+/// mantém dois widgets com um pintor só.
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct BooleanMark {
+    pub value: CheckboxValue,
+    pub state: CheckboxState,
+    pub hover_t: f32,
+    /// A aresta da caixa. `None` = o token — ver [`Checkbox::box_px`].
+    pub box_px: Option<f32>,
+    /// Reserva e desenha a coluna de animação. Ver [`Checkbox::decorator`].
+    pub decorator: bool,
+}
+
 pub(crate) fn paint_boolean_mark(
     rect: Rect,
-    box_px: Option<f32>,
-    value: CheckboxValue,
-    state: CheckboxState,
-    hover_t: f32,
+    m: BooleanMark,
     scene: &mut VectorScene,
     theme: Theme,
 ) -> Rect {
+    let BooleanMark {
+        value,
+        state,
+        hover_t,
+        box_px,
+        decorator,
+    } = m;
     // A moldura é o TETO em qualquer dos dois casos (a caixa não transborda o que a contém);
     // o que `box_px` troca é a BASE — o token, ou o que o chamador mediu. `None` reduz à
     // expressão que shipava, ao bit.
@@ -164,8 +75,16 @@ pub(crate) fn paint_boolean_mark(
     // amostrados já registam `Rect::new(x, y, w, h)` — *a linha inteira já era o alvo de clique há
     // muito tempo; o que faltava era o desenho dizê-lo.* Os 2 restantes passam meia-linha (dois
     // checkboxes lado a lado), e encostar à direita da meia-linha é igualmente correcto.
+    // ⚠️ **A coluna de animação vale para a linha de checkbox também** — senão o alinhamento que a
+    // §16.1 comprou desfaz-se: as linhas de propriedade recuariam `14 px` e as de marcar não, e o
+    // formulário voltaria a ter duas margens direitas.
+    //
+    // ⭐ **Quem NÃO a leva é a pele de canvas** — ali a moldura é o que o *artista* desenhou, não
+    // uma linha de formulário, e uma bolinha de animação não significa nada. Ela di-lo por um campo
+    // PRÓPRIO: ⛔ a 1.ª tentativa derivava-o de `box_px.is_none()` e partia o contrato daquele
+    // campo (*«pedir o token é igual a não pedir nada»*), apanhada pelo gate na 1.ª corrida.
     let box_rect = Rect::new(
-        crate::widget::property_box::value_column(rect, box_size, false).x,
+        crate::widget::property_box::value_column(rect, box_size, decorator).x,
         box_y,
         box_size,
         box_size,
@@ -266,6 +185,15 @@ pub(crate) fn paint_boolean_mark(
         CheckboxValue::Unchecked => {}
     }
 
+    if decorator {
+        crate::widget::property_box::paint_decorator(
+            scene,
+            theme,
+            crate::widget::property_box::decorator_rect(rect),
+            state == CheckboxState::Disabled,
+        );
+    }
+
     box_rect
 }
 
@@ -282,7 +210,16 @@ pub fn paint_checkbox(
     theme: Theme,
 ) {
     let box_rect = paint_boolean_mark(
-        rect, cb.box_px, cb.value, cb.state, cb.hover_t, scene, theme,
+        rect,
+        BooleanMark {
+            value: cb.value,
+            state: cb.state,
+            hover_t: cb.hover_t,
+            box_px: cb.box_px,
+            decorator: cb.decorator,
+        },
+        scene,
+        theme,
     );
 
     if !cb.label.is_empty() {
@@ -319,14 +256,27 @@ pub fn paint_checkbox(
 
 #[cfg(test)]
 mod tests {
-    /// **A caixa REAGE ao rato — e antes desta wave não reagia.**
-    ///
-    /// ⚠️ O oráculo é *entre as duas pontas E diferente das duas*: um eixo partido que devolvesse
-    /// sempre a ponta HOT passaria num `assert_ne!` contra o repouso apenas. A outra metade é o
-    /// NEUTRO — `SETTLED` tem de dar o token duro, senão toda caixa do app nasceria hovered.
-    ///
-    /// **Mutação que deve sangrar:** deixar `Checked` entrar no eixo — uma caixa marcada é
-    /// `Accent` em qualquer estado, e misturá-la seria inventar um meio-marcado.
+    use super::*;
+    use ph2d_a11y::NodeId;
+    use ph2d_tokens::CHECKBOX_BOX_PX as CHROME_CHECKBOX_BOX;
+
+    /// A caixa de partida dos testes de tinta — um sítio só.
+    fn fixture() -> Checkbox {
+        Checkbox::new(NodeId(1), "Snap to grid")
+    }
+
+    fn smoke(c: Checkbox, theme: Theme) {
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        paint_checkbox(
+            &c,
+            Rect::new(0.0, 0.0, 200.0, 18.0),
+            &mut scene,
+            &mut text,
+            theme,
+        );
+    }
+
     #[test]
     fn half_a_hover_moves_the_unchecked_box_between_the_two_ends() {
         use super::*;
@@ -344,12 +294,6 @@ mod tests {
         );
         // Estado duro (ou caixa MARCADA) não é uma quantidade: fora do eixo.
         assert!(crate::motion::hover_axis(false, 0.5, Some(rest), Some(hot)).is_none());
-    }
-
-    use super::*;
-
-    fn fixture() -> Checkbox {
-        Checkbox::new(NodeId(1), "Snap to grid")
     }
 
     /// **Sem override, a caixa é o TOKEN** — a lei de todo painel do app, ao bit
@@ -378,58 +322,6 @@ mod tests {
             (ea.n_paths, ea.path_data.clone()),
             (eb.n_paths, eb.path_data.clone()),
             "pedir o proprio token divergiu de nao pedir nada — o canal nao e' neutro"
-        );
-    }
-
-    #[test]
-    fn defaults_match_spec() {
-        let c = fixture();
-        assert_eq!(c.value, CheckboxValue::Unchecked);
-        assert_eq!(c.state, CheckboxState::Normal);
-    }
-
-    #[test]
-    fn toggle_cycles_unchecked_checked() {
-        let mut c = fixture();
-        c.toggle();
-        assert_eq!(c.value, CheckboxValue::Checked);
-        c.toggle();
-        assert_eq!(c.value, CheckboxValue::Unchecked);
-    }
-
-    #[test]
-    fn toggle_from_indeterminate_goes_to_checked() {
-        let mut c = fixture().value(CheckboxValue::Indeterminate);
-        c.toggle();
-        assert_eq!(c.value, CheckboxValue::Checked);
-    }
-
-    #[test]
-    fn a11y_role_is_checkbox_with_toggled() {
-        let node = fixture()
-            .value(CheckboxValue::Checked)
-            .build_a11y(0.0, 0.0, 100.0, 18.0);
-        assert_eq!(node.role(), Role::CheckBox);
-        assert_eq!(node.toggled(), Some(Toggled::True));
-    }
-
-    #[test]
-    fn a11y_indeterminate_is_mixed() {
-        let node = fixture()
-            .value(CheckboxValue::Indeterminate)
-            .build_a11y(0.0, 0.0, 100.0, 18.0);
-        assert_eq!(node.toggled(), Some(Toggled::Mixed));
-    }
-
-    fn smoke(c: Checkbox, theme: Theme) {
-        let mut scene = VectorScene::new();
-        let mut text = TextSystem::without_system_fonts();
-        paint_checkbox(
-            &c,
-            Rect::new(0.0, 0.0, 200.0, 18.0),
-            &mut scene,
-            &mut text,
-            theme,
         );
     }
 

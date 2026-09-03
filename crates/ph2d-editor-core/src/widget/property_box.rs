@@ -203,9 +203,7 @@ pub fn paint_property_box(
     // atravessa, e quem regista o alvo de arrasto tem de registar EXACTAMENTE o mesmo. Ver lá o
     // mecanismo da deriva.
     let box_rect = surface_rect(rect, b.decorator);
-    let deco = b
-        .decorator
-        .then(|| Rect::new(box_rect.x + box_rect.w, rect.y, DECORATOR_W, rect.h));
+    let deco = b.decorator.then(|| decorator_rect(rect));
 
     let fg = if disabled {
         ColorToken::TextDisabled
@@ -382,12 +380,36 @@ fn paint_surface(
     }
 }
 
+/// ⭐⭐⭐ **A COLUNA DE ANIMAÇÃO está LIGADA nas linhas de formulário** (Enio, 2026-09-03:
+/// *«a bolinha de animação — só desenhá-la»*).
+///
+/// ⚠️ **É um INDICADOR, não um controlo** — e a diferença é deliberada, não um esquecimento. Ele
+/// **não regista hit nenhum**, logo não há clique a cair no vazio: um ponto que se pintasse como
+/// alvo e não pusesse chave nenhuma seria um **controlo morto**, a espécie que o `CLAUDE.md` §5.0
+/// caça. Ele diz *«esta propriedade é animável»*, que é verdade para todas
+/// (*«nessa engine vou querer animar tudo»*), e cala-se sobre o resto.
+///
+/// ⚠️ **Ele CUSTA 14 px de largura em cada linha do app**, e foi por isso que ficou desligado até
+/// haver decisão. A decisão é do dono e está tomada.
+///
+/// ⏳ Os outros estados do Blender — losango cheio (chave neste quadro), losango vazio (chave
+/// noutro), ícone de driver — precisam da **timeline**, não de desenho.
+pub const FORM_ROWS_SHOW_DECORATOR: bool = true;
+
+/// **ONDE cai a coluna de animação** — a lei, com dois leitores: a caixa única e a linha de
+/// verificação. ⛔ Derivada da [`surface_rect`], para que reservar e desenhar não possam divergir.
+#[must_use]
+pub(crate) fn decorator_rect(rect: Rect) -> Rect {
+    let s = surface_rect(rect, true);
+    Rect::new(s.x + s.w, rect.y, DECORATOR_W, rect.h)
+}
+
 /// A coluna de animação.
 ///
 /// ⚠️ Aqui ela é só o estado «animável, sem chave» (o ponto vazio). Os outros do Blender — losango
 /// cheio (chave neste quadro), losango vazio (chave noutro), ícone de driver — são trabalho a
 /// seguir e precisam da **timeline**, não de desenho.
-fn paint_decorator(scene: &mut VectorScene, theme: Theme, r: Rect, disabled: bool) {
+pub(crate) fn paint_decorator(scene: &mut VectorScene, theme: Theme, r: Rect, disabled: bool) {
     let d = Spacing::Xs.px();
     let dot = Rect::new(r.x + (r.w - d) * 0.5, r.y + (r.h - d) * 0.5, d, d);
     let c = if disabled {

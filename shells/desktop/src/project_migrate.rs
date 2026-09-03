@@ -97,7 +97,9 @@ pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
         file: crate::project::ProjectFile {
             state: ProjectState {
                 world: migrate_v1_to_v2(&old.state.world),
-                vec: old.state.vec,
+                // ⚠️ A cena passou a ser partilhada entre passos ([`ProjectState::vec`]); um
+                // ficheiro velho traz-na por valor e entra aqui embrulhada. Os bytes são os mesmos.
+                vec: std::sync::Arc::new(old.state.vec),
                 flip: old.state.flip,
                 guides: old.state.guides,
                 ui_states: old.state.ui_states,

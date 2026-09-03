@@ -74,6 +74,7 @@ fn take(
         &crate::project_library::LibraryDoc::default(),
         r,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
+        None,
     )
 }
 

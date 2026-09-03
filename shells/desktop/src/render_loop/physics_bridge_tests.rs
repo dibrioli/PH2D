@@ -296,6 +296,7 @@ fn a_falling_ball_is_not_an_undo_step() {
             &crate::project_library::LibraryDoc::default(),
             &reg,
             &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
+            None,
         )
     };
 

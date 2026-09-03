@@ -97,6 +97,7 @@
 - [Réguas do quad remesh (14)](reference_topic_quad_remesh_rulers.md)
 - ⛔ [Barra calibrada SEM o lado aprovado mede os nossos defeitos; o PISO do censo decide o que a régua vê (4× «nenhuma melhoria»)](feedback_a_bar_calibrated_without_the_approved_side_measures_our_own_defects.md)
 - [Réguas do quad remesh — mais 5 (densidade · limiar · 1ª aceite · alisador cego · fixtura com ponta)](reference_topic_quad_remesh_rulers.md)
+- [Tamanho SERIALIZADO é cego à partilha por construção — leia o doc do campo até ao fim](feedback_the_serialized_size_is_blind_to_sharing_by_construction.md)
 - [Ofício de gate (32)](reference_topic_gate_discipline.md)
 - [Ofício de gate — mais 6 (folga = ponto cego · defeito só de custo · teste lento · laço que republica · publicado ≠ dividido · denominador)](reference_topic_gate_discipline.md)
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) · [modo que não exclui ninguém é outro produtor](feedback_a_mode_whose_entry_excludes_nobody_is_just_another_producer.md)

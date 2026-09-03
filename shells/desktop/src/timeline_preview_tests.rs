@@ -36,6 +36,7 @@ fn capture(drive: &PreviewDrive, sim: &mut SimWorld, reg: &ComponentRegistry) ->
         &crate::project_library::LibraryDoc::default(),
         reg,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
+        None,
     )
 }
 

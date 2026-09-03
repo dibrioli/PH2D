@@ -1,5 +1,6 @@
-//! Gates do undo global (captura · restore · canonicalização · a fila). Módulo irmão do
-//! [`super`] pelo teto de LOC do shell (HR-18) — segue o idioma `#[path]` do resto da linha.
+//! Gates do undo global (captura · restore · canonicalização · a fila). Irmão do [`super`] pelo teto
+//! de LOC (HR-18). ⚠️ **A PARTILHA entre passos vive no [`super::sharing_tests`]** — identidade e
+//! igualdade são perguntas diferentes.
 
 use super::*;
 use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
@@ -28,6 +29,8 @@ fn scene() -> (SimWorld, VecScene) {
     (sim, vec)
 }
 
+/// ⚠️ **Sem passo anterior** (`None`): estes gates medem a captura e o restauro, e a partilha da
+/// cena entre passos vive no [`super::sharing_tests`], que passa o dele.
 fn capture(sim: &mut SimWorld, vec: &VecScene, reg: &ComponentRegistry) -> ProjectState {
     ProjectState::capture(
         // Nada sob condução: estes gates são do diff e do restore, não do ledger
@@ -41,6 +44,7 @@ fn capture(sim: &mut SimWorld, vec: &VecScene, reg: &ComponentRegistry) -> Proje
         &crate::project_library::LibraryDoc::default(),
         reg,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
+        None,
     )
 }
 
@@ -118,7 +122,7 @@ fn push_undo_then_undo_redo_alternate() {
     vec1.push_path(rectangle([5.0, 5.0], [6.0, 6.0]));
     let s1 = ProjectState {
         world: s0.world.clone(),
-        vec: vec1,
+        vec: std::sync::Arc::new(vec1),
         flip: FlipDoc::new(),
         guides: ph2d_guides::GuideSet::default(),
         ui_states: ph2d_ui_state::StateSets::default(),
@@ -200,6 +204,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
             &crate::project_library::LibraryDoc::default(),
             &reg,
             &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
+            None,
         )
     };
 
@@ -223,6 +228,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
         &crate::project_library::LibraryDoc::default(),
         &reg,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
+        None,
     );
     let b = ProjectState::capture(
         &crate::preview_drive::PreviewDrive::default(),
@@ -234,6 +240,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
         &crate::project_library::LibraryDoc::default(),
         &reg,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
+        None,
     );
     assert_eq!(a, b, "flip determinístico -> sem diff espúrio");
 }
@@ -418,6 +425,7 @@ fn capture_with_library(
         library,
         reg,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
+        None,
     )
 }
 

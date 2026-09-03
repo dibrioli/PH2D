@@ -430,7 +430,10 @@ postcard = { version = "1", features = ["alloc"] }
 # serde: the `Serialize` bound on the §7 ordering-edit `queue_set` helper
 # (postcard-encodes optional sorting components). Already in the lockfile
 # transitively; declaring it direct just names the trait.
-serde = "1"
+# ⚠️ `rc` = a serde escreve um `Arc<T>` como o próprio `T`. É isso que deixa o `ProjectState`
+# PARTILHAR a cena vetorial entre passos de undo sem mover um byte do formato — o mesmo argumento
+# que o `WorldSnapshot` já fez com `Arc` por linha (ADR-0164 F2).
+serde = { version = "1", features = ["rc"] }
 wgpu = "29.0.4"
 winit = "0.30"
 gilrs = "0.11"

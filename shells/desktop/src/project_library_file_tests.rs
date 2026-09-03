@@ -36,7 +36,7 @@ fn the_library_travels_in_the_file() {
     };
     let state = ProjectState {
         world: WorldSnapshot::new(),
-        vec: VecScene::new(),
+        vec: std::sync::Arc::new(VecScene::new()),
         flip: ph2d_flip::FlipDoc::new(),
         guides: ph2d_guides::GuideSet::default(),
         ui_states: ph2d_ui_state::StateSets::default(),

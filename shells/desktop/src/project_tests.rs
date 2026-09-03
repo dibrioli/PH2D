@@ -30,7 +30,7 @@ fn headless_app() -> crate::App {
 pub(super) fn empty_state() -> ProjectState {
     ProjectState {
         world: WorldSnapshot::new(),
-        vec: VecScene::new(),
+        vec: std::sync::Arc::new(VecScene::new()),
         flip: ph2d_flip::FlipDoc::new(),
         guides: ph2d_guides::GuideSet::default(),
         ui_states: ph2d_ui_state::StateSets::default(),
@@ -328,7 +328,7 @@ fn the_ui_states_travel_in_the_file() {
 
     let state = ProjectState {
         world: WorldSnapshot::new(),
-        vec: VecScene::new(),
+        vec: std::sync::Arc::new(VecScene::new()),
         flip: ph2d_flip::FlipDoc::new(),
         guides: ph2d_guides::GuideSet::default(),
         ui_states: states.clone(),
@@ -374,7 +374,7 @@ fn project_file_round_trips_through_postcard() {
     flip.push_object("Anim");
     let state = ProjectState {
         world: WorldSnapshot::new(),
-        vec,
+        vec: std::sync::Arc::new(vec),
         flip,
         guides: ph2d_guides::GuideSet::default(),
         ui_states: ph2d_ui_state::StateSets::default(),

@@ -40,7 +40,21 @@ const UNDO_CAP: usize = 256;
 #[derive(Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) struct ProjectState {
     pub(crate) world: WorldSnapshot,
-    pub(crate) vec: VecScene,
+    /// ⭐⭐⭐ **A cena vetorial, PARTILHADA entre passos** (F8, 2026-09-02).
+    ///
+    /// ⛔⛔ **Medido antes de mudar** (`ph2d-vec-scene/tests/measure_scene_clone.rs`): um passo
+    /// clonava a cena INTEIRA — `236 KB` a 1 000 formas, `1,18 MB` a 5 000 —, e a pilha guarda
+    /// `UNDO_CAP` passos ⇒ **60 MB** e **303 MB** só de cópias da mesma cena.
+    ///
+    /// ⚠️ **É o argumento que o [`WorldSnapshot`] já tinha feito** (`Arc` por linha, F2): a
+    /// esmagadora maioria dos passos não toca no documento vetorial — mover um objecto, renomear,
+    /// pôr um componente —, e para esses a cena de dois passos consecutivos é **a mesma**.
+    ///
+    /// ⚠️ **E não move um byte do formato**: a serde com a feature `rc` escreve um `Arc<T>` como o
+    /// próprio `T`, então o `PROJECT_SCHEMA` fica onde está e todo ficheiro gravado continua a ler
+    /// igual. O `PartialEq` compara o CONTEÚDO (o `Arc` delega), logo o diff do undo não muda de
+    /// significado.
+    pub(crate) vec: std::sync::Arc<VecScene>,
     pub(crate) flip: FlipDoc,
     /// As guias do documento. Plain data — nenhuma ponte a reconstruir, ao contrário do
     /// vetor e do Flip, e é por isso que o `restore` não as devolve na tupla: quem aplica
@@ -86,6 +100,13 @@ impl ProjectState {
         library: &crate::project_library::LibraryDoc,
         registry: &ComponentRegistry,
         cache: &mut ph2d_ecs::scene::incremental::CaptureCache,
+        // ⭐⭐ **O passo ANTERIOR, para lhe reaproveitar a cena** — ver o campo [`Self::vec`].
+        //
+        // ⚠️ **A comparação de conteúdo que isto faz já era paga**: o `post_frame_undo` compara o
+        // estado inteiro com o baseline logo a seguir. ⇒ a partilha troca *clonar e depois
+        // comparar* por *comparar e clonar só se diferir* — estritamente mais barato, e não só em
+        // memória.
+        prev: Option<&Self>,
     ) -> Self {
         // O mundo passa ao estado AUTORADO só durante a fotografia, e volta ao vivo a seguir.
         let live = drive.substitute_authored(sim);
@@ -110,7 +131,10 @@ impl ProjectState {
         crate::preview_drive::PreviewDrive::restore_live(sim, &live);
         Self {
             world,
-            vec: vec.clone(),
+            vec: match prev {
+                Some(p) if *p.vec == *vec => std::sync::Arc::clone(&p.vec),
+                _ => std::sync::Arc::new(vec.clone()),
+            },
             flip: flip.clone(),
             guides: guides.clone(),
             ui_states: ui_states.clone(),
@@ -154,7 +178,7 @@ impl ProjectState {
         //    restaurados.
         let vec_map = crate::vec_entities::rebuild_map(sim);
         let flip_map = crate::flip_entities::rebuild_map(sim);
-        (self.vec.clone(), vec_map, self.flip.clone(), flip_map)
+        ((*self.vec).clone(), vec_map, self.flip.clone(), flip_map)
     }
 }
 
@@ -276,6 +300,7 @@ impl crate::App {
         // ⚠️ Empréstimos DISJUNTOS de `self` — o ledger e o `gfx` são campos diferentes, e é por
         // isso que os dois podem estar vivos ao mesmo tempo.
         let drive = &self.preview_drive;
+        let baseline = self.undo_baseline.as_ref();
         let gfx = self.gfx.as_mut()?;
         // ⚠️ **A biblioteca é codificada AQUI, e a cache é que a torna barata** — ver
         // [`crate::project_library`]: sem ela isto custava até 28 % de um quadro, em todo quadro
@@ -291,6 +316,10 @@ impl crate::App {
             &library,
             &gfx.component_registry,
             &mut gfx.undo_capture_cache,
+            // ⚠️ **O baseline é o passo anterior**, e é dele que a cena é reaproveitada quando o
+            // documento vetorial não mudou. Empréstimos disjuntos: `undo_baseline` e `gfx` são
+            // campos diferentes de `self`.
+            baseline,
         ))
     }
 
@@ -579,6 +608,12 @@ impl crate::App {
 #[cfg(test)]
 #[path = "undo_tests.rs"]
 mod tests;
+
+/// ⭐⭐ **O que um passo PARTILHA com o anterior** (F8) — irmão por assunto do [`tests`], ver o
+/// cabeçalho de lá. A pergunta ali é de igualdade; aqui é de IDENTIDADE.
+#[cfg(test)]
+#[path = "undo_sharing_tests.rs"]
+mod sharing_tests;
 
 #[cfg(test)]
 #[path = "undo_selection_tests.rs"]

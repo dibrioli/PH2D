@@ -27,7 +27,7 @@
 | F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 ✅** · **F5.3 ✅** (modelo; a secção mostra a CONTAGEM, não quais) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis abaixo descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) · critério 4 (*Apply to inner master*) ⬜ · troca p/ mestre não aparentado ⬜ |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ✅ 2026-08-30 (996 LOC + a taxonomia) |
 | F7 | O painel Asset Browser + o arrasto único | ✅ 2026-08-30 — etapas **A–D** do [plano 07](07_plano_do_navegador_de_assets.md); `DragPayload` com as duas famílias |
-| F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | ⬜ |
+| F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | 🟨 **a premissa do RELÓGIO foi REFUTADA por medição** (§F8) · a partilha da `VecScene` entre passos ✅ 2026-09-02 · `FlipDoc` ⬜ |
 
 > ⚠️ **Este placar esteve DESACTUALIZADO** (conferido contra o código em 2026-08-30): a F6 e a F7
 > diziam ⬜ com a crate e o painel construídos e smokados. *O §5.0 manda auditar a lista antes de
@@ -1461,12 +1461,59 @@ inspiração, não spec**; a spec é o índice da F6).
 
 ## §F8 — Restore incremental + docs fora do ECS versionados
 
-**Objetivo:** o Ctrl+Z aplica um diff, não reconstrói o mundo; `VecScene`/`FlipDoc` param de ser
-clonados/comparados inteiros por captura.
+**Objetivo (como escrito):** o Ctrl+Z aplica um diff, não reconstrói o mundo; `VecScene`/`FlipDoc`
+param de ser clonados/comparados inteiros por captura.
 
-**Pronto quando:** bench: Ctrl+Z **≤ 1 ms** @10 k (diff por `StableId`, aplicar k linhas — o passo
-1 do Blender); os 11 `forget()` de memos em `apply_project` viram invalidação dirigida; captura de
-`VecScene` O(paths mudados) por contador de versão ou `Arc` por path.
+**Pronto quando (como escrito):** bench: Ctrl+Z **≤ 1 ms** @10 k (diff por `StableId`, aplicar k
+linhas — o passo 1 do Blender); os 11 `forget()` de memos em `apply_project` viram invalidação
+dirigida; captura de `VecScene` O(paths mudados) por contador de versão ou `Arc` por path.
+
+---
+
+### ⛔⛔⛔ §F8.0 — **O ESTUDO (2026-09-02): metade desta fase não se justifica, e há número**
+
+O `CLAUDE.md` §0.0 manda medir antes de limitar; aqui mediu-se **antes de otimizar**, que é a mesma
+lei. Benches novos: [`measure_restore`](../../crates/ph2d-ecs/tests/measure_restore.rs) ·
+[`measure_scene_clone`](../../crates/ph2d-vec-scene/tests/measure_scene_clone.rs).
+
+| custo | quando corre | medido | veredito |
+|---|---|---:|---|
+| **restauro** (despawn tudo + respawn) @10 k | 1× por Ctrl+Z | **1,81 ms** (11 % de um quadro) | ⛔ **não justifica a fase** |
+| residência do MUNDO na pilha | 256 passos | **~12,5 MB** (`Arc` por linha, F2) | ✅ **já resolvida** |
+| clone da `VecScene` | **todo quadro com input** | 0,048 ms @1 k · 0,287 @5 k | ✅ relógio irrelevante |
+| **residência da `VecScene`** | 256 passos | **60 MB** @1 k · **303 MB** @5 k | ⭐ **é isto que sobra** |
+
+⇒ **A barra escrita («Ctrl+Z ≤ 1 ms @10 k») é quase cumprida pelo rebuild ingénuo**, e 1,8 ms uma
+vez por tecla é imperceptível. *Uma fase inteira apontava para a metade que não dói.*
+
+### ⛔⛔ E a minha 1.ª medição da residência mediu a coisa ERRADA
+
+Escrevi um teste que somava `postcard::to_allocvec(&snapshot).len() × UNDO_CAP` e imprimia
+**189 MB** a 10 k entidades. O número estava certo e a pergunta errada: o `WorldSnapshot` guarda
+`Arc` por linha desde a F2, e **o doc dele diz, na mesma frase, que a partilha NÃO viaja no fio**.
+⇒ o tamanho serializado é, por construção, o único número **cego** à residência. *Escolhi a régua
+garantidamente incapaz de ver o que eu queria medir, e ela devolveu um número grande e plausível.*
+O teste foi apagado e a nota ficou no lugar dele.
+
+### ⭐⭐ §F8.1 — A cena é PARTILHADA entre passos (feito, 2026-09-02)
+
+`ProjectState.vec` passa a ser `Arc<VecScene>`, reaproveitado do passo anterior quando o documento
+vetorial não mudou — que é a esmagadora maioria dos passos (mover um objecto, renomear, anexar um
+componente). É o argumento que o `WorldSnapshot` já tinha feito, com o grão no **documento**.
+
+- ⚠️ **Não move um byte do formato**: a serde com `rc` escreve `Arc<T>` como `T`. Gate:
+  `wrapping_the_scene_in_an_arc_does_not_move_a_byte_of_the_format` — sem ele, embrulhar um campo
+  num `Arc` seria uma mudança de formato **silenciosa**, porque o postcard é posicional.
+- ⚠️ **A comparação já era paga**: o `post_frame_undo` compara o estado inteiro com o baseline logo
+  a seguir. ⇒ trocou-se *clonar e depois comparar* por *comparar e clonar só se diferir* —
+  estritamente mais barato, e não só em memória.
+- ⚠️ **A régua é `Arc::ptr_eq`, e não a igualdade.** Igualdade é o que já havia e não diz nada sobre
+  memória: *«os dois descrevem a mesma cena»* e *«os dois SÃO a mesma cena»* são afirmações
+  diferentes.
+- ⏳ **Resíduo NOMEADO:** numa sessão de desenho vetorial cada passo muda o documento, e aí o custo
+  volta ao de hoje. A cura é `Arc` **por path** (o grão que o mundo usa); ela fica por fazer, e o
+  preço dela é o `paths_mut()` que devolve `&mut [VecPath]` a todos os chamadores.
+- ⏳ O `FlipDoc` tem exactamente a mesma forma e **não foi tocado** — falta-lhe a medição irmã.
 
 ---
 

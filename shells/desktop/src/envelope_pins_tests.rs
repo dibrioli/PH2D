@@ -320,6 +320,7 @@ fn the_pins_survive_an_undo() {
             &crate::project_library::LibraryDoc::default(),
             &reg,
             &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
+            None,
         )
     };
     let (restored_scene, restored_map, _flip, _fm) = snap.restore(&mut sim, &reg);

@@ -96,6 +96,7 @@ impl Frame {
             &crate::project_library::LibraryDoc::default(),
             &self.reg,
             &mut self.undo_cache,
+            None,
         )
     }
 }

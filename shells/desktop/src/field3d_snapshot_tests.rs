@@ -254,6 +254,7 @@ fn the_part_crosses_the_project_file_and_the_load_replaces_it_instead_of_stackin
         &crate::project_library::LibraryDoc::default(),
         &reg,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
+        None,
     );
 
     // ⭐ **Os BYTES**: é aqui que um componente que não serializa, ou um `String` de caminho

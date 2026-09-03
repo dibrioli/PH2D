@@ -188,9 +188,9 @@ fn measure_which_deformer_is_local() {
     let todos = mods();
     let reg = Registry::default();
     for (nome, m) in [
-        ("[Bend]", vec![todos[0].clone()]),
-        ("[Twist]", vec![todos[1].clone()]),
-        ("[Taper]", vec![todos[2].clone()]),
+        ("[Bend]", vec![todos[0]]),
+        ("[Twist]", vec![todos[1]]),
+        ("[Taper]", vec![todos[2]]),
         ("[Bend, Twist]", todos[..2].to_vec()),
         ("[Bend, Twist, Taper]", todos.clone()),
     ] {

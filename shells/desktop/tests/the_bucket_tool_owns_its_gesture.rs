@@ -182,6 +182,20 @@ fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
         BUCKET[f..fim].contains("er.insert(VecBucketFill::new(seed));"),
         "o ponto novo e' calculado e nao e' GRAVADO na receita"
     );
+    // ⭐⭐⭐ **A herança para o terreno NOVO só corre quando o gesto foi DEFORMAR.**
+    //
+    // ⚠️ A guarda é a contagem de contornos de parede: um nó arrastado não a muda, desenhar ou
+    // apagar uma forma muda. ⛔ Sem ela, desenhar um círculo sobre um quadrado pintado pintaria
+    // também a parte do círculo que ficou de fora — a herança deixaria de ser *"a região cresceu"*
+    // e passaria a ser *"tudo o que encosta ganha cor"*.
+    assert!(
+        BUCKET[f..fim].contains("ant.contornos == contornos.len()"),
+        "a heranca para o terreno novo corre sem a guarda de DEFORMAR"
+    );
+    assert!(
+        BUCKET[f..fim].contains("crate::vec_bucket_claim::terreno_novo("),
+        "a heranca nao pergunta o que e' TERRENO NOVO — ela inundaria as regioes deixadas vazias"
+    );
     // ⚠️ E a exclusão passa pela porta ÚNICA, com os DOIS termos: um fecho escrito à mão aqui foi
     // o que deixou a mutação `o-fill-entra-na-rede` sobreviver.
     assert!(

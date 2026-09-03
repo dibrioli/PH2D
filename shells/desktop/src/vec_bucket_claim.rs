@@ -153,6 +153,89 @@ pub(crate) fn por_preenchimento(
     out
 }
 
+/// ⭐⭐⭐ **QUAIS DESTAS FACES SÃO TERRENO NOVO** — o miolo delas estava FORA de toda a face da rede
+/// anterior, ou seja: o gesto varreu a linha sobre o fundo e fechou área que não existia.
+///
+/// ⚠️ **É a guarda que separa «a região cresceu» de «o artista deixou esta vazia»**, e sem ela a
+/// herança do [`herda_dos_vizinhos`] inundaria o desenho ao primeiro arrasto de nó.
+pub(crate) fn terreno_novo(rede: &Rede, faces: &[Face], anterior: &Rede) -> Vec<bool> {
+    let antigas: Vec<Vec<[f64; 2]>> = anterior
+        .faces()
+        .iter()
+        .filter(|f| f.area > 0.0)
+        .map(|f| anterior.contorno(f))
+        .collect();
+    faces
+        .iter()
+        .map(|f| {
+            rede.interior_point(f)
+                .is_some_and(|p| !antigas.iter().any(|q| point_in_polygon(q, p)))
+        })
+        .collect()
+}
+
+/// ⭐⭐⭐ **A TINTA ATRAVESSA PARA O TERRENO NOVO** — o pedido do Enio, nas palavras dele
+/// (2026-09-02): *"não permitir que os preenchimentos sejam destruídos **preenchendo corretamente
+/// as áreas novas que vão surgindo**"*.
+///
+/// # O que é «terreno novo», e porque a distinção é obrigatória
+///
+/// Arrastar um nó para longe faz a linha **varrer o fundo** e fechar área que antes não existia — a
+/// espiga das fotos de 2026-09-02. Essa área não estava dentro de nenhuma região pintada, logo não
+/// recebe voto nenhum ([`donos`]) e ficava sem cor. ⚠️ **Medido, e o defeito NÃO é histerese**: um
+/// arrasto em 1, 4, 20 ou 100 passos dá exactamente a mesma resposta — o que muda entre duas fotos
+/// é a **topologia**, não o caminho.
+///
+/// ⛔⛔ **E a herança NÃO pode valer para toda face sem dono.** Uma rede de 6 regiões com UMA
+/// pintada tem 5 deliberadamente vazias; se a tinta atravessasse para as vizinhas, o primeiro
+/// arrasto de nó **inundaria o desenho inteiro**. Só herda o que é NOVO — e novo quer dizer *o
+/// interior desta face estava FORA de toda a face da rede anterior*.
+///
+/// A herança vai para a vizinha com quem a face **mais confina** (o comprimento partilhado), e
+/// corre até ao ponto fixo: uma espiga que se parte em duas propaga da pintada para a nova e daí
+/// para a seguinte. ⚠️ **Cada ronda decide sobre o estado do INÍCIO da ronda** — a ordem das faces
+/// não pode mudar a resposta.
+pub(crate) fn herda_dos_vizinhos(
+    adj: &[Vec<(usize, f64)>],
+    areas: &[f64],
+    nova: &[bool],
+    donos: &mut [Option<usize>],
+) {
+    for _ in 0..donos.len() {
+        let antes = donos.to_vec();
+        let mut mexeu = false;
+        for i in 0..donos.len() {
+            if antes[i].is_some() || !nova.get(i).copied().unwrap_or(false) {
+                continue;
+            }
+            // ⚠️ A chave é `(comprimento, área do vizinho)`: uma fronteira de verdade ganha sempre
+            // a uma partilha de NÓ (comprimento `0`), e entre duas partilhas de nó ganha a face
+            // maior — que é a de que a espiga se destacou.
+            let melhor = adj
+                .get(i)
+                .into_iter()
+                .flatten()
+                .filter(|(j, _)| antes.get(*j).copied().flatten().is_some())
+                .max_by(|a, b| {
+                    a.1.total_cmp(&b.1).then_with(|| {
+                        areas
+                            .get(a.0)
+                            .copied()
+                            .unwrap_or(0.0)
+                            .total_cmp(&areas.get(b.0).copied().unwrap_or(0.0))
+                    })
+                });
+            if let Some((j, _)) = melhor {
+                donos[i] = antes[*j];
+                mexeu = true;
+            }
+        }
+        if !mexeu {
+            return;
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "vec_bucket_claim_tests.rs"]
 mod tests;

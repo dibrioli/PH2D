@@ -517,3 +517,64 @@ fn four_straight_walls_with_a_hair_of_a_gap_still_enclose_a_square() {
         "a folga fechou um vao de 2 unidades"
     );
 }
+
+/// ⭐⭐⭐ **DUAS FACES QUE PARTILHAM UMA PAREDE DECLARAM-SE VIZINHAS, e o peso é o COMPRIMENTO dela.**
+///
+/// ⚠️⚠️ **Este gate existe para não deixar a adjacência por ARCO passar despercebida se partir.** A
+/// irmã dela — a partilha por NÓ, com peso `0` — cobre o mesmo pedido do consumidor, então uma
+/// adjacência por arco avariada cairia toda no nó e **nenhum gate do balde reprovaria**. *Uma
+/// segunda rota para a mesma pergunta é uma rede de segurança que esconde a queda.*
+#[test]
+fn two_faces_that_share_a_wall_are_neighbours_by_its_length() {
+    // Um quadrado de lado 20 cortado ao meio por uma linha horizontal: a parede mede 20.
+    let linha = (vec![v(-20.0, 0.0), v(20.0, 0.0)], false);
+    let r = rede(&[quadrado(20.0), linha]);
+    let faces: Vec<Face> = r.faces().into_iter().filter(|f| f.area > 0.0).collect();
+    assert_eq!(faces.len(), 2);
+
+    let adj = r.adjacencias(&faces);
+
+    assert_eq!(adj[0].len(), 1, "cada metade tem UMA vizinha: {adj:?}");
+    assert_eq!(adj[1].len(), 1);
+    assert_eq!(adj[0][0].0, 1, "e a vizinha da primeira e' a segunda");
+    assert!(
+        (adj[0][0].1 - 20.0).abs() < 1e-6,
+        "o peso e' o COMPRIMENTO da parede partilhada, e nao a contagem: {}",
+        adj[0][0].1
+    );
+}
+
+/// ⛔ **Os dois lóbulos de um contorno que se cruza NÃO fazem fronteira — tocam-se num PONTO.**
+///
+/// Medido no report de 2026-09-02: a espiga de um círculo dá 3 faces, e por arco **as três
+/// declaram-se sem vizinhas**. É por isso que a partilha de nó existe, e é por isso que ela entra
+/// com peso `0`: ela é a última rota, nunca a primeira.
+#[test]
+fn the_lobes_of_a_self_crossing_contour_meet_at_a_node_not_along_a_wall() {
+    let base = ph2d_vec_scene::ellipse([0.0, 0.0], 100.0, 100.0);
+    let mut verts = base.verts.clone();
+    let topo = verts
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1.anchor[1].total_cmp(&b.1.anchor[1]))
+        .map(|(i, _)| i)
+        .expect("a elipse tem vertices");
+    let alvo = [0.0, -260.0];
+    verts[topo].anchor = alvo;
+    verts[topo].in_handle = alvo;
+    verts[topo].out_handle = alvo;
+    let r = rede(&[(verts, true)]);
+    let faces: Vec<Face> = r.faces().into_iter().filter(|f| f.area > 0.0).collect();
+    assert!(faces.len() >= 2, "a espiga tem de criar lobulos");
+
+    let adj = r.adjacencias(&faces);
+
+    assert!(
+        adj.iter().all(|l| l.iter().all(|(_, c)| *c == 0.0)),
+        "nenhum lobulo partilha PAREDE com outro: {adj:?}"
+    );
+    assert!(
+        adj.iter().all(|l| !l.is_empty()),
+        "e ainda assim todos tem vizinha pelo NO' — senao a tinta nao atravessa: {adj:?}"
+    );
+}

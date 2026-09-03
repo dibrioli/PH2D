@@ -490,6 +490,92 @@ impl Rede {
         out
     }
 
+    /// ⭐⭐⭐ **QUEM FAZ FRONTEIRA COM QUEM, e por quanto** — `(face vizinha, comprimento partilhado)`
+    /// para cada face da lista.
+    ///
+    /// # Porque o comprimento, e não a contagem de arcos
+    ///
+    /// É por ele que uma região nova sabe **de quem** herdar: a face com que ela mais confina é a
+    /// de que ela se destacou. Contar arcos daria o mesmo peso a uma lasca de fronteira e a meia
+    /// volta de um círculo.
+    ///
+    /// ⚠️ **A face de FORA não aparece como vizinha**: ela não está na lista (`area <= 0`), então a
+    /// meia-aresta gémea dela não mapeia para face nenhuma. É isso que impede o fundo de dar tinta.
+    ///
+    /// # ⭐⭐⭐ E as vizinhas que só partilham um NÓ entram com comprimento `0`
+    ///
+    /// ⛔ **Um laço de uma curva que se cruza a si própria NÃO faz fronteira com o corpo dela** — os
+    /// dois lóbulos de um oito tocam-se num PONTO, e a gémea de cada arco do lóbulo é a face de
+    /// fora. Medido no report de 2026-09-02: a espiga de um círculo dá 3 faces e **as três
+    /// declaram-se sem vizinhas**.
+    ///
+    /// ⚠️ E ainda assim ela é a MESMA forma para quem desenha: um contorno que se cruza tem os dois
+    /// lóbulos *dentro* pela regra `NonZero`. Por isso a partilha de nó entra na lista, com peso
+    /// `0` — quem herda prefere sempre a fronteira de comprimento, e só cai no nó quando não há
+    /// nenhuma.
+    #[must_use]
+    pub fn adjacencias(&self, faces: &[Face]) -> Vec<Vec<(usize, f64)>> {
+        let mut de_quem = vec![usize::MAX; self.arcos.len() * 2];
+        for (k, f) in faces.iter().enumerate() {
+            for &(i, frente) in &f.arcos {
+                de_quem[2 * i + usize::from(!frente)] = k;
+            }
+        }
+        // Que faces tocam cada nó.
+        let mut no_faces: Vec<Vec<usize>> = vec![Vec::new(); self.nos.len()];
+        for (k, f) in faces.iter().enumerate() {
+            for &(i, _) in &f.arcos {
+                for n in [self.arcos[i].de, self.arcos[i].ate] {
+                    if let Some(l) = no_faces.get_mut(n)
+                        && !l.contains(&k)
+                    {
+                        l.push(k);
+                    }
+                }
+            }
+        }
+        faces
+            .iter()
+            .enumerate()
+            .map(|(k, f)| {
+                let mut out: Vec<(usize, f64)> = Vec::new();
+                let soma = |out: &mut Vec<(usize, f64)>, v: usize, l: f64| {
+                    if let Some(e) = out.iter_mut().find(|(j, _)| *j == v) {
+                        e.1 += l;
+                    } else {
+                        out.push((v, l));
+                    }
+                };
+                for &(i, frente) in &f.arcos {
+                    let gemea = (2 * i + usize::from(!frente)) ^ 1;
+                    let v = de_quem[gemea];
+                    if v != usize::MAX {
+                        soma(&mut out, v, self.comprimento(i));
+                    }
+                }
+                for &(i, _) in &f.arcos {
+                    for n in [self.arcos[i].de, self.arcos[i].ate] {
+                        for &v in no_faces.get(n).into_iter().flatten() {
+                            if v != k && !out.iter().any(|(j, _)| *j == v) {
+                                out.push((v, 0.0));
+                            }
+                        }
+                    }
+                }
+                out
+            })
+            .collect()
+    }
+
+    /// O comprimento do achatado do arco `i`.
+    fn comprimento(&self, i: usize) -> f64 {
+        self.poly.get(i).map_or(0.0, |p| {
+            p.windows(2)
+                .map(|w| (w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]))
+                .sum()
+        })
+    }
+
     /// **O achatado de uma face**, para medir área e contenção — o par plano da [`Self::geometria`],
     /// que devolve a mesma fronteira em cúbicas.
     ///

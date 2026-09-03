@@ -439,16 +439,52 @@ a varredura é só um gerador de candidatos esperto.
 área · o vencedor afirmado com margem de 1% · agora a amostragem cega a formas magras). *Uma face
 sem amostra e uma face sem dono lêem-se iguais no resultado.*
 
-### §10.6 — ⏳ Aberto
+### §10.6 — ⭐⭐⭐ O TERCEIRO REPORT: **a tinta atravessa para o terreno novo**
+
+> *"várias inconsistências"* — Enio, com **cinco** fotos: a mesma espiga sai ora verde, ora
+> vermelha, ora **sem cor nenhuma**.
+
+⚠️⚠️ **A primeira hipótese era HISTERESE — e foi REFUTADA por medição.** A receita é a região do
+quadro anterior, então parecia que a resposta dependia do caminho do arrasto. Medido: o mesmo
+arrasto em **1, 4, 20 e 100 passos** dá ownership **idêntico**. O que muda entre duas fotos é a
+**topologia**, não o caminho. O que era constante em todas as corridas: a face de terreno **novo**
+nunca era reclamada.
+
+⇒ é literalmente o que ele tinha pedido no report anterior, por palavras dele: *"preenchendo
+corretamente **as áreas novas que vão surgindo**"*.
+
+**A lei nova, em três guardas:**
+
+1. **Herda a face sem dono da vizinha com quem ela mais confina** (o comprimento da fronteira
+   partilhada, não a contagem de arcos), e propaga até ao ponto fixo — cada ronda decide sobre o
+   estado do **início** dela, para a ordem das faces não mudar a resposta.
+2. ⛔ **Só o TERRENO NOVO herda** — uma face cujo miolo estava **fora** de toda a face da rede
+   anterior (`terreno_novo`, contra a rede que o cache já guardava). Sem esta guarda, uma rede de
+   6 regiões com **uma** pintada seria **inundada** ao primeiro arrasto de nó.
+3. ⛔ **E só quando o gesto foi DEFORMAR** — a contagem de contornos de parede inalterada. Com uma
+   forma desenhada ou apagada, uma face nova é **autoria**: desenhar um círculo sobre um quadrado
+   pintado não pode pintar a parte do círculo que ficou de fora.
+
+⛔⛔ **E a adjacência tinha de aprender o NÓ, não só a parede.** Medido: a espiga de um círculo dá
+3 faces e, por arco, **as três declaram-se sem vizinhas** — os lóbulos de um contorno que se cruza
+tocam-se num **ponto**. E ainda assim são a mesma forma para quem desenha (a regra `NonZero` põe os
+dois lóbulos dentro). A partilha de nó entra com peso `0`: quem herda prefere **sempre** uma
+fronteira de comprimento, e só cai no nó quando não há nenhuma; entre dois nós ganha a face **maior**.
+
+⚠️ **E isso criou uma segunda rota para a mesma pergunta, que é uma rede de segurança a esconder a
+queda** — com a partilha de nó a existir, uma adjacência por arco avariada cairia toda no nó e
+**nenhum gate do balde reprovaria**. Por isso o `two_faces_that_share_a_wall_are_neighbours_by_its_length`
+mede a rota por arco **sozinha**, com o comprimento (`20,0`) e não com a contagem.
+
+### §10.7 — ⏳ Aberto
 
 - ⏳ **Uma face nova que ninguém pintou fica por pintar** — correcto, mas o artista tem de a clicar.
   O *Live Paint* faz o mesmo.
-- ⏳ **Uma face NOVA e GORDA, nascida de território que nunca foi pintado** (o nó varre a linha
-  sobre o fundo e fecha área nova), fica sem cor — e um preenchimento que perca todas as faces
-  congela. Medido na cena das fotos: com um dos nós, `1` face de `6538` fica sem dono e `2`
-  preenchimentos congelam. É a mesma resposta do *Live Paint*; se o report voltar sobre uma área
-  **grande**, a cura é outra (herdar do vizinho com quem partilha mais fronteira), e ela tem de
-  distinguir *"cresci"* de *"nasci"*.
+- ✅ **Uma face NOVA, nascida de território que nunca foi pintado, ficava sem cor** — **FECHADO**
+  em §10.6, com as três guardas.
+- ⏳ **Um preenchimento que perca TODAS as faces continua a congelar** (a forma fica onde estava, e
+  volta quando a região volta). Se a sobreposição de duas tintas incomodar, a alternativa é
+  escondê-la enquanto ela espera — e aí a receita tem de deixar de ser a geometria.
 - ⏳ **A margem de ~7% da votação**: uma grelha mais fina reduz o viés e paga linearmente. Sem
   report, não há número que justifique o preço.
 - ⏳ **Uma ilha dentro de uma face** continua a não virar buraco (§9).

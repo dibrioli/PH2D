@@ -31,6 +31,9 @@ use ph2d_vec_scene::{VecPath, VecScene, VecVertex, VecXforms, trim_tool};
 pub(crate) struct BucketCache {
     chave: u64,
     rede: Rede,
+    /// Quantos contornos de PAREDE a produziram. ⚠️ É o que separa *deformar* de *autorar*: um nó
+    /// arrastado não muda a contagem; desenhar ou apagar uma forma muda.
+    contornos: usize,
 }
 
 /// A região sob o cursor neste quadro: a área **e** o ponto que a nomeia.
@@ -313,11 +316,32 @@ impl crate::App {
                 semente: *seed,
             })
             .collect();
-        let minhas = crate::vec_bucket_claim::por_preenchimento(
-            &faces,
-            &crate::vec_bucket_claim::donos(&rede, &faces, &regioes),
-            fills.len(),
-        );
+        let mut donos = crate::vec_bucket_claim::donos(&rede, &faces, &regioes);
+        // ⭐⭐⭐ **O TERRENO NOVO herda da vizinha com quem mais confina** — o pedido do Enio de
+        // 2026-09-02 (*"preenchendo corretamente as áreas novas que vão surgindo"*), depois das
+        // cinco fotos em que a espiga saía ora verde, ora vermelha, ora sem cor nenhuma.
+        //
+        // ⚠️⚠️ **Só se o gesto foi DEFORMAR.** Com a contagem de contornos mudada o artista
+        // desenhou ou apagou uma forma, e aí uma face nova é autoria — não é a mesma região a
+        // crescer. ⛔ Sem esta guarda, desenhar um círculo sobre um quadrado pintado pintaria
+        // também a parte do círculo que está fora dele.
+        //
+        // ⚠️ E *novo* é medido contra a rede ANTERIOR, que o cache já tem: uma face cujo miolo
+        // estava DENTRO de alguma face de antes não é nova — é uma região que o artista deixou
+        // vazia de propósito, e herdar nela inundaria o desenho ao primeiro arrasto.
+        if let Some(ant) = self.vec_bucket_cache.as_ref()
+            && ant.contornos == contornos.len()
+        {
+            let nova = crate::vec_bucket_claim::terreno_novo(&rede, &faces, &ant.rede);
+            let areas: Vec<f64> = faces.iter().map(|f| f.area).collect();
+            crate::vec_bucket_claim::herda_dos_vizinhos(
+                &rede.adjacencias(&faces),
+                &areas,
+                &nova,
+                &mut donos,
+            );
+        }
+        let minhas = crate::vec_bucket_claim::por_preenchimento(&faces, &donos, fills.len());
         #[allow(clippy::cast_possible_truncation)]
         type Forma = (Vec<VecVertex>, Vec<ph2d_vec_scene::Contour>);
         let novos: Vec<(u64, Entity, Forma, [f32; 2])> = fills
@@ -354,7 +378,11 @@ impl crate::App {
                 }
             }
         }
-        self.vec_bucket_cache = Some(BucketCache { chave: k, rede });
+        self.vec_bucket_cache = Some(BucketCache {
+            chave: k,
+            rede,
+            contornos: contornos.len(),
+        });
     }
 
     /// **Recalcula a região sob o cursor** — só com o balde na mão, e sobre a rede JÁ guardada.

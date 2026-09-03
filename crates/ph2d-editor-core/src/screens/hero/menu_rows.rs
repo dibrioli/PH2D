@@ -248,6 +248,7 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             (ids::CTX_MENU_TEXT_DEFAULT, "Default", None),
             (ids::CTX_MENU_TEXT_CRISP_HEAVY, "Crisp Heavy", None),
             (ids::CTX_MENU_TEXT_CRISP_HEAVY_PLUS, "Crisp Heavy +", None),
+            (ids::CTX_MENU_TEXT_CRISP_EMBOLDEN, "Crisp Embolden", None),
         ],
         // Motion submenu — o carácter da UI viva + o reduced motion.
         //

@@ -152,6 +152,7 @@ pub(super) fn id_is_currently_selected(
         ph2d_tokens::TextRendering::Default => ids::CTX_MENU_TEXT_DEFAULT,
         ph2d_tokens::TextRendering::CrispHeavy => ids::CTX_MENU_TEXT_CRISP_HEAVY,
         ph2d_tokens::TextRendering::CrispHeavyPlus => ids::CTX_MENU_TEXT_CRISP_HEAVY_PLUS,
+        ph2d_tokens::TextRendering::CrispEmbolden => ids::CTX_MENU_TEXT_CRISP_EMBOLDEN,
     };
     if id == text_id {
         return true;

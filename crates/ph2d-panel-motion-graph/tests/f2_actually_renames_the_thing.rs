@@ -62,6 +62,7 @@ fn card(id: u32, name: &str, kind: NodeViewKind, x: f32) -> GraphNodeView {
         inputs: Vec::new(),
         outputs: Vec::new(),
         readout: None,
+        drops: None,
         count: None,
         hot: false,
         is_sink: false,

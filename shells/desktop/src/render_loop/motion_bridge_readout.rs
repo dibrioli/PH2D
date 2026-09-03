@@ -298,6 +298,9 @@ pub(super) fn stamp(
     let inert = super::heal::inert_reaching_output(motion);
     for node in &mut snap.nodes {
         let id = NodeId(node.id);
+        // ⭐⭐⭐ **O que este no' DEITA FORA** (doc 99 §10d) — derivado das correntes reais, e
+        // `None` (sem alocacao) para todo no' que nao perde nada, que e' o caso comum.
+        node.drops = super::columns::dropped_at(motion, id);
         let cooked = motion.pump.cook.peek(id);
         // The exact element count — the memo's own when the CPU cooked, else the
         // sequencer's, which SIZED the dispatch with it. NEVER the tap's: see

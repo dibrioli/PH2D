@@ -24,6 +24,7 @@ fn node_with_inputs(id: u32, x: f32, n_in: usize) -> GraphNodeView {
             .collect(),
         outputs: vec![],
         readout: None,
+        drops: None,
         count: None,
         hot: false,
         is_sink: false,

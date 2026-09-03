@@ -227,6 +227,7 @@ fn the_ghost_end_snaps_to_the_target_socket() {
             inputs: vec![port()],
             outputs: vec![port()],
             readout: None,
+            drops: None,
             count: None,
             hot: false,
             is_sink: false,

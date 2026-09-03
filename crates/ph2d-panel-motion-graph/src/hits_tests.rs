@@ -35,6 +35,7 @@ fn node(id: u32, x: f32, y: f32) -> GraphNodeView {
         }],
         outputs: vec![],
         readout: None,
+        drops: None,
         count: None,
         hot: false,
         is_sink: false,
@@ -252,7 +253,7 @@ fn sockets_off_canvas_register_no_hit() {
 /// superfície do canvas que não é socket também não (o balão daquele id pertence a quem o
 /// registou, e sobrescrevê-lo apagaria o dele).
 #[test]
-fn only_a_socket_in_the_hit_list_produces_a_tip() {
+fn the_hot_tip_answers_for_a_socket_and_for_a_card() {
     let view = View::new(CANVAS, ViewState::default());
     let n = node(1, 10.0, 10.0);
     let mut hits = Vec::new();
@@ -269,6 +270,25 @@ fn only_a_socket_in_the_hit_list_produces_a_tip() {
     assert!(
         tip_for_hot(&nodes, &hits, bg_hit_id()).is_none(),
         "um id que nao esta' na lista de hits nao produz balao nenhum"
+    );
+
+    // ⭐⭐⭐ **O CARTÃO diz o que o nó DEITA FORA** (doc 99 §10d) — a pergunta que custou os
+    // três reports de 2026-09-01 e que nenhuma superfície do app respondia.
+    let mut com_cartao = hits.clone();
+    let card = node_hit_id(1);
+    com_cartao.push((card, GraphHitKind::Node { node: 1 }, CANVAS));
+    let mut n_perde = node(1, 10.0, 10.0);
+    n_perde.drops = Some("id · vel".to_string());
+    assert_eq!(
+        tip_for_hot(&[n_perde], &com_cartao, card).as_deref(),
+        Some("drops id · vel"),
+        "o cartao de um no' que perde colunas DIZ quais"
+    );
+    // ⚠️ **E o SILÊNCIO é a resposta honesta para quem não perde nada** — um balão a dizer
+    // «drops nothing» em 134 cartões seria o mesmo ruído que a lei do rótulo já recusou.
+    assert!(
+        tip_for_hot(&[node(1, 10.0, 10.0)], &com_cartao, card).is_none(),
+        "um no' que nao perde nada nao diz nada"
     );
 
     // O fundo ESTÁ na lista, e mesmo assim não é um socket.

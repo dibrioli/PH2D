@@ -78,3 +78,67 @@ fn describe(stream: &Stream) -> Vec<LiveColumn> {
         })
         .collect()
 }
+
+/// ⭐⭐⭐ **QUE COLUNAS ENTRARAM NESTE NÓ E NÃO SAÍRAM** — a resposta que o cartão do Mini
+/// Cavalry dá com os chips *lê/escreve* e o nosso não dava em lado nenhum
+/// ([doc 99 §10d](../../../../docs/Motion%20Nodes/99_estudo_do_mini_cavalry_2026-09-02.md)).
+///
+/// ⛔⛔⛔ **É a pergunta que custou os TRÊS reports de 2026-09-01** — o `motion.duplicator` a
+/// deitar fora `id`/`vel`/`age`/`life` (a simulação morria), o `size` que «parava de
+/// funcionar», e a varredura que teve de ser feita por sonda porque **nenhuma superfície do
+/// app respondia**.
+///
+/// ⭐⭐ **E é DERIVADA do cozimento, não declarada.** Ele escreve `reads_attrs`/`writes_attrs`
+/// à mão em cada nó — uma segunda lista que pode divergir do que o nó faz, e que só cobriria
+/// os **67 de 134** tipos que declaram bindings de device. Esta lê as correntes REAIS do memo
+/// (ou da tomada do device) e responde por **todos os 134**, sobre o documento que o artista
+/// tem à frente.
+///
+/// ⚠️ **Descritiva, nunca acusatória:** o `motion.integrate` consome `accel` de propósito e o
+/// `motion.duplicator` deitava fora sem querer — as duas leem-se igual aqui, e é o artista que
+/// sabe qual queria. *Uma superfície que ACUSA precisa de saber a intenção; uma que DESCREVE
+/// não.*
+///
+/// ⚠️ **`None` é o caso comum e não aloca nada** — só um nó que de facto perde colunas paga
+/// uma `String`. A comparação é feita sobre nomes EMPRESTADOS das duas correntes.
+pub(super) fn dropped_at(motion: &MotionState, node: NodeId) -> Option<String> {
+    let saida = stream_at(motion, node, 0)?;
+    let mut perdidas: Vec<&str> = Vec::new();
+    for e in motion.doc.graph.edges() {
+        if e.to.0 != node {
+            continue;
+        }
+        let Some(entrada) = stream_at(motion, e.from.0, e.from.1) else {
+            continue;
+        };
+        for (nome, _) in entrada.columns() {
+            if saida.get(nome).is_none() && !perdidas.contains(&nome.as_str()) {
+                perdidas.push(nome);
+            }
+        }
+    }
+    (!perdidas.is_empty()).then(|| perdidas.join(" · "))
+}
+
+/// A corrente viva de `(node, port)`, **emprestada** — o irmão do [`at`] para quem só quer
+/// comparar e não guardar. Existe para o [`dropped_at`] não pagar uma `Vec<String>` por nó por
+/// quadro só para descobrir que não há nada a dizer.
+fn stream_at(
+    motion: &MotionState,
+    node: NodeId,
+    port: u16,
+) -> Option<&ph2d_nodegraph::attr::Stream> {
+    if let Some(s) = motion
+        .pump
+        .cook
+        .peek(node)
+        .and_then(|o| o.get(port as usize))
+        .map(ph2d_nodegraph::value::CookValue::as_stream)
+    {
+        return Some(s);
+    }
+    match motion.gpu_tap.as_ref().and_then(|t| t.get(&node)) {
+        Some(s) if port == 0 => Some(s),
+        _ => None,
+    }
+}

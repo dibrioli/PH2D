@@ -63,6 +63,8 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
                 // sinks all need the COOK (or the shell's sink list), which only the shell
                 // owns; it fills them in afterwards, exactly as it does the backdrops below.
                 readout: None,
+                drops: None,
+                // Preenchido pelo shell no `readout::stamp`, que e' quem tem o cozimento.
                 count: None,
                 hot: false,
                 is_sink: false,

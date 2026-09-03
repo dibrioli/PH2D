@@ -60,7 +60,7 @@ use paint_wires::{WirePass, draw_wires};
 use crate::geom::{self, View, card_h, socket_center};
 use crate::hits::{
     bg_hit_id, push_backdrop_hits, push_card_hit, push_inert_badge_hit, push_preview_toggle_hit,
-    push_socket_hits, register_hits, register_hot_socket_tip,
+    push_socket_hits, register_hits, register_hot_tip,
 };
 use crate::snapshot::{
     GraphNodeView, GraphViewSnapshot, PortView, SocketGlyph, current_snapshot, socket_glyph,
@@ -288,7 +288,7 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
 
     register_hits(ctx, rect, &hits);
     // O balão do socket sob o rato — UM por quadro, derivado da lista de hits acima.
-    register_hot_socket_tip(ctx, &snap.nodes, &hits);
+    register_hot_tip(ctx, &snap.nodes, &hits);
 
     // The rename box (doc 61) is drawn OVER the thing's title, after everything else and after
     // the hit registration — it is a widget, not a graph hit, and it registers itself with the

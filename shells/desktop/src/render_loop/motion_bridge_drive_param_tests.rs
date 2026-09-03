@@ -10,6 +10,7 @@
 //!
 //! Mecanismo e tabelas: [doc 98 §4.4c](../../../../docs/Motion%20Nodes/98_auditoria_de_performance_2026-09-01.md).
 
+#[allow(unused_imports)]
 use super::*;
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::graph::Edge;
@@ -317,4 +318,70 @@ fn how_much_reads_writes_we_can_derive() {
         mudos.len() as f64 * 100.0 / n as f64
     );
     eprintln!("  os mudos: {}", mudos.join(" "));
+}
+
+/// ⭐⭐⭐ **O NÓ DIZ O QUE DEITA FORA** — o gate do item «chips lê/escreve» do estudo do Mini
+/// Cavalry ([doc 99 §10d](../../../../docs/Motion%20Nodes/99_estudo_do_mini_cavalry_2026-09-02.md)).
+///
+/// ⛔⛔⛔ **É a pergunta que custou os TRÊS reports de 2026-09-01** — o `motion.duplicator` a
+/// deitar fora `id`/`vel`/`age`/`life` (a simulação morria), o `size` que «parava de
+/// funcionar», e a varredura que teve de ser feita por SONDA porque nenhuma superfície do app
+/// respondia.
+///
+/// ⭐⭐ **E a nossa é DERIVADA das correntes reais, não declarada por nó** — ele escreve
+/// `reads_attrs`/`writes_attrs` à mão em cada um (uma segunda lista, que pode divergir do que
+/// o nó faz, e que só cobriria os 67 de 134 que declaram bindings de device). Esta lê o memo
+/// do cook e responde por **todos os 134**, sobre o documento que o artista tem à frente.
+///
+/// ⚠️ **A fixtura sai de uma MEDIÇÃO, não de um palpite:** o `motion.lattice` foi um dos dois
+/// que a varredura `which_nodes_drop_a_streams_columns` acusou de perder as quatro colunas
+/// exclusivas do emissor nas DUAS portas.
+#[test]
+fn a_node_that_drops_columns_says_which() {
+    use ph2d_nodegraph::cook::Cook;
+    let mut motion = MotionState::new();
+    let g = &mut motion.doc.graph;
+    let em = g.add_node("motion.emitter".to_string());
+    g.set_param(em, "rate", 200.0);
+    let alvo = g.add_node("motion.lattice".to_string());
+    let out = g.add_node("motion.output".to_string());
+    g.connect(Edge {
+        from: (em, 0),
+        to: (alvo, 0),
+        delayed: false,
+    })
+    .expect("emitter -> lattice");
+    g.connect(Edge {
+        from: (alvo, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .expect("lattice -> out");
+
+    let mut cook = Cook::new();
+    for t in 0..4u64 {
+        let ph = t as f64 * (1.0 / 60.0);
+        cook.cook(&motion.doc.graph, &motion.registry, out, ph)
+            .expect("a cadeia cozinha");
+        cook.advance_tick(&motion.doc.graph, &motion.registry, ph)
+            .ok();
+    }
+    motion.pump.cook = cook;
+
+    let nota = crate::render_loop::motion_bridge::columns::dropped_at(&motion, alvo)
+        .expect("o `motion.lattice` perde as colunas exclusivas do emissor -- medido em 01/09");
+    for c in ["id", "vel", "age", "life"] {
+        assert!(
+            nota.contains(c),
+            "a nota tem de NOMEAR a coluna perdida `{c}`, e diz {nota:?}"
+        );
+    }
+
+    // ⚠️ **E o SILÊNCIO é a resposta honesta para quem não perde nada.** Uma nota em todo nó
+    // seria o mesmo ruído que a lei do rótulo de porta já recusou -- e faria a nota que
+    // IMPORTA desaparecer entre 134 iguais.
+    assert!(
+        crate::render_loop::motion_bridge::columns::dropped_at(&motion, em).is_none(),
+        "uma FONTE nao tem entrada, logo nao pode perder nada"
+    );
 }

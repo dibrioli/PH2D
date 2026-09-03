@@ -289,6 +289,35 @@ que uma mudasse.
 ⚠️ Em inglês ([[feedback_app_ui_english_only]]), e o nome sai da **mesma** derivação que o
 rótulo do cartão (`PortLabel`) — uma segunda tabela de nomes seria a que envelhece.
 
+### (d) Os chips «lê / escreve» — DERIVADOS, e por isso melhores que os dele
+
+O cartão diz agora, ao passar o rato, **`drops id · vel · age · life`**.
+
+⛔⛔⛔ **É a pergunta que custou os TRÊS reports de 01/09** e que **nenhuma superfície do app
+respondia** — a varredura teve de ser feita por sonda.
+
+⭐⭐ **E a nossa não é declarada:** ele escreve `reads_attrs`/`writes_attrs` **à mão em cada
+nó** — uma segunda lista que pode divergir do que o nó faz. O `dropped_at` lê as **correntes
+reais** do memo do cook (ou da tomada do device, pela porta que já existia), compara o que
+entrou com o que saiu, e responde por **todos os 134** tipos sobre o **documento que o artista
+tem à frente**. ⇒ a derivação que eu media a `50%` de cobertura (`GpuKernel::bindings`)
+deixou de ser o caminho: aquela responde *o que o TIPO faz*, esta *o que está a acontecer*.
+
+⚠️ **Descritiva, nunca acusatória:** o `motion.integrate` consome `accel` de propósito e o
+`motion.duplicator` deitava fora sem querer — leem-se igual aqui, e é o artista que sabe qual
+queria. *Uma superfície que ACUSA precisa de saber a intenção; uma que DESCREVE não.*
+
+⚠️ **`None` é o caso comum e não aloca** — a comparação é feita sobre nomes **emprestados** das
+duas correntes, e só um nó que de facto perde paga uma `String`. E o silêncio é a resposta
+honesta: uma nota em 134 cartões faria a que IMPORTA desaparecer entre iguais.
+
+⚠️ **A fixtura do gate saiu de uma MEDIÇÃO** — o `motion.lattice`, um dos dois que a varredura
+`which_nodes_drop_a_streams_columns` acusou. Duas mutações, as duas mortas.
+
+⏳ **Falta a outra metade** — *o que ele ESCREVE*. A diferença de conjuntos vê colunas
+**acrescentadas** e **removidas**, e não distingue *ler `P` e reescrever `P`* de *deixar passar*.
+Para isso é preciso o `GpuKernel::bindings` (os 50%) ou uma declaração.
+
 ---
 
 ## ⛔ Recusas MEDIDAS deste estudo

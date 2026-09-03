@@ -17,6 +17,7 @@ fn node(id: u32, is_sink: bool, count: Option<u32>) -> GraphNodeView {
         inputs: Vec::new(),
         outputs: Vec::new(),
         readout: None,
+        drops: None,
         count,
         hot: false,
         is_sink,

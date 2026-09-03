@@ -446,6 +446,8 @@ fn card_view(
         // Not a cook readout — a card does not cook. It is how much is folded in
         // here, which is the number the artist actually wants off a closed door.
         readout: Some(format!("{} nodes", inside.len())),
+        drops: None,
+        // Um CARTAO agrega membros; a nota de perda e' de um NO', nao de um grupo.
         count: head.and_then(|v| v.count),
         hot: inside.iter().any(|n| by_id(*n).is_some_and(|v| v.hot)),
         is_sink: inside.iter().any(|n| by_id(*n).is_some_and(|v| v.is_sink)),

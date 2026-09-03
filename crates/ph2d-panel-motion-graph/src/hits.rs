@@ -278,7 +278,7 @@ pub(crate) fn push_socket_hits(
 /// ⚠️ **Não limpa o balão anterior**: os ids de socket são determinísticos por `(nó, porta)`,
 /// então o mapa cresce até ao tamanho do documento e não além. Um balão obsoleto nunca é lido
 /// (sem hit não há `hot`), e limpá-lo custaria a travessia que esta função existe para evitar.
-pub(crate) fn register_hot_socket_tip(
+pub(crate) fn register_hot_tip(
     ctx: &mut PaintCtx,
     nodes: &[GraphNodeView],
     hits: &[(NodeId, GraphHitKind, Rect)],
@@ -310,7 +310,16 @@ pub(crate) fn tip_for_hot(
     let (node, port, entrada) = match kind {
         GraphHitKind::SocketIn { node, port } => (*node, *port as usize, true),
         GraphHitKind::SocketOut { node, port } => (*node, *port as usize, false),
-        _ => return None, // não é um socket: o balão daquele id é de quem o registou
+        // ⭐⭐⭐ **O CARTÃO diz o que o nó DEITA FORA** (doc 99 §10d) — a pergunta que custou
+        // os três reports de 2026-09-01 e que nenhuma superfície do app respondia. Vem
+        // derivada das correntes reais (`motion_bridge_columns::dropped_at`), não declarada
+        // por nó, e é `None` para todo nó que não perde nada — que é o caso comum, e o
+        // silêncio é a resposta honesta.
+        GraphHitKind::Node { node } => {
+            let n = nodes.iter().find(|n| u64::from(n.id) == *node)?;
+            return n.drops.as_ref().map(|d| format!("drops {d}"));
+        }
+        _ => return None, // outra superfície: o balão daquele id é de quem o registou
     };
     let n = nodes.iter().find(|n| u64::from(n.id) == node)?;
     let ports = if entrada { &n.inputs } else { &n.outputs };

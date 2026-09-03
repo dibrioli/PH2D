@@ -152,6 +152,13 @@ pub struct GraphNodeView {
     /// diagnosis. (The shell fills this from the cook's MEMO, so it costs a lookup, never a
     /// second evaluation — see `Cook::peek`.)
     pub readout: Option<String>,
+    /// **As colunas que entraram neste nó e não saíram** — `"id · vel · age · life"` — ou
+    /// `None` quando ele não perde nenhuma, que é o caso comum e não custa uma alocação.
+    ///
+    /// ⛔⛔ É a pergunta que custou os três reports de 2026-09-01 e que **nenhuma superfície do
+    /// app respondia**; ver `motion_bridge_columns::dropped_at`, que a DERIVA das correntes
+    /// reais em vez de a declarar por nó.
+    pub drops: Option<String>,
     /// **How many instances this node emitted** this frame (`None` = never cooked). The wires
     /// leaving it are drawn thicker the heavier the stream (F3): a scatter that fans 12 points
     /// into 5 000 says so in the WIDTH of its wire, with no number to read.

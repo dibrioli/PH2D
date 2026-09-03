@@ -407,12 +407,29 @@ impl Rede {
     /// ⇒ *uma semente diz **onde** a tinta estava; ela não diz **quanto** da face era dela.* A
     /// resposta a «de quem é esta face?» é uma **votação**, e são estas as amostras que votam.
     ///
-    /// ⚠️ **A grelha evita as bordas de propósito** (`(k + 1) / (N + 1)`): uma amostra em cima da
-    /// fronteira é exactamente o ponto que a contenção não sabe decidir.
-    ///
     /// ⚠️ **Uniformes sobre a CAIXA da face**, e por isso a contagem de votos de uma região é
     /// proporcional à **área** que ela cobre dentro desta face — que é a grandeza que a lei do
     /// *Live Paint* pede (*"a face fundida fica com a tinta da maior"*).
+    ///
+    /// # ⛔⛔ E porque é uma VARREDURA, e não uma grelha
+    ///
+    /// Report do Enio (2026-09-02, com fotos): *"comportamento bem melhor mas com inconsistências e
+    /// falhas"* — arrastar um nó para longe cria uma **espiga**, e as regiões dela nasciam sem cor
+    /// nenhuma. Medido, com a grelha de 15×15 sobre a caixa:
+    ///
+    /// | a região | área | densidade na caixa | amostras |
+    /// |---|---|---|---|
+    /// | espiga larga | `2000` | `6,7%` | `8` |
+    /// | espiga fina | `400` | `1,3%` | **`0`** |
+    /// | espiga finíssima | `100` | `0,3%` | **`0`** |
+    ///
+    /// ⇒ *uma região comprida e magra na diagonal não tem UM ponto da grelha dentro dela*, e uma
+    /// face sem amostra não vota, não é votada e não herda tinta nenhuma. ⛔ E o defeito lia-se como
+    /// intermitente — a grelha acerta ou falha conforme o ângulo.
+    ///
+    /// A varredura acha os **intervalos interiores** de cada linha e semeia-os na MESMA malha de
+    /// `x` — mesma densidade, mesma proporcionalidade —, e um intervalo mais estreito do que a
+    /// malha recebe o **ponto do meio** em vez de nada.
     #[must_use]
     pub fn interior_samples(&self, face: &Face) -> Vec<[f64; 2]> {
         let poly = self.contorno(face);
@@ -425,19 +442,51 @@ impl Rede {
             hi = [hi[0].max(p[0]), hi[1].max(p[1])];
         }
         const N: usize = 15;
+        let (dx, dy) = ((hi[0] - lo[0]) / N as f64, (hi[1] - lo[1]) / N as f64);
         let mut out = Vec::new();
-        for i in 0..N {
-            for j in 0..N {
-                let t = |k: usize| (k as f64 + 1.0) / (N as f64 + 1.0);
-                let p = [
-                    lo[0] + (hi[0] - lo[0]) * t(i),
-                    lo[1] + (hi[1] - lo[1]) * t(j),
-                ];
-                if point_in_polygon(&poly, p) {
-                    out.push(p);
+        for j in 0..N {
+            let y = lo[1] + dy * (j as f64 + 0.5);
+            // Onde a fronteira atravessa esta linha — os extremos dos intervalos INTERIORES.
+            let mut xs: Vec<f64> = Vec::new();
+            for k in 0..poly.len() {
+                let (a, b) = (poly[k], poly[(k + 1) % poly.len()]);
+                if (a[1] <= y) == (b[1] <= y) {
+                    continue;
+                }
+                let t = (y - a[1]) / (b[1] - a[1]);
+                xs.push(t.mul_add(b[0] - a[0], a[0]));
+            }
+            xs.sort_by(f64::total_cmp);
+            for par in xs.as_chunks::<2>().0 {
+                let (a, b) = (par[0], par[1]);
+                // A malha de `x` é GLOBAL (ancorada em `lo`), e não relativa a cada intervalo: é
+                // isso que mantém a densidade uniforme, e a densidade uniforme é o que faz a
+                // contagem de votos ser proporcional à ÁREA.
+                let mut i = ((a - lo[0]) / dx).floor().max(0.0);
+                let mut emitiu = false;
+                loop {
+                    let x = dx.mul_add(i + 0.5, lo[0]);
+                    if x > b {
+                        break;
+                    }
+                    if x >= a {
+                        out.push([x, y]);
+                        emitiu = true;
+                    }
+                    i += 1.0;
+                }
+                if !emitiu {
+                    // ⚠️ Um intervalo mais estreito do que a malha ficaria MUDO — e é justamente o
+                    // caso que o report de 2026-09-02 trouxe. Ele recebe o ponto do meio: pesa um
+                    // pouco mais do que a área dele, e é infinitamente melhor do que zero.
+                    out.push([f64::midpoint(a, b), y]);
                 }
             }
         }
+        // ⭐ **O filtro é a MESMA contenção que o resto usa.** A varredura é só um gerador de
+        // candidatos esperto; quem decide *dentro* continua a ser uma porta só, senão uma face
+        // não-simples seria amostrada por uma regra e reclamada por outra.
+        out.retain(|p| point_in_polygon(&poly, *p));
         out
     }
 

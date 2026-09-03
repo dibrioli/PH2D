@@ -177,3 +177,65 @@ fn a_face_without_an_owner_reaches_no_fill() {
     assert_eq!(out[0].len(), 1);
     assert!(out[1].is_empty(), "o segundo preenchimento nao ganhou nada");
 }
+
+/// ⭐⭐⭐ **UMA REGIÃO COMPRIDA E MAGRA CONTINUA A HERDAR A TINTA** — o report de 2026-09-02 com
+/// fotos (*"comportamento bem melhor mas com inconsistências e falhas"*, com as setas a nomear a
+/// cor que cada lasca devia ter).
+///
+/// ⚠️⚠️ **A causa não era a lei da herança: era a RÉGUA dela.** As amostras saíam de uma grelha de
+/// 15×15 sobre a **caixa** da face, e uma espiga na diagonal ocupa `1,3%` da caixa dela — medido,
+/// **zero** pontos da grelha caíam lá dentro. Uma face sem amostra não vota, não é votada e não
+/// herda nada. ⛔ E lia-se como intermitente, porque a grelha acerta ou falha conforme o ângulo.
+///
+/// | a região | área | densidade na caixa | amostras com a grelha | com a varredura |
+/// |---|---|---|---|---|
+/// | espiga larga | `2000` | `6,7%` | `8` | `9` |
+/// | espiga fina | `400` | `1,3%` | **`0`** | `4` |
+/// | espiga finíssima | `100` | `0,3%` | **`0`** | `4` |
+#[test]
+fn a_region_that_became_a_thin_diagonal_sliver_still_inherits_its_paint() {
+    // A espiga: um triângulo comprido e magro na diagonal, como o que nasce ao arrastar um nó.
+    let espiga = (vec![v(0.0, 0.0), v(200.0, 150.0), v(0.0, 4.0)], true);
+    let (rede, faces) = faces_de(&[espiga]);
+    assert_eq!(faces.len(), 1);
+    assert!(
+        faces[0].area < 0.02 * 200.0 * 150.0,
+        "a fixtura tem de ser MAGRA: {} de uma caixa de 30000",
+        faces[0].area
+    );
+    assert!(
+        !rede.interior_samples(&faces[0]).is_empty(),
+        "uma face magra sem amostra nao vota nem e' votada — era este o defeito"
+    );
+    // A tinta cobria a zona inteira antes de a região emagrecer.
+    let antes = regiao([-10.0, -10.0], [210.0, 160.0], [50.0, 30.0]);
+
+    let d = donos(&rede, &faces, &[antes]);
+
+    assert_eq!(
+        d[0],
+        Some(0),
+        "a lasca tem de continuar com a cor que tinha"
+    );
+}
+
+/// ⚠️ **E a varredura NÃO pode ter deitado fora a proporcionalidade** — é dela que sai *"a face
+/// fundida fica com a tinta da maior"*. Uma face gorda continua a dar muito mais votos a quem cobre
+/// muito dela do que a quem cobre pouco.
+#[test]
+fn the_sweep_keeps_the_vote_proportional_to_the_area() {
+    let (rede, faces) = faces_de(&[quadrado(10.0)]);
+    let esquerda = regiao([-10.0, -10.0], [-6.0, 10.0], [-8.0, 0.0]); // 20% da face
+    let direita = regiao([-6.0, -10.0], [10.0, 10.0], [2.0, 0.0]); // 80%
+    let amostras = rede.interior_samples(&faces[0]);
+    assert!(
+        amostras.len() > 50,
+        "a face gorda tem de dar muitas amostras"
+    );
+
+    assert_eq!(
+        donos(&rede, &faces, &[esquerda, direita])[0],
+        Some(1),
+        "80% contra 20% nao pode empatar"
+    );
+}

@@ -410,10 +410,45 @@ arrasto.** O produto é `faces × amostras × regiões`, e numa grelha cada face
 cortar o factor das regiões vale **7,1×**. ⚠️ Não é micro-optimização — é o que separa pagável de
 inaceitável.
 
-### §10.5 — ⏳ Aberto
+### §10.5 — ⛔⛔ O SEGUNDO REPORT DO MESMO DIA: a lei estava certa, a **RÉGUA** dela não
+
+> *"Comportamento bem melhor mas com inconsistências e falhas"* — Enio, com três fotos e as setas a
+> **nomear a cor** que cada lasca devia ter (`AZUL`, `VERMELHO`).
+
+As duas setas apontam para regiões **compridas e magras** — as que nascem ao arrastar um nó para
+longe e a linha faz uma **espiga**. Medido, com a grelha de 15×15 sobre a **caixa** da face:
+
+| a região | área | densidade na caixa | amostras (grelha) | amostras (varredura) |
+|---|---|---|---|---|
+| espiga larga | `2000` | `6,7%` | `8` | `9` |
+| espiga fina | `400` | `1,3%` | **`0`** | `4` |
+| espiga finíssima | `100` | `0,3%` | **`0`** | `4` |
+
+⇒ *uma região na diagonal ocupa ~1% da caixa dela, e nenhum ponto da grelha lhe cai dentro.* Uma
+face sem amostra **não vota, não é votada e não herda nada** — e o defeito lia-se como
+**intermitente**, porque a grelha acerta ou falha conforme o ângulo. ⛔ A lei da herança (§10.3) não
+tinha defeito nenhum: o instrumento dela é que era cego para uma classe inteira de formas.
+
+A cura é uma **varredura**: por linha, os **intervalos interiores** da face, semeados na MESMA malha
+de `x` — mesma densidade, logo a mesma proporcionalidade à área — e um intervalo mais estreito do
+que a malha recebe o **ponto do meio** em vez de nada. ⭐ **Custo inalterado** (`0,35`/`0,47`/`0,65`
+ms nas mesmas três medidas), e o filtro final continua a ser a **mesma** contenção que o resto usa —
+a varredura é só um gerador de candidatos esperto.
+
+⚠️ **É a terceira vez nesta wave que a régua falha antes do código** (a identidade de uma face pela
+área · o vencedor afirmado com margem de 1% · agora a amostragem cega a formas magras). *Uma face
+sem amostra e uma face sem dono lêem-se iguais no resultado.*
+
+### §10.6 — ⏳ Aberto
 
 - ⏳ **Uma face nova que ninguém pintou fica por pintar** — correcto, mas o artista tem de a clicar.
   O *Live Paint* faz o mesmo.
+- ⏳ **Uma face NOVA e GORDA, nascida de território que nunca foi pintado** (o nó varre a linha
+  sobre o fundo e fecha área nova), fica sem cor — e um preenchimento que perca todas as faces
+  congela. Medido na cena das fotos: com um dos nós, `1` face de `6538` fica sem dono e `2`
+  preenchimentos congelam. É a mesma resposta do *Live Paint*; se o report voltar sobre uma área
+  **grande**, a cura é outra (herdar do vizinho com quem partilha mais fronteira), e ela tem de
+  distinguir *"cresci"* de *"nasci"*.
 - ⏳ **A margem de ~7% da votação**: uma grelha mais fina reduz o viés e paga linearmente. Sem
   report, não há número que justifique o preço.
 - ⏳ **Uma ilha dentro de uma face** continua a não virar buraco (§9).

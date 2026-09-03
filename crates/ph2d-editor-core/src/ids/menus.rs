@@ -40,6 +40,11 @@ pub const CTX_MENU_SHOW_GRID: NodeId = hash_node_id("ctx_menu_show_grid");
 // Save-button context menu (Save / Save As).
 pub const CTX_MENU_SAVE: NodeId = hash_node_id("ctx_menu_save");
 pub const CTX_MENU_SAVE_AS: NodeId = hash_node_id("ctx_menu_save_as");
+/// **Exportar o desenho VECTORIAL como SVG** (plano 40) — o que se vê, cozido e no mundo.
+///
+/// ⚠️ **Não é o `Export Image…` da Hierarquia.** Aquele exporta uma SPRITE, e o SVG dele recusa com
+/// a razão dele (uma imagem não vira curva). Este exporta o **documento vectorial** — as curvas.
+pub const CTX_MENU_EXPORT_SVG: NodeId = hash_node_id("ctx_menu_export_svg");
 // Open-button context menu (Open Project / Import…).
 pub const CTX_MENU_OPEN_PROJECT: NodeId = hash_node_id("ctx_menu_open_project");
 pub const CTX_MENU_IMPORT: NodeId = hash_node_id("ctx_menu_import");

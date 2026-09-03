@@ -362,6 +362,7 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_SHOW_GRID,
         ids::CTX_MENU_SAVE,
         ids::CTX_MENU_SAVE_AS,
+        ids::CTX_MENU_EXPORT_SVG,
         ids::CTX_MENU_OPEN_PROJECT,
         ids::CTX_MENU_IMPORT,
         ids::CTX_MENU_SETTINGS_PPM,

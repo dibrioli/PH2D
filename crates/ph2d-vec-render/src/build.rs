@@ -75,7 +75,7 @@ fn build_path(path: &VecPath, want: Option<bool>) -> BezPath {
 /// (ADR-0132) e o arredondamento de quina, e o [`draw_path`] precisa de ATÉ DOIS desenhos da mesma
 /// forma (o preenchimento e o traço). Cozer por desenho fazia a pilha inteira correr **duas vezes
 /// por forma por frame**; agora o cozido é feito uma vez e os dois leem dele.
-pub(crate) fn build_contours(path: &VecPath, want: Option<bool>) -> BezPath {
+pub fn build_contours(path: &VecPath, want: Option<bool>) -> BezPath {
     // O CONTADOR do gate de orçamento (`encode_cost_tests`): quantos desenhos este frame construiu.
     // Contar é exato onde cronometrar não é — a razão entre um encode de FILL e um de STROKE não
     // isola uma construção de caminho, porque os dois não fazem o mesmo trabalho no Vello (medido).

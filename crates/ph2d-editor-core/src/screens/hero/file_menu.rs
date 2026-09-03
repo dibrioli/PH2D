@@ -23,4 +23,7 @@ pub struct FileMenuRequests {
     /// Abrir outro projeto. ⚠️ Este pergunta **sempre**: é o gesto que deita fora o trabalho não
     /// gravado, e a decisão vive do lado do shell (`project_io`).
     pub open: bool,
+    /// **Exportar o desenho vectorial como SVG** (plano 40). ⚠️ Pergunta sempre o caminho: um
+    /// export não tem «o ficheiro da sessão» — o projecto tem, e não é o mesmo ficheiro.
+    pub export_svg: bool,
 }

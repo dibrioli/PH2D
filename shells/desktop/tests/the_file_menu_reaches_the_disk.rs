@@ -43,10 +43,14 @@ fn mentions(hay: &str, needle: &str) -> bool {
     })
 }
 
-/// **As três bandeiras são DRENADAS** — e cada uma leva ao seu gesto.
+/// **As bandeiras são DRENADAS** — e cada uma leva ao seu gesto.
 ///
-/// ⚠️ A asserção é sobre as três juntas: drenar duas e esquecer a terceira deixa uma bandeira
-/// **presa a `true`**, e a partir daí o app grava (ou abre) uma vez por quadro.
+/// ⚠️ A asserção é sobre todas juntas: drenar três e esquecer a quarta deixa uma bandeira **presa a
+/// `true`**, e a partir daí o app grava (ou abre, ou exporta) uma vez por quadro.
+///
+/// ⛔ **A lista é LITERAL, e a dívida está nomeada** no irmão
+/// `the_file_menu_items_are_not_mute.rs`: ela tinha três entradas e o *Export SVG…* (2026-09-02)
+/// passou sem a acordar. Item novo no menu Ficheiro ⇒ entrada nova aqui.
 ///
 /// ⚠️ **Toda agulha passa pela [`mentions`], não pelo `contains`** — o doc dela tem o mecanismo e
 /// a mutação que o provou. Não é só a `asked.save`: um `project_save_gesture` que ganhasse um
@@ -54,7 +58,12 @@ fn mentions(hay: &str, needle: &str) -> bool {
 #[test]
 fn every_file_menu_flag_is_drained() {
     let body = function_body(&source("project_io.rs"), "drain_project_io");
-    for flag in ["asked.save", "asked.save_as", "asked.open"] {
+    for flag in [
+        "asked.save",
+        "asked.save_as",
+        "asked.open",
+        "asked.export_svg",
+    ] {
         assert!(
             mentions(&body, flag),
             "o `drain_project_io` nao le' `{flag}` — a bandeira fica presa e o gesto repete uma vez \
@@ -66,7 +75,9 @@ fn every_file_menu_flag_is_drained() {
         "as bandeiras tem de ser CONSUMIDAS (mem::take), nao so' lidas"
     );
     assert!(
-        mentions(&body, "project_save_gesture") && mentions(&body, "project_open_gesture"),
+        mentions(&body, "project_save_gesture")
+            && mentions(&body, "project_open_gesture")
+            && mentions(&body, "export_svg_gesture"),
         "…e cada uma tem de chamar o gesto, nao so' baixar a bandeira"
     );
 }

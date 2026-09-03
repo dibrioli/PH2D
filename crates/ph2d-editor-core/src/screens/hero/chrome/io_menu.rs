@@ -27,6 +27,8 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         &mut hero.file_menu.save_as
     } else if id == ids::CTX_MENU_OPEN_PROJECT {
         &mut hero.file_menu.open
+    } else if id == ids::CTX_MENU_EXPORT_SVG {
+        &mut hero.file_menu.export_svg
     } else {
         return false;
     };

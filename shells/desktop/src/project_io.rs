@@ -184,7 +184,7 @@ impl crate::App {
         self.title_dirty = true;
     }
 
-    /// **Drena os três itens do menu Ficheiro**, uma vez por quadro, com `self` livre do borrow do
+    /// **Drena os itens do menu Ficheiro**, uma vez por quadro, com `self` livre do borrow do
     /// render loop — o mesmo sítio e a mesma razão do `post_frame_undo`.
     ///
     /// ⚠️ **O menu e o teclado chamam as MESMAS funções.** Duas portas para o mesmo gesto é como o
@@ -201,6 +201,11 @@ impl crate::App {
         }
         if open {
             self.project_open_gesture();
+        }
+        // ⭐ **Exportar SVG** (plano 40) — a mesma porta das outras três: o menu levanta a bandeira,
+        // o shell é que tem o disco e o selector de ficheiros.
+        if asked.export_svg {
+            self.export_svg_gesture();
         }
     }
 }

@@ -707,6 +707,7 @@ mod vec_snap;
 mod vec_snap_sprites;
 mod vec_stroke_paint;
 mod vec_stroke_present;
+mod vec_svg_export;
 mod vec_text;
 mod vec_text_object;
 mod vec_text_reopen;

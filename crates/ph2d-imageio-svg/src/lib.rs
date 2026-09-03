@@ -108,11 +108,18 @@ impl ImageExporter for SvgExporter {
         matches!(fmt, ExportFormat::Svg)
     }
 
+    /// ⚠️⚠️ **A recusa passou a NOMEAR a porta certa** (2026-09-02). Ela dizia *"deferred to W3+"*,
+    /// e a partir de hoje isso é **falso na metade que importa**: o desenho vectorial exporta-se
+    /// por **File > Export SVG…** ([`vec_svg_export`](../../../shells/desktop/src/vec_svg_export.rs)).
+    ///
+    /// ⛔ **O que continua a não existir é RASTERIZAR-PARA-SVG**, que é o que esta porta faz — ela
+    /// recebe uma imagem já decodificada, e uma imagem não tem curva nenhuma para escrever. *Uma
+    /// recusa que não diz onde está a coisa que o artista quer é indistinguível de uma ferramenta
+    /// partida.*
     fn export(&self, _img: &DecodedImage, _opts: &ExportOpts) -> Result<Vec<u8>, Error> {
         Err(Error::Unsupported(
-            "SVG export deferred to W3+ — ph2d-vector canonical types \
-             (kurbo::BezPath paint stack) need to land first. Round-trip \
-             via `.ph2d-native` preserves vector content losslessly today."
+            "SVG cannot carry an IMAGE: this exporter receives decoded pixels, and pixels have \
+             no curves. To export the VECTOR drawing, use File > Export SVG... instead."
                 .into(),
         ))
     }

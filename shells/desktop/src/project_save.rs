@@ -153,7 +153,11 @@ impl crate::App {
 
     /// Um aviso na tela — não só no terminal. O Ctrl+O é destrutivo (troca a cena, zera o undo)
     /// e o Ctrl+S é silencioso; um `eprintln!` num app de janela é uma mensagem para ninguém.
-    pub(super) fn toast(&mut self, msg: String) {
+    ///
+    /// ⚠️ **`pub(crate)` desde 2026-09-02**: era `pub(super)` (visível só dentro do `project`, de
+    /// que este ficheiro é submódulo), e o *Export SVG…* precisa da MESMA porta — um segundo
+    /// mecanismo de aviso divergiria no estilo e no tempo de vida da mensagem.
+    pub(crate) fn toast(&mut self, msg: String) {
         if let Some(gfx) = self.gfx.as_mut() {
             gfx.toasts.push(ph2d_editor::Toast::info(msg));
         }

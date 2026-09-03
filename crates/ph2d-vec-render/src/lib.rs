@@ -114,8 +114,7 @@ pub use blend_overlay::draw_blend_overlay;
 
 /// **De `VecPath` a `BezPath`** — os construtores de desenho (módulo irmão, teto de LOC).
 mod build;
-pub(crate) use build::build_contours;
-pub use build::{build_bezpath, build_fill_bezpath, build_lines_bezpath};
+pub use build::{build_bezpath, build_contours, build_fill_bezpath, build_lines_bezpath};
 
 /// **A METADE DO TRAÇO** — módulo irmão pelo teto de LOC, e o corte por RESPONSABILIDADE já estava
 /// escrito no doc-comment da função: quem traça passa por uma porta só, incluindo a rota de

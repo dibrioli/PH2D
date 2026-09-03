@@ -94,6 +94,7 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
                 "Save As\u{2026} \u{00b7} Cmd+Shift+S",
                 None,
             ),
+            (ids::CTX_MENU_EXPORT_SVG, "Export SVG\u{2026}", None),
         ],
         ContextMenuKind::OpenMenu => &[
             (

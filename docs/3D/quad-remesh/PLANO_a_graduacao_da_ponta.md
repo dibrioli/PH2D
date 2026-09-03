@@ -2055,3 +2055,90 @@ acabamento — duas leis de aceitação seriam duas respostas à mesma pergunta)
 ⚠️ **O desembaraçador sozinho não muda o caminho de omissão** (medido: `20 658` quads e o mesmo
 veredito ao bit) — a candidata vencedora de hoje não tem gravata nenhuma. *As duas metades são
 necessárias: a calota PRODUZ a candidata, o desembaraçador deixa-a GANHAR.*
+
+## §106 — ⭐⭐⭐ A FENDA no flanco: as DUAS espécies de face do avesso são UMA família (2026-09-03)
+
+O dono aprovou a wave da calota (*«melhor resultado até agora»*, backup pedido) e fotografou
+**uma** ponta com um defeito novo: uma fenda escura no flanco, com a grade a saltar à volta.
+Ficheiro dele: `sculpt003.obj`.
+
+### §106.1 — O que a fenda É (e as três réguas que não a viam)
+
+⛔ **A malha está topologicamente PERFEITA**: `χ = 2`, `0` bordo, `0` não-manifold, `1` ilha,
+`0` vértices de valência 2, `21 928` quads. O censo de arestas — a chave da frente do selector —
+**não tem nada a dizer**.
+
+| régua candidata | a APROVADA (QRemeshify) | a da foto dele | separa? |
+|---|---|---|---|
+| faces de área `< 5 % h²` | `5` | `7` | ⛔ não |
+| salto de tamanho por vértice (p99) | `4,62` | `1,57` | ⛔ **ao contrário** (a dele é adaptativa) |
+| ⭐ **dobras em GRUPO** (`folded_by_neighbours`) | `3`, maior grupo **`1`** | `5`, maior grupo **`5`** | ⭐ **sim** |
+
+⇒ *o que se vê é o GRUPO, não a contagem*: uma dobra isolada é um vinco real da escultura; cinco
+juntas são a fenda. ⚠️ **As duas leis de dobra vivem em `ph2d-quadfill` desde sempre** e são
+consumidas pelo motor **legado** e por sondas — o selector do botão **nunca as consultou**. É a
+família do `CLAUDE.md` §5.0: *uma régua na prateleira não protege ninguém*, a mesma que a gravata
+pagou no §105.
+
+### §106.2 — ⛔ E a cura por relaxação NÃO cura: ela TROCA a espécie
+
+`untangle_bowties` passou a aceitar as duas famílias (gravatas + dobras em grupo `≥ 2`), a reparar
+**um grupo de cada vez** — e a medição de ponta a ponta piorou o produto (`0/5` → `2/5` pontas
+amputadas, `21` dobras). O instrumento `--curar` (novo, `cargo run -p ph2d-quadfill --example
+dobras -- --curar <superficie.obj> <candidata.obj>`) mostra porquê na candidata que interessa:
+
+```
+CURAR: 3 face(s) reparada(s) · gravatas 1 -> 1 · dobras 8 -> 6
+```
+
+⭐⭐ **A gravata daquela candidata é irreparável por relaxação**: a ronda que a desfaz deixa a
+mesma face a apontar contra a vizinhança — *ela deixa de ser gravata e passa a ser dobra*. ⇒ o
+«sucesso» do §105 naquela candidata era **a conversão**, e a dobra resultante é o que o dono
+fotografou. ⚠️ **Duas correcções de desenho vieram daqui:**
+
+1. **um reparo que não cede não pode levar consigo o que cedeu** — a 1.ª versão relaxava tudo e
+   repunha tudo; hoje é **por grupo**;
+2. **julga-se o GRUPO e guarda-se o TOTAL** — com o censo global como critério, o reparo de um
+   grupo espera pelo do outro.
+
+### §106.3 — ⭐⭐⭐ A cura é o CRITÉRIO, com a barra no vazio que o DONO mediu
+
+Se a gravata e a dobra são a mesma coisa, a chave do selector tem de as somar — e nesta peça
+**todas** as candidatas com as pontas boas têm `6`–`8` faces do avesso, e as que têm `0` amputam
+`2`–`3` pontas. Com a igualdade estrita de antes, meia dúzia de faces ganhava sempre a três
+pontas cortadas.
+
+| saída | faces do avesso | o veredito do DONO |
+|---|---|---|
+| 30/08, a que motivou a chave das gravatas | **`125`** | ⛔ *«destruiu completamente a malha»* |
+| 03/09, com as pontas curadas | **`6`–`8`** | ⭐ *«melhor resultado até agora»* |
+
+⇒ `INSIDE_OUT_SLACK = 20`, no meio do vazio, e a chave continua **ordinal acima disso**: uma
+malha destruída perde sempre. *Uma barra colada a um dos lados muda de veredito com a peça
+seguinte* — é a mesma lei que as barras da ponta pagaram em 02/09.
+
+### §106.4 — O resultado (a realização do dono, `Detail 1`)
+
+| | pontas amputadas | pior gap | grade no bico | dobras (maior grupo) |
+|---|---|---|---|---|
+| o que shipava a 03/09 de manhã | `1/5` | `3,00` | `3,51` | `0` |
+| a build que ele aprovou (§105) | `0/5` | `0,47` | `0,79` | `5` (grupo `5`) |
+| ⭐ com a chave de UMA família | **`0/5`** | **`0,18`** | **`0,74`** | `6` (grupo `6`) |
+
+⏳ **ABERTO e nomeado:** a fenda **fica**. Ela não é reparável no acabamento — é um nó da grade,
+e a cura é a montante (extracção/mapa). O que esta wave entrega é *não a esconder* (a chave
+conta-a) e *não deixar que ela custe as pontas* (a folga medida).
+
+### §106.5 — A confirmação nas outras duas peças, e o caminho de omissão
+
+| peça / realização | hoje (`PH2D_TIP_CAP=0`) | com a wave completa |
+|---|---|---|
+| ⭐⭐ `_base_sculpt`, a realização do dono | `1/5` · gap `3,00` · grade `3,51` | ⭐ **`0/5`** · **`0,18`** · **`0,74`** |
+| `_base_sculpt` a `s = 0,7` | `0/5` · `0,45` · `1,66` (`3` acima) | `0/5` · **`0,38`** · **`1,07`** (`2`) |
+| `sculpt_antes` (a agulha) | `1/4` · `3,00` · `1,15` (`1` acima) | `1/4` · **`2,57`** · **`0,98`** (**`0`**) |
+
+⭐ **Três de três melhoram ou empatam, nenhuma piora**, e o **caminho de omissão é byte-idêntico**
+(`20 658` quads, mesmo veredito) — a chave nova só troca de escolha onde há candidata melhor.
+
+⚠️ **A fixtura de aceitação (`nossa_com_calota.obj.gz`) foi actualizada para esta saída** — ela é
+o cadeado contra a cura se desfazer em silêncio.

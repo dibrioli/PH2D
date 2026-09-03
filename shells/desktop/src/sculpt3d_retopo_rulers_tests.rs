@@ -431,6 +431,34 @@ fn a_recusa_do_estilhaco_diz_a_contagem_e_manda_desfazer() {
 /// controlo *«a topologia fica intacta»* reprovava `0` contra `4`. Solto, as duas versões têm as
 /// mesmas `4` arestas de bordo e a mesma peça única — *a única coisa que muda é a face cruzar-se
 /// a si própria*, que é exactamente o que este gate quer isolar.
+/// ⭐⭐⭐ **N quads soltos, todos em oito** — a fixtura que mede a MAGNITUDE, e não a presença.
+///
+/// ⛔ O report de 2026-08-30 era `125` faces auto-intersectadas contra `0`; a chave que ele
+/// motivou passou a ter **folga** em 2026-09-03 (ver `super::decide::INSIDE_OUT_SLACK`), porque
+/// meia dúzia delas estava a custar três pontas amputadas na peça do dono. *Uma fixtura com UMA
+/// gravata deixou de medir a lei que a chave defende.*
+pub(super) fn quads_soltos(n: usize, gravata: bool) -> Mesh {
+    let mut verts: Vec<[f32; 3]> = Vec::new();
+    let mut faces: Vec<Face> = Vec::new();
+    for i in 0..n {
+        #[allow(clippy::cast_precision_loss)]
+        let x = i as f32 * 4.0;
+        let b = u32::try_from(verts.len()).unwrap_or(0);
+        verts.extend_from_slice(&[
+            [x, 0.0, 0.0],
+            [x + 1.0, 0.0, 0.0],
+            [x + 1.0, 1.0, 0.0],
+            [x, 1.0, 0.0],
+        ]);
+        faces.push(if gravata {
+            Face::quad(b, b + 1, b + 3, b + 2)
+        } else {
+            Face::quad(b, b + 1, b + 2, b + 3)
+        });
+    }
+    Mesh::from_parts(verts, faces).expect("a fixtura e' construida aqui")
+}
+
 pub(super) fn um_quad(gravata: bool) -> Mesh {
     let verts = vec![
         [0.0, 0.0, 0.0],

@@ -113,3 +113,38 @@ faces (`+69 %`) e a saída de `20 658` para `21 928` quads (`+6 %`).
 | `shells/desktop/src/sculpt3d_photo_button.rs` | a sonda corre a fase zero **do produto** + a linha `F1 CALOTA` |
 | `shells/desktop/src/sculpt3d_history_retopo_extract.rs` | `mod target` visível ao módulo |
 | `docs/3D/quad-remesh/PLANO_a_graduacao_da_ponta.md` | §105 |
+
+---
+
+## §9 — ⭐⭐⭐ A SEGUNDA METADE DO DIA: a fenda, e as duas espécies que são uma família
+
+O dono aprovou a wave acima (*«melhor resultado até agora»*, backup pedido) e fotografou **uma**
+ponta com uma fenda no flanco (`sculpt003.obj`). Mecanismo completo: [plano §106](../quad-remesh/PLANO_a_graduacao_da_ponta.md).
+
+- ⛔ **A malha estava PERFEITA na topologia** (`χ = 2`, `0` bordo, `0` não-manifold, `0` valência-2)
+  — o censo de arestas não tinha nada a dizer. A fenda eram **cinco dobras de até 180° no mesmo
+  ponto** (faces a apontar contra a vizinhança).
+- ⭐ **A régua que separa é o TAMANHO DO GRUPO**: a retopologia que ele **aprovou** tem `3` dobras
+  com maior grupo `1` (vincos reais); a dele tinha `5` num grupo só. ⛔ Nem a contagem de faces
+  minúsculas nem o salto de tamanho separam (a aprovada é **pior** nos dois).
+- ⛔⛔ **As duas leis de dobra já viviam em `ph2d-quadfill`** e eram consumidas pelo motor legado
+  e por sondas — *o selector do botão nunca as consultou* (a família do `CLAUDE.md` §5.0, a mesma
+  que a gravata pagou de manhã).
+- ⛔⛔⛔ **E a relaxação NÃO cura uma dobra: ela troca a espécie do defeito.** Medido com o
+  instrumento novo (`cargo run -p ph2d-quadfill --example dobras -- --curar <sup.obj> <cand.obj>`):
+  naquela candidata a gravata sai e a **mesma face** fica a apontar contra a vizinhança. ⇒ o
+  «sucesso» do §105 era a conversão, e a dobra é o que ele fotografou.
+- ⭐⭐⭐ **A cura é o CRITÉRIO:** a chave passa a contar **as duas espécies** (gravatas + dobras em
+  grupo `≥ 2`) com uma **folga de `20`**, calibrada no vazio entre os dois lados que **ele** julgou
+  — `125` faces do avesso = *«destruiu completamente a malha»* (30/08) · `6`–`8` = *«melhor
+  resultado até agora»* (03/09).
+- Resultado na realização dele: **`0/5` amputadas, pior gap `0,18`, grade `0,74`** — melhor que a
+  build que ele aprovou (`0,47` / `0,79`). Caminho de omissão **byte-idêntico**.
+
+### ⏳ O que fica ABERTO desta metade
+
+- **A fenda fica.** Ela é um nó da grade e não se repara no acabamento: a cura é a montante
+  (extracção/mapa). O que esta wave entrega é **não a esconder** (a chave conta-a) e **não deixar
+  que ela custe as pontas** (a folga medida).
+- **`INSIDE_OUT_SLACK = 20` tem dois pontos de calibração, não uma varredura.** A próxima peça que
+  cair entre `8` e `125` faces do avesso é a que a testa.

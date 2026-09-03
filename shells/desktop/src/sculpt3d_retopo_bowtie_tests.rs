@@ -10,7 +10,7 @@
 
 use ph2d_mesh::{Face, Mesh};
 
-use super::tests::{cubo, cubos, sem, sem_den, um_quad};
+use super::tests::{cubo, cubos, quads_soltos, sem, sem_den, um_quad};
 
 /// ⭐⭐⭐ **GATE — a face em OITO perde, e a régua antiga era CEGA a ela.**
 ///
@@ -23,10 +23,17 @@ use super::tests::{cubo, cubos, sem, sem_den, um_quad};
 /// ⚠️ *Uma régua na prateleira não protege ninguém* — é a família do §5.0 do `CLAUDE.md`
 /// (**nenhum instrumento pergunta se o valor chega a um CONSUMIDOR**), e desta vez o consumidor
 /// em falta era o próprio botão.
+/// # ⚠️ A LEI MUDOU DE FORMA em 2026-09-03 — de PRESENÇA para MAGNITUDE
+///
+/// A chave passou a contar **as duas espécies** de face do avesso (gravatas **e** dobras em
+/// grupo) e ganhou uma **folga** (`super::super::decide::INSIDE_OUT_SLACK`), porque medida na
+/// peça do dono ela estava a custar **três pontas amputadas** por meia dúzia de faces. ⭐ O
+/// report de 30/08 continua defendido — `125` está muito acima da folga — e é isso que esta
+/// fixtura passa a medir: `21` faces em oito contra `0`.
 #[test]
 fn a_face_em_oito_perde_e_a_regua_antiga_nao_a_via() {
-    let boa = um_quad(false);
-    let torta = um_quad(true);
+    let boa = quads_soltos(21, false);
+    let torta = quads_soltos(21, true);
 
     // ⛔ O CONTROLE: sob as DUAS chaves anteriores elas são indistinguíveis.
     assert_eq!(super::open_edges(&boa), super::open_edges(&torta));

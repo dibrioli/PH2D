@@ -93,3 +93,132 @@ fn uma_cerca_apertada_repoe_a_malha_em_vez_de_entregar_meio_caminho() {
     assert_eq!(curadas, 0, "com a cerca fechada nada se cura");
     assert_eq!(m.positions(), &antes[..], "a malha nao voltou ao que era");
 }
+
+/// ⭐⭐⭐ **UM GRUPO DE DOBRAS desfaz-se** — a fenda que o dono fotografou em 2026-09-03 era
+/// exactamente isto: faces do avesso em relação à vizinhança, com `0` gravatas e a topologia
+/// impecável.
+///
+/// ⚠️ A fixtura é o vértice atirado ao longo da DIAGONAL: ele inverte os quads inteiros (a lei
+/// da gravata lê-os como `Convex`, porque a normal de Newell vira com a face) e é a metade da
+/// família que o censo de gravatas **não** vê.
+#[test]
+fn um_grupo_de_dobras_desfaz_se() {
+    let plano = grade(8);
+    let mut m = plano.clone();
+    // ⚠️ **DOIS vértices vizinhos**, e não um: um vértice sozinho inverte **uma** face, e o que
+    // esta lei repara é o GRUPO (a dobra isolada é vinco, e tem gate próprio).
+    let a = (8 / 2) * 9 + 8 / 2;
+    let b = a + 1;
+    {
+        let pos = m.positions_mut();
+        for i in [a, b] {
+            let p = pos[i];
+            pos[i] = [p[0] + 0.30, p[1] + 0.30, p[2]];
+        }
+    }
+    m.rebuild();
+    let dobradas = crate::quality::folded_faces_by_neighbours(&m).len();
+    assert!(
+        dobradas >= 2,
+        "a fixtura tem de ter um GRUPO de dobras: {dobradas}"
+    );
+    assert_eq!(
+        crate::local_shape(&m).0.bowties,
+        0,
+        "e' a outra metade da familia: sem gravatas"
+    );
+    let (v, f) = (m.vert_count(), m.face_count());
+    let curadas = super::untangle_bowties(&mut m, &plano, crate::EXTRACT_TRAVEL);
+    assert!(curadas > 0, "nao curou nada");
+    assert_eq!(
+        crate::quality::folded_faces_by_neighbours(&m).len(),
+        0,
+        "sobraram dobras"
+    );
+    assert_eq!(
+        (m.vert_count(), m.face_count()),
+        (v, f),
+        "a topologia mudou"
+    );
+}
+
+/// ⛔⛔ **UMA DOBRA ISOLADA FICA** — ela é um vinco real da escultura, e alisá-la seria apagar
+/// forma que o artista fez.
+///
+/// ⚠️ **A calibração é do lado APROVADO:** a retopologia que o dono aceitou tem `3` dobras com
+/// maior grupo `1`; a que ele fotografou tem `5` num grupo só.
+#[test]
+fn uma_dobra_isolada_nao_se_toca() {
+    let plano = grade(8);
+    let mut m = plano.clone();
+    // Inverter a ORDEM de uma face: ela passa a apontar contra as vizinhas, sozinha.
+    {
+        let faces = m.faces().to_vec();
+        let mut novas: Vec<Face> = faces
+            .iter()
+            .map(|f| {
+                let v = f.verts();
+                Face::quad(v[0], v[1], v[2], v[3])
+            })
+            .collect();
+        let v = faces[30].verts().to_vec();
+        novas[30] = Face::quad(v[3], v[2], v[1], v[0]);
+        m = Mesh::from_parts(m.positions().to_vec(), novas).expect("a grade continua valida");
+    }
+    let antes = m.positions().to_vec();
+    let dobradas = crate::quality::folded_faces_by_neighbours(&m).len();
+    assert_eq!(dobradas, 1, "a fixtura tem UMA dobra isolada: {dobradas}");
+    let curadas = super::untangle_bowties(&mut m, &plano, crate::EXTRACT_TRAVEL);
+    assert_eq!(curadas, 0, "uma dobra isolada nao se repara");
+    assert_eq!(m.positions(), &antes[..], "a malha foi mexida");
+}
+
+/// ⭐⭐⭐ **UM REPARO QUE NÃO CEDE NÃO LEVA CONSIGO O QUE CEDEU** — o defeito que a 1.ª versão
+/// desta porta tinha, e que só a peça do dono revelou.
+///
+/// ⛔⛔ Ela relaxava **todos** os vértices acusados de uma vez e repunha tudo se o censo não
+/// descesse: quando o report de 03/09 trouxe as dobras, o grupo teimoso apagava também a gravata
+/// já curada, e a saída do botão regrediu de `0/5` para `3/5` pontas amputadas.
+///
+/// ⚠️ **O que torna um grupo teimoso, de forma determinista, é a CERCA**: a gravata precisa de
+/// `≈ 1,1` arestas de viagem e a dobra desta fixtura de `≈ 6,8`; com a cerca do produto
+/// (`UNTANGLE_TRAVEL = 2`) só uma das duas é alcançável. ⛔ *Sem isto o gate passa por acidente* — a 1.ª fixtura punha a dobra na
+/// borda a contar com a vizinhança curta, e ela cedia na mesma.
+#[test]
+fn um_grupo_teimoso_nao_apaga_a_cura_do_outro() {
+    let plano = grade(8);
+    let mut m = plano.clone();
+    {
+        let pos = m.positions_mut();
+        // a gravata, no meio: o vértice passa POR CIMA do vizinho
+        let a = 4 * 9 + 4;
+        let p = pos[a];
+        pos[a] = [p[0] + 0.14, p[1] + 0.14 * 0.35, p[2]];
+        // a dobra, na BORDA: dois vértices vizinhos da fileira de baixo, na diagonal
+        for i in [2usize, 3] {
+            let q = pos[i];
+            pos[i] = [q[0] + 0.60, q[1] + 0.60, q[2]];
+        }
+    }
+    m.rebuild();
+    let gravatas = crate::local_shape(&m).0.bowties;
+    let dobras = crate::quality::folded_faces_by_neighbours(&m).len();
+    assert!(
+        gravatas > 0 && dobras > 0,
+        "a fixtura tem as DUAS: {gravatas} gravata(s), {dobras} dobra(s)"
+    );
+    let curadas = super::untangle_bowties(&mut m, &plano, super::UNTANGLE_TRAVEL);
+    assert!(curadas > 0, "nao curou nada");
+    assert_eq!(
+        crate::local_shape(&m).0.bowties,
+        0,
+        "⛔ a GRAVATA tinha de ser curada mesmo que a dobra nao ceda"
+    );
+    // ⚠️ **E o gate tem de EXERCITAR o caso:** se a dobra da borda tambem cedesse, este teste
+    // passaria sem nunca ter havido um grupo teimoso — *um gate que nao vive o caso que nomeia
+    // e' verde por acidente.*
+    assert!(
+        !crate::quality::folded_faces_by_neighbours(&m).is_empty(),
+        "a dobra cedeu: a fixtura deixou de exercitar o acoplamento"
+    );
+}

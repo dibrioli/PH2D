@@ -114,7 +114,7 @@ pub(super) fn log_candidate(
     let (ratio, amostra) = tip_ratio(out);
     eprintln!(
         "[sculpt3d] candidata w={w:.3} feicoes={features} adapt={adaptive:.2}: {} quads | \
-         furos {} | ilhas {} | gravatas {} | costuras soltas {} | locais trocados {} | lados a discordar {} | >60 {} | \
+         furos {} | ilhas {} | avesso {} (gravatas {}) | costuras soltas {} | locais trocados {} | lados a discordar {} | >60 {} | \
          envies p50 {:.2} p99 {:.1} | aspecto p50 {:.2} | ENTREGA {ratio:.3} (ponta {amostra}) \
          | alcance {:.4} | AMPUTADAS {} de {} (pior gap {:.2}, barra {:.1}) \
          | DESVIO p50 {:.2} ({} de {} ponta(s) acima de {:.1}) \
@@ -134,6 +134,7 @@ pub(super) fn log_candidate(
         // furos e ilhas com a escolhida (`3` amputadas, grade `2,81`) — logo a decisão só podia
         // vir daqui, e esta coluna não existia. *Um log que imprime `n−1` das `n` chaves explica
         // todas as escolhas menos a que interessa.*
+        inside_out(out),
         bowties(out),
         round.solve.loose_seams,
         round.solve.mismatched_locals,
@@ -323,6 +324,16 @@ pub(super) fn still_broken(
 /// corrigida. *O que faltava não era a lei — era um consumidor.*
 pub(super) fn bowties(mesh: &Mesh) -> usize {
     ph2d_quadfill::local_shape(mesh).0.bowties
+}
+
+/// ⭐⭐⭐ **AS FACES DO AVESSO — as DUAS espécies somadas.**
+///
+/// Gravatas (a face cruza-se a si própria) **mais** as dobras **em grupo de `≥ 2`** (a face
+/// aponta contra a vizinhança). ⚠️ **A dobra ISOLADA fica de fora de propósito:** ela é um vinco
+/// real da escultura — medido no lado que o dono aprovou, que tem `3` dobras com maior grupo
+/// `1`, contra as `5` num grupo só da saída que ele fotografou.
+pub(super) fn inside_out(mesh: &Mesh) -> usize {
+    bowties(mesh) + ph2d_quadfill::untangle::folded_group_faces(mesh)
 }
 
 /// ⭐⭐⭐ **AS DUAS FORMAS DE A CASCA NÃO FECHAR, somadas** — a chave da frente de [`worse`].

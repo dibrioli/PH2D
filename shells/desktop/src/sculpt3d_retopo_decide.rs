@@ -11,7 +11,11 @@
 
 use ph2d_mesh::Mesh;
 
-use super::rulers::{bowties, components, open_edges, tip_key_on, tip_ratio};
+use super::rulers::{components, inside_out, open_edges, tip_key_on, tip_ratio};
+
+/// ⭐⭐⭐ **A FOLGA da chave das faces do avesso** — ver o uso em [`worse`], com a tabela dos dois
+/// lados que o dono julgou (`125` reprovadas · `6`–`8` aprovadas).
+const INSIDE_OUT_SLACK: usize = 20;
 
 /// ⭐⭐ **O QUE UMA TENTATIVA DO BOTÃO DEVOLVE** — a malha, o relatório da extracção, o resíduo
 /// de costura, a forma, e as **duas** réguas da ponta.
@@ -102,8 +106,30 @@ pub(super) fn worse(
     // sempre para uma sem, mas se **todas** as tentativas as tiverem ainda se escolhe a menos
     // má. *Um veto absoluto pede prova de corpus que esta linha ainda não tem* — e inventar
     // um limiar sem medir é o que o §0.0 proíbe.
-    let (a_bow, b_bow) = (bowties(a_mesh), bowties(b_mesh));
-    if a_bow != b_bow {
+    // ⭐⭐⭐ **AS DUAS ESPÉCIES DE FACE DO AVESSO SÃO UMA SÓ CHAVE, e ela tem FOLGA (2026-09-03).**
+    //
+    // ⛔⛔ **A gravata e a DOBRA são a mesma coisa vista de dois lados** — uma face que se cruza
+    // a si própria e uma face que aponta contra a vizinhança — e as duas lêem-se na foto do dono
+    // como uma **fenda escura**. Contar só as gravatas deixava a outra metade invisível: a saída
+    // que ele fotografou em 03/09 tinha `0` gravatas e **cinco dobras no mesmo ponto**.
+    //
+    // ⛔⛔⛔ **E a IGUALDADE ESTRITA era o defeito.** Medido nas nove candidatas da peça dele:
+    // *todas* as candidatas com as pontas boas têm `6`–`8` faces do avesso, e as que têm `0`
+    // amputam `2`–`3` pontas. Com a chave a decidir por qualquer diferença, meia dúzia de faces
+    // ganhava sempre a três pontas cortadas — e as pontas são o que ele fotografou **duas
+    // vezes**.
+    //
+    // ⭐ **A folga vive no VAZIO MEDIDO entre os dois lados que o dono julgou:**
+    //
+    // | saída | faces do avesso | o veredito DELE |
+    // |---|---|---|
+    // | 30/08, a que motivou esta chave | **`125`** | ⛔ *«destruiu completamente a malha»* |
+    // | 03/09, com as pontas curadas | **`6`–`8`** | ⭐ *«melhor resultado até agora»* |
+    //
+    // ⇒ `20` fica no meio, e ela continua **ordinal** acima disso: uma malha destruída perde
+    // sempre. ⚠️ *Uma barra colada a um dos lados muda de veredito com a peça seguinte.*
+    let (a_bow, b_bow) = (inside_out(a_mesh), inside_out(b_mesh));
+    if a_bow.abs_diff(b_bow) > INSIDE_OUT_SLACK {
         return a_bow > b_bow;
     }
     // ⭐⭐⭐ **A AMPUTAÇÃO — e ela vem ANTES da forma, porque é o que o dono fotografou.**

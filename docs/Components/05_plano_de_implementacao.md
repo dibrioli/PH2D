@@ -1582,6 +1582,44 @@ let (outer_master, outer_copy) = make_master(sim, r, car_root, docs)?;
 `MasterRoot`* — e **não** exigindo `ObjectInstance`: esse componente só existe **depois** de haver
 uma excepção, então a régua óbvia não acha a cópia numa árvore acabada de criar.
 
+#### ⭐⭐⭐ E o PRIOR ART já estava pesquisado nesta casa — a pergunta do desenho está RESPONDIDA
+
+⚠️ **Não foi preciso pesquisar nada de novo** (pedido do Enio, 2026-09-02): o
+[`propagacao_unity_godot.md` §(c)](pesquisa/instancias_2026-08-21/propagacao_unity_godot.md) tem-no
+lido da doc primária e do código, com as citações.
+
+**Unity — TEM, e o desenho é um submenu com um item por nível:**
+
+| item | o que faz (citado da doc) |
+|---|---|
+| *Apply to Prefab 'Vase'* | *«the value is applied to the 'Vase' Prefab Asset and is used for all instances of the 'Vase' Prefab»* |
+| *Apply as Override in Prefab 'Table'* | *«the value becomes an override on the instance of 'Vase' that is inside the 'Table' Prefab»* |
+| *Apply All* | ⚠️ **sempre ao mais EXTERNO** |
+
+⭐⭐⭐ **E a regra do critério 4 está documentada, com o MOTIVO — é literalmente a nossa frase:**
+
+> *«If Apply to Prefab 'Vase' is chosen and the 'Table' Prefab has an override of the value, this
+> override in the 'Table' Prefab is **reverted at the same time** so that the property on the
+> instance retains the value that was just applied. **If this was not the case, the value on the
+> instance would change right after being applied.**»*
+
+⇒ o *no-op visível* que o critério nomeia é, do outro lado, **um valor que salta de volta logo a
+seguir a ser aplicado** — e é por isso que a `PrefabUtility.ApplyPropertyOverride` **exige** o
+`assetPath`: *«multiple valid targets may exist»*. A escolha do nível não é oferecida por generosidade;
+é que **não existe resposta por omissão**.
+
+**Godot — NÃO TEM, e a ausência é a decisão dele:** nenhum comando do editor empurra um override para
+a cena base; abre-se a cena base e edita-se lá. ⚠️ **Reconfirmado em 2026-09-02**: continua a ser um
+pedido em aberto do lado da comunidade
+([proposal #8292](https://github.com/godotengine/godot-proposals/issues/8292) ·
+[#7649](https://github.com/godotengine/godot-proposals/issues/7649)), e a queixa é sempre a mesma —
+*«anotar os valores à mão e reaplicá-los na cena base»*. ⛔ E editar o interior de uma instância de 2.º
+nível exige *Editable Children* em **cada** nível intermédio.
+
+⇒ **Os dois caminhos existem, e o nosso já tem o do Godot** (abrir a receita e editar lá). O que
+falta é o da Unity — e, se for construído, a metade que apaga a excepção intermédia **não é opcional**:
+sem ela o artista carrega em *Aplicar* e vê o valor **voltar atrás**.
+
 #### ⏳ O que ficou POR RESPONDER, e é onde a próxima janela pega
 
 Duas sondas ficaram sem veredito, e as duas dependem de **uma** pergunta:

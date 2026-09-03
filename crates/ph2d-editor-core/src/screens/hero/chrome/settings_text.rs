@@ -32,8 +32,6 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         TextRendering::CrispHeavy
     } else if id == ids::CTX_MENU_TEXT_CRISP_HEAVY_PLUS {
         TextRendering::CrispHeavyPlus
-    } else if id == ids::CTX_MENU_TEXT_CRISP_EMBOLDEN {
-        TextRendering::CrispEmbolden
     } else {
         return false;
     };

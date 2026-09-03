@@ -391,7 +391,6 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_TEXT_DEFAULT,
         ids::CTX_MENU_TEXT_CRISP_HEAVY,
         ids::CTX_MENU_TEXT_CRISP_HEAVY_PLUS,
-        ids::CTX_MENU_TEXT_CRISP_EMBOLDEN,
         ids::CTX_MENU_SETTINGS_MOTION,
         ids::CTX_MENU_MOTION_EXPRESSIVE,
         ids::CTX_MENU_MOTION_DISCRETE,

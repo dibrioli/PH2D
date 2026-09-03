@@ -171,29 +171,6 @@ pub enum TextRendering {
     /// Experimental: CrispHeavy + half-pixel snap-X + letter-spacing
     /// -0.01em em corpos ≤16 px. A/B vs CrispHeavy.
     CrispHeavyPlus,
-    /// ⭐⭐ **O que o Vello 0.10 traz e os outros três NÃO conseguem exprimir:**
-    /// engrossar o contorno **só no eixo X**.
-    ///
-    /// Os presets acima pedem massa ao **eixo `wght` da fonte** — e um eixo de peso
-    /// engorda os traços verticais **e** os horizontais juntos, porque foi assim que o
-    /// desenhador o desenhou. A `Scene::font_embolden` dilata a **outline** depois de
-    /// desenhada, com `x` e `y` independentes (`Diagonal2`) ⇒ dá para engrossar as
-    /// hastes verticais — que é o que sustenta a legibilidade a 11-12 px — **sem**
-    /// engordar as barras horizontais, que é o que faz o texto pequeno fechar os olhos
-    /// das letras.
-    ///
-    /// ⚠️ **E funciona em fonte NÃO-variável**, onde o `weight_boost` é literalmente
-    /// inerte: sem eixo `wght` não há o que empurrar.
-    ///
-    /// ⚠️ **O número é PIXELS, não ems** — a dilatação corre sobre a outline já
-    /// escalada ao corpo do run (`glyph_cache.rs`: `DrawSettings::unhinted(size)` e
-    /// depois `expand_path(amount)`) ⇒ o mesmo valor engrossa relativamente **mais** o
-    /// texto pequeno, que é a direcção certa, e é preciso ser minúsculo.
-    ///
-    /// ⛔ **O valor de partida NÃO está medido, e isso está dito de propósito.** Não há
-    /// como o medir aqui: o arnês de teste desta casa não carrega fontes, e texto sem
-    /// glifos não produz tinta nenhuma. Quem o mede é o dono, na bancada, a olhar.
-    CrispEmbolden,
 }
 
 /// Estratégia de snap horizontal do glyph origin. Trade-off entre
@@ -236,12 +213,6 @@ pub struct TextRenderingParams {
     /// aperta a densidade horizontal — útil em presets com ExtraBold
     /// para compensar o "abrir" natural do weight. `0.0` = sem ajuste.
     pub letter_spacing_em_dense: f32,
-    /// **Dilatação sintética da outline, em PIXELS**, `(x, y)` — o `font_embolden` do
-    /// Vello 0.10. `(0.0, 0.0)` desliga-a, e é o que os três presets históricos
-    /// declaram: com zero, o Vello nem sequer entra no caminho da expansão
-    /// (`glyph_cache.rs` compara contra `Diagonal2::new(0,0)`), logo eles ficam
-    /// **byte-idênticos** ao que shipava. Há gate a afirmá-lo.
-    pub embolden_px: (f32, f32),
     //
     // ⛔ AQUI VIVIA `prefer_msaa: bool` (removido 2026-08-30). NÃO o
     // reintroduza, nem com outro nome.
@@ -279,28 +250,22 @@ const CRISP_BOOST_TIER_DENSE_MAX: f32 = 16.0;
 const CRISP_BOOST_TIER_MID_MAX: f32 = 20.0;
 
 impl TextRendering {
-    /// ⭐ **Todos os modos, na ordem do ciclo do menu** — a lista canónica, como o
-    /// `SliderDesign::ALL` e o `PropertyBoxState::ALL`.
+    /// ⭐ **Todos os modos, na ordem do ciclo do menu** — a lista canónica, irmã do
+    /// `SliderDesign::ALL` e do `PropertyBoxState::ALL`.
     ///
-    /// ⚠️ Ela existe porque a alternativa mordeu: o teste do ciclo tinha a contagem **no nome**
-    /// (`..._cycles_three_states`) e o corpo escrito à mão, então o 4.º preset **partiu o teste de
-    /// outra pessoa** só por existir. *Uma contagem literal num gate faz cada feature nova editar o
-    /// teste de alguém.* Agora os gates derivam daqui, e um variant que não venha a esta lista é
-    /// apanhado pelo ciclo.
-    pub const ALL: [Self; 4] = [
-        Self::Default,
-        Self::CrispHeavy,
-        Self::CrispHeavyPlus,
-        Self::CrispEmbolden,
-    ];
+    /// ⚠️ Ela nasceu de uma mordida: o teste do ciclo tinha a contagem **no nome**
+    /// (`..._cycles_three_states`) e o corpo escrito à mão, então um preset novo **partia o
+    /// teste de outra pessoa só por existir** — e a correcção óbvia (trocar «três» por
+    /// «quatro») deixava a mesma armadilha armada para o seguinte. *Uma contagem literal num
+    /// gate faz cada feature nova editar o teste de alguém.* Os gates derivam daqui.
+    pub const ALL: [Self; 3] = [Self::Default, Self::CrispHeavy, Self::CrispHeavyPlus];
 
     /// Cycle entre as opções (toggle do menu).
     pub fn next(self) -> Self {
         match self {
             Self::Default => Self::CrispHeavy,
             Self::CrispHeavy => Self::CrispHeavyPlus,
-            Self::CrispHeavyPlus => Self::CrispEmbolden,
-            Self::CrispEmbolden => Self::Default,
+            Self::CrispHeavyPlus => Self::Default,
         }
     }
 
@@ -310,7 +275,6 @@ impl TextRendering {
             Self::Default => "default",
             Self::CrispHeavy => "crisp_heavy",
             Self::CrispHeavyPlus => "crisp_heavy_plus",
-            Self::CrispEmbolden => "crisp_embolden",
         }
     }
 
@@ -320,7 +284,6 @@ impl TextRendering {
             Self::Default => "Default",
             Self::CrispHeavy => "Crisp Heavy",
             Self::CrispHeavyPlus => "Crisp Heavy +",
-            Self::CrispEmbolden => "Crisp Embolden",
         }
     }
 
@@ -337,9 +300,6 @@ impl TextRendering {
                 snap_x: SnapX::None,
                 hint: true,
                 letter_spacing_em_dense: 0.0,
-                // Os três presets históricos ficam byte-idênticos: com zero o Vello nem
-                // entra no caminho da expansão de outline.
-                embolden_px: (0.0, 0.0),
             },
             Self::CrispHeavy => TextRenderingParams {
                 weight_boost_body: 300,
@@ -352,9 +312,6 @@ impl TextRendering {
                 // → CrispHeavy fica visualmente "pro" (ExtraBold real).
                 hint: false,
                 letter_spacing_em_dense: 0.0,
-                // Os três presets históricos ficam byte-idênticos: com zero o Vello nem
-                // entra no caminho da expansão de outline.
-                embolden_px: (0.0, 0.0),
             },
             Self::CrispHeavyPlus => TextRenderingParams {
                 // Mesmo boost de CrispHeavy.
@@ -367,35 +324,10 @@ impl TextRendering {
                 // Aperta densidade dos corpos pequenos compensando o
                 // "abrir" do ExtraBold.
                 letter_spacing_em_dense: -0.01,
-                // Os três presets históricos ficam byte-idênticos: com zero o Vello nem
-                // entra no caminho da expansão de outline.
-                embolden_px: (0.0, 0.0),
                 // ⛔ Este preset ligava `AaConfig::Msaa16` no passe do
                 // Vello. Retirado em 2026-08-30 — ver a nota longa no
                 // fim de `TextRenderingParams`: o `AaConfig` é por
                 // PASSE, e este passe também carrega os vectores.
-            },
-            Self::CrispEmbolden => TextRenderingParams {
-                // ⚠️ **Sem boost de peso, de propósito.** Este preset existe para
-                // responder a UMA pergunta — *o que a dilatação de outline faz que o
-                // eixo `wght` não faz?* — e somá-la ao boost misturaria as duas causas.
-                // Se ganhar, a composição é a wave seguinte.
-                weight_boost_body: 0,
-                weight_boost_dense: 0,
-                weight_boost_mid: 0,
-                // Snap inteiro: a dilatação é sobre a outline, e uma origem fraccionária
-                // borra exactamente a nitidez que ela vem comprar.
-                snap_x: SnapX::Full,
-                // `hint: false` pela mesma razão do CrispHeavy — o autohinter quantiza
-                // massa de haste a 11-12 px, e apagaria a diferença que este preset É.
-                hint: false,
-                letter_spacing_em_dense: 0.0,
-                // ⛔ **PALPITE DECLARADO, não medição.** `0,2 px` no X é da ordem de
-                // meia haste a 12 px; o Y fica a zero porque é a barra horizontal que
-                // fecha os olhos das letras no corpo pequeno. Não há como o medir aqui
-                // (o arnês não tem fontes), então o número é o ponto de partida para o
-                // dono olhar na bancada — e é ele que o fixa.
-                embolden_px: (0.2, 0.0),
             },
         }
     }
@@ -460,9 +392,7 @@ mod tests {
 
     /// **O ciclo do menu percorre a lista canónica e volta ao princípio.**
     ///
-    /// ⚠️ **Derivado do [`TextRendering::ALL`], nunca escrito à mão.** A 1.ª redacção chamava-se
-    /// `..._cycles_three_states` e enumerava os três — então o 4.º preset partiu-a só por existir,
-    /// e a correcção «óbvia» (trocar três por quatro) deixaria a mesma armadilha armada para o 5.º.
+    /// ⚠️ **Derivado do [`TextRendering::ALL`], nunca escrito à mão** — ver o doc de `ALL`.
     #[test]
     fn text_rendering_cycles_through_every_mode_and_returns() {
         let mut cur = TextRendering::ALL[0];

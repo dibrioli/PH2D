@@ -846,11 +846,11 @@ população**.
 
 | # | obra | porquê agora | risco |
 |---|---|---|---|
-| ✅ **1** | **checkbox: a linha inteira é o alvo** (§16.1) | 81 sítios, e ⭐ **os chamadores JÁ registam a linha** (`Rect::new(x, y, w, h)` em 17 de 19 amostrados) ⇒ é **só pintura**, zero mudanças de chamador | baixo |
-| ✅ 2 | `toggle` → `checkbox` (§16.4, fusão de PINTURA) | decisão do Enio; 11 ficheiros; apaga um widget | médio (substituição em chamadores) |
-| ✅ 3 | pílulas fora (§16.3) | decisão do Enio; **custo zero** (15.1) | nenhum |
+| **1** | **checkbox: a linha inteira é o alvo** | 81 sítios, e ⭐ **os chamadores JÁ registam a linha** (`Rect::new(x, y, w, h)` em 17 de 19 amostrados) ⇒ é **só pintura**, zero mudanças de chamador | baixo |
+| 2 | `toggle` → `checkbox` | decisão do Enio; 11 ficheiros; apaga um widget | médio (substituição em chamadores) |
+| 3 | pílulas fora | decisão do Enio; **custo zero** (15.1) | nenhum |
 | 4 | o **ritmo da linha** | ⛔ hoje a linha de propriedade mede `22` (do `SliderStyle`) e a de checkbox `18` (literal em ~19 chamadores): um formulário alterna alturas e **não lê como grelha** | médio: mexe em chamadores |
-| ⛔ 5 | ~~scrollbar `2 px` em repouso~~ | **RECUSADA por medição (§17)** — a cerca é o alvo táctil, e não há hover num tablet. Virou a **rolagem por arrasto**, que é o buraco que ela escondia | — |
+| 5 | scrollbar `2 px` em repouso | devolve **8 px de largura a TODOS os painéis** de uma vez (§5.3) | baixo |
 | 6 | **a coluna de animação** | ⭐ decisão nº 3 do Enio, e a premissa que a bloqueava **DISSOLVEU** — ver 15.3 | alto: precisa de consumidor |
 | 7 | o 4.º preset de fonte (Vello 0.10) | instrução dele; isolado; ⛔ **os três presets actuais não se tocam** | baixo |
 
@@ -1011,67 +1011,61 @@ ganha o gesto sem escrever uma linha.*
 uma pressão parada em espaço vazio já arma o arrasto, e larga sem rolar nada. As duas são afinação
 de sensação, e a sensação mede-se com o dedo, não aqui.
 
-## §18 — ✅ A OBRA 7: o 4.º modo de texto, e o que o Vello 0.10 de facto traz (2026-09-03)
+## §18 — ⛔⛔ A OBRA 7 FOI CONSTRUÍDA, SMOKADA E **REVERTIDA** (2026-09-03)
 
 Instrução do Enio, 2026-09-01: *«por precaução vamos manter o que temos e colocar o que o vello
-consegue fazer como mais uma opção de aparência das fonts. CUidado para não destruir o que temos.»*
+consegue fazer como mais uma opção de aparência das fonts.»* ⇒ construiu-se o 4.º preset,
+`CrispEmbolden`, sobre a `Scene::font_embolden` do Vello 0.10 (que tinha **zero consumidores**).
 
-### 18.1 — O que os três presets actuais NÃO conseguem exprimir
+### 18.1 — O veredito do dono, em duas frases
 
-Todos os três pedem massa ao **eixo `wght` da fonte**. Um eixo de peso engorda hastes verticais **e**
-barras horizontais **juntas** — foi assim que o tipógrafo as desenhou, e não há como as separar.
+> *«logo ao selecionar a nova opção o cursor ficou lento e não se pode abrir nada mais. não vi
+> diferença na font»*
 
-⭐ `Scene::font_embolden` (Vello 0.10, **zero consumidores** nossos até hoje) dilata a **outline**
-com `x` e `y` **independentes** (`Diagonal2`) ⇒ dá para engrossar **só as hastes verticais**, que é
-o que sustenta a legibilidade a 11–12 px, **sem** engordar as barras horizontais, que é o que fecha
-os olhos das letras no corpo pequeno.
+⇒ **caro e invisível.** As duas metades juntas fecham a questão: se fosse só invisível, era afinar o
+número; se fosse só caro, era pesar o ganho. **Sem ganho e com custo, não há o que pesar.**
 
-⚠️ **E funciona em fonte NÃO-variável**, onde o `weight_boost` é literalmente inerte: sem eixo
-`wght` não há o que empurrar.
+### 18.2 — O mecanismo do custo, e porque não é o meu número
 
-### 18.2 — A unidade, lida no fonte e não adivinhada
+`font_embolden` não é uma bandeira de rasterizador: com `amount != 0` o Vello **desvia o glifo para
+outro caminho** — desenha a outline para um buffer, corre `kurbo::expand_path` (offset de contorno,
+com junção e limite de miter) e **re-codifica o resultado**
+(`vello_encoding/src/glyph_cache.rs`). Um contorno deslocado tem **muito mais segmentos** que o
+original, e esses segmentos são re-percorridos **a cada quadro**, para cada glifo no ecrã. ⇒ o custo
+escala com *glifos × segmentos*, e uma UI desenha milhares de glifos por quadro.
 
-⚠️ **O `amount` é em PIXELS, não em ems.** A cadeia é
-`DrawSettings::unhinted(self.size, coords)` → outline já escalada ao corpo do run →
-`expand_path(outline, amount, join, miter, tol)` (`vello_encoding/src/glyph_cache.rs`). ⇒ o mesmo
-valor engrossa **relativamente mais** o texto pequeno, que é a direcção certa, e tem de ser
-minúsculo.
+⚠️ **Nenhum cache o remove:** o cache guarda a *codificação* do glifo, não o trabalho de a percorrer
+por quadro.
 
-### 18.3 — ⛔ O que NÃO está medido, dito no próprio código
+### 18.3 — E a hipótese sobre a invisibilidade, nomeada e NÃO verificada
 
-**O valor.** `(0.2, 0.0)` é **palpite declarado**, e o doc-comment do preset di-lo com essas
-palavras. Não há como o medir aqui: o arnês desta casa não carrega fontes (§16.2), texto não produz
-tinta, e a aparência de um glifo não é uma grandeza que este repo saiba ler. **Quem o fixa é o dono,
-a olhar** — *Settings › Text Rendering › Crisp Embolden*.
+O `amount` é em **pixels** — a cadeia é `Size::new(font_size)` → outline já escalada →
+`expand_path` (lido no fonte, `glyph_cache.rs:56`). A `0,2 px` por lado, uma haste de ~1,2 px a
+12 px devia engrossar **~33 %** — muito visível. Não foi.
 
-⚠️ E o preset **não soma o `weight_boost`**, de propósito: ele existe para responder a *uma*
-pergunta — *o que a dilatação faz que o eixo não faz?* — e somar as duas causas tornaria a resposta
-ilegível. Se ganhar, a composição é a wave seguinte.
+⇒ **hipótese com endereço:** `Diagonal2::new(0.2, 0.0)` é um deslocamento **anisotrópico com uma
+componente a ZERO**, e um offset de contorno com componente nula é mal condicionado — a normal que
+aponta em `y` recebe deslocamento `0` e a curva degenera. Isso produziria exactamente o par
+observado: **muitos segmentos** (lento) e **forma quase igual** (invisível).
 
-### 18.4 — A aditividade é gateada, não prometida
+⛔ **Não foi verificada, e não vale a corrida.** O teste desta casa **não carrega fontes** (§16.2),
+então isto só se mede no ecrã — e a única corrida disponível é a do dono. E mesmo que um `amount`
+**uniforme** (`(a, a)`) fosse bem condicionado e visível, ele deixaria de ser *«engrossar só o X»*,
+que era **a razão inteira de o preset existir**: um synthetic bold uniforme é o que o eixo `wght` já
+faz melhor, com espaçamento desenhado pelo tipógrafo.
 
-Os três históricos declaram `embolden_px: (0.0, 0.0)`, e com zero o Vello **nem entra** no caminho
-da expansão (ele compara contra `Diagonal2::new(0,0)` antes de chamar o `expand_path`) ⇒ a
-rasterização deles é a mesma, instrução por instrução. Gate: `the_fourth_text_preset_is_additive`.
+### 18.4 — O que fica
 
-⚠️ **E a wave partiu um teste de outra pessoa só por existir:** o
-`text_rendering_cycles_three_states` tinha a contagem **no nome** e o corpo escrito à mão. ⛔ A
-correcção óbvia — trocar «três» por «quatro» — deixaria a mesma armadilha armada para o 5.º. ⇒
-nasceu o **`TextRendering::ALL`**, e os quatro gates passaram a derivar dele.
-
-### 18.5 — ⛔⛔ E o bloco foi escrito na ÁRVORE ERRADA
-
-A cwd do shell voltou sozinha ao primário — **sem nenhum `cd` no meio** — e oito ficheiros deste
-bloco foram editados no **`main`**. ⚠️ **O `cargo check` passou**, porque a árvore errada também
-compila.
-
-⭐ **O que denunciou foi um acidente:** a ferramenta `Write` usa caminho **absoluto** e pôs o
-ficheiro de teste na worktree, enquanto o `cargo test` corria no primário ⇒ *«no test target»*. Sem
-essa inconsistência, o bloco teria sido commitado na linha errada — ou pior, ficado por commitar no
-`main` de outra pessoa.
-
-Recuperação: `git diff > patch` no primário · `git checkout --` · `git apply -3` na worktree (o
-Mergiraf resolveu o resíduo). ⚠️ **Mas o patch aterrou no sítio errado sem conflito nenhum:** esta
-linha tinha partido o ficheiro de ids **em dois**, e o símbolo novo caiu na metade que não tem os
-irmãos dele — compilava, e ficava a três écrãs de distância. *Depois de um `apply -3`, confira
-ONDE cada símbolo aterrou, não só que compila.*
+- ⛔ **O preset saiu do produto**, com o wiring todo (id, linha de menu, `pre_populate`, handler,
+  o braço do overlay). *Uma entrada de menu que congela o app é pior que uma ausente.*
+- ⚠️ **O modo NÃO era persistido** em `~/.ph2d/prefs.txt` — reiniciar limpava-o. Foi a **primeira**
+  coisa verificada ao receber o report, e é a diferença entre um smoke mau e um smoke que prende o
+  dono no estado partido.
+- ⭐ **O `TextRendering::ALL` FICA.** Ele nasceu porque este preset partiu o
+  `text_rendering_cycles_three_states` — um gate com a contagem **no nome** — e a lição sobrevive à
+  reversão: *uma contagem literal num gate faz cada feature nova editar o teste de alguém.*
+- ⇒ **A resposta à pergunta do Enio** (*«o que há de mais moderno no Vello que pode ajudar?»*),
+  para este item: **`font_embolden` foi medido e não paga.** Os outros achados da §8 (o esbatimento
+  do rótulo por `push_luminance_mask_layer`, o `draw_blurred_rounded_rect`) continuam por medir, e
+  ⚠️ este resultado ensina como: **perguntar o custo POR QUADRO antes de desenhar o que quer que
+  seja**, porque num editor tudo se repinta.

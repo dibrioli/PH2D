@@ -15,7 +15,7 @@
 
 use super::{snap_x_apply, text_rendering};
 use ph2d_text::{FontWeight, PositionedLayoutItem, TextSystem};
-use ph2d_vector::{Affine, Color, Diagonal2, Fill, FontEmbolden, Glyph, VectorScene};
+use ph2d_vector::{Affine, Color, Fill, Glyph, VectorScene};
 
 /// Lay out `text` via parley + emit a glyph run for each parley
 /// [`PositionedLayoutItem::GlyphRun`] at `(x, y)` (top-left origin).
@@ -138,7 +138,6 @@ pub(crate) fn paint_text_weighted(
     let params = rendering.params();
     let snap_x = params.snap_x;
     let hint = params.hint;
-    let embolden = params.embolden_px;
     for line in layout.lines() {
         for item in line.items() {
             let PositionedLayoutItem::GlyphRun(glyph_run) = item else {
@@ -150,15 +149,6 @@ pub(crate) fn paint_text_weighted(
             inner
                 .draw_glyphs(font)
                 .font_size(run_font_size)
-                // ⭐⭐ **A dilatação sintética da outline** (Vello 0.10) — o que o eixo
-                // `wght` não sabe fazer: engrossar **só** o X. Os três presets
-                // históricos declaram `(0.0, 0.0)`, e aí o Vello nem entra no caminho da
-                // expansão (`glyph_cache.rs` compara contra `Diagonal2::new(0,0)`) ⇒ eles
-                // ficam **byte-idênticos** ao que shipava.
-                .font_embolden(FontEmbolden::new(Diagonal2::new(
-                    f64::from(embolden.0),
-                    f64::from(embolden.1),
-                )))
                 // Hint per preset. `true` snapa stems ao pixel grid
                 // (crisp); `false` deixa o eixo wght variable fluir
                 // sem quantização (necessário para CrispHeavy ficar
@@ -248,7 +238,6 @@ pub fn paint_text_rotated_ccw(
     let params = rendering.params();
     let snap_x = params.snap_x;
     let hint = params.hint;
-    let embolden = params.embolden_px;
     for line in layout.lines() {
         for item in line.items() {
             let PositionedLayoutItem::GlyphRun(glyph_run) = item else {
@@ -260,15 +249,6 @@ pub fn paint_text_rotated_ccw(
             inner
                 .draw_glyphs(font)
                 .font_size(run_font_size)
-                // ⭐⭐ **A dilatação sintética da outline** (Vello 0.10) — o que o eixo
-                // `wght` não sabe fazer: engrossar **só** o X. Os três presets
-                // históricos declaram `(0.0, 0.0)`, e aí o Vello nem entra no caminho da
-                // expansão (`glyph_cache.rs` compara contra `Diagonal2::new(0,0)`) ⇒ eles
-                // ficam **byte-idênticos** ao que shipava.
-                .font_embolden(FontEmbolden::new(Diagonal2::new(
-                    f64::from(embolden.0),
-                    f64::from(embolden.1),
-                )))
                 // Hint per preset (same as the straight painter — see
                 // `paint_text_weighted`). Hinting under a 90° rotation:
                 // skrifa snaps to the *layout* pixel grid pre-rotation,

@@ -86,13 +86,6 @@ pub const CTX_MENU_SETTINGS_TEXT: NodeId = hash_node_id("ctx_menu_settings_text"
 pub const CTX_MENU_TEXT_DEFAULT: NodeId = hash_node_id("ctx_menu_text_default");
 pub const CTX_MENU_TEXT_CRISP_HEAVY: NodeId = hash_node_id("ctx_menu_text_crisp_heavy");
 pub const CTX_MENU_TEXT_CRISP_HEAVY_PLUS: NodeId = hash_node_id("ctx_menu_text_crisp_heavy_plus");
-/// ⭐ **O 4.º modo de texto** — a dilatação sintética de outline do Vello 0.10
-/// (`font_embolden`), a única das quatro que engrossa **só o eixo X**.
-///
-/// ⚠️ Ele mora AQUI, com os irmãos. A 1.ª tentativa aterrou no `menus.rs` porque o patch veio de
-/// uma árvore onde este ficheiro **ainda não estava partido em dois** — compilava, e ficava a três
-/// écrãs de distância de tudo o que lhe diz respeito.
-pub const CTX_MENU_TEXT_CRISP_EMBOLDEN: NodeId = hash_node_id("ctx_menu_text_crisp_embolden");
 
 /// Top-level Settings entry that opens the **Motion** submenu — o carácter da UI viva
 /// (`crate::motion::UiCharacter`) e o interruptor de *reduced motion*.

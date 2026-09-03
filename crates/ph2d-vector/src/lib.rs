@@ -72,8 +72,4 @@ pub use vello::peniko::{
 // Glyph + Scene used by callers that drive `Scene::draw_glyphs`
 // directly (text rendering in ph2d-editor::paint). Same version-skew
 // rationale as kurbo/peniko above.
-pub use vello::{FontEmbolden, Glyph, Scene};
-// ⚠️ `Diagonal2` é o par `(x, y)` da dilatação sintética de outline — mesma razão de
-// re-exportação que o resto: quem pinta texto vive noutra crate e não deve depender do
-// `vello` directamente (a lei do version-skew, acima).
-pub use vello::kurbo::Diagonal2;
+pub use vello::{Glyph, Scene};

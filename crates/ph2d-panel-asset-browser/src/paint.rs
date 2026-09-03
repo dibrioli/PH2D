@@ -116,12 +116,17 @@ pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
     }
     paint_chrome(ctx, rect);
     let controls_bottom = paint_controls(state, ctx, rect);
-    // ⭐⭐ A faixa da pergunta de relação (D9) empurra o corpo para baixo quando existe, e devolve
-    // o mesmo `y` quando não — ver o cabeçalho do [`crate::paint_related`].
-    let body_top = crate::paint_related::paint(state, ctx, rect, controls_bottom);
     // ⭐⭐ A coluna de catálogos devolve a largura que ocupou — e a grade cede a partir daí. Ver o
     // cabeçalho do `paint_catalog` para o porquê de a largura ser DERIVADA.
-    let col_w = crate::paint_catalog::paint(state, ctx, rect, body_top);
+    //
+    // ⚠️ **Ela vem ANTES da faixa de relação de propósito** (report do Enio, *«layout ruim»*): a
+    // faixa ocupa a largura da GRADE, e a largura da grade só existe depois de a coluna dizer
+    // quanto tomou. Na 1.ª versão a faixa era pintada primeiro, à largura toda, e nascia por cima
+    // da coluna.
+    let col_w = crate::paint_catalog::paint(state, ctx, rect, controls_bottom);
+    // ⭐⭐ A faixa da pergunta de relação (D9) empurra **a grade** para baixo quando existe, e
+    // devolve o mesmo `y` quando não — ver o cabeçalho do [`crate::paint_related`].
+    let body_top = crate::paint_related::paint(state, ctx, rect, controls_bottom, col_w);
     paint_grid(state, ctx, rect, body_top, col_w);
 }
 

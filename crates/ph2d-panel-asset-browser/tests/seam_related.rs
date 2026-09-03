@@ -211,3 +211,90 @@ fn a_menu_without_a_subject_sets_no_question() {
     assert_eq!(out, EventOutcome::Ignored);
     assert_eq!(st.related, None);
 }
+
+// ── ⛔⛔ A GEOMETRIA (report do Enio, 2026-09-02: *«layout ruim»*) ───────────────────────────────
+//
+// ⚠️ **Os cinco gates acima passavam sobre a foto do defeito**, e não por descuido: eles perguntam
+// *«o id está no índice de toque?»* e *«o clique chega ao estado?»* — as duas verdadeiras enquanto
+// a faixa nascia por cima da coluna de catálogos, com o rótulo debaixo do botão `+ Catalog` e o
+// `✕` dela empilhado mesmo por baixo do `✕` que fecha o painel.
+//
+// *Um controlo pode estar VIVO, ALCANÇÁVEL e no SÍTIO ERRADO — são três perguntas, e esta secção
+// é a terceira.*
+
+/// Os dois rectângulos tocam-se?
+fn overlaps(a: Rect, b: Rect) -> bool {
+    a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+}
+
+/// ⭐⭐ **A faixa ocupa a faixa da GRADE, e não pisa a coluna de catálogos.**
+///
+/// **Mutação que deve sangrar:** trocar o `x` da faixa de `rect.x + col_w + pad()` para
+/// `rect.x + pad()` — que é literalmente a versão da foto.
+#[test]
+fn the_band_never_covers_the_catalog_column() {
+    publish_library();
+    let (mut host, mut st) = open_host();
+    st.show_catalogs = true;
+    st.related = Some((HOUSE, Relation::Uses));
+    let rects = host.paint::<AssetBrowserPanel>(&mut st, Rect::new(0.0, 0.0, 1600.0, 900.0));
+
+    let band = ph2d_panel_asset_browser::paint_related::probe_band_rect()
+        .expect("com filtro ligado a faixa tem de ser pintada");
+
+    // A coluna aberta tem de existir, senão este gate mede uma ausência.
+    let col: Vec<_> = rects
+        .iter()
+        .filter(|(i, _)| {
+            *i == ids::ASSET_CATALOG_NEW
+                || *i == ids::ASSET_CATALOG_ALL
+                || *i == ids::ASSET_CATALOG_UNASSIGNED
+        })
+        .collect();
+    assert!(
+        !col.is_empty(),
+        "a coluna de catalogos nao foi pintada — o gate mediria uma ausencia"
+    );
+
+    for (id, r) in col {
+        assert!(
+            !overlaps(band, *r),
+            "a faixa {band:?} pisa um controlo da coluna ({id:?} em {r:?})"
+        );
+    }
+}
+
+// ⛔ **UM GATE QUE ESCREVI E APAGUEI, e o motivo fica escrito.**
+//
+// Ele exigia que o `✕` da faixa não partilhasse coluna de pixels com o `✕` que fecha o painel.
+// Reprovou a cura — e foi esse o sinal: a regra era **minha**, não do report. O Enio fotografou um
+// rótulo por baixo de um botão e uma faixa por cima da coluna; *«dois `✕` na mesma coluna»* foi
+// uma leitura minha da foto, e é o padrão normal de toda janela com uma barra dentro (fechar a
+// janela · dispensar a faixa). Satisfazê-lo obrigaria a pôr o `✕` num sítio que ninguém procura.
+//
+// ⚠️ *Um gate que reprova a cura de um defeito real está a medir a preferência de quem o escreveu.*
+// O que separa os dois hoje é a cura verdadeira: a faixa deixou de ser do painel e passou a ser da
+// grade, então ela nasce dentro do corpo e não encostada ao cabeçalho.
+
+/// ⭐ **O rótulo cabe DENTRO da faixa** — a linha de base não é uma margem.
+///
+/// ⚠️ A 1.ª versão punha a linha de base em `y + row_h − Xs`, ou seja no bordo de baixo: o texto
+/// descia para fora e ia colidir com a fileira seguinte. A régua aqui é a conta da centragem que a
+/// coluna ao lado já usa — se as duas divergirem, uma delas está errada.
+#[test]
+fn the_label_sits_inside_the_band() {
+    use ph2d_tokens::{Density, TypeToken};
+    publish_library();
+    let (mut host, mut st) = open_host();
+    st.related = Some((HOUSE, Relation::Uses));
+    host.paint::<AssetBrowserPanel>(&mut st, Rect::new(0.0, 0.0, 1600.0, 900.0));
+    let band = ph2d_panel_asset_browser::paint_related::probe_band_rect().expect("faixa");
+
+    let row_h = Density::Compact.row_h_px();
+    let size = TypeToken::Sm.px();
+    let baseline = band.y + (row_h - size) * 0.5;
+    assert!(
+        baseline >= band.y && baseline + size <= band.y + band.h + f32::EPSILON,
+        "a linha de base {baseline} nao cabe na faixa {band:?}"
+    );
+}

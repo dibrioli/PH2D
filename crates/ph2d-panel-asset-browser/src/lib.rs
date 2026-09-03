@@ -36,7 +36,7 @@ mod paint;
 mod paint_catalog;
 mod paint_catalog_rename;
 /// ⭐⭐ A faixa da pergunta de relação (D9) — irmã por assunto do [`paint`], ver o cabeçalho de lá.
-mod paint_related;
+pub mod paint_related;
 /// ⭐⭐ A miniatura de um cartão e o memo de textura que ela obriga — irmão por assunto do
 /// [`paint`], ver o cabeçalho de lá.
 mod paint_thumb;

@@ -670,3 +670,48 @@ passava-a ao `probe_query` — o que prova que o **índice** filtra (a `index_la
 que o painel liga o `state.related` à consulta que ele constrói. A régua passou a ser o
 `probe_painted_at`: **o que o `paint` de facto desenhou**. *Um gate que fabrica o alcance mede o seu
 próprio arnês.*
+
+### §13.6 — ⛔⛔⛔ O report *«layout ruim»* (foto do Enio, 2026-09-02) — **os oito gates passavam**
+
+A faixa nascia **à largura toda do painel**, e a foto mostra o resultado: o rótulo *«What "Canvas"
+uses»* por baixo do botão **+ Catalog**, cortado, e a faixa por cima da coluna de catálogos.
+
+**Duas causas, e as duas são de geometria:**
+
+| O que estava | O que é |
+|---|---|
+| a faixa medida sobre `rect.w` inteiro, pintada **antes** da coluna | ela mede a largura da **grade** (`rect.x + col_w + pad()`), e por isso é pintada **depois** da coluna — a largura da grade só existe quando a coluna diz quanto tomou |
+| linha de base em `band.y + row_h − Xs` (o **bordo de baixo**) | `band.y + (row_h − size) · 0,5` — a MESMA centragem do `paint_list_item` que a coluna ao lado já usa |
+
+⚠️ *Uma linha de base não é uma margem*, e *a largura de um controlo é uma afirmação sobre o que ele
+manda*: à largura toda, a faixa dizia que filtrava também a coluna — e não filtra.
+
+### §13.7 — ⭐⭐⭐ Porque os oito gates desta fatia não viram nada
+
+Eles perguntavam duas coisas, e as duas eram **verdadeiras** sobre a foto:
+
+1. *«o id está no índice de toque?»* — estava.
+2. *«o clique chega ao estado?»* — chegava.
+
+⇒ **um controlo pode estar VIVO, ALCANÇÁVEL e no SÍTIO ERRADO, e são três perguntas.** Este repo
+tem instrumentos para as duas primeiras (o `hit_indexed_ids_are_registered`, os `seam_*`) e
+**nenhum** para a terceira: nada mede se dois controlos do mesmo painel se pisam.
+
+A terceira entra agora, para esta faixa: `probe_band_rect` publica o rectângulo que o `paint`
+desenhou, e `the_band_never_covers_the_catalog_column` cruza-o com o que a coluna registou. A
+mutação que repõe a largura inteira — **literalmente a foto** — sangra só esse gate.
+
+⏳ **NOMEADO e não curado:** a lei geral (*«dois controlos irmãos não se sobrepõem»*) não pode ser
+um censo cego sobre todos os rects de um painel — uma linha dentro da coluna sobrepõe-se
+legitimamente à região dela. Ela precisa da noção de **irmão na mesma faixa de layout**, que este
+repo não tem.
+
+### §13.8 — ⛔ E um gate meu foi APAGADO, com o motivo escrito
+
+Escrevi também `the_bands_close_is_not_stacked_under_the_panels_close` — o `✕` da faixa não podia
+partilhar coluna de pixels com o `✕` que fecha o painel. **Ele reprovou a cura**, e foi esse o
+sinal: a regra era **minha**, não do report. O Enio fotografou um rótulo por baixo de um botão;
+*«dois `✕` na mesma coluna»* foi a minha leitura da foto, e é o padrão normal de toda janela com uma
+barra dentro. Satisfazê-lo obrigaria a pôr o `✕` num sítio que ninguém procura.
+
+⚠️ *Um gate que reprova a cura de um defeito real está a medir a preferência de quem o escreveu.*

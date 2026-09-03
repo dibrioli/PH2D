@@ -228,48 +228,93 @@ pub(crate) fn push_inert_badge_hit(
 
 /// Push a node's input + output socket hit rects (square, fixed screen size),
 /// clipped to the canvas.
-///
-/// ⭐⭐ **E o BALÃO de cada socket sai do MESMO laço** (estudo do Mini Cavalry, doc 99 §2): o
-/// que decide se um socket existe é o `clip_rect` — um socket panado para fora do canvas não
-/// tem hit —, e uma segunda travessia a decidir o mesmo deixaria balões órfãos no store no dia
-/// em que as duas discordassem. *Uma lista, uma condição.*
 pub(crate) fn push_socket_hits(
     hits: &mut Vec<(NodeId, GraphHitKind, Rect)>,
-    tips: &mut Vec<(NodeId, String)>,
     n: &GraphNodeView,
     view: &View,
     canvas: Rect,
 ) {
-    for (i, p) in n.inputs.iter().enumerate() {
+    for (i, _) in n.inputs.iter().enumerate() {
         let (cx, cy) = socket_center(n, view, false, i);
         if let Some(r) = clip_rect(socket_hit_rect(cx, cy), canvas) {
-            let id = sock_in_id(n.id, i);
             hits.push((
-                id,
+                sock_in_id(n.id, i),
                 GraphHitKind::SocketIn {
                     node: n.id as u64,
                     port: i as u16,
                 },
                 r,
             ));
-            tips.push((id, crate::paint::socket_tip(p)));
         }
     }
-    for (i, p) in n.outputs.iter().enumerate() {
+    for (i, _) in n.outputs.iter().enumerate() {
         let (cx, cy) = socket_center(n, view, true, i);
         if let Some(r) = clip_rect(socket_hit_rect(cx, cy), canvas) {
-            let id = sock_out_id(n.id, i);
             hits.push((
-                id,
+                sock_out_id(n.id, i),
                 GraphHitKind::SocketOut {
                     node: n.id as u64,
                     port: i as u16,
                 },
                 r,
             ));
-            tips.push((id, crate::paint::socket_tip(p)));
         }
     }
+}
+
+/// ⭐⭐⭐ **O BALÃO DO SOCKET SOB O RATO — e SÓ dele** (estudo do Mini Cavalry, doc 99 §10c).
+///
+/// ⛔⛔ **A 1.ª versão punha um balão em TODOS os sockets, a cada quadro** — e o
+/// `paint_hover_tooltip` lê exactamente **um**, o do `hot_id`. Eram ~45 `String` construídas e
+/// deitadas fora por quadro numa cena típica, contra **uma**; e a casa põe as dela **uma vez**
+/// (`&'static str` no `pre_populate`), o que devia ter-me feito olhar. *A superfície que
+/// consome um valor diz quantos deles vale a pena produzir.*
+///
+/// ⭐ **E fica mais CERTO, não só mais barato:** a resposta é derivada da **própria lista de
+/// hits** — se um socket não tem hit, o `hot_id` nunca é o dele, logo não há como um balão
+/// existir sem o socket. A concordância deixa de ser uma lei a manter e passa a ser
+/// construção. *Uma lista, e agora nem sequer uma segunda condição.*
+///
+/// ⚠️ **Não limpa o balão anterior**: os ids de socket são determinísticos por `(nó, porta)`,
+/// então o mapa cresce até ao tamanho do documento e não além. Um balão obsoleto nunca é lido
+/// (sem hit não há `hot`), e limpá-lo custaria a travessia que esta função existe para evitar.
+pub(crate) fn register_hot_socket_tip(
+    ctx: &mut PaintCtx,
+    nodes: &[GraphNodeView],
+    hits: &[(NodeId, GraphHitKind, Rect)],
+) {
+    let Some(hot) = ctx.host.store_mut().hot_id() else {
+        return;
+    };
+    if let Some(text) = tip_for_hot(nodes, hits, hot) {
+        ctx.host.store_mut().set_tooltip(hot, text);
+    }
+}
+
+/// **A DECISÃO, sem o `PaintCtx`** — que é o que a torna gateável.
+///
+/// ⚠️ *Uma decisão enterrada num método que precisa de um contexto de host não tem gate
+/// possível* — a mesma frase que o `motion_leaf_images` desta casa já escreveu sobre a
+/// aritmética dele. O `register_hot_socket_tip` fica com três linhas de plumbing; a lei mora
+/// aqui.
+///
+/// `None` quando o id quente não está na lista de hits (logo não é um socket desta corrida),
+/// quando é outra superfície do canvas, ou quando a porta já não existe no snapshot.
+#[must_use]
+pub(crate) fn tip_for_hot(
+    nodes: &[GraphNodeView],
+    hits: &[(NodeId, GraphHitKind, Rect)],
+    hot: NodeId,
+) -> Option<String> {
+    let (_, kind, _) = hits.iter().find(|(id, _, _)| *id == hot)?;
+    let (node, port, entrada) = match kind {
+        GraphHitKind::SocketIn { node, port } => (*node, *port as usize, true),
+        GraphHitKind::SocketOut { node, port } => (*node, *port as usize, false),
+        _ => return None, // não é um socket: o balão daquele id é de quem o registou
+    };
+    let n = nodes.iter().find(|n| u64::from(n.id) == node)?;
+    let ports = if entrada { &n.inputs } else { &n.outputs };
+    Some(crate::paint::socket_tip(ports.get(port)?))
 }
 
 fn socket_hit_rect(cx: f32, cy: f32) -> Rect {
@@ -285,12 +330,7 @@ fn socket_hit_rect(cx: f32, cy: f32) -> Rect {
 /// the order given — last wins) so the M0 dispatch routes gestures here, and
 /// republish the canvas rect for the wheel-zoom hit-test. Keyboard focus is
 /// cursor-gated by the shell, so it is NOT set here.
-pub(crate) fn register_hits(
-    ctx: &mut PaintCtx,
-    rect: Rect,
-    hits: &[(NodeId, GraphHitKind, Rect)],
-    tips: &[(NodeId, String)],
-) {
+pub(crate) fn register_hits(ctx: &mut PaintCtx, rect: Rect, hits: &[(NodeId, GraphHitKind, Rect)]) {
     let parent = ids::MOTION_GRAPH_PANEL;
     {
         let store = ctx.host.store_mut();
@@ -305,15 +345,6 @@ pub(crate) fn register_hits(
             );
         }
         store.set_graph_canvas(parent, rect);
-    }
-    {
-        // ⚠️ **Depois do `store.register`**: o `set_tooltip` escreve no mesmo store, e um
-        // `register` posterior sobre o mesmo id não o apaga (mapas distintos) — mas a ordem
-        // que se lê é a que se mantém.
-        let store = ctx.host.store_mut();
-        for (id, text) in tips {
-            store.set_tooltip(*id, text.clone());
-        }
     }
     let hit_index = ctx.host.hit_index_mut();
     for (id, _, r) in hits {

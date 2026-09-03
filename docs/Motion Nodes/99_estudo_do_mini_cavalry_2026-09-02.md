@@ -269,10 +269,18 @@ sockets do canvas não estão no `HitIndex` do chrome»*. **Estão**: o `hits.rs
 exactamente esses dois. ⇒ o balão custou **um `set_tooltip`**. *Duas estimativas de custo
 minhas erradas no mesmo dia, as duas por afirmar a ausência de uma peça sem a procurar.*
 
-⭐ **Uma lista, uma condição:** o balão sai do **mesmo laço** que empurra o hit, porque quem
-decide se um socket existe é o `clip_rect` — um socket panado para fora do canvas não tem hit,
-e uma segunda travessia deixaria balões órfãos no store. Gate no teste de recorte que já
-existia; a mutação que tira o `tips.push` de dentro do `if` morre.
+⛔⛔ **E a 1.ª versão construía um balão por socket POR QUADRO** — ~45 `String` por quadro numa
+cena típica, quando o `paint_hover_tooltip` lê exactamente **um**, o do `hot_id`. A casa põe as
+dela **uma vez** (`&'static str` no `pre_populate`), o que devia ter-me feito olhar. ⇒ hoje é
+**um** balão por quadro, o do socket sob o rato.
+
+⭐ **E ficou mais CERTO, não só mais barato:** o texto é procurado na **própria lista de hits**,
+então um socket sem hit não tem por onde produzir um. A concordância deixou de ser uma lei a
+manter e passou a ser **construção**. A decisão vive numa função **pura** (`tip_for_hot`), sem
+`PaintCtx` — *uma decisão enterrada num método que precisa de um contexto de host não tem gate
+possível*, que é a frase que o `motion_leaf_images` desta casa já escreveu sobre a aritmética
+dele. Gate com as três metades (socket responde · id fora da lista não · superfície que não é
+socket não), e a mutação que ignora a lista morre.
 
 ⛔ **A COR e o TEXTO são a mesma lei em dois canais**, com gate a percorrer as combinações
 (`the_colour_and_the_words_never_disagree`) — duas partições separadas divergiriam no dia em

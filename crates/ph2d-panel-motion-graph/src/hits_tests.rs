@@ -111,7 +111,7 @@ fn a_ghost_can_be_grabbed_and_wired_like_the_node_it_is() {
     assert_eq!(body.len(), 1, "you can grab it and move it out of the way");
 
     let mut sockets = Vec::new();
-    push_socket_hits(&mut sockets, &mut Vec::new(), &ghost, &view, CANVAS);
+    push_socket_hits(&mut sockets, &ghost, &view, CANVAS);
     assert_eq!(
         sockets.len(),
         1,
@@ -232,30 +232,50 @@ fn sockets_off_canvas_register_no_hit() {
         },
     );
     let mut hits = Vec::new();
-    let mut tips = Vec::new();
-    push_socket_hits(&mut hits, &mut tips, &node(1, 0.0, 0.0), &view, CANVAS);
+    push_socket_hits(&mut hits, &node(1, 0.0, 0.0), &view, CANVAS);
     assert!(hits.is_empty(), "off-canvas sockets are not grabbable");
-    // ⭐⭐ **E o BALÃO segue o HIT, não a existência da porta** (doc 99 §2): o balão sai do
-    // mesmo laço e da mesma condição, então um socket panado para fora não deixa um balão
-    // órfão no store — que ninguém veria, e que ninguém saberia limpar.
-    assert!(
-        tips.is_empty(),
-        "um socket sem hit nao pode deixar um balao para tras"
-    );
 
     // Panned back in, the socket registers.
     let view = View::new(CANVAS, ViewState::default());
-    push_socket_hits(&mut hits, &mut tips, &node(1, 10.0, 10.0), &view, CANVAS);
+    push_socket_hits(&mut hits, &node(1, 10.0, 10.0), &view, CANVAS);
     assert_eq!(hits.len(), 1);
-    assert_eq!(
-        tips.len(),
-        hits.len(),
-        "uma lista, uma condicao: cada socket com hit tem exactamente um balao"
-    );
+}
+
+/// ⭐⭐⭐ **O BALÃO SAI DA LISTA DE HITS, e é isso que o torna impossível de discordar dela**
+/// (estudo do Mini Cavalry, doc 99 §10c).
+///
+/// ⛔⛔ **A 1.ª versão construía um balão por socket por quadro** e mantinha a concordância por
+/// LEI (o mesmo laço, a mesma condição). Hoje ela é por CONSTRUÇÃO: o texto é procurado na
+/// própria lista de hits, então um socket sem hit não tem por onde produzir um.
+///
+/// As três metades mordem: o socket com hit responde · um id que não está na lista não · e uma
+/// superfície do canvas que não é socket também não (o balão daquele id pertence a quem o
+/// registou, e sobrescrevê-lo apagaria o dele).
+#[test]
+fn only_a_socket_in_the_hit_list_produces_a_tip() {
+    let view = View::new(CANVAS, ViewState::default());
+    let n = node(1, 10.0, 10.0);
+    let mut hits = Vec::new();
+    push_socket_hits(&mut hits, &n, &view, CANVAS);
+    assert_eq!(hits.len(), 1, "a fixtura tem de conter o fenomeno");
+    let nodes = [n];
+
+    let tip = tip_for_hot(&nodes, &hits, hits[0].0).expect("o socket com hit responde");
     assert!(
-        tips[0].1.contains(" · "),
-        "o balao diz o NOME e a ESPECIE, separados: {:?}",
-        tips[0].1
+        tip.contains(" · "),
+        "o balao diz o NOME e a ESPECIE, separados: {tip:?}"
     );
-    assert_eq!(tips[0].0, hits[0].0, "o balao e' do MESMO id que o hit");
+
+    assert!(
+        tip_for_hot(&nodes, &hits, bg_hit_id()).is_none(),
+        "um id que nao esta' na lista de hits nao produz balao nenhum"
+    );
+
+    // O fundo ESTÁ na lista, e mesmo assim não é um socket.
+    let mut com_fundo = hits.clone();
+    com_fundo.push((bg_hit_id(), GraphHitKind::Background, CANVAS));
+    assert!(
+        tip_for_hot(&nodes, &com_fundo, bg_hit_id()).is_none(),
+        "uma superficie que nao e' socket nao pode roubar o balao dela"
+    );
 }

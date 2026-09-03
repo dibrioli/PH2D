@@ -60,7 +60,7 @@ use paint_wires::{WirePass, draw_wires};
 use crate::geom::{self, View, card_h, socket_center};
 use crate::hits::{
     bg_hit_id, push_backdrop_hits, push_card_hit, push_inert_badge_hit, push_preview_toggle_hit,
-    push_socket_hits, register_hits,
+    push_socket_hits, register_hits, register_hot_socket_tip,
 };
 use crate::snapshot::{
     GraphNodeView, GraphViewSnapshot, PortView, SocketGlyph, current_snapshot, socket_glyph,
@@ -178,8 +178,6 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // `rect` by `hits`, matching the paint clip below.
     let mut hits: Vec<(NodeId, GraphHitKind, Rect)> =
         vec![(bg_hit_id(), GraphHitKind::Background, rect)];
-    // Os balões dos sockets (doc 99 §2) — preenchidos pelo MESMO laço que empurra os hits.
-    let mut tips: Vec<(NodeId, String)> = Vec::new();
 
     // ── Canvas content: clipped to the panel, so a card / wire panned past the
     // edge never paints over the scene viewport above. ──────────────────────
@@ -252,7 +250,7 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // Sockets + the header toggle + the inert badge last, so all three beat the card body
     // under them (doc 86; ADR-0155).
     for n in &on_screen {
-        push_socket_hits(&mut hits, &mut tips, n, &view, rect);
+        push_socket_hits(&mut hits, n, &view, rect);
         push_preview_toggle_hit(&mut hits, n, &view, rect);
         push_inert_badge_hit(&mut hits, n, &view, rect);
     }
@@ -288,7 +286,9 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
         hits.push((bg_hit_id(), GraphHitKind::Background, rect));
     }
 
-    register_hits(ctx, rect, &hits, &tips);
+    register_hits(ctx, rect, &hits);
+    // O balão do socket sob o rato — UM por quadro, derivado da lista de hits acima.
+    register_hot_socket_tip(ctx, &snap.nodes, &hits);
 
     // The rename box (doc 61) is drawn OVER the thing's title, after everything else and after
     // the hit registration — it is a widget, not a graph hit, and it registers itself with the

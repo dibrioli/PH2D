@@ -258,6 +258,29 @@ compilação** no único sítio onde alguém se lembraria de lhe dar forma.
 ⭐ Nasceu uma primitiva partilhada, `ph2d_editor_core::paint_shapes::fill_polygon` — *uma geral
 custa menos que três especiais e não convida a uma quarta*.
 
+### (c) O BALÃO no socket — a pergunta que o rótulo não responde
+
+`socket_tip` (`paint_role.rs`): passar o rato num socket diz **`Target X · a number`**,
+**`P · a stream`**, **`Pulse · a pulse`**.
+
+⚠️⚠️ **E a minha estimativa de preço estava errada outra vez** — eu escrevera *«pequena — os
+sockets do canvas não estão no `HitIndex` do chrome»*. **Estão**: o `hits.rs` já os regista no
+`HitIndex` **e** no `WidgetStore` (é de lá que sai o a11y deles), e o `paint_hover_tooltip` lê
+exactamente esses dois. ⇒ o balão custou **um `set_tooltip`**. *Duas estimativas de custo
+minhas erradas no mesmo dia, as duas por afirmar a ausência de uma peça sem a procurar.*
+
+⭐ **Uma lista, uma condição:** o balão sai do **mesmo laço** que empurra o hit, porque quem
+decide se um socket existe é o `clip_rect` — um socket panado para fora do canvas não tem hit,
+e uma segunda travessia deixaria balões órfãos no store. Gate no teste de recorte que já
+existia; a mutação que tira o `tips.push` de dentro do `if` morre.
+
+⛔ **A COR e o TEXTO são a mesma lei em dois canais**, com gate a percorrer as combinações
+(`the_colour_and_the_words_never_disagree`) — duas partições separadas divergiriam no dia em
+que uma mudasse.
+
+⚠️ Em inglês ([[feedback_app_ui_english_only]]), e o nome sai da **mesma** derivação que o
+rótulo do cartão (`PortLabel`) — uma segunda tabela de nomes seria a que envelhece.
+
 ---
 
 ## ⛔ Recusas MEDIDAS deste estudo
@@ -271,3 +294,4 @@ custa menos que três especiais e não convida a uma quarta*.
 | *«a nossa silhueta não existe»* | **Falso**: existe, está preenchida em 132 nós e tem 6 valores — só não era **pintada** (§10b) |
 | *«pintar a silhueta é grátis»* | **Meu, e falso**: o contorno do CARTÃO arrasta hits e sockets. Grátis só no **cabeçalho** (§10b) |
 | *«a cor do socket é um canal com dois valores»* | **Três**: o `Clock::Event` distingue **8 portas** que nem o domínio nem a dimensão vêem (§10a) |
+| *«o balão no socket é uma wave — eles não estão no `HitIndex`»* | **Meu, e falso**: estão, e o a11y deles sai de lá. Custou **um `set_tooltip`** (§10c) |

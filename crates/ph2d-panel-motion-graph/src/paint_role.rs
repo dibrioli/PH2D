@@ -303,3 +303,97 @@ mod socket_token_tests {
         }
     }
 }
+
+/// ⭐⭐⭐ **O QUE UM SOCKET DIZ AO PASSAR O RATO** — nome e espécie, numa linha.
+///
+/// ⛔⛔ **Por que ele nasce** (estudo do Mini Cavalry,
+/// [doc 99 §2](../../../docs/Motion%20Nodes/99_estudo_do_mini_cavalry_2026-09-02.md)): o cartão
+/// dele põe um `title=` em **todo** socket, e o nosso não tinha nenhum. A lei do RÓTULO — só
+/// rotular saídas quando há mais de uma — está **certa** e responde *«qual delas?»*; esta
+/// superfície responde a **outra** pergunta, *«o que é que isto carrega?»*, e é a pergunta que
+/// custou o report de 2026-09-01.
+///
+/// ⚠️ **Zero pixels permanentes** — é a razão de ser um balão e não uma linha no cartão: a
+/// faixa do cartão está partilhada entre a entrada e a saída (`input_label_budget_px`), então
+/// escrever a espécie ali cortaria o nome da entrada ao meio, desfazendo a cura do report de
+/// 2026-08-27.
+///
+/// ⚠️ **Em inglês** ([[feedback_app_ui_english_only]]), e o nome sai da MESMA derivação que o
+/// rótulo do cartão ([`crate::PortLabel`]) — `target_x` → `Target X`. Uma segunda tabela de
+/// nomes seria a resposta que envelhece.
+///
+/// A espécie usa a mesma lei do [`socket_token`]: um pulso primeiro, depois número contra
+/// corrente. *Uma lei, dois leitores* — a cor e o texto não podem discordar.
+#[must_use]
+pub(crate) fn socket_tip(p: &PortView) -> String {
+    let kind = match (p.clock, p.domain, p.dim) {
+        (Clock::Event, _, _) => "a pulse",
+        (Clock::Static, _, _) => "a constant",
+        (_, Domain::Instances, Dim::Scalar) => "a number",
+        (_, Domain::Instances, _) => "a stream",
+        (_, Domain::Vector, _) => "a vector shape",
+        (_, Domain::Field, _) => "a field",
+        (_, Domain::Signal, _) => "an audio signal",
+        (_, Domain::Control, _) => "control data",
+    };
+    format!("{} · {kind}", crate::PortLabel::of(p.name).as_str())
+}
+
+#[cfg(test)]
+mod socket_tip_tests {
+    use super::{socket_tip, socket_token};
+    use crate::snapshot::PortView;
+    use ph2d_nodegraph::port::{Clock, Dim, Domain};
+    use ph2d_tokens::ColorToken;
+
+    fn port(name: &'static str, dim: Dim, clock: Clock) -> PortView {
+        PortView {
+            name,
+            domain: Domain::Instances,
+            dim,
+            clock,
+        }
+    }
+
+    /// ⭐⭐ **O balão responde às DUAS perguntas** — qual porta, e o que ela carrega. A do NOME
+    /// já tinha resposta no cartão (quando há mais de uma saída); a da ESPÉCIE não tinha
+    /// nenhuma, em lado nenhum do app.
+    #[test]
+    fn the_tip_names_the_port_and_what_it_carries() {
+        assert_eq!(
+            socket_tip(&port("target_x", Dim::Scalar, Clock::Frame)),
+            "Target X · a number"
+        );
+        assert_eq!(
+            socket_tip(&port("P", Dim::Vec2, Clock::Frame)),
+            "P · a stream"
+        );
+        assert_eq!(
+            socket_tip(&port("pulse", Dim::Scalar, Clock::Event)),
+            "Pulse · a pulse"
+        );
+    }
+
+    /// ⛔⛔ **A COR e o TEXTO não podem discordar** — são a mesma pergunta respondida em dois
+    /// canais, e duas leis separadas divergiriam no dia em que uma delas mudasse. Este gate
+    /// percorre as combinações e exige que as duas partições sejam a MESMA.
+    #[test]
+    fn the_colour_and_the_words_never_disagree() {
+        for dim in [Dim::Scalar, Dim::Vec2, Dim::Vec4] {
+            for clock in [Clock::Frame, Clock::Event] {
+                let p = port("x", dim, clock);
+                let (tok, tip) = (socket_token(&p), socket_tip(&p));
+                let esperado = match tok {
+                    ColorToken::PortEvent => "a pulse",
+                    ColorToken::PortValue => "a number",
+                    ColorToken::PortInstances => "a stream",
+                    outro => panic!("token inesperado para Instances: {outro:?}"),
+                };
+                assert!(
+                    tip.ends_with(esperado),
+                    "{dim:?}/{clock:?}: a cor diz {tok:?} e o texto diz {tip:?}"
+                );
+            }
+        }
+    }
+}

@@ -42,6 +42,7 @@ mod paint_wires;
 use paint_inert_badge::draw_inert_badge;
 use paint_port_label::draw_port_labels;
 pub use paint_port_label::{PortLabel, input_label_budget_px};
+pub(crate) use paint_role::socket_tip;
 use paint_role::{role_glyph, role_inset_px, socket_token};
 #[path = "paint_grid.rs"]
 mod paint_grid;
@@ -177,6 +178,8 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // `rect` by `hits`, matching the paint clip below.
     let mut hits: Vec<(NodeId, GraphHitKind, Rect)> =
         vec![(bg_hit_id(), GraphHitKind::Background, rect)];
+    // Os balões dos sockets (doc 99 §2) — preenchidos pelo MESMO laço que empurra os hits.
+    let mut tips: Vec<(NodeId, String)> = Vec::new();
 
     // ── Canvas content: clipped to the panel, so a card / wire panned past the
     // edge never paints over the scene viewport above. ──────────────────────
@@ -249,7 +252,7 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // Sockets + the header toggle + the inert badge last, so all three beat the card body
     // under them (doc 86; ADR-0155).
     for n in &on_screen {
-        push_socket_hits(&mut hits, n, &view, rect);
+        push_socket_hits(&mut hits, &mut tips, n, &view, rect);
         push_preview_toggle_hit(&mut hits, n, &view, rect);
         push_inert_badge_hit(&mut hits, n, &view, rect);
     }
@@ -285,7 +288,7 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
         hits.push((bg_hit_id(), GraphHitKind::Background, rect));
     }
 
-    register_hits(ctx, rect, &hits);
+    register_hits(ctx, rect, &hits, &tips);
 
     // The rename box (doc 61) is drawn OVER the thing's title, after everything else and after
     // the hit registration — it is a widget, not a graph hit, and it registers itself with the

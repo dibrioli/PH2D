@@ -43,23 +43,19 @@
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-quadextract
 # o portão dos dois lados (0,8 s em debug)
 cargo test -p ph2d-quadfill --test pontas_do_dono -- --nocapture
-# a peça recentrada (o botão vê a peça RECENTRADA — Parte VII)
-python3 - <<'PY'
-src="/home/enio/Downloads/_base_sculpt.obj"; dst="/tmp/base_recentrada.obj"
-L=open(src).read().splitlines(); V=[tuple(map(float,l.split()[1:4])) for l in L if l.startswith("v ")]
-c=[(min(p[k] for p in V)+max(p[k] for p in V))/2 for k in range(3)]; it=iter(V); out=[]
-for l in L:
-    if l.startswith("v "): p=next(it); out.append(f"v {p[0]-c[0]:.6f} {p[1]-c[1]:.6f} {p[2]-c[2]:.6f}")
-    else: out.append(l)
-open(dst,"w").write("\n".join(out)+"\n")
-PY
+# ⛔⛔ o ficheiro CRU com PH2D_RECENTER=1 — a sonda recentra pela porta do importador (§5-bis).
+# Uma fixtura recentrada à mão (Python) é OUTRA realização: dava a ponta maior fina onde o dono a via cortada.
 cargo test -p ph2d-host-desktop --release --bins --no-run   # 1×, e NÃO reconstrua durante uma medição
-env PH2D_PIECE=/tmp/base_recentrada.obj PH2D_DETAIL=1.0 PH2D_ADAPT=1.0 PH2D_DUMP=/tmp/saida.obj \
+# ⚠️ o binário é o que esta linha imprime ("Executable unittests src/main.rs (…)") — NUNCA `ls -t`,
+# que apanha o executável do PROGRAMA se alguém acabou de o construir (custou dez corridas vazias em 03/09)
+env PH2D_PIECE=/home/enio/Downloads/_base_sculpt.obj PH2D_RECENTER=1 PH2D_DETAIL=1.0 PH2D_ADAPT=1.0 PH2D_DUMP=/tmp/saida.obj \
     ./target/release/deps/ph2d_host_desktop-<hash> the_artists_piece_through_the_button --ignored --nocapture --test-threads=1
 ```
 
 A linha a ler é `AMPUTADAS: … | GRADE NA PONTA: pior …` no fim, e a `GRADE NA PONTA` de cada
-`candidata` no meio. `sculpt_antes.obj` recentrada corre da mesma maneira.
+`candidata` no meio. `sculpt_antes.obj` corre da mesma maneira (crua, com `PH2D_RECENTER=1`).
+`PH2D_PROBE_SCALE=<s>` (nunca potência de dois) dá outra realização da mesma peça — a tabela do
+plano §104 tem cinco.
 
 ## §3 — O que o produto lê HOJE (mesma saída de antes)
 
@@ -104,6 +100,23 @@ por pilha.
 
 Instrumentos desta janela (scratch, fora da árvore — recriáveis a partir do plano):
 `regua_ponta.py` · `render_ponta.py` · `escada_campo.py` · `candidatas.py`.
+
+## §5-bis — ⛔⛔⛔ O report de 03/09 (foto, `Detail 1` · `Curv 1`) e a FIXTURA (plano §104)
+
+- ⭐ **A régua concordou com a foto nova:** a ponta maior da saída que ele exportou lê gap `7,23 h`,
+  grade `3,51`, ápice de valência `3` — RED onde ele aponta; as outras quatro pontas verdes.
+- ⛔⛔ **A sonda desta linha media OUTRA realização.** A fixtura recentrada em Python (`f64`, seis
+  decimais) dava `21 747` quads com a ponta fina; a peça como o importador a recentra (`f32`) dá
+  **`20 658`, a malha dele ao bit**. `PH2D_RECENTER=1` (novo na sonda) recentra pela porta do
+  importador — ⛔ **toda medição futura corre assim, sobre o ficheiro CRU.** A jornada de 01/09
+  mediu a realização errada, e é por isso que as réguas dela diziam «melhorou».
+- ⛔ **O destino da ponta maior é sorteado nos últimos bits:** cinco realizações da mesma
+  escultura nos mesmos knobs, cinco vereditos (`0/5 · 0,76` até `1/5 · 3,51`). O «segundo
+  sorteio» (`PH2D_PROBE_SCALE`, novo na sonda) foi medido e **recusado** como rede: na
+  `sculpt_antes` o espinho principal é comido nas `18` candidatas de dois sorteios.
+- ⇒ a cura continua a ser a do §5.3 — a calota na fase zero —, e o critério de aceitação ganha
+  uma cláusula: **o veredito das pontas tem de ser o mesmo nas cinco realizações da tabela do
+  §104** (recentrar pelo importador · `s = 0,584` · `0,7` · `1,3` · a fixtura Python).
 
 ## §6 — Higiene
 

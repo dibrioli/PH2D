@@ -45,7 +45,7 @@ fn the_artists_piece_through_the_button() {
     // *a fixtura só prova o que ela contém*: a peça que o artista fotografou em 28/08 é a
     // saída partida, e a **entrada** dele não está nesta árvore. Sem uma peça com pontas
     // finas, toda medição desta wave mediria uma bola.
-    let piece = if let Some(n) = path.strip_prefix("espinhos:") {
+    let mut piece = if let Some(n) = path.strip_prefix("espinhos:") {
         spiked_ball(
             n.parse().unwrap_or(6),
             std::env::var("PH2D_SPIKE_SIGMA")
@@ -62,6 +62,34 @@ fn the_artists_piece_through_the_button() {
             .unwrap_or_else(|| panic!("{path} nao tem peca dentro"))
             .mesh
     };
+    // ⭐⭐⭐ **`PH2D_RECENTER=1` recentra a peça PELA MESMA PORTA que o importador** (2026-09-03).
+    // ⛔ A fixtura recentrada à mão (Python, `f64`, seis decimais) não é a peça que o botão do
+    // programa vê: o importador chama [`ph2d_mesh::Mesh::recenter`] em `f32`, e a cadeia é
+    // caótica nos últimos bits (plano, Parte VI) — medido, o dono exportou `20 658` quads da
+    // MESMA escultura, nos MESMOS knobs, onde a sonda sobre a fixtura à mão dava `21 747`.
+    // *Uma sonda que recentra de outra maneira mede outra realização do mesmo programa.*
+    if std::env::var("PH2D_RECENTER").as_deref() == Ok("1") {
+        let c = piece.recenter();
+        eprintln!("   RECENTRADA pela porta do importador: centro da caixa era {c:?}");
+    }
+    // ⭐ **`PH2D_PROBE_SCALE=<s>` escala a peça — o «segundo sorteio»** (2026-09-03). A cadeia
+    // é covariante à escala em tudo o que decide (alvo por área, `ALPHA × diagonal`), então
+    // uma peça escalada é o MESMO problema com outro ruído de `f32` — e a mesma escultura,
+    // nos mesmos knobs, deu *guarda / come / guarda* a ponta maior em três realizações.
+    // ⛔ Nunca uma potência de dois: o produto por `0,5` é exacto e devolve a mesma realização.
+    if let Some(s) = std::env::var("PH2D_PROBE_SCALE")
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok())
+        .filter(|s| s.is_finite() && *s > 0.0)
+    {
+        for p in piece.positions_mut() {
+            for c in p.iter_mut() {
+                *c *= s;
+            }
+        }
+        piece.rebuild();
+        eprintln!("   ESCALADA por {s} (segundo sorteio)");
+    }
     let detail: f32 = std::env::var("PH2D_DETAIL")
         .ok()
         .and_then(|s| s.parse().ok())

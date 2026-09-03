@@ -1932,3 +1932,44 @@ renormalização que a `SizingGrid` já faz), e medir com `PH2D_TIP_ALIGN=5` **e
 
 ⚠️ `PH2D_F1_TARGET=1` (a fase zero inteira ao alvo) já foi refutado (`χ = 1`, `4` bordo, `123`
 dobras) — a afinação tem de ser **local**, e a renormalização por contagem é o que a torna barata.
+
+## §104 — ⛔⛔⛔ A FIXTURA À MÃO ERA OUTRA REALIZAÇÃO — e o destino da ponta maior é sorteado nos últimos bits (2026-09-03)
+
+O dono exportou `sculpt-pre.obj` (a escultura de 30/08, contagem idêntica) e `sculpt-Pos-Remesh.obj`
+(`Detail 1`, `Follow Curvature 1`). ⭐ **A régua concorda com a foto dele:** a ponta maior (`8042`
+na numeração do importador = `9663`) lê **gap `7,23 h`, grade `3,51`, `7` vértices a `6 h`, ápice
+de valência `3`** — cortada sete células abaixo do bico e tapada com faces `3,5×`; as outras quatro
+lêem `0,41`–`0,86` e gap `≤ 0,27`. É o segundo report com foto em que a régua fica **RED onde ele
+aponta**.
+
+⛔⛔ **E a sonda dava outra malha para os MESMOS knobs:** `21 747` quads com a ponta maior fina. A
+diferença era a **fixtura**: `base_recentrada.obj` foi recentrada em Python (`f64`, seis decimais) e
+o importador recentra por [`ph2d_mesh::Mesh::recenter`] em `f32`. Com `PH2D_RECENTER=1` (novo na
+sonda: recentra pela porta do importador) a sonda devolve **`20 658` quads, a mesma malha dele, ao
+bit**. ⇒ *a jornada de 01/09 mediu uma realização diferente da que o dono via — é (também) por isso
+que as réguas diziam «melhorou» sobre a foto que dizia o contrário.* ⛔ **Toda medição futura corre
+com `PH2D_RECENTER=1` sobre o ficheiro CRU**, nunca sobre uma fixtura recentrada à mão.
+
+⭐⭐ **E a mesma escultura, nos mesmos knobs, dá cinco vereditos em cinco realizações** (a cadeia é
+covariante à escala; só o ruído de `f32` muda):
+
+| realização de `_base_sculpt` (`Detail 1` · `Curv 1`) | quads | amputadas | grade pior |
+|---|---|---|---|
+| a do dono (`recenter` do importador, `s = 1`) | `20 658` | **`1/5`** (a maior, gap `7,2`) | **`3,51`** |
+| o export dele re-importado (`s = 0,584`) | `21 882` | `0/5` | ⭐ `0,76` |
+| fixtura Python (`f64`, 6 decimais) | `21 747` | `0/5` | `1,36` (`3138`) |
+| `s = 0,7` | `21 755` | `0/5` | `1,66` |
+| `s = 1,3` | `21 816` | `1/5` (gap `0,56`) | `1,64` |
+
+⛔ **O «segundo sorteio» como rede foi medido e RECUSADO:** na `_base_sculpt` ele troca uma
+amputação por três grades grossas, e na `sculpt_antes` o espinho principal é comido em **todas** as
+`18` candidatas de dois sorteios (`s = 1` e `0,7`). É lotaria, custa `2×` o relógio (`12 min` a
+`Detail 1` nesta máquina sob carga), e a §51 já o tinha recusado noutra forma. ⇒ *a cura é de
+substrato* (§103): a calota de cada espinho afiado precisa de resolução na fase zero para receber
+o pólo de quatro que o QRemeshify tem — e aí o destino do bico deixa de depender de bits.
+
+⚠️ **Higiene de instrumento paga duas vezes hoje:** `ls -t` no `target/release/deps` apanha o
+executável do PROGRAMA (que o dono acabara de construir) e não o da sonda — dez corridas «vazias»;
+e a pasta temporária da sessão foi limpa a meio (reinício), levando os quatro scripts e as
+fixturas — recriados a partir deste plano. *Um instrumento fora da árvore é um instrumento que
+desaparece; o que fica é a lei escrita aqui.*

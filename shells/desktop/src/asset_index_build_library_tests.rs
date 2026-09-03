@@ -251,4 +251,26 @@ fn a_prefab_of_atlas_sprites_gets_a_colour_and_a_portrait() {
         ph2d_asset_index::AssetEntry::new(prefab.key, String::new()).swatch,
         "o prefab ficou com a cor NEUTRA do construtor — nem a cor dominante foi achada"
     );
+    // ⛔⛔ **A TERCEIRA pergunta, que este gate não fazia** (report do Enio, 2026-09-02: *«não
+    // conseguiu listar os ítens»*). Ele media a COR e o RETRATO — as duas curadas pela porta — e
+    // deixava as `deps` de fora, que continuavam a perguntar só por `SpritePixels`. ⇒ o
+    // *«Show what it uses»* respondia *«This asset uses nothing else»* sobre um prefab de três
+    // texturas. ⚠️ E como o sentido `Owners` é DERIVADO por inversão, a mesma linha calava os dois.
+    assert_eq!(
+        prefab.deps.len(),
+        3,
+        "o prefab de sprites de atlas nao declara as texturas que usa: {:?}",
+        prefab.deps
+    );
+    // ⭐⭐ **E o sentido INVERSO na mesma corrida.** Ele é derivado por inversão, então uma `deps`
+    // vazia calava os dois — mas *derivado* não é *medido*: sem esta metade, o gate afirma a
+    // metade que o report nomeou e deixa a outra por conta de um raciocínio.
+    let first = prefab.deps[0];
+    let key = prefab.key;
+    let owners = index.owners(&first);
+    assert_eq!(
+        owners.iter().map(|e| e.key).collect::<Vec<_>>(),
+        vec![key],
+        "a textura nao sabe que prefab a usa"
+    );
 }

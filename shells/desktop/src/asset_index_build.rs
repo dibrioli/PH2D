@@ -154,9 +154,30 @@ pub(crate) fn build(
         let pieces = subtree(sim, entity);
         // As dependências: as texturas que as peças desta receita usam. É a metade guardada; o
         // sentido inverso (*quem usa esta textura?*) é derivado pelo índice.
+        //
+        // ⛔⛔⛔ **PELA PORTA** ([`texture_of`]) — e esta linha foi a **QUARTA** vez que a mesma
+        // pergunta de duas formas foi respondida com a metade errada (report do Enio, 2026-09-02:
+        // *«não conseguiu listar os ítens»*, sobre um prefab de três texturas).
+        //
+        // Ela perguntava só por `SpritePixels`, que é o carimbo — a **minoria**. Toda imagem
+        // importada e toda tela nova é uma sprite de **átlas**, logo `deps` nascia VAZIO para o
+        // caminho normal, e o *«Show what it uses»* respondia *«This asset uses nothing else»*.
+        // ⚠️ E como o sentido `Owners` é **derivado por inversão** desta lista, a mesma linha
+        // calava os DOIS sentidos de uma vez.
+        //
+        // ⛔ A porta estava **quinze linhas abaixo**, já a ser usada pelo retrato, com um
+        // doc-comment a dizer *«uma terceira forma amanhã entra aqui e não volta a partir o
+        // cartão»*. *Uma porta que o vizinho não chama ainda não é uma porta — é uma função.*
+        // O censo `the_index_asks_the_texture_door` fecha-a.
         let mut deps: Vec<AssetRef> = pieces
             .iter()
-            .filter_map(|&p| sim.world().get::<SpritePixels>(p).map(|sp| sp.0))
+            .filter_map(|&p| {
+                texture_of(
+                    sim.world().get::<SpritePixels>(p),
+                    sim.world().get::<ph2d_render::Sprite>(p),
+                    atlas_assets,
+                )
+            })
             .map(|id| AssetRef::Texture {
                 asset: *id.as_bytes(),
             })

@@ -715,3 +715,40 @@ sinal: a regra era **minha**, não do report. O Enio fotografou um rótulo por b
 barra dentro. Satisfazê-lo obrigaria a pôr o `✕` num sítio que ninguém procura.
 
 ⚠️ *Um gate que reprova a cura de um defeito real está a medir a preferência de quem o escreveu.*
+
+### §13.9 — ⛔⛔⛔ *«não conseguiu listar os ítens»* — a **QUARTA** vez que a mesma pergunta foi respondida com a metade errada
+
+Foto do Enio (2026-09-02): três objectos na cena, cada um de peças com textura, e o
+*Show what it uses* a responder **«This asset uses nothing else»**.
+
+A linha era esta:
+
+```rust
+.filter_map(|&p| sim.world().get::<SpritePixels>(p).map(|sp| sp.0))
+```
+
+Ela pergunta só por `SpritePixels` — **o carimbo, a minoria**. Toda imagem importada e toda tela
+nova é uma sprite de **átlas**, logo `deps` nascia **vazio para o caminho normal**. ⚠️ E como o
+sentido *Owners* é **derivado por inversão** dessa lista, **uma linha calava os dois sentidos**.
+
+⛔⛔ **A porta estava quinze linhas abaixo, já a ser chamada pelo vizinho** (o retrato), com um
+doc-comment a prometer que *«uma terceira forma amanhã entra aqui e não volta a partir o cartão»*.
+*Uma porta que o vizinho não chama ainda não é uma porta — é uma função.*
+
+**As quatro ocorrências, todas fechadas por um report:**
+
+| # | o que ficou mudo | como o Enio o leu |
+|---|---|---|
+| 1 | a cor dominante de um prefab | *«não funcionou»* — cartão cinzento |
+| 2 | a peça-cara (`largest_piece_texture`) | idem |
+| 3 | os utilizadores de uma imagem (`users_of`) | *«Selected 1 object(s)»* e nada acendia |
+| 4 | as **dependências** de um prefab | *«não conseguiu listar os ítens»* |
+
+⇒ a cura desta vez **não é a linha**: é o censo `the_index_asks_the_texture_door`, que recusa
+qualquer leitura de `SpritePixels` nos três ficheiros do assunto que não entregue ao `texture_of`.
+A mutação que repõe a linha antiga sangra o censo **com o número da linha** e o gate de valor.
+
+⚠️ **E o gate de valor já tinha a fixtura CERTA** — `a_prefab_of_atlas_sprites_gets_a_colour_and_a_portrait`
+monta exactamente a cena da foto. Ele media a **cor** e o **retrato** (as duas curadas na ocorrência
+1) e não media as `deps`. *Uma fixtura que já tem o fenómeno não protege as perguntas que ninguém
+lhe faz.* Ele passa a fazer as quatro, incluindo o sentido inverso — **derivado não é medido**.

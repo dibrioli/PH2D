@@ -56,6 +56,7 @@ mod tag;
 mod text_area;
 mod text_input;
 mod toggle;
+mod toggle_classic;
 mod tool_rail;
 mod tooltip;
 mod tree_view;

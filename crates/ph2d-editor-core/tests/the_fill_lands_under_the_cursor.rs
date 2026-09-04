@@ -44,6 +44,14 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
+/// ⚠️ **Este ficheiro afirma sobre o REDESENHO**, que desde 2026-09-03 é opcional
+/// (`PH2D_UI_NEW=1`) — o caminho de omissão é a UI antiga, por ordem do dono. ⇒ cada medição
+/// escolhe a aparência explicitamente. ⛔ Sem isto os gates mediriam o clássico com o nome do
+/// redesenho: **verdes, e sobre outra coisa**.
+fn redesign() {
+    ph2d_editor_core::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
+}
+
 const SLIDER: NodeId = NodeId(1);
 const CHIP: NodeId = NodeId(2);
 
@@ -129,6 +137,7 @@ fn fill_edge_x(t: f32) -> f32 {
 /// `HitIndex` resolve em ordem inversa de registo), e um `Down` seria um clique-para-escrever.
 #[test]
 fn the_fill_lands_under_the_cursor() {
+    redesign();
     let arena = Bump::new();
     for frac in [0.1_f32, 0.35, 0.6] {
         let px = ROW.x + ROW.w * frac;
@@ -156,6 +165,7 @@ fn the_fill_lands_under_the_cursor() {
 /// medir nada.
 #[test]
 fn the_narrow_registration_that_caused_the_report_would_fail_this_gate() {
+    redesign();
     let arena = Bump::new();
     let px = ROW.x + ROW.w * 0.6;
     let mut store = WidgetStore::with_capacity(4);
@@ -191,6 +201,7 @@ fn the_narrow_registration_that_caused_the_report_would_fail_this_gate() {
 /// Trocar essa ordem faria o número deixar de ser editável em todo o app, sem nenhum outro sinal.
 #[test]
 fn the_value_column_still_belongs_to_the_chip() {
+    redesign();
     let (_, hits) = painted_row(0.5);
     let vx = ROW.x + ROW.w - ph2d_tokens::Spacing::Md.px() - DEFAULT_CHIP_W * 0.5;
     assert_eq!(

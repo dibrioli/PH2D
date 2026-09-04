@@ -103,6 +103,17 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
 /// Top-level hero paint orchestrator. Clears + re-populates the
 /// hit-index, then walks each region painter in z-order
 /// (canvas → selection overlay → chrome → HUD).
+/// A aparência pedida pelo ambiente, lida **uma vez** por processo.
+///
+/// ⚠️ `OnceLock` de propósito: `std::env::var` num caminho por-quadro é uma leitura do SO em cada
+/// quadro, e o valor não pode mudar a meio de uma sessão sem ninguém saber porquê.
+fn ui_look_from_env() -> ph2d_tokens::UiLook {
+    static LOOK: std::sync::OnceLock<ph2d_tokens::UiLook> = std::sync::OnceLock::new();
+    *LOOK.get_or_init(|| {
+        ph2d_tokens::UiLook::from_env_value(std::env::var("PH2D_UI_NEW").ok().as_deref())
+    })
+}
+
 pub fn paint_hero_screen(
     hero: &mut HeroScreen,
     viewport: Rect,
@@ -116,6 +127,11 @@ pub fn paint_hero_screen(
     // Same pattern for the text-rendering strategy — read by
     // `paint_text*` via the `paint::text_rendering()` thread-local.
     crate::paint::set_text_rendering(hero.text_rendering);
+    // ⭐⭐⭐ **A APARÊNCIA do app, uma vez por quadro** (Enio, 2026-09-03: *«por enquanto permanece
+    // a antiga»*). ⚠️ Lida do ambiente **uma só vez** — `PH2D_UI_NEW=1` liga o redesenho, tudo o
+    // resto é a UI de sempre. ⛔ Não é uma preferência gravada: um redesenho a meio não deve poder
+    // ficar ligado sem que se saiba porquê.
+    crate::paint::set_ui_look(ui_look_from_env());
     // Stash the viewport so chrome event handlers in `chrome/` can
     // make smart layout decisions (cascade submenu side-flip etc.).
     hero.last_viewport = viewport;

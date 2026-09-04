@@ -24,6 +24,14 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
+/// ⚠️ **Este ficheiro afirma sobre o REDESENHO**, que desde 2026-09-03 é opcional
+/// (`PH2D_UI_NEW=1`) — o caminho de omissão é a UI antiga, por ordem do dono. ⇒ cada medição
+/// escolhe a aparência explicitamente. ⛔ Sem isto os gates mediriam o clássico com o nome do
+/// redesenho: **verdes, e sobre outra coisa**.
+fn redesign() {
+    ph2d_editor_core::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
+}
+
 const ID: NodeId = NodeId(1);
 
 /// A tinta de uma caixa **sem rótulo** numa linha de largura `w`.
@@ -57,6 +65,7 @@ fn mark_ink(w: f32, value: CheckboxValue) -> (Vec<u32>, Vec<u32>) {
 /// ter a marca na margem oposta à do número.
 #[test]
 fn the_mark_is_anchored_to_the_right_edge() {
+    redesign();
     assert_ne!(
         mark_ink(200.0, CheckboxValue::Unchecked),
         mark_ink(300.0, CheckboxValue::Unchecked),
@@ -78,6 +87,7 @@ fn the_mark_is_anchored_to_the_right_edge() {
 /// **cega** à largura: é isso que o gate de cima deixou de ser.
 #[test]
 fn a_left_anchored_mark_would_be_blind_to_the_width() {
+    redesign();
     use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
     let ink = |w: f32| {
         let mut scene = VectorScene::new();
@@ -121,6 +131,7 @@ fn a_left_anchored_mark_would_be_blind_to_the_width() {
 /// paridade de texto precisaria. Não existe hoje, e inventá-lo aqui era outra obra.
 #[test]
 fn the_label_truncation_is_not_measurable_here_and_that_is_recorded() {
+    redesign();
     let ink = |label: &str| {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();
@@ -155,6 +166,7 @@ fn the_label_truncation_is_not_measurable_here_and_that_is_recorded() {
 /// diferente, um `Radius::Full`) — as duas deixam de coincidir.
 #[test]
 fn the_switch_paints_the_very_same_mark_as_the_checkbox() {
+    redesign();
     use ph2d_editor_core::widget::{Toggle, ToggleState, paint_toggle};
     let r = Rect::new(0.0, 0.0, 60.0, 24.0);
     let switch_ink = |on: bool, st: ToggleState| {
@@ -216,6 +228,7 @@ fn the_switch_paints_the_very_same_mark_as_the_checkbox() {
 /// colapsa, e o formulário perde a coluna que o dono mandou desenhar.
 #[test]
 fn every_form_row_paints_the_animation_column() {
+    redesign();
     use ph2d_editor_core::widget::{DECORATOR_W, surface_rect};
     // ⛔ **Aqui vivia `assert!(FORM_ROWS_SHOW_DECORATOR)`, e o clippy apanhou-a:**
     // *"this assertion has a constant value"*. Afirmar que uma `const true` é verdadeira é

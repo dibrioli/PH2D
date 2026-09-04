@@ -35,6 +35,7 @@ use crate::widget::TextInputState;
 use crate::widget::number_input::{stepper_down_rect, stepper_up_rect, stepper_width};
 use crate::widget::property_box::{PropertyBox, PropertyBoxState, paint_property_box};
 
+mod classic;
 mod number_chip;
 use crate::zones::Rect;
 pub use number_chip::{paint_number_chip, paint_number_chip_flat};
@@ -129,6 +130,28 @@ pub fn paint_slider_with_chip_layout(
     // **ignorado de propósito**: mudar-lhes a assinatura para o apagar seria 50 diffs para exprimir
     // uma decisão que já está exprimida aqui. ⛔ Não o reaproveite para outra coisa — um parâmetro
     // que muda de significado é pior que um que não faz nada.
+    // ⭐⭐⭐ **A APARÊNCIA escolhe o pintor** (Enio, 2026-09-03: *«por enquanto permanece a
+    // antiga»*). ⚠️ O `Classic` é o caminho de OMISSÃO — quem não liga `PH2D_UI_NEW=1` vê a linha
+    // de sempre, e é isso que deixa esta linha entrar no `main` com o redesenho a meio.
+    if !crate::paint::ui_is_redesign() {
+        classic::paint_classic_row(
+            rect,
+            label,
+            value,
+            chip_value,
+            display_override,
+            slider_id,
+            chip_id,
+            label_w,
+            chip_w,
+            store,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+        );
+        return;
+    }
     let _ = label_w;
     let style = crate::paint::slider_style();
 
@@ -230,15 +253,23 @@ pub fn paint_slider_with_chip_layout(
 /// vez de sobre ele, num painel estreito.
 #[must_use]
 pub fn slider_with_chip_chip_rect(rect: Rect, label_w: f32, chip_w: f32) -> Rect {
-    // ⚠️ **Pela LEI da caixa, não por uma conta local.** A `value_column` é o único sítio que sabe
-    // onde a coluna do valor cai, e é ela que o pintor usa — foi assim que este `chip_rect` deixou
-    // de poder discordar do que se vê. ⛔ A versão antiga reproduzia a aritmética à mão e ainda
-    // tratava do caso empilhado, que já não existe.
+    // ⚠️ **A aparência escolhe, como no pintor** — senão a marca de *"um token cobre este valor"*
+    // aparece onde o número NÃO está. É a mesma pergunta, e ela tem duas respostas desde que o
+    // redesenho passou a ser opcional.
+    if !crate::paint::ui_is_redesign() {
+        let row = if slider_with_chip_is_stacked(rect.w, label_w, chip_w) {
+            Rect::new(
+                rect.x,
+                rect.y + rect.h + crate::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX,
+                rect.w,
+                rect.h,
+            )
+        } else {
+            rect
+        };
+        return Rect::new(row.x + row.w - chip_w, row.y, chip_w, row.h);
+    }
     let _ = label_w;
-    // ⚠️ **O MESMO `decorator` que o pintor usa.** Esta função é a versão PURA da mesma pergunta, e
-    // no dia em que a coluna de animação ligou (2026-09-03) um `false` aqui punha a marca de
-    // *"um token cobre este valor"* **14 px ao lado** do número que ela cobre. *Duas expressões da
-    // mesma lei divergem no primeiro dia em que a lei muda* — e este era esse dia.
     crate::widget::property_box::value_column(
         rect,
         chip_w,
@@ -251,23 +282,19 @@ pub fn slider_with_chip_chip_rect(rect: Rect, label_w: f32, chip_w: f32) -> Rect
 /// that must size a background BEFORE painting the adaptive rows (e.g. the Jitter card) agree exactly.
 #[must_use]
 pub fn slider_with_chip_is_stacked(content_w: f32, label_w: f32, chip_w: f32) -> bool {
-    // ⭐⭐⭐ **A LINHA DEIXOU DE EMPILHAR** (Enio, 2026-09-02): com a caixa única o rótulo vive
-    // DENTRO, então não há coluna externa que possa deixar de caber. Esta função devolve `false`
-    // sempre — e a resposta **é a decisão**, não um bug.
-    //
-    // ⚠️ **Ela FICA, e com a assinatura intacta, porque os chamadores fazem a coisa certa:** os
-    // nove sítios perguntam ao widget em vez de adivinhar (*«empilhou? então a minha altura é
-    // outra»*), e por isso todos passam a ler a verdade nova sem uma linha mudada. ⛔ Apagá-la
-    // obrigaria nove diffs a exprimir uma decisão que já está exprimida aqui.
-    //
-    // ⚠️⚠️ **DUAS asserções ficaram VÁCUAS por causa disto**, e estão nomeadas para que ninguém as
-    // leia como protecção viva: o `debug_assert!` do `chrome::input_map` e o
-    // `the_input_map_window_binds_a_key`. As duas perguntavam *«a janela é larga que chegue?»* pelo
-    // proxy do empilhamento, e o proxy morreu. *A pergunta continua boa; o instrumento é que
-    // deixou de a medir.*
+    // ⚠️ **O CLÁSSICO empilha, o redesenho nunca.** Nove sítios perguntam isto para saber a altura
+    // que uma linha vai ocupar — se a resposta não seguir a aparência, as linhas do caminho de
+    // omissão desenham-se **umas por cima das outras**.
+    if !crate::paint::ui_is_redesign() {
+        let needed = label_w + chip_w + Spacing::Sm.px() * 2.0 + CLASSIC_MIN_TRACK_W;
+        return content_w < needed;
+    }
     let _ = (content_w, label_w, chip_w);
     false
 }
+
+/// A trilha mínima antes de o rótulo descer — o piso de cromo da linha CLÁSSICA.
+const CLASSIC_MIN_TRACK_W: f32 = 60.0; // LITERAL-PX-OK: piso de cromo da linha classica
 
 /// **A largura mínima em que a caixa única ainda diz alguma coisa.**
 ///

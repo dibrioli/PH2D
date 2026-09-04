@@ -57,6 +57,15 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     // ⛔ Um nó aqui seria o SEGUNDO a descrever o mesmo número, e um leitor de ecrã anunciá-lo-ia
     // duas vezes. Saiu do `slider_with_chip.rs` em 2026-09-02 por tecto de LOC; a ausência de a11y
     // é a mesma de antes, só que agora tem ficheiro próprio e por isso é vista.
+    // ⚠️ **O CORPO CLÁSSICO do interruptor** — uma das duas caras do `toggle`, escolhida pela
+    // aparência (`PH2D_UI_NEW`). O nó de acessibilidade é do WIDGET (`Toggle::build_a11y`,
+    // `Role::Switch`) e não muda com a cara: *fundir ou separar a tinta de um controlo não muda o
+    // que ele É para quem não o vê.* ⛔ Um nó aqui seria o segundo a descrever o mesmo
+    // interruptor.
+    (
+        "toggle_classic.rs",
+        "fragmento sem NodeId: a semantica e' do widget (Toggle::build_a11y, Role::Switch)",
+    ),
     (
         "slider_with_chip/number_chip.rs",
         "fragmento sem NodeId: a semantica e' da LINHA (PropertyBox::a11y_node) e do NumberInput",

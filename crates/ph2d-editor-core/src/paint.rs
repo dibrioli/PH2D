@@ -123,6 +123,34 @@ pub fn slider_style() -> ph2d_tokens::SliderStyle {
     SLIDER_STYLE.with(std::cell::Cell::get)
 }
 
+/// ⭐⭐⭐ **A APARÊNCIA do app**, publicada uma vez por quadro como o [`SliderStyle`] e o
+/// `TextRendering`.
+///
+/// ⚠️ **O neutro é [`UiLook::Classic`]**, e é ele que permite esta linha entrar no `main` com o
+/// redesenho a meio: quem não liga `PH2D_UI_NEW=1` vê a UI de sempre. Ver o doc do enum.
+thread_local! {
+    static UI_LOOK: std::cell::Cell<ph2d_tokens::UiLook> =
+        const { std::cell::Cell::new(ph2d_tokens::UiLook::Classic) };
+}
+
+/// Publica a aparência para o quadro. Chamado pelo shell.
+pub fn set_ui_look(look: ph2d_tokens::UiLook) {
+    UI_LOOK.with(|c| c.set(look));
+}
+
+/// A aparência em vigor. ⚠️ Lida pelos **pintores**, nunca pelos painéis: quem decide o desenho de
+/// um widget é o widget.
+#[must_use]
+pub fn ui_look() -> ph2d_tokens::UiLook {
+    UI_LOOK.with(std::cell::Cell::get)
+}
+
+/// ⭐ Atalho: *estamos no redesenho?* — a pergunta que os três pintores fazem.
+#[must_use]
+pub fn ui_is_redesign() -> bool {
+    ui_look() == ph2d_tokens::UiLook::Redesign
+}
+
 /// Set the active text-rendering strategy for the current thread.
 /// Called by the shell once per frame, mirroring `set_radius_scale`.
 /// Delegates to `ph2d_text::set_active_text_rendering` — the canonical

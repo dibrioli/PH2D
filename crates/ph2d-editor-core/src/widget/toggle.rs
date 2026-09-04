@@ -118,6 +118,13 @@ impl Toggle {
 /// interruptor e pintam o rótulo eles próprios. A marca **encosta à direita** desse rect, que é
 /// onde o polegar do «ligado» estava — logo nenhum deles muda uma linha.
 pub fn paint_toggle(toggle: &Toggle, rect: Rect, scene: &mut VectorScene, theme: Theme) {
+    // ⭐⭐⭐ **A APARÊNCIA escolhe** (Enio, 2026-09-03: *«por enquanto permanece a antiga»*). O
+    // interruptor deslizante é o caminho de OMISSÃO; a fusão com a caixa de verificação só acontece
+    // com `PH2D_UI_NEW=1`.
+    if !crate::paint::ui_is_redesign() {
+        super::toggle_classic::paint_classic_toggle(toggle, rect, scene, theme);
+        return;
+    }
     let _ = super::checkbox::paint_boolean_mark(
         rect,
         super::checkbox::BooleanMark {

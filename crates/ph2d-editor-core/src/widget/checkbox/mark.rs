@@ -83,22 +83,32 @@ pub(crate) fn paint_boolean_mark(
     // uma linha de formulário, e uma bolinha de animação não significa nada. Ela di-lo por um campo
     // PRÓPRIO: ⛔ a 1.ª tentativa derivava-o de `box_px.is_none()` e partia o contrato daquele
     // campo (*«pedir o token é igual a não pedir nada»*), apanhada pelo gate na 1.ª corrida.
-    let box_rect = Rect::new(
-        crate::widget::property_box::value_column(rect, box_size, decorator).x,
-        box_y,
-        box_size,
-        box_size,
-    );
+    // ⭐⭐⭐ **A APARÊNCIA escolhe a âncora** (Enio, 2026-09-03: *«por enquanto permanece a
+    // antiga»*). No clássico a marca fica em `rect.x` e não há coluna de animação — é a linha que
+    // o app pinta desde sempre, e é o caminho de OMISSÃO.
+    let redesign = crate::paint::ui_is_redesign();
+    let decorator = decorator && redesign;
+    let box_rect = if redesign {
+        Rect::new(
+            crate::widget::property_box::value_column(rect, box_size, decorator).x,
+            box_y,
+            box_size,
+            box_size,
+        )
+    } else {
+        Rect::new(rect.x, box_y, box_size, box_size)
+    };
 
     // ⭐ **A superfície da linha ACENDE**, e é ela que ensina que o alvo é largo. Emerge do nada
     // (o `hover_axis` com repouso `None` faz *fade*, como o botão *ghost*) ⇒ em repouso a linha
     // continua a não desenhar caixa nenhuma, que é a lei do §5.3: *dentro de um painel, molduras
     // não se desenham*.
-    let row_hot = matches!(
-        state,
-        CheckboxState::Hovered | CheckboxState::Focused | CheckboxState::Pressed
-    );
-    if row_hot || hover_t < crate::motion::SETTLED {
+    let row_hot = redesign
+        && matches!(
+            state,
+            CheckboxState::Hovered | CheckboxState::Focused | CheckboxState::Pressed
+        );
+    if row_hot || (redesign && hover_t < crate::motion::SETTLED) {
         if let Some(c) = crate::motion::hover_axis(
             matches!(state, CheckboxState::Normal | CheckboxState::Hovered),
             hover_t,
@@ -231,23 +241,44 @@ pub fn paint_checkbox(
         // ⚠️ **`Sm`, e não `Base`** — medido em 2026-09-03: a linha de propriedade escreve o
         // rótulo a `12 px` e esta escrevia a `13`. Num formulário as duas alternam, e **1 px de
         // corpo de letra entre linhas vizinhas lê-se como desalinho**, não como ênfase.
-        let font_size = TypeToken::Sm.px();
+        // ⚠️ **No clássico volta a `Base`, à DIREITA da caixa** — é a linha de sempre.
+        let redesign = crate::paint::ui_is_redesign();
+        let font_size = if redesign {
+            TypeToken::Sm.px()
+        } else {
+            TypeToken::Base.px()
+        };
         let ly = rect.y + (rect.h - font_size) * 0.5;
-        let lx = rect.x + Spacing::Md.px();
-        // O rótulo é o que CEDE — a mesma lei da caixa única, pela mesma função (pesquisa §6.2).
-        // ⛔ Nunca uma cópia: metade das linhas a truncar e a outra metade a transbordar é pior
-        // que nenhuma das duas.
-        let budget = (box_rect.x - lx - Spacing::Md.px()).max(0.0);
-        let cut = crate::widget::property_box::fit_label(text_system, &cb.label, font_size, budget);
-        if !cut.is_empty() {
+        if redesign {
+            let lx = rect.x + Spacing::Md.px();
+            // O rótulo é o que CEDE — a mesma lei da caixa única, pela mesma função (§6.2).
+            // ⛔ Nunca uma cópia: metade das linhas a truncar e a outra metade a transbordar é
+            // pior que nenhuma das duas.
+            let budget = (box_rect.x - lx - Spacing::Md.px()).max(0.0);
+            let cut =
+                crate::widget::property_box::fit_label(text_system, &cb.label, font_size, budget);
+            if !cut.is_empty() {
+                paint_text(
+                    text_system,
+                    scene,
+                    &cut,
+                    lx,
+                    ly,
+                    font_size,
+                    f32::INFINITY,
+                    resolve(label_color, theme),
+                );
+            }
+        } else if rect.w > box_rect.w + Spacing::Md.px() {
+            let lx = rect.x + box_rect.w + Spacing::Md.px();
             paint_text(
                 text_system,
                 scene,
-                &cut,
+                &cb.label,
                 lx,
                 ly,
                 font_size,
-                f32::INFINITY,
+                (rect.x + rect.w - lx).max(0.0),
                 resolve(label_color, theme),
             );
         }

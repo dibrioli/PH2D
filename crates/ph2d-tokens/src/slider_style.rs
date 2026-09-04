@@ -155,3 +155,52 @@ impl SliderStyle {
         self.density.row_h_px()
     }
 }
+
+/// ⭐⭐⭐ **A APARÊNCIA do app: a de sempre, ou o redesenho de 2026-09.**
+///
+/// Enio, 2026-09-03, ao mandar integrar: *«essa nova UI ainda deve ficar desativada até que esteja
+/// concluída. Por enquanto permanece a antiga.»*
+///
+/// ⚠️ **`Classic` é o caminho de OMISSÃO**, e isso não é um detalhe de configuração — é o que
+/// permite a linha entrar no `main` sem que ninguém veja um redesenho a meio. O redesenho liga-se
+/// com `PH2D_UI_NEW=1`, como o `PH2D_FLIP_NEW_ENGINE` e o `PH2D_RETOPO_EXTRACT` fazem nos módulos
+/// deles.
+///
+/// ⛔ **O que ele NÃO governa, de propósito:** as **correcções** que a linha fez ao caminho antigo
+/// — a deriva do cursor, a roda do rato sobre a bancada, o arrastar do corpo de um painel para o
+/// rolar. Um defeito curado não é uma aparência nova, e escondê-lo atrás de um interruptor seria
+/// deixá-lo por curar para quem não o liga.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum UiLook {
+    /// A UI que shipa desde sempre: rótulo | trilha | caixa numérica, marca à esquerda,
+    /// interruptor deslizante, sem coluna de animação.
+    #[default]
+    Classic,
+    /// O redesenho: a caixa única, a marca à direita, o interruptor fundido, a coluna de animação.
+    Redesign,
+}
+
+impl UiLook {
+    /// Todos, na ordem em que se lêem.
+    pub const ALL: [Self; 2] = [Self::Classic, Self::Redesign];
+
+    /// O nome que aparece no ecrã (inglês — regra do app).
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Classic => "Classic",
+            Self::Redesign => "Redesign",
+        }
+    }
+
+    /// A leitura do ambiente. ⚠️ Só `1` liga — qualquer outra coisa é a UI de sempre, incluindo a
+    /// variável ausente, vazia ou com lixo. *Um interruptor que liga com o que não percebe é um
+    /// interruptor que se liga sozinho.*
+    #[must_use]
+    pub fn from_env_value(v: Option<&str>) -> Self {
+        match v {
+            Some("1") => Self::Redesign,
+            _ => Self::Classic,
+        }
+    }
+}

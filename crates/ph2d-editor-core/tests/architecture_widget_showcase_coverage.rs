@@ -65,6 +65,11 @@ const WIDGET_OPT_OUT: &[(&str, &str)] = &[
         "chrome-internal: app-wide overlay invoked from menus, no idle visual",
     ),
     (
+        "toggle_classic",
+        "fragmento: e' o CORPO CLASSICO do `toggle`, escolhido pela aparencia (`PH2D_UI_NEW`). \
+         A galeria mostra o `toggle`, que e' o widget; este ficheiro e' uma das duas caras dele.",
+    ),
+    (
         "panel_chrome",
         "primitive: layout helpers for every floating panel, not a standalone widget",
     ),

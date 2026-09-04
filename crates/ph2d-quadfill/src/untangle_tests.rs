@@ -318,6 +318,17 @@ fn as_tres_saidas_do_acabamento_desfazem_o_avesso() {
         retornos,
         "⛔ a relaxacao tambem tem de estar nas tres"
     );
+    // ⭐⭐⭐ **E o REMATE DA PONTA** (2026-09-04, [`crate::snap_tips`]) — a terceira cura a
+    // entrar por aqui, e a terceira vez que este censo é a rede: *uma cura que vive em duas
+    // das três saídas é uma cura que o produto às vezes não corre.*
+    // ⚠️ **A ATRIBUIÇÃO, e não a chamada** — a `fn rematar` mora dentro desta fatia, e contar
+    // `rematar(mesh` lê `4` de `3`: *um censo de fonte tem de saber a forma do que conta*, e é
+    // a segunda vez que este mesmo gate a aprende.
+    assert_eq!(
+        corpo.matches(".snapped = rematar(mesh").count(),
+        retornos,
+        "⛔ o remate da ponta tambem tem de estar nas tres"
+    );
 }
 
 /// ⛔⛔ **O RELATÓRIO CONTA A MALHA QUE SE ENTREGA** — o gate do estouro de 2026-09-03.

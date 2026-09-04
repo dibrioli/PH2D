@@ -34,6 +34,10 @@ pub(crate) const DEV_RADIUS: f32 = 3.0;
 /// ⚠️ **Quantos quads de caminho entram na grade do bico** — ver [`super::tip_density`].
 pub(crate) const GRADE_RINGS: f32 = 3.0;
 
+/// ⚠️ **A que distância do bico se procura o PÓLO** — `2` quads, a distância a que a malha
+/// que o dono aprovou tem as quatro valência-`3` (plano §101).
+pub(crate) const POLE_RINGS: f32 = 2.0;
+
 /// ⭐⭐⭐ **O QUE A CADEIA FEZ A **UMA** PONTA** — uma linha da tabela de [`tip_rows`].
 ///
 /// ⚠️ Todas as distâncias vêm **em unidades de `unit`** (adimensionais), logo duas
@@ -63,6 +67,15 @@ pub struct TipRow {
     /// ⭐ **A GRADE NO BICO** — o tamanho médio do quad da saída junto da ponta, contra
     /// [`super::TIP_DENSITY_MAX`].
     pub grade: Option<f32>,
+    /// ⭐⭐⭐ **O PÓLO — quantos vértices IRREGULARES da saída vivem a `≤ 2` quads de caminho
+    /// do bico**, e a valência do próprio bico.
+    ///
+    /// ⛔ **É a coluna do mecanismo do plano §101:** na retopologia que o dono aprovou **todo**
+    /// espinho fecha com um pólo `+1` — **quatro** valência-`3` a `≤ 2 h` —, e nas saídas que
+    /// ele reprovou as singularidades estão a `9`–`15 h`. *Uma ponta com a grade certa e sem
+    /// pólo é uma ponta que a grade atravessa em vez de fechar*, e nenhuma das outras colunas
+    /// distingue as duas.
+    pub pole: (usize, usize),
 }
 
 /// ⭐⭐⭐ **A TABELA — uma linha por espinho da entrada, na ordem de [`apices`].**
@@ -105,29 +118,14 @@ pub fn tip_rows(input: &Mesh, output: &Mesh, unit: f32) -> Vec<TipRow> {
                 / n
         })
         .collect();
-    // Os triângulos da saída, uma vez só — um leque por face, como no centroide de área.
-    let mut tris: Vec<[[f32; 3]; 3]> = Vec::new();
-    for f in output.faces() {
-        let v = f.verts();
-        for k in 1..v.len().saturating_sub(1) {
-            tris.push([
-                opos[v[0] as usize],
-                opos[v[k] as usize],
-                opos[v[k + 1] as usize],
-            ]);
-        }
-    }
+    // Os triângulos da saída, uma vez só — ver [`fan_tris`].
+    let tris = fan_tris(output);
     let radius = DEV_RADIUS * unit;
     let mut rows = Vec::with_capacity(apex.len());
     for &i in &apex {
         let a = pos[i];
         let cone = cone_of(pos, &inbr, i, unit);
-        // ⚠️ **Só os triângulos que podem competir** — sem esta cerca a régua é
-        // `O(ápices × amostras × faces)` e uma escultura de 17 k vértices leva minutos.
-        let near: Vec<&[[f32; 3]; 3]> = tris
-            .iter()
-            .filter(|t| t.iter().any(|q| dist(a, *q) <= radius + DEV_RADIUS * unit))
-            .collect();
+        let near = near_tris(&tris, a, radius + DEV_RADIUS * unit);
         // ⛔⛔⛔ **NENHUMA FACE PERTO DO ÁPICE É O PIOR CASO, NÃO UM «SALTAR»** — ver
         // [`TipRow::blind`]. O valor registado é o RAIO da busca, que é maior que as duas
         // barras por construção, logo a ponta conta como partida nas duas.
@@ -140,13 +138,11 @@ pub fn tip_rows(input: &Mesh, output: &Mesh, unit: f32) -> Vec<TipRow> {
                 blind: true,
                 dev: Some([DEV_RADIUS; 3]),
                 grade: grade_at(opos, &onbr, &mean_edge, a, unit),
+                pole: pole_at(opos, &onbr, a, unit),
             });
             continue;
         }
-        let gap = near
-            .iter()
-            .fold(f32::MAX, |acc, t| acc.min(point_triangle(a, t)))
-            / unit;
+        let gap = gap_to(&near, a) / unit;
         let mut ds: Vec<f32> = pos
             .iter()
             .filter(|p| dist(a, **p) <= radius)
@@ -170,9 +166,71 @@ pub fn tip_rows(input: &Mesh, output: &Mesh, unit: f32) -> Vec<TipRow> {
             blind: false,
             dev,
             grade: grade_at(opos, &onbr, &mean_edge, a, unit),
+            pole: pole_at(opos, &onbr, a, unit),
         });
     }
     rows
+}
+
+/// **OS TRIÂNGULOS DE UMA MALHA**, um leque por face — a mesma decomposição que o centroide
+/// de área usa, e exacta para qualquer polígono planar.
+pub(crate) fn fan_tris(mesh: &Mesh) -> Vec<[[f32; 3]; 3]> {
+    let pos = mesh.positions();
+    let mut tris: Vec<[[f32; 3]; 3]> = Vec::new();
+    for f in mesh.faces() {
+        let v = f.verts();
+        for k in 1..v.len().saturating_sub(1) {
+            tris.push([
+                pos[v[0] as usize],
+                pos[v[k] as usize],
+                pos[v[k + 1] as usize],
+            ]);
+        }
+    }
+    tris
+}
+
+/// ⚠️ **Só os triângulos que podem competir** — sem esta cerca a régua é
+/// `O(ápices × amostras × faces)` e uma escultura de 17 k vértices leva minutos.
+pub(crate) fn near_tris<'a>(
+    tris: &'a [[[f32; 3]; 3]],
+    p: [f32; 3],
+    radius: f32,
+) -> Vec<&'a [[f32; 3]; 3]> {
+    tris.iter()
+        .filter(|t| t.iter().any(|q| dist(p, *q) <= radius))
+        .collect()
+}
+
+/// ⭐ **A DISTÂNCIA DE UM PONTO À SUPERFÍCIE**, em unidades de mundo, sobre as faces que
+/// [`near_tris`] deixou passar. ⛔ **Lista vazia ⇒ [`f32::MAX`]**, que é o caso CEGO: *«mais
+/// longe do que eu olhei»* — quem lê tem de o tratar como o pior caso, nunca como um zero.
+pub(crate) fn gap_to(near: &[&[[f32; 3]; 3]], p: [f32; 3]) -> f32 {
+    near.iter()
+        .fold(f32::MAX, |acc, t| acc.min(point_triangle(p, t)))
+}
+
+/// ⭐⭐⭐ **O PÓLO de uma ponta** — quantos vértices irregulares da saída vivem a `≤ 2` quads
+/// de caminho do bico, e a valência do próprio bico. Ver [`TipRow::pole`].
+///
+/// ⚠️ **`2 × unit` é a distância da tabela do plano §101** (a malha aprovada tem as quatro
+/// valência-`3` a `0,7`–`1,9 h`), e a **valência** conta arestas distintas: a
+/// [`adjacency`] repete o vizinho uma vez por face incidente.
+fn pole_at(opos: &[[f32; 3]], onbr: &[Vec<u32>], p: [f32; 3], unit: f32) -> (usize, usize) {
+    let Some(seed) = (0..opos.len()).min_by(|&i, &j| dist(p, opos[i]).total_cmp(&dist(p, opos[j])))
+    else {
+        return (0, 0);
+    };
+    let grau = |v: usize| -> usize {
+        onbr[v]
+            .iter()
+            .copied()
+            .collect::<std::collections::BTreeSet<u32>>()
+            .len()
+    };
+    let seen = path_ball(opos, onbr, seed, POLE_RINGS * unit);
+    let irregulares = seen.keys().filter(|&&v| grau(v) != 4).count();
+    (irregulares, grau(seed))
 }
 
 /// **A grade da saída junto de um ponto da entrada** — o vértice mais próximo, e a média das
@@ -197,6 +255,8 @@ fn grade_at(
     Some(seen.keys().map(|&v| mean_edge[v]).sum::<f32>() / n / unit)
 }
 
+// ⚠️ **`pub(crate)` para o irmão** ([`crate::tip_snap`]): *o remate e a régua que o mede têm
+// de falar da mesma fixtura*, e duplicá-la seria a segunda resposta a «o que é uma ponta».
 #[cfg(test)]
 #[path = "tip_rows_tests.rs"]
-mod tests;
+pub(crate) mod tests;

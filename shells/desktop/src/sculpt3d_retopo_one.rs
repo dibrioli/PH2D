@@ -263,10 +263,20 @@ pub(super) fn one(
         .and_then(|v| v.parse::<f32>().ok())
         .unwrap_or(travel);
     if std::env::var("PH2D_EXTRACT_FINISH").as_deref() != Ok("0") {
-        if travel.is_finite() {
-            ph2d_quadfill::finish_extracted_travel(&mut out, cx.reference, travel);
+        let fin = if travel.is_finite() {
+            ph2d_quadfill::finish_extracted_travel(&mut out, cx.reference, travel)
         } else {
-            ph2d_quadfill::finish_extracted(&mut out, cx.reference);
+            ph2d_quadfill::finish_extracted(&mut out, cx.reference)
+        };
+        // ⭐⭐⭐ **AS DUAS CURAS DO ACABAMENTO DIZEM O QUE FIZERAM** (2026-09-04). ⛔ Os dois
+        // campos do relatório não tinham leitor nenhum no produto — *um campo de relatório sem
+        // consumidor é um knob morto do lado de dentro*, e foi por falta desta linha que a
+        // gravata de 03/09 custou três corridas a achar.
+        if fin.untangled > 0 || fin.snapped > 0 {
+            eprintln!(
+                "[sculpt3d] acabamento: {} face(s) do avesso desfeita(s) · {} bico(s) encostado(s) no apice",
+                fin.untangled, fin.snapped
+            );
         }
     }
     let out = out;

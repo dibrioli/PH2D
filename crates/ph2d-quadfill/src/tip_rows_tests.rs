@@ -15,8 +15,23 @@ use ph2d_mesh::{Face, Mesh};
 /// mas o filtro de forma ([`crate::CONE_MAX`], que chegou em 2026-09-02) lê-o como bossa e
 /// deita-o fora. *Com uma ponta só, «a tabela diz qual» é uma afirmação vazia: a única linha
 /// é sempre a acusada.* ⇒ aqui a peça tem **duas**, e uma delas fica intacta.
-fn cone(amputa: bool) -> Mesh {
-    const N: u32 = 8;
+pub(crate) fn cone(amputa: bool) -> Mesh {
+    cone_com(amputa, 8, 1.0 / 3.0)
+}
+
+/// ⭐⭐⭐ **O MESMO fuso com a AGULHA e a contagem à escolha** — e os dois eixos são
+/// load-bearing, cada um para um gate diferente.
+///
+/// ⚠️ **O leque que fecha um bico tem aspecto `n / (2π k)`**, onde `k` é a inclinação do cone:
+/// com `n = 8` e `k = ⅓` (a agulha) cada triângulo do bico abre **`15°`** e conta como face
+/// péssima — é a fixtura certa para provar que o remate RECUSA endireitar uma lasca. Com
+/// `n = 6` e `k = 0,75` o leque abre `43°` e o bico é uma ponta que a grade sustenta, que é o
+/// caso do produto ([`crate::tip_snap`]). *Uma fixtura mais afiada que tudo o que o produto
+/// entrega mede a fixtura.*
+pub(crate) fn cone_com(amputa: bool, n: u32, k: f32) -> Mesh {
+    let big_n = n;
+    #[expect(non_snake_case, reason = "a fixtura fala da contagem do anel")]
+    let N: u32 = big_n;
     const ALTURA: f32 = 3.0;
     const CORTE: f32 = 2.2;
     // De cima para baixo. O bico cortado troca os três anéis do topo por um só, ao nível do
@@ -30,7 +45,7 @@ fn cone(amputa: bool) -> Mesh {
         2.0, 1.5, 1.0, 0.5, 0.0, -0.5, -1.0, -1.5, -2.0, -2.5, -2.7, -2.9,
     ]);
     let aneis = &aneis[..];
-    let raio = |z: f32| (ALTURA - z.abs()) / ALTURA;
+    let raio = |z: f32| k * (ALTURA - z.abs());
     let bico = if amputa { CORTE } else { ALTURA };
     let mut verts: Vec<[f32; 3]> = vec![[0.0, 0.0, bico], [0.0, 0.0, -ALTURA]];
     for &z in aneis {

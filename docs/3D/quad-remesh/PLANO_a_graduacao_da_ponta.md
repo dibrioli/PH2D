@@ -2206,3 +2206,107 @@ seguinte não tinha como saber. *Toda edição por script leva caminho ABSOLUTO.
 (`18 446 744 073 709 551 602`): ele subtraía o relatório da extracção da contagem da saída, e o
 acabamento passou a mudar o número de faces. Curado a contar na malha entregue, com gate
 (`o_relatorio_conta_a_malha_entregue`).
+
+## §108 — ⭐⭐⭐ «UMA PONTA RUIM NO MEIO DE PONTAS BOAS»: a régua POR PONTA, e o que ela achou (2026-09-04)
+
+> *«temos bons resultados em muitas pontas no mesmo mesh onde apenas uma tem resultado ruim.
+> Isso é muito estranho. Como tornar uniforme o remesh?»* — o dono, 2026-09-04.
+
+### §108.1 — ⛔⛔ Nenhuma das três réguas da ponta sabia dizer QUAL
+
+A [`tip_deviation`] devolve o pior `p50` **entre** as pontas, a [`tip_density`] a mediana e o
+pior, a [`tip_survival`] um extremo global. **As três já mediam ponta a ponta e deitavam fora o
+índice antes de devolver** — e com uma ponta má no meio de quatro boas, *«0 de 5 acima da
+barra»* e *«1 de 5»* é tudo o que o relatório sabia dizer.
+
+⭐ É a **quarta** vez que esta linha paga a mesma forma (o `edge_max` global cego ao quad de
+`0,02 × 0,30`, o `χ` cego à almofada, a `ENTREGA` cega à ponta que engrossou). ⇒
+[`ph2d_quadfill::tip_rows`] — uma linha por ápice (`gap`, `grade`, `cone`, `dev`, o **pólo**) —
+e as duas agregadas passam a ser **dobras** dela: *os números que o produto decide não mudam,
+e não podem — uma régua nova que muda o veredito da anterior não é a mesma régua.*
+
+Instrumento: `cargo run -p ph2d-quadfill --release --example pontas -- --entrada <escultura.obj>
+[--recentrar] [--unit <h>] [--rematar] <malha.obj> …`, e a mesma tabela sai na sonda do botão,
+em `F1` **e** na `SAIDA`.
+
+### §108.2 — ⭐ A resposta, nas malhas do PRÓPRIO dono
+
+`sculpt-pre.obj` → as duas saídas que ele exportou, `h = 0,0167` (a mediana da saída):
+
+| ápice | raio | `sculpt003` (03/09) | `sculpt-Pos-Remesh` (a anterior) |
+|---|---|---|---|
+| ⛔ **`8042`** | **`1,808`** | `gap` **`0,47`** · grade `0,79` | ⛔⛔ **comida** (`gap ≥ 3`, grade `3,49`) |
+| `9218` | `1,070` | `0,27` · `0,66` | `0,15` · `0,66` |
+| `12279` | `1,052` | `0,08` · `0,64` | `0,26` · `0,40` |
+| `11108` | `0,924` | `0,08` · `0,76` | `0,05` · `0,62` |
+| `15622` | `0,846` | `0,15` · `0,73` | `0,10` · `0,85` |
+
+⭐⭐⭐ **A ponta ruim é sempre a MAIS LONGA** (raio `1,808` contra `0,85`–`1,07`), e é a pior em
+**todas** as colunas nas duas saídas. As agregadas liam `0 de 5` na primeira.
+
+### §108.3 — ⭐⭐⭐ O MECANISMO: o defeito nasce no ACABAMENTO, e é FASE, não célula
+
+A mesma extracção (`21 914` faces), acabada de duas maneiras (`PH2D_CANDIDATE_DUMP`):
+
+| acabamento | `gap` no `8042` | grade no bico | as outras quatro |
+|---|---|---|---|
+| ⭐ cerca de viagem apertada (a entregue) | `0,18` | `0,46` | `0,08`–`0,20` |
+| ⛔ cerca larga | **`0,51`** | `0,88` | `0,09`–`0,29` |
+
+⭐⭐ **A grade do bico está DENTRO da barra nas duas** — a calota de 03/09 deu-lhe resolução. O
+que muda é **onde a última volta da grade pára**, e a causa tem nome: *o acabamento pousa cada
+vértice na escultura, e a projecção ao ponto mais próximo de uma superfície **nunca escolhe o
+ápice*** — o bico é um ponto de medida nula e o pé da perpendicular cai sempre no **flanco**.
+⇒ cada ronda embota a ponta, e *quanto* depende da cerca que aquela saída calhou de usar. **É
+por isso que uma ponta sai boa e a vizinha não.**
+
+### §108.4 — ⭐⭐⭐ A cura: o BICO ENCOSTA NO ÁPICE ([`ph2d_quadfill::snap_tips`])
+
+No fim das **três** saídas do acabamento, o vértice mais próximo de cada ápice afiado muda-se
+**para o ápice**, sob três cercas:
+
+- **`gap ≤ TIP_GAP_MAX`** (meia célula) — ⛔ *acima da barra o que falta é CÉLULA, e mudar um
+  vértice esconderia do selector um defeito que ele tem de ver*;
+- **viagem `≤ 1` célula** — o `gap` mede ponto→FACE e o vértice mais próximo pode estar mais
+  longe que ele;
+- **o censo GLOBAL não pode subir** — faces péssimas (`> 60°`) e faces do avesso —, uma ponta de
+  cada vez (aceitar as cinco de uma vez faria uma má vetar quatro boas).
+
+⛔ **A recusa de 31/08 responde a outra pergunta:** *«puxar o vértice mais avançado»* foi medida
+e refutada (aspecto `12,11`, enviesamento `85°`) — mas ali o deslocamento era `0,6198` de
+mundo, **`23` células**, sobre um bico cuja grade estava a `3,85 ×` o alvo. Aqui é **meia
+célula** sobre uma grade que já tem resolução.
+
+### §108.5 — ⛔ E o experimento que o §103 encomendou foi corrido: a célula `(1,1)` é PIOR
+
+`PH2D_TIP_ALIGN=5` **com** a calota (o par que nunca tinha sido medido junto — §103 item 1):
+
+| | candidatas com furos | pior `p90` da ponta | grade no bico |
+|---|---|---|---|
+| ⭐ calota sozinha (HEAD) | `1` de `6` | `0,35` | `0` de `5` acima |
+| ⛔ calota + alinhamento `5` | **`3` de `7`** (`40` · `26` arestas) | **`3,00` em todas as 7** | `2`–`5` de `5` acima |
+
+⇒ o reforço do alinhamento na calota fica onde estava: **instrumento, não cura**. *A calota
+resolveu o que o §102 dizia que faltava, e o reforço continua a rasgar a extracção.*
+
+### §108.6 — ⭐⭐⭐ O resultado na peça do dono (`Detail 1` · `Curv 1`, `PH2D_RECENTER=1` sobre o ficheiro cru)
+
+| | sem o remate | ⭐ com o remate |
+|---|---|---|
+| pior `gap` entre as `5` pontas | `0,18` | ⭐ **`0,00`** (as cinco) |
+| grade no bico (pior) | `0,74` | `0,83` (barra `1,0`) |
+| aspecto p50 / p99 | `1,15` / `1,88` | ⭐ **`1,09` / `1,57`** |
+| enviesamento p50 / p99 | `4,3°` / `29,6°` | ⭐ **`3,0°` / `20,0°`** |
+| faces `> 60°` | `8` | ⭐ **`4`** |
+| **tentativas do botão** | `9` | ⭐⭐ **`4`** |
+| **relógio** | `337 s` | ⭐⭐⭐ **`123 s`** |
+| topologia | `χ 2` · `0` bordo · `0` não-manifold · `21 914` quads | **idêntica** |
+
+⭐⭐⭐ **O relógio e a forma são CONSEQUÊNCIA, não sorte.** A cascata pára quando uma candidata
+satisfaz as réguas: com a fase fechada, a **segunda** tentativa já as satisfaz. Antes eram
+precisas **nove** para achar uma que ganhava por `0,18` contra `0,51` no bico — e essa pagava a
+diferença em **forma** (`aspecto p50 1,15` contra `1,09`, `>60 8` contra `4`), porque a cerca de
+viagem que protege a ponta é a mesma que impede a relaxação de trabalhar.
+
+⇒ *o remate não «corrige o número da régua»: ele tira a ponta da disputa, e o selector passa a
+escolher pela forma.*

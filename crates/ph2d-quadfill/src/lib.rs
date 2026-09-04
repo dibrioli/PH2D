@@ -78,6 +78,9 @@ pub mod tips;
 
 /// ⭐⭐⭐ **UMA LINHA POR PONTA — a lei de que as agregadas são dobras** — ver [`tip_rows`].
 pub mod tip_rows;
+
+/// ⭐⭐⭐ **O BICO ENCOSTA NO ÁPICE — o remate que uniformiza as pontas** — ver [`tip_snap`].
+pub mod tip_snap;
 /// ⭐⭐⭐ **DESFAZER AS GRAVATAS** — o quad dobrado endireitado no sítio; ver [`untangle`].
 pub mod untangle;
 /// ⭐⭐ **OS PESOS DO ACHATAMENTO** — valor médio e cotangente — ver [`weights`].
@@ -105,6 +108,7 @@ pub use report::{FillError, FillReport, Provenance};
 pub use shape::{QuadShape, quad_shape, quad_shape_of, skew_by_fan, skew_by_provenance};
 pub use stitch::{SMOOTHING_ROUNDS, fill, fill_with};
 pub use tip_rows::{TipRow, tip_rows};
+pub use tip_snap::{TIP_SNAP_GAP, TIP_SNAP_TRAVEL, snap_tips};
 pub use tips::{
     TIP_DENSITY_MAX, TIP_DEVIATION_MAX, TIP_GAP_MAX, TipDensity, TipDeviation, area_centroid,
     reach, tip_density, tip_deviation,

@@ -164,6 +164,8 @@ pub struct FinishReport {
     pub blind: bool,
     /// ⭐⭐⭐ **Quantas GRAVATAS o acabamento desfez** — ver [`crate::untangle_bowties`].
     pub untangled: usize,
+    /// ⭐⭐⭐ **Quantos BICOS encostaram no ápice** — ver [`crate::snap_tips`].
+    pub snapped: usize,
 }
 
 /// ⭐⭐⭐ **DESISTIR: só enquanto NADA foi aceite ainda.**
@@ -273,6 +275,7 @@ pub fn finish_extracted_travel(mesh: &mut Mesh, surface: &Mesh, travel: f32) -> 
         // em duas das três saídas é uma cura que o produto às vezes não corre.*
         ra.untangled = crate::untangle_bowties(mesh, surface, crate::untangle::UNTANGLE_TRAVEL)
             + crate::untangle::remove_flaps(mesh, surface);
+        ra.snapped = rematar(mesh, surface);
         return ra;
     }
     // ── ⭐⭐⭐ **E SE ELA NÃO CONSEGUIU MEXER-SE, A CEGA TEM A SUA VEZ.**
@@ -299,6 +302,7 @@ pub fn finish_extracted_travel(mesh: &mut Mesh, surface: &Mesh, travel: f32) -> 
         let mut rep = FinishReport { blind: true, ..rb };
         rep.untangled = crate::untangle_bowties(mesh, surface, crate::untangle::UNTANGLE_TRAVEL)
             + crate::untangle::remove_flaps(mesh, surface);
+        rep.snapped = rematar(mesh, surface);
         return rep;
     }
     // Nenhuma das duas bateu o Laplaciano: fica ele.
@@ -308,7 +312,29 @@ pub fn finish_extracted_travel(mesh: &mut Mesh, surface: &Mesh, travel: f32) -> 
     // viver no caminho que o produto não corre.
     ra.untangled = crate::untangle_bowties(mesh, surface, crate::untangle::UNTANGLE_TRAVEL)
         + crate::untangle::remove_flaps(mesh, surface);
+    ra.snapped = rematar(mesh, surface);
     ra
+}
+
+/// ⭐⭐⭐ **O REMATE DAS PONTAS, no fim das TRÊS saídas** — ver [`crate::snap_tips`].
+///
+/// ⚠️ **A unidade é a aresta MEDIANA da malha entregue**, e não o alvo do slider: *quem acaba
+/// não conhece o alvo* — a `ph2d-quadchain` e os gates chamam esta porta sem slider nenhum —,
+/// e a mediana é a unidade que toda malha tem. As duas diferem `~8 %`, o que a lei do ápice
+/// tolera (o censo é o mesmo nas duas na peça do dono).
+///
+/// ⛔ **Ele corre DEPOIS do desembaraço**, e a ordem não é preferência: desfazer uma gravata
+/// move vértices, e um bico encostado antes disso podia sair de lá arrastado.
+fn rematar(mesh: &mut Mesh, surface: &Mesh) -> usize {
+    // ⚠️ **A bissecção mora AQUI, e alcança a bancada e os gates de propósito** — ao contrário
+    // da cerca de viagem (que é uma ESCOLHA do chamador e por isso é argumento), esta é uma
+    // porta de diagnóstico: *«a malha do dono muda por causa do remate?»* só se responde com
+    // as duas metades a correr a MESMA cadeia. ⛔ O caminho de omissão não a lê.
+    if std::env::var("PH2D_TIP_SNAP").as_deref() == Ok("0") {
+        return 0;
+    }
+    let unit = crate::median_edge(mesh);
+    crate::snap_tips(mesh, surface, unit)
 }
 
 /// ⭐⭐⭐ **QUANDO A LEI CEGA GANHA A VEZ** — a lei da escolha, separada de quem a executa.

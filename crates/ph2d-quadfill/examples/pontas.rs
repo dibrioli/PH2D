@@ -21,6 +21,10 @@ fn main() {
     // onde não há. *Esta linha pagou o mesmo erro quatro vezes em dois dias* (plano §104).
     let recentrar = args.iter().any(|a| a == "--recentrar");
     args.retain(|a| a != "--recentrar");
+    // ⭐ **`--rematar` aplica [`ph2d_quadfill::snap_tips`] a cada malha antes de a medir** — o
+    // instrumento que responde *«o remate pega nesta peça?»* sem pagar uma corrida do botão.
+    let rematar = args.iter().any(|a| a == "--rematar");
+    args.retain(|a| a != "--rematar");
     while let Some(i) = args.iter().position(|a| a == "--entrada" || a == "--unit") {
         let chave = args[i].clone();
         let valor = args.get(i + 1).cloned().unwrap_or_default();
@@ -46,7 +50,7 @@ fn main() {
         let c = entrada.recenter();
         println!("entrada RECENTRADA pela porta do importador (centro da caixa era {c:?})");
     }
-    let malhas: Vec<(String, ph2d_mesh::Mesh)> = args
+    let mut malhas: Vec<(String, ph2d_mesh::Mesh)> = args
         .iter()
         .filter_map(|p| ler(p).map(|m| (nome(p), m)))
         .collect();
@@ -54,6 +58,12 @@ fn main() {
         return;
     };
     let h = unit.unwrap_or_else(|| ph2d_quadfill::median_edge(primeira));
+    if rematar {
+        for (nome, m) in &mut malhas {
+            let n = ph2d_quadfill::snap_tips(m, &entrada, h);
+            println!("{nome}: REMATE — {n} bico(s) encostaram no apice");
+        }
+    }
     println!(
         "unidade h = {h:.5} ({}) | entrada {} verts",
         if unit.is_some() {
@@ -72,11 +82,11 @@ fn main() {
             ph2d_quadfill::TIP_GAP_MAX,
             ph2d_quadfill::TIP_DENSITY_MAX,
         );
-        println!("   apice   raio   cone    gap  grade   dev p50   p90   max");
+        println!("   apice   raio   cone    gap  grade  polo(irr,val)   dev p50   p90   max");
         for r in &linhas {
             let dev = r.dev.unwrap_or([f32::NAN; 3]);
             println!(
-                "   {:>6} {:>6.3} {:>6} {:>6.2}{} {:>6.2}{} {:>9.2} {:>5.2} {:>5.2}{}",
+                "   {:>6} {:>6.3} {:>6} {:>6.2}{} {:>6.2}{} {:>13} {:>9.2} {:>5.2} {:>5.2}{}",
                 r.apex,
                 r.radius,
                 r.cone
@@ -93,6 +103,7 @@ fn main() {
                 } else {
                     " "
                 },
+                format!("{:>3},{:<3}", r.pole.0, r.pole.1),
                 dev[0],
                 dev[1],
                 dev[2],

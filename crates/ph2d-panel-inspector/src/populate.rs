@@ -25,16 +25,6 @@ pub fn populate(store: &mut WidgetStore) {
             state: ph2d_editor_core::widget::ButtonState::Normal,
         },
     );
-    // ⭐ **Limpar as excepções SEM ALVO** (ADR-0164 / F5.3) — e ele nasceu MORTO SOB O DEDO até o
-    // `hit_indexed_ids_are_registered` o apanhar. *Um botão pintado e não registado não é um botão
-    // que falha às vezes: ele nunca é focável, logo o Down/Up nunca dispara.* É a terceira vez que
-    // esta casa paga a mesma costura (o `+` da F3, os chips da booleana, agora este).
-    store.register(
-        ids::INSP_INSTANCE_CLEAR_ORPHANS,
-        ph2d_editor_core::interaction::InteractiveState::Button {
-            state: ph2d_editor_core::widget::ButtonState::Normal,
-        },
-    );
     // ⭐⭐⭐ **A RANHURA DA TEXTURA** (plano `docs/Components/07`, wave B3) — ela recebe QUEDAS e
     // responde a CLIQUES, e as duas metades são obrigatórias.
     //
@@ -48,20 +38,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::INSP_RENDER_TEXTURE_SLOT,
         ph2d_editor_core::interaction::InteractiveState::Plain,
     );
-    // ⭐ **Os chips da fileira de VERSÕES** — a única superfície do cartão desde que o mecanismo
-    // de propriedades foi adiado (2026-09-01).
-    //
-    // ⛔⛔ **Focabilidade.** Um widget pintado e no hit-index continua **morto sob o ponteiro** se
-    // não estiver aqui — foi assim que o botão *Salvar Variação…* nasceu, e quem o apanhou foi o
-    // `seam_properties`, na primeira corrida. *Pintado e registado não é vivo.*
-    for &id in ids::INSP_INSTANCE_AXIS_OPTION.iter().flatten() {
-        store.register(
-            id,
-            ph2d_editor_core::interaction::InteractiveState::Button {
-                state: ph2d_editor_core::widget::ButtonState::Normal,
-            },
-        );
-    }
+    super::populate_instance::populate_instance_card(store);
     populate_transform_editor(store);
     populate_visibility_editor(store);
     populate_render_strategy(store);

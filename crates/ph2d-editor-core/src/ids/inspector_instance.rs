@@ -55,3 +55,36 @@ pub fn instance_axis_option(id: NodeId) -> Option<(usize, usize)> {
         .enumerate()
         .find_map(|(a, row)| row.iter().position(|c| *c == id).map(|v| (a, v)))
 }
+
+/// ⭐⭐⭐ **Quantos DEGRAUS da escada do *Aplicar* o cartão endereça** (F5 critério 4).
+///
+/// ⚠️ **É um teto de TABELA DE IDS, e ele diz de que recurso é** — o mesmo do
+/// [`MAX_INSTANCE_AXIS_VALUES`]: os ids são `const` para o censo do
+/// `hit_indexed_ids_are_registered` os poder **ver**, e uma tabela `const` tem um tamanho.
+///
+/// ⛔ **Não é o limite de aninhamento do produto.** Uma cena com nove receitas encaixadas continua
+/// a funcionar; o que acontece é que o 9.º degrau fica **fora do cartão**, e a fileira diz quantos
+/// ficaram — ⛔ escrito, nunca truncado em silêncio. O *Aplicar ao mestre* do menu (o degrau mais
+/// externo) alcança-se sempre, porque não passa por esta tabela.
+pub const MAX_INSTANCE_APPLY_LEVELS: usize = 8;
+
+/// Os botões da escada, um por degrau — do mais **externo** para o mais **interno**.
+pub const INSP_INSTANCE_APPLY_LEVEL: [NodeId; MAX_INSTANCE_APPLY_LEVELS] = [
+    hash_node_id("insp_instance_apply_level_0"),
+    hash_node_id("insp_instance_apply_level_1"),
+    hash_node_id("insp_instance_apply_level_2"),
+    hash_node_id("insp_instance_apply_level_3"),
+    hash_node_id("insp_instance_apply_level_4"),
+    hash_node_id("insp_instance_apply_level_5"),
+    hash_node_id("insp_instance_apply_level_6"),
+    hash_node_id("insp_instance_apply_level_7"),
+];
+
+/// O degrau que este id representa — a leitura INVERSA da tabela.
+///
+/// ⚠️ **Uma porta, e não uma varredura em cada chamador** — o pintor, o despachante e os gates
+/// fazem a mesma pergunta, e é o precedente do [`instance_axis_option`] logo acima.
+#[must_use]
+pub fn instance_apply_level(id: NodeId) -> Option<usize> {
+    INSP_INSTANCE_APPLY_LEVEL.iter().position(|c| *c == id)
+}

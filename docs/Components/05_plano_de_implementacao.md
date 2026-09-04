@@ -1551,7 +1551,7 @@ componente). É o argumento que o `WorldSnapshot` já tinha feito, com o grão n
 
 ---
 
-### ⏳ §F5.4 — **A investigação do critério 4 PAROU a meio, e o que ela estabeleceu fica escrito** (2026-09-02)
+### ✅ §F5.4 — **A investigação do critério 4** (2026-09-02) — ⚠️ **RESOLVIDA em 2026-09-04, ver a §F5.5**
 
 **A pergunta, em palavras de artista:** *fiz uma **Roda**; fiz um **Carro** que contém uma Roda; pus
 um Carro na cena e mudei a cor daquela roda. **Aplicar ao mestre** — a que mestre?*
@@ -1640,3 +1640,98 @@ não começar; uma feature adiada que fica no fonte é a que volta sozinha*). O 
 receita, que é a parte cara de redescobrir. ⚠️ **E ela já custou duas fixturas erradas** — uma que
 media uma variante a julgar-se aninhamento, e uma régua que pedia o registo das excepções para achar
 uma cópia que ainda não tinha nenhuma. *A fixtura que falta é sempre a que não tem o fenómeno.*
+
+
+---
+
+### ✅ §F5.5 — **O CRITÉRIO 4 FECHOU: a escada do *Aplicar*** (2026-09-04)
+
+**A pergunta da §F5.4 tem resposta MEDIDA, e ela é `sim`: uma excepção intermédia BLOQUEIA.**
+
+Gate `an_override_in_the_middle_blocks_the_inner_master`. Com a Roda dentro do Carro e um Carro na
+cena, uma excepção guardada na cópia da Roda que vive **dentro** do Carro faz a resposta (1) do
+passe disparar (*«a instância possui este componente ⇒ não se toca»*): mexer na receita da Roda
+deixa a cópia dentro do Carro exactamente como estava, **enquanto a Roda solta da cena ouve**. ⇒ a
+metade que apaga a excepção intermédia **não é opcional**, e a regra do Unity é a nossa.
+
+#### ⭐⭐ A contradição da §F5.4 dissolveu-se, e não era um mistério
+
+A sonda anterior lia `overrides = 0` numa cópia aninhada acabada de pintar **e** a cor da receita
+interna a chegar à cena. As duas leituras são a **regra do 1.º encontro**, que já estava escrita no
+`instance_sync`: *sem eco não há atribuição, e aí o mestre ganha.* A sonda pintava **antes** de
+existir um passe que semeasse o eco ⇒ o passe seguinte não atribuía a diferença a ninguém e
+**achatava a pintura**. Com um `sync_instances` a seguir à montagem da fixtura, a excepção nasce.
+⚠️ *Uma contradição entre duas leituras pode ser a ORDEM em que a sonda as produziu.*
+
+#### ⭐⭐⭐ A escada já estava no mundo — é a cadeia de ELOS
+
+[`instance_apply_deep.rs`](../../shells/desktop/src/instance_apply_deep.rs). Uma peça da cena diz de
+que peça do mestre nasceu (`InstanceOf`); essa peça, se o mestre a contém por instância, diz o mesmo
+um nível mais fundo. `piece_chain` percorre o elo até ele acabar e `owner_of` nomeia cada degrau
+pelo `MasterRoot` que o contém. Nada de estrutura nova.
+
+⚠️ **A escada é da PEÇA clicada, nunca da instância inteira** — e não é economia: um Carro que
+contenha uma Roda **e** uma Porta tem *dois* segundos degraus, e uma escada da instância teria de
+escolher um deles sem que ninguém o tivesse pedido. Clicar na raiz dá **um** degrau, que é
+exactamente o *«Apply All aplica sempre ao mais externo»* do Unity.
+
+#### As duas metades do verbo, cada uma com a mutação que a mata
+
+| metade | mutação | o que sangra |
+|---|---|---|
+| a chave sai em **todos** os degraus até à receita escolhida | limpar só o primeiro | `applying_to_the_inner_master_clears_the_override_in_the_middle` |
+| o valor escreve-se em **cada** degrau intermédio | escrever só no degrau escolhido | `the_applied_value_lands_in_the_same_pass_even_out_of_topological_order` |
+
+⚠️ **A régua da 1.ª não é o valor — é QUEM MANDA a seguir.** Com a chave intermédia por apagar o
+valor até fica certo (o gesto escreve-o em todos os degraus) e a cópia fica **surda à receita para
+sempre**; o gate mexe na Roda uma **segunda** vez para o medir.
+
+⚠️⚠️ **A 2.ª mutação SOBREVIVEU aos sete gates da primeira redacção**, e as duas leituras da casa
+aplicam-se: ou falta um gate, ou a linha é redundante. **Faltava o gate.** O passe ordena as
+instâncias por `StableId`, e na receita normal de aninhamento a cópia interna nasce **antes** do
+mestre externo ⇒ a ordem sai topológica **por coincidência** (a F5.1 já o dizia). Uma segunda Roda
+metida no Carro **depois** de ele já ser receita inverte-a, e aí a mutação mede-se: o valor aplicado
+volta a `[1,1,1,1]` **durante um quadro** antes de reaparecer — à letra o *«the value on the instance
+would change right after being applied»*. ⇒ *uma ordem que só COINCIDE com a certa não é a certa.*
+
+#### A fixtura, que era a parte cara
+
+`nested_car` monta a Roda, o Carro que a **contém**, um Carro na cena e **uma Roda solta** — a
+testemunha de *«toda Roda em todo o lado»*, sem a qual os dois degraus são indistinguíveis (o que os
+separa não é o que acontece ao Carro, é o que acontece a quem **não** está dentro dele). Ela evita as
+duas armadilhas já pagas: `make_master` sobre a raiz de uma cópia faz uma **VARIANTE**, e a cópia
+aninhada acha-se pelo **ELO**, nunca pelo nome (o `instantiate` renomeia para `Wheel (1)`) nem pelo
+`ObjectInstance` (que só nasce com a 1.ª excepção).
+
+#### A superfície: o cartão, e não o menu
+
+O menu da Hierarquia é uma tabela **`&'static [(id, rótulo, swatch)]`** — ela não pode carregar o
+*nome* de uma receita, logo o submenu do Unity é **inexprimível** ali. ⇒ a escolha vive no **cartão
+de instância** do Inspector, que já é derivado do mundo por quadro e já é onde o artista lê as
+excepções daquela peça. O item *Apply to Master* do menu continua a existir e é o **degrau 1**.
+
+- **os degraus só aparecem com ≥ 2 e com excepção nesta peça** — *um controlo que não escolhe nada
+  não é um controlo*, e um botão permanentemente inerte é ruído (as duas leis já escritas no cartão);
+- **o rótulo distingue as leis**, com a redacção do Unity: `Apply to “Wheel”` (o mais interno, onde a
+  peça é definida) contra `Apply as override in “Car”`;
+- **o que viaja no barramento é o `StableId` da receita**, nunca o índice do botão: a escada é
+  derivada e reordena-se quando uma receita é aninhada;
+- **o que fica por aplicar é DITO** (`Applied::left`) — uma excepção cuja escada não alcança aquela
+  receita fica onde está, e ⛔ **não se aplica ao degrau mais fundo que houver**: escolher por ele é
+  exactamente o que a escada existe para não fazer.
+
+⚠️ **`MAX_INSTANCE_APPLY_LEVELS = 8`** é tecto de **tabela de ids** (os `const` que o censo
+`hit_indexed_ids_are_registered` consegue ver), ⛔ não de aninhamento: o 9.º degrau fica **fora do
+cartão** e é **contado** (`+N deeper`), com o *Aplicar ao mestre* do menu sempre alcançável.
+
+#### Os gates
+
+`instance_apply_deep_tests` (9, no shell) · `seam_apply_ladder` (5, gesto REAL pelo ponteiro —
+mutação: apagar o `populate` ⇒ *«morto sob o ponteiro»*) · `the_apply_ladder_has_one_door` (3,
+textual e comment-aware: a acção tem **braço** no dreno — o `match` termina em `_ => {}` e uma acção
+sem braço **compila, corre e não faz nada** — e o `apply_to_master` **delega**, em vez de ser a
+segunda escrita da receita).
+
+⚠️ **O tecto de LOC dos painéis cobrou o corte**, e ele foi pago por CORTE: o registo das três
+superfícies do cartão saiu para `populate_instance.rs` (`populate.rs` 605 → 570), pelo idioma que o
+`populate_anchor`/`populate_anim`/`populate_physics` já tinham.

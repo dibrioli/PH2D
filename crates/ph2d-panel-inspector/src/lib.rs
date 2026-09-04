@@ -40,6 +40,8 @@ mod paint_head;
 mod populate;
 mod populate_anchor;
 mod populate_anim;
+/// ⭐⭐ O registo do CARTÃO de instância — irmão por assunto, ver o cabeçalho de lá.
+mod populate_instance;
 mod populate_physics;
 mod populate_player;
 mod sections;

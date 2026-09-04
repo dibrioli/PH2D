@@ -55,7 +55,12 @@ pub(crate) fn paint_instance_card(
     // por construção — e medir cada uma custaria um layout por quadro por linha.
     let head_h = super::text_h(text_system, &info.provenance(), font, tw_probe, line)
         + super::text_h(text_system, &info.summary(), small, tw_probe, line);
-    let rows = info.overridden.len() + usize::from(info.orphans > 0);
+    // ⚠️ **As fileiras da ESCADA entram na conta como as outras** — elas são botões de altura
+    // fixa, e o `apply_rows` já responde se elas existem (ver o modelo: sem excepção nesta peça,
+    // ou com um degrau só, não há fileira nenhuma).
+    let ladder = info.apply_rows();
+    let beyond = usize::from(!ladder.is_empty() && info.apply_levels_beyond > 0);
+    let rows = info.overridden.len() + ladder.len() + beyond + usize::from(info.orphans > 0);
     let card_h = CARD_PAD * 2.0 + head_h + line * rows as f32;
     let card = Rect::new(x, y, w, card_h);
     fill_rounded_rect(
@@ -109,6 +114,45 @@ pub(crate) fn paint_instance_card(
             font,
             tw,
             resolve(ColorToken::Text1, theme),
+        );
+        ty += line;
+    }
+
+    // ⭐⭐⭐ **A ESCADA do *Aplicar*** (F5 critério 4) — um botão por receita alcançável, da mais
+    // **externa** para a mais **interna**.
+    //
+    // ⚠️ **A ordem é uma decisão de produto:** a de fora primeiro, porque é a que alcança MENOS
+    // (só as cópias daquela receita) — *o gesto mais contido lê-se antes do mais amplo*. É também
+    // a ordem em que o *«Apply All aplica sempre ao mais externo»* do Unity põe o caso comum na
+    // primeira linha.
+    //
+    // ⚠️ **O rótulo sai do MODELO** (`ApplyChoice::label`), e não daqui: *Apply to* e *Apply as
+    // override in* dizem coisas diferentes, e escrever a escolha num pintor poria a lei num sítio
+    // que nenhum gate de modelo alcança.
+    for (i, choice) in ladder.iter().enumerate() {
+        // ⚠️ A tabela de ids tem tecto, e o `get` é o que impede um índice fora dela — o que sobra
+        // é CONTADO na linha seguinte, nunca truncado em silêncio.
+        let Some(&id) = ids::INSP_INSTANCE_APPLY_LEVEL.get(i) else {
+            break;
+        };
+        let host = Rect::new(tx, ty, tw, line);
+        hit_index.register(id, host);
+        let button = Button::new(id, choice.label())
+            .kind(ButtonKind::Default)
+            .visual(store.button_visual(id));
+        paint_button(&button, host, scene, text_system, theme);
+        ty += line;
+    }
+    if beyond > 0 {
+        paint_text(
+            text_system,
+            scene,
+            &format!("+{} deeper", info.apply_levels_beyond),
+            tx + Spacing::Sm.px(),
+            ty,
+            small,
+            tw,
+            resolve(ColorToken::Text2, theme),
         );
         ty += line;
     }

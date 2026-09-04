@@ -88,6 +88,38 @@ fn clear_orphans_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> boo
     true
 }
 
+/// ⭐⭐⭐ **UM DEGRAU DA ESCADA do *Aplicar*** (ADR-0164 / F5, critério 4).
+///
+/// ⚠️ **A leitura inversa vem da PORTA** (`ids::instance_apply_level`), e o que viaja no barramento
+/// é a **identidade da receita**, nunca o índice do botão: a escada é derivada do mundo e
+/// reordena-se quando uma receita é aninhada — um índice diria *«o segundo»* a quem já não tem o
+/// mesmo segundo.
+///
+/// ⚠️ **O sujeito é a PEÇA selecionada**, e não a raiz da cópia: o escopo do *Aplicar* é o que se
+/// clicou (a lei do *Revert*), e a escada que o cartão mostrou é a daquela peça.
+fn apply_level_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    let WidgetEvent::Click(id) = ev else {
+        return false;
+    };
+    let Some(level) = ids::instance_apply_level(id) else {
+        return false;
+    };
+    let Some(info) = crate::state::current_inspector_instance() else {
+        return false;
+    };
+    // ⛔ **Um degrau que o cartão não pinta não despacha** — o `apply_rows` é a mesma porta que o
+    // pintor usa, e perguntar-lhe aqui é o que impede um botão de outro quadro de chegar a um
+    // índice que já não existe.
+    let Some(choice) = info.apply_rows().get(level) else {
+        return false;
+    };
+    host.bus_mut().push(EditorAction::InspectorApplyToLevel {
+        entity_bits: info.entity_bits,
+        master: choice.master,
+    });
+    true
+}
+
 /// ⭐⭐ **A RANHURA DA TEXTURA abre a biblioteca** — *«o que é que eu posso pôr aqui?»*.
 ///
 /// ⚠️ **Ela recebe QUEDAS e responde a CLIQUES**, e as duas metades são obrigatórias: um id
@@ -158,6 +190,7 @@ fn sheet_grid_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool
 const SINGLE_ID_CLICKS: &[fn(&mut dyn PanelHostInternal, WidgetEvent) -> bool] = &[
     add_component_click,
     clear_orphans_click,
+    apply_level_click,
     section_color_click,
     texture_slot_click,
 ];

@@ -53,6 +53,53 @@ pub struct InspectorInstanceInfo {
     /// ⚠️ É lido da **raiz**, e não da peça selecionada: uma peça dentro de uma variante pertence
     /// à variante, e a pergunta *«de que sou cópia?»* é sempre da raiz.
     pub is_variant: bool,
+    /// ⭐⭐⭐ **A ESCADA do *Aplicar*** (F5 critério 4) — as receitas que este override pode
+    /// alcançar, **da mais externa para a mais interna**.
+    ///
+    /// Vazia, ou com **um** degrau, quando não há escolha nenhuma a fazer: uma cópia não aninhada
+    /// tem uma receita só, e *«aplicar ao mestre»* já é o item do menu. ⚠️ É o mesmo critério da
+    /// fileira de versões — *um controlo que não escolhe nada não é um controlo*.
+    ///
+    /// ⚠️ **Ela é da PEÇA selecionada**, como a lista de `overridden` logo acima e pela mesma
+    /// razão: a chave de override é `(peça, tipo)`, e a escada de uma peça não é a de outra.
+    pub apply_levels: Vec<ApplyChoice>,
+    /// Quantos degraus ficaram **fora** da tabela de ids — ⛔ escrito, nunca truncado em silêncio.
+    pub apply_levels_beyond: usize,
+}
+
+/// ⭐⭐⭐ **Um degrau da escada do *Aplicar*** — a receita que receberia.
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct ApplyChoice {
+    /// O `StableId` da receita — **a identidade**, que é o que o gesto precisa de saber.
+    pub master: u64,
+    /// O `Name` dela, que é o que o artista lê na Hierarquia.
+    pub name: String,
+    /// ⭐ Este é o degrau mais **INTERNO** — onde a peça é de facto definida.
+    ///
+    /// ⚠️ **É ele que decide o verbo do rótulo**, e a distinção é a do Unity: aplicar ali muda a
+    /// receita da peça (*«all instances of the 'Vase' Prefab»*); aplicar num degrau de fora deixa
+    /// o valor como **excepção** da cópia que vive dentro daquela receita.
+    pub innermost: bool,
+}
+
+impl ApplyChoice {
+    /// ⭐⭐ **O rótulo do botão** — e as duas frases dizem coisas diferentes, de propósito.
+    ///
+    /// ⚠️ **A redacção é a do Unity, e isso é uma escolha**: *Apply to* e *Apply as override in*
+    /// são as palavras que o artista já encontrou em todo o tutorial que leu, e inventar as nossas
+    /// obrigá-lo-ia a re-aprender a única parte deste modelo que ele provavelmente já sabe.
+    ///
+    /// ⛔ **O nome atravessa VERBATIM** — é a lei do [`InspectorInstanceInfo::provenance`]: comer
+    /// pedaços de um nome que o artista escreveu é o app a corrigi-lo.
+    #[must_use]
+    pub fn label(&self) -> String {
+        let name = &self.name;
+        if self.innermost {
+            format!("Apply to \u{201c}{name}\u{201d}")
+        } else {
+            format!("Apply as override in \u{201c}{name}\u{201d}")
+        }
+    }
 }
 
 /// Uma versão do componente que esta cópia pode passar a ser.
@@ -90,6 +137,23 @@ impl InspectorInstanceInfo {
         };
         let name = &self.master_name;
         format!("{what} of \u{201c}{name}\u{201d}")
+    }
+
+    /// ⭐⭐ **Os degraus que o cartão de facto PINTA** — e as duas condições são leis, não
+    /// economia de espaço.
+    ///
+    /// ⛔ **Sem excepção nenhuma nesta peça não há o que aplicar**: um botão permanentemente inerte
+    /// é ruído que o artista aprende a ignorar — a mesma lei do gesto dos órfãos.
+    ///
+    /// ⛔ **Com UM degrau não há escolha**: *«aplicar ao mestre»* já é o item do menu da linha, e um
+    /// botão único aqui seria a segunda porta para o mesmo verbo. É o critério da fileira de
+    /// versões, dito outra vez: *um controlo que não escolhe nada não é um controlo.*
+    #[must_use]
+    pub fn apply_rows(&self) -> &[ApplyChoice] {
+        if self.overridden.is_empty() || self.apply_levels.len() < 2 {
+            return &[];
+        }
+        &self.apply_levels
     }
 
     /// A linha que resume o estado, para quem não quer ler a lista.

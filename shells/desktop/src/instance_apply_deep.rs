@@ -222,7 +222,15 @@ pub(crate) fn apply_to_level(
             out.left += 1;
             continue;
         };
-        if write_down_the_chain(sim, registry, docs, inst_piece, &by_id, &chain[..=depth], key) {
+        if write_down_the_chain(
+            sim,
+            registry,
+            docs,
+            inst_piece,
+            &by_id,
+            &chain[..=depth],
+            key,
+        ) {
             out.changed += 1;
         }
         // ⭐⭐⭐ A metade não-opcional: a chave sai em TODOS os degraus até ao escolhido. O
@@ -240,7 +248,9 @@ pub(crate) fn apply_to_level(
                     },
                 );
             }
-            let Some(&next) = by_id.get(&piece) else { break };
+            let Some(&next) = by_id.get(&piece) else {
+                break;
+            };
             holder = next;
         }
     }

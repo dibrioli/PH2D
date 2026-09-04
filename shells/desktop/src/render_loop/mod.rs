@@ -3513,6 +3513,10 @@ impl crate::App {
             let mut add_component_for: Option<u64> = None;
             // ⭐ A troca de variante pedida neste quadro: `(raiz da instância, StableId do mestre)`.
             let mut swap_variant: Option<(u64, u64)> = None;
+            // ⭐⭐⭐ **O DEGRAU escolhido do *Aplicar*** (F5 critério 4) — `(peça clicada, receita)`.
+            // ⚠️ **ADIADO pela razão da irmã de cima**: o verbo precisa do **eco** e dos documentos
+            // possuídos, e aqui dentro o `self` já está emprestado.
+            let mut apply_to_level: Option<(u64, u64)> = None;
             let mut open_asset_browser = false;
             // ⭐ O pedido de renomear o VALOR de uma propriedade — `(receita, chave, valor)`.
             // ⭐ A entidade cujo campo de nome fechou neste quadro.
@@ -4860,6 +4864,12 @@ impl crate::App {
                     }
                     EditorAction::InspectorSwapVariant { root_bits, master } => {
                         swap_variant = Some((root_bits, master));
+                    }
+                    EditorAction::InspectorApplyToLevel {
+                        entity_bits,
+                        master,
+                    } => {
+                        apply_to_level = Some((entity_bits, master));
                     }
                     // ⭐⭐⭐ **Renomear o VALOR de uma propriedade** (report do Enio, 2026-08-31).
                     // ⚠️ O sujeito é a RECEITA; o gesto nasce sobre a cópia, que é onde o artista
@@ -11271,6 +11281,47 @@ impl crate::App {
                     ph2d_panel_asset_browser::PANEL_ID,
                     true,
                 );
+            }
+            // ⭐⭐⭐ **APLICAR num degrau da escada** (ADR-0164 / F5, critério 4).
+            //
+            // ⚠️ **O toast diz a QUE receita** — os degraus ficam um debaixo do outro no cartão e a
+            // diferença entre eles só se vê no gesto SEGUINTE (mexer noutra cópia daquele mestre).
+            // Uma confirmação igual para os dois deixaria o artista sem saber qual carregou.
+            if let Some((entity_bits, master)) = apply_to_level {
+                let name = inspector_instance::master_named(sim, master)
+                    .unwrap_or_else(|| "component".to_string());
+                match crate::instance_apply_deep::apply_to_level(
+                    sim,
+                    component_registry,
+                    &mut self.instance_echo,
+                    ph2d_ecs::Entity::from_bits(entity_bits),
+                    master,
+                    &mut crate::instance_docs::OwnedDocs {
+                        vec_scene,
+                        vec_entities: &mut self.vec_entities,
+                    },
+                ) {
+                    Ok(done) if done.changed == 0 && done.left == 0 => {
+                        toasts.push(Toast::info("Nothing overridden here"));
+                    }
+                    Ok(done) => {
+                        // ⚠️ **O que ficou por aplicar é DITO** — uma excepção cuja escada não
+                        // alcança aquela receita fica onde está, e um número que desaparece em
+                        // silêncio lê-se como trabalho perdido.
+                        toasts.push(Toast::success(if done.left > 0 {
+                            format!(
+                                "Applied {} change(s) to \u{201c}{name}\u{201d} \u{2014} {} left (not part of it)",
+                                done.changed, done.left
+                            )
+                        } else {
+                            format!("Applied {} change(s) to \u{201c}{name}\u{201d}", done.changed)
+                        }));
+                        self.title_dirty = true;
+                    }
+                    Err(_) => {
+                        toasts.push(Toast::warning("Not part of an instance"));
+                    }
+                }
             }
             if let Some((root_bits, master)) = swap_variant {
                 match crate::instance_variant::swap(

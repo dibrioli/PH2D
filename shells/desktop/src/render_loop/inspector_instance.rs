@@ -63,8 +63,32 @@ pub(super) fn build_instance_info(
     // uma lista que ninguém consegue ler duas vezes.
     overridden.sort();
 
+    // ⭐⭐⭐ **A ESCADA do *Aplicar*** (F5 critério 4) — as receitas que uma excepção DESTA peça
+    // pode alcançar. ⚠️ A lei mora no `instance_apply_deep`, que é a mesma porta que o gesto usa:
+    // um cartão que mostrasse degraus por outra travessia ofereceria uma escolha que o verbo
+    // recusa.
+    let all_levels = crate::instance_apply_deep::apply_levels(sim, entity);
+    let apply_levels_beyond = all_levels
+        .len()
+        .saturating_sub(ph2d_editor::ids::MAX_INSTANCE_APPLY_LEVELS);
+    let apply_levels: Vec<ph2d_editor::screens::hero::ApplyChoice> = all_levels
+        .iter()
+        .take(ph2d_editor::ids::MAX_INSTANCE_APPLY_LEVELS)
+        .enumerate()
+        .map(|(i, l)| ph2d_editor::screens::hero::ApplyChoice {
+            master: l.master,
+            name: l.name.clone(),
+            // ⚠️ **O mais interno é o ÚLTIMO da escada INTEIRA**, e não o último dos que couberam:
+            // com o tecto atingido, chamar *Apply to* ao 8.º diria que a peça é definida ali
+            // quando ela é definida mais fundo.
+            innermost: i + 1 == all_levels.len(),
+        })
+        .collect();
+
     Some(InspectorInstanceInfo {
         entity_bits: entity.to_bits(),
+        apply_levels,
+        apply_levels_beyond,
         master_name,
         overridden,
         orphans: inst.orphans.len(),

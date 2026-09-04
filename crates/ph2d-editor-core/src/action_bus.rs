@@ -339,6 +339,20 @@ pub enum EditorAction {
         root_bits: u64,
     },
 
+    /// ⭐⭐⭐ **APLICAR num DEGRAU da escada** (ADR-0164 / F5, critério 4).
+    ///
+    /// `entity_bits` é a PEÇA em que o artista carregou — o escopo do gesto é o que se clicou, como
+    /// no *Revert* —, e `master` é o `StableId` da receita escolhida: **a identidade, nunca o
+    /// índice do botão**, porque a escada é derivada e reordena-se quando a cena muda.
+    ///
+    /// ⛔ Ela existe porque *«aplicar ao mestre»* **não tem resposta por omissão** quando há
+    /// receitas aninhadas — é a razão pela qual a `PrefabUtility.ApplyPropertyOverride` do Unity
+    /// exige o `assetPath` (*«multiple valid targets may exist»*).
+    InspectorApplyToLevel {
+        entity_bits: u64,
+        master: u64,
+    },
+
     /// ⭐⭐⭐ **Trocar a VARIANTE de uma instância** (ADR-0164 / F5, critério 2).
     ///
     /// `master` é o `StableId` do mestre novo — **a identidade, nunca o índice do chip**: a lista

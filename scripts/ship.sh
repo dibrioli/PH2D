@@ -125,6 +125,27 @@ else
     printf '  para o ver:  bash scripts/stack-audit.sh --tetos\n'
 fi
 
+# ── sanidade da MÁQUINA (informativo — NUNCA reprova) ───────────────────
+# ⚠️ **Por que aqui, e não «quando alguém lembrar»:** medido em 2026-09-01 sobre
+# 239 209 comandos reais de 83 sessões, as sondas de saúde deste repo foram
+# invocadas **177 vezes = 0,07%** — e o `ph2d-check-memoria`, escrito depois dos
+# travamentos de 08/08 para exatamente este fim, **1 vez na vida**. As quatro
+# ferramentas que sobrevivem aqui têm uma coisa só em comum: um passo
+# obrigatório chama-as pelo nome. Esta é a lei do §2 do CLAUDE.md aplicada a si
+# própria — *ponteiro não é adoção*.
+#
+# ⚠️ Informativo, como os tetos: uma máquina apertada não pode reprovar um push.
+# O vigia de 15 min (`sanidade.sh --instalar`) é quem avisa a tempo; isto aqui é
+# a rede para o caso de o timer estar desarmado nesta máquina.
+printf '\n\033[1m── sanidade da máquina (informativo, não reprova) ──\033[0m\n'
+if [ -x scripts/sanidade.sh ] || [ -f scripts/sanidade.sh ]; then
+    _san="$(timeout 30 bash scripts/sanidade.sh 2>/dev/null || true)"
+    if [ -n "$_san" ]; then printf '%s\n' "$_san"
+    else printf '  (não correu — veja: bash scripts/sanidade.sh)\n'; fi
+else
+    printf '  (scripts/sanidade.sh ausente nesta árvore)\n'
+fi
+
 # ── summary ─────────────────────────────────────────────────────────────
 printf '\n\033[1m── ship.sh summary ──\033[0m\n'
 for r in "${results[@]}"; do printf '  %s\n' "$r"; done

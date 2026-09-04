@@ -23,6 +23,46 @@
 #   Não se moveu um byte. O `dd` parou limpo em ENOSPC, nada mais foi tocado.
 #
 # ============================================================================
+# ⛔⛔ 2026-08-30: O `noswap` SAIU. Ele curou 22/08 e travou a máquina 2× num dia.
+# ============================================================================
+#
+# A prova acima continua VERDADEIRA e continua a medir a coisa ERRADA. Ela
+# pergunta *«a página vai para o swap?»* — e a resposta é não. A pergunta que
+# ninguém fez é *«a página pode ser MOVIDA?»*, e a resposta também é não:
+# ⚠️ **`noswap` marca a página `unevictable`, e a compactação normal do kernel
+# não migra página `unevictable`** (o `ISOLATE_UNEVICTABLE` só é ligado no
+# caminho `alloc_contig`/CMA). Uma página fincada de 4 KB estraga o bloco de
+# 2 MB inteiro em que cai, e esta máquina tem 62 976 desses blocos.
+#
+# MEDIDO nos dois travamentos de 2026-08-30 (boots -1 e -2 do journal):
+#   · `Unevictable` == uso desta tmpfs, ao kB (29 GB no travamento; 6 490 992 kB
+#     contra 6 487 372 kB numa medição a frio). `Mlocked` vale 3 MB — é ela.
+#   · zona Normal às 18:35:03: `4231*1024kB (UM) 0*2048kB 0*4096kB` —
+#     **68 GB livres e ZERO blocos de 2 MB.** Não foi falta de RAM.
+#   · 11:09 → `kcompactd0` preso **495 s** num núcleo (`migrate_pages_sync`),
+#     18 `soft lockup` + `rcu stall`. Ele tentava fabricar o bloco que as
+#     páginas fincadas o impedem de fabricar.
+#   · 18:35 → `godot: vmemmap alloc failure: order:9` vindo de `nvidia_uvm →
+#     memremap_pages`: o driver precisa de 2 MB contíguos para registar a GPU,
+#     levou -ENOMEM, **não tratou**, e 10 s depois `Oops: GPF` em
+#     `kfifoChidMgrAllocChid_IMPL`. Máquina morta.
+#
+# ⚠️ **AUMENTAR O TAMANHO É A CURA AO CONTRÁRIO.** Já a 4 GB são 17 páginas
+# fincadas por bloco, e basta UMA para o estragar. Os 128 GB dão mais *bytes*
+# livres, nunca mais *blocos*.
+#
+# ⛔ RECUSA MEDIDA — `huge=` na tmpfs (blocos de 2 MB consomem um pageblock
+# inteiro em vez de o envenenar) **não serve**: dos 26 259 ficheiros aqui
+# dentro, **96,9% têm menos de 2 MB**. 7,2 GB de dados virariam ~52 GB.
+#
+# O QUE ENTRA NO LUGAR: a tmpfs volta a ser SWAPPÁVEL (⇒ páginas movíveis, a
+# compactação funciona) e a máquina ganha um **swap de verdade em disco**, que
+# ela nunca teve — só havia zram. Era ESSA a cura de 22/08: o desastre de então
+# foi o zram (que é RAM) a encher a 100% sem nada atrás. Com um swapfile no NVMe
+# o excedente sai da RAM de facto, em vez de rodar em círculo.
+# Registo: project-memory/project_ramtarget_noswap_fragments_memory_and_freezes.md
+#
+# ============================================================================
 # O GANHO, MEDIDO — e note que é OUTRA MOEDA
 # ============================================================================
 #
@@ -140,22 +180,53 @@ say() { echo "[ram-build] $*"; }
 
 [ "$(uname -s)" = "Linux" ] || { say "não é Linux — no-op."; exit 0; }
 
-kver=$(uname -r | cut -d. -f1,2)
-kmaj=${kver%%.*}; kmin=${kver##*.}
-if [ "$kmaj" -lt 6 ] || { [ "$kmaj" -eq 6 ] && [ "$kmin" -lt 4 ]; }; then
-  die "kernel $kver não tem tmpfs 'noswap' (precisa 6.4+). SEM ele este desenho repete o travamento de 22/08."
-fi
+# ⚠️ Havia aqui um piso de kernel 6.4, exigido pelo `noswap`. O `noswap` saiu em
+# 2026-08-30 (cabeçalho) e o piso saiu com ele: uma tmpfs swappável é kernel
+# nenhum de requisito. O que este desenho agora EXIGE é swap em disco — sem ele
+# o excedente cai no zram e repete-se 22/08. A verificação está abaixo, no arm.
 
 root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 tree="$(basename "$root")"
 
 mounted() { grep -qE " ${MNT} tmpfs " /proc/mounts; }
+# ⚠️ INVERTIDA em 2026-08-30: `noswap` passou de requisito a DEFEITO (cabeçalho).
 has_noswap() { grep -E " ${MNT} tmpfs " /proc/mounts | grep -q noswap; }
+# O swap em DISCO é o que torna a tmpfs swappável segura: sem ele o excedente
+# cai no zram, que é RAM, e repete-se o travamento de 22/08.
+has_disk_swap() { swapon --show=NAME --noheadings 2>/dev/null | grep -qv zram; }
+noswap_verdict() {
+  if has_noswap; then
+    say "⛔ $MNT está montada com 'noswap' — o desenho RETIRADO em 30/08."
+    say "   Ele finca as páginas: a compactação não as move, e a memória fica"
+    say "   sem um bloco de 2 MB livre. Foi o que travou a máquina 2× em 30/08."
+    say "   Cura: sudo umount $MNT && tire 'noswap' da linha do /etc/fstab."
+    return 1
+  fi
+  has_disk_swap || {
+    say "⚠️  não há swap em DISCO (só zram). A tmpfs swappável precisa dele —"
+    say "   senão o excedente comprime para dentro da própria RAM (22/08)."
+    say "   Cura: sudo btrfs filesystem mkswapfile --size 64G /swapfile"
+    say "         sudo swapon --priority 10 /swapfile"
+    return 1
+  }
+  return 0
+}
 
 # ---------------------------------------------------------------- status ----
 if [ "${1:-}" = "--status" ]; then
   if ! mounted; then say "RAM disk NÃO montada ($MNT)."; exit 0; fi
-  has_noswap || die "MONTADA SEM 'noswap' — isto é o desenho retirado. Desmonte: bash $0 --umount"
+  noswap_verdict || true
+  echo
+  # ⚠️ CONTAR os blocos de 2 MB é a régua ERRADA, e ela dá alarme FALSO: o buddy
+  # allocator FUNDE dois blocos de 2 MB adjacentes num de 4 MB, então uma máquina
+  # saudável mostra `2MB=4` com `4MB=22043` — e cada bloco de 4 MB serve um
+  # pedido de 2 MB, partindo-se ao meio. Medido em 2026-09-01: a leitura ingénua
+  # dizia "4, quase a travar" sobre **86 GB** de memória contígua.
+  # A grandeza honesta é o TOTAL contíguo em ordem ≥ 9.
+  awk '/Normal/{ g=($(NF-1)*2+$NF*4)/1024;
+    printf "  memória contígua ≥2 MB: %.1f GB   (2 MB=%s · 4 MB=%s)   %s\n", g, $(NF-1), $NF,
+      (g<1 ? "⛔ VAI TRAVAR" : (g<5 ? "⚠️ apertado" : "✓")) }' /proc/buddyinfo
+  awk '/^Unevictable/{print "  Unevictable: " $2 " kB   (tem de ser ~3 MB; se acompanhar o uso abaixo, o noswap voltou)"}' /proc/meminfo
   echo
   df -h "$MNT" | sed 's/^/  /'
   echo
@@ -189,7 +260,7 @@ fi
 # prompt de emergência. Com `nofail` o pior caso é a RAM disk não subir — e aí o
 # script diz o que houve, em vez de a máquina não ligar.
 if [ "${1:-}" = "--install-boot" ]; then
-  line="tmpfs $MNT tmpfs rw,size=$SIZE,noswap,mode=0755,uid=$(id -u),gid=$(id -g),nofail 0 0"
+  line="tmpfs $MNT tmpfs rw,size=$SIZE,mode=0755,uid=$(id -u),gid=$(id -g),nofail 0 0"
   if grep -qF " $MNT " /etc/fstab 2>/dev/null; then
     say "já há uma linha para $MNT no /etc/fstab:"
     grep -F " $MNT " /etc/fstab | sed 's/^/    /'
@@ -267,14 +338,18 @@ fi
 
 # ------------------------------------------------------------------- arm ----
 if mounted; then
-  has_noswap || die "$MNT montada SEM 'noswap'. Desmonte antes: sudo umount $MNT"
+  noswap_verdict || die "recuse-se a armar sobre um mount perigoso — veja acima."
 else
-  say "montando RAM disk $MNT ($SIZE, noswap) …"
+  has_disk_swap || die "não há swap em DISCO (só zram). Crie-o antes:
+    sudo btrfs filesystem mkswapfile --size 64G /swapfile
+    sudo swapon --priority 10 /swapfile
+  Sem ele a tmpfs swappável comprime para dentro da própria RAM — é o 22/08."
+  say "montando RAM disk $MNT ($SIZE, SWAPPÁVEL) …"
   sudo mkdir -p "$MNT"
-  sudo mount -t tmpfs -o "size=$SIZE,noswap,mode=0755,uid=$(id -u),gid=$(id -g)" tmpfs "$MNT" \
+  sudo mount -t tmpfs -o "size=$SIZE,mode=0755,uid=$(id -u),gid=$(id -g)" tmpfs "$MNT" \
     || die "mount falhou."
-  has_noswap || { sudo umount "$MNT"; die "o kernel aceitou o mount mas SEM noswap — abortado."; }
-  say "✓ montada com noswap (não pode swapar; teto duro em $SIZE)."
+  has_noswap && { sudo umount "$MNT"; die "o kernel montou com noswap sem se pedir — abortado."; }
+  say "✓ montada SWAPPÁVEL (páginas movíveis ⇒ a compactação funciona; teto em $SIZE)."
 fi
 
 heal_dangling

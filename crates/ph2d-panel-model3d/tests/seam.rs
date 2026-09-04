@@ -1260,6 +1260,10 @@ fn scene_with_one_choice_row() {
         isolated: None,
         node_count: 1,
         last_trace_ms: 0.0,
+        // ⚠️ `view_label` nasceu na `line/UIUX` (o 2.º pulldown da area nomeia a VISTA) e este
+        // literal e' da `line/3DModeling`: vazio, que e' a omissao que o doc do campo declara
+        // -- *um retrato que ninguem publicou nao tem vista para nomear*.
+        view_label: "",
     });
 }
 
@@ -1369,6 +1373,10 @@ fn every_chip_family_dispatches_its_own_intent() {
         isolated: None,
         node_count: 1,
         last_trace_ms: 0.0,
+        // ⚠️ `view_label` nasceu na `line/UIUX` (o 2.º pulldown da area nomeia a VISTA) e este
+        // literal e' da `line/3DModeling`: vazio, que e' a omissao que o doc do campo declara
+        // -- *um retrato que ninguem publicou nao tem vista para nomear*.
+        view_label: "",
     });
     /// `(nome, família de ids, quantos slots, a intenção que cada slot TEM de despachar)`.
     type Familia = (
@@ -1378,12 +1386,15 @@ fn every_chip_family_dispatches_its_own_intent() {
         fn(usize) -> ModelIntent,
     );
     let familias: &[Familia] = &[
-        ("modes", ids::model3d_mode_button, 2, |slot| {
-            ModelIntent::SetGizmoMode { slot }
-        }),
-        ("frames", ids::model3d_frame_button, 2, |slot| {
-            ModelIntent::SetGizmoFrame { slot }
-        }),
+        // ⛔⛔ **`modes` e `frames` SAIRAM desta lista na integracao de 2026-09-04, e nao por
+        // alguem os ter apagado: eles MUDARAM DE PORTA.** A `line/UIUX` mediu que os chips do
+        // painel estavam MORTOS (o clique chegava, a luz acendia, o valor nao alcancava consumidor
+        // nenhum -- a 2.a especie do `CLAUDE.md` 5.0) e ligou os do TRILHO, que ja' existiam:
+        // `area_bar::rail_verb_slot` para o verbo, `ids::TOOL_SPACE` para o referencial.
+        //
+        // ⚠️ **A costura que este gate defende continua defendida, no braco novo do `event.rs`** --
+        // o que deixou de existir e' a familia de ids do PAINEL. ⛔ Manter as duas listas daria
+        // duas portas para o mesmo verbo, que e' exactamente o que aquela wave foi apagar.
         ("selects", ids::model3d_select_button, 2, |slot| {
             ModelIntent::SetLassoMode { slot }
         }),
@@ -1479,6 +1490,10 @@ fn measure_what_the_lasso_row_costs() {
             isolated: None,
             node_count: 1,
             last_trace_ms: 0.0,
+            // ⚠️ `view_label` nasceu na `line/UIUX` (o 2.º pulldown da area nomeia a VISTA) e este
+            // literal e' da `line/3DModeling`: vazio, que e' a omissao que o doc do campo declara
+            // -- *um retrato que ninguem publicou nao tem vista para nomear*.
+            view_label: "",
         });
         let mut host = MockPanelHost::with_panel::<Model3dPanel>();
         host.set_panel_visible(Model3dPanel::ID, true);

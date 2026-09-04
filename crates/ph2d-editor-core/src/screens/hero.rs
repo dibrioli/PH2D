@@ -80,11 +80,11 @@ pub mod menu_rows;
 /// O que esta tela OFERECE agora — as portas de *«esta superfície está viva?»*.
 mod offers;
 mod paint;
-pub mod variant_axes;
 mod panel_host;
 mod panel_walk;
 mod pre_dispatch;
 pub mod slot_tabs;
+pub mod variant_axes;
 // ⚠️ Re-exportado para o gate `every_registered_panel_is_reachable_by_the_z_order_walk`: uma
 // lista que um teste não consegue ler é uma lista que ninguém confere — e esta já custou
 // seis defeitos.

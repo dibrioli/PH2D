@@ -68,6 +68,21 @@ impl Panel for AssetBrowserPanel {
     const ID: &'static str = PANEL_ID;
     const NODE_ID: NodeId = ph2d_editor_core::ids::ASSET_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    // ⚠️⚠️ **Estes tres nasceram na integracao de 2026-09-04**: a `line/UIUX` acrescentou
+    // `TITLE`/`DEFAULT_SLOT` ao contrato `Panel` (o artista passa a MOVER um painel, entao ele tem
+    // de dizer o nome e onde nasce) e a `line/components` criou este painel — as duas sozinhas
+    // compilavam, e juntas nao. ⛔ E' a quebra que so' a arvore COMBINADA ve^.
+    //
+    // Os valores nao sao escolha minha: o TITULO e' o que o chip do topbar ja' dizia
+    // (`chip_name.rs`: `TOPBAR_RIGHT_ASSETS => "Assets"`), e o resto e' o molde do irmao que ja'
+    // FLUTUA — o `WidgetLabPanel`. ⭐ *Este painel declara-se flutuante na PRIMEIRA linha do doc
+    // dele*, e um painel flutuante que nascesse numa coluna contradiria o proprio cabecalho.
+    const TITLE: &'static str = "Assets";
+    const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
+        ph2d_editor_core::screens::slot::SlotSet::SIDES;
+    const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
+        ph2d_editor_core::screens::slot::Slot::RightTop;
+    const CAN_FLOAT: bool = true;
 
     fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

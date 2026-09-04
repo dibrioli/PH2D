@@ -459,6 +459,13 @@ impl MockPanelHost {
             let mut ctx = PaintCtx {
                 host: self,
                 layout: &layout,
+                // ⚠️ O MESMO idioma das outras duas construções deste ficheiro, e não uma terceira
+                // conta: `SlotSet::of(…)`, nunca `ANY_DOCK` — ver o comentário longo em `paint`.
+                // (O campo nasceu na `line/UIUX` e este arnês veio da `line/components`: cada uma
+                // compilava sozinha.)
+                slot: layout
+                    .slot_rects(SlotSet::of(P::DEFAULT_SLOT))
+                    .get(P::DEFAULT_SLOT),
                 viewport,
                 scene: &mut scene,
                 text_system: &mut text_system,

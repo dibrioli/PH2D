@@ -27,8 +27,8 @@ mod event_precision;
 mod event_slice;
 mod event_sprite_geometry;
 mod event_sprite_value;
-mod event_value;
 mod event_transform;
+mod event_value;
 mod event_wheel;
 mod paint;
 /// ⭐ A MOLDURA do corpo — irmã do `paint_frame` pelo tecto de 600 LOC.

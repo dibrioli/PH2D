@@ -158,6 +158,9 @@ pub(crate) fn apply_event(
                 state::push_intent(ModelIntent::SetGizmoFrame {
                     slot: (active + 1) % n,
                 });
+                true
+            }
+        }
         WidgetEvent::Click(id) if slot_in(id, ids::model3d_select_button).is_some() => {
             let slot = slot_in(id, ids::model3d_select_button).unwrap_or(0);
             slot < state::current().selects.len() && {

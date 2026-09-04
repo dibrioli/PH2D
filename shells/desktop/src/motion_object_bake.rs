@@ -553,19 +553,10 @@ pub(crate) fn bake_rgba_many(
     Some((rgba, wpx, hpx, size))
 }
 
-// ⚠️ **O `THUMB_MAX` mudou-se para [`crate::thumbnail`]** com a lei, quando ela ganhou o terceiro
-// consumidor (o navegador de assets, 2026-08-30). ⛔ Ele NÃO é re-exportado aqui: uma re-exportação
-// que só os testes usam é morta no binário, e o clippy diz isso — quem o quer nomeia a porta.
-
-/// A miniatura de um ladrilho assado, no vocabulário do painel do Motion.
-///
-/// ⚠️ **A REDUÇÃO vive em [`crate::thumbnail::reduce`]** e não conhece painel nenhum; o que esta
-/// função acrescenta é só o tipo — que é de `ph2d-panel-motion-graph`, e por isso não podia descer
-/// para uma folha partilhada com o `ph2d-asset-index`.
-pub(crate) fn thumbnail(rgba: &[u8], w: u32, h: u32) -> ph2d_panel_motion_graph::PreviewThumb {
-    let (rgba, w, h) = crate::thumbnail::reduce(rgba, w, h);
-    ph2d_panel_motion_graph::PreviewThumb { rgba, w, h }
-}
+// ⚠️ **O `THUMB_MAX` e a REDUÇÃO mudaram-se para [`crate::thumbnail`]** quando a lei ganhou o
+// terceiro consumidor (o navegador de assets, 2026-08-30); o embrulho que devolve o
+// `PreviewThumb` vive em [`crate::motion_object_thumb`], que é quem este ficheiro chama.
+// ⛔ Nada é re-exportado daqui: uma re-exportação que só os testes usam é morta no binário.
 
 #[cfg(test)]
 #[path = "motion_object_bake_tests.rs"]

@@ -97,12 +97,12 @@ impl App {
         };
         match verb_for(facts) {
             None => false,
-            Some(HierKeyVerb::Delete) => {
-                self.push_hier_action(|row| action_bus::EditorAction::HierDelete { row })
-            }
-            Some(HierKeyVerb::Duplicate) => {
-                self.push_hier_action(|row| action_bus::EditorAction::HierDuplicate { row })
-            }
+            Some(HierKeyVerb::Delete) => self.push_hier_action(|row| {
+                action_bus::EditorAction::Hierarchy(action_bus::HierRequest::Delete { row })
+            }),
+            Some(HierKeyVerb::Duplicate) => self.push_hier_action(|row| {
+                action_bus::EditorAction::Hierarchy(action_bus::HierRequest::Duplicate { row })
+            }),
         }
     }
 }

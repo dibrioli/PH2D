@@ -204,7 +204,7 @@ pub fn crossings_against(
         return Vec::new();
     }
     let mut out: Vec<f64> = Vec::new();
-    for c in crate::arc_cut::crossings(&geoms, &edges, escala) {
+    for c in crate::arc_cut::crossings(&geoms, &edges, crate::arc_cut::Merge::do_corte(escala)) {
         // O contorno `0` é o alvo; uma travessia dele consigo mesmo entra pelos DOIS lados.
         if c.a.0 == 0 {
             out.push(c.a.1);
@@ -292,7 +292,10 @@ pub fn crossings_all(contornos: &[(Vec<VecVertex>, bool)], escala: f64) -> Optio
     if edges.iter().map(Vec::len).sum::<usize>() > MAX_SAMPLES_BATCH {
         return None;
     }
-    for c in crate::arc_cut::crossings(&geoms, &edges, escala) {
+    // ⚠️⚠️ **A folga é a da REDE, e não a do Trim** ([`crate::arc_cut::MERGE_FRAC_REDE`]): quem monta
+    // uma rede planar não pode perder uma travessia genuína, porque uma parede que atravessa outra
+    // sem nó devolve um ciclo gigante que engole as regiões vizinhas (report de 2026-09-04).
+    for c in crate::arc_cut::crossings(&geoms, &edges, crate::arc_cut::Merge::da_rede(escala)) {
         out[donos[c.a.0]].push(c.a.1);
         out[donos[c.b.0]].push(c.b.1);
     }

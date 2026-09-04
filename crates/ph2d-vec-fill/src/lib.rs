@@ -228,62 +228,54 @@ pub fn rede(contornos: &[(Vec<VecVertex>, bool)]) -> Rede {
         .iter()
         .map(|(v, ..)| detection_polyline(v, false))
         .collect();
+    // ⚠️ **A ordem é load-bearing**: os pontos saem primeiro. Um par de arcos-ponto no mesmo sítio
+    // é indistinguível de um duplicado, e descartar um deles deixaria o outro a envenenar o passeio.
     descartar_duplicados(
-        Rede {
-            arcos,
-            nos,
-            poly,
-            recusada: false,
-        },
+        descartar_pontos(
+            Rede {
+                arcos,
+                nos,
+                poly,
+                recusada: false,
+            },
+            tol,
+        ),
         tol,
     )
 }
 
-/// ⛔⛔ **DOIS ARCOS SOBREPOSTOS destroem o passeio — e não só a região deles.**
+/// ⛔⛔ **UM ARCO DE COMPRIMENTO ZERO É UM PONTO, e um ponto não é uma parede.**
 ///
-/// Report do Enio (2026-09-01): *"a depender da posição dos pontos o preenchimento some."*
+/// A outra metade do report de 2026-09-04 — a que só existe porque a primeira metade
+/// ([`ph2d_vec_scene::arc_cut::MERGE_FRAC_REDE`], no doc dele) deixou de descartar travessias
+/// genuínas. Duas travessias a `2,5·10⁻⁴` uma da outra são cortes distintos, o **agrupamento de nós**
+/// junta as duas pontas num nó só, e o pedaço entre elas fica com as duas pontas no MESMO nó e
+/// comprimento zero.
 ///
-/// ⚠️ **Medido:** com uma parede a cair **exactamente em cima** de outra (o artista arrasta um nó
-/// até a curva encostar na aresta vizinha), a rede inteira passava de **3 faces a 1** — e a região
-/// do outro lado do desenho, que nada tinha a ver, perdia o preenchimento junto. *Duas
-/// meias-arestas com a mesma direcção de saída são indistinguíveis para o passeio, e ele fecha um
-/// ciclo só, gigante.* É o mesmo mecanismo que fazia um preenchimento devolvido à rede envenenar as
-/// vizinhas.
+/// ⚠️⚠️ **E um pedaço desses não é inofensivo — MEDIDO:** com duas paredes a cortarem uma terceira a
+/// `10⁻²` uma da outra (folga `0,17`), a rede passa de **uma** face limitada para **ZERO**, e a
+/// região no canto oposto do desenho desaparece com elas. ⛔ **O mecanismo não é a corda de
+/// comprimento zero** — a `10⁻²` a direcção dele é perfeitamente boa. É ser um **LAÇO**: as duas
+/// meias-arestas saem do MESMO nó, e um laço num nó que tem outras meias-arestas prende o passeio,
+/// que roda por ângulo à volta do nó. *O comprimento não o salva; o que o torna venenoso é as duas
+/// pontas terem sido agrupadas.*
 ///
-/// ⇒ Dois arcos que ligam **o mesmo par de nós** e passam **pelo mesmo sítio** são o mesmo arco: o
-/// segundo cai. ⛔ **O par de nós sozinho não chega** — duas curvas diferentes entre os mesmos dois
-/// nós são uma lente, e ela é uma região legítima; por isso a comparação inclui o ponto do MEIO.
-fn descartar_duplicados(r: Rede, tol: f64) -> Rede {
-    let t2 = (tol.max(1e-9)) * (tol.max(1e-9));
-    let meio = |p: &[[f64; 2]]| p.get(p.len() / 2).copied().unwrap_or([0.0, 0.0]);
-    let mut fica: Vec<bool> = vec![true; r.arcos.len()];
-    for i in 0..r.arcos.len() {
-        if !fica[i] {
-            continue;
-        }
-        let (a, b) = (
-            r.arcos[i].de.min(r.arcos[i].ate),
-            r.arcos[i].de.max(r.arcos[i].ate),
-        );
-        let mi = meio(&r.poly[i]);
-        for (j, vivo) in fica.iter_mut().enumerate().skip(i + 1) {
-            if !*vivo {
-                continue;
-            }
-            let (c, d) = (
-                r.arcos[j].de.min(r.arcos[j].ate),
-                r.arcos[j].de.max(r.arcos[j].ate),
-            );
-            if (a, b) != (c, d) {
-                continue;
-            }
-            let mj = meio(&r.poly[j]);
-            let v = [mi[0] - mj[0], mi[1] - mj[1]];
-            if v[0].mul_add(v[0], v[1] * v[1]) <= t2 {
-                *vivo = false;
-            }
-        }
-    }
+/// ⚠️ A fusão de travessias **não** o evita, por desenho: ela é POR PAR (senão três linhas
+/// concorrentes perdem dois dos três cruzamentos), e estes dois cortes vêm de pares diferentes.
+///
+/// ⚠️ **A régua é o COMPRIMENTO, e não `de == até`**: um contorno fechado que não cruza ninguém entra
+/// na rede como um laço, que também tem as duas pontas no mesmo nó — e é uma parede legítima, a única
+/// que cerca aquela região. ⛔ Um anel autorado mais pequeno que a folga cai aqui, e é a resposta
+/// certa: ele é menor que a régua com que esta rede distingue dois pontos.
+fn descartar_pontos(r: Rede, tol: f64) -> Rede {
+    let fica: Vec<bool> = (0..r.arcos.len())
+        .map(|i| r.arcos[i].de != r.arcos[i].ate || r.comprimento(i) > tol)
+        .collect();
+    compactar(r, &fica)
+}
+
+/// Fica só com os arcos marcados — a compactação partilhada pelos dois descartes.
+fn compactar(r: Rede, fica: &[bool]) -> Rede {
     if fica.iter().all(|k| *k) {
         return r;
     }
@@ -300,6 +292,134 @@ fn descartar_duplicados(r: Rede, tol: f64) -> Rede {
         poly,
         recusada: r.recusada,
     }
+}
+
+/// ⛔⛔ **DOIS ARCOS SOBREPOSTOS destroem o passeio — e não só a região deles.**
+///
+/// Report do Enio (2026-09-01): *"a depender da posição dos pontos o preenchimento some."*
+///
+/// ⚠️ **Medido:** com uma parede a cair **exactamente em cima** de outra (o artista arrasta um nó
+/// até a curva encostar na aresta vizinha), a rede inteira passava de **3 faces a 1** — e a região
+/// do outro lado do desenho, que nada tinha a ver, perdia o preenchimento junto. *Duas
+/// meias-arestas com a mesma direcção de saída são indistinguíveis para o passeio, e ele fecha um
+/// ciclo só, gigante.* É o mesmo mecanismo que fazia um preenchimento devolvido à rede envenenar as
+/// vizinhas.
+///
+/// ⇒ Dois arcos que ligam **o mesmo par de nós** e ficam juntos **do princípio ao fim** são o mesmo
+/// arco: o segundo cai. ⛔ **O par de nós sozinho não chega** — duas curvas diferentes entre os
+/// mesmos dois nós são uma lente, e ela é uma região legítima.
+///
+/// # ⛔⛔ E UM PONTO SÓ TAMBÉM NÃO CHEGA — report do Enio de 2026-09-04
+///
+/// *"se arrasto um ponto que está dentro do stroke para perto ou sobre o stroke externo, algumas
+/// áreas de preenchimento somem"* — e arrastar para FORA funcionava.
+///
+/// ⚠️⚠️ **Medido** (quadrado a atravessar um círculo de raio `100`, escala `353,55` ⇒ folga `0,35`):
+/// com a quina do quadrado a **`0,28` DENTRO** da parede, a rede caía de `4` arcos para `3` e de
+/// `3` faces para `2` — as áreas `25 555` e `5 838` fundiam-se numa de `31 393`. O arco comido era a
+/// **quina do quadrado** (comprimento `283`), declarada igual à **meia-volta do círculo**
+/// (comprimento `315`): as duas ligam o mesmo par de nós, e **os pontos médios das duas caem os dois
+/// em cima da quina** — a `0,28` um do outro. ⛔ Fora dessa janela os arcos tinham pares de nós
+/// diferentes, e é exactamente por isso que arrastar para fora nunca falhava.
+///
+/// ⇒ *Um ponto não é uma curva.* A comparação passa a ser a **ASSINATURA** — [`AMOSTRAS_DO_MESMO`]
+/// pontos espaçados por COMPRIMENTO ao longo do arco —, e ela separa as duas à primeira amostra
+/// (`29,7` de distância contra a folga de `0,35`). ⚠️ **Nos dois sentidos**: o mesmo traço pode
+/// entrar na rede percorrido ao contrário, e aí a assinatura de um casa com a do outro invertida.
+fn descartar_duplicados(r: Rede, tol: f64) -> Rede {
+    let t2 = (tol.max(1e-9)) * (tol.max(1e-9));
+    let assinaturas: Vec<Vec<[f64; 2]>> = r.poly.iter().map(|p| assinatura(p)).collect();
+    let mut fica: Vec<bool> = vec![true; r.arcos.len()];
+    for i in 0..r.arcos.len() {
+        if !fica[i] {
+            continue;
+        }
+        let (a, b) = (
+            r.arcos[i].de.min(r.arcos[i].ate),
+            r.arcos[i].de.max(r.arcos[i].ate),
+        );
+        for (j, vivo) in fica.iter_mut().enumerate().skip(i + 1) {
+            if !*vivo {
+                continue;
+            }
+            let (c, d) = (
+                r.arcos[j].de.min(r.arcos[j].ate),
+                r.arcos[j].de.max(r.arcos[j].ate),
+            );
+            if (a, b) != (c, d) {
+                continue;
+            }
+            if mesmo_traco(&assinaturas[i], &assinaturas[j], t2) {
+                *vivo = false;
+            }
+        }
+    }
+    compactar(r, &fica)
+}
+
+/// **Quantos pontos INTERIORES decidem se dois arcos são o mesmo arco.**
+///
+/// ⚠️ **Interiores de propósito**: as pontas já são o par de nós, que é comparado antes — gastá-las
+/// aqui seria medir duas vezes a única coisa que já se sabe igual.
+///
+/// ⚠️ **Provado por mutação:** com `1` o defeito de 2026-09-04 volta inteiro (`1` **é** o ponto do
+/// meio, que era a lei de antes) e dois gates reprovam; com `2` a fixtura já não distingue nada.
+/// ⇒ o número não está calibrado numa fronteira — está com **folga deliberada** sobre ela, e a folga
+/// é barata: a assinatura custa `O(arcos)` a construir, uma vez, e a comparação só corre no par que
+/// **já** partilha os dois nós.
+const AMOSTRAS_DO_MESMO: usize = 8;
+
+/// **A ASSINATURA de um arco** — [`AMOSTRAS_DO_MESMO`] pontos espaçados por COMPRIMENTO ao longo
+/// dele.
+///
+/// ⚠️ **Por comprimento, e não por índice de amostra**: duas poligonais da mesma curva podem ter
+/// contagens de pontos diferentes (a amostragem é adaptativa), e comparar o `k`-ésimo ponto de cada
+/// uma compararia sítios diferentes da mesma curva.
+fn assinatura(poly: &[[f64; 2]]) -> Vec<[f64; 2]> {
+    let n = AMOSTRAS_DO_MESMO;
+    let Some(&primeiro) = poly.first() else {
+        return vec![[0.0, 0.0]; n];
+    };
+    if poly.len() < 2 {
+        return vec![primeiro; n];
+    }
+    let mut acum = Vec::with_capacity(poly.len());
+    let mut total = 0.0;
+    acum.push(0.0);
+    for w in poly.windows(2) {
+        total += (w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]);
+        acum.push(total);
+    }
+    if total <= 0.0 {
+        return vec![primeiro; n];
+    }
+    #[allow(clippy::cast_precision_loss)]
+    (1..=n)
+        .map(|k| {
+            let alvo = total * (k as f64) / (n as f64 + 1.0);
+            let j = acum.partition_point(|s| *s < alvo).clamp(1, poly.len() - 1);
+            let (lo, hi) = (acum[j - 1], acum[j]);
+            let t = if hi > lo { (alvo - lo) / (hi - lo) } else { 0.0 };
+            [
+                t.mul_add(poly[j][0] - poly[j - 1][0], poly[j - 1][0]),
+                t.mul_add(poly[j][1] - poly[j - 1][1], poly[j - 1][1]),
+            ]
+        })
+        .collect()
+}
+
+/// **As duas assinaturas descrevem o MESMO traço?** — em qualquer dos dois sentidos.
+///
+/// ⚠️ **O sentido tem de ser tentado nos dois lados** e não deduzido do par `(de, até)`: um arco-laço
+/// tem `de == até` e não diz sentido nenhum, e dois contornos autorados na mesma geometria podem ter
+/// sido escritos em sentidos opostos.
+fn mesmo_traco(a: &[[f64; 2]], b: &[[f64; 2]], t2: f64) -> bool {
+    let perto = |p: &[f64; 2], q: &[f64; 2]| {
+        let v = [p[0] - q[0], p[1] - q[1]];
+        v[0].mul_add(v[0], v[1] * v[1]) <= t2
+    };
+    a.iter().zip(b).all(|(p, q)| perto(p, q))
+        || a.iter().zip(b.iter().rev()).all(|(p, q)| perto(p, q))
 }
 
 impl Rede {

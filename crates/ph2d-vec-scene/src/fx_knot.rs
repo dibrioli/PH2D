@@ -25,7 +25,7 @@
 //! cada passagem); o VÃO é cortado na CURVA de Bézier pela MESMA máquina de arco do Trim
 //! ([`crate::fx_trim::pieces_between`]/[`rebuild`](crate::fx_trim::rebuild)) — as fitas saem lisas.
 
-use crate::arc_cut::{Crossing, EPS, Edge, Geom, MAX_SAMPLES, crossings, strands_uniform};
+use crate::arc_cut::{Crossing, EPS, Edge, Geom, MAX_SAMPLES, Merge, crossings, strands_uniform};
 use crate::effect::FxCtx;
 use crate::{Contour, VecPath, VecVertex};
 
@@ -119,7 +119,7 @@ pub fn knot_path(path: &VecPath, spec: &KnotSpec, ctx: &FxCtx) -> VecPath {
     if edges.iter().map(Vec::len).sum::<usize>() > MAX_SAMPLES {
         return out; // caminho patológico: não teço, devolvo intacto
     }
-    let xings = crossings(&geoms, &edges, ctx.ref_size);
+    let xings = crossings(&geoms, &edges, Merge::do_corte(ctx.ref_size));
     if xings.is_empty() {
         return out; // nada se cruza — nada a tecer
     }

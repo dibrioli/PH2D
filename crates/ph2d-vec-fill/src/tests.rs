@@ -606,3 +606,198 @@ fn the_face_is_the_one_on_the_recorded_side() {
         "e o de fora nao e' face limitada nenhuma"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// O report de 2026-09-04: *"se arrasto um ponto que está dentro do stroke para perto ou sobre o
+// stroke externo, algumas áreas de preenchimento somem"* — e para FORA funcionava.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// Um círculo de raio `r` centrado na origem, em quatro cúbicas.
+fn circulo(r: f64) -> (Vec<VecVertex>, bool) {
+    let k = 0.552_284_749_830_793_4 * r;
+    let p = [[r, 0.0], [0.0, r], [-r, 0.0], [0.0, -r]];
+    let t = [[0.0, k], [-k, 0.0], [0.0, -k], [k, 0.0]];
+    let mut out = Vec::new();
+    for i in 0..4 {
+        out.push(VecVertex {
+            anchor: p[i],
+            in_handle: [p[i][0] - t[i][0], p[i][1] - t[i][1]],
+            out_handle: [p[i][0] + t[i][0], p[i][1] + t[i][1]],
+            kind: VertexKind::Smooth,
+            corner_radius: 0.0,
+        });
+    }
+    (out, true)
+}
+
+/// O quadrado `[-150, c]²` — a quina superior-direita é o nó que o artista arrasta, e ela cruza a
+/// parede do círculo de raio `100` em `c = 70,7107`.
+fn quadrado_com_quina(c: f64) -> (Vec<VecVertex>, bool) {
+    (
+        vec![
+            v(-150.0, -150.0),
+            v(c, -150.0),
+            v(c, c),
+            v(-150.0, c),
+        ],
+        true,
+    )
+}
+
+/// ⛔⛔ **UMA PAREDE QUE SÓ PASSA PERTO DE OUTRA NÃO É A MESMA PAREDE.**
+///
+/// ⚠️⚠️ **Medido (2026-09-04):** com a quina do quadrado a `0,28` DENTRO da parede do círculo, o
+/// descarte de duplicados comia o arco da quina — as duas ligam o mesmo par de nós e **os pontos
+/// médios das duas caem em cima da quina**. A rede caía de `4` arcos para `3`, de `3` faces para
+/// `2`, e as áreas `25 555` e `5 838` fundiam-se numa de `31 393`: *o preenchimento de uma delas
+/// desaparecia.*
+///
+/// ⚠️ A distância entre as quinas é a alavanca — `0,28` está DENTRO da folga (`0,35`), e é por isso
+/// que a fixtura a fixa aí. ⛔ Uma fixtura com a quina longe da parede passa sem a cura.
+#[test]
+fn a_wall_that_only_passes_near_another_is_not_the_same_wall() {
+    let r = rede(&[circulo(100.0), quadrado_com_quina(70.5107)]);
+    let dentro = r.face_em([0.0, 0.0]).expect("circulo E quadrado");
+    let so_circulo = r.face_em([0.0, 85.0]).expect("circulo, fora do quadrado");
+    let so_quadrado = r.face_em([-120.0, -120.0]).expect("quadrado, fora do circulo");
+    assert_ne!(
+        dentro, so_circulo,
+        "a quina a 0,28 da parede fundiu a lente com a calota — a parede foi comida"
+    );
+    assert_ne!(dentro, so_quadrado, "e estas duas nunca foram a mesma");
+    assert_eq!(
+        r.faces().iter().filter(|f| f.area > 0.0).count(),
+        3,
+        "as tres regioes tem de continuar a existir"
+    );
+}
+
+/// ⭐⭐⭐ **O PREENCHIMENTO SEGUE A REGIÃO DELE ENQUANTO A QUINA ATRAVESSA A PAREDE.**
+///
+/// A lei do produto, medida pelas duas portas que o balde usa ([`Rede::arco_em`] +
+/// [`Rede::face_de`]): as âncoras gravadas com a quina bem dentro resolvem, em **toda** a travessia,
+/// para a face que contém a semente — e nunca para a do outro lado da parede.
+///
+/// ⚠️ **É uma VARREDURA e não um ponto**: os DOIS defeitos viviam em janelas estreitas de lados
+/// opostos da parede — `−0,35 < d < 0` (o duplicado falso) e `0 < d < +0,25` (a travessia
+/// descartada) —, e uma fixtura num sítio só passa ao lado das duas. ⛔ Os passos incluem de propósito
+/// a travessia **exacta** e um **fio** de cada lado dela: era ali, e não no `d` redondo, que a mão do
+/// artista pousa.
+#[test]
+fn a_fill_keeps_its_own_region_while_a_corner_crosses_the_wall() {
+    // As âncoras da lente, gravadas com a quina `0,71` DENTRO — o estado são de onde o artista parte.
+    let inicial = rede(&[circulo(100.0), quadrado_com_quina(70.2107)]);
+    let face = inicial.face_em([0.0, 0.0]).expect("a lente");
+    let ancoras: Vec<(usize, f64, bool)> = face
+        .arcos
+        .iter()
+        .flat_map(|&(i, frente)| {
+            let a = &inicial.arcos[i];
+            [0.1, 0.35, 0.65, 0.9].map(|t| (a.origem, a.em(t), frente))
+        })
+        .collect();
+
+    // A quina toca a parede em `c = √(100²/2)`; `d` é a distância com sinal até ela.
+    let toque = (100.0_f64 * 100.0 / 2.0).sqrt();
+    let mut posicoes: Vec<f64> = (0..=20).map(|k| 70.2107 + f64::from(k) * 0.05).collect();
+    for d in [-1e-2, -1e-4, -3e-5, 0.0, 3e-5, 1e-4, 1e-2, 0.05, 0.1, 0.2] {
+        posicoes.push(toque + d / 2.0_f64.sqrt());
+    }
+    for c in posicoes {
+        let r = rede(&[circulo(100.0), quadrado_com_quina(c)]);
+        let faces: Vec<Face> = r.faces().into_iter().filter(|f| f.area > 0.0).collect();
+        let mut votos = vec![0_usize; faces.len()];
+        for &(origem, frac, frente) in &ancoras {
+            if let Some(arco) = r.arco_em(origem, frac)
+                && let Some(fi) = r.face_de(&faces, arco, frente)
+            {
+                votos[fi] += 1;
+            }
+        }
+        let (dono, n) = votos
+            .iter()
+            .enumerate()
+            .max_by_key(|(_, n)| **n)
+            .expect("ha' faces");
+        assert!(*n > 0, "c={c:.4}: nenhuma ancora reencontrou a regiao");
+        let contorno = r.contorno(&faces[dono]);
+        assert!(
+            ph2d_vec_scene::point_in_polygon(&contorno, [0.0, 0.0]),
+            "c={c:.4}: a tinta saltou para uma regiao que nao contem a semente"
+        );
+        assert!(
+            !ph2d_vec_scene::point_in_polygon(&contorno, [0.0, 85.0]),
+            "c={c:.4}: a regiao engoliu a calota do outro lado da parede"
+        );
+    }
+}
+
+/// ⛔⛔ **UMA QUINA UM FIO PARA ALÉM DA PAREDE NÃO PODE APAGAR DUAS REGIÕES.**
+///
+/// A **outra** metade do report de 2026-09-04 — a que só se vê do lado de FORA da parede, e por isso
+/// escapou à fixtura da metade de dentro.
+///
+/// ⚠️⚠️ **Medido:** com a quina `3·10⁻⁵` para lá da parede, as duas travessias reais junto dela
+/// distam `2,5·10⁻⁴` — abaixo da folga com que o Trim funde travessias (`0,35`) — e a segunda era
+/// **descartada**. O quadrado atravessava então o círculo num sítio **sem nó**, e o passeio devolvia
+/// **um ciclo de 8 meias-arestas com área `−25 869`** no lugar da lente (`25 697`) e de uma calota
+/// (`2 853`): *duas regiões desapareciam de uma vez.* ⛔ Na travessia EXACTA a resposta já estava
+/// certa — o defeito vivia só na vizinhança dela.
+#[test]
+fn a_corner_a_hair_past_the_wall_leaves_every_region_standing() {
+    let toque = (100.0_f64 * 100.0 / 2.0).sqrt();
+    let um_fio = toque + 3e-5 / 2.0_f64.sqrt();
+    let r = rede(&[circulo(100.0), quadrado_com_quina(um_fio)]);
+    let faces: Vec<Face> = r.faces().into_iter().filter(|f| f.area > 0.0).collect();
+    assert_eq!(
+        faces.len(),
+        4,
+        "a lente, as DUAS calotas e o resto do quadrado — areas {:?}",
+        faces.iter().map(|f| f.area.round()).collect::<Vec<_>>()
+    );
+    for (nome, p) in [
+        ("a lente", [0.0, 0.0]),
+        ("a calota de cima", [0.0, 85.0]),
+        ("a calota da direita", [85.0, 0.0]),
+        ("o resto do quadrado", [-120.0, -120.0]),
+    ] {
+        assert!(r.face_em(p).is_some(), "{nome} desapareceu");
+    }
+}
+
+/// ⛔⛔⛔ **DUAS PAREDES QUE POUSAM QUASE NO MESMO SÍTIO NÃO PODEM APAGAR O DESENHO INTEIRO.**
+///
+/// A terceira metade do report de 2026-09-04, e a mais violenta das três.
+///
+/// ⚠️⚠️ **Medido:** com duas paredes a cortarem uma terceira a `10⁻²` uma da outra — muito abaixo da
+/// folga com que duas pontas são o mesmo nó (`0,17` nesta fixtura) —, o pedaço entre os dois cortes
+/// nasce com as **duas pontas no MESMO nó**: um LAÇO de extensão sub-tolerância. E um laço desses num
+/// nó que tem outras meias-arestas prende o passeio: a rede passa de **uma** face limitada para
+/// **ZERO** — a região de `1 600` no canto oposto do desenho, que nada tem a ver com aquilo,
+/// desaparece.
+///
+/// ⚠️ **A fusão de travessias não o evita, por desenho**: ela é POR PAR (senão três linhas
+/// concorrentes perdem dois dos três cruzamentos), e estes dois cortes vêm de pares diferentes.
+/// ⇒ quem os funde é o agrupamento de nós, e o pedaço que sobra tem de ser descartado como o ponto
+/// que ele é.
+#[test]
+fn two_walls_landing_a_hair_apart_do_not_erase_the_region_across_the_drawing() {
+    for gap in [1e-2_f64, 1e-6] {
+        let contornos = vec![
+            (vec![v(0.0, -60.0), v(0.0, 60.0)], false), // cortada duas vezes, quase no mesmo sítio
+            (vec![v(-60.0, 0.0), v(60.0, 0.0)], false),
+            (vec![v(-60.0, gap), v(60.0, gap)], false),
+            (vec![v(-60.0, -40.0), v(60.0, -40.0)], false),
+            (vec![v(-40.0, -60.0), v(-40.0, 60.0)], false),
+        ];
+        let r = rede(&contornos);
+        let f = r.face_em([-20.0, -20.0]).unwrap_or_else(|| {
+            panic!("gap={gap:.0e}: a regiao do outro lado do desenho desapareceu")
+        });
+        assert!(
+            (f.area - 1600.0).abs() < 1.0,
+            "gap={gap:.0e}: area {}",
+            f.area
+        );
+    }
+}

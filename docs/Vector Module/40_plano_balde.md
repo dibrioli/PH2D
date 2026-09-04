@@ -666,3 +666,90 @@ que a produziu continua a valer, e o defeito que ela nomeia — *sete preenchime
 ⏳ **A saída que sobra**, para quando houver report a pedi-la: um preenchimento sem região não se
 apaga nem se congela — ele **avisa** (a Hierarquia diz que aquela área perdeu a linha que a
 cercava), e o artista decide. É a única das três que não escolhe por ele.
+
+---
+
+## §12 — ⭐⭐⭐ O REPORT DE 2026-09-04: **um nó que POUSA na parede apagava regiões**
+
+> *"se arrasto um ponto que está dentro do stroke para perto ou sobre o stroke externo, algumas
+> áreas de preenchimento somem. Se eu arrastar para fora, funciona bem."* — Enio, 2026-09-04
+
+⭐ **O report traz o discriminador dentro dele**: *para fora funciona*. Isso exclui o modelo das
+âncoras (§11) — se a receita estivesse errada, erraria dos dois lados — e aponta para a **rede**,
+na vizinhança da parede. A sonda ([`probe_no_na_parede.rs`](../../crates/ph2d-vec-fill/tests/probe_no_na_parede.rs))
+varre a quina de um quadrado ao longo da diagonal, através da parede de um círculo de raio `100`
+(escala `353,55`), e imprime arcos, faces e áreas em cada posição. `d` é a distância com sinal da
+quina à parede.
+
+| `d` | arcos | faces | áreas |
+|---|---|---|---|
+| `−0,71` | 4 | 3 | `22 938` · `25 555` · `5 838` |
+| **`−0,35`** | **3** | **2** | `22 977` · **`31 393`** ⟵ *duas fundidas numa* |
+| `0,00` | 6 | 4 | `23 017` · `25 697` · `2 853` · `2 853` |
+| **`+3·10⁻⁵`** | 6 | **2** | `23 017` · `2 853` ⟵ *a lente e uma calota SUMIRAM* |
+| `+0,71` | 8 | 5 | as quatro mais a lasca da quina |
+
+⚠️⚠️ **São TRÊS defeitos, um por metade da janela mais um que nenhuma delas mostrava.** Cada um
+apaga sozinho uma região, e **nenhum é do modelo das âncoras** — todos são da rede planar.
+
+### §12.1 — Dentro da parede: *um ponto não é uma curva*
+
+O `descartar_duplicados` (§7) declara dois arcos iguais quando ligam **o mesmo par de nós** e os
+**pontos médios** deles coincidem dentro da folga. Com a quina a `0,28` **dentro** do círculo, o
+arco da quina do quadrado (comprimento `283`) e a meia-volta do círculo (comprimento `315`) ligam os
+mesmos dois nós — e **os pontos médios dos dois caem em cima da quina**, a `0,28` um do outro.
+O arco da quina era **comido**, a parede desaparecia, e duas regiões fundiam-se numa.
+
+⇒ A comparação passa a ser a **ASSINATURA**: `8` pontos espaçados por **comprimento** ao longo do
+arco, nos dois sentidos. Ela separa os dois à **primeira** amostra (`29,7` de distância contra uma
+folga de `0,35`). ⚠️ Provado por mutação: com `1` ponto (que **é** a lei de antes) dois gates
+reprovam; com `2` a fixtura já não distingue nada — o `8` é folga deliberada, e é grátis.
+
+### §12.2 — Sobre a parede: *a folga de fundir travessias é de QUEM PERGUNTA*
+
+Com a quina `3·10⁻⁵` **para lá** da parede, as duas travessias reais junto dela distam `2,5·10⁻⁴` —
+muito abaixo da folga com que o `arc_cut` funde travessias (`MERGE_FRAC`, `0,35` nesta escala) — e a
+segunda era **descartada**. O quadrado passava a atravessar o círculo num sítio **sem nó**, e o
+passeio devolvia **um ciclo de 8 meias-arestas com área `−25 869`** no lugar da lente (`25 697`) e de
+uma calota (`2 853`).
+
+⛔ **Na travessia EXACTA a resposta já estava certa** — o defeito vivia só na vizinhança dela, que é
+precisamente onde a mão do artista pousa.
+
+⇒ Aquela folga é a de quem **corta uma linha** (o Trim: um pedaço de largura zero é um pedaço que o
+artista não consegue apanhar, e fundir é certo). Quem constrói uma **rede planar** não pode perder
+uma travessia genuína. São duas leis, e passam a ser dois números
+([`MERGE_FRAC`](../../crates/ph2d-vec-scene/src/arc_cut.rs) para o Trim, `MERGE_FRAC_REDE` para o
+balde), com a folga a viajar num **tipo próprio** (`Merge`) — porque ao trocá-la por um `f64` de
+outra grandeza o `fx_knot` compilou **em silêncio** a receber a escala inteira como folga, e só o
+gate do pentagrama o apanhou.
+
+⭐ **E é de graça**: A/B em `4`–`32` círculos que se cruzam dá **os mesmos arcos, as mesmas faces e o
+mesmo relógio** (`1,15`/`3,78`/`17,57`/`46,75`/`104,96 ms` contra `1,04`/`3,85`/`17,55`/`47,30`/`105,22`).
+
+### §12.3 — E o que **nenhuma** das duas mostrava: *um laço é veneno, tenha o comprimento que tiver*
+
+⛔⛔ A mutação que apagava o descarte de arcos-ponto **SOBREVIVEU** à suíte inteira: a cura estava
+escrita e nenhuma fixtura a distinguia. A fixtura que a distingue é outra e é **mais violenta** —
+duas paredes que cortam uma terceira a `10⁻²` uma da outra (folga `0,17`): o pedaço entre os dois
+cortes nasce com as **duas pontas no mesmo nó**, e a rede passa de **uma** face limitada para
+**ZERO** — a região no canto oposto do desenho, que nada tem a ver, desaparece com ela.
+
+⚠️ **O mecanismo que eu tinha escrito estava errado**: não é a corda de comprimento zero a dar um
+ângulo sem sentido (a `10⁻²` a direcção é perfeitamente boa). É ser um **LAÇO** — as duas
+meias-arestas saem do MESMO nó — e um laço num nó que tem outras meias-arestas prende o passeio, que
+roda por ângulo à volta do nó.
+
+⚠️ A fusão de travessias **não** o evita, por desenho: ela é **por par** (senão três linhas
+concorrentes perdem dois dos três cruzamentos, §7), e estes dois cortes vêm de pares diferentes.
+⇒ quem os funde é o agrupamento de nós, e o pedaço que sobra é descartado como o ponto que ele é.
+⚠️ A régua é o **comprimento**, e não `de == até`: um contorno fechado que não cruza ninguém também
+tem as duas pontas no mesmo nó, e é a única parede que cerca aquela região (mutação: trocar as duas
+mata **cinco** gates).
+
+### §12.4 — O que fica aberto
+
+⏳ A lasca da quina (`área < 0,2`) continua a fundir-se com a vizinha enquanto os dois arcos-ponto
+dela couberem na folga — é geometria abaixo da régua com que esta rede distingue dois pontos, e não
+tem report. ⏳ E o *sete preenchimentos para seis faces* do §11-bis continua **aberto**: esta wave
+não lhe toca.

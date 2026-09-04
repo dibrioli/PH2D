@@ -35,7 +35,56 @@ pub(crate) const SAMPLES_PER_SEG: usize = 16;
 pub(crate) const MAX_SAMPLES: usize = 4096;
 
 /// Duas travessias mais próximas que isto (em fracção do tamanho de referência) são a MESMA.
+///
+/// ⚠️⚠️ **É a folga de quem CORTA UMA LINHA — o Trim —, e não a de quem constrói uma REDE.** Ali um
+/// pedaço de largura zero é um pedaço que o artista não consegue apanhar, e fundir as duas
+/// travessias é a resposta certa. ⛔ Numa rede planar é a resposta ERRADA, e mede-se: descartar uma
+/// travessia genuína deixa uma parede a atravessar outra **sem nó**, e o passeio de faces devolve um
+/// ciclo gigante que engole as regiões vizinhas — ver [`MERGE_FRAC_REDE`].
 pub(crate) const MERGE_FRAC: f64 = 1e-3;
+
+/// ⭐⭐⭐ **A MESMA PERGUNTA, PARA QUEM CONSTRÓI UMA REDE** — e a resposta é outra.
+///
+/// Report do Enio (2026-09-04): *"se arrasto um ponto que está dentro do stroke para perto ou sobre
+/// o stroke externo, algumas áreas de preenchimento somem"*.
+///
+/// ⚠️⚠️ **Medido:** com a quina de um quadrado a `3·10⁻⁵` FORA de um círculo de raio `100` (escala
+/// `353`, folga do Trim `0,35`), as duas travessias reais junto da quina distam `2,5·10⁻⁴` — muito
+/// abaixo da folga — e a segunda era **descartada**. O quadrado passava então a atravessar o círculo
+/// num sítio **sem nó**, e o passeio de faces devolvia **um ciclo de 8 meias-arestas com área
+/// `−25 869`** onde deviam estar a lente (`25 697`) e uma das calotas (`2 853`): *as duas regiões
+/// desapareciam de uma vez.* ⛔ Na travessia EXACTA (as duas travessias no mesmo ponto) a resposta
+/// já estava certa — o defeito vivia só na vizinhança dela, que é exactamente onde a mão do artista
+/// pousa.
+///
+/// ⇒ Aqui a folga só tem de apanhar **a mesma travessia vista por duas arestas de amostragem
+/// vizinhas** — que é o MESMO ponto a menos de resíduo de vírgula flutuante. Travessias genuinamente
+/// distintas passam, e quem as funde depois é o **agrupamento de nós** da rede, que junta as pontas
+/// num nó só e deixa o pedaço entre elas com comprimento zero — para ser descartado como o ponto que
+/// ele é. *A fusão certa é a que acontece onde há maquinaria para a fazer inteira.*
+pub(crate) const MERGE_FRAC_REDE: f64 = 1e-9;
+
+/// **A folga com que duas travessias são a MESMA**, já em unidades de mundo.
+///
+/// ⚠️⚠️ **É um TIPO e não um `f64` porque o parâmetro que ela ocupa carregava outra grandeza** — a
+/// escala da cena — e as duas são `f64`. Ao trocá-las, dois dos três chamadores foram corrigidos e o
+/// terceiro compilou **em silêncio** a receber a escala inteira como folga (o `fx_knot`, apanhado
+/// só pelo gate do pentagrama). *Duas grandezas diferentes do mesmo tipo primitivo no mesmo sítio
+/// são um erro à espera de acontecer.*
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Merge(pub(crate) f64);
+
+impl Merge {
+    /// A folga de quem **corta uma linha** e entrega os pedaços ao artista — ver [`MERGE_FRAC`].
+    pub(crate) fn do_corte(escala: f64) -> Self {
+        Self(escala * MERGE_FRAC)
+    }
+
+    /// A folga de quem **constrói uma rede planar** — ver [`MERGE_FRAC_REDE`].
+    pub(crate) fn da_rede(escala: f64) -> Self {
+        Self(escala * MERGE_FRAC_REDE)
+    }
+}
 
 /// A geometria de um contorno, pronta para cortar por arco.
 pub(crate) struct Geom {
@@ -192,8 +241,12 @@ pub(crate) fn seg_cross(
 /// Acha todas as travessias entre as poligonais dos contornos (auto-interseções e cruzamentos
 /// entre contornos). Salta pares de arestas ADJACENTES no MESMO contorno (partilham um vértice, não
 /// são travessia).
-pub(crate) fn crossings(geoms: &[Geom], edges: &[Vec<Edge>], span: f64) -> Vec<Crossing> {
-    let merge = span * MERGE_FRAC;
+///
+/// ⚠️ **A `merge` é a folga com que duas travessias são a MESMA, e ela é de QUEM PERGUNTA** — o Trim
+/// passa [`MERGE_FRAC`] da escala, a rede do balde passa [`MERGE_FRAC_REDE`]. *Uma folga escrita
+/// aqui dentro serviria uma das duas e partiria a outra em silêncio.*
+pub(crate) fn crossings(geoms: &[Geom], edges: &[Vec<Edge>], merge: Merge) -> Vec<Crossing> {
+    let Merge(merge) = merge;
     let mut out: Vec<Crossing> = Vec::new();
     for (ca, ea) in edges.iter().enumerate() {
         for (cb, eb) in edges.iter().enumerate().skip(ca) {

@@ -501,12 +501,38 @@ impl crate::App {
         // de ponteiro dele consome o `Down` e volta ANTES da linha que escreve o `held_button`, então
         // a condição acima — que está certa — não alcançava aquele gesto. Sem esta, arrastar uma
         // seta registava um passo de undo POR QUADRO.
-        if !had_input
-            || self.held_button.is_some()
-            || crate::field3d_smoke::gesture_in_progress()
-            || self.flip_colorize.live_busy(self.flip_style.as_ref())
-            || self.ui_state_live
-        {
+        //
+        // ⭐⭐⭐ **E o motivo tem NOME** (W114) — porque a pergunta que um report de *«o undo pula
+        // etapas»* faz é exactamente *«qual destas cinco comeu o meu passo?»*.
+        //
+        // ⚠️ **Uma mudança suprimida NÃO se perde: ela funde-se no PRÓXIMO passo**, porque o
+        // `undo_baseline` só é substituído quando um passo é registado. ⇒ duas acções viram um
+        // `Ctrl+Z` só, que é o sintoma que o artista descreve. *Um passo suprimido e um passo
+        // ausente leem-se iguais de fora, e as causas são opostas.*
+        let motivo = if !had_input {
+            Some("sem entrada neste quadro")
+        } else if self.held_button.is_some() {
+            Some("botao do rato em baixo")
+        } else if crate::field3d_smoke::gesture_in_progress() {
+            Some("arrasto do gizmo 3D em curso")
+        } else if self.flip_colorize.live_busy(self.flip_style.as_ref()) {
+            Some("colorize a recalcular")
+        } else if self.ui_state_live {
+            Some("transicao de estado de UI ao vivo")
+        } else {
+            None
+        };
+        if let Some(motivo) = motivo {
+            // ⚠️ **A captura só acontece com o log LIGADO** — ela é o passo caro do quadro, e
+            // pagá-la em toda supressão seria trocar um diagnóstico por uma regressão de relógio.
+            if Self::undo_log_on()
+                && let Some(atual) = self.capture_project()
+                && self.undo_baseline.as_ref() != Some(&atual)
+            {
+                eprintln!(
+                    "[undo] ⛔ o documento MUDOU e o passo foi SUPRIMIDO — motivo: {motivo}                      (ela vai FUNDIR-SE no proximo passo)"
+                );
+            }
             return;
         }
         let Some(current) = self.capture_project() else {

@@ -11095,3 +11095,38 @@ recorte.
 ⚠️ **O gate que existia media outra coisa, e estava certo a fazê-lo:** o
 `the_undo_pass_asks_whether_this_module_is_mid_gesture` lê o fonte e prova que **o cano está
 ligado** — ele nunca prometeu contar passos. *O buraco não era um gate errado; era um gate ausente.*
+
+## §115 — W114: ⛔ *«ainda pula etapas»* — as duas curas da W113 eram reais e NÃO eram a causa (03/09)
+
+Segundo report do Enio no mesmo dia. As duas curas da [§114](#§114) estão certas e gateadas, mas o
+caso dele continua — logo a causa é outra, e eu **não a acho por leitura**. O que esta wave entrega
+é o instrumento que a torna um FACTO em vez de uma sexta hipótese.
+
+### §115.1 — ⚠️ O que a releitura ELIMINOU, e é preciso escrever para ninguém repetir
+
+| suspeita | veredito |
+|---|---|
+| «um passo por quadro» durante o arrasto | ⛔ curado e gateado desde a W6 (`gesture_in_progress`) |
+| o `pointer_up` não marcar o quadro | ⛔ **`on_mouse_input` marca na PRIMEIRA linha** — todo press e todo release já contam (a marca do módulo, pré-existente, é redundante e fica por declarar intenção) |
+| o clique num chip do painel não marcar | ⛔ mesma linha: o clique nasce no release, e o release marca |
+| o `FieldPose` não entrar na fotografia | ⛔ **está registado** (`register_field_components`), logo a pose viaja no snapshot |
+| a intenção do painel chegar um quadro atrasada | ⛔ os gates de alcance provam que ela é drenada e aplicada **na mesma** chamada |
+
+### §115.2 — ⭐⭐⭐ A lei que o instrumento torna visível
+
+Uma mudança suprimida **não se perde: ela funde-se no PRÓXIMO passo**, porque o `undo_baseline` só é
+substituído quando um passo é registado. ⇒ duas acções viram **um** `Ctrl+Z`, que é exactamente o
+que o artista descreve como *«pular etapas»*.
+
+⚠️ *Um passo SUPRIMIDO e um passo AUSENTE leem-se iguais de fora, e as causas são opostas* — o
+primeiro funde-se, o segundo desaparece. O `post_frame_undo` tem **cinco** guardas que suprimem, e
+até aqui nenhuma delas dizia o nome quando mordia.
+
+⇒ com `PH2D_UNDO_LOG=1`, toda supressão **sobre um documento que mudou** imprime a razão:
+
+```text
+[undo] ⛔ o documento MUDOU e o passo foi SUPRIMIDO — motivo: <um dos cinco>
+```
+
+⚠️ **A captura só corre com o log LIGADO** — ela é o passo caro do quadro, e pagá-la em toda
+supressão trocaria um diagnóstico por uma regressão de relógio.

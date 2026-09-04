@@ -347,6 +347,9 @@ pub(crate) fn sync_scene_and_birth(
                 let _ = ph2d_field_ecs::set_param(world, e, ph2d_field::Param::Scale, s);
             }
             created = Some(e.to_bits());
+            // ⭐ **A MESMA lei da forma da paleta** (W115): a escultura chega por pedido, e o
+            // quadro que a escreve no mundo não tem evento nenhum.
+            crate::field3d_smoke::mark_authored_change();
         }
     }
     // ⭐ **A TECLA do isolamento** (W44). ⚠️ Drenada aqui, e não no `intents`, porque **não é um
@@ -367,6 +370,10 @@ pub(crate) fn sync_scene_and_birth(
     // mundo. A voz é a mesma do botão: uma porta só (`intents::add_shape`).
     if let Some(slot) = crate::field3d_smoke::take_shape_request() {
         created = intents::add_shape(world, root, selection, cam, slot).or(created);
+        // ⭐⭐⭐ **E o quadro tem de se DECLARAR autorado** (W115) — ele não tem evento nenhum, o
+        // pick foi consumido pelo modal num quadro anterior. Ver
+        // [`crate::field3d_smoke::mark_authored_change`] para o report que isto fecha.
+        crate::field3d_smoke::mark_authored_change();
     }
     // ⭐ **O que o painel PEDE** vive no irmão — ver [`field3d_scene_intents`](self::intents).
     let (created, cleared) = intents::apply(world, selection, created);

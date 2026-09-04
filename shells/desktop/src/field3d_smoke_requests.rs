@@ -365,6 +365,41 @@ pub(crate) fn ask_shape_palette() {
 
 thread_local! {
     static SHAPE_PALETTE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// ⭐⭐⭐ **Uma mudança AUTORADA que foi servida num quadro SEM EVENTO** (W115).
+    static AUTHORED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// ⭐⭐⭐ **ESTE QUADRO AUTOROU ALGUMA COISA, e nenhum evento o disse** (W115).
+///
+/// # ⛔⛔ O report que isto fecha (Enio, 2026-09-03, com o log na mão)
+///
+/// *«ainda undo/redo bugado pulando etapas»* — e o `PH2D_UNDO_LOG` nomeou o motivo:
+///
+/// ```text
+/// [undo] ⛔ o documento MUDOU e o passo foi SUPRIMIDO — motivo: sem entrada neste quadro
+/// ```
+///
+/// O `post_frame_undo` só regista um passo num quadro **com entrada**, e a maior parte das acções
+/// deste módulo chega por **pedido servido noutro quadro**: a forma que a paleta escolheu, a
+/// escultura que o diálogo carregou. O pick é consumido pelo modal num quadro; o **mundo** só é
+/// escrito no seguinte, que já não tem evento nenhum.
+///
+/// ⇒ a forma nascia **sem passo próprio** e **fundia-se na acção seguinte** do artista: dois gestos,
+/// um `Ctrl+Z`. *Um passo suprimido e um passo ausente leem-se iguais de fora.*
+///
+/// ⚠️ **Só o que é AUTORADO entra aqui.** Uma derivação por quadro (`promote_leaf_hosts`, a
+/// reconciliação do desenho vivo) muda o mundo e **não** é uma edição: marcá-la faria o app
+/// registar passos que ninguém pediu.
+pub(crate) fn mark_authored_change() {
+    AUTHORED.with(|c| c.set(true));
+}
+
+/// **Tira** a marca — é um EVENTO, não um estado, e por isso vale uma vez.
+///
+/// ⚠️ Ela tem de ser tirada **em todo quadro**, ao lado do `any_input_this_frame`: deixá-la pousada
+/// faria a próxima supressão legítima registar um passo que já foi registado.
+pub(crate) fn take_authored_change() -> bool {
+    AUTHORED.with(std::cell::Cell::take)
 }
 
 /// ⭐⭐ **A FORMA que a paleta escolheu**, à espera de nascer — a volta do pedido acima.

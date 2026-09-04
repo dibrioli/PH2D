@@ -330,6 +330,25 @@ mod undo_seam {
             src.contains("field3d_smoke::gesture_in_progress()"),
             "o `post_frame_undo` deixou de perguntar — um arrasto volta a ser N passos de undo"
         );
+        // ⭐⭐⭐ **E a metade de W115**: sem esta, uma forma nascida da paleta não tem passo próprio
+        // e funde-se na acção seguinte. ⚠️ Tem de ser lida **ao lado** do `any_input_this_frame`,
+        // isto é ANTES de qualquer `return` — deixá-la pousada registaria um passo repetido.
+        assert!(
+            src.contains("field3d_smoke::take_authored_change()"),
+            "o `post_frame_undo` deixou de ler o que o módulo autorou sem evento — a forma da \
+             paleta volta a nascer sem passo"
+        );
+        let marca = src
+            .find("field3d_smoke::take_authored_change()")
+            .expect("lê a marca");
+        let guarda = src
+            .find("let motivo = if !had_input")
+            .expect("a guarda dos cinco motivos");
+        assert!(
+            marca < guarda,
+            "a marca é lida DEPOIS da guarda — nos quadros suprimidos ela fica pousada e o passo \
+             seguinte sai duplicado"
+        );
     }
 
     /// ⭐⭐⭐ **AS TRÊS SAÍDAS DE UM GESTO DE GIZMO MARCAM O QUADRO — e o `Cancel` não** (W113).
@@ -399,6 +418,70 @@ mod undo_seam {
             armed(|s| typed_key(s, Stroke::Digit(b'5'))),
             (true, false),
             "um dígito não acaba o gesto"
+        );
+    }
+
+    /// ⭐⭐⭐ **UMA MUDANÇA SERVIDA NUM QUADRO SEM EVENTO DECLARA-SE** (W115).
+    ///
+    /// # ⛔⛔ O report, com o log do próprio app na mão (Enio, 2026-09-03)
+    ///
+    /// ```text
+    /// [undo] ⛔ o documento MUDOU e o passo foi SUPRIMIDO — motivo: sem entrada neste quadro
+    /// ```
+    ///
+    /// A forma que a paleta escolhe e a escultura que o diálogo carrega chegam por **pedido servido
+    /// noutro quadro** — o pick é consumido pelo modal, e o **mundo** só é escrito no quadro
+    /// seguinte, que já não tem evento nenhum. ⇒ elas nasciam **sem passo próprio** e fundiam-se na
+    /// acção seguinte do artista: dois gestos, um `Ctrl+Z`.
+    ///
+    /// ⚠️ **É um EVENTO e não um estado** — a segunda leitura tem de dar `false`, senão a próxima
+    /// supressão legítima registaria um passo que já foi registado.
+    #[test]
+    fn an_authored_change_served_on_an_eventless_frame_declares_itself() {
+        use crate::field3d_smoke::{mark_authored_change, take_authored_change};
+        // Um quadro qualquer não autora nada.
+        let _ = take_authored_change();
+        assert!(!take_authored_change(), "sem marca, o quadro é mudo");
+        mark_authored_change();
+        assert!(take_authored_change(), "a marca chega ao undo");
+        assert!(
+            !take_authored_change(),
+            "e vale UMA vez — deixá-la pousada registaria um passo que já foi registado"
+        );
+    }
+
+    /// ⭐⭐ **E a PALETA marca** — a costura, pelo caminho real (`sync_scene_and_birth`).
+    ///
+    /// ⚠️ A lei pura acima não prova que alguém a chama; este gate arma o pedido exactamente como o
+    /// modal o arma e corre a ponte que serve o mundo.
+    #[test]
+    fn a_shape_born_from_the_palette_marks_the_frame_as_authored() {
+        use crate::field3d_smoke::{ask_shape, take_authored_change};
+        let _ = take_authored_change();
+        let mut sim = ph2d_ecs::SimWorld::new();
+        // Uma peça qualquer: o pedido precisa de uma RAIZ para pendurar a forma nova.
+        let doc = ph2d_field::FieldDoc::new(
+            vec![ph2d_field::Node::new(
+                ph2d_field::Xform::IDENTITY,
+                ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Sphere { radius: 0.4 }),
+            )],
+            ph2d_field::NodeId(0),
+        )
+        .expect("documento válido");
+        crate::field3d_scene::sync_scene(&mut sim, Some(&doc), 0.0);
+        let _ = take_authored_change();
+        ask_shape(0);
+        crate::field3d_scene::sync_scene_and_birth(
+            &mut sim,
+            None,
+            &[],
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        );
+        assert!(
+            take_authored_change(),
+            "a forma da paleta nasceu num quadro que não se declarou — ela funde-se na acção \
+             seguinte, e o artista vê o undo pular uma etapa"
         );
     }
 

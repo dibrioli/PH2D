@@ -11130,3 +11130,59 @@ até aqui nenhuma delas dizia o nome quando mordia.
 
 ⚠️ **A captura só corre com o log LIGADO** — ela é o passo caro do quadro, e pagá-la em toda
 supressão trocaria um diagnóstico por uma regressão de relógio.
+
+## §116 — W115: ⭐⭐⭐ A CAUSA, com o log do próprio app: um PEDIDO servido num quadro SEM EVENTO (03/09)
+
+O instrumento da [§115](#§115) respondeu à primeira corrida. O Enio colou o log, e ele nomeia a
+causa:
+
+```text
+[undo] ⛔ o documento MUDOU e o passo foi SUPRIMIDO — motivo: sem entrada neste quadro
+[undo]   captura: sujas=0 reserializadas=0 nascidas=0 mortas=0 linhas=5 delta=0 B
+[undo] passo registrado (fila undo=2, …) — diff: world=true
+```
+
+### §116.1 — A leitura, linha a linha
+
+⭐ **`linhas=4` no 1.º passo e `linhas=5` no 2.º** — uma linha **nasceu** entre eles. E entre os dois
+há **quatro** supressões, três delas *«sem entrada neste quadro»*.
+
+⚠️ **As linhas repetidas são a MESMA mudança**, não várias: assim que algo fica pendente, **todo**
+quadro seguinte difere do baseline e volta a ser reportado, até um passo ser registado. *Contar as
+linhas do log conta os quadros, não os defeitos.*
+
+### §116.2 — ⭐⭐⭐ O mecanismo
+
+A forma que a **paleta** escolhe e a escultura que o **diálogo** carrega chegam por **pedido servido
+noutro quadro**: o pick é consumido pelo modal do `HeroScreen` num quadro, e o **mundo** só é escrito
+no seguinte — que já não tem evento nenhum. O `post_frame_undo` só regista num quadro **com
+entrada** ⇒ a forma nascia **sem passo próprio** e **fundia-se na acção seguinte** do artista.
+
+*Dois gestos, um `Ctrl+Z`.* É literalmente *«pular etapas»*.
+
+⇒ os dois pedidos passam a **declarar-se** (`field3d_smoke::mark_authored_change`), e o
+`post_frame_undo` lê a marca **ao lado** do `any_input_this_frame` — antes de qualquer `return`, e
+sempre **tirando-a**: deixá-la pousada faria a próxima supressão legítima registar um passo repetido.
+
+⛔ **Só o que é AUTORADO entra.** Uma derivação por quadro (`promote_leaf_hosts`, a reconciliação do
+desenho vivo) muda o mundo e **não** é uma edição: marcá-la faria o app registar passos que ninguém
+pediu.
+
+### §116.3 — Provas de mutação
+
+| mutação | veredito |
+|---|---|
+| **P1** a paleta deixa de marcar | ✝ `a_shape_born_from_the_palette_marks_the_frame_as_authored` |
+| **P2** o `post_frame_undo` deixa de ler a marca | ✝ `the_undo_pass_asks_whether_this_module_is_mid_gesture` (que agora mede as duas metades **e a ORDEM**) |
+| **P3** a marca deixa de ser um EVENTO | ✝ `an_authored_change_served_on_an_eventless_frame_declares_itself` |
+
+### §116.4 — ⏳ ABERTO, e com a evidência já na mão
+
+⚠️ **O relatório da captura incremental CONTRADIZ-SE no mesmo log:**
+`sujas=0 reserializadas=0 nascidas=0 mortas=0 … linhas=5` — a contagem de linhas **cresceu** e
+`nascidas` diz `0`; e `delta=0 B` num passo em que `world=true`. ⇒ *o relatório não descreve o que de
+facto mudou naquele passo.*
+
+⛔ **Não é o defeito desta wave** (o passo foi registado, e correctamente), mas é um instrumento a
+mentir — e foi por acreditar nele que a leitura demorou. A próxima janela mede
+`undo_capture_cache::last_report()` contra o diff verdadeiro antes de o citar outra vez.

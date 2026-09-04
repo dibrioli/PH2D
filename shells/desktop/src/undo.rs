@@ -20,7 +20,7 @@
 use ph2d_ecs::scene::{ComponentRegistry, WorldSnapshot, snapshot_to_world};
 use ph2d_ecs::{Entity, SimWorld, Transform, With};
 use ph2d_flip::FlipDoc;
-use ph2d_vec_scene::{VecPathId, VecScene};
+use ph2d_vec_scene::VecScene;
 
 /// Profundidade máxima da pilha (interações comuns, não infinitas). Igual ao
 /// `HISTORY_CAP` do vetor.
@@ -147,57 +147,11 @@ impl ProjectState {
     }
 }
 
-/// Os ids de forma que **sobreviveram** a um restore — a seleção que o artista tinha, menos o que o
-/// estado restaurado não contém.
-///
-/// Separada de [`App::apply_project`] porque essa função exige `gfx` (janela + GPU) e não é
-/// alcançável por um teste headless; a POLÍTICA, que é o que pode estar errado, é pura e gateada.
-#[must_use]
-pub(crate) fn surviving_selection(was: &[VecPathId], scene: &VecScene) -> Vec<VecPathId> {
-    was.iter()
-        .copied()
-        .filter(|id| scene.paths().iter().any(|p| p.id == *id))
-        .collect()
-}
-
-/// ⭐⭐⭐ **A SELEÇÃO DE UMA PEÇA 3D, EM IDENTIDADE DURÁVEL** — a irmã da
-/// [`surviving_selection`], para quem não é um caminho vetorial.
-///
-/// # ⛔⛔ O report que ela fecha (Enio, 2026-09-03)
-///
-/// *«O undo/redo do módulo não obedece cada etapa, principalmente se transformação.»* O
-/// [`App::apply_project`] **limpa a seleção inteira** e devolve só a do vetorial (pelo `vec_pen`);
-/// um nó do modelador 3D ficava de fora, então **todo `Ctrl+Z` apagava a seleção e o gizmo
-/// desaparecia**. Mover · desfazer · mover outra vez obrigava a re-escolher a peça no meio — que é
-/// exactamente *«não obedece cada etapa»* visto de fora.
-///
-/// ⚠️ **Pelo `StableId` e nunca pelos bits**, que é a lei da casa: o undo **respawna** o mundo e os
-/// `Entity::to_bits()` mudam todos. Guardar os bits traria de volta uma seleção que aponta para
-/// outro nó — pior do que nenhuma.
-pub(crate) fn field_selection_ids(
-    world: &bevy_ecs::world::World,
-    bits: &[u64],
-) -> Vec<ph2d_ecs::StableId> {
-    bits.iter()
-        .map(|b| bevy_ecs::entity::Entity::from_bits(*b))
-        // ⚠️ **Só quem é nó do MODELADOR** — o resto da seleção segue as leis de quem a possui, e
-        // alargar isto seria mudar o comportamento de módulos que não o pediram.
-        .filter(|e| world.get::<ph2d_field_ecs::FieldNode>(*e).is_some())
-        .filter_map(|e| ph2d_ecs::stable_id_of(world, e))
-        .filter(|id| !id.is_none())
-        .collect()
-}
-
-/// E de volta: os bits **novos** de quem sobreviveu ao respawn. Quem morreu simplesmente não volta.
-pub(crate) fn field_selection_back(
-    world: &mut bevy_ecs::world::World,
-    ids: &[ph2d_ecs::StableId],
-) -> Vec<u64> {
-    ids.iter()
-        .filter_map(|id| ph2d_ecs::entity_of_stable_id(world, *id))
-        .map(|e| e.to_bits())
-        .collect()
-}
+/// ⭐ **As leis da seleção que sobrevive ao undo** vivem no irmão — ver
+/// [`undo_selection`](self::selection).
+#[path = "undo_selection.rs"]
+mod selection;
+pub(crate) use selection::{field_selection_back, field_selection_ids, surviving_selection};
 
 // ⭐ **`canonicalize` MORREU AQUI** (ADR-0164 F1, snapshot v2).
 //
@@ -467,7 +421,14 @@ impl crate::App {
         // motores não declararam neste quadro. Quem parou volta a ser documento **já nesta
         // fotografia** — é isso que faz uma corrida inteira colapsar em UM passo, em vez de zero.
         self.preview_drive.settle();
-        let had_input = std::mem::take(&mut self.any_input_this_frame);
+        // ⭐⭐⭐ **E o que o módulo 3D autorou SEM evento** (W115) — a forma que a paleta escolheu,
+        // a escultura que o diálogo carregou. Elas chegam por **pedido servido noutro quadro**, e
+        // sem esta metade nasciam **sem passo próprio**, fundindo-se na acção seguinte do artista.
+        //
+        // ⚠️ **Tirada em TODO quadro, ao lado da outra** — deixá-la pousada faria a próxima
+        // supressão legítima registar um passo que já foi registado.
+        let had_input = std::mem::take(&mut self.any_input_this_frame)
+            | crate::field3d_smoke::take_authored_change();
         // O clique no botão Undo/Redo da barra entra pela MESMA porta do Ctrl+Z (que pode
         // rotear para o Áudio, o Painter, o global ou o image-edit). Ele arma o
         // `undo_request` logo abaixo, e o passo é aplicado ainda neste frame.

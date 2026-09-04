@@ -188,11 +188,11 @@ pub(crate) use requests::{
     ProfileShape, ask_export, ask_frame_the_part, ask_import, ask_isolate_key, ask_open_panel,
     ask_open_panel_if_part, ask_profile_shape, ask_relink_sculpt, ask_relinked, ask_scene_sculpt,
     ask_sculpt_extent, ask_shape, ask_shape_palette, ask_spawn_profile, ask_spawn_sculpt,
-    served_frame, set_armed_by_panel, take_export_request, take_import_request,
-    take_isolate_key_request, take_open_if_part_request, take_open_panel_request,
-    take_pending_profile, take_pending_sculpt, take_profile_request, take_relink_request,
-    take_relinked, take_scene_sculpt_request, take_sculpt_extent, take_shape_palette_request,
-    take_shape_request, wants_frame,
+    mark_authored_change, served_frame, set_armed_by_panel, take_authored_change,
+    take_export_request, take_import_request, take_isolate_key_request, take_open_if_part_request,
+    take_open_panel_request, take_pending_profile, take_pending_sculpt, take_profile_request,
+    take_relink_request, take_relinked, take_scene_sculpt_request, take_sculpt_extent,
+    take_shape_palette_request, take_shape_request, wants_frame,
 };
 thread_local! {
     /// ⭐ **O registo de esculturas: nome → campo amostrado.**

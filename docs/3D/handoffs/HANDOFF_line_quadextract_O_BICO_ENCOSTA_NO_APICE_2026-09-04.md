@@ -35,6 +35,15 @@ env PH2D_PIECE=/home/enio/Downloads/_base_sculpt.obj PH2D_RECENTER=1 PH2D_DETAIL
 
 ⚠️ **O binário é o que ESTA linha imprime** no fim do `--no-run`; nunca `ls -t`.
 
+⭐ **O smoke fica COMPILADO** (`cargo build -p ph2d-host-desktop --release`, corrido `2 ×`):
+
+```text
+    Finished `release` profile [optimized] target(s) in 3m 14s     # 1.ª
+    Finished `release` profile [optimized] target(s) in 0.34s      # 2.ª — nada a fazer
+```
+
+⇒ o `cargo run -p ph2d-host-desktop --release` do dono abre sem compilar.
+
 ## §3 — A régua: uma linha por ponta
 
 ⛔ **Nenhuma das três réguas sabia dizer QUAL.** A [`tip_deviation`] devolve o pior `p50`

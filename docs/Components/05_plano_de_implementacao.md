@@ -1058,7 +1058,7 @@ torna uma família aqui. No geral uma família nasce de *Make Prefab sobre uma i
 parentesco lê-se dos **elos**, não da hierarquia. É a diferença contra o vetorial (irmãos do mesmo
 pai), e ela não estava escrita em lado nenhum.
 
-**Smoke:** `PH2D_BUILD_SMOKE=79` — quatro versões, duas fileiras, e o chip medido pelo ponteiro.
+**Smoke:** `PH2D_BUILD_SMOKE=84` — quatro versões, duas fileiras, e o chip medido pelo ponteiro.
 
 ### ⭐⭐⭐ As CHAVES — o report do Enio que corrigiu o desenho (2026-08-30)
 
@@ -1189,7 +1189,7 @@ continua a dizer quantas; o Inspector passa a dizer **quais**, que é onde a per
 e com o nome comum igual em toda a família isso dava quatro chips a dizer `Casa` mais ruído. Hoje
 ele mostra o **miolo** das chaves (`chip_label`), que é o que difere.
 
-**Smoke:** `PH2D_BUILD_SMOKE=79`, agora com o objecto **solto** e o **gesto do report** (reescrever
+**Smoke:** `PH2D_BUILD_SMOKE=84`, agora com o objecto **solto** e o **gesto do report** (reescrever
 as chaves) nos quadros 40–52.
 
 ### ⭐⭐⭐ O 4.º report — *«me mostre o fluxo inteiro de criar variações»* (2026-08-31)
@@ -1202,7 +1202,7 @@ nome não são variantes um do outro por mais parecidos que os nomes sejam. *O m
 tinha na cabeça e o do produto divergiam, e nada na tela dizia qual era qual.*
 
 ⛔ **Não se responde a isto com uma explicação** — responde-se com o fluxo **medido**:
-`PH2D_BUILD_SMOKE=80` corre os verbos pela MESMA porta que o menu drena
+`PH2D_BUILD_SMOKE=85` corre os verbos pela MESMA porta que o menu drena
 ([`instance_verbs::drain`]) e imprime, a cada passo, a **voz do app** + o que a Hierarquia e o
 cartão mostram.
 
@@ -1342,7 +1342,7 @@ E as três queixas caem de uma vez, sem uma linha de pintor:
 | *«nos botões, Small e Big»* | os chips do eixo são **valores**, nunca nomes de receita |
 | *«se há botões, tire o texto»* | o `rows_for` já salta a chave declarada que **um eixo cobre** — a fileira de texto existia porque o eixo tinha caído |
 
-Medido (`PH2D_BUILD_SMOKE=80`, passo 4): `Variant: Casa [Casa Variant]` → **`Size: Small [Small 2]`**;
+Medido (`PH2D_BUILD_SMOKE=85`, passo 4): `Variant: Casa [Casa Variant]` → **`Size: Small [Small 2]`**;
 e no passo 5, com a variante renomeada, `Size: Small [Big]`.
 
 ⭐ **E o título passa a nomear o objecto SELECIONADO**, como a Hierarquia o mostra. ⚠️ A versão

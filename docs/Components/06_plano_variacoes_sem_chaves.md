@@ -261,7 +261,7 @@ apaga só uma sobrevive (medido a 31/08: a 3.ª cerca era código morto e treze 
 
 ## §6 — A cena de smoke
 
-Reescrever a **`=80`** (`variant_flow_smoke.rs`) de ponta a ponta, **sem uma chaveta**:
+Reescrever a **`=85`** (`variant_flow_smoke.rs`) de ponta a ponta, **sem uma chaveta**:
 nasce `Casa` → *Make Component* → *Instantiate* → muda a cópia → **`Salvar Variação…`** →
 `Size` / `Big` → a fileira nasce com `[Casa] [Big]` → troca por clique → **renomeia tudo** e prova
 que nada se mexe. Cada passo imprime o que fez, e o passo do salvar diz **quantos overrides
@@ -277,7 +277,7 @@ absorveu** e **para que receita a cópia passou**.
 | **W1** | `VariantValues` + `variant_family` + o cartão a ler DADO + a lei das chaves **apagada** + o `Make Component` sobre cópia a escrever dado | variantes funcionam; criam-se pelo verbo que já existe |
 | **W2** | o botão **`Salvar Variação…`** + o formulário em linha + o valor da base + a absorção dos overrides | o fluxo que o Enio descreveu |
 | **W3** | **`Atualizar "Big"`** + renomear valor e propriedade pelo cartão + `+ Propriedade` (2.º eixo) | dois níveis completos |
-| **W4** | varredura: o gate textual, o `*²` fora da Hierarquia, o smoke `=80` reescrito, tectos MEDIDOS | nada no repo lê chaves |
+| **W4** | varredura: o gate textual, o `*²` fora da Hierarquia, o smoke `=85` reescrito, tectos MEDIDOS | nada no repo lê chaves |
 
 ⚠️ **A W1 apaga a lei velha no MESMO passo em que a nova lê dado.** Deixar as duas vivas por uma
 wave seria ter **duas fontes para a mesma pergunta** — que é exactamente a doença que esta wave

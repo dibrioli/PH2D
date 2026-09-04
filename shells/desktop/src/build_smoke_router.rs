@@ -438,18 +438,22 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::asset_menu_smoke::frame(app, f);
         return true;
     }
-    // ⭐⭐⭐ OS EIXOS DE PROPRIEDADE (=79, a fatia que a F4.6c pedia). ⚠️ Como a `=78`, ela
+    // ⭐⭐⭐ OS EIXOS DE PROPRIEDADE (=84, a fatia que a F4.6c pedia). ⚠️ Como a `=83`, ela
     // **imprime** em vez de afirmar: o que ela mede — o chip pintado, registado e clicável — não é
     // alcançável de um `#[test]`.
-    if level == 79 {
+    // ⚠️⚠️ **`84`, CONTADO na integração de 2026-09-04 — a linha escreveu `79`.** A
+    // `line/Vector` levou `78`–`82`; esta cena e a irmã abaixo tinham sido APENDADAS depois
+    // do bloco dela, então o git fundiu-as **sem conflito** e as duas ficaram inalcançáveis.
+    // ⛔ *A colisão de cena não se vê no merge: conta-se lendo o roteador.*
+    if level == 84 {
         crate::variant_axes_smoke::frame(app, f);
         return true;
     }
-    // ⭐⭐⭐ O FLUXO INTEIRO DE CRIAR VARIAÇÕES (=80). ⚠️ Ela corre os VERBOS pela porta do menu e
+    // ⭐⭐⭐ O FLUXO INTEIRO DE CRIAR VARIAÇÕES (=85). ⚠️ Ela corre os VERBOS pela porta do menu e
     // imprime, passo a passo, a voz do app + o que a Hierarquia e o cartão mostram. É a resposta
     // medida à pergunta *«me mostre o fluxo inteiro»* — e o sítio onde um buraco dele aparece com
     // o nome do passo ao lado.
-    if level == 80 {
+    if level == 85 {
         crate::variant_flow_smoke::frame(app, f);
         return true;
     }

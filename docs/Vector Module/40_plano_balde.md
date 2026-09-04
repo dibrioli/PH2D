@@ -753,3 +753,64 @@ mata **cinco** gates).
 dela couberem na folga — é geometria abaixo da régua com que esta rede distingue dois pontos, e não
 tem report. ⏳ E o *sete preenchimentos para seis faces* do §11-bis continua **aberto**: esta wave
 não lhe toca.
+
+---
+
+## §13 — ⭐⭐ O REPORT DE 2026-09-04 (2.ª leva): a COR do balde e a tinta que já lá está
+
+### §13.1 — *"a forma selecionada recebe o preenchimento antes de eu usar o balde"*
+
+> *"Quando seleciono o balde e troco a cor do preenchimento, a forma selecionada recebe o
+> preenchimento antes de eu usar o balde. Não permita que com o balde selecionado, ao mudar o
+> preenchimento, as formas recebam preenchimento."* — Enio
+
+⭐ **O MESMO controlo tem dois papéis, e quem decide qual é o MODO.** Fora do balde a cor de
+preenchimento é **estilo**: ela pinta o que está escolhido, e é para isso que existe. Com o balde na
+mão ela é a **TINTA da ferramenta** — o que o próximo clique vai depositar —, e uma tinta não
+restila coisa nenhuma.
+
+⚠️ **A lei já existia no mesmo ficheiro, para o vizinho:** os dois knobs do LÁPIS nunca marcam
+`apply_to_selected`, com o comentário a dizer porquê. O que é novo aqui é o mesmo controlo servir os
+dois papéis.
+
+⚠️ **E ela não solta o token, pela mesma razão** — desligar a ligação de cor da forma escolhida é uma
+escrita nela, e escolher a tinta do balde não lhe toca. ⛔ **As duas metades importam**: o gate mede
+o Select **e** o Bucket, porque uma cura que desarmasse o controlo em todos os modos deixaria o
+Select sem cor de preenchimento, que é a razão de ele existir. Porta única:
+[`VectorTool::set_fill_rgba`](../../crates/ph2d-tool-vector/src/tool.rs).
+
+### §13.2 — *"o balde tem de sobrepor o que já está pintado"*
+
+> *"Dê ao balde a capacidade de sobrepor áreas já preenchidas por ele mesmo ou pelo fill da forma.
+> O preenchimento antigo deve ser deletado e o novo aplicado."* · *"Mesmo sem weld, na área de
+> intersecção de duas formas, teremos dois preenchimentos sobrepostos. Eles devem ser deletados para
+> entrar o do balde."* — Enio
+
+⚠️⚠️ **Sem isto o balde não falhava em silêncio — ele fazia PIOR.** A forma nova nascia por cima da
+velha e, no quadro seguinte, as duas tinham âncoras na **mesma face**; o empate do
+[`donos`](../../shells/desktop/src/vec_bucket_claim.rs) desce ao índice do documento, logo **a VELHA
+ganhava** e a nova ficava sem face nenhuma — congelada e invisível. *Ao artista isso lê-se como «o
+balde não funciona sobre o que já está pintado».*
+
+⇒ Uma porta só ([`apagar_tinta_sob`](../../shells/desktop/src/vec_bucket.rs)), com **duas acções que
+são diferentes de propósito**:
+
+| o que está sob o clique | o que acontece | porquê |
+|---|---|---|
+| um preenchimento do balde | é **APAGADO** | ele **é** a região; não há nada dele para guardar |
+| o `fill` de uma forma | a forma **fica** e perde o `fill` | ela é a **PAREDE** que cerca a região que se está a pintar |
+
+⚠️ **TODAS as que cobrem o ponto, e não só a da frente** — é a segunda metade do report: na
+intersecção de duas formas pintadas há duas tintas, e limpar só a de cima deixaria a de baixo a
+aparecer assim que a nova fosse transparente.
+
+⚠️ **DUAS consequências declaradas, e são a mesma — *a tinta antiga sai inteira*:** uma forma limpa
+perde o `fill` todo (se uma linha a atravessa, as outras regiões dela ficam por pintar), e um
+preenchimento do balde que tinha ganho várias faces é apagado com todas. Nos dois casos o que fica
+por pintar está a **um clique**. É a semântica do *Live Paint*: a partir do primeiro balde quem manda
+na cor é a REGIÃO, não o objecto.
+
+⚠️ **A acção mora numa PORTA e não no sítio da chamada** porque o `apply_bucket` precisa de uma `App`
+viva e **não é alcançável de um teste** — dois laços escritos lá levariam a lei com eles, e a mutação
+que trocasse as duas acções (apagar a forma, limpar o preenchimento) passaria a suíte inteira. Com a
+porta, ela morre. *É a mesma lição que o predicado do `fora_da_rede` pagou no §7.*

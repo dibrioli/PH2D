@@ -491,10 +491,24 @@ impl VectorTool {
 
     /// Set the fill colour (picker read-back) + flag the selected path for
     /// recolour. `a = 0` ⇒ "None" (no fill).
+    ///
+    /// ⭐⭐⭐ **COM O BALDE NA MÃO, ESTA COR É A TINTA DA FERRAMENTA — e uma tinta não restila o que
+    /// está selecionado** (report do Enio, 2026-09-04: *"quando seleciono o balde e troco a cor do
+    /// preenchimento, a forma selecionada recebe o preenchimento antes de eu usar o balde"*).
+    ///
+    /// ⚠️ **É a mesma lei que os dois knobs do LÁPIS já seguem** ([`Self::handle_panel_event`]): um
+    /// controlo que serve à ferramenta em mãos não é uma propriedade da selecção. O que muda aqui é
+    /// só que o MESMO controlo tem os dois papéis, e quem decide qual é o **modo**.
+    ///
+    /// ⚠️ **E não solta o token, pela mesma razão**: desligar a ligação de cor da forma selecionada
+    /// é uma escrita nela, e escolher a tinta do balde não toca nela.
     pub fn set_fill_rgba(&mut self, rgba: [u8; 4]) {
-        self.colour_authored.0 |= self.fill != rgba;
+        let e_estilo = self.mode != crate::DrawMode::Bucket;
+        self.colour_authored.0 |= e_estilo && self.fill != rgba;
         self.fill = rgba;
-        self.apply_to_selected = true;
+        // ⚠️ `|=`, nunca `=`: outra edição do mesmo quadro (o traço) pode já ter armado, e um `=`
+        // aqui desarmava-a em silêncio.
+        self.apply_to_selected |= e_estilo;
     }
 
     /// Project the current Style into the snapshot the docked panel paints.

@@ -636,3 +636,40 @@ fn authoring_the_frame_radius_lands_where_the_gesture_will_read_it() {
         "e o gesto tem de le-lo de volta -- ler e escrever sao o mesmo slot"
     );
 }
+
+/// ⭐⭐⭐ **A COR DO BALDE É A TINTA DA FERRAMENTA, E UMA TINTA NÃO RESTILA A SELECÇÃO.**
+///
+/// Report do Enio (2026-09-04): *"quando seleciono o balde e troco a cor do preenchimento, a forma
+/// selecionada recebe o preenchimento antes de eu usar o balde"*.
+///
+/// ⚠️ **As duas metades importam.** Sem a primeira, o mesmo controlo deixava de pintar a selecção em
+/// TODOS os modos e o Select ficava sem cor de preenchimento — que é a razão de ele existir.
+#[test]
+fn the_bucket_ink_is_not_the_selections_style() {
+    let mut t = VectorTool::new();
+
+    // Fora do balde a cor CONTINUA a ser estilo — é assim que o Select pinta o que está escolhido.
+    t.set_mode(DrawMode::Select);
+    let _ = t.take_apply_to_selected();
+    let _ = t.take_colour_authored();
+    t.set_fill_rgba([10, 20, 30, 255]);
+    assert!(
+        t.take_apply_to_selected(),
+        "no Select, escolher uma cor de preenchimento tem de restilar a seleccao"
+    );
+
+    // Com o balde na mão, a mesma escolha é só a TINTA: não restila nem solta o token.
+    t.set_mode(DrawMode::Bucket);
+    let _ = t.take_apply_to_selected();
+    let _ = t.take_colour_authored();
+    t.set_fill_rgba([40, 50, 60, 255]);
+    assert!(
+        !t.take_apply_to_selected(),
+        "com o balde na mao a cor e' a tinta da ferramenta, nao o estilo da forma escolhida"
+    );
+    assert!(
+        !t.take_colour_authored().0,
+        "e escolher a tinta nao pode soltar a ligacao de cor da forma escolhida"
+    );
+    assert_eq!(t.fill_rgba(), [40, 50, 60, 255], "mas a tinta ficou escolhida");
+}

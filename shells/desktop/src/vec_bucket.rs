@@ -154,6 +154,96 @@ fn fora_da_rede(escondido: bool, e_preenchimento: bool) -> bool {
     escondido || e_preenchimento
 }
 
+/// ⭐⭐⭐ **A TINTA QUE JÁ COBRE O PONTO** — o que o balde tem de apagar antes de pintar.
+///
+/// Report do Enio (2026-09-04): *"dê ao balde a capacidade de sobrepor áreas já preenchidas por ele
+/// mesmo ou pelo fill da forma. O preenchimento antigo deve ser deletado e o novo aplicado."*
+///
+/// ⚠️⚠️ **Sem isto o balde não falhava em silêncio — ele fazia PIOR:** a forma nova nascia por cima
+/// da velha e, no quadro seguinte, as duas tinham âncoras na MESMA face; o empate de
+/// [`crate::vec_bucket_claim::donos`] desce ao índice do documento, logo **a VELHA ganhava** e a
+/// nova ficava sem face nenhuma — congelada e invisível. *Ao artista isso lê-se como «o balde não
+/// funciona sobre o que já está pintado».*
+///
+/// Devolve `(os preenchimentos do balde a APAGAR, as formas cujo `fill` se LIMPA)`.
+///
+/// ⚠️ **São duas acções porque são duas espécies de objecto.** Um preenchimento do balde É a
+/// região — apagá-lo é apagar aquela tinta. O `fill` de uma forma é uma propriedade dela, e a forma
+/// tem de sobreviver (ela é a PAREDE que cerca a região que se está a pintar).
+///
+/// ⚠️⚠️ **TODAS as que cobrem o ponto, e não só a da frente** — a lei é do Enio, no mesmo dia:
+/// *"na área de intersecção de duas formas sem weld, teremos dois preenchimentos sobrepostos. Eles
+/// devem ser deletados para entrar o do balde."* ⛔ Limpar só a de cima deixaria a de baixo a
+/// aparecer por trás da tinta nova assim que ela fosse transparente, e o artista teria de adivinhar
+/// quantas vezes carregar.
+///
+/// ⚠️ **DUAS consequências declaradas, e são a mesma:** *a tinta antiga sai INTEIRA.* Uma forma
+/// limpa perde o `fill` todo — se uma linha a atravessa, as outras regiões dela ficam por pintar (o
+/// `fill` de uma forma é um só e não se reparte). E um preenchimento do balde que tinha ganho
+/// **várias** faces (a região partiu-se) é apagado com todas — a receita dele são as âncoras de UMA
+/// face, e não há como tirar-lhe uma sem reescrevê-la. Nos dois casos o que fica por pintar está a
+/// um clique. É a semântica do *Live Paint*: a partir do primeiro balde quem manda na cor é a
+/// REGIÃO, não o objecto.
+pub(crate) fn tinta_sob(
+    scene: &VecScene,
+    xforms: &VecXforms,
+    e_preenchimento: &dyn Fn(u64) -> bool,
+    p: [f64; 2],
+) -> (Vec<u64>, Vec<u64>) {
+    let (mut baldes, mut formas) = (Vec::new(), Vec::new());
+    for path in scene.paths() {
+        if path.fill.is_none() {
+            continue;
+        }
+        // ⚠️ **O ponto desce ao espaço do CAMINHO** — a regra-mãe do módulo: o clique é MUNDO e a
+        // geometria guardada é LOCAL.
+        let Some(inv) = ph2d_vec_scene::xform_of(xforms, path.id).inverse() else {
+            continue;
+        };
+        // A porta única do *"o ponto está dentro desta forma?"*: ela coze, honra a regra de
+        // preenchimento e trata o buraco de um composto — que é exactamente o que um preenchimento
+        // do balde é quando a região se partiu.
+        if !ph2d_vec_scene::contains_point(path, inv.apply(p)) {
+            continue;
+        }
+        if e_preenchimento(path.id) {
+            baldes.push(path.id);
+        } else {
+            formas.push(path.id);
+        }
+    }
+    (baldes, formas)
+}
+
+/// ⭐⭐⭐ **APAGA a tinta que já cobre o ponto.** Devolve `(preenchimentos apagados, formas limpas)`.
+///
+/// ⚠️ **A ACÇÃO vive aqui, e não no sítio da chamada, por uma razão medida neste módulo:** o
+/// `apply_bucket` precisa de uma `App` viva e **não é alcançável de um teste** — dois laços escritos
+/// lá levariam a lei com eles, e uma mutação que apagasse um deles passaria a suíte inteira (foi
+/// exactamente assim que o predicado do `fora_da_rede` sobreviveu a uma mutação, §7).
+///
+/// ⚠️ **As duas acções são DIFERENTES e é essa a metade que um gate tem de ver:** o preenchimento do
+/// balde é **apagado** (ele É a região) e a forma é **limpa** (ela tem de sobreviver — é a PAREDE
+/// que cerca a região que se está a pintar).
+pub(crate) fn apagar_tinta_sob(
+    scene: &mut VecScene,
+    xforms: &VecXforms,
+    e_preenchimento: &dyn Fn(u64) -> bool,
+    p: [f64; 2],
+) -> (usize, usize) {
+    let (baldes, formas) = tinta_sob(scene, xforms, e_preenchimento, p);
+    let (n, m) = (baldes.len(), formas.len());
+    for id in baldes {
+        scene.remove_path(id);
+    }
+    for id in formas {
+        if let Some(path) = scene.path_mut(id) {
+            path.fill = None;
+        }
+    }
+    (n, m)
+}
+
 /// A chave do documento: o conteúdo das âncoras e das alças, e não a contagem.
 fn chave(contornos: &[(Vec<VecVertex>, bool)]) -> u64 {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
@@ -379,9 +469,26 @@ impl crate::App {
         let Some(hit) = self.vec_bucket_face.clone() else {
             return false;
         };
+        // As poses e a lista de preenchimentos, lidas antes de a cena passar a mutável.
+        let (xf, e_fill) = {
+            let Some(gfx) = self.gfx.as_ref() else {
+                return false;
+            };
+            let e_fill: std::collections::BTreeSet<u64> =
+                preenchimentos(&gfx.sim, &self.vec_entities)
+                    .iter()
+                    .map(|(id, _, _)| *id)
+                    .collect();
+            (
+                crate::vec_transform::build(&gfx.sim, &self.vec_entities),
+                e_fill,
+            )
+        };
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
+        // ⭐⭐⭐ **A TINTA QUE JÁ ESTÁ AQUI SAI ANTES** — ver [`apagar_tinta_sob`].
+        apagar_tinta_sob(&mut gfx.vec_scene, &xf, &|id| e_fill.contains(&id), hit.seed);
         let nova = VecPath {
             fill: Some(ph2d_vec_scene::Paint::solid(tinta)),
             ..hit.face

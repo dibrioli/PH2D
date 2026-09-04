@@ -250,3 +250,136 @@ fn a_fill_that_won_no_face_produces_no_shape() {
         "sem faces, nada a escrever"
     );
 }
+
+/// Um quadrado FECHADO com `fill`, com a quina inferior-esquerda em `(x, y)` e lado `l`.
+fn forma_pintada(scene: &mut VecScene, x: f64, y: f64, l: f64) -> u64 {
+    scene.push_path(VecPath {
+        verts: vec![
+            v(x, y),
+            v(x + l, y),
+            v(x + l, y + l),
+            v(x, y + l),
+        ],
+        closed: true,
+        fill: Some(ph2d_vec_scene::Paint::solid(ph2d_vec_scene::Rgba8::new(
+            10, 20, 30, 255,
+        ))),
+        ..VecPath::default()
+    })
+}
+
+/// ⭐⭐⭐ **O BALDE SOBREPÕE-SE AO QUE JÁ PINTOU** — o preenchimento antigo é APAGADO, não empilhado.
+///
+/// Report do Enio (2026-09-04). ⚠️⚠️ **Sem isto o defeito não era «não faz nada»:** a forma nova
+/// nascia por cima e no quadro seguinte as duas tinham âncoras na MESMA face; o empate de
+/// [`crate::vec_bucket_claim::donos`] desce ao índice do documento, logo **a velha ganhava** e a
+/// nova ficava congelada e invisível.
+#[test]
+fn a_bucket_fill_already_under_the_click_is_deleted_not_stacked() {
+    let mut scene = VecScene::new();
+    let velho = forma_pintada(&mut scene, 0.0, 0.0, 10.0);
+    let (baldes, formas) = tinta_sob(
+        &scene,
+        &VecXforms::new(),
+        &|id| id == velho,
+        [5.0, 5.0],
+    );
+    assert_eq!(baldes, vec![velho], "o preenchimento velho tem de sair");
+    assert!(formas.is_empty(), "ele nao e' uma forma, e' a propria regiao");
+}
+
+/// ⭐⭐⭐ **TODAS as formas pintadas sob o ponto perdem o `fill`, e não só a da frente.**
+///
+/// A lei é do Enio, no mesmo dia: *"na área de intersecção de duas formas sem weld, teremos dois
+/// preenchimentos sobrepostos. Eles devem ser deletados para entrar o do balde."*
+///
+/// ⛔ A fixtura é assimétrica de propósito — o ponto está na intersecção das DUAS, e uma terceira
+/// forma pintada fica de fora: um gate que só medisse a intersecção não distinguiria *"todas as que
+/// contêm o ponto"* de *"todas as que existem"*.
+#[test]
+fn every_shape_fill_under_the_click_is_cleared_not_only_the_front_one() {
+    let mut scene = VecScene::new();
+    let a = forma_pintada(&mut scene, 0.0, 0.0, 10.0);
+    let b = forma_pintada(&mut scene, 5.0, 5.0, 10.0);
+    let longe = forma_pintada(&mut scene, 100.0, 100.0, 10.0);
+    let (baldes, mut formas) = tinta_sob(&scene, &VecXforms::new(), &|_| false, [7.0, 7.0]);
+    formas.sort_unstable();
+    assert!(baldes.is_empty(), "nenhuma delas e' preenchimento do balde");
+    assert_eq!(
+        formas,
+        {
+            let mut esperado = vec![a, b];
+            esperado.sort_unstable();
+            esperado
+        },
+        "as DUAS que se sobrepoem no ponto tem de sair, e a de longe tem de ficar (longe={longe})"
+    );
+}
+
+/// ⛔ **Uma forma SEM `fill` não é tinta** — o balde não lhe toca, e ela continua a ser a parede que
+/// cerca a região que ele está a pintar.
+#[test]
+fn a_shape_without_fill_is_never_touched_by_the_bucket() {
+    let mut scene = VecScene::new();
+    let so_traco = scene.push_path(VecPath {
+        verts: vec![v(0.0, 0.0), v(10.0, 0.0), v(10.0, 10.0), v(0.0, 10.0)],
+        closed: true,
+        ..VecPath::default()
+    });
+    let (baldes, formas) = tinta_sob(&scene, &VecXforms::new(), &|_| false, [5.0, 5.0]);
+    assert!(
+        baldes.is_empty() && formas.is_empty(),
+        "a forma sem preenchimento ({so_traco}) nao tem tinta nenhuma para apagar"
+    );
+}
+
+/// ⚠️⚠️ **A POSE entra na conta.** O clique é MUNDO e a geometria guardada é LOCAL: sem descer o
+/// ponto ao espaço do caminho, uma forma arrastada para longe seria apagada por um clique que nunca
+/// esteve dentro dela.
+#[test]
+fn the_click_comes_down_to_the_paths_own_space_before_asking() {
+    let mut scene = VecScene::new();
+    let id = forma_pintada(&mut scene, 0.0, 0.0, 10.0);
+    let mut xf = VecXforms::new();
+    // Uma translação de 100 em x: `[a, b, c, d, e, f]` com `(e, f)` a translação.
+    xf.insert(id, ph2d_vec_scene::Xform([1.0, 0.0, 0.0, 1.0, 100.0, 0.0]));
+    let (_, dentro) = tinta_sob(&scene, &xf, &|_| false, [105.0, 5.0]);
+    assert_eq!(dentro, vec![id], "no MUNDO o clique caiu dentro dela");
+    let (_, fora) = tinta_sob(&scene, &xf, &|_| false, [5.0, 5.0]);
+    assert!(
+        fora.is_empty(),
+        "a forma ja' nao esta' na origem — medir em LOCAL apagaria a tinta errada"
+    );
+}
+
+/// ⭐⭐⭐ **AS DUAS ACÇÕES SÃO DIFERENTES** — o preenchimento do balde é APAGADO, a forma é LIMPA.
+///
+/// ⚠️ **É a metade que a lei pura não prova.** O `tinta_sob` só diz *quem*; trocar os dois lados
+/// (apagar a forma e limpar o preenchimento) passaria por ele — e apagaria a PAREDE que cerca a
+/// região que se está a pintar.
+#[test]
+fn the_bucket_erases_its_own_paint_and_only_strips_the_shapes() {
+    let mut scene = VecScene::new();
+    let velho = forma_pintada(&mut scene, 0.0, 0.0, 10.0);
+    let forma = forma_pintada(&mut scene, 0.0, 0.0, 10.0);
+    let (apagados, limpos) =
+        apagar_tinta_sob(&mut scene, &VecXforms::new(), &|id| id == velho, [5.0, 5.0]);
+    assert_eq!((apagados, limpos), (1, 1));
+    assert!(
+        scene.paths().iter().all(|p| p.id != velho),
+        "o preenchimento do balde tem de DESAPARECER — ele e' a propria regiao"
+    );
+    let sobrevivente = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == forma)
+        .expect("a forma tem de SOBREVIVER: ela e' a parede que cerca a regiao");
+    assert!(
+        sobrevivente.fill.is_none(),
+        "…mas sem a tinta antiga, que e' o que o balde veio substituir"
+    );
+    assert!(
+        !sobrevivente.verts.is_empty(),
+        "e com a geometria intacta"
+    );
+}

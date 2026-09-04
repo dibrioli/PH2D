@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**107 arquivos** · **6** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**109 arquivos** · **8** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -111,6 +111,8 @@
 | 95 |   | [95_estudo_ramificacao_continua_e_instancias.md](95_estudo_ramificacao_continua_e_instancias.md) | pesquisa | 95 — Estudo: ramificação CONTÍNUA e instâncias por letra/fase no `source.lsystem` |
 | 96 | ◆ | [96_auditoria_do_lsystem_2026-08-31.md](96_auditoria_do_lsystem_2026-08-31.md) | auditoria | 96 — Auditoria de SEIS LENTES ao `source.lsystem` (2026-08-31) |
 | 97 | ◆ | [97_os_pequenos_pulos_e_a_lei_do_recem_nascido.md](97_os_pequenos_pulos_e_a_lei_do_recem_nascido.md) | — | 97 — Os pequenos pulos do L-System, e a lei do recém-nascido |
+| 98 | ◆ | [98_auditoria_de_performance_2026-09-01.md](98_auditoria_de_performance_2026-09-01.md) | auditoria | 98 — Auditoria de performance do módulo Motion, 2026-09-01 |
+| 99 | ◆ | [99_estudo_do_mini_cavalry_2026-09-02.md](99_estudo_do_mini_cavalry_2026-09-02.md) | pesquisa | 99 — Estudo sério do Mini Cavalry V2 |
 | — | ◆ | [BUGS_motion_nodes.md](BUGS_motion_nodes.md) | bugs | Bugs do módulo Motion Nodes — registro + soluções |
 | — |   | [referencia_catalogo_nodes_minicavalry.md](referencia_catalogo_nodes_minicavalry.md) | referência | Mini Cavalry — Referência de Nós (autor) |
 | — |   | [referencia_design_node_graph_ph2d_v1.md](referencia_design_node_graph_ph2d_v1.md) | referência | PH2D — Sistema de Nós — Design Canônico |

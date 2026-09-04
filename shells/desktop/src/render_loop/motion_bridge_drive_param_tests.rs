@@ -76,10 +76,10 @@ fn what_can_drive_the_rotate_angle() {
                 eprintln!("  {fonte:<20} │ a cadeia NAO COZINHA");
                 break;
             }
-            if let Some(v) = cook.peek(out) {
-                if let Some(ph2d_nodegraph::attr::Column::Scalar(r)) = v[0].as_stream().get("rot") {
-                    vistos.push(r.first().copied().unwrap_or(0.0));
-                }
+            if let Some(v) = cook.peek(out)
+                && let Some(ph2d_nodegraph::attr::Column::Scalar(r)) = v[0].as_stream().get("rot")
+            {
+                vistos.push(r.first().copied().unwrap_or(0.0));
             }
         }
         let lo = vistos.iter().copied().fold(f32::INFINITY, f32::min);

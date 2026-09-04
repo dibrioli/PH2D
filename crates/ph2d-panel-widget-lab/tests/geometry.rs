@@ -73,7 +73,7 @@ fn every_registered_id_is_given_geometry_by_the_painter() {
         ghosts.is_empty(),
         "estes ids sao REGISTADOS e nenhum pintor lhes da' um rectangulo — eles existem, te^m \
          estado, aparecem em todo censo, e nenhum pixel do ecra^ lhes pertence:\n  {ghosts:?}\n\n\
-         \u{26a0} Foi assim que as tre^s alcas da janela ficaram inertes: o painel nao se movia nem \
+         \u{26a0} Foi assim que as tres alcas da janela ficaram inertes: o painel nao se movia nem \
          se redimensionava, e nada acusava.\n\
          cura: `hit_index.register(ids::X, <rect>)` no pintor — ou tirar o `store.register`."
     );

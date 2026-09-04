@@ -70,6 +70,38 @@ pub fn fill_slash(scene: &mut VectorScene, rect: crate::zones::Rect, w: f32, col
         .fill(Fill::NonZero, Affine::IDENTITY, color, None, &path);
 }
 
+/// **Um POLÍGONO fechado de N pontos**, em coordenadas de tela.
+///
+/// ⛔⛔ **Por que ela nasce** (estudo do Mini Cavalry, doc 99 §4): o selo de PAPEL que o cartão
+/// de um nó passa a vestir precisa de um trapézio (fonte), de um trapézio invertido (sink) e de
+/// um rectângulo com aba (I/O externo) — três formas que não são um losango nem um círculo, e
+/// que teriam de nascer como três funções quase iguais. *Uma primitiva geral custa menos que
+/// três especiais e não convida a uma quarta.*
+///
+/// ⚠️ **Segmentos de recta, sem transcendentais e sem `Affine`** — a mesma lei do
+/// [`fill_diamond`] e do [`fill_slash`] (HR-5), e a razão é a mesma que aquele doc dá: uma
+/// espessura que atravessa o afim do `VectorScene` já virou borrão neste repo duas vezes.
+///
+/// Menos de 3 pontos é um no-op — não há área para preencher, e recusar em silêncio é o que um
+/// caminho de DESENHO tem de fazer (um `panic` aqui apagaria o quadro).
+pub fn fill_polygon(scene: &mut VectorScene, pts: &[(f32, f32)], color: Color) {
+    if pts.len() < 3 {
+        return;
+    }
+    let mut path = BezPath::new();
+    path.move_to((f64::from(pts[0].0), f64::from(pts[0].1)));
+    for p in &pts[1..] {
+        path.line_to((f64::from(p.0), f64::from(p.1)));
+    }
+    path.close_path();
+    scene
+        .inner_mut()
+        .fill(Fill::NonZero, Affine::IDENTITY, color, None, &path);
+}
+
+// ⚠️ **O `mod tests` fica no FIM, e o clippy exige-o** (`items after a test module`):
+// a `line/motion-value` acrescentou o `fill_polygon` DEPOIS dele, e o gate do ship
+// apanhou-o na integracao de 2026-09-04. Toda primitiva nova entra ACIMA desta linha.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,33 +149,4 @@ mod tests {
             "e o canto superior-direito"
         );
     }
-}
-
-/// **Um POLÍGONO fechado de N pontos**, em coordenadas de tela.
-///
-/// ⛔⛔ **Por que ela nasce** (estudo do Mini Cavalry, doc 99 §4): o selo de PAPEL que o cartão
-/// de um nó passa a vestir precisa de um trapézio (fonte), de um trapézio invertido (sink) e de
-/// um rectângulo com aba (I/O externo) — três formas que não são um losango nem um círculo, e
-/// que teriam de nascer como três funções quase iguais. *Uma primitiva geral custa menos que
-/// três especiais e não convida a uma quarta.*
-///
-/// ⚠️ **Segmentos de recta, sem transcendentais e sem `Affine`** — a mesma lei do
-/// [`fill_diamond`] e do [`fill_slash`] (HR-5), e a razão é a mesma que aquele doc dá: uma
-/// espessura que atravessa o afim do `VectorScene` já virou borrão neste repo duas vezes.
-///
-/// Menos de 3 pontos é um no-op — não há área para preencher, e recusar em silêncio é o que um
-/// caminho de DESENHO tem de fazer (um `panic` aqui apagaria o quadro).
-pub fn fill_polygon(scene: &mut VectorScene, pts: &[(f32, f32)], color: Color) {
-    if pts.len() < 3 {
-        return;
-    }
-    let mut path = BezPath::new();
-    path.move_to((f64::from(pts[0].0), f64::from(pts[0].1)));
-    for p in &pts[1..] {
-        path.line_to((f64::from(p.0), f64::from(p.1)));
-    }
-    path.close_path();
-    scene
-        .inner_mut()
-        .fill(Fill::NonZero, Affine::IDENTITY, color, None, &path);
 }

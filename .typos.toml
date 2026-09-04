@@ -195,6 +195,37 @@ extend-ignore-identifiers-re = [
     "^alis$",
     "^thi$",
     "^quater$",
+    # ⚠️⚠️ **As entradas abaixo entraram na INTEGRAÇÃO de 2026-09-04** (seis linhas de uma vez).
+    # Cada linha correu o `typos` na árvore dela e viu-o **limpo** — porque o texto novo das
+    # outras cinco ainda não existia ali. *Um scanner de árvore inteira só acusa depois da fusão,
+    # e por isso ele é do `ship.sh` e não do fecho de linha.*
+    #
+    # `CRITICOS` — pt-BR «críticos» sem acento, e é o nome de uma VARIÁVEL de shell em
+    # `scripts/sanidade.sh` (`CRITICOS=()`, a par de `AVISOS=()`). O typos quer `CRITICS`, que em
+    # inglês são pessoas que criticam — não os alertas críticos que o vigia acumula.
+    "^CRITICOS$",
+    # `Smal` — ⛔ **NÃO é um erro: é o SINTOMA citado.** O doc do `text_elide` reproduz o report do
+    # Enio (2026-08-31, com foto): dois chips liam-se `Smal …` e `Small …`, indistinguíveis sobre
+    # valores `Small` e `Small 2`. Corrigir a palavra apagaria a única coisa que a frase mostra.
+    "^Smal$",
+    # `aspec` — cabeçalho de COLUNA num `println!` de sonda, com largura `{:<6}`. Alargá-lo
+    # desalinharia a tabela que a sonda imprime, que é a razão de ele estar truncado.
+    "^aspec$",
+    # `anc` — variável local de «âncoras» no `vec_bucket_repro`
+    # (`let (mut ids, mut anc, mut sem)`), a par de `ids` e `sem`. O typos quer `and`.
+    "^anc$",
+    # E oito de português corrente em doc-comments: o typos quer o inglês de cada uma, o que
+    # trocaria uma palavra certa por outra no meio de uma frase portuguesa. ⚠️ O `convincente` é o
+    # que mais custa: `convenient` muda o SENTIDO da frase, que diz que a acusação *convence* e
+    # leva à cura errada.
+    "^representativas$",
+    "^colector$",
+    "^PARTICIPANTE$",
+    "^convincente$",
+    "^recorre$",
+    "^directos$",
+    "^autorize$",
+    "^cose$",
 ]
 
 [default.extend-identifiers]

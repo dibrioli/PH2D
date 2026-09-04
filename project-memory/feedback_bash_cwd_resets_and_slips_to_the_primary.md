@@ -302,3 +302,66 @@ passou, e só o aviso do harness (*«changed on disk»*, a apontar `/PH2D/shells
 recomeça com o `cd` absoluto da worktree.** E a cura, quando acontece, é
 `git checkout -- <o ficheiro>` no primário (⛔ **nunca** `git reset --hard`), seguida do mesmo
 `python3` com o `cd` certo. Ver [[feedback_the_memory_symlink_points_at_the_primary_tree_not_your_worktree]].
+
+## ⚠️ 2026-09-03 — a 14.ª, e o que a torna INVISÍVEL
+
+O `cd /…/PH2D && python3 …` que escreve uma memória **persiste**, e as chamadas seguintes correm no
+primário. Isso passou despercebido durante quatro comandos porque **os ficheiros existem nas DUAS
+árvores com o mesmo conteúdo** — ler `toggle.rs` no primário deu exactamente o mesmo que na
+worktree, e a leitura foi usada para planear.
+
+⛔ **O que denuncia a fuga é ler um ficheiro que ACABASTE de editar** — ele volta ao HEAD, e a
+conclusão natural (*"alguma coisa reverteu o meu trabalho"*) é falsa e cara: quase gastei uma
+sessão a caçar um `git checkout` que nunca existiu.
+
+⇒ **Nunca `cd` isolado.** Toda chamada começa com `cd <caminho ABSOLUTO da minha árvore> &&`, ou usa
+caminhos absolutos em `python3`/`grep`. E antes de acreditar que uma edição desapareceu:
+`pwd && git branch --show-current`.
+
+## ⛔⛔ 2026-09-03, a 15.ª — e desta vez EDITEI O `main`
+
+A cwd voltou ao primário **sozinha**, sem nenhum `cd` meu no meio: entre duas chamadas, um
+`cd <worktree> && …` deixou de valer. Todas as edições seguintes usavam **caminhos relativos**
+(`python3` com `crates/…`), e foram parar ao **`main`** — oito ficheiros, um bloco inteiro de
+feature. O `cargo check` que corri a seguir **passou**, porque a árvore errada também compila.
+
+⭐ **O que denunciou foi um `cargo test` a dizer «no test target»:** a `Write` tinha usado caminho
+ABSOLUTO e pôs o ficheiro de teste na worktree, enquanto o `cargo` corria no primário. *A
+inconsistência entre uma ferramenta que usa caminho absoluto e um script que usa relativo é o
+sintoma mais barato desta falha — e só aparece por acaso.*
+
+**A cura, e é mecânica:**
+- ⛔ **Nenhum comando com caminho relativo.** Ou `cd <ABS> && …` **na mesma chamada**, ou caminhos
+  absolutos dentro do `python3`/`grep`. Não confie em que o `cd` da chamada anterior sobreviveu.
+- ⭐ **Recuperar é barato se se apanhar cedo:** `git diff -- crates > /tmp/x.patch` no primário,
+  `git checkout -- crates`, e `git apply -3` na worktree (o Mergiraf resolve o resíduo).
+- ⚠️ **Mas o patch pode aterrar no sítio errado sem conflito:** a worktree tinha o ficheiro de ids
+  **partido em dois** e o símbolo novo caiu na metade errada — compilava, e ficava a três écrãs dos
+  irmãos. *Depois de um `apply -3`, confira ONDE cada símbolo novo aterrou, não só que compila.*
+
+## ⛔⛔⛔ 2026-09-03, a 16.ª — e a RECUPERAÇÃO fez mais estrago que a escorregadela
+
+Mesma causa (um `cd` ao primário para indexar memória, cinco `python3` seguintes com caminho
+relativo). O que é novo é o que veio a seguir: eu **copiei os ficheiros do primário para a
+worktree** — e a worktree estava **49 commits à frente**. Cada `cp` pousou a versão do `main` por
+cima de trabalho da linha, e o `cargo` acusou com erros que não faziam sentido nenhum
+(`cannot find TETO_DIGITAVEL`, `MAX_CHOICES`, `model3d_choice_button` — símbolos que a linha tinha
+criado e que o `main` não tem).
+
+⛔ **A adenda de 2026-08-26 desta mesma memória já proíbe isto, por extenso:** *«NÃO copie. Guarde o
+diff ou, melhor, descarte-o e reaplique a edição na árvore certa — o script que a fez ainda está no
+seu contexto e correr outra vez custa nada.»* Eu li-a, escrevi-a, e fiz o contrário sete dias depois.
+
+⭐ **Recuperou-se sem perda porque os 6 ficheiros estavam LIMPOS na worktree** (`git status` não os
+mostrava): `git checkout -- <os 6 caminhos>` devolveu-os ao HEAD da linha, e reaplicar os cinco
+scripts com caminho absoluto custou uma chamada. *Se algum deles tivesse edição não-commitada da
+linha, ela tinha morrido sem deixar rasto.*
+
+**How to apply — a ordem que evita as duas metades do estrago:**
+1. ⭐⭐⭐ **A pergunta ANTES de qualquer `cp` entre árvores: «a minha linha alguma vez tocou neste
+   ficheiro?»** Se sim — e com 49 commits a resposta é quase sempre sim —, copiar é um `revert`
+   silencioso. **Reaplique, nunca copie.**
+2. ⭐ `git status --short` na worktree **antes** de restaurar: só um ficheiro limpo pode levar
+   `git checkout --` sem perder nada.
+3. ⚠️ E o tell desta variante é **um erro de símbolo em cascata**: vários símbolos que a linha criou
+   a desaparecerem de uma vez é *o `main` a chegar por cima*, nunca um refactor mal feito.

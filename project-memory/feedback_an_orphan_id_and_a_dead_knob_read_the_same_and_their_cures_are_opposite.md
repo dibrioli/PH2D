@@ -29,3 +29,33 @@ pergunta é *quem DECIDE com o valor*, aqui é *existe superfície de todo*.
 **bloquear** (o fundo de uma janela flutuante) tem término por **AUSÊNCIA** — o canvas só recebe o
 clique quando o índice responde `None`. Nenhuma varredura de términos positivos o vê, e ensiná-la a
 aceitar o padrão branquearia os cabeçalhos de secção genuinamente mortos, que têm a mesma forma.
+
+## ⛔⛔ Adenda 2026-09-01 — a espécie **SEM GEOMETRIA**, e a sonda que faltava
+
+Report do Enio sobre um painel novo: *«não tem scroll nem modo de estreitar para testar»*. As três
+alças da janela — mover, redimensionar à direita, à esquerda — estavam **registadas no `populate`
+desde o primeiro dia**, com o `parent` certo e o `BlenderHitKind` certo. A janela não se mexia.
+
+**`store.register(id, …)` diz o que o id É. `hit_index.register(id, rect)` diz ONDE ele está.**
+Sem o segundo, o id existe, tem estado, aparece em todo censo — e **nenhum pixel lhe pertence**.
+
+⇒ **quatro** coisas leem-se igual e têm cura diferente:
+
+| espécie | o que falta | cura |
+|---|---|---|
+| **órfão** | ninguém o pinta nem regista | **apagar** o const |
+| **morto** | ninguém lê o valor | **ligar** o braço do consumidor |
+| **sem geometria** | ninguém lhe dá um rect | **pintar**: `hit_index.register(id, rect)` |
+| *(falso positivo)* | o consumidor é **genérico** | prova medida na catraca — ver [[feedback_a_dead_knob_has_two_species_no_probe_catches]] |
+
+⚠️ **A terceira escapa às duas sondas existentes, e por razões simétricas:**
+`hit_indexed_ids_are_registered` pergunta *«este id PINTADO está no store?»* — a alça está;
+`the_painted_control_reaches_a_consumer` pergunta *«alguém LÊ?»* — o despacho `BlenderHit` lê.
+A pergunta em falta é a terceira: ***algum sítio dá um rectângulo a este id?***
+
+**How to apply:** ao acrescentar um painel, o gate barato é textual e mora na crate dele —
+*todo `ids::X` do `populate.rs` aparece num pintor* (`ph2d-panel-widget-lab/tests/geometry.rs`).
+⚠️ E o irmão: **um corpo que `push_clip` tem de chamar `paint_scrollbar`** — um painel que recorta
+e não rola é a pior das três formas (sem recorte desenha por cima e vê-se; com recorte e rolagem
+funciona; **com recorte e sem rolagem esconde os controlos e não diz nada**). ⛔ Essa nota já estava
+escrita no `MODEL3D_SCROLLBAR_ID` e **não impediu nada** — *uma nota num irmão não é um gate.*

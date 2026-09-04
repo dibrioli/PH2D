@@ -31,3 +31,22 @@ medição, é uma amostra que pára no primeiro ruído**.
 
 *O `CLAUDE.md` §5.0 já mandava usar `--no-fail-fast` para os gates de GPU, e a razão
 é a mesma; o que faltava era a frase valer para a suíte inteira.*
+
+---
+
+⭐⭐ **O «SOZINHO» DA ASSINATURA QUER DIZER *COM A CARGA MEDIDA*, NÃO *SEM FILTRO*** (2026-09-02).
+
+A família de flakes de carga (CLAUDE.md §5.0) diagnostica-se assim: *verde sozinho 3–5 de 3–5,
+zero linhas do diff naquela crate*. Corri `measure_normals_parallel_speedup` três vezes «sozinho»
+e deu **3 de 3 VERMELHO** — o que li como *refuta a hipótese de flake, é defeito real*. A máquina
+estava a **`load 82`**: a suíte de 20 316 testes ainda a esvaziar em segundo plano. Com
+`load 3,2`, o mesmo comando dá **3 de 3 verde**.
+
+**Why:** o passo que existe para DESMENTIR a flake foi executado dentro da condição que a CAUSA.
+Um veredito assim manda alguém procurar um defeito que não existe — ou, pior, «curar» um gate
+correcto baixando-lhe a barra.
+
+**How to apply:** toda corrida de confirmação de flake imprime `cut -d' ' -f1 /proc/loadavg` **na
+mesma linha do resultado**. Abaixo de ~5 o veredito vale; acima, espere (`while` até baixar) e
+repita — e note que o próprio `cargo nextest` que acabou de correr deixa a máquina alta por
+minutos. Ver [[feedback_a_measured_refusal_answers_one_question_recheck_it_when_yours_is_another]].

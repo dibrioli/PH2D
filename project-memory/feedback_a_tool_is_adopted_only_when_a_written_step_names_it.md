@@ -40,3 +40,25 @@ de uma máquina não existe nas outras duas.
 Irmãs: [[feedback_a_rule_only_exists_if_it_is_on_the_path_of_who_executes_it]] (a regra tem de estar
 no caminho de quem a executa — esta é a versão para ferramentas) e
 [[reference_session_transcripts_are_a_measurable_instrument]] (a sonda que mediu isto).
+
+---
+
+⭐⭐ **A SUPERFÍCIE QUE CONSOME UM VALOR DIZ QUANTOS DELES VALE A PENA PRODUZIR** (2026-09-02).
+
+Liguei um balão de ajuda a cada socket do grafo construindo a `String` de **todos** eles, a cada
+quadro (~45 numa cena típica). O consumidor — `paint_hover_tooltip` — lê exactamente **um**: o do
+`store.hot_id()`. E a casa já mostrava a forma certa e eu não olhei: os balões dela são
+`&'static str` postos **uma vez** no `pre_populate`.
+
+⇒ Passou a **um** por quadro, o do id quente. ⭐ E ficou mais **CERTO**, não só mais barato: o
+texto passou a ser derivado da **própria lista de hits**, logo um socket sem hit não tem por onde
+produzir um balão órfão — a concordância deixou de ser uma lei a manter e passou a ser
+construção.
+
+**Why:** produzir para todos quando o consumidor lê um é caro **e** cria um segundo sítio onde a
+lista pode divergir. Os dois defeitos têm a mesma cura.
+
+**How to apply:** antes de preencher uma estrutura por-elemento que alimenta uma UI, pergunte
+*quantos destes o consumidor lê num quadro?* — e procure como a casa já resolve o mesmo (um
+`grep` pela função de escrita mostra se os outros a chamam por quadro ou uma vez). Se o
+consumidor lê um, derive esse um **da lista que já decide quem existe**.

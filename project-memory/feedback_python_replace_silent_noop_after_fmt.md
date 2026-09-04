@@ -39,3 +39,29 @@ próprio script. *Ler o «sucesso» que o script imprime é ler a intenção del
 
 ⚠️ **O caso legítimo continua a ser o de N ficheiros** (renomeação, mutação em lote) —
 e mesmo aí a confirmação é a contagem no ficheiro, não a saída do script.
+
+## ⛔⛔ Adenda 2026-09-02 — o `assert` de contagem **passou** e o ficheiro ficou PARTIDO
+
+A regra desta memória é *«script só com `assert` de contagem»*. Ela não chega, e o caso é este:
+
+Converti 5 sítios de chamada de `box_row(r, label, value, t, st, accent, deco, style)` para
+`box_row(r, PropertyBox { … }, style)` com um regex de grupos nomeados, e com
+`assert n == 5, "esperava 5 sítios"`. **O assert passou** — os cinco casaram — e **três ficaram
+lixo sintáctico**, porque o 1.º argumento de dois deles era `Rect::new(b.x, b.y, w, row_h)`: as
+vírgulas *dentro dos parênteses* alimentaram os grupos seguintes, e o `label` recebeu `b.y`.
+
+⚠️ **O `assert` contou ACERTOS, não CORRECÇÃO.** Um regex sobre argumentos separados por vírgula é
+cego a parênteses aninhados — ele não falha, ele **casa e mente**. E o ficheiro não estava no git
+(reescrito na mesma sessão), então não havia `git checkout` para desfazer: a reparação foi à mão,
+sítio a sítio.
+
+**How to apply:**
+- ⛔ **Nunca use regex para reagrupar ARGUMENTOS.** Vírgula não é separador quando há chamadas
+  aninhadas, e a linguagem não é regular nesse ponto. Renomear um símbolo, sim; re-parenteizar, não.
+- Se um script tocar em estrutura, o `assert` tem de ser sobre a **saída**, não sobre a contagem de
+  substituições — o mais barato é **compilar**: `bash scripts/cargo-check-narrow.sh <crate>` no fim
+  do próprio script, e restaurar do backup se ele não devolver `0`.
+- ⚠️ **Faça o backup mesmo quando o ficheiro é novo.** A rede de segurança que se usa por reflexo
+  (`git checkout --`) **não existe** para trabalho não commitado desta sessão — e é precisamente aí
+  que o script é mais tentador, porque o ficheiro acabou de ser escrito.
+- ⭐ Cinco sítios cabem em cinco `Edit`. *O script começa a compensar muito depois do que parece.*

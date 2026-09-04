@@ -46,3 +46,33 @@ Relacionadas: [[feedback_a_registry_cannot_tell_a_missing_feature_from_a_typo_as
 [[project_ci_runs_26_of_313_workspace_members]] ·
 [[feedback_a_closing_run_with_a_name_filter_never_reaches_a_tree_scanning_gate]] ·
 [[feedback_a_new_feature_can_empty_an_existing_gates_population]]
+
+## ⛔⛔ Adenda 2026-09-01 — a DIREÇÃO OPOSTA: a feature que o shell **não** tem
+
+O caso original era *o shell LIGA uma feature que a crate sozinha não tem*. Existe o simétrico, e
+custou um report do Enio (*«Widget Lab não abriu»*) sobre um painel com **10 gates verdes**:
+
+O `shells/desktop` põe `default-features = false` no `ph2d-panel-registry-init` e **re-declara**
+cada painel como feature própria. Um painel no `default` **daquela** crate e sem linha no shell é
+**compilado para fora do binário** — sem erro, sem aviso, sem uma linha vermelha em lado nenhum.
+
+⚠️ **E o que fica na tela é o pior resultado possível:** a linha do menu continua **pintada e
+clicável**, porque quem a pinta é a `ph2d-editor-core`, que não sabe nada de features do shell.
+⇒ um **botão morto** produzido não por código em falta, mas por **um manifesto**.
+
+**Por que nenhum gate o via:** todos corriam na `ph2d-panel-registry-init`, onde o painel
+*existe*. `every_window_menu_row_reaches_a_consumer`, `..._reachable_by_the_z_order_walk` e
+`build_typed_registry_matches_enabled_features` estavam os três verdes — o último por ser
+*consistente* com um painel desligado.
+
+**How to apply:**
+- Ao acrescentar um painel/módulo atrás de feature, a lista de sítios **não acaba na crate dele**:
+  procure quem o consome com `default-features = false` e re-declara features.
+- ⭐ A cura durável é um gate que lê **os dois manifestos** e exige
+  `default(registry) ∩ panel-* ⊆ default(shell)` —
+  `shells/desktop/tests/every_panel_the_registry_ships_reaches_the_binary.rs`.
+- ⚠️ Esse gate nasceu com o **próprio parser partido** (dividia por vírgula antes de descascar
+  comentários e perdia 6 painéis) e só o **controlo positivo do corpus** (`>= 20`) o apanhou.
+  *Um gate que lê manifesto precisa de saber quantas entradas devia ver.*
+- ⛔ **Um smoke que "não abriu" pode não ser código.** Antes de depurar o painel, pergunte
+  *ele está no binário?* — `strings <bin> | grep <id>` distingue as duas hipóteses em segundos.

@@ -25,4 +25,5 @@ metadata:
 - [[feedback_ship_the_ui_in_the_same_wave_not_later]] — atalho com valores fixos é harness vazando; sem indicador não há diagnóstico
 - [[feedback_one_parameter_two_roles_makes_the_wrong_call_defensible]] — parametro com dois papeis: o produto e o unico chamador que os separa
 - [[feedback_the_fifth_seam_link_is_whoever_paints]] — as 4 condicoes verdes e o widget ainda le morto: o pintor desenhou o rect a mao e nao le o estado que o despacho JA escreve
+- [[feedback_a_hit_rect_is_also_the_denominator_not_only_the_target]] — o rect registado tambem e' o DENOMINADOR: mais estreito que o pintado nao recorta, ESCALA (1,62x)
 - [[feedback_a_shared_widget_slot_has_two_questions_and_only_one_was_answered]] — widget partilhado por N rows: quem COMITA tinha 4 armas, o que MOSTRA tinha 1; tocar no campo APAGAVA o valor

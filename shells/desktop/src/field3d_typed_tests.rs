@@ -139,15 +139,15 @@ fn a_number_is_only_taken_while_a_handle_is_held() {
         s.drag = None;
         s.typed = None;
         assert!(
-            !crate::field3d_input::typed_key(s, Stroke::Digit(5)),
+            !crate::field3d_input::typed_key(s, Stroke::Digit(5)).0,
             "sem alça agarrada a tecla é de outra pessoa"
         );
         // …e nem sequer com um gesto de CÂMERA em curso.
         s.drag = Some(Drag::Orbit);
-        assert!(!crate::field3d_input::typed_key(s, Stroke::Digit(5)));
+        assert!(!crate::field3d_input::typed_key(s, Stroke::Digit(5)).0);
         // …nem numa alça onde um número não tem significado.
         s.drag = Some(Drag::Gizmo(Handle::Plane(2)));
-        assert!(!crate::field3d_input::typed_key(s, Stroke::Digit(5)));
+        assert!(!crate::field3d_input::typed_key(s, Stroke::Digit(5)).0);
     });
 }
 

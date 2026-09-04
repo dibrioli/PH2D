@@ -5743,6 +5743,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 
 | O quê | Estado | Onde |
 |---|---|---|
+| ✅⛔⛔ **O undo não obedecia cada etapa** (report do Enio, 03/09) | **DUAS** causas: um gesto de gizmo tem **três** saídas e só uma marcava o quadro como autorado (acabar com `Enter` registava **passo nenhum**) · e **todo `Ctrl+Z` apagava a seleção 3D**, porque o `apply_project` só devolvia a vetorial — a cura é por `StableId`, nunca pelos bits | §114 |
 | ✅⭐⭐⭐ **A PALETA DE FORMAS** (`+ Add shape…` / tecla `A`) — o catálogo sai do painel e entra no modal genérico da casa | a fileira de chips cortava em **8** e já tinha 8; ⛔ morreram as 4 constantes derivadas do fim da lista, que faziam *Extrude* abrir o diálogo de escultura ao acrescentar no fim | §96 |
 | ✅⭐⭐ **CONE · TRONCO DE CONE · CÁPSULA · PRISMA** — o 1.º lote da fila do Enio | uma lei só (`max` de meias-fatias, 1-Lipschitz por definição); ⚠️ **5 mutações sobreviveram à 1.ª ronda**, todas por eu gatear o campo e não a API do documento | §97 |
 | ✅ **A FILA DE FORMAS FECHOU** (era *«as 47 do catálogo vetorial + 11 sólidas»*) | ⚠️ esta linha ficou **obsoleta** durante uma jornada inteira: a auditoria da §100 encolheu a fila de 47 para 7, e a W103 fechou-a com a estrela, a gaiola e o elipsóide. A `Family::Plates` **não** nasce vazia — a estrela vive lá | §100, §101 |
@@ -11035,3 +11036,62 @@ Cinco edições por **caminho relativo** foram para a árvore **primária** (a c
 lá), e o transplante de volta trouxe as versões do `main` para uma worktree **49 commits à frente** —
 apagando alterações locais que só o `git checkout --` recuperou. ⚠️ É a **16.ª** ocorrência
 registada da mesma armadilha, e a única edição que escapou foi a que usou caminho **absoluto**.
+
+## §114 — W113: ⛔⛔⛔ O UNDO NÃO OBEDECIA CADA ETAPA — e eram DUAS causas, uma delas em todo Ctrl+Z (03/09)
+
+> **Enio, 2026-09-03:** *«O undo/redo do módulo não obedece cada etapa, principalmente se
+> transformação»*.
+
+Duas causas independentes, e nenhuma delas era a suspeita óbvia (*«um passo por quadro»*) — essa já
+estava curada e gateada desde a W6.
+
+### §114.1 — ⛔ Causa A: um gesto de gizmo tem TRÊS saídas, e só uma marcava o quadro
+
+O `post_frame_undo` só regista um passo num quadro que se declarou **autorado**
+(`any_input_this_frame`), e o gancho de ponteiro deste módulo tem de o dizer por conta própria — o
+`held_button` do shell nunca chega a ser escrito aqui. O `field3d_pointer_move` e o
+`field3d_pointer_up` faziam-no, **com o comentário a explicar porquê**. As outras duas saídas não:
+
+| saída | marcava? | o mundo mudou? | consequência |
+|---|---|---|---|
+| largar o botão (`finish`) | ✅ | sim | um passo, certo |
+| **`Enter` / número** (`typed_key`) | ❌ | **sim** | **passo nenhum** |
+| **`G`/`R`/`S` a meio** (`mode_key`) | ❌ | **sim** (o aplicado FICA) | **passo nenhum** |
+| `Esc` (`Cancel`) | ❌ | **não** (net zero) | certo por construção |
+
+⇒ acabar uma transformação com `Enter` **não registava passo**: ela colava-se à ação **seguinte** do
+artista, fosse ela qual fosse. *Uma lei escrita em três sítios ainda não é uma lei.*
+
+⭐ A cura devolve `(consumiu, autorou)` das três, e a lei da tecla de verbo foi **extraída** de
+`App::field3d_mode_key` para o irmão (`field3d_input_pointer::mode_key`) — pela mesma razão que o
+`typed_key` e o `advance` já lá viviam: *era a costura que ficava sem gate.*
+
+### §114.2 — ⛔⛔ Causa B: TODO `Ctrl+Z` apagava a seleção 3D
+
+O `App::apply_project` faz `hero.gizmo.clear_all_selection()` e devolve **só** a seleção **vetorial**
+(pelo `vec_pen`, via `surviving_selection`). Um nó do modelador ficava de fora ⇒ **o gizmo desaparece
+a cada undo**, e mover · desfazer · mover outra vez obriga a re-escolher a peça no meio. *Visto de
+fora, isso é literalmente «não obedece cada etapa».*
+
+⚠️ E a cura **não pode** guardar os bits: o undo **respawna** o mundo e todo `Entity::to_bits()`
+muda. Guardar bits traria de volta uma seleção a apontar para **outro** nó — pior que nenhuma. ⇒ a
+unidade é o **`StableId`** (`field_selection_ids` / `field_selection_back`), que é a lei que a casa
+já escreve para o resto.
+
+⛔ **Fronteira declarada:** a cura vale para nós do **modelador** (`FieldNode`), e não para toda a
+seleção. Alargá-la mudaria o comportamento de módulos que não o pediram — e há gate a afirmar o
+recorte.
+
+### §114.3 — Provas de mutação
+
+| mutação | veredito |
+|---|---|
+| **N1** o `Enter` deixa de autorar | ✝ `every_exit_from_a_gizmo_gesture_marks_the_frame_except_the_one_that_undoes_it` |
+| **N2** a tecla de verbo deixa de autorar | ✝ o mesmo |
+| **N3** o shell descarta uma das marcas | ✝ `the_shell_feeds_every_gesture_exit_into_the_undo_input_mark` |
+| **N4** o `apply_project` não devolve a seleção 3D | ✝ o arch-gate `apply_project_restores_the_pen_selection_after_the_restore` |
+| **N5** a lei não filtra por nó do modelador | ✝ `a_three_d_node_that_survives_the_respawn_keeps_its_selection` |
+
+⚠️ **O gate que existia media outra coisa, e estava certo a fazê-lo:** o
+`the_undo_pass_asks_whether_this_module_is_mid_gesture` lê o fonte e prova que **o cano está
+ligado** — ele nunca prometeu contar passos. *O buraco não era um gate errado; era um gate ausente.*

@@ -160,6 +160,45 @@ pub(crate) fn surviving_selection(was: &[VecPathId], scene: &VecScene) -> Vec<Ve
         .collect()
 }
 
+/// ⭐⭐⭐ **A SELEÇÃO DE UMA PEÇA 3D, EM IDENTIDADE DURÁVEL** — a irmã da
+/// [`surviving_selection`], para quem não é um caminho vetorial.
+///
+/// # ⛔⛔ O report que ela fecha (Enio, 2026-09-03)
+///
+/// *«O undo/redo do módulo não obedece cada etapa, principalmente se transformação.»* O
+/// [`App::apply_project`] **limpa a seleção inteira** e devolve só a do vetorial (pelo `vec_pen`);
+/// um nó do modelador 3D ficava de fora, então **todo `Ctrl+Z` apagava a seleção e o gizmo
+/// desaparecia**. Mover · desfazer · mover outra vez obrigava a re-escolher a peça no meio — que é
+/// exactamente *«não obedece cada etapa»* visto de fora.
+///
+/// ⚠️ **Pelo `StableId` e nunca pelos bits**, que é a lei da casa: o undo **respawna** o mundo e os
+/// `Entity::to_bits()` mudam todos. Guardar os bits traria de volta uma seleção que aponta para
+/// outro nó — pior do que nenhuma.
+pub(crate) fn field_selection_ids(
+    world: &bevy_ecs::world::World,
+    bits: &[u64],
+) -> Vec<ph2d_ecs::StableId> {
+    bits.iter()
+        .map(|b| bevy_ecs::entity::Entity::from_bits(*b))
+        // ⚠️ **Só quem é nó do MODELADOR** — o resto da seleção segue as leis de quem a possui, e
+        // alargar isto seria mudar o comportamento de módulos que não o pediram.
+        .filter(|e| world.get::<ph2d_field_ecs::FieldNode>(*e).is_some())
+        .filter_map(|e| ph2d_ecs::stable_id_of(world, e))
+        .filter(|id| !id.is_none())
+        .collect()
+}
+
+/// E de volta: os bits **novos** de quem sobreviveu ao respawn. Quem morreu simplesmente não volta.
+pub(crate) fn field_selection_back(
+    world: &mut bevy_ecs::world::World,
+    ids: &[ph2d_ecs::StableId],
+) -> Vec<u64> {
+    ids.iter()
+        .filter_map(|id| ph2d_ecs::entity_of_stable_id(world, *id))
+        .map(|e| e.to_bits())
+        .collect()
+}
+
 // ⭐ **`canonicalize` MORREU AQUI** (ADR-0164 F1, snapshot v2).
 //
 // Ela reordenava as linhas do snapshot por CONTEÚDO a cada captura, para que dois estados
@@ -305,13 +344,32 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        // ⭐⭐⭐ **E a seleção 3D também, pela mesma razão e na mesma unidade** — ver
+        // [`field_selection_ids`]. ⚠️ Tem de ser AQUI, antes do `restore`: depois dele os bits que a
+        // seleção guarda já apontam para entidades que deixaram de existir.
+        let was_field: Vec<ph2d_ecs::StableId> =
+            gfx.hero_screen.as_ref().map_or_else(Vec::new, |h| {
+                let bits: Vec<u64> = h
+                    .gizmo
+                    .selection
+                    .iter()
+                    .copied()
+                    .chain(h.gizmo.extra_selection.iter().copied())
+                    .collect();
+                field_selection_ids(gfx.sim.world(), &bits)
+            });
         let (vec, map, flip, flip_map) = state.restore(&mut gfx.sim, &gfx.component_registry);
         gfx.vec_scene = vec;
         gfx.flip = flip;
         gfx.guides = state.guides.clone();
         gfx.ui_states = state.ui_states.clone();
+        // ⭐ A seleção 3D volta com os bits NOVOS, depois de o mundo ter sido reconstruído.
+        let field_back = field_selection_back(gfx.sim.world_mut(), &was_field);
         if let Some(hero) = gfx.hero_screen.as_mut() {
             hero.gizmo.clear_all_selection();
+            for bits in field_back {
+                hero.gizmo.add_to_selection(bits);
+            }
         }
         self.vec_entities = map;
         self.flip_entities = flip_map;

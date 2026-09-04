@@ -186,15 +186,41 @@ const CLICK_SLOP_PX: f32 = ph2d_editor::interaction::NUMBER_INPUT_DRAG_THRESHOLD
 /// ⭐ **O que uma tecla numérica FAZ**, sobre o estado do smoke e nada mais — o irmão do [`advance`],
 /// e separado dos métodos de `App` pela mesma razão: era a costura que ficava sem gate.
 ///
-/// Devolve `true` quando a tecla foi consumida.
-pub(crate) fn typed_key(s: &mut Smoke, stroke: crate::field3d_typed::Stroke) -> bool {
+/// ⭐⭐ **O que a tecla de VERBO faz ao estado do smoke** — a terceira saída de um gesto de gizmo.
+///
+/// Devolve `(consumiu, autorou)` pela mesma razão do [`typed_key`] e do [`finish`]: trocar de verbo
+/// a meio de um arrasto **confirma** o que já foi aplicado (o mundo fica como está), logo o quadro
+/// é tão autorado como o de largar o botão.
+///
+/// ⚠️ **Extraída de `App::field3d_mode_key` para poder ser GATEADA** — é a mesma razão por que o
+/// [`typed_key`] e o [`advance`] vivem aqui: *era a costura que ficava sem gate.*
+pub(crate) fn mode_key(s: &mut Smoke, mode: crate::field3d_gizmo::Mode) -> (bool, bool) {
+    s.gizmo_mode = mode;
+    let autorou = matches!(s.drag, Some(Drag::Gizmo(_)));
+    s.drag = None;
+    s.gizmo_hot = None;
+    s.typed = None;
+    (true, autorou)
+}
+
+/// Devolve `(consumiu, autorou)` — e a **segunda** metade é a que o undo lê.
+///
+/// ⛔⛔ **Ela nasceu de um report do Enio (2026-09-03): *«o undo/redo do módulo não obedece cada
+/// etapa, principalmente se transformação»*.** Um arrasto de gizmo tem **três** saídas — largar o
+/// botão, `Enter`, e trocar de verbo — e só a primeira marcava o quadro como autorado. As outras
+/// duas mudavam a pose e **não registavam passo nenhum**: a transformação ficava colada à ação
+/// SEGUINTE do artista, fosse ela qual fosse.
+///
+/// ⚠️ **O `Cancel` é a excepção CERTA e por isso devolve `false`:** ele repõe a pose de antes do
+/// gesto, logo o diff não vê nada e um passo seria um passo vazio.
+pub(crate) fn typed_key(s: &mut Smoke, stroke: crate::field3d_typed::Stroke) -> (bool, bool) {
     use crate::field3d_typed as typed;
     // A entrada só existe **dentro de um arrasto de alça**, e só onde um número tem um significado.
     let Some(Drag::Gizmo(handle)) = s.drag else {
-        return false;
+        return (false, false);
     };
     if !typed::accepts(handle) {
-        return false;
+        return (false, false);
     }
     match stroke {
         // ⭐ **Cancelar desfaz o gesto INTEIRO**: o mundo recebe o inverso do que já lhe foi dado, e
@@ -212,25 +238,27 @@ pub(crate) fn typed_key(s: &mut Smoke, stroke: crate::field3d_typed::Stroke) -> 
             s.drag_grip = None;
             s.typed = None;
             s.press_at = None;
-            true
+            // ⚠️ **Net zero**: o mundo levou o inverso do que já tinha recebido, logo não há passo.
+            (true, false)
         }
-        // Fechar guardando o que está — o mesmo que largar o botão.
+        // Fechar guardando o que está — o mesmo que largar o botão, **e o undo tem de o saber**.
         typed::Stroke::Commit => {
             s.typed = None;
-            finish(s);
-            true
+            let (_, autorou) = finish(s);
+            (true, autorou)
         }
         stroke => {
             // ⚠️ Uma entrada só **começa** com um dígito ou um ponto: um `Backspace` sem entrada
             // aberta não é deste módulo, e engoli-lo tiraria a tecla a quem quer que a espere.
             let open = s.typed.is_some();
             if !open && matches!(stroke, typed::Stroke::Backspace) {
-                return false;
+                return (false, false);
             }
             let before = s.typed.clone().unwrap_or_default();
             s.typed = typed::edit(&before, stroke);
             apply_typed(s, handle);
-            true
+            // O gesto continua aberto: o `gesture_in_progress` suprime o passo até ele fechar.
+            (true, false)
         }
     }
 }

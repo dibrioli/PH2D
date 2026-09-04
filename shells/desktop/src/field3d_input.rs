@@ -490,13 +490,17 @@ impl App {
             return false;
         };
         let pos = self.last_pointer;
-        with_smoke(|s| {
+        let (took, authored) = with_smoke(|s| {
             if !over_window(s, pos) {
-                return false;
+                return (false, false);
             }
             typed_key(s, stroke)
         })
-        .unwrap_or(false)
+        .unwrap_or((false, false));
+        // ⚠️ **A MESMA linha do `field3d_pointer_up`, e pela mesma razão** — ver o doc do
+        // [`typed_key`]: fechar um arrasto com `Enter` autora a cena tanto quanto largar o botão.
+        self.any_input_this_frame |= authored;
+        took
     }
 
     pub(crate) fn field3d_mode_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
@@ -504,18 +508,17 @@ impl App {
             return false;
         };
         let pos = self.last_pointer;
-        with_smoke(|s| {
+        let (took, authored) = with_smoke(|s| {
             if !over_window(s, pos) {
-                return false;
+                return (false, false);
             }
-            s.gizmo_mode = mode;
-            // Trocar de verbo no meio de um arrasto deixaria uma alça agarrada que já não existe.
-            s.drag = None;
-            s.gizmo_hot = None;
-            s.typed = None;
-            true
+            // Trocar de verbo no meio de um arrasto deixaria uma alça agarrada que já não existe,
+            // e o que já foi aplicado FICA — ver [`mode_key`], que é a lei.
+            mode_key(s, mode)
         })
-        .unwrap_or(false)
+        .unwrap_or((false, false));
+        self.any_input_this_frame |= authored;
+        took
     }
 
     /// A roda aproxima. `steps` em linhas de roda.
@@ -557,7 +560,7 @@ impl App {
 mod pointer;
 #[cfg(test)]
 pub(crate) use pointer::finish_for_test;
-pub(crate) use pointer::{advance, begin, finish, hot_handle, typed_key};
+pub(crate) use pointer::{advance, begin, finish, hot_handle, mode_key, typed_key};
 use pointer::{mode_for_key, over_window};
 #[cfg(test)]
 #[path = "field3d_input_tests.rs"]

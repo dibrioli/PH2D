@@ -331,6 +331,94 @@ mod undo_seam {
             "o `post_frame_undo` deixou de perguntar — um arrasto volta a ser N passos de undo"
         );
     }
+
+    /// ⭐⭐⭐ **AS TRÊS SAÍDAS DE UM GESTO DE GIZMO MARCAM O QUADRO — e o `Cancel` não** (W113).
+    ///
+    /// # ⛔⛔ O report do Enio (2026-09-03): *«o undo/redo não obedece cada etapa, principalmente se
+    /// transformação»*
+    ///
+    /// Um arrasto de alça acaba de **três** maneiras, e até aqui só uma delas dizia ao undo que a
+    /// cena tinha sido autorada:
+    ///
+    /// | saída | marcava o quadro? | o mundo mudou? |
+    /// |---|---|---|
+    /// | largar o botão (`finish`) | ✅ | sim |
+    /// | `Enter` / número (`typed_key`) | ❌ | **sim** |
+    /// | `G`/`R`/`S` (`mode_key`) | ❌ | **sim** (o aplicado FICA) |
+    /// | `Esc` (`Cancel`) | ❌ | **não** — net zero, e por isso está certo |
+    ///
+    /// ⇒ acabar uma transformação com `Enter` não registava passo NENHUM: ela colava-se à ação
+    /// seguinte do artista. *Uma lei escrita em três sítios ainda não é uma lei.*
+    #[test]
+    fn every_exit_from_a_gizmo_gesture_marks_the_frame_except_the_one_that_undoes_it() {
+        use crate::field3d_gizmo::Mode;
+        use crate::field3d_input::{mode_key, typed_key};
+        use crate::field3d_typed::Stroke;
+
+        // 1. Largar o botão.
+        armed(|s| s.drag = Some(Drag::Gizmo(Handle::Axis(1))));
+        let (took, authored) = armed(crate::field3d_input::finish);
+        assert!(took && authored, "largar o botão autora a cena");
+
+        // 2. `Enter` — a saída que o report pagou.
+        armed(|s| s.drag = Some(Drag::Gizmo(Handle::Axis(1))));
+        assert_eq!(
+            armed(|s| typed_key(s, Stroke::Commit)),
+            (true, true),
+            "fechar com Enter autora tanto quanto largar o botão"
+        );
+
+        // 3. Trocar de verbo a meio — o que já foi aplicado FICA, logo é autoria.
+        armed(|s| s.drag = Some(Drag::Gizmo(Handle::Axis(1))));
+        assert_eq!(
+            armed(|s| mode_key(s, Mode::Rotate)),
+            (true, true),
+            "trocar de verbo confirma o que se fez e tem de registar passo"
+        );
+
+        // ⛔ E o CONTROLE que impede isto de virar «marque sempre»: sem arrasto nenhum, trocar de
+        // verbo não autora nada — senão cada tecla `G` viraria um passo de undo vazio.
+        armed(|s| s.drag = None);
+        assert_eq!(
+            armed(|s| mode_key(s, Mode::Move)),
+            (true, false),
+            "trocar de verbo PARADO não é autoria"
+        );
+
+        // ⛔ E o `Cancel` repõe a pose, logo o quadro NÃO é autorado.
+        armed(|s| s.drag = Some(Drag::Gizmo(Handle::Axis(1))));
+        assert_eq!(
+            armed(|s| typed_key(s, Stroke::Cancel)),
+            (true, false),
+            "cancelar devolve a peça ao sítio — um passo ali seria um passo vazio"
+        );
+
+        // ⛔ E um dígito NÃO fecha o gesto: ele continua aberto e o passo espera.
+        armed(|s| s.drag = Some(Drag::Gizmo(Handle::Axis(1))));
+        assert_eq!(
+            armed(|s| typed_key(s, Stroke::Digit(b'5'))),
+            (true, false),
+            "um dígito não acaba o gesto"
+        );
+    }
+
+    /// ⚠️ **E o `App` tem de LER as duas metades** — a costura que os gates acima não alcançam.
+    ///
+    /// A lei pura devolve `autorou`; se quem a chama descartar essa metade, tudo volta ao estado do
+    /// report. É o mesmo modo de falha (e o mesmo remédio) do
+    /// [`the_undo_pass_asks_whether_this_module_is_mid_gesture`].
+    #[test]
+    fn the_shell_feeds_every_gesture_exit_into_the_undo_input_mark() {
+        let src = include_str!("field3d_input.rs");
+        let marcas = src
+            .matches("self.any_input_this_frame |= authored;")
+            .count();
+        assert!(
+            marcas >= 4,
+            "só {marcas} saídas alimentam a marca de entrada do undo — as quatro são mover, \
+             soltar, `Enter` e a tecla de verbo"
+        );
+    }
 }
 
 /// Os gates das **teclas de verbo** — `G` / `R` / `S`.

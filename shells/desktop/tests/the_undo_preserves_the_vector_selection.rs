@@ -32,6 +32,26 @@ fn apply_project_restores_the_pen_selection_after_the_restore() {
         body.contains("select_many"),
         "o `apply_project` calcula a seleção sobrevivente e não a devolve ao pen"
     );
+    // ⭐⭐⭐ **E a METADE 3D** (W113): o `apply_project` limpava a seleção inteira e devolvia só a
+    // vetorial, então **todo `Ctrl+Z` apagava a seleção do modelador** e o gizmo desaparecia — o
+    // report do Enio de 2026-09-03. ⚠️ Sem esta metade, os gates da lei pura ficam verdes sobre uma
+    // política que ninguém chama, que é exactamente o buraco que este arquivo existe para fechar.
+    assert!(
+        body.contains("field_selection_ids"),
+        "o `apply_project` deixou de guardar a seleção 3D em identidade durável — todo undo volta \
+         a apagá-la, e o gizmo do modelador desaparece a cada Ctrl+Z"
+    );
+    assert!(
+        body.contains("field_selection_back"),
+        "o `apply_project` guarda a seleção 3D e não a devolve"
+    );
+    let captura_3d = body
+        .find("field_selection_ids")
+        .expect("captura a seleção 3D");
+    let devolve_3d = body
+        .find("field_selection_back")
+        .expect("devolve a seleção 3D");
+
     // E a ordem importa: a captura tem de vir ANTES do `restore`, senão ela lê o pen já zerado.
     let capture = body
         .find("selected_paths")
@@ -40,5 +60,12 @@ fn apply_project_restores_the_pen_selection_after_the_restore() {
     assert!(
         capture < restore,
         "a seleção prévia é lida DEPOIS do restore — nesse ponto ela já não existe"
+    );
+    // ⚠️ A mesma lei para a 3D, e ela é mais apertada: a captura tem de ler os bits ANTES de o
+    // `restore` despawnar as entidades, e a devolução tem de correr DEPOIS.
+    assert!(
+        captura_3d < restore && restore < devolve_3d,
+        "a seleção 3D é guardada ou devolvida do lado errado do `restore` — capturar depois lê \
+         entidades mortas, devolver antes escreve bits que o respawn vai invalidar"
     );
 }

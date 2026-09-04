@@ -375,11 +375,11 @@ impl crate::App {
         gfx.catalogs = crate::project_library::apply_catalogs(&state.library);
         gfx.library_cache.invalidate();
         if let Some(hero) = gfx.hero_screen.as_mut() {
-        hero.gizmo.clear_all_selection();
-        for bits in field_back {
-            hero.gizmo.add_to_selection(bits);
+            hero.gizmo.clear_all_selection();
+            for bits in field_back {
+                hero.gizmo.add_to_selection(bits);
+            }
         }
-    }
         self.vec_entities = map;
         self.flip_entities = flip_map;
         self.vec_sel = crate::vec_selection::VecSelSync::default();

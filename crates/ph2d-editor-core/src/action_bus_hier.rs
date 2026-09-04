@@ -61,6 +61,26 @@ pub enum HierRequest {
     /// Raised by the row's right-click → Delete menu entry.
     Delete { row: ph2d_a11y::NodeId },
 
+    /// ⭐⭐⭐ **Agrupar / desagrupar a selecção** (`line/Vector`, Enio 2026-08-30).
+    ///
+    /// ⚠️ **Estava em `EditorAction::HierGroup` e desceu para aqui na integração de
+    /// 2026-09-04**, sob a regra que o corte do barramento escreveu: *carrega uma `row` da
+    /// Hierarquia ⇒ vai para dentro do `HierRequest`*. As duas linhas cruzaram-se — uma
+    /// acrescentou o par, a outra partiu o enum — e deixá-lo fora seria a excepção que
+    /// desfaz a regra no primeiro sítio onde ela foi testada.
+    ///
+    /// ⚠️ **O `row` é o SUJEITO EXTRA, não o único** — o menu é por linha e agrupar é sobre um
+    /// conjunto, então a shell une a linha clicada à selecção da Hierarquia
+    /// ([`crate::screens::hero`] gizmo). Um payload que fosse só a linha faria *Group* nunca ter
+    /// dois sujeitos e portanto **nunca funcionar**.
+    ///
+    /// ⚠️ **O verbo já existia em `Ctrl+G` e era inalcançável** — sem menu, sem botão, sem entrada
+    /// de paleta, e cercado à ferramenta Vector. Este par de acções é o alcance dele.
+    Group { row: ph2d_a11y::NodeId },
+
+    /// O gémeo — ver [`Self::Group`].
+    Ungroup { row: ph2d_a11y::NodeId },
+
     /// Reset the entity's `Transform` to `Transform::IDENTITY`.
     /// Payload: the row's `NodeId`. Raised by the row's right-click
     /// → Reset Transform menu entry.

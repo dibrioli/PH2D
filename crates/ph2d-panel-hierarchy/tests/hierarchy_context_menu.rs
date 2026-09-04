@@ -329,7 +329,7 @@ fn every_sheet_verb_raises_its_own_action() {
 /// ⭐⭐⭐ **AGRUPAR e DESAGRUPAR saem do menu com a LINHA CLICADA** (Enio, 2026-08-30).
 ///
 /// O verbo já existia em `Ctrl+G` e **nenhum menu, botão ou rótulo do app o nomeava** — este par de
-/// linhas é o alcance dele. ⚠️ E os dois são acções **distintas**: um só `HierGroup { toggle }`
+/// linhas é o alcance dele. ⚠️ E os dois são acções **distintas**: um só `HierRequest::Group { toggle }`
 /// obrigaria a shell a adivinhar o sentido a partir do estado da selecção, e *agrupar e desagrupar
 /// não são o mesmo gesto com um interruptor* — o artista escolhe qual quer.
 #[test]
@@ -337,16 +337,16 @@ fn the_group_pair_raises_its_own_action_with_the_clicked_row() {
     for (id, esperado, nome) in [
         (
             ids::CTX_MENU_HIER_GROUP,
-            EditorAction::HierGroup {
+            EditorAction::Hierarchy(HierRequest::Group {
                 row: NodeId(100_777),
-            },
+            }),
             "Group",
         ),
         (
             ids::CTX_MENU_HIER_UNGROUP,
-            EditorAction::HierUngroup {
+            EditorAction::Hierarchy(HierRequest::Ungroup {
                 row: NodeId(100_777),
-            },
+            }),
             "Ungroup",
         ),
     ] {

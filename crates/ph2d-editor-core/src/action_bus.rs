@@ -174,20 +174,6 @@ pub enum EditorAction {
         redo: bool,
     },
 
-    /// ⭐⭐⭐ **Agrupar / desagrupar a selecção** (Enio, 2026-08-30).
-    ///
-    /// ⚠️ **O `row` é o SUJEITO EXTRA, não o único** — o menu é por linha e agrupar é sobre um
-    /// conjunto, então a shell une a linha clicada à selecção da Hierarquia
-    /// ([`crate::screens::hero`] gizmo). Um payload que fosse só a linha faria *Group* nunca ter
-    /// dois sujeitos e portanto **nunca funcionar**.
-    ///
-    /// ⚠️ **O verbo já existia em `Ctrl+G` e era inalcançável** — sem menu, sem botão, sem entrada
-    /// de paleta, e cercado à ferramenta Vector. Este par de acções é o alcance dele.
-    HierGroup { row: ph2d_a11y::NodeId },
-
-    /// O gémeo — ver [`Self::HierGroup`].
-    HierUngroup { row: ph2d_a11y::NodeId },
-
     /// Canvas multi-select event (Fase 0b). Raised by the desktop
     /// shell's canvas pick handler after resolving the click to its
     /// `entity_bits` and reading the OS modifier into a

@@ -134,9 +134,11 @@ fn try_context_menu_row(
             host.bus_mut()
                 .push(EditorAction::Hierarchy(HierRequest::Delete { row }));
         } else if id == ids::CTX_MENU_HIER_GROUP {
-            host.bus_mut().push(EditorAction::HierGroup { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::Group { row }));
         } else if id == ids::CTX_MENU_HIER_UNGROUP {
-            host.bus_mut().push(EditorAction::HierUngroup { row });
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::Ungroup { row }));
         } else if id == ids::CTX_MENU_HIER_MERGE_SPRITES {
             host.bus_mut()
                 .push(EditorAction::Hierarchy(HierRequest::MergeSprites { row }));

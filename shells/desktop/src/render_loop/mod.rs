@@ -4387,10 +4387,14 @@ impl crate::App {
                     }) => {
                         add_child_row.get_or_insert(row);
                     }
-                    EditorAction::HierGroup { row } => {
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Group {
+                        row,
+                    }) => {
                         group_row.get_or_insert((row, true));
                     }
-                    EditorAction::HierUngroup { row } => {
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Ungroup {
+                        row,
+                    }) => {
                         group_row.get_or_insert((row, false));
                     }
                     EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::AddRoot) => {
@@ -9961,7 +9965,12 @@ impl crate::App {
             let brush_arts = self.brush_live.resolve(
                 vec_scene,
                 &|id| {
-                    crate::vec_entities::object_selection_for(sim, vec_scene, &self.vec_entities, id)
+                    crate::vec_entities::object_selection_for(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        id,
+                    )
                 },
                 &vec_xf,
             );

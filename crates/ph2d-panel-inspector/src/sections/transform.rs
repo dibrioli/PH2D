@@ -2,7 +2,7 @@
 //! architecture_panel_loc_cap). Logic verbatim; behavior unchanged.
 
 use super::*;
-use ph2d_editor_core::widget::{DECORATOR_W, SectionFold};
+use ph2d_editor_core::widget::SectionFold;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_transform_section(
@@ -58,7 +58,11 @@ pub(crate) fn paint_transform_section(
     // ⭐ Toda a geometria da linha deriva de **uma** largura, então encolhê-la aqui serve as
     // quatro linhas da secção de uma vez. ⛔ O cabeçalho fica com a largura inteira: ele não é uma
     // propriedade, e a coluna é dos valores.
-    let row_w = (w - DECORATOR_W).max(1.0);
+    //
+    // ⚠️ Pela **porta** (`widget::form_row_columns`), não por uma subtracção local: há ~20
+    // construtores de linha à mão neste painel, e vinte subtracções são vinte oportunidades de a
+    // coluna ficar com um `x` diferente. O rect do ponto sai da mesma chamada, por linha.
+    let (row_w, _) = ph2d_editor_core::widget::form_row_columns(x, w, y, field_h);
 
     // Quão largo é um chip, e a seção inteira empilha? — ver [`chip_metrics`].
     let (section_narrow, two_chip_w) = chip_metrics(

@@ -10,7 +10,6 @@
 //! nada dizia isso.
 
 use super::*;
-use ph2d_editor_core::widget::DECORATOR_W;
 
 /// A geometria partilhada por TODA linha desta secção — calculada uma vez, lida por cada linha.
 pub(super) struct RowStyle<'a> {
@@ -163,10 +162,7 @@ pub(super) fn paint_row(
     }
     // O ponto da coluna de animação — **um por LINHA**, não por campo: a propriedade é a
     // linha, e um par X/Y é uma propriedade com duas componentes.
-    ph2d_editor_core::widget::paint_decorator_dot(
-        scene,
-        st.theme,
-        Rect::new(st.x + st.w - DECORATOR_W, chips_y, DECORATOR_W, st.field_h),
-    );
+    let (_, dot) = ph2d_editor_core::widget::form_row_columns(st.x, st.w, chips_y, st.field_h);
+    ph2d_editor_core::widget::paint_decorator_dot(scene, st.theme, dot);
     total_h
 }

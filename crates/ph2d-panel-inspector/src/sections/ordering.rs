@@ -97,7 +97,9 @@ fn number_row(
         label_color(theme),
     );
     let chip_x = x + label_col_w + gap;
-    let chip_w = (w - label_col_w - gap).max(0.0);
+    // A coluna de animação sai da largura ANTES de os controlos a repartirem — pela porta.
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, h);
+    let chip_w = (control_w - label_col_w - gap).max(0.0);
     let rect = Rect::new(chip_x, y, chip_w, h);
     hit_index.register(id, rect);
     let (state, value, buffer, caret, anchor) = read_number_input(store, id);
@@ -114,6 +116,7 @@ fn number_row(
         text_system,
         theme,
     );
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     y + h + Spacing::Sm.px()
 }
 
@@ -145,7 +148,9 @@ fn layer_row(
         label_color(theme),
     );
     let chip_x = x + label_col_w + gap;
-    let chip_w = (w - label_col_w - gap).max(0.0);
+    // A coluna de animação sai da largura ANTES de os controlos a repartirem — pela porta.
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, h);
+    let chip_w = (control_w - label_col_w - gap).max(0.0);
     let rect = Rect::new(chip_x, y, chip_w, h);
     hit_index.register(ids::INSP_ORDER_SORTING_LAYER, rect);
     let (open, sel) = match store.get(ids::INSP_ORDER_SORTING_LAYER) {
@@ -166,6 +171,7 @@ fn layer_row(
     if open {
         crate::state::set_pending_ordering_dd(Some((sel, rect)));
     }
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     y + h + Spacing::Sm.px()
 }
 

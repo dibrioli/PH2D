@@ -404,6 +404,32 @@ pub(crate) fn decorator_rect(rect: Rect) -> Rect {
     Rect::new(s.x + s.w, rect.y, DECORATOR_W, rect.h)
 }
 
+/// ⭐⭐⭐ **A PORTA de uma linha de formulário construída à mão** — devolve a largura que sobra para
+/// os controlos e **onde** pôr o ponto da coluna de animação.
+///
+/// ⚠️ **Ela existe porque o app tem ~20 construtores de linha à mão** (só o Inspector), cada um com
+/// a sua aritmética de larguras, e a alternativa era cada um subtrair `DECORATOR_W` por sua conta.
+/// ⛔ *Vinte subtracções são vinte oportunidades de a coluna ficar com um `x` diferente* — e a
+/// coluna só quer dizer alguma coisa se for **uma**.
+///
+/// Uso, em duas linhas:
+/// ```ignore
+/// let (control_w, dot) = form_row_columns(x, w, row_y, row_h);
+/// // …desenhe os controlos dentro de `control_w`…
+/// paint_decorator_dot(scene, theme, dot);
+/// ```
+///
+/// ⚠️ **Um ponto por LINHA, nunca por campo:** um par `X`/`Y` é *uma* propriedade com duas
+/// componentes, e dois pontos diriam que são duas.
+#[must_use]
+pub fn form_row_columns(x: f32, w: f32, row_y: f32, row_h: f32) -> (f32, Rect) {
+    let control_w = (w - DECORATOR_W).max(1.0);
+    (
+        control_w,
+        Rect::new(x + w - DECORATOR_W, row_y, DECORATOR_W, row_h),
+    )
+}
+
 /// ⭐ **A porta da coluna de animação para quem NÃO usa a caixa única.**
 ///
 /// ⚠️ Ela existe porque o app tem **três** famílias de linha de formulário, e só duas passam por

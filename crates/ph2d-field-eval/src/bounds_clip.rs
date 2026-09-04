@@ -81,17 +81,17 @@ mod tests {
     fn a_flat_piece_gets_the_margin_on_every_axis() {
         let b = Ball::of([0.0; 3], 1.0, [0.5, 0.5, 0.001]);
         let (lo, hi) = super::march_clip(b);
-        let (alo, ahi) = b.aabb();
+        let (a_lo, a_hi) = b.aabb();
         for e in 0..3 {
-            let m = alo[e] - lo[e];
+            let m = a_lo[e] - lo[e];
             assert!(m > 0.0, "eixo {e} sem margem");
             assert!(
-                (m - (hi[e] - ahi[e])).abs() < 1e-6,
+                (m - (hi[e] - a_hi[e])).abs() < 1e-6,
                 "eixo {e}: a margem não é simétrica"
             );
         }
         assert!(
-            (alo[2] - lo[2]) > 0.9 * (alo[0] - lo[0]),
+            (a_lo[2] - lo[2]) > 0.9 * (a_lo[0] - lo[0]),
             "o eixo fino recebeu menos margem do que o grosso"
         );
     }

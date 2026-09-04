@@ -24,8 +24,7 @@ fn o_reforco_multiplica_so_a_confianca_das_faces_pedidas() {
     let alvo: Vec<usize> = (0..n).step_by(7).collect();
     dual.boost_align(alvo.iter().copied(), 5.0);
     let mut tocadas = 0usize;
-    for f in 0..n {
-        let (a0, c0) = before[f];
+    for (f, &(a0, c0)) in before.iter().enumerate() {
         let (a1, c1) = dual.align(f);
         assert!((a0 - a1).abs() < 1.0e-9, "o ANGULO nao muda na face {f}");
         if alvo.contains(&f) {
@@ -59,10 +58,10 @@ fn factor_invalido_e_face_inexistente_nao_mudam_nada() {
     dual.boost_align(0..n, -3.0);
     dual.boost_align(0..n, f32::NAN);
     dual.boost_align([n + 10, n * 4], 5.0);
-    for f in 0..n {
+    for (f, &antes) in before.iter().enumerate() {
         assert_eq!(
             dual.align(f),
-            before[f],
+            antes,
             "face {f} mudou com um factor invalido"
         );
     }

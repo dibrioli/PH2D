@@ -63,6 +63,7 @@ mod keyboard_field3d;
 /// ⭐⭐⭐ **Que MODO é dono do teclado neste quadro** — irmão do `keyboard`, cortado dele pelo cap
 /// de LOC. *Um modo em curso é dono da entrada dele.*
 mod keyboard_modal;
+mod keyboard_palette; // as teclas do palette de nos -- MODAL, ver o doc do modulo
 
 /// **Os acordes de ARQUIVO** — irmão do `keyboard`, cortado dele pelo cap de LOC.
 mod keyboard_files;

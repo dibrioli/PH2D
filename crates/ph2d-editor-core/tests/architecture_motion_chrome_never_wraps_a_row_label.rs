@@ -57,7 +57,16 @@ use std::path::{Path, PathBuf};
 const SCANNED_CRATES: &[&str] = &["ph2d-panel-motion-graph", "ph2d-panel-motion-params"];
 
 /// Ficheiros avulsos de `ph2d-editor-core` que desenham rótulos de linha do Motion.
-const SCANNED_FILES: &[&str] = &["ph2d-editor-core/src/widget/slider_with_chip.rs"];
+// ⚠️⚠️ **O ficheiro virou PASTA na integracao de 2026-09-04** (`line/UIUX`, tecto de LOC), e este
+// gate afirma sobre um CAMINHO. ⭐ Ele falhou ALTO -- *«nao existe: o ficheiro mudou de nome»* --
+// porque quem o escreveu po^s a asserção de existencia ANTES da varredura; sem ela, um caminho
+// morto varre zero ficheiros e o gate fica **verde a medir nada**.
+// ⇒ varre-se a pasta INTEIRA: o `mod.rs` **e** o `number_chip.rs`, que e' onde o valor da caixa
+// se pinta agora e onde a mesma lei tem de valer.
+const SCANNED_FILES: &[&str] = &[
+    "ph2d-editor-core/src/widget/slider_with_chip/mod.rs",
+    "ph2d-editor-core/src/widget/slider_with_chip/number_chip.rs",
+];
 
 /// As portas que tratam o 7.º argumento (`max_width`) como orçamento de QUEBRA.
 const WRAPPING_DOORS: &[&str] = &["paint_text", "paint_text_title", "paint_text_block"];
@@ -72,7 +81,17 @@ const WRAPPING_DOORS: &[&str] = &["paint_text", "paint_text_title", "paint_text_
 /// - `27` (2026-08-31) — a linha de QUEIXA de uma regra malformada do `source.lsystem`
 ///   (`rows_paint::paint_one_row`, braço `ParamRow::Text(text) if text.problem.is_some()`):
 ///   texto livre do artista, comprimento sem tecto, e por isso obrigada a CORTAR.
-const ELIDED_TODAY: usize = 27;
+/// - `26` (2026-09-04, integracao) — e desta vez o numero **DESCEU**, que e' a metade que o
+///   proprio doc acima manda explicar. A `line/UIUX` fundiu as TRES colunas de uma linha de
+///   propriedade (rotulo | trilho | caixa) numa **caixa unica**: o `slider_with_chip` tinha DOIS
+///   rotulos a cortar e passou a ter **um**. ⛔ Nao e' «alguem trocou um rotulo de volta» — a lei
+///   continua a valer em todos os que restaram, e o gate confirma-o ao varrer agora a pasta
+///   inteira (`mod.rs` **e** `number_chip.rs`).
+///
+/// ⚠️ E este numero literal e' exactamente a armadilha que a memoria da casa nomeia — *uma
+/// contagem literal num gate faz cada feature nova editar o teste de outra pessoa*. Ele so' se
+/// sustenta porque tem o censo dos dois lados; deriva-lo continua por fazer.
+const ELIDED_TODAY: usize = 26;
 
 fn crates_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))

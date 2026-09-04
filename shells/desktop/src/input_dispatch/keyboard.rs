@@ -109,37 +109,9 @@ impl App {
         {
             return;
         }
-        // O palette de "Add Node" (tela cheia, Motion) é MODAL — enquanto aberto ele COME toda tecla:
-        // caracteres imprimíveis vão pro campo de busca, Enter escolhe o topo do filtro, Backspace apaga,
-        // Escape fecha. Vem PRIMEIRO (antes dos atalhos de painel/ferramenta) para uma letra digitada nunca
-        // vazar num atalho de grafo embaixo. O `A` que ABRIU o palette foi capturado no quadro ANTERIOR
-        // pelo painel (o palette só abre no quadro seguinte, na ponte), então a tecla de abertura flui normal.
-        if self.command_palette_open() {
-            if state == ElementState::Pressed {
-                if let PhysicalKey::Code(code) = physical_key {
-                    match code {
-                        KeyCode::Escape => {
-                            self.command_palette_close();
-                            return;
-                        }
-                        KeyCode::Enter | KeyCode::NumpadEnter => {
-                            self.command_palette_confirm();
-                            return;
-                        }
-                        KeyCode::Backspace => {
-                            self.command_palette_backspace();
-                            return;
-                        }
-                        _ => {}
-                    }
-                }
-                if let Some(s) = text.as_ref() {
-                    for ch in s.chars() {
-                        self.command_palette_type(ch);
-                    }
-                }
-            }
-            // Modal: engole TODA a tecla (press e release), aberto ou não haja o que digitar.
+        // ⭐ **As teclas do PALETTE vivem no irmão** — ver [`super::keyboard_palette`]. Ele é
+        // MODAL: se devolve `true`, engoliu a tecla inteira (press e release).
+        if self.command_palette_keys(physical_key, state, text.as_deref()) {
             return;
         }
 

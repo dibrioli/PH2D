@@ -166,6 +166,17 @@ fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
         "o upkeep calcula a area nova e nao a ESCREVE inteira — uma regiao que partiu perderia \
          metade"
     );
+    // ⭐⭐⭐ **E ESCREVE TAMBEM QUEM PERDEU A REGIAO** — com a forma VAZIA (report de 2026-09-02:
+    // *"as vezes ate' o preenchimento se separa do stroke"*).
+    //
+    // ⛔ **A lei mora numa funcao, e nao aqui**: `formas` devolve UMA forma por preenchimento, e a
+    // contagem e' gateada em `vec_bucket_tests`. Um assert textual sobre o corpo do upkeep nomeia
+    // UMA grafia do defeito (`filter_map`) e um `filter`+`map` passa por ele — medido, a mutacao
+    // SOBREVIVEU. Aqui so' se prova que o upkeep CHAMA a porta.
+    assert!(
+        BUCKET[f..fim].contains("formas(&rede, &faces, &minhas, &fills, &xf)"),
+        "o upkeep nao passa pela porta que garante UMA forma por preenchimento"
+    );
     // ⚠️ **E ela DESCE ao espaço do caminho antes de ser escrita.** A rede fala MUNDO; um
     // `VecPath` já assentado tem pose própria, e escrever mundo nele desloca-o pelo centro dele —
     // o report de 2026-09-01 (*"nascendo deslocado para fora do stroke"*).

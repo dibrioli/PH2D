@@ -638,3 +638,43 @@ cura.*
 
 ⇒ **O resíduo que o Enio vê é outro, e o instrumento para o achar já existe**: um `File > Export
 SVG…` no momento exacto reproduz a cena aqui, arco a arco.
+
+### §11.6 — ⭐⭐⭐ O RESÍDUO ERA O **CONGELAMENTO** (report de 2026-09-02, `drawing03`/`drawing04`)
+
+> *"arrastei o nó para cima de uma linha. em alguns lugares some o preenchimento."* ·
+> *"às vezes até o preenchimento se separa do stroke."* — Enio
+
+Sonda sobre os dois ficheiros que ele exportou **no momento do defeito**, comparando a forma que
+cada preenchimento TEM com a face que a rede diz existir no miolo dele:
+
+| preenchimento | área da forma | face no miolo | diferença |
+|---|---|---|---|
+| 6 deles | — | encontrada | **`0,0000`** |
+| o sétimo | `65,98` | **`None`** | — |
+
+⇒ **sete preenchimentos para SEIS faces.** Seis batem com a face deles ao quarto decimal — o modelo
+das âncoras está a funcionar — e o sétimo tem o miolo **fora de toda a face**: é a mancha que ele
+fotografou, cor onde já não há região.
+
+⭐⭐⭐ **A causa é o CONGELAMENTO, e ele era a resposta certa com o modelo VELHO.** Ali a forma **era**
+a receita: apagá-la apagava a memória do preenchimento, então deixá-la era a única maneira de não
+perder o trabalho. **Com âncoras a receita vive no componente**, e a forma passa a ser só o que se
+vê ⇒ *quem não reencontra região não é desenhado*, e quando a região voltar as âncoras reencontram-na
+e a forma volta a ser escrita.
+
+*A mesma decisão muda de sinal quando o que a justificava deixa de ser verdade.*
+
+⛔ **Com a rede RECUSADA nada se reescreve** — acima do tecto não há faces nenhumas, e a lei de
+esconder apagaria **toda** a tinta de uma vez.
+
+### §11.7 — ⛔⛔ E DOIS gates textuais falharam na mesma wave
+
+- **Um nomeava UMA grafia do defeito.** *"o upkeep não pode ter `filter_map`"* — e a mutação usou
+  `filter` seguido de `map`. **SOBREVIVEU.** ⇒ a lei mudou-se para uma função (`formas`) e passou a
+  ser uma **contagem**: *uma forma por preenchimento, sem excepção*.
+- **Outro usava uma agulha que casa em DOIS sítios.** `if rede.recusada` aparece duas vezes no
+  ficheiro (a outra é a linha que avisa o artista), então desligar a guarda deixava o gate verde.
+  **SOBREVIVEU.** ⇒ a guarda mudou-se para dentro da mesma porta, onde se mede.
+
+*Um gate textual afirma sobre a REDACÇÃO. Quando a lei importa, ela tem de sair para uma função que
+se possa chamar.*

@@ -246,3 +246,50 @@ fn a_face_without_an_owner_reaches_no_fill() {
     assert_eq!(out[0].len(), 1);
     assert!(out[1].is_empty(), "o segundo preenchimento nao ganhou nada");
 }
+
+/// ⭐⭐⭐ **ESCONDER NÃO É PERDER: a tinta VOLTA quando a região volta.**
+///
+/// ⚠️⚠️ É a propriedade que torna *esconder* melhor do que *congelar* — e ela só existe porque a
+/// receita saiu da geometria. Com o modelo velho a forma **era** a receita, e apagá-la apagava a
+/// memória; as âncoras vivem no componente, e a forma é só o que se vê.
+///
+/// A parede do meio desaparece (as duas metades fundem-se, e uma das tintas fica sem região) e
+/// volta. ⛔ Sem a volta, o gate passaria com um `donos` que simplesmente esquecesse o perdedor.
+#[test]
+fn hiding_is_not_losing_the_paint_returns_when_the_region_does() {
+    let com_parede = [quadrado(10.0), linha(0.0, 0.0)];
+    let (r0, f0, t0) = rede_de(&com_parede);
+    let cima = receita_em(&r0, &f0, &t0, [0.0, 5.0]);
+    let baixo = receita_em(&r0, &f0, &t0, [0.0, -5.0]);
+    let receitas = || {
+        vec![
+            Receita {
+                ancoras: &cima,
+                semente: [0.0, 5.0],
+            },
+            Receita {
+                ancoras: &baixo,
+                semente: [0.0, -5.0],
+            },
+        ]
+    };
+
+    // A parede some: UMA face, e uma das duas tintas fica sem regiao.
+    let (r1, f1, t1) = rede_de(&[quadrado(10.0)]);
+    assert_eq!(f1.len(), 1);
+    let d1 = donos(&r1, &f1, &t1, &receitas());
+    let m1 = por_preenchimento(&f1, &d1, 2);
+    assert!(
+        m1[0].is_empty() != m1[1].is_empty(),
+        "exactamente UMA das duas fica sem regiao: {m1:?}"
+    );
+
+    // A parede volta: as DUAS reencontram a sua.
+    let (r2, f2, t2) = rede_de(&com_parede);
+    let d2 = donos(&r2, &f2, &t2, &receitas());
+    let m2 = por_preenchimento(&f2, &d2, 2);
+    assert!(
+        !m2[0].is_empty() && !m2[1].is_empty(),
+        "a tinta escondida tem de VOLTAR quando a regiao volta: {m2:?}"
+    );
+}

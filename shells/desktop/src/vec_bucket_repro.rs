@@ -320,6 +320,110 @@ mod probe {
         }
     }
 
+    /// SONDA — o estado EXPORTADO bate com as faces da rede de hoje?
+    ///
+    /// ⚠️ Não precisa da receita: compara a forma que cada preenchimento TEM com a face que a rede
+    /// diz existir no miolo dele. Se as áreas divergem, o preenchimento **não está a seguir** as
+    /// linhas — que é literalmente *"o preenchimento se separa do stroke"*.
+    #[test]
+    #[ignore = "sonda; roda com --ignored --nocapture"]
+    fn probe_o_exportado_bate_com_a_rede() {
+        for nome in ["drawing_base", "drawing03", "drawing04"] {
+            let v = ler(nome);
+            let (cs, _) = paredes(&v);
+            let r = ph2d_vec_fill::rede(&cs);
+            let faces: Vec<_> = r.faces().into_iter().filter(|f| f.area > 0.0).collect();
+            println!(
+                "\n=== {nome} === paredes={} faces={}",
+                cs.len(),
+                faces.len()
+            );
+            let mut cobertas = vec![false; faces.len()];
+            for (id, e, cor, d) in v.iter().filter(|(_, e, _, _)| *e) {
+                let _ = e;
+                let cts = contornos_de(d);
+                let area_fill: f64 = cts
+                    .iter()
+                    .map(|(verts, _)| {
+                        let poly = ph2d_vec_scene::detection_polyline(verts, true);
+                        let mut a = 0.0;
+                        for w in poly.windows(2) {
+                            a += w[0][0].mul_add(w[1][1], -(w[1][0] * w[0][1]));
+                        }
+                        (a * 0.5).abs()
+                    })
+                    .sum();
+                let p = miolo(&ph2d_vec_scene::detection_polyline(&cts[0].0, true));
+                let f = r.face_em(p);
+                let idx = f
+                    .as_ref()
+                    .and_then(|g| faces.iter().position(|h| (h.area - g.area).abs() < 1e-9));
+                if let Some(i) = idx {
+                    cobertas[i] = true;
+                }
+                println!(
+                    "  fill {id} {cor}: area={area_fill:7.4} face_no_miolo={:?} diferenca={:.4}",
+                    f.as_ref().map(|g| (g.area * 10000.0).round() / 10000.0),
+                    f.as_ref().map_or(f64::NAN, |g| (g.area - area_fill).abs())
+                );
+            }
+            for (i, f) in faces.iter().enumerate() {
+                if !cobertas[i] {
+                    println!("  ⚠️ face SEM preenchimento: area={:.4}", f.area);
+                }
+            }
+        }
+    }
+
+    /// ⭐⭐⭐ **NENHUM PREENCHIMENTO FICA DESENHADO ONDE NÃO HÁ REGIÃO** — o report de 2026-09-02 com
+    /// os ficheiros `drawing03` e `drawing04` (*"às vezes até o preenchimento se separa do
+    /// stroke"*).
+    ///
+    /// A fixtura é o que ele exportou **no momento do defeito**: sete preenchimentos sobre uma rede
+    /// de doze arcos que só tem **seis** faces. Seis batem com a face deles a `0,0000` de área — e
+    /// o sétimo tem o miolo **fora de toda a face**, que é a mancha que ele fotografou.
+    ///
+    /// ⇒ o gate mede a lei que fecha isso: *quem não reencontra região não é desenhado*.
+    #[test]
+    fn a_fill_whose_region_is_gone_is_not_drawn() {
+        for nome in ["drawing03", "drawing04"] {
+            let v = ler(nome);
+            let (cs, _) = paredes(&v);
+            let r = ph2d_vec_fill::rede(&cs);
+            let faces: Vec<_> = r.faces().into_iter().filter(|f| f.area > 0.0).collect();
+            let fills: Vec<&super::PathLido> = v.iter().filter(|(_, e, _, _)| *e).collect();
+            assert!(
+                fills.len() > faces.len(),
+                "{nome}: a fixtura tem de ter MAIS preenchimentos do que faces (e' o defeito)"
+            );
+            // O orfao: o miolo dele nao cai em face nenhuma.
+            let orfaos = fills
+                .iter()
+                .filter(|(_, _, _, d)| {
+                    let cts = contornos_de(d);
+                    let p = miolo(&ph2d_vec_scene::detection_polyline(&cts[0].0, true));
+                    r.face_em(p).is_none()
+                })
+                .count();
+            assert_eq!(
+                orfaos,
+                fills.len() - faces.len(),
+                "{nome}: a conta nao fecha — cada preenchimento a mais tem de ser um orfao"
+            );
+            // E a lei: sem face, a forma sai VAZIA (nao se desenha).
+            let (primeiro, subs) = crate::vec_bucket::geometria_local(
+                &r,
+                &faces,
+                &[],
+                &ph2d_vec_scene::Xform::IDENTITY,
+            );
+            assert!(
+                primeiro.is_empty() && subs.is_empty(),
+                "{nome}: um preenchimento sem regiao continuaria desenhado"
+            );
+        }
+    }
+
     /// ⭐⭐⭐ **CADA PREENCHIMENTO FICA COM A SUA REGIÃO — nos três estados que o Enio exportou.**
     ///
     /// A fixtura é o desenho real dele: sete preenchimentos sobre uma rede soldada de doze arcos, e

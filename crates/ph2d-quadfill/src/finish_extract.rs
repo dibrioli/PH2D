@@ -268,6 +268,11 @@ pub fn finish_extracted_travel(mesh: &mut Mesh, surface: &Mesh, travel: f32) -> 
     );
     if ra.kept > 0 {
         *mesh = aligned;
+        // ⭐⭐⭐ **AS TRÊS SAÍDAS CURAM, e esta faltava** (2026-09-03): as faces do avesso saíam
+        // intactas por aqui, e foi este o caminho que a peça do dono tomou. *Uma cura que vive
+        // em duas das três saídas é uma cura que o produto às vezes não corre.*
+        ra.untangled = crate::untangle_bowties(mesh, surface, crate::untangle::UNTANGLE_TRAVEL)
+            + crate::untangle::remove_flaps(mesh, surface);
         return ra;
     }
     // ── ⭐⭐⭐ **E SE ELA NÃO CONSEGUIU MEXER-SE, A CEGA TEM A SUA VEZ.**
@@ -292,7 +297,8 @@ pub fn finish_extracted_travel(mesh: &mut Mesh, surface: &Mesh, travel: f32) -> 
     if use_blind(&ra, &rb) {
         *mesh = blind;
         let mut rep = FinishReport { blind: true, ..rb };
-        rep.untangled = crate::untangle_bowties(mesh, surface, crate::untangle::UNTANGLE_TRAVEL);
+        rep.untangled = crate::untangle_bowties(mesh, surface, crate::untangle::UNTANGLE_TRAVEL)
+            + crate::untangle::remove_flaps(mesh, surface);
         return rep;
     }
     // Nenhuma das duas bateu o Laplaciano: fica ele.
@@ -300,7 +306,8 @@ pub fn finish_extracted_travel(mesh: &mut Mesh, surface: &Mesh, travel: f32) -> 
     // ⭐⭐⭐ **AS GRAVATAS SAEM NO FIM, e as TRÊS saídas passam por aqui** — ver
     // [`crate::untangle_bowties`]. ⛔ Uma delas em falta seria o defeito de sempre: a cura a
     // viver no caminho que o produto não corre.
-    ra.untangled = crate::untangle_bowties(mesh, surface, crate::untangle::UNTANGLE_TRAVEL);
+    ra.untangled = crate::untangle_bowties(mesh, surface, crate::untangle::UNTANGLE_TRAVEL)
+        + crate::untangle::remove_flaps(mesh, surface);
     ra
 }
 

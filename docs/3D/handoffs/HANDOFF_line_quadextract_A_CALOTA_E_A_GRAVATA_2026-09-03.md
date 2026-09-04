@@ -148,3 +148,35 @@ ponta com uma fenda no flanco (`sculpt003.obj`). Mecanismo completo: [plano §10
   que ela custe as pontas** (a folga medida).
 - **`INSIDE_OUT_SLACK = 20` tem dois pontos de calibração, não uma varredura.** A próxima peça que
   cair entre `8` e `125` faces do avesso é a que a testa.
+
+---
+
+## §10 — ⭐⭐⭐ A TERCEIRA metade do dia: a ABA sai por topologia (plano §107)
+
+O dono voltou com a mesma ponta (*«o mesh não melhorou, a mesma ponta está com o meio ruim»*).
+
+- **O retrato:** `5` faces, `12` vértices, `1,93 h²` **ao todo**, ângulos de `174°`–`179°` às
+  vizinhas — uma **língua dobrada para trás**, não um buraco. Três das cinco são migalhas.
+- **Nasce na EXTRACÇÃO** (`PH2D_EXTRACT_FINISH=0`: a malha crua já a traz) porque o **mapa dobra**
+  (`134` triângulos, `4,5 %`). ⛔ A cura de fundo (solver injectivo) **já foi medida e recusada** —
+  foi ela que destruiu a malha em 30/08.
+- **A cura:** [`ph2d_quadfill::untangle::remove_flaps`] apaga o disco (a aba **mais um anel**) e
+  fecha o laço com um leque de `L/2` quads. Recusa se o bordo não for um laço, se for ímpar, ou se
+  o resultado não melhorar.
+- **Resultado na peça dele:** faces do avesso `6` (num grupo de `6`) → **`1` isolada**, pontas
+  intactas (`0/5`, gap `0,18`, grade `0,74`), `χ = 2`, `0` bordo, `0` não-manifold.
+
+### ⛔⛔ O defeito de processo que custou uma corrida inteira
+
+A cura vivia em **duas** das **três** saídas do acabamento, e a peça do dono saía pela terceira:
+a medição leu *«não melhorou»* sobre código que **nunca correu**. Gate novo:
+`as_tres_saidas_do_acabamento_desfazem_o_avesso`.
+
+⚠️ **A causa do meu erro:** o script de edição correu num comando de **fundo**, que arranca na
+árvore **primária** — o `assert` abortou e o patch não se aplicou. *Toda edição por script leva
+caminho ABSOLUTO, e todo comando de fundo começa com o `cd` da worktree.*
+
+### ⚠️ E um contador que estourou
+
+`non_quads` era `out.face_count() − e.quads`; com o acabamento a mudar a contagem de faces, o
+botão imprimiu `18 446 744 073 709 551 602`. Contado na malha entregue, com gate.

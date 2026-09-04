@@ -2142,3 +2142,67 @@ conta-a) e *não deixar que ela custe as pontas* (a folga medida).
 
 ⚠️ **A fixtura de aceitação (`nossa_com_calota.obj.gz`) foi actualizada para esta saída** — ela é
 o cadeado contra a cura se desfazer em silêncio.
+
+## §107 — ⭐⭐⭐ A ABA: a fenda sai por TOPOLOGIA, e três coisas que a medição corrigiu (2026-09-03)
+
+O dono voltou com a mesma ponta (*«o mesh não melhorou, a mesma ponta está com o meio ruim»*).
+O §106 tinha deixado a fenda como item aberto; esta secção fecha-a.
+
+### §107.1 — O retrato: uma LÍNGUA dobrada, não um buraco
+
+| grandeza | o nó da peça dele |
+|---|---|
+| faces | `5` |
+| vértices | `12` |
+| área **total** | `1,93 h²` (um quad normal é `1`) |
+| ângulos às vizinhas | `174°`–`179°` — *a superfície volta atrás* |
+| três das cinco faces | `0,005`–`0,044 h²` (migalhas) |
+
+⭐ **E nasce na EXTRACÇÃO:** com `PH2D_EXTRACT_FINISH=0` a malha crua já traz `5` dobras (grupo
+`4`) e `4` gravatas. A causa é o **mapa dobrar** — `134` triângulos dobrados no domínio da peça
+(`4,5 %`, `chain_info`).
+
+⛔⛔ **A cura de fundo já foi medida e recusada:** o solver injectivo do `ph2d-gridmap` zera as
+dobras do mapa contínuo e foi **ele** que produziu o *«destruiu completamente a malha»* de 30/08
+(tabela em `injective_solve::enabled`). A obra correcta naquele nível está nomeada lá: a barreira
+tem de entrar **somada** ao objectivo do G3, não a substituí-lo.
+
+### §107.2 — A cura desta wave: apagar a aba e fechar o buraco
+
+[`ph2d_quadfill::untangle::remove_flaps`]: apaga o disco e fecha o laço com um **leque** de `L/2`
+quads. Recusa — e a malha fica exactamente como estava — se o bordo não for **um** laço, se ele
+for **ímpar**, ou se o resultado não melhorar.
+
+⚠️ **Três correcções que só a medição impôs:**
+
+1. **O disco é MAIOR que a aba.** Apagar só as faces do grupo deixa o buraco com o mesmo contorno
+   torcido (os vértices emaranhados estão na BORDA dele) e o remendo volta a dobrar: medido,
+   `avesso 2 → 2`. Crescer **um anel** põe-nos no interior, e eles desaparecem com o disco.
+2. **A guarda é do que o artista VÊ.** Com as faces `>60°` a não poderem subir de todo, o remendo
+   que levava o avesso de `2` para **`0`** era recusado por acrescentar **uma** face enviesada.
+   *Uma dobra é uma fenda preta na foto; uma face enviesada é invisível* — e quem pesa a beleza é
+   o selector, uma camada acima. O tecto passa a ser `L/2` (o tamanho do próprio remendo).
+3. **Os vértices interiores ficam órfãos** e o `χ` conta-os — compactar antes de montar.
+
+### §107.3 — ⛔⛔ E o defeito que custou uma corrida inteira: a cura vivia em DUAS das TRÊS saídas
+
+A [`finish_extracted_travel`] tem três saídas (a lei alinhada, a cega, e a queda). O
+`untangle_bowties` entrou em duas; a peça do dono saía pela **terceira**, e a medição leu *«não
+melhorou»* sobre código que **nunca correu**. ⚠️ Gate novo:
+`as_tres_saidas_do_acabamento_desfazem_o_avesso` (lê o fonte e conta `return`s contra curas).
+
+⚠️ **E a causa do meu erro está nomeada:** o script de edição correu num comando de **fundo**, que
+arranca na árvore **primária** — o `assert` abortou e o patch nunca se aplicou, mas a compilação
+seguinte não tinha como saber. *Toda edição por script leva caminho ABSOLUTO.*
+
+### §107.4 — O resultado, na realização do dono
+
+| | faces do avesso | maior grupo | pontas amputadas | grade no bico | topologia |
+|---|---|---|---|---|---|
+| antes desta wave | `6` | **`6`** (a fenda) | `0/5` · gap `0,18` | `0,74` | `χ 2` · `0` bordo |
+| ⭐ com o apagador | **`1`** | **`1`** (vinco real) | `0/5` · gap `0,18` | `0,74` | `χ 2` · `0` bordo |
+
+`21 928 → 21 914` faces (o disco trocado pelo leque). ⚠️ **E o contador de não-quads ESTOUROU**
+(`18 446 744 073 709 551 602`): ele subtraía o relatório da extracção da contagem da saída, e o
+acabamento passou a mudar o número de faces. Curado a contar na malha entregue, com gate
+(`o_relatorio_conta_a_malha_entregue`).

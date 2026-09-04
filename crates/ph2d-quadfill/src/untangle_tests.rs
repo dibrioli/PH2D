@@ -222,3 +222,123 @@ fn um_grupo_teimoso_nao_apaga_a_cura_do_outro() {
         "a dobra cedeu: a fixtura deixou de exercitar o acoplamento"
     );
 }
+
+/// ⭐⭐⭐ **UMA ABA APAGA-SE e o buraco fecha** — a cura topológica do que a relaxação não pode
+/// curar (o 3.º report do dono, 2026-09-03).
+///
+/// ⚠️ A fixtura DOBRA uma língua de faces para trás: dois vértices interiores atirados para lá
+/// dos vizinhos ao longo da diagonal, que é o que inverte quads inteiros.
+#[test]
+fn uma_aba_apaga_se_e_o_buraco_fecha() {
+    let plano = grade(8);
+    let mut m = plano.clone();
+    {
+        let pos = m.positions_mut();
+        for i in [4 * 9 + 4, 4 * 9 + 5] {
+            let p = pos[i];
+            pos[i] = [p[0] + 0.60, p[1] + 0.60, p[2]];
+        }
+    }
+    m.rebuild();
+    let avesso = crate::quality::folded_faces_by_neighbours(&m).len();
+    assert!(avesso >= 2, "a fixtura tem de ter uma ABA: {avesso}");
+    let (v0, f0) = (m.vert_count(), m.face_count());
+    let abas = super::remove_flaps(&mut m, &plano);
+    assert!(abas > 0, "nenhuma aba foi apagada");
+    assert_eq!(
+        crate::quality::folded_faces_by_neighbours(&m).len(),
+        0,
+        "sobraram faces do avesso"
+    );
+    // ⛔ **O buraco FECHOU** — e a conta diz que foi um leque: menos faces do grupo, mais L/2.
+    assert!(
+        m.face_count() < f0 + 4 && m.vert_count() <= v0 + 4,
+        "o remendo cresceu de mais: {f0} -> {} faces, {v0} -> {} verts",
+        m.face_count(),
+        m.vert_count()
+    );
+    let mut bordo = std::collections::BTreeMap::new();
+    for f in m.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k], v[(k + 1) % v.len()]);
+            *bordo.entry((a.min(b), a.max(b))).or_insert(0usize) += 1;
+        }
+    }
+    let abertas = bordo.values().filter(|c| **c != 2).count();
+    let borda_da_grade = 32; // as arestas do contorno do plano
+    assert_eq!(
+        abertas, borda_da_grade,
+        "o remendo abriu (ou fechou) arestas que nao devia"
+    );
+}
+
+/// ⛔ **Uma malha SÃ não se toca** — a porta é a identidade ao bit onde não há aba.
+#[test]
+fn sem_aba_a_malha_fica_igual_ao_bit() {
+    let plano = grade(8);
+    let mut m = plano.clone();
+    let abas = super::remove_flaps(&mut m, &plano);
+    assert_eq!(abas, 0, "nao havia aba nenhuma");
+    assert_eq!(m.positions(), plano.positions(), "a malha sa' foi mexida");
+    assert_eq!(m.face_count(), plano.face_count());
+}
+
+/// ⭐⭐⭐ **AS TRÊS SAÍDAS DO ACABAMENTO CURAM** — o gate do defeito que custou uma corrida
+/// inteira em 2026-09-03.
+///
+/// ⛔⛔ A cura estava em **duas** das três saídas de
+/// [`crate::finish_extracted_travel`], e a peça do dono saía pela terceira: a malha entregue
+/// tinha as `6` faces do avesso intactas, e a medição leu *«não melhorou»* sobre código que
+/// nunca correu. ⚠️ *Uma cura que vive em algumas das saídas é uma cura que o produto às vezes
+/// não corre* — é a mesma família do `CLAUDE.md` §5.0.
+///
+/// ⚠️ **Ele lê o FONTE** porque as três saídas são condições de topologia que uma fixtura não
+/// escolhe: o que se defende aqui é que **nenhuma delas fica sem a linha**.
+#[test]
+fn as_tres_saidas_do_acabamento_desfazem_o_avesso() {
+    let src = include_str!("finish_extract.rs");
+    let corpo = src
+        .split_once("pub fn finish_extracted_travel")
+        .expect("a funcao existe")
+        .1;
+    let corpo = corpo
+        .split_once("\npub(crate) fn ")
+        .map_or(corpo, |(antes, _)| antes);
+    let retornos = corpo.matches("return ").count() + 1; // os `return` mais a queda no fim
+    // ⚠️ **A CHAMADA, e não o nome:** os doc-comments citam as duas portas, e contar o nome
+    // fazia o gate ler `4` de `3` — *um censo de fonte tem de saber a forma do que conta*.
+    let curas = corpo.matches("remove_flaps(mesh").count();
+    assert_eq!(
+        curas, retornos,
+        "⛔ {retornos} saida(s) e apenas {curas} com a cura -- a peca do dono saiu pela que faltava"
+    );
+    assert_eq!(
+        corpo.matches("untangle_bowties(mesh").count(),
+        retornos,
+        "⛔ a relaxacao tambem tem de estar nas tres"
+    );
+}
+
+/// ⛔⛔ **O RELATÓRIO CONTA A MALHA QUE SE ENTREGA** — o gate do estouro de 2026-09-03.
+///
+/// Enquanto o acabamento não mexia no número de faces, contar os quads pelo relatório da
+/// **extracção** e os não-quads por subtração dava o mesmo. O apagador de abas passou a remover
+/// um disco e a pôr um leque no lugar (`21 928 → 21 914`), e a subtração **estourou**: o botão
+/// imprimiu `18 446 744 073 709 551 602` não-quads.
+///
+/// ⚠️ *Um relatório que descreve outra malha que não a entregue está errado mesmo quando o
+/// número não estoura* — este gate lê o fonte do shell e exige que as duas contagens venham da
+/// saída.
+#[test]
+fn o_relatorio_conta_a_malha_entregue() {
+    let src = include_str!("../../../shells/desktop/src/sculpt3d_history_retopo_extract.rs");
+    assert!(
+        !src.contains("non_quads: out.face_count() - e.quads"),
+        "⛔ a subtração que estourou voltou"
+    );
+    assert!(
+        src.contains("non_quads: out.faces().iter().filter(|f| f.verts().len() != 4).count()"),
+        "⛔ os nao-quads tem de ser CONTADOS na malha entregue"
+    );
+}

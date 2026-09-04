@@ -56,7 +56,7 @@ fn main() {
                 &mut mesh,
                 sup,
                 ph2d_quadfill::untangle::UNTANGLE_TRAVEL,
-            );
+            ) + ph2d_quadfill::untangle::remove_flaps(&mut mesh, sup);
             println!(
                 "   CURAR: {curadas} face(s) reparada(s) · gravatas {antes_g} -> {} · dobras {antes_d} -> {}",
                 ph2d_quadfill::local_shape(&mesh).0.bowties,

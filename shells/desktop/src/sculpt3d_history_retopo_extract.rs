@@ -513,8 +513,9 @@ impl Sculpt3dScene {
         let (edge_median, edge_max) = edges(&out);
         let report = QuadRemeshReport {
             verts: out.vert_count(),
-            quads: e.quads,
-            non_quads: out.face_count() - e.quads,
+            // ⛔⛔⛔ **CONTADO NA MALHA ENTREGUE** — `out − e.quads` estourou (plano §107.3).
+            quads: out.faces().iter().filter(|f| f.verts().len() == 4).count(),
+            non_quads: out.faces().iter().filter(|f| f.verts().len() != 4).count(),
             edge: target,
             ms: t.elapsed().as_secs_f64() * 1000.0,
             holes: boundary_edges(&out),

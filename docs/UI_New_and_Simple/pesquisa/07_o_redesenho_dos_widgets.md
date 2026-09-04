@@ -1211,3 +1211,47 @@ mas para o **pinar**: ⛔ *uma decisão de produto que só existe como um `true`
 decisão que a próxima pessoa apaga por acidente*, e o sintoma (o painel simplesmente não aparecer)
 não parte teste nenhum. Ele afirma as **duas** metades — o painel visível **e** o botão do rail que
 o diz —, porque são dois `insert` em ficheiros diferentes e nada os obriga a concordar.
+
+## §21 — ⭐⭐ A PORTA, e a catraca que torna o resto obrigatório (2026-09-03)
+
+### 21.1 — Uma porta, porque o risco não é esquecer o ponto
+
+São **~15 ficheiros de secção** só no Inspector a construir linhas à mão, cada um com a sua
+aritmética. ⛔ Se cada um subtrair `DECORATOR_W` por sua conta, são quinze oportunidades de a coluna
+ficar com um `x` diferente — e **uma coluna com dois `x` é pior que nenhuma**: lê-se como desalinho,
+não como coluna.
+
+`widget::form_row_columns(x, w, row_y, row_h) -> (control_w, dot_rect)`. Cada secção passa a ser
+uma edição de **duas linhas**.
+
+⚠️ **E o gate afirma o que ela garante** (`the_animation_column_has_one_x`): a linha à mão e a caixa
+única põem o ponto no **mesmo `x`** e reservam a **mesma** largura, em cinco larguras de painel —
+mais a guarda contra largura negativa numa linha estreita de mais, que se propaga pela aritmética
+do painel e reaparece longe daqui, como texto à esquerda da moldura.
+
+### 21.2 — ⭐⭐⭐ E a catraca, porque uma promessa minha não sobrevive a uma janela de contexto
+
+`every_form_row_reserves_the_animation_column` (em `ph2d-panel-inspector/tests/`): varre
+`src/sections/`, acha quem pinta um controlo de formulário — `paint_number_input_with_buffer`,
+`paint_segmented_adaptive`, `paint_dropdown_chip`, `paint_color_swatch`,
+`paint_text_input_with_buffer` — e exige a porta em cada um, **menos a dívida declarada**.
+
+⭐ Uma secção **nova** que pinte uma linha sem a coluna **não passa**. Isto substitui *«faço as
+restantes a seguir»* por uma coisa que o repo cobra.
+
+⛔ **E tem a metade que a impede de virar licença** (`CLAUDE.md` §5.0: *uma catraca sem censo de
+obsolescência não desce, vira licença*): o segundo teste exige que quem **já** reserva a coluna
+**saia** da lista, e que a lista não descreva ficheiros que já não pintam linha nenhuma.
+
+⚠️ **Provado por mutação, as duas metades:** tirar `slice_nine.rs` da dívida faz o primeiro sangrar;
+pôr `ordering.rs` (que já reserva) na dívida faz o segundo sangrar. *Uma catraca com um só lado é
+metade de um instrumento.*
+
+### 21.3 — O estado, contado
+
+| já reserva | ainda não (dívida declarada) |
+|---|---|
+| `transform_row` · `ordering` · `rows` (as duas linhas da física) · `sampling` · `anchors` | `anchor_mount_row` · `anim_rows` · `color_tint` · `identity` · `material_blend` · `mod` · `physics_rows` · `render_source` · `slice_nine` · `sprite_sheet` · `visibility` |
+
+⚠️ Numa secção mista o artista vê pontos nalgumas linhas e não noutras — **as linhas de marcar já o
+tinham** (vêm do pintor partilhado). É o meio do caminho, e agora tem um instrumento a contá-lo.

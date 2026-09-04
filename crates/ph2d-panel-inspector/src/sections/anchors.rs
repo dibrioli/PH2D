@@ -206,7 +206,8 @@ fn anchor_editor(
 ) -> f32 {
     let mut cur_y = y;
     // Nome.
-    let host = Rect::new(x, cur_y, w, ROW_H_PX);
+    let (control_w, name_dot) = ph2d_editor_core::widget::form_row_columns(x, w, cur_y, ROW_H_PX);
+    let host = Rect::new(x, cur_y, control_w, ROW_H_PX);
     hit_index.register(ids::INSP_ANCHOR_NAME, host);
     let (state, text, caret, sel_anchor) = match store.get(ids::INSP_ANCHOR_NAME) {
         Some(InteractiveState::TextInput {
@@ -230,6 +231,7 @@ fn anchor_editor(
         text_system,
         theme,
     );
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, name_dot);
     cur_y += ROW_H_PX + Spacing::Sm.px();
 
     cur_y = field_row(

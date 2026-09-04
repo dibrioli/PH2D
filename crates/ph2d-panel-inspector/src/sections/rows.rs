@@ -47,15 +47,17 @@ pub(super) fn seg_row(
             .collect(),
     )
     .selected((selected as usize).min(labels.len() - 1));
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y + label_h, ROW_H_PX);
     let seg_h = paint_segmented_adaptive(
         &seg,
-        Rect::new(x, y + label_h, w, ROW_H_PX),
+        Rect::new(x, y + label_h, control_w, ROW_H_PX),
         scene,
         text_system,
         theme,
         store,
         hit_index,
     );
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     y + label_h + seg_h + Spacing::Sm.px()
 }
 
@@ -172,7 +174,10 @@ pub(super) fn num_row(
     // mede com a mesma função, então a moldura não pode deixar de caber.
     debug_assert!((num_row_h() - (label_h + ROW_H_PX + Spacing::Sm.px())).abs() < 1.0e-3);
     let row_y = y + label_h;
-    let rect = Rect::new(x, row_y, w, ROW_H_PX);
+    // A coluna de animação, pela porta — ver `widget::form_row_columns`. ⚠️ Nestas linhas o rótulo
+    // fica ACIMA do controlo, então o ponto alinha-se com a **caixa**, que é onde o valor está.
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, row_y, ROW_H_PX);
+    let rect = Rect::new(x, row_y, control_w, ROW_H_PX);
     hit_index.register(id, rect);
     let (state, value, buffer, caret, anchor) = read_number_input(store, id);
     let input = NumberInput::new(id, "", value).visual((state, store.hover_live(id)));
@@ -186,5 +191,6 @@ pub(super) fn num_row(
         text_system,
         theme,
     );
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     row_y + ROW_H_PX + Spacing::Sm.px()
 }

@@ -228,15 +228,17 @@ pub(crate) fn paint_sampling_section(
     } else {
         filter_selected_index(info.filter_tag)
     });
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, yy, h);
     let seg_h = paint_segmented_adaptive(
         &seg,
-        Rect::new(x, yy, w, h),
+        Rect::new(x, yy, control_w, h),
         scene,
         text_system,
         theme,
         store,
         hit_index,
     );
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     yy += seg_h + row_gap;
 
     // Texture Repeat — Inherit / Disabled / Enabled / Mirror (0/1/2/3).
@@ -265,15 +267,17 @@ pub(crate) fn paint_sampling_section(
     } else {
         usize::from(info.repeat_tag).min(REPEAT_LABELS.len() - 1)
     });
+    let (repeat_w, repeat_dot) = ph2d_editor_core::widget::form_row_columns(x, w, yy, h);
     let repeat_h = paint_segmented_adaptive(
         &repeat_seg,
-        Rect::new(x, yy, w, h),
+        Rect::new(x, yy, repeat_w, h),
         scene,
         text_system,
         theme,
         store,
         hit_index,
     );
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, repeat_dot);
     yy += repeat_h + row_gap;
 
     // UV tiling (scale > 1 tiles) + scroll (offset) — W3 UvTransform. The

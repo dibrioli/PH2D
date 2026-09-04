@@ -171,7 +171,7 @@ fn does_the_field_wake_up_at_a_thin_tip() {
     // do CAMPO/TRAÇADO, e ⛔ ter o código da referência não a traria.
     let ponta = BANDS.len() - 1;
     eprintln!(
-        "  ⇒ na casca exterior: {} singularidade(s), {} patch(es), {} aresta(s) de parede -- {}",
+        "  -> na casca exterior: {} singularidade(s), {} patch(es), {} aresta(s) de parede -- {}",
         singular[ponta],
         patches_in[ponta].len(),
         walls[ponta],

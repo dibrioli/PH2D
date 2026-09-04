@@ -161,7 +161,7 @@ pub(super) fn seam_free_probe(
     // restrição tenha de desfazer.
     let oscila = curva.windows(2).filter(|w| w[1] > w[0]).count();
     eprintln!(
-        "  ⇒ {}",
+        "  -> {}",
         if depois == 0 {
             "⭐⭐⭐ ZERA: a liberdade da costura CHEGA, e a obra grande tem sujeito"
         } else if oscila >= 2 {
@@ -325,7 +325,7 @@ pub(super) fn untangle_probe(
         )]
         let pct = 100.0 * (antes - depois) as f64 / antes as f64;
         eprintln!(
-            "  ⇒ {pct:.1} % das dobras desfeitas SEM tocar na costura -- {}",
+            "  -> {pct:.1} % das dobras desfeitas SEM tocar na costura -- {}",
             if depois == 0 {
                 "⭐ TODAS: a cura existe e o preco esta' medido"
             } else {

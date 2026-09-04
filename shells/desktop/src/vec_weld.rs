@@ -240,6 +240,26 @@ pub(crate) fn apply_vec_weld(
             slot.closed = primeiro.closed;
             slot.subpaths = contornos;
             slot.effects = Vec::new();
+            // ⭐⭐⭐ **A TAMPA DA REDE É REDONDA, e é geometria, não gosto.**
+            //
+            // Report do Enio (2026-09-02, com foto): *"com stroke muito largo, o stroke se quebra
+            // na peça com weld"*. ⚠️ **Estrutural, e prova-se sem medir**: o traço é aplicado ao
+            // caminho inteiro, e a kurbo põe **TAMPA** — nunca junta — na ponta de cada
+            // sub-caminho. Cada arco da rede é um sub-caminho, então **todo nó é um par de
+            // tampas**, e com tampa recta sobra uma cunha vazia de profundidade `(w/2)·tan(θ/2)` do
+            // lado de fora da curva: invisível num traço fino, um rasgo num traço largo.
+            //
+            // ⭐ Uma tampa REDONDA é o meio-disco de raio `w/2` centrado na ponta. No nó partilhado
+            // a união dos meios-discos dos arcos que ali chegam **cobre o disco inteiro** — logo
+            // cobre a cunha para **qualquer** ângulo, exactamente. ⛔ Não é uma aproximação que
+            // melhora com o zoom: é a mesma tinta que uma junta redonda poria.
+            //
+            // ⚠️ **O preço, declarado:** as pontas SOLTAS da rede também ficam redondas — um
+            // `StrokeSpec` tem **uma** tampa para o caminho todo, e não há como dizer *"junta no nó,
+            // a do artista na ponta livre"* sem um segundo caminho.
+            if let Some(st) = slot.stroke.as_mut() {
+                st.cap = ph2d_vec_scene::LineCap::Round;
+            }
             rede = Some(host);
         }
         if rede.is_some() {
@@ -353,3 +373,8 @@ fn escala_da_selecao(por_caminho: &[(u64, Vec<Contour>)]) -> f64 {
 #[cfg(test)]
 #[path = "vec_weld_tests.rs"]
 mod tests;
+
+/// Os gates do que se VÊ — irmão pelo tecto de LOC (HR-18), cortado por responsabilidade.
+#[cfg(test)]
+#[path = "vec_weld_look_tests.rs"]
+mod look_tests;

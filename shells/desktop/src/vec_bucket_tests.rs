@@ -223,7 +223,8 @@ fn a_region_that_split_comes_out_as_one_object_with_a_contour_per_piece() {
     assert_eq!(faces.len(), 2, "a fixtura tem de partir o quadrado em duas");
 
     let (primeiro, subs) =
-        geometria_local(&rede, &faces, &[0, 1], &ph2d_vec_scene::Xform::IDENTITY);
+        geometria_local(&rede, &faces, &[0, 1], &ph2d_vec_scene::Xform::IDENTITY)
+            .expect("as duas faces dao geometria");
 
     assert!(
         primeiro.len() >= 3,
@@ -238,104 +239,14 @@ fn a_region_that_split_comes_out_as_one_object_with_a_contour_per_piece() {
     assert!(subs[0].verts.len() >= 3);
 }
 
-/// ⭐⭐⭐ **UM PREENCHIMENTO QUE PERDEU A REGIÃO ESCONDE-SE — não fica para trás.**
-///
-/// Report do Enio (2026-09-02, `drawing03`/`drawing04`): *"às vezes até o preenchimento se separa
-/// do stroke"*. ⚠️ **Medido nos ficheiros dele**: sete preenchimentos para **seis** faces, e o miolo
-/// do sétimo não cai em face nenhuma — os outros seis batem com a face deles a `0,0000`.
-///
-/// ⚠️⚠️ **Congelar era certo com o modelo VELHO e é errado com este.** Ali a forma **era** a receita;
-/// agora a receita são as âncoras, que vivem no componente. Esconder não perde nada — e quando a
-/// região voltar, as âncoras reencontram-na.
+/// ⛔ **Sem face nenhuma não sai forma nenhuma** — é o que faz um preenchimento sem dono CONGELAR
+/// onde está, em vez de ser reescrito com geometria vazia.
 #[test]
-fn a_fill_that_lost_its_region_is_hidden_and_not_left_behind() {
+fn a_fill_that_won_no_face_produces_no_shape() {
     let rede = ph2d_vec_fill::rede(&[(vec![v(0.0, 0.0), v(10.0, 0.0)], false)]);
     let faces: Vec<_> = rede.faces().into_iter().filter(|f| f.area > 0.0).collect();
-
-    let (primeiro, subs) = geometria_local(&rede, &faces, &[], &ph2d_vec_scene::Xform::IDENTITY);
-
     assert!(
-        primeiro.is_empty() && subs.is_empty(),
-        "sem face nenhuma a forma tem de sair VAZIA — uma mancha de cor onde ja' nao ha' regiao \
-         e' o defeito reportado"
-    );
-}
-
-/// ⭐⭐⭐ **UMA FORMA POR PREENCHIMENTO — SEMPRE, inclusive para quem perdeu a região.**
-///
-/// Report do Enio (2026-09-02, `drawing03`/`drawing04`): *"às vezes até o preenchimento se separa
-/// do stroke"*. Saltar quem não tem face deixa a mancha antiga desenhada onde já não há região.
-///
-/// ⚠️⚠️ **A lei é a CONTAGEM, e é por isso que ela é medida aqui e não por um assert textual sobre
-/// o `bucket_upkeep`**: aquele nomeia UMA grafia do defeito (`filter_map`), e um `filter` seguido de
-/// `map` passa por ele — medido, a mutação **SOBREVIVEU**.
-#[test]
-fn there_is_one_shape_per_fill_even_for_the_one_that_lost_its_region() {
-    let quadrado = (
-        vec![
-            v(-10.0, -10.0),
-            v(10.0, -10.0),
-            v(10.0, 10.0),
-            v(-10.0, 10.0),
-        ],
-        true,
-    );
-    let rede = ph2d_vec_fill::rede(&[quadrado]);
-    let faces: Vec<_> = rede.faces().into_iter().filter(|f| f.area > 0.0).collect();
-    assert_eq!(faces.len(), 1);
-    let fills = vec![
-        (7u64, Entity::from_bits(1), VecBucketFill::default()),
-        (9u64, Entity::from_bits(2), VecBucketFill::default()),
-    ];
-    // O primeiro ficou com a face; o segundo perdeu tudo.
-    let minhas = vec![vec![0usize], Vec::new()];
-
-    let out = formas(&rede, &faces, &minhas, &fills, &VecXforms::new());
-
-    assert_eq!(out.len(), 2, "uma forma por preenchimento, sem excepcao");
-    assert_eq!(out[0].0, 7);
-    assert!(!out[0].1.0.is_empty(), "quem tem face traz geometria");
-    assert_eq!(out[1].0, 9);
-    assert!(
-        out[1].1.0.is_empty() && out[1].1.1.is_empty(),
-        "e quem perdeu a regiao traz a forma VAZIA — nao fica de fora da escrita"
-    );
-}
-
-/// ⛔⛔ **COM A REDE RECUSADA NÃO SE REESCREVE NADA.**
-///
-/// Acima do tecto de amostragem não há faces nenhumas, e a lei de *esconder quem perdeu a região*
-/// apagaria **toda** a tinta do desenho de uma vez — o app a deitar fora o trabalho por ter
-/// desistido de o medir.
-///
-/// ⚠️⚠️ **Esta guarda já viveu no `bucket_upkeep`, e um gate textual NÃO a apanhou**: a agulha
-/// `if rede.recusada` aparece duas vezes no ficheiro (a outra é a linha que avisa o artista), então
-/// a mutação que a desligava **SOBREVIVEU**. *Uma agulha que casa em dois sítios não prova nada
-/// sobre nenhum deles* — a lei mudou-se para dentro da porta, onde se mede.
-#[test]
-fn a_refused_network_rewrites_nothing() {
-    let mut rede = ph2d_vec_fill::rede(&[(
-        vec![
-            v(-10.0, -10.0),
-            v(10.0, -10.0),
-            v(10.0, 10.0),
-            v(-10.0, 10.0),
-        ],
-        true,
-    )]);
-    let faces: Vec<_> = rede.faces().into_iter().filter(|f| f.area > 0.0).collect();
-    let fills = vec![(7u64, Entity::from_bits(1), VecBucketFill::default())];
-    let minhas = vec![vec![0usize]];
-    assert_eq!(
-        formas(&rede, &faces, &minhas, &fills, &VecXforms::new()).len(),
-        1,
-        "com a rede boa escreve-se"
-    );
-
-    rede.recusada = true;
-
-    assert!(
-        formas(&rede, &faces, &minhas, &fills, &VecXforms::new()).is_empty(),
-        "com a rede recusada NADA se reescreve — senao toda a tinta do desenho desaparecia"
+        geometria_local(&rede, &faces, &[], &ph2d_vec_scene::Xform::IDENTITY).is_none(),
+        "sem faces, nada a escrever"
     );
 }

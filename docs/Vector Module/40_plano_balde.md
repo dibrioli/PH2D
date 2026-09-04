@@ -639,42 +639,30 @@ cura.*
 ⇒ **O resíduo que o Enio vê é outro, e o instrumento para o achar já existe**: um `File > Export
 SVG…` no momento exacto reproduz a cena aqui, arco a arco.
 
-### §11.6 — ⭐⭐⭐ O RESÍDUO ERA O **CONGELAMENTO** (report de 2026-09-02, `drawing03`/`drawing04`)
+### §11.6 — ⛔⛔ ESCONDER quem perdeu a região: **construído, medido e REVERTIDO**
 
-> *"arrastei o nó para cima de uma linha. em alguns lugares some o preenchimento."* ·
-> *"às vezes até o preenchimento se separa do stroke."* — Enio
+> *"piorou o problema do preenchimento. melhor reverter"* — Enio, 2026-09-02
 
-Sonda sobre os dois ficheiros que ele exportou **no momento do defeito**, comparando a forma que
-cada preenchimento TEM com a face que a rede diz existir no miolo dele:
+**O que motivou.** Os ficheiros `drawing03`/`drawing04`, exportados por ele no momento do defeito
+(*"às vezes até o preenchimento se separa do stroke"*), medem-se assim: **sete preenchimentos para
+seis faces**. Seis batem com a face deles a `0,0000` de área — o modelo das âncoras está a
+funcionar — e o sétimo tem o miolo **fora de toda a face**: cor onde já não há região.
 
-| preenchimento | área da forma | face no miolo | diferença |
-|---|---|---|---|
-| 6 deles | — | encontrada | **`0,0000`** |
-| o sétimo | `65,98` | **`None`** | — |
+**O que foi construído.** *Quem não reencontra região não é desenhado*: a forma sai vazia em vez de
+ficar congelada. O raciocínio era sólido — com âncoras a receita vive no **componente** e não na
+geometria, então esconder não perde memória nenhuma, e havia gate a provar que a tinta **volta**
+quando a região volta.
 
-⇒ **sete preenchimentos para SEIS faces.** Seis batem com a face deles ao quarto decimal — o modelo
-das âncoras está a funcionar — e o sétimo tem o miolo **fora de toda a face**: é a mancha que ele
-fotografou, cor onde já não há região.
+⛔ **E o Enio mediu no produto o que a sonda não vê: ficou PIOR.** Congelar deixa uma mancha
+deslocada — feia, e um desenho *a mais*. Esconder faz **desaparecer** área que o artista pintou, e
+uma ausência lê-se como trabalho perdido. *Entre um erro que se vê e um erro que apaga, o que apaga
+é sempre pior* — e nenhuma das minhas réguas media isso, porque as duas respostas passam nos mesmos
+gates de geometria.
 
-⭐⭐⭐ **A causa é o CONGELAMENTO, e ele era a resposta certa com o modelo VELHO.** Ali a forma **era**
-a receita: apagá-la apagava a memória do preenchimento, então deixá-la era a única maneira de não
-perder o trabalho. **Com âncoras a receita vive no componente**, e a forma passa a ser só o que se
-vê ⇒ *quem não reencontra região não é desenhado*, e quando a região voltar as âncoras reencontram-na
-e a forma volta a ser escrita.
+⚠️ **A fixtura FICA** (`shells/desktop/tests/fixtures/drawing03.svg` e `drawing04.svg`): a medição
+que a produziu continua a valer, e o defeito que ela nomeia — *sete preenchimentos para seis faces*
+— continua **aberto**. O que foi revertido é a **cura**, não o diagnóstico.
 
-*A mesma decisão muda de sinal quando o que a justificava deixa de ser verdade.*
-
-⛔ **Com a rede RECUSADA nada se reescreve** — acima do tecto não há faces nenhumas, e a lei de
-esconder apagaria **toda** a tinta de uma vez.
-
-### §11.7 — ⛔⛔ E DOIS gates textuais falharam na mesma wave
-
-- **Um nomeava UMA grafia do defeito.** *"o upkeep não pode ter `filter_map`"* — e a mutação usou
-  `filter` seguido de `map`. **SOBREVIVEU.** ⇒ a lei mudou-se para uma função (`formas`) e passou a
-  ser uma **contagem**: *uma forma por preenchimento, sem excepção*.
-- **Outro usava uma agulha que casa em DOIS sítios.** `if rede.recusada` aparece duas vezes no
-  ficheiro (a outra é a linha que avisa o artista), então desligar a guarda deixava o gate verde.
-  **SOBREVIVEU.** ⇒ a guarda mudou-se para dentro da mesma porta, onde se mede.
-
-*Um gate textual afirma sobre a REDACÇÃO. Quando a lei importa, ela tem de sair para uma função que
-se possa chamar.*
+⏳ **A saída que sobra**, para quando houver report a pedi-la: um preenchimento sem região não se
+apaga nem se congela — ele **avisa** (a Hierarquia diz que aquela área perdeu a linha que a
+cercava), e o artista decide. É a única das três que não escolhe por ele.

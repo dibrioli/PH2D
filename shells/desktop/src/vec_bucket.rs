@@ -118,80 +118,26 @@ fn para_local(verts: Vec<VecVertex>, xf: &ph2d_vec_scene::Xform) -> Option<Vec<V
 /// ⚠️ **A área desce ao espaço do CAMINHO** — ver [`para_local`]. Escrever mundo num caminho já
 /// assentado desloca-o pelo centro dele.
 ///
-/// ⭐⭐⭐ **UMA FORMA POR PREENCHIMENTO — SEMPRE, inclusive para quem perdeu a região.**
-///
-/// ⚠️⚠️ **A lei é a CONTAGEM**, e ela existe como função por isso: saltar quem não tem face deixa a
-/// mancha antiga desenhada onde já não há região — o report de 2026-09-02 (*"às vezes até o
-/// preenchimento se separa do stroke"*). ⛔ Um gate textual sobre o `bucket_upkeep` não fecha isto:
-/// ele nomeia **uma** grafia do defeito (`filter_map`), e um `filter` seguido de `map` passa por
-/// ele — medido, a mutação SOBREVIVEU. *A lei é «tantas formas quantos preenchimentos», e isso
-/// conta-se.*
-fn formas(
-    rede: &ph2d_vec_fill::Rede,
-    faces: &[ph2d_vec_fill::Face],
-    minhas: &[Vec<usize>],
-    fills: &[(u64, Entity, VecBucketFill)],
-    xf: &VecXforms,
-) -> Vec<(u64, Forma)> {
-    // ⛔⛔ **Com a rede RECUSADA não se reescreve NADA.** Acima do tecto de amostragem não há faces
-    // nenhumas, e a lei de esconder apagaria **toda** a tinta do desenho de uma vez — o app a
-    // deitar fora o trabalho por ter desistido de o medir.
-    //
-    // ⚠️ A guarda mora AQUI, e não no `bucket_upkeep`: ali ela era um `if` que só um gate textual
-    // alcançava, e o gate textual **não a apanhou** — a agulha `if rede.recusada` aparece duas
-    // vezes no ficheiro (a outra é a linha que avisa o artista), então a mutação que a desligava
-    // SOBREVIVEU. *Uma agulha que casa em dois sítios não prova nada sobre nenhum deles.*
-    if rede.recusada {
-        return Vec::new();
-    }
-    fills
-        .iter()
-        .enumerate()
-        .map(|(k, (id, _, _))| {
-            let vazio = Vec::new();
-            let meus = minhas.get(k).unwrap_or(&vazio);
-            let xfp = ph2d_vec_scene::xform_of(xf, *id);
-            (*id, geometria_local(rede, faces, meus, &xfp))
-        })
-        .collect()
-}
-
-/// ⭐⭐⭐ **SEM FACE NENHUMA A FORMA FICA VAZIA — o preenchimento ESCONDE-SE, e não congela.**
-///
-/// Report do Enio (2026-09-02, com `drawing03`/`drawing04`): *"em alguns lugares some o
-/// preenchimento"*, *"às vezes até o preenchimento se separa do stroke"*. ⚠️ **Medido nos ficheiros
-/// dele**: sete preenchimentos para **seis** faces, e o miolo do 7.º não cai em face nenhuma — os
-/// outros seis batem com a face deles a `0,0000`. Ele era a única coisa errada no ecrã: uma mancha
-/// de cor onde já não há região.
-///
-/// ⚠️⚠️ **Congelar era a resposta certa com o modelo VELHO e é a errada com este.** Ali a forma
-/// **era** a receita — apagá-la apagava a memória do preenchimento. Agora a receita são as
-/// **âncoras**, que vivem no componente e não na geometria: esconder não perde nada, e quando a
-/// região voltar as âncoras reencontram-na e a forma volta a ser escrita. *A mesma decisão muda de
-/// sinal quando o que a justificava deixa de ser verdade.*
-///
 /// ⚠️ **Existe como função, e não como fecho no sítio da chamada, porque o `bucket_upkeep` precisa
 /// de uma `App` viva e não é alcançável de um teste** — um fecho ali levaria esta lei com ele.
-pub(crate) fn geometria_local(
+fn geometria_local(
     rede: &ph2d_vec_fill::Rede,
     faces: &[ph2d_vec_fill::Face],
     meus: &[usize],
     xfp: &ph2d_vec_scene::Xform,
-) -> Forma {
+) -> Option<(Vec<VecVertex>, Vec<ph2d_vec_scene::Contour>)> {
     let mut cs = meus.iter().filter_map(|&i| {
         let g = rede.geometria(faces.get(i)?);
         (g.len() >= 2).then(|| para_local(g, xfp))?
     });
-    let Some(primeiro) = cs.next() else {
-        return (Vec::new(), Vec::new());
-    };
+    let primeiro = cs.next()?;
     let subs = cs
         .map(|verts| ph2d_vec_scene::Contour {
             verts,
             closed: true,
         })
         .collect();
-    (primeiro, subs)
+    Some((primeiro, subs))
 }
 
 /// ⭐⭐⭐ **AS DUAS RAZÕES para um contorno não ser PAREDE**, numa porta só.
@@ -346,7 +292,15 @@ impl crate::App {
             .collect();
         let donos = crate::vec_bucket_claim::donos(&rede, &faces, &tags, &receitas);
         let minhas = crate::vec_bucket_claim::por_preenchimento(&faces, &donos, fills.len());
-        let novos = formas(&rede, &faces, &minhas, &fills, &xf);
+        let novos: Vec<(u64, Forma)> = fills
+            .iter()
+            .enumerate()
+            .filter_map(|(k, (id, _, _))| {
+                let meus = &minhas[k];
+                let xfp = ph2d_vec_scene::xform_of(&xf, *id);
+                Some((*id, geometria_local(&rede, &faces, meus, &xfp)?))
+            })
+            .collect();
         if let Some(gfx) = self.gfx.as_mut() {
             for (id, (primeiro, subs)) in novos {
                 if let Some(p) = gfx.vec_scene.path_mut(id) {

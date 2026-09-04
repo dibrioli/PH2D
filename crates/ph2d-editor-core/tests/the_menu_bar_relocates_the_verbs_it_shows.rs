@@ -490,13 +490,20 @@ const NO_DOOR_PENDING: &[(&str, &str)] = &[
         "TOPBAR_SETTINGS",
         "idem — o `SettingsMenu` e' aberto pela linha `Preferences…` do menu Edit.",
     ),
+    // ⛔⛔ **Estas duas isenções CONTAVAM linhas, e uma contagem envelhece sozinha.** Elas diziam
+    // *«as duas linhas do `SaveMenu`»* — e em 2026-09-02 o `SaveMenu` passou a ter três (o
+    // *Export SVG…* da `line/Vector`), com a terceira sem casa na barra e **sem acordar gate
+    // nenhum**: o censo deste ficheiro corre sobre os ids de PILL declarados, e a promessa que a
+    // isenção faz é sobre as ROWS que o pill abria — outra população. ⇒ a promessa é medida por
+    // `the_bar_relocated_every_row_of_the_menus_it_replaced`, que percorre as rows reais.
     (
         "TOPBAR_SAVE",
-        "idem — as duas linhas do `SaveMenu` estao no menu File.",
+        "o verbo mudou-se: as rows do `SaveMenu` estao no menu File — medido, nao contado, por \
+         `the_bar_relocated_every_row_of_the_menus_it_replaced`.",
     ),
     (
         "TOPBAR_OPEN",
-        "idem — as duas linhas do `OpenMenu` estao no menu File.",
+        "idem para as rows do `OpenMenu`, e o mesmo gate as mede.",
     ),
     (
         "TOPBAR_PROJECT",

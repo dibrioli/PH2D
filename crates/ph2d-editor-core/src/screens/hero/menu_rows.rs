@@ -118,6 +118,14 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
                 "Save As\u{2026} \u{00b7} Cmd+Shift+S",
                 None,
             ),
+            // ⭐ **Export SVG…** (report do Enio, 2026-09-04: *«funções criadas por outros módulos
+            // não aparecem na UI»*). ⚠️ Ele **existe desde 2026-09-02** — a `line/Vector`
+            // acrescentou-o ao `SaveMenu`, que era o menu do pill `TOPBAR_SAVE`; esta barra tinha
+            // substituído o pill dois dias antes, e o merge das duas linhas foi **limpo**: nenhuma
+            // tocou na linha da outra, e o verbo ficou a existir num menu que já não tem botão.
+            // *Duas linhas a mexer na mesma superfície fundem sem conflito e uma delas evapora.*
+            // ⇒ o gate `the_bar_relocated_every_row_of_the_menus_it_replaced` apanha o próximo.
+            (ids::CTX_MENU_EXPORT_SVG, "Export SVG\u{2026}", None),
         ],
         // ⚠️ `TOOL_UNDO`/`TOOL_REDO` são os ids do TRILHO, e é de propósito: o verbo é o mesmo, e
         // duplicá-lo daria dois botões a desfazer coisas diferentes no dia em que um deles fosse
@@ -513,6 +521,34 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
 ///
 /// ⚠️ A prova de que os que ENTRAM são context-free não é opinião: os `chrome/*.rs` que os tratam
 /// só tocam o contexto para `close_context_menu()`, que é um no-op sem menu aberto. Há gate.
+/// ⭐⭐⭐ **Os menus do chrome LEGADO e o pill que os abria** — a tabela do que a barra de menus
+/// teve de **realojar**.
+///
+/// Ela existe por um defeito medido (2026-09-04, report do Enio: *«funções criadas por outros
+/// módulos não aparecem na UI»*, exemplo *Export SVG…*). A retirada dos pills (2026-08-30) tirou o
+/// único botão que abria estes cinco menus; a barra prometeu levar as rows deles para *File* /
+/// *Edit* / *View*, e a prova dessa promessa era **prosa numa lista de excepções** do gate
+/// `every_topbar_verb_has_a_door_that_is_not_the_legacy_key` — *«as duas linhas do `SaveMenu` estão
+/// no menu File»*. ⚠️ **Uma isenção que CONTA linhas envelhece no dia em que alguém acrescenta
+/// uma:** a `line/Vector` juntou o *Export SVG…* ao `SaveMenu` em 2026-09-02, a frase passou a
+/// descrever três linhas dizendo duas, e o verbo ficou sem porta **sem acordar gate nenhum** — o
+/// censo daquele gate é sobre os **ids de pill declarados**, não sobre as **rows** que eles abriam.
+///
+/// ⇒ a promessa passa a ser DADO, e quem a mede é
+/// `the_bar_relocated_every_row_of_the_menus_it_replaced`.
+///
+/// ⚠️ **Ela tem dois consumidores, de propósito:** o despacho
+/// (`interaction::dispatch::pointer_down_menus::menu_opened_by`, que continua a abrir estes menus
+/// quando a `F9` devolve o chrome legado) e o gate. *Uma lei escrita em dois sítios ainda não é uma
+/// lei — só uma porta é.*
+pub const LEGACY_PILL_MENUS: &[(NodeId, ContextMenuKind)] = &[
+    (ids::TOPBAR_THEME, ContextMenuKind::ThemeSelector),
+    (ids::TOPBAR_SAVE, ContextMenuKind::SaveMenu),
+    (ids::TOPBAR_OPEN, ContextMenuKind::OpenMenu),
+    (ids::TOPBAR_SETTINGS, ContextMenuKind::SettingsMenu),
+    (ids::TOPBAR_PROJECT, ContextMenuKind::SceneList),
+];
+
 pub const TOPBAR_LEAF_MENUS: &[ContextMenuKind] = &[
     ContextMenuKind::SaveMenu,
     ContextMenuKind::OpenMenu,

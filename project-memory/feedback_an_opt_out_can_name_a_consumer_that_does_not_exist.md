@@ -18,8 +18,19 @@ consumidores em todo o repo, mantido vivo por uma frase que ninguém reconferiu.
 que apagar a pílula custava alguma coisa (*«mas o topbar usa»*), quando custava zero. Uma isenção
 falsa transforma trabalho grátis em trabalho caro *na estimativa*, e ninguém o pega.
 
+⭐⭐ **E há uma segunda espécie, medida em 2026-09-04: a isenção que CONTA.** O
+`every_topbar_verb_has_a_door_that_is_not_the_legacy_key` isentava o `TOPBAR_SAVE` com *«as **duas**
+linhas do `SaveMenu` estão no menu File»* — verdade no dia em que foi escrita. Em 02/09 outra linha
+juntou uma terceira (*Export SVG…*), a frase passou a descrever mal o mundo, e o verbo ficou sem
+porta com a suíte inteira verde. ⛔ **A raiz é que a isenção promete sobre uma população que o gate
+NUNCA varre**: aquele censo lê os **ids de pill declarados**, e a promessa é sobre as **rows** que
+cada pill abria. *Uma isenção só é honesta quando fala da mesma população que o gate conta.*
+
 **How to apply:**
 - ⛔ **Nunca acredite no motivo de um opt-out: grepe o consumidor que ele nomeia.** É um comando.
+- ⛔ **E se o motivo traz um NÚMERO ou uma promessa («as duas linhas de X estão em Y»), ele já
+  envelheceu** — troque-o por um gate que meça a promessa. Cura de 04/09:
+  [[feedback_a_line_that_replaces_a_ui_surface_orphans_what_another_line_added_to_the_old_one]].
 - Ao **escrever** uma isenção cujo motivo é *«tem consumidor noutro sítio»*, prefira uma que o gate
   possa VERIFICAR — «este símbolo tem ≥1 chamador fora da própria crate» é uma varredura, não uma
   frase.

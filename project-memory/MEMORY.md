@@ -43,7 +43,8 @@
 - ⭐ [Efeito que reescreve a GEOMETRIA de cada glifo paga-se POR QUADRO; cache nenhum o salva (font_embolden: caro e invisível)](feedback_a_per_glyph_outline_effect_is_paid_every_frame.md)
 - ⭐⭐ [Constante cara DENTRO do construtor de uma árvore corre onde a ÁRVORE é construída — 6 → 3 852 por quadro, com a imagem perfeita](feedback_a_constant_folded_into_a_tree_is_recomputed_wherever_the_tree_is.md)
 - ⭐ [Verificar uma cerca pode revelar que o GESTO que ela protege não existe (painéis não-roláveis num tablet)](feedback_checking_a_fence_can_reveal_that_the_feature_it_guards_does_not_exist.md)
-- ⭐ [Isenção de gate pode NOMEAR um consumidor inexistente — grepe o motivo, não confie nele](feedback_an_opt_out_can_name_a_consumer_that_does_not_exist.md)
+- ⭐ [Isenção de gate pode NOMEAR um consumidor inexistente — grepe o motivo, não confie nele](feedback_an_opt_out_can_name_a_consumer_that_does_not_exist.md) · e a que CONTA linhas envelhece sozinha
+- ⭐ [Trocar uma SUPERFÍCIE de UI órfã o que outra linha acrescentou à antiga — merge limpo, zero warning, o verbo some da tela](feedback_a_line_that_replaces_a_ui_surface_orphans_what_another_line_added_to_the_old_one.md)
 - [Nota de diferido não é spec](feedback_a_deferral_notes_bar_may_exceed_the_projects_policy.md) · [inexactidão que subestima é folga](feedback_not_every_inexactness_is_danger_the_one_that_underestimates_is_slack.md)
 - ⭐ [Relaxação local TROCA a espécie do defeito — censo de uma espécie lê conversão como cura; repare por GRUPO](feedback_a_local_relaxation_swaps_the_species_of_a_defect_as_much_as_it_removes_it.md)
 - ⭐ [Log de escolha com `n−1` das `n` chaves explica tudo menos o caso que interessa (3 corridas por 1 gravata)](feedback_a_decision_log_that_omits_one_key_explains_every_choice_but_the_one_that_matters.md)

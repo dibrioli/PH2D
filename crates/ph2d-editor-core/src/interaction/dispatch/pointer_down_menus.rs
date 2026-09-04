@@ -345,12 +345,12 @@ fn menu_opened_by(id: ph2d_a11y::NodeId) -> Option<ContextMenuKind> {
     {
         return Some(*kind);
     }
-    Some(match id {
-        x if x == crate::ids::TOPBAR_THEME => ContextMenuKind::ThemeSelector,
-        x if x == crate::ids::TOPBAR_SAVE => ContextMenuKind::SaveMenu,
-        x if x == crate::ids::TOPBAR_OPEN => ContextMenuKind::OpenMenu,
-        x if x == crate::ids::TOPBAR_SETTINGS => ContextMenuKind::SettingsMenu,
-        x if x == crate::ids::TOPBAR_PROJECT => ContextMenuKind::SceneList,
-        _ => return None,
-    })
+    // ⚠️ **Os cinco do chrome legado saem da TABELA, não de um `match`** — a mesma que o gate
+    // `the_bar_relocated_every_row_of_the_menus_it_replaced` lê para exigir que as rows destes
+    // menus tenham casa na barra. Um `match` aqui e uma lista lá seriam duas respostas à mesma
+    // pergunta, e a que envelhece é sempre a que ninguém corre.
+    crate::screens::hero::menu_rows::LEGACY_PILL_MENUS
+        .iter()
+        .find(|(pill, _)| *pill == id)
+        .map(|(_, kind)| *kind)
 }

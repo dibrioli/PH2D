@@ -330,6 +330,37 @@ um gate, ou a linha era redundante — e aqui era a segunda.*
 *«alguém a jusante precisava desta?»*. Essa tem dono — o `ph2d-motion-diagnose`, que já dá selo
 ⚠ com cura clicável — e é onde a próxima tentativa começa.
 
+### (e) As CONVERSÕES — a recusa passa a NOMEAR A CURA, e a resposta é derivada
+
+Ele tem **23 conversões escritas à mão** entre os 7 tipos (`shape->point`, `value->color`, …) e
+converte **em silêncio**. É o que faz o app dele parecer que «sempre funciona».
+
+⛔ **E o preço é um resultado que ninguém autorou:** de uma corrente para um número há várias
+respostas — a média? o máximo? o primeiro? — e ele escolhe uma sem dizer.
+
+⇒ A recusa de 01/09 passa a dizer:
+
+> ✗ *Can't drive: that output is a per-element stream, not a value — insert a
+> `value.attribute` to read one number from it.*
+
+⭐⭐ **E o nome é DERIVADO do registry, não uma tabela**: procura um tipo cuja **entrada aceita
+o que a fonte emite** e cuja **saída é escalar**. *Não pode nomear um nó que não faça aquilo,
+porque é o manifesto dele que a produz* — ao contrário de uma lista de 23 pares, que discorda
+do catálogo no dia em que um nó mudar de portas. O gate verifica a resposta **no manifesto
+dela**, nunca pelo nome.
+
+⏳ **A metade do CLIQUE não foi feita, e o preço está medido:** o `Toast` desta casa é só uma
+mensagem (`message` + `severity` + `ttl`), sem acção — um botão ali é uma wave de chrome. E o
+menu de arrasto **filtra por compatibilidade antes** de o artista chegar à recusa
+(`connects_directly` exige domínio, dimensão e relógio iguais), então o sítio onde a oferta
+faria mais sentido é o menu, não o toast.
+
+⚠️⚠️ **E uma cerca desta wave é INFALSIFICÁVEL hoje, declarado em vez de escondido:** a mutação
+que apaga a exigência sobre o tipo de ENTRADA **sobrevive**. Não é redundância — o catálogo só
+tem **uma** forma não-conduzível (`Instances/Vec2`), logo não há um segundo caso contra o qual
+discriminar. *Uma mutação sobrevivente tem TRÊS leituras, não duas: falta um gate, a linha é
+redundante, ou o mundo ainda não tem o caso que a distingue.*
+
 ---
 
 ## ⛔ Recusas MEDIDAS deste estudo

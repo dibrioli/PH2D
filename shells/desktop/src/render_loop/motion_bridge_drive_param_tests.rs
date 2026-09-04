@@ -380,3 +380,58 @@ fn the_drop_instrument_names_what_a_node_loses() {
     // uma implementacao que devolvesse sempre `Some(..)` passaria.
     assert!(d(&motion, em).is_none(), "uma fonte nao tem entrada");
 }
+
+/// ⭐⭐⭐ **A RECUSA NOMEIA UM NÓ QUE DE FACTO CONVERTE** — o item (e) do estudo do Mini Cavalry
+/// ([doc 99 §10e](../../../../docs/Motion%20Nodes/99_estudo_do_mini_cavalry_2026-09-02.md)).
+///
+/// ⛔⛔ **Ele resolve isto convertendo em silêncio** — 23 conversões escritas à mão entre os 7
+/// tipos dele. É o que faz o app parecer que «sempre funciona», e o preço é um resultado que
+/// ninguém autorou: de uma corrente para um número há várias respostas (a média? o máximo? o
+/// primeiro?) e ele escolhe uma sem dizer. Aqui o artista escolhe, e o nó fica à vista.
+///
+/// ⭐ **E a nossa resposta é DERIVADA, não uma tabela:** ela procura no registry um tipo cuja
+/// entrada aceita o que a fonte emite e cuja saída é escalar. *Não pode nomear um nó que não
+/// faça aquilo, porque é o manifesto dele que a produz.*
+///
+/// As três metades mordem: existe resposta para um emissor de corrente · a resposta **é mesmo
+/// um conversor** (verificado no manifesto dela, não no nome) · e uma fonte que **já** é um
+/// valor não precisa de nenhuma.
+#[test]
+fn the_refusal_names_a_node_that_really_converts() {
+    use ph2d_nodegraph::port::Dim;
+    let mut motion = MotionState::new();
+    let g = &mut motion.doc.graph;
+    let osc = g.add_node("motion.oscillator".to_string());
+    let lfo = g.add_node("value.lfo".to_string());
+    let conv = crate::render_loop::motion_bridge::subgraph::converter_from(&motion, (osc, 0))
+        .expect("uma corrente por-elemento tem de ter um conversor no catalogo");
+
+    // ⚠️ A resposta e' verificada no MANIFESTO dela, nunca pelo nome -- senao o gate acreditaria
+    // numa string que um dia deixa de descrever o no'.
+    let m = motion
+        .registry
+        .manifests()
+        .find(|m| m.name == conv)
+        .expect("o nome que a recusa da' tem de existir no registry");
+    let saida_do_osc = crate::render_loop::motion_bridge::fold::manifest_of(&motion, osc)
+        .expect("o oscillator tem manifesto")
+        .outputs[0]
+        .ty;
+    assert_eq!(
+        m.inputs.first().map(|i| i.ty),
+        Some(saida_do_osc),
+        "`{conv}` tem de ACEITAR o que o oscillator emite"
+    );
+    assert_eq!(
+        m.outputs.first().map(|o| o.ty.dim),
+        Some(Dim::Scalar),
+        "`{conv}` tem de EMITIR um escalar -- senao nao resolve nada"
+    );
+
+    // ⚠️ Uma fonte que JA' e' um valor nao precisa de conversor: oferecer um seria mandar o
+    // artista inserir um no' inerte.
+    assert!(
+        crate::render_loop::motion_bridge::subgraph::source_can_drive(&motion, (lfo, 0)),
+        "o `value.lfo` ja' conduz -- este caso nem chega a' recusa"
+    );
+}

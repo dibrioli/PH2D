@@ -138,9 +138,17 @@ pub(super) fn drive(
     // ⚠️ **A regra é a MESMA que o menu usa** (`param_choices` declara o alvo como
     // `Instances/Scalar`): uma segunda formulação seria o defeito com o sinal trocado.
     if !source_can_drive(motion, from) {
-        toasts.push(ph2d_editor::Toast::warning(
-            "Can't drive: that output is a per-element stream, not a value",
-        ));
+        // ⭐⭐ **A recusa NOMEIA A CURA** (estudo do Mini Cavalry, doc 99 §10e). Ele resolve
+        // isto convertendo em silêncio (23 conversões entre os 7 tipos dele) — o que inventa
+        // um resultado que ninguém autorou: *de uma corrente para um número há várias
+        // respostas (a média? o máximo? o primeiro?) e ele escolhe uma sem dizer*. Aqui o
+        // artista escolhe, e o nó que converte fica **à vista e ajustável**.
+        let cura = converter_from(motion, from).map_or_else(String::new, |ty| {
+            format!(" — insert a `{ty}` to read one number from it")
+        });
+        toasts.push(ph2d_editor::Toast::warning(format!(
+            "Can't drive: that output is a per-element stream, not a value{cura}"
+        )));
         return;
     }
     let pre = motion.doc.clone();
@@ -157,6 +165,45 @@ pub(super) fn drive(
             ));
         }
     }
+}
+
+/// ⭐⭐⭐ **O NÓ QUE CONVERTE esta saída num valor — DERIVADO do registry, nunca uma tabela.**
+///
+/// ⛔⛔ **É a diferença com ele:** o Mini Cavalry tem **23 conversões escritas à mão**
+/// (`shape->point`, `value->color`, …) — uma segunda lista, que pode discordar do catálogo no
+/// dia em que um nó mudar de portas. Esta **procura no registry** um tipo cuja entrada aceita o
+/// que a fonte emite e cuja saída é um escalar. *A resposta não pode nomear um nó que não faça
+/// aquilo, porque é o manifesto dele que a produz.*
+///
+/// ⚠️ **A ORDEM do catálogo decide o empate**, e é determinística (o registry é um `BTreeMap`):
+/// entre dois conversores igualmente válidos sai sempre o mesmo, em toda máquina — que é o que
+/// faz a mensagem ser a mesma no ecrã do artista e no gate.
+///
+/// `None` quando nenhum tipo converte — e aí a recusa fica só com o «porquê», que continua a
+/// ser mais do que o silêncio que havia antes de 01/09.
+///
+/// ⚠️⚠️ **A cerca do TIPO DE ENTRADA é hoje INFALSIFICÁVEL, e isso está declarado em vez de
+/// escondido:** a mutação que a apaga (`i.ty == saida` → `is_some()`) **SOBREVIVE** ao gate.
+/// Não é redundância — é que o catálogo inteiro deste módulo só tem **uma** forma
+/// não-conduzível (`Instances/Vec2`: o censo diz `Domain::Instances` em 100% das 138 portas),
+/// então não há um segundo caso contra o qual ela possa discriminar. Ela fica porque é
+/// correcta, e torna-se falsificável no dia em que um porto de `Vector`/`Field`/`Signal`
+/// entrar num grafo de Motion. *Uma mutação sobrevivente tem três leituras, não duas: falta um
+/// gate, a linha é redundante, ou o mundo ainda não tem o caso que a distingue.*
+pub(super) fn converter_from(motion: &MotionState, from: (NodeId, u16)) -> Option<&'static str> {
+    use ph2d_nodegraph::port::Dim;
+    let saida = super::fold::manifest_of(motion, from.0)?
+        .outputs
+        .get(from.1 as usize)?
+        .ty;
+    motion
+        .registry
+        .manifests()
+        .find(|m| {
+            m.inputs.first().is_some_and(|i| i.ty == saida)
+                && m.outputs.first().is_some_and(|o| o.ty.dim == Dim::Scalar)
+        })
+        .map(|m| m.name)
 }
 
 /// **Esta saída produz um VALOR?** — a pergunta que separa um condutor de uma corrente.

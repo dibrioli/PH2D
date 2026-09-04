@@ -41,7 +41,6 @@
 
 use ph2d_mesh::Mesh;
 
-use super::apex::{adjacency, apices, path_ball};
 use super::local::{cross, dist, sub};
 
 /// ⭐⭐⭐ **O ALCANCE DA FORMA** — a distância máxima ao centroide **pesado pela área**.
@@ -191,92 +190,22 @@ pub struct TipDeviation {
 #[must_use]
 pub fn tip_deviation(input: &Mesh, output: &Mesh, unit: f32) -> TipDeviation {
     let mut out = TipDeviation::default();
-    let pos = input.positions();
-    // ⚠️ **`is_finite` ANTES da comparação, e não `!(unit > 0.0)`**: um `NaN` faz toda
-    // comparação ser falsa, então a forma negada esconde a intenção — e o clippy recusa-a.
-    if pos.is_empty() || output.positions().is_empty() || !unit.is_finite() || unit <= 0.0 {
-        return out;
-    }
-    let target = unit;
-    let (_mid, apex) = apices(input, unit);
-    // ⚠️ **Os triângulos da saída, uma vez só** — um leque por face, como no centroide.
-    let opos = output.positions();
-    let mut tris: Vec<[[f32; 3]; 3]> = Vec::new();
-    for f in output.faces() {
-        let v = f.verts();
-        for k in 1..v.len().saturating_sub(1) {
-            tris.push([
-                opos[v[0] as usize],
-                opos[v[k] as usize],
-                opos[v[k + 1] as usize],
-            ]);
-        }
-    }
-    if tris.is_empty() {
-        return out;
-    }
-    const RADIUS: f32 = 3.0;
-    let radius = RADIUS * target;
-    for &i in &apex {
-        let a = pos[i];
-        // ⚠️ **Só os triângulos que podem competir** — sem esta cerca a régua é
-        // `O(ápices × amostras × faces)` e uma escultura de 17 k vértices leva minutos.
-        let near: Vec<&[[f32; 3]; 3]> = tris
-            .iter()
-            .filter(|t| t.iter().any(|q| dist(a, *q) <= radius + RADIUS * target))
-            .collect();
-        // ⛔⛔⛔ **NENHUMA FACE PERTO DO ÁPICE É O PIOR CASO, NÃO UM «SALTAR».**
-        //
-        // ⚠️ **A 1.ª redacção desta função fazia `continue` aqui**, e o defeito mordeu no mesmo
-        // dia: uma ponta comida **por inteiro** deixa de ter superfície na vizinhança do
-        // ápice, saía da contagem, e o relatório dizia `0 de 3 acima da barra` sobre uma peça
-        // com um espinho amputado em **`−46,6 %`**. *É a família do balde vazio — «não medido»
-        // e «perfeito» são o mesmo byte —, e desta vez fui eu que a construí.*
-        //
-        // ⚠️ **O valor que se regista é o RAIO da busca** (`RADIUS` quads): não é a distância
-        // verdadeira, é o piso do que se sabe — *«mais longe do que eu olhei»*. Ele é maior que
-        // [`TIP_DEVIATION_MAX`] por construção, logo a ponta conta como partida.
-        if near.is_empty() {
-            out.tips += 1;
-            out.over += 1;
-            out.cut += 1;
-            out.p50 = out.p50.max(RADIUS);
-            out.p90 = out.p90.max(RADIUS);
-            out.max = out.max.max(RADIUS);
-            out.apex_max = out.apex_max.max(RADIUS);
-            continue;
-        }
-        // ⭐ **O ÁPICE sozinho** — a distância do bico da escultura à superfície da saída.
-        // ⛔ A mediana abaixo afoga-o: a agulha `15909` da saída reprovada lê `p50 0,84` com o
-        // bico a `1,11` da superfície. Ver [`TIP_GAP_MAX`].
-        let gap = near
-            .iter()
-            .fold(f32::MAX, |acc, t| acc.min(point_triangle(a, t)))
-            / target;
-        out.apex_max = out.apex_max.max(gap);
-        if gap > TIP_GAP_MAX {
+    // ⭐⭐⭐ **UMA DOBRA da tabela por ponta** (2026-09-04) — ver [`super::tip_rows`]. ⛔ Este
+    // corpo iterava os ápices ele próprio e deitava fora o índice antes de devolver, e o
+    // report do dono (*«apenas uma ponta tem resultado ruim»*) não tinha como ser respondido
+    // por nenhuma das saídas desta função. *Os números não mudam — não podem: uma régua nova
+    // que muda o veredito da anterior não é a mesma régua.*
+    for r in super::tip_rows(input, output, unit) {
+        out.apex_max = out.apex_max.max(r.gap);
+        if r.gap > TIP_GAP_MAX {
             out.cut += 1;
         }
-        let mut ds: Vec<f32> = pos
-            .iter()
-            .filter(|p| dist(a, **p) <= radius)
-            .map(|p| {
-                near.iter()
-                    .fold(f32::MAX, |acc, t| acc.min(point_triangle(*p, t)))
-                    / target
-            })
-            .collect();
-        // ⚠️ **A entrada não tem vértice nenhum a menos de `3` quads do próprio ápice** —
-        // acontece numa malha muito mais grosseira que o alvo. Aí não há o que medir, e a
-        // ponta **não conta**: ⛔ ao contrário do caso acima, aqui é a ENTRADA que não dá
-        // amostra, e inventar uma acusação a partir disso mediria a fixtura, não a saída.
-        if ds.is_empty() {
+        // ⚠️ **A ponta comida por inteiro entra por aqui, sem caso especial**: a linha dela
+        // traz o RAIO da busca nas quatro colunas ([`super::TipRow::blind`]), que é maior que
+        // as duas barras por construção — logo ela conta como partida nas duas.
+        let Some([p50, p90, worst]) = r.dev else {
             continue;
-        }
-        ds.sort_by(f32::total_cmp);
-        let p50 = ds[ds.len() / 2];
-        let p90 = ds[ds.len() * 9 / 10];
-        let worst = ds[ds.len() - 1];
+        };
         out.tips += 1;
         out.p50 = out.p50.max(p50);
         out.p90 = out.p90.max(p90);
@@ -297,7 +226,10 @@ fn norm(v: [f32; 3]) -> f32 {
 }
 
 /// A distância de um ponto a um triângulo, pelas sete regiões de Voronoi (Ericson).
-fn point_triangle(p: [f32; 3], t: &[[f32; 3]; 3]) -> f32 {
+///
+/// ⚠️ **`pub(crate)` desde 2026-09-04**: quem a corre é a tabela por ponta
+/// ([`super::tip_rows`]), de que esta régua passou a ser uma dobra.
+pub(crate) fn point_triangle(p: [f32; 3], t: &[[f32; 3]; 3]) -> f32 {
     let (a, b, c) = (t[0], t[1], t[2]);
     let (ab, ac, ap) = (sub(b, a), sub(c, a), sub(p, a));
     let d1 = dot3(ab, ap);
@@ -416,62 +348,14 @@ pub const TIP_DENSITY_MAX: f32 = 1.0;
 /// medido»*, e quem lê tem de o distinguir de *«perfeito»*.
 #[must_use]
 pub fn tip_density(input: &Mesh, output: &Mesh, unit: f32) -> TipDensity {
-    /// Quantos quads de caminho à volta do ápice entram na medida. ⚠️ `1` mediria só o anel
-    /// que fecha o bico (poucas amostras, e numa ponta são ele é degenerado por construção);
-    /// muito mais e a medida dilui-se no corpo, que é onde a cadeia acerta sempre.
-    const RINGS: f32 = 3.0;
-    let mut out = TipDensity::default();
-    let opos = output.positions();
-    if input.positions().is_empty() || opos.is_empty() || !unit.is_finite() || unit <= 0.0 {
-        return out;
-    }
-    let target = unit;
-    let (_mid, apex) = apices(input, unit);
-    if apex.is_empty() {
-        return out;
-    }
-    // A adjacência da SAÍDA, e a aresta incidente média de cada vértice dela.
-    let nbr = adjacency(output);
-    let mean_edge: Vec<f32> = (0..opos.len())
-        .map(|i| {
-            if nbr[i].is_empty() {
-                return 0.0;
-            }
-            #[allow(clippy::cast_precision_loss)]
-            let n = nbr[i].len() as f32;
-            nbr[i]
-                .iter()
-                .map(|&j| dist(opos[i], opos[j as usize]))
-                .sum::<f32>()
-                / n
-        })
+    // ⭐⭐⭐ **UMA DOBRA da tabela por ponta** — ver [`super::tip_rows`] e a nota gémea em
+    // [`tip_deviation`]. ⛔ Antes de 2026-09-04 as duas corriam o censo de ápices **cada uma**
+    // (um Dijkstra do cone por candidato); hoje quem quer as duas paga um censo só.
+    let mut vals: Vec<f32> = super::tip_rows(input, output, unit)
+        .into_iter()
+        .filter_map(|r| r.grade)
         .collect();
-
-    let ipos = input.positions();
-    let mut vals: Vec<f32> = Vec::new();
-    for &a in &apex {
-        let p = ipos[a];
-        // O vértice da saída mais próximo do ápice da entrada — o bico, tal como a saída o
-        // realizou. ⚠️ Uma ponta AMPUTADA não tem vértice perto, e aí esta régua não tem
-        // nada a dizer: quem acusa a amputação é a [`tip_deviation`], e misturar as duas
-        // faria uma acusação depender da outra.
-        let Some(seed) =
-            (0..opos.len()).min_by(|&i, &j| dist(p, opos[i]).total_cmp(&dist(p, opos[j])))
-        else {
-            continue;
-        };
-        // A bola de CAMINHO sobre as arestas da saída ([`path_ball`], a porta partilhada com
-        // a lei do ápice) — o raio é em unidades da aresta mediana, logo a vizinhança é a
-        // mesma em todas as candidatas de densidade parecida.
-        let seen = path_ball(opos, &nbr, seed, RINGS * target);
-        let n = seen.len();
-        if n == 0 {
-            continue;
-        }
-        #[allow(clippy::cast_precision_loss)]
-        let media = seen.keys().map(|&v| mean_edge[v]).sum::<f32>() / n as f32 / target;
-        vals.push(media);
-    }
+    let mut out = TipDensity::default();
     if vals.is_empty() {
         return out;
     }

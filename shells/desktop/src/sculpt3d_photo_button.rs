@@ -172,6 +172,9 @@ fn the_artists_piece_through_the_button() {
             den.over,
             den.tips,
         );
+        // ⭐⭐⭐ **E QUAL espinho a fase zero deixa grosso** — o corte que separa *«a calota
+        // falha»* de *«a calota falha NAQUELE bico»*. A unidade é o ALVO, como a linha acima.
+        tabela_das_pontas("F1", &piece, &work, target);
         islands("F1", &work);
         // ⭐⭐⭐ **O SEGUNDO dos três pontos.** ⚠️ A `ENTREGA` é uma razão entre medianas de
         // aresta-equivalente, logo ela é **adimensional** e comparável entre malhas de
@@ -327,8 +330,47 @@ fn the_artists_piece_through_the_button() {
             ph2d_quadfill::TIP_DENSITY_MAX,
             if g.tips == 0 { "⛔ NAO MEDIDO" } else { "" }
         );
+        // ⭐⭐⭐ **E QUAL delas** — ver [`tabela_das_pontas`].
+        tabela_das_pontas("SAIDA", &piece, &out, unit);
     }
     holes("SAIDA", &out);
+}
+
+/// ⭐⭐⭐ **UMA LINHA POR PONTA, no relatório da sonda** — [`ph2d_quadfill::tip_rows`].
+///
+/// ⛔⛔ **O report do dono de 2026-09-04 é o motivo**: *«bons resultados em muitas pontas no
+/// mesmo mesh, e apenas uma ruim»*. As duas linhas acima dizem **quantas** pontas passam a
+/// barra e a pior leitura — e nenhuma diz **qual**, que é a pergunta com que uma cura começa.
+/// *Um extremo ou uma média sobre a peça inteira nunca vê UMA ponta, e quando só uma está má
+/// ele também não diz qual.*
+fn tabela_das_pontas(tag: &str, entrada: &ph2d_mesh::Mesh, saida: &ph2d_mesh::Mesh, unit: f32) {
+    let linhas = ph2d_quadfill::tip_rows(entrada, saida, unit);
+    eprintln!("   {tag}: apice   raio   cone    gap  grade   dev p50   p90   max");
+    for r in &linhas {
+        eprintln!(
+            "   {tag}: {:>6} {:>6.3} {:>6} {:>6.2}{} {:>6.2}{} {:>9.2} {:>5.2} {:>5.2}{}",
+            r.apex,
+            r.radius,
+            r.cone
+                .map_or_else(|| "  s/a".to_string(), |c| format!("{c:6.2}")),
+            r.gap,
+            if r.gap > ph2d_quadfill::TIP_GAP_MAX {
+                "*"
+            } else {
+                " "
+            },
+            r.grade.unwrap_or(f32::NAN),
+            if r.grade.unwrap_or(0.0) > ph2d_quadfill::TIP_DENSITY_MAX {
+                "*"
+            } else {
+                " "
+            },
+            r.dev.unwrap_or([f32::NAN; 3])[0],
+            r.dev.unwrap_or([f32::NAN; 3])[1],
+            r.dev.unwrap_or([f32::NAN; 3])[2],
+            if r.blind { "  ⛔ CEGA (piso)" } else { "" },
+        );
+    }
 }
 
 /// ⭐⭐⭐ **SONDA — a FASE ZERO preserva a topologia que recebe?**

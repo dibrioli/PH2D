@@ -617,3 +617,7 @@ pub(crate) fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "lib_tests_graded.rs"]
+mod tests_graded;

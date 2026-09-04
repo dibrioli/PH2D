@@ -12,6 +12,13 @@
 
 use ph2d_editor_core::widget::{DECORATOR_W, form_row_columns, surface_rect};
 
+/// ⚠️ **Este ficheiro afirma sobre o REDESENHO**, que desde 2026-09-03 é opcional. A porta devolve
+/// a linha INTEIRA e uma coluna de zero px no clássico — medi-la sem escolher a aparência seria
+/// medir a UI de sempre com o nome da coluna.
+fn redesign() {
+    ph2d_editor_core::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
+}
+
 /// **As três famílias põem o ponto no MESMO `x`.**
 ///
 /// A caixa única recua a superfície por [`surface_rect`]; a linha à mão pergunta à
@@ -22,6 +29,7 @@ use ph2d_editor_core::widget::{DECORATOR_W, form_row_columns, surface_rect};
 /// colunas.
 #[test]
 fn the_hand_rolled_row_and_the_unified_box_agree_on_the_column() {
+    redesign();
     for w in [120.0_f32, 184.0, 240.0, 268.0, 400.0] {
         let x = 37.0_f32;
         let (control_w, dot) = form_row_columns(x, w, 0.0, 22.0);
@@ -48,6 +56,7 @@ fn the_hand_rolled_row_and_the_unified_box_agree_on_the_column() {
 /// **A coluna encosta à direita e mede exactamente [`DECORATOR_W`].**
 #[test]
 fn the_column_is_flush_right_and_exactly_one_column_wide() {
+    redesign();
     let (control_w, dot) = form_row_columns(10.0, 200.0, 5.0, 22.0);
     assert!(
         (dot.x + dot.w - 210.0).abs() < 0.001,
@@ -70,6 +79,7 @@ fn the_column_is_flush_right_and_exactly_one_column_wide() {
 /// painel.
 #[test]
 fn a_row_narrower_than_the_column_still_returns_a_usable_width() {
+    redesign();
     for w in [0.0_f32, 1.0, DECORATOR_W, DECORATOR_W + 0.5] {
         let (control_w, _) = form_row_columns(0.0, w, 0.0, 22.0);
         assert!(

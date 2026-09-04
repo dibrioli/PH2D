@@ -80,6 +80,11 @@ pub(crate) fn paint(state: &mut WidgetLabState, ctx: &mut PaintCtx) {
     // aparência escolhida é publicada no thread-local que todo pintor de linha de propriedade lê —
     // o mesmo canal do `set_text_rendering`. ⚠️ Antes do corpo, de propósito: publicar depois faria
     // as amostras desta janela usarem a aparência do quadro ANTERIOR.
+    // ⭐ **A bancada é do REDESENHO, mesmo quando o app não é** (Enio, 2026-09-03: a UI nova entra
+    // desligada). É aqui que ele se estuda; mostrá-la no clássico seria uma bancada a medir o que
+    // ela não estuda. ⚠️ Reposta no fim, senão o painel seguinte herdava-a.
+    let app_look = ph2d_editor_core::paint::ui_look();
+    ph2d_editor_core::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
     ph2d_editor_core::paint::set_slider_style(state.style);
 
     paint_panel_surface_floating(rect, ctx.scene, theme);
@@ -165,6 +170,10 @@ pub(crate) fn paint(state: &mut WidgetLabState, ctx: &mut PaintCtx) {
     if store.panel_scroll(ids::LAB_PANEL) > max_scroll {
         store.set_panel_scroll(ids::LAB_PANEL, max_scroll);
     }
+    // ⚠️ **Repõe a aparência do app.** A bancada força o redesenho para si, e o thread-local é
+    // partilhado — sem isto, o painel pintado a seguir herdava-a e o app inteiro mudava de cara
+    // por a bancada estar aberta.
+    ph2d_editor_core::paint::set_ui_look(app_look);
 }
 
 /// ⭐ **A largura por omissão é a do Inspector mais a coluna da régua**, pela mesma razão do

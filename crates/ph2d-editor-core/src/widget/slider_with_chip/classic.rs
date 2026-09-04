@@ -11,7 +11,7 @@
 //! substituído, e reescrever à mão o que o git guarda é a forma mais cara de introduzir uma
 //! diferença que ninguém procura.
 
-use super::{PropertyBox, paint_number_chip};
+use super::paint_number_chip;
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
 use crate::paint::{paint_text, resolve};
 use crate::widget::TextInputState;

@@ -31,6 +31,27 @@ exige que o que sai **sem ninguém escolher** seja byte a byte o clássico. ⛔ 
 liga com o que não percebe é um interruptor que se liga sozinho* — e este governa se o `main` mostra
 um redesenho a meio.
 
+### §0.0-bis — ⛔⛔ A 1.ª versão do interruptor VAZOU, e o gate estava VERDE
+
+Smoke do Enio, no mesmo dia: sem `PH2D_UI_NEW=1` o app *«abriu o desenho novo»*.
+
+⭐ **A guarda estava nos três PINTORES** — a linha de propriedade, a caixa de verificação, o
+interruptor. Mas as linhas do Inspector **não passam por nenhum deles**: são construídas à mão,
+com a sua própria aritmética, e chamam a `form_row_columns`. Eram **19 sítios**, e nenhum
+perguntava a aparência.
+
+⛔ **E o gate estava verde**, porque media exactamente os três pintores de que o autor se lembrava.
+*Um gate que enumera os sítios que o autor recorda mede a memória dele, não o produto.* É a
+terceira vez que esta forma morde nesta linha: o censo por **pintor** (§20), o censo por **nome**
+(§15.1-bis), e agora o gate por **enumeração**.
+
+⇒ a guarda mudou-se para a **porta**, e em **duas metades**: a `form_row_columns` devolve a linha
+inteira e uma coluna de **zero px** no clássico, **e** o `paint_decorator_dot` não pinta nada ali.
+*Duas metades, para que esquecer uma não chegue.* Provado por mutação.
+
+⚠️ **E o Widget Lab força o redesenho para si e REPÕE a aparência do app ao sair** — o thread-local
+é partilhado, e sem a reposição ter a bancada aberta mudava a cara do app inteiro.
+
 ### §0.1 — O que NÃO está atrás da bandeira, e porquê
 
 ⛔ As **correcções** ao caminho antigo ficam ligadas para toda a gente. *Um defeito curado não é uma

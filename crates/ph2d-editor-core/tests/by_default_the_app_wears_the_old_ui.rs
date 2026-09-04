@@ -175,3 +175,68 @@ fn only_the_exact_value_turns_it_on() {
         );
     }
 }
+
+/// ⛔⛔ **A PORTA das linhas construídas à mão também obedece — e foi ELA que vazou.**
+///
+/// Report do Enio, 2026-09-03, sobre a 1.ª versão deste interruptor: sem `PH2D_UI_NEW=1` o app
+/// *«abriu o desenho novo»*. ⚠️ **O gate acima estava verde**, porque media os três PINTORES que eu
+/// me lembrei — e as linhas do Inspector não passam por nenhum deles: são construídas à mão, com a
+/// sua própria aritmética, e chamam a `form_row_columns`. Eram **19 sítios**, e nenhum perguntava
+/// a aparência.
+///
+/// ⇒ *um gate que enumera os sítios que o autor recorda mede a memória dele, não o produto.* A
+/// guarda mudou-se para a **porta**, e este teste mede a porta.
+///
+/// **Mutação que deve sangrar:** tirar o `if !ui_is_redesign()` da `form_row_columns` — a coluna
+/// volta a comer `14 px` de toda linha do Inspector no caminho de omissão.
+#[test]
+fn the_hand_rolled_row_door_obeys_the_look_too() {
+    use ph2d_editor_core::widget::{DECORATOR_W, form_row_columns};
+
+    set_ui_look(UiLook::Classic);
+    let (classic_w, classic_dot) = form_row_columns(10.0, 200.0, 0.0, 22.0);
+    set_ui_look(UiLook::Redesign);
+    let (new_w, new_dot) = form_row_columns(10.0, 200.0, 0.0, 22.0);
+    set_ui_look(UiLook::default());
+
+    assert!(
+        (classic_w - 200.0).abs() < 0.001,
+        "no classico a porta comeu {} px da linha: a coluna de animacao nao existe ali",
+        200.0 - classic_w
+    );
+    assert!(
+        classic_dot.w.abs() < 0.001,
+        "no classico a porta devolveu uma coluna de {} px de largura",
+        classic_dot.w
+    );
+    assert!(
+        (new_w - (200.0 - DECORATOR_W)).abs() < 0.001,
+        "no redesenho a porta nao reserva a coluna"
+    );
+    assert!((new_dot.w - DECORATOR_W).abs() < 0.001);
+}
+
+/// ⛔ **E o ponto não se pinta no clássico, mesmo que alguém lhe passe um rect.**
+///
+/// ⚠️ É a **segunda metade** da guarda: um chamador que ignore a largura devolvida pela porta ainda
+/// assim não consegue pintar a coluna. *Duas metades, para que esquecer uma não chegue.*
+#[test]
+fn the_dot_paints_nothing_in_the_classic_look() {
+    use ph2d_editor_core::widget::paint_decorator_dot;
+    let ink = |look: UiLook| {
+        set_ui_look(look);
+        let mut scene = VectorScene::new();
+        paint_decorator_dot(&mut scene, Theme::Forge, Rect::new(0.0, 0.0, 14.0, 22.0));
+        set_ui_look(UiLook::default());
+        scene.inner().encoding().path_data.clone()
+    };
+    assert!(
+        ink(UiLook::Classic).is_empty(),
+        "o ponto foi pintado no classico: um chamador que ignore a largura da porta vaza o \
+         redesenho para o caminho de omissao"
+    );
+    assert!(
+        !ink(UiLook::Redesign).is_empty(),
+        "o ponto nao foi pintado no redesenho: a guarda apagou a feature em vez de a gatear"
+    );
+}

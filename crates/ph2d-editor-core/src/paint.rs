@@ -123,11 +123,11 @@ pub fn slider_style() -> ph2d_tokens::SliderStyle {
     SLIDER_STYLE.with(std::cell::Cell::get)
 }
 
-/// ⭐⭐⭐ **A APARÊNCIA do app**, publicada uma vez por quadro como o [`SliderStyle`] e o
-/// `TextRendering`.
-///
-/// ⚠️ **O neutro é [`UiLook::Classic`]**, e é ele que permite esta linha entrar no `main` com o
-/// redesenho a meio: quem não liga `PH2D_UI_NEW=1` vê a UI de sempre. Ver o doc do enum.
+// ⭐⭐⭐ **A APARÊNCIA do app**, publicada uma vez por quadro como o `SliderStyle` e o
+// `TextRendering`.
+//
+// ⚠️ **O neutro é `UiLook::Classic`**, e é ele que permite esta linha entrar no `main` com o
+// redesenho a meio: quem não liga `PH2D_UI_NEW=1` vê a UI de sempre. Ver o doc do enum.
 thread_local! {
     static UI_LOOK: std::cell::Cell<ph2d_tokens::UiLook> =
         const { std::cell::Cell::new(ph2d_tokens::UiLook::Classic) };

@@ -62,6 +62,14 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     // `Role::Switch`) e não muda com a cara: *fundir ou separar a tinta de um controlo não muda o
     // que ele É para quem não o vê.* ⛔ Um nó aqui seria o segundo a descrever o mesmo
     // interruptor.
+    // ⚠️ **A metade da TINTA da caixa única** — cortada do `property_box.rs` por tecto de LOC em
+    // 2026-09-03. O nó de acessibilidade é do MODELO (`PropertyBox::a11y_node`, `Role::Slider` com
+    // rótulo e `numeric_value`), que vive no `mod.rs` ao lado. ⛔ Um nó aqui seria o segundo a
+    // descrever a mesma linha.
+    (
+        "property_box/paint.rs",
+        "fragmento sem NodeId: a semantica e' do modelo (PropertyBox::a11y_node)",
+    ),
     (
         "toggle_classic.rs",
         "fragmento sem NodeId: a semantica e' do widget (Toggle::build_a11y, Role::Switch)",

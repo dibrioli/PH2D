@@ -1547,6 +1547,12 @@ pub(crate) struct App {
     /// estado atual com este (diff) para saber se uma ação virou passo. `None` até
     /// o primeiro frame estabelecê-lo.
     pub(crate) undo_baseline: Option<crate::undo::ProjectState>,
+    /// ⭐⭐⭐ **A selecção que pertence ao [`Self::undo_baseline`]** — ver
+    /// [`crate::undo::SelectionMark`] para o report que ela fecha (Enio, 2026-09-04).
+    ///
+    /// ⚠️ Ela é substituída **exactamente** onde o baseline é: quando um passo nasce, e no restauro.
+    /// Uma das duas sozinha faria o `Ctrl+Z` devolver a mão ao objecto errado.
+    pub(crate) undo_baseline_selection: crate::undo::SelectionMark,
     /// Ctrl+Z / Ctrl+Y pendente (`Some(redo)`), setado pelo teclado e drenado no
     /// `post_frame_undo` (onde `self` está livre do borrow do render loop).
     pub(crate) undo_request: Option<bool>,

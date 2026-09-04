@@ -132,7 +132,7 @@ fn a_row_of_holes_is_expressible_by_a_shape_verb_and_a_repetition() {
 /// ⭐⭐ **E uma COROA de rasgos é a mesma composição — com uma condição que o artista tem de saber.**
 ///
 /// ⚠️⚠️ **Um modificador age no referencial LOCAL do nó, ANTES da pose dele** (a mesma lei que o
-/// doc do `Unary::Mirror` já declara). ⇒ pôr `Radial` no próprio rasgo e afastá-lo pela pose **não
+/// doc do `Unary::Mirror { offset: 0.0 }` já declara). ⇒ pôr `Radial` no próprio rasgo e afastá-lo pela pose **não
 /// faz coroa nenhuma**: as `N` cópias rodam à volta da origem local do rasgo, que é onde ele já
 /// está, e coincidem todas. Medido: o rasgo `0` abre e os outros `N−1` não.
 ///

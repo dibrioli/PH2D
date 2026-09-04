@@ -23,9 +23,17 @@ fn vivo(k: UnaryKind) -> Unary {
     match k {
         UnaryKind::Shell => Unary::Shell { thickness: 0.06 },
         UnaryKind::Offset => Unary::Offset { distance: 0.05 },
-        UnaryKind::Mirror => Unary::Mirror,
-        UnaryKind::MirrorY => Unary::MirrorY,
-        UnaryKind::MirrorZ => Unary::MirrorZ,
+        // ⛔⛔ **UM PLANO FORA DA PEÇA, e não `0`** (2026-09-04): com o plano na origem do nó a
+        // dobra é a IDENTIDADE sobre uma caixa centrada, e o bordo do espelho ficava **medido no
+        // ponto neutro do próprio knob** — a lei `c' = 2·off − c` podia estar errada e este gate
+        // passava. *Uma fixtura no neutro de um knob não testa esse knob*, e é a mesma armadilha
+        // que as duas juntas acima já nomeiam.
+        //
+        // ⚠️ Os três valores estão **para lá da meia-extensão do eixo respectivo**
+        // (`[0.14, 0.31, 0.22]`), que é onde o gémeo aparece inteiro em vez de fundido.
+        UnaryKind::Mirror => Unary::Mirror { offset: -0.20 },
+        UnaryKind::MirrorY => Unary::MirrorY { offset: -0.40 },
+        UnaryKind::MirrorZ => Unary::MirrorZ { offset: -0.30 },
         UnaryKind::Array => Unary::Array {
             count: 3,
             spacing: 0.5,

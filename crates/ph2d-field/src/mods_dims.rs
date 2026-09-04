@@ -104,7 +104,19 @@ impl Unary {
                 value: distance,
                 span: Span::Free,
             }],
-            Unary::Mirror | Unary::MirrorY | Unary::MirrorZ => Vec::new(),
+            // ⭐⭐⭐ **O PLANO do espelho** — o número que faltava, e sem o qual o chip acendia e a
+            // peça ficava igual (report do Enio, 2026-09-04). Ver [`Unary::Mirror`] para a
+            // medição e para os dois gestos que este número só dá.
+            //
+            // ⚠️ **`Span::Along` e não `Positive`**: é uma POSIÇÃO no eixo, e a origem não é um
+            // canto do mundo — a mesma cerca que a banda da torção já paga.
+            Unary::Mirror { offset } | Unary::MirrorY { offset } | Unary::MirrorZ { offset } => {
+                vec![crate::Dim {
+                    key: "field.mod.mirror_plane",
+                    value: offset,
+                    span: Span::Along,
+                }]
+            }
             Unary::Array {
                 count,
                 spacing,
@@ -245,6 +257,13 @@ impl Unary {
             // onde o número passa ao ir de encolher para crescer. Recusá-lo faria o slider ter um
             // buraco no meio.
             (Unary::Offset { distance }, 0) => *distance = value,
+            // ⭐⭐⭐ **O PLANO do espelho** — uma POSIÇÃO, então não há valor recusado: qualquer
+            // coordenada do eixo é um plano legítimo, e `0` é a lei de sempre (a dobra na origem
+            // do nó). Ver [`Unary::Mirror`].
+            (
+                Unary::Mirror { offset } | Unary::MirrorY { offset } | Unary::MirrorZ { offset },
+                0,
+            ) => *offset = value,
             (Unary::Array { count, .. }, 0) => {
                 // ⚠️ **O documento é quem arredonda.** O painel mostra um inteiro porque a faixa diz
                 // que ele é um (`Span::Count`), mas quem garante é esta linha — um valor fracionário

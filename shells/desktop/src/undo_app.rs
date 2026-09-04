@@ -10,7 +10,9 @@
 //! ([`super::ProjectUndo`]); o que vem para aqui é quem as opera a partir da `App` — a
 //! fotografia, a reposição, e o passo que nasce por DIFF uma vez por quadro.
 
-use super::{ProjectState, field_selection_back, field_selection_ids, surviving_selection};
+use super::{
+    ProjectState, SelectionMark, field_selection_back, field_selection_ids, surviving_selection,
+};
 use ph2d_vec_scene::VecScene;
 
 impl crate::App {
@@ -96,7 +98,38 @@ impl crate::App {
     /// ela sobrevive: [`surviving_selection`] mantém os ids que ainda existem na cena restaurada, e o
     /// `sync_selection` do frame seguinte re-deriva os bits do mapa reconstruído. Nada de bits mortos
     /// atravessa — que era o perigo real que o zeramento defendia.
+    /// ⭐⭐⭐ **A SELEÇÃO DO MODELADOR AGORA**, em identidade durável — o que um passo tem de
+    /// guardar ao lado do estado. Ver [`SelectionMark`] para o report que isto fecha.
+    pub(crate) fn field_selection_mark(&mut self) -> SelectionMark {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return SelectionMark::default();
+        };
+        let field = gfx.hero_screen.as_ref().map_or_else(Vec::new, |h| {
+            let bits: Vec<u64> = h
+                .gizmo
+                .selection
+                .iter()
+                .copied()
+                .chain(h.gizmo.extra_selection.iter().copied())
+                .collect();
+            field_selection_ids(gfx.sim.world(), &bits)
+        });
+        SelectionMark { field }
+    }
+
     pub(crate) fn apply_project(&mut self, state: &ProjectState) {
+        self.apply_project_with(state, None);
+    }
+
+    /// A mesma porta, com a selecção que o passo trouxe.
+    ///
+    /// ⚠️ `mark = None` é o caminho do **load** (e do gate de arquitectura): ali não há passo
+    /// nenhum de onde tirar uma selecção, e a lei continua a ser *transportar o que sobreviver*.
+    pub(crate) fn apply_project_with(
+        &mut self,
+        state: &ProjectState,
+        mark: Option<&SelectionMark>,
+    ) {
         // ⛔ **As lápides ANTES da guarda do `gfx`** — elas vivem num global, e deixá-las dentro
         // dela fazia um restauro sem GPU manter as da sessão anterior. Ver `project_library`.
         crate::project_library::apply_forgotten(&state.library);
@@ -108,8 +141,13 @@ impl crate::App {
         // ⭐⭐⭐ **E a seleção 3D também, pela mesma razão e na mesma unidade** — ver
         // [`field_selection_ids`]. ⚠️ Tem de ser AQUI, antes do `restore`: depois dele os bits que a
         // seleção guarda já apontam para entidades que deixaram de existir.
-        let was_field: Vec<ph2d_ecs::StableId> =
-            gfx.hero_screen.as_ref().map_or_else(Vec::new, |h| {
+        //
+        // ⭐⭐⭐ **E o passo MANDA sobre o transporte** (report de 2026-09-04): refazer uma criação
+        // devolve o objecto, e a selecção de *agora* está vazia — transportá-la deixava a peça de
+        // volta **sem gizmo, para sempre**. Quando o passo traz a sua, é ela.
+        let was_field: Vec<ph2d_ecs::StableId> = match mark {
+            Some(m) => m.field.clone(),
+            None => gfx.hero_screen.as_ref().map_or_else(Vec::new, |h| {
                 let bits: Vec<u64> = h
                     .gizmo
                     .selection
@@ -118,7 +156,8 @@ impl crate::App {
                     .chain(h.gizmo.extra_selection.iter().copied())
                     .collect();
                 field_selection_ids(gfx.sim.world(), &bits)
-            });
+            }),
+        };
         let (vec, map, flip, flip_map) = state.restore(&mut gfx.sim, &gfx.component_registry);
         gfx.vec_scene = vec;
         gfx.flip = flip;
@@ -189,6 +228,10 @@ impl crate::App {
         // substituir — re-Aplicar sobre ela apagaria o estado restaurado. A sessão termina.
         self.flip_colorize.end_live();
         self.undo_baseline = Some(state.clone());
+        // ⚠️ **E a marca do baseline também** — ela é a selecção que pertence ao estado que acabou
+        // de virar presente. Sem esta linha o passo SEGUINTE seria empurrado com a marca de antes
+        // do restauro, e o `Ctrl+Z` a seguir devolveria a mão ao objecto errado.
+        self.undo_baseline_selection = self.field_selection_mark();
         self.title_dirty = true;
     }
 
@@ -198,13 +241,14 @@ impl crate::App {
         let Some(current) = self.capture_project() else {
             return;
         };
+        let agora = self.field_selection_mark();
         let restored = if redo {
-            self.undo.redo(current)
+            self.undo.redo(current, agora)
         } else {
-            self.undo.undo(current)
+            self.undo.undo(current, agora)
         };
-        if let Some(state) = restored {
-            self.apply_project(&state);
+        if let Some((state, mark)) = restored {
+            self.apply_project_with(&state, Some(&mark));
             if Self::undo_log_on() {
                 eprintln!("[undo] {} aplicado", if redo { "redo" } else { "undo" });
             }
@@ -284,9 +328,16 @@ impl crate::App {
         // `undo_baseline` só é substituído quando um passo é registado. ⇒ duas acções viram um
         // `Ctrl+Z` só, que é o sintoma que o artista descreve. *Um passo suprimido e um passo
         // ausente leem-se iguais de fora, e as causas são opostas.*
-        let motivo = if !had_input {
-            Some("sem entrada neste quadro")
-        } else if self.held_button.is_some() {
+        //
+        // ⛔⛔ **A ORDEM É A DO DIAGNÓSTICO, e ela custou uma jornada inteira** (04/09): os cinco
+        // motivos suprimem igual, mas dois deles podem ser verdade **ao mesmo tempo** — um arrasto
+        // em curso em que o ponteiro não se mexeu neste quadro é `gesto` **e** `sem entrada`. Com o
+        // `!had_input` à frente, o log do Enio saía cheio de *«sem entrada neste quadro»* sobre
+        // quadros que eram, de facto, um arrasto do gizmo — e mandou-me procurar uma deriva do
+        // documento que não existe. ⇒ **os motivos que são um FACTO do app vêm primeiro; a
+        // AUSÊNCIA de eventos é o último.** *Um diagnóstico que nomeia a causa errada entre duas
+        // simultâneas é pior do que não nomear nenhuma.*
+        let motivo = if self.held_button.is_some() {
             Some("botao do rato em baixo")
         } else if crate::field3d_smoke::gesture_in_progress() {
             Some("arrasto do gizmo 3D em curso")
@@ -294,6 +345,8 @@ impl crate::App {
             Some("colorize a recalcular")
         } else if self.ui_state_live {
             Some("transicao de estado de UI ao vivo")
+        } else if !had_input {
+            Some("sem entrada neste quadro")
         } else {
             None
         };
@@ -304,8 +357,14 @@ impl crate::App {
                 && let Some(atual) = self.capture_project()
                 && self.undo_baseline.as_ref() != Some(&atual)
             {
+                let partes = self
+                    .undo_baseline
+                    .as_ref()
+                    .map(|b| atual.parts_that_differ(b))
+                    .unwrap_or_default();
                 eprintln!(
-                    "[undo] ⛔ o documento MUDOU e o passo foi SUPRIMIDO — motivo: {motivo}                      (ela vai FUNDIR-SE no proximo passo)"
+                    "[undo] ⛔ o documento MUDOU em {partes:?} e o passo foi SUPRIMIDO — motivo: \
+                     {motivo} (ela vai FUNDIR-SE no proximo passo)"
                 );
             }
             return;
@@ -342,6 +401,9 @@ impl crate::App {
                 base.is_some_and(|b| b.vec != current.vec),
                 base.is_some_and(|b| b.flip != current.flip),
             );
+            if let Some(b) = base {
+                eprintln!("[undo]   partes: {:?}", current.parts_that_differ(b));
+            }
             if let Some(b) = base
                 && b.vec != current.vec
             {
@@ -359,7 +421,12 @@ impl crate::App {
             }
         }
         if let Some(base) = self.undo_baseline.replace(current) {
-            self.undo.push_undo(base);
+            // ⚠️ **A marca que vai com o passo é a do BASELINE**, não a de agora — ela descreve o
+            // estado que está a ser empurrado. E a de agora passa a ser a do baseline novo, pela
+            // mesma mecânica do próprio `undo_baseline`.
+            let agora = self.field_selection_mark();
+            let mark = std::mem::replace(&mut self.undo_baseline_selection, agora);
+            self.undo.push_undo(base, mark);
         }
     }
 }

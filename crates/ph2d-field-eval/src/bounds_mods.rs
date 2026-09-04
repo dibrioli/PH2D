@@ -46,9 +46,9 @@ pub(crate) fn axis_shift_of(m: Unary) -> usize {
         Unary::Bend { axis, .. } => axis.shift_to(BEND_AXIS),
         Unary::Shell { .. }
         | Unary::Offset { .. }
-        | Unary::Mirror
-        | Unary::MirrorY
-        | Unary::MirrorZ => 0,
+        | Unary::Mirror { .. }
+        | Unary::MirrorY { .. }
+        | Unary::MirrorZ { .. } => 0,
     }
 }
 
@@ -81,14 +81,17 @@ fn canonical_step(b: Ball, m: Unary) -> Ball {
         // O espelho é num plano do eixo LOCAL: a cópia está com aquela coordenada trocada de
         // sinal. ⚠️ **Uma função, três eixos** — três braços com a conta escrita à mão seriam
         // três sítios onde um índice errado dá uma caixa que **corta a peça** em silêncio.
-        Unary::Mirror | Unary::MirrorY | Unary::MirrorZ => {
+        Unary::Mirror { offset } | Unary::MirrorY { offset } | Unary::MirrorZ { offset } => {
             let k = match m {
-                Unary::Mirror => 0,
-                Unary::MirrorY => 1,
+                Unary::Mirror { .. } => 0,
+                Unary::MirrorY { .. } => 1,
                 _ => 2,
             };
             let mut c = b.center;
-            c[k] = -c[k];
+            // ⭐ **A reflexão é no plano `offset`, não na origem** — `c' = 2·off − c`. Com
+            // `offset = 0` é o `−c` de sempre, ao bit; com o plano fora da peça é a caixa do
+            // GÉMEO, e uma caixa que não o contenha **recorta-o** na marcha e na exportação.
+            c[k] = 2.0 * offset - c[k];
             // ⚠️ A cópia tem a **mesma** caixa — só o centro é que reflecte —, e o `merge` sabe
             // fundir as duas.
             b.merge(Ball::of(c, b.radius, b.half()))

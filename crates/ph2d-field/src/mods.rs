@@ -53,12 +53,38 @@ pub enum Unary {
     /// **Afastamento**: move a superfície por `distance`. Positivo cresce (e arredonda a quina
     /// convexa); negativo encolhe.
     Offset { distance: f32 },
-    /// **Espelho** no plano `x = 0` do nó: o que existe de um lado passa a existir dos dois.
+    /// **Espelho** num plano perpendicular ao **X local**: o que existe de um lado passa a existir
+    /// dos dois. Os outros dois eixos têm variante própria ([`Unary::MirrorY`], [`Unary::MirrorZ`]);
+    /// ver lá **por que a cerca que dizia «roda o nó» caiu**.
     ///
-    /// ⚠️ **Sem número nenhum** — e o eixo é o **X local**. Os outros dois têm variante própria
-    /// ([`Unary::MirrorY`], [`Unary::MirrorZ`]); ver lá **por que a cerca que dizia «roda o nó»
-    /// caiu**.
-    Mirror,
+    /// # ⭐⭐⭐ O `offset` é ONDE o plano está — e sem ele isto era um controlo MORTO
+    ///
+    /// Report do Enio, 2026-09-04: *«Mirror não funcionou»*. ⚠️ **Uma primitiva é construída em
+    /// volta da origem local dela por construção**, então um plano em `x = 0` passa pelo centro
+    /// dela **sempre**, e a dobra `x → |x|` devolve a mesma peça **ao bit**. Medido antes da cura,
+    /// sobre uma caixa:
+    ///
+    /// | caso | maior diferença de campo |
+    /// |---|---:|
+    /// | folha na origem | **`0.000000`** |
+    /// | folha **movida** `0,5` em `x` | **`0.000000`** |
+    /// | espelho numa **operação** com filho descentrado | `1.000000` |
+    ///
+    /// ⛔ **Mover a peça não ajudava**, e é isso que fechava a porta: a pose do nó é aplicada
+    /// **depois** da pilha (ver o doc deste `enum`), logo o plano viaja com o objeto e **nenhum
+    /// gesto do produto o deslocava**. O único sítio em que o espelho fazia alguma coisa era numa
+    /// **operação** com filhos descentrados — e era esse o caso que o gate media.
+    ///
+    /// # ⚠️ O sinal, e os DOIS gestos que um número só dá
+    ///
+    /// A dobra guarda a metade `x ≥ offset` e reflecte-a. Nascendo **fora** da peça
+    /// ([`Unary::born`]) o gesto é *duplicar ao lado*; arrastando o plano para **dentro** dela o
+    /// gesto passa a ser *modelar metade e espelhar*, que é o outro uso de um espelho em todo
+    /// modelador. **Um número, os dois usos** — e `offset = 0` é a lei de sempre, ao bit.
+    ///
+    /// ⚠️ **O campo é o ÚLTIMO da variante, e isso é load-bearing** — o documento serializa por
+    /// POSIÇÃO. Ver [`crate::FIELD_DOC_VERSION`] v17.
+    Mirror { offset: f32 },
     /// **Matriz linear**: `count` cópias espaçadas de `spacing` ao longo do **X local**.
     ///
     /// ⚠️ Mesmo eixo, mesma razão do [`Unary::Mirror`].
@@ -116,8 +142,9 @@ pub enum Unary {
         /// *Append-only é o que faz uma extensão não ser uma migração.*
         axis: Axis,
     },
-    /// **Espelho** no plano `y = 0` do nó. Ver [`Unary::MirrorZ`] para a razão de existir.
-    MirrorY,
+    /// **Espelho** num plano perpendicular ao **Y local**. Ver [`Unary::MirrorZ`] para a razão de
+    /// existir e [`Unary::Mirror`] para o que o `offset` é.
+    MirrorY { offset: f32 },
     /// **Espelho** no plano `z = 0` do nó.
     ///
     /// # ⛔ A cerca que estava escrita, e por que ela caiu (2026-08-26)
@@ -139,7 +166,9 @@ pub enum Unary {
     /// ⚠️ E os irmãos de eixo — [`Unary::Array`] (X) e [`Unary::Radial`] (Z) — **ficam como estão**:
     /// eles têm número, e uma matriz por eixo é outra pergunta (três botões × dois números). O que
     /// o Enio pediu foi o espelho.
-    MirrorZ,
+    ///
+    /// ⚠️ O `offset` é o mesmo dos irmãos — ver [`Unary::Mirror`].
+    MirrorZ { offset: f32 },
     /// ⭐⭐⭐ **Torção**: a peça roda em torno do **Z local**, `turns` voltas por unidade de altura,
     /// e só entre `lower` e `upper`.
     ///
@@ -261,9 +290,9 @@ impl Unary {
             Unary::Array { joint, .. } | Unary::Radial { joint, .. } => joint,
             Unary::Shell { .. }
             | Unary::Offset { .. }
-            | Unary::Mirror
-            | Unary::MirrorY
-            | Unary::MirrorZ
+            | Unary::Mirror { .. }
+            | Unary::MirrorY { .. }
+            | Unary::MirrorZ { .. }
             | Unary::Taper { .. }
             | Unary::Twist { .. }
             | Unary::Bend { .. } => Joint::SHARP,
@@ -278,16 +307,28 @@ impl Unary {
     /// numa fração da peça, e o número vem de fora ([`crate::characteristic_size`]), porque só quem
     /// vê a peça sabe o que é fino nela.
     #[must_use]
-    pub fn born(kind: UnaryKind, scale: f32) -> Unary {
+    pub fn born(kind: UnaryKind, scale: f32, reach: [f32; 3]) -> Unary {
         let fraction = |f: f32| (scale * f).max(f32::MIN_POSITIVE);
+        // ⭐⭐⭐ **O plano do espelho nasce FORA da peça** — é o que faz o chip mudar um pixel no
+        // primeiro clique, e é a mesma lei do [`ARRAY_BIRTH_SPAN`] («as duas encostadas — que é
+        // onde o artista começa a afastá-las»).
+        //
+        // ⚠️ **`reach` e não `scale`, e as duas respondem a perguntas OPOSTAS:** a escala é o que é
+        // **fino** na peça (uma parede), o alcance é o que a **contém**. Um plano posto a uma
+        // escala característica de distância cortaria uma peça alongada pelo meio — visível, mas
+        // não o gesto que o botão promete.
+        //
+        // ⚠️ **Por EIXO** — o espelho nomeia o dele, então o plano nasce exactamente na face da
+        // peça naquele eixo, e o gémeo fica encostado.
+        let plano = |i: usize| -reach[i].abs().max(f32::MIN_POSITIVE);
         match kind {
             UnaryKind::Shell => Unary::Shell {
                 thickness: fraction(SHELL_BIRTH_FRACTION),
             },
             UnaryKind::Offset => Unary::Offset { distance: 0.0 },
-            UnaryKind::Mirror => Unary::Mirror,
-            UnaryKind::MirrorY => Unary::MirrorY,
-            UnaryKind::MirrorZ => Unary::MirrorZ,
+            UnaryKind::Mirror => Unary::Mirror { offset: plano(0) },
+            UnaryKind::MirrorY => Unary::MirrorY { offset: plano(1) },
+            UnaryKind::MirrorZ => Unary::MirrorZ { offset: plano(2) },
             // ⚠️ **Duas cópias, e o espaçamento é a própria peça.** Uma matriz nasce com o número
             // mínimo que se **vê** ser uma matriz (uma cópia é a peça intacta), e com as duas
             // encostadas — que é onde o artista começa a afastá-las. Um espaçamento menor do que a
@@ -353,9 +394,9 @@ impl Unary {
         match self {
             Unary::Shell { .. } => UnaryKind::Shell,
             Unary::Offset { .. } => UnaryKind::Offset,
-            Unary::Mirror => UnaryKind::Mirror,
-            Unary::MirrorY => UnaryKind::MirrorY,
-            Unary::MirrorZ => UnaryKind::MirrorZ,
+            Unary::Mirror { .. } => UnaryKind::Mirror,
+            Unary::MirrorY { .. } => UnaryKind::MirrorY,
+            Unary::MirrorZ { .. } => UnaryKind::MirrorZ,
             Unary::Array { .. } => UnaryKind::Array,
             Unary::Taper { .. } => UnaryKind::Taper,
             Unary::Radial { .. } => UnaryKind::Radial,

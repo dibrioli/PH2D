@@ -29,7 +29,8 @@ fn unreadable_pattern_art_refuses_the_whole_file_and_leaves_the_session_alone() 
     app.playhead.play();
     app.playhead.advance_ticks(120);
     let before = app.playhead.time();
-    app.undo.push_undo(empty_state());
+    app.undo
+        .push_undo(empty_state(), crate::undo::SelectionMark::default());
 
     let path = tmp_path("load_bad_pattern_art");
     // Não é um `(u32, Vec<SavedPatternArt>)`.
@@ -59,7 +60,8 @@ fn unreadable_pattern_art_refuses_the_whole_file_and_leaves_the_session_alone() 
 #[test]
 fn a_well_formed_pattern_art_blob_still_opens_the_file() {
     let mut app = headless_app();
-    app.undo.push_undo(empty_state());
+    app.undo
+        .push_undo(empty_state(), crate::undo::SelectionMark::default());
     let arte = crate::project_texture_pattern::encode_for_test(4, 3);
 
     let path = tmp_path("load_good_pattern_art");

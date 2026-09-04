@@ -189,9 +189,13 @@ fn vivo(k: UnaryKind) -> Unary {
         // *Um catch-all numa fixtura não devolve um erro — devolve a peça errada com o nome certo.*
         UnaryKind::Shell => Unary::Shell { thickness: 0.06 },
         UnaryKind::Offset => Unary::Offset { distance: 0.05 },
-        UnaryKind::Mirror => Unary::Mirror,
-        UnaryKind::MirrorY => Unary::MirrorY,
-        UnaryKind::MirrorZ => Unary::MirrorZ,
+        // ⚠️ **Este fica no plano `0` de propósito, ao contrário dos irmãos de correcção**: aqui
+        // mede-se um RELÓGIO, e um plano vivo dobra a peça — o número passaria a descrever outra
+        // cena e as barras desta bancada foram calibradas nesta. *A cegueira ao knob é real e é
+        // paga noutro sítio* (`the_box_of_a_bound_contains_the_piece`).
+        UnaryKind::Mirror => Unary::Mirror { offset: 0.0 },
+        UnaryKind::MirrorY => Unary::MirrorY { offset: 0.0 },
+        UnaryKind::MirrorZ => Unary::MirrorZ { offset: 0.0 },
         UnaryKind::Array => Unary::Array {
             count: 3,
             spacing: 0.5,

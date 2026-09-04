@@ -202,6 +202,7 @@ mod field3d_shapes;
 mod field3d_smoke;
 /// ADR-0161 W26 — o NUMERO digitado no meio do gesto do gizmo (o `G X 0,5` do Blender).
 mod field3d_typed;
+mod field3d_undo_probe;
 /// ADR-0161 W109 — o cabeçalho CLICÁVEL de cada vista: o menu que troca a câmera daquele quadrante.
 mod field3d_view_menu;
 mod field3d_views;
@@ -1222,6 +1223,7 @@ impl App {
             vec_history: ph2d_vec_edit::History::new(),
             undo: crate::undo::ProjectUndo::default(),
             undo_baseline: None,
+            undo_baseline_selection: crate::undo::SelectionMark::default(),
             undo_request: None,
             undo_button: None,
             any_input_this_frame: false,

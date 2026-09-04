@@ -105,6 +105,58 @@ fn subtree_scale(world: &World, root: Entity) -> f32 {
     }
 }
 
+/// ⭐⭐⭐ **O que CONTÉM a subárvore, eixo a eixo** — a grandeza OPOSTA à [`subtree_scale`], e a que
+/// o plano de um espelho precisa.
+///
+/// ⚠️ **As duas respondem a perguntas opostas, e emprestar uma à outra é um defeito medido:** a
+/// escala é o que é *fino* na peça (a espessura de uma casca nasce dela, e por isso ela é o
+/// **mínimo**); o alcance é o que a *contém* (um plano posto lá fora nunca a corta, e por isso ele
+/// é o **máximo**). Com a escala no lugar do alcance, um espelho posto numa peça alongada nasceria
+/// com o plano **dentro** dela — visível, mas não o gesto que o botão promete.
+///
+/// ⚠️ **Por EIXO, e não um raio**: o espelho nomeia o eixo dele
+/// ([`ph2d_field::UnaryKind::Mirror`] e irmãos), então o plano pode nascer exactamente na face da
+/// peça naquele eixo — que é o «as duas encostadas» do [`ph2d_field::Unary::Array`]. Um raio único
+/// poria o gémeo longe do corpo numa peça achatada.
+///
+/// ⚠️ **A pose do PRÓPRIO nó não conta** — a pilha de modificadores corre no espaço local dele, e a
+/// pose é aplicada depois. Só as poses dos FILHOS entram.
+fn subtree_reach(world: &World, root: Entity) -> [f32; 3] {
+    let mut best = [0.0f32; 3];
+    let mut stack = vec![(root, 1.0f32, [0.0f32; 3])];
+    while let Some((e, acc, off)) = stack.pop() {
+        let Some(node) = world.get::<FieldNode>(e) else {
+            continue;
+        };
+        match &node.shape {
+            NodeShape::Leaf(p) => {
+                let h = ph2d_field::bounding_half_extents(p);
+                for i in 0..3 {
+                    best[i] = best[i].max(off[i].abs() + h[i] * acc);
+                }
+            }
+            // A caixa de uma escultura vive no campo amostrado, que o mundo não conhece — a mesma
+            // ausência declarada que a [`subtree_scale`] já nomeia.
+            NodeShape::Sampled { .. } => {}
+            NodeShape::Combine(_) => {
+                if let Some(children) = world.get::<Children>(e) {
+                    for c in children.iter().copied().collect::<Vec<_>>() {
+                        let (s, t) = world
+                            .get::<FieldPose>(c)
+                            .map_or((1.0, [0.0; 3]), |p| (p.xform.scale, p.xform.translation));
+                        let mut d = off;
+                        for i in 0..3 {
+                            d[i] += t[i] * acc;
+                        }
+                        stack.push((c, acc * s, d));
+                    }
+                }
+            }
+        }
+    }
+    best.map(|v| if v > 0.0 { v } else { 1.0 })
+}
+
 /// ⭐ **Todos os números autorados de um nó**, na ordem em que o painel os mostra.
 ///
 /// Posição · rotação · escala (só onde ela não compete com nada) · dimensões da forma.
@@ -303,7 +355,11 @@ pub fn add_mod(world: &mut World, entity: Entity, kind: ph2d_field::UnaryKind) -
     if matches!(node.shape, NodeShape::Sampled { .. }) {
         return false;
     }
-    let born = Unary::born(kind, subtree_scale(world, entity));
+    let born = Unary::born(
+        kind,
+        subtree_scale(world, entity),
+        subtree_reach(world, entity),
+    );
     let mut e = world.entity_mut(entity);
     if let Some(mut m) = e.get_mut::<FieldMods>() {
         m.stack.push(born);

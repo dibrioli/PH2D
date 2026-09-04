@@ -13,6 +13,7 @@
 
 use crate::ops;
 use crate::stack_bend::{BEND_FOLD_MARGIN, bend, bend_curvature, bend_reach};
+use crate::stack_mirror::dobra;
 use crate::stack_taper::{taper, taper_divisor, taper_floor, taper_reach};
 use fidget::context::Tree;
 use ph2d_field::Unary;
@@ -52,11 +53,13 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
     // princípio ao fim, que é o caso de omissão. E onde a lei das duas células já estava certa, as
     // células a mais entram por `min` e **não mexem na superfície**: elas só revelam matéria que
     // estava a ser perdida.
+    // ⭐⭐⭐ **E um ESPELHO fora da origem é da mesma família** — ver
+    // [`crate::stack_mirror::desloca_a_seccao`], que traz a medição.
     let deformado = mods.iter().any(|m| {
         matches!(
             m,
             Unary::Twist { .. } | Unary::Bend { .. } | Unary::Taper { .. }
-        )
+        ) || crate::stack_mirror::desloca_a_seccao(m)
     });
     for m in mods {
         acc = match *m {
@@ -67,11 +70,17 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
             // ⭐ **Dobra do domínio**: `x → |x|`. O que existe de um lado passa a existir dos dois, e
             // o campo continua uma distância exata — não há costura a fechar, que é o mesmo motivo
             // de a booleana e a casca não poderem falhar.
-            Unary::Mirror => acc.remap_xyz(Tree::x().abs(), Tree::y(), Tree::z()),
+            Unary::Mirror { offset } => {
+                acc.remap_xyz(dobra(Tree::x(), offset), Tree::y(), Tree::z())
+            }
             // ⭐ Os outros dois eixos, pela MESMA lei — ver [`ph2d_field::Unary::MirrorZ`] para a
             // cerca que caiu.
-            Unary::MirrorY => acc.remap_xyz(Tree::x(), Tree::y().abs(), Tree::z()),
-            Unary::MirrorZ => acc.remap_xyz(Tree::x(), Tree::y(), Tree::z().abs()),
+            Unary::MirrorY { offset } => {
+                acc.remap_xyz(Tree::x(), dobra(Tree::y(), offset), Tree::z())
+            }
+            Unary::MirrorZ { offset } => {
+                acc.remap_xyz(Tree::x(), Tree::y(), dobra(Tree::z(), offset))
+            }
             // ⭐⭐⭐ **A LEI É A DE SEMPRE; O EIXO ENTRA POR FORA** — ver [`conjugado`], e note que
             // para o eixo de omissão ele é a **identidade ao bit**.
             Unary::Array {
@@ -302,9 +311,9 @@ fn step_divisor(m: Unary, ball: crate::bounds::Ball, corrente: crate::bounds::Ba
         // Os outros são exactos: eles lêem o campo, não o remodelam.
         Unary::Shell { .. }
         | Unary::Offset { .. }
-        | Unary::Mirror
-        | Unary::MirrorY
-        | Unary::MirrorZ
+        | Unary::Mirror { .. }
+        | Unary::MirrorY { .. }
+        | Unary::MirrorZ { .. }
         | Unary::Array { .. }
         | Unary::Radial { .. } => 1.0,
     }

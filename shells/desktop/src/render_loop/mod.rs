@@ -983,6 +983,7 @@ impl crate::App {
         // reconstrói quando a SELEÇÃO muda — refazê-lo por frame jogaria fora o memo do
         // arranjo e cada hover voltaria a pagar a booleana.
         self.build_smoke();
+        self.field3d_undo_probe();
         self.stack_smoke();
         self.motion_path_smoke();
         self.harmony_smoke();

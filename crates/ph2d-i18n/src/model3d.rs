@@ -165,7 +165,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.export.fine" => "Export Fine",
         "panel.model3d.export.max" => "Export Max",
         // ⭐ Os nomes das linhas de número dos modificadores. ⚠️ Um modificador pode ter VÁRIOS
-        // (a matriz tem dois) e pode não ter nenhum (o espelho).
+        // (a matriz tem dois). ⛔ **Nenhum tem zero desde 2026-09-04**: o espelho era o único, e
+        // era exactamente por isso que ele acendia sem mudar um pixel.
         "field.mod.thickness" => "Thickness",
         "field.mod.distance" => "Distance",
         "field.mod.count" => "Copies",
@@ -191,6 +192,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // "Direction"**: as quatro referências (Blender *Deform Axis*, 3ds Max *Bend Axis*, Houdini,
         // ZBrush) dizem eixo, e *direction* nesta casa já é o sentido de um gradiente.
         "field.mod.axis" => "Axis",
+        // ⭐⭐⭐ **ONDE o plano do espelho está** (report do Enio, 2026-09-04). ⚠️ **"Plane" e não
+        // "Distance"**: "Distance" já é o número do afastamento (`field.mod.distance`) e quer dizer
+        // outra coisa — *quanto a superfície anda*. Aqui o número é a **posição** de um plano, e é
+        // isso que o Blender ("Mirror Object"), o 3ds Max ("Mirror Axis") e o MoI nomeiam.
+        "field.mod.mirror_plane" => "Plane",
         // ⚠️ Uma letra só, e é de propósito: a fileira tem três botões numa linha de painel, e o
         // artista lê X/Y/Z de relance. Os nomes por extenso não cabem e não acrescentam nada.
         "field.axis.x" => "X",

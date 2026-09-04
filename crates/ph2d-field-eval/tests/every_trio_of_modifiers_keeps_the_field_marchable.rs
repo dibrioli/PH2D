@@ -64,9 +64,16 @@ fn vivo(k: UnaryKind) -> Unary {
     match k {
         UnaryKind::Shell => Unary::Shell { thickness: 0.06 },
         UnaryKind::Offset => Unary::Offset { distance: 0.05 },
-        UnaryKind::Mirror => Unary::Mirror,
-        UnaryKind::MirrorY => Unary::MirrorY,
-        UnaryKind::MirrorZ => Unary::MirrorZ,
+        // ⛔⛔ **O PLANO DE NASCIMENTO, e não `0`** (2026-09-04): no plano `0` a dobra é a
+        // IDENTIDADE sobre uma caixa centrada, e os `1 000` trios mediam o espelho **desligado**.
+        // Com ele vivo, `[MirrorY, Radial]` media **`223,90`** — e a cura foi ensinar à bandeira da
+        // quiralidade que um espelho fora da origem é da família dos deformadores (ver
+        // `stack::stacked`). *Uma fixtura no neutro de um knob não testa esse knob.*
+        //
+        // ⚠️ Os três estão na **face** da peça (`[0.35, 0.35, 0.30]`), que é onde o `born` os põe.
+        UnaryKind::Mirror => Unary::Mirror { offset: -0.35 },
+        UnaryKind::MirrorY => Unary::MirrorY { offset: -0.35 },
+        UnaryKind::MirrorZ => Unary::MirrorZ { offset: -0.30 },
         UnaryKind::Array => Unary::Array {
             count: 3,
             spacing: 0.5,

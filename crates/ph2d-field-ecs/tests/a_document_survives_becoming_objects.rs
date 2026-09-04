@@ -39,7 +39,7 @@ fn peca_completa(com_mods: bool) -> FieldDoc {
     );
     if com_mods {
         a.mods = vec![
-            Unary::MirrorZ,
+            Unary::MirrorZ { offset: 0.0 },
             Unary::Twist {
                 turns: 0.35,
                 lower: -1.0,
@@ -120,7 +120,7 @@ fn every_modifier_kind_survives_the_round_trip() {
                 chamfer: 0.0,
             }),
         );
-        n.mods = vec![Unary::born(k, 0.3)];
+        n.mods = vec![Unary::born(k, 0.3, [0.3; 3])];
         let antes = FieldDoc::new(vec![n], NodeId(0)).expect("peça");
         assert_eq!(
             antes.nodes()[0].mods,

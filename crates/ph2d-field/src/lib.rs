@@ -152,7 +152,21 @@ use serde::{Deserialize, Serialize};
 /// 2026-08-26. Colapsá-las num campo apagaria **duas variantes do meio** do enum, e o postcard é
 /// posicional: toda peça gravada passaria a ler-se como outra coisa, **em silêncio**. A `Shell` e o
 /// `Offset` ficam de fora por não terem direcção nenhuma.
-pub const FIELD_DOC_VERSION: u32 = 16;
+///
+/// # v17 — o PLANO do espelho (report do Enio, 2026-09-04: *«Mirror não funcionou»*)
+///
+/// As três variantes de espelho ganharam um `offset: f32` — **onde** o plano está, no eixo local
+/// de cada uma. ⚠️ **Sem ele o espelho era um controlo MORTO**, e não «fraco»: uma primitiva é
+/// construída em volta da origem local dela por construção, então o plano em `0` passa pelo centro
+/// da forma **sempre**, e a dobra devolve a mesma peça **ao bit** (`0.000000` de diferença de
+/// campo, na origem e com a forma movida). Ver [`Unary::Mirror`] para a tabela.
+///
+/// ⚠️ **O campo é o ÚLTIMO de cada variante** — do lado aditivo da regra —, mas as três eram
+/// variantes de **unidade**: um `Mirror` gravado ocupava só o índice, e passa a ocupar índice mais
+/// quatro bytes. ⇒ **não é compatível para trás**, e o `PROJECT_SCHEMA` sobe por arrasto (a pilha
+/// viaja no blob do `ph2d_field_ecs::FieldMods`). ⛔ Sem degrau de migração, pela decisão do Enio
+/// de 26/08 — um ficheiro antigo é **recusado em voz alta**.
+pub const FIELD_DOC_VERSION: u32 = 17;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

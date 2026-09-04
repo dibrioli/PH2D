@@ -11186,3 +11186,154 @@ facto mudou naquele passo.*
 ⛔ **Não é o defeito desta wave** (o passo foi registado, e correctamente), mas é um instrumento a
 mentir — e foi por acreditar nele que a leitura demorou. A próxima janela mede
 `undo_capture_cache::last_report()` contra o diff verdadeiro antes de o citar outra vez.
+
+## §117 — W116: ⭐⭐⭐ *«o undo/redo está completamente destruído»* — a causa era a MÃO, não a fila (04/09)
+
+### §117.1 — Três jornadas curaram três defeitos reais e nenhuma era a causa
+
+A W113, a W114 e a W115 acharam e curaram defeitos verdadeiros do registo de passos, e o report
+voltou intacto **quatro** vezes. A razão está escrita no cabeçalho do
+[`fx_undo_smoke.rs`](../../shells/desktop/src/fx_undo_smoke.rs), sobre outro módulo e há semanas:
+*entre o gesto e o passo há uma máquina que nenhum gate de estado atravessa.* Esta wave começa por
+construir o aparelho que faltava — [`field3d_undo_probe.rs`](../../shells/desktop/src/field3d_undo_probe.rs),
+`PH2D_FIELD_UNDO_PROBE=1` — que conduz o produto **de dentro**: arrasta o gizmo pelo caminho real do
+`winit`, escolhe uma forma pela porta da paleta, empurra o intent de um chip, manda `Ctrl+Z` pelo
+roteamento real do teclado, e imprime por quadro a profundidade das duas filas, o que existe na cena
+e **o que o artista tem na mão**.
+
+### §117.2 — O que a sonda ilibou, com número
+
+| gesto conduzido | passos | `Ctrl+Z` | `Ctrl+Shift+Z` | veredito |
+|---|---|---|---|---|
+| ocioso, 25 s sem tocar em nada | `0` | — | — | ✅ **não há deriva** — o documento não muda sozinho |
+| dois arrastos do gizmo (caminho real do ponteiro) | `2` | devolve `0,399 → 0,210 → 0,000` | devolve `0,210` | ✅ exacto |
+| criar uma forma pela paleta + pôr um modificador | `2` | devolve os dois | devolve os dois | ✅ **a fila** |
+
+⇒ **a fila de undo do módulo nunca esteve partida.** A supressão durante o arrasto é a correcta
+(`motivo: arrasto do gizmo 3D em curso`), o passo nasce no `Up`, e o restauro é exacto.
+
+### §117.3 — ⛔⛔⛔ O que a sonda ACUSOU: refazer devolve a peça e **não devolve a mão**
+
+```text
+f=30 a paleta escolheu a forma 0     nos=4→5  sel=Some(..)  setas=3
+f=58 Ctrl+Z                          nos=5→4  sel=None      setas=3
+f=60                                                        setas=0   ⛔ o gizmo morreu
+f=66 Ctrl+Shift+Z (a forma VOLTA)    nos=4→5  sel=None      setas=0   ⛔ e não volta mais
+```
+
+A selecção era **transportada** através do restauro (a W113: ler o que estava escolhido *antes*,
+restaurar, devolver o que sobreviveu). Isso está certo para uma **edição** e é falso para uma
+**criação**: desfazer apaga a selecção porque o objecto deixou de existir — correcto —, e **refazer
+transporta a selecção de agora, que está vazia**. A peça volta sem gizmo, sem painel e sem alças, e
+daí em diante todo `Ctrl+Z` do artista *parece não fazer nada*, porque não há nada visível para ele
+mudar. ⭐ *Vista de fora, uma fila correcta sem a mão é indistinguível de uma fila partida* — e é
+literalmente o report.
+
+### §117.4 — A cura: a selecção PERTENCE ao passo
+
+[`SelectionMark`](../../shells/desktop/src/undo.rs) viaja **ao lado** de cada degrau das duas filas,
+em `StableId` (o restauro respawna o mundo). O `undo`/`redo` devolvem o par, e o `apply_project`
+passa a preferir a marca do passo ao transporte.
+
+⚠️ **Por que ela NÃO entra no `ProjectState`**, que seria o sítio óbvio: aquela unidade é comparada
+por igualdade a cada quadro (é assim que um passo nasce) **e** é o que o save grava. Com a selecção
+lá dentro, **cada clique de escolha registaria um passo de undo** e o ficheiro passaria a guardar
+quem estava escolhido.
+
+⚠️ **A marca do baseline é substituída EXACTAMENTE onde o `undo_baseline` é** — quando um passo
+nasce, e no restauro. Uma das duas sozinha faria o `Ctrl+Z` seguinte devolver a mão ao objecto
+errado.
+
+⛔ **A do vetorial fica como está, e é nomeado, não corrigido:** ela tem o mesmo buraco pela mesma
+razão, mas a lei dela tem dono noutra linha e um gate de arquitectura a afirmar o transporte.
+
+## §118 — W117: ⛔⛔⛔ *«Mirror não funcionou»* — ele era um controlo MORTO, e mediu-se `0.000000` (04/09)
+
+### §118.1 — O defeito, medido antes de tocar em código
+
+| caso | maior diferença de campo |
+|---|---:|
+| espelho numa **folha**, na origem | **`0.000000`** |
+| espelho numa **folha movida** `0,5` em `x` | **`0.000000`** |
+| espelho numa **operação** com filho descentrado | `1.000000` |
+
+Uma primitiva é construída **em volta da origem local dela por construção**, e o plano do espelho
+era o `x = 0` **do nó** — logo ele passa pelo centro da forma **sempre**, e a dobra `x → |x|`
+devolve a mesma peça ao bit. ⛔ **E mover a peça não ajudava**: a pose do nó é aplicada *depois* da
+pilha de modificadores, então o plano viaja com o objecto e **nenhum gesto do produto o deslocava**.
+
+⚠️ **O gate que existia media o caso raro.** O `a_mirror_on_an_operation_folds_an_off_centre_child`
+prova o espelho numa **operação**, e ficou verde durante todo o tempo em que a **forma** — que é o
+primeiro objecto que existe numa cena, e o único que um artista escolhe sem saber que grupos existem
+— não podia ser espelhada de maneira nenhuma.
+
+### §118.2 — A cura, e a lei que ela nomeia
+
+`Unary::Mirror`/`MirrorY`/`MirrorZ` ganham um **`offset: f32`** — **onde** o plano está, no eixo
+local de cada uma. A dobra passa a ser `t → |t − c| + c`, e ⭐ **com `c = 0` é `|t|` ao bit**.
+
+⭐⭐ **Um número, dois gestos:** nascendo **fora** da peça o gesto é *duplicar ao lado*; arrastando o
+plano para **dentro** dela é *modelar metade e espelhar*, que é o outro uso de um espelho em todo
+modelador.
+
+⭐⭐⭐ **E o valor de NASCIMENTO é o que fecha o report.** `Unary::born` passa a receber, além da
+escala, o **alcance por eixo** — e as duas respondem a perguntas **opostas**: a escala é o que é
+*fino* na peça (a espessura de uma casca nasce dela, e por isso é o **mínimo**); o alcance é o que a
+*contém* (por isso é o **máximo**). Com a escala no lugar do alcance, um espelho posto numa peça
+alongada nasceria com o plano **dentro** dela. É a mesma lei do `ARRAY_BIRTH_SPAN` (*«as duas
+encostadas — que é onde o artista começa a afastá-las»*), e o espelho era o **único** modificador
+que não a tinha.
+
+### §118.3 — O gate que faltava, e por que ele não é «todo modificador muda a peça»
+
+**Dois** modificadores nascem no ponto neutro **de propósito** — o afastamento e a inclinação — e a
+razão está escrita no `born`: *«um afastamento de zero é literalmente nada a acontecer, e é o sítio
+certo para começar a arrastar»*. Eles não são controlos mortos: eles **oferecem uma linha de
+número**, que é onde o artista descobre o gesto.
+
+⇒ a lei é a **disjunção**, e é derivada de `UnaryKind::ALL`:
+[`every_modifier_either_moves_the_field_or_offers_a_number`](../../crates/ph2d-field-eval/tests/a_modifier_either_moves_the_field_or_offers_a_number.rs)
+— *ou o modificador muda o campo ao nascer, ou ele oferece um número*. O espelho não fazia nem uma
+coisa nem outra, e era o único.
+
+⭐ **Prova de mutação:** com o plano de nascimento forçado a `0`, o irmão
+`a_mirror_born_on_a_shape_changes_the_shape` sangra com **`0.000000`** — o número do report. ⚠️ E o
+gate da disjunção fica **verde** nessa mutação, porque a linha de número passou a existir: *os dois
+são complementares, não redundantes*.
+
+### §118.4 — ⛔⛔⛔ E o plano vivo revelou um SEGUNDO defeito, alcançável em DOIS cliques
+
+Com o espelho ligado de verdade, o gate dos trios reprovou em **18** de `1 000`, todos com a mesma
+assinatura. A sonda `probe_mirror_pairs` (8 s contra os 380 s do gate) separou as leituras:
+
+| pilha | antes | depois |
+|---|---:|---:|
+| espelho **sozinho**, os três eixos, em quatro posições do plano | `1,0000` | `1,0000` |
+| **`[MirrorY, Radial]`** | **`223,8962`** | `1,0000` |
+| `[Radial, MirrorY]` · `[Mirror, Radial]` · `[MirrorZ, Radial]` | `1,0000` | `1,0000` |
+
+⭐⭐⭐ **A causa estava escrita no próprio código, para outro modificador:** a repetição radial avalia
+**duas** fatias, e isso basta *«enquanto a forma é a mesma vista de qualquer lado»*; uma torção
+antes dela torna a secção **quiral** e obriga a terceira fatia. ⚠️ **Um espelho no plano `0` aumenta
+a simetria e é inofensivo — um plano DESLOCADO empurra a matéria para um lado só e é exactamente a
+mesma quiralidade.** ⇒ a bandeira deixa de perguntar *«há um deformador?»* e passa a perguntar
+*«a secção ainda é a mesma vista de qualquer lado?»*, que é o que ela sempre significou.
+
+⛔ Sem isto o defeito era **de dois cliques** (o chip do espelho, o chip da coroa) e do tipo
+silencioso: o campo deixa de ser uma distância e a marcha atravessa a peça.
+
+⚠️ **E os quatro gates da pilha mediam o espelho DESLIGADO** — `Unary::Mirror` era um valor de
+unidade, a fixtura `vivo()` deles instanciava-o tal e qual, e a dobra na origem de uma caixa
+centrada é a identidade. Hoje três deles usam o plano de nascimento (na face da peça); o quarto —
+o do **custo** — fica no neutro **com o motivo escrito**, porque ali mede-se um relógio e um plano
+vivo mudaria a cena que calibrou as barras.
+
+### §118.5 — O preço do formato
+
+`FIELD_DOC_VERSION` **16 → 17** e `PROJECT_SCHEMA` **114 → 115**. ⛔⛔ **Este degrau NÃO é aditivo**,
+ao contrário do do eixo (v16): as três eram variantes de **unidade** (só o índice, zero bytes de
+carga) e passam a ter quatro bytes — um `Mirror` gravado num v114 lê-se, num v115, comendo os bytes
+do que vinha a seguir, **sem erro nenhum**. É esse o modo de falha que o número torna audível.
+⚠️ Quem defende os bytes é o `the_shape_of_a_saved_modifier_stack_is_pinned` (**82 → 94**, quatro
+bytes por espelho) — o instrumento que o degrau 104 da escada do `PROJECT_SCHEMA` nomeou.
+⛔ Sem degrau de migração, pela decisão do Enio de 26/08.

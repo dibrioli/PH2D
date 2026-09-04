@@ -128,20 +128,30 @@ fn push_undo_then_undo_redo_alternate() {
         ui_states: ph2d_ui_state::StateSets::default(),
         library: crate::project_library::LibraryDoc::default(),
     };
-    stack.push_undo(s0.clone());
+    // ⭐⭐ **A marca da SELEÇÃO viaja com o passo** (2026-09-04) — duas diferentes, para o gate
+    // poder dizer qual voltou. Ver [`crate::undo::SelectionMark`].
+    let m0 = crate::undo::SelectionMark {
+        field: vec![ph2d_ecs::StableId(7)],
+    };
+    let m1 = crate::undo::SelectionMark {
+        field: vec![ph2d_ecs::StableId(9)],
+    };
+    stack.push_undo(s0.clone(), m0.clone());
     assert!(stack.can_undo() && !stack.can_redo());
 
-    // Undo devolve o pré (s0) e arma o redo com o atual (s1).
-    let back = stack.undo(s1.clone()).unwrap();
-    assert_eq!(back, s0);
+    // Undo devolve o pré (s0) **com a selecção dele** e arma o redo com o atual (s1, m1).
+    let back = stack.undo(s1.clone(), m1.clone()).unwrap();
+    assert_eq!(back, (s0.clone(), m0.clone()));
     assert!(stack.can_redo());
-    // Redo devolve s1 e re-arma o undo.
-    let fwd = stack.redo(s0.clone()).unwrap();
-    assert_eq!(fwd, s1);
+    // ⭐⭐⭐ **Redo devolve s1 E a mão que estava nele** — era exactamente isto que faltava: refazer
+    // uma criação devolvia o objecto e deixava a selecção vazia, e o gizmo não voltava mais
+    // (report do Enio, 2026-09-04).
+    let fwd = stack.redo(s0.clone(), m0.clone()).unwrap();
+    assert_eq!(fwd, (s1.clone(), m1));
     assert!(stack.can_undo());
     // push_undo limpa o redo.
-    let _ = stack.undo(s1.clone());
-    stack.push_undo(s0.clone());
+    let _ = stack.undo(s1.clone(), crate::undo::SelectionMark::default());
+    stack.push_undo(s0.clone(), m0);
     assert!(!stack.can_redo());
 }
 /// O diff de undo depende disto: capturar o MESMO estado duas vezes tem de dar

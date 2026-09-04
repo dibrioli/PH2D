@@ -462,6 +462,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `FieldMods`, que para esta tripla e' opaco. Quem a defende e' o
         // `the_shape_of_a_saved_modifier_stack_is_pinned` da `ph2d-field` (77→82, um byte por
         // modificador). ⛔ SEM degrau de migracao, por decisao do Enio (26/08).
+        // PROJECT 114→115: o PLANO do espelho (report do Enio, 2026-09-04). As tres variantes de
+        // espelho da `Unary` ganharam um `offset: f32`, e o `FIELD_DOC_VERSION` subiu 16→17.
+        // ⚠️ Mesmo cego dos degraus 99/100/104/105/111: a pilha viaja dentro do `ComponentBlob` do
+        // `FieldMods`, opaco para esta tripla. Quem a defende e' o
+        // `the_shape_of_a_saved_modifier_stack_is_pinned` (82→94, quatro bytes por espelho).
+        // ⛔⛔ E este NAO e' aditivo: as tres eram variantes de UNIDADE e passaram a ter carga.
+        // ⛔ SEM degrau de migracao, por decisao do Enio (26/08).
         // PROJECT 111→112: a TAXONOMIA da biblioteca de assets (plano 07, A3). O `ProjectFile`
         // ganhou `catalogs: Vec<u8>` -- blob auto-versionado, campo APENDADO, do lado aditivo da
         // regra. O `FlipDoc` e a `VecScene` nao se mexeram, entao so' o 1.º numero sobe.

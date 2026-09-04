@@ -1143,7 +1143,7 @@ fn the_mirror_folds_the_domain_exactly() {
                     op: Op::Union(Blend::Sharp),
                     children: vec![NodeId(0)],
                 },
-                mods: vec![Unary::Mirror],
+                mods: vec![Unary::Mirror { offset: 0.0 }],
                 verb: None,
             },
         ],
@@ -2631,7 +2631,7 @@ fn the_specialisation_gives_up_under_every_modifier_that_remaps_coordinates() {
         }
     };
     for k in UnaryKind::ALL {
-        let m = Unary::born(k, 0.1);
+        let m = Unary::born(k, 0.1, [0.1; 3]);
         assert_eq!(
             crate::remaps_coordinates_for_test(&m),
             want(k),
@@ -2655,9 +2655,9 @@ fn the_bounding_box_follows_the_axis_of_the_mirror() {
     let reg = hybrid::Registry::new();
     let off = 0.4f32;
     for (axis, m) in [
-        (0usize, Unary::Mirror),
-        (1, Unary::MirrorY),
-        (2, Unary::MirrorZ),
+        (0usize, Unary::Mirror { offset: 0.0 }),
+        (1, Unary::MirrorY { offset: 0.0 }),
+        (2, Unary::MirrorZ { offset: 0.0 }),
     ] {
         let mut at = [0.0f32; 3];
         at[axis] = off;
@@ -2916,7 +2916,7 @@ fn the_table_of_who_inflates_the_gradient() {
             "Offset d=0,1",
             modded(bx.clone(), Unary::Offset { distance: 0.1 }),
         ),
-        ("Mirror", modded(bx.clone(), Unary::Mirror)),
+        ("Mirror", modded(bx.clone(), Unary::Mirror { offset: 0.0 })),
         (
             "Array 3x0,5",
             modded(
@@ -3302,9 +3302,9 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
         ));
     }
     for (n, m) in [
-        ("Mirror", Unary::Mirror),
-        ("MirrorY", Unary::MirrorY),
-        ("MirrorZ", Unary::MirrorZ),
+        ("Mirror", Unary::Mirror { offset: 0.0 }),
+        ("MirrorY", Unary::MirrorY { offset: 0.0 }),
+        ("MirrorZ", Unary::MirrorZ { offset: 0.0 }),
     ] {
         cases.push((n.into(), modded(bx.clone(), m)));
     }
@@ -4692,7 +4692,7 @@ fn composition_cases() -> Vec<(String, FieldDoc)> {
                 axis: ph2d_field::mods::TAPER_AXIS,
             },
         ),
-        ("Mirror", ph2d_field::Unary::Mirror),
+        ("Mirror", ph2d_field::Unary::Mirror { offset: 0.0 }),
         (
             "Radial 5",
             ph2d_field::Unary::Radial {
@@ -4885,9 +4885,9 @@ fn the_bound_sums_squares_and_a_live_joint_takes_the_max() {
 #[test]
 fn a_mirror_on_an_operation_folds_an_off_centre_child() {
     for (axis, m) in [
-        (0usize, ph2d_field::Unary::Mirror),
-        (1, ph2d_field::Unary::MirrorY),
-        (2, ph2d_field::Unary::MirrorZ),
+        (0usize, ph2d_field::Unary::Mirror { offset: 0.0 }),
+        (1, ph2d_field::Unary::MirrorY { offset: 0.0 }),
+        (2, ph2d_field::Unary::MirrorZ { offset: 0.0 }),
     ] {
         let off = 0.35f32;
         let mut at = [0.0f32; 3];

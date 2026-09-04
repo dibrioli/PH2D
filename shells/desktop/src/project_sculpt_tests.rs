@@ -34,7 +34,8 @@ fn an_unreadable_sculpture_refuses_the_whole_load() {
     app.playhead.play();
     app.playhead.advance_ticks(120);
     let before = app.playhead.time();
-    app.undo.push_undo(empty_state());
+    app.undo
+        .push_undo(empty_state(), crate::undo::SelectionMark::default());
 
     let path = tmp_path("sculpt_unreadable");
     // Bytes que não são um documento de escultura — o arquivo remendado.

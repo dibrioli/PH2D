@@ -583,5 +583,25 @@
 /// os bytes mudaram **dentro de um `ComponentBlob`**, que para ela é opaco. *Está escrito aqui
 /// porque a próxima pessoa olha para a tripla primeiro.*
 ///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08.///
+/// # 120 -> 121 — o PLANO do espelho (report do Enio, 2026-09-04: *«Mirror não funcionou»*)
+///
+/// As três variantes de espelho da `ph2d_field::Unary` ganharam um `offset: f32`, e o
+/// `FIELD_DOC_VERSION` subiu **16 -> 17**. ⚠️ **Sobe por arrasto pelo mesmo caminho do 104**: a
+/// pilha de modificadores viaja, posicionalmente, dentro do `ComponentBlob` do
+/// `ph2d_field_ecs::FieldMods`, que para a tripla é um `Vec<u8>` opaco.
+///
+/// ⛔⛔ **E aqui o campo NÃO é «apendado do lado aditivo», ao contrário do degrau 111:** as três
+/// eram variantes de **unidade** (só o índice, zero bytes de carga), e passam a ter quatro bytes.
+/// Um `Mirror` gravado num v114 lê-se, num v115, comendo os bytes do que vinha a seguir — **sem
+/// erro nenhum**, que é o modo de falha que este número existe para tornar audível.
+///
+/// ⚠️ **Quem defende os bytes é o `the_shape_of_a_saved_modifier_stack_is_pinned`** da
+/// `ph2d-field` (`82 -> 94`, quatro bytes por espelho) — o instrumento que o degrau 104 nomeou.
+///
+/// ⭐ **E o `offset = 0` é a lei de sempre AO BIT** (a dobra na origem do nó): o que muda é o valor
+/// de NASCIMENTO, que passa a pôr o plano na face da peça — sem isso o chip acendia e o campo era
+/// bit a bit igual, medido em `0.000000`.
+///
 /// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08.
-pub(crate) const PROJECT_SCHEMA: u32 = 120;
+pub(crate) const PROJECT_SCHEMA: u32 = 121;

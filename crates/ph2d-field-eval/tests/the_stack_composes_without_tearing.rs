@@ -28,9 +28,9 @@ fn vivo(k: UnaryKind) -> Unary {
     match k {
         UnaryKind::Shell => Unary::Shell { thickness: 0.06 },
         UnaryKind::Offset => Unary::Offset { distance: 0.05 },
-        UnaryKind::Mirror => Unary::Mirror,
-        UnaryKind::MirrorY => Unary::MirrorY,
-        UnaryKind::MirrorZ => Unary::MirrorZ,
+        UnaryKind::Mirror => Unary::Mirror { offset: -0.35 },
+        UnaryKind::MirrorY => Unary::MirrorY { offset: -0.35 },
+        UnaryKind::MirrorZ => Unary::MirrorZ { offset: -0.30 },
         UnaryKind::Array => Unary::Array {
             count: 3,
             spacing: 0.5,
@@ -186,9 +186,9 @@ fn every_modifier_alone_keeps_the_field_marchable() {
                 .iter()
                 .map(|&d| Unary::Offset { distance: d })
                 .collect(),
-            UnaryKind::Mirror => vec![Unary::Mirror],
-            UnaryKind::MirrorY => vec![Unary::MirrorY],
-            UnaryKind::MirrorZ => vec![Unary::MirrorZ],
+            UnaryKind::Mirror => vec![Unary::Mirror { offset: -0.35 }],
+            UnaryKind::MirrorY => vec![Unary::MirrorY { offset: -0.35 }],
+            UnaryKind::MirrorZ => vec![Unary::MirrorZ { offset: -0.30 }],
             UnaryKind::Array => [2u32, 3, 8, 64]
                 .iter()
                 .map(|&count| Unary::Array {

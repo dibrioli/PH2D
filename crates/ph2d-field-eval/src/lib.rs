@@ -42,6 +42,7 @@ pub mod profile_index;
 /// ⭐ A pilha de modificadores de um nó — ver [`stack`].
 pub(crate) mod stack;
 pub(crate) mod stack_bend;
+pub(crate) mod stack_mirror;
 pub(crate) mod stack_taper;
 
 /// ⭐ **A porta da SONDA para a torção** — ela existe porque a lei tem de ser medida **antes** de o
@@ -473,9 +474,9 @@ pub(crate) fn remaps_coordinates_for_test(m: &Unary) -> bool {
 fn remaps_coordinates(m: &Unary) -> bool {
     match m {
         Unary::Shell { .. } | Unary::Offset { .. } => false,
-        Unary::Mirror
-        | Unary::MirrorY
-        | Unary::MirrorZ
+        Unary::Mirror { .. }
+        | Unary::MirrorY { .. }
+        | Unary::MirrorZ { .. }
         | Unary::Array { .. }
         | Unary::Radial { .. }
         | Unary::Taper { .. }

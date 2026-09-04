@@ -182,6 +182,40 @@ impl ProjectState {
     }
 }
 
+impl ProjectState {
+    /// ⭐⭐⭐ **QUAIS PARTES DIFEREM** — o diagnóstico que faltava ao report *«o undo pula etapas»*.
+    ///
+    /// ⛔⛔ **A supressão dizia que o documento MUDOU e nunca dizia ONDE**, e as seis partes desta
+    /// unidade têm causas opostas: um `world` a mexer-se é um componente reescrito por quadro; uma
+    /// `library` a mexer-se é uma taxonomia re-codificada de outra maneira; um `vec` a mexer-se com
+    /// os mesmos ids é ORDEM. *Um diagnóstico que nomeia o facto e não o sujeito manda procurar em
+    /// seis sítios.*
+    ///
+    /// ⚠️ Só corre com o log ligado — ela compara o estado inteiro, que é o passo caro do quadro.
+    pub(crate) fn parts_that_differ(&self, other: &Self) -> Vec<&'static str> {
+        let mut v = Vec::new();
+        if self.world != other.world {
+            v.push("world");
+        }
+        if self.vec != other.vec {
+            v.push("vec");
+        }
+        if self.flip != other.flip {
+            v.push("flip");
+        }
+        if self.guides != other.guides {
+            v.push("guides");
+        }
+        if self.ui_states != other.ui_states {
+            v.push("ui_states");
+        }
+        if self.library != other.library {
+            v.push("library");
+        }
+        v
+    }
+}
+
 /// ⭐ **As leis da seleção que sobrevive ao undo** vivem no irmão — ver
 /// [`undo_selection`](self::selection).
 #[path = "undo_selection.rs"]
@@ -205,22 +239,64 @@ pub(crate) use selection::{field_selection_back, field_selection_ids, surviving_
 // ⛔ Não a reintroduza "para garantir": duas ordens canónicas é a divergência que a F2 vai
 // pagar, porque o cache incremental dela é chaveado pela mesma identidade.
 
+/// ⭐⭐⭐ **A SELEÇÃO QUE PERTENCE A UM PASSO** — e a razão de ela não caber no [`ProjectState`].
+///
+/// # ⛔⛔ O report que ela fecha (Enio, 2026-09-04: *«o undo/redo está completamente destruído»*)
+///
+/// Até aqui a seleção era **transportada** através do restauro: o [`crate::App::apply_project`] lia
+/// o que estava escolhido **antes**, restaurava o mundo, e devolvia o que tivesse sobrevivido. Isso
+/// está certo para uma EDIÇÃO e é falso para uma CRIAÇÃO — medido pela sonda desta wave:
+///
+/// ```text
+/// f=30 a paleta escolheu a forma 0     nos=4→5  sel=Some(..)  setas=3
+/// f=58 Ctrl+Z                          nos=5→4  sel=None      setas=3
+/// f=60                                                        setas=0   ⛔ o gizmo morreu
+/// f=66 Ctrl+Shift+Z (a forma VOLTA)    nos=4→5  sel=None      setas=0   ⛔ e não volta mais
+/// ```
+///
+/// ⇒ desfazer a criação apaga a selecção (correcto: o objecto deixou de existir), e **refazê-la
+/// devolve o objecto e não devolve a mão**: o `redo` transportava a selecção de *agora*, que era
+/// vazia. Daí em diante o artista não tem gizmo nem painel sobre a peça, e todo `Ctrl+Z` seguinte
+/// **parece não fazer nada** — que é, letra por letra, o report.
+///
+/// # ⚠️ Por que ela NÃO entra no [`ProjectState`]
+///
+/// O `ProjectState` é comparado por igualdade a cada quadro (é assim que um passo nasce) **e** é a
+/// unidade que o save grava. Com a selecção lá dentro, **cada clique de escolha registaria um passo
+/// de undo** e o ficheiro passaria a guardar quem estava escolhido. ⇒ ela viaja **ao lado** do
+/// passo, na fila, e não dentro da unidade comparada.
+///
+/// ⚠️ **Por `StableId`, nunca pelos bits** — a lei da casa: o restauro respawna o mundo inteiro.
+///
+/// ⚠️ **Só a do MODELADOR 3D.** A do vetorial continua a ser transportada
+/// ([`surviving_selection`]), e tem o mesmo buraco pela mesma razão — mas a lei dela tem dono
+/// noutra linha e um gate de arquitectura a afirmar o transporte; mudá-la aqui seria decidir por
+/// eles. *Nomeado, não corrigido.*
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
+pub(crate) struct SelectionMark {
+    pub(crate) field: Vec<ph2d_ecs::StableId>,
+}
+
 /// A pilha de undo/redo global. O registro de passos é dirigido por **diff de
 /// estado** no [`crate::App::post_frame_undo`] (não por begin/commit de gesto), então
 /// a API é só `push_undo` + `undo`/`redo`.
+///
+/// ⚠️ **Cada degrau é um PAR** — o estado e a [`SelectionMark`] que lhe pertence. Ver o doc dela
+/// para o report que isso fecha.
 #[derive(Default)]
 pub(crate) struct ProjectUndo {
-    undo: Vec<ProjectState>,
-    redo: Vec<ProjectState>,
+    undo: Vec<(ProjectState, SelectionMark)>,
+    redo: Vec<(ProjectState, SelectionMark)>,
 }
 
 impl ProjectUndo {
-    /// Empurra um estado-pré (o baseline antes da ação detectada). Limpa o redo.
-    pub(crate) fn push_undo(&mut self, pre: ProjectState) {
+    /// Empurra um estado-pré (o baseline antes da ação detectada) **com a selecção que lhe
+    /// pertencia**. Limpa o redo.
+    pub(crate) fn push_undo(&mut self, pre: ProjectState, mark: SelectionMark) {
         if self.undo.len() >= UNDO_CAP {
             self.undo.remove(0);
         }
-        self.undo.push(pre);
+        self.undo.push((pre, mark));
         self.redo.clear();
     }
 
@@ -233,23 +309,38 @@ impl ProjectUndo {
         self.undo.len()
     }
 
+    /// Quantos passos há na pilha de redo (para o log de diagnóstico). ⚠️ Ela é **limpa** por
+    /// todo `push_undo`, e é isso que um passo espúrio depois de um restauro destrói.
+    pub(crate) fn redo_depth(&self) -> usize {
+        self.redo.len()
+    }
+
     pub(crate) fn can_redo(&self) -> bool {
         !self.redo.is_empty()
     }
 
-    /// Desfaz: devolve o estado anterior; empurra o `current` pro redo.
+    /// Desfaz: devolve o estado anterior **e a selecção dele**; empurra o `current` (com a
+    /// selecção de agora) pro redo.
     #[must_use]
-    pub(crate) fn undo(&mut self, current: ProjectState) -> Option<ProjectState> {
+    pub(crate) fn undo(
+        &mut self,
+        current: ProjectState,
+        agora: SelectionMark,
+    ) -> Option<(ProjectState, SelectionMark)> {
         let prev = self.undo.pop()?;
-        self.redo.push(current);
+        self.redo.push((current, agora));
         Some(prev)
     }
 
-    /// Refaz: devolve o próximo estado; empurra o `current` de volta pro undo.
+    /// Refaz: devolve o próximo estado **e a selecção dele**; empurra o `current` de volta pro undo.
     #[must_use]
-    pub(crate) fn redo(&mut self, current: ProjectState) -> Option<ProjectState> {
+    pub(crate) fn redo(
+        &mut self,
+        current: ProjectState,
+        agora: SelectionMark,
+    ) -> Option<(ProjectState, SelectionMark)> {
         let next = self.redo.pop()?;
-        self.undo.push(current);
+        self.undo.push((current, agora));
         Some(next)
     }
 }

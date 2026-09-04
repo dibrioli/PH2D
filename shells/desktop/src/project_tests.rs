@@ -111,7 +111,8 @@ fn a_loaded_project_rewinds_the_clock_and_starts_a_fresh_history() {
     app.playhead.advance_ticks(120);
     let before = app.playhead.time();
     assert!(before > 0.0, "o relógio tem de estar ADIANTADO: {before}");
-    app.undo.push_undo(empty_state());
+    app.undo
+        .push_undo(empty_state(), crate::undo::SelectionMark::default());
     assert!(app.undo.can_undo(), "…e o histórico, cheio");
 
     let path = tmp_path("load_rewinds");
@@ -230,7 +231,8 @@ fn a_refused_load_leaves_the_clock_and_the_history_alone() {
     app.playhead.play();
     app.playhead.advance_ticks(120);
     let before = app.playhead.time();
-    app.undo.push_undo(empty_state());
+    app.undo
+        .push_undo(empty_state(), crate::undo::SelectionMark::default());
 
     // (a) o arquivo não existe.
     app.project_load_from(&tmp_path("nunca_gravado").to_string_lossy());
@@ -522,7 +524,8 @@ fn an_unreadable_animation_refuses_the_whole_file_and_leaves_the_session_alone()
     app.playhead.play();
     app.playhead.advance_ticks(120);
     let before = app.playhead.time();
-    app.undo.push_undo(empty_state());
+    app.undo
+        .push_undo(empty_state(), crate::undo::SelectionMark::default());
 
     let path = tmp_path("load_bad_timeline");
     write_project_with(&path, PROJECT_SCHEMA, vec![0xff, 0xff, 0xff]); // não é um TimelineDoc

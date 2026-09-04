@@ -63,7 +63,7 @@ fn every_modifier_kind_names_itself_and_its_numbers() {
             key,
             "{k:?}: sem tradução, o botão diz `{key}` na tela"
         );
-        for d in ph2d_field::Unary::born(k, 0.5).dims() {
+        for d in ph2d_field::Unary::born(k, 0.5, [0.5; 3]).dims() {
             assert_ne!(
                 ph2d_i18n::tr(d.key),
                 d.key,

@@ -266,7 +266,7 @@ fn every_modifier_that_offers_an_axis_row_is_one_the_law_conjugates() {
     let com_linha: Vec<UnaryKind> = UnaryKind::ALL
         .into_iter()
         .filter(|k| {
-            Unary::born(*k, 1.0)
+            Unary::born(*k, 1.0, [1.0; 3])
                 .dims()
                 .iter()
                 .any(|d| d.key == "field.mod.axis")

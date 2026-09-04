@@ -192,11 +192,11 @@ pub(crate) fn fan_tris(mesh: &Mesh) -> Vec<[[f32; 3]; 3]> {
 
 /// ⚠️ **Só os triângulos que podem competir** — sem esta cerca a régua é
 /// `O(ápices × amostras × faces)` e uma escultura de 17 k vértices leva minutos.
-pub(crate) fn near_tris<'a>(
-    tris: &'a [[[f32; 3]; 3]],
+pub(crate) fn near_tris(
+    tris: &[[[f32; 3]; 3]],
     p: [f32; 3],
     radius: f32,
-) -> Vec<&'a [[f32; 3]; 3]> {
+) -> Vec<&[[f32; 3]; 3]> {
     tris.iter()
         .filter(|t| t.iter().any(|q| dist(p, *q) <= radius))
         .collect()

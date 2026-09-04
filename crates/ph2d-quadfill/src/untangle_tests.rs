@@ -302,8 +302,12 @@ fn as_tres_saidas_do_acabamento_desfazem_o_avesso() {
         .split_once("pub fn finish_extracted_travel")
         .expect("a funcao existe")
         .1;
+    // ⚠️ **A fatia acaba na CHAVETA da coluna zero**, e não no `pub(crate) fn` seguinte: em
+    // 2026-09-04 nasceu uma `fn rematar` **privada** logo abaixo, e o `return 0;` da porta de
+    // bissecção dela entrou na contagem — o gate leu `4` saídas de `3`. *Um censo de fonte tem
+    // de saber onde a função ACABA, e não onde a próxima função pública começa.*
     let corpo = corpo
-        .split_once("\npub(crate) fn ")
+        .split_once("\n}\n")
         .map_or(corpo, |(antes, _)| antes);
     let retornos = corpo.matches("return ").count() + 1; // os `return` mais a queda no fim
     // ⚠️ **A CHAMADA, e não o nome:** os doc-comments citam as duas portas, e contar o nome

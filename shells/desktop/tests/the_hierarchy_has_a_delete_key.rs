@@ -91,8 +91,13 @@ fn the_chain_is_gated_on_the_pointer_being_over_the_panel() {
 #[test]
 fn the_keys_push_the_same_actions_the_menu_pushes() {
     for acao in [
-        "action_bus::EditorAction::HierDelete { row }",
-        "action_bus::EditorAction::HierDuplicate { row }",
+        // ⚠️ **A FORMA mudou na integração de 2026-09-04, a LEI não**: a `line/components`
+        // partiu o `EditorAction` e as 33 variantes da Hierarquia desceram para o
+        // `HierRequest`. Este gate afirma sobre a REDACÇÃO das duas portas, então ele tinha de
+        // seguir — e é exactamente por isso que ele existe: se só uma das duas tivesse sido
+        // reescrita, a tecla e o menu passariam a empurrar coisas diferentes em silêncio.
+        "action_bus::EditorAction::Hierarchy(action_bus::HierRequest::Delete { row })",
+        "action_bus::EditorAction::Hierarchy(action_bus::HierRequest::Duplicate { row })",
     ] {
         assert!(
             CHAIN.contains(acao),
@@ -102,8 +107,8 @@ fn the_keys_push_the_same_actions_the_menu_pushes() {
     let menu = fs::read_to_string("../../crates/ph2d-panel-hierarchy/src/event.rs")
         .expect("o event.rs do painel");
     for acao in [
-        "EditorAction::HierDelete { row }",
-        "EditorAction::HierDuplicate { row }",
+        "EditorAction::Hierarchy(HierRequest::Delete { row })",
+        "EditorAction::Hierarchy(HierRequest::Duplicate { row })",
     ] {
         assert!(
             menu.contains(acao),

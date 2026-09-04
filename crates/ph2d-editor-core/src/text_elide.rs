@@ -168,7 +168,16 @@ pub fn fit(text_system: &mut TextSystem, text: &str, font_size: f32, max_width: 
     if text_system.prefix_width(text, font_size) <= max_width {
         return text.to_string();
     }
-    elide(text_system, text, font_size, max_width).unwrap_or_else(|| text.to_string())
+    // ⚠️⚠️ **`MEDIUM` porque é o que o CHAMADOR pinta, não porque é o default do `elide`**
+    // (integração de 2026-09-04): duas linhas cruzaram-se aqui — uma deu um `weight` ao `elide`
+    // (um TÍTULO cortado em `Medium` e pintado em `SemiBold` transborda ~3 %, exactamente na
+    // fronteira em que o corte existe), a outra abriu esta porta para os chips do Inspector. O
+    // único consumidor do `fit` é um `Button`, que pinta pelo caminho **sem peso** — o mesmo que
+    // a guarda do «cabe» duas linhas acima mede (`prefix_width`), e que o `paint_text_elided`
+    // mapeia para `MEDIUM`. ⛔ Medir numa espessura e pintar noutra é o defeito que aquele
+    // parâmetro existe para impedir; herdá-lo sem escolher seria repeti-lo aqui.
+    elide(text_system, text, font_size, max_width, FontWeight::MEDIUM)
+        .unwrap_or_else(|| text.to_string())
 }
 
 #[cfg(test)]

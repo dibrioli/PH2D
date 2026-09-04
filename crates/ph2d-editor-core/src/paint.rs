@@ -126,11 +126,13 @@ pub fn slider_style() -> ph2d_tokens::SliderStyle {
 // ⭐⭐⭐ **A APARÊNCIA do app**, publicada uma vez por quadro como o `SliderStyle` e o
 // `TextRendering`.
 //
-// ⚠️ **O neutro é `UiLook::Classic`**, e é ele que permite esta linha entrar no `main` com o
-// redesenho a meio: quem não liga `PH2D_UI_NEW=1` vê a UI de sempre. Ver o doc do enum.
+// ⚠️ **O neutro é `UiLook::Redesign`** desde 2026-09-03 (ordem do Enio). O clássico volta com
+// `PH2D_UI_NEW=0` — a convenção da casa para bissecar. Ver o doc do enum.
+// ⛔ Ele TEM de repetir o `UiLook::default()`, porque um `thread_local!` `const` não pode chamar
+// `Default::default()` — e há gate a exigir que os dois concordem.
 thread_local! {
     static UI_LOOK: std::cell::Cell<ph2d_tokens::UiLook> =
-        const { std::cell::Cell::new(ph2d_tokens::UiLook::Classic) };
+        const { std::cell::Cell::new(ph2d_tokens::UiLook::Redesign) };
 }
 
 /// Publica a aparência para o quadro. Chamado pelo shell.

@@ -41,7 +41,8 @@ fn number_row(
         resolve(ColorToken::Text2, theme),
     );
     let row_y = y + label_h;
-    let rect = Rect::new(x, row_y, w, h);
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, row_y, h);
+    let rect = Rect::new(x, row_y, control_w, h);
     hit_index.register(id, rect);
     let (state, value, buffer, caret, anchor) = read_number_input(store, id);
     let input = NumberInput::new(id, "", value)
@@ -57,6 +58,7 @@ fn number_row(
         text_system,
         theme,
     );
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     row_y + h + Spacing::Sm.px()
 }
 
@@ -92,7 +94,8 @@ fn segmented_row(
         resolve(ColorToken::Text2, theme),
     );
     let row_y = y + label_h;
-    let rect = Rect::new(x, row_y, w, h);
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, row_y, h);
+    let rect = Rect::new(x, row_y, control_w, h);
     // ⚠️ **`SegmentedAdaptive` e não `Tabs`, para poder dizer «misto».** O `Tabs::selected()`
     // clampa (`idx.min(len-1)`), por isso é **incapaz** de renderizar «nenhum aceso» — e era isso
     // que fazia estas duas rows acenderem o valor da primária como se toda a seleção concordasse,
@@ -108,6 +111,7 @@ fn segmented_row(
     )
     .selected(selected.unwrap_or(usize::MAX));
     let seg_h = paint_segmented_adaptive(&seg, rect, scene, text_system, theme, store, hit_index);
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     row_y + seg_h + Spacing::Sm.px()
 }
 

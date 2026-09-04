@@ -233,8 +233,10 @@ fn paint_strategy_row(
     // Adaptive segmented GROUP — when the panel is narrow, drops
     // "Hand-packed" (the longest) to its own row instead of wrapping
     // the label. Returns the actual height used.
+    let (strategy_w, strategy_dot) =
+        ph2d_editor_core::widget::form_row_columns(x, w, cur_y, ROW_H_PX);
     let strategy_h = paint_segmented_group_adaptive(
-        Rect::new(x, cur_y, w, ROW_H_PX),
+        Rect::new(x, cur_y, strategy_w, ROW_H_PX),
         &[
             (
                 "Atlas",
@@ -260,6 +262,7 @@ fn paint_strategy_row(
     );
     // Inter-row gap inside Render Source — matches Transform's row_gap
     // (SECTION_INNER_ROW_GAP_PX) so Render Source feels like Transform.
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, strategy_dot);
     cur_y + strategy_h + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX
 }
 
@@ -472,7 +475,9 @@ fn paint_region_rows(
         if matches!(re_value, CheckboxValue::Checked) {
             let field_h = ROW_H_PX;
             let cell_gap = Spacing::Md.px();
-            let cell_w = ((w - cell_gap) * 0.5).max(0.0);
+            let (region_w, region_dot) =
+                ph2d_editor_core::widget::form_row_columns(x, w, cur_y, field_h);
+            let cell_w = ((region_w - cell_gap) * 0.5).max(0.0);
             paint_region_num_cell(
                 scene,
                 text_system,
@@ -495,6 +500,7 @@ fn paint_region_rows(
                 label_font,
                 theme,
             );
+            ph2d_editor_core::widget::paint_decorator_dot(scene, theme, region_dot);
             cur_y += field_h + row_gap;
             paint_region_num_cell(
                 scene,

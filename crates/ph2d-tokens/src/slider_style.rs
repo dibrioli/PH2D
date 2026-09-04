@@ -161,10 +161,14 @@ impl SliderStyle {
 /// Enio, 2026-09-03, ao mandar integrar: *«essa nova UI ainda deve ficar desativada até que esteja
 /// concluída. Por enquanto permanece a antiga.»*
 ///
-/// ⚠️ **`Classic` é o caminho de OMISSÃO**, e isso não é um detalhe de configuração — é o que
-/// permite a linha entrar no `main` sem que ninguém veja um redesenho a meio. O redesenho liga-se
-/// com `PH2D_UI_NEW=1`, como o `PH2D_FLIP_NEW_ENGINE` e o `PH2D_RETOPO_EXTRACT` fazem nos módulos
-/// deles.
+/// ⭐⭐⭐ **O `Redesign` é o caminho de OMISSÃO desde 2026-09-03**, por ordem do Enio: *«vamos
+/// integrar então com toda a UI nova»*. ⚠️ Ele reverte a decisão da manhã do mesmo dia (*«fica
+/// desativada até estar concluída»*) — e a inversão é dele, com a lista do que falta na mão.
+///
+/// O clássico continua alcançável com **`PH2D_UI_NEW=0`**, que é a convenção da casa para
+/// bissecar: o `PH2D_GPU_COOK=0`, o `PH2D_FLIP_NEW_ENGINE=0` e o `PH2D_RETOPO_EXTRACT=0` fazem
+/// exactamente isto nos módulos deles. ⛔ O caminho clássico **não é código morto**: é o que
+/// responde à pergunta *«isto já era assim antes?»* sem um `git stash`.
 ///
 /// ⛔ **O que ele NÃO governa, de propósito:** as **correcções** que a linha fez ao caminho antigo
 /// — a deriva do cursor, a roda do rato sobre a bancada, o arrastar do corpo de um painel para o
@@ -172,11 +176,11 @@ impl SliderStyle {
 /// deixá-lo por curar para quem não o liga.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum UiLook {
-    /// A UI que shipa desde sempre: rótulo | trilha | caixa numérica, marca à esquerda,
-    /// interruptor deslizante, sem coluna de animação.
-    #[default]
+    /// A UI que shipou até 2026-09-03: rótulo | trilha | caixa numérica, marca à esquerda,
+    /// interruptor deslizante, sem coluna de animação. ⚠️ Alcançável com `PH2D_UI_NEW=0`.
     Classic,
     /// O redesenho: a caixa única, a marca à direita, o interruptor fundido, a coluna de animação.
+    #[default]
     Redesign,
 }
 
@@ -193,14 +197,17 @@ impl UiLook {
         }
     }
 
-    /// A leitura do ambiente. ⚠️ Só `1` liga — qualquer outra coisa é a UI de sempre, incluindo a
-    /// variável ausente, vazia ou com lixo. *Um interruptor que liga com o que não percebe é um
-    /// interruptor que se liga sozinho.*
+    /// A leitura do ambiente. ⚠️ **Só `0` volta ao clássico** — qualquer outra coisa é o
+    /// redesenho, incluindo a variável ausente, vazia ou com lixo.
+    ///
+    /// ⛔ A assimetria é deliberada e é a mesma de antes, virada ao contrário: *quem desvia do
+    /// caminho normal tem de o dizer com uma palavra exacta*. Um `PH2D_UI_NEW=talvez` não pode
+    /// devolver um artista à UI velha sem ele perceber porquê.
     #[must_use]
     pub fn from_env_value(v: Option<&str>) -> Self {
         match v {
-            Some("1") => Self::Redesign,
-            _ => Self::Classic,
+            Some("0") => Self::Classic,
+            _ => Self::Redesign,
         }
     }
 }

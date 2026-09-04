@@ -306,6 +306,17 @@ const CLASSIC_MIN_TRACK_W: f32 = 60.0; // LITERAL-PX-OK: piso de cromo da linha 
 /// linha de propriedade — é um número solto.
 #[must_use]
 pub fn slider_with_chip_min_w(chip_w: f32) -> f32 {
+    // ⛔⛔ **A APARÊNCIA decide, e esta função é a que quase escapou.** Ela substituiu, no
+    // `chrome::input_map`, a fórmula que o `main` usava (`cw + Sm*2 + 60`), e sob a UI clássica
+    // devolvia `cw + Md*2` — **56 px mais estreita**. A janela do Input Map encolhia sem ninguém
+    // ter pedido, no caminho de omissão.
+    //
+    // ⚠️ **O censo dos pintores não a apanhou**, porque ela não pinta: é uma RÉGUA, e uma régua
+    // trocada muda o produto sem passar por um pintor. *Trocar a régua de um caminho é mudá-lo,
+    // mesmo sem lhe tocar na tinta.*
+    if !crate::paint::ui_is_redesign() {
+        return chip_w + Spacing::Sm.px() * 2.0 + CLASSIC_MIN_TRACK_W;
+    }
     chip_w + Spacing::Md.px() * 2.0
 }
 

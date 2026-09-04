@@ -450,7 +450,8 @@ fn signal_row(
     id: ph2d_a11y::NodeId,
     placeholder: &str,
 ) -> f32 {
-    let host = Rect::new(x, y, w, ROW_H_PX);
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
+    let host = Rect::new(x, y, control_w, ROW_H_PX);
     hit_index.register(id, host);
     let (state, text, caret, anchor) = match store.get(id) {
         Some(InteractiveState::TextInput {
@@ -474,6 +475,7 @@ fn signal_row(
         text_system,
         theme,
     );
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     y + ROW_H_PX
 }
 

@@ -25,6 +25,11 @@ fn paint_tint_swatch_cell(
 ) {
     let label_font = TypeToken::Sm.px();
     let swatch_px = SwatchSize::Sm.px();
+    // ⭐ A coluna de animação **dentro do ajudante**, não em cada chamador: as três linhas de cor
+    // desta secção passam por aqui, e uma delas a esquecer seria a coluna com dois `x`.
+    let (control_w, dot) =
+        ph2d_editor_core::widget::form_row_columns(cell.x, cell.w, cell.y, cell.h);
+    let cell = Rect::new(cell.x, cell.y, control_w, cell.h);
     let swatch_rect = Rect::new(
         cell.x + cell.w - swatch_px,
         cell.y + (cell.h - swatch_px) * 0.5,
@@ -51,6 +56,7 @@ fn paint_tint_swatch_cell(
         theme,
     );
     hit_index.register(swatch_id, swatch_rect);
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
 }
 
 /// Paint a color swatch, or — when the value diverges across a

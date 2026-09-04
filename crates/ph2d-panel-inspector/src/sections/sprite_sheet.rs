@@ -57,7 +57,10 @@ pub(crate) fn paint_sprite_sheet_section(
     let label_col_w = 78.0_f32; // LITERAL-PX-OK: row-label column width
     let col_gap = Spacing::Md.px();
     let field_x = x + label_col_w + col_gap;
-    let field_w = (w - label_col_w - col_gap).max(0.0);
+    // A coluna de animação sai da largura ANTES de o campo a repartir — pela porta, e uma vez para
+    // todas as linhas desta secção.
+    let (control_w, _) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
+    let field_w = (control_w - label_col_w - col_gap).max(0.0);
     let number_row = |scene: &mut VectorScene,
                       text_system: &mut TextSystem,
                       hit_index: &mut HitIndex,
@@ -90,6 +93,8 @@ pub(crate) fn paint_sprite_sheet_section(
             text_system,
             theme,
         );
+        let (_, dot) = ph2d_editor_core::widget::form_row_columns(x, w, row_y, field_h);
+        ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     };
     // Origin controls (spec §3.4) — Centered toggle (quad center vs
     // texture top-left + offset) + Offset X/Y (intrinsic px). Render via

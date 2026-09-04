@@ -15,7 +15,9 @@ pub(crate) fn paint_entity_name_row(
     y: f32,
 ) -> f32 {
     let row_h = ROW_H_PX;
-    let host = Rect::new(x, y, w, row_h);
+    // A coluna de animação, pela porta.
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, row_h);
+    let host = Rect::new(x, y, control_w, row_h);
     hit_index.register(ids::INSP_ENTITY_NAME, host);
     let (state, text, caret, anchor) = match store.get(ids::INSP_ENTITY_NAME) {
         Some(InteractiveState::TextInput {
@@ -39,6 +41,7 @@ pub(crate) fn paint_entity_name_row(
         text_system,
         theme,
     );
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     y + row_h + SECTION_BOTTOM_PAD_PX
 }
 

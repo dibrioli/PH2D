@@ -105,8 +105,9 @@ pub(crate) fn paint_mount_row(
         LABEL_COL_W,
         resolve(ColorToken::Text2, theme),
     );
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, h);
     let chip_x = x + LABEL_COL_W + Spacing::Md.px();
-    let chip_w = (w - LABEL_COL_W - Spacing::Md.px()).max(0.0);
+    let chip_w = (control_w - LABEL_COL_W - Spacing::Md.px()).max(0.0);
     let rect = Rect::new(chip_x, y, chip_w, h);
     hit_index.register(ids::INSP_MOUNT_PICK, rect);
 
@@ -128,6 +129,7 @@ pub(crate) fn paint_mount_row(
     if open {
         crate::state::set_pending_mount_dd(Some(rect));
     }
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     let mut cur_y = y + h;
 
     if info.mount_dangling() {

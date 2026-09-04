@@ -1255,3 +1255,42 @@ metade de um instrumento.*
 
 ⚠️ Numa secção mista o artista vê pontos nalgumas linhas e não noutras — **as linhas de marcar já o
 tinham** (vêm do pintor partilhado). É o meio do caminho, e agora tem um instrumento a contá-lo.
+
+## §22 — ⭐ A DECISÃO VIROU DE LADO, e o interruptor ficou (2026-09-03)
+
+De manhã: *«essa nova UI ainda deve ficar desativada até que esteja concluída»*. Ao fim do dia, com
+a lista do que falta na mão: ***«Vamos integrar então com toda a UI nova»***.
+
+⇒ o **redesenho é o caminho de omissão**; o clássico volta com `PH2D_UI_NEW=0`.
+
+### 22.1 — ⛔ O clássico NÃO se apaga, e a razão é o que ele já rendeu
+
+Construir o caminho clássico não foi cerimónia: ele **revelou duas divergências** que nenhum censo
+tinha apanhado, e as duas eram defeitos na UI **antiga**, não na nova.
+
+| | |
+|---|---|
+| **19 sítios** que pintavam a coluna sem perguntar a aparência | a guarda estava nos três *pintores*, e as linhas do Inspector não passam por eles |
+| a **régua** do Input Map (`~56 px`) | ela **não pinta** — nenhum censo de pintores a vê |
+
+⇒ ele fica como resposta a *«isto já era assim antes?»*, que sem ele exige um `git stash`.
+
+### 22.2 — ⚠️ O gate mudou de LADO, e por isso mudou de NOME
+
+Era `by_default_the_app_wears_the_old_ui`. Afirmar o contrário no mesmo ficheiro deixaria um nome
+a mentir sobre o que ele mede. Hoje é **`the_two_looks_are_one_switch_apart`**, e o que ele defende
+é a parte que **sobrevive à decisão**: que as duas aparências **existem e diferem**.
+
+⭐ *Um gate cujo nome descreve uma decisão morre com ela; um que descreve uma propriedade não.*
+
+### 22.3 — ⏳ O que entra por concluir, e está nomeado
+
+A decisão foi tomada **com a lista na mão** — ela não desapareceu:
+
+1. os cantos dos painéis ainda são `16 px` (o estudo §5.3 diz `4`);
+2. as secções **não recolhem**;
+3. os cartões ainda desenham moldura dentro dos painéis;
+4. as caixas de texto têm moldura permanente;
+5. etiquetas e amostras de cor ainda são pílulas (`radius: 999`);
+6. o **ritmo das linhas** (`18` contra `22`) continua a ser decisão de produto;
+7. o esbatimento do rótulo e a inércia da rolagem.

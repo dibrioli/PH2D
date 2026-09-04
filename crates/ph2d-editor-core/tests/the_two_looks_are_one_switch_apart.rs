@@ -1,11 +1,14 @@
-//! ⭐⭐⭐ **Por omissão o app veste a UI ANTIGA** — o redesenho é opcional até estar concluído.
+//! ⭐⭐⭐ **As duas aparências estão a UM interruptor de distância — e o clássico continua vivo.**
 //!
-//! Enio, 2026-09-03, ao mandar integrar com o `main`: *«essa nova UI ainda deve ficar desativada
-//! até que esteja concluída. Por enquanto permanece a antiga.»*
+//! Enio, 2026-09-03: primeiro *«essa nova UI ainda deve ficar desativada até que esteja
+//! concluída»*, e horas depois, com a lista do que falta na mão, *«vamos integrar então com toda a
+//! UI nova»*. ⇒ **o redesenho passou a ser o caminho de omissão**; o clássico volta com
+//! `PH2D_UI_NEW=0`.
 //!
-//! ⛔ **Este gate é a condição de a linha poder ser integrada.** Sem ele, «está desligado» é uma
-//! afirmação sobre um `enum` que qualquer wave muda sem reparar — e o sintoma seria o `main` a
-//! shipar um redesenho a meio, que é exactamente o que o dono recusou.
+//! ⛔ **O que este ficheiro defende MUDOU DE LADO, e por isso ele mudou de NOME.** Já não afirma
+//! *«sai o antigo»* — afirma que **os dois existem e diferem**, que é a parte que sobrevive à
+//! decisão: no dia em que alguém apagar o caminho clássico, ninguém consegue responder à pergunta
+//! *«isto já era assim antes?»* sem um `git stash`.
 //!
 //! # ⚠️ Ele mede TINTA, não a bandeira
 //!
@@ -90,13 +93,13 @@ fn toggle_ink(look: UiLook) -> Ink {
     })
 }
 
-/// **A thread nasce na aparência CLÁSSICA.**
+/// **A thread nasce no REDESENHO** — a decisão do dono, 2026-09-03.
 #[test]
-fn the_neutral_look_is_the_old_one() {
+fn the_neutral_look_is_the_redesign() {
     assert_eq!(
         ui_look(),
-        UiLook::Classic,
-        "o app nasce no REDESENHO: ele ainda nao esta' concluido, e o dono mandou manter a antiga"
+        UiLook::Redesign,
+        "o app nasce no classico: o dono mandou integrar com a UI nova"
     );
 }
 
@@ -127,12 +130,12 @@ fn the_switch_actually_switches_all_three_painters() {
     );
 }
 
-/// **E o que a thread pinta SEM ninguém escolher é o clássico** — não o redesenho.
+/// **E o que a thread pinta SEM ninguém escolher é o REDESENHO.**
 ///
-/// ⚠️ Este é o teste que de facto responde à instrução do dono: não *«existe um clássico»*, mas
-/// *«é ele que sai quando ninguém pede nada»*.
+/// ⚠️ Não basta *«existe um redesenho»*: o que se afirma é que **é ele que sai quando ninguém pede
+/// nada** — a única forma de o dizer sobre o produto e não sobre uma constante.
 #[test]
-fn what_the_app_paints_without_being_asked_is_the_classic() {
+fn what_the_app_paints_without_being_asked_is_the_redesign() {
     let untouched = {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();
@@ -148,30 +151,31 @@ fn what_the_app_paints_without_being_asked_is_the_classic() {
     };
     assert_eq!(
         untouched,
-        checkbox_ink(UiLook::Classic),
-        "sem ninguem escolher aparencia, o app pintou algo que NAO e' o classico"
+        checkbox_ink(UiLook::Redesign),
+        "sem ninguem escolher aparencia, o app pintou algo que NAO e' o redesenho"
     );
 }
 
-/// **A leitura do ambiente só liga com `1`.**
+/// **Só `0` volta ao clássico.**
 ///
-/// ⛔ *Um interruptor que liga com o que não percebe é um interruptor que se liga sozinho* — e este
-/// governa se o `main` mostra um redesenho a meio.
+/// ⛔ A assimetria é a mesma de antes, virada ao contrário: *quem desvia do caminho normal tem de o
+/// dizer com uma palavra exacta*. Um `PH2D_UI_NEW=talvez` não pode devolver um artista à UI velha
+/// sem ele perceber porquê.
 #[test]
-fn only_the_exact_value_turns_it_on() {
-    assert_eq!(UiLook::from_env_value(Some("1")), UiLook::Redesign);
+fn only_the_exact_value_goes_back_to_the_classic() {
+    assert_eq!(UiLook::from_env_value(Some("0")), UiLook::Classic);
     for v in [
         None,
         Some(""),
-        Some("0"),
-        Some("true"),
-        Some("yes"),
-        Some(" 1"),
+        Some("1"),
+        Some("false"),
+        Some("no"),
+        Some(" 0"),
     ] {
         assert_eq!(
             UiLook::from_env_value(v),
-            UiLook::Classic,
-            "o valor {v:?} ligou o redesenho"
+            UiLook::Redesign,
+            "o valor {v:?} devolveu o app a' UI velha"
         );
     }
 }
@@ -187,8 +191,8 @@ fn only_the_exact_value_turns_it_on() {
 /// ⇒ *um gate que enumera os sítios que o autor recorda mede a memória dele, não o produto.* A
 /// guarda mudou-se para a **porta**, e este teste mede a porta.
 ///
-/// **Mutação que deve sangrar:** tirar o `if !ui_is_redesign()` da `form_row_columns` — a coluna
-/// volta a comer `14 px` de toda linha do Inspector no caminho de omissão.
+/// **Mutação que deve sangrar:** tirar o `if !ui_is_redesign()` da `form_row_columns` — o caminho
+/// clássico deixa de existir, e a pergunta *«isto já era assim antes?»* fica sem resposta.
 #[test]
 fn the_hand_rolled_row_door_obeys_the_look_too() {
     use ph2d_editor_core::widget::{DECORATOR_W, form_row_columns};

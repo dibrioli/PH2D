@@ -62,7 +62,9 @@ fn pair_row(
     );
     let row_y = y + label_h;
     let gap = Spacing::Sm.px();
-    let cw = ((w - gap) * 0.5).max(0.0);
+    // ⚠️ **Um ponto para a LINHA**, não um por campo: o par é uma propriedade com duas componentes.
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, row_y, FIELD_H);
+    let cw = ((control_w - gap) * 0.5).max(0.0);
     for (i, id) in ids_pair.into_iter().enumerate() {
         let rect = Rect::new(x + (cw + gap) * i as f32, row_y, cw, FIELD_H);
         hit_index.register(id, rect);
@@ -81,6 +83,7 @@ fn pair_row(
             theme,
         );
     }
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     row_y + FIELD_H + Spacing::Sm.px()
 }
 
@@ -131,15 +134,17 @@ fn tiled_rows(
     } else {
         usize::from(info.tile_mode_tag).min(TILE_MODE_LABELS.len() - 1)
     });
+    let (tm_w, tm_dot) = ph2d_editor_core::widget::form_row_columns(x, w, cur_y, FIELD_H);
     cur_y += paint_segmented_adaptive(
         &tm,
-        Rect::new(x, cur_y, w, FIELD_H),
+        Rect::new(x, cur_y, tm_w, FIELD_H),
         scene,
         text_system,
         theme,
         store,
         hit_index,
     ) + Spacing::Sm.px();
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, tm_dot);
     // ⚠️ **A emenda rente ao canto tem NOME aqui** (smoke do Enio, 2026-08-22). Ela não é um
     // defeito de textura: é o último ladrilho cortado a meio, e o utilizador não tem como
     // adivinhar que o remédio se chama «Whole». Uma linha diz onde ele está.

@@ -97,15 +97,17 @@ pub(crate) fn paint_material_blend_section(
     } else {
         usize::from(info.blend_tag).min(BLEND_LABELS.len() - 1)
     });
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, yy, h);
     let seg_h = paint_segmented_adaptive(
         &seg,
-        Rect::new(x, yy, w, h),
+        Rect::new(x, yy, control_w, h),
         scene,
         text_system,
         theme,
         store,
         hit_index,
     );
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     yy += seg_h + row_gap;
 
     // Material slot — read-only placeholder. The renderer is

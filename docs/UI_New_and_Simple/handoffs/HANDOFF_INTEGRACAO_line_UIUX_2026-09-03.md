@@ -5,52 +5,49 @@
 
 ---
 
-## §0 — ⛔⛔ LEIA ISTO ANTES DE TUDO: a UI nova entra DESLIGADA
+## §0 — ⛔⛔ LEIA ISTO ANTES DE TUDO: a UI nova é o caminho de OMISSÃO
 
-Ordem do Enio, 2026-09-03, ao mandar escrever este handoff:
+⚠️ **A decisão do dono mudou de lado no mesmo dia, e a segunda é a que vale.** De manhã: *«essa
+nova UI ainda deve ficar desativada até que esteja concluída. Por enquanto permanece a antiga.»*
+Ao fim do dia, com a lista do que falta na mão (§4): ***«Vamos integrar então com toda a UI nova»***.
 
-> *«essa nova UI ainda deve ficar desativada até que esteja concluída. Por enquanto permanece a
-> antiga.»*
-
-⇒ **o caminho de omissão do `main` é a UI de sempre.** O redesenho liga-se com **`PH2D_UI_NEW=1`**,
-como o `PH2D_FLIP_NEW_ENGINE` e o `PH2D_RETOPO_EXTRACT` fazem nos módulos deles.
+⇒ **o `main` passa a mostrar o redesenho.** O clássico volta com **`PH2D_UI_NEW=0`** — a convenção
+da casa para bissecar (`PH2D_GPU_COOK=0`, `PH2D_FLIP_NEW_ENGINE=0`, `PH2D_RETOPO_EXTRACT=0`).
 
 | | |
 |---|---|
-| a bandeira | `ph2d_tokens::UiLook` — `Classic` (omissão) · `Redesign` |
+| a bandeira | `ph2d_tokens::UiLook` — `Redesign` (omissão) · `Classic` |
 | publicada por | `paint::set_ui_look`, uma vez por quadro, a partir de `PH2D_UI_NEW` (`OnceLock`) |
-| lida por | os **três** pintores que o redesenho mudou: a linha de propriedade, a caixa de verificação, o interruptor |
-| gate | `by_default_the_app_wears_the_old_ui` |
+| lida por | os três pintores **e a porta** das linhas construídas à mão |
+| gate | `the_two_looks_are_one_switch_apart` |
 
-⚠️ **O gate mede TINTA, não a bandeira.** Afirmar `UiLook::default() == Classic` seria uma tautologia
-sobre uma linha de código; ele pinta os três widgets nas duas aparências, exige que **difiram**, e
-exige que o que sai **sem ninguém escolher** seja byte a byte o clássico. ⛔ Sem a metade do
-«difiram», o gate ficaria verde no dia em que alguém apagasse o clássico.
+⛔ **O caminho clássico NÃO é código morto, e não o apague.** É o que responde a *«isto já era
+assim antes?»* sem um `git stash` — e foi ele que, ao ser construído, revelou **duas** divergências
+que ninguém teria visto (a §0.0-bis e a §0.0-ter).
 
-⚠️ **`PH2D_UI_NEW` só liga com `1`.** Vazio, `0`, `true`, `yes`, ` 1` → clássico. *Um interruptor que
-liga com o que não percebe é um interruptor que se liga sozinho* — e este governa se o `main` mostra
-um redesenho a meio.
+⚠️ **Só `0` volta atrás.** Vazio, `1`, `false`, `no`, ` 0` → redesenho. *Quem desvia do caminho
+normal tem de o dizer com uma palavra exacta.*
 
-### §0.0-bis — ⛔⛔ A 1.ª versão do interruptor VAZOU, e o gate estava VERDE
+### §0.0-bis — ⛔ A 1.ª versão do interruptor VAZOU, e o gate estava VERDE
 
-Smoke do Enio, no mesmo dia: sem `PH2D_UI_NEW=1` o app *«abriu o desenho novo»*.
+Quando o clássico ainda era a omissão, o smoke do Enio deu *«abriu o desenho novo»*.
 
-⭐ **A guarda estava nos três PINTORES** — a linha de propriedade, a caixa de verificação, o
-interruptor. Mas as linhas do Inspector **não passam por nenhum deles**: são construídas à mão,
-com a sua própria aritmética, e chamam a `form_row_columns`. Eram **19 sítios**, e nenhum
-perguntava a aparência.
+⭐ **A guarda estava nos três PINTORES**, e as linhas do Inspector **não passam por nenhum deles**:
+são construídas à mão e chamam a `form_row_columns` — **19 sítios**, nenhum a perguntar a
+aparência. ⛔ E o gate estava verde porque media exactamente os três pintores de que o autor se
+lembrava. *Um gate que enumera os sítios que o autor recorda mede a memória dele, não o produto.*
 
-⛔ **E o gate estava verde**, porque media exactamente os três pintores de que o autor se lembrava.
-*Um gate que enumera os sítios que o autor recorda mede a memória dele, não o produto.* É a
-terceira vez que esta forma morde nesta linha: o censo por **pintor** (§20), o censo por **nome**
-(§15.1-bis), e agora o gate por **enumeração**.
+⇒ a guarda vive na **porta**, em **duas metades** (a largura devolvida **e** o pintor do ponto).
 
-⇒ a guarda mudou-se para a **porta**, e em **duas metades**: a `form_row_columns` devolve a linha
-inteira e uma coluna de **zero px** no clássico, **e** o `paint_decorator_dot` não pinta nada ali.
-*Duas metades, para que esquecer uma não chegue.* Provado por mutação.
+### §0.0-ter — ⛔⛔ E uma RÉGUA escapou a todos os censos, porque não pinta
 
-⚠️ **E o Widget Lab força o redesenho para si e REPÕE a aparência do app ao sair** — o thread-local
-é partilhado, e sem a reposição ter a bancada aberta mudava a cara do app inteiro.
+A `slider_with_chip_min_w` substituiu, no `chrome::input_map`, a fórmula que o `main` usava
+(`cw + Sm*2 + 60`) por `cw + Md*2` ⇒ **a janela do Input Map ficava ~56 px mais estreita na UI
+clássica**.
+
+⚠️ **Nenhum censo de pintores a via**: ela é uma **régua**, e todas as guardas perguntam a aparência
+no momento de *desenhar*. *Trocar a régua de um caminho é mudá-lo, mesmo sem lhe tocar na tinta.*
+⇒ ela também segue a aparência, e no clássico devolve a fórmula do `main`, termo a termo.
 
 ### §0.1 — O que NÃO está atrás da bandeira, e porquê
 
@@ -59,7 +56,7 @@ aparência nova, e escondê-lo atrás de um interruptor é deixá-lo por curar p
 
 | correcção | porquê fica |
 |---|---|
-| a **deriva do cursor** (§14 da pesquisa) | o rect registado é o denominador do valor; o defeito existia no caminho antigo e a cura é a mesma lei |
+| a **deriva do cursor** (§14) | o rect registado é o denominador do valor; o defeito existia no caminho antigo e a cura é a mesma lei |
 | a **roda do rato** sobre a bancada | o painel publicava polegar de rolagem e a roda dava zoom na câmara |
 | o **arrastar do corpo** de um painel para o rolar | é um GESTO que faltava, não uma aparência; num tablet os painéis eram não-roláveis |
 | as **pílulas apagadas** | zero consumidores em todo o repo — não havia o que preservar |
@@ -72,7 +69,7 @@ aparência nova, e escondê-lo atrás de um interruptor é deixá-lo por curar p
 **81 commits**, `268` ficheiros de código (`+20 576 / −3 008`). O registo com mecanismo é a pesquisa
 [`07_o_redesenho_dos_widgets.md`](../pesquisa/07_o_redesenho_dos_widgets.md), §1–§21.
 
-### 1.1 — O redesenho (atrás de `PH2D_UI_NEW=1`)
+### 1.1 — O redesenho (o que o `main` passa a mostrar)
 
 | obra | o que é | onde |
 |---|---|---|
@@ -104,7 +101,7 @@ aparência nova, e escondê-lo atrás de um interruptor é deixá-lo por curar p
 
 | ficheiro | risco |
 |---|---|
-| `crates/ph2d-editor-core/src/widget/` | **12 ficheiros** tocados + 4 novos (`property_box.rs`, `checkbox/`, `slider_with_chip/`, `toggle_classic.rs`). ⚠️ O `checkbox.rs` e o `slider_with_chip.rs` **viraram pastas** por tecto de LOC — um merge textual sobre eles falha; é preciso re-aplicar por conteúdo. |
+| `crates/ph2d-editor-core/src/widget/` | **12 ficheiros** tocados + novos (`property_box/`, `checkbox/`, `slider_with_chip/`, `toggle_classic.rs`). ⚠️ **TRÊS ficheiros viraram PASTAS** por tecto de LOC (`checkbox.rs`, `slider_with_chip.rs`, `property_box.rs`) — um merge textual sobre eles falha; é preciso re-aplicar por conteúdo. |
 | `crates/ph2d-editor-core/src/paint.rs` | três thread-locais novos vizinhos (`SLIDER_STYLE`, `UI_LOOK`) |
 | `crates/ph2d-editor-core/src/interaction/` | `drag.rs` (+`BodyScrollAnchor`), `state/mod.rs` (+1 campo), `state/panel_ops.rs`, os três braços de despacho |
 | `crates/ph2d-editor-core/src/screens/hero/` | `paint.rs` (publica a aparência; `PANEL_Z_ORDER_FALLBACK` +1), `topbar/`, `ids/` |
@@ -121,11 +118,12 @@ do painel novo. Se outra linha acrescentou ids, **conte**, não escolha.
 
 | gate | afirma |
 |---|---|
-| `by_default_the_app_wears_the_old_ui` | ⛔ **a condição de integração**: sem escolher aparência, sai o clássico |
+| `the_two_looks_are_one_switch_apart` | ⛔ as **duas** aparências existem e **diferem**; sem escolher, sai o redesenho. ⚠️ Chamava-se `by_default_the_app_wears_the_old_ui` — mudou de nome quando a decisão mudou de lado: *um gate cujo nome descreve uma DECISÃO morre com ela; um que descreve uma PROPRIEDADE não* |
+| `every_form_row_reserves_the_animation_column` | ⭐ catraca **a zero**: nenhuma secção do Inspector pinta uma linha sem a coluna |
 | `the_fill_lands_under_the_cursor` | a tinta acaba debaixo do dedo, **com controlo** que reproduz o registo estreito |
 | `the_form_has_one_right_margin` | a marca segue a borda direita; o interruptor pinta a **mesma** marca; a coluna é desenhada |
 | `the_animation_column_has_one_x` | as três famílias de linha põem o ponto no **mesmo `x`** |
-| `every_form_row_reserves_the_animation_column` | ⭐ **catraca com censo de obsolescência**: 11 secções em dívida, e quem já reserva **sai** da lista |
+
 | `a_panel_scrolls_by_dragging_its_body` | o gesto novo, **com controlo** de que ele nunca rouba uma pressão que um widget reclamou |
 | `the_app_default_slider_style_is_the_one_the_owner_chose` | Underline / raio 4 / linha 22, por nome **e** por px |
 | `the_inspector_is_open_when_the_app_opens` | pina uma decisão que só existia como um `true` numa tabela |
@@ -133,10 +131,11 @@ do painel novo. Se outra linha acrescentou ids, **conte**, não escolha.
 
 ---
 
-## §4 — ⏳ O que fica ABERTO (a razão de a bandeira existir)
+## §4 — ⏳ O que fica ABERTO
 
-1. **A coluna de animação em 11 secções** do Inspector — nomeadas na dívida do gate. Cada uma é
-   uma edição de duas linhas pela porta `form_row_columns`.
+⚠️ **A decisão de integrar foi tomada COM esta lista na mão** — ela não desapareceu com a bandeira.
+
+1. ✅ ~~A coluna de animação em 11 secções~~ — **fechou**: a dívida do gate está a **zero**.
 2. **O ritmo das linhas** — as de marcar medem `18 px`, as de propriedade `22`. Um formulário
    alterna alturas. ⚠️ **Decisão do Enio pendente**: igualar é mais coerente e mais **alto**, e
    altura é o recurso escasso num tablet.
@@ -182,8 +181,9 @@ do painel novo. Se outra linha acrescentou ids, **conte**, não escolha.
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-UIUX && cargo run -p ph2d-host-desktop --release
 ```
 
-- **sem nada** → a UI de sempre. É isto que o `main` passa a mostrar.
-- **com `env PH2D_UI_NEW=1`** → o redesenho: a caixa única, a marca à direita, a coluna de animação.
+- **sem nada** → o redesenho: a caixa única, a marca à direita, a coluna de animação. É isto
+  que o `main` passa a mostrar.
+- **com `env PH2D_UI_NEW=0`** → a UI de sempre, para comparar.
 - `Window › Widget Lab` → a bancada, sempre no redesenho (é o estudo).
 
 ---

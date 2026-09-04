@@ -240,3 +240,17 @@ fn the_dot_paints_nothing_in_the_classic_look() {
         "o ponto nao foi pintado no redesenho: a guarda apagou a feature em vez de a gatear"
     );
 }
+
+// ⛔⛔ **A GALERIA não tem gate aqui, e a ausência está NOMEADA.**
+//
+// Ela mostra a caixa única, e sob o clássico deixou de a mostrar — mas o ponto de entrada
+// (`showcase::paint_slider_section`) é `pub(super)`, logo **não é alcançável de um teste de
+// integração**. ⛔ Alargar a visibilidade de uma função de produto para um teste lhe chegar é pagar
+// com API o que se quer medir.
+//
+// ⭐ **O instrumento que a encontrou foi o CENSO, não a leitura:** depois do vazamento, correr
+// *«quem chama um pintor do redesenho?»* devolveu doze ficheiros, e este chamava o
+// `paint_property_box` **directamente**. *A lista de consumidores é uma pergunta ao repo; a minha
+// memória é um palpite* — e foi a memória que produziu o gate verde sobre um app vazado.
+//
+// ⏳ O gate honesto vive na crate do painel da galeria, com o `MockPanelHost`. Fica nomeado.

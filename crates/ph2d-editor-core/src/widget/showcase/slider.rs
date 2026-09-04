@@ -60,6 +60,15 @@ pub(super) fn paint_slider_section(
     //
     // ⚠️ E ela lê o `paint::slider_style()` — o que o artista escolheu —, então esta amostra muda
     // com a preferência. *Uma galeria que mostrasse o default fixo mentiria a quem customizou.*
+    //
+    // ⛔⛔ **E ela só aparece no REDESENHO** (Enio, 2026-09-03: *«por enquanto permanece a
+    // antiga»*). A galeria é a fonte de verdade do que o editor **É** — mostrar aqui um widget que
+    // o app não pinta seria anunciar uma linguagem que ninguém vê. ⚠️ Foi o **censo** que o
+    // encontrou, não a leitura: o gate do interruptor media os três pintores, e este sítio chama o
+    // pintor da caixa **directamente**.
+    if !crate::paint::ui_is_redesign() {
+        return y;
+    }
     y += Spacing::Sm.px();
     let style = crate::paint::slider_style();
     let r = Rect::new(x, y, w, style.row_h_px());

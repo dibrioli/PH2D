@@ -325,7 +325,7 @@ mod undo_seam {
     /// ninguém a ligá-las. É a fiação órfã da `DIRETIVA_IMPLEMENTACAO` §1.
     #[test]
     fn the_undo_pass_asks_whether_this_module_is_mid_gesture() {
-        let src = include_str!("undo.rs");
+        let src = concat!(include_str!("undo.rs"), include_str!("undo_app.rs"));
         assert!(
             src.contains("field3d_smoke::gesture_in_progress()"),
             "o `post_frame_undo` deixou de perguntar — um arrasto volta a ser N passos de undo"

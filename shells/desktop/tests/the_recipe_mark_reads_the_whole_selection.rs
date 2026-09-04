@@ -126,7 +126,12 @@ fn each_smoke_scene_tells_the_artist_to_click_the_recipe_row() {
 /// prova que alguém a invoca.*
 #[test]
 fn the_photograph_reconciles_the_document_first() {
-    let s = src("undo.rs");
+    // ⚠️⚠️ **O PAR, não um ficheiro.** A `App` que opera a fila mudou-se para o irmão
+    // `undo_app.rs` na integração de 2026-09-04 (tecto de LOC estourado pela SOMA de duas
+    // linhas), e todo gate que lia só `undo.rs` ficou a afirmar sobre o ficheiro errado — em
+    // silêncio no dia seguinte, se a lei ainda lá estivesse. ⇒ *um gate que PARSEIA o fonte lê
+    // a família inteira, nunca um nome de ficheiro.*
+    let s = src("undo_app.rs");
     let Some(at) = s.find("fn capture_project(") else {
         panic!("a porta unica da fotografia mudou de nome — reancore este gate");
     };

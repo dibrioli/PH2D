@@ -79,7 +79,7 @@ fn the_load_installs_the_map_and_never_merges_it() {
 /// fita fora dele.
 #[test]
 fn the_map_is_not_part_of_the_undo_unit() {
-    let src = include_str!("undo.rs");
+    let src = concat!(include_str!("undo.rs"), include_str!("undo_app.rs"));
     assert!(
         !src.contains("input_map"),
         "o Input Map entrou no `ProjectState`: um Ctrl+Z do canvas passa a rebobinar os controlos"

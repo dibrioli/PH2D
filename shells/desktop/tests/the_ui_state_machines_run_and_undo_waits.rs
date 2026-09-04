@@ -28,7 +28,7 @@ fn the_anchors_these_gates_read_still_exist() {
         "o `run_render_frame` saiu — estes gates descrevem outro arquivo"
     );
     assert!(
-        src("src/undo.rs").contains("fn post_frame_undo"),
+        src("src/undo_app.rs").contains("fn post_frame_undo"),
         "o `post_frame_undo` saiu — o gate da supressao descreve outro arquivo"
     );
 }
@@ -80,7 +80,12 @@ fn the_machine_runs_on_the_frames_clock() {
 /// **O undo ESPERA a transição terminar.**
 #[test]
 fn the_undo_waits_for_a_live_transition() {
-    let s = src("src/undo.rs");
+    // ⚠️⚠️ **O PAR, não um ficheiro.** A `App` que opera a fila mudou-se para o irmão
+    // `undo_app.rs` na integração de 2026-09-04 (tecto de LOC estourado pela SOMA de duas
+    // linhas), e todo gate que lia só `undo.rs` ficou a afirmar sobre o ficheiro errado — em
+    // silêncio no dia seguinte, se a lei ainda lá estivesse. ⇒ *um gate que PARSEIA o fonte lê
+    // a família inteira, nunca um nome de ficheiro.*
+    let s = src("src/undo_app.rs");
     let at = s
         .find("fn post_frame_undo")
         .expect("o `post_frame_undo` existe");

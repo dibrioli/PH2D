@@ -443,10 +443,27 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⭐⭐ **O painel mostra o que serve à FERRAMENTA na mão**
   ([`section_scope.rs`](crates/ph2d-panel-vector/src/section_scope.rs) — **1 de 39** seções
   consultava o modo), e os campos de forma são da forma VIVA, ou da ARMADA, ou de ninguém.
-  ⚠️ **`PROJECT_SCHEMA` 103 → 106, e o 106 foi CONTADO**: a `line/3DModeling` e a `line/components`
-  escreveram **105 as duas** — quem as integrar tem de recontar.
-  [Handoff de 31/08](docs/Vector%20Module/handoffs/HANDOFF_INTEGRACAO_line_Vector_2026-08-31.md).
-  Cenas **`=76`** (a estampa) · **`=77`** (o pincel) · **`=78`** (as quinas) ·
+  ⭐⭐⭐ **APARAR · SOLDAR · BALDE · EXPORTAR SVG** (planos 38–41): o **Trim** apara até à fronteira
+  seguinte (o motor já vivia dentro do `fx_knot`); **soldar** parte linhas cruzadas em arcos que
+  partilham o nó e escreve **UM caminho composto** no lugar do participante mais ao fundo (⚠️ com
+  **tampa REDONDA** — cada arco é um sub-caminho e a kurbo põe *tampa*, nunca *junta*, na ponta de
+  cada um, o que abria uma cunha por nó num traço largo); o **balde** dá a região que o clique aponta
+  com a fronteira em **arcos de verdade** (`ph2d-vec-fill`, crate nova); e **`File > Export SVG…`** é
+  o primeiro exportador do app que leva uma CURVA — os outros onze levam pixels, malhas ou som.
+  ⚠️⚠️ **A tinta agarra-se às LINHAS, não a uma coordenada**: no clique gravam-se as **âncoras** da
+  face (que pedaço de que contorno, em que fracção, de que lado) e cada quadro resolve-se do
+  documento sozinho — *o mesmo desenho dá sempre as mesmas cores*. Partir, fundir e crescer caem de
+  graça; ⛔ o modelo anterior comparava com o **quadro anterior** e derivava sem volta.
+  ⏳ **ABERTO:** sete preenchimentos para **seis** faces nas fixturas do report (o sétimo com o miolo
+  fora de toda a face) — ⛔ a cura *"esconder"* foi construída e **revertida por ordem do Enio**, e a
+  saída que sobra é **avisar** · a lâmina (`cut_open`) recusa um composto, e quem faz o trabalho é o
+  Trim · a caneta só continua a partir do **arco 0** de uma rede.
+  ⚠️ **`PROJECT_SCHEMA` 103 → 108** e **`VEC_SCENE_SCHEMA` 17 → 18**, e os dois **contam-se** contra
+  o main do dia: a `line/3DModeling` e a `line/components` escreveram **105 as duas**.
+  [Handoff de 31/08](docs/Vector%20Module/handoffs/HANDOFF_INTEGRACAO_line_Vector_2026-08-31.md) ·
+  [handoff de 02/09](docs/Vector%20Module/handoffs/HANDOFF_INTEGRACAO_line_Vector_2026-09-02.md).
+  Cenas **`=76`** (a estampa) · **`=77`** (o pincel) · **`=78`** (as quinas) · **`=80`** (aparar) ·
+  **`=81`** (soldar) · **`=82`** (o balde) ·
   ✅ **o `n`/folga do *tether* e o `DRAG_RATE_X = 50` NUNCA foram «feel sem medição» — a NOTA é que
   envelheceu** (conferido 24/08, mecanismo no [estudo §6.6](docs/Vector%20Module/Estudos/ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md)):
   o `50` é o atalho de **último recurso** de uma caixa **sem intervalo nenhum**, e acima dele está a `ScrubLaw` · ⏸️ abrir/fechar painel **nunca** foi

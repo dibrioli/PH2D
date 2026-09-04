@@ -184,7 +184,7 @@ pub(crate) fn make_master(
 }
 
 /// O `Name` da entidade cujo `StableId` é `id` — o mesmo do construtor do cartão.
-fn master_named(sim: &mut SimWorld, id: u64) -> Option<String> {
+pub(crate) fn master_named(sim: &mut SimWorld, id: u64) -> Option<String> {
     let mut q = sim.world_mut().query::<(&ph2d_ecs::StableId, &Name)>();
     q.iter(sim.world())
         .find(|(s, _)| s.0 == id)
@@ -215,7 +215,8 @@ pub(crate) fn detach(sim: &mut SimWorld, clicked: Entity) -> Result<usize, VerbR
     Ok(n)
 }
 
-/// ⭐⭐ **APLICAR AO MESTRE** — empurra as excepções desta instância para dentro da receita.
+/// ⭐⭐ **APLICAR AO MESTRE** — empurra as excepções desta instância para dentro da receita
+/// **directa**, que é a mais externa da escada.
 ///
 /// Devolve quantos componentes foram escritos no mestre. O escopo é o que se clicou (uma peça ⇒ as
 /// dela; a raiz ⇒ todas), pela razão do *Revert*.
@@ -226,9 +227,14 @@ pub(crate) fn detach(sim: &mut SimWorld, clicked: Entity) -> Result<usize, VerbR
 /// leva o valor a **todas as outras instâncias**. É o *Apply* do Unity: *«o que eu fiz aqui passa a
 /// ser o padrão»*.
 ///
-/// ⚠️ **A ordem é: escrever no mestre, DEPOIS limpar a chave.** Ao contrário, o passe que corre no
-/// meio veria a instância sem excepção e diferente da receita, e achataria a edição que o gesto
-/// existe para promover.
+/// # ⭐⭐⭐ Ele é UM DEGRAU da escada, e é sempre o mais EXTERNO
+///
+/// Com receitas aninhadas há mais de uma resposta a *«a que mestre?»*, e a escolha vive em
+/// [`crate::instance_apply_deep::apply_to_level`] — esta função é o degrau **1**, que é
+/// exactamente o *«Apply All aplica sempre ao mais externo»* do Unity.
+///
+/// ⛔ **Ela não tem lei própria**: escrever aqui uma segunda travessia daria duas respostas a *«o
+/// que é aplicar?»*, e a que envelhece é a que o menu chama.
 pub(crate) fn apply_to_master(
     sim: &mut SimWorld,
     registry: &ComponentRegistry,
@@ -237,65 +243,13 @@ pub(crate) fn apply_to_master(
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
 ) -> Result<usize, VerbRefusal> {
     let root = instance_root_of(sim, clicked).ok_or(VerbRefusal::NotAnInstance)?;
-    let scope = (root != clicked)
-        .then(|| sim.world().get::<InstanceOf>(clicked).map(|l| l.master))
-        .flatten();
-    let by_id = stable_index(sim);
-    let keys: Vec<ph2d_ecs::OverrideKey> = sim
+    let outermost = sim
         .world()
-        .get::<ObjectInstance>(root)
-        .map(|o| {
-            o.overrides
-                .iter()
-                .copied()
-                .filter(|k| scope.is_none_or(|piece| k.piece == piece))
-                .collect()
-        })
-        .unwrap_or_default();
-    if keys.is_empty() {
-        return Ok(0);
-    }
-    // De que entidade da instância veio cada peça do mestre.
-    let mine: std::collections::BTreeMap<u64, Entity> = subtree(sim, root)
-        .into_iter()
-        .filter_map(|e| sim.world().get::<InstanceOf>(e).map(|l| (l.master, e)))
-        .collect();
-
-    let mut n = 0;
-    for key in keys {
-        let (Some(&master_piece), Some(&inst_piece)) =
-            (by_id.get(&key.piece), mine.get(&key.piece))
-        else {
-            continue;
-        };
-        // ⭐⭐ **Um DOCUMENTO aplica-se por CONTEÚDO** (F4.6b), e não pelos bytes do componente: o
-        // `insert_from_bytes` escreveria o **id** do `VecPathRef` da instância no mestre, e as duas
-        // passariam a apontar para o mesmo path — editar uma mexeria na outra.
-        if key.type_id == ph2d_ecs::scene::stable_type_id(crate::instance_sync_docs::VEC_PATH) {
-            if crate::instance_sync_docs::apply_one(sim, docs, inst_piece, master_piece) {
-                crate::instance_sync::revert_override(sim, echo, root, key);
-                n += 1;
-            }
-            continue;
-        }
-        let Some(entry) = registry.get_by_id(key.type_id) else {
-            continue;
-        };
-        let value = (entry.serialize)(sim.world(), inst_piece).unwrap_or_default();
-        match value {
-            Some(bytes) => {
-                if (entry.insert_from_bytes)(sim.world_mut(), master_piece, &bytes).is_err() {
-                    continue;
-                }
-            }
-            // ⚠️ A ausência também é uma excepção: o artista **tirou** o componente da cópia, e
-            // aplicar isso é tirá-lo da receita.
-            None => (entry.remove)(sim.world_mut(), master_piece),
-        }
-        crate::instance_sync::revert_override(sim, echo, root, key);
-        n += 1;
-    }
-    Ok(n)
+        .get::<InstanceOf>(root)
+        .map(|l| l.master)
+        .ok_or(VerbRefusal::NotAnInstance)?;
+    crate::instance_apply_deep::apply_to_level(sim, registry, echo, clicked, outermost, docs)
+        .map(|a| a.changed)
 }
 
 /// ⭐⭐ **Quantas instâncias deste mestre já existem** — o `n` da cascata.

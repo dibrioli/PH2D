@@ -314,6 +314,8 @@ mod input_map_drag;
 #[cfg(test)]
 #[path = "inspector_presence_tests.rs"]
 mod inspector_presence_tests;
+/// ⭐⭐ **A escada do *Aplicar*** — a que mestre, quando há mais de um. Ver o cabeçalho de lá.
+mod instance_apply_deep;
 /// ⭐ **As travessias que os verbos partilham** — irmão por assunto, ver o cabeçalho de lá.
 mod instance_diag;
 mod instance_docs;

@@ -34,6 +34,11 @@ pub(crate) const DEV_RADIUS: f32 = 3.0;
 /// ⚠️ **Quantos quads de caminho entram na grade do bico** — ver [`super::tip_density`].
 pub(crate) const GRADE_RINGS: f32 = 3.0;
 
+/// ⚠️ **Até onde vai o CORPO do espinho** — a faixa `GRADE_RINGS..SHAFT_RINGS` de caminho é o
+/// que a foto do dono mostra: ele não aponta as três células do bico, aponta o **espinho
+/// inteiro** (*«não tem a densidade de faces adequada como as outras»*).
+pub(crate) const SHAFT_RINGS: f32 = 12.0;
+
 /// ⚠️ **A que distância do bico se procura o PÓLO** — `2` quads, a distância a que a malha
 /// que o dono aprovou tem as quatro valência-`3` (plano §101).
 pub(crate) const POLE_RINGS: f32 = 2.0;
@@ -67,6 +72,20 @@ pub struct TipRow {
     /// ⭐ **A GRADE NO BICO** — o tamanho médio do quad da saída junto da ponta, contra
     /// [`super::TIP_DENSITY_MAX`].
     pub grade: Option<f32>,
+    /// ⭐⭐⭐ **A FORMA DAS FACES DO BICO** — o `p50` do aspecto (lado maior / lado menor) das
+    /// faces da saída que tocam a vizinhança do ápice, e quantas delas há.
+    ///
+    /// ⛔ **É a coluna do report de 2026-09-04 (foto, seta):** *«a ponta problemática ainda não
+    /// tem a densidade de faces adequada como as outras»*. A [`TipRow::grade`] mede a aresta
+    /// **média** e é cega a isto: um quad de `2 h × 0,5 h` tem aresta média `1,25 h` — dentro
+    /// da barra — e lê-se na tela como uma face **comprida e esparsa**. *Uma média de dois
+    /// lados não vê a forma que eles fazem.*
+    pub faces: (f32, usize),
+    /// ⭐⭐⭐ **O CORPO DO ESPINHO** — `(grade, aspecto p50, faces)` na faixa entre
+    /// [`GRADE_RINGS`] e [`SHAFT_RINGS`] quads do bico. É a régua da foto de 2026-09-04: as
+    /// três células do bico são iguais nas cinco pontas daquela peça, e o que se vê na tela é
+    /// o **espinho inteiro**.
+    pub shaft: (f32, f32, usize),
     /// ⭐⭐⭐ **O PÓLO — quantos vértices IRREGULARES da saída vivem a `≤ 2` quads de caminho
     /// do bico**, e a valência do próprio bico.
     ///
@@ -103,21 +122,7 @@ pub fn tip_rows(input: &Mesh, output: &Mesh, unit: f32) -> Vec<TipRow> {
     }
     let inbr = adjacency(input);
     let onbr = adjacency(output);
-    // A aresta incidente média de cada vértice da SAÍDA — a matéria-prima da grade.
-    let mean_edge: Vec<f32> = (0..opos.len())
-        .map(|i| {
-            if onbr[i].is_empty() {
-                return 0.0;
-            }
-            #[allow(clippy::cast_precision_loss)]
-            let n = onbr[i].len() as f32;
-            onbr[i]
-                .iter()
-                .map(|&j| dist(opos[i], opos[j as usize]))
-                .sum::<f32>()
-                / n
-        })
-        .collect();
+    let mean_edge = mean_edges(opos, &onbr);
     // Os triângulos da saída, uma vez só — ver [`fan_tris`].
     let tris = fan_tris(output);
     let radius = DEV_RADIUS * unit;
@@ -138,6 +143,8 @@ pub fn tip_rows(input: &Mesh, output: &Mesh, unit: f32) -> Vec<TipRow> {
                 blind: true,
                 dev: Some([DEV_RADIUS; 3]),
                 grade: grade_at(opos, &onbr, &mean_edge, a, unit),
+                faces: faces_at(output, &onbr, &mean_edge, a, unit, 0.0, GRADE_RINGS),
+                shaft: shaft_at(output, &onbr, &mean_edge, a, unit),
                 pole: pole_at(opos, &onbr, a, unit),
             });
             continue;
@@ -166,6 +173,8 @@ pub fn tip_rows(input: &Mesh, output: &Mesh, unit: f32) -> Vec<TipRow> {
             blind: false,
             dev,
             grade: grade_at(opos, &onbr, &mean_edge, a, unit),
+            faces: faces_at(output, &onbr, &mean_edge, a, unit, 0.0, GRADE_RINGS),
+            shaft: shaft_at(output, &onbr, &mean_edge, a, unit),
             pole: pole_at(opos, &onbr, a, unit),
         });
     }
@@ -192,11 +201,7 @@ pub(crate) fn fan_tris(mesh: &Mesh) -> Vec<[[f32; 3]; 3]> {
 
 /// ⚠️ **Só os triângulos que podem competir** — sem esta cerca a régua é
 /// `O(ápices × amostras × faces)` e uma escultura de 17 k vértices leva minutos.
-pub(crate) fn near_tris(
-    tris: &[[[f32; 3]; 3]],
-    p: [f32; 3],
-    radius: f32,
-) -> Vec<&[[f32; 3]; 3]> {
+pub(crate) fn near_tris(tris: &[[[f32; 3]; 3]], p: [f32; 3], radius: f32) -> Vec<&[[f32; 3]; 3]> {
     tris.iter()
         .filter(|t| t.iter().any(|q| dist(p, *q) <= radius))
         .collect()
@@ -208,6 +213,116 @@ pub(crate) fn near_tris(
 pub(crate) fn gap_to(near: &[&[[f32; 3]; 3]], p: [f32; 3]) -> f32 {
     near.iter()
         .fold(f32::MAX, |acc, t| acc.min(point_triangle(p, t)))
+}
+
+/// ⭐⭐⭐ **A FORMA DAS FACES JUNTO DO BICO** — o `p50` do aspecto e quantas foram medidas.
+///
+/// As faces contadas são as que têm **algum vértice** na bola de caminho de [`GRADE_RINGS`]
+/// quads à volta do bico, e a lei da forma é a da casa ([`crate::quad_shape_of`]) — ⛔ *duas
+/// definições de «quad quadrado» seriam duas respostas à mesma pergunta*.
+///
+/// ⚠️ **`(0.0, 0)` é «não medido»**, e quem lê tem de o distinguir de «perfeito».
+fn faces_at(
+    output: &Mesh,
+    onbr: &[Vec<u32>],
+    mean_edge: &[f32],
+    p: [f32; 3],
+    unit: f32,
+    de: f32,
+    ate: f32,
+) -> (f32, usize) {
+    let (_, aspecto, n) = band_with(output, onbr, mean_edge, p, unit, de, ate);
+    (aspecto, n)
+}
+
+/// ⭐⭐⭐ **O CORPO DO ESPINHO** — ver [`TipRow::shaft`].
+fn shaft_at(
+    output: &Mesh,
+    onbr: &[Vec<u32>],
+    mean_edge: &[f32],
+    p: [f32; 3],
+    unit: f32,
+) -> (f32, f32, usize) {
+    band_with(output, onbr, mean_edge, p, unit, GRADE_RINGS, SHAFT_RINGS)
+}
+
+/// **A aresta incidente MÉDIA de cada vértice** — a matéria-prima da grade.
+fn mean_edges(pos: &[[f32; 3]], nbr: &[Vec<u32>]) -> Vec<f32> {
+    (0..pos.len())
+        .map(|i| {
+            if nbr[i].is_empty() {
+                return 0.0;
+            }
+            #[allow(clippy::cast_precision_loss)]
+            let n = nbr[i].len() as f32;
+            nbr[i]
+                .iter()
+                .map(|&j| dist(pos[i], pos[j as usize]))
+                .sum::<f32>()
+                / n
+        })
+        .collect()
+}
+
+/// ⭐⭐ **A grade, a forma e a contagem numa FAIXA de caminho à volta de um ponto** —
+/// `(grade, aspecto p50, faces)`, em unidades de `unit`.
+///
+/// ⚠️ **É `pub` porque a VARREDURA por faixas é o instrumento** (`--bandas` do exemplo
+/// `pontas`): a foto do dono mostra o espinho inteiro, e onde a grade muda de carácter só se
+/// acha varrendo `0–3`, `3–6`, `6–12`, `12–24 h`. ⛔ Duplicá-la no exemplo seria a segunda
+/// resposta a *«qual é a grade aqui?»*.
+///
+/// ⚠️ A faixa é de **caminho pela malha**, como todas as irmãs: uma esfera sobre um espinho
+/// fino apanha o outro lado do corpo. ⛔ `(0, 0, 0)` é *«não medido»*.
+#[must_use]
+pub fn tip_band(output: &Mesh, p: [f32; 3], unit: f32, de: f32, ate: f32) -> (f32, f32, usize) {
+    let onbr = adjacency(output);
+    let mean_edge = mean_edges(output.positions(), &onbr);
+    band_with(output, &onbr, &mean_edge, p, unit, de, ate)
+}
+
+/// A mesma lei com a vizinhança e as arestas médias JÁ calculadas — é assim que a
+/// [`tip_rows`] a corre, uma vez por malha em vez de uma vez por ponta.
+fn band_with(
+    output: &Mesh,
+    onbr: &[Vec<u32>],
+    mean_edge: &[f32],
+    p: [f32; 3],
+    unit: f32,
+    de: f32,
+    ate: f32,
+) -> (f32, f32, usize) {
+    let opos = output.positions();
+    let Some(seed) = (0..opos.len()).min_by(|&i, &j| dist(p, opos[i]).total_cmp(&dist(p, opos[j])))
+    else {
+        return (0.0, 0.0, 0);
+    };
+    let bola = path_ball(opos, onbr, seed, ate * unit);
+    let dentro: std::collections::BTreeMap<usize, f32> =
+        bola.into_iter().filter(|(_, d)| *d >= de * unit).collect();
+    if dentro.is_empty() {
+        return (0.0, 0.0, 0);
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let grade = dentro.keys().map(|&v| mean_edge[v]).sum::<f32>() / dentro.len() as f32 / unit;
+    let faces: Vec<ph2d_mesh::Face> = output
+        .faces()
+        .iter()
+        .filter(|f| {
+            f.verts()
+                .iter()
+                .any(|v| dentro.contains_key(&(*v as usize)))
+        })
+        .copied()
+        .collect();
+    if faces.is_empty() {
+        return (grade, 0.0, 0);
+    }
+    (
+        grade,
+        crate::quad_shape_of(opos, &faces).aspect_p50,
+        faces.len(),
+    )
 }
 
 /// ⭐⭐⭐ **O PÓLO de uma ponta** — quantos vértices irregulares da saída vivem a `≤ 2` quads

@@ -5,7 +5,7 @@
 //! 2026-09-04 abriu (*«muitas pontas boas, uma ruim — muito estranho»*).
 
 use super::tip_rows;
-use crate::{TIP_GAP_MAX, tip_density, tip_deviation};
+use crate::{TIP_GAP_MAX, tip_band, tip_density, tip_deviation};
 use ph2d_mesh::{Face, Mesh};
 
 /// ⭐⭐⭐ **DOIS espinhos na mesma peça, e `amputa` corta SÓ O DE CIMA** — o fuso.
@@ -190,4 +190,34 @@ fn sem_apice_a_tabela_vem_vazia_e_as_agregadas_dizem_que_nao_mediram() {
     assert_eq!((d.tips, d.cut, d.over), (0, 0, 0), "{d:?}");
     let g = tip_density(&entrada, &entrada, 0.0);
     assert_eq!(g.tips, 0, "{g:?}");
+}
+
+/// ⭐⭐⭐ **GATE — a FAIXA exclui o que está dentro dela, e é isso que a torna a régua da foto.**
+///
+/// ⛔ **O report de 2026-09-04 é sobre o espinho INTEIRO**, não sobre as três células do bico:
+/// naquela peça as cinco pontas lêem `0,69`–`0,95` de grade no bico e a que o dono aponta lê
+/// `2,37` no corpo. *Uma faixa que começasse em zero devolveria a leitura do bico outra vez.*
+#[test]
+fn a_faixa_do_corpo_nao_conta_o_bico() {
+    let escultura = cone(false);
+    let unit = 0.2;
+    let p = escultura.positions()[0];
+    let bico = tip_band(&escultura, p, unit, 0.0, 3.0);
+    let corpo = tip_band(&escultura, p, unit, 3.0, 12.0);
+    let tudo = tip_band(&escultura, p, unit, 0.0, 12.0);
+    assert!(bico.2 > 0 && corpo.2 > 0, "as duas faixas tem populacao");
+    // ⭐ **A prova da exclusão:** a faixa inteira tem MAIS faces que a de fora sozinha — o que
+    // sobra são exactamente as do bico. ⛔ Contar `corpo` contra `bico` mediria a FORMA da
+    // fixtura (o leque do bico tem tantas faces quanto o corpo desta agulha), e não a lei.
+    assert!(
+        tudo.2 > corpo.2,
+        "a faixa de fora tem de EXCLUIR o bico: tudo {tudo:?} contra corpo {corpo:?}"
+    );
+    // E as duas leituras são de facto diferentes — no cone a grade abre com a profundidade.
+    assert!(
+        (corpo.0 - bico.0).abs() > 0.1,
+        "as duas faixas nao podem devolver a mesma leitura: {corpo:?} contra {bico:?}"
+    );
+    // ⛔ E uma faixa vazia diz «não medido» com o zero-de-`Default`, nunca com um número.
+    assert_eq!(tip_band(&escultura, p, unit, 100.0, 200.0), (0.0, 0.0, 0));
 }

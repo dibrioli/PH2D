@@ -178,3 +178,33 @@ cerca 1 a funcionar no produto. Topologia `χ 2` · `0` bordo · `0` não-manifo
 | `crates/ph2d-quadfill/examples/pontas.rs` | o instrumento (`--recentrar`, `--unit`, `--rematar`) |
 | `shells/desktop/src/sculpt3d_photo_button.rs` | a tabela na sonda, em `F1` e na `SAIDA` |
 | `shells/desktop/src/sculpt3d_retopo_one.rs` | o acabamento diz o que fez (`untangled` · `snapped`) |
+
+## §11 — ⭐⭐⭐ A SEGUNDA METADE DO DIA: o knob que abria em ZERO (plano §109)
+
+**O smoke do §108 voltou aprovado** (*«resultado do remesh muito melhor, sem problemas
+graves»*) com **uma** queixa: *«a ponta problemática ainda não tem a densidade de faces adequada
+como as outras»*, com foto e seta.
+
+⛔ **A régua do §108 não a via, e a razão é o RAIO:** ela mede as três células do bico, e ali as
+cinco pontas daquela peça são iguais (`gap 0,00`, aspecto `1,08`–`1,39`). A foto é sobre o
+espinho **inteiro**. ⇒ [`TipRow::shaft`] (a faixa `3`–`12 h`), a porta [`tip_band`] e o
+`--bandas` do exemplo, que varre `0–3`, `3–6`, `6–12`, `12–24 h` **e conta o anel** — quantas
+faces dão a volta ao espinho. *É o anel que o olho lê como densidade: um espinho fino com quads
+pequenos ainda pode ter cinco faces em volta.*
+
+⭐⭐⭐ **A causa é o ponto do painel:** o `Follow Curvature` nasce em `0`, e com `0` **dois dos
+cinco espinhos saem com `3` a `5` faces dando a volta** (contra `17`–`58` com `1`), voltam `2`
+pontas amputadas e `4` com a grade grossa. Com `1` a peça dele fica melhor em **todas** as
+colunas e **mais rápida** (`150 s → 123 s`). ⇒ o knob passa a nascer no máximo, e o botão deixa
+de guardar uma segunda cópia do default.
+
+⚠️ **A troca está dita na segunda peça** (`sculpt_antes`): o `1` paga enviesamento mediano
+`2,9° → 4,2°` (dentro da banda do oráculo) e `+50 %` de relógio, e compra `>60` de `5` para
+`0` e a grade do bico abaixo da barra em todas as pontas.
+
+⛔ **A recusa de 28/08 (*«pede-se 400 % e a saída move-se 7 %»*) já não responde** — desde ela a
+fase zero passou a graduar com renormalização, ganhou a calota e o acabamento ganhou o remate.
+*Uma recusa medida responde UMA pergunta.*
+
+Gate: `the_curvature_knob_opens_where_it_was_measured` (o valor **e** a ausência do literal) +
+`a_faixa_do_corpo_nao_conta_o_bico`.

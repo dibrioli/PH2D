@@ -288,7 +288,34 @@ impl Default for Sculpt3dUi {
             // duas vezes é o que diverge no dia em que a ordem da lista mudar.
             retopo_mode: RetopoMode::ALL[0],
             quad_detail: 0.5, // LITERAL-PX-OK: fracao do curso, nao metrica de layout
-            quad_adapt: 0.0,  // LITERAL-PX-OK: fracao, nao metrica de layout
+            // ⭐⭐⭐ **O `Follow Curvature` NASCE NO MÁXIMO desde 2026-09-04** — report do dono,
+            // com foto e seta: *«a ponta problemática ainda não tem a densidade de faces
+            // adequada como as outras»*. ⛔ O `0,0` de antes tinha razão escrita (*«abre
+            // UNIFORME, que é o modo cujo resultado o artista consegue prever»*) e uma medição
+            // de 2026-08-28 por trás (*«pede-se 400 % e a saída move-se 7 %»*) — e **as duas
+            // envelheceram**: desde então a fase zero passou a GRADUAR com renormalização
+            // (`ADAPT_RATIO 16`), ganhou a **calota** por espinho (§105) e o acabamento ganhou
+            // o **remate** (§108). *Uma recusa medida responde UMA pergunta, e a cadeia por
+            // baixo desta mudou três vezes.*
+            //
+            // Medido de ponta a ponta na escultura do dono (`Detail 1`, `PH2D_RECENTER=1`):
+            //
+            // | `Curv` | pontas amputadas | grade pior no bico | `>60°` | envies. p50/p99 | relógio |
+            // |---|---|---|---|---|---|
+            // | `0` | ⛔ `2` de `5` | ⛔ `2,37` (`4` acima) | `27` | `3,9` / `29,9` | `150 s` |
+            // | `0,5` | `0` de `5` | `0,93` | `10` | `4,0` / `27,1` | `208 s` |
+            // | ⭐ `1` | **`0` de `5`** | **`0,95`** | **`4`** | **`3,0` / `20,0`** | **`123 s`** |
+            //
+            // ⚠️ **Na segunda peça (`sculpt_antes`) o `1` NÃO é grátis** e a troca fica dita: ele
+            // leva `>60` de `5` a **`0`** e a grade do bico de `1,16` a `0,99` (nenhuma ponta
+            // acima da barra), e paga enviesamento mediano `2,9° → 4,2°` — dentro da banda do
+            // oráculo (`4,8`–`7,1°`) — e `+50 %` de relógio. *A ponta é o que o dono fotografa;
+            // o enviesamento mediano é a coluna que ele nunca nomeou.*
+            //
+            // ⚠️ **O que o `0` faz na tela, medido:** dois dos cinco espinhos saem com **`3` a
+            // `5` faces dando a volta** (contra `17`–`58` com o `1`) — o espinho fica
+            // facetado enquanto o vizinho gordo sai fino, que é a foto dele.
+            quad_adapt: 1.0, // LITERAL-PX-OK: fracao, nao metrica de layout
 
             extract: Extract::default(),
         }

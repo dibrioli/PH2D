@@ -25,6 +25,11 @@ fn main() {
     // instrumento que responde *«o remate pega nesta peça?»* sem pagar uma corrida do botão.
     let rematar = args.iter().any(|a| a == "--rematar");
     args.retain(|a| a != "--rematar");
+    // ⭐ **`--bandas` varre a grade do bico para fora** (`0–3`, `3–6`, `6–12`, `12–24 h`): a
+    // foto do dono mostra o espinho INTEIRO, e uma leitura só no bico não diz onde a grade
+    // muda de carácter.
+    let bandas = args.iter().any(|a| a == "--bandas");
+    args.retain(|a| a != "--bandas");
     while let Some(i) = args.iter().position(|a| a == "--entrada" || a == "--unit") {
         let chave = args[i].clone();
         let valor = args.get(i + 1).cloned().unwrap_or_default();
@@ -82,11 +87,13 @@ fn main() {
             ph2d_quadfill::TIP_GAP_MAX,
             ph2d_quadfill::TIP_DENSITY_MAX,
         );
-        println!("   apice   raio   cone    gap  grade  polo(irr,val)   dev p50   p90   max");
+        println!(
+            "   apice   raio   cone    gap  grade  aspecto(n)   CORPO grade/asp(n)  polo   dev p50   p90"
+        );
         for r in &linhas {
             let dev = r.dev.unwrap_or([f32::NAN; 3]);
             println!(
-                "   {:>6} {:>6.3} {:>6} {:>6.2}{} {:>6.2}{} {:>13} {:>9.2} {:>5.2} {:>5.2}{}",
+                "   {:>6} {:>6.3} {:>6} {:>6.2}{} {:>6.2}{} {:>11} {:>20} {:>8} {:>7.2} {:>5.2}{}",
                 r.apex,
                 r.radius,
                 r.cone
@@ -103,12 +110,47 @@ fn main() {
                 } else {
                     " "
                 },
+                format!("{:>5.2}({:<3})", r.faces.0, r.faces.1),
+                format!("{:>6.2} /{:>5.2}({:<4})", r.shaft.0, r.shaft.1, r.shaft.2),
                 format!("{:>3},{:<3}", r.pole.0, r.pole.1),
                 dev[0],
                 dev[1],
-                dev[2],
                 if r.blind { "  ⛔ CEGA (piso)" } else { "" },
             );
+        }
+        if bandas {
+            let pos = entrada.positions();
+            for r in &linhas {
+                let p = pos[r.apex];
+                let mut linha = format!("   ponta {:>6}:", r.apex);
+                for (de, ate) in [(0.0, 3.0), (3.0, 6.0), (6.0, 12.0), (12.0, 24.0)] {
+                    let (grade, asp, n) = ph2d_quadfill::tip_band(m, p, h, de, ate);
+                    linha.push_str(&format!("  [{de:.0}-{ate:.0}h] {grade:.2}/{asp:.2}({n})"));
+                }
+                // ⭐⭐⭐ **QUANTOS QUADS DÃO A VOLTA** — o número que o olho lê como *«a
+                // densidade deste espinho»*: um espinho fino com quads pequenos ainda pode ter
+                // só cinco faces em volta, e é isso que se vê na foto. Conta-se o anel de
+                // vértices a `d ± ½` célula de caminho do bico.
+                let onbr = ph2d_quadfill::adjacency(m);
+                let opos = m.positions();
+                if let Some(seed) = (0..opos.len()).min_by(|&i, &j| {
+                    let (a, b) = (opos[i], opos[j]);
+                    let da = (a[0] - p[0]).powi(2) + (a[1] - p[1]).powi(2) + (a[2] - p[2]).powi(2);
+                    let db = (b[0] - p[0]).powi(2) + (b[1] - p[1]).powi(2) + (b[2] - p[2]).powi(2);
+                    da.total_cmp(&db)
+                }) {
+                    let bola = ph2d_quadfill::path_ball(opos, &onbr, seed, 13.0 * h);
+                    linha.push_str("  voltas:");
+                    for d in [3.0f32, 6.0, 12.0] {
+                        let n = bola
+                            .values()
+                            .filter(|x| ((*x / h) - d).abs() <= 0.5)
+                            .count();
+                        linha.push_str(&format!(" {d:.0}h={n}"));
+                    }
+                }
+                println!("{linha}");
+            }
         }
         let cortadas = linhas
             .iter()

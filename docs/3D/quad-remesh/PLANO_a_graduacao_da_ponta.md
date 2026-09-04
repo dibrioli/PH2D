@@ -2315,3 +2315,76 @@ escolher pela forma.*
 `gap 0,00` e a agulha `4849` **fica acusada** a `2,57` — o remate recusa-se por desenho, que é a
 cerca 1 a funcionar no produto. Topologia `χ 2` · `0` bordo · `0` não-manifold · **`>60 = 0`**,
 `21 512` quads.
+
+## §109 — ⭐⭐⭐ «A PONTA NÃO TEM A DENSIDADE DAS OUTRAS»: o knob que abria em ZERO (2026-09-04)
+
+> *«Resultado do remesh muito melhor, sem problemas graves. Mas a ponta problemática ainda não
+> tem a densidade de faces adequada como as outras»* — o dono, com foto e seta, depois do
+> smoke do §108.
+
+### §109.1 — A régua que faltava: o CORPO do espinho, e quantas faces dão a VOLTA
+
+O §108 mediu as três células do bico, e **ali as cinco pontas daquela peça são iguais**
+(`gap 0,00`, aspecto `1,08`–`1,39`). A foto não é sobre o bico: é sobre o **espinho inteiro**.
+⇒ duas colunas novas em [`ph2d_quadfill::tip_rows`] — [`TipRow::shaft`] (grade e aspecto na
+faixa `3`–`12 h`) — e a porta [`ph2d_quadfill::tip_band`], que o `--bandas` do exemplo `pontas`
+varre em `0–3`, `3–6`, `6–12`, `12–24 h`, com a contagem do **anel** (quantas faces dão a volta
+ao espinho a `3`, `6` e `12 h` do bico).
+
+⭐⭐ **A contagem do anel é o número que o olho lê.** Um espinho fino com quads pequenos ainda
+pode ter **cinco** faces em volta — e é isso, e não o tamanho do quad, que se vê como *«sem
+densidade»*.
+
+### §109.2 — ⛔⛔⛔ A causa: o `Follow Curvature` nasce em `0`, e é o ponto do painel
+
+`_base_sculpt`, `Detail 1`, `PH2D_RECENTER=1` sobre o ficheiro cru:
+
+| `Curv` | quads | pontas amputadas | grade pior no bico | `>60°` | aspecto p50/p99 | envies. p50/p99 | relógio |
+|---|---|---|---|---|---|---|---|
+| ⛔ **`0`** (o padrão) | `22 165` | **`2` de `5`** | **`2,37`** (`4` acima) | `27` | `1,06` / `1,53` | `3,9` / `29,9` | `150 s` |
+| `0,5` | `22 679` | `0` de `5` | `0,93` | `10` | `1,11` / `1,73` | `4,0` / `27,1` | `208 s` |
+| ⭐ **`1`** | `21 914` | **`0` de `5`** | **`0,95`** | **`4`** | `1,09` / `1,57` | **`3,0` / `20,0`** | **`123 s`** |
+
+E o anel, que é a foto:
+
+| ponta | `Curv 0` — voltas a `3/6/12 h` | `Curv 1` |
+|---|---|---|
+| `8042` | `10 / 17 / 21` | `19 / 58 / 58` |
+| ⛔ `9218` | **`3 / 4 / 5`** | `24 / 23 / 29` |
+| ⛔ `12279` | **`1 / 0 / 8`** | `17 / 21 / 7` |
+| `11108` | `9 / 16 / 21` | `19 / 26 / 18` |
+| `15622` | `5 / 7 / 14` | `21 / 17 / 11` |
+
+⭐⭐⭐ **Dois dos cinco espinhos saem com `3` a `5` faces dando a volta** — o espinho fica
+facetado enquanto o vizinho gordo sai fino. *É literalmente a foto dele.*
+
+### §109.3 — Por que a recusa de 28/08 já não responde
+
+O `0,0` tinha razão escrita (*«abre UNIFORME, que é o modo cujo resultado o artista consegue
+prever antes de clicar»*) e uma medição por trás (*«pede-se `400 %` e a saída move-se `7 %`»*,
+com `−15 %` de contagem e o dobro das faces `>60°`). **As duas envelheceram**: desde então a
+fase zero passou a **graduar com renormalização** (`ADAPT_RATIO 16`, §5), ganhou a **calota**
+por espinho (§105) e o acabamento ganhou o **remate** (§108). *Uma recusa medida responde UMA
+pergunta, e a cadeia por baixo desta mudou três vezes.*
+
+### §109.4 — A troca, dita na segunda peça
+
+`sculpt_antes`, `Detail 1`:
+
+| `Curv` | quads | grade pior no bico | `>60°` | aspecto p50/p99 | envies. p50/p99 | relógio |
+|---|---|---|---|---|---|---|
+| `0` | `23 914` | `1,16` (`1` acima) | `5` | **`1,05` / `1,28`** | **`2,9` / `14,8`** | **`162 s`** |
+| ⭐ `1` | `21 512` | **`0,99`** (**`0`** acima) | **`0`** | `1,09` / `1,51` | `4,2` / `24,2` | `246 s` |
+
+⇒ **o `1` não é grátis nesta peça**: ele paga enviesamento mediano `2,9° → 4,2°` — dentro da
+banda do oráculo (`4,8`–`7,1°`) — e `+50 %` de relógio, e compra `>60` de `5` para **`0`** e a
+grade do bico abaixo da barra em **todas** as pontas. *A ponta é o que o dono fotografa; o
+enviesamento mediano é a coluna que ele nunca nomeou* — a mesma decisão que a chave da ponta
+tomou em 30/08.
+
+### §109.5 — O que shipa
+
+O `Follow Curvature` passa a **nascer no máximo**, e o botão deixa de guardar uma segunda cópia
+do default (ele deriva do painel — o comentário do vizinho já escrevia a lei que as duas cópias
+violavam: *«um default escrito duas vezes é o que diverge»*). Gate:
+`the_curvature_knob_opens_where_it_was_measured` (o valor medido **e** a ausência do literal).

@@ -306,9 +306,7 @@ fn as_tres_saidas_do_acabamento_desfazem_o_avesso() {
     // 2026-09-04 nasceu uma `fn rematar` **privada** logo abaixo, e o `return 0;` da porta de
     // bissecção dela entrou na contagem — o gate leu `4` saídas de `3`. *Um censo de fonte tem
     // de saber onde a função ACABA, e não onde a próxima função pública começa.*
-    let corpo = corpo
-        .split_once("\n}\n")
-        .map_or(corpo, |(antes, _)| antes);
+    let corpo = corpo.split_once("\n}\n").map_or(corpo, |(antes, _)| antes);
     let retornos = corpo.matches("return ").count() + 1; // os `return` mais a queda no fim
     // ⚠️ **A CHAMADA, e não o nome:** os doc-comments citam as duas portas, e contar o nome
     // fazia o gate ler `4` de `3` — *um censo de fonte tem de saber a forma do que conta*.

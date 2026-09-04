@@ -2310,3 +2310,8 @@ viagem que protege a ponta é a mesma que impede a relaxação de trabalhar.
 
 ⇒ *o remate não «corrige o número da régua»: ele tira a ponta da disputa, e o selector passa a
 escolher pela forma.*
+
+⭐ **E o CONTROLO na outra peça** (`sculpt_antes`, a da agulha): as **três** pontas sãs passam a
+`gap 0,00` e a agulha `4849` **fica acusada** a `2,57` — o remate recusa-se por desenho, que é a
+cerca 1 a funcionar no produto. Topologia `χ 2` · `0` bordo · `0` não-manifold · **`>60 = 0`**,
+`21 512` quads.

@@ -118,6 +118,11 @@ trabalhar. *O remate tira a ponta da disputa, e o selector passa a escolher pela
 ⚠️ `PH2D_TIP_SNAP=0` bissecta (a porta mora no acabamento e alcança a bancada de propósito: a
 comparação precisa das duas metades a correr a MESMA cadeia).
 
+⭐ **E o CONTROLO na outra peça** (`sculpt_antes`, a da agulha): as **três** pontas sãs passam a
+`gap 0,00` e a agulha `4849` **fica acusada** a `2,57` — o remate recusa-se por desenho, que é a
+cerca 1 a funcionar no produto. Topologia `χ 2` · `0` bordo · `0` não-manifold · **`>60 = 0`**,
+`21 512` quads.
+
 ## §7 — ⛔ Recusas MEDIDAS desta wave
 
 - **`PH2D_TIP_ALIGN=5` COM a calota** — a célula `(1,1)` que o [§103](../quad-remesh/PLANO_a_graduacao_da_ponta.md)

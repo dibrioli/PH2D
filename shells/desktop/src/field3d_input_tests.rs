@@ -341,8 +341,13 @@ mod undo_seam {
         let marca = src
             .find("field3d_smoke::take_authored_change()")
             .expect("lê a marca");
+        // ⚠️ **Pela CABEÇA da guarda, e não pelo primeiro motivo** (2026-09-04): a ordem dos
+        // cinco inverteu-se — um FACTO do app (gesto em curso) passou à frente de uma AUSÊNCIA
+        // (sem eventos), porque com a ordem antiga o log dizia *«sem entrada neste quadro»* sobre
+        // quadros que eram um arrasto, e mandou uma jornada inteira caçar um fantasma. *Um gate
+        // que se agarra ao PRIMEIRO ramo de uma cadeia proíbe reordená-la.*
         let guarda = src
-            .find("let motivo = if !had_input")
+            .find("let motivo = if ")
             .expect("a guarda dos cinco motivos");
         assert!(
             marca < guarda,

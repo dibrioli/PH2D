@@ -145,13 +145,22 @@ fn removing_the_last_modifier_removes_the_component_too() {
     );
 }
 
-/// ⭐ **Um modificador pode ter VÁRIOS números — ou nenhum.**
+/// ⭐ **Um modificador pode ter VÁRIOS números — e nenhum tem zero.**
 ///
-/// ⚠️ É o que a matriz forçou, e o gate mede as duas pontas na mesma corrida: o espelho não põe
-/// linha nenhuma (o chip aceso já diz tudo), e a matriz põe cinco. Um gate só sobre a matriz passaria
-/// com um `flat_map` que inventasse uma linha vazia para o espelho.
+/// ⚠️ É o que a matriz forçou, e o gate mede as duas pontas na mesma corrida: o espelho põe **uma**
+/// linha e a matriz põe **cinco**. Um gate só sobre a matriz passaria com um `flat_map` que
+/// inventasse uma linha vazia para o vizinho.
+///
+/// # ⛔⛔ A ponta de baixo era ZERO, e era o defeito (report do Enio, 2026-09-04)
+///
+/// Até aqui este gate afirmava *«o espelho não tem número nenhum — o chip aceso é a única coisa que
+/// há para dizer»*, e essa frase era a descrição de um **controlo morto**: o plano da dobra era a
+/// origem do nó, uma primitiva é construída em volta dela por construção, e o chip acendia sem
+/// mudar **um bit** do campo (`0.000000`, medido). ⇒ o espelho ganhou o **plano** e a ponta de baixo
+/// deste gate passou de `0` para `1`. *Um gate que fixa o número zero defende a ausência de um
+/// controlo.*
 #[test]
-fn a_modifier_can_have_several_numbers_or_none_at_all() {
+fn a_modifier_can_have_several_numbers_and_none_has_zero() {
     use ph2d_field::{Param, UnaryKind};
     let mut sim = a_world();
     let world = sim.world_mut();
@@ -166,15 +175,18 @@ fn a_modifier_can_have_several_numbers_or_none_at_all() {
     };
 
     ph2d_field_ecs::add_mod(world, root, UnaryKind::Mirror);
-    assert!(
-        rows_of(world).is_empty(),
-        "o espelho não tem número nenhum — o chip aceso é a única coisa que há para dizer"
+    assert_eq!(
+        rows_of(world),
+        vec![Param::Mod { slot: 0, field: 0 }],
+        "o espelho põe UMA linha — o PLANO da dobra, sem o qual o chip acende e a peça fica igual"
     );
 
     ph2d_field_ecs::add_mod(world, root, UnaryKind::Array);
     assert_eq!(
         rows_of(world),
         vec![
+            // ⭐ O PLANO do espelho, que continua no slot 0 — ver o doc deste gate.
+            Param::Mod { slot: 0, field: 0 },
             Param::Mod { slot: 1, field: 0 },
             Param::Mod { slot: 1, field: 1 },
             // ⭐ **Os dois números da COSTURA entre as cópias** (Enio, 2026-08-30), e eles vêm no
@@ -186,7 +198,7 @@ fn a_modifier_can_have_several_numbers_or_none_at_all() {
             // último da lista é o único sítio onde acrescentar não renumera ninguém.
             Param::Mod { slot: 1, field: 4 },
         ],
-        "a matriz põe CINCO linhas, e no slot 1 — o espelho continua a ocupar o slot 0"
+        "a matriz põe CINCO linhas no slot 1, e a do espelho no slot 0 continua lá"
     );
 }
 

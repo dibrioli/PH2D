@@ -31,7 +31,7 @@ fn the_dialog_offers_exactly_what_the_router_accepts() {
     // 1. Tudo o que o diálogo oferece, o roteador aceita — perguntado pela função que o produto
     //    de facto chama, e não por um predicado que só os gates usam.
     for ext in &all {
-        let (_, _, unknown) = partition_importables(&[p(&format!("/a/file.{ext}"))]);
+        let unknown = partition_importables(&[p(&format!("/a/file.{ext}"))]).unknown;
         assert!(
             unknown.is_empty(),
             "o dialogo oferece .{ext} e o roteador manda-o para «nao sei ler isto»"
@@ -41,6 +41,7 @@ fn the_dialog_offers_exactly_what_the_router_accepts() {
     //    as únicas que o roteador consulta.
     for ext in crate::ase_import::ASE_EXTENSIONS
         .iter()
+        .chain(crate::svg_import::SVG_EXTENSIONS)
         .chain(ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS)
     {
         assert!(
@@ -51,31 +52,38 @@ fn the_dialog_offers_exactly_what_the_router_accepts() {
     }
     // 3. E o que não é importável fica de fora dos dois.
     for ext in ["txt", "mp3", "blend", "rs"] {
-        let (_, _, unknown) = partition_importables(&[p(&format!("/a/x.{ext}"))]);
+        let unknown = partition_importables(&[p(&format!("/a/x.{ext}"))]).unknown;
         assert_eq!(unknown.len(), 1, ".{ext} nao devia ser importavel");
         assert!(!all.contains(&ext));
     }
 }
 
-/// **O `.ase` está lá, pelo nome** — o pedido do Enio, afirmado sem rodeios.
+/// **O `.ase`, o `.svg` e as onze imagens estão lá, pelo nome** — o pedido do Enio, afirmado sem
+/// rodeios.
 ///
-/// ⚠️ E as **onze** extensões de imagem também: o diálogo oferecia quatro enquanto o predicado
-/// aceitava onze, e esse buraco é anterior a esta linha.
+/// ⚠️ O diálogo oferecia quatro extensões enquanto o predicado aceitava onze, e esse buraco é
+/// anterior a esta linha. ⚠️ **A contagem é a SOMA das listas, nunca um número escrito** — foi
+/// assim que acrescentar o `.svg` em 05/09 acordou este gate em vez de o deixar mentir.
 #[test]
-fn aseprite_and_all_eleven_image_formats_are_offered() {
+fn aseprite_svg_and_all_eleven_image_formats_are_offered() {
     let filters = dialog_filters();
     let all = &filters[0].1;
     assert!(all.contains(&"ase") && all.contains(&"aseprite"));
+    assert!(all.contains(&"svg") && all.contains(&"svgz"));
     assert!(all.contains(&"gif") && all.contains(&"psd") && all.contains(&"ora"));
     assert_eq!(
         all.len(),
-        crate::ase_import::ASE_EXTENSIONS.len() + ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS.len(),
-        "a linha «tudo» tem de ser a UNIAO das duas listas, sem inventar nem perder"
+        crate::ase_import::ASE_EXTENSIONS.len()
+            + crate::svg_import::SVG_EXTENSIONS.len()
+            + ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS.len(),
+        "a linha «tudo» tem de ser a UNIAO das tres listas, sem inventar nem perder"
     );
     // As linhas estreitas existem para o artista poder filtrar, e cada uma é a sua lista.
     assert_eq!(filters[1].0, "Aseprite");
     assert_eq!(filters[1].1, crate::ase_import::ASE_EXTENSIONS.to_vec());
-    assert_eq!(filters[2].0, "Images");
+    assert_eq!(filters[2].0, "Vector (SVG)");
+    assert_eq!(filters[2].1, crate::svg_import::SVG_EXTENSIONS.to_vec());
+    assert_eq!(filters[3].0, "Images");
 }
 
 /// **Cada ficheiro vai para o seu importador**, e o que não é de nenhum sai NOMEADO — não em
@@ -86,14 +94,25 @@ fn aseprite_and_all_eleven_image_formats_are_offered() {
 /// prende para o dia em que colidirem).
 #[test]
 fn every_file_goes_to_its_own_importer() {
-    let (ase, images, unknown) = partition_importables(&[
+    let Importables {
+        ase,
+        svg,
+        images,
+        unknown,
+    } = partition_importables(&[
         p("/a/hero.ase"),
         p("/a/tiles.png"),
         p("/a/notes.txt"),
         p("/a/boss.ASEPRITE"),
         p("/a/scan.PSD"),
+        p("/a/logo.svg"),
     ]);
     assert_eq!(ase, vec![p("/a/hero.ase"), p("/a/boss.ASEPRITE")]);
+    assert_eq!(
+        svg,
+        vec![p("/a/logo.svg")],
+        "um .svg e' um DESENHO — se caisse na grelha de imagens viraria pixels"
+    );
     assert_eq!(images, vec![p("/a/tiles.png"), p("/a/scan.PSD")]);
     assert_eq!(unknown, vec![p("/a/notes.txt")]);
 }
@@ -102,7 +121,7 @@ fn every_file_goes_to_its_own_importer() {
 /// noutra ordem sem ninguém a ter pedido.
 #[test]
 fn the_order_of_the_batch_survives() {
-    let (_, images, _) = partition_importables(&[p("/c.png"), p("/a.png"), p("/b.png")]);
+    let images = partition_importables(&[p("/c.png"), p("/a.png"), p("/b.png")]).images;
     assert_eq!(images, vec![p("/c.png"), p("/a.png"), p("/b.png")]);
 }
 

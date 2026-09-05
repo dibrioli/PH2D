@@ -93,9 +93,19 @@ impl ImageImporter for SvgImporter {
         // body is reserved for W3+ ph2d-vector amendment.
         let _tree = usvg::Tree::from_data(src, &opts)
             .map_err(|e| Error::from_decoder_message(format!("SVG parse: {e}")))?;
-        // W3.T5 ships parse-only validation. The actual vector
-        // tree → BezPath conversion lands in W3+ when ph2d-vector
-        // is callable from imageio.
+        // ⚠️⚠️ **A recusa passou a NOMEAR a porta certa** (2026-09-05, estudo 42 item 3). Ela dizia
+        // *"lands in W3+ when ph2d-vector is callable from imageio"*, e isso deixou de ser o
+        // estado do mundo: um `.svg` **entra** neste app como formas editáveis, pelo
+        // `ph2d-vec-svg` (largar na janela ou *File > Import…*).
+        //
+        // ⛔ O que esta porta faz continua a ser outra coisa: ela pertence ao registo de IMAGENS e
+        // devolve um `DecodedImage`, que é um contentor de pixels — o `VectorDoc` daqui é o
+        // modelo vectorial ANTIGO (congelado, §6), e traduzir para ele para depois traduzir outra
+        // vez seria uma segunda tradução a envelhecer ao lado da primeira.
+        //
+        // ⇒ O corpo fica vazio **de propósito**, e o `.svg` não está no
+        // `SUPPORTED_IMAGE_EXTENSIONS` justamente para nenhum gesto do produto chegar aqui — se
+        // chegasse, o artista receberia pixels onde pediu curvas.
         Ok(DecodedImage::Vector(VectorDoc::default()))
     }
 }
@@ -253,6 +263,24 @@ mod tests {
             ),
             other => panic!("expected Decode with cap message, got: {other:?}"),
         }
+    }
+
+    /// ⭐⭐ **OS DOIS TECTOS SÃO O MESMO NÚMERO, e esta é a única crate que vê os dois.**
+    ///
+    /// O `ph2d-vec-svg` (o importador vectorial a sério, estudo 42 item 3) declara o próprio
+    /// `MAX_SVG_BYTES` porque não pode depender do `ph2d-imageio` — mas a LEI é uma só: quanto
+    /// texto XML este app aceita antes de o parser lhe tocar.
+    ///
+    /// ⚠️ *Duas constantes para a mesma lei divergem no primeiro dia em que alguém mexe numa
+    /// delas*, e a divergência aqui seria silenciosa: um ficheiro entraria por uma porta e seria
+    /// recusado pela outra, com a mesma mensagem de defesa.
+    #[test]
+    fn the_two_xml_size_ceilings_are_one_law() {
+        assert_eq!(
+            ph2d_vec_svg::MAX_SVG_BYTES,
+            MAX_ARCHIVE_TEXT_BYTES,
+            "o tecto do importador vectorial e o do texto de arquivo tem de ser o MESMO numero"
+        );
     }
 
     #[test]

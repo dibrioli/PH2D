@@ -593,6 +593,8 @@ mod splice_smoke;
 mod stack_smoke;
 mod stagger_smoke;
 mod substrate_smoke;
+mod svg_import;
+mod svg_import_smoke;
 mod symmetry_live;
 /// A cena de smoke da SIMETRIA de desenho (`PH2D_BUILD_SMOKE=46`) — irmã de `build_smoke`.
 mod symmetry_smoke;
@@ -1021,6 +1023,7 @@ impl App {
             expr_blend_smoke_done: false,
             morph_fade_smoke_done: false,
             vec_appearance_smoke_done: false,
+            svg_import_smoke_done: false,
             vec_fade_smoke_done: false,
             nest_smoke_done: false,
             player_readout_log: None,

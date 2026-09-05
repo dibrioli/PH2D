@@ -5489,6 +5489,7 @@ dependencies = [
  "ph2d-vec-pattern",
  "ph2d-vec-render",
  "ph2d-vec-scene",
+ "ph2d-vec-svg",
  "ph2d-vector",
  "ph2d-vector-font",
  "postcard",
@@ -5655,6 +5656,7 @@ name = "ph2d-imageio-svg"
 version = "0.0.0"
 dependencies = [
  "ph2d-imageio",
+ "ph2d-vec-svg",
  "usvg",
 ]
 
@@ -8143,6 +8145,15 @@ dependencies = [
  "ph2d-warp-style",
  "postcard",
  "serde",
+]
+
+[[package]]
+name = "ph2d-vec-svg"
+version = "0.0.0"
+dependencies = [
+ "ph2d-blend-mode",
+ "ph2d-vec-scene",
+ "usvg",
 ]
 
 [[package]]

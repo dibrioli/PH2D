@@ -342,6 +342,11 @@ ph2d-vec-boolean = { path = "../../crates/ph2d-vec-boolean" }
 # Conectores: o roteador (A*/OVG) da linha que gruda em duas formas e as segue. A
 # shell re-cozinha a rota a cada frame em `connector_live`.
 ph2d-vec-connect = { path = "../../crates/ph2d-vec-connect" }
+# ⭐ A tradução SVG ⇄ documento vectorial (estudo 42, item 3): o IMPORTADOR (um `.svg` largado na
+# janela vira formas editáveis) e a **lei dos eixos**, que o exportador desta shell também consome
+# — o SVG mede o Y para baixo e o mundo mede-o para cima, e antes desta crate cada lado escrevia a
+# própria conversão (o exportador não escrevia nenhuma, e saía espelhado).
+ph2d-vec-svg = { path = "../../crates/ph2d-vec-svg" }
 # ADR-0114: documento do Flip (animação quadro-a-quadro). W0 = dados + ponte ECS
 # (flip_entities) + undo/save; render e tool vêm nas waves seguintes.
 ph2d-flip = { path = "../../crates/ph2d-flip" }

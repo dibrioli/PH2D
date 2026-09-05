@@ -232,3 +232,117 @@ fn a_linear_gradient_travels_as_a_gradient() {
         "um gradiente linear NAO e' aproximacao"
     );
 }
+
+/// ⭐⭐⭐ **O QUE ESTÁ EM CIMA NO MUNDO FICA EM CIMA NO FICHEIRO.**
+///
+/// ⛔ Este gate não existia, e é por isso que **todo SVG exportado saía espelhado** desde 02/09: o
+/// exportador escrevia coordenadas de mundo cruas (`Y` a subir) dentro de um `<svg>` (`Y` a
+/// descer), e os seis gates deste ficheiro mediam tinta, pose, marca e cabeçalho — nenhum media
+/// **para que lado**.
+///
+/// ⚠️ Mutação que tem de sangrar: apagar o `bake_xform(..., world_to_svg(..))`. Todos os outros
+/// gates deste ficheiro continuam verdes.
+#[test]
+fn what_is_up_in_the_world_is_up_in_the_file() {
+    let mut scene = VecScene::new();
+    // Um triângulo com a ponta no ALTO do mundo (y = +10) e a base em baixo (y = -10).
+    scene.push_path(VecPath {
+        verts: vec![v(0.0, 10.0), v(10.0, -10.0), v(-10.0, -10.0)],
+        closed: true,
+        fill: Some(Paint::Solid(Rgba8::new(0, 0, 0, 255))),
+        ..VecPath::default()
+    });
+    let out = svg(&scene, &VecXforms::new(), &sempre_nao, &sempre_nao);
+    let ys = ys_do_d(&out.texto);
+    // ⚠️ A comparação é contra os EXTREMOS, e não contra o vizinho: num vértice de quina os dois
+    // handles coincidem com a âncora, então o `d` traz o mesmo `y` três vezes seguidas — a 1.ª
+    // redacção deste gate pedia `ys[0] < ys[1]` e reprovava sobre produto CERTO.
+    let (lo, hi) = (
+        ys.iter().copied().fold(f64::INFINITY, f64::min),
+        ys.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+    );
+    assert!(
+        (ys[0] - lo).abs() < 1e-9 && lo < hi,
+        "o `M` do caminho e' a PONTA, e no SVG (Y a descer) ela tem de ser o menor y: \
+         primeiro={} lo={lo} hi={hi}\n{}",
+        ys[0],
+        out.texto
+    );
+}
+
+/// Os `y` do primeiro `d="…"` do ficheiro, na ordem em que aparecem.
+///
+/// ⚠️ O separador leva um ESPAÇO à frente de propósito: `data-ph2d-id="` acaba em `d="`, e sem ele
+/// este ajudante lia o número do id e devolvia lista vazia — a 1.ª redacção do gate reprovou
+/// exactamente assim, sobre produto certo.
+fn ys_do_d(texto: &str) -> Vec<f64> {
+    let d = texto
+        .split(" d=\"")
+        .nth(1)
+        .expect("ha' um caminho")
+        .split('"')
+        .next()
+        .expect("o d fecha");
+    let nums: Vec<f64> = d
+        .split(|c: char| !(c.is_ascii_digit() || c == '.' || c == '-'))
+        .filter(|s| !s.is_empty())
+        .filter_map(|s| s.parse().ok())
+        .collect();
+    nums.iter().skip(1).step_by(2).copied().collect()
+}
+
+/// ⭐⭐⭐ **EXPORTAR E VOLTAR A IMPORTAR DEVOLVE A MESMA GEOMETRIA.**
+///
+/// É o oráculo que a lei dos eixos merece: as duas direcções são escritas uma vez cada
+/// ([`ph2d_vec_svg::world_to_svg`] / [`ph2d_vec_svg::svg_to_world`]) e este gate atravessa o
+/// produto inteiro — o `build_contours` do renderer, o texto do ficheiro, o parser do usvg e a
+/// travessia do importador.
+///
+/// ⚠️ **A centragem do importador é parte da ida-e-volta**: ele devolve o desenho centrado na
+/// origem (é o que a shell precisa para o largar), então o que se compara é a FORMA — cada âncora
+/// menos o centro da caixa.
+#[test]
+fn a_drawing_that_goes_out_as_svg_comes_back_the_same_shape() {
+    let mut scene = VecScene::new();
+    scene.push_path(VecPath {
+        verts: vec![v(0.0, 12.0), v(9.0, -6.0), v(-9.0, -6.0)],
+        closed: true,
+        fill: Some(Paint::Solid(Rgba8::new(10, 20, 30, 255))),
+        ..VecPath::default()
+    });
+    let out = svg(&scene, &VecXforms::new(), &sempre_nao, &sempre_nao);
+    let de_volta = ph2d_vec_svg::import(
+        out.texto.as_bytes(),
+        &ph2d_vec_svg::Options {
+            pixels_per_meter: ph2d_vec_svg::EXPORT_PIXELS_PER_UNIT,
+        },
+    )
+    .expect("o nosso proprio ficheiro tem de entrar");
+    assert_eq!(de_volta.shapes.len(), 1);
+    let v: Vec<[f64; 2]> = de_volta.shapes[0]
+        .path
+        .verts
+        .iter()
+        .map(|v| v.anchor)
+        .collect();
+    let centro = |eixo: usize| {
+        let lo = v.iter().map(|p| p[eixo]).fold(f64::INFINITY, f64::min);
+        let hi = v.iter().map(|p| p[eixo]).fold(f64::NEG_INFINITY, f64::max);
+        (lo + hi) * 0.5
+    };
+    let (cx, cy) = (centro(0), centro(1));
+    let mut vistos: Vec<[f64; 2]> = v.iter().map(|p| [p[0] - cx, p[1] - cy]).collect();
+    // O centro da caixa do triangulo original: x = 0, y = (12 + -6)/2 = 3.
+    let mut esperados = vec![[0.0, 9.0], [9.0, -9.0], [-9.0, -9.0]];
+    let ordena = |v: &mut Vec<[f64; 2]>| {
+        v.sort_by(|a, b| a.partial_cmp(b).expect("sem NaN na geometria"));
+    };
+    ordena(&mut vistos);
+    ordena(&mut esperados);
+    for (a, b) in vistos.iter().zip(&esperados) {
+        assert!(
+            (a[0] - b[0]).abs() < 1e-3 && (a[1] - b[1]).abs() < 1e-3,
+            "a forma tem de voltar igual: {vistos:?} contra {esperados:?}"
+        );
+    }
+}

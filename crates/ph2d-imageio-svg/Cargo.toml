@@ -36,3 +36,13 @@ ph2d-imageio = { path = "../ph2d-imageio" }
 # ⭐ Subir também COLAPSA o `kurbo`: a 0.43 arrastava `kurbo 0.11.3` via `svgtypes 0.15`, e era o
 # ÚNICO consumidor dessa cópia — a 0.48 pede `^0.13`, que é a que o resto da árvore já usa.
 usvg = { version = "0.48", default-features = false, features = ["svgz"] }
+
+[dev-dependencies]
+# ⭐ **SÓ para o gate que prende os DOIS tectos de bytes ao mesmo número.** O importador de SVG a
+# sério (estudo 42, item 3) vive na `ph2d-vec-svg` e tem o próprio `MAX_SVG_BYTES`; esta crate é a
+# única do repo que vê os dois, então é aqui que a igualdade se afirma.
+#
+# ⛔ **Dev-dependency de propósito, e não uma dependência normal:** o registo de IMAGENS não pode
+# passar a depender do modelo do documento VECTORIAL — isso inverteria a camada por causa de uma
+# constante.
+ph2d-vec-svg = { path = "../ph2d-vec-svg" }

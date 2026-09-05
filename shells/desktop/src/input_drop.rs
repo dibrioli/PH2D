@@ -138,12 +138,17 @@ impl App {
             paths,
             pixels_per_meter,
             &mut gfx.atlas_asset_map,
+            crate::import_router::VecTarget {
+                scene: &mut gfx.vec_scene,
+                map: &mut self.vec_entities,
+            },
         );
         for name in &batch.skipped {
             // ⚠️ A mensagem diz o que o app SABE ler. Ela dizia «Skipped non-image», e isso
-            // virou mentira no dia em que um `.ase` — que não é uma imagem — passou a entrar.
+            // virou mentira no dia em que um `.ase` — que não é uma imagem — passou a entrar; e
+            // outra vez em 05/09, quando o `.svg` passou a entrar como DESENHO.
             gfx.toasts.push(Toast::warning(format!(
-                "Skipped {name}: not an image or an Aseprite file"
+                "Skipped {name}: not an image, an SVG drawing or an Aseprite file"
             )));
             self.title_dirty = true;
         }

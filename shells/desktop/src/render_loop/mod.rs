@@ -995,6 +995,7 @@ impl crate::App {
         self.morph_fade_smoke();
         self.vec_fade_smoke();
         self.vec_appearance_smoke();
+        self.svg_import_smoke();
         self.nest_smoke();
         self.physics_smoke();
         self.instance_smoke();
@@ -12181,6 +12182,8 @@ impl crate::App {
                 next_import_cell,
                 &mut self.last_bgremoval_pushed_entity,
                 &mut self.last_painter_pushed_entity,
+                vec_scene,
+                &mut self.vec_entities,
             ) {
                 self.title_dirty = true;
             }

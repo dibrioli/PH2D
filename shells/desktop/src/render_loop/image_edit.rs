@@ -52,6 +52,12 @@ pub(super) fn dispatch(
     next_import_cell: &mut u32,
     last_bgremoval_pushed_entity: &mut Option<u64>,
     last_painter_pushed_entity: &mut Option<u64>,
+    // ⭐ O documento VECTORIAL, que só o ramo do `.svg` do importador toca (estudo 42, item 3).
+    // ⚠️ Ele viaja até aqui em vez de o `.svg` ser tratado nos dois sítios de chamada porque a lei
+    // deste app é **uma porta para o que ele importa** — e foi por haver duas que o `.ase` (e antes
+    // dele o `.gif`, o `.psd` e o `.ora`) ficou invisível num dos lados.
+    vec_scene: &mut ph2d_vec_scene::VecScene,
+    vec_entities: &mut crate::vec_entities::VecEntityMap,
 ) -> bool {
     let mut title_dirty = false;
 
@@ -489,10 +495,14 @@ pub(super) fn dispatch(
                 &paths,
                 pixels_per_meter,
                 atlas_asset_map,
+                crate::import_router::VecTarget {
+                    scene: vec_scene,
+                    map: vec_entities,
+                },
             );
             for name in &batch.skipped {
                 toasts.push(Toast::warning(format!(
-                    "Skipped {name}: not an image or an Aseprite file"
+                    "Skipped {name}: not an image, an SVG drawing or an Aseprite file"
                 )));
                 title_dirty = true;
             }

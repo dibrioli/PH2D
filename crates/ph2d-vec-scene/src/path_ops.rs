@@ -100,12 +100,25 @@ impl VecScene {
             }
         }
         let (cx, cy) = ((lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5);
-        // Screen convention (Y down): CW maps (dx,dy)→(−dy, dx); CCW →(dy, −dx).
+        // ⛔⛔ **AS DUAS ESTAVAM TROCADAS, e a premissa escrita aqui era falsa** (curado 2026-09-05,
+        // achado ao construir a lei dos eixos do import de SVG). O comentário dizia *"Screen
+        // convention (Y down)"* — e a geometria deste documento vive em **MUNDO, com o Y para
+        // CIMA** (`ph2d_render::Camera2d::world_to_screen_affine` é `scale(k, −k)`, e o assador de
+        // tiles do Motion escreve a mesma lei).
+        //
+        // A conta: com `Cw` a antiga levava um ponto à DIREITA do pivô, `(1, 0)`, para `(0, 1)` —
+        // **para cima**. Direita → cima é anti-horário num eixo Y para cima, e o Y do mundo é para
+        // cima **também no ecrã** (a câmara vira o eixo, então o alto do mundo é o alto da janela).
+        // ⇒ o botão *Rotate CW* do painel virava a forma ao contrário do que diz, sem
+        // compensação em nenhum dos dois chamadores.
+        //
+        // ⚠️ **Horário e anti-horário são palavras sobre o ECRÃ** — são o que o artista vê. Num
+        // eixo Y para cima, o horário é `(dx, dy) → (dy, −dx)`.
         let rot = |p: [f64; 2]| {
             let (dx, dy) = (p[0] - cx, p[1] - cy);
             match dir {
-                Rotate90::Cw => [cx - dy, cy + dx],
-                Rotate90::Ccw => [cx + dy, cy - dx],
+                Rotate90::Cw => [cx + dy, cy - dx],
+                Rotate90::Ccw => [cx - dy, cy + dx],
             }
         };
         path.for_each_vert_mut(|v| {

@@ -43,37 +43,50 @@ pub(crate) struct ImportBatch {
 #[must_use]
 pub(crate) fn dialog_filters() -> Vec<(String, Vec<&'static str>)> {
     let ase = crate::ase_import::ASE_EXTENSIONS.to_vec();
+    let svg = crate::svg_import::SVG_EXTENSIONS.to_vec();
     let img = ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS.to_vec();
     let mut all = ase.clone();
+    all.extend(svg.iter().copied());
     all.extend(img.iter().copied());
     vec![
         ("All supported".to_owned(), all),
         ("Aseprite".to_owned(), ase),
+        ("Vector (SVG)".to_owned(), svg),
         ("Images".to_owned(), img),
     ]
 }
 
-/// Separa a leva em `.ase`, imagens e o que este app não sabe ler.
+/// O que uma leva contém, por espécie.
 ///
 /// ⚠️ **A ordem dentro de cada grupo é a da leva** — o artista escolheu-a no diálogo (ou largou-a),
 /// e reordenar faria a grelha sair noutra ordem sem ninguém a ter pedido.
+#[derive(Debug, Default)]
+pub(crate) struct Importables {
+    pub(crate) ase: Vec<PathBuf>,
+    /// ⭐ Desenhos vectoriais (estudo 42, item 3). ⛔ **Espécie própria, e não uma imagem**: um
+    /// `.svg` que entrasse pela grelha de imagens viraria uma sprite de pixels, que é exactamente
+    /// o contrário do que ele é.
+    pub(crate) svg: Vec<PathBuf>,
+    pub(crate) images: Vec<PathBuf>,
+    pub(crate) unknown: Vec<PathBuf>,
+}
+
+/// Separa a leva em `.ase`, `.svg`, imagens e o que este app não sabe ler.
 #[must_use]
-pub(crate) fn partition_importables(
-    paths: &[PathBuf],
-) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>) {
-    let mut ase = Vec::new();
-    let mut images = Vec::new();
-    let mut unknown = Vec::new();
+pub(crate) fn partition_importables(paths: &[PathBuf]) -> Importables {
+    let mut out = Importables::default();
     for p in paths {
         if crate::ase_import::is_ase_file(p) {
-            ase.push(p.clone());
+            out.ase.push(p.clone());
+        } else if crate::svg_import::is_svg_file(p) {
+            out.svg.push(p.clone());
         } else if ph2d_asset::is_supported_image_extension(p) {
-            images.push(p.clone());
+            out.images.push(p.clone());
         } else {
-            unknown.push(p.clone());
+            out.unknown.push(p.clone());
         }
     }
-    (ase, images, unknown)
+    out
 }
 
 /// **Onde a grelha de imagens começa**, depois de os `.ase` terem ocupado a primeira linha.
@@ -89,6 +102,15 @@ pub(crate) fn images_anchor(anchor: [f32; 2], ase_row_height: f32) -> [f32; 2] {
     [anchor[0], anchor[1] - ase_row_height - gap]
 }
 
+/// O documento VECTORIAL e a ponte dele, que só o ramo do `.svg` toca.
+///
+/// ⚠️ Um `struct` e não dois parâmetros soltos: os dois viajam sempre juntos (o `sync` precisa dos
+/// dois) e esta função já carrega oito argumentos — *dois nomes que nunca se separam são um nome*.
+pub(crate) struct VecTarget<'a> {
+    pub(crate) scene: &'a mut ph2d_vec_scene::VecScene,
+    pub(crate) map: &'a mut crate::vec_entities::VecEntityMap,
+}
+
 /// **Importa uma leva**, seja ela largada na janela ou escolhida no diálogo.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn import_paths_grid(
@@ -100,8 +122,14 @@ pub(crate) fn import_paths_grid(
     paths: &[PathBuf],
     pixels_per_meter: f32,
     atlas_asset_map: &mut BTreeMap<u32, AssetId>,
+    vec: VecTarget<'_>,
 ) -> ImportBatch {
-    let (ase, images, unknown) = partition_importables(paths);
+    let Importables {
+        ase,
+        svg,
+        images,
+        unknown,
+    } = partition_importables(paths);
     let mut out = ImportBatch {
         items: Vec::new(),
         notes: Vec::new(),
@@ -150,6 +178,43 @@ pub(crate) fn import_paths_grid(
                 out.notes.extend(notes);
             }
             crate::ase_import::AseImportResult::Err { name, error } => {
+                out.items.push(ImportItemResult::Err { name, error });
+            }
+        }
+    }
+    // ⭐ Os DESENHOS partilham a primeira fileira com os `.ase`, e pela mesma razão: os dois são
+    // ficheiros COM AUTORIA (um traz a grelha e as animações, o outro a árvore de grupos), e um
+    // deles no meio da grelha de imagens faria uma célula ter o tamanho de um logótipo inteiro.
+    for path in &svg {
+        match crate::svg_import::import_svg(
+            sim,
+            vec.scene,
+            vec.map,
+            path,
+            [cursor_x, anchor_world[1]],
+            pixels_per_meter,
+        ) {
+            crate::svg_import::SvgImportResult::Ok {
+                name,
+                shapes,
+                bits,
+                size,
+                notes,
+            } => {
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "tamanho de mundo: f64 do documento para o f32 da cena"
+                )]
+                let (w, h) = (size[0] as f32, size[1] as f32);
+                cursor_x += w * (1.0 + crate::image_import::IMPORT_GRID_GAP_FRAC);
+                row_h = row_h.max(h);
+                out.items.push(ImportItemResult::Ok {
+                    label: format!("{name} ({shapes} shapes)"),
+                    bits,
+                });
+                out.notes.extend(notes);
+            }
+            crate::svg_import::SvgImportResult::Err { name, error } => {
                 out.items.push(ImportItemResult::Err { name, error });
             }
         }

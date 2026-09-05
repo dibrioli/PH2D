@@ -758,6 +758,8 @@ pub(crate) struct App {
     /// A cena do **fade vetorial** já montou? (`PH2D_VEC_FADE_SMOKE`, uma vez por sessão.)
     /// A cena da APARÊNCIA do objecto (`PH2D_VEC_APPEARANCE_SMOKE`) já montou.
     pub(crate) vec_appearance_smoke_done: bool,
+    /// A cena do IMPORTAR SVG (`PH2D_VEC_SVG_SMOKE`) já montou — ela escreve o próprio ficheiro.
+    pub(crate) svg_import_smoke_done: bool,
     pub(crate) vec_fade_smoke_done: bool,
     pub(crate) nest_smoke_done: bool,
     /// Latch for `PH2D_PHYSICS_SMOKE` (drop-a-sprite-on-a-floor, once).

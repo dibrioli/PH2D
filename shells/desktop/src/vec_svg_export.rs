@@ -17,6 +17,21 @@
 //! segunda travessia dos contornos daria um ficheiro que discorda do ecrã em curvas que nenhum
 //! olho apanha, e essa é a classe de defeito que este módulo existe para NÃO ter.
 //!
+//! # ⛔⛔ O EIXO Y, e o defeito que esta linha corrigiu em 2026-09-05
+//!
+//! Até hoje o cabeçalho deste ficheiro dizia *"em coordenadas de MUNDO (Y para baixo, como o
+//! SVG)"* — e as duas metades da frase **contradizem-se**. O mundo do PH2D mede o Y para **CIMA**
+//! (`ph2d_render::Camera2d::world_to_screen_affine` é `scale(k, **−k**)`), o SVG mede-o para
+//! baixo, e escrever as coordenadas cruas fazia **todo ficheiro exportado sair verticalmente
+//! espelhado**.
+//!
+//! ⚠️ **Ninguém o viu porque o consumidor era uma LLM a ler números** (o pedido do Enio de 02/09 foi
+//! *"precisamos de um meio de exportar o path para que vc possa analisar melhor"*), e **nenhum
+//! gate media orientação** — os seis que existiam mediam tinta, pose, marca e a nota do cabeçalho.
+//!
+//! ⇒ A conversão passa pela porta ÚNICA ([`ph2d_vec_svg::world_to_svg`]), que é a inversa exacta da
+//! que o IMPORTADOR usa. *Uma lei escrita em dois sítios ainda não é uma lei — só uma PORTA é.*
+//!
 //! # ⛔ O que ele NÃO carrega, e diz
 //!
 //! Um exportador que ignora em silêncio é pior do que um que recusa (a lei do importador `.ase`).
@@ -31,6 +46,11 @@ use std::fmt::Write as _;
 /// Quantas casas decimais nas coordenadas. `3` chega a `0,001` de unidade de mundo — abaixo do
 /// erro de amostragem com que a própria detecção de cruzamentos trabalha.
 const CASAS: usize = 3;
+
+/// **Uma unidade de mundo vira uma unidade do ficheiro** — a escolha deste exportador (quem lê o
+/// SVG compara os números com a régua do editor). ⛔ O que ele NÃO escolhe é o SINAL do Y, que é a
+/// lei da casa e mora na porta.
+const EIXOS: f64 = ph2d_vec_svg::EXPORT_PIXELS_PER_UNIT;
 
 /// O resultado: o ficheiro e o que ficou por dizer.
 pub(crate) struct Svg {
@@ -179,7 +199,11 @@ pub(crate) fn svg(
         .filter(|p| !escondido(p.id))
         .map(|p| {
             let mut c = p.cooked().into_owned();
+            // ⚠️ DUAS transformações, e a ordem é a única possível: primeiro a POSE do objecto (que
+            // vive em mundo), depois a lei dos EIXOS (mundo → ficheiro). Assá-las em separado pela
+            // mesma porta mantém a geometria, o gradiente e a largura do traço em acordo.
             ph2d_vec_scene::bake_xform(&mut c, &ph2d_vec_scene::xform_of(xforms, p.id));
+            ph2d_vec_scene::bake_xform(&mut c, &ph2d_vec_svg::world_to_svg(EIXOS));
             (p.id, c)
         })
         .collect();
@@ -252,8 +276,14 @@ pub(crate) fn svg(
         }
     }
 
-    let mut nota =
-        String::from("  Geometria COZIDA, em coordenadas de MUNDO (Y para baixo, como o SVG).\n");
+    // ⚠️ A nota diz as DUAS coisas separadamente, porque elas são separadas: a ESCALA é a do mundo
+    // (uma unidade é uma unidade) e o EIXO Y é o do SVG (desce). A frase anterior colava-as numa
+    // só — *"coordenadas de MUNDO (Y para baixo, como o SVG)"* — e assim afirmava que o mundo tem
+    // o Y a descer, que é falso e era exactamente o defeito.
+    let mut nota = String::from(
+        "  Geometria COZIDA. Uma unidade do ficheiro = uma unidade de MUNDO; o eixo Y desce,\n  \
+         como manda o SVG (no mundo ele sobe).\n",
+    );
     if aproximadas.is_empty() {
         nota.push_str("  Nada foi aproximado.\n");
     } else {

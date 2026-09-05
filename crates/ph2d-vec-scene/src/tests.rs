@@ -140,11 +140,20 @@ fn rotate_path_quarter_turn_is_cyclic_and_exact() {
     assert!(scene.rotate_path(id, Rotate90::Ccw));
     assert!(same(&scene, &before), "CW·CCW cancels");
 
-    // One CW quarter-turn about (5,2): the (0,0) corner lands at (7,−3).
+    // ⛔⛔ **ESTE NÚMERO MUDOU EM 2026-09-05, e a mudança É a cura.** Ele pedia `(7, −3)`, que é
+    // onde o canto cai numa rotação **anti-horária** — o `Rotate90::Cw` estava trocado com o
+    // irmão, e este gate defendia o defeito (ver a conta no `path_ops::rotate_path`).
+    //
+    // Um quarto de volta HORÁRIO em torno de `(5, 2)`: o canto `(0, 0)` — que num eixo Y para
+    // cima está em BAIXO à esquerda — sobe pela esquerda e para em `(3, 7)`. É o mesmo movimento
+    // do ponteiro de um relógio a passar das 8 para as 11.
     let i0 = before.iter().position(|a| *a == [0.0, 0.0]).unwrap();
     assert!(scene.rotate_path(id, Rotate90::Cw));
     let a = scene.paths()[0].verts[i0].anchor;
-    assert!((a[0] - 7.0).abs() < 1e-9 && (a[1] + 3.0).abs() < 1e-9);
+    assert!(
+        (a[0] - 3.0).abs() < 1e-9 && (a[1] - 7.0).abs() < 1e-9,
+        "canto em {a:?}, esperado [3, 7]"
+    );
 
     assert!(!scene.rotate_path(999, Rotate90::Cw));
 }
@@ -1585,4 +1594,41 @@ fn rigid_snap_delta_matches_the_nearest_endpoint() {
     );
     // Longe demais → sem snap.
     assert!(scene.rigid_snap_delta(b, &xf, 1.0).is_none());
+}
+
+/// ⭐⭐⭐ **HORÁRIO É HORÁRIO NO ECRÃ** — a lei que o `rotate_path` não tinha, e por isso o botão
+/// *Rotate CW* do painel virava a forma ao contrário desde que existe.
+///
+/// ⚠️ **A régua é um ponto à DIREITA do pivô**, e não um canto de rectângulo: um canto tem duas
+/// coordenadas a mudar de sinal e lê-se bem nas duas direcções, o que foi o que deixou o defeito
+/// passar. À direita do pivô o ponteiro de um relógio desce — e num eixo Y para cima descer é `y`
+/// a diminuir.
+///
+/// ⚠️ **E o eixo do mundo é para CIMA também no ecrã**: a câmara vira o Y
+/// (`world_to_screen_affine` é `scale(k, −k)`), então o alto do mundo é o alto da janela.
+///
+/// Mutação que tem de sangrar: trocar os dois braços do `match` (o estado anterior a 05/09).
+#[test]
+fn clockwise_means_clockwise_on_the_screen() {
+    let mut scene = VecScene::new();
+    // Um losango centrado na origem: o ponto a 3 horas é o único com `y = 0` e `x > 0`.
+    let id = scene.push_path(VecPath {
+        verts: [[1.0, 0.0], [0.0, 1.0], [-1.0, 0.0], [0.0, -1.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        ..VecPath::default()
+    });
+    assert!(scene.rotate_path(id, Rotate90::Cw));
+    let tres_horas = scene.paths()[0].verts[0].anchor;
+    assert!(
+        (tres_horas[0]).abs() < 1e-9 && (tres_horas[1] + 1.0).abs() < 1e-9,
+        "o ponto das 3 horas tem de descer para as 6: {tres_horas:?}"
+    );
+    assert!(scene.rotate_path(id, Rotate90::Ccw));
+    let de_volta = scene.paths()[0].verts[0].anchor;
+    assert!(
+        (de_volta[0] - 1.0).abs() < 1e-9 && de_volta[1].abs() < 1e-9,
+        "e o anti-horario tem de o devolver: {de_volta:?}"
+    );
 }

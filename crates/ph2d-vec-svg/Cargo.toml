@@ -1,0 +1,41 @@
+[package]
+name = "ph2d-vec-svg"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐⭐⭐ **A TRADUÇÃO ENTRE UM FICHEIRO SVG E O DOCUMENTO VECTORIAL** (estudo 42, item 3).
+#
+# ⚠️ **Ela existe porque a LEI DOS EIXOS tem de ter UM dono.** O SVG mede o Y para BAIXO e o mundo
+# do PH2D mede-o para CIMA (`ph2d_render::Camera2d::world_to_screen_affine` é `scale(k, -k)`, e há
+# um report do Enio na história dela). Sem uma porta, cada lado escreve a própria conversão — e foi
+# exactamente isso que aconteceu: o exportador de 02/09 escrevia coordenadas de mundo cruas num
+# ficheiro cujo Y desce, com o comentário a AFIRMAR que os dois eixos concordavam. Aqui as duas
+# direcções saem da mesma função, e a inversa é gateada contra ela.
+#
+# ⚠️ **Não depende do renderer.** O importador não desenha; ele produz `VecPath`. Manter
+# `ph2d-vec-render` (e portanto vello) fora daqui é o que mantém a crate leve no caminho de import.
+
+[dependencies]
+# O modelo do documento — o destino da tradução. Folha pura (serde), sem vello/kurbo.
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# ⭐ O vocabulário ÚNICO de mistura: os 16 modos do `mix-blend-mode` do SVG têm nome exacto nos 22
+# do W3C que a forma guarda desde a v19 do schema. Sem esta folha a tradução inventaria um enum.
+ph2d-blend-mode = { path = "../ph2d-blend-mode" }
+# O simplificador de SVG canónico em Rust puro (HR-1): resolve `<use>`, CSS, unidades, `viewBox` e
+# servidores de tinta numa árvore chata.
+#
+# ⚠️ **`text` FICA DESLIGADA, e é uma recusa MEDIDA:** ligá-la arrasta `fontdb` + `harfrust` +
+# `skrifa` + três tabelas `unicode-*`, e **nenhuma delas está no `Cargo.lock`** (medido 2026-09-05)
+# — seria uma SEGUNDA stack de fontes ao lado do `parley`, que é o motor de texto desta casa. Com
+# ela desligada o usvg **apaga** os `<text>`, então quem os conta é o `roxmltree` que o próprio
+# usvg re-exporta, e o importador NOMEIA quantos ficaram de fora (a lei do importador `.ase`).
+#
+# ⚠️ **`svgz` NÃO é opcional:** sem ela um `.svg` que por dentro é gzip recebe
+# `Err("...enable svgz cargo feature...")` — o `flate2` já está no grafo por 7 consumidores.
+usvg = { version = "0.48", default-features = false, features = ["svgz"] }

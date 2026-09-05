@@ -99,13 +99,13 @@ o artista vive: 59 ficheiros traçavam moldura à mão e nenhum conhecia a porta
 as crates de painel e a shell, 72 sítios passam por ela e 7 ficam isentos pelo mecanismo (o
 contorno que É a mensagem). O vocabulário ganhou `Selected` — a selecção entre iguais sem tinta,
 que o Godot Modern traça a 2 px em `mono` no nó do grafo — porque três anéis eram o único sinal
-de um estado. ⚠️ **E o smoke dela devolveu dois defeitos (05/09), os dois curados**: o navegador de
-**Assets** não tinha porta (era só um chip da barra legada; hoje é a linha *Assets* do menu
-*Window*, com o censo de alcance a cobrir também os botões directos), e os **cartões estavam a
-4/255 do painel** — a wave 1 tinha portado as regras do Godot sem a pilha de superfícies dele; a
-escada reassentou-se com o painel na `base` e os cartões em `surface_high` (Dark `#292929 →
-#393939`), e o texto secundário e o acento do *Light* passam a ser derivados até à lei de contraste.
-Mecanismo e o que ficou de fora: [`pesquisa/08 §7`](pesquisa/08_modelos_com_codigo_para_seguir.md).
+de um estado. ⚠️ **E o smoke dela devolveu dois defeitos (05/09), os dois curados**: o navegador de **Assets**
+não tinha porta (era só um chip da barra legada; hoje é a linha *Assets* do menu *Window*, com o
+censo de alcance a cobrir também os botões directos), e os **cartões estavam a 4/255 do painel**.
+⛔ A primeira cura do contraste — reassentar a escada na pilha do Godot — foi **revertida pelo
+dono**: o `Bg1` é o fundo dos cartões **e do canvas**, e clareou os dois. Hoje quem desce é o
+PAINEL (`#131313` no Dark), o canvas fica byte a byte no que ele aprovou, e o texto dos cartões
+sobe para `mono@0.70`. Mecanismo e o que ficou de fora: [`pesquisa/08 §7`](pesquisa/08_modelos_com_codigo_para_seguir.md).
 
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
 cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·

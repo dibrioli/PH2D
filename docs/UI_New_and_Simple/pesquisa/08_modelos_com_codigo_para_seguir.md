@@ -303,68 +303,63 @@ directório.*
   sítios: o anel de repouso do `color_swatch`, divisores) — o censo não os vê, e são a próxima
   medição.
 
-### 7.7 — ✅ 2026-09-05, os dois reports do smoke da wave 4: a porta do ASSETS e a ESCADA de superfícies
+### 7.7 — ✅ 2026-09-05, os reports do smoke da wave 4: a porta do ASSETS e o CONTRASTE do cartão
 
 **(a) *«não há meio de abrir assets»*** — a porta do navegador de Assets era **só** o chip
-`TOPBAR_RIGHT_ASSETS` do grupo direito da barra legada (Layers · Assets · Script), que o redesenho
-não pinta; o censo de alcance da wave 1 (`the_bar_relocated_every_row_of_the_menus_it_replaced`)
-só percorria os **menus** que a barra substituiu, e um chip que despachava sozinho não estava em
-lista nenhuma — a família do *Export SVG*, um nível ao lado. Cura: a linha **Assets** no menu
-*Window* (o mesmo id; o handler continua no `ph2d-panel-asset-browser`), a lista
-`LEGACY_PILL_BUTTONS` e a segunda metade do gate (red-first: acusou *«Assets (botão directo da barra
-legada)»* antes de a linha existir). ⚠️ **A nota que o escondia tinha envelhecido ao contrário**: o
-`NO_DOOR_PENDING` dizia *«sem consumidor»* sobre um id cujo consumidor nasceu com o painel — a
-metade de obsolescência do gate acusou-a no dia em que a linha entrou. ⛔ `Layers` e `Script` ficam
-fora **com o motivo**: nenhum `apply_event` do app os trata (eram chips mudos também no clássico), e
-uma linha de menu para um id sem handler é uma linha morta.
+`TOPBAR_RIGHT_ASSETS` do grupo direito da barra legada, que o redesenho não pinta; o censo de
+alcance (`the_bar_relocated_every_row_of_the_menus_it_replaced`) só percorria os **menus** que a
+barra substituiu, e um chip que despachava sozinho não estava em lista nenhuma — a família do
+*Export SVG*, um nível ao lado. Cura: a linha **Assets** no menu *Window* (o mesmo id; o handler
+continua no `ph2d-panel-asset-browser`), a lista `LEGACY_PILL_BUTTONS` e a segunda metade do gate
+(red-first: acusou *«Assets (botão directo da barra legada)»* antes de a linha existir). ⚠️ **A nota
+que o escondia tinha envelhecido ao contrário**: o `NO_DOOR_PENDING` dizia *«sem consumidor»* sobre
+um id cujo consumidor nasceu com o painel. ⛔ `Layers` e `Script` ficam fora **com o motivo**:
+nenhum `apply_event` do app os trata (chips mudos também no clássico), e uma linha de menu para um
+id sem handler é uma linha morta.
 
 **(b) *«o fundo dos cards tem tão pouco contraste com o fundo dos painéis»*** — medido: **4/255**
-no `Dark` (`Bg1` derivava para `dark_3`, `PanelBg` para `dark_1`). ⚠️ **A wave 1 portou as REGRAS
-do Godot sem a PILHA de superfícies dele**: no `theme_modern.cpp` (191-209) o `PanelContainer` é a
-**`base`** e as superfícies acima dela saem da `_get_base_color(ofs, sat)` — `surface_high` −1.3
-(a faixa de um bus de áudio, o «cartão»), `button_normal` −2.0, `button_hover` −2.9,
-`button_pressed` −3.2; abaixo, `surface_lower` +1.1 (o `LineEdit`) e `surface_lowest` +1.7 (o fundo
-do `GraphEdit`, das abas). Nós tínhamos o painel em `dark_1` e o botão na `base` — a pilha
-invertida, com os cartões entalados a 4/255 do painel. A escada reassentou-se, e os números são os
-medidos pela sonda:
+no Dark (cartão `Bg1` = `dark_3` = `#1f1f1f`, painel `PanelBg` = `dark_1` = `#1b1b1b`).
 
-| tema | canvas (`Bg0`) | painel | Bg1 (cartão) | Bg2 | Bg3 | BgElev | texto-2 sobre o cartão | acento sobre o cartão |
-|---|---|---|---|---|---|---|---|---|
-| Dark | `#1b1b1b` | `#292929` | `#393939` (+16) | `#424242` | `#4d4d4d` | `#505050` | `#b4b4b4` — 5,57:1 | `#569eff` — 4,25:1 (intacto) |
-| Gray | `#282828` | `#3d3d3d` | `#555555` (+24) | `#626262` | `#727272` | `#787878` | `#c9c9c9` — 4,50:1 | `#70bafa` — 3,58:1 (intacto) |
-| Light | `#f5f5f5` | `#e6e6e6` | `#d4d4d4` (−18) | `#cacaca` | `#bebebe` | `#b9b9b9` | `#505050` — 5,44:1 | `#2973e6` — 3,02:1 (⚠️ escurecido) |
-| OLED | `#000000` | `#000000` | `#000000` | `#000000` | `#1b1b1b` | `#262626` | `#a6a6a6` | `#73bfff` |
+⛔⛔ **A PRIMEIRA cura foi construída, shipada e REVERTIDA pelo dono no smoke seguinte, e a lição é
+a mais cara desta linha: o `Bg1` responde a DUAS perguntas.** Ele é o fundo dos cartões **e o
+fundo do CANVAS** (`hero::canvas_backdrop` — o `canvas.rs` di-lo em letra: *«é o `Bg1`, e não o
+token `canvas`»*, e o `clear` do shell lê a mesma porta). Eu reassentei a escada inteira na pilha
+do Godot (painel na `base`, `Bg1` em `surface_high`, os botões em `button_*`) e o cartão passou a
+destacar-se — **clareando o canvas de `#1f1f1f` para `#393939`**: *«mudou a cor do canvas»*.
+⚠️ **E a minha correcção seguinte errou o alvo por não medir**: devolvi o `Bg0` (a moldura do
+canvas), não o `Bg1` — *«não corrigiu nada do que pedi»*. Só ao ler o `canvas.rs` até ao fim é que
+o token certo apareceu.
 
-⚠️ **O CANVAS não é a escada.** A 1.ª versão desta correcção levou o `Bg0` (o fundo do canvas e do
-grafo) para o `surface_lowest` do Godot (`#141414`), e o dono devolveu-o no smoke seguinte
-(*«mudou a cor do canvas — volte ao que era antes»*): o `Bg0` fica no `dark_1` (`#1b1b1b`) que ele
-já tinha aprovado. A escada começa no painel. E o **piso do texto secundário é `0.65`**, não o
-`0.55` do Godot (*«as fontes dos cards podem ser um pouco mais claras»*): títulos e rótulos dos
-cartões são todos `Text2`; o `Text1` fica em `0.75` para a hierarquia continuar a ler-se.
+⇒ **Quem se move é o PAINEL, que é cromo e não tem outra pergunta agarrada** (`Roles::panel =
+base.lerp(black, c·1.8)`), e é também o que o Blender faz: painéis mais escuros que a área de
+trabalho. ⛔ Subir o cartão para o `Bg2` estava fora por medição: um botão em repouso PINTA `Bg2`
+(`flat_button_surface`), e os botões dentro do cartão desapareceriam.
 
-Gates: `a_card_stands_off_its_panel_and_the_surface_ladder_climbs` (red-first: *«4 de 255»*; a
-escada inteira monótona, o degrau do cartão ≥ 12, os outros ≥ 3; o OLED fica de fora — com
-contraste 0 e base preta a família colapsa, e são as *Extra Borders* que separam, como no Godot) e
-o WCAG da casa (`the_factory_table_meets_wcag_in_all_modes`), que **reprovou a primeira versão**.
+| tema | painel | cartão = canvas (`Bg1`) | degrau | botão (`Bg2`) | texto-2 |
+|---|---|---|---|---|---|
+| Dark | `#131313` | `#1f1f1f` | **+12** | `#292929` | `#bfbfbf` (era `#a3a3a3`) |
+| Gray | `#1c1c1c` | `#2f2f2f` | **+19** | `#3d3d3d` | `#c5c5c5` |
+| Light | `#fefefe` | `#f1f1f1` | **−13** | `#e6e6e6` | `#454545` |
+| OLED | `#000000` | `#000000` | — (excepção) | `#000000` | `#b3b3b3` |
+
+**(c) *«as fonts dos cards podem ser um pouco mais claras»*** — os títulos e os rótulos dos cartões
+do Painter são todos `Text2`. O piso da alfa sobe de `0.55` (o valor do Godot) para **`0.70`**, e o
+`Text1` acompanha (`0.75 → 0.80`) para a hierarquia entre rótulo e valor continuar a ler-se.
+
+**Os gates que ficam:** `the_canvas_ground_is_the_one_the_owner_approved` (o `Bg1` preso ao
+`dark_3` e o `Bg0` ao `dark_1` — as fórmulas que ele viu; com a **recusa medida da escada** escrita
+no doc-comment) e `a_card_stands_off_its_panel` (≥ 12/255, OLED de fora).
 
 **O que a construção ensinou:**
 
-- ⭐⭐ **Dois números que o Godot escreve e a lei da casa DERIVA.** O texto secundário do Godot é
-  `mono@0.55` e o acento vem por inteiro do preset — e nenhum cumpre a WCAG sobre o cartão em todos
-  os presets: no *Gray* a base `0.24` eleva o cartão mais (a família é multiplicativa) e o `0.55`
-  dá 3,5:1; o azul do *Light* faz 2,5:1 sobre o cartão e **2,99:1 sobre o próprio painel do Godot**.
-  A resposta do §0 é medir: a alfa do texto-2 sobe do piso (`0.65`, pedido do dono) só até 4,5:1
-  sobre o `Bg1` (Dark `0.65` · Light `0.65` · Gray `0.72`), e o acento escurece 2 % de cada vez
-  só até 3:1 — só o *Light* se move (`#2e80ff → #2973e6`); o `#569eff` do Dark tem gate a mantê-lo.
-- ⚠️ **O OLED colapsa a família multiplicativa numa cor só** (`0 × k = 0`): o Godot separa os
-  estados por bordas e pela cor da fonte; aqui o hover e o pressionado caem num degrau **aditivo**
-  em `mono` quando o multiplicativo não os move (`the_three_interactive_states_are_distinguishable`
-  reprovou a primeira versão: *«Oled repouso = hover»*).
-- ⚠️ **Um apelido que REPETE a fórmula deixa de ser apelido no dia em que a fórmula muda**: os
-  `timeline-row-alt`/`ruler-bg` diziam `base` onde o `bg-2` dizia `base` — e o gate dos 16 aliases
-  apanhou-os quando o `bg-2` passou a `button_normal`. Hoje delegam.
-- ⏳ **Para o smoke**: as linhas alternadas da timeline (`RowAlt = Bg2`) ficam a +25 do painel no
-  Dark — a lei dos aliases é do Enio, e a força do zebrado é dele julgar.
+- ⭐⭐⭐ **Um token que responde a duas perguntas move as duas.** O `Bg1` é o canvas *e* o cartão;
+  nenhum gate ligava os dois, e o `canvas.rs` já avisava — *o aviso estava escrito no ficheiro que
+  eu não li antes de mexer no token*. A régua que faltava é agora um gate.
+- ⚠️ **Uma correcção que não mede o alvo não corrige nada**: reverti o `Bg0` porque o `paint_canvas_bg`
+  o pinta primeiro, sem verificar QUEM pinta o pixel que o dono vê (em modo vivo aquele fill é
+  saltado e o `clear` do shell usa o `Bg1`).
+- ⛔ **A pilha de superfícies do Godot não se importa sem os papéis dela**: ela assume um token por
+  papel (poço · painel · cartão · botão), e aqui um token serve dois papéis.
 
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 

@@ -448,3 +448,111 @@ fn two_clicks_without_undo_still_return_a_piece() {
         );
     }
 }
+
+/// **UM TRAÇO DE TECIDO DESFAZ.**
+///
+/// ⛔⛔ Enio, 2026-09-05, sobre o pincel de tecido: ***«não tem undo/redo»***.
+///
+/// ⚠️ **Os dados do desfazer estão CERTOS na crate** — medido no mesmo dia:
+/// `191` vértices capturados, `129` movidos, **zero** fora da janela, e repor
+/// `base_positions()` nos `touched()` devolve a malha **ao bit**. Logo, se o
+/// artista não vê desfazer, o defeito está no caminho da SHELL — e este gate é
+/// o que o percorre.
+///
+/// ⚠️ **Ele NÃO pode usar o [`one_dab`]:** o tecido tem âncora
+/// ([`Verb::anchors`]), então o pen-down dele **pega** em vez de carimbar, e o
+/// barro só vem quando o dedo anda. Um teste que carimbasse mediria um gesto que
+/// o produto não faz — foi exatamente esse buraco que deixou o pincel MUDO no
+/// primeiro smoke.
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn a_cloth_stroke_undoes() {
+    let gpu = gpu_or_skip!();
+    let mut s = scene(&gpu.device, Verb::Cloth);
+    let antes: Vec<[f32; 3]> = s.mesh().positions().to_vec();
+
+    // A sequência do pen-down para um verbo COM âncora (`sculpt3d_input.rs`).
+    assert!(s.aim(CENTRE.0, CENTRE.1), "o raio errou a peca enquadrada");
+    s.stroke.begin(s.objects[s.active].stack.mesh());
+    assert!(
+        s.take_hold(CENTRE.0, CENTRE.1),
+        "o pen-down do tecido nao pegou a malha"
+    );
+    s.stroke_anchor = [CENTRE.0, CENTRE.1];
+
+    // E o arrasto, pelo mesmo `hook_step` que o braço `Grip::Simulate` percorre.
+    let mut prev = [CENTRE.0, CENTRE.1];
+    for k in 1..=12 {
+        let to = [CENTRE.0 + 6.0 * k as f32, CENTRE.1];
+        s.hook_step(prev, to);
+        prev = to;
+    }
+
+    let moveu = (0..antes.len())
+        .filter(|v| s.mesh().positions()[*v] != antes[*v])
+        .count();
+    assert!(
+        moveu > 0,
+        "premissa: o traco de tecido nao moveu vertice nenhum, e sem isso o \
+         desfazer nao tem o que desfazer"
+    );
+
+    s.close_stroke();
+    s.objects[s.active].uploaded = true;
+    assert!(
+        s.undo_stroke(),
+        "⛔ o traco de TECIDO nao gravou passo de undo -- e' o report de 05/09"
+    );
+
+    let sobra = (0..antes.len())
+        .filter(|v| s.mesh().positions()[*v] != antes[*v])
+        .count();
+    assert_eq!(
+        sobra, 0,
+        "o desfazer deixou {sobra} de {moveu} vertices deslocados"
+    );
+    assert!(
+        !s.objects[s.active].uploaded,
+        "⛔ o desfazer do tecido nao avisou a TELA -- a malha volta na memoria e \
+         a GPU continua a mostrar a de antes (o defeito que o irmao da MASCARA \
+         ja' pagou)"
+    );
+
+    // ⚠️ **O REFAZER, porque o report nomeia os DOIS** (*«não tem undo/redo»*).
+    assert!(s.redo_stroke(), "⛔ o tecido nao refaz");
+    let voltou = (0..antes.len())
+        .filter(|v| s.mesh().positions()[*v] != antes[*v])
+        .count();
+    assert_eq!(
+        voltou, moveu,
+        "o refazer devolveu {voltou} dos {moveu} vertices que o traco tinha movido"
+    );
+
+    // ⚠️ **E o SEGUNDO traço**, porque a fila é o que o artista de facto usa: um
+    // `begin` que não limpasse a sessão de tecido faria o 2.º traço gravar a
+    // janela do 1.º, e o Ctrl+Z voltaria ao sítio errado — em silêncio.
+    let meio: Vec<[f32; 3]> = s.mesh().positions().to_vec();
+    assert!(s.aim(CENTRE.0, CENTRE.1 + 40.0));
+    s.stroke.begin(s.objects[s.active].stack.mesh());
+    assert!(s.take_hold(CENTRE.0, CENTRE.1 + 40.0));
+    s.stroke_anchor = [CENTRE.0, CENTRE.1 + 40.0];
+    let mut prev = [CENTRE.0, CENTRE.1 + 40.0];
+    for k in 1..=12 {
+        let to = [CENTRE.0 + 6.0 * k as f32, CENTRE.1 + 40.0];
+        s.hook_step(prev, to);
+        prev = to;
+    }
+    s.close_stroke();
+    assert!(
+        s.undo_stroke(),
+        "⛔ o 2.o traco de tecido nao gravou passo de undo"
+    );
+    let sobra2 = (0..meio.len())
+        .filter(|v| s.mesh().positions()[*v] != meio[*v])
+        .count();
+    assert_eq!(
+        sobra2, 0,
+        "desfazer o 2.o traco deixou {sobra2} vertices fora do sitio -- a janela \
+         do 1.o traco vazou para a entrada do 2.o"
+    );
+}

@@ -528,3 +528,104 @@ fn sonda_da_resolucao() {
         );
     }
 }
+
+/// Uma grade plana de `n × n` células sobre `[-1, 1]` — a mesma forma do
+/// [`plano`], com a densidade como parâmetro.
+fn plano_n(n: usize) -> Mesh {
+    let s = 2.0 / n as f32;
+    let mut pos = Vec::new();
+    for j in 0..=n {
+        for i in 0..=n {
+            pos.push([i as f32 * s - 1.0, j as f32 * s - 1.0, 0.0]);
+        }
+    }
+    let id = |i: usize, j: usize| u32::try_from(j * (n + 1) + i).unwrap_or(u32::MAX);
+    let mut faces = Vec::new();
+    for j in 0..n {
+        for i in 0..n {
+            faces.push(ph2d_mesh::Face::quad(
+                id(i, j),
+                id(i + 1, j),
+                id(i + 1, j + 1),
+                id(i, j + 1),
+            ));
+        }
+    }
+    Mesh::from_parts(pos, faces).expect("grade plana")
+}
+
+/// **A RÉGUA LOCAL** — o pior resíduo de um vértice contra a média dos quatro
+/// vizinhos da grade, em unidades do **chão da discretização**.
+///
+/// ⚠️ Num perfil liso esse resíduo vale `~(h²/4)·∇²f`, logo ele cai com `(h/R)²`:
+/// uma barra fixa leria `0,093` numa grade de 24 e `0,002` numa de 144 **sobre o
+/// mesmo produto**. Dividir pelo piso torna a grandeza comparável entre
+/// densidades — e é o que separa *perfil inclinado* de *vértice que voou*.
+fn residuo_local(antes: &Mesh, depois: &Mesh, n: usize, raio: f32) -> f32 {
+    let id = |i: usize, j: usize| j * (n + 1) + i;
+    let max = (0..antes.vert_count())
+        .map(|v| desloc(antes, depois, v))
+        .fold(0.0f32, f32::max);
+    let piso = ((2.0 / n as f32) / raio).powi(2);
+    let mut pior = 0.0f32;
+    for j in 1..n {
+        for i in 1..n {
+            let d = desloc(antes, depois, id(i, j));
+            let m = [id(i - 1, j), id(i + 1, j), id(i, j - 1), id(i, j + 1)]
+                .iter()
+                .map(|v| desloc(antes, depois, *v))
+                .sum::<f32>()
+                / 4.0;
+            pior = pior.max((d - m).abs() / max.max(1e-9) / piso);
+        }
+    }
+    pior
+}
+
+/// **SONDA — o orçamento do solver contra o passo da mão, com o PERCURSO fixo.**
+///
+/// ⚠️ Esta é a célula que a sonda de integração (`probe_cloth_front`) **não
+/// consegue correr**: variar os sub-passos só é alcançável de dentro da crate, e
+/// sem ela «passo menor» e «mais varreduras» ficam confundidos — as duas mudam
+/// juntas quando se entrega o mesmo percurso em mais eventos.
+#[test]
+#[ignore = "sonda"]
+fn sonda_do_orcamento_contra_o_passo() {
+    println!(
+        "{:>5} {:>7} {:>6} {:>9} {:>9}",
+        "n", "passo/h", "subs", "residuo", "max/R"
+    );
+    for n in [96usize, 144, 192] {
+        for sub in [4u32, 8, 16, 32, 64] {
+            let antes = plano_n(n);
+            let mut mesh = plano_n(n);
+            let b = pincel();
+            let mut s = SculptStroke {
+                cloth_substeps_override: Some(sub),
+                ..SculptStroke::default()
+            };
+            s.begin(&mesh);
+            for k in 0..35 {
+                let c = [0.02 * k as f32, 0.0, 0.0];
+                let passo = if k == 0 { [0.0; 3] } else { [0.02, 0.0, 0.0] };
+                s.dab(
+                    &mut mesh,
+                    &b,
+                    &dab_em(c, b.radius, passo),
+                    Symmetry::default(),
+                );
+            }
+            let max = (0..antes.vert_count())
+                .map(|v| desloc(&antes, &mesh, v))
+                .fold(0.0f32, f32::max);
+            println!(
+                "{:>5} {:>7.2} {:>6} {:>9.1} {:>9.3}",
+                n,
+                0.02 / (2.0 / n as f32),
+                sub,
+                residuo_local(&antes, &mesh, n, b.radius),
+                max / b.radius
+            );
+        }
+    }
+}

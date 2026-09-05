@@ -59,6 +59,9 @@ mod recook;
 /// editor (ADR-0110): nome/visibilidade/trava/parentesco são da entidade ECS.
 mod paint_bind;
 pub use paint_bind::{BoundStyle, Opacity, object_alpha};
+/// ⭐ **A pilha de APARÊNCIA** (v20): N preenchimentos e N contornos numa forma só.
+pub mod paint_stack;
+pub use paint_stack::{DrawnPaint, PaintEntry, PaintKind, PaintRef};
 // ⭐ O vocabulário de MISTURA que o documento guarda (v19), re-exportado para quem lê o documento
 // não precisar de nomear a folha — a mesma cortesia que o `WarpStyle` e o `WidthProfile` já têm.
 pub use ph2d_blend_mode::{BlendMode, MAX_BLEND_MODES};
@@ -478,6 +481,21 @@ pub struct VecPath {
     /// que o painel oferece é **derivada** da tradução, nunca escrita à mão
     /// (`ph2d_vec_render::blend`).
     pub blend: ph2d_blend_mode::BlendMode,
+    /// ⭐⭐⭐ **A PILHA DE APARÊNCIA** (v20, estudo 42 item 4) — as camadas de tinta **por cima** do
+    /// `fill` e do `stroke` de base, da mais baixa para a mais alta.
+    ///
+    /// É o *Appearance panel* do Illustrator e os *Fills*/*Strokes* do Rive: sem ela, cada camada
+    /// de estilo obriga a **duplicar o objecto**, e duas cópias de uma forma são duas geometrias
+    /// que divergem no primeiro ponto que o artista mexe.
+    ///
+    /// ⚠️ **O `fill` e o `stroke` acima continuam a ser o CHÃO da pilha**, e não há migração
+    /// escondida para esta lista — a mesma relação que `verts` tem com `subpaths`. Quem quer saber
+    /// o que a forma **pinta** pergunta à porta [`VecPath::paint_stack`]; quem lê `fill`
+    /// directamente vê o chão, o que é certo para uma swatch e errado para quem desenha.
+    ///
+    /// ⚠️ **No fim da struct, como manda a escada** — e depois do `blend`, que é o campo que a v19
+    /// apendou.
+    pub paints: Vec<paint_stack::PaintEntry>,
 }
 
 /// Versão do wire-format de save (postcard é posicional → bump a cada mudança de
@@ -528,7 +546,12 @@ pub struct VecPath {
 /// um newtype de `f32` e o postcard serializa **através** dele (4 bytes), e o `BlendMode` é um
 /// enum de 22 variantes ⇒ **1 byte** de varint. ⭐ O default é o neutro nos dois (`1.0` / `Normal`),
 /// então uma cena que nunca lhes toque desenha byte a byte o que desenhava.
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 19;
+/// v20: [`VecPath`] ganhou `paints` — a **PILHA DE APARÊNCIA** (estudo 42 item 4), N
+/// preenchimentos e N contornos numa forma. Um `Vec` **apendado ao fim**, pela mesma escada do
+/// `effects`: vazio é o neutro, e uma cena que nunca lhe toque desenha byte a byte o que desenhava
+/// (o postcard escreve **1 byte** de comprimento zero). ⚠️ O degrau é destrutivo nos dois sentidos
+/// pela razão de sempre — um save v19 lido por este layout fica sem bytes no último campo.
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 20;
 
 /// Reordenação na pilha de render (índice `0` = fundo, último = frente). Uma
 /// operação de documento, mapeada pela shell a partir dos botões Arrange (mirror

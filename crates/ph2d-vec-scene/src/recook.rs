@@ -71,6 +71,12 @@ impl VecPath {
             // texto de uma forma a 50% devolvê-la opaca**, sem erro nenhum.
             opacity: _,
             blend: _,
+            // ⭐ **A PILHA DE APARÊNCIA SOBREVIVE ao re-cozimento** (v20), pela MESMA razão que a
+            // opacidade e a mistura: ela é autoria do OBJECTO e não produto dos parâmetros que o
+            // re-cozimento consome. `next` nasce de um `VecPath::default()`, então lê-la dali
+            // apagaria a pilha — e o sintoma seria **reescrever o texto de uma forma com dois
+            // contornos devolvê-la com um só**, sem erro nenhum.
+            paints: _,
         } = next;
         self.verts = verts;
         self.closed = closed;

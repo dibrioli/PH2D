@@ -69,23 +69,19 @@ pub(crate) fn transform_fill_geometry(
     if let Some(s) = path.stroke.as_mut() {
         s.width *= caneta;
     }
-    match &mut path.fill {
-        Some(Paint::Linear { start, end, .. }) => {
-            *start = f(*start);
-            *end = f(*end);
+    // ⭐⭐⭐ **E A PILHA DE APARÊNCIA INTEIRA** (v20). ⛔ As três cicatrizes deste ficheiro são todas
+    // *código que diz `fill` e devia dizer **tinta***; uma pilha de N tintas é a quarta
+    // oportunidade de repetir a conta, e a cura é a mesma: a lei de cada espécie mora numa função
+    // ([`transform_paint`] / [`transform_stroke`]) que o chão e as camadas PARTILHAM, em vez de
+    // uma cópia que envelhece.
+    for e in &mut path.paints {
+        match &mut e.kind {
+            crate::PaintKind::Fill(p) => transform_paint(p, &f, radius_scale),
+            crate::PaintKind::Stroke(s) => transform_stroke(s, x, caneta),
         }
-        Some(Paint::Radial { center, radius, .. }) => {
-            *center = f(*center);
-            *radius *= radius_scale;
-        }
-        Some(Paint::MultiPoint { points }) => {
-            for p in points {
-                p.pos = f(p.pos);
-            }
-        }
-        // A lei do padrão vive na [`transform_pattern`] — ela tem DOIS chamadores.
-        Some(Paint::Pattern(pat)) => transform_pattern(pat, &f),
-        Some(Paint::Solid(_)) | None => {}
+    }
+    if let Some(p) = path.fill.as_mut() {
+        transform_paint(p, &f, radius_scale);
     }
     // ⭐⭐⭐ **E A ESTAMPA DO CONTORNO TAMBÉM** (auditoria de 2026-08-30).
     //
@@ -113,6 +109,41 @@ pub(crate) fn transform_fill_geometry(
     }
 }
 
+/// **A lei de UMA tinta de preenchimento** — a geometria world-space dela segue a forma.
+///
+/// ⭐ Extraída em 2026-09-05 (v20) porque passou a ter N chamadores: o chão da pilha e cada camada
+/// de preenchimento dela. *Uma lei com dois donos escrita duas vezes é a forma exacta das três
+/// cicatrizes que este ficheiro carrega.*
+fn transform_paint(p: &mut Paint, f: &impl Fn([f64; 2]) -> [f64; 2], radius_scale: f64) {
+    match p {
+        Paint::Linear { start, end, .. } => {
+            *start = f(*start);
+            *end = f(*end);
+        }
+        Paint::Radial { center, radius, .. } => {
+            *center = f(*center);
+            *radius *= radius_scale;
+        }
+        Paint::MultiPoint { points } => {
+            for pt in points {
+                pt.pos = f(pt.pos);
+            }
+        }
+        Paint::Pattern(pat) => transform_pattern(pat, f),
+        Paint::Solid(_) => {}
+    }
+}
+
+/// **A lei de UM contorno** — a largura sofre a CANETA (`√|det|`) e a estampa dele segue a parte
+/// conforme, nunca a do caminho. Ver as duas notas longas no corpo da [`transform_fill_geometry`].
+fn transform_stroke(s: &mut StrokeSpec, x: &crate::Xform, caneta: f64) {
+    s.width *= caneta;
+    if let Some(pat) = s.pattern_mut() {
+        let u = x.uniform_part();
+        transform_pattern(pat, &|p| u.apply(p));
+    }
+}
+
 /// A pose de UM padrão sob o afim `f` — a lei que as duas tintas partilham.
 ///
 /// ⭐⭐ **O padrão SONDA o afim, e por isso é o único preenchimento desta casa que conserva a
@@ -135,3 +166,7 @@ fn transform_pattern(pat: &mut crate::PatternFill, f: &impl Fn([f64; 2]) -> [f64
     ];
     pat.origin = o;
 }
+
+#[cfg(test)]
+#[path = "path_bake_xform_tests.rs"]
+mod tests;

@@ -27,6 +27,7 @@ fn path_of(verts: Vec<VecVertex>, closed: bool) -> VecPath {
         effects: Vec::new(),
         opacity: crate::Opacity::default(),
         blend: ph2d_blend_mode::BlendMode::default(),
+        paints: Vec::new(),
     }
 }
 

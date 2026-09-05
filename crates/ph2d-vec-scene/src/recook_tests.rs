@@ -8,6 +8,11 @@ use crate::effect::{FxEntry, PathEffect};
 use crate::fx_zigzag::ZigZagSpec;
 use crate::{Contour, FillRule, Paint, Rgba8, StrokeSpec, VecPath, VecVertex};
 
+/// Um contorno EXTRA — a camada que a v20 acrescentou à forma.
+fn segundo_traco() -> crate::PaintEntry {
+    crate::PaintEntry::stroke(StrokeSpec::new(Rgba8::new(250, 250, 250, 255), 4.0))
+}
+
 fn zig() -> FxEntry {
     FxEntry::new(PathEffect::ZigZag(ZigZagSpec {
         amplitude: 12.0,
@@ -32,6 +37,10 @@ fn authored() -> VecPath {
         // valores e o gate ficaria verde sobre o defeito.
         opacity: crate::Opacity::new(0.4),
         blend: ph2d_blend_mode::BlendMode::Multiply,
+        // ⭐ **Idem para a PILHA DE APARÊNCIA** (v20), e pela mesma razão: um contorno extra aqui
+        // é o que deixa o gate da sobrevivência ver a diferença entre «sobreviveu» e «leu o
+        // vazio de `next`».
+        paints: vec![segundo_traco()],
     }
 }
 
@@ -57,6 +66,7 @@ fn freshly_cooked() -> VecPath {
         // Um cozimento nasce de um `..VecPath::default()`, logo NEUTRO nos dois.
         opacity: crate::Opacity::default(),
         blend: ph2d_blend_mode::BlendMode::default(),
+        paints: Vec::new(),
     }
 }
 
@@ -142,8 +152,29 @@ fn a_recook_of_a_path_without_effects_is_the_plain_replacement() {
     // este gate é onde ela se lê inteira.
     expected.opacity = crate::Opacity::new(0.4);
     expected.blend = ph2d_blend_mode::BlendMode::Multiply;
+    // ⭐ v20: e a PILHA DE APARÊNCIA também. ⚠️ **Este gate é o censo de quem vem de casa** — cada
+    // campo novo que sobreviva ao cozimento tem de aparecer aqui, e é ele que impede a lista de
+    // crescer sem ninguém a ler.
+    expected.paints = vec![segundo_traco()];
     assert_eq!(
         p, expected,
-        "sem pilha, o resultado é o path cozido com o id, a opacidade e a mistura de casa"
+        "sem pilha de efeitos, o resultado e' o path cozido com o id, a opacidade, a mistura e a \
+         aparencia de casa"
+    );
+}
+
+/// ⭐⭐⭐ **A PILHA DE APARÊNCIA SOBREVIVE ao re-cozimento** (v20) — a terceira lei da mesma família
+/// (efeitos, opacidade/mistura, aparência), e a que o destructuring exaustivo obrigou a escrever.
+///
+/// ⚠️ Sem ela o sintoma é mudo: **reescrever o texto de uma forma com dois contornos devolve-a com
+/// um só**, porque o cozimento nasce de um `VecPath::default()` e a lista dele está vazia.
+#[test]
+fn a_recook_preserves_the_appearance_stack() {
+    let mut p = authored();
+    p.replace_cooked(freshly_cooked());
+    assert_eq!(
+        p.paints,
+        vec![segundo_traco()],
+        "a pilha de aparencia e' autoria, nao produto do cozimento"
     );
 }

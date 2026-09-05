@@ -230,6 +230,7 @@ mod tests {
             inert: false,
             thumbnail: None,
             params: Vec::new(),
+            sections: Vec::new(),
         }
     }
 

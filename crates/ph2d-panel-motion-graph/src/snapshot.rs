@@ -212,6 +212,29 @@ pub struct GraphNodeView {
     /// segunda conjunção de gates aqui seria exactamente como um param passa a aparecer num
     /// sítio do app e não noutro.
     pub params: Vec<CardParam>,
+    /// ⭐⭐ **AS SECÇÕES DA FAIXA** — os grupos de params que o registry declara
+    /// (`register_param_groups`), com o estado de dobra que a shell resolve.
+    ///
+    /// ⚠️ **[`Self::params`] já vem FILTRADA**: uma secção fechada não deixa as suas rows na
+    /// lista. É o que mantém [`crate::geom::card_h`] uma função pura do snapshot — a dobra é
+    /// estado de EDITOR e vive na shell, ao lado de tudo o resto que a vista resolve.
+    pub sections: Vec<CardSection>,
+}
+
+/// ⭐ **UMA SECÇÃO da faixa de params do cartão** — o «painel dentro do nó» do Blender 4.x.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CardSection {
+    /// O nome do grupo, tal como o registry o declara.
+    pub title: &'static str,
+    /// O índice, **em [`GraphNodeView::params`]**, da primeira row desta secção — o cabeçalho é
+    /// desenhado imediatamente antes dela. Numa secção FECHADA aponta para onde as rows
+    /// estariam (a próxima row visível, ou o fim da lista).
+    pub at: u16,
+    /// Aberta: as rows dela estão em `params`. Fechada: não estão.
+    pub open: bool,
+    /// Quantas rows a secção esconde quando fechada — o número que o cabeçalho mostra, para
+    /// uma secção dobrada não parecer uma secção vazia.
+    pub hidden: u16,
 }
 
 /// ⭐ **UM PARAM NO CARTÃO** — o hint `&'static` do registry mais o valor vivo.

@@ -113,11 +113,15 @@ pub(crate) fn push_param_row_hits(
     if !crate::geom::param_row_is_grabbable(view) {
         return;
     }
-    for (i, p) in n.params.iter().enumerate() {
-        // Um param DIRIGIDO por fio não se arrasta: o número vem de fora, e um alvo que não
-        // obedece ao dedo é a mentira que a row dirigida do painel já aprendeu a não contar.
-        if p.driven {
-            continue;
+    for i in 0..crate::geom::band_len(n) {
+        match crate::geom::band_at(n, i) {
+            // Um param DIRIGIDO por fio não se arrasta: o número vem de fora, e um alvo que não
+            // obedece ao dedo é a mentira que a row dirigida do painel já aprendeu a não contar.
+            Some(crate::geom::BandRow::Param(k)) if n.params[k].driven => continue,
+            // Um cabeçalho de secção É um alvo: o clique dobra. Mesma variante de hit, mesma
+            // coordenada — quem decide o que fazer é o `band_at` do lado do gesto.
+            Some(_) => {}
+            None => break,
         }
         let Ok(row) = u16::try_from(i) else { continue };
         if let Some(r) = clip_rect(crate::geom::param_row_rect(n, view, i), canvas) {

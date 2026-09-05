@@ -68,6 +68,7 @@ fn node(k: usize) -> GraphNodeView {
                 swatch: None,
             })
             .collect(),
+        sections: Vec::new(),
     }
 }
 

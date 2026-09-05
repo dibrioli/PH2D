@@ -139,10 +139,59 @@ pub(crate) fn param_row_is_grabbable(view: &View) -> bool {
     param_text_is_drawn(view)
 }
 
-/// Quantas rows a faixa de params RESERVA — sempre todas as que o cartão carrega.
-/// ⚠️ Independente do zoom, de propósito: ver [`params_are_drawn`].
+/// **O QUE ESTÁ NA FILEIRA `i` da faixa** — um cabeçalho de secção ou um param.
+///
+/// ⚠️ **Uma coordenada só.** O pintor, o hit-test e o gesto falam todos em índice de FAIXA; se
+/// cada um contasse à sua maneira, um clique cairia uma fileira ao lado no primeiro nó com
+/// secções. É a mesma razão de [`card_h`] viver aqui e não no pintor.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum BandRow {
+    /// O cabeçalho da secção `sections[i]`.
+    Header(usize),
+    /// A row `params[i]`.
+    Param(usize),
+}
+
+/// Quantas fileiras a faixa tem: as rows visíveis mais um cabeçalho por secção.
+///
+/// ⚠️ **`params` já chega FILTRADA** — uma secção fechada não deixa rows na lista —, então esta
+/// conta não precisa de saber o estado da dobra: ela está no snapshot.
+pub(crate) fn band_len(n: &GraphNodeView) -> usize {
+    n.params.len() + n.sections.len()
+}
+
+/// O conteúdo da fileira `i`. `O(secções)`, e as secções de um nó contam-se pelos dedos.
+pub(crate) fn band_at(n: &GraphNodeView, i: usize) -> Option<BandRow> {
+    let mut fileira = 0usize;
+    let mut param = 0usize;
+    for (si, sec) in n.sections.iter().enumerate() {
+        // O cabeçalho vem imediatamente antes da primeira row da secção.
+        while param < sec.at as usize {
+            if fileira == i {
+                return Some(BandRow::Param(param));
+            }
+            fileira += 1;
+            param += 1;
+        }
+        if fileira == i {
+            return Some(BandRow::Header(si));
+        }
+        fileira += 1;
+    }
+    while param < n.params.len() {
+        if fileira == i {
+            return Some(BandRow::Param(param));
+        }
+        fileira += 1;
+        param += 1;
+    }
+    None
+}
+
+/// Quantas fileiras a faixa de params RESERVA (cabeçalhos incluídos).
+/// ⚠️ Independente do zoom, de propósito: ver [`param_text_is_drawn`].
 pub(crate) fn card_param_rows(n: &GraphNodeView) -> f32 {
-    n.params.len() as f32
+    band_len(n) as f32
 }
 
 /// O topo da FAIXA DE PARAMS, em espaço de grafo, relativo ao canto do cartão — logo abaixo
@@ -163,6 +212,7 @@ pub(crate) fn readout_top(n: &GraphNodeView) -> f32 {
 /// ⚠️ **O mesmo rect serve o pintor e o hit-test**, pela razão que [`card_h`] já documenta:
 /// uma row desenhada onde não se clica é um controlo morto sob o dedo.
 pub(crate) fn param_row_rect(n: &GraphNodeView, view: &View, i: usize) -> Rect {
+    // `i` é o índice de FAIXA (cabeçalhos incluídos) — ver [`BandRow`].
     let (sx, sy) = view.pt(n.x, n.y + param_band_top(n) + i as f32 * ROW_H);
     Rect::new(sx, sy, CARD_W * view.zoom, ROW_H * view.zoom)
 }

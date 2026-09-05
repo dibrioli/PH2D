@@ -122,6 +122,28 @@ pub(super) fn apply_graph_intents(
             // (`params::publish`, depois de `apply_graph_intents`). *Um aplicador, dois
             // canais* — a mesma lei que faz o cartão e o painel concordarem sobre o que é
             // visível.
+            // ⭐ **Dobrar/abrir uma secção do cartão** — estado de EDITOR, sem passo de undo
+            // (como o pan, o zoom e a selecção). Guarda só o que o artista TOCOU: ausente é o
+            // que o registry declarou.
+            GraphIntent::ToggleParamSection { node, section } => {
+                if let subgraph::Target::Node(n) = subgraph::target(node) {
+                    let aberta = motion
+                        .card_sections
+                        .get(&(n.0, section))
+                        .copied()
+                        .unwrap_or_else(|| {
+                            motion
+                                .doc
+                                .graph
+                                .node(n)
+                                .map(|i| i.type_id())
+                                .is_none_or(|t| {
+                                    !motion.registry.param_groups_folded(t).contains(&section)
+                                })
+                        });
+                    motion.card_sections.insert((n.0, section), !aberta);
+                }
+            }
             #[cfg(feature = "panel-motion-params")]
             GraphIntent::SetParam { node, param, value } => {
                 if let subgraph::Target::Node(n) = subgraph::target(node) {

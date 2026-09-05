@@ -79,6 +79,7 @@ fn card_with_params(id: u32, k: usize) -> GraphNodeView {
                 swatch: None,
             })
             .collect(),
+        sections: Vec::new(),
     }
 }
 

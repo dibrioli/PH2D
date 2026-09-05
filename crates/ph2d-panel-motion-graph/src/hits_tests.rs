@@ -43,6 +43,7 @@ fn node(id: u32, x: f32, y: f32) -> GraphNodeView {
         inert: false,
         thumbnail: None,
         params: Vec::new(),
+        sections: Vec::new(),
     }
 }
 

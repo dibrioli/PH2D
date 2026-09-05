@@ -38,6 +38,8 @@ const TEXT_PAD_Y: f32 = 5.0; // LITERAL-PX-OK: card param text y-inset
 /// Folga da amostra de cor dentro da faixa (ela é um quadrado, não uma barra).
 const SWATCH_INSET: f32 = 3.0; // LITERAL-PX-OK: card colour swatch inset
 const SWATCH_R: f32 = 3.0; // LITERAL-PX-OK: card colour swatch corner radius
+/// Meio-lado do chevron de uma secção.
+const CHEVRON_R: f32 = 3.5; // LITERAL-PX-OK: section chevron half-size
 
 /// ⭐⭐⭐ **O QUE UMA ROW MOSTRA, por ESPÉCIE de widget — e o `match` é EXAUSTIVO de propósito.**
 ///
@@ -92,6 +94,68 @@ fn shown(p: &CardParam) -> Shown {
     }
 }
 
+/// **O CABEÇALHO DE UMA SECÇÃO** — um galão discreto com o nome, o chevron do estado e, quando
+/// fechada, **quantas rows esconde** (uma secção dobrada não pode parecer uma secção vazia).
+///
+/// ⚠️ Sem fundo próprio: ele separa por TIPOGRAFIA e pelo chevron, não por mais uma caixa. Um
+/// cartão com seis secções teria seis caixas dentro de uma caixa.
+fn draw_section_header(
+    ctx: &mut PaintCtx,
+    sec: &crate::snapshot::CardSection,
+    row: Rect,
+    com_texto: bool,
+    z: f32,
+    theme: Theme,
+) {
+    // O chevron desenha-se SEMPRE (é a única marca de que ali há uma dobra); o nome segue o
+    // LOD, como todo texto do cartão.
+    let cx = row.x + (TRACK_INSET_X + CHEVRON_R) * z;
+    let cy = row.y + row.h * 0.5;
+    let r = CHEVRON_R * z;
+    let pts = if sec.open {
+        // ▾ aberta
+        [(cx - r, cy - r * 0.5), (cx + r, cy - r * 0.5), (cx, cy + r * 0.7)]
+    } else {
+        // ▸ fechada
+        [(cx - r * 0.5, cy - r), (cx + r * 0.7, cy), (cx - r * 0.5, cy + r)]
+    };
+    ph2d_editor_core::paint_shapes::fill_polygon(
+        ctx.scene,
+        &pts,
+        resolve(ColorToken::Text3, theme),
+    );
+    if !com_texto {
+        return;
+    }
+    let x = cx + (CHEVRON_R + TEXT_PAD_X) * z;
+    let size = geom::PARAM_LABEL_SIZE * z;
+    let contagem = (!sec.open && sec.hidden > 0).then(|| sec.hidden.to_string());
+    let right_w = contagem.as_ref().map_or(0.0, |t| {
+        let w = ctx.text_system.prefix_width(t, size);
+        paint_text_title_elided(
+            ctx.text_system,
+            ctx.scene,
+            t,
+            row.x + row.w - (TRACK_INSET_X + TEXT_PAD_X) * z - w,
+            row.y + TEXT_PAD_Y * z,
+            size,
+            w,
+            resolve(ColorToken::Text3, theme),
+        );
+        w
+    });
+    paint_text_title_elided(
+        ctx.text_system,
+        ctx.scene,
+        sec.title,
+        x,
+        row.y + TEXT_PAD_Y * z,
+        size,
+        (row.x + row.w - (TRACK_INSET_X + TEXT_PAD_X) * z - right_w - x).max(0.0),
+        resolve(ColorToken::Text2, theme),
+    );
+}
+
 /// Desenha a faixa de params de um cartão. **Nada acontece abaixo do LOD**
 /// ([`geom::params_are_drawn`]) — nem o desenho nem, do lado do hit-test, o registo: uma row
 /// pintada onde não se clica é um controlo morto, e uma registada onde não se vê é um alvo
@@ -109,8 +173,17 @@ pub(super) fn draw_card_params(
     // [`geom::param_text_is_drawn`], e o smoke que o ensinou.
     let com_texto = geom::param_text_is_drawn(view);
     let z = view.zoom;
-    for (i, p) in n.params.iter().enumerate() {
+    for i in 0..geom::band_len(n) {
         let row = geom::param_row_rect(n, view, i);
+        let p = match geom::band_at(n, i) {
+            Some(geom::BandRow::Param(k)) => &n.params[k],
+            // ⭐ **O cabeçalho de uma SECÇÃO** — o «painel dentro do nó» do Blender 4.x.
+            Some(geom::BandRow::Header(k)) => {
+                draw_section_header(ctx, &n.sections[k], row, com_texto, z, theme);
+                continue;
+            }
+            None => break,
+        };
         let track = Rect::new(
             row.x + TRACK_INSET_X * z,
             row.y + TRACK_INSET_Y * z,

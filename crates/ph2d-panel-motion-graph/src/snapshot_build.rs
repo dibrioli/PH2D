@@ -74,6 +74,7 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
                 inert: false,
                 thumbnail: None,
                 params: Vec::new(),
+                sections: Vec::new(),
             }
         })
         .collect();

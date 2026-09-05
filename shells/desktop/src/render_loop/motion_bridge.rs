@@ -342,7 +342,7 @@ pub(super) fn dispatch(
             // ⭐ **Os params de cada cartão** (ciclo 1, doc 103): o que ele CONTROLA, pela
             // mesma porta de visibilidade que o painel usa. Antes do `fold`, como o readout.
             #[cfg(feature = "panel-motion-params")]
-            params::stamp_card_params(motion, &mut snap);
+            params::card::stamp_card_params(motion, &mut snap);
             // **The fold** (doc 57), LAST: everything above published the whole flat
             // graph, and this cuts it down to the level the artist is standing in —
             // folding the nested nodes into cards (which is why it runs after the

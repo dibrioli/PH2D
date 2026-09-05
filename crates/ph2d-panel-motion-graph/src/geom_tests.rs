@@ -32,6 +32,7 @@ fn node_with_inputs(id: u32, x: f32, n_in: usize) -> GraphNodeView {
         inert: false,
         thumbnail: None,
         params: Vec::new(),
+        sections: Vec::new(),
     }
 }
 
@@ -439,4 +440,46 @@ fn only_the_text_of_a_param_row_follows_the_zoom() {
     assert!(at(0.83), "logo acima, sim");
     assert!(at(1.0));
     assert!(at(2.5));
+}
+
+/// ⭐⭐ **A FAIXA INTERCALA CABEÇALHOS E ROWS, e é UMA coordenada** — o pintor, o hit-test e o
+/// gesto falam todos em índice de faixa. FALSIFICADO por `band_at` contar sem os cabeçalhos:
+/// um clique cai uma fileira ao lado no primeiro nó com secções.
+#[test]
+fn the_band_interleaves_section_headers_with_the_rows() {
+    let mut n = with_params(node_with_inputs(1, 0.0, 1), 5);
+    n.sections = vec![
+        crate::snapshot::CardSection {
+            title: "Shape",
+            at: 0,
+            open: true,
+            hidden: 0,
+        },
+        crate::snapshot::CardSection {
+            title: "Advanced",
+            at: 3,
+            open: true,
+            hidden: 0,
+        },
+    ];
+    assert_eq!(band_len(&n), 7, "5 rows + 2 cabecalhos");
+    use crate::geom::BandRow::{Header, Param};
+    let esperado = [
+        Header(0),
+        Param(0),
+        Param(1),
+        Param(2),
+        Header(1),
+        Param(3),
+        Param(4),
+    ];
+    for (i, e) in esperado.iter().enumerate() {
+        assert_eq!(band_at(&n, i), Some(*e), "fileira {i}");
+    }
+    assert_eq!(band_at(&n, 7), None, "depois do fim nao ha' fileira");
+    // E a altura conta as sete.
+    assert_eq!(
+        card_h(&n),
+        card_h(&node_with_inputs(1, 0.0, 1)) + 7.0 * ROW_H
+    );
 }

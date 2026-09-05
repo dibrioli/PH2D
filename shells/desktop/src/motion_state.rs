@@ -226,6 +226,15 @@ pub(crate) struct MotionState {
     /// column (no framing node yet). Set from the composed atlas at init to a
     /// single opaque tile, so instances render as clean solid quads instead of a
     /// whole-atlas thumbnail. `[0,0,1,1]` (whole atlas) until the shell overrides.
+    /// ⭐ **AS SECÇÕES QUE O ARTISTA ABRIU OU FECHOU no cartão** (ciclo 1, doc 103) —
+    /// `(nó, grupo) -> aberta`, e **só o que ele tocou**: ausente significa *o que o registry
+    /// declarou* (`param_groups_folded`). Guardar o default aqui seria uma segunda cópia dele,
+    /// que envelhece no dia em que um nó mudar de grupos.
+    ///
+    /// ⚠️ Estado de EDITOR, não de documento: vive aqui e não no `doc`, como a selecção. É por
+    /// isso que `geom::card_h` continua a ser função pura do snapshot — a shell já resolveu a
+    /// dobra antes de o cartão a ver.
+    pub(crate) card_sections: std::collections::BTreeMap<(u32, &'static str), bool>,
     pub(crate) default_uv_rect: [f32; 4],
     /// `size` fallback for instances whose stream carries no `size` column.
     ///
@@ -390,6 +399,7 @@ impl MotionState {
             signals_out: Vec::new(),
             // Whole-atlas until the shell wires a real tile (init.rs). Headless
             // callers / tests keep this default.
+            card_sections: std::collections::BTreeMap::new(),
             default_uv_rect: [0.0, 0.0, 1.0, 1.0],
             // The SAME unit scale every node assumes when it materializes `size`.
             default_size: ph2d_nodegraph::attr::SIZE_IDENTITY,

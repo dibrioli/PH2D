@@ -60,6 +60,7 @@ pub(super) fn two_node_snapshot() -> GraphViewSnapshot {
         inert: false,
         thumbnail: None,
         params: Vec::new(),
+        sections: Vec::new(),
     };
     GraphViewSnapshot {
         level: None,
@@ -134,6 +135,7 @@ pub(super) fn body_node(
         inert: false,
         thumbnail: None,
         params: Vec::new(),
+        sections: Vec::new(),
     }
 }
 

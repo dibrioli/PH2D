@@ -502,13 +502,26 @@ fn apply_param_row(
     rect: Rect,
     snap: &GraphViewSnapshot,
 ) {
-    let Some(p) = snap
-        .nodes
-        .iter()
-        .find(|n| n.id == node)
-        .and_then(|n| n.params.get(row as usize))
-    else {
+    let Some(view_node) = snap.nodes.iter().find(|n| n.id == node) else {
         return;
+    };
+    // ⚠️ `row` é o índice de FAIXA — uma coordenada só para o pintor, o hit-test e o gesto.
+    let p = match crate::geom::band_at(view_node, row as usize) {
+        Some(crate::geom::BandRow::Param(k)) => &view_node.params[k],
+        // ⭐ O cabeçalho DOBRA. Na PRESSÃO (Begin), não na largada: um clique que arrasta um
+        // pixel é classificado End pelo dispatch, e a dobra tem de acontecer na mesma — é a
+        // mesma robustez que o alt-clique num fio já usa.
+        Some(crate::geom::BandRow::Header(k)) => {
+            if g.phase == GesturePhase::Begin {
+                push_intent(GraphIntent::ToggleParamSection {
+                    node,
+                    section: view_node.sections[k].title,
+                });
+            }
+            state.interaction = Interaction::Idle;
+            return;
+        }
+        None => return,
     };
     match g.phase {
         GesturePhase::Begin => {

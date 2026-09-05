@@ -37,6 +37,7 @@ fn card(params: Vec<CardParam>) -> GraphViewSnapshot {
             inert: false,
             thumbnail: None,
             params,
+            sections: Vec::new(),
         }],
         edges: Vec::new(),
         backdrops: Vec::new(),

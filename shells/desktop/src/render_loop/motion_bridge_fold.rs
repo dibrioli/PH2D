@@ -465,6 +465,7 @@ fn card_view(
         // são dos nós lá dentro, e a interface promovida de um subgrafo é obra do W8 do
         // [doc 102]. Vazio é a resposta honesta, não um buraco.
         params: Vec::new(),
+        sections: Vec::new(),
     }
 }
 

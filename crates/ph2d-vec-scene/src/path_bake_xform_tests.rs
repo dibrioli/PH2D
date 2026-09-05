@@ -122,7 +122,11 @@ fn a_shape_without_a_stack_bakes_exactly_as_before() {
 #[test]
 fn the_widest_stroke_reads_the_whole_stack() {
     let p = com_pilha();
-    assert!((p.widest_stroke() - 3.0).abs() < 1e-9, "{}", p.widest_stroke());
+    assert!(
+        (p.widest_stroke() - 3.0).abs() < 1e-9,
+        "{}",
+        p.widest_stroke()
+    );
     let so_base = VecPath {
         stroke: Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 1.0)),
         ..VecPath::default()

@@ -520,4 +520,17 @@
 /// foi a forma da `VecScene`, que é exactamente o que ela mede.
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 2026-08-26.
-pub(crate) const PROJECT_SCHEMA: u32 = 115;
+///
+/// # 115 -> 116 — A PILHA DE APARÊNCIA (`line/Vector`)
+///
+/// O [`ph2d_vec_scene::VecPath`] ganhou `paints` (`VEC_SCENE_SCHEMA_VERSION` 19 -> 20) — N
+/// preenchimentos e N contornos numa forma (o item 4 do estudo 42). Sem ela, cada camada de estilo
+/// obriga a **duplicar o objecto**, e duas cópias de uma forma são duas geometrias que divergem no
+/// primeiro ponto que o artista mexe.
+///
+/// ⚠️ **Um `Vec` apendado ao fim ⇒ a mesma quebra dura dos v114 e v115**: o postcard é posicional e
+/// não sinaliza ausência. ⭐ Vazio é o neutro e custa **1 byte** de comprimento zero, então uma cena
+/// que nunca lhe toque escreve o que escrevia mais esse byte — e desenha byte a byte igual.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão de 2026-08-26.
+pub(crate) const PROJECT_SCHEMA: u32 = 116;

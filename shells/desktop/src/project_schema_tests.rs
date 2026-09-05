@@ -478,7 +478,11 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // PROJECT 114→115 + VEC_SCENE 18→19: o `VecPath` ganhou `opacity` + `blend` (a opacidade
         // e o modo de mistura do OBJECTO, estudo 42 item 2). Dois campos apendados ⇒ layout
         // posicional muda. ⭐ Este é um dos degraus que a tripla de facto VÊ.
-        (115, 13, 19),
+        // PROJECT 115→116 + VEC_SCENE 19→20: o `VecPath` ganhou `paints` — a PILHA DE APARENCIA
+        // (N preenchimentos e N contornos, estudo 42 item 4). Um `Vec` apendado ⇒ layout
+        // posicional muda, e a tripla VE^ o degrau (mudou a forma da `VecScene`). ⭐ Vazio custa
+        // 1 byte de comprimento zero, entao uma cena que nunca lhe toque desenha igual.
+        (116, 13, 20),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

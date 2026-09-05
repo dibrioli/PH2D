@@ -152,6 +152,15 @@ pub(crate) enum Interaction {
     /// Slicing a knife stroke across the canvas (armed by `K`): every wire the
     /// segment crosses is cut on release, as ONE undo step. Screen space.
     Knife { anchor: (f32, f32), cur: (f32, f32) },
+    /// **Arrastar o valor de um param no cartão** (ciclo 1). Guarda o valor de PARTIDA e o x
+    /// de partida, e não o último x: somar deltas por quadro acumula o erro de arredondamento
+    /// de um param inteiro (arrastar e voltar não devolveria o número onde começou).
+    ScrubParam {
+        node: u32,
+        row: u16,
+        start_value: f32,
+        start_x: f32,
+    },
     /// Dragging the selected nodes. `last` is the previous pointer (screen);
     /// each Update pushes an incremental `MoveNodes` delta the shell applies
     /// live (so the node tracks the cursor with no end-jump). `started` gates the

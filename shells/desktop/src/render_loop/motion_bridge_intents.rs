@@ -113,6 +113,27 @@ pub(super) fn apply_graph_intents(
                     subgraph::drive(motion, toasts, (f, fp), t, param);
                 }
             }
+            // ⭐⭐ **O ARTISTA ARRASTOU UM PARAM NO CARTÃO** (ciclo 1, doc 103).
+            //
+            // ⚠️ **Não aplica aqui: reencaminha para a fila do PAINEL.** O
+            // `apply_param_edits` tem leis que uma segunda cópia perderia — a troca de
+            // `channel` que repõe a magnitude no default daquele canal, os limites duros, o
+            // toast de recusa —, e ele corre mais à frente NESTE mesmo quadro
+            // (`params::publish`, depois de `apply_graph_intents`). *Um aplicador, dois
+            // canais* — a mesma lei que faz o cartão e o painel concordarem sobre o que é
+            // visível.
+            #[cfg(feature = "panel-motion-params")]
+            GraphIntent::SetParam { node, param, value } => {
+                if let subgraph::Target::Node(n) = subgraph::target(node) {
+                    ph2d_panel_motion_params::push_param_intent(
+                        ph2d_panel_motion_params::MotionParamIntent::SetParam {
+                            node: n.0,
+                            param,
+                            value: f64::from(value),
+                        },
+                    );
+                }
+            }
             GraphIntent::Disconnect { to_node, to_port } => {
                 if let Some((t, tp)) = subgraph::resolve_port(motion, to_node, to_port, true) {
                     apply_disconnect(motion, toasts, t.0, tp);

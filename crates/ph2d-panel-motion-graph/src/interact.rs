@@ -143,6 +143,10 @@ fn apply_gesture(
     match g.kind {
         GraphHitKind::Background => apply_background(state, g, rect, snap),
         GraphHitKind::Node { node } => apply_node(state, g, node as u32, snap),
+        // ⭐ **Arrastar um param no cartão** (ciclo 1) — o número do Blender.
+        GraphHitKind::ParamRow { node, row } => {
+            apply_param_row(state, g, node as u32, row, rect, snap);
+        }
         GraphHitKind::SocketOut { node, port } => {
             apply_socket_out(state, g, node as u32, port, rect, snap)
         }
@@ -477,6 +481,86 @@ fn apply_node(
 
 /// Output-socket gestures: drag begins a wire; the ghost tracks the pointer and
 /// snaps its validity to the hovered input; the drop emits `Connect`.
+/// ⭐⭐⭐ **ARRASTAR O VALOR DE UM PARAM NO CARTÃO** (ciclo 1 — doc 103).
+///
+/// A lei é a do slider que a row DESENHA: **atravessar a largura do cartão varre a faixa
+/// inteira** (`min..max` do hint). É o que o preenchimento da barra mostra, então o dedo e o
+/// olho concordam por construção — e não há um segundo número de sensibilidade para calibrar.
+///
+/// ⚠️ **O delta é contra o x de PARTIDA, nunca contra o do quadro anterior.** Somar deltas
+/// acumula o arredondamento de um param inteiro: arrastar para a direita e voltar não devolveria
+/// o número onde começou.
+///
+/// ⚠️ **A edição sai pela porta que já existe** (`GraphIntent::SetParam` → `Graph::set_param`),
+/// a mesma da row do painel — o undo, o memo do cook e os limites são os mesmos nas duas
+/// superfícies. Nada de um segundo caminho de escrita.
+fn apply_param_row(
+    state: &mut MotionGraphPanelState,
+    g: GraphGesture,
+    node: u32,
+    row: u16,
+    rect: Rect,
+    snap: &GraphViewSnapshot,
+) {
+    let Some(p) = snap
+        .nodes
+        .iter()
+        .find(|n| n.id == node)
+        .and_then(|n| n.params.get(row as usize))
+    else {
+        return;
+    };
+    match g.phase {
+        GesturePhase::Begin => {
+            state.interaction = Interaction::ScrubParam {
+                node,
+                row,
+                start_value: p.value,
+                start_x: g.x,
+            };
+        }
+        GesturePhase::Update => {
+            let Interaction::ScrubParam {
+                node: n0,
+                row: r0,
+                start_value,
+                start_x,
+            } = state.interaction
+            else {
+                return;
+            };
+            if n0 != node || r0 != row {
+                return;
+            }
+            let view = View::new(rect, state.view);
+            let largura = crate::geom::CARD_W * view.zoom;
+            if largura <= 0.0 {
+                return;
+            }
+            let faixa = p.hint.max - p.hint.min;
+            let bruto = start_value + (g.x - start_x) / largura * faixa;
+            // O passo do hint decide se o número é inteiro — a mesma leitura que a row usa
+            // para o escrever.
+            let valor = if p.hint.step >= 1.0 {
+                bruto.round()
+            } else {
+                bruto
+            };
+            let valor = valor.clamp(p.hint.min.min(p.hint.max), p.hint.max.max(p.hint.min));
+            if (valor - p.value).abs() > f32::EPSILON {
+                push_intent(GraphIntent::SetParam {
+                    node,
+                    param: p.hint.param,
+                    value: valor,
+                });
+            }
+        }
+        GesturePhase::End | GesturePhase::Click | GesturePhase::DoubleClick => {
+            state.interaction = Interaction::Idle;
+        }
+    }
+}
+
 fn apply_socket_out(
     state: &mut MotionGraphPanelState,
     g: GraphGesture,
@@ -569,6 +653,11 @@ pub(super) fn target_socket(
 #[cfg(test)]
 #[path = "interact_tests.rs"]
 mod tests;
+
+/// Os gates do arrasto de um param no cartão (ciclo 1) — irmão por responsabilidade.
+#[cfg(test)]
+#[path = "interact_param_row_tests.rs"]
+mod param_row_tests;
 
 #[cfg(test)]
 #[path = "interact_drop_tests.rs"]

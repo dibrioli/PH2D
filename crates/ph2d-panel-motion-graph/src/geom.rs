@@ -127,6 +127,18 @@ pub(crate) fn param_text_is_drawn(view: &View) -> bool {
     PARAM_LABEL_SIZE * view.zoom >= MIN_READABLE_PX
 }
 
+/// **UMA ROW SÓ SE AGARRA QUANDO SE PODE MIRAR** — e é o MESMO limiar do texto, de propósito.
+///
+/// ⚠️ Parecem duas perguntas e são uma: *«esta row está utilizável por um humano agora?»*. Uma
+/// fileira de 4 px não se lê **nem** se acerta (a régua do tablet pede 44 pt), e registá-la
+/// roubaria ao corpo do cartão o gesto de ARRASTAR O NÓ sem dar nada em troca.
+///
+/// ⛔ Se um dia as duas divergirem — por exemplo um modo de toque com alvos maiores — elas
+/// separam-se aqui, com a medição ao lado; até lá, uma fonte.
+pub(crate) fn param_row_is_grabbable(view: &View) -> bool {
+    param_text_is_drawn(view)
+}
+
 /// Quantas rows a faixa de params RESERVA — sempre todas as que o cartão carrega.
 /// ⚠️ Independente do zoom, de propósito: ver [`params_are_drawn`].
 pub(crate) fn card_param_rows(n: &GraphNodeView) -> f32 {

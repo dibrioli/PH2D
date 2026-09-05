@@ -72,7 +72,8 @@ use paint_wires::{WirePass, draw_wires};
 
 use crate::geom::{self, View, card_h, socket_center};
 use crate::hits::{
-    bg_hit_id, push_backdrop_hits, push_card_hit, push_inert_badge_hit, push_preview_toggle_hit,
+    bg_hit_id, push_backdrop_hits, push_card_hit, push_inert_badge_hit, push_param_row_hits,
+    push_preview_toggle_hit,
     push_socket_hits, register_hits, register_hot_tip,
 };
 use crate::snapshot::{
@@ -259,6 +260,8 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
         // `draw_card` also draws this node's ⚠ inert badge (ADR-0155) on its corner.
         let body = draw_card(ctx, state, n, &view, theme, dim);
         push_card_hit(&mut hits, n, body, rect);
+        // ⚠️ **Depois do corpo, para lhes GANHAR o gesto** — ver `push_param_row_hits`.
+        push_param_row_hits(&mut hits, n, &view, rect);
     }
     // Sockets + the header toggle + the inert badge last, so all three beat the card body
     // under them (doc 86; ADR-0155).

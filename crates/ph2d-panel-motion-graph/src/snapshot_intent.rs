@@ -50,6 +50,15 @@ pub enum GraphIntent {
         to_node: u32,
         param: &'static str,
     },
+    /// **O ARTISTA ARRASTOU UM PARAM NO CARTÃO** (ciclo 1). O nome é `&'static` — vem do
+    /// `ParamUiHint` do registry, pela vista do cartão —, e a shell aplica-o pela **mesma
+    /// porta** que a row do painel usa (`Graph::set_param`), para que o undo, o memo do cook e
+    /// os limites sejam os mesmos nas duas superfícies.
+    SetParam {
+        node: u32,
+        param: &'static str,
+        value: f32,
+    },
     Connect {
         from_node: u32,
         from_port: u16,

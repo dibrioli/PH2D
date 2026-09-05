@@ -148,6 +148,15 @@ pub enum GraphHitKind {
     /// panel's own opaque button ordinal (editor-core never interprets it), same
     /// "crosses as an integer" rule as the node/edge handles.
     Chrome { id: u16 },
+    /// **UMA ROW DE PARAM desenhada no cartão** (ciclo 1 do Motion — decisão do Enio,
+    /// 2026-09-05: os params vivem no nó e o painel lateral sai). `row` é o índice da row na
+    /// lista que o cartão carrega — o mesmo "atravessa como inteiro" do nó e da aresta:
+    /// `editor-core` nunca o interpreta.
+    ///
+    /// ⚠️ **Registada DEPOIS do corpo do cartão**, e é isso que a faz ganhar o gesto: com os
+    /// params dentro do nó, arrastar o NÓ passa a ser pelo cabeçalho e pelas folgas — que é o
+    /// que o Blender faz, e o preço de ter os controlos ali.
+    ParamRow { node: u64, row: u16 },
 }
 
 /// Lifecycle phase of a graph pointer gesture. The panel drives its own state

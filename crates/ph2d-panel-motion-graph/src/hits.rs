@@ -94,6 +94,50 @@ pub(crate) fn push_card_hit(
     }
 }
 
+/// **OS ALVOS DAS ROWS DE PARAM** (ciclo 1) — a faixa inteira de cada row, que é também o que
+/// se arrasta (o número do Blender: pega-se em qualquer ponto da fileira).
+///
+/// ⚠️ **Empurradas DEPOIS do corpo do cartão**, e por isso ganham-lhe o gesto: `register_hits`
+/// é *«na ordem dada — a última ganha»*. Com os params dentro do nó, arrastar o NÓ passa a ser
+/// pelo cabeçalho e pelas folgas entre as fileiras. É o preço declarado de ter os controlos ali,
+/// e é o que o Blender faz.
+///
+/// ⚠️ **Nada é registado abaixo de [`geom::param_row_is_grabbable`]** — um alvo que não se vê é
+/// um alvo invisível, e roubaria o arrasto do nó sem dar nada em troca.
+pub(crate) fn push_param_row_hits(
+    hits: &mut Vec<(NodeId, GraphHitKind, Rect)>,
+    n: &GraphNodeView,
+    view: &crate::geom::View,
+    canvas: Rect,
+) {
+    if !crate::geom::param_row_is_grabbable(view) {
+        return;
+    }
+    for (i, p) in n.params.iter().enumerate() {
+        // Um param DIRIGIDO por fio não se arrasta: o número vem de fora, e um alvo que não
+        // obedece ao dedo é a mentira que a row dirigida do painel já aprendeu a não contar.
+        if p.driven {
+            continue;
+        }
+        let Ok(row) = u16::try_from(i) else { continue };
+        if let Some(r) = clip_rect(crate::geom::param_row_rect(n, view, i), canvas) {
+            hits.push((
+                param_row_hit_id(n.id, row),
+                GraphHitKind::ParamRow {
+                    node: n.id as u64,
+                    row,
+                },
+                r,
+            ));
+        }
+    }
+}
+
+/// O id de a11y de uma row de param — derivado, como todo id deste painel.
+fn param_row_hit_id(node: u32, row: u16) -> NodeId {
+    crate::paint::fnv_id(&format!("motion-graph/param-row/{node}/{row}"))
+}
+
 /// Push a backdrop's hit rects: its **header** (select + drag the group) and its
 /// two bottom-corner **grippers** (resize — either corner, like every panel in the
 /// app), all clipped to the canvas. The BODY is deliberately not registered — it

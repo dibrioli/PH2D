@@ -106,7 +106,7 @@ mod ops;
 pub(crate) use effects::seed_effect_ranges;
 
 /// Register a plain action Button in the Normal state.
-fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
+pub(crate) fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     store.register(
         id,
         InteractiveState::Button {
@@ -119,7 +119,7 @@ fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
 /// `value`. **`set_number_range` não é opcional**: sem ela o arrasto escala errado — o
 /// gotcha conhecido da caixa limitada. (As caixas de parâmetro de FORMA não passam aqui: a
 /// faixa delas é por-forma, e a shell a re-registra quando o foco muda.)
-fn number_field(
+pub(crate) fn number_field(
     store: &mut WidgetStore,
     id: ph2d_a11y::NodeId,
     min: f64,
@@ -142,7 +142,7 @@ fn number_field(
 }
 
 /// Register a slider + its linked value chip, seeded at `track` / `display`.
-pub(super) fn slider_chip(
+pub(crate) fn slider_chip(
     store: &mut WidgetStore,
     slider: ph2d_a11y::NodeId,
     chip: ph2d_a11y::NodeId,
@@ -535,32 +535,7 @@ fn populate_transform_fields(store: &mut WidgetStore) {
     populate_appearance(store);
 }
 
-/// ⭐⭐⭐ **A APARÊNCIA do objecto** (estudo 42 item 2): o slider de opacidade + o chip de mistura e
-/// as linhas do popover dele.
-///
-/// ⚠️ **As opções são registadas por ÍNDICE**, como as pontas do traço e as formas do catálogo: um
-/// modo novo no vocabulário entra na lista derivada e já nasce clicável, sem tocar aqui. O teto é
-/// o do vocabulário (`MAX_BLEND_MODES`), e não um número escolhido — a lista OFERECIDA é sempre um
-/// subconjunto dele.
-fn populate_appearance(store: &mut WidgetStore) {
-    slider_chip(
-        store,
-        ids::VECTOR_OBJ_OPACITY,
-        ids::VECTOR_OBJ_OPACITY_NUM,
-        1.0,
-        100.0, // LITERAL-PX-OK: initial opacity display = 100 %
-        ph2d_tool_vector::params::OPACITY_SLIDER_SCALE,
-        ph2d_tool_vector::params::OPACITY_SLIDER_OFFSET,
-    );
-    store.register_if_absent(
-        ids::VECTOR_OBJ_BLEND,
-        InteractiveState::Dropdown {
-            state: DropdownState::Normal,
-            open: false,
-            selected_index: None,
-        },
-    );
-    for i in 0..usize::from(ph2d_vec_scene::MAX_BLEND_MODES) {
-        button(store, ids::vector_obj_blend_option_id(i));
-    }
-}
+/// ⭐ **O registo da secção APPEARANCE** — módulo irmão pelo tecto de LOC do painel.
+#[path = "populate_appearance.rs"]
+mod appearance;
+pub(crate) use appearance::populate_appearance;

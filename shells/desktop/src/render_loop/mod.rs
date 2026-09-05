@@ -996,6 +996,7 @@ impl crate::App {
         self.vec_fade_smoke();
         self.vec_appearance_smoke();
         self.svg_import_smoke();
+        self.vec_stack_smoke();
         self.nest_smoke();
         self.physics_smoke();
         self.instance_smoke();
@@ -3428,6 +3429,14 @@ impl crate::App {
             // modo de mistura. Capturados aqui e aplicados ao documento no dreno, como o Transform.
             let mut pending_vec_opacity: Option<f64> = None;
             let mut pending_vec_blend: Option<u8> = None;
+            // ⭐⭐⭐ A PILHA DE APARÊNCIA (estudo 42 item 4): o verbo pedido, e as três propriedades
+            // da camada ABERTA. ⚠️ O índice vem do PAINEL (a camada aberta é vista dele), então a
+            // shell não guarda um segundo — dois índices para a mesma pergunta divergem no
+            // primeiro gesto que mexe na pilha.
+            let mut pending_paint_verb: Option<crate::vec_paint_stack::StackVerb> = None;
+            let mut pending_paint_width: Option<f64> = None;
+            let mut pending_paint_opacity: Option<f64> = None;
+            let mut pending_paint_blend: Option<u8> = None;
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
                 None;
             // **ONDE o NÓ vai** — `(eixo_y?, alvo)` na unidade do artista. Um por frame: os dois
@@ -3553,7 +3562,11 @@ impl crate::App {
                         // Copy) to apply after the drain; still forward to the tool
                         // (which ignores those ids) so mode/width/etc. flow.
                         if let ph2d_editor::tool::PanelEvent::Click(id) = &ev {
-                            if *id == ph2d_editor::ids::VECTOR_BLEND_RUN {
+                            if let Some(v) = crate::vec_paint_stack::stack_verb_for_id(*id) {
+                                // ⭐ A PILHA DE APARÊNCIA: o resolvedor é PURO e vive ao lado dos
+                                // verbos, como o `vec_rotate_for_id` — aqui só se captura.
+                                pending_paint_verb = Some(v);
+                            } else if *id == ph2d_editor::ids::VECTOR_BLEND_RUN {
                                 // ADR-0128: cria o Blend Object VIVO da seleção (não o destrutivo).
                                 pending_create_blend = true;
                             } else if *id == ph2d_editor::ids::VECTOR_BLEND_RESET_SPINE {
@@ -3969,6 +3982,14 @@ impl crate::App {
                                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                                 let code = v.clamp(0.0, f64::from(u8::MAX)) as u8;
                                 pending_vec_blend = Some(code);
+                            } else if *id == ph2d_editor::ids::VECTOR_PAINT_WIDTH {
+                                pending_paint_width = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_PAINT_OPACITY {
+                                pending_paint_opacity = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_PAINT_BLEND {
+                                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                                let code = v.clamp(0.0, f64::from(u8::MAX)) as u8;
+                                pending_paint_blend = Some(code);
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_X {
                                 pending_vec_vert = Some((false, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_Y {
@@ -7001,6 +7022,47 @@ impl crate::App {
                 }
                 if let Some(code) = pending_vec_blend {
                     crate::vec_appearance::set_blend(vec_scene, &sel, code);
+                }
+                // ⭐⭐⭐ **E A PILHA** (item 4). ⚠️ O verbo primeiro, as propriedades depois: um
+                // clique em «apagar» e um arrasto de slider não chegam no mesmo frame, mas se
+                // chegassem, escrever numa camada que o verbo acabou de remover seria um `None`
+                // silencioso — e a ordem torna isso impossível de acontecer ao contrário.
+                if let Some(v) = pending_paint_verb {
+                    crate::vec_paint_stack::apply(vec_scene, &sel, v);
+                }
+                // ⚠️ **O índice é o da camada ABERTA no painel** — a única que mostra estes três
+                // controlos. Sem camada aberta não há sujeito, e escrever seria adivinhar.
+                // ⭐⭐⭐ **A COR de uma camada** — o picker partilhado escreve nela.
+                //
+                // ⛔ Sem este braço a swatch de uma camada abre o picker, o artista escolhe uma
+                // cor e **nada acontece** — o `clippy` apanhou-o como `set_color` never used, que
+                // é a assinatura do controlo morto que o §5.0 nomeia.
+                if let Some(i) = crate::vec_paint_stack::layer_of_picker_target(&hero.store)
+                    && let Some((value, _, _, _)) = hero
+                        .store
+                        .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+                {
+                    // ⚠️ O picker já entrega bytes (`rgba`), como as swatches de base — converter
+                    // aqui seria a segunda régua de *"que cor é esta?"*.
+                    let c = value.rgba;
+                    crate::vec_paint_stack::set_color(
+                        vec_scene,
+                        &sel,
+                        i,
+                        ph2d_vec_scene::Rgba8::new(c[0], c[1], c[2], c[3]),
+                    );
+                }
+                if let Some(i) = ph2d_panel_vector::state::open_layer_index() {
+                    if let Some(w) = pending_paint_width {
+                        crate::vec_paint_stack::set_width(vec_scene, &sel, i, w);
+                    }
+                    if let Some(t) = pending_paint_opacity {
+                        #[allow(clippy::cast_possible_truncation)]
+                        crate::vec_paint_stack::set_opacity(vec_scene, &sel, i, t as f32);
+                    }
+                    if let Some(code) = pending_paint_blend {
+                        crate::vec_paint_stack::set_blend(vec_scene, &sel, i, code);
+                    }
                 }
             }
             if let Some((field, target)) = pending_vec_transform {

@@ -78,7 +78,13 @@ impl BodyCtx<'_> {
             &format!("{}", pct.round() as i64),
             y,
         );
-        self.blend_row(a.blend, y)
+        let y = self.blend_row(a.blend, y);
+        // ⭐⭐⭐ **E A PILHA** (v20) — as camadas por cima do chão, do topo para baixo.
+        //
+        // ⚠️ **Depois das duas do OBJECTO de propósito:** elas descrevem como a forma INTEIRA se
+        // compõe com o que está atrás dela, e a pilha é o que está DENTRO — ler de cima para baixo
+        // é ler de fora para dentro.
+        self.paint_stack(&a.layers, y)
     }
 
     /// O chip do modo de mistura. Abre o popover no passe DIFERIDO — sem ele o `push_clip` do

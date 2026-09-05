@@ -113,9 +113,14 @@ pub(crate) use widget_state::{
 /// OBJECTO, que são propriedades da forma e não da tinta dela.
 #[path = "state_appearance.rs"]
 mod appearance_state;
-pub use appearance_state::{Appearance, set_current_appearance};
+pub use appearance_state::{
+    Appearance, PaintRow, close_open_layer, open_layer_index, set_current_appearance,
+    toggle_open_layer,
+};
 pub(crate) use appearance_state::{
-    blend_option_index, current_appearance, set_pending_obj_blend_dd, take_pending_obj_blend_dd,
+    blend_option_index, current_appearance, open_layer, paint_blend_option_index,
+    set_pending_obj_blend_dd, set_pending_paint_blend_dd, take_pending_obj_blend_dd,
+    take_pending_paint_blend_dd,
 };
 
 /// **OS ESTADOS de UI da seleção** (plano UI/UX W7) — que poses ela tem, e quanto tempo o tween

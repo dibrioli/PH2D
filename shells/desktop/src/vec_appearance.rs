@@ -17,19 +17,12 @@
 
 use ph2d_vec_scene::{BlendMode, Opacity, VecPathId, VecScene};
 
-/// **O que o painel mostra** — `None` sem forma na selecção (a seção some inteira).
-pub(crate) fn published(
-    scene: &VecScene,
-    sel: &[VecPathId],
-) -> Option<ph2d_panel_vector::state::Appearance> {
-    let primeiro = *sel.first()?;
-    let p = scene.paths().iter().find(|p| p.id == primeiro)?;
-    Some(ph2d_panel_vector::state::Appearance {
-        opacity: p.opacity.get(),
-        blend: p.blend,
-    })
-}
-
+/// ⛔ **A publicação da vista MUDOU-SE para o [`crate::vec_paint_stack`]** (v20, estudo 42 item 4).
+///
+/// Ela lia duas propriedades; a vista passou a ter três (as duas mais a PILHA), e duas funções a
+/// montar o mesmo `Appearance` seriam a segunda porta pela qual as duas metades divergem — uma
+/// publicaria a pilha e a outra não, conforme quem chamasse.
+///
 /// **Escreve a opacidade** nas formas seleccionadas. Devolve se alguma coisa mudou.
 ///
 /// ⚠️ **Devolver «mudou» não é higiene:** o undo desta casa regista por DIFF, e uma escrita que

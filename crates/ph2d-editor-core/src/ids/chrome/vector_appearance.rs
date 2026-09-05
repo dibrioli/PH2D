@@ -43,3 +43,71 @@ pub const VECTOR_OBJ_BLEND: NodeId = hash_node_id("vector.obj.blend");
 pub fn vector_obj_blend_option_id(i: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.obj.blendopt.{i}"))
 }
+
+// ⭐⭐⭐ **A PILHA DE APARÊNCIA** (estudo 42 item 4, v20) — N preenchimentos e N contornos numa
+// forma. Os ids de LINHA são de runtime (a lista tem tamanho variável), pela mesma lei das opções
+// do dropdown acima: o índice vive um frame, e a resolução varre o espaço FIXO
+// (`ph2d_vec_scene::MAX_PAINT_LAYERS`) para não depender de quantas camadas a forma tem hoje.
+
+/// **+ Fill** — acrescenta um preenchimento no TOPO da pilha.
+pub const VECTOR_PAINT_ADD_FILL: NodeId = hash_node_id("vector.paint.add.fill");
+
+/// **+ Stroke** — acrescenta um contorno no TOPO da pilha.
+pub const VECTOR_PAINT_ADD_STROKE: NodeId = hash_node_id("vector.paint.add.stroke");
+
+/// O olho da camada `i` — desarma sem perder os parâmetros.
+#[must_use]
+pub fn vector_paint_eye_id(i: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.paint.eye.{i}"))
+}
+
+/// A swatch da camada `i` — abre o selector de cor DELA.
+#[must_use]
+pub fn vector_paint_swatch_id(i: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.paint.swatch.{i}"))
+}
+
+/// A linha da camada `i` — clicar ABRE-a (as propriedades dela aparecem por baixo).
+#[must_use]
+pub fn vector_paint_row_id(i: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.paint.row.{i}"))
+}
+
+/// Sobe a camada `i` uma posição na pilha.
+#[must_use]
+pub fn vector_paint_up_id(i: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.paint.up.{i}"))
+}
+
+/// Desce a camada `i` uma posição.
+#[must_use]
+pub fn vector_paint_down_id(i: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.paint.down.{i}"))
+}
+
+/// Apaga a camada `i`.
+#[must_use]
+pub fn vector_paint_del_id(i: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.paint.del.{i}"))
+}
+
+/// A largura do contorno da camada ABERTA.
+pub const VECTOR_PAINT_WIDTH: NodeId = hash_node_id("vector.paint.width");
+
+/// A opacidade da camada ABERTA (0..100 %).
+pub const VECTOR_PAINT_OPACITY: NodeId = hash_node_id("vector.paint.opacity");
+
+/// O chip numérico do slider acima.
+pub const VECTOR_PAINT_OPACITY_NUM: NodeId = hash_node_id("vector.paint.opacity.num");
+
+/// O modo de mistura da camada ABERTA.
+pub const VECTOR_PAINT_BLEND: NodeId = hash_node_id("vector.paint.blend");
+
+/// A linha `i` da lista de modos da CAMADA.
+///
+/// ⚠️ Espaço de ids próprio, e não o do objecto: os dois popovers podem existir no mesmo frame, e
+/// partilhar os ids faria um clique num deles resolver no outro.
+#[must_use]
+pub fn vector_paint_blend_option_id(i: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.paint.blendopt.{i}"))
+}

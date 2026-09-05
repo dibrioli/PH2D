@@ -36,6 +36,28 @@
 use crate::{Opacity, Paint, StrokeSpec, VecPath};
 use ph2d_blend_mode::BlendMode;
 
+/// ⭐⭐⭐ **Quantas camadas uma forma pode ter.**
+///
+/// ⚠️ **O número saiu de uma MEDIÇÃO, e ela nomeia dois recursos** (§0.0):
+///
+/// | camadas | caminhos emitidos | recortes | encode (debug) |
+/// |---|---|---|---|
+/// | 4 | 14 | 8 | 20 µs |
+/// | 16 | 50 | 32 | 72 µs |
+/// | **32** | 98 | 64 | **167 µs** |
+/// | 64 | 194 | 128 | 439 µs |
+///
+/// O custo é **linear** (~6,8 µs por camada em debug), então o encode não é o que trava: a `32`,
+/// UMA forma custa `167 µs` de um quadro de `16 700` — **1,0 %**, num build sem optimização.
+///
+/// O recurso que de facto manda é o **espaço de ids do painel**: cada linha tem cinco controlos, e
+/// a resolução de um clique varre esse espaço (a mesma lei que o `MAX_BLEND_MODES` impõe à lista de
+/// modos). ⛔ Um `Vec` sem tecto tornaria um clique irresolúvel para as camadas acima do que o
+/// painel endereça, e uma camada que se desenha e não se toca é pior que uma ausente.
+///
+/// ⚠️ Para escala: as artes de referência do Illustrator usam **2 a 5** atributos.
+pub const MAX_PAINT_LAYERS: usize = 32;
+
 /// O que uma entrada da pilha PINTA.
 ///
 /// ⚠️ **Append-only**: o postcard serializa o índice do variant, então um variant no meio relê
@@ -103,6 +125,29 @@ impl PaintEntry {
                 PaintKind::Fill(_) => true,
                 PaintKind::Stroke(s) => s.width > 0.0,
             }
+    }
+
+    /// **A cor que a swatch desta linha mostra** — a sólida, a 1.ª parada de um gradiente, ou a
+    /// `fallback` de um padrão.
+    ///
+    /// ⚠️ É a MESMA pergunta que o [`Paint::primary_color`] e o [`crate::StrokePaint::color`] já
+    /// respondem, e por isso ela é delegada: uma terceira transcrição de *"de que cor é isto?"*
+    /// divergiria na primeira tinta nova.
+    #[must_use]
+    pub fn swatch_color(&self) -> crate::Rgba8 {
+        match &self.kind {
+            PaintKind::Fill(p) => p.primary_color(),
+            PaintKind::Stroke(s) => s.color(),
+        }
+    }
+
+    /// A largura, quando esta camada é um contorno.
+    #[must_use]
+    pub fn width(&self) -> Option<f64> {
+        match &self.kind {
+            PaintKind::Stroke(s) => Some(s.width),
+            PaintKind::Fill(_) => None,
+        }
     }
 
     /// O nome que o painel mostra nesta linha.

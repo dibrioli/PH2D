@@ -464,6 +464,42 @@ pub(crate) fn pick_object_blend(
     true
 }
 
+/// ⭐⭐⭐ **Uma linha do popover de MISTURA de uma CAMADA** (estudo 42 item 4) — espelho exacto do
+/// [`pick_object_blend`], com o espaço de ids próprio.
+///
+/// ⛔ **Sem este braço a lista da camada é um CONTROLO MORTO**: ela pinta, regista os hit-rects e
+/// consome o clique, e o valor não chega a consumidor nenhum. Foi o `clippy` que o apanhou — a
+/// função de resolução ficava *never used* —, e é exactamente a espécie que o `CLAUDE.md` §5.0
+/// chama de *dreno de UM BRAÇO SÓ*.
+pub(crate) fn pick_layer_blend(
+    host: &mut dyn ph2d_editor_core::panel::PanelHostInternal,
+    id: ph2d_a11y::NodeId,
+) -> bool {
+    let Some(i) = crate::state::paint_blend_option_index(id) else {
+        return false;
+    };
+    let Some(mode) = ph2d_vec_render::blend::offered().nth(i) else {
+        return false; // slot de id vazio: o espaço é fixo e a lista oferecida é menor
+    };
+    if let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown {
+        open,
+        selected_index,
+        ..
+    }) = host.store_mut().get_mut(ids::VECTOR_PAINT_BLEND)
+    {
+        *open = false;
+        *selected_index = Some(i);
+    }
+    host.bus_mut()
+        .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
+            ph2d_editor_core::tool::PanelEvent::SetValue(
+                ids::VECTOR_PAINT_BLEND,
+                f64::from(mode.to_u8()),
+            ),
+        ));
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -100,6 +100,13 @@ fn seed_and_publish(
     // e não no `paint_contour`, porque este é o passe de sementes — e porque a marca é
     // idempotente (uma pertença a conjunto), então não depende de a seção ter pintado.
     store.register_picker_swatch(ids::VECTOR_CONTOUR_TO);
+    // ⭐⭐⭐ **E a swatch de CADA camada da pilha de aparência** (estudo 42 item 4). Marcar o espaço
+    // FIXO de ids (e não as camadas de hoje) é a mesma lei da resolução do clique: a marca é uma
+    // pertença a conjunto, idempotente, e não pode depender de quantas camadas a forma tem — senão
+    // a swatch da camada 3 nasce muda no frame em que ela é criada.
+    for i in 0..ph2d_vec_scene::MAX_PAINT_LAYERS {
+        store.register_picker_swatch(ids::vector_paint_swatch_id(i));
+    }
     // A cor do halo de cada LINHA da pilha de filtros (FX raster, plano 24). Marcadas pelo TETO
     // de linhas, como o `populate`: a marca é idempotente e o passe de sementes corre antes de a
     // shell publicar a pilha do frame.
@@ -413,6 +420,11 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     // scroll da seção Appearance.
     if let Some(chip_rect) = state::take_pending_obj_blend_dd() {
         crate::paint_appearance::paint_blend_popover(ctx, chip_rect, theme);
+    }
+    // ⭐ E o da CAMADA (estudo 42 item 4): mesmo mecanismo, espaço de ids próprio — os dois
+    // popovers podem existir no mesmo frame, e partilhar os ids faria um clique resolver no outro.
+    if let Some(chip_rect) = state::take_pending_paint_blend_dd() {
+        crate::paint_stack_rows::paint_layer_blend_popover(ctx, chip_rect, theme);
     }
     if let Some((prop, chip_rect)) = state::take_pending_token_dd() {
         crate::paint_tokens::paint_token_popover(ctx, prop, chip_rect, theme);

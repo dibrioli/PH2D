@@ -180,6 +180,22 @@ const FORWARDED_TRACK_SLIDERS: &[ph2d_a11y::NodeId] = &[
     ids::VECTOR_STATE_DAMPING,
 ];
 
+/// É este id uma linha de algum dos dois popovers de mistura?
+fn is_blend_option(id: ph2d_a11y::NodeId) -> bool {
+    state::blend_option_index(id).is_some() || state::paint_blend_option_index(id).is_some()
+}
+
+/// Encaminha a escolha para o dono do popover. ⛔ A ordem é a da pergunta acima, e o `else`
+/// **não** é um catch-all: um id que não seja de nenhum dos dois nunca chega aqui (o guarda do
+/// braço já o filtrou).
+fn blend_option(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
+    if state::blend_option_index(id).is_some() {
+        clicks::pick_object_blend(host, id)
+    } else {
+        clicks::pick_layer_blend(host, id)
+    }
+}
+
 pub(crate) fn apply_event(
     _state: &mut VectorPanelState,
     host: &mut dyn PanelHostInternal,
@@ -325,10 +341,12 @@ pub(crate) fn apply_event(
         }
         // **Opção de PONTA** (uma linha do popover de Start / End) — ver [`pick_marker`].
         WidgetEvent::Click(id) if state::marker_option(id).is_some() => pick_marker(host, id),
-        // ⭐ Uma linha do popover de MISTURA do objecto (estudo 42 item 2).
-        WidgetEvent::Click(id) if state::blend_option_index(id).is_some() => {
-            clicks::pick_object_blend(host, id)
-        }
+        // ⭐ Uma linha de um dos DOIS popovers de mistura — o do objecto (item 2) e o de uma
+        // CAMADA (item 4). ⚠️ **Os dois num braço só**, e não por economia: eles têm espaços de
+        // ids próprios de propósito (podem existir no mesmo frame), e é justamente por isso que a
+        // pergunta *"qual dos dois?"* tem de ser feita **uma vez, num sítio** — dois braços
+        // vizinhos com a mesma forma são onde o segundo envelhece.
+        WidgetEvent::Click(id) if is_blend_option(id) => blend_option(host, id),
         // **A junção do Offset Path** — panel-local, ver [`pick_expand_join`].
         WidgetEvent::Click(id) if expand_join_index(id).is_some() => pick_expand_join(host, id),
         // **O lado do Offset Path** (Outer/Inner/Both) — panel-local, ver [`pick_expand_side`].

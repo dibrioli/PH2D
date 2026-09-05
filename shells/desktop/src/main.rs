@@ -760,6 +760,7 @@ mod vec_marquee;
 mod vec_morph_edit;
 mod vec_overlay;
 mod vec_overlay_diag;
+mod vec_paint_stack;
 mod vec_pencil_input;
 /// O **Picker de caminho-guia** — o gesto de duas mãos partilhado pelo Pattern e pelo Text on Path.
 mod vec_pick;
@@ -770,6 +771,7 @@ mod vec_shape_params;
 mod vec_snap;
 /// Os alvos de snap vindos do RASTER (irmão de `vec_snap`, teto de LOC).
 mod vec_snap_sprites;
+mod vec_stack_smoke;
 mod vec_stroke_paint;
 mod vec_stroke_present;
 mod vec_svg_export;
@@ -1024,6 +1026,7 @@ impl App {
             morph_fade_smoke_done: false,
             vec_appearance_smoke_done: false,
             svg_import_smoke_done: false,
+            vec_stack_smoke_done: false,
             vec_fade_smoke_done: false,
             nest_smoke_done: false,
             player_readout_log: None,

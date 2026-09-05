@@ -150,6 +150,8 @@ mod paint_modes;
 mod paint_pencil;
 mod paint_rows;
 mod paint_sections;
+/// ⭐ **A LISTA da pilha de aparência** (v20) — irmão do acima pelo tecto de 600 LOC.
+mod paint_stack_rows;
 /// A seção SYMMETRY — a simetria de desenho (plano 25 W6.3), irmã de `paint_pencil`.
 pub(crate) mod paint_symmetry;
 mod paint_tokens;

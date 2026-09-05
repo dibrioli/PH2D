@@ -156,6 +156,14 @@ pub use ph2d_editor_core::ids::{
     VECTOR_OBJ_BLEND, VECTOR_OBJ_OPACITY, VECTOR_OBJ_OPACITY_NUM, VECTOR_SECTION_APPEARANCE,
     vector_obj_blend_option_id,
 };
+/// ⭐⭐⭐ **A PILHA DE APARÊNCIA** (estudo 42 item 4, v20): os dois botões que acrescentam uma
+/// camada, os cinco controlos de cada LINHA e as três propriedades da camada ABERTA.
+pub use ph2d_editor_core::ids::{
+    VECTOR_PAINT_ADD_FILL, VECTOR_PAINT_ADD_STROKE, VECTOR_PAINT_BLEND, VECTOR_PAINT_OPACITY,
+    VECTOR_PAINT_OPACITY_NUM, VECTOR_PAINT_WIDTH, vector_paint_blend_option_id,
+    vector_paint_del_id, vector_paint_down_id, vector_paint_eye_id, vector_paint_row_id,
+    vector_paint_swatch_id, vector_paint_up_id,
+};
 /// **O LÁPIS** (plano 25 W1): a seção + os dois knobs da mão livre, cada um com o seu chip.
 pub use ph2d_editor_core::ids::{
     VECTOR_PENCIL_FIDELITY, VECTOR_PENCIL_FIDELITY_NUM, VECTOR_PENCIL_STABILIZER,

@@ -147,3 +147,29 @@ fn a_shape_without_a_stack_encodes_exactly_what_it_encoded() {
     assert!(n >= 2, "preenchimento + traco: {n}");
     assert_eq!(c, 0, "e nenhum recorte");
 }
+
+/// ⛔ **SONDA (não é gate): quanto custa uma pilha funda?** — para o tecto de camadas sair de uma
+/// medição e não de um palpite (§0.0).
+#[test]
+fn probe_the_cost_of_a_deep_stack() {
+    for n in [1usize, 4, 16, 32, 64] {
+        let mut p = quadrado();
+        p.paints = (0..n)
+            .map(|k| {
+                let mut e = PaintEntry::stroke(StrokeSpec::new(
+                    Rgba8::new(200, 100, 50, 255),
+                    1.0 + k as f64,
+                ));
+                e.opacity = ph2d_vec_scene::Opacity::new(0.9);
+                e
+            })
+            .collect();
+        let t0 = std::time::Instant::now();
+        let (paths, clips) = conta(&p);
+        let dt = t0.elapsed();
+        eprintln!(
+            "[stack-cost] camadas={n:<3} caminhos={paths:<4} recortes={clips:<4} encode={:?}",
+            dt
+        );
+    }
+}

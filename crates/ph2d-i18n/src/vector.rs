@@ -132,6 +132,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.section.appearance" => "Appearance",
         "panel.vector.appearance.opacity" => "Opacity",
         "panel.vector.appearance.blend" => "Blend",
+        // ⭐⭐⭐ A PILHA DE APARÊNCIA (estudo 42 item 4, v20): N preenchimentos e N contornos numa
+        // forma. ⚠️ Os rótulos são os do Illustrator de propósito — é o painel que o artista já
+        // conhece, e traduzir o vocabulário dele custa a transferência inteira.
+        "panel.vector.paint.fill" => "Fill",
+        "panel.vector.paint.stroke" => "Stroke",
+        "panel.vector.paint.width" => "Width",
+        "panel.vector.paint.opacity" => "Opacity",
+        "panel.vector.paint.blend" => "Blend",
+        "panel.vector.paint.add_fill" => "+ Fill",
+        "panel.vector.paint.add_stroke" => "+ Stroke",
+        "panel.vector.paint.full" => "Layer limit reached",
         "panel.vector.section.widget" => "Widget Skin",
         "panel.vector.widget.wear" => "Wear a Widget",
         "panel.vector.widget.remove" => "Back to Drawing",

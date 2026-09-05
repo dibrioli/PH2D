@@ -112,7 +112,7 @@ pub(super) fn publish(
     // esconde a seção inteira, que é a lei desta janela para uma seção sem sujeito.
     #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::state::set_current_appearance(if vector_active {
-        crate::vec_appearance::published(scene, pen.selected_paths())
+        crate::vec_paint_stack::published(scene, pen.selected_paths())
     } else {
         None
     });

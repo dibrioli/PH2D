@@ -14,6 +14,12 @@
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_editor::screens::hero::InspectorInstanceInfo;
 
+/// O que se escreve quando o `type_id` de uma excepção sem alvo já não existe neste build.
+///
+/// ⚠️ **A linha fica na mesma** — ver o `map` do construtor: escondê-la faria o botão prometer
+/// apagar mais do que a lista mostra.
+const UNKNOWN_COMPONENT: &str = "(component no longer in this build)";
+
 /// Lê o estado de instância da entidade selecionada. `None` = ela não é peça de cópia nenhuma, e
 /// aí a seção **não existe** (a lei da F3: o Inspector mostra o que o objeto TEM).
 pub(super) fn build_instance_info(
@@ -63,6 +69,28 @@ pub(super) fn build_instance_info(
     // uma lista que ninguém consegue ler duas vezes.
     overridden.sort();
 
+    // ⭐⭐⭐ **AS EXCEPÇÕES SEM ALVO, NOMEADAS** (F5 critério 3).
+    //
+    // ⚠️ **`map`, nunca `filter_map`** — ao contrário da lista de cima. O botão *Clear* apaga o
+    // mapa INTEIRO, então uma entrada saltada aqui daria um número no botão maior do que as linhas
+    // mostradas: *o artista veria «Clear 3» sobre duas linhas*. Um tipo que este build já não
+    // conhece continua a ser uma linha, com o nome que houver.
+    let orphan_rows: Vec<ph2d_editor::screens::hero::OrphanRow> = inst
+        .orphans
+        .iter()
+        .map(|(k, o)| ph2d_editor::screens::hero::OrphanRow {
+            component: registry.get_by_id(k.type_id).map_or_else(
+                || UNKNOWN_COMPONENT.to_string(),
+                |e| {
+                    e.desc
+                        .map_or(e.canonical_name, |d| d.display_name)
+                        .to_string()
+                },
+            ),
+            piece: o.piece_name.clone(),
+        })
+        .collect();
+
     // ⭐⭐⭐ **A ESCADA do *Aplicar*** (F5 critério 4) — as receitas que uma excepção DESTA peça
     // pode alcançar. ⚠️ A lei mora no `instance_apply_deep`, que é a mesma porta que o gesto usa:
     // um cartão que mostrasse degraus por outra travessia ofereceria uma escolha que o verbo
@@ -91,7 +119,7 @@ pub(super) fn build_instance_info(
         apply_levels_beyond,
         master_name,
         overridden,
-        orphans: inst.orphans.len(),
+        orphan_rows,
         root_bits: root.to_bits(),
         // ⚠️ Da RAIZ: uma peça dentro de uma variante não é ela própria uma receita, mas pertence
         // a uma — e é isso que o artista precisa de ler antes de a editar.

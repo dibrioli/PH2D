@@ -195,11 +195,22 @@ fn the_orphans_are_counted_and_the_gesture_touches_only_them() {
         .cloned()
         .unwrap_or_default();
     o.overrides.insert(live);
-    o.orphans.insert(orphan, vec![1, 2, 3]);
+    o.orphans.insert(
+        orphan,
+        ph2d_ecs::OrphanOverride {
+            bytes: vec![1, 2, 3],
+            piece_name: "Arm".into(),
+        },
+    );
     sim.world_mut().entity_mut(inst).insert(o);
 
     let info = super::build_instance_info(&mut sim, &r, Some(p.to_bits())).expect("a secao");
-    assert_eq!(info.orphans, 1);
+    assert_eq!(info.orphans(), 1);
+    // ⭐ E a linha NOMEIA a peça que morreu — sem isto o botão apaga o que ninguém viu.
+    assert_eq!(
+        info.orphan_rows[0].label(),
+        "Sprite \u{2014} was on \u{201c}Arm\u{201d}"
+    );
     assert_eq!(
         info.summary(),
         "1 override(s) on this piece \u{b7} 1 unused"

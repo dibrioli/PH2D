@@ -19,6 +19,7 @@
 
 ## Comunicação & decisão
 - ⭐ [**Como um CONTROLO mente** — a família inteira (10 entradas): morto vs ausente · faixa · rótulo · enum serializado](reference_topic_control_design_hazards.md)
+- ⭐ [E o «há N» onde se pede «quais N» é um DADO que falta, não um widget — a janela para o guardar é de um passe](feedback_a_surface_that_only_counts_is_usually_missing_a_datum_not_a_widget.md)
 - [Decida, não pergunte](feedback_decide_dont_ask_gold_standard.md) · [os PRINCÍPIOS decidem, não o Enio](feedback_the_principles_decide_not_the_enio.md)
 - [Uma feature = UMA linha, janelas ao mínimo; a nova assume a MESMA linha (25/08)](feedback_one_feature_one_line_minimum_windows.md)
 - [`panic` engolido — e `head` — encolhem o conjunto de candidatas em silêncio: censo de AUSÊNCIA corre sem corte](feedback_a_swallowed_panic_silently_shrinks_the_candidate_set.md)

@@ -559,4 +559,26 @@
 /// zero bytes novos.
 ///
 /// ⛔ **Sem degrau de migração**, pela mesma decisão de 2026-08-26.
-pub(crate) const PROJECT_SCHEMA: u32 = 118;
+/// # 118 -> 119 — a excepção sem alvo SABE de que peça era (`line/components`, F5 critério 3)
+///
+/// O `ObjectInstance.orphans` era `BTreeMap<OverrideKey, Vec<u8>>` e passou a
+/// `BTreeMap<OverrideKey, OrphanOverride>` — os mesmos bytes **mais** o `Name` que a peça tinha
+/// quando morreu.
+///
+/// ⚠️ **O nome não é uma segunda fonte, e o argumento é o MESMO que já justificou os bytes** (F5.3):
+/// a refutação da F4.4 — *«guardar o valor cria duas fontes»* — vale enquanto a peça **existe**.
+/// Uma peça órfã não existe: o mestre apagou-a e a F5.1 tirou-a da cópia a seguir. ⇒ não há segunda
+/// fonte, há a única. Sem ele o painel pode dizer *«há três»* e **nunca** *«quais três»*, com o
+/// botão que apaga as três ao lado.
+///
+/// ⚠️ **Campo NOVO dentro do valor de um mapa ⇒ quebra dura.** O postcard é posicional: um v118
+/// lido por este layout consome os bytes do `String` de dentro do `Vec<u8>` seguinte e a cadeia
+/// inteira desalinha — *ele não avisa, lê torto*. ⛔ `#[serde(default)]` não salva um formato
+/// não-auto-descritivo.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **quarta** vez nesta escada (99, 100, 114 e agora): os
+/// bytes mudaram **dentro de um `ComponentBlob`**, que para ela é opaco. *Está escrito aqui porque
+/// a próxima pessoa olha para a tripla primeiro.*
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08 (não há projetos gravados).
+pub(crate) const PROJECT_SCHEMA: u32 = 119;

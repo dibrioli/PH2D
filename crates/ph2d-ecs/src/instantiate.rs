@@ -119,7 +119,35 @@ pub struct ObjectInstance {
     /// ⛔ **Nunca se apagam sozinhos** — é a lei do *«unused overrides»* do Unity, e a razão é que
     /// apagar a excepção do artista por causa de um `Delete` no mestre é perder trabalho em
     /// silêncio. Sai por gesto, ou quando a peça volta e ela é reposta.
-    pub orphans: std::collections::BTreeMap<OverrideKey, Vec<u8>>,
+    pub orphans: std::collections::BTreeMap<OverrideKey, OrphanOverride>,
+}
+
+/// ⭐⭐⭐ **UMA EXCEPÇÃO SEM ALVO** — o que ficou de uma peça que o mestre apagou (ADR-0164 / F5.3).
+///
+/// # ⚠️ O NOME viaja junto com os bytes, e pela MESMA razão
+///
+/// A [refutação da F4.4] diz que guardar um valor cria **duas fontes** para o mesmo facto — e ela
+/// vale **enquanto a peça existe**. Uma peça órfã **não existe**: o mestre apagou-a e a F5.1
+/// tira-a da cópia a seguir. ⇒ não há segunda fonte, há a **única**. Foi esse argumento que já
+/// justificou guardar os `bytes`; o nome cai exactamente na mesma categoria.
+///
+/// ⚠️ **A janela em que ele se lê é ESTREITA:** quem o grava é o `entomb`, no instante em que a
+/// peça da instância ainda está viva (o `despawn` vem a seguir) — e o `Name` dela é o **mesmo do
+/// mestre**, porque o passe propaga-o e só a RAIZ é dona do dela. Um passe depois não há onde o ir
+/// buscar, e o painel fica a poder dizer *«há três»* sem nunca poder dizer *«quais três»*.
+///
+/// ⛔ **Ele é para MOSTRAR, nunca para procurar.** A chave de re-encontro continua a ser o
+/// `StableId` da peça (é ele que sobrevive ao respawn do undo); um nome usado como endereço
+/// reabria a doença que o `Name` já custou seis reports noutro subsistema.
+///
+/// [refutação da F4.4]: https://github.com/dibrioli/PH2D/blob/main/docs/Components/pesquisa/instancias_2026-08-21/refutacao_3_override_aninhado.md
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OrphanOverride {
+    /// Os bytes que a peça tinha. ⚠️ **Vazio significa AUSÊNCIA do componente** — o artista tinha
+    /// tirado o componente da cópia, e isso também é uma excepção.
+    pub bytes: Vec<u8>,
+    /// O `Name` que a peça tinha quando morreu — **display only**, ver acima.
+    pub piece_name: String,
 }
 
 /// ⭐⭐⭐ **Esta peça DIVIDE a arte do mestre** — o *Duplicate Linked* do Blender (Enio, 2026-08-27).

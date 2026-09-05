@@ -150,6 +150,22 @@ impl crate::App {
             "[instance smoke 3] PASSO 5: Ctrl+Z ate' voltar, repita, e escolha 'Apply to \
              \"Wheel\"' => a roda solta muda TAMBEM"
         );
+        // ⭐⭐⭐ **A segunda metade da cena** (F5 critério 3) — ela não precisa de peças novas: a
+        // carroçaria já lá está, e é a peça certa porque **não tem física** (a pose de um corpo
+        // dinâmico é do solver, e arrastá-la não produz excepção nenhuma). O caminho inteiro está
+        // gateado em `moving_a_body_then_deleting_it_in_the_recipe_leaves_one_named_orphan`.
+        println!("[instance smoke 3] --- e para ver as ALTERACOES QUE FICAM SEM DONO ---");
+        println!(
+            "[instance smoke 3] PASSO 6: arraste a CARROCARIA azul de um dos carros (nao a roda)"
+        );
+        println!(
+            "[instance smoke 3] PASSO 7: na lista da esquerda, abra a receita 'Car' e apague a \\
+             linha 'Body' dela"
+        );
+        println!(
+            "[instance smoke 3] PASSO 8: o cartao passa a dizer, por extenso, 'Transform - was on \\
+             \"Body\"' -- e o botao ao lado apaga exactamente essa"
+        );
     }
 }
 
@@ -211,6 +227,95 @@ mod tests {
             ["Car", "Wheel"],
             "os passos impressos prometem estes dois"
         );
+    }
+
+    /// ⭐⭐⭐ **O CAMINHO DO SMOKE DOS ÓRFÃOS existe nesta cena** (F5 critério 3) — mexer na
+    /// carroçaria de um Carro da cena e apagá-la na receita deixa **uma** excepção sem alvo, e ela
+    /// sabe que era a `Body`.
+    ///
+    /// ⛔ *Uma cena de smoke que ensina o contrário do que acontece é pior que uma cena ausente* —
+    /// e os passos que eu escrevo ao dono só valem o que este gate mede. ⚠️ A carroçaria é a peça
+    /// certa para o gesto **porque não tem física**: a pose de um corpo dinâmico é do solver, e
+    /// arrastá-la **não** produz excepção nenhuma (condição (b) da refutação 1).
+    #[test]
+    fn moving_a_body_then_deleting_it_in_the_recipe_leaves_one_named_orphan() {
+        let (mut sim, r, cars, _loose) = build();
+        let bridge = PhysicsBridge::new();
+        let mut echo = MasterEcho::default();
+        let run = |sim: &mut SimWorld, echo: &mut MasterEcho| {
+            let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+            sync_instances(
+                sim,
+                &r,
+                &bridge,
+                echo,
+                &mut crate::instance_docs::OwnedDocs {
+                    vec_scene: &mut sc,
+                    vec_entities: &mut mp,
+                },
+            );
+        };
+        run(&mut sim, &mut echo);
+
+        // PASSO 1 — o artista arrasta a carroçaria do carro da esquerda.
+        let body = named(&sim, cars[0], "Body");
+        sim.world_mut()
+            .entity_mut(body)
+            .insert(Transform::from_translation(Vec2::new(0.3, 0.2)));
+        run(&mut sim, &mut echo);
+        let root_of = |sim: &SimWorld| {
+            sim.world()
+                .get::<ph2d_ecs::ObjectInstance>(cars[0])
+                .cloned()
+                .unwrap_or_default()
+        };
+        assert_eq!(
+            root_of(&sim).overrides.len(),
+            1,
+            "arrastar a carrocaria nao virou excepcao — o resto do smoke nao mede nada"
+        );
+
+        // PASSO 2 — e apaga a carroçaria NA RECEITA.
+        let master = ph2d_ecs::master_root_of(sim.world(), named(&sim, cars[0], "Body"))
+            .or_else(|| {
+                let mut q = sim
+                    .world_mut()
+                    .query_filtered::<Entity, bevy_ecs::prelude::With<ph2d_ecs::MasterRoot>>();
+                q.iter(sim.world())
+                    .find(|&e| sim.world().get::<Name>(e).is_some_and(|n| n.0 == "Car"))
+            })
+            .expect("a receita do Carro");
+        let master_body = named(&sim, master, "Body");
+        sim.world_mut().entity_mut(master_body).despawn();
+        ph2d_ecs::assign_master_pieces(sim.world_mut());
+        run(&mut sim, &mut echo);
+
+        let o = root_of(&sim);
+        assert_eq!(o.overrides.len(), 0, "a chave ficou a apontar para o nada");
+        assert_eq!(
+            o.orphans.len(),
+            1,
+            "a excepcao foi perdida em vez de guardada"
+        );
+        assert_eq!(
+            o.orphans.values().next().expect("o orfao").piece_name,
+            "Body",
+            "o painel nao vai poder dizer QUAL"
+        );
+    }
+
+    /// A entidade chamada `name` na sub-árvore de `root` (a raiz incluída).
+    fn named(sim: &SimWorld, root: Entity, name: &str) -> Entity {
+        let mut stack = vec![root];
+        while let Some(e) = stack.pop() {
+            if sim.world().get::<Name>(e).is_some_and(|n| n.0 == name) {
+                return e;
+            }
+            if let Some(kids) = sim.world().get::<ph2d_ecs::Children>(e) {
+                stack.extend(kids.iter().copied());
+            }
+        }
+        panic!("nao ha' {name:?} debaixo de {root:?}");
     }
 
     /// ⭐⭐ **A Roda SOLTA é mesmo uma testemunha** — ela segue a receita da Roda e **não** está

@@ -41,7 +41,7 @@ fn info() -> InspectorInstanceInfo {
         entity_bits: ENTITY,
         master_name: "Car".into(),
         overridden: vec!["Sprite".into()],
-        orphans: 0,
+        orphan_rows: Vec::new(),
         root_bits: ROOT,
         is_variant: false,
         apply_levels: vec![rung(OUTER, "Car", false), rung(INNER, "Wheel", true)],

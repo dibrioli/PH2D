@@ -242,7 +242,17 @@ fn entomb(
             let bytes = (entry.serialize)(sim.world(), e)
                 .unwrap_or_default()
                 .unwrap_or_default();
-            inst.orphans.insert(key, bytes);
+            // ⭐⭐⭐ **O NOME sai daqui, e só daqui** — ver [`ph2d_ecs::OrphanOverride`]: a peça
+            // ainda está viva (o `despawn` é o laço a seguir) e o `Name` dela é o do mestre.
+            // Depois deste instante não há onde o ir buscar, e o painel fica sem poder dizer
+            // *«quais»*.
+            let piece_name = sim
+                .world()
+                .get::<ph2d_ecs::Name>(e)
+                .map(|n| n.0.clone())
+                .unwrap_or_default();
+            inst.orphans
+                .insert(key, ph2d_ecs::OrphanOverride { bytes, piece_name });
             inst.overrides.remove(&key);
             out.orphaned += 1;
             wrote = true;
@@ -278,9 +288,10 @@ fn exhume(
         return;
     }
     for key in keys {
-        let Some(bytes) = inst.orphans.remove(&key) else {
+        let Some(orphan) = inst.orphans.remove(&key) else {
             continue;
         };
+        let bytes = orphan.bytes;
         if let Some(entry) = registry.get_by_id(key.type_id) {
             if bytes.is_empty() {
                 (entry.remove)(sim.world_mut(), inst_piece);

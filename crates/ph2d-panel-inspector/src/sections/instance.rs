@@ -60,7 +60,11 @@ pub(crate) fn paint_instance_card(
     // ou com um degrau só, não há fileira nenhuma).
     let ladder = info.apply_rows();
     let beyond = usize::from(!ladder.is_empty() && info.apply_levels_beyond > 0);
-    let rows = info.overridden.len() + ladder.len() + beyond + usize::from(info.orphans > 0);
+    let rows = info.overridden.len()
+        + ladder.len()
+        + beyond
+        + info.orphan_rows.len()
+        + usize::from(info.orphans() > 0);
     let card_h = CARD_PAD * 2.0 + head_h + line * rows as f32;
     let card = Rect::new(x, y, w, card_h);
     fill_rounded_rect(
@@ -157,14 +161,37 @@ pub(crate) fn paint_instance_card(
         ty += line;
     }
 
+    // ⭐⭐⭐ **AS EXCEPÇÕES SEM ALVO, uma por linha** (F5 critério 3) — o que ficou de uma peça que
+    // o mestre apagou.
+    //
+    // ⚠️ **Elas vêm em `Text2`, e as vivas em `Text1`:** as de cima são o que esta peça TEM, estas
+    // são o que sobrou de peças que já não existem. Pintá-las iguais faria o artista ler uma lista
+    // só, e o botão logo abaixo apaga **apenas** estas.
+    //
+    // ⚠️ **A ordem é a do mapa, que agrupa por PEÇA por construção** (a chave ordena `piece` antes
+    // de `type_id`) — é o agrupamento que torna a lista legível quando duas peças morreram.
+    for row in &info.orphan_rows {
+        paint_text(
+            text_system,
+            scene,
+            &format!("\u{2022} {}", row.label()),
+            tx + Spacing::Sm.px(),
+            ty,
+            font,
+            tw,
+            resolve(ColorToken::Text2, theme),
+        );
+        ty += line;
+    }
+
     // ⭐ O gesto dos ÓRFÃOS — e ele **só aparece quando existem**: um botão permanentemente inerte
     // é ruído que o artista aprende a ignorar.
-    if info.orphans > 0 {
+    if info.orphans() > 0 {
         let host = Rect::new(tx, ty, tw, line);
         hit_index.register(ids::INSP_INSTANCE_CLEAR_ORPHANS, host);
         let button = Button::new(
             ids::INSP_INSTANCE_CLEAR_ORPHANS,
-            format!("Clear {} unused override(s)", info.orphans),
+            format!("Clear {} unused override(s)", info.orphans()),
         )
         .kind(ButtonKind::Default)
         .visual(store.button_visual(ids::INSP_INSTANCE_CLEAR_ORPHANS));

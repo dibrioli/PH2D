@@ -473,3 +473,62 @@ fn the_restored_override_still_wins_against_the_master() {
         "o mestre atropelou a excepcao reposta — ela voltou como chave e nao como lei"
     );
 }
+
+/// ⭐⭐⭐ **A excepção SEM ALVO sabe de que peça era** (F5, critério 3).
+///
+/// # ⚠️ Porque o NOME se guarda, e porque isso NÃO contradiz a refutação da F4.4
+///
+/// A refutação diz que guardar um valor cria **duas fontes** para o mesmo facto — e ela vale
+/// **enquanto a peça existe**. Uma peça órfã **não existe**: o mestre apagou-a e a F5.1 tirou-a da
+/// cópia a seguir. ⇒ não há segunda fonte, há a **única**. *É literalmente o mesmo argumento que
+/// já justificou guardar os BYTES ali ao lado* — o nome cai na mesma categoria, e é o único sítio
+/// onde ele pode ser lido depois.
+///
+/// ⚠️ **A janela em que ele se lê é estreita, e é por isso que o `entomb` o faz:** naquele
+/// instante a peça da instância ainda está viva (o `despawn` vem a seguir) e o `Name` dela é o
+/// **mesmo do mestre** (o passe propaga-o; só a RAIZ é dona do dela). Um segundo depois não há
+/// onde o ir buscar.
+///
+/// **Mutação que deve sangrar:** o `entomb` gravar um nome vazio.
+#[test]
+fn an_orphan_override_remembers_the_name_of_the_piece_that_died() {
+    let (mut sim, r, master, inst) = scene();
+    let mut echo = MasterEcho::default();
+    pass(&mut sim, &r, &mut echo);
+
+    // A excepção do artista na peça da cópia.
+    let mine = sim
+        .world()
+        .get::<Children>(inst)
+        .and_then(|c| c.iter().next().copied())
+        .expect("peca da copia");
+    let mut spr = sim
+        .world()
+        .get::<ph2d_render::Sprite>(mine)
+        .copied()
+        .expect("sprite");
+    spr.tint = [0.9, 0.2, 0.2, 1.0];
+    sim.world_mut().entity_mut(mine).insert(spr);
+    pass(&mut sim, &r, &mut echo);
+
+    // O gesto: o artista apaga a peça NO MESTRE.
+    let box_master = sim
+        .world()
+        .get::<Children>(master)
+        .and_then(|c| c.iter().next().copied())
+        .expect("peca do mestre");
+    sim.world_mut().entity_mut(box_master).despawn();
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    pass(&mut sim, &r, &mut echo);
+
+    let o = sim
+        .world()
+        .get::<ph2d_ecs::ObjectInstance>(inst)
+        .cloned()
+        .expect("a raiz da instancia");
+    let orphan = o.orphans.values().next().expect("uma excepcao sem alvo");
+    assert_eq!(
+        orphan.piece_name, "Box",
+        "a excepcao nao sabe de que peca era — o painel so' pode dizer «ha' N», nunca «quais»"
+    );
+}

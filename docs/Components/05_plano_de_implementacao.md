@@ -24,7 +24,7 @@
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
 | F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | 🟨 F4.1–F4.5 ✅ · F4.6a/b ✅ · **F4.7 ✅ (os 3 smoke-gates)** · **F4.6c ⬜ — o bloqueio DISSOLVEU pelo lado inesperado** (a fatia que faltava eram os eixos, e o Enio revogou-os: já não há o que portar; o que sobra é a porta de autoria — ver §F4) · + a auditoria de 27/08 e o modo LIGADO |
-| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 ✅** · **F5.3 ✅** (modelo; a secção mostra a CONTAGEM, não quais) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis abaixo descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) · critério 4 (*Apply to inner master*) ⬜ · troca p/ mestre não aparentado ⬜ |
+| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 ✅** · **F5.3 ✅** (modelo; a secção mostra a CONTAGEM, não quais) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis abaixo descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) · **critério 4 (*Apply to inner master*) ✅ 2026-09-04** (a escada, §F5.5) · troca p/ mestre não aparentado ⬜ · **os órfãos são NOMEADOS ✅ 2026-09-04** (§F5.6 — o critério 3 fecha) |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ✅ 2026-08-30 (996 LOC + a taxonomia) |
 | F7 | O painel Asset Browser + o arrasto único | ✅ 2026-08-30 — etapas **A–D** do [plano 07](07_plano_do_navegador_de_assets.md); `DragPayload` com as duas famílias |
 | F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | 🟨 **a premissa do RELÓGIO foi REFUTADA por medição** (§F8) · a partilha da `VecScene` entre passos ✅ 2026-09-02 · `FlipDoc` ⬜ |
@@ -123,6 +123,13 @@ quiser o smoke de verdade tem de **fabricar** um v95 (checkout de um commit anti
 | Campo novo no `ProjectFile` | `stable_id_counter` (F1 — FORA do `ProjectState`, undo não rebobina) | conta no degrau do schema |
 | Teto do ADR-0074 | ✅ +3 opcionais no corte da Sprite (o teto é 32) | `architecture_*` do Sprite |
 | **`Sprite::VERSION`** | ✅ 4 → **5** (F1.6): 20 campos → **13**. Envelope `SpriteVersioned::V5` (0x02); o `V4` passa a apontar para o espelho **congelado** `SpriteV4` | gate `sprite_struct_field_count_capped` (20 → **13**) + `sprite_schema_version_v4` |
+| ⚠️ **`PROJECT_SCHEMA` (2026-09-04)** | **114 → 115** — o `ObjectInstance.orphans` passou a `BTreeMap<OverrideKey, OrphanOverride>` (bytes **+** o nome da peça que morreu) | ⛔ **A linha do `PROJECT_SCHEMA` acima é HISTÓRIA** (ela diz *«o próximo é 99»*, e o main de hoje estava em **114**): o número **conta-se no código**, nunca se lê nesta tabela — [`project_schema.rs`](../../shells/desktop/src/project_schema.rs) + a escada + a tripla |
+| **Tipo novo em `ph2d-ecs` (F5.3-bis)** | `OrphanOverride { bytes, piece_name }` — re-exportado no `lib.rs` | ⚠️ **não é componente**: vive DENTRO do `ObjectInstance`, logo **não move contador de registo** |
+| **Ids de widget novos (F5 critério 4)** | `INSP_INSTANCE_APPLY_LEVEL[8]` + `MAX_INSTANCE_APPLY_LEVELS = 8` + a porta inversa `instance_apply_level` | `ph2d-editor-core/src/ids/inspector_instance.rs` + o gate `node_id_collisions` |
+| **Acção do barramento nova (F5 critério 4)** | `EditorAction::InspectorApplyToLevel { entity_bits, master }` | ⚠️ o `match` do dreno acaba em `_ => {}` — uma acção sem braço **compila e não faz nada**; o gate `the_apply_ladder_has_one_door` afirma o braço |
+| **Campos novos no `InspectorInstanceInfo`** | `apply_levels` · `apply_levels_beyond` · `orphan_rows` (⚠️ **substitui** `orphans: usize`, que virou o método derivado `orphans()`) | ⚠️ literal obrigatório: o compilador aponta os sítios de construção, que é o que se quer |
+| **Módulos novos** | `shells/desktop/src/instance_apply_deep{,_tests,_verb_tests}.rs` · `instance_nested_smoke.rs` · `crates/ph2d-panel-inspector/src/populate_instance.rs` | nomes novos, sem colisão |
+| **Cena de smoke nova** | `PH2D_INSTANCE_SMOKE=3` (a receita dentro da receita) | ⚠️ o roteador é o `instance_smoke.rs`; **conta-se lá**, não aqui |
 | **ADRs novos (F1.6)** | [`0070-amendment-8`](../architecture/decisions/0070-amendment-8.md) (o corte) · [`0071-amendment-1`](../architecture/decisions/0071-amendment-1.md) (o 4.º canal de tinta muda de casa) | ⚠️ números **contados** contra `decisions/`, não escolhidos |
 
 ---
@@ -1735,3 +1742,67 @@ segunda escrita da receita).
 ⚠️ **O tecto de LOC dos painéis cobrou o corte**, e ele foi pago por CORTE: o registo das três
 superfícies do cartão saiu para `populate_instance.rs` (`populate.rs` 605 → 570), pelo idioma que o
 `populate_anchor`/`populate_anim`/`populate_physics` já tinham.
+
+
+---
+
+### ✅ §F5.6 — **As excepções sem alvo dizem QUAIS** (2026-09-04) — o critério 3 fecha
+
+O modelo dos órfãos existe desde a F5.3 e a superfície mostrava **um número**: `3 unused
+override(s)`, com o botão que apaga as três ao lado. O critério 3 pede que a excepção **apareça**
+na secção — e *«há três»* não responde *«quais três?»*. ⛔ *Limpar sem ver o que se limpa é o gesto
+destrutivo mais barato deste painel.*
+
+#### ⭐⭐⭐ O que faltava não era UI: era um NOME que ninguém guardava
+
+Uma linha de órfão precisa de duas metades — **o quê** (o componente) e **de onde** (a peça). A
+primeira já era derivável do catálogo. A segunda **não existia**: a peça foi apagada no mestre e a
+F5.1 tira-a da cópia a seguir, então o `StableId` da chave não nomeia nada.
+
+⭐ **E o argumento que autoriza guardá-lo já estava escrito, para os BYTES:** a refutação da F4.4
+(*«guardar o valor cria duas fontes para o mesmo facto»*) vale **enquanto a peça existe**. Uma peça
+órfã não existe ⇒ não há segunda fonte, há a **única**. *O nome cai exactamente na mesma categoria,
+e é por isso que ele viaja no mesmo registo.*
+
+⚠️ **A janela em que ele se lê é estreita, e a medição é que a achou:** o `entomb` corre com a peça
+da instância **ainda viva** (o `despawn` é o laço a seguir), e o `Name` dela é o **do mestre** —
+o passe propaga-o, e só a RAIZ é dona do dela. Um passe depois não há onde o ir buscar.
+
+⛔ **Ele é para MOSTRAR, nunca para procurar.** A chave de re-encontro continua a ser o `StableId`
+(é ele que sobrevive ao respawn do undo); um nome usado como endereço reabria a doença que o `Name`
+já custou seis reports no outro subsistema.
+
+⇒ `ph2d_ecs::OrphanOverride { bytes, piece_name }`, e **`PROJECT_SCHEMA` 114 → 115** (campo novo
+dentro do valor de um mapa ⇒ o postcard desalinha a cadeia e lê torto **sem avisar**). ⚠️ **A tripla
+não vê este degrau** — é a **quarta** vez (99, 100, 114 e este): os bytes mudaram dentro de um
+`ComponentBlob`, que para ela é opaco.
+
+#### As três decisões do cartão, e o que cada uma impede
+
+- **`map`, nunca `filter_map`** no construtor — a lista de cima salta um `type_id` desconhecido, e
+  aqui isso daria *«Clear 3»* sobre **duas** linhas. Um tipo que este build já não conhece continua
+  a ser uma linha.
+- **O número do botão é DERIVADO das linhas** (`orphans()` é `orphan_rows.len()`), e não uma segunda
+  contagem que discorda no dia em que uma entrada for saltada.
+- **Sem tecto, de propósito:** o painel rola, e um tecto na LISTA com o botão a apagar **tudo** seria
+  o pior dos dois mundos — esconderia exactamente as que o gesto destrói.
+
+⚠️ **As linhas vêm em `Text2` e as vivas em `Text1`** — as de cima são o que a peça TEM, estas são o
+que sobrou de peças que já não existem, e o botão logo abaixo apaga **apenas** estas.
+
+#### Os gates, e as duas mutações que sangraram
+
+| gate | mutação que o mata |
+|---|---|
+| `an_orphan_override_remembers_the_name_of_the_piece_that_died` | o `entomb` gravar um nome vazio |
+| `every_unused_override_is_painted_as_its_own_line` · `the_line_names_the_piece_that_died` | apagar o laço que pinta as linhas no cartão |
+
+⚠️ **O gate de pintura conta GLIFOS, não altura.** É o achado §4.2 da auditoria do `source.lsystem`:
+um gate que prometia *«a queixa chega a pixel»* lia a **linha reservada**, e apagar a pintura
+inteira deixava-o verde. O arnês tem `paint_and_count_geometry` por causa disso, e a régua enche o
+balde nos **dois** sentidos (mais órfãos ⇒ mais glifos; e nomear a peça ⇒ mais glifos do que não a
+nomear).
+
+⏳ **Fica ABERTO e nomeado:** apagar **um** órfão de cada vez. O gesto de hoje é tudo-ou-nada, e
+agora que eles se veem a pergunta *«e se eu quiser só aquele?»* passa a ser fazível — ⛔ mas ela
+custa um id por linha, e a tabela de ids tem tecto. É decisão de produto.

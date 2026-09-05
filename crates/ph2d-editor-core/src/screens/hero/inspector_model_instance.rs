@@ -32,13 +32,21 @@ pub struct InspectorInstanceInfo {
     /// `(peça, tipo)`; mostrar o conjunto todo numa peça diria ao artista que ele mexeu em coisas
     /// que estão noutro sítio da cópia. *A lista é do que está selecionado.*
     pub overridden: Vec<String>,
-    /// Quantas excepções a instância inteira tem **sem alvo** (F5.3) — a peça que as tinha já não
-    /// existe no mestre.
+    /// ⭐⭐⭐ **As excepções da instância inteira que ficaram SEM ALVO** (F5.3) — uma linha por
+    /// cada, com a peça que as tinha e o componente.
     ///
     /// ⚠️ **Da instância INTEIRA**, ao contrário do campo acima, e a diferença é o sujeito: um
-    /// órfão não tem peça, então não há peça em que ele pudesse ser listado. É o mesmo sítio onde
-    /// o Unity os põe (a lista do `PrefabInstance`, não a do objeto).
-    pub orphans: usize,
+    /// órfão não tem peça viva, então não há peça em que ele pudesse ser listado. É o mesmo sítio
+    /// onde o Unity os põe (a lista do `PrefabInstance`, não a do objeto).
+    ///
+    /// ⛔⛔ **Era uma CONTAGEM até 2026-09-04, e isso não cumpria o critério 3 da F5:** ele pede que
+    /// a excepção *«apareça»*, e um número responde *«há três»* à pergunta *«quais três?»*. Ao lado
+    /// dela vive o botão que apaga as três — *limpar sem ver o que se limpa é o gesto destrutivo
+    /// mais barato deste painel.*
+    ///
+    /// ⚠️ **Sem tecto, de propósito.** O painel rola; um tecto na LISTA com o botão a apagar
+    /// **tudo** seria o pior dos dois mundos — esconderia exactamente as que o gesto destrói.
+    pub orphan_rows: Vec<OrphanRow>,
     /// A entidade da RAIZ da instância — quem recebe o gesto de limpar os órfãos.
     pub root_bits: u64,
     /// ⭐⭐⭐ **Esta cópia é ela própria uma RECEITA** — uma variante (report do Enio, 2026-08-27).
@@ -102,6 +110,37 @@ impl ApplyChoice {
     }
 }
 
+/// ⭐⭐ **Uma excepção SEM ALVO, como o cartão precisa de a ver.**
+///
+/// ⚠️ **As duas metades são precisas:** o componente diz *o que* se perde e a peça diz *de onde*.
+/// Com duas peças apagadas, uma lista só de componentes lê-se `Sprite · Sprite · Transform` e não
+/// responde a pergunta que o artista tem antes de carregar em *Clear*.
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct OrphanRow {
+    /// O nome de exibição do componente, do mesmo catálogo de que o `+` deriva a paleta.
+    pub component: String,
+    /// O `Name` que a peça tinha quando morreu. **Vazio** quando ela não tinha nome — ver
+    /// [`Self::label`].
+    pub piece: String,
+}
+
+impl OrphanRow {
+    /// ⚠️ **A frase vive no MODELO**, como a `provenance` e a `summary`: escrevê-la no pintor poria
+    /// a escolha num sítio que nenhum gate de modelo alcança.
+    ///
+    /// ⛔ **Sem peça, sem a metade que a nomeia** — uma frase `was on ""` diria ao artista que a
+    /// peça se chamava vazio.
+    #[must_use]
+    pub fn label(&self) -> String {
+        let c = &self.component;
+        if self.piece.is_empty() {
+            return c.clone();
+        }
+        let p = &self.piece;
+        format!("{c} \u{2014} was on \u{201c}{p}\u{201d}")
+    }
+}
+
 /// Uma versão do componente que esta cópia pode passar a ser.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct VariantChoice {
@@ -160,9 +199,17 @@ impl InspectorInstanceInfo {
     ///
     /// ⚠️ **Sem excepção nenhuma ela diz «segue a receita»**, e isso é informação: é a diferença
     /// entre *«não mexi nesta»* e *«mexi e não vejo onde»*, que era exactamente o que faltava.
+    /// Quantas excepções sem alvo a instância tem — **derivado das linhas**, nunca contado à
+    /// parte: um número ao lado da lista é a segunda resposta que discorda dela no dia em que uma
+    /// entrada for saltada. É o que o botão *Clear* promete apagar.
+    #[must_use]
+    pub fn orphans(&self) -> usize {
+        self.orphan_rows.len()
+    }
+
     #[must_use]
     pub fn summary(&self) -> String {
-        match (self.overridden.len(), self.orphans) {
+        match (self.overridden.len(), self.orphans()) {
             // ⚠️ Numa variante a palavra é a mesma e o sujeito é outro: ela segue a **base**. Dizer
             // «segue o componente» sobre uma receita seria a mesma ambiguidade um nível acima.
             (0, 0) if self.is_variant => "Follows its base".to_string(),

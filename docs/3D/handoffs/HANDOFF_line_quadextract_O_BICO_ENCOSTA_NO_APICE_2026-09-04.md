@@ -264,7 +264,8 @@ censo textual.
 3. **O `Delete` sobre um painel devolve `false` sem tocar na cena** — não é um no-op silencioso,
    é a cadeia a seguir para quem de direito.
 
-## §13 — ⛔⛔ O WIREFRAME: o que a foto mostra NÃO é geometria escondida (medido)
+## §13 — O WIREFRAME, 1ª volta: a densidade da tinta (⚠️ **a conclusão desta secção foi
+REFUTADA — leia o §14 ao lado**)
 
 **O report:** *«a opção de visualizar wireframes permite que a malha que deveria estar oculta
 apareça, confundindo a visualização»* (04/09, foto com duas setas na banda rasante).
@@ -281,8 +282,11 @@ próprio dono (`sculpt003.obj`, `21 928` faces, **fechada**):
 | perto 3/4 · perto perfil | **`0,01 %`** (`2`–`3` px) |
 
 ⇒ **o descarte das arestas de costas (`obj.wire_cull`) faz o seu trabalho** — a malha de trás
-não atravessa. ⛔ *A hipótese que eu tinha ao ler a foto estava errada, e foi a medição que o
-disse.*
+não atravessa.
+
+⛔⛔ **E ESTA CONCLUSÃO ESTÁ REFUTADA — ver §14.** Esta régua chama de legítima toda tinta que
+caia sobre uma aresta **de frente**, e a aresta que atravessa numa peça não convexa **é de
+frente**: o `0,00 %` é o ponto cego da máscara, não a ausência do defeito.
 
 ### §13.2 — ⚠️ E DUAS réguas minhas mediram a coisa errada antes de acertar
 
@@ -328,3 +332,113 @@ desvanece.
 ⚠️ **O que fica no repo desta investigação:** a porta `PH2D_MESH` na sonda, a câmera vinda de
 fora, e a régua da FORÇA — as três são ganho puro e ficam, com a hipótese refutada escrita ao
 lado.
+
+## §14 — ⛔⛔⛔ E O §13 ESTAVA ERRADO: era geometria escondida, sim — a régua é que não a via
+
+**A 2ª volta do report, depois de eu lhe entregar o §13:** *«não sei se estamos falando da mesma
+coisa: só desejo o occlusion culling das faces do wireframe que são desenhadas mesmo quando suas
+faces estão invisíveis aos olhos do usuário»* (04/09).
+
+⇒ **Ele estava certo.** O §13 mede uma coisa real (a densidade da tinta) e responde à pergunta
+**errada**. Leia-o com esta secção ao lado: nada nele é falso, e a conclusão *«não é geometria
+escondida»* é.
+
+### §14.1 — ⛔⛔ A cegueira da régua era ESTRUTURAL, não um descuido
+
+A [`leaked_ink`] chama de legítima toda tinta que caia sobre uma aresta **de FRENTE**
+(`front_edge_mask` filtra por `front_facing`, que pergunta pela NORMAL). Numa peça **não
+convexa** a aresta que atravessa **é de frente**: é a malha de um vale visto através da montanha
+que está à frente dele.
+
+> *A máscara continha exactamente o defeito que ela existia para acusar* — e por isso ela lê
+> `0,00 %` numa tela em que o dono vê o defeito. As duas perguntas leem-se iguais e não são:
+>
+> | pergunta | quem responde |
+> |---|---|
+> | *esta aresta está de COSTAS?* | o descarte por normal do `fs_wire` (`obj.wire_cull`) |
+> | *esta aresta está ATRÁS de outra face?* | **o teste de profundidade** |
+
+### §14.2 — A causa: a nudge era CONSTANTE EM NDC, e o NDC é hiperbólico
+
+A `WIRE_DEPTH_NUDGE` puxava a aresta `3e-3` de NDC para a frente. A câmera ancora os planos na
+distância (`near = 0,01 d`, `far = 100 d` — [`Camera3d::clip_planes`]), então a mesma fracção de
+NDC vale distâncias de mundo diferentes conforme a profundidade:
+
+| profundidade | `3e-3` de NDC vale |
+|---|---|
+| `0,5 d` | `0,075` unidades |
+| **`1,0 d`** (a própria peça) | **`0,300` unidades** |
+| `2,0 d` | `1,200` unidades |
+
+⇒ **na profundidade da peça a aresta era puxada `30 %` da distância do olho** — mais do que a
+peça inteira tem de profundidade. *Toda aresta de frente ganhava o teste de profundidade contra
+tudo*, e o único esconderijo que restava era o descarte por normal, que responde à outra
+pergunta.
+
+### §14.3 — A régua nova: uma esfera atrás de uma CHAPA
+
+`a_malha_atras_de_uma_chapa_nao_atravessa` — uma esfera densa inteiramente atrás de uma chapa
+opaca, **uma malha só**, e a grandeza é a tinta que escurece o **miolo da chapa** (onde não passa
+aresta nenhuma dela). Duas metades: **fechada** e **ABERTA**, esta porque o descarte por normal
+se desarma numa casca (`obj.wire_cull`) e ali o teste de profundidade responde **sozinho** — que
+é o caso mais provável na tela de quem esculpe.
+
+Medido com a lei que shipava: **`4,82 %` do miolo**, `8 459` px de `10 143` de tinta do quadro —
+**`83 %` de todo o wireframe era a esfera escondida**.
+
+⚠️ **E um número que eu ia escrever sem medir:** pus no doc do gate que a casca aberta vazaria
+`9,42 %`. Medida, dá os **mesmos `4,82 %`** — as duas metades da esfera projectam-se no mesmo
+disco e a tinta de trás cai **por cima** da da frente. *Uma régua de área não soma camadas.*
+
+### §14.4 — A lei nova, e a constante que passou a significar alguma coisa
+
+`z' = z + (z − w) · k`, que é **exactamente** a profundidade que o vértice teria a `d·(1 − k)`
+(porque `ndc = C₀ + C₁/d`) ⇒ o empurrão passa a ser `Δd ≈ k · d`, uma **fracção da distância do
+olho**.
+
+⭐ **`k` É A RESOLUÇÃO DA OCLUSÃO**, e a varredura confirma a álgebra — o limiar em que a tinta
+reaparece **é o próprio `k`** (`a_que_profundidade_o_fio_deixa_de_atravessar`):
+
+| folga, em `d` | lei antiga | `k = 3e-3` | **`k = 1e-2`** | `k = 2e-2` |
+|---|---|---|---|---|
+| `0,109` | **`4,82 %`** | `0,00 %` | **`0,00 %`** | `0,00 %` |
+| `0,034` | **`5,50 %`** | `0,00 %` | **`0,00 %`** | `0,00 %` |
+| `0,010` | **`5,63 %`** | `0,00 %` | **`0,00 %`** | `0,29 %` |
+| `0,006` | **`5,69 %`** | `0,00 %` | `0,10 %` | `0,52 %` |
+
+⇒ a lei antiga **vaza em todas as folgas, a maior inclusive**: ela não escondia nada.
+
+### §14.5 — Por que `1e-2`, e não menos
+
+O piso é a **COPLANARIDADE** — a linha corre sobre a própria face, e num ângulo raso a
+profundidade da superfície muda muito por pixel. Quem a mede é o bin rasante (`facing` `0,2`–`0,4`),
+cuja barra de `78 %` defende **o report de 12/08 do mesmo dono** (*«os wireframes saem todos
+cortados»*):
+
+| `k` | bin rasante | folga escondida |
+|---|---|---|
+| `3e-3` | **`62,7 %`** ⛔ | `< 0,004 d` |
+| `5e-3` | `76,2 %` ⛔ | — |
+| `7e-3` | `78,9 %` | — |
+| **`1e-2`** | **`79,2 %`** (satura) | **`0,010 d`** |
+| `2e-2`..`8e-2` | `79,2 %` | `0,017 d`..`0,07 d` |
+
+⇒ **`1e-2` é o MENOR valor em que o rasante satura.** As duas metades são opostas por construção
+— mais empurrão salva a coplanaridade e mata a oclusão — e este é o ponto em que a primeira já
+não melhora. ⭐ *Os dois reports do dono ficam servidos ao mesmo tempo, que é o que o §13.4 dizia
+ser impossível pelo ângulo: a variável certa não era o ângulo nem a densidade, era a UNIDADE em
+que a nudge estava escrita.*
+
+### §14.6 — O que muda na tela, e o que NÃO muda
+
+- fixtura: `10 143 → 1 684` px de tinta (**`−83 %`**);
+- **peça exportada do dono** (`sculpt003.obj`, fechada): `24 593 → 23 948` px (`−2,6 %`) — ali o
+  descarte por normal já fazia quase todo o trabalho. ⚠️ *Não é a peça que mostra o ganho*;
+- o ganho grande é a peça **ABERTA** (descarte por normal desligado por lei) e a peça com pontas
+  a taparem o corpo.
+
+### §14.7 — ⏳ O que o §13 mediu continua de pé, e continua aberto
+
+A densidade (`10,8 %` de miolo contra `17,8 %` de borda) **é real** e não foi curada — ela é
+outra coisa, e a wave do §13.5 (atributo por-vértice com a célula projectada) continua a ser a
+resposta dela. ⛔ O que caiu foi só a frase *«portanto não é geometria escondida»*.

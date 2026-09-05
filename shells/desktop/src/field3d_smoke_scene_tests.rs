@@ -23,7 +23,7 @@ use ph2d_field::{NodeKind, Op};
 ///
 /// ⭐ E ele deixou de ser só uma declaração: o `the_router_has_exactly_this_many_scenes` **prova-o**
 /// pelas duas pontas — a cena `CENAS` tem de ser dela própria, e a `CENAS + 1` tem de cair no `_`.
-const CENAS: u32 = 19;
+const CENAS: u32 = 20;
 
 /// ⭐⭐⭐ **A CONTAGEM PROVA-SE, e não se declara** — as duas pontas.
 ///

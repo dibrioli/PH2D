@@ -272,5 +272,34 @@ pub fn bounding_half_extents(p: &Primitive) -> [f32; 3] {
             half_span + thickness,
             *half_height,
         ],
+        // ─────────────────────────── W122 ───────────────────────────
+        // ⚠️ **A inclinação SAI da caixa em X** — o vértice de cima está em `half_width + skew`.
+        Primitive::Parallelogram {
+            half_width,
+            half_span,
+            skew,
+            half_height,
+            ..
+        } => [half_width + skew.abs(), *half_span, *half_height],
+        // ⭐ **As três seguintes são INTERSECÇÕES, e uma intersecção arredondada só ENCOLHE** — não
+        // há termo de inchaço a acrescentar (a nuvem tem, porque é uma união).
+        Primitive::Delay {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        } => [*half_width, *half_span, *half_height],
+        Primitive::Display {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        }
+        | Primitive::OffPage {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        } => [*half_width, *half_span, *half_height],
     }
 }

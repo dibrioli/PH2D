@@ -232,6 +232,52 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
             half_height,
             ..
         } => Some((thickness * 0.5).min(*half_height)),
+        // ─────────────────────────── W122 ───────────────────────────
+        // ⭐ **A meia-largura de um paralelogramo é a distância entre os DOIS FLANCOS**, e ela
+        // encolhe com a inclinação: `half_width/√(1+k²)`. ⚠️ Usar `half_width` cru prometeria um
+        // filete que a peça inclinada já não comporta.
+        Primitive::Parallelogram {
+            half_width,
+            half_span,
+            skew,
+            half_height,
+            ..
+        } => {
+            let k = skew / half_span.max(f32::MIN_POSITIVE);
+            Some(
+                (half_width / k.mul_add(k, 1.0).sqrt())
+                    .min(*half_span)
+                    .min(*half_height),
+            )
+        }
+        // ⚠️ **A envergadura manda**: ela é o raio da tampa redonda, e o filete come a chapa de
+        // fora para dentro.
+        Primitive::Delay {
+            half_span,
+            half_height,
+            ..
+        } => Some(half_span.min(*half_height)),
+        // ⚠️ **O BICO é mais apertado que a envergadura** quando ele é curto: a meia-largura útil
+        // junto da ponta é `point·half_span/√(point² + half_span²)`, que é a altura do triângulo
+        // do bico sobre a hipotenusa. ⛔ Sem ela o filete engolia a ponta inteira.
+        Primitive::Display {
+            half_span,
+            point,
+            half_height,
+            ..
+        } => Some(half_span.min(bico(*point, *half_span)).min(*half_height)),
+        Primitive::OffPage {
+            half_width,
+            half_span,
+            point,
+            half_height,
+            ..
+        } => Some(
+            half_width
+                .min(*half_span)
+                .min(bico(*point, *half_width))
+                .min(*half_height),
+        ),
         // ⚠️ **O que sobra da fita entre o entalhe e a ponta** — não a meia-largura inteira.
         Primitive::Banner {
             half_width,
@@ -347,4 +393,16 @@ pub fn star_round_limit(points: u32, outer: f32, inner: f32) -> f32 {
         return 0.0;
     }
     (outer - inner) * inner * outer * beta.sin() / (u * (outer + inner))
+}
+
+/// ⭐ **A meia-espessura ÚTIL de um bico** — a altura do triângulo `(base, altura)` medida sobre a
+/// hipotenusa, `base·altura/√(base² + altura²)`.
+///
+/// ⚠️ **Com o bico a zero ela é zero, e isso está certo**: sem bico a forma não tem ponta nenhuma, e
+/// quem manda no filete é a outra meia-medida — os chamadores tomam o `min` com ela.
+fn bico(base: f32, altura: f32) -> f32 {
+    if base <= 0.0 {
+        return f32::INFINITY;
+    }
+    base * altura / base.hypot(altura)
 }

@@ -11857,3 +11857,139 @@ terceira vez nesta linha.
 
 **Gates:** censo **24/24** · arestas 10/10 · shell 346 · fmt · clippy · LOC.
 **Smoke:** a nuvem e o balão de pensamento na paleta, e a cena `=19`.
+
+---
+
+## §123 — W122: o LOTE 3 (fluxograma), e a cerca que a medição DESMENTIU (05/09)
+
+> **Enio:** *«siga»* — o lote que faltava do levantamento de 04/09
+> ([doc 08 §6.2](08_formas_por_formula.md)).
+
+### §123.1 — Quatro portas, e a quinta ficou de fora por ARITMÉTICA
+
+`52 → 56` itens na paleta: **Parallelogram** · **Delay** · **Display** · **Off-page Connector**,
+todas em `Family::Plates`.
+
+⛔ **A `Junction` do ANSI não foi construída, e não é adiamento:** o símbolo é *«disco ∪ cruz»*, e a
+cruz vive **dentro** do disco. A união de um conjunto com um subconjunto dele **é o próprio
+conjunto** — `min(disco, cruz) = disco` em todo o ponto, sem medição nenhuma. *Ela é um desenho de
+TRAÇOS, e o sólido dela é o cilindro que a paleta já tem.* Pelo mesmo argumento ficam de fora o
+`PredefinedProcess` (duas barras dentro de um rectângulo) e o `NoteBracket`.
+⚠️ **A lista do §6.2 do doc 08 contradizia-se**: ela punha a `Junction` nos cinco e, três linhas
+abaixo, dizia que ela tinha sido tirada. *Duas metades do mesmo parágrafo a discordar — audite a
+lista antes de pegar um item dela.*
+
+### §123.2 — ⛔⛔⛔ A cerca que eu ia escrever era de MARCHA, e a marcha não a queria
+
+Escrevi as quatro paredes com um valor à mão e fui medir antes de as documentar (§0). A varredura
+(`probe_w122_flow`) abriu cada cerca muito além do que ela deixa passar e arrastou a grandeza:
+
+| paralelogramo `k = skew/half_span` | 0 | 1 | 2 | 4 | 6 | 10 |
+|---|---:|---:|---:|---:|---:|---:|
+| `passo × ‖∇f‖` | `0,707` | `0,924` | `0,973` | `0,993` | `0,996` | `0,995` |
+
+**Não há joelho em nenhuma das quatro** — o campo sobe e **assenta por baixo de `1`**. ⇒ as cercas
+são de **identidade** (onde a forma deixa de ser a que o nome promete) e de **alcance** (onde o
+slider ainda tem resolução), e ficam escritas como tal. *§0: um limite legítimo diz de que recurso
+ele é, e dizer «marcha» aqui seria inventar um.*
+
+⭐⭐ **A do atraso tem DEMONSTRAÇÃO, não só medição:** o corpo é a cápsula da recta de `−w` a
+`w − s` engrossada em `s`. Enquanto `s ≤ 2w` a recta anda para a frente e a peça acaba
+**exactamente** em `+w`; em `s = 2w` ela degenera num ponto e a forma é um meio-disco, que ainda é
+um atraso; **acima disso a recta inverte-se** e a ponta passa para `s − w`, **fora da caixa
+declarada** — e quem lê aquela caixa é o recorte da marcha, que corta e não diz nada.
+
+### §123.3 — ⭐⭐⭐ O DEFEITO que a varredura achou: DUAS PEÇAS QUASE IGUAIS numa mistura n-ária
+
+Com o bico a zero, o mostrador media **`1,183`** — a peça rasgava no ponto onde ela é mais simples.
+
+⭐ **A causa:** os dois flancos do bico são semiplanos **distintos** que, com `point → 0`, se
+deitam **sobre a mesma recta**. Numa `intersection_round_n` o tecto é `√(quantas peças estão
+activas)`, e ali estavam duas — *a mesma superfície, contada duas vezes*. É o mecanismo do report
+da nuvem visto ao contrário: lá eram `n` discos livres, aqui são duas cópias de um plano.
+
+⭐⭐⭐ **A cura não é uma cerca — é DIZER O ÂNGULO.** O `Edge::at(round, chamfer, cos_faces)` existe
+desde a W107 para o filete honrar o ângulo entre as duas faces; com
+`cos = (altura² − base²)/(altura² + base²)` o par degenera **por construção** quando o bico fecha
+(`cos → 1` são duas normais iguais, isto é, canto nenhum). Medido:
+
+| bico / parede | 0,00 | 0,30 | 0,70 | 1,00 |
+|---|---:|---:|---:|---:|
+| n-ário sem ângulo | **`1,183`** | `1,024` | `0,991` | `0,991` |
+| par com o ângulo dentro | **`0,954`** | `0,979` | `0,991` | `0,990` |
+
+E no conector de página, `1,000 → 0,707`. ⇒ *o `point = 0` passa a ser uma FORMA (o atraso, o
+rectângulo) em vez de uma degeneração, e há gate a prová-lo campo a campo.*
+
+### §123.4 — ⚠️ E a cura tem METADE, que o gate das arestas cobrou
+
+Pôr a cunha composta também no caminho **com chanfro** levou o vinco do aro de `5,1°` para
+**`25,3°`** (mostrador) e `6,2°` para `22,6°` (conector). É a lei que a
+[`ops::plate_joint_n`](../../crates/ph2d-field-eval/src/ops.rs) já escreve: *ela só serve perfis de
+INTERSECÇÃO, e um perfil já composto leva a costura dele para o aro.*
+
+⇒ **dois caminhos, como sempre nesta família**: sem chanfro o bico entra **composto e com o ângulo
+dentro**; com chanfro as peças entram **inteiras** e é a mistura n-ária que as fecha (medida:
+`0,43`–`0,60` em todo o curso, porque o passo já encolhe com o recuo).
+
+### §123.5 — ⚠️ O que mais mordeu, e nenhuma delas era a geometria
+
+- ⛔ **A minha própria régua acusou o produto com a conta errada**: afirmei que a inclinação
+  esvaziava o canto de cima à **direita**, e com `skew > 0` a base de cima escorrega para `+X` —
+  quem sai é o de cima à **esquerda**. *O gate apanhou-me a mim, que é para o que ele serve.*
+- ⛔⛔ **Um `assert` meu tinha ERRO DE SINTAXE e eu não vi**, porque pus o script e o `cargo test`
+  no mesmo comando **em segundo plano** e li só a cauda: o Python morreu, o ficheiro ficou intacto,
+  e eu andei uma volta a perguntar porque é que a edição não aparecia. *Um script cuja saída não se
+  lê não é uma edição — é uma esperança.*
+- ⚠️ **Duas tabelas de representantes**, uma no censo e outra na sonda de arestas, e elas **divergem
+  de propósito** (a das arestas nasce com `round = 0`, porque é ela que aplica o filete). Conferi
+  antes de as «unificar»: *duas cópias com uma razão escrita não são uma duplicação.*
+
+### §123.6 — Os cortes de LOC, e DOIS deles eram vermelho ANTIGO desta linha
+
+Os meus: `dims_write.rs` passou a `752` das `700` e `field3d_smoke_scenes_lote.rs` a `627` das `600`.
+⛔ *Split, nunca allowlist* — `dims_write_edge.rs` (escrever um **RECUO** de aresta, contra escrever
+uma **DIMENSÃO**) e `field3d_smoke_scenes_shapes.rs` (as cenas cujo trabalho é **mostrar as portas
+novas de um lote**, W119–W122).
+
+⛔⛔⛔ **E a corrida completa da suíte do shell achou outros dois, que NÃO são desta wave:**
+`field3d_input_tests.rs` a `604` e `undo_tests.rs` a `602`. No `main` eles medem `599` e `592` —
+⇒ **foram as waves do undo desta própria linha que os empurraram**, e passaram **três fechos** sem
+que ninguém os visse.
+
+⚠️ **A causa é a cegueira que este repo já nomeia e que eu voltei a pagar:** o gate deles vive em
+[`shells/desktop/tests/file_loc_caps.rs`](../../shells/desktop/tests/file_loc_caps.rs), e
+`cargo test --bins` **não toca em `tests/`** — as minhas corridas de fecho anteriores liam `346` e
+`4452` verdes de um alvo que não continha o gate. ⇒ curados por corte (`undo_library_tests.rs` e
+`field3d_input_undo_seam_tests.rs`), e **o fecho desta wave passou a correr `--tests`**: `212`
+suites, `5192` testes, `0` falhas.
+
+⚠️⚠️ **E a primeira leitura dessa corrida foi um FALSO VERDE meu:** eu tinha canalizado o log por
+`grep … | tail -25` e li *«0 FAILED»* sobre as últimas vinte e cinco linhas de duzentas e doze.
+*Um `tail` não é um veredito — é uma janela*, e a contagem tem de sair do ficheiro inteiro (é a
+mesma lei do `| head` que encolhe o conjunto de candidatas em silêncio).
+
+### §123.7 — O que fica
+
+| forma | porta | linhas do painel |
+|---|---|---|
+| **Parallelogram** | `Add shape… > Parallelogram` | Width · Span · **Skew** · Height · Chamfer · Fillet |
+| **Delay** | idem | Width · Span · Height · Chamfer · Fillet |
+| **Display** | idem | Width · Span · **Point** · Height · Chamfer · Fillet |
+| **Off-page Connector** | idem | Width · Span · **Point** · Height · Chamfer · Fillet |
+
+⭐ O **Skew** é a primeira linha de uma primitiva a declarar [`Span::Walls`] — simétrica e fechada
+pelo documento —, e ela expôs um defeito **pré-existente** na porta de escrita: o guarda do zero e
+do negativo não a conhecia, então uma faixa que promete `±max` teria recusado metade do que pinta.
+*É a terceira vez que aquele guarda aprende a mesma lição* (o `FromZero` da W101, o `Free` da W119).
+
+### §123.8 — ⚠️ E a flake do costume, com a carga ao lado
+
+O `only_the_lower_row_breathes_and_it_moves_with_the_playhead` (demos de áudio, **já catalogado**
+no §5 do `CLAUDE.md`) reprovou **a `load ~10`**, com três compilações em paralelo, e deu **3 de 3
+verde a `load ~3`** — mais duas corridas cheias verdes. Zero linhas do diff naquele módulo.
+
+**Gates:** censo **24/24** · arestas **10/10** · o lote novo **11/11** (mais 8 e 9 dos anteriores) ·
+shell **212 suites / 5 192 testes / 0 falhas** · fmt · clippy · LOC (workspace, painel e shell) ·
+**prova de mutação** da guarda nova (revertê-la deixa o gate vermelho a nomear o caso).
+**Smoke:** as quatro na paleta, e a cena `=20`.

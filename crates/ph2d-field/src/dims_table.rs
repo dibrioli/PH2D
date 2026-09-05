@@ -495,6 +495,10 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
         | Primitive::Tag { .. }
         | Primitive::Check { .. }
         | Primitive::Banner { .. }
-        | Primitive::Brace { .. }) => super::dims_table_plates::dims_plate(p),
+        | Primitive::Brace { .. }
+        | Primitive::Parallelogram { .. }
+        | Primitive::Delay { .. }
+        | Primitive::Display { .. }
+        | Primitive::OffPage { .. }) => super::dims_table_plates::dims_plate(p),
     }
 }

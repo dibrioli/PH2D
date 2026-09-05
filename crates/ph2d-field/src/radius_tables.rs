@@ -225,6 +225,31 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
             .max(half_width * 0.1)
             .min(*half_span)
             .min(*half_height),
+        // ─────────────────────────── W122 ───────────────────────────
+        Primitive::Parallelogram {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        }
+        | Primitive::Delay {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        }
+        | Primitive::Display {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        }
+        | Primitive::OffPage {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        } => half_width.min(*half_span).min(*half_height),
     }
 }
 
@@ -543,7 +568,33 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
             half_span,
             half_height,
             ..
+        }
+        | Primitive::Delay {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        }
+        | Primitive::Display {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        }
+        | Primitive::OffPage {
+            half_width,
+            half_span,
+            half_height,
+            ..
         } => hyp(hyp(*half_width, *half_span), *half_height),
+        // ⚠️ **A inclinação entra no raio** — o canto mais afastado está em `half_width + |skew|`.
+        Primitive::Parallelogram {
+            half_width,
+            half_span,
+            skew,
+            half_height,
+            ..
+        } => hyp(hyp(half_width + skew.abs(), *half_span), *half_height),
         // ⚠️ **As faixas do visto passam do vértice, e a espessura sai para fora das pontas.**
         Primitive::Check {
             half_width,

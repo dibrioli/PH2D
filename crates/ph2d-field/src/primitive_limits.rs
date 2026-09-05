@@ -190,3 +190,59 @@ pub const MAX_CLOUD_LOBES: u32 = 7;
 /// lia `0,575` contra os `0,500` que a caixa declarava, e quem lê aquela caixa é o **recorte da
 /// marcha**, que corta a peça e não diz nada.
 pub const CLOUD_BLEND_SWELL: f32 = 1.145;
+
+// ─────────────────────────── W122 — as cercas do fluxograma ───────────────────────────
+//
+// ⭐⭐⭐ **NENHUMA das quatro é uma cerca de MARCHA, e isso foi MEDIDO antes de se escrever o
+// número** (`probe_w122_flow`, 2026-09-05). A varredura de cada grandeza muito além do que estas
+// paredes deixam passar mostra o campo a subir e a **assentar por baixo de `1`**, sem joelho nenhum:
+//
+// | paralelogramo `k` | 0 | 1 | 2 | 4 | 6 | 10 |
+// |---|---:|---:|---:|---:|---:|---:|
+// | `passo × ‖∇f‖` | `0,707` | `0,924` | `0,973` | `0,993` | `0,996` | `0,995` |
+//
+// ⇒ *elas são cercas de IDENTIDADE (onde a forma deixa de ser a que o nome promete) e de ALCANCE
+// (onde o slider ainda tem resolução), e ficam escritas como tal.* §0: um limite legítimo diz de
+// que recurso ele é — e dizer «marcha» aqui seria inventar um.
+
+/// ⭐ **Até onde o paralelogramo INCLINA** — em múltiplos de `half_span`.
+///
+/// # Não é a marcha (tabela acima). É a forma e é o alcance.
+///
+/// `k = skew/half_span` é a **tangente** da inclinação: `k = 1` são `45°`, `k = 2` são `63°`. Acima
+/// disso a peça é uma lasca — e a distância entre os dois flancos, que é o que o filete come, já
+/// caiu para `1/√(1+k²) = 45 %` da que a peça direita tem.
+///
+/// ⚠️ **A parede é do DOCUMENTO** ([`crate::Span::Walls`]), então o slider mapeia `±2·half_span` e o
+/// uso comum (`0,2`–`0,5`) fica no meio do curso, com resolução. Uma parede folgada poria o
+/// intervalo útil nos primeiros por cento — a lição da cauda da nuvem, ao contrário.
+pub const MAX_PARALLELOGRAM_SKEW: f32 = 2.0;
+
+/// ⭐ **A razão `half_span / half_width` que o atraso (e o mostrador) aguentam.**
+///
+/// # ⭐⭐ Aqui a cerca tem uma DEMONSTRAÇÃO, e não só uma medição
+///
+/// O corpo é a cápsula da recta de `−half_width` a `half_width − half_span`, engrossada em
+/// `half_span`. Enquanto `half_span ≤ 2·half_width` a recta anda para a frente e a peça acaba
+/// **exactamente** em `+half_width`; em `half_span = 2·half_width` ela degenera num ponto e a forma
+/// é um meio-disco, que ainda é um atraso. **Acima disso a recta inverte-se** e a ponta direita passa
+/// para `half_span − half_width`, que é maior que a caixa declarada ⇒ *a peça sai da própria caixa,
+/// e quem lê aquela caixa é o recorte da marcha, que corta e não diz nada.*
+///
+/// ⚠️ Medido na cerca: `passo × ‖∇f‖ = 0,814` — e o pior de todo o curso é `0,990`, no extremo
+/// **fino** (`s/w = 0,3`), que a parede não toca.
+pub const DELAY_SPAN_OVER_WIDTH: f32 = 2.0;
+
+/// ⭐ **Que fracção de `2·half_width − half_span` o bico do mostrador pode ocupar.**
+///
+/// `1,0` é o bico a acabar **exactamente onde a tampa redonda começa** — que é a definição do
+/// símbolo. Além disso os flancos entram na tampa, a peça perde as faces retas e deixa de se ler
+/// como um mostrador. ⚠️ **A marcha não tem voto**: medida até `2,5×` a parede, ela fica em `0,992`.
+pub const MAX_DISPLAY_POINT: f32 = 1.0;
+
+/// ⭐ **Que fracção da altura o bico do conector de página pode ocupar.**
+///
+/// `1,0` é o bico com a profundidade da peça inteira — os dois flancos vão dos cantos de cima ao
+/// vértice de baixo, e a forma é um triângulo. Além disso o topo cortaria os flancos e o «conector»
+/// seria outra coisa. ⚠️ Medida até `3×` a parede, a marcha fica em `0,985`.
+pub const MAX_OFFPAGE_POINT: f32 = 1.0;

@@ -375,6 +375,41 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             round: 0.02,
             chamfer: 0.0,
         },
+        // ─────────────────────────── W122 ───────────────────────────
+        // ⚠️ **Inclinado de verdade**: com `skew = 0` ele é o retângulo ao bit, e o termo que ele
+        // acrescenta — a normalização do flanco oblíquo — não seria exercitado.
+        PrimitiveKind::Parallelogram => Primitive::Parallelogram {
+            half_width: 0.38,
+            half_span: 0.28,
+            skew: 0.16,
+            half_height: 0.10,
+            round: 0.04,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::Delay => Primitive::Delay {
+            half_width: 0.45,
+            half_span: 0.28,
+            half_height: 0.10,
+            round: 0.04,
+            chamfer: 0.0,
+        },
+        // ⚠️ **Com BICO**: a zero ele é o atraso, e os dois flancos deitam-se sobre a parede.
+        PrimitiveKind::Display => Primitive::Display {
+            half_width: 0.45,
+            half_span: 0.26,
+            point: 0.18,
+            half_height: 0.10,
+            round: 0.04,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::OffPage => Primitive::OffPage {
+            half_width: 0.36,
+            half_span: 0.42,
+            point: 0.22,
+            half_height: 0.10,
+            round: 0.04,
+            chamfer: 0.0,
+        },
     })
 }
 
@@ -864,17 +899,25 @@ fn a_span_that_offers_negative_accepts_negative() {
     for k in PrimitiveKind::ALL {
         let Some(p) = representative(k) else { continue };
         for (linha, d) in ph2d_field::dims(&p).iter().enumerate() {
-            if !matches!(d.span, ph2d_field::Span::Free) {
-                continue;
-            }
+            // ⭐⭐ **As DUAS faixas que prometem o negativo** (W122). A [`Span::Walls`] diz-se
+            // *«simétrica, ±max»*, e até esta wave nenhuma primitiva a declarava — a porta de
+            // escrita recusava-a, e o defeito só ia aparecer no dia do primeiro consumidor.
+            // *Uma faixa simétrica que recusa o negativo oferece metade do que pinta.*
+            let alvo = match d.span {
+                ph2d_field::Span::Free => -d.value.abs().max(0.05),
+                // ⚠️ **Dentro da parede**: ali o teto é do DOCUMENTO, e pedir `−max` mediria a
+                // coerção em vez da faixa.
+                ph2d_field::Span::Walls(w) => -w * 0.8,
+                _ => continue,
+            };
             casos += 1;
-            let alvo = -d.value.abs().max(0.05);
             let mut q = p.clone();
             ph2d_field::set_dim(&mut q, 0, linha, alvo).unwrap_or_else(|e| {
                 panic!(
-                    "«{}» linha {linha}: a faixa é `Free` (o slider desce abaixo de zero) e a porta \
-                     RECUSOU {alvo} — {e:?}",
-                    k.key()
+                    "«{}» linha {linha}: a faixa {:?} desce abaixo de zero e a porta RECUSOU \
+                     {alvo} — {e:?}",
+                    k.key(),
+                    d.span
                 )
             });
             assert!(
@@ -890,8 +933,8 @@ fn a_span_that_offers_negative_accepts_negative() {
         }
     }
     assert!(
-        casos >= 3,
-        "só {casos} faixas `Free` no catálogo — este gate ficou sem sujeito e mede nada"
+        casos >= 4,
+        "só {casos} faixas simétricas no catálogo — este gate ficou sem sujeito e mede nada"
     );
 }
 

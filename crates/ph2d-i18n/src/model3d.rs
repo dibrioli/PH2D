@@ -109,6 +109,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⭐ **Duas portas, uma forma** — a fieira de bolhas é o que as separa.
         "panel.model3d.add.thought" => "Thought Balloon",
         "panel.model3d.add.cloud" => "Cloud",
+        // ⭐ **Os quatro do fluxograma** (W122). ⚠️ Os nomes são os do ANSI/ISO 5807 — quem
+        // desenha um fluxograma conhece-os, e inventar («Slanted Box») obrigaria a procurar.
+        "panel.model3d.add.parallelogram" => "Parallelogram",
+        "panel.model3d.add.delay" => "Delay",
+        "panel.model3d.add.display" => "Display",
+        "panel.model3d.add.off_page" => "Off-page Connector",
         "panel.model3d.add.bolt" => "Lightning Bolt",
         "panel.model3d.add.shield" => "Shield",
         "panel.model3d.add.tag" => "Tag",
@@ -295,6 +301,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.dim.tail" => "Tail",
         "field.dim.lobes" => "Lobes",
         "field.dim.point" => "Point",
+        // ⚠️ **"Skew" e não "Slant"**: é a palavra que o CAD e o SVG usam para a mesma grandeza, e
+        // ela é um COMPRIMENTO (o escorregamento da base de cima), não um ângulo.
+        "field.dim.skew" => "Skew",
         "field.dim.hole" => "Hole",
         "field.dim.notch" => "Notch",
         // ⚠️ Em GRAUS na cabeça do artista, mas o documento guarda radianos — o painel mostra o

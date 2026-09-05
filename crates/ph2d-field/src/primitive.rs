@@ -515,6 +515,50 @@ pub enum Primitive {
         round: f32,
         chamfer: f32,
     },
+    // ─────────────────────────── W122 — o fluxograma ───────────────────────────
+    /// ⭐ **PARALELOGRAMO** (*Data*) — o retângulo inclinado.
+    ///
+    /// `skew` é o quanto a base de cima escorrega em `+X`, e é a única grandeza desta família que
+    /// aceita **negativo e zero**: zero dá o retângulo ao bit, e o sinal escolhe o lado da queda.
+    Parallelogram {
+        half_width: f32,
+        half_span: f32,
+        skew: f32,
+        half_height: f32,
+        round: f32,
+        chamfer: f32,
+    },
+    /// ⭐ **ATRASO** (*Delay*) — a face esquerda reta e a direita num semicírculo inteiro.
+    ///
+    /// ⚠️ **`half_width >= half_span` é a cerca**: a tampa direita é um semicírculo de raio
+    /// `half_span`, e abaixo disso o centro dela passa para a esquerda da parede.
+    Delay {
+        half_width: f32,
+        half_span: f32,
+        half_height: f32,
+        round: f32,
+        chamfer: f32,
+    },
+    /// ⭐ **MOSTRADOR** (*Display*) — o atraso com a esquerda a fechar num bico de comprimento
+    /// `point`.
+    Display {
+        half_width: f32,
+        half_span: f32,
+        point: f32,
+        half_height: f32,
+        round: f32,
+        chamfer: f32,
+    },
+    /// ⭐ **CONECTOR DE PÁGINA** (*Off-page*) — o retângulo que fecha num bico de profundidade
+    /// `point` em baixo.
+    OffPage {
+        half_width: f32,
+        half_span: f32,
+        point: f32,
+        half_height: f32,
+        round: f32,
+        chamfer: f32,
+    },
 }
 
 impl Primitive {
@@ -566,6 +610,10 @@ impl Primitive {
             Primitive::Check { .. } => PrimitiveKind::Check,
             Primitive::Banner { .. } => PrimitiveKind::Banner,
             Primitive::Brace { .. } => PrimitiveKind::Brace,
+            Primitive::Parallelogram { .. } => PrimitiveKind::Parallelogram,
+            Primitive::Delay { .. } => PrimitiveKind::Delay,
+            Primitive::Display { .. } => PrimitiveKind::Display,
+            Primitive::OffPage { .. } => PrimitiveKind::OffPage,
         }
     }
 }

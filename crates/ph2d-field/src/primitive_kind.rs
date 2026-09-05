@@ -69,11 +69,16 @@ pub enum PrimitiveKind {
     Check,
     Banner,
     Brace,
+    // ─────────────────────────── W122 — o fluxograma ───────────────────────────
+    Parallelogram,
+    Delay,
+    Display,
+    OffPage,
 }
 
 impl PrimitiveKind {
     /// **A fonte da contagem** — quem quiser saber *«que formas o motor sabe fazer?»* pergunta aqui.
-    pub const ALL: [PrimitiveKind; 43] = [
+    pub const ALL: [PrimitiveKind; 47] = [
         PrimitiveKind::Box,
         PrimitiveKind::Sphere,
         PrimitiveKind::Cylinder,
@@ -117,6 +122,10 @@ impl PrimitiveKind {
         PrimitiveKind::Check,
         PrimitiveKind::Banner,
         PrimitiveKind::Brace,
+        PrimitiveKind::Parallelogram,
+        PrimitiveKind::Delay,
+        PrimitiveKind::Display,
+        PrimitiveKind::OffPage,
     ];
 
     /// O sufixo da chave do botão que a cria — `panel.model3d.add.<key>`.
@@ -166,6 +175,10 @@ impl PrimitiveKind {
             PrimitiveKind::Check => "check",
             PrimitiveKind::Banner => "banner",
             PrimitiveKind::Brace => "brace",
+            PrimitiveKind::Parallelogram => "parallelogram",
+            PrimitiveKind::Delay => "delay",
+            PrimitiveKind::Display => "display",
+            PrimitiveKind::OffPage => "off_page",
         }
     }
 }

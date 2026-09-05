@@ -36,6 +36,8 @@ pub mod ops_arrows;
 pub mod ops_balloons;
 pub mod ops_bool;
 pub mod ops_box;
+/// ⭐ O FLUXOGRAMA — ver [`ops_flowchart`].
+pub mod ops_flowchart;
 pub mod ops_joint;
 pub(crate) mod ops_norm;
 /// ⭐ Os blocos 2D partilhados por toda chapa — ver [`ops_plate2d`].

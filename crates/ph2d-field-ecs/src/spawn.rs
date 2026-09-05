@@ -74,6 +74,10 @@ pub fn shape_name(shape: &NodeShape) -> &'static str {
             Primitive::Check { .. } => "Check",
             Primitive::Banner { .. } => "Banner",
             Primitive::Brace { .. } => "Brace",
+            Primitive::Parallelogram { .. } => "Parallelogram",
+            Primitive::Delay { .. } => "Delay",
+            Primitive::Display { .. } => "Display",
+            Primitive::OffPage { .. } => "Off-page Connector",
         },
     }
 }

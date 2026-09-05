@@ -417,6 +417,28 @@ pub(crate) const SHAPES: &[Shape] = &[
         family: Family::Signs,
         make: Make::Formula(a_brace),
     },
+    // ─────────────────────────── W122 — o fluxograma ───────────────────────────
+    // ⚠️ **Na `Plates`, e não numa família nova** — ver [`make_signs`] para a razão medida.
+    Shape {
+        key: "panel.model3d.add.parallelogram",
+        family: Family::Plates,
+        make: Make::Formula(a_parallelogram),
+    },
+    Shape {
+        key: "panel.model3d.add.delay",
+        family: Family::Plates,
+        make: Make::Formula(a_delay),
+    },
+    Shape {
+        key: "panel.model3d.add.display",
+        family: Family::Plates,
+        make: Make::Formula(a_display),
+    },
+    Shape {
+        key: "panel.model3d.add.off_page",
+        family: Family::Plates,
+        make: Make::Formula(an_off_page),
+    },
     Shape {
         key: "panel.model3d.add.torus",
         family: Family::Rings,

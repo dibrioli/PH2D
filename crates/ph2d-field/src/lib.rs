@@ -56,8 +56,9 @@ pub use mods::{Unary, UnaryKind};
 pub use primitive::Primitive;
 pub use primitive_kind::PrimitiveKind;
 pub use primitive_limits::{
-    MAX_ARROW_HEADS, MAX_CLOUD_LOBES, MAX_GEAR_TEETH, MAX_PRISM_SIDES, MAX_STAR_POINTS,
-    MIN_ARROW_HEADS, MIN_CLOUD_LOBES, MIN_GEAR_TEETH, MIN_PRISM_SIDES, MIN_STAR_POINTS,
+    DELAY_SPAN_OVER_WIDTH, MAX_ARROW_HEADS, MAX_CLOUD_LOBES, MAX_DISPLAY_POINT, MAX_GEAR_TEETH,
+    MAX_OFFPAGE_POINT, MAX_PARALLELOGRAM_SKEW, MAX_PRISM_SIDES, MAX_STAR_POINTS, MIN_ARROW_HEADS,
+    MIN_CLOUD_LOBES, MIN_GEAR_TEETH, MIN_PRISM_SIDES, MIN_STAR_POINTS,
 };
 pub use profile::{
     DEFAULT_PROFILE_RESOLUTION, FillRule, MAX_PROFILE_RESOLUTION, Profile, ProfileError, coarsen,
@@ -525,6 +526,9 @@ impl FieldDoc {
 #[cfg(test)]
 mod tests;
 
+/// ⭐ E o que cada forma do FLUXOGRAMA recusa — ver [`validate_flow`].
+#[path = "validate_flow.rs"]
+mod validate_flow;
 /// ⭐ O que cada forma recusa — ver [`validate_primitive`].
 #[path = "validate_primitive.rs"]
 mod validate_primitive;

@@ -11,8 +11,9 @@
 //! ⚠️ O `pub use` no [`super`] mantém `ph2d_field::set_dim` e `ph2d_field::scale_primitive` — cortar
 //! um arquivo não pode custar uma reescrita em cada sítio que o chamava.
 
+use super::dims_write_edge::{ROUND_MARGIN, set_chamfer, set_round};
 use super::{Span, dims};
-use crate::{FieldError, Primitive, round_limit};
+use crate::{FieldError, Primitive};
 
 /// ⭐ **Escreve uma dimensão**, ou recusa.
 ///
@@ -44,7 +45,7 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
         // ⭐ A `WallFromZero` é a faixa dos DOIS RECUOS de uma aresta, e o zero **é** a aresta viva —
         // o estado de nascimento do chanfro e o destino de quem quer desfazer um filete. Ver o doc
         // dela para o defeito pré-existente que isto cura.
-        Some(Span::FromZero | Span::WallFromZero(_) | Span::Free)
+        Some(Span::FromZero | Span::WallFromZero(_) | Span::Free | Span::Walls(_))
     );
     // ⭐⭐⭐ **E QUEM DECIDE SE O NEGATIVO PASSA É A MESMA FAIXA** (W119).
     //
@@ -56,7 +57,14 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
     //
     // ⚠️ **A cura é a mesma da W101**: quem sabe a resposta é a faixa declarada, e não uma excepção
     // escrita aqui — uma `if é_esfera_cortada && index == 1` curaria o caso e não a família.
-    let negativo_ok = matches!(faixa, Some(Span::Free));
+    // ⭐⭐ **E a [`Span::Walls`] promete o MESMO que a `Free`, com as pontas fechadas** (W122): a
+    // doc dela diz *«simétrica, ±max»*, e uma faixa simétrica que recusasse o negativo ofereceria
+    // metade do que pinta. ⛔ **Era um defeito à espera do primeiro consumidor** — até à W122
+    // nenhuma primitiva a declarava (só os modificadores, que têm porta própria), e o dia em que
+    // uma declarasse o slider desceria abaixo de zero e o número pararia lá sem dizer porquê.
+    // *É a terceira vez que esta guarda aprende a mesma lição* — ver o `FromZero` da W101 e o
+    // `Free` da W119.
+    let negativo_ok = matches!(faixa, Some(Span::Free | Span::Walls(_)));
     if !value.is_finite() || (value < 0.0 && !negativo_ok) || (value == 0.0 && !zero_ok) {
         return Err(bad("dim"));
     }
@@ -339,6 +347,102 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
             },
             1,
         ) => *thickness = keep_below(value, *half_span * 0.5),
+        // ─────────────────────────── W122 — o fluxograma ───────────────────────────
+        // ⚠️ **A ORDEM tem de bater com a do `dims_table_flow.rs`** — o índice É a linha.
+        (Primitive::Parallelogram { half_width, .. }, 0)
+        | (Primitive::OffPage { half_width, .. }, 0) => *half_width = half,
+        (Primitive::OffPage { half_span, .. }, 1) => *half_span = half,
+        (Primitive::Parallelogram { half_height, .. }, 3)
+        | (Primitive::Delay { half_height, .. }, 2)
+        | (Primitive::Display { half_height, .. }, 3)
+        | (Primitive::OffPage { half_height, .. }, 3) => *half_height = half,
+        // ⭐⭐ **A envergadura do paralelogramo ARRASTA a inclinação com ela.** Encolher a peça sem
+        // encolher o `skew` deixaria o documento com um valor fora da própria cerca — e a
+        // validação recusa a **peça inteira**, não a linha. É a lei do filete que encolhe com a
+        // caixa, aplicada a uma grandeza que também é derivada da forma.
+        (
+            Primitive::Parallelogram {
+                half_span, skew, ..
+            },
+            1,
+        ) => {
+            *half_span = half;
+            let parede = half * crate::MAX_PARALLELOGRAM_SKEW;
+            *skew = skew.clamp(-parede, parede);
+        }
+        (
+            Primitive::Parallelogram {
+                skew, half_span, ..
+            },
+            2,
+        ) => {
+            let parede = *half_span * crate::MAX_PARALLELOGRAM_SKEW;
+            *skew = value.clamp(-parede, parede);
+        }
+        // ⭐ **As duas metades da cerca do atraso**, e ela coage nos dois sentidos — ver
+        // [`crate::DELAY_SPAN_OVER_WIDTH`].
+        (
+            Primitive::Delay {
+                half_width,
+                half_span,
+                ..
+            },
+            0,
+        ) => *half_width = keep_above(half, *half_span / crate::DELAY_SPAN_OVER_WIDTH),
+        (
+            Primitive::Delay {
+                half_width,
+                half_span,
+                ..
+            },
+            1,
+        ) => *half_span = keep_below(half, *half_width * crate::DELAY_SPAN_OVER_WIDTH),
+        // ⚠️ **No mostrador a mesma cerca arrasta TAMBÉM o bico**: a parede dele é
+        // `2·half_width − half_span`, e mexer em qualquer das duas move-a.
+        (
+            Primitive::Display {
+                half_width,
+                half_span,
+                point,
+                ..
+            },
+            0,
+        ) => {
+            *half_width = keep_above(half, *half_span / crate::DELAY_SPAN_OVER_WIDTH);
+            *point = point.min(crate::dims::display_point_wall(*half_width, *half_span));
+        }
+        (
+            Primitive::Display {
+                half_width,
+                half_span,
+                point,
+                ..
+            },
+            1,
+        ) => {
+            *half_span = keep_below(half, *half_width * crate::DELAY_SPAN_OVER_WIDTH);
+            *point = point.min(crate::dims::display_point_wall(*half_width, *half_span));
+        }
+        (
+            Primitive::Display {
+                point,
+                half_width,
+                half_span,
+                ..
+            },
+            2,
+        ) => {
+            *point = keep_below(
+                value,
+                crate::dims::display_point_wall(*half_width, *half_span),
+            )
+        }
+        (
+            Primitive::OffPage {
+                point, half_span, ..
+            },
+            2,
+        ) => *point = keep_below(value, *half_span * 2.0 * crate::MAX_OFFPAGE_POINT),
         (Primitive::Prism { sides, .. }, 0) => {
             // ⚠️ **COAGE, não recusa** — a lei do `Unary::Taper`, e pela mesma razão: a faixa já
             // não oferece nada fora de `[MIN, MAX]`, então um valor de fora só chega por outra
@@ -385,6 +489,10 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
             | Primitive::Check { .. }
             | Primitive::Banner { .. }
             | Primitive::Brace { .. }
+            | Primitive::Parallelogram { .. }
+            | Primitive::Delay { .. }
+            | Primitive::Display { .. }
+            | Primitive::OffPage { .. }
             | Primitive::TorusArc { .. }),
             i,
         ) if Some(i) == round_index(p) => {
@@ -426,218 +534,3 @@ fn round_index(p: &Primitive) -> Option<usize> {
 fn chamfer_index(p: &Primitive) -> Option<usize> {
     dims(p).iter().position(|d| d.key == "field.dim.chamfer")
 }
-
-/// ⭐⭐⭐ **Escreve o CHANFRO de uma forma** (Enio, 2026-08-30).
-///
-/// ⚠️ **A parede é a MESMA do filete** ([`round_limit`]), e não uma escolhida: os dois recuam a
-/// superfície a partir da mesma quina.
-///
-/// ⚠️ **EXAUSTIVO, pela razão que a [`set_round`] já pagou na W101**: uma primitiva nova com aresta
-/// que caísse num braço vazio teria o slider a mexer-se sem escrever nada — *a falha mais cara de
-/// diagnosticar, porque não deixa rasto*.
-fn set_chamfer(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldError> {
-    let limit = round_limit(p).ok_or(FieldError::NonPositive {
-        node,
-        what: "chamfer",
-    })?;
-    if value >= limit {
-        return Err(FieldError::RoundTooLarge {
-            node,
-            round: value,
-            limit,
-        });
-    }
-    match p {
-        Primitive::Box { chamfer, .. }
-        | Primitive::Cylinder { chamfer, .. }
-        | Primitive::Extrude { chamfer, .. }
-        | Primitive::Cone { chamfer, .. }
-        | Primitive::Prism { chamfer, .. }
-        | Primitive::Wedge { chamfer, .. }
-        | Primitive::Star { chamfer, .. }
-        | Primitive::BoxFrame { chamfer, .. }
-        | Primitive::Octahedron { chamfer, .. }
-        | Primitive::CutSphere { chamfer, .. }
-        | Primitive::HollowDome { chamfer, .. }
-        | Primitive::SolidAngle { chamfer, .. }
-        | Primitive::Gear { chamfer, .. }
-        | Primitive::Cross { chamfer, .. }
-        | Primitive::Heart { chamfer, .. }
-        | Primitive::Moon { chamfer, .. }
-        | Primitive::Drop { chamfer, .. }
-        | Primitive::Pie { chamfer, .. }
-        | Primitive::Trapezoid { chamfer, .. }
-        | Primitive::Vesica { chamfer, .. }
-        | Primitive::Arrow { chamfer, .. }
-        | Primitive::Chevron { chamfer, .. }
-        | Primitive::BentArrow { chamfer, .. }
-        | Primitive::Rhombus { chamfer, .. }
-        | Primitive::Tube { chamfer, .. }
-        | Primitive::CircleSegment { chamfer, .. }
-        | Primitive::SpeechRect { chamfer, .. }
-        | Primitive::SpeechOval { chamfer, .. }
-        | Primitive::Cloud { chamfer, .. }
-        | Primitive::Bolt { chamfer, .. }
-        | Primitive::Shield { chamfer, .. }
-        | Primitive::Tag { chamfer, .. }
-        | Primitive::Check { chamfer, .. }
-        | Primitive::Banner { chamfer, .. }
-        | Primitive::Brace { chamfer, .. }
-        | Primitive::TorusArc { chamfer, .. } => *chamfer = value,
-        Primitive::Sphere { .. }
-        | Primitive::Torus { .. }
-        | Primitive::Revolve { .. }
-        | Primitive::Capsule { .. }
-        | Primitive::RoundCone { .. }
-        | Primitive::Link { .. }
-        | Primitive::Ellipsoid { .. } => {
-            return Err(FieldError::NonPositive {
-                node,
-                what: "chamfer",
-            });
-        }
-    }
-    Ok(())
-}
-
-fn set_round(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldError> {
-    let limit = round_limit(p).ok_or(FieldError::NonPositive {
-        node,
-        what: "round",
-    })?;
-    if value >= limit {
-        return Err(FieldError::RoundTooLarge {
-            node,
-            round: value,
-            limit,
-        });
-    }
-    // ⚠️ **EXAUSTIVO, e o `_ => {}` que estava aqui era uma armadilha** (W101): uma primitiva nova
-    // COM filete caía no braço vazio, o `round_limit` dela respondia, o `set_round` dizia `Ok` — e
-    // o número **nunca era escrito**. Um slider que se mexe e não faz nada é a falha mais cara de
-    // diagnosticar, porque não deixa rasto. Com a lista fechada, a próxima é erro de compilação.
-    match p {
-        Primitive::Box { round, .. }
-        | Primitive::Cylinder { round, .. }
-        | Primitive::Extrude { round, .. }
-        | Primitive::Cone { round, .. }
-        | Primitive::Prism { round, .. }
-        | Primitive::Wedge { round, .. }
-        | Primitive::Star { round, .. }
-        | Primitive::BoxFrame { round, .. }
-        | Primitive::Octahedron { round, .. }
-        | Primitive::CutSphere { round, .. }
-        | Primitive::HollowDome { round, .. }
-        | Primitive::SolidAngle { round, .. }
-        | Primitive::Gear { round, .. }
-        | Primitive::Cross { round, .. }
-        | Primitive::Heart { round, .. }
-        | Primitive::Moon { round, .. }
-        | Primitive::Drop { round, .. }
-        | Primitive::Pie { round, .. }
-        | Primitive::Trapezoid { round, .. }
-        | Primitive::Vesica { round, .. }
-        | Primitive::Arrow { round, .. }
-        | Primitive::Chevron { round, .. }
-        | Primitive::BentArrow { round, .. }
-        | Primitive::Rhombus { round, .. }
-        | Primitive::Tube { round, .. }
-        | Primitive::CircleSegment { round, .. }
-        | Primitive::SpeechRect { round, .. }
-        | Primitive::SpeechOval { round, .. }
-        | Primitive::Cloud { round, .. }
-        | Primitive::Bolt { round, .. }
-        | Primitive::Shield { round, .. }
-        | Primitive::Tag { round, .. }
-        | Primitive::Check { round, .. }
-        | Primitive::Banner { round, .. }
-        | Primitive::Brace { round, .. }
-        | Primitive::TorusArc { round, .. } => *round = value,
-        Primitive::Sphere { .. }
-        | Primitive::Torus { .. }
-        | Primitive::Revolve { .. }
-        | Primitive::Capsule { .. }
-        | Primitive::RoundCone { .. }
-        | Primitive::Link { .. }
-        | Primitive::Ellipsoid { .. } => {}
-    }
-    Ok(())
-}
-
-/// ⭐ **Limita o filete ao que a forma agora comporta** — ver a nota de [`set_dim`].
-///
-/// Devolve `true` se teve de o mexer, para quem chamar poder dizê-lo.
-pub fn clamp_round(p: &mut Primitive) -> bool {
-    let Some(limit) = round_limit(p) else {
-        return false;
-    };
-    // ⚠️ **Estritamente abaixo**, e não «até»: a validação recusa `round >= limit`, e um filete
-    // exatamente no limite encolheria a fonte a zero. A margem é uma fração do próprio limite, e
-    // não um épsilon absoluto — numa peça de 0,01 um épsilon fixo seria o limite inteiro.
-    let ceiling = limit * (1.0 - ROUND_MARGIN);
-    // ⚠️ Exaustivo pela razão do [`set_round`] — um braço `_` deixaria a primitiva nova com um
-    // filete que a peça já não comporta, e a validação recusaria o documento inteiro no gesto
-    // seguinte.
-    match p {
-        Primitive::Box { round, chamfer, .. }
-        | Primitive::Cylinder { round, chamfer, .. }
-        | Primitive::Extrude { round, chamfer, .. }
-        | Primitive::Cone { round, chamfer, .. }
-        | Primitive::Prism { round, chamfer, .. }
-        | Primitive::Wedge { round, chamfer, .. }
-        | Primitive::Star { round, chamfer, .. }
-        | Primitive::BoxFrame { round, chamfer, .. }
-        | Primitive::Octahedron { round, chamfer, .. }
-        | Primitive::CutSphere { round, chamfer, .. }
-        | Primitive::HollowDome { round, chamfer, .. }
-        | Primitive::SolidAngle { round, chamfer, .. }
-        | Primitive::Gear { round, chamfer, .. }
-        | Primitive::Cross { round, chamfer, .. }
-        | Primitive::Heart { round, chamfer, .. }
-        | Primitive::Moon { round, chamfer, .. }
-        | Primitive::Drop { round, chamfer, .. }
-        | Primitive::Pie { round, chamfer, .. }
-        | Primitive::Trapezoid { round, chamfer, .. }
-        | Primitive::Vesica { round, chamfer, .. }
-        | Primitive::Arrow { round, chamfer, .. }
-        | Primitive::Chevron { round, chamfer, .. }
-        | Primitive::BentArrow { round, chamfer, .. }
-        | Primitive::Rhombus { round, chamfer, .. }
-        | Primitive::Tube { round, chamfer, .. }
-        | Primitive::CircleSegment { round, chamfer, .. }
-        | Primitive::SpeechRect { round, chamfer, .. }
-        | Primitive::SpeechOval { round, chamfer, .. }
-        | Primitive::Cloud { round, chamfer, .. }
-        | Primitive::Bolt { round, chamfer, .. }
-        | Primitive::Shield { round, chamfer, .. }
-        | Primitive::Tag { round, chamfer, .. }
-        | Primitive::Check { round, chamfer, .. }
-        | Primitive::Banner { round, chamfer, .. }
-        | Primitive::Brace { round, chamfer, .. }
-        | Primitive::TorusArc { round, chamfer, .. } => {
-            // ⭐⭐ **OS DOIS RECUOS são limitados, e não só o filete** (Enio, 2026-08-30).
-            //
-            // ⛔ Sem a segunda metade, encolher uma peça chanfrada deixava o chanfro acima da parede
-            // e a `validate_primitive` passava a **recusar o documento inteiro** no gesto seguinte —
-            // exactamente a armadilha que o doc do `set_round` nomeia para um braço `_`.
-            let mut mexeu = false;
-            for v in [&mut *round, &mut *chamfer] {
-                if *v > ceiling {
-                    *v = ceiling.max(0.0);
-                    mexeu = true;
-                }
-            }
-            mexeu
-        }
-        Primitive::Sphere { .. }
-        | Primitive::Torus { .. }
-        | Primitive::Revolve { .. }
-        | Primitive::Capsule { .. }
-        | Primitive::RoundCone { .. }
-        | Primitive::Link { .. }
-        | Primitive::Ellipsoid { .. } => false,
-    }
-}
-
-/// A folga entre o filete máximo e a parede, em fração da parede. Ver [`clamp_round`].
-const ROUND_MARGIN: f32 = 1.0e-3;

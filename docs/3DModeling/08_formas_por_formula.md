@@ -323,7 +323,17 @@ Mecanismo, as cinco medições que mudaram o desenho e as provas de mutação:
 | lote | formas |
 |---|---|
 | ✅ **2** (10) | **FECHADO na W120** — os 4 balões (Speech Balloon · Speech Oval · Thought · Cloud) e os 6 símbolos (Lightning Bolt · Shield · Tag · Check Mark · Banner · Brace). Mecanismo: [doc 06 §121](06_resultados_cena_e_gizmo.md) |
-| **3** (5) | o fluxograma que sobra: Parallelogram · Delay · Display · OffPage · Junction |
+| ✅ **3** (4) | **FECHADO na W122** — Parallelogram · Delay · Display · Off-page Connector. Mecanismo: [doc 06 §123](06_resultados_cena_e_gizmo.md) |
+
+⛔⛔ **A linha do lote 3 dizia CINCO e contradizia-se três linhas abaixo:** ela punha a `Junction`
+entre as formas a construir e o aviso seguinte dizia que ela tinha sido tirada. A resposta certa é a
+do aviso, e agora com o mecanismo em vez do gosto — **a junção do ANSI é «disco ∪ cruz» e a cruz vive
+DENTRO do disco**, então `min(disco, cruz) = disco` em todo o ponto: *a união de um conjunto com um
+subconjunto dele é o próprio conjunto*. O sólido dela é o cilindro que a paleta já tem. Pelo mesmo
+argumento ficam de fora o `PredefinedProcess` e o `NoteBracket`.
+
+⇒ **a fila das duas listas deste documento está FECHADA.** O que sobra é classe **D** e está certo
+que fique: a espiral e a base ondulada do `Document`, cuja distância não é fechada.
 
 ⚠️ **Três do lote 3 são FRACAS em 3D e isso está medido pelo desenho, não pelo motor**
 (PredefinedProcess · Junction · NoteBracket): elas nasceram como **desenhos de linha** de um

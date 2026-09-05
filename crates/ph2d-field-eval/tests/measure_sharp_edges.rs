@@ -761,6 +761,40 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             round: 0.02,
             chamfer: 0.0,
         },
+        // ─────────────────────────── W122 ───────────────────────────
+        // ⚠️ **Inclinado de verdade** — com `skew = 0` o paralelogramo é o retângulo, e as arestas
+        // que esta sonda mede seriam as de outra forma.
+        PrimitiveKind::Parallelogram => Primitive::Parallelogram {
+            half_width: 0.38,
+            half_span: 0.28,
+            skew: 0.16,
+            half_height: 0.10,
+            round: 0.0,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::Delay => Primitive::Delay {
+            half_width: 0.45,
+            half_span: 0.28,
+            half_height: 0.10,
+            round: 0.0,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::Display => Primitive::Display {
+            half_width: 0.45,
+            half_span: 0.26,
+            point: 0.18,
+            half_height: 0.10,
+            round: 0.0,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::OffPage => Primitive::OffPage {
+            half_width: 0.36,
+            half_span: 0.42,
+            point: 0.22,
+            half_height: 0.10,
+            round: 0.0,
+            chamfer: 0.0,
+        },
     })
 }
 

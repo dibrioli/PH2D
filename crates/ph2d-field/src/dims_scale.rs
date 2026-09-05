@@ -545,6 +545,52 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
                 *v *= factor;
             }
         }
+        Primitive::Parallelogram {
+            half_width,
+            half_span,
+            skew,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            // ⚠️ **O `skew` é um COMPRIMENTO** (o escorregamento da base de cima), logo escala com
+            // a peça — e escalar as duas juntas deixa a razão `skew/half_span` intacta, que é o que
+            // a cerca dela mede.
+            for v in [half_width, half_span, skew, half_height, round, chamfer] {
+                *v *= factor;
+            }
+        }
+        Primitive::Delay {
+            half_width,
+            half_span,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [half_width, half_span, half_height, round, chamfer] {
+                *v *= factor;
+            }
+        }
+        Primitive::Display {
+            half_width,
+            half_span,
+            point,
+            half_height,
+            round,
+            chamfer,
+        }
+        | Primitive::OffPage {
+            half_width,
+            half_span,
+            point,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [half_width, half_span, point, half_height, round, chamfer] {
+                *v *= factor;
+            }
+        }
         Primitive::Tag {
             half_width,
             half_span,

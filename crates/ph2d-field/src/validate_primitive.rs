@@ -509,5 +509,10 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
         | Primitive::Check { .. }
         | Primitive::Banner { .. }
         | Primitive::Brace { .. } => super::validate_signs::validate_sign(p, idx),
+        // ⭐ **E o FLUXOGRAMA ao terceiro** — ver [`super::validate_flow`].
+        Primitive::Parallelogram { .. }
+        | Primitive::Delay { .. }
+        | Primitive::Display { .. }
+        | Primitive::OffPage { .. } => super::validate_flow::validate_flow(p, idx),
     }
 }

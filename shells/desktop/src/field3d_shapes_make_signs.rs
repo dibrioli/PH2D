@@ -124,3 +124,59 @@ pub(crate) fn a_brace(r: f32) -> Primitive {
         chamfer: 0.0,
     }
 }
+
+// ─────────────────────────── W122 — o fluxograma ───────────────────────────
+//
+// ⚠️ **Elas moram na família `Plates` e não na `Signs`**, e a razão não é gosto: há exactamente
+// sete tokens `NodeCat*` e as sete famílias já os têm todos, então uma família nova partilharia
+// tinta ou pediria um token, que é decisão de design (§7). E o critério bate: as quatro são um
+// contorno 2D de fórmula puxado em Z, que é o que a `Plates` diz que é.
+
+/// ⚠️ **Nasce inclinado**: `skew = 0` é o retângulo, e uma forma que nasce igual a outra da paleta
+/// não ensina o que ela faz.
+pub(crate) fn a_parallelogram(r: f32) -> Primitive {
+    Primitive::Parallelogram {
+        half_width: r * 0.80,
+        half_span: r * 0.55,
+        skew: r * 0.30,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+/// ⚠️ **Mais largo que alto**, como o símbolo é desenhado — e a razão fica longe da parede
+/// (`half_span ≤ 2·half_width`).
+pub(crate) fn a_delay(r: f32) -> Primitive {
+    Primitive::Delay {
+        half_width: r,
+        half_span: r * 0.55,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+/// ⚠️ **O bico a `40 %` da parede dele** — com ele curto a peça lê-se como o atraso, e com ele no
+/// máximo as faces retas desaparecem.
+pub(crate) fn a_display(r: f32) -> Primitive {
+    Primitive::Display {
+        half_width: r,
+        half_span: r * 0.55,
+        point: r * 0.58,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+pub(crate) fn an_off_page(r: f32) -> Primitive {
+    Primitive::OffPage {
+        half_width: r * 0.80,
+        half_span: r * 0.70,
+        point: r * 0.45,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}

@@ -227,13 +227,20 @@ pub struct Dim {
 /// ⭐ A metade de **escrita** — ver [`dims_write`].
 #[path = "dims_write.rs"]
 mod dims_write;
+/// ⭐ E os DOIS RECUOS de uma aresta, do lado da escrita — ver [`dims_write_edge`].
+#[path = "dims_write_edge.rs"]
+mod dims_write_edge;
 
 pub use crate::dims_scale::scale_primitive;
-pub use dims_write::{clamp_round, set_dim};
+pub use dims_write::set_dim;
+pub use dims_write_edge::clamp_round;
 
 /// ⭐ A tabela por-forma — ver [`dims_table`].
 #[path = "dims_table.rs"]
 mod dims_table;
+/// ⭐ E a do FLUXOGRAMA — ver [`dims_table_flow`].
+#[path = "dims_table_flow.rs"]
+mod dims_table_flow;
 /// ⭐ A metade das CHAPAS daquela tabela — ver [`dims_table_plates`].
 #[path = "dims_table_plates.rs"]
 mod dims_table_plates;
@@ -241,3 +248,4 @@ mod dims_table_plates;
 #[path = "dims_table_signs.rs"]
 mod dims_table_signs;
 pub use dims_table::dims;
+pub(crate) use dims_table_flow::display_point_wall;

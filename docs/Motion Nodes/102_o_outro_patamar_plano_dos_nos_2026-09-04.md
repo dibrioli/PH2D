@@ -15,6 +15,23 @@ de julho, cuja §4 já desenhou a *anatomia-alvo do nó* e cujas waves W-I/W-J e
 completa**, não repete). Toda afirmação sobre a casa foi lida no código em 2026-09-04; toda
 afirmação sobre uma referência tem fonte (§9). ⛔ **Nada aqui é código ainda.**
 
+> ⛔⛔ **EMENDADO EM 2026-09-05 pela [dinâmica dos ciclos](103_dinamica_dos_ciclos.md) — leia as
+> três emendas ANTES de usar este plano:**
+> 1. **A ordem já não é «W0..W10»: é um CICLO por GRUPO de nós** (doc 103 §1/§5). As waves daqui
+>    continuam a ser a verdade TÉCNICA de cada capacidade — elas são chamadas de dentro dos
+>    ciclos, não corridas em fila.
+> 2. **O cartão hospeda TODOS os params e o painel lateral SAI** (decisão do Enio). A §5 D1
+>    daqui — *o cartão magro, e os params entram por promoção* — está **revogada**; o que a
+>    substitui é a lei do doc 103 §4 (todos os params, secções dobráveis, LOD, widgets só no
+>    cartão quente). O registo `q` (promoção) deixa de ser o portão de entrada de um param no
+>    cartão e passa a ser, quando muito, uma FIXAÇÃO na ordem.
+> 3. **O preço já não é o que a §4 do [doc 101](101_pesquisa_cartoes_ricos_2026-09-04.md) supôs**:
+>    medido em 2026-09-05, uma row **no cartão** custa **2,8 µs** (a do painel, 13,5 — são duas
+>    coisas: widget vivo contra dois textos), e o pior nó do catálogo cabe em **9 %** do quadro.
+>
+> O que NÃO mudou e continua a ser a razão de este doc existir: a **§0 (o índice das portas)**,
+> a **§2 (as leis de performance)**, a **§6 (os contratos)** e a **§7 (as recusas)**.
+
 ⚠️ **Como um agente deve LER este doc:** a §0 é o índice de PORTAS (cada pergunta tem UM sítio
 que responde); a §2 é a lei de performance que toda wave obedece; a §4 é o plano, wave a wave,
 com os ficheiros, os tipos, os registos de formato, os gates (red-first, com a mutação que os

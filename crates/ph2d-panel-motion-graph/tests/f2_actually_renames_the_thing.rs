@@ -69,6 +69,7 @@ fn card(id: u32, name: &str, kind: NodeViewKind, x: f32) -> GraphNodeView {
         bypassed: false,
         inert: false,
         thumbnail: None,
+        params: Vec::new(),
     }
 }
 

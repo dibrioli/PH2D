@@ -65,6 +65,36 @@ pub(crate) fn write_prop(
         *field.of_mut(&mut j) = f;
         return;
     }
+    // ⭐⭐⭐ **A OPACIDADE DE UM CAMINHO VETORIAL** — o mesmo canal, o outro substrato.
+    //
+    // ⛔⛔ Até 2026-09-04 este canal era **MUDO** num vetor: o braço abaixo exige um
+    // `ph2d_render::Sprite`, e uma entidade de caminho vetorial nasce com
+    // `(Transform, Name, VecPathRef, RootOrder)` e nunca com `Sprite`. A row aparecia, aceitava
+    // chaves e desenhava curva — e não movia um pixel. *Um controlo pintado e inerte.*
+    //
+    // ⚠️ **Por que um componente e não a tinta:** a tinta vive no `VecPath`, dentro da `VecScene`,
+    // que é um campo da SHELL e não um recurso do ECS — não há assinatura de `write_prop` que a
+    // alcance. O componente é a ponte, e a shell funde-o na projecção do quadro
+    // (`ph2d_vec_scene::BoundStyle`). É o padrão do `VecStrokeProfile` (ADR-0148).
+    //
+    // ⚠️ **E ele é DESREGISTADO de propósito** — logo não entra no snapshot, não vai ao save e não
+    // empilha undo. Sem isso uma reprodução de 3 s a 60 fps seria **180 passos de undo**, que é o
+    // defeito que o `preview_drive` da shell existe para curar. O detalhe está no doc do
+    // [`ph2d_ecs::VecDrivenStyle`].
+    if prop == PropKind::Opacity
+        && let AnimValue::Float(f) = v
+        && world.get::<ph2d_ecs::VecPathRef>(entity).is_some()
+    {
+        let alpha = f.clamp(0.0, 1.0);
+        if let Some(mut d) = world.get_mut::<ph2d_ecs::VecDrivenStyle>(entity) {
+            d.alpha = Some(alpha);
+        } else {
+            world.entity_mut(entity).insert(ph2d_ecs::VecDrivenStyle {
+                alpha: Some(alpha),
+            });
+        }
+        return;
+    }
     // Non-Transform properties. `Opacity` needs the render crate (Sprite lives
     // there); gated so the base timeline runtime stays GPU-free.
     #[cfg(feature = "render")]
@@ -148,6 +178,22 @@ pub(crate) fn read_prop_kind(world: &World, entity: Entity, prop: PropKind) -> O
         return world
             .get::<ph2d_physics_ecs::PhysicsJoint>(entity)
             .map(|j| *field.of(j));
+    }
+    // ⭐ A opacidade de um caminho vetorial — o braço espelho do `write_prop`, e ele vem PRIMEIRO
+    // pela mesma razão que lá: a entidade é um vetor ou é uma sprite, nunca as duas, e perguntar
+    // ao substrato certo primeiro poupa a leitura que sabe que vai falhar.
+    //
+    // ⚠️ **A ausência do componente NÃO é opacidade zero, é *"ninguém a conduz"*.** O `rest` que
+    // esta leitura semeia é o valor de ANTES de a linha do tempo assumir, e num caminho ainda não
+    // conduzido esse valor é **opaco** — devolver `0.0` faria toda track nova nascer com um fade
+    // a partir do invisível.
+    if prop == PropKind::Opacity && world.get::<ph2d_ecs::VecPathRef>(entity).is_some() {
+        return Some(
+            world
+                .get::<ph2d_ecs::VecDrivenStyle>(entity)
+                .and_then(|d| d.alpha)
+                .unwrap_or(1.0),
+        );
     }
     #[cfg(feature = "render")]
     if prop == PropKind::Opacity {

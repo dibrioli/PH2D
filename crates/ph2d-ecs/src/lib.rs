@@ -185,6 +185,7 @@ mod vec_frame;
 mod vec_layout;
 mod vec_offset;
 mod vec_pattern_path;
+mod vec_driven_style;
 mod vec_pattern_rotation;
 mod vec_resize_box;
 mod vec_stroke_profile;
@@ -214,6 +215,7 @@ pub use vec_layout::{
 };
 pub use vec_offset::VecOffset;
 pub use vec_pattern_path::VecPatternPath;
+pub use vec_driven_style::VecDrivenStyle;
 pub use vec_pattern_rotation::VecPatternRotation;
 pub use vec_resize_box::{VecResizeBox, default_for as resize_box_default, resizes_box};
 pub use vec_stroke_profile::VecStrokeProfile;

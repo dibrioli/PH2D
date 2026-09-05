@@ -124,6 +124,10 @@ impl FxLive {
         xforms: &VecXforms,
         live: &LiveGeometry,
         sil: &LiveGeometry,
+        // ⭐⭐⭐ **A PROJECÇÃO DO QUADRO** — o estilo resolvido (token, opacidade viva, espessura).
+        // Ela entra na CHAVE do memo, e não no desenho: sem isso, desvanecer uma forma filtrada
+        // acerta o memo e a textura fica com os pixels de antes (ver `fx_live_memo::FxDrawn`).
+        view: &ph2d_vec_scene::VecViewState,
         // ⛔ **REPORT DO ENIO (2026-08-27): *"filters anula pattern"*.** A rasterização isolada
         // desenha a forma como o `dispatch` a desenharia — e sem o ladrilho ela a desenhava com a
         // COR DE RECURSO, então ligar um filtro apagava o padrão (a imagem de FX **toma o lugar**
@@ -147,7 +151,8 @@ impl FxLive {
         let mut jobs: Vec<Job> = Vec::new();
         let mut miss: Vec<usize> = Vec::new();
         for path in scene.paths() {
-            let Some(job) = job_for(scene, sim, map, xforms, live, sil, camera, path.id) else {
+            let Some(job) = job_for(scene, sim, map, xforms, live, sil, view, camera, path.id)
+            else {
                 continue;
             };
             // O memo é otimização: re-coza só quando os PIXELS mudam. A pergunta inteira está na

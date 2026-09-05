@@ -281,3 +281,64 @@ fn the_frame_and_the_alpha_are_driven_side_by_side() {
         "e o vivo volta inteiro"
     );
 }
+
+/// ⭐⭐⭐ **DESVANECER UM CAMINHO VETORIAL TAMBÉM NÃO É UMA EDIÇÃO — e de graça.**
+///
+/// ⚠️⚠️ **E a razão é OUTRA das duas acima, o que faz este gate valer por si:** a sprite precisa do
+/// ledger porque o `Sprite` é um componente **REGISTADO** — ele viaja na fotografia, e sem uma
+/// entrada `Driven::SpriteAlpha` cada quadro de um fade seria um passo de Ctrl+Z. Um caminho
+/// vetorial recebe a opacidade num [`ph2d_ecs::VecDrivenStyle`], que é **desregistado de
+/// propósito** (não deriva `Serialize`, logo `register_default` nem compila): ele não entra no
+/// `world_to_snapshot`, portanto **não há nada a declarar**.
+///
+/// ⛔ **Este gate é o que impede alguém de o registar por conveniência.** No dia em que ele ganhar
+/// `Serialize` e uma linha no registo, uma reprodução de 3 s a 60 fps volta a ser **180 passos de
+/// undo** — e é aqui que isso sangra, não num smoke.
+///
+/// **Mutação que deve sangrar:** registar o `VecDrivenStyle` (ou fazer a escrita cair num
+/// componente registado).
+#[test]
+fn fading_a_vector_path_is_not_an_edit_and_needs_no_ledger() {
+    let reg = registry();
+    let mut sim = SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn((
+            Transform::default(),
+            Name::new("Fading path"),
+            ph2d_ecs::VecPathRef(9),
+        ))
+        .id();
+    let mut doc = TimelineDoc::new();
+    for (t, v) in [(0.0, 1.0_f32), (2.0, 0.0)] {
+        doc.insert_key(
+            e.to_bits(),
+            PropKind::Opacity,
+            RationalTime::from_seconds(t),
+            AnimValue::Float(v),
+            Interp::Linear,
+        );
+    }
+    let mut drive = PreviewDrive::default();
+    let at_rest = capture(&drive, &mut sim, &reg);
+    let mut t = 0.0;
+    for _ in 0..24 {
+        t += 1.0 / 60.0;
+        let before = crate::timeline_preview::state_of_bindings(sim.world(), &doc);
+        ph2d_timeline::apply_from_doc(sim.world_mut(), &mut doc, t);
+        crate::timeline_preview::declare_timeline_writes(sim.world(), &before, &mut drive);
+        drive.settle();
+        assert_eq!(
+            capture(&drive, &mut sim, &reg),
+            at_rest,
+            "o fade de um caminho vetorial mudou a captura — a ponte entrou no snapshot"
+        );
+    }
+    // CONTROLO POSITIVO: a opacidade DESCEU de facto — senão o gate acima nao mediu nada.
+    let a = sim
+        .world()
+        .get::<ph2d_ecs::VecDrivenStyle>(e)
+        .and_then(|d| d.alpha)
+        .expect("a ponte tem de estar escrita");
+    assert!(a < 0.9, "a curva nao mexeu na opacidade: {a}");
+}

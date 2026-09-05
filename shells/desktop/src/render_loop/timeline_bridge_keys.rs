@@ -31,6 +31,19 @@ pub(crate) fn sample_prop_value(
         PropKind::Rotation => Float(xf()?.rotation),
         PropKind::ScaleX => Float(xf()?.scale.x),
         PropKind::ScaleY => Float(xf()?.scale.y),
+        // ⭐ **A opacidade tem DOIS substratos**, e a entidade é um ou o outro, nunca os dois: uma
+        // sprite guarda-a no `tint[3]`; um caminho vetorial não tem campo nenhum para ela e a
+        // recebe pela projecção do quadro (`ph2d_ecs::VecDrivenStyle` → `BoundStyle::alpha`).
+        //
+        // ⚠️ **Num vetor ainda não conduzido a resposta é `1.0`, não `None`.** Esta função semeia
+        // o valor que a tecla K grava: recusar aqui faria a 1.ª chave de um fade nascer sem valor,
+        // e devolver `0.0` faria toda track nova começar invisível.
+        PropKind::Opacity if world.get::<ph2d_ecs::VecPathRef>(e).is_some() => Float(
+            world
+                .get::<ph2d_ecs::VecDrivenStyle>(e)
+                .and_then(|d| d.alpha)
+                .unwrap_or(1.0),
+        ),
         PropKind::Opacity => Float(world.get::<ph2d_render::Sprite>(e)?.tint[3]),
         // The morph `t`: unlike the clock below, this IS a scene value, so K captures it the same
         // way it captures a pose — the artist parks the slider where the shape looks right and

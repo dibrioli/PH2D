@@ -993,6 +993,7 @@ impl crate::App {
         self.extrap_smoke();
         self.expr_blend_smoke();
         self.morph_fade_smoke();
+        self.vec_fade_smoke();
         self.nest_smoke();
         self.physics_smoke();
         self.instance_smoke();
@@ -8926,6 +8927,13 @@ impl crate::App {
                     pixels_per_meter: hero.project.pixels_per_meter,
                 },
             );
+            // ⭐⭐⭐ **A APARÊNCIA QUE UM MOTOR CONDUZ** — hoje a opacidade que a linha do tempo
+            // escreve num caminho vetorial (`ph2d_ecs::VecDrivenStyle`). Depois dos tokens (ela
+            // desvanece a tinta que eles resolveram) e **antes** das rows autoradas: se as duas
+            // falarem da mesma forma, quem manda é o controlo que o artista está a segurar, e o
+            // motor é o estado de fundo — o precedente é o passe de estados de UI, mais abaixo.
+            let driven = crate::vec_driven_style::resolve(sim, &self.vec_entities);
+            crate::vec_driven_style::apply(&driven, &mut vec_view);
             // **AS ROWS AUTORADAS** (plano UI/UX W8b.3): o valor VIVO de cada controle que dirige
             // uma forma. Depois dos tokens, porque a opacidade desvanece o que de fato vai ser
             // desenhado; e aqui, no passe de desenho, pela MESMA razão que os tokens — nenhum
@@ -9839,6 +9847,7 @@ impl crate::App {
                 &vec_xf,
                 &vec_live,
                 self.fx_silhouette.live(),
+                &vec_view,
                 self.texture_pattern_live.tiles(),
                 cam_affine,
                 surface.gpu(),

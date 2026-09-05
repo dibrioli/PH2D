@@ -20,7 +20,8 @@ use crate::vec_entities::VecEntityMap;
 use ph2d_ecs::{FxOp, Name, SimWorld, Transform, VecFilter, VecPathRef};
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{
-    Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex, VecXforms, Xform,
+    BoundStyle, Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex, VecViewState,
+    VecXforms, Xform,
 };
 use ph2d_vector::Affine;
 
@@ -62,9 +63,22 @@ fn key(
     xforms: &VecXforms,
     id: VecPathId,
 ) -> super::FxKey {
+    key_view(scene, sim, map, xforms, &VecViewState::default(), id)
+}
+
+/// O mesmo, com a **projecção do quadro** explícita — é por ela que o estilo resolvido (token,
+/// opacidade viva) entra na chave.
+fn key_view(
+    scene: &VecScene,
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    xforms: &VecXforms,
+    view: &VecViewState,
+    id: VecPathId,
+) -> super::FxKey {
     let live = LiveGeometry::new();
     let sil = LiveGeometry::new();
-    job_for(scene, sim, map, xforms, &live, &sil, Affine::IDENTITY, id)
+    job_for(scene, sim, map, xforms, &live, &sil, view, Affine::IDENTITY, id)
         .expect("a forma tem filtro, caixa e pilha nao-vazia")
         .key
 }
@@ -231,6 +245,7 @@ fn changing_the_derived_geometry_re_cooks_the_shape() {
             &xforms,
             live,
             &sil,
+            &VecViewState::default(),
             Affine::IDENTITY,
             id,
         )
@@ -249,5 +264,52 @@ fn changing_the_derived_geometry_re_cooks_the_shape() {
         a != b,
         "a geometria DERIVADA mudou (mesma caixa) e o memo ACERTOU — a textura mostra o offset da \
          era anterior"
+    );
+}
+
+/// ⭐⭐⭐ **O ESTILO RESOLVIDO DO QUADRO entra na chave** — o vão que o `path` não cobria.
+///
+/// ⛔⛔ **A nota do `FxDrawn` dizia o contrário, e por acidente:** *"é o `VecPath` inteiro de
+/// propósito: um campo novo NELE viaja para dentro da chave sozinho"*. O [`BoundStyle`] **não é um
+/// campo do `VecPath`** — é uma camada de VISTA que o `painted` aplica depois —, então ele entrava
+/// no desenho sem entrar na chave. Consequência medida ao ligar a opacidade da linha do tempo
+/// (2026-09-04): desvanecer uma forma **com filtro** acertava o memo e a textura ficava com os
+/// pixels de antes, *o modo de falha que este módulo nomeia — pixels velhos que ninguém vê que são
+/// velhos*.
+///
+/// ⚠️ **As duas metades importam.** O controlo (mesma opacidade ⇒ mesma chave) é o que impede a
+/// cura degenerada *"a chave nunca casa"*, que deixaria toda forma filtrada a re-cozinhar por
+/// quadro — o custo exacto que o memo existe para não pagar.
+#[test]
+fn fading_a_filtered_shape_misses_the_memo_instead_of_keeping_old_pixels() {
+    let (scene, sim, map, xforms, id) = fixture();
+    let with_alpha = |a: Option<u8>| {
+        let mut view = VecViewState::default();
+        if a.is_some() {
+            view.bound.push(BoundStyle {
+                path: id,
+                alpha: a,
+                ..BoundStyle::default()
+            });
+        }
+        key_view(&scene, &sim, &map, &xforms, &view, id)
+    };
+    let opaca = with_alpha(None);
+    assert!(
+        opaca == with_alpha(None),
+        "CONTROLE: sem estilo resolvido a chave tem de ser estavel"
+    );
+    assert!(
+        opaca == with_alpha(Some(255)),
+        "CONTROLE: opacidade 255 e' a IDENTIDADE — o `painted` devolve a mesma arte, logo os mesmos \
+         pixels, logo a mesma chave"
+    );
+    assert!(
+        opaca != with_alpha(Some(128)),
+        "a forma foi desvanecida a meio e o memo ACERTOU — a textura mostra a arte opaca"
+    );
+    assert!(
+        with_alpha(Some(128)) != with_alpha(Some(64)),
+        "dois pontos de um fade dao a MESMA chave — o desvanecimento congela no 1.o quadro"
     );
 }

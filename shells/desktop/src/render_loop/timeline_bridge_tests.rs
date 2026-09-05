@@ -261,6 +261,37 @@ fn sample_reads_transform_and_opacity() {
     assert_eq!(sample_prop_value(&w, e.to_bits(), PropKind::Opacity), None);
 }
 
+/// ⭐⭐⭐ **A TERCEIRA LEITORA TAMBÉM SABE O QUE É UM CAMINHO VETORIAL** (2026-09-04).
+///
+/// ⚠️⚠️ Há **três** leitoras de *"qual o valor desta propriedade no mundo?"* — a da crate
+/// (`read_prop_kind`, que semeia o `rest`), esta (que a tecla **K** e o auto-key consomem) e o
+/// censo do ledger. Elas não se conhecem, e nenhuma gate as cruza: curar só a primeira deixava a
+/// tecla K a perguntar por uma `Sprite` que um caminho vetorial nunca tem, e a chave nascia **sem
+/// valor**.
+///
+/// ⚠️ **A resposta de um caminho ainda não conduzido é `1.0`, não `None`:** este número é o que a
+/// 1.ª chave de um fade grava. `None` deixaria a row sem chave; `0.0` faria o fade partir do
+/// invisível.
+#[test]
+fn sample_reads_the_opacity_of_a_vector_path_and_not_a_sprite() {
+    use ph2d_anim::AnimValue;
+    use ph2d_ecs::{Transform, VecDrivenStyle, VecPathRef, World};
+    let mut w = World::new();
+    let e = w.spawn((Transform::default(), VecPathRef(5))).id();
+    assert_eq!(
+        sample_prop_value(&w, e.to_bits(), PropKind::Opacity),
+        Some(AnimValue::Float(1.0)),
+        "um caminho ainda nao conduzido le-se OPACO — e nunca `None`, que deixaria a tecla K sem \
+         valor para gravar"
+    );
+    w.entity_mut(e).insert(VecDrivenStyle { alpha: Some(0.25) });
+    assert_eq!(
+        sample_prop_value(&w, e.to_bits(), PropKind::Opacity),
+        Some(AnimValue::Float(0.25)),
+        "e conduzido le-se a ponte, nao uma sprite que nao existe"
+    );
+}
+
 /// **TODA linha do "+Track" mapeia**, varrendo a tabela que o painel pinta.
 ///
 /// ⚠️ Este gate amostrava TRÊS das sete entradas, e por isso não pegou o `Position`

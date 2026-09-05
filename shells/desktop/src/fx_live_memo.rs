@@ -46,7 +46,7 @@
 use ph2d_ecs::SimWorld;
 use ph2d_render::{FxOpGpu, stack_reach};
 use ph2d_vec_render::LiveGeometry;
-use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms};
+use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecViewState, VecXforms};
 use ph2d_vector::Affine;
 
 use crate::vec_entities::VecEntityMap;
@@ -69,9 +69,22 @@ pub(crate) struct FxDrawn {
     sil: Option<Vec<VecPath>>,
     /// A geometria derivada desta forma (offset/contour/pattern/blend…), se houver.
     live: Option<Vec<VecPath>>,
-    /// A forma AUTORADA — verts, handles, raios de quina, fill, stroke, subpaths, regra e a pilha
-    /// de Live Path Effects. É o `VecPath` inteiro **de propósito**: um campo novo nele viaja para
-    /// dentro da chave sozinho, então não há lista a esquecer de atualizar.
+    /// A forma **COMO ELA DESENHA** — verts, handles, raios de quina, fill, stroke, subpaths, regra,
+    /// a pilha de Live Path Effects, e o estilo resolvido do quadro já aplicado. É o `VecPath`
+    /// inteiro **de propósito**: um campo novo nele viaja para dentro da chave sozinho, então não
+    /// há lista a esquecer de atualizar.
+    ///
+    /// ⭐⭐⭐ **É a forma PINTADA e não a AUTORADA, e a diferença é um defeito medido** (2026-09-04).
+    /// O token, a opacidade viva e a espessura de token vivem num [`BoundStyle`], que **não é um
+    /// campo do `VecPath`** — é uma camada de VISTA que o [`ph2d_vec_scene::VecPath::painted`]
+    /// aplica **depois**. Guardar a autorada deixava-a fora da chave: desvanecer uma forma
+    /// **filtrada** acertava o memo e a textura ficava com os pixels de antes, *o modo de falha
+    /// que este módulo nomeia — pixels velhos que ninguém vê que são velhos*.
+    ///
+    /// ⚠️ **E passar pelo `painted` é o que faz a IDENTIDADE ser de graça:** um estilo que não
+    /// muda desenho nenhum (`alpha == 255`, um token que resolve para a mesma cor) devolve
+    /// `Cow::Borrowed` e portanto **a mesma chave** — um campo `BoundStyle` cru ao lado teria feito
+    /// `Some(255)` diferir de `None` e re-cozinhado a forma para não mudar um pixel.
     path: Option<VecPath>,
     /// Parte linear (`a b c d`) do afim mundo→tela da câmera.
     cam: [f64; 4],
@@ -111,8 +124,9 @@ pub(crate) struct Job {
 /// **Porta única:** o `recook` e os gates perguntam AQUI. A alternativa (o laço a resolver em linha)
 /// é o que tornou o defeito invisível — a decisão do memo vivia dentro de uma função que precisa de
 /// GPU, então nenhum teste headless a alcançava.
-// Oito parâmetros porque a chave do memo É a lista do que é DESENHADO (§13 do doc 25): a cena, o
-// mundo ECS, a ponte path↔entidade, as poses, a geometria viva, a silhueta, a câmera e o id. Um
+// NOVE parâmetros porque a chave do memo É a lista do que é DESENHADO (§13 do doc 25): a cena, o
+// mundo ECS, a ponte path↔entidade, as poses, a geometria viva, a silhueta, **a projecção do
+// quadro** (o estilo resolvido — tokens, opacidade viva, espessura), a câmera e o id. Um
 // struct de agrupamento existiria só para satisfazer o lint, e esconderia justamente a coisa que a
 // wave W0.1 curou — **quem esquecer de passar uma delas volta a ter o defeito**, e a assinatura é
 // o que torna esquecer visível. (Mesmo veredito que o `body_desc` da linha de física tomou.)
@@ -124,6 +138,7 @@ pub(crate) fn job_for(
     xforms: &VecXforms,
     live: &LiveGeometry,
     sil: &LiveGeometry,
+    view: &VecViewState,
     camera: Affine,
     id: VecPathId,
 ) -> Option<Job> {
@@ -151,7 +166,11 @@ pub(crate) fn job_for(
             drawn: FxDrawn {
                 sil: sil.get(&id).cloned(),
                 live: live.get(&id).cloned(),
-                path: scene.paths().iter().find(|p| p.id == id).cloned(),
+                path: scene
+                    .paths()
+                    .iter()
+                    .find(|p| p.id == id)
+                    .map(|p| p.painted(view.bound_style(id)).into_owned()),
                 cam: [cam[0], cam[1], cam[2], cam[3]],
                 screen: [screen[0], screen[1], screen[2], screen[3]],
             },

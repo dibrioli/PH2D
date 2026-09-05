@@ -232,6 +232,24 @@ DIRS = [
         ),
     ),
     dict(
+        dir="docs/3D/quad-retopology",
+        titulo="`3D / quad-retopology` — o botão `Quad Retopology`, resolvido",
+        ordem="num",
+        o_que_e=(
+            "A **documentação da solução**: o que o botão faz fase a fase, as réguas e de onde "
+            "cada barra veio, as dez curas que fecharam o problema (com os números), as recusas "
+            "medidas, como medir, e o que fica aberto.\n>\n"
+            "> ⚠️ **Esta pasta é a SOLUÇÃO, não o diário.** O caminho que se percorreu até aqui "
+            "— com as hipóteses que caíram, na ordem em que caíram — vive no "
+            "[`../quad-remesh/PLANO_a_graduacao_da_ponta.md`](../quad-remesh/PLANO_a_graduacao_da_ponta.md) "
+            "(§1–§109) e nos [handoffs por jornada](../handoffs/README.md). O estado **vivo** é "
+            "o `CLAUDE.md` §5.\n>\n"
+            "> ⛔ **Antes de propor qualquer mudança de desenho, leia o "
+            "[`04_recusas_medidas.md`](04_recusas_medidas.md)** — cada linha dele é trabalho já "
+            "pago, e duas delas já dissolveram porque a cadeia mudou por baixo."
+        ),
+    ),
+    dict(
         dir="docs/DevOps",
         titulo="`DevOps` — máquina, bootstrap e multi-máquina",
         ordem="nome",

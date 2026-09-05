@@ -323,6 +323,8 @@ mod instance_live;
 /// ⭐⭐ A cena da receita DENTRO da receita — irmã por assunto do `instance_smoke`.
 mod instance_nested_smoke;
 mod instance_refs;
+/// ⭐⭐ A cena da TROCA por um componente sem parentesco — irmã por assunto do `instance_smoke`.
+mod instance_replace_smoke;
 mod instance_revert;
 mod instance_smoke;
 /// ⭐ **A FORMA de uma instância segue a do mestre** (ADR-0164 / F5.1) — irmão do sync, que

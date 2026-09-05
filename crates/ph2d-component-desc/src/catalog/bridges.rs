@@ -1,4 +1,4 @@
-//! **As pontes de identidade** — os quatro tipos que o artista NUNCA anexa à mão.
+//! **As pontes de identidade** — os CINCO tipos que o artista NUNCA anexa à mão.
 //!
 //! Cada um é um `u32`/id opaco que liga a entidade ao documento do módulo dela
 //! (`VecPathRef` → o caminho no `VecScene`; `PaintedDoc` → o documento do Painter;
@@ -30,5 +30,9 @@ pub const DESCS: &[D] = &[
     D::owned_bridge("ph2d::ecs::BakedForm", "Baked Form", C::Model3D),
     D::owned_bridge("ph2d::ecs::FlipObjectRef", "Flip Object", C::Identity),
     D::owned_bridge("ph2d::ecs::PaintedDoc", "Painted Document", C::Identity),
+    // ADR-0150: a peça da escultura. Entrou em 2026-09-04, quando o mesh passou a APARECER na
+    // Hierarquia — e ela é `owned_document` pelo mesmo motivo dos outros: copiar o id daria duas
+    // entidades sobre a mesma peça, e o `sculpt3d::entities::sync` mantém-nas 1:1.
+    D::owned_bridge("ph2d::ecs::Sculpt3dPieceRef", "Sculpt Piece", C::Model3D),
     D::owned_bridge("ph2d::ecs::VecPathRef", "Vector Path", C::Vector),
 ];

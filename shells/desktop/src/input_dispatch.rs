@@ -1948,9 +1948,30 @@ impl App {
     /// ferramenta EM MÃOS ganha as teclas nuas — ver [`Self::a_tool_owns_the_bare_keys`].
     #[cfg(feature = "sculpt3d")]
     pub(crate) fn sculpt3d_keys_live(&self) -> bool {
-        self.sculpt3d_clay_on_screen()
-            && !self.text_entry_focused()
-            && !self.a_tool_owns_the_bare_keys()
+        self.sculpt3d_keys_dead_reason().is_empty()
+    }
+
+    /// ⭐⭐⭐ **POR QUE as teclas da escultura estão mortas** — vazio quando estão vivas.
+    ///
+    /// ⛔⛔ **Ela existe por um report** (Enio, 2026-09-04: *«corrija o deletar com a tecla
+    /// del»*): a tecla morria num de três guardas e **nenhum deles dizia nada**. O diagnóstico
+    /// custou uma sessão de leitura de código para chegar a uma frase que esta função imprime.
+    ///
+    /// ⚠️ **Ela é a FONTE do [`Self::sculpt3d_keys_live`]**, e não uma segunda opinião: duas
+    /// respostas à mesma pergunta divergem no dia em que alguém acrescenta um quarto guarda a
+    /// só uma delas.
+    #[cfg(feature = "sculpt3d")]
+    pub(crate) fn sculpt3d_keys_dead_reason(&self) -> &'static str {
+        if !self.sculpt3d_clay_on_screen() {
+            return "nao ha' barro na tela (o pill SCULPT esta' fora, ou a forma nao e' barro)";
+        }
+        if self.text_entry_focused() {
+            return "um campo de texto esta' FOCADO -- clique fora dele e tente outra vez";
+        }
+        if self.a_tool_owns_the_bare_keys() {
+            return "a ferramenta Motion/Vector esta' EM MAOS e reivindica as teclas nuas";
+        }
+        ""
     }
 
     /// **Uma FERRAMENTA está em mãos reivindicando as teclas NUAS?**

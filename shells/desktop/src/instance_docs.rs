@@ -65,6 +65,10 @@ pub(crate) const DROPPED: &[(&str, &str)] = &[
         "ph2d::ecs::FlipObjectRef",
         "o objeto do Flip vive no `FlipDoc`",
     ),
+    (
+        "ph2d::ecs::Sculpt3dPieceRef",
+        "a peça vive na cena da escultura, e a ponte duplica-a no quadro seguinte",
+    ),
 ];
 
 /// **O que a clonagem fez, e o que ela DEIXOU CAIR.**

@@ -69,6 +69,8 @@ pub mod present;
 pub mod root_order;
 pub mod sampling;
 pub mod scene;
+/// ⭐⭐⭐ **A PEÇA DA ESCULTURA na árvore do editor** — ver [`sculpt_piece_ref`].
+pub mod sculpt_piece_ref;
 pub mod sibling_order;
 /// ⭐⭐⭐ **A tabela nome → acção** (TOP-20 #5) — o consumidor que faltava aos sinais.
 pub mod signal_actions;
@@ -140,6 +142,7 @@ pub use sampling::{
     FilterMode, RepeatMode, TextureFilter, TextureRepeat, UvTransform, resolve_texture_filter,
     resolve_texture_repeat,
 };
+pub use sculpt_piece_ref::Sculpt3dPieceRef;
 pub use sibling_order::{
     SiblingOrder, assign_missing_sibling_order, ordered_children, root_key, set_sibling_order,
     sibling_key,

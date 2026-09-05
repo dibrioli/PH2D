@@ -183,7 +183,13 @@ fn register_ecs_components_populates_registry() {
     //   (TOP-20 #4). Quem integrar conta o DELTA, nunca o literal.
     // ⚠️ **2026-09-09: `81` -> `84`, delta +3** -- o `GameCamera`, o `CameraFollow` e o
     //   `CameraLimits` (TOP-20 #7). Quem integrar conta o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 84);
+    // ⚠️ **2026-09-10: `84` -> `85`, delta +1** -- o `Sculpt3dPieceRef` (ADR-0150): o mesh
+    //   passou a APARECER na Hierarquia, e sem este registo o save perderia o vinculo
+    //   peca<->entidade e o load duplicaria as linhas. ⚠️ A `line/quadextract` escreveu `80`
+    //   (do `79` do merge-base dela, de 04/09) e o valor certo NAO estava em nenhum dos dois
+    //   lados -- 677 commits entraram no main entretanto. *Conte o DELTA, nunca o literal.*
+    assert_eq!(reg.len(), 85);
+    assert!(reg.get_by_name("ph2d::ecs::Sculpt3dPieceRef").is_some());
     assert!(reg.get_by_name("ph2d::ecs::AudioSource2D").is_some());
     assert!(reg.get_by_name("ph2d::ecs::AudioListener2D").is_some());
     assert!(reg.get_by_name("ph2d::ecs::GameCamera").is_some());

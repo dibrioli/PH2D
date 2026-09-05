@@ -301,9 +301,12 @@ fn the_bridges_are_the_owned_documents() {
         owned, bridges,
         "alguem declarou (ou tirou) um documento possuido fora da familia das pontes"
     );
-    assert_eq!(
-        owned.len(),
-        4,
-        "o controle positivo: o censo nao esta' vazio"
+    // ⚠️ **Um PISO, e não uma contagem exacta** (2026-09-04): a igualdade acima é a lei; este
+    // número é só o controlo contra o vácuo, e como literal ele fazia **cada ponte nova editar
+    // o gate de outra pessoa** — foi o que aconteceu quando o `Sculpt3dPieceRef` entrou.
+    assert!(
+        owned.len() >= 4,
+        "o controle positivo: o censo nao esta' vazio ({} pontes)",
+        owned.len()
     );
 }

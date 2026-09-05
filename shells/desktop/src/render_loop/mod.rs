@@ -1086,6 +1086,12 @@ impl crate::App {
         // plano no canal. Quase sempre não faz nada — sem cena armada sai no primeiro `if`.
         #[cfg(feature = "sculpt3d")]
         self.sculpt3d_donate_form();
+        // ⭐⭐⭐ **A PONTE com a Hierarquia** (uma peça ⟺ uma entidade) — ver
+        // [`crate::sculpt3d::entities`]. ⚠️ **Depois do `apply_toggle`**, para uma cena criada
+        // pelo pill NESTE quadro já entrar na lista, e **antes** de a Hierarquia ser desenhada,
+        // para o quadro ver um estado consistente. Sem cena armada é um `return` imediato.
+        #[cfg(feature = "sculpt3d")]
+        self.sculpt3d_entities_sync();
         self.flip_self_overlap_smoke();
         self.flip_airbrush_smoke();
         self.flip_hardness_smoke();
@@ -12520,6 +12526,19 @@ impl crate::App {
                 &mut self.instance_echo,
             ) {
                 self.title_dirty = true;
+            }
+            // ⭐⭐⭐ **O *Duplicate* de uma PEÇA da escultura** (ADR-0150, 2026-09-04): a cópia
+            // profunda **deixa cair** o `Sculpt3dPieceRef` — copiar o id daria duas entidades
+            // sobre a mesma peça (`instance_docs::DROPPED`) —, então a linha nova nasceria vazia.
+            // ⇒ regista-se um PEDIDO, e o `sculpt3d::entities::sync` do quadro seguinte duplica a
+            // peça e põe o `ref` novo na cópia. *A cena está emprestada neste ponto do laço.*
+            #[cfg(feature = "sculpt3d")]
+            if let Some((src_bits, new_bits)) = duplicate_made
+                && let Some(piece) = sim
+                    .world()
+                    .get::<ph2d_ecs::Sculpt3dPieceRef>(ph2d_ecs::Entity::from_bits(src_bits))
+            {
+                self.sculpt3d_dup = Some((piece.0, new_bits));
             }
             // A duplicated sprite copies the source's `Sprite` component verbatim, so it SHARES the
             // source pixels — and if the source is being painted, the unbaked paint+mask never reaches

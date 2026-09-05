@@ -103,6 +103,24 @@ impl App {
         // (`FormRole::draws_clay`), e a assimetria entre as duas portas ERA o bug: o
         // clique cedia ao sair do modo, a tecla não. Ver [`App::sculpt3d_keys_live`]
         // para o mecanismo e os números.
+        // ⭐⭐⭐ **O `Delete` decide-se numa PORTA própria** — ver [`super::keys_delete`]. Ela
+        // responde *«esta tecla é nossa?»* com os dois factos (o guarda e a área) e devolve a
+        // RAZÃO quando não é — que é o report do Enio de 2026-09-04 (*«corrija o deletar com a
+        // tecla del»*): a tecla morria num de três guardas e **nenhum deles dizia nada**.
+        if code == K::Delete
+            && let super::keys_delete::DeleteClaim::NotOurs(porque) =
+                super::keys_delete::claim_delete(
+                    self.sculpt3d_keys_dead_reason(),
+                    crate::forwarding::cursor_over_hero_panel(
+                        self.gfx.as_ref(),
+                        self.last_pointer.0,
+                        self.last_pointer.1,
+                    ),
+                )
+        {
+            eprintln!("[sculpt3d] o Delete NAO foi para a escultura: {porque}");
+            return false;
+        }
         if !self.sculpt3d_keys_live() {
             return false;
         }

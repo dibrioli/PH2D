@@ -1355,6 +1355,12 @@ impl App {
             vec_entities: Default::default(),
             motion_leaf_images: Default::default(),
             flip_entities: Default::default(),
+            #[cfg(feature = "sculpt3d")]
+            sculpt3d_rows: Default::default(),
+            #[cfg(feature = "sculpt3d")]
+            sculpt3d_dup: None,
+            #[cfg(feature = "sculpt3d")]
+            sculpt3d_sel: None,
             vec_sel: Default::default(),
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display

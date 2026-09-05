@@ -119,8 +119,18 @@ fn the_donation_switch_survives_outside_the_clay() {
 #[test]
 fn a_tool_in_hand_wins_the_bare_keys() {
     let src = fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs");
+    // ⚠️ **A PORTA MUDOU DE CASA em 2026-09-04, e o gate seguiu-a** — as três perguntas saíram
+    // para a `sculpt3d_keys_dead_reason`, que devolve **por que** as teclas estão mortas (o
+    // report *«corrija o deletar com a tecla del»*: a tecla morria num guarda e nenhum dizia
+    // nada). O `sculpt3d_keys_live` passou a DERIVAR dela. *Um censo de fonte tem de saber a
+    // forma do que conta* — e a lei que este gate defende é a mesma, uma casa adiante.
+    assert!(
+        src.contains("self.sculpt3d_keys_dead_reason().is_empty()"),
+        "o `sculpt3d_keys_live` tem de DERIVAR da razao -- duas copias das tres perguntas \
+         divergem no dia do quarto guarda"
+    );
     let live = src
-        .find("fn sculpt3d_keys_live")
+        .find("fn sculpt3d_keys_dead_reason")
         .expect("a porta sumiu — o gate mede outra coisa");
     let body_end = src[live..]
         .find("\n    }")

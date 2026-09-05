@@ -208,3 +208,58 @@ fase zero passou a graduar com renormalização, ganhou a calota e o acabamento 
 
 Gate: `the_curvature_knob_opens_where_it_was_measured` (o valor **e** a ausência do literal) +
 `a_faixa_do_corpo_nao_conta_o_bico`.
+
+## §12 — ⭐⭐⭐ A TERCEIRA metade do dia: o MESH na Hierarquia, e o `Delete` que não dizia nada
+
+**Os dois reports:** *«corrija o deletar com a tecla del»* e *«implemente o mesh na Hierarchy
+pois ele ainda não aparece lá. Implemente as funções na hierarquia para o mesh como del,
+duplicate, etc»*.
+
+### §12.1 — A ponte: uma peça ⟺ uma entidade
+
+[`ph2d_ecs::Sculpt3dPieceRef`] (componente novo, registado) + `sculpt3d::entities` — a mesma
+forma do `flip_entities` e do `vec_entities`. Com ela a peça é uma `Entity` como outra
+qualquer, e **`Name`, `ChildOf`, `RootOrder`, `Visibility`, `Locked` e os verbos de linha valem
+sem uma lei nova**: apagar a linha apaga a peça, renomear renomeia, agrupar agrupa.
+
+⭐⭐⭐ **E o estado guardado é um CONJUNTO DE IDS, não um mapa de bits** — a decisão que separa
+esta ponte das irmãs. Elas guardam `id → bits` e precisam de um `rebuild_map` a seguir a cada
+restore; aqui isso seria **apagar a escultura a cada Ctrl+Z** (o undo respawna com bits novos, e
+o plano leria *«a entidade sumiu»*). ⇒ o mundo é lido a cada quadro, e o que se guarda é só
+*«que peças já tiveram linha»* — o único facto que o mundo não sabe. Gate:
+`depois_de_um_restore_com_bits_novos_o_plano_e_vazio`.
+
+### §12.2 — Os verbos
+
+| verbo | como | nota |
+|---|---|---|
+| **Delete** | a entidade some ⇒ o plano remove a peça | de graça, pela direcção 1 da ponte |
+| **Duplicate** | a cópia profunda **larga** o `ref` (`instance_docs::DROPPED`) ⇒ um PEDIDO duplica a peça no quadro seguinte e põe o `ref` novo na cópia | ⛔ copiar o id daria duas entidades sobre a mesma peça |
+| **Rename** | escreve o `Name` da entidade | a peça não tem nome próprio: o nome **é** o da linha |
+| **Escolher a linha** | põe a mão na peça (`scene.active`) | ⚠️ **só na MUDANÇA** da selecção — `active` tem dois escritores (a linha e o `aim` do pen-down), e aplicar a cada quadro tornaria impossível esculpir noutra peça |
+
+### §12.3 — O `Delete` que morria em silêncio
+
+⛔ A tecla morria num de **três** guardas (`sculpt3d_keys_dead_reason`) e **nenhum deles dizia
+nada** — nem ao artista, nem a quem foi diagnosticar. Agora:
+
+1. a recusa é **impressa**, com o guarda que a causou (é a lei que o `Delete` lá dentro já
+   escrevia, aplicada ao guarda);
+2. o `sculpt3d_keys_live` passa a **derivar** da razão — ⛔ duas respostas à mesma pergunta
+   divergem no dia em que alguém acrescenta um quarto guarda a só uma delas;
+3. **sobre um painel o `Delete` não é da escultura**: este teclado corre antes de toda a cadeia,
+   e sem a cerca de área ele comia o `Delete` da Hierarquia (onde o mesh agora tem linha), do
+   Flip, da timeline e do Painter sempre que houvesse barro na tela.
+
+A decisão saiu para uma porta **pura** (`sculpt3d::keys_delete::claim_delete`) — forçada pelo
+tecto de LOC (`611 / 600`) e melhor por isso: ela ganhou **três gates a sério** em vez de um
+censo textual.
+
+### §12.4 — ⚠️ O que uma leitura rápida entende ao contrário
+
+1. **O `Sculpt3dPieceRef` é `owned_document`** e por isso a cópia profunda **não** o leva — a
+   duplicação da peça é feita pela ponte, não pela cópia.
+2. **A `seen` é REDERIVADA do mundo** a cada sincronia, e não incrementada: um contador que só
+   cresce era o que faria a segunda leitura discordar da primeira.
+3. **O `Delete` sobre um painel devolve `false` sem tocar na cena** — não é um no-op silencioso,
+   é a cadeia a seguir para quem de direito.

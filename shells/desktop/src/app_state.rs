@@ -1883,6 +1883,25 @@ pub(crate) struct App {
     /// `FlipObjectId` → entidade ECS que o representa na Hierarquia (ADR-0114). O
     /// invariante "um objeto ⟺ uma entidade" é mantido por `flip_entities::sync`.
     pub(crate) flip_entities: crate::flip_entities::FlipEntityMap,
+    /// **As peças da escultura que já tiveram linha na Hierarquia** (ADR-0150). ⚠️ Um CONJUNTO
+    /// de ids, e não um mapa de bits: o mapa é o próprio mundo, lido a cada quadro — ver o doc
+    /// de `sculpt3d::entities`, onde está por que um mapa guardado apagaria a escultura no
+    /// primeiro Ctrl+Z.
+    #[cfg(feature = "sculpt3d")]
+    pub(crate) sculpt3d_rows: crate::sculpt3d::entities::SculptRowsSeen,
+    /// **O *Duplicate* de uma linha de escultura, pedido e drenado no quadro seguinte**
+    /// (`(id da peça de origem, bits da entidade cópia)`).
+    ///
+    /// ⚠️ **Um PEDIDO, como o `sculpt3d_toggle_request`**, e pela mesma razão: duplicar uma peça
+    /// precisa da cena, e no ponto em que a Hierarquia responde ao clique ela está emprestada
+    /// pelo laço do quadro.
+    #[cfg(feature = "sculpt3d")]
+    pub(crate) sculpt3d_dup: Option<(u32, u64)>,
+    /// **A última selecção da Hierarquia que a escultura já leu** — o detector de MUDANÇA que
+    /// impede os dois escritores de `active` (a linha escolhida e o `aim` do pen-down) de
+    /// brigarem a cada quadro. Ver `sculpt3d::entities`.
+    #[cfg(feature = "sculpt3d")]
+    pub(crate) sculpt3d_sel: Option<u64>,
     /// Espelho da última sincronia de seleção canvas ↔ Hierarquia (ADR-0110): diz
     /// **quem** mudou neste frame, e por isso quem manda. Ver `sync_selection`.
     pub(crate) vec_sel: crate::vec_selection::VecSelSync,

@@ -167,6 +167,14 @@ pub struct SculptStroke {
     /// partilham vértice nenhum — juntá-las numa faria o solver resolver um
     /// sistema desconexo.
     cloth: Vec<Option<stroke_cloth::ClothSession>>,
+    /// **A porta de ABLAÇÃO do orçamento do tecido** — só em teste, e ela existe
+    /// para um gate poder afirmar que a lei do gesto **não depende** do número
+    /// de sub-passos. Sem ela a propriedade não é observável de fora, e foi
+    /// exatamente ela que eu quebrei sem ver: a 3.ª versão do drive dividia pelo
+    /// orçamento, e mais sub-passos deixavam o resultado PIOR. Mesmo molde do
+    /// [`Self::par_floor_override`].
+    #[cfg(test)]
+    pub(crate) cloth_substeps_override: Option<u32>,
     /// **O deslocamento laplaciano de cada vértice**, o `detail_directions` da
     /// referência — a MESMA grandeza que a [`crate::FilterKind::EnhanceDetails`]
     /// consome inteira. Aqui ele é medido no pré-passe e relido no gather, e é

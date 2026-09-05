@@ -37,14 +37,15 @@ use ph2d_mesh::Mesh;
 /// viraria um Grab com bordas duras.
 pub const CLOTH_SIM_LIMIT: f32 = 2.0;
 
-/// **A partir de que fração da região os vértices são PREGADOS.**
+/// **Quanto o pincel pode andar antes de a região o seguir**, em fração do raio
+/// dela.
 ///
-/// ⚠️ **O anel pregado é a feature, não uma cerca:** é ele que faz a transição
-/// para o resto da escultura não estourar (o *«lock vertices in the simulation
-/// falloff area»* da referência). E aqui pregar é **o vértice não ser
-/// atualizado** — massa infinita de verdade, sem termo de penalidade e sem
-/// constante para afinar.
-pub const CLOTH_FALLOFF: f32 = 0.7;
+/// ⚠️ Ele não é um teto: é a distância a partir da qual reconstruir sai mais
+/// barato que empurrar de longe. Perto de `0` a região é refeita a cada dab
+/// (caro, e o repouso re-medido a cada passo apaga a memória do gesto); perto de
+/// `1` o pincel chega ao anel pregado antes de a região o seguir, que é o arco
+/// escuro do report.
+pub const CLOTH_FOLLOW: f32 = 0.25;
 
 /// Sub-passos por evento de ponteiro.
 ///
@@ -78,6 +79,51 @@ pub const CLOTH_DT: f64 = 1.0 / 60.0;
 // o solver arrastar a vizinhança por membrana e dobra, e o `Strength` volta a ser
 // o que ele é em todo verbo deste módulo: *quanto do gesto chega*.
 
+/// **O GESTO, EM ACELERAÇÃO** — e este número é DERIVADO, não escolhido.
+///
+/// ⛔⛔⛔ **A 1.ª versão somava o passo à POSIÇÃO, e isso é um arrasto rígido —
+/// «zero física», nas palavras do report.** O `walk` emite muitos dabs por
+/// evento, então um vértice sob o pincel recebia o passo a cada um deles e era
+/// levado o traço INTEIRO: medido, `0,67` de deslocamento numa esfera de raio
+/// `1`, vizinhos a diferir `0,35` (as rachaduras em arco da foto) e uma aresta a
+/// esticar **`2,71×`**. Escrever a posição não deixa o material discordar.
+///
+/// ⭐⭐ **A forma certa: o gesto propõe onde a INÉRCIA quer ir, e o solver
+/// arbitra.** Uma aceleração externa `a` desloca a previsão de inércia em
+/// `h²·a` por sub-passo; para que o evento inteiro proponha exatamente `passo·w`,
+///
+/// ```text
+/// Δx = ½·a·dt²   ⇒   a = 2·passo·w / dt²
+/// ```
+///
+/// ⇒ **nenhum número inventado**: ele sai da cinemática do evento. Quando o
+/// material não resiste, o vértice chega ao que a mão propôs; quando resiste, ele
+/// fica pelo caminho — e é **essa diferença** que é a física.
+///
+/// ⛔⛔ **E a 3.ª versão dividia pelos SUB-PASSOS, o que fazia o solver piorar
+/// ao receber mais orçamento** — medido: `4 → 8 → 16` sub-passos levavam o
+/// esticão de `2,3×` a `5,7×` e a `10,7×`. *Um solver que fica pior com mais
+/// orçamento não está a convergir: há um termo que depende do orçamento.* Ele
+/// era o MOMENTO — uma aceleração aplicada durante o evento inteiro também
+/// injeta `a·dt` de velocidade, e eu tinha somado só os `h²·a` de posição. A
+/// forma acima é a cinemática completa, e é **independente dos sub-passos** por
+/// construção (há gate).
+///
+/// ⚠️ **E a 2.ª versão INVENTOU um ganho (`30`) e ficou 32× fraca** — o valor
+/// correto é `sub-passos/dt²`, e a distância entre um palpite e uma derivação foi
+/// exatamente esse fator.
+///
+/// ⚠️⚠️ **Ela é uma FUNÇÃO do orçamento, e o parâmetro é o gate.** Enquanto era
+/// uma `const`, o gate `o_gesto_nao_depende_do_orcamento_do_solver` estava verde
+/// **por vácuo**: ele varia os sub-passos em execução e a constante era de
+/// compilação, então nenhuma fórmula errada podia ser vista — a mutação que
+/// repunha a divisão pelo orçamento **SOBREVIVEU**. Recebendo o `StepConfig`, a
+/// lei correta usa só o `dt` e ignora o `substeps`; uma que o leia diverge, e a
+/// mutação passa a sangrar.
+fn gesto_para_aceleracao(cfg: &StepConfig) -> f64 {
+    2.0 / (cfg.dt * cfg.dt)
+}
+
 /// **A SESSÃO de tecido de UMA cópia de simetria, dentro de UM traço.**
 ///
 /// ⚠️ **Ela nasce no primeiro dab e morre no pen-up.** Tudo o que depende do
@@ -92,6 +138,11 @@ pub(super) struct ClothSession {
     /// torna a região função da malha e não da ordem em que a consulta a devolveu.
     verts: Vec<u32>,
     pinned: Vec<bool>,
+    /// A aceleração que o gesto propõe, reusada entre eventos.
+    ext: Vec<V3>,
+    /// Onde a região foi centrada, e qual o raio dela.
+    em: [f32; 3],
+    raio: f32,
 }
 
 /// O material do pano, derivado do pincel.
@@ -103,7 +154,7 @@ pub(super) struct ClothSession {
 fn material() -> ClothMaterial {
     ClothMaterial {
         density: 1.0,
-        young: 400.0,
+        young: 40.0,
         poisson: 0.3,
         bending: 2.0e-3,
         damping: 0.05,
@@ -165,11 +216,34 @@ impl SculptStroke {
         if self.cloth.len() <= copy {
             self.cloth.resize_with(copy + 1, || None);
         }
-        if self.cloth[copy].is_none() {
-            let Some(session) = self.build_cloth(mesh, center, dab.radius) else {
+        // ⛔⛔ **A REGIÃO ACOMPANHA O PINCEL, e a 1.ª versão a congelava no
+        // pen-down.** O traço do report atravessa a peça: com a região presa no
+        // primeiro toque, o pincel SAI dela e passa a empurrar quem já não está
+        // sob o dedo — e o anel pregado, imóvel, vira uma parede. É o arco
+        // escuro da foto. A referência diz a mesma coisa por outras palavras:
+        // *«a área de simulação acompanha o pincel, limitada por um raio fixo»*.
+        //
+        // ⚠️ **Refazer CARREGA a velocidade dos vértices que ficam**, senão cada
+        // reconstrução seria uma paragem brusca no meio do gesto — e o repouso é
+        // re-medido na malha de AGORA, que é o que torna a prega já feita
+        // permanente (é um pincel de escultura, não um simulador de roupa).
+        let refaz = self.cloth[copy].as_ref().is_none_or(|s| {
+            let d = [
+                center[0] - s.em[0],
+                center[1] - s.em[1],
+                center[2] - s.em[2],
+            ];
+            (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() > s.raio * CLOTH_FOLLOW
+        });
+        if refaz {
+            let velha = self.cloth[copy].take();
+            let Some(mut nova) = self.build_cloth(mesh, center, dab.radius) else {
                 return;
             };
-            self.cloth[copy] = Some(session);
+            if let Some(v) = velha {
+                nova.herda(&v);
+            }
+            self.cloth[copy] = Some(nova);
         }
         // ⚠️ **A sessão sai do vetor durante o passo**, porque o solver precisa
         // dela por `&mut` enquanto a malha também é `&mut` — e as duas vivem no
@@ -177,19 +251,27 @@ impl SculptStroke {
         let Some(mut ses) = self.cloth[copy].take() else {
             return;
         };
-        self.cloth_drive(&mut ses, brush, dab, center, path);
+        // ⚠️ **UM `StepConfig`, dois consumidores** — o solver e a lei do gesto.
+        // Dois orçamentos escritos em sítios diferentes divergiriam no dia em que
+        // alguém mexesse num, e é exatamente por eles serem o mesmo que o gate da
+        // independência pode existir.
+        let cfg = StepConfig {
+            dt: CLOTH_DT,
+            #[cfg(test)]
+            substeps: self.cloth_substeps_override.unwrap_or(CLOTH_SUBSTEPS),
+            #[cfg(not(test))]
+            substeps: CLOTH_SUBSTEPS,
+            iterations: CLOTH_ITERATIONS,
+            gravity: [0.0; 3],
+        };
+        self.cloth_drive(&mut ses, brush, dab, center, path, &cfg);
         ph2d_cloth::step(
             &ses.topo,
             &ses.rest,
             &material(),
             &ses.pinned,
-            &[],
-            &StepConfig {
-                dt: CLOTH_DT,
-                substeps: CLOTH_SUBSTEPS,
-                iterations: CLOTH_ITERATIONS,
-                gravity: [0.0; 3],
-            },
+            &ses.ext,
+            &cfg,
             &mut ses.state,
         );
         let out = mesh.positions_mut();
@@ -263,7 +345,6 @@ impl SculptStroke {
             return None;
         }
 
-        let anel = limit * CLOTH_FALLOFF;
         let pos = mesh.positions();
         let x: Vec<V3> = verts
             .iter()
@@ -272,15 +353,22 @@ impl SculptStroke {
                 [f64::from(p[0]), f64::from(p[1]), f64::from(p[2])]
             })
             .collect();
-        let pinned: Vec<bool> = verts
-            .iter()
-            .enumerate()
-            .map(|(i, v)| {
-                let p = pos[*v as usize];
-                let d = [p[0] - center[0], p[1] - center[1], p[2] - center[2]];
-                borda[i] || (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() > anel
-            })
-            .collect();
+        // ⛔⛔ **PREGA SÓ A FRONTEIRA TOPOLÓGICA, e a banda por DISTÂNCIA foi
+        // MEDIDA E APAGADA.** Ela existia como o *«lock vertices in the
+        // simulation falloff area»* da referência, a `0,7` do raio da região — e
+        // varrida de `0,7` a `0,95` e depois REMOVIDA, ela move o produto na 4.ª
+        // casa decimal, em TODOS os materiais (`young` de `100` a `15`):
+        //
+        // | material | com a banda | só a fronteira |
+        // |---|---|---|
+        // | `young 40` | `0,0522` / `0,0176` | `0,0524` / `0,0177` |
+        //
+        // ⇒ ela é morta **porque a deformação nunca chega até ela**: com o pano a
+        // responder `~17 %` do raio do pincel, o que está a `0,7` da região não se
+        // mexe, pregado ou não. *Um limite que só diz «por segurança» é um palpite
+        // esperando um smoke*, e este smoke aconteceu. Quem PRECISA de estar
+        // pregado é a fronteira, que é onde o pano encontra o resto da peça.
+        let pinned: Vec<bool> = borda;
 
         for v in &verts {
             self.capture(mesh, *v);
@@ -289,6 +377,9 @@ impl SculptStroke {
         let rest = ClothRest::measure(&topo, &x, &material());
         Some(ClothSession {
             state: ClothState::at_rest(&x),
+            ext: vec![[0.0; 3]; verts.len()],
+            em: center,
+            raio: limit,
             topo,
             rest,
             verts,
@@ -300,6 +391,31 @@ impl SculptStroke {
 /// O índice local de um vértice que já se sabe estar na região.
 fn local(verts: &[u32], v: u32) -> u32 {
     u32::try_from(verts.binary_search(&v).unwrap_or(0)).unwrap_or(0)
+}
+
+impl ClothSession {
+    /// **CARREGA a velocidade da região anterior** para os vértices que ficam.
+    ///
+    /// ⚠️ Sem isto, cada vez que a região segue o pincel o pano PARA — e o
+    /// artista vê o gesto a engasgar em intervalos regulares, que é pior que não
+    /// seguir. Os dois `verts` são ordenados, então a interseção é uma passagem
+    /// só.
+    fn herda(&mut self, velha: &Self) {
+        let (mut a, mut b) = (0usize, 0usize);
+        while a < self.verts.len() && b < velha.verts.len() {
+            match self.verts[a].cmp(&velha.verts[b]) {
+                core::cmp::Ordering::Less => a += 1,
+                core::cmp::Ordering::Greater => b += 1,
+                core::cmp::Ordering::Equal => {
+                    if !self.pinned[a] {
+                        self.state.v[a] = velha.state.v[b];
+                    }
+                    a += 1;
+                    b += 1;
+                }
+            }
+        }
+    }
 }
 
 impl SculptStroke {
@@ -328,11 +444,14 @@ impl SculptStroke {
         dab: &Dab,
         center: [f32; 3],
         path: V3,
+        cfg: &StepConfig,
     ) {
         let frame = brush.alpha_frame();
+        let escala = gesto_para_aceleracao(cfg);
         let ganho = f64::from(brush.weight() * dab.pressure.clamp(0.0, 1.0));
         let inv_r = 1.0 / dab.radius;
         for i in 0..ses.verts.len() {
+            ses.ext[i] = [0.0; 3];
             if ses.pinned[i] {
                 continue;
             }
@@ -361,8 +480,7 @@ impl SculptStroke {
                         * crate::mask_ops::free_weight(self.base_mask[s]),
                 );
             for (c, andou) in path.iter().enumerate() {
-                ses.state.x[i][c] += andou * w;
-                ses.state.v[i][c] += andou * w / CLOTH_DT;
+                ses.ext[i][c] = andou * w * escala;
             }
         }
     }

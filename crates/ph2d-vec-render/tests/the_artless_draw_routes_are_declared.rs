@@ -42,7 +42,7 @@ fn code(rel: &str) -> String {
 /// `CLAUDE.md` §5.0 nomeia sobre toda catraca deste repo.
 #[test]
 fn exactly_these_routes_draw_without_the_brush_art() {
-    const CENSO: [(&str, &str, &str); 4] = [
+    const CENSO: [(&str, &str, &str); 5] = [
         (
             "instance.rs",
             "draw_path_with(path, tess, transform, target, None, None, None);",
@@ -63,6 +63,16 @@ fn exactly_these_routes_draw_without_the_brush_art() {
             "crate::draw_path_tiled(&copia, transform, target, None, None, None);",
             "as COPIAS de um pincel: uma copia nao tem pincel proprio, e da-lo seria recursao",
         ),
+        // ⚠️⚠️ **ESTA LINHA NASCEU DE UM PONTO CEGO DESTE GATE** (2026-09-05): a lista de ficheiros
+        // e' escrita a' mao, entao o `stack_draw.rs` — modulo NOVO — passou verde sem se declarar,
+        // e o filtro de contagem tambem nao conhecia o nome da porta nova (`draw_one_stroke`).
+        // *Um censo que enumera FICHEIROS nao ve^ o ficheiro que ainda nao existe.*
+        (
+            "stack_draw.rs",
+            "stroke_draw::draw_one_stroke(path, s, tess, transform, target, None, None);",
+            "as CAMADAS da pilha de aparencia: a arte e' memoizada pela forma ANFITRIA, e uma \
+             camada nao e' uma forma",
+        ),
     ];
     for (ficheiro, agulha, porque) in CENSO {
         assert!(
@@ -75,6 +85,7 @@ fn exactly_these_routes_draw_without_the_brush_art() {
         ("instance.rs", 2usize),
         ("lib.rs", 1),
         ("stroke_draw.rs", 1),
+        ("stack_draw.rs", 1),
     ] {
         let n = code(ficheiro)
             .lines()
@@ -82,7 +93,8 @@ fn exactly_these_routes_draw_without_the_brush_art() {
             .filter(|l| {
                 (l.contains("draw_path_with(")
                     || l.contains("draw_path_tiled(")
-                    || l.contains("draw_stroke_with("))
+                    || l.contains("draw_stroke_with(")
+                    || l.contains("draw_one_stroke("))
                     && l.contains("None)")
             })
             .count();

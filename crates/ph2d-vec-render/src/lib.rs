@@ -539,12 +539,18 @@ pub(crate) fn draw_path_with(
         }
     }
     draw_stroke_with(path, tess, transform, target, stroke_tile, brush_art);
+    // ⭐⭐⭐ **E A PILHA DE APARÊNCIA POR CIMA** (v20) — as camadas extras, de baixo para cima,
+    // reusando esta mesma tesselação. No-op sem pilha, que é o caminho comum.
+    stack_draw::draw_extra_paints(path, tess, transform, target);
 }
 
+mod instance;
 /// **A camada de INSTÂNCIA de Motion** — módulo irmão pelo teto de 700 LOC. O corte é por assunto:
 /// aqui o motor de path (acima); ali o desenho de UMA instância de Motion e o LOTE que compartilha
 /// geometria, tesselando cada handle uma vez (o congelamento das 160k estrelas, ADR-0154).
-mod instance;
+/// ⭐ **A PILHA DE APARÊNCIA** (v20) — módulo irmão pelo tecto de LOC: aqui desenha-se o CHÃO de
+/// uma forma, ali o que está por cima dele.
+mod stack_draw;
 pub use instance::{draw_shape_instance, draw_shared_instances};
 
 /// **O overlay de EDIÇÃO** (as âncoras, os handles) — módulo irmão pelo teto de 700 LOC. O corte

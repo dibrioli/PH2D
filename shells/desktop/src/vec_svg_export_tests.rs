@@ -346,3 +346,78 @@ fn a_drawing_that_goes_out_as_svg_comes_back_the_same_shape() {
         );
     }
 }
+
+/// ⭐⭐⭐ **CADA CAMADA DA PILHA VIRA UM ELEMENTO** (v20), com a opacidade e a mistura dela — o SVG
+/// exprime as duas, então a pilha atravessa o ficheiro sem perda.
+///
+/// ⚠️ **E cada gradiente leva um `id` PRÓPRIO.** Um `<linearGradient id="g7">` repetido faz o
+/// segundo referenciar o primeiro **em silêncio**, e todas as camadas sairiam com a mesma rampa.
+#[test]
+fn every_layer_of_the_stack_becomes_its_own_element() {
+    let mut scene = VecScene::new();
+    let mut base = VecPath {
+        verts: vec![v(0.0, 0.0), v(10.0, 0.0), v(10.0, 10.0)],
+        closed: true,
+        fill: Some(Paint::Solid(Rgba8::new(1, 2, 3, 255))),
+        stroke: Some(StrokeSpec::new(Rgba8::new(4, 5, 6, 255), 1.0)),
+        ..VecPath::default()
+    };
+    let mut extra =
+        ph2d_vec_scene::PaintEntry::stroke(StrokeSpec::new(Rgba8::new(200, 100, 50, 255), 7.0));
+    extra.opacity = ph2d_vec_scene::Opacity::new(0.5);
+    extra.blend = ph2d_vec_scene::BlendMode::Multiply;
+    base.paints = vec![extra];
+    scene.push_path(base);
+
+    let out = svg(&scene, &VecXforms::new(), &sempre_nao, &sempre_nao);
+    let elementos = out.texto.matches("<path ").count();
+    assert_eq!(
+        elementos, 3,
+        "chao (fill + stroke) + a camada:\n{}",
+        out.texto
+    );
+    assert!(
+        out.texto.contains("stroke-width=\"7\""),
+        "a largura da CAMADA tem de sair, e nao a da base:\n{}",
+        out.texto
+    );
+    assert!(
+        out.texto.contains("opacity=\"0.5\"") && out.texto.contains("mix-blend-mode:multiply"),
+        "a opacidade e a mistura da camada atravessam:\n{}",
+        out.texto
+    );
+    assert!(
+        out.aproximadas.is_empty(),
+        "nada disto e' aproximacao: {:?}",
+        out.aproximadas
+    );
+}
+
+/// ⛔ **UM MODO QUE O CSS NÃO TEM SAI NOMEADO**, e não como `normal` calado — o ficheiro não pode
+/// afirmar uma composição que o documento não faz.
+#[test]
+fn a_blend_mode_css_does_not_have_is_named_not_silently_normal() {
+    let mut scene = VecScene::new();
+    let mut base = VecPath {
+        verts: vec![v(0.0, 0.0), v(10.0, 0.0), v(10.0, 10.0)],
+        closed: true,
+        fill: Some(Paint::Solid(Rgba8::new(1, 2, 3, 255))),
+        ..VecPath::default()
+    };
+    let mut extra = ph2d_vec_scene::PaintEntry::fill(Paint::Solid(Rgba8::new(9, 9, 9, 255)));
+    extra.blend = ph2d_vec_scene::BlendMode::Add; // o Linear Dodge: sem nome em CSS
+    base.paints = vec![extra];
+    scene.push_path(base);
+
+    let out = svg(&scene, &VecXforms::new(), &sempre_nao, &sempre_nao);
+    assert!(
+        !out.texto.contains("mix-blend-mode"),
+        "sem nome em CSS, nao se escreve nenhum:\n{}",
+        out.texto
+    );
+    assert!(
+        out.aproximadas.iter().any(|(_, o)| o.contains("mistura")),
+        "e a perda tem de aparecer no cabecalho: {:?}",
+        out.aproximadas
+    );
+}

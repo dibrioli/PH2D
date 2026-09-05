@@ -44,10 +44,22 @@ pub(crate) fn inflate_for_stroke(path: &VecPath, xf: Affine, r: Rect) -> Rect {
         // a kurbo só a corta no `miter_limit`. Inflar por meia largura recortava a ponta contra a
         // borda do scratch, e o efeito visível era **a ponta CEIFADA** (reportado no smoke). O
         // limite é lido do MESMO construtor que o renderer usa, não de uma segunda constante.
-        if let Some(s) = path.stroke.as_ref() {
-            let [a, b, c, d, _, _] = xf.as_coeffs();
-            let sx = (a * a + b * b).sqrt();
-            let sy = (c * c + d * d).sqrt();
+        // ⭐⭐⭐ **A CAIXA É A DO CONTORNO MAIS GORDO DA PILHA** (v20), e não a do de base. Uma
+        // forma com um traço extra de `20` por baixo de um de `2` é **dez vezes** mais gorda do
+        // que o `stroke.width` diz — e esta caixa dimensiona o scratch do FX e o rectângulo da
+        // camada de mistura. Medir só a base devolvia uma caixa que **corta o desenho**, que é o
+        // mesmo sintoma da ponta CEIFADA que o parágrafo acima nomeia, uma tinta adiante.
+        //
+        // ⚠️ A porta [`ph2d_vec_scene::VecPath::paint_stack`] já devolve a base como uma camada,
+        // então o caminho comum (uma forma sem pilha) mede exactamente o que media.
+        let [a, b, c, d, _, _] = xf.as_coeffs();
+        let sx = (a * a + b * b).sqrt();
+        let sy = (c * c + d * d).sqrt();
+        let mut m = 0.0_f64;
+        for camada in path.paint_stack() {
+            let ph2d_vec_scene::PaintRef::Stroke(s) = camada.paint else {
+                continue;
+            };
             // Só a JUNTA e o `miter_limit` são lidos aqui; um tracejado não muda o
             // transbordo, então medir o caminho para o ajustar seria trabalho por nada.
             let k = kurbo_stroke(s, None);
@@ -56,7 +68,9 @@ pub(crate) fn inflate_for_stroke(path: &VecPath, xf: Affine, r: Rect) -> Rect {
             } else {
                 1.0
             };
-            let m = 0.5 * s.width * sx.max(sy) * reach;
+            m = m.max(0.5 * s.width * sx.max(sy) * reach);
+        }
+        if m > 0.0 {
             r = r.inflate(m, m);
         }
     }

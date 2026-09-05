@@ -76,14 +76,17 @@ fn alfa(c: ph2d_vec_scene::Rgba8) -> String {
 }
 
 /// A tinta de preenchimento como atributos SVG, mais o que ela perdeu.
-fn tinta(paint: &Paint, id: u64, defs: &mut String) -> (String, Option<&'static str>) {
+/// ⚠️ **O `k` é o índice da CAMADA**, e não enfeite: com a pilha de aparência (v20) uma forma pode
+/// ter N gradientes, e um `id` de `<linearGradient>` repetido faz o segundo silenciosamente
+/// referenciar o primeiro — todas as camadas sairiam com a mesma rampa.
+fn tinta(paint: &Paint, id: u64, k: usize, defs: &mut String) -> (String, Option<&'static str>) {
     match paint {
         Paint::Solid(c) => (
             format!(r#"fill="{}" fill-opacity="{}""#, cor(*c), alfa(*c)),
             None,
         ),
         Paint::Linear { stops, start, end } => {
-            let g = format!("g{id}");
+            let g = format!("g{id}_{k}");
             let _ = write!(
                 defs,
                 r#"<linearGradient id="{g}" gradientUnits="userSpaceOnUse" x1="{}" y1="{}" x2="{}" y2="{}">"#,
@@ -101,7 +104,7 @@ fn tinta(paint: &Paint, id: u64, defs: &mut String) -> (String, Option<&'static 
             center,
             radius,
         } => {
-            let g = format!("g{id}");
+            let g = format!("g{id}_{k}");
             let _ = write!(
                 defs,
                 r#"<radialGradient id="{g}" gradientUnits="userSpaceOnUse" cx="{}" cy="{}" r="{}">"#,
@@ -243,35 +246,57 @@ pub(crate) fn svg(
             ph2d_vec_scene::FillRule::EvenOdd => "evenodd",
             ph2d_vec_scene::FillRule::NonZero => "nonzero",
         };
-        // ⭐⭐ **DOIS elementos, e é a lei do renderer.** O preenchimento só leva os contornos
-        // FECHADOS (`build_fill_bezpath`); o traço leva TODOS. Um SVG com um elemento só fecharia
-        // implicitamente cada contorno aberto e abriria regiões que o app não pinta.
-        if let Some(paint) = &p.fill {
-            let d = ph2d_vec_render::build_contours(p, Some(true)).to_svg();
-            if !d.is_empty() {
-                let (attrs, perdeu) = tinta(paint, *id, &mut defs);
-                if let Some(o) = perdeu {
-                    aproximadas.push((*id, o));
-                }
-                let _ = write!(
-                    corpo,
-                    "\n  <path data-ph2d-id=\"{id}\"{marca} fill-rule=\"{regra}\" {attrs} stroke=\"none\" d=\"{d}\"/>"
-                );
+        // ⭐⭐⭐ **UM ELEMENTO POR CAMADA, e a lista sai da PORTA** ([`VecPath::paint_stack`], v20):
+        // o chão (preenchimento, depois contorno) e a seguir cada camada da pilha de aparência.
+        //
+        // ⭐⭐ **E são elementos SEPARADOS, que é a lei do renderer.** O preenchimento só leva os
+        // contornos FECHADOS (`build_fill_bezpath`); o traço leva TODOS. Um SVG com um elemento só
+        // fecharia implicitamente cada contorno aberto e abriria regiões que o app não pinta.
+        for (k, camada) in p.paint_stack().enumerate() {
+            // ⭐ O SVG exprime as DUAS propriedades de uma camada, então nada se perde aqui: o
+            // `opacity` de um elemento e o `mix-blend-mode` do CSS são exactamente o que a entrada
+            // guarda. ⛔ Um modo sem nome em CSS sai NOMEADO em vez de virar `normal` calado.
+            let mut extra = String::new();
+            if camada.opacity < 1.0 {
+                let _ = write!(extra, r#" opacity="{}""#, num(f64::from(camada.opacity)));
             }
-        }
-        if let Some(s) = &p.stroke
-            && s.width > 0.0
-        {
-            let d = ph2d_vec_render::build_contours(p, None).to_svg();
-            if !d.is_empty() {
-                let (attrs, perdeu) = traco(s);
-                if let Some(o) = perdeu {
-                    aproximadas.push((*id, o));
+            if camada.blend != ph2d_vec_scene::BlendMode::Normal {
+                match ph2d_vec_svg::css_blend_name(camada.blend) {
+                    Some(nome) => {
+                        let _ = write!(extra, r#" style="mix-blend-mode:{nome}""#);
+                    }
+                    None => aproximadas.push((*id, "modo de mistura sem equivalente em CSS")),
                 }
-                let _ = write!(
-                    corpo,
-                    "\n  <path data-ph2d-id=\"{id}\"{marca} fill=\"none\" {attrs} d=\"{d}\"/>"
-                );
+            }
+            match camada.paint {
+                ph2d_vec_scene::PaintRef::Fill(paint) => {
+                    let d = ph2d_vec_render::build_contours(p, Some(true)).to_svg();
+                    if d.is_empty() {
+                        continue;
+                    }
+                    let (attrs, perdeu) = tinta(paint, *id, k, &mut defs);
+                    if let Some(o) = perdeu {
+                        aproximadas.push((*id, o));
+                    }
+                    let _ = write!(
+                        corpo,
+                        "\n  <path data-ph2d-id=\"{id}\"{marca}{extra} fill-rule=\"{regra}\" {attrs} stroke=\"none\" d=\"{d}\"/>"
+                    );
+                }
+                ph2d_vec_scene::PaintRef::Stroke(s) => {
+                    let d = ph2d_vec_render::build_contours(p, None).to_svg();
+                    if d.is_empty() {
+                        continue;
+                    }
+                    let (attrs, perdeu) = traco(s);
+                    if let Some(o) = perdeu {
+                        aproximadas.push((*id, o));
+                    }
+                    let _ = write!(
+                        corpo,
+                        "\n  <path data-ph2d-id=\"{id}\"{marca}{extra} fill=\"none\" {attrs} d=\"{d}\"/>"
+                    );
+                }
             }
         }
     }

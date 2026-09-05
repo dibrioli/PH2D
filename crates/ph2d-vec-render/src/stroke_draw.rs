@@ -30,9 +30,31 @@ pub(crate) fn draw_stroke_with(
     tile: Option<&PatternTile>,
     brush_art: Option<&[VecPath]>,
 ) {
+    if let Some(s) = path.stroke.as_ref() {
+        draw_one_stroke(path, s, tess, transform, target, tile, brush_art);
+    }
+}
+
+/// ⭐⭐⭐ **A porta com o `StrokeSpec` EXPLÍCITO** (v20) — a que a PILHA DE APARÊNCIA usa.
+///
+/// ⚠️ **Extraída, e não copiada, pela terceira vez neste ficheiro.** A de cima passou a ser um
+/// invólucro de duas linhas: ela responde *"o traço de BASE desta forma"*, e esta responde *"este
+/// traço, nesta forma"* — que é a pergunta que uma forma com N contornos faz N vezes. Uma segunda
+/// transcrição do que um traço desenha (tracejado, pontas, alinhamento, padrão, pincel) divergiria
+/// no primeiro ajuste, e o doc do módulo já escreve essa lei duas vezes.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn draw_one_stroke(
+    path: &VecPath,
+    s: &ph2d_vec_scene::StrokeSpec,
+    tess: &PathTess,
+    transform: Affine,
+    target: &mut VectorScene,
+    tile: Option<&PatternTile>,
+    brush_art: Option<&[VecPath]>,
+) {
     let fill_bp = tess.fill_bp.as_ref();
     let stroke_own = tess.stroke_bp.as_ref();
-    if let Some(s) = path.stroke.as_ref() {
+    {
         let bp = stroke_own
             .or(fill_bp)
             .expect("stroke => um dos dois desenhos existe");

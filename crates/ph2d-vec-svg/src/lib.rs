@@ -115,6 +115,43 @@ pub fn world_to_svg(pixels_per_meter: f64) -> Xform {
     Xform([k, 0.0, 0.0, -k, 0.0, 0.0])
 }
 
+/// ⭐⭐⭐ **COMO UM MODO DE MISTURA SE ESCREVE EM SVG** — a porta única do nome, nos dois sentidos.
+///
+/// O `mix-blend-mode` do CSS tem exactamente os 16 modos do W3C, e são os mesmos 16 que o
+/// [`crate::import`] traduz de volta. ⛔ **`None` para os que o CSS não tem** (o `Add`, o `Behind`,
+/// o `Clear` e os três do Photoshop): escrever um nome que o leitor não conhece fá-lo cair em
+/// `normal` **em silêncio**, e o ficheiro passaria a mentir sobre o que o desenho faz.
+///
+/// ⚠️ *Um vocabulário com dois donos escrito duas vezes diverge no primeiro modo novo* — e este já
+/// tem dois: o importador (que lê) e o exportador da shell (que escreve).
+#[must_use]
+pub fn css_blend_name(m: ph2d_blend_mode::BlendMode) -> Option<&'static str> {
+    use ph2d_blend_mode::BlendMode as B;
+    Some(match m {
+        B::Normal => return None, // o neutro não se escreve
+        B::Multiply => "multiply",
+        B::Screen => "screen",
+        B::Overlay => "overlay",
+        B::Darken => "darken",
+        B::Lighten => "lighten",
+        B::ColorDodge => "color-dodge",
+        B::ColorBurn => "color-burn",
+        B::HardLight => "hard-light",
+        B::SoftLight => "soft-light",
+        B::Difference => "difference",
+        B::Exclusion => "exclusion",
+        B::Hue => "hue",
+        B::Saturation => "saturation",
+        B::Color => "color",
+        B::Luminosity => "luminosity",
+        // ⛔ Sem equivalente em CSS. Quem exporta NOMEIA a perda; escrever `normal` calado seria o
+        // ficheiro a afirmar uma composição que o documento não faz.
+        B::Add | B::Behind | B::Clear | B::LinearBurn | B::VividLight | B::LinearLight => {
+            return None;
+        }
+    })
+}
+
 /// **O exportador escreve UNIDADES DE MUNDO**: uma unidade do documento vira uma unidade do
 /// ficheiro. É decisão dele (o consumidor lê números e compara-os com a régua do editor), e é o
 /// único grau de liberdade que ele tem sobre a lei — o Y desce em qualquer escala.

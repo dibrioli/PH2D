@@ -164,3 +164,122 @@ fn a_param_row_is_registered_after_the_card_body() {
         "e entrou DEPOIS do corpo, que e' o que a faz ganhar o gesto"
     );
 }
+
+fn enum_param(value: f32, labels: &'static [&'static str]) -> CardParam {
+    CardParam {
+        hint: ParamUiHint {
+            param: "mode",
+            label: "Mode",
+            min: 0.0,
+            max: (labels.len().saturating_sub(1)) as f32,
+            step: 1.0,
+            widget: ParamWidget::Enum { labels },
+        },
+        value,
+        driven: false,
+        swatch: None,
+    }
+}
+
+fn toggle_param(value: f32) -> CardParam {
+    CardParam {
+        hint: ParamUiHint {
+            param: "invert",
+            label: "Invert",
+            min: 0.0,
+            max: 1.0,
+            step: 1.0,
+            widget: ParamWidget::Toggle,
+        },
+        value,
+        driven: false,
+        swatch: None,
+    }
+}
+
+/// Um CLIQUE (pressão e largada sem varrer) na row `row`.
+fn click(snap: &GraphViewSnapshot, row: u16) -> Vec<GraphIntent> {
+    let _ = drain_intents();
+    let mut st = MotionGraphPanelState::default();
+    st.fitted = true;
+    super::apply_gesture(
+        &mut st,
+        gesture(
+            GraphHitKind::ParamRow { node: 7, row },
+            GesturePhase::Click,
+            100.0,
+            60.0,
+        ),
+        RECT,
+        CENTER,
+        snap,
+    );
+    drain_intents()
+}
+
+/// ⭐⭐ **UM CLIQUE AVANÇA O ENUM, COM VOLTA AO PRINCÍPIO** — é o gesto de quem quer *a
+/// seguinte*, e o `Enum` é **20 % de todas as rows do catálogo, em 85 nós** (censo de
+/// 2026-09-05). Arrastar continua a varrer, que é como se atravessa um enum de 48 opções.
+/// FALSIFICADO por o clique não emitir nada (o artista fica com um rótulo que não muda) ou por
+/// não dar a volta (a última opção prende).
+#[test]
+fn a_click_advances_an_enum_and_wraps() {
+    let snap = card(vec![enum_param(0.0, &["Sine", "Triangle", "Square"])]);
+    let saiu = click(&snap, 0);
+    let Some(GraphIntent::SetParam { value, param, .. }) = saiu.first() else {
+        panic!("o clique tem de avancar o enum, e saiu {saiu:?}");
+    };
+    assert_eq!(*param, "mode");
+    assert_eq!(*value, 1.0, "de Sine para Triangle");
+
+    let snap = card(vec![enum_param(2.0, &["Sine", "Triangle", "Square"])]);
+    let saiu = click(&snap, 0);
+    let Some(GraphIntent::SetParam { value, .. }) = saiu.first() else {
+        panic!("sem intencao na ultima opcao");
+    };
+    assert_eq!(*value, 0.0, "da ultima volta ao principio");
+}
+
+/// **UM CLIQUE VIRA O INTERRUPTOR** — nos dois sentidos. FALSIFICADO por o clique escrever
+/// sempre o mesmo valor (o interruptor liga e nunca desliga).
+#[test]
+fn a_click_flips_a_toggle_both_ways() {
+    for (antes, depois) in [(0.0_f32, 1.0_f32), (1.0, 0.0)] {
+        let snap = card(vec![toggle_param(antes)]);
+        let saiu = click(&snap, 0);
+        let Some(GraphIntent::SetParam { value, .. }) = saiu.first() else {
+            panic!("o clique tem de virar o interruptor");
+        };
+        assert_eq!(*value, depois, "de {antes} para {depois}");
+    }
+}
+
+/// ⚠️ **LARGAR DEPOIS DE VARRER NÃO DÁ MAIS UM PASSO** — se o `End` de um arrasto também
+/// avançasse, o valor saltaria por cima do que o artista acabou de escolher. FALSIFICADO por
+/// juntar `End` ao braço do `Click`.
+#[test]
+fn releasing_after_a_scrub_does_not_advance_the_enum() {
+    let snap = card(vec![enum_param(1.0, &["a", "b", "c"])]);
+    let _ = drain_intents();
+    let mut st = MotionGraphPanelState::default();
+    st.fitted = true;
+    let kind = GraphHitKind::ParamRow { node: 7, row: 0 };
+    for fase in [GesturePhase::Begin, GesturePhase::End] {
+        super::apply_gesture(&mut st, gesture(kind, fase, 100.0, 60.0), RECT, CENTER, &snap);
+    }
+    assert!(
+        drain_intents().is_empty(),
+        "pressionar e largar sem varrer nao escreve — quem escreve e' o Click"
+    );
+}
+
+/// **UM PARAM CONTÍNUO IGNORA O CLIQUE** — clicar num slider não deve mexer no número (só o
+/// arrasto o move). FALSIFICADO por o braço do clique cair no `_ => {}` errado.
+#[test]
+fn a_click_on_a_slider_changes_nothing() {
+    let snap = card(vec![param("rows", 5.0, 0.1, false)]);
+    assert!(
+        click(&snap, 0).is_empty(),
+        "um clique num slider nao escreve nada"
+    );
+}

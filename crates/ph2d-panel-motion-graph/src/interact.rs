@@ -568,7 +568,36 @@ fn apply_param_row(
                 });
             }
         }
-        GesturePhase::End | GesturePhase::Click | GesturePhase::DoubleClick => {
+        // ⭐⭐ **UM CLIQUE NUM ESTADO ALTERNA-O** — um interruptor vira, um enum avança para a
+        // opção seguinte (com volta ao princípio). Arrastar continua a varrer, que é como se
+        // atravessa depressa um enum de 48 opções; o clique é o gesto de quem quer *a
+        // seguinte*, e é o único que um dedo faz sem querer varrer.
+        //
+        // ⚠️ **Só o CLIQUE**, nunca o `End` de um arrasto: senão largar o dedo depois de varrer
+        // dava mais um passo, e o valor saltava por cima do que o artista tinha escolhido.
+        GesturePhase::Click => {
+            match p.hint.widget {
+                ph2d_node_registry::ParamWidget::Toggle => {
+                    push_intent(GraphIntent::SetParam {
+                        node,
+                        param: p.hint.param,
+                        value: f32::from(u8::from(p.value < 0.5)),
+                    });
+                }
+                ph2d_node_registry::ParamWidget::Enum { labels } if !labels.is_empty() => {
+                    let n = labels.len() as f32;
+                    let proxima = (p.value.round() + 1.0).rem_euclid(n);
+                    push_intent(GraphIntent::SetParam {
+                        node,
+                        param: p.hint.param,
+                        value: proxima,
+                    });
+                }
+                _ => {}
+            }
+            state.interaction = Interaction::Idle;
+        }
+        GesturePhase::End | GesturePhase::DoubleClick => {
             state.interaction = Interaction::Idle;
         }
     }

@@ -504,3 +504,61 @@ fn opening_a_section_brings_its_rows_back() {
         "com tudo aberto nenhuma seccao esconde nada"
     );
 }
+
+/// **O CENSO DAS ESPÉCIES DE CONTROLO** — onde o esforço dos editores ricos tem de ir.
+///
+/// `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture what_species_of_control_the_catalogue_has`
+#[test]
+#[ignore = "sonda de censo, nao um gate"]
+fn what_species_of_control_the_catalogue_has() {
+    use std::collections::BTreeMap;
+    let mut por_especie: BTreeMap<&'static str, (usize, usize)> = BTreeMap::new();
+    let base = MotionState::new();
+    let tipos: Vec<String> = base.registry.manifests().map(|m| m.name.to_string()).collect();
+    drop(base);
+    for nome in &tipos {
+        let mut m = MotionState::new();
+        let id = m.doc.graph.add_node(nome.clone());
+        open_every_section(&mut m, id);
+        let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+        stamp_card_params(&m, &mut snap);
+        let Some(v) = snap.nodes.iter().find(|v| v.id == id.0) else {
+            continue;
+        };
+        let mut vistos: Vec<&'static str> = Vec::new();
+        for c in &v.params {
+            let e = match c.hint.widget {
+                ph2d_node_registry::ParamWidget::Slider => "Slider",
+                ph2d_node_registry::ParamWidget::IntSlider => "IntSlider",
+                ph2d_node_registry::ParamWidget::Angle => "Angle",
+                ph2d_node_registry::ParamWidget::Toggle => "Toggle",
+                ph2d_node_registry::ParamWidget::Seed => "Seed",
+                ph2d_node_registry::ParamWidget::Color { .. } => "Color",
+                ph2d_node_registry::ParamWidget::Enum { .. } => "Enum",
+                ph2d_node_registry::ParamWidget::Channels { .. } => "Channels",
+                ph2d_node_registry::ParamWidget::Source => "Source",
+                ph2d_node_registry::ParamWidget::Text => "Text",
+                ph2d_node_registry::ParamWidget::Curve => "Curve",
+                ph2d_node_registry::ParamWidget::Gradient => "Gradient",
+                ph2d_node_registry::ParamWidget::Palette => "Palette",
+                ph2d_node_registry::ParamWidget::File { .. } => "File",
+            };
+            let slot = por_especie.entry(e).or_default();
+            slot.0 += 1;
+            if !vistos.contains(&e) {
+                vistos.push(e);
+                slot.1 += 1;
+            }
+        }
+    }
+    let total: usize = por_especie.values().map(|(n, _)| n).sum();
+    eprintln!("  {total} rows de cartao, por especie de controlo:");
+    let mut linhas: Vec<_> = por_especie.iter().collect();
+    linhas.sort_by_key(|(_, (n, _))| std::cmp::Reverse(*n));
+    for (e, (n, nos)) in linhas {
+        eprintln!(
+            "  {n:>4} ({:>4.1}%) │ em {nos:>3} nos │ {e}",
+            *n as f64 * 100.0 / total as f64
+        );
+    }
+}

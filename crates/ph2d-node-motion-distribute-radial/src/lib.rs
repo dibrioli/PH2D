@@ -70,6 +70,7 @@ use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, SourceWindow};
 use ph2d_nodegraph::node::{
     LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec, RECOMMENDED_MAX_ELEMENTS,
     param_as_count,
@@ -212,6 +213,198 @@ fn ring_counts(count: usize, rings: usize) -> Vec<usize> {
 /// With `align`, each point also reports the **outward heading there**, in degrees. It is the very
 /// `cycles` that placed the point, scaled to degrees — not an `atan2` of the position, which would
 /// re-derive through an approximation what this loop already knows exactly (module docs).
+/// ⭐⭐⭐ **O LEQUE RADIAL NO DEVICE** — ciclo 1 (doc 104), lei §2.1 da dinâmica.
+///
+/// ⚠️ **A parte que parecia impedir isto — «qual é o anel do elemento `i`?» — tem FORMA
+/// FECHADA.** `ring_counts` reparte `count` por `rings` como `base = count/rings` mais um
+/// extra nos primeiros `rem = count % rings`, então os anéis cheios ocupam o prefixo
+/// `rem·(base+1)` e o resto é uniforme: nenhum laço, nenhuma soma de prefixo, nenhum readback.
+///
+/// ⭐ **Paridade ao bit por construção:** a trigonometria já é a parábola corrigida
+/// transcendental-free (`trig.rs`, a mesma do oscilador e do `motion.fibonacci`), e o WGSL
+/// escreve as mesmas operações pela mesma ordem.
+///
+/// ⚠️ **O `spin` lê-se no ÍNDICE 0**, como o `eval` faz (`v.first()`), e não por elemento: este
+/// nó gira o leque INTEIRO, não cada pétala. Ler `read_v(i)` daria outro produto no dia em que
+/// alguém ligasse ali um campo por-elemento.
+const RADIAL_BINDINGS: &[ColumnBinding] = &[
+    ColumnBinding {
+        column: "P",
+        dim: Dim::Vec2,
+        access: ColumnAccess::Write,
+        identity: [0.0; 4],
+        port: 0,
+    },
+    ColumnBinding {
+        column: VALUE_COL,
+        dim: Dim::Scalar,
+        access: ColumnAccess::Read,
+        identity: [0.0; 4],
+        port: 0,
+    },
+];
+
+/// A variante com `align`: a mesma conta, mais a coluna `rot`. ⚠️ **Duas listas de bindings e
+/// não uma com um `if`** — o conjunto de colunas de um kernel é estático, e é `variant_by_param`
+/// que escolhe. Emitir `rot = 0` sempre seria uma corrente diferente da que a CPU emite.
+const RADIAL_BINDINGS_ALIGN: &[ColumnBinding] = &[
+    ColumnBinding {
+        column: "P",
+        dim: Dim::Vec2,
+        access: ColumnAccess::Write,
+        identity: [0.0; 4],
+        port: 0,
+    },
+    ColumnBinding {
+        column: "rot",
+        dim: Dim::Scalar,
+        access: ColumnAccess::Write,
+        identity: [0.0; 4],
+        port: 0,
+    },
+    ColumnBinding {
+        column: VALUE_COL,
+        dim: Dim::Scalar,
+        access: ColumnAccess::Read,
+        identity: [0.0; 4],
+        port: 0,
+    },
+];
+
+/// O corpo comum: resolve `(anel, k)` e o ângulo, deixando `rad_cycles` e `rad_rr` prontos.
+const RADIAL_BODY: &str = "\
+    let rad_n = max(min(floor(params.count_), 16777216.0), 1.0);\n\
+    let rad_rings_p = clamp(round(params.rings), 1.0, 256.0);\n\
+    let rad_rings = min(rad_rings_p, rad_n);\n\
+    let rad_base = floor(rad_n / rad_rings);\n\
+    let rad_rem = rad_n - rad_base * rad_rings;\n\
+    let rad_cheios = rad_rem * (rad_base + 1.0);\n\
+    let fi = f32(i);\n\
+    var rad_r = 0.0;\n\
+    var rad_k = 0.0;\n\
+    var rad_ring_n = rad_base;\n\
+    if (fi < rad_cheios) {\n\
+    \x20   let w = rad_base + 1.0;\n\
+    \x20   rad_r = floor(fi / w);\n\
+    \x20   rad_k = fi - rad_r * w;\n\
+    \x20   rad_ring_n = w;\n\
+    } else if (rad_base > 0.0) {\n\
+    \x20   let j = fi - rad_cheios;\n\
+    \x20   rad_r = rad_rem + floor(j / rad_base);\n\
+    \x20   rad_k = j - floor(j / rad_base) * rad_base;\n\
+    }\n\
+    var rad_rr = params.radius;\n\
+    if (rad_rings > 1.0) {\n\
+    \x20   rad_rr = params.inner + (params.radius - params.inner) * rad_r / (rad_rings - 1.0);\n\
+    }\n\
+    let rad_sweep = (params.end_angle - params.start_angle) / 360.0;\n\
+    let rad_wraps = fract(abs(rad_sweep)) == 0.0;\n\
+    var rad_frac = 0.0;\n\
+    let rad_nn = max(rad_ring_n, 1.0);\n\
+    if (rad_nn > 1.0) {\n\
+    \x20   if (rad_wraps) { rad_frac = rad_k / rad_nn; } else { rad_frac = rad_k / (rad_nn - 1.0); }\n\
+    }\n\
+    let rad_cycles = params.start_angle / 360.0 + rad_frac * rad_sweep + read_v(0u) / 360.0;\n\
+    write_P(i, vec2<f32>(rad_rr * rad_sin(rad_cycles + 0.25), rad_rr * rad_sin(rad_cycles)));\n";
+
+/// A parábola corrigida, operação a operação como no `trig.rs`.
+const RADIAL_LIB: &str = "\
+    fn rad_sin(phase: f32) -> f32 {\n\
+    \x20   let f = phase - floor(phase);\n\
+    \x20   var p: f32;\n\
+    \x20   if (f < 0.5) {\n\
+    \x20       let u = f * 2.0;\n\
+    \x20       p = 4.0 * u * (1.0 - u);\n\
+    \x20   } else {\n\
+    \x20       let u = (f - 0.5) * 2.0;\n\
+    \x20       p = -4.0 * u * (1.0 - u);\n\
+    \x20   }\n\
+    \x20   return 0.225 * (p * abs(p) - p) + p;\n\
+    }\n";
+
+/// O mesmo corpo, mais a coluna `rot` — o ângulo em graus, como o `eval` o escreve.
+const RADIAL_BODY_ALIGN: &str = "\
+    let rad_n = max(min(floor(params.count_), 16777216.0), 1.0);\n\
+    let rad_rings_p = clamp(round(params.rings), 1.0, 256.0);\n\
+    let rad_rings = min(rad_rings_p, rad_n);\n\
+    let rad_base = floor(rad_n / rad_rings);\n\
+    let rad_rem = rad_n - rad_base * rad_rings;\n\
+    let rad_cheios = rad_rem * (rad_base + 1.0);\n\
+    let fi = f32(i);\n\
+    var rad_r = 0.0;\n\
+    var rad_k = 0.0;\n\
+    var rad_ring_n = rad_base;\n\
+    if (fi < rad_cheios) {\n\
+    \x20   let w = rad_base + 1.0;\n\
+    \x20   rad_r = floor(fi / w);\n\
+    \x20   rad_k = fi - rad_r * w;\n\
+    \x20   rad_ring_n = w;\n\
+    } else if (rad_base > 0.0) {\n\
+    \x20   let j = fi - rad_cheios;\n\
+    \x20   rad_r = rad_rem + floor(j / rad_base);\n\
+    \x20   rad_k = j - floor(j / rad_base) * rad_base;\n\
+    }\n\
+    var rad_rr = params.radius;\n\
+    if (rad_rings > 1.0) {\n\
+    \x20   rad_rr = params.inner + (params.radius - params.inner) * rad_r / (rad_rings - 1.0);\n\
+    }\n\
+    let rad_sweep = (params.end_angle - params.start_angle) / 360.0;\n\
+    let rad_wraps = fract(abs(rad_sweep)) == 0.0;\n\
+    var rad_frac = 0.0;\n\
+    let rad_nn = max(rad_ring_n, 1.0);\n\
+    if (rad_nn > 1.0) {\n\
+    \x20   if (rad_wraps) { rad_frac = rad_k / rad_nn; } else { rad_frac = rad_k / (rad_nn - 1.0); }\n\
+    }\n\
+    let rad_cycles = params.start_angle / 360.0 + rad_frac * rad_sweep + read_v(0u) / 360.0;\n\
+    write_P(i, vec2<f32>(rad_rr * rad_sin(rad_cycles + 0.25), rad_rr * rad_sin(rad_cycles)));\n\
+    write_rot(i, rad_cycles * 360.0);\n";
+
+const RADIAL_PARAMS: &[&str] = &["count", "rings", "radius", "inner", "start_angle", "end_angle"];
+
+fn radial_count(c: &ph2d_nodegraph::gpu::CountLawCtx) -> SourceWindow {
+    SourceWindow::of_count(
+        param_as_count((c.param)("count"), RECOMMENDED_MAX_ELEMENTS).max(1),
+    )
+}
+
+static RADIAL_KERNEL: GpuKernel = GpuKernel {
+    wgsl: RADIAL_BODY,
+    wgsl_lib: RADIAL_LIB,
+    bindings: RADIAL_BINDINGS,
+    params: RADIAL_PARAMS,
+    count_law: Some(radial_count),
+    variant_by_param: None,
+    applicable: None,
+};
+
+static RADIAL_KERNEL_ALIGN: GpuKernel = GpuKernel {
+    wgsl: RADIAL_BODY_ALIGN,
+    wgsl_lib: RADIAL_LIB,
+    bindings: RADIAL_BINDINGS_ALIGN,
+    params: RADIAL_PARAMS,
+    count_law: Some(radial_count),
+    variant_by_param: None,
+    applicable: None,
+};
+
+/// A porta que o registry vê: escolhe a variante pelo `align`, como o `motion.drive` escolhe
+/// pelo canal.
+static RADIAL_KERNEL_ROOT: GpuKernel = GpuKernel {
+    wgsl: RADIAL_BODY,
+    wgsl_lib: RADIAL_LIB,
+    bindings: RADIAL_BINDINGS,
+    params: RADIAL_PARAMS,
+    count_law: Some(radial_count),
+    variant_by_param: Some(|param| {
+        if param("align") >= 0.5 {
+            &RADIAL_KERNEL_ALIGN
+        } else {
+            &RADIAL_KERNEL
+        }
+    }),
+    applicable: None,
+};
+
 fn radial(
     count: usize,
     rings: usize,
@@ -295,6 +488,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_gpu_kernel(MANIFEST.id, RADIAL_KERNEL_ROOT);
     Ok(())
 }
 

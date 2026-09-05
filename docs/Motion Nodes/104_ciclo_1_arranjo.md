@@ -104,7 +104,7 @@ multiplicavam zero).
 | `motion.fibonacci` | 10 000 | ✅ | 1 | 0,05 ms | ⭐ **kernel escrito neste ciclo** |
 | `motion.voronoi` | 2 000 | ✅ | 1 | **19,68 ms** | ⏳ caro para a contagem |
 | `motion.scatter` | 10 000 | ⛔ | — | **153,15 → 6,87 ms** | ⭐⭐ **22×, ao bit** |
-| `motion.distribute_radial` | 10 000 | ⛔ | — | 0,06 ms | sem kernel |
+| `motion.distribute_radial` | 10 000 | ✅ | 2 | 0,06 ms | ⭐ **kernel escrito neste ciclo** |
 | `motion.lattice` | 10 000 | ⛔ | — | 0,02 ms | sem kernel |
 | `motion.distribute_poisson` | 91 | ⛔ | — | 0,10 ms | sem kernel |
 | `motion.distribute_curve` | 10 000 | ⛔ | — | 0,11 ms | sem kernel |
@@ -135,11 +135,23 @@ pontos já colocados** ⇒ ~600 milhões de distâncias. Curado com uma grelha d
 e saltava o miolo com um `if` (`O(r²)` por anel) e não parava quando o anel já cobria a grelha
 — com a grelha quase vazia isso percorria-a toda por cada um dos primeiros pontos.
 
+### 3.1-bis ⭐ O leque radial no device — e a peça que parecia impedi-lo
+
+*«Qual é o anel do elemento `i`?»* parecia pedir uma soma de prefixo (logo, um segundo passe ou
+um readback). **Tem forma fechada:** `ring_counts` reparte `count` por `rings` como
+`base = count/rings` mais um extra nos primeiros `rem = count % rings`, então os anéis cheios
+ocupam o prefixo `rem·(base+1)` e o resto é uniforme — nenhum laço, nenhuma soma, nenhum
+readback.
+
+⚠️ **Duas armadilhas medidas:** a coluna `rot` só existe com `align`, e o conjunto de colunas de
+um kernel é ESTÁTICO ⇒ duas listas de bindings e um `variant_by_param` (emitir `rot = 0` sempre
+seria outra corrente). E `count` é um **uniform interno**: o codegen renomeia o param para
+`params.count_`, e sem isso o naga recusa com *«wrong type passed to `floor`»*.
+
 ### 3.2 ⏳ O que fica, com o mecanismo nomeado
 
 | nó | por que ainda não está no device | tamanho |
 |---|---|---|
-| `distribute_radial` | fórmula fechada — **falta só o kernel**; ⚠️ a coluna `rot` só existe com `align`, logo pede `variant_by_param`, e ele lê um `spin` da porta 0 | pequeno |
 | `distribute_curve` | fórmula fechada (cúbica amostrada) — falta o kernel | pequeno |
 | `lattice` | ⚠️ **recorta por REGIÃO**, logo a contagem depende de dados: é a mesma cerca do *problema do círculo de Gauss* que o `motion.grid` já documenta ⇒ kernel com `applicable = (shape == Rect)`, como ele | médio |
 | `clone` | multiplica a entrada: pede `count_law` sobre a contagem de entrada + `StreamOp` | médio |

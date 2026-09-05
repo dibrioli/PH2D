@@ -159,12 +159,18 @@ impl crate::App {
             "[instance smoke 3] PASSO 6: arraste a CARROCARIA azul de um dos carros (nao a roda)"
         );
         println!(
-            "[instance smoke 3] PASSO 7: na lista da esquerda, abra a receita 'Car' e apague a \\
-             linha 'Body' dela"
+            "[instance smoke 3] PASSO 7: na lista da esquerda abra a linha 'Car' -- e' a RECEITA, \
+             e as copias chamam-se 'Car (1)' e 'Car (2)' -- e apague o 'Body' DELA"
         );
         println!(
-            "[instance smoke 3] PASSO 8: o cartao passa a dizer, por extenso, 'Transform - was on \\
+            "[instance smoke 3] PASSO 8: o cartao passa a dizer, por extenso, 'Transform - was on \
              \"Body\"' -- e o botao ao lado apaga exactamente essa"
+        );
+        // ⚠️ **A ambiguidade das DUAS linhas `Body` foi o que produziu o report de 05/09** — hoje o
+        // gesto errado recusa com voz, e a cena di-lo antes de ele o tentar.
+        println!(
+            "[instance smoke 3] (apagar o 'Body' de uma COPIA e' recusado, com aviso: a forma de \
+             uma copia e' a da receita)"
         );
     }
 }
@@ -302,6 +308,151 @@ mod tests {
             "Body",
             "o painel nao vai poder dizer QUAL"
         );
+    }
+
+    /// ⭐⭐⭐ **APAGAR UMA PEÇA QUE A RECEITA DEU É RECUSADO NUMA CÓPIA** (report do Enio,
+    /// 2026-09-05: *«ao tentar deletar o objeto, ele não é deletado e volta para sua posição de
+    /// origem»*).
+    ///
+    /// ⚠️ **A recusa é NARROW**: a cópia inteira apaga-se, o que o artista pendurou dentro dela
+    /// apaga-se, a peça da RECEITA apaga-se — só a peça **dentro de uma cópia** é que não.
+    ///
+    /// **Mutação que deve sangrar:** o `is_a_recipe_given_piece` deixar de exigir `root != entity`
+    /// (aí a cópia inteira passa a ser inapagável) ou passar a devolver `false` (aí volta o
+    /// report).
+    #[test]
+    fn only_a_piece_the_recipe_gave_is_refused_and_the_rest_stays_deletable() {
+        let (mut sim, r, cars, _loose) = build();
+        let bridge = PhysicsBridge::new();
+        let mut echo = MasterEcho::default();
+        let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+        sync_instances(
+            &mut sim,
+            &r,
+            &bridge,
+            &mut echo,
+            &mut crate::instance_docs::OwnedDocs {
+                vec_scene: &mut sc,
+                vec_entities: &mut mp,
+            },
+        );
+        let refused =
+            |sim: &mut SimWorld, e: Entity| crate::instance_verbs::is_a_recipe_given_piece(sim, e);
+
+        // ⛔ RECUSADO — a carroçaria de um carro da cena veio da receita.
+        let body = named(&sim, cars[0], "Body");
+        assert!(refused(&mut sim, body), "a peca da copia tinha de recusar");
+        // ⛔ RECUSADO — e a roda aninhada também: ela é raiz de uma instância DA RODA, e continua
+        // a ser uma peça que a receita do Carro deu.
+        let wheel = named(&sim, cars[0], "Wheel (1)");
+        assert!(
+            refused(&mut sim, wheel),
+            "a copia aninhada e' peca do Carro — o `instance_root_of` sobe ate' a raiz mais externa"
+        );
+
+        // ✅ PERMITIDO — a cópia inteira é um objecto da cena.
+        assert!(
+            !refused(&mut sim, cars[0]),
+            "apagar uma copia inteira e' um gesto normal"
+        );
+        // ✅ PERMITIDO — o que o artista pendurou na cópia nunca veio do mestre.
+        let mine = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, Name::new("Sticker"), ChildOf(cars[0])))
+            .id();
+        assert!(
+            !refused(&mut sim, mine),
+            "so' o que a receita deu e' que a receita tira"
+        );
+        // ✅ PERMITIDO — a peça DA RECEITA, que é o gesto que o smoke pede.
+        let recipe_body = {
+            let mut q = sim
+                .world_mut()
+                .query_filtered::<Entity, bevy_ecs::prelude::With<ph2d_ecs::MasterRoot>>();
+            let car_recipe = q
+                .iter(sim.world())
+                .find(|&e| sim.world().get::<Name>(e).is_some_and(|n| n.0 == "Car"))
+                .expect("a receita do Carro");
+            named(&sim, car_recipe, "Body")
+        };
+        assert!(
+            !refused(&mut sim, recipe_body),
+            "apagar a peca NA RECEITA e' o caminho do smoke"
+        );
+    }
+
+    /// ⛔⛔ **O MECANISMO que a recusa existe para impedir, medido** — e é ele que torna o gesto
+    /// pior que um no-op.
+    ///
+    /// Sem a guarda, o `despawn` passa e o **passe estrutural re-materializa** a peça no quadro
+    /// seguinte (*só o que a receita deu é que a receita tira*) — com a pose do **MESTRE**. ⇒ a
+    /// edição do artista naquela peça **desaparece em silêncio**, e a chave de override dela
+    /// sobrevive a apontar para um valor que já não existe. *Um gesto que não faz nada é mau; um
+    /// que desfaz outra coisa é pior.*
+    ///
+    /// ⚠️ Este gate **não** mede a cura: ele mede o que aconteceria sem ela, e é a razão escrita
+    /// do lado de dentro. Ele chama o `despawn` directamente, por baixo da guarda.
+    #[test]
+    fn a_piece_deleted_behind_the_guard_comes_back_wearing_the_masters_pose() {
+        let (mut sim, r, cars, _loose) = build();
+        let bridge = PhysicsBridge::new();
+        let mut echo = MasterEcho::default();
+        let run = |sim: &mut SimWorld, echo: &mut MasterEcho| {
+            let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+            sync_instances(
+                sim,
+                &r,
+                &bridge,
+                echo,
+                &mut crate::instance_docs::OwnedDocs {
+                    vec_scene: &mut sc,
+                    vec_entities: &mut mp,
+                },
+            )
+        };
+        run(&mut sim, &mut echo);
+
+        let moved = Vec2::new(0.3, 0.2);
+        let body = named(&sim, cars[0], "Body");
+        sim.world_mut()
+            .entity_mut(body)
+            .insert(Transform::from_translation(moved));
+        run(&mut sim, &mut echo);
+
+        sim.world_mut().entity_mut(body).despawn();
+        run(&mut sim, &mut echo);
+
+        let back = named(&sim, cars[0], "Body");
+        assert_eq!(
+            sim.world().get::<Transform>(back).map(|t| t.translation.x),
+            Some(0.0),
+            "a peca voltou COM a pose do artista — o mecanismo mudou e a guarda pode ter outra razao"
+        );
+        assert_ne!(
+            moved.x, 0.0,
+            "a fixtura tem de MOVER a peca, senao nao mede nada"
+        );
+    }
+
+    /// ⛔ **OS PASSOS IMPRESSOS NÃO PODEM TER UMA BARRA SOLTA** — `\\` num literal Rust **não** é
+    /// continuação de linha: é uma barra invertida, mais o newline, mais a indentação. O texto
+    /// chega ao terminal partido ao meio.
+    ///
+    /// ⚠️ **Eu escrevi exactamente isso em 2026-09-05**, e nenhum dos cinco gates deste ficheiro o
+    /// via: eles medem o que a cena MONTA, e isto é o que ela DIZ. *A instrução ao dono é uma
+    /// superfície de produto, e a única deste módulo sem régua.*
+    #[test]
+    fn the_printed_steps_have_no_stray_backslash() {
+        let src = include_str!("instance_nested_smoke.rs");
+        // ⚠️ A própria linha do doc acima contém o padrão — por isso a varredura é só de CÓDIGO.
+        for (i, l) in src.lines().enumerate() {
+            let code = l.split_once("//").map_or(l, |(before, _)| before);
+            assert!(
+                !code.trim_end().ends_with("\\\\"),
+                "linha {}: `\\\\` no fim de um literal parte a mensagem em duas",
+                i + 1
+            );
+        }
     }
 
     /// A entidade chamada `name` na sub-árvore de `root` (a raiz incluída).

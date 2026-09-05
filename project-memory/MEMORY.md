@@ -50,6 +50,7 @@
 - ⭐ [Dois motivos simultâneos: a ORDEM do `if` escolhe o que o log diz — FACTO antes de AUSÊNCIA](feedback_a_suppression_log_that_names_the_wrong_simultaneous_cause_costs_a_journey.md)
 - ⭐ [Gate que mede o caso RARO deixa o normal sem régua (o espelho dava `0.000000` na forma)](feedback_a_gate_that_measures_the_rare_case_leaves_the_normal_one_without_a_ruler.md)
 - ⛔ [Gesto escrito em DUAS metades aceita a variante nova em SÓ UMA — silêncio absoluto, e a fixtura que chama a porta interna fica verde](feedback_a_gesture_written_in_two_halves_accepts_a_new_variant_in_only_one.md)
+- ⭐ [Passe que RECONCILIA transforma um apagar em desfazer silencioso — a guarda vai no GESTO, e a cerca vizinha não serve](feedback_a_reconciling_pass_turns_a_delete_into_a_silent_undo_of_another_edit.md)
 - [Regra fora do caminho não existe](feedback_a_rule_only_exists_if_it_is_on_the_path_of_who_executes_it.md) · [detector num GESTO perde o `return` cedo](feedback_a_change_detector_on_a_gesture_path_misses_the_gestures_that_return_early.md) · [ferramenta adotada = passo a NOMEIA](feedback_a_tool_is_adopted_only_when_a_written_step_names_it.md) · [arquivar sem indexar recusas](feedback_archiving_without_indexing_the_refusals_deletes_them.md)
 - [«Knob ausente» pode esconder um DEFEITO; e sonda com param no default mede o param desligado](feedback_a_missing_knob_cell_can_hide_a_defect_measure_before_pricing.md)
 - [Duas metades de uma cura, cada uma recusada SOZINHA, não a refutam — corra a célula (1,1)](feedback_two_halves_of_a_cure_each_refused_alone_do_not_refute_the_cure.md)

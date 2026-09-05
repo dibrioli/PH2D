@@ -513,7 +513,8 @@ pub(crate) fn drain(
 // cabeçalho de lá. Elas são re-exportadas aqui para os chamadores (e os gates) continuarem a
 // escrevê-las como sempre.
 pub(crate) use crate::instance_verbs_walk::{
-    belongs_to_an_instance, entity_for_stable_id, instance_root_of, stable_index, subtree,
+    belongs_to_an_instance, entity_for_stable_id, instance_root_of, is_a_recipe_given_piece,
+    stable_index, subtree,
 };
 
 #[cfg(test)]

@@ -394,11 +394,36 @@ pub(super) fn dispatch(
         // convention — multi-select right-click → Delete affects the
         // whole group). Otherwise just the clicked row. bevy_ecs 0.19
         // `ChildOf` cascade despawns descendants.
-        let to_delete: Vec<u64> = if hero.gizmo.is_selected(clicked_entity_bits) {
+        let wanted: Vec<u64> = if hero.gizmo.is_selected(clicked_entity_bits) {
             hero.gizmo.iter_selected().collect()
         } else {
             vec![clicked_entity_bits]
         };
+        // ⭐⭐⭐ **UMA PEÇA QUE A RECEITA DEU NÃO SE APAGA NUMA CÓPIA** (report do Enio,
+        // 2026-09-05: *«ao tentar deletar o objeto, ele não é deletado e volta para sua posição de
+        // origem»*).
+        //
+        // ⛔⛔ **Sem esta guarda o gesto era o pior dos três resultados possíveis**, e foi medido:
+        // o `despawn` passava, o passe estrutural **re-materializava** a peça no quadro seguinte
+        // (o mestre continua a tê-la — *só o que a receita deu é que a receita tira*), e ela
+        // voltava com a pose do **MESTRE** ⇒ a edição do artista naquela peça **desaparecia em
+        // silêncio**, com a chave de override dela a sobreviver a apontar para o valor que já não
+        // existe. *Um gesto que não faz nada é mau; um que desfaz outra coisa é pior.*
+        //
+        // ⚠️ **A voz diz ONDE fazer**: a mesma pergunta com resposta «não» e sem saída foi o que
+        // levou este report a existir — o artista tinha duas linhas chamadas `Body` na Hierarquia,
+        // uma da receita e uma da cópia, e nada lhe disse qual era qual.
+        //
+        // ⛔ **A recusa é NARROW e a porta é uma só** ([`crate::instance_verbs_walk::is_a_recipe_given_piece`]):
+        // apagar a cópia INTEIRA continua a ser um gesto normal, e o que o artista pendurou dentro
+        // dela (sem elo) também — *o passe estrutural já declara as duas metades*.
+        let (to_delete, from_a_recipe): (Vec<u64>, Vec<u64>) =
+            wanted.into_iter().partition(|bits| {
+                !crate::instance_verbs::is_a_recipe_given_piece(
+                    sim,
+                    ph2d_ecs::Entity::from_bits(*bits),
+                )
+            });
         for bits in &to_delete {
             let entity = ph2d_ecs::Entity::from_bits(*bits);
             sim.world_mut().despawn(entity);
@@ -420,12 +445,23 @@ pub(super) fn dispatch(
             hero.gizmo.selection = Some(hero.gizmo.extra_selection.remove(0));
         }
         let n = to_delete.len();
-        toasts.push(Toast::warning(if n == 1 {
-            "Deleted entity".to_string()
-        } else {
-            format!("Deleted {n} entities")
-        }));
-        title_dirty = true;
+        let kept = from_a_recipe.len();
+        // ⚠️ **Os dois números são ditos, e o zero também**: um gesto que apaga metade e cala a
+        // outra metade lê-se como um apagar que falhou às vezes.
+        if n > 0 {
+            toasts.push(Toast::warning(match (n, kept) {
+                (1, 0) => "Deleted entity".to_string(),
+                (_, 0) => format!("Deleted {n} entities"),
+                _ => {
+                    format!("Deleted {n} \u{2014} {kept} piece(s) come from a component and stayed")
+                }
+            }));
+            title_dirty = true;
+        } else if kept > 0 {
+            toasts.push(Toast::warning(
+                "That piece comes from a component \u{2014} delete it in the component, or Detach this copy first",
+            ));
+        }
     }
     // M14.6 D: drain pending hierarchy-row click → sync
     // `gizmo_selection` to whichever entity the user just picked in

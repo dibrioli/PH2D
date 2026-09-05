@@ -63,8 +63,45 @@ pub(crate) fn instance_root_of(sim: &mut SimWorld, clicked: Entity) -> Option<En
 }
 
 /// Esta entidade — ou algum ancestral dela — é peça de uma instância?
+///
+/// ⚠️⚠️ **NÃO é a mesma pergunta que [`is_a_recipe_given_piece`], e eu colapsei as duas em
+/// 2026-09-05 antes de um gate mo dizer na primeira corrida.** Esta responde *«estou DENTRO de uma
+/// cópia?»* — é o que o `make_master` precisa, porque um `MasterRoot` a meio de uma cópia viva
+/// encurta a sub-árvore de edição **venha a peça de onde vier**. A outra responde *«a receita DEU
+/// isto?»*, que exclui o que o artista pendurou lá dentro. *Duas leis que só se parecem: apertar
+/// uma para servir a outra recusa um gesto legítimo.*
 pub(crate) fn belongs_to_an_instance(sim: &mut SimWorld, entity: Entity) -> bool {
     instance_root_of(sim, entity).is_some()
+}
+
+/// ⭐⭐⭐ **Esta peça foi DADA pela receita** — está dentro de uma cópia e **não** é a raiz dela.
+///
+/// # A lei, escrita uma vez
+///
+/// *Só o que a receita deu é que a receita tira* — é a frase que o passe estrutural
+/// ([`crate::instance_structure`]) já vive por: uma entidade **sem** elo dentro de uma cópia é
+/// autoria do artista e ninguém lhe toca; uma **com** elo veio do mestre, e a forma da cópia é a
+/// forma da receita.
+///
+/// ⚠️ **A RAIZ é a excepção, e é ela que faz a pergunta ter sentido:** apagar uma cópia inteira é
+/// um gesto normal (é um objecto da cena), e apagar **uma peça dela** não é — a peça volta no passe
+/// seguinte, porque o mestre continua a tê-la.
+///
+/// ⚠️ **Uma cópia ANINHADA responde `true`**: a roda que vive dentro de um carro da cena é a raiz
+/// de uma instância *da Roda*, mas continua a ser uma peça que a receita do Carro deu — e o
+/// `instance_root_of` sobe até à raiz **mais externa**, que é o que dá esta resposta de graça.
+///
+/// ⛔ **Ela nasceu porque a condição estava escrita DUAS vezes** — aqui e no `make_master` (a
+/// recusa `InsideAnInstance`) — e um report de 2026-09-05 mostrou que faltava um terceiro leitor:
+/// o **apagar**. *Uma lei escrita em dois sítios ainda não é uma lei; só uma PORTA é.*
+pub(crate) fn is_a_recipe_given_piece(sim: &mut SimWorld, entity: Entity) -> bool {
+    // ⚠️ **O ELO é a metade que separa esta pergunta da irmã de cima** — sem ele, um *Add Child*
+    // do artista dentro de uma cópia lia-se como peça da receita e o apagar era recusado. O gate
+    // apanhou-o na primeira corrida.
+    if sim.world().get::<InstanceOf>(entity).is_none() {
+        return false;
+    }
+    matches!(instance_root_of(sim, entity), Some(root) if root != entity)
 }
 
 /// A subárvore de `root`, ela incluída.

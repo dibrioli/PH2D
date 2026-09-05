@@ -1806,3 +1806,62 @@ nomear).
 ⏳ **Fica ABERTO e nomeado:** apagar **um** órfão de cada vez. O gesto de hoje é tudo-ou-nada, e
 agora que eles se veem a pergunta *«e se eu quiser só aquele?»* passa a ser fazível — ⛔ mas ela
 custa um id por linha, e a tabela de ids tem tecto. É decisão de produto.
+
+
+---
+
+### 🐞 §F5.7 — **Apagar uma peça de uma cópia era o pior dos três resultados** (report do Enio, 2026-09-05)
+
+> *«ao tentar deletar o objeto, ele não é deletado e volta para sua posição de origem»*
+
+**Reproduzido headless em cinco minutos** (`a_piece_deleted_behind_the_guard_comes_back_wearing_the_masters_pose`):
+o `despawn` passava, o passe estrutural **re-materializava** a peça no quadro seguinte — *só o que a
+receita deu é que a receita tira*, e o mestre continua a tê-la — e ela voltava com a pose do
+**MESTRE**. ⇒ os dois sintomas do report são o mesmo mecanismo, e há um **terceiro** que ele não
+podia ver: a chave de override sobrevive a apontar para um valor que já não existe, deixando a
+cópia surda à receita naquele componente.
+
+⇒ ⛔ *Um gesto que não faz nada é mau; um que **desfaz outra coisa** é pior.*
+
+#### A guarda vive no GESTO, e não podia viver no passe
+
+O passe vê *«o mestre tem X, a instância não»* e **não consegue distinguir** «X é uma peça nova do
+mestre» de «o artista apagou a cópia de X» — as duas leituras são o mesmo estado do mundo. Só quem
+recebe o clique conhece a intenção. ⇒ a guarda entra no **único** caminho de apagar que o artista
+alcança (`hierarchy::dispatch`), consultando a porta antes do `despawn`.
+
+#### ⚠️ E eu colapsei DUAS leis numa porta só — o gate apanhou-o na PRIMEIRA corrida
+
+A condição do `make_master` (`InsideAnInstance`) lê-se igual à do apagar, e não é a mesma pergunta:
+
+| porta | pergunta | quem precisa |
+|---|---|---|
+| `belongs_to_an_instance` | *estou **DENTRO** de uma cópia?* | o `make_master` — um `MasterRoot` a meio de uma cópia viva encurta a sub-árvore de edição **venha a peça de onde vier** |
+| `is_a_recipe_given_piece` | *a receita **DEU** isto?* | o apagar — exclui o que o artista pendurou lá dentro |
+
+O que as separa é **o ELO**. Sem ele, um *Add Child* dentro de uma cópia ficava **inapagável** —
+`only_a_piece_the_recipe_gave_is_refused_and_the_rest_stays_deletable` reprovou de imediato.
+*Duas leis que só se parecem: apertar uma para servir a outra recusa um gesto legítimo.*
+
+#### A recusa é NARROW, e a voz diz ONDE
+
+Apagar a **cópia inteira** continua normal; o que o artista pendurou nela também; a peça **da
+receita** também — que é o gesto que o smoke pede. Só a peça *dentro* de uma cópia recusa, e o aviso
+diz *«delete it in the component, or Detach this copy first»*.
+
+⚠️ **Metade do report era a MINHA instrução**: a Hierarquia mostrava duas linhas chamadas `Body`
+(a da receita e a da cópia) e nada dizia qual era qual. O passo impresso passa a nomear a diferença
+(`Car` é a receita; as cópias são `Car (1)`/`Car (2)`), e a cena avisa que o gesto errado recusa.
+
+⛔ **A capacidade que o Unity tem e nós não** — *Removed GameObject* como override da cópia — fica
+**declarada, não construída**: a lei desta casa é que a **forma** de uma cópia é a da receita
+(*«Unity chama-lhe Unpack, e também não tem meia-instância»*), e essa lei já estava escrita no passe
+estrutural. Construí-la é modelo novo (`removed: BTreeSet<u64>` + degrau de schema + gesto de
+devolver), e é decisão de produto.
+
+#### E um defeito meu que nenhum dos cinco gates via
+
+`\\` num literal Rust **não** é continuação de linha: é uma barra, mais o newline, mais a
+indentação — a instrução impressa chegava ao terminal partida ao meio. ⇒ gate
+`the_printed_steps_have_no_stray_backslash` (comment-aware; a linha do doc dele contém o padrão).
+*A instrução ao dono é uma superfície de produto, e era a única deste módulo sem régua.*

@@ -77,6 +77,18 @@ DIRS = [
         ),
     ),
     dict(
+        dir="docs/3D/cloth",
+        titulo="`3D / cloth` — o pincel de tecido (W10)",
+        ordem="num",
+        o_que_e=(
+            "A pesquisa e o plano do **pincel de tecido** — a W10 do "
+            "[plano das ferramentas](../21_plano_modos_e_ferramentas.md).\n>\n"
+            "> \u26a0\ufe0f **A pesquisa contradiz o plano num ponto, com nu\u0301mero:** a escolha de "
+            "me\u0301todo dele (XPBD, 2016) esta\u0301 uma gerac\u0327a\u0303o atra\u0301s, e atra\u0301s exatamente na "
+            "propriedade de que um PINCEL precisa. Leia o `01` antes de pegar o `02`."
+        ),
+    ),
+    dict(
         dir="docs/Motion Nodes",
         titulo="`Motion Nodes` — índice do módulo",
         ordem="num",

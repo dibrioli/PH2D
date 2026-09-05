@@ -31,6 +31,7 @@ MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
 | Se sua tarefa é… | Leia, nesta ordem |
 |---|---|
 | **ASSUMIR A LINHA E IMPLEMENTAR (comece aqui)** | [[HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-18]] — onde a linha está e o que está ABERTO com o preço ao lado (⚠️ ele supersede os de 2026-08-06 e 2026-08-10; **a lista aberta de um handoff envelhece a cada jornada**, e as duas anteriores já perderam 3 de 4 e depois 3 de 4 itens) → [[06.1-Waves-riscos-e-alvos]] (o roteiro) → [[03.8-HANDOFF-implementador-W4]] (o protocolo) |
+| **o PINCEL DE TECIDO (W10)** | [`cloth/01_pesquisa_o_estado_da_arte.md`](cloth/01_pesquisa_o_estado_da_arte.md) — o regime de um pincel, o estado da arte medido contra ele, e a triagem de licença (T0: porta permissiva, clean-room encerrado) → [`cloth/02_plano.md`](cloth/02_plano.md). ⚠️ **Ela contradiz o plano 21 num ponto, com número** |
 | **mexer em QUALQUER ferramenta / pincel** | [21_plano_modos_e_ferramentas.md](21_plano_modos_e_ferramentas.md) — o plano dos 3 modos (S/B/L), do Basic×Pro e das ferramentas que faltam; ele **supersede** o [[06.1-Waves-riscos-e-alvos]] no que toca a tools |
 | **saber por que um tool nosso difere da referência** | [20_divergencias_tools.md](20_divergencias_tools.md) — D1-D27, os negativos, o catálogo nos três apps e o padrão-ouro |
 | **portar QUALQUER COISA do SculptGL** | [[03.4-Referencia-SculptGL]] (a política + o livro-razão) → [[03.7-Oraculo-de-fidelidade]] (o protocolo) → [19_paridade_sculptgl.md](19_paridade_sculptgl.md) (o estado da paridade, kernel a kernel) |

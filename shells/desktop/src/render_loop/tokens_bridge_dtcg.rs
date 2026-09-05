@@ -146,13 +146,7 @@ fn report(r: &Imported) -> String {
 
 /// O nome que o diálogo propõe — com o MODO dentro, porque um arquivo é de um modo.
 fn default_name(theme: Theme) -> String {
-    let mode = match theme {
-        Theme::Forge => "forge",
-        Theme::Workshop => "workshop",
-        Theme::Sunstone => "sunstone",
-        Theme::Blueprint => "blueprint",
-    };
-    format!("ph2d-{mode}.tokens.json")
+    format!("ph2d-{}.tokens.json", theme.id())
 }
 
 /// Só o nome do arquivo — um caminho inteiro num toast quebra a coluna e some do lado direito.

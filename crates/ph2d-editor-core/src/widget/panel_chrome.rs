@@ -21,9 +21,10 @@
 use crate::paint::{fill_rounded_rect, paint_text_title, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
+use ph2d_tokens::visuals::Chrome;
 use ph2d_tokens::{
-    ColorToken, PANEL_HEAD_PAD_PX, PANEL_RADIUS_PX, PANEL_RESIZE_HANDLE_SIZE_PX, Radius, Spacing,
-    Theme, TypeToken,
+    ColorToken, PANEL_HEAD_PAD_PX, PANEL_RADIUS_PX, PANEL_RESIZE_HANDLE_SIZE_PX, Spacing, Theme,
+    TypeToken,
 };
 use ph2d_vector::VectorScene;
 
@@ -210,14 +211,28 @@ pub fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Theme) {
 /// Superfície de um painel que **flutua** — quinas na família do chip (`Radius::Sm`), passadas
 /// pelo `scale_radius()` do menu Themes, como desde 2026-05-25.
 pub fn paint_panel_surface_floating(rect: Rect, scene: &mut VectorScene, theme: Theme) {
-    paint_panel_surface_r(rect, scene, theme, Radius::Sm.px());
+    // ⭐ O raio sai da tabela de cromo do TEMA (`ph2d_tokens::visuals::Chrome`): no clássico ela
+    //    devolve o `Radius::Sm` de sempre; num tema moderno o `4` do Godot.
+    paint_panel_surface_r(rect, scene, theme, Chrome::of(theme).panel_radius);
 }
 
 fn paint_panel_surface_r(rect: Rect, scene: &mut VectorScene, theme: Theme, radius: f32) {
     // PanelBg = BgElev hue/L with ~0.96 alpha → panel reads as
     // floating glass over canvas while text contrast holds.
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::PanelBg, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    // ⭐ A moldura é da TABELA, não deste pintor: no clássico é o `Border` a 1 px de sempre; num
+    //    tema moderno é ZERO (o Godot só a traça com *Draw Extra Borders* — o preset OLED).
+    //    *Plano* é uma propriedade do tema, e é por isso que quem decide não é o pintor.
+    let border = Chrome::of(theme).panel_border;
+    if border.is_visible() {
+        stroke_rounded_rect(
+            scene,
+            rect,
+            radius,
+            border.width,
+            crate::paint::token_to_vello(border.color),
+        );
+    }
 }
 
 /// Bottom-right resize-gripper corner accent. Painted at the END

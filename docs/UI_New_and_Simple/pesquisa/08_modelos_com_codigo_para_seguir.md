@@ -90,7 +90,7 @@ três sombras) é o que **destoa**, e é por isso que «o slider ficou bom e o a
 
 | lei | Godot Modern | Graphite | Mini Cavalry | egui |
 |---|---|---|---|---|
-| fundo é uma **rampa neutra** | `base` `#242424`, o resto por `lerp` para preto/branco | 16 degraus `#000…#fff` de `0x11` | `zinc 950…200` | `gray(27/45/55/60/70)` |
+| fundo é uma **rampa neutra** | `base` `#292929` (o preset *Default*; ⚠️ o valor de fábrica do *setting* é `#242424` e o preset sobrescreve-o), o resto por `lerp` para preto/branco | 16 degraus `#000…#fff` de `0x11` | `zinc 950…200` | `gray(27/45/55/60/70)` |
 | **um** acento | `#569eff` | `#00a8ff` (overlay) | `indigo` | `rgb(90,170,255)` |
 | raio | **4** (0..6) | 0 | 4 | 2–3 |
 | borda | `border_size: 0` | — | 1 px | 1 px `gray(60)` |
@@ -139,6 +139,52 @@ widget com a pele antiga — é o que se fez em 02–03/09, e o resultado foi «
    usá-lo *pouco*.
 4. **Quantos temas ficam** (a decisão **I**): com a derivação, um tema custa cinco números — a
    pergunta deixa de ser «4 → 2» e passa a ser *«que presets oferecemos»*.
+
+## §7 — ✅ AS DECISÕES (2026-09-04) e a WAVE 1, construída no mesmo dia
+
+> Enio: *«1 — aceito · 2 — [o cinza] do Godot · 3 — o azul do Godot · 4 — decida»*.
+
+**A 4.ª caiu em QUATRO presets, um por slot do menu, e os quatro vêm da tabela `color_preset` do
+Godot** — o critério foi *nenhuma cor nova*: `Dark` (o *Default* do 4.6) · `Gray` · `Light` ·
+`Black (OLED)`. ⚠️ O cinza é **`#292929`** (`Color(0.161, …)`, o preset), não o `#242424` que o §3
+citou: esse é o valor de fábrica do *setting*, e o preset sobrescreve-o.
+
+### 7.1 — O que existe agora
+
+| peça | onde | o que faz |
+|---|---|---|
+| **a derivação** | [`ph2d-tokens/src/derive.rs`](../../../crates/ph2d-tokens/src/derive.rs) | as regras do `theme_modern.cpp` (MIT), portadas: `mono` · `dark_color_1/3` · `contrast_color_1/2` · `highlight` · `font @ 0,75/0,55/0,35` · as quatro cores de estado (e as versões escuras para tema claro). `Inputs::of(theme)` → `roles()` → `colour(theme, token)` cobre **todo** `ColorToken` |
+| **a família moderna** | [`theme.rs`](../../../crates/ph2d-tokens/src/theme.rs) | `Theme::{Dark, Gray, Light, Oled}`, `CLASSIC`/`MODERN`/`ALL`, `is_modern`, `family`, `from_id`, `default_for(look)`; `next` cicla **dentro** da família |
+| **a fábrica** | `ColorToken::factory` | um tema moderno **não tem tabela**: a fábrica dele é a derivação — a camada de override, o DTCG e o gate de contraste não sabem a diferença |
+| **a tabela de estados** | [`visuals.rs`](../../../crates/ph2d-tokens/src/visuals.rs) | `Widgets` (5 estados × `bg_fill`/`weak_bg_fill`/`bg_stroke`/`fg_stroke`/`corner_radius`, a forma do egui) + `Chrome` (raio e moldura de painel · placa de secção · campo de texto, com o anel de foco a 2 px do Godot). A clássica **descreve** o clássico; a moderna sai dos papéis |
+| **os quatro pintores de cromo** | `panel_chrome` · `section_header` · `button` · `text_input` | lêem a tabela: **moldura zero** nos modernos (só o OLED a traça, como no Godot), raio `4`, moldura do campo **só no foco** |
+| **o menu de tema** | [`theme_menu.rs`](../../../crates/ph2d-editor-core/src/screens/hero/theme_menu.rs) + `menu_rows` | **uma família por aparência**; o redesenho abre no `Dark` |
+
+### 7.2 — O que a construção ensinou
+
+- ⚠️ **Achatar o alfa é decisão do porte** (`derive.rs`, topo): o gate de contraste mede a cor do
+  token e não a compõe, e há pintores que constroem o `Color` do Vello dos três canais — os slots
+  opacos continuam opacos, compostos sobre a base na derivação.
+- ⚠️ **As cores de DADO emprestam-se, não se derivam**: `node-cat-*`, `port-*`, `curve-*`,
+  `graph-backdrop-*` vêm da tabela do `forge` (escuros) / `sunstone` (claros) — são as únicas com
+  matiz por direito. Os eixos são os do Godot.
+- ⚠️ **Só cinco `match` exaustivos sobre `Theme` existiam no produto**, e três eram cópias do
+  `id()`/`display_name()` — morreram. Uma família nova custou **uma** tabela (`theme_menu.rs`).
+- ⛔ **O gate `every_menu_row_reaches_a_handler` lê o FONTE**: a tabela `id ⇄ tema` teve de viver
+  num ficheiro próprio e não em `menu_rows.rs` (excluído do censo), senão as oito linhas de tema
+  acusavam «sem despacho» com o despacho a funcionar.
+- ⚠️ **Os 16 apelidos da timeline dissolveram-se por construção** (gate
+  `the_timeline_slots_are_aliases_by_construction`) — a decisão **B** deixa de existir na família
+  moderna.
+
+### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
+
+- os outros ~38 pintores continuam a escolher fundo/borda sozinhos — eles já lêem os tokens
+  derivados (logo mudam de cor), mas **traçam molduras** onde a tabela diz zero. A obra seguinte é
+  um censo por pintor com catraca (`stroke_rounded_rect` em 271 sítios);
+- o `panel-radius: 16` do `tokens.json` fica para o clássico; a docagem já usa `0`;
+- `Spacing` não foi tocado (o `base_spacing 4` do Godot coincide com o `Xs`);
+- a fonte (o Godot recomenda *Inter*; a casa tem `FONT_SANS`) — não medido.
 
 ## §6 — O que ficou vendorizado (gitignorado; `bash fetch-referencias.sh` reconstrói)
 

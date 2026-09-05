@@ -51,6 +51,46 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
         ],
         // Topbar theme cluster click: 4 themes + 3 radius presets. Theme entries get a small accent
         // swatch tinted with each theme's flavor so the user can recognize them at a glance.
+        // ⭐ **UMA família por aparência** (2026-09-04): o redesenho mostra os quatro presets
+        //    DERIVADOS (Godot 4.6, `ph2d_tokens::Theme::MODERN`), o clássico os quatro de sempre.
+        //    Misturá-los poria um tema tingido ao lado de um plano sem o artista saber que está a
+        //    escolher entre dois sistemas. As linhas de baixo (cantos, trilho, espelho, estatísticas,
+        //    repor) são as mesmas nas duas.
+        ContextMenuKind::ThemeSelector if crate::paint::ui_is_redesign() => &[
+            (
+                ids::CTX_MENU_THEME_DARK,
+                "Dark",
+                Some([0x56, 0x9e, 0xff, 0xFF]),
+            ),
+            (
+                ids::CTX_MENU_THEME_GRAY,
+                "Gray",
+                Some([0x70, 0xba, 0xfa, 0xFF]),
+            ),
+            (
+                ids::CTX_MENU_THEME_LIGHT,
+                "Light",
+                Some([0x2e, 0x80, 0xff, 0xFF]),
+            ),
+            (
+                ids::CTX_MENU_THEME_OLED,
+                "Black (OLED)",
+                Some([0x73, 0xbf, 0xff, 0xFF]),
+            ),
+            (ids::CTX_MENU_RADIUS_SHARP, "— Corners: Sharp", None),
+            (ids::CTX_MENU_RADIUS_DEFAULT, "— Corners: Default", None),
+            (ids::CTX_MENU_RADIUS_ROUND, "— Corners: Round", None),
+            (ids::CTX_MENU_RAIL_SIZE_SMALL, "— Rail Buttons: Small", None),
+            (
+                ids::CTX_MENU_RAIL_SIZE_MEDIUM,
+                "— Rail Buttons: Medium",
+                None,
+            ),
+            (ids::CTX_MENU_RAIL_SIZE_LARGE, "— Rail Buttons: Large", None),
+            (ids::CTX_MENU_MIRROR_UI, "— Mirror UI", None),
+            (ids::CTX_MENU_SHOW_STATS, "— Show Statistics", None),
+            (ids::MENUBAR_VIEW_RESET_LAYOUT, "Reset Panel Layout", None),
+        ],
         ContextMenuKind::ThemeSelector => &[
             (
                 ids::CTX_MENU_THEME_FORGE,

@@ -16,6 +16,12 @@ pub const CTX_MENU_THEME_FORGE: NodeId = hash_node_id("ctx_menu_theme_forge");
 pub const CTX_MENU_THEME_PAINT: NodeId = hash_node_id("ctx_menu_theme_paint");
 pub const CTX_MENU_THEME_SUNSTONE: NodeId = hash_node_id("ctx_menu_theme_sunstone");
 pub const CTX_MENU_THEME_BLUEPRINT: NodeId = hash_node_id("ctx_menu_theme_blueprint");
+// ⭐ A família MODERNA (2026-09-04) — os quatro presets do Godot 4.6, derivados. Um id por tema,
+//    como os quatro de cima; o menu mostra UMA família por aparência (`menu_rows::ThemeSelector`).
+pub const CTX_MENU_THEME_DARK: NodeId = hash_node_id("ctx_menu_theme_dark");
+pub const CTX_MENU_THEME_GRAY: NodeId = hash_node_id("ctx_menu_theme_gray");
+pub const CTX_MENU_THEME_LIGHT: NodeId = hash_node_id("ctx_menu_theme_light");
+pub const CTX_MENU_THEME_OLED: NodeId = hash_node_id("ctx_menu_theme_oled");
 // Corner-radius scale presets — also exposed via the theme menu.
 pub const CTX_MENU_RADIUS_SHARP: NodeId = hash_node_id("ctx_menu_radius_sharp");
 pub const CTX_MENU_RADIUS_DEFAULT: NodeId = hash_node_id("ctx_menu_radius_default");

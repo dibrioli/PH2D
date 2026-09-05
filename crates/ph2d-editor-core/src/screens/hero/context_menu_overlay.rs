@@ -80,12 +80,7 @@ pub(super) fn id_is_currently_selected(
             Some(crate::widget::ButtonState::Pressed)
         );
     }
-    let theme_id = match theme {
-        Theme::Forge => ids::CTX_MENU_THEME_FORGE,
-        Theme::Workshop => ids::CTX_MENU_THEME_PAINT,
-        Theme::Sunstone => ids::CTX_MENU_THEME_SUNSTONE,
-        Theme::Blueprint => ids::CTX_MENU_THEME_BLUEPRINT,
-    };
+    let theme_id = super::theme_menu::theme_menu_id(theme);
     if id == theme_id {
         return true;
     }

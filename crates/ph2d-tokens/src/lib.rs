@@ -53,11 +53,13 @@ pub mod color;
 /// **A camada de OVERRIDE de cor** (plano UI/UX W6) — o que o artista autora sobre a tabela
 /// gerada. Vazia, `ColorToken::resolve` é byte-idêntico ao de sempre.
 pub mod contrast;
+/// **A camada de OVERRIDE numérica** — a irmã da [`overrides`], no molde dela.
+/// ⭐ **A derivação de um tema moderno** — cinco entradas → todos os slots (regras do Godot 4.6, MIT).
+pub mod derive;
 pub mod layer;
 pub mod motion;
 /// **A identidade de um token NUMÉRICO** (plano UI/UX W4c.1) — a família que se mede em px.
 pub mod num;
-/// **A camada de OVERRIDE numérica** — a irmã da [`overrides`], no molde dela.
 pub mod num_expr;
 pub mod num_overrides;
 pub mod num_runtime;
@@ -71,6 +73,8 @@ pub mod spacing;
 pub mod stroke;
 pub mod theme;
 pub mod typography;
+/// ⭐ **A tabela de estados do widget** — a porta única de fundo / borda / raio por estado.
+pub mod visuals;
 
 /// Auto-generated tables from `docs/design/tokens.json` via `build.rs`.
 /// See Wave 2 PR 11.1. Consumed by `color.rs::ColorToken::resolve`.

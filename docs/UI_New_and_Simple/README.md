@@ -84,6 +84,13 @@ E três defeitos concretos, com foto:
 que ela revelou — arrastar o CORPO para rolar — ✅ feito) · `6` coluna de animação ✅ **desenhada**
 (⏳ **não põe chave**: falta o consumidor) · `7` 4.º preset de fonte ⛔ **construído e revertido**.
 
+⭐⭐⭐ **O MODELO ESTÁ ESCOLHIDO E A WAVE 1 ESTÁ NO CÓDIGO (04/09):** Godot 4.6 «Modern» (MIT), o
+cinza `#292929` e o azul `#569eff` dele, quatro presets da tabela dele (`Dark` · `Gray` · `Light` ·
+`Black (OLED)`) — cada tema **derivado de cinco entradas**, nenhum slot escrito à mão; a tabela de
+estados do widget (forma egui) e os quatro pintores de cromo (painel · secção · botão · campo) a
+lê-la: **moldura zero, raio 4**. O redesenho abre no `Dark`; `PH2D_UI_NEW=0` devolve o clássico
+intacto. Mecanismo e o que ficou de fora: [`pesquisa/08 §7`](pesquisa/08_modelos_com_codigo_para_seguir.md).
+
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
 cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·
 esbatimento do rótulo e inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis, animado) —

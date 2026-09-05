@@ -107,7 +107,7 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
 ///
 /// ⚠️ `OnceLock` de propósito: `std::env::var` num caminho por-quadro é uma leitura do SO em cada
 /// quadro, e o valor não pode mudar a meio de uma sessão sem ninguém saber porquê.
-fn ui_look_from_env() -> ph2d_tokens::UiLook {
+pub(crate) fn ui_look_from_env() -> ph2d_tokens::UiLook {
     static LOOK: std::sync::OnceLock<ph2d_tokens::UiLook> = std::sync::OnceLock::new();
     *LOOK.get_or_init(|| {
         ph2d_tokens::UiLook::from_env_value(std::env::var("PH2D_UI_NEW").ok().as_deref())

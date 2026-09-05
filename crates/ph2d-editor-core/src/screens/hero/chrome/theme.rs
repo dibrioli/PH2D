@@ -1,24 +1,19 @@
 // ph2d-chrome-sync:z=10 (dispatch priority, ADR-0107; lower = earlier)
-//! Theme menu — 4 theme picks (Forge / Workshop / Sunstone / Blueprint).
+//! Theme menu — os temas das DUAS famílias (a clássica e a moderna, `ph2d_tokens::Theme`).
+//!
+//! ⚠️ A tabela `id ⇄ tema` vive em `theme_menu::THEME_MENU`; este handler só a consulta. Um
+//! `match` aqui e outro na marca de estado do menu foi o par que a família moderna (2026-09-04)
+//! teria feito envelhecer em separado.
 
-use crate::ids;
 use crate::interaction::WidgetEvent;
 use crate::screens::hero::HeroScreen;
-use ph2d_tokens::Theme;
+use crate::screens::hero::theme_menu::theme_of_menu_id;
 
 pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let WidgetEvent::Click(id) = event else {
         return false;
     };
-    let new_theme = if id == ids::CTX_MENU_THEME_FORGE {
-        Theme::Forge
-    } else if id == ids::CTX_MENU_THEME_PAINT {
-        Theme::Workshop
-    } else if id == ids::CTX_MENU_THEME_SUNSTONE {
-        Theme::Sunstone
-    } else if id == ids::CTX_MENU_THEME_BLUEPRINT {
-        Theme::Blueprint
-    } else {
+    let Some(new_theme) = theme_of_menu_id(id) else {
         return false;
     };
     hero.theme = new_theme;

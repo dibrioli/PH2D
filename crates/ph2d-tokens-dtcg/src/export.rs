@@ -59,12 +59,9 @@ pub fn export(theme: Theme) -> String {
 
 /// O nome do modo como o painel o mostra.
 const fn mode_name(theme: Theme) -> &'static str {
-    match theme {
-        Theme::Forge => "forge",
-        Theme::Workshop => "workshop",
-        Theme::Sunstone => "sunstone",
-        Theme::Blueprint => "blueprint",
-    }
+    // ⚠️ O id vive no `Theme` (`from_id` é o inverso exacto); um `match` aqui foi o que a família
+    //    moderna (2026-09-04) teria de repetir em três crates.
+    theme.id()
 }
 
 /// Põe `value` no caminho `a.b.c`, criando os grupos que faltarem.

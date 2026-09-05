@@ -261,7 +261,15 @@ pub fn paint_button(
     // Discrete outline for secondary / ghost buttons (so a Normal-state
     // Cancel/Reset reads as a button, not bare text). Drawn before the
     // focus ring so the ring wins visually when focused.
-    if let Some(b) = button.border_color(theme) {
+    // ⭐ **Se o TEMA traça bordas** — a tabela de estados (`ph2d_tokens::visuals::Widgets`) diz:
+    //    no clássico sim (o `Border` a 1 px de sempre); num tema moderno não (o Godot só as
+    //    traça com *Draw Extra Borders*). Um botão secundário plano continua a ler-se como botão
+    //    pelo fundo que ganha sob o rato, não por uma moldura permanente.
+    let outlines = ph2d_tokens::visuals::Widgets::of(theme)
+        .inactive
+        .bg_stroke
+        .is_visible();
+    if let Some(b) = button.border_color(theme).filter(|_| outlines) {
         stroke_rounded_rect(
             scene,
             rect,

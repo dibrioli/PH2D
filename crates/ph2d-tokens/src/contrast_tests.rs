@@ -13,11 +13,17 @@ fn put(theme: Theme, token: ColorToken, colour: Color) {
         .expect("um literal nunca fecha um laco");
 }
 
-const ALL_THEMES: [Theme; 4] = [
+const ALL_THEMES: [Theme; 8] = [
     Theme::Forge,
     Theme::Workshop,
     Theme::Sunstone,
     Theme::Blueprint,
+    // ⭐ A família moderna entra na mesma régua: um tema DERIVADO que não cumpra a WCAG é um
+    //    defeito da derivação, e é aqui que ele reprova.
+    Theme::Dark,
+    Theme::Gray,
+    Theme::Light,
+    Theme::Oled,
 ];
 
 /// **A tabela de FÁBRICA cumpre a WCAG nos quatro modos** — o gate que as quatro cópias eram.

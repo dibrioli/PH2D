@@ -124,10 +124,11 @@ pub fn paint_section_header(
     //    `Some(true)` no clique e a placa deixa de ser pintada nesse quadro). Um efeito que só é
     //    simétrico num sentido é um efeito que ninguém escreveu.
     if let Some(plate) = plate_color(header, theme) {
+        // ⭐ O raio da placa é o do cromo do TEMA (`Radius::Sm` no clássico, `4` no moderno).
         fill_rounded_rect(
             scene,
             rect,
-            Radius::Sm.px(),
+            ph2d_tokens::visuals::Chrome::of(theme).plate_radius,
             crate::paint::token_to_vello(plate),
         );
     }

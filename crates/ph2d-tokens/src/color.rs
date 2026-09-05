@@ -565,11 +565,17 @@ impl ColorToken {
     /// ficaria cego à re-vestida do artista, que é a razão de a camada existir.
     #[must_use]
     pub fn factory(self, theme: Theme) -> Color {
+        // ⭐ A família MODERNA não tem tabela: a fábrica dela é a DERIVAÇÃO (cinco entradas →
+        //    todos os slots, `crate::derive`). Passa pela mesma porta para que a camada de
+        //    override, o DTCG e o gate de contraste não saibam a diferença.
         let table: &[(&str, crate::generated::OklchRaw)] = match theme {
             Theme::Forge => crate::generated::COLORS_FORGE,
             Theme::Workshop => crate::generated::COLORS_WORKSHOP,
             Theme::Sunstone => crate::generated::COLORS_SUNSTONE,
             Theme::Blueprint => crate::generated::COLORS_BLUEPRINT,
+            Theme::Dark | Theme::Gray | Theme::Light | Theme::Oled => {
+                return crate::derive::colour(theme, self);
+            }
         };
         lookup_color(table, self.key())
     }

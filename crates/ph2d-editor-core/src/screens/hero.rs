@@ -40,6 +40,8 @@ pub mod global_palette;
 pub mod panel_ids;
 /// O MODELO do menu radial (E4) — a vista de OITO direcções da mesma lista da paleta.
 pub mod radial;
+/// ⭐ A tabela `id da linha ⇄ tema` do menu de tema (as duas famílias).
+pub mod theme_menu;
 pub use panel_ids::{PANEL_MOTION_GRAPH, PANEL_TIMELINE};
 // Wave 6+7 Phase 2: hero ids promoted to ph2d-editor-core so dispatch
 // and panel crates can reach them without depending back on hero. The
@@ -357,7 +359,9 @@ impl HeroScreen {
             ui_sound: false,
             tether: crate::tether::Tether::default(),
             id,
-            theme: Theme::Forge,
+            // ⭐ O tema de arranque segue a APARÊNCIA: o redesenho abre no `dark` (o *Default* do
+            //    Godot 4.6, decisão do Enio 2026-09-04), o clássico continua a abrir no `forge`.
+            theme: Theme::default_for(paint::ui_look_from_env()),
             text_rendering: ph2d_tokens::TextRendering::CrispHeavyPlus, // app default (Enio 2026-06-24)
             selection: Some(fixture::default_selection()),
             store,

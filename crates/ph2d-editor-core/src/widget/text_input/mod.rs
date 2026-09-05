@@ -10,7 +10,7 @@ use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// Width of the caret bar. The viewport reserves it on the right so a caret at
@@ -175,20 +175,45 @@ pub fn paint_text_input_with_buffer(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let radius = Radius::Sm.px();
-    fill_rounded_rect(scene, rect, radius, resolve(fill_token(input.state), theme));
-    let stroke_w = if input.state == TextInputState::Focused {
-        2.0
+    // ⭐ O cromo do campo é do TEMA (`ph2d_tokens::visuals::Chrome`): no clássico o `Radius::Sm`,
+    //    o `Bg1` e a moldura permanente de sempre; num tema moderno o raio `4`, um fundo um degrau
+    //    abaixo do painel, e **moldura só no foco** (o `LineEdit` do Godot) — ou no erro.
+    let chrome = ph2d_tokens::visuals::Chrome::of(theme);
+    let radius = chrome.field_radius;
+    let fill = if chrome.field_border.is_visible() {
+        resolve(fill_token(input.state), theme)
     } else {
-        1.0
+        crate::paint::token_to_vello(chrome.field_fill)
     };
-    stroke_rounded_rect(
-        scene,
-        rect,
-        radius,
-        stroke_w,
-        border_color(input.state, input.hover_t, theme),
-    );
+    fill_rounded_rect(scene, rect, radius, fill);
+    if chrome.field_border.is_visible() {
+        let stroke_w = if input.state == TextInputState::Focused {
+            chrome.field_focus.width
+        } else {
+            chrome.field_border.width
+        };
+        stroke_rounded_rect(
+            scene,
+            rect,
+            radius,
+            stroke_w,
+            border_color(input.state, input.hover_t, theme),
+        );
+    } else {
+        match input.state {
+            TextInputState::Focused => stroke_rounded_rect(
+                scene,
+                rect,
+                radius,
+                chrome.field_focus.width,
+                crate::paint::token_to_vello(chrome.field_focus.color),
+            ),
+            TextInputState::Error => {
+                stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Danger, theme))
+            }
+            _ => {}
+        }
+    }
 
     let pad_x = Spacing::Lg.px();
     let pad_y = Spacing::Md.px();

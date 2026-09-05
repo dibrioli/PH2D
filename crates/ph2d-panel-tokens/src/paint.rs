@@ -420,12 +420,9 @@ fn command_at(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, label: &str, rect: Rect
 
 /// O nome do modo, como o artista o conhece.
 const fn theme_label(theme: Theme) -> &'static str {
-    match theme {
-        Theme::Forge => "Forge",
-        Theme::Workshop => "Workshop",
-        Theme::Sunstone => "Sunstone",
-        Theme::Blueprint => "Blueprint",
-    }
+    // ⚠️ Era um `match` de quatro braços — a família moderna (2026-09-04) tornou-o o segundo
+    //    sítio a saber o nome de um tema, e o nome vive no próprio `Theme`.
+    theme.display_name()
 }
 
 fn paint_scrollbar_and_publish(

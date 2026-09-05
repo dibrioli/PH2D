@@ -11337,3 +11337,78 @@ do que vinha a seguir, **sem erro nenhum**. É esse o modo de falha que o númer
 ⚠️ Quem defende os bytes é o `the_shape_of_a_saved_modifier_stack_is_pinned` (**82 → 94**, quatro
 bytes por espelho) — o instrumento que o degrau 104 da escada do `PROJECT_SCHEMA` nomeou.
 ⛔ Sem degrau de migração, pela decisão do Enio de 26/08.
+
+## §119 — W118: ⛔⛔⛔ *«o undo é um bosta, não melhorou nada — auditoria completa»* — a coluna que nunca foi vigiada (04/09)
+
+### §119.1 — Por que QUATRO jornadas de sondas passaram verdes sobre um produto partido
+
+Todas as sondas desta linha armavam o módulo por `PH2D_FIELD_SMOKE=1`. O dono arma-o pelo **pill**.
+A diferença parecia cosmética — a mesma cena de demo nasce nos dois — e era **a diferença inteira**:
+com a variável, a cena nasce **antes** da primeira captura de undo; pelo pill, a primeira captura vê
+a cena **vazia** e a cena nasce depois. Medido pela sonda reescrita para abrir pelo pill
+(`PH2D_FIELD_UNDO_PROBE=1`, **sem** `PH2D_FIELD_SMOKE`), com os quatro gestos reais do dono:
+
+```text
+f=5..29  a semente nasce           «MUDOU … SUPRIMIDO — sem entrada» ×20   (funde-se no passo seguinte)
+f=30     criar pela paleta         undo=0→1           (spawn: visto)
+f=40..47 arrastar a seta           x=0→0,209  undo=1  ⛔ nenhum passo, e nenhuma supressão
+f=80     Ctrl+Z                    nos=5→0            ⛔ um Ctrl+Z apaga a forma E a peça de demo
+```
+
+*A sonda que arma o módulo de outra maneira que o dono mede outro programa.*
+
+### §119.2 — ⛔⛔⛔ A causa: a lista de colunas vigiadas resolvia-se UMA vez
+
+A captura incremental (ADR-0164 F2) decide *«esta linha está suja?»* olhando os ticks das colunas
+**vigiadas** — os tipos registados que **existem no mundo**, resolvidos na primeira captura
+(`primed`). `world.component_id::<T>()` é `None` para um tipo que o mundo ainda não usou. Pelo pill
+a primeira captura corre sobre a cena vazia ⇒ `FieldPose`, `FieldNode` e `FieldMods` ficam **fora
+da lista para sempre**. Tudo o que nasce depois tem essas colunas, e o pré-filtro nunca as olha:
+
+| gesto | o que é no ECS | visto? |
+|---|---|---|
+| criar pela paleta | **spawn** | ✅ (linha nova) |
+| pôr um modificador | **troca de archetype** (`FieldMods` entra) | ✅ |
+| mover com o gizmo · arrastar um slider · digitar um número | escrita **no lugar** de `FieldPose` | ⛔ **nunca** |
+
+⇒ é, letra por letra, *«não obedece cada etapa, **principalmente se transformação**»* — e o
+`Ctrl+Z` que *«apaga tudo»* é o passo da criação a levar consigo tudo o que nunca foi passo.
+
+⭐ **Gate headless que reproduz o pill:**
+`a_component_type_born_after_the_first_capture_is_still_watched` (`ph2d-ecs`) — prime com um tipo
+ausente, faz nascer uma entidade com ele, escreve-a no lugar: vermelho com `sujas=0,
+reserializadas=0` antes da cura. **Cura:** a lista re-resolve-se sempre que o mundo **aprendeu tipos
+novos** (`known_components != world.components().len()` — os ids são monotónicos, e a pergunta é um
+`usize`). A primeira captura passa a ser o caso particular de «conhecia zero».
+
+### §119.3 — A semente do pill declara-se autorada
+
+A cena de demo que o pill planta nascia num quadro **sem evento** e fundia-se no primeiro passo do
+artista — o mesmo defeito da forma da paleta (W115), no mesmo sítio. Hoje `mark_authored_change()`
+na semente: abrir o MODEL numa sessão vazia é o passo 1, e o `Ctrl+Z` que desfaz a criação de uma
+forma devolve **só** a forma.
+
+### §119.4 — Medido depois das duas curas, pelo pill
+
+```text
+f=24  semente        undo=1
+f=31  criar          undo=2
+f=48  arrastar       undo=3   x=0,210
+f=81  Ctrl+Z         undo=2   x=0,000   sel=Some  setas=3   (só o movimento)
+f=87  Ctrl+Z         undo=1   nos=5→4                       (só a criação)
+f=93  Ctrl+Z         undo=0   nos=4→0                       (só a semente)
+```
+
+### §119.5 — Os outros achados da auditoria (dois lados)
+
+- ⭐ **`Ctrl+Z` nomeia o dono** no log (`Global`/`Painter`/`Audio`/`ImageEdit`) — sem isso um
+  atalho roteado ao Painter e um que nunca chegou liam-se iguais.
+- ⚠️ **Um campo numérico com FOCO guarda o buffer através de um `Ctrl+Z`** (`set_number_value` não
+  reescreve o buffer com o campo em foco, de propósito) — um `Enter` depois do restauro comete o
+  valor **anterior**. Nomeado; não é o report (o dono fala de transformação).
+- ⚠️ **Um arrasto do gizmo que atravessa um `Ctrl+Z`** guarda os bits da alça (`Grip::anchor`), que
+  morrem no respawn; o resto do gesto perde-se em silêncio. Nomeado, raro.
+- ✅ O painel semeia slider **e** campo do documento todo quadro; o `ValueChanged` só nasce de
+  gesto — **não há eco** do painel a reescrever um restauro. ✅ A imagem re-traça por igualdade do
+  documento (`rdoc != doc`). ✅ A escolha não escreve componente nenhum. ✅ O `held_button` não fica
+  preso pelo módulo (o `Up` só é dele quando o `Down` foi).

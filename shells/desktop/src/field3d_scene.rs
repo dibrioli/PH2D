@@ -275,6 +275,12 @@ pub(crate) fn sync_scene_and_birth(
                 return (None, None);
             };
             let root = ph2d_field_ecs::spawn_doc(world, doc, PART_NAME);
+            // ⭐⭐⭐ **A SEMENTE DECLARA-SE AUTORADA** (2026-09-04) — a mesma lei da forma da
+            // paleta e da escultura importada (W115): ela nasce num quadro **sem evento**, e sem
+            // esta linha fundia-se no PRIMEIRO passo do artista. Medido pelo pill: `nos=0→4`
+            // suprimido em 20 quadros seguidos, e o primeiro `Ctrl+Z` depois de criar uma forma
+            // apagava a forma **e** a peça de demo (`nos=5→0`) — *«um Ctrl+Z apaga tudo»*.
+            crate::field3d_smoke::mark_authored_change();
             born = Some(
                 world
                     .get::<bevy_ecs::hierarchy::Children>(root)

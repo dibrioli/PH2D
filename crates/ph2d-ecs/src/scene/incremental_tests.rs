@@ -341,3 +341,75 @@ fn recycled_bits_never_make_a_row_read_the_wrong_object() {
     assert!(ids.contains(&born_id), "o objeto novo tem de estar la'");
     assert_eq!(snap, full(&mut w, &reg));
 }
+
+/// ⭐⭐⭐ **UM TIPO QUE NASCE DEPOIS DA PRIMEIRA CAPTURA CONTINUA A SER VIGIADO** — o defeito por
+/// trás de *«o undo/redo está completamente destruído»* (Enio, 2026-09-04, o 5.º report).
+///
+/// # ⛔⛔⛔ O mecanismo, medido com o app aberto pelo PILL
+///
+/// A lista de colunas vigiadas resolvia-se **uma vez**, na primeira captura (`primed`), a partir de
+/// `world.component_id::<T>()` — que é `None` para todo tipo registado que ainda não existe no
+/// mundo. Pelo pill a primeira captura vê a cena **vazia**: nenhum nó do modelador existe, logo
+/// `FieldPose`/`FieldNode`/`FieldMods` ficam de fora da lista **para sempre**. Tudo o que nasce
+/// depois tem essas colunas, e o pré-filtro nunca as olha ⇒ uma escrita **no lugar** (mover com o
+/// gizmo, arrastar um slider, digitar um número) é invisível — só um spawn, um despawn ou uma troca
+/// de archetype (pôr um modificador) chegam a ser passo. Medido pela sonda
+/// (`PH2D_FIELD_UNDO_PROBE=1`, sem `PH2D_FIELD_SMOKE`):
+///
+/// ```text
+/// f=30 criar pela paleta        undo=0→1            (spawn: visto)
+/// f=40..47 arrastar a seta      x=0→0,209  undo=1   ⛔ nenhum passo — e nenhuma supressão
+/// f=80 Ctrl+Z                   nos=5→0             ⛔ um Ctrl+Z apaga TUDO
+/// ```
+///
+/// ⚠️ **Com `PH2D_FIELD_SMOKE=1` o mesmo arrasto registava** — a cena de demo nasce ANTES da
+/// primeira captura, então as colunas já existiam quando a lista foi resolvida. *Foi por isso que
+/// quatro jornadas de sondas passaram verdes sobre um produto partido: a sonda armava o módulo pela
+/// variável de ambiente, e o dono arma-o pelo pill.*
+///
+/// A fixtura reproduz o pill: prime com um mundo em que `Visibility` **ainda não existe**, faz
+/// nascer uma entidade com ela, e depois escreve-a **no lugar**.
+///
+/// (Mutação: voltar a resolver a lista só quando `!primed` ⇒ a escrita no lugar não é vista,
+/// a incremental diverge do rebuild — RED, com a mensagem a nomear o quadro.)
+#[test]
+fn a_component_type_born_after_the_first_capture_is_still_watched() {
+    let reg = registry();
+    let (mut w, es) = world_with(1);
+    let mut c = CaptureCache::new();
+    // 1. A primeira captura, com a cena «vazia» daquele tipo: `Visibility` não existe no mundo.
+    assert!(
+        w.component_id::<Visibility>().is_none(),
+        "a fixtura precisa de um tipo que ainda não tenha id no mundo"
+    );
+    let _ = capture(&mut w, &mut c, &reg);
+    // 2. Nasce uma entidade COM o tipo — o «criar pela paleta».
+    let novo = w
+        .spawn((
+            Transform::IDENTITY,
+            Name::new("peca"),
+            RootOrder(7),
+            Visibility::default(),
+        ))
+        .id();
+    let (r, s1) = capture(&mut w, &mut c, &reg);
+    assert_eq!(r.spawned, 1, "o nascimento é visto (é um spawn)");
+    assert_eq!(s1, full(&mut w, &reg), "depois do nascimento");
+    // 3. A escrita NO LUGAR — o «arrastar a seta».
+    w.get_mut::<Visibility>(novo).expect("existe").hidden ^= true;
+    let (r, s2) = capture(&mut w, &mut c, &reg);
+    assert_eq!(
+        s2,
+        full(&mut w, &reg),
+        "⛔ a escrita no lugar de um tipo nascido DEPOIS da primeira captura ficou invisível — é \
+         o arrasto do gizmo que nunca vira passo, e o Ctrl+Z que apaga tudo (sujas={}, \
+         reserializadas={})",
+        r.dirty,
+        r.reserialized
+    );
+    assert!(
+        r.reserialized >= 1,
+        "a linha tem de ter sido re-serializada"
+    );
+    let _ = es;
+}

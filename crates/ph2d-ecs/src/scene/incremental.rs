@@ -117,10 +117,25 @@ pub struct CaptureCache {
     /// ela evita.*
     per_archetype: Vec<Option<Vec<ComponentId>>>,
     /// Os `ComponentId` de tudo o que se observa, neste mundo: os registados **+ o `ChildOf`**.
-    /// Resolvido na primeira captura (antes disso o mundo pode nem conhecer os tipos).
+    /// Resolvido na primeira captura — **e sempre que o mundo aprende tipos novos** (ver
+    /// [`Self::known_components`]).
     watched: Vec<ComponentId>,
     /// A primeira captura não tem baseline: tudo é spawn, e o `last_capture` ainda não vale.
     primed: bool,
+    /// ⭐⭐⭐ **Quantos tipos o MUNDO conhecia quando a lista foi resolvida** — a chave que a
+    /// re-resolve (2026-09-04).
+    ///
+    /// ⛔⛔⛔ **Sem isto a lista resolvia-se UMA vez, e um tipo que nascesse depois ficava de fora
+    /// para sempre.** `world.component_id::<T>()` é `None` para todo tipo registado que o mundo
+    /// ainda não usou; pelo pill do MODEL a primeira captura vê a cena **vazia**, então
+    /// `FieldPose` nunca entrava na lista — e mover com o gizmo, arrastar um slider ou digitar um
+    /// número (uma escrita **no lugar**, sem spawn nem troca de archetype) era invisível ao
+    /// pré-filtro. Era o *«o undo não obedece cada etapa, principalmente se transformação»* do
+    /// Enio, e o `Ctrl+Z` que apagava tudo. ⚠️ Com `PH2D_FIELD_SMOKE=1` a cena de demo nasce
+    /// ANTES da primeira captura, e é por isso que quatro jornadas de sondas passaram verdes sobre
+    /// um produto partido. Os ids de componente são monotónicos, então *«o mundo tem mais tipos do
+    /// que quando eu olhei»* é a pergunta exacta e barata: um `usize`.
+    known_components: usize,
     /// O relatório da última captura — para o `PH2D_UNDO_LOG` o poder imprimir sem que a
     /// assinatura da captura tenha de o devolver por 11 sítios de chamada.
     last_report: CaptureReport,
@@ -142,6 +157,7 @@ impl CaptureCache {
             per_archetype: Vec::new(),
             watched: Vec::new(),
             primed: false,
+            known_components: 0,
             last_report: CaptureReport::default(),
         }
     }
@@ -163,6 +179,7 @@ impl CaptureCache {
         self.per_archetype.clear();
         self.watched.clear();
         self.primed = false;
+        self.known_components = 0;
         self.generation = 0;
         world.clear_trackers();
         self.last_capture = world.last_change_tick();
@@ -182,6 +199,7 @@ impl CaptureCache {
     /// Os `ComponentId` observados, resolvidos contra ESTE mundo — ver
     /// [`super::registry::ComponentTypeEntry::bevy_component_id`].
     fn resolve_watched(&mut self, world: &World, registry: &ComponentRegistry) {
+        self.known_components = world.components().len();
         self.watched.clear();
         for entry in registry.iter() {
             if let Some(id) = (entry.bevy_component_id)(world) {
@@ -214,7 +232,10 @@ pub fn capture_incremental(
 ) -> Result<CaptureReport, SaveError> {
     // Condição 6 — a identidade garante-se na DERIVAÇÃO, como no `world_to_snapshot`.
     crate::assign_missing_stable_ids(world);
-    if !cache.primed {
+    // ⭐⭐⭐ **Re-resolve quando o mundo aprendeu tipos novos** — ver
+    // [`CaptureCache::known_components`]. A primeira captura (`!primed`) é só o caso particular em
+    // que ele conhecia zero.
+    if !cache.primed || world.components().len() != cache.known_components {
         cache.resolve_watched(world, registry);
     }
 

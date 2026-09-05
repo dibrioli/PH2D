@@ -97,7 +97,18 @@ impl crate::App {
         } else {
             self.undo.can_undo()
         };
-        match undo_owner(audio_owns, painter_active, colorize_owns, global_has) {
+        let dono = undo_owner(audio_owns, painter_active, colorize_owns, global_has);
+        // ⭐ **O log diz QUEM respondeu** (2026-09-04) — sem esta linha um Ctrl+Z que vai parar ao
+        // Painter ou ao image-edit é indistinguível, no log, de um que nunca chegou: nenhum dos
+        // dois imprime nada, e a fila global lê-se como «não fez nada».
+        if Self::undo_log_on() {
+            eprintln!(
+                "[undo] Ctrl+{} respondido por {dono:?} (audio={audio_owns} painter={painter_active} \
+                 colorize={colorize_owns} global={global_has})",
+                if redo { "Shift+Z" } else { "Z" }
+            );
+        }
+        match dono {
             UndoOwner::Audio =>
             {
                 #[cfg(feature = "panel-audio-editor")]

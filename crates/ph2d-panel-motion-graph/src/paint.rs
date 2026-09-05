@@ -34,6 +34,12 @@ mod paint_port_label;
 #[path = "paint_card_params.rs"]
 mod paint_card_params;
 
+/// **COMO SE DESENHA UM PINO** — irmão cortado no tecto de LOC (600) e por RESPONSABILIDADE:
+/// este ficheiro desenha o CARTÃO, aquele o que se pendura na borda dele.
+#[path = "paint_socket.rs"]
+mod paint_socket;
+use paint_socket::{highlight_socket, paint_socket_glyph, port_out_domain};
+
 /// O gate de PIXEL da faixa de params — o que os seis de geometria não podiam ver.
 #[cfg(test)]
 #[path = "paint_card_params_tests.rs"]

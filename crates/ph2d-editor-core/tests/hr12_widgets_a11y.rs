@@ -536,6 +536,20 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-motion-graph/src/paint_role.rs",
         "pure glyph drawing — the sockets' and cards' AccessKit nodes are registered in hits.rs",
     ),
+    // ⚠️ **A FAIXA DE PARAMS DENTRO DO CARTÃO** (ciclo 1 do Motion, 2026-09-05: os controlos
+    // vivem no nó e o painel lateral sai) e o PINO. Os dois são irmãos dos três acima e pela
+    // mesma razão **conferível**: nenhum tem `HitIndex` nem `WidgetStore` no escopo — eles
+    // recebem `PaintCtx` e enchem formas —, e quem regista os alvos deles é o `hits.rs`
+    // (`push_param_row_hits` / `push_socket_hits` → `register_hits`, que chama
+    // `store.register(id, InteractiveState::GraphSurface { .. })` por cada um).
+    (
+        "ph2d-panel-motion-graph/src/paint_card_params.rs",
+        "pure row drawing — the param rows' AccessKit nodes are registered in hits.rs",
+    ),
+    (
+        "ph2d-panel-motion-graph/src/paint_socket.rs",
+        "pure glyph drawing — the sockets' AccessKit nodes are registered in hits.rs",
+    ),
     // The add-node popup's DRAW — split from `paint.rs` for the 600-LOC cap (doc 57).
     //
     // It registers nothing because the MENU registers nothing: its rows are hit-tested

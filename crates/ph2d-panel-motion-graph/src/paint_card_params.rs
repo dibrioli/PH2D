@@ -40,6 +40,20 @@ const SWATCH_INSET: f32 = 3.0; // LITERAL-PX-OK: card colour swatch inset
 const SWATCH_R: f32 = 3.0; // LITERAL-PX-OK: card colour swatch corner radius
 /// Meio-lado do chevron de uma secção.
 const CHEVRON_R: f32 = 3.5; // LITERAL-PX-OK: section chevron half-size
+/// **A FORMA da setinha, em proporções do seu meio-lado** — não são medidas de desenho, são a
+/// geometria do triângulo (a mesma família dos `TAPER`/`CIGAR_H` das silhuetas).
+/// `▾ aberta`: base achatada a meia altura, bico abaixo. `▸ fechada`: espelhada no eixo.
+const CHEVRON_FLAT: f32 = 0.5; // LITERAL-PX-OK: proporcao da forma, nao medida
+const CHEVRON_TIP: f32 = 0.7; // LITERAL-PX-OK: proporcao da forma, nao medida
+
+/// A largura que o texto de facto ocupa — pela porta que vive **ao lado do pintor**
+/// ([`ph2d_editor_core::text_elide::title_elided_width`]), e não pelo `prefix_width` cru.
+///
+/// ⚠️ Foi assim que os números dos cartões apareciam como `0....` e sumiam ao afastar
+/// (report do Enio, 2026-09-05): medidos no peso normal, pintados em semi-negrito.
+fn painted_width(ctx: &mut PaintCtx, text: &str, size: f32) -> f32 {
+    ph2d_editor_core::text_elide::title_elided_width(ctx.text_system, text, size)
+}
 
 /// ⭐⭐⭐ **O QUE UMA ROW MOSTRA, por ESPÉCIE de widget — e o `match` é EXAUSTIVO de propósito.**
 ///
@@ -114,10 +128,18 @@ fn draw_section_header(
     let r = CHEVRON_R * z;
     let pts = if sec.open {
         // ▾ aberta
-        [(cx - r, cy - r * 0.5), (cx + r, cy - r * 0.5), (cx, cy + r * 0.7)]
+        [
+            (cx - r, cy - r * CHEVRON_FLAT),
+            (cx + r, cy - r * CHEVRON_FLAT),
+            (cx, cy + r * CHEVRON_TIP),
+        ]
     } else {
         // ▸ fechada
-        [(cx - r * 0.5, cy - r), (cx + r * 0.7, cy), (cx - r * 0.5, cy + r)]
+        [
+            (cx - r * CHEVRON_FLAT, cy - r),
+            (cx + r * CHEVRON_TIP, cy),
+            (cx - r * CHEVRON_FLAT, cy + r),
+        ]
     };
     ph2d_editor_core::paint_shapes::fill_polygon(
         ctx.scene,
@@ -131,7 +153,7 @@ fn draw_section_header(
     let size = geom::PARAM_LABEL_SIZE * z;
     let contagem = (!sec.open && sec.hidden > 0).then(|| sec.hidden.to_string());
     let right_w = contagem.as_ref().map_or(0.0, |t| {
-        let w = ctx.text_system.prefix_width(t, size);
+        let w = painted_width(ctx, t, size);
         paint_text_title_elided(
             ctx.text_system,
             ctx.scene,
@@ -231,7 +253,7 @@ pub(super) fn draw_card_params(
                 side
             }
             Shown::Level { text, .. } | Shown::State(text) => {
-                let vw = ctx.text_system.prefix_width(text, size);
+                let vw = painted_width(ctx, text, size);
                 // O VALOR primeiro, encostado à direita — é o que o artista procura, e
                 // alinhá-lo à direita é o que faz uma coluna de números ler-se como coluna.
                 paint_text_title_elided(

@@ -88,15 +88,16 @@ fn painted(k: usize, z: f32) -> (u32, u32) {
     // Sem isto o painel do split recebe área ZERO e o gate fica vácuo — ver o doc do arnês.
     layout.motion_graph = viewport;
     let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionGraphPanel>();
-    let mut state = MotionGraphPanelState::default();
-    state.view = ViewState {
-        zoom: z,
-        ..ViewState::default()
+    let mut state = MotionGraphPanelState {
+        view: ViewState {
+            zoom: z,
+            ..ViewState::default()
+        },
+        // ⚠️ Sem isto o painel ENQUADRA o grafo na primeira pintura e o zoom que o teste pediu
+        // é deitado fora — o gate mediria o auto-fit, não o LOD.
+        fitted: true,
+        ..MotionGraphPanelState::default()
     };
-    // ⚠️ **Sem isto o painel ENQUADRA o grafo na primeira pintura** (`if !state.fitted`) e o
-    // zoom que o teste pediu é deitado fora — o gate mediria o auto-fit, não o LOD. Foi assim
-    // que a primeira versão deste teste leu 39 glifos onde esperava 6.
-    state.fitted = true;
     let out =
         host.paint_and_count_geometry_with_layout::<MotionGraphPanel>(&mut state, layout, viewport);
     set_current_motion_graph(None);

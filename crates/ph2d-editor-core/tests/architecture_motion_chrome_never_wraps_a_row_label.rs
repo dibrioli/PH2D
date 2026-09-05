@@ -88,10 +88,19 @@ const WRAPPING_DOORS: &[&str] = &["paint_text", "paint_text_title", "paint_text_
 ///   continua a valer em todos os que restaram, e o gate confirma-o ao varrer agora a pasta
 ///   inteira (`mod.rs` **e** `number_chip.rs`).
 ///
+/// - `30` (2026-09-05) — o ciclo 1 do Motion pôs os params **dentro dos cartões do grafo**
+///   (decisão do Enio: os controlos vivem no nó e o painel lateral sai), e uma row de cartão
+///   tem **quatro** textos que cortam, todos por a largura ser a do CARTÃO e não a de uma
+///   coluna de painel: o **valor**, o **rótulo** (que cede ao valor quando os dois disputam o
+///   pixel), o **nome da secção** e a **contagem** que uma secção dobrada mostra.
+///   ⚠️ Cortar é a resposta certa aqui pela mesma razão de sempre — um cartão tem 220 px e
+///   embrulhar um rótulo empurraria a fileira seguinte para fora do sítio onde o hit-test a
+///   espera (`paint_card_params.rs`).
+///
 /// ⚠️ E este numero literal e' exactamente a armadilha que a memoria da casa nomeia — *uma
 /// contagem literal num gate faz cada feature nova editar o teste de outra pessoa*. Ele so' se
 /// sustenta porque tem o censo dos dois lados; deriva-lo continua por fazer.
-const ELIDED_TODAY: usize = 26;
+const ELIDED_TODAY: usize = 30;
 
 fn crates_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))

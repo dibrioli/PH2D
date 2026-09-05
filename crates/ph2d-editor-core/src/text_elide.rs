@@ -48,6 +48,29 @@ pub fn paint_text_elided(
     );
 }
 
+/// ⛔⛔ **A LARGURA QUE [`paint_text_title_elided`] DE FACTO OCUPA** — medida no MESMO peso em
+/// que ela pinta.
+///
+/// ⚠️ **Existe porque a divergência já shipou.** Report do Enio, 2026-09-05: os números dentro
+/// dos cartões do Motion apareciam como `0....`, `Re...`, e mais afastado sumiam de todo. Quem
+/// os desenhava media com `TextSystem::prefix_width` (peso NORMAL) e pintava com
+/// `paint_text_title_elided` (**`SEMI_BOLD`**, mais largo): o texto não cabia na largura que
+/// ele próprio tinha medido, e o elidor cortava-o. *Uma medição num peso e uma pintura noutro
+/// são duas perguntas diferentes*, e a diferença cresce quanto menor é a fonte.
+///
+/// ⚠️ **A folga de meio pixel é parte da resposta**, não um remendo: a elisão decide-se por
+/// comparação de floats, e um texto que mede exactamente a largura disponível fica na fronteira
+/// do arredondamento.
+///
+/// ⇒ quem alinha à direita, reserva coluna ou decide se cabe **chama isto**, nunca o
+/// `prefix_width` cru. Os dois vivem no mesmo ficheiro de propósito: o peso é um só.
+pub fn title_elided_width(text_system: &mut TextSystem, text: &str, font_size: f32) -> f32 {
+    if text.is_empty() {
+        return 0.0;
+    }
+    text_system.prefix_width_weighted(text, font_size, FontWeight::SEMI_BOLD) + 0.5
+}
+
 /// ⭐ [`paint_text_elided`] em **SemiBold** — a irmã de [`paint_text_title`], para o mesmo
 /// motivo pelo qual ela existe.
 ///
@@ -341,5 +364,57 @@ mod tests {
                 assert!(name.starts_with(out.trim_end_matches(ELLIPSIS)));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod title_width_tests {
+    use super::*;
+
+    /// ⭐⭐ **A LARGURA QUE A PORTA DÁ CHEGA PARA O PINTOR NÃO CORTAR** — e a condição é a
+    /// **mesma linha** que o `paint_elided_weighted` avalia
+    /// (`prefix_width_weighted(text, size, weight) <= max_width`), não uma reimplementação dela.
+    ///
+    /// FALSIFICADO por [`title_elided_width`] voltar a medir no peso normal: o texto passa a
+    /// não caber na largura que ele próprio mediu, e o pintor elide.
+    #[test]
+    fn the_width_the_door_gives_is_enough_for_the_painter_not_to_cut() {
+        let mut text = TextSystem::without_system_fonts();
+        for size in [9.0_f32, 11.0, 13.0, 22.0] {
+            for t in ["0.50", "1250", "Rect", "Circle", "-360", "12.34", "R"] {
+                let dado = title_elided_width(&mut text, t, size);
+                let preciso = text.prefix_width_weighted(t, size, FontWeight::SEMI_BOLD);
+                assert!(
+                    preciso <= dado,
+                    "`{t}` a {size}px: a porta deu {dado} e o pintor precisa de {preciso}"
+                );
+            }
+        }
+    }
+
+    /// ⛔⛔ **E A METADE QUE PROVA QUE O DEFEITO ERA REAL** — o peso NORMAL não chega.
+    ///
+    /// Report do Enio, 2026-09-05: os números dentro dos cartões do Motion liam-se `0....`,
+    /// `Re...`, e ao afastar desapareciam. Sem esta metade, o gate de cima ficaria verde sobre
+    /// uma porta que voltasse ao `prefix_width` cru em algum tamanho — *um gate sem
+    /// contra-exemplo mede disponibilidade, não correcção*.
+    #[test]
+    fn measuring_at_the_wrong_weight_really_does_cut() {
+        let mut text = TextSystem::without_system_fonts();
+        let mut apanhados = 0usize;
+        for size in [9.0_f32, 11.0, 13.0, 22.0] {
+            for t in ["0.50", "1250", "Rect", "Circle", "-360", "12.34"] {
+                let errado = text.prefix_width(t, size);
+                let preciso = text.prefix_width_weighted(t, size, FontWeight::SEMI_BOLD);
+                if preciso > errado {
+                    apanhados += 1;
+                }
+            }
+        }
+        assert!(
+            apanhados > 0,
+            "o semi-negrito tem de ser mais largo que o normal em ALGUM caso — senao este \
+             modulo esta' a defender-se de um defeito que nao existe"
+        );
     }
 }

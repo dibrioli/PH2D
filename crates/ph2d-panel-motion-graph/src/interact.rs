@@ -479,219 +479,6 @@ fn apply_node(
     }
 }
 
-/// Output-socket gestures: drag begins a wire; the ghost tracks the pointer and
-/// snaps its validity to the hovered input; the drop emits `Connect`.
-/// ⭐⭐⭐ **ARRASTAR O VALOR DE UM PARAM NO CARTÃO** (ciclo 1 — doc 103).
-///
-/// A lei é a do slider que a row DESENHA: **atravessar a largura do cartão varre a faixa
-/// inteira** (`min..max` do hint). É o que o preenchimento da barra mostra, então o dedo e o
-/// olho concordam por construção — e não há um segundo número de sensibilidade para calibrar.
-///
-/// ⚠️ **O delta é contra o x de PARTIDA, nunca contra o do quadro anterior.** Somar deltas
-/// acumula o arredondamento de um param inteiro: arrastar para a direita e voltar não devolveria
-/// o número onde começou.
-///
-/// ⚠️ **A edição sai pela porta que já existe** (`GraphIntent::SetParam` → `Graph::set_param`),
-/// a mesma da row do painel — o undo, o memo do cook e os limites são os mesmos nas duas
-/// superfícies. Nada de um segundo caminho de escrita.
-fn apply_param_row(
-    state: &mut MotionGraphPanelState,
-    g: GraphGesture,
-    node: u32,
-    row: u16,
-    rect: Rect,
-    snap: &GraphViewSnapshot,
-) {
-    let Some(view_node) = snap.nodes.iter().find(|n| n.id == node) else {
-        return;
-    };
-    // ⚠️ `row` é o índice de FAIXA — uma coordenada só para o pintor, o hit-test e o gesto.
-    let p = match crate::geom::band_at(view_node, row as usize) {
-        Some(crate::geom::BandRow::Param(k)) => &view_node.params[k],
-        // ⭐ O cabeçalho DOBRA. Na PRESSÃO (Begin), não na largada: um clique que arrasta um
-        // pixel é classificado End pelo dispatch, e a dobra tem de acontecer na mesma — é a
-        // mesma robustez que o alt-clique num fio já usa.
-        Some(crate::geom::BandRow::Header(k)) => {
-            if g.phase == GesturePhase::Begin {
-                push_intent(GraphIntent::ToggleParamSection {
-                    node,
-                    section: view_node.sections[k].title,
-                });
-            }
-            state.interaction = Interaction::Idle;
-            return;
-        }
-        None => return,
-    };
-    match g.phase {
-        GesturePhase::Begin => {
-            state.interaction = Interaction::ScrubParam {
-                node,
-                row,
-                start_value: p.value,
-                start_x: g.x,
-            };
-        }
-        GesturePhase::Update => {
-            let Interaction::ScrubParam {
-                node: n0,
-                row: r0,
-                start_value,
-                start_x,
-            } = state.interaction
-            else {
-                return;
-            };
-            if n0 != node || r0 != row {
-                return;
-            }
-            let view = View::new(rect, state.view);
-            let largura = crate::geom::CARD_W * view.zoom;
-            if largura <= 0.0 {
-                return;
-            }
-            let faixa = p.hint.max - p.hint.min;
-            let bruto = start_value + (g.x - start_x) / largura * faixa;
-            // O passo do hint decide se o número é inteiro — a mesma leitura que a row usa
-            // para o escrever.
-            let valor = if p.hint.step >= 1.0 {
-                bruto.round()
-            } else {
-                bruto
-            };
-            let valor = valor.clamp(p.hint.min.min(p.hint.max), p.hint.max.max(p.hint.min));
-            if (valor - p.value).abs() > f32::EPSILON {
-                push_intent(GraphIntent::SetParam {
-                    node,
-                    param: p.hint.param,
-                    value: valor,
-                });
-            }
-        }
-        // ⭐⭐ **UM CLIQUE NUM ESTADO ALTERNA-O** — um interruptor vira, um enum avança para a
-        // opção seguinte (com volta ao princípio). Arrastar continua a varrer, que é como se
-        // atravessa depressa um enum de 48 opções; o clique é o gesto de quem quer *a
-        // seguinte*, e é o único que um dedo faz sem querer varrer.
-        //
-        // ⚠️ **Só o CLIQUE**, nunca o `End` de um arrasto: senão largar o dedo depois de varrer
-        // dava mais um passo, e o valor saltava por cima do que o artista tinha escolhido.
-        GesturePhase::Click => {
-            match p.hint.widget {
-                ph2d_node_registry::ParamWidget::Toggle => {
-                    push_intent(GraphIntent::SetParam {
-                        node,
-                        param: p.hint.param,
-                        value: f32::from(u8::from(p.value < 0.5)),
-                    });
-                }
-                ph2d_node_registry::ParamWidget::Enum { labels } if !labels.is_empty() => {
-                    let n = labels.len() as f32;
-                    let proxima = (p.value.round() + 1.0).rem_euclid(n);
-                    push_intent(GraphIntent::SetParam {
-                        node,
-                        param: p.hint.param,
-                        value: proxima,
-                    });
-                }
-                _ => {}
-            }
-            state.interaction = Interaction::Idle;
-        }
-        GesturePhase::End | GesturePhase::DoubleClick => {
-            state.interaction = Interaction::Idle;
-        }
-    }
-}
-
-fn apply_socket_out(
-    state: &mut MotionGraphPanelState,
-    g: GraphGesture,
-    node: u32,
-    port: u16,
-    rect: Rect,
-    snap: &GraphViewSnapshot,
-) {
-    match g.phase {
-        GesturePhase::Begin => {
-            state.interaction = Interaction::DrawWire {
-                from_node: node,
-                from_port: port,
-                cur: (g.x, g.y),
-                target: None,
-                detached: None,
-            };
-        }
-        GesturePhase::Update => {
-            let view = View::new(rect, state.view);
-            let target = target_socket(snap, &view, node, port, g.x, g.y);
-            if let Interaction::DrawWire { cur, target: t, .. } = &mut state.interaction {
-                *cur = (g.x, g.y);
-                *t = target;
-            }
-        }
-        GesturePhase::End => {
-            if let Interaction::DrawWire {
-                from_node,
-                from_port,
-                target,
-                ..
-            } = std::mem::take(&mut state.interaction)
-            {
-                let Some((to_node, to_port, _compat)) = target else {
-                    // The wire landed on no input socket: a collapsed card, a regular node's
-                    // BODY, or empty canvas — resolved in that order (doc 45/57/63.3).
-                    let view = View::new(rect, state.view);
-                    drop_gesture::resolve_loose_output_drop(
-                        state, snap, &view, from_node, from_port, g.x, g.y,
-                    );
-                    return;
-                };
-                // Emit regardless of the local compatibility flag — the shell is
-                // the authority (cycle / occupied / typing / membrane) and raises
-                // the refusal toast.
-                push_intent(GraphIntent::Connect {
-                    from_node,
-                    from_port,
-                    to_node,
-                    to_port,
-                });
-            }
-        }
-        GesturePhase::Click | GesturePhase::DoubleClick => {
-            state.interaction = Interaction::Idle;
-        }
-    }
-}
-
-/// The input socket under `(x, y)`, with whether it is locally type-compatible
-/// with the source output (domain + dim + clock — `connects_directly` minus the
-/// membrane, which the shell checks). `None` when the pointer is over no input.
-pub(super) fn target_socket(
-    snap: &GraphViewSnapshot,
-    view: &View,
-    from_node: u32,
-    from_port: u16,
-    x: f32,
-    y: f32,
-) -> Option<(u32, u16, bool)> {
-    let (to_node, to_port) = geom::nearest_input_socket(snap, view, x, y)?;
-    let out = snap
-        .nodes
-        .iter()
-        .find(|n| n.id == from_node)
-        .and_then(|n| n.outputs.get(from_port as usize));
-    let inp = snap
-        .nodes
-        .iter()
-        .find(|n| n.id == to_node)
-        .and_then(|n| n.inputs.get(to_port as usize));
-    let compat = match (out, inp) {
-        (Some(o), Some(i)) => o.domain == i.domain && o.dim == i.dim && o.clock == i.clock,
-        _ => false,
-    };
-    Some((to_node, to_port, compat))
-}
-
 #[cfg(test)]
 #[path = "interact_tests.rs"]
 mod tests;
@@ -700,6 +487,22 @@ mod tests;
 #[cfg(test)]
 #[path = "interact_param_row_tests.rs"]
 mod param_row_tests;
+
+/// **OS GESTOS DENTRO DE UM CARTÃO** — irmão cortado no tecto de LOC (600) e por
+/// RESPONSABILIDADE: este ficheiro trata dos gestos sobre o GRAFO (mover um nó, puxar um fio,
+/// laçar, cortar) e aquele dos gestos que o cartão passou a ter **dentro de si** (arrastar um
+/// número, alternar um estado, dobrar uma secção). Crescem por razões diferentes.
+#[path = "interact_param_row.rs"]
+mod param_row;
+use param_row::apply_param_row;
+
+/// **PUXAR UM FIO** — irmão cortado no mesmo tecto e pela mesma régua: este ficheiro decide
+/// *que gesto é este*, aquele executa o único que tem uma máquina de estados própria (o fio
+/// vivo, o alvo magnético, e o que fazer quando ele é largado longe de um pino).
+#[path = "interact_wire_drag.rs"]
+mod wire_drag;
+pub(super) use wire_drag::target_socket;
+use wire_drag::apply_socket_out;
 
 #[cfg(test)]
 #[path = "interact_drop_tests.rs"]

@@ -627,5 +627,5 @@ fn what_the_open_cycle_group_needs() {
             v.sections.len()
         );
     }
-    eprintln!("  ⇒ controlos RICOS no grupo do ciclo 1: {total_ricos}");
+    eprintln!("  -- controlos RICOS no grupo do ciclo 1: {total_ricos}");
 }

@@ -32,10 +32,10 @@ fn snapshot_with(rows: usize) -> ParamsSnapshot {
                     label: format!("Parameter {i}"),
                     value: i as f64 * 0.5,
                     min: 0.0,
-                    max: 20.0,
+                    max: 20.0,  // LITERAL-PX-OK: valor de FIXTURA de medicao, nao desenho
                     hard_min: 0.0,
-                    hard_max: 20.0,
-                    step: 0.1,
+                    hard_max: 20.0,  // LITERAL-PX-OK: valor de FIXTURA de medicao, nao desenho
+                    step: 0.1,  // LITERAL-PX-OK: valor de FIXTURA de medicao, nao desenho
                     integer: false,
                     driven_by: None,
                     display: RowDisplay::default(),
@@ -63,7 +63,7 @@ fn paint_ms(rows: usize, n: u32) -> f64 {
                 },
             );
         }
-        melhor = melhor.min(t0.elapsed().as_secs_f64() * 1000.0 / f64::from(n));
+        melhor = melhor.min(t0.elapsed().as_secs_f64() * 1000.0 / f64::from(n));  // LITERAL-PX-OK: us por ms, conversao de unidade de RELOGIO
     }
     melhor
 }
@@ -78,7 +78,7 @@ fn measure_row_cost() {
     for rows in [0usize, 1, 2, 4, 8, 16, 24, 33] {
         let ms = paint_ms(rows, N);
         let marg = anterior.map_or(f64::NAN, |(r0, m0)| {
-            (ms - m0) * 1000.0 / (rows - r0) as f64
+            (ms - m0) * 1000.0 / (rows - r0) as f64  // LITERAL-PX-OK: us por ms, conversao de unidade de RELOGIO
         });
         eprintln!("  {rows:>5} │ {ms:>10.4} │ {marg:>12.2}");
         anterior = Some((rows, ms));

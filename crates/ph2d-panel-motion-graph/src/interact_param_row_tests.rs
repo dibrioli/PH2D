@@ -65,8 +65,10 @@ fn param(name: &'static str, value: f32, step: f32, driven: bool) -> CardParam {
 /// Arrasta a row `row` do cartão por `dx` px e devolve o que saiu na fila de intenções.
 fn drag(snap: &GraphViewSnapshot, row: u16, dx: f32) -> Vec<GraphIntent> {
     let _ = drain_intents();
-    let mut st = MotionGraphPanelState::default();
-    st.fitted = true; // senão o painel enquadra e o zoom do teste evapora
+    let mut st = MotionGraphPanelState {
+        fitted: true,
+        ..MotionGraphPanelState::default()
+    }; // senão o painel enquadra e o zoom do teste evapora
     let kind = GraphHitKind::ParamRow { node: 7, row };
     let x0 = 100.0;
     super::apply_gesture(
@@ -200,8 +202,10 @@ fn toggle_param(value: f32) -> CardParam {
 /// Um CLIQUE (pressão e largada sem varrer) na row `row`.
 fn click(snap: &GraphViewSnapshot, row: u16) -> Vec<GraphIntent> {
     let _ = drain_intents();
-    let mut st = MotionGraphPanelState::default();
-    st.fitted = true;
+    let mut st = MotionGraphPanelState {
+        fitted: true,
+        ..MotionGraphPanelState::default()
+    };
     super::apply_gesture(
         &mut st,
         gesture(
@@ -261,8 +265,10 @@ fn a_click_flips_a_toggle_both_ways() {
 fn releasing_after_a_scrub_does_not_advance_the_enum() {
     let snap = card(vec![enum_param(1.0, &["a", "b", "c"])]);
     let _ = drain_intents();
-    let mut st = MotionGraphPanelState::default();
-    st.fitted = true;
+    let mut st = MotionGraphPanelState {
+        fitted: true,
+        ..MotionGraphPanelState::default()
+    };
     let kind = GraphHitKind::ParamRow { node: 7, row: 0 };
     for fase in [GesturePhase::Begin, GesturePhase::End] {
         super::apply_gesture(&mut st, gesture(kind, fase, 100.0, 60.0), RECT, CENTER, &snap);

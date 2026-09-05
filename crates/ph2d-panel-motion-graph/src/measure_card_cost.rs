@@ -29,10 +29,6 @@ const STEP_X: f32 = 100.0; // LITERAL-PX-OK: passo da fixtura
 const STEP_Y: f32 = 60.0; // LITERAL-PX-OK: passo da fixtura
 const COLS: u32 = 12;
 
-fn card(id: u32) -> GraphNodeView {
-    card_with_params(id, 0)
-}
-
 /// O mesmo cartão com `k` rows de param — a variável do ciclo 1.
 fn card_with_params(id: u32, k: usize) -> GraphNodeView {
     let port = |name: &'static str, dim| PortView {
@@ -70,8 +66,8 @@ fn card_with_params(id: u32, k: usize) -> GraphNodeView {
                     label: ["Rows", "Columns", "Gap X", "Gap Y", "Seed", "Radius", "Count", "Angle"]
                         [i % 8],
                     min: 0.0,
-                    max: 20.0,
-                    step: 0.1,
+                    max: 20.0,  // LITERAL-PX-OK: valor de FIXTURA de medicao, nao desenho
+                    step: 0.1,  // LITERAL-PX-OK: valor de FIXTURA de medicao, nao desenho
                     widget: ph2d_node_registry::ParamWidget::Slider,
                 },
                 value: 1.0 + i as f32,
@@ -111,7 +107,7 @@ fn paint_ms_params(cards: u32, k: usize, n: u32) -> f64 {
             let mut state = MotionGraphPanelState::default();
             let _ = host.paint_with_layout::<MotionGraphPanel>(&mut state, layout, viewport);
         }
-        melhor = melhor.min(t0.elapsed().as_secs_f64() * 1000.0 / f64::from(n));
+        melhor = melhor.min(t0.elapsed().as_secs_f64() * 1000.0 / f64::from(n));  // LITERAL-PX-OK: us por ms, conversao de unidade de RELOGIO
     }
     melhor
 }
@@ -134,7 +130,7 @@ fn measure_card_cost() {
     for cards in [0u32, 1, 5, 10, 20, 40, 80, 120] {
         let ms = paint_ms(cards, N);
         let marg = anterior.map_or(f64::NAN, |(c0, m0)| {
-            (ms - m0) * 1000.0 / f64::from(cards - c0)
+            (ms - m0) * 1000.0 / f64::from(cards - c0)  // LITERAL-PX-OK: us por ms, conversao de unidade de RELOGIO
         });
         eprintln!("  {cards:>6} │ {ms:>10.4} │ {marg:>14.2}");
         anterior = Some((cards, ms));
@@ -146,7 +142,7 @@ fn measure_card_cost() {
     let mut ant: Option<(usize, f64)> = None;
     for k in [0usize, 1, 2, 4, 8, 16] {
         let ms = paint_ms_params(20, k, N);
-        let marg = ant.map_or(f64::NAN, |(k0, m0)| (ms - m0) * 1000.0 / (20 * (k - k0)) as f64);
+        let marg = ant.map_or(f64::NAN, |(k0, m0)| (ms - m0) * 1000.0 / (20 * (k - k0)) as f64);  // LITERAL-PX-OK: us por ms, conversao de unidade de RELOGIO
         eprintln!("  {k:>5} │ {ms:>10.4} │ {marg:>14.2}");
         ant = Some((k, ms));
     }

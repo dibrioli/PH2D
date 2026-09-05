@@ -430,8 +430,10 @@ fn the_readout_sits_below_the_param_band() {
 #[test]
 fn only_the_text_of_a_param_row_follows_the_zoom() {
     let at = |z: f32| {
-        let mut vs = ViewState::default();
-        vs.zoom = z;
+        let vs = ViewState {
+            zoom: z,
+            ..ViewState::default()
+        };
         param_text_is_drawn(&View::new(Rect::new(0.0, 0.0, 800.0, 600.0), vs))
     };
     assert!(!at(0.25), "afastado, o rotulo e' uma mancha — nao se escreve");

@@ -427,6 +427,30 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             (ids::CTX_MENU_ASSET_USES, "Show what it uses", None),
             (ids::CTX_MENU_ASSET_USED_BY, "Show what uses it", None),
             (ids::CTX_MENU_ASSET_REMOVE, "Remove from Library", None),
+            // ⭐⭐⭐ **A troca por um componente sem parentesco** (plano F5, o último critério).
+            //
+            // ⚠️ **Três linhas e não uma, porque o MODO é o gesto.** Sem antepassado comum não há
+            // mapa derivado, só palpite — e o plano proíbe o app de o escolher sozinho (HR-5).
+            // A linha sem adjectivo é o `None` do Unity e o caminho seguro; as duas de baixo usam
+            // o prefixo `—` do selector de tema, que é como esta casa já escreve um sub-grupo.
+            //
+            // ⚠️ **O sujeito é a SELECÇÃO**, ao contrário de todas as linhas acima — daí o rótulo
+            // a nomeá-la: um item que age sobre outra coisa que a apontada tem de o dizer.
+            (
+                ids::CTX_MENU_ASSET_REPLACE,
+                "Replace selection with this",
+                None,
+            ),
+            (
+                ids::CTX_MENU_ASSET_REPLACE_BY_NAME,
+                "\u{2014} and match overrides by name",
+                None,
+            ),
+            (
+                ids::CTX_MENU_ASSET_REPLACE_BY_TREE,
+                "\u{2014} and match overrides by position",
+                None,
+            ),
         ],
         // Painter Falloff curve point handle (Blender per-point handle types).
         ContextMenuKind::FalloffPointHandle => &[

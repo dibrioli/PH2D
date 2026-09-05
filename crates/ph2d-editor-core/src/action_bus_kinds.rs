@@ -60,6 +60,18 @@ pub enum AssetCardAction {
     /// ⭐⭐ **Tirar da biblioteca** (report do Enio, 2026-08-30). A lei das duas metades vive em
     /// `shells/desktop/src/instance_unmake.rs`.
     RemoveFromLibrary,
+    /// ⭐⭐⭐ **Trocar o que está seleccionado por este componente, sem levar excepção nenhuma**
+    /// (plano F5, o último critério) — ver [`crate::ids::CTX_MENU_ASSET_REPLACE`].
+    ///
+    /// ⚠️ **As três são variantes SEPARADAS e não um modo dentro de uma**, pela razão que as fez
+    /// existir: o modo tem de ser escolhido **pelo gesto**. Uma variante só, com o modo no corpo,
+    /// convidaria o primeiro chamador novo a passar um valor de omissão — e o valor de omissão de
+    /// uma heurística é exactamente o que o plano proíbe.
+    ReplaceSelection,
+    /// Trocar levando as excepções pelo **caminho de nomes**.
+    ReplaceSelectionByName,
+    /// Trocar levando as excepções pelo **caminho de posições**.
+    ReplaceSelectionByTree,
 }
 
 /// The three TopBar transport commands. Kept a small copy enum so the

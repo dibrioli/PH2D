@@ -63,6 +63,29 @@ pub const CTX_MENU_ASSET_USED_BY: NodeId = hash_node_id("ctx_menu_asset_used_by"
 /// `shells/desktop/src/instance_unmake.rs`.
 pub const CTX_MENU_ASSET_REMOVE: NodeId = hash_node_id("ctx_menu_asset_remove");
 
+/// ⭐⭐⭐ **TROCAR o que está seleccionado por este componente** (ADR-0164 / plano F5, o último
+/// critério) — **sem levar excepção nenhuma**, que é o `None` do `ObjectMatchMode` do Unity.
+///
+/// # ⚠️ São TRÊS itens, e é isso que cumpre *«nunca automático»*
+///
+/// O plano F5 escreve: *«trocar para mestre NÃO aparentado: só por gesto, com os 3 modos
+/// (`Nenhum` default · `Por nome` · `Por hierarquia`) + relatório. ⛔ Nunca automático (HR-5)»*.
+/// Sem parentesco não existe mapa derivado — só um **palpite** —, e um palpite que o app escolhe
+/// sozinho é a heurística que esta linha recusa desde a F5.1. ⇒ o modo é escolhido **pelo item que
+/// o artista aperta**, e este, o sem adjectivo, é o seguro: ele não adivinha nada.
+///
+/// ⚠️ **O sujeito é a SELECÇÃO, e o cartão é o objecto** — ao contrário dos cinco itens acima, cujo
+/// sujeito é o próprio cartão. O rótulo di-lo em voz alta (*«Replace selection…»*), porque um menu
+/// que age sobre outra coisa que a apontada tem de a nomear.
+pub const CTX_MENU_ASSET_REPLACE: NodeId = hash_node_id("ctx_menu_asset_replace");
+/// ⭐⭐ **Trocar levando as excepções pelo CAMINHO DE NOMES** — sobrevive a reordenar os irmãos,
+/// perde-se com um renomear. Ver [`CTX_MENU_ASSET_REPLACE`] e `shells/desktop/src/instance_swap_match.rs`.
+pub const CTX_MENU_ASSET_REPLACE_BY_NAME: NodeId = hash_node_id("ctx_menu_asset_replace_by_name");
+/// ⭐⭐ **Trocar levando as excepções pelo CAMINHO DE POSIÇÕES** — o par simétrico do de cima:
+/// sobrevive a renomear, perde-se ao reordenar. ⛔ Nenhum dos dois contém o outro, e é por isso que
+/// os dois existem.
+pub const CTX_MENU_ASSET_REPLACE_BY_TREE: NodeId = hash_node_id("ctx_menu_asset_replace_by_tree");
+
 /// ⭐⭐ **Tirar da biblioteca, a partir da HIERARQUIA** — o mesmo verbo, o outro sujeito.
 ///
 /// ⚠️ **Ele existe porque o `Verb::Unmake` já aceita os dois** (a receita e uma cópia dela), e sem

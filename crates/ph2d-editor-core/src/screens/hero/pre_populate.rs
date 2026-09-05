@@ -429,6 +429,10 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_ASSET_USES,
         ids::CTX_MENU_ASSET_USED_BY,
         ids::CTX_MENU_ASSET_REMOVE,
+        // ⭐⭐⭐ As três trocas por um componente sem parentesco (plano F5, o último critério).
+        ids::CTX_MENU_ASSET_REPLACE,
+        ids::CTX_MENU_ASSET_REPLACE_BY_NAME,
+        ids::CTX_MENU_ASSET_REPLACE_BY_TREE,
         ids::CTX_MENU_CATALOG_RENAME,
         ids::CTX_MENU_CATALOG_DELETE,
         ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE,

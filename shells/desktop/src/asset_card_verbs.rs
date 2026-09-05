@@ -199,6 +199,36 @@ pub(crate) fn drain(
             false
         }
 
+        // ── Trocar o que está escolhido por este componente ────────────────────────────────────
+        //
+        // ⭐⭐⭐ **O único verbo deste menu cujo sujeito NÃO é o cartão** (plano F5, o último
+        // critério): o cartão é o *objecto* da frase e a **selecção** é o sujeito. É por isso que os
+        // três rótulos a nomeiam — um item que age sobre outra coisa que a apontada tem de o dizer.
+        //
+        // ⚠️ **Três verbos e não um com um modo dentro.** Sem antepassado comum não existe mapa
+        // derivado, só palpite, e o plano manda que o palpite seja **pedido pelo gesto**. Ver
+        // [`crate::instance_swap_match`].
+        (
+            AssetCardAction::ReplaceSelection
+            | AssetCardAction::ReplaceSelectionByName
+            | AssetCardAction::ReplaceSelectionByTree,
+            DragPayload::Prefab { stable_id },
+        ) => replace_selection(verb, stable_id, sim, echo, gizmo, toasts),
+        (
+            AssetCardAction::ReplaceSelection
+            | AssetCardAction::ReplaceSelectionByName
+            | AssetCardAction::ReplaceSelectionByTree,
+            DragPayload::Image { .. },
+        ) => {
+            // ⛔ A quarta recusa da tabela plana, e ela nomeia o facto como as outras três: trocar
+            // é trocar de RECEITA, e uma imagem não é uma. O que o artista quer aqui tem outro
+            // gesto — largá-la sobre o objecto — e a frase manda-o para lá.
+            toasts.push(Toast::info(
+                "An image is not a component \u{2014} drop it on an object to change what it draws",
+            ));
+            false
+        }
+
         // ── Tirar da biblioteca ────────────────────────────────────────────────────────────────
         (AssetCardAction::RemoveFromLibrary, DragPayload::Prefab { stable_id }) => {
             let Some(bits) = crate::instance_verbs::entity_for_stable_id(sim, stable_id) else {
@@ -247,6 +277,98 @@ pub(crate) fn drain(
             false
         }
     }
+}
+
+/// ⭐⭐⭐ **Trocar cada cópia escolhida pelo componente do cartão** (ADR-0164 / plano F5).
+///
+/// # ⚠️ O sujeito é a SELECÇÃO, e ele espalha-se por ela
+///
+/// *«Replace selection»* no plural é o que o rótulo promete, e cumpri-lo é a diferença entre um
+/// verbo e uma armadilha: com cinco cópias escolhidas, trocar só a primária seria uma acção
+/// **parcial em silêncio**. ⚠️ E o sujeito de cada uma é a **raiz da instância**, não a entidade
+/// clicada — o artista escolhe uma peça dentro da cópia tantas vezes quantas escolhe a raiz, e
+/// exigir a raiz faria o gesto falhar sem dizer porquê.
+///
+/// # ⚠️ Uma voz só, com os números dentro
+///
+/// Uma selecção mista (cópias, objectos soltos, cópias que já são deste componente) daria um toast
+/// por objecto. ⇒ um resumo, e ele **nomeia o que não aconteceu**: o que ficou por trocar e os
+/// nomes que apareceram mais que uma vez. *A metade DURÁVEL do relatório é outra* — cada excepção
+/// que perdeu o alvo vai para a lista de *sem alvo* do cartão do Inspector (F5.6), com a peça de
+/// que era. Um toast diz **quantas**; a lista diz **quais**.
+fn replace_selection(
+    verb: AssetCardAction,
+    stable_id: u64,
+    sim: &mut SimWorld,
+    echo: &mut crate::instance_sync::MasterEcho,
+    gizmo: &ph2d_editor::screens::hero::GizmoStateGroup,
+    toasts: &mut ph2d_editor::ToastQueue,
+) -> bool {
+    use crate::instance_swap_match::WhenUnrelated;
+    let how = match verb {
+        AssetCardAction::ReplaceSelectionByName => WhenUnrelated::ByName,
+        AssetCardAction::ReplaceSelectionByTree => WhenUnrelated::ByHierarchy,
+        // ⚠️ O item sem adjectivo. ⛔ **Nunca `Refuse`** — aqui o gesto JÁ nomeou um modo; a recusa
+        // é o caminho de quem não pediu nada, e esse não passa por esta função.
+        _ => WhenUnrelated::CarryNothing,
+    };
+    let chosen: Vec<u64> = gizmo.iter_selected().collect();
+    if chosen.is_empty() {
+        toasts.push(Toast::info(
+            "Pick the copy you want to replace first \u{2014} then choose this again",
+        ));
+        return false;
+    }
+    // As raízes, sem repetições: duas peças da MESMA cópia escolhidas são uma troca, não duas.
+    let mut roots: Vec<u64> = chosen
+        .into_iter()
+        .filter_map(|bits| {
+            crate::instance_verbs::instance_root_of(sim, Entity::from_bits(bits))
+                .map(|e| e.to_bits())
+        })
+        .collect();
+    roots.sort_unstable();
+    roots.dedup();
+
+    let (mut done, mut kept, mut ambiguous, mut already, mut skipped) = (0usize, 0, 0, 0, 0);
+    for bits in roots {
+        match crate::instance_variant::swap(sim, echo, Entity::from_bits(bits), stable_id, how) {
+            Ok(r) => {
+                done += 1;
+                kept += r.overrides_kept;
+                ambiguous += r.ambiguous;
+            }
+            Err(crate::instance_variant::SwapRefusal::Already) => already += 1,
+            Err(_) => skipped += 1,
+        }
+    }
+    if done == 0 {
+        // ⚠️ **Cada caminho vazio diz uma coisa DIFERENTE**, e as três são accionáveis: *já é este*
+        // não pede nada, *não é uma cópia* diz o que escolher, e a terceira é o resto.
+        toasts.push(Toast::info(if already > 0 {
+            "Those are already copies of this component"
+        } else if skipped > 0 {
+            "That copy cannot become this component"
+        } else {
+            "Nothing you picked is a copy of a component"
+        }));
+        return false;
+    }
+    let name = crate::instance_verbs::master_named(sim, stable_id)
+        .unwrap_or_else(|| "component".to_string());
+    let mut say = format!(
+        "Replaced {done} object(s) with \u{201c}{name}\u{201d} \u{2014} {kept} override(s) kept"
+    );
+    if ambiguous > 0 {
+        say.push_str(&format!(
+            " \u{b7} {ambiguous} name(s) used more than once were skipped"
+        ));
+    }
+    if already + skipped > 0 {
+        say.push_str(&format!(" \u{b7} {} left alone", already + skipped));
+    }
+    toasts.push(Toast::success(say));
+    true
 }
 
 #[cfg(test)]

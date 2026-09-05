@@ -391,12 +391,24 @@ fn an_image_card_dispatches_every_verb_too_because_the_shell_is_who_refuses() {
         AssetCardAction::Instantiate,
         AssetCardAction::SelectUsers,
         AssetCardAction::RemoveFromLibrary,
+        // ⭐⭐⭐ **As TRÊS trocas entraram em 2026-09-05** (plano F5, o último critério). Uma imagem
+        // não é um componente, e quem o diz — em voz alta — continua a ser o shell.
+        AssetCardAction::ReplaceSelection,
+        AssetCardAction::ReplaceSelectionByName,
+        AssetCardAction::ReplaceSelectionByTree,
     ] {
         let id = match verb {
             AssetCardAction::EditPrefab => ph2d_editor_core::ids::CTX_MENU_ASSET_EDIT,
             AssetCardAction::Instantiate => ph2d_editor_core::ids::CTX_MENU_ASSET_INSTANTIATE,
             AssetCardAction::SelectUsers => ph2d_editor_core::ids::CTX_MENU_ASSET_SELECT_USERS,
             AssetCardAction::RemoveFromLibrary => ph2d_editor_core::ids::CTX_MENU_ASSET_REMOVE,
+            AssetCardAction::ReplaceSelection => ph2d_editor_core::ids::CTX_MENU_ASSET_REPLACE,
+            AssetCardAction::ReplaceSelectionByName => {
+                ph2d_editor_core::ids::CTX_MENU_ASSET_REPLACE_BY_NAME
+            }
+            AssetCardAction::ReplaceSelectionByTree => {
+                ph2d_editor_core::ids::CTX_MENU_ASSET_REPLACE_BY_TREE
+            }
         };
         let (mut host, mut st) = open_host();
         ph2d_panel_asset_browser::state::probe_set_painted(vec![AssetRef::Texture {

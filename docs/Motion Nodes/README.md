@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**110 arquivos** · **9** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**111 arquivos** · **10** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -114,6 +114,7 @@
 | 98 | ◆ | [98_auditoria_de_performance_2026-09-01.md](98_auditoria_de_performance_2026-09-01.md) | auditoria | 98 — Auditoria de performance do módulo Motion, 2026-09-01 |
 | 99 | ◆ | [99_estudo_do_mini_cavalry_2026-09-02.md](99_estudo_do_mini_cavalry_2026-09-02.md) | pesquisa | 99 — Estudo sério do Mini Cavalry V2 |
 | 100 | ◆ | [100_estudo_dos_outputs_2026-09-04.md](100_estudo_dos_outputs_2026-09-04.md) | pesquisa | 100 — Estudo dos outputs: um nó com muitos pinos, ou muitos nós com um pino? |
+| 101 | ◆ | [101_pesquisa_cartoes_ricos_2026-09-04.md](101_pesquisa_cartoes_ricos_2026-09-04.md) | pesquisa | 101 — Pesquisa: CARTÕES RICOS — o upgrade do nó para superar Blender, Cavalry e Houdini |
 | — | ◆ | [BUGS_motion_nodes.md](BUGS_motion_nodes.md) | bugs | Bugs do módulo Motion Nodes — registro + soluções |
 | — |   | [referencia_catalogo_nodes_minicavalry.md](referencia_catalogo_nodes_minicavalry.md) | referência | Mini Cavalry — Referência de Nós (autor) |
 | — |   | [referencia_design_node_graph_ph2d_v1.md](referencia_design_node_graph_ph2d_v1.md) | referência | PH2D — Sistema de Nós — Design Canônico |

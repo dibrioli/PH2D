@@ -94,7 +94,7 @@ fn weights(m: &[[f64; 2]; 2]) -> [[f64; 2]; 3] {
 }
 
 /// `F` (3×2), coluna a coluna.
-fn deform(x: &[V3], t: [u32; 3], m: &[[f64; 2]; 2]) -> [V3; 2] {
+pub(crate) fn deform(x: &[V3], t: [u32; 3], m: &[[f64; 2]; 2]) -> [V3; 2] {
     let (x0, x1, x2) = (x[t[0] as usize], x[t[1] as usize], x[t[2] as usize]);
     let (e1, e2) = (sub(x1, x0), sub(x2, x0));
     let col = |c: usize| {
@@ -108,7 +108,7 @@ fn deform(x: &[V3], t: [u32; 3], m: &[[f64; 2]; 2]) -> [V3; 2] {
 }
 
 /// `G = ½(FᵀF − G_repouso)` e `S = 2μG + λ·tr(G)·I`, as duas matrizes `2×2`.
-fn strain(
+pub(crate) fn strain(
     f: &[V3; 2],
     rest: &[[f64; 2]; 2],
     mu: f64,
@@ -178,7 +178,34 @@ pub(crate) fn accumulate(
         area * (f[0][2] * sw[0] + f[1][2] * sw[1]),
     ];
 
-    let wsw = w[0] * sw[0] + w[1] * sw[1];
+    // ⛔⛔⛔ **A PROJEÇÃO QUE FALTAVA, E ELA É SÓ DA MÉTRICA.**
+    //
+    // `wᵀSw` carrega o 2.º Piola-Kirchhoff, que é **negativo sob compressão** — e
+    // este é o único termo diagonal cheio do bloco. Sob compressão ele engole os
+    // dois termos PSD e o que resta a segurar o bloco positivo é a inércia
+    // `mᵢ/h²`, que **desaparece ao refinar a malha** enquanto o elástico é `O(μ)`.
+    //
+    // Medido em 2026-09-05, sem esta linha: a `35 %` de compressão a energia de
+    // um retalho vai de `6,4e1` para **`5,26e8`** num sub-passo e um vértice anda
+    // `20×` a peça. E é um **POLO**, não uma escala grande — refinar a amostragem
+    // da compressão `10×` faz o pico ir `0,9 → 188 → 2,0e3 → 4,9e5` **sem
+    // convergir**, que é a assinatura de `det H` a cruzar o zero.
+    //
+    // ⚠️ **O GRADIENTE FICA EXATO** — quem é projetado é só a Hessiana, que aqui
+    // é a métrica do passo de Newton. É a **mesma troca que a dobra já declara**
+    // e já tem gate (`a_hessiana_da_dobra_e_semi_definida_positiva`); com ela o
+    // bloco vira soma de três PSD (`μ·ww·FᵀF`, `(μ+λ)ggᵀ` e `wsw·I` com
+    // `wsw ≥ 0`), e o passo passa a descer a energia sempre.
+    //
+    // ⚠️⚠️ **E é isto que corrige o Rayleigh de graça:** o `(1+kd)` do
+    // [`vbd`](crate::vbd) multiplica **só** a Hessiana elástica, logo ele
+    // amplificava `13×` exatamente o termo que estava negativo.
+    //
+    // ⭐ **O buraco de simetria nomeava a cura:** a dobra tinha gate de PSD e a
+    // membrana **não tinha o gate irmão** — e o gate que existia prova que ela
+    // está *certa* contra diferença finita. *Uma Hessiana indefinida CORRETA é
+    // precisamente o defeito: ninguém perguntava se ela era **utilizável**.*
+    let wsw = (w[0] * sw[0] + w[1] * sw[1]).max(0.0);
     let ww = w[0] * w[0] + w[1] * w[1];
     let g = [
         f[0][0] * w[0] + f[1][0] * w[1],

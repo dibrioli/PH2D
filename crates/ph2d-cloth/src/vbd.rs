@@ -136,7 +136,7 @@ pub struct ClothDrive<'a> {
 /// então o caso é raro — e saltar é a única resposta finita. *Um `normalize` de
 /// vetor nulo poria `NaN` no alvo, e a recomputação de normais o alastraria à
 /// malha inteira: um vértice degenerado apagaria a peça.*
-fn solve3(h: &[[f64; 3]; 3], f: V3) -> Option<V3> {
+pub(crate) fn solve3(h: &[[f64; 3]; 3], f: V3) -> Option<V3> {
     let c0 = h[1][1] * h[2][2] - h[1][2] * h[2][1];
     let c1 = h[1][2] * h[2][0] - h[1][0] * h[2][2];
     let c2 = h[1][0] * h[2][1] - h[1][1] * h[2][0];
@@ -145,7 +145,19 @@ fn solve3(h: &[[f64; 3]; 3], f: V3) -> Option<V3> {
     // (Hessiana grande) passaria enquanto um mole (Hessiana pequena) seria
     // rejeitado por ser pequeno, não por ser singular.
     let s = h.iter().flatten().fold(0.0f64, |m, v| m.max(v.abs()));
-    if !det.is_finite() || det.abs() <= 1e-12 * s.max(1e-30).powi(3) {
+    // ⛔⛔ **A COMPARAÇÃO É SOBRE O DETERMINANTE COM SINAL, e a 1.ª redação usava
+    // `abs`.** Um bloco definido positivo tem `det > 0` **por definição**; um
+    // `det` negativo diz *«este passo SOBE a energia»*, que é um estado
+    // diferente de *«este vértice é degenerado»* e tem a mesma cura — não andar.
+    //
+    // Medido em 2026-09-05, com o `abs`: `H = diag(500, 500, −1e-9)` passava e
+    // devolvia `|Δx| = 1e9`, e um bloco **inteiramente negativo-definido**
+    // (`diag(500,500,−500)`) passava e devolvia um passo **contra** a força.
+    //
+    // ⚠️ Depois da projeção PSD da [`membrane`](crate::membrane) o caso deixa de
+    // ser alcançável pela via da compressão — esta guarda é a rede que prova
+    // isso, e não a cura.
+    if !det.is_finite() || det <= 1e-12 * s.max(1e-30).powi(3) {
         return None;
     }
     let inv = 1.0 / det;

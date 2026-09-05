@@ -432,25 +432,57 @@ fn um_traco_longo_nao_deixa_artefatos() {
 ///
 /// ⇒ com a cinemática completa (`Δx = ½·a·dt²`), as quatro corridas dão o MESMO
 /// resultado, e é isso que este gate prende.
+/// ⚠️⚠️ **A BARRA ESCOLHIDA MORREU EM 05/09, E A CURA CERTA É QUE A MATOU.** As
+/// duas primeiras redações comparavam tudo contra `subs = 4` e exigiam `< 5 %`.
+/// Quando a Hessiana da membrana passou a ser projetada
+/// ([`ph2d_cloth::membrane`]), o solver começou de facto a **convergir** — e a
+/// deriva de convergência subiu para `5,47 %`, reprovando o gate **sobre a
+/// cura**. ⛔ Subir a barra para `6 %` seria o defeito que a memória desta casa
+/// já registou (*«um tecto em graus SOBE quando a cura correta piora o número»*).
+///
+/// ⭐⭐⭐ **A troca é por uma PROPRIEDADE ANALÍTICA, que não tem barra para subir:**
+/// *deriva de convergência ENCOLHE quando se dobra o orçamento; um termo que
+/// depende do orçamento NÃO encolhe.* Com a resposta a convergir, as diferenças
+/// entre orçamentos sucessivos caem geometricamente; com o defeito de 05/09 (a
+/// aceleração dividida pelos sub-passos) cada duplicação **dobrava** a resposta,
+/// logo a diferença relativa entre consecutivos ficava **constante em ~100 %** —
+/// e nenhuma tolerância precisa de ser escolhida para as separar.
 #[test]
 fn o_gesto_nao_depende_do_orcamento_do_solver() {
-    // ⚠️ **A barra é RELATIVA, e não `1e-6`:** dobrar os sub-passos muda a
-    // CONVERGÊNCIA do solver, e isso é legítimo — o que não pode mudar é a
-    // MAGNITUDE do que o gesto propõe. A 1.ª redação exigia igualdade ao bit e
-    // reprovava sobre ruído numérico.
-    let base = artefatos(Some(4));
-    let mut pior = 0.0f32;
-    for sub in [2u32, 8, 16] {
-        let (e, r, st) = artefatos(Some(sub));
-        for (a, b) in [(e, base.0), (r, base.1), (st, base.2)] {
-            pior = pior.max((a - b).abs() / b.abs().max(1e-6));
-        }
-    }
+    const ORCAMENTOS: [u32; 5] = [4, 8, 16, 32, 64];
+    let lidos: Vec<(f32, f32, f32)> = ORCAMENTOS.iter().map(|s| artefatos(Some(*s))).collect();
+
+    // A deriva relativa entre dois orçamentos CONSECUTIVOS (que dobram).
+    let deriva: Vec<f32> = lidos
+        .windows(2)
+        .map(|w| {
+            let (a, b) = (w[0], w[1]);
+            [(a.0, b.0), (a.1, b.1), (a.2, b.2)]
+                .iter()
+                .fold(0.0f32, |m, (x, y)| m.max((y - x).abs() / x.abs().max(1e-6)))
+        })
+        .collect();
+
+    // ⚠️ **CONTROLE ANTI-VÁCUO, e sem ele o gate fica verde por um override
+    // inerte:** se `cloth_substeps_override` deixasse de chegar ao solver, todas
+    // as leituras seriam idênticas, toda deriva seria `0` e a desigualdade
+    // `0 <= 0/2` valeria trivialmente. *A 2.ª redação deste gate tinha
+    // exatamente esse buraco.*
     assert!(
-        pior < 0.05,
-        "o orcamento mudou a resposta em {:.2} % -- ha' um termo que depende dele \
-         (o defeito de 05/09 mudava 430 %)",
-        pior * 100.0
+        deriva[0] > 1e-6,
+        "o orcamento nao mudou NADA entre 4 e 8 sub-passos -- o override nao \
+         chega ao solver, e este gate estaria verde por vacuo"
+    );
+
+    // ⭐ A propriedade: a última duplicação tem de derivar **menos de metade** do
+    // que a primeira. Um termo proporcional ao orçamento mantém a deriva
+    // constante e reprova; convergência cai geometricamente e passa com folga.
+    assert!(
+        deriva[deriva.len() - 1] * 2.0 < deriva[0],
+        "a resposta NAO converge no orcamento: derivas consecutivas {deriva:?} \
+         (leituras {lidos:?}). Uma deriva que nao encolhe ao dobrar o orcamento e' \
+         um termo que DEPENDE dele -- o defeito de 05/09 dobrava a resposta a cada \
+         duplicacao"
     );
 }
 
@@ -628,4 +660,84 @@ fn sonda_do_orcamento_contra_o_passo() {
             );
         }
     }
+}
+
+/// ⭐⭐⭐ **GATE — um traço numa malha da DENSIDADE DO DONO não deixa agulha.**
+///
+/// ⛔⛔⛔ **Este gate existe porque uma mutação ATRAVESSOU a suíte inteira.** Em
+/// 2026-09-05 a projeção PSD da Hessiana da membrana
+/// ([`ph2d_cloth::membrane`]) curou o report da agulha — e desfazê-la deixava os
+/// **23 gates do solver e os 10 do pincel VERDES**. *Eu escrevi a guarda certa e
+/// não a gateei*, que é uma família já registada na memória desta casa.
+///
+/// A razão de nenhum deles a ver é a **fixtura**: a [`esfera`] tem `3 010`
+/// vértices e a [`plano`] tem `625`, e o defeito **não existe nessa densidade**.
+/// O dono esculpe a `~25 000`.
+///
+/// # ⚠️ A régua é LOCAL, e a normalização é o chão da discretização
+///
+/// As três colunas de [`artefatos`] são extremos **globais**: `espinho = max‖u‖`
+/// não distingue *«o pano todo andou `0,10`»* de *«um vértice voou `0,10` e os
+/// vizinhos `0,001`»* — e uma agulha **aumenta** o mesmo número que serve de piso
+/// anti-vácuo daquele gate. A régua que separa é o resíduo de um vértice contra a
+/// **mediana da própria vizinhança**, e ela tem de ser dividida por `(h/R)²`
+/// senão acusa a malha grossa (ver [`residuo_local`]).
+///
+/// # ⚠️ A barra saiu do VAZIO entre os dois lados, e os dois foram medidos
+///
+/// | regime | resíduo local |
+/// |---|---|
+/// | são (`96`–`192` células, com a projeção) | **`1,2` – `2,1`** |
+/// | partido (o mesmo, sem a projeção) | **`118` – `483`** |
+///
+/// `20` fica no meio do vazio, com `~10×` de margem para cada lado. ⛔ Não é um
+/// número escolhido a dedo: é a única banda em que nenhuma das duas populações
+/// medidas cai.
+///
+/// # ⚠️ E o passo da mão é o do PRODUTO
+///
+/// O gatilho medido é o passo entre eventos em **arestas de malha**: acima de
+/// `~1` aresta o elemento entra em compressão profunda, que é onde o StVK é
+/// não-convexo. A `144` células a aresta é `0,0139` e o passo é `0,02` =
+/// **`1,44` arestas** — e o `walk` do produto emite a `0,15 · raio`
+/// ([`crate::MIN_SPACING_FRACTION`]), que numa peça de 25 mil vértices dá
+/// **`1,3` arestas**. *A fixtura corre o regime que o artista corre.*
+#[test]
+fn um_traco_na_densidade_do_dono_nao_deixa_agulha() {
+    const N: usize = 144;
+    let antes = plano_n(N);
+    let mut mesh = plano_n(N);
+    let b = pincel();
+    let mut s = SculptStroke::default();
+    s.begin(&mesh);
+    for k in 0..35 {
+        let c = [0.02 * k as f32, 0.0, 0.0];
+        let passo = if k == 0 { [0.0; 3] } else { [0.02, 0.0, 0.0] };
+        s.dab(
+            &mut mesh,
+            &b,
+            &dab_em(c, b.radius, passo),
+            Symmetry::default(),
+        );
+    }
+
+    // ⚠️ **CONTROLE ANTI-VÁCUO:** sem ele, um traço que não movesse nada daria
+    // resíduo `0` e o gate leria aprovado sobre um pincel morto.
+    let max = (0..antes.vert_count())
+        .map(|v| desloc(&antes, &mesh, v))
+        .fold(0.0f32, f32::max);
+    assert!(
+        max > 0.05 * b.radius,
+        "o pincel nao moveu nada na malha fina ({max:.4}) -- este gate estaria \
+         verde por vacuo"
+    );
+
+    let residuo = residuo_local(&antes, &mesh, N, b.radius);
+    assert!(
+        residuo < 20.0,
+        "AGULHA: um vertice esta' a {residuo:.1} unidades do chao da discretizacao \
+         fora da propria vizinhanca (barra 20; sao 1,2-2,1; o report de 05/09 dava \
+         118-483). Sem a projecao PSD da Hessiana da membrana o passo de Newton e' \
+         um POLO em compressao"
+    );
 }

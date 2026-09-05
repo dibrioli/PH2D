@@ -398,3 +398,56 @@ fn o_custo_segue_a_pegada() {
         v32 as f64 / v8 as f64
     );
 }
+
+/// ⭐⭐⭐ **GATE — um bloco que SOBE a energia é recusado, e não resolvido.**
+///
+/// ⛔⛔ **A 1.ª redação do [`solve3`] comparava `|det|`, e a prova de mutação
+/// deixou-a passar.** Medido em 2026-09-05 com o módulo:
+///
+/// ```text
+/// H = diag(500, 500, eps),  f = (0,0,1)
+///       1.0e-9   det  2.5e-4   |dx| = 1.0e9   PASSOU
+///      -1.0e-9   det -2.5e-4   |dx| = 1.0e9   PASSOU
+///      -5.0e2    det -1.25e8   |dx| = 2.0e-3  PASSOU   <-- NEGATIVO-DEFINIDO
+/// ```
+///
+/// ⚠️ **`det < 0` e `det ≈ 0` são estados DIFERENTES com a mesma cura.** Um bloco
+/// definido positivo tem `det > 0` por definição; um `det` negativo diz *«o passo
+/// de Newton sobe a energia aqui»*, que não é *«este vértice é degenerado»* — mas
+/// em ambos a única resposta finita é não andar.
+///
+/// ⚠️ **Este gate é a REDE, não a cura.** Depois da projeção PSD da
+/// [`membrane`](crate::membrane) o caso deixou de ser alcançável pela via da
+/// compressão — e é por isso que ele tem de ser cobrado **direto no `solve3`**:
+/// a mutação que devolve o `abs` **sobrevive** a toda a suíte de produto, porque
+/// nenhum caminho vivo produz um bloco indefinido. *Uma rede sem gate próprio é
+/// uma linha que a próxima limpeza apaga sem que nada fique vermelho.*
+#[test]
+fn um_bloco_que_sobe_a_energia_e_recusado() {
+    // Definido positivo: resolve, e a solução é a óbvia.
+    let pd = [[500.0, 0.0, 0.0], [0.0, 500.0, 0.0], [0.0, 0.0, 500.0]];
+    let d = super::vbd::solve3(&pd, [0.0, 0.0, 1.0]).expect("um bloco PD tem de resolver");
+    assert!((d[2] - 1.0 / 500.0).abs() < 1e-15, "{d:?}");
+
+    // As três formas de subir a energia, cada uma medida em 05/09.
+    for (nome, h) in [
+        (
+            "quase singular por baixo",
+            [[500.0, 0.0, 0.0], [0.0, 500.0, 0.0], [0.0, 0.0, -1.0e-9]],
+        ),
+        (
+            "indefinido com det NEGATIVO",
+            [[500.0, 0.0, 0.0], [0.0, 500.0, 0.0], [0.0, 0.0, -1.0e-3]],
+        ),
+        (
+            "negativo-definido",
+            [[-500.0, 0.0, 0.0], [0.0, -500.0, 0.0], [0.0, 0.0, -500.0]],
+        ),
+    ] {
+        assert!(
+            super::vbd::solve3(&h, [0.0, 0.0, 1.0]).is_none(),
+            "`solve3` resolveu um bloco «{nome}» -- ele devolve um passo que SOBE \
+             a energia, e com `|det|` os tres passavam"
+        );
+    }
+}

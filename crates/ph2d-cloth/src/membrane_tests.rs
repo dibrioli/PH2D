@@ -137,3 +137,78 @@ fn a_energia_e_invariante_a_pose() {
         "a energia mudou com a pose: {base:.9e} contra {moved:.9e}"
     );
 }
+
+/// ⭐⭐⭐ **GATE — a Hessiana da membrana é SEMI-DEFINIDA POSITIVA, inclusive em
+/// COMPRESSÃO.**
+///
+/// ⛔⛔⛔ **O buraco de simetria que este gate fecha, e o que ele custou.** A dobra
+/// tinha [`a_hessiana_da_dobra_e_semi_definida_positiva`](super::bending_tests)
+/// desde que existe; a membrana **não tinha o gate irmão**, e o gate que ela
+/// tinha (`a_hessiana_bate_com_a_diferenca_finita_do_gradiente`) prova que ela
+/// está **CERTA**. *Uma Hessiana indefinida CORRETA é precisamente o defeito:
+/// nenhuma régua desta crate perguntava se ela era **utilizável**.*
+///
+/// Medido em 2026-09-05, sem a projeção: a `35 %` de compressão a energia de um
+/// retalho ia de `6,4e1` a **`5,26e8`** num sub-passo e um vértice andava `20×` a
+/// peça — e refinar a amostragem da compressão `10×` fazia o pico **não
+/// convergir** (`0,9 → 4,9e5`), a assinatura de `det H` a cruzar o zero.
+///
+/// ⚠️ **A forma quadrática é amostrada, e não os autovalores.** Para um bloco
+/// `3×3` simétrico, `vᵀHv ≥ 0` numa rede densa de direções é a definição
+/// operacional, e não pede um decompositor no caminho de um teste. As direções
+/// saem de uma espiral de Fibonacci, que é **determinística** (a lei do
+/// `BTreeMap` desta casa vale para réguas também).
+#[test]
+fn a_hessiana_da_membrana_e_semi_definida_positiva() {
+    let (x0, t) = fixtures::triangle();
+    let rest = membrane::rest_of(&x0, t);
+    let (mu, lambda) = mat().lame();
+
+    // 512 direções unitárias por espiral de Fibonacci.
+    let dirs: Vec<V3> = (0..512)
+        .map(|k| {
+            let z = 1.0 - 2.0 * (f64::from(k) + 0.5) / 512.0;
+            let r = (1.0 - z * z).max(0.0).sqrt();
+            let a = std::f64::consts::PI * (3.0 - 5.0f64.sqrt()) * f64::from(k);
+            [r * a.cos(), r * a.sin(), z]
+        })
+        .collect();
+
+    let mut pior = 0.0f64;
+    let mut escala = 0.0f64;
+    // ⚠️ **O CONTROLE: a varredura tem de ALCANÇAR o regime não-convexo.** Sem
+    // ele, um `c` que nunca comprime deixaria a asserção verde por vácuo — e o
+    // regime é nomeado pelo 2.º Piola-Kirchhoff a ficar negativo.
+    let mut viu_compressao = false;
+
+    for k in 0..=80 {
+        let c = 1.0 - 0.01 * f64::from(k); // 1,00 … 0,20
+        let x: Vec<V3> = x0.iter().map(|p| [p[0] * c, p[1] * c, p[2] * c]).collect();
+        let f = membrane::deform(&x, t, &rest.dm_inv);
+        let (_, s) = membrane::strain(&f, &rest.metric, mu, lambda);
+        if s[0][0] < 0.0 || s[1][1] < 0.0 {
+            viu_compressao = true;
+        }
+        for slot in 0..3 {
+            let (_, h) = membrane::accumulate(&x, t, &rest, mu, lambda, slot);
+            escala = escala.max(h.iter().flatten().fold(0.0f64, |m, v| m.max(v.abs())));
+            for d in &dirs {
+                let q: f64 = (0..3)
+                    .map(|r| d[r] * (0..3).map(|c2| h[r][c2] * d[c2]).sum::<f64>())
+                    .sum();
+                pior = pior.min(q);
+            }
+        }
+    }
+
+    assert!(
+        viu_compressao,
+        "a varredura nunca comprimiu o triangulo -- este gate estaria verde por vacuo"
+    );
+    assert!(
+        pior >= -1e-9 * escala.max(1.0),
+        "a Hessiana da membrana e' INDEFINIDA: a forma quadratica desce a {pior:.4e} \
+         (escala do bloco {escala:.4e}). Sem a projecao de `wsw`, o passo de Newton \
+         e' um POLO em compressao"
+    );
+}

@@ -562,3 +562,70 @@ fn what_species_of_control_the_catalogue_has() {
         );
     }
 }
+
+/// **O GRUPO DO CICLO ABERTO, controlo a controlo** — a pergunta que decide se os editores
+/// ricos bloqueiam o ciclo 1 (doc 104) ou pertencem a um ciclo mais à frente.
+///
+/// `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture what_the_open_cycle_group_needs`
+#[test]
+#[ignore = "sonda de censo, nao um gate"]
+fn what_the_open_cycle_group_needs() {
+    const GRUPO: [&str; 10] = [
+        "motion.grid",
+        "motion.scatter",
+        "motion.distribute_radial",
+        "motion.fibonacci",
+        "motion.lattice",
+        "motion.voronoi",
+        "motion.distribute_poisson",
+        "motion.distribute_curve",
+        "motion.path",
+        "motion.clone",
+    ];
+    let ricos = ["Color", "Text", "Curve", "Gradient", "Palette", "File", "Source", "Channels"];
+    let mut total_ricos = 0usize;
+    eprintln!("  {:>4} │ {:>4} │ {:>5} │ nó · espécies", "rows", "secs", "ricos");
+    for nome in GRUPO {
+        let mut m = MotionState::new();
+        let id = m.doc.graph.add_node(nome.to_string());
+        open_every_section(&mut m, id);
+        let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+        stamp_card_params(&m, &mut snap);
+        let Some(v) = snap.nodes.iter().find(|v| v.id == id.0) else {
+            continue;
+        };
+        let mut especies: Vec<&'static str> = Vec::new();
+        let mut n_ricos = 0usize;
+        for c in &v.params {
+            let e = match c.hint.widget {
+                ph2d_node_registry::ParamWidget::Slider => "Slider",
+                ph2d_node_registry::ParamWidget::IntSlider => "IntSlider",
+                ph2d_node_registry::ParamWidget::Angle => "Angle",
+                ph2d_node_registry::ParamWidget::Toggle => "Toggle",
+                ph2d_node_registry::ParamWidget::Seed => "Seed",
+                ph2d_node_registry::ParamWidget::Color { .. } => "Color",
+                ph2d_node_registry::ParamWidget::Enum { .. } => "Enum",
+                ph2d_node_registry::ParamWidget::Channels { .. } => "Channels",
+                ph2d_node_registry::ParamWidget::Source => "Source",
+                ph2d_node_registry::ParamWidget::Text => "Text",
+                ph2d_node_registry::ParamWidget::Curve => "Curve",
+                ph2d_node_registry::ParamWidget::Gradient => "Gradient",
+                ph2d_node_registry::ParamWidget::Palette => "Palette",
+                ph2d_node_registry::ParamWidget::File { .. } => "File",
+            };
+            if ricos.contains(&e) {
+                n_ricos += 1;
+            }
+            if !especies.contains(&e) {
+                especies.push(e);
+            }
+        }
+        total_ricos += n_ricos;
+        eprintln!(
+            "  {:>4} │ {:>4} │ {n_ricos:>5} │ {nome} · {especies:?}",
+            v.params.len(),
+            v.sections.len()
+        );
+    }
+    eprintln!("  ⇒ controlos RICOS no grupo do ciclo 1: {total_ricos}");
+}

@@ -65,6 +65,31 @@ categorias sobrecarregadas (`Transform` 43 e `Utility` 43) já têm sub-clusters
 4. ⚠️ **A altura do cartão não pode seguir o zoom**, senão os hit-rects saltam debaixo do dedo a
    meio de um pinch. O LOD decide o CONTEÚDO da row, nunca o espaço dela.
 
+## §2-ter — ⭐ A medição que decidiu PARAR o substrato aqui
+
+Censo das espécies de controlo (`what_species_of_control_the_catalogue_has`, **700 rows**):
+
+| espécie | rows | % | nós |
+|---|---:|---:|---:|
+| Slider | 431 | 61,6 % | 104 |
+| **Enum** | **138** | **19,7 %** | **85** |
+| Toggle · Angle · IntSlider · Seed | 102 | 14,6 % | — |
+| **os RICOS** (Text 9 · Source 7 · Color 4 · File 3 · Curve 2 · Gradient 2 · Channels 1 · Palette 1) | **29** | **4,1 %** | ~29 |
+
+⇒ **o prémio nunca foram os editores ricos: era o ENUM** (20 %, em 85 nós). Com o arrasto e o
+clique, o cartão alcança **~81 %** das rows do catálogo sem um editor novo.
+
+⭐⭐ **E a pergunta que fechou o assunto** (`what_the_open_cycle_group_needs`): dos **10 nós
+deste ciclo**, os controlos ricos são **UM** (o `Source` do `motion.path`). Construir agora um
+balão de editores seria construir para um ciclo mais à frente — e o ciclo 1 ainda deve a
+auditoria, o upgrade e o tutorial, que é o que a dinâmica pede.
+
+⏳ **O que fica nomeado para quando um ciclo precisar** (Fx, animadores, fontes): o balão
+ancorado na row, hospedando as rows que o painel já sabe pintar. ⚠️ **E o obstáculo está
+medido:** o id de uma amostra de cor é `param_swatch_id(nome_do_param)` — keyed pelo NOME, o que
+supõe **um nó de cada vez** (o painel). No cartão, dois `motion.tint` colidiriam no mesmo id;
+o balão exige um id com o NÓ dentro, e a leitura de volta do picker a saber de quem é.
+
 ## §3 — A auditoria do grupo (passo 2 do ciclo)
 
 ⏳ A escrever. Perguntas que ela tem de responder por nó: *que params a referência expõe e nós

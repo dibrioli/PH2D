@@ -11,12 +11,14 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**2 arquivos** · **0** citados pelo `CLAUDE.md` (marcados **◆**).
+**4 arquivos** · **0** citados pelo `CLAUDE.md` (marcados **◆**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
 | 01 |   | [01_pesquisa_o_estado_da_arte.md](01_pesquisa_o_estado_da_arte.md) | pesquisa | Cloth (W10) — a pesquisa |
 | 02 |   | [02_plano.md](02_plano.md) | plano | Cloth (W10) — o plano |
+| 03 |   | [03_auditoria_2026-09-05.md](03_auditoria_2026-09-05.md) | auditoria | Cloth — auditoria de quatro lentes (2026-09-05) |
+| 04 |   | [04_espec_do_comportamento.md](04_espec_do_comportamento.md) | — | Cloth (W10) — a espec do comportamento |
 
 ---
 

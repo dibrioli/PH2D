@@ -447,3 +447,72 @@ fn the_provenance_line_shows_the_name_verbatim() {
         "Instance of \u{201c}Canvas {Size=Small} Variant\u{201d}"
     );
 }
+
+/// ⭐⭐⭐ **Largar UMA excepção sem alvo tira EXACTAMENTE aquela** (F5.3-ter).
+///
+/// ⚠️ Duas metades. A CHAVE tem de chegar à linha — sem ela o `✕` não tem o que apontar, e os dois
+/// campos de texto são rótulos que duas peças podem partilhar. E o gesto tem de tirar **uma**: um
+/// braço que caísse no `clear` seria o botão de baixo com outro ícone.
+///
+/// (Mutação: o construtor não escrever `piece_id`/`type_id` ⇒ a 1.ª metade sangra. O `drop_orphan`
+/// a chamar `orphans.clear()` ⇒ a 2.ª.)
+#[test]
+fn dropping_one_unused_override_leaves_the_others_alone() {
+    let (mut sim, r, _master, inst) = scene();
+    let p = piece(&sim, inst);
+    let sprite = ph2d_ecs::scene::stable_type_id("ph2d::render::Sprite");
+    let mut o = sim
+        .world()
+        .get::<ph2d_ecs::ObjectInstance>(inst)
+        .cloned()
+        .unwrap_or_default();
+    for (piece_sid, name) in [(111_u64, "Arm"), (222, "Leg")] {
+        o.orphans.insert(
+            ph2d_ecs::OverrideKey {
+                piece: piece_sid,
+                type_id: sprite,
+            },
+            ph2d_ecs::OrphanOverride {
+                bytes: vec![9],
+                piece_name: name.into(),
+            },
+        );
+    }
+    sim.world_mut().entity_mut(inst).insert(o);
+
+    let info = super::build_instance_info(&mut sim, &r, Some(p.to_bits())).expect("a secao");
+    assert_eq!(info.orphan_rows.len(), 2);
+    // ⚠️ A CHAVE, e não o rótulo: é ela que o `✕` manda pelo barramento.
+    let arm = info
+        .orphan_rows
+        .iter()
+        .find(|row| row.piece == "Arm")
+        .expect("a linha do Arm");
+    assert_eq!(
+        (arm.piece_id, arm.type_id),
+        (111, sprite),
+        "a chave nao chegou a' linha — o `x` dela nao teria o que apontar"
+    );
+
+    assert!(super::drop_orphan(
+        &mut sim,
+        info.root_bits,
+        arm.piece_id,
+        arm.type_id
+    ));
+    let after = sim
+        .world()
+        .get::<ph2d_ecs::ObjectInstance>(inst)
+        .cloned()
+        .expect("a raiz");
+    assert_eq!(after.orphans.len(), 1, "o gesto levou mais do que uma");
+    assert!(
+        after
+            .orphans
+            .values()
+            .all(|orphan| orphan.piece_name == "Leg"),
+        "levou a errada"
+    );
+    // ⛔ E uma chave que já não está lá não mexe em nada, nem finge que mexeu.
+    assert!(!super::drop_orphan(&mut sim, info.root_bits, 111, sprite));
+}

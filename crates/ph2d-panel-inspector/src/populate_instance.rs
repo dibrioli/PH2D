@@ -41,6 +41,12 @@ pub(crate) fn populate_instance_card(store: &mut WidgetStore) {
     for &id in &ids::INSP_INSTANCE_APPLY_LEVEL {
         button(store, id);
     }
+    // ⭐⭐⭐ **O `✕` de cada excepção sem alvo** (F5.3-ter) — os DEZASSEIS, pela mesma razão da
+    // escada: o `WidgetStore` é a população, o cartão é a vista, e um `✕` que aparecesse depois de
+    // uma sexta peça morrer nasceria morto sob o dedo.
+    for &id in &ids::INSP_INSTANCE_DROP_ORPHAN {
+        button(store, id);
+    }
     // ⭐ **Os chips da fileira de VERSÕES** — a outra superfície do cartão desde que o mecanismo de
     // propriedades foi adiado (2026-09-01).
     for &id in ids::INSP_INSTANCE_AXIS_OPTION.iter().flatten() {

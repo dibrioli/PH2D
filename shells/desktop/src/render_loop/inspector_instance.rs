@@ -88,6 +88,11 @@ pub(super) fn build_instance_info(
                 },
             ),
             piece: o.piece_name.clone(),
+            // ⭐⭐⭐ **A CHAVE viaja com a linha** (F5.3-ter) — sem ela o `✕` da linha não teria o
+            // que apontar, e os dois campos acima são rótulos: duas peças podem ter tido o mesmo
+            // nome. *O que se mostra é o nome; o que se aponta é a chave.*
+            piece_id: k.piece,
+            type_id: k.type_id,
         })
         .collect();
 
@@ -191,6 +196,30 @@ pub(super) fn clear_orphans(sim: &mut SimWorld, root_bits: u64) -> usize {
         sim.world_mut().entity_mut(root).insert(inst);
     }
     n
+}
+
+/// ⭐⭐⭐ **Largar UMA excepção sem alvo** (F5.3-ter) — o `✕` da linha dela. `true` se saiu alguma.
+///
+/// ⚠️ **A chave, e nunca a linha.** O cartão é reconstruído a cada quadro, e um índice diria *«a
+/// terceira»* a uma lista que já pode ter outra terceira. É a mesma lei do degrau da escada.
+///
+/// ⚠️ **Ela é irmã do [`clear_orphans`] e não uma metade dele**: aquele apaga o mapa inteiro e este
+/// tira uma entrada, e as duas mexem **só** nos órfãos — uma excepção com alvo é o que o artista
+/// está a ver e a usar.
+pub(super) fn drop_orphan(sim: &mut SimWorld, root_bits: u64, piece: u64, type_id: u64) -> bool {
+    let root = Entity::from_bits(root_bits);
+    let Some(mut inst) = sim.world().get::<ph2d_ecs::ObjectInstance>(root).cloned() else {
+        return false;
+    };
+    if inst
+        .orphans
+        .remove(&ph2d_ecs::OverrideKey { piece, type_id })
+        .is_none()
+    {
+        return false;
+    }
+    sim.world_mut().entity_mut(root).insert(inst);
+    true
 }
 
 #[cfg(test)]

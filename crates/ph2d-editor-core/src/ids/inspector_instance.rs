@@ -14,6 +14,47 @@ use ph2d_a11y::NodeId;
 /// do artista em silêncio. ⇒ o gesto existe, e é explícito.
 pub const INSP_INSTANCE_CLEAR_ORPHANS: NodeId = hash_node_id("insp_instance_clear_orphans");
 
+/// ⭐⭐⭐ **Quantas excepções SEM ALVO ganham botão próprio** (F5.3-ter).
+///
+/// ⚠️ **É um teto de TABELA DE IDS, e ele diz de que recurso é** — a mesma razão do
+/// [`MAX_INSTANCE_APPLY_LEVELS`]: os ids são `const` para o censo do
+/// `hit_indexed_ids_are_registered` os poder **ver**, e uma tabela `const` tem tamanho.
+///
+/// ⛔ **A LISTA continua sem tecto** (o painel rola), e a razão está escrita no modelo: *esconder
+/// linhas com um botão que apaga TUDO seria esconder exactamente o que o gesto destrói*. O que o
+/// tecto limita é quantas ganham o `✕` — e a linha que diz quantas ficaram sem ele é obrigatória.
+///
+/// **O número:** um órfão nasce de um par *(peça apagada na receita, componente overridado nela)*,
+/// e apagar uma peça de uma receita é um gesto deliberado. `16` cobre a população real com folga;
+/// acima disso o *Clear all* continua a alcançar todas.
+pub const MAX_INSTANCE_ORPHAN_ROWS: usize = 16;
+
+/// O `✕` de cada excepção sem alvo — um por linha, na ordem em que o cartão as pinta.
+pub const INSP_INSTANCE_DROP_ORPHAN: [NodeId; MAX_INSTANCE_ORPHAN_ROWS] = [
+    hash_node_id("insp_instance_drop_orphan_0"),
+    hash_node_id("insp_instance_drop_orphan_1"),
+    hash_node_id("insp_instance_drop_orphan_2"),
+    hash_node_id("insp_instance_drop_orphan_3"),
+    hash_node_id("insp_instance_drop_orphan_4"),
+    hash_node_id("insp_instance_drop_orphan_5"),
+    hash_node_id("insp_instance_drop_orphan_6"),
+    hash_node_id("insp_instance_drop_orphan_7"),
+    hash_node_id("insp_instance_drop_orphan_8"),
+    hash_node_id("insp_instance_drop_orphan_9"),
+    hash_node_id("insp_instance_drop_orphan_10"),
+    hash_node_id("insp_instance_drop_orphan_11"),
+    hash_node_id("insp_instance_drop_orphan_12"),
+    hash_node_id("insp_instance_drop_orphan_13"),
+    hash_node_id("insp_instance_drop_orphan_14"),
+    hash_node_id("insp_instance_drop_orphan_15"),
+];
+
+/// A linha que este id representa — a leitura INVERSA da tabela, como as duas irmãs deste ficheiro.
+#[must_use]
+pub fn instance_drop_orphan(id: NodeId) -> Option<usize> {
+    INSP_INSTANCE_DROP_ORPHAN.iter().position(|c| *c == id)
+}
+
 /// ⭐ **Quantas FILEIRAS o cartão endereça.**
 ///
 /// ⚠️ **É `1` desde 2026-09-01**, quando o mecanismo de propriedades foi adiado: a família oferece

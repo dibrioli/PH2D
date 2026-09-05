@@ -46,6 +46,8 @@ mod emissive_row;
 mod identity;
 /// ⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.
 pub(crate) mod instance;
+/// ⭐⭐ **O bloco das excepções SEM ALVO** — irmão por assunto do `instance`, ver o cabeçalho de lá.
+pub(crate) mod instance_orphans;
 pub(crate) mod joint;
 mod joint_pair_rows;
 mod material_blend;

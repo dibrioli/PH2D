@@ -122,6 +122,16 @@ pub struct OrphanRow {
     /// O `Name` que a peça tinha quando morreu. **Vazio** quando ela não tinha nome — ver
     /// [`Self::label`].
     pub piece: String,
+    /// ⭐⭐⭐ **A IDENTIDADE da excepção** — o `StableId` da peça morta e o `type_id` do componente,
+    /// que juntos são a chave por onde o gesto a alcança.
+    ///
+    /// ⚠️ **Sem eles a linha não é endereçável, e uma linha que não é endereçável não pode ter
+    /// gesto próprio.** Os dois campos acima são RÓTULOS: duas peças podem ter tido o mesmo nome, e
+    /// um *«apaga a que diz `Sprite — was on "Arm"`»* escolheria a errada em silêncio. *O que se
+    /// mostra é o nome; o que se aponta é a chave.*
+    pub piece_id: u64,
+    /// O `type_id` do componente — a outra metade da chave.
+    pub type_id: u64,
 }
 
 impl OrphanRow {

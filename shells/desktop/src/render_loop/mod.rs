@@ -4849,6 +4849,18 @@ impl crate::App {
                             )));
                         }
                     }
+                    // ⭐⭐⭐ **Largar UMA** (F5.3-ter) — o `✕` da linha. ⚠️ Aplicado JÁ, como o irmão
+                    // acima e pela mesma razão: ele não precisa de nada que este ponto não tenha, e
+                    // o `post_frame_undo` vê a mudança e regista o passo.
+                    EditorAction::InspectorDropUnusedOverride {
+                        root_bits,
+                        piece,
+                        type_id,
+                    } => {
+                        if inspector_instance::drop_orphan(sim, root_bits, piece, type_id) {
+                            toasts.push(ph2d_editor::Toast::success("Dropped 1 unused override"));
+                        }
+                    }
                     // ⭐⭐⭐ **Trocar a VARIANTE** (ADR-0164 / F5, critério 2).
                     //
                     // ⚠️ **ADIADO para depois do dreno**, ao contrário do irmão acima, e a razão é

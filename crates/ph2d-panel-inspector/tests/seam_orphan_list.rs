@@ -42,9 +42,13 @@ fn info(rows: Vec<OrphanRow>) -> InspectorInstanceInfo {
 }
 
 fn orphan(component: &str, piece: &str) -> OrphanRow {
+    // ⚠️ A chave é derivada do NOME só para a fixtura ser legível — o que o produto lê dela é a
+    // identidade, e o gate do `✕` exige que ela chegue ao barramento inteira.
     OrphanRow {
         component: component.into(),
         piece: piece.into(),
+        piece_id: piece.len() as u64 + 1000,
+        type_id: component.len() as u64 + 2000,
     }
 }
 
@@ -111,4 +115,131 @@ fn the_clear_button_counts_exactly_the_lines_it_will_erase() {
     let i = info(vec![orphan("Sprite", "Arm"), orphan("Transform", "Leg")]);
     assert_eq!(i.orphans(), i.orphan_rows.len());
     assert_eq!(i.summary(), "Follows the component \u{b7} 2 unused");
+}
+
+/// ⛔⛔⛔ **O NOME DA PEÇA é do ARTISTA, e a linha dele avança um `line` fixo.**
+///
+/// A justificação escrita ao lado da conta da altura — *«elas são NOMES do catálogo, curtos por
+/// construção»* — é verdadeira para as linhas de componente **overridado** (o mais longo do
+/// catálogo tem 20 caracteres) e **falsa** para estas: `Sprite — was on "…"` embrulha um `Name` que
+/// o artista escreveu, e um `Name` não tem tecto.
+///
+/// ⚠️ **O oráculo é onde o BOTÃO aterra.** Se a linha embrulha e a conta não a mede, o
+/// *Clear N unused override(s)* fica pintado **por cima** da segunda linha do texto — que é
+/// exactamente a foto que o Enio mandou em 2026-08-31 (*«Card com Labels emboladas»*), por outra
+/// porta. Um nome mais longo tem de EMPURRAR o botão para baixo.
+///
+/// **Mutação que deve sangrar:** voltar o avanço das linhas de órfão para um `line` fixo.
+#[test]
+fn a_long_piece_name_pushes_the_clear_button_down_instead_of_painting_under_it() {
+    let short = clear_button_y(vec![orphan("Sprite", "Arm")]);
+    let long = clear_button_y(vec![orphan("Sprite", "Left front suspension arm assembly")]);
+    assert!(
+        long > short + 1.0,
+        "o botao nao desceu com o nome longo ({short} -> {long}): a linha embrulhou e a conta da \
+         altura nao a mediu, entao o botao esta' pintado por cima do texto"
+    );
+}
+
+/// Onde o botão dos órfãos aterra, com estas linhas no cartão.
+fn clear_button_y(rows: Vec<OrphanRow>) -> f32 {
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_name(Some(InspectorNameInfo {
+        entity_bits: ENTITY,
+        name: "Ragdoll".into(),
+    }));
+    set_current_inspector_instance(Some(info(rows)));
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_instance(None);
+    set_current_inspector_name(None);
+    rects
+        .iter()
+        .find(|(id, _)| *id == ph2d_editor_core::ids::INSP_INSTANCE_CLEAR_ORPHANS)
+        .map(|(_, r)| r.y)
+        .expect("o botao dos orfaos tem de estar pintado")
+}
+
+/// ⭐⭐⭐ **O `✕` DE UMA LINHA larga AQUELA excepção** — e o que viaja é a CHAVE, nunca o índice.
+///
+/// ⚠️ A metade que importa é a segunda: a linha `1` de três tem de mandar a chave da linha `1`. Um
+/// braço que mandasse o índice ficaria verde num cartão de uma linha só e escolheria a errada assim
+/// que a lista crescesse — e o cartão é reconstruído a cada quadro.
+///
+/// **Mutação que deve sangrar:** o `drop_orphan_click` a mandar `orphan_rows[0]`, ou a sair do
+/// `SINGLE_ID_CLICKS`.
+#[test]
+fn the_x_of_a_row_drops_that_rows_exception_by_key() {
+    use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::interaction::WidgetEvent;
+
+    let rows = vec![
+        orphan("Sprite", "Arm"),
+        orphan("Transform", "Wheel"),
+        orphan("Collider", "Hub"),
+    ];
+    let want = rows[1].clone();
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_name(Some(InspectorNameInfo {
+        entity_bits: ENTITY,
+        name: "Ragdoll".into(),
+    }));
+    set_current_inspector_instance(Some(info(rows)));
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let id = ph2d_editor_core::ids::INSP_INSTANCE_DROP_ORPHAN[1];
+    assert!(
+        rects.iter().any(|(r, _)| *r == id),
+        "o `x` da 2.a linha nao foi pintado nem hit-indexado"
+    );
+    let out = host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::Click(id));
+    let drained = host.drained_actions();
+    set_current_inspector_instance(None);
+    set_current_inspector_name(None);
+
+    assert_eq!(
+        out,
+        ph2d_editor_core::panel::EventOutcome::Consumed,
+        "o clique nao foi consumido"
+    );
+    assert_eq!(
+        drained,
+        vec![EditorAction::InspectorDropUnusedOverride {
+            root_bits: ROOT,
+            piece: want.piece_id,
+            type_id: want.type_id,
+        }],
+        "o `x` da linha 1 nao mandou a chave DELA"
+    );
+}
+
+/// ⛔ **Acima do tecto da tabela de ids a linha continua a ver-se, e a AUSÊNCIA do botão é DITA.**
+///
+/// ⚠️ A lista não tem tecto de propósito (esconder linhas com um botão que apaga tudo seria
+/// esconder exactamente o que o gesto destrói). O que tem tecto é o `✕`. ⇒ o cartão tem de dizer
+/// quantas ficaram sem ele — *uma linha que perde o botão em silêncio lê-se como um botão morto.*
+///
+/// ⛔⛔ **A 1.ª redacção deste gate contava GLIFOS, e a mutação que apagava o aviso SOBREVIVEU:**
+/// três linhas a mais acrescentam glifos por serem três linhas, tenham ou não o aviso por baixo.
+/// *Uma régua que mede a população errada dá o mesmo número com e sem a cura.* ⇒ o oráculo passa a
+/// ser o DESLOCAMENTO do botão: o aviso é uma linha, logo três órfãos a mais têm de empurrar o
+/// botão **mais do que três linhas**.
+///
+/// **Mutação que deve sangrar:** não pintar a linha do `dropless`.
+#[test]
+fn the_rows_beyond_the_id_table_say_they_have_no_button() {
+    let cap = ph2d_editor_core::ids::MAX_INSTANCE_ORPHAN_ROWS;
+    let rows = |n: usize| -> Vec<OrphanRow> {
+        (0..n).map(|i| orphan("Sprite", &format!("P{i}"))).collect()
+    };
+    // A altura de UMA linha, medida no próprio cartão — nenhum número escrito à mão.
+    let one_row = clear_button_y(rows(2)) - clear_button_y(rows(1));
+    assert!(one_row > 0.0, "duas linhas nao empurraram o botao");
+
+    let moved = clear_button_y(rows(cap + 3)) - clear_button_y(rows(cap));
+    assert!(
+        moved > one_row * 3.5,
+        "tres orfaos acima do tecto empurraram o botao {moved} (uma linha = {one_row}): sao as \
+         tres linhas e mais NADA — o aviso de que elas ficaram sem `x` nao foi pintado"
+    );
 }

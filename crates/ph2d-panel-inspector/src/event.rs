@@ -120,6 +120,37 @@ fn apply_level_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
     true
 }
 
+/// ⭐⭐⭐ **Largar UMA excepção sem alvo** (F5.3-ter) — o `✕` da linha dela.
+///
+/// ⚠️ **Ele traduz o índice do botão para a CHAVE aqui, e não no shell**: a linha `i` só significa
+/// alguma coisa dentro do cartão que este quadro pintou, e o cartão é reconstruído a cada quadro.
+/// Mandar o índice pelo barramento seria pedir ao mundo que resolvesse *«a terceira»* contra uma
+/// lista que já pode ter outra terceira — a mesma lei do `apply_level_click` logo acima.
+///
+/// ⛔ **E um botão que a lista deste quadro não pinta não despacha:** o `get(i)` sobre o
+/// `orphan_rows` é a mesma porta que o pintor percorre.
+fn drop_orphan_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    let WidgetEvent::Click(id) = ev else {
+        return false;
+    };
+    let Some(i) = ids::instance_drop_orphan(id) else {
+        return false;
+    };
+    let Some(info) = crate::state::current_inspector_instance() else {
+        return false;
+    };
+    let Some(row) = info.orphan_rows.get(i) else {
+        return false;
+    };
+    host.bus_mut()
+        .push(EditorAction::InspectorDropUnusedOverride {
+            root_bits: info.root_bits,
+            piece: row.piece_id,
+            type_id: row.type_id,
+        });
+    true
+}
+
 /// ⭐⭐ **A RANHURA DA TEXTURA abre a biblioteca** — *«o que é que eu posso pôr aqui?»*.
 ///
 /// ⚠️ **Ela recebe QUEDAS e responde a CLIQUES**, e as duas metades são obrigatórias: um id
@@ -190,6 +221,7 @@ fn sheet_grid_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool
 const SINGLE_ID_CLICKS: &[fn(&mut dyn PanelHostInternal, WidgetEvent) -> bool] = &[
     add_component_click,
     clear_orphans_click,
+    drop_orphan_click,
     apply_level_click,
     section_color_click,
     texture_slot_click,

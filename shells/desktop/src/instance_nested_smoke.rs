@@ -164,7 +164,16 @@ impl crate::App {
         );
         println!(
             "[instance smoke 3] PASSO 8: o cartao passa a dizer, por extenso, 'Transform - was on \
-             \"Body\"' -- e o botao ao lado apaga exactamente essa"
+             \"Body\"'"
+        );
+        // ⭐⭐⭐ **O `✕` da LINHA** (2026-09-05) — ate' aqui o passo 8 prometia que *«o botao ao lado
+        // apaga exactamente essa»*, e o unico botao apagava a LISTA INTEIRA. Com um orfao so' as
+        // duas frases dao a mesma tela, e foi por isso que a promessa pode envelhecer sem ninguem a
+        // desmentir. *Uma cena que ensina o contrario e' pior que uma ausente — e aqui ela ensinava
+        // o contrario exactamente no caso que o smoke nao produz.*
+        println!(
+            "[instance smoke 3] PASSO 8b: o 'x' NO FIM DA LINHA larga aquela; o botao de baixo \
+             ('Clear N unused override(s)') larga TODAS"
         );
         // ⚠️ **A ambiguidade das DUAS linhas `Body` foi o que produziu o report de 05/09** — hoje o
         // gesto errado recusa com voz, e a cena di-lo antes de ele o tentar.

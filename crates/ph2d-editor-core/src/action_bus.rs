@@ -339,6 +339,25 @@ pub enum EditorAction {
         root_bits: u64,
     },
 
+    /// ⭐⭐⭐ **Largar UMA excepção sem alvo** (ADR-0164 / F5.3-ter) — o `✕` da linha dela.
+    ///
+    /// ⚠️ **A irmã acima apaga TODAS, e ter só ela era o gesto destrutivo mais barato deste
+    /// painel:** desde 2026-09-04 o cartão diz *quais* são, e um artista que quer largar uma de
+    /// cinco tinha de largar as cinco. *Uma lista que se lê item a item pede um gesto item a item.*
+    ///
+    /// ⚠️ **A chave, e nunca o índice da linha nem o rótulo:** `piece` é o `StableId` da peça morta
+    /// e `type_id` o do componente. Duas peças podem ter tido o mesmo nome, e o cartão é
+    /// reconstruído a cada quadro — um índice diria *«a terceira»* a um cartão que já tem outra
+    /// terceira.
+    InspectorDropUnusedOverride {
+        /// A RAIZ da instância — é lá que o `ObjectInstance` mora.
+        root_bits: u64,
+        /// O `StableId` da peça que morreu.
+        piece: u64,
+        /// O `type_id` do componente cuja excepção se larga.
+        type_id: u64,
+    },
+
     /// ⭐⭐⭐ **APLICAR num DEGRAU da escada** (ADR-0164 / F5, critério 4).
     ///
     /// `entity_bits` é a PEÇA em que o artista carregou — o escopo do gesto é o que se clicou, como

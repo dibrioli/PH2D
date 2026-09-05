@@ -23,6 +23,29 @@ use ph2d_editor_core::screens::hero::InspectorInstanceInfo;
 /// A margem de dentro do cartão — o que separa o texto da borda dele.
 const CARD_PAD: f32 = 8.0; // LITERAL-PX-OK: inset do cartão, irmão do BODY_PAD do corpo
 
+/// ⭐⭐ **As larguras e os tamanhos do cartão, derivados UMA vez.**
+///
+/// ⚠️ **Ela existe porque a altura e a pintura têm de concordar sobre o orçamento de quebra.** O
+/// fundo é desenhado antes do conteúdo (senão cobre-o), logo a medição é uma passagem separada — e
+/// uma largura calculada duas vezes diverge no dia em que só uma delas passar a descontar um botão.
+/// *Foi exactamente essa divergência que pôs o botão dos órfãos por cima do texto.*
+#[derive(Copy, Clone)]
+pub(crate) struct CardMetrics {
+    /// A esquerda do conteúdo.
+    pub(crate) tx: f32,
+    /// A largura do conteúdo, sem recuo.
+    pub(crate) tw: f32,
+    /// A direita do conteúdo — onde o `✕` de uma linha encosta.
+    pub(crate) right: f32,
+    /// O orçamento de quebra de uma linha de LISTA (já sem o recuo).
+    pub(crate) list_tw: f32,
+    /// O de uma linha de órfão (já sem o recuo **e** sem o `✕`).
+    pub(crate) orphan_tw: f32,
+    pub(crate) font: f32,
+    pub(crate) small: f32,
+    pub(crate) line: f32,
+}
+
 /// Pinta o cartão. Devolve o `y` de baixo.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_instance_card(
@@ -51,8 +74,19 @@ pub(crate) fn paint_instance_card(
     // era pintado **por cima da segunda**. *Uma altura contada em linhas mente sobre todo texto que
     // pode quebrar.*
     //
-    // ⚠️ As linhas dos componentes overridados ficam na conta: elas são NOMES do catálogo, curtos
-    // por construção — e medir cada uma custaria um layout por quadro por linha.
+    // ⛔⛔⛔ **E as linhas de LISTA passaram a ser medidas TAMBÉM** (auditoria de 2026-09-05).
+    //
+    // A justificação que aqui esteve — *«elas são NOMES do catálogo, curtos por construção»* — era
+    // verdadeira para os componentes overridados (o mais longo do catálogo tem **20** caracteres) e
+    // **falsa** para as excepções sem alvo, que entraram nesta mesma conta em 2026-09-04: o rótulo
+    // delas embrulha um `Name` que o **artista escreveu**, e um `Name` não tem tecto. Medido: com
+    // `Sprite — was on "Left front suspension arm assembly"` o botão dos órfãos ficava em `y = 198`
+    // — **o mesmo `y` do nome curto** —, ou seja pintado por cima da 2.ª linha do texto. É a foto
+    // do Enio de 2026-08-31 (*«Card com Labels emboladas»*) por outra porta.
+    //
+    // ⚠️ **E o argumento nunca foi só sobre a string:** embrulhar é função da LARGURA, e a largura
+    // deste painel não é uma constante. *Quem empilha texto de comprimento variável tem de
+    // perguntar ao pintor quanto ele gastou* — a lei já estava escrita no `paint_text_block`.
     let head_h = super::text_h(text_system, &info.provenance(), font, tw_probe, line)
         + super::text_h(text_system, &info.summary(), small, tw_probe, line);
     // ⚠️ **As fileiras da ESCADA entram na conta como as outras** — elas são botões de altura
@@ -60,12 +94,43 @@ pub(crate) fn paint_instance_card(
     // ou com um degrau só, não há fileira nenhuma).
     let ladder = info.apply_rows();
     let beyond = usize::from(!ladder.is_empty() && info.apply_levels_beyond > 0);
-    let rows = info.overridden.len()
-        + ladder.len()
-        + beyond
-        + info.orphan_rows.len()
-        + usize::from(info.orphans() > 0);
-    let card_h = CARD_PAD * 2.0 + head_h + line * rows as f32;
+    // ⚠️ **A INDENTAÇÃO sai do orçamento de quebra** — ela entrava no `x` e não no `max_width`,
+    // então uma linha embrulhada corria `Spacing::Sm` **para fora** da borda direita do cartão.
+    // *Um texto recuado com o orçamento inteiro é um texto que transborda pela largura do recuo.*
+    //
+    // ⏳ **Correcção MEDIDA e por GATEAR, e o motivo é o instrumento:** a mutação que a desfaz
+    // sobrevive a todos os gates deste cartão, porque o oráculo que eles têm é *onde o botão
+    // aterra* — e o transbordo é **horizontal**. Vê-lo pedia a extensão dos glifos, que o
+    // `MockPanelHost` não expõe (ele conta glifos e devolve rects, não caixas de texto). ⛔ Fica
+    // escrito em vez de silencioso: *uma linha sem régua que se declara é dívida; sem a declaração
+    // é uma armadilha.*
+    let at = CardMetrics {
+        tx: x + CARD_PAD,
+        tw: (w - CARD_PAD * 2.0).max(0.0),
+        right: x + w - CARD_PAD,
+        list_tw: (tw_probe - Spacing::Sm.px()).max(0.0),
+        // O `✕` de cada órfão é quadrado, da altura da linha — e o texto dela paga essa largura.
+        orphan_tw: (tw_probe - Spacing::Sm.px() - line).max(0.0),
+        font,
+        small,
+        line,
+    };
+    let list_h: f32 = info
+        .overridden
+        .iter()
+        .map(|n| {
+            super::text_h(
+                text_system,
+                &format!("\u{2022} {n}"),
+                font,
+                at.list_tw,
+                line,
+            )
+        })
+        .sum::<f32>()
+        + instance_orphans::rows_height(text_system, info, font, at.orphan_tw, line);
+    let fixed_rows = ladder.len() + beyond + instance_orphans::fixed_rows(info);
+    let card_h = CARD_PAD * 2.0 + head_h + list_h + line * fixed_rows as f32;
     let card = Rect::new(x, y, w, card_h);
     fill_rounded_rect(
         scene,
@@ -74,8 +139,7 @@ pub(crate) fn paint_instance_card(
         resolve(ColorToken::Bg2, theme),
     );
 
-    let tx = x + CARD_PAD;
-    let tw = (w - CARD_PAD * 2.0).max(0.0);
+    let (tx, tw) = (at.tx, at.tw);
     let mut ty = y + CARD_PAD;
     // A linha de proveniência: **o que este objeto é**, e de que receita nasceu. É a única
     // superfície que o diz — a Hierarquia mostra a árvore, não o vínculo. ⚠️ A frase sai do modelo
@@ -109,17 +173,18 @@ pub(crate) fn paint_instance_card(
     // ⚠️ **Uma linha por componente overridado, pelo NOME que o `+` usa.** Sem elas o artista sabe
     // que «alguma coisa» está diferente e não sabe o quê — que é metade do defeito.
     for name in &info.overridden {
+        let text = format!("\u{2022} {name}");
         paint_text(
             text_system,
             scene,
-            &format!("\u{2022} {name}"),
+            &text,
             tx + Spacing::Sm.px(),
             ty,
             font,
-            tw,
+            at.list_tw,
             resolve(ColorToken::Text1, theme),
         );
-        ty += line;
+        ty += super::text_h(text_system, &text, font, at.list_tw, line);
     }
 
     // ⭐⭐⭐ **A ESCADA do *Aplicar*** (F5 critério 4) — um botão por receita alcançável, da mais
@@ -161,41 +226,9 @@ pub(crate) fn paint_instance_card(
         ty += line;
     }
 
-    // ⭐⭐⭐ **AS EXCEPÇÕES SEM ALVO, uma por linha** (F5 critério 3) — o que ficou de uma peça que
-    // o mestre apagou.
-    //
-    // ⚠️ **Elas vêm em `Text2`, e as vivas em `Text1`:** as de cima são o que esta peça TEM, estas
-    // são o que sobrou de peças que já não existem. Pintá-las iguais faria o artista ler uma lista
-    // só, e o botão logo abaixo apaga **apenas** estas.
-    //
-    // ⚠️ **A ordem é a do mapa, que agrupa por PEÇA por construção** (a chave ordena `piece` antes
-    // de `type_id`) — é o agrupamento que torna a lista legível quando duas peças morreram.
-    for row in &info.orphan_rows {
-        paint_text(
-            text_system,
-            scene,
-            &format!("\u{2022} {}", row.label()),
-            tx + Spacing::Sm.px(),
-            ty,
-            font,
-            tw,
-            resolve(ColorToken::Text2, theme),
-        );
-        ty += line;
-    }
-
-    // ⭐ O gesto dos ÓRFÃOS — e ele **só aparece quando existem**: um botão permanentemente inerte
-    // é ruído que o artista aprende a ignorar.
-    if info.orphans() > 0 {
-        let host = Rect::new(tx, ty, tw, line);
-        hit_index.register(ids::INSP_INSTANCE_CLEAR_ORPHANS, host);
-        let button = Button::new(
-            ids::INSP_INSTANCE_CLEAR_ORPHANS,
-            format!("Clear {} unused override(s)", info.orphans()),
-        )
-        .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_INSTANCE_CLEAR_ORPHANS));
-        paint_button(&button, host, scene, text_system, theme);
-    }
+    // ⭐⭐⭐ **AS EXCEPÇÕES SEM ALVO, e o gesto de cada uma** — o bloco inteiro vive no irmão
+    // [`super::instance_orphans`], cortado por assunto quando o `✕` por linha estourou o tecto de
+    // 200 LOC desta função. *Um tecto paga-se com um corte.*
+    let _ = instance_orphans::paint(scene, text_system, theme, hit_index, store, info, at, ty);
     y + card_h + SECTION_BOTTOM_PAD_PX
 }

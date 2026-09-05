@@ -70,6 +70,65 @@ impl Default for StepConfig {
     }
 }
 
+/// **A MÃO, COMO RESTRIÇÃO SUAVE** — para onde cada vértice deve ir, e quanto do
+/// caminho ele faz.
+///
+/// # ⛔⛔ Por que ela não é uma FORÇA EXTERNA
+///
+/// Uma força externa é `F = m·a`, e a massa de um vértice cai com a área dele:
+/// refinar a malha divide a massa e **não** divide a força elástica, que é um
+/// campo. Medido no pincel de tecido, com o gesto entrando como aceleração:
+///
+/// | vértices | aresta | resposta |
+/// |---|---|---|
+/// | `362` | `0,196` | `151 %` do raio |
+/// | `3 010` | `0,065` | `17 %` |
+/// | `12 162` | `0,033` | **`4 %`** |
+///
+/// ⇒ **o mesmo material comportava-se de forma diferente conforme a densidade**,
+/// e numa escultura de verdade (a cena do dono tem `50 000` faces) o pincel era
+/// mudo. *Um material de contínuo não pode depender de como se o malha.*
+///
+/// ⭐⭐ A restrição resolve isto por construção: a rigidez dela é `w` vezes a
+/// **escala local do próprio sistema** (inércia + elástico), então a razão entre
+/// «o que a mão pede» e «o que o material resiste» é a mesma em qualquer
+/// densidade.
+///
+/// ⛔ **E ela é um MÚLTIPLO da escala, não uma fração do CAMINHO.** A 1.ª forma
+/// era `k = w/(1−w)·escala`, o que dá *«vá exatamente para onde a mão está»* em
+/// `w → 1` — cinemática pura. Medido: com o gesto a arrastar o mesmo vértice
+/// por vinte dabs enquanto os vizinhos ficam, a malha esticava **`9,63×`**. Com
+/// `k = w·escala` a mão empata com o material em `w = 1`, e é o solver que
+/// reparte — que é a definição de a mão PEDIR em vez de MANDAR.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ClothDrive<'a> {
+    /// Para onde cada vértice deve ir. Vazio = ninguém é conduzido.
+    pub goal: &'a [V3],
+    /// Quanto cada vértice sente a mão, em `[0, 1]` — a curva do pincel.
+    pub weight: &'a [f64],
+    /// **A RIGIDEZ DA MÃO**, na mesma unidade do módulo do material.
+    ///
+    /// ⛔⛔ **Ela é ABSOLUTA de propósito, e as duas alternativas foram medidas
+    /// e falham cada uma de um lado:**
+    ///
+    /// | âncora | material decide? | independe da densidade? |
+    /// |---|---|---|
+    /// | o bloco inteiro (inércia + elástico) | ⛔ **não** (`1000×` mais duro dá o mesmo esticão) | ✅ sim |
+    /// | só a inércia | ✅ sim (`1,67× → 1,01×`) | ⛔ **não** (`52 % → 4 %` ao refinar) |
+    /// | **absoluta** | ✅ | ✅ |
+    ///
+    /// A razão é a escala: a Hessiana elástica por vértice é `O(μ)` e não muda
+    /// com a densidade; a inércia é `O(área)` e desaparece ao refinar. Uma mão
+    /// ancorada na inércia some junto; uma ancorada no elástico escala com ele e
+    /// nunca perde. Uma rigidez ABSOLUTA vive na mesma escala do elástico e é
+    /// independente dele — que é exatamente o que *«a mão puxa, o material
+    /// resiste»* quer dizer.
+    ///
+    /// ⚠️ **E ela NÃO é um ganho inventado:** é um módulo, com unidade, e a
+    /// calibração dela tem critério nomeado (ver o `stroke_cloth` do pincel).
+    pub stiffness: f64,
+}
+
 /// Resolve `H·Δ = f` para um bloco `3×3`, ou devolve `None` se ele for singular.
 ///
 /// ⚠️ **`None` significa «este vértice não se move nesta iteração», e não «erro».**
@@ -162,7 +221,7 @@ pub fn step(
     rest: &ClothRest,
     mat: &ClothMaterial,
     pinned: &[bool],
-    ext: &[V3],
+    drive: &ClothDrive<'_>,
     cfg: &StepConfig,
     state: &mut ClothState,
 ) {
@@ -175,10 +234,7 @@ pub fn step(
     let inv_h2 = 1.0 / (h * h);
     let kd = mat.damping.max(0.0) / h;
 
-    let accel = |i: usize| -> V3 {
-        let e = ext.get(i).copied().unwrap_or([0.0; 3]);
-        add(cfg.gravity, e)
-    };
+    let accel = |_i: usize| -> V3 { cfg.gravity };
 
     for _ in 0..cfg.substeps {
         let x_t = state.x.clone();
@@ -230,6 +286,21 @@ pub fn step(
                             - kd * (he[r][0] * dt_x[0] + he[r][1] * dt_x[1] + he[r][2] * dt_x[2]);
                         for c in 0..3 {
                             hh[r][c] = he[r][c] * (1.0 + kd) + if r == c { mi } else { 0.0 };
+                        }
+                    }
+                    // ⚠️ **A MÃO ENTRA AQUI, e a rigidez sai da ESCALA LOCAL** —
+                    // ver [`ClothDrive`]. Com `w` da fração do caminho, a rigidez
+                    // `k = w/(1−w)·escala` põe o mínimo do bloco exatamente a `w`
+                    // do caminho entre a solução livre e a meta, em qualquer
+                    // densidade de malha.
+                    let aw = drive.weight.get(i).copied().unwrap_or(0.0);
+                    if aw > 0.0
+                        && let Some(g) = drive.goal.get(i)
+                    {
+                        let k = aw * drive.stiffness;
+                        for r in 0..3 {
+                            f[r] += k * (g[r] - state.x[i][r]);
+                            hh[r][r] += k;
                         }
                     }
                     if let Some(dx) = solve3(&hh, f) {

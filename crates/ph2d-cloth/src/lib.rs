@@ -60,7 +60,7 @@ mod vbd_tests;
 
 pub use bending::Hinge;
 pub use topology::ClothTopology;
-pub use vbd::{ClothState, StepConfig, step};
+pub use vbd::{ClothDrive, ClothState, StepConfig, step};
 
 /// Um ponto, ou um vetor. `f64` — ver o cabeçalho.
 pub type V3 = [f64; 3];

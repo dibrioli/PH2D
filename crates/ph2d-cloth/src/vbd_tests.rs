@@ -1,7 +1,8 @@
 //! ⭐⭐⭐ **O SOLVER** — e cada gate aqui mata uma maneira diferente de estar errado.
 
 use crate::{
-    ClothMaterial, ClothRest, ClothState, ClothTopology, StepConfig, V3, energy, fixtures, step,
+    ClothDrive, ClothMaterial, ClothRest, ClothState, ClothTopology, StepConfig, V3, energy,
+    fixtures, step,
 };
 
 const N: usize = 8;
@@ -46,7 +47,15 @@ fn o_repouso_e_ponto_fixo() {
         ..StepConfig::default()
     };
     for _ in 0..20 {
-        step(&topo, &rest, &mat(), &[], &[], &cfg, &mut st);
+        step(
+            &topo,
+            &rest,
+            &mat(),
+            &[],
+            &ClothDrive::default(),
+            &cfg,
+            &mut st,
+        );
     }
     assert_eq!(max_desloc(&st.x, &x), 0.0, "o repouso andou");
     assert!(st.v.iter().all(|v| *v == [0.0; 3]), "nasceu velocidade");
@@ -77,7 +86,15 @@ fn mais_iteracoes_nunca_pioram() {
             iterations: it,
             ..StepConfig::default()
         };
-        step(&topo, &rest, &mat(), &pin, &[], &cfg, &mut st);
+        step(
+            &topo,
+            &rest,
+            &mat(),
+            &pin,
+            &ClothDrive::default(),
+            &cfg,
+            &mut st,
+        );
         let e = energy(&topo, &rest, &mat(), &st.x);
         assert!(
             e <= antes * (1.0 + 1e-9),
@@ -108,7 +125,15 @@ fn uma_iteracao_so_e_estavel() {
         ..StepConfig::default()
     };
     for _ in 0..500 {
-        step(&topo, &rest, &mat(), &pin, &[], &cfg, &mut st);
+        step(
+            &topo,
+            &rest,
+            &mat(),
+            &pin,
+            &ClothDrive::default(),
+            &cfg,
+            &mut st,
+        );
     }
     assert!(
         st.x.iter().flatten().all(|c| c.is_finite()),
@@ -131,7 +156,11 @@ fn uma_iteracao_so_e_estavel() {
 fn o_arrasto_na_velocidade_maxima_nao_explode() {
     let (x, topo, rest, pin) = cena();
     let mut st = ClothState::at_rest(&x);
-    let mut ext = vec![[0.0f64; 3]; x.len()];
+    // ⚠️ **A mão conduz por META e PESO** — ver [`ClothDrive`]. A 1.ª redação
+    // destes gates empurrava por aceleração externa, e a forma mudou quando a
+    // medição mostrou que uma força por MASSA desaparece ao refinar a malha.
+    let mut alvo = vec![[0.0f64; 3]; x.len()];
+    let mut peso = vec![0.0f64; x.len()];
     let cfg = StepConfig {
         substeps: 2,
         iterations: 2,
@@ -140,14 +169,28 @@ fn o_arrasto_na_velocidade_maxima_nao_explode() {
     for k in 0..300 {
         // Uma força enorme, a mudar de direção como um traço a serpentear.
         let a = f64::from(k) * 0.37;
-        for (i, e) in ext.iter_mut().enumerate() {
-            *e = if pin[i] {
-                [0.0; 3]
-            } else {
-                [900.0 * a.cos(), 900.0 * a.sin(), 600.0 * (a * 0.5).sin()]
-            };
+        for (i, g) in alvo.iter_mut().enumerate() {
+            peso[i] = if pin[i] { 0.0 } else { 1.0 };
+            let p = st.x[i];
+            *g = [
+                p[0] + 0.9 * a.cos(),
+                p[1] + 0.9 * a.sin(),
+                p[2] + 0.6 * (a * 0.5).sin(),
+            ];
         }
-        step(&topo, &rest, &mat(), &pin, &ext, &cfg, &mut st);
+        step(
+            &topo,
+            &rest,
+            &mat(),
+            &pin,
+            &ClothDrive {
+                goal: &alvo,
+                weight: &peso,
+                stiffness: 1.0e4,
+            },
+            &cfg,
+            &mut st,
+        );
         assert!(
             st.x.iter().flatten().all(|c| c.is_finite()),
             "explodiu no passo {k}"
@@ -171,7 +214,11 @@ fn o_arrasto_na_velocidade_maxima_nao_explode() {
 fn pregado_e_pregado() {
     let (x, topo, rest, pin) = cena();
     let mut st = ClothState::at_rest(&x);
-    let ext: Vec<V3> = (0..x.len()).map(|_| [500.0, -300.0, 800.0]).collect();
+    let alvo: Vec<V3> = x
+        .iter()
+        .map(|p| [p[0] + 0.4, p[1] - 0.3, p[2] + 0.5])
+        .collect();
+    let peso: Vec<f64> = (0..x.len()).map(|_| 1.0).collect();
     let cfg = StepConfig {
         substeps: 4,
         iterations: 3,
@@ -179,7 +226,19 @@ fn pregado_e_pregado() {
         ..StepConfig::default()
     };
     for _ in 0..100 {
-        step(&topo, &rest, &mat(), &pin, &ext, &cfg, &mut st);
+        step(
+            &topo,
+            &rest,
+            &mat(),
+            &pin,
+            &ClothDrive {
+                goal: &alvo,
+                weight: &peso,
+                stiffness: 1.0e4,
+            },
+            &cfg,
+            &mut st,
+        );
     }
     for (i, p) in pin.iter().enumerate() {
         if *p {
@@ -227,7 +286,15 @@ fn a_razao_de_massa_infinita_e_servida() {
         ..StepConfig::default()
     };
     for _ in 0..200 {
-        step(&topo, &rest, &duro, &pin, &[], &cfg, &mut st);
+        step(
+            &topo,
+            &rest,
+            &duro,
+            &pin,
+            &ClothDrive::default(),
+            &cfg,
+            &mut st,
+        );
     }
     let e1 = energy(&topo, &rest, &duro, &st.x);
     assert!(
@@ -248,7 +315,13 @@ fn a_razao_de_massa_infinita_e_servida() {
 #[test]
 fn o_passo_e_deterministico() {
     let (x, topo, rest, pin) = cena();
-    let ext: Vec<V3> = (0..x.len()).map(|i| [0.3 * i as f64, -0.2, 1.1]).collect();
+    let alvo: Vec<V3> = x
+        .iter()
+        .map(|p| [p[0] + 0.2, p[1] + 0.1, p[2] - 0.3])
+        .collect();
+    let peso: Vec<f64> = (0..x.len())
+        .map(|i| 0.5 + 0.5 * ((i % 3) as f64 / 2.0))
+        .collect();
     let cfg = StepConfig {
         substeps: 3,
         iterations: 2,
@@ -258,7 +331,19 @@ fn o_passo_e_deterministico() {
     let corrida = || {
         let mut st = ClothState::at_rest(&x);
         for _ in 0..30 {
-            step(&topo, &rest, &mat(), &pin, &ext, &cfg, &mut st);
+            step(
+                &topo,
+                &rest,
+                &mat(),
+                &pin,
+                &ClothDrive {
+                    goal: &alvo,
+                    weight: &peso,
+                    stiffness: 1.0e4,
+                },
+                &cfg,
+                &mut st,
+            );
         }
         st.x
     };

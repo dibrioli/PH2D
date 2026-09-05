@@ -47,6 +47,14 @@ pub const CLOTH_SIM_LIMIT: f32 = 2.0;
 /// escuro do report.
 pub const CLOTH_FOLLOW: f32 = 0.25;
 
+/// **A RIGIDEZ DA MÃO**, na mesma unidade do módulo do pano.
+///
+/// ⚠️ **Ela é o que o `Strength` do pincel multiplica**, e a calibração tem
+/// critério: com o material de fábrica, um traço a arrastar o pincel por três
+/// raios move a superfície `~16 %` do raio do pincel — visível, e com a malha a
+/// esticar menos de `10 %`, que é a propriedade publicada de um tecido.
+pub const CLOTH_GRIP: f64 = 600.0;
+
 /// Sub-passos por evento de ponteiro.
 ///
 /// ⚠️ **O orçamento é gasto em SUB-PASSOS e não em iterações**, que é o achado do
@@ -79,51 +87,6 @@ pub const CLOTH_DT: f64 = 1.0 / 60.0;
 // o solver arrastar a vizinhança por membrana e dobra, e o `Strength` volta a ser
 // o que ele é em todo verbo deste módulo: *quanto do gesto chega*.
 
-/// **O GESTO, EM ACELERAÇÃO** — e este número é DERIVADO, não escolhido.
-///
-/// ⛔⛔⛔ **A 1.ª versão somava o passo à POSIÇÃO, e isso é um arrasto rígido —
-/// «zero física», nas palavras do report.** O `walk` emite muitos dabs por
-/// evento, então um vértice sob o pincel recebia o passo a cada um deles e era
-/// levado o traço INTEIRO: medido, `0,67` de deslocamento numa esfera de raio
-/// `1`, vizinhos a diferir `0,35` (as rachaduras em arco da foto) e uma aresta a
-/// esticar **`2,71×`**. Escrever a posição não deixa o material discordar.
-///
-/// ⭐⭐ **A forma certa: o gesto propõe onde a INÉRCIA quer ir, e o solver
-/// arbitra.** Uma aceleração externa `a` desloca a previsão de inércia em
-/// `h²·a` por sub-passo; para que o evento inteiro proponha exatamente `passo·w`,
-///
-/// ```text
-/// Δx = ½·a·dt²   ⇒   a = 2·passo·w / dt²
-/// ```
-///
-/// ⇒ **nenhum número inventado**: ele sai da cinemática do evento. Quando o
-/// material não resiste, o vértice chega ao que a mão propôs; quando resiste, ele
-/// fica pelo caminho — e é **essa diferença** que é a física.
-///
-/// ⛔⛔ **E a 3.ª versão dividia pelos SUB-PASSOS, o que fazia o solver piorar
-/// ao receber mais orçamento** — medido: `4 → 8 → 16` sub-passos levavam o
-/// esticão de `2,3×` a `5,7×` e a `10,7×`. *Um solver que fica pior com mais
-/// orçamento não está a convergir: há um termo que depende do orçamento.* Ele
-/// era o MOMENTO — uma aceleração aplicada durante o evento inteiro também
-/// injeta `a·dt` de velocidade, e eu tinha somado só os `h²·a` de posição. A
-/// forma acima é a cinemática completa, e é **independente dos sub-passos** por
-/// construção (há gate).
-///
-/// ⚠️ **E a 2.ª versão INVENTOU um ganho (`30`) e ficou 32× fraca** — o valor
-/// correto é `sub-passos/dt²`, e a distância entre um palpite e uma derivação foi
-/// exatamente esse fator.
-///
-/// ⚠️⚠️ **Ela é uma FUNÇÃO do orçamento, e o parâmetro é o gate.** Enquanto era
-/// uma `const`, o gate `o_gesto_nao_depende_do_orcamento_do_solver` estava verde
-/// **por vácuo**: ele varia os sub-passos em execução e a constante era de
-/// compilação, então nenhuma fórmula errada podia ser vista — a mutação que
-/// repunha a divisão pelo orçamento **SOBREVIVEU**. Recebendo o `StepConfig`, a
-/// lei correta usa só o `dt` e ignora o `substeps`; uma que o leia diverge, e a
-/// mutação passa a sangrar.
-fn gesto_para_aceleracao(cfg: &StepConfig) -> f64 {
-    2.0 / (cfg.dt * cfg.dt)
-}
-
 /// **A SESSÃO de tecido de UMA cópia de simetria, dentro de UM traço.**
 ///
 /// ⚠️ **Ela nasce no primeiro dab e morre no pen-up.** Tudo o que depende do
@@ -138,8 +101,10 @@ pub(super) struct ClothSession {
     /// torna a região função da malha e não da ordem em que a consulta a devolveu.
     verts: Vec<u32>,
     pinned: Vec<bool>,
-    /// A aceleração que o gesto propõe, reusada entre eventos.
-    ext: Vec<V3>,
+    /// Para onde a mão pede que cada vértice vá.
+    goal: Vec<V3>,
+    /// Quanto do caminho até lá — `w`, em `[0, 1]`.
+    peso: Vec<f64>,
     /// Onde a região foi centrada, e qual o raio dela.
     em: [f32; 3],
     raio: f32,
@@ -154,7 +119,7 @@ pub(super) struct ClothSession {
 fn material() -> ClothMaterial {
     ClothMaterial {
         density: 1.0,
-        young: 40.0,
+        young: 400.0,
         poisson: 0.3,
         bending: 2.0e-3,
         damping: 0.05,
@@ -264,13 +229,17 @@ impl SculptStroke {
             iterations: CLOTH_ITERATIONS,
             gravity: [0.0; 3],
         };
-        self.cloth_drive(&mut ses, brush, dab, center, path, &cfg);
+        self.cloth_drive(&mut ses, brush, dab, center, path);
         ph2d_cloth::step(
             &ses.topo,
             &ses.rest,
             &material(),
             &ses.pinned,
-            &ses.ext,
+            &ph2d_cloth::ClothDrive {
+                goal: &ses.goal,
+                weight: &ses.peso,
+                stiffness: CLOTH_GRIP,
+            },
             &cfg,
             &mut ses.state,
         );
@@ -345,6 +314,29 @@ impl SculptStroke {
             return None;
         }
 
+        for v in &verts {
+            self.capture(mesh, *v);
+        }
+        // ⛔⛔⛔ **O REPOUSO SAI DO `pre` CONGELADO, E A 1.ª VERSÃO O RE-MEDIA NA
+        // MALHA VIVA.** Como a região segue o pincel, ela é reconstruída várias
+        // vezes por traço — e a cada reconstrução o esticão acumulado virava o
+        // repouso NOVO. O material **perdoava tudo** e nunca resistia: medido,
+        // um material `1000×` mais duro dava exatamente o mesmo esticão (`8,59×`
+        // contra `8,59×`), e mais iterações também não moviam nada. *Quando
+        // endurecer o material não muda o resultado, não é o material que está
+        // a decidir.*
+        //
+        // ⇒ é a `GripLaw::frozen` que este módulo já tem, e ela vale aqui pela
+        // mesma razão: **o peso de um traço é um fato sobre a superfície em que
+        // ele começou.** Toda reconstrução passa a dar o MESMO repouso para os
+        // mesmos vértices, e o esticão deixa de ser esquecido.
+        let repouso: Vec<V3> = verts
+            .iter()
+            .map(|v| {
+                let p = self.base_pos_of(mesh, *v);
+                [f64::from(p[0]), f64::from(p[1]), f64::from(p[2])]
+            })
+            .collect();
         let pos = mesh.positions();
         let x: Vec<V3> = verts
             .iter()
@@ -370,14 +362,12 @@ impl SculptStroke {
         // pregado é a fronteira, que é onde o pano encontra o resto da peça.
         let pinned: Vec<bool> = borda;
 
-        for v in &verts {
-            self.capture(mesh, *v);
-        }
         let topo = ClothTopology::build(&tris, verts.len());
-        let rest = ClothRest::measure(&topo, &x, &material());
+        let rest = ClothRest::measure(&topo, &repouso, &material());
         Some(ClothSession {
             state: ClothState::at_rest(&x),
-            ext: vec![[0.0; 3]; verts.len()],
+            goal: vec![[0.0; 3]; verts.len()],
+            peso: vec![0.0; verts.len()],
             em: center,
             raio: limit,
             topo,
@@ -444,14 +434,12 @@ impl SculptStroke {
         dab: &Dab,
         center: [f32; 3],
         path: V3,
-        cfg: &StepConfig,
     ) {
         let frame = brush.alpha_frame();
-        let escala = gesto_para_aceleracao(cfg);
         let ganho = f64::from(brush.weight() * dab.pressure.clamp(0.0, 1.0));
         let inv_r = 1.0 / dab.radius;
         for i in 0..ses.verts.len() {
-            ses.ext[i] = [0.0; 3];
+            ses.peso[i] = 0.0;
             if ses.pinned[i] {
                 continue;
             }
@@ -479,8 +467,9 @@ impl SculptStroke {
                         * brush.alpha_weight(base, &frame)
                         * crate::mask_ops::free_weight(self.base_mask[s]),
                 );
+            ses.peso[i] = w;
             for (c, andou) in path.iter().enumerate() {
-                ses.ext[i][c] = andou * w * escala;
+                ses.goal[i][c] = p[c] + andou;
             }
         }
     }

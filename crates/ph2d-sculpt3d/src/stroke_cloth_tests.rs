@@ -319,7 +319,7 @@ fn esfera() -> Mesh {
 }
 
 /// O traço do report: a mão atravessando a peça, evento a evento.
-fn traco_longo(mesh: &mut Mesh, b: &Brush, passos: usize, sub: Option<u32>) -> SculptStroke {
+fn traco_longo_em(mesh: &mut Mesh, b: &Brush, passos: usize, sub: Option<u32>) -> SculptStroke {
     let mut s = SculptStroke {
         cloth_substeps_override: sub,
         ..SculptStroke::default()
@@ -347,7 +347,7 @@ fn artefatos(sub: Option<u32>) -> (f32, f32, f32) {
     let antes = esfera();
     let mut mesh = esfera();
     let b = pincel();
-    traco_longo(&mut mesh, &b, 35, sub);
+    traco_longo_em(&mut mesh, &b, 35, sub);
 
     // (1) O ESPINHO: o maior deslocamento de um vértice.
     let mut pior = 0.0f32;
@@ -452,4 +452,79 @@ fn o_gesto_nao_depende_do_orcamento_do_solver() {
          (o defeito de 05/09 mudava 430 %)",
         pior * 100.0
     );
+}
+
+/// ⭐⭐⭐ **GATE — a resposta do pano NÃO depende de quão fina é a malha.**
+///
+/// ⛔⛔⛔ **Ela quebrou DUAS vezes, e a segunda foi o report *«não acontece
+/// nada»*.** O dono esculpe numa peça de `50 000` faces; as minhas fixturas
+/// tinham `3 000` vértices, e o pincel que respondia `17 %` do raio ali
+/// respondia **`4 %`** na peça dele — invisível.
+///
+/// | âncora da mão | 362 v | 3 010 v | 12 162 v |
+/// |---|---|---|---|
+/// | aceleração (`F = m·a`) | `151 %` | `17 %` | **`4 %`** ⛔ |
+/// | rigidez da INÉRCIA | `52 %` | `16 %` | **`4 %`** ⛔ |
+/// | **rigidez ABSOLUTA** | `15 %` | `24 %` | **`30 %`** ✅ |
+///
+/// ⚠️ *Um material de contínuo não pode depender de como se o malha* — e a causa
+/// das duas quebras é a mesma: tudo o que escala com a MASSA de um vértice
+/// desaparece ao refinar, enquanto a Hessiana elástica por vértice é `O(μ)` e
+/// não muda. A mão tem de viver na escala do elástico, sem ser feita dele.
+///
+/// ⚠️ **A barra é uma RAZÃO entre os extremos, e não uma tolerância apertada:**
+/// a resposta ainda cresce `~40 %` de `1 490` a `12 162` vértices, o que é
+/// deriva de discretização honesta — contra os **`13×` de COLAPSO** que as duas
+/// versões anteriores tinham.
+#[test]
+fn a_resposta_nao_depende_da_densidade_da_malha() {
+    let mut lidos = Vec::new();
+    for (r, s) in [(32usize, 48usize), (48, 64), (72, 96), (96, 128)] {
+        let antes = ph2d_mesh::shapes::uv_sphere(r, s, 1.0);
+        let mut mesh = antes.clone();
+        let b = pincel();
+        traco_longo_em(&mut mesh, &b, 35, None);
+        let pior = (0..antes.vert_count())
+            .map(|v| desloc(&antes, &mesh, v))
+            .fold(0.0f32, f32::max);
+        lidos.push(pior / b.radius);
+    }
+    let (lo, hi) = lidos
+        .iter()
+        .fold((f32::MAX, 0.0f32), |(a, b), v| (a.min(*v), b.max(*v)));
+    assert!(lo > 0.05, "o pincel some na malha fina: {lo:.3} do raio");
+    assert!(
+        hi / lo < 2.0,
+        "a resposta varia {:.1}x com a densidade ({lidos:?}) -- as versoes \
+         anteriores colapsavam 13x",
+        hi / lo
+    );
+}
+
+/// ⛔ **A SONDA DA RESOLUÇÃO** — a resposta do pano contra a densidade da malha.
+#[test]
+#[ignore = "sonda: imprime, nao julga"]
+fn sonda_da_resolucao() {
+    eprintln!("  verts     aresta    espinho   % do raio");
+    for (r, s) in [(16usize, 24usize), (32, 48), (48, 64), (72, 96), (96, 128)] {
+        let antes = ph2d_mesh::shapes::uv_sphere(r, s, 1.0);
+        let mut mesh = antes.clone();
+        let b = pincel();
+        traco_longo_em(&mut mesh, &b, 35, None);
+        let pior = (0..antes.vert_count())
+            .map(|v| desloc(&antes, &mesh, v))
+            .fold(0.0f32, f32::max);
+        let adj = antes.adjacency();
+        let aresta = {
+            let p = antes.positions();
+            let n = adj.vert_verts.neighbours(antes.vert_count() / 2)[0] as usize;
+            let (a, c) = (p[antes.vert_count() / 2], p[n]);
+            ((a[0] - c[0]).powi(2) + (a[1] - c[1]).powi(2) + (a[2] - c[2]).powi(2)).sqrt()
+        };
+        eprintln!(
+            "  {:<9} {aresta:<9.4} {pior:<9.4} {:.0}%",
+            antes.vert_count(),
+            100.0 * pior / b.radius
+        );
+    }
 }

@@ -138,6 +138,46 @@ que ninguém chama é a assinatura barata de um controlo morto.**
 
 ---
 
+## §8-bis — ⛔⛔ E o SMOKE achou o que o clippy não podia achar: a pilha INTEIRA estava muda
+
+O 1.º smoke reprovou (Enio, 2026-09-05): *"O olho não funciona. Clicar no nome não exibe a largura,
+a opacidade e a mistura. Demais botões não funcionam"*. Mecanismo completo no
+[BUGS #29](BUGS_vector.md); o que interessa aqui é **por que a §8 não bastou**.
+
+O `clippy` acha uma função que **ninguém chama**. As três rotas que faltavam não eram funções — eram
+**uma linha ausente em três allowlists**:
+
+| rota | a linha que faltava |
+|---|---|
+| clique | a família em `event_clicks::forwards_plain_click` |
+| campo numérico | `VECTOR_PAINT_WIDTH` em `is_shell_owned_number` |
+| slider | `VECTOR_PAINT_OPACITY` na lista de tracks |
+
+Nada ficava *never used*: `stack_verb_for_id` e `apply` eram chamados pelo `render_loop`, com os
+gates de unidade verdes. **A shell estava inteira; o painel é que não falava.**
+
+⚠️ **E o `hit_indexed_ids_are_registered` estava verde COM RAZÃO** — os ids estavam todos
+registados (a §5 tinha-o curado), logo os controlos eram focáveis, **acendiam sob o rato** e
+consumiam o gesto. Entre esse gate e os testes de unidade da shell há um passo que **nenhum dos
+dois** atravessa: *o clique sai do painel?*
+
+⇒ Duas mudanças estruturais, e as duas são a mesma lei:
+
+1. **As três rotas da família vivem num módulo** ([`event_paint_stack.rs`](../../crates/ph2d-panel-vector/src/event_paint_stack.rs)),
+   à vista uma da outra. A pilha de EFEITOS tinha a mesma forma espalhada por dois ficheiros e foi
+   cortada igual (`event_fx_stack.rs`).
+2. **A família ganha um `seam_*` com gesto REAL** ([`seam_paint_stack.rs`](../../crates/ph2d-panel-vector/tests/seam_paint_stack.rs),
+   7 gates), cujo oráculo é o `EditorAction` e nunca o `WidgetEvent`. ⚠️ Esta crate tinha **40**
+   ficheiros `seam_*` e a pilha não tinha nenhum.
+
+E a caça devolveu **mais dois** defeitos que o report não nomeia — o campo de largura mostrava o que
+a última edição deixou no store (o `PaintRow::width` publicado **não tinha leitor**), e a swatch de
+uma camada abria o picker no **cinzento de fábrica**, porque ninguém sincronizava o `widget_color`
+dela. Mais um verbo **inalcançável por construção** (`StackVerb::Swatch`: uma *picker swatch* nunca
+emite `Click`), removido.
+
+---
+
 ## §9 — Smoke
 
 ```

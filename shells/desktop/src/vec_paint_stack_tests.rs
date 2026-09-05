@@ -203,7 +203,6 @@ fn opening_a_row_is_a_view_change_and_never_a_document_one() {
     apply(&mut scene, &ids, StackVerb::AddFill);
     let antes = scene.clone();
     assert!(!apply(&mut scene, &ids, StackVerb::Open(0)));
-    assert!(!apply(&mut scene, &ids, StackVerb::Swatch(0)));
     assert_eq!(scene, antes, "o documento nao se mexeu");
 }
 

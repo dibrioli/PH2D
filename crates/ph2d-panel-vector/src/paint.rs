@@ -107,6 +107,21 @@ fn seed_and_publish(
     for i in 0..ph2d_vec_scene::MAX_PAINT_LAYERS {
         store.register_picker_swatch(ids::vector_paint_swatch_id(i));
     }
+    // ⭐⭐⭐ **E A COR DE CADA CAMADA SEMEIA A SWATCH DELA.**
+    //
+    // ⛔ **Sem isto o picker abre no CINZENTO de fábrica** (o `unwrap_or([0x88; 3])` do
+    // `pointer_down`) e não na cor da camada: o artista carrega numa swatch azul, vê cinzento, e a
+    // primeira mexida no picker **carimba cinzento** por cima do azul. Um controlo que esquece o
+    // valor que diz editar é pior que um que não abre.
+    //
+    // ⚠️ **Aqui, e não na shell** — ao contrário das duas swatches de BASE, cuja cor é da
+    // ferramenta e nunca chega ao painel. Esta chega (`PaintRow::color`), então pô-la no store do
+    // lado de lá seria a segunda cópia de *"que cor tem a camada 3?"*, e as duas divergiriam.
+    if let Some(a) = state::current_appearance() {
+        for (i, row) in a.layers.iter().enumerate() {
+            store.set_widget_color(ids::vector_paint_swatch_id(i), row.color);
+        }
+    }
     // A cor do halo de cada LINHA da pilha de filtros (FX raster, plano 24). Marcadas pelo TETO
     // de linhas, como o `populate`: a marca é idempotente e o passe de sementes corre antes de a
     // shell publicar a pilha do frame.
@@ -146,6 +161,21 @@ fn seed_and_publish(
                 store.set_number_value(id, v);
             }
         }
+    }
+    // ⭐⭐⭐ **A LARGURA DA CAMADA ABERTA** (estudo 42 item 4) — o mesmo padrão dos irmãos acima,
+    // incluindo o guard de FOCO.
+    //
+    // ⚠️ **Sem esta semente o campo mostra o que a última edição deixou no store**, e o
+    // `PaintRow::width` que a shell publica não tem leitor nenhum. Um campo que mostra a largura de
+    // OUTRA camada é pior que um vazio: o artista lê `3`, escreve `4`, e engorda um traço que
+    // media `12`. ⛔ E não é `live_number`: aquele lê o documento no PAINT, e o `number_cell` desta
+    // casa pinta o que está no store — a semente é a porta que os outros três campos já usam.
+    if let Some(w) = state::current_appearance()
+        .zip(state::open_layer())
+        .and_then(|(a, i)| a.layers.get(i).map(|r| r.width))
+        && store.focus_id() != Some(ids::VECTOR_PAINT_WIDTH)
+    {
+        store.set_number_value(ids::VECTOR_PAINT_WIDTH, w);
     }
     // Seed the Transform fields from the published bbox. 1-frame post-commit lag, ok.
     if let Some([tx, ty, tw, th]) = state::current_transform() {

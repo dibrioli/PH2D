@@ -34,34 +34,6 @@ use ph2d_editor_core::tool::PanelEvent;
 /// guarda e nunca precisa saber que existe um track `0..1`. Um shell que convertesse por conta
 /// própria seria uma segunda porta para a mesma pergunta — e a que esquecesse o mapa bipolar
 /// carimbaria um preset de força zero quando o artista puxou o slider até a esquerda.
-/// A linha e o parâmetro que este id endereça, se ele for um slider da pilha de efeitos.
-///
-/// A varredura é sobre os TETOS (`MAX_FX_ROWS` × `MAX_FX_ROW_PARAMS` = 16 comparações): os ids
-/// são hashes de NOME, então não há aritmética que os inverta. É barato, e é o mesmo padrão
-/// que os presets do Envelope já usam.
-fn fx_param_of(id: ph2d_a11y::NodeId) -> Option<(usize, usize)> {
-    (0..ids::MAX_FX_ROWS).find_map(|row| {
-        (0..ids::MAX_FX_ROW_PARAMS)
-            .find(|&p| id == ids::vector_fx_param_id(row, p))
-            .map(|p| (row, p))
-    })
-}
-
-/// Este id é um botão da pilha (Add / Remove / Up / Down)?
-pub(super) fn is_fx_button(id: ph2d_a11y::NodeId) -> bool {
-    (0..ids::MAX_FX_KINDS).any(|k| id == ids::vector_fx_add_id(k))
-        || (0..ids::MAX_FX_ROWS).any(|r| {
-            id == ids::vector_fx_remove_id(r)
-                || id == ids::vector_fx_up_id(r)
-                || id == ids::vector_fx_down_id(r)
-                || id == ids::vector_fx_hide_id(r)
-                // A CAIXINHA de um parâmetro também é um botão. Ela tem id próprio desde
-                // 2026-07-18: partilhar o do slider punha dois tipos de widget num id só, e um
-                // slider não emite `Click` no Up.
-                || (0..ids::MAX_FX_ROW_PARAMS).any(|p| id == ids::vector_fx_toggle_id(r, p))
-        })
-}
-
 fn forward_track(
     host: &mut dyn PanelHostInternal,
     id: ph2d_a11y::NodeId,
@@ -96,7 +68,7 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
     // O track de um parâmetro de efeito é NORMALIZADO `0..1`; a faixa real é do EFEITO e viaja
     // no snapshot. Quem reconverte é a shell, que a conhece — aqui o que se garante é que o
     // número que sai é o track, sem fingir ser outra coisa.
-    if fx_param_of(id).is_some() || id == ids::VECTOR_BLEND_STEPS {
+    if fx::param_of(id).is_some() || id == ids::VECTOR_BLEND_STEPS {
         return Some(forward_track(host, id, 0.0, |t| t));
     }
     if id == ids::VECTOR_MORPH_T {
@@ -147,6 +119,10 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
         return Some(consumed);
     }
     if let Some(consumed) = texpat::texpat_slider_event(host, id) {
+        return Some(consumed);
+    }
+    // ⭐ As três propriedades da CAMADA aberta (estudo 42 item 4) — ver `event_paint_stack`.
+    if let Some(consumed) = stack::value_event(host, ev) {
         return Some(consumed);
     }
     if let Some(consumed) = contour::contour_slider_event(host, id) {
@@ -518,6 +494,14 @@ fn token_option_chip(id: ph2d_a11y::NodeId) -> Option<ph2d_a11y::NodeId> {
 #[path = "event_clicks.rs"]
 mod clicks;
 use clicks::forwards_plain_click;
+
+/// As três rotas da PILHA DE APARÊNCIA — irmão pela mesma razão que o `clicks`.
+#[path = "event_paint_stack.rs"]
+mod stack;
+
+/// As duas rotas da PILHA DE EFEITOS — irmão pela mesma razão.
+#[path = "event_fx_stack.rs"]
+mod fx;
 
 /// O roteamento dos controles do **Contour** — irmão pelo teto de 600 LOC do painel.
 #[path = "event_contour.rs"]

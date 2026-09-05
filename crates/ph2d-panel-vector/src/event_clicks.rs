@@ -10,7 +10,7 @@
 //! gate deste painel existe para pegar.
 
 use super::filters;
-use super::is_fx_button;
+use super::fx::is_button as is_fx_button;
 use crate::ids;
 
 /// Ids dos botões cujo `Click` o painel apenas ENCAMINHA (`PanelEvent::Click`) para o
@@ -326,6 +326,8 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // — porque o estado é DERIVADO das duas pontas: quem o resolve é a tool, que as
         // possui. Fora daqui o botão pintaria e estaria MORTO.
         || id == ids::VECTOR_MARKER_BOTH
+        // ⭐⭐⭐ A PILHA DE APARÊNCIA (estudo 42 item 4) — ver `event_paint_stack::is_button`.
+        || super::stack::is_button(id)
 }
 
 /// **A família do PREFAB e da PELE** — os verbos de componente (W5), os interruptores de peça e os

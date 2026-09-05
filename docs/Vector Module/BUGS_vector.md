@@ -145,7 +145,65 @@ mutação que tira o teto da rota do painel derruba **três** gates.
 
 ---
 
-## Índice dos 28 FECHADOS — o mecanismo de cada um, em uma linha
+20. **Uma FAMÍLIA de controlos cujas rotas painel→barramento vivem em allowlists LONGAS nasce
+    muda** (#29). A pilha de aparência shipou com o documento, o transform, o renderer, o
+    exportador e o painel gateados, e **as três rotas desligadas** — cada uma era uma linha a
+    acrescentar a uma lista de 200 que outras waves editam. ⚠️ **O que torna isto invisível é a
+    outra metade estar PRONTA:** `stack_verb_for_id`, `apply` e o dreno da shell existiam, com
+    gates de unidade verdes sobre um produto 100 % morto. ⛔ E o `hit_indexed_ids_are_registered`
+    estava verde **com razão** — ele mede focabilidade, e os controlos eram focáveis, acendiam sob
+    o rato e consumiam o gesto. ⇒ *uma família nova responde às perguntas dela num MÓDULO, e ganha
+    um `seam_*` com gesto real cujo oráculo é o `EditorAction`, nunca o `WidgetEvent`.*
+
+## Índice dos 29 FECHADOS — o mecanismo de cada um, em uma linha
+
+### #29 — a PILHA DE APARÊNCIA nascia inteira e MUDA ✅ 2026-09-05
+
+**Sintoma** (Enio, no 1.º smoke do item 4): *"O olho não funciona. Clicar no nome não exibe a
+largura, a opacidade e a mistura. Demais botões não funcionam"*.
+
+**Causa — TRÊS defeitos que se leem como um.** Nenhum controlo da pilha atravessava o barramento:
+
+| rota | o que faltava | quem ficava morto |
+|---|---|---|
+| clique | a família nas allowlists do `event_clicks::forwards_plain_click` | olho · nome · ↑ · ↓ · ✕ · *+ Fill* · *+ Stroke* |
+| campo numérico | `VECTOR_PAINT_WIDTH` em `is_shell_owned_number` | a largura da camada |
+| slider | `VECTOR_PAINT_OPACITY` na lista de tracks (e o `_NUM` na de engolidos) | a opacidade da camada |
+
+⚠️ **A metade da SHELL estava inteira** — `stack_verb_for_id`, `apply`, os quatro slots de captura
+e o dreno existiam e estavam gateados. O que faltava era o painel **emitir**, e por isso os gates
+de unidade da shell ficavam todos verdes sobre um produto 100 % morto.
+
+⚠️ **E o `hit_indexed_ids_are_registered` estava verde com razão:** os ids ESTAVAM registados, logo
+os controlos eram focáveis e **acendiam sob o rato**. Ele mede focabilidade; entre ele e os testes
+de unidade da shell há um passo que nenhum dos dois atravessa — *o clique sai do painel?*
+
+**Mais DOIS defeitos que a caça revelou e o report não nomeia:**
+
+- **O campo de largura MENTIA.** Ninguém o semeava do documento, então ele mostrava o que a última
+  edição deixou no store, e o `PaintRow::width` publicado não tinha leitor nenhum. O artista lê `3`
+  numa camada que mede `12`, escreve `4`, e engorda o traço errado. (Cura em `paint.rs`, o mesmo
+  passe de sementes do Transform/Vertex, com o guarda de FOCO.)
+- **A swatch de uma camada abria o picker no CINZENTO de fábrica.** As duas swatches de base
+  sincronizam `widget_color` na shell; as das camadas não sincronizavam em lado nenhum, e o
+  `pointer_down` cai no `unwrap_or([0x88; 3])` — a primeira mexida no picker **carimbava cinzento**
+  por cima da cor da camada.
+
+**E um verbo INALCANÇÁVEL POR CONSTRUÇÃO, removido:** o `StackVerb::Swatch` abria a camada ao tocar
+na swatch, e uma *picker swatch* **nunca emite `Click`** (o `pointer_down` curto-circuita o Down
+dela). Nenhum produtor o podia emitir; só um teste que o chamava à mão o fazia parecer vivo.
+
+**A cura estrutural.** As três rotas da família passam a viver **num módulo**
+([`event_paint_stack.rs`](../../crates/ph2d-panel-vector/src/event_paint_stack.rs)), à vista uma da
+outra, em vez de três linhas em três allowlists longas que outras waves editam. A pilha de EFEITOS
+tinha a mesma forma espalhada por dois ficheiros e foi cortada igual (`event_fx_stack.rs`).
+
+**O instrumento que faltava:** [`seam_paint_stack.rs`](../../crates/ph2d-panel-vector/tests/seam_paint_stack.rs)
+— 7 gates com **gesto real** (Down+Up sobre o rectângulo que o painel pintou), cujo oráculo é o
+`EditorAction` e nunca o `WidgetEvent`. Três nasceram vermelhos sobre o produto shipado; a semente
+da cor foi provada por mutação. ⚠️ Esta crate tinha **40 ficheiros `seam_*`** e a pilha não tinha
+nenhum — *uma família de controlos sem `seam_*` é uma família que ninguém provou que fala*.
+
 
 ### #28 — o Build DUPLICAVA a forma que o gesto não tocou ✅ 2026-09-05
 

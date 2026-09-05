@@ -1288,9 +1288,51 @@ a mentir sobre o que ele mede. Hoje é **`the_two_looks_are_one_switch_apart`**,
 A decisão foi tomada **com a lista na mão** — ela não desapareceu:
 
 1. os cantos dos painéis ainda são `16 px` (o estudo §5.3 diz `4`);
-2. as secções **não recolhem**;
+2. ~~as secções **não recolhem**~~ ⛔ **REFUTADO — ver §23**;
 3. os cartões ainda desenham moldura dentro dos painéis;
 4. as caixas de texto têm moldura permanente;
 5. etiquetas e amostras de cor ainda são pílulas (`radius: 999`);
 6. o **ritmo das linhas** (`18` contra `22`) continua a ser decisão de produto;
 7. o esbatimento do rótulo e a inércia da rolagem.
+
+---
+
+## §23 — ⛔⛔ A LISTA AUDITADA CONTRA O CÓDIGO (2026-09-04), e **uma linha dela era falsa**
+
+*«Veja o plano de implementação da nova UI e descubra onde estamos e o que falta»* (Enio). A lista
+do §22.3 tem cinco dias e foi escrita de memória no fim de uma jornada. Medida ficheiro a ficheiro:
+
+| # | o item dizia | medido | verdade |
+|---|---|---|---|
+| 1 | cantos dos painéis a `16 px` | [`tokens.json`](../../design/tokens.json) `"panel-radius": 16` → `PANEL_RADIUS_PX` | ✅ verdade |
+| **2** | **as secções não recolhem** | ⛔ **FALSO** — ver abaixo | ❌ **refutado** |
+| 3 | cartões desenham moldura | [`card.rs`](../../../crates/ph2d-editor-core/src/widget/card.rs) faz `fill` **e** `stroke_rounded_rect(.., Border)` a `Radius::Lg` (12 px), em ~10 ficheiros de painel | ✅ verdade |
+| 4 | caixas de texto com moldura permanente | [`text_input/mod.rs`](../../../crates/ph2d-editor-core/src/widget/text_input/mod.rs) traça **sempre** (`1 px`; `2 px` no foco) | ✅ verdade |
+| 5 | etiquetas e amostras são pílulas | [`tag.rs`](../../../crates/ph2d-editor-core/src/widget/tag.rs) usa `Radius::Full` (999) | ✅ verdade |
+| 6 | ritmo `18` contra `22` | os `18.0` estão espalhados pelo Inspector com `LITERAL-PX-OK` ao lado; a linha de propriedade lê `SliderStyle::row_h_px()` | ✅ verdade |
+| 7 | esbatimento e inércia | nenhum consumidor de `push_luminance_mask_layer`; a rolagem por arrasto pára com o dedo | ✅ verdade |
+
+### 23.1 — ⭐⭐⭐ A DOBRA DE SECÇÃO **existe, está ligada e é animada** — em todos os painéis
+
+O item 2 mandava construir o que já shipa. Medido:
+
+| | |
+|---|---|
+| painéis que **pintam** cabeçalho de secção | `audio-editor` · `audio-mixer` · `authored` · `inspector` · `motion-params` · `painter-layers` · `physics` · `sculpt3d` · `vector` · `wet-tuning` — **10** |
+| painéis que **consultam `is_collapsed`** | os mesmos 10, **mais** o `hierarchy` — **11** |
+
+A maquinaria inteira está no sítio: [`WidgetStore::toggle_collapsed`](../../../crates/ph2d-editor-core/src/interaction/state/collapse_ops.rs)
+(com o `fold_live` que faz a **primeira** dobra de cada secção animar, em vez de saltar),
+[`SectionHeader::fold_t`](../../../crates/ph2d-editor-core/src/widget/section_header/mod.rs) e o
+[chevron que RODA](../../../crates/ph2d-editor-core/src/widget/section_header/fold.rs) — cujo
+doc-comment traz a medição de que `chevron-down` rodado `−90°` **é** o `chevron-right`, ao ponto.
+
+⚠️ **O que é verdade — e é outra frase — é que a dobra não RESOLVE o painel cheio.** Recolher
+esconde; não muda que **66 das 74 entradas** do painel medido têm outro dono (D2). *A dobra é uma
+gaveta; o esvaziamento é a arrumação.* Confundi as duas ao escrever a lista.
+
+⛔ **A lei que isto cobra é a do `CLAUDE.md` §5.0, e é a segunda vez em dois dias:** *antes de
+construir um item de lista aberta, MEÇA se a composição já o exprime* — o que se perde ao não
+reconferir não é tempo, é **construir o que já existe**. E a causa é sempre a mesma: uma lista de
+pendências escrita **de memória** no fim de uma jornada envelhece contra o código no dia seguinte,
+e nada a contradiz.

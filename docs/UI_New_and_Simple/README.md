@@ -51,6 +51,43 @@ E três defeitos concretos, com foto:
 | ⭐⭐⭐ **Redesenhar os widgets: plano, minimalista e COMPACTO** (o orçamento de 154 px, a lei do estreito, os 44 widgets) | [`pesquisa/07_o_redesenho_dos_widgets.md`](pesquisa/07_o_redesenho_dos_widgets.md) |
 | **Baixar as referências numa máquina nova** | `bash fetch-referencias.sh` |
 
+## ⭐⭐⭐ ONDE ESTAMOS (auditado contra o CÓDIGO em 2026-09-04)
+
+> ⚠️ **Esta secção é o placar, e as de baixo são história.** Ela foi escrita a medir o código, não
+> a ler as outras secções — que estavam paradas em 30/08. ⛔ **Ao actualizá-la, MEÇA outra vez:** a
+> auditoria de hoje achou **uma** linha de pendências que mandava construir o que já shipa
+> ([`pesquisa/07 §23`](pesquisa/07_o_redesenho_dos_widgets.md)).
+
+### Os degraus do plano de arranque ([`spec/02 §3`](spec/02_o_que_falta_para_comecar.md))
+
+| | degrau | estado |
+|---|---|---|
+| **A** | modelo de ÁREAS (`Slot`, `allowed_slots`, `can_float`) | ✅ **feito**, com os 2 gates que a spec pedia |
+| **B** | fundir os 16 apelidos de cor | ⛔ **construído e REVERTIDO** — equivalência re-medida (0/64 divergências), mas a pergunta é de *design system*: **veredito do Enio** |
+| **C** | a barra de menus | ✅ **feito** — ⚠️ e em 04/09 apanhou o `Export SVG…`, que a substituição da superfície tinha deixado sem porta |
+| **D** | régua e trilho viram REGIÕES da área | ✅ **feito** — tapada `86,8 % → 0 %` (esq.) e `29,4 % → 0 %` (topo) |
+| **E** | painéis declaram onde podem viver · fuga do gizmo | ✅ a metade do chrome **docado**; ⏳ **falta a metade cara**: dar **ORIGEM à cena** (hoje o sub-rectângulo dela é ancorado em `(0,0)` por construção em toda a cadeia). Sem ela, um painel **arrastado à mão** ainda tapa a régua |
+| **F** | Layouts por tarefa + cabeçalho de área | ✅ **6 dos 8** (`TaskLayout`, abas, persistência, e o `canvas` que cada layout NOMEIA); o cabeçalho é um **pulldown** que custa `0 px`. ⛔ *Código* e *Runtime* estão bloqueados por outros (não há editor de texto; `shells/game`/R1 adiado) |
+| **G** | **esvaziar os painéis** | ⏳ **a maior obra aberta: 1 painel de 25 censado.** O `3D Model` perdeu `17` das `74` entradas; ⛔ **nenhum outro foi medido** — o «66 de 74» é só dele |
+| **H** | separar LAYOUT de PALETA | ⛔ **a trava não existe**: `PanelLayout` não tem leitor de produção (medido) |
+| **I** | cortar os temas `4 → 2` | ⏳ **veredito do Enio** (hoje: Forge · Workshop · Sunstone · Blueprint) |
+
+⏳ **E duas que a restrição de ecrã abriu e ninguém pegou:** um **gesto de RECOLHER** as colunas
+(hoje são dois itens de menu, e recolher dá `89–92 %` de tela) · a **fila de ferramentas DOBRA**
+(`54 → 108 px`) no iPad 11 e no mini com o pincel em mãos.
+
+### O redesenho dos widgets ([`pesquisa/07 §15.2`](pesquisa/07_o_redesenho_dos_widgets.md))
+
+`1` caixa de verificação ✅ · `2` interruptor→caixa ✅ · `3` pílulas fora ✅ ·
+`4` **ritmo da linha** ⏳ *decisão do Enio* · `5` scrollbar fina ⛔ **recusada por medição** (e o
+que ela revelou — arrastar o CORPO para rolar — ✅ feito) · `6` coluna de animação ✅ **desenhada**
+(⏳ **não põe chave**: falta o consumidor) · `7` 4.º preset de fonte ⛔ **construído e revertido**.
+
+⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
+cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·
+esbatimento do rótulo e inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis, animado) —
+a lista dizia o contrário.
+
 ## ⚠️ `referencias/` é gitignorada — e isso é a decisão, não um esquecimento
 
 O payload (41 MB de repositórios de terceiros, com licenças alheias) **não entra no git do
@@ -80,7 +117,7 @@ O resumo que decide o que podemos fazer:
 *O Blender entra aqui como **documento**, nunca como fonte. É por isso que a pasta baixa
 `blender-developer-docs` e não `blender`.*
 
-## Estado (2026-08-30)
+## Estado (2026-08-30) — ⚠️ **HISTÓRICO: o placar vivo é «ONDE ESTAMOS» acima**
 
 ✅ **Etapa 1 fechada** e **nove decisões tomadas pelo Enio**
 ([`00_DECISOES_DO_ENIO.md`](00_DECISOES_DO_ENIO.md)): painéis **ancorados com flutuação

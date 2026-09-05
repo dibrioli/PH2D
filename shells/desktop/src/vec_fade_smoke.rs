@@ -119,6 +119,12 @@ impl crate::App {
         fade_track(doc, bits_plain);
         fade_track(doc, bits_fx);
 
+        // A régua já aberta — o smoke é sobre o que a curva faz, não sobre achar o painel.
+        // (`L` alterna, e é o mesmo gesto que a cena da física usa.)
+        if let Some(hero) = self.gfx.as_mut().expect("gfx").hero_screen.as_mut() {
+            hero.panel_visibility.insert("timeline", true);
+        }
+
         eprintln!(
             "[vec-fade-smoke] duas estrelas com a MESMA curva de opacidade (1 -> 0 -> 1 em 4 s); a \
              da direita tem um brilho. DE' PLAY: as duas tem de desvanecer JUNTAS e voltar a \

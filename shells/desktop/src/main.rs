@@ -328,6 +328,9 @@ mod instance_smoke;
 /// ⭐ **A FORMA de uma instância segue a do mestre** (ADR-0164 / F5.1) — irmão do sync, que
 /// responde *que valor*; este responde *que peças*.
 mod instance_structure;
+/// ⭐⭐ **Emparelhar as peças quando NÃO há parentesco** — irmão do `instance_variant`, que lê os
+/// elos; este é o palpite pedido em voz alta, com os três modos do plano F5.
+mod instance_swap_match;
 /// ⭐ **O SYNC VIVO mestre → instância** (ADR-0164 / F4.3).
 mod instance_sync;
 mod instance_sync_docs;

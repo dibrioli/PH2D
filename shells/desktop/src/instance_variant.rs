@@ -49,6 +49,8 @@
 use ph2d_ecs::{Children, Entity, InstanceOf, MasterRoot, ObjectInstance, StableId};
 use std::collections::{BTreeMap, BTreeSet};
 
+use crate::instance_swap_match::WhenUnrelated;
+
 use ph2d_ecs::SimWorld;
 
 /// **Porque uma troca não aconteceu.**
@@ -83,6 +85,11 @@ pub(crate) struct SwapReport {
     pub(crate) dropped: usize,
     /// Chaves de override que sobreviveram à tradução.
     pub(crate) overrides_kept: usize,
+    /// ⭐ **Caminhos que apareceram mais que uma vez** e por isso não emparelharam — só o
+    /// emparelhamento SEM parentesco o produz (o mapa derivado sai dos elos, e um elo não é
+    /// ambíguo). ⛔ Escrito, nunca engolido: é a metade do relatório que diz *porquê* uma excepção
+    /// que o artista esperava não veio.
+    pub(crate) ambiguous: usize,
 }
 
 /// **A ASCENDÊNCIA de um mestre** — ele, a base dele, a base da base…, da mais interna para a mais
@@ -213,11 +220,20 @@ fn invert(m: &BTreeMap<u64, u64>) -> BTreeMap<u64, u64> {
 ///
 /// Ver o cabeçalho: ela re-chaveia e **para**. O passe estrutural da F5.1 materializa, apaga e
 /// sepulta; o passe de valores traz os bytes do mestre novo no mesmo quadro.
+///
+/// ⭐⭐⭐ **`unrelated` é o que fazer quando NÃO há antepassado comum** (F5, o último critério).
+/// O caminho de omissão é [`WhenUnrelated::Refuse`] — é ele que a fileira de versões passa, porque
+/// ali os mestres são aparentados por construção e uma queda para heurística seria a operação
+/// automática que o plano proíbe. Os três modos só chegam aqui por um item de menu que os nomeia.
+///
+/// ⚠️ **O mapa derivado GANHA sempre:** com parentesco, `unrelated` nem é lido. *Um modo de
+/// emparelhamento é a resposta para a ausência de uma verdade, nunca uma alternativa a ela.*
 pub(crate) fn swap(
     sim: &mut SimWorld,
     echo: &mut crate::instance_sync::MasterEcho,
     root: Entity,
     new_master_id: u64,
+    unrelated: WhenUnrelated,
 ) -> Result<SwapReport, SwapRefusal> {
     let by_id: Index = stable_index(sim);
     let Some(&target) = by_id.get(&new_master_id) else {
@@ -248,9 +264,17 @@ pub(crate) fn swap(
     {
         return Err(SwapRefusal::ItselfAsMaster);
     }
-    let map = piece_map_with(sim, &by_id, old, new_master_id).ok_or(SwapRefusal::Unrelated)?;
-
     let mut out = SwapReport::default();
+    // ⭐⭐⭐ **Primeiro a verdade, depois o palpite** — e o palpite só existe se um gesto o nomeou.
+    let map = match piece_map_with(sim, &by_id, old, new_master_id) {
+        Some(derived) => derived,
+        None => {
+            let r = crate::instance_swap_match::rematch(sim, &by_id, old, new_master_id, unrelated)
+                .ok_or(SwapRefusal::Unrelated)?;
+            out.ambiguous = r.ambiguous;
+            r.map
+        }
+    };
     // ── os ELOS das peças ────────────────────────────────────────────────────────────────────
     //
     // ⚠️ A RAIZ é o caso particular, e é ela que decide de que mestre a instância é: sem esta
@@ -338,6 +362,13 @@ pub(crate) fn swap(
     // cuja peça o artista acabou de editar **neste mesmo quadro, antes de o passe correr** perdia
     // essa edição. São dois gestos no mesmo quadro em duas cópias diferentes — inalcançável por
     // mão. *Nomeado por ser o preço, não por ser um risco.*
+    //
+    // ⚠️⚠️ **A RAIZ do mestre novo está SEMPRE entre estes valores**, nos três modos de
+    // emparelhamento e no mapa derivado — e é ela que este bloco mais precisa de alcançar. Sem a
+    // raiz aqui, o componente que ela herda da receita cai exactamente no defeito descrito acima:
+    // difere do mestre novo, o mestre novo não mexeu, e o passe lê *«a instância mexeu-se»*. A lei
+    // que a garante vive em [`crate::instance_swap_match`] (*«a chave da raiz não tem sepultador»*),
+    // e é ela que torna esta linha um percurso simples.
     for piece in map.values() {
         echo.master.retain(|&(p, _), _| p != *piece);
     }

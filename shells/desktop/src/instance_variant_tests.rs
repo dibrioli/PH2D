@@ -8,6 +8,8 @@ use crate::instance_sync::{MasterEcho, sync_instances};
 use ph2d_ecs::{ChildOf, Children, Entity, MasterRoot, Name, SimWorld, Transform};
 use ph2d_physics_ecs::PhysicsBridge;
 
+use crate::instance_swap_match::WhenUnrelated;
+
 use super::{SwapRefusal, piece_map, swap};
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
@@ -201,7 +203,8 @@ fn swapping_to_a_variant_keeps_the_exception_the_artist_made() {
     pass(&mut sim, &r, &mut echo);
 
     let variant_id = sid(&sim, variant);
-    let report = swap(&mut sim, &mut echo, inst, variant_id).expect("aparentados");
+    let report =
+        swap(&mut sim, &mut echo, inst, variant_id, WhenUnrelated::Refuse).expect("aparentados");
     assert_eq!(
         report.overrides_kept, 1,
         "a excepcao nao sobreviveu a' troca"
@@ -234,7 +237,7 @@ fn swapping_back_to_the_base_keeps_it_too() {
     pass(&mut sim, &r, &mut echo);
 
     let base_id = sid(&sim, base);
-    swap(&mut sim, &mut echo, inst, base_id).expect("aparentados");
+    swap(&mut sim, &mut echo, inst, base_id, WhenUnrelated::Refuse).expect("aparentados");
     pass(&mut sim, &r, &mut echo);
 
     assert_eq!(
@@ -280,7 +283,8 @@ fn a_piece_the_target_lacks_is_entombed_and_comes_back() {
     pass(&mut sim, &r, &mut echo);
 
     let (base_id, variant_id) = (sid(&sim, base), sid(&sim, variant));
-    let report = swap(&mut sim, &mut echo, inst, base_id).expect("aparentados");
+    let report =
+        swap(&mut sim, &mut echo, inst, base_id, WhenUnrelated::Refuse).expect("aparentados");
     assert_eq!(report.dropped, 1, "a capa devia ficar sem imagem na base");
     pass(&mut sim, &r, &mut echo);
     let orphans = sim
@@ -289,7 +293,7 @@ fn a_piece_the_target_lacks_is_entombed_and_comes_back() {
         .map_or(0, |o| o.orphans.len());
     assert!(orphans > 0, "a excepcao da peca apagada nao foi sepultada");
 
-    swap(&mut sim, &mut echo, inst, variant_id).expect("aparentados");
+    swap(&mut sim, &mut echo, inst, variant_id, WhenUnrelated::Refuse).expect("aparentados");
     pass(&mut sim, &r, &mut echo);
     let cape = kid(&sim, inst, "Cape");
     assert_eq!(
@@ -383,15 +387,21 @@ fn the_swap_refuses_out_loud() {
 
     let (variant_id, loose_id, base_id) = (sid(&sim, variant), sid(&sim, loose), sid(&sim, base));
     assert_eq!(
-        swap(&mut sim, &mut echo, loose, variant_id),
+        swap(
+            &mut sim,
+            &mut echo,
+            loose,
+            variant_id,
+            WhenUnrelated::Refuse
+        ),
         Err(SwapRefusal::NotAnInstance)
     );
     assert_eq!(
-        swap(&mut sim, &mut echo, inst, loose_id),
+        swap(&mut sim, &mut echo, inst, loose_id, WhenUnrelated::Refuse),
         Err(SwapRefusal::NotAMaster)
     );
     assert_eq!(
-        swap(&mut sim, &mut echo, inst, base_id),
+        swap(&mut sim, &mut echo, inst, base_id, WhenUnrelated::Refuse),
         Err(SwapRefusal::Already)
     );
 }

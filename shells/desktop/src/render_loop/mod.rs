@@ -11329,6 +11329,10 @@ impl crate::App {
                     &mut self.instance_echo,
                     ph2d_ecs::Entity::from_bits(root_bits),
                     master,
+                    // ⚠️ **A fileira de versões nunca adivinha.** Ali os mestres são aparentados
+                    // por construção; uma queda para heurística seria a operação automática que o
+                    // plano F5 proíbe. Quem pede um dos três modos é o menu da biblioteca.
+                    crate::instance_swap_match::WhenUnrelated::Refuse,
                 ) {
                     Ok(r) => {
                         toasts.push(Toast::success(if r.dropped > 0 {

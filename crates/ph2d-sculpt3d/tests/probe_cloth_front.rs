@@ -334,8 +334,45 @@ fn sonda_da_prega() {
         );
     }
     let (relevo, ondula, lambda) = prega(&antes, &mesh, fim, brush.radius);
+    // ⭐ **AGULHA ou PREGA?** A mesma régua local do gate, mas com a POPULAÇÃO ao
+    // lado do máximo: um vértice sozinho acima da barra é agulha; dezenas
+    // espalhadas pelo traço são a estrutura da dobra. *«1 de 5 está mau» não diz
+    // QUAL nem QUANTOS.*
+    let adj = antes.adjacency();
+    let (p0, p1) = (antes.positions(), mesh.positions());
+    let d = |v: usize| {
+        let (a, b) = (p0[v], p1[v]);
+        ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt()
+    };
+    let max = (0..antes.vert_count()).map(d).fold(0.0f32, f32::max);
+    let mut res: Vec<f32> = Vec::new();
+    for v in 0..antes.vert_count() {
+        let viz = adj.vert_verts.neighbours(v);
+        if viz.len() < 3 {
+            continue;
+        }
+        let h: f32 = viz
+            .iter()
+            .map(|w| {
+                let q = p0[*w as usize];
+                ((p0[v][0] - q[0]).powi(2) + (p0[v][1] - q[1]).powi(2) + (p0[v][2] - q[2]).powi(2))
+                    .sqrt()
+            })
+            .sum::<f32>()
+            / viz.len() as f32;
+        let piso = (h / brush.radius).powi(2);
+        let m = viz.iter().map(|w| d(*w as usize)).sum::<f32>() / viz.len() as f32;
+        res.push((d(v) - m).abs() / max.max(1e-9) / piso);
+    }
+    res.sort_by(|a, b| b.partial_cmp(a).unwrap_or(core::cmp::Ordering::Equal));
+    let acima = res.iter().filter(|r| **r > 20.0).count();
     println!(
-        "PREGA vertices={} relevo={relevo:.3} ondula={ondula:.4} lambda={lambda:.2}",
-        antes.vert_count()
+        "PREGA vertices={} relevo={relevo:.3} ondula={ondula:.4} lambda={lambda:.2} \
+         | residuo p0={:.1} p1={:.1} p2={:.1} p10={:.1} acima_de_20={acima}",
+        antes.vert_count(),
+        res[0],
+        res[1],
+        res[2],
+        res[10.min(res.len() - 1)]
     );
 }

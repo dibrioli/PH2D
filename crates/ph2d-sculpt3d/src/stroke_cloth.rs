@@ -73,6 +73,96 @@ pub const CLOTH_ITERATIONS: u32 = 1;
 /// reproduziria. *O tecido responde ao GESTO, não ao relógio.*
 pub const CLOTH_DT: f64 = 1.0 / 60.0;
 
+/// ⭐⭐⭐ **O ALVO GEOMÉTRICO do gesto — e ele NÃO é um deslocamento.**
+///
+/// ⛔⛔⛔ **Esta enum existe porque a medição de 05/09 provou que tudo o resto é
+/// irrelevante sem ela.** O pincel escrevia `goal = x + path`: **o mesmo vetor de
+/// mundo para todos os vértices**. Num retalho plano isso torna o plano um
+/// subespaço **invariante exato** da dinâmica — a componente normal da força é
+/// uma soma de produtos de diferenças que são todas zero —, e o deslocamento
+/// fora do plano mede **`0.000e0`**. *Nenhum solver do mundo faz prega a partir
+/// daí; estamos sentados exatamente sobre a sela.*
+///
+/// ⚠️ **E quatro curas a jusante foram medidas e refutadas** (auditoria §8-bis):
+/// `bending × 44`, `grip ÷ 44`, desligar o anel pregado, e `10 %` de pano a mais
+/// dão `ondula` entre `0,0005` e `0,0010` arestas — ruído. O `relevo` nunca passa
+/// de `0,03` **arestas** em configuração nenhuma. *Não há o que dobrar.*
+///
+/// ⇒ a espec do comportamento ([`04`](../../../docs/3D/cloth/04_espec_do_comportamento.md))
+/// diz que, na referência, **«que direção» e «que vértices» são DOIS controlos
+/// separados**, e que o tipo de deformação escolhe **o alvo geométrico** — um
+/// ponto, uma linha, a normal, um comprimento de repouso. Cinco dos oito tipos
+/// **não podem** ser expressos por uma translação.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ClothDeform {
+    /// ⚠️ **O que shipou até 05/09, e ele NÃO é o `Drag` da referência.** O alvo é
+    /// um deslocamento rígido; fica aqui como controle de bissecção e como o
+    /// polo *«arrasto puro»* contra o qual os outros se medem.
+    #[default]
+    Translate,
+    /// **Um PONTO MÓVEL** — o cursor de agora. Os vértices são puxados *para* ele,
+    /// o que numa superfície plana é um campo **radial**, e não uma translação:
+    /// o material **acumula-se à frente do dedo**, que é compressão de verdade.
+    Point,
+    /// **A NORMAL da superfície, para fora** — o único alvo que produz relevo sem
+    /// depender da curvatura. É a razão de existir do modo `Inflate`.
+    Normal,
+    /// **UMA LINHA** — o eixo do traço. O pano converge sobre ela, que é
+    /// compressão **areal** (divergência negativa), e não cisalhamento.
+    Axis,
+}
+
+/// **O alvo que o pincel usa**, enquanto a W10c não dá um chip ao artista.
+///
+/// ⚠️⚠️ **Ele nasce em [`ClothDeform::Translate`], que é o que a medição diz ser
+/// o PIOR — e a razão é disciplina, não dúvida.** Medido em 05/09 sobre uma
+/// esfera de 24 386 vértices, com o traço longo do gate:
+///
+/// | alvo | `relevo` (arestas) | **`ondula` (arestas)** | `λ` (arestas) |
+/// |---|---|---|---|
+/// | `Translate` (o que shipa) | `0,011` | **`0,0005`** | `16,4` |
+/// | **`Point`** | `0,203` | **`0,0381`** — ⭐ **`76×`** | `12,0` |
+/// | `Normal` | **`0,998`** — `90×` de relevo | `0,0099` | `18,7` |
+/// | `Axis` | `0,104` | `0,0117` — `23×` | `12,5` |
+///
+/// ⭐⭐⭐ **O `Point` é a maior prega por três vezes, e ele É o `Drag` da
+/// referência** — a espec do comportamento diz que ali o alvo é *«um PONTO
+/// móvel: os vértices são puxados PARA o cursor»*, o que numa superfície plana é
+/// um campo **radial**, nunca uma translação. *O nosso único modo não era sequer
+/// o modo que julgávamos ter.* ⚠️ E o `Normal` faz **bossa, não dobra**: `90×` de
+/// relevo com `4×` menos ondulação que o `Point`.
+///
+/// ⛔⛔ **Por que ele ainda não é o padrão, com os dois números:**
+/// 1. Ele reprova [`encostar_sem_mover_nao_deforma`] (`0,0163` contra `0`) — um
+///    alvo que é um PONTO puxa mesmo com a mão parada, e isso é **decisão de
+///    produto** (a referência de facto continua a simular enquanto se segura).
+/// 2. Ele lê `45` na régua da agulha (barra `20`). ⚠️ **E medido, isso NÃO é uma
+///    agulha:** a distribuição do resíduo é `24,2 · 20,2 · 18,0 · … · 14,3` com
+///    **2** vértices acima da barra, contra `1,1 · 1,1 · 1,1 · … · 1,0` do
+///    `Translate` e contra `118`–`483` com `12`–`34` acima do report original.
+///    *Uma agulha é UM vértice muito acima dos vizinhos; isto é uma cauda lisa —
+///    é a estrutura da dobra.* ⇒ a régua ainda **não sabe separar** as duas, e
+///    subir a barra para deixar passar a minha própria mudança é exatamente o
+///    que esta casa proíbe.
+///
+/// ⇒ enquanto isso, ele é alcançável por [`deform_escolhido`] para o dono ver.
+pub const CLOTH_DEFORM: ClothDeform = ClothDeform::Translate;
+
+/// O alvo em vigor — a constante, ou o que a env de bissecção pedir.
+///
+/// ⚠️ **Lido UMA vez.** `std::env::var` num laço por-vértice seria uma syscall
+/// por vértice por sub-passo; e a lei da casa é que o que shipa desligado tem de
+/// ter porta de bissecção com nome (`PH2D_RETOPO_LEGACY`, `PH2D_GRIDMAP_WELD`).
+fn deform_escolhido() -> ClothDeform {
+    static ESCOLHA: std::sync::OnceLock<ClothDeform> = std::sync::OnceLock::new();
+    *ESCOLHA.get_or_init(|| match std::env::var("PH2D_CLOTH_DEFORM").as_deref() {
+        Ok("point") => ClothDeform::Point,
+        Ok("normal") => ClothDeform::Normal,
+        Ok("axis") => ClothDeform::Axis,
+        _ => CLOTH_DEFORM,
+    })
+}
+
 // ⛔⛔ **AQUI MORAVA UMA CONSTANTE DE GANHO, E ELA FOI MEDIDA E APAGADA.**
 //
 // A 1.ª versão convertia *quanto a mão andou* em FORÇA por um fator escolhido
@@ -468,9 +558,47 @@ impl SculptStroke {
                         * crate::mask_ops::free_weight(self.base_mask[s]),
                 );
             ses.peso[i] = w;
-            for (c, andou) in path.iter().enumerate() {
-                ses.goal[i][c] = p[c] + andou;
-            }
+            // ⭐ **A META SAI DO ALVO GEOMÉTRICO, e o gesto só diz QUANTO.** O
+            // `path` deixa de ser a resposta e passa a ser a AMPLITUDE — que é a
+            // separação entre *«que direção»* e *«que vértices»* que a espec do
+            // comportamento nomeia como a lei da referência.
+            let anda = (path[0] * path[0] + path[1] * path[1] + path[2] * path[2]).sqrt();
+            ses.goal[i] = match deform_escolhido() {
+                ClothDeform::Translate => [p[0] + path[0], p[1] + path[1], p[2] + path[2]],
+                // O ponto é o centro do dab de AGORA; a mola já leva `w`.
+                ClothDeform::Point => [
+                    f64::from(center[0]),
+                    f64::from(center[1]),
+                    f64::from(center[2]),
+                ],
+                // ⚠️ A normal vem do `pre` CONGELADO, pela mesma porta que o
+                // alpha e a máscara — uma normal viva realimentaria o próprio
+                // relevo que ela cria.
+                ClothDeform::Normal => {
+                    let n = self.base_nrm[s];
+                    [
+                        p[0] + anda * f64::from(n[0]),
+                        p[1] + anda * f64::from(n[1]),
+                        p[2] + anda * f64::from(n[2]),
+                    ]
+                }
+                // A projeção de `p` no eixo do traço, que passa pelo centro.
+                ClothDeform::Axis => {
+                    let l = if anda > 1e-12 { anda } else { 1.0 };
+                    let e = [path[0] / l, path[1] / l, path[2] / l];
+                    let d = [
+                        p[0] - f64::from(center[0]),
+                        p[1] - f64::from(center[1]),
+                        p[2] - f64::from(center[2]),
+                    ];
+                    let t = d[0] * e[0] + d[1] * e[1] + d[2] * e[2];
+                    [
+                        f64::from(center[0]) + e[0] * t,
+                        f64::from(center[1]) + e[1] * t,
+                        f64::from(center[2]) + e[2] * t,
+                    ]
+                }
+            };
         }
     }
 }

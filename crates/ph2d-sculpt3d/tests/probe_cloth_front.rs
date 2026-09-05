@@ -193,3 +193,149 @@ fn sonda_da_frente_do_tecido() {
         );
     }
 }
+
+/// **A RÉGUA DA PREGA** — a onda do deslocamento NORMAL, medida em arestas.
+///
+/// ⚠️ **Ela existe porque nenhuma das 33 réguas desta linha mede uma prega.** As
+/// três do gate (`espinho`/`rasgo`/`estica`) são escalares de MAGNITUDE; uma
+/// prega é uma **oscilação da componente fora do plano**, e a lei que lhe dá
+/// barra é publicada: `λ ~ 2π(B/K)^{1/4}` (Cerda & Mahadevan, PRL 90 074302).
+///
+/// Devolve `(relevo, ondula, lambda)`, todos em **arestas**:
+/// - `relevo` = RMS de `u·n⁰` na banda — o quanto a superfície LEVANTOU;
+/// - `ondula` = RMS da parte que **oscila** (o resíduo contra a média do anel-1)
+///   — é isto que é prega, e não o relevo;
+/// - `lambda` = o comprimento de onda estimado. Para uma senóide de onda `λ`
+///   amostrada com aresta `h`, a fração de arestas que **cruzam zero** é `≈2h/λ`
+///   ⇒ `λ/h ≈ 2/fração`. ⭐ É um estimador sem FFT, sem ordenação e sem
+///   parametrização — só precisa do sinal em cada ponta de aresta.
+fn prega(antes: &Mesh, depois: &Mesh, centro: [f32; 3], r: f32) -> (f32, f32, f32) {
+    let n0 = antes.normals();
+    let (p0, p1) = (antes.positions(), depois.positions());
+    let adj = antes.adjacency();
+    // A banda LIVRE: entre o bordo da pegada e o anel pregado.
+    let na_banda = |v: usize| {
+        let p = p0[v];
+        let d =
+            ((p[0] - centro[0]).powi(2) + (p[1] - centro[1]).powi(2) + (p[2] - centro[2]).powi(2))
+                .sqrt();
+        d > r && d < 2.0 * r
+    };
+    // `s` = o deslocamento ao longo da normal de REPOUSO.
+    let s: Vec<f32> = (0..antes.vert_count())
+        .map(|v| {
+            let (a, b, n) = (p0[v], p1[v], n0[v]);
+            (b[0] - a[0]) * n[0] + (b[1] - a[1]) * n[1] + (b[2] - a[2]) * n[2]
+        })
+        .collect();
+    // A parte que OSCILA: o resíduo contra a média do anel-1. ⚠️ Sem isto a
+    // régua leria a bossa que o pincel faz (relevo) como se fosse prega.
+    let osc: Vec<f32> = (0..antes.vert_count())
+        .map(|v| {
+            let viz = adj.vert_verts.neighbours(v);
+            if viz.is_empty() {
+                return 0.0;
+            }
+            s[v] - viz.iter().map(|n| s[*n as usize]).sum::<f32>() / viz.len() as f32
+        })
+        .collect();
+
+    let mut h = (0.0f32, 0usize);
+    let (mut ss, mut so, mut n) = (0.0f64, 0.0f64, 0usize);
+    for v in 0..antes.vert_count() {
+        if !na_banda(v) {
+            continue;
+        }
+        ss += f64::from(s[v] * s[v]);
+        so += f64::from(osc[v] * osc[v]);
+        n += 1;
+        for w in adj.vert_verts.neighbours(v) {
+            let q = p0[*w as usize];
+            let e =
+                ((p0[v][0] - q[0]).powi(2) + (p0[v][1] - q[1]).powi(2) + (p0[v][2] - q[2]).powi(2))
+                    .sqrt();
+            h = (h.0 + e, h.1 + 1);
+        }
+    }
+    if n == 0 || h.1 == 0 {
+        return (0.0, 0.0, 0.0);
+    }
+    let aresta = h.0 / h.1 as f32;
+    let (mut cruza, mut arestas) = (0usize, 0usize);
+    for v in 0..antes.vert_count() {
+        if !na_banda(v) {
+            continue;
+        }
+        for w in adj.vert_verts.neighbours(v) {
+            let u = *w as usize;
+            if u <= v || !na_banda(u) {
+                continue;
+            }
+            arestas += 1;
+            if osc[v] * osc[u] < 0.0 {
+                cruza += 1;
+            }
+        }
+    }
+    let frac = if arestas == 0 {
+        0.0
+    } else {
+        cruza as f32 / arestas as f32
+    };
+    let lambda = if frac > 1e-6 {
+        2.0 / frac
+    } else {
+        f32::INFINITY
+    };
+    (
+        (ss / n as f64).sqrt() as f32 / aresta,
+        (so / n as f64).sqrt() as f32 / aresta,
+        lambda,
+    )
+}
+
+/// ⭐⭐⭐ **SONDA — a previsão de Cerda, testada antes de escrever produto.**
+///
+/// A lei `λ ~ 2π(B/K)^{1/4}` com o `K` do NOSSO gesto (a mola do `ClothDrive` é
+/// uma fundação de Winkler, e ela é isotrópica ⇒ penaliza também a direção
+/// normal, que é exatamente o que uma prega é) prevê `λ = 1,4`–`3,1` arestas
+/// dentro da pegada: **abaixo do piso de Nyquist da malha**. A prega não existe
+/// no espaço discreto.
+///
+/// **Previsão falsificável:** subir `bending` `44×` (ou baixar `CLOTH_GRIP` `44×`)
+/// leva `λ` para `~8` arestas ⇒ **`ondula` tem de subir e `lambda` tem de crescer**.
+/// Se não subir, a lei de Cerda não descreve este sistema e a fila inteira de
+/// curas está ordenada sobre a coisa errada.
+#[test]
+#[ignore = "sonda"]
+fn sonda_da_prega() {
+    let antes = ph2d_mesh::shapes::uv_sphere(128, 192, 1.0);
+    let mut mesh = antes.clone();
+    let brush = Brush {
+        verb: Verb::Cloth,
+        radius: 0.30,
+        strength: 1.0,
+        ..Brush::default()
+    };
+    let mut s = SculptStroke::default();
+    s.begin(&mesh);
+    let d = 0.03;
+    let mut fim = [0.0f32; 3];
+    for k in 0..35 {
+        let x = -0.5 + d * k as f32;
+        let z = (1.0 - x * x).max(0.0).sqrt();
+        fim = [x, 0.0, z];
+        let passo = if k == 0 { [0.0; 3] } else { [d, 0.0, 0.0] };
+        s.dab(
+            &mut mesh,
+            &brush,
+            &Dab::hooking(fim, brush.radius, [0.0, 0.0, -1.0], passo),
+            Symmetry::default(),
+        );
+    }
+    let (relevo, ondula, lambda) = prega(&antes, &mesh, fim, brush.radius);
+    println!(
+        "PREGA vertices={} relevo={relevo:.3} ondula={ondula:.4} lambda={lambda:.2}",
+        antes.vert_count()
+    );
+}

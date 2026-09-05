@@ -175,3 +175,18 @@ pub const MIN_CLOUD_LOBES: u32 = 3;
 /// o número em `0,05`: duas superfícies próximas continuam próximas por mais que se aperte o raio.
 /// A alavanca é o **espaçamento** dos discos, que é `2·half_width/n`.
 pub const MAX_CLOUD_LOBES: u32 = 7;
+
+/// ⭐ **QUANTO a mistura da nuvem EMPURRA a superfície para fora das bossas** — o factor que a caixa
+/// dela tem de conter.
+///
+/// # A conta, e ela é fechada
+///
+/// O raio da mistura é `0,35 × a menor bossa`; uma união arredondada empurra a superfície até
+/// `r·(√2 − 1) = 0,4142·r`; e a menor bossa nunca passa a `half_width` (o construtor limita-a lá).
+/// ⇒ o excesso é no máximo `0,35 × 0,4142 = 0,145` de `half_width`.
+///
+/// ⚠️ **Ele não é uma folga «por segurança»** — é o inchaço de um operador, com a fórmula ao lado.
+/// Medido em 2026-09-05 (report do Enio, *«Span cria formas gigantes»*): com o `Span` a `2,0` a peça
+/// lia `0,575` contra os `0,500` que a caixa declarava, e quem lê aquela caixa é o **recorte da
+/// marcha**, que corta a peça e não diz nada.
+pub const CLOUD_BLEND_SWELL: f32 = 1.145;

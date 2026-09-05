@@ -221,8 +221,13 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
             thickness,
             half_height,
             ..
-        }
-        | Primitive::Brace {
+        } => Some((thickness * 0.5).min(*half_height)),
+        // ⛔ **A chave fica na METADE, e recuar para `0,45` foi MEDIDO e REVERTIDO** (05/09): a
+        // marcha nem se mexeu (`1,0234 → 1,0233`) e o chanfro passou a cortar `35,6 %` das arestas
+        // em vez de `54,8 %` — a sonda usa `metade da parede`, então apertar a parede aperta o
+        // chanfro que ela mede. *Uma mudança que não move a régua que a motivou e piora outra é uma
+        // regressão com cara de cura.*
+        Primitive::Brace {
             thickness,
             half_height,
             ..

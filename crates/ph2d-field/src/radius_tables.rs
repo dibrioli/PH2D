@@ -502,13 +502,24 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
             ..
         } => hyp(hyp(*half_width, half_span + tail), *half_height),
         // ⚠️ **A fieira do pensamento desce `1,32 × tail` e ainda tem raio** — ver a fórmula.
+        // ⚠️ **Com o inchaço da mistura dentro** — ver o irmão [`crate::bounding_half_extents`]: a
+        // esfera nunca pode ser MENOR que a caixa por eixo, e há gate a afirmá-lo.
         Primitive::Cloud {
             half_width,
             half_span,
             tail,
             half_height,
             ..
-        } => hyp(hyp(*half_width, half_span + tail * 1.6), *half_height),
+        } => hyp(
+            hyp(
+                half_width * crate::primitive_limits::CLOUD_BLEND_SWELL,
+                half_span.mul_add(
+                    crate::primitive_limits::CLOUD_BLEND_SWELL - 1.0,
+                    tail.mul_add(1.6, *half_span),
+                ),
+            ),
+            *half_height,
+        ),
         Primitive::Bolt {
             half_width,
             half_span,

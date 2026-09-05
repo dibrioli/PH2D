@@ -110,19 +110,36 @@ pub fn sd_tag(
 ) -> Tree {
     let e = Edge::square(round, chamfer);
     let (w, s) = (half_width, half_span);
-    let corpo = rect_round_em(0.0, 0.0, w, s, round);
+    // ⛔⛔⛔ **O CORPO NÃO TEM PAREDE DIREITA, e a razão é medida** (05/09).
+    //
+    // Os dois flancos da ponta encontram-se em `(w, 0)` e **cortam sempre** a parede direita do
+    // rectângulo — ela nunca está na fronteira. ⚠️ Mas ela continua na mistura, e quando os flancos
+    // ficam quase verticais (`Span` alto, ou `point` pequeno) as TRÊS ficam quase paralelas: o campo
+    // sobe a `1,20` e a peça rasga. *Uma parede que outro par corta sempre não é uma parede — é uma
+    // quase-duplicada.*
+    //
+    // ⭐ O corpo passa a ser um rectângulo que **acaba no início da ponta**, e são os flancos que a
+    // fecham. A silhueta é a mesma; a mistura tem uma peça a menos e nenhum par quase paralelo.
+    // ⚠️ **A parede direita é EMPURRADA para longe, e não encolhida** — a 1.ª tentativa pôs o
+    // rectângulo a acabar em `w − point`, e essa aresta **cortou a ponta fora** (o bico lia `+0,24`
+    // em vez de `0`). O que se quer é que ela não exista na fronteira, e é o que um `3w` faz.
+    let corpo = rect_round_em(w, 0.0, 2.0 * w, s, round);
     // As duas rectas que fecham a ponta, de `(w, 0)` até `(w − point, ±s)`.
     let sup = half_plane([w, 0.0], [w - point, s]);
     let inf = half_plane([w - point, -s], [w, 0.0]);
     if chamfer > 0.0 {
         // ⭐ Com chanfro o corpo entra em quatro paredes, e a ponta nas duas rectas dela.
-        let g = paredes(0.0, 0.0, w, s);
-        let mut arestas = quinas(&g);
-        arestas.push((sup.clone(), inf.clone()));
-        arestas.push((g[2].clone(), sup.clone()));
-        arestas.push((g[3].clone(), inf.clone()));
+        // ⚠️ **TRÊS paredes, e não quatro** — a da direita é a quase-duplicada; ver acima.
+        let g = paredes(w, 0.0, 2.0 * w, s);
+        let mut arestas = vec![
+            (g[1].clone(), g[2].clone()),
+            (g[1].clone(), g[3].clone()),
+            (sup.clone(), inf.clone()),
+            (g[2].clone(), sup.clone()),
+            (g[3].clone(), inf.clone()),
+        ];
+        arestas.dedup_by(|a, b| std::ptr::eq(a, b));
         let pecas = [
-            g[0].clone(),
             g[1].clone(),
             g[2].clone(),
             g[3].clone(),

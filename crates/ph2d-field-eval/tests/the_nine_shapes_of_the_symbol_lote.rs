@@ -110,6 +110,10 @@ fn the_cloud_has_lobes_and_the_thought_balloon_adds_a_trail() {
     // alta.
     fora(&f, [0.42, 0.20, 0.0], "o canto de cima é vazio");
     dentro(&f, [0.0, 0.16, 0.0], "a bossa do meio é a mais alta");
+    // ⭐ **O VALE entre duas bossas ainda existe** — é ele que faz uma nuvem parecer uma nuvem, e a
+    // mistura que alisa a junta com o corpo podia enchê-lo. A bossa vizinha do meio tem o topo mais
+    // baixo, então acima dela é vazio.
+    fora(&f, [0.0, 0.235, 0.0], "acima da bossa mais alta");
     // ⭐ **A fieira só existe com cauda** — é a única diferença entre as duas portas.
     let pensa = campo(nuvem(0.18));
     let b = [-0.45 * 0.63, -0.22 - 0.18 * 0.85, 0.0];

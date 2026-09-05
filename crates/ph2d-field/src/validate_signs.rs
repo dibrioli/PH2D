@@ -239,7 +239,27 @@ pub(super) fn validate_sign(p: &Primitive, idx: u32) -> Result<(), FieldError> {
         } => {
             positive(half_width, "half_width")?;
             positive(half_height, "half_height")?;
-            maior(2.0 * half_span, half_width, "half_span")?;
+            // ⛔⛔⛔ **A cerca é `0,8 × half_width`, e o número é MEDIDO** (05/09).
+            //
+            // Em `2s = w` a conta do centro dá `c = (4s² − w²)/2w = 0` — os dois arcos ficam com o
+            // centro no MESMO ponto e **coincidem**. A 1.ª cerca (`0,5`) aterrava exactamente ali
+            // e a 2.ª (`0,7`) ficava tão perto que ainda rasgava:
+            //
+            // | `s/w` | 0,80 | **0,90** | 1,00 | 1,10 | 1,20 | 1,30 |
+            // |---|---:|---:|---:|---:|---:|---:|
+            // | `passo × ‖∇f‖` | `1,05` | **`0,80`** | `0,78` | `0,75` | `0,71` | `0,71` |
+            //
+            // ⚠️⚠️ **E o que fez isto custar TRÊS tentativas é uma lei desta casa que eu não tinha:
+            // uma COERÇÃO estaciona NA cerca, e uma cerca é por definição onde a forma degenera.**
+            // O `keep_above` põe o valor em `cerca/(1 − 1e-3)`, isto é, a um milésimo dela — então
+            // arrastar o controlo abaixo do limite entrega **sempre** o pior caso da forma. Pôr a
+            // cerca «ao lado» do ponto degenerado não a afasta dele; é preciso VARRER e pôr a cerca
+            // onde a peça de facto volta a marchar.
+            //
+            // ⚠️ E a 1.ª varredura mediu com um filete MENOR do que o do representante (`0,02`
+            // contra `0,04`) e leu `0,88` onde o gate lia `1,05` — *uma sonda com o knob noutro
+            // ponto mede outra peça*.
+            maior(half_span, half_width * 0.9, "half_span")?;
             round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         Primitive::Tag {

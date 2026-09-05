@@ -127,49 +127,90 @@ pub fn sd_cloud(
     chamfer: f64,
 ) -> Tree {
     let e = Edge::square(round, chamfer);
-    let n = lobes.max(1);
-    let mut pecas: Vec<Tree> = Vec::with_capacity(n as usize + 2);
-    let mut menor = f64::MAX;
-    for i in 0..n {
+    #[allow(clippy::cast_lossless)]
+    let n = f64::from(lobes.max(1));
+    // ⭐ **A meia-largura de UMA bossa** — o passo entre centros é `2 × base`.
+    let base = half_width / n;
+    let mut pecas: Vec<Tree> = Vec::with_capacity(lobes as usize + 3);
+    // ⚠️ **A mistura sai da menor BOSSA, e não da menor peça** — as bolhas da fieira são disjuntas
+    // de tudo, então não há vale nenhum para elas alisarem; deixá-las entrar nesta conta punha o
+    // raio a `0,011` e a quebra de curvatura do corpo a **`18,8`** contra uma barra de `2,0`.
+    let mut menor_bossa = f64::MAX;
+    let mut corpo_topo = f64::MAX;
+    let mut bossas: Vec<(f64, f64, f64)> = Vec::with_capacity(lobes as usize);
+    for i in 0..lobes.max(1) {
         #[allow(clippy::cast_lossless)]
-        let t = (f64::from(i) + 0.5) / f64::from(n);
+        let t = (f64::from(i) + 0.5) / n;
         let arco = (t * std::f64::consts::PI).sin();
-        // ⚠️ Os lobos das pontas são MENORES, e é o que dá a silhueta de nuvem: iguais, a forma
-        // lê-se como uma salsicha.
+        // ⛔⛔⛔ **AS BOSSAS NÃO SE TOCAM UMAS ÀS OUTRAS, e é isso que mantém a peça marchável.**
         //
-        // ⛔⛔ **E os TOPOS têm de ser DIFERENTES, ou o campo infla** (medido 05/09). A 1.ª redacção
-        // punha `cy = half_span − raio`, o que deixa **todas** as bossas tangentes à MESMA recta
-        // `y = half_span`. Duas superfícies tangentes estão a menos de qualquer raio uma da outra,
-        // então junto ao topo **todas** as peças ficam activas na mistura n-ária — e o tecto dela é
-        // `√(activas)`. Medido: `passo × ‖∇f‖ = 1,06` a cinco bossas e `1,31` a doze, acima do `1`
-        // em que a marcha atravessa a superfície.
+        // Numa união n-ária o tecto de `‖∇f‖` é `√(quantas peças estão ACTIVAS)`. A 1.ª nuvem punha
+        // `n` discos livres a sobreporem-se todos, e furava em boa parte do curso dos próprios
+        // controlos — medido pela porta do painel: `passo × ‖∇f‖` de `1,06` a **`1,54`** ao arrastar
+        // `Span` e `Width`. ⚠️ E a 2.ª tentativa piorou de outra maneira: limitar o raio a
+        // `half_width` fazia **todas** as bossas colapsarem no MESMO círculo quando o `Span` passava
+        // a largura (o espaço livre `half_width − raio` ia a zero) — `n` superfícies coincidentes.
         //
-        // ⚠️⚠️ **E o raio da MISTURA não era a alavanca** — uma varredura de `0,50` a `0,10` mudou
-        // o número em `0,05` (`measure_cloud_blend`): *duas superfícies tangentes continuam
-        // tangentes por mais que se aperte o raio*. A alavanca é a GEOMETRIA.
-        //
-        // ⭐ E a cura é o que uma nuvem já é: a bossa do meio mais alta, as das pontas mais baixas.
-        let topo = half_span * 0.45f64.mul_add(arco, 0.55);
-        let raio = half_span * 0.34f64.mul_add(arco, 0.42);
-        let cx = half_width * (2.0 * t - 1.0) * (1.0 - raio / half_width.max(f64::MIN_POSITIVE));
+        // ⭐⭐ A cura é a receita da ESTRELA e da ENGRENAGEM: **um corpo mais uma peça por bossa**,
+        // e as bossas separadas entre si. O raio pára a `0,92 × base` e o passo é `2 × base`, logo
+        // duas vizinhas nunca se alcançam ⇒ **no máximo DUAS peças activas** (o corpo e uma bossa),
+        // e o tecto é `√2`, que é o balde que o módulo já paga.
+        let raio = (base * 0.92).min(half_span * 0.5) * 0.22f64.mul_add(arco, 0.78);
+        // ⚠️ **Os topos são DIFERENTES** — com todos iguais as bossas ficam tangentes à mesma recta,
+        // e duas superfícies tangentes estão a menos de qualquer raio uma da outra.
+        let topo = half_span * 0.38f64.mul_add(arco, 0.62);
+        let cx = half_width.mul_add(2.0 * t, -half_width)
+            * (1.0 - base / half_width.max(f64::MIN_POSITIVE))
+            + 0.0;
         let cy = topo - raio;
-        menor = menor.min(raio);
+        menor_bossa = menor_bossa.min(raio);
+        corpo_topo = corpo_topo.min(cy);
+        bossas.push((cx, cy, raio));
+    }
+    // ⭐ **O CORPO liga as bossas** — ele sobe até ao centro da bossa mais baixa, então cada uma o
+    // cobre pela metade de baixo: a sobreposição tem área, e não há costura a valer zero num ponto
+    // interior (a lei que a `sd_star` pagou).
+    let corpo_topo = corpo_topo.min(half_span * 0.5).max(-half_span * 0.5);
+    // ⚠️ **As quinas de baixo do corpo usam o `round` DO ARTISTA** — a 1.ª redacção punha um raio
+    // derivado da bossa, e por isso o controlo *Fillet* não lhes chegava: a sonda leu `2,2 %` da
+    // superfície sobre um vinco de `50,0°`. *Uma quina cujo raio não é o do controlo é uma quina que
+    // o controlo não arredonda.*
+    let meia_altura_corpo = (corpo_topo + half_span) * 0.5;
+    pecas.push(crate::ops_plate2d::rect_round_em(
+        0.0,
+        (corpo_topo - half_span) * 0.5,
+        half_width,
+        meia_altura_corpo,
+        round.min(half_width * 0.9).min(meia_altura_corpo * 0.9),
+    ));
+    for (cx, cy, raio) in bossas {
         pecas.push(disco_em(cx, cy, raio));
     }
     if tail > 0.0 {
-        // A fieira do pensamento: duas bolhas a encolher, para baixo e para o lado.
+        // A fieira do pensamento: duas bolhas a encolher, para baixo e para o lado. ⚠️ Elas são
+        // DISJUNTAS de tudo — é isso que um balão de pensamento é —, então não somam peças activas.
         for (k, f) in [(1.0_f64, 0.30_f64), (1.85, 0.17)] {
             let r = tail * f;
             pecas.push(disco_em(
-                -half_width * (0.45 + 0.18 * k),
-                -half_span - tail * (0.30 + 0.55 * k),
+                -half_width * 0.18f64.mul_add(k, 0.45),
+                -half_span - tail * 0.55f64.mul_add(k, 0.30),
                 r,
             ));
-            menor = menor.min(r);
+            let _ = r;
         }
     }
     // ⚠️ **O raio da mistura é uma fracção do MENOR lobo**, e não o `round`: ele é o que dá o vale
-    // entre duas bossas, e um valor maior que o lobo mais pequeno engolia-o.
-    let mistura = (menor * 0.35).min(half_span * 0.25);
+    // entre o corpo e uma bossa, e um valor maior que o lobo mais pequeno engolia-o.
+    // ⚠️ **A fracção é `0,80`, e ela foi MEDIDA contra a QUEBRA DE CURVATURA** — a régua que vê o
+    // risco no sombreado. Uma bossa redonda a encontrar o topo PLANO do corpo é `G1` sem ser `G2`, e
+    // com a mistura curta a curvatura salta:
+    //
+    // | fracção | 0,35 | 0,55 | **0,80** |
+    // |---|---:|---:|---:|
+    // | quebra de curvatura | `9,89` | `9,57` | **dentro da barra** |
+    //
+    // ⚠️ E ela **não** custa marcha: uma varredura de `0,50` a `0,10` já tinha mostrado que o raio
+    // da mistura move `passo × ‖∇f‖` em `0,05` — o que manda ali é a geometria, não este número.
+    let mistura = (menor_bossa * 0.8).min(half_span * 0.25);
     slab_and_walls(&crate::ops::union_round_n(&pecas, mistura), half_height, e)
 }

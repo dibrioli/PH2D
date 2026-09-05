@@ -501,6 +501,110 @@ fn every_primitive_offers_at_least_one_dimension() {
     }
 }
 
+/// ⭐⭐⭐ **TODA LINHA DE TODA FORMA MARCHA AO LONGO DA FAIXA DELA** — o gate que o report da nuvem
+/// obrigou a escrever (Enio, 05/09: *«cloud completamente bugado»*).
+///
+/// # ⛔⛔⛔ O buraco, e ele era o maior desta família
+///
+/// Todo censo desta casa mede a forma **no ponto em que ela nasce**. ⇒ uma primitiva podia estar
+/// perfeita no representante e **furar em quase todo o curso dos próprios controlos**, e nenhum
+/// gate dizia nada. Medido na nuvem, pela porta do painel: `passo × ‖∇f‖` ia de `0,94` no
+/// nascimento para **`1,29`** ao estreitar a largura e **`1,54`** ao subir o `Span` — acima de `1` a
+/// marcha atravessa a superfície, e o que se vê **não é a peça**.
+///
+/// ⚠️ **O `every_counted_shape_marches_safely_at_its_own_ceiling` não o via**: ele varia a
+/// CONTAGEM, e os três defeitos da nuvem estavam nas linhas **contínuas**.
+///
+/// ⭐ A régua é a do painel: arrasta-se cada linha para três pontos da faixa que ela **declara**, e
+/// pergunta-se à marcha. ⚠️ Nada de valores inventados — sair da faixa mediria uma peça que o
+/// documento recusa.
+///
+/// ⚠️ **É caro de propósito** (`43` formas × `~6` linhas × `3` pontos): é um gate de FECHO, como os
+/// irmãos deste arquivo.
+#[test]
+fn every_row_of_every_primitive_marches_safely_across_its_range() {
+    use ph2d_field::Span;
+    let mut maus = Vec::new();
+    let mut medidas = 0;
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else { continue };
+        for (i, d) in ph2d_field::dims(&p).iter().enumerate() {
+            #[allow(clippy::cast_precision_loss)]
+            let alvos: Vec<f32> = match d.span {
+                Span::Count { min, max } => vec![min as f32, max as f32],
+                Span::Wall(w) | Span::WallFromZero(w) => vec![w * 0.15, w * 0.6, w * 0.9],
+                Span::Turn(h) | Span::Walls(h) => vec![-h * 0.8, h * 0.8],
+                Span::Locked | Span::Choice(_) => continue,
+                // ⚠️ Sem parede, a faixa é o alcance da VISTA — e o que se varre é uma década em
+                // volta do valor de nascimento, que é o que uma mão alcança.
+                Span::FromZero | Span::Positive | Span::Free | Span::Along => {
+                    let v = d.value.abs().max(0.05);
+                    vec![v * 0.25, v * 2.0, v * 4.0]
+                }
+            };
+            for alvo in alvos {
+                let mut q = p.clone();
+                if ph2d_field::set_dim(&mut q, 0, i, alvo).is_err() {
+                    continue;
+                }
+                ph2d_field::clamp_round(&mut q);
+                let Ok(doc) = FieldDoc::new(
+                    vec![Node::new(Xform::IDENTITY, NodeKind::Leaf(q))],
+                    NodeId(0),
+                ) else {
+                    continue;
+                };
+                medidas += 1;
+                let passo = f64::from(ph2d_field_eval::safe_march_step(&doc));
+                let g = worst_gradient(&Field::new(&doc), 1.0, 20);
+                // ⚠️ Uma forma com tecto DECLARADO responde pela folga dela — ver
+                // [`TETO_MEDIDO_E_NAO_CURADO`], que já traz a tabela e o censo de obsolescência.
+                let barra = teto_declarado(k.key())
+                    .or_else(|| faixa_declarada(k.key()))
+                    .unwrap_or(SLACK);
+                if passo * g > barra {
+                    maus.push(format!(
+                        "«{}» com {} = {alvo:.3}: passo {passo:.4} × ‖∇f‖ {g:.4} = {:.4}",
+                        k.key(),
+                        d.key,
+                        passo * g
+                    ));
+                }
+            }
+        }
+    }
+    assert!(
+        medidas >= 300,
+        "só {medidas} pontos medidos — a lista derivada das faixas partiu-se"
+    );
+    assert!(
+        maus.is_empty(),
+        "estas formas FURAM ao arrastar um controlo delas — a peça sai rasgada e o que se vê não é \
+         a forma: {maus:#?}"
+    );
+}
+
+/// ⛔⛔ **A CHAVE no extremo FINO do controlo dela — MEDIDA, DECLARADA e não curada.**
+///
+/// Com a espessura a `15 %` da parede (`0,033` numa peça de `0,44`) ela mede `1,023` contra a barra
+/// de `1,02` — **`0,3 %` acima**, e só ali: em `25 %` e acima ela fica em `0,99`.
+///
+/// ⚠️ **Duas curas foram medidas e não a fecharam**: recuar a parede do filete de `0,50` para
+/// `0,45` da espessura (a marcha nem se mexeu — `1,0234 → 1,0233`), e apertar o raio da união dos
+/// arcos. ⇒ o que resta é a **casca** de um arco muito fino, onde a espessura da banda se aproxima
+/// do raio da mistura, e curá-lo é desenho novo.
+///
+/// ⚠️ *Uma chave com a parede a `7,5 %` do tamanho dela é um fio de cabelo*, e o defeito vive nos
+/// últimos `15 %` de um controlo. Fica com o número em vez de uma barra afrouxada.
+const FAIXA_MEDIDA_E_NAO_CURADA: [(&str, f64); 1] = [("brace", 1.03)];
+
+fn faixa_declarada(key: &str) -> Option<f64> {
+    FAIXA_MEDIDA_E_NAO_CURADA
+        .iter()
+        .find(|(k, _)| *k == key)
+        .map(|(_, v)| *v)
+}
+
 /// ⭐⭐⭐ **TODA FORMA CONTADA MARCHA NO PRÓPRIO TETO** — o gate que torna um teto medido REAL (W120).
 ///
 /// # ⛔ O buraco que ele tapa
@@ -588,7 +692,10 @@ fn every_counted_shape_marches_safely_at_its_own_ceiling() {
 ///
 /// ⚠️ **A folga é uma catraca e SÓ ENCOLHE** — o censo abaixo recusa uma entrada que já cumpra a
 /// barra normal, para ela não virar licença para a próxima forma.
-const TETO_MEDIDO_E_NAO_CURADO: [(&str, f64); 1] = [("star", 3.60)];
+/// ⚠️ **A folga cobre as DUAS réguas deste arquivo**: o gate do tecto amostra a `24` e o da faixa a
+/// `20`, e a mesma peça lê `3,55` num e `3,65` no outro. *Uma folga calibrada num instrumento
+/// descreve outra coisa no instrumento ao lado.*
+const TETO_MEDIDO_E_NAO_CURADO: [(&str, f64); 1] = [("star", 3.70)];
 
 fn teto_declarado(key: &str) -> Option<f64> {
     TETO_MEDIDO_E_NAO_CURADO

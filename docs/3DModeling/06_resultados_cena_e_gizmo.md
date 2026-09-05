@@ -11742,3 +11742,118 @@ estavam escritos no `ops_plates` **e** no `ops_arrows` — a mesma lei com um ce
 primeira corrida dele acusou a **estrela** — uma forma que shipa há duas semanas.
 
 **Smoke:** cena **`=19`** (as dez portas lado a lado) + a paleta (`A`).
+
+---
+
+## §122 — W121: ⛔⛔⛔ *«cloud completamente bugado»* — três sintomas, e o gate que faltava era MAIOR que os três (05/09)
+
+> **Enio, no smoke da W120:** *«cloud completamente bugado. Tail não tem efeito, Span e joint criam
+> formas gigantes.»*
+
+### §122.1 — A régua: arrastar cada linha **pela porta do painel**
+
+⛔ Uma sonda que construísse a primitiva à mão mediria outro programa — a lição que a sonda do undo
+pagou em 04/09. A desta wave usa `ph2d_field::dims` + `set_dim`, três pontos por linha **dentro da
+faixa que ela declara**, e imprime a peça, a caixa e a marcha lado a lado.
+
+⭐⭐⭐ **E ela devolveu MAIS do que o report:** a nuvem não estava «bugada» nos três sítios — ela
+**furava a marcha em boa parte do curso dos próprios controlos**.
+
+| linha | no nascimento | arrastada |
+|---|---:|---:|
+| `Width` a `0,5` | `0,94` | **`1,29`** |
+| `Span` a `1,0` | `0,94` | **`1,25`** |
+| `Span` a `2,0` | `0,94` | **`1,54`** |
+| `Lobes` a `7` | `0,94` | **`1,06`** |
+
+Acima de `1` a marcha **atravessa a superfície**, e o que se vê não é a peça.
+
+### §122.2 — ⭐⭐⭐ O GATE QUE FALTAVA, e ele é o maior desta família
+
+**Todo censo desta casa media a forma NO PONTO EM QUE ELA NASCE.** Uma primitiva podia estar
+perfeita no representante e rasgar em quase todo o curso dos próprios controlos, e nenhum gate dizia
+nada. ⚠️ Nem o `every_counted_shape_marches_safely_at_its_own_ceiling` da W120: ele varia a
+**contagem**, e os três defeitos da nuvem estavam nas linhas **contínuas**.
+
+⇒ `every_row_of_every_primitive_marches_safely_across_its_range`, derivado das faixas declaradas.
+**Na primeira corrida acusou SETE casos em CINCO formas** — quatro delas nada tinham a ver com o
+report.
+
+### §122.3 — As cinco causas, e nenhuma era a mesma
+
+| forma | causa |
+|---|---|
+| **nuvem** | `n` discos livres a sobreporem-se **todos**; o tecto de uma união n-ária é `√(activas)` |
+| **escudo** | a cerca `2s > w` aterrava **no ponto onde os dois arcos coincidem** (`c = 0`) |
+| **seta** | `head_width` sem parede: uma ponta mais larga que a seta é comprida deixa os flancos quase paralelos |
+| **etiqueta** | o corpo trazia uma **parede direita que os flancos cortam SEMPRE** — nunca na fronteira, sempre na mistura |
+| **chave** | a casca de um arco muito fino (declarada, ver §122.6) |
+
+### §122.4 — ⭐⭐ A nuvem: a receita da ESTRELA, e as duas tentativas antes dela
+
+| # | o que mudou | efeito |
+|---|---|---|
+| 1 | limitar o raio da bossa a `half_width` | o centro deixa de fugir, mas com `Span > Width` **todas** colapsam no MESMO círculo |
+| **2** | **um CORPO mais uma bossa por lobo, e as bossas sem se tocarem** | `1,54 → 0,77` em todo o curso |
+
+⭐ O raio pára a `0,92 × base` e o passo entre centros é `2 × base` ⇒ duas vizinhas **nunca se
+alcançam**, e no máximo **duas** peças estão activas (o corpo e uma bossa): o tecto volta ao `√2` que
+o módulo já paga. É a receita que a `sd_star` e a `sd_gear` usam desde a W103.
+
+### §122.5 — ⭐⭐ E os DOIS sintomas do report que não eram a marcha
+
+**`Tail` não tinha efeito** porque a linha **não tinha parede**: sem uma, o teto do slider vem da
+**vista**, e o intervalo útil da cauda — `0` a `0,35` numa peça de `0,5` — cabia nos primeiros por
+cento do curso. ⚠️ A parede é **medida na forma**: a maior bolha da fieira mede `0,30 × tail` e a
+menor bossa `0,42 × half_span`; em `tail = 1,4 × half_span` as duas igualam-se, e acima disso a
+«fieira» tem bolhas maiores que a nuvem.
+
+**A peça saía da própria caixa** (`Span = 2,0`: `0,775` contra `0,500` declarados) por **duas** causas
+empilhadas: o centro das bossas, e o **inchaço da união arredondada** (`r·(√2−1)`), que a caixa não
+contava. O segundo tem fórmula fechada e vive numa constante com ela ao lado
+([`CLOUD_BLEND_SWELL`](../../crates/ph2d-field/src/primitive_limits.rs)).
+
+### §122.6 — ⭐⭐⭐ A LEI que o escudo ensinou, e ela custou TRÊS cercas
+
+> **Uma COERÇÃO estaciona NA cerca, e uma cerca é por definição onde a forma degenera.**
+
+O `keep_above` põe o valor em `cerca/(1 − 1e-3)`, isto é, **a um milésimo dela**. ⇒ arrastar o
+controlo abaixo do limite entrega **sempre** o pior caso da forma, e pôr a cerca «ao lado» do ponto
+degenerado não a afasta dele:
+
+| `s/w` | 0,50 | 0,70 | 0,80 | **0,90** | 1,00 | 1,20 |
+|---|---:|---:|---:|---:|---:|---:|
+| `passo × ‖∇f‖` | degenera | `1,10` | `1,05` | **`0,80`** | `0,78` | `0,71` |
+
+⚠️ **E a 1.ª varredura mediu com um filete MENOR do que o do representante** (`0,02` contra `0,04`) e
+leu `0,88` onde o gate lia `1,05` — *uma sonda com o knob noutro ponto mede outra peça*, pela
+terceira vez nesta linha.
+
+### §122.7 — ⛔ DUAS curas minhas foram REVERTIDAS pela própria medição
+
+| cura | o que a medição disse |
+|---|---|
+| recuar a parede do filete da chave de `0,50` para `0,45` | a marcha **não se mexeu** (`1,0234 → 1,0233`) e o chanfro passou a cortar `35,6 %` das arestas em vez de `54,8 %` |
+| encolher o corpo da etiqueta até ao início da ponta | a aresta nova **cortou o bico fora** (`+0,24` onde devia ler `0`) — a parede tem de ser **empurrada para longe**, não encolhida |
+
+⭐ *Uma mudança que não move a régua que a motivou e piora outra é uma regressão com cara de cura.*
+
+### §122.8 — ⚠️ E a nuvem nova trouxe DOIS defeitos de aresta que a antiga não tinha
+
+- **O `Fillet` não chegava às quinas do corpo** (`2,2 %` da superfície sobre um vinco de `50,0°`): o
+  raio delas saía da bossa em vez do controlo. *Uma quina cujo raio não é o do controlo é uma quina
+  que o controlo não arredonda.*
+- **A quebra de curvatura foi a `18,8`** (barra `2,0`) porque a mistura saía da **menor peça**, e as
+  bolhas da fieira são **disjuntas de tudo** — não têm vale nenhum para alisar. Com a mistura a sair
+  da menor **bossa** e a fracção medida contra esta régua (`0,35 → 9,89` · `0,55 → 9,57` ·
+  **`0,80 → dentro da barra`**), fecha.
+
+### §122.9 — O que fica DECLARADO
+
+| forma | régua | valor | por quê |
+|---|---|---:|---|
+| **chave** | marcha na faixa | `1,023` | só nos últimos `15 %` do controlo de espessura, onde a parede dela é `7,5 %` do tamanho da peça; duas curas medidas não a fecharam |
+| **estrela** | marcha no tecto | `3,65` | o defeito de Agosto — o tecto saiu do PREÇO e a marcha nunca lá correu (§121.1) |
+
+**Gates:** censo **24/24** · arestas 10/10 · shell 346 · fmt · clippy · LOC.
+**Smoke:** a nuvem e o balão de pensamento na paleta, e a cena `=19`.

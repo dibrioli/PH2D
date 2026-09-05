@@ -74,7 +74,7 @@ pub(super) fn dims_sign(p: &Primitive) -> Vec<Dim> {
             Dim {
                 key: "field.dim.head_width",
                 value: head * 2.0,
-                span: Span::Positive,
+                span: Span::Wall(half_length * 2.0),
             },
             Dim {
                 key: "field.dim.head_length",
@@ -320,10 +320,22 @@ pub(super) fn dims_sign(p: &Primitive) -> Vec<Dim> {
             },
             // ⭐ **O ZERO é a porta *Cloud*** — a fieira do pensamento desaparece, e é por isso que
             // esta faixa é a `FromZero` e não a `Positive`.
+            //
+            // ⛔⛔ **E ela tem PAREDE, porque sem uma o controlo não se alcança** (report do Enio,
+            // 05/09: *«Tail não tem efeito»*). Sem parede o teto do slider vem da **vista**, e o
+            // intervalo útil da cauda — `0` a `0,35` numa peça de `0,5` — cabia nos primeiros
+            // por cento do curso: arrastar não parecia fazer nada. *Um controlo cujo intervalo útil
+            // não chega a um pixel não oferece o que promete* — a lei que a banda do `Bend` já
+            // pagou.
+            //
+            // ⚠️ **A parede é MEDIDA na própria forma**: a maior bolha da fieira mede `0,30 × tail`,
+            // e a menor bossa do corpo `0,42 × half_span`. Em `tail = 1,4 × half_span` as duas são
+            // iguais — acima disso a «fieira» tem bolhas maiores que a nuvem, e deixa de ser uma
+            // fieira.
             Dim {
                 key: "field.dim.tail",
                 value: *tail,
-                span: Span::FromZero,
+                span: Span::WallFromZero(half_span * 1.4),
             },
             Dim {
                 key: "field.dim.height",
@@ -370,7 +382,7 @@ pub(super) fn dims_sign(p: &Primitive) -> Vec<Dim> {
             Dim {
                 key: "field.dim.width",
                 value: half_width * 2.0,
-                span: Span::Wall(half_span * 4.0),
+                span: Span::Wall(half_span / 0.45),
             },
             Dim {
                 key: "field.dim.span",

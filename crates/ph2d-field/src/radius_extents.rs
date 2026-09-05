@@ -212,13 +212,25 @@ pub fn bounding_half_extents(p: &Primitive) -> [f32; 3] {
             half_height,
             ..
         } => [*half_width, half_span + tail, *half_height],
+        // ⚠️⚠️ **A união arredondada INCHA para fora das bossas**, e a caixa tem de a conter: o raio
+        // da mistura é `0,35 × a menor bossa`, um `union_round` empurra a superfície até
+        // `r·(√2 − 1)`, e a menor bossa nunca passa a `half_width` ⇒ o excesso é no máximo
+        // `0,145 × half_width`. Medido: com o `Span` a `2,0` a peça lia `0,575` contra `0,500`
+        // declarados, e quem lê esta caixa **corta a peça e não diz nada**.
         Primitive::Cloud {
             half_width,
             half_span,
             tail,
             half_height,
             ..
-        } => [*half_width, half_span + tail * 1.6, *half_height],
+        } => [
+            half_width * crate::primitive_limits::CLOUD_BLEND_SWELL,
+            half_span.mul_add(
+                crate::primitive_limits::CLOUD_BLEND_SWELL - 1.0,
+                tail.mul_add(1.6, *half_span),
+            ),
+            *half_height,
+        ],
         Primitive::Bolt {
             half_width,
             half_span,

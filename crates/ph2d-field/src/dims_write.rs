@@ -178,7 +178,18 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
         // ⭐ A parede é a LARGURA DA PONTA, e ela coage: o slider da haste pára ali, então um valor
         // de fora só chega por um arrasto do OUTRO controlo. É a lei do vale da estrela.
         (Primitive::Arrow { shaft, head, .. }, 2) => *shaft = keep_below(half, *head),
-        (Primitive::Arrow { shaft, head, .. }, 3) => *head = keep_above(half, *shaft),
+        // ⚠️ **A ponta tem parede, e ela é o COMPRIMENTO da seta**: mais larga do que a peça é
+        // comprida, ela deixa de se ler como uma seta — e as duas rectas do flanco ficam
+        // quase paralelas, com o campo a subir a `1,16`.
+        (
+            Primitive::Arrow {
+                shaft,
+                head,
+                half_length,
+                ..
+            },
+            3,
+        ) => *head = keep_below(keep_above(half, *shaft), *half_length),
         (
             Primitive::Arrow {
                 head_length,
@@ -249,9 +260,16 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
         | (Primitive::Banner { half_span, .. }, 1)
         | (Primitive::Cloud { half_span, .. }, 2)
         | (Primitive::Brace { half_span, .. }, 0) => *half_span = half,
-        (Primitive::SpeechRect { tail, .. }, 2)
-        | (Primitive::SpeechOval { tail, .. }, 2)
-        | (Primitive::Cloud { tail, .. }, 3) => *tail = value,
+        (Primitive::SpeechRect { tail, .. }, 2) | (Primitive::SpeechOval { tail, .. }, 2) => {
+            *tail = value;
+        }
+        // ⚠️ **A cauda da nuvem COAGE na parede dela** — ver o doc da linha em `dims_table_signs`.
+        (
+            Primitive::Cloud {
+                tail, half_span, ..
+            },
+            3,
+        ) => *tail = keep_below(value, *half_span * 1.4),
         (Primitive::SpeechRect { half_height, .. }, 3)
         | (Primitive::SpeechOval { half_height, .. }, 3)
         | (Primitive::Cloud { half_height, .. }, 4)
@@ -274,7 +292,7 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
                 ..
             },
             0,
-        ) => *half_width = keep_below(half, *half_span * 2.0),
+        ) => *half_width = keep_below(half, *half_span / 0.9),
         (
             Primitive::Shield {
                 half_width,
@@ -282,7 +300,7 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
                 ..
             },
             1,
-        ) => *half_span = keep_above(half, *half_width * 0.5),
+        ) => *half_span = keep_above(half, *half_width * 0.9),
         (
             Primitive::Tag {
                 point, half_width, ..

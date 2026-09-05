@@ -297,13 +297,17 @@ impl Inputs {
         //    cumpre a WCAG sobre o cartão em todos os presets: no *Gray* a base `0.24` eleva o
         //    cartão a `#555555` (a família é multiplicativa) e o `0.55` dá 3,5:1; o azul do *Light*
         //    (`0.18, 0.50, 1.00`) faz 2,5:1 sobre o cartão e **2,99:1 sobre o próprio painel** do
-        //    Godot. A resposta do §0 é medir: a alfa sobe de `0.55` só até cumprir 4,5:1 (Dark
-        //    `0.58` · Light `0.60` · Gray `0.72`), e o acento escurece 2 % de cada vez só até
-        //    3:1 (só o *Light* se move; o `#569eff` do Dark fica intacto, e há gate).
-        let font_secondary = (55..=75)
+        //    Godot. A resposta do §0 é medir: a alfa sobe do piso só até cumprir 4,5:1, e o
+        //    acento escurece 2 % de cada vez só até 3:1 (só o *Light* se move; o `#569eff` do
+        //    Dark fica intacto, e há gate).
+        // ⭐ O PISO é `0.65`, não o `0.55` do Godot: os títulos e rótulos dos cartões são todos
+        //    `Text2`, e o dono pediu-os *«um pouco mais claros»* (2026-09-05). O `Text1` fica em
+        //    `0.75`, para a hierarquia continuar a ler-se. Medido: Dark `0.65` · Light `0.65` ·
+        //    Gray `0.72` (o Gray já precisava de mais pela lei).
+        let font_secondary = (65..=80)
             .map(|pct| mono.over(base, pct as f32 / 100.0))
             .find(|t| wcag_ratio(*t, surface_high) >= 4.5)
-            .unwrap_or(mono.over(base, 0.75));
+            .unwrap_or(mono.over(base, 0.8));
         let mut accent = self.accent;
         for _ in 0..30 {
             if wcag_ratio(accent, surface_high) >= 3.0 {
@@ -388,7 +392,10 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
         //    `a_card_stands_off_its_panel_and_the_surface_ladder_climbs`. ⚠️ `Bg3` e `BgElev`
         //    ficam a 3/255 no Dark (`button_hover` · `button_pressed`): o Godot não tem um quinto
         //    nível elevado, e o `BgElev` só pousa sobre o painel ou sobre um cartão.
-        "bg-0" => r.surface_lowest.color(),
+        // ⛔ O `bg-0` é o FUNDO DO CANVAS (`hero/canvas.rs`), e fica no `dark_1` que o dono viu e
+        //    aprovou (Enio, 2026-09-05: *«mudou a cor do canvas — volte ao que era antes»*): a
+        //    escada de superfícies começa no painel, não aqui.
+        "bg-0" => r.dark_1.color(),
         "bg-1" => r.surface_high.color(),
         "bg-2" => r.button_normal.color(),
         "bg-3" => r.button_hover.color(),
@@ -434,8 +441,8 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
         "axis-y" => Rgb::new(0.53, 0.84, 0.01).color(),
         "axis-z" => Rgb::new(0.16, 0.55, 0.96).color(),
         // ── o grafo de nós ──
-        // O fundo do `GraphEdit` do Godot é o `surface_lowest`.
-        "graph-bg" => r.surface_lowest.color(),
+        // O fundo do grafo é um canvas como o outro: fica no `dark_1` aprovado (ver `bg-0`).
+        "graph-bg" => r.dark_1.color(),
         "graph-grid" => r.mono.with_alpha(0.06),
         "graph-marquee" => r.accent.with_alpha(0.18),
         "graph-inert" => r.base.with_alpha(0.62),

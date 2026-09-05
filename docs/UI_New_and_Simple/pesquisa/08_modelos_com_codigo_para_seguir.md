@@ -328,12 +328,19 @@ do `GraphEdit`, das abas). Nós tínhamos o painel em `dark_1` e o botão na `ba
 invertida, com os cartões entalados a 4/255 do painel. A escada reassentou-se, e os números são os
 medidos pela sonda:
 
-| tema | painel | Bg1 (cartão) | Bg2 | Bg3 | BgElev | texto-2 sobre o cartão | acento sobre o cartão |
-|---|---|---|---|---|---|---|---|
-| Dark | `#292929` | `#393939` (+16) | `#424242` | `#4d4d4d` | `#505050` | `#a3a3a3` — 4,58:1 | `#569eff` — 4,25:1 (intacto) |
-| Gray | `#3d3d3d` | `#555555` (+24) | `#626262` | `#727272` | `#787878` | `#c9c9c9` — 4,50:1 | `#70bafa` — 3,58:1 (intacto) |
-| Light | `#e6e6e6` | `#d4d4d4` (−18) | `#cacaca` | `#bebebe` | `#b9b9b9` | `#5c5c5c` — 4,51:1 | `#2973e6` — 3,02:1 (⚠️ escurecido) |
-| OLED | `#000000` | `#000000` | `#000000` | `#1b1b1b` | `#262626` | `#8c8c8c` | `#73bfff` |
+| tema | canvas (`Bg0`) | painel | Bg1 (cartão) | Bg2 | Bg3 | BgElev | texto-2 sobre o cartão | acento sobre o cartão |
+|---|---|---|---|---|---|---|---|---|
+| Dark | `#1b1b1b` | `#292929` | `#393939` (+16) | `#424242` | `#4d4d4d` | `#505050` | `#b4b4b4` — 5,57:1 | `#569eff` — 4,25:1 (intacto) |
+| Gray | `#282828` | `#3d3d3d` | `#555555` (+24) | `#626262` | `#727272` | `#787878` | `#c9c9c9` — 4,50:1 | `#70bafa` — 3,58:1 (intacto) |
+| Light | `#f5f5f5` | `#e6e6e6` | `#d4d4d4` (−18) | `#cacaca` | `#bebebe` | `#b9b9b9` | `#505050` — 5,44:1 | `#2973e6` — 3,02:1 (⚠️ escurecido) |
+| OLED | `#000000` | `#000000` | `#000000` | `#000000` | `#1b1b1b` | `#262626` | `#a6a6a6` | `#73bfff` |
+
+⚠️ **O CANVAS não é a escada.** A 1.ª versão desta correcção levou o `Bg0` (o fundo do canvas e do
+grafo) para o `surface_lowest` do Godot (`#141414`), e o dono devolveu-o no smoke seguinte
+(*«mudou a cor do canvas — volte ao que era antes»*): o `Bg0` fica no `dark_1` (`#1b1b1b`) que ele
+já tinha aprovado. A escada começa no painel. E o **piso do texto secundário é `0.65`**, não o
+`0.55` do Godot (*«as fontes dos cards podem ser um pouco mais claras»*): títulos e rótulos dos
+cartões são todos `Text2`; o `Text1` fica em `0.75` para a hierarquia continuar a ler-se.
 
 Gates: `a_card_stands_off_its_panel_and_the_surface_ladder_climbs` (red-first: *«4 de 255»*; a
 escada inteira monótona, o degrau do cartão ≥ 12, os outros ≥ 3; o OLED fica de fora — com
@@ -346,9 +353,9 @@ o WCAG da casa (`the_factory_table_meets_wcag_in_all_modes`), que **reprovou a p
   `mono@0.55` e o acento vem por inteiro do preset — e nenhum cumpre a WCAG sobre o cartão em todos
   os presets: no *Gray* a base `0.24` eleva o cartão mais (a família é multiplicativa) e o `0.55`
   dá 3,5:1; o azul do *Light* faz 2,5:1 sobre o cartão e **2,99:1 sobre o próprio painel do Godot**.
-  A resposta do §0 é medir: a alfa do texto-2 sobe de `0.55` só até 4,5:1 sobre o `Bg1` (Dark
-  `0.57` · Light `0.60` · Gray `0.72`), e o acento escurece 2 % de cada vez só até 3:1 — só o
-  *Light* se move (`#2e80ff → #2973e6`); o `#569eff` do Dark tem gate a mantê-lo.
+  A resposta do §0 é medir: a alfa do texto-2 sobe do piso (`0.65`, pedido do dono) só até 4,5:1
+  sobre o `Bg1` (Dark `0.65` · Light `0.65` · Gray `0.72`), e o acento escurece 2 % de cada vez
+  só até 3:1 — só o *Light* se move (`#2e80ff → #2973e6`); o `#569eff` do Dark tem gate a mantê-lo.
 - ⚠️ **O OLED colapsa a família multiplicativa numa cor só** (`0 × k = 0`): o Godot separa os
   estados por bordas e pela cor da fonte; aqui o hover e o pressionado caem num degrau **aditivo**
   em `mono` quando o multiplicativo não os move (`the_three_interactive_states_are_distinguishable`

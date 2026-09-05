@@ -91,6 +91,7 @@ cd /home/enio/Documentos/Projetos/PH2D && env PH2D_BUILD_SMOKE=<n> cargo run -p 
 | quero | vou a |
 |---|---|
 | **por que o módulo é assim** | [ADR-0108](../architecture/decisions/0108-vector-reposition-rive-referenced-native-editor-first.md) e o [`18_plano_reposicionamento_rive_native.md`](18_plano_reposicionamento_rive_native.md) |
+| ⭐⭐⭐ **o que TEMOS e o que FALTA, contra o Illustrator e o Rive** | [`42_o_que_falta_ao_vetor.md`](42_o_que_falta_ao_vetor.md) (2026-09-04, ordem do Enio) — inventário lido **no código** (16 modos · 47 formas · 41 secções · 10 efeitos · 15 filtros), a matriz de **40 capacidades** nos três, as **10 lacunas por retorno÷esforço** e as recusas dos dois concorrentes. ⚠️ **O §6 lista DEZ afirmações dos nossos docs que o código desmente — seis delas estão NESTE README** (os *"13 modos"*, o hit-test dado como aberto, a cascata/radial/realce/som dados como abertos, e a linha logo abaixo, que diz 26 e são 27) |
 | **o que já quebrou, e o padrão que se repete** | [`BUGS_vector.md`](BUGS_vector.md) — os 26 estão fechados; o que vale são as **recusas ⛔**, os **padrões** e o índice com o mecanismo |
 | **os FX raster** | [`24_plano_fx_raster.md`](24_plano_fx_raster.md) |
 | **as ferramentas de desenho** | [`25_plano_ferramentas_de_desenho.md`](25_plano_ferramentas_de_desenho.md) |

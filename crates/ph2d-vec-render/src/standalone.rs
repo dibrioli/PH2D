@@ -79,6 +79,16 @@ pub(crate) fn inflate_for_stroke(path: &VecPath, xf: Affine, r: Rect) -> Rect {
 /// ⚠️ O doc acima já declarava a lei que isso partia — *"passa pela MESMA `draw_path`"* —, e a
 /// segunda porta apareceu **dentro** da primeira quando o ladrilho virou um parâmetro que só o
 /// `dispatch` sabia preencher. *Um argumento novo com um default é uma porta nova sem nome.*
+///
+/// ⛔⛔⛔ **REPORT DO ENIO (2026-09-04): *"a da direita não ficou transparente"*.** A MESMA falha,
+/// uma tinta adiante: `bound` é obrigatório pelo mesmo motivo que o `tile` é. A opacidade viva, a
+/// cor de um token e a espessura de um token vivem num [`BoundStyle`], que **não é campo do
+/// `VecPath`** — o `dispatch` aplica-o com `painted()` no ponto de desenho, e esta porta desenhava
+/// o AUTORADO. Uma forma filtrada que a linha do tempo desvanece re-cozinhava a cada quadro (a
+/// chave do memo já carregava o estilo) e re-cozinhava **os mesmos pixels opacos**.
+///
+/// ⚠️ *Corrigir a CHAVE de um memo e não corrigir o DESENHO deixa o defeito intacto e gasta o
+/// relógio a re-produzi-lo* — o miss passa a acontecer todo quadro e a resposta não muda.
 #[allow(clippy::too_many_arguments)]
 pub fn draw_path_isolated(
     scene: &VecScene,
@@ -86,6 +96,10 @@ pub fn draw_path_isolated(
     live: &LiveGeometry,
     patterns: &crate::PatternTiles,
     brushes: &crate::BrushArts,
+    // O estilo resolvido DESTA forma neste quadro (`VecViewState::bound_style`). `None` = desenhe
+    // o autorado — e é a resposta certa para quem não tem projecção de quadro nenhuma, nunca um
+    // atalho para quem tem.
+    bound: Option<&BoundStyle>,
     id: VecPathId,
     camera: Affine,
     offset: Affine,
@@ -96,11 +110,21 @@ pub fn draw_path_isolated(
     let art = brushes.get(&id).map(Vec::as_slice);
     if let Some(items) = live.get(&id) {
         for item in items {
-            crate::draw_path_tiled(item, offset * camera, target, tile, stroke_tile, art);
+            // A derivada leva o MESMO estilo da fonte, como no `dispatch`: as cópias de
+            // offset/pattern/espelho têm id próprio, então o estilo pára na borda do 1.º efeito se
+            // for procurado por elas.
+            crate::draw_path_tiled(
+                &item.painted(bound),
+                offset * camera,
+                target,
+                tile,
+                stroke_tile,
+                art,
+            );
         }
     } else if let Some(path) = scene.paths().iter().find(|p| p.id == id) {
         crate::draw_path_tiled(
-            path,
+            &path.painted(bound),
             offset * path_to_screen(xforms, id, camera),
             target,
             tile,

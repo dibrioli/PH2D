@@ -105,3 +105,101 @@ fn a_bare_primitive_has_measurable_bounds() {
     let (x0, y0, x1, y1) = b.expect("uma forma nua tem caixa");
     assert!(x1 > x0 && y1 > y0, "e ela tem área: {x0},{y0} → {x1},{y1}");
 }
+
+/// ⭐⭐⭐ **A FORMA ISOLADA DESVANECE COM O QUADRO** — report do Enio, 2026-09-04: *"a da
+/// direita não ficou transparente"*.
+///
+/// A estrela filtrada re-cozinhava a cada quadro (a chave do memo já carregava a forma
+/// PINTADA) e re-cozinhava **os mesmos pixels opacos**, porque esta porta desenhava o
+/// AUTORADO. O oráculo é o `draw_data` — os bytes de tinta que de facto entraram na cena.
+///
+/// ⚠️ **As duas metades são um gate só de propósito:** a que muda prova que a opacidade
+/// chega, e a que NÃO muda (`alpha = 255`, a identidade) prova que o memo continua a
+/// acertar numa forma sem estilo — sem ela, a cura compraria a correcção com um re-cook
+/// por quadro em toda forma filtrada da cena.
+#[test]
+fn the_isolated_draw_fades_with_the_frames_resolved_style() {
+    use ph2d_vec_scene::{BoundStyle, VecScene, VecXforms};
+    let mut scene = VecScene::default();
+    let mut p = bare_primitive();
+    p.fill = Some(ph2d_vec_scene::Paint::solid(Rgba8::new(0, 0, 255, 255)));
+    let id = scene.push_path(p);
+    let ink = |bound: Option<&BoundStyle>| {
+        let mut s = VectorScene::new();
+        crate::draw_path_isolated(
+            &scene,
+            &VecXforms::new(),
+            &crate::LiveGeometry::new(),
+            &crate::PatternTiles::new(),
+            &crate::BrushArts::new(),
+            bound,
+            id,
+            Affine::IDENTITY,
+            Affine::IDENTITY,
+            &mut s,
+        );
+        s.inner().encoding().draw_data.clone()
+    };
+    let opaca = ink(None);
+    let meia = BoundStyle {
+        path: id,
+        alpha: Some(128),
+        ..BoundStyle::default()
+    };
+    assert_ne!(
+        opaca,
+        ink(Some(&meia)),
+        "a opacidade viva tem de chegar aos pixels da forma isolada"
+    );
+    let cheia = BoundStyle {
+        path: id,
+        alpha: Some(255),
+        ..BoundStyle::default()
+    };
+    assert_eq!(
+        opaca,
+        ink(Some(&cheia)),
+        "e opaco e' a IDENTIDADE — senao todo filtro re-cozinha por nada"
+    );
+}
+
+/// **E A GEOMETRIA DERIVADA DESVANECE JUNTO** — o irmão do gate acima, sobre o outro braço.
+///
+/// ⚠️ Sem ele uma forma com offset/pattern/espelho ligado ficaria opaca enquanto a irmã sem
+/// efeito desvanecia, e a suíte inteira ficava verde: a fixtura de cima nunca põe `live`.
+#[test]
+fn the_derived_geometry_fades_with_the_same_style() {
+    use ph2d_vec_scene::{BoundStyle, VecScene, VecXforms};
+    let mut scene = VecScene::default();
+    let mut p = bare_primitive();
+    p.fill = Some(ph2d_vec_scene::Paint::solid(Rgba8::new(0, 200, 0, 255)));
+    let id = scene.push_path(p.clone());
+    let mut live = crate::LiveGeometry::new();
+    live.insert(id, vec![p]);
+    let ink = |bound: Option<&BoundStyle>| {
+        let mut s = VectorScene::new();
+        crate::draw_path_isolated(
+            &scene,
+            &VecXforms::new(),
+            &live,
+            &crate::PatternTiles::new(),
+            &crate::BrushArts::new(),
+            bound,
+            id,
+            Affine::IDENTITY,
+            Affine::IDENTITY,
+            &mut s,
+        );
+        s.inner().encoding().draw_data.clone()
+    };
+    let meia = BoundStyle {
+        path: id,
+        alpha: Some(128),
+        ..BoundStyle::default()
+    };
+    assert_ne!(
+        ink(None),
+        ink(Some(&meia)),
+        "a copia derivada tambem desvanece"
+    );
+}

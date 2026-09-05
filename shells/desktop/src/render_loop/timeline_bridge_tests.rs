@@ -455,3 +455,58 @@ fn the_k_anchors_a_trajectory_only_on_the_keys_tab() {
         "fora dela a recusa é um VALOR, com motivo — não um `None` que o K engole"
     );
 }
+
+/// ⭐⭐⭐ **O NÚMERO QUE A ROW MOSTRA VEM DO MUNDO** — report do Enio, 2026-09-04: *"o painel não
+/// mostra as propriedades animadas (os números não mudam em tempo real com a animação)"*.
+///
+/// ⚠️ **A porta é a MESMA da tecla K** ([`sample_prop_value`]), e é isso que este gate defende: um
+/// readout tirado da curva concordaria com ela mesmo quando o objecto a ignora — que é o defeito
+/// irmão do mesmo dia (uma forma filtrada opaca com a curva a dizer `0`). *A régua não pode
+/// partilhar a lei do produto que ela mede.*
+///
+/// ⚠️ E a row de um canal SEM escalar de mundo fica **sem número**, nunca com um zero: *um zero de
+/// «não medido» e um de «vale zero» são o mesmo byte*.
+#[test]
+fn the_row_readout_comes_from_the_world_and_not_from_the_curve() {
+    use ph2d_ecs::{Transform, VecDrivenStyle, VecPathRef, World};
+    use ph2d_timeline::{AnimTarget, Extrap, TimelineViewSnapshot, TrackView};
+    let mut w = World::new();
+    let e = w
+        .spawn((
+            Transform::default(),
+            VecPathRef(5),
+            VecDrivenStyle { alpha: Some(0.25) },
+        ))
+        .id();
+    let row = |target: u64, prop| TrackView {
+        target: AnimTarget::new(target),
+        prop,
+        entity: e.to_bits(),
+        missing: false,
+        keys: Vec::new(),
+        buffer_ghost: None,
+        pre: Extrap::default(),
+        post: Extrap::default(),
+        expr: None,
+    };
+    let mut view = TimelineViewSnapshot {
+        tracks: vec![
+            row(1, PropKind::Opacity),
+            row(2, PropKind::TimeRemap),
+            row(3, PropKind::TranslationX),
+        ],
+        ..TimelineViewSnapshot::default()
+    };
+    publish_track_values(&mut view, &w);
+    assert_eq!(
+        view.values.get(1),
+        Some(0.25),
+        "a row de opacidade tem de mostrar o que a forma TEM, e a forma esta' a um quarto"
+    );
+    assert_eq!(
+        view.values.get(2),
+        None,
+        "o Time Remap nao e' um escalar do mundo — a row fica sem numero, nunca com um zero"
+    );
+    assert_eq!(view.values.get(3), Some(0.0), "e a pose le-se do Transform");
+}

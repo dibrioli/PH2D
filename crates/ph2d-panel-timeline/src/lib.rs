@@ -83,6 +83,7 @@ mod summary;
 mod summary_paint;
 pub mod tab;
 mod tracks;
+mod tracks_value;
 mod transport;
 mod transport_clips;
 mod transport_tabs;

@@ -399,7 +399,11 @@ fn assinatura(poly: &[[f64; 2]]) -> Vec<[f64; 2]> {
             let alvo = total * (k as f64) / (n as f64 + 1.0);
             let j = acum.partition_point(|s| *s < alvo).clamp(1, poly.len() - 1);
             let (lo, hi) = (acum[j - 1], acum[j]);
-            let t = if hi > lo { (alvo - lo) / (hi - lo) } else { 0.0 };
+            let t = if hi > lo {
+                (alvo - lo) / (hi - lo)
+            } else {
+                0.0
+            };
             [
                 t.mul_add(poly[j][0] - poly[j - 1][0], poly[j - 1][0]),
                 t.mul_add(poly[j][1] - poly[j - 1][1], poly[j - 1][1]),

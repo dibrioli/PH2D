@@ -111,6 +111,15 @@ pub(crate) struct FxKey {
 pub(crate) struct Job {
     pub(crate) id: VecPathId,
     pub(crate) key: FxKey,
+    /// ⭐⭐⭐ **O estilo resolvido com que esta forma é DESENHADA** — o mesmo que entrou na chave,
+    /// guardado aqui para que o rasterizador o receba (report do Enio, 2026-09-04: *"a da direita
+    /// não ficou transparente"*).
+    ///
+    /// ⚠️ **Está no `Job` e não é perguntado outra vez no desenho de propósito:** a chave diz
+    /// *"estes pixels servem"* comparando a forma PINTADA, e o desenho tem de pintar com o MESMO
+    /// estilo, senão o memo afirma sobre uma arte e a textura recebe outra. Uma segunda consulta
+    /// ao `VecViewState` seria a segunda porta pela qual eles divergem.
+    pub(crate) bound: Option<ph2d_vec_scene::BoundStyle>,
     /// O canto do scratch desta forma, em pixels de tela (a caixa dela mais a margem da pilha).
     /// **Fora da chave**: ver o doc do módulo (a translação não muda a arte dentro da célula).
     pub(crate) ex0: f64,
@@ -157,8 +166,11 @@ pub(crate) fn job_for(
     let h = (((y1 + f64::from(mb)).ceil() - ey0).max(1.0) as u32).min(MAX_FX_SIDE);
     let screen = ph2d_vec_render::path_to_screen(xforms, id, camera).as_coeffs();
     let cam = camera.as_coeffs();
+    // UMA leitura da projecção do quadro, para a chave E para o desenho (ver `Job::bound`).
+    let bound = view.bound_style(id).copied();
     Some(Job {
         id,
+        bound,
         key: FxKey {
             ops,
             w,
@@ -170,7 +182,7 @@ pub(crate) fn job_for(
                     .paths()
                     .iter()
                     .find(|p| p.id == id)
-                    .map(|p| p.painted(view.bound_style(id)).into_owned()),
+                    .map(|p| p.painted(bound.as_ref()).into_owned()),
                 cam: [cam[0], cam[1], cam[2], cam[3]],
                 screen: [screen[0], screen[1], screen[2], screen[3]],
             },

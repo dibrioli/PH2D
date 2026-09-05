@@ -37,7 +37,10 @@ fn circulo(r: f64) -> (Vec<VecVertex>, bool) {
 
 /// O quadrado cuja quina superior-direita esta' em `(c, c)`.
 fn quadrado(c: f64) -> (Vec<VecVertex>, bool) {
-    (vec![v(-150.0, -150.0), v(c, -150.0), v(c, c), v(-150.0, c)], true)
+    (
+        vec![v(-150.0, -150.0), v(c, -150.0), v(c, c), v(-150.0, c)],
+        true,
+    )
 }
 
 #[test]
@@ -46,7 +49,10 @@ fn probe_a_quina_atravessa_a_parede() {
     let r: f64 = 100.0;
     let toque = (r * r / 2.0).sqrt(); // 70.7107 — a quina EM CIMA do circulo
     println!("quina no circulo em c = {toque:.4}");
-    println!("{:>10} {:>6} {:>6} {:>7} {:>8}  areas", "c", "arcos", "faces", "stubs", "d_quina");
+    println!(
+        "{:>10} {:>6} {:>6} {:>7} {:>8}  areas",
+        "c", "arcos", "faces", "stubs", "d_quina"
+    );
     for passo in -24_i32..=24 {
         let c = toque + f64::from(passo) * 0.25;
         let contornos = vec![circulo(r), quadrado(c)];
@@ -93,15 +99,29 @@ fn probe_detalhe_da_janela() {
             esc * 1e-3
         );
         println!("  cruzamentos: circulo={:?} quadrado={:?}", x[0], x[1]);
-        println!("  nos: {:?}", rd.nos.iter().map(|n| [n[0].round(), n[1].round()]).collect::<Vec<_>>());
+        println!(
+            "  nos: {:?}",
+            rd.nos
+                .iter()
+                .map(|n| [n[0].round(), n[1].round()])
+                .collect::<Vec<_>>()
+        );
         for (i, a) in rd.arcos.iter().enumerate() {
             println!(
                 "  arco {i}: origem={} de={} ate={} faixa=({:.4},{:.4}) comp={:.4}",
-                a.origem, a.de, a.ate, a.faixa.0, a.faixa.1, rd.comprimento(i)
+                a.origem,
+                a.de,
+                a.ate,
+                a.faixa.0,
+                a.faixa.1,
+                rd.comprimento(i)
             );
         }
         let faces: Vec<_> = rd.faces().into_iter().filter(|f| f.area > 0.0).collect();
-        println!("  faces: {:?}", faces.iter().map(|f| f.area.round()).collect::<Vec<_>>());
+        println!(
+            "  faces: {:?}",
+            faces.iter().map(|f| f.area.round()).collect::<Vec<_>>()
+        );
     }
 }
 
@@ -110,11 +130,17 @@ fn probe_detalhe_da_janela() {
 fn probe_ancoras_no_toque() {
     let inicial = rede(&[circulo(100.0), quadrado(70.2107)]);
     let face = inicial.face_em([0.0, 0.0]).expect("a lente");
-    println!("ANCORAS gravadas em c=70.2107 (face area {:.0}):", face.area);
+    println!(
+        "ANCORAS gravadas em c=70.2107 (face area {:.0}):",
+        face.area
+    );
     let mut ancoras = Vec::new();
     for &(i, frente) in &face.arcos {
         let a = &inicial.arcos[i];
-        println!("  arco {i} origem={} faixa=({:.4},{:.4}) frente={frente}", a.origem, a.faixa.0, a.faixa.1);
+        println!(
+            "  arco {i} origem={} faixa=({:.4},{:.4}) frente={frente}",
+            a.origem, a.faixa.0, a.faixa.1
+        );
         for t in [0.1, 0.35, 0.65, 0.9] {
             ancoras.push((a.origem, a.em(t), frente));
         }
@@ -122,9 +148,15 @@ fn probe_ancoras_no_toque() {
     for c in [70.2107_f64, 70.7107, 70.9607] {
         let r = rede(&[circulo(100.0), quadrado(c)]);
         let faces: Vec<_> = r.faces().into_iter().filter(|f| f.area > 0.0).collect();
-        println!("\nc={c:.4}  faces={:?}", faces.iter().map(|f| f.area.round()).collect::<Vec<_>>());
+        println!(
+            "\nc={c:.4}  faces={:?}",
+            faces.iter().map(|f| f.area.round()).collect::<Vec<_>>()
+        );
         for (i, a) in r.arcos.iter().enumerate() {
-            println!("  arco {i}: origem={} de={} ate={} faixa=({:.4},{:.4})", a.origem, a.de, a.ate, a.faixa.0, a.faixa.1);
+            println!(
+                "  arco {i}: origem={} de={} ate={} faixa=({:.4},{:.4})",
+                a.origem, a.de, a.ate, a.faixa.0, a.faixa.1
+            );
         }
         for (k, f) in faces.iter().enumerate() {
             println!("  face {k} area={:.0} ciclo={:?}", f.area, f.arcos);
@@ -132,7 +164,9 @@ fn probe_ancoras_no_toque() {
         for &(origem, frac, frente) in &ancoras {
             let arco = r.arco_em(origem, frac);
             let fi = arco.and_then(|a| r.face_de(&faces, a, frente));
-            println!("  ancora(origem={origem}, frac={frac:.4}, frente={frente}) -> arco={arco:?} face={fi:?}");
+            println!(
+                "  ancora(origem={origem}, frac={frac:.4}, frente={frente}) -> arco={arco:?} face={fi:?}"
+            );
         }
     }
 }
@@ -141,12 +175,32 @@ fn probe_ancoras_no_toque() {
 #[ignore = "sonda de diagnostico"]
 fn probe_passeio_no_toque() {
     let exato = (100.0_f64 * 100.0 / 2.0).sqrt();
-    for c in [exato, 70.7107, exato + 1e-4, exato + 1e-2, exato + 0.1, exato + 0.2] {
+    for c in [
+        exato,
+        70.7107,
+        exato + 1e-4,
+        exato + 1e-2,
+        exato + 0.1,
+        exato + 0.2,
+    ] {
         let r = rede(&[circulo(100.0), quadrado(c)]);
-        println!("\nc={c:.10}  d={:+.3e}  arcos={}", (c * c * 2.0).sqrt() - 100.0, r.arcos.len());
-        println!("  nos={:?}", r.nos.iter().map(|n| [(n[0]*1e4).round()/1e4, (n[1]*1e4).round()/1e4]).collect::<Vec<_>>());
+        println!(
+            "\nc={c:.10}  d={:+.3e}  arcos={}",
+            (c * c * 2.0).sqrt() - 100.0,
+            r.arcos.len()
+        );
+        println!(
+            "  nos={:?}",
+            r.nos
+                .iter()
+                .map(|n| [(n[0] * 1e4).round() / 1e4, (n[1] * 1e4).round() / 1e4])
+                .collect::<Vec<_>>()
+        );
         for (i, a) in r.arcos.iter().enumerate() {
-            println!("   arco {i}: origem={} de={} ate={} faixa=({:.6},{:.6})", a.origem, a.de, a.ate, a.faixa.0, a.faixa.1);
+            println!(
+                "   arco {i}: origem={} de={} ate={} faixa=({:.6},{:.6})",
+                a.origem, a.de, a.ate, a.faixa.0, a.faixa.1
+            );
         }
         for (k, f) in r.faces().iter().enumerate() {
             println!("   ciclo {k}: area={:12.4} {:?}", f.area, f.arcos);
@@ -161,10 +215,10 @@ fn probe_passeio_no_toque() {
 fn probe_arco_ponto_por_travessias_de_pares_diferentes() {
     for gap in [1e-2_f64, 1e-6, 1e-10, 1e-14] {
         let contornos = vec![
-            (vec![v(0.0, -60.0), v(0.0, 60.0)], false),      // a parede cortada duas vezes
+            (vec![v(0.0, -60.0), v(0.0, 60.0)], false), // a parede cortada duas vezes
             (vec![v(-60.0, 0.0), v(60.0, 0.0)], false),
             (vec![v(-60.0, gap), v(60.0, gap)], false),
-            (vec![v(-60.0, -40.0), v(60.0, -40.0)], false),  // fecha uma regiao la' em baixo
+            (vec![v(-60.0, -40.0), v(60.0, -40.0)], false), // fecha uma regiao la' em baixo
             (vec![v(-40.0, -60.0), v(-40.0, 60.0)], false),
         ];
         let r = rede(&contornos);
@@ -176,8 +230,12 @@ fn probe_arco_ponto_por_travessias_de_pares_diferentes() {
         println!(
             "gap={gap:.0e}  arcos={}  curtos={curtos:?}  faces={:?}  regiao_baixo={:?}",
             r.arcos.len(),
-            faces.iter().map(|f| (f.area * 100.0).round() / 100.0).collect::<Vec<_>>(),
-            r.face_em([-20.0, -20.0]).map(|f| (f.area * 100.0).round() / 100.0),
+            faces
+                .iter()
+                .map(|f| (f.area * 100.0).round() / 100.0)
+                .collect::<Vec<_>>(),
+            r.face_em([-20.0, -20.0])
+                .map(|f| (f.area * 100.0).round() / 100.0),
         );
     }
 }

@@ -229,3 +229,26 @@ pub(crate) fn default_interp() -> ph2d_anim::Interp {
         ph2d_anim::EasingMode::InOut,
     ))
 }
+
+/// ⭐⭐⭐ **O NÚMERO QUE CADA ROW MOSTRA** — report do Enio, 2026-09-04: *"o painel não mostra as
+/// propriedades animadas (os números não mudam em tempo real com a animação)"*.
+///
+/// Mora AQUI, ao lado do [`sample_prop_value`], porque é o quarto consumidor da mesma pergunta —
+/// *quanto vale esta propriedade no mundo?* — e as outras três já a fazem por esta porta (a semente
+/// do `rest`, a tecla K, o auto-key). Uma segunda leitura noutro ficheiro seria a superfície pela
+/// qual o readout e a chave que o K grava passam a discordar.
+///
+/// ⚠️ **É o MUNDO e não a curva**, e a diferença é o defeito irmão deste report: no mesmo dia uma
+/// forma filtrada ficou opaca com a curva a dizer `0`. Um readout amostrado da curva teria escrito
+/// `0,00` e concordado com o defeito.
+pub(crate) fn publish_track_values(view: &mut ph2d_timeline::TimelineViewSnapshot, world: &World) {
+    let ph2d_timeline::TimelineViewSnapshot { tracks, values, .. } = view;
+    values.publish(tracks, |entity, prop| {
+        match sample_prop_value(world, entity, prop) {
+            Some(ph2d_anim::AnimValue::Float(v)) => Some(v),
+            // Um canal sem escalar de mundo (`TimeRemap`, `Position`) ou um objecto que morreu:
+            // a row fica SEM número, nunca com um zero (ver `TrackValues::get`).
+            _ => None,
+        }
+    });
+}

@@ -519,6 +519,13 @@ pub(crate) fn bake_rgba_many(
             // Medido: com um grupo de 2, a vista emitia `160` cópias e o assado `80`, de uma cor só.
             // *Uma fronteira declarada sem se medir se ela existe é uma fronteira inventada.*
             &crate::brush_live::resolve(scene, object_of, xforms),
+            // ⛔ **O ESTILO DO QUADRO fica de fora, e é MEDIDO, não presumido.** O chamador tem o
+            // `VecViewState` em mãos (o `vec_view` do quadro), então a fronteira não é de alcance:
+            // é do MEMO. Este assado é memoizado pelo `texture_pattern_live`, cuja chave não
+            // carrega estilo nenhum — passá-lo aqui daria a metade do defeito que a linha de
+            // 2026-09-04 curou no FX (*pixels velhos que ninguém vê que são velhos*), agora na arte
+            // de uma estampa. Ligá-lo é uma wave, e ela começa pela chave daquele memo.
+            None,
             id,
             camera,
             // ⭐⭐ **A ESCALA DO TECTO entra aqui**, e é o que faz o doc do `MAX_TILE_SIDE` deixar

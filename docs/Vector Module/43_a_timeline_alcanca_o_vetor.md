@@ -178,3 +178,112 @@ a medição ao lado.
 `PH2D_VEC_FADE_SMOKE=1` (`shells/desktop/src/vec_fade_smoke.rs`) — duas estrelas com a **mesma**
 curva de opacidade (`1 → 0 → 1` em 4 s); a da direita tem um **brilho**. As duas têm de desvanecer
 juntas e voltar a opaco. A da direita cravada opaca = o vão do memo de FX voltou.
+
+---
+
+## §7 — ⭐⭐⭐ Os DOIS reports do smoke de 2026-09-04, e por que eles são um par
+
+> *"a da direita não ficou transparente."*
+> *"Outra coisa: o painel não mostra as propriedades animadas (os números não mudam em tempo real
+> com a animação)."*
+
+Os dois no mesmo smoke, e a leitura conjunta é o achado: **a curva estava certa, o desenho não, e
+não havia no ecrã um único número que denunciasse a diferença.**
+
+### §7.1 — ⛔⛔ Corrigir a CHAVE de um memo não corrige o DESENHO
+
+A §3 pôs a forma **pintada** na chave, e concluiu daí que o fade chegava à forma filtrada. Não
+chegava. O `cook_batch` rasteriza por [`ph2d_vec_render::draw_path_isolated`], que recebia a cena,
+as poses, os ladrilhos e os pincéis — e **nunca** o [`BoundStyle`]. Ele desenhava o **autorado**.
+
+⇒ O efeito líquido da §3 sozinha foi **pagar o relógio sem mudar a resposta**: a chave passava a
+diferir a cada quadro do fade, a forma re-cozinhava 60 vezes por segundo, e as 60 texturas eram
+**iguais e opacas**. *Um memo que missa e produz a mesma coisa é um defeito com custo.*
+
+⚠️ **A porta já tinha sido mordida pela mesma classe, com outra tinta:** o report de 2026-08-27
+(*"filters anula pattern"*) foi o `tile` a faltar nesta mesmíssima assinatura, e o doc dela já
+escrevia a lei violada — *"passa pela MESMA `draw_path` do `dispatch`"*. ⇒ **`bound` entra como
+parâmetro obrigatório**, como o `tile` entrou: *um argumento novo com um default é uma porta nova
+sem nome*.
+
+**A porta única, dentro da porta:** o estilo viaja no [`Job`] (`fx_live_memo`), que é onde a chave
+foi feita — o desenho não o volta a perguntar ao `VecViewState`. Duas consultas seriam a superfície
+pela qual a chave afirma sobre uma arte e a textura recebe outra.
+
+| Chamador de `draw_path_isolated` | Passa | Porquê |
+|---|---|---|
+| `fx_live::cook_batch` | `job.bound` | a metade que faltava |
+| `motion_object_bake::bake_rgba_many` | `None` | ⛔ **fronteira de MEMO, não de alcance** — o chamador tem o `vec_view`, mas a chave do `texture_pattern_live` não carrega estilo nenhum: passá-lo ali daria *pixels velhos que ninguém vê que são velhos* na arte de uma estampa. Ligá-lo começa por aquela chave |
+| `pattern_tests` | `None` | fixtura sem projecção de quadro |
+
+### §7.2 — ⭐⭐⭐ O painel não mostrava número nenhum, e a régua tinha de vir do MUNDO
+
+O dope-sheet nomeia a row (*"Fade · Opacity"*) e desenha os diamantes; **valor, nunca teve** — é a
+coluna que o After Effects põe ao lado do nome. Hoje tem.
+
+⚠️⚠️ **A escolha que decide tudo: o número vem do MUNDO, não da curva.** O painel já sabe amostrar
+a curva desta row (é o que desenha o gráfico) e ler dali seria de graça — e seria **um espelho**:
+no report de cima a curva dizia `0` sobre uma estrela opaca, e um readout tirado dela teria escrito
+`0.00` **concordando com o defeito**. *Uma régua que partilha a lei do produto não acusa nada.*
+Com o número vindo do mundo, os dois reports deixam de poder acontecer em silêncio: forma opaca com
+`0.00` ao lado é o desenho a ignorar a opacidade; forma que desvanece com o número parado é a
+publicação.
+
+⇒ A porta é a **mesma da tecla K** (`sample_prop_value`), que é a 3.ª leitora do §4.2 — agora com
+um quarto consumidor, de propósito: *quatro consumidores por uma porta, nunca uma leitura nova*.
+
+| Peça | Onde | Papel |
+|---|---|---|
+| `TrackValues` | `ph2d-timeline/src/track_values.rs` | o mapa `alvo → valor`, com a publicação como **porta única** (limpa e re-preenche: o `bevy` recicla bits, e uma entrada velha passa a descrever OUTRO objecto) |
+| `TimelineViewSnapshot::values` | `snapshot.rs` | 3.º campo com a forma do `object_names`, preenchido pela shell **depois** do `rebuild` |
+| `publish_track_values` | `render_loop/timeline_bridge_keys.rs` | mora ao lado do `sample_prop_value` — o 4.º consumidor da mesma pergunta |
+| `tracks_value` | `ph2d-panel-timeline` | a repartição da coluna **e** os dois textos, numa função só |
+
+⚠️ **A largura de um é o que sobra do outro**, e por isso o nome e o número saem da MESMA função: em
+duas, a que envelhecesse escreveria por cima da outra. A coluna é arrastável e o piso dela (56 px)
+não comporta os dois ⇒ *no aperto sai o NÚMERO, nunca o nome* — quem identifica a row é o nome.
+
+⚠️⚠️ **E a coluna cresceu exactamente a fatia do número** (`LABEL_COL_W` `132 → 176`): a 1.ª versão
+metia o readout dentro dos 132 px de sempre, e o nome perdia 44 — *"Fade · Opacity"* saía
+`"Fade · Opa…"`. **Cortar o nome da row para caber o valor é trocar uma leitura por outra**, e o
+report não pedia isso; o preço é 44 px de área de tempo, e o piso dela (`MIN_TIME_W = 120`) não se
+mexe. *Uma feature que cabe «de graça» num painel cheio quase sempre está a ser paga por um vizinho
+que ninguém mediu.*
+
+⚠️ **A precisão cede antes da largura** (`{v:.2}` até 100, depois `.1`, depois `.0`): um readout
+cortado (`1234.…`) mente sobre a ordem de grandeza; um arredondado não. A banda de baixo tem as
+**mesmas duas casas do editor de gráfico** — duas superfícies com precisões diferentes leem-se como
+dois valores.
+
+⚠️ **Um canal sem escalar de mundo fica SEM número, nunca com zero** (`TimeRemap` é um relógio,
+`Position` é distância ao longo de uma trajectória, e as duas recusam na porta de amostragem com o
+motivo escrito lá). *Um zero de «não medido» e um de «vale zero» são o mesmo byte.*
+
+### §7.3 — Os gates
+
+| Gate | Onde | Afirma |
+|---|---|---|
+| `the_isolated_draw_fades_with_the_frames_resolved_style` | `ph2d-vec-render/src/standalone_tests.rs` | a forma isolada honra o estilo — **e `alpha = 255` é byte-idêntico** (sem essa metade a cura compra correcção com um re-cook por quadro) |
+| `the_derived_geometry_fades_with_the_same_style` | idem | o outro braço (offset/pattern/espelho), que a 1.ª fixtura não alcançava |
+| `the_job_carries_the_style_the_key_was_built_from` | `fx_live_memo_tests.rs` | o desenho recebe **o mesmo** estilo que entrou na chave |
+| `the_batch_draws_with_the_frames_resolved_style` | `shells/desktop/tests/the_atlas_clips_every_cell.rs` | arch-gate — a chamada precisa de GPU, e é o idioma que aquele ficheiro já usa para as outras duas leis do `cook_batch` |
+| `two_rows_of_the_same_object_carry_different_numbers` | `track_values_tests.rs` | a chave é o ALVO (por `entity`, X e Y mostrariam o mesmo número) |
+| `a_channel_with_no_number_publishes_nothing_not_zero` | idem | a ausência não vira zero pintado |
+| `a_row_that_left_takes_its_number_with_it` | idem | a publicação limpa |
+| `the_row_readout_comes_from_the_world_and_not_from_the_curve` | `timeline_bridge_tests.rs` | a costura mundo → snapshot, com `TimeRemap` a ficar sem número |
+| `the_readout_never_outgrows_its_slot` · `the_common_band_matches_the_graph_editors_precision` · `a_squeezed_column_drops_the_number_instead_of_the_name` | `tracks_value_tests.rs` | as leis da precisão e da largura |
+| `the_number_reaches_the_glyphs` | idem | ⭐⭐⭐ **chega a TINTA** — a régua é a contagem de GLIFOS da cena Vello, não altura nem rectângulo (achado §4.2 da auditoria do `source.lsystem`: espaço reservado deixa um gate de altura verde com a pintura apagada) |
+
+**Mutações: 4 corridas, 4 morreram** — `path` em vez de `path.painted(bound)` · `item` em vez de
+`item.painted(bound)` · `mostra = false` (o número deixa de ser pintado, e só o gate dos glifos o
+apanha) · e o controlo do §4.3 (o filtro que casa zero) foi corrido em todas.
+
+### §7.4 — ⏳ O que este report NÃO fecha
+
+- **O painel Vector continua sem uma linha *Opacity* do OBJECTO.** As duas que ele tem
+  (*Stroke Opacity* / *Fill Opacity*) são a **tinta da ferramenta**, não a aparência da forma
+  selecionada — escrever a opacidade conduzida nelas seria mentir sobre o que o slider edita. Uma
+  opacidade de objecto **autorada** é o item 2 do estudo 42 (junto com os modos de mistura) e é
+  wave própria: ela vive no documento, ao contrário desta, que é vista.
+- **A arte de uma estampa continua a assar o autorado** — §7.1, a linha do `motion_object_bake`.
+- Espessura, cor e trim seguem como no §5.

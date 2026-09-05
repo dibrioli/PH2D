@@ -285,6 +285,10 @@ pub struct TimelineViewSnapshot {
     /// that would not survive a reload either) has none, and the label falls back to the
     /// `#nnnn` short id that this app has shown since the dope-sheet existed.
     pub object_names: std::collections::BTreeMap<u64, String>,
+    /// **O que cada row VALE agora** — ver [`crate::TrackValues`] para o porquê de vir do MUNDO e
+    /// não da curva. Terceiro campo com a forma de [`Self::object_names`]: a shell preenche-o
+    /// depois da [`Self::rebuild`], porque só ela sabe o que uma propriedade vale.
+    pub values: crate::TrackValues,
     /// The rigid simulation is armed on the transport (ADR-0131).
     pub simulate_physics: bool,
     /// O onion da timeline (ADR-0142): o painel lê ISTO para pintar os controles no estado

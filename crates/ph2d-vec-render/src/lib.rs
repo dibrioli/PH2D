@@ -11,8 +11,8 @@
 //! sub-árvore que mudou — a alavanca de escala do ADR-0108) é o próximo passo.
 
 use ph2d_vec_scene::{
-    FillRule as VecFillRule, LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecPath, VecPathId,
-    VecScene, VecViewState, VecXforms,
+    BoundStyle, FillRule as VecFillRule, LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecPath,
+    VecPathId, VecScene, VecViewState, VecXforms,
 };
 use ph2d_vector::{
     Affine, BezPath, Brush, Cap, Circle, Color, ColorStop, Fill, Gradient, Join, Point, Rect,

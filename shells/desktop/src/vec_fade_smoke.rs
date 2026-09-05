@@ -26,6 +26,14 @@
 //!    voltou.
 //! 3. **No topo (`t = 0` e `t = 4`) as duas voltam a OPACO**, não a um degrau abaixo. Um `254` em
 //!    vez de `255` é invisível numa cor chapada e visível na borda contra o fundo.
+//! 4. ⭐ **As DUAS rows da régua mostram um número que ANDA** (2026-09-04) — `1.00` → `0.00` →
+//!    `1.00`, ao lado de *"Fade · Opacity"* e *"Fade FX · Opacity"*. Ele vem do MUNDO e não da
+//!    curva, e é por isso que ele é a régua do ponto 2: **se a da direita ficar opaca com o número
+//!    dela a marcar `0.00`, o desenho é que não está a honrar a opacidade** — foi exactamente esse
+//!    o par de defeitos reportado neste dia.
+//!
+//! ⚠️ O número só é pintado enquanto a coluna de nomes tiver largura para ele **e** para o nome
+//! (arraste a divisória: no piso ela larga o número, nunca o nome).
 //!
 //! ⚠️ Se a linha `[vec-fade-smoke]` não aparecer, PARE: a cena não montou e o resto não significa
 //! nada.
@@ -106,9 +114,7 @@ impl crate::App {
                 &mut gfx.sim,
                 &self.vec_entities,
                 &[filtered],
-                Some(VecFilter {
-                    ops: vec![glow()],
-                }),
+                Some(VecFilter { ops: vec![glow()] }),
             );
             assert_eq!(armed, 1, "[vec-fade-smoke] o filtro nao pendurou");
             (self.vec_entities[&plain], self.vec_entities[&filtered])
@@ -128,7 +134,8 @@ impl crate::App {
         eprintln!(
             "[vec-fade-smoke] duas estrelas com a MESMA curva de opacidade (1 -> 0 -> 1 em 4 s); a \
              da direita tem um brilho. DE' PLAY: as duas tem de desvanecer JUNTAS e voltar a \
-             opaco. A da direita cravada opaca = o vao do memo de FX voltou."
+             opaco, e os numeros das DUAS rows da regua tem de andar com elas (1.00 -> 0.00 -> \
+             1.00). Forma opaca com o numero dela em 0.00 = o desenho ignora a opacidade."
         );
     }
 }

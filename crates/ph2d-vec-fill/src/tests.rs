@@ -634,12 +634,7 @@ fn circulo(r: f64) -> (Vec<VecVertex>, bool) {
 /// parede do círculo de raio `100` em `c = 70,7107`.
 fn quadrado_com_quina(c: f64) -> (Vec<VecVertex>, bool) {
     (
-        vec![
-            v(-150.0, -150.0),
-            v(c, -150.0),
-            v(c, c),
-            v(-150.0, c),
-        ],
+        vec![v(-150.0, -150.0), v(c, -150.0), v(c, c), v(-150.0, c)],
         true,
     )
 }
@@ -659,7 +654,9 @@ fn a_wall_that_only_passes_near_another_is_not_the_same_wall() {
     let r = rede(&[circulo(100.0), quadrado_com_quina(70.5107)]);
     let dentro = r.face_em([0.0, 0.0]).expect("circulo E quadrado");
     let so_circulo = r.face_em([0.0, 85.0]).expect("circulo, fora do quadrado");
-    let so_quadrado = r.face_em([-120.0, -120.0]).expect("quadrado, fora do circulo");
+    let so_quadrado = r
+        .face_em([-120.0, -120.0])
+        .expect("quadrado, fora do circulo");
     assert_ne!(
         dentro, so_circulo,
         "a quina a 0,28 da parede fundiu a lente com a calota — a parede foi comida"

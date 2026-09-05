@@ -20,20 +20,24 @@ use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_text_centered, rect_to_vello, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::widget::panel_chrome::clamp_menu_to_viewport;
 use ph2d_editor_core::widget::{Button, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{Extrap, SelectedKey, TimelineViewSnapshot};
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, BezPath, Brush, Fill, Stroke};
 
 use crate::ids;
 use crate::state::TimelinePanelState;
 use crate::{geom, graph, graph_paint, summary_paint};
 
-/// Width of the left label column (property + object tag).
-pub(crate) const LABEL_COL_W: f32 = 132.0; // LITERAL-PX-OK: track-label column width
+/// Width of the left label column (property + object tag + the live value).
+///
+/// ⚠️ **Era `132` e cresceu exactamente a fatia do número** (`VALUE_W` + o respiro, 2026-09-04):
+/// o readout de valor foi ACRESCENTADO à coluna, não trocado pelo nome — com `132` o nome perdia
+/// ~40 px e *"Fade · Opacity"* passava a sair cortado, que é **o nome da própria row**. O preço é
+/// 44 px de área de tempo, e o piso dela (`MIN_TIME_W`) não se mexe.
+pub(crate) const LABEL_COL_W: f32 = 176.0; // LITERAL-PX-OK: track-label column width
 /// Width of the expand/collapse twirl at the head of each row.
 const TWIRL_W: f32 = 24.0; // LITERAL-PX-OK: row twirl hit column width
 /// Half the twirl triangle's flat edge.
@@ -247,29 +251,21 @@ pub(crate) fn paint_rows(
             },
         );
         ctx.host.hit_index_mut().register(row_id, row_hit);
-        let font = TypeToken::Sm.px();
         let text = track_label(snap.object_name(track.entity), track.entity, track.prop);
         let color = if track.missing {
             ColorToken::TimelineMissing
         } else {
             ColorToken::Text1
         };
-        let label_x = region.x + TWIRL_W;
-        // Elided, never wrapped. In `paint_text`, `max_width` is a WRAP budget:
-        // a name one pixel too long silently became two lines and spilled over
-        // the row below it.
-        // NOTE the wording above avoids a lone apostrophe on purpose — the
-        // panel LOC gate parser treats one inside a comment as a char literal
-        // and stops counting braces (see FN_OVERAGE_OK in that test).
-        paint_text_elided(
-            ctx.text_system,
-            ctx.scene,
-            &text,
-            label_x,
-            y + (ROW_H_PX - font) * 0.5,
-            font,
-            (label_w - TWIRL_W - Spacing::Xs.px()).max(0.0),
-            resolve(color, theme),
+        // O nome (elidido, nunca quebrado) e o VALOR VIVO da propriedade — os dois no irmão
+        // `tracks_value`, porque a fatia de um é o que sobra do outro.
+        crate::tracks_value::paint_name_and_value(
+            ctx,
+            theme,
+            snap,
+            track,
+            (&text, color),
+            (region.x + TWIRL_W, region.x + label_w, y),
         );
         paint_lane_keys(ctx, theme, track, view, preview_dx, y, lane);
         if h > ROW_H_PX {

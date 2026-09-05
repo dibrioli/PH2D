@@ -254,12 +254,7 @@ fn a_fill_that_won_no_face_produces_no_shape() {
 /// Um quadrado FECHADO com `fill`, com a quina inferior-esquerda em `(x, y)` e lado `l`.
 fn forma_pintada(scene: &mut VecScene, x: f64, y: f64, l: f64) -> u64 {
     scene.push_path(VecPath {
-        verts: vec![
-            v(x, y),
-            v(x + l, y),
-            v(x + l, y + l),
-            v(x, y + l),
-        ],
+        verts: vec![v(x, y), v(x + l, y), v(x + l, y + l), v(x, y + l)],
         closed: true,
         fill: Some(ph2d_vec_scene::Paint::solid(ph2d_vec_scene::Rgba8::new(
             10, 20, 30, 255,
@@ -278,14 +273,12 @@ fn forma_pintada(scene: &mut VecScene, x: f64, y: f64, l: f64) -> u64 {
 fn a_bucket_fill_already_under_the_click_is_deleted_not_stacked() {
     let mut scene = VecScene::new();
     let velho = forma_pintada(&mut scene, 0.0, 0.0, 10.0);
-    let (baldes, formas) = tinta_sob(
-        &scene,
-        &VecXforms::new(),
-        &|id| id == velho,
-        [5.0, 5.0],
-    );
+    let (baldes, formas) = tinta_sob(&scene, &VecXforms::new(), &|id| id == velho, [5.0, 5.0]);
     assert_eq!(baldes, vec![velho], "o preenchimento velho tem de sair");
-    assert!(formas.is_empty(), "ele nao e' uma forma, e' a propria regiao");
+    assert!(
+        formas.is_empty(),
+        "ele nao e' uma forma, e' a propria regiao"
+    );
 }
 
 /// ⭐⭐⭐ **TODAS as formas pintadas sob o ponto perdem o `fill`, e não só a da frente.**
@@ -378,8 +371,5 @@ fn the_bucket_erases_its_own_paint_and_only_strips_the_shapes() {
         sobrevivente.fill.is_none(),
         "…mas sem a tinta antiga, que e' o que o balde veio substituir"
     );
-    assert!(
-        !sobrevivente.verts.is_empty(),
-        "e com a geometria intacta"
-    );
+    assert!(!sobrevivente.verts.is_empty(), "e com a geometria intacta");
 }

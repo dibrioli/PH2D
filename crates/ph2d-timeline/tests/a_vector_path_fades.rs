@@ -22,7 +22,9 @@ fn s(t: f64) -> RationalTime {
 
 /// Uma entidade de caminho vetorial **como a shell a cria** — e, de propósito, **sem `Sprite`**.
 fn vector_path(w: &mut World) -> u64 {
-    w.spawn((Transform::default(), VecPathRef(42))).id().to_bits()
+    w.spawn((Transform::default(), VecPathRef(42)))
+        .id()
+        .to_bits()
 }
 
 /// ⭐⭐⭐ **UMA TRACK DE OPACIDADE DESVANECE UM CAMINHO VETORIAL.**
@@ -177,7 +179,12 @@ fn the_bridge_is_exclusive_and_never_writes_both_substrates() {
         "a ponte do vetor tem de receber o valor"
     );
     assert!(
-        (w.get::<ph2d_render::Sprite>(e).expect("a sprite esta' la'").tint[3] - 1.0).abs() < 1e-6,
+        (w.get::<ph2d_render::Sprite>(e)
+            .expect("a sprite esta' la'")
+            .tint[3]
+            - 1.0)
+            .abs()
+            < 1e-6,
         "a MESMA escrita caiu tambem na sprite — o valor passa a saltar entre dois substratos"
     );
 }

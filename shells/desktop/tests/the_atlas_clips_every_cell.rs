@@ -105,3 +105,32 @@ fn the_batch_rasterises_in_a_single_pass() {
         "o `cook_batch` faz mais de um render do Vello"
     );
 }
+
+/// ⭐⭐⭐ **A CÉLULA É RASTERIZADA COM O ESTILO DO QUADRO** — report do Enio, 2026-09-04:
+/// *"a da direita não ficou transparente"*.
+///
+/// Irmão dos dois acima, e pela MESMA razão de existirem: a chamada mora no `cook_batch`, que
+/// precisa de GPU. As metades testáveis já têm gate — o `draw_path_isolated` honra o
+/// [`ph2d_vec_scene::BoundStyle`] (`ph2d-vec-render`), e o `job_for` carrega no `Job` o estilo com
+/// que fez a chave (`fx_live_memo_tests`). O que falta é a terceira: que este laço **passe** esse
+/// estilo em vez de `None`.
+///
+/// ⚠️ **Sem ela o defeito volta com a suíte inteira verde e o memo a MISSAR todo quadro** — a
+/// forma re-cozinha 60 vezes por segundo e devolve sempre os mesmos pixels opacos.
+///
+/// A asserção pede `job.bound` e não um caminho exacto, pela lição escrita no gate acima: ela tem
+/// de sobreviver a um rename de campo e continuar a falhar no que importa — desenhar o AUTORADO.
+#[test]
+fn the_batch_draws_with_the_frames_resolved_style() {
+    let block = batch_scene_block();
+    assert!(
+        block.contains("draw_path_isolated"),
+        "o gate não está a ler o laço que desenha as formas — o âncora do `find` apodreceu"
+    );
+    assert!(
+        block.contains("job.bound"),
+        "a forma é rasterizada SEM o estilo resolvido do quadro — desvanecer, re-vestir com um \
+         token ou engrossar por token uma forma FILTRADA não muda um pixel, e o memo missa todo \
+         quadro a produzir a mesma arte velha"
+    );
+}

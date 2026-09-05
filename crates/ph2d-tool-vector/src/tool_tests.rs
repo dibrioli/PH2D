@@ -671,5 +671,9 @@ fn the_bucket_ink_is_not_the_selections_style() {
         !t.take_colour_authored().0,
         "e escolher a tinta nao pode soltar a ligacao de cor da forma escolhida"
     );
-    assert_eq!(t.fill_rgba(), [40, 50, 60, 255], "mas a tinta ficou escolhida");
+    assert_eq!(
+        t.fill_rgba(),
+        [40, 50, 60, 255],
+        "mas a tinta ficou escolhida"
+    );
 }

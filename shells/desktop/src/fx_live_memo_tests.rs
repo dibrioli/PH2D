@@ -78,9 +78,19 @@ fn key_view(
 ) -> super::FxKey {
     let live = LiveGeometry::new();
     let sil = LiveGeometry::new();
-    job_for(scene, sim, map, xforms, &live, &sil, view, Affine::IDENTITY, id)
-        .expect("a forma tem filtro, caixa e pilha nao-vazia")
-        .key
+    job_for(
+        scene,
+        sim,
+        map,
+        xforms,
+        &live,
+        &sil,
+        view,
+        Affine::IDENTITY,
+        id,
+    )
+    .expect("a forma tem filtro, caixa e pilha nao-vazia")
+    .key
 }
 
 /// **CONTROLE: nada mudou ⇒ o memo ACERTA.**
@@ -311,5 +321,50 @@ fn fading_a_filtered_shape_misses_the_memo_instead_of_keeping_old_pixels() {
     assert!(
         with_alpha(Some(128)) != with_alpha(Some(64)),
         "dois pontos de um fade dao a MESMA chave — o desvanecimento congela no 1.o quadro"
+    );
+}
+
+/// ⭐⭐⭐ **O QUE O MEMO AFIRMA É O QUE O RASTERIZADOR DESENHA** — report do Enio, 2026-09-04:
+/// *"a da direita não ficou transparente"*.
+///
+/// O gate acima prova que desvanecer uma forma filtrada **erra** o memo. Isso não bastava: o
+/// `cook_batch` desenhava a forma **AUTORADA**, então o miss acontecia todo quadro e re-cozinhava
+/// os mesmos pixels opacos — *o relógio pago, o defeito intacto*. O `Job` passa a carregar o estilo
+/// com que a chave foi feita, e o desenho lê-o dali.
+///
+/// **Mutação que tem de sangrar:** o `cook_batch` voltar a passar `None`, ou o `job_for` a resolver
+/// o estilo uma segunda vez em vez de o guardar (aí os dois podem discordar em silêncio).
+#[test]
+fn the_job_carries_the_style_the_key_was_built_from() {
+    let (scene, sim, map, xforms, id) = fixture();
+    let mut view = VecViewState::default();
+    view.bound.push(BoundStyle {
+        path: id,
+        alpha: Some(77),
+        ..BoundStyle::default()
+    });
+    let live = LiveGeometry::new();
+    let sil = LiveGeometry::new();
+    let job = job_for(
+        &scene,
+        &sim,
+        &map,
+        &xforms,
+        &live,
+        &sil,
+        &view,
+        Affine::IDENTITY,
+        id,
+    )
+    .expect("a forma tem filtro, caixa e pilha nao-vazia");
+    assert_eq!(
+        job.bound.as_ref(),
+        view.bound_style(id),
+        "o desenho tem de receber EXACTAMENTE o estilo que entrou na chave"
+    );
+    assert_eq!(
+        job.bound.and_then(|b| b.alpha),
+        Some(77),
+        "e ele tem de conter a opacidade viva, senao a forma rasteriza opaca"
     );
 }

@@ -731,11 +731,11 @@ mod vec_cut_line;
 /// tempo abre para a opacidade de um caminho vetorial (`ph2d_ecs::VecDrivenStyle`).
 /// Irmão do `vec_widget_drive`: o corte é *quem produz o número*, nunca o que se faz com ele.
 mod vec_driven_style;
+mod vec_entities;
+mod vec_expand;
 /// ⭐ A cena de smoke do **fade vetorial** (`PH2D_VEC_FADE_SMOKE=1`) — a linha do tempo a
 /// desvanecer um caminho, com e sem filtro raster.
 mod vec_fade_smoke;
-mod vec_entities;
-mod vec_expand;
 mod vec_font;
 #[cfg(feature = "panel-vector")]
 mod vec_font_preview;

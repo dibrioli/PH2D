@@ -180,12 +180,12 @@ mod vec_clip_content;
 mod vec_component;
 mod vec_contour;
 mod vec_cut_path;
+mod vec_driven_style;
 mod vec_filter;
 mod vec_frame;
 mod vec_layout;
 mod vec_offset;
 mod vec_pattern_path;
-mod vec_driven_style;
 mod vec_pattern_rotation;
 mod vec_resize_box;
 mod vec_stroke_profile;
@@ -204,6 +204,7 @@ pub use vec_clip_content::VecClipContent;
 pub use vec_component::{InstanceOverride, OverrideSlot, VecComponentMain, VecInstance};
 pub use vec_contour::{MAX_CONTOUR_STEPS, VecContour};
 pub use vec_cut_path::VecCutPath;
+pub use vec_driven_style::VecDrivenStyle;
 // ⚠️ `FxOp`/`FxKindSpec` são RE-EXPORTADOS da folha `ph2d-fx-op` (2026-08-21), onde o degrau
 // passou a morar para poder viajar numa pose de estado de UI. O re-export é o que mantém
 // `ph2d_ecs::FxOp` a funcionar em todos os consumidores sem uma linha mudada neles.
@@ -215,7 +216,6 @@ pub use vec_layout::{
 };
 pub use vec_offset::VecOffset;
 pub use vec_pattern_path::VecPatternPath;
-pub use vec_driven_style::VecDrivenStyle;
 pub use vec_pattern_rotation::VecPatternRotation;
 pub use vec_resize_box::{VecResizeBox, default_for as resize_box_default, resizes_box};
 pub use vec_stroke_profile::VecStrokeProfile;

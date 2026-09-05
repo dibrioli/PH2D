@@ -488,7 +488,12 @@ impl crate::App {
             return false;
         };
         // ⭐⭐⭐ **A TINTA QUE JÁ ESTÁ AQUI SAI ANTES** — ver [`apagar_tinta_sob`].
-        apagar_tinta_sob(&mut gfx.vec_scene, &xf, &|id| e_fill.contains(&id), hit.seed);
+        apagar_tinta_sob(
+            &mut gfx.vec_scene,
+            &xf,
+            &|id| e_fill.contains(&id),
+            hit.seed,
+        );
         let nova = VecPath {
             fill: Some(ph2d_vec_scene::Paint::solid(tinta)),
             ..hit.face

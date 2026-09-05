@@ -381,6 +381,7 @@ fn the_isolated_rasterisation_honours_the_pattern_tile() {
             &crate::LiveGeometry::new(),
             tiles,
             &crate::BrushArts::new(),
+            None,
             id,
             Affine::IDENTITY,
             Affine::IDENTITY,

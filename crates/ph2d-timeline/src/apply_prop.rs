@@ -89,9 +89,9 @@ pub(crate) fn write_prop(
         if let Some(mut d) = world.get_mut::<ph2d_ecs::VecDrivenStyle>(entity) {
             d.alpha = Some(alpha);
         } else {
-            world.entity_mut(entity).insert(ph2d_ecs::VecDrivenStyle {
-                alpha: Some(alpha),
-            });
+            world
+                .entity_mut(entity)
+                .insert(ph2d_ecs::VecDrivenStyle { alpha: Some(alpha) });
         }
         return;
     }

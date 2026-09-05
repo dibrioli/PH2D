@@ -306,6 +306,10 @@ impl FxLive {
                 // lugar** do desenho, então uma forma cuja rasterização ignore o pincel perde-o ao
                 // ligar um filtro. *Uma segunda porta de desenho esquece a tinta seguinte.*
                 brushes,
+                // ⭐⭐⭐ **E a tinta seguinte foi o ESTILO DO QUADRO** (report do Enio, 2026-09-04).
+                // Vem do `Job` — a MESMA leitura que a chave do memo usou —, nunca de uma segunda
+                // consulta ao `VecViewState`.
+                job.bound.as_ref(),
                 job.id,
                 camera,
                 Affine::translate((

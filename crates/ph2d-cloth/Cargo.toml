@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-cloth"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# O solver de tecido do pincel de Cloth (W10) — **Vertex Block Descent**
+# (Chen, Liu, Yang & Yuksel, SIGGRAPH 2024), portado dos papers e das referências
+# PERMISSIVAS (Gaia, Apache-2.0; avbd-demo, MIT; spg, MIT). A pesquisa que o
+# escolheu, a triagem de licença e o que ficou de fora estão em
+# `docs/3D/cloth/01_pesquisa_o_estado_da_arte.md`.
+#
+# ZERO dependências, de propósito: é LEI PURA, como a `ph2d-platformer` e a
+# `ph2d-arclen`. Ela não sabe o que é uma `Mesh`, um pincel ou uma câmera — recebe
+# triângulos, posições e uma máscara de pregados, e devolve posições. É isso que
+# a torna gateável sem GPU, sem janela e sem escultura, e é isso que impede o
+# solver de crescer para dentro do módulo.
+
+[lib]
+
+[dependencies]

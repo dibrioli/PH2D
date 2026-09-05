@@ -54,7 +54,7 @@ vértices: nada disso está na conta.
 | ano | método | o que traz | serve a um pincel? |
 |---|---|---|---|
 | 2003 | **Discrete Shells** (Grinspun, Hirani, Desbrun, Schröder) | energia de dobra por *hinge* (dois triângulos numa aresta interior) | ✅ é a peça de DOBRA, e é o que dá escala às pregas |
-| 2006 | **Quadratic Bending / Discrete Quadratic Curvature** (Bergou et al.) | dobra isométrica com **Hessiana constante e semi-definida positiva** | ⭐ ver §5 — a constância vale ouro aqui |
+| 2006 | **Quadratic Bending / Discrete Quadratic Curvature** (Bergou et al.) | dobra isométrica com **Hessiana constante e semi-definida positiva** | ⛔ **REFUTADO na implementação — §5**: a propriedade é real e a hipótese dela é **repouso PLANO**, que uma escultura nunca é |
 | 2007 | **PBD** (Müller, Heidelberger, Hennix, Ratcliff) | projeção de restrições, sem forças | ⛔ a rigidez **depende do número de iterações** e do passo |
 | 2014 | **Projective Dynamics** (Bouaziz et al.) | pré-fatoração global, iterações baratíssimas | ⛔ §6 — a amortização precisa de um sistema FIXO, e a pegada muda a cada evento |
 | 2015 | **Chebyshev** (Huamin Wang) | aceleração de ponto fixo | ⚠️ é um acelerador, não um método; o VBD já o incorpora |
@@ -189,16 +189,38 @@ observar o que ele faz, nunca o que ele é por dentro.
 | peça | fonte | por que esta |
 |---|---|---|
 | **membrana (estiramento/cisalhamento)** | **StVK** — a escolha do próprio paper do VBD para tecido | gradiente e Hessiana analíticos por triângulo, baratos |
-| **dobra** | **modelo quadrático de dobra** (Bergou et al. 2006), sobre o *hinge* do Discrete Shells (Grinspun 2003) | ⭐⭐ **a Hessiana dele é CONSTANTE e semi-definida positiva** |
+| **dobra** | ⛔⛔ **REFUTADO — ver abaixo.** Hoje é o **ângulo diedro com ângulo de repouso** (Grinspun, Hirani, Desbrun & Schröder, *Discrete Shells*, SCA 2003), com Hessiana de **Gauss-Newton** (PSD por construção) | vale em superfície de qualquer curvatura, e é zero no repouso por construção |
 | **amortecimento** | Rayleigh, dentro do mesmo 3×3 (§3) | local; nada global entra na conta |
 | **pregar o anel de falloff** | o próprio VBD: vértice preso é **vértice que não se atualiza** | exato, massa infinita de verdade, **sem termo de penalidade e sem constante para afinar** |
 
-⭐⭐⭐ **O achado que só aparece quando se junta o regime com o método:** num pincel o
-**repouso é congelado no pen-down**, e a Hessiana do modelo quadrático de dobra **só depende
-do repouso**. ⇒ ela é **montada UMA vez por traço** e reusada em todo sub-passo de todo
-evento — a peça mais cara do tecido vira uma tabela constante, e ainda por cima é a única
-que traria dúvida de definição positiva. *A restrição que parecia limitar o pincel (o
-repouso não pode mudar no meio do traço) é a que o torna barato.*
+⛔⛔⛔ **E ESTA LINHA ESTAVA ERRADA — a implementação (2026-09-05) refutou-a.** Ela dizia:
+
+> *«num pincel o repouso é congelado no pen-down, e a Hessiana do modelo quadrático de dobra
+> só depende do repouso ⇒ ela é montada UMA vez por traço … a peça mais cara do tecido vira
+> uma tabela constante»*
+
+O raciocínio sobre o **congelamento** está certo e continua a valer (é o §0). O que está
+errado é a premissa sobre o **modelo**: o modelo quadrático de dobra **assume o repouso
+PLANO** — a isometria do material é exatamente a condição que o torna válido, e é por isso
+que ele é a escolha certa para *pano de roupa*, que nasce plano.
+
+**O repouso de um pincel de escultura é a superfície esculpida, que é curva em todo lugar
+interessante.** Usá-lo ali daria força no repouso: a peça mexer-se-ia sozinha ao encostar o
+pincel — exatamente o que o gate *«o repouso é ponto fixo»* existe para proibir.
+
+⇒ a peça de dobra é o **ângulo diedro com ângulo de repouso** (Discrete Shells), com a
+Hessiana de **Gauss-Newton** — o termo com `∂²θ` é descartado, o que a torna um produto
+externo e portanto **PSD por construção**: com o gradiente exato e uma métrica PSD, o passo
+local é garantidamente de descida. *Trocar a exatidão da métrica pela garantia de descida é
+o negócio certo num pincel, onde quem trunca as iterações é o relógio do quadro.*
+
+⚠️ **A lição do episódio, e é a mesma do §2:** eu escolhi o modelo pela PROPRIEDADE que ele
+anunciava (Hessiana constante e PSD) sem conferir a HIPÓTESE sob a qual ele a tem. *Uma
+propriedade citada sem a hipótese dela é uma promessa sem contrato.*
+
+⭐ **E o que sobra do achado é real:** o congelamento do repouso continua a pagar — área,
+forma de repouso, ângulo e peso de cada dobradiça, e a massa de cada vértice são medidos
+**uma vez por traço**, nunca por evento.
 
 ---
 

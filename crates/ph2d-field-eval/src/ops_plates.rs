@@ -30,6 +30,7 @@
 use fidget::context::Tree;
 
 use crate::ops::{Blended, intersection, length2, slab_and_walls, union};
+use crate::ops_joint::Edge;
 
 /// Um disco de raio `r` centrado na origem do plano XY, já normalizado.
 fn disco(r: f64) -> Tree {
@@ -439,6 +440,142 @@ pub fn sd_vesica(radius: f64, offset: f64, half_height: f64, round: f64, chamfer
         );
     }
     crate::ops::plate_joint_n(&[a.clone(), b.clone()], &[(a, b)], half_height, e)
+}
+
+/// ⭐ **LOSANGO** — a chapa de diagonais `2·half_width` (X) e `2·half_span` (Y).
+///
+/// ⚠️⚠️ **Os quatro semiplanos entram SEPARADOS, e não dobrados por `|x|`+`|y|`** — é a lei que o
+/// [`sd_heart`] pagou: a forma dobrada é um `max` de quatro semiespaços, e dilatar isso é **inerte**
+/// (W104), logo as quatro quinas ficariam vivas com o filete a mexer-se e a não fazer nada. ⛔ E o
+/// truque do coração (mudar para um referencial rodado onde a região é um rectângulo exacto) **não
+/// serve aqui**: ele só vale quando as duas diagonais são iguais, e um losango com `half_width ≠
+/// half_span` é um rectângulo *escalado*, que não é uma isometria. ⇒ a mistura n-ária com as quatro
+/// arestas declaradas.
+pub fn sd_rhombus(
+    half_width: f64,
+    half_span: f64,
+    half_height: f64,
+    round: f64,
+    chamfer: f64,
+) -> Tree {
+    let l = (half_width * half_width + half_span * half_span).sqrt();
+    let (nx, ny) = (half_span / l, half_width / l);
+    let c = nx * half_width;
+    // ⭐⭐⭐ **DUAS LAJES, e não quatro semiplanos** — um losango é a intersecção de duas faixas
+    // paralelas em referenciais rodados, e uma faixa é distância **exacta** (`|n·p| − c`). ⇒ o
+    // perfil sai de UMA mistura binária, como na fatia e no trapézio.
+    //
+    // ⛔⛔ **A 1.ª redacção entregava os quatro flancos a uma mistura n-ária, e o censo mediu
+    // `passo × ‖∇f‖ = 1,38`** — acima de `1`, a marcha atravessa a superfície. Cada peça a menos de
+    // `r` soma um quadrado no `length` da [`crate::ops::union_round_n`], e com o chanfro a zero os
+    // planos de corte que ela acrescenta são **redundantes** e contam à mesma. *Uma mistura n-ária
+    // paga-se quando há mesmo N faces a encontrarem-se; aqui há duas.*
+    let laje = |sy: f64| {
+        (Tree::x() * Tree::constant(nx) + Tree::y() * Tree::constant(ny * sy)).abs()
+            - Tree::constant(c)
+    };
+    let e = Edge::square(round, chamfer);
+    let (a, b) = (laje(1.0), laje(-1.0));
+    if chamfer <= 0.0 {
+        return slab_and_walls(
+            &crate::ops_joint::intersection_joint(&a, &b, e),
+            half_height,
+            e,
+        );
+    }
+    // ⭐ **Com chanfro as peças entram INTEIRAS** — um perfil já composto carrega a costura interna
+    // dele para dentro do aro, e a sonda de arestas mediu-o: `9,6°` só com filete contra `40,2°` com
+    // chanfro (`4,19×`, barra `2,60×`). Ver [`crate::ops::plate_joint_n`].
+    crate::ops::plate_joint_n(&[a.clone(), b.clone()], &[(a, b)], half_height, e)
+}
+
+/// ⭐⭐ **TUBO / anel** — a coroa circular puxada em Z, com **sector opcional**.
+///
+/// `angle` é a meia-abertura; em `π` (ou acima) o sector **não entra na árvore** e o anel fecha.
+///
+/// # ⚠️⚠️ Por que a ausência do sector é um ramo em RUST, e não `angle = π`
+///
+/// A `sd_pie` limita a abertura a `π − 0,01` **de propósito**: em `π` exacto os dois semiplanos são
+/// opostos (`e₁ = −e₂`), e a união deles vale `−|x|`, que é **zero sobre todo o eixo** — um `0` num
+/// ponto interior, lido como fronteira por quem amostra. ⇒ *uma fenda fantasma a partir o anel ao
+/// meio*. Um anel fechado não é o sector no limite: é o sector **ausente**.
+///
+/// ⚠️ **O furo NUNCA toca o bordo** (são concêntricos), então o par `(fora, dentro)` não é uma
+/// aresta — declará-lo poria um plano de corte onde não há quina.
+pub fn sd_tube(
+    outer: f64,
+    inner: f64,
+    angle: f64,
+    half_height: f64,
+    round: f64,
+    chamfer: f64,
+) -> Tree {
+    let e = Edge::square(round, chamfer);
+    let fora = disco(outer);
+    // O furo é o complemento de um disco — exacto dos dois lados, como o `fora`.
+    let dentro = -disco(inner);
+    // ⚠️ **O bordo e o furo NUNCA se encontram** (são concêntricos), logo a coroa fecha por `max`
+    // DURO: não há quina entre eles para arredondar, e uma mistura ali só inflaria o campo.
+    let coroa = fora.clone().max(dentro.clone());
+    if angle >= std::f64::consts::PI {
+        if chamfer <= 0.0 {
+            return slab_and_walls(&coroa, half_height, e);
+        }
+        // ⚠️ **Sem aresta 2D nenhuma** — as duas circunferências não se encontram; o que o aro
+        // precisa é das peças, não da composta.
+        return crate::ops::plate_joint_n(&[fora, dentro], &[], half_height, e);
+    }
+    let a = angle.clamp(0.01, std::f64::consts::PI - 0.01);
+    let e1 = Tree::x() * Tree::constant(a.cos()) - Tree::y() * Tree::constant(a.sin());
+    let e2 = Tree::x() * Tree::constant(-a.cos()) - Tree::y() * Tree::constant(a.sin());
+    // A mesma ramificação da [`sd_pie`]: até 90° o sector é a interseção dos dois semiplanos, acima
+    // é a união deles.
+    let sector = if a <= std::f64::consts::FRAC_PI_2 {
+        e1.max(e2)
+    } else {
+        e1.min(e2)
+    };
+    // ⭐ **UMA mistura binária** — as quatro quinas do arco são `coroa ∩ sector`, e é ela que as
+    // arredonda. Ver a nota da [`sd_rhombus`] para a medição que proíbe a n-ária aqui.
+    if chamfer <= 0.0 {
+        return slab_and_walls(
+            &crate::ops_joint::intersection_joint(&coroa, &sector, e),
+            half_height,
+            e,
+        );
+    }
+    crate::ops::plate_joint_n(
+        &[fora.clone(), dentro.clone(), sector.clone()],
+        &[(fora, sector.clone()), (dentro, sector)],
+        half_height,
+        e,
+    )
+}
+
+/// ⭐ **SEGMENTO DE CÍRCULO** — o disco `radius` cortado pela **corda** `y = cut`.
+///
+/// ⚠️ **A corda é uma POSIÇÃO** e pode ser negativa: em `cut = 0` sai o semicírculo, abaixo dele
+/// sobra mais de meio disco. É a mesma faixa do corte da [`crate::ops_solids::sd_cut_sphere`], e
+/// pela mesma razão.
+pub fn sd_circle_segment(
+    radius: f64,
+    cut: f64,
+    half_height: f64,
+    round: f64,
+    chamfer: f64,
+) -> Tree {
+    let e = Edge::square(round, chamfer);
+    let d = disco(radius);
+    let corda = Tree::constant(cut) - Tree::y();
+    // ⭐ A forma da [`sd_pie`] com um plano em vez de um sector — uma mistura binária, e a laje.
+    if chamfer <= 0.0 {
+        return slab_and_walls(
+            &crate::ops_joint::intersection_joint(&d, &corda, e),
+            half_height,
+            e,
+        );
+    }
+    crate::ops::plate_joint_n(&[d.clone(), corda.clone()], &[(d, corda)], half_height, e)
 }
 
 #[cfg(test)]

@@ -238,6 +238,66 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             round: 0.02,
             chamfer: 0.0,
         },
+        // ─────────────────────────── W119 ───────────────────────────
+        // ⚠️ **Cada representante escolhe o caso que EXERCITA a fórmula**: uma haste FINA contra uma
+        // ponta larga (a farpa a sério), e não uma seta quase-rectangular.
+        PrimitiveKind::Arrow => Primitive::Arrow {
+            heads: 1,
+            half_length: 0.45,
+            shaft: 0.09,
+            head: 0.24,
+            head_length: 0.26,
+            half_height: 0.10,
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::Chevron => Primitive::Chevron {
+            half_length: 0.40,
+            half_span: 0.30,
+            thickness: 0.09,
+            half_height: 0.10,
+            round: 0.02,
+            chamfer: 0.0,
+        },
+        // ⚠️ **Braços DESIGUAIS**: com `run == rise` a peça é simétrica na diagonal e metade das
+        // costuras cai sobre a outra metade.
+        PrimitiveKind::BentArrow => Primitive::BentArrow {
+            run: 0.42,
+            rise: 0.34,
+            shaft: 0.08,
+            head: 0.18,
+            head_length: 0.20,
+            half_height: 0.10,
+            round: 0.02,
+            chamfer: 0.0,
+        },
+        // ⚠️ **Diagonais DIFERENTES**: iguais seria um quadrado rodado, e o par de flancos que não é
+        // ortogonal ao outro — que é tudo o que esta forma acrescenta — não seria exercitado.
+        PrimitiveKind::Rhombus => Primitive::Rhombus {
+            half_width: 0.45,
+            half_span: 0.26,
+            half_height: 0.10,
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        // ⚠️ **Com SECTOR**, e não o anel fechado: o anel é o caso em que o sector sai da árvore, e
+        // um representante assim não mediria os dois semiplanos nem os aros que eles formam.
+        PrimitiveKind::Tube => Primitive::Tube {
+            outer: 0.45,
+            inner: 0.26,
+            angle: 1.1,
+            half_height: 0.12,
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        // ⚠️ Corte ACIMA do centro: em `cut = 0` sai o semicírculo, que é o caso mais fácil.
+        PrimitiveKind::CircleSegment => Primitive::CircleSegment {
+            radius: 0.45,
+            cut: 0.16,
+            half_height: 0.10,
+            round: 0.03,
+            chamfer: 0.0,
+        },
     })
 }
 
@@ -320,6 +380,127 @@ fn every_primitive_honours_the_march() {
             passo * g
         );
     }
+}
+
+/// ⭐⭐⭐ **TODA FORMA OFERECE PELO MENOS UM NÚMERO** — o censo que fecha o braço `_` da tabela das
+/// chapas.
+///
+/// # ⛔ Por que ele nasceu (W119)
+///
+/// A tabela por-primitiva passou as `700` linhas do gate de LOC e partiu-se em dois arquivos: o
+/// [`ph2d_field::dims`] delega a família das chapas a um irmão, e o irmão acaba num braço `_` que
+/// devolve `Vec::new()`. Esse braço é **inalcançável pelo caminho do produto** — o único chamador
+/// nomeia as catorze chapas uma a uma, e o `match` dele continua exaustivo, logo uma primitiva nova
+/// é erro de compilação **lá**.
+///
+/// ⛔ **O que ele NÃO apanha é o outro erro:** pôr a forma nova na lista do braço que delega e
+/// esquecê-la no irmão. Aí ela compila, a paleta cria-a, e o painel dela nasce **VAZIO** — um slider
+/// que não existe não deixa rasto nenhum, que é a falha mais cara de diagnosticar (é a mesma lição
+/// que o `set_round` da W101 registou, com as palavras dele).
+///
+/// ⇒ *um braço `_` sem um censo ao lado é uma licença.*
+#[test]
+fn every_primitive_offers_at_least_one_dimension() {
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else {
+            continue;
+        };
+        let linhas = ph2d_field::dims(&p);
+        assert!(
+            !linhas.is_empty(),
+            "«{}» não oferece número nenhum — o painel dela nasce vazio, e um slider que não existe \
+             não deixa rasto",
+            k.key()
+        );
+        // ⭐ E o filete tem de estar lá quando a forma o tem: é a linha que o braço `_` deixaria
+        // cair primeiro, e a que o artista mais procura neste módulo.
+        if ph2d_field::round_limit(&p).is_some() {
+            assert!(
+                linhas.iter().any(|d| d.key == "field.dim.round"),
+                "«{}» tem filete e não o oferece no painel",
+                k.key()
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **UMA FAIXA QUE OFERECE NEGATIVO ACEITA NEGATIVO** — o defeito PRÉ-EXISTENTE que o lote da
+/// seta apanhou de passagem (W119).
+///
+/// # ⛔⛔ O defeito
+///
+/// A [`ph2d_field::Span::Free`] diz, no próprio doc, que ela é *«simétrica e sem parede nenhuma: uma
+/// **posição**. As duas pontas são o alcance da vista, e **a de baixo é negativa**»* — e o painel
+/// desenha o slider assim. A porta de escrita ([`ph2d_field::set_dim`]) recusava **tudo** o que
+/// fosse `< 0`.
+///
+/// ⇒ o `Cut` de uma esfera cortada e o de uma cúpula oca desciam até meio do curso e o número
+/// **parava lá, sem dizer porquê**. É exactamente a affordance que mente que a
+/// [`ph2d_field::Span::WallFromZero`] foi criada para curar, um campo ao lado — e a lição está
+/// escrita no doc dela desde a W101. *Uma faixa que oferece o que a porta recusa é uma affordance
+/// que mente.*
+///
+/// ⚠️ **A lista é DERIVADA**: uma faixa `Free` nova entra sem uma linha aqui.
+///
+/// ⛔ **Prova de mutação:** devolver a guarda do `set_dim` a `value < 0.0` reprova em TRÊS formas —
+/// a esfera cortada, a cúpula oca e o segmento de círculo.
+#[test]
+fn a_span_that_offers_negative_accepts_negative() {
+    let mut casos = 0;
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else { continue };
+        for (linha, d) in ph2d_field::dims(&p).iter().enumerate() {
+            if !matches!(d.span, ph2d_field::Span::Free) {
+                continue;
+            }
+            casos += 1;
+            let alvo = -d.value.abs().max(0.05);
+            let mut q = p.clone();
+            ph2d_field::set_dim(&mut q, 0, linha, alvo).unwrap_or_else(|e| {
+                panic!(
+                    "«{}» linha {linha}: a faixa é `Free` (o slider desce abaixo de zero) e a porta \
+                     RECUSOU {alvo} — {e:?}",
+                    k.key()
+                )
+            });
+            assert!(
+                (ph2d_field::dims(&q)[linha].value - alvo).abs() < 1.0e-6,
+                "«{}» linha {linha}: aceitou {alvo} e guardou {}",
+                k.key(),
+                ph2d_field::dims(&q)[linha].value
+            );
+            // ⭐ E o **zero** passa: uma posição em zero é a origem, não um estado inválido.
+            let mut z = p.clone();
+            ph2d_field::set_dim(&mut z, 0, linha, 0.0)
+                .unwrap_or_else(|e| panic!("«{}» linha {linha}: recusou o zero — {e:?}", k.key()));
+        }
+    }
+    assert!(
+        casos >= 3,
+        "só {casos} faixas `Free` no catálogo — este gate ficou sem sujeito e mede nada"
+    );
+}
+
+/// ⛔ **O CONTROLE do gate acima**: uma faixa que **não** oferece negativo continua a recusá-lo.
+///
+/// ⚠️ Sem ele, abrir a guarda para tudo passaria o gate de cima — e um raio negativo é uma peça que
+/// não existe, não uma posição.
+#[test]
+fn a_span_that_does_not_offer_negative_still_refuses_it() {
+    let mut caixa = Primitive::Box {
+        half: [0.4, 0.3, 0.25],
+        round: 0.05,
+        chamfer: 0.0,
+    };
+    assert!(
+        ph2d_field::set_dim(&mut caixa, 0, 0, -0.2).is_err(),
+        "uma largura negativa passou — a guarda abriu de mais"
+    );
+    let mut esfera = Primitive::Sphere { radius: 0.4 };
+    assert!(
+        ph2d_field::set_dim(&mut esfera, 0, 0, -0.1).is_err(),
+        "um raio negativo passou"
+    );
 }
 
 /// ⛔ **O CONTROLE do gate acima, e sem ele o produto passaria por ser pequeno.**
@@ -1201,20 +1382,35 @@ fn the_bounding_half_extents_contain_the_piece() {
                     theta.cos(),
                 ];
                 let at = |t: f64| f.at(d[0] * t, d[1] * t, d[2] * t);
-                for n in 1..8 {
-                    if at(r * f64::from(n) / 8.0) < 0.0 {
-                        viu_peca = true;
+                // ⭐⭐⭐ **PROCURA A ÚLTIMA ENTRADA, e não bissecta a partir da ORIGEM** (W119).
+                //
+                // ⛔⛔ **A 1.ª redacção supunha que a origem está DENTRO da peça** — `lo = 0` como
+                // extremo «interior» de uma bissecção —, e isso era verdade para as vinte e oito
+                // primitivas que existiam. A seta dobrada é a primeira cujo **miolo é vazio**: o
+                // canto de dentro do «L» não tem matéria, e ali a bissecção não tem invariante
+                // nenhuma. ⇒ ela convergia para uma troca de sinal qualquer e **acusou peça a
+                // `0,3459`** num eixo onde uma varredura densa mede `0,3386`. *Uma régua que
+                // pressupõe a forma das peças que já existem acusa a primeira que é diferente.*
+                //
+                // ⭐ A cura não tem pressuposto: amostra-se a semi-recta de fora para dentro e
+                // guarda-se o **maior** `t` com matéria; o `t` seguinte está fora por construção, e
+                // é entre esses dois que se bissecta. Uma peça oca, um anel, duas ilhas — todas se
+                // medem igual.
+                const AMOSTRAS: usize = 256;
+                let far = r * 4.0;
+                let mut dentro: Option<f64> = None;
+                for n in (1..=AMOSTRAS).rev() {
+                    #[allow(clippy::cast_precision_loss)]
+                    let t = far * n as f64 / AMOSTRAS as f64;
+                    if at(t) < 0.0 {
+                        dentro = Some(t);
                         break;
                     }
                 }
-                // ⭐ **Bissecta a SUPERFÍCIE nesta direcção** — a mesma lei do gate irmão. Se já
-                // está fora em `r`, a peça não excede a esfera e portanto não excede a caixa em
-                // direcção nenhuma... mas a **coordenada** dela pode exceder a meia-extensão de um
-                // eixo mesmo dentro da esfera, e é isso que se mede.
-                let (mut lo, mut hi) = (0.0f64, r);
-                if at(hi) < 0.0 {
-                    hi = r * 4.0;
-                }
+                let Some(mut lo) = dentro else { continue };
+                viu_peca = true;
+                #[allow(clippy::cast_precision_loss)]
+                let mut hi = (lo + far / AMOSTRAS as f64).min(far * 1.001);
                 for _ in 0..40 {
                     let mid = 0.5 * (lo + hi);
                     if at(mid) < 0.0 { lo = mid } else { hi = mid }

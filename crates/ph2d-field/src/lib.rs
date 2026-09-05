@@ -35,8 +35,12 @@ pub mod mods;
 pub mod mods_dims;
 /// ⭐ O que uma forma **é** — ver [`primitive`].
 pub mod primitive;
+/// ⭐ Os pisos e tetos de CONTAGEM das primitivas — ver [`primitive_limits`].
+pub mod primitive_limits;
 pub mod profile;
 pub mod radius;
+/// ⭐ Até onde o filete de cada forma vai — ver [`radius_limit`].
+pub mod radius_limit;
 pub mod xform;
 
 pub use axis::Axis;
@@ -45,9 +49,10 @@ pub use dims::{Dim, Param, Span, clamp_round, dims, scale_primitive, set_dim};
 pub use mods::{Unary, UnaryKind};
 // ⚠️ **O `pub use` é o que mantém `ph2d_field::Primitive`** — cortar um arquivo não pode custar uma
 // reescrita em cada sítio que o chamava.
-pub use primitive::{
-    MAX_GEAR_TEETH, MAX_PRISM_SIDES, MAX_STAR_POINTS, MIN_GEAR_TEETH, MIN_PRISM_SIDES,
-    MIN_STAR_POINTS, Primitive, PrimitiveKind,
+pub use primitive::{Primitive, PrimitiveKind};
+pub use primitive_limits::{
+    MAX_ARROW_HEADS, MAX_GEAR_TEETH, MAX_PRISM_SIDES, MAX_STAR_POINTS, MIN_ARROW_HEADS,
+    MIN_GEAR_TEETH, MIN_PRISM_SIDES, MIN_STAR_POINTS,
 };
 pub use profile::{
     DEFAULT_PROFILE_RESOLUTION, FillRule, MAX_PROFILE_RESOLUTION, Profile, ProfileError, coarsen,
@@ -55,8 +60,9 @@ pub use profile::{
 };
 pub use radius::{
     Bound, bounding_half_extents, bounding_radius, chamfer_of, characteristic_size, edge_shrink,
-    fillet_inflates, round_limit, round_of, set_shape_radius,
+    fillet_inflates, round_of, set_shape_radius,
 };
+pub use radius_limit::{round_limit, star_round_limit};
 pub use xform::Xform;
 
 use serde::{Deserialize, Serialize};

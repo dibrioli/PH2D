@@ -11412,3 +11412,186 @@ f=93  Ctrl+Z         undo=0   nos=4→0                       (só a semente)
   gesto — **não há eco** do painel a reescrever um restauro. ✅ A imagem re-traça por igualdade do
   documento (`rdoc != doc`). ✅ A escolha não escreve componente nenhum. ✅ O `held_button` não fica
   preso pelo módulo (o `Up` só é dele quando o `Down` foi).
+
+---
+
+## §120 — W119: ⭐⭐⭐ O LOTE DA SETA — nove portas, seis formas, e a régua do chanfro supunha que toda aresta é convexa (05/09)
+
+> **Enio, 04/09:** *«vamos voltar para os desenhos das shapes. No plano original seriam mais de 40
+> shapes prontas, feitas com fórmulas e com desempenho. Busque saber as que faltam implementar.»*
+
+O levantamento contra o [doc 08](08_formas_por_formula.md) deu **24** por construir (36 das 62 do
+plano já cobertas, 2 são classe **D** e ficam desenhadas). Esta wave é o **lote 1** dele: **9 portas
+novas**, `33 → 42` itens na paleta.
+
+### §120.1 — Nove portas, SEIS primitivas — e a razão é a lei do cone
+
+| primitiva | portas | família |
+|---|---|---|
+| `Arrow { heads, … }` | Arrow · **Double Arrow** | Plates |
+| `Chevron` | Chevron | Plates |
+| `BentArrow` | Bent Arrow | Plates |
+| `Rhombus` | **Diamond** | Plates |
+| `Tube { outer, inner, angle, … }` | Tube · **Washer** · **Ring Arc** | Rings & tubes |
+| `CircleSegment` | Circle Segment | Plates |
+
+⭐ **A seta dupla dobra o eixo por `|x|`** e a segunda ponta sai de graça; o tubo, a anilha e o arco
+de anel são o mesmo anel com outros números. ⚠️ É a lei do [`Primitive::Cone`] desde a W101 — *duas
+variantes dariam duas fórmulas para a mesma superfície, e a segunda é a que envelhece* —, e o que a
+paleta multiplica são as **portas**, que é o que o artista procura.
+
+⛔ **O tubo exige `inner > 0`, e a cerca é o que impede a segunda fórmula:** sem furo ele seria a
+`Pie`, que já existe.
+
+⛔ **E o anel fechado NÃO é o sector no limite.** Em `angle = π` os dois semiplanos da `sd_pie` são
+opostos, a união deles vale `−|x|` — **zero sobre todo o eixo**, um `0` num ponto interior, lido como
+fronteira por quem amostra ⇒ *uma fenda fantasma a partir o anel ao meio*. O sector **sai da árvore**
+em vez de degenerar, e a ramificação vive em Rust.
+
+### §120.2 — ⛔⛔⛔ A mistura N-ÁRIA com o chanfro a ZERO infla o campo, e o censo apanhou as cinco
+
+A primeira redacção entregava o perfil de cada forma a `plate_joint_n` **sempre**. Com `chamfer = 0`
+os planos de corte que ela acrescenta são **redundantes** (passam exactamente pela aresta) e contam
+à mesma para o `length` da `union_round_n` ⇒ o tecto `√(activas)` sobe sem comprar nada:
+
+| forma | `passo × ‖∇f‖` n-ário | binário + laje |
+|---|---:|---:|
+| arrow | **1,3489** | `0,9818` |
+| chevron | **1,3433** | `0,8219` |
+| rhombus | **1,3834** | `0,8629` |
+| tube | **1,2023** | `0,7360` |
+| circle_segment | `1,0487` | `0,7071` |
+
+⚠️ Acima de `1` **a marcha atravessa a superfície**. ⇒ a lei é a que a `sd_pie`, o `sd_trapezoid` e o
+`sd_cross` já escreviam e que eu não li: **com `chamfer = 0` o perfil compõe-se em 2D com misturas
+BINÁRIAS e a laje entra uma vez, no fim**; a n-ária é o caminho do chanfro.
+
+⭐⭐ **E o losango deu a régua desta lei:** ele é a intersecção de **duas faixas paralelas em
+referenciais rodados** (`|n·p| − c`, distância exacta), não quatro semiplanos. *Uma mistura n-ária
+paga-se quando há mesmo N faces a encontrarem-se; ali há duas.*
+
+### §120.3 — ⛔⛔ E a seta saía da PRÓPRIA CAIXA em Z — a união arredondada de duas faces coplanares INCHA
+
+Dar a cada peça a própria laje (`plate_joint_n`) e unir as duas chapas já fechadas põe o filete da
+farpa a agir **também em Z**, onde as duas partilham a tampa: medido `0,1088` contra uma
+meia-extensão de `0,1000`. ⇒ o perfil compõe-se em 2D e a laje entra **uma vez**.
+
+⚠️ **O mesmo excesso com CHANFRO é PRÉ-EXISTENTE e não é desta wave** — medido pelo mesmo
+instrumento: `~cross+chanfro` lê `0,1333` contra `0,1200` e `~gear+chanfro` `0,1511` contra `0,1500`.
+*Sem os controlos eu teria arquivado um número da casa como defeito meu.*
+
+### §120.4-bis — ⭐⭐⭐ E o «L» ERA A UNIÃO DE DOIS BRAÇOS: a peça inchava POR BAIXO da própria caixa
+
+Com a régua da §120.4 curada, ela acusou a seta dobrada outra vez: peça a **`−0,3459`** contra uma
+meia-extensão de `0,3400`.
+
+⛔⛔ **A causa é a mesma da §120.3, na outra ponta:** o braço deitado e o braço de pé **partilham a
+face de baixo** (`y = −rise`), e a união arredondada de duas peças cuja fronteira COINCIDE ao longo
+de uma face **incha** para fora dela — `0,0059`, que é o `r·(√2 − 1)` da mistura.
+
+⚠️⚠️ **E as DUAS varreduras densas desta linha diziam que não havia nada lá** (`260³` e uma banda
+fina de `400²`): elas guardavam o `y` **MÁXIMO**, e o excesso estava no `y` **mínimo**. *Duas réguas
+a concordar não refutam a terceira — a que media o MÓDULO tinha razão, e foi preciso replicar a
+varredura por raios dela para achar a direcção.*
+
+⭐ A cura tira a união do corpo: o «L» passa a ser um **rectângulo menos o bloco de cima à
+esquerda**. A quina côncava nasce do canto do bloco removido e arredonda como qualquer outra.
+⚠️ **O bloco tem de PASSAR DE LARGO** pelos lados esquerdo e de cima — com a fronteira dele a
+coincidir com a do rectângulo, a intersecção arredondada **comeria** aquelas duas faces, que é o
+mesmo mecanismo do outro lado. ⚠️ E a ponta encosta ao corpo em **dois pontos**, nunca ao longo de
+uma face: em `y = frente` a meia-largura dela vale exactamente `shaft`, por construção.
+
+### §120.4 — ⛔⛔⛔ A régua da CAIXA POR EIXO bissectava a partir da ORIGEM — e a seta dobrada é a primeira peça de miolo vazio
+
+`the_bounding_half_extents_contain_the_piece` usava `lo = 0` como extremo **interior** de uma
+bissecção. Isso era verdade para as vinte e oito primitivas que existiam. O canto de dentro do «L»
+**não tem matéria**, e ali a bissecção não tem invariante nenhuma: ela convergia para uma troca de
+sinal qualquer e **acusou peça a `0,3459`** num eixo onde uma varredura de `400³` mede `0,3386`.
+
+⭐ A cura não tem pressuposto: amostra-se a semi-recta **de fora para dentro** e guarda-se o maior
+`t` com matéria; o `t` seguinte está fora por construção, e é entre esses dois que se bissecta.
+*Uma régua que pressupõe a forma das peças que já existem acusa a primeira que é diferente.*
+
+### §120.5 — ⛔⛔⛔ A régua do CHANFRO supunha que toda aresta é CONVEXA
+
+`the_chamfer_reaches_every_edge_of_every_shape` perguntava, por cada ponto de vinco da forma viva,
+*«o campo chanfrado é POSITIVO aqui?»* — isto é, *«o chanfro pôs este ponto de FORA?»*.
+
+⛔ Num vinco **convexo** o chanfro tira material e o ponto fica de fora ✓. Num vinco **CÔNCAVO** ele
+**acrescenta** material e o ponto fica **enterrado** (`f < 0`) — e a régua lia isso como *«esta
+aresta não foi cortada»*.
+
+⚠️ **O chevron é a primeira forma cuja aresta dominante é côncava** (o entalhe do «V» corre a peça
+inteira). Ele lia `82,3 %` com **os 94 pontos por cortar todos no mesmo sítio** — `x = +0,064`, o
+vértice interior —, cada um a `31,1°`. As formas anteriores têm vincos côncavos pequenos (as quatro
+quinas de uma cruz) e o erro cabia na folga.
+
+⭐ A régua nova mede o **módulo**: o chanfro tem de mover a superfície para longe do ponto, e o sinal
+é da geometria, não do defeito. ⛔ **Ela não afrouxa o gate que a motivou** (o report do prisma,
+30/08): uma aresta genuinamente esquecida deixa o ponto **exactamente sobre** a superfície, e
+`|f| > 1e-4` continua a reprovar. Três formas que já shipavam melhoraram na troca — `star`
+`98,8 → 100`, `cross` `97,3 → 100`, `box_frame` já em `100` —, e o `solid_angle` fica em `39,5 %`
+com a excepção declarada dele intacta, que é o controlo de que a régua não cegou.
+
+### §120.6 — ⭐⭐ O bico das setas ARREDONDA, e a recusa da `sd_pie` respondia outra pergunta
+
+A primeira redacção fechava a cunha por `max` duro citando a lei da `sd_pie` (*«o ápice corta a
+seco»*). ⚠️ Ali o ápice está encaixado dentro de **três** intersecções arredondadas (dois semiplanos
+· o disco · a laje) e a inflação compõe-se; aqui a cunha é a peça de fora e o que se lhe segue é uma
+união com a haste. Medido: o pior vinco da seta dobrada cai de `86,3°` para dentro da barra e o censo
+continua abaixo de `1`. *Uma recusa medida responde UMA pergunta; reconfira-a quando a sua for
+outra.*
+
+### §120.7 — ⭐⭐ A LEI DA SOBREPOSIÇÃO sai da geometria, e não de um épsilon
+
+Uma seta é a **união** da haste com a ponta, e a `sd_star` já tinha escrito o preço: `min` de duas
+peças que se **tocam sem se sobrepor** vale zero na costura, que é um ponto **interior**. A
+decomposição óbvia (haste até `xb`, ponta de `xb` em diante) é precisamente uma partição.
+
+⭐ A haste avança até ao `x` onde a ponta tem **exactamente a largura dela**
+(`tip − head_length·shaft/head`): ali as duas quinas da frente pousam sobre os flancos, a
+sobreposição tem área positiva, e a haste **nunca** espreita para fora — que é o que um recuo
+escolhido à mão não garante.
+
+### §120.8 — ⭐⭐⭐ O DEFEITO PRÉ-EXISTENTE que o lote apanhou de passagem: uma faixa que oferece negativo e uma porta que o recusa
+
+A `Span::Free` diz no próprio doc que ela é *«uma **posição**; a ponta de baixo é negativa»*, e o
+painel desenha o slider assim. A porta de escrita recusava **tudo** o que fosse `< 0`.
+
+⇒ o **Cut** de uma esfera cortada e o de uma cúpula oca desciam até meio do curso e o número **parava
+lá, sem dizer porquê** — exactamente a affordance que mente que a `Span::WallFromZero` foi criada
+para curar, um campo ao lado, e cuja lição está escrita no doc dela desde a W101.
+
+⭐ A cura é a da W101: quem sabe a resposta é a **faixa declarada**, não uma excepção escrita na
+guarda. Gate `a_span_that_offers_negative_accepts_negative`, derivado do censo, com o controlo
+`a_span_that_does_not_offer_negative_still_refuses_it` ao lado.
+
+### §120.9 — ⚠️ Dois tectos de LOC, e os dois cortados por RESPONSABILIDADE
+
+| ficheiro | nasceu | responde a |
+|---|---|---|
+| `primitive_limits.rs` | `primitive.rs` a `724` | *quantos lados, pontas, dentes ou pontas de seta cada forma comporta, e a que preço* |
+| `dims_table_plates.rs` | `dims_table.rs` a `902` | *o que cada CHAPA mede* (o irmão ficou com os sólidos) |
+
+⚠️ **O segundo corte abre um braço `_`**, e ele vem com censo: `every_primitive_offers_at_least_one_dimension`
+recusa uma forma sem número nenhum. Sem ele, pôr a forma nova na lista que delega e esquecê-la no
+irmão dava um painel **VAZIO** em silêncio — *um slider que não existe não deixa rasto*, que é a
+mesma frase que o `set_round` da W101 já escreveu. ⛔ *Um braço `_` sem um censo ao lado é uma
+licença.*
+
+### §120.10 — Provas de mutação
+
+| mutação | gate | resultado |
+|---|---|---|
+| devolver a guarda do `set_dim` a `value < 0.0` | `a_span_that_offers_negative_accepts_negative` | ✝ **morta** (`cut_sphere` recusou `−0,15`) |
+| apagar o braço da `Arrow` da tabela das chapas | `every_primitive_offers_at_least_one_dimension` | ✝ **morta** (*«o painel dela nasce vazio»*) |
+| devolver o bico da seta ao `max` duro | `the_fillet_reaches_every_edge_of_every_shape` | ✝ **morta** (`bent_arrow` `4,9 %`, pior `86,3°`) |
+| apagar a aresta declarada do losango | `the_chamfer_reaches…` · `the_chamfer_never_makes…` | ⚠️ **SOBREVIVEU nos dois** |
+
+⚠️⚠️ **E a que sobreviveu não é código a mais.** A sonda `measure_the_pair_over_every_shape` mede a
+diferença: chanfro sozinho `17,24 %` com a aresta declarada contra **`19,71 %`** sem ela, e a coluna
+`c=.5 r=.2` de `0,00` para `0,15`. ⛔ Os dois gates são cegos porque a **referência** deles é a forma
+**viva** — e a viva já nasce com o filete a arredondar aqueles cantos, então os pontos de vinco deles
+nem entram na população medida. *Uma régua cuja referência já curou o fenómeno não vê quem o cura.*
+
+**Smoke:** cena **`=18`** (as nove portas lado a lado) + a paleta (`A`).

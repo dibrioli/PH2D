@@ -619,6 +619,71 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             round: 0.0,
             chamfer: 0.0,
         },
+        // ─────────────────────────── W119 ───────────────────────────
+        // ⚠️ **Cada representante escolhe o caso que EXERCITA a fórmula**: uma haste FINA contra uma
+        // ponta larga (a farpa a sério), e não uma seta quase-rectangular.
+        PrimitiveKind::Arrow => Primitive::Arrow {
+            heads: 1,
+            half_length: 0.45,
+            shaft: 0.09,
+            head: 0.24,
+            head_length: 0.26,
+            half_height: 0.10,
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::Chevron => Primitive::Chevron {
+            half_length: 0.40,
+            half_span: 0.30,
+            // ⚠️ **As PROPORÇÕES da paleta** (`thickness = 0,373 × half_span`), e não uma banda
+            // fina escolhida à mão: numa banda muito fina o filete a metade do limite é uma
+            // fracção grande da própria superfície, e a sonda lê-o como vinco de `25°`–`31°` —
+            // que é o filete, não uma aresta. *Uma fixtura mais extrema que o produto mede outra
+            // coisa.*
+            thickness: 0.112,
+            half_height: 0.10,
+            round: 0.02,
+            chamfer: 0.0,
+        },
+        // ⚠️ **Braços DESIGUAIS**: com `run == rise` a peça é simétrica na diagonal e metade das
+        // costuras cai sobre a outra metade.
+        PrimitiveKind::BentArrow => Primitive::BentArrow {
+            run: 0.42,
+            rise: 0.34,
+            shaft: 0.08,
+            head: 0.18,
+            head_length: 0.20,
+            half_height: 0.10,
+            round: 0.02,
+            chamfer: 0.0,
+        },
+        // ⚠️ **Diagonais DIFERENTES**: iguais seria um quadrado rodado, e o par de flancos que não é
+        // ortogonal ao outro — que é tudo o que esta forma acrescenta — não seria exercitado.
+        PrimitiveKind::Rhombus => Primitive::Rhombus {
+            half_width: 0.45,
+            half_span: 0.26,
+            half_height: 0.10,
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        // ⚠️ **Com SECTOR**, e não o anel fechado: o anel é o caso em que o sector sai da árvore, e
+        // um representante assim não mediria os dois semiplanos nem os aros que eles formam.
+        PrimitiveKind::Tube => Primitive::Tube {
+            outer: 0.45,
+            inner: 0.26,
+            angle: 1.1,
+            half_height: 0.12,
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        // ⚠️ Corte ACIMA do centro: em `cut = 0` sai o semicírculo, que é o caso mais fácil.
+        PrimitiveKind::CircleSegment => Primitive::CircleSegment {
+            radius: 0.45,
+            cut: 0.16,
+            half_height: 0.10,
+            round: 0.03,
+            chamfer: 0.0,
+        },
     })
 }
 
@@ -887,6 +952,41 @@ fn the_chamfer_reaches_every_edge_of_every_shape() {
     );
 }
 
+/// **SONDA** — ONDE ficaram os pontos de vinco que o chanfro não cortou, numa forma.
+#[test]
+#[ignore = "sonda: imprime as coordenadas, o veredito e' do gate irmao"]
+fn probe_where_the_chamfer_misses() {
+    for k in PrimitiveKind::ALL {
+        if k.key() != "chevron" {
+            continue;
+        }
+        let p = representative(k).expect("rep");
+        let pontos = only_creases(&traverse(&p, 2048, 4).0);
+        let Some(q) = with_pair(&p, 0.5, 0.0) else {
+            continue;
+        };
+        let doc = FieldDoc::new(
+            vec![Node::new(Xform::IDENTITY, NodeKind::Leaf(q))],
+            NodeId(0),
+        )
+        .expect("peça");
+        let f = ph2d_field_eval::Field::new(&doc);
+        let mut ficaram: Vec<_> = pontos
+            .iter()
+            .filter(|(w, _)| f.at(w[0], w[1], w[2]) <= 1.0e-4)
+            .collect();
+        ficaram.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        println!(
+            "  {} pontos de vinco, {} por cortar",
+            pontos.len(),
+            ficaram.len()
+        );
+        for (w, ang) in ficaram.iter().rev().take(18) {
+            println!("    [{:+.3} {:+.3} {:+.3}]  {ang:.1}°", w[0], w[1], w[2]);
+        }
+    }
+}
+
 /// A fracção dos pontos de vinco que um chanfro a meia parede tem de cortar.
 ///
 /// ⚠️ **MEDIDO, não escolhido**: dezanove das vinte formas ficam entre `92,8 %` e `100 %`, e o
@@ -956,9 +1056,25 @@ fn fraccao_cortada(p: &Primitive) -> Option<f64> {
     )
     .ok()?;
     let f = ph2d_field_eval::Field::new(&doc);
+    // ⭐⭐⭐ **«DEIXOU DE ESTAR NA SUPERFÍCIE», e não «ficou de FORA»** (W119).
+    //
+    // ⛔⛔ **A 1.ª redacção supunha que toda aresta é CONVEXA.** Num vinco convexo o chanfro tira
+    // material e o ponto vivo passa a estar fora (`f > 0`) — mas num vinco **CÔNCAVO** ele
+    // **ACRESCENTA** material, e o ponto fica **enterrado** (`f < 0`). A régua lia isso como *«esta
+    // aresta não foi cortada»*.
+    //
+    // ⚠️ **O chevron é a primeira forma cuja aresta dominante é côncava** — o entalhe do «V» corre
+    // ao longo da peça inteira —, e ela lia `82,3 %` com **os 94 pontos por cortar todos no mesmo
+    // sítio** (`x = +0,064`, o vértice interior), cada um a `31,1°`. As formas anteriores têm vincos
+    // côncavos pequenos (as quatro quinas de uma cruz), e o erro cabia na folga.
+    //
+    // ⭐ A régua nova mede o **módulo**: o chanfro tem de mover a superfície para longe do ponto, e
+    // o sinal é da geometria, não do defeito. ⛔ Ela **não afrouxa** o gate que a motivou: uma
+    // aresta genuinamente esquecida deixa o ponto **exactamente sobre** a superfície (`f ≈ 0`), e
+    // `|f| > 1e-4` continua a reprovar.
     let cortados = vincos
         .iter()
-        .filter(|(q, _)| f.at(q[0], q[1], q[2]) > 1.0e-4)
+        .filter(|(q, _)| f.at(q[0], q[1], q[2]).abs() > 1.0e-4)
         .count();
     Some(100.0 * cortados as f64 / vincos.len() as f64)
 }

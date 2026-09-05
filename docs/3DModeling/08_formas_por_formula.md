@@ -288,3 +288,48 @@ alguém dizer com que números ela se mede.
 | Filete que só é arco a **90°** | `(1 − 1/√2)·r/sin α` contra `r·(1/sin α − 1)`; as duas curas (canto exato · raio compensado) **pioram** a sonda de arestas (doc 06 §102.5) |
 | Canto exato dobrado sobre expressão composta | a corda e o disco são globais: `0,0 %` → `1,3 %` de aresta viva no prisma (doc 06 §102.5) |
 | Sonda de arestas semeada só por FORA | cega ao vinco **côncavo**: a mutação do vale da estrela sobrevive (`1,4 %` → `1,3 %`, ruído) — doc 06 §102.1 |
+
+---
+
+## §6 — ⭐⭐⭐ O LEVANTAMENTO de 04/09, e o LOTE 1 (W119)
+
+> **Enio:** *«No plano original seriam mais de 40 shapes prontas […] Busque saber as que faltam
+> implementar.»*
+
+⚠️ **A fila conta-se contra as DUAS listas deste documento** — as 47 do catálogo vetorial (§2.1–§2.3)
+**e** as 15 sólidas do §2.4 —, que é precisamente o erro que o §5 registou.
+
+| | formas |
+|---|---:|
+| o plano (47 + 15) | **62** |
+| já cobertas por uma porta da paleta | 36 |
+| classe **D**, ficam desenhadas (espiral · a base ondulada do `Document`) | 2 |
+| **por construir em 04/09** | **24** |
+
+### §6.1 — O que a W119 fechou (lote 1): **9 portas**, `33 → 42` itens
+
+**Setas (4):** Arrow · Double Arrow · Bent Arrow · Chevron ·
+**Fluxograma (1):** Diamond (o losango de diagonais **diferentes** — ⛔ o prisma de 4 lados tem-nas
+iguais, e é por isso que o §4.1 estava errado ao dá-lo por coberto) ·
+**Redondas (2):** Circle Segment · Ring Arc ·
+**Rings & tubes (2):** Tube · Washer — ⚠️ as duas **não** estavam em nenhuma das listas, e o nome da
+família prometia-as desde a W100.
+
+Mecanismo, as cinco medições que mudaram o desenho e as provas de mutação:
+[doc 06 §120](06_resultados_cena_e_gizmo.md).
+
+### §6.2 — ⏳ O que FICA (15), na ordem proposta
+
+| lote | formas |
+|---|---|
+| **2** (10) | os 4 balões (SpeechRect · SpeechOval · Thought · Cloud) e os 6 símbolos (Bolt · Shield · Tag · Check · Banner · Brace) |
+| **3** (5) | o fluxograma que sobra: Parallelogram · Delay · Display · OffPage · Junction |
+
+⚠️ **Três do lote 3 são FRACAS em 3D e isso está medido pelo desenho, não pelo motor**
+(PredefinedProcess · Junction · NoteBracket): elas nasceram como **desenhos de linha** de um
+fluxograma, e um sólido de 3 mm de espessura com dois traços dentro não é a forma que o nome promete.
+⇒ **decisão de produto**, e a lista acima já as tirou dos 5.
+
+⛔ **E o critério de entrada continua a ser o §3.1 deste doc** — *quantas vezes o artista as quer, e
+**não** o preço*: uma primitiva de fórmula custa `1,00×`–`1,03×` a esfera, e o preço nunca é o que
+decide.

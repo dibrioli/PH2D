@@ -38,14 +38,26 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
     // `if é_cone && index == 1` curaria o caso e não a família — a próxima grandeza cujo zero
     // significa alguma coisa voltaria a bater na mesma linha. A [`Span`] já sabe a resposta
     // (`FromZero`), e ela vem do mesmo sítio que o painel lê.
+    let faixa = dims(p).get(index).map(|d| d.span);
     let zero_ok = matches!(
-        dims(p).get(index).map(|d| d.span),
+        faixa,
         // ⭐ A `WallFromZero` é a faixa dos DOIS RECUOS de uma aresta, e o zero **é** a aresta viva —
         // o estado de nascimento do chanfro e o destino de quem quer desfazer um filete. Ver o doc
         // dela para o defeito pré-existente que isto cura.
-        Some(Span::FromZero | Span::WallFromZero(_))
+        Some(Span::FromZero | Span::WallFromZero(_) | Span::Free)
     );
-    if !value.is_finite() || value < 0.0 || (value == 0.0 && !zero_ok) {
+    // ⭐⭐⭐ **E QUEM DECIDE SE O NEGATIVO PASSA É A MESMA FAIXA** (W119).
+    //
+    // ⛔⛔ **Defeito PRÉ-EXISTENTE**, apanhado ao ligar o segmento de círculo: o `cut` da esfera
+    // cortada e o da cúpula oca declaram [`Span::Free`], cuja doc diz com todas as letras que *«a de
+    // baixo é negativa»* — e esta guarda recusava **tudo** o que fosse `< 0`. ⇒ o slider descia
+    // abaixo de zero e o número parava lá **sem dizer porquê**: exactamente a affordance que mente
+    // que a [`Span::WallFromZero`] foi criada para curar, um campo ao lado.
+    //
+    // ⚠️ **A cura é a mesma da W101**: quem sabe a resposta é a faixa declarada, e não uma excepção
+    // escrita aqui — uma `if é_esfera_cortada && index == 1` curaria o caso e não a família.
+    let negativo_ok = matches!(faixa, Some(Span::Free));
+    if !value.is_finite() || (value < 0.0 && !negativo_ok) || (value == 0.0 && !zero_ok) {
         return Err(bad("dim"));
     }
     let half = value * 0.5;
@@ -156,6 +168,70 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
         (Primitive::Trapezoid { half_width, .. }, 2) => *half_width = half,
         (Primitive::Trapezoid { half_height, .. }, 3) => *half_height = half,
         (Primitive::Vesica { radius, offset, .. }, 1) => *offset = keep_below(value, *radius),
+        // ─────────────────────────── W119 ───────────────────────────
+        // ⚠️ **A ORDEM tem de bater com a do `dims_table.rs`** — o índice É a linha.
+        (Primitive::Arrow { heads, .. }, 0) => {
+            // ⚠️ **COAGE, não recusa** — a lei da contagem de lados do prisma, e pela mesma razão.
+            *heads = (value.round() as u32).clamp(crate::MIN_ARROW_HEADS, crate::MAX_ARROW_HEADS);
+        }
+        (Primitive::Arrow { half_length, .. }, 1) => *half_length = half,
+        // ⭐ A parede é a LARGURA DA PONTA, e ela coage: o slider da haste pára ali, então um valor
+        // de fora só chega por um arrasto do OUTRO controlo. É a lei do vale da estrela.
+        (Primitive::Arrow { shaft, head, .. }, 2) => *shaft = keep_below(half, *head),
+        (Primitive::Arrow { shaft, head, .. }, 3) => *head = keep_above(half, *shaft),
+        (
+            Primitive::Arrow {
+                head_length,
+                half_length,
+                ..
+            },
+            4,
+        ) => *head_length = keep_below(value, *half_length * 2.0),
+        (Primitive::Arrow { half_height, .. }, 5)
+        | (Primitive::Chevron { half_height, .. }, 3)
+        | (Primitive::BentArrow { half_height, .. }, 5)
+        | (Primitive::Rhombus { half_height, .. }, 2)
+        | (Primitive::Tube { half_height, .. }, 3)
+        | (Primitive::CircleSegment { half_height, .. }, 2) => *half_height = half,
+        (Primitive::Chevron { half_length, .. }, 0) => *half_length = half,
+        (
+            Primitive::Chevron {
+                half_span,
+                thickness,
+                ..
+            },
+            1,
+        ) => {
+            *half_span = keep_above(half, *thickness);
+        }
+        (
+            Primitive::Chevron {
+                thickness,
+                half_span,
+                ..
+            },
+            2,
+        ) => *thickness = keep_below(value, *half_span),
+        (Primitive::BentArrow { run, .. }, 0) => *run = half,
+        (Primitive::BentArrow { rise, .. }, 1) => *rise = half,
+        (Primitive::BentArrow { shaft, head, .. }, 2) => *shaft = keep_below(half, *head),
+        (Primitive::BentArrow { shaft, head, .. }, 3) => *head = keep_above(half, *shaft),
+        (
+            Primitive::BentArrow {
+                head_length, rise, ..
+            },
+            4,
+        ) => *head_length = keep_below(value, *rise * 2.0),
+        (Primitive::Rhombus { half_width, .. }, 0) => *half_width = half,
+        (Primitive::Rhombus { half_span, .. }, 1) => *half_span = half,
+        (Primitive::Tube { outer, inner, .. }, 0) => *outer = keep_above(value, *inner),
+        (Primitive::Tube { outer, inner, .. }, 1) => *inner = keep_below(value, *outer),
+        // ⚠️ **COAGE no teto, e o teto É o anel fechado** — ver [`ph2d_field_eval::ops_plates`]:
+        // em `π` o sector sai da árvore em vez de degenerar num corte de espessura zero.
+        (Primitive::Tube { angle, .. }, 2) => *angle = value.min(std::f32::consts::PI),
+        (Primitive::CircleSegment { radius, .. }, 0) => *radius = value,
+        // ⚠️ **A corda é uma POSIÇÃO** e passa negativa — ver a guarda do [`Span::Free`] acima.
+        (Primitive::CircleSegment { cut, .. }, 1) => *cut = value,
         (Primitive::Prism { sides, .. }, 0) => {
             // ⚠️ **COAGE, não recusa** — a lei do `Unary::Taper`, e pela mesma razão: a faixa já
             // não oferece nada fora de `[MIN, MAX]`, então um valor de fora só chega por outra
@@ -187,6 +263,12 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
             | Primitive::Pie { .. }
             | Primitive::Trapezoid { .. }
             | Primitive::Vesica { .. }
+            | Primitive::Arrow { .. }
+            | Primitive::Chevron { .. }
+            | Primitive::BentArrow { .. }
+            | Primitive::Rhombus { .. }
+            | Primitive::Tube { .. }
+            | Primitive::CircleSegment { .. }
             | Primitive::TorusArc { .. }),
             i,
         ) if Some(i) == round_index(p) => {
@@ -270,6 +352,12 @@ fn set_chamfer(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldErro
         | Primitive::Pie { chamfer, .. }
         | Primitive::Trapezoid { chamfer, .. }
         | Primitive::Vesica { chamfer, .. }
+        | Primitive::Arrow { chamfer, .. }
+        | Primitive::Chevron { chamfer, .. }
+        | Primitive::BentArrow { chamfer, .. }
+        | Primitive::Rhombus { chamfer, .. }
+        | Primitive::Tube { chamfer, .. }
+        | Primitive::CircleSegment { chamfer, .. }
         | Primitive::TorusArc { chamfer, .. } => *chamfer = value,
         Primitive::Sphere { .. }
         | Primitive::Torus { .. }
@@ -324,6 +412,12 @@ fn set_round(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldError>
         | Primitive::Pie { round, .. }
         | Primitive::Trapezoid { round, .. }
         | Primitive::Vesica { round, .. }
+        | Primitive::Arrow { round, .. }
+        | Primitive::Chevron { round, .. }
+        | Primitive::BentArrow { round, .. }
+        | Primitive::Rhombus { round, .. }
+        | Primitive::Tube { round, .. }
+        | Primitive::CircleSegment { round, .. }
         | Primitive::TorusArc { round, .. } => *round = value,
         Primitive::Sphere { .. }
         | Primitive::Torus { .. }
@@ -371,6 +465,12 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
         | Primitive::Pie { round, chamfer, .. }
         | Primitive::Trapezoid { round, chamfer, .. }
         | Primitive::Vesica { round, chamfer, .. }
+        | Primitive::Arrow { round, chamfer, .. }
+        | Primitive::Chevron { round, chamfer, .. }
+        | Primitive::BentArrow { round, chamfer, .. }
+        | Primitive::Rhombus { round, chamfer, .. }
+        | Primitive::Tube { round, chamfer, .. }
+        | Primitive::CircleSegment { round, chamfer, .. }
         | Primitive::TorusArc { round, chamfer, .. } => {
             // ⭐⭐ **OS DOIS RECUOS são limitados, e não só o filete** (Enio, 2026-08-30).
             //

@@ -30,6 +30,8 @@ pub(crate) mod bounds_mods;
 pub mod extract;
 pub mod hybrid;
 pub mod ops;
+/// ⭐ A família da SETA — ver [`ops_arrows`].
+pub mod ops_arrows;
 pub mod ops_bool;
 pub mod ops_box;
 pub mod ops_joint;

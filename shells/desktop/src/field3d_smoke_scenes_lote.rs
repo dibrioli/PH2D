@@ -338,3 +338,100 @@ pub(crate) fn cena_14() -> Result<FieldDoc, ph2d_field::FieldError> {
         NodeId(3),
     )
 }
+
+/// A cena `=18` — ver o roteador.
+///
+/// ⭐⭐ **AS NOVE PORTAS DA W119, lado a lado** — e a cena responde a uma pergunta que a paleta não
+/// responde: *elas parecem-se com o que o nome promete?* ⚠️ A seta e a seta dupla ficam **coladas**,
+/// e o tubo, a anilha e o arco também: são a mesma primitiva, e vê-las juntas é o que mostra que a
+/// diferença está nos números.
+pub(crate) fn cena_18() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 18 — AS NOVE PORTAS DA W119: seta · seta dupla · seta dobrada · \
+                 chevron · losango · segmento · tubo · anilha · arco de anel"
+    );
+    // Três colunas por fileira, três fileiras.
+    let at = |i: f32| Xform {
+        translation: [
+            (i % 3.0 - 1.0) * 0.72,
+            (1.0 - (i / 3.0).floor()) * 0.62,
+            0.0,
+        ],
+        ..Xform::IDENTITY
+    };
+    let seta = |heads: u32| Primitive::Arrow {
+        heads,
+        half_length: 0.30,
+        shaft: 0.066,
+        head: 0.15,
+        head_length: 0.165,
+        half_height: 0.075,
+        round: 0.024,
+        chamfer: 0.0,
+    };
+    let anel = |inner: f32, angle: f32, half_height: f32| Primitive::Tube {
+        outer: 0.30,
+        inner,
+        angle,
+        half_height,
+        round: 0.022,
+        chamfer: 0.0,
+    };
+    FieldDoc::new(
+        vec![
+            leaf(seta(1), at(0.0)),
+            leaf(seta(2), at(1.0)),
+            leaf(
+                Primitive::BentArrow {
+                    run: 0.28,
+                    rise: 0.28,
+                    shaft: 0.058,
+                    head: 0.13,
+                    head_length: 0.145,
+                    half_height: 0.075,
+                    round: 0.020,
+                    chamfer: 0.0,
+                },
+                at(2.0),
+            ),
+            leaf(
+                Primitive::Chevron {
+                    half_length: 0.28,
+                    half_span: 0.21,
+                    thickness: 0.084,
+                    half_height: 0.075,
+                    round: 0.020,
+                    chamfer: 0.0,
+                },
+                at(3.0),
+            ),
+            leaf(
+                Primitive::Rhombus {
+                    half_width: 0.30,
+                    half_span: 0.186,
+                    half_height: 0.075,
+                    round: 0.024,
+                    chamfer: 0.0,
+                },
+                at(4.0),
+            ),
+            leaf(
+                Primitive::CircleSegment {
+                    radius: 0.30,
+                    cut: -0.075,
+                    half_height: 0.075,
+                    round: 0.024,
+                    chamfer: 0.0,
+                },
+                at(5.0),
+            ),
+            // ⚠️ **O tubo mostra-se ALTO** — chato ele lê-se como a anilha ao lado, e a cena
+            // deixaria de responder o que existe para responder.
+            leaf(anel(0.186, std::f32::consts::PI, 0.36), at(6.0)),
+            leaf(anel(0.165, std::f32::consts::PI, 0.042), at(7.0)),
+            leaf(anel(0.186, 1.0, 0.075), at(8.0)),
+            combine(Op::Union(Blend::Sharp), (0..9).map(NodeId).collect()),
+        ],
+        NodeId(9),
+    )
+}

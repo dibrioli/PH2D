@@ -390,6 +390,107 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
             // deles fixo faria a aresta mudar de carácter ao redimensionar a forma.
             *chamfer *= factor;
         }
+        // ─────────────────────────── W119 ───────────────────────────
+        // ⚠️ **A contagem de pontas NÃO escala** (o `heads`), e o **ângulo** do sector também não:
+        // os dois são adimensionais, e multiplicá-los mudaria a FORMA em vez do tamanho.
+        Primitive::Arrow {
+            heads: _,
+            half_length,
+            shaft,
+            head,
+            head_length,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [
+                half_length,
+                shaft,
+                head,
+                head_length,
+                half_height,
+                round,
+                chamfer,
+            ] {
+                *v *= factor;
+            }
+        }
+        Primitive::Chevron {
+            half_length,
+            half_span,
+            thickness,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [
+                half_length,
+                half_span,
+                thickness,
+                half_height,
+                round,
+                chamfer,
+            ] {
+                *v *= factor;
+            }
+        }
+        Primitive::BentArrow {
+            run,
+            rise,
+            shaft,
+            head,
+            head_length,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [
+                run,
+                rise,
+                shaft,
+                head,
+                head_length,
+                half_height,
+                round,
+                chamfer,
+            ] {
+                *v *= factor;
+            }
+        }
+        Primitive::Rhombus {
+            half_width,
+            half_span,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [half_width, half_span, half_height, round, chamfer] {
+                *v *= factor;
+            }
+        }
+        Primitive::Tube {
+            outer,
+            inner,
+            angle: _,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [outer, inner, half_height, round, chamfer] {
+                *v *= factor;
+            }
+        }
+        Primitive::CircleSegment {
+            radius,
+            cut,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [radius, cut, half_height, round, chamfer] {
+                *v *= factor;
+            }
+        }
     }
     true
 }

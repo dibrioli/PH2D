@@ -57,6 +57,13 @@ pub fn shape_name(shape: &NodeShape) -> &'static str {
             Primitive::Pie { .. } => "Pie",
             Primitive::Trapezoid { .. } => "Trapezoid",
             Primitive::Vesica { .. } => "Vesica",
+            Primitive::Arrow { heads, .. } if *heads >= 2 => "Double Arrow",
+            Primitive::Arrow { .. } => "Arrow",
+            Primitive::Chevron { .. } => "Chevron",
+            Primitive::BentArrow { .. } => "Bent Arrow",
+            Primitive::Rhombus { .. } => "Diamond",
+            Primitive::Tube { .. } => "Tube",
+            Primitive::CircleSegment { .. } => "Circle Segment",
         },
     }
 }

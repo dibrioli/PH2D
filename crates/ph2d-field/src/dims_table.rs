@@ -468,223 +468,24 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             chamfer_dim(*chamfer),
             round_dim(*round),
         ],
-        Primitive::Gear {
-            teeth,
-            root,
-            outer,
-            tooth,
-            half_height,
-            round,
-            chamfer,
-        } => vec![
-            Dim {
-                key: "field.dim.teeth",
-                value: *teeth as f32,
-                span: Span::Wall(crate::primitive::MAX_GEAR_TEETH as f32),
-            },
-            Dim {
-                key: "field.dim.radius",
-                value: *root,
-                span: Span::Wall(*outer),
-            },
-            Dim {
-                key: "field.dim.radius_outer",
-                value: *outer,
-                span: Span::Positive,
-            },
-            Dim {
-                key: "field.dim.tooth",
-                value: *tooth,
-                span: Span::Wall(1.0),
-            },
-            Dim {
-                key: "field.dim.height",
-                value: half_height * 2.0,
-                span: Span::Positive,
-            },
-            chamfer_dim(*chamfer),
-            round_dim(*round),
-        ],
-        Primitive::Cross {
-            arm,
-            width,
-            half_height,
-            round,
-            chamfer,
-        } => vec![
-            Dim {
-                key: "field.dim.length",
-                value: arm * 2.0,
-                span: Span::Positive,
-            },
-            Dim {
-                key: "field.dim.width",
-                value: width * 2.0,
-                span: Span::Wall(*arm * 2.0),
-            },
-            Dim {
-                key: "field.dim.height",
-                value: half_height * 2.0,
-                span: Span::Positive,
-            },
-            chamfer_dim(*chamfer),
-            round_dim(*round),
-        ],
-        Primitive::Heart {
-            size,
-            half_height,
-            round,
-            chamfer,
-        } => vec![
-            Dim {
-                key: "field.dim.size",
-                value: *size,
-                span: Span::Positive,
-            },
-            Dim {
-                key: "field.dim.height",
-                value: half_height * 2.0,
-                span: Span::Positive,
-            },
-            chamfer_dim(*chamfer),
-            round_dim(*round),
-        ],
-        Primitive::Moon {
-            radius,
-            bite,
-            offset,
-            half_height,
-            round,
-            chamfer,
-        } => vec![
-            Dim {
-                key: "field.dim.radius",
-                value: *radius,
-                span: Span::Positive,
-            },
-            Dim {
-                key: "field.dim.bite",
-                value: *bite,
-                span: Span::Positive,
-            },
-            Dim {
-                key: "field.dim.offset",
-                value: *offset,
-                span: Span::Positive,
-            },
-            Dim {
-                key: "field.dim.height",
-                value: half_height * 2.0,
-                span: Span::Positive,
-            },
-            chamfer_dim(*chamfer),
-            round_dim(*round),
-        ],
-        Primitive::Drop {
-            radius,
-            height,
-            half_height,
-            round,
-            chamfer,
-        } => vec![
-            Dim {
-                key: "field.dim.radius",
-                value: *radius,
-                span: Span::Positive,
-            },
-            Dim {
-                key: "field.dim.length",
-                value: *height,
-                span: Span::Positive,
-            },
-            Dim {
-                key: "field.dim.height",
-                value: half_height * 2.0,
-                span: Span::Positive,
-            },
-            chamfer_dim(*chamfer),
-            round_dim(*round),
-        ],
-        Primitive::Pie {
-            radius,
-            angle,
-            half_height,
-            round,
-            chamfer,
-        } => vec![
-            Dim {
-                key: "field.dim.radius",
-                value: *radius,
-                span: Span::Positive,
-            },
-            Dim {
-                key: "field.dim.angle",
-                value: *angle,
-                span: Span::Wall(std::f32::consts::PI),
-            },
-            Dim {
-                key: "field.dim.height",
-                value: half_height * 2.0,
-                span: Span::Positive,
-            },
-            chamfer_dim(*chamfer),
-            round_dim(*round),
-        ],
-        Primitive::Trapezoid {
-            bottom,
-            top,
-            half_width,
-            half_height,
-            round,
-            chamfer,
-        } => vec![
-            Dim {
-                key: "field.dim.width",
-                value: bottom * 2.0,
-                span: Span::Positive,
-            },
-            Dim {
-                key: "field.dim.radius_top",
-                value: top * 2.0,
-                span: Span::Positive,
-            },
-            Dim {
-                key: "field.dim.length",
-                value: half_width * 2.0,
-                span: Span::Positive,
-            },
-            Dim {
-                key: "field.dim.height",
-                value: half_height * 2.0,
-                span: Span::Positive,
-            },
-            chamfer_dim(*chamfer),
-            round_dim(*round),
-        ],
-        Primitive::Vesica {
-            radius,
-            offset,
-            half_height,
-            round,
-            chamfer,
-        } => vec![
-            Dim {
-                key: "field.dim.radius",
-                value: *radius,
-                span: Span::Positive,
-            },
-            Dim {
-                key: "field.dim.offset",
-                value: *offset,
-                span: Span::Wall(*radius),
-            },
-            Dim {
-                key: "field.dim.height",
-                value: half_height * 2.0,
-                span: Span::Positive,
-            },
-            chamfer_dim(*chamfer),
-            round_dim(*round),
-        ],
+        // ⭐⭐ **AS CHAPAS delegam ao irmão** — ver [`super::dims_table_plates`].
+        //
+        // ⚠️ **A corrente NÃO se perde:** este `match` continua exaustivo, então uma primitiva nova
+        // é **erro de compilação** aqui até alguém dizer a que família ela pertence. O que o irmão
+        // recebe é sempre uma das nomeadas nesta linha.
+        p @ (Primitive::Gear { .. }
+        | Primitive::Cross { .. }
+        | Primitive::Heart { .. }
+        | Primitive::Moon { .. }
+        | Primitive::Drop { .. }
+        | Primitive::Pie { .. }
+        | Primitive::Trapezoid { .. }
+        | Primitive::Vesica { .. }
+        | Primitive::Arrow { .. }
+        | Primitive::Chevron { .. }
+        | Primitive::BentArrow { .. }
+        | Primitive::Rhombus { .. }
+        | Primitive::Tube { .. }
+        | Primitive::CircleSegment { .. }) => super::dims_table_plates::dims_plate(p),
     }
 }

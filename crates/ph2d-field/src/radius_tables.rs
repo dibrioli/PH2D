@@ -137,6 +137,38 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
             half_height,
             ..
         } => (radius - offset).max(radius * 0.1).min(*half_height),
+        // ─────────────────────────── W119 ───────────────────────────
+        // ⚠️ **A MENOR medida que define a forma** — é a escala do documento, e é ela que dá sentido
+        // a um raio de mistura: a haste de uma seta, a banda de um chevron, a parede de um tubo.
+        Primitive::Arrow {
+            shaft, half_height, ..
+        }
+        | Primitive::BentArrow {
+            shaft, half_height, ..
+        } => shaft.min(*half_height),
+        Primitive::Chevron {
+            thickness,
+            half_height,
+            ..
+        } => thickness.min(*half_height),
+        Primitive::Rhombus {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        } => half_width.min(*half_span).min(*half_height),
+        Primitive::Tube {
+            outer,
+            inner,
+            half_height,
+            ..
+        } => (outer - inner).min(*half_height),
+        Primitive::CircleSegment {
+            radius,
+            cut,
+            half_height,
+            ..
+        } => (radius - cut).max(radius * 0.1).min(*half_height),
     }
 }
 
@@ -349,6 +381,54 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
             half_height,
             ..
         } => hyp(*radius, *half_height),
+        // ─────────────────────────── W119 ───────────────────────────
+        // ⚠️ **O ponto mais afastado de uma seta é uma FARPA, não o bico**: a farpa está em
+        // `(±half_length ∓ head_length, head)` e o bico em `(half_length, 0)`. Errar para CIMA é o
+        // desenho desta função, e é por isso que ela toma o maior dos dois.
+        Primitive::Arrow {
+            half_length,
+            head,
+            head_length,
+            half_height,
+            ..
+        } => hyp(
+            half_length.max(hyp(half_length - head_length, *head)),
+            *half_height,
+        ),
+        Primitive::Chevron {
+            half_length,
+            half_span,
+            thickness,
+            half_height,
+            ..
+        } => hyp(hyp(*half_length, half_span + thickness), *half_height),
+        // ⛔⛔ **A PONTA PASSA O `run`, e a 1.ª redacção disto dizia que ela «cabe por
+        // construção»:** o braço de pé está encostado em `run − shaft` e a ponta abre `head` para
+        // cada lado, logo ela chega a `run − shaft + head`, que com `head > shaft` (a cerca que faz
+        // dela uma seta) é SEMPRE maior que `run`. *Uma caixa menor que a peça corta-a e não diz
+        // nada* — foi assim que o arco preto da cruz nasceu na W106-bis.
+        Primitive::BentArrow {
+            run,
+            rise,
+            shaft,
+            head,
+            half_height,
+            ..
+        } => hyp(hyp((run - shaft + head).max(*run), *rise), *half_height),
+        Primitive::Rhombus {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        } => hyp(half_width.max(*half_span), *half_height),
+        Primitive::Tube {
+            outer, half_height, ..
+        } => hyp(*outer, *half_height),
+        Primitive::CircleSegment {
+            radius,
+            half_height,
+            ..
+        } => hyp(*radius, *half_height),
     }
 }
 
@@ -504,5 +584,41 @@ pub fn bounding_half_extents(p: &Primitive) -> [f32; 3] {
             half_height,
             ..
         } => [bottom.max(*top), *half_width, *half_height],
+        // ─────────────────────────── W119 ───────────────────────────
+        Primitive::Arrow {
+            half_length,
+            head,
+            half_height,
+            ..
+        } => [*half_length, *head, *half_height],
+        Primitive::Chevron {
+            half_length,
+            half_span,
+            thickness,
+            half_height,
+            ..
+        } => [*half_length, half_span + thickness, *half_height],
+        Primitive::BentArrow {
+            run,
+            rise,
+            shaft,
+            head,
+            half_height,
+            ..
+        } => [(run - shaft + head).max(*run), *rise, *half_height],
+        Primitive::Rhombus {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        } => [*half_width, *half_span, *half_height],
+        Primitive::Tube {
+            outer, half_height, ..
+        }
+        | Primitive::CircleSegment {
+            radius: outer,
+            half_height,
+            ..
+        } => chata(*outer, *half_height),
     }
 }

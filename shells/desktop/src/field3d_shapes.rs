@@ -298,6 +298,54 @@ pub(crate) const SHAPES: &[Shape] = &[
         family: Family::Plates,
         make: Make::Formula(a_star),
     },
+    // ─────────────────────────── W119 ───────────────────────────
+    // ⭐ **Nove portas para seis formas** — ver [`make`]: a seta dupla e as três do anel são a mesma
+    // primitiva com outros números, e é a PORTA que o artista procura.
+    Shape {
+        key: "panel.model3d.add.arrow",
+        family: Family::Plates,
+        make: Make::Formula(an_arrow),
+    },
+    Shape {
+        key: "panel.model3d.add.double_arrow",
+        family: Family::Plates,
+        make: Make::Formula(a_double_arrow),
+    },
+    Shape {
+        key: "panel.model3d.add.bent_arrow",
+        family: Family::Plates,
+        make: Make::Formula(a_bent_arrow),
+    },
+    Shape {
+        key: "panel.model3d.add.chevron",
+        family: Family::Plates,
+        make: Make::Formula(a_chevron),
+    },
+    Shape {
+        key: "panel.model3d.add.rhombus",
+        family: Family::Plates,
+        make: Make::Formula(a_rhombus),
+    },
+    Shape {
+        key: "panel.model3d.add.circle_segment",
+        family: Family::Plates,
+        make: Make::Formula(a_circle_segment),
+    },
+    Shape {
+        key: "panel.model3d.add.tube",
+        family: Family::Rings,
+        make: Make::Formula(a_tube),
+    },
+    Shape {
+        key: "panel.model3d.add.washer",
+        family: Family::Rings,
+        make: Make::Formula(a_washer),
+    },
+    Shape {
+        key: "panel.model3d.add.ring_arc",
+        family: Family::Rings,
+        make: Make::Formula(a_ring_arc),
+    },
     Shape {
         key: "panel.model3d.add.torus",
         family: Family::Rings,

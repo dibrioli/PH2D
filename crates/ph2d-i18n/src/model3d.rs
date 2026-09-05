@@ -87,6 +87,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.add.pie" => "Pie",
         "panel.model3d.add.trapezoid" => "Trapezoid",
         "panel.model3d.add.vesica" => "Vesica",
+        // ─────────────────────────── W119 ───────────────────────────
+        // ⚠️ **"Diamond" e não "Rhombus"**: é a palavra do catálogo de fluxograma e a que um artista
+        // procura na paleta; o nome geométrico fica no documento, onde o leitor é a próxima LLM.
+        "panel.model3d.add.arrow" => "Arrow",
+        "panel.model3d.add.double_arrow" => "Double Arrow",
+        "panel.model3d.add.bent_arrow" => "Bent Arrow",
+        "panel.model3d.add.chevron" => "Chevron",
+        "panel.model3d.add.rhombus" => "Diamond",
+        "panel.model3d.add.circle_segment" => "Circle Segment",
+        // ⚠️ **Três portas, uma forma** — ver o construtor de cada uma: o tubo é alto, a anilha é
+        // chata e o arco tem sector. *É a porta que o artista procura, não a fórmula.*
+        "panel.model3d.add.tube" => "Tube",
+        "panel.model3d.add.washer" => "Washer",
+        "panel.model3d.add.ring_arc" => "Ring Arc",
         // ⭐ A ESCULTURA. ⚠️ As reticências são a convenção de "isto abre um diálogo" — as outras
         // criam na hora, esta pergunta qual arquivo, e o rótulo tem de dizer a diferença antes do
         // clique.
@@ -256,6 +270,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.dim.offset" => "Offset",
         "field.dim.arm" => "Arm",
         "field.dim.half_width" => "Half Width",
+        // ⭐ **"Span" é a envergadura transversal de uma chapa** — a segunda diagonal de um losango,
+        // a abertura de um chevron. ⚠️ Não é "Height": nesta família **Height é a espessura em Z**,
+        // e a mesma palavra em duas linhas do mesmo painel faria o artista arrastar a errada.
+        "field.dim.span" => "Span",
+        "field.dim.shaft" => "Shaft Width",
+        "field.dim.head_width" => "Head Width",
+        "field.dim.head_length" => "Head Length",
+        "field.dim.heads" => "Heads",
         // ⚠️ Em GRAUS na cabeça do artista, mas o documento guarda radianos — o painel mostra o
         // número cru, e o rótulo não promete unidade nenhuma.
         "field.dim.angle" => "Sweep",

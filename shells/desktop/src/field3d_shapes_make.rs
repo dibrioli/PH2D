@@ -346,3 +346,117 @@ pub(crate) fn a_vesica(r: f32) -> Primitive {
         chamfer: 0.0,
     }
 }
+
+// ─────────────────────────────── W119 ───────────────────────────────
+// ⭐ **NOVE PORTAS, SEIS PRIMITIVAS** — a seta e a seta dupla são a mesma forma com `heads`, e o
+// tubo, a anilha e o arco de anel são o mesmo anel com outros números. ⚠️ É a lei do
+// [`ph2d_field::Primitive::Cone`]: duas variantes dariam duas fórmulas para a mesma superfície, e a
+// segunda é a que envelhece. *O que a paleta multiplica são as PORTAS, nunca as fórmulas.*
+
+/// ⚠️ A haste nasce a **22 %** do enquadramento e a ponta a **50 %**: mais fina some à distância a
+/// que a peça nasce, e mais grossa deixa de ter farpa.
+fn uma_seta(r: f32, heads: u32) -> Primitive {
+    Primitive::Arrow {
+        heads,
+        half_length: r,
+        shaft: r * 0.22,
+        head: r * 0.5,
+        head_length: r * 0.55,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+pub(crate) fn an_arrow(r: f32) -> Primitive {
+    uma_seta(r, 1)
+}
+
+pub(crate) fn a_double_arrow(r: f32) -> Primitive {
+    uma_seta(r, 2)
+}
+
+pub(crate) fn a_chevron(r: f32) -> Primitive {
+    Primitive::Chevron {
+        half_length: r,
+        half_span: r * 0.75,
+        thickness: r * 0.28,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+pub(crate) fn a_bent_arrow(r: f32) -> Primitive {
+    Primitive::BentArrow {
+        run: r,
+        rise: r,
+        shaft: r * 0.2,
+        head: r * 0.45,
+        head_length: r * 0.5,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+/// ⚠️ As duas diagonais nascem **diferentes** — é isso que separa o losango do prisma de 4 lados, e
+/// um default quadrado faria a paleta oferecer duas portas para a mesma peça.
+pub(crate) fn a_rhombus(r: f32) -> Primitive {
+    Primitive::Rhombus {
+        half_width: r,
+        half_span: r * 0.62,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+/// O anel **fechado e alto** — `angle = π` é o sector ausente, ver [`ph2d_field::Primitive::Tube`].
+pub(crate) fn a_tube(r: f32) -> Primitive {
+    Primitive::Tube {
+        outer: r,
+        inner: r * 0.62,
+        angle: std::f32::consts::PI,
+        half_height: r * 1.2,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+/// A mesma peça **chata** — a anilha. ⚠️ A meia-altura fica acima do filete de nascimento, senão a
+/// forma nasceria com o `round` já limitado e o slider começaria colado ao teto.
+pub(crate) fn a_washer(r: f32) -> Primitive {
+    Primitive::Tube {
+        outer: r,
+        inner: r * 0.55,
+        angle: std::f32::consts::PI,
+        half_height: r * 0.14,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+/// E a mesma peça **com sector** — o arco de anel.
+pub(crate) fn a_ring_arc(r: f32) -> Primitive {
+    Primitive::Tube {
+        outer: r,
+        inner: r * 0.62,
+        angle: 1.0,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+/// ⚠️ A corda nasce **abaixo** do centro: em `cut = 0` sai o semicírculo exacto, e um semicírculo
+/// lê-se como meia peça em vez de uma forma.
+pub(crate) fn a_circle_segment(r: f32) -> Primitive {
+    Primitive::CircleSegment {
+        radius: r,
+        cut: -r * 0.25,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}

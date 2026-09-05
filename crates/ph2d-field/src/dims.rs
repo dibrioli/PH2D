@@ -234,4 +234,7 @@ pub use dims_write::{clamp_round, set_dim};
 /// ⭐ A tabela por-forma — ver [`dims_table`].
 #[path = "dims_table.rs"]
 mod dims_table;
+/// ⭐ A metade das CHAPAS daquela tabela — ver [`dims_table_plates`].
+#[path = "dims_table_plates.rs"]
+mod dims_table_plates;
 pub use dims_table::dims;

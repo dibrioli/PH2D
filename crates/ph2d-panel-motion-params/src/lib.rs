@@ -20,6 +20,11 @@ mod gradient_row;
 #[cfg(test)]
 #[path = "measure_row_cap.rs"]
 mod measure_row_cap;
+/// **O custo MARGINAL de uma row pintada** — a medição do ciclo 1 (doc 103), irmã da de
+/// cima: ali o TETO de rows, aqui o preço de UMA, que é o que decide o LOD do cartão.
+#[cfg(test)]
+#[path = "measure_row_cost.rs"]
+mod measure_row_cost;
 mod number_rows;
 mod paint_seed;
 mod palette_row;

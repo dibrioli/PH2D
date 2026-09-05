@@ -237,3 +237,159 @@ fn what_each_card_carries() {
         eprintln!("  {n:>3} │ {alvo}");
     }
 }
+
+/// ⭐⭐⭐ **O CARTÃO OFERECE TUDO O QUE O PAINEL OFERECE** — o critério de aceitação para o
+/// painel lateral SAIR (doc 103: decisão do Enio, 2026-09-05).
+///
+/// ⚠️ Não basta a porta de VISIBILIDADE ser a mesma (`shown_params`): o painel monta as rows
+/// por outro caminho (`build_params_snapshot`), que dobra canais de cor em amostras, acrescenta
+/// rows do canal de TEXTO (curva, gradiente, ficheiro) e pode consumir params num controlo só.
+/// Duas contagens diferentes sobre a mesma lei é como um knob fica **inalcançável** no dia em
+/// que o painel for embora.
+///
+/// A régua é de INCLUSÃO, não de igualdade: o cartão pode oferecer mais (e oferece — ele não
+/// dobra nada ainda), nunca menos.
+///
+/// `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture what_the_panel_offers_and_the_card_does_not`
+#[test]
+#[ignore = "sonda de censo, nao um gate"]
+fn what_the_panel_offers_and_the_card_does_not() {
+    let mut faltam: Vec<(String, usize, usize, Vec<String>)> = Vec::new();
+    let mut tot_painel = 0usize;
+    let mut tot_cartao = 0usize;
+    let base = MotionState::new();
+    let tipos: Vec<String> = base.registry.manifests().map(|m| m.name.to_string()).collect();
+    drop(base);
+    for nome in &tipos {
+        let mut m = MotionState::new();
+        let id = m.doc.graph.add_node(nome.clone());
+        ph2d_panel_motion_graph::set_graph_selection(vec![id.0]);
+        let painel = build_params_snapshot(&m, ph2d_editor::ProjectSettings::default());
+        let no_painel: Vec<String> = painel
+            .as_ref()
+            .map(|s| {
+                s.rows
+                    .iter()
+                    .flat_map(|r| {
+                        r.params()
+                            .iter()
+                            .map(|p| (*p).to_string())
+                            .collect::<Vec<_>>()
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+        stamp_card_params(&m, &mut snap);
+        let no_cartao: Vec<String> = snap
+            .nodes
+            .iter()
+            .find(|v| v.id == id.0)
+            .map(|v| v.params.iter().map(|c| c.hint.param.to_string()).collect())
+            .unwrap_or_default();
+        tot_painel += no_painel.len();
+        tot_cartao += no_cartao.len();
+        let em_falta: Vec<String> = no_painel
+            .iter()
+            .filter(|p| !no_cartao.contains(p))
+            .cloned()
+            .collect();
+        if !em_falta.is_empty() {
+            faltam.push((nome.clone(), no_painel.len(), no_cartao.len(), em_falta));
+        }
+    }
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+    eprintln!(
+        "  {} tipos · painel {tot_painel} params · cartao {tot_cartao} · {} tipos com FALTA",
+        tipos.len(),
+        faltam.len()
+    );
+    faltam.sort_by_key(|(_, _, _, f)| std::cmp::Reverse(f.len()));
+    for (n, p, c, f) in faltam.iter().take(14) {
+        eprintln!("  {n:<26} painel {p:>3} · cartao {c:>3} · faltam {:>2}: {f:?}", f.len());
+    }
+}
+
+/// ⭐⭐⭐ **NENHUM PARAM DO PAINEL FICA FORA DO CARTÃO** — o critério de aceitação para o painel
+/// lateral SAIR (doc 103; decisão do Enio, 2026-09-05).
+///
+/// A porta de visibilidade é a mesma nos dois, mas o painel monta as rows por outro caminho
+/// (`build_params_snapshot`), e um param pode estar lá **dobrado** dentro de um controlo
+/// composto. A régua é por isso de **ALCANCE**, não de contagem: um param do painel está
+/// coberto quando tem row no cartão **ou** é
+/// - um dos `channels` de um hint [`ParamWidget::Color`] que o cartão mostra (o artista mexe-o
+///   pela AMOSTRA — o `motion.tint` dobra `g`/`b`/`a` na cor ancorada em `r`, e o
+///   `motion.strobe` dobra o `flash_amount`, que é a alfa daquela cor), **ou**
+/// - o `mode_param` de um hint [`ParamWidget::Channels`] que o cartão mostra (o `value.attribute`
+///   dobra o `mode` no selector de canal).
+///
+/// ⚠️ **Medido em 2026-09-05**, quando este gate nasceu: painel **713** params · cartão **700**
+/// · **13** de diferença, e as 13 são exactamente estas duas famílias — **zero** buracos reais.
+/// ⛔ **A lista de excepções é DERIVADA dos hints**, nunca escrita: um controlo composto novo
+/// entra sozinho, e um param que caia fora das duas famílias acende este gate.
+///
+/// FALSIFICADO por o cartão deixar de receber uma família de params (o gate nomeia o nó e os
+/// params, que é o que um agente precisa para saber o que ficou inalcançável).
+#[test]
+fn no_param_the_panel_offers_falls_off_the_card() {
+    let base = MotionState::new();
+    let tipos: Vec<String> = base.registry.manifests().map(|m| m.name.to_string()).collect();
+    drop(base);
+    let mut buracos: Vec<String> = Vec::new();
+    for nome in &tipos {
+        let mut m = MotionState::new();
+        let id = m.doc.graph.add_node(nome.clone());
+        ph2d_panel_motion_graph::set_graph_selection(vec![id.0]);
+        let painel = build_params_snapshot(&m, ph2d_editor::ProjectSettings::default());
+        let no_painel: Vec<String> = painel
+            .as_ref()
+            .map(|s| {
+                s.rows
+                    .iter()
+                    .flat_map(|r| {
+                        r.params()
+                            .iter()
+                            .map(|p| (*p).to_string())
+                            .collect::<Vec<_>>()
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+        stamp_card_params(&m, &mut snap);
+        let no_cartao: Vec<&'static str> = snap
+            .nodes
+            .iter()
+            .find(|v| v.id == id.0)
+            .map(|v| v.params.iter().map(|c| c.hint.param).collect())
+            .unwrap_or_default();
+        // As duas famílias de irmãos, DERIVADAS dos hints das rows que o cartão mostra.
+        let tid = m.doc.graph.node(id).expect("no'").type_id();
+        let mut irmaos: Vec<&'static str> = Vec::new();
+        if let Some(hints) = m.registry.param_ui(tid) {
+            for h in hints.iter().filter(|h| no_cartao.contains(&h.param)) {
+                match h.widget {
+                    ph2d_node_registry::ParamWidget::Color { channels } => {
+                        irmaos.extend(channels);
+                    }
+                    ph2d_node_registry::ParamWidget::Channels { mode_param, .. } => {
+                        irmaos.push(mode_param);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        for p in &no_painel {
+            if !no_cartao.contains(&p.as_str()) && !irmaos.contains(&p.as_str()) {
+                buracos.push(format!("{nome}::{p}"));
+            }
+        }
+    }
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+    assert!(
+        buracos.is_empty(),
+        "{} params do painel ficam INALCANCAVEIS no cartao (o painel nao pode sair enquanto \
+         isto durar): {buracos:?}",
+        buracos.len()
+    );
+}

@@ -25,7 +25,7 @@
 
 use crate::geom::{View, card_h};
 use crate::snapshot::{GraphBackdropView, GraphNodeView};
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::text_elide::paint_text_title_elided;
 use ph2d_editor_core::widget::panel_chrome::{
@@ -165,18 +165,25 @@ pub(crate) fn draw(
     let tint = resolve(tint_token(b.color), theme);
     fill_rounded_rect(ctx.scene, body, r, tint);
     fill_rounded_rect(ctx.scene, header_rect(b, view), r, tint);
-    stroke_rounded_rect(
+    // ⭐ Pela porta do TEMA: sem borda em repouso num tema moderno, e a SELECÇÃO é a moldura que
+    //    sobrevive (2 px em `mono`, como o `GraphNode` seleccionado do Godot). O raio fica: ele
+    //    escala com o zoom, é geometria do grafo e não uma quina de cromo.
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         body,
         r,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         BORDER_W,
         resolve(ColorToken::Border, theme),
     );
     if selected {
-        stroke_rounded_rect(
+        ph2d_editor_core::paint::stroke_frame(
             ctx.scene,
             body,
             r,
+            theme,
+            ph2d_tokens::visuals::Feel::Selected,
             SELECTED_W,
             resolve(ColorToken::Accent, theme),
         );

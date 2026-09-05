@@ -66,10 +66,67 @@ const EXEMPT: &[(&str, &str)] = &[
         "widget/showcase/body.rs",
         "o contorno de seccao do showcase e' a MARCA de realce que o utilizador escolheu (`Section outline`, cor de marcador): conteudo autorado, nao moldura de repouso.",
     ),
+    // ── Painéis (wave 4) — o contorno que É a mensagem, ou conteúdo do documento ──
+    (
+        "ph2d-panel-flip-frames/src/paint_cells.rs",
+        "o fantasma de onde a celula vai POUSAR durante um arrasto: a mensagem, nao moldura de repouso.",
+    ),
+    (
+        "ph2d-panel-hierarchy/src/paint.rs",
+        "o indicador de «largar DENTRO deste no'» durante um arrasto: a mensagem, nao moldura de repouso.",
+    ),
+    (
+        "ph2d-panel-inspector/src/paint_frame.rs",
+        "o contorno de seccao e' a MARCA de realce que o utilizador escolheu (cor de marcador): conteudo autorado — o gemeo do showcase.",
+    ),
+    (
+        "ph2d-panel-motion-graph/src/paint_overlays.rs",
+        "o marquee de seleccao sobre o CANVAS do grafo: um contorno e' o proprio significado — o gemeo do `selection.rs`.",
+    ),
+    (
+        "ph2d-panel-motion-graph/src/paint_wire.rs",
+        "o anel do crachá `pre` sobre um FIO do grafo: conteudo do documento, nao cromo.",
+    ),
+    (
+        "ph2d-panel-motion-graph/src/paint_socket.rs",
+        "o HALO de um socket-alvo durante um arrasto de fio (`Accent` compativel · `Danger` incompativel): a mensagem, nao moldura de repouso.",
+    ),
+    (
+        "ph2d-panel-physics/src/paint/matrix.rs",
+        "a diagonal da matriz de camadas e' contornada para o olho achar o eixo de simetria: a mensagem, nao moldura.",
+    ),
+    (
+        "ph2d-panel-timeline/src/strip_paint.rs",
+        "o contorno de uma STRIP na lane: duas strips adjacentes com a mesma tinta so' se separam por ele — conteudo do documento.",
+    ),
 ];
 
 fn src_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src")
+}
+
+/// ⭐⭐ **Os PAINÉIS e a SHELL também traçam** (wave 4, 2026-09-05): medido, 59 ficheiros em
+/// `crates/ph2d-panel-*/src` chamavam `stroke_rounded_rect` directo e **nenhum** conhecia a porta —
+/// e é nos painéis que o artista vive. Cada raiz vem com o prefixo da crate, para que a chave de
+/// uma isenção nunca colida com a de um ficheiro do `editor-core`.
+fn panel_and_shell_roots() -> Vec<(String, PathBuf)> {
+    let crates = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    let mut out = Vec::new();
+    for entry in fs::read_dir(&crates).expect("crates/ legivel").flatten() {
+        let p = entry.path();
+        let Some(name) = p.file_name().and_then(|n| n.to_str()).map(str::to_string) else {
+            continue;
+        };
+        if p.is_dir() && name.starts_with("ph2d-panel-") && p.join("src").is_dir() {
+            out.push((format!("{name}/src"), p.join("src")));
+        }
+    }
+    let shell = crates.join("../shells/desktop/src");
+    if shell.is_dir() {
+        out.push(("shells/desktop/src".to_string(), shell));
+    }
+    out.sort();
+    out
 }
 
 fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
@@ -83,7 +140,27 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// `(caminho relativo a src/, traça molduras?, conhece a porta?)` para todo ficheiro de produto.
+/// `(traça molduras?, conhece a porta?)` de um ficheiro de produto.
+fn classify(p: &Path) -> (bool, bool) {
+    let src = fs::read_to_string(p).expect("ficheiro legivel");
+    // ⚠️ Só o que PINTA: um `use` que nomeia a função não traça nada.
+    let body: String = src
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("use "))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let strokes = body.contains("stroke_rounded_rect(");
+    let door = body.contains("stroke_frame(") || body.contains("visuals::");
+    (strokes, door)
+}
+
+fn is_test_file(rel: &str) -> bool {
+    rel.contains("/tests") || rel.ends_with("_tests.rs") || rel.ends_with("tests.rs")
+}
+
+/// `(chave, traça molduras?, conhece a porta?)` para todo ficheiro de produto — os do
+/// `editor-core` com o caminho relativo a `src/` (`widget/…`, `screens/hero/…`, `paint.rs`), os
+/// dos painéis e da shell com o prefixo da crate (`ph2d-panel-x/src/…`, `shells/desktop/src/…`).
 fn census() -> Vec<(String, bool, bool)> {
     let root = src_root();
     let mut files = Vec::new();
@@ -98,19 +175,27 @@ fn census() -> Vec<(String, bool, bool)> {
             .expect("dentro de src/")
             .to_string_lossy()
             .replace('\\', "/");
-        if rel.contains("/tests") || rel.ends_with("_tests.rs") || rel.ends_with("tests.rs") {
+        if is_test_file(&rel) {
             continue;
         }
-        let src = fs::read_to_string(&p).expect("ficheiro legivel");
-        // ⚠️ Só o que PINTA: um `use` que nomeia a função não traça nada.
-        let body: String = src
-            .lines()
-            .filter(|l| !l.trim_start().starts_with("use "))
-            .collect::<Vec<_>>()
-            .join("\n");
-        let strokes = body.contains("stroke_rounded_rect(");
-        let door = body.contains("stroke_frame(") || body.contains("visuals::");
+        let (strokes, door) = classify(&p);
         out.push((rel, strokes, door));
+    }
+    for (prefix, src) in panel_and_shell_roots() {
+        let mut files = Vec::new();
+        walk(&src, &mut files);
+        for p in files {
+            let rel = p
+                .strip_prefix(&src)
+                .expect("dentro da raiz")
+                .to_string_lossy()
+                .replace('\\', "/");
+            if is_test_file(&rel) {
+                continue;
+            }
+            let (strokes, door) = classify(&p);
+            out.push((format!("{prefix}/{rel}"), strokes, door));
+        }
     }
     out.sort();
     out

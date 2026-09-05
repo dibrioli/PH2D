@@ -8,7 +8,7 @@
 
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Checkbox, CheckboxValue, Slider, paint_checkbox, paint_slider};
 use ph2d_editor_core::zones::Rect;
@@ -58,12 +58,15 @@ pub(crate) fn paint_composite_card(
     };
     let card_h = pad + ROW_H_PX + layers_h + pad;
     let card = Rect::new(x, y, content_w, card_h);
-    let radius = Radius::Md.px();
+    // ⭐ Raio e moldura pela porta do TEMA: o cartão é plano num tema moderno.
+    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(ctx.scene, card, radius, resolve(ColorToken::Bg1, theme));
-    stroke_rounded_rect(
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         card,
         radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Default.px(),
         resolve(ColorToken::Border, theme),
     );

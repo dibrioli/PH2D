@@ -26,9 +26,7 @@ use ph2d_color::{
 };
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::math::safe_clamp;
-use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect, paint_text_centered, resolve};
 use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -220,10 +218,13 @@ pub(crate) fn paint_gradient_row(
     let by0 = y + ROW_H_PX + gap;
     let bar = Rect::new(x, by0, w.max(1.0), BAR_H);
     paint_gradient_bar(scene, bar, &ramp);
-    stroke_rounded_rect(
+    // ⭐ Pela porta do TEMA: a barra é plana num tema moderno.
+    ph2d_editor_core::paint::stroke_frame(
         scene,
         bar,
-        Radius::Sm.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         GRID_W,
         resolve(ColorToken::TextDisabled, theme),
     );
@@ -272,10 +273,18 @@ pub(crate) fn paint_gradient_row(
             Radius::Sm.px(),
             Color::from_rgba8(srgb[0], srgb[1], srgb[2], 255), // LITERAL-COLOR-OK: the stop's own colour is data
         );
-        stroke_rounded_rect(
+        // ⭐ Pela porta do TEMA: a amostra é plana num tema moderno, e a ESCOLHIDA leva o anel de
+        //    selecção (a moldura que o moderno não apaga — sem ela não se sabe qual parada se edita).
+        ph2d_editor_core::paint::stroke_frame(
             scene,
             srect,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+            theme,
+            if sel == Some(i) {
+                ph2d_tokens::visuals::Feel::Selected
+            } else {
+                ph2d_tokens::visuals::Feel::Rest
+            },
             if sel == Some(i) { RING_W } else { GRID_W },
             if sel == Some(i) {
                 accent
@@ -303,10 +312,12 @@ pub(crate) fn paint_gradient_row(
             PRESET_H,
         );
         paint_gradient_bar(scene, prect, &preset.ramp());
-        stroke_rounded_rect(
+        ph2d_editor_core::paint::stroke_frame(
             scene,
             prect,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
             GRID_W,
             resolve(ColorToken::TextDisabled, theme),
         );

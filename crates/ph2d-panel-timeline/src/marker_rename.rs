@@ -14,7 +14,7 @@
 
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::math::safe_clamp;
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{TextInput, TextInputState, paint_text_input_with_buffer};
 use ph2d_editor_core::zones::Rect;
@@ -102,10 +102,14 @@ pub(crate) fn paint(
     } else {
         ColorToken::TimelinePlayhead
     };
-    stroke_rounded_rect(
+    // ⭐ Pela porta do TEMA: o campo em edição leva o anel de FOCO (o acento a 2 px no moderno);
+    //    no clássico a cor diz se é sinal ou rótulo, como sempre.
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         rect,
-        Radius::Xs.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px()),
+        theme,
+        ph2d_tokens::visuals::Feel::Focused,
         StrokeToken::Thin.px(),
         resolve(border, theme),
     );

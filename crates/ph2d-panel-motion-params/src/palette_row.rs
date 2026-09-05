@@ -24,9 +24,7 @@ use crate::snapshot::{PaletteRow, param_pal_add_id, param_pal_remove_id, param_p
 use ph2d_color::srgb::linear_to_srgb_byte;
 use ph2d_color::{DEFAULT_PALETTE_FALLBACK, parse_palette};
 use ph2d_editor_core::interaction::HitIndex;
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, resolve};
 use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -150,10 +148,13 @@ pub(crate) fn paint_palette_row(
             Radius::Sm.px(),
             Color::from_rgba8(srgb[0], srgb[1], srgb[2], 255), // LITERAL-COLOR-OK: the palette's own colour is data, not a token (the swatch precedent)
         );
-        stroke_rounded_rect(
+        // ⭐ Pela porta do TEMA: a amostra é plana num tema moderno.
+        ph2d_editor_core::paint::stroke_frame(
             scene,
             r,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
             GRID_W,
             resolve(ColorToken::TextDisabled, theme),
         );

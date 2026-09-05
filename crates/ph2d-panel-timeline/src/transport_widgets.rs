@@ -163,10 +163,14 @@ pub(crate) fn toggle(
     // its neighbours (Enio 2026-07-08).
     let cell_w = pad + TOGGLE_LABEL_W + pad + sw + pad;
     let cell = Rect::new(x, y, cell_w, ROW_H_PX);
-    stroke_rounded_rect(
+    // ⭐ Pela porta do TEMA: o contorno da célula é do clássico (o pedido de 2026-07-08 fica
+    //    intacto lá); num tema moderno a célula é plana e o espaçamento faz a demarcação.
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         cell,
-        Radius::Sm.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Thin.px(),
         resolve(ColorToken::Border, theme),
     );

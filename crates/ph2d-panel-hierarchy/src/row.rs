@@ -4,9 +4,7 @@
 
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::HitIndex;
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
 use ph2d_editor_core::screens::hero::fixture;
 use ph2d_editor_core::screens::hero::ids;
 use ph2d_editor_core::widget::{Tag, TagState, TagTone, paint_tag};
@@ -80,16 +78,16 @@ fn paint_row_background(
         );
     }
     if entity.selected {
-        fill_rounded_rect(
+        // ⭐ Pela porta do TEMA: a linha seleccionada é só tinta num tema moderno (a `selected`
+        //    do `Tree` do Godot).
+        let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
+        fill_rounded_rect(scene, rect, radius, resolve(ColorToken::AccentSoft, theme));
+        ph2d_editor_core::paint::stroke_frame(
             scene,
             rect,
-            Radius::Sm.px(),
-            resolve(ColorToken::AccentSoft, theme),
-        );
-        stroke_rounded_rect(
-            scene,
-            rect,
-            Radius::Sm.px(),
+            radius,
+            theme,
+            ph2d_tokens::visuals::Feel::Active,
             1.0,
             resolve(ColorToken::Accent, theme),
         );

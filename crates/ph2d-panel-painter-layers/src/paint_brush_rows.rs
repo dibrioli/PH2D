@@ -9,9 +9,7 @@
 
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownState;
 use ph2d_editor_core::zones::Rect;
@@ -91,16 +89,20 @@ pub(crate) fn paint_dropdown_chip(
         Some(InteractiveState::Dropdown { open: true, .. })
     );
 
-    let radius = Radius::Sm.px();
+    // ⭐ Raio e moldura pela porta do TEMA, com o `Feel` do estado do dropdown — a mesma porta do
+    //    `Dropdown` da casa (`dropdown_feel`), pela mesma razão do `chip_border_color` abaixo.
+    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(ctx.scene, rect, radius, resolve(ColorToken::Bg1, theme));
     // ⚠️ **Pela porta do widget, e não por uma quarta cópia da lei.** Este chip é desenhado à
     // mão (não constrói um `Dropdown`) e por isso carregava a sua própria regra de borda — que
     // não conhecia `BorderEmph` e portanto **nunca acendia sob o ponteiro**.
     let (dd_state, dd_t) = ctx.host.store().dropdown_visual(id);
-    stroke_rounded_rect(
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         rect,
         radius,
+        theme,
+        ph2d_editor_core::widget::dropdown_feel(dd_state),
         StrokeToken::Default.px(),
         ph2d_editor_core::widget::chip_border_color(dd_state, dd_t, theme),
     );

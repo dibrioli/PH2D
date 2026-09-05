@@ -21,7 +21,6 @@ use ph2d_editor_core::ids::{self as core_ids, painter_brush_falloff_point_id};
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, paint_text_centered, resolve, stroke_polyline,
-    stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
@@ -84,16 +83,20 @@ pub(crate) fn paint_falloff_section(
 
     // ── Canvas: background + border + quarter grid ──
     let canvas = Rect::new(x, y, content_w.max(1.0), CANVAS_H);
+    // ⭐ Raio e moldura pela porta do TEMA: o canvas é plano num tema moderno.
+    let canvas_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(
         ctx.scene,
         canvas,
-        Radius::Sm.px(),
+        canvas_radius,
         resolve(ColorToken::Bg2, theme),
     );
-    stroke_rounded_rect(
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         canvas,
-        Radius::Sm.px(),
+        canvas_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         GRID_W,
         resolve(ColorToken::TextDisabled, theme),
     );

@@ -116,12 +116,15 @@ pub(super) fn card_frame(
     let title_h = font + Spacing::Sm.px();
     let card_h = card_h(n_rows);
     let card = Rect::new(x, y, w, card_h);
-    let radius = Radius::Md.px();
+    // ⭐ Raio e moldura pela porta do TEMA: o cartão é plano num tema moderno.
+    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, card, radius, resolve(ColorToken::Bg1, theme));
-    stroke_rounded_rect(
+    ph2d_editor_core::paint::stroke_frame(
         scene,
         card,
         radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         ph2d_tokens::StrokeToken::Default.px(),
         resolve(ColorToken::Border, theme),
     );

@@ -257,6 +257,52 @@ barra do topo (rail-chip + chip largo).
   gate de pixel desta wave: `the_wave_three_painters_lose_exactly_their_frame` (avatar · barra de
   estado vazia · menu de contexto vazio, cada um `2 → 1` caminhos e OLED `= clássico`).
 
+### 7.6 — ✅ WAVE 4 (2026-09-05): a porta chega aos PAINÉIS — onde o artista vive
+
+**A medição que a abriu:** com a dívida do `editor-core` a zero, **59 ficheiros em
+`crates/ph2d-panel-*/src` traçavam moldura à mão (79 sítios) e nenhum conhecia a porta** — o censo
+da wave 2 só via `widget/` e `screens/hero/`. *Um censo que varre um directório afirma sobre o
+directório.*
+
+**O que existe agora:**
+
+| peça | o que é |
+|---|---|
+| **o censo alargado** | [`every_frame_goes_through_the_theme_door`](../../../crates/ph2d-editor-core/tests/every_frame_goes_through_the_theme_door.rs) varre também `crates/ph2d-panel-*/src` e `shells/desktop/src` (chaves com o prefixo da crate). Red-first: acusou **exactamente os 59** antes de uma conversão |
+| **72 sítios pela porta, 7 isentos por mecanismo** | cartões (Inspector · 7 do Painter) · canvases de curva/falloff · barras de gradiente e amostras de paleta · chips com estado (blend · brush · shape · paper · dropdown do Painter · chrome do grafo) · botões (stack lane · container list · preview toggle · apply) · campos de renomear (asset · clip · marker ⇒ `Focused`) · linhas seleccionadas com tinta (Hierarquia · Flip ⇒ `Active`) · popovers (font/icon dropdown · menu do grafo · probe · lista de tracks) · nós e backdrops do grafo · previews de imagem. Isentos: o marquee do grafo · o crachá `pre` no fio · o halo de socket · os indicadores de «largar aqui» (Flip · Hierarquia · Painter) · o contorno de secção em cor de marcador (Inspector) · a diagonal da matriz de física · as **strips** da timeline (duas adjacentes com a mesma tinta só se separam pelo contorno) |
+| ⭐ **`Feel::Selected`** | a peça que faltava no vocabulário: **SELECCIONADO entre iguais, onde a tinta não chega** (um nó no grafo, a amostra escolhida entre várias, uma linha activa sem preenchimento). Lido da fonte do Godot: o `GraphNode` Modern tem `border_width 0` em repouso e o **seleccionado leva 2 px em `mono`** (`gn_panel_selected_style`, `editor_theme_manager.cpp:1444`) — não no acento. É a terceira moldura que um tema moderno traça (foco · erro · selecção). ⚠️ **Não é o `Active`**: um controlo activo COM tinta própria diz-se pela tinta |
+| `dropdown_feel` | a redução `DropdownState → Feel` sai do pintor do `Dropdown` para uma porta `pub`, porque o Painter desenha um chip de dropdown à mão (a mesma razão do `chip_border_color`) |
+| **gate de pixel num painel** | `the_histogram_surface_loses_exactly_its_frame_in_a_modern_theme` (color-equalization): `2 → 1` caminhos, OLED = clássico |
+
+**O que a construção ensinou:**
+
+- ⭐⭐ **Três anéis eram o ÚNICO sinal de um estado** — a linha activa da máscara, a linha activa das
+  camadas do Painter (contorno sem tinta) e o chip *leveling* (a MESMA tinta ligado e desligado).
+  Passá-los por `Active` apagava o sinal no moderno: a lição do Image Tools (§7.5), três vezes no
+  mesmo dia. A resposta certa não era uma excepção na porta, era **nomear o estado** (`Selected`),
+  que o Godot já distingue.
+- ⚠️ **A porta faz o ficheiro CRESCER** (9 linhas onde havia 1-7): quatro painéis passaram o teto de
+  600 LOC. Cura por corte, nunca por folga — `paint_adjust.rs` perdeu os dois editores bespoke
+  (`paint_adjust/{curve,gradient}.rs`) e **a folga de 823 que carregava desde a W4 do Painter
+  morreu**; `motion-graph/paint.rs` cedeu os sockets (`paint_socket.rs`); `flip/paint_layers.rs` o
+  chip+popover de blend (`paint_layers/blend.rs`); `asset-browser/paint.rs` o cartão
+  (`paint/card.rs`). ⚠️ Um irmão novo cujo nome começa por `paint` entra no censo HR-12 — o
+  `paint_socket.rs` precisou do opt-out com motivo.
+- ⚠️ **Nem todo traço é moldura, e a lista de isenções cresceu com o motivo de cada um** — o censo
+  só recusa o que *não conhece* a porta; quem traça mensagem (halo · marquee · «largar aqui») fica
+  com o traço directo **e um comentário que diz porquê**, ou na lista `EXEMPT` se é o único traço do
+  ficheiro.
+- ⚠️ **O raio de um nó do grafo NÃO passa pela porta do raio**: ele escala com o zoom, é geometria
+  do documento e não uma quina de cromo. Só a moldura passa.
+- ⏳ **Dois sítios para o smoke julgar**: o contorno das células «rótulo | interruptor» do
+  transporte da timeline (pedido do Enio em 2026-07-08 — fica intacto no clássico, plano no
+  moderno) e a fronteira coluna/grade do navegador de assets (uma linha no clássico, a diferença de
+  tom no moderno).
+- ⏳ **Fora desta wave**: os traços por OUTROS primitivos (`stroke_rect` · `stroke_line` — 6 sítios
+  no `editor-core`, dividers na maioria) e os anéis pintados como PREENCHIMENTO em `Border` (10
+  sítios: o anel de repouso do `color_swatch`, divisores) — o censo não os vê, e são a próxima
+  medição.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

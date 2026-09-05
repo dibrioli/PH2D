@@ -22,7 +22,7 @@
 //! growing a second one that would drift on the next fix.
 
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{TextInput, TextInputState, paint_text_input_with_buffer};
 use ph2d_editor_core::zones::Rect;
@@ -80,16 +80,15 @@ pub(crate) fn paint(
     }
 
     // A framed overlay so the field reads as an editor floating over the bar.
-    fill_rounded_rect(
+    // ⭐ Pela porta do TEMA: o campo em edição leva o anel de FOCO (o acento a 2 px no moderno).
+    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px());
+    fill_rounded_rect(ctx.scene, rect, radius, resolve(ColorToken::BgElev, theme));
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         rect,
-        Radius::Xs.px(),
-        resolve(ColorToken::BgElev, theme),
-    );
-    stroke_rounded_rect(
-        ctx.scene,
-        rect,
-        Radius::Xs.px(),
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Focused,
         StrokeToken::Thin.px(),
         resolve(ColorToken::TimelinePlayhead, theme),
     );

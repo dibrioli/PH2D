@@ -10,7 +10,6 @@
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
 use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, paint_text, rect_to_vello, resolve, stroke_polyline,
-    stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
@@ -184,16 +183,20 @@ fn paint_frame(
     label_w: f32,
     band: &Band,
 ) {
+    // ⭐ Raio e moldura pela porta do TEMA: a banda é plana num tema moderno.
+    let band_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px());
     fill_rounded_rect(
         ctx.scene,
         band_rect,
-        Radius::Xs.px(),
+        band_radius,
         resolve(ColorToken::Bg0, theme),
     );
-    stroke_rounded_rect(
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         band_rect,
-        Radius::Xs.px(),
+        band_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Thin.px(),
         resolve(ColorToken::Border, theme),
     );

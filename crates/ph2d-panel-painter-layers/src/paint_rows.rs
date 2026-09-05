@@ -232,10 +232,14 @@ fn paint_layer_row(
     if is_active {
         let pad = Spacing::Xs.px();
         let hl = Rect::new(x - pad, y - pad, w + pad * 2.0, row_total_h + pad * 2.0);
-        stroke_rounded_rect(
+        // ⭐ `Selected`: a linha activa não tem tinta própria, então o anel é o único sinal — a
+        //    moldura que um tema moderno NÃO apaga.
+        ph2d_editor_core::paint::stroke_frame(
             ctx.scene,
             hl,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+            theme,
+            ph2d_tokens::visuals::Feel::Selected,
             StrokeToken::Default.px(),
             resolve(ColorToken::Accent, theme),
         );
@@ -407,6 +411,8 @@ pub(crate) fn paint_drop_indicator(
             bar(ctx, top);
         } else if cursor_y < inside_bot {
             if is_group {
+                // ⚠️ NÃO passa pela porta do tema: é o indicador de «largar DENTRO deste grupo»
+                //    durante um arrasto — a mensagem, não moldura de repouso.
                 stroke_rounded_rect(
                     ctx.scene,
                     rect,
@@ -448,16 +454,20 @@ pub(crate) fn paint_drag_ghost(
     let px = cursor_x + Spacing::Sm.px();
     let py = cursor_y - pill_h * 0.5;
     let pill = Rect::new(px, py, pill_w, pill_h);
+    // ⭐ Pela porta do TEMA: o fantasma de arrasto é um rótulo plano num tema moderno.
+    let pill_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(
         ctx.scene,
         pill,
-        Radius::Sm.px(),
+        pill_radius,
         resolve(ColorToken::Bg2, theme),
     );
-    stroke_rounded_rect(
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         pill,
-        Radius::Sm.px(),
+        pill_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Active,
         StrokeToken::Default.px(),
         resolve(ColorToken::Accent, theme),
     );

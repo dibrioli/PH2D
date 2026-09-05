@@ -12,9 +12,7 @@
 
 use crate::paint::register_button;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
     Button, ButtonState, ColorSwatch, SectionHeader, SwatchSize, SwatchState,
@@ -144,12 +142,15 @@ fn card_frame(
     let title_h = TypeToken::Sm.px() + Spacing::Xs.px();
     let card_h = pad + title_h + body_h + pad;
     let card = Rect::new(x, y, content_w, card_h);
-    let radius = Radius::Md.px();
+    // ⭐ Raio e moldura pela porta do TEMA: o cartão é plano num tema moderno.
+    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(ctx.scene, card, radius, resolve(ColorToken::Bg1, theme));
-    stroke_rounded_rect(
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         card,
         radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Default.px(),
         resolve(ColorToken::Border, theme),
     );
@@ -272,10 +273,13 @@ fn colors_card(
             .state(state);
         paint_color_swatch(&swatch, rects[i], ctx.scene, theme);
         if selected == i {
-            stroke_rounded_rect(
+            // ⭐ `Selected`: a amostra escolhida entre várias — a moldura que o moderno não apaga.
+            ph2d_editor_core::paint::stroke_frame(
                 ctx.scene,
                 rects[i],
-                Radius::Sm.px(),
+                ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+                theme,
+                ph2d_tokens::visuals::Feel::Selected,
                 StrokeToken::Thick.px(),
                 resolve(ColorToken::Accent, theme),
             );
@@ -306,11 +310,15 @@ fn paint_button_cell(
             ColorToken::Text1,
         )
     };
-    fill_rounded_rect(ctx.scene, rect, Radius::Sm.px(), bg);
-    stroke_rounded_rect(
+    // ⭐ Raio e moldura pela porta do TEMA, com o `Feel` do estado do botão.
+    let chip_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
+    fill_rounded_rect(ctx.scene, rect, chip_radius, bg);
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         rect,
-        Radius::Sm.px(),
+        chip_radius,
+        theme,
+        ph2d_editor_core::widget::chip_feel(ctx.host.store().button_visual(id).0, false),
         StrokeToken::Thin.px(),
         resolve(ColorToken::Border, theme),
     );

@@ -8,7 +8,7 @@ use crate::paint::register_button;
 use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
+    fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve,
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::flat_button_surface_color;
@@ -154,16 +154,20 @@ pub(super) fn paint_offset_card(
     let rows_h = (ROW_H_PX + xs) * 2.0; // slider + Trim checkbox
     let card_h = pad + title_h + rows_h + xs;
     let card = Rect::new(x, y, content_w, card_h);
+    // ⭐ Raio e moldura pela porta do TEMA: o cartão é plano num tema moderno.
+    let card_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(
         ctx.scene,
         card,
-        Radius::Md.px(),
+        card_radius,
         resolve(ColorToken::Bg1, theme),
     );
-    stroke_rounded_rect(
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         card,
-        Radius::Md.px(),
+        card_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Default.px(),
         resolve(ColorToken::Border, theme),
     );
@@ -228,16 +232,21 @@ fn button(
     };
     // O fundo segue o estado do botão **e o relógio**: a porta recebe o PAR, então este sítio não
     // pode esquecer o `t` e voltar a saltar enquanto o resto do app amacia.
+    // ⭐ Raio e moldura pela porta do TEMA, com o `Feel` do estado do botão.
+    let btn_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
+    let visual = ctx.host.store().button_visual(id);
     fill_rounded_rect(
         ctx.scene,
         r,
-        Radius::Sm.px(),
-        flat_button_surface_color(ctx.host.store().button_visual(id), theme),
+        btn_radius,
+        flat_button_surface_color(visual, theme),
     );
-    stroke_rounded_rect(
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         r,
-        Radius::Sm.px(),
+        btn_radius,
+        theme,
+        ph2d_editor_core::widget::chip_feel(visual.0, false),
         StrokeToken::Thin.px(),
         resolve(ColorToken::Border, theme),
     );
@@ -262,16 +271,21 @@ pub(super) fn paint_icon_button(
     icon: ph2d_editor_core::IconId,
     id: ph2d_a11y::NodeId,
 ) {
+    // ⭐ Raio e moldura pela porta do TEMA, com o `Feel` do estado do botão.
+    let btn_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
+    let visual = ctx.host.store().button_visual(id);
     fill_rounded_rect(
         ctx.scene,
         r,
-        Radius::Sm.px(),
-        flat_button_surface_color(ctx.host.store().button_visual(id), theme),
+        btn_radius,
+        flat_button_surface_color(visual, theme),
     );
-    stroke_rounded_rect(
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         r,
-        Radius::Sm.px(),
+        btn_radius,
+        theme,
+        ph2d_editor_core::widget::chip_feel(visual.0, false),
         StrokeToken::Thin.px(),
         resolve(ColorToken::Border, theme),
     );

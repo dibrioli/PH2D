@@ -77,6 +77,20 @@ pub enum DropdownState {
     Disabled,
 }
 
+/// **Como um chip de dropdown se SENTE** — o estado reduzido ao vocabulário da porta da moldura
+/// ([`ph2d_tokens::visuals::Feel`]). ⚠️ `pub` pela mesma razão do [`chip_border_color`]: o
+/// `ph2d-panel-painter-layers` desenha um chip de dropdown à mão, e a redução tem de ser UMA.
+#[must_use]
+pub fn dropdown_feel(state: DropdownState) -> ph2d_tokens::visuals::Feel {
+    use ph2d_tokens::visuals::Feel;
+    match state {
+        DropdownState::Hovered => Feel::Hovered,
+        DropdownState::Focused => Feel::Focused,
+        DropdownState::Disabled => Feel::Disabled,
+        DropdownState::Normal => Feel::Rest,
+    }
+}
+
 /// **A cor da borda de um CHIP de dropdown, já com o eixo do hover** — a porta ÚNICA.
 ///
 /// ⚠️ **Ela é `pub` porque um segundo chip existe:** o `ph2d-panel-painter-layers` desenha o dele
@@ -341,21 +355,12 @@ pub fn paint_dropdown_chip<T: Clone + PartialEq>(
     } else {
         1.0
     };
-    let feel = {
-        use ph2d_tokens::visuals::Feel;
-        match dd.state {
-            DropdownState::Hovered => Feel::Hovered,
-            DropdownState::Focused => Feel::Focused,
-            DropdownState::Disabled => Feel::Disabled,
-            _ => Feel::Rest,
-        }
-    };
     crate::paint::stroke_frame(
         scene,
         rect,
         radius,
         theme,
-        feel,
+        dropdown_feel(dd.state),
         stroke_w,
         chip_border_color(dd.state, dd.hover_t, theme),
     );

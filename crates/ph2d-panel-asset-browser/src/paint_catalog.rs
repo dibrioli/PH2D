@@ -281,10 +281,13 @@ pub(crate) fn paint(
 
     // A fronteira entre a coluna e a grade — uma linha, não uma sombra: ela diz onde uma região
     // acaba sem competir com o realce da escolhida.
-    ph2d_editor_core::paint::stroke_rounded_rect(
+    // ⭐ Pela porta do TEMA: num tema moderno a fronteira é a diferença de tom, não uma linha.
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         col,
-        Radius::Sm.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Default.px(),
         resolve(ColorToken::Border, theme),
     );

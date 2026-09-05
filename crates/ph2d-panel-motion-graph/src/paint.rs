@@ -50,6 +50,9 @@ mod paint_grid;
 mod paint_overlays;
 use paint_grid::draw_grid;
 use paint_overlays::draw_canvas_overlays;
+#[path = "paint_socket.rs"]
+mod paint_socket;
+use paint_socket::{highlight_socket, paint_socket_glyph, port_out_domain};
 use paint_stamp::{draw_preview, draw_preview_toggle};
 pub(crate) use paint_wire::{
     WireEmphasis, detached_edge, draw_wire, draw_wire_ghost, draws_wire_ghost, wire_endpoints,
@@ -367,16 +370,43 @@ fn draw_card(
             let off = STACK_OFFSET * step * view.zoom;
             let back = Rect::new(sx + off, sy - off, w, h);
             fill_rounded_rect(ctx.scene, back, r, resolve(ColorToken::Bg3, theme));
-            stroke_rounded_rect(ctx.scene, back, r, 1.0, resolve(ColorToken::Border, theme));
+            ph2d_editor_core::paint::stroke_frame(
+                ctx.scene,
+                back,
+                r,
+                theme,
+                ph2d_tokens::visuals::Feel::Rest,
+                1.0,
+                resolve(ColorToken::Border, theme),
+            );
         }
     }
 
     fill_rounded_rect(ctx.scene, body, r, resolve(ColorToken::Bg2, theme));
     let header = Rect::new(sx, sy, w, geom::HEADER_H * view.zoom);
     fill_rounded_rect(ctx.scene, header, r, resolve(cat_token(n.category), theme));
-    stroke_rounded_rect(ctx.scene, body, r, 1.0, resolve(ColorToken::Border, theme));
+    // ⭐ Pela porta do TEMA: o nó em repouso não tem borda num tema moderno (o `GraphNode` do
+    //    Godot Modern tem `border_width 0`), e a SELECÇÃO é a moldura que sobrevive — 2 px em
+    //    `mono`, como o `gn_panel_selected_style` dele. O raio `r` fica: escala com o zoom.
+    ph2d_editor_core::paint::stroke_frame(
+        ctx.scene,
+        body,
+        r,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
     if state.selected.contains(&n.id) {
-        stroke_rounded_rect(ctx.scene, body, r, 2.0, resolve(ColorToken::Accent, theme));
+        ph2d_editor_core::paint::stroke_frame(
+            ctx.scene,
+            body,
+            r,
+            theme,
+            ph2d_tokens::visuals::Feel::Selected,
+            2.0,
+            resolve(ColorToken::Accent, theme),
+        );
     }
 
     // ⭐⭐⭐ **O SELO DE PAPEL** — o que este nó É no grafo (fonte · decisão · junção ·
@@ -450,7 +480,15 @@ fn draw_card(
     if veiled {
         fill_rounded_rect(ctx.scene, body, r, resolve(ColorToken::GraphInert, theme));
         if state.selected.contains(&n.id) {
-            stroke_rounded_rect(ctx.scene, body, r, 2.0, resolve(ColorToken::Accent, theme));
+            ph2d_editor_core::paint::stroke_frame(
+                ctx.scene,
+                body,
+                r,
+                theme,
+                ph2d_tokens::visuals::Feel::Selected,
+                2.0,
+                resolve(ColorToken::Accent, theme),
+            );
         }
     }
 
@@ -480,43 +518,6 @@ fn draw_card(
 /// not as a dot or a stub. A pure function so the geometry is gate-able without a Vello scene.
 pub(crate) fn bypass_strike(body: Rect) -> [(f32, f32); 2] {
     [(body.x, body.y), (body.x + body.w, body.y + body.h)]
-}
-
-/// Draw one socket dot: coloured by [`Domain`], SHAPED by [`Dim`] — a diamond ◇ for a
-/// multi-component column, a circle ○ for a single value ([`socket_glyph`]). The one
-/// door the input AND output loops go through, so the two can never disagree on how a
-/// socket looks (the bug a second copy invites six months on).
-fn paint_socket_glyph(ctx: &mut PaintCtx, cx: f32, cy: f32, r: f32, p: &PortView, theme: Theme) {
-    let color = resolve(socket_token(p), theme);
-    match socket_glyph(p.dim) {
-        SocketGlyph::Value => fill_circle(ctx.scene, cx, cy, r, color),
-        SocketGlyph::Column => fill_diamond(ctx.scene, cx, cy, r, color),
-    }
-}
-
-/// A ring around a socket (the drop-target highlight), drawn as a rounded-rect stroke
-/// whose corner radius equals its half-side — i.e. a circle — so it reuses
-/// `stroke_rounded_rect` (no per-frame trig, HR-5-clean). `token` is `Accent` for a
-/// compatible target and `Danger` for an incompatible one: the ring is a circle
-/// regardless of the socket's own glyph, because it is a halo, not the socket.
-fn highlight_socket(ctx: &mut PaintCtx, cx: f32, cy: f32, r: f32, theme: Theme, token: ColorToken) {
-    let d = 2.0 * r;
-    stroke_rounded_rect(
-        ctx.scene,
-        Rect::new(cx - r, cy - r, d, d),
-        r,
-        2.0,
-        resolve(token, theme),
-    );
-}
-
-/// The source output port's [`Domain`] (ghost color) — the snapshot carries it
-/// on the port view.
-fn port_out_domain(n: &GraphNodeView, port: u16) -> Domain {
-    n.outputs
-        .get(port as usize)
-        .map(|p| p.domain)
-        .unwrap_or(Domain::Instances)
 }
 
 /// FNV-1a-64 of `key` — the runtime sibling of `hash_node_id` (which is

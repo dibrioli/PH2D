@@ -276,7 +276,7 @@ pub(crate) fn paint(
     w: f32,
     y: f32,
 ) -> f32 {
-    use ph2d_editor_core::paint::{fill_rounded_rect, stroke_rounded_rect};
+    use ph2d_editor_core::paint::fill_rounded_rect;
     use ph2d_editor_core::zones::Rect;
     use ph2d_tokens::Spacing;
     use ph2d_vector::ImageQuality;
@@ -319,10 +319,13 @@ pub(crate) fn paint(
             // desenhar.
             ImageQuality::Medium,
         );
-        stroke_rounded_rect(
+        // ⭐ Pela porta do TEMA: a pré-visualização é plana num tema moderno.
+        ph2d_editor_core::paint::stroke_frame(
             ctx.scene,
             rect,
             PREVIEW_RADIUS,
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
             PREVIEW_BORDER_PX,
             resolve(ColorToken::Border, theme),
         );

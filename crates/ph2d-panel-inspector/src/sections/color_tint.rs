@@ -89,9 +89,18 @@ fn paint_swatch_or_mixed(
 /// whatever `rect` it's given), so both the Tint/Self cells and the 2×2
 /// per-corner grid share it.
 fn paint_mixed_swatch_rect(rect: Rect, scene: &mut VectorScene, theme: Theme) {
-    let radius = Radius::Sm.px();
+    // ⭐ Raio e moldura pela porta do TEMA: a célula é plana num tema moderno.
+    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::Bg2, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    ph2d_editor_core::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
     paint_icon(
         scene,
         IconId::Minus,
@@ -397,10 +406,13 @@ fn paint_corner_gradient_preview(
             scene.fill_rect(rect_to_vello(cell), fill);
         }
     }
-    stroke_rounded_rect(
+    // ⭐ A moldura da grelha de cantos pela porta do TEMA: a amostra é plana num tema moderno.
+    ph2d_editor_core::paint::stroke_frame(
         scene,
         rect,
-        Radius::Sm.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         1.0,
         resolve(ColorToken::Border, theme),
     );

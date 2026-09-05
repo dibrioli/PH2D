@@ -40,15 +40,11 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
     // `paint_adjust.rs` estava congelado em `829` e tem **823** (apertado para a medida). Nenhuma
     // das três teria sido notada por leitura.
     // ────────────────────────────────────────────────────────────────────────────────────────
-    // Coord 2026-06-04 ship-prep: Painter W4 adjustment panels (Curves/Levels/
-    // B&W/Selective Color/Gradient Map) grew this orchestrator. Per-adjustment
-    // sibling split is a Painter-impl follow-up. ⚠️ Apertado 829 → 823 em 2026-08-30 pelo censo
-    // novo: a folga vale o TAMANHO MEDIDO, nunca o histórico.
-    (
-        "ph2d-panel-painter-layers/src/paint_adjust.rs",
-        823,
-        "Painter W4 bespoke adjustment panels — per-adjustment split deferred (Painter impl follow-up)",
-    ),
+    // ✅ **A folga do `paint_adjust.rs` MORREU em 2026-09-05** (wave 4 do redesenho): a porta da
+    // moldura do tema fê-lo passar os 823, e a cura foi o corte que a nota prometia desde
+    // 2026-06-04 — os dois editores bespoke (curvas · gradient map) são filhos por
+    // responsabilidade (`paint_adjust/{curve,gradient}.rs`), e o pai ficou em ~517. *Uma folga
+    // que sobrevive ao corte deixa o ficheiro voltar a crescer até ela em silêncio.*
 ];
 
 /// Per-function overage allowance. Each entry:

@@ -58,16 +58,19 @@ fn paint_buffer_chip(
     let rect = Rect::new(right - BUF_BTN_W, top, BUF_BTN_W, BUF_BTN_H);
     let id = ids::timeline_buffer_button_id(target, action as u8);
     let hot = ctx.host.store().hot_id() == Some(id);
-    fill_rounded_rect(
+    // ⭐ Raio e moldura pela porta do TEMA: plano num tema moderno.
+    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px());
+    fill_rounded_rect(ctx.scene, rect, radius, resolve(ColorToken::BgElev, theme));
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         rect,
-        Radius::Xs.px(),
-        resolve(ColorToken::BgElev, theme),
-    );
-    stroke_rounded_rect(
-        ctx.scene,
-        rect,
-        Radius::Xs.px(),
+        radius,
+        theme,
+        if hot {
+            ph2d_tokens::visuals::Feel::Hovered
+        } else {
+            ph2d_tokens::visuals::Feel::Rest
+        },
         StrokeToken::Thin.px(),
         resolve(
             if hot {

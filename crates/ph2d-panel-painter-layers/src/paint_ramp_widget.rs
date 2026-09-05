@@ -14,9 +14,7 @@ use crate::paint_brush_rows::paint_dropdown_chip;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect, paint_text_centered, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::{
@@ -282,10 +280,13 @@ fn paint_ramp_bar(
         let strip = Rect::new(bar.x + i as f32 * strip_w, bar.y, strip_w + 1.0, bar.h);
         fill_rounded_rect(ctx.scene, strip, 0.0, ramp_color_at(view.stops, t, view.bw));
     }
-    stroke_rounded_rect(
+    // ⭐ Pela porta do TEMA: a barra é plana num tema moderno.
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         bar,
-        Radius::Sm.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         OUTLINE_W,
         resolve(ColorToken::Border, theme),
     );

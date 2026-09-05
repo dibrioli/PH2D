@@ -94,7 +94,12 @@ intacto. ⭐ **E a wave 2 (05/09) fez da moldura uma PORTA** (`visuals::frame` /
 o tema moderno emite menos geometria. ⭐ **E a wave 3 (05/09) pôs a catraca a ZERO** — os 22
 passaram pela porta (20 convertidos, 2 isentos por mecanismo), e o modo *Image Tools* ligado
 deixou de ser um anel traçado por cima do chip (que sumiria no moderno) para ser o chip a
-pintar-se activo pela matriz do rail. Mecanismo e o que ficou de fora:
+pintar-se activo pela matriz do rail. ⭐⭐ **E a wave 4 (05/09) levou a porta aos PAINÉIS** — onde
+o artista vive: 59 ficheiros traçavam moldura à mão e nenhum conhecia a porta; hoje o censo varre
+as crates de painel e a shell, 72 sítios passam por ela e 7 ficam isentos pelo mecanismo (o
+contorno que É a mensagem). O vocabulário ganhou `Selected` — a selecção entre iguais sem tinta,
+que o Godot Modern traça a 2 px em `mono` no nó do grafo — porque três anéis eram o único sinal
+de um estado. Mecanismo e o que ficou de fora:
 [`pesquisa/08 §7`](pesquisa/08_modelos_com_codigo_para_seguir.md).
 
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·

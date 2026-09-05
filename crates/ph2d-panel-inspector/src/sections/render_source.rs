@@ -370,16 +370,15 @@ fn paint_provenance(
         resolve(ColorToken::Text2, theme),
     );
     let slot = Rect::new(x, y + label_font + row_gap, w, row_h);
-    fill_rounded_rect(
+    // ⭐ Raio e moldura pela porta do TEMA: o slot é plano num tema moderno.
+    let slot_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
+    fill_rounded_rect(scene, slot, slot_radius, resolve(ColorToken::Bg2, theme));
+    ph2d_editor_core::paint::stroke_frame(
         scene,
         slot,
-        Radius::Sm.px(),
-        resolve(ColorToken::Bg2, theme),
-    );
-    stroke_rounded_rect(
-        scene,
-        slot,
-        Radius::Sm.px(),
+        slot_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         SLOT_BORDER_PX,
         resolve(ColorToken::Border, theme),
     );

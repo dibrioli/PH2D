@@ -17,7 +17,7 @@ use crate::paint_chrome::CHROME_CRUMB_BASE;
 use crate::snapshot::GraphViewSnapshot;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::GraphHitKind;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_title, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_title, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::text_elide::paint_text_title_elided;
 use ph2d_editor_core::zones::Rect;
@@ -62,10 +62,13 @@ pub(crate) fn draw(
             ),
         );
         if !here {
-            stroke_rounded_rect(
+            // ⭐ Pela porta do TEMA: a migalha clicável é plana num tema moderno.
+            ph2d_editor_core::paint::stroke_frame(
                 ctx.scene,
                 chip,
                 CRUMB_RADIUS,
+                theme,
+                ph2d_tokens::visuals::Feel::Rest,
                 1.0,
                 resolve(ColorToken::Border, theme),
             );

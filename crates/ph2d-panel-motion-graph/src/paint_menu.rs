@@ -8,9 +8,7 @@ use super::{
 use crate::geom;
 use crate::snapshot::{GraphViewSnapshot, menu_rows};
 use crate::state::{Menu, MenuBody};
-use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, rect_to_vello, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect, rect_to_vello, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::text_elide::paint_text_title_elided;
 use ph2d_editor_core::zones::Rect;
@@ -43,10 +41,13 @@ pub(super) fn draw_menu(
         MENU_RADIUS,
         resolve(ColorToken::Bg2, theme),
     );
-    stroke_rounded_rect(
+    // ⭐ Pela porta do TEMA: o menu flutuante é plano num tema moderno.
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         panel,
         MENU_RADIUS,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         1.0,
         resolve(ColorToken::Border, theme),
     );
@@ -75,10 +76,14 @@ pub(super) fn draw_menu(
         // The row you are already ON is outlined (the backdrop's current tint) — a palette that
         // does not say where you stand makes you click one to find out.
         if c.selected {
-            stroke_rounded_rect(
+            // ⭐ `Selected`: a linha não tem tinta própria, então o anel é o que diz onde se está
+            //    — a moldura que um tema moderno NÃO apaga.
+            ph2d_editor_core::paint::stroke_frame(
                 ctx.scene,
                 row,
                 MENU_RADIUS,
+                theme,
+                ph2d_tokens::visuals::Feel::Selected,
                 1.0,
                 resolve(ColorToken::Accent, theme),
             );

@@ -11,9 +11,7 @@
 
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, rect_to_vello, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, rect_to_vello, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::zones::Rect;
@@ -535,10 +533,13 @@ fn paint_lane_button(
             theme,
         ),
     );
-    stroke_rounded_rect(
+    // ⭐ Pela porta do TEMA: o botão é plano num tema moderno.
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         r,
-        Radius::Xs.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px()),
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Thin.px(),
         resolve(ColorToken::Border, theme),
     );

@@ -7,7 +7,7 @@ use super::{
 use crate::geom::{self, View};
 use crate::snapshot::GraphNodeView;
 use crate::state::PreviewPos;
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::paint_batch::{draw_image, fill_dots};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
@@ -41,10 +41,14 @@ pub(super) fn draw_preview(
         PREVIEW_RADIUS,
         resolve(ColorToken::GraphBg, theme),
     );
-    stroke_rounded_rect(
+    // ⭐ Pela porta do TEMA: a janela do preview é plana num tema moderno (o `GraphBg` já a separa
+    //    do corpo do nó).
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         rect,
         PREVIEW_RADIUS,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         1.0,
         resolve(ColorToken::Border, theme),
     );
@@ -139,7 +143,15 @@ pub(super) fn draw_preview_toggle(
     };
     let r = (btn.w * TOGGLE_RADIUS_FRAC).max(1.0);
     fill_rounded_rect(ctx.scene, btn, r, resolve(ColorToken::Bg3, theme));
-    stroke_rounded_rect(ctx.scene, btn, r, 1.0, resolve(ColorToken::Border, theme));
+    ph2d_editor_core::paint::stroke_frame(
+        ctx.scene,
+        btn,
+        r,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
     let inset = btn.w * TOGGLE_BAR_INSET;
     let bar_h = btn.h * TOGGLE_BAR_H;
     let bar_y = match pos {

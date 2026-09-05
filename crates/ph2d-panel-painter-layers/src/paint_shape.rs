@@ -8,7 +8,7 @@ use crate::paint_brush_rows::paint_dropdown_row;
 use crate::paint_brush_top::{end_fold, paint_checkbox_row, paint_collapsible_section};
 use crate::state;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::paint::{resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
@@ -437,10 +437,13 @@ fn paint_shape_preview(
         ),
         ImageQuality::Medium,
     );
-    stroke_rounded_rect(
+    // ⭐ Pela porta do TEMA: a pré-visualização é plana num tema moderno.
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         rect,
-        Radius::Sm.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         1.0,
         resolve(ColorToken::Border, theme),
     );

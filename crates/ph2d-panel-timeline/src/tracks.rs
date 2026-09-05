@@ -16,9 +16,7 @@ mod label;
 pub(crate) use label::{prop_label, track_label};
 
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind, TrackMenuKind};
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text_centered, rect_to_vello, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::panel_chrome::clamp_menu_to_viewport;
 use ph2d_editor_core::widget::{Button, paint_button};
@@ -117,16 +115,20 @@ pub(crate) fn paint_add_track_popover(ctx: &mut PaintCtx, theme: Theme, anchor: 
         ROW_H_PX * n,
         ctx.viewport,
     );
+    // ⭐ Raio e moldura pela porta do TEMA: a lista flutuante é plana num tema moderno.
+    let list_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(
         ctx.scene,
         list,
-        Radius::Sm.px(),
+        list_radius,
         resolve(ColorToken::BgElev, theme),
     );
-    stroke_rounded_rect(
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         list,
-        Radius::Sm.px(),
+        list_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Thin.px(),
         resolve(ColorToken::Border, theme),
     );

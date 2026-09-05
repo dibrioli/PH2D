@@ -13,9 +13,7 @@ use ph2d_editor_core::IconId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::{
@@ -260,10 +258,17 @@ fn paint_shape_blend_chip(
     } else {
         ColorToken::Border
     };
-    stroke_rounded_rect(
+    // ⭐ Pela porta do TEMA: o chip é plano num tema moderno; aberto, é o popover que o diz.
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         rect,
         radius,
+        theme,
+        if open {
+            ph2d_tokens::visuals::Feel::Active
+        } else {
+            ph2d_tokens::visuals::Feel::Rest
+        },
         StrokeToken::Default.px(),
         resolve(border, theme),
     );

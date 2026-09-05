@@ -393,6 +393,10 @@ const WIDGET_DELEGATE_MARKERS: &[&str] = &[
 /// da categoria (b) está a justificar a isenção com um facto que não se verifica, e o gate — que
 /// só lê o par `(caminho, razão)` — não sabe a diferença.
 const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
+    (
+        "ph2d-panel-motion-graph/src/paint_socket.rs",
+        "pure-paint helper (o glifo do socket, o halo de alvo e o dominio da porta), cortado do paint.rs pelo teto de LOC na wave 4 do redesenho; os hit rects e a a11y dos sockets ficam no pai",
+    ),
     // ⛔⛔ **Este ficheiro passava por SUBCADEIA, e a remoção de uma fileira revelou-o.**
     // Ele nunca nomeou um primitivo canónico: o que casava era `paint_color_swatch_row` — o
     // helper LOCAL — contendo `paint_color_swatch` como substring. Quando a fileira «Color» do

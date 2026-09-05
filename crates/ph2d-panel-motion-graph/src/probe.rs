@@ -42,6 +42,8 @@ pub(crate) fn draw(
     // The ring says WHICH card the number belongs to — without it a floating panel
     // of numbers is an orphan.
     let card = geom::card_rect(node, view);
+    // ⚠️ O anel NÃO passa pela porta do tema: ele é a mensagem («este número é DESTE cartão»),
+    //    não moldura de repouso — sem ele o painel de números é órfão em qualquer família.
     stroke_rounded_rect(
         ctx.scene,
         card,
@@ -52,10 +54,13 @@ pub(crate) fn draw(
 
     let panel = Rect::new(card.x, card.y - H - GAP, W, H);
     fill_rounded_rect(ctx.scene, panel, RADIUS, resolve(ColorToken::Bg2, theme));
-    stroke_rounded_rect(
+    // ⭐ O painel, esse, é cromo: pela porta do TEMA, plano num tema moderno.
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         panel,
         RADIUS,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         1.0,
         resolve(ColorToken::Accent, theme),
     );

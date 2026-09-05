@@ -6,7 +6,7 @@
 //! border) is drawn here too because the overlay is conceptually one
 //! atomic widget.
 
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme};
 use ph2d_tool_color_equalization::algorithm::HistogramData;
@@ -35,9 +35,18 @@ pub(crate) fn paint_histogram_overlay(
     // Backing surface — Bg2 + thin BorderStrong stroke.
     let bg = resolve(ColorToken::Bg2, theme);
     let border = resolve(ColorToken::BorderStrong, theme);
-    let radius = Radius::Sm.px();
+    // ⭐ Raio e moldura pela porta do TEMA: o histograma é uma superfície plana num tema moderno.
+    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(scene, rect, radius, bg);
-    stroke_rounded_rect(scene, rect, radius, StrokeToken::Hairline.px(), border);
+    ph2d_editor_core::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        StrokeToken::Hairline.px(),
+        border,
+    );
 
     let Some(h) = hist else {
         return;
@@ -134,4 +143,39 @@ pub(crate) fn paint_histogram_overlay(
 /// the channel hue still comes from the active theme via `resolve`.
 fn with_alpha(color: ph2d_vector::Color, alpha: f32) -> ph2d_vector::Color {
     color.multiply_alpha(alpha.clamp(0.0, 1.0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// ⭐ **A PORTA DA MOLDURA chega a um PAINEL, ao pixel** (wave 4 do redesenho, 2026-09-05).
+    ///
+    /// Sem histograma o pintor emite só a superfície: *fundo + moldura* no clássico (2 caminhos),
+    /// *só fundo* num tema moderno (1), e o OLED (*Draw Extra Borders*) volta a traçar. É o gémeo
+    /// do `the_wave_three_painters_lose_exactly_their_frame` do `editor-core`, e existe porque o
+    /// censo do FONTE vê que um ficheiro *conhece* a porta, não que a *atravessa* com o `Feel`
+    /// certo — um `Feel::Selected` aqui passaria no censo e traçaria na mesma.
+    ///
+    /// **Mutação que deve sangrar:** trocar o `Feel::Rest` da superfície por `Feel::Selected`.
+    #[test]
+    fn the_histogram_surface_loses_exactly_its_frame_in_a_modern_theme() {
+        let paths = |theme: Theme| {
+            let mut scene = VectorScene::new();
+            paint_histogram_overlay(Rect::new(4.0, 4.0, 200.0, 80.0), None, &mut scene, theme);
+            scene.inner().encoding().n_paths
+        };
+        let classic = paths(Theme::Forge);
+        assert_eq!(classic, 2, "o classico e' fundo + moldura");
+        assert_eq!(
+            paths(Theme::Dark),
+            classic - 1,
+            "o moderno devia ser so' o fundo"
+        );
+        assert_eq!(
+            paths(Theme::Oled),
+            classic,
+            "o OLED traca bordas extra, como no Godot"
+        );
+    }
 }

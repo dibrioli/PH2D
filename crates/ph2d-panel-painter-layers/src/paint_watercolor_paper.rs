@@ -8,7 +8,7 @@ use crate::paint_brush_top::paint_checkbox_row;
 use crate::{number_field, state};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::DropdownOption;
@@ -336,10 +336,17 @@ fn paint_paper_color_row(
     } else {
         ColorToken::Border
     };
-    stroke_rounded_rect(
+    // ⭐ Pela porta do TEMA: a amostra é plana num tema moderno; com o picker aberto, é ele que o diz.
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         rect,
         radius,
+        theme,
+        if open {
+            ph2d_tokens::visuals::Feel::Active
+        } else {
+            ph2d_tokens::visuals::Feel::Rest
+        },
         StrokeToken::Default.px(),
         resolve(border, theme),
     );

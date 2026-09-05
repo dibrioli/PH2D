@@ -30,7 +30,7 @@ use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{
     GesturePhase, InteractiveState, TimelineGesture, TimelineHitKind,
 };
-use ph2d_editor_core::paint::{fill_rounded_rect, rect_to_vello, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, rect_to_vello, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::zones::Rect;
@@ -191,16 +191,20 @@ fn paint_row(
         return; // panned fully out of view: no ink, no hit
     };
     ctx.scene.push_clip(&rect_to_vello(time_band));
+    // ⭐ Raio e moldura pela porta do TEMA: a barra é plana num tema moderno.
+    let bar_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(
         ctx.scene,
         bar,
-        Radius::Sm.px(),
+        bar_radius,
         resolve(ColorToken::TimelineKey, theme),
     );
-    stroke_rounded_rect(
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         bar,
-        Radius::Sm.px(),
+        bar_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Thin.px(),
         resolve(ColorToken::BorderStrong, theme),
     );
@@ -253,16 +257,15 @@ fn paint_row_button(
     icon: IconId,
 ) {
     use ph2d_editor_core::paint::paint_icon;
-    fill_rounded_rect(
+    // ⭐ Raio e moldura pela porta do TEMA: o botão é plano num tema moderno.
+    let btn_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px());
+    fill_rounded_rect(ctx.scene, r, btn_radius, resolve(ColorToken::Bg3, theme));
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         r,
-        Radius::Xs.px(),
-        resolve(ColorToken::Bg3, theme),
-    );
-    stroke_rounded_rect(
-        ctx.scene,
-        r,
-        Radius::Xs.px(),
+        btn_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Thin.px(),
         resolve(ColorToken::Border, theme),
     );

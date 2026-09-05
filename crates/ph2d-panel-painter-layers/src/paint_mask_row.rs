@@ -7,7 +7,7 @@
 use crate::paint::register_button;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
-use ph2d_editor_core::paint::{paint_text, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
 use ph2d_editor_core::zones::Rect;
@@ -33,10 +33,14 @@ pub(crate) fn paint_mask_row(
     let font = TypeToken::Base.px();
     let cell_gap = Spacing::Xs.px();
     if is_active {
-        stroke_rounded_rect(
+        // ⭐ `Selected`: a linha activa não tem tinta própria, então o anel é o único sinal — a
+        //    moldura que um tema moderno NÃO apaga (2 px em `mono`, como o nó seleccionado).
+        ph2d_editor_core::paint::stroke_frame(
             ctx.scene,
             Rect::new(x, y, w, ROW_H_PX),
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+            theme,
+            ph2d_tokens::visuals::Feel::Selected,
             StrokeToken::Default.px(),
             resolve(ColorToken::Accent, theme),
         );

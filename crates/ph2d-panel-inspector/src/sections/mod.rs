@@ -14,7 +14,6 @@ pub(crate) use ph2d_editor_core::ids;
 pub(crate) use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 pub(crate) use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_icon, paint_text, paint_text_block, rect_to_vello, resolve,
-    stroke_rounded_rect,
 };
 pub(crate) use ph2d_editor_core::screens::hero::{InspectorSpriteInfo, InspectorSpriteSource};
 pub(crate) use ph2d_editor_core::widget::panel_chrome::{

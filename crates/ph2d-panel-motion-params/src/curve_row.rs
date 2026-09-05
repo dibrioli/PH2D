@@ -24,7 +24,6 @@ use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::math::safe_clamp;
 use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, paint_text_centered, resolve, stroke_polyline,
-    stroke_rounded_rect,
 };
 use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::zones::Rect;
@@ -150,16 +149,20 @@ pub(crate) fn paint_curve_row(
 
     // ── Canvas: bg + border + quarter grid ──
     let canvas = Rect::new(x, cy0, w.max(1.0), CANVAS_H);
+    // ⭐ Raio e moldura pela porta do TEMA: o canvas da curva é plano num tema moderno.
+    let canvas_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(
         scene,
         canvas,
-        Radius::Sm.px(),
+        canvas_radius,
         resolve(ColorToken::Bg2, theme),
     );
-    stroke_rounded_rect(
+    ph2d_editor_core::paint::stroke_frame(
         scene,
         canvas,
-        Radius::Sm.px(),
+        canvas_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         GRID_W,
         resolve(ColorToken::TextDisabled, theme),
     );

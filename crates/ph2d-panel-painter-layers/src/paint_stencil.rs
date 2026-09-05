@@ -6,7 +6,7 @@
 
 use crate::number_field::{ANGLE_STEP, FINE_STEP, SIZE_STEP, paint_num_row, paint_num_xy};
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
@@ -33,16 +33,20 @@ pub(crate) fn paint_stencil_card(
     let rows_h = (ROW_H_PX + xs) + (ROW_H_PX + xs) + (ROW_H_PX + xs);
     let card_h = pad + title_h + rows_h + xs;
     let card = Rect::new(x, y, content_w, card_h);
+    // ⭐ Raio e moldura pela porta do TEMA: o cartão é plano num tema moderno.
+    let card_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(
         ctx.scene,
         card,
-        Radius::Md.px(),
+        card_radius,
         resolve(ColorToken::Bg1, theme),
     );
-    stroke_rounded_rect(
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         card,
-        Radius::Md.px(),
+        card_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Default.px(),
         resolve(ColorToken::Border, theme),
     );

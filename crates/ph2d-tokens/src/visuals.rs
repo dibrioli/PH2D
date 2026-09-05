@@ -105,6 +105,13 @@ pub struct Chrome {
     pub field_focus: Stroke,
     /// O fundo de um campo em repouso.
     pub field_fill: Color,
+    /// ⭐ **O anel de SELECÇÃO entre iguais** — onde a tinta não chega: um nó no grafo, a amostra
+    /// escolhida entre várias, uma linha sem preenchimento próprio. O Godot Modern tira a borda de
+    /// repouso ao `GraphNode` e dá ao seleccionado **2 px em `mono`**
+    /// (`gn_panel_selected_style`, `editor_theme_manager.cpp`): é a única moldura, além do foco e
+    /// do erro, que um tema moderno traça. ⚠️ Não é o `active`: um controlo activo COM tinta
+    /// própria (segmento, chip em mãos, linha tingida) diz-se pela tinta e fica sem moldura.
+    pub selected: Stroke,
 }
 
 const TRANSPARENT: Color = Color {
@@ -119,6 +126,9 @@ pub const MODERN_CORNER_RADIUS_PX: f32 = 4.0;
 
 /// A largura do anel de foco do Godot (`focus_style->set_border_width_all(2)`).
 const MODERN_FOCUS_W: f32 = 2.0;
+
+/// A borda do `GraphNode` SELECCIONADO do Godot (`gn_panel_selected_style`: 2 px em `mono_color`).
+const MODERN_SELECTED_W: f32 = 2.0;
 
 impl Widgets {
     /// A tabela deste tema.
@@ -250,6 +260,7 @@ impl Chrome {
             field_focus: Stroke::new(MODERN_FOCUS_W, r.accent.color()),
             // O `LineEdit` do Godot assenta num degrau abaixo do painel.
             field_fill: r.dark_1.lerp(Rgb::BLACK, r.contrast.max(0.0) * 0.5).color(),
+            selected: Stroke::new(MODERN_SELECTED_W, r.mono.color()),
         }
     }
 
@@ -263,6 +274,7 @@ impl Chrome {
             field_border: Stroke::new(1.0, t(ColorToken::Border)),
             field_focus: Stroke::new(2.0, t(ColorToken::BorderEmph)),
             field_fill: t(ColorToken::Bg1),
+            selected: Stroke::new(2.0, t(ColorToken::Accent)),
         }
     }
 }
@@ -275,13 +287,19 @@ impl Chrome {
 pub enum Feel {
     Rest,
     Hovered,
-    /// Pressionado, ou SELECCIONADO (um segmento activo, um chip de ferramenta em mãos).
+    /// Pressionado, ou ACTIVO com tinta própria (um segmento activo, um chip de ferramenta em
+    /// mãos, uma linha tingida de `AccentSoft`): num tema moderno a tinta diz tudo e a moldura é
+    /// zero.
     Active,
-    /// Foco de teclado — o único estado em que um tema moderno traça um anel.
+    /// Foco de teclado — traça um anel num tema moderno.
     Focused,
     Disabled,
     /// Validação falhada: a moldura de erro pinta-se em TODAS as famílias.
     Error,
+    /// ⭐ SELECCIONADO entre iguais, onde a tinta NÃO chega (um nó no grafo, a amostra escolhida
+    /// entre várias, uma linha sem preenchimento): a única outra moldura que um tema moderno traça
+    /// — 2 px em `mono`, como o `GraphNode` seleccionado do Godot. Ver [`Chrome::selected`].
+    Selected,
 }
 
 /// **A regra da moldura de um controlo** — o que [`frame`] devolve.
@@ -314,6 +332,7 @@ pub fn frame(theme: Theme, feel: Feel) -> Frame {
         Feel::Active => w.active.bg_stroke,
         Feel::Disabled => w.noninteractive.bg_stroke,
         Feel::Focused => c.field_focus,
+        Feel::Selected => c.selected,
         // ⚠️ O erro é a única moldura que a família moderna NÃO apaga: sem ela um campo inválido
         //    lê-se como válido. A cor é a do `danger` derivado; o pintor clássico tem a dele.
         Feel::Error => Stroke::new(1.0, ColorToken::Danger.resolve(theme)),
@@ -349,6 +368,7 @@ mod tests {
                 Feel::Active,
                 Feel::Focused,
                 Feel::Error,
+                Feel::Selected,
             ] {
                 assert_eq!(frame(theme, feel), Frame::Classic, "{theme:?} {feel:?}");
             }
@@ -369,6 +389,16 @@ mod tests {
             }
             match frame(theme, Feel::Error) {
                 Frame::Modern(s) => assert!(s.is_visible(), "{theme:?}: o erro tem de se ver"),
+                Frame::Classic => panic!(),
+            }
+            // ⭐ A selecção entre iguais é a outra moldura que o moderno traça (o `GraphNode`
+            //    seleccionado do Godot): 2 px, e em `mono` — não no acento.
+            match frame(theme, Feel::Selected) {
+                Frame::Modern(s) => {
+                    assert!(s.is_visible(), "{theme:?}: a seleccao tem de se ver");
+                    assert_eq!(s.width, MODERN_SELECTED_W);
+                    assert_eq!(s.color, Inputs::of(theme).unwrap().roles().mono.color());
+                }
                 Frame::Classic => panic!(),
             }
         }

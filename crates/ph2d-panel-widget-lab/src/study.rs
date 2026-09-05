@@ -18,7 +18,7 @@
 use crate::state::WidgetLabState;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::HitIndex;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::widget::{PropertyBox, PropertyBoxState, paint_property_box, surface_rect};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -353,16 +353,15 @@ fn paint_old_widget(b: &mut Bench<'_>, w: f32, row_h: f32) -> f32 {
     );
 
     let chip = Rect::new(b.x + w - CHIP_W, row_y, CHIP_W, row_h);
-    fill_rounded_rect(
+    // ⭐ Raio e moldura pela porta do TEMA: o chip é plano num tema moderno.
+    let chip_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
+    fill_rounded_rect(b.scene, chip, chip_radius, resolve(ColorToken::Bg3, theme));
+    ph2d_editor_core::paint::stroke_frame(
         b.scene,
         chip,
-        Radius::Sm.px(),
-        resolve(ColorToken::Bg3, theme),
-    );
-    stroke_rounded_rect(
-        b.scene,
-        chip,
-        Radius::Sm.px(),
+        chip_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Hairline.px(),
         resolve(ColorToken::Border, theme),
     );
@@ -436,16 +435,15 @@ fn paint_controls(b: &mut Bench<'_>, st: &WidgetLabState) {
         }
         let r = Rect::new(cx, cy, cw, h);
         b.hit.register(id, r);
-        fill_rounded_rect(
+        // ⭐ Raio e moldura pela porta do TEMA: a linha é plana num tema moderno.
+        let row_radius = ph2d_editor_core::paint::frame_radius(b.theme, Radius::Xs.px());
+        fill_rounded_rect(b.scene, r, row_radius, resolve(ColorToken::Bg2, b.theme));
+        ph2d_editor_core::paint::stroke_frame(
             b.scene,
             r,
-            Radius::Xs.px(),
-            resolve(ColorToken::Bg2, b.theme),
-        );
-        stroke_rounded_rect(
-            b.scene,
-            r,
-            Radius::Xs.px(),
+            row_radius,
+            b.theme,
+            ph2d_tokens::visuals::Feel::Rest,
             StrokeToken::Hairline.px(),
             resolve(ColorToken::Border, b.theme),
         );

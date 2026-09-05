@@ -11,7 +11,7 @@
 
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{

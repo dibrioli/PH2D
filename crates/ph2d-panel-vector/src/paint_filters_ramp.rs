@@ -19,7 +19,7 @@ use crate::state::filters as fst;
 use crate::state::filters::RAMP_PREVIEW_N;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect};
 
 /// Altura da barra de preview da rampa.
 pub(crate) const RAMP_BAR_H: f32 = 14.0; // LITERAL-PX-OK: espelha o GRAD_BAR_H do editor do Painter
@@ -101,10 +101,13 @@ impl BodyCtx<'_> {
                 col,
             );
         }
-        stroke_rounded_rect(
+        // ⭐ Pela porta do TEMA: a barra é plana num tema moderno.
+        ph2d_editor_core::paint::stroke_frame(
             self.scene,
             bar,
             RAMP_BAR_RADIUS,
+            self.theme,
+            ph2d_tokens::visuals::Feel::Rest,
             1.0, // LITERAL-PX-OK: fio de 1 px, o mesmo do editor do Painter
             resolve(ColorToken::Border, self.theme),
         );

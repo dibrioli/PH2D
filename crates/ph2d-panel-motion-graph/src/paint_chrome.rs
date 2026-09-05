@@ -11,9 +11,7 @@ use crate::paint::fnv_id;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::GraphHitKind;
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, resolve, stroke_polyline, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, resolve, stroke_polyline};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
@@ -227,7 +225,20 @@ pub(crate) fn draw_split_chrome(
         } else {
             ColorToken::Border
         };
-        stroke_rounded_rect(ctx.scene, chip, CHIP_RADIUS, 1.0, resolve(border, theme));
+        // ⭐ Pela porta do TEMA: o chip é plano num tema moderno; o activo diz-se pela tinta.
+        ph2d_editor_core::paint::stroke_frame(
+            ctx.scene,
+            chip,
+            CHIP_RADIUS,
+            theme,
+            if active {
+                ph2d_tokens::visuals::Feel::Active
+            } else {
+                ph2d_tokens::visuals::Feel::Rest
+            },
+            1.0,
+            resolve(border, theme),
+        );
         let icon_rect = Rect::new(
             chip.x + CHIP_ICON_PAD,
             chip.y + CHIP_ICON_PAD,

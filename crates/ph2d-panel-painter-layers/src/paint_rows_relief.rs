@@ -10,7 +10,7 @@
 
 use crate::paint::register_button;
 use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Slider, paint_slider};
 use ph2d_editor_core::zones::Rect;
@@ -94,10 +94,14 @@ pub(crate) fn paint_relief_line(
         resolve(ColorToken::Bg2, theme),
     );
     if leveling {
-        stroke_rounded_rect(
+        // ⭐ `Selected`: o chip tem a MESMA tinta ligado e desligado, então o anel é o único
+        //    sinal do modo — a moldura que um tema moderno NÃO apaga.
+        ph2d_editor_core::paint::stroke_frame(
             ctx.scene,
             chip,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+            theme,
+            ph2d_tokens::visuals::Feel::Selected,
             StrokeToken::Default.px(),
             resolve(ColorToken::Accent, theme),
         );

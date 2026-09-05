@@ -22,9 +22,7 @@ use crate::ids;
 use crate::state;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
     ButtonState, DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, paint_scrollbar, resolve_opaque,
@@ -108,10 +106,13 @@ pub(crate) fn paint(ctx: &mut PaintCtx, chip_rect: Rect, theme: Theme) {
         radius,
         resolve_opaque(ColorToken::BgElev, theme),
     );
-    stroke_rounded_rect(
+    // ⭐ Pela porta do TEMA: o popover é plano num tema moderno.
+    ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         panel,
         radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Default.px(),
         resolve_opaque(ColorToken::Border, theme),
     );

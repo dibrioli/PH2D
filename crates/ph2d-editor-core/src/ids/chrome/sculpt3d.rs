@@ -49,7 +49,7 @@ pub const SCULPT3D_SEC_BAKE: NodeId = hash_node_id("sculpt3d.sec.bake");
 /// ⚠️ **O tamanho é o do `Verb::ALL`, e o gate o compara** — um verbo novo sem
 /// chip aqui é uma ferramenta que o artista não alcança, que é exatamente o que
 /// aconteceu com o `Magnify` antes de ele ganhar a tecla `A`.
-pub const SCULPT3D_VERB: [NodeId; 23] = [
+pub const SCULPT3D_VERB: [NodeId; 24] = [
     hash_node_id("sculpt3d.verb.0"),
     hash_node_id("sculpt3d.verb.1"),
     hash_node_id("sculpt3d.verb.2"),
@@ -73,6 +73,7 @@ pub const SCULPT3D_VERB: [NodeId; 23] = [
     hash_node_id("sculpt3d.verb.20"),
     hash_node_id("sculpt3d.verb.21"),
     hash_node_id("sculpt3d.verb.22"),
+    hash_node_id("sculpt3d.verb.23"),
 ];
 
 /// **A REFERÊNCIA que o verbo corrente segue** — os chips `S` · `B` · `L`.

@@ -91,6 +91,13 @@ impl SculptStroke {
             1.0
         };
         match brush.verb {
+            // ⛔⛔ **INALCANÇÁVEL, e não é uma omissão:** o tecido não tem alvo
+            // por-vértice — ele tem um SOLVER, e o `SculptStroke::dab` desvia
+            // para o `stroke_cloth` antes de este laço existir. Devolver a
+            // posição viva é a resposta correta para *«e se alguém chegar aqui
+            // mesmo assim?»*: não mover nada. ⚠️ Um `unreachable!()` aqui
+            // trocaria um no-op por um panic no caminho do ponteiro.
+            Verb::Cloth => live,
             // `Brush.js:57-91` — `deform = intensidade · raio · 0,1`, e o peso
             // inteiro (curva × intensidade × máscara × alpha) chega no `w`.
             Verb::Draw => add(live, n_area, reach * w),

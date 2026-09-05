@@ -876,6 +876,7 @@ fn does_the_accumulate_switch_do_anything_verb_by_verb() {
             Grip::Hook => "Hook",
             Grip::Turn(_) => "Turn",
             Grip::Paint => "Paint",
+            Grip::Simulate => "Cloth",
         };
         println!(
             "{:<12} {grip:>8} {off:>14.6} {on:>14.6} {ratio:>10}",

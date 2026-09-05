@@ -346,11 +346,15 @@ pub enum Verb {
     /// ⚠️ **O SculptGL NÃO O TEM** — a sétima vez a mesma frase (ver
     /// [`crate::RefMode`]).
     Layer,
+    /// **O TECIDO** — a superfície sob o pincel passa a ser pano: a região
+    /// escolhida no pen-down simula, o anel de fora fica pregado, e a mão entra
+    /// como força. Ver [`Grip::Simulate`] e o `stroke_cloth`.
+    Cloth,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 23] = [
+    pub const ALL: [Self; 24] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -374,6 +378,7 @@ impl Verb {
         Self::SlideRelax,
         Self::SurfaceSmooth,
         Self::Layer,
+        Self::Cloth,
     ];
 
     /// **Este verbo pode ACUMULAR?** — a porta única do `accumulate`.
@@ -501,10 +506,34 @@ impl Verb {
         matches!(self, Self::Smooth | Self::Sharpen | Self::SurfaceSmooth)
     }
 
+    /// **ESTE VERBO PASSA PELO APLICADOR POR-VÉRTICE?**
+    ///
+    /// ⚠️ **A porta existe porque uma feature nova pode ESVAZIAR o censo de
+    /// outra pessoa**, e o tecido é a primeira que o faz: os censos do
+    /// `stroke_apply` varrem `Verb::ALL` e afirmam coisas sobre o `accum` e o
+    /// `target` — dois planos que a simulação **nunca escreve**, porque ela
+    /// desvia antes do laço. Excluí-lo por NOME faria cada verbo novo editar o
+    /// teste de outra pessoa; excluí-lo por LEI é o que mantém a população dos
+    /// censos derivada.
+    ///
+    /// ⛔ *Nada aqui diz que o tecido é uma excepção tolerada:* ele tem os
+    /// próprios gates, no `stroke_cloth_tests`, e eles medem o que ele de facto
+    /// promete.
+    ///
+    /// ⚠️ **E ela nasceu SEPARANDO um `#[must_use]` do item dele** — a primeira
+    /// redação foi inserida entre o atributo do `uses_neighbours` e a assinatura
+    /// dele, e o atributo mudou de dono em silêncio. É a armadilha que este repo
+    /// já tinha registada; quem a apanhou foi o clippy, não uma leitura.
+    #[must_use]
+    pub fn writes_through_applicator(self) -> bool {
+        !matches!(self.grip(), Grip::Simulate)
+    }
+
     /// O nome que a UI mostra.
     #[must_use]
     pub fn label(self) -> &'static str {
         match self {
+            Self::Cloth => "Cloth",
             Self::Draw => "Draw",
             Self::Inflate => "Inflate",
             Self::Smooth => "Smooth",
@@ -614,6 +643,7 @@ impl Verb {
     #[must_use]
     pub fn grip(self) -> Grip {
         match self {
+            Self::Cloth => Grip::Simulate,
             Self::Move => Grip::Hold,
             Self::SnakeHook => Grip::Hook,
             Self::Twist => Grip::Turn(Amount::Angle),

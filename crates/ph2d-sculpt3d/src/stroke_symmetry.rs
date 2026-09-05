@@ -117,6 +117,18 @@ impl SculptStroke {
         // um dab que não move nada de herdar a janela do anterior.
         self.call_moved.clear();
         self.call_refreshed.clear();
+        // ⚠️⚠️ **O TECIDO DESVIA AQUI, e antes do espelho de propósito:** ele é
+        // dono da própria expansão de simetria, porque cada cópia tem a SUA
+        // região — duas regiões em lados opostos da peça não partilham vértice
+        // nenhum, e uma sessão só resolveria um sistema desconexo. Ver
+        // [`super::stroke_cloth`].
+        if brush.verb == Verb::Cloth {
+            let n = self.cloth_dab(mesh, brush, dab, sym);
+            self.call_moved.extend_from_slice(&self.moved);
+            self.call_refreshed
+                .extend_from_slice(self.region.refreshed());
+            return n;
+        }
         for s in signs.iter().take(n) {
             let det = s[0] * s[1] * s[2];
             let mirrored = Dab {

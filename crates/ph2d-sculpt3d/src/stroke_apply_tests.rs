@@ -49,7 +49,10 @@ fn unit_accum_verbs() -> Vec<Verb> {
     let list: Vec<Verb> = Verb::ALL
         .iter()
         .copied()
-        .filter(|v| v.grip_law(false, false).unit_accum)
+        // ⚠️ **A simulação sai por LEI, não por nome** — ver
+        // [`Verb::writes_through_applicator`]. Ela não escreve `accum` nem
+        // `target`, então afirmar sobre eles ali seria medir vácuo.
+        .filter(|v| v.grip_law(false, false).unit_accum && v.writes_through_applicator())
         .collect();
     assert!(
         !list.is_empty(),
@@ -281,7 +284,11 @@ fn no_vertex_reaches_the_applicator_with_zero_weight() {
     let c = [0.0, 0.0, 1.0];
     let radius = 0.5;
     let mut seen = 0usize;
-    for verb in Verb::ALL {
+    // ⚠️ **A simulação sai por LEI** — ver [`Verb::writes_through_applicator`].
+    for verb in Verb::ALL
+        .into_iter()
+        .filter(|v| v.writes_through_applicator())
+    {
         let mut mesh = sphere();
         let brush = Brush {
             verb,

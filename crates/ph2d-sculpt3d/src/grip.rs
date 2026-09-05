@@ -64,6 +64,17 @@ pub enum Grip {
     /// no-op**, e nenhuma rota deste módulo re-carimba um traço. O `base`
     /// continua sendo o `pre` congelado de todo vértice tocado, então o **undo
     /// segue trivial** nas cinco leis.
+    /// **SIMULA.** A região é escolhida no pen-down, o anel de fora é PREGADO,
+    /// e o gesto entra como FORÇA — o resto do pano responde por ser pano.
+    ///
+    /// ⚠️⚠️ **É o único grip cujo estado sobrevive ao evento** (posição *e*
+    /// velocidade). Os outros cinco respondem `alvo = f(pre, dab)` e são função
+    /// pura do gesto; aqui o resultado do evento *N* é a entrada do *N+1*, e é
+    /// isso que faz uma prega existir. ⛔ A lei abaixo NUNCA é lida por ele: o
+    /// [`crate::SculptStroke::dab`] desvia antes, para o `stroke_cloth`. Ela
+    /// está preenchida com o que o congelamento significa (a região é medida
+    /// uma vez) para o dia em que alguém a consulte.
+    Simulate,
     Stamp,
     /// **SEGURA.** A pegada é presa no pen-down e o [`crate::Dab::pull`] é o
     /// deslocamento **TOTAL** desde então. O alvo continua sendo função do
@@ -241,6 +252,10 @@ impl Grip {
             // É o mecanismo inteiro do checkbox do original — ver
             // [`crate::ref_kernels::Origin`], que o modela num tipo justamente
             // para ninguém achar que ele multiplica alguma coisa.
+            // ⛔ **Inalcançável pelo laço do dab** — ver a variante. Congelado
+            // porque a região É medida uma vez, e `unit_accum` porque o solver
+            // escreve a posição inteira, não uma fração dela.
+            Self::Simulate => (true, false, true, false),
             Self::Stamp => (false, accumulate, true, false),
             Self::Hold => (true, false, carries_field, false),
             Self::Hook => (false, true, true, false),

@@ -39,7 +39,7 @@ dizer, em cada consumidor, o que ele significa"* — o `match` exaustivo é a re
 
 ## §1 — As quatro metades, na ordem em que podem shipar
 
-### W10a — o SOLVER, puro, sem uma linha de UI
+### ✅ W10a — o SOLVER, puro, sem uma linha de UI — **FECHADA (2026-09-05)**
 
 `ph2d-cloth` (crate-folha nova, ADR-0075: feature nova = drop-crate) — ou módulo dentro
 da `ph2d-sculpt3d` se a medição de acoplamento disser que a fronteira é falsa.
@@ -61,7 +61,29 @@ derivada da malha; pregar por salto; inicialização adaptativa; sub-passos.
 | **a razão de massa infinita é servida** — o gate que o XPBD não passaria | é a justificativa medida da troca de método (§2 da pesquisa) |
 | **custo por TAMANHO DE PEGADA**, não por tamanho de malha | ⚠️ nenhum teto entra sem a tabela ao lado (CLAUDE.md §0.0) |
 
-### W10b — o PINCEL
+### ✅ W10b — o PINCEL — **FECHADA (2026-09-05)**
+
+> **O que a construção mudou em relação ao que esta secção previa**, e cada item
+> foi medido:
+>
+> - ⛔⛔ **A dobra prescrita pela pesquisa foi REFUTADA** — o modelo quadrático
+>   assume repouso PLANO, e uma escultura é curva. Hoje é ângulo diedro com
+>   ângulo de repouso, Hessiana de Gauss-Newton. Ver [`01` §5](01_pesquisa_o_estado_da_arte.md).
+> - ⛔⛔ **A conversão «gesto → força» tinha uma CONSTANTE INVENTADA**, e o gate a
+>   mediu: com a mão a percorrer `0,24`, o pano respondia `5,6e-4` — `0,2 %`. Ela
+>   foi **apagada**: sob o dedo o pano **segue a mão** (posição e momento, pesados
+>   pela curva do pincel) e a prega nasce do solver a arrastar a vizinhança. *Um
+>   número que não nomeia recurso nenhum não é um teto, é um palpite.*
+> - ⚠️ **O tecido SAIU de dois censos do aplicador, por LEI e não por nome**
+>   (`Verb::writes_through_applicator`): ele não escreve `accum` nem `target`. A
+>   dívida foi paga no mesmo commit — ele tem seis gates próprios.
+> - ⚠️ **Ele não oferece chip de MODO**, e a ausência é a decisão: a lei dele é
+>   uma só (VBD, paper com nome e ano). Um dropdown de uma opção é controlo morto.
+> - ⚠️ **Encostar sem mover não deforma** — ele responde à VIAGEM da mão. É
+>   produto correto e é o que o separa dos outros 23 verbos, que carimbam no
+>   primeiro dab.
+
+**O que era previsto, e ficou:**
 
 O `Grip` novo; a região de simulação, a coloração e o repouso nascendo **UMA vez no
 pen-down** (a `GripLaw::frozen` que já existe); o anel de falloff pregado; a força do

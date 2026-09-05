@@ -154,6 +154,19 @@ pub struct SculptStroke {
     /// quadro (e a cada sub-passo dentro dele) — uma alocação por quadro numa
     /// malha grande é o custo que o `hc_b` ao lado já paga para não pagar.
     sharp_f: Vec<f32>,
+    /// **AS SESSÕES DE TECIDO, uma por cópia de simetria** — ver
+    /// [`stroke_cloth`].
+    ///
+    /// ⚠️⚠️ **É o primeiro plano deste traço que guarda ESTADO VIVO de solver**
+    /// (posição *e* velocidade), e não uma função do gesto. Ele existe porque
+    /// uma simulação não é `f(pre, dab)`: o resultado do evento *N* é a entrada
+    /// do *N+1*. ⛔ Ele NÃO entra no snapshot de undo, e não precisa: o undo
+    /// repõe o `base_pos` dos vértices capturados, e a sessão morre no pen-up.
+    ///
+    /// ⚠️ **Uma por CÓPIA**, porque duas regiões em lados opostos da peça não
+    /// partilham vértice nenhum — juntá-las numa faria o solver resolver um
+    /// sistema desconexo.
+    cloth: Vec<Option<stroke_cloth::ClothSession>>,
     /// **O deslocamento laplaciano de cada vértice**, o `detail_directions` da
     /// referência — a MESMA grandeza que a [`crate::FilterKind::EnhanceDetails`]
     /// consome inteira. Aqui ele é medido no pré-passe e relido no gather, e é
@@ -231,8 +244,17 @@ impl SculptStroke {
         // zerado no início do traço"* do `surface_smooth.cc`: dentro de um gesto
         // ele PERSISTE entre dabs (a lei da referência), entre gestos não.
         self.hc_b.clear();
+        // ⚠️ **A região de tecido morre com o traço**, e é isso que a torna
+        // barata: ela é medida uma vez por gesto. Herdá-la faria o traço novo
+        // simular a região do anterior, num lugar onde o artista já não está.
+        self.cloth.clear();
     }
 }
+
+/// **O TECIDO** — a região que simula, o anel pregado, e o primeiro verbo cujo
+/// estado sobrevive ao evento. Ver [`stroke_cloth`].
+#[path = "stroke_cloth.rs"]
+mod stroke_cloth;
 
 /// **A ANATOMIA DE UM DAB** — a sequência que amarra os módulos acima. Ver
 /// [`dab_core`].
@@ -327,6 +349,10 @@ mod windows;
 #[cfg(test)]
 #[path = "stroke_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "stroke_cloth_tests.rs"]
+mod cloth_tests;
 
 #[cfg(test)]
 #[path = "stroke_growth_tests.rs"]

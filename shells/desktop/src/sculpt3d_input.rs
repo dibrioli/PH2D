@@ -359,6 +359,25 @@ impl App {
                 // idêntico repetido, porque o alvo do [`Grip::Turn`] é função do
                 // `pre` congelado e do gesto TOTAL.
                 Grip::Turn(kind) => scene.turn_at(kind, x, y),
+                // ⚠️⚠️ **QUEM SIMULA PERCORRE, e é o `walk` que o torna honesto.**
+                // O tecido é conduzido pela VIAGEM da mão — cada passo entrega o
+                // deslocamento desde o anterior —, e sem o passo fixo na geometria
+                // a lei passaria a depender da taxa de polling: arrastar devagar
+                // faria mais pregas que arrastar rápido pelo mesmo traçado. É a
+                // lei que este módulo pagou seis vezes (*o traço é fato do
+                // CAMINHO*), e aqui ela não é uma escolha de estilo — é o que
+                // impede o mesmo gesto de dar dois panos diferentes.
+                Grip::Simulate => {
+                    let spacing = ph2d_sculpt3d::min_spacing(scene.radius_px());
+                    if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
+                        let mut prev = scene.stroke_anchor;
+                        for step in steps {
+                            scene.hook_step(prev, step);
+                            prev = step;
+                        }
+                        scene.stroke_anchor = steps.anchor();
+                    }
+                }
                 // ⚠️ **O canal PERCORRE o caminho como o carimbo**, e o ramo é
                 // partilhado de propósito: o [`Grip::Paint`] nasceu para o
                 // carimbo poder trocar de lei sem levar a máscara junto (ver o

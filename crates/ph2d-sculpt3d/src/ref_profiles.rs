@@ -100,6 +100,12 @@ const S_BASE_RADIUS_PX: f32 = 50.0;
 const fn profile_s(verb: Verb) -> Option<VerbProfile> {
     // Um `radius_factor` é `_radius / 50`.
     let p = match verb {
+        // ⛔ **O TECIDO NÃO TEM PERFIL `s`, e a ausência é a decisão:** o
+        // SculptGL não tem pincel de tecido, então não há número a LER. Inventar
+        // um seria vestir de referência uma escolha nossa — o que o §4 do plano
+        // proíbe por nome (*«um l-mode inventado traria a autoridade que não
+        // tem»*). Ele nasce com o material de fábrica do `stroke_cloth`.
+        Verb::Cloth => return None,
         // `Brush.js:11-16` — `_radius 50 · _intensity 0.5 · _clay true ·
         // _accumulate true`. A tool `Brush` do original é a nossa **Draw E
         // Clay** (o `_clay` é um checkbox dela, ligado de fábrica).
@@ -317,6 +323,15 @@ const fn blender_reach(verb: Verb) -> Option<f32> {
 }
 
 const fn profile_b(verb: Verb) -> Option<VerbProfile> {
+    // ⛔ **O TECIDO não oferece este chip, e a ausência é a decisão.** A lei dele
+    // é UMA — o *Vertex Block Descent* (SIGGRAPH 2024), que é paper com nome e
+    // ano — e não há dela uma segunda leitura a escolher. Oferecer um `B` sem ter
+    // portado a lei de força da referência vestiria de referência uma escolha
+    // nossa, que é o que o §4 do plano proíbe por nome; e um dropdown de uma
+    // opção é um controlo morto.
+    if matches!(verb, Verb::Cloth) {
+        return None;
+    }
     Some(VerbProfile {
         strength_curve: StrengthCurve::Squared,
         falloff: Some(Falloff::Smooth),

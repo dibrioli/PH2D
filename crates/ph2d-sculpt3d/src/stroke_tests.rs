@@ -60,6 +60,11 @@ fn dab_for(verb: Verb, center: [f32; 3], radius: f32) -> Dab {
         }
         crate::Grip::Turn(crate::Amount::Angle) => Dab::turning(center, radius, base.eye, 1.0),
         crate::Grip::Turn(crate::Amount::Fraction) => Dab::scaling(center, radius, base.eye, 0.5),
+        // ⚠️ **O TECIDO exercita-se com o MESMO puxão do `Hold`**, e a razão é
+        // o que ele faz com ele: ali o puxão É o deslocamento, aqui ele vira a
+        // VELOCIDADE da mão, que é a força. O gesto de entrada é o mesmo — a mão
+        // arrastando — e é isso que estas fixturas encenam.
+        crate::Grip::Simulate => Dab::pulling(center, radius, base.eye, [0.0, radius * 0.5, 0.0]),
     }
 }
 

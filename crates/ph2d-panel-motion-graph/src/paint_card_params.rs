@@ -35,34 +35,61 @@ const TRACK_R: f32 = 4.0; // LITERAL-PX-OK: card param track corner radius
 const TEXT_PAD_X: f32 = 7.0; // LITERAL-PX-OK: card param text x-inset
 /// Descida do texto dentro da fileira, para a linha de base ficar centrada.
 const TEXT_PAD_Y: f32 = 5.0; // LITERAL-PX-OK: card param text y-inset
+/// Folga da amostra de cor dentro da faixa (ela é um quadrado, não uma barra).
+const SWATCH_INSET: f32 = 3.0; // LITERAL-PX-OK: card colour swatch inset
+const SWATCH_R: f32 = 3.0; // LITERAL-PX-OK: card colour swatch corner radius
 
-/// **O NÚMERO COMO O ARTISTA O LÊ.** O `step` do hint diz se o param é inteiro (um `Count` de
-/// `3` nunca é `3.00`) e quantas casas um contínuo merece — a mesma lei do painel, e a razão
-/// de ela viver aqui é que o cartão não tem acesso à row do painel.
-fn value_text(p: &CardParam) -> String {
-    if let ParamWidget::Enum { labels } = p.hint.widget {
-        let i = p.value.round().max(0.0) as usize;
-        return labels.get(i).map_or_else(|| p.value.to_string(), |s| (*s).to_string());
-    }
-    if matches!(p.hint.widget, ParamWidget::Toggle) {
-        return if p.value >= 0.5 { "On" } else { "Off" }.to_string();
-    }
-    if p.hint.step >= 1.0 {
-        return format!("{}", p.value.round() as i64);
-    }
-    // Duas casas é o que uma faixa de cartão comporta sem competir com o rótulo; o painel
-    // (que tem largura) é quem mostra a precisão inteira.
-    format!("{:.2}", p.value)
+/// ⭐⭐⭐ **O QUE UMA ROW MOSTRA, por ESPÉCIE de widget — e o `match` é EXAUSTIVO de propósito.**
+///
+/// O registry declara **catorze** espécies de controlo, e a primeira versão desta função
+/// desenhava um número para todas: uma cor lia-se `0.50` (o canal vermelho), uma curva lia-se
+/// `0.00`. ⚠️ *Uma row que mostra um número onde não há número é a mesma mentira que um knob
+/// morto* — e com um `match` sem `_` uma espécie NOVA é erro de compilação aqui, que é o aviso
+/// certo.
+enum Shown {
+    /// Um NÍVEL: a faixa preenche-se e o número lê-se à direita.
+    Level { text: String, fill: f32 },
+    /// Um ESTADO sem nível — um interruptor, uma opção de enum, um nome de canal.
+    State(String),
+    /// Uma COR: uma amostra, nunca um número.
+    Swatch([u8; 4]),
+    /// Um EDITOR RICO (curva, gradiente, paleta, texto, ficheiro, fonte). O cartão diz que o
+    /// controlo existe; abri-lo é obra do passo seguinte do ciclo 1. ⛔ **Não inventa valor.**
+    Editor,
 }
 
-/// A fracção `0..1` da faixa que o valor preenche, ou `None` quando o param não é um NÍVEL
-/// (um enum e um interruptor não têm «quanto», têm «qual»).
-fn fill_fraction(p: &CardParam) -> Option<f32> {
-    if matches!(p.hint.widget, ParamWidget::Enum { .. } | ParamWidget::Toggle) {
-        return None;
+fn shown(p: &CardParam) -> Shown {
+    let level = |text: String| {
+        let span = p.hint.max - p.hint.min;
+        let f = if span.abs() > f32::EPSILON {
+            ((p.value - p.hint.min) / span).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        Shown::Level { text, fill: f }
+    };
+    match p.hint.widget {
+        // Um contínuo: duas casas é o que a faixa de um cartão comporta sem competir com o
+        // rótulo (o painel, que tem largura, é quem mostra a precisão inteira).
+        ParamWidget::Slider => level(format!("{:.2}", p.value)),
+        ParamWidget::IntSlider | ParamWidget::Seed => level(format!("{}", p.value.round() as i64)),
+        // O grau é a unidade AUTORADA da casa — o sufixo evita a leitura "0,79" de um radiano.
+        ParamWidget::Angle => level(format!("{:.0}deg", p.value)),
+        ParamWidget::Toggle => Shown::State(if p.value >= 0.5 { "On" } else { "Off" }.to_string()),
+        ParamWidget::Enum { labels } => Shown::State(
+            labels
+                .get(p.value.round().max(0.0) as usize)
+                .map_or_else(|| p.value.to_string(), |s| (*s).to_string()),
+        ),
+        // Sem amostra (a shell não a preencheu) a row diz que há uma cor, não uma cor errada.
+        ParamWidget::Color { .. } => p.swatch.map_or(Shown::Editor, Shown::Swatch),
+        ParamWidget::Channels { .. } | ParamWidget::Source => Shown::Editor,
+        ParamWidget::Text
+        | ParamWidget::Curve
+        | ParamWidget::Gradient
+        | ParamWidget::Palette
+        | ParamWidget::File { .. } => Shown::Editor,
     }
-    let span = p.hint.max - p.hint.min;
-    (span.abs() > f32::EPSILON).then(|| ((p.value - p.hint.min) / span).clamp(0.0, 1.0))
 }
 
 /// Desenha a faixa de params de um cartão. **Nada acontece abaixo do LOD**
@@ -88,43 +115,70 @@ pub(super) fn draw_card_params(
             (row.h - 2.0 * TRACK_INSET_Y * z).max(0.0),
         );
         fill_rounded_rect(ctx.scene, track, TRACK_R * z, resolve(ColorToken::Bg0, theme));
-        // O NÍVEL, dentro da mesma faixa. ⚠️ Um param DIRIGIDO não desenha nível: o número
-        // vem de um fio e não obedece ao dedo — mostrar um nível arrastável seria a mentira
-        // que o painel já aprendeu a não contar (a row dirigida, doc 88 B3).
-        if !p.driven && let Some(f) = fill_fraction(p) && f > 0.0 {
-            let fill = Rect::new(track.x, track.y, track.w * f, track.h);
-            fill_rounded_rect(ctx.scene, fill, TRACK_R * z, resolve(ColorToken::AccentSoft, theme));
+        let what = shown(p);
+        // O NÍVEL, dentro da mesma faixa. ⚠️ Um param DIRIGIDO não desenha nível: o número vem
+        // de um fio e não obedece ao dedo — mostrar um nível arrastável seria a mentira que o
+        // painel já aprendeu a não contar (a row dirigida, doc 88 B3).
+        if let Shown::Level { fill, .. } = &what
+            && !p.driven
+            && *fill > 0.0
+        {
+            let bar = Rect::new(track.x, track.y, track.w * fill, track.h);
+            fill_rounded_rect(ctx.scene, bar, TRACK_R * z, resolve(ColorToken::AccentSoft, theme));
         }
         let text_y = row.y + TEXT_PAD_Y * z;
         let size = geom::PARAM_LABEL_SIZE * z;
-        let value = value_text(p);
-        // O VALOR primeiro, encostado à direita — ele é o que o artista procura, e alinhá-lo
-        // à direita é o que faz uma coluna de números ler-se como uma coluna.
-        let vw = ctx.text_system.prefix_width(&value, size);
-        let value_x = track.x + track.w - TEXT_PAD_X * z - vw;
         let (label_tone, value_tone) = if p.driven {
             (ColorToken::Text3, ColorToken::PortValue)
         } else {
             (ColorToken::Text2, ColorToken::Text1)
         };
-        paint_text_title_elided(
-            ctx.text_system,
-            ctx.scene,
-            &value,
-            value_x,
-            text_y,
-            size,
-            vw,
-            resolve(value_tone, theme),
-        );
+        // A AMOSTRA de cor ocupa o lugar do número, encostada à direita como ele.
+        let right_w = match &what {
+            Shown::Swatch(rgba) => {
+                let side = track.h - 2.0 * SWATCH_INSET * z;
+                let sw = Rect::new(
+                    track.x + track.w - TEXT_PAD_X * z - side,
+                    track.y + SWATCH_INSET * z,
+                    side,
+                    side,
+                );
+                ph2d_editor_core::paint_shapes::fill_rounded_rect_srgb8(
+                    ctx.scene,
+                    sw,
+                    SWATCH_R * z,
+                    *rgba,
+                );
+                side
+            }
+            Shown::Level { text, .. } | Shown::State(text) => {
+                let vw = ctx.text_system.prefix_width(text, size);
+                // O VALOR primeiro, encostado à direita — é o que o artista procura, e
+                // alinhá-lo à direita é o que faz uma coluna de números ler-se como coluna.
+                paint_text_title_elided(
+                    ctx.text_system,
+                    ctx.scene,
+                    text,
+                    track.x + track.w - TEXT_PAD_X * z - vw,
+                    text_y,
+                    size,
+                    vw,
+                    resolve(value_tone, theme),
+                );
+                vw
+            }
+            Shown::Editor => 0.0,
+        };
         // E o rótulo, elidido no espaço que SOBRA — quando os dois disputam o pixel, quem
         // encolhe é o nome, nunca o número.
-        let label_w = (value_x - (track.x + TEXT_PAD_X * z) - TEXT_PAD_X * z).max(0.0);
+        let label_x = track.x + TEXT_PAD_X * z;
+        let label_w = (track.x + track.w - TEXT_PAD_X * z - right_w - TEXT_PAD_X * z - label_x)
+            .max(0.0);
         paint_text_title_elided(
             ctx.text_system,
             ctx.scene,
             p.hint.label,
-            track.x + TEXT_PAD_X * z,
+            label_x,
             text_y,
             size,
             label_w,

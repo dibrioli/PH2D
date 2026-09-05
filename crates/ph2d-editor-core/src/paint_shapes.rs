@@ -150,3 +150,28 @@ mod tests {
         );
     }
 }
+
+/// **UM RECT ARREDONDADO NUMA COR AUTORADA** (bytes sRGB) — a porta para pintar uma cor que o
+/// ARTISTA escolheu, e não um token do tema.
+///
+/// ⚠️ **Não é uma fuga ao HR-15.** A regra proíbe cor de CHROME escrita à mão; aqui a cor é
+/// **dado do documento** (a amostra de um param `ParamWidget::Color`), e ela tem de chegar ao
+/// ecrã tal como foi autorada. O que a regra continua a proibir — um literal de cor no painel —
+/// esta assinatura torna impossível: os bytes só podem vir de fora.
+///
+/// Existe aqui porque o tipo [`Color`] é privado a esta crate: sem esta porta, todo painel que
+/// pinte uma cor autorada teria de depender do `ph2d-vector` e nomear o tipo do motor de
+/// desenho — que é exactamente o acoplamento que os painéis não têm.
+pub fn fill_rounded_rect_srgb8(
+    scene: &mut VectorScene,
+    rect: crate::zones::Rect,
+    radius: f32,
+    rgba: [u8; 4],
+) {
+    crate::paint::fill_rounded_rect(
+        scene,
+        rect,
+        radius,
+        Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]),
+    );
+}

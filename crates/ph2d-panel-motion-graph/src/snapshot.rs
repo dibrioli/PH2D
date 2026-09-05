@@ -230,6 +230,18 @@ pub struct CardParam {
     /// Um fio (doc 58) dirige este param: a row mostra a proveniência e **não se arrasta** —
     /// o número vem de fora.
     pub driven: bool,
+    /// A COR, em **bytes sRGB**, quando o widget é [`ph2d_node_registry::ParamWidget::Color`] —
+    /// a row pinta uma **amostra**, nunca um número.
+    ///
+    /// ⚠️ Um hint de cor ancora QUATRO params (`channels`), e a shell suprime os quatro do
+    /// resto da lista — a mesma lei do painel. Sem isso o cartão mostrava cinco rows para uma
+    /// cor: a amostra e os canais `r`/`g`/`b`/`a` crus, que é exactamente o que o
+    /// `ParamWidget::Color` existe para não fazer.
+    ///
+    /// ⚠️ **Bytes e não `f32`, porque a conversão é da SHELL:** os params guardam RGBA
+    /// **linear**, e quem sabe passar isso a sRGB é o `linear_rgba_to_srgb8` que o bridge de
+    /// cor já usa para semear o picker. Converter aqui seria a segunda cópia dessa lei.
+    pub swatch: Option<[u8; 4]>,
 }
 
 #[path = "snapshot_thumb.rs"]

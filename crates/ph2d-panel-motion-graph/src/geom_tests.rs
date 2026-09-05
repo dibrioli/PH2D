@@ -332,6 +332,7 @@ fn with_params(mut n: GraphNodeView, k: usize) -> GraphNodeView {
             hint: hint("Rows"),
             value: 3.0,
             driven: false,
+            swatch: None,
         })
         .collect();
     n

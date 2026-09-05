@@ -76,6 +76,7 @@ fn card_with_params(id: u32, k: usize) -> GraphNodeView {
                 },
                 value: 1.0 + i as f32,
                 driven: false,
+                swatch: None,
             })
             .collect(),
     }

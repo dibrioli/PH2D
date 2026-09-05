@@ -66,6 +66,12 @@ pub(crate) mod params_visible;
 #[path = "motion_bridge_params_visible_tests.rs"]
 mod params_visible_tests;
 
+/// Os gates do CARTÃO (ciclo 1, doc 103) — irmão do de cima: aquele pergunta *quando* uma row
+/// aparece, este *o que o cartão recebe*.
+#[cfg(test)]
+#[path = "motion_bridge_card_params_tests.rs"]
+mod card_params_tests;
+
 /// A resolução do `ParamWidget::File`: quem abre o diálogo e quem sabe que extensões este
 /// build lê. Fica na shell porque a cerca do `audio.bands` é estrutural (ele não depende de
 /// crate de áudio nenhuma), e o diálogo tem de passar pela porta que declara o congelamento.
@@ -514,6 +520,15 @@ pub(crate) fn stamp_card_params(
         };
         let shown = params_visible::shown_params(motion, nid);
         let sources = motion.doc.graph.param_sources(nid);
+        // ⚠️ **Um hint de COR ancora quatro params** (`channels`) e mostra UMA row com a
+        // amostra — nunca quatro números (um `0.50` linear lê-se como cinzento claro).
+        //
+        // ⛔⛔ **E a supressão dos canais crus foi ESCRITA, MEDIDA e APAGADA:** a mutação que a
+        // removia SOBREVIVEU ao gate, e o censo do registry diz porquê — das **5** cores
+        // declaradas, **0** têm um canal não-âncora com `ParamUiHint` próprio. Os canais nunca
+        // entram nesta lista porque nunca são declarados, e o filtro era código que não podia
+        // disparar. O que fica é o gate, agora um CENSO com a contagem: se um dia alguém
+        // declarar `g` como hint, ele diz — e aí a supressão volta, com um caso que a exerce.
         node.params = hints
             .iter()
             .filter(|h| shown(h.param))
@@ -521,6 +536,19 @@ pub(crate) fn stamp_card_params(
                 hint: *h,
                 value: param_value(motion, nid, h.param),
                 driven: sources.is_some_and(|s| s.contains_key(h.param)),
+                // A amostra em bytes sRGB — pela MESMA porta que semeia o picker do painel
+                // (os params guardam RGBA linear).
+                swatch: match h.widget {
+                    ph2d_node_registry::ParamWidget::Color { channels } => {
+                        Some(super::color::linear_rgba_to_srgb8([
+                            param_value(motion, nid, channels[0]),
+                            param_value(motion, nid, channels[1]),
+                            param_value(motion, nid, channels[2]),
+                            param_value(motion, nid, channels[3]),
+                        ]))
+                    }
+                    _ => None,
+                },
             })
             .collect();
     }

@@ -42,6 +42,13 @@ pub(crate) enum Family {
     /// [doc 08 §4](../../../docs/3DModeling/08_formas_por_formula.md) mediu que cruz, lua, gota e
     /// engrenagem já se fazem com o que existe — a engrenagem é *um dente + `Radial`*).
     Plates,
+    /// ⭐⭐ **SINAIS** — setas, balões e símbolos: o que se põe numa cena para ela DIZER alguma
+    /// coisa, em vez de para ela ter uma peça.
+    ///
+    /// ⚠️ **Ela nasceu porque a `Plates` chegou a 25 itens** (W120), e a paleta existe exactamente
+    /// para isso não acontecer: a fileira de chips cortava em `MAX_MODES = 8`, e um grupo que a
+    /// substitui e volta a ficar longo devolve o problema pelo outro lado.
+    Signs,
     /// O que sai de um **desenho** do editor vetorial.
     Drawn,
     /// O que vem de **fora** — uma escultura.
@@ -49,11 +56,12 @@ pub(crate) enum Family {
 }
 
 impl Family {
-    pub(crate) const ALL: [Family; 6] = [
+    pub(crate) const ALL: [Family; 7] = [
         Family::Blocks,
         Family::Round,
         Family::Rings,
         Family::Plates,
+        Family::Signs,
         Family::Drawn,
         Family::Imported,
     ];
@@ -67,6 +75,7 @@ impl Family {
             Family::Round => "Round",
             Family::Rings => "Rings & tubes",
             Family::Plates => "Plates",
+            Family::Signs => "Signs & symbols",
             Family::Drawn => "From a drawing",
             Family::Imported => "Imported",
         }
@@ -82,6 +91,10 @@ impl Family {
             Family::Round => T::NodeCatTransform,
             Family::Rings => T::NodeCatDistribute,
             Family::Plates => T::NodeCatFx,
+            // ⚠️ **O SÉTIMO token, e o último** — há exactamente sete `NodeCat*`, então uma família
+            // nova depois desta tem de partilhar tinta ou trazer um token, que é decisão de design
+            // (§7) e não desta linha.
+            Family::Signs => T::NodeCatOutput,
             Family::Drawn => T::NodeCatFocus,
             Family::Imported => T::NodeCatUtility,
         }
@@ -160,6 +173,11 @@ pub(crate) struct Shape {
 #[path = "field3d_shapes_make.rs"]
 mod make;
 pub(crate) use make::*;
+
+/// ⭐ E os dos SINAIS — ver [`make_signs`].
+#[path = "field3d_shapes_make_signs.rs"]
+mod make_signs;
+pub(crate) use make_signs::*;
 
 pub(crate) const SHAPES: &[Shape] = &[
     Shape {
@@ -303,22 +321,22 @@ pub(crate) const SHAPES: &[Shape] = &[
     // primitiva com outros números, e é a PORTA que o artista procura.
     Shape {
         key: "panel.model3d.add.arrow",
-        family: Family::Plates,
+        family: Family::Signs,
         make: Make::Formula(an_arrow),
     },
     Shape {
         key: "panel.model3d.add.double_arrow",
-        family: Family::Plates,
+        family: Family::Signs,
         make: Make::Formula(a_double_arrow),
     },
     Shape {
         key: "panel.model3d.add.bent_arrow",
-        family: Family::Plates,
+        family: Family::Signs,
         make: Make::Formula(a_bent_arrow),
     },
     Shape {
         key: "panel.model3d.add.chevron",
-        family: Family::Plates,
+        family: Family::Signs,
         make: Make::Formula(a_chevron),
     },
     Shape {
@@ -345,6 +363,59 @@ pub(crate) const SHAPES: &[Shape] = &[
         key: "panel.model3d.add.ring_arc",
         family: Family::Rings,
         make: Make::Formula(a_ring_arc),
+    },
+    // ─────────────────────────── W120 ───────────────────────────
+    // ⭐ **Dez portas para nove formas** — a nuvem e o balão de pensamento são a mesma primitiva
+    // com a fieira ligada ou não, e é a PORTA que o artista procura.
+    Shape {
+        key: "panel.model3d.add.speech_rect",
+        family: Family::Signs,
+        make: Make::Formula(a_speech_rect),
+    },
+    Shape {
+        key: "panel.model3d.add.speech_oval",
+        family: Family::Signs,
+        make: Make::Formula(a_speech_oval),
+    },
+    Shape {
+        key: "panel.model3d.add.thought",
+        family: Family::Signs,
+        make: Make::Formula(a_thought),
+    },
+    Shape {
+        key: "panel.model3d.add.cloud",
+        family: Family::Signs,
+        make: Make::Formula(a_cloud),
+    },
+    Shape {
+        key: "panel.model3d.add.bolt",
+        family: Family::Signs,
+        make: Make::Formula(a_bolt),
+    },
+    Shape {
+        key: "panel.model3d.add.shield",
+        family: Family::Signs,
+        make: Make::Formula(a_shield),
+    },
+    Shape {
+        key: "panel.model3d.add.tag",
+        family: Family::Signs,
+        make: Make::Formula(a_tag),
+    },
+    Shape {
+        key: "panel.model3d.add.check",
+        family: Family::Signs,
+        make: Make::Formula(a_check),
+    },
+    Shape {
+        key: "panel.model3d.add.banner",
+        family: Family::Signs,
+        make: Make::Formula(a_banner),
+    },
+    Shape {
+        key: "panel.model3d.add.brace",
+        family: Family::Signs,
+        make: Make::Formula(a_brace),
     },
     Shape {
         key: "panel.model3d.add.torus",

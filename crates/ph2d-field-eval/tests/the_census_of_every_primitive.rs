@@ -298,6 +298,83 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             round: 0.03,
             chamfer: 0.0,
         },
+        // ─────────────────────────── W120 ───────────────────────────
+        PrimitiveKind::SpeechRect => Primitive::SpeechRect {
+            half_width: 0.42,
+            half_span: 0.28,
+            tail: 0.20,
+            half_height: 0.10,
+            round: 0.05,
+            chamfer: 0.0,
+        },
+        // ⚠️ **Eixos DIFERENTES**: iguais o oval é um disco, e o termo que ele acrescenta — a
+        // subestimação por `min/max` — não seria exercitado.
+        PrimitiveKind::SpeechOval => Primitive::SpeechOval {
+            half_width: 0.44,
+            half_span: 0.26,
+            tail: 0.20,
+            half_height: 0.10,
+            round: 0.04,
+            chamfer: 0.0,
+        },
+        // ⚠️ **Cinco bossas E cauda**: sem cauda ela é a outra porta, e com bossas pares metade das
+        // costuras cai sobre a outra por simetria.
+        PrimitiveKind::Cloud => Primitive::Cloud {
+            lobes: 5,
+            half_width: 0.45,
+            half_span: 0.22,
+            tail: 0.18,
+            half_height: 0.10,
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::Bolt => Primitive::Bolt {
+            half_width: 0.28,
+            half_span: 0.45,
+            half_height: 0.10,
+            round: 0.02,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::Shield => Primitive::Shield {
+            half_width: 0.34,
+            half_span: 0.44,
+            half_height: 0.10,
+            round: 0.04,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::Tag => Primitive::Tag {
+            half_width: 0.45,
+            half_span: 0.26,
+            point: 0.24,
+            hole: 0.07,
+            half_height: 0.10,
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        // ⚠️ **Braços DESIGUAIS** — é o que um visto é, e com eles iguais a peça vira um «V».
+        PrimitiveKind::Check => Primitive::Check {
+            half_width: 0.42,
+            half_span: 0.30,
+            thickness: 0.11,
+            half_height: 0.10,
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::Banner => Primitive::Banner {
+            half_width: 0.45,
+            half_span: 0.22,
+            notch: 0.14,
+            half_height: 0.10,
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::Brace => Primitive::Brace {
+            half_span: 0.44,
+            thickness: 0.09,
+            half_height: 0.10,
+            round: 0.02,
+            chamfer: 0.0,
+        },
     })
 }
 
@@ -422,6 +499,236 @@ fn every_primitive_offers_at_least_one_dimension() {
             );
         }
     }
+}
+
+/// ⭐⭐⭐ **TODA FORMA CONTADA MARCHA NO PRÓPRIO TETO** — o gate que torna um teto medido REAL (W120).
+///
+/// # ⛔ O buraco que ele tapa
+///
+/// Cinco formas desta casa têm uma **contagem** com teto (lados, pontas, dentes, pontas de seta,
+/// bossas), e o [`representative`] de cada uma usa um valor **típico**. ⇒ o censo da marcha media a
+/// forma que o artista vê ao criar, e **nunca** a que ele alcança arrastando o slider até ao fim.
+///
+/// ⚠️ **Um teto que ninguém corre é uma promessa**, e esta wave apanhou-a a falhar: a nuvem passava
+/// a `5` bossas e furava a `8` — a primeira medição escreveu `12` a partir do **preço**, e só a
+/// marcha disse que o número era outro.
+///
+/// ⭐ A lista é **derivada** da tabela de linhas: qualquer forma com uma [`ph2d_field::Span::Count`]
+/// entra aqui sozinha, no dia em que nascer.
+#[test]
+fn every_counted_shape_marches_safely_at_its_own_ceiling() {
+    use ph2d_field::Span;
+    let mut maus = Vec::new();
+    let mut medidas = 0;
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else { continue };
+        for (i, d) in ph2d_field::dims(&p).iter().enumerate() {
+            let Span::Count { max, .. } = d.span else {
+                continue;
+            };
+            let mut no_teto = p.clone();
+            #[allow(clippy::cast_precision_loss)]
+            if ph2d_field::set_dim(&mut no_teto, 0, i, max as f32).is_err() {
+                maus.push(format!(
+                    "«{}»: a porta recusou o próprio teto {max}",
+                    k.key()
+                ));
+                continue;
+            }
+            // ⚠️ **Subir uma contagem ENCOLHE o filete que a forma comporta**, e o produto já
+            // sabe disso: quem escreve um número chama o [`ph2d_field::clamp_round`] a seguir. Sem
+            // esta linha o gate media uma peça que o documento **recusa**, e a mensagem falava de um
+            // filete grande de mais em vez da marcha.
+            ph2d_field::clamp_round(&mut no_teto);
+            medidas += 1;
+            let doc = doc_of(no_teto);
+            let passo = f64::from(ph2d_field_eval::safe_march_step(&doc));
+            let g = worst_gradient(&Field::new(&doc), 1.0, 24);
+            if passo * g > teto_declarado(k.key()).unwrap_or(SLACK) {
+                maus.push(format!(
+                    "«{}» no teto ({max}): passo {passo:.4} × ‖∇f‖ {g:.4} = {:.4}",
+                    k.key(),
+                    passo * g
+                ));
+            }
+        }
+    }
+    assert!(
+        medidas >= 4,
+        "só {medidas} formas com contagem foram medidas — a lista derivada partiu-se"
+    );
+    assert!(
+        maus.is_empty(),
+        "estas formas FURAM no próprio teto — um teto que ninguém corre é uma promessa: {maus:#?}"
+    );
+}
+
+/// ⛔⛔⛔ **AS FORMAS QUE FURAM NO PRÓPRIO TETO — MEDIDAS, DECLARADAS e ainda NÃO curadas.**
+///
+/// # A estrela (achado de 2026-09-05, e é PRÉ-EXISTENTE)
+///
+/// O [`ph2d_field::MAX_STAR_POINTS`] foi escrito a partir do **PREÇO** (*«a estrela chega ao preço
+/// do prisma às 16 pontas»*) e ninguém correu a **marcha** lá. Corrida, ela diz outra coisa:
+///
+/// | pontas | 5 | 6 | 7 | 8 | **9** | 10 | 12 | 14 | 16 |
+/// |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+/// | `passo × ‖∇f‖` | `0,71` | `0,71` | `0,82` | `0,88` | **`1,07`** | `1,22` | `1,61` | `2,06` | `3,47` |
+///
+/// ⇒ **o joelho está entre `8` e `9`**, e o teto shipado é `16` — o dobro. *É o §0 outra vez: um
+/// limite escrito a partir de um recurso enquanto outro amarra primeiro.*
+///
+/// # ⚠️ Por que ela fica DECLARADA e não é curada aqui
+///
+/// ⛔ **Um gate de gradiente diz «pode furar»; só a IMAGEM diz «fura»** — a lei que o
+/// `the_bend_draws_what_an_honest_march_draws` pagou nesta mesma crate, e quando os dois discordam
+/// **manda a imagem**. Baixar um teto que já shipa tira produto alcançável a partir de um limite
+/// **conservador**, e isso é decisão de quem vê (§0.8), não desta wave.
+///
+/// ⇒ o número fica aqui, com a tabela, e a wave que o resolver ou traz a imagem ou traz a cura.
+///
+/// ⚠️ **A folga é uma catraca e SÓ ENCOLHE** — o censo abaixo recusa uma entrada que já cumpra a
+/// barra normal, para ela não virar licença para a próxima forma.
+const TETO_MEDIDO_E_NAO_CURADO: [(&str, f64); 1] = [("star", 3.60)];
+
+fn teto_declarado(key: &str) -> Option<f64> {
+    TETO_MEDIDO_E_NAO_CURADO
+        .iter()
+        .find(|(k, _)| *k == key)
+        .map(|(_, v)| *v)
+}
+
+/// ⛔⛔ **A METADE QUE IMPEDE A CATRACA DE SUBIR** — cada entrada tem de **ainda** furar a barra
+/// normal, e ficar **abaixo** da folga que declara.
+#[test]
+fn the_declared_ceiling_list_has_no_stale_entries() {
+    use ph2d_field::Span;
+    for (nome, folga) in TETO_MEDIDO_E_NAO_CURADO {
+        let k = PrimitiveKind::ALL
+            .iter()
+            .find(|k| k.key() == nome)
+            .unwrap_or_else(|| panic!("«{nome}» já não é uma forma — a entrada ficou órfã"));
+        let p = representative(*k).unwrap_or_else(|| panic!("«{nome}» não tem representante"));
+        let mut medido = None;
+        for (i, d) in ph2d_field::dims(&p).iter().enumerate() {
+            let Span::Count { max, .. } = d.span else {
+                continue;
+            };
+            let mut q = p.clone();
+            #[allow(clippy::cast_precision_loss)]
+            ph2d_field::set_dim(&mut q, 0, i, max as f32).expect("o próprio teto");
+            ph2d_field::clamp_round(&mut q);
+            let doc = doc_of(q);
+            let passo = f64::from(ph2d_field_eval::safe_march_step(&doc));
+            medido = Some(passo * worst_gradient(&Field::new(&doc), 1.0, 24));
+        }
+        let v = medido.unwrap_or_else(|| {
+            panic!("«{nome}» já não tem contagem — a entrada não descreve nada")
+        });
+        println!("  [teto] {nome}: {v:.4} (folga declarada {folga:.2})");
+        assert!(
+            v > SLACK,
+            "«{nome}» já cumpre a barra normal ({v:.4}) — APAGUE a entrada, senão ela vira licença"
+        );
+        assert!(
+            v < folga,
+            "«{nome}» piorou para {v:.4}, acima da folga declarada de {folga:.2} — a catraca SÓ ENCOLHE"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **TODA LINHA DE TODA FORMA SABE SER ESCRITA** — o gate que fecha o `_ => Err(bad("dim"))`
+/// do [`ph2d_field::set_dim`] (W120).
+///
+/// # ⛔⛔ O buraco que ele tapa, e por que os outros não o viam
+///
+/// A tabela de linhas e a porta de escrita são **dois** `match` sobre a mesma forma, ligados por um
+/// **índice**. O primeiro é exaustivo por variante; o segundo casa `(forma, índice)` e acaba num
+/// braço `_`. ⇒ acrescentar uma primitiva com seis linhas e esquecer os braços de escrita **compila
+/// e passa a suíte**: o painel pinta os seis controlos, o artista arrasta, e **nada acontece**.
+///
+/// ⚠️ *Um slider que se mexe e não faz nada é a falha mais cara de diagnosticar, porque não deixa
+/// rasto* — a frase é do `set_round` da W101, e a W106 pagou-a outra vez com **catorze** formas
+/// cujos sliders eram inertes. Nenhum dos dois censos existentes a apanha: o
+/// `every_primitive_offers_at_least_one_dimension` mede a OFERTA, e a marcha mede o CAMPO.
+///
+/// ⭐ A régua é o produto: empurra-se cada linha para um valor diferente e pergunta-se à **tabela**
+/// se ela mudou. ⚠️ Aceita-se que a porta **COAJA** (uma parede pode segurar o valor pedido) — o que
+/// se recusa é ela **não mexer nada**, ou devolver erro sobre um valor que a própria faixa oferece.
+#[test]
+fn every_row_of_every_primitive_can_be_written() {
+    use ph2d_field::Span;
+    let mut mudos = Vec::new();
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else { continue };
+        let linhas = ph2d_field::dims(&p);
+        for (i, d) in linhas.iter().enumerate() {
+            // ⚠️ **O alvo sai da FAIXA declarada**, e não de um delta fixo: uma contagem anda de um
+            // em um, e um recuo de uma aresta vive num intervalo minúsculo.
+            let alvo = match d.span {
+                Span::Count { min, max } => {
+                    #[allow(clippy::cast_precision_loss)]
+                    let (lo, hi) = (min as f32, max as f32);
+                    if (d.value - lo).abs() < 0.5 { hi } else { lo }
+                }
+                Span::Wall(w) | Span::WallFromZero(w) => {
+                    if d.value < w * 0.5 {
+                        w * 0.75
+                    } else {
+                        w * 0.25
+                    }
+                }
+                Span::FromZero | Span::Positive | Span::Free | Span::Along => {
+                    if d.value > 0.0 {
+                        d.value * 0.5
+                    } else {
+                        0.25
+                    }
+                }
+                Span::Turn(h) | Span::Walls(h) => {
+                    if d.value.abs() < h * 0.5 {
+                        h * 0.5
+                    } else {
+                        0.0
+                    }
+                }
+                #[allow(clippy::cast_precision_loss)]
+                Span::Choice(opcoes) => {
+                    if d.value < 0.5 {
+                        1.0
+                    } else {
+                        (opcoes.len() - 1) as f32
+                    }
+                }
+                // ⛔ **A ÚNICA faixa que declara «não se escreve»** — e a porta que a recusa é a
+                // mesma que a pinta. Uma linha assim não é um controlo morto: é um controlo que diz
+                // que não é um.
+                Span::Locked => continue,
+            };
+            let mut q = p.clone();
+            match ph2d_field::set_dim(&mut q, 0, i, alvo) {
+                Err(e) => mudos.push(format!(
+                    "{} linha {i} ({}) RECUSOU {alvo}: {e:?}",
+                    k.key(),
+                    d.key
+                )),
+                Ok(()) => {
+                    let depois = ph2d_field::dims(&q);
+                    if (depois[i].value - d.value).abs() < 1.0e-7 {
+                        mudos.push(format!(
+                            "{} linha {i} ({}) aceitou {alvo} e NÃO MEXEU (ficou em {})",
+                            k.key(),
+                            d.key,
+                            d.value
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    assert!(
+        mudos.is_empty(),
+        "estes controlos são pintados e NÃO ESCREVEM — o artista arrasta e nada acontece: {mudos:#?}"
+    );
 }
 
 /// ⭐⭐⭐ **UMA FAIXA QUE OFERECE NEGATIVO ACEITA NEGATIVO** — o defeito PRÉ-EXISTENTE que o lote da

@@ -322,7 +322,7 @@ Mecanismo, as cinco medições que mudaram o desenho e as provas de mutação:
 
 | lote | formas |
 |---|---|
-| **2** (10) | os 4 balões (SpeechRect · SpeechOval · Thought · Cloud) e os 6 símbolos (Bolt · Shield · Tag · Check · Banner · Brace) |
+| ✅ **2** (10) | **FECHADO na W120** — os 4 balões (Speech Balloon · Speech Oval · Thought · Cloud) e os 6 símbolos (Lightning Bolt · Shield · Tag · Check Mark · Banner · Brace). Mecanismo: [doc 06 §121](06_resultados_cena_e_gizmo.md) |
 | **3** (5) | o fluxograma que sobra: Parallelogram · Delay · Display · OffPage · Junction |
 
 ⚠️ **Três do lote 3 são FRACAS em 3D e isso está medido pelo desenho, não pelo motor**

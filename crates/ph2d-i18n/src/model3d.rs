@@ -101,6 +101,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.add.tube" => "Tube",
         "panel.model3d.add.washer" => "Washer",
         "panel.model3d.add.ring_arc" => "Ring Arc",
+        // ─────────────────────────── W120 ───────────────────────────
+        // ⚠️ **"Speech Balloon" e não "Speech Rect"**: o rótulo diz o que a forma É para quem a
+        // procura, e o nome geométrico fica no documento, onde o leitor é a próxima LLM.
+        "panel.model3d.add.speech_rect" => "Speech Balloon",
+        "panel.model3d.add.speech_oval" => "Speech Oval",
+        // ⭐ **Duas portas, uma forma** — a fieira de bolhas é o que as separa.
+        "panel.model3d.add.thought" => "Thought Balloon",
+        "panel.model3d.add.cloud" => "Cloud",
+        "panel.model3d.add.bolt" => "Lightning Bolt",
+        "panel.model3d.add.shield" => "Shield",
+        "panel.model3d.add.tag" => "Tag",
+        "panel.model3d.add.check" => "Check Mark",
+        "panel.model3d.add.banner" => "Banner",
+        "panel.model3d.add.brace" => "Brace",
         // ⭐ A ESCULTURA. ⚠️ As reticências são a convenção de "isto abre um diálogo" — as outras
         // criam na hora, esta pergunta qual arquivo, e o rótulo tem de dizer a diferença antes do
         // clique.
@@ -278,6 +292,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.dim.head_width" => "Head Width",
         "field.dim.head_length" => "Head Length",
         "field.dim.heads" => "Heads",
+        "field.dim.tail" => "Tail",
+        "field.dim.lobes" => "Lobes",
+        "field.dim.point" => "Point",
+        "field.dim.hole" => "Hole",
+        "field.dim.notch" => "Notch",
         // ⚠️ Em GRAUS na cabeça do artista, mas o documento guarda radianos — o painel mostra o
         // número cru, e o rótulo não promete unidade nenhuma.
         "field.dim.angle" => "Sweep",

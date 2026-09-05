@@ -32,12 +32,18 @@ pub mod hybrid;
 pub mod ops;
 /// ⭐ A família da SETA — ver [`ops_arrows`].
 pub mod ops_arrows;
+/// ⭐ Os BALÕES — ver [`ops_balloons`].
+pub mod ops_balloons;
 pub mod ops_bool;
 pub mod ops_box;
 pub mod ops_joint;
 pub(crate) mod ops_norm;
+/// ⭐ Os blocos 2D partilhados por toda chapa — ver [`ops_plate2d`].
+pub(crate) mod ops_plate2d;
 pub mod ops_plates;
 pub mod ops_solids;
+/// ⭐ Os SÍMBOLOS — ver [`ops_symbols`].
+pub mod ops_symbols;
 pub mod profile;
 /// ⭐⭐ O perfil como CONSULTA (W56) — a cura do custo linear nas arestas.
 pub mod profile_index;

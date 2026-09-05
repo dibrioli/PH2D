@@ -170,6 +170,75 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
             half_height,
             ..
         } => Some((((radius - cut) * 0.5).max(0.0)).min(*half_height)),
+        // ─────────────────────────── W120 ───────────────────────────
+        // ⚠️ **A MENOR meia-medida manda**, e a erosão de uma chapa fecha ali: um balão come-se pelo
+        // lado curto, e a cauda dele é o que sobra por último.
+        Primitive::SpeechRect {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        }
+        | Primitive::SpeechOval {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        } => Some(half_width.min(*half_span).min(*half_height)),
+        // ⚠️ **A menor BOSSA** — ver a fórmula: a mais pequena mede `0,52 × half_span`.
+        Primitive::Cloud {
+            half_span,
+            half_height,
+            ..
+        } => Some((half_span * 0.52).min(*half_height)),
+        // ⚠️ **A banda do meio do zigue-zague** é a parte fina do raio, e ela vale `0,2 h` na
+        // fórmula; o filete come-a pelos dois lados.
+        // ⚠️ **A banda do meio mede `0,2 × half_span` NA VERTICAL**, e é ela que o filete come — a
+        // 1.ª redacção tomava `min(largura, altura)`, que numa peça alta e estreita descreve a
+        // LARGURA e aperta o teto a metade sem razão. *Uma parede tem de dizer de que medida ela é.*
+        Primitive::Bolt {
+            half_span,
+            half_height,
+            ..
+        } => Some((half_span * 0.10).min(*half_height)),
+        Primitive::Shield {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        } => Some((half_width.min(*half_span) * 0.5).min(*half_height)),
+        // ⚠️ **A ponta e o furo mandam**: o bico afila até nada, e o filete não pode comer a boca do
+        // furo.
+        Primitive::Tag {
+            half_span,
+            point,
+            hole,
+            half_height,
+            ..
+        } => Some(half_span.min(point * 0.5).min(*hole).min(*half_height)),
+        // A meia-espessura da faixa é toda a matéria que um visto tem na transversal.
+        Primitive::Check {
+            thickness,
+            half_height,
+            ..
+        }
+        | Primitive::Brace {
+            thickness,
+            half_height,
+            ..
+        } => Some((thickness * 0.5).min(*half_height)),
+        // ⚠️ **O que sobra da fita entre o entalhe e a ponta** — não a meia-largura inteira.
+        Primitive::Banner {
+            half_width,
+            half_span,
+            notch,
+            half_height,
+            ..
+        } => Some(
+            half_span
+                .min(((half_width - notch) * 0.5).max(0.0))
+                .min(*half_height),
+        ),
         // ⭐⭐ **A INCLINAÇÃO ENTRA NA CONTA, e é onde o filete SATURA** (W101).
         //
         // A parede é a reta `ρ = a + m·z` no plano `(ρ, z)`; recuá-la de `round` na perpendicular

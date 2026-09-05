@@ -54,43 +54,9 @@ fn cunha(eixo: &Tree, lado: &Tree, tip: f64, head: f64, head_length: f64) -> [Tr
     ]
 }
 
-/// Um rectângulo 2D **exacto** de meias-extensões `(hx, hy)` centrado em `(cx, cy)`.
-fn rect_em(cx: f64, cy: f64, hx: f64, hy: f64) -> Tree {
-    let dx = (Tree::x() - Tree::constant(cx)).abs() - Tree::constant(hx);
-    let dy = (Tree::y() - Tree::constant(cy)).abs() - Tree::constant(hy);
-    crate::ops::length2(&dx.max(0.0), &dy.max(0.0)) + dx.max(dy).min(0.0)
-}
-
-/// O mesmo rectângulo **com as quatro quinas arredondadas** — encolher uma distância EXACTA e
-/// deslocá-la, que é a única receita que funciona (ver [`crate::ops_plates`], lei da W104).
-fn rect_round_em(cx: f64, cy: f64, hx: f64, hy: f64, r: f64) -> Tree {
-    let r = r.min(hx * 0.999).min(hy * 0.999).max(0.0);
-    crate::ops::offset(&rect_em(cx, cy, hx - r, hy - r), r)
-}
-
-/// As quatro paredes de um rectângulo, em semiplanos **separados** — a receita do braço da cruz.
-///
-/// ⚠️ Ela existe porque a mistura do aro precisa das peças **inteiras**: um rectângulo já composto
-/// carrega a bissectriz das quinas para dentro do aro, que é o pior desalinho que este catálogo já
-/// mediu (ver [`crate::ops_plates`]).
-fn paredes(cx: f64, cy: f64, hx: f64, hy: f64) -> [Tree; 4] {
-    [
-        Tree::x() - Tree::constant(cx + hx),
-        Tree::constant(cx - hx) - Tree::x(),
-        Tree::y() - Tree::constant(cy + hy),
-        Tree::constant(cy - hy) - Tree::y(),
-    ]
-}
-
-/// Os quatro pares de quinas de um rectângulo dado em [`paredes`].
-fn quinas(p: &[Tree; 4]) -> Vec<(Tree, Tree)> {
-    vec![
-        (p[0].clone(), p[2].clone()),
-        (p[0].clone(), p[3].clone()),
-        (p[1].clone(), p[2].clone()),
-        (p[1].clone(), p[3].clone()),
-    ]
-}
+// ⚠️ **Os quatro blocos 2D vivem no [`crate::ops_plate2d`]** desde a W120 — eles estavam escritos
+// aqui E no [`crate::ops_plates`]. As árvores produzidas são as mesmas ao bit.
+use crate::ops_plate2d::{paredes, quinas, rect_round_em};
 
 /// ⭐⭐ **SETA** — a haste unida à ponta (ou às duas), puxada em Z.
 ///

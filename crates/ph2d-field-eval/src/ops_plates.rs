@@ -32,44 +32,28 @@ use fidget::context::Tree;
 use crate::ops::{Blended, intersection, length2, slab_and_walls, union};
 use crate::ops_joint::Edge;
 
+// ⚠️ **Os quatro blocos 2D vivem no [`crate::ops_plate2d`]** desde a W120 — eles estavam escritos
+// aqui E no [`crate::ops_arrows`], a mesma lei com um centro a mais. Estes atalhos existem para o
+// corpo das fórmulas abaixo não mudar uma linha, e as árvores que elas produzem são **as mesmas ao
+// bit**: o antigo era o caso `cx = cy = 0`.
+use crate::ops_plate2d::{disco_em, rect_round_em};
+
 /// Um disco de raio `r` centrado na origem do plano XY, já normalizado.
 fn disco(r: f64) -> Tree {
-    length2(&Tree::x(), &Tree::y()) - Tree::constant(r)
-}
-
-/// Um disco deslocado.
-fn disco_em(cx: f64, cy: f64, r: f64) -> Tree {
-    length2(
-        &(Tree::x() - Tree::constant(cx)),
-        &(Tree::y() - Tree::constant(cy)),
-    ) - Tree::constant(r)
+    disco_em(0.0, 0.0, r)
 }
 
 /// Um rectângulo 2D **com as quatro quinas arredondadas** em `r`.
 ///
 /// ⚠️⚠️ **A receita é a da caixa, e é a ÚNICA que funciona aqui:** encolher uma distância **exacta**
 /// e deslocá-la. A W104 mediu que `offset` sobre um `max` de semiespaços é **inerte** — dilatar um
-/// semiespaço dá outro semiespaço, sem canto para arredondar. O [`rect`] é exacto, logo dilatá-lo
-/// **é** o rectângulo de quinas redondas.
+/// semiespaço dá outro semiespaço, sem canto para arredondar.
 ///
 /// ⭐ **Existe porque a sonda de arestas o exigiu:** a cruz lia `4,7 %` da superfície sobre um vinco
 /// de `88°` com o filete a metade do limite. As quinas verticais dos braços estavam **órfãs** — o
-/// `slab_and_walls` arredonda o **aro** (parede↔tampa) e não as arestas do contorno. É a mesma
-/// pedra que a W104 apanhou no prisma: *uma divisão de responsabilidade copiada de outra forma é uma
-/// aresta órfã quando o segundo dono não existe* (no `Extrude` o dono é o editor vetorial; aqui não
-/// há nenhum).
+/// `slab_and_walls` arredonda o **aro** (parede↔tampa) e não as arestas do contorno.
 fn rect_round(hx: f64, hy: f64, r: f64) -> Tree {
-    let r = r.min(hx * 0.999).min(hy * 0.999).max(0.0);
-    crate::ops::offset(&rect(hx - r, hy - r), r)
-}
-
-/// Um rectângulo 2D de meias-extensões `(hx, hy)` — distância **exacta**, dentro e fora.
-fn rect(hx: f64, hy: f64) -> Tree {
-    let dx = Tree::x().abs() - Tree::constant(hx);
-    let dy = Tree::y().abs() - Tree::constant(hy);
-    let fora = length2(&dx.max(0.0), &dy.max(0.0));
-    let dentro = dx.max(dy).min(0.0);
-    fora + dentro
+    rect_round_em(0.0, 0.0, hx, hy, r)
 }
 
 /// ⭐⭐⭐ **ENGRENAGEM** — `teeth` dentes, e foi a forma que o Enio nomeou.

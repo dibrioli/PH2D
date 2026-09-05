@@ -144,10 +144,14 @@ fn an_empty_family_paints_no_header() {
         .iter()
         .filter(|f| !magras.iter().any(|s| s.family == **f))
         .collect();
+    // ⚠️ **DERIVADO, e não o literal `4`** — a W120 acrescentou a família dos SINAIS e este número
+    // passou a descrever outra coisa. *Uma contagem literal num gate faz cada feature nova editar o
+    // teste de outra pessoa*; a fixtura guarda DUAS famílias, então o resto está vazio por
+    // construção.
     assert_eq!(
         vazias.len(),
-        4,
-        "a fixtura tem de deixar quatro famílias vazias"
+        Family::ALL.len() - 2,
+        "a fixtura tem de deixar as famílias que ela não povoa vazias"
     );
     for f in vazias {
         assert!(

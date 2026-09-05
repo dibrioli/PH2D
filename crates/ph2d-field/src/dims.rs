@@ -237,4 +237,7 @@ mod dims_table;
 /// ⭐ A metade das CHAPAS daquela tabela — ver [`dims_table_plates`].
 #[path = "dims_table_plates.rs"]
 mod dims_table_plates;
+/// ⭐ E a metade dos SINAIS — ver [`dims_table_signs`].
+#[path = "dims_table_signs.rs"]
+mod dims_table_signs;
 pub use dims_table::dims;

@@ -232,6 +232,95 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
         (Primitive::CircleSegment { radius, .. }, 0) => *radius = value,
         // ⚠️ **A corda é uma POSIÇÃO** e passa negativa — ver a guarda do [`Span::Free`] acima.
         (Primitive::CircleSegment { cut, .. }, 1) => *cut = value,
+        // ─────────────────────────── W120 ───────────────────────────
+        // ⚠️ **A ORDEM tem de bater com a do `dims_table_signs.rs`** — o índice É a linha.
+        (Primitive::SpeechRect { half_width, .. }, 0)
+        | (Primitive::SpeechOval { half_width, .. }, 0)
+        | (Primitive::Bolt { half_width, .. }, 0)
+        | (Primitive::Tag { half_width, .. }, 0)
+        | (Primitive::Check { half_width, .. }, 0)
+        | (Primitive::Banner { half_width, .. }, 0)
+        | (Primitive::Cloud { half_width, .. }, 1) => *half_width = half,
+        (Primitive::SpeechRect { half_span, .. }, 1)
+        | (Primitive::SpeechOval { half_span, .. }, 1)
+        | (Primitive::Bolt { half_span, .. }, 1)
+        | (Primitive::Tag { half_span, .. }, 1)
+        | (Primitive::Check { half_span, .. }, 1)
+        | (Primitive::Banner { half_span, .. }, 1)
+        | (Primitive::Cloud { half_span, .. }, 2)
+        | (Primitive::Brace { half_span, .. }, 0) => *half_span = half,
+        (Primitive::SpeechRect { tail, .. }, 2)
+        | (Primitive::SpeechOval { tail, .. }, 2)
+        | (Primitive::Cloud { tail, .. }, 3) => *tail = value,
+        (Primitive::SpeechRect { half_height, .. }, 3)
+        | (Primitive::SpeechOval { half_height, .. }, 3)
+        | (Primitive::Cloud { half_height, .. }, 4)
+        | (Primitive::Bolt { half_height, .. }, 2)
+        | (Primitive::Shield { half_height, .. }, 2)
+        | (Primitive::Tag { half_height, .. }, 4)
+        | (Primitive::Check { half_height, .. }, 3)
+        | (Primitive::Banner { half_height, .. }, 3)
+        | (Primitive::Brace { half_height, .. }, 2) => *half_height = half,
+        (Primitive::Cloud { lobes, .. }, 0) => {
+            // ⚠️ **COAGE, não recusa** — a lei da contagem de lados do prisma.
+            *lobes = (value.round() as u32).clamp(crate::MIN_CLOUD_LOBES, crate::MAX_CLOUD_LOBES);
+        }
+        // ⭐ **As duas metades da cerca do escudo**, e ela coage nos dois sentidos: a largura pára
+        // em `2 × span`, e subir o span nunca pode deixar a largura para trás.
+        (
+            Primitive::Shield {
+                half_width,
+                half_span,
+                ..
+            },
+            0,
+        ) => *half_width = keep_below(half, *half_span * 2.0),
+        (
+            Primitive::Shield {
+                half_width,
+                half_span,
+                ..
+            },
+            1,
+        ) => *half_span = keep_above(half, *half_width * 0.5),
+        (
+            Primitive::Tag {
+                point, half_width, ..
+            },
+            2,
+        ) => *point = keep_below(value, *half_width * 2.0),
+        (
+            Primitive::Tag {
+                hole,
+                half_width,
+                half_span,
+                ..
+            },
+            3,
+        ) => *hole = keep_below(value, (*half_width * 0.3).min(*half_span)),
+        (
+            Primitive::Check {
+                thickness,
+                half_width,
+                half_span,
+                ..
+            },
+            2,
+        ) => *thickness = keep_below(value, half_width.min(*half_span)),
+        (
+            Primitive::Banner {
+                notch, half_width, ..
+            },
+            2,
+        ) => *notch = keep_below(value, *half_width),
+        (
+            Primitive::Brace {
+                thickness,
+                half_span,
+                ..
+            },
+            1,
+        ) => *thickness = keep_below(value, *half_span * 0.5),
         (Primitive::Prism { sides, .. }, 0) => {
             // ⚠️ **COAGE, não recusa** — a lei do `Unary::Taper`, e pela mesma razão: a faixa já
             // não oferece nada fora de `[MIN, MAX]`, então um valor de fora só chega por outra
@@ -269,6 +358,15 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
             | Primitive::Rhombus { .. }
             | Primitive::Tube { .. }
             | Primitive::CircleSegment { .. }
+            | Primitive::SpeechRect { .. }
+            | Primitive::SpeechOval { .. }
+            | Primitive::Cloud { .. }
+            | Primitive::Bolt { .. }
+            | Primitive::Shield { .. }
+            | Primitive::Tag { .. }
+            | Primitive::Check { .. }
+            | Primitive::Banner { .. }
+            | Primitive::Brace { .. }
             | Primitive::TorusArc { .. }),
             i,
         ) if Some(i) == round_index(p) => {
@@ -358,6 +456,15 @@ fn set_chamfer(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldErro
         | Primitive::Rhombus { chamfer, .. }
         | Primitive::Tube { chamfer, .. }
         | Primitive::CircleSegment { chamfer, .. }
+        | Primitive::SpeechRect { chamfer, .. }
+        | Primitive::SpeechOval { chamfer, .. }
+        | Primitive::Cloud { chamfer, .. }
+        | Primitive::Bolt { chamfer, .. }
+        | Primitive::Shield { chamfer, .. }
+        | Primitive::Tag { chamfer, .. }
+        | Primitive::Check { chamfer, .. }
+        | Primitive::Banner { chamfer, .. }
+        | Primitive::Brace { chamfer, .. }
         | Primitive::TorusArc { chamfer, .. } => *chamfer = value,
         Primitive::Sphere { .. }
         | Primitive::Torus { .. }
@@ -418,6 +525,15 @@ fn set_round(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldError>
         | Primitive::Rhombus { round, .. }
         | Primitive::Tube { round, .. }
         | Primitive::CircleSegment { round, .. }
+        | Primitive::SpeechRect { round, .. }
+        | Primitive::SpeechOval { round, .. }
+        | Primitive::Cloud { round, .. }
+        | Primitive::Bolt { round, .. }
+        | Primitive::Shield { round, .. }
+        | Primitive::Tag { round, .. }
+        | Primitive::Check { round, .. }
+        | Primitive::Banner { round, .. }
+        | Primitive::Brace { round, .. }
         | Primitive::TorusArc { round, .. } => *round = value,
         Primitive::Sphere { .. }
         | Primitive::Torus { .. }
@@ -471,6 +587,15 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
         | Primitive::Rhombus { round, chamfer, .. }
         | Primitive::Tube { round, chamfer, .. }
         | Primitive::CircleSegment { round, chamfer, .. }
+        | Primitive::SpeechRect { round, chamfer, .. }
+        | Primitive::SpeechOval { round, chamfer, .. }
+        | Primitive::Cloud { round, chamfer, .. }
+        | Primitive::Bolt { round, chamfer, .. }
+        | Primitive::Shield { round, chamfer, .. }
+        | Primitive::Tag { round, chamfer, .. }
+        | Primitive::Check { round, chamfer, .. }
+        | Primitive::Banner { round, chamfer, .. }
+        | Primitive::Brace { round, chamfer, .. }
         | Primitive::TorusArc { round, chamfer, .. } => {
             // ⭐⭐ **OS DOIS RECUOS são limitados, e não só o filete** (Enio, 2026-08-30).
             //

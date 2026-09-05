@@ -35,10 +35,14 @@ pub mod mods;
 pub mod mods_dims;
 /// ⭐ O que uma forma **é** — ver [`primitive`].
 pub mod primitive;
+/// ⭐ A lista das FAMÍLIAS de forma — ver [`primitive_kind`].
+pub mod primitive_kind;
 /// ⭐ Os pisos e tetos de CONTAGEM das primitivas — ver [`primitive_limits`].
 pub mod primitive_limits;
 pub mod profile;
 pub mod radius;
+/// ⭐ A caixa por EIXO de cada forma — ver [`radius_extents`].
+pub mod radius_extents;
 /// ⭐ Até onde o filete de cada forma vai — ver [`radius_limit`].
 pub mod radius_limit;
 pub mod xform;
@@ -49,19 +53,21 @@ pub use dims::{Dim, Param, Span, clamp_round, dims, scale_primitive, set_dim};
 pub use mods::{Unary, UnaryKind};
 // ⚠️ **O `pub use` é o que mantém `ph2d_field::Primitive`** — cortar um arquivo não pode custar uma
 // reescrita em cada sítio que o chamava.
-pub use primitive::{Primitive, PrimitiveKind};
+pub use primitive::Primitive;
+pub use primitive_kind::PrimitiveKind;
 pub use primitive_limits::{
-    MAX_ARROW_HEADS, MAX_GEAR_TEETH, MAX_PRISM_SIDES, MAX_STAR_POINTS, MIN_ARROW_HEADS,
-    MIN_GEAR_TEETH, MIN_PRISM_SIDES, MIN_STAR_POINTS,
+    MAX_ARROW_HEADS, MAX_CLOUD_LOBES, MAX_GEAR_TEETH, MAX_PRISM_SIDES, MAX_STAR_POINTS,
+    MIN_ARROW_HEADS, MIN_CLOUD_LOBES, MIN_GEAR_TEETH, MIN_PRISM_SIDES, MIN_STAR_POINTS,
 };
 pub use profile::{
     DEFAULT_PROFILE_RESOLUTION, FillRule, MAX_PROFILE_RESOLUTION, Profile, ProfileError, coarsen,
     coarsen_to_normal_error,
 };
 pub use radius::{
-    Bound, bounding_half_extents, bounding_radius, chamfer_of, characteristic_size, edge_shrink,
-    fillet_inflates, round_of, set_shape_radius,
+    Bound, bounding_radius, chamfer_of, characteristic_size, edge_shrink, fillet_inflates,
+    round_of, set_shape_radius,
 };
+pub use radius_extents::bounding_half_extents;
 pub use radius_limit::{round_limit, star_round_limit};
 pub use xform::Xform;
 
@@ -522,4 +528,7 @@ mod tests;
 /// ⭐ O que cada forma recusa — ver [`validate_primitive`].
 #[path = "validate_primitive.rs"]
 mod validate_primitive;
+/// ⭐ E o que cada SINAL recusa — ver [`validate_signs`].
+#[path = "validate_signs.rs"]
+mod validate_signs;
 use validate_primitive::validate_primitive;

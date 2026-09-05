@@ -11595,3 +11595,150 @@ diferença: chanfro sozinho `17,24 %` com a aresta declarada contra **`19,71 %`*
 nem entram na população medida. *Uma régua cuja referência já curou o fenómeno não vê quem o cura.*
 
 **Smoke:** cena **`=18`** (as nove portas lado a lado) + a paleta (`A`).
+
+---
+
+## §121 — W120: ⭐⭐⭐ O LOTE DOS SÍMBOLOS — dez portas, e DOIS gates novos que apanharam um defeito de 2026-08
+
+> **Enio, 05/09:** *«smoke ok. Siga.»* — o lote 2 da fila do [doc 08 §6.2](08_formas_por_formula.md).
+
+**Dez portas, nove primitivas**, `42 → 52` itens na paleta:
+
+| primitiva | portas | |
+|---|---|---|
+| `SpeechRect` / `SpeechOval` | Speech Balloon · Speech Oval | |
+| `Cloud { lobes, tail }` | **Cloud** (`tail = 0`) · **Thought Balloon** | a lei do cone outra vez |
+| `Bolt` · `Shield` · `Tag` · `Check` · `Banner` · `Brace` | uma porta cada | |
+
+⭐ **E a paleta ganhou uma FAMÍLIA**: a `Plates` chegava a 25 itens, e a paleta existe exactamente
+para isso não acontecer — as setas da W119 e os dez novos passam para **Signs & symbols**.
+⚠️ Ela usa o **sétimo e último** token `NodeCat*`: a família seguinte partilha tinta ou traz um
+token, que é decisão de design (§7).
+
+### §121.1 — ⭐⭐⭐ DOIS gates novos, e o segundo apanhou um defeito PRÉ-EXISTENTE
+
+**(a) `every_row_of_every_primitive_can_be_written`.** A tabela de linhas e a porta de escrita são
+**dois** `match` ligados por um **índice**, e o segundo acaba num braço `_`. ⇒ acrescentar uma forma
+com seis linhas e esquecer os braços de escrita **compila e passa a suíte**: o painel pinta os seis
+controlos, o artista arrasta, e **nada acontece**. *Um slider que se mexe e não faz nada é a falha
+mais cara de diagnosticar, porque não deixa rasto* — a frase é do `set_round` da W101, e a W106
+pagou-a com **catorze** formas inertes. ⛔ Nenhum censo existente a via: um mede a OFERTA, o outro o
+CAMPO.
+
+**(b) `every_counted_shape_marches_safely_at_its_own_ceiling`.** Cinco formas têm uma **contagem**
+com teto, e o representante de cada uma usa um valor **típico** ⇒ o censo media a forma que o
+artista cria, e **nunca** a que ele alcança arrastando o slider até ao fim.
+
+⛔⛔⛔ **E ele acusou a ESTRELA, que shipa desde a W103:**
+
+| pontas | 5 | 6 | 7 | 8 | **9** | 10 | 12 | 14 | 16 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `passo × ‖∇f‖` | `0,71` | `0,71` | `0,82` | `0,88` | **`1,07`** | `1,22` | `1,61` | `2,06` | `3,47` |
+
+O `MAX_STAR_POINTS` foi escrito a partir do **PREÇO** (*«a estrela chega ao preço do prisma às 16
+pontas»*) e ninguém correu a **marcha** lá: o joelho está entre `8` e `9`, e o teto shipado é o
+**dobro**. ⇒ *o §0 outra vez — um limite escrito a partir de um recurso enquanto outro amarra
+primeiro.*
+
+⚠️ **Fica DECLARADO e não curado**, e a razão é uma lei desta crate: *um gate de gradiente diz «pode
+furar»; só a IMAGEM diz «fura»*, e quando os dois discordam **manda a imagem**. Baixar um teto que já
+shipa tira produto alcançável a partir de um limite **conservador**, e isso é decisão de quem vê
+(§0.8). O número fica em `TETO_MEDIDO_E_NAO_CURADO`, com o censo de obsolescência ao lado.
+
+### §121.2 — ⛔⛔ E o teto da NUVEM: a primeira régua respondeu à pergunta errada
+
+A sonda do **preço** diz que `12` bossas custam `3,95×` o cilindro — a barra que o `MAX_PRISM_SIDES`
+já shipa. ⛔ **E `12` fura a peça:** a marcha passa `1` entre `7` e `8`.
+
+| bossas | 3 | 5 | **7** | 8 | 10 | 12 |
+|---|---:|---:|---:|---:|---:|---:|
+| `passo × ‖∇f‖` | `0,72` | `0,93` | **`1,00`** | `1,07` | `1,14` | `1,25` |
+
+⇒ `MAX_CLOUD_LOBES = 7`. *Duas réguas responderam, e a que governa é a que diz se a peça sai furada.*
+
+### §121.3 — ⛔⛔⛔ Todas as bossas nasciam TANGENTES à mesma recta
+
+A 1.ª nuvem punha `cy = half_span − raio`, o que deixa **todas** as bossas tangentes a `y =
+half_span`. Duas superfícies tangentes estão a menos de **qualquer** raio uma da outra ⇒ junto ao
+topo **todas** as peças ficam activas na mistura n-ária, cujo tecto é `√(activas)`.
+
+⚠️⚠️ **E o raio da MISTURA não era a alavanca** — uma varredura de `0,50` a `0,10` da fracção moveu
+o número em `0,05`: *duas superfícies tangentes continuam tangentes por mais que se aperte o raio*.
+A cura é a GEOMETRIA, e é o que uma nuvem já é: a bossa do meio mais alta, as das pontas mais baixas.
+
+### §121.4 — As quatro leis que este lote pagou (e as três já eram da W119)
+
+| lei | quem a cobrou aqui |
+|---|---|
+| **A mistura n-ária com o chanfro a ZERO infla** — os planos de corte redundantes contam à mesma | a **chave** (`1,38`), e antes dela cinco formas da W119 |
+| **Um perfil COMPOSTO leva a costura dele para o ARO** — com chanfro as peças entram inteiras | balão · escudo · etiqueta · visto · faixa (`3,2×`–`6,2×` a barra de `2,6×`) |
+| **Duas juntas ENCAIXADAS levam a costura da 1.ª para a aresta seguinte** — os `N` cantos numa mistura só | o **raio**: `37,2 % → 13,4 %`, e o pior vinco de `48,3°` para `31,0°` |
+| ⭐ **Um `max` duro é uma intersecção SEM RAIO, e uma intersecção sem raio é uma QUINA** | a **faixa**: as quinas onde o entalhe encontra o contorno liam `75,2°` |
+| ⭐⭐ **E a MESMA lei tem o preço ao contrário: juntas ENCAIXADAS compõem a inflação** | a **chave**, e ela custou três tentativas — ver §121.4-bis |
+
+### §121.4-bis — ⛔⛔⛔ A CHAVE: SEIS tentativas, e o que se aprendeu foi a ORDEM de perguntar
+
+O `arco` fechava com **duas juntas encaixadas** (a casca contra o sector, e o sector contra os
+próprios dois planos). Cada tentativa curou um sintoma e destapou o seguinte:
+
+| # | o que mudou | efeito |
+|---|---|---|
+| 1 | tirar os vales da união | marcha do chanfro `1,36 → 1,06` (ainda fura) |
+| 2 | pôr o raio da união a **zero** | `1,06 → 1,06` — **nada** |
+| 3 | achatar o `arco`: uma mistura n-ária | chanfro **verde**; e o filete passa a furar (`1,51`) |
+| 4 | dar ao `arco` as **duas rotas** | as duas marchas verdes; o chanfro só corta `62,1 %` |
+| 5 | devolver o vale à união (chanfro) | arestas **verdes**; a marcha do chanfro volta a `1,36` |
+| **6** | **união crua nas duas, e o nariz DECLARADO** | tudo verde, com o preço escrito |
+
+⭐⭐⭐ **A tentativa 2 é a que ensina, e ela não mudou nada de propósito:** pôr o raio a zero devia
+mover o número se a união fosse a causa, e não moveu **um dígito**. *Uma cura que não move a régua
+não é uma cura fraca — é a prova de que o mecanismo é outro.* Foi ela que mandou olhar para dentro
+do `arco`.
+
+⚠️⚠️ **E o CENSO das listas de folga expulsou DUAS licenças minhas, no mesmo dia.** Escrevi a chave
+no `CHANFRO_APICE` na tentativa 1 e no `APEX_EXCEPTION` na 4, e as duas vezes uma tentativa seguinte
+levou o número acima da barra normal e o censo **recusou a entrada**. ⛔ E a segunda tinha a razão
+errada escrita dentro: eu chamei ao nariz um *«ápice de `0°`»* e a sonda mostrou `33` pontos **todos
+no mesmo sítio**, a `55,6°` — uma quina a sério. *Uma folga escrita a partir de um NOME em vez de uma
+medição é uma licença com cara de decisão.*
+
+⛔ **O que fica declarado é uma ESCOLHA entre dois males, e ela tem número:** com o vale da união o
+chanfro alcança o nariz **e** a peça sai furada (`1,36`); sem ele a peça marcha e o chanfro corta
+`54,8 %` das arestas. ⚠️ E declarar **um** vale em vez de três dá **exactamente o mesmo `1,9290`` —
+o que domina não são os planos a mais, é o plano do corte estar **negativo** junto a um encontro
+quase-tangente, onde ele ganha o `min` da mistura. *A cura de fundo é um vale que sabe que os
+vizinhos dele são tangentes*, e isso é wave própria.
+
+### §121.5 — ⚠️ Quatro leituras ficam DECLARADAS, com o número
+
+| forma | régua | valor | por quê |
+|---|---|---:|---|
+| **raio** | vinco com o filete a metade | `13,4 %` | seis vértices agudos; ⚠️ o pior vinco é `31,0°`, abaixo do que uma aresta VIVA lê (`80°`–`140°`) — o que a sonda conta é a **faixa do próprio filete**. ⛔ Subir a parede é **pior**: a `0,18` a fracção cai a `3,5 %` e o pior vinco **sobe a `75,2°`** |
+| **raio** | quebra de curvatura | `3,43` | a faixa do filete encontra as faces planas em seis quinas |
+| **nuvem** | quebra de curvatura | `8,02` | `G1` sem `G2` em cada vale — *o vale entre duas bossas É a forma*, e a A/B que a gota pagou mediu **pior** |
+| **chave** | vinco com o filete a metade | `2,9 %` | o **nariz** é um ápice de `0°` — os dois arcos do meio encontram-se ali **tangentes**, e nem um filete nem um chanfro entram numa quina sem abertura |
+
+### §121.6 — ⚠️ CINCO tectos de LOC, e os cinco cortados por RESPONSABILIDADE
+
+| nasceu | responde a |
+|---|---|
+| `primitive_kind.rs` | *que formas existem* (o irmão diz *com que números*) |
+| `dims_table_signs.rs` | *o que cada SINAL mede* |
+| `radius_extents.rs` | *quão longe a peça chega em CADA eixo* |
+| `validate_signs.rs` | *o que cada SINAL recusa* |
+| `field3d_shapes_make_signs.rs` | *com que números cada sinal nasce* |
+
+⭐ **E o `ops_plate2d.rs` não é um corte de tecto: é uma PORTA.** O disco, o rectângulo e as quinas
+estavam escritos no `ops_plates` **e** no `ops_arrows` — a mesma lei com um centro a mais.
+*Uma lei escrita em dois sítios ainda não é uma lei; só uma porta é.*
+
+### §121.7 — Provas de mutação
+
+| mutação | gate | resultado |
+|---|---|---|
+| apagar o braço de escrita da espessura da chave | `every_row_of_every_primitive_can_be_written` | ✝ **morta** (*«RECUSOU 0,165»*) |
+
+⚠️ **E o gate (b) nasceu de um achado, não de uma mutação**: ele foi escrito para a nuvem e a
+primeira corrida dele acusou a **estrela** — uma forma que shipa há duas semanas.
+
+**Smoke:** cena **`=19`** (as dez portas lado a lado) + a paleta (`A`).

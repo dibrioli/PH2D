@@ -684,6 +684,83 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             round: 0.03,
             chamfer: 0.0,
         },
+        // ─────────────────────────── W120 ───────────────────────────
+        PrimitiveKind::SpeechRect => Primitive::SpeechRect {
+            half_width: 0.42,
+            half_span: 0.28,
+            tail: 0.20,
+            half_height: 0.10,
+            round: 0.05,
+            chamfer: 0.0,
+        },
+        // ⚠️ **Eixos DIFERENTES**: iguais o oval é um disco, e o termo que ele acrescenta — a
+        // subestimação por `min/max` — não seria exercitado.
+        PrimitiveKind::SpeechOval => Primitive::SpeechOval {
+            half_width: 0.44,
+            half_span: 0.26,
+            tail: 0.20,
+            half_height: 0.10,
+            round: 0.04,
+            chamfer: 0.0,
+        },
+        // ⚠️ **Cinco bossas E cauda**: sem cauda ela é a outra porta, e com bossas pares metade das
+        // costuras cai sobre a outra por simetria.
+        PrimitiveKind::Cloud => Primitive::Cloud {
+            lobes: 5,
+            half_width: 0.45,
+            half_span: 0.22,
+            tail: 0.18,
+            half_height: 0.10,
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::Bolt => Primitive::Bolt {
+            half_width: 0.28,
+            half_span: 0.45,
+            half_height: 0.10,
+            round: 0.02,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::Shield => Primitive::Shield {
+            half_width: 0.34,
+            half_span: 0.44,
+            half_height: 0.10,
+            round: 0.04,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::Tag => Primitive::Tag {
+            half_width: 0.45,
+            half_span: 0.26,
+            point: 0.24,
+            hole: 0.07,
+            half_height: 0.10,
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        // ⚠️ **Braços DESIGUAIS** — é o que um visto é, e com eles iguais a peça vira um «V».
+        PrimitiveKind::Check => Primitive::Check {
+            half_width: 0.42,
+            half_span: 0.30,
+            thickness: 0.11,
+            half_height: 0.10,
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::Banner => Primitive::Banner {
+            half_width: 0.45,
+            half_span: 0.22,
+            notch: 0.14,
+            half_height: 0.10,
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::Brace => Primitive::Brace {
+            half_span: 0.44,
+            thickness: 0.09,
+            half_height: 0.10,
+            round: 0.02,
+            chamfer: 0.0,
+        },
     })
 }
 
@@ -844,13 +921,28 @@ fn where_the_creases_are() {
 /// obsolescência não desce, vira licença* — por isso o gate irmão
 /// [`the_apex_exception_list_has_no_stale_entries`] pergunta, a cada corrida, se cada entrada
 /// **ainda** estoura a barra. Uma que deixe de estourar tem de ser **apagada**.
-const APEX_EXCEPTION: [(&str, f64); 3] = [
+const APEX_EXCEPTION: [(&str, f64); 4] = [
     // ⚠️ **As folgas saem do que o GATE mede**, e não da tabela da sonda: ela amostra `8192`
     // pontos e o gate `2048×4`, e a `pie` lê `1,1 %` numa escala e `2,57 %` na outra.
     // *Uma folga calibrada no instrumento errado descreve outra coisa.*
     ("solid_angle", 11.0),
     ("drop", 2.3),
     ("pie", 2.8),
+    // ⛔⛔ **O RAIO tem SEIS vértices agudos, e a folga dele é a maior desta lista** (W120).
+    //
+    // ⚠️ **E o pior vinco dele é `31,0°`** — abaixo do que qualquer aresta VIVA lê (`80°`–`140°`).
+    // O que a sonda conta aqui não é uma aresta por arredondar: é a **faixa do próprio filete**, que
+    // numa forma fina e espetada é uma fracção grande da superfície.
+    //
+    // ⛔ **Subir a parede do filete foi MEDIDO e é PIOR:** a `0,18 × half_span` a fracção cai a
+    // `3,5 %` e o pior vinco **sobe a `75,2°`** — o filete deixa de caber nos vértices agudos e
+    // expõe-nos. *Uma régua que só conta quanto sobrou premeia exagerar a cura.*
+    ("bolt", 14.0),
+    // ⭐ **A CHAVE ESTEVE AQUI DUAS VEZES e SAIU as duas** (05/09), e foi o censo desta lista e o do
+    // chanfro que a expulsaram. Eu chamei ao nariz dela um «ápice de `0°`» — ⛔ **não é**: a sonda
+    // localizou os `33` pontos por cortar **todos no mesmo sítio**, a `55,6°`. Era uma quina a
+    // sério, e a causa era eu ter tirado a junta da união. *Uma folga escrita a partir de um nome
+    // («ápice») em vez de uma medição é uma licença com cara de decisão.*
 ];
 
 /// A folga desta forma, se ela for uma das do ápice.
@@ -957,7 +1049,8 @@ fn the_chamfer_reaches_every_edge_of_every_shape() {
 #[ignore = "sonda: imprime as coordenadas, o veredito e' do gate irmao"]
 fn probe_where_the_chamfer_misses() {
     for k in PrimitiveKind::ALL {
-        if k.key() != "chevron" {
+        let alvo = std::env::var("PH2D_MISS").unwrap_or_else(|_| "chevron".into());
+        if k.key() != alvo {
             continue;
         }
         let p = representative(k).expect("rep");
@@ -1001,7 +1094,15 @@ const BARRA_DO_CHANFRO: f64 = 90.0;
 /// que sobra, esta mede vinco cortado), então os números não se copiam de uma para a outra —
 /// *uma folga calibrada no instrumento errado descreve outra coisa*. Só o `solid_angle` precisa
 /// dela: a `drop` lê `99,5 %` e a `pie` `99,6 %`, e as duas passam a barra normal.
-const CHANFRO_APICE: [(&str, f64); 1] = [("solid_angle", 35.0)];
+// ⭐⭐ **A CHAVE ESTEVE AQUI e SAIU no mesmo dia** (05/09) — e foi o censo desta lista que a
+// expulsou. Ela lia `54,8 %` enquanto o `arco` fechava com duas juntas ENCAIXADAS; achatá-lo numa
+// mistura só levou-a a `91,2 %`, acima da barra normal. *Uma catraca com censo desce sozinha; sem
+// ele, a entrada ficava a autorizar uma aresta viva que já não existe.*
+/// ⛔⛔ **A CHAVE entra por outro motivo, e ele é MEDIDO e não um nome**: o nariz dela é uma quina
+/// a sério (`55,6°`), e a única forma de o chanfro lá chegar é declarar o vale da união — o que leva
+/// a marcha a `passo × ‖∇f‖ = 1,36` e **fura a peça**. *Entre uma quina que o chanfro não corta e
+/// uma peça furada, fica a quina.* Ver a nota da [`ph2d_field_eval::ops_symbols::sd_brace`].
+const CHANFRO_APICE: [(&str, f64); 2] = [("solid_angle", 35.0), ("brace", 54.0)];
 
 /// O piso desta forma, se ela for uma das do ápice.
 fn chanfro_apice(key: &str) -> Option<f64> {
@@ -1243,7 +1344,14 @@ fn the_valley_of_a_star_meets_the_cap_without_a_crease() {
 /// com o knob não é uma calibração.*
 ///
 /// ⚠️ **A catraca SÓ ENCOLHE**, e o censo abaixo impede-a de virar licença.
-const TANGENT_JOIN_EXCEPTION: [(&str, f64); 1] = [("drop", 4.6)];
+/// ⚠️ **A NUVEM entra aqui pela MESMA causa da gota, e é a razão de ser dela**: uma união
+/// arredondada de discos é `G1` sem ser `G2` — a curvatura salta de `1/r` do disco para `1/mistura`
+/// do vale, em cada uma das bossas. ⛔ Curar isso é apagar a nuvem: *o vale entre duas bossas É a
+/// forma*, e a A/B que a gota já pagou (arredondar a junta) mediu **pior em toda a faixa**.
+/// ⚠️ **E o RAIO entra pela mesma porta**: a faixa do filete dele encontra as faces planas do
+/// zigue-zague, e a curvatura salta de `1/r` para `0` em cada uma das seis quinas. ⛔ Curar isso é a
+/// mesma A/B que a gota já pagou — e nela a união arredondada mediu **pior em toda a faixa**.
+const TANGENT_JOIN_EXCEPTION: [(&str, f64); 3] = [("drop", 4.6), ("cloud", 9.0), ("bolt", 4.2)];
 
 fn tangent_join_slack(key: &str) -> Option<f64> {
     TANGENT_JOIN_EXCEPTION

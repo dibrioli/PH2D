@@ -486,6 +486,15 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
         | Primitive::BentArrow { .. }
         | Primitive::Rhombus { .. }
         | Primitive::Tube { .. }
-        | Primitive::CircleSegment { .. }) => super::dims_table_plates::dims_plate(p),
+        | Primitive::CircleSegment { .. }
+        | Primitive::SpeechRect { .. }
+        | Primitive::SpeechOval { .. }
+        | Primitive::Cloud { .. }
+        | Primitive::Bolt { .. }
+        | Primitive::Shield { .. }
+        | Primitive::Tag { .. }
+        | Primitive::Check { .. }
+        | Primitive::Banner { .. }
+        | Primitive::Brace { .. }) => super::dims_table_plates::dims_plate(p),
     }
 }

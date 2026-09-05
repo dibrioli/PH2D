@@ -435,3 +435,127 @@ pub(crate) fn cena_18() -> Result<FieldDoc, ph2d_field::FieldError> {
         NodeId(9),
     )
 }
+
+/// A cena `=19` — ver o roteador.
+///
+/// ⭐⭐ **AS DEZ PORTAS DA W120**, lado a lado — e a cena responde à pergunta que a paleta não
+/// responde: *elas parecem-se com o que o nome promete?* ⚠️ A nuvem e o balão de pensamento ficam
+/// **colados**: são a mesma primitiva, e vê-las juntas é o que mostra que a diferença é a fieira.
+pub(crate) fn cena_19() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 19 — AS DEZ PORTAS DA W120: balão · oval · pensamento · nuvem · \
+                 raio · escudo · etiqueta · visto · faixa · chave"
+    );
+    // Cinco colunas por fileira, duas fileiras.
+    let at = |i: f32| Xform {
+        translation: [
+            (i % 5.0 - 2.0) * 0.60,
+            if i < 5.0 { 0.34 } else { -0.34 },
+            0.0,
+        ],
+        ..Xform::IDENTITY
+    };
+    let nuvem = |tail: f32| Primitive::Cloud {
+        lobes: 5,
+        half_width: 0.25,
+        half_span: 0.125,
+        tail,
+        half_height: 0.06,
+        round: 0.025,
+        chamfer: 0.0,
+    };
+    FieldDoc::new(
+        vec![
+            leaf(
+                Primitive::SpeechRect {
+                    half_width: 0.25,
+                    half_span: 0.165,
+                    tail: 0.11,
+                    half_height: 0.06,
+                    round: 0.025,
+                    chamfer: 0.0,
+                },
+                at(0.0),
+            ),
+            leaf(
+                Primitive::SpeechOval {
+                    half_width: 0.25,
+                    half_span: 0.155,
+                    tail: 0.11,
+                    half_height: 0.06,
+                    round: 0.025,
+                    chamfer: 0.0,
+                },
+                at(1.0),
+            ),
+            leaf(nuvem(0.10), at(2.0)),
+            leaf(nuvem(0.0), at(3.0)),
+            leaf(
+                Primitive::Bolt {
+                    half_width: 0.155,
+                    half_span: 0.25,
+                    half_height: 0.06,
+                    round: 0.012,
+                    chamfer: 0.0,
+                },
+                at(4.0),
+            ),
+            leaf(
+                Primitive::Shield {
+                    half_width: 0.195,
+                    half_span: 0.25,
+                    half_height: 0.06,
+                    round: 0.025,
+                    chamfer: 0.0,
+                },
+                at(5.0),
+            ),
+            leaf(
+                Primitive::Tag {
+                    half_width: 0.25,
+                    half_span: 0.145,
+                    point: 0.14,
+                    hole: 0.038,
+                    half_height: 0.06,
+                    round: 0.025,
+                    chamfer: 0.0,
+                },
+                at(6.0),
+            ),
+            leaf(
+                Primitive::Check {
+                    half_width: 0.25,
+                    half_span: 0.18,
+                    thickness: 0.065,
+                    half_height: 0.06,
+                    round: 0.025,
+                    chamfer: 0.0,
+                },
+                at(7.0),
+            ),
+            leaf(
+                Primitive::Banner {
+                    half_width: 0.25,
+                    half_span: 0.125,
+                    notch: 0.08,
+                    half_height: 0.06,
+                    round: 0.025,
+                    chamfer: 0.0,
+                },
+                at(8.0),
+            ),
+            leaf(
+                Primitive::Brace {
+                    half_span: 0.25,
+                    thickness: 0.06,
+                    half_height: 0.06,
+                    round: 0.025,
+                    chamfer: 0.0,
+                },
+                at(9.0),
+            ),
+            combine(Op::Union(Blend::Sharp), (0..10).map(NodeId).collect()),
+        ],
+        NodeId(10),
+    )
+}

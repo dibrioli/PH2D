@@ -64,6 +64,16 @@ pub fn shape_name(shape: &NodeShape) -> &'static str {
             Primitive::Rhombus { .. } => "Diamond",
             Primitive::Tube { .. } => "Tube",
             Primitive::CircleSegment { .. } => "Circle Segment",
+            Primitive::SpeechRect { .. } => "Speech Balloon",
+            Primitive::SpeechOval { .. } => "Speech Oval",
+            Primitive::Cloud { tail, .. } if *tail > 0.0 => "Thought Balloon",
+            Primitive::Cloud { .. } => "Cloud",
+            Primitive::Bolt { .. } => "Bolt",
+            Primitive::Shield { .. } => "Shield",
+            Primitive::Tag { .. } => "Tag",
+            Primitive::Check { .. } => "Check",
+            Primitive::Banner { .. } => "Banner",
+            Primitive::Brace { .. } => "Brace",
         },
     }
 }

@@ -147,3 +147,31 @@ pub const MIN_ARROW_HEADS: u32 = 1;
 /// ⇒ *um limite legítimo diz de que recurso ele é* (CLAUDE.md §0), e o recurso aqui é o número de
 /// pontas de um segmento. Uma estrela de três braços é o [`crate::Primitive::Star`].
 pub const MAX_ARROW_HEADS: u32 = 2;
+
+/// Uma nuvem tem pelo menos **três** bossas — com duas ela le^-se como uma cápsula.
+pub const MIN_CLOUD_LOBES: u32 = 3;
+
+/// ⭐⭐⭐ **O TETO de bossas de uma nuvem — e o recurso NÃO é o preço: é a MARCHA.**
+///
+/// # ⚠️ A primeira régua respondeu à pergunta errada
+///
+/// A sonda do **preço** ([`measure_cloud_lobes`](../../ph2d-field-eval/tests/measure_cloud_lobes.rs))
+/// diz que `12` bossas custam `3,95×` o cilindro — exactamente a barra que o [`MAX_PRISM_SIDES`] já
+/// shipa. ⛔ **E `12` fura a peça**: numa união n-ária o tecto de `‖∇f‖` é `√(quantas peças estão
+/// ACTIVAS)`, e acima de `passo × ‖∇f‖ = 1` a marcha de esferas **atravessa a superfície**.
+///
+/// | bossas | `passo × ‖∇f‖` | | bossas | `passo × ‖∇f‖` |
+/// |---:|---:|---|---:|---:|
+/// | 3 | `0,7167` | | 8 | **`1,0664`** |
+/// | 4 | `0,8653` | | 9 | `1,1155` |
+/// | 5 | `0,9274` | | 10 | `1,1396` |
+/// | 6 | `0,9454` | | 12 | `1,2483` |
+/// | **7** | **`0,9971`** | | 16 | — |
+///
+/// ⇒ **o joelho está entre `7` e `8`**, e é ele que manda. *Duas réguas responderam, e a que
+/// governa é a que diz se a peça sai furada.*
+///
+/// ⚠️ **E a alavanca não é o raio da mistura** — uma varredura de `0,50` a `0,10` da fracção moveu
+/// o número em `0,05`: duas superfícies próximas continuam próximas por mais que se aperte o raio.
+/// A alavanca é o **espaçamento** dos discos, que é `2·half_width/n`.
+pub const MAX_CLOUD_LOBES: u32 = 7;

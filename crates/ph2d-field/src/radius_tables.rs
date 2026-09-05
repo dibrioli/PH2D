@@ -169,6 +169,62 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
             half_height,
             ..
         } => (radius - cut).max(radius * 0.1).min(*half_height),
+        // ─────────────────────────── W120 ───────────────────────────
+        Primitive::SpeechRect {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        }
+        | Primitive::SpeechOval {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        }
+        | Primitive::Shield {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        }
+        | Primitive::Bolt {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        } => half_width.min(*half_span).min(*half_height),
+        Primitive::Cloud {
+            half_span,
+            half_height,
+            ..
+        } => (half_span * 0.52).min(*half_height),
+        Primitive::Tag {
+            half_span,
+            point,
+            half_height,
+            ..
+        } => half_span.min(*point).min(*half_height),
+        Primitive::Check {
+            thickness,
+            half_height,
+            ..
+        }
+        | Primitive::Brace {
+            thickness,
+            half_height,
+            ..
+        } => thickness.min(*half_height),
+        Primitive::Banner {
+            half_width,
+            half_span,
+            notch,
+            half_height,
+            ..
+        } => (half_width - notch)
+            .max(half_width * 0.1)
+            .min(*half_span)
+            .min(*half_height),
     }
 }
 
@@ -216,7 +272,7 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
 ///
 /// ⚠️ O [`crate::MIN_GEAR_TEETH`] é `3`, e o `max` aqui é a rede: `n = 1` daria `cos(π/2) = 0` e uma
 /// divisão por zero. *Uma cerca que confia noutra cerca escreve a rede na mesma.*
-fn gear_planar_reach(teeth: u32, outer: f32) -> f32 {
+pub(crate) fn gear_planar_reach(teeth: u32, outer: f32) -> f32 {
     let n = teeth.max(crate::MIN_GEAR_TEETH);
     #[allow(clippy::cast_precision_loss)]
     let meio_passo = std::f32::consts::PI / (2.0 * n as f32);
@@ -429,196 +485,74 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
             half_height,
             ..
         } => hyp(*radius, *half_height),
-    }
-}
-
-/// ⭐⭐⭐ **AS MEIAS-EXTENSÕES da caixa alinhada aos eixos que contém a peça** — a irmã por EIXO do
-/// [`bounding_radius`] (Enio, 2026-08-31).
-///
-/// # ⛔⛔⛔ Por que ela existe: uma esfera não tem lados, e três dívidas medidas vinham daí
-///
-/// O [`bounding_radius`] devolve **um** número, e quem precisa de *«quão longe a peça chega NAQUELE
-/// eixo»* tem de usar esse número em todos os três. Numa chapa alta e fina isso erra por muito, e a
-/// conta paga-se em sítios que não se parecem uns com os outros:
-///
-/// | quem lê | o que ele queria | o que a bola dá | erro |
-/// |---|---|---|---|
-/// | a **parede da dobra** (`κ·W ≤ 0,9`) | a meia-espessura na direcção em que ela deflecte | o raio, dominado pela **altura** | **`17×`** |
-/// | a **faixa da banda** (`Span::Along`) | a extensão no eixo do deformador | o raio | **`15×`** |
-/// | o **bordo da dobra** (`bounds::step_mod`) | a meia-altura no eixo dobrado | o raio | **`1,9×`**, e ele entra num `sin` |
-///
-/// # ⚠️ A ASSIMETRIA é a mesma do [`bounding_radius`], e ela manda aqui
-///
-/// **Errar para CIMA custa resolução; errar para BAIXO corta a peça e não diz nada.** ⇒ onde a
-/// orientação de uma forma no plano não é óbvia, esta tabela usa o **raio planar nos dois eixos**
-/// do plano em vez de tentar ser esperta. Continua muito mais apertada do que a esfera, e não pode
-/// cortar.
-///
-/// ⚠️ **O gate é o CAMPO, e não esta fórmula contra a outra** — ver
-/// `ph2d_field_eval::the_bounding_half_extents_contain_the_piece`. Comparar duas contas nossas seria
-/// cego a uma mutação que mexesse nas duas.
-#[must_use]
-#[allow(clippy::match_same_arms)]
-pub fn bounding_half_extents(p: &Primitive) -> [f32; 3] {
-    // Uma forma **plana em Z** (a família esmagadora desta tabela): raio no plano, altura no eixo.
-    let chata = |r: f32, h: f32| [r, r, h];
-    match p {
-        Primitive::Box { half, .. } | Primitive::Wedge { half, .. } => *half,
-        Primitive::BoxFrame { half, .. } => *half,
-        Primitive::Sphere { radius } => [*radius; 3],
-        Primitive::Cylinder {
-            radius,
-            half_height,
-            ..
-        } => chata(*radius, *half_height),
-        // ⚠️ O toro vive no plano **XY**: a espessura fora dele é só o tubo.
-        Primitive::Torus { major, minor } | Primitive::TorusArc { major, minor, .. } => {
-            [major + minor, major + minor, *minor]
-        }
-        // O perfil dá as duas do plano; a extrusão dá a terceira.
-        Primitive::Extrude {
-            profile,
-            half_height,
-            ..
-        } => {
-            let (min, max) = profile.bounds();
-            [
-                min[0].abs().max(max[0].abs()),
-                min[1].abs().max(max[1].abs()),
-                *half_height,
-            ]
-        }
-        // ⚠️ O torno gira em torno de **Y**: o `x` do perfil vira o raio (X e Z), o `y` a altura.
-        Primitive::Revolve { profile } => {
-            let (min, max) = profile.bounds();
-            let r = min[0].abs().max(max[0].abs());
-            [r, min[1].abs().max(max[1].abs()), r]
-        }
-        Primitive::Cone {
-            bottom,
-            top,
-            half_height,
-            ..
-        }
-        | Primitive::Prism {
-            bottom,
-            top,
-            half_height,
-            ..
-        } => chata(bottom.max(*top), *half_height),
-        // ⚠️ **A ponta está no EIXO, a `h + r`** — a mesma nota da [`bounding_radius`].
-        Primitive::Capsule {
-            radius,
-            half_height,
-        } => chata(*radius, half_height + radius),
-        Primitive::RoundCone {
-            bottom,
-            top,
-            half_height,
-        } => {
-            let r = bottom.max(*top);
-            chata(r, half_height + r)
-        }
-        Primitive::Star {
-            outer, half_height, ..
-        } => chata(*outer, *half_height),
-        // ⛔ Ver [`gear_planar_reach`] — a ponta de um dente é uma corda, e os cantos dela passam
-        // do `outer`.
-        Primitive::Gear {
-            teeth,
-            outer,
-            half_height,
-            ..
-        } => chata(gear_planar_reach(*teeth, *outer), *half_height),
-        // ⭐ **A única forma cuja caixa é EXACTA por eixo** — e é por isso que ela existe.
-        Primitive::Ellipsoid { radii } => *radii,
-        Primitive::Octahedron { radius, .. } | Primitive::CutSphere { radius, .. } => [*radius; 3],
-        Primitive::SolidAngle { radius, .. } => [*radius; 3],
-        Primitive::HollowDome {
-            radius, thickness, ..
-        } => [radius + thickness * 0.5; 3],
-        // ⚠️ O elo é um estádio no plano **XY**, alongado em Y; fora dele é só o tubo.
-        Primitive::Link {
-            major,
-            minor,
-            length,
-        } => [major + minor, length + major + minor, *minor],
-        // ⚠️ **O canto do braço**, e não o meio da ponta — a nota que o report dos arcos pretos
-        // deixou na [`bounding_radius`]. Aqui os dois braços dão a mesma extensão.
-        Primitive::Cross {
-            arm, half_height, ..
-        } => chata(*arm, *half_height),
-        // ⚠️ **O raio PLANAR nos dois eixos**, de propósito: a extensão exacta do coração em `x` e
-        // em `y` é `s·(½ + 1/√2)`, mas as duas dependem da orientação dos lóbulos, e a assimetria
-        // desta função manda errar para cima. Ver o doc.
-        Primitive::Heart {
-            size, half_height, ..
-        } => chata(size * std::f32::consts::SQRT_2, *half_height),
-        Primitive::Moon {
-            radius,
-            half_height,
-            ..
-        }
-        | Primitive::Pie {
-            radius,
-            half_height,
-            ..
-        }
-        | Primitive::Vesica {
-            radius,
-            half_height,
-            ..
-        } => chata(*radius, *half_height),
-        Primitive::Drop {
-            radius,
-            height,
-            half_height,
-            ..
-        } => chata(height.max(*radius), *half_height),
-        // ⚠️ **As duas do plano são DIFERENTES aqui** — é a única da família plana em que a largura
-        // e a profundidade do contorno não são a mesma grandeza.
-        Primitive::Trapezoid {
-            bottom,
-            top,
+        // ─────────────────────────── W120 ───────────────────────────
+        // ⚠️ **A CAUDA conta**, e é o que faz a caixa de um balão não ser a do corpo dele.
+        Primitive::SpeechRect {
             half_width,
+            half_span,
+            tail,
             half_height,
             ..
-        } => [bottom.max(*top), *half_width, *half_height],
-        // ─────────────────────────── W119 ───────────────────────────
-        Primitive::Arrow {
-            half_length,
-            head,
+        }
+        | Primitive::SpeechOval {
+            half_width,
+            half_span,
+            tail,
             half_height,
             ..
-        } => [*half_length, *head, *half_height],
-        Primitive::Chevron {
-            half_length,
+        } => hyp(hyp(*half_width, half_span + tail), *half_height),
+        // ⚠️ **A fieira do pensamento desce `1,32 × tail` e ainda tem raio** — ver a fórmula.
+        Primitive::Cloud {
+            half_width,
+            half_span,
+            tail,
+            half_height,
+            ..
+        } => hyp(hyp(*half_width, half_span + tail * 1.6), *half_height),
+        Primitive::Bolt {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        }
+        | Primitive::Shield {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        }
+        | Primitive::Tag {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        }
+        | Primitive::Banner {
+            half_width,
+            half_span,
+            half_height,
+            ..
+        } => hyp(hyp(*half_width, *half_span), *half_height),
+        // ⚠️ **As faixas do visto passam do vértice, e a espessura sai para fora das pontas.**
+        Primitive::Check {
+            half_width,
             half_span,
             thickness,
             half_height,
             ..
-        } => [*half_length, half_span + thickness, *half_height],
-        Primitive::BentArrow {
-            run,
-            rise,
-            shaft,
-            head,
-            half_height,
-            ..
-        } => [(run - shaft + head).max(*run), *rise, *half_height],
-        Primitive::Rhombus {
-            half_width,
+        } => hyp(
+            hyp(half_width + thickness, half_span + thickness),
+            *half_height,
+        ),
+        // ⚠️ **O arco de fora chega a `1,06 × half_span` em X** — ver a fórmula da chave.
+        Primitive::Brace {
             half_span,
+            thickness,
             half_height,
             ..
-        } => [*half_width, *half_span, *half_height],
-        Primitive::Tube {
-            outer, half_height, ..
-        }
-        | Primitive::CircleSegment {
-            radius: outer,
-            half_height,
-            ..
-        } => chata(*outer, *half_height),
+        } => hyp(
+            hyp(half_span.mul_add(1.1, *thickness), half_span + thickness),
+            *half_height,
+        ),
     }
 }

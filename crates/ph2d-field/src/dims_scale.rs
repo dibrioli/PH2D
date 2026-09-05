@@ -491,6 +491,123 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
                 *v *= factor;
             }
         }
+        // ─────────────────────────── W120 ───────────────────────────
+        // ⚠️ **A contagem de bossas NÃO escala** — ela é adimensional, e multiplicá-la mudaria a
+        // FORMA em vez do tamanho.
+        Primitive::SpeechRect {
+            half_width,
+            half_span,
+            tail,
+            half_height,
+            round,
+            chamfer,
+        }
+        | Primitive::SpeechOval {
+            half_width,
+            half_span,
+            tail,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [half_width, half_span, tail, half_height, round, chamfer] {
+                *v *= factor;
+            }
+        }
+        Primitive::Cloud {
+            lobes: _,
+            half_width,
+            half_span,
+            tail,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [half_width, half_span, tail, half_height, round, chamfer] {
+                *v *= factor;
+            }
+        }
+        Primitive::Bolt {
+            half_width,
+            half_span,
+            half_height,
+            round,
+            chamfer,
+        }
+        | Primitive::Shield {
+            half_width,
+            half_span,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [half_width, half_span, half_height, round, chamfer] {
+                *v *= factor;
+            }
+        }
+        Primitive::Tag {
+            half_width,
+            half_span,
+            point,
+            hole,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [
+                half_width,
+                half_span,
+                point,
+                hole,
+                half_height,
+                round,
+                chamfer,
+            ] {
+                *v *= factor;
+            }
+        }
+        Primitive::Check {
+            half_width,
+            half_span,
+            thickness,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [
+                half_width,
+                half_span,
+                thickness,
+                half_height,
+                round,
+                chamfer,
+            ] {
+                *v *= factor;
+            }
+        }
+        Primitive::Banner {
+            half_width,
+            half_span,
+            notch,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [half_width, half_span, notch, half_height, round, chamfer] {
+                *v *= factor;
+            }
+        }
+        Primitive::Brace {
+            half_span,
+            thickness,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [half_span, thickness, half_height, round, chamfer] {
+                *v *= factor;
+            }
+        }
     }
     true
 }

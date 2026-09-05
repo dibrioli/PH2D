@@ -986,3 +986,251 @@ fn ink_density(plain: &[u8], wired: &[u8]) -> (f64, f64) {
     bo /= bo_n.max(1.0);
     (mi, bo)
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ **A REMOÇÃO DE LINHA ESCONDIDA** — a régua do 2º report de 2026-09-04.
+//
+// ⛔⛔ **A régua anterior tinha um PONTO CEGO estrutural, e é ele que fez a
+// primeira medição responder `0,00 %` a uma pergunta que o dono via na tela.**
+// A [`leaked_ink`] chama de legítima toda tinta que caia sobre uma aresta de
+// FRENTE (`front_edge_mask` filtra por `front_facing`) — e numa peça NÃO CONVEXA
+// a aresta que atravessa a superfície é, ela própria, de frente: é a malha de um
+// vale visto através da montanha que está à frente dele. *A máscara continha
+// exatamente o defeito que ela existia para acusar.*
+//
+// ⇒ a pergunta certa não é *"esta tinta veio de uma aresta de costas?"* e sim
+// **"esta tinta veio de uma aresta que está ATRÁS de superfície opaca?"**. O
+// descarte por normal ([`fs_wire`]) responde só à primeira; a segunda é do TESTE
+// DE PROFUNDIDADE, e é a que o `WIRE_DEPTH_NUDGE` governa.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// **A ESFERA ATRÁS DE UMA CHAPA** — a fixtura em que *"escondido"* não é opinião.
+///
+/// ⚠️ **Ela existe porque numa esfera e num toro a pergunta não se separa da
+/// anterior.** Numa esfera tudo o que está escondido está de COSTAS, então o
+/// descarte por normal já responde por tudo e o teste de profundidade nunca é
+/// interrogado; num toro os dois efeitos se misturam. Aqui a esfera está inteira
+/// atrás de uma chapa OPACA e FECHADA, com a normal virada para o olho: nenhuma
+/// aresta dela pode chegar à tela por lei nenhuma, e a única coisa que a pode
+/// esconder é a profundidade.
+///
+/// A chapa vem PRIMEIRO (vértices `0..8`) para o miolo dela ser endereçável, e a
+/// esfera desloca-se em `zc` para a folga entre as duas ser varrível.
+///
+/// ⚠️⚠️ **A casca aberta é o caso EXTREMO do report, e o mais provável na tela do
+/// artista:** o descarte por normal do [`fs_wire`] só se arma numa malha FECHADA
+/// (`obj.wire_cull`), então numa peça com um furo — uma escultura a meio, uma
+/// extração que não fechou — **o teste de profundidade é a ÚNICA coisa que
+/// esconde o outro lado da peça**. Era exatamente ele que a nudge constante
+/// desarmava.
+fn hidden_behind_plate_at(zc: f32, fechada: bool) -> Mesh {
+    // A chapa: uma caixa fina, mais larga que a esfera, entre ela e o olho
+    // (a câmera da sonda tem `yaw = pitch = 0` ⇒ o olho está em `+Z`).
+    const HX: f32 = 1.6;
+    // ⚠️ **FINA de propósito:** a folga que a régua mede é da face VISÍVEL
+    // da chapa até à esfera, então a espessura dela entra no número — e uma
+    // chapa grossa põe um piso na resolução que a sonda consegue interrogar.
+    const HZ: f32 = 0.01;
+    const ZC: f32 = 1.64;
+    let mut pos: Vec<[f32; 3]> = Vec::new();
+    for &z in &[ZC - HZ, ZC + HZ] {
+        for &(sx, sy) in &[(-1.0f32, -1.0f32), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)] {
+            pos.push([sx * HX, sy * HX, z]);
+        }
+    }
+    // Enrolamento anti-horário visto de FORA, face a face.
+    let mut faces = vec![
+        ph2d_mesh::Face::quad(4, 5, 6, 7), // +Z, a que o olho vê
+        ph2d_mesh::Face::quad(0, 3, 2, 1), // −Z
+        ph2d_mesh::Face::quad(1, 2, 6, 5), // +X
+        ph2d_mesh::Face::quad(0, 4, 7, 3), // −X
+        ph2d_mesh::Face::quad(3, 7, 6, 2), // +Y
+        ph2d_mesh::Face::quad(0, 1, 5, 4), // −Y
+    ];
+    // A esfera densa, escondida atrás dela.
+    let ball = shapes::uv_sphere(32, 64, 1.0);
+    let base = u32::try_from(pos.len()).expect("cabe");
+    pos.extend(ball.positions().iter().map(|p| [p[0], p[1], p[2] + zc]));
+    for f in ball.faces() {
+        let v = f.verts();
+        faces.push(match v {
+            [a, b, c] => ph2d_mesh::Face::tri(a + base, b + base, c + base),
+            [a, b, c, d] => ph2d_mesh::Face::quad(a + base, b + base, c + base, d + base),
+            _ => continue,
+        });
+    }
+    if !fechada {
+        // Um furo na esfera — o suficiente para `is_closed` dizer não.
+        faces.pop();
+    }
+    Mesh::from_parts(pos, faces).expect("chapa + esfera")
+}
+
+/// O retângulo de tela do MIOLO da chapa — a face `+Z` encolhida por `folga`.
+///
+/// ⚠️ **Encolher é o que torna a régua honesta:** a borda da chapa carrega as
+/// arestas dela, que TÊM de aparecer, e a linha rasterizada tem espessura.
+fn plate_interior(mesh: &Mesh, cam: &Camera3d, folga: f32) -> (f32, f32, f32, f32) {
+    let pos = mesh.positions();
+    let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+    for p in pos.iter().take(8).skip(4) {
+        let p = cam.project(*p, (W, H)).expect("a chapa está na tela");
+        x0 = x0.min(p.0);
+        y0 = y0.min(p.1);
+        x1 = x1.max(p.0);
+        y1 = y1.max(p.1);
+    }
+    (x0 + folga, y0 + folga, x1 - folga, y1 - folga)
+}
+
+/// A tinta de wireframe que escurece o MIOLO da chapa, e o total do quadro.
+fn leak_behind_plate(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    mesh: &Mesh,
+    cam: &Camera3d,
+) -> (f64, usize) {
+    let (x0, y0, x1, y1) = plate_interior(mesh, cam, 4.0);
+    let plain = render_at(device, queue, mesh, false, cam);
+    let wired = render_at(device, queue, mesh, true, cam);
+    let (mut miolo, mut tinta) = (0usize, 0usize);
+    for y in y0.ceil() as i32..=y1.floor() as i32 {
+        for x in x0.ceil() as i32..=x1.floor() as i32 {
+            miolo += 1;
+            if let (Some(p), Some(w)) = (lum(&plain, x, y), lum(&wired, x, y))
+                && p - w > 6.0
+            {
+                tinta += 1;
+            }
+        }
+    }
+    (
+        100.0 * tinta as f64 / miolo.max(1) as f64,
+        total_ink(&plain, &wired),
+    )
+}
+
+/// ⭐⭐⭐ **GATE — a malha que está ATRÁS de superfície opaca não é desenhada.**
+///
+/// ⛔ **O report do dono, 2026-09-04 (2ª volta):** *«só desejo o occlusion culling
+/// das faces do wireframe que são desenhadas mesmo quando suas faces estão
+/// invisíveis aos olhos do usuário»*. A 1ª medição respondeu `0,00 %` porque
+/// perguntou *"a tinta caiu sobre uma aresta de frente?"*; esta pergunta *"a
+/// aresta estava atrás de superfície opaca?"*, que é a pergunta dele.
+///
+/// A grandeza é a fração do MIOLO da chapa que o wireframe escurece. O valor
+/// correto é **zero**: ali não passa aresta nenhuma da chapa, e tudo o que a
+/// esfera tem está atrás de barro sólido.
+///
+/// ⚠️ **As DUAS malhas, e a segunda é a que importa mais:** fechada, o descarte
+/// por normal esconde o que está de costas; **aberta**, ele está desarmado por
+/// lei (`obj.wire_cull`) e o teste de profundidade responde sozinho. Medido com
+/// a nudge constante que shipava — a que puxava o fio `30 %` da distância do
+/// olho para a frente — **`4,82 %` nas DUAS**.
+///
+/// ⚠️ **E a igualdade dos dois números não é o descarte por normal ser inútil:**
+/// as duas metades da esfera projetam-se no MESMO disco, então a tinta de trás
+/// cai por cima da da frente e não acrescenta pixel. *Uma régua de área não soma
+/// camadas* — o que a metade aberta compra é interrogar o teste de profundidade
+/// com a outra lei desligada.
+#[test]
+#[ignore = "precisa de adapter"]
+fn a_malha_atras_de_uma_chapa_nao_atravessa() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: skip");
+        return;
+    };
+    let mut vazou = Vec::new();
+    for fechada in [true, false] {
+        let mesh = hidden_behind_plate_at(0.0, fechada);
+        assert_eq!(
+            mesh.is_closed(),
+            fechada,
+            "a fixtura não contém o fenômeno: o descarte por normal arma-se \
+             exatamente com `is_closed`, e é a metade ABERTA que interroga o \
+             teste de profundidade sozinho"
+        );
+        let cam = camera_for(&mesh);
+        let (x0, y0, x1, y1) = plate_interior(&mesh, &cam, 4.0);
+
+        // ⚠️ **A FIXTURA CONTÉM O FENÔMENO?** — a esfera inteira tem de se
+        // projetar dentro do miolo da chapa, senão o que sobrar fora dele é
+        // aresta legítima e a régua contaria visibilidade correta como vazamento.
+        for p in &mesh.positions()[8..] {
+            let s = cam.project(*p, (W, H)).expect("a esfera está na tela");
+            assert!(
+                s.0 > x0 && s.0 < x1 && s.1 > y0 && s.1 < y1,
+                "a fixtura não contém o fenômeno: a esfera escapa do miolo da \
+                 chapa em ({:.1}, {:.1})",
+                s.0,
+                s.1
+            );
+        }
+
+        let (pct, total) = leak_behind_plate(&device, &queue, &mesh, &cam);
+        // Controle: o wireframe da CHAPA chegou — senão um quadro vazio leria 0 %.
+        assert!(
+            total > 500,
+            "controle: o wireframe não desenhou nada ({total} px) — a régua \
+             estaria verde por não haver o que medir"
+        );
+        eprintln!(
+            "  {} tinta total {total} px · miolo da chapa {pct:.2} %",
+            if fechada { "FECHADA" } else { "ABERTA " }
+        );
+        vazou.push((fechada, pct));
+    }
+    // ⚠️ **As duas medem-se ANTES de qualquer uma acusar.** Com o `assert` dentro
+    // do laço, a metade FECHADA reprova primeiro e a ABERTA — que é a que
+    // interroga o teste de profundidade sozinho — nunca chega a correr, e o
+    // diagnóstico fica com metade dos factos.
+    for (fechada, pct) in vazou {
+        assert!(
+            pct < 0.5,
+            "a malha ESCONDIDA atravessou a chapa ({}): {pct:.2} % do miolo. \
+             O descarte por normal não a alcança — ela está de FRENTE, só que \
+             atrás de barro opaco; quem a tinha de esconder é o teste de \
+             profundidade, e uma nudge CONSTANTE EM NDC o desarma.",
+            if fechada { "fechada" } else { "aberta" }
+        );
+    }
+}
+
+/// ⭐⭐⭐ **A RESOLUÇÃO DA OCLUSÃO** — *a que profundidade o fio deixa de atravessar?*
+///
+/// ⚠️ **Ela existe porque a fixtura do gate NÃO separa os valores da constante:**
+/// com a folga generosa dela, `k` de `1e-2` a `8e-2` dão todos `0,00 %`. Uma
+/// barra que não distingue as candidatas não pode escolher entre elas — e o que
+/// a escolha de facto compra é **quão FINA pode ser a folga que ainda esconde**.
+///
+/// A folga sai em fração da DISTÂNCIA DO OLHO, que é a unidade em que a lei
+/// relativa está escrita: um deslocamento de `k · d` esconde tudo o que estiver
+/// mais de `k · d` atrás, e é isso que a tabela tem de confirmar.
+///
+/// ```text
+/// cargo test -p ph2d-mesh-render --release --test probe_wire_continuity \
+///   -- --ignored --nocapture a_que_profundidade
+/// ```
+#[test]
+#[ignore = "sonda: precisa de adapter"]
+fn a_que_profundidade_o_fio_deixa_de_atravessar() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: skip");
+        return;
+    };
+    // ⚠️ **UMA câmera para toda a varredura.** Reenquadrar a cada folga mudaria
+    // `d`, que é o denominador da grandeza — a tabela mediria o enquadramento.
+    let cam = camera_for(&hidden_behind_plate_at(0.0, true));
+    eprintln!("  olho a {:.3} do alvo", cam.distance);
+    eprintln!("  folga        em d      tinta no miolo");
+    for &zc in &[0.0f32, 0.30, 0.45, 0.55, 0.59, 0.605, 0.615, 0.625] {
+        let mesh = hidden_behind_plate_at(zc, true);
+        let (pct, _) = leak_behind_plate(&device, &queue, &mesh, &cam);
+        let folga = 0.65 - zc;
+        eprintln!(
+            "  {folga:.3}       {:.4}    {:.2} %",
+            folga / cam.distance,
+            pct
+        );
+    }
+}

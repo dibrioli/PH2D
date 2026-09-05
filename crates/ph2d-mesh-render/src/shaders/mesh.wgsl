@@ -441,8 +441,80 @@ fn vs_core(
     return out;
 }
 
-// **QUANTO A ARESTA SE APROXIMA DO OLHO** — em profundidade NDC, e é o número
-// que faz o wireframe existir.
+// **QUANTO A ARESTA SE APROXIMA DO OLHO** — em FRAÇÃO DA DISTÂNCIA, e é o número
+// que faz o wireframe existir sem apagar a remoção de linha escondida.
+//
+// ⛔⛔⛔ **ELA ERA UM DESLOCAMENTO CONSTANTE EM NDC, e isso DESARMAVA o teste de
+// profundidade da malha inteira — report do dono de 2026-09-04, 2ª volta:** *«só
+// desejo o occlusion culling das faces do wireframe que são desenhadas mesmo
+// quando suas faces estão invisíveis aos olhos do usuário»*.
+//
+// A profundidade em NDC é HIPERBÓLICA, e a câmera ancora os planos na distância
+// (`near = 0,01 d`, `far = 100 d` — [`Camera3d::clip_planes`]), então a MESMA
+// fração de NDC vale distâncias de mundo completamente diferentes conforme a
+// profundidade. Convertido:
+//
+// | profundidade | `3e-3` de NDC vale |
+// |---|---|
+// | `0,5 d` | `0,075` unidades |
+// | **`1,0 d`** | **`0,300` unidades** |
+// | `2,0 d` | `1,200` unidades |
+//
+// ⇒ na profundidade da própria peça, a aresta era puxada para a frente por **30 %
+// da distância do olho** — mais do que a peça inteira tem de profundidade. *Toda
+// aresta de frente ganhava o teste de profundidade contra tudo*, e o que sobrava
+// a esconder alguma coisa era só o descarte por normal do [`fs_wire`], que
+// responde a outra pergunta (*está de costas?*, e não *está atrás?*).
+//
+// ⚠️ **A régua anterior não podia ver isto, e a cegueira era estrutural:** a
+// `leaked_ink` da sonda chama de legítima toda tinta que caia sobre uma aresta de
+// FRENTE, e numa peça não convexa a aresta que atravessa É de frente — é a malha
+// de um vale visto através da montanha à frente dele. *A máscara continha
+// exatamente o defeito que ela existia para acusar*, e por isso a 1ª medição
+// deste report leu `0,00 %` sobre uma tela em que o dono via o defeito.
+//
+// # A LEI, hoje: uma fração da DISTÂNCIA
+//
+// `ndc' = ndc + (ndc − 1) · k`, que em clip é
+// `z' = z + (z − w) · k`. Como `ndc = C₀ + C₁/d`, isso é **exatamente** a
+// profundidade que o vértice teria a `d·(1 − k)`: o empurrão passa a ser
+// `Δd ≈ k · d`, uma fração da distância do olho em vez de um pedaço fixo do
+// alcance do buffer.
+//
+// ⭐ **E é por isso que a constante passou a ter SIGNIFICADO: `k` É A RESOLUÇÃO DA
+// OCLUSÃO.** Medido (`a_que_profundidade_o_fio_deixa_de_atravessar`, esfera densa
+// atrás de uma chapa opaca, tinta que atravessa o miolo da chapa):
+//
+// | folga, em `d` | lei antiga | `k = 3e-3` | **`k = 1e-2`** | `k = 2e-2` |
+// |---|---|---|---|---|
+// | `0,109` | **4,82 %** | 0,00 % | **0,00 %** | 0,00 % |
+// | `0,034` | **5,50 %** | 0,00 % | **0,00 %** | 0,00 % |
+// | `0,010` | **5,63 %** | 0,00 % | **0,00 %** | 0,29 % |
+// | `0,006` | **5,69 %** | 0,00 % | 0,10 % | 0,52 % |
+//
+// ⇒ a lei antiga vazava em TODAS as folgas, a maior inclusive: ela não escondia
+// nada. A nova esconde tudo o que estiver mais de `k` da distância do olho atrás
+// da superfície visível — e a coluna confirma a álgebra, o limiar É o `k`.
+//
+// # Por que `1e-2` e não menos
+//
+// ⚠️ **O piso é a COPLANARIDADE, e ele é medido pelo bin rasante** — a linha
+// desenhada corre sobre a própria face, e num ângulo raso a profundidade da
+// superfície muda muito por pixel, então a aresta precisa de folga suficiente
+// para ganhar do triângulo que ela anota:
+//
+// | `k` | bin rasante (`facing` 0,2–0,4) | folga escondida |
+// |---|---|---|
+// | `3e-3` | **62,7 %** ⛔ (barra: 78 %) | `< 0,004 d` |
+// | `5e-3` | 76,2 % ⛔ | — |
+// | `7e-3` | 78,9 % | — |
+// | **`1e-2`** | **79,2 %** (satura) | **`0,010 d`** |
+// | `2e-2`..`8e-2` | 79,2 % | `0,017 d`..`0,07 d` |
+//
+// ⇒ **`1e-2` é o menor valor em que o rasante SATURA**, e cada passo acima dele
+// só compra resolução PIOR. As duas metades são opostas por construção — mais
+// empurrão salva a coplanaridade e mata a oclusão — e este é o ponto em que a
+// primeira já não melhora.
 //
 // ⚠️ **O viés de profundidade do pipeline NÃO alcança uma LINHA, e isso é spec,
 // não bug do driver:** ele é definido para POLÍGONOS. Medido em 2026-08-12,
@@ -454,40 +526,20 @@ fn vs_core(
 // shader é o único lugar que o wgpu garante alcançar toda topologia, em todo
 // backend.
 //
-// ⚠️ **Ela é um deslocamento em `z` de CLIP proporcional a `w`**, o que a torna
-// um deslocamento CONSTANTE em NDC — e por isso não move um pixel em `x`/`y`:
-// a linha continua exatamente sobre a aresta, ela só ganha a disputa de
+// ⚠️ **Ela não move um pixel em `x`/`y`:** o que muda é `z` de clip, e `w` fica
+// intacto — a linha continua exatamente sobre a aresta, ela só ganha a disputa de
 // profundidade. Um empurrão no espaço de VISTA (aproximar o vértice do olho)
 // deslocaria a linha na tela por perspectiva, e a aresta passaria a desenhar ao
 // lado de si mesma na silhueta.
 //
 // ⚠️ **A NUDGE SOZINHA NÃO BASTA, e a razão é geometria:** perto da silhueta a
 // face da frente e a de trás CONVERGEM em profundidade, então qualquer
-// deslocamento constante grande o bastante para uma linha de frente vencer o
-// próprio triângulo é grande o bastante para o fio do outro lado da peça
-// atravessar. As duas metades do mesmo número, puxadas em sentidos opostos.
-// Quem separa as duas é o descarte por normal do [`fs_wire`], e é ELE que
-// libertou este valor de ter um orçamento de vazamento.
-//
-// ⚠️ **O valor é MEDIDO** (`probe_wire_continuity.rs`), na régua do MIOLO
-// ESTRITO — as arestas cujas duas pontas encaram o olho com folga, num sólido
-// convexo, onde toda a aresta tem de chegar sob qualquer lei:
-//
-// | nudge | miolo | vazada |
-// |---|---|---|
-// | 0 (o que shipava antes do 1º report) | **45 %** | 0,0 % |
-// | **3e-3** | **86 %** | **0,0 %** |
-// | 6e-3 · 1,2e-2 · 2,4e-2 · 4,8e-2 | 86 % | 0,0 % |
-//
-// ⇒ **Ela SATURA em 3e-3**, e é isso que diz que os 14 % que faltam não são
-// disputa de profundidade (mais empurrão não os compra): são a sobreposição de
-// pixels entre arestas vizinhas dentro da máscara do próprio oráculo.
-//
-// ⚠️ **E subir a nudge PIORA a peça não-convexa**, que é o que fecha a escolha:
-// num TORO o miolo estrito inclui arestas que encaram o olho e estão ATRÁS do
-// tubo da frente. A 3e-3 elas ficam corretamente escondidas (50 %); a 6e-3 elas
-// atravessam e o número SOBE para 87 % — um oráculo melhorando enquanto a
-// remoção de superfície escondida piora.
+// deslocamento grande o bastante para uma linha de frente vencer o próprio
+// triângulo é grande o bastante para o fio do outro lado da peça atravessar. As
+// duas metades do mesmo número, puxadas em sentidos opostos. Quem separa as duas
+// é o descarte por normal do [`fs_wire`] — e ⚠️ **ele responde só pelo que está
+// de COSTAS**: o que está de frente e atrás de outra parte da peça é do teste de
+// profundidade, que é o que esta constante governa.
 //
 // ⚠️ **DUAS formas mais espertas foram construídas, MEDIDAS e REJEITADAS** — não
 // as refaça:
@@ -501,7 +553,13 @@ fn vs_core(
 //    silhueta tem uma ponta de cada lado e o empurrão interpolado morre no meio
 //    dela. O vazamento tem de ser cortado no FRAGMENTO, onde a pergunta é feita
 //    por pixel; no vértice ela leva a metade da frente junto.
-const WIRE_DEPTH_NUDGE: f32 = 3.0e-3;
+//
+// ⚠️ **A leitura histórica «`45 %` a nudge `0`, `86 %` a `3e-3`, satura» era da
+// LEI ANTIGA e sobre a régua do MIOLO ESTRITO** — ela media a coplanaridade, que
+// é real, e concluiu de um empurrão que também apagava a oclusão. *Uma recusa
+// medida responde UMA pergunta:* aquela varredura nunca perguntou o que estava
+// atrás.
+const WIRE_DEPTH_NUDGE: f32 = 1.0e-2;
 
 // ⛔⛔ **E o `DepthBiasState` do pipeline de arestas era CÓDIGO MORTO — confirmado
 // pela plataforma em 2026-08-29, na subida do `wgpu` 28 → 29.**
@@ -665,7 +723,7 @@ fn vs_wire(
     @location(7) preview: f32,
 ) -> VsOut {
     var out = vs_core(pos, normal, mask, curv, ao, curv_world, thickness, preview);
-    out.clip.z = out.clip.z - WIRE_DEPTH_NUDGE * out.clip.w;
+    out.clip.z = out.clip.z + (out.clip.z - out.clip.w) * WIRE_DEPTH_NUDGE;
     out.clip = wire_lateral_push(pos, normal, out.clip, out.facing);
     return out;
 }
@@ -833,6 +891,19 @@ const WIRE_RGBA: vec4<f32> = vec4<f32>(0.05, 0.06, 0.08, 0.55);
 // exatamente o que deixa o fio de trás atravessar perto da silhueta. Medido na
 // esfera 64×128, a tinta que cai onde aresta de frente nenhuma passa vai de
 // **2,2 % a 0,0 %** (11,1 % na malha grossa, 14,0 % num toro).
+//
+// ⚠️⚠️ **E ISTO NÃO SUBSTITUI O TESTE DE PROFUNDIDADE — as duas perguntas são
+// diferentes, e durante meses só esta tinha resposta.** Aqui pergunta-se *"esta
+// face está de COSTAS?"*; a outra é *"esta face está ATRÁS de outra?"*, que numa
+// peça não convexa é o vale visto através da montanha à frente dele — de frente,
+// e escondido. Ela é do teste de profundidade, que a [`WIRE_DEPTH_NUDGE`]
+// constante desarmava por completo (ver a tabela lá): o report de 2026-09-04
+// (*«occlusion culling das faces … invisíveis aos olhos do usuário»*) é dela, e
+// nenhuma quantidade de descarte por normal a responderia.
+//
+// ⚠️ **E numa malha ABERTA esta lei está desligada por decisão** (a casca de uma
+// folha), então lá o teste de profundidade é a ÚNICA defesa — a metade da
+// fixtura `a_malha_atras_de_uma_chapa_nao_atravessa` que existe por causa disso.
 //
 // ⚠️ **E ela corrige uma MEDIÇÃO, não só o desenho:** parte do que a régua
 // anterior contava como *"a aresta chegou"* era o fio de trás caindo POR CIMA do

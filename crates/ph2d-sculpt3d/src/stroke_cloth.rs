@@ -153,6 +153,33 @@ pub const CLOTH_DEFORM: ClothDeform = ClothDeform::Translate;
 /// ⚠️ **Lido UMA vez.** `std::env::var` num laço por-vértice seria uma syscall
 /// por vértice por sub-passo; e a lei da casa é que o que shipa desligado tem de
 /// ter porta de bissecção com nome (`PH2D_RETOPO_LEGACY`, `PH2D_GRIDMAP_WELD`).
+/// **A restrição PERSISTE entre dabs?**
+///
+/// ⚠️⚠️ **Nasce DESLIGADA, e a razão é a mesma da [`CLOTH_DEFORM`]: ela move
+/// duas réguas do gate e eu não sei ainda se é para melhor.** Medido em 05/09,
+/// esfera de 24 386 vértices:
+///
+/// | alvo | `ondula` antes | `ondula` com a restrição a ficar |
+/// |---|---|---|
+/// | `Translate` | `0,0005` | **`0,0380`** — ⭐ `76×`, e é o modo que já shipava |
+/// | `Point` | `0,0381` | `0,0293`, com o resíduo local a **cair `24,2 → 18,0`** e `λ` a subir `12,0 → 13,2` |
+/// | `Normal` | `0,0099` | **`0,0501`**, resíduo `5,6` (o mais limpo) e `λ = 17,2` |
+///
+/// ⇒ *o amassado não era o alvo do gesto, era o gesto RECOMEÇAR* — e ligar só a
+/// persistência faz o modo original dobrar tanto quanto o alvo novo fazia.
+///
+/// ⛔ **Ela reprova dois gates, e os dois precisam do olho do dono antes da
+/// régua:** o `espinho` vai a `0,3811` (barra `0,20`, defeito original `0,690`)
+/// — isso é **magnitude de resposta**, e a barra dela foi calibrada contra a lei
+/// fraca —, e a régua da agulha lê `38,5` (barra `20`). *Subir qualquer uma das
+/// duas para deixar passar a minha própria mudança é o que esta casa proíbe*;
+/// a barra certa vive no vazio entre um traço que ele aprova e um que ele
+/// reprova, e esse par ainda não existe.
+fn restricao_persiste() -> bool {
+    static ESCOLHA: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ESCOLHA.get_or_init(|| std::env::var("PH2D_CLOTH_HOLD").as_deref() == Ok("1"))
+}
+
 fn deform_escolhido() -> ClothDeform {
     static ESCOLHA: std::sync::OnceLock<ClothDeform> = std::sync::OnceLock::new();
     *ESCOLHA.get_or_init(|| match std::env::var("PH2D_CLOTH_DEFORM").as_deref() {
@@ -191,10 +218,22 @@ pub(super) struct ClothSession {
     /// torna a região função da malha e não da ordem em que a consulta a devolveu.
     verts: Vec<u32>,
     pinned: Vec<bool>,
-    /// Para onde a mão pede que cada vértice vá.
+    /// **A RESTRIÇÃO: para onde a mão pede que cada vértice vá.**
+    ///
+    /// ⚠️⚠️ **Ela SOBREVIVE ao dab, e a versão de 05/09 a recomeçava do zero.**
+    /// Ali o alvo era `x + path` — relativo à posição de AGORA —, o que tem duas
+    /// consequências medidas: o vértice era arrastado o `path` inteiro
+    /// **independentemente do material** (*«um material 1000× mais duro dava
+    /// exatamente o mesmo esticão»*), e cada dab virava um puxão independente
+    /// (`0,15 · raio` de espaçamento ⇒ dezenas por traço) cujo rastro é o
+    /// **papel amassado** do report.
     goal: Vec<V3>,
-    /// Quanto do caminho até lá — `w`, em `[0, 1]`.
+    /// A FORÇA de cada restrição, que **sobe** com a viagem da mão e não desce.
     peso: Vec<f64>,
+    /// Esta restrição já nasceu? ⚠️ Ela nasce **uma vez**, quando o vértice entra
+    /// na pegada, e o alvo começa **onde o vértice está** — senão o primeiro
+    /// quadro dela seria um salto.
+    ativo: Vec<bool>,
     /// Onde a região foi centrada, e qual o raio dela.
     em: [f32; 3],
     raio: f32,
@@ -458,6 +497,7 @@ impl SculptStroke {
             state: ClothState::at_rest(&x),
             goal: vec![[0.0; 3]; verts.len()],
             peso: vec![0.0; verts.len()],
+            ativo: vec![false; verts.len()],
             em: center,
             raio: limit,
             topo,
@@ -489,6 +529,15 @@ impl ClothSession {
                 core::cmp::Ordering::Equal => {
                     if !self.pinned[a] {
                         self.state.v[a] = velha.state.v[b];
+                        // ⭐⭐⭐ **E A RESTRIÇÃO VIAJA JUNTO.** Sem esta metade a
+                        // persistência não existe: a região é refeita a cada
+                        // `0,25 · limite` de mão andada — dezenas de vezes num
+                        // traço —, e cada reconstrução apagaria o alvo e a força
+                        // que o gesto vinha construindo. *Seria o puxão
+                        // recomeçado, com outro nome.*
+                        self.goal[a] = velha.goal[b];
+                        self.peso[a] = velha.peso[b];
+                        self.ativo[a] = velha.ativo[b];
                     }
                     a += 1;
                     b += 1;
@@ -528,9 +577,21 @@ impl SculptStroke {
         let frame = brush.alpha_frame();
         let ganho = f64::from(brush.weight() * dab.pressure.clamp(0.0, 1.0));
         let inv_r = 1.0 / dab.radius;
+        let anda = (path[0] * path[0] + path[1] * path[1] + path[2] * path[2]).sqrt();
+        // ⭐⭐⭐ **A FRAÇÃO DE CONVERGÊNCIA, e a forma exponencial é o que a torna
+        // HONESTA.** Um alvo que se aproxima do destino «uma fração por dab»
+        // depende de quantos dabs o `walk` emitiu — arrastar devagar daria outro
+        // pano que arrastar rápido pelo mesmo traçado. Com `1 − e^{−a/R}` a
+        // composição de dois passos é `e^{−a}·e^{−b} = e^{−(a+b)}`: **exatamente
+        // o mesmo resultado, seja o caminho entregue em um passo ou em cem.**
+        //
+        // ⚠️ É a mesma lei que o motor de traço do Flip usa para a tinta
+        // (`α = 1 − exp(−τ)`), e pela mesma razão: *o traço é fato do CAMINHO,
+        // nunca de quão fino o motor amostrou o caminho.*
+        let conv = 1.0 - (-anda * f64::from(inv_r)).exp();
         for i in 0..ses.verts.len() {
-            ses.peso[i] = 0.0;
             if ses.pinned[i] {
+                ses.peso[i] = 0.0;
                 continue;
             }
             let v = ses.verts[i] as usize;
@@ -542,63 +603,121 @@ impl SculptStroke {
             ];
             let dist = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
             let t = (dist * f64::from(inv_r)) as f32;
-            if t >= 1.0 {
+            let s = self.slot[v] as usize;
+
+            // ⭐ **A RESTRIÇÃO NASCE UMA VEZ**, quando o vértice entra na pegada,
+            // e o alvo começa **onde o vértice está**: sem isso o primeiro quadro
+            // dela seria um salto do tamanho do gesto acumulado.
+            // ⚠️ **O caminho LEGADO, byte a byte o de antes:** o peso é reposto
+            // do zero e o alvo sai de `x` — é o puxão recomeçado a cada dab.
+            if !restricao_persiste() {
+                ses.peso[i] = 0.0;
+                if t >= 1.0 {
+                    continue;
+                }
+                let w = ganho
+                    * f64::from(
+                        brush.falloff.weight(brush.shaped_distance(t))
+                            * brush.alpha_weight(self.base_pos[s], &frame)
+                            * crate::mask_ops::free_weight(self.base_mask[s]),
+                    );
+                ses.peso[i] = w;
+                // ⚠️ **`conv = 1` aqui, e não o do gesto:** o caminho legado convergia
+                // ao alvo de uma vez (`goal = center`), e um `conv` parcial faria a
+                // porta de bissecção comparar contra uma terceira lei que nunca shipou.
+                ses.goal[i] = alvo_de(
+                    deform_escolhido(),
+                    p,
+                    center,
+                    path,
+                    anda,
+                    1.0,
+                    self.base_nrm[s],
+                );
                 continue;
             }
-            // ⚠️ **A curva do pincel, pela PORTA do pincel** — não uma segunda
-            // lei de queda escrita aqui. Duas respostas para *«quanto este
-            // vértice sente»* divergiriam no dia em que o artista mexesse na
-            // dureza.
-            let s = self.slot[v] as usize;
-            let base = self.base_pos[s];
-            let w = ganho
-                * f64::from(
-                    brush.falloff.weight(brush.shaped_distance(t))
-                        * brush.alpha_weight(base, &frame)
-                        * crate::mask_ops::free_weight(self.base_mask[s]),
-                );
-            ses.peso[i] = w;
-            // ⭐ **A META SAI DO ALVO GEOMÉTRICO, e o gesto só diz QUANTO.** O
-            // `path` deixa de ser a resposta e passa a ser a AMPLITUDE — que é a
-            // separação entre *«que direção»* e *«que vértices»* que a espec do
-            // comportamento nomeia como a lei da referência.
-            let anda = (path[0] * path[0] + path[1] * path[1] + path[2] * path[2]).sqrt();
-            ses.goal[i] = match deform_escolhido() {
-                ClothDeform::Translate => [p[0] + path[0], p[1] + path[1], p[2] + path[2]],
-                // O ponto é o centro do dab de AGORA; a mola já leva `w`.
-                ClothDeform::Point => [
-                    f64::from(center[0]),
-                    f64::from(center[1]),
-                    f64::from(center[2]),
-                ],
-                // ⚠️ A normal vem do `pre` CONGELADO, pela mesma porta que o
-                // alpha e a máscara — uma normal viva realimentaria o próprio
-                // relevo que ela cria.
-                ClothDeform::Normal => {
-                    let n = self.base_nrm[s];
-                    [
-                        p[0] + anda * f64::from(n[0]),
-                        p[1] + anda * f64::from(n[1]),
-                        p[2] + anda * f64::from(n[2]),
-                    ]
+            if !ses.ativo[i] {
+                if t >= 1.0 {
+                    continue;
                 }
-                // A projeção de `p` no eixo do traço, que passa pelo centro.
-                ClothDeform::Axis => {
-                    let l = if anda > 1e-12 { anda } else { 1.0 };
-                    let e = [path[0] / l, path[1] / l, path[2] / l];
-                    let d = [
-                        p[0] - f64::from(center[0]),
-                        p[1] - f64::from(center[1]),
-                        p[2] - f64::from(center[2]),
-                    ];
-                    let t = d[0] * e[0] + d[1] * e[1] + d[2] * e[2];
-                    [
-                        f64::from(center[0]) + e[0] * t,
-                        f64::from(center[1]) + e[1] * t,
-                        f64::from(center[2]) + e[2] * t,
-                    ]
-                }
-            };
+                ses.ativo[i] = true;
+                ses.goal[i] = p;
+                ses.peso[i] = 0.0;
+            }
+
+            // ⚠️ **A FORÇA SOBE COM A VIAGEM, e não salta.** É o que a
+            // referência declara sobre o modo de dobras mais naturais — *ajustar
+            // a força das restrições a cada passo para afetar o solver o menos
+            // possível*. Fora da pegada ela **fica onde está**: é a persistência
+            // que faz a prega assentar em vez de ser re-puxada.
+            if t < 1.0 {
+                let alvo = ganho
+                    * f64::from(
+                        brush.falloff.weight(brush.shaped_distance(t))
+                            * brush.alpha_weight(self.base_pos[s], &frame)
+                            * crate::mask_ops::free_weight(self.base_mask[s]),
+                    );
+                ses.peso[i] += (alvo - ses.peso[i]) * conv;
+            }
+
+            // ⭐⭐⭐ **E O ALVO É LEVADO PELA LEI GEOMÉTRICA — nunca reposto a
+            // partir de `x`.** Era `x + path` que fazia o material não decidir
+            // nada: o alvo ficava sempre um passo à frente de onde o vértice
+            // estivesse, então um pano `1000×` mais duro chegava exatamente ao
+            // mesmo sítio. Com o alvo a acumular o gesto, o que fica entre ele e
+            // o vértice é a RESISTÊNCIA — e é ela que o material governa.
+            ses.goal[i] = alvo_de(
+                deform_escolhido(),
+                ses.goal[i],
+                center,
+                path,
+                anda,
+                conv,
+                self.base_nrm[s],
+            );
+        }
+    }
+}
+
+/// **A LEI GEOMÉTRICA DO ALVO** — uma porta, dois consumidores (a restrição que
+/// fica e o caminho legado). *Duas cópias divergiriam no dia em que uma delas
+/// mudasse, e o gate de comparação entre as duas leis mediria outra coisa.*
+#[allow(clippy::too_many_arguments)]
+fn alvo_de(
+    kind: ClothDeform,
+    g: V3,
+    center: [f32; 3],
+    path: V3,
+    anda: f64,
+    conv: f64,
+    n: [f32; 3],
+) -> V3 {
+    match kind {
+        ClothDeform::Translate => [g[0] + path[0], g[1] + path[1], g[2] + path[2]],
+        ClothDeform::Point => [
+            g[0] + (f64::from(center[0]) - g[0]) * conv,
+            g[1] + (f64::from(center[1]) - g[1]) * conv,
+            g[2] + (f64::from(center[2]) - g[2]) * conv,
+        ],
+        ClothDeform::Normal => [
+            g[0] + anda * f64::from(n[0]),
+            g[1] + anda * f64::from(n[1]),
+            g[2] + anda * f64::from(n[2]),
+        ],
+        ClothDeform::Axis => {
+            let l = if anda > 1e-12 { anda } else { 1.0 };
+            let e = [path[0] / l, path[1] / l, path[2] / l];
+            let q = [
+                g[0] - f64::from(center[0]),
+                g[1] - f64::from(center[1]),
+                g[2] - f64::from(center[2]),
+            ];
+            let k = q[0] * e[0] + q[1] * e[1] + q[2] * e[2];
+            [
+                g[0] + (f64::from(center[0]) + e[0] * k - g[0]) * conv,
+                g[1] + (f64::from(center[1]) + e[1] * k - g[1]) * conv,
+                g[2] + (f64::from(center[2]) + e[2] * k - g[2]) * conv,
+            ]
         }
     }
 }

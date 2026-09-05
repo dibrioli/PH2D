@@ -215,12 +215,53 @@ mantidos por re-export (43 chamadores).
   **estritamente menos caminhos** (as molduras que não estão lá); controlo: dois temas da mesma
   família emitem geometria **igual**.
 
+### 7.5 — ✅ WAVE 3 (2026-09-05): a DÍVIDA da wave 2 está a ZERO
+
+**O que existe agora:** `NOT_YET` **vazio** — os 22 ficheiros passaram pela porta: **20
+convertidos** (33 sítios de `stroke_rounded_rect`) e **2 isentos por mecanismo** (as alças do
+`rect2_editor`, que são gizmo sobre conteúdo, e o contorno de secção do showcase, que é a cor de
+marcador que o utilizador escolheu — conteúdo, não cromo). Os pintores convertidos: o fantasma de
+arrasto de asset · a janela do Input Map · o avatar · o picker de cor do Blender (cartão ×2,
+harmonia ×2, hex, conta-gotas, faixa de matiz, amostra) · o picker de cor clássico (cartão + amostra)
+· combobox · menu de contexto · lista chave-valor · menu radial (disco + etiquetas) · rádio
+segmentado · anel de foco do slider · chip numérico · barra de estado (⭐ deixa de ser pílula) ·
+linha seleccionada da árvore · os modais de fill/onion (cartão + amostra de fantasma) · os chips da
+barra do topo (rail-chip + chip largo).
+
+**O que a construção ensinou:**
+
+- ⭐⭐ **Um indicador desenhado POR CIMA do widget, fora da tabela de estados dele, morre quando a
+  tabela muda.** O modo *Image Tools* ligado era um anel de acento traçado pelo `paint_top_bar`
+  sobre o chip — reconstruindo o `chip_rect` à mão, sem o chip saber que estava em modo. Num tema
+  moderno (moldura em repouso = `0`) o anel sumiria e **o modo ficaria invisível**. A cura não foi
+  «passar o anel pela porta» (a porta devolveria *nada* para `Feel::Active`, que é o desenho), foi
+  **o chip saber que está activo**: `paint_topbar_rail_chip(.., active)` e `is_active = active ||
+  Pressed` — a mesma matriz do rail para a ferramenta em mãos (`AccentSoft` + contorno de acento no
+  clássico, o realce do tema no moderno). ⚠️ É a **única mudança visível no clássico** desta wave: o
+  chip do modo ligado passa de *BgElev + anel* a *AccentSoft + contorno* — o look que o rail já dava
+  à ferramenta activa, e que este pintor declarava copiar. Gate:
+  `the_image_tools_chip_shows_the_mode_in_every_family`.
+- ⭐ **O `chip_feel` (estado do botão → `Feel`) mudou-se para o `button_surface`**, ao lado do
+  `chip_axis_t`: o rail e os chips do topo declaram copiar a mesma matriz, e uma cópia privada da
+  redução no `tool_rail/paint.rs` divergiria no dia em que um estado novo entrasse num só lado.
+- ⚠️ **Nem tudo o que é `stroke_rounded_rect` é moldura**, e a porta do RAIO não é para toda
+  forma: o **círculo** do avatar e o **disco** do menu radial são a FORMA (a porta faria deles
+  quadrados de raio 4) — só o traço passa; e o **halo** do cursor da faixa de matiz (um `Bg0` de
+  1 px à volta do cursor claro) é contraste sobre a cor, não cromo — fica, com o motivo no código.
+- ⚠️ **A amostra de cor do utilizador fica PLANA no moderno** (harmonia, pré-visualização, cor de
+  fantasma): os presets do `ColorPicker` do Godot não têm borda. ⏳ A `color_swatch.rs` (wave 2)
+  ainda pinta o anel de repouso como **preenchimento** em `Border` — não é um `stroke`, o censo não
+  o vê, e é o próximo a olhar se as amostras destoarem.
+- ⚠️ **O censo do FONTE vê que o ficheiro *conhece* a porta, não que a *atravessa*** — um pintor que
+  chamasse `stroke_frame` com `Feel::Error` em repouso passaria nele e traçaria na mesma. Daí o
+  gate de pixel desta wave: `the_wave_three_painters_lose_exactly_their_frame` (avatar · barra de
+  estado vazia · menu de contexto vazio, cada um `2 → 1` caminhos e OLED `= clássico`).
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
-- ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4** — 24
-  convertidos pela porta; os **22** que faltam estão nomeados em `NOT_YET` (picker de cor do
-  Blender, menu radial, `tree_view`, `status_bar`, `radio_group`, os modais de onion/fill, o
-  topbar legado…) e o gate impede um novo de nascer sem a porta;
+- ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24
+  convertidos na wave 2, os **22** restantes na wave 3; `NOT_YET` está **vazio** e o gate impede
+  um pintor novo de nascer sem a porta;
 - o `panel-radius: 16` do `tokens.json` fica para o clássico; a docagem já usa `0`;
 - `Spacing` não foi tocado (o `base_spacing 4` do Godot coincide com o `Xs`);
 - a fonte (o Godot recomenda *Inter*; a casa tem `FONT_SANS`) — não medido.

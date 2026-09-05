@@ -94,6 +94,25 @@ pub fn chip_axis_t(state: ButtonState, active: bool, t: Option<f32>) -> Option<f
     t
 }
 
+/// **Como um CHIP DE CHROME se sente** — o estado do botão e o «está em mãos / o modo está
+/// ligado» reduzidos ao vocabulário da porta da moldura ([`ph2d_tokens::visuals::Feel`]).
+///
+/// ⚠️ Vive AQUI, ao lado de [`chip_axis_t`], porque é a mesma porta: o rail e os chips da barra
+/// do topo declaram copiar a MESMA matriz, e uma segunda cópia desta redução divergiria no dia
+/// em que um estado novo entrasse num só lado (há gate: `the_chip_axis_has_one_door`).
+#[must_use]
+pub fn chip_feel(state: ButtonState, is_active: bool) -> ph2d_tokens::visuals::Feel {
+    use ph2d_tokens::visuals::Feel;
+    match state {
+        ButtonState::Pressed => Feel::Active,
+        _ if is_active => Feel::Active,
+        ButtonState::Hovered => Feel::Hovered,
+        ButtonState::Focused => Feel::Focused,
+        ButtonState::Disabled => Feel::Disabled,
+        _ => Feel::Rest,
+    }
+}
+
 /// **A COR DE UM CHIP DE CHROME no eixo do hover** — a mistura `rest → hot` por `t`, ou o token
 /// DURO quando este chip não está no eixo (ou já assentou).
 ///

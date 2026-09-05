@@ -5,7 +5,7 @@ use super::fixture;
 use super::ids;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, resolve};
 use crate::widget::{ButtonState, IconGlyph, Tooltip, paint_tooltip};
 // ⚠️ Do DONO, e não pela boleia de um widget: o `PILL_PADDING_PX` é um token, e viajava por um
 // `pub use` do `pill_group` — um widget que este cromo NUNCA chamou (censo de 2026-09-03).
@@ -272,6 +272,10 @@ pub fn paint_top_bar(
     // can exit the mode by clicking ImageTools again.
     for (id, cluster) in &clusters[..split] {
         let rect = Rect::new(x, layout.top_bar.y, cluster_width(cluster), row_h);
+        // ⭐ O modo ligado é o `active` do chip do Image Tools — pintado pelo próprio chip, pela
+        //    matriz do rail. Até 2026-09-05 era um anel de acento traçado AQUI por cima do chip,
+        //    reconstruindo o `chip_rect` à mão; num tema moderno (sem moldura) ele sumiria e o
+        //    modo ficaria invisível. Ver `paint_topbar_rail_chip`.
         paint_top_bar_cluster(
             *id,
             cluster,
@@ -283,29 +287,8 @@ pub fn paint_top_bar(
             hit_index,
             store,
             motion,
+            image_tools_mode && *id == ids::TOPBAR_IMAGE_TOOLS,
         );
-        // Active-state ring on the ImageTools chip when the mode is
-        // on. Must mirror `paint_topbar_rail_chip` chip_rect exactly:
-        // stack_y = viewport_y + Xxs, chip_y = stack_y + label_band
-        // + gap. Centralizar em rect.h fica deslocado porque o
-        // backdrop é compacto e colado no topo (não no centro do
-        // top_bar).
-        if image_tools_mode && *id == ids::TOPBAR_IMAGE_TOOLS {
-            let chip_px = store.rail_button_size().chip_px();
-            // ⚠️ LIDAS do rail, nunca copiadas — ver `LABEL_TO_CHIP_GAP_PX`.
-            let label_band_h = crate::widget::LABEL_VISUAL_EXTENT_PX;
-            let label_to_chip_gap = crate::widget::LABEL_TO_CHIP_GAP_PX;
-            let stack_y = layout.viewport.y + Spacing::Xxs.px();
-            let chip_y = stack_y + label_band_h + label_to_chip_gap;
-            let chip_rect = Rect::new(rect.x + (rect.w - chip_px) * 0.5, chip_y, chip_px, chip_px);
-            stroke_rounded_rect(
-                scene,
-                chip_rect,
-                Radius::Sm.px(),
-                ph2d_tokens::StrokeToken::Default.px(),
-                resolve(ColorToken::Accent, theme),
-            );
-        }
         x = rect.x + rect.w + gap;
     }
     // The wordmark "PH2D · EDITOR" that used to fill the middle gap
@@ -367,6 +350,7 @@ pub fn paint_top_bar(
             hit_index,
             store,
             motion,
+            false,
         );
         rx = rect.x + rect.w + gap;
     }
@@ -498,5 +482,58 @@ mod tooltip_placement_tests {
             "nao pode acabar fora: {got:?}"
         );
         assert!(got.x >= VP.x - 1e-3);
+    }
+
+    /// ⭐⭐ **O MODO LIGADO é o `active` do chip, e VÊ-SE em todas as famílias.**
+    ///
+    /// Até 2026-09-05 o modo *Image Tools* era um anel de acento traçado pelo `paint_top_bar` POR
+    /// CIMA do chip — fora da tabela de estados dele, reconstruindo o `chip_rect` à mão. Num tema
+    /// moderno (moldura em repouso = `0`) o anel desapareceria e o modo ficaria invisível. Hoje o
+    /// chip sabe que está activo e pinta-se pela matriz do rail (a tinta `AccentSoft`), que é
+    /// visível em TODAS as famílias — é isso que este gate mede: o chip com `active = true`
+    /// emite tinta DIFERENTE do chip em repouso, no clássico, no moderno e no OLED.
+    ///
+    /// ⚠️ Compara o `draw_data` (as cores e os pincéis), não a contagem de caminhos: no moderno o
+    /// chip activo tem os MESMOS caminhos que o em repouso (fundo + glifo), só a cor muda.
+    ///
+    /// **Mutação que deve sangrar:** `is_active = state == ButtonState::Pressed` (ignorar o
+    /// `active`) em `paint_topbar_rail_chip` — as duas cenas ficam byte a byte iguais.
+    #[test]
+    fn the_image_tools_chip_shows_the_mode_in_every_family() {
+        for theme in [Theme::Forge, Theme::Dark, Theme::Oled] {
+            let paint = |active: bool| {
+                let mut scene = VectorScene::new();
+                let mut text = TextSystem::without_system_fonts();
+                let mut hit = HitIndex::new();
+                let store = WidgetStore::default();
+                let motion = crate::motion::UiMotion::default();
+                super::cluster_painter::paint_topbar_rail_chip(
+                    ids::TOPBAR_IMAGE_TOOLS,
+                    IconGlyph::Builtin(IconId::Image),
+                    "IMG",
+                    Rect::new(0.0, 0.0, 44.0, 48.0),
+                    0.0,
+                    &mut scene,
+                    &mut text,
+                    theme,
+                    &mut hit,
+                    &store,
+                    &motion,
+                    active,
+                );
+                scene.inner().encoding().draw_data.clone()
+            };
+            let rest = paint(false);
+            let on = paint(true);
+            assert!(
+                !rest.is_empty(),
+                "{theme:?}: o chip nao pintou nada — a regua esta' partida"
+            );
+            assert_ne!(
+                rest, on,
+                "{theme:?}: o chip do Image Tools com o modo LIGADO pinta igual ao em repouso — o \
+                 modo ficou invisivel"
+            );
+        }
     }
 }

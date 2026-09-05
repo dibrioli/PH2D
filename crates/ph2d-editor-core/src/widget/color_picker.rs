@@ -7,9 +7,7 @@
 
 use super::slider::{Slider, paint_slider};
 use super::tabs::{TabItem, Tabs, TabsVariant, paint_tabs};
-use crate::paint::{
-    fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
-};
+use crate::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -146,9 +144,18 @@ pub fn paint_color_picker(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let radius = Radius::Lg.px();
+    // ⭐ Raio e moldura pela porta do TEMA: o cartão do picker é plano num tema moderno.
+    let radius = crate::paint::frame_radius(theme, Radius::Lg.px());
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
 
     let pad = Spacing::Lg.px();
     let tab_h = Spacing::Xl3.px();
@@ -162,16 +169,20 @@ pub fn paint_color_picker(
         rect.w - pad * 2.0,
         preview_h,
     );
+    // ⭐ A amostra é plana num tema moderno (os presets do `ColorPicker` do Godot não têm borda).
+    let preview_radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(
         scene,
         preview_rect,
-        Radius::Md.px(),
+        preview_radius,
         VelloColor::from_rgba8(cp.rgba[0], cp.rgba[1], cp.rgba[2], cp.rgba[3]), // LITERAL-COLOR-OK: user-color — preview of the user's chosen ColorValue, not a theme token
     );
-    stroke_rounded_rect(
+    crate::paint::stroke_frame(
         scene,
         preview_rect,
-        Radius::Md.px(),
+        preview_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         1.0,
         resolve(ColorToken::Border, theme),
     );

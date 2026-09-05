@@ -12,9 +12,7 @@
 //! - `Segmented` — pill-shaped contiguous row; selected option fills
 //!   with `AccentSoft`. iOS-style segmented control.
 
-use crate::paint::{
-    fill_rounded_rect, paint_text_centered, rect_to_vello, resolve, stroke_rounded_rect,
-};
+use crate::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -179,7 +177,8 @@ fn paint_segmented<T: Clone + PartialEq>(
     // outline; unselected = Bg3 + Border). Labels are drawn on top by
     // `paint_radio_group_with_labels`. Was a "Bg2 tray + Accent inner
     // pill" look that diverged from every other segmented control.
-    let r = Radius::Sm.px();
+    // ⭐ Raio e moldura pela porta do TEMA: os segmentos são planos num tema moderno.
+    let r = crate::paint::frame_radius(theme, Radius::Sm.px());
     // Canonical inter-segment gap (single source — same value the
     // central `paint_segmented_group` uses), applied as a half-gap
     // inset each side so adjacent outlined segments don't touch.
@@ -199,10 +198,16 @@ fn paint_segmented<T: Clone + PartialEq>(
             (ColorToken::Bg3, ColorToken::Border)
         };
         fill_rounded_rect(scene, seg, r, resolve(bg, theme));
-        stroke_rounded_rect(
+        crate::paint::stroke_frame(
             scene,
             seg,
             r,
+            theme,
+            if selected {
+                ph2d_tokens::visuals::Feel::Active
+            } else {
+                ph2d_tokens::visuals::Feel::Rest
+            },
             StrokeToken::Default.px(),
             resolve(border, theme),
         );

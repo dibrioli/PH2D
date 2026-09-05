@@ -148,6 +148,7 @@ pub(super) fn paint_image_action_row(
             hit_index,
             store,
             motion,
+            false,
         );
     }
 }

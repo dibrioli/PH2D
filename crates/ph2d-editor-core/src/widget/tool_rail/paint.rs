@@ -9,24 +9,11 @@
 //! caminho de chamada muda**.
 
 use super::*;
-use crate::widget::{chip_axis_color, chip_axis_t};
+use crate::widget::{chip_axis_color, chip_axis_t, chip_feel};
+
 /// ⚠️ **Delega com o NEUTRO.** O eixo do hover vive em [`paint_tool_rail_t`]; esta assinatura é a
 /// de sempre e pinta **exactamente** o que pintava antes da wave da UI viva — o molde do
 /// `denoise_ml` / `denoise_ml_with_progress`.
-/// **Como um chip do trilho se sente** — o estado do botão e o «está em mãos» reduzidos ao
-/// vocabulário da porta da moldura ([`ph2d_tokens::visuals::Feel`]).
-fn chip_feel(state: ButtonState, is_active: bool) -> ph2d_tokens::visuals::Feel {
-    use ph2d_tokens::visuals::Feel;
-    match state {
-        ButtonState::Pressed => Feel::Active,
-        _ if is_active => Feel::Active,
-        ButtonState::Hovered => Feel::Hovered,
-        ButtonState::Focused => Feel::Focused,
-        ButtonState::Disabled => Feel::Disabled,
-        _ => Feel::Rest,
-    }
-}
-
 pub fn paint_tool_rail(
     rail: &ToolRail,
     rect: Rect,

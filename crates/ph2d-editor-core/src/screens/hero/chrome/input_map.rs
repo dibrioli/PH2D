@@ -32,7 +32,7 @@
 use crate::icons::IconId;
 use crate::ids;
 use crate::interaction::{HitIndex, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::widget::{
     Button, IconButtonStyle, IconGlyph, ListItem, ListItemState, TextInput, TextInputState,
     paint_button, paint_icon_button, paint_list_item, paint_scrollbar,
@@ -192,9 +192,18 @@ pub fn paint_input_map_window(
     let rect_y = y.clamp(viewport.y, max_y); // CLAMP-OK: bounds ordered + non-NaN
     let rect = Rect::new(rect_x, rect_y, window_w, total_h);
 
-    let radius = Radius::Md.px();
+    // ⭐ Raio e moldura pela porta do TEMA: a janela flutuante é plana num tema moderno.
+    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
     // ⛔⛔ **O FUNDO DO CARTÃO ABSORVE O CLIQUE** — auditoria de 2026-08-24, o achado mais grave.
     //
     // Sem ele, clicar no espaço vazio ENTRE dois controlos da janela caía no canvas por baixo: com

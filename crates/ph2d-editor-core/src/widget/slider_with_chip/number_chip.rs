@@ -120,7 +120,8 @@ fn paint_number_chip_inner(
     draw_surface: bool,
 ) {
     let focused = state == TextInputState::Focused;
-    let radius = Radius::Xs.px();
+    // ⭐ Raio e anel de foco pela porta do TEMA.
+    let radius = crate::paint::frame_radius(theme, Radius::Xs.px());
     if draw_surface {
         let bg = if focused {
             ColorToken::Bg2
@@ -129,7 +130,15 @@ fn paint_number_chip_inner(
         };
         fill_rounded_rect(scene, rect, radius, resolve(bg, theme));
         if focused {
-            stroke_rounded_rect(scene, rect, radius, 2.0, resolve(ColorToken::Accent, theme));
+            crate::paint::stroke_frame(
+                scene,
+                rect,
+                radius,
+                theme,
+                ph2d_tokens::visuals::Feel::Focused,
+                2.0,
+                resolve(ColorToken::Accent, theme),
+            );
         }
     }
     let display_owned;

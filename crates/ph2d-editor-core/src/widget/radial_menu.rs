@@ -136,7 +136,7 @@ pub fn paint_radial_menu(
     text_system: &mut ph2d_text::TextSystem,
     theme: ph2d_tokens::Theme,
 ) {
-    use crate::paint::{fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect};
+    use crate::paint::{fill_rounded_rect, paint_text_centered, resolve};
     use crate::zones::Rect;
     use ph2d_tokens::{ColorToken, Radius, StrokeToken, TypeToken};
 
@@ -149,15 +149,21 @@ pub fn paint_radial_menu(
         d,
         d,
     );
+    // ⚠️ O disco NÃO passa pela porta do raio: é um círculo, e o raio é a forma. A moldura passa.
     fill_rounded_rect(scene, hub, dead_zone_px(), resolve(ColorToken::Bg1, theme));
-    stroke_rounded_rect(
+    crate::paint::stroke_frame(
         scene,
         hub,
         dead_zone_px(),
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Thin.px(),
         resolve(ColorToken::Border, theme),
     );
 
+    // ⭐ Raio e moldura pela porta do TEMA: as etiquetas são planas num tema moderno, e a que
+    //    está acesa diz-se pela tinta.
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     for (i, item) in open.items.iter().enumerate() {
         let o = item_offset(i, n);
         let (w, h) = (label_w_px(), label_h_px());
@@ -171,7 +177,7 @@ pub fn paint_radial_menu(
         fill_rounded_rect(
             scene,
             r,
-            Radius::Sm.px(),
+            radius,
             resolve(
                 if lit {
                     ColorToken::AccentSoft
@@ -181,10 +187,16 @@ pub fn paint_radial_menu(
                 theme,
             ),
         );
-        stroke_rounded_rect(
+        crate::paint::stroke_frame(
             scene,
             r,
-            Radius::Sm.px(),
+            radius,
+            theme,
+            if lit {
+                ph2d_tokens::visuals::Feel::Active
+            } else {
+                ph2d_tokens::visuals::Feel::Rest
+            },
             StrokeToken::Thin.px(),
             resolve(
                 if lit {

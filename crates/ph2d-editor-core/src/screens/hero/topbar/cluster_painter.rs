@@ -15,7 +15,7 @@ use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
 
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
 use crate::widget::{ButtonState, IconButtonStyle, IconGlyph, paint_icon_button};
 use crate::zones::Rect;
 
@@ -79,6 +79,7 @@ pub(super) fn paint_topbar_rail_chip(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     motion: &crate::motion::UiMotion,
+    active: bool,
 ) {
     // Chip size mirrors the rail. Read from store so the Themes-menu
     // RailButtonSize preset (Small/Medium/Large) affects the topbar
@@ -114,8 +115,15 @@ pub(super) fn paint_topbar_rail_chip(
     // backdrop edge — the same chip/backdrop ratio the rail has,
     // making the border read as part of the chrome instead of a
     // "moldura intermediária".
-    let radius = Radius::Sm.px();
-    let is_active = state == ButtonState::Pressed;
+    // ⭐ Raio e moldura pela porta do TEMA — a mesma porta do rail (`chip_feel`).
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+    // ⭐ **O MODO ligado é o `active` do chip, não um anel por cima.** Até 2026-09-05 o
+    //    `topbar/mod.rs` traçava um anel de acento SOBRE o chip do Image Tools quando o modo estava
+    //    ligado — o único indicador do modo, fora de qualquer tabela, e num tema moderno (sem
+    //    moldura em repouso) ele desapareceria. Hoje o chip é `is_active` pelo mesmo eixo que o
+    //    rail usa para a ferramenta em mãos: no clássico a tinta `AccentSoft` + contorno de acento
+    //    (a matriz do rail, que este pintor declara copiar), num tema moderno o realce do tema.
+    let is_active = active || state == ButtonState::Pressed;
     let bg = match state {
         ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
         ButtonState::Pressed => ColorToken::AccentSoft,
@@ -144,7 +152,15 @@ pub(super) fn paint_topbar_rail_chip(
         border,
         theme,
     );
-    stroke_rounded_rect(scene, chip_rect, radius, border_w, border_c);
+    crate::paint::stroke_frame(
+        scene,
+        chip_rect,
+        radius,
+        theme,
+        crate::widget::chip_feel(state, is_active),
+        border_w,
+        border_c,
+    );
     // Route through the canonical icon-button painter (Plain style: no
     // extra fill/border, only the glyph), so the `paint_icon_path` arch
     // gate doesn't fire here. `icon_tint(state)` inside `paint_icon_button`
@@ -191,6 +207,8 @@ pub(super) fn paint_topbar_rail_chip(
 }
 
 #[allow(clippy::too_many_arguments)]
+/// `active`: o cluster está EM MODO (hoje só o chip do Image Tools, com o modo ligado) — pinta-se
+/// como a ferramenta em mãos do rail. Só o `Single` o lê; os outros clusters não têm modo.
 pub(super) fn paint_top_bar_cluster(
     id: NodeId,
     cluster: &fixture::TopBarCluster,
@@ -202,6 +220,7 @@ pub(super) fn paint_top_bar_cluster(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     motion: &crate::motion::UiMotion,
+    active: bool,
 ) {
     use fixture::TopBarCluster;
     let pad_x = Spacing::Md.px();
@@ -223,16 +242,15 @@ pub(super) fn paint_top_bar_cluster(
     // ONLY for Theme + Project. Single/Play/Right delegate to
     // `paint_topbar_rail_chip`, which paints its own per-chip surface.
     let paint_wide_chip = |scene: &mut VectorScene| {
-        fill_rounded_rect(
+        // ⭐ Raio e moldura pela porta do TEMA: o chip largo é plano num tema moderno.
+        let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+        fill_rounded_rect(scene, inner, radius, resolve(ColorToken::BgElev, theme));
+        crate::paint::stroke_frame(
             scene,
             inner,
-            Radius::Sm.px(),
-            resolve(ColorToken::BgElev, theme),
-        );
-        stroke_rounded_rect(
-            scene,
-            inner,
-            Radius::Sm.px(),
+            radius,
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
             1.0,
             resolve(ColorToken::Border, theme),
         );
@@ -301,6 +319,7 @@ pub(super) fn paint_top_bar_cluster(
                 hit_index,
                 store,
                 motion,
+                active,
             );
         }
         TopBarCluster::Project { name } => {
@@ -384,6 +403,7 @@ pub(super) fn paint_top_bar_cluster(
                     hit_index,
                     store,
                     motion,
+                    false,
                 );
             }
         }
@@ -411,6 +431,7 @@ pub(super) fn paint_top_bar_cluster(
                     hit_index,
                     store,
                     motion,
+                    false,
                 );
             }
         }

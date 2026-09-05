@@ -102,6 +102,66 @@ fn the_door_alone_removes_exactly_one_frame() {
     );
 }
 
+/// ⭐⭐ **A WAVE 3 fechou a dívida, e três dos vinte pintores convertidos provam-no ao PIXEL** —
+/// cada um é *fundo + moldura* no clássico (2 caminhos; o texto vai por glifos) e *só fundo* num
+/// tema moderno (1): o avatar (a moldura de um chip), a barra de estado vazia (a pílula que virou
+/// rectângulo) e o menu de contexto vazio (um cartão flutuante).
+///
+/// ⛔ Existe pela mesma razão do gate acima: o censo do FONTE vê que o ficheiro *conhece* a porta,
+/// não que a *atravessa* — um pintor que chame `stroke_frame` com `Feel::Error` em repouso passa
+/// no censo e traça na mesma. Só a contagem exacta `classic − 1` o apanha.
+///
+/// **Mutação que deve sangrar:** trocar o `Feel::Rest` de qualquer um dos três por `Feel::Error`,
+/// ou `visuals::frame` a devolver `Frame::Classic` para todo tema.
+#[test]
+fn the_wave_three_painters_lose_exactly_their_frame() {
+    use ph2d_editor_core::widget::{
+        Avatar, ContextMenu, StatusBar, paint_avatar, paint_context_menu, paint_status_bar,
+    };
+    fn rect() -> Rect {
+        Rect::new(10.0, 10.0, 120.0, 32.0)
+    }
+    type Painter = fn(Theme) -> u32;
+    let painters: [(&str, Painter); 3] = [
+        ("avatar", |theme| {
+            let mut scene = VectorScene::new();
+            let mut text = TextSystem::without_system_fonts();
+            let avatar = Avatar::new(NodeId(7), "Enio", 'E');
+            paint_avatar(&avatar, rect(), &mut scene, &mut text, theme);
+            scene.inner().encoding().n_paths
+        }),
+        ("status bar", |theme| {
+            let mut scene = VectorScene::new();
+            let mut text = TextSystem::without_system_fonts();
+            let bar = StatusBar::new(NodeId(8), "Status", Vec::new());
+            paint_status_bar(&bar, rect(), &mut scene, &mut text, theme);
+            scene.inner().encoding().n_paths
+        }),
+        ("context menu", |theme| {
+            let mut scene = VectorScene::new();
+            let mut text = TextSystem::without_system_fonts();
+            let menu = ContextMenu::new(NodeId(9), "Menu", Vec::new());
+            paint_context_menu(&menu, rect(), &mut scene, &mut text, theme, 22.0);
+            scene.inner().encoding().n_paths
+        }),
+    ];
+    for (name, paths) in painters {
+        let classic = paths(Theme::Forge);
+        let modern = paths(Theme::Dark);
+        assert_eq!(classic, 2, "{name}: o classico e' fundo + moldura");
+        assert_eq!(
+            modern,
+            classic - 1,
+            "{name}: o moderno devia ser so' o fundo — {modern} caminhos contra {classic}"
+        );
+        assert_eq!(
+            paths(Theme::Oled),
+            classic,
+            "{name}: o OLED traca bordas extra, como no Godot"
+        );
+    }
+}
+
 /// ⛔ **O controlo: dois temas da MESMA família emitem a MESMA geometria** — o que muda entre o
 /// `forge` e o `workshop` é cor, nunca contorno. Sem isto, uma contagem qualquer que desse
 /// «menos» passaria por pele plana.

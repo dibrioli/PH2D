@@ -5,7 +5,7 @@
 //! avatar widget only knows the *initial* glyph for the placeholder
 //! variant. M14+ wires real image bitmaps via `peniko::Image`.
 
-use crate::paint::{fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -77,9 +77,11 @@ pub fn paint_avatar(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    // ⚠️ O CÍRCULO não passa pela porta do raio: ele é a FORMA do avatar, não uma quina — a porta
+    //    faria dele um quadrado de raio 4. Só o quadrado tem quinas para o tema decidir.
     let radius = match avatar.shape {
         AvatarShape::Circle => Radius::Full.px(),
-        AvatarShape::Square => Radius::Md.px(),
+        AvatarShape::Square => crate::paint::frame_radius(theme, Radius::Md.px()),
     };
     let bg_token = if avatar.state == AvatarState::Disabled {
         ColorToken::Border
@@ -87,7 +89,20 @@ pub fn paint_avatar(
         ColorToken::Bg2
     };
     fill_rounded_rect(scene, rect, radius, resolve(bg_token, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    // ⭐ A moldura pela porta do TEMA: plano num tema moderno.
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        if avatar.state == AvatarState::Disabled {
+            ph2d_tokens::visuals::Feel::Disabled
+        } else {
+            ph2d_tokens::visuals::Feel::Rest
+        },
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
 
     let glyph = avatar
         .initial

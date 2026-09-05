@@ -7,7 +7,7 @@
 //! handling without per-node mutation.
 
 use crate::icons::IconId;
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -173,20 +173,20 @@ pub fn paint_tree_view(
         let y = rect.y + row_h * visible_index as f32;
         let row = Rect::new(rect.x, y, rect.w, row_h);
         if tree.selected.contains(&node.id) {
-            fill_rounded_rect(
-                scene,
-                row,
-                Radius::Xs.px(),
-                resolve(ColorToken::AccentSoft, theme),
-            );
+            // ⭐ Raio e moldura pela porta do TEMA: a linha seleccionada é só tinta num tema
+            //    moderno (a `selected` do `Tree` do Godot).
+            let radius = crate::paint::frame_radius(theme, Radius::Xs.px());
+            fill_rounded_rect(scene, row, radius, resolve(ColorToken::AccentSoft, theme));
             // Thin accent stroke so the selected row reads as
             // "active" rather than just "tinted" — matches the
             // hierarchy panel's row stroke and the picker's
             // channel-chip-active state.
-            stroke_rounded_rect(
+            crate::paint::stroke_frame(
                 scene,
                 row,
-                Radius::Xs.px(),
+                radius,
+                theme,
+                ph2d_tokens::visuals::Feel::Active,
                 1.0,
                 resolve(ColorToken::Accent, theme),
             );

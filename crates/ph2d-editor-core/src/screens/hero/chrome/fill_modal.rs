@@ -14,7 +14,7 @@
 use crate::action_bus::EditorAction;
 use crate::ids;
 use crate::interaction::{HitIndex, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::screens::hero::HeroScreen;
 use crate::tool::PanelEvent;
 use crate::widget::{Button, Slider, paint_button, paint_slider};
@@ -83,9 +83,18 @@ pub fn paint_fill_adjust_modal(
     }
 
     // Floating panel surface.
-    let radius = Radius::Md.px();
+    // ⭐ Raio e moldura pela porta do TEMA: o cartão flutuante é plano num tema moderno.
+    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
 
     let inner_x = rect.x + Spacing::Md.px();
     let inner_w = rect.w - Spacing::Md.px() * 2.0;

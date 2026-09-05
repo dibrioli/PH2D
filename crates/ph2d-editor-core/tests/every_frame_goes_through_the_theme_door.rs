@@ -26,32 +26,10 @@ use std::path::{Path, PathBuf};
 /// ⏳ **Dívida MEDIDA, e só encolhe.** Cada ficheiro aqui traça molduras sem perguntar ao tema —
 /// num tema moderno ele ainda desenha o contorno que a pele plana apagou nos vizinhos.
 ///
-/// ⚠️ **Não acrescente entradas.** Um pintor novo nasce com a porta; é uma chamada.
-const NOT_YET: &[&str] = &[
-    "screens/hero/asset_drag_ghost.rs",
-    "screens/hero/chrome/input_map.rs",
-    "screens/hero/topbar/mod.rs",
-    "widget/avatar.rs",
-    "widget/blender_color_picker/harmony.rs",
-    "widget/blender_color_picker/hex_field.rs",
-    "widget/blender_color_picker/paint.rs",
-    "widget/blender_color_picker/value_slider.rs",
-    "widget/color_picker.rs",
-    "widget/combobox.rs",
-    "widget/context_menu.rs",
-    "widget/key_value_list.rs",
-    "widget/radial_menu.rs",
-    "widget/radio_group.rs",
-    "widget/rect2_editor.rs",
-    "widget/showcase/body.rs",
-    "widget/slider.rs",
-    "widget/slider_with_chip/number_chip.rs",
-    "widget/status_bar.rs",
-    "widget/tree_view.rs",
-    "screens/hero/chrome/fill_modal.rs",
-    "screens/hero/chrome/onion_modal.rs",
-    "screens/hero/topbar/cluster_painter.rs",
-];
+/// ⭐ **VAZIA desde 2026-09-05** (wave 3): os 22 ficheiros da wave 2 passaram pela porta — 20
+/// convertidos, 2 isentos por mecanismo (abaixo). ⚠️ **Não acrescente entradas.** Um pintor novo
+/// nasce com a porta; é uma chamada.
+const NOT_YET: &[&str] = &[];
 
 /// ⛔ **Isentos POR MECANISMO, cada um com o motivo** — e o motivo é sobre o que o ficheiro É,
 /// não sobre uma contagem que envelhece.
@@ -79,6 +57,14 @@ const EXEMPT: &[(&str, &str)] = &[
     (
         "screens/hero/slot_tabs.rs",
         "o unico traco e' o contorno da aba DESTINO enquanto se arrasta outra: e' a mensagem, nao moldura de repouso.",
+    ),
+    (
+        "widget/rect2_editor.rs",
+        "as ALCAS de um gizmo sobre CONTEUDO (as pegas de mover/redimensionar um rect): o contorno e' o que as separa da imagem por baixo, como o marquee.",
+    ),
+    (
+        "widget/showcase/body.rs",
+        "o contorno de seccao do showcase e' a MARCA de realce que o utilizador escolheu (`Section outline`, cor de marcador): conteudo autorado, nao moldura de repouso.",
     ),
 ];
 

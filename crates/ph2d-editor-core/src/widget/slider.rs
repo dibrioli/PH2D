@@ -6,7 +6,7 @@
 //! Supports horizontal and vertical orientation and an optional set
 //! of tick positions for snap-to-grid affordance.
 
-use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme};
@@ -253,10 +253,13 @@ pub fn paint_slider(slider: &Slider, rect: Rect, scene: &mut VectorScene, theme:
     }
 
     if slider.state == SliderState::Focused {
-        stroke_rounded_rect(
+        // ⭐ O anel de foco pela porta do TEMA (o acento a 2 px num tema moderno).
+        crate::paint::stroke_frame(
             scene,
             track,
             r,
+            theme,
+            ph2d_tokens::visuals::Feel::Focused,
             StrokeToken::Default.px(),
             resolve(ColorToken::BorderEmph, theme),
         );

@@ -20,7 +20,7 @@
 //! ser clicável — ela taparia sempre o alvo que a mão está a procurar.
 
 use crate::interaction::drag_payload::{DragVerdict, InFlightDrag};
-use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, resolve};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
@@ -74,16 +74,21 @@ pub(super) fn paint_asset_drag_ghost(
         w,
         h,
     );
-    fill_rounded_rect(
+    // ⭐ Raio e moldura pela porta do TEMA. A RECUSA é `Feel::Error` — a única moldura que a
+    //    família moderna não apaga, porque sem ela o fantasma recusado lê-se como aceite; o
+    //    aceite é um fantasma plano com o rótulo (a pré-visualização de arrasto do Godot).
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
+    crate::paint::stroke_frame(
         scene,
         rect,
-        Radius::Sm.px(),
-        resolve(ColorToken::BgElev, theme),
-    );
-    stroke_rounded_rect(
-        scene,
-        rect,
-        Radius::Sm.px(),
+        radius,
+        theme,
+        if refused {
+            ph2d_tokens::visuals::Feel::Error
+        } else {
+            ph2d_tokens::visuals::Feel::Active
+        },
         StrokeToken::Default.px(),
         resolve(
             if refused {

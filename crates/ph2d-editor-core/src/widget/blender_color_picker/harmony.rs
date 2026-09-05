@@ -18,7 +18,7 @@ use super::channels::{hsv_to_rgba8, rgba_to_hsv};
 use super::state::BlenderColorPicker;
 use super::sub_ids::BlenderSubIds;
 use crate::interaction::HitIndex;
-use crate::paint::{fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_text_centered, resolve};
 use crate::widget::{RadioGroup, RadioOption, RadioOrientation, paint_radio_group_with_labels};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -184,7 +184,8 @@ pub fn paint_harmony_section(
     if cp.harmony != Harmony::None {
         let sw_y = rect.y + HARMONY_SEL_H + Spacing::Xs.px();
         let colors = partners(cp.value, cp.harmony);
-        let radius = Radius::Sm.px();
+        // ⭐ Raio e moldura pela porta do TEMA: as amostras e o «+» são planos num tema moderno.
+        let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
         let gap = 4.0_f32;
         // Reserva um "+" ao fim (add ao palette); as swatches dividem o resto.
         let add_w = HARMONY_SWATCH_H;
@@ -203,17 +204,27 @@ pub fn paint_harmony_section(
                 radius,
                 ph2d_vector::Color::from_rgba8(r, g, b, a),
             );
-            stroke_rounded_rect(scene, sr, radius, 1.0, resolve(ColorToken::Border, theme));
+            crate::paint::stroke_frame(
+                scene,
+                sr,
+                radius,
+                theme,
+                ph2d_tokens::visuals::Feel::Rest,
+                1.0,
+                resolve(ColorToken::Border, theme),
+            );
             if let Some(id) = ids.harmony_swatches.get(i).filter(|id| id.0 != 0) {
                 hit_index.register(*id, sr);
             }
         }
         let add_rect = Rect::new(rect.x + rect.w - add_w, sw_y, add_w, HARMONY_SWATCH_H);
         fill_rounded_rect(scene, add_rect, radius, resolve(ColorToken::Bg2, theme));
-        stroke_rounded_rect(
+        crate::paint::stroke_frame(
             scene,
             add_rect,
             radius,
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
             1.0,
             resolve(ColorToken::Border, theme),
         );

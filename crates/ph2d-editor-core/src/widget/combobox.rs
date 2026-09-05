@@ -7,9 +7,7 @@
 //! hit-test path share one source of truth.
 
 use crate::icons::IconId;
-use crate::paint::{
-    fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
-};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -168,7 +166,8 @@ pub fn paint_combobox_with_state(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let radius = Radius::Sm.px();
+    // ⭐ Raio e moldura pela porta do TEMA: plano num tema moderno, moldura só no foco.
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     let fill = if cb.state == ComboboxState::Disabled {
         ColorToken::Bg2
     } else {
@@ -185,7 +184,20 @@ pub fn paint_combobox_with_state(
     } else {
         1.0
     };
-    stroke_rounded_rect(scene, rect, radius, stroke_w, resolve(border, theme));
+    let feel = match cb.state {
+        ComboboxState::Focused => ph2d_tokens::visuals::Feel::Focused,
+        ComboboxState::Disabled => ph2d_tokens::visuals::Feel::Disabled,
+        _ => ph2d_tokens::visuals::Feel::Rest,
+    };
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        feel,
+        stroke_w,
+        resolve(border, theme),
+    );
 
     let pad_x = Spacing::Lg.px();
     let icon_size = (rect.h * 0.5).clamp(14.0, 18.0); // LITERAL-PX-OK: search icon scales 50% of host with min/max

@@ -179,6 +179,10 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "blender_color_picker/wheel.rs",
         "paint helper; parent mod owns a11y",
     ),
+    (
+        "blender_color_picker/preview.rs",
+        "paint helper (a amostra da cor sobre o xadrez, cortada do paint.rs pelo teto de LOC na wave 3 do redesenho); parent mod owns a11y",
+    ),
     // Wave 8 Phase 2.A panel chrome: shared paint helpers + constants
     // (paint_panel_surface, drag/resize hit-zone rects, clamp math,
     // HIGHLIGHTER_RGBA). No standalone user-facing semantics — each

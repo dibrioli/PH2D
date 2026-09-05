@@ -91,7 +91,10 @@ estados do widget (forma egui) e os quatro pintores de cromo (painel · secção
 lê-la: **moldura zero, raio 4**. O redesenho abre no `Dark`; `PH2D_UI_NEW=0` devolve o clássico
 intacto. ⭐ **E a wave 2 (05/09) fez da moldura uma PORTA** (`visuals::frame` / `paint::stroke_frame`):
 24 pintores convertidos, os 22 que faltam nomeados numa catraca, e um gate de PIXEL a provar que
-o tema moderno emite menos geometria. Mecanismo e o que ficou de fora:
+o tema moderno emite menos geometria. ⭐ **E a wave 3 (05/09) pôs a catraca a ZERO** — os 22
+passaram pela porta (20 convertidos, 2 isentos por mecanismo), e o modo *Image Tools* ligado
+deixou de ser um anel traçado por cima do chip (que sumiria no moderno) para ser o chip a
+pintar-se activo pela matriz do rail. Mecanismo e o que ficou de fora:
 [`pesquisa/08 §7`](pesquisa/08_modelos_com_codigo_para_seguir.md).
 
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·

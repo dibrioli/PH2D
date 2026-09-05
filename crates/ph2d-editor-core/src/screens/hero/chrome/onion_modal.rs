@@ -24,7 +24,7 @@
 
 use crate::ids;
 use crate::interaction::{HitIndex, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::screens::hero::HeroScreen;
 use crate::widget::{Button, Slider, paint_button, paint_slider};
 use crate::zones::Rect;
@@ -98,9 +98,18 @@ pub fn paint_onion_modal(
     let rect_y = y.clamp(viewport.y, max_y); // CLAMP-OK: bounds ordered (max_y ≥ viewport.y) + non-NaN
     let rect = Rect::new(rect_x, rect_y, MODAL_W, total_h);
 
-    let radius = Radius::Md.px();
+    // ⭐ Raio e moldura pela porta do TEMA: o cartão flutuante é plano num tema moderno.
+    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
 
     let inner_x = rect.x + Spacing::Md.px();
     let inner_w = rect.w - Spacing::Md.px() * 2.0;
@@ -195,16 +204,20 @@ pub fn paint_onion_modal(
         let sw_rect = Rect::new(inner_x + inner_w - SWATCH_W, cy, SWATCH_W, row_h);
         hit_index.register(id, sw_rect);
         let rgba = store.widget_color(id).unwrap_or([0x80, 0x80, 0x80, 0xFF]);
+        // ⭐ A amostra é plana num tema moderno.
+        let sw_radius = crate::paint::frame_radius(theme, Radius::Sm.px());
         fill_rounded_rect(
             scene,
             sw_rect,
-            Radius::Sm.px(),
+            sw_radius,
             Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]), // LITERAL-COLOR-OK: user-color — a cor de fantasma AUTORADA pelo artista, nunca um token de tema
         );
-        stroke_rounded_rect(
+        crate::paint::stroke_frame(
             scene,
             sw_rect,
-            Radius::Sm.px(),
+            sw_radius,
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
             1.0,
             resolve(ColorToken::Border, theme),
         );

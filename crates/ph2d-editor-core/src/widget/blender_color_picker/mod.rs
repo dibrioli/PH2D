@@ -33,6 +33,7 @@ pub mod harmony;
 pub mod hex_field;
 pub mod paint;
 pub mod palette;
+pub mod preview;
 pub mod segmented;
 pub mod state;
 pub mod sub_ids;

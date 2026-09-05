@@ -1,7 +1,7 @@
 //! Hex `#RRGGBBAA` text field + eyedropper button painters + parser.
 
 use crate::icons::IconId;
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ColorValue, Radius, Spacing, Theme, TypeToken};
@@ -99,15 +99,36 @@ pub fn paint_hex_field_with_state(
     theme: Theme,
 ) {
     let focused = state == crate::widget::TextInputState::Focused;
-    let radius = Radius::Sm.px();
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::Bg2, theme));
+    // ⭐ O cromo do campo é do TEMA (o molde é o `text_input`): no clássico o `Radius::Sm`, o
+    //    `Bg2` e a moldura de sempre; num tema moderno o raio 4, o fundo de campo, e moldura só
+    //    no foco.
+    let chrome = ph2d_tokens::visuals::Chrome::of(theme);
+    let radius = chrome.field_radius;
+    let fill = if chrome.field_border.is_visible() {
+        resolve(ColorToken::Bg2, theme)
+    } else {
+        crate::paint::token_to_vello(chrome.field_fill)
+    };
+    fill_rounded_rect(scene, rect, radius, fill);
     let stroke_w = if focused { 2.0 } else { 1.0 };
     let border = if focused {
         ColorToken::Accent
     } else {
         ColorToken::Border
     };
-    stroke_rounded_rect(scene, rect, radius, stroke_w, resolve(border, theme));
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        if focused {
+            ph2d_tokens::visuals::Feel::Focused
+        } else {
+            ph2d_tokens::visuals::Feel::Rest
+        },
+        stroke_w,
+        resolve(border, theme),
+    );
     let pad = Spacing::Md.px();
     let label_w = 36.0;
     let label_rect = Rect::new(rect.x + pad, rect.y, label_w, rect.h);
@@ -197,14 +218,27 @@ pub fn paint_eyedropper_with_state(
     scene: &mut VectorScene,
     theme: Theme,
 ) {
-    let radius = Radius::Sm.px();
+    // ⭐ Raio e moldura pela porta do TEMA: o botão é plano num tema moderno.
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     let (bg, border, fg) = if active {
         (ColorToken::Accent, ColorToken::Accent, ColorToken::AccentFg)
     } else {
         (ColorToken::Bg2, ColorToken::Border, ColorToken::Text2)
     };
     fill_rounded_rect(scene, rect, radius, resolve(bg, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(border, theme));
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        if active {
+            ph2d_tokens::visuals::Feel::Active
+        } else {
+            ph2d_tokens::visuals::Feel::Rest
+        },
+        1.0,
+        resolve(border, theme),
+    );
     paint_icon(scene, IconId::EyePencil, rect, resolve(fg, theme), 1.5);
 }
 

@@ -51,7 +51,16 @@ pub fn paint_value_slider(
         None,
         &body,
     );
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    // ⭐ A moldura da faixa pela porta do TEMA: plana num tema moderno.
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
 
     // Thumb: thin vertical pill at retained `hsv_h × w`. Reading
     // hue from the picker's anchor (rather than rgba_to_hsv) keeps
@@ -69,6 +78,9 @@ pub fn paint_value_slider(
         .clamp(rect.x, rect.x + rect.w - thumb_w); // CLAMP-OK: rect-bound visual thumb clamp (bounds well-formed by construction)
     let thumb_rect = Rect::new(thumb_x, rect.y, thumb_w, rect.h);
     fill_rounded_rect(scene, thumb_rect, 2.0, resolve(ColorToken::Text1, theme));
+    // ⚠️ Este traço NÃO é moldura e não passa pela porta: é o HALO de contraste que separa o
+    //    cursor claro de qualquer matiz da faixa (o grabber do Godot leva o mesmo contorno
+    //    escuro). Sem ele, o cursor some sobre o amarelo.
     stroke_rounded_rect(scene, thumb_rect, 2.0, 1.0, resolve(ColorToken::Bg0, theme));
 }
 

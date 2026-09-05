@@ -7,7 +7,7 @@
 //! emphasis token (Accent, Success, etc); a leading status dot is
 //! supported for the `EDIT` segment.
 
-use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -122,9 +122,18 @@ pub fn paint_status_bar(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let radius = Radius::Full.px();
+    // ⭐ A pílula é do CLÁSSICO: num tema moderno a barra é um rectângulo de raio 4 sem moldura.
+    let radius = crate::paint::frame_radius(theme, Radius::Full.px());
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
 
     if bar.segments.is_empty() {
         return;

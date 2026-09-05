@@ -9,7 +9,7 @@
 
 use super::button::{Button, ButtonKind, paint_button};
 use crate::icons::IconId;
-use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -139,16 +139,15 @@ fn paint_field(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    fill_rounded_rect(
+    // ⭐ Raio e moldura pela porta do TEMA: o campo é plano num tema moderno.
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::Bg3, theme));
+    crate::paint::stroke_frame(
         scene,
         rect,
-        Radius::Sm.px(),
-        resolve(ColorToken::Bg3, theme),
-    );
-    stroke_rounded_rect(
-        scene,
-        rect,
-        Radius::Sm.px(),
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Default.px(),
         resolve(ColorToken::Border, theme),
     );

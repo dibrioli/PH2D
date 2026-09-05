@@ -98,6 +98,11 @@ mod edit;
 #[path = "motion_bridge_readout.rs"]
 mod readout;
 
+/// A medição do grupo do ciclo aberto (doc 104) — sonda `#[ignore]`, não um gate.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_arranjo_probe.rs"]
+mod arranjo_probe;
+
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_rewire.rs"]
 mod rewire;

@@ -102,6 +102,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 };
 
 /// The squared distance from `p` to the nearest of `placed` (`f32::MAX` if empty).
+/// ⚠️ **O ORÁCULO, e só isso** — a varredura linear que a [`NearGrid`] substituiu em
+/// 2026-09-05. Fica viva **em teste** porque é ela que prova a bit-identidade da grelha
+/// (`the_grid_returns_exactly_what_the_scan_returned`); apagá-la deixaria a troca sem oráculo,
+/// e o gate a comparar a grelha consigo própria.
+#[cfg(test)]
 fn nearest_sq(p: [f32; 2], placed: &[[f32; 2]]) -> f32 {
     placed
         .iter()
@@ -110,6 +115,141 @@ fn nearest_sq(p: [f32; 2], placed: &[[f32; 2]]) -> f32 {
             dx * dx + dy * dy
         })
         .fold(f32::MAX, f32::min)
+}
+
+/// ⭐⭐⭐ **A GRELHA DE VIZINHANÇA — o que tira este nó de `O(n²)`.**
+///
+/// ⛔⛔ **Medido em 2026-09-05: `motion.scatter` custava `153 ms` para 10 000 pontos** — nove
+/// quadros a 60 fps, para o nó que um artista põe primeiro. A causa é o critério de Mitchell na
+/// forma ingénua: por cada um dos `count` pontos lançam-se [`CANDIDATES`] dardos, e cada dardo
+/// varria **todos os pontos já colocados** ⇒ `10 000 × 12 × 5 000 ≈ 600 milhões` de distâncias.
+///
+/// A grelha indexa os pontos colocados por célula do tamanho do espaçamento alvo (~1 ponto por
+/// célula), e a consulta cresce em ANÉIS à volta da célula do candidato, parando quando o anel
+/// seguinte já não pode conter nada mais perto que o melhor até agora.
+///
+/// ⭐⭐ **A saída é BIT-IDÊNTICA, e não por promessa:** [`Self::nearest_sq`] devolve o **mínimo
+/// do mesmo conjunto** que a varredura devolvia, e um mínimo não depende da ordem de visita
+/// (`f32::min` é comutativo fora de `NaN`). A paragem é conservadora — só corta quando nenhum
+/// ponto por visitar pode estar mais perto —, e o gate
+/// `the_grid_returns_exactly_what_the_scan_returned` mede-o ponto a ponto.
+struct NearGrid {
+    /// Lado de uma célula. Nunca zero: uma região degenerada cai numa célula só.
+    cell: f32,
+    cols: usize,
+    rows: usize,
+    /// O canto inferior-esquerdo da caixa da região.
+    ox: f32,
+    oy: f32,
+    /// Índices em `placed`, por célula.
+    cells: Vec<Vec<u32>>,
+}
+
+impl NearGrid {
+    /// Uma grelha dimensionada para ~**um ponto por célula** — o que faz a consulta ser `O(1)`
+    /// amortizado. ⚠️ O número de células é limitado a `4 × count` para uma região muito
+    /// alongada não pedir memória a mais do que os pontos que vai guardar.
+    fn new(region: &Region, count: usize) -> Self {
+        let [hw, hh] = region.half_extents();
+        let (w, h) = ((2.0 * hw).max(f32::MIN_POSITIVE), (2.0 * hh).max(f32::MIN_POSITIVE));
+        let alvo = (w * h / (count.max(1) as f32)).max(f32::MIN_POSITIVE).sqrt();
+        let mut cols = ((w / alvo).ceil() as usize).max(1);
+        let mut rows = ((h / alvo).ceil() as usize).max(1);
+        let tecto = count.max(1).saturating_mul(4);
+        while cols.saturating_mul(rows) > tecto && (cols > 1 || rows > 1) {
+            cols = (cols / 2).max(1);
+            rows = (rows / 2).max(1);
+        }
+        Self {
+            cell: (w / cols as f32).max(h / rows as f32).max(f32::MIN_POSITIVE),
+            cols,
+            rows,
+            ox: -hw,
+            oy: -hh,
+            cells: vec![Vec::new(); cols * rows],
+        }
+    }
+
+    /// A célula de `p`, presa à grelha (um candidato nasce dentro da região, logo dentro da
+    /// caixa; o clamp é a rede contra o bordo exacto e contra um `f32` não-finito).
+    fn cell_of(&self, p: [f32; 2]) -> (usize, usize) {
+        let cx = ((p[0] - self.ox) / self.cell) as isize;
+        let cy = ((p[1] - self.oy) / self.cell) as isize;
+        (
+            cx.clamp(0, self.cols as isize - 1) as usize,
+            cy.clamp(0, self.rows as isize - 1) as usize,
+        )
+    }
+
+    fn insert(&mut self, i: u32, p: [f32; 2]) {
+        let (cx, cy) = self.cell_of(p);
+        self.cells[cy * self.cols + cx].push(i);
+    }
+
+    /// O quadrado da distância ao ponto colocado mais próximo — **o mesmo `f32`** que a
+    /// varredura devolvia. `f32::MAX` quando ainda não há nenhum.
+    fn nearest_sq(&self, p: [f32; 2], placed: &[[f32; 2]]) -> f32 {
+        let (cx, cy) = self.cell_of(p);
+        let mut best = f32::MAX;
+        let max_anel = self.cols.max(self.rows);
+        for r in 0..=max_anel {
+            // ⚠️ **A paragem é CONSERVADORA:** `p` pode estar em qualquer ponto da sua célula,
+            // então um ponto no anel `r` está a pelo menos `(r-1)·cell`. Cortar em `r·cell`
+            // perderia vizinhos e a saída deixaria de bater com a varredura.
+            if r > 1 {
+                let piso = (r - 1) as f32 * self.cell;
+                if piso * piso > best {
+                    break;
+                }
+            }
+            let (x0, x1) = (cx.saturating_sub(r), (cx + r).min(self.cols - 1));
+            let (y0, y1) = (cy.saturating_sub(r), (cy + r).min(self.rows - 1));
+            // ⚠️ **Só o CONTORNO, percorrido como contorno** — o miolo já foi visitado num anel
+            // anterior. A 1.ª versão varria o RECTÂNGULO e saltava o miolo com um `if`, o que
+            // faz cada anel custar `O(r²)` em vez de `O(r)`; com a grelha quase vazia (os
+            // primeiros pontos) o `r` chega ao lado da grelha e isso sozinho era metade do
+            // relógio.
+            let visita = |cel: &Vec<u32>, best: &mut f32| {
+                for &i in cel {
+                    let q = placed[i as usize];
+                    let (dx, dy) = (p[0] - q[0], p[1] - q[1]);
+                    *best = best.min(dx * dx + dy * dy);
+                }
+            };
+            if r == 0 {
+                visita(&self.cells[cy * self.cols + cx], &mut best);
+            } else {
+                // As duas fileiras horizontais (topo e fundo), inteiras.
+                for x in x0..=x1 {
+                    if cy >= r {
+                        visita(&self.cells[y0 * self.cols + x], &mut best);
+                    }
+                    if cy + r < self.rows {
+                        visita(&self.cells[y1 * self.cols + x], &mut best);
+                    }
+                }
+                // E as duas colunas verticais, sem repetir os cantos.
+                let (iy0, iy1) = (if cy >= r { y0 + 1 } else { y0 }, if cy + r < self.rows { y1.saturating_sub(1) } else { y1 });
+                for y in iy0..=iy1.max(iy0) {
+                    if y > y1 {
+                        break;
+                    }
+                    if cx >= r {
+                        visita(&self.cells[y * self.cols + x0], &mut best);
+                    }
+                    if cx + r < self.cols {
+                        visita(&self.cells[y * self.cols + x1], &mut best);
+                    }
+                }
+            }
+            // ⚠️ **E pára quando o anel já saiu da grelha inteira** — senão, com a grelha quase
+            // vazia, a busca percorre-a toda por cada um dos primeiros pontos.
+            if x0 == 0 && y0 == 0 && x1 == self.cols - 1 && y1 == self.rows - 1 {
+                break;
+            }
+        }
+        best
+    }
 }
 
 /// Lay out `count` blue-noise points in `region` (centred on the origin) by
@@ -131,6 +271,7 @@ fn nearest_sq(p: [f32; 2], placed: &[[f32; 2]]) -> f32 {
 /// *Distribute Points on Faces*, `Density Max` × campo) entrega.
 fn scatter(count: usize, region: &Region, falloff: f32, seed: u32) -> Vec<[f32; 2]> {
     let mut placed: Vec<[f32; 2]> = Vec::with_capacity(count);
+    let mut grelha = NearGrid::new(region, count);
     let graded = falloff > 0.0;
     for i in 0..count {
         let mut best = [0.0, 0.0];
@@ -139,7 +280,7 @@ fn scatter(count: usize, region: &Region, falloff: f32, seed: u32) -> Vec<[f32; 
             let key = i as u32 * CANDIDATES + k;
             // Two decorrelated lanes → a point drawn uniformly over the region.
             let p = region.sample(hash3(seed, key, 0), hash3(seed, key, 1));
-            let d = nearest_sq(p, &placed);
+            let d = grelha.nearest_sq(p, &placed);
             // ⚠️ Sem gradação a pontuação É a distância — sem uma multiplicação por
             // `1,0` no caminho, que num `f32` não é a identidade para todo valor.
             let score = if graded {
@@ -152,6 +293,7 @@ fn scatter(count: usize, region: &Region, falloff: f32, seed: u32) -> Vec<[f32; 
                 best = p;
             }
         }
+        grelha.insert(placed.len() as u32, best);
         placed.push(best);
     }
     placed
@@ -413,6 +555,100 @@ mod tests {
         match out[0].as_stream().get("P").unwrap() {
             Column::Vec2(v) => assert_eq!(v.len(), 16, "16 points emitted"),
             _ => panic!("P"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod grid_tests {
+    use super::{CANDIDATES, NearGrid, hash3, nearest_sq, scatter};
+    use ph2d_motion_region::Region;
+
+    /// ⭐⭐⭐ **A GRELHA DEVOLVE EXACTAMENTE O QUE A VARREDURA DEVOLVIA** — ponto a ponto, bit a
+    /// bit, nas três formas de região.
+    ///
+    /// ⚠️ É este gate que autoriza a troca: o critério de Mitchell escolhe pelo `>` sobre a
+    /// pontuação, então **um único `f32` diferente muda o ponto escolhido** e daí em diante a
+    /// nuvem inteira. FALSIFICADO por cortar a busca em `r·cell` em vez de `(r-1)·cell`
+    /// (perde-se um vizinho na célula ao lado e a distância vem maior).
+    #[test]
+    fn the_grid_returns_exactly_what_the_scan_returned() {
+        for forma in [0.0_f32, 1.0, 2.0] {
+            let region = Region::of(forma, 400.0, 260.0, 0.4);
+            let mut placed: Vec<[f32; 2]> = Vec::new();
+            let mut grelha = NearGrid::new(&region, 600);
+            for i in 0..600u32 {
+                let p = region.sample(hash3(7, i, 0), hash3(7, i, 1));
+                let pela_grelha = grelha.nearest_sq(p, &placed);
+                let pela_varredura = nearest_sq(p, &placed);
+                assert_eq!(
+                    pela_grelha.to_bits(),
+                    pela_varredura.to_bits(),
+                    "forma {forma}, ponto {i}: a grelha deu {pela_grelha} e a varredura {pela_varredura}"
+                );
+                grelha.insert(placed.len() as u32, p);
+                placed.push(p);
+            }
+        }
+    }
+
+    /// **E a NUVEM inteira é a mesma** — o gate de cima mede a consulta, este mede o produto.
+    /// FALSIFICADO por qualquer diferença na ordem de inserção ou no critério de paragem.
+    #[test]
+    fn the_cloud_is_bit_identical_to_the_quadratic_one() {
+        for (forma, count, falloff) in [(0.0_f32, 400usize, 0.0_f32), (1.0, 250, 0.7), (2.0, 300, 0.0)] {
+            let region = Region::of(forma, 300.0, 200.0, 0.35);
+            let novo = scatter(count, &region, falloff, 3);
+            // O algoritmo de referência, escrito aqui à letra do que existia antes da grelha.
+            let mut placed: Vec<[f32; 2]> = Vec::with_capacity(count);
+            let graded = falloff > 0.0;
+            for i in 0..count {
+                let mut best = [0.0, 0.0];
+                let mut best_score = -1.0_f32;
+                for k in 0..CANDIDATES {
+                    let key = i as u32 * CANDIDATES + k;
+                    let p = region.sample(hash3(3, key, 0), hash3(3, key, 1));
+                    let d = nearest_sq(p, &placed);
+                    let score = if graded { d * region.density(p, falloff) } else { d };
+                    if score > best_score {
+                        best_score = score;
+                        best = p;
+                    }
+                }
+                placed.push(best);
+            }
+            assert_eq!(novo.len(), placed.len());
+            for (i, (a, b)) in novo.iter().zip(&placed).enumerate() {
+                assert_eq!(
+                    (a[0].to_bits(), a[1].to_bits()),
+                    (b[0].to_bits(), b[1].to_bits()),
+                    "forma {forma}, ponto {i}: {a:?} contra {b:?}"
+                );
+            }
+        }
+    }
+
+    /// **A MEDIÇÃO da cura** — `#[ignore]`, para o número do doc ser reproduzível com um comando.
+    ///
+    /// `cargo test -p ph2d-node-motion-scatter --release -- --ignored --nocapture measure_scatter_cost`
+    #[test]
+    #[ignore = "medicao"]
+    fn measure_scatter_cost() {
+        let region = Region::of(0.0, 800.0, 600.0, 0.0);
+        eprintln!(
+            "  load: {}",
+            std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+        );
+        eprintln!("  {:>8} │ {:>10} │ {:>12}", "pontos", "ms", "us/ponto");
+        for n in [500usize, 1_000, 5_000, 10_000, 50_000] {
+            let mut melhor = f64::MAX;
+            for _ in 0..3 {
+                let t = std::time::Instant::now();
+                let v = scatter(n, &region, 0.0, 1);
+                melhor = melhor.min(t.elapsed().as_secs_f64() * 1000.0);
+                assert_eq!(v.len(), n);
+            }
+            eprintln!("  {n:>8} │ {melhor:>10.2} │ {:>12.3}", melhor * 1000.0 / n as f64);
         }
     }
 }

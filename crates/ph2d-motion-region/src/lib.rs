@@ -125,6 +125,16 @@ impl Region {
 
     /// O retângulo de sempre — o caminho que **não** paga nada por esta lei existir.
     #[must_use]
+    /// **AS MEIAS-EXTENSÕES da caixa que contém a região** — o rectângulo, o círculo e o anel
+    /// cabem todos nela por construção (`of` guarda `hw`/`hh`).
+    ///
+    /// Existe para quem precisa de INDEXAR o espaço da região (a grelha de vizinhança do
+    /// `motion.scatter`): sem isto o consumidor teria de reconstruir a caixa a partir dos
+    /// params, que é a segunda cópia da lei que este tipo existe para ter numa só.
+    pub fn half_extents(&self) -> [f32; 2] {
+        [self.hw, self.hh]
+    }
+
     pub fn is_rect(&self) -> bool {
         self.shape == SHAPE_RECT
     }

@@ -43,6 +43,12 @@ pub enum SelectModifier {
 /// segunda lista escrita à mão.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum AssetCardAction {
+    /// ⭐⭐⭐ **Editar o componente** (report do Enio, 2026-09-05) — ver
+    /// [`crate::ids::CTX_MENU_ASSET_EDIT`].
+    ///
+    /// ⚠️ Ele **selecciona a receita**; quem a torna visível e editável é a marca derivada que já
+    /// existe. *O verbo que faltava não era um modo — era um acesso.*
+    EditPrefab,
     /// Pôr uma cópia na cena — o mesmo verbo do duplo-clique, sem ponto de queda.
     Instantiate,
     /// ⭐⭐ **Quem usa isto?** — a metade que o Godot chama *Owners*, e a pergunta que precede

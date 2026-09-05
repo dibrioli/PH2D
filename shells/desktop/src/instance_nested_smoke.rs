@@ -172,6 +172,17 @@ impl crate::App {
             "[instance smoke 3] (apagar o 'Body' de uma COPIA e' recusado, com aviso: a forma de \
              uma copia e' a da receita)"
         );
+        // ⭐⭐⭐ **A BIBLIOTECA tem porta e tem o verbo** (report do Enio, 2026-09-05) — e a cena
+        // nomeia os dois, porque foi por não os achar que ele reportou.
+        println!("[instance smoke 3] --- e a BIBLIOTECA ---");
+        println!(
+            "[instance smoke 3] PASSO 9: menu 'Window' > 'Assets' abre a biblioteca (era a porta \
+             que faltava)"
+        );
+        println!(
+            "[instance smoke 3] PASSO 10: botao direito no cartao 'Car' > 'Edit Prefab' -- a \
+             receita aparece no canvas e mexer numa peca dela chega aos dois carros"
+        );
     }
 }
 

@@ -158,6 +158,23 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             // vir a ser (`ph2d-panel-widget-lab`, doc-comment do `lib.rs`).
             (ids::TOPBAR_WIDGET_LAB, "Widget Lab", None),
             (ids::TOPBAR_GRID_SETTINGS, "Grid Settings", None),
+            // ⭐⭐⭐ **A BIBLIOTECA** (report do Enio, 2026-09-05: *«vc não colocou nenhum meio de
+            // abrir a janela de assets»* — e ele estava certo).
+            //
+            // ⛔⛔ **A porta foi CLASSIFICADA COMO LIXO por um motivo que expirou no mesmo dia.**
+            // A `line/UIUX` tirou os 29 pills (a pedido dele) e pôs este id no `NO_DOOR_PENDING`
+            // com a razão *«MORTO PRE-EXISTENTE: … SEM consumidor nenhum no repo inteiro»* — que
+            // **era verdade quando ela varreu**, e deixou de ser horas depois, quando a
+            // `line/components` lhe deu o navegador de assets como consumidor. As duas linhas
+            // compilaram, o merge não teve conflito, e o app ficou com um painel vivo, registado,
+            // despachado e **inalcançável**.
+            //
+            // ⚠️ *É o §0.0 com um MOTIVO no lugar do número: quem torna alcançável o que uma nota
+            // declarou morto tem de reconferir a nota* — e quem a escreveu não tinha como saber.
+            // ⭐ O censo `every_topbar_verb_has_a_door_that_is_not_the_legacy_key` **apanhou-o**:
+            // a metade de obsolescência dele recusou a entrada no instante em que esta linha
+            // nasceu.
+            (ids::TOPBAR_RIGHT_ASSETS, "Assets", None),
         ],
         // ⚠️ **O transporte é UM relógio** (`ph2d_core::Playhead`): física, Motion, Timeline e
         // Flip andam todos nele, e estes três verbos conduzem-nos de uma vez.
@@ -397,6 +414,11 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
         // itens» imediatamente acima de uma arm com DOIS, com a arm do cartão a ficar sem nota
         // nenhuma. *Um comentário separado do seu item muda de dono.*
         ContextMenuKind::AssetCard { .. } => &[
+            // ⭐⭐⭐ **EDITAR vem PRIMEIRO** (report do Enio, 2026-09-05) — e a ordem é medida, não
+            // estética: *Instantiate* tem uma segunda porta (o duplo-clique no cartão) e *Edit* não
+            // tinha nenhuma. *O item que é o ÚNICO acesso ao seu verbo lê-se antes do que se
+            // alcança de duas maneiras.*
+            (ids::CTX_MENU_ASSET_EDIT, "Edit Prefab", None),
             (ids::CTX_MENU_ASSET_INSTANTIATE, "Instantiate", None),
             (ids::CTX_MENU_ASSET_SELECT_USERS, "Select users", None),
             // ⭐⭐ As duas metades de D9. ⚠️ Elas ficam DEPOIS do *Select users* de propósito: a

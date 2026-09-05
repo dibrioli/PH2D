@@ -474,10 +474,6 @@ const NO_DOOR_PENDING: &[(&str, &str)] = &[
          nenhum no repo inteiro — ja' o era antes desta linha existir.",
     ),
     (
-        "TOPBAR_RIGHT_ASSETS",
-        "idem — \"Asset library\", sem consumidor.",
-    ),
-    (
         "TOPBAR_RIGHT_SCRIPT",
         "idem — \"Code · Luau\", sem consumidor.",
     ),

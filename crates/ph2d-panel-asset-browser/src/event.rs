@@ -201,6 +201,7 @@ pub(crate) fn apply_event(
 fn card_verb_of(id: ph2d_a11y::NodeId) -> Option<AssetCardAction> {
     use ph2d_editor_core::ids as core_ids;
     match id {
+        i if i == core_ids::CTX_MENU_ASSET_EDIT => Some(AssetCardAction::EditPrefab),
         i if i == core_ids::CTX_MENU_ASSET_INSTANTIATE => Some(AssetCardAction::Instantiate),
         i if i == core_ids::CTX_MENU_ASSET_SELECT_USERS => Some(AssetCardAction::SelectUsers),
         i if i == core_ids::CTX_MENU_ASSET_REMOVE => Some(AssetCardAction::RemoveFromLibrary),

@@ -116,6 +116,42 @@ pub(crate) fn drain(
     select_out: &mut Option<u64>,
 ) -> bool {
     match (verb, asset) {
+        // ── Editar a receita ───────────────────────────────────────────────────────────────────
+        //
+        // ⭐⭐⭐ **Ele SELECCIONA, e mais nada** (report do Enio, 2026-09-05: *«não tem como editar
+        // o componente»*). A receita não está na cena e **volta enquanto está seleccionada** — a
+        // marca derivada `MasterEditing` do [`crate::render_loop::master_editing`] —, então o verbo
+        // que faltava não era um modo nem uma janela: era um **acesso**. Pôr a selecção na raiz do
+        // mestre acende o canvas, arma o gizmo, enche o Inspector e faz cada peça mexida chegar a
+        // todas as cópias no mesmo quadro.
+        //
+        // ⛔ **A biblioteca era read-only para a FORMA**: listava, instanciava e respondia quem usa
+        // o quê, e não tinha como abrir um componente. *Um catálogo de onde não se edita o conteúdo
+        // é uma vitrina.*
+        (AssetCardAction::EditPrefab, DragPayload::Prefab { stable_id }) => {
+            let Some(bits) = crate::instance_verbs::entity_for_stable_id(sim, stable_id) else {
+                toasts.push(Toast::warning("That prefab is no longer in the project"));
+                return false;
+            };
+            *select_out = Some(bits);
+            let name = crate::instance_verbs::master_named(sim, stable_id)
+                .unwrap_or_else(|| "component".to_string());
+            toasts.push(Toast::success(format!(
+                "Editing \u{201c}{name}\u{201d} \u{2014} move a piece and every copy follows"
+            )));
+            true
+        }
+        (AssetCardAction::EditPrefab, DragPayload::Image { .. }) => {
+            // ⛔ **A recusa nomeia o FACTO, como as outras três da tabela plana.** Uma imagem não
+            // tem forma que este app autore — quem a edita são as ferramentas de imagem, sobre o
+            // objecto que a desenha, e é por isso que a saída é o *Select users*.
+            toasts.push(Toast::info(
+                "An image has no shape to edit here \u{2014} use \u{201c}Select users\u{201d} and \
+                 edit it on an object",
+            ));
+            false
+        }
+
         // ── Instanciar ─────────────────────────────────────────────────────────────────────────
         (AssetCardAction::Instantiate, DragPayload::Prefab { stable_id }) => {
             let Some(bits) = crate::instance_verbs::entity_for_stable_id(sim, stable_id) else {

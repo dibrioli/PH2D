@@ -141,3 +141,94 @@ fn an_atlas_sprite_counts_as_a_user_of_the_image_it_shows() {
     );
     assert_eq!(users, vec![e.to_bits()], "a sprite de átlas TEM de contar");
 }
+
+/// ⭐⭐⭐ **EDITAR um componente pela biblioteca põe a SELECÇÃO na receita** (report do Enio,
+/// 2026-09-05: *«não tem como editar o componente»*).
+///
+/// ⚠️ **É a selecção que faz a receita existir na tela** — ela não está na cena e volta enquanto
+/// está seleccionada (a marca derivada `MasterEditing`). ⇒ este gate mede o **único** efeito que o
+/// verbo tem, e é ele que o liga a toda a maquinaria que já existia.
+///
+/// **Mutação que deve sangrar:** o braço `EditPrefab` não escrever o `select_out` (o item passa a
+/// comer o clique e a dizer que editou, sem nada acontecer — a 1.ª espécie de controlo morto).
+#[test]
+fn editing_a_prefab_from_the_library_selects_the_recipe() {
+    let mut sim = SimWorld::new();
+    let r = crate::init::build_component_registry();
+    let mut echo = crate::instance_sync::MasterEcho::default();
+    let mut gizmo = ph2d_editor::screens::hero::GizmoStateGroup::default();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let mut docs = crate::instance_docs::OwnedDocs {
+        vec_scene: &mut sc,
+        vec_entities: &mut mp,
+    };
+
+    let master = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Badge"), MasterRoot))
+        .id();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let stable_id = sim.world().get::<StableId>(master).expect("id").0;
+
+    let mut select_out = None;
+    let acted = super::drain(
+        DragPayload::Prefab { stable_id },
+        ph2d_editor::action_bus::AssetCardAction::EditPrefab,
+        &mut sim,
+        &r,
+        &mut echo,
+        &mut gizmo,
+        &mut toasts,
+        &mut docs,
+        [0.0, 0.0],
+        &BTreeMap::new(),
+        &mut select_out,
+    );
+    assert!(acted, "o verbo nao agiu");
+    assert_eq!(
+        select_out,
+        Some(master.to_bits()),
+        "a seleccao nao foi para a receita — o item come o clique e nada aparece"
+    );
+}
+
+/// ⛔ **Uma IMAGEM recusa com o FACTO, e a recusa FALA** — a tabela do menu é plana, e um item que
+/// come o clique em silêncio é pior que um ausente (a lei das outras três recusas deste ficheiro).
+#[test]
+fn editing_an_image_is_refused_out_loud() {
+    let mut sim = SimWorld::new();
+    let r = crate::init::build_component_registry();
+    let mut echo = crate::instance_sync::MasterEcho::default();
+    let mut gizmo = ph2d_editor::screens::hero::GizmoStateGroup::default();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let mut docs = crate::instance_docs::OwnedDocs {
+        vec_scene: &mut sc,
+        vec_entities: &mut mp,
+    };
+
+    let mut select_out = None;
+    let acted = super::drain(
+        DragPayload::Image { asset: [7; 32] },
+        ph2d_editor::action_bus::AssetCardAction::EditPrefab,
+        &mut sim,
+        &r,
+        &mut echo,
+        &mut gizmo,
+        &mut toasts,
+        &mut docs,
+        [0.0, 0.0],
+        &BTreeMap::new(),
+        &mut select_out,
+    );
+    assert!(!acted);
+    assert!(
+        select_out.is_none(),
+        "uma imagem nao tem receita a seleccionar"
+    );
+    assert!(
+        !toasts.is_empty(),
+        "a recusa foi MUDA — o artista carrega e conclui que o app esta' partido"
+    );
+}

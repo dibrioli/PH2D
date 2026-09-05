@@ -384,11 +384,16 @@ fn an_image_card_dispatches_every_verb_too_because_the_shell_is_who_refuses() {
     use ph2d_editor_core::interaction::drag_payload::DragPayload;
 
     for verb in [
+        // ⭐ **Editar entrou em 2026-09-05** e o `match` abaixo é EXAUSTIVO de propósito: um verbo
+        // novo que ninguém pusesse nesta lista deixaria de ser medido em silêncio, e o compilador
+        // é quem o impede.
+        AssetCardAction::EditPrefab,
         AssetCardAction::Instantiate,
         AssetCardAction::SelectUsers,
         AssetCardAction::RemoveFromLibrary,
     ] {
         let id = match verb {
+            AssetCardAction::EditPrefab => ph2d_editor_core::ids::CTX_MENU_ASSET_EDIT,
             AssetCardAction::Instantiate => ph2d_editor_core::ids::CTX_MENU_ASSET_INSTANTIATE,
             AssetCardAction::SelectUsers => ph2d_editor_core::ids::CTX_MENU_ASSET_SELECT_USERS,
             AssetCardAction::RemoveFromLibrary => ph2d_editor_core::ids::CTX_MENU_ASSET_REMOVE,

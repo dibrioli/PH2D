@@ -18,6 +18,21 @@ use super::*;
 /// ⭐ **Instanciar** o prefab do cartão. Numa Imagem responde com o motivo: pôr uma imagem na cena
 /// é a **queda** num alvo, porque *qual* objecto a recebe é o que a queda responde e um item de
 /// menu não.
+/// ⭐⭐⭐ **EDITAR o componente do cartão** (report do Enio, 2026-09-05: *«não tem como editar o
+/// componente»*).
+///
+/// # ⚠️ Ele SELECCIONA a receita, e é isso que a torna editável
+///
+/// A receita não está na cena — ela volta **enquanto está seleccionada** (`master_editing`, a marca
+/// derivada `MasterEditing`). ⇒ o verbo não precisa de um modo novo nem de uma janela: ele põe a
+/// selecção na raiz do mestre, e a maquinaria que já existe faz o resto — o canvas desenha-a, o
+/// gizmo pega-a, o Inspector mostra-a, e mover uma peça dela chega a todas as cópias no mesmo
+/// quadro.
+///
+/// ⛔ **A biblioteca era READ-ONLY para a FORMA.** Ela listava os componentes, instanciava,
+/// respondia quem usa o quê — e não tinha como abrir um. *Um catálogo do qual não se pode editar o
+/// conteúdo é uma vitrina.*
+pub const CTX_MENU_ASSET_EDIT: NodeId = hash_node_id("ctx_menu_asset_edit");
 pub const CTX_MENU_ASSET_INSTANTIATE: NodeId = hash_node_id("ctx_menu_asset_instantiate");
 /// ⭐⭐ **Quem usa isto?** — a metade que o Godot chama *Owners* e que responde *«posso apagar?»*.
 ///

@@ -1865,3 +1865,74 @@ devolver), e é decisão de produto.
 indentação — a instrução impressa chegava ao terminal partida ao meio. ⇒ gate
 `the_printed_steps_have_no_stray_backslash` (comment-aware; a linha do doc dele contém o padrão).
 *A instrução ao dono é uma superfície de produto, e era a única deste módulo sem régua.*
+
+
+---
+
+### 🐞 §F7.1 — **A biblioteca não tinha porta, e o motivo escrito na lista de excepções tinha EXPIRADO** (report do Enio, 2026-09-05)
+
+> *«Depois que construímos a janela de assets, não tem como editar o componente. Inclusive vc não
+> colocou nenhum meio de abrir a janela de assets»*
+
+**As duas metades eram verdade, e a primeira tem um mecanismo que vale mais do que o defeito.**
+
+#### ⛔⛔ A porta foi classificada como LIXO por uma razão que a minha linha tornou falsa no mesmo dia
+
+O painel nasceu com **um** acesso: o pill `Assets` da barra de cima. Em 2026-08-30 a `line/UIUX`
+retirou os 29 pills (a pedido do dono) e realojou tudo no menu **Window** — com um censo,
+`every_topbar_verb_has_a_door_that_is_not_the_legacy_key`, e uma lista de excepções `NO_DOOR_PENDING`
+onde este id ficou com a razão:
+
+> *«MORTO PRE-EXISTENTE: pintado, registado e com tooltip, e SEM consumidor nenhum no repo inteiro —
+> já o era antes desta linha existir.»*
+
+⭐ **Era verdade quando ela varreu.** O doc do próprio painel di-lo: *«até 2026-08-30 não tinha
+despacho nenhum»*. Horas depois, a `line/components` deu-lhe o navegador de assets como consumidor.
+As duas linhas compilavam, o merge não teve um conflito, e o app ficou com um painel **vivo,
+registado, despachado e inalcançável**.
+
+⇒ **é o §0.0 com um MOTIVO no lugar do número**: *quem torna alcançável o que uma nota declarou
+morto tem de reconferir a nota* — e quem a escreveu não tinha como saber, porque o consumidor ainda
+não existia na árvore dela.
+
+⚠️⚠️ **E a metade de obsolescência do censo funcionou — mas só quando alguém já ia fazer a coisa
+certa.** Ela não avisou ninguém; ela **validou-me** no instante em que acrescentei a linha do menu
+(*«estes já têm linha de menu e continuam na lista de excepções»*). ⛔ *Uma catraca com censo de
+obsolescência apanha o resíduo; ela não apanha a JANELA entre a classificação e a cura.*
+
+⏳ **INSTRUMENTO EM FALTA, nomeado e NÃO construído:** as três entradas justificadas por *«sem
+consumidor»* são **prosa**, e o gate confia nelas. Derivá-las — varrer o repo por um despacho
+daquele id — é um censo textual sobre um alvo com muitas formas (`i if i == core_ids::X`, tabelas,
+`match`), e a lei desta casa diz que *um gate que parseia o fonte tem de saber TODAS as formas,
+senão acusa o errado e cega o certo*. ⇒ fica escrito, não meio-feito.
+
+#### As duas curas
+
+| o quê | onde |
+|---|---|
+| **`Window > Assets`** | a linha do menu + `MODULE_TRUTHS` (ela é um *toggle* e mostra o próprio estado, como as outras treze) + a saída da `NO_DOOR_PENDING` |
+| **`Edit Prefab`** no menu do cartão | `AssetCardAction::EditPrefab` → **põe a selecção na receita**, e mais nada |
+
+⭐⭐ **O verbo que faltava não era um modo — era um ACESSO.** A receita não está na cena e **volta
+enquanto está seleccionada** (a marca derivada `MasterEditing`, F4.6). Seleccioná-la acende o canvas,
+arma o gizmo, enche o Inspector e faz cada peça mexida chegar a todas as cópias no mesmo quadro.
+⛔ *A biblioteca era read-only para a FORMA: listava, instanciava e dizia quem usa o quê, e não tinha
+como abrir um componente. Um catálogo de onde não se edita o conteúdo é uma vitrina.*
+
+⚠️ **A ordem do menu é MEDIDA, não estética:** *Edit Prefab* vem **antes** de *Instantiate* porque o
+segundo tem uma segunda porta (o duplo-clique no cartão) e o primeiro não tinha nenhuma.
+
+#### Os três gates que reprovaram à primeira, e o que cada um exigiu
+
+A linha do menu sozinha **não** bastava, e a barra disse-o de imediato:
+
+| gate | o que faltava |
+|---|---|
+| `every_toggle_row_of_the_bar_is_marked_by_its_own_state` | toda linha do *Window* é uma alternância e mostra o estado — faltava a entrada em `MODULE_TRUTHS` |
+| `clicking_a_toggle_row_moves_its_mark` | e a marca tem de **mexer** ao clicar |
+| `every_topbar_verb_has_a_door_that_is_not_the_legacy_key` | a entrada obsoleta tinha de **sair** da lista de excepções |
+
+E do lado do verbo: `editing_a_prefab_from_the_library_selects_the_recipe` (mutação: não escrever o
+`select_out` ⇒ o item come o clique e diz que editou) · `editing_an_image_is_refused_out_loud` ·
+o censo do painel (`an_image_card_dispatches_every_verb_too…`) que é **exaustivo sobre o enum**, então
+um verbo novo entra na medição ou não compila.

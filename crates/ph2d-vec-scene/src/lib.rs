@@ -58,7 +58,10 @@ mod recook;
 /// Pilha de z + recorte de copy/paste. A ÁRVORE de objetos é a Hierarchy do
 /// editor (ADR-0110): nome/visibilidade/trava/parentesco são da entidade ECS.
 mod paint_bind;
-pub use paint_bind::BoundStyle;
+pub use paint_bind::{BoundStyle, Opacity, object_alpha};
+// ⭐ O vocabulário de MISTURA que o documento guarda (v19), re-exportado para quem lê o documento
+// não precisar de nomear a folha — a mesma cortesia que o `WarpStyle` e o `WidthProfile` já têm.
+pub use ph2d_blend_mode::{BlendMode, MAX_BLEND_MODES};
 mod structure;
 pub use structure::{VecClip, VecClipSpan, VecViewState};
 
@@ -450,8 +453,31 @@ pub struct VecPath {
     /// caminho comum — e vazia é o caso rápido: `cooked()` devolve `Cow::Borrowed`.
     ///
     /// ⚠️ **No FIM da struct de propósito**: o postcard é posicional, então um campo no meio
-    /// faria todo save anterior ser relido com os campos trocados.
+    /// faria todo save anterior ser relido com os campos trocados. (A v19 apendou os dois campos
+    /// abaixo **depois** dele, pela mesma lei — o «fim» é o sítio, não este campo.)
     pub effects: Vec<effect::FxEntry>,
+    /// ⭐⭐⭐ **A OPACIDADE DO OBJECTO** (v19, estudo 42 item 2) — o que o Illustrator põe no painel
+    /// *Transparency* e o Rive/Figma numa forma.
+    ///
+    /// ⚠️ **NÃO é o alfa da tinta, e a diferença vê-se onde a forma desenha mais de uma marca:**
+    /// meia-opacidade no preenchimento **e** no traço deixa o traço transparecer sobre o
+    /// preenchimento (duas marcas, cada uma a metade); meia-opacidade no OBJECTO compõe a forma
+    /// inteira uma vez e depois desvanece-a. É por isso que ela é uma CAMADA no desenho e não uma
+    /// multiplicação nas cores ([`crate::object_alpha`]).
+    ///
+    /// ⚠️ **Newtype, e não um `f32` cru, por causa do `Default`**: `VecPath::default()` é o idioma
+    /// de centenas de fixturas e de todo `..VecPath::default()` do repo, e um `f32` derivado
+    /// nasceria a `0.0` — *toda forma do app invisível, sem uma linha de erro*.
+    pub opacity: Opacity,
+    /// ⭐⭐⭐ **O MODO DE MISTURA do objecto** (v19) — como esta forma se compõe com o que está por
+    /// baixo dela na pilha de z.
+    ///
+    /// O vocabulário é o do app inteiro ([`ph2d_blend_mode::BlendMode`], os 22 do W3C que a camada
+    /// do Painter já usa), e `Normal` é o default e o caminho byte-idêntico. ⚠️ **Nem todos os 22
+    /// são alcançáveis numa forma vectorial** — o conjunto do Vello é fixo no shader —, e a lista
+    /// que o painel oferece é **derivada** da tradução, nunca escrita à mão
+    /// (`ph2d_vec_render::blend`).
+    pub blend: ph2d_blend_mode::BlendMode,
 }
 
 /// Versão do wire-format de save (postcard é posicional → bump a cada mudança de
@@ -495,7 +521,14 @@ pub struct VecPath {
 /// o que quebra é o inverso (um v17 com pincel encontra, num binário v16, um índice de variante que
 /// ele não conhece). ⭐ É exactamente o degrau barato que a nota do `PROJECT_SCHEMA` 101 previu ao
 /// desenhar o `StrokePaint` como enum.
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 18;
+/// v19: [`VecPath`] ganhou `opacity` e `blend` — a **opacidade e o modo de mistura do OBJECTO**
+/// (estudo 42 item 2). Dois campos **apendados ao fim**, do lado destrutivo da regra nos dois
+/// sentidos: um save v18 lido por este layout fica **sem bytes** nos dois últimos campos
+/// (`Hit the end of buffer`) e um v19 lido por um binário v18 traz bytes a mais. ⚠️ O `Opacity` é
+/// um newtype de `f32` e o postcard serializa **através** dele (4 bytes), e o `BlendMode` é um
+/// enum de 22 variantes ⇒ **1 byte** de varint. ⭐ O default é o neutro nos dois (`1.0` / `Normal`),
+/// então uma cena que nunca lhes toque desenha byte a byte o que desenhava.
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 19;
 
 /// Reordenação na pilha de render (índice `0` = fundo, último = frente). Uma
 /// operação de documento, mapeada pela shell a partir dos botões Arrange (mirror

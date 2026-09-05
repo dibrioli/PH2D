@@ -64,6 +64,13 @@ impl VecPath {
             subpaths,
             fill_rule,
             effects: _,
+            // ⭐ **A opacidade e a mistura SOBREVIVEM ao re-cozimento** (v19), como a pilha de
+            // efeitos e pela mesma razão: elas são autoria do OBJECTO, não produto dos parâmetros
+            // que o re-cozimento consome. `next` nasce de um `VecPath::default()` com a geometria
+            // por cima, então lê-las dali repunha o neutro — e o sintoma seria **reescrever o
+            // texto de uma forma a 50% devolvê-la opaca**, sem erro nenhum.
+            opacity: _,
+            blend: _,
         } = next;
         self.verts = verts;
         self.closed = closed;
@@ -71,7 +78,7 @@ impl VecPath {
         self.stroke = stroke;
         self.subpaths = subpaths;
         self.fill_rule = fill_rule;
-        // `self.id` e `self.effects` sobrevivem — a lei do módulo.
+        // `self.id`, `self.effects`, `self.opacity` e `self.blend` sobrevivem — a lei do módulo.
     }
 }
 

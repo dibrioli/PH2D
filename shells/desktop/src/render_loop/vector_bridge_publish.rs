@@ -107,6 +107,15 @@ pub(super) fn publish(
     });
     // **Quantos** nós estão selecionados — o tipo acima diz *uniforme ou misto*, não a contagem, e
     // o Average precisa exactamente dela (com um nó só não há o que mediar).
+    // ⭐⭐⭐ **A APARÊNCIA da forma seleccionada** (estudo 42 item 2): a opacidade e o modo de
+    // mistura do OBJECTO. ⚠️ Só com a ferramenta em mãos, como o Transform ao lado — e `None`
+    // esconde a seção inteira, que é a lei desta janela para uma seção sem sujeito.
+    #[cfg(feature = "panel-vector")]
+    ph2d_panel_vector::state::set_current_appearance(if vector_active {
+        crate::vec_appearance::published(scene, pen.selected_paths())
+    } else {
+        None
+    });
     #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_vertex_count(if vector_active {
         pen.selected_verts().len()

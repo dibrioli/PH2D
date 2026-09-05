@@ -63,6 +63,10 @@ pub use cut_line::draw_cut_line;
 pub use hover_outline::{draw_bucket_face, draw_hover_outline, draw_trim_piece};
 pub use marquee::{draw_lasso, draw_marquee};
 pub use standalone::{draw_path_isolated, draw_path_standalone};
+
+/// A tradução do modo de mistura do documento para o par do Vello (módulo irmão: ele é a fonte da
+/// lista que o painel oferece, e o `dispatch` é só um dos consumidores).
+pub mod blend;
 pub use stroke_uniform::{is_conformal, stroke_uniform, uniform_scale};
 mod guides;
 pub use guides::{
@@ -306,6 +310,15 @@ pub fn dispatch(
         // sobre o pai), então o preenchimento dela é o fundo do card **por sair primeiro**; abrir
         // antes de desenhar recortaria a moldura pela própria silhueta.
         if !view.is_hidden(path.id) {
+            // ⭐⭐⭐ **A CAMADA DO OBJECTO** (v19): opacidade e modo de mistura da forma compõem-na
+            // UMA vez, com tudo o que ela desenha lá dentro. Opaca e `Normal` ⇒ nada é empurrado e
+            // o desenho é byte-idêntico ao de sempre. ⚠️ Ela envolve os TRÊS braços de propósito —
+            // a imagem de FX e a pele de widget substituem o desenho, mas continuam a ser **este
+            // objecto**, e desvanecer só o braço do meio seria a opacidade a funcionar até alguém
+            // ligar um filtro.
+            let bound = view.bound_style(path.id);
+            let layered =
+                blend::open_object_layer(target, scene, xforms, live, fx, path, bound, camera);
             // O FX da forma, se houver, TOMA o lugar do desenho: a pilha já compôs tudo o que se
             // vê desta forma (halo incluído) numa imagem só, no z dela.
             if let Some(img) = fx.get(&path.id) {
@@ -317,12 +330,10 @@ pub fn dispatch(
                 // quem tem a câmera, e ele já respondeu.
                 target.inner_mut().append(skin.inner(), None);
             } else {
-                // A TINTA que os tokens dão a esta forma neste modo, perguntada UMA vez — e ela
+                // (A TINTA que os tokens dão a esta forma foi perguntada UMA vez, acima — e ela
                 // vale também para a geometria DERIVADA dela: as cópias de offset/pattern/espelho
                 // têm id próprio, então procurá-las na tabela não acharia nada e o token pararia
-                // na borda do primeiro efeito (a forma re-vestiria e as cópias ficariam com a cor
-                // velha).
-                let bound = view.bound_style(path.id);
+                // na borda do primeiro efeito.)
                 // A derivada já está em MUNDO (a shell assou a pose dentro dela), então ela sobe
                 // pela CÂMERA e não pelo afim do path — aplicar a pose duas vezes foi bug real
                 // desta linha.
@@ -356,6 +367,9 @@ pub fn dispatch(
                         art,
                     );
                 }
+            }
+            if layered {
+                target.pop_layer();
             }
         }
         // ⚠️ FORA do filtro de escondido: push e pop de camada têm de se emparelhar mesmo quando

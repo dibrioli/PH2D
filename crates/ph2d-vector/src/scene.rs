@@ -455,6 +455,27 @@ impl VectorScene {
         );
     }
 
+    /// ⭐⭐⭐ **A CAMADA DE UM OBJECTO** — o que faz *opacidade do objecto* e *modo de mistura*
+    /// significarem o que significam no Illustrator, no Figma e no SVG (2026-09-05).
+    ///
+    /// Tudo o que for desenhado até ao [`Self::pop_layer`] compõe-se **uma vez**, como um só
+    /// objecto: é isto que distingue meia-opacidade no OBJECTO de meia-opacidade em cada tinta
+    /// dele — com as tintas, o traço transparece sobre o próprio preenchimento.
+    ///
+    /// ⚠️ **`rect` é o LIMITE da camada, e ele tem custo:** o Vello aloca a mistura sobre esta
+    /// caixa, então ela tem de ser a da arte (a caixa de ecrã da forma, com o transbordo do traço)
+    /// e não a tela. ⛔ Uma caixa PEQUENA DEMAIS recorta a arte em silêncio — quem chama usa a
+    /// mesma porta de limites que o produtor de FX usa para dimensionar a textura dele.
+    ///
+    /// ⚠️ **Quem chama decide se ISTO é preciso**: com `alpha = 1` e mistura normal, uma camada é
+    /// trabalho de GPU para nada — o caminho neutro tem de continuar a não a empurrar.
+    pub fn push_object_layer(&mut self, rect: &Rect, blend: vello::peniko::BlendMode, alpha: f32) {
+        // A regra de preenchimento do RECORTE da camada: um rectângulo é convexo, então `NonZero`
+        // e `EvenOdd` coincidem — a escolha é a do irmão `push_clip` e não uma decisão nova.
+        self.inner
+            .push_layer(Fill::NonZero, blend, alpha, Affine::IDENTITY, rect);
+    }
+
     /// Pop the most recent layer pushed via [`Self::push_clip`].
     pub fn pop_layer(&mut self) {
         self.inner.pop_layer();

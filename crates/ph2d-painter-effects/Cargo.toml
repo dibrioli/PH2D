@@ -24,6 +24,10 @@ authors.workspace = true
 [dependencies]
 # Postcard binary serialization derives for the adjustment-layer save schema.
 serde = { version = "1", features = ["derive"] }
+# O vocabulário de MISTURA (os 22 modos + a matemática), re-exportado por esta crate. Saiu daqui
+# para uma folha só-serde em 2026-09-05: o vector precisa dele no documento, e a `ph2d-vec-scene`
+# declara-se sem `ph2d-color`, que esta crate arrasta.
+ph2d-blend-mode = { path = "../ph2d-blend-mode" }
 # Canonical sRGB↔linear transfer + OKLab/OKLCH color types reused by the
 # adjustment kernels (blend math + composite happen in linear light).
 ph2d-color = { path = "../ph2d-color" }

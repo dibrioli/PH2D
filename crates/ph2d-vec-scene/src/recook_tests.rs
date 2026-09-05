@@ -27,6 +27,11 @@ fn authored() -> VecPath {
         subpaths: Vec::new(),
         fill_rule: FillRule::NonZero,
         effects: vec![zig()],
+        // ⭐ **Fora do neutro de propósito** (v19): é o que dá dentes ao gate da sobrevivência
+        // logo abaixo — no neutro, um `replace_cooked` que as levasse de `next` leria os mesmos
+        // valores e o gate ficaria verde sobre o defeito.
+        opacity: crate::Opacity::new(0.4),
+        blend: ph2d_blend_mode::BlendMode::Multiply,
     }
 }
 
@@ -49,6 +54,9 @@ fn freshly_cooked() -> VecPath {
         }],
         fill_rule: FillRule::EvenOdd,
         effects: Vec::new(),
+        // Um cozimento nasce de um `..VecPath::default()`, logo NEUTRO nos dois.
+        opacity: crate::Opacity::default(),
+        blend: ph2d_blend_mode::BlendMode::default(),
     }
 }
 
@@ -81,6 +89,28 @@ fn a_recook_keeps_the_paths_own_identity() {
     );
 }
 
+/// ⭐⭐⭐ **A OPACIDADE E A MISTURA DO OBJECTO SOBREVIVEM** (v19) — a mesma lei da pilha de efeitos,
+/// e o gate que a `line/Vector` deve ao destructuring exaustivo do módulo.
+///
+/// ⚠️ **O sintoma sem ele é mudo e caro:** um cozimento nasce de `VecPath::default()`, então lê-las
+/// de `next` repunha o neutro — **reescrever o texto de uma forma a 40% devolvia-a opaca**, e o
+/// artista teria de descobrir sozinho que foi a edição que apagou a autoria.
+#[test]
+fn a_recook_preserves_the_objects_opacity_and_blend() {
+    let mut p = authored();
+    p.replace_cooked(freshly_cooked());
+    assert_eq!(
+        p.opacity,
+        crate::Opacity::new(0.4),
+        "a opacidade do objecto e' autoria, nao produto do cozimento"
+    );
+    assert_eq!(
+        p.blend,
+        ph2d_blend_mode::BlendMode::Multiply,
+        "e o modo de mistura tambem"
+    );
+}
+
 /// A outra metade da lei: tudo o que o re-cozimento PRODUZ é substituído — senão a "cura" seria
 /// um re-cook que não re-cozinha. Sem este gate, uma implementação que só copiasse `verts`
 /// passaria no gate da pilha.
@@ -108,8 +138,12 @@ fn a_recook_of_a_path_without_effects_is_the_plain_replacement() {
 
     let mut expected = next;
     expected.id = 77;
+    // ⭐ v19: a autoria do OBJECTO vem de casa, como o id — a lista de quem sobrevive cresceu, e
+    // este gate é onde ela se lê inteira.
+    expected.opacity = crate::Opacity::new(0.4);
+    expected.blend = ph2d_blend_mode::BlendMode::Multiply;
     assert_eq!(
         p, expected,
-        "sem pilha, o resultado é o path cozido com o id de casa"
+        "sem pilha, o resultado é o path cozido com o id, a opacidade e a mistura de casa"
     );
 }

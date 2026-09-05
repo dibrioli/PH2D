@@ -405,6 +405,16 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
     // casar `paint_dropdown`, …). ⛔ Apertar a régua para exigir a CHAMADA (`marcador(`) acusaria
     // os 25 injustamente: eles delegam de verdade, um salto mais longe. A cura honesta é o gate
     // seguir **um salto de delegação** dentro da crate — obra própria, com o número já medido.
+    // ⚠️ **A seção BOOLEAN saiu do `paint_sections.rs` em 2026-09-05** (o teto de 600 LOC do painel,
+    // para dar lugar à seção *Appearance*), e com ela deixou de nomear um primitivo: o ficheiro de
+    // onde ela veio nomeia `paint_color_swatch(`/`paint_button(` por causa das OUTRAS seções que lá
+    // vivem. ⭐ **A delegação é real e TRANSITIVA** — `self.segmented(…)`, `self.row2(…)` e
+    // `self.compound_row(…)` vivem no irmão `paint_rows.rs`, que nomeia `paint_button(`. É o
+    // mesmíssimo caso do `paint_body_sections.rs` abaixo, e o mesmo salto que o gate ainda não dá.
+    (
+        "ph2d-panel-vector/src/paint_boolean.rs",
+        "seccao orquestradora: delega em `BodyCtx::segmented`/`row2`/`compound_row` (irmao `paint_rows.rs`, que nomeia `paint_button(`). Cortada do `paint_sections.rs` pelo teto de LOC",
+    ),
     (
         "ph2d-panel-grid-snap/src/paint_body_sections.rs",
         "orquestrador de seccoes: delega nos irmaos `paint_rows`/`paint_helpers`, que nomeiam `paint_toggle(`/`paint_button(`. Passava por subcadeia (`paint_color_swatch_row`) ate' a fileira Color sair",

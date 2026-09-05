@@ -18,7 +18,7 @@
 //! in `ph2d-tool-painter` (which depends on this crate — a cycle). The
 //! `LayerStack` converts at the boundary (`LayerId(x)` / `x.0`).
 
-use crate::blend::BlendMode;
+use ph2d_blend_mode::BlendMode;
 use ph2d_color::oklab::OklabColor;
 use ph2d_color::{LinearRgba, OklchColor};
 use serde::{Deserialize, Serialize};

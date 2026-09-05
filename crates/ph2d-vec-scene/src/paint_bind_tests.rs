@@ -104,65 +104,111 @@ fn binding_a_stroke_colours_an_existing_stroke_and_never_invents_one() {
     );
 }
 
-/// **Opacidade cheia é a IDENTIDADE, e nem clona.**
+/// ⭐⭐⭐ **QUALQUER opacidade é a identidade PARA A TINTA, e nem clona** (v19).
 ///
-/// ⚠️ O gate do CONTROLE da W8b.3, e ele mede as duas metades da mesma frase: um slider no topo
-/// não muda um byte da arte E não paga um clone por forma por frame.
+/// ⚠️ **Era *"opacidade CHEIA é a identidade"*, e o gate mudou com a lei** (2026-09-05): a
+/// opacidade deixou de escalar a tinta e passou a ser a do OBJECTO, aplicada como camada por quem
+/// desenha ([`crate::object_alpha`]). O que o `painted` faz com ela hoje é **nada**, e é isso que
+/// este gate pina — a metade que sobra da frase antiga (*não paga um clone por forma por frame*)
+/// passou a valer para toda a faixa do slider, e não só para o topo dela.
+///
+/// ⭐ **E é uma economia medida na wave anterior:** a chave do memo de FX é feita desta forma
+/// pintada, então desvanecer uma forma **filtrada** deixou de a re-cozinhar 60 vezes por segundo.
 #[test]
-fn a_full_opacity_is_the_identity_and_costs_nothing() {
+fn a_live_opacity_never_touches_the_paint_and_costs_nothing() {
     let p = shape();
-    let full = BoundStyle {
-        path: p.id,
-        alpha: Some(255),
-        ..BoundStyle::default()
-    };
-    let drawn = p.painted(Some(&full));
-    assert!(
-        matches!(drawn, std::borrow::Cow::Borrowed(_)),
-        "opacidade cheia nao pode custar um clone"
-    );
+    for a in [255_u8, 128, 0] {
+        let live = BoundStyle {
+            path: p.id,
+            alpha: Some(a),
+            ..BoundStyle::default()
+        };
+        let drawn = p.painted(Some(&live));
+        assert!(
+            matches!(drawn, std::borrow::Cow::Borrowed(_)),
+            "alpha={a}: a opacidade viva nao pode clonar a forma — ela nao e' tinta"
+        );
+    }
 
-    // E pela rota que CLONA (um token junto), o alfa tem de sair intacto: aqui o early-out não
-    // salva — o clone acontece pelo `fill`, e o que prova a identidade é o `fades` ser falso.
+    // E pela rota que CLONA (um token junto), a tinta tem de sair com o alfa AUTORADO: o clone
+    // acontece pelo `fill`, e o que se prova aqui é que o alfa vivo não entra na cor.
     let with_token = BoundStyle {
         path: p.id,
         fill: Some(Rgba8::new(9, 9, 9, 255)),
-        alpha: Some(255),
+        alpha: Some(51),
         ..BoundStyle::default()
     };
     let drawn = p.painted(Some(&with_token));
     assert_eq!(drawn.fill, Some(Paint::Solid(Rgba8::new(9, 9, 9, 255))));
 }
 
-/// **A opacidade arredonda ao mais próximo, e não trunca.**
+/// ⭐⭐⭐ **A OPACIDADE VIVA SOBREPÕE A AUTORADA** — a lei dos outros três campos do [`BoundStyle`],
+/// agora também na opacidade (v19).
+///
+/// ⚠️ Mutação que tem de sangrar: `object_alpha` MULTIPLICAR em vez de sobrepor. Multiplicar
+/// parece inofensivo e é a segunda resposta à mesma pergunta: uma forma autorada a `0,5` com um
+/// estado de UI a pedir `1,0` ficaria a meio — *o controlo no topo da barra deixaria de significar
+/// «opaca»*.
+#[test]
+fn the_live_opacity_overrides_the_authored_one() {
+    let mut p = shape();
+    p.opacity = crate::Opacity::new(0.5);
+    assert!(
+        (crate::object_alpha(&p, None) - 0.5).abs() < 1e-6,
+        "sem valor vivo, manda o documento"
+    );
+    let live = BoundStyle {
+        path: p.id,
+        alpha: Some(u8::MAX),
+        ..BoundStyle::default()
+    };
+    assert!(
+        (crate::object_alpha(&p, Some(&live)) - 1.0).abs() < 1e-6,
+        "o vivo COBRE o autorado — nao o multiplica"
+    );
+    let quarter = BoundStyle {
+        path: p.id,
+        alpha: Some(64),
+        ..BoundStyle::default()
+    };
+    assert!(
+        (crate::object_alpha(&p, Some(&quarter)) - 64.0 / 255.0).abs() < 1e-6,
+        "e o valor vivo chega inteiro"
+    );
+}
+
+/// **O `fade` arredonda ao mais próximo, e não trunca.**
 ///
 /// ⚠️ O gate mede onde as duas contas DIFEREM (`100 * 130/255 = 50,98`), porque numa forma opaca
 /// elas coincidem — foi a mutação que tirou o `+127` e sobreviveu que nomeou este buraco. Truncar
 /// erra sempre para baixo, e uma cadeia de desvanecimentos escureceria meio nível de cada vez.
+///
+/// ⚠️ **Ele mede o [`crate::paint_bind::fade`] DIRECTAMENTE desde a v19**, e não o `painted`: a
+/// opacidade viva saiu da tinta e virou camada, mas a função ficou — com um consumidor,
+/// `brush_copies`, que desvanece a ARTE de um traço (tinta de verdade). *A lei não morreu; mudou
+/// de dono, e o gate seguiu-a.*
 #[test]
-fn the_opacity_rounds_to_nearest_instead_of_always_down() {
+fn the_fade_rounds_to_nearest_instead_of_always_down() {
     let mut p = shape();
     p.fill = Some(Paint::Solid(Rgba8::new(9, 9, 9, 100)));
-    let b = BoundStyle {
-        path: p.id,
-        alpha: Some(130),
-        ..BoundStyle::default()
-    };
-    let drawn = p.painted(Some(&b));
+    crate::paint_bind::fade(&mut p, 130);
     assert_eq!(
-        drawn.fill,
+        p.fill,
         Some(Paint::Solid(Rgba8::new(9, 9, 9, 51))),
         "100 * 130/255 = 50,98 — arredonda para 51; truncar daria 50"
     );
 }
 
-/// **A opacidade ESCALA o alfa e preserva a ESPÉCIE da tinta.**
+/// **O `fade` ESCALA o alfa e preserva a ESPÉCIE da tinta.**
 ///
 /// ⚠️ O gradiente é o oráculo, e não o sólido: o atalho que esta wave recusou — trocar o `fill` por
 /// uma cor com alfa — passaria no sólido e achataria todo gradiente em silêncio. Aqui cada parada
 /// desvanece junto, e a rampa continua uma rampa.
+///
+/// ⚠️ **Mede o `fade` directamente desde a v19** (ver o irmão do arredondamento): a arte de um
+/// pincel pode ser um gradiente ou um padrão, e é ela que passa por aqui agora.
 #[test]
-fn the_opacity_fades_every_species_of_paint() {
+fn the_fade_dims_every_species_of_paint() {
     let mut p = shape();
     p.fill = Some(Paint::Linear {
         stops: vec![
@@ -173,12 +219,8 @@ fn the_opacity_fades_every_species_of_paint() {
         end: [1.0, 0.0],
     });
     p.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 0.05));
-    let half = BoundStyle {
-        path: p.id,
-        alpha: Some(128),
-        ..BoundStyle::default()
-    };
-    let drawn = p.painted(Some(&half));
+    crate::paint_bind::fade(&mut p, 128);
+    let drawn = &p;
     let Some(Paint::Linear { stops, .. }) = drawn.fill.as_ref() else {
         panic!("a especie da tinta MUDOU — o gradiente foi achatado");
     };
@@ -195,12 +237,20 @@ fn the_opacity_fades_every_species_of_paint() {
     );
 }
 
-/// **A opacidade entra DEPOIS do token** — ela desvanece o que de fato vai ser desenhado.
+/// ⛔⛔ **A ORDEM «opacidade DEPOIS do token» DISSOLVEU** (v19), e a nota fica porque a pergunta
+/// era boa.
 ///
-/// Se entrasse antes, o token cobriria a cor já desvanecida com o alfa dele e o slider ficaria
-/// inerte em toda forma bindada — inerte só ALI, que é a pior forma de um controle falhar.
+/// O gate antigo media que o slider não ficava inerte numa forma bindada a um token — um risco
+/// real enquanto as duas coisas escreviam o MESMO campo (a cor). Com a opacidade a ser uma camada
+/// sobre o desenho, ela desvanece **o que quer que tenha sido desenhado**: não há ordem a acertar,
+/// e nenhuma tinta futura pode escapar-lhe por a tabela de espécies a esquecer.
+///
+/// *Uma lei que a representação torna verdadeira por construção não precisa de gate; precisa de
+/// nota, para ninguém a reconstruir como código.* O que sobra de testável é o CONTROLE: o token
+/// entra, a opacidade não toca na cor — e isso é o
+/// [`a_live_opacity_never_touches_the_paint_and_costs_nothing`] acima.
 #[test]
-fn the_opacity_fades_what_the_token_put_there() {
+fn the_token_paints_and_the_live_opacity_stays_out_of_the_colour() {
     let p = shape();
     let both = BoundStyle {
         path: p.id,
@@ -209,5 +259,13 @@ fn the_opacity_fades_what_the_token_put_there() {
         ..BoundStyle::default()
     };
     let drawn = p.painted(Some(&both));
-    assert_eq!(drawn.fill, Some(Paint::Solid(Rgba8::new(1, 2, 3, 51))));
+    assert_eq!(
+        drawn.fill,
+        Some(Paint::Solid(Rgba8::new(1, 2, 3, 255))),
+        "o token pinta com o alfa DELE; a opacidade do objecto vive na camada"
+    );
+    assert!(
+        (crate::object_alpha(&p, Some(&both)) - 51.0 / 255.0).abs() < 1e-6,
+        "e o numero da camada e' o do valor vivo"
+    );
 }

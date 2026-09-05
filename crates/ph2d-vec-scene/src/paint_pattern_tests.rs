@@ -162,13 +162,12 @@ fn the_pattern_law_crosses_one_door_from_world_to_pixels() {
 /// instante em que ele ainda não resolveu, que é o contrário do que se vê.
 #[test]
 fn fading_a_pattern_dims_the_pattern_not_just_its_fallback() {
-    let (scene, id) = scene_with_pattern(fill());
-    let bound = BoundStyle {
-        path: id,
-        alpha: Some(128),
-        ..BoundStyle::default()
-    };
-    let painted = scene.paths()[0].painted(Some(&bound));
+    let (scene, _id) = scene_with_pattern(fill());
+    // ⚠️ **Mede o `fade` DIRECTAMENTE desde a v19**: a opacidade de vista saiu da tinta e virou
+    // camada, e quem ainda desvanece tinta é a arte de um pincel (`brush_copies`). A lei do padrão
+    // — *a opacidade e a cor de recurso descem JUNTAS* — não mudou, e é dela que este gate é.
+    let mut painted = scene.paths()[0].clone();
+    crate::paint_bind::fade(&mut painted, 128);
     let Some(Paint::Pattern(p)) = &painted.fill else {
         panic!("o desvanecimento trocou a especie do preenchimento")
     };
@@ -539,13 +538,10 @@ fn fading_a_patterned_stroke_dims_the_pattern_not_just_its_fallback() {
     };
     path.id = VecPathId::default();
     let mut scene = VecScene::default();
-    let id = scene.push_path(path);
-    let bound = BoundStyle {
-        path: id,
-        alpha: Some(128),
-        ..BoundStyle::default()
-    };
-    let drawn = scene.paths()[0].painted(Some(&bound));
+    let _id = scene.push_path(path);
+    // Mede o `fade` directamente (v19) — ver o irmão do preenchimento.
+    let mut drawn = scene.paths()[0].clone();
+    crate::paint_bind::fade(&mut drawn, 128);
     let p = drawn
         .stroke
         .as_ref()

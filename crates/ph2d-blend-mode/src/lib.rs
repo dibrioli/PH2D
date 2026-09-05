@@ -1,5 +1,16 @@
-//! Layer blend modes (W3.T3.3) — the 22 canonical modes from
-//! `docs/Painter_projeto/02_layers.md` §2.2.
+//! ⭐⭐⭐ **O VOCABULÁRIO ÚNICO DE MISTURA** — os 22 modos canónicos do W3C, com a matemática.
+//!
+//! Nasceu como *Layer blend modes* (W3.T3.3) do Painter
+//! (`docs/Painter_projeto/02_layers.md` §2.2) e **mudou de casa em 2026-09-05**, quando o VETOR se
+//! tornou o segundo dono da mesma pergunta (opacidade + mistura por forma). A
+//! [`ph2d_painter_effects`] re-exporta os três nomes, então nenhum consumidor mudou de endereço;
+//! o porquê do corte está no `Cargo.toml` desta folha.
+//!
+//! ⚠️ **Nem todo modo desta lista é alcançável em toda superfície.** O compositor do Painter roda
+//! o [`apply`] daqui e faz os 22; o vector compõe no Vello, cujo conjunto de mistura é fixo no
+//! shader — a tradução (e as três recusas medidas) vive em `ph2d_vec_render::blend`. *Uma lista de
+//! modos não é uma promessa de que todos desenham: quem oferece a lista é quem tem de a derivar de
+//! quem a honra.*
 //!
 //! # Color space
 //!
@@ -30,7 +41,7 @@
 //!
 //! `#[repr(u8)]` with the popover order as the stable wire value, so a
 //! future GPU compositor (`stamp.wgsl` sibling) can dispatch on the same
-//! integer — mirror of [`crate::rendering_mode::RenderingMode`].
+//! integer — mirror of `ph2d_painter_effects::rendering_mode::RenderingMode`.
 
 use serde::{Deserialize, Serialize};
 

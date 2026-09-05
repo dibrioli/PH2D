@@ -69,6 +69,12 @@ pub use vello::peniko::{
     Brush, Color, ColorStop, ColorStops, Extend, Fill, Gradient, GradientKind, ImageData,
     ImageQuality, LinearGradientPosition,
 };
+// ⭐ **A MISTURA do Vello** (2026-09-05): o `Mix`/`Compose` do peniko e o par deles, para o vector
+// compor uma forma com o que está por baixo. ⚠️ Re-exportado com nome PRÓPRIO — o app já tem um
+// `BlendMode` (o vocabulário dos 22 modos do W3C, em `ph2d-blend-mode`), e importar os dois com o
+// mesmo nome no mesmo ficheiro é como se lê a tradução ao contrário. Aqui `VelloBlend` é o que a
+// PLACA sabe fazer; lá é o que o artista escolhe.
+pub use vello::peniko::{BlendMode as VelloBlend, Compose, Mix};
 // Glyph + Scene used by callers that drive `Scene::draw_glyphs`
 // directly (text rendering in ph2d-editor::paint). Same version-skew
 // rationale as kurbo/peniko above.

@@ -23,6 +23,7 @@ fn reta(scene: &mut VecScene, a: [f64; 2], b: [f64; 2]) -> u64 {
         subpaths: Vec::new(),
         fill_rule: ph2d_vec_scene::FillRule::NonZero,
         effects: Vec::new(),
+        ..VecPath::default()
     })
 }
 
@@ -242,6 +243,7 @@ fn a_cross_inside_a_square_becomes_a_network_of_arcs() {
         subpaths: Vec::new(),
         fill_rule: ph2d_vec_scene::FillRule::NonZero,
         effects: Vec::new(),
+        ..VecPath::default()
     });
     let diagonal = reta(&mut scene, [-20.0, 0.0], [20.0, 0.0]);
     pen.select_many(&[quadrado, diagonal]);

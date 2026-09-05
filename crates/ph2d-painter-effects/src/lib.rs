@@ -17,6 +17,9 @@
 //! `ph2d-painter-contracts::architecture_painter_contract_surface`.
 
 pub mod adjustments;
-pub mod blend;
+// ⭐ **O vocabulário de mistura MUDOU DE CASA** (2026-09-05): ele é agora a folha
+// `ph2d-blend-mode`, porque o vector passou a ser o segundo dono da mesma pergunta e a
+// `ph2d-vec-scene` declara-se sem `ph2d-color` (que esta crate arrasta). Os três nomes são
+// RE-EXPORTADOS aqui, então nenhum dos consumidores mudou uma linha.
 
-pub use blend::{BlendMode, MAX_BLEND_MODES, apply as apply_blend};
+pub use ph2d_blend_mode::{BlendMode, MAX_BLEND_MODES, apply as apply_blend};

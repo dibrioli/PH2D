@@ -277,21 +277,24 @@ fn changing_the_derived_geometry_re_cooks_the_shape() {
     );
 }
 
-/// ⭐⭐⭐ **O ESTILO RESOLVIDO DO QUADRO entra na chave** — o vão que o `path` não cobria.
+/// ⭐⭐⭐ **O ESTILO RESOLVIDO DO QUADRO entra na chave — e a OPACIDADE saiu dela** (v19).
 ///
 /// ⛔⛔ **A nota do `FxDrawn` dizia o contrário, e por acidente:** *"é o `VecPath` inteiro de
 /// propósito: um campo novo NELE viaja para dentro da chave sozinho"*. O [`BoundStyle`] **não é um
-/// campo do `VecPath`** — é uma camada de VISTA que o `painted` aplica depois —, então ele entrava
-/// no desenho sem entrar na chave. Consequência medida ao ligar a opacidade da linha do tempo
-/// (2026-09-04): desvanecer uma forma **com filtro** acertava o memo e a textura ficava com os
-/// pixels de antes, *o modo de falha que este módulo nomeia — pixels velhos que ninguém vê que são
-/// velhos*.
+/// campo do `VecPath`** — é uma camada de VISTA que o `painted` aplica depois —, então o TOKEN
+/// entrava no desenho sem entrar na chave.
 ///
-/// ⚠️ **As duas metades importam.** O controlo (mesma opacidade ⇒ mesma chave) é o que impede a
-/// cura degenerada *"a chave nunca casa"*, que deixaria toda forma filtrada a re-cozinhar por
-/// quadro — o custo exacto que o memo existe para não pagar.
+/// ⚠️⚠️ **Este gate INVERTEU-SE em 2026-09-05, e a inversão é a cura a ficar mais barata.** Ele
+/// exigia que desvanecer uma forma filtrada **errasse** o memo — a única resposta possível
+/// enquanto a opacidade vivia nas CORES (a arte rasterizada era outra). Com ela a ser a camada do
+/// OBJECTO (estudo 42 item 2), a arte isolada é a MESMA em qualquer opacidade e quem desvanece é o
+/// composto ⇒ o memo tem de **ACERTAR**, e uma forma filtrada a desvanecer deixa de re-cozinhar
+/// sessenta vezes por segundo para produzir os mesmos pixels.
+///
+/// ⇒ O que fica a ser medido é o que continua verdadeiro: **o TOKEN muda a chave** (ele muda os
+/// pixels da forma) e **a opacidade não** (ela não os toca).
 #[test]
-fn fading_a_filtered_shape_misses_the_memo_instead_of_keeping_old_pixels() {
+fn the_token_changes_the_key_and_the_opacity_no_longer_does() {
     let (scene, sim, map, xforms, id) = fixture();
     let with_alpha = |a: Option<u8>| {
         let mut view = VecViewState::default();
@@ -309,27 +312,36 @@ fn fading_a_filtered_shape_misses_the_memo_instead_of_keeping_old_pixels() {
         opaca == with_alpha(None),
         "CONTROLE: sem estilo resolvido a chave tem de ser estavel"
     );
+    for a in [255_u8, 128, 0] {
+        assert!(
+            opaca == with_alpha(Some(a)),
+            "alpha={a}: a opacidade do objecto compoe-se na CAMADA, logo a arte isolada nao muda — \
+             uma chave diferente aqui e' um re-cook por quadro para produzir os MESMOS pixels"
+        );
+    }
+    // E o TOKEN, que muda a arte de verdade, continua a mudar a chave.
+    let mut com_token = VecViewState::default();
+    com_token.bound.push(BoundStyle {
+        path: id,
+        fill: Some(ph2d_vec_scene::Rgba8::new(240, 10, 10, 255)),
+        ..BoundStyle::default()
+    });
     assert!(
-        opaca == with_alpha(Some(255)),
-        "CONTROLE: opacidade 255 e' a IDENTIDADE — o `painted` devolve a mesma arte, logo os mesmos \
-         pixels, logo a mesma chave"
+        opaca != key_view(&scene, &sim, &map, &xforms, &com_token, id),
+        "a cor que o token resolve MUDA os pixels da forma — sem ela na chave, a textura fica com a \
+         cor anterior (o defeito de 2026-07-29)"
     );
-    assert!(
-        opaca != with_alpha(Some(128)),
-        "a forma foi desvanecida a meio e o memo ACERTOU — a textura mostra a arte opaca"
-    );
-    assert!(
-        with_alpha(Some(128)) != with_alpha(Some(64)),
-        "dois pontos de um fade dao a MESMA chave — o desvanecimento congela no 1.o quadro"
-    );
+    // ⛔ **A metade «dois pontos de um fade dão chaves diferentes» MORREU com a lei** (v19): hoje
+    // eles dão a MESMA chave de propósito, e é o laço acima que o afirma. *Uma exigência que
+    // descrevia o mecanismo antigo, e não a propriedade, morre com ele.*
 }
 
 /// ⭐⭐⭐ **O QUE O MEMO AFIRMA É O QUE O RASTERIZADOR DESENHA** — report do Enio, 2026-09-04:
 /// *"a da direita não ficou transparente"*.
 ///
-/// O gate acima prova que desvanecer uma forma filtrada **erra** o memo. Isso não bastava: o
-/// `cook_batch` desenhava a forma **AUTORADA**, então o miss acontecia todo quadro e re-cozinhava
-/// os mesmos pixels opacos — *o relógio pago, o defeito intacto*. O `Job` passa a carregar o estilo
+/// O gate acima prova que o TOKEN entra na chave. Isso não bastava: o `cook_batch` desenhava a
+/// forma **AUTORADA**, então o miss acontecia todo quadro e re-cozinhava os mesmos pixels — *o
+/// relógio pago, o defeito intacto*. O `Job` passa a carregar o estilo
 /// com que a chave foi feita, e o desenho lê-o dali.
 ///
 /// **Mutação que tem de sangrar:** o `cook_batch` voltar a passar `None`, ou o `job_for` a resolver

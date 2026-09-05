@@ -424,6 +424,46 @@ fn is_boolean_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_COMPOUND_RELEASE
 }
 
+/// ⭐⭐⭐ **Uma linha do popover de MISTURA do objecto foi escolhida** — fecha o chip e encaminha o
+/// MODO (estudo 42 item 2).
+///
+/// ⚠️ **O que viaja no bus é o CÓDIGO do modo, não a linha do popover.** A lista é derivada da
+/// tradução para o Vello, e mandar o índice obrigaria a shell a reconstruí-la para o traduzir —
+/// uma segunda cópia da mesma lista é como os dois lados passam a discordar sobre o que a linha 7
+/// significa. É o mesmo desenho do picker de PONTA (ele manda `marker.as_u8()`).
+///
+/// ⚠️ E o chip fecha AQUI: o light-dismiss não dispara num clique DENTRO do popover, e sem isto a
+/// lista fica aberta por cima da secção depois de escolher (a cicatriz que o dropdown de fonte já
+/// carrega).
+pub(crate) fn pick_object_blend(
+    host: &mut dyn ph2d_editor_core::panel::PanelHostInternal,
+    id: ph2d_a11y::NodeId,
+) -> bool {
+    let Some(i) = crate::state::blend_option_index(id) else {
+        return false;
+    };
+    let Some(mode) = ph2d_vec_render::blend::offered().nth(i) else {
+        return false; // slot de id vazio: o espaço é fixo e a lista oferecida é menor
+    };
+    if let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown {
+        open,
+        selected_index,
+        ..
+    }) = host.store_mut().get_mut(ids::VECTOR_OBJ_BLEND)
+    {
+        *open = false;
+        *selected_index = Some(i);
+    }
+    host.bus_mut()
+        .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
+            ph2d_editor_core::tool::PanelEvent::SetValue(
+                ids::VECTOR_OBJ_BLEND,
+                f64::from(mode.to_u8()),
+            ),
+        ));
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

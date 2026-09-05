@@ -130,7 +130,9 @@ pub(crate) fn rotation_to_track(deg: f64) -> f32 {
 }
 /// A seção CONSTRAINTS — as âncoras (plano UI/UX W3), irmã de `paint_layout`.
 mod paint_anchors;
+mod paint_appearance;
 mod paint_arrange;
+mod paint_boolean;
 /// O catálogo de formas (categoria em dropdown + grade de thumbnails cozidos).
 mod paint_catalog;
 /// A seção **Clip** — o recorte, oferecido a qualquer forma vetorial FECHADA.

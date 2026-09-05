@@ -1,0 +1,34 @@
+[package]
+name = "ph2d-blend-mode"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐⭐⭐ **O VOCABULÁRIO ÚNICO de "como isto se compõe com o que está por baixo"**, extraído da
+# `ph2d-painter-effects` em 2026-09-05 quando o VETOR se tornou o segundo dono da pergunta
+# (opacidade + mistura por forma, estudo 42 item 2).
+#
+# ⚠️ **A extracção existe por uma FRONTEIRA DECLARADA:** a `ph2d-vec-scene` diz de si, na primeira
+# linha do Cargo.toml dela, *"modelo puro de documento — sem vello/kurbo/ph2d-color"*, e a
+# `ph2d-painter-effects` depende da `ph2d-color`. Guardar o modo no documento vectorial exigia ou
+# quebrar aquela fronteira, ou um SEGUNDO enum de mistura no app — e um segundo vocabulário para a
+# mesma palavra é o defeito que este repo já pagou noutros sítios.
+#
+# ⚠️ **O corte é limpo porque a matemática já era só `f32`**: nem o enum nem o `apply` tocavam a
+# `ph2d-color` (o doc do módulo diz *"opera em linear-sRGB"*, e quem converte é o compositor). ⇒
+# a folha leva os TRÊS (`BlendMode`, `MAX_BLEND_MODES`, `apply`) e a `ph2d-painter-effects`
+# re-exporta-os: **nenhum dos 8 consumidores mudou uma linha** (todos escreviam
+# `ph2d_painter_effects::{BlendMode, MAX_BLEND_MODES, apply_blend}`, e nenhum o caminho do módulo).
+#
+# Mesmo precedente das outras folhas só-serde que os documentos deste repo partilham:
+# `ph2d-warp-style`, `ph2d-stroke-width`, `ph2d-vec-pattern`, `ph2d-fx-op`.
+
+[dependencies]
+# Postcard binary serialization derives — o modo viaja no save do documento (a camada do Painter,
+# a forma do vector) e o discriminante é o valor de wire.
+serde = { version = "1", features = ["derive"] }

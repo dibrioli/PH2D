@@ -994,6 +994,7 @@ impl crate::App {
         self.expr_blend_smoke();
         self.morph_fade_smoke();
         self.vec_fade_smoke();
+        self.vec_appearance_smoke();
         self.nest_smoke();
         self.physics_smoke();
         self.instance_smoke();
@@ -3422,6 +3423,10 @@ impl crate::App {
             let mut pending_rulers: Option<bool> = None;
 
             // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
+            // ⭐ A APARÊNCIA do objecto (estudo 42 item 2): o track `0..1` do slider e o CÓDIGO do
+            // modo de mistura. Capturados aqui e aplicados ao documento no dreno, como o Transform.
+            let mut pending_vec_opacity: Option<f64> = None;
+            let mut pending_vec_blend: Option<u8> = None;
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
                 None;
             // **ONDE o NÓ vai** — `(eixo_y?, alvo)` na unidade do artista. Um por frame: os dois
@@ -3954,6 +3959,15 @@ impl crate::App {
                                 crate::input_dispatch::vec_transform_field_for_id(*id)
                             {
                                 pending_vec_transform = Some((field, *v));
+                            } else if *id == ph2d_editor::ids::VECTOR_OBJ_OPACITY {
+                                pending_vec_opacity = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_OBJ_BLEND {
+                                // ⚠️ O valor é o CÓDIGO do modo (`BlendMode::to_u8`), e não a linha
+                                // do popover: a lista é derivada da tradução para o Vello, e
+                                // reconstruí-la aqui seria a segunda cópia dela.
+                                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                                let code = v.clamp(0.0, f64::from(u8::MAX)) as u8;
+                                pending_vec_blend = Some(code);
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_X {
                                 pending_vec_vert = Some((false, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_Y {
@@ -6972,6 +6986,22 @@ impl crate::App {
             // chamador logo abaixo — o preset de dispositivo devolve **unidades de DOCUMENTO**
             // (`DevicePreset::size`, o aspecto do aparelho normalizado ao `LONG_SIDE`), que é dado
             // AUTORADO e não um número da face do artista: ele tem de atravessar intocado.
+            // ⭐⭐⭐ **A APARÊNCIA do objecto entra no DOCUMENTO** (estudo 42 item 2).
+            //
+            // ⚠️ **Escreve na selecção INTEIRA e lê do primário** — a lei desta janela, e a porta é
+            // uma só (`vec_appearance`). ⚠️ E o passo de undo sai de graça: o registo é por DIFF, e
+            // um arrasto de slider não regista por quadro (um gesto em curso suprime a captura),
+            // então a corrida inteira colapsa em UM passo ao soltar.
+            {
+                let sel = self.vec_pen.selected_paths().to_vec();
+                if let Some(track) = pending_vec_opacity {
+                    #[allow(clippy::cast_possible_truncation)]
+                    crate::vec_appearance::set_opacity(vec_scene, &sel, track as f32);
+                }
+                if let Some(code) = pending_vec_blend {
+                    crate::vec_appearance::set_blend(vec_scene, &sel, code);
+                }
+            }
             if let Some((field, target)) = pending_vec_transform {
                 let target = ph2d_editor::LengthDisplay::of(&hero.project).to_world(target);
                 crate::input_dispatch::apply_vec_transform(
@@ -8938,6 +8968,10 @@ impl crate::App {
             // motor é o estado de fundo — o precedente é o passe de estados de UI, mais abaixo.
             let driven = crate::vec_driven_style::resolve(sim, &self.vec_entities);
             crate::vec_driven_style::apply(&driven, &mut vec_view);
+            // ⭐ E o componente volta ao AUTORADO — depois de ser lido, nunca antes. Sem isto,
+            // apagar uma track de opacidade deixava a forma congelada no último valor da curva
+            // para sempre (ver o doc da função).
+            crate::vec_driven_style::settle_to_authored(sim, &self.vec_entities, vec_scene);
             // **AS ROWS AUTORADAS** (plano UI/UX W8b.3): o valor VIVO de cada controle que dirige
             // uma forma. Depois dos tokens, porque a opacidade desvanece o que de fato vai ser
             // desenhado; e aqui, no passe de desenho, pela MESMA razão que os tokens — nenhum

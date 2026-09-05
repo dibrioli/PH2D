@@ -28,6 +28,11 @@ postcard = { version = "1", features = ["alloc"] }
 # do Envelope re-exportam o MESMO `WarpStyle`, então não podem divergir. Folha pura
 # (só serde) — não fere a pureza da cena.
 ph2d-warp-style = { path = "../ph2d-warp-style" }
+# ⭐ O VOCABULÁRIO ÚNICO de mistura (os 22 modos do W3C), que a forma guarda no documento desde a
+# v19 do schema. Folha só-serde, mesmo precedente da `ph2d-warp-style` acima — e ela existe
+# **porque** esta crate se declara sem `ph2d-color`: o enum vivia na `ph2d-painter-effects`, que a
+# arrasta, e foi extraído em 2026-09-05 em vez de se abrir a fronteira ou inventar um 2.º enum.
+ph2d-blend-mode = { path = "../ph2d-blend-mode" }
 # A casa ÚNICA do perfil de largura (ADR-0148): o `WidthProfile`/`WidthStops` mora nesta folha
 # porque tem dois donos que não se veem — este crate (o motor, via `power_stroke`) e o
 # `ph2d-ecs` (o componente que o documento guarda). Folha pura (só serde), mesmo precedente da

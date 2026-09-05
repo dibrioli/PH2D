@@ -24,6 +24,7 @@ fn reta(scene: &mut VecScene, a: [f64; 2], b: [f64; 2]) -> VecPathId {
         subpaths: Vec::new(),
         fill_rule: ph2d_vec_scene::FillRule::NonZero,
         effects: Vec::new(),
+        ..VecPath::default()
     })
 }
 

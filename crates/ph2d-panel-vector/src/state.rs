@@ -109,6 +109,15 @@ pub(crate) use widget_state::{
     set_pending_icon_dd, take_pending_icon_dd, widget_kinds_beyond, widget_skin_state,
 };
 
+/// ⭐⭐⭐ **A APARÊNCIA da seleção** (estudo 42 item 2) — a opacidade e o modo de mistura do
+/// OBJECTO, que são propriedades da forma e não da tinta dela.
+#[path = "state_appearance.rs"]
+mod appearance_state;
+pub use appearance_state::{Appearance, set_current_appearance};
+pub(crate) use appearance_state::{
+    blend_option_index, current_appearance, set_pending_obj_blend_dd, take_pending_obj_blend_dd,
+};
+
 /// **OS ESTADOS de UI da seleção** (plano UI/UX W7) — que poses ela tem, e quanto tempo o tween
 /// entre elas leva.
 #[path = "state_ui_states.rs"]

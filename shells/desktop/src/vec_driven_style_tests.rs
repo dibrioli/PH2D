@@ -103,3 +103,83 @@ fn the_top_of_a_fade_closes_on_opaque_instead_of_one_step_below() {
     apply(&resolve(&sim, &map), &mut view);
     assert_eq!(view.bound[0].alpha, Some(0));
 }
+
+/// ⭐⭐⭐ **APAGAR A TRACK DEVOLVE A FORMA AO DOCUMENTO** (v19) — o defeito que o
+/// [`super::settle_to_authored`] fecha.
+///
+/// ⚠️ A ponte da linha do tempo **escreve** o componente e nunca o apaga: sem a reposição, uma
+/// forma cuja track foi apagada ficava congelada no último valor da curva **para sempre**, com o
+/// documento a dizer outra coisa e nenhum gesto de volta.
+///
+/// **Mutação que tem de sangrar:** repor a `1.0` em vez do valor do documento (a forma autorada a
+/// 40 % saltaria para opaca ao parar a animação), ou repor ANTES de a projecção ser lida (a curva
+/// deste quadro desapareceria).
+#[test]
+fn settling_returns_the_component_to_the_authored_value() {
+    use ph2d_vec_scene::{Opacity, VecPath, VecScene, VecVertex};
+    let mut sim = SimWorld::default();
+    let mut map = VecEntityMap::new();
+    let mut scene = VecScene::default();
+    let id = scene.push_path(VecPath {
+        verts: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        opacity: Opacity::new(0.4),
+        ..VecPath::default()
+    });
+    let e = sim
+        .world_mut()
+        .spawn((
+            ph2d_ecs::Transform::default(),
+            ph2d_ecs::VecPathRef(id),
+            // O que a curva deixou no último quadro em que ela existia.
+            VecDrivenStyle { alpha: Some(0.9) },
+        ))
+        .id();
+    map.insert(id, e.to_bits());
+
+    super::settle_to_authored(&mut sim, &map, &scene);
+    let a = sim
+        .world()
+        .get::<VecDrivenStyle>(ph2d_ecs::Entity::from_bits(e.to_bits()))
+        .and_then(|d| d.alpha)
+        .expect("o componente fica — o que muda e' o valor");
+    assert!(
+        (a - 0.4).abs() <= 1.0 / f32::from(u8::MAX),
+        "a forma tem de voltar ao que o DOCUMENTO diz (0,4), e nao ao ultimo valor da curva: {a}"
+    );
+}
+
+/// **A reposição não CRIA o componente** — a população fica pequena de propósito.
+///
+/// ⚠️ Semeá-lo em toda forma poria uma entrada de estilo por forma na projecção do quadro, e o
+/// `bound_style` é uma varredura linear: `O(N²)` por quadro numa cena grande. *Uma cura que custa
+/// um quadrado não é uma cura.*
+#[test]
+fn settling_never_creates_the_component() {
+    use ph2d_vec_scene::{Opacity, VecPath, VecScene, VecVertex};
+    let mut sim = SimWorld::default();
+    let mut map = VecEntityMap::new();
+    let mut scene = VecScene::default();
+    let id = scene.push_path(VecPath {
+        verts: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        opacity: Opacity::new(0.4),
+        ..VecPath::default()
+    });
+    let e = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::default(), ph2d_ecs::VecPathRef(id)))
+        .id();
+    map.insert(id, e.to_bits());
+    super::settle_to_authored(&mut sim, &map, &scene);
+    assert!(
+        sim.world()
+            .get::<VecDrivenStyle>(ph2d_ecs::Entity::from_bits(e.to_bits()))
+            .is_none(),
+        "uma forma que a linha do tempo nunca conduziu nao pode ganhar o componente aqui"
+    );
+}

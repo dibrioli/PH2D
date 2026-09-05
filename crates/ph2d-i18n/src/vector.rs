@@ -127,6 +127,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.states.signals.add" => "+ Signal",
         "panel.vector.states.signals.hint" => "signal name",
         "panel.vector.states.signals.remove" => "x",
+        // ⭐ A APARÊNCIA do OBJECTO (estudo 42 item 2): a opacidade e a mistura da forma inteira —
+        // ⚠️ **não** o alfa da tinta, que vive nas duas rows `Opacity` das secções de estilo.
+        "panel.vector.section.appearance" => "Appearance",
+        "panel.vector.appearance.opacity" => "Opacity",
+        "panel.vector.appearance.blend" => "Blend",
         "panel.vector.section.widget" => "Widget Skin",
         "panel.vector.widget.wear" => "Wear a Widget",
         "panel.vector.widget.remove" => "Back to Drawing",

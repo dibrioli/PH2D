@@ -77,6 +77,63 @@ pub(crate) fn apply(driven: &[(VecPathId, f32)], view: &mut VecViewState) {
     }
 }
 
+/// ⭐⭐⭐ **O COMPONENTE VOLTA A SER O AUTORADO depois de o quadro o ler** (v19, 2026-09-05).
+///
+/// # O defeito que ela fecha
+///
+/// A ponte da linha do tempo **escreve** [`VecDrivenStyle`] e nunca o apaga: apagar uma track
+/// deixava a forma congelada no último valor da curva, **para sempre e sem gesto de volta** — o
+/// documento dizia `1,0` e a tela mostrava `0,4`. Enquanto não havia opacidade autorada isso era
+/// invisível (não havia outro valor a discordar); com a v19 há, e o silêncio virou contradição.
+///
+/// ⇒ Depois de a projecção deste quadro ser lida, o componente volta ao valor do DOCUMENTO. Um
+/// quadro em que a curva escreve, ela ganha; um quadro em que ninguém escreve, o autorado desenha.
+///
+/// # ⚠️ Porquê DEPOIS, e não antes
+///
+/// A lista de estilo (`vec_view.bound`) já foi construída a partir do componente, e é ELA que
+/// desenha — repor antes apagaria a curva **deste** quadro. Repor depois deixa o componente
+/// correcto para o quadro seguinte, que é onde a ausência de curva se manifesta.
+///
+/// # ⚠️ E porquê só quem JÁ TEM o componente
+///
+/// A população é «as formas que a linha do tempo alguma vez conduziu», que é pequena. Semeá-lo em
+/// TODA forma da cena poria uma entrada de estilo por forma na `vec_view.bound`, e o
+/// `bound_style(id)` é uma varredura linear — `O(N²)` por quadro numa cena de dez mil formas.
+/// *Uma cura que custa um quadrado não é uma cura.*
+///
+/// ⏳ **O que fica em aberto, com o mecanismo nomeado:** uma forma **nunca conduzida** não tem o
+/// componente, então as três leitoras de *«quanto vale esta propriedade?»* continuam a responder
+/// `1,0` para ela — a tecla **K** sobre uma forma autorada a 40 % grava a 1.ª chave em `1,0`. As
+/// duas leitoras da crate (`read_prop_kind`, que semeia o `rest`) **não alcançam o documento
+/// vectorial**, e fechá-lo é passar a cena por três assinaturas.
+pub(crate) fn settle_to_authored(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    scene: &ph2d_vec_scene::VecScene,
+) {
+    for (&id, &bits) in map {
+        let e = Entity::from_bits(bits);
+        let Some(autorada) = scene
+            .paths()
+            .iter()
+            .find(|p| p.id == id)
+            .map(|p| p.opacity.get())
+        else {
+            continue;
+        };
+        // ⚠️ Só quem tem o componente: `get_mut` não o cria, e é isso que mantém a população
+        // pequena (ver o doc acima).
+        if let Some(mut d) = sim.world_mut().get_mut::<VecDrivenStyle>(e) {
+            let alvo = Some((autorada.clamp(0.0, 1.0) * f32::from(u8::MAX)).round() as u8);
+            let alvo = alvo.map(|a| f32::from(a) / f32::from(u8::MAX));
+            if d.alpha != alvo {
+                d.alpha = alvo;
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "vec_driven_style_tests.rs"]
 mod tests;

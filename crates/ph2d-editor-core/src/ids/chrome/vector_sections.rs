@@ -6,6 +6,7 @@
 use ph2d_a11y::NodeId;
 
 use super::vector::*;
+use super::vector_appearance::VECTOR_SECTION_APPEARANCE;
 use super::vector_pencil::VECTOR_SECTION_PENCIL;
 
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
@@ -31,6 +32,9 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     VECTOR_SECTION_FILL_TYPE,
     VECTOR_SECTION_SNAP,
     VECTOR_SECTION_TRANSFORM,
+    // ⭐ A APARÊNCIA do objecto (estudo 42 item 2) — logo a seguir ao Transform, que é onde ela é
+    // pintada: as duas descrevem a forma selecionada como um todo.
+    VECTOR_SECTION_APPEARANCE,
     VECTOR_SECTION_VERTEX,
     VECTOR_SECTION_BOOLEAN,
     VECTOR_SECTION_EXPAND,

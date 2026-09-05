@@ -651,7 +651,12 @@ fn every_section_header_is_registered_as_collapsible() {
         // não um alvo da família do padrão**: os knobs são OUTROS (avanço e escala RELATIVA contra
         // reticulado, fase e repetição), e metade dos de cada um ficaria morta na outra. ⚠️ O `40`
         // foi **CONTADO** (o gate imprimiu `left: 40`), como manda esta nota desde o `31`.
-        40,
+        // +1 (estudo 42 item 2): APPEARANCE — a opacidade e a mistura do OBJECTO. ⚠️ **Secção
+        // PRÓPRIA, e não uma row da *Fill***: aquela já tem uma `Opacity` que é o alfa da TINTA da
+        // ferramenta, e as duas são coisas diferentes (a tinta descreve UMA marca, esta descreve a
+        // forma inteira — a diferença vê-se onde o traço cobre o próprio preenchimento). ⚠️ O `41`
+        // foi **CONTADO** (o gate imprimiu `left: 41`), como manda esta nota desde o `31`.
+        41,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

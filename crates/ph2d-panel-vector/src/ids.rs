@@ -150,6 +150,12 @@ pub use ph2d_editor_core::ids::{
     VECTOR_SECTION_TOOL, VECTOR_SECTION_TRANSFORM, VECTOR_SECTION_VERTEX, VECTOR_SECTIONS,
     VECTOR_SHAPE_GROUP_DD,
 };
+/// ⭐ **A APARÊNCIA do OBJECTO** (estudo 42 item 2): a seção, o slider de opacidade e o chip de
+/// mistura + as linhas do popover dele.
+pub use ph2d_editor_core::ids::{
+    VECTOR_OBJ_BLEND, VECTOR_OBJ_OPACITY, VECTOR_OBJ_OPACITY_NUM, VECTOR_SECTION_APPEARANCE,
+    vector_obj_blend_option_id,
+};
 /// **O LÁPIS** (plano 25 W1): a seção + os dois knobs da mão livre, cada um com o seu chip.
 pub use ph2d_editor_core::ids::{
     VECTOR_PENCIL_FIDELITY, VECTOR_PENCIL_FIDELITY_NUM, VECTOR_PENCIL_STABILIZER,

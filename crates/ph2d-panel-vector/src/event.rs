@@ -258,6 +258,10 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_TEXT_WRAP_W
                 || id == ids::VECTOR_STROKE_OPACITY
                 || id == ids::VECTOR_FILL_OPACITY
+                // ⭐ A opacidade do OBJECTO (estudo 42 item 2) — mesmo formato de track `0..1`, e
+                // ⚠️ **outro sujeito**: as duas de cima são a tinta da ferramenta, esta é a forma
+                // selecionada. Elas convivem, e o id é o que as separa.
+                || id == ids::VECTOR_OBJ_OPACITY
                 || id == ids::VECTOR_DASH
                 || id == ids::VECTOR_GAP
                 || id == ids::VECTOR_GRAD_ANGLE
@@ -283,6 +287,7 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_TEXT_WRAP_W_NUM
                 || id == ids::VECTOR_STROKE_OPACITY_NUM
                 || id == ids::VECTOR_FILL_OPACITY_NUM
+                || id == ids::VECTOR_OBJ_OPACITY_NUM
                 || id == ids::VECTOR_DASH_NUM
                 || id == ids::VECTOR_GAP_NUM
                 || id == ids::VECTOR_GRAD_ANGLE_NUM
@@ -320,6 +325,10 @@ pub(crate) fn apply_event(
         }
         // **Opção de PONTA** (uma linha do popover de Start / End) — ver [`pick_marker`].
         WidgetEvent::Click(id) if state::marker_option(id).is_some() => pick_marker(host, id),
+        // ⭐ Uma linha do popover de MISTURA do objecto (estudo 42 item 2).
+        WidgetEvent::Click(id) if state::blend_option_index(id).is_some() => {
+            clicks::pick_object_blend(host, id)
+        }
         // **A junção do Offset Path** — panel-local, ver [`pick_expand_join`].
         WidgetEvent::Click(id) if expand_join_index(id).is_some() => pick_expand_join(host, id),
         // **O lado do Offset Path** (Outer/Inner/Both) — panel-local, ver [`pick_expand_side`].

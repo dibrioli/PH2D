@@ -475,7 +475,10 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // mede a forma do `FlipDoc` e da `VecScene`, e o que mudou foi o `ProjectFile`. E' o mesmo
         // cego dos degraus 99 e 100, e esta escrito aqui porque a proxima pessoa olha para a
         // tripla primeiro.
-        (114, 13, 18),
+        // PROJECT 114→115 + VEC_SCENE 18→19: o `VecPath` ganhou `opacity` + `blend` (a opacidade
+        // e o modo de mistura do OBJECTO, estudo 42 item 2). Dois campos apendados ⇒ layout
+        // posicional muda. ⭐ Este é um dos degraus que a tripla de facto VÊ.
+        (115, 13, 19),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -507,4 +507,17 @@
 /// sítios faziam com `to_degrees()` escrito à mão. Quem nunca abrir o menu não vê diferença.
 ///
 /// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08.
-pub(crate) const PROJECT_SCHEMA: u32 = 114;
+/// # 114 -> 115 — A OPACIDADE E A MISTURA DA FORMA (`line/Vector`)
+///
+/// O [`ph2d_vec_scene::VecPath`] ganhou `opacity` + `blend` (`VEC_SCENE_SCHEMA_VERSION` 18 -> 19) —
+/// o item 2 do estudo 42, e a metade que faltava ao report do Enio de 2026-09-04 (*"o painel não
+/// mostra..."* ⇒ não havia o que mostrar: a forma não tinha opacidade própria).
+///
+/// ⚠️ **Campos APENDADOS ao fim de uma struct ⇒ quebra dura nos dois sentidos** — o mesmo
+/// mecanismo do v80 e do v114: postcard é posicional e não sinaliza ausência, então um save v18 da
+/// cena lido por este layout **acaba os bytes** no campo novo, e um v19 lido por um binário velho
+/// traz bytes a mais. ⭐ **A tripla VÊ este degrau** (ao contrário dos v99/v100/v114): o que mudou
+/// foi a forma da `VecScene`, que é exactamente o que ela mede.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 2026-08-26.
+pub(crate) const PROJECT_SCHEMA: u32 = 115;

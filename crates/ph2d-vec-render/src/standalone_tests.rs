@@ -106,19 +106,23 @@ fn a_bare_primitive_has_measurable_bounds() {
     assert!(x1 > x0 && y1 > y0, "e ela tem área: {x0},{y0} → {x1},{y1}");
 }
 
-/// ⭐⭐⭐ **A FORMA ISOLADA DESVANECE COM O QUADRO** — report do Enio, 2026-09-04: *"a da
-/// direita não ficou transparente"*.
+/// ⭐⭐⭐ **A FORMA ISOLADA LEVA O TOKEN DO QUADRO — e NÃO leva a opacidade** (v19).
 ///
-/// A estrela filtrada re-cozinhava a cada quadro (a chave do memo já carregava a forma
-/// PINTADA) e re-cozinhava **os mesmos pixels opacos**, porque esta porta desenhava o
-/// AUTORADO. O oráculo é o `draw_data` — os bytes de tinta que de facto entraram na cena.
+/// ⚠️⚠️ **Este gate mudou de lado em 2026-09-05, e a mudança é a cura de ontem a ficar mais
+/// barata.** Ele nasceu do report *"a da direita não ficou transparente"*: a estrela
+/// filtrada era rasterizada opaca porque esta porta desenhava o AUTORADO. Hoje a opacidade
+/// do objecto é uma **camada no composto** ([`crate::blend`]), então:
 ///
-/// ⚠️ **As duas metades são um gate só de propósito:** a que muda prova que a opacidade
-/// chega, e a que NÃO muda (`alpha = 255`, a identidade) prova que o memo continua a
-/// acertar numa forma sem estilo — sem ela, a cura compraria a correcção com um re-cook
-/// por quadro em toda forma filtrada da cena.
+/// - o **token** (cor, espessura) continua a ter de chegar aqui — ele muda os pixels da
+///   forma, e o FX borra o que a forma É;
+/// - a **opacidade** não chega, e não pode chegar: se chegasse, ela seria aplicada DUAS
+///   vezes (uma na tinta, outra na camada) e um fade a meio sairia a um quarto.
+///
+/// ⭐ E o efeito colateral é a economia que ontem não existia: sem a opacidade na chave do
+/// memo, desvanecer uma forma filtrada **acerta** o memo em vez de a re-cozinhar 60 vezes
+/// por segundo. O oráculo é o `draw_data` — os bytes de tinta que entraram na cena.
 #[test]
-fn the_isolated_draw_fades_with_the_frames_resolved_style() {
+fn the_isolated_draw_takes_the_token_and_leaves_the_opacity_to_the_layer() {
     use ph2d_vec_scene::{BoundStyle, VecScene, VecXforms};
     let mut scene = VecScene::default();
     let mut p = bare_primitive();
@@ -140,35 +144,38 @@ fn the_isolated_draw_fades_with_the_frames_resolved_style() {
         );
         s.inner().encoding().draw_data.clone()
     };
-    let opaca = ink(None);
-    let meia = BoundStyle {
+    let autorada = ink(None);
+    let token = BoundStyle {
         path: id,
-        alpha: Some(128),
+        fill: Some(Rgba8::new(240, 10, 10, 255)),
         ..BoundStyle::default()
     };
     assert_ne!(
-        opaca,
-        ink(Some(&meia)),
-        "a opacidade viva tem de chegar aos pixels da forma isolada"
+        autorada,
+        ink(Some(&token)),
+        "a cor que o token resolve tem de chegar aos pixels da forma isolada"
     );
-    let cheia = BoundStyle {
-        path: id,
-        alpha: Some(255),
-        ..BoundStyle::default()
-    };
-    assert_eq!(
-        opaca,
-        ink(Some(&cheia)),
-        "e opaco e' a IDENTIDADE — senao todo filtro re-cozinha por nada"
-    );
+    for a in [0_u8, 128, 255] {
+        let viva = BoundStyle {
+            path: id,
+            alpha: Some(a),
+            ..BoundStyle::default()
+        };
+        assert_eq!(
+            autorada,
+            ink(Some(&viva)),
+            "alpha={a}: a opacidade do objecto compoe-se na CAMADA — aqui ela seria aplicada duas \
+             vezes, e um fade a meio sairia a um quarto"
+        );
+    }
 }
 
-/// **E A GEOMETRIA DERIVADA DESVANECE JUNTO** — o irmão do gate acima, sobre o outro braço.
+/// **E A GEOMETRIA DERIVADA LEVA O MESMO TOKEN** — o irmão do gate acima, sobre o outro braço.
 ///
-/// ⚠️ Sem ele uma forma com offset/pattern/espelho ligado ficaria opaca enquanto a irmã sem
-/// efeito desvanecia, e a suíte inteira ficava verde: a fixtura de cima nunca põe `live`.
+/// ⚠️ Sem ele uma forma com offset/pattern/espelho ligado ficaria com a cor velha enquanto a irmã
+/// sem efeito re-vestia, e a suíte inteira ficava verde: a fixtura de cima nunca põe `live`.
 #[test]
-fn the_derived_geometry_fades_with_the_same_style() {
+fn the_derived_geometry_takes_the_same_token() {
     use ph2d_vec_scene::{BoundStyle, VecScene, VecXforms};
     let mut scene = VecScene::default();
     let mut p = bare_primitive();
@@ -192,14 +199,14 @@ fn the_derived_geometry_fades_with_the_same_style() {
         );
         s.inner().encoding().draw_data.clone()
     };
-    let meia = BoundStyle {
+    let token = BoundStyle {
         path: id,
-        alpha: Some(128),
+        fill: Some(Rgba8::new(240, 10, 10, 255)),
         ..BoundStyle::default()
     };
     assert_ne!(
         ink(None),
-        ink(Some(&meia)),
-        "a copia derivada tambem desvanece"
+        ink(Some(&token)),
+        "a copia derivada tambem veste o token"
     );
 }

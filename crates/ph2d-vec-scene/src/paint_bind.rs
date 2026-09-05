@@ -20,6 +20,8 @@
 //! `resolve(theme)`. Uma segunda tabela em qualquer um deles é a swatch que mostra uma cor e a arte
 //! que desenha outra — divergência que só aparece num screenshot.
 
+use serde::{Deserialize, Serialize};
+
 use crate::{Paint, Rgba8, VecPath, VecPathId};
 
 /// A tinta que os tokens desta forma produzem no modo vigente.
@@ -38,14 +40,22 @@ pub struct BoundStyle {
     pub stroke: Option<Rgba8>,
     /// **A opacidade VIVA desta forma neste frame**, `255` = opaca (plano UI/UX W8b.3).
     ///
-    /// ⚠️ Ela **escala** o alfa que a forma já tem, em vez de o substituir — e é o que preserva a
-    /// ESPÉCIE da tinta: um gradiente continua um gradiente (cada parada desvanece junto), um
-    /// sólido continua sólido. Trocar o `fill` por uma cor com alfa, que seria o atalho, achataria
-    /// todo gradiente no instante em que alguém arrastasse o slider.
+    /// ⚠️ E ela é **VISTA, nunca documento**: quem a produz é o valor vivo de um controle (um
+    /// estado de UI, uma curva da linha do tempo), e o autorado fica onde o artista o escreveu. É
+    /// a costura *fonte ≠ o que o mundo consome* do ADR-0121, aqui na opacidade — arrastar até
+    /// zero e voltar devolve exatamente a arte.
     ///
-    /// ⚠️ E ela é **VISTA, nunca documento**: quem a produz é o valor vivo de um controle, e a
-    /// tinta autorada fica onde o artista a escreveu. É a costura *fonte ≠ o que o mundo consome*
-    /// do ADR-0121, aqui na opacidade — arrastar até zero e voltar devolve exatamente a arte.
+    /// ⭐⭐⭐ **Ela SOBREPÕE a [`crate::VecPath::opacity`], e isso mudou em 2026-09-05.** Até à v19
+    /// do schema não havia opacidade de objecto nenhuma, então este campo **escalava o alfa de
+    /// toda a tinta** — a única forma de desvanecer que existia. Com o objecto a ter a sua, os
+    /// quatro campos desta struct passam a ser **a mesma lei**: *`None` = o literal do documento
+    /// vale; `Some` = o valor vivo cobre-o*. A composição tem uma porta só,
+    /// [`object_alpha`], e o desenho aplica-a como CAMADA.
+    ///
+    /// ⚠️ **A mudança é observável, e é uma correcção:** escalar a tinta faz o traço transparecer
+    /// através do próprio preenchimento a meia-opacidade (duas marcas, cada uma a metade); a
+    /// camada compõe a forma inteira uma vez. É o que o Illustrator e o Figma fazem, e é o que a
+    /// palavra *opacidade do objecto* quer dizer.
     pub alpha: Option<u8>,
     /// **A ESPESSURA que um token de escala dá ao traço**, em unidades de MUNDO (W4c.4).
     ///
@@ -100,11 +110,13 @@ impl VecPath {
             .width
             .zip(self.stroke.as_ref())
             .is_some_and(|(w, s)| (s.width - w).abs() > f64::EPSILON);
-        // ⚠️ A opacidade entra na conta do early-out: `alpha == Some(255)` é a identidade, e um
-        // clone por forma por frame para não mudar um pixel é o custo que este `Cow` existe para
-        // não pagar — um slider parado no topo tem de sair byte-idêntico à arte.
-        let fades = b.alpha.is_some_and(|a| a < u8::MAX);
-        if b.fill.is_none() && !paints_stroke && !fades && !widens {
+        // ⛔ **A OPACIDADE NÃO ENTRA AQUI desde 2026-09-05** (v19 do schema). Ela deixou de ser
+        // um escalar da tinta e passou a ser a opacidade do OBJECTO, aplicada como CAMADA por
+        // quem desenha ([`object_alpha`]) — ver o doc do campo `alpha`. ⭐ E o efeito colateral é
+        // uma economia: a chave do memo de FX é feita desta forma pintada, então desvanecer uma
+        // forma filtrada **acerta** o memo em vez de a re-cozinhar 60 vezes por segundo (que é o
+        // que a wave de 2026-09-04 teve de fazer enquanto a opacidade vivia nas cores).
+        if b.fill.is_none() && !paints_stroke && !widens {
             return std::borrow::Cow::Borrowed(self);
         }
         let mut out = self.clone();
@@ -119,11 +131,6 @@ impl VecPath {
         }
         if let (Some(w), Some(s)) = (b.width, out.stroke.as_mut()) {
             s.width = w;
-        }
-        if fades {
-            // O token entra ANTES, então a opacidade desvanece o que de fato vai ser desenhado —
-            // e não o literal que o token acabou de cobrir.
-            fade(&mut out, b.alpha.unwrap_or(u8::MAX));
         }
         std::borrow::Cow::Owned(out)
     }
@@ -140,10 +147,14 @@ impl VecPath {
 /// meio nível de cada vez. O gate mede onde o erro se vê — `100 * 130/255` é 50,98, que arredonda
 /// para 51 e trunca para 50.
 ///
-/// ⭐⭐ **É `pub(crate)` desde a W6 porque ela tem um SEGUNDO consumidor:** o
+/// ⭐⭐ **É `pub(crate)` desde a W6 porque ela tinha um SEGUNDO consumidor:** o
 /// [`crate::brush_stroke::brush_copies`] desvanece a arte de um pincel com esta função. *Desvanecer
 /// toda a tinta de um `VecPath` é uma pergunta só, e uma segunda cópia dela divergiria na primeira
 /// espécie de tinta nova* — foi a razão de o `ArcPath` existir, um nível abaixo.
+///
+/// ⚠️ **Hoje o pincel é o ÚNICO** — a opacidade viva saiu daqui em 2026-09-05 e virou uma camada
+/// ([`object_alpha`]). A função fica porque a pergunta do pincel não mudou: ali o que desvanece é
+/// a ARTE de um traço, que é tinta de verdade, e não a composição de um objecto.
 pub(crate) fn fade(p: &mut VecPath, a: u8) {
     let scale = |c: &mut Rgba8| c.a = ((u32::from(c.a) * u32::from(a) + 127) / 255) as u8;
     match p.fill.as_mut() {
@@ -189,6 +200,69 @@ pub(crate) fn fade(p: &mut VecPath, a: u8) {
         Some(crate::StrokePaint::Brush(b)) => scale(&mut b.fallback),
         None => {}
     }
+}
+
+/// ⭐⭐⭐ **A OPACIDADE DO OBJECTO, do documento** (v19 do schema).
+///
+/// Newtype por causa do `Default`: a [`VecPath`] deriva-o, `..VecPath::default()` é o idioma de
+/// centenas de sítios deste repo, e um `f32` cru nasceria a `0.0` — *toda forma invisível, sem uma
+/// linha de erro*. O tipo carrega o neutro **e** a cerca (0..1), num sítio só.
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Opacity(f32);
+
+impl Default for Opacity {
+    fn default() -> Self {
+        Self(1.0)
+    }
+}
+
+impl Opacity {
+    /// A opacidade, presa a `0..=1`.
+    ///
+    /// ⚠️ **`NaN` vira OPACO, não `NaN`.** Um `f32::clamp` com `NaN` devolve `NaN` (não estoura), e
+    /// um `NaN` a chegar ao `push_layer` do Vello é uma camada com alfa indefinido — o modo de
+    /// falha silencioso que este tipo existe para não ter. O neutro é a resposta segura: quem
+    /// entrega `NaN` já perdeu o valor, e desaparecer a forma seria pior do que a ignorar.
+    #[must_use]
+    pub fn new(v: f32) -> Self {
+        Self(if v.is_finite() {
+            v.clamp(0.0, 1.0)
+        } else {
+            1.0
+        })
+    }
+
+    /// O número, `1.0` = opaca.
+    #[must_use]
+    pub fn get(self) -> f32 {
+        self.0
+    }
+
+    /// **Esta forma compõe-se como sempre?** — o caminho rápido do desenho: sem camada, byte a
+    /// byte o que se desenhava antes de a v19 existir.
+    #[must_use]
+    pub fn is_opaque(self) -> bool {
+        self.0 >= 1.0
+    }
+}
+
+/// ⭐⭐⭐ **QUÃO OPACO este objecto está NESTE quadro** — a porta ÚNICA que compõe o autorado com o
+/// vivo.
+///
+/// A lei é a dos outros três campos do [`BoundStyle`], e ela é uma só: *`None` = o literal do
+/// documento vale; `Some` = o valor vivo cobre-o*. Um estado de UI ou uma curva da linha do tempo
+/// **sobrepõem** a opacidade que o artista escreveu, sem lhe tocar — largar o controlo devolve a
+/// arte autorada.
+///
+/// ⚠️ **Uma segunda porta era o defeito:** enquanto a opacidade viva escalava a tinta e a autorada
+/// não existia, «quão transparente é esta forma» tinha duas respostas possíveis e nenhum sítio
+/// onde elas se encontrassem. Quem desenha, quem mede o custo e quem publica o número no painel
+/// perguntam todos aqui.
+#[must_use]
+pub fn object_alpha(path: &VecPath, bound: Option<&BoundStyle>) -> f32 {
+    bound
+        .and_then(|b| b.alpha)
+        .map_or(path.opacity.get(), |a| f32::from(a) / f32::from(u8::MAX))
 }
 
 #[cfg(test)]

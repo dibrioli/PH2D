@@ -40,6 +40,7 @@ fn linha(verts: Vec<VecVertex>, closed: bool) -> VecPath {
         subpaths: Vec::new(),
         fill_rule: ph2d_vec_scene::FillRule::NonZero,
         effects: Vec::new(),
+        ..VecPath::default()
     }
 }
 

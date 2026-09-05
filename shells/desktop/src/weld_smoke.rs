@@ -59,6 +59,7 @@ fn curva(verts: Vec<VecVertex>) -> VecPath {
         subpaths: Vec::new(),
         fill_rule: ph2d_vec_scene::FillRule::NonZero,
         effects: Vec::new(),
+        ..VecPath::default()
     }
 }
 

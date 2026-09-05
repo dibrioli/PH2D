@@ -148,16 +148,23 @@ fn the_arts_own_stroke_fades_with_its_fill() {
     }
 }
 
-/// ⭐⭐⭐ **A SOBREPOSIÇÃO VIVA (tokens / opacidade de vista) chega às cópias PELA MESMA PORTA.**
+/// ⛔⛔ **A OPACIDADE DE VISTA DEIXOU DE PASSAR PELA `fallback`** (v19, 2026-09-05), e este gate
+/// mudou de lado com a lei.
 ///
-/// [`VecPath::painted`] desvanece a `fallback` do pincel; o motor lê a `fallback`; ⇒ as cópias
-/// desvanecem. É a dívida que o [`crate::paint_bind`] declarava, fechada **sem uma linha lá**.
+/// Ele media a composição *autorada × vista* **dentro da tinta**: o `painted` desvanecia a
+/// `fallback` do pincel, o motor lia-a, e as cópias saíam a um quarto. Com a opacidade do OBJECTO a
+/// ser uma **camada** ([`crate::object_alpha`]), a vista deixa de tocar em tinta nenhuma — as
+/// cópias desvanecem porque a forma INTEIRA desvanece, uma vez, no fim.
 ///
-/// ⚠️ **A composição é multiplicativa e tem de o ser:** uma forma autorada a meia opacidade sob um
-/// desvanecimento de vista a meio sai a um quarto. Somar, ou deixar a vista ganhar, faria a
-/// opacidade autorada evaporar assim que alguém tocasse no slider de vista.
+/// ⭐ **A propriedade de produto que o gate protegia sobrevive, e mais barata:** ela era paga por
+/// uma tabela de espécies de tinta (esquecer uma espécie = uma tinta que não desvanece) e passa a
+/// sair da composição. ⚠️ **E a composição deixou de ser multiplicativa de propósito:** os quatro
+/// campos do `BoundStyle` são a mesma lei — *o vivo COBRE o autorado* —, e um slider de vista no
+/// topo tem de significar «opaca», não «a opacidade que o documento tiver».
+///
+/// O que fica testável aqui é a metade AUTORADA, que é tinta de verdade.
 #[test]
-fn the_live_fade_reaches_the_copies_through_the_fallback() {
+fn the_live_fade_no_longer_dims_the_fallback_and_the_authored_one_still_does() {
     let art = arte_pintada(255, 255);
     let mut forma = quadrado(4.0);
     forma.stroke = Some(traco(&pincel_a(128), 1.0, None));
@@ -174,10 +181,12 @@ fn the_live_fade_reaches_the_copies_through_the_fallback() {
     );
     assert!(!copias.is_empty());
     for a in alfas_de_fill(&copias) {
-        // 128 (autorada) x 128 (vista) = 64 a menos de arredondamento.
-        assert_eq!(a, 64, "a opacidade de vista nao compos com a autorada");
+        assert_eq!(
+            a, 128,
+            "a opacidade de VISTA nao pode entrar na tinta — ela e' a camada do objecto"
+        );
     }
-    // CONTROLO: sem sobreposição, a autorada sozinha manda.
+    // CONTROLO: a AUTORADA do pincel continua a mandar na tinta das cópias.
     let sem = brush_along_path(
         &forma,
         std::slice::from_ref(&art),

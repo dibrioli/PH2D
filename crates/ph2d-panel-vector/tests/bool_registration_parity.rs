@@ -53,7 +53,12 @@ fn bool_ids(src: &str) -> BTreeSet<String> {
 /// clique — foi por isso que o report *"não funcionam"* não bastou para localizar a causa.
 #[test]
 fn every_painted_boolean_chip_is_registered_in_populate() {
-    let painted = bool_ids(&read("src/paint_sections.rs"));
+    // ⚠️ **O ficheiro mudou em 2026-09-05** — a seção Boolean saiu do `paint_sections.rs` (que é a
+    // caixa de ferramentas do corpo) para o irmão `paint_boolean.rs`, pelo teto de LOC. ⭐ **O
+    // CONTROLO deste gate apanhou a mudança**: com o scanner apontado ao ficheiro velho ele leu
+    // ZERO ids e disparou o `!painted.is_empty()` — *a régua quebrou, não o produto*, exactamente
+    // como o doc dele promete. Sem essa metade, o gate teria ficado **verde sobre nada**.
+    let painted = bool_ids(&read("src/paint_boolean.rs"));
     let registered = bool_ids(&read("src/populate_ops.rs"));
     assert!(
         !painted.is_empty(),

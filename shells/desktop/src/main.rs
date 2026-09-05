@@ -698,6 +698,8 @@ mod variant_flow_smoke;
 /// A cena de smoke dos **VARIANTS** (`PH2D_BUILD_SMOKE=58`) — irmã de `component_pieces_smoke`.
 mod variant_smoke;
 mod vec_anchor_edit;
+mod vec_appearance;
+mod vec_appearance_smoke;
 mod vec_bindings;
 mod vec_blend;
 /// ⭐ Os gates de ROTA da booleana viva até os ESTADOS (auditoria de 2026-08-23): *com uma
@@ -1018,6 +1020,7 @@ impl App {
             extrap_smoke_done: false,
             expr_blend_smoke_done: false,
             morph_fade_smoke_done: false,
+            vec_appearance_smoke_done: false,
             vec_fade_smoke_done: false,
             nest_smoke_done: false,
             player_readout_log: None,

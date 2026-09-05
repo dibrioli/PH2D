@@ -49,6 +49,7 @@ E três defeitos concretos, com foto:
 | **«Pintar sobre vetor» — metade já existe** | [`pesquisa/05_pintar_sobre_vetor.md`](pesquisa/05_pintar_sobre_vetor.md) |
 | ⭐⭐ **A engine é 2.5D — e o que isso resolve** | [`pesquisa/06_a_engine_e_2_5d.md`](pesquisa/06_a_engine_e_2_5d.md) |
 | ⭐⭐⭐ **Redesenhar os widgets: plano, minimalista e COMPACTO** (o orçamento de 154 px, a lei do estreito, os 44 widgets) | [`pesquisa/07_o_redesenho_dos_widgets.md`](pesquisa/07_o_redesenho_dos_widgets.md) |
+| ⭐⭐⭐ **O MODELO a seguir, com código completo** — por que o app ficou com a mesma cara, os 13 candidatos com licença, e a recomendação (Godot 4.6 «Modern», MIT) | [`pesquisa/08_modelos_com_codigo_para_seguir.md`](pesquisa/08_modelos_com_codigo_para_seguir.md) |
 | **Baixar as referências numa máquina nova** | `bash fetch-referencias.sh` |
 
 ## ⭐⭐⭐ ONDE ESTAMOS (auditado contra o CÓDIGO em 2026-09-04)

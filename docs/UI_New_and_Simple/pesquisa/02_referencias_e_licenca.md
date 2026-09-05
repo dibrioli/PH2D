@@ -260,3 +260,11 @@ conteúdo) com as regras de quando é aceitável.
 3. **Não foi baixado o código de docking de mais ninguém.** Se a decisão for docking, vale
    comparar com o *Qt Advanced Docking System* (LGPL — ⛔ ler com cuidado) e o *Dear ImGui*
    docking (MIT). ⏳ Não feito.
+
+⭐ **2026-09-04 — a recolha cresceu por outro motivo:** o Enio pediu *um modelo a seguir, com
+código completo*, para o redesenho visual. A pesquisa, a tabela de 13 candidatos com licença
+verificada e a recomendação (Godot 4.6 «Modern», MIT — já em `godot-editor-src/editor/themes/`)
+estão em [`08_modelos_com_codigo_para_seguir.md`](08_modelos_com_codigo_para_seguir.md); o
+`fetch-referencias.sh` passou a trazer também o `godot-minimal-theme`, o Pixelorama, o Material
+Maker, o Graphite (Apache-2.0), o `iced`, o `egui`, o Masonry e o Dear ImGui — cada um só com a
+pasta do tema. ⚠️ O Dear ImGui vem por **isto**, não pelo docking do item 3.

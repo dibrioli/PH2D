@@ -42,4 +42,27 @@ clone gnome-hig https://gitlab.gnome.org/GNOME/gnome-devel-docs.git "CC-BY-SA 4.
 clone godot-editor-src https://github.com/godotengine/godot.git "MIT" \
       editor/docks editor/themes scene/gui scene/main/window.cpp
 
+# ── MODELOS COM CÓDIGO COMPLETO para o redesenho (pesquisa/08, 2026-09-04) ──
+# ⭐ O tema «Modern» do Godot 4.6 (= o godot-minimal-theme portado nativo) já vem em
+# godot-editor-src/editor/themes/theme_modern.cpp (MIT). Estes são os OUTROS.
+clone godot-minimal-theme https://github.com/passivestar/godot-minimal-theme.git "MIT"
+# Pixelorama: uma ferramenta de ARTE feita em Godot — 9 temas DERIVADOS de (base, accent, contrast).
+# ⚠️ O sparse-checkout é em modo CONE: aceita DIRECTÓRIOS, nunca ficheiros (um ficheiro dá
+#    `fatal: … is not a directory`, e a clonagem fica só com a raiz). Os ficheiros que interessam
+#    estão nomeados no comentário de cada linha.
+clone pixelorama https://github.com/Orama-Interactive/Pixelorama.git "MIT" \
+      assets src/Autoload src/Classes            # assets/theme.tres · Autoload/Themes.gd · Classes/ThemeUtils.gd
+# Material Maker: editor de nós em Godot, MIT.
+clone material-maker https://github.com/RodZill4/material-maker.git "MIT" material_maker/theme
+# Graphite: editor 2D vetorial/raster em Rust (Apache-2.0) — o chrome plano de referência.
+clone graphite https://github.com/GraphiteEditor/Graphite.git "Apache-2.0" frontend/src
+# Os três toolkits Rust cuja TEORIA de tema é portável para o ph2d-tokens:
+clone iced https://github.com/iced-rs/iced.git "MIT" core/src/theme                # palette.rs
+clone egui https://github.com/emilk/egui.git "Apache-2.0 OR MIT" crates/egui/src   # style.rs
+clone xilem https://github.com/linebender/xilem.git "Apache-2.0" masonry/src       # theme.rs
+# Dear ImGui: o `ImGuiStyle` canónico das UIs de ferramenta (MIT). Os ficheiros que interessam
+# (`imgui.h`, `imgui_draw.cpp`) estão na RAIZ, que o modo cone traz sempre; o sub-dir é só para
+# a clonagem ser esparsa.
+clone imgui https://github.com/ocornut/imgui.git "MIT" misc/cpp
+
 echo; echo "── total ──"; du -sh . 2>/dev/null

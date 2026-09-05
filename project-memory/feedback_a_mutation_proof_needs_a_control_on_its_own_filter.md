@@ -23,6 +23,7 @@ casa **o teste VIZINHO**. Em 2026-09-05 (`line/components`) o filtro `every_menu
 veredito foi *"SOBREVIVEU"*. ⇒ o controle honesto não é *«correu alguma coisa?»* mas **«correu o
 gate que eu nomeei no comentário da mutação?»** — dois ficheiros de gate cujos nomes partilham um
 prefixo são a armadilha, e eles partilham prefixo **de propósito** (são a mesma família).
+⚠️⚠️ **Aconteceu DUAS vezes na mesma jornada, e a segunda foi DEPOIS de esta nota ser escrita:** `hit_indexed_ids_are_registered` é *estruturalmente* cego a registos guiados por tabela, e o gate que via a mutação era o irmão `table_driven_chips_are_registered_too`. *Um filtro que casa 1 teste passa no controle «quantos correram?» e mente na mesma.*
 
 **Why:** a prova de mutação afirma *"este gate reprova quando o produto quebra"*. Ela tem duas
 metades — a mutação chegou ao binário, e o gate correu. Um filtro errado mata a segunda em

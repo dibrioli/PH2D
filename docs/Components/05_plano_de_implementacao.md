@@ -134,6 +134,10 @@ quiser o smoke de verdade tem de **fabricar** um v95 (checkout de um commit anti
 | **Variantes novas no `AssetCardAction`** | `ReplaceSelection` · `ReplaceSelectionByName` · `ReplaceSelectionByTree` | ⚠️ **três variantes, não uma com o modo no corpo**: o modo tem de ser escolhido pelo GESTO (F5, *«nunca automático»*), e uma variante única convidaria o primeiro chamador novo a passar um valor de omissão |
 | **Campo novo no `SwapReport`** | `ambiguous: usize` | ⚠️ só o emparelhamento SEM parentesco o produz — um elo não é ambíguo |
 | **Módulos novos (F5, a troca sem parentesco)** | `shells/desktop/src/instance_swap_match{,_tests}.rs` · `instance_replace_smoke{,_tests}.rs` | nomes novos, sem colisão |
+| **Ids de widget novos (F5.3-ter)** | `INSP_INSTANCE_DROP_ORPHAN[16]` + `MAX_INSTANCE_ORPHAN_ROWS = 16` + a porta inversa `instance_drop_orphan` | `ph2d-editor-core/src/ids/inspector_instance.rs` + `node_id_collisions`. ⚠️ Tabela `const` e não hash em tempo de execução — é o idioma deste directório, e é o que deixa o censo de ids **ver** os 16 |
+| **Acção do barramento nova (F5.3-ter)** | `EditorAction::InspectorDropUnusedOverride { root_bits, piece, type_id }` | ⚠️ o `match` do dreno acaba em `_ => {}`; o gate `the_unused_override_gestures_reach_the_verb` afirma o braço **e** que ele chama a porta DELE (não a do gesto vizinho, que apaga tudo) |
+| **Campos novos no `OrphanRow`** | `piece_id` · `type_id` — a CHAVE | ⚠️ literal obrigatório: o compilador aponta os sítios de construção |
+| **Módulo novo (F5.3-ter)** | `crates/ph2d-panel-inspector/src/sections/instance_orphans.rs` | corte do tecto de LOC por função (244 de 200) |
 | **ADRs novos (F1.6)** | [`0070-amendment-8`](../architecture/decisions/0070-amendment-8.md) (o corte) · [`0071-amendment-1`](../architecture/decisions/0071-amendment-1.md) (o 4.º canal de tinta muda de casa) | ⚠️ números **contados** contra `decisions/`, não escolhidos |
 
 ---
@@ -2056,3 +2060,75 @@ maneira de o corrigir automaticamente seria adivinhar se o nome ainda «pertence
 é uma heurística sobre nomes: exactamente o que esta linha recusa. ⚠️ **O cartão do Inspector diz a
 verdade** (*Instance of "Truck"*), e renomear é um gesto que já existe. Se o smoke recusar, a
 alternativa nomeada é renomear **sempre** — e ela custa o nome que o artista escreveu.
+
+---
+
+### ✅ §F5.9 — **A lista de excepções sem alvo fica ACCIONÁVEL** (auditoria de 2026-09-05)
+
+Com a F5 fechada, o passo seguinte foi **medir o que ela deixou**: duas lentes sobre o cartão de
+instância (correcção · costura de UI). Três achados, os três reais.
+
+#### 1. (costura) A lista mostrava QUAIS, e o único gesto apagava TODAS
+
+A §F5.6 curou a metade que interessava — *«limpar sem ver o que se limpa é o gesto destrutivo mais
+barato deste painel»* —, e deixou a outra: quem quisesse largar **uma** de cinco largava as cinco.
+⚠️ E a linha nem era **endereçável**: o `OrphanRow` carregava só os dois **rótulos**, e duas peças
+podem ter tido o mesmo nome. ⇒ ela ganha a **chave** (`piece_id`, `type_id`), e cada linha ganha o
+`✕` dela. *O que se mostra é o nome; o que se aponta é a chave.*
+
+⚠️ **A lista continua SEM TECTO** (a razão da §F5.6 mantém-se: esconder linhas com um botão que
+apaga tudo seria esconder exactamente o que o gesto destrói). O que tem tecto é a **tabela de ids**
+do `✕` — `MAX_INSTANCE_ORPHAN_ROWS = 16`, `const` porque é assim que o censo
+`hit_indexed_ids_are_registered` os pode ver —, e as linhas que ficam sem botão são **DITAS**.
+
+#### 2. ⛔⛔ (correcção) A justificação da conta da altura era sobre a população ANTIGA
+
+```text
+Sprite — was on "Arm"                                 →  botao em y = 198
+Sprite — was on "Left front suspension arm assembly"  →  botao em y = 198   ⇐ MEDIDO
+```
+
+A altura conta `line` por linha de lista, e a nota escrita ao lado dizia: *«elas são NOMES do
+catálogo, curtos por construção — e medir cada uma custaria um layout por quadro por linha»*. Ela é
+**verdadeira** para os componentes overridados (o mais longo do catálogo tem **20** caracteres) e
+**falsa** para as excepções sem alvo, que entraram **na mesma conta** em 2026-09-04: o rótulo delas
+embrulha um `Name` que o **artista escreveu**, e um `Name` não tem tecto. ⇒ o botão fica pintado por
+cima da 2.ª linha do texto — é a foto do Enio de 2026-08-31 (*«Card com Labels emboladas»*) por
+outra porta, e a lei já estava escrita no `paint_text_block`.
+
+⚠️ **E o argumento nunca foi só sobre a string:** embrulhar é função da **LARGURA**, e a largura
+deste painel não é uma constante.
+
+#### 3. (correcção) O recuo entrava no `x` e não no orçamento de quebra
+
+Uma linha embrulhada corria `Spacing::Sm` **para fora** da borda direita do cartão. ⏳ **Fica
+NOMEADA como dívida:** a mutação que a desfaz sobrevive a todos os gates deste cartão, porque o
+oráculo que eles têm é *onde o botão aterra* e o transbordo é **horizontal** — vê-lo pedia a
+extensão dos glifos, que o `MockPanelHost` não expõe. *Uma linha sem régua que se declara é dívida;
+sem a declaração é uma armadilha.*
+
+#### ⛔ O tecto de LOC por FUNÇÃO (244 de 200) pago com CORTE
+
+O bloco inteiro saiu para [`sections/instance_orphans.rs`](../../crates/ph2d-panel-inspector/src/sections/instance_orphans.rs),
+e as larguras viraram um **`CardMetrics` derivado UMA vez**. ⚠️ *Uma largura calculada duas vezes
+diverge no dia em que só uma delas passar a descontar um botão* — que é literalmente o achado nº 2,
+um nível acima.
+
+#### ⚠️⚠️ As TRÊS mutações que sobreviveram à primeira, e o que cada uma disse
+
+| mutação | leitura |
+|---|---|
+| não pintar o aviso do tecto | **o gate media a população errada**: ele contava GLIFOS, e três linhas a mais dão mais glifos tenham ou não o aviso por baixo. Refeito sobre o **deslocamento do botão** (uma linha medida no próprio cartão, nenhum número escrito à mão) ⇒ morre |
+| não registar o `✕` para focar | **o filtro nomeava o gate VIZINHO** — o `hit_indexed_ids_are_registered` é *estruturalmente* cego a registos guiados por tabela, e o irmão `table_driven_chips_are_registered_too` mata-a |
+| o recuo fora do orçamento | **falta o instrumento** — ver o achado nº 3 |
+
+⚠️ **A do meio é a SEGUNDA da mesma jornada** (a primeira foi na §F5.8, com `every_menu_row` a
+casar o `every_menu_row_reaches_a_handler`), e a memória que a descreve foi escrita **entre as
+duas**. *Um controle que só pergunta «correu algum teste?» passa quando o filtro casa o vizinho: a
+pergunta é «correu o gate que a mutação nomeia?».*
+
+#### E o smoke prometia isto desde 04/09
+
+O **PASSO 8** da cena `=3` dizia *«e o botão ao lado apaga exactamente essa»*, e o único botão
+apagava a lista inteira. ⚠️ **Com um órfão só as duas frases dão a mesma tela** — foi por isso que a
+promessa pôde envelhecer sem ninguém a desmentir. Hoje é verdade, e o passo nomeia os dois gestos.

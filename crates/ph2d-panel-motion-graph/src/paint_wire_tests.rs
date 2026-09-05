@@ -234,6 +234,7 @@ fn the_ghost_end_snaps_to_the_target_socket() {
             bypassed: false,
             inert: false,
             thumbnail: None,
+            params: Vec::new(),
         }],
         edges: vec![],
         backdrops: vec![],

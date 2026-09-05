@@ -42,6 +42,7 @@ fn node(id: u32, x: f32, y: f32) -> GraphNodeView {
         bypassed: false,
         inert: false,
         thumbnail: None,
+        params: Vec::new(),
     }
 }
 

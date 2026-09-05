@@ -73,6 +73,7 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
                 // shell owns; it fills this afterwards, like the cook-derived flags above.
                 inert: false,
                 thumbnail: None,
+                params: Vec::new(),
             }
         })
         .collect();

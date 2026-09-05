@@ -83,6 +83,67 @@ pub(crate) fn card_rows(n: &GraphNodeView) -> f32 {
     (n.inputs.len().max(n.outputs.len()).max(1)) as f32
 }
 
+/// **O tamanho do rótulo de um param no cartão.** Menor que o título (13) e igual ao readout
+/// (11): a hierarquia do cartão é *nome do nó > o que ele faz > os seus botões*.
+pub(crate) const PARAM_LABEL_SIZE: f32 = 11.0; // LITERAL-PX-OK: card param label font size
+
+/// A menor altura de letra que ainda se LÊ num ecrã. Não é gosto: abaixo disto o rótulo é
+/// uma mancha cinzenta, e desenhá-lo custa o mesmo que desenhá-lo legível.
+const MIN_READABLE_PX: f32 = 9.0; // LITERAL-PX-OK: legibility floor
+
+/// ⭐⭐⭐ **O LOD DAS ROWS — e ele é o ORÇAMENTO, não polimento** (doc 103 §7).
+///
+/// Medido em 2026-09-05 (load 2,66): um cartão nu custa **11,3 µs** e uma row de param
+/// **13,5 µs** — *uma row custa mais que um cartão inteiro*, porque as duas são dominadas
+/// pelo TEXTO. A conta do quadro (`N × (11,3 + R × 13,5) µs` contra 16,67 ms):
+///
+/// | cena | custo | % do quadro |
+/// |---|---:|---:|
+/// | 120 cartões nus | 1,41 ms | 8 % |
+/// | 40 cartões × 5 rows | 3,15 ms | 19 % |
+/// | 40 cartões × 13 rows | 7,49 ms | **45 %** |
+/// | 120 cartões × 5 rows | 9,46 ms | **57 %** |
+///
+/// ⭐⭐ **E o limiar paga-se sozinho:** ele é a LEGIBILIDADE (`11 px × zoom ≥ 9 px` ⇒
+/// `zoom ≥ 0,82`), e a esse zoom o recorte do viewport já só deixa **~18 cartões** na tela ⇒
+/// `18 × (11,3 + 8 × 13,5) = 2,1 ms` = **13 %**. *Aproximar mostra os params e esconde os
+/// cartões; afastar faz o contrário — a mesma alavanca paga as duas coisas.*
+///
+/// ⚠️ **O que o LOD NÃO faz é mudar a ALTURA do cartão** ([`card_h`] é espaço de GRAFO e não
+/// vê o zoom): a faixa fica reservada sempre. Um cartão que encolhesse ao afastar faria os
+/// hit-rects saltarem debaixo do dedo a meio de um pinch.
+pub(crate) fn params_are_drawn(view: &View) -> bool {
+    PARAM_LABEL_SIZE * view.zoom >= MIN_READABLE_PX
+}
+
+/// Quantas rows a faixa de params RESERVA — sempre todas as que o cartão carrega.
+/// ⚠️ Independente do zoom, de propósito: ver [`params_are_drawn`].
+pub(crate) fn card_param_rows(n: &GraphNodeView) -> f32 {
+    n.params.len() as f32
+}
+
+/// O topo da FAIXA DE PARAMS, em espaço de grafo, relativo ao canto do cartão — logo abaixo
+/// da última fileira de sockets.
+pub(crate) fn param_band_top(n: &GraphNodeView) -> f32 {
+    HEADER_H + card_rows(n) * ROW_H
+}
+
+/// O topo do READOUT, em espaço de grafo — abaixo dos params. ⚠️ **Uma porta**: o pintor
+/// leria a mesma soma à mão e ficaria uma linha atrás no dia em que a faixa mudasse.
+pub(crate) fn readout_top(n: &GraphNodeView) -> f32 {
+    param_band_top(n) + card_param_rows(n) * ROW_H
+}
+
+/// O rect de ECRÃ da row de param `i` — a faixa inteira do cartão, que é também o alvo de
+/// arrasto (o número arrasta-se em qualquer ponto da row, como no Blender).
+///
+/// ⚠️ **O mesmo rect serve o pintor e o hit-test**, pela razão que [`card_h`] já documenta:
+/// uma row desenhada onde não se clica é um controlo morto sob o dedo.
+pub(crate) fn param_row_rect(n: &GraphNodeView, view: &View, i: usize) -> Rect {
+    let (sx, sy) = view.pt(n.x, n.y + param_band_top(n) + i as f32 * ROW_H);
+    Rect::new(sx, sy, CARD_W * view.zoom, ROW_H * view.zoom)
+}
+
 // Breadcrumb metrics (doc 57) — logical == screen (chrome, never scaled by zoom).
 pub(crate) const CRUMB_H: f32 = 20.0; // LITERAL-PX-OK: breadcrumb chip height
 pub(crate) const CRUMB_PAD_X: f32 = 8.0; // LITERAL-PX-OK: breadcrumb chip x-padding
@@ -135,7 +196,7 @@ const PREVIEW_TOGGLE_PAD: f32 = 6.0; // LITERAL-PX-OK: toggle inset from the hea
 /// and a card clickable past its own border steals from the canvas behind it.
 pub(crate) fn card_h(n: &GraphNodeView) -> f32 {
     let readout = if n.readout.is_some() { ROW_H } else { 0.0 };
-    HEADER_H + card_rows(n) * ROW_H + readout + PAD_BOTTOM
+    readout_top(n) + readout + PAD_BOTTOM
 }
 
 /// The preview moldura's rect in SCREEN space — its own frame ABOVE or BELOW the card, or

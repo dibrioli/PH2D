@@ -141,25 +141,34 @@ Antes de pôr um param dentro de um cartão (§0.0: medir antes de limitar). Dua
 | `measure_row_cost` (params) | `cargo test -p ph2d-panel-motion-params --release -- --ignored --nocapture measure_row_cost` | **13,5 µs por row** (marginal: 13,46 · 13,32 · 12,89 · 13,72 · 14,18 de 4 a 33 rows) |
 | `measure_card_cost` (grafo) | `cargo test -p ph2d-panel-motion-graph --release -- --ignored --nocapture measure_card_cost` | **11,3 µs por cartão** nu (10,63 · 10,63 · 11,23 · 11,18 · 11,33 · 11,88 de 5 a 120) |
 
-⭐⭐ **A leitura que decide o desenho: uma ROW custa MAIS que um cartão inteiro** (13,5 contra
-11,3 µs) — as duas são dominadas pelo TEXTO. Um cartão com 5 rows custa **7×** um cartão nu.
+⛔⛔ **E a extrapolação dos 13,5 µs para o cartão estava ERRADA — a construção mediu-a e
+refutou-a.** Depois de as rows existirem no cartão, a mesma sonda
+(`measure_card_cost`, secção *«20 cartões, R rows»*) dá **2,8 µs por row no cartão** (3 leituras:
+2,82 · 2,78 · 2,81 a 8 rows), **4,8× mais barato** que a row do painel.
 
-**O orçamento** (16,67 ms de quadro; a conta é `N × (11,3 + R × 13,5) µs`):
+⚠️ *A mesma «row» custa dois números porque são duas coisas:* a do painel é um **widget vivo**
+(slider + chip numérico + reset + registo no `HitIndex`/`WidgetStore` + balão), a do cartão é
+**dois textos e dois rectângulos**. Medir uma para prever a outra é a família do
+[doc 103 §4](#) outra vez — *uma medição responde à pergunta que lhe foi feita*.
+
+**O orçamento REAL** (16,67 ms; `N × (11,7 + R × 2,8) µs`, medido 2026-09-05):
 
 | cenário | custo | % do quadro |
 |---|---:|---:|
-| 120 cartões **nus** (hoje) | 1,41 ms | 8 % |
-| 20 cartões × 5 rows | 1,58 ms | 9 % |
-| 40 cartões × 5 rows | 3,15 ms | 19 % |
-| 20 cartões × 13 rows | 3,74 ms | 22 % |
-| 40 cartões × 13 rows | 7,49 ms | **45 %** ⛔ |
-| 120 cartões × 5 rows | 9,46 ms | **57 %** ⛔ |
+| 120 cartões **nus** | 1,41 ms | 8 % |
+| 20 cartões × 8 rows | 0,70 ms | 4 % |
+| 40 cartões × 16 rows | 2,26 ms | 14 % |
+| 120 cartões × 5 rows | 3,08 ms | 18 % |
+| 20 cartões × 24 rows (o pior nó do catálogo) | 1,58 ms | 9 % |
 
-⇒ **O LOD por zoom não é polimento, é o orçamento** — e ele fecha sozinho: as rows só são
-legíveis a partir de `zoom ≈ 0,85` (fonte de rótulo ~11 px × zoom ≥ 9 px), e a esse zoom o
-recorte do viewport deixa **~18 cartões** na tela ⇒ `18 × (11,3 + 8×13,5) = 2,1 ms` = **13 %**.
-*Aproximar mostra params e esconde cartões; afastar faz o contrário — a mesma alavanca paga as
-duas coisas.*
+⇒ ⭐ **Nenhum cenário do catálogo estoura o quadro** — a decisão do Enio é ainda melhor do que
+a defesa que eu lhe tinha escrito. O **LOD fica** (`params_are_drawn`), mas pela razão certa: ele
+é a **LEGIBILIDADE** (`11 px × zoom ≥ 9 px` ⇒ `zoom ≥ 0,818`) e o que poupa num grafo afastado
+é bónus, não o que torna a feature possível.
+
+⚠️ **A leitura foi tirada a load 6,7–9,9** (§5.0 pede ≤ 5); vale porque as **três** leituras a
+loads diferentes (9,9 · 7,2 · 6,7) concordam a **2 %** — um custo absoluto pequeno, não uma
+razão de dois relógios. Re-confirmar com a máquina calma no fecho do ciclo.
 
 ⚠️ **E a consequência para o modelo:** as rows do cartão **não podem ser `ParamRow`** (que
 carrega `String` por rótulo e por valor): 20 cartões × 5 rows seriam 200 `String` por quadro.

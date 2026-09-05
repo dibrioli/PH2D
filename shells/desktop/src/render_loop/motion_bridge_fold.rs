@@ -461,6 +461,10 @@ fn card_view(
         // sees by ENTERING the group, not on the closed card (ADR-0155).
         inert: false,
         thumbnail: None,
+        // ⚠️ **Um cartão de subgrafo não tem params PRÓPRIOS** (ciclo 1, doc 103): os params
+        // são dos nós lá dentro, e a interface promovida de um subgrafo é obra do W8 do
+        // [doc 102]. Vazio é a resposta honesta, não um buraco.
+        params: Vec::new(),
     }
 }
 

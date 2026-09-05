@@ -484,3 +484,44 @@ pub(crate) fn build_params_snapshot(
         folded_by_default,
     })
 }
+
+/// ⭐⭐⭐ **OS PARAMS QUE CADA CARTÃO MOSTRA** — o ciclo 1 da dinâmica
+/// ([doc 103](../../../../docs/Motion%20Nodes/103_dinamica_dos_ciclos.md); decisão do Enio,
+/// 2026-09-05: os params vivem no cartão e o painel lateral sai).
+///
+/// ⚠️ **A porta da visibilidade é a MESMA do painel** ([`params_visible::shown_params`]) e a do
+/// valor também ([`edit::param_value`]). Reimplementar a conjunção dos três gates aqui seria
+/// exactamente como um param passa a aparecer num sítio do app e não noutro — o defeito que o
+/// doc daquela função já nomeia.
+///
+/// ⚠️ **Corre ANTES do `fold`**, como o `readout::stamp`: aqui todo nó da vista é um nó
+/// simples, e um cartão de subgrafo (que o fold cria depois) não tem params próprios.
+///
+/// ⚠️ **Zero `String`**: [`ph2d_panel_motion_graph::CardParam`] leva o `ParamUiHint` do
+/// registry (`Copy`, `&'static`) e o `f32` vivo — a medição do doc 103 §7 diz porquê (uma row
+/// custa 13,5 µs, e 20 cartões × 5 rows seriam 200 alocações por quadro).
+pub(crate) fn stamp_card_params(
+    motion: &MotionState,
+    snap: &mut ph2d_panel_motion_graph::GraphViewSnapshot,
+) {
+    for node in &mut snap.nodes {
+        let nid = ph2d_nodegraph::graph::NodeId(node.id);
+        let Some(type_id) = motion.doc.graph.node(nid).map(|i| i.type_id()) else {
+            continue;
+        };
+        let Some(hints) = motion.registry.param_ui(type_id) else {
+            continue;
+        };
+        let shown = params_visible::shown_params(motion, nid);
+        let sources = motion.doc.graph.param_sources(nid);
+        node.params = hints
+            .iter()
+            .filter(|h| shown(h.param))
+            .map(|h| ph2d_panel_motion_graph::CardParam {
+                hint: *h,
+                value: param_value(motion, nid, h.param),
+                driven: sources.is_some_and(|s| s.contains_key(h.param)),
+            })
+            .collect();
+    }
+}

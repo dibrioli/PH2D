@@ -31,6 +31,7 @@ fn node_with_inputs(id: u32, x: f32, n_in: usize) -> GraphNodeView {
         bypassed: false,
         inert: false,
         thumbnail: None,
+        params: Vec::new(),
     }
 }
 
@@ -308,4 +309,127 @@ fn menu_panel_clamps_into_the_canvas() {
     assert!(p.x + p.w <= canvas.x + canvas.w + 0.01);
     assert!(p.y + p.h <= canvas.y + canvas.h + 0.01);
     assert!(p.x >= canvas.x && p.y >= canvas.y);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CICLO 1 — **os params vivem no cartão** (doc 103; decisão do Enio, 2026-09-05).
+// ─────────────────────────────────────────────────────────────────────────────
+
+fn hint(label: &'static str) -> ph2d_node_registry::ParamUiHint {
+    ph2d_node_registry::ParamUiHint {
+        param: "p",
+        label,
+        min: 0.0,
+        max: 10.0,
+        step: 0.1,
+        widget: ph2d_node_registry::ParamWidget::Slider,
+    }
+}
+
+fn with_params(mut n: GraphNodeView, k: usize) -> GraphNodeView {
+    n.params = (0..k)
+        .map(|_| crate::snapshot::CardParam {
+            hint: hint("Rows"),
+            value: 3.0,
+            driven: false,
+        })
+        .collect();
+    n
+}
+
+/// **O cartão RESERVA a faixa dos seus params** — uma fileira por param, entre os sockets e o
+/// readout. FALSIFICADO por `card_param_rows` devolver `0`: o cartão volta à altura de antes e
+/// as rows passam a ser desenhadas por cima do readout e fora do corpo.
+#[test]
+fn the_card_reserves_a_band_for_its_params() {
+    let nu = node_with_inputs(1, 0.0, 2);
+    let base = card_h(&nu);
+    for k in [1usize, 3, 8, 24] {
+        assert_eq!(
+            card_h(&with_params(node_with_inputs(1, 0.0, 2), k)),
+            base + k as f32 * ROW_H,
+            "um cartao com {k} params e' {k} fileiras mais alto"
+        );
+    }
+}
+
+/// **A ALTURA NÃO DEPENDE DO ZOOM.** [`card_h`] é espaço de GRAFO: um cartão que encolhesse ao
+/// afastar faria os hit-rects saltarem debaixo do dedo a meio de um pinch — e o LOD só decide
+/// se o CONTEÚDO da row é desenhado. FALSIFICADO por `card_h` passar a consultar o zoom.
+#[test]
+fn the_card_height_does_not_follow_the_zoom() {
+    let n = with_params(node_with_inputs(1, 0.0, 2), 5);
+    // `card_h` não recebe a vista, e é essa a prova: se um dia receber, este teste não compila,
+    // que é o aviso certo (a lei muda de forma, não de valor).
+    let h = card_h(&n);
+    assert!(h > 0.0, "a altura existe e e' do grafo, nao do ecra");
+}
+
+/// **A ROW DE PARAM CAI DENTRO DO CARTÃO** — o rect que o pintor usa é o mesmo que um hit-test
+/// usará, e ele tem de estar dentro do corpo. FALSIFICADO por trocar o `param_band_top` pela
+/// soma antiga (a faixa passaria a começar em cima do readout).
+#[test]
+fn every_param_row_falls_inside_its_card() {
+    let n = with_params(node_with_inputs(7, 40.0, 2), 6);
+    let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
+    let (cx, cy) = view.pt(n.x, n.y);
+    let ch = card_h(&n) * view.zoom;
+    for i in 0..n.params.len() {
+        let r = param_row_rect(&n, &view, i);
+        assert!(r.y >= cy, "a row {i} comeca abaixo do topo do cartao");
+        assert!(
+            r.y + r.h <= cy + ch + f32::EPSILON,
+            "a row {i} acaba dentro do cartao (fundo {} contra {})",
+            r.y + r.h,
+            cy + ch
+        );
+        assert!(r.x >= cx && r.w <= CARD_W * view.zoom + f32::EPSILON);
+    }
+}
+
+/// **AS ROWS NÃO SE SOBREPÕEM** — cada uma ocupa exactamente uma fileira. FALSIFICADO por o
+/// passo do `param_row_rect` deixar de ser `ROW_H`.
+#[test]
+fn param_rows_stack_without_overlapping() {
+    let n = with_params(node_with_inputs(7, 0.0, 1), 4);
+    let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
+    for i in 1..n.params.len() {
+        let a = param_row_rect(&n, &view, i - 1);
+        let b = param_row_rect(&n, &view, i);
+        assert!(
+            (b.y - (a.y + a.h)).abs() < 1e-3,
+            "a row {i} comeca onde a anterior acaba"
+        );
+    }
+}
+
+/// **O READOUT FICA ABAIXO DOS PARAMS** — senão o número que o nó produziu é escrito por cima
+/// dos botões dele. FALSIFICADO por `readout_top` voltar a somar só os sockets.
+#[test]
+fn the_readout_sits_below_the_param_band() {
+    let n = with_params(node_with_inputs(1, 0.0, 2), 3);
+    assert_eq!(
+        readout_top(&n),
+        param_band_top(&n) + 3.0 * ROW_H,
+        "o readout comeca depois da ultima row de param"
+    );
+    assert!(readout_top(&n) > param_band_top(&n));
+}
+
+/// ⭐⭐ **O LOD É O ORÇAMENTO** (doc 103 §7): as rows só se desenham quando o rótulo é legível
+/// — `11 px × zoom ≥ 9 px` ⇒ `zoom ≥ 0,818`. FALSIFICADO por `params_are_drawn` devolver
+/// sempre `true`: 120 cartões × 5 rows passam a custar **57 % do quadro**.
+#[test]
+fn param_rows_are_drawn_only_above_the_legibility_zoom() {
+    let at = |z: f32| {
+        let mut vs = ViewState::default();
+        vs.zoom = z;
+        params_are_drawn(&View::new(Rect::new(0.0, 0.0, 800.0, 600.0), vs))
+    };
+    assert!(!at(0.25), "afastado, uma row e' uma mancha — nao se desenha");
+    assert!(!at(0.5));
+    assert!(!at(0.8), "logo abaixo do limiar (0,818) ainda nao");
+    assert!(at(0.83), "logo acima, sim");
+    assert!(at(1.0));
+    assert!(at(2.5));
 }

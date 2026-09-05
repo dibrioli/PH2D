@@ -30,6 +30,11 @@ const STEP_Y: f32 = 60.0; // LITERAL-PX-OK: passo da fixtura
 const COLS: u32 = 12;
 
 fn card(id: u32) -> GraphNodeView {
+    card_with_params(id, 0)
+}
+
+/// O mesmo cartão com `k` rows de param — a variável do ciclo 1.
+fn card_with_params(id: u32, k: usize) -> GraphNodeView {
     let port = |name: &'static str, dim| PortView {
         name,
         domain: Domain::Instances,
@@ -56,14 +61,35 @@ fn card(id: u32) -> GraphNodeView {
         bypassed: false,
         inert: false,
         thumbnail: None,
+        params: (0..k)
+            .map(|i| crate::snapshot::CardParam {
+                hint: ph2d_node_registry::ParamUiHint {
+                    param: "p",
+                    // Rótulos realistas e VARIÁVEIS: o custo de uma row é dominado pelo texto,
+                    // e medir sempre a mesma string mediria o cache.
+                    label: ["Rows", "Columns", "Gap X", "Gap Y", "Seed", "Radius", "Count", "Angle"]
+                        [i % 8],
+                    min: 0.0,
+                    max: 20.0,
+                    step: 0.1,
+                    widget: ph2d_node_registry::ParamWidget::Slider,
+                },
+                value: 1.0 + i as f32,
+                driven: false,
+            })
+            .collect(),
     }
 }
 
 fn paint_ms(cards: u32, n: u32) -> f64 {
+    paint_ms_params(cards, 0, n)
+}
+
+fn paint_ms_params(cards: u32, k: usize, n: u32) -> f64 {
     set_current_motion_graph(Some(GraphViewSnapshot {
         level: None,
         breadcrumb: Vec::new(),
-        nodes: (0..cards).map(card).collect(),
+        nodes: (0..cards).map(|i| card_with_params(i, k)).collect(),
         edges: Vec::new(),
         backdrops: Vec::new(),
         probe: None,
@@ -111,6 +137,17 @@ fn measure_card_cost() {
         eprintln!("  {cards:>6} │ {ms:>10.4} │ {marg:>14.2}");
         anterior = Some((cards, ms));
     }
+
+    // ⭐ A VARIÁVEL DO CICLO 1: o mesmo cartão com rows de param desenhadas.
+    eprintln!("  --- 20 cartoes, R rows de param cada (zoom 1 => acima do LOD) ---");
+    eprintln!("  {:>5} │ {:>10} │ {:>14}", "rows", "ms/pintura", "us/row (marg.)");
+    let mut ant: Option<(usize, f64)> = None;
+    for k in [0usize, 1, 2, 4, 8, 16] {
+        let ms = paint_ms_params(20, k, N);
+        let marg = ant.map_or(f64::NAN, |(k0, m0)| (ms - m0) * 1000.0 / (20 * (k - k0)) as f64);
+        eprintln!("  {k:>5} │ {ms:>10.4} │ {marg:>14.2}");
+        ant = Some((k, ms));
+    }
     set_current_motion_graph(None);
-    eprintln!("  (com 13,5 us/row, N cartoes x R rows tem de caber nos 16,67 ms do quadro)");
+    eprintln!("  (N cartoes x R rows tem de caber nos 16,67 ms do quadro — doc 103 §7)");
 }

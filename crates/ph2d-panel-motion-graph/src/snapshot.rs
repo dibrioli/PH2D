@@ -8,7 +8,7 @@
 //! `ph2d_panel_vector::set_current_vector_style`). The panel returns edits the
 //! other way as `GraphIntent`s (M1.E10 phase 2; not yet wired).
 
-use ph2d_node_registry::{NodeSilhouette, NodeUiCategory};
+use ph2d_node_registry::{NodeSilhouette, NodeUiCategory, ParamUiHint};
 use ph2d_nodegraph::port::{Clock, Dim, Domain};
 use std::cell::RefCell;
 
@@ -197,6 +197,39 @@ pub struct GraphNodeView {
     /// A positional-only node (no object) keeps `None` and draws its scatter: the two answer
     /// different questions — *what* an instance draws vs *where* the copies go.
     pub thumbnail: Option<PreviewThumb>,
+    /// ⭐⭐⭐ **OS PARAMS DESENHADOS NO CARTÃO** (ciclo 1 — [doc 103](../../../docs/Motion%20Nodes/103_dinamica_dos_ciclos.md);
+    /// decisão do Enio, 2026-09-05: *«como no Blender, os parâmetros dos nós devem ser
+    /// desenhados nos nós e vamos retirar o painel lateral»*).
+    ///
+    /// ⚠️ **É [`CardParam`] e NÃO [`ph2d_panel_motion_params::ParamRow`], e a razão é MEDIDA**
+    /// (doc 103 §7): uma row do painel carrega um `String` por rótulo e outro por valor, e
+    /// 20 cartões × 5 rows seriam **200 alocações por quadro**. Aqui tudo o que vem do
+    /// registry é `&'static` e o valor é um `f32` — **zero alocação por row** —, e quem
+    /// formata o número é o PINTOR, só para os cartões que de facto desenha.
+    ///
+    /// ⚠️ **Quem decide QUAIS params entram é a shell**, pela porta única
+    /// `motion_bridge_params::params_visible::shown_params` — a mesma que o painel usa. Uma
+    /// segunda conjunção de gates aqui seria exactamente como um param passa a aparecer num
+    /// sítio do app e não noutro.
+    pub params: Vec<CardParam>,
+}
+
+/// ⭐ **UM PARAM NO CARTÃO** — o hint `&'static` do registry mais o valor vivo.
+///
+/// `Copy` de propósito: [`ph2d_node_registry::ParamUiHint`] já é `Copy` (os seus `param` e
+/// `label` são `&'static str`), então uma row do cartão custa **um `memcpy`, nunca um
+/// `String`** — ver o doc de [`GraphNodeView::params`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CardParam {
+    /// Rótulo, faixa, passo e widget — tal como o registry os declara (`register_param_ui`).
+    pub hint: ParamUiHint,
+    /// O valor **AUTORADO** (override do grafo, senão o default do manifesto). ⚠️ Não é o
+    /// valor do cook: um param dirigido por fio só tem valor DURANTE o cozimento, e desenhar
+    /// esse faria a row tremer a meio de um quadro.
+    pub value: f32,
+    /// Um fio (doc 58) dirige este param: a row mostra a proveniência e **não se arrasta** —
+    /// o número vem de fora.
+    pub driven: bool,
 }
 
 #[path = "snapshot_thumb.rs"]

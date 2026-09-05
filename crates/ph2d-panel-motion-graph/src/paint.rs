@@ -29,6 +29,10 @@ mod paint_breadcrumb;
 mod paint_inert_badge;
 #[path = "paint_port_label.rs"]
 mod paint_port_label;
+/// A faixa de params do cartão (ciclo 1, doc 103) — irmão por RESPONSABILIDADE: este
+/// ficheiro desenha o que um cartão É, aquele o que ele CONTROLA.
+#[path = "paint_card_params.rs"]
+mod paint_card_params;
 /// A ESPÉCIE e o PAPEL: a cor de um socket e o selo do cabeçalho — irmão cortado no teto de
 /// LOC, por responsabilidade (ver o cabeçalho dele).
 #[path = "paint_role.rs"]
@@ -41,6 +45,7 @@ mod paint_wire;
 mod paint_wires;
 use paint_inert_badge::draw_inert_badge;
 use paint_port_label::draw_port_labels;
+use paint_card_params::draw_card_params;
 pub use paint_port_label::{PortLabel, input_label_budget_px};
 pub(crate) use paint_role::socket_tip;
 use paint_role::{role_glyph, role_inset_px, socket_token};
@@ -441,11 +446,14 @@ fn draw_card(
     // tem de ganhar quando os dois disputam o mesmo pixel.
     draw_port_labels(ctx, n, view, theme);
 
+    // ⭐ **A faixa de params** (ciclo 1, doc 103): o que o cartão CONTROLA, sob os sockets.
+    draw_card_params(ctx, n, view, theme);
+
     // The inline readout: what this card produced on this frame's cook, under its sockets.
     // Text2 (the muted tone), not Text1 — it is a live instrument reading, not a label the
     // artist authored, and it must not compete with the node's own name.
     if let Some(text) = &n.readout {
-        let row_y = sy + (geom::HEADER_H + geom::card_rows(n) * geom::ROW_H) * view.zoom;
+        let row_y = sy + geom::readout_top(n) * view.zoom;
         paint_text_title_elided(
             ctx.text_system,
             ctx.scene,

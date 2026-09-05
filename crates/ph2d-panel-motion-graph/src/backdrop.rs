@@ -229,6 +229,7 @@ mod tests {
             bypassed: false,
             inert: false,
             thumbnail: None,
+            params: Vec::new(),
         }
     }
 

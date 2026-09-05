@@ -24,6 +24,7 @@ fn node(id: u32, is_sink: bool, count: Option<u32>) -> GraphNodeView {
         bypassed: false,
         inert: false,
         thumbnail: None,
+        params: Vec::new(),
     }
 }
 

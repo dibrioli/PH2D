@@ -53,10 +53,25 @@ fn camera_for(mesh: &Mesh) -> Camera3d {
 }
 
 fn render(device: &wgpu::Device, queue: &wgpu::Queue, mesh: &Mesh, wire: bool) -> Vec<u8> {
+    render_at(device, queue, mesh, wire, &camera_for(mesh))
+}
+
+/// A mesma pintura, com a câmera **do chamador** — a porta que a sonda da peça do artista usa.
+fn render_at(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    mesh: &Mesh,
+    wire: bool,
+    camera: &Camera3d,
+) -> Vec<u8> {
     let mut renderer = MeshRenderer::new(device, FORMAT);
     renderer.upload_at(device, queue, 0, mesh, &[]);
     renderer.upload_wire_at(device, 0, mesh);
-    let camera = camera_for(mesh);
+    // ⛔⛔ **A CÂMERA VEM DE FORA desde 2026-09-04** — ver [`render_at`]. Enquanto ela nascia
+    // aqui dentro, uma sonda que rodasse a vista media a MÁSCARA de uma câmera contra a TINTA de
+    // outra: eu li `33`–`51 %` de fuga onde a verdade é `0 %`. *Uma régua com dois referenciais
+    // mede a diferença entre eles.*
+    let camera = *camera;
     let target = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("alvo"),
         size: wgpu::Extent3d {
@@ -840,3 +855,134 @@ fn open_grid(flip: bool) -> Mesh {
 // wave. A varredura que estabelece o fato (`constant` de 0 a −4096, tinta
 // idêntica ao pixel) está no doc do `WIRE_DEPTH_NUDGE`, e a rota para a
 // reproduzir é a sonda acima.
+
+/// ⭐⭐⭐ **A PEÇA DO ARTISTA, pela mesma porta** — `PH2D_MESH=<ficheiro.obj>`.
+///
+/// ⛔ **Report de 2026-09-04, com foto:** *«a opção de visualizar wireframes permite que a malha
+/// que deveria estar oculta apareça, confundindo a visualização»*. As três malhas do corpus
+/// acima são uma esfera e um toro; a pergunta era sobre uma **escultura**, e sem esta porta a
+/// sonda só sabia responder sobre o que ela já tinha.
+///
+/// ```text
+/// env PH2D_MESH=~/Downloads/sculpt003.obj cargo test -p ph2d-mesh-render --release \
+///   --test probe_wire_continuity -- --ignored --nocapture a_peca_do_artista
+/// ```
+#[test]
+#[ignore = "sonda: precisa de adapter e de PH2D_MESH=<obj>"]
+fn a_peca_do_artista_vaza_wireframe() {
+    let Ok(path) = std::env::var("PH2D_MESH") else {
+        eprintln!("sem PH2D_MESH -- nada a medir");
+        return;
+    };
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: skip");
+        return;
+    };
+    let texto = std::fs::read_to_string(&path).expect("o ficheiro");
+    let mesh = ph2d_mesh::import_obj(&texto)
+        .expect("um OBJ deste leitor")
+        .into_iter()
+        .next()
+        .expect("uma peça")
+        .mesh;
+    println!(
+        "  {path}: {} faces | FECHADA {} (e' isto que arma o descarte das arestas de costas)",
+        mesh.face_count(),
+        mesh.is_closed()
+    );
+    // ⚠️ **Quatro ângulos**, e não um: a foto do report é de uma vista específica, e a fuga
+    // vive na silhueta — uma câmera só pode não a apanhar.
+    // ⚠️ **E de PERTO, que é a condição da foto** — o report é um close-up, e a silhueta
+    // ocupa uma fracção muito maior do quadro quando a câmera se aproxima.
+    for (nome, yaw, pitch, zoom) in [
+        ("frente", 0.0f32, 0.0f32, 1.0f32),
+        ("3/4", 0.9, 0.3, 1.0),
+        ("perfil", 1.57, 0.0, 1.0),
+        ("de cima", 0.4, 1.1, 1.0),
+        ("perto 3/4", 0.9, 0.3, 0.35),
+        ("perto perfil", 1.57, 0.0, 0.35),
+    ] {
+        let mut cam = camera_for(&mesh);
+        cam.yaw = yaw;
+        cam.pitch = pitch;
+        cam.frame(mesh.bounds(), 1.0);
+        cam.distance *= zoom;
+        let plain = render_at(&device, &queue, &mesh, false, &cam);
+        let wired = render_at(&device, &queue, &mesh, true, &cam);
+        let ink = total_ink(&plain, &wired);
+        let leak = leaked_ink(&mesh, &plain, &wired, &cam);
+        // ⭐⭐⭐ **A DENSIDADE, que é o que a foto mostra** — a fuga lê `0 %` e o artista vê uma
+        // mancha escura: as arestas da FRENTE amontoam-se onde a superfície foge do olho, e a
+        // tinta satura. ⛔ *Uma régua que pergunta «há aresta de frente aqui?» não pode ver
+        // isto: a resposta é sim, muitas vezes, no mesmo pixel.*
+        let (dentro, borda) = ink_density(&plain, &wired);
+        println!(
+            "  {nome:<12} tinta {ink:>7}   VAZADA {:>5.2} %   COBERTURA miolo {:>5.1} %  borda              {:>5.1} %",
+            leak as f64 / ink.max(1) as f64 * 100.0,
+            dentro * 100.0,
+            borda * 100.0
+        );
+    }
+}
+
+/// ⭐⭐⭐ **QUANTO A TINTA DO WIREFRAME ESCURECE A PEÇA** — `(miolo, borda)`, a FORÇA
+/// média por pixel (`0` = a peça limpa, `1` = tinta cheia em todo pixel).
+///
+/// A `borda` são os pixels da peça cujo raio, normalizado pela silhueta, passa de `0,85`: é ali
+/// que a superfície foge do olho, que as células se comprimem, e que a foto do report mostra uma
+/// mancha. O `miolo` é o resto — o controlo.
+///
+/// ⚠️ **O fundo é lido do canto `(0,0)`**, e não escrito à mão: a cor de limpeza é do renderizador
+/// e uma cópia dela aqui envelheceria sozinha.
+fn ink_density(plain: &[u8], wired: &[u8]) -> (f64, f64) {
+    let bg = [plain[0], plain[1], plain[2]];
+    let mut pts: Vec<(f64, f64, f64)> = Vec::new();
+    let (mut cx, mut cy, mut n) = (0.0f64, 0.0f64, 0.0f64);
+    for y in 0..H as usize {
+        for x in 0..W as usize {
+            let i = (y * W as usize + x) * 4;
+            let corpo = plain[i] != bg[0] || plain[i + 1] != bg[1] || plain[i + 2] != bg[2];
+            if !corpo {
+                continue;
+            }
+            // ⛔⛔ **A FORÇA, e não a presença** (2026-09-04): a 1.ª redacção contava o pixel
+            // como «coberto» assim que ele mudasse um bit, e por isso **não via** um
+            // desvanecimento — a linha continua lá, só mais clara. *Uma régua de presença mede
+            // se a tinta existe; a mancha é sobre quanto ela ESCURECE.*
+            let d = (i32::from(plain[i]) - i32::from(wired[i])).abs()
+                + (i32::from(plain[i + 1]) - i32::from(wired[i + 1])).abs()
+                + (i32::from(plain[i + 2]) - i32::from(wired[i + 2])).abs();
+            let tinta = f64::from(d) / (3.0 * 255.0);
+            pts.push((x as f64, y as f64, tinta));
+            cx += x as f64;
+            cy += y as f64;
+            n += 1.0;
+        }
+    }
+    if n < 1.0 {
+        return (0.0, 0.0);
+    }
+    let (cx, cy) = (cx / n, cy / n);
+    let rmax = pts
+        .iter()
+        .map(|(x, y, _)| ((x - cx).powi(2) + (y - cy).powi(2)).sqrt())
+        .fold(0.0f64, f64::max)
+        .max(1.0);
+    let (mut mi, mi_n, mut bo, bo_n) = pts.iter().fold(
+        (0.0f64, 0.0f64, 0.0f64, 0.0f64),
+        |(mut mi, mut mn, mut bo, mut bn), (x, y, tinta)| {
+            let r = ((x - cx).powi(2) + (y - cy).powi(2)).sqrt() / rmax;
+            if r > 0.85 {
+                bn += 1.0;
+                bo += *tinta;
+            } else {
+                mn += 1.0;
+                mi += *tinta;
+            }
+            (mi, mn, bo, bn)
+        },
+    );
+    mi /= mi_n.max(1.0);
+    bo /= bo_n.max(1.0);
+    (mi, bo)
+}

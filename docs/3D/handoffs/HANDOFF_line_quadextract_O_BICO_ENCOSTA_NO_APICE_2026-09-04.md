@@ -263,3 +263,68 @@ censo textual.
    cresce era o que faria a segunda leitura discordar da primeira.
 3. **O `Delete` sobre um painel devolve `false` sem tocar na cena** — não é um no-op silencioso,
    é a cadeia a seguir para quem de direito.
+
+## §13 — ⛔⛔ O WIREFRAME: o que a foto mostra NÃO é geometria escondida (medido)
+
+**O report:** *«a opção de visualizar wireframes permite que a malha que deveria estar oculta
+apareça, confundindo a visualização»* (04/09, foto com duas setas na banda rasante).
+
+### §13.1 — A medição que refuta a hipótese óbvia
+
+Instrumento novo: `PH2D_MESH=<obj>` na sonda `probe_wire_continuity`
+(`a_peca_do_artista_vaza_wireframe`), **seis vistas incluindo close-up**, sobre a peça do
+próprio dono (`sculpt003.obj`, `21 928` faces, **fechada**):
+
+| vista | tinta VAZADA (onde nenhuma aresta da FRENTE passa) |
+|---|---|
+| frente · 3/4 · perfil · de cima | **`0,00 %`** |
+| perto 3/4 · perto perfil | **`0,01 %`** (`2`–`3` px) |
+
+⇒ **o descarte das arestas de costas (`obj.wire_cull`) faz o seu trabalho** — a malha de trás
+não atravessa. ⛔ *A hipótese que eu tinha ao ler a foto estava errada, e foi a medição que o
+disse.*
+
+### §13.2 — ⚠️ E DUAS réguas minhas mediram a coisa errada antes de acertar
+
+1. **A câmera da sonda vinha de dentro do `render`**, então rodar a vista comparava a MÁSCARA de
+   uma câmera com a TINTA de outra: li `33`–`51 %` de fuga onde a verdade é `0 %`. Curado —
+   a câmera passa a vir do chamador (`render_at`).
+2. **A régua de cobertura contava PRESENÇA** (o pixel mudou um bit) e por isso **não via um
+   desvanecimento**. Curada para a **FORÇA** (quanto a tinta escurece o pixel).
+
+### §13.3 — O que a régua honesta diz
+
+Com a força: a tinta do wireframe escurece **`10,8 %`** do miolo da peça e **`17,8 %`** da borda
+(razão `1,65`) — e a `de cima`, `13,8 %` / `26,0 %`. *Onde as células se projectam com menos de
+um pixel, o wireframe deixa de ser linhas e vira preenchimento* — e uma mancha cheia lê-se como
+«a malha de trás».
+
+### §13.4 — ⛔ A cura ÓBVIA foi construída, medida e REVERTIDA
+
+Desvanecer a aresta pelo ângulo (`smoothstep` sobre `|facing|`) funciona na régua nova:
+
+| `LO`–`HI` | miolo | borda | razão |
+|---|---|---|---|
+| *(sem)* | `10,8 %` | `17,8 %` | `1,65` |
+| `0,25`–`0,65` | `7,9 %` | **`8,5 %`** | **`1,08`** |
+
+⛔ **E reprova o gate `the_grazing_edges_are_not_eaten_by_their_own_surface`**: `24,4 %` contra
+a barra de `78 %`. Esse gate defende **o report de 12/08 do mesmo dono** (*«os wireframes saem
+todos cortados»*) — o desvanecimento por ângulo cura este report **reabrindo aquele**.
+
+⇒ *A variável certa não é o ÂNGULO, é a DENSIDADE por pixel*: uma aresta rasante sozinha numa
+malha esparsa tem de aparecer inteira; cinquenta arestas no mesmo pixel não podem saturar. As
+duas leituras só se separam pelo **tamanho projectado da célula**, que hoje não existe no
+shader.
+
+### §13.5 — ⏳ A wave que resolve, com endereço
+
+Um atributo por-vértice com a **aresta incidente média** (a CPU já a calcula em
+`ph2d_quadfill::tip_rows`), e o alfa da linha a desvanecer quando
+`célula_mundo / mundo_por_pixel < ~2 px`. Isso separa os dois reports por construção: a aresta
+rasante isolada mede muitos pixels por célula e fica; a banda saturada mede menos de um e
+desvanece.
+
+⚠️ **O que fica no repo desta investigação:** a porta `PH2D_MESH` na sonda, a câmera vinda de
+fora, e a régua da FORÇA — as três são ganho puro e ficam, com a hipótese refutada escrita ao
+lado.

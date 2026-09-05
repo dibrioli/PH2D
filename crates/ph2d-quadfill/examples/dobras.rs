@@ -68,8 +68,11 @@ fn main() {
         let shape = ph2d_quadfill::quad_shape(&mesh);
         let nome = path.rsplit('/').next().unwrap_or(path);
         println!(
-            "{nome}: {} faces | DOBRAS {} (maior grupo {}) | gravatas {} | enviesamento p50 {:.1} | aspecto p50 {:.2}",
+            "{nome}: {} faces | FECHADA {} | DOBRAS {} (maior grupo {}) | gravatas {} | enviesamento p50 {:.1} | aspecto p50 {:.2}",
             mesh.face_count(),
+            // ⚠️ **A pergunta que arma o descarte das arestas de costas** no wireframe
+            // (`ph2d_mesh_render`: `obj.wire_cull` só liga numa malha FECHADA).
+            mesh.is_closed(),
             dobradas.len(),
             maior_grupo(&mesh, &dobradas),
             forma.bowties,

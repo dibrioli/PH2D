@@ -103,23 +103,43 @@ impl App {
         // (`FormRole::draws_clay`), e a assimetria entre as duas portas ERA o bug: o
         // clique cedia ao sair do modo, a tecla não. Ver [`App::sculpt3d_keys_live`]
         // para o mecanismo e os números.
-        // ⭐⭐⭐ **O `Delete` decide-se numa PORTA própria** — ver [`super::keys_delete`]. Ela
-        // responde *«esta tecla é nossa?»* com os dois factos (o guarda e a área) e devolve a
-        // RAZÃO quando não é — que é o report do Enio de 2026-09-04 (*«corrija o deletar com a
-        // tecla del»*): a tecla morria num de três guardas e **nenhum deles dizia nada**.
-        if code == K::Delete
-            && let super::keys_delete::DeleteClaim::NotOurs(porque) =
-                super::keys_delete::claim_delete(
-                    self.sculpt3d_keys_dead_reason(),
-                    crate::forwarding::cursor_over_hero_panel(
-                        self.gfx.as_ref(),
-                        self.last_pointer.0,
-                        self.last_pointer.1,
-                    ),
-                )
-        {
-            eprintln!("[sculpt3d] o Delete NAO foi para a escultura: {porque}");
-            return false;
+        // ⭐⭐⭐ **O `Delete` decide-se numa PORTA própria, e RESOLVE-SE aqui** — ver
+        // [`super::keys_delete`]. ⛔ Ele **não** pode cair no guarda geral abaixo: o report de
+        // 2026-09-04, com a linha impressa como prova, foi *«a ferramenta Motion/Vector está EM
+        // MÃOS e reivindica as teclas nuas»* — e o `Delete` não é uma tecla nua. A lei que
+        // decide está no irmão, com os quatro factos e a ordem das explicações.
+        if code == K::Delete {
+            let factos = super::keys_delete::DeleteFacts {
+                clay_on_screen: self.sculpt3d_clay_on_screen(),
+                text_focused: self.text_entry_focused(),
+                over_panel: crate::forwarding::cursor_over_hero_panel(
+                    self.gfx.as_ref(),
+                    self.last_pointer.0,
+                    self.last_pointer.1,
+                ),
+                vector_has_selection: self.vec_pen.selected_vert().is_some()
+                    || !self.vec_pen.selected_paths().is_empty(),
+            };
+            if let super::keys_delete::DeleteClaim::NotOurs(porque) =
+                super::keys_delete::claim_delete(&factos)
+            {
+                eprintln!("[sculpt3d] o Delete NAO foi para a escultura: {porque}");
+                return false;
+            }
+            let Some(scene) = self.sculpt3d_scene_mut() else {
+                return false;
+            };
+            // ⚠️ A recusa é REPORTADA. Um Delete que não faz nada e não diz nada é
+            // indistinguível de uma tecla que não chegou.
+            if scene.delete_active() {
+                eprintln!(
+                    "[sculpt3d] APAGOU: sobram {} pecas -- Ctrl+Z a devolve INTEIRA",
+                    scene.objects.len()
+                );
+            } else {
+                eprintln!("[sculpt3d] a cena ja' esta' VAZIA: nao ha' peca a apagar");
+            }
+            return true;
         }
         if !self.sculpt3d_keys_live() {
             return false;
@@ -308,26 +328,6 @@ impl App {
                 }
                 return true;
             }
-        }
-        if code == K::Delete {
-            // ⚠️ A recusa é REPORTADA. Um Delete que não faz nada e não diz nada
-            // é indistinguível de uma tecla que não chegou.
-            if scene.delete_active() {
-                eprintln!(
-                    "[sculpt3d] APAGOU: sobram {} pecas -- Ctrl+Z a devolve INTEIRA",
-                    scene.objects.len()
-                );
-            } else {
-                // ⚠️ **Esta linha MENTIA.** Ela dizia *"a ULTIMA peca nao e
-                // apagavel: a cena ficaria vazia"*, que era verdade até o Enio
-                // derrubar a cerca no smoke (*"não consigo deletar todos os
-                // objetos"*) — a última passou a ser apagável, e a única recusa
-                // que sobrou é a cena **já** vazia. Uma mensagem que descreve a
-                // regra anterior é pior que nenhuma: ela ensina ao artista um
-                // limite que o produto não tem.
-                eprintln!("[sculpt3d] a cena ja' esta' VAZIA: nao ha' peca a apagar");
-            }
-            return true;
         }
         let held = match code {
             K::KeyG => Some(Verb::Move),

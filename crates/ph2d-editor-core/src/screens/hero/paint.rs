@@ -107,7 +107,10 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
 ///
 /// ⚠️ `OnceLock` de propósito: `std::env::var` num caminho por-quadro é uma leitura do SO em cada
 /// quadro, e o valor não pode mudar a meio de uma sessão sem ninguém saber porquê.
-pub(crate) fn ui_look_from_env() -> ph2d_tokens::UiLook {
+// ⚠️ `pub`, e re-exportada por `hero.rs` (`pub use paint::*`): a shell resolve o tema de
+//    arranque (`PH2D_THEME`) pela MESMA leitura da aparência que o `HeroScreen::new` usa — duas
+//    leituras do ambiente seriam duas respostas à mesma pergunta.
+pub fn ui_look_from_env() -> ph2d_tokens::UiLook {
     static LOOK: std::sync::OnceLock<ph2d_tokens::UiLook> = std::sync::OnceLock::new();
     *LOOK.get_or_init(|| {
         ph2d_tokens::UiLook::from_env_value(std::env::var("PH2D_UI_NEW").ok().as_deref())

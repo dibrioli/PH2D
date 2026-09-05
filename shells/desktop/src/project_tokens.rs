@@ -74,10 +74,17 @@ pub(crate) struct SavedToken {
 /// modo desconhecido é um override que não se sabe mostrar, e jogar fora o projeto por causa dele
 /// seria a resposta errada — o `PROJECT_SCHEMA` é quem recusa formato, não um campo.
 const fn theme_from_u8(b: u8) -> Theme {
+    // ⚠️ A família moderna (2026-09-04) entrou no FIM do enum de propósito: os quatro bytes
+    //    clássicos não se mexeram, e um projeto gravado antes lê-se igual. O gate
+    //    `every_theme_survives_the_byte_round_trip` cobra que esta escada acompanhe `Theme::ALL`.
     match b {
         1 => Theme::Workshop,
         2 => Theme::Sunstone,
         3 => Theme::Blueprint,
+        4 => Theme::Dark,
+        5 => Theme::Gray,
+        6 => Theme::Light,
+        7 => Theme::Oled,
         _ => Theme::Forge,
     }
 }

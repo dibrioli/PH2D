@@ -120,13 +120,11 @@ fn the_mode_round_trips_through_its_byte() {
     }
     // E a direção de ida concorda com a de volta em TODO modo — sem isto as duas poderiam
     // divergir e um projeto salvo no Sunstone reabriria no Blueprint.
-    for t in [
-        Theme::Forge,
-        Theme::Workshop,
-        Theme::Sunstone,
-        Theme::Blueprint,
-    ] {
-        assert_eq!(theme_from_u8(t as u8), t);
+    // ⚠️ `Theme::ALL`, não uma lista escrita à mão: a família moderna (2026-09-04) entrou no fim
+    //    do enum, e uma lista de quatro deixaria os quatro bytes novos por medir — um projeto com
+    //    um override no `dark` reabriria no `forge` em silêncio.
+    for t in Theme::ALL {
+        assert_eq!(theme_from_u8(t as u8), t, "{t:?} nao sobrevive ao byte");
     }
 }
 

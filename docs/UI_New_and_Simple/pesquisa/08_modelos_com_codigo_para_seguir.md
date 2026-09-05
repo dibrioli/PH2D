@@ -177,6 +177,15 @@ citou: esse é o valor de fábrica do *setting*, e o preset sobrescreve-o.
   `the_timeline_slots_are_aliases_by_construction`) — a decisão **B** deixa de existir na família
   moderna.
 
+- ⛔⛔ **E o smoke apanhou o tema de arranque com DUAS portas** (Enio: *«o app abriu como era
+  antes. Mas ao mudar o theme, as cores mudaram»*): o `HeroScreen::new` já abria no `dark`, e a
+  shell — `init.rs`, dois passos depois — escrevia por cima com `resolve_theme(PH2D_THEME)`, cujo
+  `None => Theme::Forge` ninguém tinha mudado. *Duas portas para o mesmo default, e a que corre
+  por último é a que ninguém lembra.* Cura: uma lei ([`Theme::default_for`]) e as duas portas a
+  lê-la, com `PH2D_THEME` a aceitar os oito ids. ⚠️ E o byte do tema no ficheiro de projeto
+  (`theme_from_u8`) ganhou os quatro degraus novos — o gate passou a percorrer `Theme::ALL` em vez
+  de uma lista de quatro.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - os outros ~38 pintores continuam a escolher fundo/borda sozinhos — eles já lêem os tokens

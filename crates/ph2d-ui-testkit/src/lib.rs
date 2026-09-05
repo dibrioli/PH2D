@@ -487,9 +487,24 @@ impl MockPanelHost {
         state: &mut P::State,
         viewport: Rect,
     ) -> (u32, u32) {
+        self.paint_and_count_geometry_with_layout::<P>(state, HeroLayout::for_viewport(viewport), viewport)
+    }
+
+    /// [`Self::paint_and_count_geometry`], com o layout dado — a variante que os painéis do
+    /// **split** precisam.
+    ///
+    /// ⚠️ **`for_viewport` constrói um centro POR PARTIR**, então o Motion (grafo e timeline)
+    /// recebe um rect de área ZERO e volta antes de desenhar: contar geometria por ali daria
+    /// `(0, 0)` para tudo, e um gate de pixel sobre um painel do split seria **vácuo**. É a
+    /// mesma razão que fez nascer o [`Self::paint_with_layout`], um nível acima.
+    pub fn paint_and_count_geometry_with_layout<P: Panel>(
+        &mut self,
+        state: &mut P::State,
+        layout: HeroLayout,
+        viewport: Rect,
+    ) -> (u32, u32) {
         self.set_panel_visible(P::ID, true);
         self.hit_index.clear_for_frame();
-        let layout = HeroLayout::for_viewport(viewport);
         let mut scene = VectorScene::new();
         let mut text_system = TextSystem::without_system_fonts();
         {

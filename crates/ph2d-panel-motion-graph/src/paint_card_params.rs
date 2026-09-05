@@ -102,9 +102,12 @@ pub(super) fn draw_card_params(
     view: &View,
     theme: Theme,
 ) {
-    if n.params.is_empty() || !geom::params_are_drawn(view) {
+    if n.params.is_empty() {
         return;
     }
+    // ⚠️ **A BARRA pinta-se sempre; só o TEXTO passa pelo LOD** — ver
+    // [`geom::param_text_is_drawn`], e o smoke que o ensinou.
+    let com_texto = geom::param_text_is_drawn(view);
     let z = view.zoom;
     for (i, p) in n.params.iter().enumerate() {
         let row = geom::param_row_rect(n, view, i);
@@ -125,6 +128,9 @@ pub(super) fn draw_card_params(
         {
             let bar = Rect::new(track.x, track.y, track.w * fill, track.h);
             fill_rounded_rect(ctx.scene, bar, TRACK_R * z, resolve(ColorToken::AccentSoft, theme));
+        }
+        if !com_texto {
+            continue;
         }
         let text_y = row.y + TEXT_PAD_Y * z;
         let size = geom::PARAM_LABEL_SIZE * z;

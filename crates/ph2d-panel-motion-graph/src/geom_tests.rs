@@ -417,18 +417,24 @@ fn the_readout_sits_below_the_param_band() {
     assert!(readout_top(&n) > param_band_top(&n));
 }
 
-/// ⭐⭐ **O LOD É O ORÇAMENTO** (doc 103 §7): as rows só se desenham quando o rótulo é legível
-/// — `11 px × zoom ≥ 9 px` ⇒ `zoom ≥ 0,818`. FALSIFICADO por `params_are_drawn` devolver
-/// sempre `true`: 120 cartões × 5 rows passam a custar **57 % do quadro**.
+/// ⭐⭐ **O LOD É DO TEXTO, e a BARRA pinta-se sempre.**
+///
+/// ⛔ A primeira versão escondia a row inteira abaixo do limiar e o smoke do Enio devolveu
+/// *«tudo em branco»*: a cena abre a `zoom ≈ 0,5`, a faixa ficava reservada (a altura não segue
+/// o zoom) e nada era desenhado nela. O texto some (`11 px × zoom ≥ 9 px` ⇒ `zoom ≥ 0,818`);
+/// a barra e o nível, não.
+///
+/// FALSIFICADO por `param_text_is_drawn` devolver sempre `true` (o rótulo vira uma mancha
+/// cinzenta e paga-se o texto num grafo afastado) ou sempre `false` (nenhum número se lê).
 #[test]
-fn param_rows_are_drawn_only_above_the_legibility_zoom() {
+fn only_the_text_of_a_param_row_follows_the_zoom() {
     let at = |z: f32| {
         let mut vs = ViewState::default();
         vs.zoom = z;
-        params_are_drawn(&View::new(Rect::new(0.0, 0.0, 800.0, 600.0), vs))
+        param_text_is_drawn(&View::new(Rect::new(0.0, 0.0, 800.0, 600.0), vs))
     };
-    assert!(!at(0.25), "afastado, uma row e' uma mancha — nao se desenha");
-    assert!(!at(0.5));
+    assert!(!at(0.25), "afastado, o rotulo e' uma mancha — nao se escreve");
+    assert!(!at(0.5), "o zoom com que a cena de smoke abre");
     assert!(!at(0.8), "logo abaixo do limiar (0,818) ainda nao");
     assert!(at(0.83), "logo acima, sim");
     assert!(at(1.0));

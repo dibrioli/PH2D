@@ -91,7 +91,18 @@ pub(crate) const PARAM_LABEL_SIZE: f32 = 11.0; // LITERAL-PX-OK: card param labe
 /// uma mancha cinzenta, e desenhá-lo custa o mesmo que desenhá-lo legível.
 const MIN_READABLE_PX: f32 = 9.0; // LITERAL-PX-OK: legibility floor
 
-/// ⭐⭐⭐ **O LOD DAS ROWS — e ele é o ORÇAMENTO, não polimento** (doc 103 §7).
+/// ⭐⭐⭐ **O LOD DO TEXTO da row — e é só do TEXTO** (doc 103 §7).
+///
+/// ⛔⛔ **A primeira versão escondia a ROW INTEIRA abaixo do limiar, e o smoke do Enio
+/// (2026-09-05, foto) devolveu o resultado: «tudo em branco».** A cena abre com `zoom ≈ 0,5`,
+/// a faixa continuava RESERVADA (a altura não segue o zoom, e não pode) e nada era desenhado
+/// nela — *o pior dos dois mundos: o espaço pago e a informação ausente*. O Blender nunca faz
+/// isto: o corpo do nó desenha sempre as caixas dos controlos, e o que desaparece ao afastar é
+/// o TEXTO. ⇒ a barra e o nível pintam-se **sempre** (dois rectângulos, o barato), e só os dois
+/// textos passam por aqui.
+///
+/// ⭐ E a barra sozinha ainda INFORMA: uma coluna de níveis diz de relance que knobs estão
+/// altos e quais estão no fundo, que é o que um nó afastado tem para dizer.
 ///
 /// Medido em 2026-09-05 (load 2,66): um cartão nu custa **11,3 µs** e uma row de param
 /// **13,5 µs** — *uma row custa mais que um cartão inteiro*, porque as duas são dominadas
@@ -112,7 +123,7 @@ const MIN_READABLE_PX: f32 = 9.0; // LITERAL-PX-OK: legibility floor
 /// ⚠️ **O que o LOD NÃO faz é mudar a ALTURA do cartão** ([`card_h`] é espaço de GRAFO e não
 /// vê o zoom): a faixa fica reservada sempre. Um cartão que encolhesse ao afastar faria os
 /// hit-rects saltarem debaixo do dedo a meio de um pinch.
-pub(crate) fn params_are_drawn(view: &View) -> bool {
+pub(crate) fn param_text_is_drawn(view: &View) -> bool {
     PARAM_LABEL_SIZE * view.zoom >= MIN_READABLE_PX
 }
 

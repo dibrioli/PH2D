@@ -33,6 +33,11 @@ mod paint_port_label;
 /// ficheiro desenha o que um cartão É, aquele o que ele CONTROLA.
 #[path = "paint_card_params.rs"]
 mod paint_card_params;
+
+/// O gate de PIXEL da faixa de params — o que os seis de geometria não podiam ver.
+#[cfg(test)]
+#[path = "paint_card_params_tests.rs"]
+mod paint_card_params_tests;
 /// A ESPÉCIE e o PAPEL: a cor de um socket e o selo do cabeçalho — irmão cortado no teto de
 /// LOC, por responsabilidade (ver o cabeçalho dele).
 #[path = "paint_role.rs"]

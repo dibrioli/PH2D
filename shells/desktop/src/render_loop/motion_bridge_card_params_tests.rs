@@ -155,3 +155,85 @@ fn the_card_and_the_panel_agree_on_which_params_are_visible() {
         }
     }
 }
+
+/// **O CENSO: quantos params cada tipo de nó põe no cartão** — a sonda que responde *«o cartão
+/// está vazio porque ninguém o encheu, ou porque ninguém o pintou?»* sem arqueologia de pixels.
+///
+/// `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture what_each_card_carries`
+#[test]
+#[ignore = "sonda de censo, nao um gate"]
+fn what_each_card_carries() {
+    let m = MotionState::new();
+    let mut linhas: Vec<(usize, String)> = Vec::new();
+    let mut sem_hints = 0usize;
+    for man in m.registry.manifests() {
+        let mut aux = MotionState::new();
+        let id = aux.doc.graph.add_node(man.name.to_string());
+        let mut snap = ph2d_panel_motion_graph::snapshot_from(&aux.doc.graph, &aux.registry);
+        stamp_card_params(&aux, &mut snap);
+        let n = snap
+            .nodes
+            .iter()
+            .find(|v| v.id == id.0)
+            .map_or(0, |v| v.params.len());
+        if aux.registry.param_ui(man.id).is_none() {
+            sem_hints += 1;
+        }
+        linhas.push((n, man.name.to_string()));
+    }
+    linhas.sort_by(|a, b| b.0.cmp(&a.0));
+    let total: usize = linhas.iter().map(|(n, _)| n).sum();
+    let vazios = linhas.iter().filter(|(n, _)| *n == 0).count();
+    eprintln!(
+        "  {} tipos · {total} rows no total · {vazios} cartoes VAZIOS · {sem_hints} sem hints",
+        linhas.len()
+    );
+    eprintln!("  --- os 12 mais cheios ---");
+    for (n, name) in linhas.iter().take(12) {
+        eprintln!("  {n:>3} │ {name}");
+    }
+    // ⭐ E o que a DOBRA por omissão faria à altura — a pergunta que decide se o cartão de 30
+    // rows do L-System é um problema de desenho ou de folding.
+    eprintln!("  --- se o cartao dobrasse as seccoes como o painel dobra ---");
+    eprintln!("  {:>4} │ {:>4} │ {:>4} │ nó", "rows", "abre", "secs");
+    for alvo in ["source.lsystem", "motion.bezier_warp", "motion.emitter", "motion.noise", "motion.grid"] {
+        let mut aux = MotionState::new();
+        let id = aux.doc.graph.add_node(alvo.to_string());
+        let tid = aux.doc.graph.node(id).expect("no'").type_id();
+        let mut snap = ph2d_panel_motion_graph::snapshot_from(&aux.doc.graph, &aux.registry);
+        stamp_card_params(&aux, &mut snap);
+        let ps = snap
+            .nodes
+            .iter()
+            .find(|v| v.id == id.0)
+            .map(|v| v.params.clone())
+            .unwrap_or_default();
+        let dobradas = aux.registry.param_groups_folded(tid);
+        let mut secs: Vec<&str> = Vec::new();
+        let mut abertas = 0usize;
+        for c in &ps {
+            let g = aux.registry.param_group(tid, c.hint.param);
+            match g {
+                Some(g) => {
+                    if !secs.contains(&g) {
+                        secs.push(g);
+                    }
+                    if !dobradas.contains(&g) {
+                        abertas += 1;
+                    }
+                }
+                // Sem grupo = sempre visível (o topo do painel).
+                None => abertas += 1,
+            }
+        }
+        eprintln!("  {:>4} │ {abertas:>4} │ {:>4} │ {alvo}", ps.len(), secs.len());
+    }
+    eprintln!("  --- os do smoke ---");
+    for alvo in ["source.lsystem", "motion.move", "motion.output", "motion.grid"] {
+        let n = linhas
+            .iter()
+            .find(|(_, s)| s == alvo)
+            .map_or(usize::MAX, |(n, _)| *n);
+        eprintln!("  {n:>3} │ {alvo}");
+    }
+}

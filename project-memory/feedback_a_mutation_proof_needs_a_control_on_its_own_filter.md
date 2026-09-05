@@ -16,6 +16,14 @@ Aconteceu em 2026-08-27 (auditoria do Motion): o filtro `cook_lazy` casava zero,
 caminho do módulo é `cook::lazy::tests`. Duas mutações reportaram "sobreviveu"; com o filtro
 certo as duas morreram.
 
+⚠️⚠️ **E há uma segunda forma, PIOR, porque o controle «quantos correram?» passa nela:** o filtro
+casa **o teste VIZINHO**. Em 2026-09-05 (`line/components`) o filtro `every_menu_row` casou
+`every_menu_row_reaches_a_handler` — 1 teste, verde — enquanto o gate que a mutação atacava era
+`every_painted_menu_row_is_registered_and_therefore_clickable`, noutro ficheiro. Contar deu `1` e o
+veredito foi *"SOBREVIVEU"*. ⇒ o controle honesto não é *«correu alguma coisa?»* mas **«correu o
+gate que eu nomeei no comentário da mutação?»** — dois ficheiros de gate cujos nomes partilham um
+prefixo são a armadilha, e eles partilham prefixo **de propósito** (são a mesma família).
+
 **Why:** a prova de mutação afirma *"este gate reprova quando o produto quebra"*. Ela tem duas
 metades — a mutação chegou ao binário, e o gate correu. Um filtro errado mata a segunda em
 silêncio, e o mesmo vale para um `--test` com nome errado ou um crate sem o alvo.

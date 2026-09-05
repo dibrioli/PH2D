@@ -24,7 +24,7 @@
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
 | F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | 🟨 F4.1–F4.5 ✅ · F4.6a/b ✅ · **F4.7 ✅ (os 3 smoke-gates)** · **F4.6c ⬜ — o bloqueio DISSOLVEU pelo lado inesperado** (a fatia que faltava eram os eixos, e o Enio revogou-os: já não há o que portar; o que sobra é a porta de autoria — ver §F4) · + a auditoria de 27/08 e o modo LIGADO |
-| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 ✅** · **F5.3 ✅** (modelo; a secção mostra a CONTAGEM, não quais) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis abaixo descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) · **critério 4 (*Apply to inner master*) ✅ 2026-09-04** (a escada, §F5.5) · troca p/ mestre não aparentado ⬜ · **os órfãos são NOMEADOS ✅ 2026-09-04** (§F5.6 — o critério 3 fecha) |
+| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 ✅** · **F5.3 ✅** (modelo; a secção mostra a CONTAGEM, não quais) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis abaixo descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) · **critério 4 (*Apply to inner master*) ✅ 2026-09-04** (a escada, §F5.5) · **troca p/ mestre não aparentado ✅ 2026-09-05** (os 3 modos + o relatório, §F5.8) · **os órfãos são NOMEADOS ✅ 2026-09-04** (§F5.6 — o critério 3 fecha) ⇒ ✅ **A F5 NÃO TEM MAIS NADA ABERTO** |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ✅ 2026-08-30 (996 LOC + a taxonomia) |
 | F7 | O painel Asset Browser + o arrasto único | ✅ 2026-08-30 — etapas **A–D** do [plano 07](07_plano_do_navegador_de_assets.md); `DragPayload` com as duas famílias |
 | F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | 🟨 **a premissa do RELÓGIO foi REFUTADA por medição** (§F8) · a partilha da `VecScene` entre passos ✅ 2026-09-02 · `FlipDoc` ⬜ |
@@ -129,7 +129,11 @@ quiser o smoke de verdade tem de **fabricar** um v95 (checkout de um commit anti
 | **Acção do barramento nova (F5 critério 4)** | `EditorAction::InspectorApplyToLevel { entity_bits, master }` | ⚠️ o `match` do dreno acaba em `_ => {}` — uma acção sem braço **compila e não faz nada**; o gate `the_apply_ladder_has_one_door` afirma o braço |
 | **Campos novos no `InspectorInstanceInfo`** | `apply_levels` · `apply_levels_beyond` · `orphan_rows` (⚠️ **substitui** `orphans: usize`, que virou o método derivado `orphans()`) | ⚠️ literal obrigatório: o compilador aponta os sítios de construção, que é o que se quer |
 | **Módulos novos** | `shells/desktop/src/instance_apply_deep{,_tests,_verb_tests}.rs` · `instance_nested_smoke.rs` · `crates/ph2d-panel-inspector/src/populate_instance.rs` | nomes novos, sem colisão |
-| **Cena de smoke nova** | `PH2D_INSTANCE_SMOKE=3` (a receita dentro da receita) | ⚠️ o roteador é o `instance_smoke.rs`; **conta-se lá**, não aqui |
+| **Cena de smoke nova** | `PH2D_INSTANCE_SMOKE=3` (a receita dentro da receita) · **`=4`** (trocar por um componente sem parentesco) | ⚠️ o roteador é o `instance_smoke.rs`; **conta-se lá**, não aqui |
+| **Ids de widget novos (F5, a troca sem parentesco)** | `CTX_MENU_ASSET_REPLACE` · `CTX_MENU_ASSET_REPLACE_BY_NAME` · `CTX_MENU_ASSET_REPLACE_BY_TREE` | `ph2d-editor-core/src/ids/menus_asset.rs` + `node_id_collisions`. ⚠️ **Três sítios por linha de menu**: a tabela (`menu_rows`), o despacho (`card_verb_of`) e o **registo** (`pre_populate.rs`) — faltar o terceiro dá um botão que não faz nada, e o censo apanhou-o à primeira |
+| **Variantes novas no `AssetCardAction`** | `ReplaceSelection` · `ReplaceSelectionByName` · `ReplaceSelectionByTree` | ⚠️ **três variantes, não uma com o modo no corpo**: o modo tem de ser escolhido pelo GESTO (F5, *«nunca automático»*), e uma variante única convidaria o primeiro chamador novo a passar um valor de omissão |
+| **Campo novo no `SwapReport`** | `ambiguous: usize` | ⚠️ só o emparelhamento SEM parentesco o produz — um elo não é ambíguo |
+| **Módulos novos (F5, a troca sem parentesco)** | `shells/desktop/src/instance_swap_match{,_tests}.rs` · `instance_replace_smoke{,_tests}.rs` | nomes novos, sem colisão |
 | **ADRs novos (F1.6)** | [`0070-amendment-8`](../architecture/decisions/0070-amendment-8.md) (o corte) · [`0071-amendment-1`](../architecture/decisions/0071-amendment-1.md) (o 4.º canal de tinta muda de casa) | ⚠️ números **contados** contra `decisions/`, não escolhidos |
 
 ---
@@ -1936,3 +1940,119 @@ E do lado do verbo: `editing_a_prefab_from_the_library_selects_the_recipe` (muta
 `select_out` ⇒ o item come o clique e diz que editou) · `editing_an_image_is_refused_out_loud` ·
 o censo do painel (`an_image_card_dispatches_every_verb_too…`) que é **exaustivo sobre o enum**, então
 um verbo novo entra na medição ou não compila.
+
+---
+
+### ✅ §F5.8 — **A TROCA por um mestre NÃO APARENTADO** (2026-09-05) — a F5 fecha
+
+> **O que o plano pedia:** *«Trocar para mestre NÃO aparentado: só por gesto, com os 3 modos
+> (`Nenhum` default · `Por nome` só com nomes únicos · `Por hierarquia`) + relatório.
+> ⛔ Nunca automático (HR-5).»*
+
+#### O que existia, e por que a recusa estava certa
+
+[`instance_variant::swap`](../../shells/desktop/src/instance_variant.rs) troca o mestre de uma cópia
+**lendo os elos** — as peças de uma variante dizem de que peça da base nasceram, então o mapa
+`de → para` está no mundo e nada se adivinha. Com dois mestres **sem antepassado comum** ela devolvia
+`SwapRefusal::Unrelated`, e isso não era uma lacuna: sem elo **não existe** resposta derivada.
+
+O que faltava era o **palpite pedido em voz alta**. O artista às vezes quer exactamente isso —
+*«troca este Carro por um Camião e tenta levar o que eu mexi»* —, e a única coisa que o plano proíbe
+é que aconteça **sozinho**.
+
+#### O desenho
+
+| peça | onde |
+|---|---|
+| `WhenUnrelated { Refuse · CarryNothing · ByName · ByHierarchy }` + `rematch` | [`instance_swap_match.rs`](../../shells/desktop/src/instance_swap_match.rs) (novo) |
+| `swap` ganha o parâmetro; o caminho de omissão é `Refuse` | `instance_variant.rs` |
+| Três linhas no menu do cartão da biblioteca | `menu_rows.rs` + `menus_asset.rs` + `pre_populate.rs` |
+| Três variantes no `AssetCardAction` → o dreno | `action_bus_kinds.rs` · `event.rs` · `asset_card_verbs.rs` |
+| A cena `PH2D_INSTANCE_SMOKE=4` | [`instance_replace_smoke.rs`](../../shells/desktop/src/instance_replace_smoke.rs) |
+
+⭐ **O mapa DERIVADO ganha sempre.** Com parentesco, `piece_map` responde e o modo escolhido **nem é
+lido**. *Um modo de emparelhamento é a resposta para a AUSÊNCIA de uma verdade, nunca uma alternativa
+a ela.*
+
+#### ⭐⭐ A chave é um CAMINHO, e não um nome solto — a 1.ª redacção partia a árvore
+
+Emparelhar por `Name` cru produz mapas **estruturalmente incoerentes**: a peça `Wheel` que no Carro
+pende da raiz e no Camião pende da `Cabin` seria emparelhada, e a cópia ficaria com a roda debaixo da
+raiz enquanto a receita a diz debaixo da cabina. ⚠️ **O `reconcile` materializa e apaga, e NÃO muda
+peças de pai** — então o defeito ficaria **estável e mudo**.
+
+⇒ a chave dos dois modos é o **caminho desde a raiz**, e o degrau é a única diferença:
+
+| modo | um degrau é | sobrevive a | perde-se com |
+|---|---|---|---|
+| `ByName` | o `Name` da peça | reordenar os irmãos | renomear |
+| `ByHierarchy` | o índice entre os irmãos | renomear | reordenar |
+
+São as duas metades do `ObjectMatchMode` do Unity, e **nenhuma contém a outra** — é por isso que as
+duas existem.
+
+⭐ **E um caminho só emparelha se o PAI dele emparelhar.** Com dois irmãos `Arm` o caminho `Arm` é
+ambíguo e cai; sem esta lei o `Arm/Hand` de um deles — que é **único** — emparelharia sobre um pai que
+não existe daquele lado. ⚠️ Um percurso só chega, e a razão é a ordem do `BTreeMap`: um caminho ordena
+sempre depois de todos os prefixos dele, então quando se chega a um filho o pai já foi decidido.
+
+#### ⭐⭐⭐ A RAIZ emparelha nos TRÊS modos — *a chave da raiz não tem sepultador*
+
+A 1.ª versão deixava a raiz fora no modo *«não leves nada»*, por simetria com o nome do modo. A
+medição do mecanismo desfez isso:
+
+> O `entomb` guarda a excepção de uma peça **no instante em que a peça morre**, e a raiz de uma
+> instância **nunca morre** numa troca — o que muda é o elo dela. ⇒ uma chave de raiz sem imagem no
+> mapa não fica **viva** (o passe compara com a raiz do mestre NOVO) nem **sepultada** (ninguém a
+> enterra): fica **invisível**, a comer a excepção do artista e a bloquear a receita nova, sem uma
+> linha em lado nenhum do painel a dizê-lo.
+
+⚠️ E é a mesma razão pela qual o **eco** do mestre novo é esquecido na troca: o `swap` percorre os
+valores do mapa, e a raiz estar lá é o que faz o primeiro passe cair na regra do 1.º encontro em vez
+de congelar a cópia com o valor do mestre velho. *A cerca é do eco, e a raiz no mapa é o que a
+torna um percurso simples.*
+
+⚠️ **Nada disto move o objecto:** onde ele está, como se chama e em que ordem aparece são da raiz e
+nunca foram do mestre (`ROOT_IS_ITS_OWN`), logo não são excepções e não passam por mapa nenhum.
+
+#### A ambiguidade é CONTADA, e o relatório tem duas metades
+
+`SwapReport::ambiguous` conta os caminhos que aparecem mais que uma vez de um dos lados. ⛔ Escolher
+*«o de `StableId` menor»* seria aplicar a excepção do artista ao braço que calhou de nascer primeiro —
+a heurística que o plano proíbe, com cara de determinismo.
+
+⚠️ **O toast diz QUANTAS; a lista diz QUAIS.** A metade durável do relatório já existia: cada excepção
+que perde o alvo cai na lista de *sem alvo* do cartão do Inspector (§F5.6), **com a peça de que era**.
+
+#### ⛔ Por que são TRÊS itens de menu e não um selector
+
+O modo tem de ser escolhido **pelo gesto**. Um selector com valor de omissão é o app a escolher, que
+é exactamente a operação automática que o plano proíbe (HR-5) — e uma variante de acção única, com o
+modo no corpo, convidaria o primeiro chamador novo a passar um default. ⇒ três ids, três rótulos,
+três variantes.
+
+⚠️ **O sujeito é a SELECÇÃO e o cartão é o objecto** — o único verbo deste menu em que isso acontece,
+e por isso os três rótulos a nomeiam (*«Replace selection…»*). E o sujeito de cada objecto é a **raiz
+da instância**, não a entidade clicada: clicar no canvas dá a peça que está debaixo do rato.
+
+#### O que a barra apanhou
+
+| gate | o que faltava |
+|---|---|
+| `every_painted_menu_row_is_registered_and_therefore_clickable` | as três linhas **pintadas e não registadas** — o `Down` não fica activo e o `Click` **nunca nasce**. *Uma linha de menu vive em três sítios e faltar um não dá erro nenhum.* |
+| `an_image_card_dispatches_every_verb_too…` | é **exaustivo sobre o enum** ⇒ os três verbos novos entram na medição ou não compila |
+
+**18 gates novos** (13 no mecanismo + 5 na cena) e **18 mutações mortas** em três baterias.
+
+⚠️⚠️ **Uma delas leu-se *«SOBREVIVEU»* com um filtro que casava OUTRO teste** (`every_menu_row` bate
+no `every_menu_row_reaches_a_handler`, noutro ficheiro); com o nome certo ela morre. *Um filtro que
+casa zero — ou que casa o vizinho — imprime o mesmo veredito de um gate ausente.*
+
+#### ⛔ Uma decisão de produto NOMEADA, e não construída
+
+**A troca não renomeia o objecto.** Uma cópia chamada `Car (1)` que vira Camião continua a chamar-se
+`Car (1)` — o `Name` da raiz é `ROOT_IS_ITS_OWN` (é do artista, nunca veio do mestre), e a única
+maneira de o corrigir automaticamente seria adivinhar se o nome ainda «pertence» à receita velha, que
+é uma heurística sobre nomes: exactamente o que esta linha recusa. ⚠️ **O cartão do Inspector diz a
+verdade** (*Instance of "Truck"*), e renomear é um gesto que já existe. Se o smoke recusar, a
+alternativa nomeada é renomear **sempre** — e ela custa o nome que o artista escreveu.

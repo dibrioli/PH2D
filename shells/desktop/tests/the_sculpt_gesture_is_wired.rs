@@ -676,6 +676,19 @@ fn every_verb_is_reachable_from_the_keyboard() {
         // com quatro candidatos a uma tecla quem escolhe não pode ser quem passou
         // por último: o `L` é o ÚLTIMO livre, e gastá-lo é uma decisão de uma via.
         "Layer",
+        // ⚠️ **O TECIDO (W10), e ele entra aqui porque NÃO HÁ TECLA LIVRE.** O
+        // parágrafo acima diz que o `L` é a última, e que gastá-la é uma decisão
+        // de uma via reservada ao Enio — então dá-la ao Cloth por ele ser o mais
+        // recente seria exatamente *"quem escolhe é quem passou por último"*, que
+        // aquele parágrafo recusa.
+        //
+        // ⚠️ E aqui a ausência custa POUCO, com motivo: o tecido não é um verbo
+        // de retoque que se alterna a cada dois traços — é um gesto de FORMA, do
+        // tipo que se escolhe uma vez e se usa por minutos. O chip o entrega, e
+        // ele é o único verbo do catálogo que **não oferece chip de MODO**, o que
+        // deixa a fileira dele mais curta e não mais longa. **A escolha da tecla
+        // é do Enio.**
+        "Cloth",
     ];
     let keys = function_body(&sculpt_src(), "sculpt3d_key");
     // ⚠️ **O gate COLETA em vez de abortar no primeiro, e isso não é estilo.**

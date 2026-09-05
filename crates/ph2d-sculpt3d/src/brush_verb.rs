@@ -673,9 +673,25 @@ impl Verb {
     /// não tem âncora nenhuma. A pergunta passou a ser feita pelo lado
     /// POSITIVO — quem de fato pega um ponto no pen-down —, que é a forma que
     /// sobrevive ao sexto grip em vez de o adotar em silêncio.
+    /// ⛔⛔ **E O SEXTO GRIP CHEGOU SEM RESPONDER A ESTA PERGUNTA — report do
+    /// dono, 2026-09-05: *«não funciona, nada aconteceu ao pintar»*.** O
+    /// [`Grip::Simulate`] entrou sem entrar nesta lista, então o pen-down do
+    /// tecido caía no `else` (`sculpt_at`) e a âncora do dedo nunca era tomada;
+    /// no arrasto, o `hook_step` sai no primeiro `if` porque `self.grab` é
+    /// `None`, e **nada acontece**. O parágrafo acima previu exatamente esta
+    /// classe e ainda assim ela passou: *uma lista pelo lado positivo obriga o
+    /// grip novo a declarar-se, e nada obriga QUEM O ESCREVE a ler a lista.*
+    ///
+    /// ⇒ o que fecha a classe é o gate
+    /// `the_sculpt_pen_down_arms_what_the_drag_needs` (shell), que confere as
+    /// DUAS metades: todo grip que o arrasto conduz a partir da âncora tem de
+    /// aparecer aqui.
     #[must_use]
     pub fn anchors(self) -> bool {
-        matches!(self.grip(), Grip::Hold | Grip::Hook | Grip::Turn(_))
+        matches!(
+            self.grip(),
+            Grip::Hold | Grip::Hook | Grip::Turn(_) | Grip::Simulate
+        )
     }
 }
 /// **OS DEFAULTS** — com que números um verbo nasce. Ver [`defaults`].

@@ -138,6 +138,13 @@ impl SculptStroke {
             ];
             self.cloth_copy(mesh, brush, dab, center, path, copy);
         }
+        // ⚠️⚠️ **ESCRITA, e não herdada.** O [`SculptStroke::last_gpu_dirty`]
+        // escolhe a janela de upload por esta bandeira, e o `begin` NÃO a
+        // reinicia — sem esta linha um traço de tecido logo depois de um traço
+        // de MÁSCARA subiria a janela errada, e o defeito seria *«a malha mudou
+        // e a tela não»*, com todos os gates de CPU verdes. O tecido move
+        // geometria, ponto.
+        self.last_paints_mask = false;
         if self.moved.is_empty() {
             return 0;
         }

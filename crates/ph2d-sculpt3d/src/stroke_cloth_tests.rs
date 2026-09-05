@@ -45,8 +45,14 @@ fn pincel() -> Brush {
 }
 
 /// Um dab olhando de `+z` para o plano.
-fn dab_em(c: [f32; 3], r: f32) -> Dab {
-    Dab::at(c, r, [0.0, 0.0, -1.0])
+///
+/// ⚠️ **`Dab::hooking`, que é EXATAMENTE o que o shell manda** (`hook_step` ⇒
+/// `Dab::hooking(center, radius, eye, step)`). A 1.ª redação usava `Dab::at`, e
+/// a diferença não muda a lei do tecido — mas uma fixtura que manda outro dab
+/// que o produto é uma fixtura que pode ficar verde sobre um caminho que
+/// ninguém percorre.
+fn dab_em(c: [f32; 3], r: f32, passo: [f32; 3]) -> Dab {
+    Dab::hooking(c, r, [0.0, 0.0, -1.0], passo)
 }
 
 /// Arrasta a mão por `passos` eventos, devolvendo a malha e o traço.
@@ -56,10 +62,11 @@ fn arrastar(passos: usize, brush: &Brush) -> (Mesh, SculptStroke) {
     s.begin(&mesh);
     for k in 0..passos {
         let c = [0.02 * k as f32, 0.0, 0.0];
+        let passo = if k == 0 { [0.0; 3] } else { [0.02, 0.0, 0.0] };
         s.dab(
             &mut mesh,
             brush,
-            &dab_em(c, brush.radius),
+            &dab_em(c, brush.radius, passo),
             Symmetry::default(),
         );
     }
@@ -157,7 +164,13 @@ fn a_mascara_protege() {
     s.begin(&mesh);
     for k in 0..12 {
         let c = [0.02 * k as f32, 0.0, 0.0];
-        s.dab(&mut mesh, &b, &dab_em(c, b.radius), Symmetry::default());
+        let passo = if k == 0 { [0.0; 3] } else { [0.02, 0.0, 0.0] };
+        s.dab(
+            &mut mesh,
+            &b,
+            &dab_em(c, b.radius, passo),
+            Symmetry::default(),
+        );
     }
     let pior = (0..n)
         .map(|v| desloc(&antes, &mesh, v))
@@ -172,6 +185,54 @@ fn a_mascara_protege() {
     assert!(
         move_ > 1e-3,
         "o controle nao se mexeu: o gate mediria vacuo"
+    );
+}
+
+/// ⭐⭐⭐ **GATE — a janela de upload não sai vazia, nem herdada.**
+///
+/// ⛔⛔ **O segundo modo de *«a malha mudou e a tela não»*.** O
+/// [`SculptStroke::last_gpu_dirty`] escolhe entre duas listas pela bandeira
+/// `last_paints_mask`, e o `begin` **não a reinicia**: um traço de tecido logo
+/// depois de um traço de MÁSCARA leria a bandeira do outro. Aqui o gate encena
+/// exatamente essa ordem.
+#[test]
+fn a_janela_de_upload_nao_e_herdada_do_traco_anterior() {
+    let mut mesh = plano();
+    let mut s = SculptStroke::default();
+    // Um traço de MÁSCARA primeiro — é ele que arma a bandeira do outro lado.
+    let mascara = Brush {
+        verb: Verb::Mask,
+        radius: 0.30,
+        strength: 1.0,
+        ..Brush::default()
+    };
+    s.begin(&mesh);
+    for k in 0..4 {
+        let c = [0.02 * k as f32, 0.0, 0.0];
+        let passo = if k == 0 { [0.0; 3] } else { [0.02, 0.0, 0.0] };
+        s.dab(
+            &mut mesh,
+            &mascara,
+            &dab_em(c, mascara.radius, passo),
+            Symmetry::default(),
+        );
+    }
+    // Agora o tecido, no MESMO traço-objeto.
+    let b = pincel();
+    s.begin(&mesh);
+    for k in 0..12 {
+        let c = [0.02 * k as f32, 0.0, 0.0];
+        let passo = if k == 0 { [0.0; 3] } else { [0.02, 0.0, 0.0] };
+        s.dab(
+            &mut mesh,
+            &b,
+            &dab_em(c, b.radius, passo),
+            Symmetry::default(),
+        );
+    }
+    assert!(
+        !s.last_gpu_dirty().is_empty(),
+        "a janela de upload do tecido saiu VAZIA -- a malha muda e a tela nao"
     );
 }
 
@@ -212,14 +273,26 @@ fn um_traco_novo_nao_herda_a_regiao() {
     s.begin(&mesh);
     for k in 0..8 {
         let c = [-0.6 + 0.02 * k as f32, -0.6, 0.0];
-        s.dab(&mut mesh, &b, &dab_em(c, b.radius), Symmetry::default());
+        let passo = if k == 0 { [0.0; 3] } else { [0.02, 0.0, 0.0] };
+        s.dab(
+            &mut mesh,
+            &b,
+            &dab_em(c, b.radius, passo),
+            Symmetry::default(),
+        );
     }
     let entre = mesh.clone();
     // Segundo traço, no canto OPOSTO.
     s.begin(&mesh);
     for k in 0..8 {
         let c = [0.6 + 0.02 * k as f32, 0.6, 0.0];
-        s.dab(&mut mesh, &b, &dab_em(c, b.radius), Symmetry::default());
+        let passo = if k == 0 { [0.0; 3] } else { [0.02, 0.0, 0.0] };
+        s.dab(
+            &mut mesh,
+            &b,
+            &dab_em(c, b.radius, passo),
+            Symmetry::default(),
+        );
     }
     // O canto do PRIMEIRO traço não pode ter andado no segundo.
     let mut velho = 0.0f32;

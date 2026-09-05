@@ -473,6 +473,10 @@ const NO_DOOR_PENDING: &[(&str, &str)] = &[
         "MORTO PRE-EXISTENTE: pintado, registado e com tooltip (\"Layers\"), e SEM consumidor \
          nenhum no repo inteiro — ja' o era antes desta linha existir.",
     ),
+    // ⚠️ `TOPBAR_RIGHT_ASSETS` SAIU daqui em 2026-09-05: a nota dizia *«sem consumidor»* e o
+    //    `ph2d-panel-asset-browser` é o consumidor desde que existe (`event.rs`) — a nota
+    //    envelheceu no dia em que o painel nasceu, e o Enio encontrou o app sem forma de o abrir.
+    //    Hoje a linha vive no menu *Window* (ver `LEGACY_PILL_BUTTONS`).
     (
         "TOPBAR_RIGHT_SCRIPT",
         "idem — \"Code · Luau\", sem consumidor.",

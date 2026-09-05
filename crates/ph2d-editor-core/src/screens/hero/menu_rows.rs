@@ -589,6 +589,18 @@ pub const LEGACY_PILL_MENUS: &[(NodeId, ContextMenuKind)] = &[
     (ids::TOPBAR_PROJECT, ContextMenuKind::SceneList),
 ];
 
+/// ⭐⭐ **Os BOTÕES directos da barra legada que faziam alguma coisa** — a outra metade do censo de
+/// alcance. O `LEGACY_PILL_MENUS` responde por *menus* que a barra substituiu; um chip que
+/// despachava sozinho (sem menu) não estava em lista nenhuma, e foi assim que o navegador de
+/// **Assets** ficou sem porta no redesenho (Enio, 2026-09-05: *«não há meio de abrir assets»*) —
+/// a porta dele era só o chip `TOPBAR_RIGHT_ASSETS` do grupo direito, que o redesenho não pinta.
+///
+/// ⚠️ `TOPBAR_RIGHT_LAYERS` e `TOPBAR_RIGHT_SCRIPT` **não** estão aqui de propósito: nenhum
+/// `apply_event` do app os trata (medido em 2026-09-05 — eram chips MUDOS também no clássico), e
+/// uma linha de menu para um id sem handler é uma linha morta, que o
+/// `every_menu_row_reaches_a_handler` recusa. Quando um deles ganhar handler, entra aqui.
+pub const LEGACY_PILL_BUTTONS: &[(NodeId, &str)] = &[(ids::TOPBAR_RIGHT_ASSETS, "Assets")];
+
 pub const TOPBAR_LEAF_MENUS: &[ContextMenuKind] = &[
     ContextMenuKind::SaveMenu,
     ContextMenuKind::OpenMenu,

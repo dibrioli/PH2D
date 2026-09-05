@@ -10,9 +10,10 @@
 //! # As duas famílias, uma tabela
 //!
 //! - **Moderna** ([`Theme::is_modern`]): os valores saem dos papéis derivados
-//!   ([`crate::derive::Roles`]) — botão em repouso é a `base` sobre um painel `dark_1`, o hover
-//!   sobe um degrau de contraste, o pressionado é o `highlight`; **borda `0`** salvo com *Draw
-//!   Extra Borders*; raio **4** (`interface/theme/corner_radius` do Godot).
+//!   ([`crate::derive::Roles`]) — o painel é a `base`, o botão em repouso é o `button_normal`
+//!   (mais claro que o painel, como no `theme_modern.cpp`), o hover o `button_hover`, o
+//!   pressionado é o `highlight`; **borda `0`** salvo com *Draw Extra Borders*; raio **4**
+//!   (`interface/theme/corner_radius` do Godot).
 //! - **Clássica**: os valores são os que os pintores já usam (`Bg2` · `BgElev` · `AccentSoft` ·
 //!   `Border` · `Radius::Md`) — a tabela DESCREVE o clássico, não o muda. ⚠️ Os pintores clássicos
 //!   **não a lêem** (mantêm o caminho de sempre, byte-idêntico); ela existe aqui para que um
@@ -142,7 +143,6 @@ impl Widgets {
 
     fn modern(inputs: Inputs) -> Self {
         let r = inputs.roles();
-        let c = r.contrast.max(0.3);
         let border = if inputs.extra_borders {
             Stroke::new(1.0, r.mono.with_alpha(0.2))
         } else {
@@ -150,23 +150,26 @@ impl Widgets {
         };
         let text = |rgb: Rgb| Stroke::new(1.0, rgb.color());
         let radius = MODERN_CORNER_RADIUS_PX;
+        // ⭐ Os fundos são os do `theme_modern.cpp` (191-209): o painel (noninteractive) é a
+        //    `base`, o botão em repouso o `button_normal` (mais claro que o painel), o hover o
+        //    `button_hover`. A wave 1 tinha o painel em `dark_1` e o botão na `base`.
         Self {
             noninteractive: WidgetVisuals {
-                bg_fill: r.dark_1.color(),
-                weak_bg_fill: TRANSPARENT,
-                bg_stroke: border,
-                fg_stroke: text(r.font),
-                corner_radius: radius,
-            },
-            inactive: WidgetVisuals {
                 bg_fill: r.base.color(),
                 weak_bg_fill: TRANSPARENT,
                 bg_stroke: border,
                 fg_stroke: text(r.font),
                 corner_radius: radius,
             },
+            inactive: WidgetVisuals {
+                bg_fill: r.button_normal.color(),
+                weak_bg_fill: TRANSPARENT,
+                bg_stroke: border,
+                fg_stroke: text(r.font),
+                corner_radius: radius,
+            },
             hovered: WidgetVisuals {
-                bg_fill: r.base.lerp(r.mono, c * 0.35).color(),
+                bg_fill: r.button_hover.color(),
                 weak_bg_fill: r.mono.with_alpha(0.06),
                 bg_stroke: border,
                 fg_stroke: text(r.font_hover),
@@ -180,7 +183,7 @@ impl Widgets {
                 corner_radius: radius,
             },
             open: WidgetVisuals {
-                bg_fill: r.base.lerp(r.mono, c * 0.35).color(),
+                bg_fill: r.button_hover.color(),
                 weak_bg_fill: r.mono.with_alpha(0.06),
                 bg_stroke: border,
                 fg_stroke: text(r.font_hover),
@@ -258,8 +261,8 @@ impl Chrome {
             field_radius: MODERN_CORNER_RADIUS_PX,
             field_border: border,
             field_focus: Stroke::new(MODERN_FOCUS_W, r.accent.color()),
-            // O `LineEdit` do Godot assenta num degrau abaixo do painel.
-            field_fill: r.dark_1.lerp(Rgb::BLACK, r.contrast.max(0.0) * 0.5).color(),
+            // O `LineEdit` do Godot é o `surface_lower` — um poço abaixo do painel.
+            field_fill: r.surface_lower.color(),
             selected: Stroke::new(MODERN_SELECTED_W, r.mono.color()),
         }
     }

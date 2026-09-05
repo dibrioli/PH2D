@@ -82,8 +82,13 @@ fn the_dark_preset_is_godots_default() {
         "o azul do Godot"
     );
     assert!((d.contrast - 0.3).abs() < 1e-6);
-    // E o tema chega ao app com esses dois números intactos.
-    assert_eq!(ColorToken::Bg2.factory(Theme::Dark), base, "bg-2 e' a base");
+    // E o tema chega ao app com esses dois números intactos: o PAINEL é a base (o
+    // `PanelContainer` do Godot), e as superfícies sobem a partir dele.
+    assert_eq!(
+        ColorToken::PanelBg.factory(Theme::Dark),
+        base,
+        "o painel e' a base"
+    );
     assert_eq!(ColorToken::Accent.factory(Theme::Dark), accent);
 }
 
@@ -114,4 +119,46 @@ fn light_elevates_by_darkening_and_dark_by_lightening() {
         light_bg3 < light_bg1,
         "no claro, mais elevado = mais escuro"
     );
+}
+
+/// ⭐⭐ **Um CARTÃO destaca-se do PAINEL, e a escada de superfícies sobe por degraus que se vêem.**
+///
+/// Report do Enio (2026-09-05, com foto): *«o fundo dos cards tem tão pouco contraste com o fundo
+/// dos painéis que quase não podem ser diferenciados»*. Medido: o `Bg1` (cartões) derivava para
+/// `dark_3` e o `PanelBg` para `dark_1` — **4/255** um do outro no `Dark`. A wave 1 tinha posto o
+/// painel em `dark_1`, quando no Godot Modern o `PanelContainer` é a **`base`** e as superfícies
+/// acima dela sobem pela `_get_base_color` (`surface_high` −1.3 · `button_normal` −2.0 ·
+/// `button_hover` −2.9 · `button_pressed` −3.2).
+///
+/// A régua é a escada inteira e não só o par do report: `PanelBg → Bg1 → Bg2 → Bg3 → BgElev`
+/// monótona (a subir no escuro, a descer no claro), com o degrau do cartão ≥ 12/255 e todos os
+/// outros ≥ 3/255. ⛔ O OLED fica de fora: com `contrast = 0` e base preta toda a escada é preta,
+/// e é a *Draw Extra Borders* que separa — como no Godot.
+#[test]
+fn a_card_stands_off_its_panel_and_the_surface_ladder_climbs() {
+    let ladder = [
+        ColorToken::PanelBg,
+        ColorToken::Bg1,
+        ColorToken::Bg2,
+        ColorToken::Bg3,
+        ColorToken::BgElev,
+    ];
+    for theme in [Theme::Dark, Theme::Gray, Theme::Light] {
+        let grey = |t: ColorToken| i32::from(t.factory(theme).g);
+        let steps: Vec<i32> = ladder.windows(2).map(|w| grey(w[1]) - grey(w[0])).collect();
+        let sign = if theme == Theme::Light { -1 } else { 1 };
+        assert!(
+            steps[0] * sign >= 12,
+            "{theme:?}: o cartao (Bg1) esta' a {} de 255 do painel — o report do Enio",
+            steps[0].abs()
+        );
+        for (i, s) in steps.iter().enumerate() {
+            assert!(
+                s * sign >= 3,
+                "{theme:?}: degrau {i} da escada ({:?} -> {:?}) e' {s}, a escada nao sobe",
+                ladder[i],
+                ladder[i + 1]
+            );
+        }
+    }
 }

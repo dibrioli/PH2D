@@ -303,6 +303,62 @@ directório.*
   sítios: o anel de repouso do `color_swatch`, divisores) — o censo não os vê, e são a próxima
   medição.
 
+### 7.7 — ✅ 2026-09-05, os dois reports do smoke da wave 4: a porta do ASSETS e a ESCADA de superfícies
+
+**(a) *«não há meio de abrir assets»*** — a porta do navegador de Assets era **só** o chip
+`TOPBAR_RIGHT_ASSETS` do grupo direito da barra legada (Layers · Assets · Script), que o redesenho
+não pinta; o censo de alcance da wave 1 (`the_bar_relocated_every_row_of_the_menus_it_replaced`)
+só percorria os **menus** que a barra substituiu, e um chip que despachava sozinho não estava em
+lista nenhuma — a família do *Export SVG*, um nível ao lado. Cura: a linha **Assets** no menu
+*Window* (o mesmo id; o handler continua no `ph2d-panel-asset-browser`), a lista
+`LEGACY_PILL_BUTTONS` e a segunda metade do gate (red-first: acusou *«Assets (botão directo da barra
+legada)»* antes de a linha existir). ⚠️ **A nota que o escondia tinha envelhecido ao contrário**: o
+`NO_DOOR_PENDING` dizia *«sem consumidor»* sobre um id cujo consumidor nasceu com o painel — a
+metade de obsolescência do gate acusou-a no dia em que a linha entrou. ⛔ `Layers` e `Script` ficam
+fora **com o motivo**: nenhum `apply_event` do app os trata (eram chips mudos também no clássico), e
+uma linha de menu para um id sem handler é uma linha morta.
+
+**(b) *«o fundo dos cards tem tão pouco contraste com o fundo dos painéis»*** — medido: **4/255**
+no `Dark` (`Bg1` derivava para `dark_3`, `PanelBg` para `dark_1`). ⚠️ **A wave 1 portou as REGRAS
+do Godot sem a PILHA de superfícies dele**: no `theme_modern.cpp` (191-209) o `PanelContainer` é a
+**`base`** e as superfícies acima dela saem da `_get_base_color(ofs, sat)` — `surface_high` −1.3
+(a faixa de um bus de áudio, o «cartão»), `button_normal` −2.0, `button_hover` −2.9,
+`button_pressed` −3.2; abaixo, `surface_lower` +1.1 (o `LineEdit`) e `surface_lowest` +1.7 (o fundo
+do `GraphEdit`, das abas). Nós tínhamos o painel em `dark_1` e o botão na `base` — a pilha
+invertida, com os cartões entalados a 4/255 do painel. A escada reassentou-se, e os números são os
+medidos pela sonda:
+
+| tema | painel | Bg1 (cartão) | Bg2 | Bg3 | BgElev | texto-2 sobre o cartão | acento sobre o cartão |
+|---|---|---|---|---|---|---|---|
+| Dark | `#292929` | `#393939` (+16) | `#424242` | `#4d4d4d` | `#505050` | `#a3a3a3` — 4,58:1 | `#569eff` — 4,25:1 (intacto) |
+| Gray | `#3d3d3d` | `#555555` (+24) | `#626262` | `#727272` | `#787878` | `#c9c9c9` — 4,50:1 | `#70bafa` — 3,58:1 (intacto) |
+| Light | `#e6e6e6` | `#d4d4d4` (−18) | `#cacaca` | `#bebebe` | `#b9b9b9` | `#5c5c5c` — 4,51:1 | `#2973e6` — 3,02:1 (⚠️ escurecido) |
+| OLED | `#000000` | `#000000` | `#000000` | `#1b1b1b` | `#262626` | `#8c8c8c` | `#73bfff` |
+
+Gates: `a_card_stands_off_its_panel_and_the_surface_ladder_climbs` (red-first: *«4 de 255»*; a
+escada inteira monótona, o degrau do cartão ≥ 12, os outros ≥ 3; o OLED fica de fora — com
+contraste 0 e base preta a família colapsa, e são as *Extra Borders* que separam, como no Godot) e
+o WCAG da casa (`the_factory_table_meets_wcag_in_all_modes`), que **reprovou a primeira versão**.
+
+**O que a construção ensinou:**
+
+- ⭐⭐ **Dois números que o Godot escreve e a lei da casa DERIVA.** O texto secundário do Godot é
+  `mono@0.55` e o acento vem por inteiro do preset — e nenhum cumpre a WCAG sobre o cartão em todos
+  os presets: no *Gray* a base `0.24` eleva o cartão mais (a família é multiplicativa) e o `0.55`
+  dá 3,5:1; o azul do *Light* faz 2,5:1 sobre o cartão e **2,99:1 sobre o próprio painel do Godot**.
+  A resposta do §0 é medir: a alfa do texto-2 sobe de `0.55` só até 4,5:1 sobre o `Bg1` (Dark
+  `0.57` · Light `0.60` · Gray `0.72`), e o acento escurece 2 % de cada vez só até 3:1 — só o
+  *Light* se move (`#2e80ff → #2973e6`); o `#569eff` do Dark tem gate a mantê-lo.
+- ⚠️ **O OLED colapsa a família multiplicativa numa cor só** (`0 × k = 0`): o Godot separa os
+  estados por bordas e pela cor da fonte; aqui o hover e o pressionado caem num degrau **aditivo**
+  em `mono` quando o multiplicativo não os move (`the_three_interactive_states_are_distinguishable`
+  reprovou a primeira versão: *«Oled repouso = hover»*).
+- ⚠️ **Um apelido que REPETE a fórmula deixa de ser apelido no dia em que a fórmula muda**: os
+  `timeline-row-alt`/`ruler-bg` diziam `base` onde o `bg-2` dizia `base` — e o gate dos 16 aliases
+  apanhou-os quando o `bg-2` passou a `button_normal`. Hoje delegam.
+- ⏳ **Para o smoke**: as linhas alternadas da timeline (`RowAlt = Bg2`) ficam a +25 do painel no
+  Dark — a lei dos aliases é do Enio, e a força do zebrado é dele julgar.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

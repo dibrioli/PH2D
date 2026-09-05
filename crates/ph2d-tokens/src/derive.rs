@@ -176,6 +176,15 @@ impl Rgb {
 /// O `default_contrast` do Godot — o piso das duas cores de contraste.
 const DEFAULT_CONTRAST: f32 = 0.3;
 
+/// A razão de contraste da WCAG 2.2 entre duas cores opacas — a régua da lei de contraste da casa
+/// (`contrast.rs`), usada aqui para DERIVAR o que a lei exige em vez de o escrever à mão.
+fn wcag_ratio(a: Rgb, b: Rgb) -> f64 {
+    let la = a.color().relative_luminance();
+    let lb = b.color().relative_luminance();
+    let (hi, lo) = if la > lb { (la, lb) } else { (lb, la) };
+    (hi + 0.05) / (lo + 0.05)
+}
+
 /// Os papéis DERIVADOS — a tabela intermédia entre as cinco entradas e os ~83 slots.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Roles {
@@ -184,7 +193,24 @@ pub struct Roles {
     pub mono: Rgb,
     pub mono_inv: Rgb,
     pub dark_1: Rgb,
-    pub dark_3: Rgb,
+    /// ⭐⭐ **A FAMÍLIA `surface_*` do Godot Modern** (`_get_base_color(ofs, sat)`,
+    /// `theme_modern.cpp:191-203`): ofs **positivo** escurece (poços · popups · fundo das abas),
+    /// **negativo** clareia (cartões · botões). É a pilha real do editor dele: o `PanelContainer`
+    /// é a `base`, um cartão (a faixa de um bus de áudio) é `surface_high`, um botão em repouso é
+    /// `button_normal`, o `LineEdit` é `surface_lower`, o fundo do `GraphEdit` é `surface_lowest`.
+    /// ⚠️ A wave 1 tinha posto o painel em `dark_1` e os cartões em `dark_3` — 4/255 entre os dois
+    /// (report do Enio, 2026-09-05).
+    pub surface_lowest: Rgb,
+    pub surface_lower: Rgb,
+    pub surface_low: Rgb,
+    pub surface_high: Rgb,
+    pub surface_higher: Rgb,
+    pub surface_highest: Rgb,
+    pub surface_popup: Rgb,
+    pub button_normal: Rgb,
+    pub button_hover: Rgb,
+    pub button_pressed: Rgb,
+    pub button_disabled: Rgb,
     pub contrast_1: Rgb,
     pub contrast_2: Rgb,
     pub font: Rgb,
@@ -263,17 +289,63 @@ impl Inputs {
                 Rgb::new(0.8, 0.22, 0.22),
             )
         };
+        // O CARTÃO (`Bg1`): é sobre ele que a lei de contraste da casa mede o texto secundário e o
+        // acento (`CONTRAST_PAIRS`), e é a superfície que a família multiplicativa mais move.
+        let surface_high = base.dimmed(c, -1.3, 0.8);
+        // ⭐ **Dois números que a lei DERIVA em vez de os escrever.** O Godot fixa o texto
+        //    secundário em `mono@0.55` e dá o acento do preset por inteiro — e nenhum dos dois
+        //    cumpre a WCAG sobre o cartão em todos os presets: no *Gray* a base `0.24` eleva o
+        //    cartão a `#555555` (a família é multiplicativa) e o `0.55` dá 3,5:1; o azul do *Light*
+        //    (`0.18, 0.50, 1.00`) faz 2,5:1 sobre o cartão e **2,99:1 sobre o próprio painel** do
+        //    Godot. A resposta do §0 é medir: a alfa sobe de `0.55` só até cumprir 4,5:1 (Dark
+        //    `0.58` · Light `0.60` · Gray `0.72`), e o acento escurece 2 % de cada vez só até
+        //    3:1 (só o *Light* se move; o `#569eff` do Dark fica intacto, e há gate).
+        let font_secondary = (55..=75)
+            .map(|pct| mono.over(base, pct as f32 / 100.0))
+            .find(|t| wcag_ratio(*t, surface_high) >= 4.5)
+            .unwrap_or(mono.over(base, 0.75));
+        let mut accent = self.accent;
+        for _ in 0..30 {
+            if wcag_ratio(accent, surface_high) >= 3.0 {
+                break;
+            }
+            accent = accent.lerp(Rgb::BLACK, 0.02);
+        }
+        let button_normal = base.dimmed(c, -2.0, 0.85);
+        // ⚠️ **O OLED (base preta, contraste 0) colapsa a família multiplicativa numa cor só**: a
+        //    `_get_base_color` escala o V, e `0 × k = 0`. O Godot separa os estados por bordas e
+        //    pela cor da fonte; aqui um botão que não muda sob o rato é um botão morto com cara de
+        //    vivo (gate `the_three_interactive_states_are_distinguishable`), então o hover e o
+        //    pressionado caem num degrau ADITIVO em `mono` quando o multiplicativo não os move.
+        let raised_or = |multiplicative: Rgb, additive_k: f32| {
+            if multiplicative == button_normal {
+                base.lerp(mono, c_floor * additive_k)
+            } else {
+                multiplicative
+            }
+        };
         Roles {
             base,
-            accent: self.accent,
+            accent,
             mono,
             mono_inv,
             dark_1: base.lerp(Rgb::BLACK, c * 1.15),
-            dark_3: base.dimmed(c, 0.8, 0.9),
+            // Os offsets e as saturações são os do `theme_modern.cpp` (191-209), literalmente.
+            surface_lowest: base.dimmed(c, 1.7, 0.9),
+            surface_lower: base.dimmed(c, 1.1, 0.9),
+            surface_low: base.dimmed(c, 0.8, 1.0),
+            surface_high,
+            surface_higher: base.dimmed(c, -1.5, 0.8),
+            surface_highest: base.dimmed(c, -2.2, 0.6),
+            surface_popup: base.dimmed(c, 1.9, 0.9),
+            button_normal,
+            button_hover: raised_or(base.dimmed(c, -2.9, 0.75), 0.35),
+            button_pressed: raised_or(base.dimmed(c, -3.2, 0.75), 0.5),
+            button_disabled: base.dimmed(c, -1.4, 0.75),
             contrast_1: base.lerp(mono, c_floor * 1.15),
             contrast_2: base.lerp(mono, c_floor * 1.725),
             font: mono.over(base, 0.75),
-            font_secondary: mono.over(base, 0.55),
+            font_secondary,
             font_hover: mono.over(base, 0.85),
             font_disabled: mono.over(base, if self.dark { 0.35 } else { 0.5 }),
             info,
@@ -309,12 +381,19 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
     let c = r.contrast.max(DEFAULT_CONTRAST);
     match key {
         // ── superfícies ──
-        "bg-0" => r.dark_1.color(),
-        "bg-1" => r.dark_3.color(),
-        "bg-2" => r.base.color(),
-        "bg-3" => r.base.lerp(r.mono, c * 0.5).color(),
-        "bg-elev" => r.base.lerp(r.mono, c * 0.3).color(),
-        "panel-bg" => r.dark_1.color(),
+        // ⭐⭐ A ESCADA assenta no painel = `base` (o `PanelContainer` do Godot) e sobe pela
+        //    família `surface_*`/`button_*` dele: `PanelBg → Bg1 → Bg2 → Bg3 → BgElev` é monótona
+        //    (a subir no escuro, a descer no claro — o contraste negativo do *Light*), e o degrau
+        //    do cartão é o que se vê (Dark: `#292929 → #393939`). Gate:
+        //    `a_card_stands_off_its_panel_and_the_surface_ladder_climbs`. ⚠️ `Bg3` e `BgElev`
+        //    ficam a 3/255 no Dark (`button_hover` · `button_pressed`): o Godot não tem um quinto
+        //    nível elevado, e o `BgElev` só pousa sobre o painel ou sobre um cartão.
+        "bg-0" => r.surface_lowest.color(),
+        "bg-1" => r.surface_high.color(),
+        "bg-2" => r.button_normal.color(),
+        "bg-3" => r.button_hover.color(),
+        "bg-elev" => r.button_pressed.color(),
+        "panel-bg" => r.base.color(),
         "rail-bg" => r.dark_1.with_alpha(0.85),
         "canvas" => r.base.lerp(Rgb::BLACK, c * 1.5).color(),
         "bg-scrim" => Rgb::BLACK.with_alpha(if inputs.dark { 0.6 } else { 0.4 }),
@@ -355,7 +434,8 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
         "axis-y" => Rgb::new(0.53, 0.84, 0.01).color(),
         "axis-z" => Rgb::new(0.16, 0.55, 0.96).color(),
         // ── o grafo de nós ──
-        "graph-bg" => r.dark_1.color(),
+        // O fundo do `GraphEdit` do Godot é o `surface_lowest`.
+        "graph-bg" => r.surface_lowest.color(),
         "graph-grid" => r.mono.with_alpha(0.06),
         "graph-marquee" => r.accent.with_alpha(0.18),
         "graph-inert" => r.base.with_alpha(0.62),
@@ -369,7 +449,9 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
         "timeline-handle-line" | "timeline-loop-region" => {
             r.accent.over(r.base, HIGHLIGHT_A).color()
         }
-        "timeline-row-alt" | "timeline-ruler-bg" => r.base.color(),
+        // Apelido POR CONSTRUÇÃO do `bg-2` (a lei dos 16 slots da timeline): repetir a fórmula
+        // aqui foi o que os desalinhou no dia em que a escada de superfícies se reassentou.
+        "timeline-row-alt" | "timeline-ruler-bg" => colour(theme, ColorToken::Bg2),
         "timeline-marker" | "timeline-summary-key" => r.warning.color(),
         "timeline-key-active" => r.accent.lerp(r.mono_inv, 0.15).color(),
         "timeline-missing" => r.error.color(),

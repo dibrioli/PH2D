@@ -90,7 +90,59 @@ medido:** o id de uma amostra de cor é `param_swatch_id(nome_do_param)` — key
 supõe **um nó de cada vez** (o painel). No cartão, dois `motion.tint` colidiriam no mesmo id;
 o balão exige um id com o NÓ dentro, e a leitura de volta do picker a saber de quem é.
 
-## §3 — A auditoria do grupo (passo 2 do ciclo)
+## §3 — A auditoria do grupo: **onde cada nó corre, e o que custa**
 
-⏳ A escrever. Perguntas que ela tem de responder por nó: *que params a referência expõe e nós
-não* · *corre no device?* · *quantos objectos por ms?* · *o cartão dele cabe?*
+Sonda `measure_the_arranjo_group` (`#[ignore]`, na shell). ⚠️ **A primeira versão desta tabela
+foi deitada fora:** ela cronometrava um segundo `cook` no MESMO `Cook`, e como estes nós são
+`Effect::Pure` o memo respondia — **as dez linhas leram `0,00 ms`**. *A régua media o memo.*
+Hoje cada corrida tem um `Cook` novo, e o `clone`/`path` recebem uma grelha (sem entrada
+multiplicavam zero).
+
+| nó | elementos | device | passes | CPU | nota |
+|---|---:|---|---:|---:|---|
+| `motion.grid` | 10 000 | ✅ | 1 | 0,09 ms | |
+| `motion.fibonacci` | 10 000 | ✅ | 1 | 0,05 ms | ⭐ **kernel escrito neste ciclo** |
+| `motion.voronoi` | 2 000 | ✅ | 1 | **19,68 ms** | ⏳ caro para a contagem |
+| `motion.scatter` | 10 000 | ⛔ | — | **153,15 → 6,87 ms** | ⭐⭐ **22×, ao bit** |
+| `motion.distribute_radial` | 10 000 | ⛔ | — | 0,06 ms | sem kernel |
+| `motion.lattice` | 10 000 | ⛔ | — | 0,02 ms | sem kernel |
+| `motion.distribute_poisson` | 91 | ⛔ | — | 0,10 ms | sem kernel |
+| `motion.distribute_curve` | 10 000 | ⛔ | — | 0,11 ms | sem kernel |
+| `motion.clone` | 100 000 | ⛔ | — | 0,29 ms | sem kernel |
+| `motion.path` | 0 | ⛔ | — | — | ⏳ precisa de um caminho VECTORIAL, não de pontos |
+
+⚠️ **Leitura tirada a `load 6,18`** (§5.0 pede ≤ 5) — as diferenças são de ordens de grandeza,
+logo direccionais; re-confirmar calmo no fecho do ciclo.
+
+### 3.1 ⭐⭐⭐ O defeito que a auditoria achou: o `motion.scatter` era `O(n²)`
+
+**153 ms para 10 000 pontos** — nove quadros a 60 fps, no nó que um artista põe primeiro. O
+critério de Mitchell na forma ingénua: 12 dardos por ponto, e **cada dardo varria todos os
+pontos já colocados** ⇒ ~600 milhões de distâncias. Curado com uma grelha de vizinhança
+(~1 ponto por célula, consulta em anéis com paragem conservadora):
+
+| pontos | antes | depois | µs/ponto |
+|---:|---:|---:|---:|
+| 500 | — | 0,31 ms | 0,626 |
+| 5 000 | — | 3,42 ms | 0,684 |
+| **10 000** | **153,15 ms** | **6,87 ms** | 0,687 |
+| 50 000 | (~3,8 s) | 37,74 ms | 0,755 |
+
+⭐ O custo por ponto passa a ser **plano** — a curva era quadrática e é linear. E a nuvem é
+**bit-idêntica**, com dois gates (a consulta ponto a ponto contra a varredura, que fica viva sob
+`cfg(test)` como **oráculo**; e a nuvem inteira nas três formas de região).
+⚠️ **A minha primeira grelha ainda era lenta** (15 ms): ela varria o **rectângulo** de cada anel
+e saltava o miolo com um `if` (`O(r²)` por anel) e não parava quando o anel já cobria a grelha
+— com a grelha quase vazia isso percorria-a toda por cada um dos primeiros pontos.
+
+### 3.2 ⏳ O que fica, com o mecanismo nomeado
+
+| nó | por que ainda não está no device | tamanho |
+|---|---|---|
+| `distribute_radial` | fórmula fechada — **falta só o kernel**; ⚠️ a coluna `rot` só existe com `align`, logo pede `variant_by_param`, e ele lê um `spin` da porta 0 | pequeno |
+| `distribute_curve` | fórmula fechada (cúbica amostrada) — falta o kernel | pequeno |
+| `lattice` | ⚠️ **recorta por REGIÃO**, logo a contagem depende de dados: é a mesma cerca do *problema do círculo de Gauss* que o `motion.grid` já documenta ⇒ kernel com `applicable = (shape == Rect)`, como ele | médio |
+| `clone` | multiplica a entrada: pede `count_law` sobre a contagem de entrada + `StreamOp` | médio |
+| `scatter` · `distribute_poisson` | ⛔ **sequenciais por construção** (cada ponto depende de todos os anteriores). Um kernel exige OUTRO algoritmo (Bridson paralelo, ou tiles de Poisson) — decisão de produto, porque a nuvem deixa de ser bit-idêntica | grande |
+| `path` | ⏳ precisa de um caminho **vectorial** vivo; é a mesma fronteira do `field.shape` (CPU-only enquanto o canal de porta-template no device só existir emparelhado com `StreamOp::SourceRows`) | grande |
+| `voronoi` | está no device e custa **19,68 ms** para 2 000 — medir onde (relaxação de Lloyd?) antes de tocar | médio |

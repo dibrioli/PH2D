@@ -23,6 +23,7 @@ use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, SourceWindow};
 use ph2d_nodegraph::node::{
     LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec, RECOMMENDED_MAX_ELEMENTS,
     param_as_count,
@@ -75,6 +76,56 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 
 /// Build the `count`-seed Vogel spiral: seed `i` at angle `i·angle` and radius
 /// `spacing·√i`. Centered on the origin.
+/// ⭐⭐⭐ **A ESPIRAL NO DEVICE** — o ciclo 1 (doc 104), lei §2.1 da dinâmica: *todo nó de um
+/// ciclo diz onde corre*. Medido em 2026-09-05, este nó não tinha kernel e a cadeia
+/// `fibonacci → output` caía inteira para a CPU, onde o módulo é **50,9×** mais lento
+/// ([doc 98](../../../docs/Motion%20Nodes/98_auditoria_de_performance_2026-09-01.md)).
+///
+/// ⭐⭐ **É PARIDADE AO BIT por construção, não por sorte:** a lei já era
+/// **transcendental-free** (a parábola corrigida de Capens que o oscilador usa, `trig.rs`), e o
+/// WGSL escreve a MESMA sequência de operações. Um `sin` de verdade não daria — a `sin` do
+/// driver não é a `sin` da libm, e é essa a razão de a casa não a usar (HR-5).
+///
+/// ⚠️ **A ordem das operações é o contrato.** `(params.angle * fi) / 360.0` e não
+/// `params.angle * (fi / 360.0)`: em `f32` os dois diferem, e a espiral é um acumulador de
+/// ângulo — a diferença cresce com o índice até separar visivelmente as duas nuvens.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let fib_i = f32(i);\n\
+        let fib_cycles = (params.angle * fib_i) / 360.0;\n\
+        let fib_r = params.spacing * sqrt(fib_i);\n\
+        write_P(i, vec2<f32>(fib_r * fib_sin(fib_cycles + 0.25), fib_r * fib_sin(fib_cycles)));\n",
+    // A mesma parábola corrigida do `trig.rs`, operação a operação.
+    wgsl_lib: "\
+        fn fib_sin(phase: f32) -> f32 {\n\
+        \x20   let f = phase - floor(phase);\n\
+        \x20   var p: f32;\n\
+        \x20   if (f < 0.5) {\n\
+        \x20       let u = f * 2.0;\n\
+        \x20       p = 4.0 * u * (1.0 - u);\n\
+        \x20   } else {\n\
+        \x20       let u = (f - 0.5) * 2.0;\n\
+        \x20       p = -4.0 * u * (1.0 - u);\n\
+        \x20   }\n\
+        \x20   return 0.225 * (p * abs(p) - p) + p;\n\
+        }\n",
+    bindings: &[ColumnBinding {
+        column: "P",
+        dim: Dim::Vec2,
+        access: ColumnAccess::Write,
+        identity: [0.0; 4],
+        port: 0,
+    }],
+    params: &["spacing", "angle"],
+    // Uma espiral é estática: a contagem é o param, e não anda com o playhead nem com uma
+    // entrada (ela não tem nenhuma).
+    count_law: Some(|c| {
+        SourceWindow::of_count(param_as_count((c.param)("count"), RECOMMENDED_MAX_ELEMENTS))
+    }),
+    variant_by_param: None,
+    applicable: None,
+};
+
 fn build_spiral(count: usize, spacing: f32, angle_deg: f32) -> Vec<[f32; 2]> {
     (0..count)
         .map(|i| {
@@ -119,6 +170,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 

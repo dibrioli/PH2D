@@ -171,8 +171,8 @@ mexe, a coluna de params pode ficar **fechada** — e fechar as duas colunas dev
 **D1 — Que params aparecem no cartão?** Três razões, **derivadas**, nunca uma lista à mão por nó:
 (a) o param está **DIRIGIDO** (existe `d` — o fio tem de pousar em algo visível; é a 3.ª condição
 do doc 58 que hoje só o painel cumpre); (b) o artista **promoveu-o** (Mini Cavalry *«Abrir
-slot»* / Unreal *Promote*), e a promoção é **estado de DOCUMENTO** — registo novo `p <id>
-<param>`, append-only, como `d` e `pos`; (c) o cartão está **EXPANDIDO** (o inverso do `H` do
+slot»* / Unreal *Promote*), e a promoção é **estado de DOCUMENTO** — registo novo `q <id>
+<param>` (⚠️ `p` já é o registo de override — corrigido no doc 102), append-only, como `d` e `pos`; (c) o cartão está **EXPANDIDO** (o inverso do `H` do
 Blender): então todas as rows, em **secções** que são os `ParamGroup` que já existem (o painel
 dentro do nó do Blender 4.x, de graça). Fora disso o cartão é o de hoje. ⛔ Um param
 `Text`/`Curve`/`Gradient`/`File` não promove (Mini Cavalry recusa o mesmo: *«não é número/cor»*).
@@ -228,7 +228,7 @@ um consumidor, o undo por diff que já existe. ⛔ Nenhum caminho novo de escrit
 `NodeManifest` (§6, `=8`) é `&'static` e **não recebe um campo**: tudo o que o cartão precisa já
 mora fora dele — `NodeRegistry::register_ui` / `register_param_ui` / `register_primary_input`
 (side-metadata) e o **documento** (`Graph`: `layout`, `labels`, `param_sources`, e os registos
-novos `p`/`w`, append-only, `v3` só quando existem — o precedente exacto do `d`). `Tool=12` /
+novos `q`/`w`, append-only, `v3` só quando existem — o precedente exacto do `d`). `Tool=12` /
 `PanelEvent=4` não entram: o cartão fala pela fila de intents que o painel já usa. Prova a
 correr no fecho: `architecture_contract_surface` + `architecture_tool_contract_surface` verdes
 sem ADR, e `grep -c "pub struct NodeManifest" -A12` inalterado.
@@ -250,7 +250,7 @@ dois params dirigidos e um por promover.
 1. `a_driven_param_paints_a_socket_on_the_card_and_the_hit_rect_agrees` — geom = paint.
 2. `dropping_a_value_wire_on_a_param_socket_drives_it` — costura REAL (`seam_*`), não `Click`
    sintético (o chip do Vector morreu sob o dedo com o clique sintético verde).
-3. `a_promoted_param_survives_save_and_load` — ida-e-volta do registo `p`; `v3` só se existir.
+3. `a_promoted_param_survives_save_and_load` — ida-e-volta do registo `q`; `v7` só se existir.
 4. `the_card_height_is_a_function_of_promotion_and_expansion` — a função de D4, e o tecto de
    25 % do mini sobre **todo** o registry (mutação: apagar a dobra deixa o `bezier_warp` a 80 %).
 5. `below_the_lod_zoom_no_row_is_painted_and_none_is_registered` — as duas metades.
@@ -265,7 +265,7 @@ dois params dirigidos e um por promover.
 | **W0** | MEDIR: pintar 20 cartões com rows (harness `ph2d-ui-testkit`), o `n px` de legibilidade por zoom, o custo do `HitIndex` por widget | — | 1 sonda | tabela no doc |
 | **W1** | extrair o renderer de rows para `ph2d-param-rows` | um renderer, dois hosts | painel **byte-idêntico** (golden) | `PH2D_DRIVEN_ROW_SMOKE=1` igual |
 | **W2** | rows dos params **DIRIGIDOS** no cartão + socket-de-param + largar fio = `drive_param` | D1(a) · D3 | W1; gates 1, 2, 6, 7 | `PH2D_CARD_SMOKE=1`: a mesma cena, o fio pousa no cartão |
-| **W3** | **promoção** (menu no painel e no cartão) — registo `p` | D1(b) | W2; gate 3 | promover `phase_stagger`, gravar, abrir |
+| **W3** | **promoção** (menu no painel e no cartão) — registo `q` | D1(b) | W2; gate 3 | promover `phase_stagger`, gravar, abrir |
 | **W4** | **expandir/dobrar** com secções (`ParamGroup`) + **compacto** | D1(c) · D6 | gate 4 | `bezier_warp` expandido |
 | **W5** | **LOD por zoom** + pega de largura (`w`) | D5 · D7 | W0; gate 5 | zoom out até sumirem as rows |
 | **W6** | **decoração**: param de modo no cabeçalho, ícone de categoria, forma «dirigível» | D8 | gate 8 | `motion.noise` mostra `Perlin ▾` |

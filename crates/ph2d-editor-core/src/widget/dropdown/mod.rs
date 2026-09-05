@@ -7,9 +7,7 @@
 //! to hit-test.
 
 use crate::icons::IconId;
-use crate::paint::{
-    fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
-};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -330,7 +328,8 @@ pub fn paint_dropdown_chip<T: Clone + PartialEq>(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let radius = Radius::Sm.px();
+    // ⭐ Raio e moldura pela porta do TEMA: plano num tema moderno, moldura só no foco.
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     let fill = if dd.state == DropdownState::Disabled {
         ColorToken::Bg2
     } else {
@@ -342,10 +341,21 @@ pub fn paint_dropdown_chip<T: Clone + PartialEq>(
     } else {
         1.0
     };
-    stroke_rounded_rect(
+    let feel = {
+        use ph2d_tokens::visuals::Feel;
+        match dd.state {
+            DropdownState::Hovered => Feel::Hovered,
+            DropdownState::Focused => Feel::Focused,
+            DropdownState::Disabled => Feel::Disabled,
+            _ => Feel::Rest,
+        }
+    };
+    crate::paint::stroke_frame(
         scene,
         rect,
         radius,
+        theme,
+        feel,
         stroke_w,
         chip_border_color(dd.state, dd.hover_t, theme),
     );

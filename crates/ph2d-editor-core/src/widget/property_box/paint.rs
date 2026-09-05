@@ -9,7 +9,7 @@ use super::{
     PAD_UNITS_BETWEEN_LABEL_AND_VALUE, PropertyBox, PropertyBoxState, decorator_rect, fit_label,
     paint_decorator, surface_rect, value_column,
 };
-use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, SliderDesign, SliderStyle, Spacing, StrokeToken, Theme, TypeToken};
@@ -199,19 +199,25 @@ fn paint_surface(
         }
     }
 
+    // ⭐ Pela porta do TEMA: num tema moderno a edição continua a ter o anel (é foco), e o hover
+    //    deixa de ter contorno — o fundo já sobe um degrau.
     if state == PropertyBoxState::Editing {
-        stroke_rounded_rect(
+        crate::paint::stroke_frame(
             scene,
             r,
             rad,
+            theme,
+            ph2d_tokens::visuals::Feel::Focused,
             StrokeToken::Thin.px(),
             resolve(ColorToken::Accent, theme),
         );
     } else if state == PropertyBoxState::Hovered {
-        stroke_rounded_rect(
+        crate::paint::stroke_frame(
             scene,
             r,
             rad,
+            theme,
+            ph2d_tokens::visuals::Feel::Hovered,
             StrokeToken::Hairline.px(),
             resolve(ColorToken::BorderStrong, theme),
         );

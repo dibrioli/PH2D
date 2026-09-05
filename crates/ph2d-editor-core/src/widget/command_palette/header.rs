@@ -12,7 +12,7 @@
 
 use super::{CLOSE_W, HEADER_H, MIN_COL_W, PILL_H, PaletteModel};
 use crate::interaction::HitIndex;
-use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -112,11 +112,14 @@ pub(super) fn paint_header(
     let sb_x = content_x + title_w + Spacing::Md.px();
     let sb_w = (count_x - toggle_w - Spacing::Md.px() - sb_x).max(MIN_COL_W * 0.5);
     let sb = Rect::new(sb_x, header_y + (HEADER_H - search_h) * 0.5, sb_w, search_h);
-    fill_rounded_rect(scene, sb, Radius::Sm.px(), resolve(ColorToken::Bg3, theme));
-    stroke_rounded_rect(
+    let sb_radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+    fill_rounded_rect(scene, sb, sb_radius, resolve(ColorToken::Bg3, theme));
+    crate::paint::stroke_frame(
         scene,
         sb,
-        Radius::Sm.px(),
+        sb_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         1.0,
         resolve(ColorToken::Border, theme),
     );
@@ -199,11 +202,14 @@ fn paint_toggle(
     } else {
         (ColorToken::Bg3, ColorToken::Text2)
     };
-    fill_rounded_rect(scene, box_rect, Radius::Sm.px(), resolve(bg, theme));
-    stroke_rounded_rect(
+    let box_radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+    fill_rounded_rect(scene, box_rect, box_radius, resolve(bg, theme));
+    crate::paint::stroke_frame(
         scene,
         box_rect,
-        Radius::Sm.px(),
+        box_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         1.0,
         resolve(ColorToken::Border, theme),
     );

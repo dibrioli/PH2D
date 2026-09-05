@@ -5,7 +5,7 @@
 //! `Role::Tooltip` so screen readers can announce it as auxiliary
 //! help text.
 
-use crate::paint::{fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -41,9 +41,17 @@ pub fn paint_tooltip(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let radius = Radius::Sm.px();
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::Bg3, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
     paint_text_centered(
         text_system,
         scene,

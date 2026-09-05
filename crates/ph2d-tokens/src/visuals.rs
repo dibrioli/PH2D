@@ -267,9 +267,127 @@ impl Chrome {
     }
 }
 
+/// **Como um controlo se SENTE agora** — o eixo que decide a moldura.
+///
+/// É o vocabulário mínimo comum aos pintores: cada um tem o seu enum de estado
+/// (`ButtonState`, `TextInputState`, `CheckboxState`, `DropdownState`…) e todos cabem nestes seis.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Feel {
+    Rest,
+    Hovered,
+    /// Pressionado, ou SELECCIONADO (um segmento activo, um chip de ferramenta em mãos).
+    Active,
+    /// Foco de teclado — o único estado em que um tema moderno traça um anel.
+    Focused,
+    Disabled,
+    /// Validação falhada: a moldura de erro pinta-se em TODAS as famílias.
+    Error,
+}
+
+/// **A regra da moldura de um controlo** — o que [`frame`] devolve.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Frame {
+    /// Família clássica: o pintor traça o que sempre traçou (largura e cor dele).
+    Classic,
+    /// Família moderna: o pintor traça ISTO — e nada, quando o traço é invisível.
+    Modern(Stroke),
+}
+
+/// ⭐⭐ **A porta única da MOLDURA de um controlo.**
+///
+/// No clássico devolve [`Frame::Classic`] — *«traça o teu»* — e o pintor fica byte-idêntico. Num
+/// tema moderno devolve o traço da tabela: **nenhum** em repouso/hover/activo (só o OLED, com
+/// *Draw Extra Borders*), o anel de foco a 2 px em [`Feel::Focused`], e o de erro sempre.
+///
+/// ⚠️ **É por isto que os pintores não precisam de `if theme.is_modern()`**: a pergunta que eles
+/// fazem é *«que moldura tem este controlo neste estado?»*, e a resposta é do tema.
+#[must_use]
+pub fn frame(theme: Theme, feel: Feel) -> Frame {
+    if !theme.is_modern() {
+        return Frame::Classic;
+    }
+    let w = Widgets::of(theme);
+    let c = Chrome::of(theme);
+    Frame::Modern(match feel {
+        Feel::Rest => w.inactive.bg_stroke,
+        Feel::Hovered => w.hovered.bg_stroke,
+        Feel::Active => w.active.bg_stroke,
+        Feel::Disabled => w.noninteractive.bg_stroke,
+        Feel::Focused => c.field_focus,
+        // ⚠️ O erro é a única moldura que a família moderna NÃO apaga: sem ela um campo inválido
+        //    lê-se como válido. A cor é a do `danger` derivado; o pintor clássico tem a dele.
+        Feel::Error => Stroke::new(1.0, ColorToken::Danger.resolve(theme)),
+    })
+}
+
+/// ⭐ **A porta única do RAIO de um controlo.**
+///
+/// Clássico: o raio que o pintor sempre usou (`classic`). Moderno: o `corner_radius` do Godot —
+/// excepto `0`, que fica `0` (um painel docado, um separador): *plano* não é *arredondar o que
+/// era recto*.
+#[must_use]
+pub fn radius(theme: Theme, classic: f32) -> f32 {
+    if theme.is_modern() && classic > 0.0 {
+        MODERN_CORNER_RADIUS_PX
+    } else {
+        classic
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A porta da moldura: clássico = «traça o teu»; moderno = nada em repouso, anel no foco,
+    /// erro sempre.
+    #[test]
+    fn the_frame_door_keeps_the_classic_and_flattens_the_modern() {
+        for theme in Theme::CLASSIC {
+            for feel in [
+                Feel::Rest,
+                Feel::Hovered,
+                Feel::Active,
+                Feel::Focused,
+                Feel::Error,
+            ] {
+                assert_eq!(frame(theme, feel), Frame::Classic, "{theme:?} {feel:?}");
+            }
+        }
+        for theme in [Theme::Dark, Theme::Gray, Theme::Light] {
+            for feel in [Feel::Rest, Feel::Hovered, Feel::Active, Feel::Disabled] {
+                match frame(theme, feel) {
+                    Frame::Modern(s) => assert!(!s.is_visible(), "{theme:?} {feel:?}"),
+                    Frame::Classic => panic!("{theme:?} devolveu Classic"),
+                }
+            }
+            match frame(theme, Feel::Focused) {
+                Frame::Modern(s) => {
+                    assert!(s.is_visible(), "{theme:?}: o foco tem de se ver");
+                    assert_eq!(s.width, MODERN_FOCUS_W);
+                }
+                Frame::Classic => panic!(),
+            }
+            match frame(theme, Feel::Error) {
+                Frame::Modern(s) => assert!(s.is_visible(), "{theme:?}: o erro tem de se ver"),
+                Frame::Classic => panic!(),
+            }
+        }
+        // O OLED é a excepção declarada: traça em repouso.
+        match frame(Theme::Oled, Feel::Rest) {
+            Frame::Modern(s) => assert!(s.is_visible()),
+            Frame::Classic => panic!(),
+        }
+    }
+
+    /// O raio: passa no clássico, é 4 no moderno, e `0` continua `0`.
+    #[test]
+    fn the_radius_door_flattens_everything_but_zero() {
+        assert_eq!(radius(Theme::Forge, 12.0), 12.0);
+        assert_eq!(radius(Theme::Forge, 999.0), 999.0);
+        assert_eq!(radius(Theme::Dark, 12.0), MODERN_CORNER_RADIUS_PX);
+        assert_eq!(radius(Theme::Dark, 999.0), MODERN_CORNER_RADIUS_PX);
+        assert_eq!(radius(Theme::Dark, 0.0), 0.0);
+    }
 
     /// No redesenho a moldura em repouso é ZERO — é a linha que separa «plano» de «com a mesma
     /// cara». O OLED é a excepção declarada (bordas extra), como no Godot.

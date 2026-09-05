@@ -12,7 +12,7 @@
 //! callable only from this module.
 
 use crate::icons::IconId;
-use crate::paint::{fill_rounded_rect, paint_icon, paint_icon_path, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_icon_path, resolve};
 use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme};
@@ -186,16 +186,23 @@ pub fn paint_icon_button(
     let (state, hover_t) = visual;
     let (icon_rect, icon_color) = match style {
         IconButtonStyle::Chip | IconButtonStyle::Compact => {
-            let radius = if matches!(style, IconButtonStyle::Compact) {
-                Radius::Sm.px()
-            } else {
-                Radius::Xl.px()
-            };
+            // ⭐ Raio e moldura pela porta do TEMA: o `Xl` (16 px) da TopBar e a moldura são do
+            //    clássico; num tema moderno o chip é um rectângulo de raio 4, sem contorno.
+            let radius = crate::paint::frame_radius(
+                theme,
+                if matches!(style, IconButtonStyle::Compact) {
+                    Radius::Sm.px()
+                } else {
+                    Radius::Xl.px()
+                },
+            );
             fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-            stroke_rounded_rect(
+            crate::paint::stroke_frame(
                 scene,
                 rect,
                 radius,
+                theme,
+                ph2d_tokens::visuals::Feel::Rest,
                 StrokeToken::Default.px(),
                 resolve(ColorToken::Border, theme),
             );
@@ -234,7 +241,12 @@ pub fn paint_icon_button(
                 theme,
             )
             .unwrap_or_else(|| resolve(bg, theme));
-            fill_rounded_rect(scene, rect, Radius::Lg.px(), bg);
+            fill_rounded_rect(
+                scene,
+                rect,
+                crate::paint::frame_radius(theme, Radius::Lg.px()),
+                bg,
+            );
             (rect, resolve(ColorToken::AccentFg, theme))
         }
         IconButtonStyle::Plain => (rect, icon_tint_t(state, hover_t, theme)),

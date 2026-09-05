@@ -6,9 +6,7 @@
 //! a11y node so VoiceOver narrates correctly.
 
 use crate::icons::IconId;
-use crate::paint::{
-    fill_rounded_rect, paint_icon, paint_text, rect_to_vello, resolve, stroke_rounded_rect,
-};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text, rect_to_vello, resolve};
 use crate::widget::{Button, ButtonState, paint_button};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
@@ -106,17 +104,19 @@ pub fn paint_modal(
 ) {
     scene.fill_rect(rect_to_vello(viewport), resolve(ColorToken::BgScrim, theme));
 
-    let radius = Radius::Lg.px();
+    let radius = crate::paint::frame_radius(theme, Radius::Lg.px());
     fill_rounded_rect(
         scene,
         dialog_rect,
         radius,
         resolve(ColorToken::BgElev, theme),
     );
-    stroke_rounded_rect(
+    crate::paint::stroke_frame(
         scene,
         dialog_rect,
         radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         1.0,
         resolve(ColorToken::Border, theme),
     );

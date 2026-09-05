@@ -6,9 +6,7 @@
 //! right edge; non-removable tags read as `Role::Label`.
 
 use crate::icons::IconId;
-use crate::paint::{
-    fill_rounded_rect, paint_icon, paint_text_centered, resolve, stroke_rounded_rect,
-};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -186,7 +184,10 @@ pub fn paint_tag(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let radius = Radius::Full.px();
+    // ⭐ A pílula é do CLÁSSICO: num tema moderno a etiqueta é um rectângulo de raio 4, como no
+    //    Godot (e como o dono pediu — *«etiquetas ainda são pílulas»* estava na lista do que
+    //    destoava, `pesquisa/07 §22.3`).
+    let radius = crate::paint::frame_radius(theme, Radius::Full.px());
     let bg = resolve(tag.bg_token(), theme);
     let fg = resolve(tag.fg_token(), theme);
     fill_rounded_rect(scene, rect, radius, bg);
@@ -197,7 +198,15 @@ pub fn paint_tag(
     // número que tornava algo inalcançável tem de reconferir a nota.*
     if let Some(ring) = tag.ring_color(theme) {
         let ring = crate::paint::token_to_vello(ring);
-        stroke_rounded_rect(scene, rect, radius, 1.0, ring); // LITERAL-PX-OK: tag hover ring stroke (geometry 1px)
+        crate::paint::stroke_frame(
+            scene,
+            rect,
+            radius,
+            theme,
+            ph2d_tokens::visuals::Feel::Hovered,
+            1.0, // LITERAL-PX-OK: tag hover ring stroke (geometry 1px)
+            ring,
+        );
     }
 
     let pad_x = (rect.h * 0.5).max(8.0); // LITERAL-PX-OK: pill horizontal pad scales with height (geometry)

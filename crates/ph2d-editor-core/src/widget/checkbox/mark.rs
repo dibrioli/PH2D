@@ -7,7 +7,7 @@
 
 use super::{CHECKBOX_BOX_PX, Checkbox, CheckboxState, CheckboxValue};
 use crate::icons::IconId;
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
@@ -165,10 +165,24 @@ pub(crate) fn paint_boolean_mark(
         crate::paint::token_to_vello,
     );
     fill_rounded_rect(scene, box_rect, radius, bg);
-    stroke_rounded_rect(
+    // ⭐ A moldura pela porta do TEMA: no clássico a de sempre; num tema moderno a caixa é plana
+    //    (marcada = acento cheio, desmarcada = um degrau abaixo do painel) e só o foco traça.
+    let feel = {
+        use ph2d_tokens::visuals::Feel;
+        match state {
+            CheckboxState::Disabled => Feel::Disabled,
+            CheckboxState::Focused => Feel::Focused,
+            CheckboxState::Hovered => Feel::Hovered,
+            CheckboxState::Pressed => Feel::Active,
+            CheckboxState::Normal => Feel::Rest,
+        }
+    };
+    crate::paint::stroke_frame(
         scene,
         box_rect,
         radius,
+        theme,
+        feel,
         if state == CheckboxState::Focused {
             2.0
         } else {

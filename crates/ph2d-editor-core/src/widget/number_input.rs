@@ -7,7 +7,7 @@
 //! [`NumberInput::down_rect`].
 
 use crate::icons::IconId;
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
 use crate::widget::text_input::{TextInputState, border_color, fill_token};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
@@ -195,17 +195,21 @@ pub fn paint_number_input_with_buffer(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let radius = Radius::Sm.px();
+    // ⭐ Raio e moldura pela porta do TEMA — no clássico byte-idêntico; num tema moderno o campo
+    //    é plano e a moldura só aparece no foco (anel a 2 px) ou no erro.
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(scene, rect, radius, resolve(fill_token(input.state), theme));
     let stroke_w = if input.state == TextInputState::Focused {
         2.0
     } else {
         1.0
     };
-    stroke_rounded_rect(
+    crate::paint::stroke_frame(
         scene,
         rect,
         radius,
+        theme,
+        crate::widget::text_input::feel_of(input.state),
         stroke_w,
         border_color(input.state, input.hover_t, theme),
     );

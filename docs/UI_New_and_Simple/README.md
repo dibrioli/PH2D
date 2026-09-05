@@ -89,7 +89,10 @@ cinza `#292929` e o azul `#569eff` dele, quatro presets da tabela dele (`Dark` �
 `Black (OLED)`) — cada tema **derivado de cinco entradas**, nenhum slot escrito à mão; a tabela de
 estados do widget (forma egui) e os quatro pintores de cromo (painel · secção · botão · campo) a
 lê-la: **moldura zero, raio 4**. O redesenho abre no `Dark`; `PH2D_UI_NEW=0` devolve o clássico
-intacto. Mecanismo e o que ficou de fora: [`pesquisa/08 §7`](pesquisa/08_modelos_com_codigo_para_seguir.md).
+intacto. ⭐ **E a wave 2 (05/09) fez da moldura uma PORTA** (`visuals::frame` / `paint::stroke_frame`):
+24 pintores convertidos, os 22 que faltam nomeados numa catraca, e um gate de PIXEL a provar que
+o tema moderno emite menos geometria. Mecanismo e o que ficou de fora:
+[`pesquisa/08 §7`](pesquisa/08_modelos_com_codigo_para_seguir.md).
 
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
 cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·

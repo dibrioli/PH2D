@@ -186,11 +186,41 @@ citou: esse é o valor de fábrica do *setting*, e o preset sobrescreve-o.
   (`theme_from_u8`) ganhou os quatro degraus novos — o gate passou a percorrer `Theme::ALL` em vez
   de uma lista de quatro.
 
+### 7.4 — ✅ WAVE 2 (2026-09-05): a PORTA DA MOLDURA, e o censo que a torna obrigatória
+
+*«smoke ok. siga»* (Enio). O que a wave 1 deixou nomeado — *os outros pintores traçam molduras
+onde a tabela diz zero* — fechou por uma porta, não por 38 `if`:
+
+| peça | onde |
+|---|---|
+| **a porta** | [`visuals::frame(theme, feel) -> Frame`](../../../crates/ph2d-tokens/src/visuals.rs) e `visuals::radius(theme, classic)`: no clássico `Frame::Classic` (*«traça o teu»*, byte-idêntico); num tema moderno o traço da tabela — **nenhum** em repouso/hover/activo (só o OLED), o anel de foco a 2 px, e o **erro sempre** |
+| **o vocabulário** | `Feel { Rest, Hovered, Active, Focused, Disabled, Error }` — o mínimo comum aos cinco enums de estado dos pintores |
+| **a chamada** | [`paint::stroke_frame(scene, rect, radius, theme, feel, w, colour)`](../../../crates/ph2d-editor-core/src/paint.rs) + `paint::frame_radius(theme, classic)` — a cor clássica chega já misturada no eixo do hover, então o pintor não perde a animação que tinha |
+| **24 pintores convertidos** | segmentado · trilho (4 chips) · caixa de verificação · campo de número · campo de texto · área de texto · dropdown (chip + popover) · abas · etiqueta (⭐ deixa de ser pílula: raio 4) · botão de ícone (⭐ `Xl` 16 → 4) · cartão (⭐ `Lg` 12 → 4, sem contorno) · amostra de cor · menus de contexto (5 corpos) · popover · tooltip · modal · paleta de comandos (4) · caixa única (hover sem contorno, edição com anel) |
+
+⚠️ **E o `paint.rs` bateu o tecto de 700 LOC (731)** — cura por corte, nunca por folga: o que a
+shell **publica por quadro** (escala de raio · estilo das linhas · aparência · texto) mudou-se para
+[`published.rs`](../../../crates/ph2d-editor-core/src/published.rs), com os caminhos `paint::…`
+mantidos por re-export (43 chamadores).
+
+**Os gates:**
+- [`every_frame_goes_through_the_theme_door`](../../../crates/ph2d-editor-core/tests/every_frame_goes_through_the_theme_door.rs)
+  — censo pelo FONTE: todo ficheiro de `widget/` + `screens/hero/` que chame `stroke_rounded_rect`
+  conhece a porta, ou está em `NOT_YET` (**22 ficheiros**, só encolhe) ou em `EXEMPT` (4, por
+  mecanismo: a porta, o pintor só-clássico, a pele de documento, os contornos de canvas que **são**
+  a mensagem). Com a metade de obsolescência. ⚠️ A 1.ª corrida acusou **9** ficheiros que o meu
+  `grep -c` de véspera não tinha visto — *um censo escrito à mão conta o que o autor lembrou*.
+- [`the_modern_family_paints_fewer_frames`](../../../crates/ph2d-editor-core/tests/the_modern_family_paints_fewer_frames.rs)
+  — carrega no PIXEL: a galeria inteira pintada no `forge` e no `dark`, e o `dark` emite
+  **estritamente menos caminhos** (as molduras que não estão lá); controlo: dois temas da mesma
+  família emitem geometria **igual**.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
-- os outros ~38 pintores continuam a escolher fundo/borda sozinhos — eles já lêem os tokens
-  derivados (logo mudam de cor), mas **traçam molduras** onde a tabela diz zero. A obra seguinte é
-  um censo por pintor com catraca (`stroke_rounded_rect` em 271 sítios);
+- ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4** — 24
+  convertidos pela porta; os **22** que faltam estão nomeados em `NOT_YET` (picker de cor do
+  Blender, menu radial, `tree_view`, `status_bar`, `radio_group`, os modais de onion/fill, o
+  topbar legado…) e o gate impede um novo de nascer sem a porta;
 - o `panel-radius: 16` do `tokens.json` fica para o clássico; a docagem já usa `0`;
 - `Spacing` não foi tocado (o `base_spacing 4` do Godot coincide com o `Xs`);
 - a fonte (o Godot recomenda *Inter*; a casa tem `FONT_SANS`) — não medido.

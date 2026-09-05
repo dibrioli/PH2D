@@ -9,7 +9,7 @@
 //! swatch's alpha < 255 we paint a 4x4 transparency checkerboard
 //! beneath the fill so users can see what's translucent.
 
-use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
@@ -179,10 +179,13 @@ pub fn paint_color_swatch(swatch: &ColorSwatch, rect: Rect, scene: &mut VectorSc
     );
 
     if swatch.state == SwatchState::Hovered {
-        stroke_rounded_rect(
+        // ⭐ Pela porta do TEMA: o anel de hover é do clássico; num tema moderno a amostra é plana.
+        crate::paint::stroke_frame(
             scene,
             rect,
             radius,
+            theme,
+            ph2d_tokens::visuals::Feel::Hovered,
             1.0,
             resolve(ColorToken::AccentSoft, theme),
         );

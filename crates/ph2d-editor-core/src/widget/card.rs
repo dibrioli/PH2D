@@ -2,7 +2,7 @@
 //! footer rects. Pure layout primitive; the consumer paints children
 //! into the slot rects we expose.
 
-use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -121,9 +121,20 @@ pub fn paint_card(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let radius = Radius::Lg.px();
+    // ⭐ Raio e moldura pela porta do TEMA: o cartão de 12 px com contorno é do clássico; num
+    //    tema moderno é uma superfície de raio 4 sem moldura (*«os cartões ainda desenham
+    //    moldura»* — `pesquisa/07 §22.3`).
+    let radius = crate::paint::frame_radius(theme, Radius::Lg.px());
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::Bg2, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
 
     if let (Some(header), Some(title)) = (card.header_rect(rect), &card.title) {
         let pad = Spacing::Lg.px();

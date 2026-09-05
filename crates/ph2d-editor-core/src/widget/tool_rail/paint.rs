@@ -13,6 +13,20 @@ use crate::widget::{chip_axis_color, chip_axis_t};
 /// ⚠️ **Delega com o NEUTRO.** O eixo do hover vive em [`paint_tool_rail_t`]; esta assinatura é a
 /// de sempre e pinta **exactamente** o que pintava antes da wave da UI viva — o molde do
 /// `denoise_ml` / `denoise_ml_with_progress`.
+/// **Como um chip do trilho se sente** — o estado do botão e o «está em mãos» reduzidos ao
+/// vocabulário da porta da moldura ([`ph2d_tokens::visuals::Feel`]).
+fn chip_feel(state: ButtonState, is_active: bool) -> ph2d_tokens::visuals::Feel {
+    use ph2d_tokens::visuals::Feel;
+    match state {
+        ButtonState::Pressed => Feel::Active,
+        _ if is_active => Feel::Active,
+        ButtonState::Hovered => Feel::Hovered,
+        ButtonState::Focused => Feel::Focused,
+        ButtonState::Disabled => Feel::Disabled,
+        _ => Feel::Rest,
+    }
+}
+
 pub fn paint_tool_rail(
     rail: &ToolRail,
     rect: Rect,
@@ -115,7 +129,7 @@ pub fn paint_tool_rail_axis(
                 let chip_rect = rest_rect;
                 // Halved 2026-05-24 (Lg → Sm, 12 → 6 px) per user
                 // feedback that rail buttons looked too bubbly.
-                let radius = Radius::Sm.px();
+                let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
                 let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
                 let is_active = *active || state == ButtonState::Pressed;
                 let t = chip_axis_t(state, is_active, hover_t(*id));
@@ -137,7 +151,15 @@ pub fn paint_tool_rail_axis(
                 };
                 let border_c =
                     chip_axis_color(t, ColorToken::Border, ColorToken::BorderEmph, border, theme);
-                stroke_rounded_rect(scene, chip_rect, radius, border_w, border_c);
+                crate::paint::stroke_frame(
+                    scene,
+                    chip_rect,
+                    radius,
+                    theme,
+                    chip_feel(state, is_active),
+                    border_w,
+                    border_c,
+                );
                 let fg = match state {
                     ButtonState::Hovered | ButtonState::Focused => ColorToken::Text1,
                     ButtonState::Pressed => ColorToken::Accent,
@@ -176,7 +198,7 @@ pub fn paint_tool_rail_axis(
                 let chip_rect = slot_rect;
                 // Halved 2026-05-24 (Lg → Sm, 12 → 6 px) per user
                 // feedback that rail buttons looked too bubbly.
-                let radius = Radius::Sm.px();
+                let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
                 let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
                 // ⚠️ **Esta variante estava FORA do eixo** (auditoria de 2026-08-23): das três
                 // do rail, só a `Tool` misturava — as outras duas resolviam a borda pelo estado
@@ -195,7 +217,15 @@ pub fn paint_tool_rail_axis(
                 };
                 let border_c =
                     chip_axis_color(t, ColorToken::Border, ColorToken::BorderEmph, border, theme);
-                stroke_rounded_rect(scene, chip_rect, radius, border_w, border_c);
+                crate::paint::stroke_frame(
+                    scene,
+                    chip_rect,
+                    radius,
+                    theme,
+                    chip_feel(state, false),
+                    border_w,
+                    border_c,
+                );
                 let face_color = match state {
                     ButtonState::Pressed => ColorToken::Accent,
                     _ => ColorToken::Text1,
@@ -241,7 +271,7 @@ pub fn paint_tool_rail_axis(
                 ..
             } => {
                 let chip_rect = slot_rect;
-                let radius = Radius::Sm.px();
+                let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
                 let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
                 let is_active = *active || state == ButtonState::Pressed;
                 // The chip IS the colour box — fill it with the live paint colour (this button doubles as
@@ -266,7 +296,15 @@ pub fn paint_tool_rail_axis(
                     border,
                     theme,
                 );
-                stroke_rounded_rect(scene, chip_rect, radius, border_w, border_c);
+                crate::paint::stroke_frame(
+                    scene,
+                    chip_rect,
+                    radius,
+                    theme,
+                    chip_feel(state, is_active),
+                    border_w,
+                    border_c,
+                );
                 paint_sub_label(
                     text_system,
                     scene,
@@ -290,7 +328,7 @@ pub fn paint_tool_rail_axis(
                 ..
             } => {
                 let rest_rect = slot_rect;
-                let radius = Radius::Sm.px();
+                let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
                 let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
                 let is_active = *active || state == ButtonState::Pressed;
                 let t = chip_axis_t(state, is_active, hover_t(*id));
@@ -309,7 +347,15 @@ pub fn paint_tool_rail_axis(
                 };
                 let border_c =
                     chip_axis_color(t, ColorToken::Border, ColorToken::BorderEmph, border, theme);
-                stroke_rounded_rect(scene, chip_rect, radius, border_w, border_c);
+                crate::paint::stroke_frame(
+                    scene,
+                    chip_rect,
+                    radius,
+                    theme,
+                    chip_feel(state, is_active),
+                    border_w,
+                    border_c,
+                );
                 // ⚠️ **O glifo vai pelo pintor CANÓNICO** (`IconButtonStyle::Plain`: sem fundo
                 // nem moldura, só o desenho), e não por um `paint_icon_path` à mão. É a mesma
                 // rota que o chip da barra de topo usa, e existe uma cerca a exigi-la

@@ -9,7 +9,7 @@
 //! `docs/UI_Bugs/README.md` §3.3) — char-count approximations land
 //! between glyphs on proportional fonts.
 
-use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
 use crate::widget::text_input::{TextInputState, border_color, fill_token};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
@@ -159,17 +159,20 @@ pub fn paint_text_area_with_state(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let radius = Radius::Sm.px();
+    // ⭐ Raio e moldura pela porta do TEMA (ver `number_input`).
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(scene, rect, radius, resolve(fill_token(area.state), theme));
     let stroke_w = if area.state == TextInputState::Focused {
         2.0
     } else {
         1.0
     };
-    stroke_rounded_rect(
+    crate::paint::stroke_frame(
         scene,
         rect,
         radius,
+        theme,
+        crate::widget::text_input::feel_of(area.state),
         stroke_w,
         border_color(area.state, area.hover_t, theme),
     );

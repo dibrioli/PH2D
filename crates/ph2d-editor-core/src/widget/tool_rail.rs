@@ -14,7 +14,7 @@ use crate::icons::IconId;
 use crate::interaction::WidgetStore;
 use crate::paint::{
     fill_rounded_rect, paint_icon, paint_text_centered, paint_text_rotated_ccw, rect_to_vello,
-    resolve, stroke_rounded_rect,
+    resolve,
 };
 use crate::widget::ButtonState;
 use crate::zones::Rect;

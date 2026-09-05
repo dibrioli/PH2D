@@ -44,17 +44,19 @@ pub fn paint_dropdown_popover_in_viewport<T: Clone + PartialEq>(
         Some(vp) => dd.popover_rect_clamped(chip_rect, vp),
         None => dd.popover_rect(chip_rect),
     };
-    let panel_radius = Radius::Md.px();
+    let panel_radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(
         scene,
         panel,
         panel_radius,
         opaque(ColorToken::BgElev, theme),
     );
-    stroke_rounded_rect(
+    crate::paint::stroke_frame(
         scene,
         panel,
         panel_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         1.0,
         opaque(ColorToken::Border, theme),
     );
@@ -129,17 +131,19 @@ pub fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
     if !dd.open {
         return;
     }
-    let panel_radius = Radius::Md.px();
+    let panel_radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(
         scene,
         panel,
         panel_radius,
         opaque(ColorToken::BgElev, theme),
     );
-    stroke_rounded_rect(
+    crate::paint::stroke_frame(
         scene,
         panel,
         panel_radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         1.0,
         opaque(ColorToken::Border, theme),
     );

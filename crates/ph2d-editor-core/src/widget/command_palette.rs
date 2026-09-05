@@ -17,7 +17,7 @@
 //! gates it on the store's open-state and routes its [`apply`]-side events. Nothing here mutates state.
 
 use crate::interaction::HitIndex;
-use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -276,9 +276,17 @@ pub fn paint(
 
     // ── Card: centred, sized to its content. ──
     let card = Rect::new(card_x, card_y, card_w, card_h);
-    let radius = Radius::Lg.px();
+    let radius = crate::paint::frame_radius(theme, Radius::Lg.px());
     fill_rounded_rect(scene, card, radius, resolve(ColorToken::BgElev, theme));
-    stroke_rounded_rect(scene, card, radius, 1.0, resolve(ColorToken::Border, theme));
+    crate::paint::stroke_frame(
+        scene,
+        card,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
     hit_index.register(CMD_PALETTE_CARD, card);
 
     // ── A banda do cabeçalho — título, busca, contagem, a caixa *Show all* e o X de fechar. Ela
@@ -367,10 +375,18 @@ fn paint_card(
     // ⚠️ `oy` é a posição ASSENTE — a que o dedo procura — e `dy` a que o olho vê durante a
     //    entrada. Tudo o que DESENHA lê `dy`; o único `register` deste corpo lê `oy`.
     let dy = oy + rise;
-    let radius = Radius::Md.px();
+    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     let card = Rect::new(ox, dy, card_w, cl.height);
     fill_rounded_rect(scene, card, radius, resolve(ColorToken::Bg2, theme));
-    stroke_rounded_rect(scene, card, radius, 1.0, resolve(ColorToken::Border, theme));
+    crate::paint::stroke_frame(
+        scene,
+        card,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
 
     let cat_color = resolve(cl.color, theme);
     let sm = TypeToken::Sm.px();

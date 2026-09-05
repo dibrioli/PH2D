@@ -5,9 +5,7 @@
 //! [`super::radio_group::RadioOrientation::Segmented`] but tab-shaped).
 //! AccessKit `Role::TabList` (parent) + `Role::Tab` (per option).
 
-use crate::paint::{
-    fill_rounded_rect, paint_text_centered, rect_to_vello, resolve, stroke_rounded_rect,
-};
+use crate::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role, Toggled};
 use ph2d_text::TextSystem;
@@ -131,9 +129,18 @@ pub fn paint_tabs_with_hover(
     theme: Theme,
 ) {
     if tabs.variant == TabsVariant::Segmented {
-        let radius = Radius::Md.px();
+        // ⭐ Raio e moldura pela porta do TEMA — a calha das abas é plana num tema moderno.
+        let radius = crate::paint::frame_radius(theme, Radius::Md.px());
         fill_rounded_rect(scene, rect, radius, resolve(ColorToken::Bg2, theme));
-        stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+        crate::paint::stroke_frame(
+            scene,
+            rect,
+            radius,
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
+            1.0,
+            resolve(ColorToken::Border, theme),
+        );
     }
 
     for (i, item) in tabs.items.iter().enumerate() {

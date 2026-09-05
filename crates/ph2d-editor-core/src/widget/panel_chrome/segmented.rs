@@ -7,7 +7,7 @@
 //! outra vez: arquivo irmão sob o mesmo módulo, então nenhum caminho de chamada muda.
 
 use crate::interaction::HitIndex;
-use crate::paint::{fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -33,7 +33,17 @@ pub fn paint_segmented_button(
 ) {
     use crate::widget::ButtonState;
     let (state, hover_t) = visual;
-    let radius = Radius::Sm.px();
+    // ⭐ Raio e moldura pela porta do TEMA (`paint::frame_radius` / `paint::stroke_frame`): no
+    //    clássico é o `Sm` e a moldura de sempre; num tema moderno é o `4` do Godot e nenhuma
+    //    moldura — um segmento seleccionado diz-se pelo fundo e pelo texto, não por um contorno.
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+    let feel = match state {
+        _ if selected || state == ButtonState::Pressed => ph2d_tokens::visuals::Feel::Active,
+        ButtonState::Hovered => ph2d_tokens::visuals::Feel::Hovered,
+        ButtonState::Focused => ph2d_tokens::visuals::Feel::Focused,
+        ButtonState::Disabled => ph2d_tokens::visuals::Feel::Disabled,
+        _ => ph2d_tokens::visuals::Feel::Rest,
+    };
     // Hover/press feedback (Enio 2026-07-04): segmented buttons used to render ONLY selected-vs-not, so
     // hovering / pressing showed nothing. Read the widget `state` the dispatcher sets and deepen the fill.
     let (bg, fg, border) = if selected {
@@ -76,10 +86,12 @@ pub fn paint_segmented_button(
         resolve(bg, theme)
     };
     fill_rounded_rect(scene, rect, radius, fill);
-    stroke_rounded_rect(
+    crate::paint::stroke_frame(
         scene,
         rect,
         radius,
+        theme,
+        feel,
         StrokeToken::Default.px(),
         resolve(border, theme),
     );

@@ -109,6 +109,19 @@ pub(crate) fn border_token(state: TextInputState) -> ColorToken {
     }
 }
 
+/// **Como um campo se sente** — o [`TextInputState`] reduzido ao vocabulário da porta da moldura.
+/// Uma porta para os três pintores da família (`text_input` · `number_input` · `text_area`).
+pub(crate) fn feel_of(state: TextInputState) -> ph2d_tokens::visuals::Feel {
+    use ph2d_tokens::visuals::Feel;
+    match state {
+        TextInputState::Normal => Feel::Rest,
+        TextInputState::Hovered => Feel::Hovered,
+        TextInputState::Focused => Feel::Focused,
+        TextInputState::Disabled => Feel::Disabled,
+        TextInputState::Error => Feel::Error,
+    }
+}
+
 pub(crate) fn fill_token(state: TextInputState) -> ColorToken {
     match state {
         TextInputState::Disabled => ColorToken::Bg2,

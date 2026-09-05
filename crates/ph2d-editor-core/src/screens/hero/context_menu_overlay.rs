@@ -277,9 +277,17 @@ pub fn paint_context_menu_overlay(
     let rect = clamp_to_viewport(req.x, req.y, MENU_W, total_h, viewport);
 
     // Floating panel: BgElev fill + Border stroke + Md radius.
-    let radius = Radius::Md.px();
+    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
 
     // Rows.
     let row_x = rect.x + Spacing::Xs.px();
@@ -423,9 +431,17 @@ fn paint_scene_list(
     let rect = clamp_to_viewport(req.x, req.y, menu_w, total_h, viewport);
 
     // Floating panel surface.
-    let radius = Radius::Md.px();
+    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
 
     // Search input row.
     let inner_x = rect.x + Spacing::Xs.px();
@@ -564,9 +580,17 @@ fn paint_tool_bar_overflow(
         inner_h + pad * 2.0,
         viewport,
     );
-    let radius = Radius::Md.px();
+    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
     let content = Rect::new(rect.x + pad, rect.y + pad, inner_w, inner_h);
     crate::widget::paint_tool_rail_axis(
         &rail,

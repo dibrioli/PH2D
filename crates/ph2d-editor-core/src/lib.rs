@@ -66,6 +66,9 @@ pub mod panel;
 /// Long-operation pattern: off-thread work + a bar that can be painted while it runs.
 pub mod progress;
 pub mod project;
+/// O que a shell PUBLICA por quadro e os pintores lêem — irmão do `paint` pelo tecto de LOC; os
+/// caminhos `paint::set_ui_look` e irmãos continuam a valer (re-export).
+mod published;
 /// A FICHA de leitura — o número que aparece onde os olhos já estão (a regra, uma só).
 pub mod readout;
 pub mod ruler;

@@ -80,95 +80,13 @@ pub fn rect_to_vello(r: Rect) -> VelloRect {
     )
 }
 
-// Thread-local global radius multiplier. Lets the user pick Sharp /
-// Default / Round in the topbar context menu and have every rounded
-// surface (200+ sites) scale uniformly without threading the value
-// through every painter signature. Set via `set_radius_scale` before
-// paint, read via `radius_scale`. Defaults to 1.0.
-thread_local! {
-    static RADIUS_SCALE: std::cell::Cell<f32> = const { std::cell::Cell::new(1.0) };
-}
-
-/// Set the global radius scale for the current thread (paint runs).
-/// Clamped to non-negative; pass `1.0` to reset.
-pub fn set_radius_scale(scale: f32) {
-    RADIUS_SCALE.with(|s| s.set(scale.max(0.0)));
-}
-
-thread_local! {
-    static SLIDER_STYLE: std::cell::Cell<ph2d_tokens::SliderStyle> =
-        const { std::cell::Cell::new(ph2d_tokens::SliderStyle {
-            design: ph2d_tokens::SliderDesign::Underline,
-            radius: ph2d_tokens::Radius::Xs,
-            density: ph2d_tokens::Density::Compact,
-        }) };
-}
-
-/// **A aparência das linhas de propriedade**, publicada uma vez por quadro pelo shell.
-///
-/// ⭐ Decisão do Enio (2026-09-02): o padrão do app é `Underline` · raio `4` · linha `22`.
-///
-/// ⚠️ **O `const` acima repete o [`SliderStyle::default()`](ph2d_tokens::SliderStyle) porque um
-/// `thread_local!` `const`-inicializado não pode chamar `Default::default()`** — e é a inicialização
-/// `const` que o torna barato. ⛔ Os dois têm de concordar, e há gate a exigi-lo
-/// (`the_paint_default_matches_the_token_default`): *duas escritas do mesmo default é exactamente a
-/// forma que diverge em silêncio.*
-pub fn set_slider_style(style: ph2d_tokens::SliderStyle) {
-    SLIDER_STYLE.with(|s| s.set(style));
-}
-
-/// Lê a aparência activa das linhas de propriedade.
-#[must_use]
-pub fn slider_style() -> ph2d_tokens::SliderStyle {
-    SLIDER_STYLE.with(std::cell::Cell::get)
-}
-
-// ⭐⭐⭐ **A APARÊNCIA do app**, publicada uma vez por quadro como o `SliderStyle` e o
-// `TextRendering`.
-//
-// ⚠️ **O neutro é `UiLook::Redesign`** desde 2026-09-03 (ordem do Enio). O clássico volta com
-// `PH2D_UI_NEW=0` — a convenção da casa para bissecar. Ver o doc do enum.
-// ⛔ Ele TEM de repetir o `UiLook::default()`, porque um `thread_local!` `const` não pode chamar
-// `Default::default()` — e há gate a exigir que os dois concordem.
-thread_local! {
-    static UI_LOOK: std::cell::Cell<ph2d_tokens::UiLook> =
-        const { std::cell::Cell::new(ph2d_tokens::UiLook::Redesign) };
-}
-
-/// Publica a aparência para o quadro. Chamado pelo shell.
-pub fn set_ui_look(look: ph2d_tokens::UiLook) {
-    UI_LOOK.with(|c| c.set(look));
-}
-
-/// A aparência em vigor. ⚠️ Lida pelos **pintores**, nunca pelos painéis: quem decide o desenho de
-/// um widget é o widget.
-#[must_use]
-pub fn ui_look() -> ph2d_tokens::UiLook {
-    UI_LOOK.with(std::cell::Cell::get)
-}
-
-/// ⭐ Atalho: *estamos no redesenho?* — a pergunta que os três pintores fazem.
-#[must_use]
-pub fn ui_is_redesign() -> bool {
-    ui_look() == ph2d_tokens::UiLook::Redesign
-}
-
-/// Set the active text-rendering strategy for the current thread.
-/// Called by the shell once per frame, mirroring `set_radius_scale`.
-/// Delegates to `ph2d_text::set_active_text_rendering` — the canonical
-/// thread-local lives there so `TextSystem::prefix_width` can read it
-/// internally (fixing the caret-position bug under CrispHeavy where
-/// measurements used Medium 500 while glyphs render ExtraBold 800).
-pub fn set_text_rendering(mode: ph2d_tokens::TextRendering) {
-    ph2d_text::set_active_text_rendering(mode);
-}
-
-/// Read the active text-rendering strategy. Delegates to
-/// `ph2d_text::active_text_rendering` — see `set_text_rendering` for
-/// why the state lives in ph2d-text.
-pub fn text_rendering() -> ph2d_tokens::TextRendering {
-    ph2d_text::active_text_rendering()
-}
+// ⭐ **O que a shell publica por quadro** (escala de raio · estilo das linhas · aparência · texto)
+//    mudou-se para o irmão [`crate::published`] pelo tecto de 700 LOC; os caminhos `paint::…`
+//    continuam a valer por este re-export.
+pub use crate::published::{
+    radius_scale, set_radius_scale, set_slider_style, set_text_rendering, set_ui_look,
+    slider_style, text_rendering, ui_is_redesign, ui_look,
+};
 
 /// Apply the snap strategy to a glyph X. `None` returns `x` unchanged
 /// (preserves subpixel kerning); `Half` snaps to 0.5 px (preserves ~50 %
@@ -180,11 +98,6 @@ fn snap_x_apply(x: f32, snap: ph2d_tokens::SnapX) -> f32 {
         ph2d_tokens::SnapX::Half => (x * 2.0).round() * 0.5,
         ph2d_tokens::SnapX::Full => x.round(),
     }
-}
-
-/// Read the current global radius scale.
-pub fn radius_scale() -> f32 {
-    RADIUS_SCALE.with(|s| s.get())
 }
 
 fn scale_radius(r: f32) -> f32 {
@@ -252,6 +165,42 @@ pub fn stroke_rounded_rect(
     scene
         .inner_mut()
         .stroke(&stroke, Affine::IDENTITY, color, None, &rr);
+}
+
+/// ⭐⭐ **A MOLDURA de um controlo, pela porta do TEMA** — o sítio único que substitui o
+/// `stroke_rounded_rect` de repouso/estado nos pintores de widget.
+///
+/// Clássico: traça `classic_w` × `classic_colour`, byte-idêntico ao que o pintor sempre fez.
+/// Moderno: traça o que a tabela de estados diz — nada em repouso (a pele plana), o anel de foco,
+/// a moldura de erro. Ver [`ph2d_tokens::visuals::frame`].
+///
+/// ⚠️ A cor clássica chega já misturada no eixo do hover (é um `Color` do Vello): é por isso que a
+/// porta recebe a cor pronta em vez de um token — o pintor não perde a animação que já tinha.
+#[allow(clippy::too_many_arguments)]
+pub fn stroke_frame(
+    scene: &mut VectorScene,
+    rect: Rect,
+    radius: f32,
+    theme: Theme,
+    feel: ph2d_tokens::visuals::Feel,
+    classic_w: f32,
+    classic_colour: Color,
+) {
+    match ph2d_tokens::visuals::frame(theme, feel) {
+        ph2d_tokens::visuals::Frame::Classic => {
+            stroke_rounded_rect(scene, rect, radius, classic_w, classic_colour);
+        }
+        ph2d_tokens::visuals::Frame::Modern(s) if s.is_visible() => {
+            stroke_rounded_rect(scene, rect, radius, s.width, token_to_vello(s.color));
+        }
+        ph2d_tokens::visuals::Frame::Modern(_) => {}
+    }
+}
+
+/// ⭐ **O RAIO de um controlo, pela porta do TEMA** — ver [`ph2d_tokens::visuals::radius`].
+#[must_use]
+pub fn frame_radius(theme: Theme, classic: f32) -> f32 {
+    ph2d_tokens::visuals::radius(theme, classic)
 }
 
 /// Fill a circle centered at `(cx, cy)` with radius `r` — curve-editor control-

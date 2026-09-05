@@ -1,0 +1,233 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · Do primeiro objeto ao milhão</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+    --src: #5f9e79; --tra: #6f86c9; --out: #c96a6a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  h4 { font-size:13px; margin:14px 0 4px; color:var(--t1); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"→ "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"⚠ "; }
+  .figs { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0; }
+  .fig { background:var(--card); border:1px solid var(--line); border-radius:10px;
+         padding:8px; text-align:center; break-inside:avoid; }
+  .fig img { width:100%; display:block; border-radius:6px; }
+  .fig figcaption { font-size:11px; color:var(--t2); margin-top:6px; }
+  .fig b { color:var(--t1); display:block; font-size:12.5px; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  .card-demo { background:var(--card); border:1px solid var(--line); border-radius:9px;
+       width:230px; overflow:hidden; font-size:11px; }
+  .card-demo .h { padding:5px 9px; font-weight:600; color:#0e0d10; font-size:11.5px; }
+  .card-demo .rows { padding:6px; display:grid; gap:3px; }
+  .card-demo .r { background:#0b0a0e; border-radius:4px; padding:3px 7px; display:flex;
+       justify-content:space-between; position:relative; overflow:hidden; }
+  .card-demo .r i { position:absolute; inset:0 auto 0 0; background:#3b3350; }
+  .card-demo .r span { position:relative; }
+  .card-demo .r .n { color:var(--t1); }
+  .card-demo .r .l { color:var(--t2); }
+  .card-demo .sec { color:var(--t3); padding:3px 7px; font-size:10.5px; }
+  .two { display:grid; grid-template-columns:230px 1fr; gap:16px; align-items:start; }
+  .params { font-size:11px; }
+  .params h4 { margin-top:12px; }
+  .soft { color:var(--t3); }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+
+<h1>Do primeiro objeto ao milhão
+  <small>PH2D · Motion Nodes · tutorial 1 — os nós que <b>arranjam</b> as coisas na tela</small></h1>
+
+<p>Um grafo de Motion é uma linha de montagem: um nó <b>faz</b> os objetos, os do meio
+<b>mexem</b> neles, e o último <b>mostra</b>. Este tutorial é sobre o primeiro — os dez nós que
+decidem <em>onde as coisas ficam</em>. No fim você vai ter dois milhões de objetos se mexendo a
+60 quadros por segundo.</p>
+
+<div class="figs">
+  <figure class="fig"><img src="../fig/grid.svg" alt="grade"><b>Grid</b>
+    <figcaption>linhas e colunas</figcaption></figure>
+  <figure class="fig"><img src="../fig/radial.svg" alt="anéis"><b>Radial Array</b>
+    <figcaption>anéis em volta de um centro</figcaption></figure>
+  <figure class="fig"><img src="../fig/fibonacci.svg" alt="espiral"><b>Fibonacci Spiral</b>
+    <figcaption>a espiral do girassol</figcaption></figure>
+</div>
+
+<div class="note"><b>Estas imagens não são desenhos.</b> Cada uma é a saída de verdade do nó,
+cozinhada pelo mesmo motor que roda no app e gravada em seguida. Se um nó mudar, a figura muda.</div>
+
+<h2>1 · Abrir</h2>
+<p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
+segundos.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=1 cargo run -p ph2d-host-desktop --release</div>
+<p class="out">Abre uma tela escura com uma <b>massa de pontos ondulando</b>. São
+<b>2 000 000</b> de objetos — 1250 linhas por 1600 colunas.</p>
+<p class="bad">Se a janela abrir vazia, o número da cena está errado: confira que você copiou
+<code>PH2D_GPU_COOK_DEMO=1</code>.</p>
+
+<h2>2 · O grafo, e o cartão de um nó</h2>
+<ol class="steps">
+  <li><b>Olhe o painel do grafo</b> (a área com os cartões ligados por fios).
+      <div class="out">Três cartões: <b>Grid</b> (verde, faz os objetos), <b>Oscillator</b>
+      (azul, faz ondular) e <b>Output</b> (vermelho, mostra).</div></li>
+  <li><b>Aproxime o zoom</b> com a roda do mouse sobre o grafo, até conseguir ler as letras
+      dentro dos cartões.
+      <div class="out">Dentro de cada cartão aparecem os <b>controles</b>: um nome à esquerda,
+      um número à direita, e uma barra preenchida mostrando o quanto ele está alto.</div>
+      <div class="bad">Se os cartões continuarem vazios por dentro, aproxime mais — longe demais
+      o app esconde as letras de propósito, e só mostra as barrinhas.</div></li>
+</ol>
+
+<div class="two">
+  <div class="card-demo">
+    <div class="h" style="background:var(--src)">Grid</div>
+    <div class="rows">
+      <div class="r"><i style="width:64%"></i><span class="l">Rows</span><span class="n">1250</span></div>
+      <div class="r"><i style="width:80%"></i><span class="l">Columns</span><span class="n">1600</span></div>
+      <div class="r"><i style="width:8%"></i><span class="l">Gap X</span><span class="n">1.00</span></div>
+      <div class="r"><i style="width:8%"></i><span class="l">Gap Y</span><span class="n">1.00</span></div>
+      <div class="r"><span class="l">Shape</span><span class="n">Rect</span></div>
+    </div>
+  </div>
+  <div>
+    <h3>Como se mexe num controle</h3>
+    <p><b>Arraste</b> em cima da barra: o número anda. Atravessar a largura do cartão vai do
+    mínimo ao máximo daquele controle — por isso o quanto a barra está cheia é exatamente onde o
+    número está.</p>
+    <p><b>Clique</b> numa linha que mostra uma palavra (como <code>Shape&nbsp;·&nbsp;Rect</code>):
+    ela troca pela próxima opção, e depois da última volta para a primeira.</p>
+    <p><b>Para mover o nó</b>, arraste pelo <b>cabeçalho</b> colorido — o corpo agora é dos
+    controles.</p>
+  </div>
+</div>
+
+<h2>3 · Mexa na grade</h2>
+<ol class="steps">
+  <li><b>Arraste a linha <code>Rows</code></b> do cartão Grid para a esquerda, até um número
+      pequeno (uns 12).
+      <div class="out">A massa vira uma grade que dá para contar. A tela responde
+      <b>enquanto você arrasta</b>.</div></li>
+  <li><b>Faça o mesmo com <code>Columns</code>.</b>
+      <div class="out">Agora são poucas dezenas de objetos.</div></li>
+  <li><b>Arraste <code>Gap X</code> para a direita.</b>
+      <div class="out">As colunas se afastam. <code>Gap</code> é a distância entre um objeto e o
+      vizinho, em pixels.</div></li>
+  <li><b>Aperte <kbd>Ctrl</kbd>+<kbd>Z</kbd> algumas vezes.</b>
+      <div class="out">Volta ao que era. Todo arrasto é um passo que se desfaz.</div>
+      <div class="bad">Se arrastar a barra mover o cartão inteiro em vez do número, você pegou
+      no cabeçalho — desça um pouco.</div></li>
+</ol>
+
+<h2>4 · Troque a forma do arranjo</h2>
+<p>A grade é só um dos jeitos. Os outros são <b>outros nós</b>, e trocar é ligar um fio.</p>
+<ol class="steps">
+  <li><b>Clique com o botão direito</b> num espaço vazio do grafo.
+      <div class="out">Abre a lista de nós.</div></li>
+  <li><b>Escolha <code>Fibonacci Spiral</code>.</b>
+      <div class="out">Um cartão novo aparece, solto.</div></li>
+  <li><b>Arraste do pino de saída</b> do Fibonacci (a bolinha na borda direita do cartão)
+      <b>até o pino de entrada do Oscillator</b> (a bolinha na borda esquerda dele).
+      <div class="out">O fio muda de dono: agora a espiral é que alimenta a onda, e a tela
+      mostra a espiral do girassol.</div>
+      <div class="bad">Se o fio não pegar, solte em cima do <b>corpo</b> do cartão de destino —
+      ele encaixa na primeira entrada livre.</div></li>
+  <li><b>Arraste <code>Count</code></b> no cartão do Fibonacci.
+      <div class="out">A espiral cresce e encolhe. <code>Spacing</code> abre o miolo,
+      <code>Angle</code> muda o desenho inteiro — experimente 137.5 e depois 90.</div></li>
+</ol>
+
+<div class="figs">
+  <figure class="fig"><img src="../fig/scatter.svg" alt="espalhado"><b>Scatter</b>
+    <figcaption>aleatório, mas sem amontoar</figcaption></figure>
+  <figure class="fig"><img src="../fig/poisson.svg" alt="poisson"><b>Poisson Disk</b>
+    <figcaption>distância mínima garantida</figcaption></figure>
+  <figure class="fig"><img src="../fig/voronoi.svg" alt="voronoi"><b>Voronoi</b>
+    <figcaption>espaçado por relaxamento</figcaption></figure>
+  <figure class="fig"><img src="../fig/lattice.svg" alt="colmeia"><b>Lattice</b>
+    <figcaption>colmeia: fileiras desencontradas</figcaption></figure>
+  <figure class="fig"><img src="../fig/curve.svg" alt="curva"><b>Curve Points</b>
+    <figcaption>ao longo de uma curva</figcaption></figure>
+  <figure class="fig"><img src="../fig/clone.svg" alt="clone"><b>Clone</b>
+    <figcaption>repete o que chega nele</figcaption></figure>
+</div>
+
+<h2>5 · O milhão</h2>
+<ol class="steps">
+  <li><b>Volte para o Grid</b> (ligue o fio dele no Oscillator outra vez, ou aperte
+      <kbd>Ctrl</kbd>+<kbd>Z</kbd> até a espiral sumir).</li>
+  <li><b>Suba <code>Rows</code> e <code>Columns</code> até o fim do arrasto.</b>
+      <div class="out">Centenas de milhares de objetos, e a tela continua fluida — porque o
+      <b>Grid roda na placa de vídeo</b>, não no processador.</div></li>
+  <li><b>Deixe rodando e olhe o canto.</b>
+      <div class="out">A cena de abertura tinha 2 milhões. Na placa, esse número custa
+      <b>3,85 ms</b> por quadro; no processador custaria <b>195,9 ms</b> — cinquenta vezes mais,
+      e não caberia num quadro.</div></li>
+</ol>
+
+<div class="note"><b>Nem todos os dez rodam na placa ainda.</b> Hoje são quatro: Grid,
+Fibonacci Spiral, Radial Array e Voronoi. Os outros funcionam igual, só que no processador — e
+você percebe quando o número fica muito alto.</div>
+
+<h2>6 · O que cada controle faz</h2>
+<p>Esta tabela é gerada do próprio app: se um nó ganhar um controle novo, ela ganha a linha
+sozinha. A <b>faixa</b> é até onde o arrasto vai; onde diz <i>digitável até</i>, a caixa do
+painel aceita mais do que o arrasto alcança.</p>
+<div class="params">
+<!--#include ../fig/params.html-->
+</div>
+
+<h2>7 · Vá além</h2>
+<ol class="steps">
+  <li><b>Anéis que não fecham.</b> No Radial Array, mexa em <code>Start Angle</code> e
+      <code>End Angle</code> — em vez de um círculo você faz um leque.</li>
+  <li><b>Uma grade recortada.</b> No Grid, clique em <code>Shape</code> e escolha
+      <code>Circle</code>. A grade continua grade, mas só sobra o que cabe no disco.</li>
+  <li><b>Empilhe dois arranjos.</b> Ligue um Grid na entrada do <code>Clone</code>: cada ponto
+      da grade vira uma fileira de cópias. É assim que se faz muito com pouco.</li>
+</ol>
+
+<h2>8 · Se algo não bater</h2>
+<table>
+  <tr><th>o que você vê</th><th>o que é</th></tr>
+  <tr><td>Cartões vazios por dentro</td><td>zoom afastado demais — aproxime até ler as letras</td></tr>
+  <tr><td>Arrastar move o cartão</td><td>você pegou no cabeçalho; a barra fica abaixo dele</td></tr>
+  <tr><td>Uma linha com uma setinha</td><td>é uma <b>seção</b> dobrada: clique para abrir</td></tr>
+  <tr><td>Um controle que não arrasta</td><td>ele está sendo puxado por um fio — o número vem de fora</td></tr>
+  <tr><td>A cena engasga com muitos objetos</td><td>aquele nó ainda roda no processador (veja a nota da seção 5)</td></tr>
+</table>
+
+<footer>PH2D · Motion Nodes · ciclo 1 «Arranjo» · gerado de
+<code>docs/Motion Nodes/tutoriais/src/01_arranjo.html</code> ·
+figuras e tabela derivadas do app por <code>dump_arranjo_figures</code>.</footer>
+

@@ -103,6 +103,11 @@ mod readout;
 #[path = "motion_bridge_arranjo_probe.rs"]
 mod arranjo_probe;
 
+/// As figuras do tutorial do ciclo 1 — geradas COZINHANDO os nós (doc 103 §3).
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_arranjo_figures.rs"]
+mod arranjo_figures;
+
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_rewire.rs"]
 mod rewire;

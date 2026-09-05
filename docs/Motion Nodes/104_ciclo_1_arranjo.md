@@ -45,8 +45,8 @@ categorias sobrecarregadas (`Transform` 43 e `Utility` 43) já têm sub-clusters
 | **secções dobráveis** no cartão (`ParamGroup`) | ⏳ |
 | **os editores ricos** (curva, gradiente, paleta, texto, ficheiro, cor) | ⏳ |
 | **o painel lateral sai** | ⏳ |
-| auditoria + upgrade dos 10 nós | ⏳ |
-| o tutorial em PDF | ⏳ |
+| auditoria + upgrade dos 10 nós | ✅ §3 (scatter 22× · fibonacci e radial no device) |
+| o tutorial em PDF | ✅ [`tutoriais/01_arranjo.pdf`](tutoriais/01_arranjo.pdf) — 6 páginas |
 
 ## §2-bis — O que a construção do substrato ENSINOU (e corrigiu)
 
@@ -158,3 +158,29 @@ seria outra corrente). E `count` é um **uniform interno**: o codegen renomeia o
 | `scatter` · `distribute_poisson` | ⛔ **sequenciais por construção** (cada ponto depende de todos os anteriores). Um kernel exige OUTRO algoritmo (Bridson paralelo, ou tiles de Poisson) — decisão de produto, porque a nuvem deixa de ser bit-idêntica | grande |
 | `path` | ⏳ precisa de um caminho **vectorial** vivo; é a mesma fronteira do `field.shape` (CPU-only enquanto o canal de porta-template no device só existir emparelhado com `StreamOp::SourceRows`) | grande |
 | `voronoi` | está no device e custa **19,68 ms** para 2 000 — medir onde (relaxação de Lloyd?) antes de tocar | médio |
+
+---
+
+## §4 — O TUTORIAL, e as duas coisas que ele ensinou a quem o escreveu
+
+**Fonte:** `tutoriais/src/01_arranjo.html` · **PDF:** `tutoriais/01_arranjo.pdf` (6 páginas) ·
+**figuras:** `tutoriais/fig/*.svg`.
+
+⭐⭐ **As nove figuras não são desenhos: são a saída COZIDA de cada nó**
+(`dump_arranjo_figures`, no shell). É a lei do doc 103 §3 — *as imagens saem do próprio app* —,
+e a sonda **falha** se alguma nuvem sair vazia. A tabela dos controlos é **derivada do registry**
+(`param_ui` + `param_units` + `param_hard_max`), então um param novo ganha a linha sozinho.
+
+⛔⛔ **DOIS defeitos que só olhar o PDF impresso apanhou:**
+1. A tabela vinha por `fetch()` — e num `file://` o browser **não a busca**: a secção 6 do
+   primeiro PDF prometia uma tabela e entregava **branco**. *Um tutorial que promete e não
+   entrega é pior que um que não promete.* Hoje o `tutorial-pdf.sh` expande
+   `<!--#include …-->` antes de imprimir e **aborta** se o include vier vazio ou ausente.
+2. A tabela mostrava só `min..max` do hint — a faixa do **deslizante** — e o PDF ensinava que o
+   `Radius` de um leque vai «até 20 px», quando a caixa aceita `4000` e a **figura deste mesmo
+   tutorial** usa `200`. É a família do *controlo que mente*. Hoje a coluna diz
+   `1 a 20 (digitável até 1 000 000)` quando o tecto duro difere.
+
+⚠️ **E o caminho de saída do gerador estava errado sem dar erro:** `cargo test` corre com a cwd
+na raiz do **pacote**, então as figuras foram parar a `shells/desktop/docs/…` e a sonda disse
+*ok*. *Um gerador que escreve no sítio errado é pior que um que falha.*

@@ -104,7 +104,7 @@ inventada. Contagens do registry em 2026-09-05.
 
 | # | ciclo | nós | tutorial |
 |---|---|---|---|
-| **1** | **ARRANJO — pôr muitos objectos na tela** | `motion.grid` · `motion.scatter` · `motion.distribute_radial` · `motion.fibonacci` · `motion.lattice` · `motion.voronoi` · `motion.distribute_poisson` · `motion.distribute_curve` · `motion.path` · `motion.clone` (**10**) | **«Do primeiro objecto ao milhão»** |
+| **1** ⏳ smoke | **ARRANJO — pôr muitos objectos na tela** | `motion.grid` · `motion.scatter` · `motion.distribute_radial` · `motion.fibonacci` · `motion.lattice` · `motion.voronoi` · `motion.distribute_poisson` · `motion.distribute_curve` · `motion.path` · `motion.clone` (**10**) | **«Do primeiro objecto ao milhão»** |
 | 2 | ANIMADORES — fazer andar | `motion.oscillator` · `value.lfo` · `motion.wiggle` · `motion.noise` · `motion.stagger` · `motion.orbit` · `motion.spring` · `motion.delay` | «O tempo entra no grafo» |
 | 3 | TRANSFORMES & DEFORMADORES | `move` · `rotate` · `scale` · `transform` · `mirror` · `look_at` · `bend` · `twist` · `spherize` · `four_point_warp` · `bezier_warp` · `kaleidoscope` · `spline_wrap` | «Dobrar o mundo» |
 | 4 | FOCO — quem é afectado (campos) | `motion.falloff` · `field.box` · `field.radial_sweep` · `field.index_range` · `field.remap` · `field.combine` · `field.shape` | «Nem todos ao mesmo tempo» |

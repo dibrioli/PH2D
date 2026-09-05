@@ -186,7 +186,26 @@ impl BuildSession {
                 continue;
             }
             let src = self.arr.sources()[i].clone();
-            let mut rest = subtract_all(&src, &taken);
+            // ⛔⛔⛔ **A SOBRA NÃO PODE RE-CRIAR O QUE ESTÁ POR CIMA** — report do Enio de
+            // 2026-09-05: *"a ferramenta Build duplica a forma resultante"*.
+            //
+            // `fonte − pintado` inclui tudo o que a fonte tem **escondido debaixo das outras**.
+            // Medido na fixtura dos gates: pintando o corredor do rectângulo, a sobra dele saía
+            // como duas peças com a área EXACTA do pentágono e da estrela — que continuavam lá,
+            // intactas. Cinco formas onde o artista vê três, e mover a de cima revela a gémea.
+            //
+            // ⭐ **A lei é a do DONO: cada ponto pertence à forma mais ALTA que o contém.** As
+            // fontes vêm em ordem de z (fundo → topo), então basta acrescentar as de cima aos
+            // cortadores — uma chamada só, porque o `Subtract` do `apply_many` já dobra a união.
+            // Com ela, as sobras de todas as fontes são disjuntas **por construção**, e nenhuma
+            // pisa numa forma que o gesto não tocou.
+            //
+            // ⚠️ **Fronteira NOMEADA:** se a forma de cima não tiver preenchimento, o que se via
+            // ali era a de baixo — e ela perde essa área. É a mesma divisão que o Shape Builder do
+            // Illustrator faz (ele reparte a arte), e só acontece a uma fonte que o gesto TOCOU.
+            let mut cortadores = taken.clone();
+            cortadores.extend_from_slice(&self.arr.sources()[i + 1..]);
+            let mut rest = subtract_all(&src, &cortadores);
             // O `apply_many` tira o estilo do ÚLTIMO argumento — que aqui é uma FACE, não a
             // fonte. O que sobra de uma forma continua sendo aquela forma: o estilo é dela.
             for p in &mut rest {

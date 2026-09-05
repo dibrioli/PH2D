@@ -145,7 +145,39 @@ mutação que tira o teto da rota do painel derruba **três** gates.
 
 ---
 
-## Índice dos 27 FECHADOS — o mecanismo de cada um, em uma linha
+## Índice dos 28 FECHADOS — o mecanismo de cada um, em uma linha
+
+### #28 — o Build DUPLICAVA a forma que o gesto não tocou ✅ 2026-09-05
+
+**Sintoma** (Enio): *"a ferramenta Build duplica a forma resultante"*.
+
+**Causa.** A sobra de uma fonte TOCADA era `fonte − faces_pintadas`, e uma fonte carrega tudo o que
+tem **escondido debaixo das outras**. Medido na fixtura dos gates (rectângulo por baixo, pentágono e
+estrela por cima): pintar o **corredor** do rectângulo — a única parte dele que se vê — deixava a
+sobra dele com a área **exacta** do pentágono (`3,7151`) e a **exacta** da estrela, que continuavam
+lá, intactas. **Cinco formas onde o artista vê três**, e mover a de cima revela a gémea.
+
+**A cura: a LEI DO DONO.** Cada ponto pertence à forma mais ALTA que o contém. As fontes já vêm em
+ordem de z, então basta acrescentar as de cima aos cortadores da sobra — **uma chamada só**, porque
+o `Subtract` do `apply_many` já dobra a união. Com ela as sobras são disjuntas *por construção*.
+É o que o Shape Builder do Illustrator faz (ele reparte a arte), e só toca em fontes que o gesto
+tocou.
+
+⛔ **Fronteira NOMEADA:** se a forma de cima não tiver preenchimento, o que se via ali era a de
+baixo — e ela perde essa área.
+
+⚠️⚠️ **E o achado maior é sobre a RÉGUA, duas vezes no mesmo ficheiro no mesmo dia.** A fixtura
+guarda geometria **LOCAL** com a pose num `Xform` (é como a Shape tool a deixa) e as constantes de
+teste são pontos de **MUNDO**. O helper `hits` comparava as duas cruas:
+
+- ele **nunca via o pentágono** (local `x ∈ [−1,25; 1,25]` contra o ponto `−1,75`);
+- o que fazia `hits(IN_PENT) > 0` passar era **a sobra do rectângulo**, que nasce em mundo e cobria
+  a área do pentágono — ou seja, *o gate da lua crescente estava a PINAR o defeito*;
+- e a 1.ª redacção do gate novo tinha a mesma doença ao contrário: acusou uma duplicata de `3,19`
+  onde não havia nenhuma.
+
+*Um gate que compara dois espaços diferentes pode ficar verde sobre o defeito e vermelho sobre a
+cura, e as duas leituras parecem igualmente convincentes.*
 
 ### #27 — o traço virava uma CANETA ELÍPTICA sob Scale não-uniforme ✅ 2026-08-23
 
@@ -221,3 +253,5 @@ devolve para poder ser medido.
 | 24 | *"Linhas no Bevel"*: o **PENTE** era o caminho do **RASTER**, e toda forma com traço caía nele — *um caminho de fallback que ninguém consegue FOTOGRAFAR acumula bugs* (a cura foi `PH2D_FX_RASTER=1`, três linhas). | 2026-07-27 |
 | 25 | Renomear na Hierarquia **disparava os atalhos** do Vector: a cura é **porta única**, não mais um `&&` no despacho. | 2026-08-05 |
 | 26 | Checkbox não redimensiona / Slider com altura fixa: **UM mecanismo, não dois bugs** — a razão é `h / ROW_H_PX` (⛔ ver as recusas no topo). | 2026-08-05 |
+| 27 | O traço virava **CANETA ELÍPTICA** sob Scale não-uniforme: no Vello o transform de um `stroke` multiplica a CANETA, não só a geometria. | 2026-08-23 |
+| 28 | O **Build duplicava**: a sobra de uma forma tocada era `fonte − pintado`, e isso inclui o que está **escondido por baixo** das outras — ela re-criava, com a área EXACTA, as formas que o gesto não tocou. ⚠️ E a régua dos gates comparava geometria **local** com pontos de **mundo**, então ela pinava o defeito em vez de o acusar. | 2026-09-05 |

@@ -219,7 +219,23 @@ fn alt_clicking_the_overlap_deletes_it_and_leaves_the_slices() {
     s.touch(IN_STAR); // estrela ∩ retângulo
 
     commit(&mut sc, &mut s);
-    let hits = |p: [f64; 2]| sc.paths().iter().filter(|q| contains_point(q, p)).count();
+    // ⛔⛔ **A RÉGUA MEDIA O ESPAÇO ERRADO, e ficava verde por acidente.** Os pontos (`IN_PENT`,
+    // `IN_STAR`, `ONLY_RECT`) são de MUNDO, e a fixtura guarda a geometria em LOCAL com a pose num
+    // `Xform` — que é como a Shape tool a deixa. Sem assar a pose, `contains_point` nunca via o
+    // pentágono (local x ∈ [-1,25; 1,25] contra o ponto `-1,75`): o que fazia `hits(IN_PENT) > 0`
+    // passar era a **sobra do rectângulo**, que nasce em mundo e cobria a área do pentágono — ou
+    // seja, a régua estava a pinar exactamente o defeito de 05/09.
+    let mundo = |q: &VecPath| {
+        let mut w = q.clone();
+        ph2d_vec_scene::bake_xform(&mut w, &ph2d_vec_scene::xform_of(&xf, q.id));
+        w
+    };
+    let hits = |p: [f64; 2]| {
+        sc.paths()
+            .iter()
+            .filter(|q| contains_point(&mundo(q), p))
+            .count()
+    };
     assert_eq!(hits(IN_STAR), 0, "a sobreposição SUMIU — é a lua crescente");
     assert!(hits(IN_PENT) > 0, "o pentágono ficou");
     assert!(hits(ONLY_RECT) > 0, "e o corredor do retângulo também");
@@ -448,4 +464,103 @@ fn a_thin_but_real_crescent_survives_the_sliver_filter() {
         total > 0.0,
         "a sobra existe mas tem área nula — então ela não é uma lua, é uma lasca"
     );
+}
+
+/// ⛔⛔ **SONDA do report do Enio (2026-09-05): «a ferramenta Build DUPLICA a forma resultante».**
+///
+/// Ela pinta **todas** as faces e une — o gesto de *"junta isto tudo numa forma só"*, que é o mais
+/// comum do Shape Builder. O que tem de sobrar é **uma** forma.
+#[test]
+fn painting_every_face_and_uniting_leaves_exactly_one_shape() {
+    let (mut sc, xf, ids) = scene();
+    let mut s = session(&sc, &xf, &ids);
+    // ⚠️ O arrasto tem de estar ARMADO: o `touch` só pinta com `dragging`, e é o `build_down` do
+    // produto que o liga. Sem esta linha a sonda mede um gesto que nunca aconteceu.
+    s.dragging = true;
+    // Pinta as três regiões nomeadas da fixtura — juntas, elas cobrem a união inteira.
+    for p in [IN_PENT, IN_STAR, ONLY_RECT] {
+        s.touch(p);
+    }
+    let antes = sc.paths().len();
+    let sel = commit(&mut sc, &mut s);
+    eprintln!(
+        "[build-probe] antes={antes} depois={} seleccao={} areas={:?}",
+        sc.paths().len(),
+        sel.len(),
+        sc.paths()
+            .iter()
+            .map(|p| (p.id, (ph2d_vec_boolean::area(p) * 100.0).round() / 100.0))
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        sc.paths().len(),
+        1,
+        "pintar tudo e unir tem de deixar UMA forma"
+    );
+}
+
+/// ⭐⭐⭐ **O QUE O GESTO PRODUZ NÃO SE SOBREPÕE AO QUE ELE DEIXOU EM PAZ** — report do Enio,
+/// 2026-09-05: *"a ferramenta Build duplica a forma resultante"*.
+///
+/// ⛔ **O mecanismo:** a sobra de uma forma TOCADA era `fonte − pintado`, e isso inclui o que está
+/// escondido **por baixo** das formas que o gesto não tocou. Pintando o corredor do rectângulo, a
+/// sobra dele saía como duas peças com a área EXACTA do pentágono e da estrela — que continuavam
+/// lá. O artista fica com cinco formas onde vê três, e mover a de cima revela a gémea.
+///
+/// ⚠️ **A régua é a SOBREPOSIÇÃO, e não a contagem nem a área total:** a soma das áreas é a MESMA
+/// com o defeito e sem ele (o rectângulo só se parte em pedaços que coincidem com os vizinhos), e
+/// um gate sobre ela ficaria verde. O que muda é *quem cobre o quê*.
+#[test]
+fn what_the_gesture_makes_never_overlaps_what_it_left_alone() {
+    for (nome, pontos) in [
+        ("so o corredor", vec![ONLY_RECT]),
+        ("corredor + pentagono", vec![ONLY_RECT, IN_PENT]),
+        ("corredor + estrela", vec![ONLY_RECT, IN_STAR]),
+        ("so o pentagono", vec![IN_PENT]),
+    ] {
+        let (mut sc, xf, ids) = scene();
+        let mut s = session(&sc, &xf, &ids);
+        s.dragging = true;
+        for w in &pontos {
+            s.touch(*w);
+        }
+        let antes: Vec<VecPathId> = sc.paths().iter().map(|p| p.id).collect();
+        let _ = commit(&mut sc, &mut s);
+        // ⚠️⚠️ **TUDO É COMPARADO EM MUNDO** — a fixtura guarda geometria LOCAL com a pose num
+        // `Xform`, e as formas que o gesto cria nascem em mundo. Comparar as duas cruas mede a
+        // sobreposição de espaços diferentes: foi assim que a 1.ª redacção deste gate acusou uma
+        // duplicata de `3,19` onde não havia nenhuma, e é a MESMA doença que a régua `hits` do
+        // gate da lua crescente tinha (duas vezes no mesmo ficheiro, no mesmo dia).
+        let mundo = |q: &VecPath| {
+            let mut w = q.clone();
+            ph2d_vec_scene::bake_xform(&mut w, &ph2d_vec_scene::xform_of(&xf, q.id));
+            w
+        };
+        let novos: Vec<VecPath> = sc
+            .paths()
+            .iter()
+            .filter(|p| !antes.contains(&p.id))
+            .map(mundo)
+            .collect();
+        let sobreviventes: Vec<(VecPathId, VecPath)> =
+            sc.paths().iter().map(|p| (p.id, mundo(p))).collect();
+        for n in &novos {
+            for (oid, outro) in &sobreviventes {
+                if *oid == n.id {
+                    continue;
+                }
+                let inter =
+                    ph2d_vec_boolean::apply_many(&[n, outro], ph2d_vec_boolean::BoolOp::Intersect);
+                let sobreposto: f64 = inter.iter().map(ph2d_vec_boolean::area).sum();
+                assert!(
+                    sobreposto < 1e-6,
+                    "[{nome}] a forma {} que o gesto criou cobre {:.4} da forma {} que ele nao \
+                     tocou — e' a duplicata do report",
+                    n.id,
+                    sobreposto,
+                    oid
+                );
+            }
+        }
+    }
 }

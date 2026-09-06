@@ -250,6 +250,22 @@ vezes (o `indice.json` envelhecido, os gates 15/17 parados em `51`/`50`):
   tabela das corridas não tinha a fixture `_fraco` da emenda Q11. Agora: `56` linhas para `56`
   ficheiros, e o total com a instrução de o contar.
 
+**SÉTIMA cura, de SUFICIÊNCIA — e ela fecha o Q13 do I, feito enquanto esta auditoria corria.** A
+§4.3 define `δ` como des-projecção de ecrã à profundidade do pen-down, e **nunca diz qual é a vista**
+— o I registou no INBOX que «as fixtures não carregam nem a vista nem o caminho em ecrã; sem uma das
+duas o delta dos sete modos não é reconstruível deste lado», e mediu a rota errada a piorar a paridade
+(projectar no plano perpendicular à normal do pen-down: `0,265 → 0,605` no Agarrar, `0,351 → 0,663`
+no gancho). ⭐ **Resolvido sem oráculo novo e sem o I olhar para nada**: as corridas são
+**ortográficas** — prova nos próprios números, o passo do caminho da esfera é `0,6/11 = 0,054545…` e
+`δ` mede `0,05455` nos **doze** passos apesar de os pontos estarem a profundidades diferentes —, logo
+`δ_k = proj_⊥v̂(c_k − c_{k−1})` (e `proj_⊥v̂(c_k − c_0)` no Agarrar) sobre o `caminho` que o cabeçalho
+**já traz**. O que faltava era só `v̂`, e ele é **diferente nos dois corpora**: **`z`** no plano (a
+folha vive em `z = 0` ⇒ a projecção é um no-op, que é a degenerescência da §4.6-1) e **`y`** na esfera
+(o caminho pousa em `y = −√(1−x²)`). Derivado das fixtures pelo R-pré e **confirmado
+independentemente** pela medição do I (o ângulo máximo entre a diferença 3D e a projecção no plano
+`x–z` dá `15,83°`, o número exacto do Q12.2). Escrito na §4.3 e no README das fixtures, com o ⛔ de
+que o plano do **ECRÃ** não é o plano tangente do pen-down.
+
 **Veredicto: ATESTADO** — a emenda Q12 pode ser lida pela janela-mãe.
 
 ### Auditoria R-pré — 2026-09-06 (emenda Q11)

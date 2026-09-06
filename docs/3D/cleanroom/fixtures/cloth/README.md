@@ -138,6 +138,21 @@ no 12) enquanto o Inflate fica (`0,2701` → `0,2629`), e nos dois o aro está p
 | 12 | `0.64571` | `0.32416` | `0.03738` | `0.03378` | `0.21922` |
 
 
+## ⚠️ O EIXO DA VISTA (não está no cabeçalho, e é diferente nos dois corpora)
+
+As corridas são em vista **ORTOGRÁFICA**. O cabeçalho traz o `caminho` (as linhas `c`, em espaço do
+objecto) e **não** traz a vista — que é o que falta para reconstruir deste lado o deslocamento de
+cursor que sete dos oito modos lêem (espec §4.3). Ela é, derivada das próprias fixtures:
+
+| corpus | superfície | eixo da vista | consequência |
+|---|---|---|---|
+| plano | folha em `z = 0` | **`z`** | a projecção é um **no-op**: o deslocamento é a diferença dos pontos do caminho, ao bit |
+| esfera | esfera unitária, caminho em `y = −√(1−x²)` | **`y`** | o deslocamento vive no plano `x–z`; é a componente `y` que se perde (até `15,83°` de direcção) |
+
+⭐ **Que é ortográfica lê-se nos números:** o passo do caminho da esfera é `0,6/11 = 0,054545…` e o
+deslocamento de cursor mede `0,05455` em **todos** os 12 passos, apesar de os pontos do caminho
+estarem a profundidades diferentes — em perspectiva os dois não podiam coincidir.
+
 ## O formato (texto, `gzip`, vocabulário do domínio)
 
 `<superficie>.repouso.txt.gz` — uma vez por superfície:

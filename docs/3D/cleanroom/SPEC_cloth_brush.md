@@ -111,6 +111,13 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   *porque a área dele é Global e não tem centro para ficar refém do sobrevoo* — que é o mecanismo que
   o próprio README explica. Mais o total do fim, parado em `53` com `56` no disco, e a fixture
   `_fraco` que faltava na tabela das corridas (agora `56` linhas para `56` ficheiros).
+  ⭐⭐⭐ **E uma SÉTIMA cura, de SUFICIÊNCIA, que fecha a pergunta que o I acabou de fazer (Q13):** a
+  §4.3 descrevia `δ` como uma des-projecção de ecrã sem nunca dizer **qual é a vista**, e sem isso ele
+  não era reconstruível deste lado. As fixtures são **ortográficas** (prova nos números) ⇒
+  `δ = proj_⊥v̂(c_k − c_{k−1})` sobre o `caminho` que o cabeçalho já traz, com `v̂` = **`z`** no corpus
+  do plano (projecção = no-op) e **`y`** no da esfera. Está agora na §4.3 e no README das fixtures,
+  com o ⛔ de que o plano do **ECRÃ** não é o plano tangente do pen-down — a rota que o I mediu a
+  piorar (`0,265 → 0,605` · `0,351 → 0,663`).
   Veredictos e detalhe: LEDGER §Papel R.
 Mapa de leitura da literatura (⭐ pública e lícita a TODOS os papéis):
   · Jakobsen, "Advanced Character Physics", GDC 2001 — integração de Verlet por posições + relaxação
@@ -558,6 +565,30 @@ enquanto a diferença dos pontos 3D chega a `(0,05455, ∓0,01547, 0)` — **`15
 direcção no 1.º e no último passo, `0°` a meio, e até `1,039×` de módulo. No **Agarrar**, que
 acumula, o desvio entre o `δ` acumulado e a diferença acumulada dos pontos chega a **`0,04569`** a
 meio do caminho, que é **`19,3 %`** do maior deslocamento daquela fixture (`0,236509`).
+
+⭐⭐⭐ **E por isso `δ` É RECONSTRUÍVEL DO NOSSO LADO, sem câmara nenhuma — falta só o EIXO DA VISTA,
+que fica aqui** (R-pré, 2026-09-06, derivado das próprias fixtures e confirmado pela medição
+independente do I): as fixtures foram gravadas em vista **ORTOGRÁFICA**, e nessa vista as duas
+des-projecções à mesma profundidade dão exactamente *a componente do deslocamento perpendicular ao
+eixo da vista*. Logo, com `c_k` os pontos do `caminho` que cada fixture já traz no cabeçalho:
+
+```
+δ_k = proj_⊥v̂ (c_k − c_{k−1})            (os sete modos incrementais)
+δ_k = proj_⊥v̂ (c_k − c_0)                (o Agarrar, que acumula)
+```
+
+⚠️ **O eixo da vista `v̂` NÃO está no cabeçalho das fixtures e é diferente nos dois corpora:**
+- **corpus do PLANO** — a folha vive no plano `z = 0` e a vista é ao longo de **`z`** ⇒ a projecção
+  é um **no-op** e `δ` é a diferença dos pontos ao bit (é esta a degenerescência que a §4.6-1 nomeia);
+- **corpus da ESFERA** — a vista é ao longo de **`y`** (o caminho pousa em `y = −√(1−x²)`), ⇒ `δ` vive
+  no plano **`x–z`** e é a componente `y` que se perde.
+
+⭐ **A prova de que é ortográfica está nos próprios números**: o passo do caminho é `0,6/11 =
+0,054545…` e `δ` mede `0,05455` em **todos** os 12 passos da esfera, apesar de os pontos do caminho
+estarem a profundidades diferentes — numa vista em perspectiva os dois não podiam coincidir.
+⛔ **Projectar no plano perpendicular à NORMAL DO PEN-DOWN é outra coisa e está medido a piorar** (o
+I mediu `0,265 → 0,605` no Agarrar e `0,351 → 0,663` no gancho): o plano é o do **ECRÃ**, e só numa
+folha vista de frente é que ele coincide com o plano tangente.
 
 ⚠️ **A localização do cursor** (`c`, centro do disco de influência):
 - Drag/Push/Pinch/Inflate/Expand: **re-apanhada na superfície a cada passo** (raio contra a malha).

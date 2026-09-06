@@ -435,6 +435,43 @@ percorridos) e a barra do §7.2 (zero hits na árvore inteira), e os atestados d
 por conta própria.
 ⏳ **Falta o atestado do R-pré sobre esta emenda** (a janela-mãe despacha-o antes de implementar).
 
+### Q9 — o SNAKE HOOK deforma no sítio errado (pergunta do I de 2026-09-06; resposta no mesmo dia)
+
+**Pergunta (INBOX §Q9):** o pico da deformação do gancho fica, no port, sob o cursor (`0,05R`) e no
+oráculo onde o pincel **estava** (`0,86R`); no arrasto os dois coincidem. Q9.1 — o centro da queda é
+a posição do fim ou do início do passo? Q9.2 — a distância mede-se contra que posições? Q9.3 — falta
+uma restrição de FORMA?
+
+- **Q9.1 — o INÍCIO do passo.** Nos dois modos de âncora a localização do pincel **deixa de ser lida
+  do evento a partir do 2.º passo** (F). No Grab ela fica pregada no pen-down todo o traço; no Snake
+  Hook ela é avançada pelo delta — **mas o avanço corre ANTES de o delta deste passo ser calculado**,
+  logo usa o delta do passo ANTERIOR. ⇒ `c_k = pen-down + Σ_{i<k} δ_i`: o centro está **um passo
+  atrasado**, e no 1.º passo simulado (delta anterior `= 0`) é **exactamente o pen-down** — que é o
+  vértice mais deslocado que o I mediu no oráculo. A hipótese que o I construiu e reverteu está
+  **CORRECTA**; a espec dizia `c ← c + δ` sem dizer **qual** `δ`, e é essa a emenda (§4.3).
+- **Q9.2 — as posições ACTUAIS** (o estado deformado com que o passo começa). O **Grab é o único**
+  modo que mede distância, recorte e textura sobre as posições de repouso; os outros sete, o Snake
+  Hook incluído, medem sobre as actuais (F). ⇒ o material já puxado viaja **com** o centro atrasado.
+- **Q9.3 — NÃO existe eixo, plano nem limite de profundidade próprios do Snake Hook** (leitura
+  integral da fase de gesto). O «plano de profundidade» é do **delta** e vale para os oito modos; a
+  queda é a distância comum ao centro com a forma de queda do pincel. ⇒ a forma que falta a um port
+  é o PAR (a) centro atrasado + (b) distâncias sobre as posições actuais — não uma lei nova.
+
+**Achado colateral, e é uma CORRECÇÃO à espec:** a força por passo das âncoras é **zerada em todo o
+objecto** antes de ser reescrita **nos DOIS** modos de âncora — a espec e o gate 12 diziam «o Grab
+não», e estava errado. O que distingue os dois é o valor com que reescrevem (`1` radial / `clamp(f)`
+plano no Grab; `f` no Snake Hook) e o conjunto afectado do Grab ser fixo. Gate 12 reescrito, gate 18
+novo (a posição do pico).
+
+**Emenda à espec (commit desta entrada):** §4.3 (o `δ` do avanço; o Grab como único que mede no
+repouso; o zeramento nos dois) · **§10.4 (nova, o lado medido pelo I)** · §14 gates 12 e 18.
+**Cobertura desta leitura:** as fases de gesto e de aplicação de forças do ficheiro do pincel de
+tecido, mais a actualização do estado do traço (localização, delta, predicados de delta ancorado e de
+orientação de ponta) e o cálculo de distâncias do pincel, no ficheiro central do modo de escultura.
+Fonte v5.2.0, por shell, 2026-09-06.
+**Sweep:** verde sobre a espec emendada, 2026-09-06.
+⏳ **Falta o atestado do R-pré** (junto com o da Q8).
+
 ## Fechamento R
 
 ⏳

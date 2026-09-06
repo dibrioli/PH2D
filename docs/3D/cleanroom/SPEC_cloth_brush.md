@@ -17,7 +17,9 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   expressão (uma frase de comentário do fonte citada como (F) no §7) e CINCO higienes §4.3 (detalhe de
   implementação descrito como comportamento) curados no acto pelo R-pré; os nomes de fixture do §14 e a
   contagem do gate 15 alinhados aos ficheiros. Veredictos e curas, um a um: LEDGER §Papel R.
-  ⏳ EMENDA Q8 de 2026-09-06 (§1 fases 0/1 · §2.1 · §3.1 · §3.3 · §5.2-bis NOVA · §10.2 · §10.3 NOVA ·
+  ⏳ EMENDAS Q8 e Q9 de 2026-09-06 — Q9 (§4.3 · §10.4 NOVA · §14 gates 12 e 18): o centro da queda do
+  Snake Hook está UM PASSO atrasado, e a força por passo das âncoras é zerada nos DOIS modos de âncora.
+  Q8 (§1 fases 0/1 · §2.1 · §3.1 · §3.3 · §5.2-bis NOVA · §10.2 · §10.3 NOVA · §13 ·
   §14 gates 8/16/17): a lista de restrições do ramo *Local* vem em DUPLICADO. Escrita pelo subagente-E
   da mesma janela, com o fonte reaberto só para esta pergunta; sweep verde sobre a espec emendada em
   2026-09-06. ⚠️ **AGUARDA o atestado do R-pré** — a janela-mãe despacha-o antes de implementar a
@@ -351,6 +353,17 @@ ponto anterior). Com *Normal Weight* `> 0` (omissão `0`) o delta é inclinado p
   conjunto fixo de vértices).
 - **Snake Hook**: `c ← c + δ` a cada passo — o centro **anda com o gancho no plano de profundidade
   original**, não é re-apanhado na superfície.
+  ⚠️⚠️ **E o `δ` desse avanço é o do passo ANTERIOR, não o deste passo (F, 2026-09-06):** o avanço
+  acontece **antes** de `δ` ser recalculado, logo quando a queda por-vértice é avaliada o centro está
+  **onde o pincel estava no início do passo**, não onde o cursor chegou. Em fórmula:
+  `c_k = pen-down + Σ_{i<k} δ_i` — o centro está **um passo atrasado** em relação ao cursor, e como
+  a localização **nunca mais é lida do evento depois do 1.º passo**, essa soma é a definição do
+  centro (não há re-projecção nem raio contra a malha que possam divergir dela).
+  ⭐ **No 1.º passo simulado (o 2.º passo do traço) `δ` do passo anterior é ZERO** ⇒ o centro é
+  **exactamente o ponto do pen-down**, e o vértice mais deslocado é o do pen-down — não o que está
+  sob o cursor (M — §10.4).
+  ⇒ *é isto que faz o pico da deformação ficar ATRÁS do cursor, e um port que centre a queda no
+  cursor apanha material novo a cada passo em vez de arrastar o que já pegou.*
 
 | modo | âncora de deformação do vértice `v` (o ponto B, §3.2) | força da restrição `s` (fixa na criação) | factor por passo `σ_v` (§5.2) |
 |---|---|---|---|
@@ -367,7 +380,17 @@ guarda âncoras «de partida + delta total» para um conjunto fixo, com força f
 simulação o menos possível».)
 
 ⚠️ **O Grab mede o falloff na malha de PARTIDA** (distâncias e recorte sobre as posições de repouso
-do traço) — é por isso que o conjunto agarrado não muda quando a malha se mexe.
+do traço) — é por isso que o conjunto agarrado não muda quando a malha se mexe. ⚠️ **O Grab é o
+ÚNICO assim:** os outros sete modos — o **Snake Hook incluído** — medem a distância, o recorte e a
+textura sobre as **posições ACTUAIS** da malha, isto é, o estado deformado com que o passo começa
+(F). ⇒ no Snake Hook o material já puxado viaja **com** o centro atrasado, e o gancho continua a
+segurar o que agarrou em vez de agarrar o que está debaixo do cursor.
+
+⚠️ **A força por passo das âncoras é ZERADA em TODO o objecto antes de ser reescrita, nos DOIS
+modos de âncora** (F — a espec dizia «o Grab não», e estava errado): o passo começa com `σ ≡ 0` em
+toda a malha e cada um dos dois preenche o que lhe toca — o Grab põe `1` (radial) ou `clamp(f,0,1)`
+(plano) nas células afectadas, o Snake Hook põe `f`. O que os distingue **não é zerar ou não**, é o
+valor com que reescrevem e o facto de o conjunto afectado do Grab ser fixo.
 
 ⚠️ **Nenhum dos dois modos de âncora aplica força.** A aceleração fica a zero; o que move é a
 restrição de âncora dentro das 5 varreduras (§5.2).
@@ -928,6 +951,40 @@ de 2 passos e o apertar-ponto *Local* pioram a `10` — no Hook o pico do port n
 que é defeito de LOCALIZAÇÃO e não de amplitude; e na esfera os modos que não são arrasto erram em
 *Dynamic* sem que as varreduras lhes toquem.
 
+### §10.4 — ONDE está o pico (2026-09-06) — o lado MEDIDO da §4.3 do Snake Hook
+
+A sonda por passo imprime a distância do vértice mais deslocado ao cursor **daquele passo**, em
+raios (M):
+
+| traço | pico do port (centro no cursor) | pico do oráculo |
+|---|---|---|
+| arrastar radial *Local*, passo 8 | `0,82R` | `0,82R` |
+| arrastar radial *Local*, passo 11 | `1,02R` | `1,02R` |
+| gancho radial *Local*, passo 2 | `0,05R` | **`0,86R`** |
+| gancho radial *Local*, passo 3 | `0,24R` | **`0,91R`** |
+
+⇒ **o arrasto está no sítio certo e o gancho não:** o pico do oráculo fica onde o pincel **estava**.
+No 1.º passo simulado o vértice mais deslocado do oráculo é **o do pen-down** (`max = c0`), que é o
+que a §4.3 prevê com o centro atrasado (`δ` anterior `= 0`).
+
+⭐ **Medido pelo port com o centro atrasado (mutação de uma linha), 7 traços de gancho de 7 melhoram**
+(`err_max/max_oráculo`, exemplos: `1passo` `0,999 → 0,467`; `2passos_origem` `0,700 → 0,324`;
+o traço longo `0,162 → 0,129`), e a **contagem de movidos** do traço de um passo vai de `1040` para
+`1434` contra `1452` do oráculo — outro inteiro a convergir.
+
+⛔ **E o resíduo que sobra NÃO é a força da âncora** (varrida de `0,20` a `1,00` no traço de um
+passo): a `0,35` — o valor que a §3.2 já dá — a amplitude bate (`0,4935` contra `0,4894`) e sobra
+`0,2036` de erro; a `0,50` o erro desce e a **amplitude estoura `25 %`**. Nenhum valor torna o traço
+exacto ⇒ a constante da espec está certa e o resíduo é de forma.
+
+⚠️ **Quanto à forma que falta: no alvo NÃO existe eixo, plano nem limite de profundidade próprios do
+Snake Hook** (leitura integral da fase de gesto, 2026-09-06). O que dá forma ao gancho, e que um port
+pode não ter, é o par: **(a)** o centro atrasado desta secção e **(b)** a distância medida sobre as
+posições **actuais** (§4.3) — juntos fazem o material já puxado viajar com o centro. O «plano de
+profundidade» da §4.3 é do **delta** (a des-projecção do cursor), e vale para os oito modos; a queda
+por-vértice é a distância comum ao centro, com a forma de queda do pincel (`falloff_shape` = esfera,
+ou tubo quando o artista o escolhe — não é uma lei do modo).
+
 ---
 
 ## §11 — Comportamento de borda, caso a caso (F salvo indicação)
@@ -1018,7 +1075,8 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 9 | **5 varreduras, `0,6`, meio para cada lado**: numa restrição isolada entre dois vértices livres com `φ = 1`, o erro após `k` varreduras é `(1 − 0,6)^k` do inicial | `0,4^5 = 0,01024 ± f32` | §5.2 |
 | 10 | **Damping é retenção**: com damping `d`, um vértice livre em voo perde `d` da velocidade por passo; com `d = 1` pára | `f32` | §5.3 · fixture `plano_arrastar_radial_local_amort05` |
 | 11 | **O 1.º passo nunca simula**; o passo seguinte sim | exacta | §1 |
-| 12 | **Snake Hook zera as forças de âncora fora do pincel a cada passo**; o Grab não | exacta | §4.3 |
+| 12 | **A força por passo das âncoras é zerada em todo o objecto a cada passo e reescrita**: no Snake Hook com a queda `f` (⇒ `0` fora do pincel), no Grab com `1` (radial) nas células afectadas — ⛔ **não** «o Grab não zera» | exacta | §4.3 |
+| 18 | **O centro do Snake Hook está um passo ATRASADO**: no 1.º passo simulado o vértice mais deslocado é o do **pen-down**, não o que está sob o cursor; e ao longo do traço a distância do pico ao cursor é `≈` o passo do traço, não `≈ 0` | posição do `arg max`, em raios | §4.3 · §10.4 · fixtures `plano_gancho_radial_local_1passo`, `plano_gancho_radial_local_2passos_origem` |
 | 13 | **Grab mede na malha de partida**: mover o pano não muda o conjunto agarrado | exacta | §4.3 |
 | 14 | **A simetria é por passagem** e a 2.ª passagem vê a 1.ª | fixture com espelho | §6.6 |
 | 15 | **Paridade com o oráculo** — os 51 traços (§10): a barra é a **discretização** e o **`f32`**: a nossa malha é a mesma (gerada pela mesma lei), logo a comparação é por vértice; a barra por vértice é a aresta × a diferença de ordem das restrições (Gauss–Seidel não comuta) — MEDIR primeiro a dispersão entre duas ordens nossas e usar essa dispersão como barra (⛔ não um epsilon de conforto; ⛔ não bit-parity — ADR-0162) | derivada por medição | §10 |

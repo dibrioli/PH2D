@@ -662,6 +662,16 @@ descrição do `analise.json` que não era a do ficheiro. **Espec:** §3.1 · §
 fixtures. **Instrumento:** o arnês do oráculo de 05/09 com um ficheiro de corridas novo e um montador
 próprio, os dois **fora da árvore**, em `~/Referencias/`.
 
+⚠️ **Para o R-PÓS, registado aqui para não se perder:** o sweep sobre **este ledger** (e sobre o
+histórico dos caminhos de `cleanroom/`) devolve **DOIS** hits, os dois **pré-existentes de
+2026-09-05** e os dois na mesma coisa — o caminho/nome do ficheiro do alvo, escrito nas linhas da
+cobertura da travessia e do achado de parede nº 1. Não vêm desta emenda (conferido no `git diff`),
+e o ledger é, por desenho do §6, o sítio onde a proveniência vive e que a janela I nunca lê (o
+`settings.local.json` da worktree nega-lhe o `Read`). ⇒ **é decisão do R-PÓS**: ou reescrever as duas
+linhas em vocabulário do domínio (e então o histórico continua a tê-las, o que só o `--git-history`
+vê), ou declarar a excepção do ledger por escrito no fechamento. ⛔ O que não pode ficar é
+implícito — a barra do §7.2 é «zero hits sobre a árvore inteira».
+
 ## Fechamento R
 
 ⏳

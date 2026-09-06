@@ -181,3 +181,20 @@ escala, e a espec §4.3 acerta na constante.
   a nossa lei implementa isso como queda radial (`FalloffForca::Radial`) porque o traço é radial.*
 
 Contrato de retorno igual ao do Q8.
+
+## Q10 — pedido de INSTRUMENTO (prioridade baixa; só depois do Q8 e do Q9)
+
+Os modos de **aperto** são exactos ao bit no traço de UM passo
+(`plano_apertar_ponto_radial_local_1passo` e `_linha_..._1passo`: `0,000`) e erram muito no fim de um
+traço inteiro (`plano_apertar_ponto_radial_local` `1,072`; `plano_apertar_linha_radial_local`
+`2,024`; a esfera na Dinâmica `0,54`–`0,59`). Nós sobrepassamos: `0,5296` contra `0,3258` no aperto
+de ponto, `0,2439` contra `0,1005` no de linha.
+
+⚠️ **E as varreduras NÃO os explicam**: a `10` o aperto de linha melhora (`2,024 → 1,024`) e o de
+ponto **piora** (`1,072 → 1,380`), ao contrário de todo o resto do ramo Local. ⇒ há aqui um terceiro
+mecanismo, e ele nasce entre o passo 1 e o fim.
+
+**Pedido:** os mesmos dumps POR PASSO do Q7 (corridas-prefixo com prova `k = N` ≡ corrida inteira)
+para **dois** traços: `plano_apertar_ponto_radial_local` e `plano_apertar_linha_radial_local`.
+Sem eles só se vê o estado final, e o estado final diz *quanto* diverge, nunca *em que passo*.
+Um traço de 2 passos de cada um chegaria para localizar o nascimento.

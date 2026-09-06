@@ -730,6 +730,11 @@ fn sonda_passo_a_passo() {
 
     let mut pos = rest.clone();
     let mut tecido = PincelTecido::pen_down(pincel, &pos, c0);
+    // ⭐⭐ **As colunas nomeadas são as do anel PRÓXIMO (`1R`, `2R`)**, e a troca
+    // é de 06/09: um defeito que vive num vértice só não se vê nas colunas do
+    // ARO, que são justamente onde a lei já bate. O aperto de ponto lê `1R`
+    // `0,02102` contra `0,02096` do oráculo e `c0` `0,0975` contra `0,1842` —
+    // *a vizinhança inteira concorda a cinco casas e discorda UM vértice.*
     println!(
         "{nome}: {} passos, {} blocos",
         pp.caminho.len(),
@@ -745,10 +750,10 @@ fn sonda_passo_a_passo() {
         "k",
         "c0 nos",
         "c0 orac",
-        "2.9R nos",
-        "2.9R or",
-        "3.5R nos",
-        "3.5R or",
+        "1R nos",
+        "1R or",
+        "2R nos",
+        "2R or",
         "4R nos",
         "4R orac",
         "max nos",
@@ -821,9 +826,31 @@ fn sonda_passo_a_passo() {
         let _ = (err, ck);
         // A distância do pico ao cursor DESTE passo, em raios de pincel.
         let (pico_n, pico_o) = (dist(rest[arg_n], cursor) / r, dist(rest[arg_o], cursor) / r);
-        let (c0v, bnd, lim, fora) = (nomeados[0].1, nomeados[3].1, nomeados[5].1, nomeados[6].1);
+        let (c0v, bnd, lim, fora) = (nomeados[0].1, nomeados[1].1, nomeados[2].1, nomeados[6].1);
+        // ⭐ Onde o vértice do PEN-DOWN está AGORA, em raios: um vértice que se
+        // encostou ao cursor deixa de ter direcção de puxão.
+        let (dc_n, dc_o) = (dist(pos[c0v], cursor) / r, dist(bloco[c0v], cursor) / r);
+        // ⭐ A componente FORA DO PLANO do pen-down (a superfície plana é z = 0):
+        // uma folha que dobra sob o aperto move-se em z; uma que só desliza não.
+        let (uz_n, uz_o) = (pos[c0v][2] - rest[c0v][2], bloco[c0v][2] - rest[c0v][2]);
+        let _ = (uz_n, uz_o);
+        let vn = [
+            pos[c0v][0] - rest[c0v][0],
+            pos[c0v][1] - rest[c0v][1],
+            pos[c0v][2] - rest[c0v][2],
+        ];
+        let vo = [
+            bloco[c0v][0] - rest[c0v][0],
+            bloco[c0v][1] - rest[c0v][1],
+            bloco[c0v][2] - rest[c0v][2],
+        ];
+        let dcur = [
+            cursor[0] - rest[c0v][0],
+            cursor[1] - rest[c0v][1],
+            cursor[2] - rest[c0v][2],
+        ];
         println!(
-            "{:>4} | {:>7.4} {:>7.4} | {:>8.5} {:>8.5} | {:>8.5} {:>8.5} | {:>7.5} {:>7.5} | {:>8.4} {:>8.4} | {:>5.2}R {:>5.2}R{}",
+            "{:>4} | {:>7.4} {:>7.4} | {:>8.5} {:>8.5} | {:>8.5} {:>8.5} | {:>7.5} {:>7.5} | {:>8.4} {:>8.4} | {:>5.2}R {:>5.2}R | c0a {:>5.2}R {:>5.2}R | u_nos [{:>7.4} {:>7.4} {:>7.4}] u_or [{:>7.4} {:>7.4} {:>7.4}] cursor-rest [{:>7.4} {:>7.4} {:>7.4}]{}",
             k + 1,
             u_n(c0v),
             u_o(c0v),
@@ -837,6 +864,17 @@ fn sonda_passo_a_passo() {
             max_o,
             pico_n,
             pico_o,
+            dc_n,
+            dc_o,
+            vn[0],
+            vn[1],
+            vn[2],
+            vo[0],
+            vo[1],
+            vo[2],
+            dcur[0],
+            dcur[1],
+            dcur[2],
             if glitch {
                 "  (bloco = repouso: glitch do dump, ignorar)"
             } else {

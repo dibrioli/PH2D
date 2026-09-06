@@ -58,9 +58,20 @@ impl crate::App {
         }
         match self.vec_bone_smoke_step {
             0 => self.bone_smoke_build(),
-            // Um quadro de folga: é nele que o `vec_entities::sync` dá entidade às três formas.
-            1 => self.vec_bone_smoke_step = 2,
-            2 => self.bone_smoke_bind(),
+            // ⚠️⚠️ **NÃO se conta QUADROS aqui, pergunta-se o FATO.** Prender exige a ENTIDADE de
+            // cada forma, e quem a cria (`vec_entities::sync`) corre no MEIO do quadro — que um
+            // quadro inicial pode nunca alcançar (superfície ainda por configurar). Um contador
+            // acertaria na máquina que testou e prenderia **zero** noutra, em silêncio, e o
+            // sintoma seria exactamente *"nenhuma forma pode ser deformada"*.
+            1 => {
+                let prontas = self
+                    .vec_bone_smoke_pend
+                    .as_ref()
+                    .is_some_and(|p| p.iter().all(|(id, _)| self.vec_entities.contains_key(id)));
+                if prontas {
+                    self.bone_smoke_bind();
+                }
+            }
             _ => {}
         }
     }
@@ -101,11 +112,16 @@ impl crate::App {
 
     /// O 2.º tempo: prende as DUAS primeiras. A folha fica solta de propósito.
     fn bone_smoke_bind(&mut self) {
-        self.vec_bone_smoke_step = 3;
+        self.vec_bone_smoke_step = 2;
         let Some(pecas) = self.vec_bone_smoke_pend.take() else {
             return;
         };
         let gfx = self.gfx.as_mut().expect("gfx");
+        eprintln!(
+            "[vec-bone-smoke] mapa de entidades = {} forma(s); cena = {} caminho(s)",
+            self.vec_entities.len(),
+            gfx.vec_scene.paths().len()
+        );
         let mut presas = 0;
         for (id, raiz) in pecas.iter().take(2) {
             presas += crate::skin_live::bind(
@@ -116,8 +132,33 @@ impl crate::App {
                 *raiz,
             );
         }
+        // ⭐⭐⭐ **O TENTÁCULO ABRE JÁ CURVADO** (report do Enio, 2026-09-06: *"nenhuma forma pode
+        // ser deformada"*). A medição mostrou o motor intacto — o que faltava era **ver** que ele
+        // funciona sem depender de acertar um gesto que ainda se está a aprender.
+        //
+        // ⚠️ É a lei do `CLAUDE.md` §5.0 levada a sério: *uma cena que só prova o motor DEPOIS de
+        // o artista acertar o gesto não prova nada quando o gesto falha* — e as duas falhas leem-se
+        // exactamente igual na tela.
+        if let Some((_, Some(raiz))) = pecas.get(1).copied() {
+            let mut e = raiz;
+            let mut n = 0;
+            // Deixa a raiz quieta e curva do 2.º em diante: a base ancorada faz a curva LER-SE.
+            while let Some(filhos) = gfx.sim.world().get::<ph2d_ecs::Children>(e) {
+                let Some(f) = filhos.iter().next() else {
+                    break;
+                };
+                e = *f;
+                n += 1;
+                if n >= 1
+                    && let Some(mut t) = gfx.sim.world_mut().get_mut::<ph2d_ecs::Transform>(e)
+                {
+                    t.rotation = 0.30; // LITERAL-PX-OK: ângulo do documento (rad), não medida de UI
+                }
+            }
+        }
         eprintln!(
-            "[vec-bone-smoke] {presas} forma(s) presa(s): o BRACO (3 ossos) e o TENTACULO (6). A \
+            "[vec-bone-smoke] {presas} forma(s) presa(s): o BRACO (3 ossos, RETO) e o TENTACULO \
+             (6, ja' CURVADO pela cena -- e' o motor a trabalhar sem gesto nenhum). A \
              FOLHA roxa tem esqueleto e NAO esta' presa -- seleccione-a e carregue em `Bind to \
              Skeleton`. Para POSAR, fique na ferramenta Bone: arraste o CORPO de um osso para o \
              girar, ou a BOLINHA da junta para o deslocar."

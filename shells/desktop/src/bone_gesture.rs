@@ -106,6 +106,59 @@ pub(crate) fn create(
     Some(e.to_bits())
 }
 
+/// **O que o press do modo Osso DECIDE** — a porta única, para a decisão ser observável.
+///
+/// ⚠️ **Ela nasceu de um report** (Enio, 2026-09-06: *"o bind não funciona"*): a decisão vivia
+/// dentro do `input_dispatch`, onde nenhum teste a alcança, e faltava-lhe metade — apontar uma
+/// forma nunca a SELECCIONAVA, então o botão *Bind* (que age sobre a selecção de formas) só sabia
+/// recusar. *Uma decisão que só existe dentro do dispatch é uma decisão que nenhum gate lê.*
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum BonePress {
+    /// Acertou um osso: selecciona-o e ARMA a pose (`joint` ⇒ desloca em vez de girar).
+    Grab { bone: u64, joint: bool },
+    /// Não acertou osso: marca a ORIGEM de um osso novo (já encaixada na ponta do pai, se perto) e
+    /// diz que FORMA estava sob o cursor — é essa a metade que o *Bind* precisa.
+    Start {
+        origin: [f64; 2],
+        pick: Option<ph2d_vec_scene::VecPathId>,
+    },
+}
+
+/// A decisão do press, sem tocar em nada.
+pub(crate) fn press(
+    sim: &SimWorld,
+    scene: &ph2d_vec_scene::VecScene,
+    pen: &ph2d_vec_edit::PenTool,
+    world: [f64; 2],
+    px_to_world: f64,
+    selected: Option<u64>,
+) -> BonePress {
+    if let Some(bone) = hit(sim, world, px_to_world) {
+        return BonePress::Grab {
+            bone,
+            joint: grabbed_the_joint(Some(sim), bone, world, px_to_world),
+        };
+    }
+    // ⭐⭐⭐ **O FILHO NASCE NA PONTA DO PAI, SEMPRE** — não "quando o press cai perto dela".
+    //
+    // ⛔ **O encaixe por PROXIMIDADE era inalcançável, e um gate apanhou-o**: a ponta está SOBRE o
+    // segmento do osso, então todo press dentro do raio de encaixe está também dentro do raio de
+    // acerto — o `hit` acima ganha sempre, e o ramo do encaixe nunca corria. *Um encaixe que exige
+    // pontaria dentro do alvo que ele quer evitar não é um encaixe.*
+    //
+    // ⇒ a lei passa a ser a do Spine e a do Moho: com um osso aceso, o arrasto seguinte cresce da
+    // PONTA dele para onde a mão for. Para começar um osso solto, basta que nenhum osso esteja
+    // aceso — e clicar numa forma (o ramo `pick` abaixo) faz exactamente isso.
+    let r = BONE_HIT_PX * px_to_world;
+    let origin = selected_bone(sim, selected)
+        .and_then(|b| tip_of(sim, b))
+        .unwrap_or(world);
+    BonePress::Start {
+        origin,
+        pick: pen.path_at(scene, world, r),
+    }
+}
+
 /// **O press caiu na JUNTA deste osso?** — a bolinha da raiz, dentro do mesmo raio das alças.
 ///
 /// ⚠️ **É a pergunta que escolhe o VERBO** (deslocar × girar), então ela mora ao lado da função que

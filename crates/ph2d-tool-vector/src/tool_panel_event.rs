@@ -235,3 +235,70 @@ impl VectorTool {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_editor_core::ids;
+
+    /// ⭐⭐⭐ **TODO MODO QUE TEM PILL CHEGA À FERRAMENTA — e todo modo diz se tem pill.**
+    ///
+    /// ⛔⛔ **O gate com este nome era um FANTASMA**: o `seam.rs` do painel cita-o num comentário
+    /// (*"Os pills têm seam na tabela de modos (`every_mode_button_reaches_the_tool`)"*) e ele
+    /// **não existia em ficheiro nenhum** — `grep` por ele devolvia só a citação. Entre *o clique
+    /// sai do painel* (que o `seam_*` prova) e *a ferramenta muda de modo* havia um passo sem
+    /// instrumento, e é nele que um `match` sem braço mora.
+    ///
+    /// ⚠️ **A metade que faz disto um CENSO é a segunda:** a tabela é confrontada com o
+    /// [`DrawMode::ALL`], então um modo novo **tem** de aparecer aqui — com pill, ou na lista dos
+    /// que deliberadamente não têm. *Uma tabela escrita à mão sem essa confrontação envelhece na
+    /// primeira feature.*
+    #[test]
+    fn every_mode_button_reaches_the_tool() {
+        let pills: &[(ph2d_a11y::NodeId, DrawMode)] = &[
+            (ids::VECTOR_MODE_SELECT, DrawMode::Select),
+            (ids::VECTOR_MODE_NODE, DrawMode::Node),
+            (ids::VECTOR_MODE_PEN, DrawMode::Pen),
+            (ids::VECTOR_MODE_PENCIL, DrawMode::Pencil),
+            (ids::VECTOR_MODE_SHAPE, DrawMode::Shape),
+            (ids::VECTOR_MODE_TEXT, DrawMode::Text),
+            (ids::VECTOR_MODE_BUILD, DrawMode::Build),
+            (ids::VECTOR_MODE_CONNECT, DrawMode::Connect),
+            (ids::VECTOR_MODE_PICKBLEND, DrawMode::PickBlend),
+            (ids::VECTOR_MODE_FILLET, DrawMode::Fillet),
+            (ids::VECTOR_MODE_CHAMFER, DrawMode::Chamfer),
+            (ids::VECTOR_MODE_WIDTH, DrawMode::Width),
+            (ids::VECTOR_MODE_TRIM, DrawMode::Trim),
+            (ids::VECTOR_MODE_BUCKET, DrawMode::Bucket),
+            (ids::VECTOR_MODE_CUT, DrawMode::Cut),
+            (ids::VECTOR_MODE_FRAME, DrawMode::Frame),
+            (ids::VECTOR_MODE_BONE, DrawMode::Bone),
+        ];
+        for &(id, esperado) in pills {
+            // ⚠️ Parte de OUTRO modo, senão o teste ficaria verde sobre um braço que não existe.
+            let mut tool = VectorTool {
+                mode: if esperado == DrawMode::Select {
+                    DrawMode::Pen
+                } else {
+                    DrawMode::Select
+                },
+                ..VectorTool::default()
+            };
+            tool.handle_panel_event(PanelEvent::Click(id));
+            assert_eq!(
+                tool.mode, esperado,
+                "o pill de {esperado:?} nao chegou a' ferramenta - ele pinta, acende sob o rato e \
+                 o modo nunca muda"
+            );
+        }
+        // ⛔ **O CENSO**: todo modo do vocabulário aparece na tabela acima. Um modo novo sem pill
+        // tem de se declarar aqui, e a lista de excepções é vazia de propósito — hoje todos têm.
+        for m in DrawMode::ALL {
+            assert!(
+                pills.iter().any(|(_, x)| x == m),
+                "o modo {m:?} nao esta' na tabela: ou ele tem pill (acrescente a linha) ou nao tem \
+                 (declare-o aqui, com o motivo)"
+            );
+        }
+    }
+}

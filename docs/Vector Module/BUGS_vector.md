@@ -7,7 +7,7 @@ volta. Espelha o [`docs/Painter/BUGS_painter.md`](../Painter/BUGS_painter.md).
 Regra deste arquivo: um bug só é considerado fechado quando existe um teste que **falha**
 se a correção for revertida. "Não reproduzi mais" não fecha nada.
 
-> **O que está VIVO aqui:** os **27 bugs estão TODOS fechados**, então o que vale hoje não é
+> **O que está VIVO aqui:** os **31 bugs estão TODOS fechados**, então o que vale hoje não é
 > nenhum deles — é o que eles ensinaram. Ficaram, nesta ordem: as **recusas com medição atrás**
 > (⛔ — não as reconstrua), os **padrões que se repetem** (leia ANTES de caçar o próximo) e o
 > **índice de uma linha por bug, com o MECANISMO**.
@@ -155,7 +155,51 @@ mutação que tira o teto da rota do painel derruba **três** gates.
     o rato e consumiam o gesto. ⇒ *uma família nova responde às perguntas dela num MÓDULO, e ganha
     um `seam_*` com gesto real cujo oráculo é o `EditorAction`, nunca o `WidgetEvent`.*
 
-## Índice dos 30 FECHADOS — o mecanismo de cada um, em uma linha
+## Índice dos 31 FECHADOS — o mecanismo de cada um, em uma linha
+
+### #31 — o ESQUELETO parecia morto, e o motor estava intacto ✅ 2026-09-06
+
+**Sintoma** (Enio): *"o bind não funciona e nenhuma forma pode ser deformada"*.
+
+**⭐ A medição veio ANTES da correcção, e mudou a pergunta.** Com o app a correr
+(`PH2D_BONE_LOG=1`, porta nova, irmã do `PH2D_MORPH_LOG`): **11 ossos · 3 formas no mapa · 2 formas
+PRESAS · o cozimento a rodar todo quadro**, e **todas as matrizes na identidade**. ⇒ o modelo, o
+`bind` e o cozimento nunca estiveram partidos: as poses estavam na identidade porque **nenhum osso
+se mexeu**. *Os dois sintomas do report são UM só, e é do GESTO.*
+
+**A causa do «bind não funciona»:** na ferramenta Osso, um press **nunca seleccionava uma forma**.
+O botão *Bind* age sobre a selecção de FORMAS, então ele era pintado, acendia sob o rato, o clique
+chegava ao barramento — e a shell recusava por não haver sujeito. ⛔ **A ferramenta não conseguia
+produzir o sujeito do próprio botão.**
+
+⚠️ **Nenhum gate desta linha o via, e a cegueira é estrutural:** o `seam_bone` prova que o clique
+**sai do painel**, e os gates da pele provam o que o `bind` faz **depois** de receber as formas.
+Entre os dois falta a pergunta *a ferramenta na mão consegue produzir esse sujeito?* — hoje ela é o
+`a_press_over_a_shape_in_the_bone_tool_picks_it_so_bind_has_a_subject`, sobre a porta
+`bone_gesture::press` (a decisão saiu do `input_dispatch`, onde teste nenhum a alcança).
+
+**E mais TRÊS defeitos que a caça revelou, cada um com o próprio mecanismo:**
+
+1. ⛔ **O encaixe na ponta do pai era INALCANÇÁVEL** — a ponta está *sobre* o segmento do osso,
+   então todo press dentro do raio de encaixe caía também dentro do raio de ACERTO e o ramo
+   `Grab` ganhava sempre. *Um encaixe que exige pontaria dentro do alvo que ele quer evitar não é
+   um encaixe.* A lei passa a ser a do Spine: **o filho cresce da ponta do pai, sempre**.
+2. ⛔ **A cena contava QUADROS para saber quando prender.** Prender exige a ENTIDADE de cada forma,
+   e quem a cria corre no MEIO do quadro — que um quadro inicial pode nunca alcançar. Um contador
+   acerta na máquina que se testou e prende **zero** noutra, em silêncio. Hoje ela pergunta o FATO.
+3. ⛔ **O `settle_origins` não conhecia a pele.** Ele exclui por lista os hosts que reescrevem
+   `verts` (forma viva, conector, blend, morph, envelope) — e uma forma presa **na identidade**
+   teria o pivô assentado no meio da **deformada**, que é um escritor por-quadro no documento.
+
+**E a cena passou a ABRIR com uma forma já curvada** (`CLAUDE.md` §5.0): *uma cena que só prova o
+motor depois de o artista acertar um gesto que está a aprender não prova nada quando o gesto falha
+— e as duas falhas leem-se igual na tela.*
+
+⚠️⚠️ **E o gate que o painel CITAVA não existia:** o `seam.rs` aponta
+`every_mode_button_reaches_the_tool` num comentário e ele não estava em ficheiro nenhum — entre *o
+clique sai do painel* e *a ferramenta muda de modo* não havia instrumento. Ele existe agora, como
+CENSO contra o `DrawMode::ALL`.
+
 
 ### #30 — o offset de CAD ARREDONDAVA as quinas ✅ 2026-09-06
 

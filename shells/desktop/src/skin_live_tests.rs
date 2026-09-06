@@ -316,3 +316,47 @@ fn the_drawn_bone_is_where_the_hierarchy_puts_it() {
         "a ponta do osso filho ficou em {b:?}"
     );
 }
+
+/// ⚠️ **SONDA da cena de smoke** (report do Enio, 2026-09-06: *"o bind não funciona e nenhuma forma
+/// pode ser deformada"*): a MESMA sequência do `vec_bone_smoke`, com as MESMAS portas.
+#[test]
+fn probe_the_smoke_sequence() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let id = scene.push_path(crate::build_smoke::shape(
+        ph2d_vec_scene::ShapeKind::RoundRect,
+        [-8.5, 2.0],
+        [-1.5, 3.0],
+        &[0.5],
+        [230, 170, 90],
+    ));
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    // A cadeia, como o smoke a faz: pela porta do GESTO, em coordenadas de MUNDO.
+    let mut pai: Option<Entity> = None;
+    let mut raiz = None;
+    for i in 0..3 {
+        let x = -8.2 + f64::from(i) * 2.1333;
+        let bits =
+            crate::bone_gesture::create(&mut sim, pai, [x, 2.5], [x + 2.1333, 2.5]).expect("osso");
+        pai = Some(Entity::from_bits(bits));
+        raiz = raiz.or(pai);
+    }
+    eprintln!(
+        "[probe] ossos = {:?}",
+        crate::skin_live::bone_segments(&sim)
+    );
+    let n = bind(&mut sim, &scene, &map, &[id], raiz);
+    eprintln!("[probe] bind devolveu {n}");
+    let antes = quadro(&sim, &mut scene, id);
+    // Posa o ÚLTIMO osso pela porta do gesto.
+    let ultimo = pai.expect("ultimo");
+    let ok = crate::bone_gesture::pose(&mut sim, ultimo, [-2.0, 6.0], false);
+    eprintln!("[probe] pose devolveu {ok}");
+    let depois = quadro(&sim, &mut scene, id);
+    eprintln!("[probe] desvio = {}", pior_desvio(&antes, &depois));
+    assert!(
+        pior_desvio(&antes, &depois) > 0.5,
+        "a forma NAO deformou - reproduzido o report"
+    );
+}

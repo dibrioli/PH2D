@@ -4408,53 +4408,53 @@ impl App {
                     // ⛔ Consome o press SEMPRE que a ferramenta está na mão, pela razão do Trim e
                     // do Balde: um clique no vazio não pode cair na cadeia de baixo e começar a
                     // desenhar uma forma.
+                    // ⭐⭐⭐ **O OSSO** (estudo 42 item 5, doc 47 §2.6): a DECISÃO vive na porta
+                    // única `bone_gesture::press` — aqui ficam só os efeitos. ⚠️ Foi tê-la dentro
+                    // deste ficheiro que escondeu a metade que faltava (report do Enio,
+                    // 2026-09-06: *"o bind não funciona"* — apontar uma forma nunca a
+                    // seleccionava, e o botão só sabia recusar).
+                    //
+                    // ⛔ Consome o press SEMPRE que a ferramenta está na mão, pela razão do Trim e
+                    // do Balde: um clique no vazio não pode cair na cadeia de baixo e começar a
+                    // desenhar uma forma.
                     if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Bone {
                         if let Some(world) = self.vec_world_at(self.last_pointer) {
                             let px = self.vec_px_to_world();
-                            let alvo = self
-                                .gfx
-                                .as_ref()
-                                .and_then(|g| crate::bone_gesture::hit(&g.sim, world, px));
-                            match alvo {
-                                Some(bits) => {
-                                    // ⭐ **E ARMA A POSE**: agarrar o osso é o gesto de o posar (o
-                                    // gizmo de sprite não serve — ver `bone_gesture::pose`). Pela
-                                    // JUNTA desloca; pelo CORPO gira.
-                                    let junta = crate::bone_gesture::grabbed_the_joint(
-                                        self.gfx.as_ref().map(|g| &g.sim),
-                                        bits,
-                                        world,
-                                        px,
-                                    );
-                                    self.vec_bone_pose = Some((bits, junta));
+                            let sel = self.selected_bone_bits();
+                            let decisao = self.gfx.as_ref().map(|g| {
+                                crate::bone_gesture::press(
+                                    &g.sim,
+                                    &g.vec_scene,
+                                    &self.vec_pen,
+                                    world,
+                                    px,
+                                    sel,
+                                )
+                            });
+                            match decisao {
+                                Some(crate::bone_gesture::BonePress::Grab { bone, joint }) => {
+                                    // Agarrar o osso é o gesto de o POSAR (o gizmo de sprite não
+                                    // serve — ver `bone_gesture::pose`), e também o que o
+                                    // selecciona: o pai do próximo osso é o que está aceso.
+                                    self.vec_bone_pose = Some((bone, joint));
                                     if let Some(gfx) = self.gfx.as_mut()
                                         && let Some(hero) = gfx.hero_screen.as_mut()
                                     {
-                                        hero.gizmo.selection = Some(bits);
+                                        hero.gizmo.selection = Some(bone);
                                         hero.gizmo.extra_selection.clear();
                                     }
                                 }
-                                None => {
-                                    // **Encaixa na PONTA do osso seleccionado** dentro do mesmo raio
-                                    // das alças: é o que faz uma cadeia sair contínua sem exigir
-                                    // pontaria. Fora dele, a origem é o ponto cru — um osso pode
-                                    // nascer deslocado do pai (um ombro que sai do meio da espinha).
-                                    let ponta = self.selected_bone_bits().and_then(|b| {
-                                        self.gfx
-                                            .as_ref()
-                                            .and_then(|g| crate::bone_gesture::tip_of(&g.sim, b))
-                                    });
-                                    let r = crate::bone_gesture::BONE_HIT_PX * px;
-                                    let origem = match ponta {
-                                        Some(t)
-                                            if (t[0] - world[0]).hypot(t[1] - world[1]) <= r =>
-                                        {
-                                            t
-                                        }
-                                        _ => world,
-                                    };
-                                    self.vec_bone_drag = Some(origem);
+                                Some(crate::bone_gesture::BonePress::Start { origin, pick }) => {
+                                    self.vec_bone_drag = Some(origin);
+                                    // ⚠️ **O clique que SELECCIONA e o arrasto que faz osso são o
+                                    // MESMO press**, e é de propósito: um clique curto (< 12 px)
+                                    // não faz osso nenhum, então apontar uma forma é só apontar —
+                                    // e é assim que o *Bind* passa a ter sujeito.
+                                    if let Some(pid) = pick {
+                                        self.vec_pen.select(Some(pid));
+                                    }
                                 }
+                                None => {}
                             }
                         }
                         return;

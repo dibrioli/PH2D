@@ -148,10 +148,31 @@ pub(crate) fn recook(sim: &SimWorld, scene: &mut VecScene) {
             ))
         })
         .collect();
+    // ⚠️ **O diagnóstico da família** (`PH2D_BONE_LOG=1`), irmão do `PH2D_MORPH_LOG`: ele responde
+    // as três perguntas que um report de *"não deforma"* não distingue — *há pele? há osso vivo? a
+    // matriz é a identidade?* Sem ele, as três produzem o MESMO sintoma na tela.
+    let log = std::env::var_os("PH2D_BONE_LOG").is_some();
+    if log {
+        eprintln!(
+            "[bone] peles={} ossos={}",
+            alvos.len(),
+            ossos_da_cena(sim).len()
+        );
+    }
     for (e, skin, id) in alvos {
         let Some(pele) = resolve(sim, &skin, e) else {
+            if log {
+                eprintln!(
+                    "[bone] pele de {id} NAO resolveu (ossos={})",
+                    skin.bones.len()
+                );
+            }
             continue;
         };
+        if log {
+            let m: Vec<[f64; 6]> = pele.bones().iter().map(|b| b.pose.0).collect();
+            eprintln!("[bone] {id}: {} osso(s), poses={m:?}", pele.len());
+        }
         // Uma fonte corrompida é PULADA (não há o que deformar, e melhor não escrever lixo) — a
         // forma fica com a última geometria boa. Mesma escolha do envelope.
         let Ok(mut src) = postcard::from_bytes::<VecPath>(&skin.source) else {

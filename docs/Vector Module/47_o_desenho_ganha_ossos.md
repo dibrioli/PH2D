@@ -192,6 +192,31 @@ the_radius_handle_policy`), e ele não pergunta se a escrita é boa — pergunta
 
 ---
 
+## §4-bis — ⛔ O QUE O 1.º SMOKE DEVOLVEU (report do Enio, 2026-09-06)
+
+> *"o bind não funciona e nenhuma forma pode ser deformada"*
+
+⭐ **A medição veio antes da correcção e mudou a pergunta.** Com o app a correr
+(`PH2D_BONE_LOG=1`): **11 ossos · 2 formas presas · o cozimento a rodar todo quadro · todas as
+matrizes na IDENTIDADE**. ⇒ o motor estava intacto; as matrizes eram a identidade porque **nenhum
+osso se mexeu**. *Os dois sintomas são UM só, e é do gesto.*
+
+⛔ **A causa: na ferramenta Osso, um press nunca SELECCIONAVA uma forma** — e o *Bind* age sobre a
+selecção de formas. A ferramenta não conseguia produzir o sujeito do próprio botão. ⚠️ E entre *o
+clique sai do painel* (que o `seam_bone` prova) e *o `bind` recebe as formas* (que os gates da pele
+provam) **não havia instrumento** para *a ferramenta consegue produzir esse sujeito?*.
+
+⚠️ Mais três, cada um com mecanismo próprio, no [bug #31](BUGS_vector.md): o encaixe na ponta era
+**inalcançável** (a ponta está dentro do raio de acerto do próprio osso ⇒ o `Grab` ganhava sempre) ·
+a cena contava **quadros** em vez de perguntar se as entidades existiam · e o `settle_origins` não
+conhecia a pele.
+
+⭐⭐ **E a cena passou a ABRIR com uma forma já curvada.** *Uma cena que só prova o motor depois de
+o artista acertar um gesto que está a aprender não prova nada quando o gesto falha* — as duas
+falhas leem-se igual na tela.
+
+---
+
 ## §5 — Aberto, e nomeado (⛔ não são esquecimentos)
 
 - **IK** — a matemática existe e está gateada em `ph2d-node-rig-{ik_2bone,fabrik,rubber_hose}`, mas

@@ -138,3 +138,82 @@ fn two_bones_never_share_a_name() {
     let b = create(&mut sim, None, [0.0, 5.0], [1.0, 5.0]).expect("b");
     assert_ne!(nome(&sim, a), nome(&sim, b));
 }
+
+/// ⭐⭐⭐ **UM CLIQUE SOBRE UMA FORMA, NA FERRAMENTA DE OSSO, SELECCIONA-A** — o report do Enio de
+/// 2026-09-06 (*"o bind não funciona"*), reduzido à decisão que o produzia.
+///
+/// ⛔ **O botão *Bind* age sobre a selecção de FORMAS**, e nesta ferramenta um press nunca
+/// seleccionava nada: a secção era pintada, o botão acendia, o clique chegava ao barramento — e a
+/// shell recusava por não haver sujeito. ⚠️ **Nenhum gate desta linha o via**: o `seam_bone` prova
+/// que o clique SAI do painel, e os gates da pele provam o que o `bind` faz **depois** de receber
+/// as formas. Entre os dois faltava *a ferramenta consegue produzir esse sujeito?*
+#[test]
+fn a_press_over_a_shape_in_the_bone_tool_picks_it_so_bind_has_a_subject() {
+    let mut sim = SimWorld::default();
+    let mut scene = ph2d_vec_scene::VecScene::new();
+    let id = scene.push_path(crate::build_smoke::shape(
+        ph2d_vec_scene::ShapeKind::Ellipse,
+        [2.0, -2.0],
+        [8.0, 2.0],
+        &[],
+        [180, 140, 220],
+    ));
+    let pen = ph2d_vec_edit::PenTool::default();
+    // No MIOLO da forma, longe de osso nenhum.
+    let d = press(&sim, &scene, &pen, [5.0, 0.0], 1.0, None);
+    assert_eq!(
+        d,
+        BonePress::Start {
+            origin: [5.0, 0.0],
+            pick: Some(id)
+        },
+        "apontar a forma tem de a devolver - sem isto o `Bind` nunca tem sujeito"
+    );
+    // E um press sobre um OSSO nao e' uma escolha de forma: e' agarrar o osso.
+    // ⚠️ O osso é LONGO de propósito: a `BONE_JOINT_R_PX` vale 6 unidades a este zoom, então num
+    // osso curto TODO ponto é a junta — e a fixtura mediria o verbo errado.
+    let osso = create(&mut sim, None, [3.0, 4.0], [27.0, 4.0]).expect("osso");
+    let g = press(&sim, &scene, &pen, [20.0, 4.0], 1.0, None);
+    assert_eq!(
+        g,
+        BonePress::Grab {
+            bone: osso,
+            joint: false
+        },
+        "sobre o CORPO de um osso o press agarra-o, nao aponta a forma"
+    );
+}
+
+/// ⭐⭐⭐ **COM UM OSSO ACESO, O PRÓXIMO NASCE NA PONTA DELE — arraste-se onde se arrastar.**
+///
+/// ⛔ **A 1.ª lei desta wave era um ENCAIXE POR PROXIMIDADE, e este gate mostrou-a INALCANÇÁVEL:**
+/// a ponta está sobre o segmento do osso, logo todo press dentro do raio de encaixe cai também
+/// dentro do raio de ACERTO — o ramo `Grab` ganhava sempre e o encaixe nunca corria. *Um encaixe
+/// que exige pontaria dentro do alvo que ele quer evitar não é um encaixe.*
+#[test]
+fn with_a_bone_selected_the_next_one_grows_from_its_tip() {
+    let mut sim = SimWorld::default();
+    let scene = ph2d_vec_scene::VecScene::new();
+    let pen = ph2d_vec_edit::PenTool::default();
+    let osso = create(&mut sim, None, [0.0, 0.0], [10.0, 0.0]).expect("osso");
+    // Longe do osso (senão o press agarra-o), e a origem sai na PONTA dele na mesma.
+    let d = press(&sim, &scene, &pen, [60.0, 40.0], 1.0, Some(osso));
+    assert_eq!(
+        d,
+        BonePress::Start {
+            origin: [10.0, 0.0],
+            pick: None
+        },
+        "o filho tem de crescer da ponta do pai"
+    );
+    // Sem osso aceso: um osso SOLTO nasce onde a mao pousou.
+    let f = press(&sim, &scene, &pen, [60.0, 40.0], 1.0, None);
+    assert_eq!(
+        f,
+        BonePress::Start {
+            origin: [60.0, 40.0],
+            pick: None
+        },
+        "sem pai, a origem e' o ponto apontado"
+    );
+}

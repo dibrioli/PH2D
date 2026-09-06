@@ -68,7 +68,12 @@ pub fn paint_dropdown_popover_in_viewport<T: Clone + PartialEq>(
             // Use the saturated `Accent` (alpha-255 by token) for
             // the selected row instead of `AccentSoft` (which is
             // intentionally semi-transparent for inline overlays).
-            fill_rounded_rect(scene, r, Radius::Sm.px(), opaque(ColorToken::Accent, theme));
+            fill_rounded_rect(
+                scene,
+                r,
+                crate::paint::frame_radius(theme, Radius::Sm.px()),
+                opaque(ColorToken::Accent, theme),
+            );
         }
         let fg = if is_selected {
             ColorToken::AccentFg
@@ -163,7 +168,12 @@ pub fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
         }
         let is_selected = dd.selected.as_ref() == Some(&opt.value);
         if is_selected {
-            fill_rounded_rect(scene, r, Radius::Sm.px(), opaque(ColorToken::Accent, theme));
+            fill_rounded_rect(
+                scene,
+                r,
+                crate::paint::frame_radius(theme, Radius::Sm.px()),
+                opaque(ColorToken::Accent, theme),
+            );
         }
         let fg = if is_selected {
             ColorToken::AccentFg

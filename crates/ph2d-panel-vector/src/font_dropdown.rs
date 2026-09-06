@@ -178,7 +178,12 @@ fn paint_rows(
             }
             let is_sel = i == sel;
             if is_sel {
-                fill_rounded_rect(ctx.scene, r, Radius::Sm.px(), accent);
+                fill_rounded_rect(
+                    ctx.scene,
+                    r,
+                    ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+                    accent,
+                );
             }
             let color = if is_sel { accent_fg } else { text1 };
             if pv.outline.elements().is_empty() {

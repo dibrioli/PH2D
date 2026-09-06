@@ -70,7 +70,12 @@ pub(super) fn paint(ctx: &mut PaintCtx, matrix: LayerMatrix, x: f32, y_in: f32) 
             } else {
                 ColorToken::Bg3
             };
-            fill_rounded_rect(ctx.scene, cell, Radius::Sm.px(), resolve(token, theme));
+            fill_rounded_rect(
+                ctx.scene,
+                cell,
+                ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+                resolve(token, theme),
+            );
             // The diagonal is a layer against ITSELF, and turning it off is a
             // real and useful thing (a layer whose members ignore each other),
             // so it is a cell like any other — just outlined, so the eye can

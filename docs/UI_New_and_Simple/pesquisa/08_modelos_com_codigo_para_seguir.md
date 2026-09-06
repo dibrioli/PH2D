@@ -563,6 +563,92 @@ NOME tem de perguntar o VALOR de cada casamento.*
   *«rótulo por cima de um bloco de botões»* que a B4 manda trocar por sub-painéis, e não temos
   controlo **segmentado** (vão zero) para o que é uma escolha entre irmãos.
 
+### 7.12 — ✅ WAVE 9 (2026-09-06): o CARTÃO substitui o RISCO — o modelo de painel do Blender
+
+**Ordem do dono**, com três telas e a palavra `CARD` escrita à mão sobre a do Blender:
+*«Gostei do modo Blender onde uma secção está dentro de um card. Uma subsecção está com o seu
+título dentro do card da secção mas o seu conteúdo fica dentro de outro card/container de cor
+diferente. Estude o Blender e traga isso para nós. Vamos eliminar os nossos divisores azuis.»*
+Mais quatro queixas na mesma mensagem: *«espaços grandes, irregulares»* · *«botões com quinas de
+raios altos»* · *«espaçamento entre divisores irregular»* · *«o nome de um efeito de áudio parece
+um botão»*.
+
+#### O modelo, do manual do Blender (CC-BY-SA)
+
+> *«The smallest organizational unit in the user interface is a panel. The panel header shows the
+> title of the panel. It is always visible. Some panels also include subpanels.»*
+> — `interface/window_system/tabs_panels.rst`
+
+E do HIG, a razão de o sub-painel ganhar ao risco:
+
+> *«When a label would help give context to multiple buttons, it often makes sense to organize
+> them in a subpanel. The use of subpanels is generally preferred over a single label button in a
+> row above a block of buttons.»* — `layouts.md`
+
+⭐⭐⭐ **A fronteira de uma secção é a BORDA DE UM CORPO, não uma linha entre dois vizinhos.** Um
+risco diz *«acabou»* e não diz *«do quê»*: com ele o espaço acima e o espaço abaixo não pertencem
+a ninguém — e é por isso que a folga em volta se lia irregular **por mais que a apertássemos**
+(waves 7 e 8 apertaram-na duas vezes e a queixa voltou). *Estávamos a afinar o número errado.*
+
+#### ⭐⭐ O mecanismo, e porque ele não re-dispõe uma única linha
+
+O nosso desenho é imediato: um pintor anda de cima para baixo e devolve o `y`. Um cartão tem de
+ser pintado **por baixo** de um conteúdo cuja altura só se conhece **depois** — o que parece pedir
+duas passagens, e duas passagens registariam o hit-index **duas vezes** (um defeito, não um custo).
+
+A saída é **estacionar a cena**: o corpo pinta-se numa cena vazia, os cartões vão para a cena real,
+e o corpo volta por cima com `Scene::append`. É lícito porque o `VectorScene` é um *newtype* de UM
+campo sobre a cena do Vello (a troca é **sem perdas**) e porque um `append` herda a pilha de
+recortes aberta — que é o que mantém a rolagem do painel a funcionar.
+
+⭐ **E o cartão é um RECUO PARA FORA do bloco já pintado**, nunca uma caixa que empurra o conteúdo
+para dentro: *nenhuma linha muda de sítio, logo nenhum gesto muda de alvo.* Foi isto que tornou a
+conversão possível sem tocar na disposição de uma única secção — o sítio de chamada passa de
+`y = separator(y, x, w, scene, theme)` para `y = cards.close(scene, x, w, y)`, a mesma forma.
+*O risco já marcava o fim de uma secção; ele só não sabia dizer o princípio.*
+
+**A escada de fundos**, que é o que diz «subsecção»: painel `panel-bg` (`#131313`) · cartão de
+secção `bg-1` (`#1f1f1f`) · cartão de **subsecção** `bg-2` (`#292929`). Degraus de 12 e 10 em 255
+— a medida que o dono aprovou em §7.7. O **título** de uma subsecção fica no cartão do pai e só o
+**conteúdo** desce para o cartão claro: é literalmente o que ele descreveu.
+
+⛔ **O tema CLÁSSICO não muda:** `PH2D_UI_NEW=0` continua a desenhar o risco, e a escolha vive
+**dentro da porta** — nenhum painel ganhou um `if` de tema.
+
+Porta: [`widget::section_cards`](../../../crates/ph2d-editor-core/src/widget/section_cards/mod.rs).
+Gates: 4, e o que paga o mecanismo mede a **CENA** (*«o corpo estacionado volta inteiro»*) — ⚠️ se
+o `append` deixasse cair o corpo, todo painel convertido ficaria **em branco** e nenhum gate de
+geometria o veria, porque os `Rect` continuariam certos. Mutação: **morta**.
+
+#### O que mais entrou
+
+- ⭐ **A linha de lista deixou de parecer um botão.** Lei do Godot Modern para o `selected` de uma
+  `Tree` (`theme_modern.cpp:709`): é o *flat pressed* com **`content_margin_all(0)`** — ele
+  **SANGRA** de ponta a ponta do corpo, sem recuo e sem moldura. O nosso realce tinha raio de chip
+  e a largura exacta do `Bypass` logo abaixo; hoje transborda a folga do cartão.
+- ⭐ **As quinas.** A porta do raio já existia (`visuals::radius` → 4 px, o `corner_radius` do
+  Godot Modern) e **25 pinturas passavam ao lado dela**, a 6 px. Passam agora. ⛔ Uma fica de
+  fora, declarada: um *post-it* tem cor de marcador fixa e o pintor dele não recebe tema.
+
+#### ⚠️ A mesma lição, pela segunda vez em duas waves: o censo linha-a-linha mente
+
+O primeiro censo do raio contou **26** desvios. Refeito com uma varredura que atravessa linhas,
+são **75** — a chamada que o dono apontou (o realce da corrente de efeitos) estava escrita em cinco
+linhas e era **invisível** à primeira. *Um censo que lê o fonte tem de saber a forma do que lê* —
+na wave 8 a forma escondida era uma **função**, aqui é uma **quebra de linha**.
+
+⏳ **E os outros 50 não foram convertidos de propósito:** metade deles é **canvas**, não cromo — a
+régua da timeline, as células do Flip, o gizmo 3D, as tiras de clip. O raio de um clip de timeline
+é desenho do documento, não do painel, e achatá-lo com o resto seria o erro simétrico. A partição
+cromo/canvas é uma wave própria, no molde do censo da moldura (§7.4–§7.8).
+
+#### ⏳ O que fica, e é o resto da ordem dele
+
+Está convertido **um** painel — o **Editor de Áudio**, que é o da foto. Os outros **23 riscos
+azuis** (Inspector: 11 · Painter Layers: 9 · Vector: 2 · Grid Snap: 1) esperam a mesma conversão,
+agora que a máquina está paga e provada. ⚠️ **A ordem é deliberada:** o mecanismo era o risco desta
+wave, e prová-lo no painel que ele fotografou antes de tocar em oito crates é a ordem honesta.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

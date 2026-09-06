@@ -65,6 +65,9 @@ pub fn paint_one_note(
     }
     let rgba = HIGHLIGHTER_RGBA[note.color_idx.min(4) as usize];
     let bg = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: user-color — HIGHLIGHTER_RGBA palette (note background)
+    // ⛔ **A ÚNICA fill que fica FORA da porta do raio, e é declarada:** um post-it não é cromo —
+    // ele tem cor de marcador fixa (`HIGHLIGHTER_RGBA`) e este pintor não recebe tema nenhum.
+    // *Achatá-lo com o resto seria achatar a única superfície do app que é de propósito um objeto.*
     fill_rounded_rect(scene, r, Radius::Md.px(), bg);
 
     let dark = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0xFF); // LITERAL-COLOR-OK: note-text — dark glyph fixed across themes

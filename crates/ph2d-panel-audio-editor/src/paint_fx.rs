@@ -323,10 +323,18 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
         };
         let row = Rect::new(x, y, w, stage_h);
         if i == sel {
+            // ⭐⭐ **Uma linha de LISTA escolhida não é um botão premido — e a diferença é o
+            //    RECUO.** Enio, 2026-09-06: *«o nome de um efeito de áudio parece um botão»*, e
+            //    parecia: o realce tinha raio de chip (6 px) e a largura exacta do `Bypass` logo
+            //    abaixo. A lei do Godot Modern para o `selected` de uma `Tree` é o *flat pressed*
+            //    com **`content_margin_all(0)`** (`theme_modern.cpp:709`) — ele **SANGRA** de
+            //    ponta a ponta do corpo, sem recuo e sem moldura. Aqui isso é transbordar a folga
+            //    do cartão que envolve a secção.
+            let bleed = Spacing::Xs.px();
             fill_rounded_rect(
                 ctx.scene,
-                row,
-                Radius::Sm.px(),
+                Rect::new(x - bleed, y, w + bleed * 2.0, stage_h),
+                ph2d_editor_core::paint::frame_radius(ctx.theme, Radius::Sm.px()),
                 resolve(ColorToken::Bg3, ctx.theme),
             );
         }

@@ -111,7 +111,12 @@ pub(crate) fn paint_toggle(
                 |c| VelloColor::from_rgba8(c.r, c.g, c.b, c.a), // LITERAL-COLOR-OK: token-bridge
             )
     };
-    fill_rounded_rect(scene, rect, Radius::Sm.px(), bg);
+    fill_rounded_rect(
+        scene,
+        rect,
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+        bg,
+    );
     paint_text_centered(
         text_system,
         scene,

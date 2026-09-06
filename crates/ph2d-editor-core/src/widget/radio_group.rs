@@ -162,7 +162,12 @@ pub fn paint_radio_group<T: Clone + PartialEq>(
         } else {
             ColorToken::Bg1
         };
-        fill_rounded_rect(scene, inset, Radius::Sm.px(), resolve(token, theme));
+        fill_rounded_rect(
+            scene,
+            inset,
+            crate::paint::frame_radius(theme, Radius::Sm.px()),
+            resolve(token, theme),
+        );
     }
 }
 

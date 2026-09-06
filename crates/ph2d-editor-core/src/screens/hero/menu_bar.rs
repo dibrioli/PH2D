@@ -323,7 +323,12 @@ pub fn paint_menu_bar(
             _ => None,
         };
         if let Some(bg) = bg {
-            fill_rounded_rect(scene, r, Radius::Sm.px(), resolve(bg, theme));
+            fill_rounded_rect(
+                scene,
+                r,
+                crate::paint::frame_radius(theme, Radius::Sm.px()),
+                resolve(bg, theme),
+            );
         }
         let fg = if is_open {
             ColorToken::Accent

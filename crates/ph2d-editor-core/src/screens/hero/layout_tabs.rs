@@ -131,7 +131,12 @@ pub fn paint(
             None
         };
         if let Some(bg) = bg {
-            fill_rounded_rect(scene, r, Radius::Sm.px(), resolve(bg, theme));
+            fill_rounded_rect(
+                scene,
+                r,
+                crate::paint::frame_radius(theme, Radius::Sm.px()),
+                resolve(bg, theme),
+            );
         }
         let fg = if is_on {
             ColorToken::Accent

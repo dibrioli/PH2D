@@ -119,7 +119,12 @@ pub(crate) fn paint_selection_box(
     for right in [false, true] {
         let bar_x = grip_bar_x(right, x_lo, x_hi, view.time_x, view.right);
         let bar = Rect::new(bar_x, rows.y, HANDLE_W, rows.h);
-        fill_rounded_rect(ctx.scene, bar, Radius::Xs.px(), accent);
+        fill_rounded_rect(
+            ctx.scene,
+            bar,
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px()),
+            accent,
+        );
         let id = if right {
             ids::TIMELINE_SCALE_HANDLE_R
         } else {

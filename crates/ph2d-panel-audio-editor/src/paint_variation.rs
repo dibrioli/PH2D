@@ -263,7 +263,12 @@ fn paint_var_list(
         } else {
             ColorToken::Text1
         };
-        fill_rounded_rect(scene, rect, Radius::Sm.px(), resolve(bg, theme));
+        fill_rounded_rect(
+            scene,
+            rect,
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+            resolve(bg, theme),
+        );
         paint_text(
             text_system,
             scene,

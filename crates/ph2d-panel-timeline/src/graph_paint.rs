@@ -147,7 +147,12 @@ fn paint_height_grip(
     } else {
         ColorToken::Border
     };
-    fill_rounded_rect(ctx.scene, bar, Radius::Xs.px(), resolve(tok, theme));
+    fill_rounded_rect(
+        ctx.scene,
+        bar,
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px()),
+        resolve(tok, theme),
+    );
 
     let id = ids::timeline_graph_resize_id(target);
     ctx.host.store_mut().register(

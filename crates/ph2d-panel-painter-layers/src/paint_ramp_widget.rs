@@ -248,7 +248,12 @@ fn icon_button(
             ColorToken::Text1,
         )
     };
-    fill_rounded_rect(ctx.scene, r, Radius::Sm.px(), bg);
+    fill_rounded_rect(
+        ctx.scene,
+        r,
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+        bg,
+    );
     paint_text_centered(
         ctx.text_system,
         ctx.scene,

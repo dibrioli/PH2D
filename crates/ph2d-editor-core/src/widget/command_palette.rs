@@ -431,7 +431,12 @@ fn paint_card(
             }
             Placed::Pill { rect, id, label } => {
                 let r = Rect::new(ox + rect.x, dy + rect.y, rect.w, rect.h);
-                fill_rounded_rect(scene, r, Radius::Sm.px(), resolve(ColorToken::Bg3, theme));
+                fill_rounded_rect(
+                    scene,
+                    r,
+                    crate::paint::frame_radius(theme, Radius::Sm.px()),
+                    resolve(ColorToken::Bg3, theme),
+                );
                 dot(scene, r.x + PILL_PAD_X + DOT_R, r.y + r.h * 0.5, cat_color);
                 paint_text(
                     ts,

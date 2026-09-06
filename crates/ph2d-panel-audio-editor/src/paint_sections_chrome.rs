@@ -86,11 +86,18 @@ pub(super) fn end_fold(
     fold.finish(store, scene, hits, y)
 }
 
-/// The rule between two sections — `paint_section_separator`, the SAME one the Sprite
-/// Inspector and the Widget Gallery draw: a 1 px accent-coloured line, not the neutral
-/// `Divider`. The Gallery is the single source of truth for chrome (DIRETRIZ §5.2), and
-/// a panel that invents its own line is a panel that looks like it belongs to a
-/// different app (Enio, 2026-07-12).
-pub(super) fn separator(y: f32, x: f32, w: f32, scene: &mut VectorScene, theme: Theme) -> f32 {
-    paint_section_separator(scene, theme, x, w, y)
+/// **A fronteira entre duas secções** — hoje a borda de um CARTÃO, não um risco.
+///
+/// Enio, 2026-09-06: *«vamos eliminar os nossos divisores azuis»*, depois de pôr o Blender ao
+/// lado. ⚠️ **A porta é a mesma para as duas famílias**: no clássico ela ainda desenha o risco
+/// de sempre — ver [`ph2d_editor_core::widget::section_cards`]. Este painel continua a não ter
+/// um `if` de tema, que era o que a nota anterior aqui defendia e continua a valer.
+pub(super) fn separator(
+    y: f32,
+    x: f32,
+    w: f32,
+    scene: &mut VectorScene,
+    cards: &mut SectionCards,
+) -> f32 {
+    cards.close(scene, x, w, y)
 }

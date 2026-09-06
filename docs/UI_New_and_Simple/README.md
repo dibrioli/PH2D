@@ -131,6 +131,20 @@ alcance estavam escondidas atrás de uma função, invisíveis à varredura que 
 (uma delas servia o Inspector inteiro, a 6 px contra os 4 do resto do app). Hoje há uma porta,
 99 sítios passam por ela, e um portão de duas metades impede a oitava.
 
+⭐⭐⭐ **E a wave 9 (06/09) trocou o RISCO pelo CARTÃO** — o modelo de painel do Blender, pedido pelo
+dono com a palavra `CARD` escrita à mão sobre a tela dele: *«vamos eliminar os nossos divisores
+azuis»*. Uma secção passa a ser **um corpo dentro de um cartão**, e uma subsecção tem o título no
+cartão do pai e o conteúdo num cartão **mais claro** — a escada `#131313 → #1f1f1f → #292929`.
+⭐⭐ **A folga em volta do risco lia-se irregular porque estávamos a afinar o número errado:** um
+risco diz *«acabou»* e não diz *«do quê»*, então o espaço acima e abaixo dele não pertence a
+ninguém — duas waves apertaram-no e a queixa voltou. ⚠️ **O cartão é um recuo para FORA do
+conteúdo já pintado** (a cena é estacionada e devolvida por cima), logo **nenhuma linha mudou de
+sítio e nenhum gesto mudou de alvo**. Entraram também a lei do Godot para a linha de lista
+escolhida (ela **sangra**, e por isso deixa de parecer um botão) e os **25 raios** que passavam ao
+lado da porta dos 4 px. ⏳ Converteu-se **o Editor de Áudio**, que é o painel da foto; os outros 23
+riscos seguem, com a máquina já paga. Mecanismo:
+[`pesquisa/08 §7.12`](pesquisa/08_modelos_com_codigo_para_seguir.md).
+
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
 cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·
 esbatimento do rótulo e inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis, animado) —

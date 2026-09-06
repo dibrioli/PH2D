@@ -348,7 +348,12 @@ pub(crate) fn button(
         enabled,
         theme,
     );
-    fill_rounded_rect(scene, rect, Radius::Sm.px(), bg);
+    fill_rounded_rect(
+        scene,
+        rect,
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+        bg,
+    );
     paint_text_centered(
         text_system,
         scene,
@@ -420,7 +425,12 @@ pub(crate) fn toggle(
 ) {
     let (rest, hot, press, fg) = toggle_tokens(active, enabled);
     let bg = action_bg(rest, hot, press, hit_index.visual(id), enabled, theme);
-    fill_rounded_rect(scene, rect, Radius::Sm.px(), bg);
+    fill_rounded_rect(
+        scene,
+        rect,
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+        bg,
+    );
     paint_text_centered(
         text_system,
         scene,

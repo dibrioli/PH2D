@@ -34,6 +34,16 @@ use std::path::{Path, PathBuf};
 //    `#[cfg(test)]`, porque já está dentro de um). *A enumeração apodrece; a lei não.*
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
+    // ⚠️ **O cartão de secção não tem semântica própria, e a ausência é a decisão** (2026-09-06):
+    // ele é o COMPOSITOR que põe o corpo de uma secção dentro de um cartão (o modelo de painel do
+    // Blender). Não pinta controlo nenhum e não regista alvo nenhum — quem tem nome, papel e foco
+    // é o cabeçalho da secção (`section_header`, que os tem) e cada controlo lá dentro. Dar um nó
+    // ao cartão poria um alvo focável a envolver TODOS os controlos da secção, que é exactamente
+    // o ruído que um leitor de ecrã não deve receber.
+    (
+        "section_cards/mod.rs",
+        "compositor sem semantica: pinta o fundo de uma seccao; o nome e o foco vivem no cabecalho e nos controlos",
+    ),
     // ⛔⛔ **Os dois passavam por COINCIDÊNCIA, e o corte do tecto de LOC revelou-o** (2026-08-30):
     // o que os fazia casar era `use ph2d_a11y::NodeId` — a importação da ESCADA DE IDS —, não uma
     // linha de a11y. Ao mover a escada para o irmão, o `scrollbar.rs` ficou sem a importação e o

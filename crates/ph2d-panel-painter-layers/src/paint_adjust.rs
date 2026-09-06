@@ -295,7 +295,12 @@ fn paint_channel_mixer(
         } else {
             (ColorToken::Bg2, ColorToken::Text2)
         };
-        fill_rounded_rect(ctx.scene, trect, Radius::Sm.px(), resolve(bg, theme));
+        fill_rounded_rect(
+            ctx.scene,
+            trect,
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+            resolve(bg, theme),
+        );
         paint_text_centered(
             ctx.text_system,
             ctx.scene,
@@ -416,7 +421,12 @@ fn paint_segment_rack(
         } else {
             (ColorToken::Bg2, ColorToken::Text2)
         };
-        fill_rounded_rect(ctx.scene, srect, Radius::Sm.px(), resolve(bg, theme));
+        fill_rounded_rect(
+            ctx.scene,
+            srect,
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+            resolve(bg, theme),
+        );
         paint_text_centered(
             ctx.text_system,
             ctx.scene,
@@ -467,7 +477,12 @@ fn paint_selective_color(
         } else {
             (ColorToken::Bg2, ColorToken::Text2)
         };
-        fill_rounded_rect(ctx.scene, trect, Radius::Sm.px(), resolve(bg, theme));
+        fill_rounded_rect(
+            ctx.scene,
+            trect,
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+            resolve(bg, theme),
+        );
         paint_text_centered(
             ctx.text_system,
             ctx.scene,

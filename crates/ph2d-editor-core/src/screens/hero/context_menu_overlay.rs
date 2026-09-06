@@ -300,7 +300,12 @@ pub fn paint_context_menu_overlay(
         let r = Rect::new(row_x, rect.y + pad_y() + ROW_H * i as f32, row_w, ROW_H);
         hit_index.register(*id, r);
         if Some(*id) == store.hot_id() {
-            fill_rounded_rect(scene, r, Radius::Sm.px(), resolve(ColorToken::Bg2, theme));
+            fill_rounded_rect(
+                scene,
+                r,
+                crate::paint::frame_radius(theme, Radius::Sm.px()),
+                resolve(ColorToken::Bg2, theme),
+            );
         }
         let pad_x = Spacing::Md.px();
         let icon_size = SECTION_GAP_PX;
@@ -484,7 +489,12 @@ fn paint_scene_list(
             let r = Rect::new(inner_x, rows_y0 + i as f32 * row_h, inner_w, row_h);
             hit_index.register(row_id, r);
             if Some(row_id) == store.hot_id() {
-                fill_rounded_rect(scene, r, Radius::Sm.px(), resolve(ColorToken::Bg2, theme));
+                fill_rounded_rect(
+                    scene,
+                    r,
+                    crate::paint::frame_radius(theme, Radius::Sm.px()),
+                    resolve(ColorToken::Bg2, theme),
+                );
             }
             // Highlight the currently-active scene with an accent
             // bullet so the user sees "this is what's loaded".

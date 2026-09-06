@@ -25,6 +25,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (file slug under `widget/`, one-line reason).
 const WIDGET_OPT_OUT: &[(&str, &str)] = &[
     (
+        "section_cards",
+        "not a widget: it is the COMPOSER that puts a section's body inside a card (the Blender panel/subpanel model, 2026-09-06) — it paints no control of its own, and a gallery section for it would show the widgets it wraps, which the gallery already shows; the card itself is proved by `widget::section_cards::tests`, which measures the SCENE",
+    ),
+    (
         "radial_menu",
         "chrome-internal: a full-screen pie summoned by a HELD key and dismissed on release, with no idle visual — same reason as command_palette/modal/context_menu; a gallery section would show a menu nobody is holding",
     ),

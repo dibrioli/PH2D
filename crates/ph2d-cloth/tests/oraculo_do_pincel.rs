@@ -1029,6 +1029,11 @@ const BARRA_PARIDADE: f64 = 0.13;
 /// Os traços que a lei REPRODUZ (espec §14 gate 15).
 const PARIDADE: [&str; VERDE_N] = [
     "esfera_arrastar_radial_dinamica",
+    // ⭐⭐ Os DOIS que a lei do CENTRO DA ÁREA (§4.4) trouxe em 06/09: o plano de
+    // queda deixou de passar pelo cursor e passou a passar pelo centro da área,
+    // que é a média das posições PUXADAS PARA O CURSOR. Os quatro traços de
+    // falloff de plano melhoraram e mais nenhum se mexeu.
+    "plano_agarrar_plano_local",
     "plano_agarrar_radial_local",
     "plano_agarrar_radial_local_1passo",
     "plano_agarrar_radial_local_24passos",
@@ -1057,13 +1062,14 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_arrastar_radial_local_origem",
     "plano_arrastar_radial_local_pino",
     "plano_arrastar_radial_local_plast05",
+    "plano_empurrar_plano_local",
     "plano_empurrar_radial_local_1passo",
     "plano_gancho_radial_local",
     "plano_gancho_radial_local_24passos",
     "plano_gancho_radial_local_amort06",
     "plano_inflar_radial_local_1passo",
 ];
-const VERDE_N: usize = 29;
+const VERDE_N: usize = 31;
 
 /// Os traços AINDA por explicar, com o valor MEDIDO em 2026-09-06 ao lado.
 ///
@@ -1082,17 +1088,15 @@ const ABERTOS: [(&str, f64); ABERTO_N] = [
     ("esfera_expandir_radial_dinamica", 0.557),
     ("esfera_gancho_radial_dinamica", 0.245),
     ("esfera_inflar_radial_dinamica", 0.378),
-    ("plano_agarrar_plano_local", 0.180),
     ("plano_apertar_linha_radial_local", 1.024),
     ("plano_apertar_linha_radial_local_origem", 0.263),
-    ("plano_apertar_ponto_plano_local", 0.613),
+    ("plano_apertar_ponto_plano_local", 0.546),
     ("plano_apertar_ponto_radial_local", 1.380),
     ("plano_apertar_ponto_radial_local_origem", 1.079),
-    ("plano_arrastar_plano_local", 0.233),
+    ("plano_arrastar_plano_local", 0.134),
     ("plano_arrastar_radial_dinamica", 0.181),
     ("plano_arrastar_radial_global", 0.175),
     ("plano_arrastar_radial_global_origem", 0.301),
-    ("plano_empurrar_plano_local", 0.215),
     ("plano_empurrar_radial_local", 0.214),
     // ⚠️ Os DOIS traços por passo que o especificador entregou em 06/09 para o
     // Q12. Os dois divergem a partir do passo 3, e no empurrar o PICO está
@@ -1107,7 +1111,7 @@ const ABERTOS: [(&str, f64); ABERTO_N] = [
     ("plano_gancho_radial_local_2passos_origem", 0.420),
     ("plano_inflar_radial_local", 0.253),
 ];
-const ABERTO_N: usize = 27;
+const ABERTO_N: usize = 25;
 
 /// A folga de regressão sobre o valor medido de um traço ABERTO.
 const FOLGA_ABERTO: f64 = 1.25;

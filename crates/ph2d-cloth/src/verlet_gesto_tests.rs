@@ -287,3 +287,85 @@ fn a_normal_da_area_pesa_o_vertice_pela_distancia() {
          -- a fixtura nao separa as duas leis"
     );
 }
+
+/// ⭐⭐⭐ **O CENTRO DA ÁREA não é o centroide do disco: cada vértice entra na
+/// média já PUXADO PARA O CURSOR** (espec §4.4).
+///
+/// ```text
+/// contribuição(v) = c + (p_v − c) · (1 − a_v)      a_v = 3p² − 2p³
+/// ```
+///
+/// ⇒ o peso `1 − a` vale **zero no cursor** e cresce para a borda: um vértice
+/// colado ao cursor é quase inteiramente **substituído** por ele, e um vértice
+/// na borda entra quase como ele próprio. *É a mistura das duas metades que
+/// separa esta lei de um centroide, e nenhuma delas sozinha o faz.*
+///
+/// ⚠️⚠️ **Este gate existe porque a medição de 06/09 respondeu à pergunta
+/// errada:** «o plano pelo cursor reproduz o alvo e o plano pelo centro da área
+/// afasta-o» foi medido com um CENTROIDE (`empurrar 0,944 → 1,250`), e o alvo
+/// não usa um centroide. O plano pelo cursor é a aproximação de **primeira
+/// ordem** desta lei — é por isso que ele passava quase.
+#[test]
+fn o_centro_da_area_puxa_cada_vertice_para_o_cursor() {
+    let (raio, cursor, vista) = (1.0, [0.0, 0.0, 0.0], [0.0, 0.0, 1.0]);
+    let frente = [0.0, 0.0, 1.0];
+    let alcance = raio * crate::verlet_gesto::RAIO_DA_NORMAL;
+
+    // (a) COLADO ao cursor (`d = 0,1·alcance` ⇒ `a = 0,972`): o vértice é
+    // substituído pelo cursor a 97,2 %. Um centroide leria `0,05`.
+    let pos = vec![[0.05, 0.0, 0.0]];
+    let (_, c) =
+        crate::verlet_gesto::normal_e_centro_da_area(&pos, &[frente], &[0], cursor, raio, vista);
+    assert!(
+        c[0] < 0.05 * 0.05,
+        "o centro da area leu a POSICAO do vertice colado ao cursor ({c:?}) -- \
+         um centroide daria 0,05 e a lei da' 0,0014"
+    );
+
+    // (b) NA BORDA do disco (`d = 0,98·alcance` ⇒ `a = 0,0012`): ele entra
+    // quase como ele próprio. ⛔ Sem esta metade, devolver sempre o cursor
+    // passaria em (a).
+    let borda = 0.98 * alcance;
+    let pos = vec![[borda, 0.0, 0.0]];
+    let (_, c) =
+        crate::verlet_gesto::normal_e_centro_da_area(&pos, &[frente], &[0], cursor, raio, vista);
+    assert!(
+        (c[0] - borda).abs() < borda * 0.01,
+        "o vertice da BORDA devia entrar quase como ele proprio: {c:?} contra {borda}"
+    );
+
+    // (c) ⭐ O centro sai do MESMO balde que a normal (§4.2-bis (4)), e não de
+    // um desempate proprio: o de tras esta' mais perto e mesmo assim nao conta.
+    let pos = vec![[0.45, 0.0, 0.0], [0.05, 0.0, 0.0]];
+    let normais = vec![frente, [0.0, 0.0, -1.0]];
+    let (_, c) =
+        crate::verlet_gesto::normal_e_centro_da_area(&pos, &normais, &[0, 1], cursor, raio, vista);
+    assert!(
+        (c[0] - 0.4374).abs() < 1e-4,
+        "o centro misturou os dois baldes: {c:?} -- so' o da frente conta, e ele \
+         da' 0,4374 (a media dos dois daria 0,2194)"
+    );
+}
+
+/// ⭐ **Sem vértice nenhum no disco, o centro da área é o CURSOR** (espec §4.4)
+/// — e não a origem, nem o último centro, nem `NaN`.
+#[test]
+fn sem_vertice_no_disco_o_centro_da_area_e_o_cursor() {
+    let (raio, vista) = (1.0, [0.0, 0.0, 1.0]);
+    let cursor = [0.7, -0.2, 0.3];
+    // O único vértice está muito além do meio-raio.
+    let pos = vec![[9.0, 9.0, 9.0]];
+    let (n, c) = crate::verlet_gesto::normal_e_centro_da_area(
+        &pos,
+        &[[0.0, 0.0, 1.0]],
+        &[0],
+        cursor,
+        raio,
+        vista,
+    );
+    assert_eq!(n, [0.0; 3], "sem vertice no disco a normal e' nula");
+    assert_eq!(
+        c, cursor,
+        "sem vertice no disco o centro da area tem de ser o CURSOR, nao {c:?}"
+    );
+}

@@ -247,12 +247,56 @@ pub fn normal_da_area(
     raio: f64,
     vista: V3,
 ) -> V3 {
+    normal_e_centro_da_area(posicoes, normais, dentro, cursor, raio, vista).0
+}
+
+/// **A NORMAL e o CENTRO DA ÁREA, da MESMA varredura** (espec §4.2-bis e §4.4).
+///
+/// ⭐⭐⭐ **O centro da área NÃO é o centroide do disco.** Cada vértice entra na
+/// média já **puxado para o cursor**:
+///
+/// ```text
+/// contribuição(v) = c + (p_v − c) · (1 − a_v)      a_v = 3p² − 2p³
+/// ```
+///
+/// ⇒ o peso `1 − a` vale **zero no cursor** e cresce para a borda do disco: quanto
+/// mais perto do cursor um vértice está, mais completamente ele é **substituído**
+/// por ele. Numa folha em repouso o centro da área é praticamente o cursor; numa
+/// folha já cavada ele fica muito mais perto do cursor do que o centroide.
+///
+/// ⚠️⚠️ **É por isso que a medição de 06/09 — «o plano pelo cursor reproduz o alvo
+/// e o plano pelo centro da área afasta-o» — não refuta esta lei: o que foi medido
+/// foi um CENTROIDE, e o alvo não usa um centroide** (`empurrar 0,944 → 1,250`,
+/// `arrastar 0,233 → 0,716`). *Uma recusa medida responde a UMA pergunta, e aquela
+/// respondeu «o centroide não serve», não «o centro da área não serve».* O plano
+/// pelo cursor é a aproximação de **primeira ordem** desta lei, e é por isso que
+/// ele passava quase.
+///
+/// ⛔ **O balde é escolhido UMA vez, pela regra da normal** (§4.2-bis (4)) — as
+/// duas grandezas saem do mesmo balde, e não de dois desempates independentes.
+/// Sem balde nenhum, o centro é o **cursor** e a normal é o vector nulo.
+///
+/// ⚠️ **Só o plano de queda lê o centro da área.** A origem do referencial local
+/// é o cursor (§4.4), e a localização da área *Local* (§2.1) é outra coisa ainda
+/// — essa fica no pen-down durante todo o traço, e mora em
+/// [`PincelTecido::localizacao_da_area`].
+#[must_use]
+pub fn normal_e_centro_da_area(
+    posicoes: &[V3],
+    normais: &[V3],
+    dentro: &[u32],
+    cursor: V3,
+    raio: f64,
+    vista: V3,
+) -> (V3, V3) {
     let alcance = raio * RAIO_DA_NORMAL;
     let mut baldes = [[0.0f64; 3]; 2];
-    let mut tem = [false; 2];
+    let mut centros = [[0.0f64; 3]; 2];
+    let mut contas = [0usize; 2];
     for &v in dentro {
         let vi = v as usize;
-        let d = dist(posicoes[vi], cursor);
+        let p = posicoes[vi];
+        let d = dist(p, cursor);
         if d > alcance {
             continue;
         }
@@ -261,9 +305,10 @@ pub fn normal_da_area(
         let t = (1.0 - d / alcance.max(1e-30)).clamp(0.0, 1.0);
         let w = t * t * (3.0 - 2.0 * t);
         let frente = usize::from(n[0] * vista[0] + n[1] * vista[1] + n[2] * vista[2] <= 0.0);
-        tem[frente] = true;
+        contas[frente] += 1;
         for c in 0..3 {
             baldes[frente][c] += n[c] * w;
+            centros[frente][c] += cursor[c] + (p[c] - cursor[c]) * (1.0 - w);
         }
     }
     // ⚠️⚠️ **A metade «soma não-nula» da regra é carregada pelo [`unit`], e não
@@ -280,11 +325,13 @@ pub fn normal_da_area(
     // *Uma linha que nenhuma mutação mata é redundante ou falta-lhe um gate; esta
     // era redundante, e a prova está no gate `sem_balde_valido_a_normal_da_area_e_nula`.*
     for b in 0..2 {
-        if tem[b] {
-            return unit(baldes[b]);
+        if contas[b] > 0 {
+            let k = contas[b] as f64;
+            let c = [centros[b][0] / k, centros[b][1] / k, centros[b][2] / k];
+            return (unit(baldes[b]), c);
         }
     }
-    [0.0; 3]
+    ([0.0; 3], cursor)
 }
 
 /// **O pincel de tecido de UM traço**: a sessão, o centro da área e a simulação.
@@ -324,9 +371,16 @@ impl PincelTecido {
         }
     }
 
-    /// O centro e o raio da ÁREA neste passo (espec §2.1).
+    /// A LOCALIZAÇÃO e o raio da área simulada neste passo (espec §2.1).
+    ///
+    /// ⛔ **Isto não é o «centro da área» do §4.4**, que é outra grandeza com
+    /// outro consumidor: esta fica no pen-down durante todo o traço na área
+    /// *Local*, e aquela é reavaliada a cada passo à volta do cursor e só o plano
+    /// de queda a lê ([`normal_e_centro_da_area`]). *Chamar às duas «o centro da
+    /// área» foi o que fez a primeira medição desta linha responder à pergunta
+    /// errada.*
     #[must_use]
-    pub fn centro_da_area(&self, cursor: V3) -> (V3, f64) {
+    pub fn localizacao_da_area(&self, cursor: V3) -> (V3, f64) {
         match self.pincel.area {
             Area::Local | Area::Global => (self.inicio, self.raio0),
             Area::Dinamica => (cursor, self.pincel.raio),
@@ -346,7 +400,7 @@ impl PincelTecido {
         if self.pincel.area == Area::Global {
             return 1.0;
         }
-        let (c, r) = self.centro_da_area(cursor);
+        let (c, r) = self.localizacao_da_area(cursor);
         banda(p, c, r, self.pincel.limite * escala, self.pincel.banda)
     }
 
@@ -368,7 +422,7 @@ impl PincelTecido {
         debug_assert_eq!(n, self.sim.len());
         let cursor = passo.cursor;
         // fase 1 — a área deste passo, e as restrições de quem entra nela
-        let (c, r) = self.centro_da_area(cursor);
+        let (c, r) = self.localizacao_da_area(cursor);
         let alcance = r * (1.0 + self.pincel.limite);
         self.dentro.clear();
         for (v, p) in posicoes.iter().enumerate() {
@@ -497,13 +551,24 @@ impl PincelTecido {
         self.w(p, cursor) * self.pincel.curva.peso(d_remap, r)
     }
 
-    /// A distância que a curva lê (espec §4.1): esférica ao cursor, ou ao PLANO
-    /// de falloff (normal = direcção do movimento, pelo centro da área).
-    fn distancia(&self, p: V3, cursor: V3, delta_u: V3) -> f64 {
+    /// A distância que a curva lê (espec §4.1): esférica ao **centro da queda**
+    /// do modo, ou ao **PLANO de falloff** — que passa pelo **centro da área**
+    /// (§4.4) com normal `δ̂`.
+    ///
+    /// ⚠️ **Os dois pontos são grandezas diferentes e chegam separados de
+    /// propósito:** o centro da queda muda com o modo (o cursor · a localização
+    /// inicial no Agarrar · o cursor do passo ANTERIOR no Gancho), e o ponto do
+    /// plano é sempre o centro da área do passo. *Enquanto os dois eram o mesmo
+    /// argumento, o plano passava pelo cursor — a aproximação de primeira ordem.*
+    fn distancia(&self, p: V3, centro: V3, centro_area: V3, delta_u: V3) -> f64 {
         match self.pincel.falloff_forca {
-            FalloffForca::Radial => dist(p, cursor),
+            FalloffForca::Radial => dist(p, centro),
             FalloffForca::Plano => {
-                let q = [p[0] - cursor[0], p[1] - cursor[1], p[2] - cursor[2]];
+                let q = [
+                    p[0] - centro_area[0],
+                    p[1] - centro_area[1],
+                    p[2] - centro_area[2],
+                ];
                 (q[0] * delta_u[0] + q[1] * delta_u[1] + q[2] * delta_u[2]).abs()
             }
         }
@@ -517,11 +582,26 @@ impl PincelTecido {
         let alpha = self.pincel.forca * self.pincel.forca;
         let flip = self.pincel.flip;
         let pressao = passo.pressao.clamp(0.0, 1.0);
-        let n_area = normal_da_area(
+        // ⚠️ Uma varredura, duas grandezas (espec §4.2-bis e §4.4): o mesmo disco
+        // de meio raio, os mesmos dois baldes, o mesmo desempate.
+        //
+        // ⚠️⚠️ **O disco é centrado na LOCALIZAÇÃO DO CURSOR do modo** (espec
+        // §4.2-bis (3), «distância ao cursor»), e no Agarrar essa localização
+        // **fica no ponto do pen-down durante todo o traço** (§4.3) — é isso que
+        // faz o Grab pegar num conjunto FIXO de vértices. Medido em 06/09: com o
+        // disco a seguir o cursor que anda, o `plano_agarrar_plano_local` sobe de
+        // `0,180` para `1,094`, porque o plano de queda passa a derivar por baixo
+        // de uma pegada que é medida na malha de PARTIDA.
+        let c_cursor = if self.pincel.modo == Modo::Agarrar {
+            self.inicio
+        } else {
+            cursor
+        };
+        let (n_area, c_area) = normal_e_centro_da_area(
             posicoes,
             passo.normais,
             &self.dentro,
-            cursor,
+            c_cursor,
             r,
             passo.vista,
         );
@@ -550,7 +630,7 @@ impl PincelTecido {
                 for &v in &dentro {
                     let vi = v as usize;
                     let p0 = self.sim.repouso[vi];
-                    let d = self.distancia(p0, self.inicio, delta_u);
+                    let d = self.distancia(p0, self.inicio, c_area, delta_u);
                     let f = self.factor(p0, self.inicio, self.raio0, d) * self.pincel.forca;
                     let m = 1.0 - self.mascara_de(vi);
                     let f = f * m;
@@ -594,7 +674,7 @@ impl PincelTecido {
                 for &v in &dentro {
                     let vi = v as usize;
                     let p = posicoes[vi];
-                    let d = self.distancia(p, centro, delta_u);
+                    let d = self.distancia(p, centro, c_area, delta_u);
                     let f = self.factor(p, centro, r, d) * b * (1.0 - self.mascara_de(vi));
                     self.sim.ancora[vi] = [
                         p[0] + passo.delta[0] * f,
@@ -609,7 +689,7 @@ impl PincelTecido {
                 for &v in &dentro {
                     let vi = v as usize;
                     let p = posicoes[vi];
-                    let d = self.distancia(p, cursor, delta_u);
+                    let d = self.distancia(p, cursor, c_area, delta_u);
                     let f = self.factor(p, cursor, r, d) * b * (1.0 - self.mascara_de(vi));
                     self.sim.tau[vi] += 0.01 * f;
                 }
@@ -623,7 +703,7 @@ impl PincelTecido {
                 for &v in &dentro {
                     let vi = v as usize;
                     let p = posicoes[vi];
-                    let d = self.distancia(p, cursor, delta_u);
+                    let d = self.distancia(p, cursor, c_area, delta_u);
                     let f = self.factor(p, cursor, r, d) * b * (1.0 - self.mascara_de(vi));
                     if f == 0.0 {
                         continue;

@@ -201,12 +201,6 @@ impl ModuleTruth {
 /// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
 /// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
 pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 18] = [
-    // ⭐ O navegador de Assets (a porta era só o chip legado; ver `LEGACY_PILL_BUTTONS`). O nome
-    //    é o `PANEL_ID` do `ph2d-panel-asset-browser`.
-    (
-        ids::TOPBAR_RIGHT_ASSETS,
-        ModuleTruth::Panel("asset_browser"),
-    ),
     (ids::TOPBAR_VECTOR, ModuleTruth::Tool("vector")),
     (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
     (ids::TOPBAR_FLIP, ModuleTruth::Tool("flip")),

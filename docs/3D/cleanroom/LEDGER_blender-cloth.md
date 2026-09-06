@@ -363,7 +363,7 @@ leitura do fonte + medição; as que mexiam na espec foram emendadas (§3.1, §2
   certa, a seguinte com o centro na origem em 30/30 corridas e zero em 2; a auto-verificação por
   bbox só discrimina em corridas com o disco inteiro excitado). Os fixtures *Local* anteriores foram
   auditados: corridas completas todas centradas em `x = −0,305` (o pen-down) — ver tabela abaixo.
-  `f`/`φ` não são observáveis sem recompilar (checkout esparso); entregou-se o rastreio de sete vértices.
+  `f`/`φ` não são observáveis sem recompilar (checkout esparso); entregou-se o rastreio de sete vértices. Commit: `2807337c6`.
   | traço por passo | N | prova `k=N` ≡ inteira | movidos | máx |
   |---|---|---|---|---|
   | `plano_arrastar_radial_local_origem` | 12 | `0.000000` | 2145 | `0.329649` |

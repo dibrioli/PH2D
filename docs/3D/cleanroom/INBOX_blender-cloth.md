@@ -230,3 +230,66 @@ correcção dentro do passo, não sobre quanto.
 varreduras sobre a lista simples**. As medições que eu tinha feito com `PH2D_VARREDURAS=10` são,
 bit a bit, o que a construção dupla vai produzir — o knob que eu media e o mecanismo que o E achou
 são a mesma coisa, e é por isso que as duas leituras coincidiram.
+
+## Q11 — o APERTO DE PONTO: um vértice só, e nenhuma ordem o cura (2026-09-06, sessão 1246816c)
+
+O Q8 e o Q9 estão implementados e medidos (`29c453ee5`, `d823c67af`, `0bac8cc04`), com os gates 15,
+16, 17 e 18 escritos e provados por mutação (`72c35a25a`). A lei da referência é o caminho de
+**omissão** do produto desde hoje. O que sobra em primeiro lugar é o **aperto de ponto**.
+
+⭐ **O defeito está localizado num VÉRTICE.** No `plano_apertar_ponto_radial_local_origem`, no 2.º
+passo simulado (`k = 3`), a vizinhança inteira concorda e um único vértice discorda:
+
+| grandeza | nosso | oráculo |
+|---|---|---|
+| `1R` (um raio ao lado) | `0,02102` | `0,02096` |
+| `2R` | `0,00396` | `0,00393` |
+| `max` da malha | `0,1840` | `0,1842` |
+| distância do PICO ao cursor | `0,32R` | `0,31R` |
+| **`c0` (o vértice do pen-down)** | **`0,0975`** | **`0,1842`** |
+
+⇒ *Os dois têm um pico do mesmo tamanho, à mesma distância do cursor; no alvo ele é o vértice do
+pen-down e em nós é o vizinho dele.* Fora do plano não se mexe nada nos dois (`u_z ≡ 0`).
+
+O vector do vértice do pen-down, com o cursor a andar em `+x` a `0,0545` por passo:
+
+| k | `u` nosso | `u` do oráculo | cursor − repouso |
+|---|---|---|---|
+| 2 | `[0,0935, 0, 0]` | `[0,0935, 0, 0]` | `[0,0545, 0, 0]` |
+| 3 | `[0,0872, −0,0437, 0]` | `[0,1734, −0,0622, 0]` | `[0,1091, 0, 0]` |
+
+⇒ **no passo 3 o vértice do alvo recebe outro impulso inteiro em `+x` e ULTRAPASSA o cursor; o nosso
+avança zero** (recua `0,006`). ⚠️ **E o mesmo vértice, no mesmo passo, com o mesmo `f` e a mesma
+direcção, no modo ARRASTAR recebe o impulso** (`0,0935 → 0,1661`, oráculo `0,1676`) — a nossa
+maquinaria de força e de integração está certa; o que muda é a resposta COLECTIVA do aperto.
+
+⛔ **E não é a ordem de resolução** (a hipótese óbvia, porque o aperto puxa tudo para um ponto e o
+Gauss-Seidel não comuta). Medido em quatro ordens nossas, `err_max / max_oráculo`:
+
+| ordem | arrastar local | aperto de ponto | aperto de linha |
+|---|---|---|---|
+| **directa (a nossa)** | **`0,071`** | `1,380` | `1,024` |
+| inversa | `0,273` | `0,797` | `0,629` |
+| por célula `0,05` | `0,607` | `0,833` | `1,673` |
+| por célula `0,20` | `0,374` | `1,259` | `0,748` |
+
+*O arrasto é `4×` a `8×` melhor na nossa ordem que em qualquer outra — a nossa ordem é a do alvo. E
+NENHUMA ordem põe os apertos abaixo de `0,6`.* ⇒ há lei por descobrir, não ruído de ordenação.
+
+⭐ E o aperto de LINHA é o mesmo defeito mais fraco: o `_origem` dele lê `0,263` e a curva inteira
+bate (Q10 acima), enquanto o `plano_apertar_linha_radial_local` — o mesmo gesto com o pen-down em
+`x = −0,305` — lê `1,024`. *A única diferença entre os dois é onde o pen-down cai na grelha, isto é,
+qual vértice fica mais perto do cursor.*
+
+### As perguntas
+
+- **Q11.1** — Nos dois modos de aperto, o vértice que está sobre o cursor (distância ≈ `0`) recebe
+  força? A direcção «do vértice para o cursor» degenera ali. O alvo trata a direcção nula de alguma
+  maneira própria — devolve zero, salta o vértice, usa um mínimo?
+- **Q11.2** — A força do aperto é aplicada a partir da posição do vértice ANTES da relaxação deste
+  passo, ou depois? (A espec §5.2 diz que a relaxação corre antes da integração; a pergunta é se o
+  `f` e o `u` do aperto são avaliados no mesmo instante que os dos modos de arrasto.)
+- **Q11.3** — Há no aperto algum limite que o arrasto não tem — um tecto de deslocamento por passo,
+  um corte quando o vértice ultrapassa o cursor, um amortecimento próprio?
+
+Contrato de retorno igual ao do Q8.

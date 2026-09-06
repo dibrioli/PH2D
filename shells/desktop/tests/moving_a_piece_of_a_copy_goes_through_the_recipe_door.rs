@@ -39,10 +39,19 @@ fn code_of(rel: &str) -> String {
 /// **Mutação que deve sangrar:** apagar a guarda, ou pô-la depois do `insert(ChildOf(p))`.
 #[test]
 fn the_drag_asks_the_door_before_changing_the_parent() {
-    let body = code_of("hero_intents/hierarchy.rs");
+    // ⚠️⚠️ **A janela é o CORPO do gesto, e não o ficheiro** — a 1.ª redacção procurava o
+    // `is_a_recipe_given_piece` em qualquer sítio, e quando a lei saiu para a porta
+    // `refuses_reparent` (acima nesta ficheiro) o censo ficou **VÁCUO**: a mutação que apagava a
+    // chamada dentro do gesto **sobreviveu**, porque o nome continuava a aparecer no ficheiro.
+    // *Um censo que casa um nome onde ele passou a viver deixa de medir quem o invoca.*
+    let file = code_of("hero_intents/hierarchy.rs");
+    let at = file
+        .find("pub(crate) fn drain_reparent(")
+        .expect("o gesto mudou de nome — reancore este censo");
+    let body = &file[at..];
     let ask = body
-        .find("is_a_recipe_given_piece")
-        .expect("o arrasto deixou de perguntar se a peca veio da receita — ele desfaz-se sozinho");
+        .find("refuses_reparent(sim, dragged, new_parent_entity)")
+        .expect("o arrasto deixou de consultar a porta da recusa — ele desfaz-se sozinho");
     let write = body
         .find("entry.insert(ph2d_ecs::ChildOf(p))")
         .expect("a escrita do pai novo");
@@ -64,14 +73,23 @@ fn the_drag_asks_the_door_before_changing_the_parent() {
 /// **Mutação que deve sangrar:** tirar o `!same_parent` da condição.
 #[test]
 fn reordering_between_siblings_is_still_allowed() {
-    let body = code_of("hero_intents/hierarchy.rs");
-    let guard = body
-        .find("if !same_parent && crate::instance_verbs::is_a_recipe_given_piece(")
-        .expect("a guarda tem de perguntar as DUAS coisas");
-    let same = body.find("let same_parent =").expect("a comparacao de pai");
+    let file = code_of("hero_intents/hierarchy.rs");
+    let at = file
+        .find("pub(crate) fn refuses_reparent(")
+        .expect("a porta da recusa mudou de nome — reancore este censo");
+    let end = file[at..]
+        .find("\npub(crate) fn ")
+        .map_or(file.len(), |n| at + n);
+    let door = &file[at..end];
     assert!(
-        same < guard,
-        "o `same_parent` e' calculado depois de ser usado — ou deixou de existir"
+        door.contains("!same_parent"),
+        "a porta deixou de exigir que o PAI mude — ela passa a recusar tambem o reordenar entre \
+         irmaos, que e' uma excepcao legitima da copia:\n{door}"
+    );
+    assert!(
+        door.contains("is_a_recipe_given_piece("),
+        "a porta deixou de perguntar se a receita DEU a peca — ela passa a recusar tambem o que o \
+         artista pendurou lá dentro:\n{door}"
     );
 }
 

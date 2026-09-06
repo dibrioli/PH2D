@@ -140,9 +140,17 @@ impl crate::App {
             "[instance smoke 7] => nos TRES robos da tela o braco laranja sobe do corpo para a \
              cabeca, ao mesmo tempo"
         );
+        // ⛔⛔⛔ **O PASSO 2 pedia um gesto que a guarda NÃO apanha** (report do Enio, 2026-09-06:
+        // *«a mensagem da recusa não apareceu»*). Ele mandava arrastar o braço da cópia para a
+        // **cabeça** — mas depois do passo 1 ele **já está lá**, e arrastar uma peça para o pai onde
+        // ela já está é o *mesmo pai*, que a guarda deixa passar de propósito (é um reordenar).
+        //
+        // ⇒ o passo pede agora o movimento que MUDA o pai: pôr o braço de volta no corpo. *Um passo
+        // que demonstra uma recusa tem de pedir um gesto que a recusa apanhe — e o estado deixado
+        // pelo passo anterior decide isso.*
         println!(
-            "[instance smoke 7] PASSO 2 (na LISTA): tente fazer o mesmo dentro de um robo \
-             NUMERADO — arraste o 'Arm' dele para o 'Head' dele"
+            "[instance smoke 7] PASSO 2 (na LISTA): agora tente DESFAZER isso num robo NUMERADO — \
+             arraste o 'Arm' dele de VOLTA para o 'Body' dele"
         );
         println!(
             "[instance smoke 7] => o app recusa e diz onde fazer: o lugar de uma peca e' do \

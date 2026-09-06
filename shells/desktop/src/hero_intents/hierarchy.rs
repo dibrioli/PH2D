@@ -19,6 +19,26 @@ use ph2d_ecs::SimWorld;
 /// só desenha enquanto aquela receita está seleccionada. Mudo, esse gesto lê-se como *«o meu objecto
 /// desapareceu»* — e o artista não tem como saber que aquela linha era uma biblioteca. ⇒ **essa**
 /// fala. *Um reparent silencioso está certo enquanto o resultado for visível.*
+/// ⭐⭐⭐ **ESTE ARRASTO É RECUSADO?** — a guarda do lugar de uma peça de cópia (F5.12).
+///
+/// ⚠️ **Porta separada, e não uma condição dentro do gesto:** o [`drain_reparent`] recebe o
+/// `HeroLive` (a ponte nó ↔ entidade), que um teste não monta sem uma janela. Enquanto a lei vivia
+/// lá dentro, **qual dos gestos ela apanha** não era mensurável — e foi exactamente isso que o
+/// report de 2026-09-06 expôs.
+///
+/// ⚠️ **Só quando o PAI muda.** Reordenar entre irmãos continua a valer: a ordem viaja no
+/// `SiblingOrder`, que **é** componente registado e por isso vira excepção da cópia como qualquer
+/// outro valor (há gate: `reordering_a_piece_inside_a_copy_sticks_as_an_override`). *Duas perguntas
+/// diferentes sobre o mesmo arrasto, e só uma delas é sobre a forma.*
+pub(crate) fn refuses_reparent(
+    sim: &mut SimWorld,
+    dragged: ph2d_ecs::Entity,
+    new_parent: Option<ph2d_ecs::Entity>,
+) -> bool {
+    let same_parent = sim.world().get::<ph2d_ecs::ChildOf>(dragged).map(|c| c.0) == new_parent;
+    !same_parent && crate::instance_verbs::is_a_recipe_given_piece(sim, dragged)
+}
+
 pub(crate) fn drain_reparent(
     intent: ph2d_editor::screens::hero::HierReparentIntent,
     live: &crate::HeroLive,
@@ -87,9 +107,14 @@ pub(crate) fn drain_reparent(
     //
     // ⚠️ **E a voz diz ONDE fazer** — a receita alcança-se pelo *Edit Prefab* da biblioteca. Uma
     // recusa muda deixa o artista a repetir o mesmo gesto.
-    let same_parent =
-        sim.world().get::<ph2d_ecs::ChildOf>(dragged).map(|c| c.0) == new_parent_entity;
-    if !same_parent && crate::instance_verbs::is_a_recipe_given_piece(sim, dragged) {
+    //
+    // ⚠️⚠️ **A DECISÃO saiu para uma porta** (`refuses_reparent`) — report do Enio, 2026-09-06:
+    // *«a mensagem da recusa não apareceu»*. Ela estava certa e o **passo do smoke** é que pedia um
+    // gesto que ela não apanha (depois de a receita mover a peça, arrastá-la para o pai onde ela já
+    // está é *o mesmo pai*, e isso é um reordenar). Enquanto a condição vivia dentro desta função —
+    // que recebe o `HeroLive`, e por isso nenhum teste a monta — **não havia como medir qual dos
+    // dois gestos ela apanha.* Agora há.
+    if refuses_reparent(sim, dragged, new_parent_entity) {
         toasts.push(ph2d_editor::Toast::warning(
             "That piece's place comes from the component \u{2014} open it with \u{201c}Edit \
              Prefab\u{201d} to move it there",

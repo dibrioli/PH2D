@@ -197,3 +197,76 @@ fn every_row_the_step_names_is_actually_in_the_list() {
         );
     }
 }
+
+/// ⛔⛔⛔ **O PASSO QUE DEMONSTRA UMA RECUSA TEM DE PEDIR UM GESTO QUE A RECUSA APANHE.**
+///
+/// Report do Enio (2026-09-06): *«a mensagem da recusa não apareceu»*. A guarda estava certa — o
+/// passo é que pedia o gesto errado: ele mandava arrastar o braço da cópia para a **cabeça**, e
+/// depois do passo 1 ele **já lá está**. Arrastar uma peça para o pai onde ela já está é o *mesmo
+/// pai*, e a guarda deixa passar de propósito (é um reordenar, e a ordem é excepção da cópia).
+///
+/// ⚠️ **As duas metades são o gate, e a segunda é a que o report descreve:** o gesto que o passo
+/// pede agora é apanhado; o que ele pedia antes **não é**. Sem a segunda, este gate ficaria verde
+/// sobre o texto antigo.
+///
+/// (Mutação: tirar o `!same_parent` do `refuses_reparent` ⇒ RED na 2.ª metade.)
+#[test]
+fn the_step_that_shows_the_refusal_asks_for_a_gesture_the_guard_catches() {
+    let (mut sim, r, master, copies) = build();
+    let mut echo = MasterEcho::default();
+    pass(&mut sim, &r, &mut echo);
+
+    // PASSO 1 — a receita move o braço para a cabeça, e as cópias seguem.
+    let m_head = piece(&sim, master, "Head");
+    let m_arm = piece(&sim, master, "Arm");
+    sim.world_mut().entity_mut(m_arm).insert(ChildOf(m_head));
+    pass(&mut sim, &r, &mut echo);
+
+    let c = copies[1];
+    let (arm, body, head) = (
+        piece(&sim, c, "Arm"),
+        piece(&sim, c, "Body"),
+        piece(&sim, c, "Head"),
+    );
+    assert_eq!(
+        sim.world().get::<ChildOf>(arm).map(|x| x.0),
+        Some(head),
+        "a fixtura tem de partir do estado que o PASSO 1 deixa"
+    );
+    assert!(
+        crate::hero_intents::hierarchy::refuses_reparent(&mut sim, arm, Some(body)),
+        "o gesto que o PASSO 2 pede nao e' recusado — o smoke promete uma mensagem que nao vem"
+    );
+    assert!(
+        !crate::hero_intents::hierarchy::refuses_reparent(&mut sim, arm, Some(head)),
+        "o gesto que o PASSO 2 PEDIA antes seria recusado — entao o report do dono nao teria \
+         causa, e este gate esta' a medir outra coisa"
+    );
+}
+
+/// ⛔⛔ **E o TEXTO do passo tem de nomear a peça que a guarda apanha.**
+///
+/// O gate acima mede a **lei** (qual arrasto é recusado); este mede a **instrução**, e sem ele o
+/// texto pode voltar a pedir o gesto que passa — que foi exactamente o report de 2026-09-06.
+/// *Duas metades: a lei e a frase que a manda exercer.*
+///
+/// ⚠️ A régua é derivada do estado que o PASSO 1 deixa: depois dele o braço está na **cabeça**,
+/// logo o alvo que MUDA o pai é o **corpo**.
+#[test]
+fn the_printed_steps_name_the_piece_the_guard_catches() {
+    let src = include_str!("instance_move_smoke.rs");
+    let at = src
+        .find("PASSO 2 (na LISTA)")
+        .expect("a cena perdeu o passo da recusa");
+    let step = &src[at..at + 220.min(src.len() - at)];
+    assert!(
+        step.contains("'Body'"),
+        "o passo da recusa deixou de nomear o 'Body' — depois do PASSO 1 o braco esta' na cabeca, \
+         e so' o corpo MUDA o pai:\n{step}"
+    );
+    assert!(
+        !step.contains("para o 'Head'"),
+        "o passo da recusa voltou a mandar arrastar para a cabeca, onde a peca ja' esta' — a \
+         guarda deixa passar (e' o mesmo pai) e a mensagem nao aparece:\n{step}"
+    );
+}

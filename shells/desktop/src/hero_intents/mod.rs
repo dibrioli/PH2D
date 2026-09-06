@@ -23,7 +23,10 @@
 //! surface unchanged; `hero_intents::drain_X` paths still resolve
 //! via the re-exports below.
 
-mod hierarchy;
+/// ⚠️ **`pub(crate)` e não privado**: a porta `refuses_reparent` é chamada pelos gates pelo
+/// caminho do módulo. Um `pub(crate) use` dela avisaria de import não usado no build normal —
+/// *o alcance do teste não é um consumidor do produto.*
+pub(crate) mod hierarchy;
 mod image_edit;
 mod sprite_merge;
 pub(crate) mod texture_edit;

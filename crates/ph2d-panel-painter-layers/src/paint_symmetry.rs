@@ -146,7 +146,7 @@ fn paint_axis_segment(
             .hit_index_mut()
             .register(*id, rg.option_rect(rect, i));
     }
-    y + ROW_H_PX + Spacing::Sm.px()
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// The radial **segment-count** slider (`3..=12`, integer). Canonical slider-with-chip; the `0..1`
@@ -213,5 +213,5 @@ fn paint_pick_button(
         paint_button(&btn, rect, scene, text_system, theme);
     }
     ctx.host.hit_index_mut().register(id, rect);
-    y + ROW_H_PX + Spacing::Sm.px()
+    y + ph2d_tokens::row_pitch_px()
 }

@@ -232,7 +232,7 @@ fn anchor_editor(
         theme,
     );
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, name_dot);
-    cur_y += ROW_H_PX + Spacing::Sm.px();
+    cur_y += ph2d_tokens::row_pitch_px();
 
     cur_y = field_row(
         scene,

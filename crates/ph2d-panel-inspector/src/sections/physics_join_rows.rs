@@ -88,7 +88,7 @@ pub(crate) fn paint_join_gesture(
         });
     paint_button(&btn, rect, scene, text_system, theme);
     hit_index.register(ids::INSP_PHYS_JOIN_DRAW, rect);
-    yy += ROW_H_PX + Spacing::Sm.px();
+    yy += ph2d_tokens::row_pitch_px();
 
     if join_count >= 2 {
         let label = join_button_label(join_count);
@@ -98,7 +98,7 @@ pub(crate) fn paint_join_gesture(
             .visual(store.button_visual(ids::INSP_PHYS_JOIN));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PHYS_JOIN, rect);
-        yy += ROW_H_PX + Spacing::Sm.px();
+        yy += ph2d_tokens::row_pitch_px();
     }
     // **A TERCEIRA rota: o rig sai da HIERARQUIA** (W-Rig). Oferecida só quando há
     // uma aresta pai→filho a ligar — `rig_parts == 0` é a resposta inteira, e um
@@ -111,7 +111,7 @@ pub(crate) fn paint_join_gesture(
             .visual(store.button_visual(ids::INSP_PHYS_RIG));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PHYS_RIG, rect);
-        yy += ROW_H_PX + Spacing::Sm.px();
+        yy += ph2d_tokens::row_pitch_px();
     }
     yy
 }

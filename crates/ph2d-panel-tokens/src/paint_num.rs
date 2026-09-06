@@ -70,7 +70,7 @@ pub(crate) fn paint_numeric_family(
         w,
         resolve(ColorToken::Text2, theme),
     );
-    y += ROW_H_PX + Spacing::Xs.px();
+    y += ph2d_tokens::row_pitch_px();
 
     for (row, &token) in NumToken::ALL.iter().enumerate() {
         y = paint_num_row(
@@ -199,7 +199,7 @@ fn paint_num_row(
             y,
         );
     }
-    let mut y = y + ROW_H_PX + Spacing::Xxs.px();
+    let mut y = y + ph2d_tokens::row_pitch_px();
 
     // ⚠️ O campo é uma SEGUNDA linha, de largura cheia, e não um editor apertado no lugar do chip:
     // `{spacing.md} * 2` não cabe em 56 px, e um campo que corta o que o artista escreveu é um
@@ -277,7 +277,7 @@ fn paint_formula_field(
         theme,
     );
     ctx.host.hit_index_mut().register(id, rect);
-    rect.y + ROW_H_PX + Spacing::Xxs.px()
+    rect.y + ph2d_tokens::row_pitch_px()
 }
 
 /// Pinta o chip de px e **espelha** o valor efetivo nele enquanto ninguém o está a editar.

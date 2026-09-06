@@ -30,7 +30,7 @@ pub(crate) fn card_frame(
     let pad = Spacing::Sm.px();
     let font = TypeToken::Sm.px();
     let title_h = font + Spacing::Sm.px();
-    let row_adv = ROW_H_PX + Spacing::Xs.px();
+    let row_adv = ph2d_tokens::row_pitch_px();
     let card_h = pad + title_h + n_rows as f32 * row_adv + pad;
     let card = Rect::new(x, y, content_w, card_h);
     // ⭐ Raio e moldura pela porta do TEMA: o cartão é plano num tema moderno.
@@ -107,5 +107,5 @@ pub(crate) fn card_row(
         step,
         decimals,
     );
-    y + ROW_H_PX + Spacing::Xs.px()
+    y + ph2d_tokens::row_pitch_px()
 }

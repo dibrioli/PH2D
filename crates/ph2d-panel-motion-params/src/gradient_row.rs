@@ -215,7 +215,7 @@ pub(crate) fn paint_gradient_row(
     }
 
     // ── Gradient bar: adjacent vertical strips filled with eval(t) ──
-    let by0 = y + ROW_H_PX + gap;
+    let by0 = y + ph2d_tokens::row_pitch_px();
     let bar = Rect::new(x, by0, w.max(1.0), BAR_H);
     paint_gradient_bar(scene, bar, &ramp);
     // ⭐ Pela porta do TEMA: a barra é plana num tema moderno.

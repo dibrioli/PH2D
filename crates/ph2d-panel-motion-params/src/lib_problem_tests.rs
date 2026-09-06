@@ -61,7 +61,7 @@ fn paint_and_measure(problem: Option<&str>) -> f32 {
 /// ⭐⭐⭐ **A QUEIXA CHEGA A TINTA — e não só a espaço reservado.**
 ///
 /// ⛔⛔ **Este gate nasceu de o irmão de baixo estar errado no ponto que decidia tudo** (achado
-/// §4.2 da auditoria de seis lentes). A altura é escrita por `y += ROW_H_PX + row_gap`, que é
+/// §4.2 da auditoria de seis lentes). A altura é escrita por `y += ph2d_tokens::row_pitch_px()`, que é
 /// **outra linha** que não o `paint_text_elided`: apagar a pintura inteira deixava o
 /// `a_text_row_with_a_problem_takes_more_room_than_one_without` **verde**, e o doc-comment deste
 /// ficheiro prometia ser *«a metade que prova que ela chega a pixel»*.

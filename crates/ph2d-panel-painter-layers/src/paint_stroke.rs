@@ -380,7 +380,7 @@ pub(crate) fn section_header(
         content_w,
         resolve(ColorToken::Text3, theme),
     );
-    y + ROW_H_PX + Spacing::Xs.px()
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// Map a count (`1..=BRUSH_COUNT_SLIDER_MAX`) onto the slider's `0..1` track. Inverse of the

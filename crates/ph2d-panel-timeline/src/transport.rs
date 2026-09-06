@@ -176,7 +176,7 @@ pub(crate) fn paint_bar(
     view: BarView,
 ) -> (f32, Option<ClipChip>) {
     let gap = Spacing::Xs.px();
-    let row_step = ROW_H_PX + gap;
+    let row_step = ph2d_tokens::row_pitch_px();
     let mut clip_chip = None;
     // Row 0 is the header strip; row 1+ are full-width rows in the body.
     let mut row = header;

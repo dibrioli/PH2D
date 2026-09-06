@@ -351,7 +351,7 @@ fn paint_paper_color_row(
         resolve(border, theme),
     );
     ctx.host.hit_index_mut().register(id, rect);
-    y + ROW_H_PX + Spacing::Sm.px()
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// The **Grain**-section watercolor extras — shown at the top of the Grain section in watercolor mode,

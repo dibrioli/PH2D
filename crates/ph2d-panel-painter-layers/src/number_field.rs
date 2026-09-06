@@ -187,7 +187,7 @@ pub(crate) fn paint_num_row(
         step,
         decimals,
     );
-    y + ROW_H_PX + Spacing::Xs.px()
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// Label + TWO number boxes on one line, with red **X** / green **Y** axis tags (Size / Offset), like the
@@ -244,7 +244,7 @@ pub(crate) fn paint_num_xy(
         step,
         decimals,
     );
-    y + ROW_H_PX + Spacing::Xs.px()
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// Per-pattern params (all `0..1`, step `0.01`): pair two consecutive SHORT-label params on one line
@@ -267,7 +267,7 @@ pub(crate) fn paint_num_params(
             let half = ((content_w - gap) * 0.5).max(0.0);
             half_param(ctx, theme, x, half, y, l0, id0, v0);
             half_param(ctx, theme, x + half + gap, half, y, l1, id1, v1);
-            y += ROW_H_PX + Spacing::Xs.px();
+            y += ph2d_tokens::row_pitch_px();
             i += 2;
         } else {
             y = paint_num_row(

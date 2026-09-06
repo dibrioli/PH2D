@@ -455,6 +455,114 @@ espaçamento a desactualiza, e a forma de falhar é a pior — o gate fica verde
 (`chrome.hier-row-h`) contra as 24 de formulário — herdada da wave 6 e agora mais visível, porque
 tudo em volta dela apertou.
 
+### 7.11 — ✅ WAVE 8 (2026-09-06): as LEIS do Godot e do Blender, e a que nos faltava
+
+**Ordem do dono**, com três fotos lado a lado (Blender · nós · Godot): *«veja a diferença entre
+nós e o Blender e a Godot. Blender e Godot com aspecto muito mais compacto e profissional.
+Espaçamento muito regrado e universal.»* E a seguir: *«vá até ao código da Godot e Blender para
+encontrar as leis necessárias para a nossa UI.»*
+
+⚠️ **A triagem desta linha ([§1 do doc 02](02_referencias_e_licenca.md)) decide de onde cada
+metade vem:** o editor do Godot é **MIT** — lemos **e portamos**; o código do Blender é **GPL** e
+esta linha não o lê, por decisão já escrita. O Blender entra pelo **HIG** dele (CC-BY-SA), que a
+própria triagem chama de fonte melhor, *«porque diz a intenção, que o código não diz»*.
+
+#### As leis do Godot 4.6 «Modern» (medidas em `editor/themes/`, MIT)
+
+Com o `base_spacing = 4` de fábrica (`editor_theme_manager.h:67`):
+
+| lei | derivação | valor |
+|---|---|---|
+| **G1 — nenhum espaço é escolhido** | tudo é `base_margin · k`, `k ∈ {0.75, 1, 1.5, 1.75, 2, 2.5, 3, 4}` | — |
+| **G2 — o vão entre irmãos tem NOME** | `separation_margin`, lido por `BoxContainer`, `HBox`, `VBox`, `GridContainer`, `FlowContainer`, `FoldableContainer` | **4** |
+| **G3 — uma LISTA não tem vão: as linhas encostam** | `Tree.v_separation = pow(base_margin · 0.175, 3)` = `0,343` | **0** |
+| **G4 — uma GRELHA é mais apertada que uma pilha** | `GridContainer.v_separation = widget_margin.y − 2` | **3** |
+| **G5 — o separador de secção é `base · 2`** | `Separator.separation`, com o `StyleBoxLine` a levar margens **negativas** de `−base_margin` | **8** |
+| **G6 — o vão vertical é forçado a PAR** | *«if the vsep is odd it will be lopsided»* — `forced_even_separation` | par |
+| **G7 — o botão é `(base·2, base·1.5)` de conteúdo** | `button_style.content_margin` | (8, 6) |
+
+⭐⭐⭐ **A lei que responde ao dono é a G1+G2, e ela é sobre o MECANISMO, não sobre o número:**
+*o espaço não é escolhido onde se pinta — ele tem um nome, e o nome é o que impede a segunda
+resposta.*
+
+#### As leis do HIG do Blender (CC-BY-SA, `human_interface_guidelines/layouts.md`)
+
+⚠️ **Sem um único número** — é intenção, e por isso complementa o Godot em vez de repetir:
+
+- **B1 — Property Split**: rótulo à esquerda, controlo à direita, na MESMA linha, alinhados por
+  todo o painel.
+- **B2 — Order of importance**: o mais usado em cima; o resto abaixo ou em sub-painel.
+- **B3 — Enums**: *dropdown* acima de 2–3 itens; abaixo disso, **expandido a toda a largura no
+  topo** quando a propriedade define o painel (é o `None | Vertices | Faces` da foto dele — um
+  controlo **segmentado**, com vão ZERO entre as partes).
+- **B4 — Sub-painéis acima de «um rótulo por cima de um bloco de botões»**: *«o título de um
+  sub-painel ocupa pouco mais que um rótulo, organiza mais, e permite recolher»*.
+- **B5 — ⛔ Não usar disposição espacial para comunicar sentido.**
+
+#### ⛔ O que nós tínhamos: SETE respostas para UMA pergunta
+
+Censo de 2026-09-06 sobre *«quanto avança de uma linha para a seguinte?»*:
+
+| onde | valor | alcance |
+|---|---|---|
+| `ROW_H_PX + Spacing::Xs` | 4 px | 21 sítios |
+| `ROW_H_PX + Spacing::Sm` | **6 px** | 20 sítios — o **Inspector** e o **Painter Layers** inteiros |
+| `ROW_H_PX + Spacing::Xxs` | 2 px | 3 sítios |
+| um local `gap` / `row_gap` | 4 px | 52 sítios |
+| `grid_snap::layout::row_gap()` | **6 px** | escondida atrás de uma função |
+| `showcase::row_gap()` | **6 px** | 18 chamadas — a maquinaria de que o Inspector é feito |
+| `asset_browser::paint::gap()` | **6 px** | 13 chamadas |
+
+⚠️⚠️ **As três últimas são a lição:** uma cópia atrás de uma **função** não aparece na varredura
+que procura o operador. A primeira leitura contou **quatro** respostas porque procurou
+`ROW_H + <espaço>`; as outras três só apareceram ao perguntar *«que função desta árvore devolve
+um degrau da escada e chama-se vão?»*. *Um censo que procura a FORMA de uma expressão é cego a
+quem lhe deu um nome.*
+
+⚠️ **E a escada NÃO era o defeito, apesar de ser o suspeito óbvio:** a nossa
+(`2·4·6·8·12·16·24·32·48`) é `base·k` com `base = 4` em **todos** os degraus — o mesmo vocabulário
+do Godot. *O defeito nunca foi que degraus existem; era que a escolha se fazia no sítio da
+pintura.*
+
+#### A cura: a porta, e o portão que a torna lei
+
+[`ph2d_tokens::row_gap_px()`](../../../crates/ph2d-tokens/src/spacing.rs) (o vão — o primitivo do
+modelo, G2 = **4 px**) e `row_pitch_px()` (a conveniência, `altura + vão`). **99 sítios** e as
+**7** cópias passam por ela. ⚠️ A porta nasceu com a forma errada — só sabia responder
+`altura + vão`, e há sítios que empilham uma caixa cuja altura é medida em tempo de pintura;
+*uma porta que só serve metade dos chamadores deixa a outra metade a escrever o número.*
+
+O portão é [`the_gap_between_two_rows_is_one_answer`](../../../crates/ph2d-editor-core/tests/the_gap_between_two_rows_is_one_answer.rs),
+com **duas** metades porque as cópias tinham duas formas: nenhum sítio escreve o passo à mão, e
+nenhuma função chamada «vão de linha» escolhe um degrau. **2 de 2 mutações mortas.**
+
+#### ⚠️ O defeito que EU introduzi, e que a suíte apanhou
+
+O renomeio tratou `ROW_H` como um nome só. A barra de progresso declara o **seu próprio**
+`ROW_H = 44 px` (um alvo de toque, já declarado no censo irmão), com vão `Md` — e passou a
+avançar 28. `progress::tests::column_rows_never_overlap` foi vermelho com a mensagem exacta
+(*«row at y=44 overlaps the row above it»*). ⇒ revertido, e a auditoria a seguir conferiu **um a
+um** que todo `gap` local substituído valia mesmo 4 px no `HEAD`. *Uma renomeação que casa por
+NOME tem de perguntar o VALOR de cada casamento.*
+
+#### ⏳ O que a wave ACHOU e NÃO fez (com o número, para o dono decidir)
+
+- ⛔ **`chrome.section-gap` (14 px) não tem um único consumidor da pergunta que nomeia.** Os
+  **quatro** usos reais tratam-no como **tamanho de ícone** (a seta do menu de contexto, o
+  chevron da barra do topo, o interruptor da hierarquia, o piso da altura de um chip). É a família
+  *«um controlo que mente»*: o nome responde a uma pergunta e os consumidores fazem outra. ⛔ Não
+  lhe toquei — mudá-lo encolhe quatro ícones. A cura é uma wave própria (dar aos ícones o token
+  deles e devolver o nome à secção).
+- ⏳ **O fim de um GRUPO ainda tem duas respostas** (`Md` = 8 em 4 sítios, `Lg` = 12 em 1) — a G5
+  do Godot diz **8**. São 5 sítios; ficam nomeados no portão.
+- ⏳ **As duas superfícies de LISTA não seguem a G3** (as linhas deviam encostar): a hierarquia
+  avança `HIER_ROW_H + 2` e a lista de variações do áudio `22 + 4`. É a mesma medição que a
+  pergunta aberta da altura de 32 px da hierarquia.
+- ⏳ **B1/B3/B4 do Blender são composição, não espaçamento** — e é aí que está a outra metade da
+  distância para as fotos dele: a grelha de 22 botões iguais do editor de áudio é exactamente o
+  *«rótulo por cima de um bloco de botões»* que a B4 manda trocar por sub-painéis, e não temos
+  controlo **segmentado** (vão zero) para o que é uma escolha entre irmãos.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

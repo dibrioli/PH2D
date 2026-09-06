@@ -64,7 +64,7 @@ pub(super) fn paint_gradient_map(
         register_button(ctx.host.store_mut(), id);
         ctx.host.hit_index_mut().register(id, brect);
     }
-    y += ROW_H_PX + gap;
+    y += ph2d_tokens::row_pitch_px();
 
     // ── Preview bar (samples the LINEAR LUT the canvas uses) ──
     let bar = Rect::new(x, y, w.max(1.0), GRAD_BAR_H);
@@ -133,7 +133,7 @@ pub(super) fn paint_gradient_map(
         let Some(kind) = slot_kind(slot) else { break };
         let id = painter_layer_widget_id(layer_id, kind);
         paint_labeled_slider(ctx, theme, id, label, val01, Rect::new(x, y, w, ROW_H_PX));
-        y += ROW_H_PX + gap;
+        y += ph2d_tokens::row_pitch_px();
     }
 
     // ── Interpolation segment (Linear / Smooth) ──

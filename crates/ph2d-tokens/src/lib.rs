@@ -98,7 +98,9 @@ pub use motion::{Duration, Easing};
 pub use num::NumToken;
 pub use radius::Radius;
 pub use slider_style::{SLIDER_DENSITIES, SLIDER_RADII, SliderDesign, SliderStyle, UiLook};
-pub use spacing::{Density, ICON_BTN_SIZE_PX, ROW_H_PX, SECTION_GAP_PX, Spacing};
+pub use spacing::{
+    Density, ICON_BTN_SIZE_PX, ROW_H_PX, SECTION_GAP_PX, Spacing, row_gap_px, row_pitch_px,
+};
 pub use stroke::StrokeToken;
 pub use theme::{PanelLayout, Theme};
 pub use typography::{

@@ -180,13 +180,13 @@ fn paint_layer_row(
     // the Impasto depth. Every other document — every document, until someone sculpts one — is exactly
     // the two-line row it always was, with no impasto chrome anywhere in the panel.
     let relief_h = if layer.has_relief {
-        ROW_H_PX + row_gap
+        ph2d_tokens::row_pitch_px()
     } else {
         0.0
     };
     let row_total_h = ROW_H_PX * 2.0 + row_gap + relief_h;
-    let op_y = y + ROW_H_PX + row_gap;
-    let depth_y = op_y + ROW_H_PX + row_gap;
+    let op_y = y + ph2d_tokens::row_pitch_px();
+    let depth_y = op_y + ph2d_tokens::row_pitch_px();
     // The far-right column is reserved (on every row, for alignment) for the
     // reorder buttons; the rest of the row content stops at `content_right`.
     let reorder_x = x + w - REORDER_W;

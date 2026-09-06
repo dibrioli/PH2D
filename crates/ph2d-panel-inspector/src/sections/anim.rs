@@ -86,7 +86,7 @@ fn segmented_row(
             theme,
         );
     }
-    row_y + ROW_H_PX + Spacing::Sm.px()
+    row_y + ph2d_tokens::row_pitch_px()
 }
 
 /// O bloco do TOCADOR. Devolve o `y` seguinte.

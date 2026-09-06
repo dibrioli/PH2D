@@ -11,8 +11,11 @@ pub(crate) const ROW_H: f32 = ROW_H_PX;
 pub(crate) fn pad() -> f32 {
     Spacing::Lg.px()
 }
+/// ⛔ **Era a QUINTA cópia da mesma resposta, e a única escondida atrás de uma função** — por
+/// isso o censo por `grep` de 2026-09-06 a subestimou. Ela devolvia `Sm` (6 px) enquanto o resto
+/// do app avançava 4, e é o que fazia este painel respirar diferente dos vizinhos. Delega.
 pub(crate) fn row_gap() -> f32 {
-    Spacing::Sm.px()
+    ph2d_tokens::row_gap_px()
 }
 pub(crate) const LABEL_FONT_SIZE: f32 = TypeToken::Base.px();
 /// Column where the widget (right side of a "Label: [widget]" row)

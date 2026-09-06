@@ -113,5 +113,5 @@ pub(crate) fn paint_mask_row(
     paint_button(&apply_btn, apply_rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(apply_id, apply_rect);
 
-    y + ROW_H_PX + Spacing::Xs.px()
+    y + ph2d_tokens::row_pitch_px()
 }

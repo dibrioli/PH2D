@@ -50,9 +50,9 @@ pub(crate) fn paint_composite_card(
     let gap = Spacing::Xs.px();
     let checked = brush.composite_enabled;
     // Single-line rows (bare slider never stacks), so the height is exact: padding + the checkbox row +
-    // (when on) a gap and the 3 layer rows (each ROW_H + gap).
+    // (when on) a gap and the 3 layer rows (each ph2d_tokens::row_pitch_px()).
     let layers_h = if checked {
-        gap + N_LAYERS * (ROW_H_PX + gap)
+        gap + N_LAYERS * (ph2d_tokens::row_pitch_px())
     } else {
         0.0
     };
@@ -175,5 +175,5 @@ fn paint_layer_row(
         IconId::ChevronDown,
     );
 
-    y + ROW_H_PX + gap
+    y + ph2d_tokens::row_pitch_px()
 }

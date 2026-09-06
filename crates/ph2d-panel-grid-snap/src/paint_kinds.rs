@@ -4,7 +4,7 @@
 //! during ADR-0029 Phase C.4.
 
 use crate::ids;
-use crate::layout::{ROW_H, row_gap};
+use crate::layout::ROW_H;
 use crate::paint_helpers::{
     NeighborhoodFamily, paint_labeled_segmented_row, paint_neighborhood_button_row,
 };
@@ -495,7 +495,7 @@ pub(crate) fn paint_voronoi_cfg(
     };
     paint_button(&btn, reseed_rect, scene, text_system, theme);
     hit_index.register(ids::GS_CFG_VORONOI_RESEED, reseed_rect);
-    y + ROW_H + row_gap()
+    y + ph2d_tokens::row_pitch_px()
 }
 
 #[allow(clippy::too_many_arguments)]

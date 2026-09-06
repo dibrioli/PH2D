@@ -10,7 +10,7 @@ use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, TypeToken};
 use ph2d_tool_painter::BrushSettings;
 
 /// Paint the Clone card and return the next `y`. Only called in Clone mode (`brush.is_clone`).
@@ -44,7 +44,7 @@ pub(crate) fn paint_clone_card(
     paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
     register_button(ctx.host.store_mut(), id);
     ctx.host.hit_index_mut().register(id, rect);
-    let mut y = y + ROW_H_PX + Spacing::Sm.px();
+    let mut y = y + ph2d_tokens::row_pitch_px();
 
     // "Aligned" toggle — keep the source→dest offset fixed across strokes.
     y = paint_checkbox_row(

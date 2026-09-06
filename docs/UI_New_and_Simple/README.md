@@ -119,6 +119,18 @@ por report do dono: o risco entre secções reservava **17 px** (o Godot Modern 
 e o vão entre controlos, que a árvore escrevia de **duas** maneiras (64 sítios a 4 px, 82 a 6),
 unificou-se nos **4 px** do modelo — 82 sítios em 54 ficheiros.
 
+⭐⭐⭐ **E a wave 8 (06/09) foi ao FONTE das duas referências** a pedido do dono, que pôs as três
+telas lado a lado: *«espaçamento muito regrado e universal»*. As **sete leis** do tema Modern do
+Godot (MIT — lemos e portamos) e as **cinco** do HIG do Blender (CC-BY-SA — o código dele é GPL e
+esta linha não o lê) estão em [`pesquisa/08 §7.11`](pesquisa/08_modelos_com_codigo_para_seguir.md).
+⚠️ **A lei que responde ao dono não é um número, é um mecanismo:** no Godot **nenhum** espaço é
+escolhido onde se pinta — todos são `base·k` a partir de um `base_spacing = 4`, e o vão entre
+irmãos tem **nome** (`separation_margin`), que é o que impede a segunda resposta. ⛔ Nós tínhamos
+**sete** respostas para *«quanto avança de uma linha para a seguinte?»* — e as **três** de maior
+alcance estavam escondidas atrás de uma função, invisíveis à varredura que procura o operador
+(uma delas servia o Inspector inteiro, a 6 px contra os 4 do resto do app). Hoje há uma porta,
+99 sítios passam por ela, e um portão de duas metades impede a oitava.
+
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
 cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·
 esbatimento do rótulo e inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis, animado) —

@@ -165,7 +165,7 @@ pub(super) fn paint_color_row(
     row: &ColorRow,
     inner_x: f32,
     inner_w: f32,
-    row_gap: f32,
+    _row_gap: f32,
     mut y: f32,
     label_font: f32,
     hit_index: &mut HitIndex,
@@ -189,7 +189,7 @@ pub(super) fn paint_color_row(
     let sw = ColorSwatch::new(swatch_id, "Color", row.srgb).size(SwatchSize::Md);
     paint_color_swatch(&sw, srect, scene, theme);
     hit_index.register(swatch_id, srect);
-    y += ROW_H_PX + row_gap;
+    y += ph2d_tokens::row_pitch_px();
     y
 }
 
@@ -229,7 +229,7 @@ pub(super) fn paint_enum_row(
     for (opt, caption) in row.labels.iter().enumerate().take(k) {
         let bid = param_enum_id(i, opt);
         let rx = inner_x + (opt % cols) as f32 * (seg_w + gap);
-        let ry = y + (opt / cols) as f32 * (ROW_H_PX + gap);
+        let ry = y + (opt / cols) as f32 * (ph2d_tokens::row_pitch_px());
         let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
         let bstate = store.button_visual(bid);
         paint_segmented_button(
@@ -289,7 +289,7 @@ pub(super) fn paint_channels_row(
         };
         let bid = param_enum_id(i, opt);
         let rx = inner_x + (opt % cols) as f32 * (seg_w + gap);
-        let ry = y + (opt / cols) as f32 * (ROW_H_PX + gap);
+        let ry = y + (opt / cols) as f32 * (ph2d_tokens::row_pitch_px());
         let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
         let bstate = store.button_visual(bid);
         paint_segmented_button(
@@ -410,7 +410,7 @@ pub(super) fn paint_source_row(
         for j in 0..n {
             let bid = param_enum_id(i, j);
             let rx = inner_x + (j % cols) as f32 * (seg_w + gap);
-            let ry = y + (j / cols) as f32 * (ROW_H_PX + gap);
+            let ry = y + (j / cols) as f32 * (ph2d_tokens::row_pitch_px());
             let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
             let bstate = store.button_visual(bid);
             paint_segmented_button(
@@ -451,7 +451,7 @@ pub(super) fn paint_toggle_row(
     i: usize,
     inner_x: f32,
     inner_w: f32,
-    row_gap: f32,
+    _row_gap: f32,
     mut y: f32,
     store: &WidgetStore,
     hit_index: &mut HitIndex,
@@ -471,7 +471,7 @@ pub(super) fn paint_toggle_row(
     let crect = Rect::new(inner_x, y, inner_w, ROW_H_PX);
     paint_checkbox(&cb, crect, scene, text_system, theme);
     hit_index.register(cb_id, crect);
-    y += ROW_H_PX + row_gap;
+    y += ph2d_tokens::row_pitch_px();
     y
 }
 
@@ -536,7 +536,7 @@ pub(super) fn paint_file_row(
         theme,
     );
     hit_index.register(bid, btn);
-    y += ROW_H_PX + Spacing::Xs.px();
+    y += ph2d_tokens::row_pitch_px();
 
     let field = Rect::new(inner_x, y, inner_w, ROW_H_PX);
     crate::text_rows::paint_text_field(

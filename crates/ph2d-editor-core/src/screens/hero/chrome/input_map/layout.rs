@@ -142,7 +142,7 @@ pub(super) fn title_text(map: &InputMap, listening: Option<ActionId>) -> Option<
 /// começa e a [`input_map_window_size`] para saber quanto sobra. *Era a terceira cópia desta conta
 /// no ficheiro.*
 pub(super) fn chrome_h() -> f32 {
-    Spacing::Sm.px() * 2.0 + (ROW_H_PX + Spacing::Xs.px()) * 2.0
+    Spacing::Sm.px() * 2.0 + (ph2d_tokens::row_pitch_px()) * 2.0
 }
 
 /// **O TAMANHO da janela e o TETO da rolagem** — `(largura, altura, rolagem máxima)`.

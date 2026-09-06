@@ -72,7 +72,7 @@ pub(super) fn paint_curve_editor(
         register_button(ctx.host.store_mut(), id);
         ctx.host.hit_index_mut().register(id, brect);
     }
-    y += ROW_H_PX + gap;
+    y += ph2d_tokens::row_pitch_px();
 
     // ── Canvas: the active channel's curve + draggable points ──
     let canvas = Rect::new(x, y, w.max(1.0), CURVE_CANVAS_H);

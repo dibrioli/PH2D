@@ -50,7 +50,7 @@ pub(crate) fn paint_use_layers_button(
     paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
     register_button(ctx.host.store_mut(), id);
     ctx.host.hit_index_mut().register(id, rect);
-    y + ROW_H_PX + Spacing::Sm.px()
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// Paint the **Per-Layer Color** toggle + (when on) the per-layer "Layer N Color" checkbox + swatch
@@ -202,7 +202,7 @@ pub(crate) fn paint_shape_per_layer_color(
             1.0,
             0,
         );
-        y += ROW_H_PX + Spacing::Sm.px();
+        y += ph2d_tokens::row_pitch_px();
     }
     y
 }

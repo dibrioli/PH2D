@@ -99,7 +99,7 @@ pub(super) fn paint_lists_section(
     for (i, item) in tabs.items.iter().enumerate() {
         hit_index.register(item.id, tabs.tab_rect(r, i));
     }
-    y += ROW_H_PX + Spacing::Xs.px();
+    y += ph2d_tokens::row_pitch_px();
 
     // Tab body — distinct sample per selected tab so the user can
     // see the tab actually swapping content (vs. just visual

@@ -169,7 +169,7 @@ pub(crate) fn paint_display_section(
             state,
         );
     }
-    y += ROW_H + row_gap();
+    y += ph2d_tokens::row_pitch_px();
 
     let opacity_row = Rect::new(inner_x, y, inner_w, ROW_H);
     {
@@ -184,7 +184,7 @@ pub(crate) fn paint_display_section(
             state,
         );
     }
-    y += ROW_H + row_gap();
+    y += ph2d_tokens::row_pitch_px();
 
     // ⛔⛔ **A fileira «Color» saiu em 2026-08-30 — ela era um controlo que MENTIA e uma SEGUNDA
     // porta para uma grandeza que já tinha a sua.**

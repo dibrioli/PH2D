@@ -94,7 +94,7 @@ pub(crate) fn paint_checkbox_row(
     let rect = Rect::new(x, y, content_w, ROW_H_PX);
     paint_checkbox(&cb, rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(id, rect);
-    y + ROW_H_PX + Spacing::Sm.px()
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// Paint a collapsible section header (Inspector pattern: ALL-CAPS label + a **reset** icon button + an

@@ -248,7 +248,7 @@ fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 
             ctx.theme,
             ctx.hit_index,
         );
-        y += ROW_H + Spacing::Xs.px();
+        y += ph2d_tokens::row_pitch_px();
         // Which room is loaded — an empty slot has to look empty, or the user is left
         // wondering why a fully-wet reverb does nothing (it is bypassed: no room, no reverb).
         paint_text_centered(

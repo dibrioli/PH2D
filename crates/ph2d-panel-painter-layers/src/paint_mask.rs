@@ -124,7 +124,7 @@ pub(crate) fn paint_mask_section(
         .visual(apply_st);
     paint_button(&apply_btn, apply_rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(apply_id, apply_rect);
-    y + ROW_H_PX + Spacing::Sm.px()
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// Draw a titled card box (Bg1 fill + Border + an ALL-CAPS `title`) and return `(inner_x, inner_w,
@@ -201,7 +201,7 @@ fn button_card(
             ROW_H_PX,
             gap,
         );
-        ROW_H_PX + gap + rest_h
+        ph2d_tokens::row_pitch_px() + rest_h
     } else {
         flow_fill(0.0, 0.0, inner_w, labels.len(), BTN_MIN_W, ROW_H_PX, gap).1
     };
@@ -211,7 +211,7 @@ fn button_card(
         // `labels[0]` full-width on top; the remainder reflows on the row(s) below.
         let top = Rect::new(inner_x, body_top, inner_w, ROW_H_PX);
         paint_button_cell(ctx, theme, top, labels[0], ids[0], selected == Some(0));
-        let rest_top = body_top + ROW_H_PX + gap;
+        let rest_top = body_top + ph2d_tokens::row_pitch_px();
         let (rects, _) = flow_fill(
             inner_x,
             rest_top,

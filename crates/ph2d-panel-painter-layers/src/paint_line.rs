@@ -86,7 +86,7 @@ pub(crate) fn paint_line_card(
     // arremesso (Enio 2026-08-13, *"em alchemy o slider não é necessário"*), então o produto acerta
     // de fábrica em vez de delegar.
     let param_rows = rows_of(kind);
-    let card_h = pad + ROW_H_PX + gap + ROW_H_PX + param_rows * (gap + ROW_H_PX) + pad;
+    let card_h = pad + ph2d_tokens::row_pitch_px() + ROW_H_PX + param_rows * (gap + ROW_H_PX) + pad;
     let card = Rect::new(x, y, content_w, card_h);
     // ⭐ Raio e moldura pela porta do TEMA: o cartão é plano num tema moderno.
     let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px());
@@ -115,7 +115,7 @@ pub(crate) fn paint_line_card(
     ctx.host
         .hit_index_mut()
         .register(core_ids::PAINTER_LINE_SOLID, cb_rect);
-    iy += ROW_H_PX + gap;
+    iy += ph2d_tokens::row_pitch_px();
 
     let (ny, open) = crate::paint_brush_rows::paint_dropdown_row(
         ctx,
@@ -306,12 +306,12 @@ fn paint_param_rows(
     brush: BrushSettings,
     kind: LineKind,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
+    let _gap = Spacing::Xs.px();
     let mut iy = y;
     for (id, label, read) in sliders_of(kind) {
         let (track, shown) = read(brush);
         paint_param_row(ctx, theme, x, row_w, iy, label, *id, track, shown);
-        iy += ROW_H_PX + gap;
+        iy += ph2d_tokens::row_pitch_px();
     }
     if let Some((id, label, read)) = checkbox_of(kind) {
         let cb = Checkbox::new(id, label).value(if read(brush) {

@@ -112,6 +112,46 @@ pub const ICON_BTN_SIZE_PX: f32 = crate::generated::CHROME_ICON_BTN_SIZE;
 /// Default body row height. Per tokens.json `chrome.row-h`.
 pub const ROW_H_PX: f32 = crate::generated::CHROME_ROW_H;
 
+/// ⭐⭐⭐ **O AVANÇO de uma linha de formulário para a seguinte — e é UMA resposta, não quatro.**
+///
+/// Enio, 2026-09-06 (com as fotos do Blender e do Godot lado a lado): *«Blender e Godot com
+/// aspecto muito mais compacto e profissional. Espaçamento muito regrado e universal.»*
+///
+/// ⚠️ **A palavra é «universal», e ela nomeia o mecanismo, não o número.** Medido no fonte do
+/// Godot (MIT, `editor/themes/theme_modern.cpp`): **nenhuma constante de espaço daquele tema é
+/// escolhida** — todas são `base_margin · k` a partir de um `base_spacing = 4`, e a que os
+/// contentores lêem tem NOME próprio (`separation_margin`), lido por `BoxContainer`,
+/// `HBoxContainer`, `VBoxContainer`, `GridContainer`, `FlowContainer` e `FoldableContainer`.
+/// *Um nome é o que impede a segunda resposta.*
+///
+/// ⛔ **E nós tínhamos QUATRO respostas para a MESMA pergunta**, censadas em 2026-09-06:
+/// `Xs` (4 px) em 63 sítios · **`Sm` (6 px) em 20** · `Xxs` (2 px) em 3 · `Md` (8 px) em 1.
+/// Os 20 do `Sm` não estavam espalhados: eram o **Inspector** e o **Painter Layers** inteiros —
+/// os dois painéis em que o artista vive respiravam 50 % mais que o resto do app, e nenhum
+/// teste podia ver isso, porque cada sítio estava certo sozinho.
+///
+/// **O valor é o do modelo:** `separation_margin` do Godot Modern = `base_spacing` = **4 px**,
+/// que é o `Spacing::Xs` desta casa. ⚠️ E ele é o número da PILHA de linhas de formulário, que
+/// é a superfície destes painéis — o Godot tem outros dois para outras duas superfícies, e cada
+/// um é derivado, nunca escolhido: uma **lista** (`Tree`) tem `pow(base·0.175, 3)` = **0**, as
+/// linhas encostam; uma **grelha** tem `widget_margin.y − 2` = **3**. ⇒ quando esta casa precisar
+/// de uma dessas, ela nasce **aqui, com nome e derivação**, e não num `+ Spacing::Qualquer` no
+/// sítio da pintura.
+pub fn row_pitch_px() -> f32 {
+    ROW_H_PX + row_gap_px()
+}
+
+/// ⭐⭐ **O VÃO sozinho — para quem empilha linhas de ALTURA VARIÁVEL.**
+///
+/// É este o primitivo do modelo, e o [`row_pitch_px`] é a conveniência: no Godot o que tem nome é
+/// a **separação** (`separation_margin`), e é o contentor que a soma à altura de cada filho.
+/// ⚠️ Descobri-o pela construção — a 1.ª versão desta porta só sabia responder `altura + vão`, e
+/// havia sítios a empilhar uma caixa cuja altura é medida em tempo de pintura (`y + h + vão`).
+/// *Uma porta que só serve a metade dos chamadores deixa a outra metade a escrever o número.*
+pub fn row_gap_px() -> f32 {
+    Spacing::Xs.px()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

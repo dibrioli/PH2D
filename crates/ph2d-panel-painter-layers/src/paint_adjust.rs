@@ -131,7 +131,7 @@ pub(crate) fn paint_adjustment_params(
     if matches!(params, AdjustmentParams::GradientMap(_)) {
         return paint_gradient_map(ctx, theme, layer_id, params, x, w, y);
     }
-    let gap = Spacing::Xs.px();
+    let _gap = Spacing::Xs.px();
     for (slot, (label, val01)) in ph2d_tool_painter::adjustment_slider_params(params)
         .into_iter()
         .enumerate()
@@ -139,7 +139,7 @@ pub(crate) fn paint_adjustment_params(
         let Some(kind) = slot_kind(slot) else { break };
         let id = painter_layer_widget_id(layer_id, kind);
         paint_labeled_slider(ctx, theme, id, label, val01, Rect::new(x, y, w, ROW_H_PX));
-        y += ROW_H_PX + gap;
+        y += ph2d_tokens::row_pitch_px();
     }
     // Segment rack (the adjustment's single 1-of-N param, e.g. Color Balance's
     // tonal range / Gradient Map's interpolation), between the sliders + toggles.
@@ -158,7 +158,7 @@ pub(crate) fn paint_adjustment_params(
         };
         let id = painter_layer_widget_id(layer_id, kind);
         paint_toggle_row(ctx, theme, id, label, on, Rect::new(x, y, w, ROW_H_PX));
-        y += ROW_H_PX + gap;
+        y += ph2d_tokens::row_pitch_px();
     }
     y
 }
@@ -264,7 +264,7 @@ fn paint_channel_mixer(
     let AdjustmentParams::ChannelMixer(m) = params else {
         return y;
     };
-    let gap = Spacing::Xs.px();
+    let _gap = Spacing::Xs.px();
     let font = TypeToken::Base.px();
     // Monochrome collapses the three output rows to a single Gray tab.
     let mono = ph2d_tool_painter::adjustment_toggle_params(params)
@@ -308,7 +308,7 @@ fn paint_channel_mixer(
         register_button(ctx.host.store_mut(), id);
         ctx.host.hit_index_mut().register(id, trect);
     }
-    y += ROW_H_PX + gap;
+    y += ph2d_tokens::row_pitch_px();
     // ── The active output row's 4 weight sliders (R/G/B source + Constant) ──
     for (slot, (label, val01)) in ph2d_tool_painter::channel_mixer_slider_params(m, active as usize)
         .into_iter()
@@ -317,7 +317,7 @@ fn paint_channel_mixer(
         let Some(kind) = slot_kind(slot) else { break };
         let id = painter_layer_widget_id(layer_id, kind);
         paint_labeled_slider(ctx, theme, id, label, val01, Rect::new(x, y, w, ROW_H_PX));
-        y += ROW_H_PX + gap;
+        y += ph2d_tokens::row_pitch_px();
     }
     // ── Monochrome switch (the generic toggle rack, rendered inline) ──
     for (slot, (label, on)) in ph2d_tool_painter::adjustment_toggle_params(params)
@@ -329,7 +329,7 @@ fn paint_channel_mixer(
         };
         let id = painter_layer_widget_id(layer_id, kind);
         paint_toggle_row(ctx, theme, id, label, on, Rect::new(x, y, w, ROW_H_PX));
-        y += ROW_H_PX + gap;
+        y += ph2d_tokens::row_pitch_px();
     }
     y
 }
@@ -349,14 +349,14 @@ fn paint_black_and_white(
     w: f32,
     mut y: f32,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
+    let _gap = Spacing::Xs.px();
     let sliders = ph2d_tool_painter::adjustment_slider_params(params);
     // The 6 per-hue weight sliders (always present).
     for (slot, &(label, val01)) in sliders.iter().enumerate().take(6) {
         let Some(kind) = slot_kind(slot) else { break };
         let id = painter_layer_widget_id(layer_id, kind);
         paint_labeled_slider(ctx, theme, id, label, val01, Rect::new(x, y, w, ROW_H_PX));
-        y += ROW_H_PX + gap;
+        y += ph2d_tokens::row_pitch_px();
     }
     // The Tint switch.
     for (slot, (label, on)) in ph2d_tool_painter::adjustment_toggle_params(params)
@@ -368,14 +368,14 @@ fn paint_black_and_white(
         };
         let id = painter_layer_widget_id(layer_id, kind);
         paint_toggle_row(ctx, theme, id, label, on, Rect::new(x, y, w, ROW_H_PX));
-        y += ROW_H_PX + gap;
+        y += ph2d_tokens::row_pitch_px();
     }
     // The tint Hue + amount sliders (slots 6+), present only while a tint is set.
     for (slot, &(label, val01)) in sliders.iter().enumerate().skip(6) {
         let Some(kind) = slot_kind(slot) else { break };
         let id = painter_layer_widget_id(layer_id, kind);
         paint_labeled_slider(ctx, theme, id, label, val01, Rect::new(x, y, w, ROW_H_PX));
-        y += ROW_H_PX + gap;
+        y += ph2d_tokens::row_pitch_px();
     }
     y
 }
@@ -397,7 +397,7 @@ fn paint_segment_rack(
         return y;
     };
     let font = TypeToken::Base.px();
-    let gap = Spacing::Xs.px();
+    let _gap = Spacing::Xs.px();
     let n = options.len().clamp(1, 3);
     let seg_w = w / n as f32;
     for (option, label) in options.iter().enumerate().take(3) {
@@ -428,7 +428,7 @@ fn paint_segment_rack(
         register_button(ctx.host.store_mut(), id);
         ctx.host.hit_index_mut().register(id, srect);
     }
-    y + ROW_H_PX + gap
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// Bespoke Selective Color editor: a row of 9 color-group tabs
@@ -449,7 +449,7 @@ fn paint_selective_color(
     let AdjustmentParams::SelectiveColor(s) = params else {
         return y;
     };
-    let gap = Spacing::Xs.px();
+    let _gap = Spacing::Xs.px();
     let font = TypeToken::Base.px();
     let active = state::active_selective_bucket(layer_id).min(8);
     // ── 9 color-group tabs (single-char labels span the width) ──
@@ -480,7 +480,7 @@ fn paint_selective_color(
         register_button(ctx.host.store_mut(), id);
         ctx.host.hit_index_mut().register(id, trect);
     }
-    y += ROW_H_PX + gap;
+    y += ph2d_tokens::row_pitch_px();
     // ── 4 CMYK sliders for the active group ──
     for (slot, (label, val01)) in
         ph2d_tool_painter::selective_color_slider_params(s, active as usize)
@@ -490,7 +490,7 @@ fn paint_selective_color(
         let Some(kind) = slot_kind(slot) else { break };
         let id = painter_layer_widget_id(layer_id, kind);
         paint_labeled_slider(ctx, theme, id, label, val01, Rect::new(x, y, w, ROW_H_PX));
-        y += ROW_H_PX + gap;
+        y += ph2d_tokens::row_pitch_px();
     }
     // ── method segment (Relative / Absolute) ──
     paint_segment_rack(ctx, theme, layer_id, params, x, w, y)

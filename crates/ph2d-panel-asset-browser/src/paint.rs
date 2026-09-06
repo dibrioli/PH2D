@@ -56,8 +56,10 @@ pub(crate) fn pad() -> f32 {
 }
 
 /// Folga entre fileiras.
+///
+/// ⛔ **A SÉTIMA cópia da mesma resposta** (censo de 2026-09-06). Delega para a porta.
 fn gap() -> f32 {
-    Spacing::Sm.px()
+    ph2d_tokens::row_gap_px()
 }
 
 /// Geometria com que o painel nasce.

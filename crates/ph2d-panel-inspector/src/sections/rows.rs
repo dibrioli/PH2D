@@ -69,7 +69,7 @@ pub(super) fn seg_row(
 /// cima das caixas. Uma régua, dois consumidores — o mesmo argumento do
 /// `segmented_row_counts` do Painter.
 pub(super) fn num_row_h() -> f32 {
-    TypeToken::Sm.px() + Spacing::Xs.px() + ROW_H_PX + Spacing::Sm.px()
+    TypeToken::Sm.px() + Spacing::Xs.px() + ph2d_tokens::row_pitch_px()
 }
 
 /// Quanto um card **inteiro** mede.
@@ -175,7 +175,7 @@ pub(super) fn num_row(
     );
     // ⚠️ A régua da altura é a `num_row_h`, e ela é PERGUNTADA — o `card_frame`
     // mede com a mesma função, então a moldura não pode deixar de caber.
-    debug_assert!((num_row_h() - (label_h + ROW_H_PX + Spacing::Sm.px())).abs() < 1.0e-3);
+    debug_assert!((num_row_h() - (label_h + ph2d_tokens::row_pitch_px())).abs() < 1.0e-3);
     let row_y = y + label_h;
     // A coluna de animação, pela porta — ver `widget::form_row_columns`. ⚠️ Nestas linhas o rótulo
     // fica ACIMA do controlo, então o ponto alinha-se com a **caixa**, que é onde o valor está.
@@ -195,5 +195,5 @@ pub(super) fn num_row(
         theme,
     );
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-    row_y + ROW_H_PX + Spacing::Sm.px()
+    row_y + ph2d_tokens::row_pitch_px()
 }

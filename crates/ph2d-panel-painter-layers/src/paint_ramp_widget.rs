@@ -149,7 +149,7 @@ pub(crate) fn paint_color_ramp_section(
     ) {
         (ids.set_pending_alpha)(Some((alpha_rect, view.alpha_mode)));
     }
-    let out = y + ROW_H_PX + Spacing::Xs.px();
+    let out = y + ph2d_tokens::row_pitch_px();
     crate::paint_brush_top::end_fold(ctx, fold, out)
 }
 
@@ -177,7 +177,7 @@ fn paint_controls(
             false,
             false,
         );
-        cx += ROW_H_PX + gap;
+        cx += ph2d_tokens::row_pitch_px();
     }
     // B&W: accent/checked when on OR locked; when locked it's inert (no hit) — the 3 pixel-processing
     // modes force it (a B&W coverage tone), so it can't be unchecked there.
@@ -198,7 +198,7 @@ fn paint_controls(
         let total = (x + content_w) - buttons_right;
         (buttons_right, y, (total - gap) * 0.5)
     } else {
-        (x, y + ROW_H_PX + gap, (content_w - gap) * 0.5)
+        (x, y + ph2d_tokens::row_pitch_px(), (content_w - gap) * 0.5)
     };
     let mode_rect = Rect::new(dd_x, dd_y, dd_w, ROW_H_PX);
     if paint_dropdown_chip(
@@ -374,7 +374,7 @@ fn paint_ramp_bottom(
     );
     register_button(ctx.host.store_mut(), ids.swatch);
     ctx.host.hit_index_mut().register(ids.swatch, box_rect);
-    y + ROW_H_PX + gap
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// Paint one editable [`paint_number_chip`] driven by a `NumberInput`: register once, mirror

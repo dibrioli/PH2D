@@ -132,8 +132,11 @@ pub const TAB_GROUP_IDS: [NodeId; 3] = [
 ];
 
 pub(super) const BODY_PAD: f32 = 10.0; // LITERAL-PX-OK: showcase body inset
+/// ⛔ **A SEXTA cópia da mesma resposta** (censo de 2026-09-06), e a de maior alcance: 18
+/// chamadas, que são as linhas do showcase — a maquinaria de que o Inspector é feito. Ela
+/// devolvia `Sm` (6 px) contra os 4 do resto do app. Delega para a porta.
 pub(super) fn row_gap() -> f32 {
-    Spacing::Sm.px()
+    ph2d_tokens::row_gap_px()
 }
 pub(super) const SECTION_HEAD_H: f32 = ROW_H_PX;
 pub(super) fn field_h() -> f32 {

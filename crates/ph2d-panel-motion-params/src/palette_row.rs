@@ -126,7 +126,7 @@ pub(crate) fn paint_palette_row(
 
     // ── The strip, WRAPPED. The height follows the count; nothing here caps it. ──
     let cols = per_line(w);
-    let mut used = ROW_H_PX + gap;
+    let mut used = ph2d_tokens::row_pitch_px();
     for (i, c) in colors.iter().enumerate() {
         let (line, col) = (i / cols, i % cols);
         #[expect(

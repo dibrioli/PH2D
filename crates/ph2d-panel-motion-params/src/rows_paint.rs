@@ -81,7 +81,7 @@ fn paint_one_row(
                 text_system,
                 theme,
             );
-            y += ROW_H_PX + row_gap;
+            y += ph2d_tokens::row_pitch_px();
         }
         ParamRow::Scalar(row) => {
             y = paint_scalar_row(
@@ -175,7 +175,7 @@ fn paint_one_row(
             );
             // ⚠️ **Nada é registado no `HitIndex`**: um aviso não se clica. Registá-lo poria um
             // alvo mudo por cima do campo, que é o defeito que a caça aos knobs mortos nomeia.
-            y += ROW_H_PX + row_gap;
+            y += ph2d_tokens::row_pitch_px();
         }
         ParamRow::Angle(_) | ParamRow::Seed(_) | ParamRow::Text(_) => {
             // As rows-CAIXA: uma altura de row, um `Rect` explícito.

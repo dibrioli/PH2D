@@ -120,7 +120,7 @@ fn paint_body(
         w,
         resolve(ColorToken::Text2, theme),
     );
-    y += ROW_H_PX + Spacing::Xs.px();
+    y += ph2d_tokens::row_pitch_px();
 
     y = paint_contrast(ctx, theme, x, w, y);
 
@@ -339,7 +339,7 @@ fn paint_token_row(
             y,
         );
     }
-    y + ROW_H_PX + Spacing::Xxs.px()
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// O botão de elo da linha — **Pressed enquanto armado**, para o artista ver de onde o gesto saiu.

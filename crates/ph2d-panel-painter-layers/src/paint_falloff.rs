@@ -78,7 +78,7 @@ pub(crate) fn paint_falloff_section(
             register_button(ctx.host.store_mut(), id);
             ctx.host.hit_index_mut().register(id, brect);
         }
-        y += ROW_H_PX + gap;
+        y += ph2d_tokens::row_pitch_px();
     }
 
     // ── Canvas: background + border + quarter grid ──

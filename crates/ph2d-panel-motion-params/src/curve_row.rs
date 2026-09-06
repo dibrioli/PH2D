@@ -145,7 +145,7 @@ pub(crate) fn paint_curve_row(
         hit_index.register(id, brect);
         out.buttons.push(id);
     }
-    let cy0 = y + ROW_H_PX + gap;
+    let cy0 = y + ph2d_tokens::row_pitch_px();
 
     // ── Canvas: bg + border + quarter grid ──
     let canvas = Rect::new(x, cy0, w.max(1.0), CANVAS_H);

@@ -298,7 +298,7 @@ fn editor(
             theme,
         );
     }
-    cur_y += ROW_H_PX + Spacing::Sm.px();
+    cur_y += ph2d_tokens::row_pitch_px();
 
     // **OS SINAIS** (spec §8.10) — no FIM, e depois da direção, porque eles são o que a animação
     // diz para FORA. Tudo acima descreve o que ela faz; isto descreve o que ela anuncia.
@@ -390,5 +390,5 @@ fn text_row(
         theme,
     );
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-    y + ROW_H_PX + Spacing::Sm.px()
+    y + ph2d_tokens::row_pitch_px()
 }

@@ -369,7 +369,7 @@ fn header_row(
         );
         ctx.host.hit_index_mut().register(eye_id, r);
     }
-    y + ROW_H_PX + Spacing::Xs.px()
+    y + ph2d_tokens::row_pitch_px()
 }
 
 #[allow(clippy::too_many_arguments)] // a row is (geometry, id, label, state) — splitting hides the seam
@@ -393,7 +393,7 @@ fn checkbox_row(
         });
     paint_checkbox(&cb, rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(id, rect);
-    y + ROW_H_PX + Spacing::Xs.px()
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// The Experimental card's explanatory note — short lines, wrapped by hand

@@ -255,5 +255,5 @@ fn paint_fact(ctx: &mut PaintCtx, row: &ParamRow, x: f32, w: f32, y: f32) -> f32
         (w - LABEL_COL_W).max(0.0),
         dim,
     );
-    y + ROW_H_PX + Spacing::Xs.px()
+    y + ph2d_tokens::row_pitch_px()
 }

@@ -442,7 +442,7 @@ fn paint_color_swatch_row(
     ctx.host
         .hit_index_mut()
         .register(core_ids::PAINTER_COLOR_THUMB, rect);
-    y + ROW_H_PX + Spacing::Sm.px()
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// The shared scrollable dropdown-popover renderer (moved to its own module for the LOC cap).

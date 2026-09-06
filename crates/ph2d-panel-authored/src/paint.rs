@@ -352,7 +352,7 @@ fn paint_body(
                 text_system,
                 theme,
             );
-            y += ROW_H_PX + Spacing::Xs.px();
+            y += ph2d_tokens::row_pitch_px();
             // A dobra abre DEPOIS de a row-cabeçalho estar pintada — ela é uma row como as
             // outras, e o corpo dela começa onde ela acaba.
             if opens_a_fold {

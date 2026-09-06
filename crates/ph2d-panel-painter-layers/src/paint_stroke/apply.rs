@@ -41,7 +41,7 @@ pub(super) fn paint_apply_row(
             Some("Convert to Curve"),
             core_ids::PAINTER_BRUSH_STROKE_EDIT,
         );
-        y += ROW_H_PX + gap;
+        y += ph2d_tokens::row_pitch_px();
     }
     // Trailing cluster is now just ✕ Delete.
     let icons = sq;
@@ -70,7 +70,7 @@ pub(super) fn paint_apply_row(
             keep,
         );
         paint_icon_cluster(ctx, theme, keep_x + w + gap, y, sq);
-        y + ROW_H_PX + Spacing::Xs.px()
+        y + ph2d_tokens::row_pitch_px()
     } else {
         // Narrow: Apply (+ icons) on row 1; Apply & Keep full-width on row 2.
         let text_w = content_w - icons - gap;
@@ -82,7 +82,7 @@ pub(super) fn paint_apply_row(
             apply,
         );
         paint_icon_cluster(ctx, theme, x + text_w + gap, y, sq);
-        let keep_y = y + ROW_H_PX + gap;
+        let keep_y = y + ph2d_tokens::row_pitch_px();
         button(
             ctx,
             theme,
@@ -90,7 +90,7 @@ pub(super) fn paint_apply_row(
             Some("Apply & Keep"),
             keep,
         );
-        keep_y + ROW_H_PX + Spacing::Xs.px()
+        keep_y + ph2d_tokens::row_pitch_px()
     }
 }
 
@@ -111,7 +111,7 @@ pub(super) fn paint_simplify_row(
         Some("Simplify"),
         core_ids::PAINTER_BRUSH_STROKE_SIMPLIFY,
     );
-    y + ROW_H_PX + Spacing::Xs.px()
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// Paint the **Merge Curves** button row (full width) under Simplify — folds every open/parked shape into
@@ -131,7 +131,7 @@ pub(super) fn paint_merge_row(
         Some("Merge Curves"),
         core_ids::PAINTER_BRUSH_STROKE_MERGE,
     );
-    y + ROW_H_PX + Spacing::Xs.px()
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// Paint the **Offset** card (modeled on the Jitter card): the perpendicular-offset slider, then a **Trim**

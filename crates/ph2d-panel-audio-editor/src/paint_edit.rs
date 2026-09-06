@@ -73,7 +73,7 @@ fn paint_toolbar(
             hit_index,
         );
     }
-    y += ROW_H + gap;
+    y += ph2d_tokens::row_pitch_px();
 
     // Row 2 — the clipboard. Paste is the one op that does NOT need a selection: it needs
     // something to paste. A Paste button lit with an empty clipboard is a button that lies.
@@ -94,7 +94,7 @@ fn paint_toolbar(
             hit_index,
         );
     }
-    y += ROW_H + gap;
+    y += ph2d_tokens::row_pitch_px();
 
     // Row 3 — structure. Split cuts at the playhead; Clear Cuts heals every seam (the audio stays
     // wherever you dragged it to — the pieces were never separate buffers).
@@ -182,7 +182,7 @@ pub(crate) fn paint_edit_section(
                 hit_index,
             );
         }
-        y += ROW_H + gap;
+        y += ph2d_tokens::row_pitch_px();
     }
     // Invert | Force Mono (downmix the whole clip for 3D positional audio).
     button(
@@ -235,7 +235,7 @@ pub(crate) fn paint_edit_section(
                 hit_index,
             );
         }
-        y += ROW_H + gap;
+        y += ph2d_tokens::row_pitch_px();
     }
     // The effects rack used to be painted from here. It is its own SECTION now
     // (`paint_sections`), so delegating to it as well drew the whole rack twice — and

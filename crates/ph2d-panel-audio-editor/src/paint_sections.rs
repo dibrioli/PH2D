@@ -468,7 +468,7 @@ fn paint_transport_section(
         theme,
         hit_index,
     );
-    y += ROW_H + Spacing::Sm.px();
+    y += ph2d_tokens::row_pitch_px();
 
     // Stop | Loop side by side.
     let gap = Spacing::Xs.px();
@@ -517,7 +517,7 @@ fn paint_transport_section(
         theme,
         hit_index,
     );
-    y += ROW_H + Spacing::Sm.px();
+    y += ph2d_tokens::row_pitch_px();
 
     // Batch LUFS — a FOLDER op (independent of the loaded clip), so always enabled.
     button(

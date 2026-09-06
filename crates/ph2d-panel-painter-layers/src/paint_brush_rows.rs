@@ -63,7 +63,7 @@ pub(crate) fn paint_dropdown_row(
     let chip_w = (content_w - LABEL_W - gap).max(0.0);
     let rect = Rect::new(x + LABEL_W + gap, y, chip_w, ROW_H_PX);
     let open = paint_dropdown_chip(ctx, theme, id, cur_value, cur_label, rect);
-    (y + ROW_H_PX + Spacing::Sm.px(), open.then_some(rect))
+    (y + ph2d_tokens::row_pitch_px(), open.then_some(rect))
 }
 
 /// Paint a dropdown chip (registered as a `Dropdown` for the generic open/close

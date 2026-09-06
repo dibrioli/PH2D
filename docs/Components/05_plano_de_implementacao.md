@@ -151,6 +151,9 @@ quiser o smoke de verdade tem de **fabricar** um v95 (checkout de um commit anti
 | **`PROJECT_SCHEMA` (F5.11)** | **não se mexe** | ⭐ a lista é **derivada** da ausência de elo, que já é persistida desde a F4.2 |
 | **Módulos novos (F5.11)** | `shells/desktop/src/instance_added{,_tests}.rs` · `instance_added_smoke{,_tests}.rs` · `sections/instance_added.rs` · `tests/the_added_piece_gesture_reaches_the_verb.rs` | nomes novos, sem colisão |
 | **Cena de smoke nova** | **`PH2D_INSTANCE_SMOKE=6`** (dar uma peça ao componente) | ⚠️ conta-se no `instance_smoke.rs`; a montagem é a **mesma função** da `=5` |
+| **Campo novo no `StructureReport` (F5.12)** | `moved: usize` | ⚠️ literal obrigatório? **não** — a struct é `Default` e ninguém a constrói por literal fora da definição |
+| **Cena de smoke nova** | **`PH2D_INSTANCE_SMOKE=7`** (mudar uma peça de lugar no componente) | ⚠️ conta-se no `instance_smoke.rs` |
+| **Módulos novos (F5.12)** | `shells/desktop/src/instance_reparent_tests.rs` · `instance_move_smoke{,_tests}.rs` · `tests/moving_a_piece_of_a_copy_goes_through_the_recipe_door.rs` | nomes novos, sem colisão |
 | **ADRs novos (F1.6)** | [`0070-amendment-8`](../architecture/decisions/0070-amendment-8.md) (o corte) · [`0071-amendment-1`](../architecture/decisions/0071-amendment-1.md) (o 4.º canal de tinta muda de casa) | ⚠️ números **contados** contra `decisions/`, não escolhidos |
 
 ---
@@ -2363,3 +2366,72 @@ para *erro de compilação*, e a segunda saiu com o mesmo `✗`. ⇒ o diagnóst
 ⚠️ **Um gate meu já existia com outro nome** (`duplicating_an_instance_keeps_it_an_instance_of_the_same_master`,
 da F4.2) e eu escrevi-o outra vez — apanhado ao ler o ficheiro para corrigir a assinatura da fixtura.
 *Antes de escrever a metade «e o caso contrário», grepe o ficheiro: ele pode já a ter.*
+
+---
+
+### ✅ §F5.12 — **A forma da receita inclui QUEM É PAI DE QUEM** (2026-09-06)
+
+O passe estrutural tinha **duas** metades — materializar o que falta, despawnar o que sobra — e a
+terceira faltava: **mover**. Uma peça que o artista arrastasse para outro pai *dentro da receita*
+ficava, em toda cópia, pendurada no pai antigo.
+
+#### ⛔⛔ O defeito era silencioso, permanente, e nenhuma régua o via
+
+*A peça existe, desenha, tem os bytes certos, e só a árvore está errada.* É a mesma família que a
+§F5.8 nomeia ao explicar por que a chave de emparelhamento é um **caminho**: uma peça sob o pai
+errado é estável e não acusa. Medido red-first:
+
+```text
+moving_a_piece_in_the_recipe_moves_it_in_every_copy
+  left: "Body"   right: "Head"
+```
+
+#### ⭐⭐ O `ChildOf` NÃO é componente registado, e é isso que torna a metade obrigatória
+
+Ele nunca propaga — e ainda bem: propagar os **bytes** dele poria a peça da cópia debaixo do pai do
+**MESTRE** — e nunca vira excepção. ⇒ até hoje a árvore de uma cópia **não tinha dono**. O bloco
+novo dá-lhe um: o pai de cada peça é o contraparte do pai dela na receita.
+
+⚠️ **A pose acompanha de graça:** o `Transform` de uma peça é LOCAL e chega verbatim da receita, então
+o braço aparece na posição certa relativa ao pai novo. Com um override de pose, a pose é a do
+artista, agora relativa ao pai novo — a lei de sempre (*a receita manda na forma; o artista no
+valor*).
+
+#### A guarda vive no GESTO
+
+Arrastar uma peça de cópia para outro pai **desfazia-se sozinho no quadro seguinte** assim que o
+passe passou a arrumar — a mão do artista a perder para um passe invisível, que é literalmente a lei
+que o apagar pagou em 2026-09-05. ⇒ o arrasto recusa, e a voz diz **onde** fazer (o *Edit Prefab*).
+
+⚠️ **Só quando o PAI muda.** Reordenar entre irmãos continua a valer: a ordem viaja no
+`SiblingOrder`, que **é** componente registado e vira excepção da cópia como qualquer outro valor.
+*Duas perguntas diferentes sobre o mesmo arrasto, e só uma delas é sobre a forma.*
+
+#### ⚠️⚠️ DUAS mutações sobreviveram, e as duas corrigiram AFIRMAÇÕES minhas
+
+| mutação | o que ela disse |
+|---|---|
+| incluir a raiz no bloco | a guarda `if mine == root` é **redundante**: o pai da raiz do mestre nunca está no mapa `have` — ele fica **acima** do mestre, e o mapa só tem peças de dentro dele. Fica como **cerca legível**, com a medição escrita ao lado |
+| inverter a travessia | *«a pré-ordem do mestre é o que impede um ciclo»* é **falso**. Os alvos são calculados **antes** de qualquer escrita, logo as atribuições são independentes: o ciclo, quando existe, vive **entre dois `insert`** e nenhuma travessia corre no meio. ⛔ Quem trocar *recolher e depois aplicar* por *aplicar enquanto percorre* reabre a pergunta |
+
+⚠️ **E a fixtura do swap também não produzia o fenómeno** — o `Body` e o `Head` eram **irmãos**, e um
+ciclo só se fecha quando o alvo do movimento é **descendente** de quem se move. *Uma fixtura que não
+produz o fenómeno absolve a linha que o impede.*
+
+#### A cena `=7`, e por que ela DESENHA a lista
+
+Reparentar é um gesto de Hierarquia — não há como fazê-lo no canvas. E é exactamente aí que o report
+de 2026-09-06 dói: *achar a linha certa entre quatro conjuntos de nomes iguais* é uma decisão que o
+dono não tem como tomar sozinho. ⇒ a cena imprime a árvore como ela aparece, com uma seta em cada
+uma das **duas** linhas do gesto:
+
+```text
+    Robot          <- o COMPONENTE (e' o unico SEM numero)
+      Body
+        Arm        <- (1) ARRASTE ESTA LINHA
+      Head         <- (2) E LARGUE EM CIMA DESTA
+    Robot (1)      (as tres copias vem depois)
+```
+
+⚠️ **O PASSO 2 ensina a lei pela recusa** — tentar o mesmo dentro de um robô numerado devolve a voz
+que diz onde fazer. *Uma lei que o artista descobre por um aviso é uma lei que ele aprende uma vez.*

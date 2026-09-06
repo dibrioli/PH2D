@@ -68,6 +68,7 @@
 - ⭐ [Gate CERTO que barra feature nova: a FEATURE é que sai — afrouxar paga-se em todo o corpus (escada, 20 139 = 20 139)](feedback_a_correct_gate_that_blocks_a_new_feature_is_not_the_thing_to_weaken.md)
 - ⭐ [«Isto fica para depois porque PRECISA de Y» — desmonte o Y primeiro: 3 de 3 eram falsas](feedback_a_dependency_asserted_without_dismantling_it_is_a_deferred_feature.md)
 - [Mutação que SOBREVIVE tem 2 leituras: falta um gate, ou a linha era redundante](feedback_a_surviving_mutation_can_mean_the_code_is_redundant.md)
+- ⭐ [São TRÊS leituras: falta um gate · a linha é redundante · **a fixtura não produz o fenómeno** — e mute o «X é o que impede Y»](feedback_a_fixture_where_the_two_are_siblings_cannot_produce_a_cycle.md)
 - ⭐ [E a fixtura que a mata pode ser a ORDEM INVERSA — 7 gates verdes sobre uma coincidência](feedback_an_order_that_only_coincides_with_the_right_one_is_not_the_right_one.md)
 - [Recusa medida responde UMA pergunta](feedback_a_measured_refusal_answers_one_question_recheck_it_when_yours_is_another.md) · [cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) · [revert: leia o motivo](feedback_a_reverted_attempt_may_differ_only_in_lifetime_read_the_revert_reason.md)
 - [Gate que PARSEIA o fonte tem de saber TODAS as formas — a nova acusa o errado e cega o certo](feedback_a_source_parsing_gate_must_know_every_shape_of_what_it_parses.md)

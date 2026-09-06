@@ -483,3 +483,70 @@ des-projecção a profundidade fixa escala com a profundidade.
   for ortográfica, a minha refutação acima é um defeito da minha aproximação da VISTA (usei a normal
   do pen-down) e não da ideia; se for perspectiva, nenhuma aproximação da vista basta e o Q13.1 é
   obrigatório.
+
+## Q14 — os três modos que NÃO escrevem força são os três que erram num passo (2026-09-06)
+
+O Q12 está implementado (§4.2-bis e §4.4: a normal da área, os dois baldes, o factor de escala e o
+**centro da área**), e o censo da §4.6 está **fechado deste lado** — as seis grandezas estão
+implementadas, ou já estavam certas, ou são a metade que a própria §4.6 declara em aberto (o peso da
+normal por vértice). `31` dos `56` traços estão dentro da barra.
+
+⭐⭐⭐ **E o que sobra parte-se por uma linha que eu não tinha visto: o que o gesto ESCREVE.**
+
+| o gesto escreve | modos | traços de UM passo | `err/max` |
+|---|---|---|---|
+| **aceleração** (`a`) | Arrastar · Empurrar · Aperto de ponto · Aperto de linha · Inflate | **7 traços** | **`0,000` todos — ao bit** |
+| **âncora + `σ`** | Agarrar · Snake Hook | 2 traços | `0,095` · **`0,416`** |
+| **desvio de repouso** (`τ`) | Expand | 1 traço | **`0,560`** |
+
+⇒ *num único passo simulado, tudo o que alimenta a aceleração está exacto — a área, a banda, o
+factor por vértice, a curva, a dureza, a integração e as restrições de distância. Os três modos que
+falham são os três cuja escrita entra na RELAXAÇÃO em vez de entrar na força.*
+
+### O Snake Hook, medido: o erro é função do TAMANHO de `δ` por passo
+
+O mesmo caminho (`−0,3` → `+0,3`), o mesmo pincel, só a subdivisão a mudar:
+
+| traço | `δ` por passo | `err/max` |
+|---|---|---|
+| `plano_gancho_radial_local_1passo` | `0,600` | `0,416` |
+| `plano_gancho_radial_local_2passos` | `0,300` | `0,388` |
+| `plano_gancho_radial_local_24passos` | `0,026` | **`0,062`** |
+| `plano_gancho_radial_local` | `0,026` | **`0,059`** |
+
+### E o PERFIL do traço de um passo diz onde (centro da queda = pen-down `−0,3`, `R = 0,35`)
+
+| `x` de repouso | nosso | oráculo | razão |
+|---|---|---|---|
+| `−0,281` | `0,4598` | `0,4602` | `1,00` |
+| `−0,234` | `0,4935` | `0,4894` | `1,01` |
+| `−0,188` | `0,4167` | `0,4280` | `0,97` |
+| `−0,141` | `0,2175` | `0,2552` | `0,85` |
+| `−0,094` | `0,0975` | `0,0602` | **`1,62`** |
+| `−0,047` | `0,0822` | `0,0458` | **`1,79`** |
+| `0,000` | `0,0635` | `0,0385` | **`1,65`** |
+| `+0,234` | `0,0197` | `0,0122` | `1,61` |
+| `+0,703` | `0,0009` | `0,0006` | `1,50` |
+
+⭐⭐ **Duas coisas que este perfil prova, e que separam as hipóteses:**
+1. **A cauda das duas decai à MESMA taxa** (`≈ 0,78` por célula de `0,047`, nas duas colunas, ao
+   longo de 15 células) ⇒ *a rede de restrições transmite igual; o que difere é a amplitude com que
+   ela é alimentada.*
+2. **O oráculo tem um DEGRAU que a curva de queda não produz:** ele cai `4,24×` numa célula
+   (`0,2552 → 0,0602`, a `0,45R`–`0,59R` do centro), onde nós caímos `2,23×`. A curva *smooth* entre
+   essas duas distâncias só muda de `0,57` para `0,37`.
+
+### As perguntas
+
+- **Q14.1 (a maior)** — dentro de uma varredura de relaxação, como é resolvida a restrição de
+  **âncora** (o alvo `B` do §3.2) em relação às de distância? Em particular: (a) ela é percorrida na
+  mesma lista e na mesma ordem que as de par, ou num passe próprio antes/depois? (b) a correcção
+  aplicada ao vértice é a metade que uma restrição de dois corpos aplicaria, ou a correcção inteira?
+  (c) o alvo da âncora é recalculado dentro da varredura, ou fixado uma vez por passo?
+- **Q14.2** — o que faz o material do alvo **soltar-se** tão bruscamente entre `0,45R` e `0,59R` do
+  centro num único passo grande? Há algum limite por-vértice, por-restrição ou por-varredura que só
+  se observa quando `δ` é grande (um tecto no deslocamento, uma desistência, um número de varreduras
+  que depende do tamanho do passo)?
+- **Q14.3 (Expand)** — o `plano_expandir_radial_local_1passo` é o único traço de um passo de um modo
+  **de força zero** e não sai ao bit. Ele só escreve `τ` (§4.5). O `τ` é somado ao comprimento de
+  repouso **antes** da primeira varredura do mesmo passo, ou só passa a valer no passo seguinte?

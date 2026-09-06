@@ -18,22 +18,9 @@
 
 /// Versão do formato de arquivo de projeto. Bump ⇒ migração ou hard-break.
 ///
-/// ⚠️ **Os degraus de v2 a v81 estão em [`super::project_schema_history`]**, verbatim — o corte é
+/// ⚠️ **Os degraus de v2 a v82 estão em [`super::project_schema_history`]**, verbatim — o corte é
 /// por IDADE, e o teto de 600 LOC do HR-18 foi quem o pediu. O que se lê para contar o próximo
 /// degrau é a ponta, e a ponta é o que ficou aqui.
-/// v82 (physics, W-Brink — A TRAVA DE BEIRADA): o `PlatformPlayer` ganhou
-/// `walk_off_ledges` e `crouch_walk_off_ledges`, apendados ao FIM ⇒ quebra dura.
-/// O `bCanWalkOffLedges` do Unreal, que ele serve a IA e ao *andar com cuidado*.
-/// ⚠️ **Os campos guardam a CAPACIDADE, nunca a trava**, e a razao e' o postcard:
-/// num `stop_at_ledges` o `false` que todo arquivo antigo traz num campo novo
-/// significaria *trava armada*, e a capacidade nasceria ligada em toda arte ja'
-/// autorada. ⚠️ **E o degrau e' o UNICO preco:** os dois nascem em `true`, onde
-/// a lei devolve o alvo VERBATIM e o sensor nem sequer casta ⇒ todo projeto
-/// salvo em v81 reabre a andar exactamente como andava, e o `physics_ecs_c9` sai
-/// byte-identico. ⚠️ **O alcance NAO e' um degrau:** ele e' DERIVADO
-/// (`v²/2a` + meia-largura) porque o knob que ele substituiu tinha o valor certo
-/// em funcao de outros dois — medido, a 8 m/s um `0,30` deixava o personagem
-/// CAIR e um `0,60` o segurava, com a fronteira exactamente em `0,533`.
 /// v83 (`line/Vector`, item 4 do estudo dos contêineres — A TABELA SINAL → AÇÃO): o
 /// `HostStates` ganhou **`on_signal`**, a lista de ligações *nome de sinal → papel*
 /// (`ph2d_ui_state::SignalBinding`). Ele mora DENTRO do `HostStates` — e não numa

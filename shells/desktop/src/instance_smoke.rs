@@ -381,14 +381,16 @@ impl crate::App {
             vec_scene: &mut gfx.vec_scene,
             vec_entities,
         };
-        let (_master, roots) =
-            spawn_ragdoll_scene(&mut gfx.sim, &gfx.component_registry, &mut docs);
+        let (master, roots) = spawn_ragdoll_scene(&mut gfx.sim, &gfx.component_registry, &mut docs);
+        let master_bits = master.to_bits();
         // ⚠️ A cena **imprime o que montou** — se estas linhas não aparecerem, PARE: o que está
         // na tela não é o que este smoke descreve.
-        // ⚠️ Ver a nota da cena 2: a receita so' esta' na tela enquanto a linha dela esta' escolhida.
+        // ⛔⛔⛔ **O PASSO 1 que aqui esteve era IMPOSSÍVEL desde 2026-08-30** — ver a nota da
+        // cena 2: a Hierarquia retira da lista a receita inteira, e ele mandava clicar na linha
+        // dela. A cena abre-a agora, e o texto diz o estado.
         println!(
-            "[instance smoke 1] PASSO 1: na lista da esquerda (Hierarchy) clique na linha \
-             'Ragdoll' — a RECEITA aparece la' em cima (ela NAO se mexe)"
+            "[instance smoke 1] o componente ja' esta' ABERTO (a linha 'Ragdoll' nasce acesa) — e' \
+             por isso que a RECEITA aparece la' em cima (ela NAO se mexe)"
         );
         for (i, r) in roots.iter().enumerate() {
             let name = gfx
@@ -425,5 +427,9 @@ impl crate::App {
             "[instance smoke 1] para desfazer a excepcao: botao direito na linha da copia -> \
              'Revert to Master'"
         );
+        // ⚠️ **Depois dos `println!`, e não antes** — o `gfx` está emprestado ao `docs` até aqui.
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.gizmo.replace_selection(Some(master_bits));
+        }
     }
 }

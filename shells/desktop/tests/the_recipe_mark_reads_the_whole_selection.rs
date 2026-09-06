@@ -85,27 +85,48 @@ fn the_duplicate_row_offsets_the_copy_and_puts_the_gizmo_on_it() {
     );
 }
 
-/// ⚠️ **O texto de cada cena de smoke nomeia o gesto que ACENDE a receita** — auditoria §1.7.
+/// ⛔⛔⛔ **ESTE GATE MUDOU DE LADO, e a razão é uma medição** (2026-09-06).
 ///
-/// A parte de código está gateada em `master_editing::tests::the_smoke_scene_shows_its_recipe_
-/// only_after_the_row_is_clicked` (a receita não tem um pixel no quadro 0). O que nenhum gate de
-/// unidade alcança são as **strings**: elas descreviam coordenadas vazias — *«receita lá em cima»*,
-/// *«à ESQUERDA, longe das cópias»* — e o artista lia isso, olhava para o canvas e reportava «o
-/// mestre ficou invisível». *Um instrumento que descreve um estado que ele próprio não produz é
-/// pior que instrumento nenhum.*
+/// Ele exigia que cada cena mandasse *«clique na linha da receita»* — o gesto que ACENDIA a receita
+/// quando ele foi escrito (auditoria §1.7, 27/08). Desde **30/08** a Hierarquia **retira da lista**
+/// tudo o que o `off_canvas::is_unedited_recipe` acusa, e a raiz da receita também é `MasterPiece`:
+/// a linha **deixou de existir**. ⇒ o gate passou a defender uma instrução impossível, e as duas
+/// cenas ficaram a mandar o dono procurar o que não está lá.
+///
+/// ⚠️ **Ele estava VERDE o tempo todo** — media a presença de uma frase, e a frase continuava lá.
+/// *Um gate sobre o TEXTO de uma instrução não sabe se o gesto que ela nomeia ainda existe.*
+///
+/// ⇒ hoje ele exige o contrário: a cena **abre a receita ela própria** (a marca é derivada da
+/// selecção) e **não** manda clicar numa linha que a lista não tem. A metade que mede o efeito
+/// vive em `instance_move_smoke::tests::every_row_the_step_names_is_actually_in_the_list`, que
+/// corre o predicado do painel; esta metade é sobre as **strings**, que nenhum gate de unidade
+/// alcança.
 #[test]
-fn each_smoke_scene_tells_the_artist_to_click_the_recipe_row() {
+fn no_smoke_scene_tells_the_artist_to_click_a_recipe_row() {
     let s = src("instance_smoke.rs");
-    for scene in ["[instance smoke 1] PASSO 1", "[instance smoke 2] PASSO 1"] {
+    assert_eq!(
+        s.matches("replace_selection(Some(master_bits))").count(),
+        2,
+        "as cenas 1 e 2 tem de ABRIR a receita ao montar — sem isso as linhas dela nao estao na \
+         Hierarquia, e os passos delas nomeiam o que nao existe"
+    );
+    for scene in ["[instance smoke 1]", "[instance smoke 2]"] {
         let at = s
             .find(scene)
-            .unwrap_or_else(|| panic!("a cena perdeu o PASSO 1: {scene:?}"));
-        let step = &s[at..s[at..].find("println!").map_or(s.len(), |n| at + n)];
+            .unwrap_or_else(|| panic!("a cena desapareceu: {scene:?}"));
+        let block = &s[at..];
+        let end = block.find("fn ").unwrap_or(block.len());
+        let block = &block[..end];
         assert!(
-            step.contains("clique na linha"),
-            "o PASSO 1 de {scene:?} deixou de mandar clicar na linha da receita. Sem esse gesto a \
-             receita nao tem UM pixel no canvas, e o smoke entrega o report que existe para \
-             evitar.\n{step}"
+            !block.contains("clique na linha 'Ragdoll'")
+                && !block.contains("clique na linha 'Badge'"),
+            "{scene:?} voltou a mandar clicar na linha da RECEITA — ela nao esta' na lista desde \
+             2026-08-30, e o report que volta e' «nao achei»"
+        );
+        assert!(
+            block.contains("ja' esta' ABERT"),
+            "{scene:?} abre a receita e nao o diz — o dono ve' um objecto a mais na tela que \
+             ninguem explicou"
         );
     }
 }

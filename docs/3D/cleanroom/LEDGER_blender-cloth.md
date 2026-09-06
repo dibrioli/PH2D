@@ -357,6 +357,21 @@ leitura do fonte + medição; as que mexiam na espec foram emendadas (§3.1, §2
   esfera foram **regeradas como área Dinâmica** (centro no cursor, que o traço fornece) — param no
   bordo da banda (`≈ 3,5 R`, zero além). A área **Local** fica medida só no PLANO (onde a origem cai
   na superfície). Commit da errata: `3d621e94b`.
+- **Q7 — instrumento por passo (pedido de 2026-09-06):** quatro traços regravados como corridas-prefixo
+  (`k` elementos do mesmo caminho, malha fresca) com prova `k = N` ≡ corrida inteira. ⚠️ O pen-down foi
+  posto **na ORIGEM** porque a semeadura do hover é refém do ponteiro físico (medido: uma sessão inteira
+  certa, a seguinte com o centro na origem em 30/30 corridas e zero em 2; a auto-verificação por
+  bbox só discrimina em corridas com o disco inteiro excitado). Os fixtures *Local* anteriores foram
+  auditados: corridas completas todas centradas em `x = −0,305` (o pen-down) — ver tabela abaixo.
+  `f`/`φ` não são observáveis sem recompilar (checkout esparso); entregou-se o rastreio de sete vértices.
+  | traço por passo | N | prova `k=N` ≡ inteira | movidos | máx |
+  |---|---|---|---|---|
+  | `plano_arrastar_radial_local_origem` | 12 | `0.000000` | 2145 | `0.329649` |
+  | `plano_arrastar_radial_global_origem` | 12 | `0.000000` | 4225 | `0.645708` |
+  | `plano_gancho_radial_local_2passos_origem` | 3 | `0.000000` | 1950 | `0.343869` |
+  | `plano_agarrar_radial_local_2passos_origem` | 3 | `0.000000` | 1869 | `0.14572` |
+  Auditoria dos fixtures *Local* já entregues (corridas completas, disco de movidos): TODOS centrados em `x = −0,305` = o pen-down (os de 1–2 passos não excitam o disco inteiro e não são auditáveis por bbox; nasceram na mesma sessão que os auditados).
+
 
 ## Fechamento R
 

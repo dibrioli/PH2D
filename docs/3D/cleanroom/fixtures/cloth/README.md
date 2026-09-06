@@ -33,6 +33,74 @@ plasticidade `0`, pino desligado, sem colisões, sem gravidade — i.e., **as om
   o passo simulado carrega **o percurso inteiro de `0,6`** de uma vez; nos modos de força o percurso
   só dá a DIRECÇÃO, e a magnitude é a da espec §4.1.
 
+
+## ⭐ O instrumento POR PASSO (`*.porpasso.txt.gz`, pedido do I em 2026-09-06)
+
+**O que é.** Para quatro traços, as posições **depois de CADA passo** — um ficheiro por traço com um
+bloco `passo k` por passo. **Como foi obtido:** o traço do binário é uma chamada só e a simulação vive
+dentro dela, logo não se pode «pausar»; mas a simulação **nunca olha para a frente**, então uma corrida
+NOVA com só os primeiros `k` elementos do MESMO caminho, sobre uma malha fresca, termina exactamente no
+estado do passo `k` da corrida inteira. Cada ficheiro traz a **prova**: `prova_do_fatiamento` = a
+diferença máxima por vértice entre o bloco `k = N` e uma corrida inteira da MESMA sessão — tem de ser
+`0,000000` (a 6 decimais).
+
+⚠️ **O pen-down destes quatro está NA ORIGEM do objecto** (`caminho` de `(0,0,0)` a `(0,6,0,0)`), e o
+sufixo `_origem` diz-o. Motivo, medido: o centro da área *Local* é o ponto de HOVER do cursor antes do
+pen-down, e num traço scriptado esse hover é **refém do ponteiro físico** — numa sessão inteira saiu
+certo, na seguinte saiu na origem em todas as corridas e a zero em duas. Com o pen-down na origem, o
+centro é o mesmo quer o hover dispare quer não ⇒ determinístico por construção. Os outros fixtures
+*Local* (pen-down em `x = −0,3`) foram **verificados** um a um: o disco de vértices movidos das corridas
+completas está centrado em `x = −0,305` (o pen-down), não na origem — ver a coluna no ledger.
+
+**`*.porpasso.rastreio.txt`** (texto): por passo, `|u|` de sete vértices de repouso nomeados —
+sob o pen-down, a `1R`, `2R`, no início da banda (`2,875R`), a meio dela (`3,2R`), no limite (`3,5R`)
+e fora (`4R`), todos deslocados **perpendicularmente** ao traço a partir do pen-down — mais o vértice
+sob o cursor do passo `k`. ⛔ O factor `f` da força e o `φ` das restrições **não são observáveis** sem
+recompilar o binário (o checkout é esparso e não compila); calculam-se da espec (§4.1, §2.2, §5.2)
+sobre estas posições, e o rastreio dá o lado MEDIDO da comparação.
+
+| traço (`_origem`) | passos | prova do fatiamento | movidos | máx `|u|` |
+|---|---|---|---|---|
+| `plano_arrastar_radial_local_origem` | 12 | `0.000000` | 2145 | `0.329649` |
+| `plano_arrastar_radial_global_origem` | 12 | `0.000000` | 4225 | `0.645708` |
+| `plano_gancho_radial_local_2passos_origem` | 3 | `0.000000` | 1950 | `0.343869` |
+| `plano_agarrar_radial_local_2passos_origem` | 3 | `0.000000` | 1869 | `0.14572` |
+
+`plano_arrastar_radial_local_origem` — `|u|` depois do passo k (excerto do rastreio):
+
+| passo | sob o pen-down | a 1R | no limite 3,5R | fora, 4R | sob o cursor do passo |
+|---|---|---|---|---|---|
+| 1 | `0.00000` | `0.00000` | `0.00000` | `0.00000` | `0.00000` |
+| 2 | `0.09347` | `0.00072` | `0.00000` | `0.00000` | `0.09986` |
+| 3 | `0.16758` | `0.01176` | `0.00000` | `0.00000` | `0.14865` |
+| 4 | `0.21314` | `0.03171` | `0.00000` | `0.00000` | `0.17944` |
+| 5 | `0.24711` | `0.05551` | `0.00000` | `0.00000` | `0.18102` |
+| 6 | `0.27291` | `0.07947` | `0.00002` | `0.00000` | `0.19755` |
+| 7 | `0.29041` | `0.10136` | `0.00004` | `0.00000` | `0.21078` |
+| 8 | `0.29737` | `0.11971` | `0.00008` | `0.00000` | `0.22034` |
+| 9 | `0.29100` | `0.13338` | `0.00013` | `0.00000` | `0.22642` |
+| 10 | `0.27014` | `0.14161` | `0.00019` | `0.00000` | `0.22915` |
+| 11 | `0.24062` | `0.14418` | `0.00025` | `0.00000` | `0.20411` |
+| 12 | `0.22022` | `0.14132` | `0.00032` | `0.00000` | `0.20429` |
+
+`plano_arrastar_radial_global_origem` — `|u|` depois do passo k (excerto do rastreio):
+
+| passo | sob o pen-down | a 1R | no limite 3,5R | fora, 4R | sob o cursor do passo |
+|---|---|---|---|---|---|
+| 1 | `0.00000` | `0.00000` | `0.00000` | `0.00000` | `0.00000` |
+| 2 | `0.09347` | `0.00072` | `0.00000` | `0.00000` | `0.09986` |
+| 3 | `0.20530` | `0.01013` | `0.00000` | `0.00000` | `0.18029` |
+| 4 | `0.27913` | `0.03197` | `0.00005` | `0.00001` | `0.22558` |
+| 5 | `0.33335` | `0.06380` | `0.00028` | `0.00011` | `0.24307` |
+| 6 | `0.38610` | `0.10068` | `0.00103` | `0.00049` | `0.24223` |
+| 7 | `0.44464` | `0.14042` | `0.00273` | `0.00157` | `0.23429` |
+| 8 | `0.49123` | `0.18174` | `0.00584` | `0.00388` | `0.30696` |
+| 9 | `0.54262` | `0.22325` | `0.01074` | `0.00797` | `0.22634` |
+| 10 | `0.58434` | `0.26075` | `0.01766` | `0.01427` | `0.25184` |
+| 11 | `0.61514` | `0.29525` | `0.02659` | `0.02293` | `0.25337` |
+| 12 | `0.64571` | `0.32416` | `0.03738` | `0.03378` | `0.21922` |
+
+
 ## O formato (texto, `gzip`, vocabulário do domínio)
 
 `<superficie>.repouso.txt.gz` — uma vez por superfície:
@@ -74,52 +142,56 @@ o ficheiro diz o que contém.
 
 | fixture | modo | passos | movidos | máx |u| |
 |---|---|---|---|---|
-| `plano_arrastar_plano_local` | arrastar | 12 | 2146 | `0.8996` |
-| `plano_arrastar_radial_dinamica` | arrastar | 12 | 2508 | `0.612821` |
-| `plano_arrastar_radial_dinamica_preset` | arrastar | 12 | 2455 | `0.329617` |
-| `plano_arrastar_radial_global` | arrastar | 12 | 4225 | `0.644607` |
-| `plano_arrastar_radial_local` | arrastar | 12 | 2144 | `0.331637` |
-| `plano_arrastar_radial_local_1passo` | arrastar | 2 | 171 | `0.09917` |
-| `plano_arrastar_radial_local_2passos` | arrastar | 3 | 1438 | `0.135888` |
-| `plano_arrastar_radial_local_amort1` | arrastar | 12 | 2141 | `0.219903` |
-| `plano_arrastar_radial_local_amort05` | arrastar | 12 | 2142 | `0.254386` |
-| `plano_arrastar_radial_local_massa2` | arrastar | 12 | 2143 | `0.154596` |
-| `plano_arrastar_radial_local_massa2_1passo` | arrastar | 2 | 171 | `0.049585` |
-| `plano_arrastar_radial_local_pino` | arrastar | 12 | 2144 | `0.323528` |
-| `plano_arrastar_radial_local_plast05` | arrastar | 12 | 2141 | `0.234305` |
-| `plano_arrastar_radial_local_forca05` | arrastar | 12 | 2139 | `0.073252` |
-| `plano_arrastar_radial_local_forca05_1passo` | arrastar | 2 | 168 | `0.024792` |
-| `plano_expandir_radial_local` | expandir | 12 | 2134 | `0.011523` |
-| `plano_expandir_radial_local_1passo` | expandir | 2 | 848 | `0.001902` |
-| `plano_agarrar_plano_local` | agarrar | 12 | 2146 | `0.307644` |
-| `plano_agarrar_radial_local` | agarrar | 12 | 2139 | `0.16991` |
-| `plano_agarrar_radial_local_1passo` | agarrar | 2 | 1324 | `0.134099` |
-| `plano_agarrar_radial_local_24passos` | agarrar | 24 | 2142 | `0.158543` |
-| `plano_agarrar_radial_local_2passos` | agarrar | 3 | 1872 | `0.146115` |
-| `plano_agarrar_radial_local_amort06` | agarrar | 12 | 2131 | `0.131488` |
-| `plano_agarrar_radial_local_preset` | agarrar | 12 | 4123 | `0.132623` |
-| `plano_inflar_radial_local` | inflar | 12 | 2146 | `0.317159` |
-| `plano_inflar_radial_local_1passo` | inflar | 2 | 171 | `0.09917` |
-| `plano_apertar_linha_radial_local` | apertar_linha | 12 | 2135 | `0.100451` |
-| `plano_apertar_linha_radial_local_1passo` | apertar_linha | 2 | 156 | `0.087609` |
-| `plano_apertar_ponto_plano_local` | apertar_ponto | 12 | 2146 | `0.623884` |
-| `plano_apertar_ponto_radial_local` | apertar_ponto | 12 | 2146 | `0.325769` |
-| `plano_apertar_ponto_radial_local_1passo` | apertar_ponto | 2 | 171 | `0.09917` |
-| `plano_empurrar_plano_local` | empurrar | 12 | 2146 | `0.520138` |
-| `plano_empurrar_radial_local` | empurrar | 12 | 2145 | `0.258986` |
-| `plano_empurrar_radial_local_1passo` | empurrar | 2 | 171 | `0.069419` |
-| `plano_gancho_radial_local` | gancho | 12 | 2140 | `0.09155` |
-| `plano_gancho_radial_local_1passo` | gancho | 2 | 1452 | `0.489383` |
-| `plano_gancho_radial_local_24passos` | gancho | 24 | 2142 | `0.02932` |
-| `plano_gancho_radial_local_2passos` | gancho | 3 | 1950 | `0.364813` |
-| `plano_gancho_radial_local_amort06` | gancho | 12 | 2135 | `0.063396` |
-| `esfera_arrastar_radial_dinamica` | arrastar | 12 | 2183 | `0.582806` |
-| `esfera_expandir_radial_dinamica` | expandir | 12 | 2096 | `0.046715` |
-| `esfera_agarrar_radial_dinamica` | agarrar | 12 | 1863 | `0.236509` |
-| `esfera_inflar_radial_dinamica` | inflar | 12 | 2181 | `0.267017` |
-| `esfera_apertar_linha_radial_dinamica` | apertar_linha | 12 | 2162 | `0.249739` |
-| `esfera_apertar_ponto_radial_dinamica` | apertar_ponto | 12 | 2183 | `0.463862` |
-| `esfera_empurrar_radial_dinamica` | empurrar | 12 | 2102 | `0.479385` |
-| `esfera_gancho_radial_dinamica` | gancho | 12 | 2234 | `0.169025` |
+| `esfera_agarrar_radial_dinamica.` | agarrar | 12 | 1863 | `0.236509` |
+| `esfera_apertar_linha_radial_dinamica.` | apertar_linha | 12 | 2162 | `0.249739` |
+| `esfera_apertar_ponto_radial_dinamica.` | apertar_ponto | 12 | 2183 | `0.463862` |
+| `esfera_arrastar_radial_dinamica.` | arrastar | 12 | 2183 | `0.582806` |
+| `esfera_empurrar_radial_dinamica.` | empurrar | 12 | 2102 | `0.479385` |
+| `esfera_expandir_radial_dinamica.` | expandir | 12 | 2096 | `0.046715` |
+| `esfera_gancho_radial_dinamica.` | gancho | 12 | 2234 | `0.169025` |
+| `esfera_inflar_radial_dinamica.` | inflar | 12 | 2181 | `0.267017` |
+| `plano_agarrar_plano_local.` | agarrar | 12 | 2146 | `0.307644` |
+| `plano_agarrar_radial_local.` | agarrar | 12 | 2139 | `0.16991` |
+| `plano_agarrar_radial_local_1passo.` | agarrar | 2 | 1324 | `0.134099` |
+| `plano_agarrar_radial_local_24passos.` | agarrar | 24 | 2142 | `0.158543` |
+| `plano_agarrar_radial_local_2passos.` | agarrar | 3 | 1872 | `0.146115` |
+| `plano_agarrar_radial_local_2passos_origem.` | agarrar | 3 | 1869 | `0.14572` |
+| `plano_agarrar_radial_local_amort06.` | agarrar | 12 | 2131 | `0.131488` |
+| `plano_agarrar_radial_local_preset.` | agarrar | 12 | 4123 | `0.132623` |
+| `plano_apertar_linha_radial_local.` | apertar_linha | 12 | 2135 | `0.100451` |
+| `plano_apertar_linha_radial_local_1passo.` | apertar_linha | 2 | 156 | `0.087609` |
+| `plano_apertar_ponto_plano_local.` | apertar_ponto | 12 | 2146 | `0.623884` |
+| `plano_apertar_ponto_radial_local.` | apertar_ponto | 12 | 2146 | `0.325769` |
+| `plano_apertar_ponto_radial_local_1passo.` | apertar_ponto | 2 | 171 | `0.09917` |
+| `plano_arrastar_plano_local.` | arrastar | 12 | 2146 | `0.8996` |
+| `plano_arrastar_radial_dinamica.` | arrastar | 12 | 2508 | `0.612821` |
+| `plano_arrastar_radial_dinamica_preset.` | arrastar | 12 | 2455 | `0.329617` |
+| `plano_arrastar_radial_global.` | arrastar | 12 | 4225 | `0.644607` |
+| `plano_arrastar_radial_global_origem.` | arrastar | 12 | 4225 | `0.645708` |
+| `plano_arrastar_radial_local.` | arrastar | 12 | 2144 | `0.331637` |
+| `plano_arrastar_radial_local_1passo.` | arrastar | 2 | 171 | `0.09917` |
+| `plano_arrastar_radial_local_2passos.` | arrastar | 3 | 1438 | `0.135888` |
+| `plano_arrastar_radial_local_amort05.` | arrastar | 12 | 2142 | `0.254386` |
+| `plano_arrastar_radial_local_amort1.` | arrastar | 12 | 2141 | `0.219903` |
+| `plano_arrastar_radial_local_forca05.` | arrastar | 12 | 2139 | `0.073252` |
+| `plano_arrastar_radial_local_forca05_1passo.` | arrastar | 2 | 168 | `0.024792` |
+| `plano_arrastar_radial_local_massa2.` | arrastar | 12 | 2143 | `0.154596` |
+| `plano_arrastar_radial_local_massa2_1passo.` | arrastar | 2 | 171 | `0.049585` |
+| `plano_arrastar_radial_local_origem.` | arrastar | 12 | 2145 | `0.329649` |
+| `plano_arrastar_radial_local_pino.` | arrastar | 12 | 2144 | `0.323528` |
+| `plano_arrastar_radial_local_plast05.` | arrastar | 12 | 2141 | `0.234305` |
+| `plano_empurrar_plano_local.` | empurrar | 12 | 2146 | `0.520138` |
+| `plano_empurrar_radial_local.` | empurrar | 12 | 2145 | `0.258986` |
+| `plano_empurrar_radial_local_1passo.` | empurrar | 2 | 171 | `0.069419` |
+| `plano_expandir_radial_local.` | expandir | 12 | 2134 | `0.011523` |
+| `plano_expandir_radial_local_1passo.` | expandir | 2 | 848 | `0.001902` |
+| `plano_gancho_radial_local.` | gancho | 12 | 2140 | `0.09155` |
+| `plano_gancho_radial_local_1passo.` | gancho | 2 | 1452 | `0.489383` |
+| `plano_gancho_radial_local_24passos.` | gancho | 24 | 2142 | `0.02932` |
+| `plano_gancho_radial_local_2passos.` | gancho | 3 | 1950 | `0.364813` |
+| `plano_gancho_radial_local_2passos_origem.` | gancho | 3 | 1950 | `0.343869` |
+| `plano_gancho_radial_local_amort06.` | gancho | 12 | 2135 | `0.063396` |
+| `plano_inflar_radial_local.` | inflar | 12 | 2146 | `0.317159` |
+| `plano_inflar_radial_local_1passo.` | inflar | 2 | 171 | `0.09917` |
 
-**47 traços.** ⚠️ As fixtures de ESFERA são todas de área **Dinâmica** (centro no cursor). A área *Local* na esfera NÃO foi gravada: um traço scriptado não dispara o hover que fixa o centro da área Local, que fica na ORIGEM do objecto — e numa esfera unitária a origem põe toda a malha dentro da banda (ver ERRATA no ledger). A área Local está medida no PLANO (onde a origem cai na superfície).
+**51 traços** (47 da matriz + 4 do instrumento por passo). ⚠️ As fixtures de ESFERA são todas de área **Dinâmica** (centro no cursor). A área *Local* na esfera NÃO foi gravada: um traço scriptado não dispara o hover que fixa o centro da área Local, que fica na ORIGEM do objecto — e numa esfera unitária a origem põe toda a malha dentro da banda (ver ERRATA no ledger). A área Local está medida no PLANO (onde a origem cai na superfície).

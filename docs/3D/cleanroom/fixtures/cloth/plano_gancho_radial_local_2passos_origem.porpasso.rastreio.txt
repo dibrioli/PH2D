@@ -1,0 +1,5 @@
+# rastreio por passo -- plano_gancho_radial_local_2passos_origem: |u| DEPOIS do passo k, de vertices de repouso nomeados (offsets perpendiculares ao traco, a partir do pen-down); 'sob_o_cursor_k' = vertice mais proximo do ponto k do caminho
+passo sob_o_pen-down a_1R a_2R inicio_da_banda_2.875R meio_da_banda_3.2R limite_3.5R fora_4R sob_o_cursor_k
+1 0.00000 0.00000 0.00000 0.00000 0.00000 0.00000 0.00000 0.00000
+2 0.19714 0.01131 0.00037 0.00004 0.00001 0.00000 0.00000 0.05807
+3 0.27608 0.05067 0.00434 0.00082 0.00018 0.00000 0.00000 0.06315

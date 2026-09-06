@@ -1,0 +1,5 @@
+# rastreio por passo -- plano_gancho_radial_local_2passos: deslocamento |u| (e componente x) de vértices de repouso nomeados; 'sob_o_cursor_k' = vértice mais próximo do ponto k do caminho
+passo sob_o_cursor_inicial|u| a_1R|u| a_2R|u| inicio_da_banda_2.875R|u| meio_da_banda_3.2R|u| limite_3.5R|u| sob_o_cursor_k|u|
+1 0.00000 0.00000 0.00000 0.00000 0.00000 0.00000 0.00000
+2 0.19397 0.01085 0.00031 0.00003 0.00000 0.00000 0.05206
+3 0.30105 0.05087 0.00410 0.00072 0.00010 0.00000 0.06582

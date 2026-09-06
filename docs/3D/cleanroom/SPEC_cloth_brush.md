@@ -718,7 +718,7 @@ como proveniência (as mensagens de commit são públicas; o texto foi re-dito).
 
 ## §10 — Vectores de teste (o oráculo)
 
-⭐ **47 traços do binário 5.2.1 sobre malhas NOSSAS** (grelha plana 64×64, esfera UV 96×64), um por
+⭐ **51 traços do binário 5.2.1 (47 + os 4 do instrumento por passo, §10.2) sobre malhas NOSSAS** (grelha plana 64×64, esfera UV 96×64), um por
 modo e por variante de solver, em `fixtures/cloth/` (proveniência e verificador no README de lá).
 Colunas: **movidos** = vértices com `|u| > 1e-5` · **máx `|u|`** em unidades de objecto · **alcance/R**
 = distância máxima de um vértice movido ao caminho, sobre o raio · **fracção normal** = `Σ|u·n⁰|/Σ|u|`
@@ -797,6 +797,49 @@ passo (que o traço scriptado FORNECE), funciona: as 8 fixtures de esfera param 
 (`alcance ≈ 3,5 R`, `0` vértices além), e é sobre elas que se lê o relevo fora do plano numa
 superfície curva. A área **Local** fica medida **só no plano** (onde a origem cai na superfície e o
 disco de `3,5 R` é exacto). Mecanismo e a errata completa: [ledger](LEDGER_blender-cloth.md).
+
+---
+
+### §10.2 — O instrumento POR PASSO (2026-09-06, a pedido do I)
+
+Quatro traços com as posições **depois de cada passo** (`fixtures/cloth/*_origem.porpasso.txt.gz`,
+método e prova no README de lá): Drag *Local* e *Global* (12 passos), Snake Hook e Grab *Local*
+(2 passos simulados). ⚠️ **Pen-down na origem** (determinismo do centro *Local*, ver README).
+O rastreio de sete vértices por passo (`*.porpasso.rastreio.txt`) é o lado MEDIDO para a Q3 do I
+(Local ≈ metade do Dinâmico/Global): ⭐ **o que os números dizem** —
+
+| passo | Local: sob o pen-down | Global: sob o pen-down | Local: no limite 3,5R | Global: no limite 3,5R | Local: fora 4R | Global: fora 4R |
+|---|---|---|---|---|---|---|
+| 1 | `0.00000` | `0.00000` | `0.00000` | `0.00000` | `0.00000` | `0.00000` |
+| 2 | `0.09347` | `0.09347` | `0.00000` | `0.00000` | `0.00000` | `0.00000` |
+| 3 | `0.16758` | `0.20530` | `0.00000` | `0.00000` | `0.00000` | `0.00000` |
+| 4 | `0.21314` | `0.27913` | `0.00000` | `0.00005` | `0.00000` | `0.00001` |
+| 5 | `0.24711` | `0.33335` | `0.00000` | `0.00028` | `0.00000` | `0.00011` |
+| 6 | `0.27291` | `0.38610` | `0.00002` | `0.00103` | `0.00000` | `0.00049` |
+| 7 | `0.29041` | `0.44464` | `0.00004` | `0.00273` | `0.00000` | `0.00157` |
+| 8 | `0.29737` | `0.49123` | `0.00008` | `0.00584` | `0.00000` | `0.00388` |
+| 9 | `0.29100` | `0.54262` | `0.00013` | `0.01074` | `0.00000` | `0.00797` |
+| 10 | `0.27014` | `0.58434` | `0.00019` | `0.01766` | `0.00000` | `0.01427` |
+| 11 | `0.24062` | `0.61514` | `0.00025` | `0.02659` | `0.00000` | `0.02293` |
+| 12 | `0.22022` | `0.64571` | `0.00032` | `0.03738` | `0.00000` | `0.03378` |
+
+1. **O bordo do Local é uma ÂNCORA e o do Global não existe:** no limite (`3,5R`) o Local move
+   `≤ 0,0003` em 12 passos e **fora dele exactamente `0`** (sem restrições, `φ = 0`); o Global move o
+   mesmo vértice `0,037` e o de fora `0,034` — a folha inteira desliza. ⇒ o disco Local é uma membrana
+   **presa no aro** por `w → 0` DENTRO do conjunto restringido (o raio de construção é o LIMITE, não o
+   início da banda).
+2. **A consequência está no pen-down:** no Local o vértice do pen-down sobe até `0,297` (passo 8) e
+   depois **RECUA** para `0,220` — o material atrás do cursor é puxado de volta para o aro preso; no
+   Global sobe monotonamente até `0,646` (a folha acompanha o cursor com a velocidade acumulada).
+   Sob o cursor do passo os dois são parecidos (`≈ 0,20–0,23` contra `≈ 0,22–0,31`).
+3. **Até ao passo 2 os dois são IGUAIS ao bit** (`0,09347` / `0,00072` / `0`): a diferença nasce só
+   quando a relaxação chega ao aro (passo 3 em diante) — é a prova de que o mecanismo é o aro, não a
+   força nem o passo de tempo.
+⇒ **Um port em que Local ≈ Global tem o aro LIVRE**: ou cria restrições só até ao início da banda
+(`R(1+L·F)`) em vez de até ao limite (`R(1+L)`), ou o `w` não chega a `0` dentro do conjunto
+restringido, ou `φ` não multiplica a correcção do lado do vértice do aro. Régua directa: `limite_3.5R`
+tem de ler `≈ 0` e `fora_4R` exactamente `0` no Local — e `> 0,03` nos dois no Global.
+
 
 ---
 
@@ -888,6 +931,6 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 12 | **Snake Hook zera as forças de âncora fora do pincel a cada passo**; o Grab não | exacta | §4.3 |
 | 13 | **Grab mede na malha de partida**: mover o pano não muda o conjunto agarrado | exacta | §4.3 |
 | 14 | **A simetria é por passagem** e a 2.ª passagem vê a 1.ª | fixture com espelho | §6.6 |
-| 15 | **Paridade com o oráculo** — os 47 traços (§10): a barra é a **discretização** e o **`f32`**: a nossa malha é a mesma (gerada pela mesma lei), logo a comparação é por vértice; a barra por vértice é a aresta × a diferença de ordem das restrições (Gauss–Seidel não comuta) — MEDIR primeiro a dispersão entre duas ordens nossas e usar essa dispersão como barra (⛔ não um epsilon de conforto; ⛔ não bit-parity — ADR-0162) | derivada por medição | §10 |
+| 15 | **Paridade com o oráculo** — os 51 traços (§10): a barra é a **discretização** e o **`f32`**: a nossa malha é a mesma (gerada pela mesma lei), logo a comparação é por vértice; a barra por vértice é a aresta × a diferença de ordem das restrições (Gauss–Seidel não comuta) — MEDIR primeiro a dispersão entre duas ordens nossas e usar essa dispersão como barra (⛔ não um epsilon de conforto; ⛔ não bit-parity — ADR-0162) | derivada por medição | §10 |
 
 ---

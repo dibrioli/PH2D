@@ -380,8 +380,17 @@ fn normal_da_face(pos: &[V3], f: &[u32]) -> V3 {
     n
 }
 
-/// Normais por vértice, ponderadas pela área, das posições ACTUAIS.
+/// Normais por vértice das posições ACTUAIS, somadas face a face e
+/// normalizadas no fim (espec §4.6 linha 4).
+///
+/// ⚠️⚠️ **O PESO de cada face nessa soma é a metade que a §4.6 declara ABERTA** —
+/// a espec demonstra a FORMA e o consumidor (o Inflate) e diz que o peso (área ·
+/// ângulo · uniforme) não é demonstrável com o que esta linha tem à mão. Nós
+/// escolhemos **área** (Newell traz a área embutida), e o experimento
+/// `PH2D_PESO_NORMAL=uniforme` corre a alternativa para a medição não depender da
+/// escolha. *Uma escolha declarada mede-se; uma escolha escondida herda-se.*
 fn normais(pos: &[V3], faces: &[Vec<u32>]) -> Vec<V3> {
+    let uniforme = std::env::var("PH2D_PESO_NORMAL").as_deref() == Ok("uniforme");
     let mut n = vec![[0.0f64; 3]; pos.len()];
     for f in faces {
         // Newell: normal de um polígono qualquer, com área embutida.
@@ -391,6 +400,12 @@ fn normais(pos: &[V3], faces: &[Vec<u32>]) -> Vec<V3> {
             fnrm[0] += (a[1] - b[1]) * (a[2] + b[2]);
             fnrm[1] += (a[2] - b[2]) * (a[0] + b[0]);
             fnrm[2] += (a[0] - b[0]) * (a[1] + b[1]);
+        }
+        if uniforme {
+            let l = (fnrm[0] * fnrm[0] + fnrm[1] * fnrm[1] + fnrm[2] * fnrm[2]).sqrt();
+            if l > 0.0 {
+                fnrm = [fnrm[0] / l, fnrm[1] / l, fnrm[2] / l];
+            }
         }
         for v in f {
             for c in 0..3 {

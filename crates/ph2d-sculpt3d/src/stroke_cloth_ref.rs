@@ -1,12 +1,13 @@
 //! ⭐⭐⭐ **A LEI DA REFERÊNCIA no pincel** — o adaptador entre a malha, o
 //! [`Brush`]/[`Dab`] da casa e o gesto puro de [`ph2d_cloth::verlet_gesto`].
 //!
-//! ⚠️ **Ele nasce DESLIGADO** (`PH2D_CLOTH_LAW=ref` liga) e o caminho de omissão
-//! continua a ser o VBD de [`super::stroke_cloth`]: a paridade com o oráculo
-//! está medida a meio (os seis traços de um passo de força ao bit; a amplitude
-//! Local/Dinâmica por resolver com o especificador — ver o INBOX do clean-room).
-//! *Ligar por omissão antes de o gate de paridade existir seria trocar um pincel
-//! reprovado por outro sem régua.*
+//! ⭐⭐ **Ele é o caminho de OMISSÃO desde 2026-09-06** (`PH2D_CLOTH_LAW=vbd`
+//! volta ao VBD de [`super::stroke_cloth`], para bissecar). A frase que estava
+//! aqui — *«ligar por omissão antes de o gate de paridade existir seria trocar
+//! um pincel reprovado por outro sem régua»* — continua verdadeira, e o gate
+//! passou a existir: `a_paridade_com_o_oraculo_nao_regride` cobre os `53`
+//! traços em duas listas, `28` dentro da barra e `25` abertos com o número
+//! medido ao lado.
 //!
 //! # O que este ficheiro traduz, e só isso
 //!
@@ -33,10 +34,22 @@ pub(super) struct ClothRef {
     tecido: PincelTecido,
 }
 
-/// A lei em vigor é a da referência? (`PH2D_CLOTH_LAW=ref`) — lido UMA vez.
+/// A lei em vigor é a da referência? — lido UMA vez.
+///
+/// ⭐⭐ **É o caminho de OMISSÃO desde 2026-09-06**, e a razão é o portão de
+/// paridade existir: `28` dos `53` traços do oráculo saem dentro da barra
+/// (`a_paridade_com_o_oraculo_nao_regride`), sete deles ao bit, e os `25`
+/// abertos estão nomeados com o número medido. ⚠️ *A lei «o que é novo nasce
+/// desligado» valia enquanto não havia régua; ela existe.*
+///
+/// ⛔ **O que fica do outro lado não é «o antigo», é o REPROVADO:** a lei VBD
+/// foi recusada pelo dono três vezes com foto (a agulha, o papel amassado, os
+/// caroços) e nunca teve paridade medida contra o alvo em modo nenhum.
+///
+/// `PH2D_CLOTH_LAW=vbd` volta a ela, para bissecar.
 pub(super) fn lei_referencia() -> bool {
     static ESCOLHA: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ESCOLHA.get_or_init(|| std::env::var("PH2D_CLOTH_LAW").as_deref() == Ok("ref"))
+    *ESCOLHA.get_or_init(|| std::env::var("PH2D_CLOTH_LAW").as_deref() != Ok("vbd"))
 }
 
 /// **O cursor deste passo tem de ser RE-APANHADO na superfície?** (espec §4.3:
@@ -201,19 +214,38 @@ impl SculptStroke {
         let cursor = v3(center);
         let pos: Vec<V3> = mesh.positions().iter().map(|p| v3(*p)).collect();
         if self.cloth_ref[copy].is_none() {
-            let mut tecido = PincelTecido::pen_down(pincel_de(brush, passagens), &pos, cursor);
-            // A máscara da casa, pela porta de sempre: `1` = protegido.
-            if let Some(masks) = mesh.masks() {
-                tecido.mascara = masks
-                    .iter()
-                    .map(|m| 1.0 - f64::from(crate::mask_ops::free_weight(*m)))
-                    .collect();
-            }
+            let tecido = PincelTecido::pen_down(pincel_de(brush, passagens), &pos, cursor);
             self.cloth_ref[copy] = Some(ClothRef { tecido });
         }
         let Some(mut ses) = self.cloth_ref[copy].take() else {
             return;
         };
+        // ⚠️ **A máscara E o alpha entram pela MESMA porta, e a cada dab.** A lei
+        // da casa é que *o alpha é mais um peso por-vértice, como a máscara*
+        // ([`super::stroke_cloth`]), e o carimbo do alpha anda com o traço —
+        // por isso isto não pode ser feito uma vez no pen-down. `1` = imóvel.
+        //
+        // ⚠️ **Sem isto o pincel de tecido era o ÚNICO verbo que ignorava o
+        // alpha**, e o censo `every_verb_reads_the_alpha` diz-o pelo nome: o
+        // buraco só apareceu quando esta lei passou a ser a de omissão.
+        let frame = brush.alpha_frame();
+        let usa_alpha = brush.alpha.is_some();
+        if mesh.masks().is_some() || usa_alpha {
+            let livre = mesh.masks().map(<[f32]>::to_vec);
+            ses.tecido.mascara = (0..pos.len())
+                .map(|v| {
+                    let m = livre
+                        .as_ref()
+                        .map_or(1.0, |l| f64::from(crate::mask_ops::free_weight(l[v])));
+                    let a = if usa_alpha {
+                        f64::from(brush.alpha_weight(mesh.positions()[v], &frame))
+                    } else {
+                        1.0
+                    };
+                    1.0 - m * a
+                })
+                .collect();
+        }
 
         // As normais ACTUAIS (o Inflate lê-as) e a normal da ÁREA (a média sob o
         // pincel — espec §4.4).

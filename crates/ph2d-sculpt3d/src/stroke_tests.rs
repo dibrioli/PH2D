@@ -217,13 +217,20 @@ fn every_verb_inherits_symmetry_from_the_one_place_it_is_expanded() {
         };
         let mut s = SculptStroke::default();
         s.begin(&mesh);
+        // ⚠️ **DOIS dabs, e é load-bearing:** um verbo cuja lei tenha um passo
+        // de aquecimento — o tecido, cujo 1.º passo constrói e não simula —
+        // não move nada no primeiro, e um dab só media a AUSÊNCIA dele em vez
+        // da simetria. Os outros verbos são indiferentes a um dab a mais.
         // Dab fora do plano X = 0, para que o espelho caia noutro lugar.
-        s.dab(
-            &mut mesh,
-            &b,
-            &dab_at([0.6, 0.0, 0.8], b.radius),
-            Symmetry::MIRROR_X,
-        );
+        for k in 0..2 {
+            let x = 0.6 + f32::from(u8::try_from(k).unwrap_or(0)) * 0.05;
+            s.dab(
+                &mut mesh,
+                &b,
+                &dab_at([x, 0.0, 0.8], b.radius),
+                Symmetry::MIRROR_X,
+            );
+        }
         let touched = s.touched().len();
         assert!(touched > 0, "{} não tocou nada", verb.label());
         // O conjunto tocado tem de ser simétrico em X: para cada vértice tocado

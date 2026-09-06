@@ -480,6 +480,12 @@ impl Verb {
                 // do `compute_target`), porque o nosso `accum` é a MAGNITUDE da
                 // demão e uma magnitude não tem lado.
                 | Self::Layer
+                // ⚠️ **O TECIDO honra o Ctrl desde 2026-09-06**, quando a lei da
+                // referência passou a ser a de omissão: ela carrega um sinal
+                // `±1` que multiplica a força do gesto (o *Add/Subtract* do
+                // alvo), e o adaptador lê-o do `Brush::invert`. ⛔ A lei VBD
+                // anterior não o lia, e é por isso que esta linha não existia.
+                | Self::Cloth
         )
     }
 

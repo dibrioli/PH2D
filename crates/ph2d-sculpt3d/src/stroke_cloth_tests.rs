@@ -103,21 +103,46 @@ fn encostar_sem_mover_nao_deforma() {
 fn arrastar_move_o_miolo_e_o_anel_fica() {
     let antes = plano();
     let (depois, _) = arrastar(12, &pincel());
+    // ⚠️ **A cerca sai da LEI, não de um número.** A área simulada da lei da
+    // referência acaba em `R(1 + L)` com `L` = *Simulation Limit* — e não em
+    // `2R`, que era a cerca da lei VBD e mordeu quando esta passou a ser a de
+    // omissão. Fora de `R(1+L)` o peso de banda é ZERO, logo o pano não se
+    // pode mexer ali, e é isso que se afirma.
+    let alcance =
+        f64::from(pincel().radius) * (1.0 + ph2d_cloth::verlet_gesto::Pincel::default().limite);
+    #[allow(clippy::cast_possible_truncation)]
+    let fora = alcance as f32;
     let mut miolo = 0.0f32;
     let mut longe = 0.0f32;
+    let mut contados = 0usize;
     for v in 0..antes.vert_count() {
         let p = antes.positions()[v];
         let r = (p[0] * p[0] + p[1] * p[1]).sqrt();
+        // ⚠️ **A distância é ao CAMINHO, não à origem** — a área anda com o
+        // cursor, e medir da origem daria por «fora» pontos que o pincel visitou
+        // no fim do traço. O caminho é o mesmo que [`arrastar`] percorre.
+        let ao_caminho = (0..12)
+            .map(|k| {
+                let c = [0.02 * k as f32, 0.0, 0.0];
+                ((p[0] - c[0]).powi(2) + (p[1] - c[1]).powi(2) + (p[2] - c[2]).powi(2)).sqrt()
+            })
+            .fold(f32::MAX, f32::min);
         let d = desloc(&antes, &depois, v);
         if r < 0.15 {
             miolo = miolo.max(d);
-        } else if r > 0.80 {
-            // Bem fora da região de simulação (`0,30 × 2 = 0,60`).
+        } else if ao_caminho > fora {
+            contados += 1;
             longe = longe.max(d);
         }
     }
     assert!(miolo > 1e-3, "o pano nao respondeu ao arrasto: {miolo:.3e}");
-    assert_eq!(longe, 0.0, "o pano moveu fora da regiao: {longe:.3e}");
+    // Anti-vácuo: tem de haver vértices ALÉM da cerca, senão «nada se moveu lá»
+    // é verdade por não haver «lá».
+    assert!(
+        contados > 20,
+        "so' {contados} vertices alem de {fora:.2} -- a fixtura nao alcanca a cerca"
+    );
+    assert_eq!(longe, 0.0, "o pano moveu fora da regiao ({fora:.2}): {longe:.3e}");
 }
 
 /// ⭐⭐⭐ **GATE — o pano responde FORA da pegada, e é isso que o separa de um Grab.**
@@ -397,27 +422,42 @@ fn sonda_dos_artefatos() {
 
 /// ⭐⭐⭐ **GATE — um traço longo não deixa os artefatos da foto de 2026-09-05.**
 ///
-/// ⛔⛔ **As barras saem do defeito REPRODUZIDO, não de um número escolhido.** O
-/// report (*«zero física! muitos artefatos»*) foi reproduzido nesta mesma
-/// fixtura, e cada coluna tem os dois lados:
+/// ⛔⛔⛔ **DUAS das três barras foram RETIRADAS em 2026-09-06, porque elas
+/// reprovavam a saída do próprio alvo.** Elas tinham sido calibradas sobre a lei
+/// VBD — a que o dono reprovou três vezes com foto — e essa lei era TÍMIDA: o
+/// que elas liam como saúde era ela mal deformar o pano. Medido na saída do
+/// oráculo, sobre os 53 traços do clean-room:
 ///
-/// | grandeza | o defeito | hoje | barra |
-/// |---|---|---|---|
-/// | espinho (maior deslocamento) | `0,690` | `0,052` | `0,20` |
-/// | rasgo (salto entre vizinhos) | `0,387` | `0,018` | `0,10` |
-/// | estica (aresta / repouso) | `2,98×` | `1,14×` | `1,50×` |
+/// | grandeza | o defeito (05/09) | a lei VBD | **o ALVO** | a nossa lei | veredito |
+/// |---|---|---|---|---|---|
+/// | espinho (maior deslocamento) | `0,690` | `0,052` | **`0,900`** | `0,767` | ⛔ não discrimina |
+/// | rasgo (salto entre vizinhos) | `0,387` | `0,018` | **`0,219`** (arrasto) | `0,122` | ✅ discrimina |
+/// | estica (aresta / repouso) | `2,98×` | `1,14×` | **`3,72×`** (arrasto) | `1,17×` | ⛔ não discrimina |
+///
+/// ⚠️ *O alvo deforma MAIS do que o defeito deformava em duas das três colunas.*
+/// Uma barra que o reprovasse proibiria o comportamento correcto — e é
+/// exactamente a armadilha que esta casa já registou: **uma barra calibrada sem
+/// o lado aprovado mede os nossos próprios defeitos.**
+///
+/// ⭐ **O que SOBRA é o rasgo, e ele é o discriminador certo por mecanismo:** uma
+/// agulha é um vértice que anda longe enquanto os vizinhos dele ficam, que é
+/// literalmente um salto de deslocamento entre vizinhos de aresta. A barra
+/// `0,30` fica na banda medida entre o pior arrasto do alvo (`0,219`) e o
+/// defeito reproduzido (`0,387`).
 ///
 /// ⚠️ **E o CONTROLE é metade do gate:** sem o piso, um pincel que não fizesse
-/// nada passaria em todas as três — que é literalmente o estado em que ele
-/// esteve no report ANTERIOR (*«nada aconteceu ao pintar»*). *Os dois reports do
-/// mesmo dia são os dois lados desta assertiva.*
+/// nada passaria — que é literalmente o estado do report ANTERIOR (*«nada
+/// aconteceu ao pintar»*). *Os dois reports do mesmo dia são os dois lados
+/// desta assertiva.*
 #[test]
 fn um_traco_longo_nao_deixa_artefatos() {
     let (espinho, rasgo, estica) = artefatos(None);
     assert!(espinho > 0.01, "o pincel nao fez NADA: {espinho:.4}");
-    assert!(espinho < 0.20, "espinho: {espinho:.4} (defeito: 0,690)");
-    assert!(rasgo < 0.10, "rasgo: {rasgo:.4} (defeito: 0,387)");
-    assert!(estica < 1.50, "estica: {estica:.2}x (defeito: 2,98x)");
+    assert!(
+        rasgo < 0.30,
+        "rasgo: {rasgo:.4} -- o defeito de 05/09 leu 0,387 e o pior arrasto do \
+         alvo le 0,219 (espinho {espinho:.4}, estica {estica:.2}x)"
+    );
 }
 
 /// ⭐⭐⭐ **GATE — a lei do gesto NÃO depende do orçamento do solver.**
@@ -452,6 +492,13 @@ fn o_gesto_nao_depende_do_orcamento_do_solver() {
     const ORCAMENTOS: [u32; 5] = [4, 8, 16, 32, 64];
     let lidos: Vec<(f32, f32, f32)> = ORCAMENTOS.iter().map(|s| artefatos(Some(*s))).collect();
 
+    // Controlo anti-vácuo comum às duas leis: o traço tem de ter deformado.
+    assert!(
+        lidos[0].0 > 0.01,
+        "o pincel nao fez NADA: {:.4} -- o gate ficaria verde por vacuo",
+        lidos[0].0
+    );
+
     // A deriva relativa entre dois orçamentos CONSECUTIVOS (que dobram).
     let deriva: Vec<f32> = lidos
         .windows(2)
@@ -463,26 +510,26 @@ fn o_gesto_nao_depende_do_orcamento_do_solver() {
         })
         .collect();
 
-    // ⚠️ **CONTROLE ANTI-VÁCUO, e sem ele o gate fica verde por um override
-    // inerte:** se `cloth_substeps_override` deixasse de chegar ao solver, todas
-    // as leituras seriam idênticas, toda deriva seria `0` e a desigualdade
-    // `0 <= 0/2` valeria trivialmente. *A 2.ª redação deste gate tinha
-    // exatamente esse buraco.*
-    assert!(
-        deriva[0] > 1e-6,
-        "o orcamento nao mudou NADA entre 4 e 8 sub-passos -- o override nao \
-         chega ao solver, e este gate estaria verde por vacuo"
-    );
+    // ⭐⭐ **A lei da REFERÊNCIA satisfaz a propriedade na forma mais forte que
+    // existe: o orçamento não é um botão dela.** Ela relaxa um número fixo de
+    // vezes por passo, então as cinco leituras são IDÊNTICAS e toda deriva é
+    // exactamente zero. ⛔ *Isto não é o vácuo que a 2.ª redacção deste gate
+    // deixou passar* — o piso acima já provou que o traço deformou; o que se
+    // afirma aqui é que a deformação não mudou com o orçamento.
+    if deriva.iter().all(|d| *d == 0.0) {
+        return;
+    }
 
-    // ⭐ A propriedade: a última duplicação tem de derivar **menos de metade** do
-    // que a primeira. Um termo proporcional ao orçamento mantém a deriva
-    // constante e reprova; convergência cai geometricamente e passa com folga.
+    // ⭐ E a lei VBD (alcançável por `PH2D_CLOTH_LAW=vbd`) satisfaz a mesma
+    // propriedade na forma fraca: a deriva de convergência ENCOLHE quando se
+    // dobra o orçamento. Um termo que dependa do orçamento — o defeito de
+    // 05/09, a aceleração dividida pelos sub-passos — mantém a deriva constante
+    // em ~100 % e reprova, sem tolerância nenhuma escolhida.
+    let (primeira, ultima) = (deriva[0], deriva[deriva.len() - 1]);
     assert!(
-        deriva[deriva.len() - 1] * 2.0 < deriva[0],
-        "a resposta NAO converge no orcamento: derivas consecutivas {deriva:?} \
-         (leituras {lidos:?}). Uma deriva que nao encolhe ao dobrar o orcamento e' \
-         um termo que DEPENDE dele -- o defeito de 05/09 dobrava a resposta a cada \
-         duplicacao"
+        ultima <= primeira / 2.0,
+        "a deriva NAO encolhe ao dobrar o orcamento: {primeira:.4} -> {ultima:.4} \
+         (derivas {deriva:?}) -- um termo proporcional ao orcamento le' ~100 % constante"
     );
 }
 

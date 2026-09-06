@@ -313,6 +313,57 @@ pub(crate) fn materialise_piece(
     Some(copy.root)
 }
 
+/// ⭐⭐⭐ **PROMOVE uma peça acrescentada para dentro da receita** (ADR-0164 / F5.11) — o sentido
+/// INVERSO do [`materialise_piece`], e o *Apply* do *Added GameObject* do Unity.
+///
+/// `added` é a peça que o artista pendurou na cópia; `host_master` é a peça do MESTRE que
+/// corresponde ao pai dela. Devolve quantas entidades entraram na receita.
+///
+/// ⚠️ **O ELO nasce no ORIGINAL, e é ele que impede a peça de aparecer DUAS vezes.** Sem esta
+/// metade o passe estrutural vê, no quadro seguinte, uma peça do mestre que esta cópia *«não tem»*
+/// — e materializa uma segunda, na cópia onde o artista acabou de trabalhar. *A cópia para a
+/// receita sozinha não é o gesto: é metade dele.*
+///
+/// ⚠️ **E a leitura do `StableId` é do DESTINO**, ao contrário do irmão: lá o mestre já existia e
+/// a cópia nascia; aqui a cópia é que nasce, e é a identidade dela que o elo tem de nomear.
+///
+/// ⛔ **A marca da cópia LIGADA não entra na receita.** [`ph2d_ecs::LinkedArt`] diz *«esta cópia
+/// partilha a arte do mestre»* — o doc dela diz, pelo nome, que **o mestre não a tem**, e o sync
+/// vive disso (ela está no `NEVER_PROPAGATES` justamente para o passe não a arrancar da cópia). Uma
+/// receita que a carregasse seria uma receita a dizer que é cópia de si mesma.
+pub(crate) fn promote_piece(
+    sim: &mut SimWorld,
+    registry: &ComponentRegistry,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
+    added: Entity,
+    host_master: Entity,
+) -> Option<usize> {
+    let copy =
+        ph2d_ecs::deep_copy_subtree(sim.world_mut(), registry, added, Some(host_master)).ok()?;
+    crate::instance_docs::clone_owned_documents(sim, registry, docs, &copy).warn("promover peca");
+    let pieces: Vec<Entity> = copy.copies();
+    crate::instance_refs::remap_object_refs(sim.world_mut(), &pieces, &copy.stable_ids);
+    for (&src, &dst) in &copy.entities {
+        let Some(id) = sim.world().get::<StableId>(dst).map(|s| s.0) else {
+            continue;
+        };
+        sim.world_mut()
+            .entity_mut(src)
+            .insert(InstanceOf { master: id });
+        sim.world_mut()
+            .entity_mut(dst)
+            .remove::<ph2d_ecs::LinkedArt>();
+    }
+    // A peça da receita não é ela própria uma receita — a mesma linha que os dois irmãos pagam.
+    sim.world_mut().entity_mut(copy.root).remove::<MasterRoot>();
+    ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
+    // ⚠️ **Obrigatória, e a falta dela é VISÍVEL:** sem a marca a peça nova da receita passa a
+    // DESENHAR, e a receita está escondida exactamente por não ter nenhuma. O artista veria a peça
+    // aparecer duas vezes — uma na cópia dele e outra em cima da biblioteca.
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    Some(pieces.len())
+}
+
 #[cfg(test)]
 #[path = "instantiate_tests.rs"]
 mod tests;

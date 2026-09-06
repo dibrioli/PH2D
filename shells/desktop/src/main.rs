@@ -314,6 +314,9 @@ mod input_map_drag;
 #[cfg(test)]
 #[path = "inspector_presence_tests.rs"]
 mod inspector_presence_tests;
+/// ⭐⭐⭐ **A peça que o artista ACRESCENTOU a uma cópia** (F5.11) — o espelho da recusa: ali a
+/// decisão tinha de ser guardada, aqui ela já está escrita na ausência do elo.
+mod instance_added;
 /// ⭐⭐ **A escada do *Aplicar*** — a que mestre, quando há mais de um. Ver o cabeçalho de lá.
 mod instance_apply_deep;
 /// ⭐ **As travessias que os verbos partilham** — irmão por assunto, ver o cabeçalho de lá.

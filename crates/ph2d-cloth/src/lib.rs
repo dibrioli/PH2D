@@ -46,6 +46,8 @@ mod bending;
 mod membrane;
 mod topology;
 mod vbd;
+pub mod verlet;
+pub mod verlet_gesto;
 
 #[cfg(test)]
 mod bending_tests;

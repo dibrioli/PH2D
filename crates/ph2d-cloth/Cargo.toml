@@ -22,3 +22,11 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+
+# Só o ARNÊS de paridade com o oráculo (`tests/oraculo_do_pincel.rs`) precisa de
+# uma malha para as normais e o anel-1, e de inflar os `.gz` das fixtures — a lib
+# continua sem dependência nenhuma. `miniz_oxide` e não `flate2`, pela mesma razão
+# do `ph2d-quadfill`: já está na árvore.
+[dev-dependencies]
+ph2d-mesh = { path = "../ph2d-mesh" }
+miniz_oxide = "0.8"

@@ -18,7 +18,7 @@ use crate::{
     AEDIT_TOOL_SCALE, AEDIT_TOOL_SELECT, AEDIT_TRIM, AEDIT_UNDO, loop_state, snapshot,
 };
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::widget::segment_rects;
+use ph2d_editor_core::widget::{block_cells, grid_height};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{Spacing, Theme};
@@ -30,7 +30,7 @@ use ph2d_vector::VectorScene;
 /// toggling it off — a pointer that means nothing is a pointer that does nothing.
 #[allow(clippy::too_many_arguments)]
 fn paint_toolbar(
-    mut y: f32,
+    y: f32,
     x: f32,
     w: f32,
     loaded: bool,
@@ -54,7 +54,11 @@ fn paint_toolbar(
         ),
         ("Scale", AEDIT_TOOL_SCALE, EditTool::Scale, loaded),
     ];
-    let seg = segment_rects(Rect::new(x, y, w, ROW_H), tools.len());
+    // ⭐⭐ **As três fileiras são UM bloco** — encostam na vertical como encostam na horizontal
+    //    (a lei do Blender nas duas direcções). O dono, depois de ver só a metade horizontal:
+    //    *«na vertical ainda tem muito espaço ainda»*.
+    let block = block_cells(Rect::new(x, y, w, 0.0), &[3, 3, 2], ROW_H);
+    let seg = &block[0];
     for (i, (label, id, t, enabled)) in tools.into_iter().enumerate() {
         toggle_in_group(
             seg[i].0,
@@ -69,7 +73,6 @@ fn paint_toolbar(
             hit_index,
         );
     }
-    y += ph2d_tokens::row_pitch_px();
 
     // Row 2 — the clipboard. Paste is the one op that does NOT need a selection: it needs
     // something to paste. A Paste button lit with an empty clipboard is a button that lies.
@@ -78,7 +81,7 @@ fn paint_toolbar(
         ("Copy", AEDIT_COPY, has_sel),
         ("Paste", AEDIT_PASTE, snapshot::has_clipboard()),
     ];
-    let seg = segment_rects(Rect::new(x, y, w, ROW_H), clip_row.len());
+    let seg = &block[1];
     for (i, (label, id, enabled)) in clip_row.into_iter().enumerate() {
         button_in_group(
             seg[i].0,
@@ -92,11 +95,10 @@ fn paint_toolbar(
             hit_index,
         );
     }
-    y += ph2d_tokens::row_pitch_px();
 
     // Row 3 — structure. Split cuts at the playhead; Clear Cuts heals every seam (the audio stays
     // wherever you dragged it to — the pieces were never separate buffers).
-    let seg = segment_rects(Rect::new(x, y, w, ROW_H), 2);
+    let seg = &block[2];
     button_in_group(
         seg[0].0,
         "Split",
@@ -119,7 +121,7 @@ fn paint_toolbar(
         theme,
         hit_index,
     );
-    y + ROW_H + Spacing::Md.px()
+    y + grid_height(3, ROW_H) + Spacing::Md.px()
 }
 
 /// The Edit ops block: the toolbar (tools · clipboard · structure), then whole-clip
@@ -167,8 +169,11 @@ pub(crate) fn paint_edit_section(
             ("Gain +", AEDIT_GAIN_UP, loaded),
         ],
     ];
-    for row in rows {
-        let seg = segment_rects(Rect::new(x, y, w, ROW_H), row.len());
+    // ⭐⭐ **As CINCO fileiras são um corpo só** — as quatro daqui mais a `Invert | Force Mono`
+    //    logo abaixo: elas fazem a mesma coisa (agir sobre o clipe inteiro), logo encostam.
+    let block = block_cells(Rect::new(x, y, w, 0.0), &[2, 2, 2, 2, 2], ROW_H);
+    for (r, row) in rows.into_iter().enumerate() {
+        let seg = &block[r];
         for (i, (label, id, enabled)) in row.into_iter().enumerate() {
             button_in_group(
                 seg[i].0,
@@ -182,10 +187,9 @@ pub(crate) fn paint_edit_section(
                 hit_index,
             );
         }
-        y += ph2d_tokens::row_pitch_px();
     }
     // Invert | Force Mono (downmix the whole clip for 3D positional audio).
-    let seg = segment_rects(Rect::new(x, y, w, ROW_H), 2);
+    let seg = &block[4];
     button_in_group(
         seg[0].0,
         "Invert",
@@ -209,7 +213,7 @@ pub(crate) fn paint_edit_section(
         theme,
         hit_index,
     );
-    y += ROW_H + Spacing::Md.px();
+    y += grid_height(5, ROW_H) + Spacing::Md.px();
 
     // Selection range ops — enabled only when a waveform selection exists (drag on the overlay
     // with the Select tool to make one). Cut/Copy/Paste used to live down here; they are basic
@@ -224,8 +228,9 @@ pub(crate) fn paint_edit_section(
             ("Fade Out", AEDIT_FADE_OUT, has_sel),
         ],
     ];
-    for row in range_rows {
-        let seg = segment_rects(Rect::new(x, y, w, ROW_H), row.len());
+    let block = block_cells(Rect::new(x, y, w, 0.0), &[2, 2], ROW_H);
+    for (r, row) in range_rows.into_iter().enumerate() {
+        let seg = &block[r];
         for (i, (label, id, enabled)) in row.into_iter().enumerate() {
             button_in_group(
                 seg[i].0,
@@ -239,8 +244,8 @@ pub(crate) fn paint_edit_section(
                 hit_index,
             );
         }
-        y += ph2d_tokens::row_pitch_px();
     }
+    y += grid_height(2, ROW_H);
     // The effects rack used to be painted from here. It is its own SECTION now
     // (`paint_sections`), so delegating to it as well drew the whole rack twice — and
     // since `HitIndex::hit` walks back-to-front, the copy up here was a ghost: painted,

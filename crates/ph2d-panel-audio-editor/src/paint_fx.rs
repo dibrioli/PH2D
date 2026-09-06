@@ -14,7 +14,7 @@
 //! kind index, and the shell publishes each slot's label + already-formatted value
 //! (`audio/fx_params.rs`), so no DSP range or unit ever lands here.
 
-use crate::paint::{ClippedHits, ROW_H, button, toggle};
+use crate::paint::{ClippedHits, ROW_H, button, button_in_group, toggle};
 use crate::{
     AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
     AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_STAGE_ONS,
@@ -26,7 +26,7 @@ use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::widget::{
     ButtonState, IconButtonStyle, IconGlyph, Slider, SliderOrientation, paint_icon_button,
-    paint_slider,
+    paint_slider, segment_rects,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -406,22 +406,24 @@ fn paint_commit_row(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &
 
     // Apply is dimmed while bypassed: what sounds is the dry clip, so committing
     // would land nothing. Release Bypass to commit what the chain does.
-    let btn_w = ((w - gap) * 0.5).max(1.0);
-    button(
-        Rect::new(x, y, btn_w, row_h),
+    let seg = segment_rects(Rect::new(x, y, w, row_h), 2);
+    button_in_group(
+        seg[0].0,
         "Apply",
         loaded && !bypassed,
         AEDIT_FX_APPLY,
+        seg[0].1,
         ctx.scene,
         ctx.text_system,
         ctx.theme,
         ctx.hit_index,
     );
-    button(
-        Rect::new(x + btn_w + gap, y, btn_w, row_h),
+    button_in_group(
+        seg[1].0,
         "Cancel",
         auditioning,
         AEDIT_FX_CANCEL,
+        seg[1].1,
         ctx.scene,
         ctx.text_system,
         ctx.theme,

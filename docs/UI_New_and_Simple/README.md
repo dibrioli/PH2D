@@ -155,6 +155,14 @@ a fonte é 13 px e a caixa do glifo 15, logo sobram 3,5 de cada lado) e o realce
 lista **sem quina nenhuma** — que é o que finalmente o separa de um botão.
 [`pesquisa/08 §7.13`](pesquisa/08_modelos_com_codigo_para_seguir.md).
 
+⭐⭐ **E a wave 11 (06/09) fechou a outra metade dela** — *«na horizontal ficou bom. Na vertical
+ainda tem muito espaço ainda.»* A lei do Blender **nunca foi horizontal**: no cartão *Transform*
+que ele fotografou, o `Location X/Y/Z` é uma coluna de linhas que encostam. Agora um canto só
+arredonda se estiver na borda **da linha e da coluna**, e os quatro blocos do editor de áudio
+(transporte `1·2·2·1`, ferramentas `3·3·2`, operações `2·2·2·2·2` e selecção `2·2`) são **um corpo
+cada**, com quatro cantos em vez de dezasseis.
+[`pesquisa/08 §7.14`](pesquisa/08_modelos_com_codigo_para_seguir.md).
+
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
 cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·
 esbatimento do rótulo e inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis, animado) —

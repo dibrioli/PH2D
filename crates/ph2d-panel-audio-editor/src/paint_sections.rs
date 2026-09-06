@@ -11,7 +11,7 @@
 //! Split out of `paint.rs` to keep that file (and its `paint` fn) under the panel LOC
 //! caps.
 
-use crate::paint::{ClippedHits, button, fmt_time, toggle};
+use crate::paint::{ClippedHits, button_in_group, fmt_time, toggle_in_group};
 use crate::{
     AEDIT_BATCH_LUFS, AEDIT_EXPORT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME, AEDIT_PLAY,
     AEDIT_SEC_DELIVERY, AEDIT_SEC_EDIT, AEDIT_SEC_FX, AEDIT_SEC_LOOP, AEDIT_SEC_MARKERS,
@@ -21,8 +21,8 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, rect_to_vello, resolve};
 use ph2d_editor_core::widget::section_cards::{SectionCards, with_section_cards};
 use ph2d_editor_core::widget::{
-    SectionFold, SectionHeader, TextInput, TextInputState, paint_section_header,
-    paint_text_input_with_buffer,
+    SectionFold, SectionHeader, TextInput, TextInputState, block_cells, grid_height,
+    paint_section_header, paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -467,10 +467,15 @@ fn paint_transport_section(
     );
     y += TypeToken::Xs.px() + Spacing::Md.px();
 
+    // ⭐⭐ **As QUATRO fileiras do transporte são um corpo só** (`1 · 2 · 2 · 1`) — Enio,
+    //    2026-09-06: *«na vertical ainda tem muito espaço ainda»*. Elas fazem a mesma coisa
+    //    (comandar o clipe), logo encostam, e só os quatro cantos do BLOCO arredondam.
+    let block = block_cells(Rect::new(x, y, w, 0.0), &[1, 2, 2, 1], ROW_H);
     // Transport: Play/Pause (full width toggle, active while playing).
     let play_label = if t.playing { "Pause" } else { "Play" };
-    toggle(
-        Rect::new(x, y, w, ROW_H),
+    toggle_in_group(
+        block[0][0].0,
+        block[0][0].1,
         play_label,
         t.playing,
         t.loaded,
@@ -480,23 +485,23 @@ fn paint_transport_section(
         theme,
         hit_index,
     );
-    y += ph2d_tokens::row_pitch_px();
 
     // Stop | Loop side by side.
-    let gap = Spacing::Xs.px();
-    let half = ((w - gap) * 0.5).max(1.0);
-    button(
-        Rect::new(x, y, half, ROW_H),
+    let seg = &block[1];
+    button_in_group(
+        seg[0].0,
         "Stop",
         t.loaded,
         AEDIT_STOP,
+        seg[0].1,
         scene,
         text_system,
         theme,
         hit_index,
     );
-    toggle(
-        Rect::new(x + half + gap, y, half, ROW_H),
+    toggle_in_group(
+        seg[1].0,
+        seg[1].1,
         "Loop",
         t.looping,
         true,
@@ -506,43 +511,45 @@ fn paint_transport_section(
         theme,
         hit_index,
     );
-    y += ROW_H + Spacing::Md.px();
 
     // Load | Export WAV side by side.
-    button(
-        Rect::new(x, y, half, ROW_H),
+    let seg = &block[2];
+    button_in_group(
+        seg[0].0,
         "Load\u{2026}",
         true,
         AEDIT_LOAD,
+        seg[0].1,
         scene,
         text_system,
         theme,
         hit_index,
     );
-    button(
-        Rect::new(x + half + gap, y, half, ROW_H),
+    button_in_group(
+        seg[1].0,
         "Export WAV\u{2026}",
         t.loaded,
         AEDIT_EXPORT,
+        seg[1].1,
         scene,
         text_system,
         theme,
         hit_index,
     );
-    y += ph2d_tokens::row_pitch_px();
 
     // Batch LUFS — a FOLDER op (independent of the loaded clip), so always enabled.
-    button(
-        Rect::new(x, y, w, ROW_H),
+    button_in_group(
+        block[3][0].0,
         "Batch LUFS\u{2026}",
         true,
         AEDIT_BATCH_LUFS,
+        block[3][0].1,
         scene,
         text_system,
         theme,
         hit_index,
     );
-    y + ROW_H + Spacing::Lg.px()
+    y + grid_height(4, ROW_H) + Spacing::Lg.px()
 }
 
 #[cfg(test)]

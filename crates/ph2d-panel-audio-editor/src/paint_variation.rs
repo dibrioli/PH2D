@@ -10,7 +10,7 @@
 //! The row labels + strategy name come from `variation_state` (the shell publishes
 //! labels; the panel owns the selected row and the jitter slider positions).
 
-use crate::paint::{ClippedHits, button, toggle};
+use crate::paint::{ClippedHits, button, button_in_group, toggle};
 use crate::{
     AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_ENABLED, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD,
     AEDIT_VAR_PITCH, AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE,
@@ -18,7 +18,7 @@ use crate::{
     MAX_VARIATIONS, variation_state,
 };
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
-use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider};
+use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider, segment_rects};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
@@ -88,22 +88,24 @@ pub(crate) fn paint_variation_section(
     y = paint_var_list(y, x, w, scene, text_system, theme, hit_index);
 
     // Add file | Add folder (import by convention: a folder of `name_01..NN`).
-    let half = ((w - gap) * 0.5).max(1.0);
-    button(
-        Rect::new(x, y, half, row_h),
+    let seg = segment_rects(Rect::new(x, y, w, row_h), 2);
+    button_in_group(
+        seg[0].0,
         "Add\u{2026}",
         true,
         AEDIT_VAR_ADD,
+        seg[0].1,
         scene,
         text_system,
         theme,
         hit_index,
     );
-    button(
-        Rect::new(x + half + gap, y, half, row_h),
+    button_in_group(
+        seg[1].0,
         "Add Folder\u{2026}",
         true,
         AEDIT_VAR_ADD_FOLDER,
+        seg[1].1,
         scene,
         text_system,
         theme,
@@ -116,6 +118,7 @@ pub(crate) fn paint_variation_section(
     // the A/B of a variation set (mute the take you are unsure about, hear the set without it,
     // put it back) rather than removing the file and having to find it again.
     let on = variation_state::selected_enabled();
+    let half = ((w - gap) * 0.5).max(1.0);
     toggle(
         Rect::new(x, y, half, row_h),
         if on { "Enabled" } else { "Disabled" },

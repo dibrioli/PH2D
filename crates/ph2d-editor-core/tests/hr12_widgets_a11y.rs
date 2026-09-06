@@ -99,9 +99,15 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     // A tinta de FUNDO de um botão plano, misturada no eixo do hover. Aritmética de COR pura — não
     // pinta, não regista, não conhece um `NodeId`. Quem anuncia é o pintor que a chama, e cada um
     // deles já constrói o próprio nó (é precisamente por pintarem à mão que eles precisam dela).
+    // ⚠️ **Passou a ser uma PASTA em 2026-09-06** — o tecto de 500 LOC cortou-a em *cor* (o `mod`)
+    // e *forma de grupo* (o `group`), e as duas metades herdam a mesma isenção pela mesma razão.
     (
-        "button_surface.rs",
+        "button_surface/mod.rs",
         "colour arithmetic only; paints nothing, registers nothing — the calling painter owns a11y",
+    ),
+    (
+        "button_surface/group.rs",
+        "geometry only (where a piece sits in a row/block and which corners round); paints nothing",
     ),
     // A lei de COLOCAÇÃO de um menu: dado um âncora, um tamanho e o viewport, onde é que o rect
     // pousa. Aritmética pura — não pinta, não regista, não conhece um `NodeId`. Quem anuncia é

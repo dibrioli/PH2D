@@ -136,153 +136,6 @@ pub fn chip_axis_color(
     crate::paint::resolve(hard, theme)
 }
 
-/// ⭐⭐⭐ **Onde uma peça está numa FILEIRA de botões vizinhos.**
-///
-/// Enio, 2026-09-06, apontando o `None | Vertices | Faces` do Blender: *«uma coisa muito legal que
-/// o Blender tem: se 2 ou mais botões estão lado a lado, só as bordas externas dos botões das
-/// extremidades recebem arredondamento»*.
-///
-/// ⭐⭐ **E é a resposta à outra queixa da mesma mensagem** (*«espaços demais entre botões»*): num
-/// grupo as peças **ENCOSTAM**, porque o que separa duas peças de um mesmo controlo é a **QUINA**,
-/// não o espaço. Um vão entre elas diria que são coisas diferentes — e elas não são: são uma
-/// escolha entre irmãos, que o HIG do Blender manda expandir a toda a largura (`layouts.md`,
-/// «Mode toggling buttons»).
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum GroupPos {
-    /// Sozinho — arredonda os quatro cantos, como sempre.
-    Only,
-    /// A primeira de uma fileira: arredonda só à esquerda.
-    First,
-    /// Do meio: **nenhum** canto arredondado.
-    Middle,
-    /// A última: arredonda só à direita.
-    Last,
-}
-
-impl GroupPos {
-    /// A posição da peça `i` numa fileira de `n`.
-    #[must_use]
-    pub fn of(i: usize, n: usize) -> Self {
-        match (i, n) {
-            (_, 0 | 1) => Self::Only,
-            (0, _) => Self::First,
-            (i, n) if i + 1 == n => Self::Last,
-            _ => Self::Middle,
-        }
-    }
-
-    /// Os quatro raios, na ordem do kurbo: `(cima-esq, cima-dir, baixo-dir, baixo-esq)`.
-    #[must_use]
-    pub fn radii(self, radius: f32) -> (f32, f32, f32, f32) {
-        match self {
-            Self::Only => (radius, radius, radius, radius),
-            Self::First => (radius, 0.0, 0.0, radius),
-            Self::Middle => (0.0, 0.0, 0.0, 0.0),
-            Self::Last => (0.0, radius, radius, 0.0),
-        }
-    }
-}
-
-/// O traço entre duas peças de um grupo — **um pixel**.
-///
-/// ⚠️ **Não é um degrau da escada de espaço, e não devia ser:** ele não é folga, é o traço que
-/// deixa ver onde uma peça acaba e a seguinte começa. *Pôr aqui um `Spacing::Xs` diria que as
-/// peças são coisas separadas, que é exactamente o que o grupo nega.*
-pub const SEGMENT_HAIRLINE: f32 = 1.0; // LITERAL-PX-OK: a costura de um grupo e' 1 px por definicao
-
-/// ⭐⭐ **A fileira: `n` peças que ENCOSTAM, cada uma com a sua posição no grupo.**
-///
-/// ⚠️ As larguras são **arredondadas ao pixel** e a última peça come o resto: sem isso, `n` peças
-/// de largura fraccionária deixam uma costura de sub-pixel entre duas quinas que deviam formar
-/// uma linha recta.
-#[must_use]
-pub fn segment_rects(row: crate::zones::Rect, n: usize) -> Vec<(crate::zones::Rect, GroupPos)> {
-    if n == 0 {
-        return Vec::new();
-    }
-    let gaps = SEGMENT_HAIRLINE * (n.saturating_sub(1)) as f32;
-    let each = ((row.w - gaps) / n as f32).floor().max(1.0);
-    (0..n)
-        .map(|i| {
-            let x = row.x + i as f32 * (each + SEGMENT_HAIRLINE);
-            let w = if i + 1 == n {
-                (row.x + row.w - x).max(1.0)
-            } else {
-                each
-            };
-            (
-                crate::zones::Rect::new(x, row.y, w, row.h),
-                GroupPos::of(i, n),
-            )
-        })
-        .collect()
-}
-
-#[cfg(test)]
-mod group_tests {
-    use super::*;
-    use crate::zones::Rect;
-
-    /// ⭐⭐⭐ **A lei que o dono apontou**: só as bordas de FORA das peças das extremidades
-    /// arredondam.
-    #[test]
-    fn only_the_outer_corners_of_a_row_are_rounded() {
-        let r = 3.0;
-        assert_eq!(GroupPos::Only.radii(r), (r, r, r, r));
-        assert_eq!(GroupPos::First.radii(r), (r, 0.0, 0.0, r), "só à esquerda");
-        assert_eq!(
-            GroupPos::Middle.radii(r),
-            (0.0, 0.0, 0.0, 0.0),
-            "uma peça do meio não arredonda canto nenhum"
-        );
-        assert_eq!(GroupPos::Last.radii(r), (0.0, r, r, 0.0), "só à direita");
-    }
-
-    /// ⚠️ **Uma peça sozinha continua a ser um botão** — a lei do grupo não pode achatar quem não
-    /// tem vizinhos.
-    #[test]
-    fn a_row_of_one_is_still_a_plain_button() {
-        assert_eq!(GroupPos::of(0, 1), GroupPos::Only);
-        assert_eq!(GroupPos::of(0, 0), GroupPos::Only);
-    }
-
-    /// ⭐⭐ **As peças ENCOSTAM** — a resposta a *«espaços demais entre botões»*: entre duas peças
-    /// de um grupo há um traço de 1 px, não um degrau da escada de espaço.
-    #[test]
-    fn the_pieces_touch_and_fill_the_row_exactly() {
-        let row = Rect::new(10.0, 5.0, 100.0, 22.0);
-        for n in 1..=5 {
-            let seg = segment_rects(row, n);
-            assert_eq!(seg.len(), n);
-            assert!(
-                (seg[0].0.x - row.x).abs() < 1e-3,
-                "a fileira começa no sítio"
-            );
-            let last = seg[n - 1].0;
-            assert!(
-                ((last.x + last.w) - (row.x + row.w)).abs() < 1e-3,
-                "a fileira acaba no sítio (n = {n})"
-            );
-            for w in seg.windows(2) {
-                let gap = w[1].0.x - (w[0].0.x + w[0].0.w);
-                assert!(
-                    (gap - SEGMENT_HAIRLINE).abs() < 1e-3,
-                    "entre duas peças há UM traço, não uma folga (n = {n}, medido {gap})"
-                );
-            }
-        }
-    }
-
-    /// ⭐ **As pontas são as pontas** — e é isto que uma fileira de 3 tem de dizer.
-    #[test]
-    fn the_ends_of_a_row_know_they_are_ends() {
-        let seg = segment_rects(Rect::new(0.0, 0.0, 90.0, 22.0), 3);
-        assert_eq!(seg[0].1, GroupPos::First);
-        assert_eq!(seg[1].1, GroupPos::Middle);
-        assert_eq!(seg[2].1, GroupPos::Last);
-    }
-}
-
 #[cfg(test)]
 mod flat_surface_tests {
     use super::*;
@@ -449,3 +302,11 @@ mod chip_axis_tests {
         );
     }
 }
+
+/// ⭐ **A FORMA de um grupo de botões** — a lei do Blender, num irmão pelo tecto de 500 LOC dos
+/// primitivos. O corte é por RESPONSABILIDADE: aqui em cima, *que COR tem o fundo de um botão*;
+/// ali, *que FORMA ele tem quando tem vizinhos*.
+mod group;
+pub use group::{
+    GroupCell, GroupPos, SEGMENT_HAIRLINE, block_cells, grid_cells, grid_height, segment_rects,
+};

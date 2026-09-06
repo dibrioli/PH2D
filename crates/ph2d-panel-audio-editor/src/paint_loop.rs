@@ -11,13 +11,15 @@
 //! export. The readout `(start, end)` seconds are published by the shell
 //! (`loop_state::set_loop_span`).
 
-use crate::paint::{ClippedHits, button};
+use crate::paint::{ClippedHits, button, button_in_group};
 use crate::{
     AEDIT_LOOP_BAKE, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD,
     AEDIT_MARK_DEL, AEDIT_SPLIT, loop_state,
 };
 use ph2d_editor_core::paint::{paint_text_centered, resolve};
-use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider, paint_slider_track};
+use ph2d_editor_core::widget::{
+    Slider, SliderOrientation, paint_slider, paint_slider_track, segment_rects,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
@@ -46,22 +48,24 @@ pub(crate) fn paint_loop_section(
     let label_h = TypeToken::Xs.px();
 
     // Set (from selection) | Clear.
-    let half = ((w - gap) * 0.5).max(1.0);
-    button(
-        Rect::new(x, y, half, row_h),
+    let seg = segment_rects(Rect::new(x, y, w, row_h), 2);
+    button_in_group(
+        seg[0].0,
         "Set Loop",
         loaded && has_sel,
         AEDIT_LOOP_SET,
+        seg[0].1,
         scene,
         text_system,
         theme,
         hit_index,
     );
-    button(
-        Rect::new(x + half + gap, y, half, row_h),
+    button_in_group(
+        seg[1].0,
         "Clear",
         has_loop,
         AEDIT_LOOP_CLEAR,
+        seg[1].1,
         scene,
         text_system,
         theme,
@@ -152,22 +156,24 @@ pub(crate) fn paint_markers_section(
     let count = loop_state::marker_count();
 
     // Add (at playhead) | Delete (nearest).
-    let half = ((w - gap) * 0.5).max(1.0);
-    button(
-        Rect::new(x, y, half, row_h),
+    let seg = segment_rects(Rect::new(x, y, w, row_h), 2);
+    button_in_group(
+        seg[0].0,
         "Add Marker",
         loaded,
         AEDIT_MARK_ADD,
+        seg[0].1,
         scene,
         text_system,
         theme,
         hit_index,
     );
-    button(
-        Rect::new(x + half + gap, y, half, row_h),
+    button_in_group(
+        seg[1].0,
         "Delete",
         count > 0,
         AEDIT_MARK_DEL,
+        seg[1].1,
         scene,
         text_system,
         theme,

@@ -20,8 +20,8 @@ use ph2d_editor_core::widget::panel_chrome::{
     paint_panel_title, panel_close_button_rect,
 };
 use ph2d_editor_core::widget::{
-    AUDIO_EDITOR_SCROLLBAR_ID, ButtonState, GroupPos, SCROLLBAR_W, TextInputState, paint_scrollbar,
-    scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
+    AUDIO_EDITOR_SCROLLBAR_ID, ButtonState, GroupCell, GroupPos, SCROLLBAR_W, TextInputState,
+    paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -340,7 +340,10 @@ pub(crate) fn button(
         label,
         enabled,
         id,
-        GroupPos::Only,
+        GroupCell {
+            col: GroupPos::Only,
+            row: GroupPos::Only,
+        },
         scene,
         text_system,
         theme,
@@ -355,7 +358,7 @@ pub(crate) fn button_in_group(
     label: &str,
     enabled: bool,
     id: NodeId,
-    pos: GroupPos,
+    pos: GroupCell,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -455,7 +458,10 @@ pub(crate) fn toggle(
 ) {
     toggle_in_group(
         rect,
-        GroupPos::Only,
+        GroupCell {
+            col: GroupPos::Only,
+            row: GroupPos::Only,
+        },
         label,
         active,
         enabled,
@@ -471,7 +477,7 @@ pub(crate) fn toggle(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn toggle_in_group(
     rect: Rect,
-    pos: GroupPos,
+    pos: GroupCell,
     label: &str,
     active: bool,
     enabled: bool,

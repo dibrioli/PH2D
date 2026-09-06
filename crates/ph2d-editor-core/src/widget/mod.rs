@@ -76,8 +76,8 @@ pub use blender_color_picker::{
 };
 pub use button::{Button, ButtonKind, ButtonState, ICON_BUTTON_SIZE_PX, paint_button};
 pub use button_surface::{
-    GroupPos, SEGMENT_HAIRLINE, chip_axis_color, chip_axis_t, chip_feel, flat_button_surface_color,
-    segment_rects,
+    GroupCell, GroupPos, SEGMENT_HAIRLINE, block_cells, chip_axis_color, chip_axis_t, chip_feel,
+    flat_button_surface_color, grid_cells, grid_height, segment_rects,
 };
 pub use card::{Card, paint_card, pop_card_body_clip, push_card_body_clip};
 pub use checkbox::{CHECKBOX_BOX_PX, Checkbox, CheckboxState, CheckboxValue, paint_checkbox};

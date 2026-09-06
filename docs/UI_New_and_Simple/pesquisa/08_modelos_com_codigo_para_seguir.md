@@ -705,6 +705,52 @@ A descida de `24 → 22` px moveu três retratos escritos à mão, e o portão a
 responsabilidade: a família do rectângulo mudou-se para `paint_rounded.rs` (608 + 118), **com a
 prova dela** — *uma prova que fica na casa antiga mede um nome, não uma lei*.
 
+### 7.14 — ✅ WAVE 11 (2026-09-06): a lei do grupo tinha DUAS dimensões, e eu aplicara uma
+
+**Ordem do dono**, depois de ver a fileira agrupada: *«na horizontal ficou bom. Na vertical ainda
+tem muito espaço ainda.»*
+
+⭐⭐⭐ **Ele tem razão, e a leitura correcta é que a lei nunca foi horizontal.** No cartão
+*Transform* do Blender que ele próprio fotografou, o `Location X / Y / Z` é uma **coluna** de
+linhas que encostam, com arredondamento só no topo da primeira e no fundo da última. *Eu tinha
+portado metade da lei — a metade que a foto dele mostrava de lado.*
+
+**A generalização:** [`GroupCell`](../../../crates/ph2d-editor-core/src/widget/button_surface/group.rs)
+`{ col, row }`, e **um canto só arredonda se estiver na borda das DUAS**. Um bloco de 3×2 botões
+passa a ter **quatro** cantos, não doze — e o gate conta-os.
+
+⚠️ **E a forma real é RAGGED, não rectangular:** a barra de ferramentas deste app é `3 · 3 · 2`, e
+o próprio Blender empilha `Location X/Y/Z` (3 linhas de 1) com um `Mode` de uma peça só. Uma
+grelha uniforme partiria o bloco em três — que é exactamente a folga que o dono estava a ver. ⇒
+`block_cells(origin, &[3, 3, 2], row_h)`.
+
+**O que virou um corpo só no editor de áudio:**
+
+| bloco | fileiras | o que era |
+|---|---|---|
+| Transporte | `1 · 2 · 2 · 1` | Play · Stop\|Loop · Load\|Export · Batch LUFS |
+| Barra de ferramentas | `3 · 3 · 2` | tools · clipboard · estrutura |
+| Operações do clipe | `2 · 2 · 2 · 2 · 2` | Undo…Gain, mais Invert\|Force Mono |
+| Operações de selecção | `2 · 2` | Trim\|Silence · Fade In\|Out |
+
+⚠️ **E os avanços de linha DENTRO de um bloco morreram** — quem posiciona é o bloco, e a altura
+total sai de `grid_height`. *Um `y += pitch` sobrevivente seria a folga a voltar por uma porta que
+já não é a única.*
+
+#### ⚠️ Três coisas que o portão apanhou, e todas são a mesma espécie
+
+1. **`segment_rects` devolvia meia resposta** (`GroupPos`, só a coluna) — cada chamador teria de
+   construir a célula à mão, e metade esquecer-se-ia da segunda dimensão. Hoje devolve a célula:
+   *uma fileira solta é um bloco de UMA linha, e dizê-lo na porta é o que impede a próxima
+   metade.*
+2. **O `button_surface.rs` cruzou o tecto de 500 LOC** ⇒ cortado por responsabilidade em *cor*
+   (`mod.rs`, 312) e *forma de grupo* (`group.rs`, 358).
+3. ⭐⭐ **E o corte partiu DOIS censos que isentavam a porta pelo NOME DO FICHEIRO** — ela era
+   `widget/button_surface.rs` e passou a `widget/button_surface/mod.rs`. *Um censo que aponta a um
+   ficheiro mede o sítio, não a lei — e quem corta um ficheiro em dois não devia ter de saber que
+   censo de outra pessoa aponta para ele.* **É a segunda vez que esta linha paga isto** (a
+   primeira foi o cartão de asset, na wave 6): a isenção passa a ser pelo **módulo**.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

@@ -74,6 +74,16 @@ fn walk(dir: &Path, out: &mut Vec<(PathBuf, String)>) {
     }
 }
 
+/// ⚠️ **A porta isenta-se pelo MÓDULO, não pelo nome do ficheiro** — ela era
+/// `widget/button_surface.rs` e passou a ser `widget/button_surface/mod.rs` quando o tecto de
+/// LOC a cortou em *cor* + *forma de grupo* (2026-09-06). *Um censo que aponta a um FICHEIRO mede
+/// o sítio, não a lei — e quem corta um ficheiro em dois não devia ter de saber que censo de
+/// outra pessoa aponta para ele.* (É a segunda vez que esta linha paga isto; a primeira foi o
+/// cartão de asset, na wave 6.)
+fn is_the_door_itself(p: &std::path::Path) -> bool {
+    p.to_string_lossy().contains("widget/button_surface")
+}
+
 /// ⛔ **NINGUÉM RE-INVENTA O MAPA DURO.**
 ///
 /// ⚠️ A porta certa é agora a única alcançável — o mapa duro é **privado**, e foi essa
@@ -92,7 +102,7 @@ fn nobody_re_invents_the_hard_surface_map() {
     let offenders: Vec<String> = sources()
         .into_iter()
         .filter(|(p, s)| {
-            !p.ends_with("widget/button_surface.rs")
+            !is_the_door_itself(p)
                 && s.contains("ButtonState::Pressed => ColorToken::AccentSoft")
                 && s.contains("_ => ColorToken::Bg2")
         })
@@ -119,8 +129,7 @@ fn nobody_asks_the_flat_surface_for_a_literal_resting_state() {
     let offenders: Vec<String> = sources()
         .into_iter()
         .filter(|(p, s)| {
-            !p.ends_with("widget/button_surface.rs")
-                && s.contains("flat_button_surface(ButtonState::Normal)")
+            !is_the_door_itself(p) && s.contains("flat_button_surface(ButtonState::Normal)")
         })
         .map(|(p, _)| p.strip_prefix(root()).unwrap_or(&p).display().to_string())
         .collect();

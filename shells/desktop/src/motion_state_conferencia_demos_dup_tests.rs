@@ -106,6 +106,104 @@ fn the_scene_builds_every_band_with_the_count_it_promises() {
     }
 }
 
+/// ⭐⭐⭐ **UMA CADEIA POR SAÍDA, E ELA É FECHADA** — a lei desta cena, medida.
+///
+/// Report do Enio (2026-09-06): *«tem tantos nós interligados que não pude entender. Crie uma
+/// cadeia de nós por output.»* A 1.ª versão partilhava as formas entre as bandas de cada
+/// fileira, e os fios atravessavam a tela.
+///
+/// ⚠️ **A régua é a TOPOLOGIA, não a contagem de nós:** o que torna um grafo ilegível não é ele
+/// ser grande, é um fio sair de uma banda e chegar a outra. ⇒ contam-se as **componentes
+/// ligadas**, e têm de ser exactamente tantas quantas as saídas. FALSIFICADO por partilhar
+/// qualquer nó entre duas bandas — as componentes fundem-se e a contagem cai.
+#[test]
+fn each_output_is_its_own_closed_chain() {
+    let (doc, _reg, sinks) = scene();
+    let nos: Vec<NodeId> = doc.graph.nodes().iter().map(|n| n.id).collect();
+    let indice = |id: NodeId| nos.iter().position(|n| *n == id).expect("o no' existe");
+    // Union-find sobre as arestas: duas bandas que partilhem um nó caem no mesmo balde.
+    let mut pai: Vec<usize> = (0..nos.len()).collect();
+    fn achar(pai: &mut [usize], mut i: usize) -> usize {
+        while pai[i] != i {
+            pai[i] = pai[pai[i]];
+            i = pai[i];
+        }
+        i
+    }
+    for e in doc.graph.edges() {
+        let (a, b) = (indice(e.from.0), indice(e.to.0));
+        let (ra, rb) = (achar(&mut pai, a), achar(&mut pai, b));
+        pai[ra] = rb;
+    }
+    let mut raizes: Vec<usize> = (0..nos.len()).map(|i| achar(&mut pai, i)).collect();
+    raizes.sort_unstable();
+    raizes.dedup();
+    assert_eq!(
+        raizes.len(),
+        BANDS,
+        "o grafo tem {} ilhas para {BANDS} saidas: alguma banda partilha um no' com a vizinha",
+        raizes.len()
+    );
+    // E cada SINK cai numa ilha diferente — sem isto, `BANDS` ilhas com dois sinks numa e um nó
+    // solto noutra passaria pela contagem.
+    let mut das_saidas: Vec<usize> = sinks.iter().map(|s| achar(&mut pai, indice(*s))).collect();
+    das_saidas.sort_unstable();
+    das_saidas.dedup();
+    assert_eq!(das_saidas.len(), BANDS, "duas saidas na mesma cadeia");
+}
+
+/// ⭐⭐ **AS TRÊS BANDAS DO `PICK` CARIMBAM AS MESMAS TRÊS FORMAS** — a propriedade que a partilha
+/// comprava, agora medida na SAÍDA em vez de garantida por referência.
+///
+/// Se as três bandas oferecessem formas diferentes, a comparação mediria as ENTRADAS e não o
+/// modo — e o artista concluiria a coisa errada sobre o `Pick`. FALSIFICADO por mudar a cor ou a
+/// altura de uma forma numa das três.
+#[test]
+fn the_three_pick_bands_stamp_the_same_shapes() {
+    let (doc, reg, sinks) = scene();
+    let bandas = bake(&doc, &reg, &sinks);
+    // A assinatura de uma banda: as (cor, altura) DISTINTAS que ela pousou, ordenadas.
+    let assinatura = |b: &Band| -> Vec<(i32, i32)> {
+        let mut v: Vec<(i32, i32)> = b
+            .tint
+            .iter()
+            .zip(&b.p)
+            .map(|(t, p)| {
+                (
+                    (t[0] * 1000.0).round() as i32,
+                    ((p[1] - ROW_Y[1]) / SPREAD).round() as i32,
+                )
+            })
+            .collect();
+        v.sort_unstable();
+        v.dedup();
+        v
+    };
+    let (off, cycle, random) = (
+        assinatura(&bandas[3]),
+        assinatura(&bandas[4]),
+        assinatura(&bandas[5]),
+    );
+    assert_eq!(off.len(), TRIO_RGB.len(), "o produto pousa as tres formas");
+    for (nome, a) in [("Cycle", &cycle), ("Random", &random)] {
+        assert!(
+            a.iter().all(|c| off.contains(c)),
+            "{nome} carimba uma forma que o Off nao tem: {a:?} contra {off:?}"
+        );
+    }
+    // E o CONTROLE do outro lado: a banda do `Shape Wins` carimba a forma cinzenta da cena — se
+    // ela carimbasse outra coisa, «as quatro do Transfer usam a mesma forma» seria uma frase
+    // sobre nada.
+    let cinza = (SHAPE_RGB[0] * 1000.0).round() as i32;
+    assert!(
+        bandas[9]
+            .tint
+            .iter()
+            .all(|t| ((t[0] * 1000.0).round() as i32 - cinza).abs() <= 1),
+        "Shape Wins carimba a forma cinzenta da cena"
+    );
+}
+
 /// ⭐⭐ **A FORMA INTEIRA POUSA EM CADA PONTO, E O PONTO SOMA O LUGAR DELE.**
 ///
 /// A banda 2 tem três pontos e um cometa de três peças: as nove cópias têm de estar em **nove**
@@ -418,9 +516,15 @@ fn measure_the_dup_scene() {
         );
     }
     eprintln!(
-        "\n  a cena inteira: x {x0:.2}..{x1:.2} ({:.2} de largura) · y {y0:.2}..{y1:.2} ({:.2} de altura)\n",
+        "\n  a cena inteira: x {x0:.2}..{x1:.2} ({:.2} de largura) · y {y0:.2}..{y1:.2} ({:.2} de altura)",
         x1 - x0,
         y1 - y0
+    );
+    // E o tamanho de cada ILHA do grafo — o número que o report do Enio de 06/09 pôs em jogo.
+    let total = doc.graph.nodes().len();
+    eprintln!(
+        "  o grafo: {total} nos em {BANDS} cadeias fechadas ({:.1} nos por cadeia, em media)\n",
+        total as f32 / BANDS as f32
     );
 }
 

@@ -11,7 +11,14 @@ pub(crate) fn dup_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
   precisa de Play. Cada bloco tem uma ficha em cima a dizer o que ele e'.
 
   O Duplicator CARIMBA uma forma em cada ponto de um arranjo: a esquerda do no' recebe
-  O QUE desenhar, a direita recebe ONDE. As quatro fileiras sao quatro perguntas."
+  O QUE desenhar, a direita recebe ONDE. As quatro fileiras sao quatro perguntas.
+
+  ⭐ CADA BLOCO DA TELA TEM A SUA PROPRIA CADEIA DE NOS, e elas nao se tocam: no grafo
+  sao TREZE ILHAS empilhadas, cada uma a ler-se da esquerda para a direita. A ficha de
+  cada bloco comeca pelo NUMERO dele, que e' o mesmo da lista aqui em baixo.
+
+  PARA OLHAR UMA DE CADA VEZ: clique num no' da cadeia e aperte F -- o grafo enquadra
+  o que esta' selecionado. Sem selecao, F volta a mostrar tudo."
     );
     for (i, label) in conferencia_demos_dup::band_labels() {
         eprintln!("  {}. {label}", i + 1);
@@ -31,8 +38,8 @@ pub(crate) fn dup_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
     · Clique num «Duplicator» e escreva/arraste os controlos dele. Em «Pick», clicar
       troca de opcao; a «Seed» so' aparece em Random, que e' o unico modo que a le^.
     · As tres bandas do Pick carimbam AS MESMAS tres formas, e as quatro do Transfer a
-      mesma forma cinzenta -- elas sao partilhadas de proposito, entao mexer numa muda a
-      fileira toda e a comparacao continua honesta.
+      mesma forma cinzenta -- mas cada uma tem a SUA copia dos nos. Se mexer numa forma
+      e quiser comparar de novo, faca a mesma mexida nas irmas da fileira.
     · Puxe o fio do «points» de qualquer banda: a forma passa INTACTA -- um carimbo sem
       onde carimbar deixa a corrente passar, e e' isso que torna seguro enfiar um
       Duplicator no meio de uma cadeia. Puxe o do «shape» e a banda esvazia (sem o que

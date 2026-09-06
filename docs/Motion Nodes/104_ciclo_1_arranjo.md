@@ -279,8 +279,22 @@ bandas numa tela, uma por caso:
 | 3 | 3 | **`Point Scale`** — `0` · `0,5` · `1` |
 | 4 | 4 | **`Transfer`** — `Shape Wins` · `Point Wins` · `Add` · `Multiply` |
 
-⚠️ **As formas são construídas UMA vez e partilhadas** pelas bandas de cada fileira — a régua do
-`=98`: se as entradas diferissem, o olho atribuiria a diferença às entradas e não ao modo.
+⛔⛔ **E a 1.ª versão errou o alvo, com o report a chegar no dia seguinte** — *«o cenário que
+você construiu tem tantos nós interligados que não pude entender. Crie uma cadeia de nós por
+output»* (Enio, 06/09). Ela construía as formas **uma vez** e partilhava-as entre as bandas de
+cada fileira, para a comparação medir o modo e não a entrada. ⭐ **A propriedade estava certa e o
+preço era o GRAFO:** um nó de forma alimentava quatro carimbos em quatro alturas, e os fios
+atravessavam a tela. *Um grafo que ninguém consegue seguir não ensina nada, por mais correcta que
+seja a corrente que ele desenha.*
+
+⇒ hoje cada banda é uma **cadeia FECHADA** (`140` nós em `13` ilhas, `10,8` por ilha), e a
+propriedade não se perdeu — **mudou de dono**: as três bandas do `Pick` carimbam as mesmas formas
+porque saem da MESMA função, não porque partilhem um nó. ⭐ *Uma igualdade por CONSTRUÇÃO é tão
+forte quanto uma por referência, e não custa um fio a atravessar a tela.* Os dois gates novos:
+`each_output_is_its_own_closed_chain` (conta as **componentes ligadas** — a régua é a TOPOLOGIA,
+não a contagem de nós) e `the_three_pick_bands_stamp_the_same_shapes` (mede a igualdade na
+SAÍDA, que é onde a afirmação vive). A mutação que repõe a partilha lê **`11` ilhas para `13`
+saídas**.
 ⚠️ **A semente do `Random` é uma CALIBRAÇÃO com gate:** cinco sorteios sobre três formas deixam
 uma de fora com facilidade — **9 das 24** primeiras sementes fazem-no, e a banda passaria a
 ler-se como *«Random escolhe entre duas»*. O `PICK_SEED = 9` é o número que a varredura deu, e o

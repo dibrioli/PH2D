@@ -387,6 +387,13 @@ fn group_chip_ui(
         ui.ui_level = state::UiLevel::ALL[i];
     } else if let Some(i) = index_of(&ids::SCULPT3D_FALLOFF, id) {
         ui.brush.falloff = Falloff::ALL[i];
+    } else if let Some(i) = index_of(&ids::SCULPT3D_CLOTH_MODE, id) {
+        // ⚠️ **Sem re-armar nada:** escolher COMO o tecido deforma é uma escolha
+        // sobre o pincel que já está na mão, não a troca dele — a mesma razão do
+        // falloff logo acima.
+        ui.brush.cloth_mode = ph2d_sculpt3d::ClothMode::ALL[i];
+    } else if let Some(i) = index_of(&ids::SCULPT3D_CLOTH_AREA, id) {
+        ui.brush.cloth_area = ph2d_sculpt3d::ClothArea::ALL[i];
     } else if let Some(i) = index_of(&ids::SCULPT3D_MATCAP, id) {
         // A opção `0` é o rig do artista e as seguintes são os matcaps, o mesmo
         // deslocamento que o pintor usa. `checked_sub` e não `- 1`: a opção zero

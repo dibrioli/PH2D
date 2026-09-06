@@ -29,6 +29,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.radius" => "Radius",
         "panel.sculpt3d.strength" => "Strength",
         "panel.sculpt3d.falloff" => "Falloff",
+        // ⚠️ Os rótulos do alvo, sem tradução: *Deformation* e *Simulation
+        // Area* são o que o painel dele diz (espec §8.4), e um artista que vem
+        // de lá procura essas duas palavras.
+        "panel.sculpt3d.cloth_mode" => "Deformation",
+        "panel.sculpt3d.cloth_area" => "Simulation Area",
         // ⚠️ **A row lê `Reference`, e os chips leem `S` · `B` · `L`** (§1.4 do
         // plano): o artista não sabe o que é o SculptGL, e o nome de um produto
         // de terceiro num botão é ruído que envelhece. Trocar para os nomes por

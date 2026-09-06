@@ -11,6 +11,16 @@ use crate::{Alpha, AlphaStencil};
 /// **O CATÁLOGO** — ver [`verb`].
 #[path = "brush_verb.rs"]
 mod verb;
+
+/// ⭐ **O que um verbo É** — os predicados, irmãos do [`verb`]. O corte é *o que
+/// o verbo É* (aqui) contra *quais verbos existem e como se chamam* (lá), e ele
+/// nasceu de o ficheiro do catálogo passar o tecto de LOC em 2026-09-06.
+///
+/// ⚠️ **O tecto estava vermelho ANTES desta jornada** (`714` de `700`) e nenhum
+/// portão da linha o via: o `cargo test --bins` não alcança os gates que vivem
+/// em `tests/`, e este vive lá.
+#[path = "brush_verb_predicados.rs"]
+mod verb_predicados;
 pub use verb::{
     BLENDER_REACH_FRACTION, CLAY_PLANE_FRACTION, CLAY_THUMB_TILT_MAX_DEG, CLAY_THUMB_TILT_STEP_DEG,
     CREASE_FRACTION, DEFAULT_MULTIPLANE_ANGLE_DEG, FilterKind, LAYER_HEIGHT_HARD_MAX,
@@ -333,6 +343,20 @@ pub struct Brush {
     /// `fill_hc_disp` que os lê — nenhum outro braço do alvo os toca, então o
     /// mundo pré-wave é byte-idêntico com eles em qualquer valor.
     pub hc_vertex: f32,
+    /// **COMO o pincel de tecido deforma** ([`crate::ClothMode`]) — só o
+    /// [`Verb::Cloth`] o lê.
+    ///
+    /// ⚠️ **Ele existia como VARIÁVEL DE AMBIENTE**, e por isso o pincel tinha
+    /// oito comportamentos e um alcançável. A lei responde aos oito desde
+    /// 2026-09-05; o que faltava era o campo e a fileira que o escreve.
+    pub cloth_mode: crate::ClothMode,
+    /// **QUE PEDAÇO da malha entra na simulação** ([`crate::ClothArea`]).
+    ///
+    /// ⚠️ **A omissão é `Dynamic`**, que é a dos treze presets do alvo — ⛔ e
+    /// **não** `Local`, que é a omissão do código dele. A distinção está medida:
+    /// a `Local` constrói a lista de restrições em duplicado e entrega no centro
+    /// `0,34×` o que a `Global` entrega.
+    pub cloth_area: crate::ClothArea,
 }
 
 impl Default for Brush {
@@ -448,6 +472,8 @@ impl Default for Brush {
             elastic_scales: crate::kelvinlet::Scales::default(),
             hc_shape: crate::HC_SHAPE_DEFAULT,
             hc_vertex: crate::HC_VERTEX_DEFAULT,
+            cloth_mode: crate::ClothMode::default(),
+            cloth_area: crate::ClothArea::default(),
         }
     }
 }

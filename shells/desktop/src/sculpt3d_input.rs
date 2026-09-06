@@ -375,7 +375,7 @@ impl App {
                         // cursor na superfície a cada passo (`cloth_step`); os
                         // de âncora — e a lei VBD de omissão — andam no plano
                         // de profundidade do pen-down, pela porta de sempre.
-                        let repica = ph2d_sculpt3d::cloth_repica();
+                        let repica = ph2d_sculpt3d::cloth_repica(&scene.brush);
                         for step in steps {
                             if repica {
                                 scene.cloth_step(prev, step);

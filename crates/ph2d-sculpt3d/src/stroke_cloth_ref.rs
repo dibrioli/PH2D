@@ -25,7 +25,7 @@
 use crate::{Brush, Dab, Falloff, SculptStroke, Symmetry};
 use ph2d_cloth::V3;
 use ph2d_cloth::verlet::norm;
-use ph2d_cloth::verlet_gesto::{Area, Curva, FalloffForca, Modo, Passo, Pincel, PincelTecido};
+use ph2d_cloth::verlet_gesto::{Curva, FalloffForca, Passo, Pincel, PincelTecido};
 use ph2d_mesh::Mesh;
 
 /// **O que muda de uma CÓPIA DE SIMETRIA para a outra**, num dab.
@@ -73,43 +73,14 @@ pub(super) fn lei_referencia() -> bool {
 /// os modos de força e o Expand re-picam a cada passo; o Grab fica no pen-down
 /// e o Snake Hook anda no plano de profundidade.) A shell pergunta isto para
 /// escolher entre o passo re-picado e o `hook_step` de sempre.
+///
+/// ⚠️ **Ele pergunta ao PINCEL desde 2026-09-06.** Antes lia uma variável de
+/// ambiente por [`std::sync::OnceLock`], o que o congelava na primeira leitura
+/// do processo — *um modo escolhido no painel a meio da sessão nunca teria
+/// chegado aqui*.
 #[must_use]
-pub fn cloth_repica() -> bool {
-    lei_referencia()
-        && matches!(
-            modo_escolhido(),
-            Modo::Arrastar
-                | Modo::Empurrar
-                | Modo::ApertarPonto
-                | Modo::ApertarLinha
-                | Modo::Inflar
-                | Modo::Expandir
-        )
-}
-
-/// O modo de deformação (`PH2D_CLOTH_DEFORM`), enquanto a W10c não dá o chip.
-fn modo_escolhido() -> Modo {
-    static ESCOLHA: std::sync::OnceLock<Modo> = std::sync::OnceLock::new();
-    *ESCOLHA.get_or_init(|| match std::env::var("PH2D_CLOTH_DEFORM").as_deref() {
-        Ok("push" | "empurrar") => Modo::Empurrar,
-        Ok("point" | "pinch" | "apertar") => Modo::ApertarPonto,
-        Ok("axis" | "pinch_line" | "linha") => Modo::ApertarLinha,
-        Ok("normal" | "inflate" | "inflar") => Modo::Inflar,
-        Ok("grab" | "agarrar") => Modo::Agarrar,
-        Ok("hook" | "gancho") => Modo::Gancho,
-        Ok("expand" | "expandir") => Modo::Expandir,
-        _ => Modo::Arrastar,
-    })
-}
-
-/// A área (`PH2D_CLOTH_AREA`): a omissão é a dos 13 presets do alvo, *Dynamic*.
-fn area_escolhida() -> Area {
-    static ESCOLHA: std::sync::OnceLock<Area> = std::sync::OnceLock::new();
-    *ESCOLHA.get_or_init(|| match std::env::var("PH2D_CLOTH_AREA").as_deref() {
-        Ok("local") => Area::Local,
-        Ok("global") => Area::Global,
-        _ => Area::Dinamica,
-    })
+pub fn cloth_repica(brush: &Brush) -> bool {
+    lei_referencia() && brush.cloth_mode.repica()
 }
 
 /// O anel-1 vem da TRIANGULAÇÃO, em vez das arestas dos polígonos?
@@ -159,8 +130,8 @@ fn anel_de(mesh: &Mesh, v: u32) -> Vec<u32> {
 /// `Suave`, que é a omissão do alvo.
 fn pincel_de(brush: &Brush, passagens: u32) -> Pincel {
     Pincel {
-        modo: modo_escolhido(),
-        area: area_escolhida(),
+        modo: brush.cloth_mode.modo(),
+        area: brush.cloth_area.area(),
         falloff_forca: FalloffForca::Radial,
         curva: match brush.falloff {
             Falloff::Constant => Curva::Constante,

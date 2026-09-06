@@ -43,6 +43,7 @@ mod footprint;
 pub use footprint::{Blade, Footprint, Strip, rounded_box};
 
 mod brush;
+mod cloth_mode;
 mod coat;
 /// **A CURVA DO PINCEL** — o falloff, irmão do [`brush`]. Ver [`falloff`].
 mod falloff;
@@ -77,6 +78,7 @@ pub use brush::{
     MULTIPLANE_ANGLE_SMOOTH, MULTIPLANE_TIP_STRETCH, PINCH_GAIN, Pass, REACH_FRACTION,
     RingOperator, STRIP_PLANE_FRACTION, Symmetry, TAUBIN_LAMBDA, TAUBIN_MU, TAUBIN_PASS_BAND, Verb,
 };
+pub use cloth_mode::{ClothArea, ClothMode};
 pub use coat::{COAT_HEAD, coat_step};
 pub use falloff::Falloff;
 pub use grip::{Amount, Grip, GripLaw};

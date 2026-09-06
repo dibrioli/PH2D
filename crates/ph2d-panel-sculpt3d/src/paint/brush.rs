@@ -13,7 +13,7 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
-use ph2d_sculpt3d::{Alpha, Falloff, Verb};
+use ph2d_sculpt3d::{Alpha, ClothArea, ClothMode, Falloff, Verb};
 use ph2d_tokens::Spacing;
 
 use super::body::paint_one_row;
@@ -318,5 +318,55 @@ fn paint_per_verb_switches(
     } else {
         y
     };
+    let y = paint_cloth_rows(ctx, snap, x, w, y);
     paint_mask_tools(ctx, snap, x, w, y)
+}
+
+/// **AS DUAS FILEIRAS DO PINCEL DE TECIDO** — *Deformation* e *Simulation Area*,
+/// na ordem em que o painel da referência as põe (espec §8.4).
+///
+/// ⚠️ **Elas só existem com o verbo Cloth na mão**, e a pergunta é ao VERBO — a
+/// mesma cerca da lâmina do `MultiplaneScrape` acima: uma lista paralela aqui
+/// seria uma fileira que aparece noutra ferramenta e não move um vértice.
+///
+/// ⚠️ **Antes de 2026-09-06 os dois selectores eram VARIÁVEIS DE AMBIENTE.** O
+/// motor respondia aos oito modos e às três áreas desde que a lei da referência
+/// nasceu, e o artista chegava a UM. *Não era um botão morto: era um motor vivo
+/// sem botão nenhum.*
+fn paint_cloth_rows(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
+    if snap.ui.brush.verb != Verb::Cloth {
+        return y;
+    }
+    let selected = ClothMode::ALL
+        .iter()
+        .position(|&m| m == snap.ui.brush.cloth_mode)
+        .unwrap_or(0);
+    let labels: Vec<&str> = ClothMode::ALL.iter().map(|m| m.label()).collect();
+    let y = labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.cloth_mode"),
+        ids::SCULPT3D_SEC_BRUSH,
+        &ids::SCULPT3D_CLOTH_MODE,
+        &labels,
+        selected,
+        x,
+        w,
+        y,
+    );
+    let selected = ClothArea::ALL
+        .iter()
+        .position(|&a| a == snap.ui.brush.cloth_area)
+        .unwrap_or(0);
+    let labels: Vec<&str> = ClothArea::ALL.iter().map(|a| a.label()).collect();
+    labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.cloth_area"),
+        ids::SCULPT3D_SEC_BRUSH,
+        &ids::SCULPT3D_CLOTH_AREA,
+        &labels,
+        selected,
+        x,
+        w,
+        y,
+    )
 }

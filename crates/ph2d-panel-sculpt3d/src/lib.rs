@@ -39,6 +39,12 @@ pub mod state_modes;
 
 mod event;
 
+/// ⭐ **O CENSO DAS FILEIRAS DE CHIP** — o painel oferece exactamente o que o
+/// motor tem. Filho por `#[path]`, no molde dos outros testes deste crate.
+#[cfg(test)]
+#[path = "censo_das_fileiras_tests.rs"]
+mod censo_das_fileiras_tests;
+
 pub use state::{
     RetopoMode, Sculpt3dIntent, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, UiLevel,
     alpha_chip_index, drain_intents, last_content_h, last_visible_h, set_current_sculpt3d,

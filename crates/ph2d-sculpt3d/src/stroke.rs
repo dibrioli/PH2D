@@ -265,6 +265,11 @@ impl SculptStroke {
 
 /// **O TECIDO** — a região que simula, o anel pregado, e o primeiro verbo cujo
 /// estado sobrevive ao evento. Ver [`stroke_cloth`].
+/// ⭐ **Os NÚMEROS calibrados da lei VBD** — irmão do [`stroke_cloth`], e o corte
+/// é *os números com a calibração ao lado* contra *a tradução malha ⇄ solver*.
+#[path = "stroke_cloth_num.rs"]
+pub mod stroke_cloth_num;
+
 #[path = "stroke_cloth.rs"]
 mod stroke_cloth;
 /// A lei da REFERÊNCIA (Verlet + restrições de distância), clean-room, atrás
@@ -370,6 +375,18 @@ mod tests;
 #[cfg(test)]
 #[path = "stroke_cloth_tests.rs"]
 mod cloth_tests;
+
+/// ⭐ **Os SELECTORES do tecido chegam ao motor** — irmão do [`cloth_tests`], e
+/// o corte é *o que a LEI faz* contra *o que o PAINEL alcança*.
+#[cfg(test)]
+#[path = "stroke_cloth_mode_tests.rs"]
+mod cloth_mode_tests;
+
+/// ⭐ **Os ARTEFATOS, o orçamento e a densidade** — o outro irmão, e o corte é
+/// *o que o gesto faz na região* contra *o que um traço LONGO deixa*.
+#[cfg(test)]
+#[path = "stroke_cloth_artefatos_tests.rs"]
+mod cloth_artefatos_tests;
 
 #[cfg(test)]
 #[path = "stroke_growth_tests.rs"]

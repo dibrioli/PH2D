@@ -219,6 +219,31 @@ pub const SCULPT3D_FALLOFF: [NodeId; 12] = [
     hash_node_id("sculpt3d.falloff.10"),
     hash_node_id("sculpt3d.falloff.11"),
 ];
+/// **Como o pincel de TECIDO deforma** — `ph2d_sculpt3d::ClothMode::ALL`.
+///
+/// ⚠️ **O tamanho se CONTA, não se escolhe**, pela mesma razão do falloff acima:
+/// o seam `the_panel_offers_every_cloth_mode_the_engine_has` compara este array
+/// com o `ALL` do motor, então um modo novo que não passe por aqui nasce
+/// inalcançável e o gate fica vermelho em vez de o chip sumir em silêncio.
+///
+/// ⚠️ **A fileira só é desenhada com o verbo Cloth na mão** — os outros 22
+/// verbos não têm o que dizer sobre ela.
+pub const SCULPT3D_CLOTH_MODE: [NodeId; 8] = [
+    hash_node_id("sculpt3d.cloth_mode.0"),
+    hash_node_id("sculpt3d.cloth_mode.1"),
+    hash_node_id("sculpt3d.cloth_mode.2"),
+    hash_node_id("sculpt3d.cloth_mode.3"),
+    hash_node_id("sculpt3d.cloth_mode.4"),
+    hash_node_id("sculpt3d.cloth_mode.5"),
+    hash_node_id("sculpt3d.cloth_mode.6"),
+    hash_node_id("sculpt3d.cloth_mode.7"),
+];
+/// **Que pedaço da malha entra na simulação** — `ph2d_sculpt3d::ClothArea::ALL`.
+pub const SCULPT3D_CLOTH_AREA: [NodeId; 3] = [
+    hash_node_id("sculpt3d.cloth_area.0"),
+    hash_node_id("sculpt3d.cloth_area.1"),
+    hash_node_id("sculpt3d.cloth_area.2"),
+];
 /// Raio do pincel, em **pixels de tela**.
 pub const SCULPT3D_RADIUS: NodeId = hash_node_id("sculpt3d.radius");
 /// Chip ligado a [`SCULPT3D_RADIUS`].

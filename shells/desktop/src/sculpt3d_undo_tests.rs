@@ -488,7 +488,7 @@ fn a_cloth_stroke_undoes() {
     // ser a de omissão: os modos de força dela re-picam, e um gate preso ao
     // `hook_step` passaria a medir um caminho que o produto já não toma. *Um
     // gate que não pergunta o que o gesto pergunta mede outro programa.*
-    let repica = ph2d_sculpt3d::cloth_repica();
+    let repica = ph2d_sculpt3d::cloth_repica(&s.brush);
     let mut prev = [CENTRE.0, CENTRE.1];
     for k in 1..=12 {
         let to = [CENTRE.0 + 6.0 * k as f32, CENTRE.1];

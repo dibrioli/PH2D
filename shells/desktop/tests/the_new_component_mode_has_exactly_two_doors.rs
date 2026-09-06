@@ -1,0 +1,71 @@
+//! ⛔⛔ **O MODO NOVO DA SECÇÃO *Component* TEM DUAS PORTAS, E AS DUAS LÊEM A MESMA PERGUNTA**
+//! (F4.6c, wave 1).
+//!
+//! # Porque é textual
+//!
+//! As duas decisões vivem dentro do laço de quadro da `render_loop`, cuja função tem ~35 argumentos
+//! e um `AppGfx` com uma surface de janela real — um teste de integração ali seria uma montagem
+//! maior do que a lei que ele mede.
+//!
+//! # ⚠️ A lei
+//!
+//! **O que a secção MOSTRA** e **o que o clique FAZ** têm de concordar sobre o motor. Se um lê o
+//! interruptor e o outro não, a secção oferece verbos que o dreno recusa (ou o contrário) — e o
+//! sintoma é um botão que não faz nada, que é o defeito que esta linha caçou três vezes.
+//!
+//! ⛔ Ele descasca comentários antes de varrer.
+
+use std::path::Path;
+
+fn code_of(rel: &str) -> String {
+    let p = Path::new(env!("CARGO_MANIFEST_DIR")).join("src").join(rel);
+    let body = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()));
+    body.lines()
+        .map(|l| match l.find("//") {
+            Some(i) => &l[..i],
+            None => l,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// ⭐⭐⭐ **As DUAS portas leem o `armed()`** — nem uma a mais, nem uma a menos.
+///
+/// **Mutação que deve sangrar:** apagar um dos dois `if`.
+#[test]
+fn both_doors_of_the_new_component_mode_read_the_same_switch() {
+    let body = code_of("render_loop/mod.rs");
+    assert_eq!(
+        body.matches("vec_component_general::armed()").count(),
+        2,
+        "o interruptor do modo novo deixou de ser lido nos DOIS sitios que decidem — o que a \
+         seccao MOSTRA e o que o clique FAZ"
+    );
+    // A porta que publica o estado, e a que despacha o verbo.
+    assert!(
+        body.contains("vec_component_general::state_of("),
+        "a seccao deixou de poder descrever o modelo geral"
+    );
+    assert!(
+        body.contains("vec_component_general::dispatch("),
+        "o clique deixou de poder alcancar o modelo geral"
+    );
+}
+
+/// ⛔⛔ **O caminho de OMISSÃO fica intacto** — o motor velho continua a ser chamado no `else`.
+///
+/// É o que torna esta wave incapaz de regredir: sem a env var, o que corre é exactamente o que
+/// corria antes. *Um modo novo que apaga o velho antes de o dono o aprovar não é reversível.*
+#[test]
+fn the_old_motor_is_still_the_default_path() {
+    let body = code_of("render_loop/mod.rs");
+    assert!(
+        body.contains("vec_component_edit::selected_component("),
+        "o publicador do motor VELHO desapareceu — o caminho de omissao deixou de existir"
+    );
+    assert!(
+        body.contains("vec_component_edit::create_main(")
+            && body.contains("vec_component_edit::place_instance("),
+        "os verbos do motor VELHO desapareceram do dreno — a wave deixou de ser reversivel"
+    );
+}

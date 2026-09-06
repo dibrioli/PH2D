@@ -761,6 +761,9 @@ mod vec_bucket_repro;
 /// vetorial FECHADA (e não só para a moldura, desde 2026-08-21).
 mod vec_clip_edit;
 mod vec_component_edit;
+/// ⭐⭐⭐ **A secção *Component* do painel vetorial, ligada ao mecanismo GERAL** (F4.6c) — nasce
+/// DESLIGADA (`PH2D_VEC_COMPONENT_GENERAL=1` arma). Ver o cabeçalho de lá.
+mod vec_component_general;
 mod vec_component_pieces;
 /// O painel edita o CONECTOR selecionado (Route / Jetty / Spread) — resolve o valor
 /// EFETIVO que o painel exibe e aplica a edição a TODOS os conectores selecionados.

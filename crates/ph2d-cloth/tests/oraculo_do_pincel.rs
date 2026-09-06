@@ -427,7 +427,10 @@ struct Leitura {
 }
 
 /// Corre a NOSSA lei sobre o traço e compara com a saída do oráculo.
-fn correr(nome: &str) -> Leitura {
+/// **Corre a NOSSA lei sobre o traço e devolve as POSIÇÕES finais.** Extraída
+/// de [`correr`] para que uma sonda possa medir outra grandeza sobre a mesma
+/// corrida sem reescrever o laço — *duas cópias do laço seriam duas leis.*
+fn correr_posicoes(nome: &str) -> Vec<V3> {
     let t = traco(nome);
     let sup = t.s("superficie").to_string();
     let rest = repouso(&sup);
@@ -494,6 +497,25 @@ fn correr(nome: &str) -> Leitura {
         }
     }
 
+    pos
+}
+
+/// As posições que o ORÁCULO gravou para este traço.
+fn deformado(nome: &str) -> Vec<V3> {
+    traco(nome).depois
+}
+
+/// Corre a NOSSA lei sobre o traço e compara com a saída do oráculo.
+fn correr(nome: &str) -> Leitura {
+    let t = traco(nome);
+    let sup = t.s("superficie").to_string();
+    let rest = repouso(&sup);
+    assert_eq!(
+        rest.len(),
+        t.depois.len(),
+        "{nome}: repouso e deformado nao batem"
+    );
+    let pos = correr_posicoes(nome);
     let (mut movidos_nos, mut movidos_oraculo) = (0usize, 0usize);
     let (mut max_nos, mut max_oraculo, mut erro_max, mut soma2) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
     for v in 0..rest.len() {
@@ -1180,4 +1202,52 @@ fn o_centro_do_snake_hook_esta_um_passo_atrasado() {
         "o pico esta a {ao_cursor:.2}R do cursor -- com o centro da queda NO cursor \
          esta conta le ~0,05R, e o oraculo le 0,86R"
     );
+}
+
+/// **SONDA — as três grandezas de ARTEFATO, medidas na saída do ORÁCULO.**
+///
+/// ⚠️ **Existe porque as barras do gate de artefatos da `ph2d-sculpt3d` foram
+/// calibradas sobre a lei VBD**, que o dono reprovou três vezes — *uma barra
+/// calibrada sem o lado aprovado mede os nossos próprios defeitos*. Agora há
+/// lado aprovado: a saída do alvo, para o mesmo traço.
+///
+/// espinho = o maior deslocamento · rasgo = a maior diferença de deslocamento
+/// entre vizinhos de aresta · estica = a maior razão aresta/repouso.
+#[test]
+#[ignore = "sonda"]
+fn sonda_dos_artefatos_do_oraculo() {
+    println!(
+        "{:<44} | {:>8} {:>8} | {:>8} {:>8} | {:>7} {:>7}",
+        "traco", "esp_nos", "esp_orac", "rasg_nos", "rasg_or", "est_nos", "est_or"
+    );
+    for nome in todas() {
+        let t = traco(&nome);
+        let sup = t.s("superficie").to_string();
+        let rest = repouso(&sup);
+        let fs = faces(&sup, &rest);
+        let an = aneis(rest.len(), &fs);
+        let nosso = correr_posicoes(&nome);
+        let orac = deformado(&nome);
+        let tres = |p: &[V3]| -> (f64, f64, f64) {
+            let d: Vec<f64> = (0..rest.len()).map(|v| dist(rest[v], p[v])).collect();
+            let (mut esp, mut rasg, mut est) = (0.0f64, 0.0f64, 1.0f64);
+            for v in 0..rest.len() {
+                esp = esp.max(d[v]);
+                for &n in &an[v] {
+                    let n = n as usize;
+                    rasg = rasg.max((d[v] - d[n]).abs());
+                    let l0 = dist(rest[v], rest[n]);
+                    if l0 > 1e-9 {
+                        est = est.max(dist(p[v], p[n]) / l0);
+                    }
+                }
+            }
+            (esp, rasg, est)
+        };
+        let (a, b, c) = tres(&nosso);
+        let (x, y, z) = tres(&orac);
+        println!(
+            "{nome:<44} | {a:>8.4} {x:>8.4} | {b:>8.5} {y:>8.5} | {c:>7.4} {z:>7.4}"
+        );
+    }
 }

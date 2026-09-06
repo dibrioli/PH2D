@@ -425,3 +425,32 @@ barra que reprova por sorteio.* ⇒ o gate mede **dois regimes**, com as barras 
   somos pior por uma ordem de grandeza num regime que o alvo também não controla.
 
 ⏳ **Para o R-pós / a próxima emenda:** a §14 gate 20 deve passar a dizer isto, com a tabela.
+
+## Q12 — o que SOBRA depois do Q8/Q9/Q11, com o número de cada um (2026-09-06)
+
+O Q8, o Q9 e o Q11 estão implementados, com os gates 15-21 escritos e provados por mutação, e a lei
+da referência é o caminho de omissão do produto. Dos **54** traços, **29** estão dentro da barra de
+paridade e **8** saem ao bit. O que fica **não é uma família** — as duas réguas que eu construí para
+o agrupar (faces invertidas · compressão do par mais apertado) foram medidas e refutadas acima.
+
+| família | traços e `err_max / max_oráculo` | o que já sei |
+|---|---|---|
+| **Push** | `plano_empurrar_plano_local` **`0,944`** · `_radial_local` `0,329` · `esfera_dinamica` `0,303` | o `_1passo` sai **ao bit** (`0,000`); o oráculo **não** inverte faces (`0` no plano) e **não** comprime (`0,89`–`0,95`) |
+| **Inflate** | `plano_inflar_radial_local` `0,253` · `esfera_dinamica` `0,378` | idem: `_1passo` ao bit, sem inversão, sem compressão (`0,94`–`0,88`) |
+| **Expand** | `plano_expandir_radial_local` `0,192` · `_1passo` **`0,560`** · `esfera_dinamica` `0,557` | ⚠️ é o ÚNICO modo cujo traço de UM passo **não** sai ao bit — mas os deslocamentos são `0,0019`, e `0,560` é uma razão com denominador minúsculo (o erro absoluto é `0,0011`, `2,3 %` de uma aresta) |
+| **Snake Hook** | `_2passos` `0,388` · `_2passos_origem` `0,420` · `_1passo` `0,416` | o Q9 curou o passo 2 (o pico passou a cair no vértice certo, `0,86R`/`0,86R`); sobra o passo 3, onde o nosso `max` é `0,4460` contra `0,3439` |
+| **a ESFERA** | os sete não-arrasto: `0,265` a `0,588` | o `esfera_arrastar_radial_dinamica` bate (`0,092`) ⇒ não é a malha nem a área |
+
+### As perguntas
+
+- **Q12.1 (PUSH, a maior)** — o `plano_empurrar_plano_local` erra `0,944` com o `_1passo` ao bit,
+  sem inversão e sem compressão. O Push usa a **normal da área** (`−n̂ · 2R · escala`), que é a única
+  grandeza dele que muda entre passos. Como é que o alvo calcula essa normal ao longo do traço: ela
+  é recalculada a cada passo sobre a malha deformada, congelada no pen-down, ou vem da lei da casa
+  (*Sculpt Plane*) com algum estado próprio? E o `escala` — de que ele é função?
+- **Q12.2 (a ESFERA)** — os sete modos não-arrasto erram `0,27`–`0,59` na esfera e os mesmos modos
+  no plano erram menos. O arrasto na esfera bate. Há alguma coisa que o alvo faz **só** em
+  superfície curva — congelar a normal, projectar o delta, medir a distância de outra maneira?
+- **Q12.3 (INSTRUMENTO, prioridade baixa)** — os dumps POR PASSO do Q7/Q10 para **dois** traços:
+  `plano_empurrar_radial_local` e `plano_inflar_radial_local`. Sem eles só vejo o estado final, e foi
+  o dump por passo que localizou o aperto num vértice.

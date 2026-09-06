@@ -91,7 +91,7 @@ Um controle interativo atravessa o **seam painel↔tool**, no mínimo **7 sites*
 - [ ] Prove **paridade numérica** contra a referência canônica, não "parece certo": o caminho GPU bate
       o CPU **bit-a-bit** (ex.: `shader_adjustment_coefficients_bit_identical_with_rust` em
       [`ph2d-render/src/layer_compositor/tests.rs`](../../crates/ph2d-render/src/layer_compositor/tests.rs);
-      blend-modes em [`ph2d-painter-effects/src/blend.rs`](../../crates/ph2d-painter-effects/src/blend.rs)).
+      blend-modes em [`ph2d-blend-mode/src/lib.rs`](../../crates/ph2d-blend-mode/src/lib.rs)).
       Efeito espacial (bloom / shadows-highlights) reconcilia o kernel contra a fn CPU canônica.
 - [ ] Testes GPU `#[ignore]` (headless Metal — rodam no sandbox): rode com `-- --ignored` e **registre**
       o resultado. Kernel/efeito **sem** teste de paridade = **um achado**, não um pass.

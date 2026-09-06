@@ -18,27 +18,9 @@
 
 /// Versão do formato de arquivo de projeto. Bump ⇒ migração ou hard-break.
 ///
-/// ⚠️ **Os degraus de v2 a v79 estão em [`super::project_schema_history`]**, verbatim — o corte é
+/// ⚠️ **Os degraus de v2 a v81 estão em [`super::project_schema_history`]**, verbatim — o corte é
 /// por IDADE, e o teto de 600 LOC do HR-18 foi quem o pediu. O que se lê para contar o próximo
 /// degrau é a ponta, e a ponta é o que ficou aqui.
-/// v80 (physics, W-Fall — O TETO DE QUEDA): o `PlatformPlayer` ganhou
-/// `max_fall_speed`, apendado ao FIM ⇒ quebra dura. ⚠️ **Ele existe porque NÃO
-/// havia velocidade terminal, e o número é desta wave:** largando de mil metros
-/// a descida chega a **142,57 m/s aos 8 s** e continua a crescer, nos DOIS
-/// modos — um personagem que caia de alto o bastante atravessa o cenário a
-/// velocidades que nenhum colisor discreto resolve. ⚠️ **E o degrau é o ÚNICO
-/// preço da wave:** o campo nasce em `0`, que **desliga** a lei (a porta devolve
-/// `None` e o motor é `Motor::default()`) ⇒ todo projeto salvo em v79 reabre a
-/// cair exactamente como caía, e o `physics_ecs_c9` sai byte-idêntico.
-/// v81 (physics, W-Leave — O QUE A PLATAFORMA DA AO PULO): o `PlatformPlayer`
-/// ganhou `platform_lift`, apendado ao FIM ⇒ quebra dura. ⚠️ **A altura autorada
-/// era medida contra a PLATAFORMA, e ninguem tinha escolhido isso:** o pulo leva
-/// a subida RELATIVA ao chao ao `v0`, o que e' o `ADD_VELOCITY` do Godot — e num
-/// elevador a descer a 4 m/s o pico medido cai de **1,865 para 0,016 m**, nos
-/// tres modos (`measure_platform_leave`). ⚠️ **E o degrau e' o UNICO preco:** o
-/// campo nasce em `Full`, onde a porta devolve `rel_up` VERBATIM ⇒ todo projeto
-/// salvo em v80 reabre a pular exactamente como pulava, e o `physics_ecs_c9` sai
-/// byte-identico.
 /// v82 (physics, W-Brink — A TRAVA DE BEIRADA): o `PlatformPlayer` ganhou
 /// `walk_off_ledges` e `crouch_walk_off_ledges`, apendados ao FIM ⇒ quebra dura.
 /// O `bCanWalkOffLedges` do Unreal, que ele serve a IA e ao *andar com cuidado*.

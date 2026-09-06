@@ -1,8 +1,8 @@
-//! **A ESCADA do `PROJECT_SCHEMA`, de v2 a v79** — a metade ARQUIVADA, verbatim.
+//! **A ESCADA do `PROJECT_SCHEMA`, de v2 a v81** — a metade ARQUIVADA, verbatim.
 //!
 //! ⚠️ **O corte é por IDADE, e ele é o único eixo em que este arquivo cresce:** a escada ganha um
 //! parágrafo por wave e nunca perde um, então ela atravessou o teto de 600 LOC do HR-18 por
-//! acumulação, não por um autor. Os degraus VIVOS (v80 em diante) ficam colados à constante, em
+//! acumulação, não por um autor. Os degraus VIVOS (v82 em diante) ficam colados à constante, em
 //! [`super::project_schema`] — porque *quem conta o próximo degrau lê a escada, não o literal*, e
 //! o que ele precisa de ler é a ponta.
 //!
@@ -457,3 +457,21 @@
 //! o campo nasce em `1`, onde a lei reduz LITERALMENTE (`x * 1.0` é `x` em
 //! IEEE-754) ⇒ todo projeto salvo em v78 reabre a andar e a parar exactamente
 //! como estava, e o `physics_ecs_c9` sai byte-idêntico.
+//! v80 (physics, W-Fall — O TETO DE QUEDA): o `PlatformPlayer` ganhou
+//! `max_fall_speed`, apendado ao FIM ⇒ quebra dura. ⚠️ **Ele existe porque NÃO
+//! havia velocidade terminal, e o número é desta wave:** largando de mil metros
+//! a descida chega a **142,57 m/s aos 8 s** e continua a crescer, nos DOIS
+//! modos — um personagem que caia de alto o bastante atravessa o cenário a
+//! velocidades que nenhum colisor discreto resolve. ⚠️ **E o degrau é o ÚNICO
+//! preço da wave:** o campo nasce em `0`, que **desliga** a lei (a porta devolve
+//! `None` e o motor é `Motor::default()`) ⇒ todo projeto salvo em v79 reabre a
+//! cair exactamente como caía, e o `physics_ecs_c9` sai byte-idêntico.
+//! v81 (physics, W-Leave — O QUE A PLATAFORMA DA AO PULO): o `PlatformPlayer`
+//! ganhou `platform_lift`, apendado ao FIM ⇒ quebra dura. ⚠️ **A altura autorada
+//! era medida contra a PLATAFORMA, e ninguem tinha escolhido isso:** o pulo leva
+//! a subida RELATIVA ao chao ao `v0`, o que e' o `ADD_VELOCITY` do Godot — e num
+//! elevador a descer a 4 m/s o pico medido cai de **1,865 para 0,016 m**, nos
+//! tres modos (`measure_platform_leave`). ⚠️ **E o degrau e' o UNICO preco:** o
+//! campo nasce em `Full`, onde a porta devolve `rel_up` VERBATIM ⇒ todo projeto
+//! salvo em v80 reabre a pular exactamente como pulava, e o `physics_ecs_c9` sai
+//! byte-identico.

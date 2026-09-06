@@ -11,7 +11,8 @@ pub(crate) fn dup_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
   precisa de Play. Cada bloco tem uma ficha em cima a dizer o que ele e'.
 
   O Duplicator CARIMBA uma forma em cada ponto de um arranjo: a esquerda do no' recebe
-  O QUE desenhar, a direita recebe ONDE. As quatro fileiras sao quatro perguntas.
+  O QUE desenhar (um «Shape»), a direita recebe ONDE (um «Grid»). As quatro fileiras
+  sao quatro perguntas.
 
   ⭐ CADA BLOCO DA TELA TEM A SUA PROPRIA CADEIA DE NOS, e elas nao se tocam: no grafo
   sao TREZE ILHAS empilhadas, cada uma a ler-se da esquerda para a direita. A ficha de
@@ -40,6 +41,9 @@ pub(crate) fn dup_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
     · As tres bandas do Pick carimbam AS MESMAS tres formas, e as quatro do Transfer a
       mesma forma cinzenta -- mas cada uma tem a SUA copia dos nos. Se mexer numa forma
       e quiser comparar de novo, faca a mesma mexida nas irmas da fileira.
+    · Clique num «Shape» e troque o campo «Kind»: sao 43 silhuetas, e a forma nova e'
+      carimbada em todos os pontos na hora. A geometria e' VETORIAL -- aproxime o zoom
+      e a borda continua nitida.
     · Puxe o fio do «points» de qualquer banda: a forma passa INTACTA -- um carimbo sem
       onde carimbar deixa a corrente passar, e e' isso que torna seguro enfiar um
       Duplicator no meio de uma cadeia. Puxe o do «shape» e a banda esvazia (sem o que

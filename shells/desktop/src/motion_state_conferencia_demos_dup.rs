@@ -15,7 +15,31 @@
 //! | 3 | **`Point Scale`** — a escala do PONTO compõe-se com a da forma (`0` · `0,5` · `1`) |
 //! | 4 | **`Transfer`** — de quem é a cor quando a coluna existe dos DOIS lados |
 //!
-//! ## ⭐⭐⭐ UMA CADEIA POR SAÍDA — e a primeira versão desta cena não era assim
+//! ## ⭐⭐⭐ O QUE ENTRA NA PORTA `shape` É UM `source.shape` — e a 1.ª versão punha um `motion.grid`
+//!
+//! Report do Enio (2026-09-06): *«você colocou grid entrando em Shape de Duplicator! Essa
+//! aplicação é correta?»* — e não era.
+//!
+//! Um `motion.grid` de uma célula **funciona**: ele emite uma instância, o carimbo replica-a e o
+//! sink desenha o ladrilho de omissão. ⛔ **Mas ensina o idioma errado.** O que uma forma É
+//! neste app é um [`source.shape`] (geometria vectorial viva, nítida em qualquer zoom, 43
+//! silhuetas) ou um `source.object` (uma sprite da cena) — e o doc do próprio `source.shape`
+//! nomeia esta composição à letra: *«cross it with a `motion.grid` through a
+//! `motion.duplicator` and the shape is stamped, crisp, at every point — with none of a baked
+//! tile's dead pixels»*. Uma cena de demonstração que põe uma GRELHA onde vai uma FORMA ensina
+//! o artista a fazer o que ela faz, e ele leva o erro para o trabalho dele.
+//!
+//! ⭐⭐ **E a troca melhorou a cena que ela veio corrigir:** as três alternativas do `Pick` deixam
+//! de ser três quadrados de cores diferentes e passam a ser um **círculo, uma estrela e um
+//! coração**. A pergunta do `Pick` é *«qual FORMA pousa em qual ponto»*, e agora a figura
+//! responde-a — com o `geometry_id` a ser o oráculo dos gates, que é literalmente *qual forma*,
+//! em vez da cor, que era um substituto.
+//!
+//! ⚠️ **`source.shape` lê um EXTERNAL que a SHELL publica** (`motion_shape_gen::publish`): num
+//! cook virgem ele emite ZERO. É por isso que os gates desta cena cozinham através de um
+//! `MotionState` — medir num `Cook` nu seria a sonda a acusar-se a si própria.
+//!
+//! ## ⭐⭐⭐ UMA CADEIA POR SAÍDA
 //!
 //! Report do Enio (2026-09-06): *«o cenário que você construiu tem tantos nós interligados que
 //! não pude entender. Crie uma cadeia de nós por output.»*
@@ -37,13 +61,9 @@
 //! é onde a afirmação vive. *Uma igualdade por construção é mais forte que uma por referência, e
 //! não custa um fio a atravessar a tela.*
 //!
-//! ⚠️ **Os pontos não trazem `size` nas bandas que não são do `Point Scale`**, de propósito: o
-//! `apply_point_scale` sai cedo quando a coluna não existe, então uma coluna posta por comodidade
-//! ligaria aquele controlo em bandas que não são sobre ele.
-//!
 //! ⚠️ **A banda 2 e a banda 4 são a MESMA lei vista de dois lados** — «uma forma feita de três
 //! peças» e «três formas alternativas» são o mesmo stream para este nó; o que as separa é o
-//! `Pick`, que trata cada ELEMENTO da forma como uma candidata. Está escrito no anúncio.
+//! `Pick`, que trata cada ELEMENTO da forma como uma candidata.
 
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
@@ -59,20 +79,28 @@ const COL_STEP: f32 = 2.5;
 /// O centro de cada fileira, de cima para baixo.
 const ROW_Y: [f32; 4] = [2.7, 0.9, -0.9, -2.7];
 
-/// O tamanho de uma peça e o passo entre pontos, em unidades de mundo.
-const PIECE: f32 = 0.2;
-const GAP: f32 = 0.34;
+/// O RAIO de uma forma e o passo entre pontos, em unidades de mundo.
+///
+/// ⚠️ **Raio, não lado:** a geometria de um `source.shape` vive em **raio 1** e o `size`
+/// escala-a, então a meia-extensão de uma cópia **é** o `size` — não metade dele, como seria num
+/// ladrilho. O gate que mede a sobreposição das bandas depende disto.
+const PIECE: f32 = 0.11;
+const GAP: f32 = 0.32;
 /// Quantos pontos tem a fila de uma banda normal.
 const PIECES: f32 = 5.0;
 /// A banda do GRUPO usa menos pontos e mais espaço: a forma dela é larga.
 const COMET_POINTS: f32 = 3.0;
-const COMET_GAP: f32 = 0.72;
+const COMET_GAP: f32 = 0.62;
+/// E as do `Point Scale` também: a última engorda as cópias `POINT_MUL` vezes, e cinco delas
+/// encavalitavam-se.
+const SCALE_POINTS: f32 = 3.0;
+const SCALE_GAP: f32 = 0.62;
 
 /// O desnível entre as três formas alternativas — é o que faz o `Cycle` e o `Random` lerem-se
-/// mesmo em cinzento, e o que transforma o produto cartesiano numa grelha de 3 × 5.
+/// como uma escolha, e o que transforma o produto cartesiano numa grelha de 3 × 5.
 const SPREAD: f32 = 0.26;
-/// Quanto o último ponto da fila gira, em graus. ⛔ **Não 90:** um quadrado a 90° lê-se igual a
-/// um quadrado a 0°, e a banda pareceria começar e acabar no mesmo sítio.
+/// Quanto o último ponto da fila gira, em graus. ⛔ **Não 90:** a leitura tem de ser monótona da
+/// esquerda para a direita, e uma forma com simetria de um quarto de volta fecharia o ciclo.
 const ROT_SPAN: f32 = 60.0;
 /// O multiplicador de escala que os PONTOS carregam nas bandas do `Point Scale`. Eles nunca são
 /// desenhados: este número existe só para o `point_scale` ter o que compor.
@@ -84,9 +112,8 @@ const PICK_CYCLE: f32 = 1.0;
 const PICK_RANDOM: f32 = 2.0;
 /// A semente da banda `Random` — fixa, para a cena abrir sempre igual, e **escolhida por
 /// medição** (`which_seed_shows_every_shape`): cinco sorteios sobre três formas deixam uma de
-/// fora com facilidade, e uma banda «Random» que só mostra DUAS cores ensina menos do que
-/// promete. ⚠️ Das 24 primeiras sementes, **nove** deixam uma forma de fora. O gate
-/// `the_random_band_shows_every_shape` defende esta escolha.
+/// fora com facilidade, e uma banda «Random» que só mostra DUAS formas ensina menos do que
+/// promete. O gate `the_random_band_shows_every_shape` defende a escolha.
 const PICK_SEED: f32 = 9.0;
 /// A escada do param `transfer`.
 const SHAPE_WINS: f32 = 0.0;
@@ -99,22 +126,30 @@ const FIELD_RAMP: f32 = 1.0;
 const CH_ROTATION: f32 = 2.0;
 const DRIVE_SET: f32 = 1.0;
 
-/// A cor neutra das formas que não são sobre cor.
-const NEUTRAL: [f32; 3] = [0.72, 0.74, 0.78];
-/// As três formas alternativas do `Pick` — bem separadas no matiz, senão o `Random` lê-se como
-/// ruído em vez de como escolha.
-const TRIO_RGB: [[f32; 3]; 3] = [[0.85, 0.35, 0.25], [0.35, 0.70, 0.40], [0.30, 0.45, 0.85]];
+/// ⭐⭐ **AS TRÊS ALTERNATIVAS DO `PICK`, por SILHUETA** — os índices do `kind` do `source.shape`
+/// (`Circle`, `Star`, `Heart`).
+///
+/// ⚠️ **Silhueta e não cor**, e a diferença é a própria pergunta do `Pick`: *«qual FORMA pousa em
+/// qual ponto»*. Com três quadrados de cores diferentes o artista lê *«ele pinta»*.
+const TRIO_KINDS: [f32; 3] = [0.0, 5.0, 6.0];
+/// O `kind` das bandas que não são sobre a escolha: um CÍRCULO, que não tem orientação e por
+/// isso não compete com a leitura das outras.
+const PLAIN_KIND: f32 = 0.0;
+/// O `kind` das bandas do `Transfer`: uma ESTRELA, que mostra a cor no miolo e nas pontas.
+const TRANSFER_KIND: f32 = 5.0;
+/// A forma que GIRA (banda 3) tem de ter uma ponta: um círculo a rodar não se vê rodar.
+const TURN_KIND: f32 = 10.0; // ArrowRight
+
+/// As três peças do COMETA: `(offset x, raio)`. Uma forma que se lê como UMA coisa, para a
+/// banda 2 mostrar que é a coisa inteira que pousa em cada ponto.
+const COMET: [(f32, f32); 3] = [(0.0, 0.11), (0.17, 0.072), (0.29, 0.047)];
+
 /// A cor da FORMA nas bandas do `Transfer`. ⚠️ Um cinzento a meio caminho, pela razão que o
 /// `=98` já pagou: o branco é o NEUTRO do `Multiply`, e com ele aquela banda sairia igual à
 /// vizinha.
 const SHAPE_RGB: [f32; 3] = [0.55, 0.62, 0.45];
 
-/// As três peças do COMETA: `(offset x, tamanho)`. Uma forma que se lê como UMA coisa, para a
-/// banda 2 mostrar que é a coisa inteira que pousa em cada ponto.
-const COMET: [(f32, f32); 3] = [(0.0, 0.20), (0.17, 0.13), (0.30, 0.08)];
-
-/// A altura, no GRAFO, do espaço reservado a uma banda. Larga o suficiente para as cinco
-/// sub-fileiras que a banda mais alta usa, com margem — é ela que faz cada cadeia ler-se como
+/// A altura, no GRAFO, do espaço reservado a uma banda — é ela que faz cada cadeia ler-se como
 /// uma ILHA e não como parte da vizinha.
 const BAND_H: f32 = 640.0;
 /// O passo entre duas sub-fileiras DENTRO de uma banda.
@@ -149,35 +184,38 @@ fn push(g: &mut Graph, head: NodeId, kind: &str, ps: &[(&str, f32)], ey: f32, x:
     n
 }
 
-/// UMA peça: na origem (ou deslocada dela), do tamanho pedido e com a cor pedida.
-fn piece(g: &mut Graph, ey: f32, rgb: [f32; 3], off: [f32; 2], size: f32) -> NodeId {
-    let one = node(g, "motion.grid", &[("rows", 1.0), ("cols", 1.0)], ey, 80.0);
-    let placed = if off == [0.0, 0.0] {
-        one
+/// UMA forma: geometria vectorial viva, do tamanho pedido, na origem ou deslocada dela.
+///
+/// ⚠️ **Uma forma nua é BRANCA e não precisa de mais nó nenhum** — o `size` é param dela, então
+/// uma banda neutra é *um* nó em vez dos quatro que o ladrilho pedia.
+fn shape_at(g: &mut Graph, ey: f32, kind: f32, off: [f32; 2], size: f32) -> NodeId {
+    let s = node(
+        g,
+        "source.shape",
+        &[
+            (ph2d_node_motion_shape::param::KIND, kind),
+            (ph2d_node_motion_shape::param::SIZE, size),
+        ],
+        ey,
+        80.0,
+    );
+    if off == [0.0, 0.0] {
+        s
     } else {
         push(
             g,
-            one,
+            s,
             "motion.transform",
             &[("offset_x", off[0]), ("offset_y", off[1])],
             ey,
-            220.0,
+            240.0,
         )
-    };
-    let sized = push(g, placed, "motion.scale", &[("amount", size)], ey, 360.0);
-    push(
-        g,
-        sized,
-        "motion.tint",
-        &[("r", rgb[0]), ("g", rgb[1]), ("b", rgb[2])],
-        ey,
-        500.0,
-    )
+    }
 }
 
-/// Junta até quatro peças numa forma só.
+/// Junta até quatro formas numa só.
 fn joined(g: &mut Graph, parts: &[NodeId], ey: f32) -> Option<NodeId> {
-    let c = node(g, "motion.combine", &[], ey, 660.0);
+    let c = node(g, "motion.combine", &[], ey, 480.0);
     for (i, p) in parts.iter().enumerate() {
         wire(g, *p, 0, c, u16::try_from(i).ok()?)?;
     }
@@ -186,9 +224,8 @@ fn joined(g: &mut Graph, parts: &[NodeId], ey: f32) -> Option<NodeId> {
 
 /// A fila de `n` pontos, já posta no quadrante da banda.
 ///
-/// ⚠️ **Sem `motion.scale`**, ao contrário da fila do `=98`: ali os pontos também eram
-/// desenhados; aqui eles só dizem ONDE, e uma coluna `size` neles acenderia o `point_scale` em
-/// bandas que não são sobre ele.
+/// ⚠️ **Sem `motion.scale`**: os pontos só dizem ONDE, e uma coluna `size` neles acenderia o
+/// `point_scale` em bandas que não são sobre ele (o `apply_point_scale` sai cedo sem a coluna).
 fn points_row(g: &mut Graph, at: [f32; 2], ey: f32, n: f32, gap: f32) -> NodeId {
     let grid = node(
         g,
@@ -203,7 +240,7 @@ fn points_row(g: &mut Graph, at: [f32; 2], ey: f32, n: f32, gap: f32) -> NodeId 
         "motion.transform",
         &[("offset_x", at[0]), ("offset_y", at[1])],
         ey,
-        220.0,
+        240.0,
     )
 }
 
@@ -223,39 +260,41 @@ fn finish(
     Some(out)
 }
 
-/// ⭐ **AS TRÊS FORMAS QUE ESTA CENA USA** — cada uma construída DENTRO da banda que a carimba.
-///
-/// ⚠️ **A igualdade entre bandas é por CONSTRUÇÃO, não por referência:** as três bandas do
-/// `Pick` chamam a mesma [`trio_shape`], então carimbam as mesmas três formas sem que um nó de
-/// uma banda alcance a outra. É o que substitui a partilha, e sem o fio a atravessar a tela.
-fn one_shape(g: &mut Graph, ey: f32) -> NodeId {
-    piece(g, row(ey, 0), NEUTRAL, [0.0, 0.0], PIECE)
-}
-
-/// O COMETA: três peças de tamanhos diferentes numa linha, uma forma que se lê como UMA coisa.
+/// O COMETA: três formas de tamanhos diferentes numa linha, que se lê como UMA coisa.
 fn comet_shape(g: &mut Graph, ey: f32) -> Option<NodeId> {
     let parts: Vec<NodeId> = COMET
         .iter()
         .enumerate()
-        .map(|(i, (dx, size))| piece(g, row(ey, i), NEUTRAL, [*dx, 0.0], *size))
+        .map(|(i, (dx, size))| shape_at(g, row(ey, i), PLAIN_KIND, [*dx, 0.0], *size))
         .collect();
     joined(g, &parts, row(ey, 0))
 }
 
-/// O TRIO: três formas alternativas, cada uma com a sua cor e a sua altura — é entre elas que
-/// o `Pick` escolhe.
+/// O TRIO: três formas alternativas, cada uma com a sua SILHUETA e a sua altura — é entre elas
+/// que o `Pick` escolhe.
+///
+/// ⚠️ **As três bandas do `Pick` chamam esta função**, e é daí que vem a igualdade entre elas:
+/// por CONSTRUÇÃO, sem que um nó de uma banda alcance a outra.
 fn trio_shape(g: &mut Graph, ey: f32) -> Option<NodeId> {
-    let parts: Vec<NodeId> = TRIO_RGB
+    let parts: Vec<NodeId> = TRIO_KINDS
         .iter()
         .enumerate()
-        .map(|(i, rgb)| piece(g, row(ey, i), *rgb, [0.0, (i as f32 - 1.0) * SPREAD], PIECE))
+        .map(|(i, kind)| {
+            shape_at(
+                g,
+                row(ey, i),
+                *kind,
+                [0.0, (i as f32 - 1.0) * SPREAD],
+                PIECE,
+            )
+        })
         .collect();
     joined(g, &parts, row(ey, 0))
 }
 
 /// **A banda 1** — o carimbo puro: uma forma, cinco pontos.
 fn stamp_band(g: &mut Graph, at: [f32; 2], ey: f32) -> Option<NodeId> {
-    let shape = one_shape(g, ey);
+    let shape = shape_at(g, row(ey, 0), PLAIN_KIND, [0.0, 0.0], PIECE);
     let pts = points_row(g, at, row(ey, 3), PIECES, GAP);
     finish(g, shape, pts, row(ey, 0), &[])
 }
@@ -270,7 +309,7 @@ fn whole_band(g: &mut Graph, at: [f32; 2], ey: f32) -> Option<NodeId> {
 
 /// **A banda 3** — cada ponto traz o `rot` dele, e o carimbo SOMA-O ao da forma.
 fn turn_band(g: &mut Graph, at: [f32; 2], ey: f32) -> Option<NodeId> {
-    let shape = one_shape(g, ey);
+    let shape = shape_at(g, row(ey, 0), TURN_KIND, [0.0, 0.0], PIECE);
     let pts = points_row(g, at, row(ey, 3), PIECES, GAP);
     let t = node(
         g,
@@ -305,8 +344,8 @@ fn pick_band(g: &mut Graph, at: [f32; 2], ey: f32, ps: &[(&str, f32)]) -> Option
 
 /// **As bandas 7-9** — os pontos trazem uma escala PRÓPRIA, e `t` diz quanto dela entra.
 fn scale_band(g: &mut Graph, at: [f32; 2], ey: f32, t: f32) -> Option<NodeId> {
-    let shape = one_shape(g, ey);
-    let pts = points_row(g, at, row(ey, 3), PIECES, GAP);
+    let shape = shape_at(g, row(ey, 0), PLAIN_KIND, [0.0, 0.0], PIECE);
+    let pts = points_row(g, at, row(ey, 3), SCALE_POINTS, SCALE_GAP);
     let sized = push(
         g,
         pts,
@@ -321,7 +360,19 @@ fn scale_band(g: &mut Graph, at: [f32; 2], ey: f32, t: f32) -> Option<NodeId> {
 /// **As bandas 10-13** — a rampa é autorada nos PONTOS e a forma tem cor própria, então a coluna
 /// `tint` existe dos DOIS lados, que é a única situação em que o `Transfer` decide algo.
 fn transfer_band(g: &mut Graph, at: [f32; 2], ey: f32, mode: f32) -> Option<NodeId> {
-    let shape = piece(g, row(ey, 0), SHAPE_RGB, [0.0, 0.0], PIECE);
+    let forma = shape_at(g, row(ey, 0), TRANSFER_KIND, [0.0, 0.0], PIECE);
+    let shape = push(
+        g,
+        forma,
+        "motion.tint",
+        &[
+            ("r", SHAPE_RGB[0]),
+            ("g", SHAPE_RGB[1]),
+            ("b", SHAPE_RGB[2]),
+        ],
+        row(ey, 0),
+        400.0,
+    );
     let pts = points_row(g, at, row(ey, 3), PIECES, GAP);
     let t = node(
         g,
@@ -411,8 +462,7 @@ pub(crate) fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
 ///
 /// ⚠️ **A ficha começa pelo NÚMERO da banda**, e não é enfeite: o anúncio do terminal lista as
 /// treze por número, e sem ele o artista tem de contar blocos da esquerda para a direita e de
-/// cima para baixo para casar uma coisa com a outra — que é meia leitura perdida numa tela de
-/// treze figuras.
+/// cima para baixo para casar uma coisa com a outra.
 pub(crate) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     band_labels()
         .map(|(k, label)| {
@@ -436,3 +486,8 @@ fn short_of(label: &'static str) -> &'static str {
 #[cfg(test)]
 #[path = "motion_state_conferencia_demos_dup_tests.rs"]
 mod tests;
+
+/// Os gates sobre como a cena está LIGADA — irmão por responsabilidade (HR-18).
+#[cfg(test)]
+#[path = "motion_state_conferencia_demos_dup_graph_tests.rs"]
+mod graph_tests;

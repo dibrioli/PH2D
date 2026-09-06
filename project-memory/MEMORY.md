@@ -157,6 +157,7 @@
 - [Invariante na DERIVAÇÃO](feedback_enforce_the_invariant_at_the_derivation_not_at_each_gesture.md) · [marca de evento é canal próprio](feedback_a_transient_event_marker_is_its_own_channel.md)
 - [Blindagem Fase 0 — ph2d-ui-testkit](project_blindagem_phase0_2026_06_20.md)
 - [Pintura voltou](project_painter_brush_came_back_cleanroom.md) = [clean-room Blender](project_blender_texture_paint_reference.md) + [Texture Layer](project_texture_layer_design.md)
+- ⭐⭐⭐ [Porta de tipo LARGO: «compila e desenha» não é a barra de uma cena — ela ensina o idioma (grid no `shape` do duplicator; o certo saiu 140→102 nós)](feedback_a_port_that_accepts_anything_still_teaches_what_you_plug_into_it.md)
 - ⭐⭐ [Partilhar um nó para igualar entradas torna o grafo ilegível — a igualdade por CONSTRUÇÃO é tão forte e não cruza a tela (13 ilhas, não 4)](feedback_a_correct_property_can_cost_the_legibility_that_was_the_whole_point.md)
 - ⭐⭐ [Superfície que SUBSTITUI outra copia o que a antiga RESOLVE (faixa do canal · do fio · a FACE), não só o que ela mostra — 109 de 454 rows](feedback_a_replacement_surface_must_copy_what_the_old_one_RESOLVES_not_only_what_it_shows.md)
 - ⭐⭐ [**A DINÂMICA DOS CICLOS** do Motion (05/09): um grupo de nós por ciclo · params NO cartão e o painel lateral SAI · **o smoke é o TUTORIAL em PDF**](project_motion_cycle_dynamic.md)

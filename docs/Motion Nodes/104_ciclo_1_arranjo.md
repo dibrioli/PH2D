@@ -287,7 +287,7 @@ preço era o GRAFO:** um nó de forma alimentava quatro carimbos em quatro altur
 atravessavam a tela. *Um grafo que ninguém consegue seguir não ensina nada, por mais correcta que
 seja a corrente que ele desenha.*
 
-⇒ hoje cada banda é uma **cadeia FECHADA** (`140` nós em `13` ilhas, `10,8` por ilha), e a
+⇒ hoje cada banda é uma **cadeia FECHADA**, e a
 propriedade não se perdeu — **mudou de dono**: as três bandas do `Pick` carimbam as mesmas formas
 porque saem da MESMA função, não porque partilhem um nó. ⭐ *Uma igualdade por CONSTRUÇÃO é tão
 forte quanto uma por referência, e não custa um fio a atravessar a tela.* Os dois gates novos:
@@ -295,6 +295,31 @@ forte quanto uma por referência, e não custa um fio a atravessar a tela.* Os d
 não a contagem de nós) e `the_three_pick_bands_stamp_the_same_shapes` (mede a igualdade na
 SAÍDA, que é onde a afirmação vive). A mutação que repõe a partilha lê **`11` ilhas para `13`
 saídas**.
+
+⛔⛔⛔ **E o report seguinte apanhou um erro de IDIOMA que nenhum gate podia ver** — *«você
+colocou grid entrando em Shape de Duplicator! Essa aplicação é correta?»* (Enio, 06/09). Não
+era. As duas portas do carimbo são o mesmo tipo (`Instances`), então **só a semântica as
+distingue**, e um `motion.grid` de uma célula compila, cozinha e desenha o ladrilho de omissão.
+⚠️ *Numa cena de demonstração isso não é «funciona»: é ENSINAR que uma forma se faz com uma
+grelha de 1×1*, e o artista leva o erro para o trabalho dele. A resposta estava escrita no nó
+que eu não procurei — o doc do **`source.shape`** nomeia a composição à letra: *«cross it with a
+`motion.grid` through a `motion.duplicator` and the shape is stamped, crisp, at every point»*.
+
+⭐⭐ **O idioma certo saiu MAIS BARATO, que é o sinal de que era mesmo o certo:** o ladrilho
+precisava de `grid + transform + scale + tint` para ser «uma forma»; o `source.shape` é **um** nó
+(`kind` e `size` são params dele). A cena foi de **140 para 102 nós** (`7,8` por cadeia), ficou
+**vectorial** — nítida em qualquer zoom — e ganhou silhuetas: o `Pick` deixou de escolher entre
+três quadrados coloridos e passa a escolher entre um **círculo, uma estrela e um coração**, que é
+a pergunta que ele responde. ⇒ o oráculo dos gates passou a ser o **`geometry_id`** (literalmente
+*qual forma*) em vez da cor, que era um substituto.
+
+⚠️ **Dois preços que a troca traz, os dois nomeados:** um `source.shape` lê um EXTERNAL que a
+shell publica, então **num cook nu ele emite zero** — os gates cozinham através de um
+`MotionState` depois de `motion_shape_gen::publish`; e a geometria vive em **raio 1**, então a
+meia-extensão de uma cópia **é** o `size` e não metade dele (o gate da sobreposição depende
+disso). O gate novo, `the_shape_port_is_fed_by_a_shape_source_and_the_points_port_by_an_arrangement`,
+sobe pela entrada 0 de cada carimbo até à **origem** do braço — entre a fonte e o carimbo há
+transformes e tints, e olhar só o vizinho imediato não responderia.
 ⚠️ **A semente do `Random` é uma CALIBRAÇÃO com gate:** cinco sorteios sobre três formas deixam
 uma de fora com facilidade — **9 das 24** primeiras sementes fazem-no, e a banda passaria a
 ler-se como *«Random escolhe entre duas»*. O `PICK_SEED = 9` é o número que a varredura deu, e o

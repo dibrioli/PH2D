@@ -26,11 +26,20 @@ const VIEWPORT: Rect = Rect {
     w: 1600.0,
     h: 900.0,
 };
-/// ⚠️ **Trinta, e o número saiu de uma VARREDURA.** Com vinte a lista ainda cabe abaixo do chip
-/// (termina em `y = 732`) e o gate mediria o caso que os irmãos do `seam_authored_popover` já
-/// cobrem — o braço clampado do `popover_rect_clamped` só é alcançado quando nem abaixo nem acima
-/// comporta a lista inteira.
-const OPTIONS: usize = 30;
+/// ⚠️⚠️ **O número é DERIVADO da altura de linha, e antes era `30` escrito à mão.**
+///
+/// O `30` saíra de uma varredura (com `20` a lista ainda cabia abaixo do chip) — mas a varredura
+/// mediu a árvore de um dia: quando o dono pediu linhas mais compactas e o `chrome.row-h` desceu
+/// de `28` para `22` px (2026-09-06), a lista de trinta passou a caber **exactamente** na janela
+/// (`664` de conteúdo em `664` visíveis) e o gate deixou de conter o fenómeno. ⭐ **Ele disse-o em
+/// voz alta** — *«a fixture nao transborda»* — em vez de passar por vácuo, que é o desenho certo.
+///
+/// ⇒ conta-se: quantas linhas cabem na janela INTEIRA, mais folga. Assim a lista nunca cabe nem
+/// abaixo nem acima do chip, que é o braço do `popover_rect_clamped` que este gate existe para
+/// alcançar — e a conta sobrevive à próxima vez que a linha mudar de altura.
+fn options() -> usize {
+    (VIEWPORT.h / ph2d_tokens::ROW_H_PX).ceil() as usize + 8
+}
 
 fn long_list() -> (ph2d_a11y::NodeId, String) {
     let key = "mode".to_string();
@@ -43,7 +52,7 @@ fn long_list() -> (ph2d_a11y::NodeId, String) {
         rgba: None,
         icon: None,
         icon_id: None,
-        options: (0..OPTIONS).map(|i| format!("Op{i}")).collect(),
+        options: (0..options()).map(|i| format!("Op{i}")).collect(),
     }]));
     (id, key)
 }
@@ -79,7 +88,7 @@ fn no_option_is_offered_outside_the_panel_that_holds_it() {
         .expect("o painel nao publicou onde a lista aberta esta' — a roda nunca a alcanca");
 
     let mut offered = 0;
-    for i in 0..OPTIONS {
+    for i in 0..options() {
         let Some(r) =
             h.painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, ids::authored_option_id(&key, i))
         else {
@@ -132,7 +141,7 @@ fn the_option_that_does_not_fit_is_reachable_by_scrolling() {
     );
 
     h.store_mut().set_panel_scroll(id, content_h - visible_h);
-    let last = ids::authored_option_id(&key, OPTIONS - 1);
+    let last = ids::authored_option_id(&key, options() - 1);
     let panel = h
         .store()
         .dropdown_popover()

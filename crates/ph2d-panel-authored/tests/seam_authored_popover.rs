@@ -223,28 +223,54 @@ fn a_dropdown_without_options_is_still_a_live_control() {
 /// de uma lista do fundo. Sem esta altura de viewport, trocar uma pela outra passa em tudo — e o
 /// artista fica com uma lista desenhada em cima e os cliques a caírem em baixo dela.
 ///
-/// ⚠️ **Os números vêm de uma VARREDURA**, não de gosto: com 900 px e 600 px a lista desce, e a
-/// partir de ~420 px ela vira. Uma fixture escolhida no olho ficaria do lado errado do joelho e o
-/// gate mediria o caso que os irmãos já cobrem.
+/// ⚠️⚠️ **A altura é PROCURADA, e antes era `420` escrito à mão.** O `420` saíra de uma varredura
+/// («com 900 e 600 px a lista desce, e a partir de ~420 ela vira»), e a própria nota avisava que
+/// *«uma fixture escolhida no olho ficaria do lado errado do joelho»*. ⭐ **O joelho mexeu-se** no
+/// dia em que o dono pediu linhas mais compactas (`chrome.row-h` `28 → 22`, 2026-09-06): a lista
+/// encolheu, passou a caber abaixo do chip a 420 px, e o gate mediu o caso que os irmãos já
+/// cobrem. *Uma varredura responde pela árvore do dia em que foi corrida.*
+///
+/// ⇒ o gate **procura** a janela em que a lista vira, e falha alto se não houver nenhuma.
 #[test]
 fn a_list_near_the_bottom_flips_up_and_its_options_go_with_it() {
-    const SHORT: Rect = Rect {
-        x: 0.0,
-        y: 0.0,
-        w: 1600.0,
-        h: 420.0,
-    };
     let (id, key, options) = the_dropdown();
     let (mut h, mut st) = host();
     open_it(&mut h, id, 0);
+
+    // Desce a janela até a lista virar para CIMA. O passo é a altura de uma linha: mais fino não
+    // muda o veredito, e mais grosso pode saltar por cima do joelho.
+    let short = |vh: f32| Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: vh,
+    };
+    let flips = |h: &mut ph2d_ui_testkit::MockPanelHost, st: &mut _, vh: f32| -> bool {
+        let Some(chip) = h.painted_rect::<AuthoredPanel>(st, short(vh), id) else {
+            return false;
+        };
+        h.painted_rect::<AuthoredPanel>(st, short(vh), ids::authored_option_id(&key, 0))
+            .is_some_and(|r| r.y + r.h <= chip.y)
+    };
+    let step = ph2d_tokens::ROW_H_PX;
+    let mut vh = 900.0_f32;
+    while vh > 120.0 && !flips(&mut h, &mut st, vh) {
+        vh -= step;
+    }
+    assert!(
+        flips(&mut h, &mut st, vh),
+        "nenhuma janela entre 120 e 900 px faz a lista virar para cima — a fixture perdeu o \
+         fenomeno, e o braco `option_rect_in` ficou sem quem o meca"
+    );
+    let short_rect = short(vh);
     let chip = h
-        .painted_rect::<AuthoredPanel>(&mut st, SHORT, id)
+        .painted_rect::<AuthoredPanel>(&mut st, short_rect, id)
         .expect("o chip do dropdown nao foi pintado");
 
     let mut last_y = f32::NEG_INFINITY;
     for i in 0..options.len() {
         let r = h
-            .painted_rect::<AuthoredPanel>(&mut st, SHORT, ids::authored_option_id(&key, i))
+            .painted_rect::<AuthoredPanel>(&mut st, short_rect, ids::authored_option_id(&key, i))
             .unwrap_or_else(|| panic!("a opcao {i} nao publicou retangulo de hit"));
         assert!(
             r.y + r.h <= chip.y,

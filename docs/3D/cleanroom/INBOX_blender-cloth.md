@@ -293,3 +293,26 @@ qual vértice fica mais perto do cursor.*
   um corte quando o vértice ultrapassa o cursor, um amortecimento próprio?
 
 Contrato de retorno igual ao do Q8.
+
+### Q11 — duas hipóteses minhas, CONSTRUÍDAS, MEDIDAS e REFUTADAS (2026-09-06)
+
+Antes de perguntar, testei as duas coisas que a própria espec deixava em aberto para mim. Registo-as
+para não voltarem:
+
+⛔ **(1) O filtro de raio na criação de restrições da área *Dynamic*.** A espec §2.1 diz que no
+*Local* a criação é filtrada por `|p⁰ − c| < R₀(1+L)` e no *Dynamic/Global* é **sem filtro** (todos
+os vértices das células tocadas, e numa malha pequena a célula é metade dela). A nossa Dinâmica
+filtra por um disco de vértices. Tirei o filtro: `plano_arrastar_radial_dinamica` `0,181 → 0,182` e
+as outras nove **inalteradas**. ⇒ *quem segura os vértices longe é a banda `w`, exactamente como a
+§2.1 diz — o portão grosso da célula não tem efeito observável nesta escala.*
+
+⛔ **(2) O peso da normal por vértice.** Todos os modos de FORÇA são exactos ao bit num traço de UM
+passo e derivam ao longo de um traço inteiro, e o que muda entre passos neles é a normal da malha
+deformada (o Inflate lê-a por vértice, o Push e o aperto de linha lêem a da área). Troquei o peso do
+Newell (por ÁREA) pelo peso uniforme por face: **19 traços medidos, 18 inalterados** e um `0,008`
+pior. ⇒ o resíduo dos modos de força não é a normal.
+
+⚠️ **E o que fica NOMEADO por esta medição:** o **arrasto** é o único modo de força que NÃO deriva
+(`0,071` num traço de 12 passos), e ele é o único cuja direcção não depende do estado da malha —
+`δ̂` é a mesma para todos os vértices. Os outros quatro derivam. *A causa comum tem de estar em algo
+que a direcção por-vértice lê e a direcção global não.*

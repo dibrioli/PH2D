@@ -115,6 +115,9 @@ que é decisão do dono.
 | o **peso** da normal por vértice, RE-MEDIDO contra a lei de hoje | `uniforme` contra `área`: `inflar 0,253 → 0,253`, `esfera 0,378 → 0,379`, `empurrar 0,214 → 0,213` — a recusa de 06/09 continua de pé depois do Q12 e do centro da área |
 | a ordem inversa como **CHÃO DE RUÍDO** (ruler minha, construída e apagada) | ⛔ inverter a ordem não é ruído, é uma lei ERRADA: erramos `0,0713` contra o oráculo no `plano_arrastar_radial_local` e a ordem inversa move-nos `0,2932` — *estamos 4× mais perto do alvo do que ela está de nós*, e um chão de ruído nunca é maior que a distância ao alvo |
 | partir o corpus em «ruído de ordem» contra «lei em falta» com barra em `0,35` | ⛔ **sem VALE**: as razões dos 25 abertos são um contínuo de `0,30` a `3,39` e o maior vazio (`0,92`) está no topo, entre os dois últimos ⇒ qualquer barra a meio seria escolhida (CLAUDE.md §0.0). O gate foi apagado; a sonda ficou sem veredito por traço |
+| a **banda `φ`** das restrições como causa do espalhamento (`PH2D_ESC_PHI` de `0,4` a `1,3`) | `1,0` é um óptimo AGUDO e o corpus di-lo pelo arrasto: `plano_arrastar_radial_local` mede `0,482 · 0,359 · 0,192 · 0,071 · 0,447` na varredura, e o Push/Inflate mal se mexem (`0,214`/`0,253` contra `0,207`/`0,274` a `0,8`) |
+| **mais varreduras** de relaxação (`PH2D_VARREDURAS` `5 → 10 → 20`) | destrói o arrasto: `0,071 → 0,709 → 0,910`. ⚠️ O Inflate MELHORA (`0,253 → 0,191`) e não compra nada — *um knob que cura um traço e parte outro não é a lei que falta* |
+| a **retenção** de velocidade (`PH2D_ESC_RET` de `0,6` a `1,3`) | `1,0` está no óptimo e satura acima dele: `arrastar 0,138 · 0,082 · 0,071 · 0,070` |
 | a regressão do §9 nº 20 da espec como causa do aperto | foi **fechada em 2024**, dois anos antes da versão que gravou as fixtures |
 
 ## §4 — ⛔⛔ A DECISÃO que é do DONO (e não há terceira saída)

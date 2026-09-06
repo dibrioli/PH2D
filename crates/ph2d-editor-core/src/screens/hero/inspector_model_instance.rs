@@ -57,6 +57,15 @@ pub struct InspectorInstanceInfo {
     /// órfãos): se a peça voltar à receita, a linha volta com ela. *Mostrar uma linha cujo botão não
     /// faz nada é um botão morto com legenda.*
     pub removed_rows: Vec<RemovedRow>,
+    /// ⭐⭐⭐ **As peças que o artista ACRESCENTOU a esta cópia** (F5.11) — o *Added GameObject*.
+    ///
+    /// ⚠️ **Da instância INTEIRA**, como as duas listas acima, e **só os TOPOS de cada cadeia**: uma
+    /// peça pendurada dentro de outra acrescentada vai junto com ela, então uma linha própria
+    /// ofereceria um gesto que não existe.
+    ///
+    /// ⚠️ **A travessia pára numa cópia ANINHADA** — o que se pendura dentro da roda pertence ao
+    /// cartão da roda, e a receita de destino dela é outra.
+    pub added_rows: Vec<AddedRow>,
     /// A entidade da RAIZ da instância — quem recebe o gesto de limpar os órfãos.
     pub root_bits: u64,
     /// ⭐⭐⭐ **Esta cópia é ela própria uma RECEITA** — uma variante (report do Enio, 2026-08-27).
@@ -184,6 +193,38 @@ impl RemovedRow {
     }
 }
 
+/// ⭐⭐⭐ **Uma peça que o artista ACRESCENTOU a esta cópia** (F5.11) — o *Added GameObject*.
+///
+/// ⚠️ **Nada disto é guardado**, nem sequer a decisão: a peça está na cena, sem elo com a receita,
+/// e é essa ausência que ela É. Contra o [`RemovedRow`], onde a decisão tinha de viajar porque uma
+/// ausência não distingue *«recusei»* de *«ainda não materializei»*.
+///
+/// ⚠️ **A RECEITA de destino vem por linha, e não do cartão:** com aninhamento, uma peça pendurada
+/// numa peça que veio de dentro vai para a receita **interna** — o pai é que a escolhe, nunca o
+/// artista. *O rótulo tem de dizer para onde a peça vai, senão o gesto é uma aposta.*
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct AddedRow {
+    /// O `StableId` da peça — **a identidade**, que é o que o gesto precisa de saber.
+    pub piece_id: u64,
+    /// O `Name` dela.
+    pub name: String,
+    /// O `Name` da receita que a recebe.
+    pub master_name: String,
+}
+
+impl AddedRow {
+    /// ⚠️ **A frase vive no MODELO**, como as irmãs deste ficheiro.
+    ///
+    /// ⚠️ **Ela nomeia os DOIS lados** — a peça e o destino. *Um botão que diz só «Apply» obriga o
+    /// artista a adivinhar a que receita, e com aninhamento a resposta não é a que ele vê no topo
+    /// do cartão.*
+    #[must_use]
+    pub fn label(&self) -> String {
+        let (n, m) = (&self.name, &self.master_name);
+        format!("Add \u{201c}{n}\u{201d} to \u{201c}{m}\u{201d}")
+    }
+}
+
 /// Uma versão do componente que esta cópia pode passar a ser.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct VariantChoice {
@@ -252,7 +293,7 @@ impl InspectorInstanceInfo {
 
     #[must_use]
     pub fn summary(&self) -> String {
-        match (self.overridden.len(), self.orphans()) {
+        let mut s = match (self.overridden.len(), self.orphans()) {
             // ⚠️ Numa variante a palavra é a mesma e o sujeito é outro: ela segue a **base**. Dizer
             // «segue o componente» sobre uma receita seria a mesma ambiguidade um nível acima.
             (0, 0) if self.is_variant => "Follows its base".to_string(),
@@ -260,6 +301,20 @@ impl InspectorInstanceInfo {
             (0, n) => format!("Follows the component \u{b7} {n} unused"),
             (k, 0) => format!("{k} override(s) on this piece"),
             (k, n) => format!("{k} override(s) on this piece \u{b7} {n} unused"),
+        };
+        // ⭐⭐⭐ **As diferenças de ESTRUTURA entram aqui, e a ausência delas era um defeito meu**
+        // (F5.11): a F5.10 ensinou a cópia a **recusar** uma peça e não ensinou este resumo a
+        // dizê-lo — uma cópia sem o braço lia *«Follows the component»*, que é falso ao nível da
+        // cópia. ⚠️ Os quatro braços acima falam da **peça selecionada** e ficam intactos ao byte
+        // (há gates com a frase inteira); o que se acrescenta fala da **instância**, como o
+        // `unused` já fazia.
+        let (a, r) = (self.added_rows.len(), self.removed_rows.len());
+        if a > 0 {
+            s.push_str(&format!(" \u{b7} {a} added"));
         }
+        if r > 0 {
+            s.push_str(&format!(" \u{b7} {r} removed"));
+        }
+        s
     }
 }

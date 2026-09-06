@@ -268,8 +268,11 @@ impl crate::App {
             "4" => self.instance_smoke_replace(),
             // ⭐⭐⭐ **O que é SÓ desta cópia** (F5.10) — irmã por assunto, ver o cabeçalho de lá.
             "5" => self.instance_smoke_removed(),
+            // ⭐⭐⭐ **DAR uma peça ao componente** (F5.11) — o espelho da `=5`, e a montagem é a
+            // MESMA função; ver o cabeçalho de lá.
+            "6" => self.instance_smoke_added(),
             other => {
-                println!("[instance smoke] cena {other:?} nao existe (ha' a 1..5)")
+                println!("[instance smoke] cena {other:?} nao existe (ha' a 1..6)")
             }
         }
         // ⚠️ **O relógio TEM de partir a andar**, e a linha vive no prólogo pela razão do smoke da

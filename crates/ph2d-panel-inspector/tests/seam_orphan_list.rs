@@ -39,6 +39,7 @@ fn info(rows: Vec<OrphanRow>) -> InspectorInstanceInfo {
         apply_levels: Vec::new(),
         apply_levels_beyond: 0,
         removed_rows: Vec::new(),
+        added_rows: Vec::new(),
     }
 }
 
@@ -307,5 +308,93 @@ fn the_put_back_names_the_piece_it_brings_back() {
         removed("Arm", 1).label(),
         "Put back \u{201c}Arm\u{201d}",
         "o rotulo deixou de nomear a peca"
+    );
+}
+
+fn added(name: &str, id: u64, master: &str) -> ph2d_editor_core::screens::hero::AddedRow {
+    ph2d_editor_core::screens::hero::AddedRow {
+        piece_id: id,
+        name: name.into(),
+        master_name: master.into(),
+    }
+}
+
+/// ⭐⭐⭐ **O *Add … to …* DE UMA LINHA aplica AQUELA peça** — e o que viaja é a CHAVE (F5.11).
+///
+/// ⚠️ A metade que importa é a segunda, como no *Put back*: a linha `1` de três tem de mandar a
+/// chave da linha `1`. Um braço que mandasse o índice ficaria verde num cartão de uma linha só e
+/// escolheria a errada assim que a lista crescesse.
+///
+/// **Mutação que deve sangrar:** o `apply_added_click` a mandar `added_rows[0]`, ou o botão a não
+/// ser pintado.
+#[test]
+fn the_apply_of_an_added_row_promotes_that_piece_by_key() {
+    use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::interaction::WidgetEvent;
+
+    let rows = vec![
+        added("Hat", 11, "Robot"),
+        added("Cape", 22, "Robot"),
+        added("Bolt", 33, "Wheel"),
+    ];
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_name(Some(InspectorNameInfo {
+        entity_bits: ENTITY,
+        name: "Robot".into(),
+    }));
+    let mut i = info(Vec::new());
+    i.added_rows = rows;
+    set_current_inspector_instance(Some(i));
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let id = ph2d_editor_core::ids::INSP_INSTANCE_APPLY_ADDED[1];
+    assert!(
+        rects.iter().any(|(r, _)| *r == id),
+        "o botao da 2.a linha nao foi pintado nem hit-indexado"
+    );
+    let out = host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::Click(id));
+    let drained = host.drained_actions();
+    set_current_inspector_instance(None);
+    set_current_inspector_name(None);
+
+    assert_eq!(out, ph2d_editor_core::panel::EventOutcome::Consumed);
+    assert_eq!(
+        drained,
+        vec![EditorAction::InspectorApplyAddedPiece { piece: 22 }],
+        "o `Add` da linha 1 nao mandou a chave DELA"
+    );
+}
+
+/// ⚠️ **O rótulo nomeia os DOIS lados** — a peça e a receita que a recebe.
+///
+/// ⛔ Sem o destino, um cartão de uma cópia aninhada oferece dois botões iguais que mandam a peça
+/// para receitas diferentes. *Um gesto cujo destino não se lê é uma aposta.*
+#[test]
+fn the_apply_row_names_the_piece_and_the_recipe() {
+    assert_eq!(
+        added("Bolt", 1, "Wheel").label(),
+        "Add \u{201c}Bolt\u{201d} to \u{201c}Wheel\u{201d}",
+        "o rotulo deixou de nomear a peca ou o destino"
+    );
+}
+
+/// ⛔⛔ **O RESUMO conta as diferenças de ESTRUTURA** — e a ausência disto era um defeito da F5.10.
+///
+/// Uma cópia sem o braço lia *«Follows the component»*, que é falso ao nível da cópia: o artista
+/// tinha tirado uma peça e o painel dizia que ela segue a receita. ⚠️ Os quatro braços da peça
+/// selecionada ficam intactos ao byte — há gates com a frase inteira.
+///
+/// **Mutação que deve sangrar:** apagar qualquer um dos dois `push_str` do `summary`.
+#[test]
+fn the_summary_counts_the_pieces_added_and_removed() {
+    let mut i = info(Vec::new());
+    assert_eq!(i.summary(), "Follows the component");
+    i.added_rows = vec![added("Hat", 11, "Robot")];
+    assert_eq!(i.summary(), "Follows the component \u{b7} 1 added");
+    i.removed_rows = vec![removed("Arm", 22), removed("Leg", 33)];
+    assert_eq!(
+        i.summary(),
+        "Follows the component \u{b7} 1 added \u{b7} 2 removed",
+        "o resumo nao conta as pecas acrescentadas e recusadas"
     );
 }

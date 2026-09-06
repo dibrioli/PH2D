@@ -516,3 +516,45 @@ fn dropping_one_unused_override_leaves_the_others_alone() {
     // ⛔ E uma chave que já não está lá não mexe em nada, nem finge que mexeu.
     assert!(!super::drop_orphan(&mut sim, info.root_bits, 111, sprite));
 }
+
+/// ⭐⭐⭐ **O CARTÃO aparece sobre uma peça que a receita NÃO deu** (F5.11).
+///
+/// ⛔ **Enquanto o elo era obrigatório, ele desaparecia exactamente ali:** um *Add Child* ou um
+/// *Duplicate* dentro de uma cópia deixa uma entidade **sem** elo — que é o que uma peça
+/// acrescentada É —, e seleccioná-la fazia o Inspector calar-se sobre a cópia inteira. O botão que
+/// dá a peça à receita não tinha onde ser pintado.
+///
+/// (Mutação: voltar o `let link = …copied();` a `…copied()?;` ⇒ RED.)
+#[test]
+fn the_card_shows_over_a_piece_the_recipe_did_not_give() {
+    let (mut sim, r, _master, inst) = scene();
+    let hat = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            Name::new("Hat"),
+            ph2d_ecs::ChildOf(inst),
+        ))
+        .id();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let info = super::build_instance_info(&mut sim, &r, Some(hat.to_bits()))
+        .expect("o cartao tem de existir sobre uma peca acrescentada");
+    assert_eq!(
+        info.master_name, "Badge",
+        "o cartao nao diz de que copia a peca faz parte"
+    );
+    assert!(
+        info.overridden.is_empty(),
+        "uma peca sem elo nao pode ter excepcao nenhuma — nao ha' par no mestre de que discordar"
+    );
+    let labels: Vec<String> = info.added_rows.iter().map(|a| a.name.clone()).collect();
+    assert_eq!(
+        labels,
+        vec!["Hat".to_string()],
+        "a lista das pecas acrescentadas nao chegou ao cartao"
+    );
+    assert_eq!(
+        info.added_rows[0].master_name, "Badge",
+        "a linha nao nomeia a receita que a recebe"
+    );
+}

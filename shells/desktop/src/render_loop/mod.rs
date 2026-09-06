@@ -3515,6 +3515,8 @@ impl crate::App {
             let mut add_component_for: Option<u64> = None;
             // ⭐ A troca de variante pedida neste quadro: `(raiz da instância, StableId do mestre)`.
             let mut swap_variant: Option<(u64, u64)> = None;
+            // O `StableId` da peça acrescentada que o cartão mandou aplicar.
+            let mut apply_added: Option<u64> = None;
             // ⭐⭐⭐ **O DEGRAU escolhido do *Aplicar*** (F5 critério 4) — `(peça clicada, receita)`.
             // ⚠️ **ADIADO pela razão da irmã de cima**: o verbo precisa do **eco** e dos documentos
             // possuídos, e aqui dentro o `self` já está emprestado.
@@ -4885,6 +4887,13 @@ impl crate::App {
                     // contrário.
                     EditorAction::OpenAssetBrowser => {
                         open_asset_browser = true;
+                    }
+                    // ⭐⭐⭐ **Aplicar uma peça ACRESCENTADA** (F5.11). ⚠️ **ADIADO como o irmão
+                    // abaixo, e pela mesma família de razões:** ela precisa do registo de
+                    // componentes e dos documentos possuídos (a peça pode ser uma forma vetorial),
+                    // e aqui dentro o `self` já está emprestado.
+                    EditorAction::InspectorApplyAddedPiece { piece } => {
+                        apply_added = Some(piece);
                     }
                     EditorAction::InspectorSwapVariant { root_bits, master } => {
                         swap_variant = Some((root_bits, master));
@@ -11344,6 +11353,45 @@ impl crate::App {
                     }
                     Err(_) => {
                         toasts.push(Toast::warning("Not part of an instance"));
+                    }
+                }
+            }
+            // ⭐⭐⭐ **APLICAR uma peça acrescentada** (F5.11) — ela entra na receita e o passe
+            // estrutural leva-a às irmãs no quadro seguinte.
+            //
+            // ⚠️ **O sujeito resolve-se por `StableId`**, e não pelos bits que o cartão viu: entre
+            // o clique e este ponto pode ter corrido um Ctrl+Z, que respawna tudo com bits novos.
+            if let Some(piece) = apply_added {
+                let mut docs = crate::instance_docs::OwnedDocs {
+                    vec_scene,
+                    vec_entities: &mut self.vec_entities,
+                };
+                let subject = crate::instance_verbs::entity_for_stable_id(sim, piece)
+                    .map(ph2d_ecs::Entity::from_bits);
+                match subject
+                    .ok_or(crate::instance_added::AddRefusal::NotAdded)
+                    .and_then(|e| {
+                        crate::instance_added::promote(sim, component_registry, &mut docs, e)
+                    }) {
+                    Ok(p) => {
+                        let name =
+                            crate::render_loop::inspector_instance::master_named(sim, p.master)
+                                .unwrap_or_else(|| "the component".to_string());
+                        toasts.push(Toast::success(format!(
+                            "Added {} piece(s) to \u{201c}{name}\u{201d} \u{2014} every copy gets them",
+                            p.pieces
+                        )));
+                        self.title_dirty = true;
+                    }
+                    // ⚠️ **Todo caminho negativo fala** — a lei do menu dos verbos. Um botão que
+                    // come o clique em silêncio é pior que um ausente.
+                    Err(crate::instance_added::AddRefusal::NotAdded) => {
+                        toasts.push(Toast::warning(
+                            "That piece came from the component \u{2014} it is already in it",
+                        ));
+                    }
+                    Err(_) => {
+                        toasts.push(Toast::warning("That is not a piece of a copy"));
                     }
                 }
             }

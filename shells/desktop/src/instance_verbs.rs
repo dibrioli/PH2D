@@ -242,6 +242,20 @@ pub(crate) fn apply_to_master(
     clicked: Entity,
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
 ) -> Result<usize, VerbRefusal> {
+    // ⭐⭐⭐ **Uma peça que a receita NÃO DEU só tem uma coisa a aplicar: ela própria** (F5.11).
+    //
+    // ⚠️ **Sem esta rota o item do menu era um NO-OP com legenda:** um *Add Child* ou um *Duplicate*
+    // dentro de uma cópia não tem excepção nenhuma (não há par no mestre de que discordar), logo o
+    // verbo respondia *«Nothing overridden here»* sobre a peça em que o gesto que falta é
+    // precisamente este. *Um verbo que responde a pergunta errada no endereço certo lê-se como
+    // morto.*
+    //
+    // ⚠️ **O sujeito real é o TOPO da cadeia acrescentada**, e quem normaliza é a porta.
+    if crate::instance_added::is_added(sim, clicked) {
+        return crate::instance_added::promote(sim, registry, docs, clicked)
+            .map(|p| p.pieces)
+            .map_err(|_| VerbRefusal::NotAnInstance);
+    }
     let root = instance_root_of(sim, clicked).ok_or(VerbRefusal::NotAnInstance)?;
     let outermost = sim
         .world()

@@ -52,6 +52,10 @@ pub(crate) fn populate_instance_card(store: &mut WidgetStore) {
     for &id in &ids::INSP_INSTANCE_RESTORE_PIECE {
         button(store, id);
     }
+    // ⭐⭐⭐ **O *Add … to …* de cada peça acrescentada** (F5.11) — os DEZASSEIS, pela mesma razão.
+    for &id in &ids::INSP_INSTANCE_APPLY_ADDED {
+        button(store, id);
+    }
     // ⭐ **Os chips da fileira de VERSÕES** — a outra superfície do cartão desde que o mecanismo de
     // propriedades foi adiado (2026-09-01).
     for &id in ids::INSP_INSTANCE_AXIS_OPTION.iter().flatten() {

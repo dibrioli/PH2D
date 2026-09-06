@@ -31,7 +31,14 @@ pub(super) fn build_instance_info(
     if sim.world().get_entity(entity).is_err() {
         return None;
     }
-    let link = sim.world().get::<ph2d_ecs::InstanceOf>(entity).copied()?;
+    // ⭐⭐⭐ **O ELO é OPCIONAL desde a F5.11, e a mudança é de produto.**
+    //
+    // Uma peça que o artista pendurou dentro de uma cópia **não tem elo** — é exactamente isso que
+    // a define. Enquanto isto era um `?`, seleccioná-la fazia o cartão **desaparecer**: o objecto
+    // vive dentro de uma cópia, o Inspector não dizia uma palavra sobre isso, e o botão que a dá à
+    // receita não tinha onde ser pintado. ⚠️ *O cartão fala da CÓPIA; o elo só decide quais
+    // excepções são desta peça.*
+    let link = sim.world().get::<ph2d_ecs::InstanceOf>(entity).copied();
     let root = crate::instance_verbs::instance_root_of(sim, entity)?;
     // ⚠️ **`unwrap_or_default`, e não `?`** — e o gate apanhou-me a escrever `?`. O
     // `ObjectInstance` só nasce quando a PRIMEIRA excepção é capturada, então uma cópia intacta não
@@ -54,10 +61,13 @@ pub(super) fn build_instance_info(
 
     // ⚠️ **Só as chaves DESTA peça** — ver o doc do modelo: o conjunto mora na raiz e chaveia por
     // `(peça, tipo)`, então mostrar tudo diria ao artista que ele mexeu noutro sítio da cópia.
+    // ⚠️ **Sem elo não há excepção DESTA peça** — uma peça acrescentada nunca teve par no mestre,
+    // logo nenhuma chave a nomeia. ⛔ Comparar os `Option` é o que evita um sentinela: um `u64`
+    // escolhido para significar *«nenhuma»* seria um valor que uma chave real pode ter.
     let mut overridden: Vec<String> = inst
         .overrides
         .iter()
-        .filter(|k| k.piece == link.master)
+        .filter(|k| Some(k.piece) == link.map(|l| l.master))
         .filter_map(|k| registry.get_by_id(k.type_id))
         .map(|e| {
             e.desc
@@ -124,6 +134,28 @@ pub(super) fn build_instance_info(
         })
         .collect();
 
+    // ⭐⭐⭐ **AS PEÇAS QUE O ARTISTA ACRESCENTOU** (F5.11) — o *Added GameObject*.
+    //
+    // ⚠️ **Derivadas do mundo, e não de um campo:** a peça está na cena sem elo, e é essa ausência
+    // que ela é. ⛔ Ao contrário das duas listas acima, aqui não há nada guardado que pudesse
+    // ficar obsoleto — a lista de hoje é a árvore de hoje.
+    //
+    // ⚠️ **Só os TOPOS de cada cadeia, e a travessia pára numa cópia aninhada** — a lei inteira
+    // vive no [`crate::instance_added`], que é a mesma porta que o gesto usa.
+    //
+    // ⛔ **Sem `take` aqui**, ao contrário da escada: o tecto é da TABELA DE IDS, e quem o conta é
+    // o pintor — cortar a lista no shell faria a linha *«+N more»* nunca aparecer, que é o corte
+    // silencioso que esta casa proíbe.
+    let added_rows: Vec<ph2d_editor::screens::hero::AddedRow> =
+        crate::instance_added::added_pieces(sim, root)
+            .into_iter()
+            .map(|a| ph2d_editor::screens::hero::AddedRow {
+                piece_id: a.piece_id,
+                name: a.name,
+                master_name: a.master_name,
+            })
+            .collect();
+
     // ⭐⭐⭐ **A ESCADA do *Aplicar*** (F5 critério 4) — as receitas que uma excepção DESTA peça
     // pode alcançar. ⚠️ A lei mora no `instance_apply_deep`, que é a mesma porta que o gesto usa:
     // um cartão que mostrasse degraus por outra travessia ofereceria uma escolha que o verbo
@@ -154,6 +186,7 @@ pub(super) fn build_instance_info(
         overridden,
         orphan_rows,
         removed_rows,
+        added_rows,
         root_bits: root.to_bits(),
         // ⚠️ Da RAIZ: uma peça dentro de uma variante não é ela própria uma receita, mas pertence
         // a uma — e é isso que o artista precisa de ler antes de a editar.

@@ -19,7 +19,7 @@ fn build() -> (
     let mut sim = SimWorld::new();
     let r = crate::init::build_component_registry();
     let (mut sc, mut mp) = crate::instance_docs::empty_docs();
-    let (master, copies) = spawn_removed_scene(
+    let (master, copies) = spawn_robot_scene(
         &mut sim,
         &r,
         &mut OwnedDocs {

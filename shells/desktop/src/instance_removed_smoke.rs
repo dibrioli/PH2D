@@ -38,7 +38,11 @@ const BODY: [f32; 4] = [0.35, 0.55, 0.85, 1.0];
 const ARM: [f32; 4] = [0.95, 0.55, 0.20, 1.0];
 
 /// Monta a cena. Devolve `(a receita, as três cópias)`.
-pub(crate) fn spawn_removed_scene(
+///
+/// ⚠️ **DUAS cenas a usam** — esta e a `=6` (a peça acrescentada). Elas ensinam as duas metades
+/// da mesma pergunta (*«o que esta cópia tem de diferente»*) sobre o mesmo objecto, e uma
+/// segunda montagem divergiria no dia em que uma delas ganhasse uma peça.
+pub(crate) fn spawn_robot_scene(
     sim: &mut SimWorld,
     registry: &ph2d_ecs::scene::ComponentRegistry,
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
@@ -98,8 +102,7 @@ impl crate::App {
             vec_scene: &mut gfx.vec_scene,
             vec_entities,
         };
-        let (_master, copies) =
-            spawn_removed_scene(&mut gfx.sim, &gfx.component_registry, &mut docs);
+        let (_master, copies) = spawn_robot_scene(&mut gfx.sim, &gfx.component_registry, &mut docs);
         println!(
             "[instance smoke 5] montado: {} robos iguais, todos do componente 'Robot'",
             copies.len()

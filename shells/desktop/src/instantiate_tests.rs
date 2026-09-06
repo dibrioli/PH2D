@@ -504,3 +504,35 @@ fn instantiating_inside_the_master_itself_is_refused() {
         .id();
     assert!(instantiate(&mut sim, &r, master, Some(host)).is_ok());
 }
+
+/// ⭐⭐⭐ **Duplicar uma PEÇA de uma cópia dá um objecto ACRESCENTADO, e não um sósia** (F5.11).
+///
+/// ⛔ **O defeito que isto cura era MUDO e apareceu no smoke:** o `InstanceOf` é componente
+/// registado, então a cópia profunda levava-o verbatim e o duplicado nascia a dizer-se *a mesma
+/// peça da receita* que o original. O passe põe os dois no mesmo balde e o sync reescreve **os
+/// dois** com os bytes do mestre ⇒ o duplicado não se deixava mover, e nada na tela dizia porquê.
+///
+/// (Mutação: tirar o `remove::<InstanceOf>()` do `duplicate_subtree` ⇒ RED.)
+#[test]
+fn duplicating_a_recipe_given_piece_gives_an_authored_object() {
+    let mut sim = SimWorld::new();
+    let r = reg();
+    let master = spawn_master(&mut sim);
+    let inst = instantiate(&mut sim, &r, master, None).expect("instanciou");
+    let arm = *sim
+        .world()
+        .get::<Children>(inst)
+        .expect("a copia tem pecas")
+        .first()
+        .expect("uma peca");
+    assert!(
+        sim.world().get::<InstanceOf>(arm).is_some(),
+        "a fixtura tem de partir de uma peca COM elo, senao mede outra coisa"
+    );
+    let copy = duplicate(&mut sim, &r, arm).expect("duplicou");
+    assert!(
+        sim.world().get::<InstanceOf>(copy).is_none(),
+        "o duplicado herdou o elo — ele e' um segundo pretendente a' mesma peca do mestre, e o \
+         sync reescreve os dois"
+    );
+}

@@ -129,8 +129,11 @@ pub(crate) fn paint_instance_card(
         })
         .sum::<f32>()
         + instance_orphans::rows_height(text_system, info, font, at.orphan_tw, line);
-    let fixed_rows =
-        ladder.len() + beyond + instance_removed::rows(info) + instance_orphans::fixed_rows(info);
+    let fixed_rows = ladder.len()
+        + beyond
+        + instance_added::rows(info)
+        + instance_removed::rows(info)
+        + instance_orphans::fixed_rows(info);
     let card_h = CARD_PAD * 2.0 + head_h + list_h + line * fixed_rows as f32;
     let card = Rect::new(x, y, w, card_h);
     fill_rounded_rect(
@@ -226,6 +229,11 @@ pub(crate) fn paint_instance_card(
         );
         ty += line;
     }
+
+    // ⭐⭐⭐ **AS PEÇAS que o artista ACRESCENTOU** (F5.11) — o bloco inteiro vive no irmão
+    // [`super::instance_added`]. ⚠️ Ele vem antes do das recusadas porque o sujeito dele **está na
+    // tela**: as duas listas são diferenças vivas, e a que se vê lê-se primeiro.
+    ty = instance_added::paint(scene, text_system, theme, hit_index, store, info, at, ty);
 
     // ⭐⭐⭐ **AS PEÇAS que esta cópia RECUSOU** (F5.10) — o bloco inteiro vive no irmão
     // [`super::instance_removed`]. ⚠️ Ele vem ANTES dos órfãos de propósito: uma peça recusada é

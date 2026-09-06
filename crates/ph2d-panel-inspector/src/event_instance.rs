@@ -102,6 +102,31 @@ pub(crate) fn drop_orphan_click(host: &mut dyn PanelHostInternal, ev: WidgetEven
     true
 }
 
+/// ⭐⭐⭐ **Aplicar uma peça que o artista acrescentou** (F5.11) — o *Add … to …* da linha.
+///
+/// ⚠️ Ele traduz o índice do botão para a CHAVE aqui, e não no shell — a mesma lei dos três acima.
+///
+/// ⚠️ **O que viaja é a PEÇA, e nunca a receita de destino:** ela é derivada do pai da peça, e
+/// mandá-la daqui deixaria o painel a escolher um destino que o mundo pode já ter mudado.
+pub(crate) fn apply_added_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    let WidgetEvent::Click(id) = ev else {
+        return false;
+    };
+    let Some(i) = ids::instance_apply_added(id) else {
+        return false;
+    };
+    let Some(info) = crate::state::current_inspector_instance() else {
+        return false;
+    };
+    let Some(row) = info.added_rows.get(i) else {
+        return false;
+    };
+    host.bus_mut().push(EditorAction::InspectorApplyAddedPiece {
+        piece: row.piece_id,
+    });
+    true
+}
+
 /// ⭐⭐⭐ **Devolver uma peça que a cópia recusou** (F5.10) — o *Put back* da linha.
 ///
 /// ⚠️ Ele traduz o índice do botão para a CHAVE aqui, e não no shell — a mesma lei do

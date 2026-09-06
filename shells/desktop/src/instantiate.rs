@@ -248,6 +248,28 @@ pub(crate) fn duplicate_subtree(
     // ⭐⭐⭐ **A cópia não é uma receita** — ver o doc. É a mesma linha que o `instantiate_master`
     // já dava à instância, e pela mesma razão: com o marcador ela nasce fora da cena.
     sim.world_mut().entity_mut(copy.root).remove::<MasterRoot>();
+    // ⭐⭐⭐ **E o duplicado de uma PEÇA DA RECEITA é um objecto NOVO, não um segundo pretendente à
+    // mesma peça do mestre** (achado pelo smoke da F5.11, 2026-09-06).
+    //
+    // ⛔ O `InstanceOf` é componente **registado**, logo a cópia profunda levava-o verbatim: o
+    // duplicado nascia a dizer-se a mesma peça da receita que o original. O passe põe os dois no
+    // mesmo balde (`have` é um mapa `StableId → entidade`, e o segundo tapa o primeiro), e o sync
+    // reescreve **os dois** com os bytes do mestre — o duplicado era um **sósia que não se deixa
+    // mover**, e nada na tela dizia porquê. *A cópia rasa de outrora acertava nisto por acidente,
+    // porque não copiava o elo.*
+    //
+    // ⚠️ **A pergunta é a PORTA ESTREITA, e a largura dela é load-bearing:** duplicar a RAIZ de uma
+    // cópia tem de continuar a dar uma segunda cópia (o elo fica), e duplicar uma cópia ANINHADA
+    // também (ela é a raiz da cópia dela). ⛔ Um `remove` incondicional transformaria o *Duplicate*
+    // de uma instância num *Detach* silencioso.
+    //
+    // ⭐ É exactamente o *Added GameObject* do Unity: duplicar um filho de uma instância dá um
+    // objecto acrescentado, que o cartão lista e o botão dá à receita.
+    if crate::instance_verbs::is_a_recipe_given_piece(sim, src) {
+        for e in copy.copies() {
+            sim.world_mut().entity_mut(e).remove::<InstanceOf>();
+        }
+    }
 
     let unique = crate::name_unique::unique_name(sim, &base);
     sim.world_mut()

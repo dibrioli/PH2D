@@ -372,6 +372,26 @@ pub enum EditorAction {
         type_id: u64,
     },
 
+    /// ⭐⭐⭐ **APLICAR uma peça que o artista ACRESCENTOU a esta cópia** (ADR-0164 / F5.11) — o
+    /// *Apply* do *Added GameObject*.
+    ///
+    /// ⚠️ **A chave, e nunca o índice da linha:** o cartão é reconstruído a cada quadro e a lista
+    /// reordena-se; `piece` é o `StableId` da própria peça acrescentada — que existe na cena, ao
+    /// contrário das duas irmãs, onde a chave é a peça do **mestre**.
+    ///
+    /// ⚠️ **A RECEITA de destino não viaja**, e a ausência é a decisão: ela é derivada do PAI da
+    /// peça (a receita que deu esse pai), e mandá-la daqui deixaria o painel a escolher um destino
+    /// que o mundo pode já ter mudado. *O que viaja é o sujeito; quem decide o destino é a lei.*
+    ///
+    /// ⛔ **E a RAIZ da cópia também não viaja**, ao contrário das duas irmãs — nelas a chave é uma
+    /// peça do **mestre**, que não está na cena, então o `root_bits` é o único endereço do mapa de
+    /// excepções. Aqui a peça **é** uma entidade da cena, e a raiz dela deriva-se dela. *Um campo
+    /// que o executor não lê é uma segunda fonte à espera de discordar.*
+    InspectorApplyAddedPiece {
+        /// O `StableId` da peça acrescentada.
+        piece: u64,
+    },
+
     /// ⭐⭐⭐ **APLICAR num DEGRAU da escada** (ADR-0164 / F5, critério 4).
     ///
     /// `entity_bits` é a PEÇA em que o artista carregou — o escopo do gesto é o que se clicou, como

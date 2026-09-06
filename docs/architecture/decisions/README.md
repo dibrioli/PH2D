@@ -182,10 +182,11 @@
 | [0166](0166-the-inspector-shows-what-the-object-has-and-components-attach-through-one-palette-filtered-by-object-type.md) | Accepted (Enio, 2026-08-24 — instruções complementares à ordem de implementação … | O Inspector mostra o que o objeto TEM; componente anexa-se por UMA porta, com categorias e filtro por TIPO DE OBJETO |
 | [0167](0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md) | Accepted | A EXTRAÇÃO de malha quad é clean-room dos *papers*; a biblioteca MPL-2.0 é ORÁCULO, não fonte a portar |
 | [0168](0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md) | Accepted | O stack sobe até os TETOS, e o que fica para trás fica por MEDIÇÃO |
+| [0169](0169-the-skeleton-is-its-own-module-and-each-medium-answers-only-what-a-point-is.md) | Aceito (2026-09-06) | O esqueleto é um MÓDULO PRÓPRIO, e cada mídia responde só a *«o que é um ponto aqui»* |
 
 ---
 
-**173 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**174 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

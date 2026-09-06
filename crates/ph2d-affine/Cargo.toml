@@ -1,0 +1,15 @@
+[package]
+name = "ph2d-affine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ ZERO dependências, e é o ponto: esta crate existe porque o afim 2D em `f64` era
+# alcançável só através da `ph2d-vec-scene`, e um esqueleto que serve raster, 3D e Flip
+# não pode puxar a cena vectorial para multiplicar duas matrizes.
+[dependencies]

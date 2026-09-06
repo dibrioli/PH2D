@@ -3,7 +3,7 @@
 use super::*;
 
 fn mundo(sim: &SimWorld, bits: u64) -> ([f64; 2], [f64; 2]) {
-    crate::skin_live::bone_segments(sim)
+    crate::skeleton_live::bone_segments(sim)
         .into_iter()
         .find(|(b, _, _)| *b == bits)
         .map(|(_, a, b)| (a, b))

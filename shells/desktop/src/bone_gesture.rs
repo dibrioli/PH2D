@@ -16,7 +16,8 @@
 //! conforme; transformar os pontos está certo com qualquer afim, e é a mesma regra-mãe do pen —
 //! *o que se aponta é MUNDO; o que o documento guarda é LOCAL*.
 
-use ph2d_ecs::{ChildOf, Entity, Name, RootOrder, SimWorld, Transform, VecBone};
+use ph2d_ecs::{ChildOf, Entity, Name, RootOrder, SimWorld, Transform};
+use ph2d_skeleton_ecs::Bone;
 use ph2d_vec_scene::Xform;
 
 /// Raio de acerto de um osso, em píxeis de tela — o mesmo `HANDLE_HIT_PX` que as alças do vetor
@@ -27,8 +28,8 @@ pub(crate) const BONE_HIT_PX: f64 = 12.0;
 pub(crate) fn hit(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<u64> {
     let r = BONE_HIT_PX * px_to_world;
     let mut melhor: Option<(f64, u64)> = None;
-    for (bits, a, b) in crate::skin_live::bone_segments(sim) {
-        let d2 = ph2d_vec_skin::dist2_to_segment(world, a, b);
+    for (bits, a, b) in crate::skeleton_live::bone_segments(sim) {
+        let d2 = ph2d_skeleton::dist2_to_segment(world, a, b);
         if d2 <= r * r && melhor.is_none_or(|(m, _)| d2 < m) {
             melhor = Some((d2, bits));
         }
@@ -38,7 +39,7 @@ pub(crate) fn hit(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<u
 
 /// **A ponta de um osso, em MUNDO** — para o encaixe do próximo nascer colado nela.
 pub(crate) fn tip_of(sim: &SimWorld, bits: u64) -> Option<[f64; 2]> {
-    crate::skin_live::bone_segments(sim)
+    crate::skeleton_live::bone_segments(sim)
         .into_iter()
         .find(|(b, _, _)| *b == bits)
         .map(|(_, _, tip)| tip)
@@ -79,9 +80,9 @@ pub(crate) fn create(
                 rotation: rotation as f32,
                 ..Transform::IDENTITY
             },
-            VecBone {
+            Bone {
                 length,
-                ..VecBone::default()
+                ..Bone::default()
             },
         ))
         .id();
@@ -173,7 +174,7 @@ pub(crate) fn grabbed_the_joint(
     let Some(sim) = sim else {
         return false;
     };
-    crate::skin_live::bone_segments(sim)
+    crate::skeleton_live::bone_segments(sim)
         .into_iter()
         .find(|(b, _, _)| *b == bits)
         .is_some_and(|(_, a, _)| {
@@ -181,7 +182,7 @@ pub(crate) fn grabbed_the_joint(
             // perguntas — *acertei o osso?* e *acertei a junta DELE?* — e usar o mesmo número faria
             // um osso curto ser todo junta, logo impossível de girar.
             (a[0] - world[0]).hypot(a[1] - world[1])
-                <= ph2d_vec_render::BONE_JOINT_R_PX * px_to_world
+                <= ph2d_skeleton_render::BONE_JOINT_R_PX * px_to_world
         })
 }
 
@@ -252,7 +253,7 @@ pub(crate) fn selected_bone(
     // só o primário tornaria essa desambiguação inexprimível.
     selection
         .into_iter()
-        .find(|&b| sim.world().get::<VecBone>(Entity::from_bits(b)).is_some())
+        .find(|&b| sim.world().get::<Bone>(Entity::from_bits(b)).is_some())
 }
 
 impl crate::App {

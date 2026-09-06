@@ -62,9 +62,11 @@ mod tests {
         // + 1: LinkedArt (Enio 2026-08-27) -- ver a nota dos TRES contadores em `ph2d-ecs`.
         // + 1: VecBucketFill (o preenchimento do balde, plano 40, 2026-09-01) -- ver a nota
         //   dos TRES contadores em `ph2d-ecs`.
-        // + 2: VecBone + VecSkin (o ESQUELETO, estudo 42 item 5, 2026-09-06) -- ver a nota dos
-        //   TRES contadores em `ph2d-ecs`. O `82` foi CONTADO (o gate imprimiu `left: 82`).
-        assert_eq!(reg.len(), 82);
+        // ⚠️ **-2 em 2026-09-06: o ESQUELETO SAIU do `register_ecs_components`** e virou modulo
+        //   proprio (`ph2d-skeleton-ecs`, com a porta `register_skeleton_components`, precedente da
+        //   `ph2d-physics-ecs`). ⛔ Um componente que SAI conta tanto como um que entra: ECS 79 ⇒
+        //   aqui 80, e o numero foi CONTADO (o gate imprimiu `left: 80`).
+        assert_eq!(reg.len(), 80);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());

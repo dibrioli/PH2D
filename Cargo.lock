@@ -4747,6 +4747,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-affine"
+version = "0.0.0"
+
+[[package]]
 name = "ph2d-anim"
 version = "0.0.0"
 dependencies = [
@@ -5452,6 +5456,9 @@ dependencies = [
  "ph2d-script",
  "ph2d-sculpt3d",
  "ph2d-sdf",
+ "ph2d-skeleton",
+ "ph2d-skeleton-ecs",
+ "ph2d-skeleton-render",
  "ph2d-sprite-sheet",
  "ph2d-table",
  "ph2d-text",
@@ -7671,6 +7678,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-skeleton"
+version = "0.0.0"
+dependencies = [
+ "ph2d-affine",
+]
+
+[[package]]
+name = "ph2d-skeleton-ecs"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-ecs",
+ "serde",
+]
+
+[[package]]
+name = "ph2d-skeleton-render"
+version = "0.0.0"
+dependencies = [
+ "ph2d-tokens",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-spike"
 version = "0.0.0"
 dependencies = [
@@ -8155,6 +8186,7 @@ dependencies = [
 name = "ph2d-vec-scene"
 version = "0.0.0"
 dependencies = [
+ "ph2d-affine",
  "ph2d-arclen",
  "ph2d-asset-id",
  "ph2d-blend-mode",
@@ -8170,6 +8202,7 @@ dependencies = [
 name = "ph2d-vec-skin"
 version = "0.0.0"
 dependencies = [
+ "ph2d-skeleton",
  "ph2d-vec-scene",
 ]
 

@@ -14,11 +14,12 @@
 //! ⚠️ **O ponto onde isto se parte, se alguém o refactorar:** a matriz de um osso é
 //! `S_agora⁻¹ ∘ B_agora ∘ rest⁻¹`, e o `rest` guardado **é** `S_bind⁻¹ ∘ B_bind`. Ligar num espaço e
 //! cozer noutro devolve uma forma que salta para longe no instante do bind. A composição vive numa
-//! porta só ([`ph2d_vec_skin::SkinBone::new`]) por causa disso.
+//! porta só ([`ph2d_skeleton::SkinBone::new`]) por causa disso.
 
-use ph2d_ecs::{ChildOf, Entity, SimWorld, VecBone, VecPathRef, VecSkin, VecSkinBone};
-use ph2d_vec_scene::{VecPath, VecPathId, VecScene, Xform};
-use ph2d_vec_skin::{Skin, SkinBone};
+use ph2d_ecs::{ChildOf, Entity, SimWorld, VecPathRef};
+use ph2d_skeleton::{Skin, SkinBone, Xform};
+use ph2d_skeleton_ecs::{Bone, SkinBind, Tendon};
+use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
 use crate::vec_entities::VecEntityMap;
 
@@ -61,7 +62,7 @@ pub(crate) fn bone_segments(sim: &SimWorld) -> Vec<(u64, [f64; 2], [f64; 2])> {
 fn ossos_da_cena(sim: &SimWorld) -> Vec<(Entity, f64)> {
     sim.world()
         .iter_entities()
-        .filter_map(|er| er.get::<VecBone>().map(|b| (er.id(), b.length)))
+        .filter_map(|er| er.get::<Bone>().map(|b| (er.id(), b.length)))
         .collect()
 }
 
@@ -88,7 +89,7 @@ pub(crate) fn skeleton_of(sim: &SimWorld, seed: Option<Entity>) -> Vec<Entity> {
     // um esqueleto inteiro dentro de um grupo sem ele deixar de ser um esqueleto.
     let mut raiz = seed;
     while let Some(p) = sim.world().get::<ChildOf>(raiz).map(ChildOf::parent) {
-        if sim.world().get::<VecBone>(p).is_some() {
+        if sim.world().get::<Bone>(p).is_some() {
             raiz = p;
         } else {
             break;
@@ -97,7 +98,7 @@ pub(crate) fn skeleton_of(sim: &SimWorld, seed: Option<Entity>) -> Vec<Entity> {
     let mut out = Vec::new();
     let mut pilha = vec![raiz];
     while let Some(e) = pilha.pop() {
-        if sim.world().get::<VecBone>(e).is_none() {
+        if sim.world().get::<Bone>(e).is_none() {
             continue;
         }
         out.push(e);
@@ -111,14 +112,14 @@ pub(crate) fn skeleton_of(sim: &SimWorld, seed: Option<Entity>) -> Vec<Entity> {
 
 /// A pele de uma forma, resolvida para ESTE quadro. `None` quando não há osso vivo nenhum (todos
 /// apagados) ou quando a pose da forma é singular — nos dois casos a forma fica em paz.
-fn resolve(sim: &SimWorld, skin: &VecSkin, shape: Entity) -> Option<Skin> {
+fn resolve(sim: &SimWorld, skin: &SkinBind, shape: Entity) -> Option<Skin> {
     let shape_inv = world_of(sim, shape).inverse()?;
-    let mut ossos = Vec::with_capacity(skin.bones.len());
-    for b in &skin.bones {
+    let mut ossos = Vec::with_capacity(skin.tendons.len());
+    for b in &skin.tendons {
         let e = Entity::from_bits(b.bone);
         // Um osso apagado é SALTADO e os outros renormalizam-se sozinhos: apagar um osso não pode
         // apagar a forma.
-        let Some(vb) = sim.world().get::<VecBone>(e).copied() else {
+        let Some(vb) = sim.world().get::<Bone>(e).copied() else {
             continue;
         };
         if let Some(sb) = SkinBone::new(
@@ -137,13 +138,13 @@ fn resolve(sim: &SimWorld, skin: &VecSkin, shape: Entity) -> Option<Skin> {
 /// **Um quadro de pele.** Corre depois do `vec_entities::sync` (as entidades existem) e ao lado do
 /// `envelope_live::recook`.
 pub(crate) fn recook(sim: &SimWorld, scene: &mut VecScene) {
-    let alvos: Vec<(Entity, VecSkin, VecPathId)> = sim
+    let alvos: Vec<(Entity, SkinBind, VecPathId)> = sim
         .world()
         .iter_entities()
         .filter_map(|er| {
             Some((
                 er.id(),
-                er.get::<VecSkin>()?.clone(),
+                er.get::<SkinBind>()?.clone(),
                 er.get::<VecPathRef>()?.0,
             ))
         })
@@ -164,7 +165,7 @@ pub(crate) fn recook(sim: &SimWorld, scene: &mut VecScene) {
             if log {
                 eprintln!(
                     "[bone] pele de {id} NAO resolveu (ossos={})",
-                    skin.bones.len()
+                    skin.tendons.len()
                 );
             }
             continue;
@@ -178,7 +179,7 @@ pub(crate) fn recook(sim: &SimWorld, scene: &mut VecScene) {
         let Ok(mut src) = postcard::from_bytes::<VecPath>(&skin.source) else {
             continue;
         };
-        pele.apply(&mut src);
+        ph2d_vec_skin::apply(&pele, &mut src);
         if let Some(p) = scene.path_mut(id) {
             p.replace_cooked(src);
         }
@@ -218,16 +219,16 @@ pub(crate) fn bind(
             continue;
         };
         // `rest = S⁻¹ ∘ B` — aplica o mundo do osso primeiro, depois leva ao espaço da forma.
-        let tendoes: Vec<VecSkinBone> = ossos
+        let tendoes: Vec<Tendon> = ossos
             .iter()
-            .map(|&e| VecSkinBone {
+            .map(|&e| Tendon {
                 bone: e.to_bits(),
                 rest: world_of(sim, e).then(&shape_inv).0,
             })
             .collect();
         sim.world_mut()
             .entity_mut(shape)
-            .insert(VecSkin::new(bytes, tendoes));
+            .insert(SkinBind::new(bytes, tendoes));
         feitos += 1;
     }
     feitos
@@ -245,7 +246,7 @@ pub(crate) fn release(
     for &id in paths {
         let Some(&bits) = map.get(&id) else { continue };
         let e = Entity::from_bits(bits);
-        let Some(skin) = sim.world().get::<VecSkin>(e).cloned() else {
+        let Some(skin) = sim.world().get::<SkinBind>(e).cloned() else {
             continue;
         };
         if keep == Keep::Source
@@ -254,12 +255,12 @@ pub(crate) fn release(
         {
             p.replace_cooked(src);
         }
-        sim.world_mut().entity_mut(e).remove::<VecSkin>();
+        sim.world_mut().entity_mut(e).remove::<SkinBind>();
         feitos += 1;
     }
     feitos
 }
 
 #[cfg(test)]
-#[path = "skin_live_tests.rs"]
+#[path = "skeleton_live_tests.rs"]
 mod tests;

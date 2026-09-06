@@ -138,7 +138,7 @@ pub enum DrawMode {
     /// num osso que já existe selecciona-o, e é assim que se ramifica.
     ///
     /// ⚠️ **Ele não desenha uma FORMA** — [`Self::shape_kind`] devolve `None`. Um osso é uma
-    /// entidade com `Transform` mais um `VecBone`; a hierarquia dela **é** o esqueleto, e é por isso
+    /// entidade com `Transform` mais um `ph2d_skeleton_ecs::Bone`; a hierarquia dela **é** o esqueleto, e
     /// que a cinemática directa não precisa de uma linha de código (a propagação de `Transform` da
     /// casa já a faz) e que a timeline anima um osso sem saber que ossos existem.
     Bone,

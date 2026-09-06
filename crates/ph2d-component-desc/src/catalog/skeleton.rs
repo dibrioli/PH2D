@@ -1,0 +1,31 @@
+//! **A família do ESQUELETO** — os 2 componentes de `ph2d-skeleton-ecs`.
+//!
+//! ⚠️ **Família própria, e não uma prateleira do vetor.** Ela nasceu em 2026-09-06, quando os
+//! ossos saíram de dentro do módulo vectorial: nas quatro referências do mercado um esqueleto só
+//! serve várias mídias — Blender deforma malha, curva, texto, treliça **e desenho 2D** com o
+//! mesmo *Armature*; Moho prende os mesmos ossos a camada vectorial, **de imagem** e 3D; Rive
+//! deforma formas **e** imagens; Spine deforma malhas de imagem. O que muda por mídia é só *o que
+//! é um ponto ali*.
+//!
+//! ⚠️ **`applies_to` é `ANY`, e é uma decisão com mecanismo, não uma folga.** O `SkinBind` guarda
+//! a fonte autorada em **bytes opacos**, então ele não sabe — nem precisa de saber — se do outro
+//! lado está um `VecPath` ou uma malha raster. Estreitar isto para `VECTOR` escreveria na tabela
+//! uma limitação que o código não tem, e seria preciso desfazê-la no primeiro cliente novo.
+//! ⛔ O que hoje só existe para o vetor é o **GESTO** (*Bind*, no modo Bone) e o **cliente** que
+//! sabe percorrer um caminho (`ph2d-vec-skin`) — não o modelo.
+//!
+//! ⚠️ **O nome do TIPO e o rótulo diferem no `Skin`, de propósito:** o tipo é `SkinBind` (diz o
+//! que se GUARDA — a fonte mais as matrizes de repouso) e o rótulo é "Skin" (diz o que a coisa
+//! É). Este catálogo é exactamente o sítio onde os dois nomes se encontram.
+
+use crate::{ComponentCategory as C, ComponentDesc as D, ObjectKinds as O};
+
+/// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).
+pub const DESCS: &[D] = &[
+    // ⭐ O OSSO — `authored`: ele TEM `Default` (comprimento 1, força 1 é um osso legítimo), logo
+    // a paleta do `+` consegue construí-lo no ponto neutro.
+    D::authored("ph2d::skeleton::Bone", "Bone", C::Skeleton, O::ANY, &[]),
+    // ⭐ A PELE — `intrinsic`: ela chega com o GESTO (*Bind*) e **não tem `Default`**, porque uma
+    // pele sem a fonte autorada dentro não é uma pele, é uma forma prestes a sumir.
+    D::intrinsic("ph2d::skeleton::Skin", "Skin", C::Skeleton, &[]),
+];

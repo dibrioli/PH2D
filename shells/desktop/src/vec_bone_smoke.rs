@@ -124,7 +124,7 @@ impl crate::App {
         );
         let mut presas = 0;
         for (id, raiz) in pecas.iter().take(2) {
-            presas += crate::skin_live::bind(
+            presas += crate::skeleton_live::bind(
                 &mut gfx.sim,
                 &gfx.vec_scene,
                 &self.vec_entities,

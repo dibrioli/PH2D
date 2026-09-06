@@ -96,10 +96,10 @@ pub use envelope::{
     ENVELOPE_HANDLE_R_PX, EnvelopeCageView, draw_envelope_cage, draw_envelope_pins,
 };
 
-/// ⭐ **Os OSSOS** (estudo 42 item 5) — módulo irmão (LOC cap). O losango afilado que diz a
-/// direcção, desenhado com largura em PÍXEIS e comprimento em MUNDO.
-mod bone;
-pub use bone::{BONE_JOINT_R_PX, draw_bones};
+// ⛔ **O desenho dos OSSOS mudou-se em 2026-09-06** para a `ph2d-skeleton-render`, quando o
+// esqueleto virou módulo próprio: ele nunca importou a cena vectorial (só a stack de desenho e os
+// tokens), então um esqueleto sobre uma imagem ou sobre uma malha desenha-se com o MESMO código.
+// ⇒ `ph2d_skeleton_render::{draw_bones, BONE_JOINT_R_PX}`.
 
 /// A **alça do texto em caminho** (plano 22, W5) — módulo irmão (LOC cap). A bolinha onde o
 /// texto começa no caminho; arrastá-la corre o texto ao longo dele.

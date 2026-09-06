@@ -1,5 +1,10 @@
-//! Desenho dos **OSSOS** (estudo 42 item 5) — módulo irmão do overlay da gaiola (`envelope.rs`),
-//! teto de LOC.
+#![forbid(unsafe_code)]
+//! **O DESENHO DO OSSO** (estudo 42 item 5) — a metade visível do módulo do esqueleto.
+//!
+//! ⚠️ **Ele nunca soube o que é um caminho vectorial**, e por isso a mudança de casa em 2026-09-06
+//! (era `ph2d-vec-render::bone`) não custou uma linha de lógica: um esqueleto sobre um desenho,
+//! sobre uma imagem ou sobre uma malha desenha-se exactamente igual. *Uma peça que não importa o
+//! documento de uma mídia já é do módulo — só falta mudá-la de sítio.*
 //!
 //! Um osso desenha-se como o **losango afilado** que toda ferramenta de rig usa (Spine, Moho, Rive,
 //! Blender): largo na raiz, agudo na ponta. Não é decoração — a forma **diz a direcção**, que é a

@@ -4767,7 +4767,7 @@ impl App {
                                     .and_then(|h| h.gizmo.selection)
                                     .map(ph2d_ecs::Entity::from_bits)
                                     .filter(|e| {
-                                        gfx.sim.world().get::<ph2d_ecs::VecBone>(*e).is_some()
+                                        gfx.sim.world().get::<ph2d_skeleton_ecs::Bone>(*e).is_some()
                                     });
                                 let novo =
                                     crate::bone_gesture::create(&mut gfx.sim, pai, origem, ponta);

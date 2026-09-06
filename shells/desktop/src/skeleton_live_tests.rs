@@ -1,6 +1,6 @@
-//! Os gates do [`crate::skin_live`] — o esqueleto como HOST.
+//! Os gates do [`crate::skeleton_live`] — o esqueleto como HOST.
 //!
-//! A **lei** da mistura (peso, órfão, C¹, escala) é da crate `ph2d-vec-skin` e está gateada lá. Aqui
+//! A **lei** da mistura (peso, órfão, C¹, escala) é do MÓDULO (`ph2d-skeleton`) e está gateada lá. Aqui
 //! mede-se o que só existe com um mundo ECS: prender não move nada · dobrar um osso dobra o desenho
 //! · a hierarquia É a cinemática (mover o pai leva o filho) · apagar um osso não apaga a forma · os
 //! dois verbos de soltar · e um segundo esqueleto não é apanhado por engano.
@@ -33,7 +33,7 @@ fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option<Ent
             },
             Name::new(nome),
             RootOrder(0),
-            VecBone {
+            Bone {
                 length: len,
                 strength: 1.0,
             },
@@ -252,9 +252,9 @@ fn the_order_of_the_bones_in_a_skin_does_not_change_the_drawing() {
 
     let e = Entity::from_bits(map[&id]);
     sim.world_mut()
-        .get_mut::<VecSkin>(e)
+        .get_mut::<SkinBind>(e)
         .expect("a pele")
-        .bones
+        .tendons
         .reverse();
     let avessa = quadro(&sim, &mut scene, id);
     let pior = pior_desvio(&direita, &avessa);
@@ -344,7 +344,7 @@ fn probe_the_smoke_sequence() {
     }
     eprintln!(
         "[probe] ossos = {:?}",
-        crate::skin_live::bone_segments(&sim)
+        crate::skeleton_live::bone_segments(&sim)
     );
     let n = bind(&mut sim, &scene, &map, &[id], raiz);
     eprintln!("[probe] bind devolveu {n}");

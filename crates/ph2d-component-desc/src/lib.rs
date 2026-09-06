@@ -451,6 +451,13 @@ pub enum ComponentCategory {
     Animation,
     /// Âncoras e encaixes nomeados (a §12).
     Anchors,
+    /// ⭐ **O ESQUELETO** — o osso e a pele que ele deforma.
+    ///
+    /// ⚠️ Categoria PRÓPRIA, e não uma prateleira do vetor, porque o módulo serve várias mídias:
+    /// nas quatro referências (Blender, Moho, Rive, Spine) um esqueleto só deforma desenho,
+    /// imagem e malha, e o que muda por mídia é apenas *o que é um ponto ali*. Declará-lo em
+    /// `Vector` prometeria ao artista que ele só serve caminhos.
+    Skeleton,
     /// Geometria vetorial e os efeitos vivos dela.
     Vector,
     /// Corpos, colisores, juntas, zonas, player.
@@ -465,7 +472,7 @@ pub enum ComponentCategory {
 
 impl ComponentCategory {
     /// Todas, na ordem em que a paleta as mostra. ⛔ Fonte única da iteração.
-    pub const ALL: [ComponentCategory; 12] = [
+    pub const ALL: [ComponentCategory; 13] = [
         ComponentCategory::Identity,
         ComponentCategory::Transform,
         ComponentCategory::Ordering,
@@ -473,6 +480,7 @@ impl ComponentCategory {
         ComponentCategory::Image,
         ComponentCategory::Animation,
         ComponentCategory::Anchors,
+        ComponentCategory::Skeleton,
         ComponentCategory::Vector,
         ComponentCategory::Physics,
         ComponentCategory::Model3D,
@@ -491,6 +499,7 @@ impl ComponentCategory {
             ComponentCategory::Image => "Image",
             ComponentCategory::Animation => "Animation",
             ComponentCategory::Anchors => "Anchors",
+            ComponentCategory::Skeleton => "Skeleton",
             ComponentCategory::Vector => "Vector",
             ComponentCategory::Physics => "Physics",
             ComponentCategory::Model3D => "3D",

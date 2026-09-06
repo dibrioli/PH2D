@@ -62,6 +62,11 @@ pub(crate) fn build_component_registry() -> ComponentRegistry {
     // SILENCIO, e o sintoma é o objeto sumir ao desfazer. `field3d_snapshot_tests` prova os dois
     // lados disso.
     ph2d_field_ecs::register_field_components(&mut reg);
+    // ⭐⭐⭐ O ESQUELETO (2026-09-06) — o osso e a pele. Eles viveram dentro do `ph2d-ecs` até virarem
+    // MÓDULO: ele serve vector, raster, 3D e Flip, e um componente por mídia dentro da fundação a
+    // faria crescer uma vez por cliente. Sem esta linha o WorldSnapshot descarta-os EM SILÊNCIO, e
+    // o sintoma é o personagem perder o esqueleto ao desfazer.
+    ph2d_skeleton_ecs::register_skeleton_components(&mut reg);
     reg
 }
 

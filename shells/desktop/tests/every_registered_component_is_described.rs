@@ -20,13 +20,20 @@
 use ph2d_component_desc::{Attach, ComponentDesc, desc_for};
 use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
 
-/// O registo **completo** — os CINCO registradores.
+/// O registo **completo** — os SEIS registradores.
 ///
-/// ⚠️ **Deliberadamente diferente do boot.** O `init.rs` chama quatro
+/// ⚠️ **Deliberadamente diferente do boot.** O `init.rs` chama cinco
 /// (`register_script_components` fica de fora, e a consequência está escrita no
 /// `catalog/script.rs`: o `LuauScript` não é salvo nem desfeito). O censo mede os tipos que
-/// **existem**, não os que hoje arrancam — senão o dia em que alguém ligar o quinto
+/// **existem**, não os que hoje arrancam — senão o dia em que alguém ligar o sexto
 /// registador o catálogo estaria em falta, e o gate teria estado verde até lá.
+///
+/// ⚠️⚠️ **Esta lista é a SEGUNDA cópia da do `init.rs`, e ela acabou de se provar útil:** ao
+/// tirar o esqueleto da fundação em 2026-09-06 (`ph2d-skeleton-ecs`, o módulo próprio), o
+/// registador novo entrou no boot e **não** aqui, e foi este gate que o disse — com os dois
+/// nomes. A cópia não se pode fundir com a do boot: o `init.rs` vive no BINÁRIO, e um teste de
+/// integração não alcança o `main.rs`. ⇒ *ao criar um registador novo, escreva-o nos DOIS sítios;
+/// o gate cobra o segundo.*
 fn full_registry() -> ComponentRegistry {
     let mut reg = ComponentRegistry::new();
     register_ecs_components(&mut reg);
@@ -34,6 +41,7 @@ fn full_registry() -> ComponentRegistry {
     ph2d_script::register_script_components(&mut reg);
     ph2d_physics_ecs::register_physics_components(&mut reg);
     ph2d_field_ecs::register_field_components(&mut reg);
+    ph2d_skeleton_ecs::register_skeleton_components(&mut reg);
     reg
 }
 

@@ -10,8 +10,11 @@ authors.workspace = true
 [lib]
 
 [dependencies]
-# A LEI da pele, e nada mais. Ela deforma um `VecPath` ponto a ponto por um afim por osso, então
-# não precisa de kurbo (não há reamostragem: uma Bézier deformada por um afim **é** uma Bézier, e a
-# mistura de afins ainda é um afim). ⛔ É por isso que esta crate é a irmã POBRE da
-# `ph2d-vec-envelope`, que precisa de `sample + fit` porque o mapa dela não é afim.
+# ⭐ **A LEI mora no MÓDULO; aqui mora só o que o VETOR sabe.** Esta crate é o 1.º cliente do
+# esqueleto — a que responde *«o que é um ponto aqui»* (três por vértice: âncora e as duas alças).
+# É a mesma repartição do Blender, onde o *Armature modifier* é um só e o Grease Pencil tem a
+# implementação dele à parte porque *o que é um ponto* ali é outra coisa.
+ph2d-skeleton = { path = "../ph2d-skeleton" }
+# O documento vectorial. ⛔ Ele NÃO é dependência da lei: uma pele que precisasse dele deixaria de
+# servir raster, 3D e Flip — que é a razão de o módulo existir.
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }

@@ -273,11 +273,11 @@ pub(crate) fn settle_origins(
                 // gaiola, reescrita em MUNDO a cada frame (`envelope_live`). Vive na identidade.
                 && sim.world().get::<ph2d_ecs::VecEnvelope>(e).is_none()
                 // ⭐ PELE (estudo 42 item 5): idem — a forma é a fonte autorada deformada pelos
-                // ossos, reescrita a cada quadro (`skin_live`). Assentar o pivô no meio da
+                // ossos, reescrita a cada quadro (`skeleton_live`). Assentar o pivô no meio da
                 // DEFORMADA faria este sistema escrever no documento num quadro que o artista não
                 // provocou, e o centro de um objecto é propriedade da identidade dele, não da pose
                 // em que ele está agora.
-                && sim.world().get::<ph2d_ecs::VecSkin>(e).is_none()
+                && sim.world().get::<ph2d_skeleton_ecs::SkinBind>(e).is_none()
                 && sim
                     .world()
                     .get::<Transform>(e)

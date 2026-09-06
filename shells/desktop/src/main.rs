@@ -609,10 +609,10 @@ mod signal_smoke;
 mod signal_table_smoke;
 mod sim_populate;
 mod sizing_smoke;
+/// ⭐⭐⭐ **O ESQUELETO, vivo** (estudo 42 item 5): a forma presa aos ossos, re-cozida por quadro.
+mod skeleton_live;
 /// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
 mod sketch_hatch_smoke;
-/// ⭐⭐⭐ **O ESQUELETO, vivo** (estudo 42 item 5): a forma presa aos ossos, re-cozida por quadro.
-mod skin_live;
 /// **9-slice, lado a lado com o que ele conserta** (`PH2D_SLICE_SMOKE=1`).
 mod slice_smoke;
 mod smoke_layout;

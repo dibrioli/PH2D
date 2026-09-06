@@ -1,4 +1,8 @@
-//! **A família do vetor** — os 32 `Vec*` registados.
+//! **A família do vetor** — os 30 `Vec*` registados.
+//!
+//! ⚠️ **O OSSO e a PELE saíram daqui em 2026-09-06** (-2) para a família [`super::skeleton`],
+//! quando o esqueleto virou módulo próprio: ele serve raster, 3D e Flip além do vetor, e
+//! declará-lo aqui prometeria ao artista que ele só serve caminhos.
 //!
 //! ⚠️ **Nenhum destes é hoje alcançável pelo Inspector**: a auditoria de 2026-08-21 mediu que
 //! 31 dos 36 tipos ausentes do Inspector são desta família, editados por **outro painel
@@ -39,9 +43,6 @@ pub const DESCS: &[D] = &[
     g("ph2d::ecs::VecAnchors", "Anchors"),
     v("ph2d::ecs::VecBindings", "Bindings"),
     g("ph2d::ecs::VecBlend", "Blend"),
-    // ⭐ O OSSO (estudo 42 item 5) — `v`, e não `g`: ele TEM `Default` (um osso de comprimento 1 e
-    // força 1 é um osso legítimo), e é a paleta do Inspector que o pendura.
-    v("ph2d::ecs::VecBone", "Bone"),
     g("ph2d::ecs::VecBoolGroup", "Boolean Group"),
     g("ph2d::ecs::VecBoolOp", "Boolean Op"),
     g("ph2d::ecs::VecBucketFill", "Bucket Fill"),
@@ -74,9 +75,6 @@ pub const DESCS: &[D] = &[
     v("ph2d::ecs::VecPatternRotation", "Pattern Rotation"),
     g("ph2d::ecs::VecResizeBox", "Resize Box"),
     g("ph2d::ecs::VecShape", "Shape"),
-    // ⭐ A PELE (estudo 42 item 5) — `g`: ela chega com o GESTO (*Bind*) e **não tem `Default`**,
-    // porque uma pele sem a fonte autorada dentro não é uma pele, é uma forma prestes a sumir.
-    g("ph2d::ecs::VecSkin", "Skin"),
     v("ph2d::ecs::VecStrokeProfile", "Stroke Profile"),
     v("ph2d::ecs::VecSymmetry", "Symmetry"),
     g("ph2d::ecs::VecTextPath", "Text on Path"),

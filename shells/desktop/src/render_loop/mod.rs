@@ -3325,7 +3325,7 @@ impl crate::App {
             // ⭐⭐⭐ O ESQUELETO (estudo 42 item 5): prender a selecção aos ossos, as duas saídas, e
             // os dois números do osso em foco (`true` = a força, `false` = o comprimento).
             let mut pending_bone_bind = false;
-            let mut pending_bone_release: Option<crate::skin_live::Keep> = None;
+            let mut pending_bone_release: Option<crate::skeleton_live::Keep> = None;
             let mut pending_bone_knob: Option<(bool, f64)> = None;
             // ⚠️ **O osso seleccionado lê-se AQUI, antes de o mundo ser emprestado mutável** — os
             // verbos lá em baixo já seguram `sim`, e uma leitura de `self` no meio deles não
@@ -3616,10 +3616,10 @@ impl crate::App {
                                 pending_bone_bind = true;
                             } else if *id == ph2d_editor::ids::VECTOR_BONE_EXPAND {
                                 // Solta e fica com a pose de AGORA (o Expand do envelope).
-                                pending_bone_release = Some(crate::skin_live::Keep::Deformed);
+                                pending_bone_release = Some(crate::skeleton_live::Keep::Deformed);
                             } else if *id == ph2d_editor::ids::VECTOR_BONE_RELEASE {
                                 // Solta e devolve o que o artista DESENHOU.
-                                pending_bone_release = Some(crate::skin_live::Keep::Source);
+                                pending_bone_release = Some(crate::skeleton_live::Keep::Source);
                             } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_RUN {
                                 // ADR-0129: envolve a seleção (1..N) num container com gaiola.
                                 pending_create_envelope = true;
@@ -6121,7 +6121,8 @@ impl crate::App {
             if pending_bone_bind {
                 let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
                 let semente = osso_selecionado.map(ph2d_ecs::Entity::from_bits);
-                let n = crate::skin_live::bind(sim, vec_scene, &self.vec_entities, &ids, semente);
+                let n =
+                    crate::skeleton_live::bind(sim, vec_scene, &self.vec_entities, &ids, semente);
                 if n == 0 {
                     eprintln!(
                         "[ph2d-vec] osso: selecione ao menos UMA forma, e desenhe um esqueleto                          antes (ferramenta Bone)"
@@ -6134,13 +6135,13 @@ impl crate::App {
             }
             if let Some(keep) = pending_bone_release {
                 let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
-                crate::skin_live::release(sim, vec_scene, &self.vec_entities, &ids, keep);
+                crate::skeleton_live::release(sim, vec_scene, &self.vec_entities, &ids, keep);
             }
             if let Some((forca, v)) = pending_bone_knob
                 && let Some(bits) = osso_selecionado
                 && let Some(mut osso) = sim
                     .world_mut()
-                    .get_mut::<ph2d_ecs::VecBone>(ph2d_ecs::Entity::from_bits(bits))
+                    .get_mut::<ph2d_skeleton_ecs::Bone>(ph2d_ecs::Entity::from_bits(bits))
             {
                 // ⛔ Os dois são pisos, não tetos: um comprimento negativo viraria o osso do avesso
                 // e uma força negativa daria peso negativo. O TETO é o do documento — §0.0: um
@@ -8739,7 +8740,7 @@ impl crate::App {
                 let presa = self.vec_pen.selected_paths().iter().any(|id| {
                     self.vec_entities.get(id).is_some_and(|&b| {
                         sim.world()
-                            .get::<ph2d_ecs::VecSkin>(ph2d_ecs::Entity::from_bits(b))
+                            .get::<ph2d_skeleton_ecs::SkinBind>(ph2d_ecs::Entity::from_bits(b))
                             .is_some()
                     })
                 });
@@ -8748,13 +8749,13 @@ impl crate::App {
                 // Osso. ⛔ Sem esta metade ela seria um cabeçalho permanente num app que nunca viu
                 // um osso, que é exactamente o report que a tabela de escopo curou em 31/08.
                 ph2d_panel_vector::set_current_has_skeleton(
-                    !crate::skin_live::bone_segments(sim).is_empty(),
+                    !crate::skeleton_live::bone_segments(sim).is_empty(),
                 );
                 ph2d_panel_vector::set_current_bone(
                     crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected()).and_then(
                         |b| {
                             sim.world()
-                                .get::<ph2d_ecs::VecBone>(ph2d_ecs::Entity::from_bits(b))
+                                .get::<ph2d_skeleton_ecs::Bone>(ph2d_ecs::Entity::from_bits(b))
                                 .map(|v| (v.length, v.strength))
                         },
                     ),
@@ -9290,7 +9291,7 @@ impl crate::App {
             // ⚠️ Sem `xforms`: a pele resolve a pose de cada osso e da forma pela hierarquia (a
             // propagação de `Transform` que a casa já corre), que é a mesma razão de a cinemática
             // directa não precisar de código.
-            crate::skin_live::recook(sim, vec_scene);
+            crate::skeleton_live::recook(sim, vec_scene);
             // **Select: arrastar o objeto blend move as fontes** — o gizmo mira as FONTES (não o
             // spine), então ele as move NATIVAMENTE como grupo (`vec_selection::sync_selection`
             // redireciona a seleção do gizmo). O spine as segue no `recook`. Nada a fazer aqui: um
@@ -10648,9 +10649,9 @@ impl crate::App {
             //
             // ⛔ Não é uma forma da cena: nada disto entra no documento, no SVG ou no z-order.
             if overlay.bones {
-                let ossos = crate::skin_live::bone_segments(sim);
+                let ossos = crate::skeleton_live::bone_segments(sim);
                 if !ossos.is_empty() {
-                    ph2d_vec_render::draw_bones(
+                    ph2d_skeleton_render::draw_bones(
                         &ossos,
                         hero.gizmo.selection,
                         cam_affine,

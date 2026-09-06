@@ -238,12 +238,12 @@ pub use vec_envelope::{
     ENVELOPE_DEFAULT_BEND, EnvelopeKind, EnvelopeWarp, VecEnvelope, VecEnvelopeChild,
 };
 
-/// ⭐⭐⭐ **O ESQUELETO** (estudo 42 item 5) — o osso é uma ENTIDADE, e a pele é um componente da
-/// forma. Irmão do envelope no padrão (fonte autorada em bytes, recook por quadro) e diferente no
-/// que deforma: a gaiola é um mapa `R2→R2` sobre N formas; a pele é um afim POR OSSO misturado por
-/// peso, e a hierarquia da cena é a cinemática.
-mod vec_skin;
-pub use vec_skin::{VecBone, VecSkin, VecSkinBone};
+// ⛔ **O ESQUELETO SAIU DA FUNDAÇÃO em 2026-09-06** e vive na `ph2d-skeleton-ecs`
+// (`Bone` + `SkinBind` + `Tendon`), que os regista pela porta dela — o precedente é a
+// `ph2d-physics-ecs`. A razão é que ele serve vector, raster, 3D e Flip, e um componente por mídia
+// aqui dentro faria a fundação crescer uma vez por cliente.
+// ⚠️ O que ele CONTINUA a usar daqui é o que o justifica ser entidade: o `Transform`, a
+// `propagate_transforms` (que É a cinemática directa) e o `SimComponent`.
 
 /// **O RÓTULO** — o texto que pertence a uma forma (ou a um conector) e a segue. Mesma família
 /// do conector, e pela mesma razão: o componente guarda a RELAÇÃO (de quem, e onde em relação a

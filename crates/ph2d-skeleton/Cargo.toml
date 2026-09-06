@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-skeleton"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# ⛔ **UMA dependência, e é a álgebra.** É esta linha que faz do esqueleto um MÓDULO: enquanto a
+# lei vivia na `ph2d-vec-skin` ela puxava a `ph2d-vec-scene`, e um esqueleto que serve raster, 3D e
+# Flip não pode precisar da cena vectorial para compor `repouso⁻¹ ∘ osso ∘ forma⁻¹`. O que cada
+# mídia sabe — *o que é um ponto aqui* — mora do lado dela (`ph2d-vec-skin` é o 1.º cliente).
+ph2d-affine = { path = "../ph2d-affine" }

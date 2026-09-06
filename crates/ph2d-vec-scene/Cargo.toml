@@ -20,6 +20,13 @@ authors.workspace = true
 # segundo consumidor. `pub mod arclen` re-exporta, entao os 5 sitios de chamada
 # desta crate seguem escrevendo `crate::arclen::...` verbatim.
 ph2d-arclen = { path = "../ph2d-arclen" }
+# ⭐ O AFIM 2D, extraído para uma folha ZERO-dep pelo MESMO precedente do `ph2d-arclen` logo
+# acima — e pelo mesmo motivo, medido: seis crates que não têm nada de vectorial
+# (`ph2d-field*`, `ph2d-flip`, `ph2d-tool-painter`) já escreviam `ph2d_vec_scene::Xform`, e a
+# lei do esqueleto (que serve raster, 3D e Flip) não pode puxar a cena vectorial para
+# multiplicar duas matrizes. `xform.rs` re-exporta, então os ~300 sítios que escrevem
+# `ph2d_vec_scene::Xform` seguem verbatim.
+ph2d-affine = { path = "../ph2d-affine" }
 serde = { version = "1", features = ["derive"] }
 # Persistência (ADR-0108 Fase 2): save/load da cena via postcard (mesmo wire
 # format canônico do resto do repo). `alloc` p/ to_allocvec.

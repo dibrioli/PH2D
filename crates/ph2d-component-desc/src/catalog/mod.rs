@@ -28,6 +28,7 @@ pub mod field;
 pub mod image;
 pub mod physics;
 pub mod script;
+pub mod skeleton;
 pub mod vector;
 
 /// As famílias, cada uma ordenada por `canonical_name`.
@@ -41,6 +42,7 @@ const FAMILIES: &[&[ComponentDesc]] = &[
     image::DESCS,
     physics::DESCS,
     script::DESCS,
+    skeleton::DESCS,
     vector::DESCS,
 ];
 

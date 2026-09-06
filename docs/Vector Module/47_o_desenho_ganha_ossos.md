@@ -8,6 +8,25 @@
 > `ph2d-vec-scene/src/lib.rs:12` promete *"Rig/bones… entram na Fase 1"* desde a ADR-0108, e a Fase 1
 > nunca os trouxe. *Um nome parecido em seis crates é a razão pela qual esta lacuna passou dois meses
 > a parecer fechada.*
+>
+> ⭐⭐⭐ **ESTE DOC É HISTÓRIA a partir de 2026-09-06: o esqueleto virou MÓDULO PRÓPRIO.**
+> A decisão é do dono (*«será aplicado não só em vetor mas em raster, 3d, Flip»*) e está em
+> [ADR-0169](../architecture/decisions/0169-the-skeleton-is-its-own-module-and-each-medium-answers-only-what-a-point-is.md);
+> o pensamento vivo mudou-se para [`docs/Skeleton/`](../Skeleton/00_o_modulo_nasce.md).
+> ⚠️ **O que este doc escreve continua VERDADEIRO — mudou de ENDEREÇO**, e o mapa é:
+>
+> | o que o doc chama | onde vive hoje |
+> |---|---|
+> | a lei da pele (`ph2d-vec-skin`) | **`ph2d-skeleton`**, sem saber o que é um caminho |
+> | `VecBone` / `VecSkin` / `VecSkinBone` | **`ph2d-skeleton-ecs`**: `Bone` / `SkinBind` / `Tendon` |
+> | `ph2d::ecs::VecBone` / `…VecSkin` | **`ph2d::skeleton::Bone`** / **`ph2d::skeleton::Skin`** |
+> | o desenho (`ph2d-vec-render::bone`) | **`ph2d-skeleton-render`** |
+> | `ph2d-vec-skin` | o **1.º CLIENTE**: só as três metades de um vértice |
+>
+> ⚠️ **A troca dos nomes canónicos foi feita enquanto era GRÁTIS** — o `ComponentBlob` é chaveado
+> por `blake3(nome)`, e os dois `.ph2dproj` da máquina do dono são de 26/08, onze dias antes de os
+> ossos existirem ⇒ nenhum tinha esqueleto. Depois do primeiro personagem salvo, ela apagaria o
+> esqueleto dele em silêncio.
 
 ---
 

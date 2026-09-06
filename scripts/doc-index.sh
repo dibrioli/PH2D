@@ -254,6 +254,18 @@ DIRS = [
         ),
     ),
     dict(
+        dir="docs/Skeleton",
+        titulo="`Skeleton` — índice do módulo",
+        ordem="num",
+        o_que_e=(
+            "O **pensamento** do módulo do esqueleto (ADR-0169) — o osso que é uma ENTIDADE, a "
+            "lei do peso que não sabe o que é um caminho, e a metade que cada mídia responde "
+            "sozinha (*o que é um ponto aqui*). ⚠️ **Não confunda com as seis crates "
+            "`ph2d-node-rig-*`**, que são o rig do grafo de nós, noutro substrato e deferidas. "
+            "O registro de **como** foi construído fica em [`handoffs/`](handoffs/README.md)."
+        ),
+    ),
+    dict(
         dir="docs/Runtime",
         titulo="`Runtime` — índice do módulo",
         ordem="num",

@@ -182,6 +182,15 @@ ph2d-painter-effects = { path = "../../crates/ph2d-painter-effects" }
 ph2d-vec-blend = { path = "../../crates/ph2d-vec-blend" }
 # ADR-0129: o motor do envelope/warp (deformação não-afim de geometria Bézier).
 ph2d-vec-envelope = { path = "../../crates/ph2d-vec-envelope" }
+# ⭐⭐⭐ **O MÓDULO DO ESQUELETO** (2026-09-06) — as duas metades, e a repartição é o ponto:
+# `ph2d-skeleton` é a LEI (para onde vai um ponto) e não sabe o que é um caminho, logo serve raster,
+# 3D e Flip; `ph2d-skeleton-ecs` possui o osso e a pele e regista-os pela porta dela (precedente:
+# `ph2d-physics-ecs`); e `ph2d-vec-skin` é o 1.º CLIENTE — a única peça que sabe que um vértice tem
+# três pontos. É a mesma repartição do *Armature modifier* do Blender, que é um só e tem a
+# implementação do Grease Pencil à parte porque *o que é um ponto* ali é outra coisa.
+ph2d-skeleton = { path = "../../crates/ph2d-skeleton" }
+ph2d-skeleton-render = { path = "../../crates/ph2d-skeleton-render" }
+ph2d-skeleton-ecs = { path = "../../crates/ph2d-skeleton-ecs" }
 ph2d-vec-skin = { path = "../../crates/ph2d-vec-skin" }
 ph2d-tool-vector = { path = "../../crates/ph2d-tool-vector" }
 # O estabilizador do lápis (`lazy_mouse_step`) — a MESMA função que o pincel do Painter usa.

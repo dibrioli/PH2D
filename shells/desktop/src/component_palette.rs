@@ -54,6 +54,9 @@ fn cat_token(c: C) -> ColorToken {
         C::Animation | C::Anchors => ColorToken::NodeCatTransform,
         // Geometria autorada.
         C::Vector | C::Model3D => ColorToken::NodeCatFocus,
+        // ⭐ O que DEFORMA o que foi autorado — o esqueleto fica com a cor de quem move, ao lado
+        // da Animação e das Âncoras, e não com a da geometria: ele não é geometria de ninguém.
+        C::Skeleton => ColorToken::NodeCatTransform,
         // O que simula.
         C::Physics => ColorToken::NodeCatOutput,
         // O resto.
@@ -62,21 +65,13 @@ fn cat_token(c: C) -> ColorToken {
 }
 
 /// O rótulo em inglês de cada categoria (HR-15: a UI do app é em inglês).
+///
+/// ⚠️ **UMA porta:** ele delega para [`C::label`], que é a dona do rótulo. Este `match` existiu
+/// aqui em cópia até 2026-09-06, com as 12 linhas repetidas letra a letra — duas respostas à mesma
+/// pergunta, e a segunda envelhece na primeira categoria nova (foi o que quase aconteceu ao
+/// acrescentar o `Skeleton`).
 fn cat_title(c: C) -> &'static str {
-    match c {
-        C::Identity => "Identity",
-        C::Transform => "Transform",
-        C::Ordering => "Ordering",
-        C::Rendering => "Rendering",
-        C::Image => "Image",
-        C::Animation => "Animation",
-        C::Anchors => "Anchors",
-        C::Vector => "Vector",
-        C::Physics => "Physics",
-        C::Model3D => "3D",
-        C::Scripting => "Scripting",
-        C::Instancing => "Instancing",
-    }
+    c.label()
 }
 
 /// **Um componente é oferecível?** Três condições, e cada uma barra um defeito diferente.

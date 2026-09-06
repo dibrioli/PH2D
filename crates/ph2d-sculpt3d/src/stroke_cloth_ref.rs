@@ -28,6 +28,23 @@ use ph2d_cloth::verlet::norm;
 use ph2d_cloth::verlet_gesto::{Area, Curva, FalloffForca, Modo, Passo, Pincel, PincelTecido};
 use ph2d_mesh::Mesh;
 
+/// **O que muda de uma CÓPIA DE SIMETRIA para a outra**, num dab.
+///
+/// ⚠️ Existe para o dab não passar oito argumentos soltos: os quatro campos são
+/// a mesma coisa — *qual das passagens de simetria é esta* —, e um deles
+/// (`passagens`) é a CONTAGEM delas, que a área *Local* lê para saber quantas
+/// vezes construir.
+struct Copia {
+    /// O centro do dab já espelhado.
+    center: [f32; 3],
+    /// O caminho do dab já espelhado.
+    path: V3,
+    /// O índice desta passagem (a sessão dela vive em `SculptStroke::cloth_ref`).
+    copy: usize,
+    /// Quantas passagens o traço tem ao todo.
+    passagens: u32,
+}
+
 /// **A sessão da lei da referência de UMA cópia de simetria, num traço.**
 #[derive(Clone, Debug)]
 pub(super) struct ClothRef {
@@ -186,7 +203,17 @@ impl SculptStroke {
                 f64::from(dab.path[1] * s[1]),
                 f64::from(dab.path[2] * s[2]),
             ];
-            self.cloth_ref_copy(mesh, brush, dab, center, path, copy, u32::try_from(n).unwrap_or(1));
+            self.cloth_ref_copy(
+                mesh,
+                brush,
+                dab,
+                &Copia {
+                    center,
+                    path,
+                    copy,
+                    passagens: u32::try_from(n).unwrap_or(1),
+                },
+            );
         }
         // O tecido move geometria — a janela de upload é a das posições.
         self.last_paints_mask = false;
@@ -198,16 +225,13 @@ impl SculptStroke {
     }
 
     /// Uma cópia de simetria: a sessão nasce no 1.º dab, corre um passo, escreve.
-    fn cloth_ref_copy(
-        &mut self,
-        mesh: &mut Mesh,
-        brush: &Brush,
-        dab: &Dab,
-        center: [f32; 3],
-        path: V3,
-        copy: usize,
-        passagens: u32,
-    ) {
+    fn cloth_ref_copy(&mut self, mesh: &mut Mesh, brush: &Brush, dab: &Dab, copia: &Copia) {
+        let Copia {
+            center,
+            path,
+            copy,
+            passagens,
+        } = *copia;
         if self.cloth_ref.len() <= copy {
             self.cloth_ref.resize_with(copy + 1, || None);
         }

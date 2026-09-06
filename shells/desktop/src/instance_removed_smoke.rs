@@ -107,9 +107,16 @@ impl crate::App {
             "[instance smoke 5] montado: {} robos iguais, todos do componente 'Robot'",
             copies.len()
         );
+        // ⛔⛔ **A linha que aqui esteve era FALSA** (medido em 2026-09-06): uma receita **não é
+        // uma linha da cena** — a Hierarquia retira da lista tudo o que o
+        // `off_canvas::is_unedited_recipe` acusa, e o `MasterRoot` também é `MasterPiece`. Ela
+        // dizia *«na lista: 'Robot' é o COMPONENTE»* sobre uma linha que não está lá. ⚠️ *O texto
+        // de um smoke é superfície de produto: uma frase falsa manda o dono procurar, e o report
+        // que volta é indistinguível de um defeito.*
         println!(
-            "[instance smoke 5] (na lista da esquerda: 'Robot' e' o COMPONENTE; os tres da tela \
-             chamam-se 'Robot (1)', 'Robot (2)' e 'Robot (3)')"
+            "[instance smoke 5] (na lista da esquerda estao SO' as tres copias — 'Robot (1)', \
+             'Robot (2)' e 'Robot (3)'; o componente 'Robot' vive na biblioteca e nao aparece \
+             nesta lista)"
         );
         println!(
             "[instance smoke 5] PASSO 1 (na TELA): clique na barra LARANJA do robo do MEIO — e' o \

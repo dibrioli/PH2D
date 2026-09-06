@@ -298,19 +298,29 @@ impl crate::App {
             vec_entities,
         };
         let (master, roots) = spawn_vector_scene(&mut gfx.sim, &gfx.component_registry, &mut docs);
+        let master_bits = master.to_bits();
         // ⚠️ **O DIAGNÓSTICO do que ela montou, peça a peça.** Uma cópia sem `VecPathRef` é o modo
         // de falha que não deixa linha nenhuma em lado nenhum — e é o 1.º suspeito do §14.
         // ⚠️ **A receita NAO esta' na tela ate' alguem a escolher** — a marca `MasterEditing`
         // (F4.6) e' derivada da selecao, e ate' 2026-08-27 estas linhas descreviam coordenadas
         // vazias: o smoke que existe para dar o meio-caminho entregava «o mestre ficou invisivel»,
         // que e' exactamente o report que ele existe para evitar.
+        // ⛔⛔⛔ **O PASSO 1 que aqui esteve tornou-se IMPOSSÍVEL, e ninguém o notou** (medido em
+        // 2026-09-06). Ele mandava *«clique na linha 'Badge'»* — verdade quando foi escrito
+        // (27/08) e falso desde 30/08, quando a Hierarquia passou a **retirar da lista** tudo o
+        // que o `off_canvas::is_unedited_recipe` acusa: o `MasterRoot` também é `MasterPiece`,
+        // logo a receita inteira sai. *É a lei do §5.0 à letra — quando um comportamento muda, a
+        // cena que o demonstra é o último sítio a ser lembrado e o primeiro que o dono lê.*
+        //
+        // ⇒ a cena **abre a receita ela própria** (a marca é derivada da selecção), e o texto passa
+        // a dizer o estado em vez de mandar um gesto que não existe.
         println!(
-            "[instance smoke 2] PASSO 1: na lista da esquerda (Hierarchy) clique na linha 'Badge' \
-             — o cracha' da RECEITA aparece a' ESQUERDA das tres copias"
+            "[instance smoke 2] o componente ja' esta' ABERTO (a linha 'Badge' nasce acesa) — e' \
+             por isso que o cracha' da RECEITA aparece a' ESQUERDA das tres copias"
         );
         println!(
-            "[instance smoke 2] (sem esse clique a receita NAO se ve': ela e' a biblioteca, e so' \
-             aparece enquanto a linha dela esta' escolhida)"
+            "[instance smoke 2] (feche-a escolhendo outra coisa: uma receita e' a biblioteca, e so' \
+             se ve' enquanto a linha dela esta' escolhida)"
         );
         for name in ["Box", "Label"] {
             let m = piece_path(&gfx.sim, master, name);
@@ -354,6 +364,10 @@ impl crate::App {
             "[instance smoke 2] se nao mudarem, rode outra vez com PH2D_INSTANCE_LOG=1 — o passe \
              diz em que pergunta ele parou"
         );
+        // ⚠️ **Depois dos `println!`, e não antes** — o `gfx` está emprestado ao `docs` até aqui.
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.gizmo.replace_selection(Some(master_bits));
+        }
     }
 
     /// Cena 1 — ver o cabeçalho do módulo.

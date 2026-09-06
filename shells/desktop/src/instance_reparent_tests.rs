@@ -259,3 +259,55 @@ fn swapping_two_levels_in_the_recipe_never_makes_a_cycle() {
         "a subida do braco nao chegou a' raiz em 8 passos — ha' ciclo"
     );
 }
+
+/// ⭐⭐⭐ **REORDENAR entre irmãos dentro de uma cópia FICA** — e é isso que a guarda do arrasto
+/// deixa passar de propósito (F5.12).
+///
+/// ⚠️ **Este gate existe porque eu afirmei isto num doc antes de o medir.** A guarda do gesto só
+/// recusa quando o **pai** muda, com a justificação de que a ordem *«viaja no `SiblingOrder`, que É
+/// componente registado, e vira excepção da cópia como qualquer outro valor»*. Uma frase dessas ao
+/// lado de código é uma promessa ao próximo leitor — e uma promessa sem régua envelhece sozinha.
+///
+/// ⛔ Se ela fosse falsa, a guarda estaria a deixar passar um gesto que se desfaz sozinho — o
+/// defeito exacto que ela existe para impedir, pela porta que ela deixou aberta.
+#[test]
+fn reordering_a_piece_inside_a_copy_sticks_as_an_override() {
+    let (mut sim, r, master, inst) = scene();
+    let mut echo = MasterEcho::default();
+    pass(&mut sim, &r, &mut echo);
+    let (body, head) = (piece(&sim, inst, "Body"), piece(&sim, inst, "Head"));
+    let before = sim
+        .world()
+        .get::<ph2d_ecs::SiblingOrder>(head)
+        .map(|s| s.0)
+        .expect("a peca tem ordem");
+
+    // O artista arrasta o `Head` para cima do `Body` — mesmo pai, outra ordem.
+    let swapped = sim
+        .world()
+        .get::<ph2d_ecs::SiblingOrder>(body)
+        .map(|s| s.0)
+        .expect("a peca tem ordem")
+        .saturating_sub(1);
+    assert_ne!(before, swapped, "a fixtura tem de MUDAR a ordem");
+    sim.world_mut()
+        .entity_mut(head)
+        .insert(ph2d_ecs::SiblingOrder(swapped));
+    pass(&mut sim, &r, &mut echo);
+    pass(&mut sim, &r, &mut echo);
+
+    assert_eq!(
+        sim.world().get::<ph2d_ecs::SiblingOrder>(head).map(|s| s.0),
+        Some(swapped),
+        "a ordem que o artista deu foi reescrita pela receita — a guarda do arrasto esta' a deixar \
+         passar um gesto que se desfaz sozinho"
+    );
+    // ⚠️ E a receita **não** se mexeu: o que é da cópia fica na cópia.
+    assert_eq!(
+        sim.world()
+            .get::<ph2d_ecs::SiblingOrder>(piece(&sim, master, "Head"))
+            .map(|s| s.0),
+        Some(before),
+        "reordenar dentro de uma copia subiu a' receita"
+    );
+}

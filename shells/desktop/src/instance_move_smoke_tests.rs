@@ -154,3 +154,46 @@ fn the_printed_steps_have_no_stray_backslash() {
         );
     }
 }
+
+/// ⛔⛔⛔ **A LINHA QUE O PASSO NOMEIA TEM DE ESTAR NA LISTA.**
+///
+/// O passo 1 manda arrastar duas linhas **da receita** na Hierarquia. Mas uma receita não é uma
+/// linha da cena: desde 2026-08-30 o `snapshots.rs` **retira** da lista tudo o que o
+/// [`crate::render_loop::off_canvas::is_unedited_recipe`] acusa — e o `MasterRoot` também é
+/// `MasterPiece`, logo a receita INTEIRA sai. ⇒ sem alguém a escolher, o passo nomeia linhas que
+/// não existem, e o report que volta é *«não achei»* — indistinguível de um defeito real.
+///
+/// ⚠️ **As DUAS metades são o gate:** com a receita escolhida as quatro linhas estão lá; **sem**
+/// ela, nenhuma está. A segunda metade é o que impede este gate de ser vácuo — sem ela, uma
+/// implementação que nunca escondesse nada passaria.
+///
+/// (Mutação: tirar a selecção da receita do `instance_smoke_move` ⇒ RED na 1.ª metade.)
+#[test]
+fn every_row_the_step_names_is_actually_in_the_list() {
+    let (mut sim, _r, master, _copies) = build();
+    let rows = [
+        master,
+        piece(&sim, master, "Body"),
+        piece(&sim, master, "Head"),
+        piece(&sim, master, "Arm"),
+    ];
+
+    // ⚠️ **A metade JUSTA vem primeiro:** sem selecção nenhuma, a receita não está na lista.
+    crate::render_loop::master_editing::mark(&mut sim, std::iter::empty());
+    for (i, &e) in rows.iter().enumerate() {
+        assert!(
+            crate::render_loop::off_canvas::is_unedited_recipe(sim.world(), e),
+            "a linha {i} ja' estaria na lista sem ninguem escolher a receita — este gate mediria \
+             nada"
+        );
+    }
+
+    // E é isto que a cena faz ao montar: escolhe a receita, e as quatro linhas aparecem.
+    crate::render_loop::master_editing::mark(&mut sim, std::iter::once(master.to_bits()));
+    for (i, &e) in rows.iter().enumerate() {
+        assert!(
+            !crate::render_loop::off_canvas::is_unedited_recipe(sim.world(), e),
+            "a linha {i} que o PASSO 1 manda arrastar NAO esta' na Hierarquia"
+        );
+    }
+}

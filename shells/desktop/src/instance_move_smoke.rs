@@ -106,20 +106,35 @@ impl crate::App {
             vec_scene: &mut gfx.vec_scene,
             vec_entities,
         };
-        let (_master, copies) = spawn_move_scene(&mut gfx.sim, &gfx.component_registry, &mut docs);
+        let (master, copies) = spawn_move_scene(&mut gfx.sim, &gfx.component_registry, &mut docs);
+        // ⛔⛔⛔ **A RECEITA TEM DE FICAR ABERTA, senão o PASSO 1 nomeia linhas que não existem.**
+        //
+        // Uma receita **não é uma linha da cena**: desde 2026-08-30 a Hierarquia retira da lista
+        // tudo o que o `off_canvas::is_unedited_recipe` acusa, e o `MasterRoot` também é
+        // `MasterPiece` — logo a receita INTEIRA sai. A marca que a traz de volta é derivada da
+        // **selecção**, então escolhê-la aqui é o que põe as quatro linhas na lista.
+        //
+        // ⚠️ **E é por isso que ela também se VÊ na tela** (o mesmo `MasterEditing` manda nas duas
+        // perguntas): a cena tem **quatro** robôs, e o de cima é o componente. O texto di-lo — um
+        // robô a mais que ninguém explicou lê-se como defeito.
+        let master_bits = master.to_bits();
         println!(
-            "[instance smoke 7] montado: {} robos iguais, todos do componente 'Robot'",
+            "[instance smoke 7] montado: {} robos iguais + o COMPONENTE (o de CIMA, sozinho)",
             copies.len()
         );
+        println!(
+            "[instance smoke 7] o componente ja' esta' ABERTO — e' por isso que ele aparece na \
+             lista E na tela (o robo de cima, sozinho); escolher outra coisa fecha-o"
+        );
         println!("[instance smoke 7] a LISTA da esquerda comeca assim:");
-        println!("[instance smoke 7]     Robot          <- o COMPONENTE (e' o unico SEM numero)");
+        println!("[instance smoke 7]     Robot          <- o COMPONENTE (a linha ja' ACESA)");
         println!("[instance smoke 7]       Body");
         println!("[instance smoke 7]         Arm        <- (1) ARRASTE ESTA LINHA");
         println!("[instance smoke 7]       Head         <- (2) E LARGUE EM CIMA DESTA");
         println!("[instance smoke 7]     Robot (1)      (as tres copias vem depois)");
         println!(
             "[instance smoke 7] PASSO 1 (na LISTA da esquerda): arraste o 'Arm' de dentro do \
-             'Robot' sem numero e largue-o em cima do 'Head' logo abaixo"
+             'Robot' ACESO e largue-o em cima do 'Head' logo abaixo"
         );
         println!(
             "[instance smoke 7] => nos TRES robos da tela o braco laranja sobe do corpo para a \
@@ -134,9 +149,14 @@ impl crate::App {
              componente"
         );
         println!(
-            "[instance smoke 7] (deu errado se: so' um robo mudar · nenhum mudar · o braco voltar \
-             sozinho para o corpo · ou o passo 2 mexer no robo numerado sem dizer nada)"
+            "[instance smoke 7] (deu errado se: as linhas 'Body'/'Head'/'Arm' do 'Robot' aceso nao \
+             estiverem na lista · so' um robo mudar · nenhum mudar · o braco voltar sozinho para o \
+             corpo · ou o passo 2 mexer no robo numerado sem dizer nada)"
         );
+        // ⚠️ **Depois dos `println!`, e não antes** — o `gfx` está emprestado ao `docs` até aqui.
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.gizmo.replace_selection(Some(master_bits));
+        }
     }
 }
 

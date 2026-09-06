@@ -1,0 +1,447 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · O tempo entra no grafo</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+    --src: #5f9e79; --tra: #6f86c9; --out: #c96a6a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  h4 { font-size:13px; margin:14px 0 4px; color:var(--t1); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"→ "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"⚠ "; }
+  .figs { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0; }
+  .figs.two { grid-template-columns:repeat(2,1fr); }
+  .fig { background:var(--card); border:1px solid var(--line); border-radius:10px;
+         padding:8px; text-align:center; break-inside:avoid; }
+  .fig img { width:100%; display:block; border-radius:6px; }
+  .fig figcaption { font-size:11px; color:var(--t2); margin-top:6px; }
+  .fig b { color:var(--t1); display:block; font-size:12.5px; }
+  .wide { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:10px; margin:12px 0; break-inside:avoid; }
+  .wide img { width:100%; display:block; border-radius:6px; }
+  .key { font-size:11.5px; color:var(--t2); margin-top:8px; display:flex; flex-wrap:wrap; gap:14px; }
+  .key i { font-style:normal; display:inline-flex; align-items:center; gap:6px; }
+  .key s { width:16px; height:3px; border-radius:2px; display:inline-block; text-decoration:none; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  .card-demo { background:var(--card); border:1px solid var(--line); border-radius:9px;
+       width:230px; overflow:hidden; font-size:11px; }
+  .card-demo .h { padding:5px 9px; font-weight:600; color:#0e0d10; font-size:11.5px; }
+  .card-demo .rows { padding:6px; display:grid; gap:3px; }
+  .card-demo .r { background:#0b0a0e; border-radius:4px; padding:3px 7px; display:flex;
+       justify-content:space-between; position:relative; overflow:hidden; }
+  .card-demo .r i { position:absolute; inset:0 auto 0 0; background:#3b3350; }
+  .card-demo .r span { position:relative; }
+  .card-demo .r .n { color:var(--t1); }
+  .card-demo .r .l { color:var(--t2); }
+  .card-demo .sec { color:var(--t3); padding:3px 7px; font-size:10.5px; }
+  .two-col { display:grid; grid-template-columns:230px 1fr; gap:16px; align-items:start; }
+  .params { font-size:11px; }
+  .params h4 { margin-top:12px; }
+  .soft { color:var(--t3); }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+
+<h1>O tempo entra no grafo
+  <small>PH2D · Motion Nodes · tutorial 2 — os oito nós que fazem as coisas <b>andarem</b></small></h1>
+
+<p>No tutorial 1 você pôs um milhão de objetos na tela. Eles ficaram <em>parados</em>. Este
+tutorial é sobre a pergunta seguinte: <b>o que faz isso andar, e como eu mando nele?</b></p>
+
+<p>São oito nós, e todos respondem à mesma pergunta de jeitos diferentes: uma <b>onda</b>, um
+<b>tremor</b>, um <b>campo</b>, um <b>atraso por elemento</b>, uma <b>volta</b>, uma <b>mola</b>,
+um <b>eco</b> — e um que não mexe em ninguém: ele só entrega o <b>número</b>, para você usar onde
+quiser.</p>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/osc_sine.svg" alt="onda senoidal"><b>Sine</b></figure>
+  <figure class="fig"><img src="../fig/osc_tri.svg" alt="onda triangular"><b>Tri</b></figure>
+  <figure class="fig"><img src="../fig/osc_square.svg" alt="onda quadrada"><b>Square</b></figure>
+  <figure class="fig"><img src="../fig/osc_saw.svg" alt="dente de serra"><b>Saw</b></figure>
+  <figure class="fig"><img src="../fig/osc_spike.svg" alt="pulso estreito"><b>Spike</b></figure>
+</div>
+
+<div class="note"><b>Estas imagens não são desenhos.</b> Cada uma é a saída de verdade do nó,
+cozinhada pelo mesmo motor que roda no app e gravada em seguida. Se um nó mudar, a figura muda —
+e se um nó parar de fazer efeito, a figura se recusa a ser gerada.</div>
+
+<h2>1 · Abrir</h2>
+<p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
+segundos.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=1 cargo run -p ph2d-host-desktop --release</div>
+<p class="out">Abre uma tela escura com uma <b>massa de pontos ondulando</b>. A onda já está lá:
+o cartão azul do meio, chamado <b>Oscillator</b>, é o assunto da próxima seção.</p>
+<p class="bad">Se a janela abrir e nada se mexer, você está numa cena errada: confira que copiou
+<code>PH2D_GPU_COOK_DEMO=1</code>.</p>
+
+<h2>2 · Deixe a cena contável</h2>
+<p>Dois milhões de pontos são bonitos e não deixam ver <em>o que</em> está acontecendo com cada
+um. Diminua antes de estudar.</p>
+<ol class="steps">
+  <li><b>Aproxime o zoom</b> com a roda do mouse sobre o grafo, até ler as letras dentro dos
+      cartões.
+      <div class="out">Dentro de cada cartão aparecem os <b>controles</b>: nome à esquerda,
+      número à direita, e uma barra mostrando o quanto ele está alto.</div></li>
+  <li><b>Clique</b> (sem arrastar) na linha <code>Rows</code> do cartão verde <b>Grid</b>, digite
+      <code>1</code> e aperte <kbd>Enter</kbd>. Faça o mesmo em <code>Columns</code> com
+      <code>41</code>.
+      <div class="out">Sobra <b>uma fileira</b> de 41 pontos, ondulando.</div>
+      <div class="bad">Se clicar não abrir caixa nenhuma, você pegou no cabeçalho colorido — ele
+      é para mover o cartão. Desça um pouco.</div></li>
+  <li><b>Arraste <code>Gap X</code></b> até a fileira ocupar a largura da tela.</li>
+</ol>
+
+<h2>3 · O Oscillator: a onda</h2>
+<p>Uma onda tem três perguntas, e o cartão tem uma linha para cada: <b>quanto</b> ela move
+(<code>Amplitude</code>), <b>quão rápido</b> (<code>Frequency</code>) e <b>quanto um vizinho
+espera pelo outro</b> (<code>Stagger</code>).</p>
+
+<div class="two-col">
+  <div class="card-demo">
+    <div class="h" style="background:var(--tra)">Oscillator</div>
+    <div class="rows">
+      <div class="r"><span class="l">Channel</span><span class="n">Y</span></div>
+      <div class="r"><span class="l">Wave</span><span class="n">Sine</span></div>
+      <div class="r"><i style="width:38%"></i><span class="l">Amplitude</span><span class="n">380 px</span></div>
+      <div class="r"><i style="width:26%"></i><span class="l">Frequency</span><span class="n">2.10</span></div>
+      <div class="r"><i style="width:10%"></i><span class="l">Stagger</span><span class="n">0.10</span></div>
+      <div class="r"><span class="l">Time Mode</span><span class="n">Seconds</span></div>
+    </div>
+  </div>
+  <div>
+    <h3>O controle que faz a onda aparecer no espaço</h3>
+    <p><code>Stagger</code> é o atraso de <b>fase</b> entre um objeto e o seguinte, contado em
+    <b>voltas</b>. Em <code>0</code> todos sobem e descem juntos — a fileira inteira é um bloco.
+    Em <code>1</code> cada um está uma volta inteira à frente do vizinho, o que dá <b>na mesma
+    coisa</b>: o bloco volta.</p>
+    <p>O valor que desenha <em>uma</em> onda ao longo da fileira é <b>1 dividido pelo número de
+    vãos</b>: numa fileira de 41 pontos, <code>1 / 40 = 0.025</code>. É esse número que produziu
+    as cinco figuras da capa.</p>
+  </div>
+</div>
+
+<ol class="steps">
+  <li><b>Clique em <code>Stagger</code></b> no cartão Oscillator, digite <code>0.025</code>,
+      <kbd>Enter</kbd>.
+      <div class="out">A fileira deixa de subir em bloco e passa a desenhar <b>uma onda inteira
+      no espaço</b>, que caminha para o lado.</div></li>
+  <li><b>Arraste <code>Amplitude</code></b> para a direita e para a esquerda.
+      <div class="out">A onda fica mais alta e mais baixa. O número está em <b>pixels</b>.</div></li>
+  <li><b>Arraste <code>Frequency</code></b>.
+      <div class="out">A onda caminha mais depressa. Em <code>0</code> ela congela — o desenho
+      fica, o movimento some.</div></li>
+  <li><b>Clique na linha <code>Wave</code></b> (ela mostra uma palavra, não um número).
+      <div class="out">Ela troca para a próxima forma: <code>Sine</code> → <code>Tri</code> →
+      <code>Square</code> → <code>Saw</code> → <code>Spike</code> → <code>Custom</code> e volta
+      ao começo. São as cinco figuras da capa, e você acabou de percorrê-las.</div>
+      <div class="bad">Se a fileira ficar quase toda reta com dois pontos no alto, você está no
+      <code>Spike</code>: ele é um <b>pico curto</b> — fica em zero 92% do tempo, de propósito.</div></li>
+  <li><b>Escolha <code>Custom</code>.</b>
+      <div class="out">Aparece um controle a mais, <code>Custom Wave</code>: ali a forma é
+      <b>desenhada por você</b> em vez de escolhida numa lista.</div></li>
+</ol>
+
+<div class="note"><b>Um controle que aparece depois.</b> Vários nós escondem linhas que só fazem
+sentido num modo — o <code>Custom Wave</code> só existe com <code>Wave = Custom</code>. Isso não
+é um bug: cada linha escondida do app tem um motivo declarado, e a tabela da seção 10 diz, para
+cada nó, <b>o que existe e o que acende</b>.</div>
+
+<h2>4 · O Stagger: a onda que corre pela fila</h2>
+<p>O <code>Stagger</code> do Oscillator atrasa a <em>onda</em>. O nó <b>Stagger</b> faz a mesma
+ideia virar uma ferramenta própria: ele dá a cada elemento um valor entre um mínimo e um máximo,
+seguindo a <b>ordem</b> que você escolher e a <b>curva</b> que você escolher.</p>
+
+<div class="figs">
+  <figure class="fig"><img src="../fig/stag_index.svg" alt="ordem por índice"><b>Index</b>
+    <figcaption>do primeiro ao último</figcaption></figure>
+  <figure class="fig"><img src="../fig/stag_center.svg" alt="do centro"><b>From Center</b>
+    <figcaption>do meio para fora</figcaption></figure>
+  <figure class="fig"><img src="../fig/stag_random.svg" alt="aleatório"><b>Random</b>
+    <figcaption>cada um por si, sempre igual</figcaption></figure>
+</div>
+
+<ol class="steps">
+  <li><b>Clique com o botão direito</b> num espaço vazio do grafo e escolha <b>Stagger</b>.
+      <div class="out">Um cartão novo aparece, solto.</div></li>
+  <li><b>Arraste do pino de saída</b> do Oscillator (a bolinha na borda direita) <b>até o corpo
+      do Stagger</b>, e depois do Stagger até o <b>Output</b>.
+      <div class="out">A fileira agora passa pelos dois.</div>
+      <div class="bad">Se o fio não pegar, solte em cima do <b>corpo</b> do cartão de destino —
+      ele encaixa sozinho na primeira entrada livre.</div></li>
+  <li><b>No cartão Stagger, ponha <code>Maximum</code> em <code>150</code></b> e olhe a
+      fileira.
+      <div class="out">Ela sobe da esquerda para a direita: cada objeto recebe um pouco mais que
+      o anterior.</div></li>
+  <li><b>Clique na linha <code>Ease</code></b> e percorra as opções.
+      <div class="out">A subida deixa de ser reta: <code>Quad</code>, <code>Cubic</code>,
+      <code>Back</code> (que passa do alvo e volta), <code>Bounce</code> (que quica).</div></li>
+  <li><b>Clique na linha <code>Order</code>.</b>
+      <div class="out">Três opções: <code>Index</code> (a fila normal), <code>From Center</code>
+      (o meio primeiro) e <code>Random</code>. As três figuras acima são exatamente essas.</div></li>
+  <li><b>Escolha <code>Random</code> e depois mexa no <code>Seed</code>.</b>
+      <div class="out">O <code>Seed</code> só aparece nesse modo — e trocar o número dá outro
+      sorteio, sempre o <b>mesmo</b> para o mesmo número.</div></li>
+  <li><b>Ligue o <code>Reverse</code></b> (a linha que diz <i>On/Off</i>).
+      <div class="out">A ordem espelha. Com <code>From Center</code> ligado ao contrário você
+      obtém o <i>das pontas para o meio</i> — por isso ele não é uma quarta opção da lista: são
+      <b>três ordens vezes dois sentidos</b>, seis comportamentos com três entradas.</div></li>
+</ol>
+
+<h2>5 · O Spring: chegar com peso</h2>
+<p>Uma mola não vai direto ao lugar: ela <em>persegue</em>. O problema é que a física dela se
+descreve com dois números que ninguém consegue prever — <code>Tension</code> e
+<code>Friction</code>. Por isso o nó tem <b>dois modos</b>, e o segundo pergunta em português:
+<b>quanto tempo</b> ela demora e <b>quanto ela salta</b>.</p>
+
+<div class="wide">
+  <img src="../fig/spring.svg" alt="três molas perseguindo um alvo que salta">
+  <div class="key">
+    <i><s style="background:#4b4560"></s> o alvo (salta de um lado ao outro)</i>
+    <i><s style="background:#6f86c9"></s> <b>Physics</b>, como vem de fábrica</i>
+    <i><s style="background:#7ee0b0"></s> <b>Time</b>, <code>Bounce = 0</code></i>
+    <i><s style="background:#ffcf7a"></s> <b>Time</b>, <code>Bounce = 0.6</code></i>
+  </div>
+</div>
+
+<ol class="steps">
+  <li><b>Acrescente um <code>Spring</code></b> (botão direito no vazio) e ligue-o entre o
+      Oscillator e o Output.
+      <div class="out">O cartão nasce com <b>dois pinos de entrada</b>, e o de baixo já vem
+      ligado nele mesmo: é a memória dele, e você não precisa fazer nada com ela.</div></li>
+  <li><b>Ponha o Oscillator em <code>Wave = Square</code> e <code>Frequency = 0.35</code>.</b>
+      <div class="out">O alvo passa a <b>saltar</b> de um lado para o outro, em vez de deslizar.
+      É a linha tracejada da figura.</div></li>
+  <li><b>Olhe a fileira.</b>
+      <div class="out">Com os valores de fábrica ela <b>passa do alvo e volta várias vezes</b>,
+      demorando. É a curva azul.</div></li>
+  <li><b>Clique na linha <code>Mode</code></b> e escolha <code>Time</code>.
+      <div class="out">Duas linhas novas aparecem: <code>Duration</code> e <code>Bounce</code>.
+      <code>Tension</code> e <code>Friction</code> somem — elas não são lidas nesse modo.</div></li>
+  <li><b>Ponha <code>Duration = 0.6</code> e <code>Bounce = 0</code>.</b>
+      <div class="out">A mola chega em seis décimos de segundo e <b>para</b> — não passa do alvo
+      nenhuma vez. É a curva verde.</div></li>
+  <li><b>Suba o <code>Bounce</code> para <code>0.6</code>.</b>
+      <div class="out">Agora ela passa e volta. Medido nesta figura: com <code>Bounce = 0</code>
+      o pico é <b>exatamente</b> o alvo; com <code>0.6</code> ele é <b>48% acima</b>. A curva
+      amarela.</div></li>
+  <li><b>Experimente <code>Bounce</code> negativo.</b>
+      <div class="out">Ela fica preguiçosa: chega devagar, arrastando.</div></li>
+</ol>
+
+<div class="note"><b>Não existe um controle de massa, e isso é de propósito.</b> Na conta de uma
+mola a massa não é um terceiro botão — ela se dissolve nos outros dois, e um botão a mais só
+mudaria os que já existem. Peso <em>por objeto</em> existe, e vem de outro lugar: de um nó que
+escreve peso em cada elemento.</div>
+
+<h2>6 · Wiggle e Noise: tremer, e um campo</h2>
+<p>Os dois parecem a mesma coisa e não são. O <b>Wiggle</b> dá a cada objeto um tremor
+<em>próprio</em>: vizinhos não combinam nada. O <b>Noise</b> é um <em>campo</em> espalhado pelo
+mundo — vizinhos leem quase o mesmo lugar do campo, então <b>andam juntos</b>.</p>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/wiggle.svg" alt="tremor"><b>Wiggle</b>
+    <figcaption>cada um treme por si</figcaption></figure>
+  <figure class="fig"><img src="../fig/noise.svg" alt="campo de ruído"><b>Noise</b>
+    <figcaption>o traço mostra de onde cada um saiu — vizinhos vão para o mesmo lado</figcaption></figure>
+</div>
+
+<ol class="steps">
+  <li><b>Troque o Spring por um <code>Wiggle</code></b> e suba <code>Amplitude</code>.
+      <div class="out">A fileira vira uma linha nervosa. <code>Frequency</code> muda o quão
+      depressa treme; <code>Octaves</code> acrescenta tremores menores por cima do grande.</div></li>
+  <li><b>Volte o Grid para <code>Rows = 16</code> e <code>Columns = 16</code></b>, e troque o
+      Wiggle por um <code>Noise</code>.
+      <div class="out">Uma grade de 256 pontos.</div></li>
+  <li><b>No Noise, ponha <code>Channel = Position XY</code></b> e suba
+      <code>Amplitude</code> devagar.
+      <div class="out">A grade se <b>deforma como um pano</b>, em vez de chiar como estática.</div></li>
+  <li><b>Baixe <code>Scale</code> até perto do mínimo.</b>
+      <div class="out">As manchas do campo ficam <b>maiores</b> — escala menor, feição maior.
+      Um valor alto pica o campo em pedaços menores que o vão entre os objetos, e aí ele volta a
+      parecer aleatório.</div>
+      <div class="bad">Se mesmo com <code>Scale</code> pequeno continuar parecendo estática,
+      baixe <code>Octaves</code> para <code>1</code>: cada oitava a mais soma um campo com o
+      <b>dobro</b> da frequência, e a terceira já tem quatro vezes a da primeira.</div></li>
+  <li><b>Procure a seção <code>Space</code></b> no cartão do Noise — ela nasce fechada, com uma
+      setinha.
+      <div class="out">Abrindo, aparecem <code>Rotation</code> e <code>Uniform</code>: dá para
+      <b>girar</b> o campo e para esticá-lo num eixo só (desligue o <code>Uniform</code> e um
+      <code>Scale Y</code> aparece).</div></li>
+</ol>
+
+<h2>7 · Orbit e Delay: dar a volta, e chegar tarde</h2>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/orbit.svg" alt="órbita"><b>Orbit</b>
+    <figcaption>o rastro de três segundos: cada objeto dá a sua volta</figcaption></figure>
+  <figure class="fig"><img src="../fig/delay.svg" alt="atraso"><b>Delay</b>
+    <figcaption>a onda que entra (escura) e a que sai (clara)</figcaption></figure>
+</div>
+
+<ol class="steps">
+  <li><b>Ponha um <code>Orbit</code></b> depois do Grid, com o Grid em <code>3 × 3</code>.
+      <div class="out">Os nove pontos giram em volta do centro. <code>Speed</code> é em
+      <b>graus por segundo</b> — o padrão, 72, dá uma volta a cada cinco segundos.</div></li>
+  <li><b>Mexa em <code>Pivot X</code>.</b>
+      <div class="out">O centro da volta se desloca: quem estava no meio passa a orbitar
+      também.</div></li>
+  <li><b>Ligue <code>Carry Rotation</code>.</b>
+      <div class="out">Os objetos deixam de andar de lado e passam a <b>virar junto</b> com a
+      volta — como um carrinho numa pista, em vez de uma cadeira de roda-gigante.</div></li>
+  <li><b>Volte à fileira</b> (<code>Rows = 1</code>, <code>Columns = 41</code>,
+      <code>Stagger = 0.025</code>) e ponha um <code>Delay</code> depois do Oscillator.
+      <div class="out">A onda continua, mas <b>mais baixa e atrasada</b>: é a figura acima, com
+      a onda de entrada em cinza atrás.</div></li>
+  <li><b>Suba <code>Ticks</code>.</b>
+      <div class="out">O atraso aumenta e o movimento fica mais macio — o nó vai <b>pesando o
+      passado</b> de cada objeto.</div></li>
+  <li><b>Clique em <code>Mode</code>.</b>
+      <div class="out">Três: <code>Delay</code> (repete o passado exato), <code>Average</code>
+      (a média de uma janela) e <code>Blend</code>, que é o padrão e o mais barato — ele só
+      guarda o resultado anterior, em vez de guardar a fila inteira.</div></li>
+</ol>
+
+<h2>8 · O LFO: a mesma onda, como número</h2>
+<p>O <b>LFO</b> é o único dos oito que <em>não mexe em ninguém</em>. Ele produz só o número, e
+você decide quem lê. Para ele chegar a alguma coisa é preciso um segundo nó — o <b>Drive</b>, que
+pega um número e o aplica a um canal.</p>
+
+<table>
+  <tr><th>o que você quer</th><th>o que montar</th><th>custa</th></tr>
+  <tr><td>mexer num canal</td><td><code>Oscillator</code> (um nó)</td><td class="n">2 passes na placa</td></tr>
+  <tr><td>um número que <b>vários</b> nós leem</td><td><code>LFO → Drive</code> (dois nós)</td><td class="n">3 passes na placa</td></tr>
+</table>
+
+<p><b>A onda é a mesma, e isso foi medido:</b> nos dois caminhos, sobre 10 000 objetos e em seis
+instantes diferentes, <b>nenhum</b> objeto saiu num lugar diferente — nem por um bit. (A única
+exceção conhecida é escolher um período que o computador não consegue escrever exatamente, como
+um terço de segundo: aí 53 dos 10 000 diferem em <b>três centésimos de milésimo de pixel</b>.)</p>
+
+<ol class="steps">
+  <li><b>Acrescente um <code>LFO</code> e um <code>Drive</code>.</b></li>
+  <li><b>Ligue o Grid na entrada do LFO</b> e também na primeira entrada do Drive; depois ligue
+      a saída do LFO na <b>segunda</b> entrada do Drive.
+      <div class="out">O Drive tem duas entradas: a de cima são os objetos, a de baixo é o
+      número.</div>
+      <div class="bad">Se soltar o fio no corpo do Drive ele entra na primeira entrada livre —
+      confira que o fio do LFO ficou no pino <b>de baixo</b>.</div></li>
+  <li><b>No Drive, escolha <code>Channel = Y</code> e <code>Mode = Add</code>.</b>
+      <div class="out">A fileira ondula exatamente como ondulava com o Oscillator.</div></li>
+  <li><b>Agora ligue a saída do LFO num segundo lugar</b> — por exemplo noutro Drive com
+      <code>Channel = Size</code>.
+      <div class="out">Os dois efeitos ficam em fase, presos ao <b>mesmo</b> número. É isto que o
+      LFO compra e o Oscillator não.</div></li>
+</ol>
+
+<h2>9 · O que isto custa</h2>
+<p>Medido nesta máquina com <b>100 000 objetos</b>, com a cena calma. A coluna
+<i>por quadro</i> é o que o nó custa enquanto a cena roda; a coluna <i>ao mexer</i> é o que ele
+custa quando algo muda e ele precisa refazer a conta. Um quadro a 60 por segundo tem
+<b>16,67 ms</b>.</p>
+
+<table>
+  <tr><th>nó</th><th>na placa de vídeo?</th><th>ao mexer</th><th>por quadro</th></tr>
+  <tr><td>Oscillator</td><td>sim</td><td class="n">0,27 ms</td><td class="n">0,26 ms</td></tr>
+  <tr><td>Stagger</td><td>sim</td><td class="n">0,78 ms</td><td class="n"><b>0,00 ms</b></td></tr>
+  <tr><td>Orbit</td><td>sim</td><td class="n">0,78 ms</td><td class="n">0,63 ms</td></tr>
+  <tr><td>Spring</td><td>sim</td><td class="n">0,89 ms</td><td class="n">1,00 ms</td></tr>
+  <tr><td>LFO + Drive</td><td>sim</td><td class="n">1,02 ms</td><td class="n">0,85 ms</td></tr>
+  <tr><td>Delay</td><td><b>não</b></td><td class="n">1,08 ms</td><td class="n">1,02 ms</td></tr>
+  <tr><td>Wiggle</td><td>sim</td><td class="n">1,55 ms</td><td class="n">1,43 ms</td></tr>
+  <tr><td>Noise</td><td>sim</td><td class="n"><b>4,47 ms</b></td><td class="n">4,22 ms</td></tr>
+</table>
+
+<div class="note"><b>Por que o Stagger custa zero por quadro.</b> O que ele produz <em>não muda
+com o tempo</em>: é um valor fixo por elemento. Depois do primeiro quadro o app percebe que a
+resposta é a mesma e nem refaz a conta. Já o Delay precisa refazer sempre, porque a resposta dele
+de hoje depende da de ontem — e é por isso que ele é o único dos oito que não roda na placa de
+vídeo.</div>
+
+<h2>10 · O que cada controle faz</h2>
+<p>Esta tabela é gerada do próprio app: se um nó ganhar um controle novo, ela ganha a linha
+sozinha, com os <b>mesmos números que o cartão mostra</b> — na sua unidade, não na do arquivo.
+A <b>faixa</b> é até onde o arrasto vai; onde diz <i>digitável até</i>, a caixa que abre no
+clique aceita mais do que o arrasto alcança. E onde diz <i>só noutro modo</i>, aquele controle
+existe mas só aparece depois que você troca o modo que a linha nomeia.</p>
+<div class="params">
+<!--#include ../fig/params_animadores.html-->
+</div>
+
+<h2>11 · Vá além</h2>
+<ol class="steps">
+  <li><b>Uma onda que nunca se repete.</b> Ponha um <code>Noise</code> depois de um
+      <code>Oscillator</code>, os dois no canal <code>Y</code>, com o Noise em amplitude baixa.
+      A onda ganha vida sem deixar de ser onda.</li>
+  <li><b>Um enxame que respira.</b> Grid <code>20 × 20</code> → <code>Noise</code> em
+      <code>Position XY</code> com <code>Scale</code> baixo → <code>Spring</code> em
+      <code>Position XY</code>, modo <code>Time</code>, <code>Bounce = 0.4</code>. Os objetos
+      perseguem o campo com peso, e o resultado não parece programado.</li>
+  <li><b>Um efeito em cascata.</b> <code>Stagger</code> (ordem <code>From Center</code>, canal
+      <code>Size</code>) na frente de um <code>Oscillator</code>: a pulsação sai do meio e se
+      espalha.</li>
+  <li><b>O mesmo pulso mandando em tudo.</b> Um <code>LFO</code> ligado a três
+      <code>Drive</code> diferentes — <code>Y</code>, <code>Size</code> e
+      <code>Rotation</code>. Três coisas, um relógio.</li>
+</ol>
+
+<h2>12 · Se algo não bater</h2>
+<table>
+  <tr><th>o que você vê</th><th>o que é</th></tr>
+  <tr><td>A fileira sobe e desce em bloco</td><td><code>Stagger</code> em <code>0</code> (ou em
+      <code>1</code>, que dá no mesmo): todos na mesma fase</td></tr>
+  <tr><td>O Noise parece chuvisco de TV</td><td>a feição do campo está menor que o vão entre os
+      objetos: baixe <code>Scale</code> e ponha <code>Octaves = 1</code></td></tr>
+  <tr><td>O Spring não para nunca</td><td>modo <code>Physics</code> com os valores de fábrica é
+      bem saltitante; troque para <code>Time</code> e use <code>Bounce = 0</code></td></tr>
+  <tr><td><code>Duration</code> e <code>Bounce</code> não existem no cartão</td><td>o
+      <code>Mode</code> está em <code>Physics</code> — eles só aparecem em <code>Time</code></td></tr>
+  <tr><td>O Delay não faz nada</td><td><code>Ticks</code> em <code>0</code> é o ponto neutro: o
+      nó fica transparente de propósito</td></tr>
+  <tr><td>O <code>Seed</code> do Stagger sumiu</td><td>ele só existe com
+      <code>Order = Random</code></td></tr>
+  <tr><td>Uma linha com uma setinha</td><td>é uma <b>seção</b> dobrada: clique para abrir (o
+      <code>Space</code> do Noise é uma)</td></tr>
+  <tr><td>Um controle que não arrasta</td><td>ele está sendo puxado por um fio — o número vem de
+      fora</td></tr>
+  <tr><td>A cena engasga com muitos objetos</td><td>o <code>Delay</code> é o único dos oito que
+      não roda na placa; com ele na cadeia, tudo volta para o processador</td></tr>
+</table>
+
+<footer>PH2D · Motion Nodes · ciclo 2 «Animadores» · gerado de
+<code>docs/Motion Nodes/tutoriais/src/02_animadores.html</code> ·
+figuras e tabela derivadas do app por <code>dump_animadores_figures</code> ·
+números de desempenho medidos por <code>measure_the_animator_group</code> e
+<code>the_tee_against_the_fused_node</code>.</footer>

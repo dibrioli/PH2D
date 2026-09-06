@@ -3,7 +3,8 @@
 > **Protocolo:** [doc 103](103_dinamica_dos_ciclos.md) (os 7 passos e as 4 leis).
 > **Ciclo anterior:** [doc 104](104_ciclo_1_arranjo.md) — ARRANJO, ✅ com o smoke do Enio em
 > 2026-09-06.
-> **Estado:** ⏳ aberto em 2026-09-06.
+> **Estado:** ⏳ aberto em 2026-09-06 · **W1–W5 ✅ · medição ✅ · tutorial ✅** —
+> falta o passo 7, o smoke do Enio, que é a aceitação do ciclo.
 
 ## §1 — O grupo (8 nós), e a premissa do tutorial
 
@@ -285,23 +286,150 @@ declaração errada:**
 
 *Uma tabela de dívida fabricada custa mais que a dívida: ela manda construir o que já existe.*
 
-### W5 — O PAR `oscillator` / `lfo` NO TUTORIAL
+### ✅ W5 — O PAR `oscillator` / `lfo` NO TUTORIAL
 
-⏳ **Não é código, e a medição já existe:** a sonda `the_tee_against_the_fused_node`
-(`motion_bridge_tee_probe_tests`, da wave dos outputs) compara `value.lfo → motion.drive` contra
-`motion.oscillator` **bit a bit** e mede se os dois chegam ao dispositivo. ⇒ o que falta é a
-**frase** no tutorial e o smoke que a mostra (as duas cadeias lado a lado, a mesma figura). Entra
-no passo 6.
-
-### W5 — O PAR `oscillator` / `lfo` NO TUTORIAL
-
-Não é código: é a **frase** que falta. O [estudo dos outputs](100_estudo_dos_outputs_2026-09-04.md)
-mediu que `value.lfo → motion.drive` é o `motion.oscillator` **ao bit**, e nenhum doc diz isso ao
-artista. O tutorial tem de o dizer, e o smoke tem de o mostrar (as duas cadeias lado a lado, a
-mesma figura).
+**Não era código, e a medição já existia:** a sonda `the_tee_against_the_fused_node` (da wave dos
+outputs) compara `value.lfo → motion.drive` contra `motion.oscillator` bit a bit. O que faltava
+era a **frase** — e ela está escrita, com os números, na §8 do tutorial e na [§4.2](#42--o-par-oscillator--lfo-medido-a-w5)
+daqui: **`0` de `10 000` objectos diferem**, os dois chegam ao dispositivo (2 passes contra 3), e
+o fundido custa `6,43 ms` contra `10,77` a um milhão.
 
 ---
 
-## §4 — Passo 5: a MEDIÇÃO (⏳ depois das waves)
+## §4 — Passo 5: a MEDIÇÃO do grupo (2026-09-06, `load 2,85 / 3,07` — §5.0 ok)
 
-## §5 — O tutorial (⏳ o último passo)
+Sonda `measure_the_animator_group` (`#[ignore]`, na shell). **100 000 elementos** (`400 × 250`),
+`--release`, melhor de 5 corridas, cada uma com `MotionState` e `Cook` novos.
+
+⚠️ **Um animador não POSITA objectos: ele mexe nos que chegam** — então a régua deste grupo é
+outra que a do ciclo 1. Ali media-se o nó sozinho; aqui mede-se `grade → animador → output`
+**menos** `grade → output` (a linha de base: `0,32 ms` a frio, `0,00` em regime).
+
+| nó | device | passes | frio | regime | objectos/ms |
+|---|---|---:|---:|---:|---:|
+| `motion.oscillator` | ✅ | 2 | **0,27 ms** | 0,26 ms | **377 199** |
+| `motion.stagger` | ✅ | 2 | 0,78 ms | **0,00 ms** | 128 701 |
+| `motion.orbit` | ✅ | 2 | 0,78 ms | 0,63 ms | 128 226 |
+| `motion.spring` | ✅ | 2 | 0,89 ms | 1,00 ms | 112 250 |
+| `value.lfo` (+ `motion.drive`) | ✅ | 3 | 1,02 ms | 0,85 ms | 97 622 |
+| `motion.delay` | ⛔ | — | 1,08 ms | 1,02 ms | 92 434 |
+| `motion.wiggle` | ✅ | 2 | 1,55 ms | 1,43 ms | 64 504 |
+| `motion.noise` | ✅ | 2 | **4,47 ms** | 4,22 ms | **22 387** |
+
+⭐ **O grupo inteiro cabe num quadro com folga:** o mais caro dos oito custa `4,47 ms` de `16,67`
+a 100 000 objectos, **na CPU** — e sete deles nem lá correm quando a cadeia é reivindicada pelo
+dispositivo, cujo tecto medido é `4,19 M` objectos em `3,85 ms`
+([auditoria 98](98_auditoria_de_performance_2026-09-01.md)).
+
+⚠️ **A coluna `device` é a reivindicação do PLANEADOR** (`plan(...).is_fully_gpu()`), como no
+ciclo 1 — não um cronómetro de GPU. O que ela responde é a pergunta que a auditoria 98 mostrou
+ser a que manda: *esta cadeia chega lá?* Sete chegam; o `motion.delay` não, e o preço dele é a
+coluna `regime`.
+
+### §4.1 ⛔⛔ Dois vermelhos que a própria medição apanhou, e nenhum era do produto
+
+**(a) `0,00 ms` na linha de base e no `motion.stagger` — o memo a responder.** A 1.ª versão da
+sonda cronometrava um tique adiantado e leu `1 250 000 000 objectos/ms`. Não era ruído: os dois
+são `Effect::Pure`, e num tique seguinte **o memo devolve o resultado**. *É a mesma armadilha que
+o ciclo 1 pagou, noutra forma* — ali era o segundo `cook` no mesmo `Cook`, aqui é o quadragésimo.
+
+⚠️ **E a cura NÃO é «cozer sempre a frio», porque metade do grupo pede o contrário:** a
+`motion.spring` e o `motion.delay` carregam estado por uma aresta `delayed`, e o **primeiro**
+tique deles é a identidade **por desenho** — a frio mede-se o nó desligado. ⇒ a tabela traz as
+**duas** colunas, e cada metade do grupo lê a sua:
+
+- **frio** = o que o nó custa **quando tem de correr** (um arrasto de param, uma cena a abrir);
+- **regime** = o que ele custa **por quadro** numa cena a andar.
+
+⭐ E daí sai o número mais útil da tabela: o **`motion.stagger` custa `0` por quadro**. Ele é
+`Pure` **e** a saída dele não depende do tempo — um atraso por elemento é um mapa fixo —, então
+depois do primeiro quadro ele é de graça. *Isso não é um erro de medição: é a resposta.*
+
+**(b) `advance_tick` — uma aresta `delayed` não se carrega sozinha.** A sonda cozia em `t`
+crescente e nunca fazia o tique virar, então a saída de um tique nunca chegava à porta `state` do
+seguinte: a `motion.spring` e o `motion.delay` respondiam **para sempre** o primeiro tique, que é
+a identidade. ⚠️ **O mesmo defeito estava no gerador das figuras**, e ali ele era visível: a
+figura do `motion.delay` saía **byte-idêntica** à cadeia sem o nó — *ele parecia um controlo
+morto quando o morto era o meu laço*.
+
+### §4.2 ⭐⭐ O par `oscillator` / `lfo`, medido (a W5)
+
+Sonda `the_tee_against_the_fused_node`, `100 × 100`:
+
+| a pergunta | a resposta medida |
+|---|---|
+| dão os mesmos bits? | **`0` de `10 000` diferem**, em `t = 0 · 0,1 · 0,37 · 1,234 · 7,5 · 33,3` |
+| …e com um período que o `f32` não representa? | a `3 Hz` (período `1/3 s`) **`53` de `10 000`** diferem num instante, `max │dy│ = 3,05e-5 px`, **8 ULP** |
+| os dois chegam ao dispositivo? | **sim os dois** — o fundido em **2 passes**, a tee em **3** |
+| o que custam a 1 000 000 na CPU? | fundido **`6,43 ms`**, tee **`10,77 ms`** ⇒ **`1,7×`** |
+
+⇒ a frase do tutorial: *são a mesma onda*. A diferença de bits não é da lei — é de `t·f` contra
+`t/(1/f)`, e ela só aparece quando o período não é exacto em binário. O artista escolhe por
+**«quero mexer num canal»** (um nó, mais barato) contra **«quero um número que muitos nós leem»**
+(dois nós, um passe a mais).
+
+---
+
+## §5 — Passo 6: O TUTORIAL
+
+**Fonte:** `tutoriais/src/02_animadores.html` · **PDF:** `tutoriais/02_animadores.pdf` ·
+**figuras:** `tutoriais/fig/*.svg`, geradas por `dump_animadores_figures`.
+
+⭐⭐ **As 13 figuras são a saída COZIDA dos nós** (doc 103 §3), e a tabela dos controlos sai de
+`tutorial_table::derive` — **a porta única**, que é a mesma função de onde o painel e o cartão
+tiram os números. ⚠️ Ela viveu dentro do gerador do ciclo 1 e **saiu de lá neste ciclo, antes de
+existir uma segunda cópia**: *uma tabela de referência escrita duas vezes diverge em silêncio, e
+o lado que envelhece é o que o artista lê.*
+
+### §5.1 ⛔⛔ A régua das figuras errou QUATRO vezes, e cada erro tinha outro mecanismo
+
+Um animador não tem forma: tem **movimento**. Nenhuma figura do ciclo 1 servia, e a régua de
+*«esta figura mostra o nó a trabalhar?»* foi reescrita quatro vezes — cada uma por um defeito que
+a anterior não podia ver.
+
+| a régua que eu escrevi | o que ela deixou passar / acusou errado |
+|---|---|
+| «a figura não está vazia» (herdada do ciclo 1) | uma fila **deslocada em bloco** não está vazia e não desenha nada |
+| «o deslocamento é grande» | a onda **quadrada** desloca metade da fila para `+A` e metade para `−A`: a *magnitude* é igual nos 41, e a figura mais legível do conjunto foi acusada |
+| «a variação do deslocamento é grande» | a **órbita fecha a volta**: no último instante ela está onde começou, e um círculo inteiro percorrido lia `4,35` |
+| «…medida contra a largura da fila» | o **campo de ruído** partilhava a moldura de uma fila oito vezes maior e era acusado de estar parado |
+
+⇒ o que ficou: a variação do deslocamento **por eixo** (que tem sinal), contra a **moldura** da
+figura (que é o que o artista de facto vê impresso), e para um rasto a pergunta é outra — *quanto
+o rasto se afasta da fila parada*. ⚠️ **E a tabela imprime-se ANTES de a régua acusar:** uma sonda
+que estoura na primeira figura má obriga a uma corrida por figura, e cada uma custa aqui um build
+de release.
+
+### §5.2 ⭐ A quarta maneira de olhar, que o ciclo 1 não precisou
+
+Três não chegaram. Um **campo** coerente é *vizinhos a andarem juntos*, e uma nuvem de pontos
+deslocados não diz de onde cada um veio: com feição pequena lê-se estática de televisão, com
+feição grande lê-se uma grade quase parada — **e as duas leituras estão erradas sobre o mesmo
+produto**. ⇒ a figura do `motion.noise` desenha o **deslocamento**: um traço de onde o elemento
+estava até onde ficou, com o fantasma por baixo.
+
+⚠️⚠️ **E a feição não é só o `scale`: são as OITAVAS.** O espaço do campo devolve
+`(px·scale, py·scale)` e o `fbm` soma `octaves` camadas com `lacunarity = 2` — com as **3** de
+omissão a camada mais fina tem `4×` a frequência da base, então uma grade que mostra `2,4`
+períodos da base mostra `9,6` da última e **volta a ler-se aleatória**. A figura pede **uma**
+oitava, e isso é uma coisa que o tutorial passa a dizer ao artista.
+
+### §5.3 A figura da mola é uma CURVA NO TEMPO, e a afirmação dela é medida
+
+As outras doze mostram uma fila num instante, e nenhuma delas conseguiria mostrar a diferença
+entre *«chega e pára»* e *«chega, passa e volta»* — que é exactamente o que a W1 acrescentou. A
+cena é um alvo que **salta** (uma onda quadrada) e três molas a persegui-lo, e o gerador **mede a
+promessa antes de a desenhar**:
+
+| mola | pico, sobre um alvo de `90` |
+|---|---|
+| `Bounce = 0` | **`90,0`** — não passa, e o gate reprova se passar |
+| `Bounce = 0,6` | **`133,0`** (`+48 %`) — passa, e o gate reprova se **não** passar |
+
+⚠️ **E a moldura sai dos DADOS.** A 1.ª versão fixou-a em `±1,45 × alvo` e o modo `Physics` — que
+com os defaults `tension 8` / `friction 1,5` tem `ζ = 0,27`, bem mais saltitante que o
+`Bounce = 0,6` — saiu **por fora do quadro**: a figura mostrava três curvas e cortava
+justamente a que mais salta. *Uma figura que corta o caso extremo ensina que ele não existe.*
+
+## §6 — Passo 7: o SMOKE (⏳ é do Enio, e é a aceitação do ciclo)
+

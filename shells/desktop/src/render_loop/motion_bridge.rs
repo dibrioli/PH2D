@@ -98,15 +98,15 @@ mod edit;
 #[path = "motion_bridge_readout.rs"]
 mod readout;
 
-/// A medição do grupo do ciclo aberto (doc 104) — sonda `#[ignore]`, não um gate.
+/// ⭐ **Os instrumentos da DINÂMICA DOS CICLOS** (doc 103) — as sondas de medição e os
+/// geradores dos tutoriais, declarados num irmão pelo teto de LOC (HR-18).
+///
+/// ⚠️ O corte é por RESPONSABILIDADE, e é o mesmo do `test_mods` ao lado: o pai é a membrana
+/// (o que a ponte FAZ); ali estão os testes que a medem, e aqui os instrumentos que medem e
+/// documentam o **grupo de nós do ciclo aberto** — que não são da ponte, passam por ela.
 #[cfg(all(test, feature = "panel-motion-graph"))]
-#[path = "motion_bridge_arranjo_probe.rs"]
-mod arranjo_probe;
-
-/// As figuras do tutorial do ciclo 1 — geradas COZINHANDO os nós (doc 103 §3).
-#[cfg(all(test, feature = "panel-motion-graph"))]
-#[path = "motion_bridge_arranjo_figures.rs"]
-mod arranjo_figures;
+#[path = "motion_bridge_ciclos_mods.rs"]
+mod ciclos_mods;
 
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_rewire.rs"]

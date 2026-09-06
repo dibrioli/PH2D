@@ -316,3 +316,30 @@ pior. ⇒ o resíduo dos modos de força não é a normal.
 (`0,071` num traço de 12 passos), e ele é o único cuja direcção não depende do estado da malha —
 `δ̂` é a mesma para todos os vértices. Os outros quatro derivam. *A causa comum tem de estar em algo
 que a direcção por-vértice lê e a direcção global não.*
+
+### Q11 — a TERCEIRA hipótese, e o facto que a mata (2026-09-06)
+
+⛔ **A direcção do aperto medida no REPOUSO** (como o Grab faz), em vez de na posição actual:
+`plano_apertar_ponto_radial_local` `1,380 → 1,012` e o `_origem` `1,079 → 1,051`, mas a
+`esfera_apertar_ponto_radial_dinamica` **piora** de `0,542` para `0,939`. ⇒ refutada.
+
+⭐⭐ **E a medição que estreita a pergunta: o erro por passo.** A sonda passou a imprimir o pior erro
+por vértice em cada passo. O ARRASTO acumula e **estabiliza**: `0,000 · 0,006 · 0,011 · 0,013 ·
+0,014 · 0,014 …` — um desvio pequeno e constante. O APERTO DE PONTO salta de `0,000` para
+**`0,125` num único passo** (o k=3) e depois cresce. *As duas malhas são idênticas ao bit no fim do
+passo 2 e o passo seguinte separa-as em `0,125`.* ⇒ não é acumulação nem ruído: é uma lei que muda
+quando a malha deixa de estar em repouso.
+
+⚠️ **E a aritmética do vértice diz onde procurar.** No fim do passo 2 o anel imediato de `c0` está em
+`0,0894` e o próprio `c0` em `0,0935` — as restrições entre eles estão **quase satisfeitas**, logo a
+relaxação do passo 3 mal deveria mexer em `c0`, e o impulso de força (`≈0,09`, que a espec §4.1
+fixa em `10·dt/massa`) deveria levá-lo a `≈0,18`. É exactamente o que o oráculo faz (`0,1842`). Em
+nós ele acaba em `0,0975`, com uma componente `−0,0437` **perpendicular ao traço** que a força do
+aperto não pode produzir (ali `u` é paralelo ao traço). ⇒ *o que nos tira o impulso vem da
+RELAXAÇÃO, não da força* — e no arrasto, no mesmo passo e no mesmo vértice, a mesma relaxação
+deixa o impulso passar (`0,0935 → 0,1661`, oráculo `0,1676`) e o anel imediato bate **exactamente**
+(`0,1585` contra `0,1585`).
+
+⇒ Q11.4 (nova): o que a relaxação faz de diferente num passo de APERTO e num de ARRASTO, sendo o
+estado de partida o mesmo? *A única coisa que distingue os dois passos é o campo de força ser
+convergente (todos os vértices para um ponto) em vez de uniforme.*

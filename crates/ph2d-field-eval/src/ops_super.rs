@@ -57,7 +57,17 @@ const FLOOR: f64 = 1.0e-9;
 /// `|v|^n`, sem o `ln(0)`. Ver [`EPS`]. ⚠️ **O chamador entrega uma RAZÃO em `[0, 1]`** — ver
 /// [`norma`].
 fn abs_pow(v: &Tree, n: f64) -> Tree {
-    ((v.clone() * v.clone() + Tree::constant(EPS)).ln() * Tree::constant(n * 0.5)).exp()
+    let q = v.clone() * v.clone() + Tree::constant(EPS);
+    // ⭐⭐ **Os dois expoentes do meio da faixa são EXACTOS sem transcendental** (auditoria de
+    // 06/09): `2` é o quadrado e `1` é a raiz. ⚠️ E `2` é a **esfera**, que é o ponto por onde toda
+    // travessia desta forma passa.
+    if (n - 2.0).abs() < 1.0e-12 {
+        return q;
+    }
+    if (n - 1.0).abs() < 1.0e-12 {
+        return q.sqrt();
+    }
+    (q.ln() * Tree::constant(n * 0.5)).exp()
 }
 
 /// ⭐⭐⭐ **A norma-`n` de dois números, pelo caminho ESTÁVEL** — `m · Σ(|vᵢ|/m)^n` elevado a `1/n`,
@@ -74,6 +84,12 @@ fn abs_pow(v: &Tree, n: f64) -> Tree {
 /// que estoure**, e o `ln` da soma passa a ser o de um número entre `1` e `2`, que é o regime
 /// melhor condicionado que existe. ⇒ o tecto do controlo deixa de ser da representação.
 fn norma(a: &Tree, b: &Tree, n: f64) -> Tree {
+    // ⭐⭐⭐ **A norma-2 é a hipotenusa** — sem razão, sem `ln`, sem `exp`, e sem o `max` do
+    // denominador estável (ali não há nada que estoure). *A esfera é o ponto neutro desta forma, e
+    // ela passa a custar o que uma esfera custa.*
+    if (n - 2.0).abs() < 1.0e-12 {
+        return (a.clone() * a.clone() + b.clone() * b.clone()).sqrt();
+    }
     let m = a.abs().max(b.abs()).max(Tree::constant(FLOOR));
     let soma = abs_pow(&(a.clone() / m.clone()), n) + abs_pow(&(b.clone() / m.clone()), n);
     m * (soma.ln() * Tree::constant(1.0 / n)).exp()

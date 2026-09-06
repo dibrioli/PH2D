@@ -389,3 +389,49 @@ fn armed<R>(f: impl FnOnce() -> R) -> R {
 /// ⭐ A costura dos chips de CÂMERA — ver [`camera`].
 #[path = "field3d_reach_camera_tests.rs"]
 mod camera;
+
+/// ⭐⭐⭐ **TODA LINHA DE TODA FORMA TEM RÓTULO** — o censo que faltava (auditoria de 06/09).
+///
+/// # ⛔⛔ O buraco, e por que ele é pior do que parece
+///
+/// O `ph2d_i18n::tr` de uma chave desconhecida faz `leak_key`: ele **pinta o identificador cru** e
+/// **vaza a string**. Num painel repintado a cada quadro, uma chave sem rótulo é um vazamento **por
+/// quadro por linha** — e o que o artista vê é `field.dim.top_n1` em vez de *Top N1*.
+///
+/// ⚠️ **Nada gateava isto.** A W128 acrescentou **oito** chaves de uma vez; se uma tivesse ficado
+/// por traduzir, a suíte inteira ficava verde e o defeito só aparecia no smoke — se alguém reparasse
+/// na linha feia.
+///
+/// ⭐ A lista é **derivada** de `PrimitiveKind::ALL` × `dims()`, logo uma forma nova entra sozinha.
+#[test]
+fn every_row_of_every_shape_has_a_label() {
+    let mut sem = Vec::new();
+    for k in ph2d_field::PrimitiveKind::ALL {
+        // ⭐ **A peça sai do próprio CATÁLOGO**, casando a chave do botão com a da família — nada
+        // de uma segunda tabela de representantes que envelhece ao lado desta.
+        let alvo = format!("panel.model3d.add.{}", k.key());
+        let Some(slot) = crate::field3d_shapes::SHAPES
+            .iter()
+            .position(|s| s.key == alvo)
+        else {
+            continue;
+        };
+        let Some(p) = crate::field3d_shapes::shape_at(slot, 0.3) else {
+            continue;
+        };
+        for d in ph2d_field::dims(&p) {
+            // ⚠️ **A prova é a IDENTIDADE**: o `tr` devolve a própria chave quando não a conhece, e
+            // é exactamente isso que se proíbe. *Comparar com uma lista de chaves escrita à mão
+            // seria a segunda resposta à mesma pergunta.*
+            if ph2d_i18n::tr(d.key) == d.key {
+                sem.push(format!("{} · {}", k.key(), d.key));
+            }
+        }
+    }
+    assert!(
+        sem.is_empty(),
+        "{} linha(s) do painel pintam o IDENTIFICADOR CRU (e vazam uma string por quadro):\n  {}",
+        sem.len(),
+        sem.join("\n  ")
+    );
+}

@@ -12670,3 +12670,101 @@ que sobreviveu*.
 responsabilidade: as arms das formas por fórmula saíram para irmãos).
 **Smoke:** *MODEL* > *Add shape…* > **Superformula**, e a cena `=25` com seis formas da mesma
 fórmula.
+
+---
+
+## §130 — AUDITORIA da W128: *«performance menor que as outras formas? é esperado?»* (06/09)
+
+> **Enio, 06/09:** *«smoke OK, contudo com performance menor que as outras formas? Isso é
+> esperado?»*
+
+**Metade sim, metade não** — e a metade que não era um defeito de **`642×`**.
+
+### §130.1 — ⛔⛔⛔ O achado: o divisor é do FORMATO e corria por LADRILHO
+
+A marcha **especializa a árvore por ladrilho × fatia de profundidade** (W56), e o
+`compile_in_region_with` percorre **todos os nós** e reconstrói cada folha em cada região. ⇒ as
+varreduras de uma dimensão da superfórmula viajavam com ela.
+
+⚠️ **A régua é um CONTADOR, não um relógio** — esta workstation corre vários agentes e nenhuma
+leitura de tempo vale acima de `load ~5`. *Uma contagem é imune à carga.*
+
+| a cena (um quadro a `640×360`) | varreduras do divisor |
+|---|---:|
+| a superfórmula **sozinha** | `6` |
+| a superfórmula **ao lado de um desenho** | **`3 852`** |
+
+⭐ **A cura é o que a conta É:** uma função **pura** de onze números. Um memo por thread não pode
+ficar obsoleto (não há estado a invalidar), não tem corrida nem trava, e devolve bit a bit o mesmo.
+⛔ *Não é o cache de estado derivado que este módulo recusou na W53* — aquele guardava um resumo do
+**documento**, que o undo podia envenenar; aqui guarda-se o valor de uma **função**.
+
+Depois: **`0` varreduras** num quadro morno, e **`132`** num quadro **frio** — que é o que o artista
+paga ao **arrastar** um knob, e que é `4` por **thread** e não por região.
+
+⛔⛔ **E nada gateava isto: um defeito só de CUSTO é invisível a todo gate de imagem.** A W128 shipou
+com a imagem perfeita. O gate novo — `the_shape_constants_are_computed_once_per_shape_not_once_per_tile`
+— corre no caminho do produto (com um desenho na cena, que é o que **liga** a especialização) e
+conta. Mutação: desligar o memo devolve `2 568`.
+
+### §130.2 — ⭐⭐⭐ E havia um ganho EXACTO na mesa: os expoentes `1` e `2`
+
+`|v|^n` era sempre `exp(n·ln(v²+ε)/2)`. Mas `n = 2` é o **quadrado** e `n = 1` é a **raiz** — a
+mesma conta sem transcendental nenhum. E mais forte: **com `n2 = n3 = 2` a curva é um círculo para
+qualquer `m` e qualquer `n1`** (`A = cos² + sin² = 1` **identicamente**), logo `inv_r` devolve uma
+constante e o quadro perde **um `atan2`, dois trigonométricos e três `ln`/`exp`**.
+
+⚠️ **É a álgebra, não uma aproximação** — e é o que a segunda curva vale **por omissão**, que é a
+forma que o botão cria.
+
+| um quadro a `640×360` | antes | **depois** |
+|---|---:|---:|
+| **superfórmula** | `5,8`–`6,5 ms` | **`3,4`–`3,8 ms`** |
+| desenho + superfórmula | `28,9`–`30,7 ms` | **`22,1`–`25,9 ms`** |
+
+⇒ **`−42 %`**, e ela passou a ser **mais barata que a superquadrática** (`0,9×`). A mesma cura foi
+dada à irmã (a norma-2 dela é a hipotenusa, sem razão nem `ln`).
+
+### §130.3 — A resposta ao dono, com a escada medida
+
+| forma (`640×360`, `load 2,8`, 3 corridas) | ms | contra a esfera |
+|---|---:|---:|
+| caixa | `1,6` | `0,7×` |
+| esfera | `2,2` | `1,0×` |
+| **superfórmula** | **`3,5`** | **`1,6×`** |
+| superquadrática | `3,8` | `1,7×` |
+
+⇒ **sim, é esperado que ela custe mais que uma caixa** — ela é a única forma da paleta com
+**trigonometria** no campo, e a escada `caixa < esfera < superfórmula ≈ superquadrática` é coerente
+com quantos transcendentais cada uma avalia por amostra. **Mas o que ele sentiu tinha um defeito
+dentro**, e ele saiu.
+
+### §130.4 — ⭐⭐ E a lente 2 achou um buraco de UI que ninguém gateava
+
+O `ph2d_i18n::tr` de uma chave desconhecida faz `leak_key`: **pinta o identificador cru e vaza a
+string**. Num painel repintado por quadro, uma chave sem rótulo é um vazamento **por quadro por
+linha**, e o artista vê `field.dim.top_n1`.
+
+⚠️ **A W128 acrescentou OITO chaves de uma vez** e nada as conferia. O gate novo
+(`every_row_of_every_shape_has_a_label`) percorre `PrimitiveKind::ALL × dims()` e prova pela
+**identidade** — `tr(k) == k` é exactamente o vazamento. ⭐ Corrida sobre as **54** formas: nenhuma
+falha hoje, e a próxima já não pode nascer muda. Mutação: apagar um rótulo acusa
+`superformula · field.dim.top_n2`.
+
+### §130.5 — ⚠️ E duas escritas da MESMA lei ganharam gate
+
+A curva tem duas implementações **de propósito**: a do produto anda em `α` (onde a feição tem
+largura constante) e a da sonda anda em `θ` (a variável do produto, para o oráculo não partilhar a
+mudança de variável que está a ser testada). *Duas escritas da mesma lei é o hazard clássico* — se
+uma mudar, a sonda passa a medir outro programa **em silêncio**. ⇒
+`the_two_writings_of_the_curve_agree`, a `1e-12`.
+
+### §130.6 — ⛔ E o meu próprio controlo de mutação leu VERDE sobre um filtro vazio
+
+Ao provar o memo, a primeira corrida usou um filtro que casou **zero** testes (`74 filtered out`) e
+imprimiu `test result: ok`. *Um filtro que casa zero lê-se igual a um gate que passou* — é a terceira
+vez que esta linha paga isso, e a cura é a mesma: **ler o `X/Y` da linha do resultado**, não a
+palavra `ok`.
+
+**Gates:** os 6 da superfórmula (um novo) · o do custo (novo, com mutação) · o dos rótulos (novo,
+com mutação) · censo · arestas · shell · fmt · clippy · LOC.

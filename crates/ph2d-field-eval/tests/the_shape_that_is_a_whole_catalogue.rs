@@ -309,3 +309,44 @@ fn the_two_curves_are_not_the_same_axis() {
         "e o PERFIL tinha de deixar de ser a elipse — desviou só {d:.4}"
     );
 }
+
+/// ⭐⭐ **AS DUAS ESCRITAS DA MESMA CURVA CONCORDAM** — o produto e o oráculo da sonda.
+///
+/// ⚠️ **Há duas implementações de `(r, r')` de propósito**: a do produto anda em `α` ([`e_l`], que é
+/// onde a feição tem largura constante) e a da referência anda em `θ` ([`r_dr_of`], que é a variável
+/// do produto e por isso não partilha a mudança de variável que está a ser testada). *Duas escritas
+/// da mesma lei é o hazard clássico*, e aqui ele é deliberado — mas então ele precisa de gate, senão
+/// o dia em que uma mudar a sonda passa a medir outro programa **em silêncio**.
+#[test]
+fn the_two_writings_of_the_curve_agree() {
+    use ph2d_field_eval::ops_gielis::{Curve, e_l_of, r_dr_of};
+    let mut pior = 0.0_f64;
+    for (m, n1, n2, n3) in [
+        (5.0_f64, 0.6_f64, 1.7_f64, 1.3_f64),
+        (1.0, 2.0, 1.0, 4.0),
+        (16.0, 0.3, 4.0, 1.0),
+        (3.0, 40.0, 2.0, 2.0),
+    ] {
+        let c = Curve {
+            symmetry: m,
+            n1,
+            n2,
+            n3,
+        };
+        for i in 0..400 {
+            let theta =
+                -std::f64::consts::PI + std::f64::consts::TAU * (f64::from(i) + 0.5) / 400.0;
+            let (r, dr) = r_dr_of(c, theta);
+            let alpha = m * (theta + std::f64::consts::PI) * 0.25;
+            let (e, l) = e_l_of(c, alpha);
+            // `E = 1/r` e `L = −r'/r`.
+            pior = pior.max((e - 1.0 / r).abs() / (1.0 / r));
+            pior = pior.max((l - (-dr / r)).abs() / (1.0 + (dr / r).abs()));
+        }
+    }
+    assert!(
+        pior < 1.0e-12,
+        "as duas escritas da curva divergem em {pior:.3e} — a referência da sonda deixou de medir o \
+         mesmo programa"
+    );
+}

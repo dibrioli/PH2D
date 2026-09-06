@@ -40,6 +40,18 @@ A alternativa é ordenar antes a integração desta pasta para o `main`.
 ⛔ *Um handoff nunca acrescenta conteúdo além dos campos do molde* — o resto vive na espec
 e no ledger.
 
+## ⭐ A obra do PINCEL DE TECIDO (alvo `blender-cloth`, 2026-09-05)
+
+| arquivo | quem lê |
+|---|---|
+| ⭐⭐ [`SPEC_cloth_brush.md`](SPEC_cloth_brush.md) | **todos** — a espec do pincel e do filtro de tecido: gesto, área, restrições, solver, colisão, undo, filtro, constantes, 15 gates propostos. ⏳ **R-pré pendente** — a janela I não abre antes do atestado no cabeçalho |
+| ⭐ [`fixtures/cloth/`](fixtures/cloth/README.md) | **todos** — dumps do oráculo sobre malhas NOSSAS, um por modo de deformação e por variante de solver, + verificador |
+| [`INBOX_blender-cloth.md`](INBOX_blender-cloth.md) | o Implementador **escreve** (append cego), nunca lê |
+| ⛔ `LEDGER_blender-cloth.md` · `VASSOURA_blender-cloth.txt` | **E e R apenas** — carregam rastros do alvo de propósito |
+
+⛔ **Denylist de caminhos desta obra** (o Passo 0 do BLOCO-I nega `Read` E `Bash` sobre eles):
+`~/Referencias/**` · `/home/enio/Documentos/Recursos/BlenderSculpt/**`.
+
 ## Os arquivos
 
 | arquivo | quem lê |

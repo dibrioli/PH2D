@@ -255,17 +255,17 @@ impl SculptStroke {
                 .collect();
         }
 
-        // As normais ACTUAIS (o Inflate lê-as) e a normal da ÁREA (a média sob o
-        // pincel — espec §4.4).
+        // As normais ACTUAIS por vértice — o Inflate lê-as uma a uma, e a NORMAL
+        // DA ÁREA sai delas dentro da lei (espec §4.2-bis).
+        //
+        // ⛔ **Ela deixou de ser calculada aqui em 2026-09-06**, e não por
+        // arrumação: a média das normais no disco INTEIRO — que era o que este
+        // sítio fazia — não é a lei. O alvo amostra num disco de **metade** do
+        // raio, pesa cada normal, e reparte os vértices em dois baldes pelo lado
+        // a que estão virados, ficando com o PRIMEIRO que seja não-vazio e de
+        // soma não-nula. *Nenhuma dessas três coisas cabe num chamador que só
+        // sabe somar.*
         let normais: Vec<V3> = mesh.normals().iter().map(|n| v3(*n)).collect();
-        mesh.verts_in_sphere(center, dab.radius, &mut self.query, &mut self.footprint);
-        let mut normal_area = [0.0f64; 3];
-        for v in &self.footprint {
-            let n = normais[*v as usize];
-            normal_area[0] += n[0];
-            normal_area[1] += n[1];
-            normal_area[2] += n[2];
-        }
         // ⭐⭐⭐ **`δ` é a PROJECÇÃO do caminho no plano do ECRÃ** (espec §4.3,
         // emenda Q12), e o eixo da vista é a direcção do olho deste dab. As duas
         // des-projecções do alvo são feitas à mesma profundidade, logo a
@@ -284,7 +284,10 @@ impl SculptStroke {
             delta,
             delta_3d: path,
             parado: norm(delta) == 0.0,
-            normal_area,
+            // ⚠️ **A direcção da SUPERFÍCIE PARA O OLHO** — o `Dab` guarda o olho
+            // a apontar para dentro da peça, e a convenção da espec §4.2-bis é a
+            // oposta (`n̂ · v̂ > 0` é o balde da frente).
+            vista: [-eye[0], -eye[1], -eye[2]],
             normais: &normais,
             pressao: f64::from(dab.pressure.clamp(0.0, 1.0)),
         };

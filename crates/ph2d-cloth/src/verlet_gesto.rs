@@ -200,12 +200,91 @@ pub struct Passo<'a> {
     pub delta_3d: V3,
     /// O cursor não se mexeu no ecrã? ⇒ sem forças neste passo.
     pub parado: bool,
-    /// A normal da ÁREA sob o pincel (espec §4.4).
-    pub normal_area: V3,
+    /// **A direcção da SUPERFÍCIE PARA O OLHO**, unitária — o que reparte os
+    /// vértices nos dois baldes da normal da área (espec §4.2-bis (4)).
+    ///
+    /// ⚠️ **É o oposto da direcção do raio que apanhou o cursor**: o `Dab` da
+    /// casa guarda o olho a apontar para DENTRO da peça, e aqui a convenção é a
+    /// da espec — `n̂ · v̂ > 0` é o balde da frente.
+    pub vista: V3,
     /// As normais ACTUAIS por vértice (o Inflate lê-as).
     pub normais: &'a [V3],
     /// Pressão em `[0,1]`.
     pub pressao: f64,
+}
+
+/// **O «Normal Radius» dos presets de tecido** (espec §4.2-bis (3), proveniência
+/// `A` — lido dos treze pincéis da biblioteca do alvo).
+///
+/// ⚠️⚠️ **A normal da área é amostrada num disco de METADE do raio do pincel.**
+/// Um port que a tire do disco inteiro tem uma direcção diferente assim que a
+/// superfície deixa de ser plana ou de estar em repouso — foi essa a diferença
+/// que deixou o `plano_empurrar_plano_local` a errar `0,944`.
+pub const RAIO_DA_NORMAL: f64 = 0.5;
+
+/// **A NORMAL DA ÁREA** (espec §4.2-bis) — um vector por passo, e a mesma
+/// grandeza que o Push usa como direcção, o referencial local usa como `ẑ` e o
+/// falloff de plano usa como normal (§4.4).
+///
+/// ⛔ **A regra de desempate NÃO é uma média:** os vértices repartem-se em dois
+/// baldes pelo sinal de `n̂ · v̂`, e a resposta é a soma normalizada do PRIMEIRO
+/// balde que esteja **não-vazio E com soma de comprimento não-nulo**, nesta
+/// ordem fixa — nunca a mistura, nunca «o balde com mais vértices». ⇒ basta UM
+/// vértice virado para a vista para que os virados ao contrário não contem.
+///
+/// ⚠️ **E o teste é não-vazio E soma não-nula, balde a balde:** se as normais do
+/// balde da frente se cancelarem, a resposta é a do balde de trás. ⛔ Não é
+/// «escolher o balde e só depois olhar para a soma».
+///
+/// Sem resposta nenhuma ⇒ **vector NULO**, e o Push desse passo é força zero,
+/// sem `NaN` e sem direcção de reserva (espec §4.2-bis (5)).
+#[must_use]
+pub fn normal_da_area(
+    posicoes: &[V3],
+    normais: &[V3],
+    dentro: &[u32],
+    cursor: V3,
+    raio: f64,
+    vista: V3,
+) -> V3 {
+    let alcance = raio * RAIO_DA_NORMAL;
+    let mut baldes = [[0.0f64; 3]; 2];
+    let mut tem = [false; 2];
+    for &v in dentro {
+        let vi = v as usize;
+        let d = dist(posicoes[vi], cursor);
+        if d > alcance {
+            continue;
+        }
+        let n = normais[vi];
+        // O peso é a mesma smoothstep da banda, sobre `1 − d/alcance`.
+        let t = (1.0 - d / alcance.max(1e-30)).clamp(0.0, 1.0);
+        let w = t * t * (3.0 - 2.0 * t);
+        let frente = usize::from(n[0] * vista[0] + n[1] * vista[1] + n[2] * vista[2] <= 0.0);
+        tem[frente] = true;
+        for c in 0..3 {
+            baldes[frente][c] += n[c] * w;
+        }
+    }
+    // ⚠️⚠️ **A metade «soma não-nula» da regra é carregada pelo [`unit`], e não
+    // por um `if` aqui — e isso é MEDIDO, não suposto.** Um `if` que a testasse
+    // sobrevive a toda mutação, porque:
+    //
+    // - o balde da FRENTE, se não estiver vazio, **nunca** tem soma nula: ela é
+    //   `Σ wᵢ n̂ᵢ` com todos os `wᵢ > 0` e todos os `n̂ᵢ · v̂ > 0`, logo o produto
+    //   dela com `v̂` é positivo e o vector não pode ser zero;
+    // - o de TRÁS pode cancelar-se (ali `n̂ · v̂ ≤ 0` admite o zero), e o [`unit`]
+    //   de um vector nulo é o vector nulo — que é exactamente o que a espec
+    //   §4.2-bis (5) manda devolver.
+    //
+    // *Uma linha que nenhuma mutação mata é redundante ou falta-lhe um gate; esta
+    // era redundante, e a prova está no gate `sem_balde_valido_a_normal_da_area_e_nula`.*
+    for b in 0..2 {
+        if tem[b] {
+            return unit(baldes[b]);
+        }
+    }
+    [0.0; 3]
 }
 
 /// **O pincel de tecido de UM traço**: a sessão, o centro da área e a simulação.
@@ -438,7 +517,14 @@ impl PincelTecido {
         let alpha = self.pincel.forca * self.pincel.forca;
         let flip = self.pincel.flip;
         let pressao = passo.pressao.clamp(0.0, 1.0);
-        let n_area = unit(passo.normal_area);
+        let n_area = normal_da_area(
+            posicoes,
+            passo.normais,
+            &self.dentro,
+            cursor,
+            r,
+            passo.vista,
+        );
         // O referencial local do traço (espec §4.4).
         let x_hat = unit(cruz(n_area, delta_u));
         // ⛔ **O guarda de «passo sem movimento» vale para os OITO modos** (espec

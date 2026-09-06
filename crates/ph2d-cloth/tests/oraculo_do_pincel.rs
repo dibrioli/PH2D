@@ -341,7 +341,8 @@ fn aneis(n: usize, faces: &[Vec<u32>]) -> Vec<Vec<u32>> {
     a
 }
 
-/// **O EIXO DA VISTA de um corpus de fixtures** (espec §4.3, emenda Q12).
+/// **A DIRECÇÃO DA SUPERFÍCIE PARA O OLHO** de um corpus de fixtures (espec §4.3
+/// e §4.2-bis).
 ///
 /// ⚠️ **Ele NÃO está no cabeçalho das fixtures** e é diferente nos dois corpora:
 /// no plano a folha vive em `z = 0` e a vista é ao longo de `z` — a projecção é
@@ -352,7 +353,10 @@ fn aneis(n: usize, faces: &[Vec<u32>]) -> Vec<Vec<u32>> {
 /// esfera, apesar de os pontos estarem a profundidades diferentes.
 fn eixo_da_vista(sup: &str) -> V3 {
     if sup.starts_with("esfera") {
-        [0.0, 1.0, 0.0]
+        // O caminho pousa em `y = −√(1−x²)`, logo o olho está do lado `−y`.
+        // ⚠️ A PROJECÇÃO do `δ` não distingue o sinal; quem o distingue é o
+        // desempate dos dois baldes da normal da área (§4.2-bis).
+        [0.0, -1.0, 0.0]
     } else {
         [0.0, 0.0, 1.0]
     }
@@ -503,21 +507,12 @@ fn correr_posicoes(nome: &str) -> Vec<V3> {
         let delta = projecta(d3, eixo_da_vista(&sup));
         let parado = k == 0 || dist(delta, [0.0; 3]) == 0.0;
         let nrm = normais(&pos, &fs);
-        // A normal da ÁREA: a média das normais sob o pincel (espec §4.4).
-        let mut na = [0.0f64; 3];
-        for (v, p) in pos.iter().enumerate() {
-            if dist(*p, cursor) < pincel.raio {
-                for c in 0..3 {
-                    na[c] += nrm[v][c];
-                }
-            }
-        }
         let passo = Passo {
             cursor,
             delta,
             delta_3d: d3,
             parado,
-            normal_area: na,
+            vista: eixo_da_vista(&sup),
             normais: &nrm,
             pressao: 1.0,
         };
@@ -610,7 +605,7 @@ fn sonda_do_perfil() {
             delta,
             delta_3d: d3,
             parado: k == 0,
-            normal_area: [0.0, 0.0, 1.0],
+            vista: [0.0, 0.0, 1.0],
             normais: &nrm,
             pressao: 1.0,
         };
@@ -813,20 +808,12 @@ fn sonda_passo_a_passo() {
         };
         let delta = projecta(d3, eixo_da_vista(&sup));
         let nrm = normais(&pos, &fs);
-        let mut na = [0.0f64; 3];
-        for (v, p) in pos.iter().enumerate() {
-            if dist(*p, cursor) < r {
-                for c in 0..3 {
-                    na[c] += nrm[v][c];
-                }
-            }
-        }
         let passo = Passo {
             cursor,
             delta,
             delta_3d: d3,
             parado: k == 0,
-            normal_area: na,
+            vista: eixo_da_vista(&sup),
             normais: &nrm,
             pressao: 1.0,
         };
@@ -1089,9 +1076,9 @@ const VERDE_N: usize = 29;
 /// fora da folga e reprova aqui.
 const ABERTOS: [(&str, f64); ABERTO_N] = [
     ("esfera_agarrar_radial_dinamica", 0.196),
-    ("esfera_apertar_linha_radial_dinamica", 0.576),
+    ("esfera_apertar_linha_radial_dinamica", 0.673),
     ("esfera_apertar_ponto_radial_dinamica", 0.542),
-    ("esfera_empurrar_radial_dinamica", 0.303),
+    ("esfera_empurrar_radial_dinamica", 0.323),
     ("esfera_expandir_radial_dinamica", 0.557),
     ("esfera_gancho_radial_dinamica", 0.245),
     ("esfera_inflar_radial_dinamica", 0.378),
@@ -1105,13 +1092,13 @@ const ABERTOS: [(&str, f64); ABERTO_N] = [
     ("plano_arrastar_radial_dinamica", 0.181),
     ("plano_arrastar_radial_global", 0.175),
     ("plano_arrastar_radial_global_origem", 0.301),
-    ("plano_empurrar_plano_local", 0.944),
-    ("plano_empurrar_radial_local", 0.329),
+    ("plano_empurrar_plano_local", 0.215),
+    ("plano_empurrar_radial_local", 0.214),
     // ⚠️ Os DOIS traços por passo que o especificador entregou em 06/09 para o
     // Q12. Os dois divergem a partir do passo 3, e no empurrar o PICO está
     // noutro sítio (`0,13R` contra `0,40R` do oráculo) — a mesma assinatura
     // que o Snake Hook tinha antes do Q9.
-    ("plano_empurrar_radial_local_origem", 0.326),
+    ("plano_empurrar_radial_local_origem", 0.214),
     ("plano_inflar_radial_local_origem", 0.252),
     ("plano_expandir_radial_local", 0.192),
     ("plano_expandir_radial_local_1passo", 0.560),
@@ -1207,7 +1194,7 @@ fn a_lista_do_local_vem_em_duplicado() {
             delta: [0.0; 3],
             delta_3d: [0.0; 3],
             parado: true,
-            normal_area: [0.0, 0.0, 1.0],
+            vista: [0.0, 0.0, 1.0],
             normais: &normais,
             pressao: 1.0,
         };
@@ -1309,20 +1296,12 @@ fn o_centro_do_snake_hook_esta_um_passo_atrasado() {
         ];
         let delta = projecta(d3, eixo_da_vista(&sup));
         let nrm = normais(&pos, &fs);
-        let mut na = [0.0f64; 3];
-        for (v, p) in pos.iter().enumerate() {
-            if dist(*p, cursor) < r {
-                for c in 0..3 {
-                    na[c] += nrm[v][c];
-                }
-            }
-        }
         let passo = Passo {
             cursor,
             delta,
             delta_3d: d3,
             parado: k == 0,
-            normal_area: na,
+            vista: eixo_da_vista(&sup),
             normais: &nrm,
             pressao: 1.0,
         };
@@ -1468,7 +1447,6 @@ fn correr_por_passo(nome: &str) -> (Vec<V3>, Vec<Vec<u32>>, Vec<Vec<V3>>) {
     let an = aneis(rest.len(), &fs);
     let anel = |v: u32| an[v as usize].clone();
     let pincel = t.pincel();
-    let r = pincel.raio;
     let c0 = pp.caminho[0];
     let mut pos = rest.clone();
     let mut tecido = PincelTecido::pen_down(pincel, &pos, c0);
@@ -1487,20 +1465,12 @@ fn correr_por_passo(nome: &str) -> (Vec<V3>, Vec<Vec<u32>>, Vec<Vec<V3>>) {
         };
         let delta = projecta(d3, eixo_da_vista(&sup));
         let nrm = normais(&pos, &fs);
-        let mut na = [0.0f64; 3];
-        for (v, p) in pos.iter().enumerate() {
-            if dist(*p, cursor) < r {
-                for c in 0..3 {
-                    na[c] += nrm[v][c];
-                }
-            }
-        }
         let passo = Passo {
             cursor,
             delta,
             delta_3d: d3,
             parado: k == 0,
-            normal_area: na,
+            vista: eixo_da_vista(&sup),
             normais: &nrm,
             pressao: 1.0,
         };

@@ -454,3 +454,32 @@ o agrupar (faces invertidas · compressão do par mais apertado) foram medidas e
 - **Q12.3 (INSTRUMENTO, prioridade baixa)** — os dumps POR PASSO do Q7/Q10 para **dois** traços:
   `plano_empurrar_radial_local` e `plano_inflar_radial_local`. Sem eles só vejo o estado final, e foi
   o dump por passo que localizou o aperto num vértice.
+
+## Q13 — a projecção do Q12.2 CONFIRMADA nos dados, e a minha implementação dela REFUTADA (2026-09-06)
+
+⭐⭐ **O número bate exactamente.** Medi, no caminho do `esfera_arrastar_radial_dinamica`, o ângulo
+entre a diferença 3D de dois pontos consecutivos e a projecção dela no plano `xz`: **máximo
+`15,83°`**, que é o número que o Q12.2 devolveu, e desvio acumulado descartado `0,09138`. ⇒ *a vista
+destas fixtures é ao longo de `y`, e o plano do ecrã é o `xz`.* Nas fixtures de plano o caminho tem
+`z ≡ 0` e a projecção é um no-op, que é a degenerescência que a §4.6 nomeia.
+
+⛔ **Mas a minha implementação dela está REFUTADA**: projectar a diferença 3D no plano perpendicular
+à normal do pen-down, em todos os modos menos o arrastar, **piora** — `agarrar 0,265 → 0,605`,
+`gancho 0,351 → 0,663`, `apertar_linha 0,588 → 0,665`, e os outros quatro inalterados (não lêem a
+direcção do delta).
+
+⚠️ **E a §4.3 diz por quê, relendo-a com o resultado na mão:** o delta não é *«a diferença 3D
+projectada»* — é *«o ponto do cursor DES-PROJECTADO à profundidade da localização original, menos o
+ponto anterior»*. As duas coisas coincidem numa vista ortográfica e **não** numa perspectiva: a
+des-projecção a profundidade fixa escala com a profundidade.
+
+### O pedido
+
+- **Q13.1** — as fixtures não carregam nem a vista nem o caminho em coordenadas de ECRÃ; só o ponto
+  re-apanhado na superfície. Sem uma das duas, o delta dos sete modos não é reconstruível do lado de
+  cá. Pode acrescentar às fixtures de ESFERA **o caminho do cursor em ecrã** (ou a matriz da vista, o
+  que for mais fácil de gravar), nem que seja em duas delas?
+- **Q13.2** — a projecção é **ortográfica ou em perspectiva** na corrida que gravou as fixtures? Se
+  for ortográfica, a minha refutação acima é um defeito da minha aproximação da VISTA (usei a normal
+  do pen-down) e não da ideia; se for perspectiva, nenhuma aproximação da vista basta e o Q13.1 é
+  obrigatório.

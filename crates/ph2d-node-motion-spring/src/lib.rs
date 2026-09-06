@@ -36,6 +36,7 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod channel;
 mod kernel;
+pub mod law;
 use channel::{channel_get, channel_set, falloff_at, ids_of, inv_mass_at};
 use std::collections::BTreeMap;
 
@@ -45,6 +46,10 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 const MAX_DT: f32 = 0.1;
 /// Stability bound for the adaptive sub-step: `sub_dt² · tension < STABLE`.
 const STABLE: f32 = 0.05;
+/// ⚠️ **O limite do ATRITO, que é outro** — o Euler semi-implícito é estável enquanto
+/// `friction · sub_dt < 2`; com margem, `1,0`. **É um recurso do INTEGRADOR**, não um gosto:
+/// acima dele a velocidade troca de sinal a cada sub-passo e cresce.
+const FRICTION_STABLE: f32 = 1.0;
 /// Hard cap on sub-steps per tick — at the UI's max tension (60) and MAX_DT the
 /// adaptive count is 4, so 64 only guards absurd hand-authored overrides.
 const MAX_STEPS: usize = 64;
@@ -90,6 +95,21 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "friction",
             default: 1.5,
         },
+        // ⭐⭐⭐ **OS TRÊS DO CICLO 2, APENDADOS** (doc 105 W1). ⚠️ O default de `mode` é
+        // `Physics`, então todo grafo já autorado lê exactamente o que lia — e o gate
+        // `the_physics_mode_is_byte_identical` afirma-o.
+        ParamSpec {
+            name: "mode",
+            default: law::MODE_PHYSICS,
+        },
+        ParamSpec {
+            name: "duration",
+            default: 0.5,
+        },
+        ParamSpec {
+            name: "bounce",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -103,8 +123,16 @@ impl NodeOp for MotionSpring {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let channel = ctx.param("channel").round() as i32;
-        let tension = ctx.param("tension").max(0.1);
-        let friction = ctx.param("friction").max(0.05);
+        // ⭐ A porta ÚNICA da conversão — a mesma que o WGSL do device faz, termo a termo.
+        let (tension, friction) = law::physics_of(
+            ctx.param("mode"),
+            ctx.param("tension"),
+            ctx.param("friction"),
+            ctx.param("duration"),
+            ctx.param("bounce"),
+        );
+        let tension = tension.max(0.1);
+        let friction = friction.max(0.05);
         let playhead = ctx.playhead() as f32;
         let out = {
             let input = ctx.input(0);
@@ -240,7 +268,15 @@ fn solve(
         };
         let dt = (playhead - t_prev).clamp(0.0, MAX_DT);
         // Adaptive sub-step from the stability limit (reference parity).
-        let ideal = (STABLE / tension).sqrt();
+        // ⚠️⚠️ **O SUB-PASSO GUARDA AS DUAS FORÇAS, e até 2026-09-06 guardava só uma.**
+        // O limite `sub_dt²·tension < STABLE` é o da RIGIDEZ; o do ATRITO é outro — o Euler
+        // semi-implícito só é estável enquanto `friction·sub_dt < 2` (acima disso a velocidade
+        // troca de sinal e cresce). Enquanto os sliders iam até `friction 20` com `tension 0,5`
+        // o termo do atrito dava `0,33` e nunca mordia; o modo `Time` alcança pares muito mais
+        // amortecidos, e ali a mola **explodia**.
+        // ⭐ **A faixa autorada de sempre é byte-idêntica** — o gate
+        // `the_friction_bound_never_bites_in_the_authored_range` afirma-o.
+        let ideal = (STABLE / tension).sqrt().min(FRICTION_STABLE / friction);
         let steps = if dt > 0.0 {
             ((dt / ideal).ceil() as usize).clamp(1, MAX_STEPS)
         } else {
@@ -326,6 +362,15 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    // A duração é um TEMPO — o painel e o cartão põem-lhe o `s` ao lado.
+    reg.register_param_units(
+        MANIFEST.id,
+        &[ph2d_node_registry::ParamUnitDecl {
+            param: "duration",
+            unit: ph2d_node_registry::ParamUnit::Seconds,
+        }],
+    );
     Ok(())
 }
 
@@ -360,6 +405,59 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 20.0,
         step: 0.1,
         widget: ParamWidget::Slider,
+    },
+    // ⭐⭐⭐ **A MOLA EM DOIS NÚMEROS QUE SE SABE PENSAR** (ciclo 2, W1 — ver [`law`]).
+    ParamUiHint {
+        param: "mode",
+        label: "Mode",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Physics", "Time"],
+        },
+    },
+    ParamUiHint {
+        param: "duration",
+        label: "Duration",
+        min: law::MIN_DURATION,
+        max: 3.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    // ⚠️ `0` é criticamente amortecida (chega e pára). Positivo salta; negativo arrasta-se.
+    ParamUiHint {
+        param: "bounce",
+        label: "Bounce",
+        min: -law::MAX_BOUNCE,
+        max: law::MAX_BOUNCE,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+];
+
+/// ⚠️ **Cada modo mostra o SEU par, e só ele** — um controlo que o cook não lê não é pintado. É a
+/// mesma lei do `uniform` do `motion.scale`.
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    ph2d_node_registry::ParamGate {
+        param: "tension",
+        when: "mode",
+        values: &[0],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "friction",
+        when: "mode",
+        values: &[0],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "duration",
+        when: "mode",
+        values: &[1],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "bounce",
+        when: "mode",
+        values: &[1],
     },
 ];
 

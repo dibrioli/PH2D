@@ -36,7 +36,12 @@
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::port::Dim;
 
-const SP_PARAMS: &[&str] = &["channel", "tension", "friction"];
+const SP_PARAMS: &[&str] = &[
+    "channel", "tension", "friction",
+    // ⭐ Os três do ciclo 2 (doc 105 W1) — o device faz a MESMA conversão que o
+    // [`super::law::physics_of`], termo a termo e na mesma ordem.
+    "mode", "duration", "bounce",
+];
 
 /// The falloff mask and the pin weight, bound identically by every variant.
 const SP_FALLOFF: ColumnBinding = ColumnBinding {
@@ -113,12 +118,36 @@ const SP_GATHER: ColumnBinding = ColumnBinding {
 const SP_LIB: &str = "\
     const SPRING_MAX_DT: f32 = 0.1;\n\
     const SPRING_STABLE: f32 = 0.05;\n\
+    const SPRING_FRICTION_STABLE: f32 = 1.0;\n\
+    const SPRING_TWO_PI: f32 = 6.2831855;\n\
+    const SPRING_FOUR_PI: f32 = 12.566371;\n\
+    const SPRING_MIN_DUR: f32 = 0.05;\n\
+    const SPRING_MAX_BOUNCE: f32 = 0.99;\n\
+    const SPRING_TENSION_CEIL: f32 = 20480.0;\n\
+    const SPRING_FRICTION_CEIL: f32 = 640.0;\n\
+    fn sp_physics(mode: f32, tension: f32, friction: f32, duration: f32, bounce: f32)\n\
+        -> vec2<f32> {\n\
+        if (mode < 0.5) {\n\
+            return vec2<f32>(tension, friction);\n\
+        }\n\
+        let d = max(duration, SPRING_MIN_DUR);\n\
+        let b = clamp(bounce, -SPRING_MAX_BOUNCE, SPRING_MAX_BOUNCE);\n\
+        let w = SPRING_TWO_PI / d;\n\
+        let k = w * w;\n\
+        var c = SPRING_FOUR_PI / (d * (1.0 + b));\n\
+        if (b >= 0.0) {\n\
+            c = SPRING_FOUR_PI * (1.0 - b) / d;\n\
+        }\n\
+        return vec2<f32>(min(k, SPRING_TENSION_CEIL), min(c, SPRING_FRICTION_CEIL));\n\
+    }\n\
     fn spring_finite(x: f32) -> bool {\n\
         return abs(x) <= 3.4028235e38;\n\
     }\n\
     fn sp_solve(i: u32, goal: f32) -> vec3<f32> {\n\
-        let tension = max(params.tension, 0.1);\n\
-        let friction = max(params.friction, 0.05);\n\
+        let sp_kc = sp_physics(params.mode, params.tension, params.friction,\n\
+            params.duration, params.bounce);\n\
+        let tension = max(sp_kc.x, 0.1);\n\
+        let friction = max(sp_kc.y, 0.05);\n\
         // Seeded AT the target (no snap); only what the state knows then steps.\n\
         var sp_x = goal;\n\
         var sp_v = 0.0;\n\
@@ -130,7 +159,8 @@ const SP_LIB: &str = "\
         \x20       select(params.playhead, read_state_sim_t(0u), HAS_state_sim_t);\n\
             let dt = clamp(params.playhead - t_prev, 0.0, SPRING_MAX_DT);\n\
             // Adaptive sub-step from the stability limit (reference parity).\n\
-            let ideal = sqrt(SPRING_STABLE / tension);\n\
+            let ideal = min(sqrt(SPRING_STABLE / tension),\n\
+                SPRING_FRICTION_STABLE / friction);\n\
             var steps = 1u;\n\
             if (dt > 0.0) {\n\
                 steps = u32(clamp(ceil(dt / ideal), 1.0, 64.0));\n\

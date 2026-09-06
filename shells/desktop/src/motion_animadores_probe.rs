@@ -26,7 +26,7 @@ pub(crate) const GRUPO: [&str; 8] = [
 #[ignore = "sonda de auditoria — corra à mão"]
 fn audit_the_animator_group() {
     let base = MotionState::new();
-    eprintln!("\n  nó                   | params | no cartão | device | portas (in→out) | efeito");
+    eprintln!("\n  nó                   | params | no cartão | device | portas (in->out) | efeito");
     eprintln!("  ---------------------|--------|-----------|--------|-----------------|--------");
     for nome in GRUPO {
         let mut m = MotionState::new();
@@ -62,7 +62,7 @@ fn audit_the_animator_group() {
             m.registry.gpu_kernel(tid).is_some()
         };
         eprintln!(
-            "  {nome:<21} | {:>6} | {no_cartao:>9} | {:^6} | {}→{:<13} | {:?}",
+            "  {nome:<21} | {:>6} | {no_cartao:>9} | {:^6} | {}->{:<13} | {:?}",
             man.params.len(),
             if device { "sim" } else { "NAO" },
             man.inputs.len(),
@@ -70,6 +70,60 @@ fn audit_the_animator_group() {
             man.effect,
         );
         let _ = &mut m;
+    }
+    eprintln!();
+}
+
+/// **OS PARAMS DE CADA NÓ DO GRUPO, um a um** — o que a auditoria compara contra as
+/// referências. ⚠️ Sem esta lista, «falta X» é um palpite.
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture what_each_animator_offers
+/// ```
+#[test]
+#[ignore = "sonda de auditoria — corra à mão"]
+fn what_each_animator_offers() {
+    let m = MotionState::new();
+    for nome in GRUPO {
+        let tid = ph2d_nodegraph::node::NodeTypeId::of(nome);
+        let man = {
+            use ph2d_nodegraph::cook::OpResolver;
+            let Some(op) = m.registry.resolve(tid) else {
+                continue;
+            };
+            op.manifest()
+        };
+        eprintln!("\n  === {nome} ===");
+        eprintln!(
+            "  portas: [{}] -> [{}]",
+            man.inputs
+                .iter()
+                .map(|p| p.name)
+                .collect::<Vec<_>>()
+                .join(", "),
+            man.outputs
+                .iter()
+                .map(|p| p.name)
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        let hints = m.registry.param_ui(tid).unwrap_or(&[]);
+        for spec in man.params {
+            let h = hints.iter().find(|h| h.param == spec.name);
+            let w = h.map_or("(sem hint)".to_string(), |h| match h.widget {
+                ph2d_node_registry::ParamWidget::Enum { labels } => {
+                    format!("Enum[{}]", labels.join("|"))
+                }
+                outro => format!("{outro:?}"),
+            });
+            eprintln!(
+                "    {:<16} default {:>8.3}  {}  {}",
+                spec.name,
+                spec.default,
+                h.map_or("—".to_string(), |h| format!("{}..{}", h.min, h.max)),
+                w
+            );
+        }
     }
     eprintln!();
 }

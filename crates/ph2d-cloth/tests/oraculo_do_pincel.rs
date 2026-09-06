@@ -875,3 +875,309 @@ fn sonda_da_paridade_com_o_oraculo() {
         );
     }
 }
+
+/// A barra da PARIDADE (espec §14 gate 15) — o pior erro por vértice de um
+/// traço, em unidades do deslocamento máximo do oráculo.
+///
+/// ⚠️ **Ela sai de um VALE MEDIDO, não de conforto:** com a lei de 06/09 os 53
+/// traços partem-se em `28` com `≤ 0,095` e `25` com `≥ 0,175`, e não há nada
+/// entre os dois. `0,13` é o meio desse vazio.
+///
+/// ⚠️⚠️ **E não se aperta em direcção ao grupo, porque a ORDEM de resolução
+/// custa mais do que o resíduo:** inverter a ordem das restrições — que é uma
+/// escolha nossa, e Gauss-Seidel não comuta — move a nossa resposta em média
+/// `0,0985` e até `0,256` nos mesmos 28 traços. *Estamos a bater o oráculo com
+/// folga MENOR do que o ruído de ordenação, o que só é possível se a nossa
+/// ordem for a dele; uma barra colada em `0,10` mediria a ordem, não a lei.*
+const BARRA_PARIDADE: f64 = 0.13;
+
+/// Os traços que a lei REPRODUZ (espec §14 gate 15).
+const PARIDADE: [&str; VERDE_N] = [
+    "esfera_arrastar_radial_dinamica",
+    "plano_agarrar_radial_local",
+    "plano_agarrar_radial_local_1passo",
+    "plano_agarrar_radial_local_24passos",
+    "plano_agarrar_radial_local_2passos",
+    "plano_agarrar_radial_local_2passos_origem",
+    "plano_agarrar_radial_local_amort06",
+    "plano_agarrar_radial_local_preset",
+    "plano_apertar_linha_radial_local_1passo",
+    "plano_apertar_ponto_radial_local_1passo",
+    "plano_arrastar_radial_dinamica_preset",
+    "plano_arrastar_radial_local",
+    "plano_arrastar_radial_local_1passo",
+    "plano_arrastar_radial_local_2passos",
+    "plano_arrastar_radial_local_amort05",
+    "plano_arrastar_radial_local_amort1",
+    "plano_arrastar_radial_local_forca05",
+    "plano_arrastar_radial_local_forca05_1passo",
+    "plano_arrastar_radial_local_massa2",
+    "plano_arrastar_radial_local_massa2_1passo",
+    "plano_arrastar_radial_local_origem",
+    "plano_arrastar_radial_local_pino",
+    "plano_arrastar_radial_local_plast05",
+    "plano_empurrar_radial_local_1passo",
+    "plano_gancho_radial_local",
+    "plano_gancho_radial_local_24passos",
+    "plano_gancho_radial_local_amort06",
+    "plano_inflar_radial_local_1passo",
+];
+const VERDE_N: usize = 28;
+
+/// Os traços AINDA por explicar, com o valor MEDIDO em 2026-09-06 ao lado.
+///
+/// ⚠️ **A lista tem censo de obsolescência nas DUAS pontas** (CLAUDE.md §5.0:
+/// *uma catraca sem censo não desce, vira licença*): um traço daqui que passe a
+/// bater é acusado — tem de migrar para [`PARIDADE`] —, e um que se degrade
+/// acima da folga também. ⭐ **É o segundo ramo que fecha o gate 17:** um port
+/// que dobre a relaxação em TODA a parte passaria o gate 16 e mandaria o
+/// `plano_arrastar_radial_global` de `0,301` para `0,583` (medido), o que cai
+/// fora da folga e reprova aqui.
+const ABERTOS: [(&str, f64); ABERTO_N] = [
+    ("esfera_agarrar_radial_dinamica", 0.265),
+    ("esfera_apertar_linha_radial_dinamica", 0.588),
+    ("esfera_apertar_ponto_radial_dinamica", 0.542),
+    ("esfera_empurrar_radial_dinamica", 0.303),
+    ("esfera_expandir_radial_dinamica", 0.557),
+    ("esfera_gancho_radial_dinamica", 0.351),
+    ("esfera_inflar_radial_dinamica", 0.378),
+    ("plano_agarrar_plano_local", 0.180),
+    ("plano_apertar_linha_radial_local", 1.024),
+    ("plano_apertar_linha_radial_local_origem", 0.263),
+    ("plano_apertar_ponto_plano_local", 0.613),
+    ("plano_apertar_ponto_radial_local", 1.380),
+    ("plano_apertar_ponto_radial_local_origem", 1.079),
+    ("plano_arrastar_plano_local", 0.233),
+    ("plano_arrastar_radial_dinamica", 0.181),
+    ("plano_arrastar_radial_global", 0.175),
+    ("plano_arrastar_radial_global_origem", 0.301),
+    ("plano_empurrar_plano_local", 0.944),
+    ("plano_empurrar_radial_local", 0.329),
+    ("plano_expandir_radial_local", 0.192),
+    ("plano_expandir_radial_local_1passo", 0.560),
+    ("plano_gancho_radial_local_1passo", 0.416),
+    ("plano_gancho_radial_local_2passos", 0.388),
+    ("plano_gancho_radial_local_2passos_origem", 0.420),
+    ("plano_inflar_radial_local", 0.253),
+];
+const ABERTO_N: usize = 25;
+
+/// A folga de regressão sobre o valor medido de um traço ABERTO.
+const FOLGA_ABERTO: f64 = 1.25;
+
+/// **GATE — a paridade com o oráculo não regride** (espec §14 gates 15 e 17).
+#[test]
+fn a_paridade_com_o_oraculo_nao_regride() {
+    // Censo: as duas listas juntas TÊM de ser o corpus inteiro. Sem isto, uma
+    // fixture nova entra sem régua nenhuma e a suíte fica verde sobre ela.
+    let mut nomeados: Vec<String> = PARIDADE.iter().map(|s| (*s).to_string()).collect();
+    nomeados.extend(ABERTOS.iter().map(|(s, _)| (*s).to_string()));
+    nomeados.sort();
+    let mut corpus = todas();
+    corpus.sort();
+    assert_eq!(
+        nomeados, corpus,
+        "as listas do gate nao descrevem o corpus -- ha fixture sem regua ou nome morto"
+    );
+
+    for nome in PARIDADE {
+        let l = correr(nome);
+        assert!(
+            l.movidos_nos > 100 && l.movidos_oraculo > 100,
+            "{nome}: movidos {} / {} -- vacuo",
+            l.movidos_nos,
+            l.movidos_oraculo
+        );
+        let e = l.erro_max / l.max_oraculo.max(1e-12);
+        assert!(
+            e <= BARRA_PARIDADE,
+            "{nome}: erro relativo {e:.3} passa a barra {BARRA_PARIDADE} \
+             (max nosso {:.4} / oraculo {:.4}; rms {:.4})",
+            l.max_nos,
+            l.max_oraculo,
+            l.erro_rms
+        );
+    }
+
+    for (nome, medido) in ABERTOS {
+        let l = correr(nome);
+        let e = l.erro_max / l.max_oraculo.max(1e-12);
+        assert!(
+            e > BARRA_PARIDADE,
+            "{nome}: erro relativo {e:.3} JA' BATE a barra {BARRA_PARIDADE} -- \
+             este traco deixou de estar aberto e tem de migrar para PARIDADE"
+        );
+        assert!(
+            e <= medido * FOLGA_ABERTO,
+            "{nome}: erro relativo {e:.3} regrediu contra o medido {medido:.3} \
+             (folga {FOLGA_ABERTO}x)"
+        );
+    }
+}
+
+/// **GATE — a lista de restrições do *Local* vem em DUPLICADO** (espec §14
+/// gate 16, §5.2-bis).
+///
+/// Duas réguas, e a segunda é a que importa: a contagem de restrições é a
+/// estrutura, e a **contagem de VÉRTICES MOVIDOS num traço de âncora de UM
+/// passo simulado** é o comportamento — um inteiro, dos dois lados, sem
+/// acumulação possível. ⚠️ *Numa relaxação sequencial o alcance por passo É o
+/// número de passagens*, então essa contagem mede directamente quantas cópias
+/// a lista tem: com uma só ela lê `869` contra `1324` do oráculo.
+///
+/// ⚠️ **A lei geral é `n + 1` cópias para `n` passagens de simetria** (§5.2-bis);
+/// as fixtures correm sem simetria (`n = 1`), logo aqui o factor é `2`. ⛔ Não
+/// escreva `2` como se fosse a lei.
+#[test]
+fn a_lista_do_local_vem_em_duplicado() {
+    let t = traco("plano_arrastar_radial_local");
+    let sup = t.s("superficie").to_string();
+    let rest = repouso(&sup);
+    let fs = faces(&sup, &rest);
+    let an = aneis(rest.len(), &fs);
+    let anel = |v: u32| an[v as usize].clone();
+    let normais = vec![[0.0, 0.0, 1.0]; rest.len()];
+    let c0 = t.caminho[0];
+
+    let lista_de = |area: Area| -> Vec<ph2d_cloth::verlet::Restricao> {
+        let pincel = Pincel { area, ..t.pincel() };
+        let mut tecido = PincelTecido::pen_down(pincel, &rest, c0);
+        let passo = Passo {
+            cursor: c0,
+            delta: [0.0; 3],
+            parado: true,
+            normal_area: [0.0, 0.0, 1.0],
+            normais: &normais,
+            pressao: 1.0,
+        };
+        tecido.passo(&rest, &anel, &passo);
+        tecido.sim.restricoes.clone()
+    };
+    // ⭐ A régua da ESTRUTURA não precisa de botão de controlo, e é mais forte
+    // que uma contagem: a espec diz «duas cópias IDÊNTICAS, na ordem *a lista
+    // inteira, e a seguir a lista inteira outra vez*» — então a lista tem de
+    // partir-se ao meio em duas metades iguais, restrição a restrição.
+    let lista = lista_de(Area::Local);
+    assert!(lista.len() > 1000, "vacuo: {} restricoes", lista.len());
+    assert_eq!(lista.len() % 2, 0, "lista impar: {}", lista.len());
+    let meio = lista.len() / 2;
+    for i in 0..meio {
+        let (x, y) = (lista[i], lista[i + meio]);
+        assert!(
+            x.a == y.a && x.b == y.b && x.l.to_bits() == y.l.to_bits() && x.s.to_bits() == y.s.to_bits(),
+            "restricao {i} difere da copia {}: {x:?} contra {y:?} -- a lista do Local \
+             tem de ser a mesma lista duas vezes, na mesma ordem",
+            i + meio
+        );
+    }
+    // E o outro lado da lei: fora do *Local* a lista vem UMA vez.
+    for area in [Area::Global, Area::Dinamica] {
+        let p = Pincel { area, ..t.pincel() };
+        assert_eq!(
+            p.construcoes(),
+            1,
+            "{area:?} nao pode construir mais de uma vez (espec §14 gate 17)"
+        );
+    }
+    let p = Pincel { area: Area::Local, passagens: 3, ..t.pincel() };
+    assert_eq!(p.construcoes(), 4, "a lei geral e' n+1 copias para n passagens");
+
+    // A régua de COMPORTAMENTO: os inteiros dos dois lados.
+    for nome in [
+        "plano_agarrar_radial_local_1passo",
+        "plano_expandir_radial_local_1passo",
+        "plano_arrastar_radial_local_2passos",
+    ] {
+        let l = correr(nome);
+        let dif = (l.movidos_nos as f64 - l.movidos_oraculo as f64).abs()
+            / f64::from(u32::try_from(l.movidos_oraculo).unwrap_or(1));
+        assert!(
+            dif <= 0.02,
+            "{nome}: movemos {} vertices contra {} do oraculo ({:.1} %) -- com UMA \
+             copia da lista esta conta le 869 contra 1324",
+            l.movidos_nos,
+            l.movidos_oraculo,
+            dif * 100.0
+        );
+    }
+}
+
+/// **GATE — o centro do Snake Hook está UM PASSO atrasado** (espec §14 gate 18,
+/// §4.3, §10.4).
+///
+/// No 1.º passo simulado o vértice mais deslocado é o do **pen-down**, e não o
+/// que está sob o cursor: o gancho arrasta o que agarrou em vez de apanhar
+/// material novo. ⚠️ **É defeito de LUGAR e toda régua de amplitude é cega a
+/// ele** — com o centro no cursor a amplitude fica certa e o pico salta para
+/// `0,05R` do cursor, contra `0,86R` do oráculo.
+#[test]
+fn o_centro_do_snake_hook_esta_um_passo_atrasado() {
+    let nome = "plano_gancho_radial_local_2passos_origem";
+    let pp = por_passo(nome);
+    let t = traco(nome);
+    let sup = t.s("superficie").to_string();
+    let rest = repouso(&sup);
+    let fs = faces(&sup, &rest);
+    let an = aneis(rest.len(), &fs);
+    let anel = |v: u32| an[v as usize].clone();
+    let pincel = t.pincel();
+    let r = pincel.raio;
+    let c0 = pp.caminho[0];
+    let mut pos = rest.clone();
+    let mut tecido = PincelTecido::pen_down(pincel, &pos, c0);
+    let mut argmax = (0usize, 0.0f64);
+    let mut cursor = c0;
+    for k in 0..2 {
+        cursor = pp.caminho[k];
+        let prev = pp.caminho[k.saturating_sub(1)];
+        let delta = [
+            cursor[0] - prev[0],
+            cursor[1] - prev[1],
+            cursor[2] - prev[2],
+        ];
+        let nrm = normais(&pos, &fs);
+        let mut na = [0.0f64; 3];
+        for (v, p) in pos.iter().enumerate() {
+            if dist(*p, cursor) < r {
+                for c in 0..3 {
+                    na[c] += nrm[v][c];
+                }
+            }
+        }
+        let passo = Passo {
+            cursor,
+            delta,
+            parado: k == 0,
+            normal_area: na,
+            normais: &nrm,
+            pressao: 1.0,
+        };
+        if tecido.passo(&pos, &anel, &passo) {
+            for (v, act) in tecido.sim.activo.iter().enumerate() {
+                if *act {
+                    pos[v] = tecido.sim.x[v];
+                }
+            }
+        }
+    }
+    for (v, p) in pos.iter().enumerate() {
+        let u = dist(rest[v], *p);
+        if u > argmax.1 {
+            argmax = (v, u);
+        }
+    }
+    // Anti-vácuo: tem de ter deformado.
+    assert!(argmax.1 > 0.05, "o traco nao deformou (max {:.4})", argmax.1);
+    let ao_cursor = dist(rest[argmax.0], cursor) / r;
+    let ao_pendown = dist(rest[argmax.0], c0) / r;
+    assert!(
+        ao_pendown < 0.15,
+        "o pico esta a {ao_pendown:.2}R do pen-down -- no 1.º passo simulado ele TEM \
+         de ser o vertice do pen-down (espec §4.3)"
+    );
+    assert!(
+        ao_cursor > 0.5,
+        "o pico esta a {ao_cursor:.2}R do cursor -- com o centro da queda NO cursor \
+         esta conta le ~0,05R, e o oraculo le 0,86R"
+    );
+}

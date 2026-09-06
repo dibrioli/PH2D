@@ -141,6 +141,48 @@ impl Sculpt3dScene {
         );
     }
 
+    /// **Um passo de quem SIMULA com o cursor RE-APANHADO na superfície** — os
+    /// modos de força do pincel de tecido pela lei da referência
+    /// (`ph2d_sculpt3d::cloth_repica`).
+    ///
+    /// ⚠️ **Por que não é o [`Self::hook_step`]:** ele anda no plano de
+    /// profundidade do pen-down, e numa esfera isso LEVANTA o centro da
+    /// superfície (medido na auditoria de 05/09: a região ia de 363 a 0 vértices
+    /// ao atravessar a peça). A referência re-pica os modos de força a cada
+    /// passo (espec §4.3), e é o acerto de superfície que dá o centro e a
+    /// direcção do gesto em espaço de objecto. Sem acerto, o passo **não
+    /// acontece** (espec §11) — um cursor fora da malha não empurra pano nenhum.
+    ///
+    /// Os DOIS pontos são re-picados (não um contra o anterior guardado): dois
+    /// acertos absolutos, como no `hook_step`, para o erro não acumular.
+    pub(super) fn cloth_step(&mut self, from: [f32; 2], to: [f32; 2]) {
+        let (Some(h0), Some(h1)) = (
+            self.pick_active(from[0], from[1]),
+            self.pick_active(to[0], to[1]),
+        ) else {
+            return;
+        };
+        let center = h1.point;
+        let step = [
+            h1.point[0] - h0.point[0],
+            h1.point[1] - h0.point[1],
+            h1.point[2] - h0.point[2],
+        ];
+        let brush = self.armed_brush(center);
+        let eye = self.dir_to_local(self.ray_at(to[0], to[1]).dir());
+        self.stroke.dab(
+            self.objects[self.active].stack.mesh_mut(),
+            &brush,
+            &Dab::hooking(center, brush.radius, eye, step),
+            self.symmetry,
+        );
+        Self::mesh_changed(
+            &mut self.objects[self.active].dirty,
+            &mut self.edits,
+            self.stroke.last_gpu_dirty(),
+        );
+    }
+
     /// **O ângulo varrido em torno de `center`**, do pen-down até aqui.
     ///
     /// `None` quando o gesto ainda não começou: dentro da zona morta e com nada

@@ -85,6 +85,7 @@ pub use preview::{NO_PREVIEW, preview_into, preview_verts};
 pub use ref_mode::{Field, FrontFace, KernelLaw, LateralPull, PlaneReach, RefMode};
 pub use ref_profiles::VerbProfile;
 pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
+pub use stroke::cloth_repica;
 pub use stroke::{
     Dab, FILTER_DRAG_PER_PX, HC_SHAPE_DEFAULT, HC_VERTEX_DEFAULT, HC_VERTEX_MIN, SculptStroke,
     sharpen_total_for_measurement,

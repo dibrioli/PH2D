@@ -167,6 +167,9 @@ pub struct SculptStroke {
     /// partilham vértice nenhum — juntá-las numa faria o solver resolver um
     /// sistema desconexo.
     cloth: Vec<Option<stroke_cloth::ClothSession>>,
+    /// As sessões da LEI DA REFERÊNCIA (`PH2D_CLOTH_LAW=ref`), uma por cópia de
+    /// simetria — ver [`stroke_cloth_ref`]. Nascem no 1.º dab, morrem no `begin`.
+    cloth_ref: Vec<Option<stroke_cloth_ref::ClothRef>>,
     /// **A porta de ABLAÇÃO do orçamento do tecido** — só em teste, e ela existe
     /// para um gate poder afirmar que a lei do gesto **não depende** do número
     /// de sub-passos. Sem ela a propriedade não é observável de fora, e foi
@@ -256,6 +259,7 @@ impl SculptStroke {
         // barata: ela é medida uma vez por gesto. Herdá-la faria o traço novo
         // simular a região do anterior, num lugar onde o artista já não está.
         self.cloth.clear();
+        self.cloth_ref.clear();
     }
 }
 
@@ -263,6 +267,11 @@ impl SculptStroke {
 /// estado sobrevive ao evento. Ver [`stroke_cloth`].
 #[path = "stroke_cloth.rs"]
 mod stroke_cloth;
+/// A lei da REFERÊNCIA (Verlet + restrições de distância), clean-room, atrás
+/// de `PH2D_CLOTH_LAW=ref`. Ver [`stroke_cloth_ref`].
+#[path = "stroke_cloth_ref.rs"]
+mod stroke_cloth_ref;
+pub use stroke_cloth_ref::cloth_repica;
 
 /// **A ANATOMIA DE UM DAB** — a sequência que amarra os módulos acima. Ver
 /// [`dab_core`].

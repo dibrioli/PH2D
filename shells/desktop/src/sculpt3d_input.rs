@@ -371,8 +371,17 @@ impl App {
                     let spacing = ph2d_sculpt3d::min_spacing(scene.radius_px());
                     if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
                         let mut prev = scene.stroke_anchor;
+                        // ⚠️ Os modos de FORÇA da lei da referência re-picam o
+                        // cursor na superfície a cada passo (`cloth_step`); os
+                        // de âncora — e a lei VBD de omissão — andam no plano
+                        // de profundidade do pen-down, pela porta de sempre.
+                        let repica = ph2d_sculpt3d::cloth_repica();
                         for step in steps {
-                            scene.hook_step(prev, step);
+                            if repica {
+                                scene.cloth_step(prev, step);
+                            } else {
+                                scene.hook_step(prev, step);
+                            }
                             prev = step;
                         }
                         scene.stroke_anchor = steps.anchor();

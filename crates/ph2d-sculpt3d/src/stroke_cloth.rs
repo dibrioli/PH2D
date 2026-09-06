@@ -268,6 +268,12 @@ impl SculptStroke {
         dab: &Dab,
         sym: Symmetry,
     ) -> usize {
+        // ⭐ A lei da REFERÊNCIA, quando pedida — ver `stroke_cloth_ref`. O desvio
+        // é aqui, ANTES de qualquer estado desta lei ser tocado: as duas nunca
+        // correm no mesmo traço.
+        if super::stroke_cloth_ref::lei_referencia() {
+            return self.cloth_ref_dab(mesh, brush, dab, sym);
+        }
         let (signs, n) = sym.signs();
         self.moved.clear();
         for (copy, s) in signs.iter().take(n).enumerate() {

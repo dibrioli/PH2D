@@ -33,3 +33,10 @@ Arnês: `crates/ph2d-cloth/tests/oraculo_do_pincel.rs` (a lei nossa em `ph2d-clo
 - ⚠️ **Âncoras:** `gancho_1passo` dá `0,378` contra `0,489` e `agarrar_1passo` `0,098` contra `0,134`
   — a correcção da âncora parece maior do que `Δ/2`. Pergunta 5 ao E.
 - Bug meu já curado: a massa entrava duas vezes (`massa2_1passo` lia metade); hoje ao bit.
+- ⚠️⚠️ **A esfera decide a pergunta 2/4 (medido 06/09):** no `esfera_arrastar_radial_local` do oráculo
+  os vértices a `3,5R..4R` do início têm `|u|` mediana `0,0175` (máx `0,106`) e mesmo a `5,5R` (o lado
+  oposto) mediana `0,017` — **toda a esfera se desloca**, como um corpo; o `esfera_agarrar_radial_dinamica`
+  pára SECO a `3,5R` (`0` movidos além). No plano o Local pára exactamente no disco de `3,5R`. ⇒ ou o
+  `R₀` da corrida Local na esfera era maior que `0,35` (o alcance medido é `5,65R` ≈ o antípoda), ou
+  o conjunto activo do Local é a malha inteira nessa malha (folhas grandes) e o φ NÃO tem banda.
+  Pergunta 6 ao E.

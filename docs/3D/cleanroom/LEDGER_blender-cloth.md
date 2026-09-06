@@ -306,7 +306,7 @@ leitura do fonte + medição; as que mexiam na espec foram emendadas (§3.1, §2
   do arnês**. O `R₀` estava certo (`0,35`); o defeito era o CENTRO. **Corrigido:** as 8 fixtures de
   esfera foram **regeradas como área Dinâmica** (centro no cursor, que o traço fornece) — param no
   bordo da banda (`≈ 3,5 R`, zero além). A área **Local** fica medida só no PLANO (onde a origem cai
-  na superfície). Commit da errata: (ver abaixo).
+  na superfície). Commit da errata: `3d621e94b`.
 
 ## Fechamento R
 

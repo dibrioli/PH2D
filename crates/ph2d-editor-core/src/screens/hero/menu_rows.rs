@@ -438,13 +438,13 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
                 "Instantiate Linked",
                 None,
             ),
-            (ids::CTX_MENU_HIER_APPLY_TO_MASTER, "Apply to Master", None),
+            (ids::CTX_MENU_HIER_APPLY_TO_MASTER, "Apply to Prefab", None),
             (
                 ids::CTX_MENU_HIER_REVERT_TO_MASTER,
-                "Revert to Master",
+                "Revert to Prefab",
                 None,
             ),
-            (ids::CTX_MENU_HIER_DETACH, "Detach from Master", None),
+            (ids::CTX_MENU_HIER_DETACH, "Detach from Prefab", None),
             (
                 ids::CTX_MENU_HIER_REMOVE_FROM_LIBRARY,
                 "Remove from Library",

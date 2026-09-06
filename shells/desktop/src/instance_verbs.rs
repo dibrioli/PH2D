@@ -389,7 +389,7 @@ pub(crate) fn drain(
             }
             Err(VerbRefusal::InsideAnInstance | VerbRefusal::NotAnInstance) => {
                 toasts.push(Toast::warning(
-                    "Inside an instance — detach it first, or edit the master",
+                    "Inside an instance — detach it first, or edit the prefab",
                 ));
                 false
             }
@@ -455,14 +455,14 @@ pub(crate) fn drain(
                     // nó). Uma confirmação igual para os dois deixaria o artista sem saber qual
                     // clicou.
                     toasts.push(Toast::success(if verb == Verb::PlaceLinked {
-                        "Instantiated linked — its art follows the component both ways"
+                        "Instantiated linked — its art follows the prefab both ways"
                     } else {
                         "Instantiated"
                     }));
                     true
                 }
                 Err(crate::instantiate::Refusal::WouldNestInItself) => {
-                    toasts.push(Toast::warning("That would put the component inside itself"));
+                    toasts.push(Toast::warning("That would put the prefab inside itself"));
                     false
                 }
                 Err(_) => {
@@ -473,7 +473,9 @@ pub(crate) fn drain(
         }
         Verb::Detach => match detach(sim, entity) {
             Ok(n) => {
-                toasts.push(Toast::success(format!("Detached {n} piece(s) from master")));
+                toasts.push(Toast::success(format!(
+                    "Detached {n} piece(s) from the prefab"
+                )));
                 true
             }
             Err(_) => {
@@ -487,7 +489,9 @@ pub(crate) fn drain(
                 false
             }
             Ok(n) => {
-                toasts.push(Toast::success(format!("Applied {n} change(s) to master")));
+                toasts.push(Toast::success(format!(
+                    "Applied {n} change(s) to the prefab"
+                )));
                 true
             }
             Err(_) => {

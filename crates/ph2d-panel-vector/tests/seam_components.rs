@@ -118,17 +118,17 @@ fn click_reaches_bus(st: ComponentState, id: ph2d_a11y::NodeId, what: &str) {
 #[test]
 fn all_four_component_verbs_are_reachable_and_reach_the_bus() {
     clear();
-    click_reaches_bus(plain(), ids::VECTOR_COMPONENT_CREATE, "Create Component");
-    click_reaches_bus(main_shape(), ids::VECTOR_COMPONENT_PLACE, "Place Instance");
+    click_reaches_bus(plain(), ids::VECTOR_COMPONENT_CREATE, "Make Prefab");
+    click_reaches_bus(main_shape(), ids::VECTOR_COMPONENT_PLACE, "Instantiate");
     click_reaches_bus(
         instance_with_overrides(),
         ids::VECTOR_COMPONENT_DETACH,
-        "Detach Instance",
+        "Detach from Prefab",
     );
     click_reaches_bus(
         instance_with_overrides(),
         ids::VECTOR_COMPONENT_RESET,
-        "Reset Overrides",
+        "Revert to Prefab",
     );
     clear();
 }
@@ -174,7 +174,7 @@ fn update_main_and_swap_are_reachable_and_reach_the_bus() {
     click_reaches_bus(
         instance_with_overrides(),
         ids::VECTOR_COMPONENT_UPDATE_MAIN,
-        "Update Main",
+        "Apply to Prefab",
     );
     // ⚠️ O *Swap* é oferecido a uma instância LIMPA também: trocar de mestre não pede diferença
     // nenhuma, e gateá-lo em `has_overrides` tê-lo-ia deixado inalcançável no caso comum.
@@ -182,7 +182,7 @@ fn update_main_and_swap_are_reachable_and_reach_the_bus() {
         is_instance: true,
         ..ComponentState::default()
     };
-    click_reaches_bus(clean, ids::VECTOR_COMPONENT_SWAP, "Swap Main");
+    click_reaches_bus(clean, ids::VECTOR_COMPONENT_SWAP, "Swap Prefab");
     clear();
 }
 

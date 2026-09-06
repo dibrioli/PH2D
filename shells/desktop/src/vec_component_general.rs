@@ -147,7 +147,7 @@ pub(crate) fn dispatch(
             return false;
         };
         toasts.push(ph2d_editor::Toast::success(format!(
-            "Reverted {} override(s) to the component",
+            "Reverted {} override(s) to the prefab",
             r.count
         )));
         return r.count > 0;

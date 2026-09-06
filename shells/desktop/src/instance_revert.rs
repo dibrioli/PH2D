@@ -224,7 +224,7 @@ pub(crate) fn drain_revert_to_master(
         }
         Some(r) => {
             toasts.push(Toast::success(format!(
-                "Reverted {} override(s) to master",
+                "Reverted {} override(s) to the prefab",
                 r.count
             )));
             true

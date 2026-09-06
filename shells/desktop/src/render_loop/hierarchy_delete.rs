@@ -130,9 +130,7 @@ pub(super) fn drain(
         if n > 0 || refused > 0 {
             toasts.push(Toast::warning(match (n, refused, kept) {
                 (1, 0, 0) => "Deleted entity".to_string(),
-                (0, 1, 0) => {
-                    "Removed from this copy \u{2014} the component still has it".to_string()
-                }
+                (0, 1, 0) => "Removed from this copy \u{2014} the prefab still has it".to_string(),
                 (0, r, 0) => format!("Removed {r} piece(s) from this copy only"),
                 (_, 0, 0) => format!("Deleted {n} entities"),
                 (_, r, 0) => format!("Deleted {n} \u{2014} {r} removed from this copy only"),
@@ -143,7 +141,7 @@ pub(super) fn drain(
             title_dirty = true;
         } else if kept > 0 {
             toasts.push(Toast::warning(
-                "That piece comes from a component \u{2014} delete it in the component, or Detach this copy first",
+                "That piece comes from a prefab \u{2014} delete it in the prefab, or Detach this copy first",
             ));
         }
     }

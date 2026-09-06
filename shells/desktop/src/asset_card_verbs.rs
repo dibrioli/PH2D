@@ -224,7 +224,7 @@ pub(crate) fn drain(
             // é trocar de RECEITA, e uma imagem não é uma. O que o artista quer aqui tem outro
             // gesto — largá-la sobre o objecto — e a frase manda-o para lá.
             toasts.push(Toast::info(
-                "An image is not a component \u{2014} drop it on an object to change what it draws",
+                "An image is not a prefab \u{2014} drop it on an object to change what it draws",
             ));
             false
         }
@@ -346,11 +346,11 @@ fn replace_selection(
         // ⚠️ **Cada caminho vazio diz uma coisa DIFERENTE**, e as três são accionáveis: *já é este*
         // não pede nada, *não é uma cópia* diz o que escolher, e a terceira é o resto.
         toasts.push(Toast::info(if already > 0 {
-            "Those are already copies of this component"
+            "Those are already copies of this prefab"
         } else if skipped > 0 {
-            "That copy cannot become this component"
+            "That copy cannot become this prefab"
         } else {
-            "Nothing you picked is a copy of a component"
+            "Nothing you picked is a copy of a prefab"
         }));
         return false;
     }

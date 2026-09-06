@@ -94,6 +94,9 @@ fn nenhum_vertice_guarda_a_forca_por_passo_de_um_passo_anterior() {
             let passo = Passo {
                 cursor,
                 delta,
+                // A grelha do arnês vive em `z = 0` e a vista é ao longo de `z`
+                // ⇒ a projecção é um no-op e os dois deltas coincidem ao bit.
+                delta_3d: delta,
                 parado: k == 0,
                 normal_area: [0.0, 0.0, 1.0],
                 normais: &normais,

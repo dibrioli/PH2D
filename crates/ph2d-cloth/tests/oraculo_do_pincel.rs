@@ -341,7 +341,29 @@ fn aneis(n: usize, faces: &[Vec<u32>]) -> Vec<Vec<u32>> {
     a
 }
 
-/// Normais por vértice, ponderadas pela área, das posições ACTUAIS.
+/// **O EIXO DA VISTA de um corpus de fixtures** (espec §4.3, emenda Q12).
+///
+/// ⚠️ **Ele NÃO está no cabeçalho das fixtures** e é diferente nos dois corpora:
+/// no plano a folha vive em `z = 0` e a vista é ao longo de `z` — a projecção é
+/// um **no-op** e `δ` é a diferença dos pontos ao bit; na esfera a vista é ao
+/// longo de `y` (o caminho pousa em `y = −√(1−x²)`) e é a componente `y` que se
+/// perde. ⭐ A prova de que a vista é ORTOGRÁFICA está nos números: o passo do
+/// caminho é `0,6/11 = 0,054545…` e `δ` mede `0,05455` nos doze passos da
+/// esfera, apesar de os pontos estarem a profundidades diferentes.
+fn eixo_da_vista(sup: &str) -> V3 {
+    if sup.starts_with("esfera") {
+        [0.0, 1.0, 0.0]
+    } else {
+        [0.0, 0.0, 1.0]
+    }
+}
+
+/// `δ` = a diferença dos pontos PROJECTADA no plano do ecrã.
+fn projecta(d: V3, v: V3) -> V3 {
+    let k = d[0] * v[0] + d[1] * v[1] + d[2] * v[2];
+    [d[0] - v[0] * k, d[1] - v[1] * k, d[2] - v[2] * k]
+}
+
 /// A normal (não normalizada) de UMA face, por Newell.
 fn normal_da_face(pos: &[V3], f: &[u32]) -> V3 {
     let mut n = [0.0f64; 3];
@@ -354,6 +376,7 @@ fn normal_da_face(pos: &[V3], f: &[u32]) -> V3 {
     n
 }
 
+/// Normais por vértice, ponderadas pela área, das posições ACTUAIS.
 fn normais(pos: &[V3], faces: &[Vec<u32>]) -> Vec<V3> {
     let mut n = vec![[0.0f64; 3]; pos.len()];
     for f in faces {
@@ -467,7 +490,7 @@ fn correr_posicoes(nome: &str) -> Vec<V3> {
     for k in 0..passos {
         let cursor = t.caminho[k];
         let prev = t.caminho[k.saturating_sub(1)];
-        let delta = if pincel.modo == Modo::Agarrar {
+        let d3 = if pincel.modo == Modo::Agarrar {
             let c0 = t.caminho[0];
             [cursor[0] - c0[0], cursor[1] - c0[1], cursor[2] - c0[2]]
         } else {
@@ -477,7 +500,8 @@ fn correr_posicoes(nome: &str) -> Vec<V3> {
                 cursor[2] - prev[2],
             ]
         };
-        let parado = k == 0 || dist(cursor, prev) == 0.0;
+        let delta = projecta(d3, eixo_da_vista(&sup));
+        let parado = k == 0 || dist(delta, [0.0; 3]) == 0.0;
         let nrm = normais(&pos, &fs);
         // A normal da ÁREA: a média das normais sob o pincel (espec §4.4).
         let mut na = [0.0f64; 3];
@@ -491,6 +515,7 @@ fn correr_posicoes(nome: &str) -> Vec<V3> {
         let passo = Passo {
             cursor,
             delta,
+            delta_3d: d3,
             parado,
             normal_area: na,
             normais: &nrm,
@@ -573,15 +598,17 @@ fn sonda_do_perfil() {
     for k in 0..t.caminho.len() {
         let cursor = t.caminho[k];
         let prev = t.caminho[k.saturating_sub(1)];
-        let delta = [
+        let d3 = [
             cursor[0] - prev[0],
             cursor[1] - prev[1],
             cursor[2] - prev[2],
         ];
+        let delta = projecta(d3, eixo_da_vista(&sup));
         let nrm = normais(&pos, &fs);
         let passo = Passo {
             cursor,
             delta,
+            delta_3d: d3,
             parado: k == 0,
             normal_area: [0.0, 0.0, 1.0],
             normais: &nrm,
@@ -775,7 +802,7 @@ fn sonda_passo_a_passo() {
     for k in 0..pp.caminho.len() {
         let cursor = pp.caminho[k];
         let prev = pp.caminho[k.saturating_sub(1)];
-        let delta = if pincel.modo == Modo::Agarrar {
+        let d3 = if pincel.modo == Modo::Agarrar {
             [cursor[0] - c0[0], cursor[1] - c0[1], cursor[2] - c0[2]]
         } else {
             [
@@ -784,6 +811,7 @@ fn sonda_passo_a_passo() {
                 cursor[2] - prev[2],
             ]
         };
+        let delta = projecta(d3, eixo_da_vista(&sup));
         let nrm = normais(&pos, &fs);
         let mut na = [0.0f64; 3];
         for (v, p) in pos.iter().enumerate() {
@@ -796,6 +824,7 @@ fn sonda_passo_a_passo() {
         let passo = Passo {
             cursor,
             delta,
+            delta_3d: d3,
             parado: k == 0,
             normal_area: na,
             normais: &nrm,
@@ -1059,12 +1088,12 @@ const VERDE_N: usize = 29;
 /// `plano_arrastar_radial_global` de `0,301` para `0,583` (medido), o que cai
 /// fora da folga e reprova aqui.
 const ABERTOS: [(&str, f64); ABERTO_N] = [
-    ("esfera_agarrar_radial_dinamica", 0.265),
-    ("esfera_apertar_linha_radial_dinamica", 0.588),
+    ("esfera_agarrar_radial_dinamica", 0.196),
+    ("esfera_apertar_linha_radial_dinamica", 0.576),
     ("esfera_apertar_ponto_radial_dinamica", 0.542),
     ("esfera_empurrar_radial_dinamica", 0.303),
     ("esfera_expandir_radial_dinamica", 0.557),
-    ("esfera_gancho_radial_dinamica", 0.351),
+    ("esfera_gancho_radial_dinamica", 0.245),
     ("esfera_inflar_radial_dinamica", 0.378),
     ("plano_agarrar_plano_local", 0.180),
     ("plano_apertar_linha_radial_local", 1.024),
@@ -1176,6 +1205,7 @@ fn a_lista_do_local_vem_em_duplicado() {
         let passo = Passo {
             cursor: c0,
             delta: [0.0; 3],
+            delta_3d: [0.0; 3],
             parado: true,
             normal_area: [0.0, 0.0, 1.0],
             normais: &normais,
@@ -1272,11 +1302,12 @@ fn o_centro_do_snake_hook_esta_um_passo_atrasado() {
     for k in 0..2 {
         cursor = pp.caminho[k];
         let prev = pp.caminho[k.saturating_sub(1)];
-        let delta = [
+        let d3 = [
             cursor[0] - prev[0],
             cursor[1] - prev[1],
             cursor[2] - prev[2],
         ];
+        let delta = projecta(d3, eixo_da_vista(&sup));
         let nrm = normais(&pos, &fs);
         let mut na = [0.0f64; 3];
         for (v, p) in pos.iter().enumerate() {
@@ -1289,6 +1320,7 @@ fn o_centro_do_snake_hook_esta_um_passo_atrasado() {
         let passo = Passo {
             cursor,
             delta,
+            delta_3d: d3,
             parado: k == 0,
             normal_area: na,
             normais: &nrm,
@@ -1444,7 +1476,7 @@ fn correr_por_passo(nome: &str) -> (Vec<V3>, Vec<Vec<u32>>, Vec<Vec<V3>>) {
     for k in 0..pp.caminho.len() {
         let cursor = pp.caminho[k];
         let prev = pp.caminho[k.saturating_sub(1)];
-        let delta = if pincel.modo == Modo::Agarrar {
+        let d3 = if pincel.modo == Modo::Agarrar {
             [cursor[0] - c0[0], cursor[1] - c0[1], cursor[2] - c0[2]]
         } else {
             [
@@ -1453,6 +1485,7 @@ fn correr_por_passo(nome: &str) -> (Vec<V3>, Vec<Vec<u32>>, Vec<Vec<V3>>) {
                 cursor[2] - prev[2],
             ]
         };
+        let delta = projecta(d3, eixo_da_vista(&sup));
         let nrm = normais(&pos, &fs);
         let mut na = [0.0f64; 3];
         for (v, p) in pos.iter().enumerate() {
@@ -1465,6 +1498,7 @@ fn correr_por_passo(nome: &str) -> (Vec<V3>, Vec<Vec<u32>>, Vec<Vec<V3>>) {
         let passo = Passo {
             cursor,
             delta,
+            delta_3d: d3,
             parado: k == 0,
             normal_area: na,
             normais: &nrm,

@@ -181,7 +181,23 @@ pub struct Passo<'a> {
     pub cursor: V3,
     /// O delta de agarrar `δ` (espec §4.3): incremental para todos os modos,
     /// TOTAL para o Grab.
+    ///
+    /// ⭐⭐⭐ **Ele NÃO é a diferença dos dois pontos 3D do cursor — é a PROJECÇÃO
+    /// dela no plano do ECRÃ** (espec §4.3, emenda Q12). As duas des-projecções
+    /// são feitas à mesma profundidade, logo numa vista ortográfica a componente
+    /// ao longo do eixo da vista é descartada **por construção**. ⚠️ Numa folha
+    /// plana vista de frente as duas coisas são a MESMA ao bit, e é por isso que
+    /// isto só aparece em superfície curva: na esfera das fixtures são `15,83°`
+    /// de direcção e até `1,039×` de módulo.
+    /// ⛔ **O plano do ecrã não é o plano tangente do pen-down** — essa rota foi
+    /// medida a piorar o Agarrar de `0,265` para `0,605`.
     pub delta: V3,
+    /// **A diferença dos dois pontos 3D do cursor**, sem projecção.
+    ///
+    /// ⚠️ **Só o ARRASTO a lê**, e é dela que sai a direcção dele (espec §4.2) —
+    /// é por isso que o arrasto é o único modo que se comporta igual nas duas
+    /// superfícies. Os outros sete tiram tudo de [`Self::delta`].
+    pub delta_3d: V3,
     /// O cursor não se mexeu no ecrã? ⇒ sem forças neste passo.
     pub parado: bool,
     /// A normal da ÁREA sob o pincel (espec §4.4).
@@ -425,6 +441,13 @@ impl PincelTecido {
         let n_area = unit(passo.normal_area);
         // O referencial local do traço (espec §4.4).
         let x_hat = unit(cruz(n_area, delta_u));
+        // ⛔ **O guarda de «passo sem movimento» vale para os OITO modos** (espec
+        // §4.3): ele corre ANTES de o modo ser escolhido, e o que ele testa é o
+        // `δ` projectado, não a posição 3D. Antes de 06/09 ele vivia dentro do
+        // braço dos modos de força, e os dois de âncora escapavam-lhe.
+        if passo.parado {
+            return;
+        }
         let dentro = self.dentro.clone();
         match self.pincel.modo {
             Modo::Agarrar => {
@@ -496,9 +519,6 @@ impl PincelTecido {
                 }
             }
             Modo::Expandir => {
-                if passo.parado {
-                    return;
-                }
                 let b = 0.1 * alpha * flip * pressao;
                 for &v in &dentro {
                     let vi = v as usize;
@@ -513,10 +533,6 @@ impl PincelTecido {
             | Modo::ApertarPonto
             | Modo::ApertarLinha
             | Modo::Inflar => {
-                // Espec §4.2: nenhuma força num passo em que o cursor não se mexeu.
-                if passo.parado {
-                    return;
-                }
                 let b = 10.0 * alpha * flip * pressao;
                 for &v in &dentro {
                     let vi = v as usize;
@@ -527,7 +543,10 @@ impl PincelTecido {
                         continue;
                     }
                     let u: V3 = match self.pincel.modo {
-                        Modo::Arrastar => delta_u,
+                        // ⛔ **O arrasto é o ÚNICO modo que NÃO tira a direcção de
+                        // `δ`** (espec §4.2/§4.3): ela é a diferença dos dois
+                        // pontos 3D do cursor, normalizada.
+                        Modo::Arrastar => unit(passo.delta_3d),
                         Modo::Empurrar => [
                             -n_area[0] * 2.0 * r,
                             -n_area[1] * 2.0 * r,

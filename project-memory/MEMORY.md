@@ -31,6 +31,7 @@
 - [Esperar build por `pgrep` apanha o compilador da OUTRA worktree; `mtime` não distingue binário velho — espere por uma STRING do código novo](feedback_a_probe_that_waits_on_pgrep_catches_the_other_worktrees_compiler.md)
 - [`sleep` em background NAO faz o agente esperar — quem espera e' a notificacao da tarefa](feedback_a_background_sleep_does_not_make_the_agent_wait.md)
 - [Comando inclui o cd](feedback_run_command_include_cd.md) · [⚠️ a cwd do Bash volta ao primário — **13 ocorrências**, sempre use caminho ABSOLUTO](feedback_bash_cwd_resets_and_slips_to_the_primary.md)
+- ⭐ [«O smoke não foi claro»: conte DECISÕES por passo — a cura é a CENA, não o texto](feedback_a_smoke_step_that_needs_three_decisions_at_once_is_not_a_step.md)
 - [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) · [perfeição sem adiamentos](feedback_perfection_no_deferrals.md)
 - [O teto é do HARDWARE](feedback_the_ceiling_is_the_hardwares_never_the_fallbacks.md) · [medir pode confirmá-lo](feedback_measuring_a_ceiling_can_confirm_it_and_that_is_the_result.md) · [razão com denominador-knob](feedback_a_ratio_bar_tightens_itself_when_the_denominator_is_a_knob.md)
 - [⛔ ALVO É TABLET: toda faixa permanente diz o que custa em % nos TRÊS alvos (37,6 % no mini)](feedback_a_permanent_band_must_return_more_screen_than_it_eats.md)

@@ -935,10 +935,14 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   física em 24/08, a timeline em 25/08): renomear um objeto animado **não** desliga o binding, com gate
   (`renaming_an_animated_object_does_not_unbind_it` + `a_stranger_with_the_old_name_does_not_capture_the_animation`) —
   *a frase pôde envelhecer três dias porque nenhum gate a contradizia* ·
-  ⏳ **F5 critério 4** (*Apply to inner master* apagar o override nos níveis intermediários) e a troca para um mestre
-  **NÃO aparentado** (3 modos + relatório, ⛔ nunca automática) · ⏳ **a F4.6c DESBLOQUEOU e passou a CONTER uma fatia:**
-  portar os **eixos de propriedade** (`Size=Small, State=Idle`) do `vec_variants.rs` para o cartão geral **antes** de
-  apagar os 24 ficheiros do `VecInstance` — *um porte que apaga uma feature não é um porte* · ⏳ **F6–F8** ·
+  ⭐⭐⭐ **A F5 FECHOU INTEIRA em 2026-09-06** — a escada do *Aplicar* (critério 4) · os órfãos NOMEADOS e largados um a um
+  (critério 3) · a troca por mestre **NÃO aparentado** (3 modos + relatório) · e as **três metades da FORMA de uma cópia**:
+  a peça **RECUSADA** (*Removed GameObject*, `PROJECT_SCHEMA` 116), a **ACRESCENTADA** (*Added GameObject*, **derivada** da
+  ausência de elo ⇒ schema intocado) e **mover uma peça na receita move-a em TODAS as cópias** (o passe não sabia
+  reparentar, e o `ChildOf` não é componente registado ⇒ a árvore de uma cópia não tinha dono). Cenas **`=5`**, **`=6`** e
+  **`=7`**. ⛔ **A F4.6c está bloqueada na PRÁTICA e não tecnicamente** — apagar os ~2 961 LOC do `VecInstance` em 24
+  ficheiros com a `line/Vector` VIVA é catástrofe de merge; a fatia que a bloqueava (os eixos) foi revogada pelo Enio ·
+  ⏳ **F8: o `FlipDoc`** (headless, logo não é fatia sob a regra *«cada etapa acaba num smoke»*) ·
   ⚠️ **O `physics_ecs_c9` NÃO tem baseline a re-capturar e NÃO corre na varredura impactada** — o `spike.yml` compara os
   **três OS entre si**, então o risco real é eles **discordarem**, e só o CI o mede; a **F4.7 FECHOU** e acrescentou-lhe
   a lane de mestre+instância, que localmente só se prova pelo que dá (corre e é estável, mesmo hash em 2 de 2) ·
@@ -964,7 +968,9 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   *o que não PROPAGA não se REMAPEIA*, achada por uma **mutação que SOBREVIVEU** porque nenhum gate corria o passe duas
   vezes antes de medir) · [handoff de 27/08](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_F5_2026-08-27.md)
   (⚠️ o §7 traz as **quatro** correcções que esta seção precisou, e o §8.2 as **quatro fixturas que mordiam ANTES de
-  medirem o produto**)
+  medirem o produto**) · [handoff de 06/09](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_F5_FECHO_2026-09-06.md)
+  (⚠️ o §8 tem **sete** coisas que uma leitura rápida do diff entende ao contrário, o §9 as **cinco** premissas minhas que
+  a medição derrubou, e o §5.1 os **três** gates que só a árvore COMBINADA pode reprovar)
 
 - **Image Tools — os utilitários de bitmap** (⚠️ **~30 k LOC que esta seção nunca mencionou**, achado
   da auditoria de 2026-08-18): `ph2d-tool-color-equalization` (10.291) · `ph2d-tool-bgremoval` (8.377) ·

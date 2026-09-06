@@ -126,17 +126,32 @@ impl PaintDilateLive {
     }
 }
 
-/// **Funde as peças num composto `EvenOdd`** — a tradução que a sonda `probe_offset_as_effect`
-/// validou.
+/// **Funde as peças num composto** — e ⚠️ **a REGRA DE PREENCHIMENTO é do MOTOR, não desta função**.
 ///
 /// ⚠️ **Um offset pode PARTIR a forma**: encolher um haltere para além do pescoço devolve duas
-/// ilhas, e a sonda mediu **8** no pior caso do corpus. Tudo o que sai do motor está regularizado,
-/// então um ponto está no conjunto sse um número ÍMPAR de contornos o cerca — é o que torna o
-/// `EvenOdd` legítimo, qualquer que seja o aninhamento.
+/// ilhas, e a sonda `probe_offset_as_effect` mediu **8** no pior caso do corpus. Ela validou o
+/// `EvenOdd` como a composição de N peças — *tudo o que sai do SWEEP está regularizado*, então um
+/// ponto está no conjunto sse um número ÍMPAR de contornos o cerca.
+///
+/// ⛔⛔ **E essa lei é do SWEEP, não do ANEL.** Report do Enio, 2026-09-06: *"o offset não obedece
+/// as quinas (arredonda as quinas)"*. A 1.ª redacção carimbava `EvenOdd` em **toda** peça, e o
+/// [`ph2d_vec_boolean::offset_ring`] devolve `NonZero` **de propósito** — o laço dele pode ser
+/// AUTO-CRUZADO (a ponta de uma `Miter` numa forma côncava), e é o winding NonZero do rasterizador
+/// que preenche essa auto-interseção. Sob `EvenOdd` a ponta **cancela-se contra si mesma** e some:
+/// as quinas apareciam arredondadas com o motor a devolvê-las afiadas.
+///
+/// ⚠️ **Medido**: `offset_ring` num quadrado a `d = 4` devolve alcance `19,80` (Miter) · `17,20`
+/// (Round) · `17,20` (Bevel) — *o motor nunca foi o problema*. **Eu apliquei a lei de um motor à
+/// saída do outro.**
+///
+/// ⇒ **UMA peça mantém a regra que o motor lhe deu** (o anel devolve sempre exactamente uma); só a
+/// composição de N — que só o sweep produz, e cuja saída É regularizada — passa a `EvenOdd`.
 fn merge(pecas: &[VecPath]) -> Option<VecPath> {
     let mut it = pecas.iter();
     let mut out = it.next()?.clone();
-    out.fill_rule = ph2d_vec_scene::FillRule::EvenOdd;
+    if pecas.len() > 1 {
+        out.fill_rule = ph2d_vec_scene::FillRule::EvenOdd;
+    }
     for p in it {
         out.subpaths.push(ph2d_vec_scene::Contour {
             verts: p.verts.clone(),
@@ -245,6 +260,74 @@ mod tests {
         let mut live = PaintDilateLive::default();
         live.recook(&scene);
         assert!(live.out().is_empty(), "nada devia ter sido cozido");
+    }
+
+    /// ⭐⭐⭐ **O OFFSET OBEDECE À QUINA — as três desenham FORMAS diferentes.**
+    ///
+    /// Report do Enio, 2026-09-06: *"o offset não obedece as quinas (arredonda as quinas)"*.
+    ///
+    /// ⚠️ **A régua é o ALCANCE** (o ponto mais longe do centro), porque é isso que distingue as
+    /// três: numa quina de 90° a `Miter` crava a ponta a `d·√2` do canto, a `Bevel` corta-a, e a
+    /// `Round` arqueia entre as duas. Contar vértices **não** serve — a `Round` é amostrada em
+    /// polilinha e a contagem depende da tolerância, não da lei.
+    ///
+    /// ⛔ **E o motor NUNCA foi o problema**: medido, `offset_ring` devolve `19,80 / 17,20 / 17,20`
+    /// para as três num quadrado. O que as apagava era esta crate.
+    #[test]
+    fn the_offset_obeys_the_corner_and_the_three_draw_different_shapes() {
+        let alcance = |d: f64, j: u8| {
+            let mut scene = VecScene::default();
+            let id = quadrado(&mut scene, 10.0);
+            let mut e = PaintEntry::fill(Paint::Solid(Rgba8::new(0, 0, 255, 255)));
+            e.dilate = d;
+            e.dilate_join = j;
+            scene.path_mut(id).expect("a forma").paints = vec![e];
+            let mut live = PaintDilateLive::default();
+            live.recook(&scene);
+            live.out()
+                .get(&(id, 0))
+                .expect("cozida")
+                .verts_all()
+                .map(|v| v.anchor[0].hypot(v.anchor[1]))
+                .fold(0.0_f64, f64::max)
+        };
+        let (miter, round, bevel) = (alcance(4.0, 0), alcance(4.0, 1), alcance(4.0, 2));
+        assert!(
+            miter > round + 1.0,
+            "a MITER tem de cravar a ponta muito alem da Round: {miter:.4} contra {round:.4}"
+        );
+        assert!(
+            (bevel - round).abs() < 2.0 && bevel < miter - 1.0,
+            "a BEVEL corta a ponta: {bevel:.4} (miter {miter:.4})"
+        );
+    }
+
+    /// ⭐⭐⭐ **A REGRA DE PREENCHIMENTO DO MOTOR SOBREVIVE — foi ela que apagava as quinas.**
+    ///
+    /// ⛔⛔ **O `merge` carimbava `EvenOdd` em TODA peça**, e o `offset_ring` devolve `NonZero`
+    /// **de propósito**: o laço dele pode ser AUTO-CRUZADO (a ponta de uma miter numa forma
+    /// côncava), e é o winding NonZero do rasterizador que preenche essa auto-interseção. Sob
+    /// `EvenOdd` a ponta **cancela-se contra si mesma** e some — que é exactamente *"arredonda as
+    /// quinas"*.
+    ///
+    /// ⚠️ **A lei do `EvenOdd` é do SWEEP, não do anel**: a sonda `probe_offset_as_effect`
+    /// validou-a sobre a saída da booleana, *"tudo o que sai do sweep está regularizado"*. O anel
+    /// não é regularizado, e eu apliquei a lei de um motor à saída do outro.
+    #[test]
+    fn the_engines_fill_rule_survives_the_merge() {
+        let mut scene = VecScene::default();
+        let id = quadrado(&mut scene, 10.0);
+        let mut e = PaintEntry::fill(Paint::Solid(Rgba8::new(0, 0, 255, 255)));
+        e.dilate = 4.0;
+        e.dilate_join = 0; // Miter — a quina que a auto-interseção serve
+        scene.path_mut(id).expect("a forma").paints = vec![e];
+        let mut live = PaintDilateLive::default();
+        live.recook(&scene);
+        assert_eq!(
+            live.out().get(&(id, 0)).expect("cozida").fill_rule,
+            ph2d_vec_scene::FillRule::NonZero,
+            "a regra do motor foi sobrescrita — a auto-interseccao da ponta cancela-se e a quina some"
+        );
     }
 
     /// ⭐⭐ **O MEMO SOBREVIVE, E MORRE COM A CAMADA.**

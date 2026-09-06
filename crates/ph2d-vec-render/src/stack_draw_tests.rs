@@ -339,3 +339,65 @@ fn the_box_covers_a_growing_layer_and_not_a_shrinking_one() {
         "encolher fica DENTRO da forma — inflar por ele e' folga por nada"
     );
 }
+
+/// ⭐⭐⭐ **A REGRA DE PREENCHIMENTO DE UMA CAMADA DILATADA É DELA, NÃO DA FORMA ANFITRIÃ.**
+///
+/// Report do Enio, 2026-09-06: *"o offset não obedece as quinas (arredonda as quinas)"*. A causa
+/// estava na shell (o `merge` carimbava `EvenOdd` sobre o `NonZero` que o `offset_ring` devolve de
+/// propósito), e **esta é a costura pela qual ela voltaria**: `fill_rule(path)` em vez de
+/// `fill_rule(geo)` deixa a regra do ANFITRIÃO decidir o que a camada preenche.
+///
+/// ⚠️ **O oráculo é a INVARIÂNCIA:** a mesma geometria dilatada, com a forma anfitriã a mudar de
+/// regra, tem de codificar **exactamente igual**. Um gate que só afirmasse *"a camada desenha"*
+/// ficaria verde com a regra do anfitrião a mandar.
+///
+/// ⛔ E por que isto importa: o laço do anel pode ser AUTO-CRUZADO (a ponta de uma `Miter` numa
+/// forma côncava), e sob `EvenOdd` essa ponta **cancela-se contra si mesma** — as quinas afiadas
+/// aparecem arredondadas.
+#[test]
+fn a_dilated_layers_fill_rule_is_its_own_and_not_the_hosts() {
+    let dilatado = |host_rule| {
+        let mut p = quadrado();
+        p.fill_rule = host_rule;
+        let mut e = PaintEntry::fill(Paint::Solid(Rgba8::new(255, 0, 0, 255)));
+        e.dilate = 4.0;
+        p.paints = vec![e];
+
+        let mut gordo = VecPath {
+            verts: [[-14.0, -14.0], [14.0, -14.0], [14.0, 14.0], [-14.0, 14.0]]
+                .map(VecVertex::corner)
+                .to_vec(),
+            closed: true,
+            fill: Some(Paint::Solid(Rgba8::new(255, 0, 0, 255))),
+            // O que o `offset_ring` devolve, e o que tem de sobreviver até ao codificador.
+            fill_rule: ph2d_vec_scene::FillRule::NonZero,
+            ..VecPath::default()
+        };
+        gordo.id = p.id;
+        let mut mapa = crate::DilatedPaints::new();
+        mapa.insert((p.id, 0), gordo);
+
+        let mut t = VectorScene::new();
+        crate::draw_path_tiled(
+            &p,
+            Affine::IDENTITY,
+            &mut t,
+            crate::Derived {
+                dilated: Some(&mapa),
+                ..crate::Derived::NONE
+            },
+        );
+        let e = t.inner().encoding();
+        // ⚠️ Os TAGS de caminho carregam a regra de preenchimento, e o `PathTag` não é `Debug` —
+        // comparamos os BYTES dele, que é a mesma pergunta sem pedir uma impressão que a
+        // biblioteca não oferece.
+        let tags: Vec<u8> = e.path_tags.iter().map(|t| t.0).collect();
+        (e.n_paths, e.n_path_segments, tags)
+    };
+    assert_eq!(
+        dilatado(ph2d_vec_scene::FillRule::EvenOdd),
+        dilatado(ph2d_vec_scene::FillRule::NonZero),
+        "a regra da forma ANFITRIA vazou para a camada dilatada — uma ponta de miter \
+         auto-cruzada cancela-se e a quina aparece arredondada"
+    );
+}

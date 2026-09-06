@@ -283,6 +283,28 @@ feature que usa o barato na metade dos casos.*
 5. **A QUINA só é pintada com o offset armado** — com `dilate = 0` não há esquina a formar, e três
    chips que não mudam nada são um controlo morto sob o dedo.
 
+### ⛔⛔ E a 1.ª versão ARREDONDAVA as quinas — a lei de um motor aplicada à saída do outro
+
+Report do Enio, 2026-09-06: *"o offset não obedece as quinas (arredonda as quinas)"*. Mecanismo
+completo no [BUGS #30](BUGS_vector.md); o que interessa aqui é a forma do erro.
+
+O `merge` — que junta as peças quando um offset PARTE a forma — carimbava `EvenOdd` em **toda**
+peça. Mas essa lei é do **sweep** (a sonda `probe_offset_as_effect` validou-a sobre a saída dele,
+*«tudo o que sai do sweep está regularizado»*), e o **anel** devolve `NonZero` **de propósito**: o
+laço dele pode ser auto-cruzado, e é o NonZero que preenche a auto-interseção da ponta de uma
+`Miter`. Sob `EvenOdd` essa ponta **cancela-se contra si mesma**.
+
+⚠️ **Os dois motores vivem atrás da MESMA porta** (`cook_piece`), e é isso que torna a troca
+invisível a quem lê o chamador — *a decisão «qual motor» é dela; a decisão «qual regra de
+preenchimento» também tinha de ser.*
+
+⚠️ **E o smoke não o mostrava:** a peça da cena **encolhe**, e encolher sai pelo caminho booleano,
+onde o `EvenOdd` estava certo. O defeito vive só no **crescer**.
+
+⛔ **O gate que já existia passava**, e a razão é a mesma família de sempre: ele mede o ALCANCE dos
+vértices (geometria), e o que se perdia era o **preenchimento**. *Duas grandezas estavam a ser
+lidas como uma.*
+
 ### ⚠️ A receita do adesivo também é INVERTIDA
 
 Uma camada extra desenha sempre **por cima** da base (§3.3), então uma que CRESCE tapa a forma

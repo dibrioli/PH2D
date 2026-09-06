@@ -155,7 +155,40 @@ mutação que tira o teto da rota do painel derruba **três** gates.
     o rato e consumiam o gesto. ⇒ *uma família nova responde às perguntas dela num MÓDULO, e ganha
     um `seam_*` com gesto real cujo oráculo é o `EditorAction`, nunca o `WidgetEvent`.*
 
-## Índice dos 29 FECHADOS — o mecanismo de cada um, em uma linha
+## Índice dos 30 FECHADOS — o mecanismo de cada um, em uma linha
+
+### #30 — o offset de CAD ARREDONDAVA as quinas ✅ 2026-09-06
+
+**Sintoma** (Enio): *"o offset não obedece as quinas (arredonda as quinas)"*.
+
+**⛔ O motor nunca foi o problema, e a medição diz por quanto.** `offset_ring` num quadrado a
+`d = 4` devolve alcance **`19,80`** (Miter) · `17,20` (Round) · `17,20` (Bevel) — as três desenham
+formas diferentes, e o código do painel chega lá intacto.
+
+**A causa era UMA LINHA minha:** o `merge` da shell — que funde as peças quando um offset PARTE a
+forma — carimbava `FillRule::EvenOdd` em **toda** peça. E o `offset_ring` devolve **`NonZero` de
+propósito**: o laço dele pode ser **auto-cruzado** (a ponta de uma `Miter` numa forma côncava), e é
+o winding NonZero do rasterizador que preenche essa auto-interseção. Sob `EvenOdd` a ponta
+**cancela-se contra si mesma** e some — a quina afiada aparece arredondada.
+
+**⚠️ A lei do `EvenOdd` é do SWEEP, não do ANEL.** A sonda `probe_offset_as_effect` validou-a sobre
+a saída da booleana (*"tudo o que sai do sweep está regularizado"*), e eu **apliquei a lei de um
+motor à saída do outro** — os dois vivem atrás da mesma porta (`cook_piece`), e é isso que torna a
+troca invisível a quem lê o chamador.
+
+**A cura.** Uma peça mantém a regra que o motor lhe deu (o anel devolve sempre exactamente uma); só
+a composição de **N** — que só o sweep produz, e cuja saída É regularizada — passa a `EvenOdd`.
+
+**⚠️ Por que o smoke não o mostrou.** A peça da cena (**O ADESIVO**) **encolhe** (`d < 0`), e
+encolher sai pelo caminho **booleano**, onde o `EvenOdd` estava certo. O defeito só aparece a
+**crescer** — que é o caminho do anel, e é o que o dono fez.
+
+**Gates:** dois novos, e o segundo nasceu **vermelho** — *a regra do motor sobrevive ao merge*
+(shell) e *a regra de uma camada dilatada é DELA, não da forma anfitriã* (renderer, oráculo = a
+codificação ser **invariante** à regra do anfitrião). ⛔ O 1.º (as três quinas desenham formas
+diferentes) já passava **antes** da cura: ele mede GEOMETRIA, e o que se perdia era o
+PREENCHIMENTO. *Duas grandezas estavam a ser lidas como uma.*
+
 
 ### #29 — a PILHA DE APARÊNCIA nascia inteira e MUDA ✅ 2026-09-05
 

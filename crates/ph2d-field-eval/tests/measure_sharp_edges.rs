@@ -897,6 +897,14 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             round: 0.0,
             chamfer: 0.0,
         },
+        // ⚠️ **Ela é a única forma da tabela cujo «filete» não é um controle** — o bojo É o
+        // arredondamento das duas arestas dela, e por isso entra aqui já com o valor da paleta em
+        // vez do `round = 0` que as vizinhas usam. *Uma linha com bojo zero mediria um cilindro.*
+        PrimitiveKind::RoundedCylinder => Primitive::RoundedCylinder {
+            radius: 0.40,
+            bulge: 0.12,
+            half_height: 0.30,
+        },
     })
 }
 

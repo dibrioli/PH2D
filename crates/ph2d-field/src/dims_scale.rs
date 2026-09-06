@@ -390,6 +390,15 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
             // deles fixo faria a aresta mudar de carácter ao redimensionar a forma.
             *chamfer *= factor;
         }
+        Primitive::RoundedCylinder {
+            radius,
+            bulge,
+            half_height,
+        } => {
+            for v in [radius, bulge, half_height] {
+                *v *= factor;
+            }
+        }
         p @ (Primitive::Arrow { .. }
         | Primitive::Chevron { .. }
         | Primitive::BentArrow { .. }

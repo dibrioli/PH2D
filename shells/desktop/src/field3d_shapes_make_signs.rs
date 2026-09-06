@@ -244,3 +244,15 @@ pub(crate) fn a_gyroid(r: f32) -> Primitive {
         chamfer: 0.0,
     }
 }
+
+// ─────────────────────────── W125 — a exacta do catálogo ───────────────────────────
+
+/// ⚠️ **O bojo a `30 %` do raio** — a zero seria o cilindro que a paleta já tem, e no máximo é uma
+/// cápsula.
+pub(crate) fn a_rounded_cylinder(r: f32) -> Primitive {
+    Primitive::RoundedCylinder {
+        radius: r,
+        bulge: r * 0.30,
+        half_height: r * 0.55,
+    }
+}

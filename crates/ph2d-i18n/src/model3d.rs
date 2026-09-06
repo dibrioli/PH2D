@@ -121,6 +121,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // e "helix" é a curva matemática.
         "panel.model3d.add.helix" => "Coil",
         "panel.model3d.add.gyroid" => "Gyroid Lattice",
+        "panel.model3d.add.rounded_cylinder" => "Rounded Cylinder",
         "panel.model3d.add.bolt" => "Lightning Bolt",
         "panel.model3d.add.shield" => "Shield",
         "panel.model3d.add.tag" => "Tag",
@@ -316,6 +317,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.dim.turns" => "Turns",
         "field.dim.wave" => "Wave",
         "field.dim.cell" => "Cell",
+        // ⚠️ **"Bulge" e não "Fillet"**: ele arredonda a PAREDE inteira, não só o aro — chamar-lhe
+        // filete prometeria o controlo por aresta que as outras formas têm, que é outra coisa.
+        "field.dim.bulge" => "Bulge",
         "field.dim.hole" => "Hole",
         "field.dim.notch" => "Notch",
         // ⚠️ Em GRAUS na cabeça do artista, mas o documento guarda radianos — o painel mostra o

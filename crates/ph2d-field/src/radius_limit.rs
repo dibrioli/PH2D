@@ -34,6 +34,7 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
         // erro (ver a nota de [`Primitive::Extrude`]).
         Primitive::Extrude { half_height, .. } => Some(*half_height),
         Primitive::Sphere { .. }
+        | Primitive::RoundedCylinder { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }

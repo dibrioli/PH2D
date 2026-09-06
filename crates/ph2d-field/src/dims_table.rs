@@ -503,6 +503,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
         | Primitive::Spiral { .. }
         | Primitive::Document { .. }
         | Primitive::Helix { .. }
-        | Primitive::Gyroid { .. }) => super::dims_table_plates::dims_plate(p),
+        | Primitive::Gyroid { .. }
+        | Primitive::RoundedCylinder { .. }) => super::dims_table_plates::dims_plate(p),
     }
 }

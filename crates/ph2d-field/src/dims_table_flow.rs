@@ -343,3 +343,37 @@ pub(crate) fn dims_lattice(p: &Primitive) -> Vec<Dim> {
         _ => Vec::new(),
     }
 }
+
+/// As linhas do cilindro com barriga (W125).
+///
+/// ⚠️ **Três, e nenhuma de aresta**: o `bulge` já é o arredondamento — ver
+/// [`ph2d_field_eval::ops_exact::sd_rounded_cylinder`].
+#[must_use]
+pub(crate) fn dims_exact(p: &Primitive) -> Vec<Dim> {
+    match p {
+        Primitive::RoundedCylinder {
+            radius,
+            bulge,
+            half_height,
+        } => vec![
+            Dim {
+                key: "field.dim.radius",
+                value: *radius,
+                span: Span::Positive,
+            },
+            // ⚠️ **A parede do bojo é a menor meia-medida** — acima dela a peça vira uma cápsula e
+            // o número deixa de descrever um bordo.
+            Dim {
+                key: "field.dim.bulge",
+                value: *bulge,
+                span: Span::Wall(radius.min(*half_height)),
+            },
+            Dim {
+                key: "field.dim.height",
+                value: half_height * 2.0,
+                span: Span::Positive,
+            },
+        ],
+        _ => Vec::new(),
+    }
+}

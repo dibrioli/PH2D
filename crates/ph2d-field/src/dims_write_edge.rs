@@ -76,6 +76,7 @@ pub(super) fn set_chamfer(p: &mut Primitive, node: u32, value: f32) -> Result<()
         | Primitive::Brace { chamfer, .. }
         | Primitive::TorusArc { chamfer, .. } => *chamfer = value,
         Primitive::Sphere { .. }
+        | Primitive::RoundedCylinder { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }
@@ -153,6 +154,7 @@ pub(super) fn set_round(p: &mut Primitive, node: u32, value: f32) -> Result<(), 
         | Primitive::Brace { round, .. }
         | Primitive::TorusArc { round, .. } => *round = value,
         Primitive::Sphere { .. }
+        | Primitive::RoundedCylinder { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }
@@ -237,6 +239,7 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
             mexeu
         }
         Primitive::Sphere { .. }
+        | Primitive::RoundedCylinder { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }

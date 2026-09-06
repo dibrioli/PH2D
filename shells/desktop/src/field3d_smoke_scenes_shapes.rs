@@ -382,3 +382,40 @@ pub(crate) fn cena_22() -> Result<FieldDoc, ph2d_field::FieldError> {
         NodeId(2),
     )
 }
+
+/// ⭐ **A cena `=23`: O CILINDRO COM BOJO** (W125) — a única forma da wave, mostrada pelo que a
+/// distingue.
+///
+/// ⚠️ **Três cópias com o bojo a crescer, e não uma.** A forma nasce da fórmula exacta do Quílez e
+/// o bojo é o ÚNICO controle que ela tem; uma cópia só mostraria um cilindro com o aro mole e não
+/// diria que o knob percorre de *cilindro* (bojo `0`) a *cápsula* (bojo = `min(raio, meia-altura)`).
+/// *Um gate no representante deixa o curso do controle por medir* — e uma cena com uma cópia só faz
+/// o mesmo ao olho.
+pub(crate) fn cena_23() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 23 — O CILINDRO COM BOJO (W125): o mesmo raio e a mesma altura com o \
+         bojo a 0,02 / 0,12 / 0,24. A da direita ja' e' quase uma capsula."
+    );
+    let peca = |bulge: f32, x: f32| {
+        leaf(
+            Primitive::RoundedCylinder {
+                radius: 0.24,
+                bulge,
+                half_height: 0.30,
+            },
+            Xform {
+                translation: [x, 0.0, 0.0],
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    FieldDoc::new(
+        vec![
+            peca(0.02, -0.62),
+            peca(0.12, 0.0),
+            peca(0.24, 0.62),
+            combine(Op::Union(Blend::Sharp), (0..3).map(NodeId).collect()),
+        ],
+        NodeId(3),
+    )
+}

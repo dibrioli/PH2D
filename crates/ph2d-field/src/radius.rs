@@ -66,6 +66,7 @@ impl FieldDoc {
                 // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
                 // caía no braço vazio e o painel dizia que ela não tinha nenhum.
                 Primitive::Sphere { .. }
+                | Primitive::RoundedCylinder { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
                 | Primitive::Capsule { .. }
@@ -215,6 +216,7 @@ impl NodeShape {
                 // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
                 // caía no braço vazio e o painel dizia que ela não tinha nenhum.
                 Primitive::Sphere { .. }
+                | Primitive::RoundedCylinder { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
                 | Primitive::Capsule { .. }
@@ -327,6 +329,7 @@ pub fn set_shape_radius(shape: &mut NodeShape, node: u32, radius: f32) -> Result
                 | Primitive::TorusArc { round, .. } => *round = radius,
                 // Inalcançável: `round_limit` já devolveu `None` para estas acima.
                 Primitive::Sphere { .. }
+                | Primitive::RoundedCylinder { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
                 | Primitive::Capsule { .. }
@@ -498,6 +501,7 @@ pub fn fillet_inflates(p: &Primitive) -> bool {
         // ⚠️ **Lista FECHADA**: uma primitiva nova é erro de compilação aqui, e quem a escrever tem
         // de dizer se as peças dela são ortogonais.
         Primitive::Sphere { .. }
+        | Primitive::RoundedCylinder { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }

@@ -450,6 +450,14 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             round: 0.012,
             chamfer: 0.0,
         },
+        // ⚠️ **O bojo a `0,12` de um raio de `0,40`** — nem zero (que degeneraria no cilindro que a
+        // paleta já tem, e deixaria a fórmula exacta sem nada para medir) nem no tecto
+        // `min(raio, meia-altura)`, onde ela vira uma cápsula.
+        PrimitiveKind::RoundedCylinder => Primitive::RoundedCylinder {
+            radius: 0.40,
+            bulge: 0.12,
+            half_height: 0.30,
+        },
     })
 }
 

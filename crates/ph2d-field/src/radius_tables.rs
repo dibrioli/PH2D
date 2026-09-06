@@ -267,6 +267,12 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
         Primitive::Gyroid {
             cell, thickness, ..
         } => thickness.min(*cell),
+        // ─────────────────────────── W125 ───────────────────────────
+        Primitive::RoundedCylinder {
+            radius,
+            half_height,
+            ..
+        } => radius.min(*half_height),
     }
 }
 
@@ -635,6 +641,11 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
             ..
         } => hyp(radius + thickness, pitch * turns * 0.5),
         Primitive::Gyroid { half, .. } => hyp(hyp(half[0], half[1]), half[2]),
+        Primitive::RoundedCylinder {
+            radius,
+            half_height,
+            ..
+        } => hyp(*radius, *half_height),
         // ⚠️ **As faixas do visto passam do vértice, e a espessura sai para fora das pontas.**
         Primitive::Check {
             half_width,

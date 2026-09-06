@@ -277,3 +277,33 @@ pub(super) fn validate_lattice(p: &Primitive, idx: u32) -> Result<(), FieldError
         _ => Ok(()),
     }
 }
+
+/// **O que o cilindro com barriga recusa** (W125).
+pub(super) fn validate_exact(p: &Primitive, idx: u32) -> Result<(), FieldError> {
+    let positive = |v: f32, what: &'static str| -> Result<(), FieldError> {
+        if !v.is_finite() || v <= 0.0 {
+            Err(FieldError::NonPositive { node: idx, what })
+        } else {
+            Ok(())
+        }
+    };
+    match *p {
+        Primitive::RoundedCylinder {
+            radius,
+            bulge,
+            half_height,
+        } => {
+            positive(radius, "radius")?;
+            positive(bulge, "bulge")?;
+            positive(half_height, "half_height")?;
+            if !bulge.is_finite() || bulge > radius.min(half_height) {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "bulge",
+                });
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}

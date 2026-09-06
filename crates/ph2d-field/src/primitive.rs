@@ -612,6 +612,16 @@ pub enum Primitive {
         round: f32,
         chamfer: f32,
     },
+    // ─────────────────────────── W125 ───────────────────────────
+    /// ⭐ **CILINDRO COM BARRIGA** — o bordo inteiro num arco de raio `bulge`.
+    ///
+    /// ⚠️ **Não tem `round`, e é uma decisão**: o `bulge` já É o arredondamento, e um segundo
+    /// número para a mesma aresta seriam duas verdades sobre ela.
+    RoundedCylinder {
+        radius: f32,
+        bulge: f32,
+        half_height: f32,
+    },
 }
 
 impl Primitive {
@@ -671,6 +681,7 @@ impl Primitive {
             Primitive::Document { .. } => PrimitiveKind::Document,
             Primitive::Helix { .. } => PrimitiveKind::Helix,
             Primitive::Gyroid { .. } => PrimitiveKind::Gyroid,
+            Primitive::RoundedCylinder { .. } => PrimitiveKind::RoundedCylinder,
         }
     }
 }

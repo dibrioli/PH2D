@@ -12200,3 +12200,115 @@ irmão com os sólidos e as chapas de geometria.
 obsolescência a confirmá-las) · as **7** provas novas · os quatro lotes anteriores (7, 11, 8, 9) ·
 shell **212 suites / 0 falhas** · fmt · clippy · LOC (workspace e shell).
 **Smoke:** *Coil* e *Gyroid Lattice* na paleta, e a cena `=22`.
+
+---
+
+## §126 — W125: o lote 5 — e o levantamento da semana passada estava INFLADO em quatro (06/09)
+
+> **Enio, 06/09:** *«Muito bom! Siga»*.
+
+### §126.1 — ⛔⛔⛔ Quatro das onze que EU listei já se alcançam
+
+Antes de construir, corri a lista do [§7.3](08_formas_por_formula.md) contra o **código**, e não
+contra os nomes:
+
+| eu tinha listado | e ela é |
+|---|---|
+| **Horseshoe** | o **`Tube` com ângulo** — um sector de anel com pontas quadradas é exactamente isso |
+| **Rounded X** | a **`Cross` rodada `45°`** — ela já tem `round` |
+| **Tunnel** | o **`Delay` rodado um quarto de volta** — a cápsula cortada por uma parede |
+| **Uneven Capsule** | o **`RoundCone`**, que é a versão 3D dela |
+
+⇒ *a minha lista comparou NOMES do catálogo com nomes da paleta; a pergunta certa é que **forma o
+produto alcança**, e uma rotação é um gesto que o artista já tem.* É a mesma lei que o §5 do doc 08
+registou em Agosto, vista do outro lado: ali eu cortei quarenta formas com *«já se faz por
+composição»* (errado, porque montar não é achar); aqui eu contei quatro que se fazem com **uma
+pose** (errado, porque rodar não é montar).
+
+### §126.2 — E o OVO foi construído, medido e RECUSADO
+
+A fórmula publicada tem um parâmetro de barriga (`bu`). Medido:
+
+| `bu` | 0,30 | 0,70 | 0,95 | **1,00** | 1,20 |
+|---|---:|---:|---:|---:|---:|
+| meia-largura | `0,314` | `0,241` | `0,255` | **círculo** | *sem arco* |
+
+⛔ **No valor natural (`1`) a álgebra dá `x = 0` identicamente** — o arco que liga as duas pontas
+vira um círculo centrado no eixo, e a peça é um **disco**. De um lado o knob é **não-monótono**
+(`0,70` é mais magro que `0,30` e que `0,95`); do outro **não há arco nenhum**. E com `bu` fixo em
+qualquer valor, **`28` de `100`** combinações de `(raio, topo, vão)` ficam sem arco — isto é, com um
+**vinco** entre os dois círculos.
+
+⇒ *um controlo que mente num quarto do próprio curso é a definição do que esta linha passou a semana
+a curar.* Fica recusado com a tabela.
+
+### §126.3 — A que fica é UMA, e ela é DISTÂNCIA EXACTA
+
+⭐ Ao contrário da espiral, da mola e da rede — que entregam um **minorante**, que é tudo o que a
+marcha precisa — esta mede `‖∇f‖ = 1,0000`:
+
+- **Cilindro com bojo** (*rounded cylinder*): o bordo inteiro num arco de raio `bulge`.
+  ⚠️ **Não é um cilindro com filete**: ali a parede é reta e só o aro arqueia; aqui a **parede
+  curva**. É a rolha, o botão, o pneu. ⛔ E por isso ela **não tem `round`** — o `bulge` já é o
+  arredondamento, e um segundo número para a mesma aresta seriam duas verdades sobre ela.
+
+⚠️ **O knob percorre entre duas degenerações, e as duas são legítimas:** no piso (`0`, que a porta
+recusa) ela é o cilindro que a paleta já tem; no tecto `min(raio, meia-altura)` a parede reta
+desaparece — com o raio maior sai uma pastilha, com a altura maior uma cápsula. **Em toda a
+travessia o equador fica no `radius` e a tampa na `half_height`**, e é isso que faz dele um *bojo* e
+não uma escala (gate `the_bulge_eats_the_corner_and_never_the_extents`, que existe porque *um gate
+no representante deixa o curso do controle por medir*).
+
+### §126.4 — ⛔⛔⛔ E a ESCADA foi construída QUATRO vezes, medida e RECUSADA
+
+Ela parecia a mais fácil das três (`steps` degraus numa peça só; ⛔ o `Array` não a exprime — ele
+repete ao longo de UM eixo e um degrau anda nos dois). Foi a mais cara, e cada construção morreu de
+uma coisa diferente:
+
+| # | a construção | o que a medição disse |
+|---|---|---|
+| 1 | cada degrau numa caixa que ocupa a **própria célula** | campo lê **`0,00000` na parede partilhada** — um `min` de duas caixas **encostadas** vale zero na fronteira comum, e nasce uma superfície dentro do sólido |
+| 2 | caixas **alargadas** uma célula para a direita, com `round` | o filete **cresce a peça** — os pisos dos degraus vizinhos são **coplanares**, e uma união arredondada de duas faces coplanares incha para lá dessa face |
+| 3 | as caixas **rebaixadas** e o piso recortado depois | continua a crescer, e o `‖∇f‖` bate no tecto **`√3`** da união de três meias-fatias |
+| 4 | janela de **duas células**, com o dono do ponto escolhido antes de compor | marcha, chanfro e arestas **todos verdes** — e o filete é **neutro em volume** |
+
+A #1 é literalmente a lei que a [`ops::sd_star`](../../crates/ph2d-field-eval/src/ops.rs) pagou
+(*«uma partição: as duas bases ficam sobre a mesma recta»*), e eu voltei a escrevê-la. A cura foi o
+degrau ir **uma célula para a DIREITA** — o seguinte é mais alto e cobre a sobra, e as caixas passam
+a sobrepor-se em volume; ⛔ para a **esquerda** encheria o degrau anterior.
+
+⛔⛔ **A #4 é a que decide, e ela morre num gate que está CERTO.** O censo mede
+`the_biggest_fillet_still_leaves_a_body` com um `<` **estrito**: com o maior filete que o documento
+aceita, a peça tem de encolher. A escada conta **`20 139` amostras dentro com filete e `20 139` sem**
+— *exactamente* o mesmo número. Não é um filete inerte: é que ela tem **tantas quinas côncavas como
+convexas, e do mesmo raio**, então o que o filete come numa aresta ele devolve na vizinha.
+
+⚠️ **E o gate não consegue distinguir *equilibrado* de *inerte*** — nem devia ter de o fazer: foi
+esse `<` estrito que apanhou, em Agosto, o `round` **inerte** do cone e do prisma (§104, `+0,0 %` de
+volume, campo bit a bit igual). ⇒ *enfraquecê-lo para caber uma forma seria trocar um gate que
+apanhou dois defeitos reais por uma escada.* **A escada é que sai**, com a tabela ao lado.
+
+### §126.5 — ⭐⭐⭐ E o tecto de degraus dela: a primeira varredura media a SONDA
+
+Vale registar porque a leitura errada quase virou uma constante do produto:
+
+| degraus | 2 | 4 | 8 | 16 | 32 | 48 | 64 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| peça de **tamanho fixo** (o degrau encolhe) | `0,71` | `0,71` | `0,71` | `0,71` | **`14,78`** | `0,71` | **`17,73`** |
+| **degrau fixo** (a peça cresce) | `0,71` | `0,71` | `0,71` | `0,71` | `0,71` | — | `0,71` |
+
+⚠️ **Um número que salta e VOLTA não é um joelho, é aliasing:** a grelha da sonda tem célula `0,017`
+e o degrau a `32` mede `0,020`. ⭐ **O controlo desfaz a acusação** — com o degrau fixo, `64` lê
+`0,7071`. *O campo de uma escada não sabe quantos degraus ela tem*, como o da espiral não sabe as
+voltas.
+
+### §126.6 — ⚠️ E a recuperação foi por REVERSÃO, não por cirurgia
+
+A escada estava ligada em **29 ficheiros** quando a medição a derrubou. ⛔ Desligá-la à mão em 29
+sítios é o género de operação em que uma linha esquecida compila; o que se fez foi
+`git checkout -- crates/ shells/` (os docs preservados) e **reaplicar só o cilindro**, do zero, com
+o `cargo check` a fechar cada passo.
+
+**Gates:** censo (com o representante novo) · arestas 10/10 · as 3 provas novas (**2 mutações, cada
+uma morta por 2 gates**) · shell · fmt · clippy · LOC.
+**Smoke:** *Rounded Cylinder* na paleta, e a cena `=23` (três cópias com o bojo a crescer).

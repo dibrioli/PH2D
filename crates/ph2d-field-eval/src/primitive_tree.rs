@@ -673,5 +673,17 @@ fn primitive_raw(p: &Primitive) -> Tree {
             f64::from(round),
             f64::from(chamfer),
         ),
+        // ─────────────────────────── W125 ───────────────────────────
+        // ⚠️ **Sem `round`/`chamfer`** — o bojo já É o arredondamento desta forma, e um segundo
+        // controlo sobre a mesma aresta daria dois nomes ao mesmo raio.
+        Primitive::RoundedCylinder {
+            radius,
+            bulge,
+            half_height,
+        } => crate::ops_exact::sd_rounded_cylinder(
+            f64::from(radius),
+            f64::from(bulge),
+            f64::from(half_height),
+        ),
     }
 }

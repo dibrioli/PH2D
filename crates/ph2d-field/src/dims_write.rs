@@ -552,6 +552,17 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
             },
             4,
         ) => *thickness = keep_below(half, *cell * crate::MAX_GYROID_FILL * 0.5),
+        // ─────────────────────────── W125 ───────────────────────────
+        (Primitive::RoundedCylinder { radius, .. }, 0) => *radius = value,
+        (
+            Primitive::RoundedCylinder {
+                bulge,
+                radius,
+                half_height,
+            },
+            1,
+        ) => *bulge = keep_below(value, radius.min(*half_height)),
+        (Primitive::RoundedCylinder { half_height, .. }, 2) => *half_height = half,
         (Primitive::Prism { sides, .. }, 0) => {
             // ⚠️ **COAGE, não recusa** — a lei do `Unary::Taper`, e pela mesma razão: a faixa já
             // não oferece nada fora de `[MIN, MAX]`, então um valor de fora só chega por outra

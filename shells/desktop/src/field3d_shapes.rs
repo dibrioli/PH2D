@@ -465,6 +465,12 @@ pub(crate) const SHAPES: &[Shape] = &[
         family: Family::Blocks,
         make: Make::Formula(a_gyroid),
     },
+    // ─────────────────────────── W125 ───────────────────────────
+    Shape {
+        key: "panel.model3d.add.rounded_cylinder",
+        family: Family::Round,
+        make: Make::Formula(a_rounded_cylinder),
+    },
     Shape {
         key: "panel.model3d.add.torus",
         family: Family::Rings,

@@ -82,6 +82,7 @@ pub fn shape_name(shape: &NodeShape) -> &'static str {
             Primitive::Document { .. } => "Document",
             Primitive::Helix { .. } => "Coil",
             Primitive::Gyroid { .. } => "Gyroid Lattice",
+            Primitive::RoundedCylinder { .. } => "Rounded Cylinder",
         },
     }
 }

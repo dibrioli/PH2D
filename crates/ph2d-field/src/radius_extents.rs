@@ -336,5 +336,11 @@ pub fn bounding_half_extents(p: &Primitive) -> [f32; 3] {
         }
         // ⭐ **A caixa É a peça** — o gyroid é cortado por ela.
         Primitive::Gyroid { half, .. } => *half,
+        // ─────────────────────────── W125 ───────────────────────────
+        Primitive::RoundedCylinder {
+            radius,
+            half_height,
+            ..
+        } => [*radius, *radius, *half_height],
     }
 }

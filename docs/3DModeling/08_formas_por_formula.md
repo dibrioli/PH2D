@@ -284,6 +284,8 @@ alguém dizer com que números ela se mede.
 | Teto de excentricidade do elipsóide | a forma está **correta**; só a marcha viva degrada (`324` passos a `1:64` contra `MAX_STEPS = 400`) — limitar a peça pelo previsualizador é o §0 ao contrário |
 | Polígono dos vales **+ um triângulo por ponta** | é uma **partição**: `min` de peças que se tocam sem se sobrepor dá `0` no interior do sólido (doc 06 §101.5) |
 | `MAX_STAR_POINTS` acima de 16 | `24` pontas custam `5,17×` o cilindro, contra o `3,80×` que o `MAX_PRISM_SIDES` fixou como preço aceite |
+| **Ovo** por fórmula publicada (W125) | o knob de barriga degenera num **círculo** no valor natural (`x = 0` identicamente), é não-monótono de um lado e sem arco do outro; com ele fixo, `28` de `100` combinações deixam um **vinco** (doc 06 §126.2) |
+| **Escada** por fórmula (W125, 4 construções) | a última passa marcha, chanfro e arestas — e o filete é **neutro em volume** (`20 139` amostras dentro com e sem), porque ela tem tantas quinas côncavas como convexas e do mesmo raio. ⛔ O `<` estrito de `the_biggest_fillet_still_leaves_a_body` não distingue *equilibrado* de *inerte*, e foi ele que apanhou o `round` inerte do cone e do prisma (doc 06 §126.4) |
 
 | Filete que só é arco a **90°** | `(1 − 1/√2)·r/sin α` contra `r·(1/sin α − 1)`; as duas curas (canto exato · raio compensado) **pioram** a sonda de arestas (doc 06 §102.5) |
 | Canto exato dobrado sobre expressão composta | a corda e o disco são globais: `0,0 %` → `1,3 %` de aresta viva no prisma (doc 06 §102.5) |
@@ -400,16 +402,25 @@ limite seja honesto.
 
 ### §7.3 — Do catálogo 2D faltam ONZE que valem uma chapa
 
+⛔⛔⛔ **CORRIGIDO em 06/09: QUATRO destas onze já se alcançam, e a lista comparava NOMES.**
+A pergunta certa é *que **forma** o produto alcança* — e uma **rotação** é um gesto que o artista já
+tem, não uma montagem:
+
+| eu listei | e ela é |
+|---|---|
+| ~~Horseshoe~~ | o **`Tube` com ângulo** (um sector de anel com pontas quadradas) |
+| ~~Rounded X~~ | a **`Cross` rodada `45°`** — ela já tem `round` |
+| ~~Tunnel~~ | o **`Delay` rodado um quarto de volta** |
+| ~~Uneven Capsule~~ | o **`RoundCone`**, que é a versão 3D dela |
+
+⇒ ficam **sete** — e a W125 mediu **duas** dessas sete até à recusa (o ovo e a escada), pelo que sobram **cinco**. Mecanismo: [doc 06 §126](06_resultados_cena_e_gizmo.md).
+
 | Forma | Classe | Por que ela |
 |---|---|---|
-| **Horseshoe** (ferradura) | **A** | ⭐⭐ Arco com espessura e pontas **quadradas**. Hoje só se faz com um `RingArc` mais dois cortes |
 | **Polygon (N vértices arbitrários)** | **A** | ⭐⭐ O polígono **irregular** por fórmula. Hoje isto obriga a **desenhar**, e desenhar custa por segmento |
 | **Triangle (3 vértices arbitrários)** | **A** | ⭐ O prisma só faz **regulares**; um triângulo escaleno hoje é um desenho |
-| **Uneven Capsule** | **A** | ⭐ Cápsula com **raios diferentes** nas duas pontas — a forma de um dente, de uma pétala |
-| **Egg** | **A** | ⭐ O ovo, exacto. ⚠️ **Não é a nossa `Drop`**: aquela tem bico |
-| **Rounded X** | **A** | ⭐ O «X» de braços redondos — a `Cross` rodada não o dá com as pontas certas |
-| **Tunnel** | **A** | ⭐ Rectângulo com o topo em meio-círculo — porta, janela, arco |
-| **Stairs** | **A** | ⭐ A **escada de N degraus**, por fórmula. É o `Array` de uma caixa… com a diferença de ser **uma** peça |
+| ~~**Egg**~~ | — | ⛔ **CONSTRUÍDO e RECUSADO na W125** — o knob de barriga degenera num círculo no valor natural (recusas medidas, abaixo) |
+| ~~**Stairs**~~ | — | ⛔ **CONSTRUÍDO 4× e RECUSADO na W125** — o filete dela é neutro em volume, e o gate que o exige está certo (recusas medidas, abaixo) |
 | **Bezier (quadrático)** | **A** | ⭐ Um traço curvo com espessura, sem desenhar |
 | **Parabola** | **A** | A curva, com espessura |
 | **Circle Wave** | **A** | ⭐ A onda em anel — irmã directa da onda que o `Document` estreou |
@@ -447,8 +458,8 @@ um item de lote.*
 | lote | formas | por quê |
 |---|---|---|
 | ✅ **4** (2) | **FECHADO na W124** — *Coil* e *Gyroid Lattice*. Mecanismo: [doc 06 §125](06_resultados_cena_e_gizmo.md) |
-| **5** (6) | **Plane** · **Death Star** · **Rounded Cylinder** · **Horseshoe** · **Tunnel** · **Egg** | as exactas do catálogo, baratas e que o `§4.2` ou o uso comum já pediam |
-| **6** (5) | **Polygon(N)** · **Triangle** · **Uneven Capsule** · **Rounded X** · **Stairs** | as que hoje **obrigam a desenhar** — e desenhar custa `101×` |
+| ✅ **5** (1) | **FECHADO na W125** — *Rounded Cylinder*, e ele é a primeira forma deste módulo com **distância exacta** (`‖∇f‖ = 1,0000`). ⛔ E das outras cinco que este lote nomeava: a **ferradura** e o **túnel** já se alcançam (acima); o **ovo** e a **escada** foram construídos e **recusados por medição** (o knob de barriga mente num quarto do curso; a escada tem o filete **neutro em volume**, `20 139 = 20 139`, e o gate que o mede está certo); e o **plano** precisa que a bola de recorte admita uma peça **infinita** — é maquinaria, não forma. Mecanismo: [doc 06 §126](06_resultados_cena_e_gizmo.md) |
+| **6** (2) | **Polygon(N)** · **Triangle** | as que hoje **obrigam a desenhar**. ⚠️ E elas têm um preço próprio: *os vértices arbitrários são o que o desenho já é* — o ganho é só o custo |
 | **7** (2) | **Superquadrática** · **Superfórmula** | um knob que morfa uma família inteira; é onde a fórmula humilha o desenho |
 | ⏳ | Bezier · Parabola · Circle Wave · nó de toro · rosca | valem, e não são de primeira mão |
 

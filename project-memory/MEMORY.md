@@ -24,6 +24,7 @@
 - [Uma feature = UMA linha, janelas ao mínimo; a nova assume a MESMA linha (25/08)](feedback_one_feature_one_line_minimum_windows.md)
 - [`panic` engolido — e `head` — encolhem o conjunto de candidatas em silêncio: censo de AUSÊNCIA corre sem corte](feedback_a_swallowed_panic_silently_shrinks_the_candidate_set.md)
 - [A ETAPA acaba num smoke; complexidade audita-se ANTES de o sugerir (30/08)](feedback_a_stage_ends_in_a_smoke_and_complexity_is_audited_before_it.md)
+- ⛔ [Passo que manda clicar numa LINHA de painel afirma que ela está na lista — e o dono aprova o smoke com o passo impossível dentro](feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md)
 - [O desenho pedido pode já ser LEI noutra metade do app — procure antes de desenhar](feedback_the_design_being_asked_for_may_already_be_law_in_another_half_of_the_app.md)
 - [«checksum» vermelho: o agente AGE, não escala](feedback_a_red_checksum_is_acted_on_by_the_agent_not_escalated.md)
 - [Handoff promete UMA linha no §5 e entrega 89 — meça o diff](feedback_a_handoff_can_promise_one_line_in_the_router_and_ship_eighty_nine.md)

@@ -2435,3 +2435,49 @@ uma das **duas** linhas do gesto:
 
 ⚠️ **O PASSO 2 ensina a lei pela recusa** — tentar o mesmo dentro de um robô numerado devolve a voz
 que diz onde fazer. *Uma lei que o artista descobre por um aviso é uma lei que ele aprende uma vez.*
+
+---
+
+### 🐞 §F5.13 — **Duas cenas mandavam agir sobre linhas que não estão na lista** (2026-09-06)
+
+Achado ao preparar a wave seguinte, com o instrumento a ser escrito **antes** da cura.
+
+#### O mecanismo
+
+Uma **receita não é uma linha da cena**: desde 2026-08-30 o `snapshots.rs` retira da Hierarquia tudo
+o que o `off_canvas::is_unedited_recipe` acusa — e a raiz da receita também é `MasterPiece`, logo a
+receita **inteira** sai. Quem a traz de volta é a marca `MasterEditing`, **derivada da selecção**.
+
+| cena | o passo | desde quando é falso |
+|---|---|---|
+| `=2` | *«clique na linha `Badge`»* | **30/08** — o texto foi escrito a 27/08, quando era verdade |
+| `=7` | *«arraste o `Arm` … para o `Head`»* | **nasceu assim**, hoje |
+
+⚠️⚠️ **E o dono aprovou a `=7` com o passo impossível dentro** (*«smoke OK»*). Ele faz o que consegue
+e diz que está bem — *a aprovação de um smoke não é uma verificação de que cada passo é executável.*
+
+#### A cura, e por que o texto muda junto
+
+As duas cenas **abrem a receita elas próprias**, e o texto passa a dizer o **estado** em vez de mandar
+um gesto que não existe. ⚠️ Abrir também a **desenha** (o mesmo `MasterEditing` responde às duas
+perguntas), então a `=7` tem **quatro** robôs e o texto di-lo: *um objecto a mais que ninguém
+explicou lê-se como defeito.*
+
+E a linha *«na lista: `Robot` é o COMPONENTE»* das cenas `=5` e `=6` era falsa — corrigida para o que
+a lista de facto mostra.
+
+#### O instrumento tem DUAS metades
+
+1. **`every_row_the_step_names_is_actually_in_the_list`** — corre o predicado do painel sobre as
+   entidades que o passo nomeia, com a **metade justa primeiro** (sem a selecção, nenhuma está lá):
+   sem ela, uma implementação que nunca escondesse nada passaria.
+2. **`a_smoke_that_opens_the_recipe_says_so`** — censo de dois sentidos: *quem abre diz, e quem diz
+   abre*, mais a metade que exige uma cena de cada lado — *um censo cuja população pode ser vazia
+   passa por não ter sujeito.*
+
+#### ⭐ E uma promessa minha da §F5.12 ganhou régua
+
+A guarda do arrasto só recusa quando o **pai** muda, com a justificação escrita de que a ordem *«vira
+excepção da cópia como qualquer outro valor»*. Isso era uma afirmação sem instrumento — hoje é
+`reordering_a_piece_inside_a_copy_sticks_as_an_override`. *Uma frase ao lado de código é uma promessa
+ao próximo leitor, e uma promessa sem régua envelhece sozinha.*

@@ -501,6 +501,15 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // DESCARTA e o undo/save perderiam a gaiola E a fonte autorada em silêncio (e a fonte, aqui,
     // é insubstituível: o recook já sobrescreveu o path da cena com a cozida).
     reg.register::<crate::VecEnvelope>("ph2d::ecs::VecEnvelope");
+    // ⭐⭐⭐ O ESQUELETO (estudo 42 item 5): o OSSO e a PELE. Mesma razão de todos acima — sem o
+    // registo, o snapshot descarta-os e o undo/save perderiam o rig E a fonte autorada em silêncio
+    // (a fonte, aqui, é insubstituível: o recook já sobrescreveu o caminho da cena com a deformada).
+    // ⚠️ E os dois viajam SEM mexer no `PROJECT_SCHEMA`, pela razão escrita no `VecMorphMachine`
+    // acima: o `ComponentBlob` é chaveado por `blake3(nome canónico)`, então um ficheiro antigo
+    // simplesmente NÃO TEM estes blobs e a entidade volta sem esqueleto — que é a leitura correcta
+    // de "ninguém desenhou osso nenhum".
+    reg.register_default::<crate::VecBone>("ph2d::ecs::VecBone");
+    reg.register::<crate::VecSkin>("ph2d::ecs::VecSkin");
     reg.register::<crate::VecLabel>("ph2d::ecs::VecLabel");
     // O FX raster de uma forma (Blur/Glow/Drop Shadow, plano 24). Mesma razão de todos os irmãos —
     // sem o registro, o snapshot o DESCARTA e um Ctrl+Z (ou reabrir) devolveria a forma NUA, sem a

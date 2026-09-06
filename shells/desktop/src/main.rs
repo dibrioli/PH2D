@@ -87,6 +87,9 @@ mod blend_smoke;
 mod body_fk;
 mod body_grab;
 mod body_pose;
+/// ⭐ **O gesto do modo OSSO** (estudo 42 item 5): arrastar no vazio faz um osso, e o pai é o osso
+/// seleccionado — arrasto-arrasto-arrasto é uma cadeia.
+mod bone_gesture;
 /// Os GESTOS da booleana viva: armar (criar/re-mirar) e consolidar. O documento mora aqui; o
 /// motor, no `bool_live`.
 mod bool_gesture;
@@ -583,6 +586,8 @@ mod sim_populate;
 mod sizing_smoke;
 /// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
 mod sketch_hatch_smoke;
+/// ⭐⭐⭐ **O ESQUELETO, vivo** (estudo 42 item 5): a forma presa aos ossos, re-cozida por quadro.
+mod skin_live;
 /// **9-slice, lado a lado com o que ele conserta** (`PH2D_SLICE_SMOKE=1`).
 mod slice_smoke;
 mod smoke_layout;
@@ -704,6 +709,9 @@ mod vec_appearance;
 mod vec_appearance_smoke;
 mod vec_bindings;
 mod vec_blend;
+/// ⭐⭐⭐ **O desenho ganha OSSOS** (`PH2D_VEC_BONE_SMOKE=1`, estudo 42 item 5) — irmã da cena da
+/// pilha de aparência, teto de LOC.
+mod vec_bone_smoke;
 /// ⭐ Os gates de ROTA da booleana viva até os ESTADOS (auditoria de 2026-08-23): *com uma
 /// booleana em mãos, o artista chega às poses dela?* — a pergunta que "o widget existe e o clique
 /// chega ao barramento" não faz.
@@ -1029,6 +1037,8 @@ impl App {
             vec_appearance_smoke_done: false,
             svg_import_smoke_done: false,
             vec_stack_smoke_done: false,
+            vec_bone_smoke_step: 0,
+            vec_bone_smoke_pend: None,
             vec_fade_smoke_done: false,
             nest_smoke_done: false,
             player_readout_log: None,
@@ -1232,6 +1242,8 @@ impl App {
             vec_trim_hit: None,
             vec_trim_piece: Vec::new(),
             vec_bucket_face: None,
+            vec_bone_drag: None,
+            vec_bone_pose: None,
             vec_bucket_cache: None,
             vec_bucket_new: Vec::new(),
             vec_shape_armed_target: None,

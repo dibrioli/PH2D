@@ -80,6 +80,11 @@ impl VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_FRAME => {
                 self.mode = DrawMode::Frame;
             }
+            // ⭐ **Osso** (estudo 42 item 5) — o 17.º pill. O gesto produz uma ENTIDADE com
+            // `VecBone`, não um caminho; a shell é quem a cria (aqui só se troca de modo).
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_BONE => {
+                self.mode = DrawMode::Bone;
+            }
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_PENCIL => {
                 self.mode = DrawMode::Pencil;
             }

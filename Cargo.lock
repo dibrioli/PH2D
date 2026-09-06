@@ -5489,6 +5489,7 @@ dependencies = [
  "ph2d-vec-pattern",
  "ph2d-vec-render",
  "ph2d-vec-scene",
+ "ph2d-vec-skin",
  "ph2d-vec-svg",
  "ph2d-vector",
  "ph2d-vector-font",
@@ -8145,6 +8146,13 @@ dependencies = [
  "ph2d-warp-style",
  "postcard",
  "serde",
+]
+
+[[package]]
+name = "ph2d-vec-skin"
+version = "0.0.0"
+dependencies = [
+ "ph2d-vec-scene",
 ]
 
 [[package]]

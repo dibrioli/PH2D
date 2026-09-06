@@ -143,6 +143,14 @@ impl BodyCtx<'_> {
                 tr("panel.vector.mode.frame"),
                 DrawMode::Frame,
             ),
+            // ⭐⭐⭐ **Osso** (estudo 42 item 5) — o 17º pill, ao lado da Moldura porque os dois são
+            // os únicos que produzem algo que NÃO é uma forma: aquele o lugar onde as formas moram,
+            // este o que as move.
+            (
+                ids::VECTOR_MODE_BONE,
+                tr("panel.vector.mode.bone"),
+                DrawMode::Bone,
+            ),
             // NOTA: o **Pick Shapes** (`VECTOR_MODE_PICKBLEND`) NÃO fica aqui — ele é uma etapa do
             // Blend (escolher as formas na ordem), e mora na seção BLEND, ao lado do botão que as
             // liga (ADR-0128 C2b). É um modo de tool, mas seu botão vive lá, não nesta fileira.

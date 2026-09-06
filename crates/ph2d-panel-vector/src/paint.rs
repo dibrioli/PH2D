@@ -151,6 +151,29 @@ fn seed_and_publish(
             }
         }
     }
+    // ⭐⭐ **As sementes dos CAMPOS NUMÉRICOS saíram daqui** — irmã pelo teto de 200 LOC por
+    // função, e o corte é por RESPONSABILIDADE: acima ficam as marcas e os sliders (coisas que
+    // se fazem UMA vez), e ali a família que se repete oito vezes — *re-semear um campo do
+    // estado publicado, nunca sobre o que está em FOCO*.
+    seed_number_fields(store);
+    store.set_panel_content_h(ids::VECTOR_PANEL, content_h);
+    store.set_panel_visible_h(ids::VECTOR_PANEL, body_h);
+    // Clamp any stale scroll if the content shrank (e.g. a collapsed section) so we never
+    // leave a blank gap below the last row.
+    let max_scroll = (content_h - body_h).max(0.0);
+    if store.panel_scroll(ids::VECTOR_PANEL) > max_scroll {
+        store.set_panel_scroll(ids::VECTOR_PANEL, max_scroll);
+    }
+}
+
+/// **Re-semeia os campos numéricos do estado publicado** — a família que o [`seed_and_publish`]
+/// repetia oito vezes.
+///
+/// ⚠️ **A lei é UMA e vale para todos: nunca semear o campo em FOCO.** O `NumberInput` é dono do
+/// próprio buffer enquanto o artista digita, e reescrevê-lo apaga a tecla que ele acabou de
+/// premir. Cada bloco abaixo repete o guarda porque cada um lê um estado diferente — o que se
+/// partilha é a REGRA, e é por ela que eles vivem juntos.
+fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     // Seed the NODE fields from the published median. Mesmo padrão dos irmãos do Transform,
     // incluindo o guard de FOCO: re-semear o campo que está a ser digitado apagaria o dígito
     // debaixo do dedo.
@@ -181,6 +204,18 @@ fn seed_and_publish(
             (ids::VECTOR_PAINT_DX, row.offset[0]),
             (ids::VECTOR_PAINT_DY, row.offset[1]),
             (ids::VECTOR_PAINT_DILATE, row.dilate),
+        ] {
+            if store.focus_id() != Some(id) {
+                store.set_number_value(id, v);
+            }
+        }
+    }
+    // ⭐ Os dois números do OSSO em foco (estudo 42 item 5), com o MESMO guarda de foco dos
+    // irmãos: re-semear o campo que está a ser digitado apaga o dígito debaixo do dedo.
+    if let Some((length, strength)) = state::current_bone() {
+        for (id, v) in [
+            (ids::VECTOR_BONE_LENGTH, length),
+            (ids::VECTOR_BONE_STRENGTH, strength),
         ] {
             if store.focus_id() != Some(id) {
                 store.set_number_value(id, v);
@@ -281,14 +316,6 @@ fn seed_and_publish(
     // Idem para as caixas da PONTA (Head Size / Head Round): nascem no valor EFETIVO da tool,
     // não em `0` — uma ponta de tamanho zero é uma ponta invisível.
     crate::paint_markers::seed(store);
-    store.set_panel_content_h(ids::VECTOR_PANEL, content_h);
-    store.set_panel_visible_h(ids::VECTOR_PANEL, body_h);
-    // Clamp any stale scroll if the content shrank (e.g. a collapsed section) so we never
-    // leave a blank gap below the last row.
-    let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ids::VECTOR_PANEL) > max_scroll {
-        store.set_panel_scroll(ids::VECTOR_PANEL, max_scroll);
-    }
 }
 
 pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {

@@ -182,6 +182,7 @@ ph2d-painter-effects = { path = "../../crates/ph2d-painter-effects" }
 ph2d-vec-blend = { path = "../../crates/ph2d-vec-blend" }
 # ADR-0129: o motor do envelope/warp (deformação não-afim de geometria Bézier).
 ph2d-vec-envelope = { path = "../../crates/ph2d-vec-envelope" }
+ph2d-vec-skin = { path = "../../crates/ph2d-vec-skin" }
 ph2d-tool-vector = { path = "../../crates/ph2d-tool-vector" }
 # O estabilizador do lápis (`lazy_mouse_step`) — a MESMA função que o pincel do Painter usa.
 # ⚠️ Aresta de custo ZERO, medido: a crate já vem transitivamente pela `ph2d-tool-painter`.

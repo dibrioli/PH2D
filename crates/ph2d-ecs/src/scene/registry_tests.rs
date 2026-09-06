@@ -162,7 +162,13 @@ fn register_ecs_components_populates_registry() {
     //   propriedades saiu inteiro do fonte, adiado para o fim do plano) ⇒ a conta volta a
     //   `79`, que e' o `VecBucketFill` da `line/Vector`, ja' no main. ⛔ *Um numero que
     //   soma entre linhas conta-se; e um que a linha DESFEZ nao se soma.*
-    assert_eq!(reg.len(), 79);
+    // + 2 do ESQUELETO (VecBone + VecSkin, estudo 42 item 5, 2026-09-06) -- o OSSO (uma entidade
+    //   com pose, comprimento e forca) e a PELE (a fonte autorada em bytes + a matriz de repouso de
+    //   cada osso). ⚠️ Os PESOS nao entram: eles sao DERIVADOS do bind a cada quadro, e uma tabela
+    //   por ordem de varredura seria o *vector paralelo* que o `corner_radius` proibe por escrito.
+    // ⛔ **Este numero SOMA entre linhas: conta-se, nunca se escolhe.** O `81` saiu do gate (ele
+    //   imprimiu `left: 81`), como manda a nota do `VecBucketFill` acima.
+    assert_eq!(reg.len(), 81);
     assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());

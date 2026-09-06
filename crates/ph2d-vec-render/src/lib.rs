@@ -96,6 +96,11 @@ pub use envelope::{
     ENVELOPE_HANDLE_R_PX, EnvelopeCageView, draw_envelope_cage, draw_envelope_pins,
 };
 
+/// ⭐ **Os OSSOS** (estudo 42 item 5) — módulo irmão (LOC cap). O losango afilado que diz a
+/// direcção, desenhado com largura em PÍXEIS e comprimento em MUNDO.
+mod bone;
+pub use bone::{BONE_JOINT_R_PX, draw_bones};
+
 /// A **alça do texto em caminho** (plano 22, W5) — módulo irmão (LOC cap). A bolinha onde o
 /// texto começa no caminho; arrastá-la corre o texto ao longo dele.
 mod text_handle;

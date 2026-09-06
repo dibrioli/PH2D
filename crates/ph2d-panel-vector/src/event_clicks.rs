@@ -104,6 +104,10 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
             || x == ids::VECTOR_MODE_CUT
             || x == ids::VECTOR_MODE_TRIM
             || x == ids::VECTOR_MODE_BUCKET
+            // ⭐ O 17º pill: o OSSO (estudo 42 item 5). Fora daqui ele PINTA, ACENDE sob o rato e o
+            // `Click` morre no painel — o modo nunca troca. É a metade do bug #29 que só o gesto
+            // REAL apanha.
+            || x == ids::VECTOR_MODE_BONE
             || x == ids::VECTOR_PATH_WELD
             // A FONTE da largura do lápis (W1d) — três chips exclusivos, do mesmo assunto:
             // com que ferramenta, e como, o traço nasce.
@@ -205,6 +209,11 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // O botão de SEÇÃO "Apply" (assa a pilha de efeitos). Fora daqui pintaria e estaria
         // MORTO — a shell classifica-o via `fx_bridge_dispatch::classify_click`.
         || id == ids::VECTOR_FX_APPLY
+        // ⭐⭐⭐ Os três verbos do ESQUELETO (estudo 42 item 5) — eles mexem no MUNDO (um componente
+        // da entidade), então o clique é da shell. A lição do bug #29 é literalmente esta linha.
+        || id == ids::VECTOR_BONE_BIND
+        || id == ids::VECTOR_BONE_EXPAND
+        || id == ids::VECTOR_BONE_RELEASE
         || id == ids::VECTOR_ENVELOPE_RUN
         || id == ids::VECTOR_ENVELOPE_EXPAND
         || id == ids::VECTOR_ENVELOPE_RELEASE

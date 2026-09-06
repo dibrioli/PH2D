@@ -238,6 +238,13 @@ pub use vec_envelope::{
     ENVELOPE_DEFAULT_BEND, EnvelopeKind, EnvelopeWarp, VecEnvelope, VecEnvelopeChild,
 };
 
+/// ⭐⭐⭐ **O ESQUELETO** (estudo 42 item 5) — o osso é uma ENTIDADE, e a pele é um componente da
+/// forma. Irmão do envelope no padrão (fonte autorada em bytes, recook por quadro) e diferente no
+/// que deforma: a gaiola é um mapa `R2→R2` sobre N formas; a pele é um afim POR OSSO misturado por
+/// peso, e a hierarquia da cena é a cinemática.
+mod vec_skin;
+pub use vec_skin::{VecBone, VecSkin, VecSkinBone};
+
 /// **O RÓTULO** — o texto que pertence a uma forma (ou a um conector) e a segue. Mesma família
 /// do conector, e pela mesma razão: o componente guarda a RELAÇÃO (de quem, e onde em relação a
 /// ele), e a pose é uma função pura dela. O alvo é um `VecPathId`, nunca bits de entidade.

@@ -45,6 +45,7 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     // Boolean op buttons (N-ary over the SELECTED closed regions) + compound row.
     super::blend::populate_blend(store);
     super::envelope::populate_envelope(store);
+    super::bone::populate_bone(store);
     // Text on Path (plano 22): os quatro controles + o slider de offset. Registrados
     // INCONDICIONALMENTE, como todos os irmãos — o store é agnóstico de modo, e quem decide se
     // o clique é possível é a PINTURA (sem hit-rect não há Click).

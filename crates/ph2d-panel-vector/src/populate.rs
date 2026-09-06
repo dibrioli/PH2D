@@ -75,6 +75,10 @@ mod blend;
 #[path = "populate_envelope.rs"]
 mod envelope;
 
+/// ⭐ O registro dos widgets do **ESQUELETO** — módulo irmão, par do `paint_bone`.
+#[path = "populate_bone.rs"]
+mod bone;
+
 /// O registro dos widgets dos **Effects** (ADR-0132) — módulo irmão, par do `paint_effects`.
 #[path = "populate_effects.rs"]
 mod effects;

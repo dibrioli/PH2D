@@ -130,6 +130,18 @@ pub enum DrawMode {
     /// **produzir**, e a tela quer ser desenhada onde vai ficar. Converter uma forma que já existe
     /// (o *Frame selection* do Figma) é a outra metade, e não está construída.
     Frame,
+    /// ⭐⭐⭐ **Osso** (estudo 42 item 5, doc 47): arrastar no vazio faz um osso — a origem no press,
+    /// o comprimento e o ângulo no arrasto.
+    ///
+    /// **O pai é o osso SELECCIONADO**, e o osso novo fica seleccionado ⇒ arrasto-arrasto-arrasto é
+    /// uma cadeia, sem um único clique de cerimónia (o gesto do Spine, do Moho e do Rive). Clicar
+    /// num osso que já existe selecciona-o, e é assim que se ramifica.
+    ///
+    /// ⚠️ **Ele não desenha uma FORMA** — [`Self::shape_kind`] devolve `None`. Um osso é uma
+    /// entidade com `Transform` mais um `VecBone`; a hierarquia dela **é** o esqueleto, e é por isso
+    /// que a cinemática directa não precisa de uma linha de código (a propagação de `Transform` da
+    /// casa já a faz) e que a timeline anima um osso sem saber que ossos existem.
+    Bone,
 }
 
 impl DrawMode {
@@ -160,6 +172,7 @@ impl DrawMode {
         Self::Bucket,
         Self::Cut,
         Self::Frame,
+        Self::Bone,
     ];
 
     /// **A forma que ESTE modo desenha** — `None` quando o gesto não produz forma nenhuma.
@@ -276,10 +289,11 @@ mod all_tests {
                 | DrawMode::Trim
                 | DrawMode::Bucket
                 | DrawMode::Cut
-                | DrawMode::Frame => 1,
+                | DrawMode::Frame
+                | DrawMode::Bone => 1,
             };
         }
-        assert_eq!(vistos, 16, "o vocabulario mudou — reveja quem o itera");
+        assert_eq!(vistos, 17, "o vocabulario mudou — reveja quem o itera");
         // …e sem repetidos: uma variante duplicada na lista faria todo censo medi-la duas vezes.
         let mut ordenada: Vec<String> = DrawMode::ALL.iter().map(|m| format!("{m:?}")).collect();
         ordenada.sort();

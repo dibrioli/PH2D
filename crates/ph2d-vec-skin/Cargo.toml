@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-vec-skin"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A LEI da pele, e nada mais. Ela deforma um `VecPath` ponto a ponto por um afim por osso, então
+# não precisa de kurbo (não há reamostragem: uma Bézier deformada por um afim **é** uma Bézier, e a
+# mistura de afins ainda é um afim). ⛔ É por isso que esta crate é a irmã POBRE da
+# `ph2d-vec-envelope`, que precisa de `sample + fit` porque o mapa dela não é afim.
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }

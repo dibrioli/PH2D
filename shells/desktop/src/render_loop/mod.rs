@@ -997,6 +997,7 @@ impl crate::App {
         self.vec_appearance_smoke();
         self.svg_import_smoke();
         self.vec_stack_smoke();
+        self.vec_bone_smoke();
         self.nest_smoke();
         self.physics_smoke();
         self.instance_smoke();
@@ -3318,6 +3319,16 @@ impl crate::App {
             // ADR-0129: o botão "Envelope" envolve a seleção numa gaiola (container); Expand
             // materializa a deformada e Release ressuscita a fonte autorada — os dois dissolvem.
             let mut pending_create_envelope = false;
+            // ⭐⭐⭐ O ESQUELETO (estudo 42 item 5): prender a selecção aos ossos, as duas saídas, e
+            // os dois números do osso em foco (`true` = a força, `false` = o comprimento).
+            let mut pending_bone_bind = false;
+            let mut pending_bone_release: Option<crate::skin_live::Keep> = None;
+            let mut pending_bone_knob: Option<(bool, f64)> = None;
+            // ⚠️ **O osso seleccionado lê-se AQUI, antes de o mundo ser emprestado mutável** — os
+            // verbos lá em baixo já seguram `sim`, e uma leitura de `self` no meio deles não
+            // compila. O valor é do QUADRO, e é o mesmo que o gesto e o overlay usam.
+            let osso_selecionado =
+                crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected());
             let mut pending_textpath: Option<crate::vec_text_ride::TextPathCmd> = None;
             let mut pending_textpath_offset: Option<f64> = None;
             // Pattern on Path (plano 23): o comando de vínculo + os dois sliders, drenados como os
@@ -3591,6 +3602,15 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_MORPH_RUN {
                                 // O irmão animável do blend: UMA forma, com o `t` keyável.
                                 pending_create_morph = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_BONE_BIND {
+                                // ⭐⭐⭐ O ESQUELETO (estudo 42 item 5): prende a seleção aos ossos.
+                                pending_bone_bind = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_BONE_EXPAND {
+                                // Solta e fica com a pose de AGORA (o Expand do envelope).
+                                pending_bone_release = Some(crate::skin_live::Keep::Deformed);
+                            } else if *id == ph2d_editor::ids::VECTOR_BONE_RELEASE {
+                                // Solta e devolve o que o artista DESENHOU.
+                                pending_bone_release = Some(crate::skin_live::Keep::Source);
                             } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_RUN {
                                 // ADR-0129: envolve a seleção (1..N) num container com gaiola.
                                 pending_create_envelope = true;
@@ -4006,6 +4026,14 @@ impl crate::App {
                                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                                 let code = v.clamp(0.0, f64::from(u8::MAX)) as u8;
                                 pending_paint_blend = Some(code);
+                            } else if *id == ph2d_editor::ids::VECTOR_BONE_LENGTH
+                                || *id == ph2d_editor::ids::VECTOR_BONE_STRENGTH
+                            {
+                                // ⭐ Os dois números do OSSO (estudo 42 item 5). Eles vivem num
+                                // componente da entidade, então quem escreve é a shell — a mesma
+                                // rota dos campos do Transform e do layout.
+                                pending_bone_knob =
+                                    Some((*id == ph2d_editor::ids::VECTOR_BONE_STRENGTH, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_X {
                                 pending_vec_vert = Some((false, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_Y {
@@ -6043,6 +6071,41 @@ impl crate::App {
                     "[ph2d-vec] pattern on path: pick armado -- clique no CAMINHO-guia (vazio = \
                      desiste)"
                 );
+            }
+            // ⭐⭐⭐ **O ESQUELETO** (estudo 42 item 5): os três verbos da seção, aplicados aqui como
+            // os do envelope — o dreno acima só CAPTURA, e quem mexe no mundo é este bloco.
+            if pending_bone_bind {
+                let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                let semente = osso_selecionado.map(ph2d_ecs::Entity::from_bits);
+                let n = crate::skin_live::bind(sim, vec_scene, &self.vec_entities, &ids, semente);
+                if n == 0 {
+                    eprintln!(
+                        "[ph2d-vec] osso: selecione ao menos UMA forma, e desenhe um esqueleto                          antes (ferramenta Bone)"
+                    );
+                } else {
+                    eprintln!(
+                        "[ph2d-vec] osso: {n} forma(s) presa(s) -- pegue a seta (Select), clique                          num osso e gire-o"
+                    );
+                }
+            }
+            if let Some(keep) = pending_bone_release {
+                let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                crate::skin_live::release(sim, vec_scene, &self.vec_entities, &ids, keep);
+            }
+            if let Some((forca, v)) = pending_bone_knob
+                && let Some(bits) = osso_selecionado
+                && let Some(mut osso) = sim
+                    .world_mut()
+                    .get_mut::<ph2d_ecs::VecBone>(ph2d_ecs::Entity::from_bits(bits))
+            {
+                // ⛔ Os dois são pisos, não tetos: um comprimento negativo viraria o osso do avesso
+                // e uma força negativa daria peso negativo. O TETO é o do documento — §0.0: um
+                // limite legítimo diz de que recurso é, e não há recurso nenhum a limitar aqui.
+                if forca {
+                    osso.strength = v.max(0.0);
+                } else {
+                    osso.length = v.max(0.0);
+                }
             }
             if pending_create_envelope {
                 let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
@@ -8623,6 +8686,35 @@ impl crate::App {
                     .collect();
                 let env_container = crate::envelope_live::sole_container(sim, &sel_bits);
                 ph2d_panel_vector::set_current_has_envelope(env_container.is_some());
+                // ⭐⭐⭐ **O ESQUELETO** (estudo 42 item 5): as duas perguntas que só a shell
+                // responde — *"a selecção tem forma PRESA?"* (decide se as saídas são oferecidas) e
+                // *"o que está aceso é um osso, e com que números?"* (decide os dois campos).
+                //
+                // ⚠️ A 2ª passa pela MESMA porta que o gesto e o overlay usam
+                // (`bone_gesture::selected_bone`): três consumidores, uma resposta.
+                let presa = self.vec_pen.selected_paths().iter().any(|id| {
+                    self.vec_entities.get(id).is_some_and(|&b| {
+                        sim.world()
+                            .get::<ph2d_ecs::VecSkin>(ph2d_ecs::Entity::from_bits(b))
+                            .is_some()
+                    })
+                });
+                ph2d_panel_vector::set_current_skinned(presa);
+                // E se a CENA tem esqueleto — é isso que faz a seção aparecer (ou não) fora do modo
+                // Osso. ⛔ Sem esta metade ela seria um cabeçalho permanente num app que nunca viu
+                // um osso, que é exactamente o report que a tabela de escopo curou em 31/08.
+                ph2d_panel_vector::set_current_has_skeleton(
+                    !crate::skin_live::bone_segments(sim).is_empty(),
+                );
+                ph2d_panel_vector::set_current_bone(
+                    crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected()).and_then(
+                        |b| {
+                            sim.world()
+                                .get::<ph2d_ecs::VecBone>(ph2d_ecs::Entity::from_bits(b))
+                                .map(|v| (v.length, v.strength))
+                        },
+                    ),
+                );
                 // Text on Path (plano 22): as duas perguntas que só a shell sabe responder —
                 // *"esta seleção permite prender?"* (um texto + um caminho) e *"o texto em foco
                 // já cavalga alguma coisa, e com que valores?"*. A primeira usa a MESMA porta
@@ -9146,6 +9238,15 @@ impl crate::App {
             // container e é o `Transform` do container (via `vec_transform::build`) que leva os filhos
             // ao mundo; o recook varre os containers por QUERY (eles não têm path).
             crate::envelope_live::recook(sim, vec_scene);
+            // ⭐⭐⭐ **O ESQUELETO** (estudo 42 item 5): a forma presa aos ossos é re-cozida da fonte
+            // autorada e da pose de AGORA. Ao lado do envelope de propósito — os dois deformam a
+            // partir de uma fonte guardada em bytes — e DEPOIS dele, porque a pele fala de formas
+            // que já existem na cena e o envelope pode acabar de reescrever uma.
+            //
+            // ⚠️ Sem `xforms`: a pele resolve a pose de cada osso e da forma pela hierarquia (a
+            // propagação de `Transform` que a casa já corre), que é a mesma razão de a cinemática
+            // directa não precisar de código.
+            crate::skin_live::recook(sim, vec_scene);
             // **Select: arrastar o objeto blend move as fontes** — o gizmo mira as FONTES (não o
             // spine), então ele as move NATIVAMENTE como grupo (`vec_selection::sync_selection`
             // redireciona a seleção do gizmo). O spine as segue no `recook`. Nada a fazer aqui: um
@@ -10491,6 +10592,27 @@ impl crate::App {
                             ph2d_vec_render::draw_lasso(&pts, vector_scene);
                         }
                     }
+                }
+            }
+            // ⭐⭐⭐ **OS OSSOS** (estudo 42 item 5): desenhados enquanto a ferramenta de VETOR está
+            // na mão, e só então.
+            //
+            // ⚠️ **FORA do `overlay.edit`, e é a mesma razão da linha de corte abaixo:** aquele
+            // portão fecha em Select/Build/Bucket porque *âncoras* ali são ruído — mas um osso não
+            // é uma âncora, é o corpo do rig. Escondê-lo no Select tiraria da tela a única coisa
+            // que diz onde o esqueleto está enquanto se mexe nas formas dele.
+            //
+            // ⛔ Não é uma forma da cena: nada disto entra no documento, no SVG ou no z-order.
+            if overlay.bones {
+                let ossos = crate::skin_live::bone_segments(sim);
+                if !ossos.is_empty() {
+                    ph2d_vec_render::draw_bones(
+                        &ossos,
+                        hero.gizmo.selection,
+                        cam_affine,
+                        hero.theme,
+                        vector_scene,
+                    );
                 }
             }
             // **A LINHA DE CORTE** (W4) — hachurada, com a tesoura na ponta. Ela é a única

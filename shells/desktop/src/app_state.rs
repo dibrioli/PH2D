@@ -762,6 +762,13 @@ pub(crate) struct App {
     pub(crate) svg_import_smoke_done: bool,
     /// A cena da PILHA DE APARÊNCIA (`PH2D_VEC_STACK_SMOKE`) já montou.
     pub(crate) vec_stack_smoke_done: bool,
+    /// Em que TEMPO está a cena dos ossos (`PH2D_VEC_BONE_SMOKE`): `0` monta, `1` deixa o `sync`
+    /// dar entidade às formas, `2` prende, `3` acabou. ⚠️ Ela precisa de dois quadros porque
+    /// prender exige a ENTIDADE da forma, e quem a cria corre depois do prólogo.
+    pub(crate) vec_bone_smoke_step: u8,
+    /// As três peças da cena entre os dois tempos: `(forma, raiz do esqueleto dela)`.
+    pub(crate) vec_bone_smoke_pend:
+        Option<[(ph2d_vec_scene::VecPathId, Option<ph2d_ecs::Entity>); 3]>,
     pub(crate) vec_fade_smoke_done: bool,
     pub(crate) nest_smoke_done: bool,
     /// Latch for `PH2D_PHYSICS_SMOKE` (drop-a-sprite-on-a-floor, once).
@@ -1684,6 +1691,17 @@ pub(crate) struct App {
     /// em MUNDO, e `None` quando ele não aponta região nenhuma. O realce desenha-a e o clique
     /// deposita-a, **pela mesma resposta**.
     pub(crate) vec_bucket_face: Option<crate::vec_bucket::BucketHit>,
+    /// ⭐⭐⭐ **O OSSO em desenho** (estudo 42 item 5) — a origem em MUNDO que o press marcou, e
+    /// `None` fora do gesto. O `release` faz o osso dali até onde a mão soltou.
+    ///
+    /// ⚠️ **Estado de GESTO, não de documento**: ele não entra no snapshot, não tem undo e morre
+    /// no Up — como o `vec_envelope_drag` e o marquee.
+    pub(crate) vec_bone_drag: Option<[f64; 2]>,
+    /// ⭐ **O osso a ser POSADO** e por onde ele foi agarrado (`true` = pela junta ⇒ desloca;
+    /// `false` = pelo corpo ⇒ gira). `None` fora do gesto.
+    ///
+    /// ⚠️ Como o irmão acima, é estado de GESTO: morre no Up, não entra no snapshot.
+    pub(crate) vec_bone_pose: Option<(u64, bool)>,
     /// A rede de arcos guardada, com a chave do documento que a produziu.
     ///
     /// ⚠️ **Guardada porque montá-la custa `3,8 ms` a 20 traços e `188 ms` a 80** (medido), contra

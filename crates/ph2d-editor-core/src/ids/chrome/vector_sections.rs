@@ -41,6 +41,9 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     VECTOR_SECTION_BLEND,
     VECTOR_SECTION_MORPH,
     VECTOR_SECTION_ENVELOPE,
+    // ⭐ O ESQUELETO (estudo 42 item 5) — ao lado do Envelope de propósito: os dois DEFORMAM formas
+    // que já existem, e lidos juntos ensinam a diferença (uma gaiola contra uma cadeia de ossos).
+    super::vector_bone::VECTOR_SECTION_BONE,
     VECTOR_SECTION_EFFECTS,
     VECTOR_SECTION_ALIGN,
     VECTOR_SECTION_ARRANGE,

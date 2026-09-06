@@ -216,7 +216,7 @@ ou procurar no sítio errado.*
 | 5 | README lista **F5/E4/C2/D1** como abertos | Os quatro fecharam; sobra a **D2** (partículas) |
 | 6 | Dois docs citam **`DRAG_RATE_X = 50`** como número vivo | O símbolo **não existe** no repo (grep vazio) |
 | 7 | `ph2d-imageio-svg` na árvore sugere **import de SVG** | Devolve `VectorDoc::default()` — *"intentionally empty"* |
-| 8 | Seis crates `ph2d-node-rig-*` sugerem **bones no vetor** | Deformam nuvem de pontos do grafo; `ph2d-vec-scene/src/lib.rs:12` promete *"Rig/bones… entram na Fase 1"* — não entraram |
+| 8 | Seis crates `ph2d-node-rig-*` sugerem **bones no vetor** | Deformam nuvem de pontos do grafo; `ph2d-vec-scene/src/lib.rs:12` promete *"Rig/bones… entram na Fase 1"* — não entraram. ✅ **CURADO em 2026-09-06** ([doc 47](47_o_desenho_ganha_ossos.md)): o osso é uma ENTIDADE e a pele é um componente da forma. ⚠️ As seis crates `rig-*` continuam a ser outra coisa — elas deformam a nuvem do GRAFO —, e é por isso que esta linha fica aqui |
 | 9 | A timeline parece **animar tudo** | Num `VecPath`: pose + trajetória + morph `t`. A track `Opacity` é **inerte** (`apply_prop.rs:73`) |
 | 10 | *"Clip content"* lê-se como máscara universal | `VecClipContent` **não alcança sprites** e o `ClipChildren` **não alcança um caminho** (`vec_clip_content.rs:25-28`) — *uma moldura vetorial não recorta uma imagem* |
 

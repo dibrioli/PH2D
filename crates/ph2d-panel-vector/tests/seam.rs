@@ -656,7 +656,11 @@ fn every_section_header_is_registered_as_collapsible() {
         // ferramenta, e as duas são coisas diferentes (a tinta descreve UMA marca, esta descreve a
         // forma inteira — a diferença vê-se onde o traço cobre o próprio preenchimento). ⚠️ O `41`
         // foi **CONTADO** (o gate imprimiu `left: 41`), como manda esta nota desde o `31`.
-        41,
+        // +1 (estudo 42 item 5): BONE — o ESQUELETO. ⚠️ **Secção PRÓPRIA, colada no *Envelope***:
+        // os dois deformam formas que já existem, e lidos juntos ensinam a diferença (uma gaiola
+        // de quatro cantos contra uma cadeia de ossos que a hierarquia move). ⚠️ O `42` foi
+        // **CONTADO** (o gate imprimiu `left: 42`), como manda esta nota desde o `31`.
+        42,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

@@ -2573,6 +2573,25 @@ impl App {
         }
     }
 
+    /// Um quadro de POSE de osso — no-op sem osso agarrado.
+    fn vec_bone_pose_move(&mut self) -> bool {
+        let Some((bits, junta)) = self.vec_bone_pose else {
+            return false;
+        };
+        let Some(world) = self.vec_world_at(self.last_pointer) else {
+            return false;
+        };
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        crate::bone_gesture::pose(
+            &mut gfx.sim,
+            ph2d_ecs::Entity::from_bits(bits),
+            world,
+            junta,
+        )
+    }
+
     fn vec_envelope_corner_move(&mut self, x: f32, y: f32) -> bool {
         let Some(active) = self.vec_envelope_drag else {
             return false;
@@ -3101,6 +3120,11 @@ impl App {
             && let Some(w) = self.vec_world_at(self.last_pointer)
             && self.build_move(w)
         {
+            return;
+        }
+        // ⭐⭐⭐ **POSAR um osso** (estudo 42 item 5): a mesma disciplina de early-return dos irmãos,
+        // e no-op sem osso agarrado.
+        if self.vec_bone_pose_move() {
             return;
         }
         // ADR-0129 Fatia 1: arrastar um canto da gaiola do Envelope (modo Node).
@@ -4377,6 +4401,64 @@ impl App {
                         }
                         return;
                     }
+                    // ⭐⭐⭐ **O OSSO** (estudo 42 item 5, doc 47 §2.6): apontar um osso
+                    // SELECCIONA-o (é assim que se ramifica); o vazio marca a ORIGEM, e o `release`
+                    // faz o osso dali até onde a mão soltou.
+                    //
+                    // ⛔ Consome o press SEMPRE que a ferramenta está na mão, pela razão do Trim e
+                    // do Balde: um clique no vazio não pode cair na cadeia de baixo e começar a
+                    // desenhar uma forma.
+                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Bone {
+                        if let Some(world) = self.vec_world_at(self.last_pointer) {
+                            let px = self.vec_px_to_world();
+                            let alvo = self
+                                .gfx
+                                .as_ref()
+                                .and_then(|g| crate::bone_gesture::hit(&g.sim, world, px));
+                            match alvo {
+                                Some(bits) => {
+                                    // ⭐ **E ARMA A POSE**: agarrar o osso é o gesto de o posar (o
+                                    // gizmo de sprite não serve — ver `bone_gesture::pose`). Pela
+                                    // JUNTA desloca; pelo CORPO gira.
+                                    let junta = crate::bone_gesture::grabbed_the_joint(
+                                        self.gfx.as_ref().map(|g| &g.sim),
+                                        bits,
+                                        world,
+                                        px,
+                                    );
+                                    self.vec_bone_pose = Some((bits, junta));
+                                    if let Some(gfx) = self.gfx.as_mut()
+                                        && let Some(hero) = gfx.hero_screen.as_mut()
+                                    {
+                                        hero.gizmo.selection = Some(bits);
+                                        hero.gizmo.extra_selection.clear();
+                                    }
+                                }
+                                None => {
+                                    // **Encaixa na PONTA do osso seleccionado** dentro do mesmo raio
+                                    // das alças: é o que faz uma cadeia sair contínua sem exigir
+                                    // pontaria. Fora dele, a origem é o ponto cru — um osso pode
+                                    // nascer deslocado do pai (um ombro que sai do meio da espinha).
+                                    let ponta = self.selected_bone_bits().and_then(|b| {
+                                        self.gfx
+                                            .as_ref()
+                                            .and_then(|g| crate::bone_gesture::tip_of(&g.sim, b))
+                                    });
+                                    let r = crate::bone_gesture::BONE_HIT_PX * px;
+                                    let origem = match ponta {
+                                        Some(t)
+                                            if (t[0] - world[0]).hypot(t[1] - world[1]) <= r =>
+                                        {
+                                            t
+                                        }
+                                        _ => world,
+                                    };
+                                    self.vec_bone_drag = Some(origem);
+                                }
+                            }
+                        }
+                        return;
+                    }
                     if self.vec_draw_config.mode.is_corner_tool() {
                         let chamfer = self.vec_draw_config.mode.corner_is_chamfer();
                         let px_to_world = self.vec_px_to_world();
@@ -4628,6 +4710,48 @@ impl App {
                 (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
                     // Fim de gesto: as guias de snap não sobrevivem ao Up.
                     self.vec_clear_snap_guides();
+                    // ⭐⭐⭐ **O OSSO nasce aqui** (estudo 42 item 5): origem no press, comprimento e
+                    // ângulo no arrasto, PAI = o osso seleccionado — e o novo fica seleccionado, que
+                    // é o que faz arrasto-arrasto-arrasto ser uma cadeia.
+                    //
+                    // ⚠️ **Consome SÓ com o gesto VIVO** (a origem marcada), pela lei que o
+                    // `shape_up_consumes` documenta: soltar sobre um botão do painel neste modo não
+                    // pode engolir o clique.
+                    // A pose acaba no Up. ⚠️ Ela CONSOME o gesto: sem isto, soltar depois de girar
+                    // um osso cairia na cadeia de baixo e a forma sob o cursor seria seleccionada.
+                    if self.vec_bone_pose.take().is_some() {
+                        return;
+                    }
+                    if let Some(origem) = self.vec_bone_drag.take() {
+                        let px = self.vec_px_to_world();
+                        if let Some(ponta) = self.vec_world_at(self.last_pointer) {
+                            // ⛔ Um arrasto mais curto que o raio das alças NÃO faz osso: um osso de
+                            // comprimento zero não tem eixo, logo não pesa ponto nenhum e é
+                            // invisível — seria lixo que só o `Delete` da Hierarquia acha. O limiar
+                            // é em píxeis de TELA, então basta aproximar o zoom para fazer um menor.
+                            let curto = (ponta[0] - origem[0]).hypot(ponta[1] - origem[1])
+                                < crate::bone_gesture::BONE_HIT_PX * px;
+                            if !curto && let Some(gfx) = self.gfx.as_mut() {
+                                let pai = gfx
+                                    .hero_screen
+                                    .as_ref()
+                                    .and_then(|h| h.gizmo.selection)
+                                    .map(ph2d_ecs::Entity::from_bits)
+                                    .filter(|e| {
+                                        gfx.sim.world().get::<ph2d_ecs::VecBone>(*e).is_some()
+                                    });
+                                let novo =
+                                    crate::bone_gesture::create(&mut gfx.sim, pai, origem, ponta);
+                                if let Some(bits) = novo
+                                    && let Some(hero) = gfx.hero_screen.as_mut()
+                                {
+                                    hero.gizmo.selection = Some(bits);
+                                    hero.gizmo.extra_selection.clear();
+                                }
+                            }
+                        }
+                        return;
+                    }
                     // Shape Builder: o Up materializa as faces pintadas. Consome SÓ com o
                     // arrasto VIVO, pela mesma razão que o conector documenta abaixo —
                     // um Up sobre um botão do painel não pode ser engolido pelo modo.

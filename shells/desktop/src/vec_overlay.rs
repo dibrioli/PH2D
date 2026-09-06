@@ -25,6 +25,8 @@ pub(crate) struct VecOverlayPlan {
     /// Guias de alinhamento do snap — desenhadas em TODOS os modos, inclusive o
     /// Select (gizmo-move).
     pub snap_guides: bool,
+    /// ⭐ Os OSSOS do esqueleto (estudo 42 item 5) — com a ferramenta na mão, em todo modo dela.
+    pub bones: bool,
     /// A **gaiola do Envelope** (ADR-0129, Fatia 1) — só no **Node**: no Select manda o gizmo, no
     /// Pen/Shape o clique tem outro dono. Este flag só diz que a gaiola *pode* aparecer neste modo;
     /// se a forma selecionada é de fato um envelope é o [`crate::envelope_gesture::view`] que decide
@@ -71,6 +73,12 @@ pub(crate) fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverla
                 DrawMode::Select | DrawMode::Build | DrawMode::PickBlend | DrawMode::Bucket
             ),
         snap_guides: vector_active,
+        // ⭐ **OS OSSOS: com a ferramenta de vetor na mão, e em TODO modo dela.** ⛔ Eles não entram
+        // no `edit` acima, e é decisão: aquele portão fecha em Select/Build/Bucket porque *âncoras*
+        // ali são ruído — mas um osso não é uma âncora, é o corpo do rig. Escondê-lo no Select
+        // tiraria da tela a única coisa que diz onde o esqueleto está enquanto se mexe nas formas
+        // dele. (A mesma razão que pôs a linha de corte fora daquele portão, depois de um report.)
+        bones: vector_active,
         // Node-only (mesma razão de modo do `edit`, mais estreita). Se a seleção é um envelope é
         // `envelope_gesture::view` que resolve — aqui é só a política de MODO.
         envelope_cage: vector_active && mode == DrawMode::Node,
@@ -94,6 +102,25 @@ mod tests {
 
     /// O P1: no modo Select as guias de snap TÊM que aparecer (o gizmo-move encaixa a
     /// forma), mas os overlays de edição de nó NÃO — lá quem fala é o gizmo.
+    /// ⭐⭐ **OS OSSOS APARECEM EM TODO MODO DA FERRAMENTA — o Select incluído.**
+    ///
+    /// ⚠️ Este gate existe porque a 1.ª escrita da wave os pendurou no `edit`, que é FALSO no
+    /// Select: o artista poria a seta na mão para mexer numa forma e o rig **desapareceria**. É o
+    /// mesmo defeito que a linha de corte pagou com um report do Enio.
+    #[test]
+    fn the_bones_are_drawn_in_every_mode_of_the_vector_tool() {
+        for mode in DrawMode::ALL {
+            assert!(
+                vec_overlay_plan(true, *mode).bones,
+                "{mode:?} escondeu o esqueleto"
+            );
+        }
+        assert!(
+            !vec_overlay_plan(false, DrawMode::Bone).bones,
+            "sem a ferramenta de vetor na mao os ossos nao se desenham"
+        );
+    }
+
     #[test]
     fn select_mode_shows_snap_guides_but_not_edit_overlays() {
         let plan = vec_overlay_plan(true, DrawMode::Select);

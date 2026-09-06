@@ -64,6 +64,8 @@ mod vector;
 /// Os ids do **AUTO LAYOUT** (plano UI/UX W2, ADR-0153) — irmão de `vector_frame` pelo mesmo teto.
 mod vector_anchors;
 mod vector_appearance;
+/// ⭐ **Os ids do ESQUELETO** (estudo 42 item 5) — o modo Osso e a seção que prende a forma a ele.
+mod vector_bone;
 /// Os ids da seção **Contour** (pesquisa `20_*` #9) — irmão de `vector` pelo teto de 700 LOC.
 mod vector_bool;
 mod vector_components;
@@ -134,6 +136,7 @@ pub use topbar::*;
 pub use vector::*;
 pub use vector_anchors::*;
 pub use vector_appearance::*;
+pub use vector_bone::*;
 pub use vector_bool::*;
 pub use vector_components::*;
 pub use vector_contour::*;

@@ -62,6 +62,13 @@ pub(crate) fn has_derived_verts(
     if w.get::<VecShape>(e).is_some()
         || w.get::<ph2d_ecs::VecConnector>(e).is_some()
         || w.get::<ph2d_ecs::VecMorph>(e).is_some()
+        // ⭐ **A PELE** (estudo 42 item 5): o `skin_live::recook` reescreve os `verts` a partir da
+        // fonte guardada, todo quadro e sem condição — então um raio autorado na forma VIVA
+        // desapareceria no quadro seguinte, em silêncio. ⛔ RECUSAR é a resposta certa, e não
+        // "permitir como o blend": ali a escrita PARA quando o artista assume o spine; aqui não há
+        // nada que a pare. Quem quiser arredondar uma quina de uma forma presa solta-a primeiro
+        // (*Release*), arredonda, e prende outra vez — o *re-bind na pose actual* é de graça.
+        || w.get::<ph2d_ecs::VecSkin>(e).is_some()
     {
         return true;
     }

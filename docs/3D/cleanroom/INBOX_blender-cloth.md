@@ -90,3 +90,42 @@ constante desde o início — não precisa de acumular.
 
 *Formato de resposta pedido: número + onde ele vive (nome público do knob, se houver), sem uma
 linha de expressão do alvo.*
+
+### Q8 — a confirmação sobre o CORPUS INTEIRO (mesmo dia, 2026-09-06)
+
+A experiência das varreduras foi corrida sobre as **50 fixtures** da `sonda_da_paridade_com_o_oraculo`,
+a `5` e a `10`, e comparada linha a linha (`err_max / max_oráculo`). ⭐⭐ **O botão PARTE o corpus
+exactamente na linha Local / não-Local:**
+
+| área | melhora a 10 | fica igual | piora a 10 |
+|---|---|---|---|
+| **Local** (38 traços) | **27** | 7 (os de um passo de força, `0,000` nos dois) | 4 |
+| **Global** (2) | 0 | 0 | **2** |
+| **Dinâmica** (10) | 1 | 0 | **9** |
+
+Ordens de grandeza, não afinação: `plano_arrastar_radial_local` **`1,253 → 0,071`** · `_forca05`
+`1,037 → 0,030` · `_massa2` `1,073 → 0,033` · `_amort05` `0,913 → 0,044` · `_pino` `1,311 → 0,081` ·
+`_origem` `1,269 → 0,067`. E do outro lado: `plano_arrastar_radial_global` `0,175 → 0,565` ·
+`plano_arrastar_radial_dinamica_preset` `0,068 → 0,476`.
+
+⭐⭐⭐ **E a prova que não é amplitude ajustada: as CONTAGENS de vértices movidos, que são inteiros.**
+A `10` varreduras oito traços Local passam a mover **exactamente** o número do oráculo —
+`agarrar_preset` `3970 → 4123` (oráculo `4123`) · `arrastar_plast05` `2128 → 2141` (`2141`) ·
+`arrastar_amort1` `2129 → 2141` (`2141`) · `arrastar_massa2` `2141 → 2143` (`2143`) ·
+`inflar_local` `2141 → 2146` (`2146`) · `agarrar_24passos` `2140 → 2142` (`2142`) ·
+`arrastar_origem` `2144 → 2145` (`2145`) · `pino` `2143 → 2144` (`2144`) — e nos traços de UM e DOIS
+passos, onde não há acumulação possível, o alcance salta para o do oráculo: `agarrar_1passo`
+`869 → 1307` (`1324`), `agarrar_2passos` `1304 → 1844` (`1872`), `arrastar_2passos` `1050 → 1428`
+(`1438`), `expandir_1passo` `597 → 840` (`848`). *Numa relaxação de Gauss-Seidel o alcance por passo
+é o número de varreduras: a contagem de movidos MEDE a contagem de passagens, e ela diz `~2×` no
+ramo Local, num único passo de pincel.*
+
+⇒ A resposta ao Q8 tem de ser: constante, desde o primeiro passo, a actuar **só no ramo Local**, e a
+valer ~`2×` a relaxação. As Q8.1/8.2/8.3 continuam de pé — o que muda é que já não é hipótese.
+
+⏳ **Fica FORA desta pergunta e é o item seguinte** (não misturar): os 4 Local que pioram são o
+**Snake Hook** de 2 passos (`0,740 → 0,951`) e o `apertar_ponto_radial_local` (`1,072 → 1,380`); no
+Hook o nosso pico não está sob o cursor (`max` `0,1531` com `c0` `0,0175`, contra o oráculo que tem
+os dois em `0,1971`) — é defeito de LOCALIZAÇÃO da deformação, não de amplitude. E na **esfera** os
+modos que não são arrasto (`apertar` `0,54–0,59`, `expandir` `0,56`, `inflar` `0,38`, `gancho` `0,39`)
+erram na Dinâmica sem que as varreduras os toquem.

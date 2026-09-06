@@ -104,8 +104,8 @@ inventada. Contagens do registry em 2026-09-05.
 
 | # | ciclo | nós | tutorial |
 |---|---|---|---|
-| **1** ⏳ smoke | **ARRANJO — pôr muitos objectos na tela** | `motion.grid` · `motion.scatter` · `motion.distribute_radial` · `motion.fibonacci` · `motion.lattice` · `motion.voronoi` · `motion.distribute_poisson` · `motion.distribute_curve` · `motion.path` · `motion.clone` (**10**) | **«Do primeiro objecto ao milhão»** |
-| 2 | ANIMADORES — fazer andar | `motion.oscillator` · `value.lfo` · `motion.wiggle` · `motion.noise` · `motion.stagger` · `motion.orbit` · `motion.spring` · `motion.delay` | «O tempo entra no grafo» |
+| **1** ✅ | **ARRANJO — pôr muitos objectos na tela** | `motion.grid` · `motion.scatter` · `motion.distribute_radial` · `motion.fibonacci` · `motion.lattice` · `motion.voronoi` · `motion.distribute_poisson` · `motion.distribute_curve` · `motion.path` · `motion.clone` (**10**) | **«Do primeiro objecto ao milhão»** |
+| **2** ⏳ **ABERTO** | **ANIMADORES — fazer andar** | `motion.oscillator` · `value.lfo` · `motion.wiggle` · `motion.noise` · `motion.stagger` · `motion.orbit` · `motion.spring` · `motion.delay` | «O tempo entra no grafo» |
 | 3 | TRANSFORMES & DEFORMADORES | `move` · `rotate` · `scale` · `transform` · `mirror` · `look_at` · `bend` · `twist` · `spherize` · `four_point_warp` · `bezier_warp` · `kaleidoscope` · `spline_wrap` | «Dobrar o mundo» |
 | 4 | FOCO — quem é afectado (campos) | `motion.falloff` · `field.box` · `field.radial_sweep` · `field.index_range` · `field.remap` · `field.combine` · `field.shape` | «Nem todos ao mesmo tempo» |
 | 5 | SIMULAÇÃO | `sim.zone` · `sim.spawn` · `sim.step` · `sim.lifetime` · `sim.collide` · `motion.integrate` · as `force.*` | «Deixar a física decidir» |
@@ -113,6 +113,52 @@ inventada. Contagens do registry em 2026-09-05.
 | 7 | APARÊNCIA (Fx) | `tint` · `color_ramp` · `color_array` · `trail` · `strobe` · `glow` · `drop_shadow` · `rgb_split` · `sub_uv` · `slit_scan` | «A cor e o rasto» |
 | 8 | FONTES & DADOS | `source.shape` · `source.object` · `source.text` · `source.table` · `source.lsystem` · `motion.emitter` | «De onde vêm as coisas» |
 | 9 | RIG & CORPOS MOLES | `rig.*` · `soft_body` · `verlet_rope` · `wave` · `boids` | «Coisas que se seguram» |
+| **10** | ⚡ **O CARIMBO NO DISPOSITIVO** — `source.shape` + `motion.duplicator` | (optimização, não um grupo novo) | «Um milhão de cópias» |
+| **11** | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o módulo inteiro, cena a cena | (varredura) | — |
+| **12** | ⚡ **OS TETOS CONFORTÁVEIS** — quantos objectos o sistema aguenta, com número | (decisão do Enio, com a tabela) | — |
+
+### §5.1 — Os três últimos, e por que ficam no FIM
+
+**Pedido do Enio, 2026-09-06**, com a bissecção feita por ele: *«no primeiro grafo tentei colocar
+1000×1000 no grid e pesou muito. Retirando Shape e Duplicator fica um pouco melhor.»*
+
+⭐ **Ele acertou o nó, e a medição diz por quê** (`measure_the_stamp_at_a_million`, release,
+`load 3,1`):
+
+| lado | objectos | só a grade | grade + carimbo | o carimbo custa | no dispositivo? |
+|---|---|---|---|---|---|
+| 100 | 10 000 | 0,22 ms 🟢 | 0,61 ms 🔴 | 2,8× | **NÃO** |
+| 320 | 102 400 | 0,47 ms 🟢 | 1,71 ms 🔴 | 3,6× | **NÃO** |
+| 640 | 409 600 | 1,44 ms 🟢 | 3,91 ms 🔴 | 2,7× | **NÃO** |
+| **1000** | **1 000 000** | **3,15 ms 🟢** | **9,27 ms 🔴** | **2,9×** | **NÃO** |
+
+⛔⛔ **O `2,9×` NÃO é o achado — o 🔴 é.** A grade sozinha é reivindicada pelo dispositivo; **com
+o carimbo a cadeia INTEIRA cai na CPU**, porque o `motion.duplicator` declara
+`lowerings: &[LoweringKind::Cpu]`. O que se perde não são os `6 ms` da tabela: é o caminho que a
+[auditoria 98](98_auditoria_de_performance_2026-09-01.md) mediu em **`50,9×`** (4,19 M objectos
+em `3,85 ms` no dispositivo contra `195,9 ms` na CPU). *Um nó CPU-only no meio de uma cadeia não
+custa o que ele custa: custa o dispositivo inteiro.*
+
+⚠️ **E é por isso que estes três ficam no FIM, e não porque sejam menos importantes:**
+
+1. **`10` não pode vir antes dos grupos.** O carimbo muda a CONTAGEM de elementos
+   (`formas × pontos`), que é estrutural e não um mapa por-elemento — pôr isso no dispositivo é
+   uma wave de substrato (`StreamOp` com contagem derivada), e ela toca o planeador, que é o
+   caminho por onde **todos** os grupos passam. Mexer nele a meio da fila mudaria o custo de cada
+   ciclo já fechado, e nenhum deles teria a régua para notar.
+2. **`11` mede o que existir, não o que existia.** Uma varredura de performance feita agora
+   descreve nove grupos que ainda vão ser reescritos — ela tem de ser a última coisa antes do
+   veredito, senão é uma fotografia de um sítio onde ninguém está.
+3. **`12` é uma DECISÃO, e uma decisão precisa da tabela pronta.** ⚠️ A lei da casa
+   (`CLAUDE.md` §0.0) é explícita: *nunca deixe o fallback definir o produto* — o caso registado
+   é o teto posto em `16 384` porque a CPU seria lenta, num módulo que fazia `4,19 M` no
+   dispositivo, **256× abaixo**. ⇒ o teto confortável só se escreve **depois** de o `10` decidir
+   quem vai ao dispositivo, senão ele é o número da CPU outra vez.
+
+⚠️ **O que o `10` NÃO é:** não é «tornar o duplicator mais rápido na CPU». A pergunta é *o que
+tem de existir para uma cadeia com carimbo continuar no dispositivo* — e a resposta provável é
+uma **contagem derivada** no planeador, não um kernel. ⛔ Otimizar o laço da CPU primeiro é
+exactamente o erro que o §0.0 nomeia.
 
 ⚠️ **O ciclo 1 carrega o SUBSTRATO** (o cartão passa a hospedar params e o painel sai) — é a única
 vez; os ciclos 2+ só pagam o grupo deles. ⚠️ **A ordem dos 2..9 pode mudar** por decisão do Enio;

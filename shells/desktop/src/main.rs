@@ -388,6 +388,10 @@ mod morph_live;
 mod morph_machine_drive;
 mod morph_set;
 mod morph_states_smoke;
+/// A sonda do custo do carimbo (report do Enio, 2026-09-06) — `#[cfg(test)]`, não entra no bin.
+/// A auditoria do grupo do ciclo 2 (doc 105) — `#[cfg(test)]`, não entra no bin.
+#[cfg(test)]
+mod motion_animadores_probe;
 mod motion_autofix_smoke;
 mod motion_autofix_smoke_appropriate;
 mod motion_autofix_smoke_dead_branch;
@@ -411,6 +415,8 @@ mod motion_path_smoke;
 mod motion_shape_bake;
 mod motion_shape_smoke;
 mod motion_shape_smoke_knobs;
+#[cfg(test)]
+mod motion_stamp_cost_probe;
 mod motion_state;
 mod mount_smoke;
 mod multi_node_smoke;

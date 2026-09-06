@@ -343,3 +343,37 @@ deixa o impulso passar (`0,0935 → 0,1661`, oráculo `0,1676`) e o anel imediat
 ⇒ Q11.4 (nova): o que a relaxação faz de diferente num passo de APERTO e num de ARRASTO, sendo o
 estado de partida o mesmo? *A única coisa que distingue os dois passos é o campo de força ser
 convergente (todos os vértices para um ponto) em vez de uniforme.*
+
+## Q11 — a resposta do E VERIFICADA no nosso lado, e duas réguas minhas refutadas (2026-09-06)
+
+⭐⭐⭐ **A fixtura de força reduzida ILIBA a nossa lei do aperto.** Corrido o
+`plano_apertar_ponto_radial_local_origem_fraco` (o mesmo traço, força `1,0 → 0,2`):
+
+| | erro por passo | `err_max / max_oráculo` |
+|---|---|---|
+| força `0,2` | **`0,000` nos DOZE passos** | **`0,063`** |
+| força `1,0` (o irmão) | salta para `0,125` no passo 3 | `1,079` |
+
+⇒ *a lei está certa; o que divergia é o regime em que o alvo deixa de ser determinista.* A fixtura
+entrou na lista verde do gate de paridade (`acfee8a6e`), e o censo das duas listas acusou-a sozinho
+antes de eu a nomear — que é o que ele existe para fazer.
+
+⛔ **A trava que impediria o vértice de ULTRAPASSAR o alvo: construída, medida, REFUTADA.** Ela não
+é inerte — parte os traços de UM passo que hoje saem ao bit (`0,000 → 0,465` no aperto de linha e
+`0,000 → 0,811` no de ponto). *O alvo ultrapassa já no primeiro passo e isso é a LEI, não o defeito;
+não há guarda local que separe a ultrapassagem fiel do caos que vem depois dela.*
+
+⛔ **E DUAS réguas minhas para classificar os abertos, as duas refutadas** (instrumentadas na
+`sonda_dos_artefatos_do_oraculo`, que fica porque a medição fica):
+
+- **contar FACES INVERTIDAS na saída do oráculo** — não discrimina: o arrasto tem `41`–`57` e bate a
+  `0,071`; o `plano_arrastar_plano_local` tem `273` e erra `0,233`.
+- **a COMPRESSÃO do par mais apertado** (`min D/ℓ`, a grandeza que faz o factor de correcção inverter
+  o sinal) — explica a família do APERTO e nada mais: a fixtura fraca lê `0,8316` e o irmão `0,1288`;
+  mas o `plano_empurrar_plano_local` lê `0,8929` **sem compressão nenhuma** e erra `0,944`, e o
+  `plano_arrastar_plano_local` lê `0,0959` — compressão extrema — e erra `0,233`.
+
+⇒ **os abertos que sobram NÃO são uma família.** Ficam nomeados, com o número: o **Push**
+(`0,944` no plano, `0,329` radial, `0,303` na esfera), o **Expand** (`0,557` · `0,192` · `0,560`),
+o **Inflate** (`0,378` · `0,253`), o **Snake Hook de 2 passos** (`0,39`–`0,42`) e os modos
+não-arrasto na **esfera**. Cada um precisa da sua pergunta.

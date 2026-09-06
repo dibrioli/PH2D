@@ -342,6 +342,18 @@ fn aneis(n: usize, faces: &[Vec<u32>]) -> Vec<Vec<u32>> {
 }
 
 /// Normais por vértice, ponderadas pela área, das posições ACTUAIS.
+/// A normal (não normalizada) de UMA face, por Newell.
+fn normal_da_face(pos: &[V3], f: &[u32]) -> V3 {
+    let mut n = [0.0f64; 3];
+    for k in 0..f.len() {
+        let (a, b) = (pos[f[k] as usize], pos[f[(k + 1) % f.len()] as usize]);
+        n[0] += (a[1] - b[1]) * (a[2] + b[2]);
+        n[1] += (a[2] - b[2]) * (a[0] + b[0]);
+        n[2] += (a[0] - b[0]) * (a[1] + b[1]);
+    }
+    n
+}
+
 fn normais(pos: &[V3], faces: &[Vec<u32>]) -> Vec<V3> {
     let mut n = vec![[0.0f64; 3]; pos.len()];
     for f in faces {
@@ -1323,8 +1335,18 @@ fn o_centro_do_snake_hook_esta_um_passo_atrasado() {
 #[ignore = "sonda"]
 fn sonda_dos_artefatos_do_oraculo() {
     println!(
-        "{:<44} | {:>8} {:>8} | {:>8} {:>8} | {:>7} {:>7}",
-        "traco", "esp_nos", "esp_orac", "rasg_nos", "rasg_or", "est_nos", "est_or"
+        "{:<44} | {:>8} {:>8} | {:>8} {:>8} | {:>7} {:>7} | {:>5} {:>5} | {:>7} {:>7}",
+        "traco",
+        "esp_nos",
+        "esp_orac",
+        "rasg_nos",
+        "rasg_or",
+        "est_nos",
+        "est_or",
+        "iv_n",
+        "iv_o",
+        "cmp_n",
+        "cmp_o"
     );
     for nome in todas() {
         let t = traco(&nome);
@@ -1350,8 +1372,47 @@ fn sonda_dos_artefatos_do_oraculo() {
             }
             (esp, rasg, est)
         };
+        // ⭐⭐ **AS FACES INVERTIDAS**, que é a régua que separa «lei por
+        // descobrir» de «o alvo deixou de ser determinista». Um campo de força
+        // convergente empurra o vértice para ALÉM do alvo; a face vira do
+        // avesso; os pares ficam comprimidos e o factor de correcção inverte o
+        // sinal e cresce sem tecto — a partir daí o resultado por vértice é
+        // decidido pela ORDEM da lista, e essa ordem sai de uma árvore espacial
+        // que não é a nossa. *Onde o ORÁCULO inverte faces, a paridade não é
+        // alcançável, e perseguí-la é perseguir um defeito aberto do alvo.*
+        let invertidas = |p: &[V3]| -> usize {
+            fs.iter()
+                .filter(|f| {
+                    let n0 = normal_da_face(&rest, f);
+                    let n1 = normal_da_face(p, f);
+                    n0[0] * n1[0] + n0[1] * n1[1] + n0[2] * n1[2] < 0.0
+                })
+                .count()
+        };
+        let (inv_n, inv_o) = (invertidas(&nosso), invertidas(&orac));
+        // ⭐⭐⭐ **A COMPRESSÃO do par mais apertado**, que é a régua que o
+        // contador de faces invertidas NÃO é: a correcção de uma restrição vale
+        // `RIGIDEZ · (1 − ℓ/D)`, então quando `D/ℓ` fica pequeno ela inverte o
+        // sinal e cresce **sem tecto** — e é aí que a ORDEM da lista passa a
+        // decidir o resultado por vértice.
+        let compressao = |p: &[V3]| -> f64 {
+            let mut m = f64::MAX;
+            for (v, viz) in an.iter().enumerate() {
+                for &w in viz {
+                    let l = dist(rest[v], rest[w as usize]);
+                    if l > 1e-12 {
+                        m = m.min(dist(p[v], p[w as usize]) / l);
+                    }
+                }
+            }
+            m
+        };
+        let (cmp_n, cmp_o) = (compressao(&nosso), compressao(&orac));
         let (a, b, c) = tres(&nosso);
         let (x, y, z) = tres(&orac);
-        println!("{nome:<44} | {a:>8.4} {x:>8.4} | {b:>8.5} {y:>8.5} | {c:>7.4} {z:>7.4}");
+        println!(
+            "{nome:<44} | {a:>8.4} {x:>8.4} | {b:>8.5} {y:>8.5} | {c:>7.4} {z:>7.4} | \
+             {inv_n:>5} {inv_o:>5} | {cmp_n:>7.4} {cmp_o:>7.4}"
+        );
     }
 }

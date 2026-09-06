@@ -11,12 +11,13 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**2 arquivos** · **0** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**3 arquivos** · **0** citados pelo `CLAUDE.md` (marcados **◆**) · **3** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
 | 2026-08-30 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-08-30.md](HANDOFF_INTEGRACAO_line_UIUX_2026-08-30.md) | ⚠️ handoff (morto) | HANDOFF de integração — `line/UIUX`, 2026-08-30 |
 | 2026-09-03 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-03.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-03.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-09-03 |
+| 2026-09-06 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-06.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-06.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX` — 2026-09-06 |
 
 ---
 

@@ -17,6 +17,11 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   expressão (uma frase de comentário do fonte citada como (F) no §7) e CINCO higienes §4.3 (detalhe de
   implementação descrito como comportamento) curados no acto pelo R-pré; os nomes de fixture do §14 e a
   contagem do gate 15 alinhados aos ficheiros. Veredictos e curas, um a um: LEDGER §Papel R.
+  ⏳ EMENDA Q8 de 2026-09-06 (§1 fases 0/1 · §2.1 · §3.1 · §3.3 · §5.2-bis NOVA · §10.2 · §10.3 NOVA ·
+  §14 gates 8/16/17): a lista de restrições do ramo *Local* vem em DUPLICADO. Escrita pelo subagente-E
+  da mesma janela, com o fonte reaberto só para esta pergunta; sweep verde sobre a espec emendada em
+  2026-09-06. ⚠️ **AGUARDA o atestado do R-pré** — a janela-mãe despacha-o antes de implementar a
+  emenda.
   ⭐ ERRATA de 2026-09-06 (`3d621e94b` + `d5844ad5c`: §2.1 · §3.1 · §5.2 · §10 · fixtures de esfera)
   auditada contra §4.2 por R-pré em 2026-09-06 — sweep verde sobre espec + a pasta inteira das fixtures +
   INBOX + ledger + o histórico destes caminhos. TRÊS nomes internos do alvo (dois no §5.2, um no §10)
@@ -80,8 +85,8 @@ de simetria** (espelho · radial · ladrilho), corre o seguinte, nesta ordem (F)
 
 | # | fase | entra | sai |
 |---|---|---|---|
-| 0 | **Primeiro passo de uma passagem?** ⇒ com área *Local*, constrói as restrições das células da área (§2, §3) e **termina sem simular** (F) — o alvo precisa de um deslocamento do cursor válido para orientar a ponta, e no 1.º passo ele é zero. ⚠️ Com área *Dynamic*/*Global* o 1.º passo também não simula, e as restrições ficam para o 2.º. | — | células com restrições, ainda **inactivas** |
-| 1 | **Garantir restrições** para toda célula do conjunto afectado que ainda não as tenha (§3) | conjunto de células (§2.1) | restrições novas (só para células novas — uma célula é construída UMA vez por traço) |
+| 0 | **Primeiro passo de uma passagem?** ⇒ com área *Local*, constrói as restrições das células da área (§2, §3) e **termina sem simular** (F) — o alvo precisa de um deslocamento do cursor válido para orientar a ponta, e no 1.º passo ele é zero. ⚠️⚠️ **E esta construção NÃO marca as células como construídas** — a marca é a **ACTIVAÇÃO** (fase 3), que este passo nunca alcança (F) ⇒ **a fase 1 do passo seguinte constrói-as OUTRA VEZ, e o conjunto de restrições do *Local* fica com CADA restrição DUAS vezes** (§3.1, §5.2-bis: é a origem MEDIDA do factor `~2` de amplitude entre *Local* e *Global*). ⚠️ Com área *Dynamic*/*Global* o 1.º passo também não simula **e não constrói**: as restrições ficam para o 2.º passo e nascem **uma vez só**. | — | células com restrições, ainda **inactivas** |
+| 1 | **Garantir restrições** para toda célula do conjunto afectado que ainda não as tenha (§3) | conjunto de células (§2.1) | restrições novas (só para células **ainda não activadas** — uma célula já activada nunca mais é construída; ⚠️ a fase 0 do *Local* constrói **sem** activar, logo essas células são construídas **duas** vezes) |
 | 2 | **Guardar o estado**: a posição de simulação de TODOS os vértices ← posições actuais da malha | malha | `x` |
 | 3 | **Activar** as células do conjunto afectado | — | células activas |
 | 4 | **Aplicar o gesto** (§4): forças → aceleração; ou âncoras + força de âncora; ou desvio de repouso | cursor, delta, normal, factores | `a`, âncoras, desvios |
@@ -129,12 +134,18 @@ velocidade retida movem o vértice, mesmo que a célula dele esteja activa). No 
   velocidade) é a **localização inicial fixa** no Local e a **do cursor, a cada passo** no Dynamic;
 - **a criação de restrições é filtrada por raio** no Local (só vértices com `|p⁰ − c| < R₀·(1+L)`, em
   posições de repouso), e **sem filtro** (todos os vértices das células tocadas) no Dynamic/Global;
-- as restrições nascem **de uma vez, no 1.º passo** no Local; **incrementalmente**, à medida que
+- as restrições nascem **de uma vez no 1.º passo — e OUTRA VEZ no 2.º**, logo em **DUPLICADO**, no Local (§1 fase 0, §5.2-bis); **incrementalmente e uma vez só**, à medida que
   novas células entram na área, no Dynamic;
 - a banda `w` do Local é avaliada com o centro FIXO, logo o fim de um traço longo cai mais longe do
   centro da força ⇒ menos deslocamento lá; no Dynamic o centro segue o cursor e o traço inteiro
   recebe força cheia. ⇒ para o mesmo traço, o Dynamic desloca mais que o Local, e é ≈ Global. (A
-  razão exacta é emergente; a alavanca dominante é o centro fixo vs. móvel.)
+  razão exacta **não** é emergente — ver a seguir.)
+
+⭐⭐⭐ **A alavanca DOMINANTE não é o centro fixo: é a lista de restrições DUPLICADA do *Local*
+(§1 fase 0, §3.1, §5.2-bis).** O centro fixo e o aro preso explicam o **BORDO** (§10.2), não o
+**INTERIOR**: um port com o aro certo e a lista simples lê *Local* ≈ *Global* coluna a coluna no
+interior, e no alvo o *Local* entrega no centro `0,34–0,57×` o *Global*, uniformemente ao longo do
+traço (M — §10.2 e §10.3).
 
 ⚠️ **A célula é a unidade de activação, e isso tem um efeito visível:** todo vértice de uma célula
 activa é integrado (fase 5), mesmo que esteja fora da esfera — o que o segura é o **peso de
@@ -218,7 +229,7 @@ vizinha**. Numa malha de triângulos regular são 6. A diagonal só aparece como
 = as 2 «diâmetros» N-S / E-O (comprimento `2h`, o papel de dobra) + as 4 diagonais N-E… (`√2·h`,
 cisalhamento). O sistema de escultura NÃO triangula a malha para escolher vizinhos.
 
-Cada par não ordenado entra **uma vez** por simulação (conjunto global de arestas já criadas — H:
+Cada par não ordenado entra **uma vez por CONSTRUÇÃO** — o registo de pares já criados nasce e morre **dentro de uma construção** (a fase 1 de um passo), e não é partilhado entre construções (F) ⇒ ⚠️⚠️ **duas construções sobre a mesma célula deixam DUAS cópias de cada par**, que é exactamente o que a área *Local* faz (§1 fase 0, §5.2-bis). Dentro de UMA construção não há duplicados (H:
 D8007 curou a duplicação). ⭐ **O que isso produz** (grelha de quads, vértice interior de 4 vizinhos):
 as **4** arestas (estrutural) + as **2** «diagonais longas» N-S / E-O (dobra, `2h`) + as **4**
 diagonais N-E… (cisalhamento, `√2·h`) — o «4 + 2 + 4» do gate 8. Numa malha de triângulos (6
@@ -258,7 +269,9 @@ cada passo** — é *isso* a «força ajustada a cada passo do pincel» da docum
   multiplica toda correcção e todo movimento deles (§5.2, §5.4): máscara `1` ⇒ imóvel.
 - Não limita o número de restrições por vértice (F).
 - Não separa estrutural de cisalhamento de dobra: é UM tipo com `ℓ` diferente.
-- Não reconstrói nunca dentro do traço: uma célula construída é final (F).
+- Não reconstrói uma célula **depois de ela ter sido ACTIVADA** — a partir daí ela é final (F).
+  ⚠️ **Antes disso reconstrói:** a fase 0 do *Local* constrói e não activa, logo o passo seguinte
+  constrói a mesma célula de novo e as restrições ficam em duplicado (§1, §5.2-bis).
 
 ---
 
@@ -457,6 +470,48 @@ diferentes disputam o mesmo vértice»). ⚠️ As forças de âncora do Grab er
 `0,1` em 2020-10-15 (H: D9201 — «instabilidade na zona onde o fade dava 1»; «encontrado
 empiricamente, pode precisar de afinação»); a dos pincéis alheios era mais alta e desceu a `0,01`
 em 2020-09-14 (H: D8884 — «impedia as dobras de se formarem»).
+
+### §5.2-bis — A AMPLITUDE do *Local*: a lista de restrições vem em DUPLICADO (F; M 2026-09-06)
+
+⭐⭐⭐ **O facto.** Com área *Local*, o conjunto de restrições contém **cada restrição exactamente
+duas vezes** — duas cópias idênticas, na ordem «a lista inteira, e a seguir a lista inteira outra
+vez». Não é uma decisão de rigidez nem um parâmetro: é a consequência de a fase 0 construir **sem
+activar** (§1, §3.1, §3.3). Com *Global* e *Dynamic* cada restrição aparece **uma** vez.
+
+**O que isso faz.** As `5` varreduras (§5.2) percorrem a lista sequencialmente (Gauss–Seidel), logo
+no *Local* cada restrição é projectada **`10` vezes por passo** em vez de `5`, com a 2.ª projecção a
+ver já o resultado da 1.ª. O material fica mais rígido, o deslocamento no INTERIOR cai, e o
+**alcance** cresce (numa relaxação sequencial o alcance por passo É o número de passagens).
+
+⚠️ **É constante desde o início do traço, e NÃO acumula:** a lista já está dobrada quando a primeira
+relaxação com efeito corre. As duas cópias são iguais (mesma ordem, mesmos comprimentos de repouso,
+mesmas forças), porque as duas construções partem do mesmo centro fixo, do mesmo raio inicial e das
+mesmas posições de repouso (F).
+
+⚠️ **Porque é INVISÍVEL no primeiro passo simulado dos modos de FORÇA.** A relaxação corre ANTES da
+integração (§5.2): nesse passo a malha ainda está em repouso e toda correcção estrutural é zero —
+percorrer duas vezes uma lista de correcções nulas não muda nada. Por isso o passo 2 do *Local* e do
+*Global* é idêntico (`0,09347` sob o pen-down nas duas fixtures, §10.2) e a divergência começa no
+passo 3. ⛔ **Nos modos de ÂNCORA não é invisível já no passo 2**, porque a âncora é escrita na fase
+4 e a restrição de âncora **não** está satisfeita quando a relaxação corre — é isso que faz um traço
+de Grab de um único passo simulado mover `~1 300` vértices em vez de `~870` (M — §10.3).
+
+⚠️ **Duplicam-se TODAS as espécies** (estrutural, âncora de deformação, corpo mole, pino), porque o
+que corre duas vezes é a construção inteira (§3.2).
+
+⚠️ **Com simetria há MAIS cópias:** a fase 0 corre uma vez por passagem de simetria e todas elas
+constroem antes de qualquer activação, logo uma célula tocada por `n` passagens fica com `n` cópias
+da fase 0 **mais** uma da fase 1 do 2.º passo = `n + 1` (F). Nas fixtures o factor medido é
+exactamente `2` (⇒ uma passagem efectiva) — M, §10.3.
+
+⛔ **«Pôr 10 varreduras» NÃO é o mesmo, e a medição diz quanto:** dobrar a lista intercala as duas
+projecções de cada restrição de outra maneira do que dobrar o laço exterior. Um traço de arrastar
+cruza o oráculo a `10` e um de agarrar entre `9` e `10` (M — §10.3). ⇒ **para um port, a forma FIEL é
+a lista dobrada no ramo *Local*, não um número de varreduras diferente por área.**
+
+⭐ **E isto FECHA a suspeita de que a correcção de âncora seria maior do que `Δ/2`** (§5.2): não é —
+`Δ/2` está certo, e o défice de um port estava no número de PASSAGENS, porque todas as fixtures de
+âncora são de área *Local*.
 
 ### §5.3 — O que «damping» é, de facto
 
@@ -832,14 +887,46 @@ O rastreio de sete vértices por passo (`*.porpasso.rastreio.txt`) é o lado MED
    depois **RECUA** para `0,220` — o material atrás do cursor é puxado de volta para o aro preso; no
    Global sobe monotonamente até `0,646` (a folha acompanha o cursor com a velocidade acumulada).
    Sob o cursor do passo os dois são parecidos (`≈ 0,20–0,23` contra `≈ 0,22–0,31`).
-3. **Até ao passo 2 os dois são IGUAIS ao bit** (`0,09347` / `0,00072` / `0`): a diferença nasce só
-   quando a relaxação chega ao aro (passo 3 em diante) — é a prova de que o mecanismo é o aro, não a
-   força nem o passo de tempo.
-⇒ **Um port em que Local ≈ Global tem o aro LIVRE**: ou cria restrições só até ao início da banda
-(`R(1+L·F)`) em vez de até ao limite (`R(1+L)`), ou o `w` não chega a `0` dentro do conjunto
-restringido, ou `φ` não multiplica a correcção do lado do vértice do aro. Régua directa: `limite_3.5R`
-tem de ler `≈ 0` e `fora_4R` exactamente `0` no Local — e `> 0,03` nos dois no Global.
+3. **Até ao passo 2 os dois são IGUAIS ao bit** (`0,09347` / `0,00072` / `0`) e só divergem no
+   passo 3. ⚠️ **A 1.ª leitura desta linha — «logo o mecanismo é o aro» — está REFUTADA** (§10.3):
+   os DOIS mecanismos previam esta igualdade, porque no passo 2 a relaxação corre sobre uma malha em
+   repouso (§5.2-bis). O aro explica as colunas `3.5R`/`4R`; o **interior** é a lista duplicada.
+⇒ **Um port cujo `limite_3.5R` não seja `≈ 0` e cujo `fora_4R` não seja exactamente `0` no Local tem
+o aro LIVRE**: ou cria restrições só até ao início da banda (`R(1+L·F)`) em vez de até ao limite
+(`R(1+L)`), ou o `w` não chega a `0` dentro do conjunto restringido, ou `φ` não multiplica a
+correcção do lado do vértice do aro. Régua directa: `limite_3.5R` tem de ler `≈ 0` e `fora_4R`
+exactamente `0` no Local — e `> 0,03` nos dois no Global.
+⚠️ **Mas um port com o aro CERTO e o interior igual ao Global tem outra coisa, e é a §5.2-bis:** as
+colunas do aro batem com a lista simples, e o interior não. As duas leituras separam-se pela coluna,
+não pelo passo.
 
+### §10.3 — A experiência das varreduras (2026-09-06) — o lado MEDIDO da §5.2-bis
+
+Medição nossa, com a nossa lei, variando **só** o número de varreduras de relaxação por passo (M):
+
+| traço | varreduras que reproduzem o oráculo |
+|---|---|
+| arrastar radial **Global** (12 passos) | **5** — erro `≤ 4 %` em 12 passos × 5 colunas |
+| arrastar radial **Local** (12 passos) | **10** — erro `≤ 3 %`, e só a `10` aparece o **pico-e-recuo** (máximo no passo 8, recuo até ao 12); a `5` a curva é monótona crescente |
+| agarrar radial **Local** (2 passos) | cruza entre **9** e **10** |
+
+⭐⭐ **O botão parte o corpus exactamente na linha *Local* / não-*Local*** (50 fixtures, `5` contra
+`10` varreduras, erro relativo por traço): *Local* (38) — **27 melhoram**, 7 ficam ao bit em `0` (os
+de um passo de força, §5.2-bis), 4 pioram; *Global* (2) — **os dois pioram**; *Dynamic* (10) — **9
+pioram**. Ordens de grandeza, não afinação: arrastar *Local* `1,253 → 0,071`; arrastar *Global*
+`0,175 → 0,565`.
+
+⭐⭐⭐ **A prova que não é amplitude ajustada são as CONTAGENS de vértices movidos, que são inteiros:**
+a `10` varreduras oito traços *Local* passam a mover **exactamente** o número do oráculo, e nos
+traços de um e dois passos — onde não há acumulação possível — o alcance salta para o dele: agarrar
+`869 → 1307` (oráculo `1324`), expandir `597 → 840` (`848`), arrastar `1050 → 1428` (`1438`). *Numa
+relaxação sequencial o alcance por passo É o número de passagens ⇒ a contagem de movidos MEDE as
+passagens, e ela diz `~2×` no ramo Local dentro de UM passo de pincel.*
+
+⛔ **Duas coisas que esta medição NÃO explica** (e que não se devem misturar com ela): o Snake Hook
+de 2 passos e o apertar-ponto *Local* pioram a `10` — no Hook o pico do port não está sob o cursor,
+que é defeito de LOCALIZAÇÃO e não de amplitude; e na esfera os modos que não são arrasto erram em
+*Dynamic* sem que as varreduras lhes toquem.
 
 ---
 
@@ -910,6 +997,9 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
   disco actual e é o que os presets usam.
 - A relaxação é sequencial (Gauss–Seidel) — o determinismo vem da ordem de células e de
   vértices.
+- ⚠️ **A área *Local* paga o DOBRO da relaxação** (a lista vem em duplicado, §5.2-bis): `10`
+  projecções por restrição e por passo, e o dobro da memória de restrições. Não é uma escolha de
+  desempenho do alvo — é o preço do mecanismo, e um port fiel paga-o.
 
 ---
 
@@ -924,7 +1014,7 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 5 | **Expand muda o repouso**: a área do retalho cresce; e a força é `0,1×` a dos outros modos | `Σ área > área₀` · razão `10 ± 1 %` | §4.5 · fixture `plano_expandir_radial_local` |
 | 6 | **A força é absoluta**: o deslocamento no 1.º passo simulado é `0,1 · α / massa` no centro, independente de `R` e da aresta — massa `2` ⇒ metade exacta | `f32` (a conta é `a·dt`) | §4.1/§5.4 · fixtures `plano_arrastar_radial_local_1passo`, `plano_arrastar_radial_local_massa2_1passo` |
 | 7 | **A banda é smoothstep** em `[R(1+LF), R(1+L)]`, nas três leituras, e `w ≡ 1` em *Global* | exacta (polinómio) | §2.2 |
-| 8 | **O padrão de restrições** numa grelha regular: 4 + 2 + 4 por vértice interior, sem duplicados | contagem exacta | §3.1 |
+| 8 | **O padrão de restrições** numa grelha regular: 4 + 2 + 4 por vértice interior, sem duplicados **DENTRO de uma construção** (⚠️ o conjunto do *Local* tem a lista inteira **duas** vezes — gate 16) | contagem exacta | §3.1 · §5.2-bis |
 | 9 | **5 varreduras, `0,6`, meio para cada lado**: numa restrição isolada entre dois vértices livres com `φ = 1`, o erro após `k` varreduras é `(1 − 0,6)^k` do inicial | `0,4^5 = 0,01024 ± f32` | §5.2 |
 | 10 | **Damping é retenção**: com damping `d`, um vértice livre em voo perde `d` da velocidade por passo; com `d = 1` pára | `f32` | §5.3 · fixture `plano_arrastar_radial_local_amort05` |
 | 11 | **O 1.º passo nunca simula**; o passo seguinte sim | exacta | §1 |
@@ -932,5 +1022,7 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 13 | **Grab mede na malha de partida**: mover o pano não muda o conjunto agarrado | exacta | §4.3 |
 | 14 | **A simetria é por passagem** e a 2.ª passagem vê a 1.ª | fixture com espelho | §6.6 |
 | 15 | **Paridade com o oráculo** — os 51 traços (§10): a barra é a **discretização** e o **`f32`**: a nossa malha é a mesma (gerada pela mesma lei), logo a comparação é por vértice; a barra por vértice é a aresta × a diferença de ordem das restrições (Gauss–Seidel não comuta) — MEDIR primeiro a dispersão entre duas ordens nossas e usar essa dispersão como barra (⛔ não um epsilon de conforto; ⛔ não bit-parity — ADR-0162) | derivada por medição | §10 |
+| 16 | **A lista do *Local* vem em duplicado**: no mesmo retalho e no mesmo traço, a contagem de restrições do conjunto *Local* é **exactamente `2×`** a que uma construção só produz, e a de *Global*/*Dynamic* é `1×`; e a régua de comportamento é a **CONTAGEM DE VÉRTICES MOVIDOS** num traço de âncora de UM passo simulado (inteiro, sem acumulação possível), que tem de bater a do oráculo | contagem exacta (inteiros dos dois lados) | §5.2-bis · §10.3 · fixtures `plano_agarrar_radial_local_1passo`, `plano_expandir_radial_local_1passo`, `plano_arrastar_radial_local_2passos` |
+| 17 | **É só o ramo *Local***: a mesma experiência que melhora os traços *Local* tem de **piorar** os *Global* e os *Dynamic* — um port que dobre a relaxação em toda a parte passa o gate 16 e reprova aqui | sinal do erro relativo, nos 50 traços | §5.2-bis · §10.3 |
 
 ---

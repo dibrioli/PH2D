@@ -373,6 +373,68 @@ leitura do fonte + medição; as que mexiam na espec foram emendadas (§3.1, §2
   Auditoria dos fixtures *Local* já entregues (corridas completas, disco de movidos): TODOS centrados em `x = −0,305` = o pen-down (os de 1–2 passos não excitam o disco inteiro e não são auditáveis por bbox; nasceram na mesma sessão que os auditados).
 
 
+### Q8 — a AMPLITUDE do *Local* (pergunta do I de 2026-09-06; resposta por leitura do fonte, mesmo dia)
+
+**Pergunta (INBOX §Q8):** o oráculo entrega, no ramo *Local*, `0,34–0,57×` a amplitude do *Global* no
+INTERIOR da área, e a nossa lei reproduz o oráculo *Global* a `5` varreduras e o *Local* a `10`.
+Q8.1 — quantas passagens de relaxação faz cada ramo? Q8.2 — a lista do *Local* é deduplicada?
+Q8.3 — o *Local* corre o solver mais vezes / com `dt` menor?
+
+**Resposta — nenhuma das três hipóteses como formuladas; é uma QUARTA, e é a Q8.2 «pela outra ponta».**
+
+- **Q8.1 — o número de passagens é o MESMO nos dois ramos:** um passo de pincel corre a relaxação
+  **uma** vez, e ela varre a lista de restrições **5** vezes, em qualquer área (F). Nenhum
+  multiplicador aqui.
+- **Q8.2 — a lista É deduplicada, mas o registo de duplicados vive UMA CONSTRUÇÃO** (a fase 1 de um
+  passo), não a simulação (F). ⇒ duas construções sobre a mesma célula deixam **duas cópias** de cada
+  restrição. ⚠️ E a área *Local* faz exactamente duas construções: a fase 0 (1.º passo do traço)
+  constrói e **não activa** — a marca de «construída» é a ACTIVAÇÃO, e o 1.º passo termina antes
+  dela —, logo a fase 1 do 2.º passo reconstrói tudo. **Cada restrição do *Local* existe DUAS vezes;
+  as de *Global*/*Dynamic*, uma** (esses ramos não têm fase 0 de construção). ⇒ **`10` projecções por
+  restrição e por passo no *Local*, `5` nos outros** — a assimetria de `~2×` medida pelo I.
+- **Q8.3 — não se aplica:** um solver por passo, `dt` igual nos dois ramos, sem sub-passos (F).
+
+**Porque casa com a restrição que o I impôs à resposta:** o mecanismo é **constante desde o início**
+(a lista já está dobrada quando a primeira relaxação com efeito corre) e **invisível no passo 2 dos
+modos de FORÇA**, porque a relaxação corre ANTES da integração e nesse passo a malha ainda está em
+repouso — percorrer duas vezes uma lista de correcções nulas dá o mesmo. Nos modos de ÂNCORA já não é
+invisível no passo 2 (a âncora é escrita antes da relaxação e não está satisfeita), e é isso que o I
+mediu como `agarrar_1passo` `869 → 1307` movidos contra `1324` do oráculo.
+
+**Origem histórica (H, §9 item 15):** a fase 0 de construção do *Local* existe para que TODAS as
+passagens de simetria acrescentem as suas restrições antes de qualquer activação — sem ela a 2.ª
+passagem encontrava a célula já activada e não acrescentava as dela. A cópia extra no 2.º passo é o
+efeito colateral dessa cura, e é **comportamento observável** do alvo: o corpus do I mede-a em 38
+traços. ⚠️ **Consequência com simetria:** uma célula tocada por `n` passagens fica com `n + 1` cópias.
+Nas fixtures o factor é exactamente `2`.
+
+**Correcções que a Q8 impõe a respostas anteriores deste ledger:**
+- **Q3 fica emendada:** *«a alavanca dominante do "Local < Dynamic" é o centro fixo vs. móvel; a razão
+  exacta é emergente»* está **REFUTADO** — o centro fixo e o aro preso explicam o **bordo**; o
+  **interior** é a lista duplicada, e a razão **não** é emergente. (§2.1 e §10.2 da espec emendados.)
+- **Q5 fica CONFIRMADA e o défice NOMEADO:** a correcção de âncora é mesmo `Δ/2`; *«o défice de um
+  port está noutro factor»* — o factor é o número de PASSAGENS, porque todas as fixtures de âncora
+  são de área *Local*. (§5.2-bis da espec.)
+- A leitura do §10.2 *«até ao passo 2 são iguais ⇒ o mecanismo é o aro»* está **refutada como
+  inferência**: os dois mecanismos previam essa igualdade. O facto medido fica; a conclusão mudou.
+
+**Emenda à espec (commit desta entrada):** §1 fases 0 e 1 · §2.1 · §3.1 · §3.3 · **§5.2-bis (nova)** ·
+§10.2 · **§10.3 (nova, o lado medido pelo I)** · §13 · §14 gates 8, 16 e 17.
+**Cobertura desta leitura:** o ficheiro do pincel/filtro de tecido (2 590 linhas) relido nas fases de
+construção de restrições, relaxação, passo de simulação, activação de células e entrada do pincel,
+mais o predicado de «primeiro passo» e o produtor do conjunto de células, no ficheiro central do modo
+de escultura. Fonte v5.2.0, por shell, 2026-09-06.
+**Sweep:** verde sobre a espec emendada e sobre esta secção do ledger, isoladamente (vassoura de 70
+entradas), 2026-09-06.
+⚠️ **FACTO PARA O R-PÓS, não causado por esta emenda:** o sweep sobre o LEDGER INTEIRO sai **✗ com
+duas ocorrências PRÉ-EXISTENTES** (linhas 88 e 209 na versão de `fa785e173`, as duas na tabela de
+cobertura e no achado de parede nº 1, onde o caminho de um ficheiro do alvo é nomeado por exigência
+do §6 «cobertura da travessia»). ⇒ há uma tensão real entre o §6 (que MANDA registar os ficheiros
+percorridos) e a barra do §7.2 (zero hits na árvore inteira), e os atestados de 05 e 06/09 dizem
+«sweep verde ... + ledger». **Decisão é do R** — o E não silencia nem apaga o registo de cobertura
+por conta própria.
+⏳ **Falta o atestado do R-pré sobre esta emenda** (a janela-mãe despacha-o antes de implementar).
+
 ## Fechamento R
 
 ⏳

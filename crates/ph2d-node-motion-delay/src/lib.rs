@@ -131,6 +131,9 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 /// `mode`: the three ways to be late.
 const MODE_DELAY: i32 = 0;
 const MODE_AVERAGE: i32 = 1;
+/// O modo de omissão — a one-pole. ⚠️ **Ele é o único que não lê o anel**, e é isso que o
+/// [`ring::depth_for`] usa.
+pub(crate) const MODE_BLEND: i32 = 2;
 
 /// `channel`: the shared prefix (`0..3`) plus this node's two whole quantities.
 const CH_X: i32 = 0;
@@ -427,12 +430,16 @@ impl NodeOp for MotionDelay {
                         &empty
                     };
                     let rows = ring::rows_of(hist, input);
-                    let past = ring::past(hist, &rows, &live, c.dim);
+                    // ⭐ O anel só é lido e reescrito na PROFUNDIDADE que este modo abre.
+                    let depth = ring::depth_for(mode, c.angular);
+                    let past = ring::past(hist, &rows, &live, c.dim, depth);
                     let prev = ring::prev_out(hist, &rows, &live, c.dim);
 
-                    if c.angular {
+                    if c.angular && !past.is_empty() {
                         // `past[0]` is one tick ago, already unwrapped (and a newborn's is its own
                         // live value, so the first tick is the identity).
+                        // ⚠️ A guarda é a metade honesta do [`ring::depth_for`]: um canal angular
+                        // pede sempre a fatia 1, e o `is_empty` diz alto se alguma vez não pedir.
                         unwrap_live(&mut live, &past[0]);
                     }
 
@@ -659,6 +666,10 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "measure_modes.rs"]
+mod measure_modes;
 
 // ⚠️ Irmão e não filho: o `tests.rs` está no teto de LOC, e o harness dele
 // (`rig`/`run`/`Src`) ganhou um SEGUNDO consumidor — que é a razão de ele ser

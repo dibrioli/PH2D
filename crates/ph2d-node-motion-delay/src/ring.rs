@@ -180,13 +180,38 @@ fn gather(
 }
 
 /// The past values, `[k - 1] = k ticks ago`, gathered onto the live rows.
+/// ⭐⭐⭐ **QUANTAS FATIAS ESTE MODO LÊ** — e é isto que tira o anel do caminho do modo comum.
+///
+/// **Medido em 2026-09-06** (`measure_what_each_mode_costs`, release): as três saíam com **34**
+/// colunas de estado e o `Blend` — o default, e aquele *para que o nó existe* — lê **uma**
+/// (`dl_out`). Ele pagava as 32 fatias do anel em cada tique: `10,96 ms` a 100 000 elementos,
+/// dois terços de um quadro, para juntar e reescrever um histórico que ele nunca abre.
+///
+/// ⚠️ **O `Blend` ainda precisa de UMA fatia quando o canal é ANGULAR** — o desembrulho do
+/// ângulo compara com «um tique atrás» (`past[0]`), e sem ele um giro que cruza os 180° saltaria.
+/// *Uma varredura que devolvesse zero para todo `Blend` partiria a rotação e nenhum gate de
+/// contagem o veria.*
+///
+/// ⛔ **O anel dos outros dois NÃO encolhe com o `ticks`, de propósito.** Seguir o knob faria a
+/// profundidade mudar **durante o arrasto**, e subir o lag mostraria um histórico curto até ele
+/// se voltar a encher — um transitório de `ticks` quadros a cada mexida. O ganho aqui é o do
+/// modo comum, e é livre.
+pub(crate) fn depth_for(mode: i32, angular: bool) -> usize {
+    if mode == crate::MODE_BLEND {
+        usize::from(angular)
+    } else {
+        MAX_LAG
+    }
+}
+
 pub(crate) fn past(
     state: &Stream,
     rows: &[Option<usize>],
     live: &[f32],
     dim: usize,
+    depth: usize,
 ) -> Vec<Vec<f32>> {
-    (1..=MAX_LAG)
+    (1..=depth.min(MAX_LAG))
         .map(|k| gather(state, slot(k), rows, live, dim))
         .collect()
 }
@@ -230,6 +255,9 @@ pub(crate) fn push(
     dim: usize,
     channel: i32,
 ) {
+    // ⚠️ **Só as fatias que este modo LÊ** — ver [`depth_for`]. As mais fundas simplesmente não
+    // existem na saída: o `eval` reconstrói o stream sem as colunas de estado, então não há
+    // resíduo a limpar.
     let mut shifted = live.to_vec();
     for (k, mut older) in past.into_iter().enumerate().take(MAX_LAG) {
         // `shifted` enters holding what belongs in slot k+1; swap it out and carry the slot's

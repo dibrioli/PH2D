@@ -223,6 +223,39 @@ device suporta ler uma linha arbitrária de um buffer de histórico, ou a recusa
 escrita. ⛔ **Não abrir com «escrever o kernel»** — abrir com a medição de quanto ele custa numa
 cena real e de qual é o bloqueador exacto, como a auditoria 98 exige.
 
+#### ✅ W3 FECHOU (2026-09-06) — e a medição DERRUBOU a linha acima, e depois deu um ganho de `7,5×`
+
+⛔⛔ **A frase «ele lê o passado de OUTRO elemento» é FALSA** — cada elemento lê o **seu
+próprio** passado. *Uma premissa afirmada sem abrir o nó é um palpite com cara de medição*, e ela
+ia mandar a wave inteira atrás de um gather que não existe.
+
+⭐⭐⭐ **O bloqueador real é o ANEL DE 32 FATIAS** — e ao medi-lo apareceu uma coisa muito melhor
+que um kernel: o modo **`Blend`**, que é o **default** e aquele *para que o nó existe*, **não lê o
+anel** (uma one-pole é uma soma pesada de TODO o passado, então ela carrega a própria saída
+anterior, `dl_out` — uma coluna). Ele estava a juntar e a reescrever **32 colunas por tique** que
+nunca abre.
+
+| modo, 100 000 elementos | antes | depois | colunas de estado |
+|---|---|---|---|
+| `Delay` | `12,82 ms` | `12,85 ms` | 34 → 34 |
+| `Average` | `13,89 ms` | `10,32 ms` | 34 → 34 |
+| **`Blend`** (o default) | **`10,96 ms`** | **`1,46 ms`** | **34 → 2** |
+
+**`7,5×` no modo comum**, e os outros dois byte-idênticos. ⇒ `ring::depth_for(mode, angular)` é a
+porta: o anel é lido e reescrito só na profundidade que o modo abre.
+
+⚠️ **E o `Blend` ANGULAR ainda guarda UMA fatia** — o desembrulho do ângulo compara com «um tique
+atrás», e uma varredura que devolvesse zero para todo `Blend` partiria a rotação **sem nenhum
+gate de contagem o ver**. O `the_angular_blend_still_keeps_its_one_slice` mede-o.
+
+⛔ **E o anel dos outros dois NÃO encolhe com o `ticks`, de propósito:** seguir o knob faria a
+profundidade mudar **durante o arrasto**, e subir o lag mostraria um histórico curto até se
+voltar a encher — um transitório a cada mexida. *O ganho do modo comum é livre; este não era.*
+
+⏳ **E agora o kernel é uma pergunta diferente:** com **duas** colunas de estado o `Blend` é um
+mapa por-elemento, logo é candidato a device. Fica nomeado, com o número ao lado — mas depois do
+`7,5×` ele deixou de ser a alavanca que era.
+
 ### W4 — O CENSO DO CARTÃO DO GRUPO
 
 O `motion.noise` mostra **13 de 19** params no cartão. Correr

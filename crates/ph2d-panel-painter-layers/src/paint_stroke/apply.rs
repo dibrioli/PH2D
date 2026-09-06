@@ -160,7 +160,10 @@ pub(super) fn paint_offset_card(
         ctx.scene,
         card,
         card_radius,
-        resolve(ColorToken::Bg1, theme),
+        resolve(
+            ph2d_editor_core::widget::section_cards::CardDepth::Subsection.token(),
+            theme,
+        ),
     );
     ph2d_editor_core::paint::stroke_frame(
         ctx.scene,

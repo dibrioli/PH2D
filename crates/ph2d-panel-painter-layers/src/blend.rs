@@ -111,7 +111,15 @@ pub(crate) fn paint_blend_chip(
     }
 
     let radius = Radius::Sm.px();
-    fill_rounded_rect(ctx.scene, rect, radius, resolve(ColorToken::Bg1, theme));
+    fill_rounded_rect(
+        ctx.scene,
+        rect,
+        radius,
+        resolve(
+            ph2d_editor_core::widget::section_cards::CardDepth::Subsection.token(),
+            theme,
+        ),
+    );
     let border = if open {
         ColorToken::Accent
     } else {

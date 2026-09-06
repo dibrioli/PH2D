@@ -92,7 +92,15 @@ pub(crate) fn paint_dropdown_chip(
     // ⭐ Raio e moldura pela porta do TEMA, com o `Feel` do estado do dropdown — a mesma porta do
     //    `Dropdown` da casa (`dropdown_feel`), pela mesma razão do `chip_border_color` abaixo.
     let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
-    fill_rounded_rect(ctx.scene, rect, radius, resolve(ColorToken::Bg1, theme));
+    fill_rounded_rect(
+        ctx.scene,
+        rect,
+        radius,
+        resolve(
+            ph2d_editor_core::widget::section_cards::CardDepth::Subsection.token(),
+            theme,
+        ),
+    );
     // ⚠️ **Pela porta do widget, e não por uma quarta cópia da lei.** Este chip é desenhado à
     // mão (não constrói um `Dropdown`) e por isso carregava a sua própria regra de borda — que
     // não conhecia `BorderEmph` e portanto **nunca acendia sob o ponteiro**.

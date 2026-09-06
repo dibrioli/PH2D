@@ -163,7 +163,69 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 | R-pré | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` (transcript = zona contaminada — leu o fonte por shell) | 2026-09-05 — ✅ **atestado no cabeçalho da espec**; veredictos abaixo |
 | R-pré (errata) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a errata (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (errata)» |
 | R-pré (emendas Q8/Q9/Q10) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu as emendas (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emendas Q8, Q9 e Q10)» |
+| R-pré (emenda Q11) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emenda Q11)» |
 | R-pós | ⏳ | — |
+
+### Auditoria R-pré — 2026-09-06 (emenda Q11)
+
+**Âmbito.** A emenda Q11 (commits locais `5c14b345a` + `2d733a7bf`): §3.1 · §4.2 · §5.2 · §5.2-ter
+NOVA · §9 nº 20 · §10 · §10.6 NOVA · §11 · §14 gates 19-21, mais a fixture
+`plano_apertar_ponto_radial_local_origem_fraco` e o `indice.json` regenerado.
+
+**Conformidade §4.2 — ZERO achados.** Nenhum trecho, nenhum nome interno (funções, variáveis,
+ficheiros, structs, constantes), nenhum comentário do original, nenhum wording de manual. A lista
+numerada da ordem de criação do §3.1 é **mecanismo** (§4.1.11 — o algoritmo em qualquer
+profundidade), escrita em vocabulário do domínio já usado pela espec; a nota do percurso do anel
+descreve o efeito, não a redacção do original. O nome da fixture nova é domínio puro.
+
+**Sweep (§7.1).** Vassoura de 70 entradas. Verde sobre: espec emendada · `fixtures/cloth/` inteira ·
+INBOX · os dois READMEs · `docs/3D/cloth/`. Verde em `--git-history` sobre `SPEC_cloth_brush.md` e
+sobre `fixtures/`. ⚠️ Os **dois únicos hits** da árvore continuam a ser os deste ledger (linhas 88 e
+210 antes desta secção — o caminho do ficheiro do alvo, na cobertura da travessia e no achado de
+parede nº 1), já nomeados para o R-pós pelo commit `2d733a7bf`. Nenhum artefacto destinado à
+janela-mãe tem hits.
+
+**Fidelidade — conferida no fonte, facto a facto (todos CORRECTOS).** A ordem interna de criação, as
+cinco espécies na sequência que o §3.1 passa a declarar · o registo de pares partilhado por uma
+construção e não entre construções · o filtro de raio da construção alcançar só duas espécies · o
+anel percorrido face a face com deduplicação · o factor de correcção sem tecto, com o `D = 0` como
+único guarda · as três re-escalas a comprimento 1 dos apertos e a projecção que deixa o de linha em
+`≤ 1` · o instante em que cada modo lê as posições (só um modo lê outro) · a ausência de tecto de
+deslocamento, de corte ao ultrapassar e de amortecimento próprio · as constantes citadas · e o
+**§9 nº 20**: a versão que gravou as fixtures MULTIPLICA, logo a refutação está certa e não há
+divergência deliberada a declarar. ⚠️ A **data** do conserto é história pública (H) e não é
+verificável na árvore disponível (clone raso); o que decide — o comportamento que o oráculo tem —
+está verificado no código.
+
+**Fidelidade — os NÚMEROS reconstruídos do zero pelo R-pré**, das fixtures `*.porpasso` e do
+repouso, sem usar o harness do E: as duas tabelas (§5.2-ter e §10.6) reproduzem **célula a célula**
+(`10 / 18 / 52` · `0 / 0 / 0` · `6 / 5 / 2` · `0 / 0 / 57` · `0 / 11` · `0,675` · `1,060` · `0,103` ·
+`0,144` · `0,059` · `0,219` · `0,099` · `0,204` · `0,064` · `0,286` · `0,088` · `0,283` · `0,095` ·
+`0,099` · `2 145` · `2 029` · `0,303401` · `0,004082`), e os «9 vértices que passam o cursor» também
+(com o cursor no ponto do 1.º passo simulado).
+
+**Curas aplicadas no acto (quatro §4.3/suficiência + uma de decisão), todas funcionais.**
+1. **§3.1 — fidelidade.** Dizia que a âncora de deformação e o pino nascem «para todo vértice visível
+   da célula, sem esse filtro», o que contradiz o §2.3: o pino tem a condição da banda e a opção
+   ligada, e a âncora radial tem o raio do pincel. Reescrito: ficam fora do filtro da CONSTRUÇÃO,
+   cada uma com a sua condição, nomeadas.
+2. **§5.2 / §10.6 — a régua subestimava por `3,5×`.** «Pior compressão de um par estrutural» não
+   dizia sobre que pares corria. Medido: `0,052` (factor `−18,1`) só sobre pares que são ARESTAS;
+   `0,015` (factor **`−64,4`**) sobre TODOS os pares da construção, que é a população certa (as
+   restrições de par do anel sofrem a mesma projecção). As duas ficam escritas, com a larga declarada
+   como a que vale.
+3. **§5.2-ter — o gate 19 não era edificável.** «Quadrilátero de orientação invertida» e «assimetria
+   de espelho» eram colunas medidas sem régua escrita em lado nenhum. Ficam definidas
+   operacionalmente (produto vectorial das diagonais contra a normal de repouso; `∞`-norma sobre
+   `2`-norma), com a leitura errada NOMEADA — somar as duas metades triangulares conta o
+   quadrilátero apenas dobrado e devolve `11 / 26 / 88`.
+4. **§14 gates 15 e 17.** Citavam `51` e `50` traços de memória com `54` no disco — passam a ser
+   contados, com o comando ao lado.
+5. **§5.2-ter — a decisão do dono.** A alternativa estava nomeada mas o que o artista VÊ de cada lado
+   não; ficam as duas frases, mais a nota de que não há terceira saída (a inversão nasce antes de a
+   relaxação correr).
+
+**Veredicto: ATESTADO.**
 
 ### Auditoria R-pré — 2026-09-05
 

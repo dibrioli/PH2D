@@ -34,12 +34,35 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   INBOX + ledger + o histórico destes caminhos. TRÊS nomes internos do alvo (dois no §5.2, um no §10)
   re-expressos em vocabulário do domínio e UMA linha órfã de arnês apagada no §10, no acto; os seis
   factos da errata conferidos no fonte pelo R-pré, todos correctos. Detalhe: LEDGER §Papel R.
-  ⏳ **EMENDA Q11 de 2026-09-06 — AGUARDA O ATESTADO DO R-PRÉ** (§3.1 · §4.2 · §5.2 · **§5.2-ter NOVA** ·
-  §9 nº 20 · **§10.6 NOVA** · §11 · §14 gates 19-21, + a fixture nova
+  ✅ **EMENDA Q11 de 2026-09-06 — auditada contra §4.2 por R-pré em 2026-09-06** (§3.1 · §4.2 · §5.2 ·
+  **§5.2-ter NOVA** · §9 nº 20 · **§10.6 NOVA** · §11 · §14 gates 19-21, + a fixture nova
   `plano_apertar_ponto_radial_local_origem_fraco`): o aperto **inverte a malha debaixo do cursor no
   PRIMEIRO passo simulado**, e a partir daí o resultado por vértice é decidido pela ORDEM de
   resolução. Escrita pelo subagente-E da mesma janela, com o fonte reaberto só para estas perguntas
   e com uma corrida NOVA do oráculo (o par de força do §5.2-ter).
+  **R-pré: contexto novo, independente de quem a escreveu; leu os dois lados (o fonte por shell).**
+  ⛔ **ZERO achados de §4.2** — sem trecho, sem nome interno, sem wording de comentário/manual; a
+  ordem de criação do §3.1 é mecanismo (§4.1.11) escrito em vocabulário do domínio, e o nome da
+  fixture nova também. Sweep **verde** sobre a espec emendada + a pasta inteira das fixtures + INBOX
+  + os dois READMEs + `docs/3D/cloth/`, e sobre o **histórico** da espec e das fixtures.
+  ⭐⭐ **FIDELIDADE: os factos foram conferidos no fonte e os NÚMEROS reconstruídos do zero pelo
+  R-pré a partir das fixtures** — a ordem interna de criação (as cinco espécies na ordem que o §3.1
+  passou a dizer), o filtro de raio alcançar só duas delas, o anel percorrido face a face, a
+  ausência de tecto no factor de correcção, a re-escala a comprimento 1 nos dois apertos, o instante
+  em que cada modo lê as posições, e o **§9 nº 20** (a versão que gravou as fixtures MULTIPLICA —
+  não há divergência a declarar). As **duas tabelas** do §5.2-ter e do §10.6 reproduzem célula a
+  célula (`10 / 18 / 52` · `0,675` · `1,060` · `0,103` · `0,059` · `0,286` · `0,088` · `0,283` ·
+  `2 145` · `2 029` · `0,303401` · `0,004082`), e os «9 vértices que passam o cursor» também.
+  **QUATRO curas aplicadas no acto pelo R-pré, todas funcionais:** (1) o §3.1 dizia que a âncora e o
+  pino nascem «para todo vértice visível», o que contradizia o §2.3 — cada um tem a SUA condição;
+  (2) a régua da compressão do §5.2/§10.6 não dizia sobre que pares corria e **subestimava por
+  `3,5×`** (`0,052`/`−18,1` só sobre arestas, contra `0,015`/`−64,4` sobre todos os pares da
+  construção — as duas ficam agora escritas); (3) as **duas réguas** da tabela do §5.2-ter (o
+  quadrilátero invertido e a assimetria de espelho) não estavam definidas em lado nenhum, logo o
+  gate 19 não era edificável — ficam definidas, com a leitura ERRADA nomeada (somar metades
+  triangulares dá `11 / 26 / 88`); (4) os gates 15 e 17 citavam `51` e `50` traços de memória, com
+  `54` no disco. Mais a decisão do §5.2-ter posta nas duas frases que o dono precisa de ler.
+  Veredictos e detalhe: LEDGER §Papel R.
 Mapa de leitura da literatura (⭐ pública e lícita a TODOS os papéis):
   · Jakobsen, "Advanced Character Physics", GDC 2001 — integração de Verlet por posições + relaxação
     de restrições de distância por projecção. É EXACTAMENTE a família do solver do alvo.
@@ -266,16 +289,21 @@ autores chamam-lhe, por escrito, «básico» e sabem que repete restrições (H:
      vizinhos distintos, na mesma ordem do anel · a **âncora de deformação** · o **pino**.
      ⛔ O corpo mole vem ANTES das estruturais e o pino DEPOIS da âncora — a espec anterior não
      dizia a ordem interna, e ela é observável assim que duas espécies disputam um vértice.
-  4. o registo de pares já criados é **partilhado pela construção inteira**, logo a **primeira**
-     ocorrência de um par fixa a posição dele na lista, e um par cujos dois vértices vivem em
-     células diferentes cai na célula que lá chegou primeiro.
+  4. o registo de pares já criados é **partilhado pela construção inteira** — é o MESMO registo do
+     parágrafo acima: **um por CONSTRUÇÃO**, comum a todas as células dela, e é por isso que duas
+     construções deixam duas cópias. Logo a **primeira** ocorrência de um par fixa a posição dele na
+     lista, e um par cujos dois vértices vivem em células diferentes cai na célula que lá chegou
+     primeiro.
   ⚠️ **O anel de um vértice é percorrido face a face** (para cada face que contém `v`, os dois cantos
   adjacentes, deduplicados), logo a ordem do anel é a ordem das faces à volta do vértice — não uma
   ordem angular nem a dos índices (F).
 - ⚠️ **O filtro de raio da construção só vale para as ESTRUTURAIS e para o corpo mole** (F,
-  2026-09-06): a **âncora de deformação** e o **pino** são criados para **todo vértice visível da
-  célula**, sem esse filtro — a âncora radial do Grab tem um filtro **próprio e diferente**, o
-  **raio do PINCEL** (`d⁰ < R₀`), e a do Grab-plano e a do Snake Hook não têm nenhum.
+  2026-09-06): a **âncora de deformação** e o **pino** ficam **FORA** dele — mas ⛔ isso **não** quer
+  dizer «sem condição nenhuma»: cada uma tem a **sua**, e nenhuma delas é o raio da construção.
+  A âncora radial do Grab usa o **raio do PINCEL** (`d⁰ < R₀`, filtro próprio e diferente); a do
+  Grab-plano e a do Snake Hook não têm condição de distância nenhuma (todo vértice visível da
+  célula); e o **pino** tem a dele, que é a **banda** (`w < 1`, §2.3) e só existe com a opção ligada
+  e fora da área *Dynamic*.
   ⇒ um port que filtre as quatro espécies pelo mesmo raio cria menos âncoras e menos pinos do que o
   alvo. ⚠️ **Na área *Local* isso é observável só pela ORDEM da lista**, porque o factor por vértice
   dessas restrições extra é `0` (§5.2: `σ = 0` fora do conjunto que o gesto reescreve; `φ = 0` além
@@ -389,10 +417,10 @@ primeiro passo, a partir do repouso, e é a LEI.*
 
 ⚠️ **A direcção nula tem tratamento próprio e é o único caso especial dos apertos:** um vértice
 **exactamente** sobre o cursor (ou, no falloff de plano, exactamente SOBRE o plano) dá separação
-nula, e a re-escala a comprimento 1 da casa devolve o **vector NULO** ⇒ **força zero**, sem `NaN`,
-sem direcção de reserva e sem o vértice ser saltado. Um vértice a um epsilon dele recebe a força
-**inteira** (F). ⇒ *o ponto onde o aperto é mais forte é o ponto onde a direcção dele está pior
-determinada.*
+nula, e a re-escala a comprimento 1 aplicada a essa separação devolve o **vector NULO** ⇒ **força
+zero**, sem `NaN`, sem direcção de reserva e sem o vértice ser saltado. Um vértice a um epsilon dele
+recebe a força **inteira** (F). ⇒ *o ponto onde o aperto é mais forte é o ponto onde a direcção dele
+está pior determinada.*
 
 ### §4.3 — Os modos de ÂNCORA (dois) — e o delta de agarrar
 
@@ -536,11 +564,20 @@ h  = Δ/2
 ⚠️⚠️ **O factor `(1 − ℓ'/D)` NÃO TEM TECTO, e muda de SINAL quando o par fica COMPRIMIDO** (F,
 2026-09-06 — o único guarda do fonte é o `D = 0`): com `D > ℓ'` ele vive em `[0, 1)` e a correcção
 puxa; com `D < ℓ'` ele é **negativo e cresce sem limite** à medida que `D → 0`, e a correcção
-**empurra**, com magnitude `0,6/2 · (ℓ'/D − 1)` **vezes a separação actual** por projecção. Medido
-nas fixtures por passo: o arrasto nunca desce abaixo de `D/ℓ = 0,49` (factor `−1,1`, limitado); o
-aperto de ponto chega a **`D/ℓ = 0,052`** (factor **`−18,1`** ⇒ um par empurrado a `5,4×` a
-separação dele numa só projecção, e a lista do *Local* projecta-o **dez** vezes por passo). ⇒ *é
+**empurra**, com magnitude `0,6/2 · (ℓ'/D − 1)` **vezes a separação actual** por projecção. ⇒ *é
 aqui que a relaxação deixa de ser uma contracção e passa a ser um amplificador — ver §5.2-ter.*
+
+⚠️⚠️ **E a régua da compressão tem de dizer SOBRE QUE PARES é que corre, senão subestima por `3,5×`**
+(M, conferido pelo R-pré em 2026-09-06 sobre as fixtures `*.porpasso`): o pior `D/ℓ` dos doze passos
+do aperto de ponto vale **`0,052`** (factor `−18,1`) se se olharem só os pares que são **arestas da
+malha**, e **`0,015`** (factor **`−64,4`**) se se olharem **todos** os pares que a construção cria —
+que é a população certa, porque as restrições de PAR DO ANEL (cisalhamento e dobra, §3.1) são
+restrições de distância como as outras e sofrem a mesma projecção. O arrasto, na mesma régua larga,
+nunca desce abaixo de `D/ℓ = 0,49` (factor `−1,1`), e a fixture de força fraca fica em `0,830`
+(factor `−0,20`). ⇒ um par empurrado a **`19×`** a separação dele numa só projecção, e a lista do
+*Local* projecta-o **dez** vezes por passo. ⚠️ **Quando este documento diz «par estrutural» numa
+tabela de medição, é a régua LARGA que vale** — a estreita fica aqui só porque foi a primeira a ser
+escrita e a diferença entre as duas é ela própria o achado.
 
 ⚠️ **Só a POSIÇÃO é corrigida — não há projecção de velocidade separada**: a velocidade do passo
 seguinte sai da diferença de posições (§5.4), logo as correcções das restrições **entram na
@@ -622,8 +659,26 @@ a lista é percorrida** — que é a coisa que um Gauss–Seidel não comuta.
 
 ⭐⭐ **A PROVA está dentro do próprio oráculo, e não precisa de nós: a SIMETRIA DE ESPELHO.** A malha
 de repouso, o caminho do cursor (em `y = 0`), a lei da força e o **conjunto** de restrições são todos
-simétricos em relação ao traço. A **ordem** da lista não é. Medindo `max|u(v) − espelho(u(espelho(v)))|`
-contra o maior `|u|` da malha, por passo (M — fixtures `*.porpasso`):
+simétricos em relação ao traço. A **ordem** da lista não é.
+
+⚠️⚠️ **AS DUAS RÉGUAS DA TABELA, escritas para se poderem CONSTRUIR** — sem isto o gate 19 não é
+edificável, e um número medido cuja régua não está escrita não é um número (R-pré, 2026-09-06: as
+duas foram **reconstruídas do zero a partir das fixtures** e devolvem, célula a célula, os valores
+da tabela; se um port as escrever de outra maneira, mede outra coisa):
+
+- **Quadrilátero de orientação invertida** = a face cuja **normal depois do passo** aponta ao
+  contrário da normal dela **em repouso**. Na grelha plana isso é o sinal da componente `z` do
+  **produto vectorial das DIAGONAIS** do quadrilátero, `(p₃ − p₁) × (p₄ − p₂)` com os cantos na
+  ordem do quadrilátero — equivalente, na prática, à normal de Newell do polígono. Conta-se sobre
+  **todas** as faces da malha, e o valor é um **inteiro**. ⛔ Não é «somar as duas metades
+  triangulares»: essa leitura conta também o quadrilátero apenas DOBRADO (que não inverteu) e
+  devolve `11 / 26 / 88` onde a régua certa devolve `10 / 18 / 52`.
+- **Assimetria de espelho ÷ `|u|max`** = `max_v ‖u(v) − M(u(m(v)))‖∞` a dividir por `max_v ‖u(v)‖₂`,
+  com `m` o vértice reflectido no plano do traço e `M` a reflexão do próprio vector de
+  deslocamento. Numerador em **norma do máximo por componente**, denominador em **norma euclidiana**
+  — as duas normas são diferentes de propósito, e trocá-las muda o número.
+
+Por passo (M — fixtures `*.porpasso`):
 
 | traço | quadriláteros invertidos `k=2 / k=3 / k=12` | assimetria de espelho ÷ `|u|max`, `k=2 / k=3 / k=12` |
 |---|---|---|
@@ -672,6 +727,13 @@ sensibilidade à ordem desaparece; o modo, a lei e a maquinaria não mudaram.*
   limitar o impulso do aperto à distância que falta até ao alvo, que é a única linha que a inversão
   pede — **muda o produto e diverge do oráculo de propósito**, e por isso é decisão do dono, com o
   preço já medido nesta tabela. ⛔ Não a tome sozinho.
+  ⚠️ **A decisão põe-se em duas frases, e são estas** (sem elas ninguém a pode tomar sem adivinhar):
+  **(a) reproduzir** — apertar com força alta vira o retalho debaixo do cursor do avesso, as faces
+  atravessam-se e a superfície fica com um nó que nada desfaz depois (§11); é o que o alvo faz hoje,
+  e apertar com força baixa continua limpo. **(b) limitar** — o aperto nunca ultrapassa o ponto para
+  onde puxa, o nó não aparece em força nenhuma, e a nossa saída deixa de casar com a do alvo
+  exactamente nos traços fortes. ⛔ **Não há terceira**: a inversão nasce no PRIMEIRO passo, antes de
+  a relaxação correr, logo nenhuma afinação do solver a evita.
 
 ### §5.3 — O que «damping» é, de facto
 
@@ -1163,7 +1225,8 @@ com **UMA** coisa mudada: **força `1,0 → 0,2`**. Existe para ser a outra meta
 | máx `|u|` no fim | `0,303401` | `0,004082` |
 | **quadriláteros invertidos**, passos 2 / 3 / 12 | **`10` / `18` / `52`** | **`0` / `0` / `0`** |
 | **assimetria de espelho ÷ `|u|max`**, passos 2 / 3 / 12 | `0,000` / **`0,675`** / `1,060` | `0,000` / `0,103` / `0,144` |
-| pior compressão de um par estrutural (`D/ℓ`, dos 12 passos) | `0,0523` ⇒ factor `−18,1` | `0,8304` ⇒ factor `−0,20` |
+| pior compressão, **só sobre pares que são ARESTAS** (`D/ℓ`, dos 12 passos) | `0,0523` ⇒ factor `−18,1` | `0,8304` ⇒ factor `−0,20` |
+| pior compressão, **sobre TODOS os pares da construção** (a régua larga, §5.2) | `0,0153` ⇒ factor `−64,4` | `0,8304` ⇒ factor `−0,20` |
 
 ⚠️ **Para que serve, do lado do port:** ela é a régua por vértice que os apertos ainda admitem. Num
 traço em que a malha nunca se inverte, o aperto é tão comparável quanto o arrasto; a partir do
@@ -1269,11 +1332,11 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 18 | **O centro do Snake Hook está um passo ATRASADO**: no 1.º passo simulado o vértice mais deslocado é o do **pen-down**, não o que está sob o cursor; e ao longo do traço a distância do pico ao cursor é `≈` o passo do traço, não `≈ 0` | posição do `arg max`, em raios | §4.3 · §10.4 · fixtures `plano_gancho_radial_local_1passo`, `plano_gancho_radial_local_2passos_origem` |
 | 13 | **Grab mede na malha de partida**: mover o pano não muda o conjunto agarrado | exacta | §4.3 |
 | 14 | **A simetria é por passagem** e a 2.ª passagem vê a 1.ª | fixture com espelho | §6.6 |
-| 15 | **Paridade com o oráculo** — os 51 traços (§10): a barra é a **discretização** e o **`f32`**: a nossa malha é a mesma (gerada pela mesma lei), logo a comparação é por vértice; a barra por vértice é a aresta × a diferença de ordem das restrições (Gauss–Seidel não comuta) — MEDIR primeiro a dispersão entre duas ordens nossas e usar essa dispersão como barra (⛔ não um epsilon de conforto; ⛔ não bit-parity — ADR-0162) | derivada por medição | §10 |
+| 15 | **Paridade com o oráculo** — **todos** os traços de §10 (⛔ **conte-os**, `ls fixtures/cloth/*.deformado.txt.gz \| wc -l`; esta célula já esteve parada em `51` com `54` no disco): a barra é a **discretização** e o **`f32`**: a nossa malha é a mesma (gerada pela mesma lei), logo a comparação é por vértice; a barra por vértice é a aresta × a diferença de ordem das restrições (Gauss–Seidel não comuta) — MEDIR primeiro a dispersão entre duas ordens nossas e usar essa dispersão como barra (⛔ não um epsilon de conforto; ⛔ não bit-parity — ADR-0162) | derivada por medição | §10 |
 | 16 | **A lista do *Local* vem em duplicado**: no mesmo retalho e no mesmo traço, a contagem de restrições do conjunto *Local* é **exactamente `2×`** a que uma construção só produz (⚠️ `2×` é o caso de UMA passagem de simetria, que é o das fixtures; a lei geral é `n+1` cópias para `n` passagens — §5.2-bis), e a de *Global*/*Dynamic* é `1×`; e a régua de comportamento é a **CONTAGEM DE VÉRTICES MOVIDOS** num traço de âncora de UM passo simulado (inteiro, sem acumulação possível), que tem de bater a do oráculo | contagem exacta (inteiros dos dois lados) | §5.2-bis · §10.3 · fixtures `plano_agarrar_radial_local_1passo`, `plano_expandir_radial_local_1passo`, `plano_arrastar_radial_local_2passos` |
 | 19 | **O aperto INVERTE no 1.º passo simulado, e o arrasto não**: no mesmo retalho, mesmo caminho e mesma força, contar os quadriláteros de orientação invertida depois do 1.º passo simulado — aperto de ponto `> 0`, arrasto `= 0`. E a versão de força fraca do MESMO traço tem de dar `0` nos doze passos | contagem exacta (inteiros; o oráculo dá `10` / `0` / `0`) | §4.2 · §5.2-ter · fixtures `plano_apertar_ponto_radial_local_origem`(+`_fraco`), `plano_arrastar_radial_local_origem` |
 | 20 | **A barra dos apertos é a da ORDEM, e mede-se, não se escolhe**: a assimetria de espelho da NOSSA saída dividida pelo maior `|u|` não pode passar a do ORÁCULO no mesmo passo (`0,675` no passo 3 do aperto de ponto); e a paridade por vértice do gate 15 **não se aplica** a um passo com faces invertidas — ali a barra é esta. ⛔ Barra derivada do oráculo, ⛔ nunca um epsilon de conforto | a do oráculo, passo a passo | §5.2-ter · §10.6 |
 | 21 | **Fora da inversão o aperto é tão comparável quanto o arrasto**: sobre a fixture de força fraca (zero faces invertidas nos 12 passos) a paridade por vértice do aperto de ponto tem de ficar no mesmo patamar da do arrasto — se ficar pior, o defeito **não** é a ordem e há lei em falta | o erro relativo do arrasto no mesmo traço | §10.6 · fixture `plano_apertar_ponto_radial_local_origem_fraco` |
-| 17 | **É só o ramo *Local***: a mesma experiência que melhora os traços *Local* tem de **piorar** os *Global* e os *Dynamic* — um port que dobre a relaxação em toda a parte passa o gate 16 e reprova aqui | sinal do erro relativo, nos 50 traços | §5.2-bis · §10.3 |
+| 17 | **É só o ramo *Local***: a mesma experiência que melhora os traços *Local* tem de **piorar** os *Global* e os *Dynamic* — um port que dobre a relaxação em toda a parte passa o gate 16 e reprova aqui | sinal do erro relativo, em **todos** os traços de §10 (⛔ contados, nunca citados de memória) | §5.2-bis · §10.3 |
 
 ---

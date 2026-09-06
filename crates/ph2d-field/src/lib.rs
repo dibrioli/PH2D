@@ -38,6 +38,8 @@ pub mod mods;
 pub mod mods_dims;
 /// ⭐ O que uma forma **é** — ver [`primitive`].
 pub mod primitive;
+/// ⭐ O `match` forma → família — ver [`primitive_family`].
+mod primitive_family;
 /// ⭐ A lista das FAMÍLIAS de forma — ver [`primitive_kind`].
 pub mod primitive_kind;
 /// ⭐ Os pisos e tetos de CONTAGEM das primitivas — ver [`primitive_limits`].
@@ -61,8 +63,9 @@ pub use primitive_kind::PrimitiveKind;
 pub use primitive_limits::{
     DELAY_SPAN_OVER_WIDTH, MAX_ARROW_HEADS, MAX_CLOUD_LOBES, MAX_DISPLAY_POINT, MAX_DOCUMENT_WAVE,
     MAX_GEAR_TEETH, MAX_GYROID_FILL, MAX_OFFPAGE_POINT, MAX_PARALLELOGRAM_SKEW, MAX_PRISM_SIDES,
-    MAX_SPIRAL_FILL, MAX_SPIRAL_TURNS, MAX_STAR_POINTS, MIN_ARROW_HEADS, MIN_CLOUD_LOBES,
-    MIN_GEAR_TEETH, MIN_GYROID_CELLS, MIN_PRISM_SIDES, MIN_STAR_POINTS,
+    MAX_SPIRAL_FILL, MAX_SPIRAL_TURNS, MAX_STAR_POINTS, MAX_SUPERQUADRIC_EXPONENT, MIN_ARROW_HEADS,
+    MIN_CLOUD_LOBES, MIN_GEAR_TEETH, MIN_GYROID_CELLS, MIN_PRISM_SIDES, MIN_STAR_POINTS,
+    MIN_SUPERQUADRIC_EXPONENT,
 };
 pub use profile::{
     DEFAULT_PROFILE_RESOLUTION, FillRule, MAX_PROFILE_RESOLUTION, Profile, ProfileError, coarsen,

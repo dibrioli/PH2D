@@ -12431,3 +12431,131 @@ devolve **11**. Controlo verde nas duas.
 **Gates:** o censo inteiro (26) · shell · fmt · clippy · LOC.
 **Smoke:** criar um *Rounded Cylinder* e puxar o **Radius** até ao fundo — a peça afina e **nada
 mais desaparece**; e o mesmo com a moldura (*Box Frame*), a lua (*Moon*) e o cone redondo.
+
+---
+
+## §128 — W127: a SUPERQUADRÁTICA — um knob que atravessa a família inteira (06/09)
+
+> **Enio, 06/09:** *«vamos seguir implementando até termos tudo isso. Escolha e siga»*.
+
+Escolhida a de maior razão **família/linha** do levantamento ([doc 08 §7.4](08_formas_por_formula.md)):
+uma fórmula que vai de **losango → esfera → caixa** de cima, e de **bipirâmide → elipse → prisma**
+de lado, com **dois** números.
+
+### §128.1 — ⭐⭐⭐ O divisor sai em FORMA FECHADA, e a razão é a homogeneidade
+
+Com `q = p / meia_medida`, a peça é a bola da norma-`n` **encaixada**:
+
+```text
+g = ‖ ( ‖(qx, qz)‖_n_top , qy ) ‖_n_side          f = g − 1
+```
+
+`f` **não é uma distância** — é adimensional e o gradiente dele passa de `1`. Mas este módulo nunca
+precisou da distância exacta: precisa de um **minorante** (§124), e `f/K` é um com `K = max‖∇f‖`.
+
+⭐ **E o `K` não precisa de varredura nenhuma:** `g` é positivamente homogénea de grau `1` ⇒ `∇g` é
+homogénea de grau **zero** ⇒ ela é **constante ao longo de cada raio da origem**. Toda direcção está
+representada na superfície `g = 1`, logo *o máximo sobre a superfície **é** o máximo global*.
+
+Na superfície, com `t = s^n_side` e `u = |qx|^n_top / s^n_top`:
+
+```text
+‖∇f‖² = t^α₂ · [ u^α₁/hx² + (1−u)^α₁/hz² ] + (1−t)^α₂ / hy²      αᵢ = 2 − 2/nᵢ
+```
+
+São **duas** maximizações independentes da mesma forma — `Σ uᵢ^α wᵢ` sobre o simplexo —, e ela tem
+dois ramos:
+
+| `n` | `α` | `uᵢ^α` é | o máximo está em |
+|---|---|---|---|
+| `≥ 2` | `[1, 2)` | **convexa** | um **vértice** ⇒ `max wᵢ` |
+| `[1, 2)` | `[0, 1)` | **côncava** | o **interior** ⇒ `(Σ wᵢ^β)^(1/β)`, `β = n/(2−n)` |
+
+⚠️ **Os dois concordam em `n = 2`** (ali `β → ∞` e a média-potência colapsa no máximo) — *um divisor
+com dois ramos que discordassem na fronteira seria um degrau no meio do knob*.
+
+⭐⭐ **Medido contra a realidade em 72 células** (dois formatos de peça × `n_top` de `1` a `32` ×
+`n_side` de `1` a `16`): o campo já dividido lê **`1,0000`** em todas — a fórmula não é conservadora,
+é **justa**.
+
+### §128.2 — ⛔ A cerca de baixo é do CAMPO: `n ≥ 1`
+
+`α = 2 − 2/n` fica **negativo** abaixo de `1`, e aí `u^α → ∞` quando `u → 0`: o gradiente na
+superfície **não tem limite**. Geometricamente é a **astróide**, que tem **cúspides** — e uma cúspide
+não admite minorante com divisor constante.
+
+| `n` | **1,00** | 0,90 | 0,80 | 0,60 | 0,40 |
+|---|---:|---:|---:|---:|---:|
+| `‖∇f‖` na pele | **`1,0000`** | `1,1702` | `1,3867` | `1,8323` | `1,7494` |
+
+⚠️ **O `0,40` lê MENOS que o `0,60` e isso não desmente nada:** uma cúspide tem gradiente infinito
+num ponto só, e uma grelha finita não o apanha. *A medição confirma a subida; quem diz que ela não
+pára é a álgebra.* E `n = 1` é o **octaedro**, uma forma útil — a cerca fica onde o controlo ainda
+entrega peça.
+
+### §128.3 — ⛔⛔ E o tecto: a rota ingénua ESTOURAVA, e foi curada em vez de virar cerca
+
+`exp(n · ln|q|)` passa o `f64` em `n ≈ 407` — e a marcha **viaja** para lá da peça. Medido na caixa
+`±2` com a peça a `0,35`: a `n = 512` só **`4 913` de `15 625`** amostras eram finitas; a `1 024`,
+`729`. *Um limite escrito a partir daquele número teria sido um limite da minha implementação, não
+da forma* (§0).
+
+⭐ A cura é a **norma estável**: `m · (Σ(|vᵢ|/m)^n)^(1/n)` com `m` o maior dos dois. A base de cada
+potência fica em `[0, 1]`, a soma em `[1, 2]`, e **não há expoente que estoure** — `15 625/15 625`
+finitas até `n = 1024`.
+
+Com isso, **nenhum dos três recursos limita**:
+
+| recurso | medido | limita? |
+|---|---|---|
+| relógio | `1,08×` o mesmo campo a `n = 2`, **de `8` a `128`** | ⛔ não — é plano |
+| representação | `15 625/15 625` finitas até `1024` | ⛔ não |
+| marcha (passos até tocar) | `8 / 13 / 16` face/aresta/canto, e **satura em `n = 64`** | ⛔ não acima de `64` |
+
+⇒ o número sai do **curso do controlo**: o desvio para a caixa perfeita cai como `~1/n`, e de `1` a
+`16` o knob já entrega **85 %** de toda a travessia.
+
+| `n` | 2 | 4 | 8 | 16 | 32 | 48 | **64** | 128 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| desvio da caixa (fracção da meia-medida) | `0,724` | `0,408` | `0,214` | `0,107` | `0,050` | `0,031` | **`0,022`** | `0,011` |
+
+**`MAX_SUPERQUADRIC_EXPONENT = 64`** — e quem quer a caixa perfeita tem a `Box`, que é exacta e mais
+barata.
+
+### §128.4 — ⭐⭐ A `Span::Range`: a primeira grandeza ADIMENSIONAL do painel
+
+Nem a `Wall` nem a `Floor` servem: as duas deixam uma ponta ao **alcance da vista**, que é um
+**comprimento**. Um expoente não é um comprimento — um slider de `1` até *«a oitava de quatro raios
+da peça»* daria faixas diferentes para a mesma forma em tamanhos diferentes, e **aproximar a câmera
+mudaria o alcance de um número sem unidade**. ⇒ `Span::Range { min, max }`, com as duas pontas do
+documento. É a lei da `Span::Turn` (*«as pontas são a própria representação»*) sem a periodicidade.
+
+### §128.5 — ⚠️ O eixo de cima desta casa é o `Y`, e isso decide a permutação
+
+A `half[1]` chama-se **Height** em toda forma de caixa desta paleta ⇒ *de cima* é o par `X–Z` e *de
+lado* é o `Y`. Os rótulos são **Top Exponent** e **Side Exponent**, e não «XY»/«Z»: *o artista
+escolhe pelo que vê*.
+
+⛔⛔ **Numa peça cúbica com expoentes iguais, trocar os eixos é a IDENTIDADE** — o representante do
+censo é **torto** (`[0,40 · 0,28 · 0,34]`) e com os **dois expoentes diferentes** (`4` e `2,5`) de
+propósito. *Só uma peça assimétrica separa a ordem certa da errada*, e a mutação prova-o.
+
+### §128.6 — ⚠️ E a primeira leitura do gate da esfera media a MINHA RÉGUA
+
+O gate *«a `2` ela é a esfera exacta»* acusou `5,962e-9` de erro. Não era a fórmula: é
+**exactamente** `0,35 − f64::from(0,35_f32)`. O documento guarda `f32` e o meu literal de referência
+era `f64`. Corrigido, sobra `1,833e-12` — e esse **é** a regularização `EPS = 1e-12` que tira o `NaN`
+do gradiente na origem, medido a seguir-lhe (`EPS = 1e-14` ⇒ erro `1,843e-14`).
+
+⚠️ *Baixar o `EPS` para o gate ficar mais bonito seria afinar o teste em vez do produto* — a barra
+fica uma década acima do medido, com a tabela ao lado.
+
+**Provas de mutação (3, todas mortas):** trocar a permutação dos eixos (morre no gate dos eixos **e**
+no da marcha) · tirar o divisor (morre na exactidão **e** na marcha) · colapsar o ramo **côncavo** do
+divisor no convexo (morre só na marcha — é o ramo que só existe entre `1` e `2`).
+
+**Gates:** censo inteiro (26, com o representante novo) · as 4 provas novas · shell · fmt · clippy ·
+LOC (o `primitive.rs` passou dos `700` e foi **partido** por responsabilidade: o `match` forma →
+família saiu para o `primitive_family.rs`).
+**Smoke:** *MODEL* > *Add shape…* > **Superquadric**, e arrastar os dois expoentes; ou a cena `=24`,
+que mostra quatro pontos do mesmo knob.

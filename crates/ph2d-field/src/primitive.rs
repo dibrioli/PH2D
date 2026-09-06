@@ -12,7 +12,6 @@
 //! ⚠️ O `pub use` no [`super`] mantém `ph2d_field::Primitive` — cortar um arquivo não pode custar
 //! uma reescrita em cada sítio que o chamava.
 
-use crate::PrimitiveKind;
 use crate::Profile;
 use serde::{Deserialize, Serialize};
 
@@ -622,66 +621,22 @@ pub enum Primitive {
         bulge: f32,
         half_height: f32,
     },
-}
-
-impl Primitive {
-    /// A família desta forma. ⚠️ **O `match` é exaustivo, e é ele que fecha a corrente** — ver
-    /// [`PrimitiveKind`].
-    #[must_use]
-    pub fn kind(&self) -> PrimitiveKind {
-        match self {
-            Primitive::Box { .. } => PrimitiveKind::Box,
-            Primitive::Sphere { .. } => PrimitiveKind::Sphere,
-            Primitive::Cylinder { .. } => PrimitiveKind::Cylinder,
-            Primitive::Torus { .. } => PrimitiveKind::Torus,
-            Primitive::Extrude { .. } => PrimitiveKind::Extrude,
-            Primitive::Revolve { .. } => PrimitiveKind::Revolve,
-            Primitive::Cone { .. } => PrimitiveKind::Cone,
-            Primitive::Capsule { .. } => PrimitiveKind::Capsule,
-            Primitive::Prism { .. } => PrimitiveKind::Prism,
-            Primitive::Wedge { .. } => PrimitiveKind::Wedge,
-            Primitive::TorusArc { .. } => PrimitiveKind::TorusArc,
-            Primitive::Star { .. } => PrimitiveKind::Star,
-            Primitive::BoxFrame { .. } => PrimitiveKind::BoxFrame,
-            Primitive::Ellipsoid { .. } => PrimitiveKind::Ellipsoid,
-            Primitive::Octahedron { .. } => PrimitiveKind::Octahedron,
-            Primitive::RoundCone { .. } => PrimitiveKind::RoundCone,
-            Primitive::CutSphere { .. } => PrimitiveKind::CutSphere,
-            Primitive::HollowDome { .. } => PrimitiveKind::HollowDome,
-            Primitive::Link { .. } => PrimitiveKind::Link,
-            Primitive::SolidAngle { .. } => PrimitiveKind::SolidAngle,
-            Primitive::Gear { .. } => PrimitiveKind::Gear,
-            Primitive::Cross { .. } => PrimitiveKind::Cross,
-            Primitive::Heart { .. } => PrimitiveKind::Heart,
-            Primitive::Moon { .. } => PrimitiveKind::Moon,
-            Primitive::Drop { .. } => PrimitiveKind::Drop,
-            Primitive::Pie { .. } => PrimitiveKind::Pie,
-            Primitive::Trapezoid { .. } => PrimitiveKind::Trapezoid,
-            Primitive::Vesica { .. } => PrimitiveKind::Vesica,
-            Primitive::Arrow { .. } => PrimitiveKind::Arrow,
-            Primitive::Chevron { .. } => PrimitiveKind::Chevron,
-            Primitive::BentArrow { .. } => PrimitiveKind::BentArrow,
-            Primitive::Rhombus { .. } => PrimitiveKind::Rhombus,
-            Primitive::Tube { .. } => PrimitiveKind::Tube,
-            Primitive::CircleSegment { .. } => PrimitiveKind::CircleSegment,
-            Primitive::SpeechRect { .. } => PrimitiveKind::SpeechRect,
-            Primitive::SpeechOval { .. } => PrimitiveKind::SpeechOval,
-            Primitive::Cloud { .. } => PrimitiveKind::Cloud,
-            Primitive::Bolt { .. } => PrimitiveKind::Bolt,
-            Primitive::Shield { .. } => PrimitiveKind::Shield,
-            Primitive::Tag { .. } => PrimitiveKind::Tag,
-            Primitive::Check { .. } => PrimitiveKind::Check,
-            Primitive::Banner { .. } => PrimitiveKind::Banner,
-            Primitive::Brace { .. } => PrimitiveKind::Brace,
-            Primitive::Parallelogram { .. } => PrimitiveKind::Parallelogram,
-            Primitive::Delay { .. } => PrimitiveKind::Delay,
-            Primitive::Display { .. } => PrimitiveKind::Display,
-            Primitive::OffPage { .. } => PrimitiveKind::OffPage,
-            Primitive::Spiral { .. } => PrimitiveKind::Spiral,
-            Primitive::Document { .. } => PrimitiveKind::Document,
-            Primitive::Helix { .. } => PrimitiveKind::Helix,
-            Primitive::Gyroid { .. } => PrimitiveKind::Gyroid,
-            Primitive::RoundedCylinder { .. } => PrimitiveKind::RoundedCylinder,
-        }
-    }
+    // ─────────────────────────── W127 ───────────────────────────
+    /// ⭐⭐⭐ **SUPERQUADRÁTICA** — a bola da norma-`n` encaixada: *um* knob atravessa a família
+    /// inteira.
+    ///
+    /// `exponent_top` governa o que se vê **de cima** (`1` losango · `2` círculo · alto quadrado) e
+    /// `exponent_side` o que se vê **de lado** (`1` bipirâmide · `2` elipse · alto prisma). A esfera
+    /// é `2` nos dois, e nesse ponto o campo é a distância **exacta**.
+    ///
+    /// ⚠️ **O eixo de cima desta casa é o `Y`** (a `half[1]` chama-se *Height* em toda forma de
+    /// caixa), então o *de cima* é o par `X–Z` e o *de lado* é o `Y`.
+    ///
+    /// ⚠️ **Não tem `round` nem `chamfer`, e é a mesma decisão do [`Primitive::RoundedCylinder`]**:
+    /// o expoente já É o arredondamento desta forma.
+    Superquadric {
+        half: [f32; 3],
+        exponent_top: f32,
+        exponent_side: f32,
+    },
 }

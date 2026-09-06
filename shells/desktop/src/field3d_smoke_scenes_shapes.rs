@@ -419,3 +419,38 @@ pub(crate) fn cena_23() -> Result<FieldDoc, ph2d_field::FieldError> {
         NodeId(3),
     )
 }
+
+/// ⭐⭐⭐ **A cena `=24`: A FAMÍLIA INTEIRA NUM KNOB** (W127) — quatro pontos do mesmo controlo.
+///
+/// ⚠️ **Quatro peças e não uma**, porque o que esta forma vende não é uma silhueta: é a
+/// **travessia**. Uma cópia só mostraria um bloco de cantos moles e não diria que o mesmo número
+/// vai do losango à caixa — e a quarta prova que os DOIS expoentes são eixos diferentes.
+pub(crate) fn cena_24() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 24 — A SUPERQUADRATICA (W127): losango (1,1) · esfera (2,2) · \
+         squircle (4,4) · e a ultima com os DOIS expoentes diferentes (16 de cima, 1,6 de lado)."
+    );
+    let peca = |top: f32, side: f32, x: f32| {
+        leaf(
+            Primitive::Superquadric {
+                half: [0.20, 0.20, 0.20],
+                exponent_top: top,
+                exponent_side: side,
+            },
+            Xform {
+                translation: [x, 0.0, 0.0],
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    FieldDoc::new(
+        vec![
+            peca(1.0, 1.0, -0.72),
+            peca(2.0, 2.0, -0.24),
+            peca(4.0, 4.0, 0.24),
+            peca(16.0, 1.6, 0.72),
+            combine(Op::Union(Blend::Sharp), (0..4).map(NodeId).collect()),
+        ],
+        NodeId(4),
+    )
+}

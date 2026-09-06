@@ -50,6 +50,8 @@ pub mod ops_plates;
 pub mod ops_solids;
 /// ⭐ A ESPIRAL por fórmula — ver [`ops_spiral`].
 pub mod ops_spiral;
+/// ⭐ A SUPERQUADRÁTICA — ver [`ops_super`].
+pub mod ops_super;
 /// ⭐ Os SÍMBOLOS — ver [`ops_symbols`].
 pub mod ops_symbols;
 pub mod profile;

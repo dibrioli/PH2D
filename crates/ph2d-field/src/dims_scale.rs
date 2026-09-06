@@ -399,6 +399,13 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
                 *v *= factor;
             }
         }
+        // ⚠️ **Os expoentes NÃO escalam** — eles são adimensionais, e multiplicá-los por um factor
+        // de tamanho mudaria a FORMA ao redimensionar a peça.
+        Primitive::Superquadric { half, .. } => {
+            for v in half.iter_mut() {
+                *v *= factor;
+            }
+        }
         p @ (Primitive::Arrow { .. }
         | Primitive::Chevron { .. }
         | Primitive::BentArrow { .. }

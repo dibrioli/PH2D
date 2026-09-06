@@ -471,6 +471,15 @@ pub(crate) const SHAPES: &[Shape] = &[
         family: Family::Round,
         make: Make::Formula(a_rounded_cylinder),
     },
+    // ─────────────────────────── W127 ───────────────────────────
+    // ⭐ **Vai para `Blocks`** — no ponto em que nasce ela é um bloco de cantos moles, e é como
+    // bloco que o artista a procura. (De `1` a `2` ela é redonda; a família inteira não cabe numa
+    // gaveta, e a gaveta é onde ela NASCE.)
+    Shape {
+        key: "panel.model3d.add.superquadric",
+        family: Family::Blocks,
+        make: Make::Formula(a_superquadric),
+    },
     Shape {
         key: "panel.model3d.add.torus",
         family: Family::Rings,

@@ -256,3 +256,16 @@ pub(crate) fn a_rounded_cylinder(r: f32) -> Primitive {
         half_height: r * 0.55,
     }
 }
+
+/// ⭐⭐ **A SUPERQUADRÁTICA nasce como um SQUIRCLE** (`4` nos dois expoentes).
+///
+/// ⚠️ **Nem `2` nem o tecto**: a `2` ela é a esfera que a paleta já tem, e no tecto é a caixa que a
+/// paleta já tem — nos dois casos o botão entregaria um sósia de outra entrada. *Uma forma nova tem
+/// de nascer no sítio em que ela é ELA.*
+pub(crate) fn a_superquadric(r: f32) -> Primitive {
+    Primitive::Superquadric {
+        half: [r, r * 0.85, r],
+        exponent_top: 4.0,
+        exponent_side: 4.0,
+    }
+}

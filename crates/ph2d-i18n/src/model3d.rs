@@ -122,6 +122,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.add.helix" => "Coil",
         "panel.model3d.add.gyroid" => "Gyroid Lattice",
         "panel.model3d.add.rounded_cylinder" => "Rounded Cylinder",
+        "panel.model3d.add.superquadric" => "Superquadric",
         "panel.model3d.add.bolt" => "Lightning Bolt",
         "panel.model3d.add.shield" => "Shield",
         "panel.model3d.add.tag" => "Tag",
@@ -320,6 +321,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ **"Bulge" e não "Fillet"**: ele arredonda a PAREDE inteira, não só o aro — chamar-lhe
         // filete prometeria o controlo por aresta que as outras formas têm, que é outra coisa.
         "field.dim.bulge" => "Bulge",
+        // ⚠️ **"Top" e "Side" e não "XY" e "Z"**: o artista escolhe pelo que VÊ, e o eixo de cima
+        // desta casa é o `Y` — chamar-lhes pelos eixos obrigaria a decifrar qual é qual.
+        "field.dim.exponent_top" => "Top Exponent",
+        "field.dim.exponent_side" => "Side Exponent",
         "field.dim.hole" => "Hole",
         "field.dim.notch" => "Notch",
         // ⚠️ Em GRAUS na cabeça do artista, mas o documento guarda radianos — o painel mostra o

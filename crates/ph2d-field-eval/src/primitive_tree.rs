@@ -685,5 +685,15 @@ fn primitive_raw(p: &Primitive) -> Tree {
             f64::from(bulge),
             f64::from(half_height),
         ),
+        // ─────────────────────────── W127 ───────────────────────────
+        Primitive::Superquadric {
+            half,
+            exponent_top,
+            exponent_side,
+        } => crate::ops_super::sd_superquadric(
+            [f64::from(half[0]), f64::from(half[1]), f64::from(half[2])],
+            f64::from(exponent_top),
+            f64::from(exponent_side),
+        ),
     }
 }

@@ -304,6 +304,30 @@ pub(super) fn validate_exact(p: &Primitive, idx: u32) -> Result<(), FieldError> 
             }
             Ok(())
         }
+        // ─────────────────────────── W127 ───────────────────────────
+        Primitive::Superquadric {
+            half,
+            exponent_top,
+            exponent_side,
+        } => {
+            for h in half {
+                positive(h, "half")?;
+            }
+            // ⚠️ **A cerca de baixo é do CAMPO** (abaixo de `1` o gradiente na superfície não tem
+            // limite — cúspides) e a de cima é do curso do controlo. Ver os dois `const`.
+            for e in [exponent_top, exponent_side] {
+                if !e.is_finite()
+                    || e < crate::MIN_SUPERQUADRIC_EXPONENT
+                    || e > crate::MAX_SUPERQUADRIC_EXPONENT
+                {
+                    return Err(FieldError::NonPositive {
+                        node: idx,
+                        what: "exponent",
+                    });
+                }
+            }
+            Ok(())
+        }
         _ => Ok(()),
     }
 }

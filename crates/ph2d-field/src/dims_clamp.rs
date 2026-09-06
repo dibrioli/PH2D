@@ -95,6 +95,8 @@ fn coagido(value: f32, span: Span) -> Option<f32> {
         Span::Walls(w) => (value.abs() >= w).then(|| value.signum() * keep_below(value.abs(), w)),
         // ⭐⭐ **O PISO** — a faixa da espécie B. Ver o cabeçalho.
         Span::Floor(f) => (value <= f).then(|| super::dims_write::keep_above(value, f)),
+        // ⭐ As duas pontas são do documento; coage-se para dentro das duas.
+        Span::Range { min, max } => (value < min || value > max).then(|| value.clamp(min, max)),
         Span::Count { min, max } => {
             let alvo = value.round().clamp(min as f32, max as f32);
             (alvo != value).then_some(alvo)

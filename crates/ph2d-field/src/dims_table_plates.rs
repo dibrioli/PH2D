@@ -300,7 +300,9 @@ pub(super) fn dims_plate(p: &Primitive) -> Vec<Dim> {
             super::dims_table_flow::dims_lattice(p)
         }
         // ⭐ **E a EXACTA do catálogo** (W125).
-        p @ Primitive::RoundedCylinder { .. } => super::dims_table_flow::dims_exact(p),
+        p @ (Primitive::RoundedCylinder { .. } | Primitive::Superquadric { .. }) => {
+            super::dims_table_flow::dims_exact(p)
+        }
         // ⚠️ **Inalcançável pelo caminho do produto** — ver o cabeçalho: o único chamador nomeia as
         // catorze chapas. Um `Vec` vazio e não um `panic`: uma forma nova esquecida aqui tem de
         // aparecer como um painel sem linhas no gate que a conta, e não derrubar o app.

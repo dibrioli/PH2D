@@ -300,6 +300,9 @@ pub(crate) fn param_rows(
                 // tem para onde arrastar, e é o mesmo defeito que a `Span::Count` pagou com o piso
                 // do prisma. O `2×` é o que faz a faixa ter curso em vez de ser um ponto.
                 Span::Floor(f) => (f, Bound::Soft(view_span.max(f * 2.0))),
+                // ⭐⭐ **Adimensional: as duas pontas são do DOCUMENTO** e a vista não tem voto —
+                // ver [`ph2d_field::Span::Range`]. `Hard`, logo digitar um número de fora clampa.
+                Span::Range { min, max } => (min, Bound::Hard(max)),
                 // ⭐ **Uma ESCOLHA**: as pontas são a lista, e são do DOCUMENTO — um índice fora
                 // dela não é um gesto que a vista possa oferecer. `Hard`, logo digitar clampa.
                 Span::Choice(nomes) => (0.0, Bound::Hard(nomes.len().saturating_sub(1) as f32)),

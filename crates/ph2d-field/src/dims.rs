@@ -146,6 +146,19 @@ pub enum Span {
     /// a [`Span::Count`] pagou com o piso do prisma e a [`Span::WallFromZero`] com o zero do
     /// chanfro. **É a terceira vez**, e desta o preço era o ecrã em branco.
     Floor(f32),
+    /// ⭐⭐⭐ **AS DUAS PONTAS SÃO DO DOCUMENTO, e a VISTA não tem voto** — a faixa de uma grandeza
+    /// **adimensional**.
+    ///
+    /// # ⛔ Por que nem a [`Span::Floor`] nem a [`Span::Wall`] servem
+    ///
+    /// As duas deixam uma das pontas ao **alcance da vista**, que é um COMPRIMENTO. O expoente de
+    /// uma superquadrática (W127) não é um comprimento: um slider que fosse de `1` até «a oitava de
+    /// quatro raios da peça» daria faixas diferentes para a mesma forma em tamanhos diferentes, e
+    /// *aproximar a câmera mudaria o alcance de um número que não tem unidade*.
+    ///
+    /// ⚠️ É a mesma lei da [`Span::Turn`] — *«as pontas são a própria representação»* — com a
+    /// diferença de esta não ser periódica.
+    Range { min: f32, max: f32 },
     /// Simétrica e sem parede nenhuma: uma **posição**. As duas pontas são o alcance da vista, e a
     /// de baixo é negativa — a origem não é um canto do mundo.
     Free,

@@ -374,6 +374,46 @@ pub(crate) fn dims_exact(p: &Primitive) -> Vec<Dim> {
                 span: Span::Positive,
             },
         ],
+        // ─────────────────────────── W127 ───────────────────────────
+        Primitive::Superquadric {
+            half,
+            exponent_top,
+            exponent_side,
+        } => vec![
+            Dim {
+                key: "field.dim.width",
+                value: half[0] * 2.0,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.height",
+                value: half[1] * 2.0,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.depth",
+                value: half[2] * 2.0,
+                span: Span::Positive,
+            },
+            // ⚠️ **Adimensionais, logo a vista não tem voto** — ver [`Span::Range`]. As duas pontas
+            // saem das cercas medidas do documento.
+            Dim {
+                key: "field.dim.exponent_top",
+                value: *exponent_top,
+                span: Span::Range {
+                    min: crate::MIN_SUPERQUADRIC_EXPONENT,
+                    max: crate::MAX_SUPERQUADRIC_EXPONENT,
+                },
+            },
+            Dim {
+                key: "field.dim.exponent_side",
+                value: *exponent_side,
+                span: Span::Range {
+                    min: crate::MIN_SUPERQUADRIC_EXPONENT,
+                    max: crate::MAX_SUPERQUADRIC_EXPONENT,
+                },
+            },
+        ],
         _ => Vec::new(),
     }
 }

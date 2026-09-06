@@ -342,5 +342,9 @@ pub fn bounding_half_extents(p: &Primitive) -> [f32; 3] {
             half_height,
             ..
         } => [*radius, *radius, *half_height],
+        // ⭐ **A caixa contém a peça em todo expoente** — a bola da norma-`n` está dentro da
+        // norma-∞, que é a caixa de meia-medida `half`. ⚠️ E é *justa* no limite: com o expoente no
+        // tecto a peça encosta nos cantos.
+        Primitive::Superquadric { half, .. } => *half,
     }
 }

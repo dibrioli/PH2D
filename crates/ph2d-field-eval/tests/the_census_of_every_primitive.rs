@@ -458,6 +458,15 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             bulge: 0.12,
             half_height: 0.30,
         },
+        // ⚠️ **TORTA e com os DOIS expoentes DIFERENTES, de propósito.** Numa peça cúbica com
+        // expoentes iguais uma troca de eixos é a **identidade** — e o divisor desta forma faz
+        // exactamente uma permutação (`X–Z` de cima, `Y` de lado). *Só uma peça assimétrica separa
+        // a ordem certa da errada.*
+        PrimitiveKind::Superquadric => Primitive::Superquadric {
+            half: [0.40, 0.28, 0.34],
+            exponent_top: 4.0,
+            exponent_side: 2.5,
+        },
     })
 }
 
@@ -653,6 +662,8 @@ fn march_over_the_declared_rows(k: PrimitiveKind) -> Vec<(String, f64)> {
             Span::Wall(w) | Span::WallFromZero(w) => vec![w * 0.15, w * 0.6, w * 0.9],
             // ⭐ O PISO varre-se por cima dele, que é o lado onde a forma existe.
             Span::Floor(f) => vec![f * 1.2, f * 2.0, f * 5.0],
+            // ⭐ As duas pontas são do documento: varrem-se as DUAS e o meio.
+            Span::Range { min, max } => vec![min, 0.5 * (min + max), max],
             Span::Turn(h) | Span::Walls(h) => vec![-h * 0.8, h * 0.8],
             Span::Locked | Span::Choice(_) => continue,
             // ⚠️ Sem parede, a faixa é o alcance da VISTA — e o que se varre é uma década em
@@ -945,6 +956,14 @@ fn every_row_of_every_primitive_can_be_written() {
                         f * 4.0
                     } else {
                         f * 1.5
+                    }
+                }
+                // ⭐ A faixa fechada: o «outro valor» é a ponta mais longe do actual.
+                Span::Range { min, max } => {
+                    if d.value - min > max - d.value {
+                        min
+                    } else {
+                        max
                     }
                 }
                 Span::FromZero | Span::Positive | Span::Free | Span::Along => {

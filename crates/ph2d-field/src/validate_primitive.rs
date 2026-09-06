@@ -520,6 +520,8 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
         Primitive::Helix { .. } | Primitive::Gyroid { .. } => {
             super::validate_flow::validate_lattice(p, idx)
         }
-        Primitive::RoundedCylinder { .. } => super::validate_flow::validate_exact(p, idx),
+        Primitive::RoundedCylinder { .. } | Primitive::Superquadric { .. } => {
+            super::validate_flow::validate_exact(p, idx)
+        }
     }
 }

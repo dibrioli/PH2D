@@ -905,6 +905,13 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             bulge: 0.12,
             half_height: 0.30,
         },
+        // ⚠️ **Com o expoente ALTO, que é onde ela tem quase-arestas** — a `2` ela é uma esfera e
+        // esta sonda não teria o que medir.
+        PrimitiveKind::Superquadric => Primitive::Superquadric {
+            half: [0.40, 0.28, 0.34],
+            exponent_top: 8.0,
+            exponent_side: 6.0,
+        },
     })
 }
 

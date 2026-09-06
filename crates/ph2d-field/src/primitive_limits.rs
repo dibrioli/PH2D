@@ -318,3 +318,51 @@ pub const MIN_GYROID_CELLS: f32 = 2.0;
 /// ⚠️ E a medição confirma-o pelo outro lado: a partir de `0,3` a marcha lê `0,7071` **cravado**,
 /// que é o valor de uma **caixa** — ali já não há rede nenhuma para medir.
 pub const MAX_GYROID_FILL: f32 = 0.25;
+
+// ─────────────────────────── W127 — a superquadrática ───────────────────────────
+
+/// ⭐⭐⭐ **O PISO do expoente, e ele é do CAMPO — não de conforto.**
+///
+/// # A demonstração, e a medição que a confirma
+///
+/// O gradiente da norma-`n` na superfície tem a forma `Σ uᵢ^α wᵢ` com `α = 2 − 2/n`. Abaixo de
+/// `n = 1` esse `α` é **negativo**, e `u^α → ∞` quando `u → 0`: o gradiente **não tem limite**, logo
+/// não existe divisor constante que faça do campo um minorante. Geometricamente é a **astróide**,
+/// cuja superfície tem **cúspides**.
+///
+/// Medido (`probe_superquadric`, `‖∇f‖` na pele com o divisor de `n = 1`):
+///
+/// | `n` | **1,00** | 0,90 | 0,80 | 0,60 | 0,40 |
+/// |---|---:|---:|---:|---:|---:|
+/// | `‖∇f‖` | **`1,0000`** | `1,1702` | `1,3867` | `1,8323` | `1,7494` |
+///
+/// ⚠️ **O `0,40` lê MENOS que o `0,60` e isso não desmente nada** — uma cúspide tem gradiente
+/// infinito num ponto só, e uma grelha finita não o apanha. *A medição confirma a subida; quem diz
+/// que ela não pára é a álgebra.*
+///
+/// ⭐ E `n = 1` é uma forma útil (o **octaedro**), não uma degenerescência: a cerca fica no sítio em
+/// que o controlo ainda entrega peça.
+pub const MIN_SUPERQUADRIC_EXPONENT: f32 = 1.0;
+
+/// ⭐ **O TECTO do expoente — e nenhum dos três recursos medidos o impõe.**
+///
+/// | recurso | medido | limita? |
+/// |---|---|---|
+/// | **relógio** | `1,08×` o mesmo campo a `n = 2`, **de `8` a `128`** | ⛔ não — é plano |
+/// | **representação** (`f64`) | `15 625/15 625` amostras finitas até `n = 1024` | ⛔ não — ver a norma estável em [`ph2d_field_eval::ops_super`] |
+/// | **marcha** | passos até tocar: `8 / 13 / 16` (face/aresta/canto) e **satura em `n = 64`** | ⛔ não acima de `64` |
+///
+/// ⚠️ **A rota ingénua ESTOURAVA aqui**, e foi curada em vez de virar cerca: `exp(n·ln|q|)` passava
+/// o `f64` a `n ≈ 407`, e a `512` só `4 913` de `15 625` amostras eram finitas. *Um limite escrito a
+/// partir daquele número teria sido um limite da minha implementação, não da forma* (§0).
+///
+/// ⇒ o que fixa o número é o **curso do controlo**: o desvio da peça para a caixa perfeita cai como
+/// `~1/n`, e no tecto ele já está abaixo do que a peça mostra.
+///
+/// | `n` | 2 | 4 | 8 | 16 | 32 | 48 | **64** | 128 |
+/// |---|---:|---:|---:|---:|---:|---:|---:|---:|
+/// | desvio da caixa (fracção da meia-medida) | `0,724` | `0,408` | `0,214` | `0,107` | `0,050` | `0,031` | **`0,022`** | `0,011` |
+///
+/// De `1` a `16` o controlo entrega **85 %** de toda a travessia; de `64` para cima sobra `2 %`, e
+/// quem quer a caixa perfeita tem a `Box` — que é exacta e mais barata.
+pub const MAX_SUPERQUADRIC_EXPONENT: f32 = 64.0;

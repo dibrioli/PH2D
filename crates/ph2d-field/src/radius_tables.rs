@@ -273,6 +273,8 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
             half_height,
             ..
         } => radius.min(*half_height),
+        // ─────────────────────────── W127 ───────────────────────────
+        Primitive::Superquadric { half, .. } => half[0].min(half[1]).min(half[2]),
     }
 }
 
@@ -646,6 +648,9 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
             half_height,
             ..
         } => hyp(*radius, *half_height),
+        // ⭐ O canto da caixa: a bola da norma-`n` está dentro da norma-∞ para todo `n ≥ 1`, e
+        // encosta lá em cima.
+        Primitive::Superquadric { half, .. } => hyp(hyp(half[0], half[1]), half[2]),
         // ⚠️ **As faixas do visto passam do vértice, e a espessura sai para fora das pontas.**
         Primitive::Check {
             half_width,

@@ -164,7 +164,7 @@ As cinco abaixo foram lidas no arquivo `LICENSE`, não em página de projeto:
 há ledger, não há subagente E/R. É **porte fiel com atribuição**, feito pela própria janela
 — exatamente o precedente do SculptGL (MIT) e do Instant Meshes (BSD) desta casa.
 
-⚠️⚠️ **E o alvo GPL não é necessário.** O `sculpt_cloth.cc` do Blender é GPL e **não
+⚠️⚠️ **E o alvo GPL não é necessário.** O ficheiro do pincel de tecido do Blender é GPL e **não
 precisamos dele**: o que se quer daquele lado é **comportamento** — quais modos o artista
 espera encontrar —, e comportamento vem do **manual público** (fatos, nunca o *wording* —
 [SKILL_Cleanroom §1.2](../../_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md), a

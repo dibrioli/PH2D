@@ -12,7 +12,11 @@ Patente (§8.1): buscado em 2026-09-05 (termos no ledger). Nenhuma patente viva 
   vestuário sobre MANEQUIM com escultura + pano + impedir a entrada no manequim; se a casa um dia
   fizer «vestir um corpo» com colisão contra o corpo, refazer a busca com parecer humano).
 Filtragem §4.3: executada em 2026-09-05 (E) · Sweep: verde em 2026-09-05 (E), vassoura de 70 entradas
-Auditoria §4.2 (R-pré): ⏳ pendente — a janela I NÃO abre antes do R-pré atestar aqui.
+Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 — sweep verde sobre espec +
+  fixtures + INBOX + READMEs + docs/3D/cloth/02-04 (e sobre o histórico destes caminhos). UM achado de
+  expressão (uma frase de comentário do fonte citada como (F) no §7) e CINCO higienes §4.3 (detalhe de
+  implementação descrito como comportamento) curados no acto pelo R-pré; os nomes de fixture do §14 e a
+  contagem do gate 15 alinhados aos ficheiros. Veredictos e curas, um a um: LEDGER §Papel R.
 Mapa de leitura da literatura (⭐ pública e lícita a TODOS os papéis):
   · Jakobsen, "Advanced Character Physics", GDC 2001 — integração de Verlet por posições + relaxação
     de restrições de distância por projecção. É EXACTAMENTE a família do solver do alvo.
@@ -192,8 +196,8 @@ chamam-lhe, por escrito, «básico» e sabem que repete restrições (H: D6715).
   traço** — ou nas posições da **base persistente** se o pincel estiver em modo *Persistent* e
   ela existir (§6.4). Força `1`.
 - **Ordem:** as restrições ficam na ordem de criação (célula a célula, vértice a vértice, vizinho
-  a vizinho) e são resolvidas **nessa ordem**, sequencialmente (Gauss–Seidel). A construção é
-  **mono-thread** de propósito (F) ⇒ a ordem é determinística dada a ordem das células.
+  a vizinho) e são resolvidas **nessa ordem**, sequencialmente (Gauss–Seidel). A ordem de criação
+  é determinística dada a ordem das células (F).
 
 ### §3.2 — As quatro espécies, e o que cada uma liga
 
@@ -217,8 +221,7 @@ cada passo** — é *isso* a «força ajustada a cada passo do pincel» da docum
 - Não cria restrições para vértices escondidos (F). Vértices **mascarados** entram nas restrições
   como vértices normais — o que os pinta como «pregados» é o factor por vértice `1 − máscara` que
   multiplica toda correcção e todo movimento deles (§5.2, §5.4): máscara `1` ⇒ imóvel.
-- Não limita o número de restrições por vértice (há uma constante nomeada para isso no fonte, não
-  usada em nenhum sítio lido — F).
+- Não limita o número de restrições por vértice (F).
 - Não separa estrutural de cisalhamento de dobra: é UM tipo com `ℓ` diferente.
 - Não reconstrói nunca dentro do traço: uma célula construída é final (F).
 
@@ -228,7 +231,8 @@ cada passo** — é *isso* a «força ajustada a cada passo do pincel» da docum
 
 ### §4.1 — O factor por vértice `f` que multiplica QUALQUER gesto
 
-Para cada vértice de cada célula afectada, nesta ordem (F):
+Para cada vértice de cada célula afectada, o PRODUTO dos factores abaixo (F — só uma ordem importa:
+a dureza remapeia a distância ANTES de a curva a ler; e a gravidade entra a meio, §4.2):
 
 ```
 f = (1 − máscara) · (0 se escondido) · (0 se fora dos planos de recorte da vista)
@@ -303,7 +307,7 @@ ponto anterior). Com *Normal Weight* `> 0` (omissão `0`) o delta é inclinado p
 | modo | âncora de deformação do vértice `v` (o ponto B, §3.2) | força da restrição `s` (fixa na criação) | factor por passo `σ_v` (§5.2) |
 |---|---|---|---|
 | **Grab** | `p⁰(v) + δ · f_v` — a partir da posição de **repouso do traço**, deslocada pelo delta TOTAL pesado | radial: `0,1 · curva(d⁰, R₀)` e **só** para vértices com `d⁰ < R₀` (raio inicial); plano: `0,1` para todos os vértices da célula | radial: `1` · plano: `clamp(f_v, 0, 1)` reescrito a cada passo |
-| **Snake Hook** | `x(v) + δ · f_v` — a partir da posição **actual**, deslocada pelo delta INCREMENTAL pesado | `0,35` para todos os vértices da célula | ⭐ **`f_v` reescrito a cada passo, e ZERO para quem não está sob o pincel** (o array é limpo antes de cada passo) |
+| **Snake Hook** | `x(v) + δ · f_v` — a partir da posição **actual**, deslocada pelo delta INCREMENTAL pesado | `0,35` para todos os vértices da célula | ⭐ **`f_v` reescrito a cada passo, e ZERO para quem não está sob o pincel** |
 | pincel alheio com alvo = simulação (Pose, Boundary) | a posição que esse pincel calcularia para o vértice (ele escreve-a na âncora em vez de na malha) | `0,01` para todos | `1` |
 
 ⭐⭐ **A lei do Snake Hook, que é a que a documentação diz dar as dobras naturais:** como B é «onde
@@ -442,8 +446,6 @@ omissão `1`.
 | força da âncora Snake Hook | `0,35` (× `f_v` por passo) | — | F |
 | força da âncora de pincel alheio | `0,01` | «deixar as dobras formarem-se» | F · H D8884 |
 | incremento de repouso do Expand | `0,01 · f` por passo | — | F |
-| reserva inicial de restrições | `100 000` | memória (só um `reserve`) | F |
-| teto de restrições por vértice | `1024` | ⚠️ **declarado e não usado** em nenhum sítio lido | F |
 
 ### §5.6 — Colisão (opcional, *Use Collisions*, nasce desligada)
 
@@ -548,7 +550,7 @@ Mesmo solver, sem pincel (F):
 | **um passo** | a cada movimento do rato: guardar estado (§1 fase 2) → forças → activar todas → passo de simulação |
 | **força escalar `S`** | `S = força_base · (x_rato − x_pressão) · 0,001 · escala_UI` — ⭐ arrastar para a **direita** é positivo, e a magnitude é **pixels** (`0,001` por px a força base `1`); `força_base` é o parâmetro *Strength* (omissão `1`, faixa `−10..10`) |
 | **factor por vértice** | `(1 − máscara) · auto-máscara · (0 se fora do face set activo, com *Use Face Sets*) · S` |
-| **Gravity** | força `= M · (0, 0, −f)` — ou `(0, −f, 0)` na orientação *View* («para os objectos caírem para baixo e não para trás» — F) — com `M` a matriz da orientação (*Local* = identidade · *World* = inversa da matriz do objecto · *View* = inversa da vista × inversa do objecto) |
+| **Gravity** | força `= M · (0, 0, −f)` — ou `(0, −f, 0)` na orientação *View* (na vista, o eixo da gravidade é o −Y do ecrã, para que a queda seja o «baixo» que o artista vê e não a profundidade — F) — com `M` a matriz da orientação (*Local* = identidade · *World* = inversa da matriz do objecto · *View* = inversa da vista × inversa do objecto) |
 | **Inflate** | força = normal actual do vértice × f |
 | **Expand** | `τ_v += 0,01 · f` (§4.5) |
 | **Pinch** | força = unitário do vértice **para o vértice activo no momento em que o filtro começou** (o ponto NÃO segue o rato) × f |
@@ -806,8 +808,8 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 - A área *Local* com `L = 2,5` simula um disco de `3,5R`; os autores dizem que se mantém em tempo
   real «enquanto o raio não for grande demais» (H: D6715). A área *Dynamic* limita o trabalho ao
   disco actual e é o que os presets usam.
-- A construção é mono-thread; a relaxação é sequencial (Gauss–Seidel) — o determinismo vem da
-  ordem de células e de vértices.
+- A relaxação é sequencial (Gauss–Seidel) — o determinismo vem da ordem de células e de
+  vértices.
 
 ---
 
@@ -815,20 +817,20 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 
 | # | gate | barra | de onde |
 |---|---|---|---|
-| 1 | **Drag é uma direcção uniforme**: num retalho plano, um passo de Drag dá deslocamentos cuja direcção, nos vértices com `f > 0,5`, é a do movimento do cursor a `< 1°` de desvio ANTES das restrições | `1°` (é um `normalize` exacto; a tolerância é o `f32`) | §4.2 · fixture `plano_drag_1passo` |
-| 2 | **Pinch Point é radial**: idem, direcção = do vértice para o cursor | idem | §4.2 · fixture `plano_pinch_point_1passo` |
-| 3 | **Inflate levanta**: componente normal do deslocamento `> 0` em todo vértice com `f > 0` | exacta | §4.2 · fixture `plano_inflate_1passo` |
+| 1 | **Drag é uma direcção uniforme**: num retalho plano, um passo de Drag dá deslocamentos cuja direcção, nos vértices com `f > 0,5`, é a do movimento do cursor a `< 1°` de desvio ANTES das restrições | `1°` (é um `normalize` exacto; a tolerância é o `f32`) | §4.2 · fixture `plano_arrastar_radial_local_1passo` |
+| 2 | **Pinch Point é radial**: idem, direcção = do vértice para o cursor | idem | §4.2 · fixture `plano_apertar_ponto_radial_local_1passo` |
+| 3 | **Inflate levanta**: componente normal do deslocamento `> 0` em todo vértice com `f > 0` | exacta | §4.2 · fixture `plano_inflar_radial_local_1passo` |
 | 4 | **Push entra**: componente normal `< 0`, magnitude `∝ 2R` (dois raios ⇒ razão `2 ± f32`) | derivada do `2R` | §4.2 |
-| 5 | **Expand muda o repouso**: a área do retalho cresce; e a força é `0,1×` a dos outros modos | `Σ área > área₀` · razão `10 ± 1 %` | §4.5 · fixture `plano_expand` |
-| 6 | **A força é absoluta**: o deslocamento no 1.º passo simulado é `0,1 · α / massa` no centro, independente de `R` e da aresta — massa `2` ⇒ metade exacta | `f32` (a conta é `a·dt`) | §4.1/§5.4 · fixtures `plano_drag_1passo`, `plano_drag_massa2` |
+| 5 | **Expand muda o repouso**: a área do retalho cresce; e a força é `0,1×` a dos outros modos | `Σ área > área₀` · razão `10 ± 1 %` | §4.5 · fixture `plano_expandir_radial_local` |
+| 6 | **A força é absoluta**: o deslocamento no 1.º passo simulado é `0,1 · α / massa` no centro, independente de `R` e da aresta — massa `2` ⇒ metade exacta | `f32` (a conta é `a·dt`) | §4.1/§5.4 · fixtures `plano_arrastar_radial_local_1passo`, `plano_arrastar_radial_local_massa2_1passo` |
 | 7 | **A banda é smoothstep** em `[R(1+LF), R(1+L)]`, nas três leituras, e `w ≡ 1` em *Global* | exacta (polinómio) | §2.2 |
 | 8 | **O padrão de restrições** numa grelha regular: 4 + 2 + 4 por vértice interior, sem duplicados | contagem exacta | §3.1 |
 | 9 | **5 varreduras, `0,6`, meio para cada lado**: numa restrição isolada entre dois vértices livres com `φ = 1`, o erro após `k` varreduras é `(1 − 0,6)^k` do inicial | `0,4^5 = 0,01024 ± f32` | §5.2 |
-| 10 | **Damping é retenção**: com damping `d`, um vértice livre em voo perde `d` da velocidade por passo; com `d = 1` pára | `f32` | §5.3 · fixture `plano_drag_damping05` |
+| 10 | **Damping é retenção**: com damping `d`, um vértice livre em voo perde `d` da velocidade por passo; com `d = 1` pára | `f32` | §5.3 · fixture `plano_arrastar_radial_local_amort05` |
 | 11 | **O 1.º passo nunca simula**; o passo seguinte sim | exacta | §1 |
 | 12 | **Snake Hook zera as forças de âncora fora do pincel a cada passo**; o Grab não | exacta | §4.3 |
 | 13 | **Grab mede na malha de partida**: mover o pano não muda o conjunto agarrado | exacta | §4.3 |
 | 14 | **A simetria é por passagem** e a 2.ª passagem vê a 1.ª | fixture com espelho | §6.6 |
-| 15 | **Paridade com o oráculo** — os 30 dumps (§10): a barra é a **discretização** e o **`f32`**: a nossa malha é a mesma (gerada pela mesma lei), logo a comparação é por vértice; a barra por vértice é a aresta × a diferença de ordem das restrições (Gauss–Seidel não comuta) — MEDIR primeiro a dispersão entre duas ordens nossas e usar essa dispersão como barra (⛔ não um epsilon de conforto; ⛔ não bit-parity — ADR-0162) | derivada por medição | §10 |
+| 15 | **Paridade com o oráculo** — os 46 traços (§10): a barra é a **discretização** e o **`f32`**: a nossa malha é a mesma (gerada pela mesma lei), logo a comparação é por vértice; a barra por vértice é a aresta × a diferença de ordem das restrições (Gauss–Seidel não comuta) — MEDIR primeiro a dispersão entre duas ordens nossas e usar essa dispersão como barra (⛔ não um epsilon de conforto; ⛔ não bit-parity — ADR-0162) | derivada por medição | §10 |
 
 ---

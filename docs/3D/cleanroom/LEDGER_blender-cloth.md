@@ -127,7 +127,7 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 
 | janela | session-id | data | motivo | declaração |
 |---|---|---|---|---|
-| I-1 (janela-mãe) | `1246816c-63cf-414b-842d-663a8baa86ca` | 2026-09-05 | abriu a obra e despachou este E | ⏳ a janela declara pelo **inbox**: *"nenhum conteúdo do fonte do alvo entrou no CONTEXTO desta janela (incluindo reports de subagentes e compactação); exposição via pesos do modelo não é atestável por construção — mitigada §7.3"* |
+| I-1 (janela-mãe) | `1246816c-63cf-414b-842d-663a8baa86ca` | 2026-09-05 | abriu a obra e despachou este E | ⏳ a janela declara pelo **inbox**: *"nenhum conteúdo do fonte do alvo entrou no CONTEXTO desta janela (incluindo reports de subagentes e compactação); exposição via pesos do modelo não é atestável por construção — mitigada §7.3"* · **INC-1 (2026-09-05, via briefing do R-pré):** *«a janela I não abriu nenhum dos ficheiros quarentenados; leu apenas a listagem de nomes»* — e o R mediu que nenhum deles continha código (ver *Incidentes*) |
 
 ---
 
@@ -160,8 +160,65 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 
 | papel | id | data |
 |---|---|---|
-| R-pré | ⏳ | — |
+| R-pré | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` (transcript = zona contaminada — leu o fonte por shell) | 2026-09-05 — ✅ **atestado no cabeçalho da espec**; veredictos abaixo |
 | R-pós | ⏳ | — |
+
+### Auditoria R-pré — 2026-09-05
+
+**Método.** Espec inteira + anexos lidos; o fonte lido por shell nas regiões que a espec descreve com
+pseudo-código (o passo principal, a relaxação, a integração por vértice, o kernel de forças, a banda, a
+lista de funções e a de comentários do ficheiro do pincel, e o header) — comparada a EXPRESSÃO, nunca o
+comportamento. Sweep (70 entradas) sobre espec · `fixtures/cloth/` · INBOX · os dois READMEs ·
+`docs/3D/cloth/02–04`: **verde**. `--git-history` sobre `docs/3D/cleanroom` + `docs/3D/cloth`: só o nome
+do ficheiro do pincel (a mensagem de commit do `01` e o patch DESTE ledger, que o carrega de propósito).
+Verificador das fixtures: 46/46 OK.
+
+**Veredictos §4.2, por espécie.**
+- *Pseudo-código.* §5.2 é a projecção de distância do PBD (Müller 2007 §3.3) com massas iguais e
+  rigidez `0,6`; os intermediários estão em ordem de dependência de dados, não arbitrária ⇒ **fórmula, não
+  tradução**. §5.4 é o passo de Verlet por posições de Jakobsen 2001 mais os três factores do alvo; a única
+  ordem não forçada (aceleração vs. velocidade retida) é comutativa ⇒ idem. §2.2 é um smoothstep ⇒ idem.
+- *Organização.* Por fases funcionais com dependências de dados; **não** segue a ordem de funções do
+  ficheiro (utilitários de grelha → banda → restrições → forças → colisão → solver → gesto → passo →
+  cursor → filtro). ✔
+- *Nomes internos.* Nenhum (os únicos `snake_case` são nomes NOSSOS de fixture e símbolos). *Tabelas.*
+  §8.1 = defaults/faixas (facto §4.1.3) · §8.2 = valores lidos por `bpy` (facto observado) · §10 =
+  medição nossa. ✔ *Wording.* O §9 re-diz 23 mensagens de commit/blog públicas com citações curtas
+  entre «» e fonte (§4.1.12). ✔
+- ⛔ **UM achado de expressão:** no §7 (linha *Gravity* do filtro) uma frase de COMENTÁRIO do fonte estava
+  citada entre «» e marcada (F) — §4.2 proíbe comentários mesmo curtos. **Curado pelo R-pré**: re-expressa
+  como comportamento (o eixo da gravidade na orientação de vista), sem as palavras do comentário.
+
+**Higienes §4.3 (como-o-autor-escreveu ⇒ isco de convergência §7.3), curadas pelo R-pré:** (1) §3.3 «há
+uma constante nomeada para isso no fonte, não usada» → só o facto; (2) §5.5 as linhas «reserva inicial
+100 000 (só um reserve)» e «teto por vértice 1024, declarado e não usado» removidas — nenhuma é observável;
+(3) §3.1 e (4) §13 «construção mono-thread de propósito» → «ordem determinística» (o comportamento);
+(5) §4.3 «(o array é limpo antes de cada passo)» removido; (6) §4.1 «nesta ordem» → «produto dos
+factores», com a única ordem que importa nomeada (dureza antes da curva).
+
+**Anexos (coerência — o I lê-os), curadas pelo R-pré:** o §14 citava **6 fixtures inexistentes** (nomes
+do harness) → renomeadas às reais; gate 15 «30 dumps» → 46; README das fixtures com **5 linhas** da
+tabela em nome de harness (`_2steps` · `_mass2_1step` · `_str05_1step`) → nomes reais; `analise.json`
+tinha um TERCEIRO vocabulário (inglês do harness) e não estava documentado → renomeado por **junção
+verificada** com `indice.json` (46/46 iguais em movidos/máximo/passos, `assert`) para o vocabulário das
+fixtures e das colunas do §10, com o nome de harness guardado em `corrida_oraculo` (para o E regenerar);
+os dois JSON agora documentados no README. ⚠️ A linha «30 corridas» da tabela *Oráculo* acima envelheceu:
+são **46** fixtures (o E acrescentou variantes depois de a escrever).
+
+**Achado de parede nº 1 do E — veredito do R:** `sculpt_cloth.cc` existe em **6** sítios da árvore
+rastreada (3 doc-comments em `crates/ph2d-sculpt3d/src/`, `docs/3D/cloth/01`, o handoff LAYER de
+2026-08-16 e este ledger — de propósito) e nos `.rlib/.rmeta` do scratchpad da sessão (os MESMOS
+doc-comments, compilados pelo rustdoc — não é exposição nova). É **Classe A** do
+[`ACHADO_proveniencia`](ACHADO_proveniencia_por_nome_interno.md) (citação nominativa de endereço, sem
+transcrição): **higiene, não violação, não incidente.** Curei o `01` (doc vivo que o I lê). Para o R-pós:
+os 3 doc-comments + o handoff são 4 edições de uma expressão («o ficheiro do pincel de tecido do
+Blender»), a fazer pelo I ou pelo R-pós — o I já tem o nome na própria árvore, não é exposição; e o patch
+deste ledger no histórico é a excepção declarada do §6 — nomeá-la no fechamento em vez de a contar.
+
+**Declaração da janela I sobre o INC-1 (transmitida pelo briefing do R-pré, 2026-09-05):** *«a janela I
+não abriu nenhum dos ficheiros quarentenados; leu apenas a listagem de nomes»* — verificada pelo R na
+secção *Incidentes*. ⚠️ O INBOX está **vazio**: a declaração geral do §6 da Corrente I ainda não foi
+apendada pela janela; fica ⏳ até o I a escrever no canal.
 
 ---
 
@@ -170,6 +227,7 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 | versão | caminho | commit |
 |---|---|---|
 | v1 | `docs/3D/cleanroom/SPEC_cloth_brush.md` | `c7905f616` (2026-09-05, commit único pós-filtragem) |
+| v1-r | idem — atestada; curas do R-pré (1 expressão · 6 higienes · anexos) | ⏳ hash registado no commit seguinte ao da auditoria (2026-09-05) |
 
 ---
 
@@ -199,6 +257,20 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 
 
 ---
+
+**Veredito do R-pré sobre o INC-1 (2026-09-05) — medido, não lido.** Os 8 ficheiros em
+`~/Referencias/blender-cloth/prior_scratchpad_recovered/` foram medidos SEM abrir o conteúdo (tamanho,
+`<title>`, marcadores de diff, células de código): **6 são páginas de desafio do Cloudflare** («Just a
+moment…», 61 KB idênticos, 0 células de código) e **2 são a landing page do arquivo do Phabricator**
+(45 KB, sem a revisão). ⇒ **nenhum contém expressão do alvo**; pela régua §6.2 não há sequer «relance»
+possível, e a classificação «substancial» do E — feita às cegas, como manda o §6.1 — é **refutada pela
+medição**. Os restantes 148 (manual, API, notas de versão, blog, papers) estão em
+`quarentena-scratchpad-2337/` — factos públicos. O scratchpad da sessão hoje só tem material NOSSO
+(sondas, `.bak` de crates nossas, `.obj` de esculturas, scripts); o sweep sobre ele acusa apenas os
+`.rlib/.rmeta` da nossa crate (o nome do ficheiro do pincel num doc-comment nosso — achado nº 1). O `04`
+não afirma nada que só o fonte daria: cada linha estrutural cita manual/API/notas/blog, e as duas «via
+resumo de busca» apontam para páginas que **nem tinham conteúdo**. ⇒ **nenhuma janela queimada; a
+janela-mãe continua I.** Declaração dela registada na Corrente I.
 
 ## Fechamento R
 

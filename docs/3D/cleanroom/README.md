@@ -44,7 +44,7 @@ e no ledger.
 
 | arquivo | quem lê |
 |---|---|
-| ⭐⭐ [`SPEC_cloth_brush.md`](SPEC_cloth_brush.md) | **todos** — a espec do pincel e do filtro de tecido: gesto, área, restrições, solver, colisão, undo, filtro, constantes, 15 gates propostos. ⏳ **R-pré pendente** — a janela I não abre antes do atestado no cabeçalho |
+| ⭐⭐ [`SPEC_cloth_brush.md`](SPEC_cloth_brush.md) | **todos** — a espec do pincel e do filtro de tecido: gesto, área, restrições, solver, colisão, undo, filtro, constantes, 15 gates propostos. ✅ **R-pré atestado em 2026-09-05** (cabeçalho da espec; veredictos no ledger) — a janela I pode abrir |
 | ⭐ [`fixtures/cloth/`](fixtures/cloth/README.md) | **todos** — dumps do oráculo sobre malhas NOSSAS, um por modo de deformação e por variante de solver, + verificador |
 | [`INBOX_blender-cloth.md`](INBOX_blender-cloth.md) | o Implementador **escreve** (append cego), nunca lê |
 | ⛔ `LEDGER_blender-cloth.md` · `VASSOURA_blender-cloth.txt` | **E e R apenas** — carregam rastros do alvo de propósito |

@@ -55,6 +55,21 @@ vertices <N> +  N linhas  d <x> <y> <z>    # as posições DEPOIS do traço, mes
 compara com o cabeçalho — **exit 0 = coerente**. Ele não carrega algoritmo nenhum: é a prova de que
 o ficheiro diz o que contém.
 
+## Os dois índices derivados (JSON)
+
+- `indice.json` — 46 pares `[fixture, cabeçalho]`, com as **mesmas chaves** do cabeçalho dos
+  `.deformado.txt.gz` (derivado deles; serve para escolher fixtures sem descomprimir).
+- `analise.json` — 46 objectos com as grandezas que a espec §10 tabela, calculadas pelo harness do E
+  a partir de repouso + deformado (⛔ **não são oráculo**: são leituras NOSSAS sobre o dado):
+  `fixture` · `corrida_oraculo` (o nome interno da corrida no harness — só para o E regenerar) ·
+  `movidos` · `max_deslocamento` · `alcance` (distância máxima de um vértice movido ao caminho) ·
+  `alcance_sobre_raio` · `fraccao_normal` (`Σ|u·n⁰| / Σ|u|`) · `coerencia` (módulo do vector unitário
+  médio dos deslocamentos grandes) · `u_normal_max` / `u_normal_min` · `desloc_no_passo1` /
+  `desloc_no_fim` (deslocamento medido no 1.º / no último ponto do caminho, conforme o harness) ·
+  `delta_area` (fracção; só significativa no plano) · `passos` · `raio`.
+  ⚠️ Renomeado pelo R-pré em 2026-09-05 do vocabulário do harness para o das fixtures, por **junção
+  verificada** com `indice.json` (46/46 iguais em movidos, máximo e passos).
+
 ## As corridas
 
 | fixture | modo | passos | movidos | máx |u| |
@@ -65,22 +80,22 @@ o ficheiro diz o que contém.
 | `plano_arrastar_radial_global` | arrastar | 12 | 4225 | `0.644607` |
 | `plano_arrastar_radial_local` | arrastar | 12 | 2144 | `0.331637` |
 | `plano_arrastar_radial_local_1passo` | arrastar | 2 | 171 | `0.09917` |
-| `plano_arrastar_radial_local_2steps` | arrastar | 3 | 1438 | `0.135888` |
+| `plano_arrastar_radial_local_2passos` | arrastar | 3 | 1438 | `0.135888` |
 | `plano_arrastar_radial_local_amort1` | arrastar | 12 | 2141 | `0.219903` |
 | `plano_arrastar_radial_local_amort05` | arrastar | 12 | 2142 | `0.254386` |
 | `plano_arrastar_radial_local_massa2` | arrastar | 12 | 2143 | `0.154596` |
-| `plano_arrastar_radial_local_mass2_1step` | arrastar | 2 | 171 | `0.049585` |
+| `plano_arrastar_radial_local_massa2_1passo` | arrastar | 2 | 171 | `0.049585` |
 | `plano_arrastar_radial_local_pino` | arrastar | 12 | 2144 | `0.323528` |
 | `plano_arrastar_radial_local_plast05` | arrastar | 12 | 2141 | `0.234305` |
 | `plano_arrastar_radial_local_forca05` | arrastar | 12 | 2139 | `0.073252` |
-| `plano_arrastar_radial_local_str05_1step` | arrastar | 2 | 168 | `0.024792` |
+| `plano_arrastar_radial_local_forca05_1passo` | arrastar | 2 | 168 | `0.024792` |
 | `plano_expandir_radial_local` | expandir | 12 | 2134 | `0.011523` |
 | `plano_expandir_radial_local_1passo` | expandir | 2 | 848 | `0.001902` |
 | `plano_agarrar_plano_local` | agarrar | 12 | 2146 | `0.307644` |
 | `plano_agarrar_radial_local` | agarrar | 12 | 2139 | `0.16991` |
 | `plano_agarrar_radial_local_1passo` | agarrar | 2 | 1324 | `0.134099` |
 | `plano_agarrar_radial_local_24passos` | agarrar | 24 | 2142 | `0.158543` |
-| `plano_agarrar_radial_local_2steps` | agarrar | 3 | 1872 | `0.146115` |
+| `plano_agarrar_radial_local_2passos` | agarrar | 3 | 1872 | `0.146115` |
 | `plano_agarrar_radial_local_amort06` | agarrar | 12 | 2131 | `0.131488` |
 | `plano_agarrar_radial_local_preset` | agarrar | 12 | 4123 | `0.132623` |
 | `plano_inflar_radial_local` | inflar | 12 | 2146 | `0.317159` |
@@ -96,7 +111,7 @@ o ficheiro diz o que contém.
 | `plano_gancho_radial_local` | gancho | 12 | 2140 | `0.09155` |
 | `plano_gancho_radial_local_1passo` | gancho | 2 | 1452 | `0.489383` |
 | `plano_gancho_radial_local_24passos` | gancho | 24 | 2142 | `0.02932` |
-| `plano_gancho_radial_local_2steps` | gancho | 3 | 1950 | `0.364813` |
+| `plano_gancho_radial_local_2passos` | gancho | 3 | 1950 | `0.364813` |
 | `plano_gancho_radial_local_amort06` | gancho | 12 | 2135 | `0.063396` |
 | `esfera_arrastar_radial_local` | arrastar | 12 | 6050 | `0.531513` |
 | `esfera_expandir_radial_local` | expandir | 12 | 6050 | `0.05374` |

@@ -31,6 +31,12 @@ defeito real, e custa uma jornada a bissecar.
    Abrir sem dizer põe na tela um objecto que ninguém explicou; dizer sem abrir é o passo impossível
    de volta.
 
+⛔⛔ **E havia um GATE a defender a instrução impossível — verde o tempo todo.** Ele exigia que cada
+cena mandasse *«clique na linha da receita»*, porque era esse o gesto no dia em que foi escrito.
+Depois de o filtro nascer, ele passou a **obrigar** a manter uma frase que já não descrevia nada:
+*um gate sobre o TEXTO de uma instrução mede a presença da frase, nunca se o gesto que ela nomeia
+ainda existe*. Foi ele que expôs a terceira cena — ao reprovar quando as outras duas foram curadas.
+
 **Why:** o texto de um smoke é **superfície de produto** — é onde o dono aprende a ferramenta
 (CLAUDE.md §0.8) —, e é a única superfície do repo cuja correcção nada media.
 

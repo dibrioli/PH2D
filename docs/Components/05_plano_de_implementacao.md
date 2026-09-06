@@ -2450,8 +2450,15 @@ receita **inteira** sai. Quem a traz de volta é a marca `MasterEditing`, **deri
 
 | cena | o passo | desde quando é falso |
 |---|---|---|
+| `=1` | *«clique na linha `Ragdoll`»* | **30/08** |
 | `=2` | *«clique na linha `Badge`»* | **30/08** — o texto foi escrito a 27/08, quando era verdade |
 | `=7` | *«arraste o `Arm` … para o `Head`»* | **nasceu assim**, hoje |
+
+⚠️⚠️ **E a `=1` só apareceu no PORTÃO DE FECHO, por um gate que EXIGIA a frase impossível.** O
+`each_smoke_scene_tells_the_artist_to_click_the_recipe_row` defendia o gesto que acendia a receita
+quando foi escrito, e esteve **verde o tempo todo**: ele media a presença de uma **frase**, e a frase
+continuava lá. *Um gate sobre o TEXTO de uma instrução não sabe se o gesto que ela nomeia ainda
+existe* — ele mudou de lado, com a história escrita dentro.
 
 ⚠️⚠️ **E o dono aprovou a `=7` com o passo impossível dentro** (*«smoke OK»*). Ele faz o que consegue
 e diz que está bem — *a aprovação de um smoke não é uma verificação de que cada passo é executável.*

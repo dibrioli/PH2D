@@ -267,6 +267,48 @@ que já calcula o `inert` do nó inteiro — para a row **dizer** que não tem s
 no ciclo que possuir o grupo do CARIMBO. ⛔ Esconder a row está fora: o artista precisa de a ver
 para saber que entrada ligar.
 
+### §5.3-bis — *«Point Scale faz exatamente o que o nó Scale faz? E Transfer faz o quê?»*
+
+Perguntas do Enio (2026-09-06), respondidas por medição — as duas sondas vivem na crate do nó
+(`measure_what_point_scale_does_that_scale_cannot` · `measure_what_transfer_decides`).
+
+**(a) Não, e a diferença é INFORMAÇÃO PERDIDA, não conveniência.** O `motion.scale` é *«fique N
+vezes maior»* — um número, o mesmo para todos. O `point_scale` é *«o arranjo já traz um tamanho
+por ponto: quanto dele eu obedeço?»* — a variação vem dos PONTOS. Medido com um arranjo que traz
+`size = [1, 2, 3, 4]` sobre uma forma sem `size`:
+
+| `point_scale` | o `size` de cada cópia |
+|---|---|
+| `0` | **a coluna NÃO EXISTE na saída** |
+| `0,5` | `[1 · 1,5 · 2 · 2,5]` |
+| `1` | `[1 · 2 · 3 · 4]` |
+
+⛔ **A metade que prova que não é um `scale`:** com `point_scale = 0`, trocar os tamanhos do
+arranjo de `[1,2,3,4]` para `[10,17,24,31]` **não muda a saída ao bit** — a coluna do ponto é
+deitada fora, e um `motion.scale` a jusante não a pode recuperar porque ela já não existe. *Um é
+um multiplicador; o outro é uma comporta.*
+
+⚠️ **E o default é `0`, ou seja: DEITAR FORA.** Quem espalha com tamanhos variados e carimba
+perde a variação **em silêncio** — é o mundo de sempre preservado de propósito (mudá-lo mexeria
+em arte já autorada), mas é a coisa que um artista descobre tarde.
+
+**(b) O `Transfer` é a regra de quem GANHA quando os dois lados trazem a MESMA coluna** — e não é
+sobre cor: a cor é só o caso comum. Medido com um atributo qualquer (`heat`), forma `10` contra
+arranjo `[1,2,3]`:
+
+| modo | disputada (forma `10`, arranjo `[1,2,3]`) | só no ARRANJO |
+|---|---|---|
+| `Shape Wins` | `[10, 10, 10]` | `[1, 2, 3]` |
+| `Point Wins` | `[1, 2, 3]` | `[1, 2, 3]` |
+| `Add` | `[11, 12, 13]` | `[1, 2, 3]` |
+| `Multiply` | `[10, 20, 30]` | `[1, 2, 3]` |
+
+⚠️ **A coluna de UM lado só chega em todos os modos** — não é o `Transfer` a decidir, é a cura de
+2026-09-01: *um modo que resolve conflito não decide sobre uma coluna que ninguém disputa*.
+⛔ **E há três que ele NÃO toca**, porque já têm lei própria: `P` e `rot` **somam sempre** (medido:
+`rot` sai `[8, 9, 10]` nos quatro modos), `Index`/`Count` são renumerados contínuos, e o `size` é
+do `point_scale`. *Uma grandeza, uma porta.*
+
 ⭐⭐ **E a metade que se podia entregar HOJE foi entregue: a cena `=110`** (pedido do Enio no
 mesmo dia — *«crie uma cena de smoke com exemplos de todos os usos do duplicator»*). Se um
 controlo só fala com a entrada certa, então a resposta imediata é **montar a entrada** — treze

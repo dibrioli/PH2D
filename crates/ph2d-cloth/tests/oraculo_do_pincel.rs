@@ -1525,8 +1525,8 @@ fn assimetria(rest: &[V3], pos: &[V3], esp: &[usize]) -> f64 {
         ]
     };
     let (mut num, mut den) = (0.0f64, 0.0f64);
-    for v in 0..rest.len() {
-        let (a, b) = (u(v), u(esp[v]));
+    for (v, &e) in esp.iter().enumerate() {
+        let (a, b) = (u(v), u(e));
         // `M` reflecte o próprio vector: a componente `y` troca de sinal.
         let m = [b[0], -b[1], b[2]];
         for c in 0..3 {

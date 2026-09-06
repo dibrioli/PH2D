@@ -56,9 +56,20 @@ fn a_degenerate_name_is_never_a_panic() {
 /// ⚠️ Não há API que deixe um teste perguntar à cena *"que texto ficou aqui?"* (o
 /// `paint_text_title` desenha glifos direto no `VectorScene`), então esta é a metade que se
 /// consegue provar sem inventar uma camada de inspecção de texto.
+/// ⚠️⚠️ **E ele lê o ficheiro onde o `draw_card` VIVE, que deixou de ser o `paint.rs`.** Quando
+/// a árvore combinada de 06/09 empurrou o painter para fora do teto de LOC, o `draw_card` mudou
+/// para o `paint_card.rs` e este censo ficou vermelho **sem que o produto se mexesse**.
+/// *Um censo textual aponta para um FICHEIRO, e um corte por responsabilidade move o alvo* — por
+/// isso ele confere as DUAS coisas, e diz qual delas quebrou: um ficheiro que já não define o
+/// `draw_card` é uma acusação diferente de um `draw_card` que deixou de chamar o rótulo.
 #[test]
 fn the_card_painter_actually_calls_it() {
-    let src = include_str!("paint.rs");
+    let src = include_str!("paint_card.rs");
+    assert!(
+        src.contains("fn draw_card("),
+        "o `draw_card` ja' nao vive no `paint_card.rs` — este censo perdeu o alvo, e ate' \
+         ser reapontado ele nao prova nada sobre os rotulos das portas"
+    );
     assert!(
         src.contains("draw_port_labels(ctx, n, view, theme);"),
         "o `draw_card` deixou de escrever os nomes das portas — o cartao volta a ter uma \

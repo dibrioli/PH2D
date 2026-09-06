@@ -1078,6 +1078,12 @@ const ABERTOS: [(&str, f64); ABERTO_N] = [
     ("plano_arrastar_radial_global_origem", 0.301),
     ("plano_empurrar_plano_local", 0.944),
     ("plano_empurrar_radial_local", 0.329),
+    // ⚠️ Os DOIS traços por passo que o especificador entregou em 06/09 para o
+    // Q12. Os dois divergem a partir do passo 3, e no empurrar o PICO está
+    // noutro sítio (`0,13R` contra `0,40R` do oráculo) — a mesma assinatura
+    // que o Snake Hook tinha antes do Q9.
+    ("plano_empurrar_radial_local_origem", 0.326),
+    ("plano_inflar_radial_local_origem", 0.252),
     ("plano_expandir_radial_local", 0.192),
     ("plano_expandir_radial_local_1passo", 0.560),
     ("plano_gancho_radial_local_1passo", 0.416),
@@ -1085,7 +1091,7 @@ const ABERTOS: [(&str, f64); ABERTO_N] = [
     ("plano_gancho_radial_local_2passos_origem", 0.420),
     ("plano_inflar_radial_local", 0.253),
 ];
-const ABERTO_N: usize = 25;
+const ABERTO_N: usize = 27;
 
 /// A folga de regressão sobre o valor medido de um traço ABERTO.
 const FOLGA_ABERTO: f64 = 1.25;

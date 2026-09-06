@@ -17,14 +17,18 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   expressão (uma frase de comentário do fonte citada como (F) no §7) e CINCO higienes §4.3 (detalhe de
   implementação descrito como comportamento) curados no acto pelo R-pré; os nomes de fixture do §14 e a
   contagem do gate 15 alinhados aos ficheiros. Veredictos e curas, um a um: LEDGER §Papel R.
-  ⏳ EMENDAS Q8, Q9 e Q10 de 2026-09-06 — Q10 (§10.5 NOVA): dois traços de APERTO por passo, 12 passos,
+  ✅ EMENDAS Q8, Q9 e Q10 de 2026-09-06 — Q10 (§10.5 NOVA): dois traços de APERTO por passo, 12 passos,
   prova do fatiamento `0,000000`. Q9 (§4.3 · §10.4 NOVA · §14 gates 12 e 18): o centro da queda do
   Snake Hook está UM PASSO atrasado, e a força por passo das âncoras é zerada nos DOIS modos de âncora.
   Q8 (§1 fases 0/1 · §2.1 · §3.1 · §3.3 · §5.2-bis NOVA · §10.2 · §10.3 NOVA · §13 ·
-  §14 gates 8/16/17): a lista de restrições do ramo *Local* vem em DUPLICADO. Escrita pelo subagente-E
-  da mesma janela, com o fonte reaberto só para esta pergunta; sweep verde sobre a espec emendada em
-  2026-09-06. ⚠️ **AGUARDA o atestado do R-pré** — a janela-mãe despacha-o antes de implementar a
-  emenda.
+  §14 gates 8/16/17): a lista de restrições do ramo *Local* vem em DUPLICADO. Escritas pelo subagente-E
+  da mesma janela, com o fonte reaberto só para estas perguntas.
+  **As TRÊS auditadas contra §4.2 por R-pré em 2026-09-06** (contexto novo, independente de quem as
+  escreveu; leu os dois lados, o fonte por shell) — sweep verde sobre a espec emendada + a pasta inteira
+  das fixtures + INBOX + os dois READMEs + `docs/3D/cloth/`, e sobre o **histórico** destes caminhos.
+  UM achado §4.2 (um nome interno do alvo em forma de identificador, no §10.4) e UMA insuficiência
+  (o gate 16 fixava `2×`, que é só o caso de UMA passagem de simetria) **curados no acto pelo R-pré**;
+  os factos das três emendas conferidos no fonte, **todos correctos**. Veredictos: LEDGER §Papel R.
   ⭐ ERRATA de 2026-09-06 (`3d621e94b` + `d5844ad5c`: §2.1 · §3.1 · §5.2 · §10 · fixtures de esfera)
   auditada contra §4.2 por R-pré em 2026-09-06 — sweep verde sobre espec + a pasta inteira das fixtures +
   INBOX + ledger + o histórico destes caminhos. TRÊS nomes internos do alvo (dois no §5.2, um no §10)
@@ -983,8 +987,9 @@ Snake Hook** (leitura integral da fase de gesto, 2026-09-06). O que dá forma ao
 pode não ter, é o par: **(a)** o centro atrasado desta secção e **(b)** a distância medida sobre as
 posições **actuais** (§4.3) — juntos fazem o material já puxado viajar com o centro. O «plano de
 profundidade» da §4.3 é do **delta** (a des-projecção do cursor), e vale para os oito modos; a queda
-por-vértice é a distância comum ao centro, com a forma de queda do pincel (`falloff_shape` = esfera,
-ou tubo quando o artista o escolhe — não é uma lei do modo).
+por-vértice é a distância comum ao centro, com a forma de queda que o pincel tiver — a **esférica**
+por omissão, ou a *Projected* (medida no plano da vista) quando o artista a escolhe. É uma opção do
+pincel, comum aos oito modos, **não** uma lei do modo.
 
 ### §10.5 — Os dois traços de APERTO por passo (2026-09-06, a pedido do I)
 
@@ -1102,7 +1107,7 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 13 | **Grab mede na malha de partida**: mover o pano não muda o conjunto agarrado | exacta | §4.3 |
 | 14 | **A simetria é por passagem** e a 2.ª passagem vê a 1.ª | fixture com espelho | §6.6 |
 | 15 | **Paridade com o oráculo** — os 51 traços (§10): a barra é a **discretização** e o **`f32`**: a nossa malha é a mesma (gerada pela mesma lei), logo a comparação é por vértice; a barra por vértice é a aresta × a diferença de ordem das restrições (Gauss–Seidel não comuta) — MEDIR primeiro a dispersão entre duas ordens nossas e usar essa dispersão como barra (⛔ não um epsilon de conforto; ⛔ não bit-parity — ADR-0162) | derivada por medição | §10 |
-| 16 | **A lista do *Local* vem em duplicado**: no mesmo retalho e no mesmo traço, a contagem de restrições do conjunto *Local* é **exactamente `2×`** a que uma construção só produz, e a de *Global*/*Dynamic* é `1×`; e a régua de comportamento é a **CONTAGEM DE VÉRTICES MOVIDOS** num traço de âncora de UM passo simulado (inteiro, sem acumulação possível), que tem de bater a do oráculo | contagem exacta (inteiros dos dois lados) | §5.2-bis · §10.3 · fixtures `plano_agarrar_radial_local_1passo`, `plano_expandir_radial_local_1passo`, `plano_arrastar_radial_local_2passos` |
+| 16 | **A lista do *Local* vem em duplicado**: no mesmo retalho e no mesmo traço, a contagem de restrições do conjunto *Local* é **exactamente `2×`** a que uma construção só produz (⚠️ `2×` é o caso de UMA passagem de simetria, que é o das fixtures; a lei geral é `n+1` cópias para `n` passagens — §5.2-bis), e a de *Global*/*Dynamic* é `1×`; e a régua de comportamento é a **CONTAGEM DE VÉRTICES MOVIDOS** num traço de âncora de UM passo simulado (inteiro, sem acumulação possível), que tem de bater a do oráculo | contagem exacta (inteiros dos dois lados) | §5.2-bis · §10.3 · fixtures `plano_agarrar_radial_local_1passo`, `plano_expandir_radial_local_1passo`, `plano_arrastar_radial_local_2passos` |
 | 17 | **É só o ramo *Local***: a mesma experiência que melhora os traços *Local* tem de **piorar** os *Global* e os *Dynamic* — um port que dobre a relaxação em toda a parte passa o gate 16 e reprova aqui | sinal do erro relativo, nos 50 traços | §5.2-bis · §10.3 |
 
 ---

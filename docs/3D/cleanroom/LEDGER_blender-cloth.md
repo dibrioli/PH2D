@@ -162,6 +162,7 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 |---|---|---|
 | R-pré | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` (transcript = zona contaminada — leu o fonte por shell) | 2026-09-05 — ✅ **atestado no cabeçalho da espec**; veredictos abaixo |
 | R-pré (errata) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a errata (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (errata)» |
+| R-pré (emendas Q8/Q9/Q10) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu as emendas (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emendas Q8, Q9 e Q10)» |
 | R-pós | ⏳ | — |
 
 ### Auditoria R-pré — 2026-09-05
@@ -268,6 +269,72 @@ concordam entre si (47 traços; as 8 esferas com área `dinamica` no índice).
 - **Q6** — o `indice.json`, o README e a tabela do §10 registam as 8 esferas como área Dinâmica com os
   mesmos `movidos`/`máx` (2 096..2 234 movidos, alcance `3,44..3,52 R`).
 
+
+### Auditoria R-pré — 2026-09-06 (as EMENDAS Q8, Q9 e Q10)
+
+**Âmbito:** os quatro commits `52e6f75a0` (Q8) · `bdc378b5f` (Q9) · `82ecde1b6` + `9a79c1721` (Q10)
+— espec (§1 fases 0/1 · §2.1 · §3.1 · §3.3 · §4.3 · §5.2-bis NOVA · §10.2 · §10.3 NOVA · §10.4 NOVA ·
+§10.5 NOVA · §13 · §14 gates 8/12/16/17/18), o README das fixtures e as 6 fixtures novas por passo.
+Contexto novo, independente do subagente-E que as escreveu; leu os dois lados (o fonte por shell).
+
+**Sweep (vassoura de 70 entradas) — VERDE** sobre: a espec emendada · a pasta inteira `fixtures/cloth/`
+(conteúdo, `strings` e NOMES) · o INBOX · `docs/3D/cloth/` · o README do `cleanroom/`. `--git-history`
+sobre esses caminhos: os únicos hits são os **pré-existentes de 2026-09-05** já adjudicados (o nome do
+ficheiro do fonte na mensagem de commit do `01` e no patch que o R-pré daquele dia já curou no doc vivo,
+mais a tabela de cobertura DESTE ledger, que o §6 exige) — **nada de novo, e a árvore viva está limpa**.
+
+**Achado §4.2 — UM, curado no acto pelo R-pré:** no §10.4 (Q9) a forma da queda do pincel estava nomeada
+por um **identificador em forma de código** entre crases. Re-dito em vocabulário do domínio, com o nome
+que o artista vê (a queda esférica por omissão, ou a *Projected*, medida no plano da vista) — que é a
+mesma palavra que o §4.3 já usava.
+
+**Insuficiência — UMA, curada no acto pelo R-pré:** o gate 16 (Q8) fixava a contagem em `2×` sem dizer de
+onde vem o `2`. A regra derivável estava só no corpo (§5.2-bis: `n` passagens de simetria ⇒ `n+1` cópias,
+e as fixtures têm `n = 1`); o gate passa a nomeá-la, senão um teste com espelho reprova sobre produto
+correcto.
+
+**Wording de manual/comentário · pseudo-código espelhado · tabela verbatim · organização transcrita ·
+outros nomes internos: nenhum.** As emendas descrevem o mecanismo em fases funcionais e em vocabulário
+nosso (célula · construção · activação · âncora · varredura); os únicos `snake_case` novos são nomes de
+fixture NOSSOS. As tabelas do §10.3/§10.4/§10.5 são medição nossa (M) e saída do oráculo (§4.1.6).
+⚠️ O bloco que descreve o tempo de vida do registo de pares (§3.3) foi pesado e **fica**: ele é a LEI que
+produz o multiconjunto de restrições — comportamento observável por contagem e pela régua de vértices
+movidos — e está escrito sem nomear função, ficheiro ou variável do alvo (§4.1.11: o limite é a FORMA,
+nunca a profundidade).
+
+**Os factos das três emendas, conferidos no fonte (R vê os dois lados) — TODOS correctos:**
+- **Q8.1** — o número de varreduras de relaxação por passo é uma constante única, igual nos três tipos de
+  área; não há multiplicador por área.
+- **Q8.2** — o registo de pares já criados é **local a uma construção** e a construção só corre para
+  células ainda **não activadas**; a activação é um passo SEPARADO, que o primeiro passo do traço nunca
+  alcança no ramo *Local* (ele constrói e retorna). ⇒ a mesma célula é construída outra vez no passo
+  seguinte e **cada restrição fica em duplicado**; em *Global*/*Dynamic* o primeiro passo **não constrói**
+  e a lista nasce simples. A generalização `n+1` para `n` passagens de simetria também confere.
+- **Q8 (colateral)** — duplicam-se **todas** as espécies: a de distância porque o registo é novo, e as de
+  corpo mole / âncora / pino porque não têm registo nenhum. ✔
+- **Q8 (ordem)** — a relaxação corre **antes** da integração dentro do passo, e as âncoras são escritas
+  **antes** da relaxação ⇒ a invisibilidade no 1.º passo simulado dos modos de força, e a visibilidade
+  imediata nos de âncora, estão certas. ✔
+- **Q9.1** — a localização do pincel deixa de ser lida do evento a partir do 2.º passo nos dois modos de
+  âncora; no gancho ela é somada ao delta **antes** de o delta deste passo ser recalculado ⇒ o centro é
+  `pen-down + Σ_{i<k} δ_i`, um passo atrasado, e no 1.º passo simulado é exactamente o pen-down (o delta
+  do primeiro passo é zerado). ✔ E esse centro é de facto o que a queda por-vértice usa como referência.
+- **Q9.2** — há uma escolha explícita de posições no kernel de forças: **repouso para o Grab, actuais para
+  todos os outros**, e ela alimenta as três coisas que a emenda nomeia (distância, recorte de região,
+  textura). ✔
+- **Q9.3** — não há eixo, plano nem limite de profundidade próprios do gancho; a des-projecção à
+  profundidade original e o achatamento no plano da vista pertencem ao **delta** e valem para os oito
+  modos. ✔
+- **Q9 (colateral)** — a força por passo das âncoras é zerada em **todo o objecto** nos DOIS modos de
+  âncora antes de ser reescrita, e os valores de reescrita (`1` radial / recorte no plano, para o Grab;
+  a queda, para o gancho) conferem. A redacção anterior do gate 12 estava **errada** e a correcção é a
+  certa. ✔
+- **Q10** — é medição nossa sobre o oráculo (fixtures novas com a prova de fatiamento a `0,000000`); a
+  leitura do rastreio bate com a lei da força que aponta ao cursor, e a do modo de linha com a lei que
+  aperta contra a linha do traço. ✔
+
+**Veredito: ATESTADO.** As três emendas descrevem comportamento, não expressão, e são fiéis.
+
 ---
 
 ## Espec
@@ -278,6 +345,8 @@ concordam entre si (47 traços; as 8 esferas com área `dinamica` no índice).
 | v1-r | idem — atestada; curas do R-pré (1 expressão · 6 higienes · anexos) | `0c884a2b2` (2026-09-05, R-pré) |
 | v1-e | idem — ERRATA do E (as 6 perguntas do I; §2.1 · §3.1 · §5.2 · §10; 8 fixtures de esfera regeradas como área Dinâmica) | `3d621e94b` + `d5844ad5c` (2026-09-06, E) |
 | v1-er | idem — errata atestada; curas do R-pré (3 nomes internos · 1 higiene) | `4cfc1745a` (2026-09-06, R-pré) |
+| v1-q | idem — EMENDAS Q8/Q9/Q10 do E (a lista duplicada do *Local* · o centro atrasado do gancho e o zeramento das âncoras · os dois traços de aperto por passo) | `52e6f75a0` · `bdc378b5f` · `82ecde1b6` · `9a79c1721` (2026-09-06, E) |
+| v1-qr | idem — emendas atestadas; curas do R-pré (1 nome interno no §10.4 · 1 insuficiência no gate 16) | este commit (2026-09-06, R-pré) |
 
 ---
 

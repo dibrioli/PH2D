@@ -377,3 +377,16 @@ não há guarda local que separe a ultrapassagem fiel do caos que vem depois del
 (`0,944` no plano, `0,329` radial, `0,303` na esfera), o **Expand** (`0,557` · `0,192` · `0,560`),
 o **Inflate** (`0,378` · `0,253`), o **Snake Hook de 2 passos** (`0,39`–`0,42`) e os modos
 não-arrasto na **esfera**. Cada um precisa da sua pergunta.
+
+### E uma QUINTA hipótese refutada, sobre a família do falloff de PLANO (2026-09-06)
+
+Os quatro traços `*_plano_local` são sistematicamente piores que os irmãos radiais
+(`empurrar 0,944` · `apertar_ponto 0,613` · `arrastar 0,233` · `agarrar 0,180`), e a §4.4 diz que o
+plano de queda passa pelo **centro da área** com normal `δ̂`, enquanto nós o fazemos passar pelo
+**cursor**. Trocado para o centro da área: `empurrar 0,944 → 1,250`, `apertar_ponto 0,613 → 0,798`,
+`arrastar 0,233 → 0,716`, `agarrar` inalterado. ⇒ **refutada** — o plano pelo cursor é o que
+reproduz o alvo, e a frase da §4.4 não se lê como nós a líamos.
+
+⏳ **Pergunta para uma próxima ronda** (não urgente, e nomeada para não se perder): na área *Local*,
+o «centro da área» de que a §4.4 fala é a localização inicial fixa (o que a §2.1 define) ou a do
+cursor? A medição diz cursor; a espec, lida à letra, diz a inicial.

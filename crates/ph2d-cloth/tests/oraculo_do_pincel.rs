@@ -637,6 +637,142 @@ fn sonda_da_cadeia_com_parede() {
     }
 }
 
+/// Um dump POR PASSO do oráculo: o caminho e os blocos de posições DEPOIS de
+/// cada passo (`passo k` + `N` linhas `d`).
+struct PorPasso {
+    caminho: Vec<V3>,
+    blocos: Vec<Vec<V3>>,
+}
+
+fn por_passo(nome: &str) -> PorPasso {
+    let texto = inflar(&format!("{nome}.porpasso.txt.gz"));
+    let (mut caminho, mut blocos): (Vec<V3>, Vec<Vec<V3>>) = (Vec::new(), Vec::new());
+    for l in texto.lines() {
+        let campos: Vec<&str> = l.split_whitespace().collect();
+        match campos.first().copied() {
+            Some("c") => caminho.push(v3(&campos[1..])),
+            Some("passo") => blocos.push(Vec::new()),
+            Some("d") => blocos.last_mut().expect("bloco antes de d").push(v3(&campos[1..])),
+            _ => {}
+        }
+    }
+    PorPasso { caminho, blocos }
+}
+
+/// **SONDA — PASSO A PASSO contra o oráculo**, para UM traço (`PH2D_TRACO`).
+///
+/// ⭐ É a régua «fase a fase onde houver dumps» do §7.2 da skill: a comparação
+/// final diz QUANTO diverge; esta diz EM QUE PASSO a divergência nasce, e em
+/// que vértice (sob o cursor inicial · a 1R e 2R dele, perpendicular ao traço ·
+/// no início, meio e limite da banda · sob o cursor de cada passo).
+/// ⚠️ Um bloco cujas posições sejam o REPOUSO é um glitch do arnês do oráculo
+/// e é saltado com aviso — não é «erro zero».
+#[test]
+#[ignore = "sonda"]
+fn sonda_passo_a_passo() {
+    let nome = std::env::var("PH2D_TRACO").unwrap_or_else(|_| "plano_arrastar_radial_local".into());
+    let pp = por_passo(&nome);
+    let t = traco(&nome);
+    let sup = t.s("superficie").to_string();
+    let rest = repouso(&sup);
+    let fs = faces(&sup, &rest);
+    let an = aneis(rest.len(), &fs);
+    let anel = |v: u32| an[v as usize].clone();
+    let pincel = t.pincel();
+    let c0 = pp.caminho[0];
+    let r = pincel.raio;
+    // Os vértices nomeados: o mais próximo de cada ponto de referência.
+    let perto = |p: V3| -> usize {
+        (0..rest.len())
+            .min_by(|a, b| dist(rest[*a], p).total_cmp(&dist(rest[*b], p)))
+            .expect("malha vazia")
+    };
+    let nomeados: Vec<(String, usize)> = [
+        ("cursor0", 0.0),
+        ("1R", 1.0),
+        ("2R", 2.0),
+        ("2.875R", 2.875),
+        ("3.2R", 3.2),
+        ("3.5R", 3.5),
+        ("4R", 4.0),
+    ]
+    .iter()
+    .map(|(n, k)| ((*n).to_string(), perto([c0[0], c0[1] + k * r, c0[2]])))
+    .collect();
+
+    let mut pos = rest.clone();
+    let mut tecido = PincelTecido::pen_down(pincel, &pos, c0);
+    println!("{nome}: {} passos, {} blocos", pp.caminho.len(), pp.blocos.len());
+    // ⭐ As colunas do ARO são o discriminador Local/Global que o oráculo entregou
+    // em 06/09: no Local o `3,5R` mexe `≤0,0003` e o `4R` é **zero exacto** (o aro
+    // é âncora, porque o raio de construção é o LIMITE e ali `w = 0`); no Global
+    // os dois passam de `0,03`. *Um port cujo aro se mexe no Local tem o aro
+    // livre, e é isso que faz o Local render como o Global.*
+    println!(
+        "{:>4} | {:>7} {:>7} | {:>7} {:>7} | {:>7} {:>7} | {:>7} {:>7} | {:>8} {:>8}",
+        "k", "c0 nos", "c0 orac", "2.9R nos", "2.9R or", "3.5R nos", "3.5R or", "4R nos", "4R orac", "max nos", "max orac"
+    );
+    for k in 0..pp.caminho.len() {
+        let cursor = pp.caminho[k];
+        let prev = pp.caminho[k.saturating_sub(1)];
+        let delta = if pincel.modo == Modo::Agarrar {
+            [cursor[0] - c0[0], cursor[1] - c0[1], cursor[2] - c0[2]]
+        } else {
+            [cursor[0] - prev[0], cursor[1] - prev[1], cursor[2] - prev[2]]
+        };
+        let nrm = normais(&pos, &fs);
+        let mut na = [0.0f64; 3];
+        for (v, p) in pos.iter().enumerate() {
+            if dist(*p, cursor) < r {
+                for c in 0..3 {
+                    na[c] += nrm[v][c];
+                }
+            }
+        }
+        let passo = Passo {
+            cursor,
+            delta,
+            parado: k == 0,
+            normal_area: na,
+            normais: &nrm,
+            pressao: 1.0,
+        };
+        let simulou = tecido.passo(&pos, &anel, &passo);
+        if k == 0 {
+            reordenar(&mut tecido.sim);
+        }
+        if simulou {
+            for (v, act) in tecido.sim.activo.iter().enumerate() {
+                if *act {
+                    pos[v] = tecido.sim.x[v];
+                }
+            }
+        }
+        let Some(bloco) = pp.blocos.get(k) else {
+            continue;
+        };
+        let glitch = bloco.iter().zip(&rest).all(|(a, b)| a == b) && k > 0;
+        let u_n = |v: usize| dist(rest[v], pos[v]);
+        let u_o = |v: usize| dist(rest[v], bloco[v]);
+        let ck = perto(cursor);
+        let (mut max_n, mut max_o, mut err) = (0.0f64, 0.0f64, 0.0f64);
+        for v in 0..rest.len() {
+            max_n = max_n.max(u_n(v));
+            max_o = max_o.max(u_o(v));
+            err = err.max(dist(pos[v], bloco[v]));
+        }
+        let _ = (err, ck);
+        let (c0v, bnd, lim, fora) = (nomeados[0].1, nomeados[3].1, nomeados[5].1, nomeados[6].1);
+        println!(
+            "{:>4} | {:>7.4} {:>7.4} | {:>8.5} {:>8.5} | {:>8.5} {:>8.5} | {:>7.5} {:>7.5} | {:>8.4} {:>8.4}{}",
+            k + 1,
+            u_n(c0v), u_o(c0v), u_n(bnd), u_o(bnd), u_n(lim), u_o(lim), u_n(fora), u_o(fora),
+            max_n, max_o,
+            if glitch { "  (bloco = repouso: glitch do dump, ignorar)" } else { "" }
+        );
+    }
+}
+
 fn todas() -> Vec<String> {
     let mut nomes: Vec<String> = std::fs::read_dir(fixture_dir())
         .expect("fixtures/cloth")

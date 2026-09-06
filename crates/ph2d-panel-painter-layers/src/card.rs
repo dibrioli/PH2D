@@ -35,7 +35,27 @@ pub(crate) fn card_frame(
     let card = Rect::new(x, y, content_w, card_h);
     // ⭐ Raio e moldura pela porta do TEMA: o cartão é plano num tema moderno.
     let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(ctx.scene, card, radius, resolve(ColorToken::Bg1, theme));
+    // ⭐⭐⭐ **O tom de uma SUBSECÇÃO, não o de uma secção** — report do dono, 2026-09-06, com as
+    //    duas telas lado a lado: *«em Audio Editor: Effects temos o card. Já o card de Painter:
+    //    Jitter não se vê mais.»*
+    //
+    //    ⚠️ **Ele não sumiu: foi ENGOLIDO.** Este cartão sempre pintou `Bg1`, e em 2026-09-06 a
+    //    wave 12 pôs um cartão de SECÇÃO por trás dele — também `Bg1`. Dois `Bg1` encostados são
+    //    um só. *Um cartão dentro de um cartão da mesma cor não é um cartão; é o mesmo cartão.*
+    //
+    //    ⇒ a cura é a lei que o próprio dono descreveu na wave 9, e que existia sem um único
+    //    chamador: *«uma subsecção está com o seu título dentro do card da secção mas o seu
+    //    conteúdo fica dentro de outro card/container de COR DIFERENTE»*. O tom vem da porta, e
+    //    não de um token escolhido aqui — senão a escada volta a ter duas respostas.
+    fill_rounded_rect(
+        ctx.scene,
+        card,
+        radius,
+        resolve(
+            ph2d_editor_core::widget::section_cards::CardDepth::Subsection.token(),
+            theme,
+        ),
+    );
     ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         card,

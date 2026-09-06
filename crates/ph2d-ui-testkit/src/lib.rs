@@ -114,6 +114,22 @@ impl MockPanelHost {
         host
     }
 
+    /// ⭐⭐⭐ **Pinta no TEMA que se pede** — e a ausência desta porta era um buraco de cobertura,
+    /// não uma conveniência em falta.
+    ///
+    /// ⚠️ **`Theme::default()` é `Forge`, que é CLÁSSICO.** Enquanto este arnês não soube trocar de
+    /// tema, **todo gate de painel deste repo mediu a família clássica** — e a família MODERNA (o
+    /// redesenho plano: a pele sem moldura, o cartão de secção, o raio de 3 px) não tinha um único
+    /// teste de painel a olhar para ela. Medido em 2026-09-06, a caçar um report do dono (*«o card
+    /// de Painter: Jitter não se vê mais»*): a sonda que eu escrevi para achar o defeito devolveu
+    /// **exactamente a mesma contagem** com e sem os cartões — porque no clássico não há cartão
+    /// nenhum para contar. *Uma sonda no tema errado mede outro programa.*
+    #[must_use]
+    pub fn in_theme(mut self, theme: Theme) -> Self {
+        self.theme = theme;
+        self
+    }
+
     /// **O host com as DUAS metades que o app de facto popula** — o chrome partilhado *e* o painel.
     ///
     /// # Por que existe

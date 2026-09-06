@@ -81,7 +81,12 @@ pub enum CardDepth {
 }
 
 impl CardDepth {
-    fn token(self) -> ColorToken {
+    /// ⭐ **O tom desta profundidade.** `pub` porque um painel que pinta o PRÓPRIO cartão interior
+    /// (o *Jitter* do Painter, e mais onze) tem de pedir o tom à porta em vez de escolher um — foi
+    /// escolhê-lo que fez os dois cartões nascerem `Bg1` e se engolirem (report do dono,
+    /// 2026-09-06).
+    #[must_use]
+    pub fn token(self) -> ColorToken {
         match self {
             Self::Section => ColorToken::Bg1,
             Self::Subsection => ColorToken::Bg2,
@@ -172,7 +177,7 @@ pub fn with_section_cards<R>(
 ) -> R {
     begin_section_cards(scene, theme, top);
     let out = body(scene);
-    end_section_cards(scene);
+    let _ = end_section_cards(scene);
     out
 }
 
@@ -200,17 +205,25 @@ pub fn begin_section_cards(scene: &mut VectorScene, theme: Theme, top: f32) {
 }
 
 /// **Fecha o corpo:** pinta os cartões na cena real e devolve o corpo por cima.
-pub fn end_section_cards(scene: &mut VectorScene) {
+///
+/// ⭐⭐ **Devolve QUANTOS cartões pintou** — e não é conveniência: sem este número, *«o painel tem
+/// cartões»* e *«o painel tem UM cartão que engole tudo»* leem-se exactamente igual, tanto no ecrã
+/// como numa contagem de geometria. Foi essa ambiguidade que fez o report do dono (*«o card de
+/// Painter: Jitter não se vê mais»*) demorar a ter causa: a cena crescia, logo *alguma coisa*
+/// estava a ser pintada. ⚠️ Produção ignora-o; quem o lê é um gate.
+pub fn end_section_cards(scene: &mut VectorScene) -> usize {
     let Some((cards, mut parked)) = LEDGER.with(|l| l.borrow_mut().pop()) else {
-        return;
+        return 0;
     };
     // O corpo sai; a cena real volta.
     let mut painted_body = VectorScene::new();
     std::mem::swap(scene, &mut painted_body);
     std::mem::swap(scene, &mut parked);
 
+    let n = cards.rects.len();
     cards.paint_into(scene);
     scene.inner_mut().append(painted_body.inner(), None);
+    n
 }
 
 thread_local! {

@@ -166,3 +166,64 @@ fn a_body_inside_another_gives_the_parent_its_own_back() {
         path_count(&scene)
     );
 }
+
+/// ⛔⛔ **UM CARTÃO DENTRO DE OUTRO DA MESMA COR NÃO É UM CARTÃO — é o mesmo cartão.**
+///
+/// Report do dono, 2026-09-06, com as duas telas lado a lado: *«em Audio Editor: Effects temos o
+/// card. Já o card de Painter: Jitter não se vê mais.»*
+///
+/// ⚠️ **Ele não sumiu — foi ENGOLIDO.** O Painter já pintava um cartão próprio para o *Jitter* (e
+/// mais onze) em `Bg1`, e a wave 12 pôs um cartão de SECÇÃO por trás dele, também `Bg1`. Dois
+/// tons iguais encostados leem-se como uma superfície só.
+///
+/// ⚠️⚠️ **E nenhuma régua desta linha o via**, o que é o mais caro: a cena CRESCEU (os 9 cartões do
+/// pincel estão lá, com 296 e 609 px de altura), o `close_section` foi chamado, o gate do cartão
+/// ficou verde — *tudo o que se media respondia «sim, há cartão»*. O que faltava medir era o
+/// CONTRASTE entre profundidades vizinhas.
+#[test]
+fn two_nested_depths_never_paint_the_same_tone() {
+    // ⛔ **O OLED fica de fora, e a exceção é HERDADA, não inventada:** o gate irmão
+    // `a_card_stands_off_its_panel` (ph2d-tokens) já a declara com a medição — *«base preta e
+    // contraste 0 colapsam a família, e quem separa lá é a Draw Extra Borders, como no Godot»*.
+    // ⚠️ Medido aqui em 2026-09-06: painel, secção e subsecção lêem **0, 0, 0** — no OLED nenhum
+    // cartão do app é visível, o que é o preço do preto puro e **não** uma regressão desta wave.
+    for theme in [Theme::Dark, Theme::Gray, Theme::Light] {
+        let section = resolve(CardDepth::Section.token(), theme);
+        let sub = resolve(CardDepth::Subsection.token(), theme);
+        let d = |a: ph2d_vector::Color, b: ph2d_vector::Color| {
+            let (x, y) = (a.components, b.components);
+            (0..3).map(|i| (x[i] - y[i]).abs()).fold(0.0_f32, f32::max)
+        };
+        // ⚠️⚠️ **A barra é «DIFERENTES», e não um número — de propósito.** A tentação era herdar os
+        // 12/255 que o dono aprovou em §7.7, mas aquele par é *cartão contra PAINEL*; este é
+        // *subsecção contra SECÇÃO*, e a escada dá-lhe **10** (`#1f1f1f → #292929`). Pôr 12 aqui
+        // seria calibrar uma pergunta com a resposta de outra — o defeito que esta linha já
+        // registou duas vezes. *Se 10 chega ao olho é veredito do dono, e este gate defende o que
+        // se pode provar sem ele: que as três superfícies são TRÊS.*
+        let panel = resolve(ColorToken::PanelBg, theme);
+        let lum = |c: ph2d_vector::Color| {
+            let [r, g, b, _] = c.components;
+            r + g + b
+        };
+        // ⚠️ **A direcção é do TEMA, não da lei** — num tema claro a escada DESCE (as superfícies
+        // escurecem ao aninhar), e a 1.ª redacção deste gate exigia subida e reprovou o `Light`
+        // sobre uma escada correcta. *Uma lei escrita na polaridade de um tema é uma lei sobre
+        // aquele tema.* O que é invariante é a MONOTONIA: cada degrau afasta-se do anterior no
+        // mesmo sentido.
+        let (a, b, c) = (lum(panel), lum(section), lum(sub));
+        assert!(
+            (a < b && b < c) || (a > b && b > c),
+            "{theme:?}: a escada de fundos deixou de ser monótona — painel {:.0}, secção {:.0}, \
+             subsecção {:.0} (em 765)",
+            a * 255.0,
+            b * 255.0,
+            c * 255.0
+        );
+        assert!(
+            d(section, sub) > 0.0 && d(panel, section) > 0.0,
+            "{theme:?}: dois degraus vizinhos pintam o MESMO tom — um cartão dentro do outro \
+             desaparece, que foi exactamente o report do Painter/Jitter (seccao a subseccao: {:.1}/255)",
+            d(section, sub) * 255.0
+        );
+    }
+}

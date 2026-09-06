@@ -805,6 +805,49 @@ verde. A mutação apanhou-o. *Um censo de presença que lê comentários testem
 não o produto.* (É a terceira vacuidade desta espécie em três waves: a assinatura dentro do corpo,
 o nome de ficheiro numa isenção, e agora a prosa de um doc.)
 
+### 7.16 — ✅ WAVE 13 (2026-09-06): o cartão do Painter não sumiu — foi ENGOLIDO
+
+**Report do dono**, com as duas telas lado a lado: *«em Audio Editor: Effects temos o card. Já o
+card de Painter: Jitter não se vê mais.»*
+
+⭐⭐⭐ **A palavra dele — «não se vê MAIS» — era o diagnóstico.** O Painter já pintava um cartão
+próprio para o *Jitter* (e mais onze, via `card.rs::card_frame`) em **`Bg1`**, e a wave 12 pôs um
+cartão de **SECÇÃO** por trás dele, também `Bg1`. *Dois `Bg1` encostados são um só.*
+
+⇒ a cura é a lei que ele próprio descreveu na wave 9 e que existia com **zero chamadores**:
+*«uma subsecção está com o seu título dentro do card da secção mas o seu conteúdo fica dentro de
+outro card/container de COR DIFERENTE»*. O `card_frame` pede o tom à porta
+(`CardDepth::Subsection.token()` = `Bg2`) em vez de escolher um. **12 cartões internos** mudam com
+uma linha.
+
+#### ⚠️⚠️ E o caminho até à causa tem três achados maiores que o defeito
+
+**1 — `Theme::default()` é `Forge`, que é CLÁSSICO ⇒ nenhum gate de painel deste repo media a
+família MODERNA.** A primeira sonda que escrevi devolveu **exactamente a mesma contagem** com e sem
+os cartões (1 821 nos dois) — porque no clássico não há cartão nenhum para contar. *Uma sonda no
+tema errado mede outro programa.* ⇒ o arnês ganhou [`MockPanelHost::in_theme`], e o redesenho
+passou a ser observável de um teste de painel pela primeira vez. **No moderno a diferença é real:
+1 591 contra 1 573.**
+
+**2 — «há cartão» e «há UM cartão que engole tudo» dão o mesmo número.** A cena crescia, o
+`close_section` era chamado, todos os gates estavam verdes. O que faltava era **contar**: o
+`end_section_cards` passa a devolver quantos pintou, e a medição deu **9 cartões** no corpo do
+pincel — com **296 px** e **609 px** de altura. *Um cartão que preenche o corpo inteiro não tem
+borda visível.*
+
+**3 — o que nenhuma régua desta linha media era o CONTRASTE entre profundidades vizinhas.** O gate
+novo (`two_nested_depths_never_paint_the_same_tone`) fecha isso, e nasceu errado **duas** vezes:
+- exigia que a escada **SUBISSE**, e reprovou o `Light` sobre uma escada correcta — ali as
+  superfícies **escurecem** ao aninhar. *Uma lei escrita na polaridade de um tema é uma lei sobre
+  aquele tema;* o que é invariante é a **monotonia**.
+- e a barra que eu ia herdar (os `12/255` aprovados em §7.7) é de **outro par** — aquele é *cartão
+  contra painel*, este é *subsecção contra secção*, e a escada dá-lhe **10**. ⇒ o gate defende o
+  que se prova sem o dono (as três superfícies são TRÊS) e **a pergunta dos 10 px vai ao smoke**.
+
+⛔ **E o OLED lê `0, 0, 0` nas três superfícies** — no preto puro nenhum cartão do app é visível.
+A exceção é **herdada** do gate irmão `a_card_stands_off_its_panel`, que já a media e nomeava a
+cura do Godot (*Draw Extra Borders*); **não é regressão desta wave**.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

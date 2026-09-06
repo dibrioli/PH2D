@@ -13,6 +13,7 @@
 //! | **A ETIQUETA**: uma estrela com contorno branco largo por baixo de um preto fino | a largura é POR CAMADA (é isto que o Figma não faz: lá as N tintas partilham uma geometria de traço) |
 //! | **O CARRIL**: uma linha com três contornos de larguras decrescentes | a pilha ordena-se, e o de cima desenha por último |
 //! | **A MISTURA**: um disco com um 2.º preenchimento em `Multiply` a 60 % | opacidade e mistura são de CADA camada, e compõem-se DENTRO da forma |
+//! | **A SOMBRA**: um cartão com o 2.º preenchimento DESLOCADO | ONDE cada camada desenha é da CAMADA (v21) — sem isso dois preenchimentos ocupam os mesmos pixels |
 //! | O par de referência ao lado | a mesma arte feita à moda antiga (duas formas empilhadas) — para se ver que agora é **uma** |
 //!
 //! ⚠️ Se a linha `[vec-stack-smoke]` não aparecer, PARE: a cena não montou.
@@ -98,6 +99,24 @@ impl crate::App {
         mistura.blend = BlendMode::Multiply;
         scene.push_path(com(disco, vec![mistura]));
 
+        // ⭐⭐⭐ A SOMBRA: UMA forma, e o 2.º preenchimento desenha DESLOCADO (v21).
+        //
+        // ⚠️ **A receita é INVERTIDA, e é isso que a cena ensina.** Uma camada extra desenha sempre
+        // POR CIMA da base (a base é o chão da pilha, por desenho), então para uma sombra ATRÁS o
+        // que se desloca é a *forma*, não a sombra: a BASE leva a cor da sombra e a camada extra
+        // leva a cor viva, deslocada para cima e para a esquerda. O olho lê um cartão claro com
+        // sombra dura em baixo à direita — que é o que se queria.
+        let cartao = crate::build_smoke::shape(
+            ShapeKind::Rectangle,
+            [-8.2, -5.0],
+            [-3.6, -1.4],
+            &[],
+            [30, 30, 45],
+        );
+        let mut viva = PaintEntry::fill(Paint::Solid(Rgba8::new(245, 235, 210, 255)));
+        viva.offset = [-0.35, 0.35];
+        scene.push_path(com(cartao, vec![viva]));
+
         // O par de REFERÊNCIA: a mesma etiqueta feita à moda antiga — duas formas empilhadas.
         let mut fundo = crate::build_smoke::shape(
             ShapeKind::Star,
@@ -120,8 +139,9 @@ impl crate::App {
         scene.push_path(cima);
 
         eprintln!(
-            "[vec-stack-smoke] a ETIQUETA (1 forma, 2 contornos), o CARRIL (1 forma, 3 contornos) \
-             e a MISTURA (1 forma, 2 preenchimentos) — mais o par de REFERENCIA a' direita, que e' \
+            "[vec-stack-smoke] a ETIQUETA (1 forma, 2 contornos), o CARRIL (1 forma, 3 contornos), \
+             a MISTURA (1 forma, 2 preenchimentos) e a SOMBRA (1 forma, o 2.o preenchimento \
+             DESLOCADO) — mais o par de REFERENCIA a' direita, que e' \
              a mesma etiqueta em DUAS formas empilhadas. PEGUE a ferramenta Vector, clique numa \
              forma, e a seccao Appearance lista as camadas dela."
         );

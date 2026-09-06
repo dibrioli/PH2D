@@ -35,6 +35,12 @@ pub struct PaintRow {
     /// `0..=1`.
     pub opacity: f32,
     pub blend: BlendMode,
+    /// ⭐ **ONDE esta camada desenha**, relativo à forma, em unidades de mundo (v21).
+    ///
+    /// ⚠️ Publicado como o `width` é: o painel MOSTRA o que o documento tem, e o campo é semeado
+    /// dele no passe de sementes — sem isso ele mostraria o que a última edição deixou no store, que
+    /// é o defeito que a wave anterior pagou no campo de largura.
+    pub offset: [f64; 2],
 }
 
 /// O que a forma selecionada tem, hoje.

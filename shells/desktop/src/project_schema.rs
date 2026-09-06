@@ -533,4 +533,18 @@
 /// que nunca lhe toque escreve o que escrevia mais esse byte — e desenha byte a byte igual.
 ///
 /// ⛔ **Sem degrau de migração**, pela mesma decisão de 2026-08-26.
-pub(crate) const PROJECT_SCHEMA: u32 = 116;
+/// # 116 -> 117 — ONDE cada camada da pilha desenha (`line/Vector`)
+///
+/// O [`ph2d_vec_scene::PaintEntry`] ganhou `offset` (`VEC_SCENE_SCHEMA_VERSION` 20 -> 21) — o
+/// deslocamento de UMA camada, relativo à forma. Report do Enio, 2026-09-05: *"o fill não deveria
+/// ter um offset? não seria mais útil?"* Sem ele, dois preenchimentos desenham nos **mesmos
+/// pixels**, e as duas coisas que um artista faz com um segundo preenchimento — a sombra dura e a
+/// profundidade de um rótulo — são inexprimíveis sem duplicar a forma outra vez.
+///
+/// ⚠️ **O campo é apendado ao fim de `PaintEntry`, e não ao fim do `VecPath`** — a diferença é o
+/// modo de falha: um save v116 lido por este layout rebenta **dentro** do `Vec` de camadas (o
+/// postcard lê elemento a elemento), e não no fim do ficheiro. ⭐ Uma forma **sem pilha** não tem
+/// entradas ⇒ zero bytes novos, e o ficheiro é byte a byte o de antes.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão de 2026-08-26.
+pub(crate) const PROJECT_SCHEMA: u32 = 117;

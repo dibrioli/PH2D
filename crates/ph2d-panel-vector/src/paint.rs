@@ -170,12 +170,21 @@ fn seed_and_publish(
     // OUTRA camada é pior que um vazio: o artista lê `3`, escreve `4`, e engorda um traço que
     // media `12`. ⛔ E não é `live_number`: aquele lê o documento no PAINT, e o `number_cell` desta
     // casa pinta o que está no store — a semente é a porta que os outros três campos já usam.
-    if let Some(w) = state::current_appearance()
+    if let Some(row) = state::current_appearance()
         .zip(state::open_layer())
-        .and_then(|(a, i)| a.layers.get(i).map(|r| r.width))
-        && store.focus_id() != Some(ids::VECTOR_PAINT_WIDTH)
+        .and_then(|(a, i)| a.layers.get(i).copied())
     {
-        store.set_number_value(ids::VECTOR_PAINT_WIDTH, w);
+        // ⭐ E o par que diz ONDE ela desenha (v21), pela MESMA porta e com o mesmo guarda: um
+        // campo semeado por cima do dígito que o artista acabou de escrever apaga-o.
+        for (id, v) in [
+            (ids::VECTOR_PAINT_WIDTH, row.width),
+            (ids::VECTOR_PAINT_DX, row.offset[0]),
+            (ids::VECTOR_PAINT_DY, row.offset[1]),
+        ] {
+            if store.focus_id() != Some(id) {
+                store.set_number_value(id, v);
+            }
+        }
     }
     // Seed the Transform fields from the published bbox. 1-frame post-commit lag, ok.
     if let Some([tx, ty, tw, th]) = state::current_transform() {

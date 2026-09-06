@@ -173,3 +173,65 @@ fn probe_the_cost_of_a_deep_stack() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O DESLOCAMENTO DE UMA CAMADA SOFRE A POSE DA FORMA** — a ordem do afim.
+///
+/// ⚠️ **O caso de omissão NÃO testa isto:** com `offset = [0, 0]` as duas ordens dão o mesmo afim,
+/// e com a forma sem rotação nem escala também. O que as separa é uma forma **rodada** — ali,
+/// `translate ∘ transform` deixaria a sombra a andar no eixo do ECRÃ enquanto a forma roda por
+/// baixo dela, e o artista veria a sombra descolar ao rodar o objecto.
+///
+/// A régua é o ponto para onde a origem da camada vai: sob `rot(90°)`, um deslocamento de `+1` em
+/// `x` (o eixo da FORMA) tem de aterrar em `+1` no `y` do mundo.
+#[test]
+fn a_layers_offset_rides_the_shapes_pose() {
+    let rodado = Affine::rotate(std::f64::consts::FRAC_PI_2);
+    let onde = super::camada_xf(rodado, [1.0, 0.0]);
+    let p = onde * ph2d_vector::Point::ZERO;
+    assert!(
+        (p.x - 0.0).abs() < 1e-9 && (p.y - 1.0).abs() < 1e-9,
+        "a camada nao seguiu a pose: ({}, {}) — a ordem do afim esta' invertida",
+        p.x,
+        p.y
+    );
+    // O CONTROLO: o neutro devolve o afim de sempre, AO BIT — é o que mantém byte-idêntico o
+    // desenho de toda pilha que não desloca nada.
+    assert_eq!(
+        super::camada_xf(rodado, [0.0, 0.0]).as_coeffs(),
+        rodado.as_coeffs(),
+        "o neutro nao e' byte-identico"
+    );
+}
+
+/// ⭐⭐⭐ **A CAIXA DA FORMA COBRE A CAMADA DESLOCADA.**
+///
+/// ⛔ Sem isto ela é **recortada**: esta caixa dimensiona o scratch do FX e o rectângulo da camada
+/// de mistura, e é a MESMA ponta CEIFADA que o `inflate_for_stroke` já documenta duas vezes — a
+/// terceira vez que este ficheiro paga a conta, uma tinta adiante.
+#[test]
+fn the_shapes_box_covers_an_offset_layer() {
+    let mut p = quadrado();
+    p.paints = vec![{
+        let mut e = PaintEntry::fill(Paint::Solid(Rgba8::new(255, 0, 0, 255)));
+        e.offset = [5.0, -3.0];
+        e
+    }];
+    let r = ph2d_vector::Rect::new(0.0, 0.0, 10.0, 10.0);
+    let inflada = crate::standalone::inflate_for_stroke(&p, Affine::IDENTITY, r);
+    assert!(
+        inflada.x1 >= r.x1 + 5.0 && inflada.y0 <= r.y0 - 3.0,
+        "a caixa nao cobre a camada deslocada: {inflada:?}"
+    );
+    // O CONTROLO: a MESMA pilha no neutro devolve a caixa que a forma já dava.
+    //
+    // ⚠️ **A 1.ª redacção comparava com o rectângulo CRU e reprovou** — `quadrado()` tem traço de
+    // base, então a caixa infla `2` em cada lado com pilha ou sem ela. *Um controlo que mede uma
+    // grandeza que a feature não toca acusa o produto pelo que já era verdade.*
+    let mut limpa = quadrado();
+    limpa.paints = vec![PaintEntry::fill(Paint::Solid(Rgba8::new(255, 0, 0, 255)))];
+    assert_eq!(
+        crate::standalone::inflate_for_stroke(&limpa, Affine::IDENTITY, r),
+        crate::standalone::inflate_for_stroke(&quadrado(), Affine::IDENTITY, r),
+        "uma pilha sem deslocamento mudou a caixa"
+    );
+}

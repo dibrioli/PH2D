@@ -141,6 +141,33 @@ pub(crate) fn number_field(
     store.set_number_range(id, min, max, step);
 }
 
+/// ⭐⭐⭐ **Um campo numérico de COORDENADA DE MUNDO — sem faixa, de propósito.**
+///
+/// ⚠️ **É uma grandeza diferente da de um `number_field` com faixa**, e a diferença é a lei desta
+/// casa: uma largura de traço tem um tecto (o recurso é a caneta), e uma **coordenada de mundo não
+/// tem nenhum** — ela abrange qualquer magnitude, e um clamp ali torna posições legítimas
+/// inalcançáveis por digitação. O arrasto é calibrado ao vivo pelo `vector_bridge`
+/// (`set_number_drag_rate`), então o campo é 1:1 com o ecrã em qualquer zoom.
+///
+/// ⛔ Ela existe porque a lei estava escrita num COMENTÁRIO dentro de um laço, e a wave seguinte
+/// (o deslocamento de uma camada, v21) registou o campo dela com a faixa da **largura do traço** —
+/// um tecto emprestado de outro recurso, que é o defeito que o `CLAUDE.md` §0.0 nomeia. *Uma lei em
+/// comentário não é uma lei; só uma PORTA é.*
+pub(crate) fn world_number_field(store: &mut WidgetStore, id: ph2d_a11y::NodeId, value: f64) {
+    store.register(
+        id,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value,
+            buffer: format!("{value}"),
+            caret: 0,
+            last_committed: value,
+            selection_anchor: None,
+        },
+    );
+    // ⛔ SEM `set_number_range` — ver o doc acima.
+}
+
 /// Register a slider + its linked value chip, seeded at `track` / `display`.
 pub(crate) fn slider_chip(
     store: &mut WidgetStore,
@@ -497,21 +524,8 @@ fn populate_transform_fields(store: &mut WidgetStore) {
         ids::VECTOR_VERT_X,
         ids::VECTOR_VERT_Y,
     ] {
-        store.register(
-            id,
-            InteractiveState::NumberInput {
-                state: TextInputState::Normal,
-                value: 0.0,
-                buffer: String::from("0"),
-                caret: 0,
-                last_committed: 0.0,
-                selection_anchor: None,
-            },
-        );
-        // NO `set_number_range` → the field is UNBOUNDED (no clamp, world coords
-        // span any magnitude). The shell's `vector_bridge` calibrates the drag
-        // scrub live via `set_number_drag_rate(px_to_world)` so a chip drag is 1:1
-        // with the shape's on-screen movement at any zoom.
+        // A lei (campo SEM faixa) vive na porta, e não neste laço — ver [`world_number_field`].
+        world_number_field(store, id, 0.0);
     }
     // **Resize Box** (plano UI/UX W3b) — sem este registo o checkbox ficaria pintado, com
     // hit-rect, e MORTO sob o rato: a checagem de focabilidade mora no store. É o defeito que

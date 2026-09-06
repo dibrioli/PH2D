@@ -268,6 +268,22 @@ pub(crate) fn svg(
                     None => aproximadas.push((*id, "modo de mistura sem equivalente em CSS")),
                 }
             }
+            // ⭐⭐⭐ **E ONDE ela desenha** (v21). O SVG exprime-o directamente — um `transform` de
+            // translação no elemento —, então também aqui nada se perde.
+            //
+            // ⭐⭐ **E ele sai CRU, sem tocar na lei dos eixos — o que é a PROVA de que o sítio dele
+            // é o `bake_xform`.** Este `p` já passou pelos DOIS assadores (a pose, depois
+            // `world_to_svg`), e o deslocamento viaja com a geometria porque o assador o leva
+            // (`apply_vec`) ⇒ quando chega aqui, ele **já está em espaço de ficheiro**.
+            //
+            // ⛔ A 1.ª redacção desta linha multiplicava por `EIXOS` e invertia o `y` outra vez —
+            // a lei do eixo escrita pela **quinta** vez nesta casa, sobre um valor que já a tinha
+            // sofrido. *Uma lei escrita em dois sítios ainda não é uma lei — só uma PORTA é*, e o
+            // cabeçalho deste ficheiro diz exactamente isso, três parágrafos acima.
+            if camada.offset != [0.0, 0.0] {
+                let [dx, dy] = camada.offset;
+                let _ = write!(extra, r#" transform="translate({} {})""#, num(dx), num(dy));
+            }
             match camada.paint {
                 ph2d_vec_scene::PaintRef::Fill(paint) => {
                     let d = ph2d_vec_render::build_contours(p, Some(true)).to_svg();

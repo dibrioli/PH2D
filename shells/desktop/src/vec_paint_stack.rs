@@ -156,6 +156,7 @@ pub(crate) fn published(
                     enabled: e.enabled,
                     opacity: e.opacity.get(),
                     blend: e.blend,
+                    offset: e.offset,
                 }
             })
             .collect(),
@@ -260,6 +261,19 @@ pub(crate) fn set_width(scene: &mut VecScene, sel: &[VecPathId], i: usize, w: f6
             }
             _ => false,
         }
+    })
+}
+
+/// **ONDE a camada `i` desenha** (v21) — em unidades de mundo, relativo à forma.
+///
+/// ⚠️ Vale nas DUAS espécies: a sombra dura de um PREENCHIMENTO é o caso que motivou isto.
+pub(crate) fn set_offset(scene: &mut VecScene, sel: &[VecPathId], i: usize, o: [f64; 2]) -> bool {
+    edit(scene, sel, |p| match p.paints.get_mut(i) {
+        Some(e) if e.offset != o => {
+            e.offset = o;
+            true
+        }
+        _ => false,
     })
 }
 

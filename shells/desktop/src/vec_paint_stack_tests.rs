@@ -1,7 +1,9 @@
 //! Gates da PILHA DE APARÊNCIA do lado da shell (v20) — a vista publicada, os verbos, e a
 //! resolução de um clique num id de runtime.
 
-use super::{StackVerb, apply, published, set_blend, set_opacity, set_width, stack_verb_for_id};
+use super::{
+    StackVerb, apply, published, set_blend, set_offset, set_opacity, set_width, stack_verb_for_id,
+};
 use ph2d_vec_scene::{
     MAX_PAINT_LAYERS, Paint, PaintEntry, PaintKind, Rgba8, StrokeSpec, VecPath, VecScene, VecVertex,
 };
@@ -224,4 +226,29 @@ fn a_new_stroke_has_a_width_and_a_fill_layer_refuses_one() {
         "a camada de preenchimento nao tem largura para escrever"
     );
     let _ = StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 1.0);
+}
+
+/// ⭐⭐⭐ **O DESLOCAMENTO ESCREVE-SE EM TODA A SELECÇÃO, E É IDEMPOTENTE.**
+///
+/// ⚠️ **As duas metades, e a segunda é a que importa para o undo:** escrever o MESMO deslocamento
+/// devolve `false`, senão um arrasto de campo registaria um passo por quadro. É a lei que o
+/// `set_opacity` e o `set_blend` ao lado já pagam.
+#[test]
+fn a_layers_offset_is_written_to_the_whole_selection_and_is_idempotent() {
+    let (mut scene, ids) = cena();
+    apply(&mut scene, &ids, StackVerb::AddFill);
+    assert!(set_offset(&mut scene, &ids, 0, [3.0, -2.0]));
+    assert!(
+        !set_offset(&mut scene, &ids, 0, [3.0, -2.0]),
+        "reescrever o mesmo deslocamento contou como mudanca de documento"
+    );
+    for id in &ids {
+        assert_eq!(
+            scene.path(*id).expect("forma").paints[0].offset,
+            [3.0, -2.0],
+            "a forma {id:?} nao recebeu o deslocamento"
+        );
+    }
+    // ⛔ Um índice que não existe é SALTADO, nunca criado — a lei do cabeçalho deste módulo.
+    assert!(!set_offset(&mut scene, &ids, 7, [1.0, 1.0]));
 }

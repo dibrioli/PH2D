@@ -137,3 +137,37 @@ fn the_widest_stroke_reads_the_whole_stack() {
         "sem traco nenhum a largura e' zero, e nao um infinito negativo"
     );
 }
+
+/// ⭐⭐⭐ **O DESLOCAMENTO DE UMA CAMADA É UM VECTOR, NÃO UM PONTO.**
+///
+/// Assar uma pose escala/roda o deslocamento (a parte **linear**) e **ignora a translação** — se
+/// ele apanhasse a translação, a camada andaria **duas** vezes: uma porque a geometria dela se
+/// moveu, outra porque o deslocamento se somou.
+///
+/// ⚠️ **E o caso de omissão não vê o defeito:** com uma pose que só ESCALA, as duas leis dão o
+/// mesmo número. O que as separa é uma pose com **translação**, que é precisamente a pose que uma
+/// fixtura descuidada usa (mover um objecto é o gesto mais comum do app).
+#[test]
+fn a_layers_offset_is_a_vector_and_not_a_point() {
+    let mut p = com_pilha();
+    p.paints[0].offset = [2.0, 0.0];
+    // Escala 3× E translada +100: só a escala pode tocar no deslocamento.
+    crate::bake_xform(&mut p, &crate::Xform([3.0, 0.0, 0.0, 3.0, 100.0, 50.0]));
+    assert_eq!(
+        p.paints[0].offset,
+        [6.0, 0.0],
+        "o deslocamento apanhou a translacao — a camada andaria duas vezes"
+    );
+}
+
+/// **O CONTROLO: uma pose que só TRANSLADA não mexe no deslocamento.**
+///
+/// Sem ele o gate acima ficaria verde sobre um assador que multiplicasse por `3` e somasse `0` por
+/// acidente. Aqui a parte linear é a identidade, então o número tem de sair **igual**.
+#[test]
+fn a_pure_translation_leaves_a_layers_offset_alone() {
+    let mut p = com_pilha();
+    p.paints[0].offset = [2.0, -1.0];
+    crate::bake_xform(&mut p, &crate::Xform([1.0, 0.0, 0.0, 1.0, 100.0, 50.0]));
+    assert_eq!(p.paints[0].offset, [2.0, -1.0]);
+}

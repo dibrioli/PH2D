@@ -138,6 +138,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.paint.fill" => "Fill",
         "panel.vector.paint.stroke" => "Stroke",
         "panel.vector.paint.width" => "Width",
+        // ⚠️ `X`/`Y` e não «Offset X»: a casa escreve um par de coordenadas com uma letra por caixa
+        // (o Transform, o Vertex), e a calha do rótulo é MEDIDA — um rótulo longo estreita o campo.
+        "panel.vector.paint.dx" => "X",
+        "panel.vector.paint.dy" => "Y",
         "panel.vector.paint.opacity" => "Opacity",
         "panel.vector.paint.blend" => "Blend",
         "panel.vector.paint.add_fill" => "+ Fill",

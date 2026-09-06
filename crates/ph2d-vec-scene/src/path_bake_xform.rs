@@ -79,6 +79,18 @@ pub(crate) fn transform_fill_geometry(
             crate::PaintKind::Fill(p) => transform_paint(p, &f, radius_scale),
             crate::PaintKind::Stroke(s) => transform_stroke(s, x, caneta),
         }
+        // ⭐⭐ **E O DESLOCAMENTO DA CAMADA** (v21) — pela parte **LINEAR** de `x`, nunca pela
+        // translação.
+        //
+        // ⚠️ Ele é um VECTOR (uma diferença entre dois pontos), não um ponto: assar uma pose que
+        // move a forma `+5` em `x` já move a camada junto, porque a geometria dela é a mesma. Somar
+        // a translação aqui fá-la-ia andar **duas** vezes — e o defeito seria invisível em toda
+        // pose sem translação, que é exactamente o caso que uma fixtura descuidada testa.
+        //
+        // ⭐ A porta já existia com a lei escrita nela (`apply_vec`: *"transladar um delta o
+        // transformaria em ponto — o erro clássico"*); uma segunda conta aqui seria a cópia que
+        // envelhece, que é a cicatriz que este ficheiro já carrega três vezes.
+        e.offset = x.apply_vec(e.offset);
     }
     if let Some(p) = path.fill.as_mut() {
         transform_paint(p, &f, radius_scale);

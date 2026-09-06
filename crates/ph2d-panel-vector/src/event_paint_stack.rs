@@ -61,7 +61,7 @@ pub(super) fn value_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
     let WidgetEvent::ValueChanged(id) = ev else {
         return None;
     };
-    if id == ids::VECTOR_PAINT_WIDTH {
+    if id == ids::VECTOR_PAINT_WIDTH || id == ids::VECTOR_PAINT_DX || id == ids::VECTOR_PAINT_DY {
         return Some(super::forward_number(host, id));
     }
     if id == ids::VECTOR_PAINT_OPACITY {

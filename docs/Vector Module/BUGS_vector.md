@@ -159,6 +159,15 @@ mutação que tira o teto da rota do painel derruba **três** gates.
 
 ### #29 — a PILHA DE APARÊNCIA nascia inteira e MUDA ✅ 2026-09-05
 
+> ⚠️ **A wave seguinte (v21) acrescentou o DESLOCAMENTO por camada**, de uma pergunta do Enio no
+> mesmo dia (*"o fill não deveria ter um offset? não seria mais útil?"*) — sem ele dois
+> preenchimentos ocupam os mesmos pixels. Mecanismo, as duas medições que partem o pedido em duas
+> features de preços muito diferentes, e as três leis que só a construção revelou:
+> [doc 46 §8-ter](46_a_forma_tem_N_tintas.md). ⛔ Não é um bug — é o registo de que aquela wave
+> **encostou** neste ficheiro (o censo `the_artless_draw_routes_are_declared` reprovou, e a cura foi
+> actualizar a agulha, não apagar a linha).
+
+
 **Sintoma** (Enio, no 1.º smoke do item 4): *"O olho não funciona. Clicar no nome não exibe a
 largura, a opacidade e a mistura. Demais botões não funcionam"*.
 

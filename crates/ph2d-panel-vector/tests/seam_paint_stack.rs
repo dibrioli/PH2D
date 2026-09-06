@@ -53,6 +53,7 @@ fn traco(w: f64) -> PaintRow {
         enabled: true,
         opacity: 1.0,
         blend: BlendMode::Normal,
+        offset: [0.0, 0.0],
     }
 }
 
@@ -64,6 +65,7 @@ fn tinta() -> PaintRow {
         enabled: true,
         opacity: 1.0,
         blend: BlendMode::Normal,
+        offset: [0.0, 0.0],
     }
 }
 
@@ -387,6 +389,98 @@ fn the_layer_blend_chip_opens_and_the_pick_reaches_the_bus() {
         codigos,
         vec![f64::from(modo.to_u8())],
         "a mistura escolhida na camada nao chegou ao barramento com o codigo do modo"
+    );
+    state::close_open_layer();
+    state::set_current_appearance(None);
+}
+
+/// ⭐⭐⭐ **ONDE A CAMADA DESENHA CHEGA AO BARRAMENTO, NOS DOIS EIXOS.**
+///
+/// Report do Enio, 2026-09-05: *"o fill não deveria ter um offset? não seria mais útil?"* — sem
+/// ele dois preenchimentos desenham nos MESMOS pixels e o de cima só se distingue por cor,
+/// opacidade e mistura.
+///
+/// ⚠️ **Os dois eixos, e não só o `x`:** eles são ids diferentes num braço só, e um braço que
+/// casasse apenas o primeiro deixaria metade do controlo mudo — a forma exacta do bug #29.
+#[test]
+fn the_layers_offset_reaches_the_bus_on_both_axes() {
+    publica(vec![tinta()]);
+    state::toggle_open_layer(0);
+    for (id, valor, eixo) in [
+        (ids::VECTOR_PAINT_DX, 3.0, "x"),
+        (ids::VECTOR_PAINT_DY, -2.5, "y"),
+    ] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        host.set_number_value(id, valor);
+        host.apply_panel_event::<VectorPanel>(&mut st, WidgetEvent::ValueChanged(id));
+        let sent: Vec<f64> = host
+            .drained_actions()
+            .into_iter()
+            .filter_map(|a| match a {
+                EditorAction::ToolPanelEvent(PanelEvent::SetValue(c, v)) if c == id => Some(v),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            sent,
+            vec![valor],
+            "o deslocamento em {eixo} nao chegou ao barramento"
+        );
+    }
+    state::close_open_layer();
+    state::set_current_appearance(None);
+}
+
+/// ⭐⭐ **O PAR X/Y APARECE NUM PREENCHIMENTO — e é o ponto da wave.**
+///
+/// ⚠️ A LARGURA só existe num contorno (um preenchimento não tem uma), e o deslocamento existe nos
+/// **dois**: a sombra dura de um preenchimento é o caso que motivou isto. Um gate que só medisse o
+/// contorno ficaria verde sobre um painel que esconde o par exactamente onde ele foi pedido.
+#[test]
+fn the_offset_pair_shows_on_a_fill_layer_where_the_width_does_not() {
+    publica(vec![tinta()]);
+    state::toggle_open_layer(0);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    for (id, what) in [(ids::VECTOR_PAINT_DX, "o X"), (ids::VECTOR_PAINT_DY, "o Y")] {
+        assert!(
+            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+                .is_some(),
+            "{what} nao foi pintado numa camada de PREENCHIMENTO"
+        );
+    }
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_PAINT_WIDTH)
+            .is_none(),
+        "a largura foi pintada num preenchimento — o controlo nao tem sujeito"
+    );
+    state::close_open_layer();
+    state::set_current_appearance(None);
+}
+
+/// ⭐⭐ **O PAR MOSTRA O DESLOCAMENTO DA CAMADA ABERTA.**
+///
+/// ⚠️ Mesma lei da largura, e a wave anterior pagou-a: sem a semente o campo mostra o que a última
+/// edição deixou no store, e o artista lê `0` numa camada que está a `4`.
+#[test]
+fn the_offset_fields_show_the_open_layers_offset() {
+    let mut linha = tinta();
+    linha.offset = [4.0, -1.5];
+    publica(vec![linha]);
+    state::toggle_open_layer(0);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    host.set_number_value(ids::VECTOR_PAINT_DX, 0.0);
+    host.set_number_value(ids::VECTOR_PAINT_DY, 0.0);
+    host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_PAINT_DX);
+    assert_eq!(
+        (
+            host.store().number_value(ids::VECTOR_PAINT_DX),
+            host.store().number_value(ids::VECTOR_PAINT_DY)
+        ),
+        (Some(4.0), Some(-1.5)),
+        "o par nao foi semeado da camada aberta"
     );
     state::close_open_layer();
     state::set_current_appearance(None);

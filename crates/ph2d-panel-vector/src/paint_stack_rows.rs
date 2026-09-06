@@ -127,6 +127,19 @@ impl BodyCtx<'_> {
         if !row.is_fill {
             y = self.lone_number_row(tr("panel.vector.paint.width"), ids::VECTOR_PAINT_WIDTH, y);
         }
+        // ⭐⭐⭐ **ONDE ela desenha** (v21) — o par `X`/`Y`, na MESMA `number_row` que o Transform e
+        // o Vertex usam para as coordenadas deles.
+        //
+        // ⚠️ **Aparece nas DUAS espécies**, ao contrário da largura: um preenchimento deslocado é
+        // precisamente o caso que motivou isto (a sombra dura), e escondê-lo num preenchimento
+        // deixaria de fora o pedido que a wave responde.
+        y = self.number_row(
+            tr("panel.vector.paint.dx"),
+            ids::VECTOR_PAINT_DX,
+            tr("panel.vector.paint.dy"),
+            ids::VECTOR_PAINT_DY,
+            y,
+        );
         let track = self.live_track(ids::VECTOR_PAINT_OPACITY, row.opacity);
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent
         #[expect(

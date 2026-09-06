@@ -94,6 +94,13 @@ pub fn vector_paint_del_id(i: usize) -> NodeId {
 /// A largura do contorno da camada ABERTA.
 pub const VECTOR_PAINT_WIDTH: NodeId = hash_node_id("vector.paint.width");
 
+/// **ONDE a camada ABERTA desenha** — o deslocamento em `x`, relativo à forma.
+pub const VECTOR_PAINT_DX: NodeId = hash_node_id("vector.paint.dx");
+
+/// O gémeo em `y`. ⚠️ Dois campos e não um: a casa escreve um par de coordenadas como duas caixas
+/// (`X`/`Y` do Transform, do Vertex), e um campo só obrigaria o artista a digitar uma sintaxe.
+pub const VECTOR_PAINT_DY: NodeId = hash_node_id("vector.paint.dy");
+
 /// A opacidade da camada ABERTA (0..100 %).
 pub const VECTOR_PAINT_OPACITY: NodeId = hash_node_id("vector.paint.opacity");
 

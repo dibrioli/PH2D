@@ -178,6 +178,66 @@ emite `Click`), removido.
 
 ---
 
+## §8-ter — ⭐⭐⭐ ONDE cada camada desenha (v21), e por que ele é GRÁTIS
+
+Pergunta do Enio, 2026-09-05, logo depois do smoke: *"o fill não deveria ter um offset? não seria
+mais útil?"*
+
+**Ele tem razão, e a medição diz porquê.** Sem deslocamento, dois preenchimentos ocupam os
+**mesmos pixels**, e o de cima só se distingue do de baixo por cor, opacidade e mistura. As duas
+coisas que um artista de facto faz com um segundo preenchimento — **a sombra dura** (o *offset
+print*, o *long shadow*) e a **profundidade** de um rótulo — pedem que ele esteja noutro sítio, e
+sem isso voltam a exigir **duplicar a forma**: exactamente a doença que o item 4 curou.
+
+### A medição parte o pedido em DUAS coisas com preços muito diferentes
+
+| | o que faz | custo por quadro |
+|---|---|---|
+| **deslocar** (v21, feito) | a mesma forma, noutro lugar | **zero** — a pilha inteira de `32` camadas encoda em `26,5 µs` de `16 700` (**0,16 %**), em release, e mover não acrescenta nada |
+| **engordar** (⏳ aberto) | a silhueta cresce para fora — o adesivo | **`0,085`–`0,44 ms` por camada** (`ph2d-vec-boolean`, `probe_offset_cost_per_call`, release) ⇒ até **17×** a pilha inteira, por UMA camada |
+
+⭐ O deslocamento é grátis porque **a geometria não muda**: a camada reusa a mesma tesselação e o
+renderer só lhe passa outro afim — que ele já passava, em toda camada. O custo somado é uma
+multiplicação de afins.
+
+⛔ **O «engordar» não é esta wave, e metade dele já existe:** a secção *Contour* faz anéis em volta
+da forma com rampa de cor (`VecContour`, memoizado). O que ela não é é uma **camada da pilha** — não
+dá para intercalar `preenchimento → contorno → preenchimento gordo`.
+
+### ⚠️ A receita da sombra é INVERTIDA, e é uma consequência do §3.3
+
+Uma camada extra desenha sempre **por cima** da base — a base é o chão da pilha, por desenho. ⇒ para
+uma sombra **atrás**, o que se desloca é a *forma*, não a sombra: a BASE leva a cor da sombra e a
+camada extra leva a cor viva, deslocada no sentido contrário. O olho lê um cartão claro com sombra
+dura, e é o que a peça **A SOMBRA** do smoke ensina.
+
+### As três leis que só a construção revelou
+
+1. **O deslocamento é um VECTOR, não um ponto.** Ele passa pelo `bake_xform` (é LOCAL — a regra-mãe
+   desta casa), e ali sofre só a parte **LINEAR**: apanhar a translação fá-lo-ia andar **duas**
+   vezes, uma porque a geometria se moveu e outra porque o número se somou. ⚠️ **O caso de omissão
+   não vê o defeito** — com uma pose que só escala as duas leis dão o mesmo número; o que as separa
+   é uma pose com translação, que é o gesto mais comum do app. ⭐ A porta já existia com a lei
+   escrita nela (`Xform::apply_vec`: *"transladar um delta o transformaria em ponto — o erro
+   clássico"*).
+2. **A ordem do afim é `transform ∘ translate`, e o neutro também não a testa.** Com `offset =
+   [0,0]` as duas ordens dão o mesmo afim; o que as separa é uma forma **rodada** — na ordem errada
+   a sombra anda no eixo do ECRÃ enquanto a forma roda por baixo dela.
+3. **A CAIXA da forma tem de cobrir a camada deslocada**, senão ela é **recortada** — a terceira vez
+   que o `inflate_for_stroke` paga a mesma conta (a ponta ceifada do miter, o traço mais gordo da
+   pilha, e agora isto). A inflação é simétrica de propósito: um deslocamento tem direcção e uma
+   caixa não, e a troca só tem um lado (uma caixa apertada CORTA; uma folgada custa memória).
+
+⛔⛔ **E o exportador SVG quase pagou a lei do eixo pela QUINTA vez.** A 1.ª redacção multiplicava o
+deslocamento por `EXPORT_PIXELS_PER_UNIT` e invertia o `y` — sobre um valor que **já** tinha sofrido
+as duas coisas, porque ele viaja com a geometria pelos dois `bake_xform`. Ele sai **cru**, e isso é a
+prova de que o sítio dele é o assador. *Uma lei escrita em dois sítios ainda não é uma lei — só uma
+PORTA é*, que é o que o cabeçalho daquele ficheiro já dizia.
+
+`VEC_SCENE_SCHEMA_VERSION` **20 → 21** · `PROJECT_SCHEMA` **116 → 117** (a tripla dos gates junto).
+
+---
+
 ## §9 — Smoke
 
 ```
@@ -189,6 +249,7 @@ env PH2D_VEC_STACK_SMOKE=1 cargo run -p ph2d-host-desktop --release
 | **A ETIQUETA** — uma estrela com contorno branco largo por baixo de um preto fino | a largura é POR CAMADA (o que o Figma não faz) |
 | **O CARRIL** — uma linha com três contornos de larguras decrescentes | a pilha ordena-se, e o de cima desenha por último |
 | **A MISTURA** — um disco com um 2.º preenchimento em `Multiply` a 60 % | opacidade e mistura são de CADA camada |
+| **A SOMBRA** — um cartão com o 2.º preenchimento DESLOCADO (v21) | ONDE cada camada desenha é da CAMADA; ⚠️ a receita é invertida (§8-ter) |
 | o par à direita | a mesma etiqueta à moda antiga: **duas** formas empilhadas |
 
 ---
@@ -203,3 +264,12 @@ env PH2D_VEC_STACK_SMOKE=1 cargo run -p ph2d-host-desktop --release
    ali (a swatch mostra uma cor, e escrever uma cor é o que ela promete).
 4. **Efeitos por atributo** (o *Appearance panel* do Illustrator põe um efeito em UMA camada) — a
    pilha de efeitos é do caminho inteiro, e cruzá-las é modelo novo.
+5. ⏳ **ENGORDAR uma camada** (a silhueta cresce para fora — o adesivo), que é a outra metade da
+   pergunta do Enio em §8-ter. **O preço está medido**: `0,085`–`0,44 ms` por camada e por quadro,
+   contra **zero** do deslocamento ⇒ ela precisa de memória do resultado, como o `VecContour` já
+   tem. ⚠️ E metade dela **já existe** na secção *Contour* — o que falta é ela ser uma CAMADA da
+   pilha, para se poder intercalar.
+6. ⏳ **Escalar e rodar uma camada.** O afim por camada já é o mecanismo (o `camada_xf` compõe um
+   `Affine`), então isto é painel, não motor. ⛔ Não foi feito porque **não foi pedido**, e escalar
+   uma forma comprida não a engorda por igual — quem quer o adesivo quer o item 5, e oferecer a
+   escala com esse nome ensinaria a coisa errada.

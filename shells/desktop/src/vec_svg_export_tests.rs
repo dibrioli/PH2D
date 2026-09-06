@@ -421,3 +421,55 @@ fn a_blend_mode_css_does_not_have_is_named_not_silently_normal() {
         out.aproximadas
     );
 }
+
+/// ⭐⭐⭐ **ONDE A CAMADA DESENHA ATRAVESSA O SVG** (v21) — e atravessa CRU.
+///
+/// ⚠️ **A régua é o número, não a presença do atributo.** O `p` que o exportador percorre já passou
+/// pelos DOIS assadores (a pose, depois `world_to_svg`), e o deslocamento viaja com a geometria
+/// porque o assador o leva (`apply_vec`) ⇒ quando chega ao escritor, **já está em espaço de
+/// ficheiro**. Aplicar a lei do eixo outra vez ali — que foi a 1.ª redacção — sairia com o `y`
+/// trocado e a escala ao quadrado, e um gate que só procurasse `transform=` ficaria verde sobre os
+/// dois defeitos.
+///
+/// Com `EXPORT_PIXELS_PER_UNIT = 1` e o eixo `y` invertido: um deslocamento de mundo `[3, 2]` sai
+/// como `translate(3 -2)`.
+#[test]
+fn a_layers_offset_crosses_the_svg_in_file_space() {
+    let mut scene = VecScene::new();
+    let mut base = VecPath {
+        verts: vec![v(0.0, 0.0), v(10.0, 0.0), v(10.0, 10.0)],
+        closed: true,
+        fill: Some(Paint::Solid(Rgba8::new(1, 2, 3, 255))),
+        ..VecPath::default()
+    };
+    let mut extra = ph2d_vec_scene::PaintEntry::fill(Paint::Solid(Rgba8::new(9, 9, 9, 255)));
+    extra.offset = [3.0, 2.0];
+    base.paints = vec![extra];
+    scene.push_path(base);
+
+    let out = svg(&scene, &VecXforms::new(), &sempre_nao, &sempre_nao);
+    assert!(
+        out.texto.contains(r#"transform="translate(3 -2)""#),
+        "o deslocamento da camada nao saiu em espaco de ficheiro:\n{}",
+        out.texto
+    );
+    // O CONTROLO: uma camada no neutro não escreve `transform` nenhum — senão todo SVG que este
+    // app exporta ganharia um atributo por camada, por nada.
+    let mut limpa = VecScene::new();
+    let mut b2 = VecPath {
+        verts: vec![v(0.0, 0.0), v(10.0, 0.0), v(10.0, 10.0)],
+        closed: true,
+        fill: Some(Paint::Solid(Rgba8::new(1, 2, 3, 255))),
+        ..VecPath::default()
+    };
+    b2.paints = vec![ph2d_vec_scene::PaintEntry::fill(Paint::Solid(Rgba8::new(
+        9, 9, 9, 255,
+    )))];
+    limpa.push_path(b2);
+    assert!(
+        !svg(&limpa, &VecXforms::new(), &sempre_nao, &sempre_nao)
+            .texto
+            .contains("transform="),
+        "uma camada no neutro escreveu um transform"
+    );
+}

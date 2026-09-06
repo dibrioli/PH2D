@@ -67,9 +67,13 @@ fn exactly_these_routes_draw_without_the_brush_art() {
         // e' escrita a' mao, entao o `stack_draw.rs` — modulo NOVO — passou verde sem se declarar,
         // e o filtro de contagem tambem nao conhecia o nome da porta nova (`draw_one_stroke`).
         // *Um censo que enumera FICHEIROS nao ve^ o ficheiro que ainda nao existe.*
+        // ⚠️ O 4.o argumento diz `onde` e nao `transform` desde a v21: uma camada desenha na pose
+        // da forma COMPOSTA com o deslocamento dela. A rota continua ARTLESS (os dois `None`), e o
+        // que mudou foi o nome — *este censo fixa o texto da chamada de propósito, e foi ele que
+        // apanhou a troca*.
         (
             "stack_draw.rs",
-            "stroke_draw::draw_one_stroke(path, s, tess, transform, target, None, None);",
+            "stroke_draw::draw_one_stroke(path, s, tess, onde, target, None, None);",
             "as CAMADAS da pilha de aparencia: a arte e' memoizada pela forma ANFITRIA, e uma \
              camada nao e' uma forma",
         ),

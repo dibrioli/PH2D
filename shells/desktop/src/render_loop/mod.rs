@@ -3435,6 +3435,10 @@ impl crate::App {
             // primeiro gesto que mexe na pilha.
             let mut pending_paint_verb: Option<crate::vec_paint_stack::StackVerb> = None;
             let mut pending_paint_width: Option<f64> = None;
+            // ⭐ ONDE a camada aberta desenha (v21). Dois slots e nao um par: as duas caixas
+            // comitam INDEPENDENTES, e um par obrigaria a inventar o eixo que nao mudou.
+            let mut pending_paint_dx: Option<f64> = None;
+            let mut pending_paint_dy: Option<f64> = None;
             let mut pending_paint_opacity: Option<f64> = None;
             let mut pending_paint_blend: Option<u8> = None;
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
@@ -3984,6 +3988,10 @@ impl crate::App {
                                 pending_vec_blend = Some(code);
                             } else if *id == ph2d_editor::ids::VECTOR_PAINT_WIDTH {
                                 pending_paint_width = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_PAINT_DX {
+                                pending_paint_dx = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_PAINT_DY {
+                                pending_paint_dy = Some(*v);
                             } else if *id == ph2d_editor::ids::VECTOR_PAINT_OPACITY {
                                 pending_paint_opacity = Some(*v);
                             } else if *id == ph2d_editor::ids::VECTOR_PAINT_BLEND {
@@ -7055,6 +7063,23 @@ impl crate::App {
                 if let Some(i) = ph2d_panel_vector::state::open_layer_index() {
                     if let Some(w) = pending_paint_width {
                         crate::vec_paint_stack::set_width(vec_scene, &sel, i, w);
+                    }
+                    // ⭐ ONDE ela desenha (v21). ⚠️ O eixo que NAO comitou le-se do documento, e
+                    // nao de um default: escrever `0` no gemeo apagaria o valor que o artista
+                    // acabou de por na outra caixa.
+                    if pending_paint_dx.is_some() || pending_paint_dy.is_some() {
+                        // ⛔ `sel.first()`, nunca `sel[0]`: a camada aberta é estado de VISTA e
+                        // sobrevive a um quadro em que a selecção esvaziou.
+                        let atual = sel
+                            .first()
+                            .and_then(|id| vec_scene.path(*id))
+                            .and_then(|p| p.paints.get(i).map(|e| e.offset))
+                            .unwrap_or([0.0, 0.0]);
+                        let novo = [
+                            pending_paint_dx.unwrap_or(atual[0]),
+                            pending_paint_dy.unwrap_or(atual[1]),
+                        ];
+                        crate::vec_paint_stack::set_offset(vec_scene, &sel, i, novo);
                     }
                     if let Some(t) = pending_paint_opacity {
                         #[allow(clippy::cast_possible_truncation)]

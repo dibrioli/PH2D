@@ -12,7 +12,7 @@ use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::DropdownState;
 
 use crate::ids;
-use crate::populate::{button, number_field, slider_chip};
+use crate::populate::{button, number_field, slider_chip, world_number_field};
 
 /// ⭐⭐⭐ **A APARÊNCIA do objecto** (estudo 42 item 2): o slider de opacidade + o chip de mistura e
 /// as linhas do popover dele.
@@ -88,6 +88,16 @@ fn populate_paint_stack(store: &mut WidgetStore) {
         ph2d_tool_vector::params::WIDTH_MIN_PX,
         1.0,
     );
+    // ⭐ ONDE a camada desenha (v21) — um par de caixas, como o `X`/`Y` do Transform, e pela MESMA
+    // porta: um deslocamento é uma **coordenada de mundo**, logo **sem faixa**.
+    //
+    // ⛔ A 1.ª redacção emprestou a faixa da LARGURA DO TRAÇO (`±WIDTH_MAX_PX`) — um tecto de outro
+    // recurso, exactamente o defeito que o §0.0 nomeia. E o recurso que se temia não existe: a
+    // caixa que o deslocamento infla dimensiona o scratch do FX, que **já é limitado** pelo
+    // `MAX_FX_SIDE` a jusante.
+    for id in [ids::VECTOR_PAINT_DX, ids::VECTOR_PAINT_DY] {
+        world_number_field(store, id, 0.0);
+    }
     store.register_if_absent(
         ids::VECTOR_PAINT_BLEND,
         InteractiveState::Dropdown {

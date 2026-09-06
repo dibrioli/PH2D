@@ -43,12 +43,19 @@ pub(crate) fn draw_extra_paints(
     }
     for e in path.paints.iter().filter(|e| e.is_active()) {
         let aberta = open_layer(target, path, transform, e.opacity.get(), e.blend);
+        // ⭐⭐⭐ **ONDE esta camada desenha** (v21). ⚠️ A translação vem **por fora** (`transform *
+        // translate`, e não `translate * transform`): o deslocamento é LOCAL, logo tem de sofrer a
+        // pose da forma — rodar a forma 90° tem de rodar a sombra com ela, senão a sombra descola.
+        //
+        // ⭐ E é aqui que se vê por que ele é GRÁTIS: a tesselação (`tess`) é a MESMA, e o Vello já
+        // recebia um transform em toda camada. O custo somado é uma multiplicação de afins.
+        let onde = camada_xf(transform, e.offset);
         match &e.kind {
             PaintKind::Fill(paint) => {
                 if let Some(fp) = tess.fill_bp.as_ref() {
                     target.inner_mut().fill(
                         fill_rule(path),
-                        transform,
+                        onde,
                         &fill_brush(paint, path),
                         None,
                         fp,
@@ -58,13 +65,29 @@ pub(crate) fn draw_extra_paints(
             // ⛔ Os dois `None` (ladrilho, arte de pincel) são a fronteira declarada no cabeçalho
             // deste módulo, e o censo `the_artless_draw_routes_are_declared` conta-os.
             PaintKind::Stroke(s) => {
-                stroke_draw::draw_one_stroke(path, s, tess, transform, target, None, None);
+                stroke_draw::draw_one_stroke(path, s, tess, onde, target, None, None);
             }
         }
         if aberta {
             target.pop_layer();
         }
     }
+}
+
+/// **O transform de UMA camada** — a pose da forma, e depois o deslocamento dela.
+///
+/// ⚠️ **A ordem é load-bearing e o caso de omissão não a testa:** com `offset = [0, 0]` as duas
+/// ordens dão o mesmo afim, então uma fixtura sem deslocamento fica verde sobre a errada. O que a
+/// separa é uma forma **rodada ou escalada** — ali, `translate ∘ transform` deixa a sombra a andar
+/// no eixo do ECRÃ enquanto a forma roda por baixo dela.
+///
+/// ⭐ O neutro é o afim de sempre, **ao bit** — é o `if` que mantém byte-idêntico o desenho de toda
+/// pilha que não desloca nada.
+fn camada_xf(transform: Affine, offset: [f64; 2]) -> Affine {
+    if offset[0] == 0.0 && offset[1] == 0.0 {
+        return transform;
+    }
+    transform * Affine::translate((offset[0], offset[1]))
 }
 
 /// Abre a camada de composição desta entrada, se ela precisar de uma. Devolve se abriu.

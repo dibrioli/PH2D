@@ -70,8 +70,25 @@ pub(crate) fn inflate_for_stroke(path: &VecPath, xf: Affine, r: Rect) -> Rect {
             };
             m = m.max(0.5 * s.width * sx.max(sy) * reach);
         }
-        if m > 0.0 {
-            r = r.inflate(m, m);
+        // ⭐⭐⭐ **E A CAMADA DESLOCADA** (v21). Uma camada com `offset` desenha FORA da caixa da
+        // forma, e esta caixa dimensiona o scratch do FX e o rectângulo da camada de mistura ⇒ sem
+        // isto ela é **recortada**, que é a MESMA ponta CEIFADA que os dois parágrafos acima
+        // nomeiam, uma tinta adiante. (A terceira vez que este ficheiro paga a conta.)
+        //
+        // ⚠️ **Simétrica de propósito.** Um deslocamento tem direcção e a caixa não: inflar os dois
+        // lados por `|dx|` e `|dy|` cobre qualquer direcção e nunca corta. Uma caixa apertada demais
+        // CORTA o desenho (defeito visível); uma folgada custa scratch (memória) — a troca só tem
+        // um lado.
+        let (mut ox, mut oy) = (0.0_f64, 0.0_f64);
+        for camada in path.paint_stack() {
+            let [dx, dy] = camada.offset;
+            // O deslocamento é LOCAL, e a caixa está no espaço de `xf` ⇒ ele escala com o afim,
+            // pelo mesmo par (`sx`, `sy`) que a largura acima usa.
+            ox = ox.max((dx * sx).abs());
+            oy = oy.max((dy * sy).abs());
+        }
+        if m > 0.0 || ox > 0.0 || oy > 0.0 {
+            r = r.inflate(m + ox, m + oy);
         }
     }
     r

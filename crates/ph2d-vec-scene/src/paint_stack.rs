@@ -87,6 +87,37 @@ pub struct PaintEntry {
     pub opacity: Opacity,
     /// Como esta camada se compõe com o que está por baixo dela **dentro** da forma.
     pub blend: BlendMode,
+    /// ⭐⭐⭐ **ONDE esta camada desenha**, em unidades de mundo, **relativo à forma**.
+    ///
+    /// # Por que uma camada precisa disto
+    ///
+    /// Sem ele, dois preenchimentos desenham nos **mesmos pixels**, e o de cima só se distingue do
+    /// de baixo pela cor, pela opacidade e pela mistura. As duas coisas que um artista de facto faz
+    /// com um segundo preenchimento — **a sombra dura** (o *offset print*, o *long shadow*) e a
+    /// **profundidade** de um rótulo — pedem que ele esteja noutro sítio. Enio, 2026-09-05:
+    /// *"o fill não deveria ter um offset? não seria mais útil?"*
+    ///
+    /// # ⭐ Por que é GRÁTIS, e a medição
+    ///
+    /// A geometria **não muda**: a camada reusa a mesma tesselação e o renderer só lhe passa outro
+    /// transform — que ele já passa, em toda camada. Medido em release: a pilha inteira de `32`
+    /// camadas encoda em `26,5 µs` de um quadro de `16 700` (**0,16 %**), e o deslocamento não
+    /// acrescenta nada a isso.
+    ///
+    /// ⛔ **Isto NÃO é «engordar» a camada** (a silhueta crescer para fora — o adesivo). Essa é
+    /// outra grandeza, com outro preço **medido**: `0,085`–`0,44 ms` por camada e por quadro
+    /// ([`ph2d-vec-boolean`], sonda `probe_offset_cost_per_call`), ou seja **até 17×** o custo da
+    /// pilha inteira, por UMA camada. Ela pede memória do resultado, como o `VecContour` já tem, e
+    /// é etapa própria.
+    ///
+    /// # ⚠️ É LOCAL, e é por isso que ele passa pelo `bake_xform`
+    ///
+    /// A regra-mãe desta casa: *o que se vê/aponta/encaixa é MUNDO; o que o documento guarda é
+    /// LOCAL*. Assar uma pose na geometria tem de assar o deslocamento junto — pela parte
+    /// **LINEAR** do transform, nunca pela translação (senão a camada anda duas vezes).
+    ///
+    /// `[0.0, 0.0]` é o neutro, e uma pilha inteira no neutro desenha byte a byte o que desenhava.
+    pub offset: [f64; 2],
 }
 
 impl PaintEntry {
@@ -98,7 +129,14 @@ impl PaintEntry {
             enabled: true,
             opacity: Opacity::default(),
             blend: BlendMode::Normal,
+            offset: [0.0, 0.0],
         }
+    }
+
+    /// **Esta camada desenha fora do lugar?** — a pergunta que o renderer e a CAIXA da forma fazem.
+    #[must_use]
+    pub fn is_offset(&self) -> bool {
+        self.offset[0] != 0.0 || self.offset[1] != 0.0
     }
 
     /// Um preenchimento novo.
@@ -180,6 +218,9 @@ pub struct DrawnPaint<'a> {
     /// Esta camada é a base? Quem desenha não precisa de saber; quem **mede** precisa (o
     /// hit-test da largura, o exportador que marca o preenchimento do balde).
     pub is_base: bool,
+    /// **Onde ela desenha**, relativo à forma, em unidades de mundo. `[0, 0]` para a base — o chão
+    /// da pilha É a forma, e deslocá-lo seria mover a forma.
+    pub offset: [f64; 2],
 }
 
 impl VecPath {
@@ -195,6 +236,7 @@ impl VecPath {
             opacity: 1.0,
             blend: BlendMode::Normal,
             is_base: true,
+            offset: [0.0, 0.0],
         });
         let base_stroke = self
             .stroke
@@ -205,6 +247,7 @@ impl VecPath {
                 opacity: 1.0,
                 blend: BlendMode::Normal,
                 is_base: true,
+                offset: [0.0, 0.0],
             });
         let extras = self.paints.iter().filter(|e| e.is_active()).map(|e| {
             let paint = match &e.kind {
@@ -216,6 +259,7 @@ impl VecPath {
                 opacity: e.opacity.get(),
                 blend: e.blend,
                 is_base: false,
+                offset: e.offset,
             }
         });
         base_fill.into_iter().chain(base_stroke).chain(extras)

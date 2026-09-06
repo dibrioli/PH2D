@@ -59,4 +59,15 @@
 /// `effects`: vazio é o neutro, e uma cena que nunca lhe toque desenha byte a byte o que desenhava
 /// (o postcard escreve **1 byte** de comprimento zero). ⚠️ O degrau é destrutivo nos dois sentidos
 /// pela razão de sempre — um save v19 lido por este layout fica sem bytes no último campo.
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 20;
+/// v21: [`crate::PaintEntry`] ganhou `offset` — **ONDE cada camada da pilha desenha**, relativo à
+/// forma (`[f64; 2]`, unidades de mundo). Report do Enio, 2026-09-05: *"o fill não deveria ter um
+/// offset? não seria mais útil?"* — sem ele dois preenchimentos desenham nos mesmos pixels e o de
+/// cima só se distingue por cor, opacidade e mistura. ⚠️ Campo **apendado ao fim de `PaintEntry`**,
+/// e o degrau é destrutivo nos dois sentidos pela razão de sempre: um save v20 lido por este layout
+/// fica **sem bytes** no último campo de cada entrada da pilha (⛔ e não «sem bytes no fim do
+/// ficheiro» — o `Vec` é lido elemento a elemento, então uma cena com pilha rebenta *dentro* dela).
+/// ⭐ O neutro é `[0.0, 0.0]` e o renderer sai por um `if` antes de compor o afim ⇒ uma cena que
+/// nunca lhe toque desenha byte a byte o que desenhava. ⛔ **Não é «engordar» a camada** (a
+/// silhueta crescer): essa custa `0,085`–`0,44 ms` por camada e por quadro, contra **zero** desta,
+/// e é etapa própria — parte dela já vive no `VecContour`.
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 21;

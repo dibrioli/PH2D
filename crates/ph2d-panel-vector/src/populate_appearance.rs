@@ -98,6 +98,15 @@ fn populate_paint_stack(store: &mut WidgetStore) {
     for id in [ids::VECTOR_PAINT_DX, ids::VECTOR_PAINT_DY] {
         world_number_field(store, id, 0.0);
     }
+    // ⭐ O OFFSET DE CAD (v22) — também uma distância de MUNDO, logo a mesma porta sem faixa.
+    world_number_field(store, ids::VECTOR_PAINT_DILATE, 0.0);
+    for id in [
+        ids::VECTOR_PAINT_JOIN_MITER,
+        ids::VECTOR_PAINT_JOIN_ROUND,
+        ids::VECTOR_PAINT_JOIN_BEVEL,
+    ] {
+        button(store, id);
+    }
     store.register_if_absent(
         ids::VECTOR_PAINT_BLEND,
         InteractiveState::Dropdown {

@@ -760,6 +760,8 @@ mod vec_marquee;
 mod vec_morph_edit;
 mod vec_overlay;
 mod vec_overlay_diag;
+/// O offset de CAD de uma camada da pilha (v22) — o memo do cozimento.
+mod vec_paint_dilate;
 mod vec_paint_stack;
 mod vec_pencil_input;
 /// O **Picker de caminho-guia** — o gesto de duas mãos partilhado pelo Pattern e pelo Text on Path.
@@ -1169,6 +1171,7 @@ impl App {
             vec_live_drawn: ph2d_vec_render::LiveGeometry::new(),
             profile_live: crate::profile_live::ProfileLive::default(),
             contour_live: crate::contour_live::ContourLive::default(),
+            paint_dilate_live: crate::vec_paint_dilate::PaintDilateLive::default(),
             instance_live: crate::instance_live::InstanceLive::default(),
             layout_live: crate::layout_live::LayoutLive::default(),
             vec_view_derived: ph2d_vec_scene::VecViewState::default(),

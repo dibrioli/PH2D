@@ -163,8 +163,9 @@ pub use ph2d_editor_core::ids::{
 /// ⚠️ **Esta lista é CURADA** — um id que exista no `editor-core` e não venha aqui simplesmente não
 /// se compila no painel. Foi a armadilha da wave anterior, e é a mesma família.
 pub use ph2d_editor_core::ids::{
-    VECTOR_PAINT_ADD_FILL, VECTOR_PAINT_ADD_STROKE, VECTOR_PAINT_BLEND, VECTOR_PAINT_DX,
-    VECTOR_PAINT_DY, VECTOR_PAINT_OPACITY, VECTOR_PAINT_OPACITY_NUM, VECTOR_PAINT_WIDTH,
+    VECTOR_PAINT_ADD_FILL, VECTOR_PAINT_ADD_STROKE, VECTOR_PAINT_BLEND, VECTOR_PAINT_DILATE,
+    VECTOR_PAINT_DX, VECTOR_PAINT_DY, VECTOR_PAINT_JOIN_BEVEL, VECTOR_PAINT_JOIN_MITER,
+    VECTOR_PAINT_JOIN_ROUND, VECTOR_PAINT_OPACITY, VECTOR_PAINT_OPACITY_NUM, VECTOR_PAINT_WIDTH,
     vector_paint_blend_option_id, vector_paint_del_id, vector_paint_down_id, vector_paint_eye_id,
     vector_paint_row_id, vector_paint_swatch_id, vector_paint_up_id,
 };

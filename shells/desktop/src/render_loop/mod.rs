@@ -3439,6 +3439,9 @@ impl crate::App {
             // comitam INDEPENDENTES, e um par obrigaria a inventar o eixo que nao mudou.
             let mut pending_paint_dx: Option<f64> = None;
             let mut pending_paint_dy: Option<f64> = None;
+            // ⭐ O OFFSET DE CAD da camada aberta (v22) e a quina dele.
+            let mut pending_paint_dilate: Option<f64> = None;
+            let mut pending_paint_join: Option<u8> = None;
             let mut pending_paint_opacity: Option<f64> = None;
             let mut pending_paint_blend: Option<u8> = None;
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
@@ -3566,7 +3569,10 @@ impl crate::App {
                         // Copy) to apply after the drain; still forward to the tool
                         // (which ignores those ids) so mode/width/etc. flow.
                         if let ph2d_editor::tool::PanelEvent::Click(id) = &ev {
-                            if let Some(v) = crate::vec_paint_stack::stack_verb_for_id(*id) {
+                            if let Some(j) = crate::vec_paint_stack::join_code_for_id(*id) {
+                                // ⭐ A QUINA do offset de CAD (v22) — um clique, não um valor.
+                                pending_paint_join = Some(j);
+                            } else if let Some(v) = crate::vec_paint_stack::stack_verb_for_id(*id) {
                                 // ⭐ A PILHA DE APARÊNCIA: o resolvedor é PURO e vive ao lado dos
                                 // verbos, como o `vec_rotate_for_id` — aqui só se captura.
                                 pending_paint_verb = Some(v);
@@ -3992,6 +3998,8 @@ impl crate::App {
                                 pending_paint_dx = Some(*v);
                             } else if *id == ph2d_editor::ids::VECTOR_PAINT_DY {
                                 pending_paint_dy = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_PAINT_DILATE {
+                                pending_paint_dilate = Some(*v);
                             } else if *id == ph2d_editor::ids::VECTOR_PAINT_OPACITY {
                                 pending_paint_opacity = Some(*v);
                             } else if *id == ph2d_editor::ids::VECTOR_PAINT_BLEND {
@@ -7088,6 +7096,12 @@ impl crate::App {
                     if let Some(code) = pending_paint_blend {
                         crate::vec_paint_stack::set_blend(vec_scene, &sel, i, code);
                     }
+                    if let Some(d) = pending_paint_dilate {
+                        crate::vec_paint_stack::set_dilate(vec_scene, &sel, i, d);
+                    }
+                    if let Some(j) = pending_paint_join {
+                        crate::vec_paint_stack::set_dilate_join(vec_scene, &sel, i, j);
+                    }
                 }
             }
             if let Some((field, target)) = pending_vec_transform {
@@ -9240,6 +9254,9 @@ impl crate::App {
             // O Pattern Along Path vivo (plano 23): as cópias de um motivo ao longo de um guia,
             // cozidas aqui e desenhadas no z do motivo — a fonte nunca é tocada.
             self.pattern_live.recook(vec_scene, sim, &self.vec_entities);
+            // ⭐ O offset de CAD de cada camada (v22). ⚠️ Só precisa da CENA: a distância é LOCAL,
+            // então a pose não entra na chave — é isso que faz o memo sobreviver ao arrasto.
+            self.paint_dilate_live.recook(vec_scene);
             // O Contour vivo (pesquisa 20 #9): os anéis concêntricos + a rampa de cor, cozidos
             // aqui e desenhados no z da fonte — que entra na lista junto com eles.
             self.contour_live
@@ -10185,6 +10202,7 @@ impl crate::App {
                     &vec_skins,
                     vec_patterns,
                     brush_arts,
+                    self.paint_dilate_live.out(),
                     cam_affine,
                     &mut target,
                 );
@@ -10202,6 +10220,7 @@ impl crate::App {
                     &vec_skins,
                     vec_patterns,
                     brush_arts,
+                    self.paint_dilate_live.out(),
                     cam_affine,
                     vector_scene,
                 );

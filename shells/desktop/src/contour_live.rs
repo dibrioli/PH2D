@@ -308,7 +308,12 @@ fn signed_dists(spec: &VecContour, k: u16) -> Vec<f64> {
 ///
 /// ⚠️ Sempre `OffsetSide::Outer`: a direção sai do SINAL de `dist`, não do `OffsetSide`. É isso que
 /// deixa o offset direto cobrir TODOS os Sides do Contour (o FPS/piscar não voltam por Inner/Both).
-fn cook_piece(world: &VecPath, dist: f64, join: LineJoin) -> Option<Vec<VecPath>> {
+///
+/// ⚠️⚠️ **É `pub(crate)` porque tem DOIS consumidores desde 2026-09-05**: o Contour e o offset de
+/// CAD de uma camada da pilha de aparência ([`crate::vec_paint_dilate`]). *Uma segunda função que
+/// escolhesse entre o anel e a booleana seria a porta pela qual as duas passam a discordar sobre
+/// quando o caro é preciso* — e a que envelhecesse desenharia outra forma.
+pub(crate) fn cook_piece(world: &VecPath, dist: f64, join: LineJoin) -> Option<Vec<VecPath>> {
     match ph2d_vec_boolean::offset_ring(world, dist, join, OffsetSide::Outer) {
         Some(g) => Some(g),
         None => {

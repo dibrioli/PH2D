@@ -70,4 +70,11 @@
 /// nunca lhe toque desenha byte a byte o que desenhava. ⛔ **Não é «engordar» a camada** (a
 /// silhueta crescer): essa custa `0,085`–`0,44 ms` por camada e por quadro, contra **zero** desta,
 /// e é etapa própria — parte dela já vive no `VecContour`.
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 21;
+/// v22: [`crate::PaintEntry`] ganhou `dilate` e `dilate_join` — o **OFFSET DE CAD** de uma camada:
+/// a silhueta dela **cresce** ou **encolhe** (o *Offset Path* do Illustrator aplicado a UM
+/// atributo). Pedido do Enio, 2026-09-05: *"o offset do cad, contraindo e dilatando"* — e é o que
+/// faz um adesivo, um rótulo contornado ou um selo **numa forma só**. ⚠️ Dois campos **apendados ao
+/// fim de `PaintEntry`**, com o mesmo modo de falha do v21: um save v21 rebenta **dentro** do `Vec`
+/// de camadas. ⭐ O neutro é `0.0` e o cozimento sai por um `is_dilated()` antes de tocar no motor
+/// ⇒ uma cena que nunca lhe toque desenha byte a byte o que desenhava.
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 22;

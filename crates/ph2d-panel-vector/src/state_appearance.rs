@@ -41,6 +41,11 @@ pub struct PaintRow {
     /// dele no passe de sementes — sem isso ele mostraria o que a última edição deixou no store, que
     /// é o defeito que a wave anterior pagou no campo de largura.
     pub offset: [f64; 2],
+    /// ⭐ **O OFFSET DE CAD** (v22): a silhueta cresce (`>0`) ou encolhe (`<0`).
+    pub dilate: f64,
+    /// A quina dele (`0` Miter · `1` Round · `2` Bevel) — o painel pinta a fileira só com o offset
+    /// armado.
+    pub dilate_join: u8,
 }
 
 /// O que a forma selecionada tem, hoje.

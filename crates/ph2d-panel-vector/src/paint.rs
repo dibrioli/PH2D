@@ -180,6 +180,7 @@ fn seed_and_publish(
             (ids::VECTOR_PAINT_WIDTH, row.width),
             (ids::VECTOR_PAINT_DX, row.offset[0]),
             (ids::VECTOR_PAINT_DY, row.offset[1]),
+            (ids::VECTOR_PAINT_DILATE, row.dilate),
         ] {
             if store.focus_id() != Some(id) {
                 store.set_number_value(id, v);

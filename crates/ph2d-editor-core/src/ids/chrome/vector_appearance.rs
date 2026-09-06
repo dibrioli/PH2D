@@ -101,6 +101,20 @@ pub const VECTOR_PAINT_DX: NodeId = hash_node_id("vector.paint.dx");
 /// (`X`/`Y` do Transform, do Vertex), e um campo só obrigaria o artista a digitar uma sintaxe.
 pub const VECTOR_PAINT_DY: NodeId = hash_node_id("vector.paint.dy");
 
+/// ⭐⭐⭐ **O OFFSET DE CAD da camada ABERTA** — a silhueta cresce (`>0`) ou encolhe (`<0`).
+///
+/// ⛔ **Não confundir com o [`VECTOR_PAINT_DX`]/[`VECTOR_PAINT_DY`]**, que MOVEM a camada sem lhe
+/// mudar a forma. São duas grandezas, e o painel chama-lhes `X`/`Y` e `Offset` — os nomes que o
+/// artista já conhece do Illustrator e de um CAD.
+pub const VECTOR_PAINT_DILATE: NodeId = hash_node_id("vector.paint.dilate");
+
+/// A QUINA desse offset — `Miter`.
+pub const VECTOR_PAINT_JOIN_MITER: NodeId = hash_node_id("vector.paint.join.miter");
+/// `Round` — o default, pelo motivo que o `VecContour` já escreveu.
+pub const VECTOR_PAINT_JOIN_ROUND: NodeId = hash_node_id("vector.paint.join.round");
+/// `Bevel`.
+pub const VECTOR_PAINT_JOIN_BEVEL: NodeId = hash_node_id("vector.paint.join.bevel");
+
 /// A opacidade da camada ABERTA (0..100 %).
 pub const VECTOR_PAINT_OPACITY: NodeId = hash_node_id("vector.paint.opacity");
 

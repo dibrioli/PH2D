@@ -215,6 +215,7 @@ fn a_tile_replaces_the_fallback_and_without_one_the_encode_is_the_solids() {
             &crate::WidgetSkins::new(),
             tiles,
             &crate::BrushArts::new(),
+            &crate::DilatedPaints::new(),
             Affine::IDENTITY,
             &mut target,
         );
@@ -317,7 +318,15 @@ fn a_patterned_shape_still_draws_its_stroke() {
             ..VecPath::default()
         };
         let mut s = VectorScene::new();
-        crate::draw_path_tiled(&path, Affine::IDENTITY, &mut s, tile, None, None);
+        crate::draw_path_tiled(
+            &path,
+            Affine::IDENTITY,
+            &mut s,
+            crate::Derived {
+                tile,
+                ..crate::Derived::NONE
+            },
+        );
         s.inner().encoding().n_paths
     };
     let cor = Rgba8::new(200, 30, 30, 255);

@@ -144,6 +144,7 @@ fn desenhar(modo: ph2d_vec_pattern::PatternMode, xf: Xform) -> VectorScene {
         &crate::WidgetSkins::new(),
         &tiles,
         &crate::BrushArts::new(),
+        &crate::DilatedPaints::new(),
         Affine::IDENTITY,
         &mut target,
     );

@@ -84,7 +84,9 @@ pub(crate) fn draw_shape_instance_tessellated(
         // é «não deu» — é a fronteira desta wave, e o gate
         // `a_motion_instance_of_a_patterned_shape_paints_the_fallback` prende-a, para que o dia em
         // que alguém a mudar seja um acto deliberado e não um efeito colateral.
-        draw_path_with(path, tess, transform, target, None, None, None);
+        // ⛔ O último `None`: uma INSTÂNCIA partilha a geometria por `geometry_id`, e a dilatação
+        // de uma camada é indexada pelo id da FORMA — a mesma lei do ladrilho e do pincel.
+        draw_path_with(path, tess, transform, target, crate::Derived::NONE);
     } else {
         let fill_bp = tess
             .fill_bp

@@ -142,6 +142,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // (o Transform, o Vertex), e a calha do rótulo é MEDIDA — um rótulo longo estreita o campo.
         "panel.vector.paint.dx" => "X",
         "panel.vector.paint.dy" => "Y",
+        // ⭐ O offset de CAD. ⚠️ `Offset` é o nome do Illustrator e de um CAD para ESTA grandeza —
+        // o `X`/`Y` acima é a outra, e chamar-lhes o mesmo nome seria o painel a ensinar errado.
+        "panel.vector.paint.dilate" => "Offset",
+        "panel.vector.paint.join" => "Corner",
         "panel.vector.paint.opacity" => "Opacity",
         "panel.vector.paint.blend" => "Blend",
         "panel.vector.paint.add_fill" => "+ Fill",

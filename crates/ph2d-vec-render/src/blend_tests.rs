@@ -134,6 +134,7 @@ fn only_a_non_neutral_object_pushes_a_layer() {
             &crate::WidgetSkins::new(),
             &crate::PatternTiles::new(),
             &crate::BrushArts::new(),
+            &crate::DilatedPaints::new(),
             Affine::IDENTITY,
             &mut target,
         );

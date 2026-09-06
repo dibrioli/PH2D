@@ -140,6 +140,22 @@ impl BodyCtx<'_> {
             ids::VECTOR_PAINT_DY,
             y,
         );
+        // ⭐⭐⭐ **O OFFSET DE CAD** (v22) — a silhueta cresce (`>0`) ou encolhe (`<0`).
+        y = self.lone_number_row(tr("panel.vector.paint.dilate"), ids::VECTOR_PAINT_DILATE, y);
+        // ⚠️ **A QUINA só aparece com o offset ARMADO** — é a lei do «nenhum controlo mudo»: com
+        // `dilate = 0` não há esquina nenhuma a formar, e três chips que não mudam nada são a
+        // definição de um controlo morto sob o dedo.
+        if row.dilate != 0.0 {
+            y = self.segmented3(
+                tr("panel.vector.paint.join"),
+                [
+                    (ids::VECTOR_PAINT_JOIN_MITER, "Miter", row.dilate_join == 0),
+                    (ids::VECTOR_PAINT_JOIN_ROUND, "Round", row.dilate_join == 1),
+                    (ids::VECTOR_PAINT_JOIN_BEVEL, "Bevel", row.dilate_join == 2),
+                ],
+                y,
+            );
+        }
         let track = self.live_track(ids::VECTOR_PAINT_OPACITY, row.opacity);
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent
         #[expect(

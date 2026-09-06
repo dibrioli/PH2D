@@ -91,6 +91,13 @@ pub(crate) fn transform_fill_geometry(
         // transformaria em ponto — o erro clássico"*); uma segunda conta aqui seria a cópia que
         // envelhece, que é a cicatriz que este ficheiro já carrega três vezes.
         e.offset = x.apply_vec(e.offset);
+        // ⭐⭐ **E O OFFSET DE CAD** (v22) — pela lei da CANETA (`√|det|`), não pela do caminho.
+        //
+        // ⚠️ Ele é uma distância LOCAL, e assar a pose engorda a geometria ⇒ a distância tem de
+        // engordar junto, senão o contorno de uma forma escalada `2×` sai com metade da espessura
+        // relativa. É **exactamente** a conta que a largura do traço faz três linhas acima, e usar
+        // a média do CAMINHO aqui poria as duas em desacordo sob escala não-uniforme (bug #27).
+        e.dilate *= caneta;
     }
     if let Some(p) = path.fill.as_mut() {
         transform_paint(p, &f, radius_scale);

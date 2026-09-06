@@ -61,7 +61,9 @@ mod paint_bind;
 pub use paint_bind::{BoundStyle, Opacity, object_alpha};
 /// ⭐ **A pilha de APARÊNCIA** (v20): N preenchimentos e N contornos numa forma só.
 pub mod paint_stack;
-pub use paint_stack::{DrawnPaint, MAX_PAINT_LAYERS, PaintEntry, PaintKind, PaintRef};
+pub use paint_stack::{
+    DrawnPaint, JOIN_ROUND, MAX_PAINT_LAYERS, MIN_DILATE, PaintEntry, PaintKind, PaintRef,
+};
 // ⭐ O vocabulário de MISTURA que o documento guarda (v19), re-exportado para quem lê o documento
 // não precisar de nomear a folha — a mesma cortesia que o `WarpStyle` e o `WidthProfile` já têm.
 pub use ph2d_blend_mode::{BlendMode, MAX_BLEND_MODES};

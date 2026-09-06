@@ -1447,6 +1447,9 @@ pub(crate) struct App {
     /// (`ph2d_ecs::VecContour`, pesquisa `20_*` item #9), irmão do `offset_live` de que é a
     /// generalização. Runtime-only e memoizado POR ANEL.
     pub(crate) contour_live: crate::contour_live::ContourLive,
+    /// ⭐ **O offset de CAD de cada camada da pilha** (v22) — o memo do cozimento, do lado que tem
+    /// estado entre quadros. Ver [`crate::vec_paint_dilate`].
+    pub(crate) paint_dilate_live: crate::vec_paint_dilate::PaintDilateLive,
     /// **As INSTÂNCIAS de componente, vivas** (plano UI/UX W5) — o mestre desenhado na pose de
     /// cada cópia. O 9º produtor de `LiveGeometry`.
     pub(crate) instance_live: crate::instance_live::InstanceLive,

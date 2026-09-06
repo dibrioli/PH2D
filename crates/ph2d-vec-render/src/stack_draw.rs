@@ -37,11 +37,17 @@ pub(crate) fn draw_extra_paints(
     tess: &PathTess,
     transform: Affine,
     target: &mut VectorScene,
+    dilated: Option<&crate::DilatedPaints>,
 ) {
     if path.paints.is_empty() {
         return;
     }
-    for e in path.paints.iter().filter(|e| e.is_active()) {
+    for (i, e) in path
+        .paints
+        .iter()
+        .enumerate()
+        .filter(|(_, e)| e.is_active())
+    {
         let aberta = open_layer(target, path, transform, e.opacity.get(), e.blend);
         // ⭐⭐⭐ **ONDE esta camada desenha** (v21). ⚠️ A translação vem **por fora** (`transform *
         // translate`, e não `translate * transform`): o deslocamento é LOCAL, logo tem de sofrer a
@@ -50,13 +56,28 @@ pub(crate) fn draw_extra_paints(
         // ⭐ E é aqui que se vê por que ele é GRÁTIS: a tesselação (`tess`) é a MESMA, e o Vello já
         // recebia um transform em toda camada. O custo somado é uma multiplicação de afins.
         let onde = camada_xf(transform, e.offset);
+        // ⭐⭐⭐ **A GEOMETRIA DESTA CAMADA** (v22): a dilatada, se a shell a cozeu; senão a da
+        // forma. ⚠️ O índice é o do DOCUMENTO (`enumerate` ANTES do filtro) — desarmar a camada `1`
+        // não pode fazer a `3` desenhar a silhueta da `2`.
+        //
+        // ⛔ **Uma camada dilatada cuja geometria NÃO chegou desenha a silhueta da forma**, e não
+        // nada: a shell só falha em cozer quando a booleana panica, e *voltar à forma lê-se como
+        // «o offset não pegou»; desaparecer lê-se como «apaguei a camada»*.
+        //
+        // ⭐ **Tesselar o dilatado corre AQUI** (`~0,13 µs`, como qualquer forma); o que é caro — o
+        // offset — já veio memoizado da shell. É essa divisão que deixa o traço dilatado passar
+        // pela MESMA porta do de base, com o tracejado AJUSTADO ao comprimento novo de graça.
+        let proprio = dilated
+            .and_then(|d| d.get(&(path.id, i)))
+            .map(|p| (p, crate::path_tess(p)));
+        let (geo, gtess) = proprio.as_ref().map_or((path, tess), |(p, t)| (*p, t));
         match &e.kind {
             PaintKind::Fill(paint) => {
-                if let Some(fp) = tess.fill_bp.as_ref() {
+                if let Some(fp) = gtess.fill_bp.as_ref() {
                     target.inner_mut().fill(
-                        fill_rule(path),
+                        fill_rule(geo),
                         onde,
-                        &fill_brush(paint, path),
+                        &fill_brush(paint, geo),
                         None,
                         fp,
                     );
@@ -64,8 +85,10 @@ pub(crate) fn draw_extra_paints(
             }
             // ⛔ Os dois `None` (ladrilho, arte de pincel) são a fronteira declarada no cabeçalho
             // deste módulo, e o censo `the_artless_draw_routes_are_declared` conta-os.
+            // ⭐ Um CONTORNO dilatado percorre a silhueta crescida/encolhida — o anel de CAD —, e
+            // passa por AQUI: o que muda é a geometria, não a porta.
             PaintKind::Stroke(s) => {
-                stroke_draw::draw_one_stroke(path, s, tess, onde, target, None, None);
+                stroke_draw::draw_one_stroke(geo, s, gtess, onde, target, None, None);
             }
         }
         if aberta {

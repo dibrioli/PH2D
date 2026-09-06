@@ -547,4 +547,16 @@
 /// entradas ⇒ zero bytes novos, e o ficheiro é byte a byte o de antes.
 ///
 /// ⛔ **Sem degrau de migração**, pela mesma decisão de 2026-08-26.
-pub(crate) const PROJECT_SCHEMA: u32 = 117;
+/// # 117 -> 118 — O OFFSET DE CAD de uma camada (`line/Vector`)
+///
+/// O [`ph2d_vec_scene::PaintEntry`] ganhou `dilate` + `dilate_join`
+/// (`VEC_SCENE_SCHEMA_VERSION` 21 -> 22): a silhueta de UMA camada cresce ou encolhe. Pedido do
+/// Enio, 2026-09-05 (*"o offset do cad, contraindo e dilatando"*), e é o que faz um adesivo ou um
+/// selo sem duplicar a forma.
+///
+/// ⚠️ Mesmo modo de falha do degrau anterior: os campos são apendados ao fim de `PaintEntry`, então
+/// um save v117 rebenta **dentro** do `Vec` de camadas. ⭐ Uma forma sem pilha não tem entradas ⇒
+/// zero bytes novos.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão de 2026-08-26.
+pub(crate) const PROJECT_SCHEMA: u32 = 118;

@@ -22,7 +22,7 @@ fn quadrado() -> VecPath {
 /// Quantos caminhos e quantos recortes a codificação levou ao desenhar `p`.
 fn conta(p: &VecPath) -> (u32, u32) {
     let mut t = VectorScene::new();
-    crate::draw_path_tiled(p, Affine::IDENTITY, &mut t, None, None, None);
+    crate::draw_path_tiled(p, Affine::IDENTITY, &mut t, crate::Derived::NONE);
     let e = t.inner().encoding();
     (e.n_paths, e.n_clips)
 }
@@ -233,5 +233,109 @@ fn the_shapes_box_covers_an_offset_layer() {
         crate::standalone::inflate_for_stroke(&limpa, Affine::IDENTITY, r),
         crate::standalone::inflate_for_stroke(&quadrado(), Affine::IDENTITY, r),
         "uma pilha sem deslocamento mudou a caixa"
+    );
+}
+
+/// ⭐⭐⭐ **UMA CAMADA DILATADA DESENHA A GEOMETRIA DELA, E NÃO A DA FORMA.**
+///
+/// Pedido do Enio, 2026-09-05: *"o offset do cad, contraindo e dilatando"*.
+///
+/// ⚠️ **A régua é a CONTAGEM DE SEGMENTOS que chegou ao codificador**, e não a de marcas: uma
+/// camada dilatada emite exactamente UMA marca, como qualquer outra — o que muda é a geometria.
+/// Um gate que contasse caminhos ficaria verde sobre um renderer que ignorasse a dilatação por
+/// inteiro.
+///
+/// A fixtura é construída para a régua: a forma é um QUADRADO e a geometria dilatada é um
+/// TRIÂNGULO. Se o renderer usar a dilatada, o codificador recebe **menos** segmentos.
+#[test]
+fn a_dilated_layer_draws_its_own_geometry_and_not_the_shapes() {
+    let mut p = quadrado();
+    let mut e = PaintEntry::fill(Paint::Solid(Rgba8::new(255, 0, 0, 255)));
+    e.dilate = 4.0;
+    p.paints = vec![e];
+
+    let mut triangulo = VecPath {
+        verts: [[-4.0, -4.0], [14.0, -4.0], [5.0, 14.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        fill: Some(Paint::Solid(Rgba8::new(255, 0, 0, 255))),
+        ..VecPath::default()
+    };
+    triangulo.id = p.id;
+    let mut mapa = crate::DilatedPaints::new();
+    mapa.insert((p.id, 0), triangulo);
+
+    let (marcas_com, segs_com) = conta_dilatada(&p, Some(&mapa));
+    let (marcas_sem, segs_sem) = conta_dilatada(&p, None);
+    assert_eq!(
+        marcas_com, marcas_sem,
+        "uma camada dilatada emite as MESMAS marcas — o que muda e' a geometria"
+    );
+    assert_eq!(
+        segs_com + 1,
+        segs_sem,
+        "a camada nao desenhou a geometria DILATADA: o triangulo tem um segmento a MENOS que o \
+         quadrado, e a contagem nao mudou ({segs_com} contra {segs_sem})"
+    );
+}
+
+/// **O CONTROLO: uma forma SEM dilatação codifica exactamente o que codificava**, mesmo com o mapa
+/// presente — é o que mantém byte-idêntico o desenho de todo documento que não lhe toca.
+#[test]
+fn a_shape_with_no_dilated_layer_encodes_exactly_what_it_encoded() {
+    let mut p = quadrado();
+    p.paints = vec![PaintEntry::fill(Paint::Solid(Rgba8::new(255, 0, 0, 255)))];
+    let mapa = crate::DilatedPaints::new();
+    assert_eq!(
+        conta_dilatada(&p, Some(&mapa)),
+        conta_dilatada(&p, None),
+        "um mapa VAZIO nao pode mudar nada"
+    );
+}
+
+/// Marcas emitidas + segmentos codificados, com (ou sem) o mapa de dilatação.
+fn conta_dilatada(p: &VecPath, dilated: Option<&crate::DilatedPaints>) -> (u32, u32) {
+    let mut t = VectorScene::new();
+    crate::draw_path_tiled(
+        p,
+        Affine::IDENTITY,
+        &mut t,
+        crate::Derived {
+            dilated,
+            ..crate::Derived::NONE
+        },
+    );
+    let e = t.inner().encoding();
+    (e.n_paths, e.n_path_segments)
+}
+
+/// ⭐⭐ **A CAIXA COBRE UMA CAMADA QUE CRESCE** — e não infla por uma que encolhe.
+///
+/// ⚠️ As duas metades: sem a primeira o anel de CAD sai **recortado** na borda do scratch (a
+/// quarta vez que este ficheiro paga a conta); sem a segunda toda forma com um offset negativo
+/// pagaria scratch por uma geometria que fica DENTRO dela.
+#[test]
+fn the_box_covers_a_growing_layer_and_not_a_shrinking_one() {
+    let base = crate::path_bounds_under(&quadrado(), Affine::IDENTITY).expect("ha' caixa");
+
+    let mut cresce = quadrado();
+    let mut e = PaintEntry::fill(Paint::Solid(Rgba8::new(255, 0, 0, 255)));
+    e.dilate = 6.0;
+    cresce.paints = vec![e];
+    let r = crate::path_bounds_under(&cresce, Affine::IDENTITY).expect("ha' caixa");
+    assert!(
+        r.x0 <= base.x0 - 6.0 && r.x1 >= base.x1 + 6.0,
+        "a caixa nao cobre a camada crescida: {r:?} contra {base:?}"
+    );
+
+    let mut encolhe = quadrado();
+    let mut e2 = PaintEntry::fill(Paint::Solid(Rgba8::new(255, 0, 0, 255)));
+    e2.dilate = -6.0;
+    encolhe.paints = vec![e2];
+    assert_eq!(
+        crate::path_bounds_under(&encolhe, Affine::IDENTITY).expect("ha' caixa"),
+        base,
+        "encolher fica DENTRO da forma — inflar por ele e' folga por nada"
     );
 }

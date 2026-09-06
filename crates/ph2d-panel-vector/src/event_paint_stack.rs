@@ -36,6 +36,10 @@ use crate::ids;
 pub(super) fn is_button(id: ph2d_a11y::NodeId) -> bool {
     id == ids::VECTOR_PAINT_ADD_FILL
         || id == ids::VECTOR_PAINT_ADD_STROKE
+        // ⭐ Os três chips da QUINA do offset de CAD (v22).
+        || id == ids::VECTOR_PAINT_JOIN_MITER
+        || id == ids::VECTOR_PAINT_JOIN_ROUND
+        || id == ids::VECTOR_PAINT_JOIN_BEVEL
         || (0..ph2d_vec_scene::MAX_PAINT_LAYERS).any(|i| {
             id == ids::vector_paint_eye_id(i)
                 || id == ids::vector_paint_row_id(i)
@@ -61,7 +65,11 @@ pub(super) fn value_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
     let WidgetEvent::ValueChanged(id) = ev else {
         return None;
     };
-    if id == ids::VECTOR_PAINT_WIDTH || id == ids::VECTOR_PAINT_DX || id == ids::VECTOR_PAINT_DY {
+    if id == ids::VECTOR_PAINT_WIDTH
+        || id == ids::VECTOR_PAINT_DX
+        || id == ids::VECTOR_PAINT_DY
+        || id == ids::VECTOR_PAINT_DILATE
+    {
         return Some(super::forward_number(host, id));
     }
     if id == ids::VECTOR_PAINT_OPACITY {

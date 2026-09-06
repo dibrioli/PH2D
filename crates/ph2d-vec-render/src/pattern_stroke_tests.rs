@@ -69,6 +69,7 @@ fn desenha_com(
         &crate::WidgetSkins::new(),
         tiles,
         brushes,
+        &crate::DilatedPaints::new(),
         Affine::IDENTITY,
         &mut target,
     );
@@ -196,6 +197,7 @@ fn the_stroke_pattern_lands_in_the_same_place_under_a_non_conformal_affine() {
             &crate::WidgetSkins::new(),
             &tiles,
             &crate::BrushArts::new(),
+            &crate::DilatedPaints::new(),
             xf,
             &mut target,
         );
@@ -629,7 +631,7 @@ fn the_copies_are_drawn_without_any_brush_of_their_own() {
         .collect::<Vec<_>>()
         .join("\n");
     assert!(
-        code.contains("crate::draw_path_tiled(&copia, transform, target, None, None, None);"),
+        code.contains("crate::draw_path_tiled(&copia, transform, target, crate::Derived::NONE);"),
         "as copias deixaram de ser desenhadas com os tres mapas a `None` - uma arte com pincel \
          proprio entra em recursao infinita, e o sintoma e' o app a parar"
     );

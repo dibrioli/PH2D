@@ -45,7 +45,7 @@ fn exactly_these_routes_draw_without_the_brush_art() {
     const CENSO: [(&str, &str, &str); 5] = [
         (
             "instance.rs",
-            "draw_path_with(path, tess, transform, target, None, None, None);",
+            "draw_path_with(path, tess, transform, target, crate::Derived::NONE);",
             "instancia: o sujeito e' um `geometry_id`, e a arte e' indexada por `VecPathId`",
         ),
         (
@@ -55,12 +55,12 @@ fn exactly_these_routes_draw_without_the_brush_art() {
         ),
         (
             "lib.rs",
-            "draw_path_tiled(path, transform, target, None, None, None);",
+            "draw_path_tiled(path, transform, target, Derived::NONE);",
             "`draw_path`: a porta sem cena, usada pelo overlay do blend (passos VIRTUAIS)",
         ),
         (
             "stroke_draw.rs",
-            "crate::draw_path_tiled(&copia, transform, target, None, None, None);",
+            "crate::draw_path_tiled(&copia, transform, target, crate::Derived::NONE);",
             "as COPIAS de um pincel: uma copia nao tem pincel proprio, e da-lo seria recursao",
         ),
         // ⚠️⚠️ **ESTA LINHA NASCEU DE UM PONTO CEGO DESTE GATE** (2026-09-05): a lista de ficheiros
@@ -73,7 +73,7 @@ fn exactly_these_routes_draw_without_the_brush_art() {
         // apanhou a troca*.
         (
             "stack_draw.rs",
-            "stroke_draw::draw_one_stroke(path, s, tess, onde, target, None, None);",
+            "stroke_draw::draw_one_stroke(geo, s, gtess, onde, target, None, None);",
             "as CAMADAS da pilha de aparencia: a arte e' memoizada pela forma ANFITRIA, e uma \
              camada nao e' uma forma",
         ),
@@ -99,7 +99,12 @@ fn exactly_these_routes_draw_without_the_brush_art() {
                     || l.contains("draw_path_tiled(")
                     || l.contains("draw_stroke_with(")
                     || l.contains("draw_one_stroke("))
-                    && l.contains("None)")
+                    // ⚠️ **DUAS formas de dizer «sem arte» desde a v22**: os `None` soltos, e o
+                    // pacote `Derived::NONE` (que nasceu quando o 8.º argumento cruzou o tecto do
+                    // `clippy`). *Um censo que só conhece a forma antiga conta ZERO e lê-se como
+                    // «todas as rotas foram curadas»* — que é o modo de falha mais caro deste
+                    // ficheiro, porque ele é silencioso e vem com cara de vitória.
+                    && (l.contains("None)") || l.contains("Derived::NONE)"))
             })
             .count();
         assert_eq!(

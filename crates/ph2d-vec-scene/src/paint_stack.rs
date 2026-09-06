@@ -34,7 +34,23 @@
 //! ENTRADA.
 
 use crate::{Opacity, Paint, StrokeSpec, VecPath};
+
 use ph2d_blend_mode::BlendMode;
+
+/// O código de quina **Round** — o default de um offset, pelo motivo que o `VecContour` já escreveu.
+pub const JOIN_ROUND: u8 = 1;
+
+/// ⭐ **O piso de um offset que vale a pena cozer** — abaixo dele o motor devolve vazio.
+///
+/// ⚠️ **Ele espelha o `MIN_OFFSET` do `ph2d-vec-boolean`, e a duplicação é DELIBERADA:** esta crate
+/// é o DOCUMENTO e é uma FOLHA — depender do motor booleano seria uma dependência ao contrário, e
+/// puxaria o `linesweeper` para dentro do tipo que o save serializa. O gate
+/// `the_dilate_floor_matches_the_engine` (do lado que depende dos dois) liga os números.
+///
+/// ⛔ **O valor NÃO é escolhido aqui:** lá ele é o piso da tolerância de achatamento (*"uma forma
+/// degenerada tem diagonal zero, e tolerância zero faria a kurbo subdividir para sempre"*). A 1.ª
+/// redacção desta linha escreveu `1e-6` sem olhar, e o gate reprovou na primeira corrida.
+pub const MIN_DILATE: f64 = 1e-9;
 
 /// ⭐⭐⭐ **Quantas camadas uma forma pode ter.**
 ///
@@ -104,11 +120,9 @@ pub struct PaintEntry {
     /// camadas encoda em `26,5 µs` de um quadro de `16 700` (**0,16 %**), e o deslocamento não
     /// acrescenta nada a isso.
     ///
-    /// ⛔ **Isto NÃO é «engordar» a camada** (a silhueta crescer para fora — o adesivo). Essa é
-    /// outra grandeza, com outro preço **medido**: `0,085`–`0,44 ms` por camada e por quadro
-    /// ([`ph2d-vec-boolean`], sonda `probe_offset_cost_per_call`), ou seja **até 17×** o custo da
-    /// pilha inteira, por UMA camada. Ela pede memória do resultado, como o `VecContour` já tem, e
-    /// é etapa própria.
+    /// ⛔ **Isto NÃO é o offset de CAD** (a silhueta crescer ou encolher — o adesivo). Essa é outra
+    /// grandeza, com outro preço e outro motor, e vive no [`Self::dilate`] logo abaixo. As duas
+    /// coexistem porque fazem coisas diferentes, e o painel chama-lhes `X`/`Y` e `Offset`.
     ///
     /// # ⚠️ É LOCAL, e é por isso que ele passa pelo `bake_xform`
     ///
@@ -118,6 +132,44 @@ pub struct PaintEntry {
     ///
     /// `[0.0, 0.0]` é o neutro, e uma pilha inteira no neutro desenha byte a byte o que desenhava.
     pub offset: [f64; 2],
+    /// ⭐⭐⭐ **O OFFSET DE CAD desta camada** — a silhueta **cresce** (`> 0`) ou **encolhe**
+    /// (`< 0`), em unidades LOCAIS. `0` é o neutro.
+    ///
+    /// Pedido do Enio, 2026-09-05: *"o offset do cad, contraindo e dilatando"*. É o *Offset Path*
+    /// do Illustrator aplicado a UM atributo da pilha, e é o que faz um adesivo, um rótulo
+    /// contornado ou um selo — **numa forma só**.
+    ///
+    /// ⛔ **NÃO é o [`Self::offset`]**, que move a camada sem lhe mudar a forma. São duas grandezas
+    /// e dois preços, e o painel chama-lhes `X`/`Y` e `Offset` para não as confundir.
+    ///
+    /// # ⚠️ LOCAL, e não MUNDO — ao contrário do `VecContour`
+    ///
+    /// O `contour_live` coze em MUNDO (com a pose assada) porque os anéis dele são objectos com
+    /// espessura própria. Aqui a distância é **local**, por duas razões medidas:
+    ///
+    /// 1. **É a lei que o TRAÇO já segue.** Um contorno engrossa com a forma (bug #27, `√|det|`);
+    ///    um contorno de CAD que não engrossasse seria a única grandeza da forma a não o fazer.
+    /// 2. **O memo sobrevive ao arrasto.** Em mundo, mover a forma muda a entrada e **recoze a cada
+    ///    quadro** — que é precisamente o que o `contour_live` declara sofrer. Em local, a chave é a
+    ///    geometria cozida, que não muda ao arrastar.
+    ///
+    /// # ⭐ Os DOIS preços, medidos (release)
+    ///
+    /// | direcção | motor | custo por camada |
+    /// |---|---|---|
+    /// | **crescer** (contorno único) | `offset_ring` (a dilatação de Minkowski, sem booleana) | **~0,5 µs** |
+    /// | **encolher**, ou compound | `offset_path` (o sweep booleano) | **85–440 µs** |
+    ///
+    /// ⇒ crescer é da ordem de tesselar uma forma (~0,13 µs) e **encolher é ~1000× isso** — é o
+    /// encolher que obriga ao memo, e é por isso que o memo existe do lado da shell.
+    pub dilate: f64,
+    /// A QUINA do offset, no código do painel: `0` Miter · `1` Round · `2` Bevel.
+    ///
+    /// ⚠️ Os mesmos códigos do [`crate::VecPath`] em toda esta casa, resolvidos pela MESMA porta
+    /// (`vec_expand::join_of_code`) — uma segunda tabela aqui divergiria na primeira quina nova.
+    /// O default é **Round**, que é o que o `VecContour` já escolheu com o motivo escrito: *é a
+    /// quina que faz um contorno parecer um contorno*.
+    pub dilate_join: u8,
 }
 
 impl PaintEntry {
@@ -130,6 +182,8 @@ impl PaintEntry {
             opacity: Opacity::default(),
             blend: BlendMode::Normal,
             offset: [0.0, 0.0],
+            dilate: 0.0,
+            dilate_join: JOIN_ROUND,
         }
     }
 
@@ -137,6 +191,16 @@ impl PaintEntry {
     #[must_use]
     pub fn is_offset(&self) -> bool {
         self.offset[0] != 0.0 || self.offset[1] != 0.0
+    }
+
+    /// **Esta camada muda de FORMA?** — a pergunta que decide se ela precisa de geometria própria.
+    ///
+    /// ⚠️ O piso é o mesmo do motor (`MIN_OFFSET` do `ph2d-vec-boolean`, que recusa um offset
+    /// ~nulo): perguntar `!= 0.0` aqui faria a shell cozer uma geometria que o motor devolve vazia,
+    /// e a camada desapareceria em vez de desenhar onde estava.
+    #[must_use]
+    pub fn is_dilated(&self) -> bool {
+        self.dilate.is_finite() && self.dilate.abs() >= MIN_DILATE
     }
 
     /// Um preenchimento novo.
@@ -221,6 +285,11 @@ pub struct DrawnPaint<'a> {
     /// **Onde ela desenha**, relativo à forma, em unidades de mundo. `[0, 0]` para a base — o chão
     /// da pilha É a forma, e deslocá-lo seria mover a forma.
     pub offset: [f64; 2],
+    /// **Quanto a silhueta dela cresce (`>0`) ou encolhe (`<0`)**. `0` para a base, pela mesma
+    /// razão: o chão da pilha É a forma.
+    pub dilate: f64,
+    /// A quina desse offset (`0` Miter · `1` Round · `2` Bevel).
+    pub dilate_join: u8,
 }
 
 impl VecPath {
@@ -237,6 +306,8 @@ impl VecPath {
             blend: BlendMode::Normal,
             is_base: true,
             offset: [0.0, 0.0],
+            dilate: 0.0,
+            dilate_join: JOIN_ROUND,
         });
         let base_stroke = self
             .stroke
@@ -248,6 +319,8 @@ impl VecPath {
                 blend: BlendMode::Normal,
                 is_base: true,
                 offset: [0.0, 0.0],
+                dilate: 0.0,
+                dilate_join: JOIN_ROUND,
             });
         let extras = self.paints.iter().filter(|e| e.is_active()).map(|e| {
             let paint = match &e.kind {
@@ -260,6 +333,8 @@ impl VecPath {
                 blend: e.blend,
                 is_base: false,
                 offset: e.offset,
+                dilate: e.dilate,
+                dilate_join: e.dilate_join,
             }
         });
         base_fill.into_iter().chain(base_stroke).chain(extras)

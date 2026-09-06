@@ -14,6 +14,7 @@
 //! | **O CARRIL**: uma linha com três contornos de larguras decrescentes | a pilha ordena-se, e o de cima desenha por último |
 //! | **A MISTURA**: um disco com um 2.º preenchimento em `Multiply` a 60 % | opacidade e mistura são de CADA camada, e compõem-se DENTRO da forma |
 //! | **A SOMBRA**: um cartão com o 2.º preenchimento DESLOCADO | ONDE cada camada desenha é da CAMADA (v21) — sem isso dois preenchimentos ocupam os mesmos pixels |
+//! | **O ADESIVO**: uma estrela branca cujo 2.º preenchimento ENCOLHE | o *offset de CAD* (v22) — a silhueta de UMA camada contrai/dilata, e é isso que faz um adesivo numa forma só |
 //! | O par de referência ao lado | a mesma arte feita à moda antiga (duas formas empilhadas) — para se ver que agora é **uma** |
 //!
 //! ⚠️ Se a linha `[vec-stack-smoke]` não aparecer, PARE: a cena não montou.
@@ -117,6 +118,23 @@ impl crate::App {
         viva.offset = [-0.35, 0.35];
         scene.push_path(com(cartao, vec![viva]));
 
+        // ⭐⭐⭐ O ADESIVO: UMA forma, e o 2.º preenchimento ENCOLHE a silhueta (v22).
+        //
+        // ⚠️ **Encolher, e não crescer, e a razão é a ordem da pilha:** uma camada extra desenha
+        // sempre POR CIMA da base, então uma que CRESCE taparia a forma inteira. O adesivo faz-se
+        // ao contrário — a BASE é a borda branca, e a camada de cima é a cor viva **encolhida**.
+        // É a mesma inversão que a SOMBRA ao lado ensina, e as duas saem da mesma lei.
+        let selo = crate::build_smoke::shape(
+            ShapeKind::Star,
+            [1.0, 1.6],
+            [5.6, 6.2],
+            &[5.0, 0.45, 0.0],
+            [250, 250, 250],
+        );
+        let mut miolo = PaintEntry::fill(Paint::Solid(Rgba8::new(220, 60, 90, 255)));
+        miolo.dilate = -0.22;
+        scene.push_path(com(selo, vec![miolo]));
+
         // O par de REFERÊNCIA: a mesma etiqueta feita à moda antiga — duas formas empilhadas.
         let mut fundo = crate::build_smoke::shape(
             ShapeKind::Star,
@@ -140,8 +158,8 @@ impl crate::App {
 
         eprintln!(
             "[vec-stack-smoke] a ETIQUETA (1 forma, 2 contornos), o CARRIL (1 forma, 3 contornos), \
-             a MISTURA (1 forma, 2 preenchimentos) e a SOMBRA (1 forma, o 2.o preenchimento \
-             DESLOCADO) — mais o par de REFERENCIA a' direita, que e' \
+             a MISTURA (1 forma, 2 preenchimentos), a SOMBRA (o 2.o preenchimento DESLOCADO) e \
+             o ADESIVO (o 2.o preenchimento ENCOLHIDO) — mais o par de REFERENCIA a' direita, que e' \
              a mesma etiqueta em DUAS formas empilhadas. PEGUE a ferramenta Vector, clique numa \
              forma, e a seccao Appearance lista as camadas dela."
         );

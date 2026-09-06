@@ -200,9 +200,9 @@ sem isso voltam a exigir **duplicar a forma**: exactamente a doença que o item 
 renderer só lhe passa outro afim — que ele já passava, em toda camada. O custo somado é uma
 multiplicação de afins.
 
-⛔ **O «engordar» não é esta wave, e metade dele já existe:** a secção *Contour* faz anéis em volta
-da forma com rampa de cor (`VecContour`, memoizado). O que ela não é é uma **camada da pilha** — não
-dá para intercalar `preenchimento → contorno → preenchimento gordo`.
+⚠️⚠️ **E esta tabela estava PELA METADE — a §8-quater corrige-a.** O motor tem DOIS caminhos, e o
+barato (`offset_ring`, `~0,5 µs`) cobre exactamente *dilatar*; só *contrair* paga os `85–440 µs`.
+A recusa acima adiou uma feature com o preço do caminho caro sobre um caso que usa o barato.
 
 ### ⚠️ A receita da sombra é INVERTIDA, e é uma consequência do §3.3
 
@@ -238,6 +238,75 @@ PORTA é*, que é o que o cabeçalho daquele ficheiro já dizia.
 
 ---
 
+## §8-quater — ⭐⭐⭐ O OFFSET DE CAD: a silhueta de uma camada CONTRAI e DILATA (v22)
+
+*"não era esse tipo de offset, mas sim o offset do cad, contraindo e dilatando"* — Enio,
+2026-09-05, sobre o §8-ter.
+
+Ele estava a pedir o **Offset Path** aplicado a UM atributo, e eu construí o deslocamento. As duas
+coexistem porque fazem coisas diferentes, e o painel chama-lhes `X`/`Y` e **Offset** — os nomes que
+o artista já conhece.
+
+### ⚠️ A tabela de custos que eu dei estava PELA METADE
+
+A 1.ª resposta disse *«engordar custa 0,085–0,44 ms por camada»* e adiou a feature com isso. **O
+motor tem DOIS caminhos**, e o barato cobre exactamente a direcção que ele nomeou primeiro:
+
+| direcção | motor | custo por camada | domínio |
+|---|---|---|---|
+| **dilatar** | `offset_ring` — a dilatação de Minkowski, sem booleana | **~0,5 µs** | contorno único, `d > 0` |
+| **contrair** | `offset_path` — o sweep booleano | **85–440 µs** | tudo o resto |
+
+Tesselar uma forma custa **~0,13 µs** ⇒ dilatar é da ordem do desenho, e contrair é **~1 000×**
+isso. *Uma recusa medida responde UMA pergunta, e a minha respondeu à do caminho caro sobre uma
+feature que usa o barato na metade dos casos.*
+
+⇒ O memo existe pelo **contrair**, e serve os dois (uma porta).
+
+### O desenho, e as cinco decisões
+
+1. **A distância é LOCAL, e não MUNDO.** O `contour_live` coze em mundo e por isso **recoze a cada
+   quadro** enquanto a forma é arrastada — o próprio ficheiro dele declara sofrer disso. Local dá
+   duas coisas: o contorno **engrossa com a forma** (a lei que o traço já segue, bug #27) e a chave
+   do memo **sobrevive ao arrasto**. No `bake_xform` ele escala por `√|det|`, a **mesma** conta da
+   largura do traço.
+2. **O cozimento passa pela porta do Contour** (`contour_live::cook_piece`), que já escolhe entre o
+   anel e a booleana com o domínio de cada um medido. ⛔ Uma segunda escolha divergiria dela no dia
+   em que o domínio do anel crescesse.
+3. **A shell entrega o CAMINHO, o renderer tessela.** O caro fica memoizado; os `~0,13 µs` de
+   tesselar correm no quadro, como em qualquer forma. ⭐ É essa divisão que faz um **contorno**
+   dilatado passar pela mesma porta do de base, com o tracejado re-ajustado ao comprimento novo de
+   graça.
+4. **Um offset pode PARTIR a forma** — encolher um haltere para além do pescoço dá duas ilhas, e a
+   sonda `probe_offset_as_effect` mediu **8** no pior caso. As peças fundem-se num composto
+   `EvenOdd`, que é legítimo porque tudo o que sai do motor está regularizado.
+5. **A QUINA só é pintada com o offset armado** — com `dilate = 0` não há esquina a formar, e três
+   chips que não mudam nada são um controlo morto sob o dedo.
+
+### ⚠️ A receita do adesivo também é INVERTIDA
+
+Uma camada extra desenha sempre **por cima** da base (§3.3), então uma que CRESCE tapa a forma
+inteira. O adesivo faz-se ao contrário: a **base** é a borda branca e a camada de cima é a cor viva
+**encolhida**. É a mesma inversão da SOMBRA, e a peça **O ADESIVO** do smoke ensina-a.
+
+### Três coisas que a construção corrigiu em mim
+
+- **O piso do offset.** Escrevi `MIN_DILATE = 1e-6` sem olhar; o gate
+  `the_dilate_floor_matches_the_engine` reprovou **na primeira corrida** e o número certo é `1e-9`
+  (o piso da tolerância de achatamento do motor). ⚠️ Ele vive **do lado do motor** porque o
+  documento é uma crate-FOLHA — depender do booleano puxaria o `linesweeper` para dentro do tipo que
+  o save serializa.
+- **A faixa do campo.** A do deslocamento nasceu emprestada da **largura do traço**; a lei da casa
+  para uma coordenada de mundo (*"world coords span any magnitude"*) estava num **comentário dentro
+  de um laço**, e hoje é a porta `world_number_field`.
+- **O 8.º argumento.** Threading a geometria pela cadeia cruzou o tecto do `clippy`. ⛔ Silenciar
+  seria armengo; os quatro artefactos derivados passaram a viajar num pacote (`Derived`), o que
+  **reduz** a assinatura de 8 para 5 e torna impossível trocar dois `None` de posição.
+
+`VEC_SCENE_SCHEMA_VERSION` **21 → 22** · `PROJECT_SCHEMA` **117 → 118**.
+
+---
+
 ## §9 — Smoke
 
 ```
@@ -250,6 +319,7 @@ env PH2D_VEC_STACK_SMOKE=1 cargo run -p ph2d-host-desktop --release
 | **O CARRIL** — uma linha com três contornos de larguras decrescentes | a pilha ordena-se, e o de cima desenha por último |
 | **A MISTURA** — um disco com um 2.º preenchimento em `Multiply` a 60 % | opacidade e mistura são de CADA camada |
 | **A SOMBRA** — um cartão com o 2.º preenchimento DESLOCADO (v21) | ONDE cada camada desenha é da CAMADA; ⚠️ a receita é invertida (§8-ter) |
+| **O ADESIVO** — uma estrela branca cujo 2.º preenchimento ENCOLHE (v22) | o *offset de CAD*: a silhueta de UMA camada contrai/dilata; ⚠️ a receita também é invertida (§8-quater) |
 | o par à direita | a mesma etiqueta à moda antiga: **duas** formas empilhadas |
 
 ---
@@ -264,11 +334,9 @@ env PH2D_VEC_STACK_SMOKE=1 cargo run -p ph2d-host-desktop --release
    ali (a swatch mostra uma cor, e escrever uma cor é o que ela promete).
 4. **Efeitos por atributo** (o *Appearance panel* do Illustrator põe um efeito em UMA camada) — a
    pilha de efeitos é do caminho inteiro, e cruzá-las é modelo novo.
-5. ⏳ **ENGORDAR uma camada** (a silhueta cresce para fora — o adesivo), que é a outra metade da
-   pergunta do Enio em §8-ter. **O preço está medido**: `0,085`–`0,44 ms` por camada e por quadro,
-   contra **zero** do deslocamento ⇒ ela precisa de memória do resultado, como o `VecContour` já
-   tem. ⚠️ E metade dela **já existe** na secção *Contour* — o que falta é ela ser uma CAMADA da
-   pilha, para se poder intercalar.
+5. ✅ **O OFFSET DE CAD FECHOU** (v22, §8-quater) — a silhueta de uma camada contrai e dilata.
+   ⏳ Fica aberto o **miter limit**: a quina `Miter` usa o limite de fábrica do motor, e o
+   Illustrator expõe-no no diálogo dele. Nenhum report pediu, e o número não foi medido.
 6. ⏳ **Escalar e rodar uma camada.** O afim por camada já é o mecanismo (o `camada_xf` compõe um
    `Affine`), então isto é painel, não motor. ⛔ Não foi feito porque **não foi pedido**, e escalar
    uma forma comprida não a engorda por igual — quem quer o adesivo quer o item 5, e oferecer a

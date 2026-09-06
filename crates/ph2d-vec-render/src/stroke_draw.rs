@@ -81,7 +81,7 @@ pub(crate) fn draw_one_stroke(
                 // isso é o guarda de ciclo estrutural: uma arte que tivesse ela própria um
                 // pincel entraria em recursão infinita. *A recusa vive na chamada, não numa
                 // bandeira que alguém se lembre de passar.*
-                crate::draw_path_tiled(&copia, transform, target, None, None, None);
+                crate::draw_path_tiled(&copia, transform, target, crate::Derived::NONE);
             }
             return;
         }

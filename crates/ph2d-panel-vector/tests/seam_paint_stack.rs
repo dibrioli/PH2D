@@ -54,6 +54,8 @@ fn traco(w: f64) -> PaintRow {
         opacity: 1.0,
         blend: BlendMode::Normal,
         offset: [0.0, 0.0],
+        dilate: 0.0,
+        dilate_join: 1,
     }
 }
 
@@ -66,6 +68,8 @@ fn tinta() -> PaintRow {
         opacity: 1.0,
         blend: BlendMode::Normal,
         offset: [0.0, 0.0],
+        dilate: 0.0,
+        dilate_join: 1,
     }
 }
 
@@ -481,6 +485,109 @@ fn the_offset_fields_show_the_open_layers_offset() {
         ),
         (Some(4.0), Some(-1.5)),
         "o par nao foi semeado da camada aberta"
+    );
+    state::close_open_layer();
+    state::set_current_appearance(None);
+}
+
+/// ⭐⭐⭐ **O OFFSET DE CAD CHEGA AO BARRAMENTO, E A QUINA TAMBÉM.**
+///
+/// Pedido do Enio, 2026-09-05: *"o offset do cad, contraindo e dilatando"*.
+///
+/// ⚠️ **As duas rotas num gate só, porque elas falham SEPARADAS:** o número viaja como `SetValue`
+/// (é um campo) e a quina como `Click` (são três chips), e ligar uma sem a outra deixa metade do
+/// controlo muda — que é exactamente a forma do bug #29.
+#[test]
+fn the_cad_offset_and_its_corner_reach_the_bus() {
+    let mut linha = tinta();
+    linha.dilate = 2.0; // a quina só é pintada com o offset ARMADO
+    publica(vec![linha]);
+    state::toggle_open_layer(0);
+
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    host.set_number_value(ids::VECTOR_PAINT_DILATE, -1.5);
+    host.apply_panel_event::<VectorPanel>(
+        &mut st,
+        WidgetEvent::ValueChanged(ids::VECTOR_PAINT_DILATE),
+    );
+    let sent: Vec<f64> = host
+        .drained_actions()
+        .into_iter()
+        .filter_map(|a| match a {
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(c, v))
+                if c == ids::VECTOR_PAINT_DILATE =>
+            {
+                Some(v)
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        sent,
+        vec![-1.5],
+        "o offset de CAD nao chegou ao barramento — e o negativo e' metade da feature (contrair)"
+    );
+
+    for id in [
+        ids::VECTOR_PAINT_JOIN_MITER,
+        ids::VECTOR_PAINT_JOIN_ROUND,
+        ids::VECTOR_PAINT_JOIN_BEVEL,
+    ] {
+        let acoes = clica(id, "um chip da quina do offset");
+        assert!(
+            acoes.iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if *c == id
+            )),
+            "o chip da quina nao atravessa: ele acende sob o rato e nao faz nada"
+        );
+    }
+    state::close_open_layer();
+    state::set_current_appearance(None);
+}
+
+/// ⭐⭐ **A QUINA SÓ EXISTE COM O OFFSET ARMADO** — a lei do «nenhum controlo mudo».
+///
+/// ⚠️ As duas metades: com `dilate = 0` não há esquina nenhuma a formar, e três chips que não mudam
+/// nada são a definição de um controlo morto sob o dedo; com o offset armado eles têm de existir,
+/// senão a quina é inalcançável e o artista fica preso no default.
+#[test]
+fn the_corner_row_appears_only_with_the_offset_armed() {
+    for (d, deve) in [(0.0_f64, false), (2.0, true)] {
+        let mut linha = tinta();
+        linha.dilate = d;
+        publica(vec![linha]);
+        state::toggle_open_layer(0);
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        let visto = host
+            .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_PAINT_JOIN_ROUND)
+            .is_some();
+        assert_eq!(
+            visto, deve,
+            "a fileira da quina com dilate={d}: esperado pintada={deve}"
+        );
+        state::close_open_layer();
+    }
+    state::set_current_appearance(None);
+}
+
+/// ⭐⭐ **O CAMPO MOSTRA O OFFSET DA CAMADA ABERTA** — a mesma lei da largura e do par X/Y.
+#[test]
+fn the_offset_field_shows_the_open_layers_dilate() {
+    let mut linha = tinta();
+    linha.dilate = 3.25;
+    publica(vec![linha]);
+    state::toggle_open_layer(0);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    host.set_number_value(ids::VECTOR_PAINT_DILATE, 0.0);
+    host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_PAINT_DILATE);
+    assert_eq!(
+        host.store().number_value(ids::VECTOR_PAINT_DILATE),
+        Some(3.25),
+        "o campo nao foi semeado da camada aberta"
     );
     state::close_open_layer();
     state::set_current_appearance(None);

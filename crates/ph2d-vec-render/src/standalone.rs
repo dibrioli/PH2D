@@ -86,6 +86,13 @@ pub(crate) fn inflate_for_stroke(path: &VecPath, xf: Affine, r: Rect) -> Rect {
             // pelo mesmo par (`sx`, `sy`) que a largura acima usa.
             ox = ox.max((dx * sx).abs());
             oy = oy.max((dy * sy).abs());
+            // ⭐⭐ **E O OFFSET DE CAD** (v22): uma camada que CRESCE desenha para fora da silhueta
+            // e seria recortada pela mesma borda. ⛔ Só o crescer conta — encolher fica DENTRO da
+            // forma, e inflar por ele daria folga a troco de nada.
+            if camada.dilate > 0.0 {
+                ox = ox.max(camada.dilate * sx);
+                oy = oy.max(camada.dilate * sy);
+            }
         }
         if m > 0.0 || ox > 0.0 || oy > 0.0 {
             r = r.inflate(m + ox, m + oy);
@@ -148,9 +155,12 @@ pub fn draw_path_isolated(
                 &item.painted(bound),
                 offset * camera,
                 target,
-                tile,
-                stroke_tile,
-                art,
+                crate::Derived {
+                    tile,
+                    stroke_tile,
+                    brush_art: art,
+                    dilated: None,
+                },
             );
         }
     } else if let Some(path) = scene.paths().iter().find(|p| p.id == id) {
@@ -158,9 +168,12 @@ pub fn draw_path_isolated(
             &path.painted(bound),
             offset * path_to_screen(xforms, id, camera),
             target,
-            tile,
-            stroke_tile,
-            art,
+            crate::Derived {
+                tile,
+                stroke_tile,
+                brush_art: art,
+                dilated: None,
+            },
         );
     }
 }

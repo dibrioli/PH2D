@@ -63,6 +63,21 @@ pub(crate) fn stack_verb_for_id(id: ph2d_editor::NodeId) -> Option<StackVerb> {
     })
 }
 
+/// **Que QUINA de offset este id pede** (`None` se não é um dos três chips).
+///
+/// ⚠️ Os códigos são os da casa (`0` Miter · `1` Round · `2` Bevel), resolvidos pela MESMA porta
+/// (`vec_expand::join_of_code`) que o Contour e o Expand usam — uma segunda tabela divergiria na
+/// primeira quina nova.
+pub(crate) fn join_code_for_id(id: ph2d_editor::NodeId) -> Option<u8> {
+    use ph2d_editor::ids;
+    match id {
+        _ if id == ids::VECTOR_PAINT_JOIN_MITER => Some(0),
+        _ if id == ids::VECTOR_PAINT_JOIN_ROUND => Some(1),
+        _ if id == ids::VECTOR_PAINT_JOIN_BEVEL => Some(2),
+        _ => None,
+    }
+}
+
 /// **De que CAMADA é a swatch que o picker está a editar** (`None` se ele não está numa).
 ///
 /// ⚠️ Varre o espaço FIXO de ids, como o [`stack_verb_for_id`] — e pela mesma razão.
@@ -157,6 +172,8 @@ pub(crate) fn published(
                     opacity: e.opacity.get(),
                     blend: e.blend,
                     offset: e.offset,
+                    dilate: e.dilate,
+                    dilate_join: e.dilate_join,
                 }
             })
             .collect(),
@@ -271,6 +288,28 @@ pub(crate) fn set_offset(scene: &mut VecScene, sel: &[VecPathId], i: usize, o: [
     edit(scene, sel, |p| match p.paints.get_mut(i) {
         Some(e) if e.offset != o => {
             e.offset = o;
+            true
+        }
+        _ => false,
+    })
+}
+
+/// **O OFFSET DE CAD da camada `i`** (v22) — a silhueta cresce (`>0`) ou encolhe (`<0`).
+pub(crate) fn set_dilate(scene: &mut VecScene, sel: &[VecPathId], i: usize, d: f64) -> bool {
+    edit(scene, sel, |p| match p.paints.get_mut(i) {
+        Some(e) if e.dilate != d => {
+            e.dilate = d;
+            true
+        }
+        _ => false,
+    })
+}
+
+/// **A QUINA desse offset** (`0` Miter · `1` Round · `2` Bevel).
+pub(crate) fn set_dilate_join(scene: &mut VecScene, sel: &[VecPathId], i: usize, j: u8) -> bool {
+    edit(scene, sel, |p| match p.paints.get_mut(i) {
+        Some(e) if e.dilate_join != j => {
+            e.dilate_join = j;
             true
         }
         _ => false,

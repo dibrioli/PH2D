@@ -482,7 +482,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // (N preenchimentos e N contornos, estudo 42 item 4). Um `Vec` apendado ⇒ layout
         // posicional muda, e a tripla VE^ o degrau (mudou a forma da `VecScene`). ⭐ Vazio custa
         // 1 byte de comprimento zero, entao uma cena que nunca lhe toque desenha igual.
-        (117, 13, 21),
+        (118, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -245,6 +245,14 @@ pub type PatternTiles = std::collections::BTreeMap<(VecPathId, PatternSlot), Pat
 /// ([`ph2d_vec_scene::pattern_path::motif_frame`]) para que os membros mantenham a disposição.
 pub type BrushArts = std::collections::BTreeMap<VecPathId, Vec<ph2d_vec_scene::VecPath>>;
 
+/// ⭐ **Os artefactos DERIVADOS que a shell coze por quadro** — irmão pelo tecto de 700 LOC, e o
+/// corte é por RESPONSABILIDADE: aqui fica o motor de desenho; ali, o vocabulário de *"o que esta
+/// forma recebeu de fora neste quadro"*.
+#[path = "derived.rs"]
+mod derived;
+pub(crate) use derived::Derived;
+pub use derived::DilatedPaints;
+
 /// Os FX raster deste frame, por forma. Vazio = nenhum FX na cena, e o desenho é o de sempre —
 /// **byte-idêntico** ao mundo pré-FX (o caminho comum não paga nada).
 pub type FxImages = std::collections::BTreeMap<VecPathId, FxImage>;
@@ -298,6 +306,7 @@ pub fn dispatch(
     skins: &WidgetSkins,
     patterns: &PatternTiles,
     brushes: &BrushArts,
+    dilated: &DilatedPaints,
     camera: Affine,
     target: &mut VectorScene,
 ) {
@@ -347,13 +356,20 @@ pub fn dispatch(
                 let art = brushes.get(&path.id).map(Vec::as_slice);
                 if let Some(items) = live.get(&path.id) {
                     for item in items {
+                        // ⛔ `None`: uma cópia DERIVADA tem id próprio, e a geometria
+                        // dilatada é indexada pelo id da FONTE — a mesma lei do ladrilho e da
+                        // arte de pincel logo acima. O censo `the_artless_draw_routes_are_
+                        // declared` conta esta rota.
                         draw_path_tiled(
                             &item.painted(bound),
                             camera,
                             target,
-                            tile,
-                            stroke_tile,
-                            art,
+                            Derived {
+                                tile,
+                                stroke_tile,
+                                brush_art: art,
+                                dilated: None,
+                            },
                         );
                     }
                 } else {
@@ -362,9 +378,12 @@ pub fn dispatch(
                         &path.painted(bound),
                         transform,
                         target,
-                        tile,
-                        stroke_tile,
-                        art,
+                        Derived {
+                            tile,
+                            stroke_tile,
+                            brush_art: art,
+                            dilated: Some(dilated),
+                        },
                     );
                 }
             }
@@ -462,7 +481,7 @@ pub(crate) fn dash_of(cooked: &VecPath, stroke: Option<&StrokeSpec>) -> Option<[
 /// Tessela sua própria geometria ([`path_tess`]) e delega a [`draw_path_with`] — byte-idêntico ao
 /// desenho de antes: 1 cozimento + as construções de sempre por chamada.
 pub(crate) fn draw_path(path: &VecPath, transform: Affine, target: &mut VectorScene) {
-    draw_path_tiled(path, transform, target, None, None, None);
+    draw_path_tiled(path, transform, target, Derived::NONE);
 }
 
 /// Igual a [`draw_path`], mas com o LADRILHO de padrão desta forma neste quadro.
@@ -473,12 +492,10 @@ pub(crate) fn draw_path_tiled(
     path: &VecPath,
     transform: Affine,
     target: &mut VectorScene,
-    tile: Option<&PatternTile>,
-    stroke_tile: Option<&PatternTile>,
-    brush_art: Option<&[ph2d_vec_scene::VecPath]>,
+    derived: Derived<'_>,
 ) {
     let tess = path_tess(path);
-    draw_path_with(path, &tess, transform, target, tile, stroke_tile, brush_art);
+    draw_path_with(path, &tess, transform, target, derived);
 }
 
 /// Desenha um path a partir da geometria JÁ TESSELADA (`tess`) — a metade barata do [`draw_path`],
@@ -492,10 +509,14 @@ pub(crate) fn draw_path_with(
     tess: &PathTess,
     transform: Affine,
     target: &mut VectorScene,
-    tile: Option<&PatternTile>,
-    stroke_tile: Option<&PatternTile>,
-    brush_art: Option<&[ph2d_vec_scene::VecPath]>,
+    derived: Derived<'_>,
 ) {
+    let Derived {
+        tile,
+        stroke_tile,
+        brush_art,
+        dilated,
+    } = derived;
     let fill_bp = tess.fill_bp.as_ref();
     if let Some(fill) = &path.fill {
         let fp = fill_bp.expect("fill => fill_bp construido");
@@ -541,7 +562,7 @@ pub(crate) fn draw_path_with(
     draw_stroke_with(path, tess, transform, target, stroke_tile, brush_art);
     // ⭐⭐⭐ **E A PILHA DE APARÊNCIA POR CIMA** (v20) — as camadas extras, de baixo para cima,
     // reusando esta mesma tesselação. No-op sem pilha, que é o caminho comum.
-    stack_draw::draw_extra_paints(path, tess, transform, target);
+    stack_draw::draw_extra_paints(path, tess, transform, target, dilated);
 }
 
 mod instance;

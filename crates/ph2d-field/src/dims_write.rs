@@ -26,10 +26,20 @@ use crate::{FieldError, Primitive};
 /// ⚠️ **Em silêncio, mas não invisível**: o número do filete é uma linha do mesmo painel, e ela
 /// muda à vista. Um valor que muda sozinho **sem aparecer** seria outra coisa.
 ///
+/// ⛔⛔⛔ **ESTA É A ESCRITA CRUA, e NÃO é a porta do produto** (06/09) — a porta é
+/// [`super::set_dim`], que corre isto e a seguir repõe as invariantes da peça
+/// ([`super::clamp_dims`]). *Uma escrita que deixa a peça inválida apaga a CENA INTEIRA*, porque o
+/// `FieldDoc` é validado como um todo e cozido da hierarquia a cada quadro.
+///
 /// # Errors
 /// [`FieldError::NonPositive`] para um valor não-finito ou ≤ 0, e para um índice que não é desta
 /// forma. [`FieldError::RoundTooLarge`] quando é o próprio filete que não cabe.
-pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result<(), FieldError> {
+pub(super) fn write_dim(
+    p: &mut Primitive,
+    node: u32,
+    index: usize,
+    value: f32,
+) -> Result<(), FieldError> {
     let bad = |what: &'static str| FieldError::NonPositive { node, what };
     // ⭐⭐ **QUEM DECIDE SE O ZERO PASSA É A FAIXA DECLARADA** (W101), e não uma excepção escrita
     // aqui.
@@ -636,12 +646,12 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
 
 /// `value`, mantido **estritamente abaixo** de `ceiling` — a folga é uma fração do próprio tecto,
 /// pela razão do [`ROUND_MARGIN`] (num alvo de `0,01` um épsilon fixo seria o tecto inteiro).
-fn keep_below(value: f32, ceiling: f32) -> f32 {
+pub(super) fn keep_below(value: f32, ceiling: f32) -> f32 {
     value.min(ceiling * (1.0 - ROUND_MARGIN))
 }
 
 /// `value`, mantido **estritamente acima** de `floor` — a irmã do [`keep_below`].
-fn keep_above(value: f32, floor: f32) -> f32 {
+pub(super) fn keep_above(value: f32, floor: f32) -> f32 {
     value.max(floor / (1.0 - ROUND_MARGIN))
 }
 

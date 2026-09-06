@@ -291,6 +291,15 @@ pub(crate) fn param_rows(
                 // aresta. ⚠️ O mapeamento é o mesmo da `Wall`; o que muda é do outro lado, na porta
                 // de escrita, que agora aceita o zero que este slider sempre ofereceu.
                 Span::WallFromZero(w) => (0.0, Bound::Hard(w)),
+                // ⭐⭐ **PISO do documento, tecto da vista** — a imagem no espelho da `Wall`. Ver o
+                // doc dela para o report de 06/09 que a obrigou: sem o piso, o slider oferecia
+                // valores que a validação recusa, e um nó recusado apaga a CENA INTEIRA.
+                // ⚠️ **O tecto tem de ficar ACIMA do piso** — o alcance da vista é a oitava de
+                // `4×` o raio da peça, e o piso é uma medida da própria peça, então em quase toda
+                // peça o primeiro já é maior. *Quase* não é uma lei: um slider com `lo ≥ hi` não
+                // tem para onde arrastar, e é o mesmo defeito que a `Span::Count` pagou com o piso
+                // do prisma. O `2×` é o que faz a faixa ter curso em vez de ser um ponto.
+                Span::Floor(f) => (f, Bound::Soft(view_span.max(f * 2.0))),
                 // ⭐ **Uma ESCOLHA**: as pontas são a lista, e são do DOCUMENTO — um índice fora
                 // dela não é um gesto que a vista possa oferecer. `Hard`, logo digitar clampa.
                 Span::Choice(nomes) => (0.0, Bound::Hard(nomes.len().saturating_sub(1) as f32)),

@@ -134,7 +134,9 @@ pub(super) fn dims_sign(p: &Primitive) -> Vec<Dim> {
             Dim {
                 key: "field.dim.length",
                 value: run * 2.0,
-                span: Span::Positive,
+                // ⚠️ **O cotovelo tem de caber no braço** (06/09): a validação exige
+                // `percurso > haste`, senão a haste sai da caixa da peça.
+                span: Span::Floor(shaft * 2.0),
             },
             Dim {
                 key: "field.dim.span",
@@ -240,7 +242,8 @@ pub(super) fn dims_sign(p: &Primitive) -> Vec<Dim> {
             Dim {
                 key: "field.dim.cut",
                 value: *cut,
-                span: Span::Free,
+                // ⚠️ **A validação já dizia `|corte| ≥ raio`** e a faixa dizia «livre» (06/09).
+                span: Span::Walls(*radius),
             },
             Dim {
                 key: "field.dim.height",

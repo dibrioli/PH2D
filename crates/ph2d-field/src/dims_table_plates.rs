@@ -143,7 +143,9 @@ pub(super) fn dims_plate(p: &Primitive) -> Vec<Dim> {
             Dim {
                 key: "field.dim.bite",
                 value: *bite,
-                span: Span::Positive,
+                // ⚠️ **A mordida não pode engolir a lua** (06/09): com `bite ≥ raio + desvio` não
+                // sobra peça, e a validação recusa-a — o que apaga a cena inteira.
+                span: Span::Wall(*radius + *offset),
             },
             Dim {
                 key: "field.dim.offset",
@@ -173,7 +175,9 @@ pub(super) fn dims_plate(p: &Primitive) -> Vec<Dim> {
             Dim {
                 key: "field.dim.length",
                 value: *height,
-                span: Span::Positive,
+                // ⚠️ **A ponta tem de passar da bola** (06/09) — abaixo disso não há gota, e a
+                // validação recusa.
+                span: Span::Floor(*radius),
             },
             Dim {
                 key: "field.dim.height",

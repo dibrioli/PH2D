@@ -606,53 +606,18 @@ fn every_primitive_offers_at_least_one_dimension() {
 /// irmãos deste arquivo.
 #[test]
 fn every_row_of_every_primitive_marches_safely_across_its_range() {
-    use ph2d_field::Span;
     let mut maus = Vec::new();
     let mut medidas = 0;
     for k in PrimitiveKind::ALL {
-        let Some(p) = representative(k) else { continue };
-        for (i, d) in ph2d_field::dims(&p).iter().enumerate() {
-            #[allow(clippy::cast_precision_loss)]
-            let alvos: Vec<f32> = match d.span {
-                Span::Count { min, max } => vec![min as f32, max as f32],
-                Span::Wall(w) | Span::WallFromZero(w) => vec![w * 0.15, w * 0.6, w * 0.9],
-                Span::Turn(h) | Span::Walls(h) => vec![-h * 0.8, h * 0.8],
-                Span::Locked | Span::Choice(_) => continue,
-                // ⚠️ Sem parede, a faixa é o alcance da VISTA — e o que se varre é uma década em
-                // volta do valor de nascimento, que é o que uma mão alcança.
-                Span::FromZero | Span::Positive | Span::Free | Span::Along => {
-                    let v = d.value.abs().max(0.05);
-                    vec![v * 0.25, v * 2.0, v * 4.0]
-                }
-            };
-            for alvo in alvos {
-                let mut q = p.clone();
-                if ph2d_field::set_dim(&mut q, 0, i, alvo).is_err() {
-                    continue;
-                }
-                ph2d_field::clamp_round(&mut q);
-                let Ok(doc) = FieldDoc::new(
-                    vec![Node::new(Xform::IDENTITY, NodeKind::Leaf(q))],
-                    NodeId(0),
-                ) else {
-                    continue;
-                };
-                medidas += 1;
-                let passo = f64::from(ph2d_field_eval::safe_march_step(&doc));
-                let g = worst_gradient(&Field::new(&doc), 1.0, 20);
-                // ⚠️ Uma forma com tecto DECLARADO responde pela folga dela — ver
-                // [`TETO_MEDIDO_E_NAO_CURADO`], que já traz a tabela e o censo de obsolescência.
-                let barra = teto_declarado(k.key())
-                    .or_else(|| faixa_declarada(k.key()))
-                    .unwrap_or(SLACK);
-                if passo * g > barra {
-                    maus.push(format!(
-                        "«{}» com {} = {alvo:.3}: passo {passo:.4} × ‖∇f‖ {g:.4} = {:.4}",
-                        k.key(),
-                        d.key,
-                        passo * g
-                    ));
-                }
+        for (onde, v) in march_over_the_declared_rows(k) {
+            medidas += 1;
+            // ⚠️ Uma forma com tecto DECLARADO responde pela folga dela — ver
+            // [`TETO_MEDIDO_E_NAO_CURADO`], que já traz a tabela e o censo de obsolescência.
+            let barra = teto_declarado(k.key())
+                .or_else(|| faixa_declarada(k.key()))
+                .unwrap_or(SLACK);
+            if v > barra {
+                maus.push(format!("«{}» {onde} = {v:.4}", k.key()));
             }
         }
     }
@@ -667,19 +632,95 @@ fn every_row_of_every_primitive_marches_safely_across_its_range() {
     );
 }
 
-/// ⛔⛔ **A CHAVE no extremo FINO do controlo dela — MEDIDA, DECLARADA e não curada.**
+/// ⭐⭐⭐ **A VARREDURA, numa função só** — arrasta cada linha desta forma para três pontos da faixa
+/// que ela **declara** e devolve `(onde, passo × ‖∇f‖)` de cada um.
 ///
-/// Com a espessura a `15 %` da parede (`0,033` numa peça de `0,44`) ela mede `1,023` contra a barra
-/// de `1,02` — **`0,3 %` acima**, e só ali: em `25 %` e acima ela fica em `0,99`.
+/// ⚠️ **Ela existe porque DOIS gates a percorrem** (o da faixa e o censo de obsolescência da
+/// [`FAIXA_MEDIDA_E_NAO_CURADA`]), e *uma régua escrita duas vezes deixa de ser uma régua*: a irmã
+/// deste arquivo já pagou isso, com a mesma peça a ler `3,55` num instrumento e `3,65` no outro.
 ///
-/// ⚠️ **Duas curas foram medidas e não a fecharam**: recuar a parede do filete de `0,50` para
-/// `0,45` da espessura (a marcha nem se mexeu — `1,0234 → 1,0233`), e apertar o raio da união dos
-/// arcos. ⇒ o que resta é a **casca** de um arco muito fino, onde a espessura da banda se aproxima
-/// do raio da mistura, e curá-lo é desenho novo.
+/// ⚠️ Nada de valores inventados — sair da faixa mediria uma peça que o documento recusa.
+fn march_over_the_declared_rows(k: PrimitiveKind) -> Vec<(String, f64)> {
+    use ph2d_field::Span;
+    let mut saida = Vec::new();
+    let Some(p) = representative(k) else {
+        return saida;
+    };
+    for (i, d) in ph2d_field::dims(&p).iter().enumerate() {
+        #[allow(clippy::cast_precision_loss)]
+        let alvos: Vec<f32> = match d.span {
+            Span::Count { min, max } => vec![min as f32, max as f32],
+            Span::Wall(w) | Span::WallFromZero(w) => vec![w * 0.15, w * 0.6, w * 0.9],
+            // ⭐ O PISO varre-se por cima dele, que é o lado onde a forma existe.
+            Span::Floor(f) => vec![f * 1.2, f * 2.0, f * 5.0],
+            Span::Turn(h) | Span::Walls(h) => vec![-h * 0.8, h * 0.8],
+            Span::Locked | Span::Choice(_) => continue,
+            // ⚠️ Sem parede, a faixa é o alcance da VISTA — e o que se varre é uma década em
+            // volta do valor de nascimento, que é o que uma mão alcança.
+            Span::FromZero | Span::Positive | Span::Free | Span::Along => {
+                let v = d.value.abs().max(0.05);
+                vec![v * 0.25, v * 2.0, v * 4.0]
+            }
+        };
+        for alvo in alvos {
+            let mut q = p.clone();
+            if ph2d_field::set_dim(&mut q, 0, i, alvo).is_err() {
+                continue;
+            }
+            ph2d_field::clamp_round(&mut q);
+            let Ok(doc) = FieldDoc::new(
+                vec![Node::new(Xform::IDENTITY, NodeKind::Leaf(q))],
+                NodeId(0),
+            ) else {
+                continue;
+            };
+            let passo = f64::from(ph2d_field_eval::safe_march_step(&doc));
+            let g = worst_gradient(&Field::new(&doc), 1.0, 20);
+            saida.push((
+                format!("com {} = {alvo:.3}: passo {passo:.4} × ‖∇f‖ {g:.4}", d.key),
+                passo * g,
+            ));
+        }
+    }
+    saida
+}
+
+/// O pior valor da varredura acima — `None` se a forma não tem representante nem linhas.
+fn worst_over_the_declared_rows(k: PrimitiveKind) -> Option<f64> {
+    march_over_the_declared_rows(k)
+        .into_iter()
+        .map(|(_, v)| v)
+        .max_by(f64::total_cmp)
+}
+
+/// ⛔⛔⛔ **E a ETIQUETA com o CORPO estreito — MEDIDA em 06/09, e ela é PRÉ-EXISTENTE.**
 ///
-/// ⚠️ *Uma chave com a parede a `7,5 %` do tamanho dela é um fio de cabelo*, e o defeito vive nos
-/// últimos `15 %` de um controlo. Fica com o número em vez de uma barra afrouxada.
-const FAIXA_MEDIDA_E_NAO_CURADA: [(&str, f64); 1] = [("brace", 1.03)];
+/// Ela entrou nesta lista no dia em que a cura do ecrã em branco a tornou **mensurável**: até aí,
+/// arrastar a largura para `0,225` deixava a `point` e o `hole` acima das paredes delas, o
+/// documento **recusava** a peça, e este gate fazia `continue`. ⇒ *o defeito estava escondido atrás
+/// de outro defeito, e o instrumento que o encontraria era o mesmo que o outro cegava.*
+///
+/// A tabela (régua grossa do censo, barra `1,02`), com o vão fixo em `0,52`:
+///
+/// | largura | 0,900 | 0,600 | 0,400 | 0,300 | **0,225** |
+/// |---|---:|---:|---:|---:|---:|
+/// | ponta a `0,999·w` | `0,990` | `0,979` | `0,979` | `0,984` | **`1,023`** |
+/// | ponta a `0,250·w` | `0,909` | `0,929` | `1,120` | `1,170` | — |
+///
+/// ⚠️ **A PELE está bem em toda a travessia** (`0,80`–`0,92`): o que sobe é o campo **LONGE** da
+/// peça — o pior ponto está em `x ≈ 0,99` com `f = 1,17`, a mais de nove larguras da forma. E ele
+/// **não é ruído de amostragem**: adensar a grelha de `20³` para `120³` move-o de `1,0232` para
+/// `1,0248`, sempre a caminhar para o canto da caixa.
+///
+/// ⚠️ **Três leituras REFUTARAM as curas óbvias**: recuar a ponta da parede **piora**
+/// (`1,023 → 1,060 → 1,098` a `0,85` e `0,70` da largura), estreitar o vão **cura**
+/// (`1,023 → 0,992` a `vão/largura = 1,78`) e o defeito cobre uma **região**, não um ponto ⇒ não há
+/// cerca de uma linha que o feche: *o que degrada é o corpo ficar estreito em relação ao vão*, e
+/// isso é desenho do [`sd_tag`], não uma parede.
+///
+/// ⏳ **ABERTO com o número.** Fica com a folga em vez de uma barra afrouxada, e o censo de
+/// obsolescência abaixo impede a entrada de virar licença.
+const FAIXA_MEDIDA_E_NAO_CURADA: [(&str, f64); 2] = [("brace", 1.03), ("tag", 1.03)];
 
 fn faixa_declarada(key: &str) -> Option<f64> {
     FAIXA_MEDIDA_E_NAO_CURADA
@@ -787,6 +828,37 @@ fn teto_declarado(key: &str) -> Option<f64> {
         .map(|(_, v)| *v)
 }
 
+/// ⛔⛔ **A METADE QUE FALTAVA À OUTRA LISTA** (06/09) — a [`FAIXA_MEDIDA_E_NAO_CURADA`] tinha a
+/// tabela e **não tinha censo de obsolescência**, enquanto a irmã [`TETO_MEDIDO_E_NAO_CURADO`] o
+/// tinha desde que nasceu.
+///
+/// ⚠️ *Uma catraca sem censo de obsolescência não desce: ela vira LICENÇA* — e uma entrada cuja
+/// forma já cumpre a barra normal passa a **esconder** a regressão seguinte daquela forma.
+///
+/// ⭐ A varredura é a **mesma** do [`every_row_of_every_primitive_marches_safely_across_its_range`],
+/// restrita à forma declarada: uma régua diferente daria outro número e a folga descreveria outra
+/// coisa (é a lição que a irmã já pagou, com `3,55` num instrumento e `3,65` no outro).
+#[test]
+fn the_declared_range_list_has_no_stale_entries() {
+    for (nome, folga) in FAIXA_MEDIDA_E_NAO_CURADA {
+        let k = *PrimitiveKind::ALL
+            .iter()
+            .find(|k| k.key() == nome)
+            .unwrap_or_else(|| panic!("«{nome}» já não é uma forma — a entrada ficou órfã"));
+        let pior = worst_over_the_declared_rows(k)
+            .unwrap_or_else(|| panic!("«{nome}» não tem representante nem linhas"));
+        println!("  [faixa] {nome}: {pior:.4} (folga declarada {folga:.2})");
+        assert!(
+            pior > SLACK,
+            "«{nome}» já cumpre a barra normal ({pior:.4}) — APAGUE a entrada, senão ela vira licença"
+        );
+        assert!(
+            pior < folga,
+            "«{nome}» piorou para {pior:.4}, acima da folga declarada de {folga:.2} — a catraca SÓ ENCOLHE"
+        );
+    }
+}
+
 /// ⛔⛔ **A METADE QUE IMPEDE A CATRACA DE SUBIR** — cada entrada tem de **ainda** furar a barra
 /// normal, e ficar **abaixo** da folga que declara.
 #[test]
@@ -865,6 +937,14 @@ fn every_row_of_every_primitive_can_be_written() {
                         w * 0.75
                     } else {
                         w * 0.25
+                    }
+                }
+                // ⭐ O piso: o «outro valor» é sempre acima dele.
+                Span::Floor(f) => {
+                    if d.value < f * 2.0 {
+                        f * 4.0
+                    } else {
+                        f * 1.5
                     }
                 }
                 Span::FromZero | Span::Positive | Span::Free | Span::Along => {
@@ -1989,4 +2069,61 @@ fn a_flat_gear_is_not_cut_by_its_own_bounding_radius() {
             r / 1.001
         );
     }
+}
+
+/// ⛔⛔⛔ **O QUE A PORTA ACEITA, O DOCUMENTO TEM DE ACEITAR** — o report do Enio de 06/09:
+/// *«se reduzir muito o raio de Rounded Cylinder, todas as formas na tela somem»*.
+///
+/// # O mecanismo, e por que ele apaga a CENA INTEIRA
+///
+/// O `FieldDoc` é validado **como um todo** e é cozido da hierarquia a cada quadro. Uma primitiva
+/// que o documento recusa não some sozinha: ela faz a **derivação inteira** falhar, e o que o
+/// artista vê é o ecrã vazio — sem mensagem, e sobre peças que não têm defeito nenhum.
+///
+/// ⇒ toda porta que escreve uma dimensão tem de deixar a peça **num estado que o documento aceita**.
+/// Uma dimensão que depende de outra (o bojo, que não pode passar do raio) tem de ser **puxada
+/// junto**, exactamente como o [`ph2d_field::clamp_round`] já faz com o filete desde a W101.
+///
+/// ⚠️ **Este gate varre a FAMÍLIA, não o caso** — `PrimitiveKind::ALL` × todas as linhas do painel ×
+/// uma escada de valores. *O exemplo que o dono aponta pode ser a excepção da família, e aqui foi
+/// o contrário: ele apontou o único membro dela.*
+#[test]
+fn no_dim_write_can_produce_a_piece_the_document_refuses() {
+    // ⚠️ A escada tem de descer MUITO (é o «reduzir muito» do report) e subir o suficiente para
+    // passar por cima de uma parede.
+    const ESCADA: [f32; 10] = [0.001, 0.005, 0.02, 0.05, 0.1, 0.3, 0.7, 1.5, 4.0, 20.0];
+    let mut acusados = Vec::new();
+    for k in PrimitiveKind::ALL {
+        let Some(base) = representative(k) else {
+            continue;
+        };
+        for linha in 0..ph2d_field::dims(&base).len() {
+            for v in ESCADA {
+                for sinal in [1.0_f32, -1.0] {
+                    let mut p = base.clone();
+                    // ⭐ Uma RECUSA é um desfecho legítimo — a faixa declarada é que manda, e o
+                    // painel pinta a parede. O que este gate proíbe é o **aceite** inválido.
+                    if ph2d_field::set_dim(&mut p, 0, linha, v * sinal).is_err() {
+                        continue;
+                    }
+                    let doc = FieldDoc::new(
+                        vec![Node::new(Xform::IDENTITY, NodeKind::Leaf(p))],
+                        NodeId(0),
+                    );
+                    if let Err(e) = doc {
+                        acusados.push(format!(
+                            "{k:?} linha {linha} <- {:.3}: a porta ACEITOU e o documento recusou ({e:?})",
+                            v * sinal
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    assert!(
+        acusados.is_empty(),
+        "{} escrita(s) deixam a peça num estado que apaga a cena inteira:\n  {}",
+        acusados.len(),
+        acusados.join("\n  ")
+    );
 }

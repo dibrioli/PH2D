@@ -131,6 +131,21 @@ pub enum Span {
     /// ⛔ **A `Wall` fica como está**, e a distinção é o que ela protege: num dente de engrenagem ou
     /// numa espessura de moldura o zero é a forma a deixar de existir, não um estado que se pede.
     WallFromZero(f32),
+    /// ⭐⭐⭐ **O PISO** — a irmã da [`Span::Wall`] do outro lado: abaixo de `floor` a forma
+    /// degenera, e acima dela não há parede nenhuma.
+    ///
+    /// # ⛔⛔ O report que a obrigou (Enio, 2026-09-06)
+    ///
+    /// *«se reduzir muito o raio de Rounded Cylinder, todas as formas na tela somem»* — e o censo
+    /// que ele provocou achou **a espécie que nenhuma faixa sabia dizer**: o `RoundCone` exige
+    /// `|raio_baixo − raio_topo| < altura` e declarava as três linhas como [`Span::Positive`]. ⇒ o
+    /// slider oferecia raios que o documento recusa, e **um nó inválido apaga a cena inteira**
+    /// (o `FieldDoc` é validado como um todo).
+    ///
+    /// ⚠️ *Uma faixa que oferece o que a porta recusa é uma affordance que mente* — a mesma lei que
+    /// a [`Span::Count`] pagou com o piso do prisma e a [`Span::WallFromZero`] com o zero do
+    /// chanfro. **É a terceira vez**, e desta o preço era o ecrã em branco.
+    Floor(f32),
     /// Simétrica e sem parede nenhuma: uma **posição**. As duas pontas são o alcance da vista, e a
     /// de baixo é negativa — a origem não é um canto do mundo.
     Free,
@@ -232,7 +247,11 @@ mod dims_write;
 mod dims_write_edge;
 
 pub use crate::dims_scale::scale_primitive;
-pub use dims_write::set_dim;
+/// ⭐ E a porta que **repõe as invariantes** depois de cada escrita — ver [`dims_clamp`].
+#[path = "dims_clamp.rs"]
+mod dims_clamp;
+
+pub use dims_clamp::{clamp_dims, set_dim};
 pub use dims_write_edge::clamp_round;
 
 /// ⭐ A tabela por-forma — ver [`dims_table`].

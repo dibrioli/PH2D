@@ -363,6 +363,9 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             chamfer_dim(*chamfer),
             round_dim(*round),
         ],
+        // ⭐ **A altura tem PISO** (06/09): com `|Δraio| ≥ altura` a esfera pequena entra na
+        // grande e a peça deixa de ser um cone — a validação recusa, e um nó recusado apaga a
+        // cena inteira. ⚠️ Quem se mexe é a ALTURA, e não o raio: o gesto foi no raio.
         Primitive::RoundCone {
             bottom,
             top,
@@ -381,7 +384,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             Dim {
                 key: "field.dim.height",
                 value: half_height * 2.0,
-                span: Span::Positive,
+                span: Span::Floor((bottom - top).abs()),
             },
         ],
         Primitive::CutSphere {
@@ -398,7 +401,10 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             Dim {
                 key: "field.dim.cut",
                 value: *cut,
-                span: Span::Free,
+                // ⚠️ **Parede dos DOIS lados** (06/09): a validação recusa `corte ≥ raio` (não
+                // sobra peça), e abaixo de `−raio` o plano já saiu da esfera — a faixa acaba onde
+                // a FORMA deixa de mudar, que é a fronteira honesta.
+                span: Span::Walls(*radius),
             },
             chamfer_dim(*chamfer),
             round_dim(*round),
@@ -418,7 +424,10 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             Dim {
                 key: "field.dim.cut",
                 value: *cut,
-                span: Span::Free,
+                // ⚠️ **Parede dos DOIS lados** (06/09): a validação recusa `corte ≥ raio` (não
+                // sobra peça), e abaixo de `−raio` o plano já saiu da esfera — a faixa acaba onde
+                // a FORMA deixa de mudar, que é a fronteira honesta.
+                span: Span::Walls(*radius),
             },
             Dim {
                 key: "field.dim.thickness",

@@ -722,7 +722,22 @@ fn shrinking_a_shape_shrinks_its_fillet_instead_of_refusing() {
     };
     // Encolhe a caixa muito abaixo do filete de 0,4.
     crate::set_dim(&mut b, 0, 0, 0.2).expect("encolher é legítimo");
-    assert!(crate::clamp_round(&mut b), "o filete tinha de ser limitado");
+    // ⭐⭐ **A PORTA JÁ DEIXOU A PEÇA VÁLIDA** (06/09) — este assert dizia
+    // `assert!(clamp_round(&mut b))`, isto é, *«ainda havia filete por limitar»*, e desde que a
+    // `set_dim` repõe as invariantes já não há: um segundo `clamp_round` é **no-op**.
+    //
+    // ⚠️ A propriedade defendida é a mesma e passou a ser mais forte — antes provava-se que
+    // *alguém* podia limitar o filete, agora prova-se que ele **já está** limitado à saída da porta
+    // que o artista usa. *Uma peça que só fica válida se o chamador se lembrar de um segundo passo
+    // apaga a cena inteira no dia em que ele se esquecer.*
+    assert!(
+        !crate::clamp_round(&mut b),
+        "a porta tinha de ter limitado o filete sozinha — sobrou trabalho para o chamador"
+    );
+    assert!(
+        crate::validate_primitive::validate_primitive(0, &b).is_ok(),
+        "o nó tem de sair VÁLIDO da porta: {b:?}"
+    );
 
     let Primitive::Box {
         half,

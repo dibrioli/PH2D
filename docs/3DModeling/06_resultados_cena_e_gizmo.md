@@ -12312,3 +12312,122 @@ o `cargo check` a fechar cada passo.
 **Gates:** censo (com o representante novo) · arestas 10/10 · as 3 provas novas (**2 mutações, cada
 uma morta por 2 gates**) · shell · fmt · clippy · LOC.
 **Smoke:** *Rounded Cylinder* na paleta, e a cena `=23` (três cópias com o bojo a crescer).
+
+---
+
+## §127 — W126: o ecrã em branco — e o report do Enio apontava **31** pares, não um (06/09)
+
+> **Enio, 06/09:** *«um bug: se reduzir muito o raio de Rounded Cylinder, todas as formas na tela
+> somem»*.
+
+### §127.1 — ⛔⛔⛔ O mecanismo, e por que ele apaga a CENA INTEIRA
+
+O `FieldDoc` é validado **como um todo** e cozido da hierarquia a cada quadro. Uma primitiva que o
+documento recusa **não some sozinha**: ela faz a derivação inteira falhar, e o que se vê é o ecrã
+vazio — sem mensagem, e sobre peças que não têm defeito nenhum.
+
+A porta de escrita (`set_dim`) coagia o **bojo** quando era o bojo a ser escrito, e não fazia nada
+quando era o **raio** que encolhia por baixo dele. ⇒ a peça ficava com `bojo > min(raio, altura)`,
+que a validação recusa.
+
+### §127.2 — ⭐⭐⭐ E o censo diz que ele tocou no único membro que calhou de tocar
+
+Antes de curar, varri `PrimitiveKind::ALL` × cada linha do painel × uma escada de dez valores,
+perguntando *«a porta aceitou e o documento recusa?»*:
+
+| | escritas acusadas | pares (forma, linha) |
+|---|---:|---:|
+| **antes** | **584** | **~130** |
+| depois de a porta repor as invariantes | `60` | `13` |
+| depois de as sete faixas passarem a dizer a verdade | **`0`** | **`0`** |
+
+⚠️ Das 584, **433** eram o filete e o chanfro — e essas **o produto já curava**, porque o
+`edit_params` do ECS chama o `clamp_round` a seguir à escrita. *A minha primeira sonda mediu a porta
+de BAIXO e acusou o que a de cima já resolvia* — a régua tinha de ser a composição que o painel
+usa, e passou a ser: hoje é a **porta** que repõe, e o chamador não tem de se lembrar de nada.
+
+Sobram **31** pares reais, em ~20 formas. ⇒ *o exemplo que o dono aponta pode ser a excepção da
+família; aqui foi a regra, e ele calhou de tocar no membro mais novo.*
+
+### §127.3 — As DUAS espécies, e por que a cura é uma só
+
+| espécie | o que se passa | a cura |
+|---|---|---|
+| **A** — a faixa **sabe** a parede (`Wall`, `WallFromZero`, `Walls`) e ninguém a repõe depois de mexer na irmã | o bojo, a espessura da moldura, o filete de tudo | `clamp_dims`, que **relê a tabela** e coage cada linha para dentro da própria faixa |
+| **B** — a faixa **não sabe**: diz `Positive` e o documento tem uma regra entre dimensões | sete formas (abaixo) | declarar a faixa honesta — e aí a máquina da espécie A cura-a |
+
+⭐ **A cura da espécie A é DERIVADA da tabela**, e não uma lista escrita à mão: a `Span` de cada
+linha já é calculada dos valores vivos da peça, então repô-la é **reler a tabela**. Uma forma nova
+recebe a lei sem uma linha de código — a mesma razão de o `round_index` perguntar à `dims`.
+
+### §127.4 — ⛔⛔ As SETE faixas que mentiam, e a `Span::Floor` que não existia
+
+| forma | a regra que o documento já tinha | o que a faixa dizia | passa a dizer |
+|---|---|---|---|
+| `RoundCone` | `\|Δraio\| < altura` | `Positive` | `Floor(\|Δraio\|)` na altura |
+| `Drop` | `comprimento > raio` | `Positive` | `Floor(raio)` |
+| `BentArrow` | `percurso > haste` | `Positive` | `Floor(haste)` |
+| `Moon` | `mordida < raio + desvio` | `Positive` | `Wall(raio + desvio)` |
+| `CutSphere` | `corte < raio` | `Free` | `Walls(raio)` |
+| `HollowDome` | `corte < raio` | `Free` | `Walls(raio)` |
+| `CircleSegment` | `\|corte\| < raio` | `Free` | `Walls(raio)` |
+
+⚠️ **Três delas pediam um PISO, e a `Span` só tinha paredes.** ⇒ `Span::Floor(f32)` — *«abaixo disto
+a forma degenera; acima não há parede nenhuma»*. É a **terceira** vez que este vocabulário aprende a
+mesma lição (o piso do prisma na `Count`, o zero do chanfro na `WallFromZero`), e desta o preço era
+o ecrã em branco. ⚠️ O `match` do painel é exaustivo, então a variante nova **não podia** nascer
+muda.
+
+⚠️ E a coerção da `Walls` passou a ser **estritamente** para dentro: a validação do corte recusa
+`|corte| ≥ raio`, e parar em cima da parede é parar onde a peça deixa de existir.
+
+### §127.5 — ⭐⭐⭐ E a cura DESCEGOU o censo: a etiqueta estreita estava escondida atrás do bug
+
+Com o ecrã em branco curado, o gate `every_row_of_every_primitive_marches_safely_across_its_range`
+passou a reprovar a **`tag`** com `1,0232` contra a barra de `1,02`.
+
+⛔ **Não é regressão: é um defeito PRÉ-EXISTENTE que este gate nunca conseguira medir.** Ele faz
+`continue` sobre um documento inválido — e arrastar a largura da etiqueta para `0,225` produzia
+exactamente um documento inválido. *O defeito estava escondido atrás de outro defeito, e o
+instrumento que o encontraria era o mesmo que o outro cegava.*
+
+| largura (vão fixo em `0,52`) | 0,900 | 0,600 | 0,400 | 0,300 | **0,225** |
+|---|---:|---:|---:|---:|---:|
+| ponta a `0,999·w` | `0,990` | `0,979` | `0,979` | `0,984` | **`1,023`** |
+| ponta a `0,250·w` | `0,909` | `0,929` | `1,120` | `1,170` | — |
+
+⚠️ **A PELE está bem em toda a travessia** (`0,80`–`0,92`): o que sobe é o campo **LONGE** da peça —
+o pior ponto está em `x ≈ 0,99` com `f = 1,17`, a mais de nove larguras da forma. E **não é ruído de
+amostragem**: adensar a grelha de `20³` para `120³` move-o de `1,0232` para `1,0248`, sempre a
+caminhar para o canto da caixa.
+
+⛔ **Três leituras refutaram as curas óbvias:** recuar a ponta da parede **piora** (`1,023 → 1,060 →
+1,098`), estreitar o vão **cura** (`0,992` a `vão/largura = 1,78`), e o defeito cobre uma **região**
+e não um ponto ⇒ não há cerca de uma linha que o feche. O que degrada é *o corpo ficar estreito em
+relação ao vão*, e isso é desenho do `sd_tag`. ⏳ **Fica ABERTO com o número**, na
+`FAIXA_MEDIDA_E_NAO_CURADA`, ao lado do `brace`.
+
+### §127.6 — ⭐⭐ E essa lista não tinha censo de obsolescência — a irmã tinha
+
+O `TETO_MEDIDO_E_NAO_CURADO` nasceu com a metade que o impede de subir; a
+`FAIXA_MEDIDA_E_NAO_CURADA` vivia sem ela desde que existe. ⇒
+`the_declared_range_list_has_no_stale_entries`: cada entrada tem de **ainda** furar a barra normal
+(senão apaga-se) e ficar **abaixo** da folga declarada.
+
+⚠️ **E ele corre a MESMA varredura do gate da faixa**, extraída para uma função só — *uma régua
+escrita duas vezes deixa de ser uma régua*, que é a lição que a irmã já tinha pago com `3,55` num
+instrumento e `3,65` no outro. Leituras de hoje: `brace 1,0234` · `tag 1,0232` · `star 2,2700`.
+
+### §127.7 — E um gate ficou obsoleto pela cura, o que é o desfecho certo
+
+O `shrinking_a_shape_shrinks_its_fillet_instead_of_refusing` afirmava *«ainda havia filete por
+limitar»* (`assert!(clamp_round(...))`). Com a porta a repor sozinha, já não há: ele passa a afirmar
+o **contrário e mais forte** — que um segundo `clamp_round` é **no-op** e que o nó sai **válido** da
+porta que o artista usa.
+
+**Provas de mutação:** tirar o `clamp_dims` da porta devolve as **584**; tirar o piso do `RoundCone`
+devolve **11**. Controlo verde nas duas.
+
+**Gates:** o censo inteiro (26) · shell · fmt · clippy · LOC.
+**Smoke:** criar um *Rounded Cylinder* e puxar o **Radius** até ao fundo — a peça afina e **nada
+mais desaparece**; e o mesmo com a moldura (*Box Frame*), a lua (*Moon*) e o cone redondo.

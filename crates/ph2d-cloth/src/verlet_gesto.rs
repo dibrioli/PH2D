@@ -450,12 +450,28 @@ impl PincelTecido {
             Modo::Gancho => {
                 // Espec §4.3: âncora = x + δ · f, e σ = f reescrito a cada passo —
                 // ZERO fora do pincel.
+                //
+                // ⚠️⚠️ **O centro da queda é ONDE O PINCEL ESTAVA, não onde ele
+                // chegou** (espec, emenda Q9 de 06/09): a localização do pincel
+                // deixa de ser lida do evento e passa a ser avançada pelo delta
+                // do passo ANTERIOR, logo fica um passo atrasada — e no 1.º
+                // passo simulado é exactamente o pen-down. É por isso que
+                // [`Self::anterior`] serve tal e qual: ela é essa localização.
+                //
+                // ⚠️ **É defeito de LUGAR, e as réguas de amplitude são cegas a
+                // ele.** Medido em 06/09 com a sonda por passo: com o centro no
+                // cursor o nosso pico ficava a `0,05R` do cursor e o do alvo a
+                // `0,86R` — nós apanhávamos material novo a cada passo, o alvo
+                // arrasta o que já pegou. A amplitude estava certa.
+                //
+                // ⚠️ **As posições são as ACTUAIS** — só o Grab mede no repouso.
+                let centro = self.anterior;
                 let b = self.pincel.forca * pressao;
                 for &v in &dentro {
                     let vi = v as usize;
                     let p = posicoes[vi];
-                    let d = self.distancia(p, cursor, delta_u);
-                    let f = self.factor(p, cursor, r, d) * b * (1.0 - self.mascara_de(vi));
+                    let d = self.distancia(p, centro, delta_u);
+                    let f = self.factor(p, centro, r, d) * b * (1.0 - self.mascara_de(vi));
                     self.sim.ancora[vi] = [
                         p[0] + passo.delta[0] * f,
                         p[1] + passo.delta[1] * f,

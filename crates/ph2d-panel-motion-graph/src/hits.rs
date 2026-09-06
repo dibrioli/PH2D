@@ -424,6 +424,12 @@ pub(crate) fn rename_id() -> NodeId {
     fnv_id("motion_graph/rename")
 }
 
+/// A caixa de escrever o número de um param (ciclo 1). **Um id**, pela mesma razão do
+/// [`rename_id`]: só um número está a ser escrito de cada vez, e a caixa está por cima dele.
+pub(crate) fn param_edit_id() -> NodeId {
+    fnv_id("motion_graph/param_edit")
+}
+
 pub(crate) fn wire_hit_id(to_node: u32, to_port: u16) -> NodeId {
     fnv_id(&format!("motion_graph/wire/{to_node}/{to_port}"))
 }

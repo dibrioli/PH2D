@@ -25,14 +25,14 @@ mod paint_menu;
 use paint_menu::draw_menu;
 #[path = "paint_breadcrumb.rs"]
 mod paint_breadcrumb;
+/// A faixa de params do cartão (ciclo 1, doc 103) — irmão por RESPONSABILIDADE: este
+/// ficheiro desenha o que um cartão É, aquele o que ele CONTROLA.
+#[path = "paint_card_params.rs"]
+pub(crate) mod paint_card_params;
 #[path = "paint_inert_badge.rs"]
 mod paint_inert_badge;
 #[path = "paint_port_label.rs"]
 mod paint_port_label;
-/// A faixa de params do cartão (ciclo 1, doc 103) — irmão por RESPONSABILIDADE: este
-/// ficheiro desenha o que um cartão É, aquele o que ele CONTROLA.
-#[path = "paint_card_params.rs"]
-mod paint_card_params;
 
 /// **COMO SE DESENHA UM PINO** — irmão cortado no tecto de LOC (600) e por RESPONSABILIDADE:
 /// este ficheiro desenha o CARTÃO, aquele o que se pendura na borda dele.
@@ -54,9 +54,9 @@ mod paint_stamp;
 mod paint_wire;
 #[path = "paint_wires.rs"]
 mod paint_wires;
+use paint_card_params::draw_card_params;
 use paint_inert_badge::draw_inert_badge;
 use paint_port_label::draw_port_labels;
-use paint_card_params::draw_card_params;
 pub use paint_port_label::{PortLabel, input_label_budget_px};
 pub(crate) use paint_role::socket_tip;
 use paint_role::{role_glyph, role_inset_px, socket_token};
@@ -79,8 +79,7 @@ use paint_wires::{WirePass, draw_wires};
 use crate::geom::{self, View, card_h, socket_center};
 use crate::hits::{
     bg_hit_id, push_backdrop_hits, push_card_hit, push_inert_badge_hit, push_param_row_hits,
-    push_preview_toggle_hit,
-    push_socket_hits, register_hits, register_hot_tip,
+    push_preview_toggle_hit, push_socket_hits, register_hits, register_hot_tip,
 };
 use crate::snapshot::{
     GraphNodeView, GraphViewSnapshot, PortView, SocketGlyph, current_snapshot, socket_glyph,
@@ -316,6 +315,10 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // the hit registration — it is a widget, not a graph hit, and it registers itself with the
     // panel's widget index like the menu's search field does.
     crate::rename::paint(state, ctx, rect, &snap, &view);
+    // ⭐ **A caixa de escrever um número** (ciclo 1) — pela mesma porta e pela mesma razão que
+    // a de renomear: é um widget sobre o cartão, registado DEPOIS dos hits do grafo, para o
+    // clique dentro dela chegar a ela e não à row que está por baixo.
+    crate::param_edit::paint(state, ctx, &snap, &view);
 }
 
 /// Scale + center a bounding box into `rect`. `selection = Some(ids)` frames only

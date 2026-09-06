@@ -11,10 +11,10 @@
 //! o texto só acima do limiar de legibilidade. Um gate a `zoom = 1` teria passado sobre o
 //! ecrã em branco que o Enio fotografou (a cena abre a `zoom ≈ 0,5`).
 
+use crate::MotionGraphPanel;
 use crate::snapshot::{
     CardParam, GraphNodeView, GraphViewSnapshot, NodeViewKind, PortView, set_current_motion_graph,
 };
-use crate::MotionGraphPanel;
 use crate::state::{MotionGraphPanelState, ViewState};
 use ph2d_editor_core::screens::layout::HeroLayout;
 use ph2d_editor_core::zones::Rect;
@@ -54,18 +54,18 @@ fn node(k: usize) -> GraphNodeView {
         inert: false,
         thumbnail: None,
         params: (0..k)
-            .map(|i| CardParam {
-                hint: ParamUiHint {
-                    param: "p",
-                    label: ["Rows", "Columns", "Gap X", "Gap Y"][i % 4],
-                    min: 0.0,
-                    max: 10.0,
-                    step: 0.1,
-                    widget: ParamWidget::Slider,
-                },
-                value: 4.0,
-                driven: false,
-                swatch: None,
+            .map(|i| {
+                CardParam::from_hint(
+                    ParamUiHint {
+                        param: "p",
+                        label: ["Rows", "Columns", "Gap X", "Gap Y"][i % 4],
+                        min: 0.0,
+                        max: 10.0,
+                        step: 0.1,
+                        widget: ParamWidget::Slider,
+                    },
+                    4.0,
+                )
             })
             .collect(),
         sections: Vec::new(),

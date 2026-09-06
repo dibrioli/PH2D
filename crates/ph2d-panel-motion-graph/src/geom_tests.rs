@@ -329,12 +329,7 @@ fn hint(label: &'static str) -> ph2d_node_registry::ParamUiHint {
 
 fn with_params(mut n: GraphNodeView, k: usize) -> GraphNodeView {
     n.params = (0..k)
-        .map(|_| crate::snapshot::CardParam {
-            hint: hint("Rows"),
-            value: 3.0,
-            driven: false,
-            swatch: None,
-        })
+        .map(|_| crate::snapshot::CardParam::from_hint(hint("Rows"), 3.0))
         .collect();
     n
 }
@@ -436,7 +431,10 @@ fn only_the_text_of_a_param_row_follows_the_zoom() {
         };
         param_text_is_drawn(&View::new(Rect::new(0.0, 0.0, 800.0, 600.0), vs))
     };
-    assert!(!at(0.25), "afastado, o rotulo e' uma mancha — nao se escreve");
+    assert!(
+        !at(0.25),
+        "afastado, o rotulo e' uma mancha — nao se escreve"
+    );
     assert!(!at(0.5), "o zoom com que a cena de smoke abre");
     assert!(!at(0.8), "logo abaixo do limiar (0,818) ainda nao");
     assert!(at(0.83), "logo acima, sim");

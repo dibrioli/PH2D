@@ -221,51 +221,9 @@ pub struct GraphNodeView {
     pub sections: Vec<CardSection>,
 }
 
-/// ⭐ **UMA SECÇÃO da faixa de params do cartão** — o «painel dentro do nó» do Blender 4.x.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct CardSection {
-    /// O nome do grupo, tal como o registry o declara.
-    pub title: &'static str,
-    /// O índice, **em [`GraphNodeView::params`]**, da primeira row desta secção — o cabeçalho é
-    /// desenhado imediatamente antes dela. Numa secção FECHADA aponta para onde as rows
-    /// estariam (a próxima row visível, ou o fim da lista).
-    pub at: u16,
-    /// Aberta: as rows dela estão em `params`. Fechada: não estão.
-    pub open: bool,
-    /// Quantas rows a secção esconde quando fechada — o número que o cabeçalho mostra, para
-    /// uma secção dobrada não parecer uma secção vazia.
-    pub hidden: u16,
-}
-
-/// ⭐ **UM PARAM NO CARTÃO** — o hint `&'static` do registry mais o valor vivo.
-///
-/// `Copy` de propósito: [`ph2d_node_registry::ParamUiHint`] já é `Copy` (os seus `param` e
-/// `label` são `&'static str`), então uma row do cartão custa **um `memcpy`, nunca um
-/// `String`** — ver o doc de [`GraphNodeView::params`].
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct CardParam {
-    /// Rótulo, faixa, passo e widget — tal como o registry os declara (`register_param_ui`).
-    pub hint: ParamUiHint,
-    /// O valor **AUTORADO** (override do grafo, senão o default do manifesto). ⚠️ Não é o
-    /// valor do cook: um param dirigido por fio só tem valor DURANTE o cozimento, e desenhar
-    /// esse faria a row tremer a meio de um quadro.
-    pub value: f32,
-    /// Um fio (doc 58) dirige este param: a row mostra a proveniência e **não se arrasta** —
-    /// o número vem de fora.
-    pub driven: bool,
-    /// A COR, em **bytes sRGB**, quando o widget é [`ph2d_node_registry::ParamWidget::Color`] —
-    /// a row pinta uma **amostra**, nunca um número.
-    ///
-    /// ⚠️ Um hint de cor ancora QUATRO params (`channels`), e a shell suprime os quatro do
-    /// resto da lista — a mesma lei do painel. Sem isso o cartão mostrava cinco rows para uma
-    /// cor: a amostra e os canais `r`/`g`/`b`/`a` crus, que é exactamente o que o
-    /// `ParamWidget::Color` existe para não fazer.
-    ///
-    /// ⚠️ **Bytes e não `f32`, porque a conversão é da SHELL:** os params guardam RGBA
-    /// **linear**, e quem sabe passar isso a sRGB é o `linear_rgba_to_srgb8` que o bridge de
-    /// cor já usa para semear o picker. Converter aqui seria a segunda cópia dessa lei.
-    pub swatch: Option<[u8; 4]>,
-}
+#[path = "snapshot_card.rs"]
+mod card;
+pub use card::{CardParam, CardSection};
 
 #[path = "snapshot_thumb.rs"]
 mod thumb;

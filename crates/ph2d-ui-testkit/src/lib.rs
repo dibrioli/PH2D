@@ -487,7 +487,11 @@ impl MockPanelHost {
         state: &mut P::State,
         viewport: Rect,
     ) -> (u32, u32) {
-        self.paint_and_count_geometry_with_layout::<P>(state, HeroLayout::for_viewport(viewport), viewport)
+        self.paint_and_count_geometry_with_layout::<P>(
+            state,
+            HeroLayout::for_viewport(viewport),
+            viewport,
+        )
     }
 
     /// [`Self::paint_and_count_geometry`], com o layout dado — a variante que os painéis do

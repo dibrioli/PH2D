@@ -151,8 +151,13 @@ impl NearGrid {
     /// alongada não pedir memória a mais do que os pontos que vai guardar.
     fn new(region: &Region, count: usize) -> Self {
         let [hw, hh] = region.half_extents();
-        let (w, h) = ((2.0 * hw).max(f32::MIN_POSITIVE), (2.0 * hh).max(f32::MIN_POSITIVE));
-        let alvo = (w * h / (count.max(1) as f32)).max(f32::MIN_POSITIVE).sqrt();
+        let (w, h) = (
+            (2.0 * hw).max(f32::MIN_POSITIVE),
+            (2.0 * hh).max(f32::MIN_POSITIVE),
+        );
+        let alvo = (w * h / (count.max(1) as f32))
+            .max(f32::MIN_POSITIVE)
+            .sqrt();
         let mut cols = ((w / alvo).ceil() as usize).max(1);
         let mut rows = ((h / alvo).ceil() as usize).max(1);
         let tecto = count.max(1).saturating_mul(4);
@@ -161,7 +166,9 @@ impl NearGrid {
             rows = (rows / 2).max(1);
         }
         Self {
-            cell: (w / cols as f32).max(h / rows as f32).max(f32::MIN_POSITIVE),
+            cell: (w / cols as f32)
+                .max(h / rows as f32)
+                .max(f32::MIN_POSITIVE),
             cols,
             rows,
             ox: -hw,
@@ -229,7 +236,14 @@ impl NearGrid {
                     }
                 }
                 // E as duas colunas verticais, sem repetir os cantos.
-                let (iy0, iy1) = (if cy >= r { y0 + 1 } else { y0 }, if cy + r < self.rows { y1.saturating_sub(1) } else { y1 });
+                let (iy0, iy1) = (
+                    if cy >= r { y0 + 1 } else { y0 },
+                    if cy + r < self.rows {
+                        y1.saturating_sub(1)
+                    } else {
+                        y1
+                    },
+                );
                 for y in iy0..=iy1.max(iy0) {
                     if y > y1 {
                         break;
@@ -596,7 +610,11 @@ mod grid_tests {
     /// FALSIFICADO por qualquer diferença na ordem de inserção ou no critério de paragem.
     #[test]
     fn the_cloud_is_bit_identical_to_the_quadratic_one() {
-        for (forma, count, falloff) in [(0.0_f32, 400usize, 0.0_f32), (1.0, 250, 0.7), (2.0, 300, 0.0)] {
+        for (forma, count, falloff) in [
+            (0.0_f32, 400usize, 0.0_f32),
+            (1.0, 250, 0.7),
+            (2.0, 300, 0.0),
+        ] {
             let region = Region::of(forma, 300.0, 200.0, 0.35);
             let novo = scatter(count, &region, falloff, 3);
             // O algoritmo de referência, escrito aqui à letra do que existia antes da grelha.
@@ -609,7 +627,11 @@ mod grid_tests {
                     let key = i as u32 * CANDIDATES + k;
                     let p = region.sample(hash3(3, key, 0), hash3(3, key, 1));
                     let d = nearest_sq(p, &placed);
-                    let score = if graded { d * region.density(p, falloff) } else { d };
+                    let score = if graded {
+                        d * region.density(p, falloff)
+                    } else {
+                        d
+                    };
                     if score > best_score {
                         best_score = score;
                         best = p;
@@ -637,7 +659,9 @@ mod grid_tests {
         let region = Region::of(0.0, 800.0, 600.0, 0.0);
         eprintln!(
             "  load: {}",
-            std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+            std::fs::read_to_string("/proc/loadavg")
+                .unwrap_or_default()
+                .trim()
         );
         eprintln!("  {:>8} │ {:>10} │ {:>12}", "pontos", "ms", "us/ponto");
         for n in [500usize, 1_000, 5_000, 10_000, 50_000] {
@@ -648,7 +672,10 @@ mod grid_tests {
                 melhor = melhor.min(t.elapsed().as_secs_f64() * 1000.0);
                 assert_eq!(v.len(), n);
             }
-            eprintln!("  {n:>8} │ {melhor:>10.2} │ {:>12.3}", melhor * 1000.0 / n as f64);
+            eprintln!(
+                "  {n:>8} │ {melhor:>10.2} │ {:>12.3}",
+                melhor * 1000.0 / n as f64
+            );
         }
     }
 }

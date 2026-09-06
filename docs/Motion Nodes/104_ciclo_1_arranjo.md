@@ -184,3 +184,85 @@ e a sonda **falha** se alguma nuvem sair vazia. A tabela dos controlos é **deri
 ⚠️ **E o caminho de saída do gerador estava errado sem dar erro:** `cargo test` corre com a cwd
 na raiz do **pacote**, então as figuras foram parar a `shells/desktop/docs/…` e a sonda disse
 *ok*. *Um gerador que escreve no sítio errado é pior que um que falha.*
+
+---
+
+## §5 — O SMOKE DO ENIO (2026-09-05), e o que ele devolveu
+
+Três reports, três espécies diferentes de defeito. Os dois primeiros do substrato do cartão; o
+terceiro é sobre um nó de **outro** grupo, e a resposta dele é uma MEDIÇÃO, não uma cura.
+
+### §5.1 — *«vários números só aparecem com zoom muito agressivo»*
+
+**Causa:** a largura era medida em `FontWeight::NORMAL` e o texto pintado em `SEMI_BOLD`, que é
+mais largo — o número não cabia na largura que ele próprio tinha medido e o elidor cortava-o
+(`0....`). A diferença cresce quando a fonte encolhe, e é por isso que piorava ao afastar.
+
+**Cura:** a medição mudou-se para **ao lado do pintor** (`ph2d_editor_core::text_elide::
+title_elided_width`), no mesmo peso. ⚠️ *O módulo já tinha a lição para o CORTE do texto e não
+para a LARGURA* — [memória](../../project-memory/feedback_measuring_a_text_at_one_weight_and_painting_it_at_another_elides_the_text.md).
+
+### §5.2 — *«vários nós não permitem clicar no número para usar o teclado para escrever»*
+
+⭐⭐⭐ **Um clique num número abre uma caixa de escrita sobre a row** (`param_edit.rs`, irmã do
+`rename.rs`: campo efémero, buffer no `WidgetStore`, `Enter` comita, `Esc` desiste, `Blur` fecha).
+Arrastar continua a varrer — é o *number field* do Blender inteiro: *arrastar dá «um pouco mais»,
+clicar dá «exactamente isto»*. Um enum e um interruptor mantêm o clique que já tinham.
+
+⚠️ **Quem responde *«isto é um número?»* é o PINTOR** (`paint_card_params::shows_a_level`), pela
+MESMA função que decide o que a row desenha — duas listas de espécies é como uma variante nova
+ganha um número no ecrã e não o deixa escrever.
+
+⭐⭐⭐ **E construir a caixa expôs uma divergência MUITO maior, que o painel a sair traria calada:
+o cartão lia `hint.min`/`hint.max` e mostrava o valor CRU.** Três coisas em falta, todas já
+resolvidas no painel:
+
+| o que faltava | mecanismo | quantos |
+|---|---|---|
+| a faixa do **canal** | uma magnitude mede graus numa Rotation e unidades de mundo num X/Y (`channel_range_override`) | os 6 nós que declaram `param_channel_range` |
+| a faixa do **fio** e o `contain` | um `value.*` veste a faixa de quem alimenta; e a faixa tem de conter o valor vivo | — |
+| a **FACE** (`mostrado = guardado × escala`) | um comprimento guarda-se em metros e mostra-se em px | **109 de 454** rows escalares (24 %), e **135** têm sufixo |
+
+⛔ Sem isto a caixa nova escreveria `94` onde o painel escreve `0,94`, num quarto dos controlos —
+*eu teria shipado o defeito no mesmo commit que curou o report*. Hoje `CardParam` carrega
+`min`/`max`/`step`/`hard_min`/`hard_max`/`value` **já na face**, e a volta ao documento acontece
+num sítio só (`CardParam::to_stored`), com o gate
+`the_card_shows_and_drags_the_same_numbers_the_panel_does` a compará-los **row a row sobre todo o
+catálogo** (a mutação que apaga a face acusa as 109 pelo nome).
+
+### §5.3 — *«em Duplicator não vejo o efeito de Pick, Point Scale e Transfer»*
+
+⭐ **Os três estão VIVOS — a sonda é a régua do PRODUTO** (`measure_what_each_param_needs`, em
+`ph2d-node-motion-duplicator`): varrer o param pela faixa do hint e contar quantas saídas
+**distintas ao bit** o nó emite. `1` = o artista não vê nada mexer.
+
+| entrada | Pick | Point Scale | Transfer |
+|---|---|---|---|
+| 1 forma · pontos NUS | 1 | 1 | 1 |
+| 3 formas · pontos NUS | **3** | 1 | 1 |
+| 1 forma · pontos AUTORADOS (`size`+`tint`) | 1 | **5** | 1 |
+| 3 formas · pontos AUTORADOS | **3** | **5** | 1 |
+| 3 formas **COM TINT** · pontos AUTORADOS | **3** | **5** | **4** |
+
+⇒ cada um precisa de algo na ENTRADA, e o mecanismo é o próprio desenho do nó:
+
+- **Pick** escolhe *qual forma pousa em qual ponto* ⇒ com **uma** forma os três modos são a mesma
+  coisa. Precisa de ≥ 2 formas na porta `shape` (um `motion.combine` de duas fontes).
+- **Point Scale** compõe a escala do PONTO com a da forma ⇒ precisa que os pontos **tragam
+  `size`** (um `motion.scale` sobre o arranjo antes do carimbo). Sem coluna não há o que compor,
+  e escrever `1` em toda a linha criaria uma coluna que não existia — está no doc da função.
+- **Transfer** decide *de quem é o valor quando a coluna existe dos DOIS lados* ⇒ precisa de uma
+  coluna **disputada**. Uma coluna que só o ponto tem chega em **todo** modo desde 2026-09-01
+  (foi a cura do report *«o nó entrou em points e a simulação morreu»*), e por isso um arranjo
+  colorido contra uma forma sem cor dá o mesmo nos quatro.
+
+⛔⛔ **Isto NÃO é «funciona como desenhado» e fica assim:** *um knob cujo sujeito não existe nesta
+entrada lê-se exactamente como um knob morto* — é a mesma família do doc 90 e a mesma lição da
+wave do painel do L-System (*«um param cujo sujeito outro cria mede-se morto no default»*). A
+diferença é que ali a condição era outro PARAM (e o `ParamGate` resolve-a) e aqui é a **forma da
+ENTRADA**, que muda a cada quadro e que nenhum mecanismo do registry sabe exprimir hoje.
+⏳ **Aberto, com o desenho nomeado:** um `register_param_needs` (side-metadata: *este param só
+fala quando a porta `k` traz a coluna `X`* / *quando ela traz ≥ 2 elementos*), lido pela shell —
+que já calcula o `inert` do nó inteiro — para a row **dizer** que não tem sujeito. É wave própria,
+no ciclo que possuir o grupo do CARIMBO. ⛔ Esconder a row está fora: o artista precisa de a ver
+para saber que entrada ligar.

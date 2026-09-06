@@ -241,6 +241,36 @@ pub(crate) struct Rename {
     pub opened: bool,
 }
 
+/// ⭐⭐⭐ **A CAIXA DE DIGITAR UM PARAM, aberta sobre a row do cartão** (report do Enio,
+/// 2026-09-05: *«vários nós não permitem clicar no número para usar o teclado para escrever»*).
+///
+/// Irmã de [`Rename`], e de propósito: as duas são a MESMA coisa — um campo efémero que toma o
+/// teclado, vive sobre o sítio onde o valor se lê, e comita por `Enter`. O que se desfaz é o
+/// **valor** que ela comita, nunca ela.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct ParamEdit {
+    /// O nó e a FAIXA (a coordenada do pintor/hit-test) — a row é reencontrada por `band_at`,
+    /// nunca guardada, para uma secção dobrada debaixo da caixa não a deixar a apontar a outro
+    /// param.
+    pub node: u32,
+    pub row: u16,
+    /// O nome do param — `&'static` do registry, o mesmo que o intent leva.
+    pub param: &'static str,
+    /// O valor com que a caixa abre: **o que o artista está a ver**, e por isso formatado como a
+    /// row o escreve (ver `crate::paint_card_params::param_text`).
+    pub seed: String,
+    /// A faixa digitável e o passo — do [`crate::snapshot::CardParam`], que os traz do registry.
+    pub min: f64,
+    pub max: f64,
+    pub step: f64,
+    /// ⚠️ **A FACE** (`mostrado = guardado × escala`) — a caixa mostra e aceita o número do
+    /// artista (`94 px`), e o documento recebe o dele (`0,94`). Guardada aqui e não relida da
+    /// row porque a conversão de VOLTA acontece no `commit`, que já não tem a row à mão.
+    pub face_scale: f32,
+    /// `false` até o quadro em que a caixa toma o teclado (o `settle_focus`), como no [`Rename`].
+    pub opened: bool,
+}
+
 /// An open popup (E7). Ephemeral — never undoable. The frame (panel, scrollbar,
 /// rows) is one widget; WHAT it lists and what a pick MEANS is [`MenuBody`].
 #[derive(Clone, Debug, PartialEq)]
@@ -367,6 +397,9 @@ pub struct MotionGraphPanelState {
     /// **The open rename box** (doc 61), or `None`. Ephemeral — never undoable; what IS undoable
     /// is the name it commits.
     pub(crate) rename: Option<Rename>,
+    /// **A caixa de digitar um número, aberta sobre a row** (report do Enio, 2026-09-05), ou
+    /// `None`. Efémera como o [`Rename`] — o que é desfazível é o valor que ela comita.
+    pub(crate) param_edit: Option<ParamEdit>,
     /// `P` armed the probe: the NEXT click on a node picks it as the probe target.
     /// Disarmed by the pick, by Esc, or by a second `P` — same three exits as the
     /// knife (a mode you cannot leave is a trap).

@@ -11,7 +11,6 @@
 //!
 //! `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture dump_arranjo_figures`
 
-use super::*;
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
@@ -34,15 +33,96 @@ struct Fig {
 }
 
 const FIGS: &[Fig] = &[
-    Fig { file: "grid", node: "motion.grid", params: &[("rows", 12.0), ("cols", 12.0), ("gap_x", 34.0), ("gap_y", 34.0)], feed: false },
-    Fig { file: "scatter", node: "motion.scatter", params: &[("count", 240.0), ("width", 400.0), ("height", 400.0), ("seed", 7.0)], feed: false },
-    Fig { file: "radial", node: "motion.distribute_radial", params: &[("count", 180.0), ("rings", 5.0), ("radius", 200.0), ("inner", 40.0)], feed: false },
-    Fig { file: "fibonacci", node: "motion.fibonacci", params: &[("count", 400.0), ("spacing", 10.5), ("angle", 137.5)], feed: false },
-    Fig { file: "lattice", node: "motion.lattice", params: &[("rows", 13.0), ("cols", 13.0), ("spacing", 32.0)], feed: false },
-    Fig { file: "voronoi", node: "motion.voronoi", params: &[("count", 160.0), ("width", 400.0), ("height", 400.0), ("seed", 3.0), ("iterations", 6.0)], feed: false },
-    Fig { file: "poisson", node: "motion.distribute_poisson", params: &[("radius", 26.0), ("width", 400.0), ("height", 400.0), ("seed", 5.0)], feed: false },
-    Fig { file: "curve", node: "motion.distribute_curve", params: &[("count", 60.0), ("p0x", -200.0), ("p0y", -120.0), ("p1x", -90.0), ("p1y", 200.0), ("p2x", 90.0), ("p2y", -200.0), ("p3x", 200.0), ("p3y", 120.0)], feed: false },
-    Fig { file: "clone", node: "motion.clone", params: &[("count", 8.0), ("distance", 46.0), ("angle", 25.0)], feed: true },
+    Fig {
+        file: "grid",
+        node: "motion.grid",
+        params: &[
+            ("rows", 12.0),
+            ("cols", 12.0),
+            ("gap_x", 34.0),
+            ("gap_y", 34.0),
+        ],
+        feed: false,
+    },
+    Fig {
+        file: "scatter",
+        node: "motion.scatter",
+        params: &[
+            ("count", 240.0),
+            ("width", 400.0),
+            ("height", 400.0),
+            ("seed", 7.0),
+        ],
+        feed: false,
+    },
+    Fig {
+        file: "radial",
+        node: "motion.distribute_radial",
+        params: &[
+            ("count", 180.0),
+            ("rings", 5.0),
+            ("radius", 200.0),
+            ("inner", 40.0),
+        ],
+        feed: false,
+    },
+    Fig {
+        file: "fibonacci",
+        node: "motion.fibonacci",
+        params: &[("count", 400.0), ("spacing", 10.5), ("angle", 137.5)],
+        feed: false,
+    },
+    Fig {
+        file: "lattice",
+        node: "motion.lattice",
+        params: &[("rows", 13.0), ("cols", 13.0), ("spacing", 32.0)],
+        feed: false,
+    },
+    Fig {
+        file: "voronoi",
+        node: "motion.voronoi",
+        params: &[
+            ("count", 160.0),
+            ("width", 400.0),
+            ("height", 400.0),
+            ("seed", 3.0),
+            ("iterations", 6.0),
+        ],
+        feed: false,
+    },
+    Fig {
+        file: "poisson",
+        node: "motion.distribute_poisson",
+        params: &[
+            ("radius", 26.0),
+            ("width", 400.0),
+            ("height", 400.0),
+            ("seed", 5.0),
+        ],
+        feed: false,
+    },
+    Fig {
+        file: "curve",
+        node: "motion.distribute_curve",
+        params: &[
+            ("count", 60.0),
+            ("p0x", -200.0),
+            ("p0y", -120.0),
+            ("p1x", -90.0),
+            ("p1y", 200.0),
+            ("p2x", 90.0),
+            ("p2y", -200.0),
+            ("p3x", 200.0),
+            ("p3y", 120.0),
+        ],
+        feed: false,
+    },
+    Fig {
+        file: "clone",
+        node: "motion.clone",
+        params: &[("count", 8.0), ("distance", 46.0), ("angle", 25.0)],
+        feed: true,
+    },
 ];
 
 fn cook_points(fig: &Fig) -> Vec<[f32; 2]> {
@@ -53,13 +133,26 @@ fn cook_points(fig: &Fig) -> Vec<[f32; 2]> {
     }
     if fig.feed {
         let feed = m.doc.graph.add_node("motion.grid".to_string());
-        for (p, v) in [("rows", 3.0), ("cols", 3.0), ("gap_x", 90.0), ("gap_y", 90.0)] {
+        for (p, v) in [
+            ("rows", 3.0),
+            ("cols", 3.0),
+            ("gap_x", 90.0),
+            ("gap_y", 90.0),
+        ] {
             m.doc.graph.set_param(feed, p, v);
         }
-        let _ = m.doc.graph.connect(Edge { from: (feed, 0), to: (src, 0), delayed: false });
+        let _ = m.doc.graph.connect(Edge {
+            from: (feed, 0),
+            to: (src, 0),
+            delayed: false,
+        });
     }
     let out = m.doc.graph.add_node("motion.output".to_string());
-    let _ = m.doc.graph.connect(Edge { from: (src, 0), to: (out, 0), delayed: false });
+    let _ = m.doc.graph.connect(Edge {
+        from: (src, 0),
+        to: (out, 0),
+        delayed: false,
+    });
     let mut cook = Cook::new();
     match cook.cook(&m.doc.graph, &m.registry, out, 0.0) {
         Ok(v) => match v.first().map(|c| c.as_stream()).and_then(|s| s.get("P")) {
@@ -78,7 +171,10 @@ fn svg(points: &[[f32; 2]]) -> String {
         "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{:.0} {:.0} {VIEW:.0} {VIEW:.0}\" \
          width=\"260\" height=\"260\" role=\"img\">\n\
          <rect x=\"{:.0}\" y=\"{:.0}\" width=\"{VIEW:.0}\" height=\"{VIEW:.0}\" rx=\"14\" fill=\"#141317\"/>\n",
-        -VIEW / 2.0, -VIEW / 2.0, -VIEW / 2.0, -VIEW / 2.0
+        -VIEW / 2.0,
+        -VIEW / 2.0,
+        -VIEW / 2.0,
+        -VIEW / 2.0
     );
     for p in points {
         // O y do mundo cresce para CIMA e o do SVG para baixo — a figura tem de mostrar o que
@@ -143,7 +239,10 @@ fn dump_arranjo_figures() {
             let duro = m.registry.param_hard_max(tid, h.param);
             let faixa = match duro {
                 Some(d) if (d - h.max).abs() > f32::EPSILON => {
-                    format!("{} a {} <span class=\"soft\">(digitável até {d})</span>", h.min, h.max)
+                    format!(
+                        "{} a {} <span class=\"soft\">(digitável até {d})</span>",
+                        h.min, h.max
+                    )
                 }
                 _ => format!("{} a {}", h.min, h.max),
             };

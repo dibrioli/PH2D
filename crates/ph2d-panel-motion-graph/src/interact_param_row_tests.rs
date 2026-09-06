@@ -3,9 +3,11 @@
 //! ⚠️ Irmão de `interact_tests` por RESPONSABILIDADE: aquele mede os gestos do GRAFO (mover
 //! um nó, puxar um fio, laçar), este o gesto que o cartão passou a ter dentro de si.
 
-use super::*;
-use crate::snapshot::{CardParam, GraphNodeView, GraphViewSnapshot, NodeViewKind, PortView, drain_intents};
 use super::tests::{CENTER, RECT, gesture};
+use super::*;
+use crate::snapshot::{
+    CardParam, GraphNodeView, GraphViewSnapshot, NodeViewKind, PortView, drain_intents,
+};
 use ph2d_node_registry::{NodeSilhouette, NodeUiCategory, ParamUiHint, ParamWidget};
 use ph2d_nodegraph::port::{Clock, Dim, Domain};
 
@@ -47,8 +49,8 @@ fn card(params: Vec<CardParam>) -> GraphViewSnapshot {
 }
 
 fn param(name: &'static str, value: f32, step: f32, driven: bool) -> CardParam {
-    CardParam {
-        hint: ParamUiHint {
+    let p = CardParam::from_hint(
+        ParamUiHint {
             param: name,
             label: "Rows",
             min: 0.0,
@@ -57,9 +59,8 @@ fn param(name: &'static str, value: f32, step: f32, driven: bool) -> CardParam {
             widget: ParamWidget::Slider,
         },
         value,
-        driven,
-        swatch: None,
-    }
+    );
+    if driven { p.driven_by_wire() } else { p }
 }
 
 /// Arrasta a row `row` do cartão por `dx` px e devolve o que saiu na fila de intenções.
@@ -100,7 +101,10 @@ fn dragging_a_param_row_writes_the_document() {
     };
     assert_eq!(*node, 7);
     assert_eq!(*param, "rows");
-    assert!(*value > 5.0, "arrastar para a direita SOBE o valor ({value})");
+    assert!(
+        *value > 5.0,
+        "arrastar para a direita SOBE o valor ({value})"
+    );
 }
 
 /// ⭐⭐ **ATRAVESSAR A LARGURA DO CARTÃO VARRE A FAIXA INTEIRA** — a lei que faz o dedo e a
@@ -168,8 +172,8 @@ fn a_param_row_is_registered_after_the_card_body() {
 }
 
 fn enum_param(value: f32, labels: &'static [&'static str]) -> CardParam {
-    CardParam {
-        hint: ParamUiHint {
+    CardParam::from_hint(
+        ParamUiHint {
             param: "mode",
             label: "Mode",
             min: 0.0,
@@ -178,14 +182,12 @@ fn enum_param(value: f32, labels: &'static [&'static str]) -> CardParam {
             widget: ParamWidget::Enum { labels },
         },
         value,
-        driven: false,
-        swatch: None,
-    }
+    )
 }
 
 fn toggle_param(value: f32) -> CardParam {
-    CardParam {
-        hint: ParamUiHint {
+    CardParam::from_hint(
+        ParamUiHint {
             param: "invert",
             label: "Invert",
             min: 0.0,
@@ -194,13 +196,13 @@ fn toggle_param(value: f32) -> CardParam {
             widget: ParamWidget::Toggle,
         },
         value,
-        driven: false,
-        swatch: None,
-    }
+    )
 }
 
-/// Um CLIQUE (pressão e largada sem varrer) na row `row`.
-fn click(snap: &GraphViewSnapshot, row: u16) -> Vec<GraphIntent> {
+/// Um CLIQUE (pressão e largada sem varrer) na row `row` — o **estado** que ele deixa e o que
+/// saiu na fila. As duas coisas, porque desde 2026-09-05 um clique num número não escreve: ele
+/// abre uma caixa, e isso só se vê no estado.
+fn click_state(snap: &GraphViewSnapshot, row: u16) -> (MotionGraphPanelState, Vec<GraphIntent>) {
     let _ = drain_intents();
     let mut st = MotionGraphPanelState {
         fitted: true,
@@ -218,7 +220,12 @@ fn click(snap: &GraphViewSnapshot, row: u16) -> Vec<GraphIntent> {
         CENTER,
         snap,
     );
-    drain_intents()
+    (st, drain_intents())
+}
+
+/// Só o que saiu na fila — o caso comum.
+fn click(snap: &GraphViewSnapshot, row: u16) -> Vec<GraphIntent> {
+    click_state(snap, row).1
 }
 
 /// ⭐⭐ **UM CLIQUE AVANÇA O ENUM, COM VOLTA AO PRINCÍPIO** — é o gesto de quem quer *a
@@ -271,7 +278,13 @@ fn releasing_after_a_scrub_does_not_advance_the_enum() {
     };
     let kind = GraphHitKind::ParamRow { node: 7, row: 0 };
     for fase in [GesturePhase::Begin, GesturePhase::End] {
-        super::apply_gesture(&mut st, gesture(kind, fase, 100.0, 60.0), RECT, CENTER, &snap);
+        super::apply_gesture(
+            &mut st,
+            gesture(kind, fase, 100.0, 60.0),
+            RECT,
+            CENTER,
+            &snap,
+        );
     }
     assert!(
         drain_intents().is_empty(),
@@ -287,5 +300,62 @@ fn a_click_on_a_slider_changes_nothing() {
     assert!(
         click(&snap, 0).is_empty(),
         "um clique num slider nao escreve nada"
+    );
+}
+
+/// ⭐⭐⭐ **UM CLIQUE NUM NÚMERO ABRE A CAIXA DE ESCRITA — e NÃO mexe no valor** (report do Enio,
+/// 2026-09-05: *«vários nós não permitem clicar no número para usar o teclado para escrever»*).
+///
+/// As duas metades: uma caixa que não abre é o report, e uma que abre **escrevendo** destruiria o
+/// número em quem só quis olhar. FALSIFICADO por o braço do clique cair no `match` dos estados
+/// (nada abre) ou por ele emitir um `SetParam`.
+#[test]
+fn clicking_a_number_row_opens_the_typing_box_and_writes_nothing() {
+    let snap = card(vec![param("rows", 5.0, 0.1, false)]);
+    let (st, saiu) = click_state(&snap, 0);
+    let e = st
+        .param_edit
+        .expect("o clique num numero tem de abrir a caixa");
+    assert_eq!((e.node, e.param), (7, "rows"));
+    assert!(
+        saiu.is_empty(),
+        "abrir a caixa nao escreve nada, e saiu {saiu:?}"
+    );
+}
+
+/// ⭐⭐ **UM ENUM CONTINUA A AVANÇAR, e NÃO abre caixa** — não há número para escrever ali, e o
+/// clique já era o gesto de *«a opção seguinte»*. FALSIFICADO por o braço novo engolir o clique de
+/// todas as espécies (o enum deixaria de avançar) ou por abrir uma caixa sobre um enum.
+#[test]
+fn clicking_an_enum_row_still_advances_it_and_opens_no_box() {
+    let snap = card(vec![enum_param(0.0, &["Off", "Cycle", "Random"])]);
+    let (st, saiu) = click_state(&snap, 0);
+    assert!(st.param_edit.is_none(), "um enum nao abre caixa de numero");
+    let Some(GraphIntent::SetParam { value, .. }) = saiu.first() else {
+        panic!("o enum tem de avancar, e saiu {saiu:?}");
+    };
+    assert!((*value - 1.0).abs() < 1e-6, "avancou para {value}");
+}
+
+/// ⭐⭐⭐ **O ARRASTO TAMBÉM VOLTA À UNIDADE DO DOCUMENTO** — a barra, o número e o dedo trabalham
+/// na face do artista (`px`), e a escrita converte. FALSIFICADO por o arrasto emitir o número
+/// mostrado: com a face de `100 px/unidade` o objecto andaria cem vezes mais.
+#[test]
+fn dragging_a_faced_param_writes_the_document_unit() {
+    let mut p = param("dx", 0.0, 0.1, false);
+    // A face que o `motion.move::dx` tem no projecto de omissão: metros guardados, px mostrados.
+    p.face_scale = 100.0;
+    p.min = -1000.0;
+    p.max = 1000.0;
+    let snap = card(vec![p]);
+    // Atravessar meia largura de cartão varre METADE da faixa mostrada (1000 px).
+    let saiu = drag(&snap, 0, crate::geom::CARD_W * 0.5);
+    let Some(GraphIntent::SetParam { value, .. }) = saiu.first() else {
+        panic!("sem intencao: {saiu:?}");
+    };
+    // 1000 px de excursão ⇒ 10 unidades de mundo.
+    assert!(
+        (*value - 10.0).abs() < 1e-2,
+        "meia largura varre 1000 px = 10 unidades, e escreveu {value}"
     );
 }

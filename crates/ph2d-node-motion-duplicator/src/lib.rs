@@ -608,3 +608,7 @@ mod tests;
 #[cfg(test)]
 #[path = "pick_tests.rs"]
 mod pick_tests;
+
+#[cfg(test)]
+#[path = "measure_params.rs"]
+mod measure_params;

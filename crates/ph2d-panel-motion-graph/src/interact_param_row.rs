@@ -75,24 +75,24 @@ pub(super) fn apply_param_row(
             if largura <= 0.0 {
                 return;
             }
-            let faixa = p.hint.max - p.hint.min;
+            // A faixa **RESOLVIDA** — a mesma que a barra desenha e a mesma que o painel
+            // arrasta (canal · fio · `contain`).
+            let faixa = p.max - p.min;
             let bruto = start_value + (g.x - start_x) / largura * faixa;
-            // O passo do hint decide se o número é inteiro — a mesma leitura que a row usa
+            // O passo decide se o número é inteiro — a mesma leitura que a row usa
             // para o escrever.
-            let valor = if p.hint.step >= 1.0 {
-                bruto.round()
-            } else {
-                bruto
-            };
+            let valor = if p.step >= 1.0 { bruto.round() } else { bruto };
             // `safe_clamp` e não `clamp`: ele é tolerante a NaN e a limites TROCADOS, e um
             // hint com `min > max` existe (um param cuja faixa é decrescente). O `clamp` da
             // biblioteca entra em pânico nesse caso.
-            let valor = ph2d_editor_core::math::safe_clamp(valor, p.hint.min, p.hint.max);
+            let valor = ph2d_editor_core::math::safe_clamp(valor, p.min, p.max);
             if (valor - p.value).abs() > f32::EPSILON {
                 push_intent(GraphIntent::SetParam {
                     node,
                     param: p.hint.param,
-                    value: valor,
+                    // ⚠️ **A volta à unidade do DOCUMENTO acontece aqui e só aqui** — a row
+                    // inteira (barra, número, arrasto) trabalha na face do artista.
+                    value: p.to_stored(valor),
                 });
             }
         }
@@ -104,12 +104,26 @@ pub(super) fn apply_param_row(
         // ⚠️ **Só o CLIQUE**, nunca o `End` de um arrasto: senão largar o dedo depois de varrer
         // dava mais um passo, e o valor saltava por cima do que o artista tinha escolhido.
         GesturePhase::Click => {
+            // ⭐⭐⭐ **UM CLIQUE NUM NÚMERO ABRE-O PARA ESCRITA** (report do Enio, 2026-09-05:
+            // *«vários nós não permitem clicar no número para usar o teclado para escrever»*).
+            //
+            // ⚠️ **Quem responde *«isto é um número?»* é o PINTOR** (`shows_a_level`), não uma
+            // segunda lista de espécies aqui: a row que desenha um nível é exactamente a que
+            // aceita um nível escrito.
+            //
+            // O arrasto continua a varrer — é o *number field* do Blender inteiro: arrastar dá
+            // *«um pouco mais»*, clicar dá *«exactamente isto»*.
+            if crate::paint::paint_card_params::shows_a_level(p) {
+                crate::param_edit::arm(state, node, row, p);
+                state.interaction = Interaction::Idle;
+                return;
+            }
             match p.hint.widget {
                 ph2d_node_registry::ParamWidget::Toggle => {
                     push_intent(GraphIntent::SetParam {
                         node,
                         param: p.hint.param,
-                        value: f32::from(u8::from(p.value < 0.5)),
+                        value: p.to_stored(f32::from(u8::from(p.value < 0.5))),
                     });
                 }
                 ph2d_node_registry::ParamWidget::Enum { labels } if !labels.is_empty() => {
@@ -118,7 +132,7 @@ pub(super) fn apply_param_row(
                     push_intent(GraphIntent::SetParam {
                         node,
                         param: p.hint.param,
-                        value: proxima,
+                        value: p.to_stored(proxima),
                     });
                 }
                 _ => {}

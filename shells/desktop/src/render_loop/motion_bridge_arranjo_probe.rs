@@ -7,7 +7,6 @@
 //!
 //! `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture measure_the_arranjo_group`
 
-use super::*;
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::Edge;
@@ -37,8 +36,8 @@ fn measure_the_arranjo_group() {
             .trim()
     );
     eprintln!(
-        "  {:<26} │ {:>9} │ {:>9} │ {:>6} │ {:>9} │ {}",
-        "nó", "elementos", "device", "passes", "CPU ms", "recusa"
+        "  {:<26} │ {:>9} │ {:>9} │ {:>6} │ {:>9} │ recusa",
+        "nó", "elementos", "device", "passes", "CPU ms"
     );
     for (nome, contagem) in GRUPO {
         let mut m = MotionState::new();
@@ -100,5 +99,7 @@ fn measure_the_arranjo_group() {
             plano.dispatching_stages(&m.registry),
         );
     }
-    eprintln!("  (device = a cadeia `no' -> output` fica inteira na placa; 4,19 M em 3,85 ms e' o tecto medido)");
+    eprintln!(
+        "  (device = a cadeia `no' -> output` fica inteira na placa; 4,19 M em 3,85 ms e' o tecto medido)"
+    );
 }

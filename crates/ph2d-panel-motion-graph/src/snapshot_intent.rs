@@ -62,10 +62,7 @@ pub enum GraphIntent {
     /// **O ARTISTA DOBROU OU ABRIU UMA SECÇÃO** do cartão (ciclo 1). Estado de EDITOR: a shell
     /// guarda-o ao lado do resto do que a vista resolve, e por isso [`crate::geom::card_h`]
     /// continua a ser função pura do snapshot.
-    ToggleParamSection {
-        node: u32,
-        section: &'static str,
-    },
+    ToggleParamSection { node: u32, section: &'static str },
     Connect {
         from_node: u32,
         from_port: u16,

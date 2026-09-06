@@ -97,6 +97,7 @@ pub(crate) fn process(
     }
 
     crate::rename::settle_focus(state, ctx);
+    crate::param_edit::settle_focus(state, ctx);
 }
 
 /// **The frame boundary a released wire-end has to survive** (doc 45.1).
@@ -501,8 +502,8 @@ use param_row::apply_param_row;
 /// vivo, o alvo magnético, e o que fazer quando ele é largado longe de um pino).
 #[path = "interact_wire_drag.rs"]
 mod wire_drag;
-pub(super) use wire_drag::target_socket;
 use wire_drag::apply_socket_out;
+pub(super) use wire_drag::target_socket;
 
 #[cfg(test)]
 #[path = "interact_drop_tests.rs"]

@@ -143,11 +143,21 @@ segundos.</p>
   <li><b>Arraste <code>Gap X</code> para a direita.</b>
       <div class="out">As colunas se afastam. <code>Gap</code> é a distância entre um objeto e o
       vizinho, em pixels.</div></li>
+  <li><b>Agora <u>clique</u> na linha <code>Rows</code>, sem arrastar.</b>
+      <div class="out">A linha vira uma <b>caixa de escrever</b>, com o número já selecionado.
+      Digite <code>40</code> e aperte <kbd>Enter</kbd>: são exatamente quarenta fileiras.
+      <kbd>Esc</kbd> desiste e deixa como estava.</div>
+      <div class="bad">Se clicar não abrir caixa nenhuma, aquele controle não é um número — um
+      que diz <i>On/Off</i> ou o nome de uma opção troca de valor no clique, e é isso mesmo.</div></li>
   <li><b>Aperte <kbd>Ctrl</kbd>+<kbd>Z</kbd> algumas vezes.</b>
       <div class="out">Volta ao que era. Todo arrasto é um passo que se desfaz.</div>
       <div class="bad">Se arrastar a barra mover o cartão inteiro em vez do número, você pegou
       no cabeçalho — desça um pouco.</div></li>
 </ol>
+<div class="note"><b>Arrastar e escrever respondem a coisas diferentes.</b> O arrasto responde
+<i>«um pouco mais»</i> e mostra o resultado enquanto a mão anda; o clique responde
+<i>«exatamente isto»</i>. É por isso que o arrasto para onde o controle é útil e a caixa aceita
+muito além — a coluna <i>digitável até</i> da tabela da seção 6 diz até onde.</div>
 
 <h2>4 · Troque a forma do arranjo</h2>
 <p>A grade é só um dos jeitos. Os outros são <b>outros nós</b>, e trocar é ligar um fio.</p>
@@ -201,8 +211,8 @@ você percebe quando o número fica muito alto.</div>
 
 <h2>6 · O que cada controle faz</h2>
 <p>Esta tabela é gerada do próprio app: se um nó ganhar um controle novo, ela ganha a linha
-sozinha. A <b>faixa</b> é até onde o arrasto vai; onde diz <i>digitável até</i>, a caixa do
-painel aceita mais do que o arrasto alcança.</p>
+sozinha. A <b>faixa</b> é até onde o arrasto vai; onde diz <i>digitável até</i>, a caixa que
+abre no clique aceita mais do que o arrasto alcança.</p>
 <div class="params">
 <!--#include ../fig/params.html-->
 </div>
@@ -224,6 +234,8 @@ painel aceita mais do que o arrasto alcança.</p>
   <tr><td>Arrastar move o cartão</td><td>você pegou no cabeçalho; a barra fica abaixo dele</td></tr>
   <tr><td>Uma linha com uma setinha</td><td>é uma <b>seção</b> dobrada: clique para abrir</td></tr>
   <tr><td>Um controle que não arrasta</td><td>ele está sendo puxado por um fio — o número vem de fora</td></tr>
+  <tr><td>Clicar não abre caixa</td><td>aquele controle não é um número (é um <i>On/Off</i> ou uma lista de opções): o clique troca o valor</td></tr>
+  <tr><td>O número que você escreveu virou outro</td><td>você passou do <i>digitável até</i>; o app trouxe de volta para o maior que aceita</td></tr>
   <tr><td>A cena engasga com muitos objetos</td><td>aquele nó ainda roda no processador (veja a nota da seção 5)</td></tr>
 </table>
 

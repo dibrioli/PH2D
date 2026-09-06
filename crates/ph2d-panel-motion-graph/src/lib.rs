@@ -16,14 +16,14 @@ mod backdrop;
 mod flow;
 mod geom;
 
+mod hits;
+mod interact;
 /// **O custo de um CARTÃO pintado** — a medição do ciclo 1 (doc 103), irmã do
 /// `measure_row_cost` do painel de params: sem os dois números não há orçamento para pôr
 /// rows dentro dos cartões.
 #[cfg(test)]
 #[path = "measure_card_cost.rs"]
 mod measure_card_cost;
-mod hits;
-mod interact;
 mod paint;
 mod paint_chrome;
 mod split;
@@ -32,6 +32,7 @@ pub use paint_chrome::chrome_hit_id_for_tests;
 /// ⭐ A lei do arrasto do divisor — pública porque o gate dela é de **ida-e-volta** e tem de
 /// atravessar as duas crates (a fórmula aqui, a aplicação no `HeroLayout`).
 pub use split::split_fraction;
+mod param_edit;
 mod probe;
 mod rename;
 mod snapshot;
@@ -43,11 +44,11 @@ mod state;
 /// drift from it.
 pub use backdrop::{MIN_H as BACKDROP_MIN_H, MIN_W as BACKDROP_MIN_W};
 pub use snapshot::{
-    CardParam, CardSection, ChoiceTarget, Crumb, GraphBackdropView, GraphEdgeView, GraphIntent, GraphNodeView,
-    GraphViewSnapshot, HiddenPorts, NodeChoice, NodeViewKind, PROBE_SAMPLES, PortChoice, PortView,
-    PreviewThumb, ProbeView, RenameTarget, SUBGRAPH_VIEW_TAG, card_hidden_ports,
-    current_graph_backdrop_selection, current_graph_selection, drain_intents, is_subgraph_view,
-    library_pick, pending_graph_selection, push_intent, request_graph_selection,
+    CardParam, CardSection, ChoiceTarget, Crumb, GraphBackdropView, GraphEdgeView, GraphIntent,
+    GraphNodeView, GraphViewSnapshot, HiddenPorts, NodeChoice, NodeViewKind, PROBE_SAMPLES,
+    PortChoice, PortView, PreviewThumb, ProbeView, RenameTarget, SUBGRAPH_VIEW_TAG,
+    card_hidden_ports, current_graph_backdrop_selection, current_graph_selection, drain_intents,
+    is_subgraph_view, library_pick, pending_graph_selection, push_intent, request_graph_selection,
     set_card_hidden_ports, set_current_motion_graph, set_current_node_catalog,
     set_graph_backdrop_selection, set_graph_selection, set_node_help, snapshot_from,
 };
@@ -160,6 +161,21 @@ impl Panel for MotionGraphPanel {
             // than merely blurring the field.)
             WidgetEvent::Cancel(id) if id == hits::rename_id() => {
                 state.rename = None;
+                EventOutcome::Consumed
+            }
+            // ⭐ **O NÚMERO ESCRITO** (report do Enio, 2026-09-05). Um `NumberInput` comita por
+            // `ValueChanged` — é o que o `Enter` produz depois de analisar o buffer, e também o
+            // que as setinhas e o arrasto DENTRO da caixa produzem.
+            WidgetEvent::ValueChanged(id) if id == hits::param_edit_id() => {
+                param_edit::commit(state, _host.store());
+                EventOutcome::Consumed
+            }
+            // ⚠️ **O `Blur` é o ÚNICO fecho, e tem de ser** — ele é o que os TRÊS caminhos têm em
+            // comum: o `Enter` (que manda `ValueChanged` e depois este), o `Esc` (que repõe o
+            // buffer e manda **só** este) e o clique fora. Fechar no `ValueChanged` deixaria o
+            // `Esc` sem quem o ouvisse, que é como uma caixa fica no ecrã a comer o teclado.
+            WidgetEvent::Blur(id) if id == hits::param_edit_id() => {
+                state.param_edit = None;
                 EventOutcome::Consumed
             }
             _ => EventOutcome::Ignored,

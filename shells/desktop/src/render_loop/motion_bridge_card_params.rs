@@ -28,6 +28,7 @@ use super::*;
 /// custa 13,5 µs, e 20 cartões × 5 rows seriam 200 alocações por quadro).
 pub(crate) fn stamp_card_params(
     motion: &MotionState,
+    project: ph2d_editor::ProjectSettings,
     snap: &mut ph2d_panel_motion_graph::GraphViewSnapshot,
 ) {
     for node in &mut snap.nodes {
@@ -52,33 +53,124 @@ pub(crate) fn stamp_card_params(
         // ⭐⭐ **AS SECÇÕES, pela MESMA lei do painel** (`sections::split_into_sections`): a
         // ordem é a que o registry declara (`param_group_order`), os sem grupo vêm primeiro, e
         // a ordenação é ESTÁVEL para a ordem dos hints sobreviver dentro de cada grupo.
+        // ⭐⭐ **A faixa de cada row sai das MESMAS portas do painel** — o canal (uma magnitude
+        // mede graus numa Rotation e unidades de mundo num X/Y), o fio (um `value.*` veste a
+        // roupa de quem ele conduz), o `contain` (conter o valor vivo) e o tecto/piso digitáveis.
+        // ⚠️ Reimplementar a escada aqui seria como o cartão passa a arrastar noutra faixa que
+        // o painel, e o defeito que ela cura já foi reportado uma vez (doc 88).
+        let type_name = motion
+            .doc
+            .graph
+            .node(nid)
+            .map(|i| i.type_name.clone())
+            .unwrap_or_default();
+        let channel = hints
+            .iter()
+            .any(|h| h.param == "channel")
+            .then(|| param_value(motion, nid, "channel").round() as i32);
+        // ⚠️ **O fio só se resolve para quem o LÊ.** O `wire_face` varre o mapa de params
+        // dirigidos do documento inteiro, e aqui há um cartão por nó na vista — chamá-lo sempre
+        // seria `O(nós × dirigidos)` por quadro. Quem declara `FromWire` é uma minoria conhecida,
+        // e para toda a outra a resposta não é lida.
+        let le_o_fio = hints.iter().any(|h| {
+            ph2d_node_registry::unit_of(
+                h.widget,
+                motion.registry.param_unit_declared(type_id, h.param),
+            ) == ph2d_node_registry::ParamUnit::FromWire
+        });
+        let wire = le_o_fio
+            .then(|| params_wire::wire_face(motion, nid))
+            .flatten();
         let ordem = motion.registry.param_group_order(type_id);
         let dobradas = motion.registry.param_groups_folded(type_id);
         let mut linhas: Vec<(Option<&'static str>, ph2d_panel_motion_graph::CardParam)> = hints
             .iter()
             .filter(|h| shown(h.param))
-            .map(|h| ph2d_panel_motion_graph::CardParam {
-                hint: *h,
-                value: param_value(motion, nid, h.param),
-                driven: sources.is_some_and(|s| s.contains_key(h.param)),
-                // A amostra em bytes sRGB — pela MESMA porta que semeia o picker do painel
-                // (os params guardam RGBA linear).
-                swatch: match h.widget {
-                    ph2d_node_registry::ParamWidget::Color { channels } => {
-                        Some(super::super::color::linear_rgba_to_srgb8([
-                            param_value(motion, nid, channels[0]),
-                            param_value(motion, nid, channels[1]),
-                            param_value(motion, nid, channels[2]),
-                            param_value(motion, nid, channels[3]),
-                        ]))
-                    }
-                    _ => None,
-                },
+            .map(|h| {
+                // ⭐⭐ **A FACE do artista** — a MESMA de `build_params_snapshot`: um comprimento
+                // do mundo guarda-se em metros e mostra-se em px. Sem ela o cartão leria `0.94`
+                // onde o painel lê `94 px`, em **109 de 454** rows escalares do catálogo.
+                let unidade = ph2d_node_registry::unit_of(
+                    h.widget,
+                    motion.registry.param_unit_declared(type_id, h.param),
+                );
+                let face =
+                    params_wire::display_face(unidade, channel, wire.map(|w| w.unit), project);
+                let (min, max, step) = channel
+                    .and_then(|ch| {
+                        channel_range_override(&motion.registry, &type_name, h.param, ch)
+                    })
+                    .or_else(|| {
+                        (ph2d_node_registry::unit_of(
+                            h.widget,
+                            motion.registry.param_unit_declared(type_id, h.param),
+                        ) == ph2d_node_registry::ParamUnit::FromWire)
+                            .then(|| wire.and_then(|w| w.range))
+                            .flatten()
+                    })
+                    .unwrap_or((h.min, h.max, h.step));
+                let (min, max) = contain(min, max, param_value(motion, nid, h.param));
+                (h, min, max, step, face)
+            })
+            .map(|(h, min, max, step, face)| {
+                // ⚠️ **Tudo vestido de uma vez** — o valor, as duas faixas e o passo. Vestir só
+                // o número deixaria o slider a arrastar noutra escala que a que ele mostra, que
+                // é o defeito que o doc do `in_display` do painel já nomeia.
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "a face e' um f64 de escala"
+                )]
+                let vestir = |v: f32| (f64::from(v) * face.scale) as f32;
+                ph2d_panel_motion_graph::CardParam {
+                    hint: *h,
+                    value: vestir(param_value(motion, nid, h.param)),
+                    min: vestir(min),
+                    max: vestir(max),
+                    step: vestir(step),
+                    // O tecto/piso DIGITÁVEIS, com a mesma lei do painel: um hard que ficasse do lado
+                    // de dentro do arrasto desfaria em silêncio um valor que o dedo ainda alcança.
+                    hard_max: vestir(
+                        motion
+                            .registry
+                            .param_hard_max(type_id, h.param)
+                            .unwrap_or(max)
+                            .max(max),
+                    ),
+                    hard_min: vestir(
+                        motion
+                            .registry
+                            .param_hard_min(type_id, h.param)
+                            .unwrap_or(min)
+                            .min(min),
+                    ),
+                    #[expect(
+                        clippy::cast_possible_truncation,
+                        reason = "a face e' um f64 de escala"
+                    )]
+                    face_scale: face.scale as f32,
+                    face_suffix: face.suffix,
+                    driven: sources.is_some_and(|s| s.contains_key(h.param)),
+                    // A amostra em bytes sRGB — pela MESMA porta que semeia o picker do painel
+                    // (os params guardam RGBA linear).
+                    swatch: match h.widget {
+                        ph2d_node_registry::ParamWidget::Color { channels } => {
+                            Some(super::super::color::linear_rgba_to_srgb8([
+                                param_value(motion, nid, channels[0]),
+                                param_value(motion, nid, channels[1]),
+                                param_value(motion, nid, channels[2]),
+                                param_value(motion, nid, channels[3]),
+                            ]))
+                        }
+                        _ => None,
+                    },
+                }
             })
             .map(|c| (motion.registry.param_group(type_id, c.hint.param), c))
             .collect();
         linhas.sort_by_key(|(g, _)| {
-            g.map_or(0, |g| 1 + ordem.iter().position(|o| *o == g).unwrap_or(ordem.len()))
+            g.map_or(0, |g| {
+                1 + ordem.iter().position(|o| *o == g).unwrap_or(ordem.len())
+            })
         });
 
         // A dobra EFECTIVA: o que o artista tocou, senão o que o registry declarou.
@@ -121,7 +213,16 @@ pub(crate) fn stamp_card_params(
     }
 }
 
-/// Os gates desta faixa — irmão de teste, como em todo o módulo.
+/// Os gates desta faixa — irmão de teste, como em todo o módulo. ⚠️ **Dois ficheiros, duas
+/// perguntas** (HR-18): *quais* params o cartão mostra, e *que número* cada um carrega.
 #[cfg(test)]
 #[path = "motion_bridge_card_params_tests.rs"]
 mod card_params_tests;
+
+#[cfg(test)]
+#[path = "motion_bridge_card_range_tests.rs"]
+mod card_range_tests;
+
+#[cfg(test)]
+#[path = "motion_bridge_card_census.rs"]
+mod card_census;

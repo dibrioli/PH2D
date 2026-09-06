@@ -16,8 +16,8 @@
 
 use crate::geom::{self, View};
 use crate::snapshot::{CardParam, GraphNodeView};
-use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
+use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::text_elide::paint_text_title_elided;
 use ph2d_editor_core::zones::Rect;
 use ph2d_node_registry::ParamWidget;
@@ -76,21 +76,33 @@ enum Shown {
 
 fn shown(p: &CardParam) -> Shown {
     let level = |text: String| {
-        let span = p.hint.max - p.hint.min;
+        // ⚠️ A faixa **RESOLVIDA** (`p.min`/`p.max`), nunca a do hint: numa magnitude ligada a
+        // um canal angular o hint descreve o outro canal, e o nível saía saturado.
+        let span = p.max - p.min;
         let f = if span.abs() > f32::EPSILON {
-            ((p.value - p.hint.min) / span).clamp(0.0, 1.0)
+            ((p.value - p.min) / span).clamp(0.0, 1.0)
         } else {
             0.0
         };
         Shown::Level { text, fill: f }
     };
+    // ⭐⭐ **UMA LEI PARA COMO UM NÚMERO LÊ** — o formatador da casa
+    // ([`ph2d_editor_core::interaction::format_number`], o mesmo do painel) mais o sufixo da
+    // FACE. ⛔ Um segundo formatador aqui seria uma segunda forma de arredondar, e o mesmo param
+    // leria `0.50` no cartão e `0,503 px` no painel.
+    let com_face = |v: f32| {
+        let n = ph2d_editor_core::interaction::format_number(f64::from(v));
+        if p.face_suffix.is_empty() {
+            n
+        } else {
+            format!("{n} {}", p.face_suffix)
+        }
+    };
     match p.hint.widget {
-        // Um contínuo: duas casas é o que a faixa de um cartão comporta sem competir com o
-        // rótulo (o painel, que tem largura, é quem mostra a precisão inteira).
-        ParamWidget::Slider => level(format!("{:.2}", p.value)),
-        ParamWidget::IntSlider | ParamWidget::Seed => level(format!("{}", p.value.round() as i64)),
-        // O grau é a unidade AUTORADA da casa — o sufixo evita a leitura "0,79" de um radiano.
-        ParamWidget::Angle => level(format!("{:.0}deg", p.value)),
+        // Um contínuo, um inteiro, uma semente e um ângulo são todos NÍVEIS — o que muda entre
+        // eles é a face, e ela já vem resolvida na row.
+        ParamWidget::Slider | ParamWidget::Angle => level(com_face(p.value)),
+        ParamWidget::IntSlider | ParamWidget::Seed => level(com_face(p.value.round())),
         ParamWidget::Toggle => Shown::State(if p.value >= 0.5 { "On" } else { "Off" }.to_string()),
         ParamWidget::Enum { labels } => Shown::State(
             labels
@@ -106,6 +118,18 @@ fn shown(p: &CardParam) -> Shown {
         | ParamWidget::Palette
         | ParamWidget::File { .. } => Shown::Editor,
     }
+}
+
+/// ⭐⭐ **UMA ROW ACEITA UM NÚMERO ESCRITO EXACTAMENTE QUANDO MOSTRA UM NÍVEL** — e a pergunta
+/// responde-se pela MESMA função que decide o que a row desenha ([`shown`]), nunca por uma
+/// segunda lista de espécies.
+///
+/// ⚠️ *Duas listas para uma pergunta é como uma espécie nova ganha um número no ecrã e não o
+/// deixa escrever* — o `match` de [`shown`] é exaustivo de propósito, e esta resposta vem
+/// atrelada a ele: uma variante nova de `ParamWidget` é erro de compilação lá, e daí sai o
+/// veredito aqui de graça.
+pub(crate) fn shows_a_level(p: &CardParam) -> bool {
+    matches!(shown(p), Shown::Level { .. })
 }
 
 /// **O CABEÇALHO DE UMA SECÇÃO** — um galão discreto com o nome, o chevron do estado e, quando
@@ -182,12 +206,7 @@ fn draw_section_header(
 /// ([`geom::params_are_drawn`]) — nem o desenho nem, do lado do hit-test, o registo: uma row
 /// pintada onde não se clica é um controlo morto, e uma registada onde não se vê é um alvo
 /// invisível.
-pub(super) fn draw_card_params(
-    ctx: &mut PaintCtx,
-    n: &GraphNodeView,
-    view: &View,
-    theme: Theme,
-) {
+pub(super) fn draw_card_params(ctx: &mut PaintCtx, n: &GraphNodeView, view: &View, theme: Theme) {
     if n.params.is_empty() {
         return;
     }
@@ -212,7 +231,12 @@ pub(super) fn draw_card_params(
             (row.w - 2.0 * TRACK_INSET_X * z).max(0.0),
             (row.h - 2.0 * TRACK_INSET_Y * z).max(0.0),
         );
-        fill_rounded_rect(ctx.scene, track, TRACK_R * z, resolve(ColorToken::Bg0, theme));
+        fill_rounded_rect(
+            ctx.scene,
+            track,
+            TRACK_R * z,
+            resolve(ColorToken::Bg0, theme),
+        );
         let what = shown(p);
         // O NÍVEL, dentro da mesma faixa. ⚠️ Um param DIRIGIDO não desenha nível: o número vem
         // de um fio e não obedece ao dedo — mostrar um nível arrastável seria a mentira que o
@@ -222,7 +246,12 @@ pub(super) fn draw_card_params(
             && *fill > 0.0
         {
             let bar = Rect::new(track.x, track.y, track.w * fill, track.h);
-            fill_rounded_rect(ctx.scene, bar, TRACK_R * z, resolve(ColorToken::AccentSoft, theme));
+            fill_rounded_rect(
+                ctx.scene,
+                bar,
+                TRACK_R * z,
+                resolve(ColorToken::AccentSoft, theme),
+            );
         }
         if !com_texto {
             continue;
@@ -273,8 +302,8 @@ pub(super) fn draw_card_params(
         // E o rótulo, elidido no espaço que SOBRA — quando os dois disputam o pixel, quem
         // encolhe é o nome, nunca o número.
         let label_x = track.x + TEXT_PAD_X * z;
-        let label_w = (track.x + track.w - TEXT_PAD_X * z - right_w - TEXT_PAD_X * z - label_x)
-            .max(0.0);
+        let label_w =
+            (track.x + track.w - TEXT_PAD_X * z - right_w - TEXT_PAD_X * z - label_x).max(0.0);
         paint_text_title_elided(
             ctx.text_system,
             ctx.scene,

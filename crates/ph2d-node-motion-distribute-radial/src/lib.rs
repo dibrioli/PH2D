@@ -359,12 +359,17 @@ const RADIAL_BODY_ALIGN: &str = "\
     write_P(i, vec2<f32>(rad_rr * rad_sin(rad_cycles + 0.25), rad_rr * rad_sin(rad_cycles)));\n\
     write_rot(i, rad_cycles * 360.0);\n";
 
-const RADIAL_PARAMS: &[&str] = &["count", "rings", "radius", "inner", "start_angle", "end_angle"];
+const RADIAL_PARAMS: &[&str] = &[
+    "count",
+    "rings",
+    "radius",
+    "inner",
+    "start_angle",
+    "end_angle",
+];
 
 fn radial_count(c: &ph2d_nodegraph::gpu::CountLawCtx) -> SourceWindow {
-    SourceWindow::of_count(
-        param_as_count((c.param)("count"), RECOMMENDED_MAX_ELEMENTS).max(1),
-    )
+    SourceWindow::of_count(param_as_count((c.param)("count"), RECOMMENDED_MAX_ELEMENTS).max(1))
 }
 
 static RADIAL_KERNEL: GpuKernel = GpuKernel {

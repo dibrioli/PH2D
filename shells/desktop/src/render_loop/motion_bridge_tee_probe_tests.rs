@@ -142,7 +142,9 @@ fn the_tee_against_the_fused_node() {
         );
     }
 
-    eprintln!("  --- custo na CPU a 1 000 000 (1000x1000): cozimento frio, depois um segundo instante ---");
+    eprintln!(
+        "  --- custo na CPU a 1 000 000 (1000x1000): cozimento frio, depois um segundo instante ---"
+    );
     let mut a = Graph::new();
     let oa = fused(&mut a, 1000.0, 1000.0, 2.0);
     let mut b = Graph::new();

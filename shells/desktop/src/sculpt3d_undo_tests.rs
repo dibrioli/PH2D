@@ -480,11 +480,23 @@ fn a_cloth_stroke_undoes() {
     );
     s.stroke_anchor = [CENTRE.0, CENTRE.1];
 
-    // E o arrasto, pelo mesmo `hook_step` que o braço `Grip::Simulate` percorre.
+    // E o arrasto, pelo MESMO braço que o `Grip::Simulate` percorre — incluindo
+    // a escolha entre re-picar o cursor na superfície e andar no plano de
+    // profundidade.
+    //
+    // ⚠️ **Ela é load-bearing desde 06/09**, quando a lei da referência passou a
+    // ser a de omissão: os modos de força dela re-picam, e um gate preso ao
+    // `hook_step` passaria a medir um caminho que o produto já não toma. *Um
+    // gate que não pergunta o que o gesto pergunta mede outro programa.*
+    let repica = ph2d_sculpt3d::cloth_repica();
     let mut prev = [CENTRE.0, CENTRE.1];
     for k in 1..=12 {
         let to = [CENTRE.0 + 6.0 * k as f32, CENTRE.1];
-        s.hook_step(prev, to);
+        if repica {
+            s.cloth_step(prev, to);
+        } else {
+            s.hook_step(prev, to);
+        }
         prev = to;
     }
 

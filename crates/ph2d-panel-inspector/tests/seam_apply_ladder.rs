@@ -46,6 +46,7 @@ fn info() -> InspectorInstanceInfo {
         is_variant: false,
         apply_levels: vec![rung(OUTER, "Car", false), rung(INNER, "Wheel", true)],
         apply_levels_beyond: 0,
+        removed_rows: Vec::new(),
     }
 }
 

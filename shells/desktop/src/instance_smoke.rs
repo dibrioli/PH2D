@@ -266,8 +266,10 @@ impl crate::App {
             // ⭐⭐⭐ **A troca por um componente SEM PARENTESCO** (F5, o último critério) — irmã por
             // assunto, ver o cabeçalho de lá.
             "4" => self.instance_smoke_replace(),
+            // ⭐⭐⭐ **O que é SÓ desta cópia** (F5.10) — irmã por assunto, ver o cabeçalho de lá.
+            "5" => self.instance_smoke_removed(),
             other => {
-                println!("[instance smoke] cena {other:?} nao existe (ha' a 1, a 2, a 3 e a 4)")
+                println!("[instance smoke] cena {other:?} nao existe (ha' a 1..5)")
             }
         }
         // ⚠️ **O relógio TEM de partir a andar**, e a linha vive no prólogo pela razão do smoke da

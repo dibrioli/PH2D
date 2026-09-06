@@ -581,4 +581,25 @@
 /// a próxima pessoa olha para a tripla primeiro.*
 ///
 /// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08 (não há projetos gravados).
-pub(crate) const PROJECT_SCHEMA: u32 = 119;
+///
+/// # 119 -> 120 — uma cópia pode RECUSAR uma peça da receita (`line/components`, F5.10)
+///
+/// O `ObjectInstance` ganha `removed: BTreeSet<u64>` — os `StableId` das peças do mestre que
+/// **esta** cópia apagou. É o *Removed GameObject* do Unity, e era a única coisa que o modelo de
+/// override não sabia dizer: até aqui a forma de uma cópia era **sempre** a da receita, e o gesto
+/// de apagar uma peça dentro dela era recusado em voz alta.
+///
+/// ⚠️ **Só a DECISÃO viaja, e é o que a separa dos órfãos:** a peça recusada continua viva na
+/// receita, logo o nome, a pose e os componentes dela lêem-se de lá — não há segunda fonte a criar.
+/// *Guardar um valor só é honesto quando não há primeira.*
+///
+/// ⚠️ **Campo NOVO no fim de um componente ⇒ quebra dura na mesma.** O postcard é posicional e um
+/// v115 lido por este layout fica sem os bytes do conjunto — a cadeia desalinha a partir dali, sem
+/// avisar.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **quinta** vez nesta escada (99, 100, 114, 115 e agora):
+/// os bytes mudaram **dentro de um `ComponentBlob`**, que para ela é opaco. *Está escrito aqui
+/// porque a próxima pessoa olha para a tripla primeiro.*
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08.
+pub(crate) const PROJECT_SCHEMA: u32 = 120;

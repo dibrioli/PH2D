@@ -108,7 +108,7 @@ fn a_copy_of_a_variant_is_born_with_no_overrides() {
             }]
             .into_iter()
             .collect(),
-            orphans: Default::default(),
+            ..Default::default()
         });
     ph2d_ecs::assign_master_pieces(sim.world_mut());
 

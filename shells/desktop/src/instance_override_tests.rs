@@ -459,7 +459,8 @@ fn reverting_a_whole_instance_answers_the_three_cases() {
         crate::instance_revert::revert_all_overrides(&mut sim, &mut echo, roots[0]),
         Some(crate::instance_revert::Reverted {
             count: 1,
-            poses_kept: 0
+            poses_kept: 0,
+            pieces_back: 0,
         })
     );
     pass(&mut sim, &r, &bridge, &mut echo);
@@ -503,7 +504,8 @@ fn reverting_from_the_piece_the_artist_touched_works() {
         crate::instance_revert::revert_all_overrides(&mut sim, &mut echo, arm),
         Some(crate::instance_revert::Reverted {
             count: 1,
-            poses_kept: 0
+            poses_kept: 0,
+            pieces_back: 0,
         }),
         "clicar na peca tem de devolver a excepcao DELA"
     );
@@ -524,7 +526,8 @@ fn reverting_from_the_piece_the_artist_touched_works() {
         crate::instance_revert::revert_all_overrides(&mut sim, &mut echo, roots[0]),
         Some(crate::instance_revert::Reverted {
             count: 1,
-            poses_kept: 0
+            poses_kept: 0,
+            pieces_back: 0,
         })
     );
     pass(&mut sim, &r, &bridge, &mut echo);

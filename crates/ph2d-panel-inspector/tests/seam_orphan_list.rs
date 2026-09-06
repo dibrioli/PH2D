@@ -38,6 +38,7 @@ fn info(rows: Vec<OrphanRow>) -> InspectorInstanceInfo {
         is_variant: false,
         apply_levels: Vec::new(),
         apply_levels_beyond: 0,
+        removed_rows: Vec::new(),
     }
 }
 
@@ -241,5 +242,70 @@ fn the_rows_beyond_the_id_table_say_they_have_no_button() {
         moved > one_row * 3.5,
         "tres orfaos acima do tecto empurraram o botao {moved} (uma linha = {one_row}): sao as \
          tres linhas e mais NADA — o aviso de que elas ficaram sem `x` nao foi pintado"
+    );
+}
+
+// ── As peças que a cópia RECUSOU (F5.10) ────────────────────────────────────────────────────
+
+fn removed(name: &str, id: u64) -> ph2d_editor_core::screens::hero::RemovedRow {
+    ph2d_editor_core::screens::hero::RemovedRow {
+        piece_id: id,
+        name: name.into(),
+    }
+}
+
+/// ⭐⭐⭐ **O *Put back* DE UMA LINHA devolve AQUELA peça** — e o que viaja é a CHAVE, nunca o índice.
+///
+/// ⚠️ A metade que importa é a segunda: a linha `1` de três tem de mandar a chave da linha `1`. Um
+/// braço que mandasse o índice ficaria verde num cartão de uma linha só e escolheria a errada assim
+/// que a lista crescesse.
+///
+/// **Mutação que deve sangrar:** o `restore_piece_click` a mandar `removed_rows[0]`, ou o botão a
+/// não ser pintado.
+#[test]
+fn the_put_back_of_a_row_restores_that_piece_by_key() {
+    use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::interaction::WidgetEvent;
+
+    let rows = vec![removed("Arm", 11), removed("Leg", 22), removed("Hat", 33)];
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_name(Some(InspectorNameInfo {
+        entity_bits: ENTITY,
+        name: "Robot".into(),
+    }));
+    let mut i = info(Vec::new());
+    i.removed_rows = rows;
+    set_current_inspector_instance(Some(i));
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let id = ph2d_editor_core::ids::INSP_INSTANCE_RESTORE_PIECE[1];
+    assert!(
+        rects.iter().any(|(r, _)| *r == id),
+        "o botao da 2.a linha nao foi pintado nem hit-indexado"
+    );
+    let out = host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::Click(id));
+    let drained = host.drained_actions();
+    set_current_inspector_instance(None);
+    set_current_inspector_name(None);
+
+    assert_eq!(out, ph2d_editor_core::panel::EventOutcome::Consumed);
+    assert_eq!(
+        drained,
+        vec![EditorAction::InspectorRestoreRemovedPiece {
+            root_bits: ROOT,
+            piece: 22,
+        }],
+        "o `Put back` da linha 1 nao mandou a chave DELA"
+    );
+}
+
+/// ⚠️ **O rótulo NOMEIA a peça** — *Put back "Arm"*. Sem o nome o artista tem N botões iguais sobre
+/// coisas diferentes, que é o defeito que a lista dos órfãos já pagou em 04/09.
+#[test]
+fn the_put_back_names_the_piece_it_brings_back() {
+    assert_eq!(
+        removed("Arm", 1).label(),
+        "Put back \u{201c}Arm\u{201d}",
+        "o rotulo deixou de nomear a peca"
     );
 }

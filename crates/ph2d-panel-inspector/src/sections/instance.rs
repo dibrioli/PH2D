@@ -129,7 +129,8 @@ pub(crate) fn paint_instance_card(
         })
         .sum::<f32>()
         + instance_orphans::rows_height(text_system, info, font, at.orphan_tw, line);
-    let fixed_rows = ladder.len() + beyond + instance_orphans::fixed_rows(info);
+    let fixed_rows =
+        ladder.len() + beyond + instance_removed::rows(info) + instance_orphans::fixed_rows(info);
     let card_h = CARD_PAD * 2.0 + head_h + list_h + line * fixed_rows as f32;
     let card = Rect::new(x, y, w, card_h);
     fill_rounded_rect(
@@ -225,6 +226,12 @@ pub(crate) fn paint_instance_card(
         );
         ty += line;
     }
+
+    // ⭐⭐⭐ **AS PEÇAS que esta cópia RECUSOU** (F5.10) — o bloco inteiro vive no irmão
+    // [`super::instance_removed`]. ⚠️ Ele vem ANTES dos órfãos de propósito: uma peça recusada é
+    // uma diferença VIVA (o artista pode desfazê-la, e a peça existe na receita), e uma excepção
+    // sem alvo é um resto. *O que se pode desfazer lê-se antes do que só se pode largar.*
+    ty = instance_removed::paint(scene, text_system, theme, hit_index, store, info, at, ty);
 
     // ⭐⭐⭐ **AS EXCEPÇÕES SEM ALVO, e o gesto de cada uma** — o bloco inteiro vive no irmão
     // [`super::instance_orphans`], cortado por assunto quando o `✕` por linha estourou o tecto de

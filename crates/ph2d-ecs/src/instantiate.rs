@@ -120,6 +120,30 @@ pub struct ObjectInstance {
     /// apagar a excepção do artista por causa de um `Delete` no mestre é perder trabalho em
     /// silêncio. Sai por gesto, ou quando a peça volta e ela é reposta.
     pub orphans: std::collections::BTreeMap<OverrideKey, OrphanOverride>,
+    /// ⭐⭐⭐ **As peças que ESTA cópia recusou** — o *Removed GameObject* do Unity (ADR-0164 / F5.10).
+    ///
+    /// `StableId` da peça **do mestre** que o artista apagou nesta cópia. A receita continua a
+    /// tê-la, as outras cópias continuam a mostrá-la, e só esta não.
+    ///
+    /// # ⚠️ Ela é um CONJUNTO de ids, e não guarda nada da peça
+    ///
+    /// É a diferença exacta contra os [`Self::orphans`], e o critério é o mesmo da refutação da
+    /// F4.4: *guardar um valor cria duas fontes para o mesmo facto, e isso só é aceitável quando
+    /// não há primeira*. Um órfão perdeu a peça no mestre — não há de onde a ler, logo os bytes e o
+    /// nome viajam. Uma peça **recusada continua viva na receita**: o nome, a pose e os componentes
+    /// dela lêem-se de lá a qualquer momento. ⇒ o que falta guardar é só a **decisão**.
+    ///
+    /// # ⛔ Ela é a intenção do GESTO, e não uma lei do passe
+    ///
+    /// [`crate::MasterRoot`]: a forma de uma cópia continua a ser a da receita — apagar uma peça
+    /// **por fora** (um `despawn` cru) continua a ser desfeito pelo passe estrutural no quadro
+    /// seguinte, e há gate a afirmá-lo. O que mudou é que o **gesto** passou a ter como dizer
+    /// *«de propósito»*. *A guarda vive no gesto; a lei fica no passe.*
+    ///
+    /// ⛔ **Nunca se limpa sozinha**, pela mesma razão dos órfãos: se o mestre apagar a peça e
+    /// alguém desfizer, a peça volta — e a cópia que a recusou **continua a recusá-la**. Sai por
+    /// gesto (*Put back*, ou o *Revert* da raiz).
+    pub removed: std::collections::BTreeSet<u64>,
 }
 
 /// ⭐⭐⭐ **UMA EXCEPÇÃO SEM ALVO** — o que ficou de uma peça que o mestre apagou (ADR-0164 / F5.3).

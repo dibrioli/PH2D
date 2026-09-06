@@ -48,6 +48,8 @@ mod identity;
 pub(crate) mod instance;
 /// ⭐⭐ **O bloco das excepções SEM ALVO** — irmão por assunto do `instance`, ver o cabeçalho de lá.
 pub(crate) mod instance_orphans;
+/// ⭐⭐ **O bloco das peças RECUSADAS** — irmão por assunto do `instance`, ver o cabeçalho de lá.
+pub(crate) mod instance_removed;
 pub(crate) mod joint;
 mod joint_pair_rows;
 mod material_blend;

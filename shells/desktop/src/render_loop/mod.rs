@@ -51,6 +51,8 @@ mod hierarchy_add_root;
 /// ⭐⭐ **O menu de um cartão da biblioteca, e a poda de selecção morta** — irmão por assunto do
 /// [`hierarchy`], ver o cabeçalho de lá.
 mod hierarchy_asset_verbs;
+/// ⭐⭐ **O gesto de APAGAR e as três respostas dele** — irmão por assunto do `hierarchy`.
+mod hierarchy_delete;
 mod hierarchy_rename;
 // ⚠️ **A row *Duplicate*, por ASSUNTO** — o `hierarchy.rs` voltou ao tecto de 600 LOC quando a
 // cópia ganhou as duas leis que lhe faltavam (auditoria §1.4/§1.2). Lá o dreno das intenções, aqui
@@ -4852,6 +4854,16 @@ impl crate::App {
                     // ⭐⭐⭐ **Largar UMA** (F5.3-ter) — o `✕` da linha. ⚠️ Aplicado JÁ, como o irmão
                     // acima e pela mesma razão: ele não precisa de nada que este ponto não tenha, e
                     // o `post_frame_undo` vê a mudança e regista o passo.
+                    // ⭐⭐⭐ **Devolver uma peça recusada** (F5.10). ⚠️ Ela só apaga a DECISÃO — quem
+                    // materializa a peça, lhe traz os bytes da receita e exuma a excepção que o
+                    // artista tinha nela é o passe estrutural, no quadro seguinte.
+                    EditorAction::InspectorRestoreRemovedPiece { root_bits, piece } => {
+                        if crate::instance_structure::restore_piece(sim, root_bits, piece) {
+                            toasts.push(ph2d_editor::Toast::success(
+                                "Put the piece back \u{2014} it returns as the component has it",
+                            ));
+                        }
+                    }
                     EditorAction::InspectorDropUnusedOverride {
                         root_bits,
                         piece,

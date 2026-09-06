@@ -47,6 +47,11 @@ pub(crate) fn populate_instance_card(store: &mut WidgetStore) {
     for &id in &ids::INSP_INSTANCE_DROP_ORPHAN {
         button(store, id);
     }
+    // ⭐⭐⭐ **O *Put back* de cada peça recusada** (F5.10) — os DEZASSEIS, pela mesma razão da
+    // escada e do `✕` dos órfãos: o `WidgetStore` é a população e o cartão é a vista.
+    for &id in &ids::INSP_INSTANCE_RESTORE_PIECE {
+        button(store, id);
+    }
     // ⭐ **Os chips da fileira de VERSÕES** — a outra superfície do cartão desde que o mecanismo de
     // propriedades foi adiado (2026-09-01).
     for &id in ids::INSP_INSTANCE_AXIS_OPTION.iter().flatten() {

@@ -31,12 +31,16 @@ fn code_of(rel: &str) -> String {
         .join("\n")
 }
 
-/// ⭐⭐⭐ **O apagar da Hierarquia consulta a porta antes de despawnar.**
+/// ⭐⭐⭐ **O apagar consulta a porta antes de despawnar.**
+///
+/// ⚠️ **O sujeito mudou de ficheiro em 2026-09-06** (`render_loop/hierarchy_delete.rs`), e o gate
+/// reprovou — que é o desenho: um censo textual afirma sobre **um endereço**, e mover a lei sem
+/// mover o censo deixaria o censo verde sobre um ficheiro que já não tem a lei.
 ///
 /// **Mutação que deve sangrar:** tirar o `partition` e voltar a despawnar `wanted` inteiro.
 #[test]
 fn the_delete_asks_the_door_before_despawning() {
-    let body = code_of("render_loop/hierarchy.rs");
+    let body = code_of("render_loop/hierarchy_delete.rs");
     assert!(
         body.contains("is_a_recipe_given_piece"),
         "o apagar deixou de perguntar se a peca veio da receita — o passe volta a ressuscita'-la"
@@ -53,14 +57,57 @@ fn the_delete_asks_the_door_before_despawning() {
     );
 }
 
-/// ⭐⭐ **E o gesto tem VOZ quando recusa** — a mesma lei do menu dos verbos: um item que come o
-/// clique em silêncio é pior que um ausente, e foi por falta de voz que o report existiu.
+/// ⭐⭐⭐ **A peça da receita é RECUSADA pela cópia, e nunca despawnada aqui** (F5.10).
+///
+/// ⚠️ **É a lei que substituiu a recusa em voz alta**, e as duas metades são precisas: o gesto
+/// chama a porta que grava a decisão, **e** não despawna — despawnar saltaria o sepultador do passe
+/// estrutural, e a excepção daquela peça ficaria nem viva nem enterrada.
+///
+/// **Mutação que deve sangrar:** trocar o `refuse_pieces` por um `despawn` do lado recusado.
+#[test]
+fn the_recipe_given_piece_is_refused_not_despawned() {
+    let body = code_of("render_loop/hierarchy_delete.rs");
+    assert!(
+        body.contains("instance_structure::refuse_pieces("),
+        "o lado recusado nao chama a porta que grava a decisao — ou ele voltou a ser uma recusa \
+         muda, ou passou a despawnar por fora do passe"
+    );
+    let refuse = body
+        .find("instance_structure::refuse_pieces(")
+        .expect("a porta da recusa");
+    let tail = &body[refuse..];
+    assert!(
+        !tail.contains("for bits in &from_a_recipe"),
+        "alguem voltou a percorrer as pecas recusadas DEPOIS de as marcar — quem as apaga e' o passe"
+    );
+}
+
+/// ⭐⭐ **E o caminho que ainda RECUSA tem voz** — a peça de cópia cuja raiz não se resolve fica, e
+/// o aviso diz onde a apagar. *Um item que come o clique em silêncio é pior que um ausente, e foi
+/// por falta de voz que o report de 05/09 existiu.*
 #[test]
 fn the_refusal_says_where_to_do_it_instead() {
-    let body = code_of("render_loop/hierarchy.rs");
+    let body = code_of("render_loop/hierarchy_delete.rs");
     assert!(
         body.contains("delete it in the component"),
         "a recusa nao diz ONDE fazer — o artista fica com um Delete que nao faz nada"
+    );
+}
+
+/// ⭐⭐ **Recusar uma peça move a selecção para a CÓPIA** — e não é conveniência.
+///
+/// A peça escolhida vai deixar de existir no quadro seguinte, e uma selecção pendurada num objecto
+/// morto **apaga o cartão do Inspector** — que é onde vive o *Put back* que desfaz este gesto.
+/// *Um gesto que esconde a sua própria saída é irreversível pelo painel.*
+#[test]
+fn refusing_a_piece_moves_the_selection_to_the_copy() {
+    let body = code_of("render_loop/hierarchy_delete.rs");
+    let refuse = body
+        .find("instance_structure::refuse_pieces(")
+        .expect("a porta da recusa");
+    assert!(
+        body[refuse..].contains("replace_selection("),
+        "a recusa nao move a seleccao — o cartao com o `Put back` desaparece com a peca"
     );
 }
 

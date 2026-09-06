@@ -47,6 +47,16 @@ pub struct InspectorInstanceInfo {
     /// ⚠️ **Sem tecto, de propósito.** O painel rola; um tecto na LISTA com o botão a apagar
     /// **tudo** seria o pior dos dois mundos — esconderia exactamente as que o gesto destrói.
     pub orphan_rows: Vec<OrphanRow>,
+    /// ⭐⭐⭐ **As peças que ESTA cópia RECUSOU** (F5.10) — o *Removed GameObject* do Unity.
+    ///
+    /// ⚠️ **Da instância INTEIRA**, como os órfãos e pela mesma razão: uma peça recusada não está na
+    /// cena, logo não há peça em que ela pudesse ser listada.
+    ///
+    /// ⚠️ **Só entram as que a receita AINDA TEM.** Uma decisão sobre uma peça que o mestre também
+    /// apagou é inerte — pô-la de volta não devolveria nada —, e ela **não se apaga** (a lei dos
+    /// órfãos): se a peça voltar à receita, a linha volta com ela. *Mostrar uma linha cujo botão não
+    /// faz nada é um botão morto com legenda.*
+    pub removed_rows: Vec<RemovedRow>,
     /// A entidade da RAIZ da instância — quem recebe o gesto de limpar os órfãos.
     pub root_bits: u64,
     /// ⭐⭐⭐ **Esta cópia é ela própria uma RECEITA** — uma variante (report do Enio, 2026-08-27).
@@ -148,6 +158,29 @@ impl OrphanRow {
         }
         let p = &self.piece;
         format!("{c} \u{2014} was on \u{201c}{p}\u{201d}")
+    }
+}
+
+/// ⭐⭐ **Uma peça que esta cópia recusou, como o cartão precisa de a ver.**
+///
+/// ⚠️ **O nome NÃO é guardado em lado nenhum** — ele é lido da peça do mestre, que continua viva.
+/// É a diferença exacta contra o [`OrphanRow`], cuja peça morreu: *guardar um valor só é honesto
+/// quando não há primeira fonte.*
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct RemovedRow {
+    /// O `StableId` da peça do mestre — **a identidade**, que é o que o gesto precisa de saber.
+    pub piece_id: u64,
+    /// O `Name` que ela tem na receita, agora.
+    pub name: String,
+}
+
+impl RemovedRow {
+    /// ⚠️ **A frase vive no MODELO**, como as irmãs deste ficheiro: escrevê-la no pintor poria a
+    /// escolha num sítio que nenhum gate de modelo alcança.
+    #[must_use]
+    pub fn label(&self) -> String {
+        let n = &self.name;
+        format!("Put back \u{201c}{n}\u{201d}")
     }
 }
 

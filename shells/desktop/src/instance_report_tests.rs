@@ -137,7 +137,8 @@ fn reverting_does_not_move_what_the_artist_placed() {
         got,
         crate::instance_revert::Reverted {
             count: 1,
-            poses_kept: 1
+            poses_kept: 1,
+            pieces_back: 0,
         },
         "o revert tem de devolver a COR e contar a pose que ficou"
     );

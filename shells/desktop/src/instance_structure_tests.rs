@@ -1,5 +1,9 @@
 //! Os gates da FORMA de uma instância (ADR-0164 / F5.1).
 //!
+//! ⚠️ **Os quatro auxiliares são `pub(super)`** porque o irmão [`super::refuse_tests`] os usa — o
+//! corte por assunto (imposto pelo tecto de 600 LOC) não pode duplicar a fixtura: *duas fixturas
+//! para o mesmo mundo divergem no dia em que uma delas ganhar uma peça.*
+//!
 //! ⚠️ **O oráculo é a ÁRVORE da instância depois do passe**, e nunca «o passe correu»: um gate que
 //! contasse materializações ficaria verde sobre um passe que põe a peça no pai errado.
 
@@ -12,7 +16,7 @@ fn reg() -> ph2d_ecs::scene::ComponentRegistry {
     crate::init::build_component_registry()
 }
 
-fn pass(
+pub(super) fn pass(
     sim: &mut SimWorld,
     r: &ph2d_ecs::scene::ComponentRegistry,
     echo: &mut MasterEcho,
@@ -30,7 +34,7 @@ fn pass(
     )
 }
 
-fn instantiate(
+pub(super) fn instantiate(
     sim: &mut SimWorld,
     r: &ph2d_ecs::scene::ComponentRegistry,
     master: Entity,
@@ -51,7 +55,7 @@ fn instantiate(
 }
 
 /// Uma receita de uma peça, e uma instância dela.
-fn scene() -> (SimWorld, ph2d_ecs::scene::ComponentRegistry, Entity, Entity) {
+pub(super) fn scene() -> (SimWorld, ph2d_ecs::scene::ComponentRegistry, Entity, Entity) {
     let mut sim = SimWorld::new();
     let r = reg();
     let master = sim
@@ -70,7 +74,7 @@ fn scene() -> (SimWorld, ph2d_ecs::scene::ComponentRegistry, Entity, Entity) {
     (sim, r, master, inst)
 }
 
-fn names(sim: &SimWorld, root: Entity) -> Vec<String> {
+pub(super) fn names(sim: &SimWorld, root: Entity) -> Vec<String> {
     let mut out = Vec::new();
     let mut stack = vec![root];
     while let Some(e) = stack.pop() {

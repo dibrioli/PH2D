@@ -349,6 +349,20 @@ pub enum EditorAction {
     /// e `type_id` o do componente. Duas peças podem ter tido o mesmo nome, e o cartão é
     /// reconstruído a cada quadro — um índice diria *«a terceira»* a um cartão que já tem outra
     /// terceira.
+    /// ⭐⭐⭐ **Devolver uma peça que esta cópia RECUSOU** (ADR-0164 / F5.10) — o *Put back* da linha.
+    ///
+    /// ⚠️ **A chave, e nunca o índice da linha:** o cartão é reconstruído a cada quadro, e a lista
+    /// reordena-se quando outra peça é recusada. `piece` é o `StableId` da peça do **mestre**.
+    ///
+    /// ⚠️ Ela **só apaga a decisão** — quem materializa a peça, lhe traz os bytes da receita e exuma
+    /// a excepção que o artista tinha nela é o passe estrutural, no quadro seguinte.
+    InspectorRestoreRemovedPiece {
+        /// A RAIZ da instância — é lá que o `ObjectInstance` mora.
+        root_bits: u64,
+        /// O `StableId` da peça do mestre que volta.
+        piece: u64,
+    },
+
     InspectorDropUnusedOverride {
         /// A RAIZ da instância — é lá que o `ObjectInstance` mora.
         root_bits: u64,

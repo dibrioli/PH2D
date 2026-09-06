@@ -19,6 +19,8 @@ mod event;
 /// Os dois sliders-com-chip da sprite (Opacidade + Emissive) — irmão do `event`, que estava no tecto.
 mod event_anchor;
 mod event_anim;
+/// ⭐⭐ **Os cliques do CARTÃO de instância** — irmão por assunto do `event`.
+mod event_instance;
 mod event_joint;
 mod event_ordering;
 mod event_physics;

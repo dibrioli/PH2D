@@ -96,6 +96,34 @@ pub(super) fn build_instance_info(
         })
         .collect();
 
+    // ⭐⭐⭐ **AS PEÇAS QUE ESTA CÓPIA RECUSOU** (F5.10) — o *Removed GameObject*.
+    //
+    // ⚠️ **`filter_map`, ao contrário dos órfãos logo acima, e a assimetria é a lei:** ali o botão
+    // apaga o mapa INTEIRO, então saltar uma linha faria o número mentir sobre a lista. Aqui cada
+    // linha tem o **botão dela**, e uma decisão sobre uma peça que o mestre também apagou é
+    // **inerte** — pô-la de volta não devolveria nada. *Mostrar uma linha cujo botão não faz nada é
+    // um botão morto com legenda.*
+    //
+    // ⚠️ E ela **não se apaga**: se a peça voltar à receita, a linha volta com ela (a lei dos
+    // órfãos, e há gate).
+    //
+    // ⭐ **O nome vem da RECEITA, agora** — a peça está viva lá, então não há nada a guardar.
+    let removed_rows: Vec<ph2d_editor::screens::hero::RemovedRow> = inst
+        .removed
+        .iter()
+        .filter_map(|&piece_id| {
+            let e = crate::instance_verbs::entity_for_stable_id(sim, piece_id)?;
+            Some(ph2d_editor::screens::hero::RemovedRow {
+                piece_id,
+                name: sim
+                    .world()
+                    .get::<ph2d_ecs::Name>(ph2d_ecs::Entity::from_bits(e))
+                    .map(|n| n.0.clone())
+                    .unwrap_or_default(),
+            })
+        })
+        .collect();
+
     // ⭐⭐⭐ **A ESCADA do *Aplicar*** (F5 critério 4) — as receitas que uma excepção DESTA peça
     // pode alcançar. ⚠️ A lei mora no `instance_apply_deep`, que é a mesma porta que o gesto usa:
     // um cartão que mostrasse degraus por outra travessia ofereceria uma escolha que o verbo
@@ -125,6 +153,7 @@ pub(super) fn build_instance_info(
         master_name,
         overridden,
         orphan_rows,
+        removed_rows,
         root_bits: root.to_bits(),
         // ⚠️ Da RAIZ: uma peça dentro de uma variante não é ela própria uma receita, mas pertence
         // a uma — e é isso que o artista precisa de ler antes de a editar.

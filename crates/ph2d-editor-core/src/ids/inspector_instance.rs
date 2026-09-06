@@ -55,6 +55,39 @@ pub fn instance_drop_orphan(id: NodeId) -> Option<usize> {
     INSP_INSTANCE_DROP_ORPHAN.iter().position(|c| *c == id)
 }
 
+/// ⭐⭐⭐ **Quantas peças RECUSADAS ganham botão de devolver** (F5.10).
+///
+/// ⚠️ Mesmo tecto e mesma razão do [`MAX_INSTANCE_ORPHAN_ROWS`]: os ids são `const` para o censo os
+/// poder **ver**, e uma tabela `const` tem tamanho. ⛔ Acima dele a saída é o *Revert* da raiz, que
+/// devolve **todas** — e a linha que fica sem botão di-lo.
+pub const MAX_INSTANCE_REMOVED_ROWS: usize = 16;
+
+/// O *Put back* de cada peça recusada, na ordem em que o cartão as pinta.
+pub const INSP_INSTANCE_RESTORE_PIECE: [NodeId; MAX_INSTANCE_REMOVED_ROWS] = [
+    hash_node_id("insp_instance_restore_piece_0"),
+    hash_node_id("insp_instance_restore_piece_1"),
+    hash_node_id("insp_instance_restore_piece_2"),
+    hash_node_id("insp_instance_restore_piece_3"),
+    hash_node_id("insp_instance_restore_piece_4"),
+    hash_node_id("insp_instance_restore_piece_5"),
+    hash_node_id("insp_instance_restore_piece_6"),
+    hash_node_id("insp_instance_restore_piece_7"),
+    hash_node_id("insp_instance_restore_piece_8"),
+    hash_node_id("insp_instance_restore_piece_9"),
+    hash_node_id("insp_instance_restore_piece_10"),
+    hash_node_id("insp_instance_restore_piece_11"),
+    hash_node_id("insp_instance_restore_piece_12"),
+    hash_node_id("insp_instance_restore_piece_13"),
+    hash_node_id("insp_instance_restore_piece_14"),
+    hash_node_id("insp_instance_restore_piece_15"),
+];
+
+/// A linha que este id representa — a leitura INVERSA da tabela, como as irmãs deste ficheiro.
+#[must_use]
+pub fn instance_restore_piece(id: NodeId) -> Option<usize> {
+    INSP_INSTANCE_RESTORE_PIECE.iter().position(|c| *c == id)
+}
+
 /// ⭐ **Quantas FILEIRAS o cartão endereça.**
 ///
 /// ⚠️ **É `1` desde 2026-09-01**, quando o mecanismo de propriedades foi adiado: a família oferece

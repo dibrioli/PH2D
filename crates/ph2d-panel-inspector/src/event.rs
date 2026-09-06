@@ -69,88 +69,6 @@ pub(crate) fn apply_event(
 /// ⚠️ **Função irmã, e não um braço da mãe:** as 14 linhas dela levaram o `apply_event_impl` de 292
 /// para 306 contra um teto de 200 cuja tolerância **só desce** — o precedente é o `visibility_toggle`
 /// (função irmã no mesmo ficheiro, que está com folga sob o teto de 600 do ARQUIVO).
-/// ⭐⭐ **Limpar as excepções SEM ALVO** (ADR-0164 / F5.3).
-///
-/// ⚠️ **O painel diz QUEM pediu, não o que fazer** — o `root_bits` é a RAIZ da instância, que é
-/// onde o `ObjectInstance` mora. A shell é quem tem o mundo; este ficheiro só honra o clique.
-///
-/// ⚠️ **Função irmã, e não um braço do `apply_event_impl`** — o precedente é o
-/// [`add_component_click`] logo abaixo, e a razão é a mesma (o teto de LOC daquela função).
-fn clear_orphans_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    if ev != WidgetEvent::Click(ids::INSP_INSTANCE_CLEAR_ORPHANS) {
-        return false;
-    }
-    let Some(root_bits) = crate::state::current_inspector_instance().map(|i| i.root_bits) else {
-        return false;
-    };
-    host.bus_mut()
-        .push(EditorAction::InspectorClearUnusedOverrides { root_bits });
-    true
-}
-
-/// ⭐⭐⭐ **UM DEGRAU DA ESCADA do *Aplicar*** (ADR-0164 / F5, critério 4).
-///
-/// ⚠️ **A leitura inversa vem da PORTA** (`ids::instance_apply_level`), e o que viaja no barramento
-/// é a **identidade da receita**, nunca o índice do botão: a escada é derivada do mundo e
-/// reordena-se quando uma receita é aninhada — um índice diria *«o segundo»* a quem já não tem o
-/// mesmo segundo.
-///
-/// ⚠️ **O sujeito é a PEÇA selecionada**, e não a raiz da cópia: o escopo do *Aplicar* é o que se
-/// clicou (a lei do *Revert*), e a escada que o cartão mostrou é a daquela peça.
-fn apply_level_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    let WidgetEvent::Click(id) = ev else {
-        return false;
-    };
-    let Some(level) = ids::instance_apply_level(id) else {
-        return false;
-    };
-    let Some(info) = crate::state::current_inspector_instance() else {
-        return false;
-    };
-    // ⛔ **Um degrau que o cartão não pinta não despacha** — o `apply_rows` é a mesma porta que o
-    // pintor usa, e perguntar-lhe aqui é o que impede um botão de outro quadro de chegar a um
-    // índice que já não existe.
-    let Some(choice) = info.apply_rows().get(level) else {
-        return false;
-    };
-    host.bus_mut().push(EditorAction::InspectorApplyToLevel {
-        entity_bits: info.entity_bits,
-        master: choice.master,
-    });
-    true
-}
-
-/// ⭐⭐⭐ **Largar UMA excepção sem alvo** (F5.3-ter) — o `✕` da linha dela.
-///
-/// ⚠️ **Ele traduz o índice do botão para a CHAVE aqui, e não no shell**: a linha `i` só significa
-/// alguma coisa dentro do cartão que este quadro pintou, e o cartão é reconstruído a cada quadro.
-/// Mandar o índice pelo barramento seria pedir ao mundo que resolvesse *«a terceira»* contra uma
-/// lista que já pode ter outra terceira — a mesma lei do `apply_level_click` logo acima.
-///
-/// ⛔ **E um botão que a lista deste quadro não pinta não despacha:** o `get(i)` sobre o
-/// `orphan_rows` é a mesma porta que o pintor percorre.
-fn drop_orphan_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    let WidgetEvent::Click(id) = ev else {
-        return false;
-    };
-    let Some(i) = ids::instance_drop_orphan(id) else {
-        return false;
-    };
-    let Some(info) = crate::state::current_inspector_instance() else {
-        return false;
-    };
-    let Some(row) = info.orphan_rows.get(i) else {
-        return false;
-    };
-    host.bus_mut()
-        .push(EditorAction::InspectorDropUnusedOverride {
-            root_bits: info.root_bits,
-            piece: row.piece_id,
-            type_id: row.type_id,
-        });
-    true
-}
-
 /// ⭐⭐ **A RANHURA DA TEXTURA abre a biblioteca** — *«o que é que eu posso pôr aqui?»*.
 ///
 /// ⚠️ **Ela recebe QUEDAS e responde a CLIQUES**, e as duas metades são obrigatórias: um id
@@ -220,9 +138,12 @@ fn sheet_grid_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool
 /// blocos têm a mesma forma, a forma é que é o dado.* O próximo entra numa linha.
 const SINGLE_ID_CLICKS: &[fn(&mut dyn PanelHostInternal, WidgetEvent) -> bool] = &[
     add_component_click,
-    clear_orphans_click,
-    drop_orphan_click,
-    apply_level_click,
+    // ⭐⭐ Os quatro do CARTÃO DE INSTÂNCIA vivem no irmão [`crate::event_instance`] — corte por
+    // assunto, imposto pelo tecto de 600 LOC deste ficheiro quando o *Put back* entrou.
+    crate::event_instance::clear_orphans_click,
+    crate::event_instance::drop_orphan_click,
+    crate::event_instance::restore_piece_click,
+    crate::event_instance::apply_level_click,
     section_color_click,
     texture_slot_click,
 ];

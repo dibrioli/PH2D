@@ -385,83 +385,11 @@ pub(super) fn dispatch(
             title_dirty = true;
         }
     }
-    if let Some(row) = delete_row
-        && let Some(live) = hero_live.as_ref()
-        && let Some(clicked_entity_bits) = live.bridge.entity_for(row)
-    {
-        // Onda 2 fix: if the clicked row is part of the multi-
-        // selection, delete EVERY selected sprite (Photoshop / Figma
-        // convention — multi-select right-click → Delete affects the
-        // whole group). Otherwise just the clicked row. bevy_ecs 0.19
-        // `ChildOf` cascade despawns descendants.
-        let wanted: Vec<u64> = if hero.gizmo.is_selected(clicked_entity_bits) {
-            hero.gizmo.iter_selected().collect()
-        } else {
-            vec![clicked_entity_bits]
-        };
-        // ⭐⭐⭐ **UMA PEÇA QUE A RECEITA DEU NÃO SE APAGA NUMA CÓPIA** (report do Enio,
-        // 2026-09-05: *«ao tentar deletar o objeto, ele não é deletado e volta para sua posição de
-        // origem»*).
-        //
-        // ⛔⛔ **Sem esta guarda o gesto era o pior dos três resultados possíveis**, e foi medido:
-        // o `despawn` passava, o passe estrutural **re-materializava** a peça no quadro seguinte
-        // (o mestre continua a tê-la — *só o que a receita deu é que a receita tira*), e ela
-        // voltava com a pose do **MESTRE** ⇒ a edição do artista naquela peça **desaparecia em
-        // silêncio**, com a chave de override dela a sobreviver a apontar para o valor que já não
-        // existe. *Um gesto que não faz nada é mau; um que desfaz outra coisa é pior.*
-        //
-        // ⚠️ **A voz diz ONDE fazer**: a mesma pergunta com resposta «não» e sem saída foi o que
-        // levou este report a existir — o artista tinha duas linhas chamadas `Body` na Hierarquia,
-        // uma da receita e uma da cópia, e nada lhe disse qual era qual.
-        //
-        // ⛔ **A recusa é NARROW e a porta é uma só** ([`crate::instance_verbs_walk::is_a_recipe_given_piece`]):
-        // apagar a cópia INTEIRA continua a ser um gesto normal, e o que o artista pendurou dentro
-        // dela (sem elo) também — *o passe estrutural já declara as duas metades*.
-        let (to_delete, from_a_recipe): (Vec<u64>, Vec<u64>) =
-            wanted.into_iter().partition(|bits| {
-                !crate::instance_verbs::is_a_recipe_given_piece(
-                    sim,
-                    ph2d_ecs::Entity::from_bits(*bits),
-                )
-            });
-        for bits in &to_delete {
-            let entity = ph2d_ecs::Entity::from_bits(*bits);
-            sim.world_mut().despawn(entity);
-        }
-        // Remove every deleted bits from the selection set. Without
-        // this, `selected_len()` stays > 1 even after a multi-delete,
-        // which keeps the global gizmo painted around vanished sprites
-        // (user-reported: "se deletar algumas e sobrar 1, o gizmo
-        // global fica aparecendo mesmo com uma sprite").
-        for bits in &to_delete {
-            if hero.gizmo.selection == Some(*bits) {
-                hero.gizmo.selection = None;
-            }
-            hero.gizmo.extra_selection.retain(|b| b != bits);
-        }
-        // If primary was deleted but extras remain, promote the
-        // oldest extra so the selection isn't headless.
-        if hero.gizmo.selection.is_none() && !hero.gizmo.extra_selection.is_empty() {
-            hero.gizmo.selection = Some(hero.gizmo.extra_selection.remove(0));
-        }
-        let n = to_delete.len();
-        let kept = from_a_recipe.len();
-        // ⚠️ **Os dois números são ditos, e o zero também**: um gesto que apaga metade e cala a
-        // outra metade lê-se como um apagar que falhou às vezes.
-        if n > 0 {
-            toasts.push(Toast::warning(match (n, kept) {
-                (1, 0) => "Deleted entity".to_string(),
-                (_, 0) => format!("Deleted {n} entities"),
-                _ => {
-                    format!("Deleted {n} \u{2014} {kept} piece(s) come from a component and stayed")
-                }
-            }));
-            title_dirty = true;
-        } else if kept > 0 {
-            toasts.push(Toast::warning(
-                "That piece comes from a component \u{2014} delete it in the component, or Detach this copy first",
-            ));
-        }
+    // ⭐⭐ **O gesto de APAGAR vive no irmão** [`super::hierarchy_delete`] — corte por assunto,
+    // imposto pelo tecto de 600 LOC quando a recusa de uma peça entrou (F5.10). Ali estão as TRÊS
+    // respostas que um `Delete` pode ter nesta casa, e a voz que as distingue.
+    if super::hierarchy_delete::drain(delete_row, hero, hero_live.as_ref(), sim, toasts) {
+        title_dirty = true;
     }
     // M14.6 D: drain pending hierarchy-row click → sync
     // `gizmo_selection` to whichever entity the user just picked in

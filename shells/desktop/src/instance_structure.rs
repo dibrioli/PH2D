@@ -120,6 +120,23 @@ fn reconcile_one(
         .into_iter()
         .filter_map(|e| sim.world().get::<StableId>(e).map(|s| (s.0, e)))
         .collect();
+    // ⭐⭐⭐ **As peças que ESTA cópia recusou** (F5.10) — o *Removed GameObject* do Unity.
+    //
+    // ⚠️ **A decisão entra nas DUAS metades do passe, e é isso que a torna barata:** uma peça
+    // recusada deixa de contar como *«a instância tem»* (logo cai no ramo das que SOBRAM, que já
+    // sepulta as excepções dela e a despawna) e sai da lista das que FALTAM (logo nunca volta). ⇒ o
+    // gesto escreve **um id** e o passe faz o resto, pela mesma maquinaria que o mestre a apagar já
+    // usava — incluindo o `entomb`/`exhume`, que é o que faz o *Put back* devolver a excepção junto
+    // com a peça.
+    //
+    // ⛔ **A LEI do passe não mudou:** apagar uma peça **por fora** (um `despawn` cru, sem esta
+    // marca) continua a ser desfeito no quadro seguinte, e há gate a afirmá-lo. *A guarda vive no
+    // gesto; a lei fica no passe.*
+    let removed = sim
+        .world()
+        .get::<ph2d_ecs::ObjectInstance>(root)
+        .map(|o| o.removed.clone())
+        .unwrap_or_default();
     // `StableId` da peça do mestre → a entidade correspondente NA INSTÂNCIA.
     let mut have: BTreeMap<u64, Entity> = BTreeMap::new();
     let mut extra: Vec<Entity> = Vec::new();
@@ -130,7 +147,7 @@ fn reconcile_one(
             // seria apagar trabalho que ninguém pediu. *Só o que a receita deu é que a receita tira.*
             continue;
         };
-        if master_pieces.contains_key(&link.master) {
+        if master_pieces.contains_key(&link.master) && !removed.contains(&link.master) {
             have.insert(link.master, e);
         } else {
             extra.push(e);
@@ -145,7 +162,7 @@ fn reconcile_one(
     let linked = sim.world().get::<ph2d_ecs::LinkedArt>(root).is_some();
     let missing: Vec<(u64, Entity, Entity)> = master_pieces
         .iter()
-        .filter(|(sid, _)| !have.contains_key(sid))
+        .filter(|(sid, _)| !have.contains_key(sid) && !removed.contains(sid))
         .filter_map(|(&sid, &m)| {
             let parent_sid = sim
                 .world()
@@ -199,6 +216,60 @@ fn reconcile_one(
             out.removed += 1;
         }
     }
+}
+
+/// ⭐⭐⭐ **A cópia RECUSA estas peças** (F5.10) — o *Removed GameObject* do Unity. Devolve quantas.
+///
+/// # ⚠️ Ela escreve uma DECISÃO e não apaga nada
+///
+/// Quem apaga é o passe: uma peça marcada aqui cai, no quadro seguinte, no ramo das que **sobram**
+/// — que já sepulta as excepções dela ([`entomb`]) e despawna a sub-árvore inteira — e sai da lista
+/// das que **faltam**, logo nunca mais volta. ⛔ Despawnar aqui saltaria o sepultador: a excepção
+/// daquela peça ficaria **nem viva nem enterrada**, invisível ao cartão e a bloquear a receita.
+///
+/// ⚠️ **A chave é a peça do MESTRE**, e não a entidade clicada: a cópia é respawnada a cada Ctrl+Z
+/// com bits novos, e o elo é o que sobrevive.
+///
+/// ⚠️ **Uma peça sem raiz de instância é saltada** — a partição do gesto já garante que só peças de
+/// cópia chegam aqui, e uma segunda pergunta com outra resposta seria a lei em dois sítios.
+pub(crate) fn refuse_pieces(sim: &mut SimWorld, pieces: &[u64]) -> usize {
+    let mut done = 0;
+    for &bits in pieces {
+        let e = Entity::from_bits(bits);
+        let Some(master_piece) = sim.world().get::<InstanceOf>(e).map(|l| l.master) else {
+            continue;
+        };
+        let Some(root) = crate::instance_verbs::instance_root_of(sim, e) else {
+            continue;
+        };
+        let mut inst = sim
+            .world()
+            .get::<ph2d_ecs::ObjectInstance>(root)
+            .cloned()
+            .unwrap_or_default();
+        if inst.removed.insert(master_piece) {
+            sim.world_mut().entity_mut(root).insert(inst);
+            done += 1;
+        }
+    }
+    done
+}
+
+/// ⭐⭐ **Devolve uma peça recusada** (F5.10) — o *Put back* do cartão. `true` se saiu alguma.
+///
+/// ⚠️ **Ela só apaga a decisão.** Quem materializa a peça, quem lhe traz os bytes da receita e quem
+/// **exuma** a excepção que o artista tinha nela é o passe estrutural, no quadro seguinte — e é por
+/// isso que o *Put back* devolve a peça **como ela estava**, sem uma linha de código sobre poses.
+pub(crate) fn restore_piece(sim: &mut SimWorld, root_bits: u64, piece: u64) -> bool {
+    let root = Entity::from_bits(root_bits);
+    let Some(mut inst) = sim.world().get::<ph2d_ecs::ObjectInstance>(root).cloned() else {
+        return false;
+    };
+    if !inst.removed.remove(&piece) {
+        return false;
+    }
+    sim.world_mut().entity_mut(root).insert(inst);
+    true
 }
 
 fn master_root_sid(sim: &SimWorld, master_root: Entity) -> Option<u64> {
@@ -308,3 +379,9 @@ fn exhume(
 #[cfg(test)]
 #[path = "instance_structure_tests.rs"]
 mod tests;
+
+/// ⚠️ **A RECUSA de uma peça é outro assunto** — ali a lei de que a forma segue a receita, aqui o
+/// que acontece quando o artista diz não. O precedente do corte é o `instance_variant_verb_tests`.
+#[cfg(test)]
+#[path = "instance_refuse_tests.rs"]
+mod refuse_tests;

@@ -99,6 +99,23 @@ pub(crate) fn revert_all_overrides(
         })
         .unwrap_or_default();
     let mut out = Reverted::default();
+    // ⭐⭐⭐ **Na RAIZ, o Revert também traz de volta as peças que a cópia recusou** (F5.10).
+    //
+    // ⚠️ **Só na raiz, e a razão é a mesma dos overrides:** o escopo é o que a mão aponta, e uma
+    // peça recusada **não está na cena** — não há linha nela para clicar, logo o único sujeito que
+    // a alcança é a instância inteira. *Devolver o rig inteiro porque o artista pediu um braço
+    // seria apagar trabalho que ele não mandou apagar*, e aqui ele pediu a cópia inteira.
+    //
+    // ⛔ Isto **não** contradiz a nota da pose logo acima: ali o verbo recusa-se a TELETRANSPORTAR
+    // o que está na cena; aqui ele repõe o que a cópia não tem. São perguntas diferentes.
+    if scope.is_none()
+        && let Some(mut inst) = sim.world().get::<ObjectInstance>(root).cloned()
+        && !inst.removed.is_empty()
+    {
+        out.pieces_back = inst.removed.len();
+        inst.removed.clear();
+        sim.world_mut().entity_mut(root).insert(inst);
+    }
     for key in keys {
         if key.type_id == pose {
             out.poses_kept += 1;
@@ -118,6 +135,8 @@ pub(crate) struct Reverted {
     pub(crate) count: usize,
     /// Poses que ficaram como estavam — ver o doc de [`revert_all_overrides`].
     pub(crate) poses_kept: usize,
+    /// ⭐ Peças que a cópia tinha **recusado** e que voltaram (F5.10). Só a raiz as alcança.
+    pub(crate) pieces_back: usize,
 }
 
 /// **A raiz da instância a que esta entidade pertence, e o escopo do gesto.**
@@ -176,6 +195,16 @@ pub(crate) fn drain_revert_to_master(
         }
         // ⚠️ **Quatro respostas, e a pose é a razão de serem quatro**: dizer *«nada estava
         // sobrescrito»* a quem acabou de mover a peça seria mentir sobre o que o app sabe.
+        // ⚠️ **A peça que volta é dita PRIMEIRO**, e não somada às excepções: ela é uma mudança de
+        // FORMA, e o artista vê-a acontecer na tela. *Um número que muda a silhueta não se conta
+        // junto com um que muda uma cor.*
+        Some(r) if r.pieces_back > 0 => {
+            toasts.push(Toast::success(format!(
+                "Put back {} piece(s) \u{2014} and reverted {} change(s)",
+                r.pieces_back, r.count
+            )));
+            true
+        }
         Some(r) if r.count == 0 && r.poses_kept == 0 => {
             toasts.push(Toast::info("Nothing overridden here"));
             false

@@ -267,3 +267,67 @@ fn the_shape_constants_are_computed_once_per_shape_not_once_per_tile() {
         "quadro MORNO tinha de pagar ZERO varreduras e pagou {morno}"
     );
 }
+
+/// ⛔⛔ **A RESOLUÇÃO em que o dono corre** — o report de 06/09: *«não houve melhora
+/// significativa»*, sobre uma cura que a régua mediu em `−42 %`.
+///
+/// ⚠️ **A hipótese nº 1 é que a régua mediu a cena errada:** as leituras da auditoria são
+/// `640×360` num arnês; ele corre o **pill MODEL** numa janela cheia. *Uma sonda que mede outra
+/// resolução mede outro programa.*
+#[test]
+#[ignore = "sonda: o quadro na resolução do dono"]
+fn the_price_at_the_resolution_the_owner_runs() {
+    let reg = Registry::default();
+    let cam = Orbit::default();
+    let formas: [(&str, Primitive); 3] = [
+        ("esfera", Primitive::Sphere { radius: 0.35 }),
+        (
+            "superquadrática",
+            Primitive::Superquadric {
+                half: [0.35, 0.30, 0.35],
+                exponent_top: 4.0,
+                exponent_side: 4.0,
+            },
+        ),
+        (
+            "SUPERFÓRMULA",
+            Primitive::Superformula {
+                half: [0.35, 0.19, 0.35],
+                top_symmetry: 5.0,
+                top_n1: 0.6,
+                top_n2: 1.7,
+                top_n3: 1.7,
+                side_symmetry: 4.0,
+                side_n1: 2.0,
+                side_n2: 2.0,
+                side_n3: 2.0,
+            },
+        ),
+    ];
+    println!("\n── o QUADRO por resolução (orçamento de 60 fps = 16,7 ms) ──");
+    println!(
+        "  {:<18} {:>10} {:>10} {:>10} {:>10}",
+        "", "640×360", "1280×720", "1920×1080", "2560×1440"
+    );
+    for (nome, p) in formas {
+        let doc = doc_de(p);
+        let mut linha = format!("  {nome:<18}");
+        for (w, h) in [(640_u32, 360_u32), (1280, 720), (1920, 1080), (2560, 1440)] {
+            let _ = trace(&doc, &reg, &cam, w / 2, h / 2);
+            let mut melhor = f64::INFINITY;
+            for _ in 0..3 {
+                let t0 = std::time::Instant::now();
+                let _ = trace(&doc, &reg, &cam, w, h);
+                melhor = melhor.min(t0.elapsed().as_secs_f64() * 1000.0);
+            }
+            linha.push_str(&format!(" {melhor:>9.1}"));
+        }
+        println!("{linha}");
+    }
+    println!(
+        "\n  ⚠️ o melhor de 3 por célula, e o `load` ao lado importa: {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+}

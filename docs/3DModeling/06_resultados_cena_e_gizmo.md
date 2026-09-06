@@ -12768,3 +12768,35 @@ palavra `ok`.
 
 **Gates:** os 6 da superfórmula (um novo) · o do custo (novo, com mutação) · o dos rótulos (novo,
 com mutação) · censo · arestas · shell · fmt · clippy · LOC.
+
+---
+
+## §131 — A REVISÃO adiada: por que a cura de `−42 %` não se SENTE (06/09)
+
+> **Enio, depois da cura:** *«não houve melhora significativa»* — e ele tem razão sobre o que
+> **sente**, mesmo com a régua a dizer `−42 %`.
+
+A hipótese nº 1 do handoff estava certa: **a régua mediu outra resolução**. Medido no mesmo arnês, o
+melhor de 3 por célula, a `load 1,67`:
+
+| forma | 640×360 | 1280×720 | **1920×1080** | 2560×1440 |
+|---|---:|---:|---:|---:|
+| esfera | `1,3` | `4,1` | **`8,8`** | `19,4` |
+| superquadrática | `3,7` | `11,4` | **`23,2`** | `45,7` |
+| **superfórmula** | `3,5` | `9,2` | **`18,9`** | `35,8` |
+
+⇒ **na janela dele a peça já custa `18,9 ms` contra um orçamento de `16,7`** — e antes da cura
+custava `~31`. *A diferença entre duas coisas que já não cabem no quadro não atravessa o limiar do
+que se sente*, e é por isso que uma melhoria real de `42 %` se lê como nenhuma.
+
+⚠️ **E o tecto não é desta forma:** o §13.0 já declara a **base** do módulo acima do orçamento (o
+quadro de movimento custa `26,7 ms` contra `16,7`, com a marcha a ser `80 %` dele). Uma forma cara
+em cima de uma base cara move pouco a percepção — *o que ele sente é o módulo, não a superfórmula*.
+
+⭐ **O que a cura comprou, e continua a valer:** ela tirou `642×` de trabalho redundante por quadro
+(gateado) e pôs a superfórmula **abaixo** da superquadrática (`18,9` contra `23,2` a `1920×1080`).
+Não é visível; é o que impede a próxima forma de herdar a mesma armadilha.
+
+⏳ **ABERTO, e é do MÓDULO e não da forma:** o quadro a `1920×1080` custa `8,8 ms` só para uma
+esfera. A alavanca que muda o que o dono sente está na **base** — e ela tem tabela desde Agosto
+(§13.0: a sobre-relaxação está fora, e atacar a montagem tem tecto medido de `20 %`).

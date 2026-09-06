@@ -121,6 +121,7 @@
 - ⛔ [Barra calibrada SEM o lado aprovado mede os nossos defeitos; o PISO do censo decide o que a régua vê (4× «nenhuma melhoria»)](feedback_a_bar_calibrated_without_the_approved_side_measures_our_own_defects.md)
 - [Tamanho SERIALIZADO é cego à partilha por construção — leia o doc do campo até ao fim](feedback_the_serialized_size_is_blind_to_sharing_by_construction.md)
 - [Ofício de gate (47) — folga = ponto cego · mutação que não mata · metade justa · feito≠entregue · censo textual · censo que presume o destino · censo que partilha estado](reference_topic_gate_discipline.md)
+- ⭐ [Aresta `delayed` não se carrega sozinha — sem `advance_tick` o nó com estado devolve o 1.º tique, que é a IDENTIDADE (sonda e figura enganadas no mesmo dia)](feedback_a_delayed_edge_does_not_carry_itself_advance_tick_does.md)
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) · [modo que não exclui ninguém é outro produtor](feedback_a_mode_whose_entry_excludes_nobody_is_just_another_producer.md)
 - [Costura de UI (15)](reference_topic_ui_seam_discipline.md) — ⭐ [o hit rect é também o DENOMINADOR](feedback_a_hit_rect_is_also_the_denominator_not_only_the_target.md) · [seção partilhada regride quem chegou primeiro](feedback_a_shared_section_header_is_a_regression_to_whoever_arrived_first.md)
 - [VIVO · ALCANÇÁVEL · NO SÍTIO CERTO são TRÊS perguntas — a 3.ª não tem instrumento](feedback_alive_reachable_and_in_the_wrong_place_are_three_questions.md)

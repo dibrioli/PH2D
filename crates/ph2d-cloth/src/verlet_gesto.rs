@@ -430,6 +430,14 @@ impl PincelTecido {
             Modo::Agarrar => {
                 // Espec §4.3: âncora = p⁰ + δ_total · f, com f medido na malha
                 // de PARTIDA e o raio inicial; σ = 1 (radial) ou clamp(f) (plano).
+                //
+                // ⚠️ **O passo começa com `σ ≡ 0` em TODA a malha** (espec §4.3,
+                // emenda Q9): os DOIS modos de âncora zeram a força por passo
+                // antes de a reescrever, e o que os distingue não é zerar ou
+                // não — é o valor com que reescrevem e o facto de o conjunto do
+                // Grab ser fixo. ⛔ A redacção anterior desta espec dizia que o
+                // Grab não zerava, e estava errada.
+                self.sim.sigma.fill(0.0);
                 for &v in &dentro {
                     let vi = v as usize;
                     let p0 = self.sim.repouso[vi];
@@ -442,8 +450,13 @@ impl PincelTecido {
                         p0[1] + passo.delta[1] * f,
                         p0[2] + passo.delta[2] * f,
                     ];
+                    // σ reescrito a cada passo: `1` no radial (e só para quem
+                    // o raio INICIAL alcança, que é o conjunto fixo em que a
+                    // âncora nasceu) · `clamp(f)` no plano.
                     if self.pincel.falloff_forca == FalloffForca::Plano {
                         self.sim.sigma[vi] = f.clamp(0.0, 1.0);
+                    } else if d < self.raio0 {
+                        self.sim.sigma[vi] = 1.0;
                     }
                 }
             }
@@ -466,6 +479,8 @@ impl PincelTecido {
                 //
                 // ⚠️ **As posições são as ACTUAIS** — só o Grab mede no repouso.
                 let centro = self.anterior;
+                // Idem §4.3: `σ ≡ 0` em toda a malha antes de reescrever.
+                self.sim.sigma.fill(0.0);
                 let b = self.pincel.forca * pressao;
                 for &v in &dentro {
                     let vi = v as usize;

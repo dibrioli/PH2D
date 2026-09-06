@@ -102,15 +102,36 @@ fn a_timeline_whose_rows_fit_has_nothing_to_scroll() {
 
 /// **A barra aparece exactamente quando há o que rolar** — e é hit-registada, senão é um desenho
 /// que não se agarra.
+///
+/// ⚠️⚠️ **A contagem que transborda é PROCURADA, não escrita** (2026-09-06): a redacção anterior
+/// afirmava que `4` linhas transbordavam, e isso deixou de ser verdade no dia em que o dono pediu
+/// linhas mais baixas (`24 → 22 px`) — *uma fixtura que nomeia um número descreve a árvore do dia
+/// em que foi escrita.* O que este gate defende é o FENÓMENO: existe uma contagem a partir da
+/// qual a barra aparece, e uma abaixo dela em que não aparece.
 #[test]
 fn the_bar_is_there_and_grabbable_exactly_when_the_rows_overflow() {
-    for (n, want) in [(1usize, false), (4, true), (40, true)] {
-        let (max, _, bar) = scroll_after_a_wheel(n, 0.0);
-        assert_eq!(
-            bar, want,
-            "n={n}: barra={bar} mas scroll_max={max} — o desenho e o alcance discordam"
-        );
-    }
+    let first_overflow = (1usize..64)
+        .find(|n| scroll_after_a_wheel(*n, 0.0).2)
+        .expect("nenhuma contagem ate' 64 transborda — a fixture perdeu o fenomeno");
+    assert!(
+        first_overflow > 1,
+        "uma lista de UMA linha nao devia transbordar"
+    );
+    let (max_below, _, bar_below) = scroll_after_a_wheel(first_overflow - 1, 0.0);
+    assert!(
+        !bar_below && max_below == 0.0,
+        "n={}: a barra apareceu logo abaixo do limiar",
+        first_overflow - 1
+    );
+    let (max_over, _, bar_over) = scroll_after_a_wheel(first_overflow, 0.0);
+    assert!(
+        bar_over && max_over > 0.0,
+        "n={first_overflow}: o desenho e o alcance discordam no limiar"
+    );
+    assert!(
+        scroll_after_a_wheel(40, 0.0).2,
+        "uma lista bem maior que a janela tem de continuar a oferecer a barra"
+    );
 }
 
 /// **E o polegar não é da mesma cor que a pista.**
@@ -197,14 +218,24 @@ fn a_tall_window_still_shows_every_property() {
 /// O resto honesto: com 300 px não há deslize que ponha 364 px na tela. O que fica de fora tem de
 /// ficar de fora **inteiro** — nem pintado nem registado —, porque uma linha viva onde o ponteiro
 /// não chega conta como oferta e não é uma.
+///
+/// ⚠️⚠️ **A janela é PROCURADA, não escrita** — pela mesma razão da irmã acima: os `300 px` da
+/// redacção anterior deixaram de cortar a lista quando a linha desceu para `22 px`.
 #[test]
 fn a_window_shorter_than_the_list_offers_only_what_it_can_reach() {
-    let (n, outside) = addprop_rows_reachable(300.0);
-    assert!(!outside, "linha registada fora de uma janela de 300 px");
-    assert!(n > 0, "a lista desapareceu por inteiro");
+    let total = ids::ADDPROP_BUTTONS.len();
+    let mut vh = 1400.0_f32;
+    let (mut n, mut outside) = addprop_rows_reachable(vh);
+    while n >= total && vh > 32.0 {
+        vh *= 0.5;
+        let r = addprop_rows_reachable(vh);
+        n = r.0;
+        outside = r.1;
+    }
     assert!(
-        n < ids::ADDPROP_BUTTONS.len(),
-        "300 px nao podiam conter as {} linhas — a fixture nao contem o fenomeno",
-        ids::ADDPROP_BUTTONS.len()
+        n < total,
+        "nenhuma janela ate' 32 px cortou as {total} linhas — a fixture perdeu o fenomeno"
     );
+    assert!(!outside, "linha registada fora de uma janela de {vh} px");
+    assert!(n > 0, "a lista desapareceu por inteiro");
 }

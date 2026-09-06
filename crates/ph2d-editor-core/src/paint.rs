@@ -26,9 +26,7 @@ use crate::toast::ToastQueue;
 use crate::zones::{Layout, Rect, Zone};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{Color as TokenColor, ColorToken, Theme};
-use ph2d_vector::{
-    Affine, BezPath, Circle, Color, Fill, Rect as VelloRect, RoundedRect, Stroke, VectorScene,
-};
+use ph2d_vector::{Affine, BezPath, Circle, Color, Fill, Rect as VelloRect, Stroke, VectorScene};
 
 /// Per-frame paint context. Built by the shell, threaded through
 /// every widget's [`Paint::paint`] call.
@@ -49,6 +47,22 @@ pub trait Paint {
 
 #[path = "paint_text.rs"]
 mod text;
+
+#[path = "paint_rounded.rs"]
+mod rounded;
+pub use rounded::{fill_rounded_rect, fill_rounded_rect_radii, stroke_rect, stroke_rounded_rect};
+
+/// Apply the snap strategy to a glyph X. `None` returns `x` unchanged
+/// (preserves subpixel kerning); `Half` snaps to 0.5 px (preserves ~50 %
+/// of kerning); `Full` snaps to 1 px integer (full pixel alignment, no
+/// subpixel kerning). Trade-off documented on [`ph2d_tokens::SnapX`].
+fn snap_x_apply(x: f32, snap: ph2d_tokens::SnapX) -> f32 {
+    match snap {
+        ph2d_tokens::SnapX::None => x,
+        ph2d_tokens::SnapX::Half => (x * 2.0).round() * 0.5,
+        ph2d_tokens::SnapX::Full => x.round(),
+    }
+}
 
 #[path = "paint_icons.rs"]
 mod icons_paint;
@@ -87,85 +101,6 @@ pub use crate::published::{
     radius_scale, set_radius_scale, set_slider_style, set_text_rendering, set_ui_look,
     slider_style, text_rendering, ui_is_redesign, ui_look,
 };
-
-/// Apply the snap strategy to a glyph X. `None` returns `x` unchanged
-/// (preserves subpixel kerning); `Half` snaps to 0.5 px (preserves ~50 %
-/// of kerning); `Full` snaps to 1 px integer (full pixel alignment, no
-/// subpixel kerning). Trade-off documented on [`ph2d_tokens::SnapX`].
-fn snap_x_apply(x: f32, snap: ph2d_tokens::SnapX) -> f32 {
-    match snap {
-        ph2d_tokens::SnapX::None => x,
-        ph2d_tokens::SnapX::Half => (x * 2.0).round() * 0.5,
-        ph2d_tokens::SnapX::Full => x.round(),
-    }
-}
-
-fn scale_radius(r: f32) -> f32 {
-    let s = radius_scale();
-    if s == 1.0 {
-        r
-    } else {
-        // Preserve perfect-circle / pill semantics — `Radius::Full`
-        // (999) was chosen specifically so it always wraps to the
-        // shortest axis. Scaling it would un-pill pills at scale < 1.
-        if r >= 999.0 { r } else { r * s }
-    }
-}
-
-/// Fill a rect with rounded corners. Pass `radius == 0` for sharp.
-pub fn fill_rounded_rect(scene: &mut VectorScene, rect: Rect, radius: f32, color: Color) {
-    let radius = scale_radius(radius);
-    if radius <= 0.0 {
-        scene.fill_rect(rect_to_vello(rect), color);
-        return;
-    }
-    let rr = RoundedRect::new(
-        rect.x as f64,
-        rect.y as f64,
-        (rect.x + rect.w) as f64,
-        (rect.y + rect.h) as f64,
-        radius as f64,
-    );
-    scene
-        .inner_mut()
-        .fill(Fill::NonZero, Affine::IDENTITY, color, None, &rr);
-}
-
-/// Stroke an axis-aligned rect (sharp corners) with the given line
-/// width and color. Default `Stroke` uses round joins/caps.
-pub fn stroke_rect(scene: &mut VectorScene, rect: Rect, width: f32, color: Color) {
-    let stroke = Stroke::new(width as f64);
-    scene
-        .inner_mut()
-        .stroke(&stroke, Affine::IDENTITY, color, None, &rect_to_vello(rect));
-}
-
-/// Stroke a rect with rounded corners. Same defaults as
-/// [`stroke_rect`]. Pass `radius == 0` to fall through to sharp.
-pub fn stroke_rounded_rect(
-    scene: &mut VectorScene,
-    rect: Rect,
-    radius: f32,
-    width: f32,
-    color: Color,
-) {
-    let radius = scale_radius(radius);
-    if radius <= 0.0 {
-        stroke_rect(scene, rect, width, color);
-        return;
-    }
-    let rr = RoundedRect::new(
-        rect.x as f64,
-        rect.y as f64,
-        (rect.x + rect.w) as f64,
-        (rect.y + rect.h) as f64,
-        radius as f64,
-    );
-    let stroke = Stroke::new(width as f64);
-    scene
-        .inner_mut()
-        .stroke(&stroke, Affine::IDENTITY, color, None, &rr);
-}
 
 /// ⭐⭐ **A MOLDURA de um controlo, pela porta do TEMA** — o sítio único que substitui o
 /// `stroke_rounded_rect` de repouso/estado nos pintores de widget.
@@ -504,20 +439,6 @@ impl Paint for ToastQueue {
 mod tests {
     use super::*;
     use crate::icons::IconId;
-
-    /// `radius_scale` is a thread-local — paint_rounded_rect helpers
-    /// scale by it, but `Radius::Full` (999) is preserved exactly so
-    /// pill / circle shapes stay perfect even at scale < 1.
-    #[test]
-    fn radius_scale_preserves_full_pill() {
-        set_radius_scale(0.2);
-        assert!((scale_radius(999.0) - 999.0).abs() < f32::EPSILON);
-        assert!((scale_radius(12.0) - 2.4).abs() < 1e-4);
-        set_radius_scale(1.6);
-        assert!((scale_radius(999.0) - 999.0).abs() < f32::EPSILON);
-        assert!((scale_radius(8.0) - 12.8).abs() < 1e-4);
-        set_radius_scale(1.0);
-    }
 
     /// `text_rendering` thread-local round-trip + default.
     #[test]

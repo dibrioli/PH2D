@@ -20,7 +20,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     paint_panel_title, panel_close_button_rect,
 };
 use ph2d_editor_core::widget::{
-    AUDIO_EDITOR_SCROLLBAR_ID, ButtonState, SCROLLBAR_W, TextInputState, paint_scrollbar,
+    AUDIO_EDITOR_SCROLLBAR_ID, ButtonState, GroupPos, SCROLLBAR_W, TextInputState, paint_scrollbar,
     scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
@@ -335,6 +335,32 @@ pub(crate) fn button(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) {
+    button_in_group(
+        rect,
+        label,
+        enabled,
+        id,
+        GroupPos::Only,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+}
+
+/// O mesmo botão, sabendo **onde está numa fileira** — ver [`GroupPos`].
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn button_in_group(
+    rect: Rect,
+    label: &str,
+    enabled: bool,
+    id: NodeId,
+    pos: GroupPos,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut ClippedHits,
+) {
     let fg = if enabled {
         ColorToken::Text1
     } else {
@@ -348,10 +374,14 @@ pub(crate) fn button(
         enabled,
         theme,
     );
-    fill_rounded_rect(
+    // ⭐⭐ **A lei do grupo do Blender:** numa fileira, só as pontas de FORA arredondam.
+    ph2d_editor_core::paint::fill_rounded_rect_radii(
         scene,
         rect,
-        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+        pos.radii(ph2d_editor_core::paint::frame_radius(
+            theme,
+            Radius::Sm.px(),
+        )),
         bg,
     );
     paint_text_centered(
@@ -423,12 +453,43 @@ pub(crate) fn toggle(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) {
+    toggle_in_group(
+        rect,
+        GroupPos::Only,
+        label,
+        active,
+        enabled,
+        id,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+}
+
+/// O mesmo interruptor, sabendo **onde está numa fileira** — ver [`GroupPos`].
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn toggle_in_group(
+    rect: Rect,
+    pos: GroupPos,
+    label: &str,
+    active: bool,
+    enabled: bool,
+    id: NodeId,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut ClippedHits,
+) {
     let (rest, hot, press, fg) = toggle_tokens(active, enabled);
     let bg = action_bg(rest, hot, press, hit_index.visual(id), enabled, theme);
-    fill_rounded_rect(
+    ph2d_editor_core::paint::fill_rounded_rect_radii(
         scene,
         rect,
-        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+        pos.radii(ph2d_editor_core::paint::frame_radius(
+            theme,
+            Radius::Sm.px(),
+        )),
         bg,
     );
     paint_text_centered(

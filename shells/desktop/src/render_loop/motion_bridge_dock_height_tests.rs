@@ -450,13 +450,20 @@ fn the_dock_overflow_is_named_not_discovered() {
     /// `spline_wrap` estoura só no FALLBACK (sem forma escolhida ele mostra as oito
     /// coordenadas da cúbica), e com uma forma mede **456 px** num corpo de 664.
     const NAMED_OVERFLOW: &[(&str, f32)] = &[
-        ("motion.bezier_warp", 825.0),
+        ("motion.bezier_warp", 777.0),
         // ⭐⭐ **O `motion.spline_wrap` SAIU em 2026-09-06, e outra vez sem ninguem o encolher: a
         // LINHA e' que ficou mais baixa.** O dono pediu paineis mais compactos e o
         // `chrome.row-h` desceu de `28` para `24` px (wave 6 do redesenho) ⇒ ele foi de `755`
         // para **`679`** sobre um corpo de `754`, e o censo deste gate exigiu que saisse. O
         // `bezier_warp` desceu de `969` para `873` pelo mesmo motivo e **continua a estourar**:
         // 24 params sao a superficie da referencia.
+        // ⚠️⚠️ **E de `825` para `777` em 2026-09-06, o TERCEIRO retrato em tres waves** — desta
+        // vez porque a linha desceu de `24` para `22` px (o `density.compact` que este repo ja'
+        // declarava) a pedido do dono: *«a propria altura dos botoes pode ser menos sem reduzir o
+        // tamanho da font»*. O piso e' medido: a fonte de um botao e' `13 px` e a caixa do glifo
+        // `15`, logo `22` deixa `3,5` de folga de cada lado — o `base_margin · 0.75` do Godot.
+        // ⇒ *tres waves de espacamento, tres retratos: quem escreve um numero a mao neste censo
+        // esta' a fotografar uma arvore, e a arvore mexe-se sempre que o dono pede compactacao.*
         // ⚠️ **E de `873` para `825` no mesmo dia**, pela wave da FOLGA: o dono pediu menos
         // espaco entre botoes e a volta dos divisores, o `separator_pad_y` passou de `Md` para
         // `Xs` (17 px de risco para 9) e o vao entre controlos unificou-se em `Xs` ⇒ este

@@ -649,6 +649,62 @@ azuis** (Inspector: 11 · Painter Layers: 9 · Vector: 2 · Grid Snap: 1) espera
 agora que a máquina está paga e provada. ⚠️ **A ordem é deliberada:** o mecanismo era o risco desta
 wave, e prová-lo no painel que ele fotografou antes de tocar em oito crates é a ordem honesta.
 
+### 7.13 — ✅ WAVE 10 (2026-09-06): o GRUPO — e a quina passa a ser o que separa
+
+**Ordem do dono**, cinco pontos: *«espaços demais entre botões»* · *«raios das quinas ainda com
+valores altos»* · *«a própria altura dos botões pode ser menos sem reduzir o tamanho da font»* ·
+*«o nome do filtro continua a parecer um botão»* · e ⭐ *«uma coisa muito legal que o Blender tem:
+se 2 ou mais botões estão lado a lado, só as bordas externas dos botões das extremidades recebem
+arredondamento»*.
+
+⭐⭐⭐ **O quinto ponto é a resposta ao primeiro.** Numa fileira do Blender as peças **encostam** —
+o que separa duas peças de um mesmo controlo é a **QUINA**, não o espaço. Um vão entre elas diria
+que são coisas diferentes, e elas não são: são uma escolha entre irmãos, que o HIG manda expandir
+a toda a largura (`layouts.md`, «Mode toggling buttons»). *Estávamos a pôr folga onde o modelo põe
+geometria.*
+
+Porta: [`widget::GroupPos`](../../../crates/ph2d-editor-core/src/widget/button_surface.rs) +
+`segment_rects`, com o primitivo `paint::fill_rounded_rect_radii` (o raio deixou de ser um número e
+passou a ser quatro). A grelha EDIT inteira do editor de áudio passou por ela, e com isso
+**morreram as larguras à mão** (`third`, `half`, `TOOL_COLS`) — a fileira agora é derivada.
+
+| item | antes | agora | fonte |
+|---|---|---|---|
+| vão entre botões de um grupo | `Spacing::Xs` = 4 px | **1 px** (o traço da costura) | Blender, a foto dele |
+| quinas de dentro de um grupo | 4 px | **0** | a lei que ele apontou |
+| raio de cromo | 4 px | **3 px** | `editor_theme_manager.cpp:277` (o outro estilo do Godot) |
+| altura de linha | 24 px | **22 px** | `density.compact`, que este repo já declarava |
+| realce de linha de lista | raio 6, largura de botão | **sangra, raio 0** | `theme_modern.cpp:709` |
+
+⚠️ **A altura é DERIVADA, não escolhida:** a fonte de um botão é `13 px` e a caixa do glifo `15`,
+logo `22` deixa `3,5` px de folga de cada lado — que é o `base_margin · 0.75` do Godot. *O pedido
+era «menos altura sem mexer na fonte», e o piso da fonte é o que responde.*
+
+⚠️ **E a quina zero é o que finalmente separa a linha de lista do botão:** com a lei do grupo, um
+botão desta casa arredonda **pelo menos um** canto; uma linha de lista não arredonda **nenhum**.
+*É a mesma régua do Blender lida do outro lado — lá o que agrupa é a quina que fica, aqui o que
+separa é a quina que não existe.* O sangramento sozinho (wave 9) não bastara.
+
+#### ⚠️⚠️ Três reduções de fixtura na mesma corrida — e uma vacuidade que só a mutação viu
+
+A descida de `24 → 22` px moveu três retratos escritos à mão, e o portão apanhou os três:
+
+1. O retrato do dock (`motion.bezier_warp` `825 → 777`) — **o terceiro em três waves**.
+2. Duas fixturas de **rolagem** da timeline deixaram de conter o fenómeno (`13` linhas já cabiam
+   em `300` px). ⭐ **O gate era honesto e disse-o em voz alta** — *«a fixture nao contem o
+   fenomeno»* — em vez de passar por vácuo. As duas passam a **procurar** o limiar em vez de o
+   nomear.
+3. ⭐⭐⭐ E o censo que verifica que os pintores deste painel **perguntam ao store** ficou verde
+   sobre código partido: ao partir `button` em *delegador* + *implementação*, ensinei-o a aceitar
+   a delegação — e a fatia a que ele chama «corpo» **começa na própria assinatura**, então
+   `button_in_group` media-se a delegar **para si mesmo**. Apagar a pergunta ao store dos **dois**
+   pintores deixava-o verde. *Um censo que procura uma CHAMADA encontra a DEFINIÇÃO, e o único
+   instrumento que o diz é a mutação.*
+
+⚠️ **E o `paint.rs` cruzou o tecto de 700 LOC** ao ganhar o raio por canto ⇒ cortado por
+responsabilidade: a família do rectângulo mudou-se para `paint_rounded.rs` (608 + 118), **com a
+prova dela** — *uma prova que fica na casa antiga mede um nome, não uma lei*.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

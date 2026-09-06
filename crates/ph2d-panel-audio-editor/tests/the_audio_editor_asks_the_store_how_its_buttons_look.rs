@@ -17,12 +17,24 @@
 
 use std::fs;
 
-/// Os três pintores, com o ficheiro onde vivem e o nome da `fn`.
-const PAINTERS: [(&str, &str); 3] = [
+/// Os pintores, com o ficheiro onde vivem e o nome da `fn`.
+///
+/// ⚠️ **São CINCO desde 2026-09-06, e a razão é a lei do grupo do Blender:** o `button` e o
+/// `toggle` partiram-se em *delegador* + *implementação com a posição no grupo*, e a pergunta ao
+/// store mudou-se para a segunda. A 1.ª redacção deste censo acusou o delegador — *um censo que
+/// lê o fonte tem de saber a forma do que lê*, e a forma nova é a DELEGAÇÃO. ⇒ o gate aceita as
+/// duas: ou o corpo pergunta ao store, ou ele **entrega a um irmão desta lista que pergunta**.
+const PAINTERS: [(&str, &str); 5] = [
     ("src/paint.rs", "pub(crate) fn button("),
+    ("src/paint.rs", "pub(crate) fn button_in_group("),
     ("src/paint.rs", "pub(crate) fn toggle("),
+    ("src/paint.rs", "pub(crate) fn toggle_in_group("),
     ("src/paint_fx.rs", "fn icon_button("),
 ];
+
+/// Os nomes a que um delegador pode entregar o trabalho — cada um está ele próprio na lista
+/// acima, logo é medido pela mesma régua.
+const DELEGATES_TO: [&str; 2] = ["button_in_group(", "toggle_in_group("];
 
 /// O corpo de `fn` que começa em `start`, até à chave que a fecha na coluna zero.
 fn body_after(src: &str, start: usize) -> &str {
@@ -53,9 +65,20 @@ fn the_three_painters_read_the_live_visual() {
             panic!("{rel}: `{sig}` desapareceu — o gate ficou a olhar para nada")
         });
         let body = body_after(&src, at);
+        let asks = body.contains(".visual(id)");
+        // ⚠️⚠️ **`!sig.contains(d)` não é defensivo — é a CURA de uma vacuidade que uma mutação
+        //    apanhou** (2026-09-06): a fatia a que este censo chama «corpo» começa na PRÓPRIA
+        //    assinatura, então `button_in_group` contém `button_in_group(` e media-se a delegar
+        //    **para si mesmo**. Com isso, apagar a pergunta ao store dos DOIS pintores deixava o
+        //    gate verde. *Um censo que procura uma CHAMADA encontra a DEFINIÇÃO, e o único
+        //    instrumento que o diz é a mutação.*
+        let delegates = DELEGATES_TO
+            .iter()
+            .any(|d| !sig.contains(d) && body.contains(d));
         assert!(
-            body.contains(".visual(id)"),
-            "{rel}: `{sig}` pinta sem perguntar ao store — o botao volta a ser inerte sob o rato"
+            asks || delegates,
+            "{rel}: `{sig}` pinta sem perguntar ao store e sem entregar a quem pergunta — \
+             o botao volta a ser inerte sob o rato"
         );
     }
 }

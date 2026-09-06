@@ -75,7 +75,10 @@ pub use blender_color_picker::{
     rgba_to_hsv, value_pick, wheel_pick,
 };
 pub use button::{Button, ButtonKind, ButtonState, ICON_BUTTON_SIZE_PX, paint_button};
-pub use button_surface::{chip_axis_color, chip_axis_t, chip_feel, flat_button_surface_color};
+pub use button_surface::{
+    GroupPos, SEGMENT_HAIRLINE, chip_axis_color, chip_axis_t, chip_feel, flat_button_surface_color,
+    segment_rects,
+};
 pub use card::{Card, paint_card, pop_card_body_clip, push_card_body_clip};
 pub use checkbox::{CHECKBOX_BOX_PX, Checkbox, CheckboxState, CheckboxValue, paint_checkbox};
 pub use color_picker::{ColorPicker, ColorPickerMode, paint_color_picker};

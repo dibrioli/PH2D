@@ -115,10 +115,20 @@ fn the_modern_family_is_flat_and_the_classic_is_framed() {
             !Widgets::of(theme).inactive.bg_stroke.is_visible(),
             "{theme:?}"
         );
+        // ⚠️ **O número sai da PORTA, não de um literal repetido aqui** — o dono move-o (4 → 3
+        // em 2026-09-06, *«raios das quinas ainda com valores altos»*), e um literal nesta linha
+        // faria toda mudança dele editar o teste de outra pessoa. O que o gate defende é a LEI:
+        // no moderno todo raio de cromo colapsa **no mesmo** número, e esse número vive dentro da
+        // faixa que o Godot publica para o `interface/theme/corner_radius` (`0..6`).
+        let r = Chrome::of(theme).panel_radius;
         assert_eq!(
-            Chrome::of(theme).panel_radius,
-            4.0,
-            "{theme:?}: o raio do Godot"
+            r,
+            ph2d_tokens::visuals::MODERN_CORNER_RADIUS_PX,
+            "{theme:?}: o cromo moderno tem UM raio, e e' o da porta"
+        );
+        assert!(
+            (0.0..=6.0).contains(&r),
+            "{theme:?}: {r} esta' fora da faixa que o Godot publica (0..6)"
         );
     }
 }

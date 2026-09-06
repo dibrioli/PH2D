@@ -145,6 +145,16 @@ lado da porta dos 4 px. ⏳ Converteu-se **o Editor de Áudio**, que é o painel
 riscos seguem, com a máquina já paga. Mecanismo:
 [`pesquisa/08 §7.12`](pesquisa/08_modelos_com_codigo_para_seguir.md).
 
+⭐⭐⭐ **E a wave 10 (06/09) trouxe o GRUPO do Blender**, apontado pelo dono: *«se 2 ou mais botões
+estão lado a lado, só as bordas externas dos botões das extremidades recebem arredondamento»*.
+⭐⭐ **Isso é a resposta a «espaços demais entre botões»:** numa fileira as peças **encostam**, e o
+que separa duas peças de um mesmo controlo é a **quina**, não o espaço — *estávamos a pôr folga
+onde o modelo põe geometria*. A grelha inteira do editor de áudio passou pela porta nova e as
+larguras à mão morreram. Com ela: raio de cromo `4 → 3`, altura de linha `24 → 22` (**derivada**:
+a fonte é 13 px e a caixa do glifo 15, logo sobram 3,5 de cada lado) e o realce de uma linha de
+lista **sem quina nenhuma** — que é o que finalmente o separa de um botão.
+[`pesquisa/08 §7.13`](pesquisa/08_modelos_com_codigo_para_seguir.md).
+
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
 cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·
 esbatimento do rótulo e inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis, animado) —

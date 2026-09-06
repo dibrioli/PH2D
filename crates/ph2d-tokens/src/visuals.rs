@@ -121,8 +121,16 @@ const TRANSPARENT: Color = Color {
     a: 0,
 };
 
-/// O `corner_radius` por omissão do Godot 4.6 (`interface/theme/corner_radius`, faixa `0..6`).
-pub const MODERN_CORNER_RADIUS_PX: f32 = 4.0;
+/// O `corner_radius` do Godot 4.6 (`interface/theme/corner_radius`, faixa `0..6`).
+///
+/// ⚠️ **`3`, e não os `4` do preset «Default»** — Enio, 2026-09-06, pela terceira vez sobre a mesma
+/// coisa: *«raios das quinas dos botões ainda com valores altos»*. O `3` é o número do **outro**
+/// estilo do mesmo ficheiro (`editor_theme_manager.cpp:277`, o braço `style == "Classic"`), logo é
+/// medido e não escolhido. ⭐⭐ E ele conta menos do que parece agora que existe o **grupo**: numa
+/// fileira de botões vizinhos os cantos de dentro são `0`, então a maior parte das quinas do
+/// painel **deixou de existir** em vez de encolher (a lei do grupo vive no
+/// `ph2d_editor_core::widget::GroupPos`, que esta crate-folha não pode nomear por link).
+pub const MODERN_CORNER_RADIUS_PX: f32 = 3.0;
 
 /// A largura do anel de foco do Godot (`focus_style->set_border_width_all(2)`).
 const MODERN_FOCUS_W: f32 = 2.0;

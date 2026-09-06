@@ -30,11 +30,14 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// Width of the `◀` / `▶` selector arrows.
 const ARROW_W: f32 = 26.0; // LITERAL-PX-OK: selector arrow button width (chrome)
+/// **Uma linha de lista não tem quinas** — ver o sítio que a usa.
+const LIST_ROW_RADIUS_PX: f32 = 0.0; // LITERAL-PX-OK: a ausencia de raio E' a lei da linha de lista
+
 /// Buttons in the chain action row (Add · Remove · Up · Down).
 const ACTION_BUTTONS: f32 = 4.0; // LITERAL-PX-OK: fixed count, divides the row width
 /// Buttons in the preset action row (Apply · Save · Load).
@@ -331,10 +334,16 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
             //    ponta a ponta do corpo, sem recuo e sem moldura. Aqui isso é transbordar a folga
             //    do cartão que envolve a secção.
             let bleed = Spacing::Xs.px();
+            // ⛔ **E SEM QUINAS** — o dono voltou ao assunto: *«o nome do filtro continua a
+            //    parecer um botão»*. O sangramento sozinho não bastou, porque o que diz «botão»
+            //    é a QUINA: com a lei do grupo, um botão desta casa arredonda pelo menos um
+            //    canto, e uma linha de lista não arredonda **nenhum**. *É a mesma régua do
+            //    Blender, do outro lado: lá o que agrupa é a quina que fica, aqui o que separa
+            //    é a quina que não existe.*
             fill_rounded_rect(
                 ctx.scene,
                 Rect::new(x - bleed, y, w + bleed * 2.0, stage_h),
-                ph2d_editor_core::paint::frame_radius(ctx.theme, Radius::Sm.px()),
+                LIST_ROW_RADIUS_PX,
                 resolve(ColorToken::Bg3, ctx.theme),
             );
         }

@@ -9,7 +9,7 @@
 //! history / no selection / nothing on the clipboard / no cuts). Ends by delegating to the
 //! effects rack.
 
-use crate::paint::{ClippedHits, ROW_H, button, toggle};
+use crate::paint::{ClippedHits, ROW_H, button_in_group, toggle_in_group};
 use crate::tool_state::{self, EditTool};
 use crate::{
     AEDIT_COPY, AEDIT_CUT, AEDIT_CUTS_CLEAR, AEDIT_DC, AEDIT_FADE_IN, AEDIT_FADE_OUT,
@@ -18,14 +18,11 @@ use crate::{
     AEDIT_TOOL_SCALE, AEDIT_TOOL_SELECT, AEDIT_TRIM, AEDIT_UNDO, loop_state, snapshot,
 };
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::widget::segment_rects;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{Spacing, Theme};
 use ph2d_vector::VectorScene;
-
-/// The toolbar lays its rows out three across. A **count**, not a dimension — there is no design
-/// token for "how many buttons fit on a line".
-const TOOL_COLS: f32 = 3.0; // LITERAL-PX-OK: a column count, not a design value
 
 /// The toolbar at the top of the section: the tools, then the clipboard, then the structure.
 ///
@@ -43,9 +40,6 @@ fn paint_toolbar(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
-    let third = ((w - gap * (TOOL_COLS - 1.0)) / TOOL_COLS).max(1.0);
-    let half = ((w - gap) * 0.5).max(1.0);
     let armed = tool_state::tool();
 
     // Row 1 — the tools. Move needs somewhere to drop a piece, so it stays dim until the clip is
@@ -60,9 +54,11 @@ fn paint_toolbar(
         ),
         ("Scale", AEDIT_TOOL_SCALE, EditTool::Scale, loaded),
     ];
+    let seg = segment_rects(Rect::new(x, y, w, ROW_H), tools.len());
     for (i, (label, id, t, enabled)) in tools.into_iter().enumerate() {
-        toggle(
-            Rect::new(x + i as f32 * (third + gap), y, third, ROW_H),
+        toggle_in_group(
+            seg[i].0,
+            seg[i].1,
             label,
             armed == t,
             enabled,
@@ -82,12 +78,14 @@ fn paint_toolbar(
         ("Copy", AEDIT_COPY, has_sel),
         ("Paste", AEDIT_PASTE, snapshot::has_clipboard()),
     ];
+    let seg = segment_rects(Rect::new(x, y, w, ROW_H), clip_row.len());
     for (i, (label, id, enabled)) in clip_row.into_iter().enumerate() {
-        button(
-            Rect::new(x + i as f32 * (third + gap), y, third, ROW_H),
+        button_in_group(
+            seg[i].0,
             label,
             enabled,
             id,
+            seg[i].1,
             scene,
             text_system,
             theme,
@@ -98,21 +96,24 @@ fn paint_toolbar(
 
     // Row 3 — structure. Split cuts at the playhead; Clear Cuts heals every seam (the audio stays
     // wherever you dragged it to — the pieces were never separate buffers).
-    button(
-        Rect::new(x, y, half, ROW_H),
+    let seg = segment_rects(Rect::new(x, y, w, ROW_H), 2);
+    button_in_group(
+        seg[0].0,
         "Split",
         loaded,
         AEDIT_SPLIT_PLAYHEAD,
+        seg[0].1,
         scene,
         text_system,
         theme,
         hit_index,
     );
-    button(
-        Rect::new(x + half + gap, y, half, ROW_H),
+    button_in_group(
+        seg[1].0,
         "Clear Cuts",
         tool_state::has_cuts(),
         AEDIT_CUTS_CLEAR,
+        seg[1].1,
         scene,
         text_system,
         theme,
@@ -150,8 +151,6 @@ pub(crate) fn paint_edit_section(
         hit_index,
     );
 
-    let gap = Spacing::Xs.px();
-    let half = ((w - gap) * 0.5).max(1.0);
     // (label, id, enabled) pairs, laid out two-per-row (last row is single).
     let rows: [[(&str, NodeId, bool); 2]; 4] = [
         [("Undo", AEDIT_UNDO, undo_ok), ("Redo", AEDIT_REDO, redo_ok)],
@@ -169,13 +168,14 @@ pub(crate) fn paint_edit_section(
         ],
     ];
     for row in rows {
+        let seg = segment_rects(Rect::new(x, y, w, ROW_H), row.len());
         for (i, (label, id, enabled)) in row.into_iter().enumerate() {
-            let bx = x + i as f32 * (half + gap);
-            button(
-                Rect::new(bx, y, half, ROW_H),
+            button_in_group(
+                seg[i].0,
                 label,
                 enabled,
                 id,
+                seg[i].1,
                 scene,
                 text_system,
                 theme,
@@ -185,18 +185,21 @@ pub(crate) fn paint_edit_section(
         y += ph2d_tokens::row_pitch_px();
     }
     // Invert | Force Mono (downmix the whole clip for 3D positional audio).
-    button(
-        Rect::new(x, y, half, ROW_H),
+    let seg = segment_rects(Rect::new(x, y, w, ROW_H), 2);
+    button_in_group(
+        seg[0].0,
         "Invert",
         loaded,
         AEDIT_INVERT,
+        seg[0].1,
         scene,
         text_system,
         theme,
         hit_index,
     );
-    toggle(
-        Rect::new(x + half + gap, y, half, ROW_H),
+    toggle_in_group(
+        seg[1].0,
+        seg[1].1,
         "Force Mono",
         loop_state::mono_on(),
         loaded,
@@ -222,13 +225,14 @@ pub(crate) fn paint_edit_section(
         ],
     ];
     for row in range_rows {
+        let seg = segment_rects(Rect::new(x, y, w, ROW_H), row.len());
         for (i, (label, id, enabled)) in row.into_iter().enumerate() {
-            let bx = x + i as f32 * (half + gap);
-            button(
-                Rect::new(bx, y, half, ROW_H),
+            button_in_group(
+                seg[i].0,
                 label,
                 enabled,
                 id,
+                seg[i].1,
                 scene,
                 text_system,
                 theme,

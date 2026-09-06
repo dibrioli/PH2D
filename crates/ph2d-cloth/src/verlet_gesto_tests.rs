@@ -369,3 +369,181 @@ fn sem_vertice_no_disco_o_centro_da_area_e_o_cursor() {
         "sem vertice no disco o centro da area tem de ser o CURSOR, nao {c:?}"
     );
 }
+
+/// ⭐⭐⭐ **A ORDEM DE NASCIMENTO por vértice é LEI** (espec §5.2 nº 1, emenda
+/// Q14): **corpo mole → estruturais → âncora → pino**.
+///
+/// ⛔⛔ **Não há «primeiro as distâncias, depois as âncoras».** As quatro
+/// espécies vivem numa lista SÓ, percorrida de fio a pavio cinco vezes, e a
+/// espécie só é lida DENTRO da projecção. Como Gauss–Seidel não comuta — nesta
+/// bancada, inverter a lista move a nossa resposta `0,29` num traço que erra
+/// `0,07` —, *onde cada restrição cai decide o resultado tanto quanto o que ela
+/// diz*.
+///
+/// ⚠️ **O corpus quase não a vê, e é por isso que este gate existe:** só dois
+/// traços ligam o pino ou a plasticidade, e adoptar a ordem certa move-os
+/// `0,068 → 0,074` e `0,040 → 0,043` — dentro da barra nos dois casos, logo o
+/// gate de paridade fica verde com a ordem ERRADA lá dentro.
+#[test]
+fn as_quatro_especies_nascem_pela_ordem_da_referencia() {
+    use crate::verlet::Alvo;
+    // ⚠️ A grelha é FINA de propósito: o pino só nasce nos vértices que caem na
+    // janela `[R(1+L·F), R(1+L)]` da banda, e numa grelha grossa essa janela
+    // pode não conter vértice nenhum — foi o que a 1.ª fixtura fez.
+    let (pos, faces) = grelha(11, 0.06);
+    let an = aneis(11 * 11, &faces);
+    let cursor = [0.0, 0.0, 0.0];
+    let mut p = Pincel {
+        modo: Modo::Gancho,
+        area: Area::Local,
+        // ⚠️ O raio é pequeno de propósito: o pino só nasce onde a BANDA já
+        // caiu, e com um raio que cubra a grelha inteira ela vale `1` em toda a
+        // parte e a espécie não chega a existir.
+        raio: 0.1,
+        pino: true,
+        ..Pincel::default()
+    };
+    p.solver.plasticidade = 0.5;
+    let mut t = PincelTecido::pen_down(p, &pos, cursor);
+    let passo = Passo {
+        cursor,
+        delta: [0.05, 0.0, 0.0],
+        delta_3d: [0.05, 0.0, 0.0],
+        parado: false,
+        vista: [0.0, 0.0, 1.0],
+        normais: &vec![[0.0, 0.0, 1.0]; pos.len()],
+        pressao: 1.0,
+    };
+    t.passo(&pos, &|v| an[v as usize].clone(), &passo);
+
+    // A sequência de espécies, como um código por vértice.
+    let especie = |a: &crate::verlet::Restricao| match a.b {
+        Alvo::Memoria => 'm',
+        Alvo::Vertice(_) => 'e',
+        Alvo::Ancora => 'a',
+        Alvo::Repouso => 'p',
+    };
+    let toda: String = t.sim.restricoes.iter().map(especie).collect();
+    assert!(
+        !toda.is_empty(),
+        "nenhuma restricao nasceu -- a fixtura nao produz o fenomeno"
+    );
+    // ⚠️ A área *Local* constrói a lista DUAS vezes (§5.2-bis), e a emenda entre
+    // as duas passagens é uma fronteira de bloco, não uma troca de ordem. As
+    // duas metades são idênticas por construção — o que também se afirma aqui.
+    assert_eq!(
+        toda.len() % 2,
+        0,
+        "a lista da Local tem de vir em duplicado"
+    );
+    let (a, b) = toda.split_at(toda.len() / 2);
+    assert_eq!(a, b, "as duas passagens da Local nao sao identicas");
+    let seq = a.to_string();
+    // As quatro espécies têm de existir, senão o gate é vácuo.
+    for (c, nome) in [
+        ('m', "corpo mole"),
+        ('e', "estrutural"),
+        ('a', "ancora"),
+        ('p', "pino"),
+    ] {
+        assert!(
+            seq.contains(c),
+            "a fixtura nao produz {nome} -- gate vacuo sobre essa especie"
+        );
+    }
+    // ⭐ A lei: o bloco de cada vértice é `m` · `e`+ · `a`? · `p`?, e nunca outra
+    // permutação.
+    //
+    // ⚠️ **A leitura tem de ser por BLOCO, não por par de letras** — a 1.ª
+    // redacção proibia `am` e `pm`, que são precisamente as **fronteiras** entre
+    // dois vértices, e reprovava sobre uma sequência correcta. *Um censo de
+    // transições sobre uma lista de blocos acusa as fronteiras dele.*
+    let mut blocos = seq.split('m');
+    assert_eq!(
+        blocos.next(),
+        Some(""),
+        "a sequencia nao comeca pelo corpo mole: {seq}"
+    );
+    let mut n_blocos = 0;
+    for bloco in blocos {
+        n_blocos += 1;
+        let mut it = bloco.chars().peekable();
+        let mut estruturais = 0;
+        while it.peek() == Some(&'e') {
+            it.next();
+            estruturais += 1;
+        }
+        assert!(
+            estruturais > 0,
+            "bloco `m{bloco}`: alguma coisa nasceu ANTES das estruturais"
+        );
+        if it.peek() == Some(&'a') {
+            it.next();
+        }
+        if it.peek() == Some(&'p') {
+            it.next();
+        }
+        assert!(
+            it.next().is_none(),
+            "bloco `m{bloco}` fora da ordem `corpo mole -> estruturais -> ancora -> pino`"
+        );
+    }
+    assert!(
+        n_blocos > 1,
+        "um bloco so' nao testa a fronteira entre vertices"
+    );
+}
+
+/// ⭐⭐ **O desvio de repouso do Expand entra nas QUATRO espécies, e INTEIRO nas
+/// três de alvo próprio** (espec §5.2 e §4.5, emenda Q14).
+///
+/// A soma é sempre «metade do desvio de cada extremo»; quando os dois extremos
+/// são o **mesmo** vértice, as duas metades somam o desvio dele por completo.
+///
+/// ⚠️ **O corpus não o vê:** `τ` só é diferente de zero no Expand, e nenhuma
+/// fixture combina Expand com pino ou com plasticidade — embora as duas
+/// combinações sejam alcançáveis com o pincel de tecido (são opções
+/// independentes do modo). *Uma lei que o corpus não alcança precisa de um gate
+/// que a alcance.*
+#[test]
+fn o_desvio_de_repouso_entra_inteiro_nas_especies_de_alvo_proprio() {
+    use crate::verlet::{Solver, Verlet};
+    let solver = Solver {
+        varreduras: 1,
+        ..Solver::default()
+    };
+    // Um vértice deslocado de `D = 0,10` da posição de repouso, com (ou sem) um
+    // pino a puxá-lo de volta.
+    let correu = |tau: f64, com_pino: bool| {
+        let mut v = Verlet::nascer(vec![[0.0, 0.0, 0.0]]);
+        if com_pino {
+            v.pregar(0, 1.0);
+        }
+        v.phi[0] = 1.0;
+        v.activo[0] = true;
+        v.x[0] = [0.10, 0.0, 0.0];
+        v.tau[0] = tau;
+        v.passo(&solver);
+        v.x[0][0]
+    };
+    let inerte = correu(0.0, false);
+    assert!(
+        (correu(0.0, true) - inerte).abs() > 1e-9,
+        "sem desvio o pino tinha de puxar -- a fixtura nao produz o fenomeno"
+    );
+    // ⭐ **A régua é o ponto em que a restrição fica SATISFEITA**, que é exacto e
+    // não depende do resto do passo: com `ℓ' = τ` INTEIRO ela cala-se quando
+    // `τ = D`. Com `τ/2` só se calaria a `τ = 2D`, e a `τ = D` ainda puxava.
+    assert!(
+        (correu(0.10, true) - inerte).abs() < 1e-12,
+        "a `τ = D` o pino ainda puxou ({} contra {inerte}) -- o desvio nao entra \
+         INTEIRO na especie de alvo proprio",
+        correu(0.10, true)
+    );
+    // Controlo: a METADE de `D` ele ainda tem de puxar, senão o gate acima
+    // estaria verde por o desvio ter apagado a restrição em toda a parte.
+    assert!(
+        (correu(0.05, true) - inerte).abs() > 1e-9,
+        "a `τ = D/2` o pino deixou de puxar -- o desvio esta' a apagar a restricao"
+    );
+}

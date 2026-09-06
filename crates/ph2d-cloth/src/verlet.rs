@@ -270,9 +270,14 @@ impl Verlet {
                 if dist <= 0.0 {
                     continue;
                 }
+                // ⚠️⚠️ **`ℓ'` vale para as QUATRO espécies** (espec §5.2 e §4.5,
+                // emenda Q14): a soma é sempre «metade do desvio de cada
+                // extremo», e nas três de alvo próprio os dois extremos são o
+                // MESMO vértice, logo as duas metades somam o desvio dele por
+                // completo. ⛔ Antes de 06/09 só a estrutural o lia.
                 let l = match r.b {
                     Alvo::Vertice(b) => r.l + (self.tau[ai] + self.tau[b as usize]) * 0.5,
-                    _ => r.l,
+                    _ => r.l + self.tau[ai],
                 };
                 let f = RIGIDEZ * (1.0 - l / dist);
                 let h = [d[0] * f * 0.5, d[1] * f * 0.5, d[2] * f * 0.5];

@@ -462,24 +462,20 @@ impl PincelTecido {
             }
             for &v in &novos {
                 let vizinhos = anel(v);
-                self.sim.construir(v, &vizinhos);
                 let vi = v as usize;
-                // Espec §2.3: o pino da fronteira, só em Local, força `1 − w`.
-                if self.pincel.pino && self.pincel.area == Area::Local {
-                    let wv = banda(
-                        self.sim.repouso[vi],
-                        cursor,
-                        self.raio0,
-                        self.pincel.limite,
-                        self.pincel.banda,
-                    );
-                    if wv < 1.0 {
-                        self.sim.pregar(v, 1.0 - wv);
-                    }
-                }
+                // ⚠️⚠️ **A ORDEM DE NASCIMENTO por vértice é LEI, e é esta**
+                // (espec §5.2 nº 1, emenda Q14): **corpo mole → estruturais →
+                // âncora → pino**. As quatro espécies vivem numa lista SÓ e num
+                // laço SÓ, resolvido de fio a pavio — não há «primeiro as
+                // distâncias, depois as âncoras» —, e Gauss-Seidel não comuta,
+                // logo onde cada uma cai decide a resposta. ⛔ Antes de 06/09
+                // esta casa nascia por outra ordem (estruturais → pino → corpo
+                // mole → âncora), o que só é observável nos dois traços que
+                // ligam o pino ou a plasticidade.
                 if self.pincel.solver.plasticidade > 0.0 {
                     self.sim.amolecer(v);
                 }
+                self.sim.construir(v, &vizinhos);
                 // As âncoras de deformação nascem com o vértice (espec §4.3).
                 match self.pincel.modo {
                     Modo::Agarrar => {
@@ -499,6 +495,20 @@ impl PincelTecido {
                     }
                     Modo::Gancho => self.sim.ancorar(v, 0.35),
                     _ => {}
+                }
+                // Espec §2.3: o pino da fronteira, só em Local, força `1 − w`.
+                // ⚠️ Ele é o ÚLTIMO do bloco do vértice (§5.2 nº 1).
+                if self.pincel.pino && self.pincel.area == Area::Local {
+                    let wv = banda(
+                        self.sim.repouso[vi],
+                        cursor,
+                        self.raio0,
+                        self.pincel.limite,
+                        self.pincel.banda,
+                    );
+                    if wv < 1.0 {
+                        self.sim.pregar(v, 1.0 - wv);
+                    }
                 }
             }
         }

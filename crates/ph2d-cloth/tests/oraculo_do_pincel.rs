@@ -1043,8 +1043,10 @@ const PARIDADE: [&str; VERDE_N] = [
     // que é a média das posições PUXADAS PARA O CURSOR. Os quatro traços de
     // falloff de plano melhoraram e mais nenhum se mexeu.
     "plano_agarrar_plano_local",
+    "plano_agarrar_radial_global_origem_1passo",
     "plano_agarrar_radial_local",
     "plano_agarrar_radial_local_1passo",
+    "plano_agarrar_radial_local_origem_1passo",
     "plano_agarrar_radial_local_24passos",
     "plano_agarrar_radial_local_2passos",
     "plano_agarrar_radial_local_2passos_origem",
@@ -1075,10 +1077,16 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_empurrar_radial_local_1passo",
     "plano_gancho_radial_local",
     "plano_gancho_radial_local_24passos",
+    // ⭐⭐ Os DOIS controlos do §5.2-quater, e o que eles provam ao BATEREM: com
+    // `δ` de uma aresta (`_curto`) e com a queda CONSTANTE, a mesma lei que
+    // erra `0,432` no traço longo lê `0,088` e `0,104`. ⇒ *o resíduo do gancho
+    // é da rede sob `δ` grande, não da lei da âncora.*
+    "plano_gancho_radial_local_origem_1passo_constante",
+    "plano_gancho_radial_local_origem_1passo_curto",
     "plano_gancho_radial_local_amort06",
     "plano_inflar_radial_local_1passo",
 ];
-const VERDE_N: usize = 31;
+const VERDE_N: usize = 35;
 
 /// Os traços AINDA por explicar, com o valor MEDIDO em 2026-09-06 ao lado.
 ///
@@ -1113,14 +1121,21 @@ const ABERTOS: [(&str, f64); ABERTO_N] = [
     // que o Snake Hook tinha antes do Q9.
     ("plano_empurrar_radial_local_origem", 0.214),
     ("plano_inflar_radial_local_origem", 0.252),
+    ("plano_expandir_radial_global_origem_1passo", 0.773),
     ("plano_expandir_radial_local", 0.192),
+    // ⚠️ ZERO força e ZERO âncora: só a lista de restrições, a ordem dela e o
+    // número de passagens. A espec §5.2-quater manda fechá-lo PRIMEIRO.
+    ("plano_expandir_radial_local_origem_1passo", 0.554),
+    ("plano_expandir_radial_local_origem_1passo_forca05", 0.556),
     ("plano_expandir_radial_local_1passo", 0.560),
+    ("plano_gancho_radial_global_origem_1passo", 0.432),
     ("plano_gancho_radial_local_1passo", 0.416),
+    ("plano_gancho_radial_local_origem_1passo", 0.432),
     ("plano_gancho_radial_local_2passos", 0.388),
     ("plano_gancho_radial_local_2passos_origem", 0.420),
     ("plano_inflar_radial_local", 0.253),
 ];
-const ABERTO_N: usize = 25;
+const ABERTO_N: usize = 30;
 
 /// A folga de regressão sobre o valor medido de um traço ABERTO.
 const FOLGA_ABERTO: f64 = 1.25;

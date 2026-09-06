@@ -199,6 +199,22 @@ fn toggle_param(value: f32) -> CardParam {
     )
 }
 
+fn file_param() -> CardParam {
+    CardParam::from_hint(
+        ParamUiHint {
+            param: "file",
+            label: "File",
+            min: 0.0,
+            max: 0.0,
+            step: 0.0,
+            widget: ParamWidget::File {
+                kind: ph2d_node_registry::FileKind::Table,
+            },
+        },
+        0.0,
+    )
+}
+
 /// Um CLIQUE (pressão e largada sem varrer) na row `row` — o **estado** que ele deixa e o que
 /// saiu na fila. As duas coisas, porque desde 2026-09-05 um clique num número não escreve: ele
 /// abre uma caixa, e isso só se vê no estado.
@@ -358,4 +374,46 @@ fn dragging_a_faced_param_writes_the_document_unit() {
         (*value - 10.0).abs() < 1e-2,
         "meia largura varre 1000 px = 10 unidades, e escreveu {value}"
     );
+}
+
+/// ⭐⭐ **UM CLIQUE NUM CONTROLO DE FICHEIRO PEDE O DIÁLOGO** — o cartão **pede**, nunca abre.
+///
+/// ⚠️ **Antes disto ele não fazia NADA**, e essa é a espécie de defeito que só se vê medindo:
+/// a row era pintada, o alvo estava registado, o dedo acertava — e o braço do `match` caía no
+/// `_ => {}`. O censo do catálogo (`what_the_card_still_cannot_reach`) contava **26** controlos
+/// assim; este é um dos três que saem.
+///
+/// FALSIFICADO por o braço voltar ao `Nothing`: a fila sai vazia e o diálogo nunca abre.
+#[test]
+fn a_click_on_a_file_row_asks_the_shell_for_the_dialog() {
+    let snap = card(vec![file_param()]);
+    let saiu = click(&snap, 0);
+    let Some(GraphIntent::PickFile { param, .. }) = saiu.first() else {
+        panic!("o clique tem de PEDIR o dialogo, e saiu {saiu:?}");
+    };
+    assert_eq!(*param, "file");
+    // ⚠️ E o cartão **não escreve o caminho** — quem o escreve é a shell, depois de o artista
+    // escolher. Uma intenção de escrita aqui seria o cartão a inventar um valor.
+    assert!(
+        !saiu
+            .iter()
+            .any(|i| matches!(i, GraphIntent::SetParam { .. })),
+        "o cartao nao pode escrever nada por si: {saiu:?}"
+    );
+}
+
+/// ⛔ **E o veredito do clique é a PORTA ÚNICA, lida também pelo censo.** Este gate prende as
+/// duas leituras: se alguém acrescentar uma espécie ao gesto sem ela aparecer no `click_does`,
+/// o censo do catálogo continua a contá-la como inalcançável e a conta mente para o lado
+/// perigoso — *o painel lateral sairia com um controlo morto atrás*.
+#[test]
+fn the_click_law_answers_for_every_species_the_gesture_handles() {
+    use crate::{ClickDoes, click_does};
+    assert_eq!(click_does(&file_param()), ClickDoes::PickFile);
+    assert_eq!(
+        click_does(&enum_param(0.0, &["A", "B"])),
+        ClickDoes::Cycle(2)
+    );
+    assert_eq!(click_does(&toggle_param(0.0)), ClickDoes::Toggle);
+    assert_eq!(click_does(&param("size", 1.0, 0.1, false)), ClickDoes::Type);
 }

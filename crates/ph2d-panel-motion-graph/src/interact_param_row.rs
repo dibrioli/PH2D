@@ -132,6 +132,10 @@ pub(super) fn apply_param_row(
                         value: p.to_stored(proxima),
                     });
                 }
+                ClickDoes::PickFile => push_intent(GraphIntent::PickFile {
+                    node,
+                    param: p.hint.param,
+                }),
                 ClickDoes::Nothing => {}
             }
             state.interaction = Interaction::Idle;
@@ -162,6 +166,8 @@ pub enum ClickDoes {
     Toggle,
     /// Avança para a opção seguinte de `n`, com volta ao princípio.
     Cycle(usize),
+    /// **Pede à shell que abra o diálogo de ficheiro** — o cartão nunca abre um por si.
+    PickFile,
     /// **Nada** — o cartão diz que o controlo existe e não o abre.
     Nothing,
 }
@@ -178,6 +184,7 @@ pub fn click_does(p: &crate::CardParam) -> ClickDoes {
         ph2d_node_registry::ParamWidget::Enum { labels } if !labels.is_empty() => {
             ClickDoes::Cycle(labels.len())
         }
+        ph2d_node_registry::ParamWidget::File { .. } => ClickDoes::PickFile,
         _ => ClickDoes::Nothing,
     }
 }

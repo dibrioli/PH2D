@@ -82,6 +82,7 @@ fn censo() -> Censo {
                 ClickDoes::Type => "escreve-se",
                 ClickDoes::Toggle => "vira",
                 ClickDoes::Cycle(_) => "avança",
+                ClickDoes::PickFile => "abre ficheiro",
                 ClickDoes::Nothing => "NADA",
             };
             *veredito.entry(v).or_default() += 1;
@@ -151,7 +152,49 @@ fn the_side_panel_cannot_leave_while_the_card_cannot_open_these() {
     );
 }
 
-/// **Medido em 2026-09-06: `26` de `683` rows** — reconciliado pela sonda, nunca escrito de
+/// ⭐⭐ **O PEDIDO DO CARTÃO CHEGA À PORTA DO PAINEL** — a metade que o gate do painel não
+/// prova. Lá mede-se que o clique **emite** a intenção; aqui, que a shell a **traduz** para a
+/// mesma `MotionParamIntent::PickFile` que a row do painel usa há meses.
+///
+/// ⚠️ **São dois defeitos diferentes e nenhum gate via os dois:** um clique que não emite nada
+/// (o braço `_ => {}` de antes) e uma emissão que a shell ignora. O segundo é o pior — a fila
+/// enche e nada acontece, e nenhuma superfície diz porquê.
+///
+/// ⛔ **E ele não abre diálogo nenhum:** o teste pára na tradução, de propósito. Abrir uma
+/// janela do sistema dentro de um teste é o que a porta `modal::pick_file` existe para
+/// cronometrar, e um gate que a chamasse ficaria pendurado à espera de um humano.
+///
+/// FALSIFICADO por apagar o braço `GraphIntent::PickFile` do `apply_graph_intents`.
+#[test]
+fn the_cards_file_click_reaches_the_same_door_the_panel_row_uses() {
+    use ph2d_panel_motion_graph::{GraphIntent, drain_intents, push_intent};
+    let mut m = MotionState::new();
+    let id = m.doc.graph.add_node("source.table");
+    let _ = drain_intents();
+    let _ = ph2d_panel_motion_params::drain_param_intents();
+    push_intent(GraphIntent::PickFile {
+        node: id.0,
+        param: "file",
+    });
+    crate::render_loop::motion_bridge::apply_graph_intents(
+        &mut m,
+        &mut ph2d_core::Playhead::default(),
+        &mut ph2d_editor::ToastQueue::default(),
+        &mut ph2d_editor::screens::layout::CenterSplit::None,
+    );
+    let saiu = ph2d_panel_motion_params::drain_param_intents();
+    assert!(
+        saiu.iter().any(|i| matches!(
+            i,
+            ph2d_panel_motion_params::MotionParamIntent::PickFile { node, param }
+                if *node == id.0 && *param == "file"
+        )),
+        "o pedido do cartao nao chegou a` porta do painel: {saiu:?}"
+    );
+}
+
+/// **Medido em 2026-09-06: `23` de `683` rows** (eram `26` — os **3** de ficheiro saíram na
+/// primeira wave, e a tabela abaixo já os mostra fora) — reconciliado pela sonda, nunca escrito de
 /// memória. Em sete espécies, e a maior é o campo de texto (9):
 ///
 /// | espécie | quantos | nós |
@@ -159,13 +202,18 @@ fn the_side_panel_cannot_leave_while_the_card_cannot_open_these() {
 /// | campo de TEXTO | 9 | `source.text` (×2) · `value.table` (×2) · `motion.expression` · `pulse.signal` · `rig.skeleton` · `value.pattern` · `motion.sub_uv` |
 /// | amostra + selector de COR | 4 | `motion.tint` · `fx.glow` · `fx.drop_shadow` · `motion.strobe` |
 /// | selector de FONTE publicada | 4 | `motion.path` · `motion.spline_wrap` · `fx.glow` · `source.object` |
-/// | caminho + diálogo de FICHEIRO | 3 | `audio.bands` · `source.table` · `value.table` |
+/// | ~~caminho + diálogo de FICHEIRO~~ | ~~3~~ | ✅ **curado**: o cartão pede, a shell abre |
 /// | editor de CURVA | 2 | `value.curve` · `motion.strobe` |
 /// | editor de GRADIENTE | 2 | `motion.color_ramp` · `fx.glow` |
 /// | editor de PALETA | 1 | `motion.color_array` |
 /// | selector de CANAL | 1 | `value.attribute` |
 ///
-/// ⚠️ **Os `4 + 3 + 4 = 11` de cor, ficheiro e fonte são os BARATOS:** quem abre o selector, o
+/// ⚠️ **Os `4 + 3 + 4 = 11` de cor, ficheiro e fonte eram os BARATOS:** quem abre o selector, o
 /// diálogo e a lista de publicados é a **SHELL**, não o painel — o cartão só precisa de emitir a
 /// mesma intenção. Os outros `15` pedem uma superfície de edição que hoje só o painel tem.
-const TRANCADOS_NO_PAINEL: usize = 26;
+///
+/// ⭐ **E o primeiro dos três provou que a estrada já estava construída:** o
+/// `apply_graph_intents` **já traduzia** as intenções do cartão para as do painel (é assim que
+/// o `SetParam` de um arrasto no cartão chega ao documento), então o ficheiro custou **um
+/// braço em cada lado** — nenhuma lei nova, nenhuma segunda porta.
+const TRANCADOS_NO_PAINEL: usize = 23;

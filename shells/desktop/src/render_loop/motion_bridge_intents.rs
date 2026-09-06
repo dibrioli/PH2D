@@ -156,6 +156,18 @@ pub(super) fn apply_graph_intents(
                     );
                 }
             }
+            // ⭐ **O cartão pede um ficheiro pela MESMA porta que a row do painel** — a shell
+            // não tem um segundo caminho para abrir um diálogo, e é isso que garante que
+            // escolher pelo cartão recarrega a tabela, repara os fios órfãos e conta um passo
+            // de undo exactamente como escolher pelo painel.
+            #[cfg(feature = "panel-motion-params")]
+            GraphIntent::PickFile { node, param } => {
+                if let subgraph::Target::Node(n) = subgraph::target(node) {
+                    ph2d_panel_motion_params::push_param_intent(
+                        ph2d_panel_motion_params::MotionParamIntent::PickFile { node: n.0, param },
+                    );
+                }
+            }
             GraphIntent::Disconnect { to_node, to_port } => {
                 if let Some((t, tp)) = subgraph::resolve_port(motion, to_node, to_port, true) {
                     apply_disconnect(motion, toasts, t.0, tp);

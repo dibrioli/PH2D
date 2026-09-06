@@ -59,6 +59,15 @@ pub enum GraphIntent {
         param: &'static str,
         value: f32,
     },
+    /// ⭐ **O ARTISTA CLICOU NUM CONTROLO DE FICHEIRO NO CARTÃO** — o cartão **pede**, a shell
+    /// abre. Um diálogo é uma janela do sistema que congela o laço, então só a shell o pode
+    /// abrir, e ela já o faz para a row do painel.
+    ///
+    /// ⚠️ **Ele não carrega filtro nenhum, e isso é o desenho:** quem resolve *que ficheiros
+    /// este param aceita* é a shell, a partir do `ParamUiHint` que ela própria publicou. Pôr as
+    /// extensões aqui faria o cartão ser a segunda resposta à mesma pergunta — exactamente o que
+    /// a row do painel já recusou pelo mesmo motivo.
+    PickFile { node: u32, param: &'static str },
     /// **O ARTISTA DOBROU OU ABRIU UMA SECÇÃO** do cartão (ciclo 1). Estado de EDITOR: a shell
     /// guarda-o ao lado do resto do que a vista resolve, e por isso [`crate::geom::card_h`]
     /// continua a ser função pura do snapshot.

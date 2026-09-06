@@ -162,6 +162,38 @@ fn the_wave_three_painters_lose_exactly_their_frame() {
     }
 }
 
+/// ⭐⭐ **A AMOSTRA DE COR perde o anel que era um PREENCHIMENTO** (wave 5, 2026-09-05).
+///
+/// O anel dela nunca foi um traço: era um rectângulo na cor da borda com a cor do artista por
+/// cima, recuada — a forma que o censo do `stroke_rounded_rect` **não vê**, e por isso a amostra
+/// continuou emoldurada depois de a pele plana ter apagado as molduras dos vizinhos. No clássico
+/// são dois caminhos (anel + cor); num tema moderno é **um** (a cor, a toda a área).
+///
+/// **Mutação que deve sangrar:** trocar o `paint::fill_ring` de volta pelo
+/// `fill_rounded_rect(rect, border_token)` directo.
+#[test]
+fn the_colour_swatch_loses_the_ring_that_was_a_fill() {
+    use ph2d_editor_core::widget::{ColorSwatch, paint_color_swatch};
+    let paths = |theme: Theme| {
+        let mut scene = VectorScene::new();
+        let swatch = ColorSwatch::new(NodeId(11), "cor", [200, 80, 40, 255]);
+        paint_color_swatch(&swatch, Rect::new(4.0, 4.0, 24.0, 24.0), &mut scene, theme);
+        scene.inner().encoding().n_paths
+    };
+    let classic = paths(Theme::Forge);
+    assert_eq!(classic, 2, "o classico e' anel + cor");
+    assert_eq!(
+        paths(Theme::Dark),
+        classic - 1,
+        "no moderno a amostra e' so' a cor do artista"
+    );
+    assert_eq!(
+        paths(Theme::Oled),
+        classic,
+        "o OLED traca bordas extra, como no Godot"
+    );
+}
+
 /// ⛔ **O controlo: dois temas da MESMA família emitem a MESMA geometria** — o que muda entre o
 /// `forge` e o `workshop` é cor, nunca contorno. Sem isto, uma contagem qualquer que desse
 /// «menos» passaria por pele plana.

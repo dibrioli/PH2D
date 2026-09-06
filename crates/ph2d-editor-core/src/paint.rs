@@ -197,6 +197,33 @@ pub fn stroke_frame(
     }
 }
 
+/// ⭐⭐ **O ANEL POR PREENCHIMENTO, pela porta do TEMA** — a irmã do [`stroke_frame`] para a
+/// moldura que **não é um traço**: um rectângulo maior na cor da borda, com o conteúdo pintado
+/// por cima com um recuo. É a forma que a amostra de cor usa, e **o censo do traço não a vê**
+/// (wave 5 do redesenho, 2026-09-05).
+///
+/// Devolve `Some((recuo, cor))` quando há anel, `None` quando o tema não quer nenhum. Clássico:
+/// sempre o par que o pintor sempre usou. Moderno: o traço da tabela — logo **`None` em
+/// repouso**, e o anel de foco (2 px no acento) quando o controlo está focado.
+///
+/// ⚠️ **O recuo é a LARGURA do anel**, e é por isso que ele volta daqui em vez de ser escolhido
+/// no pintor: um anel de 2 px desenhado com recuo de 1 lê-se como meia moldura.
+#[must_use]
+pub fn fill_ring(
+    theme: Theme,
+    feel: ph2d_tokens::visuals::Feel,
+    classic_w: f32,
+    classic_colour: Color,
+) -> Option<(f32, Color)> {
+    match ph2d_tokens::visuals::frame(theme, feel) {
+        ph2d_tokens::visuals::Frame::Classic => Some((classic_w, classic_colour)),
+        ph2d_tokens::visuals::Frame::Modern(s) if s.is_visible() => {
+            Some((s.width, token_to_vello(s.color)))
+        }
+        ph2d_tokens::visuals::Frame::Modern(_) => None,
+    }
+}
+
 /// ⭐ **O RAIO de um controlo, pela porta do TEMA** — ver [`ph2d_tokens::visuals::radius`].
 #[must_use]
 pub fn frame_radius(theme: Theme, classic: f32) -> f32 {

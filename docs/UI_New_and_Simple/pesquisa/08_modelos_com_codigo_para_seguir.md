@@ -361,6 +361,26 @@ no doc-comment) e `a_card_stands_off_its_panel` (≥ 12/255, OLED de fora).
 - ⛔ **A pilha de superfícies do Godot não se importa sem os papéis dela**: ela assume um token por
   papel (poço · painel · cartão · botão), e aqui um token serve dois papéis.
 
+### 7.8 — ✅ WAVE 5 (2026-09-05): a moldura que NÃO é um traço, e três itens fechados por medição
+
+**O buraco que a wave 4 nomeou, medido:** dos três candidatos, dois estavam limpos e um era real.
+
+| candidato | medido |
+|---|---|
+| **sombras** | ⛔ **não existem**: nenhum consumidor de token de sombra no código (o `tokens.json` ainda os carrega; o `§0` deste doc contava-os como parte da «mesma cara») |
+| outros primitivos de traço (`stroke_rect` · `stroke_line` · `stroke_polyline`) | ⛔ **não são molduras**: são a curva de um editor, os fios do grafo, a grade, o cursor de uma faixa — conteúdo |
+| **anéis por PREENCHIMENTO** | ⭐ **um real**: a amostra de cor pinta um rect na cor da borda e põe a cor do artista por cima, recuada — e continuou emoldurada depois de a pele plana ter apagado as vizinhas |
+
+**A porta:** [`paint::fill_ring(theme, feel, classic_w, classic_colour) -> Option<(recuo, cor)>`](../../../crates/ph2d-editor-core/src/paint.rs), a irmã do `stroke_frame` para a moldura que é um preenchimento. ⚠️ **O recuo É a largura do anel** e volta da porta: escolhê-lo no pintor daria meia moldura no foco.
+
+**O gate:** [`a_ring_painted_as_a_fill_is_still_a_frame`](../../../crates/ph2d-editor-core/tests/a_ring_painted_as_a_fill_is_still_a_frame.rs) — ⚠️ **a régua não pode ser «um `fill` numa cor de borda é suspeito»**: a maioria é legítima e não é moldura (divisores, a trilha de um slider, a bandeja de um grupo), e o fonte não distingue — a espessura vive numa variável. ⇒ a régua é a **DECLARAÇÃO**: os 8 sítios estão numa tabela dizendo o que são (`Ring` · `Divider` · `Track`), e um `Ring` **tem de chamar a porta**. Com a metade de obsolescência. Mais o gate de pixel `the_colour_swatch_loses_the_ring_that_was_a_fill` (clássico 2 caminhos, moderno 1, OLED = clássico).
+
+**Três itens do §7.3 fechados por MEDIÇÃO, sem escrever código:**
+
+- ✅ **A fonte já é a que o Godot recomenda** — `InterVariable.ttf` (SIL OFL) vem embutida em `ph2d-text`, com o eixo `opsz`. O item dizia *«não medido»*.
+- ✅ **O `Spacing` já é o do Godot**: o `base_spacing 4` dele é o nosso `Xs`, e a escala (`2 · 4 · 6 · 8 · 12 · 16`) é múltipla de 4.
+- ⏳ **O ritmo da linha continua a ser decisão do dono, e agora com número**: a nossa linha mede **28 px** com fonte **13**; o Godot Modern dá **26** ao botão (fonte 14 + 6+6) e **22** ao campo de texto. Baixar é o único knob de densidade que sobra, e mexe na geometria de todos os painéis — não se faz sem ele.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

@@ -150,15 +150,35 @@ fn paint_checker(scene: &mut VectorScene, rect: Rect, corner_radius: f32) {
 /// the swatch's actual RGBA on top. Focused state swaps the frame
 /// from `Border` to `BorderEmph` (3:1 contrast vs. Bg1).
 pub fn paint_color_swatch(swatch: &ColorSwatch, rect: Rect, scene: &mut VectorScene, theme: Theme) {
-    let radius = Radius::Sm.px();
+    // ⭐⭐ **O anel desta amostra é um PREENCHIMENTO, não um traço** — um rect na cor da borda com
+    //    a cor do artista por cima, recuada. O censo do traço não vê esta forma, e por isso a
+    //    amostra continuou com moldura depois de a pele plana ter apagado as outras (wave 5).
+    //    Pela porta: no clássico o anel de sempre; num tema moderno **nenhum em repouso** (os
+    //    presets do `ColorPicker` do Godot não têm borda) e o anel de FOCO, que a família moderna
+    //    traça.
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     let border_token = if swatch.state == SwatchState::Focused {
         ColorToken::BorderEmph
     } else {
         ColorToken::Border
     };
-    fill_rounded_rect(scene, rect, radius, resolve(border_token, theme));
-
-    let pad = 2.0_f32.min(rect.w * 0.5).min(rect.h * 0.5);
+    let feel = match swatch.state {
+        SwatchState::Focused => ph2d_tokens::visuals::Feel::Focused,
+        SwatchState::Hovered => ph2d_tokens::visuals::Feel::Hovered,
+        SwatchState::Pressed => ph2d_tokens::visuals::Feel::Active,
+        SwatchState::Disabled => ph2d_tokens::visuals::Feel::Disabled,
+        SwatchState::Normal => ph2d_tokens::visuals::Feel::Rest,
+    };
+    let ring = crate::paint::fill_ring(theme, feel, 2.0, resolve(border_token, theme));
+    if let Some((_, colour)) = ring {
+        fill_rounded_rect(scene, rect, radius, colour);
+    }
+    // ⚠️ O recuo É a largura do anel: sem anel não há recuo, e a cor do artista ocupa a amostra
+    //    inteira. Escolhê-lo aqui em vez de o receber da porta daria meia moldura no foco.
+    let pad = ring
+        .map_or(0.0, |(w, _)| w)
+        .min(rect.w * 0.5)
+        .min(rect.h * 0.5);
     let inner = Rect::new(
         rect.x + pad,
         rect.y + pad,

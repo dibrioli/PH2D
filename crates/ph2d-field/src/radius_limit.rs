@@ -278,6 +278,25 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
                 .min(bico(*point, *half_width))
                 .min(*half_height),
         ),
+        // ─────────────────────────── W123 ───────────────────────────
+        // ⚠️ **A meia-espessura da FITA manda** — o filete come-a dos dois lados.
+        Primitive::Spiral {
+            thickness,
+            half_height,
+            ..
+        } => Some(thickness.min(*half_height)),
+        // ⚠️ **O que sobra entre a CRISTA da onda e o topo** — é a parte mais fina da peça.
+        Primitive::Document {
+            half_width,
+            half_span,
+            wave,
+            half_height,
+            ..
+        } => Some(
+            half_width
+                .min((half_span - wave * 0.5).max(0.0))
+                .min(*half_height),
+        ),
         // ⚠️ **O que sobra da fita entre o entalhe e a ponta** — não a meia-largura inteira.
         Primitive::Banner {
             half_width,

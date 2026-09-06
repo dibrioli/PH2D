@@ -246,3 +246,42 @@ pub const MAX_DISPLAY_POINT: f32 = 1.0;
 /// vértice de baixo, e a forma é um triângulo. Além disso o topo cortaria os flancos e o «conector»
 /// seria outra coisa. ⚠️ Medida até `3×` a parede, a marcha fica em `0,985`.
 pub const MAX_OFFPAGE_POINT: f32 = 1.0;
+
+// ─────────────────────────── W123 — as cercas das duas curvas ───────────────────────────
+//
+// ⭐⭐⭐ **NENHUMA das três é de marcha, e a da espiral é o resultado que a wave existe para dar.**
+// Medido em 2026-09-05 (`probe_w123_curves`), com a peça a ser arrastada pela porta do painel:
+//
+// | voltas | 1 | 2 | 4 | 8 | 12 | 20 | 32 |
+// |---|---:|---:|---:|---:|---:|---:|---:|
+// | `passo × ‖∇f‖` | `0,9899` | `0,9899` | `0,9899` | `0,9899` | `0,9899` | `0,9899` | `0,9899` |
+//
+// ⇒ **o campo de uma espiral não sabe quantas voltas ela tem** — a fita inteira é uma conta de
+// raio, e o número de voltas entra só no anel que a corta. É exactamente o oposto de um contorno
+// desenhado, que paga **por segmento**: o mesmo cilindro custa `1,79 ns/ponto` por fórmula e
+// `181,44 ns` desenhado com 192 lados (`spike_formula_vs_profile`, `load 0,61`).
+
+/// ⭐ **Quantas voltas uma espiral pode dar.**
+///
+/// # ⚠️ O recurso é o ALCANCE do controlo, e não a marcha (tabela acima)
+///
+/// A cada volta a peça cresce `pitch` no raio, então `32` voltas com um passo generoso já é uma
+/// peça enorme — e o slider `1..32` ainda tem resolução para a fracção (meia volta lê-se).
+/// ⛔ Escrever aqui um número «por segurança» seria inventar um recurso que a medição não achou.
+pub const MAX_SPIRAL_TURNS: f32 = 32.0;
+
+/// ⭐ **Que fracção do passo a fita pode ocupar** — `2·thickness ≤ pitch × isto`.
+///
+/// # É IDENTIDADE: uma espiral cheia é um disco com um risco
+///
+/// Em `1,0` as voltas encostam-se e o vale entre elas — que **é** a forma — desaparece. A `0,95`
+/// sobra `5 %` do passo em vão, que se vê. ⚠️ E a marcha não tem voto: medida em `0,20`, `0,60`,
+/// `0,90` e `0,99` ela fica entre `0,964` e `0,996`, sem joelho.
+pub const MAX_SPIRAL_FILL: f32 = 0.95;
+
+/// ⭐ **Que fracção da meia-altura a onda da base pode ter.**
+///
+/// Em `2,0` a crista da onda toca o topo e a peça fica **beliscada a zero**; em `1,5` sobra um
+/// quarto da altura, e é onde esta parede fica. ⚠️ Medida: `0` → `0,707`, `1,0` → `0,966`,
+/// `1,5` → `0,983` — de novo sem joelho.
+pub const MAX_DOCUMENT_WAVE: f32 = 1.5;

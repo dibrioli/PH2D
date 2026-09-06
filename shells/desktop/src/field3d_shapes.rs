@@ -439,6 +439,19 @@ pub(crate) const SHAPES: &[Shape] = &[
         family: Family::Plates,
         make: Make::Formula(an_off_page),
     },
+    // ─────────────────────────── W123 ───────────────────────────
+    // ⭐⭐ **As duas que o plano dava por «tem de ser desenhada»** — e a recusa respondia a outra
+    // pergunta: o que não é fechado é a distância EXACTA, e a marcha só pede um minorante.
+    Shape {
+        key: "panel.model3d.add.spiral",
+        family: Family::Plates,
+        make: Make::Formula(a_spiral),
+    },
+    Shape {
+        key: "panel.model3d.add.document",
+        family: Family::Plates,
+        make: Make::Formula(a_document),
+    },
     Shape {
         key: "panel.model3d.add.torus",
         family: Family::Rings,

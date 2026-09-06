@@ -514,5 +514,8 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
         | Primitive::Delay { .. }
         | Primitive::Display { .. }
         | Primitive::OffPage { .. } => super::validate_flow::validate_flow(p, idx),
+        Primitive::Spiral { .. } | Primitive::Document { .. } => {
+            super::validate_flow::validate_curve(p, idx)
+        }
     }
 }

@@ -58,6 +58,8 @@ impl FieldDoc {
                 | Primitive::Delay { round, .. }
                 | Primitive::Display { round, .. }
                 | Primitive::OffPage { round, .. }
+                | Primitive::Spiral { round, .. }
+                | Primitive::Document { round, .. }
                 | Primitive::TorusArc { round, .. } => Some(*round),
                 // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
                 // caía no braço vazio e o painel dizia que ela não tinha nenhum.
@@ -203,6 +205,8 @@ impl NodeShape {
                 | Primitive::Delay { round, .. }
                 | Primitive::Display { round, .. }
                 | Primitive::OffPage { round, .. }
+                | Primitive::Spiral { round, .. }
+                | Primitive::Document { round, .. }
                 | Primitive::TorusArc { round, .. } => Some(*round),
                 // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
                 // caía no braço vazio e o painel dizia que ela não tinha nenhum.
@@ -312,6 +316,8 @@ pub fn set_shape_radius(shape: &mut NodeShape, node: u32, radius: f32) -> Result
                 | Primitive::Delay { round, .. }
                 | Primitive::Display { round, .. }
                 | Primitive::OffPage { round, .. }
+                | Primitive::Spiral { round, .. }
+                | Primitive::Document { round, .. }
                 | Primitive::TorusArc { round, .. } => *round = radius,
                 // Inalcançável: `round_limit` já devolveu `None` para estas acima.
                 Primitive::Sphere { .. }
@@ -478,6 +484,8 @@ pub fn fillet_inflates(p: &Primitive) -> bool {
         | Primitive::Delay { .. }
         | Primitive::Display { .. }
         | Primitive::OffPage { .. }
+        | Primitive::Spiral { .. }
+        | Primitive::Document { .. }
         | Primitive::TorusArc { .. } => r != 0.0 || c != 0.0,
         // ⚠️ **Lista FECHADA**: uma primitiva nova é erro de compilação aqui, e quem a escrever tem
         // de dizer se as peças dela são ortogonais.

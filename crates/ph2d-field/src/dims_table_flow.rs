@@ -183,3 +183,85 @@ pub(crate) fn dims_flow(p: &Primitive) -> Vec<Dim> {
 pub(crate) fn display_point_wall(half_width: f32, half_span: f32) -> f32 {
     (half_width.mul_add(2.0, -half_span) * crate::MAX_DISPLAY_POINT).max(f32::MIN_POSITIVE)
 }
+
+/// As linhas das duas formas que a W123 tirou do «fica desenhada».
+///
+/// ⚠️ **Inalcançável com outra primitiva** — o chamador nomeia as seis.
+#[must_use]
+pub(crate) fn dims_curve(p: &Primitive) -> Vec<Dim> {
+    match p {
+        Primitive::Spiral {
+            radius,
+            pitch,
+            turns,
+            thickness,
+            half_height,
+            round,
+            chamfer,
+        } => vec![
+            Dim {
+                key: "field.dim.radius",
+                value: *radius,
+                span: Span::Positive,
+            },
+            // ⚠️ **O passo tem PISO na espessura**: com `pitch ≤ 2·thickness` as voltas encostam-se
+            // e a fita deixa de ser uma fita. A parede vive do outro lado (na espessura), porque é
+            // ela que o artista arrasta para engrossar.
+            Dim {
+                key: "field.dim.pitch",
+                value: *pitch,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.turns",
+                value: *turns,
+                span: Span::Wall(crate::MAX_SPIRAL_TURNS),
+            },
+            Dim {
+                key: "field.dim.thickness",
+                value: thickness * 2.0,
+                span: Span::Wall(pitch * crate::MAX_SPIRAL_FILL),
+            },
+            Dim {
+                key: "field.dim.height",
+                value: half_height * 2.0,
+                span: Span::Positive,
+            },
+            chamfer_dim(p, *chamfer),
+            round_dim(p, *round),
+        ],
+        Primitive::Document {
+            half_width,
+            half_span,
+            wave,
+            half_height,
+            round,
+            chamfer,
+        } => vec![
+            Dim {
+                key: "field.dim.width",
+                value: half_width * 2.0,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.span",
+                value: half_span * 2.0,
+                span: Span::Positive,
+            },
+            // ⭐ **O zero é o RETÂNGULO** — a base fica reta, e é uma forma.
+            Dim {
+                key: "field.dim.wave",
+                value: *wave,
+                span: Span::WallFromZero(half_span * crate::MAX_DOCUMENT_WAVE),
+            },
+            Dim {
+                key: "field.dim.height",
+                value: half_height * 2.0,
+                span: Span::Positive,
+            },
+            chamfer_dim(p, *chamfer),
+            round_dim(p, *round),
+        ],
+        _ => Vec::new(),
+    }
+}

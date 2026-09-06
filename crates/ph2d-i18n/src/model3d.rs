@@ -115,6 +115,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.add.delay" => "Delay",
         "panel.model3d.add.display" => "Display",
         "panel.model3d.add.off_page" => "Off-page Connector",
+        "panel.model3d.add.spiral" => "Spiral",
+        "panel.model3d.add.document" => "Document",
         "panel.model3d.add.bolt" => "Lightning Bolt",
         "panel.model3d.add.shield" => "Shield",
         "panel.model3d.add.tag" => "Tag",
@@ -304,6 +306,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ **"Skew" e não "Slant"**: é a palavra que o CAD e o SVG usam para a mesma grandeza, e
         // ela é um COMPRIMENTO (o escorregamento da base de cima), não um ângulo.
         "field.dim.skew" => "Skew",
+        // ⭐ As da W123. ⚠️ **"Pitch" é a palavra do parafuso e da mola** — o afastamento por
+        // volta —, e "Turns" é uma contagem que aceita meias voltas.
+        "field.dim.pitch" => "Pitch",
+        "field.dim.turns" => "Turns",
+        "field.dim.wave" => "Wave",
         "field.dim.hole" => "Hole",
         "field.dim.notch" => "Notch",
         // ⚠️ Em GRAUS na cabeça do artista, mas o documento guarda radianos — o painel mostra o

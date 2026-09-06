@@ -499,6 +499,8 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
         | Primitive::Parallelogram { .. }
         | Primitive::Delay { .. }
         | Primitive::Display { .. }
-        | Primitive::OffPage { .. }) => super::dims_table_plates::dims_plate(p),
+        | Primitive::OffPage { .. }
+        | Primitive::Spiral { .. }
+        | Primitive::Document { .. }) => super::dims_table_plates::dims_plate(p),
     }
 }

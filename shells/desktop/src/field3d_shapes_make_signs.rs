@@ -180,3 +180,35 @@ pub(crate) fn an_off_page(r: f32) -> Primitive {
         chamfer: 0.0,
     }
 }
+
+// ─────────────────────────── W123 — as duas que saíram do «fica desenhada» ───────────────────────
+
+/// ⚠️ **Três voltas e a fita a `55 %` do passo** — com uma volta não se lê como espiral, e com a
+/// fita a encher o passo o vale entre as voltas (que é a forma) desaparece.
+pub(crate) fn a_spiral(r: f32) -> Primitive {
+    let pitch = r * 0.30;
+    Primitive::Spiral {
+        radius: r * 0.16,
+        pitch,
+        turns: 3.0,
+        thickness: pitch * 0.275,
+        half_height: r * 0.25,
+        // ⚠️ **Metade do que as outras nascem**: a parede do filete de uma fita é a meia-espessura
+        // dela, e a fita mede `27,5 %` do passo.
+        round: pitch * 0.06,
+        chamfer: 0.0,
+    }
+}
+
+/// ⚠️ **Nasce COM onda** — a zero ele é o retângulo, e uma forma que nasce igual a outra da paleta
+/// não ensina o que ela faz.
+pub(crate) fn a_document(r: f32) -> Primitive {
+    Primitive::Document {
+        half_width: r,
+        half_span: r * 0.62,
+        wave: r * 0.20,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}

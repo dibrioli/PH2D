@@ -519,6 +519,8 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
         19 => shapes::cena_19(),
         // ⭐ As QUATRO PORTAS da W122 — ver [`lote::cena_20`].
         20 => shapes::cena_20(),
+        // ⭐ As DUAS da W123 — ver [`shapes::cena_21`].
+        21 => shapes::cena_21(),
         _ => {
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"

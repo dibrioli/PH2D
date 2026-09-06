@@ -217,3 +217,57 @@ fn cos_bico(base: f64, altura: f64) -> f64 {
     let (b2, a2) = (base * base, altura * altura);
     ((a2 - b2) / (a2 + b2).max(f64::MIN_POSITIVE)).clamp(-1.0, 1.0)
 }
+
+/// ⭐⭐⭐ **DOCUMENTO** (*Document*) — o retângulo cuja base é uma ONDA.
+///
+/// # ⛔⛔ Ela estava declarada «fica desenhada», e a recusa respondia a OUTRA pergunta
+///
+/// O [doc 08](../../../docs/3DModeling/08_formas_por_formula.md) dá-a como classe **C/D** porque
+/// *«a distância a uma senóide não é fechada»* — o que é **verdade** e **não é o que o módulo
+/// pede**. Uma marcha de esferas precisa de um **minorante** da distância, nunca do valor exacto:
+/// andar a menos custa passos, andar a mais atravessa a superfície
+/// ([`crate::safe_march_step`]).
+///
+/// ⭐ E o minorante de uma curva implícita é uma linha de álgebra: para `g(x,y) = base(x) − y`,
+/// `|g| / max‖∇g‖ ≤ dist`. Aqui `‖∇g‖ = √(1 + base'(x)²) ≤ √(1 + (a·π/w)²)`, que é uma **constante**
+/// — logo a divisão é rigorosa em todo o plano, e não uma aproximação com erro.
+///
+/// ⚠️ **A SUPERFÍCIE é exacta**: o zero de `g` é a senóide, ao bit. O que é conservador é só a
+/// *distância* longe dela. *Uma inexactidão que subestima é folga, não perigo.*
+///
+/// ⚠️ **Meia onda ao longo da peça** (`k = π/w`): em `x = ±w` o seno vale zero, então a base
+/// encontra os dois flancos **exactamente** em `−half_span` — a onda não muda a altura das quinas.
+pub fn sd_document(
+    half_width: f64,
+    half_span: f64,
+    wave: f64,
+    half_height: f64,
+    round: f64,
+    chamfer: f64,
+) -> Tree {
+    let e = Edge::square(round, chamfer);
+    let (w, s) = (half_width, half_span);
+    let k = std::f64::consts::PI / w.max(f64::MIN_POSITIVE);
+    // ⭐ O MAIOR `‖∇g‖` possível — `cos` vale no máximo `1`.
+    let lip = (wave * k).mul_add(wave * k, 1.0).sqrt();
+    let base = Tree::constant(wave) * (Tree::x() * Tree::constant(k)).sin() - Tree::constant(s);
+    let onda = (base - Tree::y()) / Tree::constant(lip);
+    let lados = Tree::x().abs() - Tree::constant(w);
+    let topo = Tree::y() - Tree::constant(s);
+    if chamfer <= 0.0 {
+        return slab_and_walls(
+            &crate::ops::intersection_round_n(&[lados, topo, onda], round),
+            half_height,
+            e,
+        );
+    }
+    // ⚠️ **Só as DUAS arestas que existem**: o topo e a onda nunca se encontram, e declarar um par
+    // que não forma quina põe um plano de corte que não corta nada e ainda conta no tecto da
+    // mistura — a lei que a nuvem pagou.
+    plate_joint_n(
+        &[lados.clone(), topo.clone(), onda.clone()],
+        &[(lados.clone(), topo), (lados, onda)],
+        half_height,
+        e,
+    )
+}

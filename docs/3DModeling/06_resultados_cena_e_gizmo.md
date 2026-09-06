@@ -11993,3 +11993,110 @@ verde a `load ~3`** — mais duas corridas cheias verdes. Zero linhas do diff na
 shell **212 suites / 5 192 testes / 0 falhas** · fmt · clippy · LOC (workspace, painel e shell) ·
 **prova de mutação** da guarda nova (revertê-la deixa o gate vermelho a nomear o caso).
 **Smoke:** as quatro na paleta, e a cena `=20`.
+
+---
+
+## §124 — W123: ⭐⭐⭐ *«usando fórmulas não ficam mais leves? Implemente»* — e a recusa respondia a OUTRA pergunta (05/09)
+
+> **Enio, 05/09**, depois de eu lhe dizer que a espiral e a base ondulada do *Document* *«só ficam
+> certas desenhando o contorno à mão»*.
+
+### §124.1 — Ele tem razão, e o número estava a um comando de distância
+
+A sonda [`spike_formula_vs_profile`](../../crates/ph2d-field-eval/tests/spike_formula_vs_profile.rs)
+existe desde 28/08 e responde exactamente isto. Corrida a `load 0,61` (⚠️ acima de `~5` nenhum
+relógio desta máquina vale):
+
+| o MESMO cilindro | fórmula | 24 lados | 96 lados | 192 lados |
+|---|---:|---:|---:|---:|
+| ns/ponto | `1,79` | `19,58` | `91,49` | `181,44` |
+| × a fórmula | `1,00` | **`10,9`** | **`51,0`** | **`101,2`** |
+
+E uma espiral de três voltas não se desenha com menos do que isso.
+
+### §124.2 — ⛔⛔⛔ A recusa estava CERTA e respondia a outra pergunta
+
+O [doc 08](08_formas_por_formula.md) dá as duas como classe **C/D** porque *«a distância a uma
+espiral de Arquimedes / a uma senóide **não é fechada**»*. Isso é **verdade**.
+
+⭐ **E o módulo nunca precisou dela.** Uma marcha de esferas precisa de um **MINORANTE** da
+distância: andar a menos custa passos, andar a mais **atravessa a superfície**. O que o censo exige,
+forma a forma, é `passo × ‖∇f‖ ≤ 1` — não `f = dist`.
+
+⇒ *uma recusa medida responde UMA pergunta; releia-a quando a sua for outra.* A pergunta que a
+recusa respondeu foi **«a distância é fechada?»**; a do módulo é **«o campo promete mais do que
+anda?»**.
+
+### §124.3 — O minorante da onda é uma linha de álgebra
+
+Para uma curva implícita `g(x,y) = base(x) − y`, vale `|g| / max‖∇g‖ ≤ dist`. Aqui
+`‖∇g‖ = √(1 + base'(x)²) ≤ √(1 + (a·π/w)²)`, que é uma **constante** ⇒ a divisão é rigorosa em todo
+o plano, e não uma aproximação com erro. ⚠️ **A superfície é a senóide ao bit** — o que é
+conservador é só a distância longe dela: medido, os oito pontos de prova (topo, flancos, cruzamento,
+**vale** e **crista**) leem `0,0000`, e `‖∇f‖ = 1,0000`.
+
+### §124.4 — ⭐⭐⭐ E a espiral tem DUAS metades, e a segunda é que a torna exprimível
+
+1. **A volta mais próxima sai de um arredondamento**, como a repetição radial já fazia: com
+   `φ = atan2(y,x)` e `u = (ρ − r₀)/b`, a volta é `k = round((u − φ)/2π)`. ⚠️ **Contínua no corte do
+   `atan2`**: ali `φ` salta `−2π` e `k` salta `+1`, e a soma não se mexe.
+2. ⭐⭐⭐ **O FIM DA FITA É UM ANEL, e isso é exacto para a LINHA MÉDIA.** Numa espiral de
+   Arquimedes o raio é **monótono** no ângulo, logo limitar `ρ` a `[r₀, r_fim]` é *exactamente*
+   limitar `θ` a `[0, Θ]`.
+
+⚠️ **O divisor é uma CONSTANTE, e é isso que o torna rigoroso.** `‖∇u‖ = √(ρ²+b²)/ρ` **decresce**
+com `ρ`; dividir pelo valor local sobrestimaria a distância quando o ponto mais próximo estivesse
+mais para dentro. Divide-se pelo valor em `r₀` — o maior de toda a coroa.
+
+### §124.5 — ⭐⭐⭐ O resultado que a wave existe para dar
+
+| voltas | 1 | 2 | 4 | 8 | 12 | 20 | 32 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `passo × ‖∇f‖` | `0,9899` | `0,9899` | `0,9899` | `0,9899` | `0,9899` | `0,9899` | `0,9899` |
+
+**O campo de uma espiral não sabe quantas voltas ela tem.** A fita inteira é uma conta de raio, e o
+número de voltas entra só no anel que a corta. É o oposto exacto de um contorno desenhado, que paga
+**por segmento** — e é a resposta literal à pergunta do dono.
+
+### §124.5-bis — ⛔⛔⛔ E a PENA das pontas: três cortes construídos, três medidos abaixo
+
+A fita tem **espessura**, e um corte circular é **tangente** aos flancos dela: a ponta afina ao
+longo de `π·fill/c` de ângulo (**`101°`** no representante) e acaba num fio. Medido: o filete não a
+alcança (`3,1 %` da superfície sobre um vinco de `61,7°`) e deixa uma crista de curvatura de `2,12`
+contra a barra de `2,0`.
+
+| corte | o que a medição disse |
+|---|---|
+| **divisor LOCAL** (`ρ/√(ρ²+b²)`) | dá gradiente unitário e o filete assenta — **e quebra o minorante**, que é a razão de a forma existir |
+| **ângulo DESENROLADO** | dá pontas radiais a direito — e `θ` **salta `2π` na costura onde a volta mais próxima muda**: `‖∇f‖ = 2596,5` |
+| **subtrair a pena** (semiplano ∩ anel) | a pena e a **volta anterior** partilham a mesma faixa de raio a ângulos diferentes: a subtracção come as duas |
+
+⚠️ **A segunda é a mais instrutiva:** eu tinha *provado* que o ângulo desenrolado é contínuo — e é,
+**no corte do `atan2`**. *Contínuo numa costura não é contínuo em todas*, e a outra costura (a
+troca de volta mais próxima) estava a duas linhas de distância no mesmo ficheiro.
+
+⇒ fica **DECLARADA** nas duas listas de excepção, com o número e com o mecanismo: *o defeito é do
+corte CIRCULAR de uma fita com espessura, e curá-lo é desenho novo.*
+
+### §124.6 — ⚠️ E as três cercas novas também não são de marcha
+
+Como na wave anterior, varri-as muito além do que deixam passar e **nenhuma tem joelho**: o
+enchimento da fita fica entre `0,964` e `0,996` de `0,20` a `0,99`, e a onda vai de `0,707` a
+`0,983` até `1,5× half_span`. ⇒ elas são de **identidade**: uma espiral cheia é um disco com um
+risco (`MAX_SPIRAL_FILL = 0,95`), e uma onda de `2× half_span` belisca a peça a zero
+(`MAX_DOCUMENT_WAVE = 1,5`, que deixa um quarto da altura).
+
+### §124.7 — ⚠️ O gate apanhou-me a aritmética DUAS vezes na mesma wave
+
+Escrevi *«a de 3 voltas continua em `r = 0,40`»* e `0,40` é **vale** no ângulo zero — o ponto que
+distingue as duas está a **meia volta** (`x < 0`), onde a fita está em `r₀ + pitch·(k + ½)`. É a
+segunda vez em dois dias que uma asserção minha sobre onde a forma está sai errada e o gate a
+corrige; *escrever a régua a partir da fórmula e não da corrida é o que faz isso acontecer a tempo.*
+
+⭐ E daí saiu o gate que mais vale nesta forma: **a fita sobe meia volta de cada vez**. Um conjunto
+de anéis concêntricos passa em todos os pontos do ângulo zero e reprova nesse.
+
+**Gates:** censo **24/24** · arestas **10/10** (com a pena declarada nas duas listas, e os dois
+censos de obsolescência a confirmarem que os números são reais) · as **7** provas novas · shell ·
+fmt · clippy · LOC.
+**Smoke:** *Spiral* e *Document* na paleta, e a cena `=21`.

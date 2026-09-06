@@ -295,3 +295,49 @@ pub(crate) fn cena_20() -> Result<FieldDoc, ph2d_field::FieldError> {
         NodeId(4),
     )
 }
+
+/// ⭐⭐ **A cena `=21`: AS DUAS QUE SAÍRAM DO DESENHO** (W123) — a espiral e o documento.
+///
+/// ⚠️ **A espiral com TRÊS voltas e o documento COM onda**: as duas no ponto que as exercita, e não
+/// no de nascimento — a zero, uma é um arco e o outro é um retângulo.
+pub(crate) fn cena_21() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 21 — AS DUAS DA W123: espiral (3 voltas) · documento (base ondulada). \
+         Nenhuma delas tem um segmento desenhado."
+    );
+    FieldDoc::new(
+        vec![
+            leaf(
+                Primitive::Spiral {
+                    radius: 0.06,
+                    pitch: 0.09,
+                    turns: 3.0,
+                    thickness: 0.025,
+                    half_height: 0.06,
+                    round: 0.012,
+                    chamfer: 0.0,
+                },
+                Xform {
+                    translation: [-0.40, 0.0, 0.0],
+                    ..Xform::IDENTITY
+                },
+            ),
+            leaf(
+                Primitive::Document {
+                    half_width: 0.30,
+                    half_span: 0.20,
+                    wave: 0.07,
+                    half_height: 0.06,
+                    round: 0.02,
+                    chamfer: 0.0,
+                },
+                Xform {
+                    translation: [0.42, 0.0, 0.0],
+                    ..Xform::IDENTITY
+                },
+            ),
+            combine(Op::Union(Blend::Sharp), (0..2).map(NodeId).collect()),
+        ],
+        NodeId(2),
+    )
+}

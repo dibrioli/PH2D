@@ -443,6 +443,50 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
             },
             2,
         ) => *point = keep_below(value, *half_span * 2.0 * crate::MAX_OFFPAGE_POINT),
+        // ─────────────────────────── W123 ───────────────────────────
+        // ⚠️ **A ORDEM tem de bater com a do `dims_table_flow::dims_curve`** — o índice É a linha.
+        (Primitive::Spiral { radius, .. }, 0) => *radius = value,
+        // ⭐ **O passo ARRASTA a espessura com ele**: apertar o passo sem apertar a fita deixaria o
+        // documento com um valor fora da própria cerca, e a validação recusa a PEÇA inteira.
+        (
+            Primitive::Spiral {
+                pitch, thickness, ..
+            },
+            1,
+        ) => {
+            *pitch = value;
+            *thickness = thickness.min(value * crate::MAX_SPIRAL_FILL * 0.5);
+        }
+        (Primitive::Spiral { turns, .. }, 2) => {
+            *turns = keep_below(value, crate::MAX_SPIRAL_TURNS);
+        }
+        (
+            Primitive::Spiral {
+                thickness, pitch, ..
+            },
+            3,
+        ) => *thickness = keep_below(half, *pitch * crate::MAX_SPIRAL_FILL * 0.5),
+        (Primitive::Spiral { half_height, .. }, 4) => *half_height = half,
+        (Primitive::Document { half_width, .. }, 0) => *half_width = half,
+        // ⭐ E a envergadura arrasta a onda, pela mesma razão.
+        (
+            Primitive::Document {
+                half_span, wave, ..
+            },
+            1,
+        ) => {
+            *half_span = half;
+            *wave = wave.min(half * crate::MAX_DOCUMENT_WAVE);
+        }
+        (
+            Primitive::Document {
+                wave, half_span, ..
+            },
+            2,
+        ) => {
+            *wave = keep_below(value, *half_span * crate::MAX_DOCUMENT_WAVE);
+        }
+        (Primitive::Document { half_height, .. }, 3) => *half_height = half,
         (Primitive::Prism { sides, .. }, 0) => {
             // ⚠️ **COAGE, não recusa** — a lei do `Unary::Taper`, e pela mesma razão: a faixa já
             // não oferece nada fora de `[MIN, MAX]`, então um valor de fora só chega por outra
@@ -493,6 +537,8 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
             | Primitive::Delay { .. }
             | Primitive::Display { .. }
             | Primitive::OffPage { .. }
+            | Primitive::Spiral { .. }
+            | Primitive::Document { .. }
             | Primitive::TorusArc { .. }),
             i,
         ) if Some(i) == round_index(p) => {

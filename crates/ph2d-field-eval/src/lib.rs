@@ -44,6 +44,8 @@ pub(crate) mod ops_norm;
 pub(crate) mod ops_plate2d;
 pub mod ops_plates;
 pub mod ops_solids;
+/// ⭐ A ESPIRAL por fórmula — ver [`ops_spiral`].
+pub mod ops_spiral;
 /// ⭐ Os SÍMBOLOS — ver [`ops_symbols`].
 pub mod ops_symbols;
 pub mod profile;

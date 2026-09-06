@@ -332,8 +332,19 @@ DENTRO do disco**, então `min(disco, cruz) = disco` em todo o ponto: *a união 
 subconjunto dele é o próprio conjunto*. O sólido dela é o cilindro que a paleta já tem. Pelo mesmo
 argumento ficam de fora o `PredefinedProcess` e o `NoteBracket`.
 
-⇒ **a fila das duas listas deste documento está FECHADA.** O que sobra é classe **D** e está certo
-que fique: a espiral e a base ondulada do `Document`, cuja distância não é fechada.
+⇒ **a fila das duas listas deste documento está FECHADA.**
+
+⛔⛔⛔ **E as duas que ficavam «desenhadas» também caíram, no mesmo dia** (W123, a pedido do dono:
+*«usando fórmulas não ficam mais leves? Implemente»*). A recusa dizia que *«a distância a uma
+espiral de Arquimedes / a uma senóide não é fechada»* — o que é **verdade e não é o que o módulo
+pede**: uma marcha de esferas precisa de um **minorante**, nunca do valor exacto. As duas são hoje
+primitivas de fórmula, e o preço de as ter deixado desenhadas estava medido desde 28/08: o **mesmo**
+cilindro custa `1,79 ns/ponto` por fórmula e `181,44 ns` desenhado com 192 lados (**`101×`**).
+⭐ Medido na espiral: `passo × ‖∇f‖` fica em `0,9899` de **1 a 32 voltas** — *o campo de uma espiral
+não sabe quantas voltas ela tem*. Mecanismo: [doc 06 §124](06_resultados_cena_e_gizmo.md).
+
+⇒ **não sobra nenhuma forma da lista por construir.** O contorno **autorado** continua a ser
+desenhado, e é para isso que o vínculo desenho→peça existe.
 
 ⚠️ **Três do lote 3 são FRACAS em 3D e isso está medido pelo desenho, não pelo motor**
 (PredefinedProcess · Junction · NoteBracket): elas nasceram como **desenhos de linha** de um

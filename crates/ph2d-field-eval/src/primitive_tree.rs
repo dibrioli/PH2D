@@ -611,5 +611,38 @@ fn primitive_raw(p: &Primitive) -> Tree {
             f64::from(round),
             f64::from(chamfer),
         ),
+        // ─────────────────────────── W123 ───────────────────────────
+        Primitive::Spiral {
+            radius,
+            pitch,
+            turns,
+            thickness,
+            half_height,
+            round,
+            chamfer,
+        } => crate::ops_spiral::sd_spiral(
+            f64::from(radius),
+            f64::from(pitch),
+            f64::from(turns),
+            f64::from(thickness),
+            f64::from(half_height),
+            f64::from(round),
+            f64::from(chamfer),
+        ),
+        Primitive::Document {
+            half_width,
+            half_span,
+            wave,
+            half_height,
+            round,
+            chamfer,
+        } => crate::ops_flowchart::sd_document(
+            f64::from(half_width),
+            f64::from(half_span),
+            f64::from(wave),
+            f64::from(half_height),
+            f64::from(round),
+            f64::from(chamfer),
+        ),
     }
 }

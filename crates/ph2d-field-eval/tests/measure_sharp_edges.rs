@@ -795,6 +795,27 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             round: 0.0,
             chamfer: 0.0,
         },
+        // ─────────────────────────── W123 ───────────────────────────
+        // ⚠️ **Três voltas**: com uma não há vale entre voltas, que é onde a fórmula da fita se
+        // exercita.
+        PrimitiveKind::Spiral => Primitive::Spiral {
+            radius: 0.09,
+            pitch: 0.15,
+            turns: 3.0,
+            thickness: 0.04,
+            half_height: 0.10,
+            round: 0.0,
+            chamfer: 0.0,
+        },
+        // ⚠️ **COM onda** — a zero ele é o retângulo, e a senóide não seria exercitada.
+        PrimitiveKind::Document => Primitive::Document {
+            half_width: 0.42,
+            half_span: 0.26,
+            wave: 0.10,
+            half_height: 0.10,
+            round: 0.0,
+            chamfer: 0.0,
+        },
     })
 }
 
@@ -955,7 +976,7 @@ fn where_the_creases_are() {
 /// obsolescência não desce, vira licença* — por isso o gate irmão
 /// [`the_apex_exception_list_has_no_stale_entries`] pergunta, a cada corrida, se cada entrada
 /// **ainda** estoura a barra. Uma que deixe de estourar tem de ser **apagada**.
-const APEX_EXCEPTION: [(&str, f64); 4] = [
+const APEX_EXCEPTION: [(&str, f64); 5] = [
     // ⚠️ **As folgas saem do que o GATE mede**, e não da tabela da sonda: ela amostra `8192`
     // pontos e o gate `2048×4`, e a `pie` lê `1,1 %` numa escala e `2,57 %` na outra.
     // *Uma folga calibrada no instrumento errado descreve outra coisa.*
@@ -972,6 +993,16 @@ const APEX_EXCEPTION: [(&str, f64); 4] = [
     // `3,5 %` e o pior vinco **sobe a `75,2°`** — o filete deixa de caber nos vértices agudos e
     // expõe-nos. *Uma régua que só conta quanto sobrou premeia exagerar a cura.*
     ("bolt", 14.0),
+    // ⭐⭐⭐ **A PENA da espiral** (W123) — e ela não é um ápice, é o **corte circular de uma fita
+    // com espessura**. Um anel é tangente aos flancos da fita, então a ponta afina ao longo de
+    // `π·fill/c` de ângulo (`101°` no representante) e acaba num fio.
+    //
+    // ⛔ **TRÊS cortes alternativos foram construídos e MEDIDOS ABAIXO** — o divisor local (quebra o
+    // minorante, que é a razão de a forma existir), o corte pelo ângulo desenrolado (`‖∇f‖ = 2596,5`
+    // na costura onde a volta mais próxima muda) e a subtracção da pena (come a volta anterior, que
+    // partilha a faixa de raio a outro ângulo). Ver o cabeçalho da
+    // [`ph2d_field_eval::ops_spiral`].
+    ("spiral", 3.5),
     // ⭐ **A CHAVE ESTEVE AQUI DUAS VEZES e SAIU as duas** (05/09), e foi o censo desta lista e o do
     // chanfro que a expulsaram. Eu chamei ao nariz dela um «ápice de `0°`» — ⛔ **não é**: a sonda
     // localizou os `33` pontos por cortar **todos no mesmo sítio**, a `55,6°`. Era uma quina a
@@ -1385,7 +1416,14 @@ fn the_valley_of_a_star_meets_the_cap_without_a_crease() {
 /// ⚠️ **E o RAIO entra pela mesma porta**: a faixa do filete dele encontra as faces planas do
 /// zigue-zague, e a curvatura salta de `1/r` para `0` em cada uma das seis quinas. ⛔ Curar isso é a
 /// mesma A/B que a gota já pagou — e nela a união arredondada mediu **pior em toda a faixa**.
-const TANGENT_JOIN_EXCEPTION: [(&str, f64); 3] = [("drop", 4.6), ("cloud", 9.0), ("bolt", 4.2)];
+const TANGENT_JOIN_EXCEPTION: [(&str, f64); 4] = [
+    ("drop", 4.6),
+    ("cloud", 9.0),
+    ("bolt", 4.2),
+    // ⭐ **A mesma PENA da espiral, vista pela outra régua** — ver [`APEX_EXCEPTION`] para o
+    // mecanismo e para os três cortes que foram medidos e recusados.
+    ("spiral", 2.2),
+];
 
 fn tangent_join_slack(key: &str) -> Option<f64> {
     TANGENT_JOIN_EXCEPTION

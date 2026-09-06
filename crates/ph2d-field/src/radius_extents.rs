@@ -301,5 +301,26 @@ pub fn bounding_half_extents(p: &Primitive) -> [f32; 3] {
             half_height,
             ..
         } => [*half_width, *half_span, *half_height],
+        // ─────────────────────────── W123 ───────────────────────────
+        // ⚠️ **O raio do FIM mais a espessura** — a fita acaba num corte radial.
+        Primitive::Spiral {
+            radius,
+            pitch,
+            turns,
+            thickness,
+            half_height,
+            ..
+        } => {
+            let fora = pitch.mul_add(*turns, *radius) + thickness;
+            [fora, fora, *half_height]
+        }
+        // ⚠️ **A onda SAI da caixa em baixo**, e a caixa é simétrica: `half_span + wave`.
+        Primitive::Document {
+            half_width,
+            half_span,
+            wave,
+            half_height,
+            ..
+        } => [*half_width, half_span + wave, *half_height],
     }
 }

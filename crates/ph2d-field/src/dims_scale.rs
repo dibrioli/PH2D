@@ -591,6 +591,33 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
                 *v *= factor;
             }
         }
+        // ⚠️ **O `turns` NÃO escala** — é uma contagem, não um comprimento; escalá-lo daria uma
+        // espiral com mais voltas ao ampliar a peça.
+        Primitive::Spiral {
+            radius,
+            pitch,
+            turns: _,
+            thickness,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [radius, pitch, thickness, half_height, round, chamfer] {
+                *v *= factor;
+            }
+        }
+        Primitive::Document {
+            half_width,
+            half_span,
+            wave,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [half_width, half_span, wave, half_height, round, chamfer] {
+                *v *= factor;
+            }
+        }
         Primitive::Tag {
             half_width,
             half_span,

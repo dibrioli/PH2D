@@ -410,6 +410,27 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             round: 0.04,
             chamfer: 0.0,
         },
+        // ─────────────────────────── W123 ───────────────────────────
+        // ⚠️ **Três voltas**: com uma não há vale entre voltas, que é onde a fórmula da fita se
+        // exercita.
+        PrimitiveKind::Spiral => Primitive::Spiral {
+            radius: 0.09,
+            pitch: 0.15,
+            turns: 3.0,
+            thickness: 0.04,
+            half_height: 0.10,
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        // ⚠️ **COM onda** — a zero ele é o retângulo, e a senóide não seria exercitada.
+        PrimitiveKind::Document => Primitive::Document {
+            half_width: 0.42,
+            half_span: 0.26,
+            wave: 0.10,
+            half_height: 0.10,
+            round: 0.04,
+            chamfer: 0.0,
+        },
     })
 }
 

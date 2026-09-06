@@ -559,6 +559,33 @@ pub enum Primitive {
         round: f32,
         chamfer: f32,
     },
+    // ─────────────────────────── W123 — as duas que estavam «desenhadas» ───────────────────────
+    /// ⭐⭐⭐ **ESPIRAL de Arquimedes** — a fita que começa em `radius`, cresce `pitch` por volta e
+    /// dá `turns` voltas, com meia-espessura `thickness`.
+    ///
+    /// ⚠️ **Estava declarada «fica desenhada»**, e a recusa respondia a outra pergunta: o que não é
+    /// fechado é a **distância exacta**, e a marcha só precisa de um minorante. Ver
+    /// [`ph2d_field_eval::ops_spiral`].
+    Spiral {
+        radius: f32,
+        pitch: f32,
+        turns: f32,
+        thickness: f32,
+        half_height: f32,
+        round: f32,
+        chamfer: f32,
+    },
+    /// ⭐⭐ **DOCUMENTO** (*Document*) — o retângulo cuja base é uma onda de amplitude `wave`.
+    ///
+    /// ⚠️ **A superfície é a senóide, ao bit**; o que é conservador é só a distância longe dela.
+    Document {
+        half_width: f32,
+        half_span: f32,
+        wave: f32,
+        half_height: f32,
+        round: f32,
+        chamfer: f32,
+    },
 }
 
 impl Primitive {
@@ -614,6 +641,8 @@ impl Primitive {
             Primitive::Delay { .. } => PrimitiveKind::Delay,
             Primitive::Display { .. } => PrimitiveKind::Display,
             Primitive::OffPage { .. } => PrimitiveKind::OffPage,
+            Primitive::Spiral { .. } => PrimitiveKind::Spiral,
+            Primitive::Document { .. } => PrimitiveKind::Document,
         }
     }
 }

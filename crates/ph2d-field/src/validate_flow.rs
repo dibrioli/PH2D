@@ -128,3 +128,80 @@ pub(super) fn validate_flow(p: &Primitive, idx: u32) -> Result<(), FieldError> {
         _ => Ok(()),
     }
 }
+
+/// **O que a espiral e o documento recusam** (W123).
+pub(super) fn validate_curve(p: &Primitive, idx: u32) -> Result<(), FieldError> {
+    let positive = |v: f32, what: &'static str| -> Result<(), FieldError> {
+        if !v.is_finite() || v <= 0.0 {
+            Err(FieldError::NonPositive { node: idx, what })
+        } else {
+            Ok(())
+        }
+    };
+    let nao_passa = |v: f32, tecto: f32, what: &'static str| -> Result<(), FieldError> {
+        if !v.is_finite() || v > tecto {
+            Err(FieldError::NonPositive { node: idx, what })
+        } else {
+            Ok(())
+        }
+    };
+    let um_recuo = |round: f32, limit: f32| -> Result<(), FieldError> {
+        if !round.is_finite() || round < 0.0 || round >= limit {
+            Err(FieldError::RoundTooLarge {
+                node: idx,
+                round,
+                limit,
+            })
+        } else {
+            Ok(())
+        }
+    };
+    let round_fits = |round: f32, chamfer: f32, limit: f32| -> Result<(), FieldError> {
+        um_recuo(chamfer, limit)?;
+        um_recuo(round, limit)
+    };
+    match *p {
+        // ⚠️ **`2·thickness ≤ pitch·MAX_SPIRAL_FILL` é a cerca que faz de uma fita uma fita**: com
+        // as voltas a encostarem-se a peça é um disco com um risco, e o vale entre elas — que é
+        // toda a forma — desaparece.
+        Primitive::Spiral {
+            radius,
+            pitch,
+            turns,
+            thickness,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            positive(radius, "radius")?;
+            positive(pitch, "pitch")?;
+            positive(turns, "turns")?;
+            positive(thickness, "thickness")?;
+            positive(half_height, "half_height")?;
+            nao_passa(turns, crate::MAX_SPIRAL_TURNS, "turns")?;
+            nao_passa(2.0 * thickness, pitch * crate::MAX_SPIRAL_FILL, "thickness")?;
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
+        }
+        Primitive::Document {
+            half_width,
+            half_span,
+            wave,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            positive(half_width, "half_width")?;
+            positive(half_span, "half_span")?;
+            positive(half_height, "half_height")?;
+            if !wave.is_finite() || wave < 0.0 {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "wave",
+                });
+            }
+            nao_passa(wave, half_span * crate::MAX_DOCUMENT_WAVE, "wave")?;
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
+        }
+        _ => Ok(()),
+    }
+}

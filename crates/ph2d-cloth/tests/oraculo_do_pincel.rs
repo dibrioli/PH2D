@@ -823,13 +823,23 @@ fn sonda_passo_a_passo() {
             }
             err = err.max(dist(pos[v], bloco[v]));
         }
-        let _ = (err, ck);
+        let _ = ck;
         // A distância do pico ao cursor DESTE passo, em raios de pincel.
         let (pico_n, pico_o) = (dist(rest[arg_n], cursor) / r, dist(rest[arg_o], cursor) / r);
         let (c0v, bnd, lim, fora) = (nomeados[0].1, nomeados[1].1, nomeados[2].1, nomeados[6].1);
         // ⭐ Onde o vértice do PEN-DOWN está AGORA, em raios: um vértice que se
         // encostou ao cursor deixa de ter direcção de puxão.
         let (dc_n, dc_o) = (dist(pos[c0v], cursor) / r, dist(bloco[c0v], cursor) / r);
+        // ⭐ O ANEL IMEDIATO de `c0` (a coluna `1R` está a ~4 células daqui): é
+        // contra ele que a relaxação puxa o vértice de volta.
+        let (mut an_n, mut an_o, mut nn) = (0.0f64, 0.0f64, 0usize);
+        for &w in &an[c0v] {
+            let w = w as usize;
+            an_n += u_n(w);
+            an_o += u_o(w);
+            nn += 1;
+        }
+        let (an_n, an_o) = (an_n / nn as f64, an_o / nn as f64);
         // ⭐ A componente FORA DO PLANO do pen-down (a superfície plana é z = 0):
         // uma folha que dobra sob o aperto move-se em z; uma que só desliza não.
         let (uz_n, uz_o) = (pos[c0v][2] - rest[c0v][2], bloco[c0v][2] - rest[c0v][2]);
@@ -850,7 +860,7 @@ fn sonda_passo_a_passo() {
             cursor[2] - rest[c0v][2],
         ];
         println!(
-            "{:>4} | {:>7.4} {:>7.4} | {:>8.5} {:>8.5} | {:>8.5} {:>8.5} | {:>7.5} {:>7.5} | {:>8.4} {:>8.4} | {:>5.2}R {:>5.2}R | c0a {:>5.2}R {:>5.2}R | u_nos [{:>7.4} {:>7.4} {:>7.4}] u_or [{:>7.4} {:>7.4} {:>7.4}] cursor-rest [{:>7.4} {:>7.4} {:>7.4}]{}",
+            "{:>4} | {:>7.4} {:>7.4} | {:>8.5} {:>8.5} | {:>8.5} {:>8.5} | {:>7.5} {:>7.5} | {:>8.4} {:>8.4} | {:>5.2}R {:>5.2}R | ERRO {:>8.5} | anel {:>7.4} {:>7.4} | c0a {:>5.2}R {:>5.2}R | u_nos [{:>7.4} {:>7.4} {:>7.4}] u_or [{:>7.4} {:>7.4} {:>7.4}] cursor-rest [{:>7.4} {:>7.4} {:>7.4}]{}",
             k + 1,
             u_n(c0v),
             u_o(c0v),
@@ -864,6 +874,9 @@ fn sonda_passo_a_passo() {
             max_o,
             pico_n,
             pico_o,
+            err,
+            an_n,
+            an_o,
             dc_n,
             dc_o,
             vn[0],

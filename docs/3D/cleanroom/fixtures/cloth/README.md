@@ -36,7 +36,7 @@ plasticidade `0`, pino desligado, sem colisões, sem gravidade — i.e., **as om
 
 ## ⭐ O instrumento POR PASSO (`*.porpasso.txt.gz`, pedido do I em 2026-09-06)
 
-**O que é.** Para quatro traços, as posições **depois de CADA passo** — um ficheiro por traço com um
+**O que é.** Para **seis** traços, as posições **depois de CADA passo** — um ficheiro por traço com um
 bloco `passo k` por passo. **Como foi obtido:** o traço do binário é uma chamada só e a simulação vive
 dentro dela, logo não se pode «pausar»; mas a simulação **nunca olha para a frente**, então uma corrida
 NOVA com só os primeiros `k` elementos do MESMO caminho, sobre uma malha fresca, termina exactamente no
@@ -44,7 +44,7 @@ estado do passo `k` da corrida inteira. Cada ficheiro traz a **prova**: `prova_d
 diferença máxima por vértice entre o bloco `k = N` e uma corrida inteira da MESMA sessão — tem de ser
 `0,000000` (a 6 decimais).
 
-⚠️ **O pen-down destes quatro está NA ORIGEM do objecto** (`caminho` de `(0,0,0)` a `(0,6,0,0)`), e o
+⚠️ **O pen-down destes seis está NA ORIGEM do objecto** (`caminho` de `(0,0,0)` a `(0,6,0,0)`), e o
 sufixo `_origem` diz-o. Motivo, medido: o centro da área *Local* é o ponto de HOVER do cursor antes do
 pen-down, e num traço scriptado esse hover é **refém do ponteiro físico** — numa sessão inteira saiu
 certo, na seguinte saiu na origem em todas as corridas e a zero em duas. Com o pen-down na origem, o
@@ -65,7 +65,15 @@ sobre estas posições, e o rastreio dá o lado MEDIDO da comparação.
 | `plano_arrastar_radial_global_origem` | 12 | `0.000000` | 4225 | `0.645708` |
 | `plano_gancho_radial_local_2passos_origem` | 3 | `0.000000` | 1950 | `0.343869` |
 | `plano_agarrar_radial_local_2passos_origem` | 3 | `0.000000` | 1869 | `0.14572` |
+| `plano_apertar_ponto_radial_local_origem` | 12 | `0.000000` | 2145 | `0.303401` |
+| `plano_apertar_linha_radial_local_origem` | 12 | `0.000000` | 2137 | `0.100744` |
 
+⭐ **Os dois de APERTO foram acrescentados em 2026-09-06 a pedido do I** (a divergência dos modos de
+aperto nasce entre o 1.º passo e o fim do traço, e só o dump por passo diz **em que** passo). ⚠️ O
+rastreio deles mostra o que o traço inteiro esconde: sob o pen-down o aperto de PONTO **não é
+monótono** (`0,093 · 0,184 · 0,118 · 0,106 · 0,197 · 0,208 · 0,201 · 0,187 · 0,160 · 0,149 · 0,154`
+nos passos 2..12) — a força aponta para o cursor, que se afasta, logo o vértice é puxado e largado a
+cada passo; e o de LINHA quase não move o pen-down (`≤ 0,006`) e move o vizinho a `1R`.
 `plano_arrastar_radial_local_origem` — `|u|` depois do passo k (excerto do rastreio):
 
 | passo | sob o pen-down | a 1R | no limite 3,5R | fora, 4R | sob o cursor do passo |
@@ -160,9 +168,11 @@ o ficheiro diz o que contém.
 | `plano_agarrar_radial_local_preset.` | agarrar | 12 | 4123 | `0.132623` |
 | `plano_apertar_linha_radial_local.` | apertar_linha | 12 | 2135 | `0.100451` |
 | `plano_apertar_linha_radial_local_1passo.` | apertar_linha | 2 | 156 | `0.087609` |
+| `plano_apertar_linha_radial_local_origem.` | apertar_linha | 12 | 2137 | `0.100744` |
 | `plano_apertar_ponto_plano_local.` | apertar_ponto | 12 | 2146 | `0.623884` |
 | `plano_apertar_ponto_radial_local.` | apertar_ponto | 12 | 2146 | `0.325769` |
 | `plano_apertar_ponto_radial_local_1passo.` | apertar_ponto | 2 | 171 | `0.09917` |
+| `plano_apertar_ponto_radial_local_origem.` | apertar_ponto | 12 | 2145 | `0.303401` |
 | `plano_arrastar_plano_local.` | arrastar | 12 | 2146 | `0.8996` |
 | `plano_arrastar_radial_dinamica.` | arrastar | 12 | 2508 | `0.612821` |
 | `plano_arrastar_radial_dinamica_preset.` | arrastar | 12 | 2455 | `0.329617` |
@@ -194,4 +204,4 @@ o ficheiro diz o que contém.
 | `plano_inflar_radial_local.` | inflar | 12 | 2146 | `0.317159` |
 | `plano_inflar_radial_local_1passo.` | inflar | 2 | 171 | `0.09917` |
 
-**51 traços** (47 da matriz + 4 do instrumento por passo). ⚠️ As fixtures de ESFERA são todas de área **Dinâmica** (centro no cursor). A área *Local* na esfera NÃO foi gravada: um traço scriptado não dispara o hover que fixa o centro da área Local, que fica na ORIGEM do objecto — e numa esfera unitária a origem põe toda a malha dentro da banda (ver ERRATA no ledger). A área Local está medida no PLANO (onde a origem cai na superfície).
+**53 traços** (47 da matriz + 6 do instrumento por passo). ⚠️ As fixtures de ESFERA são todas de área **Dinâmica** (centro no cursor). A área *Local* na esfera NÃO foi gravada: um traço scriptado não dispara o hover que fixa o centro da área Local, que fica na ORIGEM do objecto — e numa esfera unitária a origem põe toda a malha dentro da banda (ver ERRATA no ledger). A área Local está medida no PLANO (onde a origem cai na superfície).

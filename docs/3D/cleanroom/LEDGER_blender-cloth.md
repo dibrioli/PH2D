@@ -472,6 +472,39 @@ Fonte v5.2.0, por shell, 2026-09-06.
 **Sweep:** verde sobre a espec emendada, 2026-09-06.
 ⏳ **Falta o atestado do R-pré** (junto com o da Q8).
 
+### Q10 — os dumps POR PASSO dos dois modos de APERTO (pedido do I de 2026-09-06; ENTREGUE no mesmo dia)
+
+**Pedido:** os modos de aperto são exactos no traço de um passo e erram `1,07` (ponto) e `2,02`
+(linha) no fim do traço inteiro, sempre a sobrepassar; as varreduras não os explicam (a `10` o de
+linha melhora e o de ponto piora, ao contrário do resto do ramo *Local*). ⇒ dumps por passo para
+localizar em que passo nasce.
+
+**Entregue:** `plano_apertar_ponto_radial_local_origem` e `plano_apertar_linha_radial_local_origem`,
+**12 passos cada** (o pedido dizia 2; entregaram-se os 12 porque a divergência nasce «entre o passo 1
+e o fim» e um traço de 2 passos não a alcança). Método idêntico ao da Q7: corridas-prefixo de `k`
+elementos do MESMO caminho sobre malha fresca, `k = 1..12`, mais uma corrida inteira da mesma sessão
+como referência. **`prova_do_fatiamento = 0,000000` nos dois.** Pen-down **na origem** (determinismo
+do centro da área *Local*). Auto-verificação do centro: `ok` em todas as corridas retidas.
+
+| traço | passos | prova | movidos | máx `|u|` |
+|---|---|---|---|---|
+| `plano_apertar_ponto_radial_local_origem` | 12 | `0.000000` | 2145 | `0.303401` |
+| `plano_apertar_linha_radial_local_origem` | 12 | `0.000000` | 2137 | `0.100744` |
+
+⭐ **E o rastreio já responde metade da pergunta antes de o I correr a sonda:** sob o pen-down o
+aperto de PONTO **não é monótono** (`0,093 · 0,184 · 0,118 · 0,106 · 0,197 · 0,208 · 0,201 · 0,187 ·
+0,160 · 0,149 · 0,154` nos passos 2..12) — a força aponta para o **cursor**, que se afasta, logo o
+vértice é puxado e largado a cada passo. Uma lei que integre monotonamente ultrapassa, que é
+exactamente o sinal que o I mede no fim do traço. O de LINHA quase não move o pen-down (`≤ 0,006`,
+contra `0,10` no vizinho a `1R`): ele aperta contra a **linha** do traço, e o que está sobre ela já
+lá está.
+
+**Ficheiros:** `fixtures/cloth/plano_apertar_{ponto,linha}_radial_local_origem.{deformado,porpasso}.txt.gz`
++ `.porpasso.rastreio.txt`. README das fixtures actualizado (6 traços por passo, 53 no total).
+**Espec:** §10.5 (nova). **Sweep:** verde sobre a espec, o README e a pasta inteira das fixtures.
+**Instrumento:** o mesmo arnês do oráculo de 05/09, com um ficheiro de corridas novo e o montador
+por passo estendido aos dois modos — os dois fora da árvore, em `~/Referencias/`.
+
 ## Fechamento R
 
 ⏳

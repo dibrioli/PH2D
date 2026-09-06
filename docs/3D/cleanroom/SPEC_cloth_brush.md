@@ -985,6 +985,27 @@ profundidade» da §4.3 é do **delta** (a des-projecção do cursor), e vale pa
 por-vértice é a distância comum ao centro, com a forma de queda do pincel (`falloff_shape` = esfera,
 ou tubo quando o artista o escolhe — não é uma lei do modo).
 
+### §10.5 — Os dois traços de APERTO por passo (2026-09-06, a pedido do I)
+
+`plano_apertar_ponto_radial_local_origem` e `plano_apertar_linha_radial_local_origem`: 12 passos
+cada, corridas-prefixo com `prova_do_fatiamento = 0,000000`, mesmo método e mesmo caminho (pen-down
+na origem) da §10.2. Entregues porque os dois modos de aperto são exactos no traço de um passo e
+divergem no fim do traço inteiro — só o dump por passo diz **em que** passo nasce.
+
+⭐ **O que o rastreio já mostra, e o estado final escondia** — `|u|` sob o pen-down, passos 2..12:
+
+| modo | `|u|` sob o pen-down, por passo |
+|---|---|
+| **aperto de PONTO** | `0,093 · 0,184 · 0,118 · 0,106 · 0,197 · 0,208 · 0,201 · 0,187 · 0,160 · 0,149 · 0,154` |
+| **aperto de LINHA** | `0,000 · 0,001 · 0,001 · 0,002 · 0,005 · 0,006 · 0,005 · 0,004 · 0,004 · 0,003 · 0,003` |
+
+⚠️ **O aperto de ponto NÃO é monótono** — sobe, **desce** no passo 4, volta a subir e desce de novo:
+a força aponta para o **cursor**, que se afasta a cada passo, logo o vértice é puxado e depois
+largado, e o pico anda com o cursor. Uma lei que integre monotonamente ultrapassa (é o sinal que o I
+mede no fim do traço). ⚠️ **E o aperto de LINHA quase não move o pen-down** (`≤ 0,006`, contra
+`0,10` no vizinho a `1R`): ele aperta contra a **linha** do traço, e o que está SOBRE a linha já lá
+está.
+
 ---
 
 ## §11 — Comportamento de borda, caso a caso (F salvo indicação)

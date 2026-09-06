@@ -138,6 +138,13 @@ quiser o smoke de verdade tem de **fabricar** um v95 (checkout de um commit anti
 | **Acção do barramento nova (F5.3-ter)** | `EditorAction::InspectorDropUnusedOverride { root_bits, piece, type_id }` | ⚠️ o `match` do dreno acaba em `_ => {}`; o gate `the_unused_override_gestures_reach_the_verb` afirma o braço **e** que ele chama a porta DELE (não a do gesto vizinho, que apaga tudo) |
 | **Campos novos no `OrphanRow`** | `piece_id` · `type_id` — a CHAVE | ⚠️ literal obrigatório: o compilador aponta os sítios de construção |
 | **Módulo novo (F5.3-ter)** | `crates/ph2d-panel-inspector/src/sections/instance_orphans.rs` | corte do tecto de LOC por função (244 de 200) |
+| ⚠️ **`PROJECT_SCHEMA` (2026-09-06)** | **115 → 116** — o `ObjectInstance` ganha `removed: BTreeSet<u64>` (F5.10) | ⚠️ campo NOVO no fim de um componente ⇒ quebra dura na mesma (postcard é posicional). A **tripla** não o vê — é a **quinta** vez |
+| **Ids de widget novos (F5.10)** | `INSP_INSTANCE_RESTORE_PIECE[16]` + `MAX_INSTANCE_REMOVED_ROWS = 16` + `instance_restore_piece` | `node_id_collisions` |
+| **Acção do barramento nova (F5.10)** | `EditorAction::InspectorRestoreRemovedPiece { root_bits, piece }` | ⚠️ o `match` do dreno acaba em `_ => {}` |
+| **Campo novo no `InspectorInstanceInfo`** | `removed_rows: Vec<RemovedRow>` | literal obrigatório |
+| **Campo novo no `Reverted`** | `pieces_back: usize` | idem |
+| **Módulos novos (F5.10)** | `sections/instance_removed.rs` · `event_instance.rs` · `render_loop/hierarchy_delete.rs` · `instance_refuse_tests.rs` · `instance_removed_smoke{,_tests}.rs` | três deles são cortes de tecto de LOC |
+| **Cena de smoke nova** | **`PH2D_INSTANCE_SMOKE=5`** (o que é só desta cópia) | ⚠️ conta-se no `instance_smoke.rs` |
 | **ADRs novos (F1.6)** | [`0070-amendment-8`](../architecture/decisions/0070-amendment-8.md) (o corte) · [`0071-amendment-1`](../architecture/decisions/0071-amendment-1.md) (o 4.º canal de tinta muda de casa) | ⚠️ números **contados** contra `decisions/`, não escolhidos |
 
 ---
@@ -2132,3 +2139,95 @@ pergunta é «correu o gate que a mutação nomeia?».*
 O **PASSO 8** da cena `=3` dizia *«e o botão ao lado apaga exactamente essa»*, e o único botão
 apagava a lista inteira. ⚠️ **Com um órfão só as duas frases dão a mesma tela** — foi por isso que a
 promessa pôde envelhecer sem ninguém a desmentir. Hoje é verdade, e o passo nomeia os dois gestos.
+
+---
+
+### ✅ §F5.10 — **Uma cópia pode RECUSAR uma peça da receita** (Enio, 2026-09-06) — o *Removed GameObject*
+
+> **A pergunta devolvida em 05/09, e a resposta:** *«hoje apagar uma peça de dentro de uma cópia é
+> recusado. O Unity deixa apagar e guarda isso como mais uma diferença daquela cópia. Quer que eu
+> construa?»* → **«sim, quero que construa»**.
+
+#### ⛔ A recusa estava certa para o modelo de então
+
+A §F5.7 curou um defeito real (o `despawn` passava e o passe **re-materializava** a peça com a pose
+do mestre, comendo a edição do artista) com uma recusa em voz alta. ⚠️ **O que faltava não era
+permitir o `despawn`: era o modelo ter onde guardar a INTENÇÃO.**
+
+#### O modelo: só a DECISÃO viaja
+
+`ObjectInstance.removed: BTreeSet<u64>` — os `StableId` das peças **do mestre** que esta cópia
+apagou. `PROJECT_SCHEMA` **115 → 116**.
+
+⚠️ **É a diferença exacta contra os órfãos, e o critério é o mesmo da refutação da F4.4:** *guardar
+um valor cria duas fontes para o mesmo facto, e isso só é aceitável quando não há primeira*. Um
+órfão perdeu a peça no mestre — não há de onde a ler, logo os bytes **e** o nome viajam. Uma peça
+recusada **continua viva na receita**: o nome, a pose e os componentes lêem-se de lá a qualquer
+momento. ⇒ o que falta guardar é só a decisão.
+
+#### ⭐⭐ O gesto escreve UM ID, e o passe faz tudo o resto
+
+A decisão entra nas **duas** metades do `reconcile`:
+
+| metade | efeito |
+|---|---|
+| a classificação | a peça marcada deixa de contar como *«a instância tem»* ⇒ cai no ramo das que **SOBRAM**, que já sepulta as excepções dela (`entomb`) e despawna a sub-árvore |
+| a materialização | ela sai da lista das que **FALTAM** ⇒ nunca volta |
+
+⭐ **E é isso que dá o *Put back* de graça:** apagar a marca põe a peça de volta na lista das que
+faltam, o passe materializa-a e **exuma** a excepção — *a peça volta onde o artista a tinha posto,
+sem uma linha de código sobre poses.*
+
+⛔ **Despawnar no gesto saltaria o sepultador** — a excepção daquela peça ficaria **nem viva nem
+enterrada**, que é literalmente a lei que a raiz do `swap` pagou na §F5.8.
+
+#### ⛔ A LEI DO PASSE não mudou, e há gate
+
+Um `despawn` **cru** (sem a marca) continua a ser desfeito no quadro seguinte
+(`a_raw_despawn_is_still_undone_by_the_pass`), e o gate `a_variant_cannot_lose_a_piece_of_its_base`
+continua verde **pela mesma razão**: ele despawna por fora. *A guarda vive no GESTO; a lei fica no
+passe.*
+
+⛔ E a recusa **nunca se limpa sozinha** (a lei dos órfãos): se a receita apagar a peça e alguém
+desfizer, a cópia que a recusou **continua a recusá-la**.
+
+#### A superfície
+
+Um bloco próprio no cartão, com um `Put back "Arm"` por peça — **o rótulo nomeia**, a **chave**
+viaja (nunca o índice), 16 ids `const`, e acima do tecto a saída é **nomeada**: o *Revert* da raiz
+devolve todas, e ele passou a contá-las (`Reverted::pieces_back`).
+
+⭐ **Recusar move a selecção para a CÓPIA.** A peça escolhida morre no quadro seguinte, e uma
+selecção pendurada num objecto morto **apaga o cartão** — que é onde vive o *Put back* que desfaz
+este gesto. *Um gesto que esconde a própria saída é irreversível pelo painel.*
+
+#### ⭐⭐⭐ E a cena `=5` nasce de um report sobre o SMOKE, não sobre o produto
+
+> *«quanto ao smoke não foi claro o suficiente para eu entender»* (Enio, 2026-09-06)
+
+Medido no texto do smoke anterior (o dos órfãos, na cena `=3`): cada passo pedia **três** decisões
+de uma vez — achar a linha da **receita** no meio de duas cópias com nome parecido, saber que é ali
+que se apaga, e ler um cartão para ver o efeito. ⇒ a cena nova tem **três robôs iguais**, cada passo
+é **um gesto**, o passo diz **onde** ele acontece (tela ou lista), e o sujeito está sempre visível.
+
+⚠️ **E ela ensina o modelo inteiro numa linha reta:** arrastar (excepção) → apagar (recusa) →
+*Put back* (a excepção volta junto).
+
+#### ⚠️⚠️ Três mutações sobreviveram, e SÓ UMA era gate ausente
+
+| mutação | leitura |
+|---|---|
+| *devolver uma peça limpa todas* | **gate ausente** — com **uma** peça recusada as duas leis dão a mesma tela. A fixtura passou a ter **duas** |
+| *o passe salta toda peça ausente* | **mutação minha mal desenhada**: ela materializava em vez de saltar (era a mutação da metade vizinha, que já morria) |
+| *o passe poda a recusa* | idem — ela **filtrava a leitura** em vez de escrever a poda, logo não persistia nada |
+
+*Uma mutação que não muda o comportamento que o gate mede não testa o gate: ela testa a minha
+leitura do código.*
+
+#### ⛔ Três tectos de LOC, três cortes
+
+`event.rs` 612/600 (os quatro cliques do cartão → `event_instance.rs`) · `hierarchy.rs` 618/600 (o
+gesto de apagar e as **três** respostas dele → `hierarchy_delete.rs`) ·
+`instance_structure_tests.rs` 699/600 (→ `instance_refuse_tests.rs`, com os quatro auxiliares da
+fixtura a passarem a `pub(super)` — *duas fixturas para o mesmo mundo divergem no dia em que uma
+delas ganhar uma peça*).

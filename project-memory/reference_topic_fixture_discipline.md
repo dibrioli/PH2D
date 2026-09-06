@@ -15,3 +15,4 @@ metadata:
 - [[feedback_changing_a_fixture_invalidates_the_mutation_proof]] — encolher para matar flake tira os dentes do gate em silêncio
 - [[feedback_two_quantities_that_should_differ_can_coincide_by_fixture_phase]] — max≠last verde-sobre-nada; ache fixture onde diferem por FÍSICA
 - [[feedback_identical_fixtures_hide_the_tiebreak_you_meant_to_test]] — fixture com os dois lados IDÊNTICOS não arma empate (0.0 exato vs 1e-16): o ruído decide certo por acidente
+- [[feedback_a_library_doc_can_use_a_word_in_another_sense_and_the_easy_fixture_hides_it]] — «absolute coordinates» = comandos, não espaço; a fixtura ÓBVIA concorda com as duas leituras — só o caso ANINHADO as separa

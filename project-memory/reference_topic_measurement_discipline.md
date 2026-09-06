@@ -98,3 +98,4 @@ uma continua a ser um ficheiro próprio; o que mudou foi o endereço.
 - [«Só na ponta» + «não encolhe» = pulso: a ponta VIRA interior](feedback_two_requirements_can_be_contradictory_over_time.md)
 - [Máscara PARTILHADA é mais larga que a sua pergunta — o `falloff` parou as folhas](feedback_a_shared_mask_is_wider_than_the_question_you_asked.md)
 - [Mecanismo certo, cura errada](feedback_a_correct_mechanism_can_prescribe_the_wrong_cure.md) · [preço errado 4×](feedback_a_note_can_name_the_right_mechanism_and_miss_the_price_by_4x.md) · [cerca declarada escolhe a cura](feedback_a_declared_fence_chooses_the_shape_of_its_own_cure.md)
+- [[feedback_a_ruler_that_compares_two_coordinate_spaces_is_green_over_the_defect_and_red_over_the_cure]] — régua que compara LOCAL com MUNDO fica verde sobre o defeito e vermelha sobre a cura; converta uma vez e passe tudo por lá

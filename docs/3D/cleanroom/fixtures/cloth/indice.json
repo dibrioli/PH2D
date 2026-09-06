@@ -1,11 +1,11 @@
 [
  [
-  "plano_arrastar_plano_local",
+  "esfera_agarrar_radial_dinamica",
   {
-   "superficie": "plano",
-   "modo": "arrastar",
-   "falloff_da_forca": "plano",
-   "area": "local",
+   "superficie": "esfera",
+   "modo": "agarrar",
+   "falloff_da_forca": "radial",
+   "area": "dinamica",
    "raio": 0.35,
    "limite": 2.5,
    "banda": 0.75,
@@ -16,14 +16,56 @@
    "forca": 1.0,
    "curva": "smooth",
    "passos": 12,
-   "movidos": 2146,
-   "max_deslocamento": 0.8996
+   "movidos": 1863,
+   "max_deslocamento": 0.236509
   }
  ],
  [
-  "plano_arrastar_radial_dinamica",
+  "esfera_apertar_linha_radial_dinamica",
   {
-   "superficie": "plano",
+   "superficie": "esfera",
+   "modo": "apertar_linha",
+   "falloff_da_forca": "radial",
+   "area": "dinamica",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2162,
+   "max_deslocamento": 0.249739
+  }
+ ],
+ [
+  "esfera_apertar_ponto_radial_dinamica",
+  {
+   "superficie": "esfera",
+   "modo": "apertar_ponto",
+   "falloff_da_forca": "radial",
+   "area": "dinamica",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2183,
+   "max_deslocamento": 0.463862
+  }
+ ],
+ [
+  "esfera_arrastar_radial_dinamica",
+  {
+   "superficie": "esfera",
    "modo": "arrastar",
    "falloff_da_forca": "radial",
    "area": "dinamica",
@@ -37,15 +79,15 @@
    "forca": 1.0,
    "curva": "smooth",
    "passos": 12,
-   "movidos": 2508,
-   "max_deslocamento": 0.612821
+   "movidos": 2183,
+   "max_deslocamento": 0.582806
   }
  ],
  [
-  "plano_arrastar_radial_dinamica_preset",
+  "esfera_empurrar_radial_dinamica",
   {
-   "superficie": "plano",
-   "modo": "arrastar",
+   "superficie": "esfera",
+   "modo": "empurrar",
    "falloff_da_forca": "radial",
    "area": "dinamica",
    "raio": 0.35,
@@ -53,274 +95,22 @@
    "banda": 0.75,
    "massa": 1.0,
    "amortecimento": 0.01,
-   "plasticidade": 0.5,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 12,
-   "movidos": 2455,
-   "max_deslocamento": 0.329617
-  }
- ],
- [
-  "plano_arrastar_radial_global",
-  {
-   "superficie": "plano",
-   "modo": "arrastar",
-   "falloff_da_forca": "radial",
-   "area": "global",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
    "plasticidade": 0.0,
    "pino": 0,
    "forca": 1.0,
    "curva": "smooth",
    "passos": 12,
-   "movidos": 4225,
-   "max_deslocamento": 0.644607
+   "movidos": 2102,
+   "max_deslocamento": 0.479385
   }
  ],
  [
-  "plano_arrastar_radial_local",
+  "esfera_expandir_radial_dinamica",
   {
-   "superficie": "plano",
-   "modo": "arrastar",
-   "falloff_da_forca": "radial",
-   "area": "local",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 12,
-   "movidos": 2144,
-   "max_deslocamento": 0.331637
-  }
- ],
- [
-  "plano_arrastar_radial_local_1passo",
-  {
-   "superficie": "plano",
-   "modo": "arrastar",
-   "falloff_da_forca": "radial",
-   "area": "local",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 2,
-   "movidos": 171,
-   "max_deslocamento": 0.09917
-  }
- ],
- [
-  "plano_arrastar_radial_local_2passos",
-  {
-   "superficie": "plano",
-   "modo": "arrastar",
-   "falloff_da_forca": "radial",
-   "area": "local",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 3,
-   "movidos": 1438,
-   "max_deslocamento": 0.135888
-  }
- ],
- [
-  "plano_arrastar_radial_local_amort1",
-  {
-   "superficie": "plano",
-   "modo": "arrastar",
-   "falloff_da_forca": "radial",
-   "area": "local",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 1.0,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 12,
-   "movidos": 2141,
-   "max_deslocamento": 0.219903
-  }
- ],
- [
-  "plano_arrastar_radial_local_amort05",
-  {
-   "superficie": "plano",
-   "modo": "arrastar",
-   "falloff_da_forca": "radial",
-   "area": "local",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.5,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 12,
-   "movidos": 2142,
-   "max_deslocamento": 0.254386
-  }
- ],
- [
-  "plano_arrastar_radial_local_massa2",
-  {
-   "superficie": "plano",
-   "modo": "arrastar",
-   "falloff_da_forca": "radial",
-   "area": "local",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 2.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 12,
-   "movidos": 2143,
-   "max_deslocamento": 0.154596
-  }
- ],
- [
-  "plano_arrastar_radial_local_massa2_1passo",
-  {
-   "superficie": "plano",
-   "modo": "arrastar",
-   "falloff_da_forca": "radial",
-   "area": "local",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 2.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 2,
-   "movidos": 171,
-   "max_deslocamento": 0.049585
-  }
- ],
- [
-  "plano_arrastar_radial_local_pino",
-  {
-   "superficie": "plano",
-   "modo": "arrastar",
-   "falloff_da_forca": "radial",
-   "area": "local",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 1,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 12,
-   "movidos": 2144,
-   "max_deslocamento": 0.323528
-  }
- ],
- [
-  "plano_arrastar_radial_local_plast05",
-  {
-   "superficie": "plano",
-   "modo": "arrastar",
-   "falloff_da_forca": "radial",
-   "area": "local",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.5,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 12,
-   "movidos": 2141,
-   "max_deslocamento": 0.234305
-  }
- ],
- [
-  "plano_arrastar_radial_local_forca05",
-  {
-   "superficie": "plano",
-   "modo": "arrastar",
-   "falloff_da_forca": "radial",
-   "area": "local",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 0.5,
-   "curva": "smooth",
-   "passos": 12,
-   "movidos": 2139,
-   "max_deslocamento": 0.073252
-  }
- ],
- [
-  "plano_arrastar_radial_local_forca05_1passo",
-  {
-   "superficie": "plano",
-   "modo": "arrastar",
-   "falloff_da_forca": "radial",
-   "area": "local",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 0.5,
-   "curva": "smooth",
-   "passos": 2,
-   "movidos": 168,
-   "max_deslocamento": 0.024792
-  }
- ],
- [
-  "plano_expandir_radial_local",
-  {
-   "superficie": "plano",
+   "superficie": "esfera",
    "modo": "expandir",
    "falloff_da_forca": "radial",
-   "area": "local",
+   "area": "dinamica",
    "raio": 0.35,
    "limite": 2.5,
    "banda": 0.75,
@@ -331,17 +121,17 @@
    "forca": 1.0,
    "curva": "smooth",
    "passos": 12,
-   "movidos": 2134,
-   "max_deslocamento": 0.011523
+   "movidos": 2096,
+   "max_deslocamento": 0.046715
   }
  ],
  [
-  "plano_expandir_radial_local_1passo",
+  "esfera_gancho_radial_dinamica",
   {
-   "superficie": "plano",
-   "modo": "expandir",
+   "superficie": "esfera",
+   "modo": "gancho",
    "falloff_da_forca": "radial",
-   "area": "local",
+   "area": "dinamica",
    "raio": 0.35,
    "limite": 2.5,
    "banda": 0.75,
@@ -351,9 +141,30 @@
    "pino": 0,
    "forca": 1.0,
    "curva": "smooth",
-   "passos": 2,
-   "movidos": 848,
-   "max_deslocamento": 0.001902
+   "passos": 12,
+   "movidos": 2234,
+   "max_deslocamento": 0.169025
+  }
+ ],
+ [
+  "esfera_inflar_radial_dinamica",
+  {
+   "superficie": "esfera",
+   "modo": "inflar",
+   "falloff_da_forca": "radial",
+   "area": "dinamica",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2181,
+   "max_deslocamento": 0.267017
   }
  ],
  [
@@ -462,6 +273,27 @@
   }
  ],
  [
+  "plano_agarrar_radial_local_2passos_origem",
+  {
+   "superficie": "plano",
+   "modo": "agarrar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 3,
+   "movidos": 1869,
+   "max_deslocamento": 0.14572
+  }
+ ],
+ [
   "plano_agarrar_radial_local_amort06",
   {
    "superficie": "plano",
@@ -504,48 +336,6 @@
   }
  ],
  [
-  "plano_inflar_radial_local",
-  {
-   "superficie": "plano",
-   "modo": "inflar",
-   "falloff_da_forca": "radial",
-   "area": "local",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 12,
-   "movidos": 2146,
-   "max_deslocamento": 0.317159
-  }
- ],
- [
-  "plano_inflar_radial_local_1passo",
-  {
-   "superficie": "plano",
-   "modo": "inflar",
-   "falloff_da_forca": "radial",
-   "area": "local",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 2,
-   "movidos": 171,
-   "max_deslocamento": 0.09917
-  }
- ],
- [
   "plano_apertar_linha_radial_local",
   {
    "superficie": "plano",
@@ -585,6 +375,27 @@
    "passos": 2,
    "movidos": 156,
    "max_deslocamento": 0.087609
+  }
+ ],
+ [
+  "plano_apertar_linha_radial_local_origem",
+  {
+   "superficie": "plano",
+   "modo": "apertar_linha",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2137,
+   "max_deslocamento": 0.100744
   }
  ],
  [
@@ -651,6 +462,405 @@
   }
  ],
  [
+  "plano_apertar_ponto_radial_local_origem",
+  {
+   "superficie": "plano",
+   "modo": "apertar_ponto",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2145,
+   "max_deslocamento": 0.303401
+  }
+ ],
+ [
+  "plano_apertar_ponto_radial_local_origem_fraco",
+  {
+   "superficie": "plano",
+   "modo": "apertar_ponto",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 0.2,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2029,
+   "max_deslocamento": 0.004082
+  }
+ ],
+ [
+  "plano_arrastar_plano_local",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "plano",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2146,
+   "max_deslocamento": 0.8996
+  }
+ ],
+ [
+  "plano_arrastar_radial_dinamica",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "dinamica",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2508,
+   "max_deslocamento": 0.612821
+  }
+ ],
+ [
+  "plano_arrastar_radial_dinamica_preset",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "dinamica",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.5,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2455,
+   "max_deslocamento": 0.329617
+  }
+ ],
+ [
+  "plano_arrastar_radial_global",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "global",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 4225,
+   "max_deslocamento": 0.644607
+  }
+ ],
+ [
+  "plano_arrastar_radial_global_origem",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "global",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 4225,
+   "max_deslocamento": 0.645708
+  }
+ ],
+ [
+  "plano_arrastar_radial_local",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2144,
+   "max_deslocamento": 0.331637
+  }
+ ],
+ [
+  "plano_arrastar_radial_local_1passo",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 2,
+   "movidos": 171,
+   "max_deslocamento": 0.09917
+  }
+ ],
+ [
+  "plano_arrastar_radial_local_2passos",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 3,
+   "movidos": 1438,
+   "max_deslocamento": 0.135888
+  }
+ ],
+ [
+  "plano_arrastar_radial_local_amort05",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.5,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2142,
+   "max_deslocamento": 0.254386
+  }
+ ],
+ [
+  "plano_arrastar_radial_local_amort1",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 1.0,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2141,
+   "max_deslocamento": 0.219903
+  }
+ ],
+ [
+  "plano_arrastar_radial_local_forca05",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 0.5,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2139,
+   "max_deslocamento": 0.073252
+  }
+ ],
+ [
+  "plano_arrastar_radial_local_forca05_1passo",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 0.5,
+   "curva": "smooth",
+   "passos": 2,
+   "movidos": 168,
+   "max_deslocamento": 0.024792
+  }
+ ],
+ [
+  "plano_arrastar_radial_local_massa2",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 2.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2143,
+   "max_deslocamento": 0.154596
+  }
+ ],
+ [
+  "plano_arrastar_radial_local_massa2_1passo",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 2.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 2,
+   "movidos": 171,
+   "max_deslocamento": 0.049585
+  }
+ ],
+ [
+  "plano_arrastar_radial_local_origem",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2145,
+   "max_deslocamento": 0.329649
+  }
+ ],
+ [
+  "plano_arrastar_radial_local_pino",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 1,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2144,
+   "max_deslocamento": 0.323528
+  }
+ ],
+ [
+  "plano_arrastar_radial_local_plast05",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.5,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2141,
+   "max_deslocamento": 0.234305
+  }
+ ],
+ [
   "plano_empurrar_plano_local",
   {
    "superficie": "plano",
@@ -711,6 +921,48 @@
    "passos": 2,
    "movidos": 171,
    "max_deslocamento": 0.069419
+  }
+ ],
+ [
+  "plano_expandir_radial_local",
+  {
+   "superficie": "plano",
+   "modo": "expandir",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2134,
+   "max_deslocamento": 0.011523
+  }
+ ],
+ [
+  "plano_expandir_radial_local_1passo",
+  {
+   "superficie": "plano",
+   "modo": "expandir",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 2,
+   "movidos": 848,
+   "max_deslocamento": 0.001902
   }
  ],
  [
@@ -798,6 +1050,27 @@
   }
  ],
  [
+  "plano_gancho_radial_local_2passos_origem",
+  {
+   "superficie": "plano",
+   "modo": "gancho",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 3,
+   "movidos": 1950,
+   "max_deslocamento": 0.343869
+  }
+ ],
+ [
   "plano_gancho_radial_local_amort06",
   {
    "superficie": "plano",
@@ -819,75 +1092,12 @@
   }
  ],
  [
-  "esfera_arrastar_radial_dinamica",
+  "plano_inflar_radial_local",
   {
-   "superficie": "esfera",
-   "modo": "arrastar",
-   "falloff_da_forca": "radial",
-   "area": "dinamica",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 12,
-   "movidos": 2183,
-   "max_deslocamento": 0.582806
-  }
- ],
- [
-  "esfera_expandir_radial_dinamica",
-  {
-   "superficie": "esfera",
-   "modo": "expandir",
-   "falloff_da_forca": "radial",
-   "area": "dinamica",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 12,
-   "movidos": 2096,
-   "max_deslocamento": 0.046715
-  }
- ],
- [
-  "esfera_agarrar_radial_dinamica",
-  {
-   "superficie": "esfera",
-   "modo": "agarrar",
-   "falloff_da_forca": "radial",
-   "area": "dinamica",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 12,
-   "movidos": 1863,
-   "max_deslocamento": 0.236509
-  }
- ],
- [
-  "esfera_inflar_radial_dinamica",
-  {
-   "superficie": "esfera",
+   "superficie": "plano",
    "modo": "inflar",
    "falloff_da_forca": "radial",
-   "area": "dinamica",
+   "area": "local",
    "raio": 0.35,
    "limite": 2.5,
    "banda": 0.75,
@@ -898,17 +1108,17 @@
    "forca": 1.0,
    "curva": "smooth",
    "passos": 12,
-   "movidos": 2181,
-   "max_deslocamento": 0.267017
+   "movidos": 2146,
+   "max_deslocamento": 0.317159
   }
  ],
  [
-  "esfera_apertar_linha_radial_dinamica",
+  "plano_inflar_radial_local_1passo",
   {
-   "superficie": "esfera",
-   "modo": "apertar_linha",
+   "superficie": "plano",
+   "modo": "inflar",
    "falloff_da_forca": "radial",
-   "area": "dinamica",
+   "area": "local",
    "raio": 0.35,
    "limite": 2.5,
    "banda": 0.75,
@@ -918,72 +1128,9 @@
    "pino": 0,
    "forca": 1.0,
    "curva": "smooth",
-   "passos": 12,
-   "movidos": 2162,
-   "max_deslocamento": 0.249739
-  }
- ],
- [
-  "esfera_apertar_ponto_radial_dinamica",
-  {
-   "superficie": "esfera",
-   "modo": "apertar_ponto",
-   "falloff_da_forca": "radial",
-   "area": "dinamica",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 12,
-   "movidos": 2183,
-   "max_deslocamento": 0.463862
-  }
- ],
- [
-  "esfera_empurrar_radial_dinamica",
-  {
-   "superficie": "esfera",
-   "modo": "empurrar",
-   "falloff_da_forca": "radial",
-   "area": "dinamica",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 12,
-   "movidos": 2102,
-   "max_deslocamento": 0.479385
-  }
- ],
- [
-  "esfera_gancho_radial_dinamica",
-  {
-   "superficie": "esfera",
-   "modo": "gancho",
-   "falloff_da_forca": "radial",
-   "area": "dinamica",
-   "raio": 0.35,
-   "limite": 2.5,
-   "banda": 0.75,
-   "massa": 1.0,
-   "amortecimento": 0.01,
-   "plasticidade": 0.0,
-   "pino": 0,
-   "forca": 1.0,
-   "curva": "smooth",
-   "passos": 12,
-   "movidos": 2234,
-   "max_deslocamento": 0.169025
+   "passos": 2,
+   "movidos": 171,
+   "max_deslocamento": 0.09917
   }
  ]
 ]

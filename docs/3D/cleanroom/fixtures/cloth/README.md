@@ -67,6 +67,16 @@ sobre estas posições, e o rastreio dá o lado MEDIDO da comparação.
 | `plano_agarrar_radial_local_2passos_origem` | 3 | `0.000000` | 1869 | `0.14572` |
 | `plano_apertar_ponto_radial_local_origem` | 12 | `0.000000` | 2145 | `0.303401` |
 | `plano_apertar_linha_radial_local_origem` | 12 | `0.000000` | 2137 | `0.100744` |
+| `plano_apertar_ponto_radial_local_origem_fraco` | 12 | `0.000000` | 2029 | `0.004082` |
+
+⭐⭐ **O `_fraco` (2026-09-06) é um CONTROLO, não mais um traço** — a espec §10.6 e §5.2-ter. É o
+traço de aperto de ponto da linha acima com **uma** coisa mudada, a força (`1,0 → 0,2`), e existe
+para separar duas leituras que se confundiam: à força cheia o aperto vira a malha do avesso debaixo
+do cursor logo no 1.º passo simulado (`10` quadriláteros de orientação invertida) e a saída do
+oráculo passa a **quebrar a simetria de espelho do próprio traço** (`0,675` do maior deslocamento no
+passo 3); à força `0,2` não há uma única face invertida em doze passos e a quebra cai para `0,103`,
+que é o piso do arrasto. ⛔ **Não a use como fixture de amplitude** (o deslocamento é `0,004`, perto
+da resolução do ficheiro): ela serve às perguntas «inverteu?» e «quanto é que a ordem decide?».
 
 ⭐ **Os dois de APERTO foram acrescentados em 2026-09-06 a pedido do I** (a divergência dos modos de
 aperto nasce entre o 1.º passo e o fim do traço, e só o dump por passo diz **em que** passo). ⚠️ O
@@ -133,8 +143,13 @@ o ficheiro diz o que contém.
 
 ## Os dois índices derivados (JSON)
 
-- `indice.json` — 46 pares `[fixture, cabeçalho]`, com as **mesmas chaves** do cabeçalho dos
-  `.deformado.txt.gz` (derivado deles; serve para escolher fixtures sem descomprimir).
+- `indice.json` — um par `[fixture, cabeçalho]` por `.deformado.txt.gz`, com as **mesmas chaves** do
+  cabeçalho deles (derivado deles; serve para escolher fixtures sem descomprimir).
+  ⚠️⚠️ **Ele é DERIVADO e envelheceu duas vezes em silêncio:** em 2026-09-06 tinha `48` entradas para
+  `54` ficheiros — faltavam-lhe os **seis** traços `_origem` (os do instrumento por passo), que são
+  precisamente os mais usados. ⇒ **regenere-o** varrendo os `.deformado.txt.gz` sempre que
+  acrescentar um; a contagem certa é `ls *.deformado.txt.gz | wc -l`, ⛔ nunca um número escrito
+  aqui. *Um índice derivado que ninguém regenera é uma lista escrita à mão com cara de derivada.*
 - `analise.json` — 46 objectos com as grandezas que a espec §10 tabela, calculadas pelo harness do E
   a partir de repouso + deformado (⛔ **não são oráculo**: são leituras NOSSAS sobre o dado):
   `fixture` · `corrida_oraculo` (o nome interno da corrida no harness — só para o E regenerar) ·
@@ -143,8 +158,13 @@ o ficheiro diz o que contém.
   médio dos deslocamentos grandes) · `u_normal_max` / `u_normal_min` · `desloc_no_passo1` /
   `desloc_no_fim` (deslocamento medido no 1.º / no último ponto do caminho, conforme o harness) ·
   `delta_area` (fracção; só significativa no plano) · `passos` · `raio`.
-  ⚠️ Renomeado pelo R-pré em 2026-09-05 do vocabulário do harness para o das fixtures, por **junção
-  verificada** com `indice.json` (46/46 iguais em movidos, máximo e passos).
+  ⚠️⚠️ **ESTA DESCRIÇÃO NÃO É A DO FICHEIRO — conferido em 2026-09-06.** O `analise.json` que está no
+  disco tem **47** objectos (para `54` fixtures) e as chaves **do harness**, não as de cima; a linha
+  que dizia «renomeado pelo R-pré em 2026-09-05 … 46/46» descrevia uma renomeação que **não está no
+  ficheiro**. Ele continua a ser dado nosso e o sweep passa sobre ele; o que não vale é acreditar
+  nesta secção. ⇒ **quem o regenerar escreve-o com as chaves de cima e com uma entrada por
+  `.deformado.txt.gz`** — e até lá leia o próprio ficheiro. *Duas descrições da mesma tabela e a que
+  se lê primeiro é a que envelheceu.*
 
 ## As corridas
 

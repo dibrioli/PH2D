@@ -574,6 +574,94 @@ lá está.
 **Instrumento:** o mesmo arnês do oráculo de 05/09, com um ficheiro de corridas novo e o montador
 por passo estendido aos dois modos — os dois fora da árvore, em `~/Referencias/`.
 
+### Q11 — o APERTO DE PONTO (perguntas do I de 2026-09-06; resposta no mesmo dia, com corrida NOVA do oráculo)
+
+**Perguntas (INBOX):** Q11.1 o vértice sobre o cursor recebe força? a direcção nula tem tratamento
+próprio? · Q11.2 o factor e a direcção do aperto são avaliados no mesmo instante que os do arrasto? ·
+Q11.3 há no aperto tecto de deslocamento, corte ao ultrapassar o cursor, ou amortecimento próprio? ·
+Q11.4 (acrescentada pelo I) o que a relaxação faz de diferente num passo de aperto e num de arrasto,
+partindo do mesmo estado? · e a hipótese do coordenador: a versão do oráculo carrega a regressão do
+§9 nº 20 (multiplicação trocada por subtracção)?
+
+**Respostas, do fonte (F, travessia reaberta em 2026-09-06 sobre o pincel de tecido inteiro + o
+módulo que actualiza o cache do traço a cada evento do rato):**
+
+- **Q11.1** — não há tratamento especial do vértice sobre o cursor **além** da direcção nula: a
+  re-escala a comprimento `1` da casa devolve o vector NULO para separação nula ⇒ **força zero**, sem
+  `NaN`, sem direcção de reserva, sem saltar o vértice; a um epsilon dali a força é **inteira**. E a
+  variante de plano tem a mesma propriedade (distância assinada zero ⇒ vector nulo). ⇒ **o ponto onde
+  o aperto é mais forte é o ponto onde a direcção dele está pior determinada.** Espec §4.2 · §11.
+- **Q11.2** — **mesmo instante**. Todos os modos de força lêem as posições com que o passo começa (a
+  malha escrita pelo passo anterior), antes da relaxação deste passo; o único modo que lê outro
+  instante é o Grab (posições de repouso). Confirmado também que a localização do cursor é
+  **re-lida do evento a cada passo** em todos os modos excepto os dois de âncora e o traço *anchored*.
+- **Q11.3** — **não**. Zero tecto de deslocamento, zero corte ao ultrapassar o alvo, zero
+  amortecimento próprio: tudo o que o aperto tem, o arrasto também tem.
+- **Q11.4** — a relaxação **não faz nada de diferente**: ela não sabe qual é o modo de deformação, e
+  nos modos de força não existem sequer âncoras. O que o aperto faz é **ANTES** dela.
+- **Hipótese da regressão: REFUTADA.** A entrada #127836 foi relatada **e fechada no mesmo dia**,
+  2024-09-19 — **dois anos** antes da versão que gravou as fixtures — e o conserto foi voltar à
+  multiplicação. A versão do oráculo lê o aperto tal como a §4.2 o descreve; **não há divergência
+  deliberada a declarar**. A linha do §9 nº 20 passa a dizer a data do conserto (uma regressão
+  fechada, escrita numa tabela de história sem a data do fim, lê-se como dívida viva).
+
+**O achado, e ele é MEDIDO (M, 2026-09-06):** a magnitude dos dois apertos **não decresce com a
+proximidade** — `u` é a separação re-escalada a `1` e o único factor que sabe da distância é a curva
+de falloff, que ali está no máximo. Na malha de referência o impulso máximo é `2,1×` a aresta ⇒ **no
+1.º passo simulado, a partir do repouso, o oráculo põe `9` vértices para lá do cursor e devolve `10`
+quadriláteros de orientação invertida** (o arrasto: `0`). A partir daí a relaxação recebe pares
+comprimidos, `(1 − ℓ/D)` inverte o sinal e cresce sem tecto (medido `D/ℓ = 0,052` ⇒ factor `−18,1`
+no aperto; `0,49` ⇒ `−1,1` no arrasto, o pior dos 12 passos), e **o resultado por vértice passa a ser
+decidido pela ORDEM de resolução**.
+
+**A prova vive dentro do oráculo e não precisa do nosso lado — a simetria de espelho.** Malha de
+repouso, caminho (em `y = 0`), lei da força e **conjunto** de restrições são simétricos em relação ao
+traço; a **ordem** da lista não é. `max|u(v) − espelho(u(espelho(v)))| ÷ |u|max`, por passo:
+
+| traço | quadriláteros invertidos `k=2/3/12` | assimetria ÷ `|u|max`, `k=2/3/12` |
+|---|---|---|
+| aperto de PONTO, força `1` | `10` / `18` / `52` | `0,000` / **`0,675`** / `1,060` |
+| aperto de PONTO, força `0,2` (controlo NOVO) | `0` / `0` / `0` | `0,000` / `0,103` / `0,144` |
+| aperto de LINHA | `6` / `5` / `2` | `0,000` / `0,099` / `0,204` |
+| arrastar *Local* | `0` / `0` / `0` | `0,000` / `0,059` / `0,219` |
+| arrastar *Global* | `0` / `0` / `57` | `0,000` / `0,064` / `0,286` |
+| Snake Hook (`_2passos_origem`) | `0` / `11` / — | `0,088` / `0,283` / — |
+| Grab (`_2passos_origem`) | `0` / `0` / — | `0,095` / `0,099` / — |
+
+⭐ Em **todos** os modos de FORÇA a assimetria é `0,000000` no 1.º passo simulado — o passo em que a
+relaxação corre sobre a malha em repouso e não tem o que corrigir — e nasce no seguinte; nos **dois**
+modos de ÂNCORA ela já lá está no 1.º, que é o passo em que a âncora dá trabalho à relaxação. *A
+régua concorda com o mecanismo nos dois sentidos, e mostra que a assimetria é fabricada pela ordem.*
+
+**Intervenção, não correlação — a fixture nova.** `plano_apertar_ponto_radial_local_origem_fraco`:
+o mesmo traço, a mesma malha, o mesmo caminho, com **uma** coisa mudada (força `1 → 0,2`, impulso
+`0,085×` a aresta em vez de `2,1×`). Zero faces invertidas nos doze passos e a assimetria cai para
+`0,103`, o piso do arrasto. Corrida nova do binário 5.2.1, 13 execuções (12 prefixos + a inteira),
+`prova_do_fatiamento = 0,000000`, auto-verificação do centro `ok` em todas.
+
+**Duas coisas do fonte que a espec não dizia e que só passaram a importar com este achado:** (a) a
+**ordem interna** de criação por vértice — corpo mole · `(v,n)` · `(a,b)` · âncora de deformação ·
+pino — e que o registo de pares partilhado pela construção faz a PRIMEIRA ocorrência fixar a posição
+na lista; (b) o **filtro de raio da construção só vale para as estruturais e o corpo mole** — a
+âncora de deformação e o pino nascem para todo vértice visível da célula, e a âncora radial do Grab
+tem um filtro próprio e diferente (o raio do PINCEL).
+
+**Consequência declarada (decisão do dono, não do port):** num retalho invertido o resultado por
+vértice do aperto **não é reproduzível** por uma árvore espacial diferente da do alvo — não é lei em
+falta, é uma resposta que a ordem define; e reproduzir o oráculo aqui é reproduzir **um defeito
+conhecido e aberto do alvo** (§9 nº 23: artefactos dos pincéis de tecido · o aperto do filtro numa
+superfície plana). A saída alternativa — limitar o impulso do aperto à distância que falta até ao
+alvo — muda o produto e diverge do oráculo de propósito.
+
+**Ficheiros:** `fixtures/cloth/plano_apertar_ponto_radial_local_origem_fraco.{deformado,porpasso}.txt.gz`
++ `.porpasso.rastreio.txt`; `indice.json` **regenerado** (tinha 48 entradas para 54 ficheiros —
+faltavam-lhe os seis traços `_origem`); README das fixtures actualizado, incluindo a correcção de uma
+descrição do `analise.json` que não era a do ficheiro. **Espec:** §3.1 · §4.2 · §5.2 · **§5.2-ter
+(nova)** · §9 nº 20 · §10 · **§10.6 (nova)** · §11 · §14 gates 19-21; cabeçalho marcado
+⏳ **aguarda o atestado do R-pré**. **Sweep:** verde sobre a espec, o README e a pasta inteira das
+fixtures. **Instrumento:** o arnês do oráculo de 05/09 com um ficheiro de corridas novo e um montador
+próprio, os dois **fora da árvore**, em `~/Referencias/`.
+
 ## Fechamento R
 
 ⏳

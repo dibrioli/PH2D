@@ -388,12 +388,12 @@ W123 este módulo sabe que ele **nunca precisou da distância exacta** — preci
 (doc 06 §124). ⇒ uma função *«bounded»* da fonte é tão utilizável quanto uma exacta, desde que o
 limite seja honesto.
 
-### §7.2 — Do catálogo 3D faltam QUATRO (as outras 25 já se fazem)
+### §7.2 — Do catálogo 3D faltam TRÊS (a quarta shipou na W125; as outras 25 já se faziam)
 
 | Forma | Classe | O que ela é, e por que não é composição |
 |---|---|---|
 | **Plane / semiespaço** | **A** | ⭐⭐ O corte. O [§4.2](#42--o-que-continua-a-faltar-e-por-que-cada-um-não-é-composição) **já a nomeia como a peça em falta**: hoje cortar em ângulo é *«uma caixa gigante rodada — um objecto a mais e um número sem sentido»* |
-| **Rounded Cylinder** | **A** | ⭐ O cilindro com **barriga** (rolha, pneu, botão): raio do bojo **e** raio do aro, dois números. ⛔ Não é o nosso `round`, que só arredonda o aro |
+| ~~**Rounded Cylinder**~~ | — | ✅ **SHIPOU na W125** — o cilindro com bojo (rolha, pneu, botão), com um knob só. ⛔ Não é o nosso `round`, que só arredonda o aro |
 | **Death Star** | **A** | ⭐⭐ Esfera **menos** esfera, com a distância **exacta** na cratera. A nossa subtracção dá a forma e **não** dá a distância exacta ali |
 | **Vesica Segment** | **A** | A lente 3D entre dois pontos — a cápsula «com barriga para dentro» |
 
@@ -465,3 +465,23 @@ um item de lote.*
 
 ⚠️ **Nada disto é uma promessa de calendário** — é a fila que a medição e o alcance sugerem, e quem
 a ordena é o dono do produto.
+
+### §7.6 — ⭐ O PLACAR, contado das três tabelas acima (06/09)
+
+⚠️ **Conte-o daqui, nunca de memória** — esta lista já esteve inflada em quatro (§7.3) e este placar
+é a soma das três secções, com os riscados fora:
+
+| de onde | ainda faltam | quais |
+|---|---:|---|
+| §7.2 — catálogo **3D** | **3** | Plane · Death Star · Vesica Segment |
+| §7.3 — catálogo **2D** | **5** | Polygon(N) · Triangle · Bezier · Parabola · Circle Wave |
+| §7.4 — **famílias** fora de catálogo | **4** | Superfórmula · Superquadrática · Nó de toro · Rosca |
+| **total** | **12** | |
+
+⛔ **Fora desta conta, de propósito:** as **duas** que são modificadores e não formas (grade
+hexagonal, metabolas) e os **fractais** (§7.4), que são wave com medição própria. ⚠️ E o **Plane**
+não é uma forma a construir — é a bola de recorte a admitir uma peça **infinita**, que é maquinaria.
+
+⚠️ **O que já shipou não se conta aqui, conta-se no CÓDIGO:** o catálogo tem hoje **61** entradas
+(`grep -c 'key: "panel.model3d.add' shells/desktop/src/field3d_shapes.rs`) sobre **52** primitivas
+(`PrimitiveKind::ALL`). *Um número escrito num doc é o que envelhece primeiro.*

@@ -198,3 +198,35 @@ mecanismo, e ele nasce entre o passo 1 e o fim.
 para **dois** traços: `plano_apertar_ponto_radial_local` e `plano_apertar_linha_radial_local`.
 Sem eles só se vê o estado final, e o estado final diz *quanto* diverge, nunca *em que passo*.
 Um traço de 2 passos de cada um chegaria para localizar o nascimento.
+
+## Q10 — o que os dumps novos dizem (2026-09-06, sessão 1246816c, medido no mesmo dia em que chegaram)
+
+⭐⭐ **O aperto de LINHA fica RESOLVIDO pela resposta do Q8, e isto é uma confirmação sobre dados que
+não existiam quando a resposta foi dada.** `plano_apertar_linha_radial_local_origem`, com dez
+projecções por passo (o que a construção dupla produz), contra o dump por passo:
+
+| k | `2.9R` nosso | oráculo | `max` nosso | oráculo | pico nosso | pico oráculo |
+|---|---|---|---|---|---|---|
+| 4 | `0,00214` | `0,00225` | `0,0993` | `0,0965` | `0,41R` | `0,41R` |
+| 7 | `0,00417` | `0,00434` | `0,1095` | `0,1092` | `0,27R` | `0,27R` |
+| 10 | `0,00144` | `0,00116` | `0,1015` | `0,1011` | `0,41R` | `0,41R` |
+| 12 | `0,00120` | `0,00108` | `0,1016` | `0,1007` | `0,27R` | `0,40R` |
+
+A `3.5R` é exacta a cinco casas nos 12 passos. A cinco projecções o mesmo traço dá `max 0,2575`
+contra `0,1007` — **2,6×**. ⇒ o aperto de linha não tinha defeito próprio nenhum.
+
+⚠️ **O aperto de PONTO não fica.** Com dez projecções o aro fica exacto (`2.9R` `0,01157` contra
+`0,01141`; `3.5R` `0,00062` contra `0,00061`) e o **centro fica fora de fase**: nos passos 3-5 o
+oráculo faz `0,1842 → 0,1180 → 0,1058` e nós fazemos `0,0975 → 0,2060 → 0,1957` — **anti-correlados**
+—, e do passo 6 em diante andam juntos com `max` `20 %` alto (`0,3661` contra `0,3034`). O pico
+também salta de sítio (`k6`: `0,66R` nosso contra `0,14R`; `k9`: `0,22R` contra `0,76R`).
+
+*Os dois são não-monótonos sob o pen-down, como o E observou; o que difere é a FASE.* ⇒ o aperto de
+ponto é o item que sobra depois do Q8 e do Q9, e a pergunta seguinte é sobre **quando** ele aplica a
+correcção dentro do passo, não sobre quanto.
+
+⭐ **E uma nota de aritmética que fecha o Q8:** construir a lista duas vezes deixa-a como
+`[c₁..c_N, c₁..c_N]`, logo **cinco varreduras sobre a lista dobrada são, na ordem, exactamente dez
+varreduras sobre a lista simples**. As medições que eu tinha feito com `PH2D_VARREDURAS=10` são,
+bit a bit, o que a construção dupla vai produzir — o knob que eu media e o mecanismo que o E achou
+são a mesma coisa, e é por isso que as duas leituras coincidiram.

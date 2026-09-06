@@ -77,11 +77,14 @@ pub enum PrimitiveKind {
     // ─────────────────────────── W123 ───────────────────────────
     Spiral,
     Document,
+    // ─────────────────────────── W124 ───────────────────────────
+    Helix,
+    Gyroid,
 }
 
 impl PrimitiveKind {
     /// **A fonte da contagem** — quem quiser saber *«que formas o motor sabe fazer?»* pergunta aqui.
-    pub const ALL: [PrimitiveKind; 49] = [
+    pub const ALL: [PrimitiveKind; 51] = [
         PrimitiveKind::Box,
         PrimitiveKind::Sphere,
         PrimitiveKind::Cylinder,
@@ -131,6 +134,8 @@ impl PrimitiveKind {
         PrimitiveKind::OffPage,
         PrimitiveKind::Spiral,
         PrimitiveKind::Document,
+        PrimitiveKind::Helix,
+        PrimitiveKind::Gyroid,
     ];
 
     /// O sufixo da chave do botão que a cria — `panel.model3d.add.<key>`.
@@ -186,6 +191,8 @@ impl PrimitiveKind {
             PrimitiveKind::OffPage => "off_page",
             PrimitiveKind::Spiral => "spiral",
             PrimitiveKind::Document => "document",
+            PrimitiveKind::Helix => "helix",
+            PrimitiveKind::Gyroid => "gyroid",
         }
     }
 }

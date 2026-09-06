@@ -205,3 +205,75 @@ pub(super) fn validate_curve(p: &Primitive, idx: u32) -> Result<(), FieldError> 
         _ => Ok(()),
     }
 }
+
+/// **O que a mola e o gyroid recusam** (W124).
+pub(super) fn validate_lattice(p: &Primitive, idx: u32) -> Result<(), FieldError> {
+    let positive = |v: f32, what: &'static str| -> Result<(), FieldError> {
+        if !v.is_finite() || v <= 0.0 {
+            Err(FieldError::NonPositive { node: idx, what })
+        } else {
+            Ok(())
+        }
+    };
+    let nao_passa = |v: f32, tecto: f32, what: &'static str| -> Result<(), FieldError> {
+        if !v.is_finite() || v > tecto {
+            Err(FieldError::NonPositive { node: idx, what })
+        } else {
+            Ok(())
+        }
+    };
+    let um_recuo = |round: f32, limit: f32| -> Result<(), FieldError> {
+        if !round.is_finite() || round < 0.0 || round >= limit {
+            Err(FieldError::RoundTooLarge {
+                node: idx,
+                round,
+                limit,
+            })
+        } else {
+            Ok(())
+        }
+    };
+    let round_fits = |round: f32, chamfer: f32, limit: f32| -> Result<(), FieldError> {
+        um_recuo(chamfer, limit)?;
+        um_recuo(round, limit)
+    };
+    match *p {
+        Primitive::Helix {
+            radius,
+            pitch,
+            turns,
+            thickness,
+            round,
+            chamfer,
+        } => {
+            positive(radius, "radius")?;
+            positive(pitch, "pitch")?;
+            positive(turns, "turns")?;
+            positive(thickness, "thickness")?;
+            nao_passa(turns, crate::MAX_SPIRAL_TURNS, "turns")?;
+            nao_passa(2.0 * thickness, pitch * crate::MAX_SPIRAL_FILL, "thickness")?;
+            // ⚠️ **O tubo não pode engolir o eixo**: com `thickness ≥ radius` a mola fecha-se sobre
+            // ela própria e o divisor do campo perde o chão.
+            nao_passa(2.0 * thickness, radius * 1.8, "thickness")?;
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
+        }
+        Primitive::Gyroid {
+            half,
+            cell,
+            thickness,
+            round,
+            chamfer,
+        } => {
+            for (i, h) in half.iter().enumerate() {
+                positive(*h, ["half_x", "half_y", "half_z"][i])?;
+            }
+            positive(cell, "cell")?;
+            positive(thickness, "thickness")?;
+            let menor = half[0].min(half[1]).min(half[2]) * 2.0;
+            nao_passa(cell * crate::MIN_GYROID_CELLS, menor, "cell")?;
+            nao_passa(2.0 * thickness, cell * crate::MAX_GYROID_FILL, "thickness")?;
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
+        }
+        _ => Ok(()),
+    }
+}

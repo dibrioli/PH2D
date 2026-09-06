@@ -123,3 +123,107 @@ fn probe_w123_fences() {
         println!("  onda {f:4.2}: {:?}", marcha(&p));
     }
 }
+
+/// A bancada da W124 — a mola e o gyroid, antes de serem ligados.
+#[test]
+#[ignore = "instrumento"]
+fn probe_helix_and_gyroid() {
+    println!("\n── MOLA: raio 0,30 · pitch 0,14 · voltas 3 · tubo 0,05 ──");
+    let m = Field::from_tree(&ph2d_field_eval::ops_spiral::sd_helix(
+        0.30, 0.14, 3.0, 0.05, 0.0, 0.0,
+    ));
+    // A altura é `pitch × voltas = 0,42`, centrada: z vai de −0,21 a +0,21.
+    for (nome, x, y, z) in [
+        ("centro do tubo, base (φ=0)", 0.30, 0.0, -0.21),
+        ("centro do tubo, 1 volta acima", 0.30, 0.0, -0.07),
+        ("centro do tubo, meia volta", -0.30, 0.0, -0.14),
+        ("entre duas voltas", 0.30, 0.0, -0.14),
+        ("no eixo", 0.0, 0.0, 0.0),
+        ("fora do cilindro", 0.45, 0.0, 0.0),
+        ("acima da laje", 0.30, 0.0, 0.26),
+    ] {
+        println!("  {nome:32} f = {:+.4}", m.at(x, y, z));
+    }
+    println!("  pior ‖∇f‖ na casca = {:.4}", pior_gradiente(&m, 0.5, 60));
+
+    println!("\n── GYROID: caixa 0,40 · célula 0,25 · parede 0,02 ──");
+    let g = Field::from_tree(&ph2d_field_eval::ops_lattice::sd_gyroid(
+        [0.40; 3], 0.25, 0.02, 0.0, 0.0,
+    ));
+    // A origem está SOBRE a superfície (`g(0,0,0) = 0`), logo dentro da parede.
+    for (nome, x, y, z) in [
+        ("a origem, que está na superfície", 0.0, 0.0, 0.0),
+        ("meia célula em X", 0.125, 0.0, 0.0),
+        ("um canto da caixa", 0.40, 0.40, 0.40),
+        ("fora da caixa", 0.55, 0.0, 0.0),
+    ] {
+        println!("  {nome:34} f = {:+.4}", g.at(x, y, z));
+    }
+    println!("  pior ‖∇f‖ na casca = {:.4}", pior_gradiente(&g, 0.45, 70));
+}
+
+/// A varredura que escolhe as cercas da W124.
+#[test]
+#[ignore = "instrumento"]
+fn probe_w124_fences() {
+    use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, Primitive, Xform};
+    let marcha = |p: &Primitive| -> Option<String> {
+        let mut q = p.clone();
+        ph2d_field::clamp_round(&mut q);
+        let doc = FieldDoc::new(
+            vec![Node::new(Xform::IDENTITY, NodeKind::Leaf(q))],
+            NodeId(0),
+        )
+        .ok()?;
+        let passo = f64::from(ph2d_field_eval::safe_march_step(&doc));
+        let f = Field::new(&doc);
+        Some(format!("{:.4}", passo * pior_gradiente(&f, 1.0, 70)))
+    };
+    println!("\n── MOLA: 2·tubo / passo ──");
+    for f in [0.2, 0.4, 0.6, 0.8, 0.9, 0.95] {
+        let p = Primitive::Helix {
+            radius: 0.30,
+            pitch: 0.14,
+            turns: 3.0,
+            thickness: 0.14 * f * 0.5,
+            round: 0.005,
+            chamfer: 0.0,
+        };
+        println!("  enchimento {f:4.2}: {:?}", marcha(&p));
+    }
+    println!("\n── MOLA: voltas ──");
+    for t in [1.0, 2.0, 4.0, 8.0, 16.0, 32.0] {
+        let p = Primitive::Helix {
+            radius: 0.30,
+            pitch: 0.14,
+            turns: t,
+            thickness: 0.045,
+            round: 0.012,
+            chamfer: 0.0,
+        };
+        println!("  voltas {t:5.1}: {:?}", marcha(&p));
+    }
+    println!("\n── GYROID: células no bloco (0,8 de lado) ──");
+    for n in [1.0, 2.0, 4.0, 8.0, 16.0] {
+        let cell = 0.8 / n;
+        let p = Primitive::Gyroid {
+            half: [0.40; 3],
+            cell,
+            thickness: cell * 0.11,
+            round: cell * 0.05,
+            chamfer: 0.0,
+        };
+        println!("  {n:4.1} células: {:?}", marcha(&p));
+    }
+    println!("\n── GYROID: 2·parede / célula ──");
+    for f in [0.1, 0.3, 0.5, 0.7, 0.9, 0.97] {
+        let p = Primitive::Gyroid {
+            half: [0.40; 3],
+            cell: 0.20,
+            thickness: 0.20 * f * 0.5,
+            round: 0.004,
+            chamfer: 0.0,
+        };
+        println!("  enchimento {f:4.2}: {:?}", marcha(&p));
+    }
+}

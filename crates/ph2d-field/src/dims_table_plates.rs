@@ -291,6 +291,10 @@ pub(super) fn dims_plate(p: &Primitive) -> Vec<Dim> {
         p @ (Primitive::Spiral { .. } | Primitive::Document { .. }) => {
             super::dims_table_flow::dims_curve(p)
         }
+        // ⭐ **E a MOLA e a REDE** (W124).
+        p @ (Primitive::Helix { .. } | Primitive::Gyroid { .. }) => {
+            super::dims_table_flow::dims_lattice(p)
+        }
         // ⚠️ **Inalcançável pelo caminho do produto** — ver o cabeçalho: o único chamador nomeia as
         // catorze chapas. Um `Vec` vazio e não um `panic`: uma forma nova esquecida aqui tem de
         // aparecer como um painel sem linhas no gate que a conta, e não derrubar o app.

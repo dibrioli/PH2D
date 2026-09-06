@@ -322,5 +322,19 @@ pub fn bounding_half_extents(p: &Primitive) -> [f32; 3] {
             half_height,
             ..
         } => [*half_width, half_span + wave, *half_height],
+        // ─────────────────────────── W124 ───────────────────────────
+        // ⚠️ **A altura é `pitch × turns`, e a laje corta lá** — o tubo não passa dela.
+        Primitive::Helix {
+            radius,
+            pitch,
+            turns,
+            thickness,
+            ..
+        } => {
+            let fora = radius + thickness;
+            [fora, fora, pitch * turns * 0.5]
+        }
+        // ⭐ **A caixa É a peça** — o gyroid é cortado por ela.
+        Primitive::Gyroid { half, .. } => *half,
     }
 }

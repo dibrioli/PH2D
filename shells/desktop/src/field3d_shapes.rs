@@ -452,6 +452,19 @@ pub(crate) const SHAPES: &[Shape] = &[
         family: Family::Plates,
         make: Make::Formula(a_document),
     },
+    // ─────────────────────────── W124 ───────────────────────────
+    // ⭐⭐ **A MOLA vai para `Rings`** — ela tem furo no meio por construção, que é o que a família
+    // diz que é —, e a **REDE** para `Blocks`, porque a caixa É a peça.
+    Shape {
+        key: "panel.model3d.add.helix",
+        family: Family::Rings,
+        make: Make::Formula(a_helix),
+    },
+    Shape {
+        key: "panel.model3d.add.gyroid",
+        family: Family::Blocks,
+        make: Make::Formula(a_gyroid),
+    },
     Shape {
         key: "panel.model3d.add.torus",
         family: Family::Rings,

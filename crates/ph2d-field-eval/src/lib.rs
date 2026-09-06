@@ -39,6 +39,8 @@ pub mod ops_box;
 /// ⭐ O FLUXOGRAMA — ver [`ops_flowchart`].
 pub mod ops_flowchart;
 pub mod ops_joint;
+/// ⭐ O GYROID e a família das redes — ver [`ops_lattice`].
+pub mod ops_lattice;
 pub(crate) mod ops_norm;
 /// ⭐ Os blocos 2D partilhados por toda chapa — ver [`ops_plate2d`].
 pub(crate) mod ops_plate2d;

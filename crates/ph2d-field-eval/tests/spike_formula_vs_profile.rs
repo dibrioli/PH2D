@@ -130,6 +130,41 @@ fn measure_formula_against_drawn() {
             cost(&extrusion(n)),
         );
     }
+    // ⭐⭐ **As duas da W124** — a pergunta do dono era se a fórmula é mais leve, e a rede é o caso
+    // difícil: seis chamadas de trigonometria por ponto.
+    linha(
+        "mola (fórmula)",
+        cost(&doc(Primitive::Helix {
+            radius: 0.30,
+            pitch: 0.14,
+            turns: 3.0,
+            thickness: 0.045,
+            round: 0.0,
+            chamfer: 0.0,
+        })),
+    );
+    linha(
+        "gyroid (fórmula)",
+        cost(&doc(Primitive::Gyroid {
+            half: [0.40; 3],
+            cell: 0.20,
+            thickness: 0.022,
+            round: 0.0,
+            chamfer: 0.0,
+        })),
+    );
+    linha(
+        "espiral (fórmula)",
+        cost(&doc(Primitive::Spiral {
+            radius: 0.09,
+            pitch: 0.15,
+            turns: 3.0,
+            thickness: 0.04,
+            half_height: 0.10,
+            round: 0.0,
+            chamfer: 0.0,
+        })),
+    );
 }
 
 /// ⭐⭐ **E o CONTROLO que a pergunta pede: a MESMA forma pelos dois caminhos.**

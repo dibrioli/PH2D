@@ -431,6 +431,25 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             round: 0.04,
             chamfer: 0.0,
         },
+        // ─────────────────────────── W124 ───────────────────────────
+        // ⚠️ **Três voltas**: com uma não há vale entre voltas, que é onde a fórmula do tubo se
+        // exercita.
+        PrimitiveKind::Helix => Primitive::Helix {
+            radius: 0.30,
+            pitch: 0.14,
+            turns: 3.0,
+            thickness: 0.045,
+            round: 0.012,
+            chamfer: 0.0,
+        },
+        // ⚠️ **Quatro células no bloco** — com uma só, o que se mede é um pedaço de superfície.
+        PrimitiveKind::Gyroid => Primitive::Gyroid {
+            half: [0.40; 3],
+            cell: 0.20,
+            thickness: 0.022,
+            round: 0.012,
+            chamfer: 0.0,
+        },
     })
 }
 

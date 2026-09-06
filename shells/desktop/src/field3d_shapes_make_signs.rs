@@ -212,3 +212,35 @@ pub(crate) fn a_document(r: f32) -> Primitive {
         chamfer: 0.0,
     }
 }
+
+// ─────────────────────────── W124 — a mola e a rede ───────────────────────────
+
+/// ⚠️ **Três voltas e o tubo a `30 %` do passo** — com uma volta não se lê como mola, e com o tubo
+/// a encher o passo ela vira um cilindro.
+pub(crate) fn a_helix(r: f32) -> Primitive {
+    let pitch = r * 0.42;
+    Primitive::Helix {
+        radius: r * 0.62,
+        pitch,
+        turns: 3.0,
+        thickness: pitch * 0.15,
+        // ⚠️ **Metade da meia-espessura do tubo**: a parede do filete de uma mola é o raio do tubo,
+        // e ele é fino de propósito.
+        round: pitch * 0.05,
+        chamfer: 0.0,
+    }
+}
+
+/// ⚠️ **Quatro células no bloco** — com duas não se lê como rede, e a parede nasce a `20 %` da
+/// célula, que é a proporção com que a impressão 3D a usa.
+pub(crate) fn a_gyroid(r: f32) -> Primitive {
+    let cell = r * 0.5;
+    Primitive::Gyroid {
+        half: [r; 3],
+        cell,
+        thickness: cell * 0.1,
+        // ⚠️ **A parede do filete aqui é a PAREDE da rede**, que é `10 %` da célula.
+        round: cell * 0.03,
+        chamfer: 0.0,
+    }
+}

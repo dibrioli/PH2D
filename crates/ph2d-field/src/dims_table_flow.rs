@@ -265,3 +265,81 @@ pub(crate) fn dims_curve(p: &Primitive) -> Vec<Dim> {
         _ => Vec::new(),
     }
 }
+
+/// As linhas da mola e do gyroid (W124).
+#[must_use]
+pub(crate) fn dims_lattice(p: &Primitive) -> Vec<Dim> {
+    match p {
+        Primitive::Helix {
+            radius,
+            pitch,
+            turns,
+            thickness,
+            round,
+            chamfer,
+        } => vec![
+            Dim {
+                key: "field.dim.radius",
+                value: *radius,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.pitch",
+                value: *pitch,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.turns",
+                value: *turns,
+                span: Span::Wall(crate::MAX_SPIRAL_TURNS),
+            },
+            // ⚠️ **A MESMA parede da espiral, e é a mesma lei**: com o tubo a encher o passo as
+            // voltas encostam-se e a mola vira um cilindro.
+            Dim {
+                key: "field.dim.thickness",
+                value: thickness * 2.0,
+                span: Span::Wall((pitch * crate::MAX_SPIRAL_FILL).min(radius * 1.8)),
+            },
+            chamfer_dim(p, *chamfer),
+            round_dim(p, *round),
+        ],
+        Primitive::Gyroid {
+            half,
+            cell,
+            thickness,
+            round,
+            chamfer,
+        } => vec![
+            Dim {
+                key: "field.dim.width",
+                value: half[0] * 2.0,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.height",
+                value: half[1] * 2.0,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.depth",
+                value: half[2] * 2.0,
+                span: Span::Positive,
+            },
+            // ⚠️ **A célula tem PAREDE na peça**: uma célula maior do que o bloco não desenha uma
+            // rede, desenha um pedaço de superfície solto.
+            Dim {
+                key: "field.dim.cell",
+                value: *cell,
+                span: Span::Wall(half[0].min(half[1]).min(half[2]) * 2.0 / crate::MIN_GYROID_CELLS),
+            },
+            Dim {
+                key: "field.dim.thickness",
+                value: thickness * 2.0,
+                span: Span::Wall(cell * crate::MAX_GYROID_FILL),
+            },
+            chamfer_dim(p, *chamfer),
+            round_dim(p, *round),
+        ],
+        _ => Vec::new(),
+    }
+}

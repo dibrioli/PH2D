@@ -517,5 +517,8 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
         Primitive::Spiral { .. } | Primitive::Document { .. } => {
             super::validate_flow::validate_curve(p, idx)
         }
+        Primitive::Helix { .. } | Primitive::Gyroid { .. } => {
+            super::validate_flow::validate_lattice(p, idx)
+        }
     }
 }

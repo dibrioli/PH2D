@@ -117,6 +117,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.add.off_page" => "Off-page Connector",
         "panel.model3d.add.spiral" => "Spiral",
         "panel.model3d.add.document" => "Document",
+        // ⚠️ **"Coil" e não "Helix"**: é a palavra que um artista usa para a peça (mola, bobina),
+        // e "helix" é a curva matemática.
+        "panel.model3d.add.helix" => "Coil",
+        "panel.model3d.add.gyroid" => "Gyroid Lattice",
         "panel.model3d.add.bolt" => "Lightning Bolt",
         "panel.model3d.add.shield" => "Shield",
         "panel.model3d.add.tag" => "Tag",
@@ -311,6 +315,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.dim.pitch" => "Pitch",
         "field.dim.turns" => "Turns",
         "field.dim.wave" => "Wave",
+        "field.dim.cell" => "Cell",
         "field.dim.hole" => "Hole",
         "field.dim.notch" => "Notch",
         // ⚠️ Em GRAUS na cabeça do artista, mas o documento guarda radianos — o painel mostra o

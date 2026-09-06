@@ -80,6 +80,8 @@ pub fn shape_name(shape: &NodeShape) -> &'static str {
             Primitive::OffPage { .. } => "Off-page Connector",
             Primitive::Spiral { .. } => "Spiral",
             Primitive::Document { .. } => "Document",
+            Primitive::Helix { .. } => "Coil",
+            Primitive::Gyroid { .. } => "Gyroid Lattice",
         },
     }
 }

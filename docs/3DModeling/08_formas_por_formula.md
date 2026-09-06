@@ -368,8 +368,14 @@ contra a **literatura de campos de distância**, que é uma lista maior e de out
 formas não vêm de um menu de desenho, vêm de uma **fórmula publicada**.
 
 ⚠️⚠️ **E a régua de entrada é a mesma do §3.1** — *quantas vezes o artista a quer*, e **não** o
-preço. Uma primitiva de fórmula custa `1,00×`–`1,03×` a esfera; uma desenhada com 192 lados custa
-**`101×`** ([doc 06 §124](06_resultados_cena_e_gizmo.md)).
+preço.
+
+⛔⛔ **Mas o número do preço estava ERRADO nesta frase, e a W124 mediu-o** (doc 06 §125.1): *«uma
+primitiva de fórmula custa `1,00×`–`1,03×` a esfera»* vale para a família **algébrica** (caixa,
+cilindro, toro: `1,00`–`1,25×`) e **não** para a **transcendente** — a espiral custa `9,7×`, a mola
+`11,9×` e o gyroid **`28,4×`**, porque o que custa é o `atan2`, o `sin` e o `cos`. ⭐ A conclusão
+não muda: o gyroid é a primitiva mais cara desta casa e ainda assim é `4,7×` mais barato do que um
+contorno de 192 segmentos (`134×`) — que, no caso dele, nem sequer se pode desenhar.
 
 ### §7.1 — A fonte, e o que ela diz que é EXACTO
 
@@ -440,7 +446,7 @@ um item de lote.*
 
 | lote | formas | por quê |
 |---|---|---|
-| **4** (2) | **Hélice/mola** · **Gyroid** | as duas de maior alcance, e as duas cujo mecanismo esta linha **acabou de pagar** (a volta por `round`, o minorante por gradiente) |
+| ✅ **4** (2) | **FECHADO na W124** — *Coil* e *Gyroid Lattice*. Mecanismo: [doc 06 §125](06_resultados_cena_e_gizmo.md) |
 | **5** (6) | **Plane** · **Death Star** · **Rounded Cylinder** · **Horseshoe** · **Tunnel** · **Egg** | as exactas do catálogo, baratas e que o `§4.2` ou o uso comum já pediam |
 | **6** (5) | **Polygon(N)** · **Triangle** · **Uneven Capsule** · **Rounded X** · **Stairs** | as que hoje **obrigam a desenhar** — e desenhar custa `101×` |
 | **7** (2) | **Superquadrática** · **Superfórmula** | um knob que morfa uma família inteira; é onde a fórmula humilha o desenho |

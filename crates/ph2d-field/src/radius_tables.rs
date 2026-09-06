@@ -262,6 +262,11 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
             half_height,
             ..
         } => half_width.min(*half_span).min(*half_height),
+        // ─────────────────────────── W124 ───────────────────────────
+        Primitive::Helix { thickness, .. } => *thickness,
+        Primitive::Gyroid {
+            cell, thickness, ..
+        } => thickness.min(*cell),
     }
 }
 
@@ -622,6 +627,14 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
             half_height,
             ..
         } => hyp(hyp(*half_width, half_span + wave), *half_height),
+        Primitive::Helix {
+            radius,
+            pitch,
+            turns,
+            thickness,
+            ..
+        } => hyp(radius + thickness, pitch * turns * 0.5),
+        Primitive::Gyroid { half, .. } => hyp(hyp(half[0], half[1]), half[2]),
         // ⚠️ **As faixas do visto passam do vértice, e a espessura sai para fora das pontas.**
         Primitive::Check {
             half_width,

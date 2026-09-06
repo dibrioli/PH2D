@@ -12100,3 +12100,103 @@ de anéis concêntricos passa em todos os pontos do ângulo zero e reprova nesse
 censos de obsolescência a confirmarem que os números são reais) · as **7** provas novas · shell ·
 fmt · clippy · LOC.
 **Smoke:** *Spiral* e *Document* na paleta, e a cena `=21`.
+
+---
+
+## §125 — W124: a MOLA e o GYROID — e o preço de uma fórmula **não** é `1,03×` a esfera (06/09)
+
+> **Enio, 05/09:** *«vamos lá. siga implementando»* — o lote 4 do levantamento
+> ([doc 08 §7.5](08_formas_por_formula.md)): as duas de maior alcance, e as duas cujo mecanismo esta
+> linha acabou de pagar.
+
+### §125.1 — ⛔⛔⛔ E a primeira coisa que a medição fez foi DESMENTIR uma frase minha
+
+O [doc 08 §3.1](08_formas_por_formula.md) diz, desde Agosto, que *«uma primitiva de fórmula custa
+`1,00×`–`1,03×` a esfera»* — e eu repeti-a no §7 desta semana. **É verdade para a família
+algébrica e é falsa para a transcendente:**
+
+| forma | ns/ponto | × a esfera |
+|---|---:|---:|
+| esfera · caixa · cilindro · toro | `1,48`–`1,85` | `1,00`–`1,25` |
+| **espiral** | `14,40` | **`9,7×`** |
+| **mola** | `17,64` | **`11,9×`** |
+| **gyroid** | `42,10` | **`28,4×`** |
+| extrusão desenhada, 192 lados | `199,14` | `134×` |
+
+⇒ *o que custa é o `atan2`, o `sin` e o `cos`* — a espiral tem um, a mola tem um, o gyroid tem
+**seis**. ⚠️ **E a conclusão que o dono queria continua de pé, com folga:** o gyroid é a primitiva
+mais cara desta casa e ainda assim é `4,7×` mais barato do que um contorno de 192 segmentos — que,
+no caso dele, nem sequer se pode desenhar.
+
+### §125.2 — A mola é a espiral com o eixo trocado
+
+Ali a volta mais próxima saía do **raio**; aqui sai da **altura** (`k = round((z'/b − φ)/2π)`), e o
+`‖∇‖` a dividir é **o mesmo** `√(ρ²+b²)/ρ`. ⚠️ Inclusive a **pena** das pontas: a laje que corta o
+fim é quase paralela ao tubo (`85°` entre a tangente e a normal dela), e a ponta afina como a da
+espiral — `5,6 %` da superfície sobre um vinco de `56,0°`, **declarada** com o mesmo mecanismo.
+
+### §125.3 — ⭐⭐ O gyroid: o divisor foi MEDIDO, e é METADE do limite grosso
+
+`sin x·cos y + sin y·cos z + sin z·cos x = 0`. A desigualdade triangular ingénua dá
+`‖∇g‖ ≤ 2√3 = 3,4641`; varrida a célula (`140³`), a medição dá **`1,7315`** — isto é, `√3`.
+E **sobre a superfície** o gradiente vive entre `1,4144` e `1,7315`, logo o campo fica no pior sítio
+só **`1,22×`** mais fraco que uma distância verdadeira. *Escrever `2√3` teria custado o dobro dos
+passos de marcha por uma desigualdade que ninguém mediu.*
+
+⭐ **E a cerca do enchimento tem DEMONSTRAÇÃO:** o máximo de `|g|` é exactamente `3/2` (medido sobre
+`220³`), logo a rede **fecha** — o bloco passa a maciço — em
+`2·thickness/cell = 3/(2π√3) = 0,2757`. A parede fica em `0,25`. ⚠️ E a medição confirma-o pelo
+outro lado: a partir de `0,3` a marcha lê `0,7071` **cravado**, que é o valor de uma **caixa**.
+
+### §125.4 — ⛔⛔⛔ E a caixa do gyroid entrava COMPOSTA — a régua deu as coordenadas
+
+A sonda de arestas acusou `46,9 %` da superfície por cortar, e a
+[`probe_where_the_chamfer_misses`] pôs os `1058` pontos **todos nos oito cantos** (`±0,400` nos três
+eixos, a `70,9°`). ⇒ as quinas da caixa são um `max` **dentro** da fórmula dela, e nenhuma junta por
+fora lhes chega. A cura já existia e tinha o nome escrito: a
+[`ops_box::box_pieces`](../../crates/ph2d-field-eval/src/ops_box.rs), criada para a cunha pela
+**mesma** razão — *quem mistura precisa das peças, não do resultado*. A quebra de curvatura caiu de
+`38,54` para `7,82` no mesmo commit.
+
+### §125.5 — ⭐⭐⭐ E a régua que separa uma CRISTA DE FILETE da CURVATURA da forma
+
+Sobravam `7,82` contra uma barra de `2,0`, e a pergunta certa não é *«quanto»* — é *«de quem»*.
+A sonda nova [`is_the_curvature_break_the_fillets_fault`] mede o número com o filete a **zero** e no
+**máximo**:
+
+| forma | sem filete | com filete | o filete acrescenta |
+|---|---:|---:|---:|
+| **gyroid** | `36,74` | `7,86` | **`−28,88`** |
+| espiral | `50,43` | `2,16` | `−48,27` |
+| gota | `28,75` | `4,63` | `−24,12` |
+| nuvem | `3,06` | `8,58` | `+5,52` |
+
+⇒ **no gyroid o filete REDUZ a quebra `4,7×`** — ele não deixa crista nenhuma, tira-a. O que sobra é
+a curvatura própria de uma **superfície mínima tripla-periódica**, que é curva em todo o ponto por
+definição. ⚠️ *A premissa da régua — «numa superfície de curvatura contínua ela é pequena em toda
+parte» — vale para peças feitas de faces simples, e esta não é uma delas.* A nuvem, com `+5,52`, é o
+controlo: nela o filete **acrescenta** mesmo, e é por isso que está declarada.
+
+### §125.6 — ⚠️ E metade do outro número era da RÉGUA, não da forma
+
+O filete ainda não alcançava `19,4 %` da superfície. O cabeçalho da própria sonda declara que ela
+mede com o passo (`0,004`) **muito menor que o filete** — e com a parede fina do representante o
+filete máximo é `0,022`, metade dele `0,011`, e a normal roda `0,004/0,011 = 21°` por passo, a um
+grau da barra de `25°`: *ela lia o próprio filete como aresta*. Com um representante de parede
+grossa (`0,045`, rotação `10°`) a leitura cai para **`7,6 %`**.
+
+⭐ E o que sobra tem coordenadas: a sonda nova [`probe_where_the_fillet_misses`] põe os `321` pontos
+**todos** em `|coordenada| ≈ 0,385`–`0,390`, isto é, **na face da caixa**. Uma superfície periódica
+cortada por um plano **roça-o nalgum sítio, sempre** — ali a intersecção tem uma cúspide e o filete
+não tem o que morder. É a família da gota, da nuvem e do raio, e fica declarada com o número.
+
+### §125.7 — O corte de LOC, por ASSUNTO
+
+`dims_scale.rs` passou a `714` das `700` ao receber as duas. ⛔ *Split, nunca allowlist* —
+`dims_scale_signs.rs` fica com as vinte e três formas que as waves W119–W124 acrescentaram, e o
+irmão com os sólidos e as chapas de geometria.
+
+**Gates:** censo **24/24** · arestas **10/10** (com as duas declarações novas e os censos de
+obsolescência a confirmá-las) · as **7** provas novas · os quatro lotes anteriores (7, 11, 8, 9) ·
+shell **212 suites / 0 falhas** · fmt · clippy · LOC (workspace e shell).
+**Smoke:** *Coil* e *Gyroid Lattice* na paleta, e a cena `=22`.

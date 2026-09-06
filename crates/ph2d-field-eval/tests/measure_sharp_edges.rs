@@ -283,6 +283,60 @@ fn curvature_break(p: &Primitive, seeds: usize) -> (f64, f64) {
     (pior, if conta == 0 { 0.0 } else { soma / conta as f64 })
 }
 
+/// ⭐ **ONDE o FILETE não chega** — a irmã da [`probe_where_the_chamfer_misses`], para a outra
+/// régua. ⚠️ Ela **traça a forma já filetada**, e não a crua: a pergunta é onde a superfície final
+/// ainda tem vinco, não quais dos vincos antigos sobreviveram.
+///
+/// `PH2D_MISS=<forma> cargo test … -- --ignored probe_where_the_fillet_misses --nocapture`
+#[test]
+#[ignore = "sonda: imprime as coordenadas, o veredito é do gate irmão"]
+fn probe_where_the_fillet_misses() {
+    let alvo = std::env::var("PH2D_MISS").unwrap_or_else(|_| "gyroid".into());
+    for k in PrimitiveKind::ALL {
+        if k.key() != alvo {
+            continue;
+        }
+        let p = representative(k).expect("rep");
+        let Some(q) = with_round(&p, 0.5) else {
+            continue;
+        };
+        let (pontos, total, pior) = traverse(&q, 2048, 4);
+        let vincos = only_creases(&pontos);
+        println!(
+            "  {} de {total} amostras sobre vinco ({:.1} %), pior {pior:.1}°",
+            vincos.len(),
+            100.0 * vincos.len() as f64 / total as f64
+        );
+        for (w, ang) in vincos.iter().take(18) {
+            println!("    [{:+.3} {:+.3} {:+.3}]  {ang:.1}°", w[0], w[1], w[2]);
+        }
+    }
+}
+
+/// ⛔ **A PERGUNTA QUE SEPARA UMA CRISTA DE FILETE DA CURVATURA PRÓPRIA DA SUPERFÍCIE.**
+///
+/// Se o número não se mexe entre o filete a ZERO e o filete no MÁXIMO, então o que a régua lê não é
+/// o que o filete deixou — é o que a forma **é**.
+#[test]
+#[ignore = "sonda: separa a crista do filete da curvatura da forma"]
+fn is_the_curvature_break_the_fillets_fault() {
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else { continue };
+        let Some(cheio) = with_round(&p, 0.999) else {
+            continue;
+        };
+        let (_, sem) = curvature_break(&p, 1024);
+        let (_, com) = curvature_break(&cheio, 1024);
+        if com > 2.0 {
+            println!(
+                "  {:<14} sem filete {sem:6.2} | com filete {com:6.2} | o filete acrescenta {:+.2}",
+                k.key(),
+                com - sem
+            );
+        }
+    }
+}
+
 /// ⭐ **ONDE ficam as quebras de curvatura** — a irmã de [`where_the_creases_are`], para a pergunta
 /// que a normal não responde.
 #[test]
@@ -816,6 +870,33 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             round: 0.0,
             chamfer: 0.0,
         },
+        // ─────────────────────────── W124 ───────────────────────────
+        // ⚠️ **Três voltas**: com uma não há vale entre voltas, que é onde a fórmula do tubo se
+        // exercita.
+        PrimitiveKind::Helix => Primitive::Helix {
+            radius: 0.30,
+            pitch: 0.14,
+            turns: 3.0,
+            thickness: 0.045,
+            round: 0.0,
+            chamfer: 0.0,
+        },
+        // ⚠️⚠️ **DUAS células e a parede GROSSA, e é uma escolha da RÉGUA, não da forma.** O
+        // cabeçalho desta sonda declara que ela mede com o passo (`0,004`) **muito menor que o
+        // filete**; com a parede a `0,022` o filete máximo é `0,022`, metade dele é `0,011`, e a
+        // normal roda `0,004/0,011 = 21°` por passo — a um grau da barra de `25°`. *A sonda passaria
+        // a ler o próprio filete como aresta.* Com a parede a `0,045` a rotação cai para `10°`.
+        //
+        // ⚠️ O censo usa o representante de QUATRO células, que é o que a paleta cria — as duas
+        // tabelas divergem **de propósito**, e é a mesma razão de todas as outras aqui nascerem com
+        // `round = 0`.
+        PrimitiveKind::Gyroid => Primitive::Gyroid {
+            half: [0.40; 3],
+            cell: 0.40,
+            thickness: 0.045,
+            round: 0.0,
+            chamfer: 0.0,
+        },
     })
 }
 
@@ -976,7 +1057,7 @@ fn where_the_creases_are() {
 /// obsolescência não desce, vira licença* — por isso o gate irmão
 /// [`the_apex_exception_list_has_no_stale_entries`] pergunta, a cada corrida, se cada entrada
 /// **ainda** estoura a barra. Uma que deixe de estourar tem de ser **apagada**.
-const APEX_EXCEPTION: [(&str, f64); 5] = [
+const APEX_EXCEPTION: [(&str, f64); 7] = [
     // ⚠️ **As folgas saem do que o GATE mede**, e não da tabela da sonda: ela amostra `8192`
     // pontos e o gate `2048×4`, e a `pie` lê `1,1 %` numa escala e `2,57 %` na outra.
     // *Uma folga calibrada no instrumento errado descreve outra coisa.*
@@ -1003,6 +1084,25 @@ const APEX_EXCEPTION: [(&str, f64); 5] = [
     // partilha a faixa de raio a outro ângulo). Ver o cabeçalho da
     // [`ph2d_field_eval::ops_spiral`].
     ("spiral", 3.5),
+    // ⭐ **A MESMA PENA, na MOLA** (W124) — é a mesma forma com o eixo trocado, e o corte do fim é
+    // uma laje em vez de um anel. A laje é quase paralela ao tubo (a tangente faz `85°` com a
+    // normal dela numa mola típica), logo a ponta afina exactamente como a da espiral. Medido:
+    // `5,6 %` da superfície sobre um vinco de `56,0°`. Ver o cabeçalho da
+    // [`ph2d_field_eval::ops_spiral`] para os três cortes alternativos que foram medidos abaixo.
+    ("helix", 6.0),
+    // ⭐⭐⭐ **O GYROID, e a régua está certa: é uma junção TANGENTE, e há coordenadas.**
+    //
+    // A sonda irmã [`probe_where_the_fillet_misses`] põe os `321` pontos de vinco **todos** em
+    // `|coordenada| ≈ 0,385`–`0,390` — isto é, **na face da caixa**, onde a folha da rede a
+    // encontra. ⚠️ Uma superfície periódica cortada por um plano **roça-o nalgum sítio, sempre**:
+    // ali a curva de intersecção tem uma cúspide, e um filete não tem o que morder. É a mesma
+    // família da gota, da nuvem e do raio ([`TANGENT_JOIN_EXCEPTION`]).
+    //
+    // ⛔ **E metade do número era da RÉGUA, não da forma:** com o representante de parede fina o
+    // filete máximo é `0,022`, metade dele `0,011`, e a normal roda `21°` por passo da sonda —
+    // *ela lia o próprio filete como aresta*. Com a parede a `0,045` a leitura cai de `19,4 %` para
+    // `7,6 %`. Ver a nota no representante.
+    ("gyroid", 8.0),
     // ⭐ **A CHAVE ESTEVE AQUI DUAS VEZES e SAIU as duas** (05/09), e foi o censo desta lista e o do
     // chanfro que a expulsaram. Eu chamei ao nariz dela um «ápice de `0°`» — ⛔ **não é**: a sonda
     // localizou os `33` pontos por cortar **todos no mesmo sítio**, a `55,6°`. Era uma quina a
@@ -1416,13 +1516,23 @@ fn the_valley_of_a_star_meets_the_cap_without_a_crease() {
 /// ⚠️ **E o RAIO entra pela mesma porta**: a faixa do filete dele encontra as faces planas do
 /// zigue-zague, e a curvatura salta de `1/r` para `0` em cada uma das seis quinas. ⛔ Curar isso é a
 /// mesma A/B que a gota já pagou — e nela a união arredondada mediu **pior em toda a faixa**.
-const TANGENT_JOIN_EXCEPTION: [(&str, f64); 4] = [
+const TANGENT_JOIN_EXCEPTION: [(&str, f64); 5] = [
     ("drop", 4.6),
     ("cloud", 9.0),
     ("bolt", 4.2),
     // ⭐ **A mesma PENA da espiral, vista pela outra régua** — ver [`APEX_EXCEPTION`] para o
     // mecanismo e para os três cortes que foram medidos e recusados.
     ("spiral", 2.2),
+    // ⭐⭐⭐ **O GYROID, e aqui a régua não está a medir o filete — está a medir a FORMA.**
+    //
+    // A sonda irmã [`is_the_curvature_break_the_fillets_fault`] pergunta o número com o filete a
+    // ZERO e no MÁXIMO. No gyroid ele vai de **`36,74` para `7,86`**: o filete **reduz** a quebra
+    // `4,7×`, isto é, ele não deixa crista nenhuma — tira-a. O que sobra é a curvatura própria de
+    // uma **superfície mínima tripla-periódica**, que é curva em todo o ponto por definição.
+    //
+    // ⚠️ *A premissa desta régua — «numa superfície de curvatura contínua ela é pequena em toda
+    // parte» — vale para peças feitas de faces simples, e o gyroid não é uma delas.*
+    ("gyroid", 8.5),
 ];
 
 fn tangent_join_slack(key: &str) -> Option<f64> {

@@ -285,3 +285,36 @@ pub const MAX_SPIRAL_FILL: f32 = 0.95;
 /// quarto da altura, e é onde esta parede fica. ⚠️ Medida: `0` → `0,707`, `1,0` → `0,966`,
 /// `1,5` → `0,983` — de novo sem joelho.
 pub const MAX_DOCUMENT_WAVE: f32 = 1.5;
+
+// ─────────────────────────── W124 — as cercas da rede ───────────────────────────
+//
+// ⚠️ **A mola reutiliza as duas da espiral** ([`MAX_SPIRAL_TURNS`] e [`MAX_SPIRAL_FILL`]), e não
+// por economia: é a **mesma lei** — com o tubo a encher o passo, as voltas encostam-se e a peça
+// deixa de ser uma mola. Medido no enchimento, `0,20` a `0,95`: `0,985` a `0,997`, sem joelho.
+//
+// ⛔ **E a varredura das VOLTAS da mola tem um artefacto que é preciso nomear:** acima de `~8`
+// voltas a peça mede mais do que a caixa da sonda, e o `0,7065` que ela imprime é o da **laje**, não
+// o da mola. *Uma régua com a peça a sair da caixa mede outra peça* — a leitura válida vai até `8`
+// (`0,998`), e o campo continua a não saber quantas voltas há.
+
+/// ⭐ **Quantas células do gyroid o bloco tem de conter, no eixo mais curto.**
+///
+/// # É IDENTIDADE, e a marcha não tem voto
+///
+/// Medido (`probe_w124_fences`): `1` célula lê `0,840` e `16` lêem `0,745` — sem joelho, e a peça
+/// com **uma** célula é um pedaço de superfície solto, não uma rede.
+pub const MIN_GYROID_CELLS: f32 = 2.0;
+
+/// ⭐⭐⭐ **Que fracção da célula a parede pode ocupar** — `2·thickness ≤ cell × isto`.
+///
+/// # A cerca tem DEMONSTRAÇÃO, e não é uma medição de relógio
+///
+/// O sólido é `|g| ≤ h` com `h = thickness · k · √3` (ver [`ph2d_field_eval::ops_lattice`]), e o
+/// máximo de `|g|` é **exactamente `3/2`** (medido sobre `220³` da célula, e é o valor analítico).
+/// ⇒ a rede **FECHA** — o bloco passa a maciço — quando
+///
+/// `2·thickness/cell = 2·max|g| / (2π·√3) = 3/(2π√3) = 0,2757`.
+///
+/// ⚠️ E a medição confirma-o pelo outro lado: a partir de `0,3` a marcha lê `0,7071` **cravado**,
+/// que é o valor de uma **caixa** — ali já não há rede nenhuma para medir.
+pub const MAX_GYROID_FILL: f32 = 0.25;

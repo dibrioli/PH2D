@@ -586,6 +586,32 @@ pub enum Primitive {
         round: f32,
         chamfer: f32,
     },
+    // ─────────────────────────── W124 — a mola e a rede ───────────────────────────
+    /// ⭐⭐⭐ **MOLA / HÉLICE** — o tubo de raio `thickness` que dá `turns` voltas num cilindro de
+    /// raio `radius`, subindo `pitch` por volta.
+    ///
+    /// ⚠️ **Não é uma chapa**: ela não tem `half_height`, porque a altura dela é
+    /// `pitch × turns` — um número que já existe.
+    Helix {
+        radius: f32,
+        pitch: f32,
+        turns: f32,
+        thickness: f32,
+        round: f32,
+        chamfer: f32,
+    },
+    /// ⭐⭐⭐ **GYROID** — a parede de meia-espessura `thickness` em volta da superfície de Schoen,
+    /// com célula `cell`, recortada pela caixa `half`.
+    ///
+    /// ⚠️ **A distância a ela não tem forma fechada, e o módulo não precisa dela** — ver
+    /// [`ph2d_field_eval::ops_lattice`] para o divisor **medido**.
+    Gyroid {
+        half: [f32; 3],
+        cell: f32,
+        thickness: f32,
+        round: f32,
+        chamfer: f32,
+    },
 }
 
 impl Primitive {
@@ -643,6 +669,8 @@ impl Primitive {
             Primitive::OffPage { .. } => PrimitiveKind::OffPage,
             Primitive::Spiral { .. } => PrimitiveKind::Spiral,
             Primitive::Document { .. } => PrimitiveKind::Document,
+            Primitive::Helix { .. } => PrimitiveKind::Helix,
+            Primitive::Gyroid { .. } => PrimitiveKind::Gyroid,
         }
     }
 }

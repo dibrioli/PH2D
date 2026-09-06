@@ -1,4 +1,5 @@
-//! ⭐⭐⭐ **A ESPIRAL POR FÓRMULA** (W123) — a fita de Arquimedes, sem um único segmento desenhado.
+//! ⭐⭐⭐ **A ESPIRAL E A MOLA POR FÓRMULA** (W123–W124) — a fita de Arquimedes e a hélice, sem um
+//! único segmento desenhado.
 //!
 //! # ⛔⛔⛔ A recusa que estava escrita respondia a OUTRA pergunta
 //!
@@ -80,4 +81,46 @@ pub fn sd_spiral(
     let meio = (r0 + r_fim) * 0.5;
     let anel = (rho.clone() - Tree::constant(meio)).abs() - Tree::constant((r_fim - r0) * 0.5);
     slab_and_walls(&intersection_joint(&banda, &anel, e), half_height, e)
+}
+
+/// ⭐⭐⭐ **MOLA / HÉLICE** — o tubo de raio `thickness` que dá `turns` voltas num cilindro de raio
+/// `radius`, subindo `pitch` por volta.
+///
+/// # ⭐ É a ESPIRAL com o eixo trocado, e o mecanismo é o mesmo
+///
+/// Ali a volta mais próxima saía do **raio**; aqui sai da **altura**: `k = round((z'/b − φ)/2π)` com
+/// `z' = z + H/2`. ⚠️ E o `‖∇‖` a dividir é **o mesmo** `√(ρ² + b²)/ρ` — a conta que o faz aparecer
+/// é a dependência de `z_k` em `φ`, que é a mesma nos dois.
+///
+/// # ⚠️ O fim do tubo é uma LAJE em Z, e ela deixa a MESMA PENA da espiral
+///
+/// A altura é monótona no parâmetro, logo `z ∈ [−H/2, H/2]` é *exactamente* `t ∈ [0, 2π·turns]`.
+/// ⛔ Mas o tubo corre quase **na horizontal** (a tangente faz `85°` com a normal da laje numa mola
+/// típica), então o corte é quase tangente e a ponta afina ao longo de `t'/b` de ângulo — o mesmo
+/// mecanismo que a [`sd_spiral`] já declara, com os mesmos três cortes alternativos medidos abaixo.
+pub fn sd_helix(
+    radius: f64,
+    pitch: f64,
+    turns: f64,
+    thickness: f64,
+    round: f64,
+    chamfer: f64,
+) -> Tree {
+    let e = Edge::square(round, chamfer);
+    let tau = std::f64::consts::TAU;
+    let b = pitch / tau;
+    let altura = pitch * turns;
+    let rho = safe_sqrt(Tree::x().square() + Tree::y().square());
+    let phi = Tree::y().atan2(Tree::x());
+    let z0 = Tree::z() + Tree::constant(altura * 0.5);
+    let k = ((z0.clone() / Tree::constant(b) - phi.clone()) / Tree::constant(tau)).round();
+    let z_k = (phi + Tree::constant(tau) * k) * Tree::constant(b);
+    // ⭐ O divisor CONSTANTE, tomado no MENOR raio onde há matéria — ver o cabeçalho do módulo.
+    let dentro = (radius - thickness).max(thickness * 0.05);
+    let c = dentro / dentro.hypot(b);
+    let dr = rho - Tree::constant(radius);
+    let dz = z0 - z_k;
+    let tubo = safe_sqrt(dr.square() + dz.square()) * Tree::constant(c) - Tree::constant(thickness);
+    let laje = Tree::z().abs() - Tree::constant(altura * 0.5);
+    intersection_joint(&tubo, &laje, e)
 }

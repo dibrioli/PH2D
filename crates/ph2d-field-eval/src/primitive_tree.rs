@@ -644,5 +644,34 @@ fn primitive_raw(p: &Primitive) -> Tree {
             f64::from(round),
             f64::from(chamfer),
         ),
+        // ─────────────────────────── W124 ───────────────────────────
+        Primitive::Helix {
+            radius,
+            pitch,
+            turns,
+            thickness,
+            round,
+            chamfer,
+        } => crate::ops_spiral::sd_helix(
+            f64::from(radius),
+            f64::from(pitch),
+            f64::from(turns),
+            f64::from(thickness),
+            f64::from(round),
+            f64::from(chamfer),
+        ),
+        Primitive::Gyroid {
+            half,
+            cell,
+            thickness,
+            round,
+            chamfer,
+        } => crate::ops_lattice::sd_gyroid(
+            [f64::from(half[0]), f64::from(half[1]), f64::from(half[2])],
+            f64::from(cell),
+            f64::from(thickness),
+            f64::from(round),
+            f64::from(chamfer),
+        ),
     }
 }

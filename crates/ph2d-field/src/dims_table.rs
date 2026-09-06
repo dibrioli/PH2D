@@ -501,6 +501,8 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
         | Primitive::Display { .. }
         | Primitive::OffPage { .. }
         | Primitive::Spiral { .. }
-        | Primitive::Document { .. }) => super::dims_table_plates::dims_plate(p),
+        | Primitive::Document { .. }
+        | Primitive::Helix { .. }
+        | Primitive::Gyroid { .. }) => super::dims_table_plates::dims_plate(p),
     }
 }

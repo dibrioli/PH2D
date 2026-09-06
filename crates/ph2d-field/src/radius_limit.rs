@@ -297,6 +297,14 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
                 .min((half_span - wave * 0.5).max(0.0))
                 .min(*half_height),
         ),
+        // ─────────────────────────── W124 ───────────────────────────
+        // ⚠️ **O tubo é redondo**: as únicas arestas dele são os dois cortes das pontas, e quem as
+        // come é o raio do tubo.
+        Primitive::Helix { thickness, .. } => Some(*thickness),
+        // ⚠️ **A parede da rede é mais fina que a caixa**, quase sempre — e é ela que manda.
+        Primitive::Gyroid {
+            half, thickness, ..
+        } => Some(thickness.min(half[0]).min(half[1]).min(half[2])),
         // ⚠️ **O que sobra da fita entre o entalhe e a ponta** — não a meia-largura inteira.
         Primitive::Banner {
             half_width,

@@ -69,6 +69,7 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
         return Err(bad("dim"));
     }
     let half = value * 0.5;
+    let half_positivo = half;
     match (p, index) {
         (Primitive::Box { half: h, .. }, i @ 0..=2) => h[i] = half,
         (Primitive::Sphere { radius }, 0) | (Primitive::Cylinder { radius, .. }, 0) => {
@@ -487,6 +488,70 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
             *wave = keep_below(value, *half_span * crate::MAX_DOCUMENT_WAVE);
         }
         (Primitive::Document { half_height, .. }, 3) => *half_height = half,
+        // ─────────────────────────── W124 ───────────────────────────
+        // ⚠️ **A ORDEM tem de bater com a do `dims_table_flow::dims_lattice`**.
+        (Primitive::Helix { radius, .. }, 0) => *radius = value,
+        (
+            Primitive::Helix {
+                pitch, thickness, ..
+            },
+            1,
+        ) => {
+            *pitch = value;
+            *thickness = thickness.min(value * crate::MAX_SPIRAL_FILL * 0.5);
+        }
+        (Primitive::Helix { turns, .. }, 2) => {
+            *turns = keep_below(value, crate::MAX_SPIRAL_TURNS);
+        }
+        (
+            Primitive::Helix {
+                thickness,
+                pitch,
+                radius,
+                ..
+            },
+            3,
+        ) => {
+            *thickness = keep_below(
+                half,
+                (*pitch * crate::MAX_SPIRAL_FILL).min(*radius * 1.8) * 0.5,
+            );
+        }
+        // ⭐ **A caixa do gyroid ARRASTA a célula**: encolher o bloco sem encolher a célula deixaria
+        // o documento fora da própria cerca, e a validação recusa a PEÇA inteira.
+        (
+            Primitive::Gyroid {
+                half,
+                cell,
+                thickness,
+                ..
+            },
+            i @ 0..=2,
+        ) => {
+            half[i] = half_positivo;
+            let menor = half[0].min(half[1]).min(half[2]) * 2.0;
+            *cell = cell.min(menor / crate::MIN_GYROID_CELLS);
+            *thickness = thickness.min(*cell * crate::MAX_GYROID_FILL * 0.5);
+        }
+        (
+            Primitive::Gyroid {
+                half,
+                cell,
+                thickness,
+                ..
+            },
+            3,
+        ) => {
+            let menor = half[0].min(half[1]).min(half[2]) * 2.0;
+            *cell = keep_below(value, menor / crate::MIN_GYROID_CELLS);
+            *thickness = thickness.min(*cell * crate::MAX_GYROID_FILL * 0.5);
+        }
+        (
+            Primitive::Gyroid {
+                thickness, cell, ..
+            },
+            4,
+        ) => *thickness = keep_below(half, *cell * crate::MAX_GYROID_FILL * 0.5),
         (Primitive::Prism { sides, .. }, 0) => {
             // ⚠️ **COAGE, não recusa** — a lei do `Unary::Taper`, e pela mesma razão: a faixa já
             // não oferece nada fora de `[MIN, MAX]`, então um valor de fora só chega por outra
@@ -539,6 +604,8 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
             | Primitive::OffPage { .. }
             | Primitive::Spiral { .. }
             | Primitive::Document { .. }
+            | Primitive::Helix { .. }
+            | Primitive::Gyroid { .. }
             | Primitive::TorusArc { .. }),
             i,
         ) if Some(i) == round_index(p) => {

@@ -341,3 +341,44 @@ pub(crate) fn cena_21() -> Result<FieldDoc, ph2d_field::FieldError> {
         NodeId(2),
     )
 }
+
+/// ⭐⭐ **A cena `=22`: A MOLA E A REDE** (W124) — as duas de maior alcance do levantamento.
+pub(crate) fn cena_22() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 22 — A MOLA (3 voltas) e a REDE GYROID (4 células). Nenhuma delas tem \
+         um segmento desenhado, e a rede é UMA LINHA de fórmula."
+    );
+    FieldDoc::new(
+        vec![
+            leaf(
+                Primitive::Helix {
+                    radius: 0.20,
+                    pitch: 0.10,
+                    turns: 3.0,
+                    thickness: 0.03,
+                    round: 0.0,
+                    chamfer: 0.0,
+                },
+                Xform {
+                    translation: [-0.38, 0.0, 0.0],
+                    ..Xform::IDENTITY
+                },
+            ),
+            leaf(
+                Primitive::Gyroid {
+                    half: [0.24; 3],
+                    cell: 0.12,
+                    thickness: 0.012,
+                    round: 0.004,
+                    chamfer: 0.0,
+                },
+                Xform {
+                    translation: [0.38, 0.0, 0.0],
+                    ..Xform::IDENTITY
+                },
+            ),
+            combine(Op::Union(Blend::Sharp), (0..2).map(NodeId).collect()),
+        ],
+        NodeId(2),
+    )
+}

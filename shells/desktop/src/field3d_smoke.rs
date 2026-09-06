@@ -1,4 +1,4 @@
-//! **O smoke do módulo de modelagem 3D** — `PH2D_FIELD_SMOKE=1..21` (ADR-0161).
+//! **O smoke do módulo de modelagem 3D** — `PH2D_FIELD_SMOKE=1..22` (ADR-0161).
 //!
 //! Põe na tela o que o módulo de facto é: o **campo traçado**, não uma malha. É por aqui que o Enio
 //! vê a quina de navalha e o filete liso que a W0 mediu.

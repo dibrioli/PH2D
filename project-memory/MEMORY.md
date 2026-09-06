@@ -87,6 +87,7 @@
 
 ## Ship / CI / integração
 - [Multi-máquina: GitHub fonte única](project_multi_machine_setup.md) · [fast mode: dia sem push](feedback_fast_mode_ship.md)
+- ⏳ [**`line/motion-value` espera a PRÓXIMA rodada** — 5 de 6 linhas entraram em 06/09 e esta ficou de fora; as 5 mitigações em vigor](project_motion_value_waits_for_the_next_integration_round.md)
 - [Ship = Enio-only](feedback_ship_only_enio_end_of_all_lines.md) · [integração = Enio-only](feedback_integration_only_enio_command_end_of_all_lines.md)
 - [Integração multi-linha (12) — ordem se MEDE](reference_topic_integration_discipline.md)
 - ⭐ [Duas linhas refactoram o MESMO bloco de maneiras diferentes: funde limpo e deixa a cópia MORTA (4× num dia; só `dead_code` a vê)](feedback_two_lines_can_refactor_the_same_code_differently_and_both_survive_the_merge.md)

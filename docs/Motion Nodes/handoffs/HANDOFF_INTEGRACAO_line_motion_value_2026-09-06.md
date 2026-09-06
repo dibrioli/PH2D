@@ -8,10 +8,12 @@
 | | |
 |---|---|
 | branch | `line/motion-value` |
-| HEAD do TRABALHO | `4fb4af7d0` — **34** commits |
-| ⚠️ o que se funde | **o tip do branch**: `git rev-parse line/motion-value`. Este handoff e a reconciliação do índice são os commits **acima** daquele — *um handoff que cita o próprio SHA persegue o rabo*, então ele nomeia o fim do trabalho e manda contar o resto |
-| merge-base com `main` | `53832c884` |
-| ficheiros | **132** (`+17 640` / `−616`) no trabalho, mais este doc |
+| ⚠️ **estado** | **FECHADA e À ESPERA da PRÓXIMA rodada** — decisão do Enio, 2026-09-06 (ver §13) |
+| base | **`815555aed`** — a linha foi **rebaseada** sobre o `main` já com as cinco linhas de 06/09 |
+| ⚠️ o que se funde | **o tip do branch**: `git rev-parse line/motion-value`, hoje `fd3f34c09` · marco `linha-pronta-para-integrar-2026-09-06`. *Um handoff que cita o próprio SHA persegue o rabo* |
+| commits a entrar | **36** — os 35 do trabalho + a cura dos vermelhos da árvore combinada |
+| entra em fast-forward? | ✅ **sim**, verificado (`git merge-base --is-ancestor main HEAD`) |
+| ficheiros | **130** |
 | contrato congelado (§6) | **NENHUM tocado** — `nodegraph/src/node.rs` e `editor-core/src/tool.rs` intactos |
 | ADR novo | **nenhum** ⇒ fora de toda disputa de número |
 
@@ -49,6 +51,11 @@ Tudo **aditivo**. Nenhuma assinatura existente mudou de forma.
 ⛔ **Nenhuma crate nova, nenhuma dependência nova** (`Cargo.lock` sem `+name`).
 
 ## §3 — Símbolos que podem COLIDIR (a saída do `collision-surface.sh`, não de memória)
+
+> ⛔ **A tabela abaixo mede contra `53832c884`, que era o `main` ANTES da integração de 06/09.**
+> Depois dela a linha foi rebaseada sobre `815555aed` e a tabela ficou histórica. Ela continua
+> útil para saber *o que a linha achava que estava a tocar* — **re-corra o script** antes de
+> fundir (é o que a própria §1.5.9 manda, e agora há um motivo a mais: a base mudou).
 
 ```text
 SUPERFÍCIE DE COLISÃO — line/motion-value contra main
@@ -221,3 +228,43 @@ $ cargo build -p ph2d-host-desktop --release          # a PROVA
 **Zero linhas `Compiling` na 2.ª corrida.** ⚠️ Uma env var não é um build: **um** binário cobre
 todas as cenas (`PH2D_GPU_COOK_DEMO`, `PH2D_MOTION_*`, …). E o `target/*/incremental` foi
 reclamado antes disto — **19 GB** devolvidos, e o perfil `release` não o usa.
+
+---
+
+## §13 — A LINHA ESPERA A PRÓXIMA RODADA, e as cinco providências
+
+**O que aconteceu:** a integração de 2026-09-06 levou **cinco** das seis linhas — `sculpt3d`,
+`Vector`, `components`, `3DModeling`, `UIUX` — e esta ficou de fora. O commit de preparação do
+integrador diz *«as lições das SEIS linhas»* (15:01) e o de fecho diz *«nenhuma das seis linhas
+os podia ver»* (16:26); a linha estava pronta às **14:39**.
+
+⚠️ **Não se confirma isto pelo reflog:** ele tem um `merge line/motion-value` em **04/09 15:58**,
+que é a jornada **anterior** — e é por isso que o L-System está no `main`. A pergunta certa é
+pelo **conteúdo desta jornada**:
+
+```bash
+git cat-file -e main:crates/ph2d-node-motion-spring/src/law.rs   # ausente ⇒ não integrada
+```
+
+**Decisão do Enio (2026-09-06): esperar a próxima rodada.** O custo foi medido antes de decidir —
+na rodada que passou as cinco linhas tocaram **7 dos 130 ficheiros** desta (5%), e esses 7
+custaram **três** defeitos que nenhuma linha via sozinha (§8). À data da decisão o encosto VIVO
+era **zero**: `3DModeling`·`components`·`sculpt3d` tinham 2·2·5 ficheiros novos, nenhum meu.
+
+**As cinco providências em vigor enquanto ela espera:**
+
+| # | providência | porquê |
+|---|---|---|
+| 1 | **`git rebase main` no INÍCIO de cada sessão**, não só no fecho | a distância nunca passa de um dia, e um conflito de um dia resolve-se; um de uma semana reescreve-se |
+| 2 | **`rerere` ligado** (`rerere.enabled` + `autoupdate`), com **16** resoluções em cache — a do `paint_socket.rs` entre elas | o mesmo conflito não se resolve duas vezes |
+| 3 | ⛔ **não tocar nos três ficheiros-hub** até integrar: `CLAUDE.md` · `shells/desktop/src/main.rs` · `crates/ph2d-panel-motion-graph/src/paint.rs` | são os que **toda** linha edita; a edição do §5 que o protocolo exige **já está feita** |
+| 4 | **`collision-surface.sh` no início da sessão também** | o handoff é referência e envelhece; a corrida é a evidência |
+| 5 | **marcos**: `linha-pronta-para-integrar-2026-09-06` (o tip verde) e `pre-rebase-2026-09-06` | nada se perde num rebase que corra mal |
+
+⚠️⚠️ **O risco que NÃO é conflito de texto, e é o maior:** esta linha carrega o **substrato do
+cartão**, e o **tutorial em PDF é o smoke do produto** — ele descreve o app passo a passo. Se
+outra linha mudar a UI do cartão antes desta entrar, o tutorial passa a **ensinar o que não
+acontece**, que é a família que o [`CLAUDE.md §5.0`](../../../CLAUDE.md) regista com o preço
+pago. A vizinha perigosa é a **`line/UIUX`**, que acabou de passar o app inteiro para cartões e
+que já colidiu com esta **duas vezes na mesma pasta** (§8 e o commit `fd3f34c09`).
+⇒ **ao reabrir esta linha, o passo 1 é conferir se a `UIUX` mexeu no painel do Motion.**

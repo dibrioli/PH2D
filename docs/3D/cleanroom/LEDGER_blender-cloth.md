@@ -165,7 +165,124 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 | R-pré (emendas Q8/Q9/Q10) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu as emendas (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emendas Q8, Q9 e Q10)» |
 | R-pré (emenda Q11) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emenda Q11)» |
 | R-pré (emenda Q12) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emenda Q12)» |
+| R-pré (emenda Q14) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emenda Q14)» |
 | R-pós | ⏳ | — |
+
+### Auditoria R-pré — 2026-09-06 (emenda Q14)
+
+**Âmbito.** A emenda Q14: cabeçalho · §2.2 (errata da banda) · §3.2 (bloco novo) · §4.2 · §4.5 · §5.2
+(dois blocos novos + o censo dos limites) · **§5.2-quater NOVA** · §10 contagem · **§10.8 NOVA** · §11
+(três linhas) · §14 gates **25-31**, mais as **nove** fixtures `*_origem_1passo*`, o `indice.json`
+regenerado e o README das fixtures.
+
+**Conformidade §4.2 — TRÊS achados, todos da MESMA espécie, todos curados no acto.** A espécie é
+*comentário/doc-comment do alvo re-dito quase-verbatim*: (1) a justificação de o 1.º passo de uma
+passagem não simular, no §1 fase 0 — ⚠️ **pré-existente**, e a tradução mais colada do documento
+inteiro; (2) a frase do §3.2 que descrevia como a restrição guarda as duas pontas; (3) a razão, no
+§5.2 nº 5, de o peso por vértice ter de ser um vector da malha inteira. As três ficam re-expressas
+como **requisito funcional** em vocabulário do domínio, sem perder um facto. ⛔ Nada mais: sem
+trechos, sem nomes internos (funções, variáveis, ficheiros, structs, macros), sem wording de manual.
+Os nomes das nove fixtures novas, as chaves dos cabeçalhos e o vocabulário que a emenda introduz
+(**gaveta · memória de forma · desvio de repouso · factor por passo**) são do domínio; `Gauss–Seidel`
+e `Jacobi` são literatura pública (§4.1.2); e *Local*/*Global*/*Smooth*/*Constant* são rótulos que o
+artista vê, que o §4.1.13 permite e que este documento já usava.
+
+**Sweep (§7.1).** `bash scripts/cleanroom-sweep.sh` com a vassoura de 70 entradas sobre a espec
+emendada + a pasta **inteira** das fixtures + INBOX + os dois READMEs + `docs/3D/cloth/`: **exit 0**.
+Sobre o **histórico** dos mesmos caminhos: os dois hits pré-existentes de 2026-09-05 (o nome do
+ficheiro do alvo numa mensagem de commit e no patch de `docs/3D/cloth/`), já registados acima para o
+R-pós — ⛔ nenhum vem desta emenda, e a árvore de hoje está limpa. Sobre **este ledger**: os mesmos
+dois, nas linhas 88 e 374.
+
+**Fidelidade — os 11 factos conferidos no fonte, os números reconstruídos do zero.**
+Confirmados: a lista única resolvida num laço `5×` sequencial na ordem de criação, com a espécie lida
+só dentro da projecção · a correcção `Δ/2` nas quatro espécies · o peso por vértice lido por índice,
+um por extremo, com a excepção do corpo mole (as duas metades levam o do vértice) · o peso calculado
+**uma vez por passo, para a malha inteira, antes da 1.ª varredura** · o alvo de cada espécie lido no
+**instante da projecção**, com as quatro respostas (estrutural vivo · âncora fixa · **memória de
+forma a andar** · pino fixo) · as gavetas de âncora a nascerem na posição de repouso do traço com
+factor por passo `1`, e só quando o pincel é de âncora ou um pincel alheio mira a simulação · o
+comprimento de repouso efectivo a somar metade do desvio de cada extremo, logo **inteiro** nas três
+espécies de alvo próprio · o desvio do Expand acumulado na fase do gesto, que corre inteira antes da
+fase do solver · o guarda de cursor parado a desistir **só** da fase do gesto, com a zeragem do
+factor por passo **depois** dele · e a errata da banda, `R(1+L)` e `R(1+L·F)`.
+
+**O censo dos limites: certo dentro do solver, NÃO exaustivo no passo.** Não há tecto de correcção,
+tecto de deslocamento, desistência por convergência, contagem de varreduras dependente do passo,
+sub-passos, tecto de velocidade nem corte ao ultrapassar o alvo; o único salto é a célula inactiva e o
+único guarda é a separação nula. ⚠️ **Duas notas que o censo devia trazer e não trazia:** (a) o limite
+de restrições por vértice existe como **constante declarada e SEM CONSUMIDOR** — a conclusão «não há
+limite» está certa, mas é por o número não ser lido, não por não existir; (b) o **bloqueio de eixos** e
+o **recorte do modificador de espelho** da casa aparam o deslocamento **na escrita na malha** (§6.1) —
+fora do solver, sem dependência do tamanho do passo, e desligados em todas as fixtures. A tabela do
+§5.2 passa a nomeá-los.
+
+**Números reproduzidos, um a um** (script próprio, fora do repo, sobre `repouso` + `deformado`):
+- o **censo do disco**: `171` movidos e **`0`** fora nos traços de arrastar / empurrar / inflar /
+  apertar ponto, `171` no de massa `2`, `168` no de força `0,5`, `156` no aperto de linha; `173`
+  dentro e `675` / `1151` / `1279` fora no expandir / agarrar / gancho. O disco tem `173` vértices;
+- a tabela *Local*×*Global* (`0,456101`/`0,343172` · `0,134311`/`0,094722` · `0,001914`/`0,001525`) e
+  as razões `0,752` · `0,705` · `0,797`;
+- o perfil ao longo do traço, **célula a célula nas quatro colunas**, e as quatro sequências de
+  razões — `4,52` entre `0,536 R` e `0,670 R` (*Local*), `5,11` entre `0,402 R` e `0,536 R`
+  (*Global*), a cauda do agarrar a assentar em `1,32` / `1,47`;
+- o traço curto: pico `0,032433 = 0,649 · δ` contra `0,456101 = 0,760 · δ`;
+- a curva *Constant*: `0,878999 = 1,465 · δ`, **`107`** vértices acima de `δ`, máximo a `0,5522 R`,
+  degrau `1,071 R → 1,205 R` com razão `5,32`, e `0` vértices na *Smooth*;
+- a linearidade do desvio de repouso, e a coerência dos **nove** cabeçalhos novos com o §10.8 e com o
+  README;
+- `verifica_traco.py` **verde sobre os 65** ficheiros, `gera_indice.py` a regenerar o `indice.json`
+  **byte-a-byte** (65 entradas para 65 ficheiros) e a tabela «As corridas» do README com **65 linhas,
+  todas a casar com o índice**.
+
+**TRÊS números discordaram** e a espec passa a trazer a leitura do R-pré: (1) a 4.ª razão do traço
+curto é `1,2747`, que arredonda a **`1,27`** e não a `1,28` — e são **oito** razões, logo **nove**
+células, uma a mais do que a tabela do perfil; (2) o terceiro valor da errata da banda: o gancho dá
+**`1,2234`** e não `1,2239`, valor que **existe** no corpus mas pertence a seis *outras* fixtures de
+12 passos; (3) a razão do par de força do Expand é **`0,24999`** nos máximos (`0,00047846 /
+0,00191389`) e `0,250000` na mediana por vértice sobre os `662` vértices comuns — o `0,2497` é o que
+sai de dividir os dois `max_deslocamento` já arredondados a seis casas.
+⭐⭐ **E a errata da banda ganhou a prova que lhe faltava, achada nesta reconstrução:** a fixture
+`plano_agarrar_radial_local_preset` corre com `limite = 5,0` (a única do corpus) e o seu vértice
+movido mais distante está a **`2,0745`** — `0,99 · R(1+L) = 2,10` e **`+19 %`** para lá de
+`R·L = 1,75`. *Com um só valor de `L` as duas leituras da fórmula eram indistinguíveis por medição;
+com dois, `R·L` erra por factores diferentes (`1,40×` e `1,19×`) e `R(1+L)` acerta nos dois.*
+
+**DUAS afirmações de fidelidade estavam ERRADAS, e as duas apagam comportamento num port sem aviso:**
+1. **A supressão do segundo `Δ/2` por igualdade de índice alcança DUAS das três espécies de alvo
+   próprio, não as três.** Na âncora e no pino o segundo `Δ/2` é suprimido; **no corpo mole ele é
+   aplicado — à memória de forma —, e quem o encaminha para lá é a ESPÉCIE**. A frase «o mesmo braço
+   de código serve as quatro espécies» é falsa, e um port que a siga **congela a memória de forma**:
+   a plasticidade deixa de existir com a suíte verde. ⚠️ A própria emenda dizia, no §3.2, que o alvo
+   do corpo mole **anda** — *as duas frases não podiam ser verdadeiras ao mesmo tempo.*
+2. **`Expand + pino` e `Expand + corpo mole` SÃO alcançáveis com o pincel de tecido sozinho.** O §4.5
+   declarava que nenhuma das três combinações o era; o pino e o corpo mole não são modos, são opções
+   independentes do modo de deformação. Só a **âncora** é inalcançável junto com o Expand — e a
+   própria emenda o contradizia na linha seguinte, e outra vez na tabela nova do §11.
+
+**Curas de FIDELIDADE e de PRECISÃO aplicadas no acto, por secção:**
+- **§1 fase 0** — re-expressão (§4.2, achado 1).
+- **§2.2** — a errata passa a citar os valores certos, a régua (`|u| > 1e-5`), a faixa medida sobre
+  **25** fixtures (`3,492 R`–`3,497 R`), a isenção nomeada do controlo de força fraca, e o **segundo
+  ponto de `L`**.
+- **§3.2** — re-expressão (§4.2, achado 2).
+- **§4.5** — as duas razões com a conta de cada uma escrita; e a lista de **quais** combinações o
+  artista alcança, no lugar da afirmação errada.
+- **§5.2** — o nº 1 passa a dar a ordem de criação **por vértice** e a corrigir «entre duas
+  estruturais do mesmo vértice»; o nº 3 é reescrito (achado de fidelidade 1); o nº 5 é re-expresso
+  (§4.2, achado 3); e o censo ganha a nota do que apara um deslocamento **fora** do solver.
+- **§5.2-quater** — a partição «modos de força» × «modos que escrevem aceleração» declarada na 1.ª
+  linha; a régua do censo escrita por inteiro (limiar · centro · tamanho do disco, e o `177` das
+  fixtures de pen-down na origem); a tabela passa a listar os **sete** traços; a amostragem do perfil
+  fica definida (eixo do traço, `k · aresta`, `d` medido do **pen-down**); e a 4.ª razão do traço
+  curto corrigida.
+- **§14** — os sete gates novos ficam edificáveis (ver o cabeçalho da espec); o **29** troca um tecto
+  absoluto que **reprovava o próprio oráculo** por um discriminador derivado, e o **31** declara-se
+  gate de espec por não haver fixture que o produza.
+- **README das fixtures** — o parágrafo dos valores de omissão tinha **sete** excepções e nomeava
+  uma; ficam as sete, contadas do `indice.json`, com a de `limite = 5,0` marcada como load-bearing.
+
+**Veredicto: ATESTADO** — a emenda Q14 pode ser lida pela janela-mãe.
 
 ### Auditoria R-pré — 2026-09-06 (emenda Q12)
 
@@ -931,6 +1048,74 @@ regenerado (**56** entradas para 56 ficheiros); README das fixtures actualizado.
 hits pré-existentes de 2026-09-05 já registados acima) e o texto do report ao I.
 **Instrumento:** o arnês do oráculo de 05/09 com um ficheiro de corridas novo e um montador próprio,
 os dois **fora da árvore**, em `~/Referencias/`.
+
+### Q14 — a RELAXAÇÃO é o que os traços exactos nunca mediram (perguntas do I de 2026-09-06; resposta no mesmo dia, com corrida NOVA do oráculo)
+
+**A pergunta do I** (INBOX §Q14): num traço de UM passo simulado, os sete traços dos modos que
+escrevem aceleração saem ao bit e os três que escrevem âncora/`σ` ou desvio de repouso não; o I
+concluiu daí que *«a área, a banda, o factor por vértice, a curva, a dureza, a integração e as
+restrições de distância estão exactas»* e perguntou (1) como a âncora é resolvida dentro de uma
+varredura, (2) que tecto faz o material do alvo soltar-se abruptamente a `0,45R`–`0,59R` quando o
+passo é grande, e (3) quando o desvio de repouso do Expand passa a valer.
+
+**Q14.1 — RESPONDIDA por leitura do fonte.** Uma lista só, um laço só, ordem de criação (§3.1);
+`Δ/2` para as quatro espécies; o segundo `Δ/2` é suprimido por uma comparação de ÍNDICE (as três
+espécies de alvo próprio guardam o mesmo índice nos dois extremos), não por um teste de tipo; `φ` é
+lido por índice, um por extremo, **excepto** no corpo mole, onde as duas metades levam o `φ` do
+vértice; e `φ` é calculado **uma vez por passo, para a malha inteira**, antes da 1.ª varredura.
+⭐ **O achado que a pergunta não previa:** a restrição não guarda cópias das posições — guarda **de
+que gaveta** cada extremo é, e lê a gaveta no instante da projecção. ⇒ a resposta a *«fixo ou
+recalculado?»* é **quatro respostas**: estrutural = vivo (é o que faz o laço ser Gauss–Seidel);
+âncora = fixa (ninguém lhe toca durante o passo); **corpo mole = o alvo ANDA** (a própria varredura o
+escreve); pino = fixo. Espec §3.2 (bloco novo) e §5.2 (bloco novo).
+
+**Q14.2 — a premissa estava ERRADA, e a correcção é medida.** Censo do fonte: **não há** tecto de
+correcção, tecto de deslocamento, desistência por convergência, número de varreduras dependente do
+passo, sub-passos, limite de restrições por vértice, tecto de velocidade nem corte ao ultrapassar o
+alvo; o único salto é a célula inactiva e o único guarda é a separação nula (espec §5.2, tabela do
+censo). ⭐⭐⭐ **O que os sete traços exactos provam é menos do que o I supôs:** a relaxação corre
+ANTES da integração, logo num traço de um passo de um modo de força ela encontra a malha em repouso
+e **toda** correcção dela é zero. Medido: esses cinco traços movem `171` (`156` no aperto de linha)
+vértices e **`0` fora do disco do pincel**; os três que falham movem `848` / `1324` / `1452`, dos
+quais `675` / `1151` / `1279` **fora do disco** — material que força nenhuma tocou. *Eles não
+exercitam uma única restrição de distância.* ⭐⭐ **Intervenção com uma variável:** o mesmo gesto em
+área *Global* (`5` projecções em vez de `10`) muda o pico de um passo em `0,752` / `0,705` / `0,797`,
+e desloca o «degrau» do perfil **uma célula para dentro** (`0,536R`–`0,670R` → `0,402R`–`0,536R`).
+⭐ **E o degrau é de `δ` grande:** com o percurso encurtado para `0,05` ele desaparece (a curva fica a
+do agarrar, que nunca o tem). ⇒ a causa é a não-linearidade de `(1 − ℓ'/D)`, não um limite em falta.
+⭐ **Gémeo em tracção do achado de compressão do §5.2-ter:** com a curva *Constant*, `107` vértices
+acabam o passo **mais longe** do que o alvo da própria âncora (`1,465 × δ`). Espec **§5.2-quater
+(nova)**.
+
+**Q14.3 — RESPONDIDA e MEDIDA.** O desvio de repouso é somado na fase do gesto, que corre inteira
+antes do solver ⇒ vale já na 1.ª varredura do MESMO passo. ⭐ **A prova estava numa fixture que já
+existia**: o traço de um passo do Expand move `848` vértices com aceleração zero e sem âncora — se o
+desvio só valesse no passo seguinte, teria de mover **zero**. ⭐⭐ E a corrida nova fecha-a por
+intervenção: o mesmo traço a força `0,5` (que muda só o desvio, porque ele é `0,1·α` com `α = força²`)
+dá razão **`0,2499`** no máximo e **`0,2500`** na mediana por vértice. ⭐ **Segundo achado:** o desvio
+entra no comprimento de repouso das **quatro** espécies, e nas três de alvo próprio entra **inteiro**
+(os dois extremos são o mesmo vértice) — um pino sob Expand segura o vértice *a `τ` da* posição de
+repouso, não nela. Espec §4.5 e §5.2.
+
+**ERRATA achada de caminho (F+M):** a §2.2 dizia que a banda vai de `1,875·R` a `2,5·R`; as
+fronteiras são `R(1+L·F)` e `R(1+L)` = **`2,875·R`** e **`3,5·R`**. Medido em três fixtures *Local*
+de 12 passos: o vértice movido mais distante do pen-down está a `1,2227`/`1,2234`/`1,2239`, contra
+`3,5·R = 1,2250`. *Um port com a leitura antiga simula um disco `40 %` mais pequeno.*
+
+**Corrida NOVA do oráculo:** binário 5.2.1, **10** execuções (1 de validação + 9 gravadas), pen-down
+na origem, auto-verificação do centro `ok` em todas. ⚠️ **Validação antes de gravar:** a corrida de
+controlo (gancho, caminho `0 → 0,3 → 0,6`) devolveu `máx = 0,343869`, idêntico a seis casas ao da
+fixture da sessão anterior — sem isso, um número novo e um número velho não são comparáveis.
+**Ficheiros:** nove `fixtures/cloth/*_origem_1passo*.deformado.txt.gz`; `indice.json` regenerado por
+`gera_indice.py` (**65** entradas para 65 ficheiros); `verifica_traco.py` verde sobre os 65; README
+das fixtures actualizado (a tabela das corridas, o total e a subsecção nova das nove — com o aviso de
+que duas delas quebram o parágrafo «o traço»: a de curva `constant` e a de percurso `0,05`).
+**Espec:** cabeçalho · §2.2 (errata) · §3.2 · §4.2 · §4.5 · §5.2 · **§5.2-quater (nova)** · §10 ·
+**§10.8 (nova)** · §11 · §14 gates **25-31**.
+**Instrumento:** o arnês do oráculo de 05/09 com um ficheiro de corridas novo, um montador próprio e
+os scripts de análise — todos **fora da árvore**, em `~/Referencias/`.
+**Sweep:** verde sobre a espec, o README, a pasta inteira das fixtures, o INBOX, este ledger (menos
+os dois hits pré-existentes de 2026-09-05 já registados acima) e o texto do report ao I.
 
 ## Fechamento R
 

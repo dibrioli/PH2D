@@ -189,6 +189,27 @@
   }
  ],
  [
+  "plano_agarrar_radial_global_origem_1passo",
+  {
+   "superficie": "plano",
+   "modo": "agarrar",
+   "falloff_da_forca": "radial",
+   "area": "global",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 2,
+   "movidos": 881,
+   "max_deslocamento": 0.094722
+  }
+ ],
+ [
   "plano_agarrar_radial_local",
   {
    "superficie": "plano",
@@ -312,6 +333,27 @@
    "passos": 12,
    "movidos": 2131,
    "max_deslocamento": 0.131488
+  }
+ ],
+ [
+  "plano_agarrar_radial_local_origem_1passo",
+  {
+   "superficie": "plano",
+   "modo": "agarrar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 2,
+   "movidos": 1323,
+   "max_deslocamento": 0.134311
   }
  ],
  [
@@ -945,6 +987,27 @@
   }
  ],
  [
+  "plano_expandir_radial_global_origem_1passo",
+  {
+   "superficie": "plano",
+   "modo": "expandir",
+   "falloff_da_forca": "radial",
+   "area": "global",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 2,
+   "movidos": 724,
+   "max_deslocamento": 0.001525
+  }
+ ],
+ [
   "plano_expandir_radial_local",
   {
    "superficie": "plano",
@@ -984,6 +1047,69 @@
    "passos": 2,
    "movidos": 848,
    "max_deslocamento": 0.001902
+  }
+ ],
+ [
+  "plano_expandir_radial_local_origem_1passo",
+  {
+   "superficie": "plano",
+   "modo": "expandir",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 2,
+   "movidos": 846,
+   "max_deslocamento": 0.001914
+  }
+ ],
+ [
+  "plano_expandir_radial_local_origem_1passo_forca05",
+  {
+   "superficie": "plano",
+   "modo": "expandir",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 0.5,
+   "curva": "smooth",
+   "passos": 2,
+   "movidos": 662,
+   "max_deslocamento": 0.000478
+  }
+ ],
+ [
+  "plano_gancho_radial_global_origem_1passo",
+  {
+   "superficie": "plano",
+   "modo": "gancho",
+   "falloff_da_forca": "radial",
+   "area": "global",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 2,
+   "movidos": 1068,
+   "max_deslocamento": 0.343172
   }
  ],
  [
@@ -1110,6 +1236,69 @@
    "passos": 12,
    "movidos": 2135,
    "max_deslocamento": 0.063396
+  }
+ ],
+ [
+  "plano_gancho_radial_local_origem_1passo",
+  {
+   "superficie": "plano",
+   "modo": "gancho",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 2,
+   "movidos": 1451,
+   "max_deslocamento": 0.456101
+  }
+ ],
+ [
+  "plano_gancho_radial_local_origem_1passo_constante",
+  {
+   "superficie": "plano",
+   "modo": "gancho",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "constant",
+   "passos": 2,
+   "movidos": 1735,
+   "max_deslocamento": 0.878999
+  }
+ ],
+ [
+  "plano_gancho_radial_local_origem_1passo_curto",
+  {
+   "superficie": "plano",
+   "modo": "gancho",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 2,
+   "movidos": 1129,
+   "max_deslocamento": 0.032433
   }
  ],
  [

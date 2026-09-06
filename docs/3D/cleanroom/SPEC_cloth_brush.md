@@ -119,6 +119,79 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   com o ⛔ de que o plano do **ECRÃ** não é o plano tangente do pen-down — a rota que o I mediu a
   piorar (`0,265 → 0,605` · `0,351 → 0,663`).
   Veredictos e detalhe: LEDGER §Papel R.
+  ✅ **EMENDA Q14 de 2026-09-06** (§2.2 errata · §3.2 · §4.2 · §4.5 · §5.2 · **§5.2-quater NOVA** ·
+  §10 contagem · **§10.8 NOVA** · §11 · §14 gates 25-31, + as **nove** fixtures `*_origem_1passo*` que
+  isolam a rede de restrições): como a âncora, o pino e o corpo mole são resolvidos DENTRO da
+  varredura (uma lista só, `Δ/2` para as quatro espécies, e ⭐ o alvo de cada uma lido no instante da
+  projecção — vivo na estrutural, **móvel** no corpo mole, fixo na âncora e no pino); o **censo dos
+  limites do solver**, que devolve **nenhum** e desmonta a busca por um tecto dependente do tamanho
+  do passo; ⭐⭐⭐ e a correcção da premissa que gerou a pergunta — **os sete traços de um passo dos
+  cinco modos que escrevem ACELERAÇÃO movem o disco do pincel e ZERO vértices fora dele, logo não
+  exercitam uma única restrição de distância** (⚠️ o Expand é «modo de força» pela §4.2 e está do
+  OUTRO lado desta partição, porque escreve repouso e não aceleração);
+  mais o instante em que o desvio de repouso do Expand passa a valer (no
+  MESMO passo, antes da 1.ª varredura) e o facto de ele entrar nas **quatro** espécies. Escrita pelo
+  subagente-E da mesma janela, com o fonte reaberto só para estas perguntas e com uma corrida NOVA do
+  oráculo (10 execuções: 1 de validação + as 9 gravadas).
+  ✅ **AUDITADA contra §4.2 por R-pré em 2026-09-06** — contexto novo, independente do subagente que a
+  escreveu; leu os dois lados (o fonte por shell).
+  ⚠️ **TRÊS achados §4.2, todos da mesma espécie — comentário/doc-comment do alvo re-dito
+  quase-verbatim — e todos CURADOS NO ACTO por re-expressão** (nenhum facto perdido): a justificação
+  do 1.º passo não simular (§1 fase 0, **pré-existente**), a frase que descrevia como a restrição
+  guarda as pontas (§3.2) e a razão de o peso por vértice ser um vector da malha inteira (§5.2 nº 5).
+  ⛔ Zero trechos, zero nomes internos, zero wording de manual; os nomes de fixture, as chaves dos
+  cabeçalhos e o vocabulário novo (**gaveta · memória de forma · desvio de repouso**) são do domínio,
+  e `Gauss–Seidel`/`Jacobi` são literatura pública. Sweep **verde** sobre a espec emendada + a pasta
+  inteira das fixtures + INBOX + os dois READMEs + `docs/3D/cloth/`, e sobre o **histórico** destes
+  caminhos (os dois hits do ledger são os pré-existentes de 2026-09-05, já registados lá).
+  ⭐⭐ **FIDELIDADE: os 11 factos foram conferidos no fonte e TODOS os números reconstruídos do zero**
+  a partir das fixtures, com script próprio fora do repo. Confirmados: a lista única e o laço `5×` na
+  ordem de criação; `Δ/2` nas quatro espécies; o peso por índice com a excepção do corpo mole; `φ`
+  calculado **uma vez por passo para a malha inteira**; o alvo de cada espécie lido **no instante da
+  projecção** (estrutural vivo · âncora fixa · memória de forma **a andar** · pino fixo); as gavetas de
+  âncora a nascerem na posição de repouso com factor `1`; `ℓ'` nas quatro espécies com o desvio
+  **inteiro** nas de alvo próprio; o desvio do Expand somado na fase do gesto, que corre **inteira**
+  antes do solver; o guarda de cursor parado a desistir **só** da fase do gesto, com a zeragem do
+  factor por passo **depois** dele; e a errata da banda (`R(1+L)` / `R(1+L·F)`).
+  ⚠️ **O censo dos limites está certo DENTRO do solver e não era exaustivo no passo:** falta-lhe o
+  bloqueio de eixos e o recorte de espelho da casa, que aparam o deslocamento **na escrita** (§6.1) —
+  ficam agora nomeados na tabela, com o ⛔ de não dependerem do tamanho do passo.
+  ⭐ Reproduzem-se célula a célula: o censo do disco (`171`/`156` dentro e **`0`** fora nos sete traços
+  de aceleração; `173` + `675`/`1151`/`1279` nos três de âncora/repouso) · a tabela *Local*×*Global* e
+  as três razões (`0,752`/`0,705`/`0,797`) · as **quatro** sequências de razões do perfil (`4,52` e
+  `5,11` nos degraus; `1,32`/`1,47` nas caudas) · o traço curto (`0,649·δ` contra `0,760·δ`) · a curva
+  *Constant* (`0,878999 = 1,465·δ`, `107` vértices, máximo a `0,552 R`, degrau `1,071→1,205 R` com
+  razão `5,32`, e `0` vértices na *Smooth*) · `verifica_traco.py` **verde sobre os 65** ·
+  `gera_indice.py` a regenerar o `indice.json` **byte-a-byte** (65 entradas para 65 ficheiros) · e a
+  tabela «As corridas» do README, **65 linhas, todas a casar com o índice**.
+  ⛔ **TRÊS números discordaram e foram corrigidos para a leitura do R-pré:** (1) a 4.ª razão do traço
+  curto é `1,2747` ⇒ **`1,27`**, não `1,28` (e são `8` razões, logo `9` células); (2) o terceiro valor
+  da errata da banda — o gancho dá **`1,2234`**, e o `1,2239` é de **outras** fixtures; (3) a razão do
+  par de força do Expand é **`0,24999`** nos máximos e `0,250000` na mediana por vértice (`0,2497` é o
+  que sai de dividir os cabeçalhos já arredondados). ⭐⭐ **E a errata da banda ganhou a prova que lhe
+  faltava:** `plano_agarrar_radial_local_preset` corre com `limite = 5,0` e alcança `2,0745` —
+  `0,99 · R(1+L)` e `+19 %` para lá de `R·L`; *com um só `L` as duas fórmulas eram indistinguíveis por
+  medição.*
+  ⚠️ **DUAS afirmações de fidelidade estavam ERRADAS e foram curadas** (as duas com o mesmo efeito num
+  port: apagar comportamento sem aviso): a supressão do segundo `Δ/2` por igualdade de índice alcança
+  a âncora e o pino, **não o corpo mole** — ali a segunda metade é aplicada à memória de forma, e quem
+  a encaminha é a espécie (um braço só **congela a plasticidade**); e a combinação Expand + pino /
+  Expand + corpo mole **é** alcançável com o pincel de tecido sozinho (são opções independentes do
+  modo), ao contrário do que a emenda declarava — só a âncora é que não.
+  **CURAS de SUFICIÊNCIA nos gates 25-31, para que sejam edificáveis do lado limpo:** as réguas do
+  censo (limiar, centro e tamanho do disco) e da amostragem do perfil ficam escritas; o gate 25 passa
+  a nomear os **sete** traços com as contagens de cada um; o 26 ganha a taxa do corpo mole; o 27 ganha
+  o **ponto de encontro `(1−ρ)A₀ + ρB₀`** (⛔ não é o ponto médio) e o invariante que o produz; o 28
+  ganha as duas leituras da razão; o 29 troca o tecto de `1,4` — que **reprovava o próprio oráculo** —
+  por um discriminador derivado (maior razão ÷ mediana das restantes, com o vazio de `3,6×` medido);
+  o 30 ganha o limiar, a isenção do controlo de força fraca e a segunda metade com `L = 5`; e o 31
+  passa a declarar-se **gate de espec**, porque nenhuma fixture traz um ponto de caminho repetido.
+  ⚠️ **E o vocabulário «modos de FORÇA» tinha DUAS populações na mesma emenda** — a §4.2 chama-lhes
+  seis (o Expand incluído) e o censo precisava dos **cinco que escrevem aceleração**; a §5.2-quater
+  passa a dizê-lo na primeira linha, senão a conclusão lê-se ao contrário.
+  ⚠️ Mais **uma cura no README das fixtures**: o parágrafo dos valores de omissão tinha **sete**
+  excepções e nomeava uma — entre elas a fixture de `limite = 5,0` que a errata da banda agora usa.
+  **Veredicto: ATESTADO** — a emenda Q14 pode ser lida pela janela-mãe. Detalhe: LEDGER §Papel R.
 Mapa de leitura da literatura (⭐ pública e lícita a TODOS os papéis):
   · Jakobsen, "Advanced Character Physics", GDC 2001 — integração de Verlet por posições + relaxação
     de restrições de distância por projecção. É EXACTAMENTE a família do solver do alvo.
@@ -177,7 +250,7 @@ de simetria** (espelho · radial · ladrilho), corre o seguinte, nesta ordem (F)
 
 | # | fase | entra | sai |
 |---|---|---|---|
-| 0 | **Primeiro passo de uma passagem?** ⇒ com área *Local*, constrói as restrições das células da área (§2, §3) e **termina sem simular** (F) — o alvo precisa de um deslocamento do cursor válido para orientar a ponta, e no 1.º passo ele é zero. ⚠️⚠️ **E esta construção NÃO marca as células como construídas** — a marca é a **ACTIVAÇÃO** (fase 3), que este passo nunca alcança (F) ⇒ **a fase 1 do passo seguinte constrói-as OUTRA VEZ, e o conjunto de restrições do *Local* fica com CADA restrição DUAS vezes** (§3.1, §5.2-bis: é a origem MEDIDA do factor `~2` de amplitude entre *Local* e *Global*). ⚠️ Com área *Dynamic*/*Global* o 1.º passo também não simula **e não constrói**: as restrições ficam para o 2.º passo e nascem **uma vez só**. | — | células com restrições, ainda **inactivas** |
+| 0 | **Primeiro passo de uma passagem?** ⇒ com área *Local*, constrói as restrições das células da área (§2, §3) e **termina sem simular** (F) — no 1.º passo de uma passagem o deslocamento do cursor é zero, e os modos que dele tiram direcção, referencial ou alvo não têm resposta definida sem ele. ⚠️⚠️ **E esta construção NÃO marca as células como construídas** — a marca é a **ACTIVAÇÃO** (fase 3), que este passo nunca alcança (F) ⇒ **a fase 1 do passo seguinte constrói-as OUTRA VEZ, e o conjunto de restrições do *Local* fica com CADA restrição DUAS vezes** (§3.1, §5.2-bis: é a origem MEDIDA do factor `~2` de amplitude entre *Local* e *Global*). ⚠️ Com área *Dynamic*/*Global* o 1.º passo também não simula **e não constrói**: as restrições ficam para o 2.º passo e nascem **uma vez só**. | — | células com restrições, ainda **inactivas** |
 | 1 | **Garantir restrições** para toda célula do conjunto afectado que ainda não as tenha (§3) | conjunto de células (§2.1) | restrições novas (só para células **ainda não activadas** — uma célula já activada nunca mais é construída; ⚠️ a fase 0 do *Local* constrói **sem** activar, logo essas células são construídas **duas** vezes) |
 | 2 | **Guardar o estado**: a posição de simulação de TODOS os vértices ← posições actuais da malha | malha | `x` |
 | 3 | **Activar** as células do conjunto afectado | — | células activas |
@@ -272,7 +345,28 @@ simulação como alvo (Pose/Boundary), `w ≡ 1` (F — eles não têm área; H:
 ⇒ Um vértice que a simulação arrasta para fora da banda **continua** a obedecer às restrições e a
 reter velocidade com o peso do sítio de onde partiu; só a força nova o deixa de tocar.
 
-Com os valores de omissão: a banda vai de `1,875·R` a `2,5·R` — largura `0,625·R`.
+⛔⛔ **ERRATA de 2026-09-06 (F+M) — esta linha dizia `1,875·R` a `2,5·R` e estava ERRADA por um
+factor de `1,4`.** As duas fronteiras são `R·(1 + L)` e `R·(1 + L·F)`, exactamente como o bloco de
+fórmula acima já diz, e com os valores de omissão (`L = 2,5`, `F = 0,75`) isso dá **início
+`2,875·R`** e **limite `3,5·R`** — largura `0,625·R`, que é a única coisa que a redacção anterior
+acertava. *A conta errada era `R·L` e `R·L·F`: ela esquece o `R` que abre os dois parênteses.*
+⚠️ **E é MEDIDO, não derivado** (M; números reconstruídos do zero pelo R-pré em 2026-09-06, régua =
+`|u| > 1e-5`, a mesma que o cabeçalho de cada fixture usa para o campo `movidos`): nas **26** fixtures
+*Local* de 12 passos do plano com `limite = 2,5`, o vértice movido mais distante do pen-down cai em
+**`3,492·R`–`3,497·R`** (`1,2221`–`1,2239`) em **25** delas — encostado a `3,5·R = 1,2250` e **muito
+para lá** de `2,5·R = 0,8750`. ⚠️ A 26.ª é o **controlo de força fraca**
+(`plano_apertar_ponto_radial_local_origem_fraco`, `3,456·R`), cujo maior deslocamento vale `0,004` e
+cuja franja da banda **desaparece na resolução do ficheiro** — ⛔ ela não desmente a fronteira, mede
+a resolução. As três fixtures que este bloco nomeia dão `1,2221` (`plano_expandir_radial_local`),
+`1,2234` (`plano_agarrar_radial_local`) e `1,2234` (`plano_gancho_radial_local`); ⚠️ o valor `1,2239`
+existe no corpus mas é de **outras** fixtures (o arrastar, os dois apertos, o empurrar, o inflar).
+⭐⭐ **E há um SEGUNDO ponto da recta, que é o que torna a errata irrefutável:** a fixture
+`plano_agarrar_radial_local_preset` corre com **`limite = 5,0`** e o seu vértice movido mais distante
+está a **`2,0745`** — `0,99·R(1+L) = 2,10`, e **`+19 %` para lá de `R·L = 1,75`**. *Duas leituras da
+mesma fórmula não podem sobreviver a dois valores de `L`: `R(1+L)` acerta nos dois (`1,00×` e
+`0,99×`), `R·L` erra por factores diferentes (`1,40×` e `1,19×`).*
+⇒ *um port com a leitura antiga simula um disco `40 %` mais pequeno e põe `φ = 0` num anel inteiro
+onde o alvo ainda tem `φ = 1`.*
 
 ### §2.3 — O pino opcional (*Pin Simulation Boundary*)
 
@@ -382,6 +476,35 @@ uma âncora de deformação é ainda **multiplicada, no solver, por um segundo f
 (§5.2) que o Grab fixa a `1` (radial) ou ao seu peso de plano, e que o Snake Hook **reescreve a
 cada passo** — é *isso* a «força ajustada a cada passo do pincel» da documentação.
 
+⭐⭐⭐ **ONDE VIVE O PONTO `B`, E QUEM LHE TOCA DURANTE A VARREDURA** (F, 2026-09-06 — a resposta à
+pergunta *«o alvo é recalculado dentro da varredura ou fixado uma vez por passo?»*). Nenhuma das
+duas pontas é **fotografada na construção**: cada uma é lida, **no instante da projecção**, da
+gaveta por-vértice a que pertence. Logo a resposta não é «fixo» nem «recalculado» — é **quem mais
+escreve naquela gaveta durante as varreduras**, e são quatro respostas diferentes:
+
+| espécie | de que gaveta é `B` | quem escreve nessa gaveta durante as 5 (ou 10) projecções |
+|---|---|---|
+| **estrutural** | a posição de TRABALHO do outro vértice | **a própria varredura** ⇒ `B` é **vivo** (é isto que faz o laço ser Gauss–Seidel e não Jacobi) |
+| **âncora de deformação** | a gaveta de âncora daquele vértice | **ninguém** — o gesto escreve-a uma vez por passo (§1 fase 4) e o solver nunca lhe toca ⇒ **fixa durante o passo inteiro** |
+| **corpo mole** | a memória de forma daquele vértice | **a própria varredura** — cada projecção puxa a memória para o vértice na fracção `1 − ρ` ⇒ **o alvo ANDA entre projecções** |
+| **pino** | a posição de repouso do traço | **ninguém** ⇒ **fixa** (e é a mesma gaveta que a construção lê para os comprimentos de repouso) |
+
+⚠️ **O mesmo vale para `A`:** ele é sempre a posição de trabalho do vértice, lida no instante da
+projecção. ⇒ *uma implementação que fotografe as posições no início de uma varredura e só as
+publique no fim é um Jacobi e diverge do alvo já na primeira varredura de qualquer passo em que a
+malha não esteja em repouso.*
+⚠️ **As duas gavetas por-vértice do modo de âncora nascem com valores que não são zero:** a gaveta
+de âncora nasce igual à **posição de repouso do traço** e o factor por passo `σ` nasce a **`1`** (F)
+— e só existem se o pincel for um dos dois modos de âncora, ou se um pincel alheio estiver a usar a
+simulação como alvo. ⇒ num pincel de FORÇA elas não existem, e não há âncora nenhuma.
+⚠️ **Esta tabela é (F) e NÃO se reconstrói de uma fixture** (R-pré, 2026-09-06) — a saída do oráculo
+mostra só o resultado das quatro leis somadas. A régua do lado limpo é o **gate 27**, que corre sobre
+restrições isoladas do NOSSO motor; ⭐ o corpus dá-lhe **três** apoios laterais, e vale nomeá-los
+porque são os únicos traços em que estas espécies aparecem de todo: `plano_arrastar_radial_local_plast05`
+e `plano_arrastar_radial_dinamica_preset` (plasticidade `0,5` ⇒ corpo mole vivo) e
+`plano_arrastar_radial_local_pino` (pino ligado). *Nos outros 62 traços o corpo mole e o pino não
+existem, logo nenhum deles pode acusar um port que os escreva ao contrário.*
+
 ### §3.3 — O que a construção NÃO faz
 
 - Não cria restrições para vértices escondidos (F). Vértices **mascarados** entram nas restrições
@@ -455,6 +578,13 @@ A força de um vértice é `F = f · u`, com `u` o vector abaixo; ela entra como
 
 ⚠️ **Nenhuma força é aplicada num passo em que o deslocamento do cursor no ECRÃ seja zero** (F) —
 o teste é sobre o delta de agarrar (§4.3), não sobre a posição 3D.
+⚠️⚠️ **Mas o SOLVER corre na mesma, e esse passo NÃO é um no-op** (F, 2026-09-06): o guarda desiste
+da fase do gesto, não do passo — as varreduras e a integração correm a seguir como em qualquer outro
+passo. ⇒ nesse passo a relaxação dá **mais 5 (ou 10) projecções** sobre uma malha já deformada e a
+integração transporta a velocidade de Verlet. ⭐ E há uma segunda consequência, porque a **zeragem do
+factor por passo das âncoras acontece DEPOIS do guarda**: num passo parado o `σ` e a gaveta de âncora
+ficam com os valores do passo ANTERIOR, e a âncora continua a puxar para o alvo velho. *Parar a mão
+não pára o pano — é isto que faz um traço com pausas continuar a assentar.*
 
 ⭐⭐⭐ **A MAGNITUDE DOS DOIS APERTOS NÃO DECRESCE COM A PROXIMIDADE — e é isso que os separa dos
 outros quatro modos de força** (F, 2026-09-06 · M — §5.2-ter). Nos dois apertos `u` é o vector
@@ -697,6 +827,42 @@ de toda restrição `(a, b)` passa a ser `ℓ + (τ_a + τ_b)/2` (§5.2). Com `f
   **absoluto** (não relativo à aresta): numa aresta de `0,047` (a grelha do oráculo) são `2 %` por
   passo (M, §10).
 
+⭐⭐⭐ **QUANDO `τ` PASSA A VALER: no MESMO passo, ANTES da primeira varredura** (F+M, 2026-09-06). A
+fase do gesto corre inteira antes da fase do solver (§1), e é ela que soma o incremento; quando a
+1.ª varredura lê o comprimento de repouso efectivo, o incremento **deste** passo já lá está. ⇒ *o
+Expand é o único modo em que a relaxação tem trabalho para fazer no PRIMEIRO passo simulado, com a
+malha ainda em repouso* — nos modos de força, a relaxação desse passo corre sobre uma malha por
+mexer e toda a correcção dela é identicamente zero (§5.2).
+
+⚠️⚠️ **A prova está numa fixture que já existia e ninguém tinha lido assim:** o
+`plano_expandir_radial_local_1passo` move **848** vértices num passo em que a aceleração é zero e
+não há âncora nenhuma (`846` na gémea com o pen-down na origem, `plano_expandir_radial_local_origem_1passo`). *Se `τ` só valesse no passo seguinte, esse traço tinha de mover **zero**
+vértices.* ⭐ E a corrida nova de 2026-09-06 fecha-a por **intervenção**: o mesmo traço com força
+`0,5` — que muda `τ` e mais nada, porque `B = 0,1·α` com `α = força²` — dá `0,000478` contra
+`0,001914`. ⚠️ **As duas razões, com a conta de cada uma escrita** (reconstruídas do zero pelo R-pré,
+2026-09-06): a **razão dos máximos** vale **`0,24999`** (`0,00047846 / 0,00191389`, e não `0,2497`,
+que é o que sai de dividir os dois números do cabeçalho já arredondados a seis casas) e a **mediana
+das razões por vértice** vale **`0,250000`** sobre os `662` vértices que os dois traços movem (M:
+`plano_expandir_radial_local_origem_1passo` e `…_forca05`). *O passo inteiro é linear em `τ`, o que
+só é possível se `τ` já estiver na conta quando a varredura corre.*
+
+⚠️⚠️ **E `τ` NÃO é privilégio das restrições de par: ele entra no comprimento de repouso de TODA
+restrição, as quatro espécies** (F). A soma é sempre *«metade do `τ` de cada extremo»* — só que as
+três espécies cujos dois extremos são **o mesmo vértice** (âncora, corpo mole, pino) recebem por isso
+o **`τ` INTEIRO daquele vértice**, e não metade. ⇒ com o Expand a soprar, um pino deixa de segurar o
+vértice na posição de repouso e passa a segurá-lo **a `τ` dela**, e uma âncora passa a mirar uma
+casca de raio `τ` à volta do alvo em vez do alvo.
+⚠️ **QUAIS destas combinações o artista alcança, uma a uma** (corrigido pelo R-pré, 2026-09-06 — a
+redacção anterior dizia que nenhuma era alcançável com o pincel de tecido sozinho, e isso é verdade
+só para a âncora): o **pino** e o **corpo mole** não são modos, são **opções independentes do modo**
+(o pino nasce da caixa da fronteira em qualquer área que não seja a dinâmica; o corpo mole nasce de
+plasticidade `> 0`) ⇒ **Expand + pino** e **Expand + corpo mole** são alcançáveis com o pincel de
+tecido sozinho, e é lá que o `τ` inteiro se vê. ⛔ Só a **âncora de deformação** é inalcançável junto
+com o Expand pelo pincel de tecido (a âncora só existe nos dois modos de âncora), e essa combinação
+alcança-se quando um pincel alheio usa a simulação como alvo. *Um port que some `τ` só à lista das
+estruturais escreve uma lei diferente, e o corpus de hoje — que corre com pino desligado e
+plasticidade `0` — não a vê falhar.*
+
 ### §4.6 — O que é DEGENERADO num plano visto de frente e VIVO numa superfície curva (F+M, 2026-09-06)
 
 ⛔⛔⛔ **Leia isto antes de procurar uma lei «para superfície curva»: não existe nenhuma.** Nenhuma
@@ -799,6 +965,40 @@ h  = Δ/2
 - **A força `s` do Grab radial é `0,1 · curva(d⁰)` com a curva do PINCEL** (o preset de falloff do
   pincel activo avaliado na distância de repouso ao centro), não uma curva fixa.
 
+⭐⭐⭐ **A ÂNCORA NÃO TEM PASSE PRÓPRIO — as quatro espécies vivem numa lista SÓ e num laço SÓ**
+(F, 2026-09-06 — a resposta directa à pergunta *«ela é percorrida na mesma ordem que as de par, ou
+num passe antes/depois?»*). O laço é literalmente *«cinco vezes, a lista de fio a pavio»*, e a
+espécie de cada restrição só é lida **dentro** da projecção, para escolher o factor que a multiplica
+e para quem vai a metade do outro lado. Em consequência, e cada uma destas é uma coisa que um port
+pode ter escrito ao contrário:
+1. **A ordem é a de CRIAÇÃO** (§3.1) e nada a reordena por espécie. Por vértice a ordem de nascimento
+   é **corpo mole → estruturais (anel-1 e pares do anel) → âncora → pino**, e as estruturais de um
+   vértice também nascem no bloco dos **vizinhos** dele ⇒ **entre duas restrições que TOCAM o mesmo
+   vértice pode estar a âncora dele**. ⛔ *Não há «primeiro as distâncias, depois as âncoras».*
+   ⚠️ A frase inversa também é falsa: dentro do bloco de um vértice as estruturais dele são
+   contíguas, e a âncora vem **depois** delas — o que as intercala é o bloco do vizinho seguinte.
+2. **A correcção é sempre `Δ/2`** — na âncora, no pino e no corpo mole também. O que faz uma âncora
+   fechar só metade do que uma estrutural fecha **não é um factor diferente**: é o outro extremo não
+   ser um vértice, logo o segundo `Δ/2` não é aplicado a ninguém.
+3. ⚠️ **A supressão do lado `B` é uma comparação de ÍNDICE — mas ela só alcança DUAS das três
+   espécies de alvo próprio** (corrigido pelo R-pré, 2026-09-06): as três guardam o **mesmo índice**
+   nos dois extremos, e é essa igualdade que suprime o segundo `Δ/2` **na âncora e no pino**. ⛔ **No
+   corpo mole o segundo `Δ/2` NÃO é suprimido: ele é aplicado à memória de forma**, e quem o encaminha
+   para lá é a **espécie** — o corpo mole é o único que tem braço próprio na projecção. ⇒ um port com
+   um só braço, guardado pela igualdade de índices, **congela a memória de forma** e a plasticidade
+   deixa de existir sem que nada avise.
+4. **O peso `φ` é lido por ÍNDICE, um por extremo** (`φ_A` para A, `φ_B` para B) — ⛔ excepto no
+   corpo mole, onde as **duas** metades levam o `φ` de **A**: a memória de forma não tem `φ` próprio.
+5. **`φ` é calculado UMA vez por passo, antes da 1.ª varredura, e para a malha INTEIRA** — não por
+   célula activa e não por varredura. ⚠️ **A razão é funcional, e um port que a ignore lê o peso
+   errado:** uma restrição de par liga vértices que podem pertencer a **células diferentes**, e a
+   projecção precisa do `φ` dos dois no mesmo instante ⇒ o peso tem de estar disponível para
+   **qualquer** vértice da malha enquanto o laço corre, e não só para os do lote em mãos.
+
+⚠️⚠️ **`ℓ'` vale para as QUATRO espécies, e nas três de alvo próprio o incremento entra INTEIRO**
+(F, 2026-09-06): a soma é sempre *«metade do desvio de cada extremo»*, e quando os dois extremos são
+o mesmo vértice as duas metades somam o desvio dele por completo (§4.5).
+
 ⚠️⚠️ **O factor `(1 − ℓ'/D)` NÃO TEM TECTO, e muda de SINAL quando o par fica COMPRIMIDO** (F,
 2026-09-06 — o único guarda do fonte é o `D = 0`): com `D > ℓ'` ele vive em `[0, 1)` e a correcção
 puxa; com `D < ℓ'` ele é **negativo e cresce sem limite** à medida que `D → 0`, e a correcção
@@ -816,6 +1016,32 @@ nunca desce abaixo de `D/ℓ = 0,49` (factor `−1,1`), e a fixture de força fr
 *Local* projecta-o **dez** vezes por passo. ⚠️ **Quando este documento diz «par estrutural» numa
 tabela de medição, é a régua LARGA que vale** — a estreita fica aqui só porque foi a primeira a ser
 escrita e a diferença entre as duas é ela própria o achado.
+
+⛔⛔⛔ **O CENSO DOS LIMITES DO SOLVER, feito de propósito para fechar a pergunta *«há algum tecto
+que só se veja quando o passo é grande?»*** (F, 2026-09-06 — leitura integral do laço e da
+integração, uma linha de cada vez). **A resposta é NÃO, e a lista é exaustiva:**
+
+| o que se procurou | existe? |
+|---|---|
+| tecto na magnitude de uma correcção | **não** — o único guarda do laço é a separação nula |
+| tecto no deslocamento acumulado de um vértice num passo | **não** |
+| desistência / condição de saída antecipada por convergência | **não** — o laço é um `5` fixo, sem medir resíduo |
+| número de varreduras que dependa do passo de tempo, do tamanho do gesto ou do estado da malha | **não** — `5` é uma constante do ficheiro |
+| sub-passos do solver dentro de um passo de pincel | **não** (§5.7) |
+| limite ao número de restrições por vértice | **não** (§3.3) |
+| tecto na velocidade de Verlet, ou corte ao ultrapassar o alvo | **não** (§5.4) |
+| algo que salte uma restrição | **sim, um só**: a célula dela não estar activa |
+
+⚠️ **A única coisa em todo o passo que APARA um deslocamento vive FORA do solver e nasce desligada**
+(R-pré, 2026-09-06 — o censo acima é do laço e da integração, e esta não está em nenhum dos dois): na
+**escrita na malha** (§6.1) o deslocamento passa pelo **bloqueio de eixos** e pelo **recorte do
+modificador de espelho** da casa, que zeram componentes inteiras. ⛔ Não é um tecto de magnitude, não
+depende do tamanho do passo e **não** está activo em nenhuma fixture do §10 — mas um port que a
+esqueça diverge de todo traço feito com um eixo travado.
+
+⇒ **nada no solver lê o tamanho do gesto.** Se um port se afasta mais quando o passo é grande, a
+causa não é um limite que lhe falte: é que a projecção `(1 − ℓ'/D)` é **não-linear** no esticão e o
+laço deixa de ser uma contracção — e é a §5.2-quater que mede o quanto.
 
 ⚠️ **Só a POSIÇÃO é corrigida — não há projecção de velocidade separada**: a velocidade do passo
 seguinte sai da diferença de posições (§5.4), logo as correcções das restrições **entram na
@@ -987,6 +1213,121 @@ sensibilidade à ordem desaparece; o modo, a lei e a maquinaria não mudaram.*
   onde puxa, o nó não aparece em força nenhuma, e a nossa saída deixa de casar com a do alvo
   exactamente nos traços fortes. ⛔ **Não há terceira**: a inversão nasce no PRIMEIRO passo, antes de
   a relaxação correr, logo nenhuma afinação do solver a evita.
+
+### §5.2-quater — ⛔⛔⛔ O que os traços de UM PASSO dos modos que escrevem ACELERAÇÃO **não** medem (F+M, 2026-09-06)
+
+⚠️ **A palavra «força» tem duas populações neste documento, e aqui vale a estreita** (precisado pelo
+R-pré, 2026-09-06): a §4.2 chama «modos de FORÇA» aos **seis** que não são de âncora, e o Expand é
+um deles — mas o Expand **não escreve aceleração nenhuma**, escreve desvio de repouso (§4.5). ⇒ nesta
+secção, e nos gates que ela alimenta, o sujeito são os **CINCO modos que escrevem aceleração**
+(arrastar · empurrar · inflar · apertar ponto · apertar linha). *Ler «os seis de força» aqui inverte
+a conclusão, porque o Expand está do outro lado da partição.*
+
+⛔⛔⛔ **Leia isto antes de concluir seja o que for a partir de um traço de um passo simulado.** A
+relaxação corre **antes** da integração (§5.2). Num traço de um passo de um modo que escreve
+aceleração, a malha com que a relaxação se encontra está **em repouso**, todo par está exactamente no
+comprimento de repouso e `τ` é zero ⇒ **todas as correcções que ela calcula são identicamente zero**.
+O que sobra é a força, dividida pela massa, vezes o passo de tempo. ⇒ *um traço desses mede a área, a
+banda, o factor por vértice, a curva, a dureza, a direcção do modo e a integração — e **não toca numa
+única restrição de distância**.*
+
+⭐⭐ **E isso CONTA-SE, não se argumenta** (M, 2026-09-06; recontado do zero pelo R-pré). A régua, por
+inteiro, para que o censo seja reconstruível: **movido** = `|u| > 1e-5` sobre as posições a seis casas
+(é a mesma régua com que o cabeçalho de cada fixture enche o campo `movidos`); **disco** = os vértices
+cuja posição de **repouso** dista menos de `R` da **ponta do caminho** (o cursor do passo simulado).
+⚠️ **O disco tem tamanho diferente conforme onde a ponta cai na grelha** — `173` vértices nas fixtures
+com o pen-down em `x = −0,3` (ponta em `+0,3`), que são as deste censo, e `177` nas de pen-down na
+origem (ponta em `+0,6`). ⚠️ Nos dois modos de âncora o resultado é o mesmo com qualquer das duas
+pontas do caminho, porque o disco inteiro se move de qualquer maneira.
+
+| traço de UM passo (pen-down em `x = −0,3`) | movidos DENTRO do disco | movidos FORA do disco | total (= o `movidos` do cabeçalho) |
+|---|---|---|---|
+| arrastar · empurrar · inflar · apertar ponto | `171` | **`0`** | `171` |
+| arrastar com massa `2` | `171` | **`0`** | `171` |
+| arrastar com força `0,5` | `168` | **`0`** | `168` |
+| apertar linha | `156` | **`0`** | `156` |
+| **expandir** | `173` | **`675`** | `848` |
+| **agarrar** | `173` | **`1151`** | `1324` |
+| **gancho** | `173` | **`1279`** | `1452` |
+
+⇒ **os SETE traços de um passo dos cinco modos que escrevem aceleração movem o disco e mais nada; os
+três que falham movem entre 5 e 8,5 vezes mais vértices, e a esmagadora maioria deles é material que
+força nenhuma tocou.** Aquele material só pode ter sido movido pela relaxação. *A partição «modos que
+escrevem aceleração» × «modos que escrevem âncora ou repouso» é, medida, a partição «traços que não
+exercitam a rede de restrições» × «traços cuja resposta É a rede de restrições».*
+
+⭐⭐⭐ **A INTERVENÇÃO que o prova: dobrar a lista muda o resultado de um passo em 20–30 %.** A área
+*Local* projecta cada restrição `10` vezes por passo e a *Global* `5` (§5.2-bis). Correndo o **mesmo
+gesto, o mesmo caminho, o mesmo raio e a mesma força**, só a área a mudar (M, corrida nova de
+2026-09-06, pen-down na origem, um passo simulado):
+
+| traço de um passo | *Local* (`10` projecções) | *Global* (`5`) | razão |
+|---|---|---|---|
+| gancho | `0,456101` | `0,343172` | `0,752` |
+| agarrar | `0,134311` | `0,094722` | `0,705` |
+| expandir | `0,001914` | `0,001525` | `0,797` |
+
+⚠️ **A leitura honesta da diferença:** a *Global* também constrói para a malha inteira e tem `w ≡ 1`
+— mas na janela do perfil (`d < 1,6 R`) a banda vale `1` nas duas (§2.2: ela só começa a cair a
+`2,875 R`), logo o que resta a explicar `25 %` do pico é o **número de passagens**. *Nenhum dos sete
+traços de força de um passo consegue ver esta diferença: neles as duas áreas dão o mesmo, porque
+percorrer duas vezes uma lista de correcções nulas não muda nada.*
+
+⭐⭐⭐ **O «degrau» do perfil é a rede, e o seu SÍTIO move-se com o número de passagens.** Perfil ao
+longo da linha do traço, um passo, `δ = 0,6`. ⚠️ **A amostragem, por inteiro** (precisada pelo R-pré,
+2026-09-06, que reproduziu a tabela célula a célula): os vértices são os que estão **sobre o eixo do
+traço** (`y = z = 0`) em `x = k · aresta`, `k = 0..7`, com `aresta = 0,046875` — logo `d` é a
+distância de repouso ao **pen-down**, medida **no sentido do traço**, e `d/R = k · 0,13393`.
+⛔ `d` não é a distância ao centro da queda: nestas fixtures o pen-down está na origem, e é dele que
+a tabela parte nos dois modos.
+
+| `d/R` | gancho *Local* | gancho *Global* | agarrar *Local* | agarrar *Global* |
+|---|---|---|---|---|
+| `0,000` | `0,4513` | `0,3149` | `0,1343` | `0,0900` |
+| `0,134` | `0,4419` | `0,3188` | `0,1262` | `0,0843` |
+| `0,268` | `0,4559` | `0,3357` | `0,1098` | `0,0714` |
+| `0,402` | `0,3743` | `0,2954` | `0,0895` | `0,0553` |
+| `0,536` | **`0,1947`** | **`0,0577`** | `0,0697` | `0,0399` |
+| `0,670` | **`0,0431`** | `0,0351` | `0,0529` | `0,0276` |
+| `0,804` | `0,0392` | `0,0327` | `0,0400` | `0,0188` |
+| `0,938` | `0,0329` | `0,0233` | `0,0302` | `0,0128` |
+
+Razão entre células consecutivas: o gancho *Local* faz `1,02 · 0,97 · 1,22 · 1,92 · **4,52** · 1,10
+· 1,19` e o gancho *Global* faz `0,99 · 0,95 · 1,14 · **5,11** · 1,65 · 1,07 · 1,40`. ⇒ **é o mesmo
+degrau, deslocado UMA célula para dentro quando as passagens caem de `10` para `5`.**
+⭐ **E o agarrar não tem degrau nenhum** (`1,06 · 1,15 · 1,23 · 1,29 · 1,32 · 1,32 · 1,32`): ele
+decai suavemente e assenta numa cauda de `1,32` por célula (*Local*) / `1,47` (*Global*). *A cauda é
+a rede a transmitir; o degrau é a rede a **ceder** — e só o gancho a leva ao ponto de ceder.* ⚠️ O
+que os separa **não** é a lei do alvo (as duas são quadráticas na queda: no agarrar a força da
+restrição já traz a curva, no gancho é o factor por passo que a traz): é a **magnitude** — âncora de
+`0,35` contra `0,1 · curva`, e um pico de `0,4561` contra `0,1343` no mesmo passo, `3,4×`.
+
+⭐⭐⭐ **E o degrau é um fenómeno de `δ` GRANDE — desaparece a `δ` pequeno com tudo o resto igual.** O
+mesmo gancho, um passo, com o percurso encurtado de `0,6` para `0,05` (≈ uma aresta) dá
+`1,07 · 1,15 · 1,22 · 1,27 · 1,30 · 1,31 · 1,31 · 1,31` — ⚠️ **oito razões, logo NOVE células**
+(a tabela acima pára em `0,938 R`; esta segue até `1,072 R`), e a 4.ª é `1,2747`, que arredonda a
+`1,27` (o R-pré recontou-a em 2026-09-06). É **a curva do agarrar, sem degrau**, e o
+pico vale `0,649 · δ` contra `0,760 · δ` no traço longo (M: `plano_gancho_radial_local_origem_1passo`
+e `…_curto`). ⇒ *a resposta de um passo nem sequer é proporcional a `δ`: a projecção
+`(1 − ℓ/D)` deixa de ser uma mola quando o par é esticado várias vezes o comprimento dele, e passa a
+devolver uma fracção fixa da separação ACTUAL — um travão muito mais duro. É essa não-linearidade
+que fabrica o degrau, e é ela que um port ligeiramente mais mole alisa.*
+
+⭐⭐ **A prova de que a rede também ULTRAPASSA (o gémeo em TRACÇÃO do achado de compressão do
+§5.2-ter):** com a curva *Constant* — que põe `f_v = 1` em todo o disco e `0` fora dele, tornando o
+alvo da âncora uniforme e o perfil de fora um medidor puro da rede — o mesmo passo devolve
+**`0,8790`**, que é **`1,465 × δ`**, com **`107` vértices a andarem MAIS do que o alvo da própria
+âncora** e o máximo a `0,552 R` do centro, não no centro (M:
+`plano_gancho_radial_local_origem_1passo_constante`; com a curva *Smooth* são `0` vértices). *Uma
+âncora não pode empurrar um vértice para além do ponto para onde puxa: quem o leva lá é a cadeia de
+pares esticados, a projectar em Gauss–Seidel mais vezes do que a contracção aguenta.* ⚠️ E o degrau
+dessa fixture está a `1,071 R → 1,205 R` (razão `5,3`), que é **onde `f_v` cai a zero** — ⇒ *a
+posição do degrau é onde a âncora deixa de alimentar e a rede assume; a forma dele é da rede.*
+
+⚠️ **O que isto manda fazer, e por que ordem:** o traço que isola a rede com **zero** força e **zero**
+âncora é o `plano_expandir_radial_local_origem_1passo` — nele a única coisa que existe é a lista de
+restrições, a ordem dela e o número de passagens. ⇒ **fechá-lo primeiro**; os dois modos de âncora
+somam-lhe a lei da âncora, e só depois é justo lê-los.
 
 ### §5.3 — O que «damping» é, de facto
 
@@ -1248,9 +1589,11 @@ como proveniência (as mensagens de commit são públicas; o texto foi re-dito).
 
 ## §10 — Vectores de teste (o oráculo)
 
-⭐ **56 traços do binário 5.2.1 sobre malhas NOSSAS** — ⚠️ **CONTE-OS, não cite este número de
+⭐ **65 traços do binário 5.2.1 sobre malhas NOSSAS** — ⚠️ **CONTE-OS, não cite este número de
 memória** (`ls docs/3D/cleanroom/fixtures/cloth/*.deformado.txt.gz | wc -l`): esta linha esteve em
-`51` depois de a §10.5 acrescentar dois, a §10.6 mais um e a §10.7 mais dois.
+`51` depois de a §10.5 acrescentar dois, a §10.6 mais um, a §10.7 mais dois e a §10.8 mais **nove**.
+⚠️ **A tabela abaixo NÃO é o corpus** — ela tem as `47` linhas da 1.ª geração, e os traços das
+§10.2–§10.8 vivem nas secções delas. O corpus é o directório.
 ⚠️ **O `indice.json` é DERIVADO e regenera-se** — `python3 fixtures/cloth/gera_indice.py` (uma
 entrada por `.deformado.txt.gz`); ⛔ não o edite à mão, e não confie num número escrito aqui. Malhas: grelha plana 64×64 e esfera UV
 96×64; um traço por modo e por variante de solver, em `fixtures/cloth/` (proveniência e verificador
@@ -1533,6 +1876,37 @@ traço a partir do pen-down) e do vértice mais próximo do cursor do passo:
 
 ---
 
+### §10.8 — As NOVE corridas que isolam a REDE de restrições (corrida NOVA do oráculo, 2026-09-06, a pedido do I)
+
+Todas com **pen-down na ORIGEM** e **um** passo simulado (caminho de dois pontos), na grelha de
+sempre (`R = 0,35`, força `1` salvo indicação, curva *Smooth* salvo indicação, aresta `0,046875`).
+⚠️ **Validação da sessão antes de as gravar:** uma corrida de controlo do gancho com o caminho
+`0 → 0,3 → 0,6` devolveu `máx = 0,343869`, o **mesmo valor a seis casas** que a fixture
+`plano_gancho_radial_local_2passos_origem` gravada na sessão anterior. *A sessão reproduz; o que se
+segue é comparável com o corpus antigo.*
+
+| fixture | o que a corrida muda | movidos | máx `|u|` |
+|---|---|---|---|
+| `plano_expandir_radial_local_origem_1passo` | (a referência da rede pura) | `846` | `0,001914` |
+| `plano_expandir_radial_global_origem_1passo` | área *Global* ⇒ `5` projecções em vez de `10` | `724` | `0,001525` |
+| `plano_expandir_radial_local_origem_1passo_forca05` | força `0,5` ⇒ `τ` a `0,25` e mais nada | `662` | `0,000478` |
+| `plano_gancho_radial_local_origem_1passo` | (a referência do gancho) | `1451` | `0,456101` |
+| `plano_gancho_radial_global_origem_1passo` | área *Global* | `1068` | `0,343172` |
+| `plano_gancho_radial_local_origem_1passo_constante` | curva *Constant* ⇒ `f_v` é um degrau | `1735` | `0,878999` |
+| `plano_gancho_radial_local_origem_1passo_curto` | percurso `0,05` em vez de `0,6` | `1129` | `0,032433` |
+| `plano_agarrar_radial_local_origem_1passo` | (a referência do agarrar) | `1323` | `0,134311` |
+| `plano_agarrar_radial_global_origem_1passo` | área *Global* | `881` | `0,094722` |
+
+⭐ **Cada uma existe para responder a UMA pergunta, e as três colunas de intervenção são pares
+A/B com uma variável só** — a área (o número de passagens), a força do Expand (`τ`) e o
+comprimento do percurso (`δ`). As leituras estão na **§5.2-quater** (a rede) e na **§4.5** (`τ`).
+⚠️ **A `_constante` é a única do corpus inteiro que não usa a curva *Smooth*** — o cabeçalho dela
+di-lo (`curva constant`), e um port que ignore esse campo mede outro gesto.
+⚠️ **As de área *Global* têm o pen-down na origem como as outras, mas a área *Global* não tem centro
+nenhum** (§2.1) — o pen-down delas importa só por ser onde o pincel está.
+
+---
+
 ## §11 — Comportamento de borda, caso a caso (F salvo indicação)
 
 | caso | o que o alvo faz |
@@ -1542,6 +1916,9 @@ traço a partir do pen-down) e do vértice mais próximo do cursor do passo:
 | vértice **exactamente** sobre o cursor, num modo de aperto | direcção nula ⇒ **força zero** (sem `NaN`, sem direcção de reserva, sem saltar o vértice); a um epsilon dali recebe a força inteira (§4.2) |
 | vértice exactamente **sobre o plano** de falloff, no aperto de ponto com *Force Falloff = Plane* | o mesmo: distância assinada zero ⇒ direcção nula ⇒ força zero |
 | retalho já invertido debaixo do cursor | nada o desfaz: não há detecção de inversão, nem tecto de deslocamento, nem corte ao ultrapassar o alvo (§5.2-ter) |
+| **passo em que o cursor não se moveu no ecrã** | a fase do gesto desiste, **o solver corre na mesma** (mais 5/10 projecções + integração) e o factor por passo das âncoras **não é zerado** ⇒ a âncora continua a puxar para o alvo do passo anterior (§4.2) |
+| **par esticado a várias vezes o comprimento de repouso** | a projecção deixa de ser uma contracção: com a curva *Constant*, `107` vértices acabam o passo MAIS longe do que o alvo da própria âncora (`1,465 × δ`) — sem tecto, sem corte (§5.2-quater) |
+| Expand com pino ligado, ou com um pincel alheio a mirar a simulação | o desvio de repouso `τ` entra **também** no pino, na âncora e no corpo mole, e ali **inteiro** (os dois extremos são o mesmo vértice) ⇒ o pino segura a `τ` da posição de repouso, não nela (§4.5) |
 | vértice escondido | sem restrições, factor `0` |
 | vértice totalmente mascarado | tem restrições, mas `φ = 0` ⇒ nunca se move — os vizinhos vêem-no como âncora rígida |
 | célula sem vértices visíveis | construída vazia; activada/desactivada sem efeito |
@@ -1637,6 +2014,13 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 17 | **É só o ramo *Local***: a mesma experiência que melhora os traços *Local* tem de **piorar** os *Global* e os *Dynamic* — um port que dobre a relaxação em toda a parte passa o gate 16 e reprova aqui | sinal do erro relativo, em **todos** os traços de §10 (⛔ contados, nunca citados de memória) | §5.2-bis · §10.3 |
 | 22 | **O deslocamento do cursor é a PROJECÇÃO, e só o arrasto não o usa**: sobre as fixtures de esfera, o `δ` que alimenta a âncora do Agarrar, a do Snake Hook, a normal do plano de queda e o `x̂` do referencial tem componente **exactamente zero** ao longo do eixo da vista em **todos** os passos; e a direcção do arrasto no mesmo traço **tem** componente de profundidade, com o ângulo entre as duas a reproduzir, nos **11** passos, `15,83° · 12,61° · 9,42° · 6,27° · 3,13° · 0°` **e o espelho** (`3,13° · 6,27° · 9,42° · 12,61° · 15,83°`) — a sequência é simétrica porque o caminho é simétrico em relação ao topo da esfera, ⛔ e não é uma tabela a copiar: sai de `atan(Δy/Δx)` sobre a esfera unitária ⇒ ⚠️ **duas metades**, e a segunda é o controlo: um port que use a diferença dos pontos 3D em toda a parte passa a 1.ª e reprova a 2.ª, e um que projecte em toda a parte faz o inverso | `0` exacto numa metade · a tabela do §4.3 na outra | §4.3 · §4.6 · fixtures de esfera |
 | 23 | **A normal do Push é REAVALIADA sobre a malha DEFORMADA**: congelá-la na normal de repouso tem de **mudar** `plano_empurrar_radial_local_origem` acima da barra do gate 15, e tem de deixar `plano_empurrar_radial_local_1passo` **byte-idêntico** ⇒ ⚠️ **duas metades**, e a segunda é o controlo (no 1.º passo simulado a malha ainda está em repouso, logo lá as duas leis coincidem por construção) | mutação: A/B com a normal congelada | §4.2-bis · §10.7 |
+| 25 | ⛔⛔ **UM PASSO DE ACELERAÇÃO NÃO MOVE NADA FORA DO DISCO — e é o CONTROLO de que a relaxação não corre ali**. Régua, por inteiro: **movido** = `\|u\| > 1e-5` sobre as posições a seis casas; **disco** = posição de **repouso** a menos de `R` da **ponta do caminho**, que nestas fixtures (pen-down em `x = −0,3`) tem `173` vértices. Nos **sete** traços de um passo dos cinco modos que escrevem aceleração a contagem FORA do disco tem de ser **`0`**, e a de dentro `171` (arrastar · arrastar com massa `2` · empurrar · inflar · apertar ponto), `168` (arrastar com força `0,5`) e `156` (apertar linha); nos três de âncora/repouso a de fora tem de ser `675` (expandir) · `1151` (agarrar) · `1279` (gancho) e a de dentro `173` nos três. ⚠️ **Duas metades, e a 1.ª é o controlo:** um port cuja relaxação corra DEPOIS da integração passa a 2.ª e reprova a 1.ª | contagens exactas (inteiros dos dois lados) | §5.2 · §5.2-quater · as **dez** fixtures `plano_*_1passo` de pen-down em `x = −0,3` |
+| 26 | **A ÂNCORA vive na mesma lista e recebe `Δ/2`**: numa fixtura de uma restrição de âncora isolada com `φ = 1`, `s = 1` e `σ = 1`, a distância ao alvo após `k` varreduras é `(1 − 0,3)^k` da inicial — ⛔ **não** `(1 − 0,6)^k`, que é a lei das ESTRUTURAIS (gate 9). O **pino** segue a mesma lei da âncora. ⭐ E o **corpo mole** fecha a separação à MESMA taxa da âncora — `0,3ρ` do lado do vértice mais `0,3(1−ρ)` do lado da memória dá `0,3` para qualquer `ρ` —, o que o distingue não é a taxa, é **as duas pontas se moverem** | `0,7^5 = 0,16807 ± f32` nos três · e, no corpo mole, `\|Δvértice\| + \|Δmemória\| = Δ/2` exacto | §3.2 · §5.2 |
+| 27 | ⭐ **O alvo de cada espécie é lido no INSTANTE da projecção, e a memória de forma ANDA**: com plasticidade `0 < ρ < 1` e uma restrição de corpo mole isolada, a memória tem de ter-se deslocado no fim do passo — e os dois têm de convergir para o ponto **`(1 − ρ)·A₀ + ρ·B₀`** (`A` = vértice, `B` = memória), que é a combinação que a projecção **conserva**: cada varredura move `A` de `+0,3ρ(B−A)` e `B` de `−0,3(1−ρ)(B−A)`, e `(1−ρ)A + ρB` fica invariante. ⛔ Não é o ponto médio: com `ρ = 0` o encontro é em `A₀` (a memória vai ter com o vértice) e com `ρ = 1` é em `B₀`. ⚠️ **Controlo:** com a âncora de deformação, o alvo tem de ficar **exactamente** onde o gesto o pôs, ao bit, no fim das 10 projecções | ponto de encontro `= (1−ρ)A₀ + ρB₀ ± f32` · posição da âncora idêntica ao bit | §3.2 · §5.2 |
+| 28 | ⭐⭐ **`τ` entra ANTES da 1.ª varredura do MESMO passo, e é linear**: o traço de UM passo do Expand tem de mover `846` vértices (régua do gate 25; ⛔ um port que só aplique `τ` no passo seguinte move **zero**), e o mesmo traço a força `0,5` tem de dar `0,25 ×` o deslocamento — as duas leituras da razão são a **dos máximos** (`0,24999`) e a **mediana das razões por vértice** sobre os `662` vértices que os dois traços movem (`0,250000`); ⛔ dividir os dois `max_deslocamento` do cabeçalho, já arredondados a seis casas, dá `0,2497` e não é a régua. ⚠️ **Duas metades**, e a 2.ª mata a hipótese «move alguma coisa por outro motivo» | contagem exacta · razão `0,25 ± f32` | §4.5 · §10.8 · fixtures `plano_expandir_radial_local_origem_1passo`(+`_forca05`) |
+| 29 | ⭐⭐⭐ **O DEGRAU do gancho é da REDE, e o sítio dele desloca-se com o número de passagens.** Régua do perfil: §5.2-quater (eixo do traço, `k · aresta`, `k = 0..7`). ⚠️ **«Há degrau» tem de ser um predicado DERIVADO, não um tecto escolhido** — o critério é *a maior razão entre células consecutivas dividida pela MEDIANA das restantes* (`≥ 2` ⇒ há degrau). Ele separa o corpus por um vazio de `3,6×`: gancho `3,95` (*Local*) e `4,63` (*Global*) contra agarrar `1,05`/`1,10` e `_curto` `1,05`. ⛔ **Um tecto absoluto de `1,4` na razão máxima REPROVA o próprio oráculo** (o agarrar *Global* faz `1,47` sem degrau nenhum, só por decair mais depressa). **Metades:** (a) no gancho a maior razão tem de cair entre `0,536 R` e `0,670 R` na *Local* e entre `0,402 R` e `0,536 R` na *Global* (o oráculo dá `4,52` e `5,11`); (b) o **agarrar** não pode ter degrau (discriminador `≤ 1,2`), com a cauda a assentar em `1,32` *Local* / `1,47` *Global*; (c) o `_curto` (`δ = 0,05`) também não pode ter degrau — se tiver, o defeito não é a rede, é a lei da âncora | posição do máximo da razão, em células · discriminador `≥ 2` no gancho e `≤ 1,2` nos outros dois | §5.2-quater · §10.8 · fixtures `plano_gancho_radial_{local,global}_origem_1passo`, `…_curto`, `plano_agarrar_radial_{local,global}_origem_1passo` |
+| 30 | **A banda começa a `R(1+L·F)` e acaba a `R(1+L)`** — com as omissões, `2,875 R` e `3,5 R`, ⛔ **não** `1,875 R` e `2,5 R`. Régua: `movido` = `\|u\| > 1e-5`; num traço *Local* de 12 passos do plano com `limite = 2,5` o vértice movido mais distante do pen-down tem de ficar entre `3,49 R` e `3,50 R` (`25` fixtures dão `1,2221`–`1,2239` contra `3,5 R = 1,2250`; ⛔ isenta o controlo de força fraca, cuja franja cai na resolução do ficheiro). ⚠️ **Segunda metade, e é ela que refuta a leitura antiga:** com `limite = 5,0` o mesmo traço tem de chegar a `≈ 0,99 · R(1+L) = 2,08`, e `R·L` daria `1,75` — *um `L` só não distingue as duas fórmulas; dois distinguem* | `1,2221`–`1,2239` e `2,0745` (M) | §2.2 · fixtures `plano_{expandir,agarrar,gancho}_radial_local` e `plano_agarrar_radial_local_preset` |
+| 31 | **Um passo sem movimento de cursor ainda SIMULA**: dois traços com o mesmo caminho, um deles com um ponto repetido, não podem dar a mesma malha — o repetido tem de ter relaxado e integrado mais uma vez, com a âncora e o `σ` do passo anterior intactos. ⚠️ **É um gate de ESPEC, não de oráculo:** nenhuma fixture do §10 traz um ponto de caminho repetido, logo ele corre **A/B sobre o nosso motor** e a barra é *«diferem»*, não *«casam com o oráculo»*. Um port que trate o passo parado como no-op dá as duas malhas iguais | as duas malhas diferem acima da barra do gate 15 | §4.2 · §11 |
 | 24 | **A razão `2R` do Push, e a igualdade Push/Inflate no 1.º passo simulado**: no passo 2 dos dois traços do §10.7 o vértice do pen-down move `0,06543` e `0,09347`, razão `0,7000 = 2·R`; e a divergência entre os dois só pode começar no passo **3** — se começar no 2, o port está a ler duas normais diferentes numa folha plana em repouso, onde elas são a mesma | razão `2R ± f32` · igualdade de direcção no passo 2 | §4.2-bis · §10.1 · §10.7 |
 
 ---

@@ -19,10 +19,21 @@ repouso e as posições depois do traço.
 Vista ortográfica; o cursor anda em linha recta ao longo de `+X`, comprimento `0,6`, em `passos`
 passos iguais (o 1.º passo nunca simula — espec §1); no plano, sobre a face de cima (`z = 0`);
 na esfera, sobre o equador visível (`y < 0`). Raio do pincel em espaço de objecto `0,35`
-(≈ 7,5 arestas da grelha); força `1,0` (salvo `_forca05`), pressão `1`, curva *Smooth*, dureza `0`,
+(≈ 7,5 arestas da grelha); força `1,0`, pressão `1`, curva *Smooth*, dureza `0`,
 área *Local* (salvo indicação), limite `2,5`, banda `0,75`, massa `1`, amortecimento `0,01`,
 plasticidade `0`, pino desligado, sem colisões, sem gravidade — i.e., **as omissões do código**
 (espec §8.1), não as dos presets (§8.2).
+
+⚠️ **As excepções a este parágrafo são SETE, e foram CONTADAS do `indice.json`** (R-pré, 2026-09-06 —
+a redacção anterior nomeava só `_forca05` e deixava as outras quatro debaixo de uma frase que as
+contradizia; ⛔ leia o cabeçalho da fixture, nunca esta lista, mas saiba que ela existe):
+- **força** ≠ `1,0` em **quatro**: `plano_apertar_ponto_radial_local_origem_fraco` (`0,2`),
+  `plano_arrastar_radial_local_forca05`, `…_forca05_1passo` e
+  `plano_expandir_radial_local_origem_1passo_forca05` (`0,5`);
+- **curva** ≠ *Smooth* em **uma**: `plano_gancho_radial_local_origem_1passo_constante`;
+- **percurso** ≠ `0,6` em **uma**: `plano_gancho_radial_local_origem_1passo_curto` (`0,05`);
+- **limite** ≠ `2,5` em **uma**: `plano_agarrar_radial_local_preset` (**`5,0`**) — ⭐ e essa é
+  load-bearing: é o **segundo ponto de `L`** que refuta a leitura antiga da banda (espec §2.2).
 
 ⚠️ **Duas coisas do harness que mudam a leitura de uma fixture:**
 - o centro da área *Local* é o ponto da superfície sob o cursor **no hover antes do pen-down** — o
@@ -32,6 +43,29 @@ plasticidade `0`, pino desligado, sem colisões, sem gravidade — i.e., **as om
 - nas variantes `_1passo` o caminho tem **dois** pontos, logo nos modos de âncora (Grab, Snake Hook)
   o passo simulado carrega **o percurso inteiro de `0,6`** de uma vez; nos modos de força o percurso
   só dá a DIRECÇÃO, e a magnitude é a da espec §4.1.
+
+### ⭐ As NOVE corridas de 2026-09-06 que isolam a REDE de restrições (`*_origem_1passo*`)
+
+Gravadas a pedido do I para a emenda Q14 (espec §5.2-quater e §10.8), na **mesma** sessão e com o
+**mesmo** harness. Pen-down na **origem** e **um** passo simulado, em três pares A/B com **uma**
+variável cada:
+
+| par | o que muda entre os dois lados |
+|---|---|
+| `…_local_origem_1passo` × `…_global_origem_1passo` (gancho · agarrar · expandir) | a **área**, e com ela o número de projecções por restrição e por passo: `10` na *Local* (a lista vem em duplicado) contra `5` na *Global* |
+| `plano_expandir_radial_local_origem_1passo` × `…_forca05` | a **força** (`1` → `0,5`), que num modo sem força nem âncora muda **só** o desvio de repouso |
+| `plano_gancho_radial_local_origem_1passo` × `…_curto` | o **percurso** (`0,6` → `0,05`), i.e. o tamanho do gesto num passo |
+
+⚠️ **Duas destas nove QUEBRAM o parágrafo acima, e os cabeçalhos dizem-no:**
+`plano_gancho_radial_local_origem_1passo_constante` é a **única fixture do corpus inteiro com curva
+`constant`** (todas as outras são `smooth`), e `…_curto` é a **única com um percurso que não é
+`0,6`** — leia-o no campo `caminho` dela, não nesta prosa.
+⚠️ **Validação da sessão, antes de qualquer uma ser gravada:** uma corrida de controlo do gancho com
+o caminho `0 → 0,3 → 0,6` devolveu `máx = 0,343869`, idêntico a seis casas ao da fixture
+`plano_gancho_radial_local_2passos_origem` da sessão anterior. *Sem esta corrida, um número novo e um
+número velho não são comparáveis.*
+⚠️ **Proveniência igual à das outras**: malha nossa, gerada pelo harness; a saída é dado (§5 da
+skill). Regenerar continua a ser acto de **E**.
 
 
 ## ⭐ O instrumento POR PASSO (`*.porpasso.txt.gz`, pedido do I em 2026-09-06)
@@ -217,12 +251,14 @@ o ficheiro diz o que contém.
 | `esfera_gancho_radial_dinamica.` | gancho | 12 | 2234 | `0.169025` |
 | `esfera_inflar_radial_dinamica.` | inflar | 12 | 2181 | `0.267017` |
 | `plano_agarrar_plano_local.` | agarrar | 12 | 2146 | `0.307644` |
+| `plano_agarrar_radial_global_origem_1passo.` | agarrar | 2 | 881 | `0.094722` |
 | `plano_agarrar_radial_local.` | agarrar | 12 | 2139 | `0.16991` |
 | `plano_agarrar_radial_local_1passo.` | agarrar | 2 | 1324 | `0.134099` |
 | `plano_agarrar_radial_local_24passos.` | agarrar | 24 | 2142 | `0.158543` |
 | `plano_agarrar_radial_local_2passos.` | agarrar | 3 | 1872 | `0.146115` |
 | `plano_agarrar_radial_local_2passos_origem.` | agarrar | 3 | 1869 | `0.14572` |
 | `plano_agarrar_radial_local_amort06.` | agarrar | 12 | 2131 | `0.131488` |
+| `plano_agarrar_radial_local_origem_1passo.` | agarrar | 2 | 1323 | `0.134311` |
 | `plano_agarrar_radial_local_preset.` | agarrar | 12 | 4123 | `0.132623` |
 | `plano_apertar_linha_radial_local.` | apertar_linha | 12 | 2135 | `0.100451` |
 | `plano_apertar_linha_radial_local_1passo.` | apertar_linha | 2 | 156 | `0.087609` |
@@ -253,17 +289,25 @@ o ficheiro diz o que contém.
 | `plano_empurrar_radial_local.` | empurrar | 12 | 2145 | `0.258986` |
 | `plano_empurrar_radial_local_1passo.` | empurrar | 2 | 171 | `0.069419` |
 | `plano_empurrar_radial_local_origem.` | empurrar | 12 | 2145 | `0.259368` |
+| `plano_expandir_radial_global_origem_1passo.` | expandir | 2 | 724 | `0.001525` |
 | `plano_expandir_radial_local.` | expandir | 12 | 2134 | `0.011523` |
 | `plano_expandir_radial_local_1passo.` | expandir | 2 | 848 | `0.001902` |
+| `plano_expandir_radial_local_origem_1passo.` | expandir | 2 | 846 | `0.001914` |
+| `plano_expandir_radial_local_origem_1passo_forca05.` | expandir | 2 | 662 | `0.000478` |
+| `plano_gancho_radial_global_origem_1passo.` | gancho | 2 | 1068 | `0.343172` |
 | `plano_gancho_radial_local.` | gancho | 12 | 2140 | `0.09155` |
 | `plano_gancho_radial_local_1passo.` | gancho | 2 | 1452 | `0.489383` |
 | `plano_gancho_radial_local_24passos.` | gancho | 24 | 2142 | `0.02932` |
 | `plano_gancho_radial_local_2passos.` | gancho | 3 | 1950 | `0.364813` |
 | `plano_gancho_radial_local_2passos_origem.` | gancho | 3 | 1950 | `0.343869` |
 | `plano_gancho_radial_local_amort06.` | gancho | 12 | 2135 | `0.063396` |
+| `plano_gancho_radial_local_origem_1passo.` | gancho | 2 | 1451 | `0.456101` |
+| `plano_gancho_radial_local_origem_1passo_constante.` | gancho | 2 | 1735 | `0.878999` |
+| `plano_gancho_radial_local_origem_1passo_curto.` | gancho | 2 | 1129 | `0.032433` |
 | `plano_inflar_radial_local.` | inflar | 12 | 2146 | `0.317159` |
 | `plano_inflar_radial_local_1passo.` | inflar | 2 | 171 | `0.09917` |
 | `plano_inflar_radial_local_origem.` | inflar | 12 | 2145 | `0.317081` |
 
-**56 traços** (47 da matriz + 9 do instrumento por passo) — ⚠️ **conte-os**
-(`ls *.deformado.txt.gz | wc -l`), esta linha já esteve parada em `53`. ⚠️ As fixtures de ESFERA são todas de área **Dinâmica** (centro no cursor). A área *Local* na esfera NÃO foi gravada: um traço scriptado não dispara o hover que fixa o centro da área Local, que fica na ORIGEM do objecto — e numa esfera unitária a origem põe toda a malha dentro da banda (ver ERRATA no ledger). A área Local está medida no PLANO (onde a origem cai na superfície).
+**65 traços** (47 da matriz + 9 do instrumento por passo + 9 das corridas que isolam a REDE de
+restrições, de 2026-09-06 — espec §10.8) — ⚠️ **conte-os**
+(`ls *.deformado.txt.gz | wc -l`), esta linha já esteve parada em `53` e em `56`. ⚠️ As fixtures de ESFERA são todas de área **Dinâmica** (centro no cursor). A área *Local* na esfera NÃO foi gravada: um traço scriptado não dispara o hover que fixa o centro da área Local, que fica na ORIGEM do objecto — e numa esfera unitária a origem põe toda a malha dentro da banda (ver ERRATA no ledger). A área Local está medida no PLANO (onde a origem cai na superfície).

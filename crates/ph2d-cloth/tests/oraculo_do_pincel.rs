@@ -1009,6 +1009,12 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_agarrar_radial_local_amort06",
     "plano_agarrar_radial_local_preset",
     "plano_apertar_linha_radial_local_1passo",
+    // ⭐⭐ O MESMO traço do `plano_apertar_ponto_radial_local_origem`, com a
+    // força `1,0 → 0,2` (fixture do especificador, 06/09). Ele lê `0,063` e o
+    // irmão a força cheia lê `1,079` — *a nossa lei do aperto está certa, e o
+    // que diverge é o regime em que o ALVO deixa de ser determinista* (ver os
+    // ABERTOS).
+    "plano_apertar_ponto_radial_local_origem_fraco",
     "plano_apertar_ponto_radial_local_1passo",
     "plano_arrastar_radial_dinamica_preset",
     "plano_arrastar_radial_local",
@@ -1029,7 +1035,7 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_gancho_radial_local_amort06",
     "plano_inflar_radial_local_1passo",
 ];
-const VERDE_N: usize = 28;
+const VERDE_N: usize = 29;
 
 /// Os traços AINDA por explicar, com o valor MEDIDO em 2026-09-06 ao lado.
 ///

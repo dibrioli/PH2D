@@ -161,6 +161,7 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 | papel | id | data |
 |---|---|---|
 | R-pré | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` (transcript = zona contaminada — leu o fonte por shell) | 2026-09-05 — ✅ **atestado no cabeçalho da espec**; veredictos abaixo |
+| R-pré (errata) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a errata (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (errata)» |
 | R-pós | ⏳ | — |
 
 ### Auditoria R-pré — 2026-09-05
@@ -220,6 +221,53 @@ não abriu nenhum dos ficheiros quarentenados; leu apenas a listagem de nomes»*
 secção *Incidentes*. ⚠️ O INBOX está **vazio**: a declaração geral do §6 da Corrente I ainda não foi
 apendada pela janela; fica ⏳ até o I a escrever no canal.
 
+### Auditoria R-pré — 2026-09-06 (a ERRATA `3d621e94b` + `d5844ad5c`)
+
+**Âmbito:** o diff `622df9c52..d5844ad5c` sobre a espec (§2.1 · §3.1 · §5.2 · §10 · gate 15), o README e o
+`indice.json` das fixtures, e o INBOX (a declaração da janela I e as seis medições dela). O R-pré da
+errata é um contexto novo, independente do subagente que a escreveu, e leu os dois lados (o fonte por
+shell).
+
+**Sweep (vassoura de 70 entradas) — VERDE** sobre: a espec · o README · o `indice.json` · o INBOX · a
+pasta inteira `fixtures/cloth/` (os 55 ficheiros rastreados **e** os `*.porpasso.*` ainda não rastreados
+do I — conteúdo, `strings` e NOMES) · e `--git-history` sobre os cinco caminhos. ⚠️ Os únicos hits do
+histórico e do ledger são os **dois nomes de ficheiro do fonte na tabela de cobertura da travessia**
+(pré-existentes de 05/09; o §6 EXIGE essa lista, e o I nunca abre o ledger) — não são achado.
+
+**Achados §4.2 — TRÊS nomes internos do alvo, confirmados no fonte por `grep` (1 · 2 · 9 ficheiros),
+curados no acto pelo R-pré:**
+1. §5.2, bloco «Confirmação de fonte»: o nome da variável local que guarda a metade do vector de
+   correcção, entre crases e com a expressão dela ⇒ re-dito como o `h = Δ/2` que o laço da própria
+   secção já define («o que cada extremo recebe»).
+2. §5.2, mesmo bloco: o nome do campo por-vértice do factor de deformação, com o default dele ⇒ re-dito
+   como «vale `1` em toda restrição que não seja âncora de deformação, e só nessas é `(σ_A+σ_B)/2`».
+3. §10, errata das esferas: o nome do campo que guarda a localização inicial do traço ⇒ «a localização
+   inicial guardada — a célula «centro» do Local na tabela do §2.1».
+**Higiene §4.3 — UMA:** o §10 trazia uma linha órfã de saída de arnês (uma nota «em falta» com um nome
+inglês que não é de nenhuma fixture, a contradizer a errata que a segue) ⇒ apagada.
+**Higiene do ledger:** a entrada Q5 das erratas citava o nome interno do achado 1 ⇒ re-dita.
+
+**Wording de manual/comentário · pseudo-código espelhado · tabela verbatim · organização transcrita:
+nenhum.** As duas frases de comentário que a vassoura guarda (o filtro por raio só no Local; as restrições
+repetidas) estão RE-DITAS em português funcional, sem citação. O bloco «Local contra Dynamic» do §2.1
+enumera cinco diferenças de COMPORTAMENTO (centro · raio · filtro · momento da criação · banda) e não a
+decomposição do código. As tabelas do §10 / README / índice são saída do oráculo (§4.1.6), e as três
+concordam entre si (47 traços; as 8 esferas com área `dinamica` no índice).
+
+**Os seis factos da errata, conferidos no fonte (R vê os dois lados) — TODOS correctos:**
+- **Q1** — a vizinhança sai das **faces poligonais** (o colector recebe as faces e os vértices de canto,
+  e percorre por face os dois cantos adjacentes; não recebe triangulação) ⇒ 4 vizinhos num quad interior.
+- **Q2** — o factor por vértice é multiplicado pela banda ANTES das varreduras, e nas quatro rotas que
+  chegam ao solver.
+- **Q3** — o raio que filtra a criação de restrições só é finito na área Local (ilimitado nas outras).
+- **Q4** — o tecto de **2 500 faces** por célula-folha é uma constante do construtor da árvore espacial.
+- **Q5** — a metade da correcção vale para toda espécie; o 2.º extremo só se move se for um vértice
+  DISTINTO do 1.º (numa âncora os dois índices coincidem); o factor por passo é `1` salvo nas âncoras de
+  deformação; o corpo mole não o leva (leva a plasticidade); o Grab radial pesa `0,1` pela **curva do
+  pincel**, e o de plano leva `0,1` seco (a força vem depois, na aplicação).
+- **Q6** — o `indice.json`, o README e a tabela do §10 registam as 8 esferas como área Dinâmica com os
+  mesmos `movidos`/`máx` (2 096..2 234 movidos, alcance `3,44..3,52 R`).
+
 ---
 
 ## Espec
@@ -228,6 +276,8 @@ apendada pela janela; fica ⏳ até o I a escrever no canal.
 |---|---|---|
 | v1 | `docs/3D/cleanroom/SPEC_cloth_brush.md` | `c7905f616` (2026-09-05, commit único pós-filtragem) |
 | v1-r | idem — atestada; curas do R-pré (1 expressão · 6 higienes · anexos) | `0c884a2b2` (2026-09-05, R-pré) |
+| v1-e | idem — ERRATA do E (as 6 perguntas do I; §2.1 · §3.1 · §5.2 · §10; 8 fixtures de esfera regeradas como área Dinâmica) | `3d621e94b` + `d5844ad5c` (2026-09-06, E) |
+| v1-er | idem — errata atestada; curas do R-pré (3 nomes internos · 1 higiene) | ⏳ registado no commit seguinte (2026-09-06, R-pré) |
 
 ---
 
@@ -294,7 +344,7 @@ leitura do fonte + medição; as que mexiam na espec foram emendadas (§3.1, §2
   dominante do «Local < Dynamic» é o centro fixo vs. móvel; a razão exacta é emergente. §2.1 emendado.
 - **Q4 — célula-folha ≤ 2 500 FACES (fonte):** a grelha de 4 225 v é ~2 células; a esfera de 6 050 ~3.
   A activação é grossa, mas a «parede» é a banda em `φ`, não a granularidade. §2.1 emendado.
-- **Q5 — âncoras (fonte):** a correcção é **`Δ/2`** (`correction_vector·0,5`) para toda espécie; numa
+- **Q5 — âncoras (fonte):** a correcção é **`Δ/2`** (a metade do vector de correcção) para toda espécie; numa
   âncora **B não se move, só A leva `Δ/2`** ⇒ fecha metade por varredura. O **`σ` por passo multiplica
   SÓ as âncoras de deformação** (pino e corpo mole não o levam). A força `s` do Grab radial é
   `0,1 · curva_do_pincel(d⁰)`. *Um port que fique abaixo do oráculo com `Δ/2` tem o défice noutro

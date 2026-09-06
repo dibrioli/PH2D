@@ -17,6 +17,11 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   expressão (uma frase de comentário do fonte citada como (F) no §7) e CINCO higienes §4.3 (detalhe de
   implementação descrito como comportamento) curados no acto pelo R-pré; os nomes de fixture do §14 e a
   contagem do gate 15 alinhados aos ficheiros. Veredictos e curas, um a um: LEDGER §Papel R.
+  ⭐ ERRATA de 2026-09-06 (`3d621e94b` + `d5844ad5c`: §2.1 · §3.1 · §5.2 · §10 · fixtures de esfera)
+  auditada contra §4.2 por R-pré em 2026-09-06 — sweep verde sobre espec + a pasta inteira das fixtures +
+  INBOX + ledger + o histórico destes caminhos. TRÊS nomes internos do alvo (dois no §5.2, um no §10)
+  re-expressos em vocabulário do domínio e UMA linha órfã de arnês apagada no §10, no acto; os seis
+  factos da errata conferidos no fonte pelo R-pré, todos correctos. Detalhe: LEDGER §Papel R.
 Mapa de leitura da literatura (⭐ pública e lícita a TODOS os papéis):
   · Jakobsen, "Advanced Character Physics", GDC 2001 — integração de Verlet por posições + relaxação
     de restrições de distância por projecção. É EXACTAMENTE a família do solver do alvo.
@@ -422,14 +427,15 @@ h  = Δ/2
   1.ª versão pregava à posição ORIGINAL e rompia com gravidade e com o Grab).
 
 ⚠️ **Confirmação de fonte (2026-09-06), para o arnês de paridade:**
-- **A correcção é `Δ/2`, não `Δ` inteiro**, para TODA espécie (`correction_vector_half = Δ·0,5`). Numa
+- **A correcção é `Δ/2`, não `Δ` inteiro**, para TODA espécie (o `h = Δ/2` do laço acima é o que cada
+  extremo recebe). Numa
   restrição estrutural, cada um dos dois vértices leva `Δ/2` ⇒ juntos fecham `Δ`. **Numa âncora, B não
   é vértice e NÃO se move: só A leva `Δ/2`** ⇒ a âncora fecha só metade por varredura (é «mole» de
   propósito, e por isso precisa das 5 varreduras para chegar). *Se um port dá abaixo do oráculo com
   `Δ/2`, o défice está noutro factor (o `σ` por passo do Snake Hook, o `s`, ou a re-ancoragem por
   passo), não em trocar `Δ/2` por `Δ` — o fonte é `Δ/2`.*
 - **O `σ` (o factor por passo) multiplica SÓ as âncoras de DEFORMAÇÃO** (Grab, Snake Hook, pincel
-  alheio): `deformation_strength = 1` por omissão, e só é reescrito para `(σ_A+σ_B)/2` quando a
+  alheio): vale `1` em toda restrição que não seja âncora de deformação, e só é `(σ_A+σ_B)/2` quando a
   restrição é de deformação. ⛔ O **pino** e o **corpo mole** NÃO o levam (o seu peso é a força `s` e,
   no corpo mole, a plasticidade `ρ`).
 - **A força `s` do Grab radial é `0,1 · curva(d⁰)` com a curva do PINCEL** (o preset de falloff do
@@ -778,11 +784,11 @@ deslocamentos grandes (`1` = uma direcção só; `0` = radial) · **Δárea** = 
 - **Área (§2.1):** Local — alcance `3.49 R` (a esfera de células `R₀(1+L) = 3,5 R` a partir do pen-down); Dynamic — `3.49 R` a partir do caminho, `máx` `0.6128` (segue o cursor); Global — todos os `4225` vértices.
 - **Âncoras (§4.3):** Grab radial 12 passos `máx` `0.1699` e 24 passos `0.1585` (mesmo percurso: a resposta depende do percurso, não do número de passos); Grab de plano `0.3076`; Snake Hook `0.0915` (12) e `0.0293` (24 — metade do delta por passo ⇒ ~metade da resposta: lei quadrática no falloff); com damping `0,6` (o dos presets de Grab): Grab `0.1315`, e com `L = 5` `0.1326`.
 - **Expand (§4.5):** 12 passos, `máx|u|` `0.0115` (`0.25` arestas) e Δárea `+0.002 %`.
-(em falta: 'sphere_drag_radial_local')
 
 ⚠️⚠️ **As fixtures de ESFERA são todas de área DINÂMICA (ERRATA de 2026-09-06).** A 1.ª entrega
 gravou-as como *Local*, mas um traço scriptado **não dispara o hover** que fixa o centro da área
-Local — esse centro fica na ORIGEM do objecto (o valor obsoleto de `initial_location`). Numa esfera
+Local — esse centro fica na ORIGEM do objecto (o valor obsoleto da **localização inicial** guardada —
+a célula «centro» do Local na tabela do §2.1). Numa esfera
 unitária a origem põe **toda** a malha dentro da banda (todo vértice a `1,0` < início da banda
 `1,006`), então a saída lida `6 050 / 6 050` movidos, uniformes — a esfera a deslocar-se como um
 CORPO, que é **artefacto do arnês, não comportamento Local do alvo**. ⭐ **O R₀ estava certo (`0,35`,

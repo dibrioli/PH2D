@@ -381,6 +381,42 @@ no doc-comment) e `a_card_stands_off_its_panel` (≥ 12/255, OLED de fora).
 - ✅ **O `Spacing` já é o do Godot**: o `base_spacing 4` dele é o nosso `Xs`, e a escala (`2 · 4 · 6 · 8 · 12 · 16`) é múltipla de 4.
 - ⏳ **O ritmo da linha continua a ser decisão do dono, e agora com número**: a nossa linha mede **28 px** com fonte **13**; o Godot Modern dá **26** ao botão (fonte 14 + 6+6) e **22** ao campo de texto. Baixar é o único knob de densidade que sobra, e mexe na geometria de todos os painéis — não se faz sem ele.
 
+### 7.9 — ✅ WAVE 6 (2026-09-06): a LINHA fica compacta, e as quatro cópias que ela revelou
+
+**Ordem do dono:** *«linhas dos painéis mais compactas (28 px → 24 px) — sim»*. `chrome.row-h`
+**28 → 24** no [`tokens.json`](../../design/tokens.json) — um número, e os 647 sítios que o lêem
+encolhem juntos (⚠️ 18 deles são contexto `const`, o que fecha a porta a uma função com tema: a
+altura de linha é geometria de LAYOUT, calculada antes de haver tema, ao contrário do raio, que é
+escalado na pintura).
+
+**O que se ganha, medido:** um painel de 600 px passa de **21,4 para 25 linhas** (+17 %). E o
+`motion.spline_wrap` **saiu da lista de painéis que estouram o dock** — foi de `755` para `679`
+sobre um corpo de `754`, sem ninguém lhe tocar; o `motion.bezier_warp` desceu de `969` para `873`
+e continua nomeado (24 params são a superfície da referência).
+
+⭐⭐⭐ **E a mudança de um número revelou QUATRO cópias dele**, todas `28.0` escrito à mão — o valor
+que o token tinha: `TOGGLE_H` e `HEX_ROW_H` (o picker de cor), o `SWATCH_W` do rig de impasto
+(**cujo doc já dizia *«sized to the row height»***) e o `ROW_H` do editor de áudio (*«transport
+button row height»*). ⚠️ **Nenhum teste ficou vermelho:** o app teria linhas de duas alturas e o
+defeito só se vê a olho. As quatro passam a ler o token, e a espécie morre num censo:
+[`the_row_height_is_one_number`](../../../crates/ph2d-editor-core/tests/the_row_height_is_one_number.rs)
+— toda constante cujo NOME diz «altura de linha» ou deriva do token, ou está declarada com a
+régua própria (as **9** legítimas: listas densas de 22 px, a linha de socket do grafo que escala
+com o zoom, o alvo de toque de 44 px de uma barra de progresso, o menu flutuante da vista 3D).
+⚠️ **A régua separa PALAVRAS, não subcadeias** — a primeira versão, escrita a `grep`, acusou
+`DUR_ARROW_HALF_W` e `NARROW_HALF` três vezes: `ROW_H` vive dentro de `ARROW_H`.
+
+⚠️ **E o portão da shell apanhou uma regressão da WAVE 4** que as suítes de painel não viam: o
+`the_asset_card_asks_the_law_instead_of_painting_the_swatch` lê o FONTE de
+`ph2d-panel-asset-browser/src/paint.rs`, e o cartão mudou-se para `src/paint/card.rs` quando o
+ficheiro cruzou o tecto de LOC. O gate ficou vermelho sobre código correcto. ⇒ a lente dele passa
+a ser a **crate**: *um censo que aponta a um ficheiro mede o sítio, não a lei — e quem corta um
+ficheiro em dois não devia ter de saber que gate de outra pessoa aponta para ele.*
+
+⏳ **Fica para o dono:** a linha da **hierarquia** continua em **32 px** (`chrome.hier-row-h`), a
+mais alta do app — com as de formulário a 24, ela destoa. Baixá-la aperta o ícone, o nome, o olho
+e o cadeado na mesma linha; é medição de uma wave, não um número a mudar.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

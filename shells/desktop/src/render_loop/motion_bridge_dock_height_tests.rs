@@ -446,8 +446,13 @@ fn the_dock_overflow_is_named_not_discovered() {
     /// `spline_wrap` estoura só no FALLBACK (sem forma escolhida ele mostra as oito
     /// coordenadas da cúbica), e com uma forma mede **456 px** num corpo de 664.
     const NAMED_OVERFLOW: &[(&str, f32)] = &[
-        ("motion.bezier_warp", 969.0),
-        ("motion.spline_wrap", 755.0),
+        ("motion.bezier_warp", 873.0),
+        // ⭐⭐ **O `motion.spline_wrap` SAIU em 2026-09-06, e outra vez sem ninguem o encolher: a
+        // LINHA e' que ficou mais baixa.** O dono pediu paineis mais compactos e o
+        // `chrome.row-h` desceu de `28` para `24` px (wave 6 do redesenho) ⇒ ele foi de `755`
+        // para **`679`** sobre um corpo de `754`, e o censo deste gate exigiu que saisse. O
+        // `bezier_warp` desceu de `969` para `873` pelo mesmo motivo e **continua a estourar**:
+        // 24 params sao a superficie da referencia.
         // ⭐ **`source.shape` (680) e `fx.glow` (674) SAIRAM daqui em 2026-08-30, e nao por
         // alguem os ter encolhido: o DOCK cresceu.** A coluna da direita era limitada por um
         // tecto de altura (`INSPECTOR_MAX_H`, coisa de painel que FLUTUA) e passou a ir de ponta

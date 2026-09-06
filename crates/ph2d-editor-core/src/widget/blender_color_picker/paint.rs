@@ -22,9 +22,13 @@ use ph2d_vector::VectorScene;
 pub const SV_RECT_H: f32 = 150.0;
 pub const HUE_STRIP_H: f32 = 16.0;
 pub const ROW_GAP: f32 = 8.0;
-pub const TOGGLE_H: f32 = 28.0;
+/// ⚠️ **A altura de uma linha vem do TOKEN, não de uma cópia.** As duas eram `28.0` escrito à
+/// mão — o valor que o `chrome.row-h` tinha — e ficaram para trás no dia em que o dono pediu
+/// linhas mais compactas (`28 → 24`, 2026-09-06): o picker teria linhas mais altas que o resto do
+/// app. *Um número copiado é uma lei escrita duas vezes.*
+pub const TOGGLE_H: f32 = ph2d_tokens::ROW_H_PX;
 pub const SLIDER_ROW_H: f32 = 22.0;
-pub const HEX_ROW_H: f32 = 28.0;
+pub const HEX_ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 pub const PREVIEW_H: f32 = 24.0;
 
 pub fn paint_blender_color_picker(

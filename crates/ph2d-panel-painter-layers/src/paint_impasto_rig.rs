@@ -35,7 +35,12 @@ const LAMP_IDS: [ph2d_a11y::NodeId; 4] = [
 ];
 
 /// Width of the colour swatch at the end of the Intensity row.
-const SWATCH_W: f32 = 28.0; // LITERAL-PX-OK: swatch box, sized to the row height
+///
+/// ⚠️ **É a altura da LINHA, e por isso vem do token** — o doc já dizia *«sized to the row
+/// height»* e o número era uma cópia (`28.0`), que ficou para trás quando o dono pediu linhas
+/// mais compactas (`28 → 24`, 2026-09-06). *Um comentário que descreve uma derivação que o código
+/// não faz é a próxima divergência.*
+const SWATCH_W: f32 = ph2d_tokens::ROW_H_PX;
 
 /// Rows 2..5 of the Lighting card: the lamp selector, then the SELECTED lamp's Angle / Elevation /
 /// Intensity + colour. Returns the next `y`.

@@ -95,15 +95,23 @@ fn the_sprite_layer_clear_comes_from_the_door() {
 /// ⭐ A outra ponta: o cartão do navegador não pinta o fundo com a cor do asset directamente.
 #[test]
 fn the_asset_card_asks_the_law_instead_of_painting_the_swatch() {
-    let p = repo_root()
+    // ⚠️ **A lente é a CRATE, não um ficheiro** — e a diferença mordeu em 2026-09-06: o cartão
+    //    mudou-se para `src/paint/card.rs` quando o `paint.rs` cruzou o tecto de LOC, e este gate
+    //    (que lia só o pai) ficou vermelho sobre código correcto. *Um censo que aponta a um
+    //    ficheiro mede o sítio, não a lei; quem corta um ficheiro em dois não devia ter de saber
+    //    que gate de outra pessoa aponta para ele.*
+    let src = repo_root()
         .join("crates")
         .join("ph2d-panel-asset-browser")
-        .join("src")
-        .join("paint.rs");
-    let code = code_of(&p);
+        .join("src");
+    let code: String = production_files(&src)
+        .iter()
+        .map(|p| code_of(p))
+        .collect::<Vec<_>>()
+        .join("\n");
     assert!(
         !code.is_empty(),
-        "paint.rs do navegador de assets nao foi lido"
+        "o fonte do navegador de assets nao foi lido"
     );
     assert!(
         code.contains("card_backdrop::card_backdrop"),

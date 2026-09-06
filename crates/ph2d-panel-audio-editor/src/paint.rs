@@ -30,7 +30,13 @@ use ph2d_vector::{Color as VelloColor, VectorScene};
 
 pub(crate) use crate::clipped_hits::ClippedHits;
 
-pub(crate) const ROW_H: f32 = 28.0; // LITERAL-PX-OK: transport button row height (chrome)
+/// A linha do transporte — a linha de painel de sempre, e por isso **o token**.
+///
+/// ⚠️ Era `28.0` escrito à mão: o valor que o `chrome.row-h` tinha. Ficou para trás no dia em que
+/// o dono pediu linhas mais compactas (`28 → 24`, 2026-09-06) e o painel de áudio teria linhas
+/// mais altas que todos os outros. *Uma cópia de um número do design system é uma divergência
+/// com data marcada.*
+pub(crate) const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 
 pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(AudioEditorPanel::ID) {

@@ -465,6 +465,12 @@ mod tests;
 #[path = "instance_refuse_tests.rs"]
 mod refuse_tests;
 
+/// ⭐⭐⭐ **AS DUAS PORTAS DE AUTORIA que a F4.6c não pode apagar** — medidas no mecanismo GERAL.
+/// Ficheiro próprio porque o assunto é a **pré-condição de outra fase**, não a forma de uma cópia.
+#[cfg(test)]
+#[path = "instance_piece_override_tests.rs"]
+mod piece_override_tests;
+
 /// ⚠️ **E QUEM É PAI DE QUEM é o terceiro assunto** (F5.12) — a metade da forma que o passe não
 /// sabia. Ficheiro próprio pela mesma razão dos dois acima: o `instance_structure_tests` está a
 /// **538** de 600 linhas, e um corte por assunto é mais barato que um corte por tamanho.

@@ -2488,3 +2488,38 @@ A guarda do arrasto só recusa quando o **pai** muda, com a justificação escri
 excepção da cópia como qualquer outro valor»*. Isso era uma afirmação sem instrumento — hoje é
 `reordering_a_piece_inside_a_copy_sticks_as_an_override`. *Uma frase ao lado de código é uma promessa
 ao próximo leitor, e uma promessa sem régua envelhece sozinha.*
+
+---
+
+### 🐞 §F5.14 — **«A mensagem da recusa não apareceu»** (report do Enio, 2026-09-06)
+
+A guarda estava **certa**; o **passo** é que pedia o gesto errado.
+
+#### O mecanismo
+
+O `PASSO 1` move o braço para a cabeça — **em todas as cópias**. O `PASSO 2` mandava então arrastar
+o braço de uma cópia *para a cabeça dela*, onde ele **já está**: é o **mesmo pai**, e a guarda deixa
+passar de propósito (é um reordenar, e a ordem é excepção da cópia, com gate próprio desde a §F5.13).
+
+⇒ o passo pede agora o movimento que **muda** o pai — pôr o braço de volta no corpo. *Um passo que
+demonstra uma recusa tem de pedir um gesto que a recusa apanhe, e o estado deixado pelo passo
+anterior decide isso.*
+
+#### ⭐⭐ A decisão saiu para uma PORTA, e é isso que a torna mensurável
+
+`hero_intents::hierarchy::refuses_reparent`. Enquanto a condição vivia dentro do `drain_reparent` —
+que recebe o `HeroLive`, e por isso nenhum teste o monta — **qual dos dois gestos ela apanha não era
+mensurável**. O gate novo corre-a sobre o estado real que o `PASSO 1` deixa, com as duas metades: o
+gesto que o passo pede agora é recusado; o que ele pedia antes **não é**. *Sem a segunda metade o
+gate ficaria verde sobre o texto antigo.*
+
+E um segundo gate mede a **instrução**: o passo tem de nomear o `Body` e não pode voltar a mandar
+arrastar para o `Head`. *A lei e a frase que a manda exercer são duas coisas, e cada uma tem régua.*
+
+#### ⛔⛔ E o refactor ESVAZIOU um censo — a mutação apanhou-o
+
+O `the_drag_asks_the_door_before_changing_the_parent` procurava `is_a_recipe_given_piece` **em
+qualquer sítio do ficheiro**. Com a lei mudada para a porta (acima, no mesmo ficheiro), a mutação que
+apagava a chamada **dentro do gesto** sobreviveu: o nome continuava a aparecer. ⇒ a janela do censo
+passa a ser o **corpo do gesto**. *Um censo que casa um nome onde ele passou a viver deixa de medir
+quem o invoca.*

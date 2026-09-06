@@ -37,6 +37,13 @@ Depois de o filtro nascer, ele passou a **obrigar** a manter uma frase que já n
 *um gate sobre o TEXTO de uma instrução mede a presença da frase, nunca se o gesto que ela nomeia
 ainda existe*. Foi ele que expôs a terceira cena — ao reprovar quando as outras duas foram curadas.
 
+⛔⛔ **E há uma segunda espécie, do mesmo dia e do mesmo dono:** um passo que demonstra uma
+**RECUSA** tem de pedir um gesto que a recusa **apanhe** — e o estado deixado pelo passo anterior
+decide isso. O `PASSO 1` movia a peça para a cabeça em todas as cópias; o `PASSO 2` mandava
+arrastá-la *para a cabeça*, onde ela já estava. Mesmo pai ⇒ a guarda deixa passar de propósito, e a
+mensagem prometida nunca vem. ⇒ *quando um passo promete uma mensagem, gate o gesto que ele pede
+contra a lei que a produz — com as duas metades: o gesto novo é apanhado, o antigo não.*
+
 **Why:** o texto de um smoke é **superfície de produto** — é onde o dono aprende a ferramenta
 (CLAUDE.md §0.8) —, e é a única superfície do repo cuja correcção nada media.
 

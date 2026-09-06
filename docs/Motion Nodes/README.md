@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**115 arquivos** · **11** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**115 arquivos** · **12** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -116,7 +116,7 @@
 | 100 | ◆ | [100_estudo_dos_outputs_2026-09-04.md](100_estudo_dos_outputs_2026-09-04.md) | pesquisa | 100 — Estudo dos outputs: um nó com muitos pinos, ou muitos nós com um pino? |
 | 101 | ◆ | [101_pesquisa_cartoes_ricos_2026-09-04.md](101_pesquisa_cartoes_ricos_2026-09-04.md) | pesquisa | 101 — Pesquisa: CARTÕES RICOS — o upgrade do nó para superar Blender, Cavalry e Houdini |
 | 102 | ◆ | [102_o_outro_patamar_plano_dos_nos_2026-09-04.md](102_o_outro_patamar_plano_dos_nos_2026-09-04.md) | plano | 102 — O OUTRO PATAMAR: o plano dos nós além de Blender, Cavalry e Houdini |
-| 103 |   | [103_dinamica_dos_ciclos.md](103_dinamica_dos_ciclos.md) | — | 103 — A DINÂMICA DOS CICLOS (o protocolo desta obra até ao fim) |
+| 103 | ◆ | [103_dinamica_dos_ciclos.md](103_dinamica_dos_ciclos.md) | — | 103 — A DINÂMICA DOS CICLOS (o protocolo desta obra até ao fim) |
 | 104 |   | [104_ciclo_1_arranjo.md](104_ciclo_1_arranjo.md) | — | 104 — CICLO 1 · ARRANJO: pôr muitos objectos na tela |
 | 105 |   | [105_ciclo_2_animadores.md](105_ciclo_2_animadores.md) | — | Ciclo 2 — ANIMADORES · «O tempo entra no grafo» |
 | — | ◆ | [BUGS_motion_nodes.md](BUGS_motion_nodes.md) | bugs | Bugs do módulo Motion Nodes — registro + soluções |

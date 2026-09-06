@@ -43,7 +43,7 @@ fn paint_toolbar(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let third = ((w - gap * (TOOL_COLS - 1.0)) / TOOL_COLS).max(1.0);
     let half = ((w - gap) * 0.5).max(1.0);
     let armed = tool_state::tool();
@@ -150,7 +150,7 @@ pub(crate) fn paint_edit_section(
         hit_index,
     );
 
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let half = ((w - gap) * 0.5).max(1.0);
     // (label, id, enabled) pairs, laid out two-per-row (last row is single).
     let rows: [[(&str, NodeId, bool); 2]; 4] = [

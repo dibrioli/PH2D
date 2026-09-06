@@ -175,7 +175,7 @@ pub(crate) fn paint_bar(
     snap: &TimelineViewSnapshot,
     view: BarView,
 ) -> (f32, Option<ClipChip>) {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let row_step = ROW_H_PX + gap;
     let mut clip_chip = None;
     // Row 0 is the header strip; row 1+ are full-width rows in the body.
@@ -210,7 +210,7 @@ pub(crate) fn paint_bar(
 /// painter below lays out from these same constants, so the fit test and the
 /// pixels cannot disagree.
 fn width(item: Item, snap: &TimelineViewSnapshot, view: BarView) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let half = gap * 0.5;
     match item {
         // One cell per tab, side by side inside the segmented pill (the container
@@ -361,7 +361,7 @@ fn paint_item(
     snap: &TimelineViewSnapshot,
     view: BarView,
 ) -> Option<ClipChip> {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let half = gap * 0.5;
     let fps = if snap.fps > 0.0 {
         snap.fps

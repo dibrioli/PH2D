@@ -92,7 +92,7 @@ impl BodyCtx<'_> {
             return y;
         }
         let active = state::envelope_warp();
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         let w = ((self.inner_w - gap) / 2.0).max(1.0);
         let mut y = y;
         // Dois por linha; contagem ímpar deixa o último sozinho, largura cheia.

@@ -17,7 +17,7 @@ pub(crate) fn paint_transform_section(
 ) -> f32 {
     let label_font = TypeToken::Sm.px();
     let field_h = ROW_H_PX;
-    let row_gap = Spacing::Sm.px();
+    let row_gap = Spacing::Xs.px();
     let label_color = resolve(ColorToken::Text2, theme);
 
     // O cabeçalho da secção + a dobra do corpo. Ver [`paint_header_and_begin_fold`].

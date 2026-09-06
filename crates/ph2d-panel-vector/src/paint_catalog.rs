@@ -200,7 +200,7 @@ impl BodyCtx<'_> {
     /// (chip com chevron, não botão segmentado) — é essa diferença que separa "categoria"
     /// de "tipo" sem gastar altura nenhuma.
     fn category_row(&mut self, group: ShapeGroup, y: f32) -> f32 {
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         paint_text(
             self.text_system,
             self.scene,
@@ -251,7 +251,7 @@ impl BodyCtx<'_> {
         if in_group.is_empty() {
             return y;
         }
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         let pad = Spacing::Xs.px();
         let thumb_h = ICON_BTN_SIZE_PX + Spacing::Md.px();
         let name_h = TypeToken::Xs.px();

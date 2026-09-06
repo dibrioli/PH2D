@@ -176,7 +176,7 @@ pub(crate) fn paint_posterize_quantize_section(
     layout: SectionLayout,
     y_in: f32,
 ) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     // ⚠️ **The Dither toggle shares this row with Posterize, and only
     // Posterize is unconditional** — it is the stage's own on-switch.
     // With Posterize off, `posterize(..)` never runs and the toggle

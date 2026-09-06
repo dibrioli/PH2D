@@ -123,7 +123,7 @@ fn uv_pair_row(
         resolve(ColorToken::Text2, theme),
     );
     let row_y = y + label_h;
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let cw = ((w - gap) * 0.5).max(0.0);
     for (i, id) in [id_x, id_y].into_iter().enumerate() {
         let rect = Rect::new(x + (cw + gap) * i as f32, row_y, cw, h);
@@ -188,7 +188,7 @@ pub(crate) fn paint_sampling_section(
     };
     let mut yy = y + header_h;
     let h = ROW_H_PX;
-    let row_gap = Spacing::Sm.px();
+    let row_gap = Spacing::Xs.px();
     let label_font = TypeToken::Sm.px();
     let label_color = resolve(ColorToken::Text2, theme);
     // The label sits on its OWN short row ABOVE the segmented (label-

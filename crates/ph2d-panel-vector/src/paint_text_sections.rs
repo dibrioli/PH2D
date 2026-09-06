@@ -125,7 +125,7 @@ impl BodyCtx<'_> {
             return y;
         }
         let btn_w = self.row_h;
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         self.arrow_button(ids::VECTOR_TEXT_FONT_PREV, "<", self.inner_x, btn_w, y);
         self.arrow_button(
             ids::VECTOR_TEXT_FONT_NEXT,

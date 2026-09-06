@@ -139,7 +139,7 @@ pub(super) fn row_of_two(
     w: f32,
     y: f32,
 ) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let half = (w - gap) * 0.5;
     command(ctx, left.0, left.1, x, half, y);
     command(ctx, right.0, right.1, x + half + gap, half, y)

@@ -82,7 +82,7 @@ pub(crate) fn card_row(
     step: f64,
     decimals: usize,
 ) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let font = TypeToken::Sm.px();
     paint_text(
         ctx.text_system,

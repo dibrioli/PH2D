@@ -41,7 +41,7 @@ pub(crate) fn paint_spectral_section(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let label_h = TypeToken::Xs.px();
     // An AI Denoise in flight (W7 — it runs off the UI thread, `ph2d_editor_core::progress`)
     // makes every EDITING control here inert: each one commits to the clip, so a second edit

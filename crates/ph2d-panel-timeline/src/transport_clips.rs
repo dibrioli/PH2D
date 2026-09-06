@@ -54,7 +54,7 @@ pub(crate) fn cluster(
     snap: &TimelineViewSnapshot,
     view: crate::transport::BarView,
 ) -> Option<ClipChip> {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let mut x = x;
 
     let chip = Rect::new(x, y, CLIP_DD_W, ROW_H_PX);

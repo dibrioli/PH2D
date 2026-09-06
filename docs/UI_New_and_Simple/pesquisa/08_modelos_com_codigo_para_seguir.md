@@ -417,6 +417,44 @@ ficheiro em dois não devia ter de saber que gate de outra pessoa aponta para el
 mais alta do app — com as de formulário a 24, ela destoa. Baixá-la aperta o ícone, o nome, o olho
 e o cadeado na mesma linha; é medição de uma wave, não um número a mudar.
 
+### 7.10 — ✅ WAVE 7 (2026-09-06): a FOLGA — o vão entre controlos e o ar à volta do risco
+
+**Ordem do dono** (com foto do editor de áudio): *«distância entre botões e espaço entre
+divisores ainda excessivo»*. As duas metades são grandezas diferentes e as duas foram medidas
+contra o Godot Modern, que é o modelo desta linha.
+
+**(a) O RISCO entre secções: 17 px → 9.** O `paint_section_separator` punha `Spacing::Md` de cada
+lado de uma linha de 1 px ⇒ **8 + 1 + 8 = 17 px** de altura reservada. O Godot dá **8** ao
+separador *inteiro* (`separation = base_margin · 2`, com o `StyleBoxLine` a levar margens
+**negativas** de `−base_margin`, que é como ele desconta a própria espessura). Com o `Xs` ficam
+**9** — o número do modelo mais o pixel da linha, que nós não descontamos porque o nosso risco é
+pintado dentro da faixa. ⚠️ Um número, **30 chamadas em 15 ficheiros**.
+
+**(b) O VÃO entre controlos: `Sm` → `Xs`, e ele já era `Xs` na maioria do app.** O `separation_margin`
+do Godot Modern é **`base_spacing = 4`**, e o censo da árvore devolveu a divisão: **64 sítios já
+usavam `Xs` (4)** e **82 usavam `Sm` (6)** — *duas respostas à mesma pergunta, e a que o artista vê
+depende do painel em que está*. Os 82 (65 `let gap` + 17 `let row_gap`, **54 ficheiros**) passam a
+`Xs` por renomeação com `assert` de contagem. ⛔ Isto **não** é um token novo: a escada de espaço
+não mudou: mudou quem a lê.
+
+⚠️ **O que a wave revelou, e é a lição da wave 6 outra vez:** os dois retratos de altura de dock
+mexeram-se **sem ninguém tocar num painel**. O `motion.bezier_warp` foi de `873` para **`825`** (e
+continua a ser o único nomeado), e a fixtura do gate da **rolagem** deixou de servir: ela nomeava
+`source.shape` à mão, e o painel encolheu para `734` num corpo de `754` ⇒ *deixou de estourar, logo
+deixou de testar rolagem alguma, e o gate teria ficado **verde por vacuidade***. ⇒ a fixtura passa a
+ser **DERIVADA** do próprio censo (`height_census().first()`, o painel mais alto que existir hoje):
+
+```rust
+let (tallest, _) = height_census().first().copied().expect("o registry não é vazio");
+```
+
+⭐ *Uma fixtura escrita à mão para «o painel que estoura» é um retrato de uma árvore; toda wave de
+espaçamento a desactualiza, e a forma de falhar é a pior — o gate fica verde.*
+
+⏳ **Fica para o dono, com o número ao lado:** a linha da **hierarquia** segue em **32 px**
+(`chrome.hier-row-h`) contra as 24 de formulário — herdada da wave 6 e agora mais visível, porque
+tudo em volta dela apertou.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

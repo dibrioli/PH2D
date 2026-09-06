@@ -68,7 +68,7 @@ impl BodyCtx<'_> {
             (ids::VECTOR_VERT_SEL_SUBPATH, "Select Subpath"),
             (ids::VECTOR_VERT_SEL_SAME, "Select Same"),
         ];
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         let w = ((self.inner_w - gap) / 2.0).max(1.0);
         y = self.row2(w, gap, sel, y);
         // **Average** (W4) — colapsa os nós selecionados no centroide deles. Fica ao lado do

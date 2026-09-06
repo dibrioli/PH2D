@@ -176,7 +176,7 @@ impl Panel for MotionParamsPanel {
         let inner_x = rect.x + PANEL_HEAD_PAD;
         let inner_w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
         let chip_w = NUMBER_INPUT_MIN_W_PX;
-        let row_gap = Spacing::Sm.px();
+        let row_gap = Spacing::Xs.px();
         let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
         // ⚠️ **O corpo ROLA** (doc 88 §B3). Medido: uma linha escalar ocupa 34 px e o dock
         // comporta 24 — contra um teto de 16 e um pior nó de 15 params. A varredura PRO

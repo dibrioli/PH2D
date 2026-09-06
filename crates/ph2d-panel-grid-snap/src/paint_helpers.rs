@@ -157,7 +157,7 @@ pub(crate) fn paint_kind_button_grid(
         (GridKind::Chunks, "Chunks", ids::GS_KIND_OPT_CHUNKS),
     ];
     let cols = 3.0_f32; // LITERAL-PX-OK: kind-button grid column count (math constant)
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let col_w = ((w - gap * (cols - 1.0)) / cols).max(40.0); // LITERAL-PX-OK: minimum column width for kind buttons (panel-specific design floor)
     let h = ROW_H_PX;
     let mut cy = y;
@@ -199,7 +199,7 @@ pub(crate) fn paint_target_button_stack(
     state: &GridSnapState,
 ) -> f32 {
     let h = ROW_H_PX;
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let entries: [(SnapTarget, &str, NodeId); 5] = [
         (SnapTarget::Center, "Center", ids::GS_SNAP_CENTER),
         (
@@ -273,7 +273,7 @@ pub(crate) fn paint_neighborhood_button_row(
     let y = y + label_font + Spacing::Xs.px();
 
     let h = ROW_H_PX;
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let half_w = (w - gap) * 0.5;
     let (label_l, id_l, label_r, id_r, active_idx) = match family {
         NeighborhoodFamily::Square => {
@@ -361,7 +361,7 @@ pub(crate) fn paint_labeled_segmented_row(
     let y = y + label_font + Spacing::Xs.px();
 
     let h = ROW_H_PX;
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let n = options.len() as f32;
     let cell_w = ((w - gap * (n - 1.0)) / n).max(40.0); // LITERAL-PX-OK: minimum cell width for segmented row (panel-specific design floor)
     for (i, (lbl, oid)) in options.iter().enumerate() {

@@ -69,7 +69,7 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
     let inner_x = rect.x + PANEL_HEAD_PAD;
     let inner_w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
     let row_h = ROW_H_PX;
-    let row_gap = Spacing::Sm.px();
+    let row_gap = Spacing::Xs.px();
     // Canonical chip width = NUMBER_INPUT_MIN_W_PX (72 px); user
     // 2026-05-24 reported old 32 px (`Spacing::Xl * 2`) was too narrow.
     let chip_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;

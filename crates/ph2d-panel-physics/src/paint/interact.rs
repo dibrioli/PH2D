@@ -66,7 +66,7 @@ pub(super) fn paint_interact(
 
     // The numbers of whichever tool is in hand — from the ONE table, asking each
     // row whether it is live.
-    let row_gap = Spacing::Sm.px();
+    let row_gap = Spacing::Xs.px();
     for row in IROWS {
         if row.section != ISection::Sim || !(row.shown)(it) {
             continue;

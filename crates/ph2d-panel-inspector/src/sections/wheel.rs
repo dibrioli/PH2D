@@ -279,7 +279,7 @@ fn paint_mount_row(
     let font = TypeToken::Sm.px();
     let icon_w = (h * 0.82).min(w); // LITERAL-PX-OK: icon inset ratio (compact square in the row)
     let label_w = (font * 5.0).min(w * 0.42); // LITERAL-PX-OK: label = 5 char-heights, capped at 0.42 of the row
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let mounted = !info.mount_name.is_empty();
     let icons = if mounted { 2.0 } else { 1.0 };
     let text_y = y + (h - font) * 0.5;
@@ -423,7 +423,7 @@ fn paint_rope_row(
     let font = TypeToken::Sm.px();
     let icon_w = (h * 0.82).min(w); // LITERAL-PX-OK: icon inset ratio (compact square in the row)
     let label_w = (font * 5.0).min(w * 0.42); // LITERAL-PX-OK: label = 5 char-heights, capped at 0.42 of the row
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let text_y = y + (h - font) * 0.5;
     paint_text(
         text_system,

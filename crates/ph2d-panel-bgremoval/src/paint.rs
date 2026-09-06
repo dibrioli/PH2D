@@ -61,7 +61,7 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     let inner_x = rect.x + PANEL_HEAD_PAD;
     let inner_w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
     let row_h = ROW_H_PX;
-    let row_gap = Spacing::Sm.px();
+    let row_gap = Spacing::Xs.px();
     // Canonical chip width — matches Widget Gallery + Inspector
     // (NUMBER_INPUT_MIN_W_PX = 72 px ≈ 7 digits + stepper). The old
     // `Spacing::Xl * 2 = 32 px` was too narrow (user 2026-05-24).

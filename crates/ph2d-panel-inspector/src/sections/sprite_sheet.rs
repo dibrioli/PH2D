@@ -22,7 +22,7 @@ pub(crate) fn paint_sprite_sheet_section(
 ) -> f32 {
     let label_font = TypeToken::Sm.px();
     let field_h = ROW_H_PX;
-    let row_gap = Spacing::Sm.px();
+    let row_gap = Spacing::Xs.px();
     let label_color = resolve(ColorToken::Text2, theme);
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let color_id = ids::INSP_LIVE_SHEET_COLOR;

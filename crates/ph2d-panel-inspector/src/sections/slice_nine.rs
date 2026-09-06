@@ -61,7 +61,7 @@ fn pair_row(
         resolve(ColorToken::Text2, theme),
     );
     let row_y = y + label_h;
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     // ⚠️ **Um ponto para a LINHA**, não um por campo: o par é uma propriedade com duas componentes.
     let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, row_y, FIELD_H);
     let cw = ((control_w - gap) * 0.5).max(0.0);

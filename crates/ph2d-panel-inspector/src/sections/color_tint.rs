@@ -128,7 +128,7 @@ pub(crate) fn paint_color_tint_section(
     y: f32,
 ) -> f32 {
     let field_h = ROW_H_PX;
-    let row_gap = Spacing::Sm.px();
+    let row_gap = Spacing::Xs.px();
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let color_id = ids::INSP_LIVE_COLOR_COLOR;
     let rgba = store

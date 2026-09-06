@@ -111,7 +111,7 @@ fn paint_body_rows(
     let icon_w = (h * 0.82).min(w); // LITERAL-PX-OK: icon inset ratio (compact square in the row)
     // "Body A" / "Body B" column, wide enough for the label at this font.
     let label_w = (label_font * 3.6).min(w * 0.4); // LITERAL-PX-OK: label = 3.6 char-heights, capped at 0.4 of the row
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     for (slot_label, name, id, armed) in [
         (
             "Body A",

@@ -164,7 +164,7 @@ impl BodyCtx<'_> {
     /// Uma linha: rótulo + chip de dropdown mostrando a ponta corrente. Mesmo desenho da
     /// linha de CATEGORIA (rótulo na coluna de rótulos, chip ocupando o resto).
     fn marker_row(&mut self, snap: &VectorStyleSnapshot, slot: usize, y: f32) -> f32 {
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         paint_text(
             self.text_system,
             self.scene,

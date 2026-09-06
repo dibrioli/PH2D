@@ -458,7 +458,7 @@ impl BodyCtx<'_> {
     /// resto) — a mesma estética para a mesma pergunta *"qual destes?"*. A lista em si é pintada
     /// no passe DIFERIDO: são vinte leis, e o card mora dentro do scroll da seção.
     fn filter_blend_row(&mut self, row: usize, fx: &fst::FilterRowView, y: f32) -> f32 {
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         let id = ids::filter_blend_id(row);
         paint_text(
             self.text_system,

@@ -139,8 +139,16 @@ pub(super) const SECTION_HEAD_H: f32 = ROW_H_PX;
 pub(super) fn field_h() -> f32 {
     Spacing::Xl3.px()
 }
+/// ⭐⭐ **A folga acima e abaixo do risco entre secções.**
+///
+/// Enio, 2026-09-06 (com foto do painel de áudio): *«espaçamento entre divisores ainda
+/// excessivo»*. Medido: com o `Md` de cada lado o risco ocupava **17 px** (8 + 1 + 8) — o Godot
+/// Modern dá **8** ao separador inteiro (`separation = base_margin · 2`, e o `StyleBoxLine` dele
+/// leva margens NEGATIVAS de `−base_margin`). Com o `Xs` ficam **9**, que é o número do modelo
+/// mais o pixel da linha. ⚠️ São **30 chamadas em 15 ficheiros**: um número, e o app
+/// inteiro respira menos.
 fn separator_pad_y() -> f32 {
-    Spacing::Md.px()
+    Spacing::Xs.px()
 }
 
 // ── Helpers (formerly inspector::mod.rs) ───────────────────────────────────

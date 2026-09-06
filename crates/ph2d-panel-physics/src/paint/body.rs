@@ -30,7 +30,7 @@ fn table_sections(
     y_in: f32,
 ) -> f32 {
     let mut y = y_in;
-    let row_gap = Spacing::Sm.px();
+    let row_gap = Spacing::Xs.px();
     for section in rows::SECTIONS {
         let (fold, next_y) = header(ctx, section.id, tr(section.title), x, w, y);
         y = next_y;
@@ -81,7 +81,7 @@ pub(super) fn paint_sections(
     w: f32,
     y_in: f32,
 ) -> f32 {
-    let row_gap = Spacing::Sm.px();
+    let row_gap = Spacing::Xs.px();
     let mut y = table_sections(ctx, snapshot, x, w, y_in);
 
     // The Interaction tool (W-Hand). BEFORE the layer matrix and after the world

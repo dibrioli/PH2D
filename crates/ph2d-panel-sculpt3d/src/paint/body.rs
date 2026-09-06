@@ -95,7 +95,7 @@ fn no_head(_: &mut PaintCtx, _: &Sculpt3dSnapshot, _: f32, _: f32, y: f32) -> f3
 /// Não é um rádio: um segmented é *um de N* por construção, e o ZBrush espelha
 /// em dois eixos ao mesmo tempo.
 fn paint_symmetry(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let (fold, y) = header(
         ctx,
         ids::SCULPT3D_SEC_SYMMETRY,
@@ -197,7 +197,7 @@ fn paint_shading_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f3
 
 /// **A TOPOLOGIA** — a resolução do barro.
 fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let (fold, mut y) = header(
         ctx,
         ids::SCULPT3D_SEC_TOPOLOGY,
@@ -334,7 +334,7 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
 
 /// **A CENA** — a lista de peças e os verbos que a mexem.
 fn paint_scene(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let (fold, mut y) = header(
         ctx,
         ids::SCULPT3D_SEC_SCENE,

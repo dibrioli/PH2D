@@ -60,7 +60,7 @@ pub(super) fn field_row(
         resolve(ColorToken::Text2, theme),
     );
     let row_y = y + label_h;
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let n = field_ids.len().max(1) as f32;
     let cw = ((w - gap * (n - 1.0)) / n).max(0.0);
     for (i, &id) in field_ids.iter().enumerate() {

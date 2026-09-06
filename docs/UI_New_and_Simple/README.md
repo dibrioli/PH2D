@@ -107,6 +107,18 @@ dono**: o `Bg1` é o fundo dos cartões **e do canvas**, e clareou os dois. Hoje
 PAINEL (`#131313` no Dark), o canvas fica byte a byte no que ele aprovou, e o texto dos cartões
 sobe para `mono@0.70`. Mecanismo e o que ficou de fora: [`pesquisa/08 §7`](pesquisa/08_modelos_com_codigo_para_seguir.md).
 
+⭐ **A wave 5 (05/09) fechou os buracos que o censo da moldura não podia ver** — uma moldura que é
+um **PREENCHIMENTO** (um rectângulo maior na cor da borda, com o conteúdo por cima) não é um traço,
+e nenhuma varredura de `stroke_*` a alcança; ela ganhou a porta irmã (`paint::fill_ring`) e um
+censo que a DECLARA. As sombras e os outros primitivos de traço foram medidos e estavam limpos.
+⭐ **A wave 6 (06/09) encolheu a LINHA** a pedido do dono — `chrome.row-h` **28 → 24 px**, um número
+que 647 sítios lêem, e um painel de 600 px passa de 21 para **25 linhas**. ⚠️ A mudança revelou
+**quatro cópias do 28 escritas à mão** (o picker de cor, o rig de impasto, o editor de áudio) que
+nenhum teste via, e a espécie morreu num censo. ⭐ **E a wave 7 (06/09) tirou o AR a mais**, também
+por report do dono: o risco entre secções reservava **17 px** (o Godot Modern dá 8) e passou a **9**,
+e o vão entre controlos, que a árvore escrevia de **duas** maneiras (64 sítios a 4 px, 82 a 6),
+unificou-se nos **4 px** do modelo — 82 sítios em 54 ficheiros.
+
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
 cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·
 esbatimento do rótulo e inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis, animado) —

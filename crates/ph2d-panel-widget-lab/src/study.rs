@@ -307,7 +307,7 @@ fn paint_old_widget(b: &mut Bench<'_>, w: f32, row_h: f32) -> f32 {
     const LABEL_W: f32 = 70.0; // LITERAL-PX-OK: DEFAULT_LABEL_W do slider_with_chip
     const CHIP_W: f32 = 72.0; // LITERAL-PX-OK: number_input::MIN_W_PX
     const MIN_TRACK: f32 = 60.0; // LITERAL-PX-OK: SLIDER_CHIP_MIN_SLIDER_W
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let stacked = w < LABEL_W + CHIP_W + gap * 2.0 + MIN_TRACK;
     let theme = b.theme;
 

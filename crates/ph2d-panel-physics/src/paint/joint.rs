@@ -64,7 +64,7 @@ pub(super) fn paint_joint(
 
     // Os números do modo em mãos — da MESMA tabela da outra seção, filtrada
     // pelo campo `section` (ver [`ISection`] para por que não são duas listas).
-    let row_gap = Spacing::Sm.px();
+    let row_gap = Spacing::Xs.px();
     for row in IROWS {
         if row.section != ISection::Joint || !(row.shown)(it) {
             continue;

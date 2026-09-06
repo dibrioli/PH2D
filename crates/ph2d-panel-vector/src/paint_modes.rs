@@ -217,7 +217,7 @@ impl BodyCtx<'_> {
         if snap.mode != DrawMode::Cut || !state::cut_line_exists() {
             return y;
         }
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         let w = ((self.inner_w - gap) / 2.0).max(1.0);
         self.row2(
             w,
@@ -283,7 +283,7 @@ impl BodyCtx<'_> {
         current: &str,
         y: f32,
     ) -> f32 {
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         paint_text(
             self.text_system,
             self.scene,
@@ -323,7 +323,7 @@ impl BodyCtx<'_> {
         if n == 0 {
             return y;
         }
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         let w = ((self.inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
         for i in 0..n {
             let (id, label, active) = item(i);
@@ -357,7 +357,7 @@ impl BodyCtx<'_> {
         step: f64,
         y: f32,
     ) -> f32 {
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         paint_text(
             self.text_system,
             self.scene,

@@ -299,7 +299,7 @@ impl StripRow {
         let pad = Spacing::Lg.px();
         let content_x = rect.x + pad;
         let content_w = (rect.w - pad * 2.0).max(1.0);
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         let n = cols as f32;
         let col_w = ((content_w - gap * (n - 1.0)) / n).max(FADER_W);
         Self {
@@ -451,7 +451,7 @@ fn paint_strip(
             );
         }
         Some(solo_id) => {
-            let gap = Spacing::Sm.px();
+            let gap = Spacing::Xs.px();
             let half = ((col_w - gap) * 0.5).max(1.0);
             paint_toggle(
                 Rect::new(col_x, y, half, MUTE_H),

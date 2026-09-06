@@ -58,7 +58,7 @@ pub(crate) fn paint_dropdown_row(
     cur_value: u8,
     cur_label: &str,
 ) -> (f32, Option<Rect>) {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     label(ctx, theme, label_txt, x, y, TypeToken::Sm.px());
     let chip_w = (content_w - LABEL_W - gap).max(0.0);
     let rect = Rect::new(x + LABEL_W + gap, y, chip_w, ROW_H_PX);

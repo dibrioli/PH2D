@@ -38,7 +38,7 @@ pub(crate) fn paint_loop_section(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let has_loop = loop_state::has_loop();
 
     // No title row: the section header above carries the name AND the readout. Printing
@@ -148,7 +148,7 @@ pub(crate) fn paint_markers_section(
     hit_index: &mut ClippedHits,
 ) -> f32 {
     let mut y = y;
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let count = loop_state::marker_count();
 
     // Add (at playhead) | Delete (nearest).

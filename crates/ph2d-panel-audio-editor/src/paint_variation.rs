@@ -42,7 +42,7 @@ pub(crate) fn paint_variation_section(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let count = variation_state::count();
     let has_any = count > 0;
 

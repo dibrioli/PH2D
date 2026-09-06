@@ -144,7 +144,7 @@ pub(crate) fn layers_section(
     // coluna sai de `.len()` (não de um `3.0` solto), e a regra "precisa de camada ativa"
     // vale para Duplicate/Delete: sem camada não há o que duplicar nem apagar, e um botão
     // que não age é pior que um ausente (disabled ⇒ não hit-registrado ⇒ no-op).
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let needs_active = snap.active.is_some();
     let buttons = [
         (ids::FLIP_LAYER_ADD, "Add", true),

@@ -64,7 +64,7 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     let inner_x = rect.x + PANEL_HEAD_PAD;
     let inner_w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
     let row_h = ROW_H_PX;
-    let row_gap = Spacing::Sm.px();
+    let row_gap = Spacing::Xs.px();
 
     let title_size = paint_panel_title(
         rect,
@@ -418,7 +418,7 @@ fn paint_radio_row(
     if items.is_empty() {
         return;
     }
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let n = items.len() as f32;
     let item_w = ((rect.w - gap * (n - 1.0)) / n).max(0.0);
     for (i, (label, id, active)) in items.iter().enumerate() {

@@ -69,7 +69,7 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
     let scrollbar_reserve = SCROLLBAR_W + Spacing::Sm.px();
     let inner_w = (rect.w - PANEL_HEAD_PAD * 2.0 - scrollbar_reserve).max(0.0);
     let row_h = ROW_H_PX;
-    let row_gap = Spacing::Sm.px();
+    let row_gap = Spacing::Xs.px();
     let chip_w = NUMBER_INPUT_MIN_W_PX;
     let font = TypeToken::Base.px();
 

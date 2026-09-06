@@ -33,7 +33,7 @@ pub(super) fn paint_actions_section(
         return y;
     }
     let btn_h = 30.0_f32; // LITERAL-PX-OK: action button height (distinct from ROW_H_PX)
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     // Three labelled buttons.
     let trio_w = (w - gap * 2.0) / 3.0; // LITERAL-PX-OK: button count divisor
     let trio = [

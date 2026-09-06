@@ -59,7 +59,7 @@ pub(crate) fn paint_material_blend_section(
     };
     let mut yy = y + header_h;
     let h = ROW_H_PX;
-    let row_gap = Spacing::Sm.px();
+    let row_gap = Spacing::Xs.px();
     let label_font = TypeToken::Sm.px();
     let label_color = resolve(ColorToken::Text2, theme);
     let label_h = label_font + Spacing::Xs.px();

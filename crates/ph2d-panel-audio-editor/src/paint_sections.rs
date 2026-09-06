@@ -471,7 +471,7 @@ fn paint_transport_section(
     y += ROW_H + Spacing::Sm.px();
 
     // Stop | Loop side by side.
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let half = ((w - gap) * 0.5).max(1.0);
     button(
         Rect::new(x, y, half, ROW_H),

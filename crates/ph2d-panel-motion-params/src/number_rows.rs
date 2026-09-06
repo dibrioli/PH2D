@@ -233,7 +233,7 @@ pub(crate) fn paint_seed_row(
     theme: Theme,
 ) -> f32 {
     row_label(scene, text_system, label, rect, theme);
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let fx = rect.x + DEFAULT_LABEL_W + gap;
     let btn_w = ROW_H_PX; // square button, row-height (the Inspector's icon-button slot)
     let field_w = (rect.x + rect.w - fx - btn_w - gap).max(0.0);

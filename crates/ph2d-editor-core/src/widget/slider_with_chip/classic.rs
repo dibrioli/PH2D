@@ -39,7 +39,7 @@ pub(super) fn paint_classic_row(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let track_x = rect.x + label_w + gap;
     let track_w = (rect.w - label_w - chip_w - gap * 2.0).max(1.0);
     let label_rect = Rect::new(rect.x, rect.y, label_w, rect.h);

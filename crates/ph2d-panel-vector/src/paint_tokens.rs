@@ -92,7 +92,7 @@ impl BodyCtx<'_> {
         let Some(slot) = ids::token_slot_of(id) else {
             return y;
         };
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         ph2d_editor_core::paint::paint_text(
             self.text_system,
             self.scene,

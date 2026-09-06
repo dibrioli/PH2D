@@ -128,7 +128,7 @@ pub(crate) fn paint_visibility_section(
     info: &InspectorVisibilitySectionInfo,
 ) -> f32 {
     let h = ROW_H_PX;
-    let row_gap = Spacing::Sm.px();
+    let row_gap = Spacing::Xs.px();
     let label_font = TypeToken::Sm.px();
     let label_color = resolve(ColorToken::Text2, theme);
     let label_h = label_font + Spacing::Xs.px();

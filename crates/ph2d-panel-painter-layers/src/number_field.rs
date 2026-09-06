@@ -172,7 +172,7 @@ pub(crate) fn paint_num_row(
     step: f64,
     decimals: usize,
 ) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     label_tok(ctx, theme, label_txt, x, y, LABEL_W, ColorToken::Text2);
     let cx = x + LABEL_W + gap;
     let cw = (x + content_w - cx).max(0.0);
@@ -209,7 +209,7 @@ pub(crate) fn paint_num_xy(
     step: f64,
     decimals: usize,
 ) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let tag_gap = Spacing::Xxs.px();
     label_tok(ctx, theme, label_txt, x, y, LABEL_W, ColorToken::Text2);
     let fields_x = x + LABEL_W + gap;
@@ -263,7 +263,7 @@ pub(crate) fn paint_num_params(
         if i + 1 < params.len() && l0.len() <= PAIR_MAX_LEN && params[i + 1].0.len() <= PAIR_MAX_LEN
         {
             let (l1, id1, v1) = params[i + 1];
-            let gap = Spacing::Sm.px();
+            let gap = Spacing::Xs.px();
             let half = ((content_w - gap) * 0.5).max(0.0);
             half_param(ctx, theme, x, half, y, l0, id0, v0);
             half_param(ctx, theme, x + half + gap, half, y, l1, id1, v1);

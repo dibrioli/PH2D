@@ -224,7 +224,7 @@ pub(super) fn paint_enum_row(
     let k = row.labels.len().min(MAX_ENUM_OPTIONS);
     // Up to 4 buttons across, then wrap; a single option → 1.
     let cols = k.clamp(1, 4); // CLAMP-OK: segmented column count (option-count layout, not a UI metric)
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let seg_w = ((inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
     for (opt, caption) in row.labels.iter().enumerate().take(k) {
         let bid = param_enum_id(i, opt);
@@ -279,7 +279,7 @@ pub(super) fn paint_channels_row(
     let n = row.channels.len(); // Custom is the n-th button
     let k = (n + 1).min(MAX_ENUM_OPTIONS);
     let cols = k.clamp(1, 4); // CLAMP-OK: segmented column count, not a UI metric
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let seg_w = ((inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
     for opt in 0..k {
         let caption = if opt < n {
@@ -405,7 +405,7 @@ pub(super) fn paint_source_row(
         );
         y += TypeToken::Sm.px() + Spacing::Xs.px();
         let cols = n.clamp(1, 4); // CLAMP-OK: segmented column count, not a UI metric
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         let seg_w = ((inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
         for j in 0..n {
             let bid = param_enum_id(i, j);

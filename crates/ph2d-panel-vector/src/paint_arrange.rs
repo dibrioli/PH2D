@@ -208,7 +208,7 @@ impl BodyCtx<'_> {
     /// closed paths into one compound is how a hole is authored by hand (draw a
     /// contour inside another, merge, and `EvenOdd` vacates the inner region).
     pub(crate) fn compound_row(&mut self, y: f32) -> f32 {
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         let w = ((self.inner_w - gap) / 2.0).max(1.0);
         self.row2(
             w,
@@ -299,7 +299,7 @@ impl BodyCtx<'_> {
             self.store,
             self.hit_index,
         );
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         y += used + self.row_gap;
 
         // Multi-point: Add / Remove point (drag points on-canvas to move them) +
@@ -402,7 +402,7 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         let cols = 3usize;
         let cw = ((self.inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
         let rows = [
@@ -457,7 +457,7 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         let w = ((self.inner_w - gap) / 2.0).max(1.0);
         if state::convertible() {
             y = self.action_button(ids::VECTOR_CONVERT_TO_CURVES, "Convert to Curves", y);

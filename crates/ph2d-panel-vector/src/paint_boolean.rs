@@ -125,7 +125,7 @@ impl BodyCtx<'_> {
             (ids::VECTOR_BOOL_CROP, tr("panel.vector.bool.crop")),
             (ids::VECTOR_BOOL_MERGE, tr("panel.vector.bool.merge")),
         ];
-        let gap = Spacing::Sm.px();
+        let gap = Spacing::Xs.px();
         let w = ((self.inner_w - gap) / 2.0).max(1.0);
         for pair in ops.chunks(2) {
             let [a, b] = pair else { continue };

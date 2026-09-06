@@ -160,19 +160,23 @@ fn measure_the_param_height_census() {
 /// ⚠️ O `INSPECTOR_MAX_H` continua a ser lido — ele é a altura VISÍVEL, e é o que separa
 /// *cabe* de *rola*; a sonda irmã imprime os dois.
 /// ⚠️ **A fixture TRANSBORDA de propósito**, e é o que separa este gate de um verde por
-/// acidente: no estado de DEFAULT o nó mais alto do catálogo cabe no dock (a sonda irmã
-/// imprime o número), então rolar não teria o que provar. Um `source.shape` com traço abre a
-/// família inteira do traço — cor, tracejado e os três do Trim — e é o pior caso REAL do
-/// catálogo de hoje. *Uma fixture só prova o que contém.*
+/// acidente: um nó que cabe não tem o que rolar. *Uma fixture só prova o que contém.*
+///
+/// ⚠️⚠️ **E ela é DERIVADA do censo, não escrita à mão.** Era um `source.shape` com o traço
+/// armado, sob a nota *«no estado de DEFAULT o nó mais alto do catálogo cabe no dock»* — que
+/// deixou de ser verdade duas vezes: o `bezier_warp` passou a estourar no default, e em
+/// 2026-09-06, quando o dono pediu linhas e folgas menores (`row-h 28 → 24`, o gap entre
+/// controlos `6 → 4`), o próprio `source.shape` encolheu para `734` num corpo de `754` e este
+/// gate ficou **vermelho sobre produto correcto**. *Uma fixture escrita à mão descreve o
+/// catálogo do dia em que foi escrita; o censo descreve o de hoje.*
 #[test]
 fn the_last_row_of_the_tallest_node_is_reachable_by_scrolling() {
-    let tallest = "source.shape";
+    let (tallest, _) = height_census()
+        .first()
+        .copied()
+        .expect("o registry não é vazio");
     let mut motion = MotionState::new();
     let node = motion.doc.graph.add_node(tallest);
-    motion
-        .doc
-        .graph
-        .set_param(node, ph2d_node_motion_shape::param::STROKE_WIDTH, 0.2);
     ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
     ph2d_panel_motion_params::set_current_params(build_params_snapshot(
         &motion,
@@ -446,13 +450,18 @@ fn the_dock_overflow_is_named_not_discovered() {
     /// `spline_wrap` estoura só no FALLBACK (sem forma escolhida ele mostra as oito
     /// coordenadas da cúbica), e com uma forma mede **456 px** num corpo de 664.
     const NAMED_OVERFLOW: &[(&str, f32)] = &[
-        ("motion.bezier_warp", 873.0),
+        ("motion.bezier_warp", 825.0),
         // ⭐⭐ **O `motion.spline_wrap` SAIU em 2026-09-06, e outra vez sem ninguem o encolher: a
         // LINHA e' que ficou mais baixa.** O dono pediu paineis mais compactos e o
         // `chrome.row-h` desceu de `28` para `24` px (wave 6 do redesenho) ⇒ ele foi de `755`
         // para **`679`** sobre um corpo de `754`, e o censo deste gate exigiu que saisse. O
         // `bezier_warp` desceu de `969` para `873` pelo mesmo motivo e **continua a estourar**:
         // 24 params sao a superficie da referencia.
+        // ⚠️ **E de `873` para `825` no mesmo dia**, pela wave da FOLGA: o dono pediu menos
+        // espaco entre botoes e a volta dos divisores, o `separator_pad_y` passou de `Md` para
+        // `Xs` (17 px de risco para 9) e o vao entre controlos unificou-se em `Xs` ⇒ este
+        // retrato move-se de novo. *Um numero escrito a mao neste censo e' um retrato de uma
+        // arvore, e toda wave de espacamento o desactualiza — leia-o do log, nunca da memoria.*
         // ⭐ **`source.shape` (680) e `fx.glow` (674) SAIRAM daqui em 2026-08-30, e nao por
         // alguem os ter encolhido: o DOCK cresceu.** A coluna da direita era limitada por um
         // tecto de altura (`INSPECTOR_MAX_H`, coisa de painel que FLUTUA) e passou a ir de ponta

@@ -81,7 +81,7 @@ pub(crate) fn paint_fx_section(
 /// in-panel list is needed. Sits above the effect selector: a preset is a starting
 /// point you then tune.
 fn paint_presets(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let has_presets = presets::preset_count() > 0;
     button(
         Rect::new(x, y, ARROW_W, row_h),
@@ -144,7 +144,7 @@ fn paint_presets(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut
 /// frameless, sits beside the name, and puts that stage's parameters back on their
 /// neutral defaults. It is dimmed while they already are.
 fn paint_selector(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     button(
         Rect::new(x, y, ARROW_W, row_h),
         "\u{25c0}",
@@ -193,7 +193,7 @@ fn paint_selector(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mu
 /// slider under it. Slots the effect doesn't use are simply not painted — and not
 /// hit-registered, so a stale slider can't be grabbed.
 fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let views = snapshot::fx_param_views();
     let norms = snapshot::fx_norms();
     let label_h = TypeToken::Xs.px();
@@ -371,7 +371,7 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
 /// Apply turns exactly the buffer you heard into one undo step; Cancel drops it.
 /// Both are only meaningful while something is auditioning.
 fn paint_commit_row(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let auditioning = snapshot::fx_auditioning();
     let bypassed = snapshot::fx_bypass();
     toggle(

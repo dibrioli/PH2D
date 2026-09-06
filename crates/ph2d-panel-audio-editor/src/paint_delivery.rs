@@ -51,7 +51,7 @@ pub(crate) fn paint_delivery_section(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     let label_h = TypeToken::Xs.px();
 
     // No title row: the section header above carries the name AND the download size —

@@ -66,7 +66,7 @@ pub(super) fn paint_status_section(
     // Tag chips — Accent + Success + Warn.
     let chip_w = 50.0_f32; // LITERAL-PX-OK: tag chip width (chrome-specific)
     let chip_h = TypeToken::Lg.px();
-    let gap = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
     for (i, (label, tone)) in [
         ("PRF", TagTone::Accent),
         ("OK", TagTone::Success),

@@ -142,11 +142,51 @@ inteira, não cherry-picks.
 ### ⚠️ NÃO smokado — re-smokar depois de integrar
 
 1. **A cura da performance da W128** (`4f87b14e7`) chegou **depois** do smoke dele: o memo e os
-   atalhos exactos mudam o **preço**, nunca o valor (há gate a prová-lo). Vale um olhar.
+   atalhos exactos mudam o **preço**, nunca o valor (há gate a prová-lo). ⛔ **E ele já a smokou e
+   NÃO viu diferença — ver §6-bis, que é o item ABERTO desta linha.**
 2. **O `PROJECT_SCHEMA 115` com um ficheiro gravado antes**: abrir um `.ph2dproj` v114 tem de dizer
    *«Project migrated from format 114 to N»*.
 3. **A `Span::Floor` no painel**: as formas afectadas são `RoundCone`, `Drop` e `BentArrow` — o
    slider delas passou a ter piso, e o piso **move-se** com as irmãs.
+
+---
+
+## 6-bis. ⛔⛔⛔ ABERTO — a minha régua diz `−42 %` e o OLHO DO DONO diz que não
+
+> **Enio, 06/09, depois da cura:** *«não houve melhora significativa. mas vamos deixar a revisão
+> para depois da integração»*.
+
+⚠️ **Isto NÃO está resolvido, e não deve ser lido como se estivesse.** A cura é real e está gateada
+(`3 852 → 0` varreduras por quadro, e o atalho exacto dos expoentes `1` e `2` é álgebra, não
+aproximação) — mas *uma melhoria que o dono não vê é uma melhoria que ainda não chegou ao produto*,
+e é a mesma lição que o quad remesh desta casa pagou quatro vezes: **uma barra calibrada sem o lado
+que o dono aprovou mede os nossos defeitos, não os dele**.
+
+### As hipóteses, por ordem de probabilidade — a próxima janela MEDE, não escolhe
+
+1. ⭐⭐ **A régua mediu a cena errada.** As minhas leituras são `640×360` num arnês de teste; ele corre
+   o **pill MODEL** numa janela cheia, com a câmara a mexer. A `1920×1080` são `9×` os pixels: `3,5`
+   e `5,8 ms` viram `~32` e `~52` — **os dois muito acima do quadro de `16,7 ms`**, e a diferença
+   entre duas coisas lentas não atravessa o limiar do que se **sente**. ⚠️ *Uma sonda que arma o
+   módulo por env var mede outro programa que o pill* — esta linha já tem essa memória.
+2. ⭐ **O que ele sente pode não ser a marcha.** O quadro de MOVIMENTO tem duas metades (a marcha e o
+   contorno), e a W71 mediu a marcha em `80 %` de um quadro **de extrusão**. Numa superfórmula sem
+   perfil nenhum a repartição pode ser outra. **Meça as duas metades separadas antes de optimizar
+   qualquer uma.**
+3. **O tecto pode não ser desta forma.** A base do módulo já está declarada acima do orçamento
+   (doc 06 §13.0: o quadro de movimento custa `26,7 ms` contra `16,7`), e uma forma cara em cima de
+   uma base cara move pouco a percepção.
+
+### O que a próxima janela tem de fazer ANTES de tocar em código
+
+- ⛔ **Medir no PILL, na resolução dele, e não no arnês** — com a mesma peça e a mesma câmara, antes
+  e depois de `4f87b14e7` (`git stash` não; use duas árvores ou `git checkout` do commit anterior).
+- ⛔ **Perguntar-lhe o que «significativa» quer dizer aqui** — se é *«deixa de engasgar ao rodar»*, a
+  régua é o **quadro de movimento**, não o assente; se é *«a peça aparece mais depressa»*, é o
+  refinamento.
+- ⚠️ **E aceitar a resposta se ela for «a forma é assim»** — o preço tem uma escada medida
+  (`caixa 0,7× · esfera 1,0× · superfórmula 1,6×`), e o mecanismo é a trigonometria por amostra.
+  *Se o tecto for esse, a cura é outra coisa e não esta forma.*
 
 ---
 

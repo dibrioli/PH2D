@@ -8,6 +8,16 @@
 
 ---
 
+## 0-bis. ⛔ O ITEM QUE VEM ANTES DA FILA
+
+**A revisão da performance da superfórmula**, adiada pelo Enio para depois da integração:
+*«não houve melhora significativa»*. As hipóteses e o que medir antes de tocar em código estão no
+[handoff de 06/09 §6-bis](handoffs/HANDOFF_INTEGRACAO_line_3DModeling_2026-09-06.md). ⚠️ *Uma
+melhoria que o dono não vê ainda não chegou ao produto* — e a régua que discorda dele é a suspeita
+número um.
+
+---
+
 ## 0. Onde a fila está hoje
 
 | de onde | faltam | quais |

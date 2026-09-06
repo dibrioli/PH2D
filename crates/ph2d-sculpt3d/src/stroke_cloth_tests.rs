@@ -142,7 +142,10 @@ fn arrastar_move_o_miolo_e_o_anel_fica() {
         contados > 20,
         "so' {contados} vertices alem de {fora:.2} -- a fixtura nao alcanca a cerca"
     );
-    assert_eq!(longe, 0.0, "o pano moveu fora da regiao ({fora:.2}): {longe:.3e}");
+    assert_eq!(
+        longe, 0.0,
+        "o pano moveu fora da regiao ({fora:.2}): {longe:.3e}"
+    );
 }
 
 /// ⭐⭐⭐ **GATE — o pano responde FORA da pegada, e é isso que o separa de um Grab.**

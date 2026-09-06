@@ -677,7 +677,10 @@ fn por_passo(nome: &str) -> PorPasso {
         match campos.first().copied() {
             Some("c") => caminho.push(v3(&campos[1..])),
             Some("passo") => blocos.push(Vec::new()),
-            Some("d") => blocos.last_mut().expect("bloco antes de d").push(v3(&campos[1..])),
+            Some("d") => blocos
+                .last_mut()
+                .expect("bloco antes de d")
+                .push(v3(&campos[1..])),
             _ => {}
         }
     }
@@ -727,7 +730,11 @@ fn sonda_passo_a_passo() {
 
     let mut pos = rest.clone();
     let mut tecido = PincelTecido::pen_down(pincel, &pos, c0);
-    println!("{nome}: {} passos, {} blocos", pp.caminho.len(), pp.blocos.len());
+    println!(
+        "{nome}: {} passos, {} blocos",
+        pp.caminho.len(),
+        pp.blocos.len()
+    );
     // ⭐ As colunas do ARO são o discriminador Local/Global que o oráculo entregou
     // em 06/09: no Local o `3,5R` mexe `≤0,0003` e o `4R` é **zero exacto** (o aro
     // é âncora, porque o raio de construção é o LIMITE e ali `w = 0`); no Global
@@ -735,7 +742,17 @@ fn sonda_passo_a_passo() {
     // livre, e é isso que faz o Local render como o Global.*
     println!(
         "{:>4} | {:>7} {:>7} | {:>7} {:>7} | {:>7} {:>7} | {:>7} {:>7} | {:>8} {:>8}",
-        "k", "c0 nos", "c0 orac", "2.9R nos", "2.9R or", "3.5R nos", "3.5R or", "4R nos", "4R orac", "max nos", "max orac"
+        "k",
+        "c0 nos",
+        "c0 orac",
+        "2.9R nos",
+        "2.9R or",
+        "3.5R nos",
+        "3.5R or",
+        "4R nos",
+        "4R orac",
+        "max nos",
+        "max orac"
     );
     println!("      (as duas ultimas colunas sao a distancia do PICO ao cursor, em raios)");
     for k in 0..pp.caminho.len() {
@@ -744,7 +761,11 @@ fn sonda_passo_a_passo() {
         let delta = if pincel.modo == Modo::Agarrar {
             [cursor[0] - c0[0], cursor[1] - c0[1], cursor[2] - c0[2]]
         } else {
-            [cursor[0] - prev[0], cursor[1] - prev[1], cursor[2] - prev[2]]
+            [
+                cursor[0] - prev[0],
+                cursor[1] - prev[1],
+                cursor[2] - prev[2],
+            ]
         };
         let nrm = normais(&pos, &fs);
         let mut na = [0.0f64; 3];
@@ -804,10 +825,23 @@ fn sonda_passo_a_passo() {
         println!(
             "{:>4} | {:>7.4} {:>7.4} | {:>8.5} {:>8.5} | {:>8.5} {:>8.5} | {:>7.5} {:>7.5} | {:>8.4} {:>8.4} | {:>5.2}R {:>5.2}R{}",
             k + 1,
-            u_n(c0v), u_o(c0v), u_n(bnd), u_o(bnd), u_n(lim), u_o(lim), u_n(fora), u_o(fora),
-            max_n, max_o,
-            pico_n, pico_o,
-            if glitch { "  (bloco = repouso: glitch do dump, ignorar)" } else { "" }
+            u_n(c0v),
+            u_o(c0v),
+            u_n(bnd),
+            u_o(bnd),
+            u_n(lim),
+            u_o(lim),
+            u_n(fora),
+            u_o(fora),
+            max_n,
+            max_o,
+            pico_n,
+            pico_o,
+            if glitch {
+                "  (bloco = repouso: glitch do dump, ignorar)"
+            } else {
+                ""
+            }
         );
     }
 }
@@ -1086,7 +1120,10 @@ fn a_lista_do_local_vem_em_duplicado() {
     for i in 0..meio {
         let (x, y) = (lista[i], lista[i + meio]);
         assert!(
-            x.a == y.a && x.b == y.b && x.l.to_bits() == y.l.to_bits() && x.s.to_bits() == y.s.to_bits(),
+            x.a == y.a
+                && x.b == y.b
+                && x.l.to_bits() == y.l.to_bits()
+                && x.s.to_bits() == y.s.to_bits(),
             "restricao {i} difere da copia {}: {x:?} contra {y:?} -- a lista do Local \
              tem de ser a mesma lista duas vezes, na mesma ordem",
             i + meio
@@ -1101,8 +1138,16 @@ fn a_lista_do_local_vem_em_duplicado() {
             "{area:?} nao pode construir mais de uma vez (espec §14 gate 17)"
         );
     }
-    let p = Pincel { area: Area::Local, passagens: 3, ..t.pincel() };
-    assert_eq!(p.construcoes(), 4, "a lei geral e' n+1 copias para n passagens");
+    let p = Pincel {
+        area: Area::Local,
+        passagens: 3,
+        ..t.pincel()
+    };
+    assert_eq!(
+        p.construcoes(),
+        4,
+        "a lei geral e' n+1 copias para n passagens"
+    );
 
     // A régua de COMPORTAMENTO: os inteiros dos dois lados.
     for nome in [
@@ -1189,7 +1234,11 @@ fn o_centro_do_snake_hook_esta_um_passo_atrasado() {
         }
     }
     // Anti-vácuo: tem de ter deformado.
-    assert!(argmax.1 > 0.05, "o traco nao deformou (max {:.4})", argmax.1);
+    assert!(
+        argmax.1 > 0.05,
+        "o traco nao deformou (max {:.4})",
+        argmax.1
+    );
     let ao_cursor = dist(rest[argmax.0], cursor) / r;
     let ao_pendown = dist(rest[argmax.0], c0) / r;
     assert!(
@@ -1246,8 +1295,6 @@ fn sonda_dos_artefatos_do_oraculo() {
         };
         let (a, b, c) = tres(&nosso);
         let (x, y, z) = tres(&orac);
-        println!(
-            "{nome:<44} | {a:>8.4} {x:>8.4} | {b:>8.5} {y:>8.5} | {c:>7.4} {z:>7.4}"
-        );
+        println!("{nome:<44} | {a:>8.4} {x:>8.4} | {b:>8.5} {y:>8.5} | {c:>7.4} {z:>7.4}");
     }
 }

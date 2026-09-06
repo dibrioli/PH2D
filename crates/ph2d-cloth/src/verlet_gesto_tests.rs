@@ -29,7 +29,12 @@ fn grelha(n: usize, h: f64) -> (Vec<V3>, Vec<Vec<u32>>) {
     let mut faces = Vec::new();
     for j in 0..n - 1 {
         for i in 0..n - 1 {
-            faces.push(vec![idx(i, j), idx(i + 1, j), idx(i + 1, j + 1), idx(i, j + 1)]);
+            faces.push(vec![
+                idx(i, j),
+                idx(i + 1, j),
+                idx(i + 1, j + 1),
+                idx(i, j + 1),
+            ]);
         }
     }
     (p, faces)
@@ -81,7 +86,11 @@ fn nenhum_vertice_guarda_a_forca_por_passo_de_um_passo_anterior() {
         let normais = vec![[0.0, 0.0, 1.0]; rest.len()];
         for k in 0..24 {
             let delta = if k == 0 { [0.0; 3] } else { [0.05, 0.0, 0.10] };
-            cursor = [cursor[0] + delta[0], cursor[1] + delta[1], cursor[2] + delta[2]];
+            cursor = [
+                cursor[0] + delta[0],
+                cursor[1] + delta[1],
+                cursor[2] + delta[2],
+            ];
             let passo = Passo {
                 cursor,
                 delta,
@@ -121,6 +130,9 @@ fn nenhum_vertice_guarda_a_forca_por_passo_de_um_passo_anterior() {
                 );
             }
         }
-        assert!(fora > 100, "{modo:?}: só {fora} vértices fora do disco — vácuo");
+        assert!(
+            fora > 100,
+            "{modo:?}: só {fora} vértices fora do disco — vácuo"
+        );
     }
 }

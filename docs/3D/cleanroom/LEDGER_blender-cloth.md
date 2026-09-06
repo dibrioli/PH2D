@@ -175,7 +175,28 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 
 ## Incidentes
 
-*(vazio)*
+**INC-1 (2026-09-05, registado pelo subagente-E) — material do alvo no scratchpad partilhado (§3.E).**
+- **Origem:** o scratchpad da sessão (`/tmp/claude-1000/.../1246816c-.../scratchpad/`) continha, ANTES
+  desta obra, ~120 artefactos de pesquisa do alvo criados por uma janela anterior (a auditoria de
+  `docs/3D/cloth/` do MESMO dia): páginas de manual/API/notas-de-versão/blog (factos públicos) **e**
+  páginas de revisão/commit do repositório do alvo que **carregam diff de código** (as duas revisões
+  públicas e seis páginas de commit, por hash). O scratchpad é alcançável pela janela-mãe ⇒ é o vector
+  de contaminação que o §3.E proíbe (*«nada do alvo... em /tmp nem no scratchpad»*).
+- **Régua de substancial:** as 8 páginas de revisão/commit são **substanciais** (contêm corpo de
+  função/diff). As páginas de manual/API/blog são factos públicos (relance).
+- **Acção deste E:** ⛔ **não li o conteúdo** de nenhuma delas (o registo DESCREVE, não reproduz). As 8
+  páginas de código foram **relocadas por `mv` cego** para `~/Referencias/blender-cloth/prior_scratchpad_recovered/`
+  (zona contaminada, fora do repo e fora do /tmp), sem entrarem no meu contexto. As restantes (factos
+  públicos, mais fixtures de OUTRA obra — malhas `.obj`, backups `.bak` de crates NOSSAS, scripts `.py`)
+  foram deixadas onde estavam, para não quebrar trabalho vivo da janela-mãe.
+- **Veredito para o R e para o Enio:** ⚠️ isto é um achado sobre a **janela-mãe/auditoria anterior**, não
+  sobre esta espec. A espec, o ledger, a vassoura e as fixtures desta obra nasceram todos em
+  `~/Referencias/` ou no repo, e o sweep de árvore e de histórico corre **verde**. A recomendação é o
+  operador **esvaziar o scratchpad da sessão** (ou o que sobra do alvo nele) antes da próxima janela — e
+  o doc `04_espec_do_comportamento.md`, que afirma *«nenhum código-fonte do alvo foi aberto por este
+  agente»*, ser reconciliado com a existência daquelas páginas de revisão/commit no scratchpad da sessão
+  que o produziu.
+
 
 ---
 

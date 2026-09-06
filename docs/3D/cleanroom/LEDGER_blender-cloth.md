@@ -227,7 +227,7 @@ apendada pela janela; fica ⏳ até o I a escrever no canal.
 | versão | caminho | commit |
 |---|---|---|
 | v1 | `docs/3D/cleanroom/SPEC_cloth_brush.md` | `c7905f616` (2026-09-05, commit único pós-filtragem) |
-| v1-r | idem — atestada; curas do R-pré (1 expressão · 6 higienes · anexos) | ⏳ hash registado no commit seguinte ao da auditoria (2026-09-05) |
+| v1-r | idem — atestada; curas do R-pré (1 expressão · 6 higienes · anexos) | `0c884a2b2` (2026-09-05, R-pré) |
 
 ---
 

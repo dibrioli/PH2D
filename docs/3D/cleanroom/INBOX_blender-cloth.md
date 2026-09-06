@@ -129,3 +129,55 @@ Hook o nosso pico não está sob o cursor (`max` `0,1531` com `c0` `0,0175`, con
 os dois em `0,1971`) — é defeito de LOCALIZAÇÃO da deformação, não de amplitude. E na **esfera** os
 modos que não são arrasto (`apertar` `0,54–0,59`, `expandir` `0,56`, `inflar` `0,38`, `gancho` `0,39`)
 erram na Dinâmica sem que as varreduras os toquem.
+
+## Q9 — o SNAKE HOOK deforma no sítio errado (2026-09-06, sessão 1246816c)
+
+A sonda por passo passou a imprimir **onde** está o pico (distância do `arg max` ao cursor deste
+passo, em raios). No **Arrastar** os dois picos coincidem (`0,82R`/`0,82R` no passo 8, `1,02R`/`1,02R`
+no 11) ⇒ a lei do arrasto está no sítio certo. No **Snake Hook** (`plano_gancho_radial_local_2passos_origem`):
+
+| passo | pico nosso | pico do oráculo | `c0` nosso | `c0` oráculo |
+|---|---|---|---|---|
+| 2 | `0,05R` | `0,86R` | `0,0516` | `0,1971` |
+| 3 | `0,24R` | `0,91R` | `0,1099` | `0,2761` |
+
+⇒ **o nosso pico fica sob o cursor e o do oráculo fica onde o pincel ESTAVA.** No oráculo, no 1.º
+passo simulado, o vértice mais deslocado é o do pen-down (`max = c0 = 0,1971`); no nosso é o que
+está sob o cursor agora. *Nós apanhamos material novo a cada passo; o alvo arrasta o que já pegou.*
+
+### Experiência feita, medida e REVERTIDA (o produto está intocado)
+
+Hipótese: a queda `f` do Snake Hook é medida a partir de **onde o pincel estava** (`cursor − δ`), e
+não de onde chegou. Mutação de uma linha, `err_max/max_oráculo` nos SETE traços de gancho:
+
+| traço | espec (`f` no cursor) | hipótese (`f` no anterior) |
+|---|---|---|
+| `plano_gancho_radial_local_1passo` (varr 5 / 10) | `0,999` / `0,981` | **`0,467` / `0,416`** |
+| `plano_gancho_radial_local_2passos` | `0,740` / `0,951` | **`0,410` / `0,388`** |
+| `plano_gancho_radial_local_2passos_origem` | `0,700` / `0,996` | **`0,324` / `0,420`** |
+| `plano_gancho_radial_local` | `0,162` / `0,127` | **`0,129` / `0,059`** |
+| `plano_gancho_radial_local_24passos` | `0,135` / `0,100` | **`0,124` / `0,062`** |
+| `plano_gancho_radial_local_amort06` | `0,237` / `0,155` | **`0,172` / `0,062`** |
+| `esfera_gancho_radial_dinamica` (varr 5) | `0,387` | **`0,351`** |
+
+Sete de sete melhoram, e a CONTAGEM de movidos do `1passo` vai de `1040` para **`1434`** contra
+`1452` do oráculo (a `10` varreduras) — outra vez um inteiro a convergir.
+
+⛔ **E o que sobra NÃO é a força da âncora.** Varrida a constante de `0,20` a `1,00` no `1passo` com
+a hipótese ligada: a `0,35` (o valor da espec) a amplitude bate (`0,4935` contra `0,4894`) e o erro
+fica em `0,2036`; a `0,50` o erro desce a `0,1711` mas a amplitude **estoura 25 %** (`0,6095`);
+acima disso piora tudo. *Nenhum valor torna o traço exacto* ⇒ o resíduo é de **FORMA**, não de
+escala, e a espec §4.3 acerta na constante.
+
+### As perguntas
+
+- **Q9.1** — No Snake Hook, o centro a partir do qual a queda por-vértice é medida é a posição do
+  pincel no FIM do passo, ou a do início (antes do deslocamento deste passo)?
+- **Q9.2** — E as posições contra as quais essa distância é medida: são as da malha ANTES do passo,
+  ou já as do passo corrente?
+- **Q9.3** — Sobrando `≈0,20` de erro num traço de UM passo com a amplitude certa e a contagem de
+  movidos a `1434/1452`, há no Snake Hook alguma restrição de FORMA que a espec §4.3 não tem (um
+  eixo, um plano, um limite de profundidade)? *A espec diz que ele «anda no plano de profundidade»;
+  a nossa lei implementa isso como queda radial (`FalloffForca::Radial`) porque o traço é radial.*
+
+Contrato de retorno igual ao do Q8.

@@ -17,7 +17,8 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   expressão (uma frase de comentário do fonte citada como (F) no §7) e CINCO higienes §4.3 (detalhe de
   implementação descrito como comportamento) curados no acto pelo R-pré; os nomes de fixture do §14 e a
   contagem do gate 15 alinhados aos ficheiros. Veredictos e curas, um a um: LEDGER §Papel R.
-  ⏳ EMENDAS Q8 e Q9 de 2026-09-06 — Q9 (§4.3 · §10.4 NOVA · §14 gates 12 e 18): o centro da queda do
+  ⏳ EMENDAS Q8, Q9 e Q10 de 2026-09-06 — Q10 (§10.5 NOVA): dois traços de APERTO por passo, 12 passos,
+  prova do fatiamento `0,000000`. Q9 (§4.3 · §10.4 NOVA · §14 gates 12 e 18): o centro da queda do
   Snake Hook está UM PASSO atrasado, e a força por passo das âncoras é zerada nos DOIS modos de âncora.
   Q8 (§1 fases 0/1 · §2.1 · §3.1 · §3.3 · §5.2-bis NOVA · §10.2 · §10.3 NOVA · §13 ·
   §14 gates 8/16/17): a lista de restrições do ramo *Local* vem em DUPLICADO. Escrita pelo subagente-E

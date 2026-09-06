@@ -277,7 +277,7 @@ concordam entre si (47 traços; as 8 esferas com área `dinamica` no índice).
 | v1 | `docs/3D/cleanroom/SPEC_cloth_brush.md` | `c7905f616` (2026-09-05, commit único pós-filtragem) |
 | v1-r | idem — atestada; curas do R-pré (1 expressão · 6 higienes · anexos) | `0c884a2b2` (2026-09-05, R-pré) |
 | v1-e | idem — ERRATA do E (as 6 perguntas do I; §2.1 · §3.1 · §5.2 · §10; 8 fixtures de esfera regeradas como área Dinâmica) | `3d621e94b` + `d5844ad5c` (2026-09-06, E) |
-| v1-er | idem — errata atestada; curas do R-pré (3 nomes internos · 1 higiene) | ⏳ registado no commit seguinte (2026-09-06, R-pré) |
+| v1-er | idem — errata atestada; curas do R-pré (3 nomes internos · 1 higiene) | `4cfc1745a` (2026-09-06, R-pré) |
 
 ---
 

@@ -11,8 +11,8 @@
 //! # O que este ficheiro traduz, e só isso
 //!
 //! - **a malha** → posições em `f64`, normais actuais, o anel-1 de cada vértice
-//!   (pela TRIANGULAÇÃO, que é o que a medição contra o oráculo preferiu — a
-//!   espec §3.1 dizia quads; `PH2D_CLOTH_ANEL=arestas` bissecta) e a máscara;
+//!   (pelas ARESTAS das faces poligonais, como o alvo — confirmado pelo
+//!   especificador em 06/09; `PH2D_CLOTH_ANEL=tri` bissecta) e a máscara;
 //! - **o pincel** → o [`Pincel`] da lei: raio, força, curva, dureza, modo, área;
 //! - **o dab** → o [`Passo`]: o cursor, o delta, a normal da área (a média das
 //!   normais sob o pincel) e a pressão.
@@ -82,16 +82,22 @@ fn area_escolhida() -> Area {
     })
 }
 
-/// O anel-1 vem das arestas dos polígonos, em vez da triangulação?
-fn anel_por_arestas() -> bool {
+/// O anel-1 vem da TRIANGULAÇÃO, em vez das arestas dos polígonos?
+///
+/// ⚠️ **A omissão é ARESTAS, e mudou em 06/09 por resposta do especificador:** o
+/// alvo toma os vizinhos pelas faces POLIGONAIS (um quad interior tem 4, e as
+/// diagonais entram só como restrições de PAR). A grelha triangulada tinha
+/// casado o `Local` do oráculo por rigidez a mais, não por ser o mecanismo dele.
+/// `PH2D_CLOTH_ANEL=tri` fica como bissecção.
+fn anel_por_triangulacao() -> bool {
     static ESCOLHA: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ESCOLHA.get_or_init(|| std::env::var("PH2D_CLOTH_ANEL").as_deref() == Ok("arestas"))
+    *ESCOLHA.get_or_init(|| std::env::var("PH2D_CLOTH_ANEL").as_deref() == Ok("tri"))
 }
 
-/// O anel-1 de `v` pela TRIANGULAÇÃO das faces incidentes (ou pelas arestas).
+/// O anel-1 de `v` pelas ARESTAS das faces (ou pela triangulação, para bissecar).
 fn anel_de(mesh: &Mesh, v: u32) -> Vec<u32> {
     let adj = mesh.adjacency();
-    if anel_por_arestas() {
+    if !anel_por_triangulacao() {
         return adj.vert_verts.neighbours(v as usize).to_vec();
     }
     let mut out = Vec::new();

@@ -8,8 +8,8 @@
 ## §1 — O que mudou, numa frase
 
 A **lei da referência** deixou de ser um experimento atrás de uma variável de ambiente e passou a
-ser **o caminho de omissão** do pincel de tecido, com **29 dos 54 traços do oráculo dentro da barra
-de paridade** (8 deles ao bit), os **oito modos de deformação e as três áreas alcançáveis pela
+ser **o caminho de omissão** do pincel de tecido, com **29 dos 56 traços do oráculo dentro da barra
+de paridade** (7 deles ao bit), os **oito modos de deformação e as três áreas alcançáveis pela
 tela**, e **sete gates** que medem tudo isso — três deles a existirem porque a jornada descobriu que
 o que os substituía media outra coisa.
 
@@ -33,6 +33,7 @@ passo a passo com o anel imediato, o erro do passo, o pico e o vector) e
 |---|---|---|---|
 | **Q8** | uma força em falta, ou mais varreduras no *Local* | a **construção da lista de restrições corre `passagens + 1` vezes** no *Local*, e o registo de duplicados vive UMA construção ⇒ cada restrição está lá em dobro | 27 dos 38 traços *Local* melhoram, os 12 não-*Local* ficam **byte-idênticos**, e a contagem de vértices movidos passa a bater **exacta** em oito traços |
 | **Q9** | a amplitude do Snake Hook | o **centro da queda está UM PASSO atrasado** — a queda mede-se de onde o pincel *estava* | o pico passa a cair no vértice do oráculo (`0,86R` contra `0,86R`); toca em 7 traços e melhora os 7 |
+| **Q12** | uma lei que a esfera pedisse | **`δ` não é a diferença dos dois pontos 3D do cursor — é a PROJECÇÃO dela no plano do ECRÃ**, e só o arrasto lê os pontos 3D | melhora 3 traços de esfera (`agarrar 0,265 → 0,196`, `gancho 0,351 → 0,245`) e deixa **53 inalterados**: no plano a projecção é um no-op |
 | **Q11** | a lei que falta no aperto | **não falta nenhuma**: a força do aperto não decresce com a proximidade, o vértice ultrapassa o cursor, faces invertem e a partir daí **a ORDEM da lista decide** | a fixtura do mesmo traço com força `0,2` sai com erro **`0,000` nos doze passos** |
 
 ⭐⭐⭐ **A aritmética que fecha o Q8:** a lista dobrada é `[c₁..c_N, c₁..c_N]`, logo cinco varreduras
@@ -41,6 +42,13 @@ o especificador achou são a mesma coisa — e é por isso que as duas leituras 
 ⚠️ **Mas só para os modos de FORÇA:** repetir apenas os pares deixa as âncoras no meio da lista e
 piora o Grab de `0,050` para `0,415`. *Onde uma restrição está na lista é tão load-bearing quanto
 quantas vezes ela lá está.*
+
+⭐⭐ **E o Q12 fecha o mistério da esfera:** as duas des-projecções do alvo são feitas à MESMA
+profundidade, logo numa vista ortográfica a componente do deslocamento ao longo do eixo da vista é
+descartada **por construção**. Numa folha plana vista de frente as duas coisas são a mesma **ao
+bit** — é por isso que isto só aparece em superfície curva, e por isso que o arrasto, único modo que
+lê os pontos 3D, se comporta igual nas duas. Nas fixtures da esfera são **`15,83°`** de direcção,
+e eu medi esse número no caminho delas antes de o ler na espec.
 
 ## §4 — ⛔ Recusas MEDIDAS desta jornada (não as reconstrua)
 
@@ -53,6 +61,7 @@ quantas vezes ela lá está.*
 | a **direcção do aperto medida no repouso** | melhora o plano (`1,380 → 1,012`) e piora a esfera (`0,542 → 0,939`) |
 | a **trava** que impede o vértice de ultrapassar o alvo | **não é inerte**: parte os traços de um passo que hoje saem ao bit (`0,000 → 0,465` e `0,811`) |
 | o **plano de queda pelo centro da área** (a leitura literal da §4.4) | `empurrar 0,944 → 1,250`, `arrastar 0,233 → 0,716` |
+| a projecção do `δ` no plano **tangente do pen-down** (em vez do plano do ecrã) | `agarrar 0,265 → 0,605`, `gancho 0,351 → 0,663` — *só numa folha vista de frente os dois planos coincidem* |
 | **faces invertidas** como régua de classificação | não discrimina: o arrasto tem `41`–`57` e bate a `0,071` |
 | a **compressão** do par mais apertado como régua | explica a família do aperto e nada mais (`empurrar_plano_local` lê `0,89` sem compressão e erra `0,944`) |
 
@@ -126,6 +135,6 @@ com ela.
 
 ## §9 — Portões corridos no fecho desta fatia
 
-`ph2d-cloth` 33 · `ph2d-sculpt3d` 390 · `ph2d-panel-sculpt3d` 77 · `ph2d-host-desktop` **5192** ·
+`ph2d-cloth` 33 · `ph2d-sculpt3d` 391 · `ph2d-panel-sculpt3d` 77 · `ph2d-host-desktop` **5192** ·
 o gate de undo do tecido **com GPU** · `architecture_workspace_file_loc_cap` · clippy `--all-targets`
 limpo nas cinco crates tocadas · `cargo fmt`.

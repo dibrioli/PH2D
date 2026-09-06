@@ -117,11 +117,17 @@ fn anel_de(mesh: &Mesh, v: u32) -> Vec<u32> {
 
 /// O [`Pincel`] da lei, derivado do [`Brush`] da casa.
 ///
+/// ⚠️ **`passagens` são as cópias de SIMETRIA do traço**, e a área *Local*
+/// constrói a lista de restrições `passagens + 1` vezes (espec, emenda Q8) — é
+/// daí que sai a rigidez que separa a *Local* da *Global*. ⚠️ As fixtures do
+/// oráculo correm todas sem simetria (`1`), então a lei `n + 1` vem da espec e
+/// **só o degrau `n = 1` está medido aqui**.
+///
 /// ⚠️ A força é o `strength` CRU (a lei eleva-o ao quadrado, espec §4.1), e não
 /// o [`Brush::weight`] com a curva de força do modo — essa curva é de outros
 /// verbos. A curva de queda mapeia o que existe dos dois lados; o resto cai na
 /// `Suave`, que é a omissão do alvo.
-fn pincel_de(brush: &Brush) -> Pincel {
+fn pincel_de(brush: &Brush, passagens: u32) -> Pincel {
     Pincel {
         modo: modo_escolhido(),
         area: area_escolhida(),
@@ -135,6 +141,7 @@ fn pincel_de(brush: &Brush) -> Pincel {
         forca: f64::from(brush.strength.clamp(0.0, 1.0)),
         dureza: f64::from(brush.hardness.clamp(0.0, 1.0)),
         flip: if brush.invert { -1.0 } else { 1.0 },
+        passagens,
         ..Pincel::default()
     }
 }
@@ -166,7 +173,7 @@ impl SculptStroke {
                 f64::from(dab.path[1] * s[1]),
                 f64::from(dab.path[2] * s[2]),
             ];
-            self.cloth_ref_copy(mesh, brush, dab, center, path, copy);
+            self.cloth_ref_copy(mesh, brush, dab, center, path, copy, u32::try_from(n).unwrap_or(1));
         }
         // O tecido move geometria — a janela de upload é a das posições.
         self.last_paints_mask = false;
@@ -186,6 +193,7 @@ impl SculptStroke {
         center: [f32; 3],
         path: V3,
         copy: usize,
+        passagens: u32,
     ) {
         if self.cloth_ref.len() <= copy {
             self.cloth_ref.resize_with(copy + 1, || None);
@@ -193,7 +201,7 @@ impl SculptStroke {
         let cursor = v3(center);
         let pos: Vec<V3> = mesh.positions().iter().map(|p| v3(*p)).collect();
         if self.cloth_ref[copy].is_none() {
-            let mut tecido = PincelTecido::pen_down(pincel_de(brush), &pos, cursor);
+            let mut tecido = PincelTecido::pen_down(pincel_de(brush, passagens), &pos, cursor);
             // A máscara da casa, pela porta de sempre: `1` = protegido.
             if let Some(masks) = mesh.masks() {
                 tecido.mascara = masks

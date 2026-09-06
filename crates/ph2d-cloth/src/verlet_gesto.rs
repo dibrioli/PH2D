@@ -105,6 +105,34 @@ pub struct Pincel {
     pub escala_phi: f64,
     /// Idem para o leitor da RETENÇÃO de velocidade.
     pub escala_retencao: f64,
+    /// **Quantas PASSAGENS o traço faz por passo** (as cópias de simetria; `1`
+    /// = sem simetria). Só a área *Local* a lê, e é ela que decide quantas
+    /// vezes a lista de restrições é construída — ver [`Self::construcoes`].
+    pub passagens: u32,
+}
+
+impl Pincel {
+    /// **Quantas vezes a lista de restrições é construída** (espec, emenda Q8):
+    /// na área *Local* são `passagens + 1`; nas outras é uma só.
+    ///
+    /// ⚠️ **É daqui que sai a rigidez que separava a *Local* da *Global***, e
+    /// não de uma contagem de varreduras: os dois ramos relaxam o mesmo número
+    /// de vezes, mas na *Local* cada restrição está na lista `passagens + 1`
+    /// vezes, porque o registo de duplicados vive UMA construção
+    /// ([`ph2d_cloth::verlet::Verlet::reabrir`]).
+    ///
+    /// ⚠️ **Sem isto a *Local* rende como a *Global*** — medido em 06/09 sobre
+    /// as 50 fixtures: `plano_arrastar_radial_local` erra `125 %` com uma cópia
+    /// e `7 %` com duas, e a contagem de vértices movidos passa a bater EXACTA
+    /// em oito traços. ⛔ Não «optimize» a lista deduplicando-a.
+    #[must_use]
+    pub fn construcoes(&self) -> u32 {
+        if self.area == Area::Local {
+            self.passagens.max(1) + 1
+        } else {
+            1
+        }
+    }
 }
 
 impl Default for Pincel {
@@ -124,6 +152,7 @@ impl Default for Pincel {
             solver: Solver::default(),
             escala_phi: 1.0,
             escala_retencao: 1.0,
+            passagens: 1,
         }
     }
 }
@@ -264,45 +293,64 @@ impl PincelTecido {
             .copied()
             .filter(|v| !self.sim.construido[*v as usize])
             .collect();
-        for &v in &novos {
-            let vizinhos = anel(v);
-            self.sim.construir(v, &vizinhos);
-            let vi = v as usize;
-            // Espec §2.3: o pino da fronteira, só em Local, força `1 − w`.
-            if self.pincel.pino && self.pincel.area == Area::Local {
-                let wv = banda(
-                    self.sim.repouso[vi],
-                    cursor,
-                    self.raio0,
-                    self.pincel.limite,
-                    self.pincel.banda,
-                );
-                if wv < 1.0 {
-                    self.sim.pregar(v, 1.0 - wv);
-                }
+        // ⚠️⚠️ **A CONSTRUÇÃO CORRE `construcoes()` VEZES** (espec, emenda Q8), e
+        // entre passagens o registo de duplicados é ESQUECIDO. Na área *Local*
+        // isso deixa cada restrição repetida na lista, e como a lista é resolvida
+        // na ORDEM, `[c₁..c_N, c₁..c_N]` percorrida `k` vezes é bit a bit a lista
+        // simples percorrida `2k` vezes. *A repetição não é desperdício: é a
+        // rigidez que separava a Local da Global, e os dois ramos relaxam o
+        // mesmo número de vezes.*
+        //
+        // ⚠️ **A passagem repete o VÉRTICE INTEIRO, não só os pares** — a âncora,
+        // o pino e o amolecimento entram na mesma lista e não têm registo de
+        // duplicados. Medido em 06/09: repetir só os pares deixa as âncoras no
+        // meio da lista e piora o Grab de `0,050` para `0,415` e o Snake Hook de
+        // `0,127` para `0,612`. *Onde uma restrição está na lista é tão
+        // load-bearing quanto quantas vezes ela lá está.*
+        for passagem in 0..self.pincel.construcoes() {
+            if passagem > 0 {
+                self.sim.reabrir(&novos);
             }
-            if self.pincel.solver.plasticidade > 0.0 {
-                self.sim.amolecer(v);
-            }
-            // As âncoras de deformação nascem com o vértice (espec §4.3).
-            match self.pincel.modo {
-                Modo::Agarrar => {
-                    let d0 = dist(self.sim.repouso[vi], self.inicio);
-                    match self.pincel.falloff_forca {
-                        FalloffForca::Radial => {
-                            if d0 < self.raio0 {
-                                let s = 0.1 * self.pincel.curva.peso(d0, self.raio0);
-                                self.sim.ancorar(v, s);
-                                self.sim.sigma[vi] = 1.0;
-                            }
-                        }
-                        FalloffForca::Plano => {
-                            self.sim.ancorar(v, 0.1);
-                        }
+            for &v in &novos {
+                let vizinhos = anel(v);
+                self.sim.construir(v, &vizinhos);
+                let vi = v as usize;
+                // Espec §2.3: o pino da fronteira, só em Local, força `1 − w`.
+                if self.pincel.pino && self.pincel.area == Area::Local {
+                    let wv = banda(
+                        self.sim.repouso[vi],
+                        cursor,
+                        self.raio0,
+                        self.pincel.limite,
+                        self.pincel.banda,
+                    );
+                    if wv < 1.0 {
+                        self.sim.pregar(v, 1.0 - wv);
                     }
                 }
-                Modo::Gancho => self.sim.ancorar(v, 0.35),
-                _ => {}
+                if self.pincel.solver.plasticidade > 0.0 {
+                    self.sim.amolecer(v);
+                }
+                // As âncoras de deformação nascem com o vértice (espec §4.3).
+                match self.pincel.modo {
+                    Modo::Agarrar => {
+                        let d0 = dist(self.sim.repouso[vi], self.inicio);
+                        match self.pincel.falloff_forca {
+                            FalloffForca::Radial => {
+                                if d0 < self.raio0 {
+                                    let s = 0.1 * self.pincel.curva.peso(d0, self.raio0);
+                                    self.sim.ancorar(v, s);
+                                    self.sim.sigma[vi] = 1.0;
+                                }
+                            }
+                            FalloffForca::Plano => {
+                                self.sim.ancorar(v, 0.1);
+                            }
+                        }
+                    }
+                    Modo::Gancho => self.sim.ancorar(v, 0.35),
+                    _ => {}
+                }
             }
         }
         // O 1.º passo de uma passagem nunca simula (espec §1 fase 0): o alvo

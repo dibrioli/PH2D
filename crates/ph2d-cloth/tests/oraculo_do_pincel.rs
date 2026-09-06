@@ -151,6 +151,9 @@ impl Traco {
             banda: self.f("banda"),
             pino: self.f("pino") > 0.5,
             flip: 1.0,
+            // As fixtures do oráculo correm SEM simetria ⇒ uma passagem, e a
+            // área *Local* constrói a lista `passagens + 1 = 2` vezes.
+            passagens: 1,
             escala_phi: std::env::var("PH2D_ESC_PHI")
                 .ok()
                 .and_then(|s| s.parse().ok())

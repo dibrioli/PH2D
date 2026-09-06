@@ -166,6 +166,23 @@ impl Verlet {
     /// malha de triângulos, as 6 arestas + os 9 que atravessam o anel.
     ///
     /// ⚠️ `ℓ` sai das posições de REPOUSO DO TRAÇO — nunca das actuais.
+    /// **REABRE a construção** de `vs`: esquece o registo de duplicados e as
+    /// marcas de «já construído», de modo que um [`Self::construir`] a seguir
+    /// volte a acrescentar TODAS as restrições daqueles vértices.
+    ///
+    /// ⚠️ **Isto não é um utilitário — é a lei da área *Local*** (espec, a
+    /// emenda Q8 de 06/09): ali a construção corre mais de uma vez e o registo
+    /// de duplicados **vive uma construção só**, logo cada restrição acaba
+    /// repetida na lista. Como a lista é resolvida **na ordem**, uma lista
+    /// `[c₁..c_N, c₁..c_N]` percorrida `k` vezes é, bit a bit, a lista simples
+    /// percorrida `2k` vezes: *a repetição não é desperdício, é a rigidez.*
+    pub fn reabrir(&mut self, vs: &[u32]) {
+        self.pares.clear();
+        for &v in vs {
+            self.construido[v as usize] = false;
+        }
+    }
+
     pub fn construir(&mut self, v: u32, anel: &[u32]) {
         let vi = v as usize;
         if self.construido[vi] {

@@ -41,6 +41,8 @@ pub(crate) struct StructureReport {
     pub(crate) orphaned: usize,
     /// Excepções que voltaram a pegar porque a peça voltou.
     pub(crate) restored: usize,
+    /// ⭐⭐⭐ **Peças que estavam no pai errado** (F5.12) — a terceira metade da forma.
+    pub(crate) moved: usize,
 }
 
 /// ⭐⭐ **Põe a forma de cada instância a par com a do mestre dela.**
@@ -192,6 +194,83 @@ fn reconcile_one(
                 exhume(sim, registry, root, sid, new_root, out);
             }
         }
+    }
+
+    // ── as que estão no SÍTIO ERRADO ─────────────────────────────────────────────────────────
+    //
+    // ⭐⭐⭐ **A TERCEIRA metade da forma** (F5.12). O passe sabia materializar o que falta e
+    // despawnar o que sobra, e **não sabia mover**: uma peça que o artista arrastasse para outro
+    // pai dentro da receita ficava, em toda cópia, pendurada no pai antigo — para sempre e em
+    // silêncio. *A peça existe, desenha, tem os bytes certos, e só a árvore está errada.*
+    //
+    // ⚠️ **O `ChildOf` NÃO é componente registado**, e é isso que torna esta metade obrigatória:
+    // ele nunca propaga (bem — propagar os bytes dele poria a peça da cópia debaixo do pai do
+    // MESTRE) e nunca vira excepção. ⇒ a árvore não tem outro dono senão este bloco.
+    //
+    // ⚠️⚠️ **A ORDEM NÃO IMPORTA, e a 1.ª redacção deste comentário dizia o contrário.** Ela
+    // afirmava que a pré-ordem do mestre *«é o que impede um ciclo»*; a prova de mutação inverteu a
+    // travessia e **nada reprovou**. O motivo é a forma do bloco, não a ordem: os alvos são
+    // calculados a partir do MESTRE **antes** de qualquer escrita, logo as atribuições são
+    // independentes e o estado final é o mesmo em qualquer ordem. Um ciclo pode existir **entre
+    // dois `insert`** — e ninguém o observa, porque nenhuma travessia corre no meio.
+    //
+    // ⇒ *é por isto que este bloco não precisa de verificação de ciclo*, e não por causa da ordem.
+    // ⛔ Quem um dia trocar o «recolher e depois aplicar» por «aplicar enquanto percorre» reabre a
+    // pergunta — e aí a ordem passa a ser load-bearing a sério.
+    //
+    // ⛔ **A RAIZ nunca entra** — ela tem elo como qualquer peça (aponta para o `MasterRoot`), e um
+    // bloco que a incluísse arrastaria a cópia para dentro da biblioteca. É o `ROOT_IS_ITS_OWN` um
+    // nível acima: a pose **e o lugar** da raiz são dela.
+    //
+    // ⚠️⚠️ **E a linha é REDUNDANTE hoje — a prova de mutação disse-o, e ela fica como CERCA.**
+    // Tirá-la não muda nada porque o pai da raiz do mestre **nunca** está no `have`: ele fica
+    // *acima* do mestre, e o mapa só tem peças de *dentro* dele. ⇒ quem de facto recusa é o
+    // `None => continue` do `match` abaixo. A guarda fica por ser o sítio onde alguém **leria** a
+    // lei, e a redundância está escrita em vez de silenciosa.
+    //
+    // ⛔ **E uma peça que o artista ACRESCENTOU não é tocada** — ela não está no `have` (não tem
+    // elo), que é a mesma linha por que o passe não a apaga.
+    let root_sid = master_root_sid(sim, master_root);
+    let mut moves: Vec<(Entity, Entity)> = Vec::new();
+    for m in subtree(sim, master_root) {
+        let Some(sid) = sim.world().get::<StableId>(m).map(|s| s.0) else {
+            continue;
+        };
+        let Some(&mine) = have.get(&sid) else {
+            continue;
+        };
+        if mine == root {
+            continue;
+        }
+        let Some(parent_sid) = sim
+            .world()
+            .get::<ph2d_ecs::ChildOf>(m)
+            .and_then(|c| sim.world().get::<StableId>(c.0))
+            .map(|s| s.0)
+        else {
+            continue;
+        };
+        // O pai da peça do mestre é a raiz do mestre ⇒ o pai da minha é a raiz da CÓPIA.
+        let want = if Some(parent_sid) == root_sid {
+            root
+        } else {
+            // ⚠️ Sem contrapartida viva o pai está a caminho do despawn (foi recusado, ou o mestre
+            // apagou-o): mexer nesta peça agora seria arrumá-la para dentro de algo que morre no
+            // mesmo passe.
+            match have.get(&parent_sid) {
+                Some(&p) => p,
+                None => continue,
+            }
+        };
+        if sim.world().get::<ph2d_ecs::ChildOf>(mine).map(|c| c.0) != Some(want) {
+            moves.push((mine, want));
+        }
+    }
+    for (child, parent) in moves {
+        sim.world_mut()
+            .entity_mut(child)
+            .insert(ph2d_ecs::ChildOf(parent));
+        out.moved += 1;
     }
 
     // ── as que SOBRAM ────────────────────────────────────────────────────────────────────────
@@ -385,3 +464,10 @@ mod tests;
 #[cfg(test)]
 #[path = "instance_refuse_tests.rs"]
 mod refuse_tests;
+
+/// ⚠️ **E QUEM É PAI DE QUEM é o terceiro assunto** (F5.12) — a metade da forma que o passe não
+/// sabia. Ficheiro próprio pela mesma razão dos dois acima: o `instance_structure_tests` está a
+/// **538** de 600 linhas, e um corte por assunto é mais barato que um corte por tamanho.
+#[cfg(test)]
+#[path = "instance_reparent_tests.rs"]
+mod reparent_tests;

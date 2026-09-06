@@ -73,6 +73,29 @@ pub(crate) fn drain_reparent(
     // de uma receita, incluindo os que a não atravessam.
     let into_a_recipe =
         new_parent_entity.is_some_and(|p| ph2d_ecs::master_root_of(sim.world(), p).is_some());
+    // ⭐⭐⭐ **O LUGAR de uma peça de cópia é da RECEITA, e a guarda vive no GESTO** (F5.12).
+    //
+    // ⛔ Sem ela o arrasto **desfazia-se sozinho no quadro seguinte**: desde a F5.12 o passe
+    // estrutural arruma cada peça no pai que a receita lhe dá, então a mão do artista ficava a
+    // perder para um passe invisível. *É a lei que o apagar já pagou em 2026-09-05 — a guarda vive
+    // no gesto; a lei fica no passe.*
+    //
+    // ⚠️ **Só quando o PAI muda.** Reordenar entre irmãos continua a valer: a ordem viaja no
+    // `SiblingOrder`, que **é** componente registado e por isso vira excepção da cópia como
+    // qualquer outro valor. *Duas perguntas diferentes sobre o mesmo arrasto, e só uma delas é
+    // sobre a forma.*
+    //
+    // ⚠️ **E a voz diz ONDE fazer** — a receita alcança-se pelo *Edit Prefab* da biblioteca. Uma
+    // recusa muda deixa o artista a repetir o mesmo gesto.
+    let same_parent =
+        sim.world().get::<ph2d_ecs::ChildOf>(dragged).map(|c| c.0) == new_parent_entity;
+    if !same_parent && crate::instance_verbs::is_a_recipe_given_piece(sim, dragged) {
+        toasts.push(ph2d_editor::Toast::warning(
+            "That piece's place comes from the component \u{2014} open it with \u{201c}Edit \
+             Prefab\u{201d} to move it there",
+        ));
+        return false;
+    }
     let sim_w = sim.world_mut();
     let would_cycle = new_parent_entity.is_some_and(|np| {
         let mut current = Some(np);

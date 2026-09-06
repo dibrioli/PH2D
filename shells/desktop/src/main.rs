@@ -325,6 +325,8 @@ mod instance_apply_deep;
 mod instance_diag;
 mod instance_docs;
 mod instance_live;
+/// ⭐⭐ A cena de MUDAR uma peça de lugar no componente — irmã por assunto do `instance_smoke`.
+mod instance_move_smoke;
 /// ⭐⭐ A cena da receita DENTRO da receita — irmã por assunto do `instance_smoke`.
 mod instance_nested_smoke;
 mod instance_refs;

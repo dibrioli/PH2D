@@ -39,3 +39,12 @@ compra tempo, e este é o preço dele.
 ⛔ O irmão: `| head`/`| tail` num comando cujo veredito importa destrói o exit code
 ([[feedback_pipe_masks_script_exit_code]]) — na mesma sessão o portão de fecho imprimiu
 `error: test run failed` e reportou sucesso.
+
+⚠️⚠️ **E uma TERCEIRA forma, na direcção contrária: o resumo do script lê igual para «filtro
+vazio» e para «não compila».** Medido em 2026-09-06 (`line/components`): o
+`cargo-test-narrow.sh` imprimiu `✗ — 0 falharam · 0 passaram · 0 ignorados` sobre um ficheiro de
+teste com um erro de assinatura, que é **a mesma linha** que ele imprime quando o filtro não casa
+nada. O script tem exit codes distintos (`1` teste vermelho · `2` não compila) e **a linha de
+resumo não os distingue** — foram precisas duas leituras e um `cargo test` cru para ver o erro.
+⇒ num controlo de filtro, leia o **exit code**, nunca só a contagem: `0 passaram` com `exit 2`
+não é um gate vazio, é uma árvore partida.

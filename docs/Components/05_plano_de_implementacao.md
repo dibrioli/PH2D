@@ -24,7 +24,7 @@
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
 | F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | 🟨 F4.1–F4.5 ✅ · F4.6a/b ✅ · **F4.7 ✅ (os 3 smoke-gates)** · **F4.6c ⬜ — o bloqueio DISSOLVEU pelo lado inesperado** (a fatia que faltava eram os eixos, e o Enio revogou-os: já não há o que portar; o que sobra é a porta de autoria — ver §F4) · + a auditoria de 27/08 e o modo LIGADO |
-| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 ✅** · **F5.3 ✅** (modelo; a secção mostra a CONTAGEM, não quais) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis abaixo descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) · **critério 4 (*Apply to inner master*) ✅ 2026-09-04** (a escada, §F5.5) · **troca p/ mestre não aparentado ✅ 2026-09-05** (os 3 modos + o relatório, §F5.8) · **os órfãos são NOMEADOS ✅ 2026-09-04** (§F5.6 — o critério 3 fecha) ⇒ ✅ **A F5 NÃO TEM MAIS NADA ABERTO** |
+| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 ✅** · **F5.3 ✅** (modelo; a secção mostra a CONTAGEM, não quais) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis abaixo descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) · **critério 4 (*Apply to inner master*) ✅ 2026-09-04** (a escada, §F5.5) · **troca p/ mestre não aparentado ✅ 2026-09-05** (os 3 modos + o relatório, §F5.8) · **os órfãos são NOMEADOS ✅ 2026-09-04** (§F5.6 — o critério 3 fecha) ⇒ ✅ **A F5 NÃO TEM MAIS NADA ABERTO** · **a peça RECUSADA ✅ 2026-09-06** (§F5.10) · **a peça ACRESCENTADA ✅ 2026-09-06** (§F5.11 — derivada, sem degrau de schema) |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ✅ 2026-08-30 (996 LOC + a taxonomia) |
 | F7 | O painel Asset Browser + o arrasto único | ✅ 2026-08-30 — etapas **A–D** do [plano 07](07_plano_do_navegador_de_assets.md); `DragPayload` com as duas famílias |
 | F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | 🟨 **a premissa do RELÓGIO foi REFUTADA por medição** (§F8) · a partilha da `VecScene` entre passos ✅ 2026-09-02 · `FlipDoc` ⬜ |
@@ -145,6 +145,12 @@ quiser o smoke de verdade tem de **fabricar** um v95 (checkout de um commit anti
 | **Campo novo no `Reverted`** | `pieces_back: usize` | idem |
 | **Módulos novos (F5.10)** | `sections/instance_removed.rs` · `event_instance.rs` · `render_loop/hierarchy_delete.rs` · `instance_refuse_tests.rs` · `instance_removed_smoke{,_tests}.rs` | três deles são cortes de tecto de LOC |
 | **Cena de smoke nova** | **`PH2D_INSTANCE_SMOKE=5`** (o que é só desta cópia) | ⚠️ conta-se no `instance_smoke.rs` |
+| **Ids de widget novos (F5.11)** | `INSP_INSTANCE_APPLY_ADDED[16]` + `MAX_INSTANCE_ADDED_ROWS = 16` + `instance_apply_added` | `node_id_collisions` + o `populate_instance.rs` (os 16, porque o `WidgetStore` é a **população** e o cartão é a vista) |
+| **Acção do barramento nova (F5.11)** | `EditorAction::InspectorApplyAddedPiece { piece }` | ⚠️ **um campo só**, ao contrário das duas irmãs: a peça acrescentada **é** uma entidade da cena, logo a raiz da cópia deriva-se dela. O gate `the_added_piece_gesture_reaches_the_verb` afirma o braço |
+| **Campo novo no `InspectorInstanceInfo`** | `added_rows: Vec<AddedRow>` | literal obrigatório |
+| **`PROJECT_SCHEMA` (F5.11)** | **não se mexe** | ⭐ a lista é **derivada** da ausência de elo, que já é persistida desde a F4.2 |
+| **Módulos novos (F5.11)** | `shells/desktop/src/instance_added{,_tests}.rs` · `instance_added_smoke{,_tests}.rs` · `sections/instance_added.rs` · `tests/the_added_piece_gesture_reaches_the_verb.rs` | nomes novos, sem colisão |
+| **Cena de smoke nova** | **`PH2D_INSTANCE_SMOKE=6`** (dar uma peça ao componente) | ⚠️ conta-se no `instance_smoke.rs`; a montagem é a **mesma função** da `=5` |
 | **ADRs novos (F1.6)** | [`0070-amendment-8`](../architecture/decisions/0070-amendment-8.md) (o corte) · [`0071-amendment-1`](../architecture/decisions/0071-amendment-1.md) (o 4.º canal de tinta muda de casa) | ⚠️ números **contados** contra `decisions/`, não escolhidos |
 
 ---
@@ -2231,3 +2237,129 @@ gesto de apagar e as **três** respostas dele → `hierarchy_delete.rs`) ·
 `instance_structure_tests.rs` 699/600 (→ `instance_refuse_tests.rs`, com os quatro auxiliares da
 fixtura a passarem a `pub(super)` — *duas fixturas para o mesmo mundo divergem no dia em que uma
 delas ganhar uma peça*).
+
+---
+
+### ✅ §F5.11 — **Uma cópia pode DAR uma peça à receita** (2026-09-06) — o *Added GameObject*
+
+O espelho exacto da §F5.10, escolhido por ser a metade que faltava do mesmo modelo: lá a cópia
+**perde** uma peça e a devolve; aqui ela **ganha** uma e a dá ao componente.
+
+#### ⭐⭐⭐ O modelo não guarda NADA, e a assimetria contra a F5.10 é a lição
+
+A F5.10 teve de inventar um campo (`ObjectInstance.removed`) porque *«esta cópia recusou a peça X»*
+não é dedutível de coisa nenhuma: a peça continua viva na receita e ausente na cópia, e uma ausência
+não distingue *«recusei»* de *«ainda não materializei»*.
+
+⭐ **Aqui a verdade já estava escrita, e é load-bearing desde a F4.2:** uma entidade dentro de uma
+cópia **sem** `InstanceOf` é autoria do artista — é literalmente a linha por que o passe estrutural
+não lhe toca (*«só o que a receita deu é que a receita tira»*) e a linha por que o apagar a deixa
+morrer (`is_a_recipe_given_piece`). ⇒ a lista é **derivada**, o `PROJECT_SCHEMA` **não se mexe**, e
+um projecto gravado antes desta wave já a tem certa.
+
+> *Guardar um valor cria duas fontes para o mesmo facto, e isso só é aceitável quando não há
+> primeira* — o critério da refutação da F4.4, aplicado ao contrário.
+
+#### ⭐⭐ O gesto: o ELO nasce no ORIGINAL, e é ele que impede a peça de aparecer DUAS vezes
+
+`instantiate::promote_piece` é o sentido inverso do `materialise_piece`: copia a sub-árvore para
+dentro da receita e **liga a original à cópia nova**. As duas metades são obrigatórias e o defeito de
+cada uma é mudo:
+
+| metade em falta | o que o artista vê |
+|---|---|
+| sem a cópia para a receita | as irmãs nunca recebem a peça — é o gesto inteiro |
+| sem o elo no original | o passe seguinte vê uma peça do mestre que esta cópia *«não tem»* e **materializa uma segunda**, na cópia onde o artista acabou de trabalhar |
+
+⚠️ **A `LinkedArt` não entra na receita** — o doc dela diz, pelo nome, que *o mestre não a tem*, e o
+sync vive disso (ela está no `NEVER_PROPAGATES` para o passe não a arrancar da cópia).
+
+#### ⭐ O sujeito é o TOPO da cadeia, e isso APAGA uma recusa
+
+Um *Add Child* dentro de um *Add Child* não é uma segunda peça a promover: promover a de dentro
+sozinha poria na receita uma peça cujo pai lá não existe. O `promote` **sobe** enquanto o pai também
+não tiver elo ⇒ a recusa *«aplique o pai primeiro»* deixa de existir. *Uma pergunta que a
+normalização responde não precisa de uma voz.*
+
+#### ⛔ A travessia pára numa cópia ANINHADA
+
+O `instance_root_of` devolve a raiz **mais interna**, então uma peça pendurada dentro da roda de um
+carro pertence ao cartão **da roda**. Listá-la também no de fora daria a mesma linha em dois sítios,
+com dois destinos diferentes — e o de fora estaria errado.
+
+⏳ **FRONTEIRA NOMEADA:** uma **cópia arrastada para dentro de outra cópia** (uma Roda largada dentro
+de um Carro) **não** entra na lista — ela tem elo, e é a raiz da cópia dela. Promovê-la significaria
+criar uma receita aninhada, que é território do *Make Component*. *A fronteira é nomeada em vez de
+descoberta.*
+
+#### A superfície
+
+Um bloco próprio no cartão, **antes** do das recusadas: as duas listas são diferenças vivas, e a que
+o artista **vê na tela** lê-se primeiro. ⚠️ **O rótulo nomeia os DOIS lados** (`Add "Arm (1)" to
+"Robot"`) — com aninhamento a receita de destino não é a do topo do cartão, e um `Apply` seco
+obrigaria o artista a adivinhar.
+
+⛔ **Sem `✕`**, ao contrário do bloco dos órfãos: apagar uma peça acrescentada já é o `Delete` da
+linha dela na Hierarquia, que a porta estreita deixa passar exactamente por ela não ter elo.
+
+#### ⛔⛔ E o cartão APARECIA a menos — o `?` no elo apagava-o
+
+`build_instance_info` exigia `InstanceOf` na entidade selecionada. Uma peça acrescentada **não tem**
+— é o que ela é —, então seleccioná-la fazia o Inspector calar-se **sobre a cópia inteira**, e o
+botão que dá a peça à receita não tinha onde ser pintado. ⇒ o elo passa a `Option`, e ele só decide
+*quais excepções são desta peça*.
+
+#### ⛔⛔ O RESUMO não contava a estrutura — defeito meu, da F5.10
+
+Uma cópia sem o braço lia *«Follows the component»*, que é falso ao nível da cópia. Os quatro braços
+da peça selecionada ficam **intactos ao byte** (há gates com a frase inteira) e o que se acrescenta
+fala da instância, como o `unused` já fazia: `· N added` · `· N removed`.
+
+#### ⛔⛔⛔ E o SMOKE achou um defeito MUDO e anterior: duplicar uma peça deixava um SÓSIA
+
+O `InstanceOf` é componente **registado**, logo a cópia profunda levava-o verbatim: o duplicado de
+uma peça de cópia nascia a **dizer-se a mesma peça da receita** que o original. O passe põe os dois
+no mesmo balde (`have` é `StableId → entidade`, e o segundo tapa o primeiro) e o sync reescreve **os
+dois** com os bytes do mestre ⇒ *o duplicado não se deixava mover, e nada na tela dizia porquê.*
+
+⚠️ **A cura vive na porta estreita, e a largura dela é load-bearing:** só um `is_a_recipe_given_piece`
+perde os elos. Duplicar a **raiz** de uma cópia tem de continuar a dar uma segunda cópia — um
+`remove` incondicional transformaria o *Duplicate* de uma instância num **Detach silencioso**.
+
+⭐ É exactamente o que o Unity faz: duplicar um filho de uma instância dá um *Added GameObject*.
+
+#### O menu deixou de mentir
+
+*Apply to Master* sobre uma peça acrescentada respondia *«Nothing overridden here»* — verdade sobre
+excepções e **a pergunta errada** no endereço certo. Hoje ele roteia para a promoção. *Um verbo que
+responde outra pergunta no sítio onde o artista a faz lê-se como morto.*
+
+#### A cena `=6`, e por que ela usa *Duplicate* e não *Add Child*
+
+A montagem é **a mesma função** da `=5` (`spawn_robot_scene`) — as duas ensinam as duas metades da
+mesma pergunta sobre o mesmo objecto, e duas montagens divergiriam no dia em que uma ganhasse uma
+peça. Três passos, um gesto cada:
+
+1. *(na TELA)* clicar na barra laranja do robô do meio;
+2. *(na LISTA)* botão direito na linha `Arm` acesa → **Duplicate** ⇒ um segundo braço, só nesse robô;
+3. *(no CARTÃO)* clicar em `Add "Arm (1)" to "Robot"` ⇒ os **três** ficam com dois braços.
+
+⚠️ **O *Add Child* deixaria um objecto vazio** — um anel fino que o dono tem de procurar. Duplicar o
+braço deixa uma **barra laranja**: *o sujeito de um passo tem de se ver.*
+
+⚠️ **O rótulo impresso é DERIVADO** do `AddedRow::label`, com gate a proibir o literal no ficheiro da
+cena — a lei que a `=4` já paga para os itens de menu.
+
+#### As provas
+
+**15 mutações, zero sobreviventes**, todas com controlo de filtro (cada nome corre ≥ 1 teste na
+árvore sã — o controlo que esta linha teve de aprender duas vezes em 05/09).
+
+⚠️ **E o script de mutação leu «0 passaram» sobre um ficheiro que NÃO COMPILAVA** — a linha de
+resumo do `cargo-test-narrow.sh` mostra `0 falharam · 0 passaram` tanto para *filtro vazio* como
+para *erro de compilação*, e a segunda saiu com o mesmo `✗`. ⇒ o diagnóstico veio de correr o
+`cargo test` cru. *Duas causas com a mesma linha de saída custam uma corrida a separar.*
+
+⚠️ **Um gate meu já existia com outro nome** (`duplicating_an_instance_keeps_it_an_instance_of_the_same_master`,
+da F4.2) e eu escrevi-o outra vez — apanhado ao ler o ficheiro para corrigir a assinatura da fixtura.
+*Antes de escrever a metade «e o caso contrário», grepe o ficheiro: ele pode já a ter.*

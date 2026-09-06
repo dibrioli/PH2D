@@ -144,6 +144,8 @@
 - [«O mais recente possível» ≠ «o mais recente»: conte os TETOS](feedback_the_newest_possible_is_not_the_newest_count_the_ceilings_first.md) · [duas cópias podem ser o MECANISMO, não resíduo](feedback_two_copies_of_a_dependency_can_be_the_mechanism_not_the_residue.md)
 - [Dois motores, um estado](feedback_two_engines_one_state_is_worse_than_a_slow_engine.md) · [contrato congelado escolhe a arquitetura](feedback_frozen_contract_can_pick_the_architecture.md)
 - [Tipo em N sítios → componente opcional](feedback_widely_constructed_type_favors_optional_component_over_appended_field.md) · [a representação apaga o caso especial](feedback_the_representation_can_delete_the_special_case.md)
+- ⭐ [Antes de acrescentar um CAMPO, veja se a AUSÊNCIA já é o estado — e se ela já tem leitores](feedback_before_adding_a_field_ask_whether_the_absence_is_already_the_state.md)
+- ⭐ [Cópia profunda que leva TODO componente leva o ELO: duas entidades com a mesma identidade = sósia que não se move](feedback_a_deep_copy_that_copies_every_component_also_copies_the_identity_link.md)
 - [Invariante na DERIVAÇÃO](feedback_enforce_the_invariant_at_the_derivation_not_at_each_gesture.md) · [marca de evento é canal próprio](feedback_a_transient_event_marker_is_its_own_channel.md)
 - [Blindagem Fase 0 — ph2d-ui-testkit](project_blindagem_phase0_2026_06_20.md)
 - [Pintura voltou](project_painter_brush_came_back_cleanroom.md) = [clean-room Blender](project_blender_texture_paint_reference.md) + [Texture Layer](project_texture_layer_design.md)

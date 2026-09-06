@@ -489,6 +489,9 @@ mod campo;
 /// O anuncio da cena `=85` — as curas novas da folha 06 (animadores).
 #[path = "motion_state_demo_conferencia_drawn.rs"]
 mod drawn;
+/// O anuncio da cena `=110` — TODO o duplicator, treze bandas (pedido do Enio, 05/09).
+#[path = "motion_state_demo_conferencia_dup.rs"]
+mod dup;
 /// O anuncio da cena `=88` — o eco que ve^ o futuro (folha 07, o P1).
 #[path = "motion_state_demo_conferencia_echo.rs"]
 mod echo;
@@ -536,6 +539,7 @@ pub(super) use lsystem::lsystem_family;
 
 #[path = "motion_state_demo_conferencia_table.rs"]
 mod table;
+pub(super) use dup::dup_family;
 pub(super) use plume::plume_family;
 pub(super) use sibling::sibling_family;
 pub(super) use slice::slice_family;

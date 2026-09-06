@@ -266,3 +266,32 @@ fala quando a porta `k` traz a coluna `X`* / *quando ela traz ≥ 2 elementos*),
 que já calcula o `inert` do nó inteiro — para a row **dizer** que não tem sujeito. É wave própria,
 no ciclo que possuir o grupo do CARIMBO. ⛔ Esconder a row está fora: o artista precisa de a ver
 para saber que entrada ligar.
+
+⭐⭐ **E a metade que se podia entregar HOJE foi entregue: a cena `=110`** (pedido do Enio no
+mesmo dia — *«crie uma cena de smoke com exemplos de todos os usos do duplicator»*). Se um
+controlo só fala com a entrada certa, então a resposta imediata é **montar a entrada** — treze
+bandas numa tela, uma por caso:
+
+| fileira | bandas | o que ela responde |
+|---|---|---|
+| 1 | 3 | **o que o carimbo É** — a forma inteira pousa em cada ponto, e `P`/`rot` SOMAM |
+| 2 | 3 | **`Pick`** — `Off` (o produto, 15 cópias) · `Cycle` · `Random` |
+| 3 | 3 | **`Point Scale`** — `0` · `0,5` · `1` |
+| 4 | 4 | **`Transfer`** — `Shape Wins` · `Point Wins` · `Add` · `Multiply` |
+
+⚠️ **As formas são construídas UMA vez e partilhadas** pelas bandas de cada fileira — a régua do
+`=98`: se as entradas diferissem, o olho atribuiria a diferença às entradas e não ao modo.
+⚠️ **A semente do `Random` é uma CALIBRAÇÃO com gate:** cinco sorteios sobre três formas deixam
+uma de fora com facilidade — **9 das 24** primeiras sementes fazem-no, e a banda passaria a
+ler-se como *«Random escolhe entre duas»*. O `PICK_SEED = 9` é o número que a varredura deu, e o
+`the_random_band_shows_every_shape` defende-o.
+⚠️ **A banda 2 e a banda 4 são a MESMA lei vista de dois lados** — *«uma forma feita de três
+peças»* e *«três formas alternativas»* são a mesma corrente para este nó; o que as separa é o
+`Pick`, que trata cada elemento da forma como uma candidata. Está no anúncio, porque é
+exactamente a coisa que um artista entende ao contrário.
+
+**Os nove gates medem o que a cena DESENHA** (cada banda é cozida e a afirmação é sobre as
+colunas que saem), e três deles nasceram de uma medição: a contagem por banda (`15` no produto,
+`5` nos dois modos de variante), a **sequência de cores** do `Cycle` contra a do `Random` (a
+contagem não os separa), e o `no_band_runs_into_its_neighbour` — que teve de aprender que **uma
+peça girada é `√2` mais larga**, senão a banda do giro lia-se 41 % mais estreita do que desenha.

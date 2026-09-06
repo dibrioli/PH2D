@@ -150,6 +150,11 @@ pub(crate) mod conferencia_demos_forces;
 #[path = "motion_state_conferencia_demos_value.rs"]
 pub(crate) mod conferencia_demos_value;
 
+/// A cena de TODO O DUPLICATOR (`=110`) — as treze bandas do carimbo: o que ele E', o
+/// `Pick`, o `Point Scale` e o `Transfer` (pedido do Enio, 2026-09-05).
+#[path = "motion_state_conferencia_demos_dup.rs"]
+pub(crate) mod conferencia_demos_dup;
+
 /// A cena do VOCABULARIO DO CARIMBO (`=98`) — a cor autorada no arranjo que sumia no
 /// carimbo, e a ordenacao DENTRO de grupos (folha 08).
 #[path = "motion_state_conferencia_demos_stamp.rs"]

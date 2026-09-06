@@ -390,3 +390,38 @@ reproduz o alvo, e a frase da §4.4 não se lê como nós a líamos.
 ⏳ **Pergunta para uma próxima ronda** (não urgente, e nomeada para não se perder): na área *Local*,
 o «centro da área» de que a §4.4 fala é a localização inicial fixa (o que a §2.1 define) ou a do
 cursor? A medição diz cursor; a espec, lida à letra, diz a inicial.
+
+## Os gates 19, 20 e 21 estão IMPLEMENTADOS — e o 20 precisou de uma correcção medida (2026-09-06)
+
+Os três da emenda Q11 vivem em `crates/ph2d-cloth/tests/oraculo_do_pincel.rs`, com as duas réguas da
+§5.2-ter escritas como a espec as define (quadrilátero invertido pela normal de Newell contra o
+repouso — ⛔ não a soma das metades triangulares; assimetria de espelho com o numerador em norma do
+máximo e o denominador na euclidiana).
+
+- **19 — verde.** O aperto inverte no 1.º passo simulado, o arrasto não, e a fixtura de força fraca
+  não inverte em passo nenhum. Mutação que o mata: travar o impulso do aperto à distância que falta.
+- **21 — verde.** Fora da inversão o aperto erra `0,063` contra `0,067` do arrasto no mesmo retalho.
+  ⚠️ **Ele SOBREVIVEU à primeira mutação que tentei** (a direcção medida no repouso), porque a
+  fixtura fraca desloca `0,004` e ali repouso ≈ actual — *um corpus no neutro de um detalhe não
+  testa esse detalhe*. A mutação que o mata é a força do aperto pela metade (`0,495` contra `0,067`).
+
+⚠️⚠️ **20 — a barra que a espec propõe NÃO é propriedade de nenhum dos dois lados.** Ela diz *«a
+nossa assimetria não pode passar a do oráculo no mesmo passo»*; medido passo a passo no aperto a
+força cheia, nós ficamos ACIMA em `k = 5, 7, 11` e ABAIXO nos outros nove:
+
+| k | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| nós | `0,586` | `0,479` | **`1,979`** | `1,381` | **`0,901`** | `1,106` | `0,726` | `0,706` | **`1,294`** | `0,730` |
+| oráculo | `0,675` | `1,218` | `0,931` | `1,463` | `0,856` | `1,316` | `1,448` | `1,169` | `0,608` | `1,060` |
+
+*Uma barra «sempre abaixo» sobre um regime que a própria espec diz ser decidido pela ORDEM é uma
+barra que reprova por sorteio.* ⇒ o gate mede **dois regimes**, com as barras derivadas da tabela:
+
+- **passos SEM inversão** (onde a comparação por passo vale): a razão medida é `1,15`–`1,26` no
+  arrasto e `1,49`–`1,67` no aperto fraco ⇒ barra **`2,0`**, no vazio entre `1,67` e o `2,12` do
+  pior passo do regime caótico.
+- **passos COM inversão**: compara-se o **ENVELOPE** do traço, não o passo — `1,979` contra `1,463`,
+  razão `1,35` ⇒ barra **`2,0`**. ⚠️ Ele **não** afirma que reproduzimos o alvo ali; afirma que não
+  somos pior por uma ordem de grandeza num regime que o alvo também não controla.
+
+⏳ **Para o R-pós / a próxima emenda:** a §14 gate 20 deve passar a dizer isto, com a tabela.

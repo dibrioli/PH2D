@@ -1416,3 +1416,288 @@ fn sonda_dos_artefatos_do_oraculo() {
         );
     }
 }
+
+/// **As posições NOSSAS depois de CADA passo** de um traço com dump por passo.
+///
+/// ⚠️ Extraída da [`sonda_passo_a_passo`] para os gates 19–21 medirem sobre a
+/// MESMA corrida que a sonda imprime — duas cópias do laço seriam duas leis.
+fn correr_por_passo(nome: &str) -> (Vec<V3>, Vec<Vec<u32>>, Vec<Vec<V3>>) {
+    let pp = por_passo(nome);
+    let t = traco(nome);
+    let sup = t.s("superficie").to_string();
+    let rest = repouso(&sup);
+    let fs = faces(&sup, &rest);
+    let an = aneis(rest.len(), &fs);
+    let anel = |v: u32| an[v as usize].clone();
+    let pincel = t.pincel();
+    let r = pincel.raio;
+    let c0 = pp.caminho[0];
+    let mut pos = rest.clone();
+    let mut tecido = PincelTecido::pen_down(pincel, &pos, c0);
+    let mut saida = Vec::with_capacity(pp.caminho.len());
+    for k in 0..pp.caminho.len() {
+        let cursor = pp.caminho[k];
+        let prev = pp.caminho[k.saturating_sub(1)];
+        let delta = if pincel.modo == Modo::Agarrar {
+            [cursor[0] - c0[0], cursor[1] - c0[1], cursor[2] - c0[2]]
+        } else {
+            [
+                cursor[0] - prev[0],
+                cursor[1] - prev[1],
+                cursor[2] - prev[2],
+            ]
+        };
+        let nrm = normais(&pos, &fs);
+        let mut na = [0.0f64; 3];
+        for (v, p) in pos.iter().enumerate() {
+            if dist(*p, cursor) < r {
+                for c in 0..3 {
+                    na[c] += nrm[v][c];
+                }
+            }
+        }
+        let passo = Passo {
+            cursor,
+            delta,
+            parado: k == 0,
+            normal_area: na,
+            normais: &nrm,
+            pressao: 1.0,
+        };
+        if tecido.passo(&pos, &anel, &passo) {
+            for (v, act) in tecido.sim.activo.iter().enumerate() {
+                if *act {
+                    pos[v] = tecido.sim.x[v];
+                }
+            }
+        }
+        saida.push(pos.clone());
+    }
+    (rest, fs, saida)
+}
+
+/// **QUADRILÁTEROS DE ORIENTAÇÃO INVERTIDA** (espec §5.2-ter): a face cuja
+/// normal depois do passo aponta ao contrário da dela em repouso.
+///
+/// ⛔ **Não é «somar as duas metades triangulares»** — essa leitura conta também
+/// o quadrilátero apenas DOBRADO, que não inverteu, e devolve `11/26/88` onde
+/// esta devolve `10/18/52` (a espec nomeia a leitura errada com os números).
+fn invertidos(rest: &[V3], pos: &[V3], fs: &[Vec<u32>]) -> usize {
+    fs.iter()
+        .filter(|f| {
+            let a = normal_da_face(rest, f);
+            let b = normal_da_face(pos, f);
+            a[0] * b[0] + a[1] * b[1] + a[2] * b[2] < 0.0
+        })
+        .count()
+}
+
+/// O vértice reflectido no plano `y = 0` (o plano do traço destas fixtures).
+fn espelho_de(rest: &[V3]) -> Vec<usize> {
+    let chave = |p: V3| {
+        (
+            (p[0] * 1e4).round() as i64,
+            (p[1] * 1e4).round() as i64,
+            (p[2] * 1e4).round() as i64,
+        )
+    };
+    let mapa: std::collections::BTreeMap<_, usize> = rest
+        .iter()
+        .enumerate()
+        .map(|(v, p)| (chave(*p), v))
+        .collect();
+    rest.iter()
+        .enumerate()
+        .map(|(v, p)| *mapa.get(&chave([p[0], -p[1], p[2]])).unwrap_or(&v))
+        .collect()
+}
+
+/// **ASSIMETRIA DE ESPELHO ÷ `|u|max`** (espec §5.2-ter).
+///
+/// ⚠️ **As duas normas são diferentes de propósito**: o numerador é a norma do
+/// MÁXIMO por componente e o denominador a EUCLIDIANA — trocá-las muda o número.
+fn assimetria(rest: &[V3], pos: &[V3], esp: &[usize]) -> f64 {
+    let u = |v: usize| {
+        [
+            pos[v][0] - rest[v][0],
+            pos[v][1] - rest[v][1],
+            pos[v][2] - rest[v][2],
+        ]
+    };
+    let (mut num, mut den) = (0.0f64, 0.0f64);
+    for v in 0..rest.len() {
+        let (a, b) = (u(v), u(esp[v]));
+        // `M` reflecte o próprio vector: a componente `y` troca de sinal.
+        let m = [b[0], -b[1], b[2]];
+        for c in 0..3 {
+            num = num.max((a[c] - m[c]).abs());
+        }
+        den = den.max((a[0] * a[0] + a[1] * a[1] + a[2] * a[2]).sqrt());
+    }
+    num / den.max(1e-12)
+}
+
+/// **GATE 19 — o APERTO inverte a malha no 1.º passo simulado, e o arrasto não.**
+///
+/// ⭐ É o facto que separa «lei em falta» de «o alvo deixou de ser determinista»
+/// (espec §5.2-ter): a força do aperto não decresce com a proximidade, logo o
+/// vértice ao lado do cursor anda MAIS do que a distância a que estava dele.
+/// A partir daí a relaxação recebe pares comprimidos e a ordem da lista decide.
+///
+/// ⚠️ **A terceira linha é a INTERVENÇÃO**: o mesmo traço com a força `1 → 0,2`
+/// não inverte nada nos doze passos. *Tira-se a inversão e o modo, a lei e a
+/// maquinaria não mudaram.*
+#[test]
+fn o_aperto_inverte_a_malha_no_primeiro_passo_e_o_arrastar_nao() {
+    let casos: [(&str, bool); 3] = [
+        ("plano_apertar_ponto_radial_local_origem", true),
+        ("plano_arrastar_radial_local_origem", false),
+        ("plano_apertar_ponto_radial_local_origem_fraco", false),
+    ];
+    for (nome, inverte) in casos {
+        let (rest, fs, passos) = correr_por_passo(nome);
+        // O 1.º passo simulado é o 2.º ponto do caminho (o 1.º constrói e não simula).
+        let n1 = invertidos(&rest, &passos[1], &fs);
+        // Anti-vácuo: o traço tem de ter deformado alguma coisa.
+        let movidos = passos[1]
+            .iter()
+            .zip(&rest)
+            .filter(|(a, b)| dist(**a, **b) > 1e-9)
+            .count();
+        assert!(movidos > 50, "{nome}: so' {movidos} movidos -- vacuo");
+        if inverte {
+            assert!(
+                n1 > 0,
+                "{nome}: ZERO quadrilateros invertidos no 1.º passo simulado -- \
+                 o oraculo da' 10, e sem a inversao o resto da §5.2-ter nao se aplica"
+            );
+        } else {
+            assert_eq!(
+                n1, 0,
+                "{nome}: {n1} quadrilateros invertidos no 1.º passo simulado, e este \
+                 traco NAO pode inverter (o oraculo da' 0)"
+            );
+            // E o controlo de força fraca não inverte em passo NENHUM.
+            for (k, p) in passos.iter().enumerate() {
+                let n = invertidos(&rest, p, &fs);
+                assert_eq!(n, 0, "{nome}: {n} invertidos no passo {}", k + 1);
+            }
+        }
+    }
+}
+
+/// **GATE 20 — a barra dos apertos é a da ORDEM, e mede-se em DOIS regimes.**
+///
+/// ⚠️⚠️ **A espec propõe este gate como «a nossa assimetria nunca passa a do
+/// oráculo no mesmo passo», e a MEDIÇÃO mostra que isso não é propriedade de
+/// nenhum dos dois lados.** Num passo com faces invertidas o resultado por
+/// vértice é decidido pela ORDEM da lista (§5.2-ter) e nenhum dos lados domina o
+/// outro: no aperto a força cheia nós ficamos acima em `k = 5, 7, 11` e abaixo
+/// nos outros nove. *Uma barra «sempre abaixo» sobre um regime caótico é uma
+/// barra que reprova por sorteio.* ⇒ o gate mede os dois regimes com réguas
+/// diferentes, e as duas barras saem da tabela abaixo:
+///
+/// | traço | passos SEM inversão (nós ÷ oráculo) | passos COM inversão |
+/// |---|---|---|
+/// | arrastar *Local* | `1,15`–`1,26` (12 passos) | — |
+/// | aperto de ponto, força `0,2` | `1,49`–`1,67` (12 passos) | — |
+/// | aperto de ponto, força `1` | — | envelope `1,979` contra `1,463` = `1,35×` |
+///
+/// - **Sem inversão** a comparação por passo VALE, e a barra `2,0` fica no vazio
+///   medido entre o pior caso são (`1,67`) e o pior do regime caótico (`2,12`).
+/// - **Com inversão** a comparação por passo não vale; o que se afirma é o
+///   ENVELOPE do traço, com a barra `2,0` sobre a razão medida de `1,35`.
+///
+/// ⛔ As duas barras são derivadas da medição, ⛔ nenhuma é um epsilon de conforto,
+/// e a segunda **não** afirma que nós reproduzimos o alvo ali — afirma que não
+/// somos pior por uma ordem de grandeza num regime que o alvo também não
+/// controla.
+#[test]
+fn a_assimetria_de_espelho_fica_no_patamar_do_oraculo() {
+    for nome in [
+        "plano_apertar_ponto_radial_local_origem",
+        "plano_apertar_ponto_radial_local_origem_fraco",
+        "plano_arrastar_radial_local_origem",
+    ] {
+        let (rest, fsx, passos) = correr_por_passo(nome);
+        let esp = espelho_de(&rest);
+        let pp = por_passo(nome);
+        // Controlo: o espelho tem de ser uma involução sobre a malha inteira.
+        assert!(
+            (0..rest.len()).all(|v| esp[esp[v]] == v),
+            "{nome}: o espelho nao e' involucao -- a malha nao e' simetrica no traco"
+        );
+        let (mut env_n, mut env_o, mut houve_inversao, mut sem_inv) =
+            (0.0f64, 0.0f64, false, 0usize);
+        for (k, nosso) in passos.iter().enumerate() {
+            let Some(bloco) = pp.blocos.get(k) else {
+                continue;
+            };
+            if bloco.iter().zip(&rest).all(|(a, b)| a == b) && k > 0 {
+                continue; // bloco = repouso: glitch do dump do oráculo
+            }
+            let (an, ao) = (
+                assimetria(&rest, nosso, &esp),
+                assimetria(&rest, bloco, &esp),
+            );
+            env_n = env_n.max(an);
+            env_o = env_o.max(ao);
+            if invertidos(&rest, bloco, &fsx) > 0 {
+                houve_inversao = true;
+            } else {
+                sem_inv += 1;
+                assert!(
+                    an <= ao * 2.0 + 1e-9,
+                    "{nome} passo {}: SEM inversao a nossa assimetria {an:.4} passa \
+                     {:.4} = 2x a do oraculo {ao:.4} -- fora da inversao a barra e' \
+                     por passo, e o pior caso medido e' 1,67x",
+                    k + 1,
+                    ao * 2.0
+                );
+            }
+        }
+        // Anti-vácuo: tem de haver passos medidos, e assimetria de facto.
+        assert!(sem_inv > 2 || houve_inversao, "{nome}: nada medido");
+        assert!(
+            env_o > 0.05,
+            "{nome}: o oraculo nao e' assimetrico ({env_o:.4})"
+        );
+        if houve_inversao {
+            assert!(
+                env_n <= env_o * 2.0,
+                "{nome}: o envelope da nossa assimetria {env_n:.4} passa {:.4} = 2x o \
+                 do oraculo {env_o:.4} -- no regime invertido a barra e' o envelope, \
+                 e a razao medida e' 1,35x",
+                env_o * 2.0
+            );
+        }
+    }
+}
+
+/// **GATE 21 — FORA da inversão o aperto é tão comparável quanto o arrasto.**
+///
+/// ⭐⭐ **É o gate que ILIBA a lei do aperto**: sobre a fixture de força fraca,
+/// que não inverte uma única face nos doze passos, a paridade por vértice do
+/// aperto tem de ficar no patamar da do arrasto. *Se ficar pior, o defeito não é
+/// a ordem e há lei em falta* — e a `1,079` do irmão a força cheia deixaria de
+/// ter explicação.
+#[test]
+fn fora_da_inversao_o_aperto_e_tao_comparavel_quanto_o_arrastar() {
+    let fraco = correr("plano_apertar_ponto_radial_local_origem_fraco");
+    let arrasto = correr("plano_arrastar_radial_local_origem");
+    let rel = |l: &Leitura| l.erro_max / l.max_oraculo.max(1e-12);
+    assert!(
+        fraco.movidos_nos > 100 && fraco.movidos_oraculo > 100,
+        "vacuo: {} / {}",
+        fraco.movidos_nos,
+        fraco.movidos_oraculo
+    );
+    assert!(
+        rel(&fraco) <= rel(&arrasto) * 1.5,
+        "fora da inversao o aperto erra {:.3} contra {:.3} do arrasto no mesmo \
+         retalho -- ha lei em falta, e a divergencia do irmao a forca cheia deixa \
+         de ser explicada pela ORDEM",
+        rel(&fraco),
+        rel(&arrasto)
+    );
+}

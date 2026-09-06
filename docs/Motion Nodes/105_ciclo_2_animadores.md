@@ -91,7 +91,7 @@ Medido por `what_each_animator_offers`.
 que o grupo está no dispositivo (7 de 8). Cada wave traz portas, params, gates e o passo de
 smoke, para nenhum agente ter de os redescobrir.
 
-### W1 — ⭐⭐⭐ A MOLA LEGÍVEL (`motion.spring`)
+### ✅ W1 — ⭐⭐⭐ A MOLA LEGÍVEL (`motion.spring`)
 
 **O problema, medido:** a mola tem **três** params e dois deles são constantes de física —
 `tension = 8`, `friction = 1,5`. *Nenhum artista consegue prever o que `friction 1,5` faz*, e a
@@ -172,7 +172,7 @@ regressão.*
 é divergirem sem ninguém ver. O `the_wgsl_says_what_the_rust_says` compara o TEXTO termo a termo,
 e confere que os dois tectos do WGSL são os números que a aritmética do Rust dá.
 
-### W2 — ⭐⭐ A ORDEM DO STAGGER (`motion.stagger`)
+### ✅ W2 — ⭐⭐ A ORDEM DO STAGGER (`motion.stagger`)
 
 **O problema:** o stagger tem `reverse` (um booleano) e é só isso — a onda corre da esquerda para
 a direita, ou ao contrário. O que as referências oferecem é a **ORDEM** como uma escolha: *do
@@ -213,7 +213,7 @@ acusou o WGSL, e ao corrigir vi que a lista do teste tinha o mesmo defeito. *Um 
 duas cópias à mão não prova nada: ele tem de DERIVAR um dos lados* — hoje ele formata os `u32` do
 Rust e procura-os no texto.
 
-### W3 — O `motion.delay` E O DISPOSITIVO
+### ✅ W3 — O `motion.delay` E O DISPOSITIVO
 
 **O problema:** é o único do grupo fora do dispositivo — e é `Pure`.
 
@@ -256,11 +256,42 @@ voltar a encher — um transitório a cada mexida. *O ganho do modo comum é liv
 mapa por-elemento, logo é candidato a device. Fica nomeado, com o número ao lado — mas depois do
 `7,5×` ele deixou de ser a alavanca que era.
 
-### W4 — O CENSO DO CARTÃO DO GRUPO
+### ✅ W4 — O CENSO DO CARTÃO (2026-09-06): limpo, e virou um GATE DO CATÁLOGO INTEIRO
 
-O `motion.noise` mostra **13 de 19** params no cartão. Correr
-`no_param_the_panel_offers_falls_off_the_card` restrito a este grupo e responder: são gates de
-modo (legítimo) ou params inalcançáveis?
+**A pergunta:** o `motion.noise` mostra 13 de 19 — são gates de modo (legítimo) ou params
+**inalcançáveis** (a espécie que nenhum gate de registo apanha)?
+
+**A resposta, medida sobre TODO o catálogo:** `810` controlos · `127` escondidos ·
+**`0` sem explicação.** Cada um dos 127 é uma de três coisas, e o gate exige que seja:
+
+| explicação | exemplo |
+|---|---|
+| um `ParamGate`/`ParamGateText`/`ParamGateAbove` que o nomeia | `metric` só existe na base `Cellular` |
+| um canal de uma **COR**, consumido pela amostra | `motion.tint::r2` |
+| uma row dentro de uma **secção que nasce fechada** | o `Space` do `motion.noise` |
+
+⇒ `every_param_the_card_hides_has_a_declared_reason` — **catálogo inteiro, sem lista de
+tolerância**. Mutação (esconder um param a mais no bridge): **15 nós** acusados pelo nome.
+
+⚠️⚠️ **E a sonda acusou DUAS VEZES o produto errado antes de acertar — as duas vezes por ler a
+declaração errada:**
+
+1. A coluna do **dispositivo** saía do `NodeManifest::lowerings` e imprimiu **`NÃO` para os
+   oito**; o caminho do device é side-metadata (`register_gpu_kernel`). *Teria aberto o ciclo a
+   escrever oito kernels que já existem.*
+2. O **`rotation`/`uniform` do `motion.noise`** foram acusados de *«sem explicação»* porque a
+   sonda não sabia o que é uma **secção dobrada**. Eles estão a **um clique**, com o cabeçalho a
+   dizer quantas rows esconde — o oposto de inalcançável.
+
+*Uma tabela de dívida fabricada custa mais que a dívida: ela manda construir o que já existe.*
+
+### W5 — O PAR `oscillator` / `lfo` NO TUTORIAL
+
+⏳ **Não é código, e a medição já existe:** a sonda `the_tee_against_the_fused_node`
+(`motion_bridge_tee_probe_tests`, da wave dos outputs) compara `value.lfo → motion.drive` contra
+`motion.oscillator` **bit a bit** e mede se os dois chegam ao dispositivo. ⇒ o que falta é a
+**frase** no tutorial e o smoke que a mostra (as duas cadeias lado a lado, a mesma figura). Entra
+no passo 6.
 
 ### W5 — O PAR `oscillator` / `lfo` NO TUTORIAL
 

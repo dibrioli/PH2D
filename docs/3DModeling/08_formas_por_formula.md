@@ -354,3 +354,97 @@ fluxograma, e um sólido de 3 mm de espessura com dois traços dentro não é a 
 ⛔ **E o critério de entrada continua a ser o §3.1 deste doc** — *quantas vezes o artista as quer, e
 **não** o preço*: uma primitiva de fórmula custa `1,00×`–`1,03×` a esfera, e o preço nunca é o que
 decide.
+
+---
+
+## §7 — ⭐⭐⭐ O LEVANTAMENTO de 05/09: o que a FÓRMULA ainda dá, e nós não temos
+
+> **Enio, 05/09**, depois do smoke da espiral: *«diante do sucesso da espiral, faça pesquisa de
+> shapes geradas por fórmulas que ainda não temos»*.
+
+⚠️ **A pergunta mudou desde o §2.** Aquele levantamento contava contra o **catálogo vetorial da
+casa** (47 formas) e contra as 15 sólidas — duas listas que hoje estão **fechadas**. Este conta
+contra a **literatura de campos de distância**, que é uma lista maior e de outra natureza: ali as
+formas não vêm de um menu de desenho, vêm de uma **fórmula publicada**.
+
+⚠️⚠️ **E a régua de entrada é a mesma do §3.1** — *quantas vezes o artista a quer*, e **não** o
+preço. Uma primitiva de fórmula custa `1,00×`–`1,03×` a esfera; uma desenhada com 192 lados custa
+**`101×`** ([doc 06 §124](06_resultados_cena_e_gizmo.md)).
+
+### §7.1 — A fonte, e o que ela diz que é EXACTO
+
+As duas páginas que o `ops.rs` já cita — [3D](https://iquilezles.org/articles/distfunctions/) e
+[2D](https://iquilezles.org/articles/distfunctions2d/) — trazem **29** funções 3D (26 exactas) e
+**43** 2D. ⚠️ **A distinção «exacta / limitada» é a que importa aqui, e não a que parece**: desde a
+W123 este módulo sabe que ele **nunca precisou da distância exacta** — precisa de um **minorante**
+(doc 06 §124). ⇒ uma função *«bounded»* da fonte é tão utilizável quanto uma exacta, desde que o
+limite seja honesto.
+
+### §7.2 — Do catálogo 3D faltam QUATRO (as outras 25 já se fazem)
+
+| Forma | Classe | O que ela é, e por que não é composição |
+|---|---|---|
+| **Plane / semiespaço** | **A** | ⭐⭐ O corte. O [§4.2](#42--o-que-continua-a-faltar-e-por-que-cada-um-não-é-composição) **já a nomeia como a peça em falta**: hoje cortar em ângulo é *«uma caixa gigante rodada — um objecto a mais e um número sem sentido»* |
+| **Rounded Cylinder** | **A** | ⭐ O cilindro com **barriga** (rolha, pneu, botão): raio do bojo **e** raio do aro, dois números. ⛔ Não é o nosso `round`, que só arredonda o aro |
+| **Death Star** | **A** | ⭐⭐ Esfera **menos** esfera, com a distância **exacta** na cratera. A nossa subtracção dá a forma e **não** dá a distância exacta ali |
+| **Vesica Segment** | **A** | A lente 3D entre dois pontos — a cápsula «com barriga para dentro» |
+
+⛔ **`udTriangle` e `udQuad` ficam de fora por natureza:** são superfícies **sem volume** (distância
+*não assinada*), e um modelador de sólidos não tem o que fazer com elas.
+
+### §7.3 — Do catálogo 2D faltam ONZE que valem uma chapa
+
+| Forma | Classe | Por que ela |
+|---|---|---|
+| **Horseshoe** (ferradura) | **A** | ⭐⭐ Arco com espessura e pontas **quadradas**. Hoje só se faz com um `RingArc` mais dois cortes |
+| **Polygon (N vértices arbitrários)** | **A** | ⭐⭐ O polígono **irregular** por fórmula. Hoje isto obriga a **desenhar**, e desenhar custa por segmento |
+| **Triangle (3 vértices arbitrários)** | **A** | ⭐ O prisma só faz **regulares**; um triângulo escaleno hoje é um desenho |
+| **Uneven Capsule** | **A** | ⭐ Cápsula com **raios diferentes** nas duas pontas — a forma de um dente, de uma pétala |
+| **Egg** | **A** | ⭐ O ovo, exacto. ⚠️ **Não é a nossa `Drop`**: aquela tem bico |
+| **Rounded X** | **A** | ⭐ O «X» de braços redondos — a `Cross` rodada não o dá com as pontas certas |
+| **Tunnel** | **A** | ⭐ Rectângulo com o topo em meio-círculo — porta, janela, arco |
+| **Stairs** | **A** | ⭐ A **escada de N degraus**, por fórmula. É o `Array` de uma caixa… com a diferença de ser **uma** peça |
+| **Bezier (quadrático)** | **A** | ⭐ Um traço curvo com espessura, sem desenhar |
+| **Parabola** | **A** | A curva, com espessura |
+| **Circle Wave** | **A** | ⭐ A onda em anel — irmã directa da onda que o `Document` estreou |
+
+✅ **E estas do catálogo 2D já se fazem**, para não as reconstruir: `sdCircle`/`sdBox`/`sdRoundedBox`
+(caixa e cilindro), `sdChamferBox` (o **chanfro** é um controlo desta casa), `sdOrientedBox` (a pose),
+`sdSegment` (cápsula), `sdRhombus`, `sdTrapezoid`, `sdParallelogram` (W122), `sdPentagon`/`sdHexagon`/
+`sdOctogon` (o prisma de N lados), `sdStar` — e com ela o **pentagrama** e o **hexagrama**, que são a
+mesma fórmula com `points` e a razão interna certa —, `sdPie`, `sdCutDisk`, `sdArc`, `sdRing`,
+`sdVesica`, `sdMoon`, `sdRoundedCross`, `sdHeart`, `sdCross`, `sdEllipse`.
+⛔ `sdfCoolS` é uma piada do autor; `sdHyperbola` e `sdQuadraticCircle` são curvas de estudo.
+
+### §7.4 — ⭐⭐⭐ E as SEIS famílias que não estão em catálogo nenhum — é aqui que está o salto
+
+| Família | Classe | Por que ela vale mais do que uma forma |
+|---|---|---|
+| **Hélice / mola** | **B** ⭐⭐⭐ | **O irmão 3D da espiral, e o mecanismo já está pago**: a volta mais próxima sai de um `round()`, exactamente como na W123. Molas, parafusos, cabos, corrimãos, DNA, escadas em caracol |
+| **Gyroid e a família TPMS** | **C** ⭐⭐⭐ | `sin x·cos y + sin y·cos z + sin z·cos x = 0` — **uma linha** dá um enchimento infinito. É o que a impressão 3D usa dentro das peças, e o que um artista usa para «isto é uma estrutura». ⚠️ Não é distância exacta; o limite sai por **dividir pelo gradiente máximo**, que é a lei que a onda do `Document` acabou de estabelecer nesta linha |
+| **Superfórmula (Gielis)** | **C** ⭐⭐ | **Uma fórmula, centenas de formas orgânicas** — folhas, conchas, flores, estrelas do mar. Seis números. É a maior razão forma/linha-de-código de toda esta lista |
+| **Superquadrática / superelipsóide** | **B** ⭐⭐ | **Um knob que atravessa a família inteira**: astroide → losango → esfera → caixa. O «squircle» em 3D |
+| **Nó de toro (p, q)** | **C** ⭐⭐ | Dois inteiros dão uma família inteira de nós. Decoração, joalharia, matemática |
+| **Rosca / knurling** | **B** ⭐ | A hélice varrida num cilindro — o parafuso a sério, e o punho serrilhado |
+
+⚠️ **E há duas que são MODIFICADORES, não formas:** a **grade hexagonal** (favo de mel) é a
+repetição que falta ao lado do `Array` e do `Radial`, e as **metabolas** são o `smooth-min` que já
+existe com uma contagem por cima.
+
+⛔ **Fractais (Menger, Sierpinski, Mandelbulb) ficam nomeados e fora desta fila.** O *distance
+estimator* deles **é** um minorante por construção, o que os torna legítimos aqui — mas o custo é
+por **iteração** e não por nó, e isso muda o preço do quadro. *É uma wave com medição própria, não
+um item de lote.*
+
+### §7.5 — A ordem que eu proporia
+
+| lote | formas | por quê |
+|---|---|---|
+| **4** (2) | **Hélice/mola** · **Gyroid** | as duas de maior alcance, e as duas cujo mecanismo esta linha **acabou de pagar** (a volta por `round`, o minorante por gradiente) |
+| **5** (6) | **Plane** · **Death Star** · **Rounded Cylinder** · **Horseshoe** · **Tunnel** · **Egg** | as exactas do catálogo, baratas e que o `§4.2` ou o uso comum já pediam |
+| **6** (5) | **Polygon(N)** · **Triangle** · **Uneven Capsule** · **Rounded X** · **Stairs** | as que hoje **obrigam a desenhar** — e desenhar custa `101×` |
+| **7** (2) | **Superquadrática** · **Superfórmula** | um knob que morfa uma família inteira; é onde a fórmula humilha o desenho |
+| ⏳ | Bezier · Parabola · Circle Wave · nó de toro · rosca | valem, e não são de primeira mão |
+
+⚠️ **Nada disto é uma promessa de calendário** — é a fila que a medição e o alcance sugerem, e quem
+a ordena é o dono do produto.

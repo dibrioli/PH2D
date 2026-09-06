@@ -313,9 +313,9 @@ impl Verlet {
             ];
             self.x_prev[i] = self.x[i];
             let kv = phi * ret * self.w_repouso[i];
-            for c in 0..3 {
+            for (c, vc) in v.iter().enumerate() {
                 self.x[i][c] += self.a[i][c] * phi * DT;
-                self.x[i][c] += v[c] * kv;
+                self.x[i][c] += vc * kv;
             }
             self.a[i] = [0.0; 3];
         }

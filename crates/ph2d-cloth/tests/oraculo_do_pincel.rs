@@ -623,9 +623,9 @@ fn sonda_da_cadeia_com_parede() {
             sim.x.copy_from_slice(&pos);
             sim.a[20] = [10.0, 0.0, 0.0];
             sim.passo(&solver);
-            for i in 0..n {
+            for (i, p) in pos.iter_mut().enumerate() {
                 if sim.activo[i] {
-                    pos[i] = sim.x[i];
+                    *p = sim.x[i];
                 }
             }
         }

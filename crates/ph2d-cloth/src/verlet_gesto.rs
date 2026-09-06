@@ -247,15 +247,15 @@ impl PincelTecido {
         let (c, r) = self.centro_da_area(cursor);
         let alcance = r * (1.0 + self.pincel.limite);
         self.dentro.clear();
-        for v in 0..n {
+        for (v, p) in posicoes.iter().enumerate() {
             let dentro = match self.pincel.area {
                 Area::Global => true,
                 // ⚠️ Local: o teste da construção é sobre o REPOUSO (espec §3.1).
                 Area::Local => dist(self.sim.repouso[v], c) < alcance,
-                Area::Dinamica => dist(posicoes[v], c) < alcance,
+                Area::Dinamica => dist(*p, c) < alcance,
             };
             if dentro {
-                self.dentro.push(v as u32);
+                self.dentro.push(u32::try_from(v).unwrap_or(u32::MAX));
             }
         }
         let novos: Vec<u32> = self
@@ -316,9 +316,7 @@ impl PincelTecido {
         // fase 2 — guardar o estado: x ← malha
         self.sim.x.copy_from_slice(posicoes);
         // fase 3 — activar
-        for a in &mut self.sim.activo {
-            *a = false;
-        }
+        self.sim.activo.fill(false);
         for &v in &self.dentro {
             self.sim.activo[v as usize] = true;
         }
@@ -483,8 +481,8 @@ impl PincelTecido {
                         _ => [0.0; 3],
                     };
                     let inv_m = 1.0 / self.pincel.solver.massa.max(1e-9);
-                    for c in 0..3 {
-                        self.sim.a[vi][c] += f * u[c] * inv_m;
+                    for (c, uc) in u.iter().enumerate() {
+                        self.sim.a[vi][c] += f * uc * inv_m;
                     }
                 }
             }

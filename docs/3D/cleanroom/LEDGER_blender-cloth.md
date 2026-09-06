@@ -169,7 +169,7 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 
 | versão | caminho | commit |
 |---|---|---|
-| v1 | `docs/3D/cleanroom/SPEC_cloth_brush.md` | ⏳ |
+| v1 | `docs/3D/cleanroom/SPEC_cloth_brush.md` | `c7905f616` (2026-09-05, commit único pós-filtragem) |
 
 ---
 

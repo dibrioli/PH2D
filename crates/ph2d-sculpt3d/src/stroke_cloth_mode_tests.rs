@@ -11,7 +11,7 @@
 //! contra *o que o PAINEL alcança* (aqui).
 
 use super::cloth_tests::{arrastar, pincel, plano};
-use crate::Brush;
+use crate::{Brush, Dab, SculptStroke, Symmetry};
 
 /// ⭐⭐⭐ **GATE — os OITO modos de deformação dão OITO panos diferentes.**
 ///
@@ -85,4 +85,75 @@ fn as_tres_areas_simuladas_dao_tres_panos_diferentes() {
             assert!(pa != pb, "{aa:?} e {ab:?} dao o MESMO pano ao bit");
         }
     }
+}
+
+/// ⭐⭐⭐ **GATE — o gesto que o tecido lê é o CAMINHO PROJECTADO no plano do
+/// ecrã, e é o OLHO que define esse plano.**
+///
+/// ⛔⛔ **Esta costura não tinha régua nenhuma, e a razão é a fixtura**: as
+/// grelhas deste ficheiro são planas e vistas de frente, e ali a projecção é um
+/// **no-op** — o adaptador podia entregar o caminho 3D cru que nenhum gate desta
+/// crate mudava de cor. *Uma lei que só é exercida por uma vista que a fixtura
+/// não tem é uma lei sem gate.* A cura é inclinar o OLHO, não a malha.
+///
+/// A propriedade é observável pela porta pública, e tem DUAS metades:
+/// - **inclinar o olho MUDA** o pano nos sete modos que lêem `δ`, porque o plano
+///   do ecrã roda e a projecção do mesmo caminho passa a ser outra;
+/// - **e NÃO muda** no arrasto, que é o único modo cuja direcção sai da
+///   diferença dos dois pontos 3D (espec §4.2/§4.3).
+///
+/// ⚠️ **Sem a segunda metade o gate ficaria verde sobre um adaptador que
+/// projectasse TUDO**, arrasto incluído.
+#[test]
+fn o_olho_define_o_plano_em_que_o_tecido_le_o_gesto() {
+    let de_frente = [0.0f32, 0.0, -1.0];
+    let inclinado = {
+        // ⚠️ A inclinação tem de ser no eixo do TRAÇO: com ela no eixo `y` o
+        // caminho, que corre em `x`, já é perpendicular ao olho, a projecção não
+        // tira nada — a primeira redacção deste gate era VAZIA por isso.
+        let v = [0.6f32, 0.0, -1.0];
+        let l = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+        [v[0] / l, v[1] / l, v[2] / l]
+    };
+    let correr = |olho: [f32; 3], modo: crate::ClothMode| -> Vec<[f32; 3]> {
+        let mut mesh = plano();
+        let mut s = SculptStroke::default();
+        s.begin(&mesh);
+        let b = Brush {
+            cloth_mode: modo,
+            ..pincel()
+        };
+        for k in 0..8 {
+            // ⚠️ O caminho é derivado dos CENTROS pelo traço, não do construtor
+            // — e ele é o mesmo nas duas corridas. O que muda é só o olho.
+            let c = [0.02 * k as f32, 0.0, 0.0];
+            s.dab(
+                &mut mesh,
+                &b,
+                &Dab::at(c, b.radius, olho),
+                Symmetry::default(),
+            );
+        }
+        mesh.positions().to_vec()
+    };
+    let antes = plano();
+    let frente_grab = correr(de_frente, crate::ClothMode::Grab);
+    let movidos = frente_grab
+        .iter()
+        .zip(antes.positions())
+        .filter(|(a, b)| a != b)
+        .count();
+    assert!(movidos > 100, "so' {movidos} movidos -- vacuo");
+    assert_ne!(
+        frente_grab,
+        correr(inclinado, crate::ClothMode::Grab),
+        "inclinar o OLHO nao mudou o pano no Grab -- o adaptador esta a entregar o \
+         caminho 3D cru onde a lei pede a projeccao no plano do ecra (espec §4.3)"
+    );
+    assert_eq!(
+        correr(de_frente, crate::ClothMode::Drag),
+        correr(inclinado, crate::ClothMode::Drag),
+        "inclinar o OLHO mudou o ARRASTO -- ele e' o unico modo cuja direccao sai da \
+         diferenca dos dois pontos 3D, e nao de `δ`"
+    );
 }

@@ -37,8 +37,10 @@ use ph2d_mesh::Mesh;
 struct Copia {
     /// O centro do dab já espelhado.
     center: [f32; 3],
-    /// O caminho do dab já espelhado.
+    /// O caminho do dab já espelhado — a diferença dos dois pontos 3D.
     path: V3,
+    /// A direcção do OLHO já espelhada: o eixo da vista da projecção do `δ`.
+    eye: V3,
     /// O índice desta passagem (a sessão dela vive em `SculptStroke::cloth_ref`).
     copy: usize,
     /// Quantas passagens o traço tem ao todo.
@@ -174,6 +176,15 @@ impl SculptStroke {
                 f64::from(dab.path[1] * s[1]),
                 f64::from(dab.path[2] * s[2]),
             ];
+            // ⚠️ **O OLHO espelha com a cópia**, e é por isso que ele vive no
+            // [`Dab`] e não no [`Brush`]: guardá-lo no pincel daria a MESMA
+            // direcção às duas cópias, e a metade espelhada seria projectada
+            // por um olho que não é o dela.
+            let eye = [
+                f64::from(dab.eye[0] * s[0]),
+                f64::from(dab.eye[1] * s[1]),
+                f64::from(dab.eye[2] * s[2]),
+            ];
             self.cloth_ref_copy(
                 mesh,
                 brush,
@@ -181,6 +192,7 @@ impl SculptStroke {
                 &Copia {
                     center,
                     path,
+                    eye,
                     copy,
                     passagens: u32::try_from(n).unwrap_or(1),
                 },
@@ -200,6 +212,7 @@ impl SculptStroke {
         let Copia {
             center,
             path,
+            eye,
             copy,
             passagens,
         } = *copia;
@@ -253,10 +266,24 @@ impl SculptStroke {
             normal_area[1] += n[1];
             normal_area[2] += n[2];
         }
+        // ⭐⭐⭐ **`δ` é a PROJECÇÃO do caminho no plano do ECRÃ** (espec §4.3,
+        // emenda Q12), e o eixo da vista é a direcção do olho deste dab. As duas
+        // des-projecções do alvo são feitas à mesma profundidade, logo a
+        // componente ao longo do olho é descartada por construção. ⚠️ Numa folha
+        // plana vista de frente as duas coisas são a MESMA ao bit; numa
+        // superfície curva separam-se `15,83°` nas fixtures do oráculo.
+        // ⛔ Só o ARRASTO lê o caminho 3D — dele sai a direcção dele.
+        let k = path[0] * eye[0] + path[1] * eye[1] + path[2] * eye[2];
+        let delta = [
+            path[0] - eye[0] * k,
+            path[1] - eye[1] * k,
+            path[2] - eye[2] * k,
+        ];
         let passo = Passo {
             cursor,
-            delta: path,
-            parado: norm(path) == 0.0,
+            delta,
+            delta_3d: path,
+            parado: norm(delta) == 0.0,
             normal_area,
             normais: &normais,
             pressao: f64::from(dab.pressure.clamp(0.0, 1.0)),

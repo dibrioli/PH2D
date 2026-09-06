@@ -328,6 +328,54 @@ pub(super) fn validate_exact(p: &Primitive, idx: u32) -> Result<(), FieldError> 
             }
             Ok(())
         }
+        // ─────────────────────────── W128 ───────────────────────────
+        Primitive::Superformula {
+            half,
+            top_symmetry,
+            top_n1,
+            top_n2,
+            top_n3,
+            side_symmetry,
+            side_n1,
+            side_n2,
+            side_n3,
+        } => {
+            for h in half {
+                positive(h, "half")?;
+            }
+            let fora = |v: f32, lo: f32, hi: f32| !v.is_finite() || v < lo || v > hi;
+            #[allow(clippy::cast_precision_loss)]
+            for m in [top_symmetry, side_symmetry] {
+                if fora(
+                    m,
+                    crate::MIN_SUPERFORMULA_SYMMETRY as f32,
+                    crate::MAX_SUPERFORMULA_SYMMETRY as f32,
+                ) || (m - m.round()).abs() > 1.0e-4
+                {
+                    return Err(FieldError::NonPositive {
+                        node: idx,
+                        what: "symmetry",
+                    });
+                }
+            }
+            for n1 in [top_n1, side_n1] {
+                if fora(n1, crate::MIN_SUPERFORMULA_N1, crate::MAX_SUPERFORMULA_N1) {
+                    return Err(FieldError::NonPositive {
+                        node: idx,
+                        what: "n1",
+                    });
+                }
+            }
+            for n in [top_n2, top_n3, side_n2, side_n3] {
+                if fora(n, crate::MIN_SUPERFORMULA_N, crate::MAX_SUPERFORMULA_N) {
+                    return Err(FieldError::NonPositive {
+                        node: idx,
+                        what: "exponent",
+                    });
+                }
+            }
+            Ok(())
+        }
         _ => Ok(()),
     }
 }

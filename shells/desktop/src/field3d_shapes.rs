@@ -480,6 +480,14 @@ pub(crate) const SHAPES: &[Shape] = &[
         family: Family::Blocks,
         make: Make::Formula(a_superquadric),
     },
+    // ─────────────────────────── W128 ───────────────────────────
+    // ⭐ **Vai para `Round`** — ela nasce estrela do mar, e é entre as redondas que o artista a
+    // procura.
+    Shape {
+        key: "panel.model3d.add.superformula",
+        family: Family::Round,
+        make: Make::Formula(a_superformula),
+    },
     Shape {
         key: "panel.model3d.add.torus",
         family: Family::Rings,

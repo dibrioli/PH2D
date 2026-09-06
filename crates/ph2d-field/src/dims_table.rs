@@ -514,6 +514,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
         | Primitive::Helix { .. }
         | Primitive::Gyroid { .. }
         | Primitive::RoundedCylinder { .. }
-        | Primitive::Superquadric { .. }) => super::dims_table_plates::dims_plate(p),
+        | Primitive::Superquadric { .. }
+        | Primitive::Superformula { .. }) => super::dims_table_plates::dims_plate(p),
     }
 }

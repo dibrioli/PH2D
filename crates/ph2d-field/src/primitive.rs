@@ -639,4 +639,24 @@ pub enum Primitive {
         exponent_top: f32,
         exponent_side: f32,
     },
+    // ─────────────────────────── W128 ───────────────────────────
+    /// ⭐⭐⭐ **A SUPERFÓRMULA DE GIELIS** — o produto esférico de duas curvas planas: uma traça o
+    /// que se vê **de cima** e a outra o **perfil**. Folhas, conchas, flores, estrelas do mar.
+    ///
+    /// ⚠️ **A simetria é INTEIRA** e a razão é a costura do `atan2` — ver
+    /// [`crate::MIN_SUPERFORMULA_SYMMETRY`]. ⚠️ **As duas curvas são NORMALIZADAS**: sem isso, mexer
+    /// num expoente multiplicava o tamanho da peça por oito.
+    ///
+    /// ⚠️ **Não tem `round` nem `chamfer`** — a mesma decisão do [`Primitive::Superquadric`].
+    Superformula {
+        half: [f32; 3],
+        top_symmetry: f32,
+        top_n1: f32,
+        top_n2: f32,
+        top_n3: f32,
+        side_symmetry: f32,
+        side_n1: f32,
+        side_n2: f32,
+        side_n3: f32,
+    },
 }

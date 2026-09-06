@@ -401,7 +401,8 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
         }
         // ⚠️ **Os expoentes NÃO escalam** — eles são adimensionais, e multiplicá-los por um factor
         // de tamanho mudaria a FORMA ao redimensionar a peça.
-        Primitive::Superquadric { half, .. } => {
+        // ⚠️ **Nem os expoentes nem a simetria escalam** — são adimensionais.
+        Primitive::Superquadric { half, .. } | Primitive::Superformula { half, .. } => {
             for v in half.iter_mut() {
                 *v *= factor;
             }

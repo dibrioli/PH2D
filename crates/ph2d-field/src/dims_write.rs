@@ -562,34 +562,13 @@ pub(super) fn write_dim(
             },
             4,
         ) => *thickness = keep_below(half, *cell * crate::MAX_GYROID_FILL * 0.5),
-        // ─────────────────────────── W125 ───────────────────────────
-        (Primitive::RoundedCylinder { radius, .. }, 0) => *radius = value,
+        // ⭐ **As formas por FÓRMULA (W125–W128) escrevem no irmão** — ver [`super::dims_write_formula`].
         (
-            Primitive::RoundedCylinder {
-                bulge,
-                radius,
-                half_height,
-            },
-            1,
-        ) => *bulge = keep_below(value, radius.min(*half_height)),
-        (Primitive::RoundedCylinder { half_height, .. }, 2) => *half_height = half,
-        // ─────────────────────────── W127 ───────────────────────────
-        (Primitive::Superquadric { half: h, .. }, i @ 0..=2) => h[i] = half_positivo,
-        // ⚠️ **COAGE, não recusa** — a lei do `Unary::Taper` e do prisma: a faixa já não oferece
-        // nada fora de `[MIN, MAX]`, então um valor de fora só chega por outra porta, e recusar ali
-        // rejeitaria a peça inteira.
-        (Primitive::Superquadric { exponent_top, .. }, 3) => {
-            *exponent_top = value.clamp(
-                crate::MIN_SUPERQUADRIC_EXPONENT,
-                crate::MAX_SUPERQUADRIC_EXPONENT,
-            );
-        }
-        (Primitive::Superquadric { exponent_side, .. }, 4) => {
-            *exponent_side = value.clamp(
-                crate::MIN_SUPERQUADRIC_EXPONENT,
-                crate::MAX_SUPERQUADRIC_EXPONENT,
-            );
-        }
+            p @ (Primitive::RoundedCylinder { .. }
+            | Primitive::Superquadric { .. }
+            | Primitive::Superformula { .. }),
+            i,
+        ) => return super::dims_write_formula::write_formula(p, node, i, value),
         (Primitive::Prism { sides, .. }, 0) => {
             // ⚠️ **COAGE, não recusa** — a lei do `Unary::Taper`, e pela mesma razão: a faixa já
             // não oferece nada fora de `[MIN, MAX]`, então um valor de fora só chega por outra

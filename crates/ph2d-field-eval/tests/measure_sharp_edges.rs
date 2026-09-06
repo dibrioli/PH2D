@@ -912,6 +912,20 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             exponent_top: 8.0,
             exponent_side: 6.0,
         },
+        // ⚠️ **A ESTRELA DO MAR, com as duas curvas em sítios DIFERENTES** — se as duas
+        // estivessem no ponto neutro a peça era uma esfera, e o censo mediria a forma errada. E a
+        // peça é **torta**, que é o que separa uma permutação de eixos da identidade.
+        PrimitiveKind::Superformula => Primitive::Superformula {
+            half: [0.40, 0.22, 0.34],
+            top_symmetry: 5.0,
+            top_n1: 0.6,
+            top_n2: 1.7,
+            top_n3: 1.3,
+            side_symmetry: 2.0,
+            side_n1: 1.5,
+            side_n2: 2.0,
+            side_n3: 3.0,
+        },
     })
 }
 
@@ -1072,7 +1086,17 @@ fn where_the_creases_are() {
 /// obsolescência não desce, vira licença* — por isso o gate irmão
 /// [`the_apex_exception_list_has_no_stale_entries`] pergunta, a cada corrida, se cada entrada
 /// **ainda** estoura a barra. Uma que deixe de estourar tem de ser **apagada**.
-const APEX_EXCEPTION: [(&str, f64); 7] = [
+/// ⛔⛔ **E a W128 trouxe a PRIMEIRA sem filete a entrar aqui** — a `superformula`, com `18,6 %`.
+///
+/// A sonda [`probe_where_a_filletless_shape_creases`] localizou os `791` pontos: **`0` deles nos
+/// polos**, e todos num **MERIDIANO** (azimute `−31,5°` em toda a elevação). Isso é o **vale** entre
+/// dois lobos, onde `|sin α|^n3` com `1 < n3 < 2` é `C¹` e tem **curvatura infinita** — a normal
+/// roda depressa num arco minúsculo, e a sonda conta-o.
+///
+/// ⚠️ **O pior vinco lê `57,5°`, abaixo dos `80°–140°` de uma aresta VIVA** — é a mesma assinatura
+/// do raio e do gyroid nesta lista. E é a **forma**: o vale afiado entre lobos é o que a família
+/// tem de bonito, e quem o abre é o `n1`, que é um controlo que ela já tem.
+const APEX_EXCEPTION: [(&str, f64); 8] = [
     // ⚠️ **As folgas saem do que o GATE mede**, e não da tabela da sonda: ela amostra `8192`
     // pontos e o gate `2048×4`, e a `pie` lê `1,1 %` numa escala e `2,57 %` na outra.
     // *Uma folga calibrada no instrumento errado descreve outra coisa.*
@@ -1118,6 +1142,7 @@ const APEX_EXCEPTION: [(&str, f64); 7] = [
     // *ela lia o próprio filete como aresta*. Com a parede a `0,045` a leitura cai de `19,4 %` para
     // `7,6 %`. Ver a nota no representante.
     ("gyroid", 8.0),
+    ("superformula", 19.0),
     // ⭐ **A CHAVE ESTEVE AQUI DUAS VEZES e SAIU as duas** (05/09), e foi o censo desta lista e o do
     // chanfro que a expulsaram. Eu chamei ao nariz dela um «ápice de `0°`» — ⛔ **não é**: a sonda
     // localizou os `33` pontos por cortar **todos no mesmo sítio**, a `55,6°`. Era uma quina a
@@ -1148,10 +1173,11 @@ fn the_apex_exception_list_has_no_stale_entries() {
             .find(|k| k.key() == nome)
             .unwrap_or_else(|| panic!("«{nome}» já não é uma forma — a entrada ficou órfã"));
         let p = representative(*k).unwrap_or_else(|| panic!("«{nome}» não tem representante"));
-        let meio = with_round(&p, 0.5).unwrap_or_else(|| {
-            panic!("«{nome}» deixou de ter filete — a entrada não descreve nada")
-        });
-        let (depois, _, _) = probe_with(&meio, 2048, 4);
+        // ⚠️ **Uma forma SEM filete mede-se como ela é** — a `superformula` entrou nesta lista pelo
+        // outro braço do gate irmão, e exigir um filete aqui faria o censo entrar em pânico sobre
+        // uma entrada legítima. *Um censo que só sabe medir metade da população não é um censo.*
+        let alvo = with_round(&p, 0.5).unwrap_or_else(|| p.clone());
+        let (depois, _, _) = probe_with(&alvo, 2048, 4);
         println!("  [apex] {nome}: {depois:.2} % (folga declarada {folga:.2} %)");
         assert!(
             depois >= 2.0,
@@ -1396,11 +1422,13 @@ fn the_fillet_reaches_every_edge_of_every_shape() {
             com_aresta += 1;
         }
         let Some(meio) = with_round(&p, 0.5) else {
-            // Sem filete: ela não pode ter aresta nenhuma para arredondar.
+            // Sem filete: ela não pode ter aresta nenhuma para arredondar — **ou** o ápice dela está
+            // declarado, com o mecanismo localizado, na mesma lista das outras.
             assert!(
-                vivo < 2.0,
+                vivo < apex_slack(k.key()).unwrap_or(2.0),
                 "«{}» não tem filete e tem {vivo:.1} % de aresta viva — ou ganha o controle, ou a \
-                 ausência dele deixou de ser uma decisão",
+                 ausência dele deixou de ser uma decisão (e se for ÁPICE, entra no APEX_EXCEPTION \
+                 com a sonda que o localizou ao lado)",
                 k.key()
             );
             continue;
@@ -2057,5 +2085,54 @@ fn the_star_creases_sorted_by_region() {
                 w[2]
             );
         }
+    }
+}
+
+/// **SONDA** — onde estão os vincos de uma forma **SEM filete** (a irmã da
+/// [`probe_where_the_fillet_misses`], que precisa de um filete para existir).
+///
+/// ⚠️ Ela existe porque a W128 trouxe a primeira forma sem filete a estourar a barra do
+/// [`the_fillet_reaches_every_edge_of_every_shape`], e *declarar uma folga sem localizar o vinco é
+/// escrever um número sobre um mecanismo que ninguém viu*.
+#[test]
+#[ignore = "sonda: onde uma forma sem filete tem vinco"]
+fn probe_where_a_filletless_shape_creases() {
+    let alvo = std::env::var("PH2D_MISS").unwrap_or_else(|_| "superformula".into());
+    for k in PrimitiveKind::ALL {
+        if k.key() != alvo {
+            continue;
+        }
+        let p = representative(k).expect("rep");
+        let (pontos, total, pior) = traverse(&p, 2048, 4);
+        let vincos = only_creases(&pontos);
+        println!(
+            "  «{alvo}»: {} de {total} amostras sobre vinco ({:.1} %), pior {pior:.1}°",
+            vincos.len(),
+            100.0 * vincos.len() as f64 / total as f64
+        );
+        // Onde eles estão, em coordenadas esféricas da casa (Y é o eixo de cima).
+        for (w, ang) in vincos.iter().take(14) {
+            let s = (w[0] * w[0] + w[2] * w[2]).sqrt();
+            println!(
+                "    [{:+.3} {:+.3} {:+.3}]  {ang:.1}°   elevação {:+.1}°  azimute {:+.1}°",
+                w[0],
+                w[1],
+                w[2],
+                w[1].atan2(s).to_degrees(),
+                w[2].atan2(w[0]).to_degrees()
+            );
+        }
+        // E quantos deles estão junto dos POLOS.
+        let polos = vincos
+            .iter()
+            .filter(|(w, _)| {
+                let s = (w[0] * w[0] + w[2] * w[2]).sqrt();
+                w[1].atan2(s).abs().to_degrees() > 70.0
+            })
+            .count();
+        println!(
+            "    ⇒ {polos} de {} estão acima de 70° de elevação (os POLOS)",
+            vincos.len()
+        );
     }
 }

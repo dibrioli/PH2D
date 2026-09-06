@@ -72,6 +72,7 @@ impl Primitive {
             Primitive::Gyroid { .. } => PrimitiveKind::Gyroid,
             Primitive::RoundedCylinder { .. } => PrimitiveKind::RoundedCylinder,
             Primitive::Superquadric { .. } => PrimitiveKind::Superquadric,
+            Primitive::Superformula { .. } => PrimitiveKind::Superformula,
         }
     }
 }

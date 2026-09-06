@@ -414,6 +414,92 @@ pub(crate) fn dims_exact(p: &Primitive) -> Vec<Dim> {
                 },
             },
         ],
+        // ─────────────────────────── W128 ───────────────────────────
+        // ⚠️ **A ordem É a identidade** (o `set_dim` recebe o ÍNDICE): as três medidas, depois os
+        // quatro números da curva de CIMA, depois os quatro do PERFIL.
+        Primitive::Superformula {
+            half,
+            top_symmetry,
+            top_n1,
+            top_n2,
+            top_n3,
+            side_symmetry,
+            side_n1,
+            side_n2,
+            side_n3,
+        } => {
+            let mut v = vec![
+                Dim {
+                    key: "field.dim.width",
+                    value: half[0] * 2.0,
+                    span: Span::Positive,
+                },
+                Dim {
+                    key: "field.dim.height",
+                    value: half[1] * 2.0,
+                    span: Span::Positive,
+                },
+                Dim {
+                    key: "field.dim.depth",
+                    value: half[2] * 2.0,
+                    span: Span::Positive,
+                },
+            ];
+            for (chaves, m, n1, n2, n3) in [
+                (
+                    [
+                        "field.dim.top_symmetry",
+                        "field.dim.top_n1",
+                        "field.dim.top_n2",
+                        "field.dim.top_n3",
+                    ],
+                    top_symmetry,
+                    top_n1,
+                    top_n2,
+                    top_n3,
+                ),
+                (
+                    [
+                        "field.dim.side_symmetry",
+                        "field.dim.side_n1",
+                        "field.dim.side_n2",
+                        "field.dim.side_n3",
+                    ],
+                    side_symmetry,
+                    side_n1,
+                    side_n2,
+                    side_n3,
+                ),
+            ] {
+                v.push(Dim {
+                    key: chaves[0],
+                    value: *m,
+                    span: Span::Count {
+                        min: crate::MIN_SUPERFORMULA_SYMMETRY,
+                        max: crate::MAX_SUPERFORMULA_SYMMETRY,
+                    },
+                });
+                v.push(Dim {
+                    key: chaves[1],
+                    value: *n1,
+                    span: Span::Range {
+                        min: crate::MIN_SUPERFORMULA_N1,
+                        max: crate::MAX_SUPERFORMULA_N1,
+                    },
+                });
+                for (chave, valor) in [(chaves[2], n2), (chaves[3], n3)] {
+                    v.push(Dim {
+                        key: chave,
+                        value: *valor,
+                        span: Span::Range {
+                            min: crate::MIN_SUPERFORMULA_N,
+                            max: crate::MAX_SUPERFORMULA_N,
+                        },
+                    });
+                }
+            }
+            v
+        }
         _ => Vec::new(),
     }
 }

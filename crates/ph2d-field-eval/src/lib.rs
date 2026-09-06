@@ -40,6 +40,8 @@ pub mod ops_box;
 pub mod ops_exact;
 /// ⭐ O FLUXOGRAMA — ver [`ops_flowchart`].
 pub mod ops_flowchart;
+/// ⭐ A SUPERFÓRMULA de Gielis — ver [`ops_gielis`].
+pub mod ops_gielis;
 pub mod ops_joint;
 /// ⭐ O GYROID e a família das redes — ver [`ops_lattice`].
 pub mod ops_lattice;
@@ -586,4 +588,6 @@ fn axis_gap(lo: f32, hi: f32) -> f32 {
 /// ⭐ Qual fórmula cada forma usa — ver [`primitive_tree`].
 #[path = "primitive_tree.rs"]
 mod primitive_tree;
+/// ⭐ As formas por FÓRMULA — ver [`primitive_tree_formula`].
+mod primitive_tree_formula;
 pub(crate) use primitive_tree::primitive;

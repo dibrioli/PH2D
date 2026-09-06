@@ -673,27 +673,10 @@ fn primitive_raw(p: &Primitive) -> Tree {
             f64::from(round),
             f64::from(chamfer),
         ),
-        // ─────────────────────────── W125 ───────────────────────────
-        // ⚠️ **Sem `round`/`chamfer`** — o bojo já É o arredondamento desta forma, e um segundo
-        // controlo sobre a mesma aresta daria dois nomes ao mesmo raio.
-        Primitive::RoundedCylinder {
-            radius,
-            bulge,
-            half_height,
-        } => crate::ops_exact::sd_rounded_cylinder(
-            f64::from(radius),
-            f64::from(bulge),
-            f64::from(half_height),
-        ),
-        // ─────────────────────────── W127 ───────────────────────────
-        Primitive::Superquadric {
-            half,
-            exponent_top,
-            exponent_side,
-        } => crate::ops_super::sd_superquadric(
-            [f64::from(half[0]), f64::from(half[1]), f64::from(half[2])],
-            f64::from(exponent_top),
-            f64::from(exponent_side),
-        ),
+        // ⭐ **As formas por FÓRMULA (W125–W128) baixam no irmão** — ver
+        // [`super::primitive_tree_formula`].
+        Primitive::RoundedCylinder { .. }
+        | Primitive::Superquadric { .. }
+        | Primitive::Superformula { .. } => crate::primitive_tree_formula::formula(p),
     }
 }

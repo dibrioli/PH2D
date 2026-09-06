@@ -255,9 +255,13 @@ pub struct Dim {
 /// ⭐ A metade de **escrita** — ver [`dims_write`].
 #[path = "dims_write.rs"]
 mod dims_write;
+
 /// ⭐ E os DOIS RECUOS de uma aresta, do lado da escrita — ver [`dims_write_edge`].
 #[path = "dims_write_edge.rs"]
 mod dims_write_edge;
+/// ⭐ As arms das formas por FÓRMULA — ver [`dims_write_formula`].
+#[path = "dims_write_formula.rs"]
+mod dims_write_formula;
 
 pub use crate::dims_scale::scale_primitive;
 /// ⭐ E a porta que **repõe as invariantes** depois de cada escrita — ver [`dims_clamp`].

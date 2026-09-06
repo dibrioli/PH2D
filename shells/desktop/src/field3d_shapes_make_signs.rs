@@ -269,3 +269,23 @@ pub(crate) fn a_superquadric(r: f32) -> Primitive {
         exponent_side: 4.0,
     }
 }
+
+/// ⭐⭐ **A SUPERFÓRMULA nasce ESTRELA DO MAR** — cinco lobos e um perfil de elipse.
+///
+/// ⚠️ **Não nasce no ponto neutro** (`m = 4`, tudo a `2`), que é a **esfera** — a paleta já a tem, e
+/// um botão que entrega o sósia de outra entrada não diz o que ele faz. *Uma forma nova tem de
+/// nascer no sítio em que ela é ELA.*
+pub(crate) fn a_superformula(r: f32) -> Primitive {
+    Primitive::Superformula {
+        half: [r, r * 0.55, r],
+        top_symmetry: 5.0,
+        top_n1: 0.6,
+        top_n2: 1.7,
+        top_n3: 1.7,
+        // O perfil fica no ponto neutro: uma elipse, para a estrela se ver.
+        side_symmetry: 4.0,
+        side_n1: 2.0,
+        side_n2: 2.0,
+        side_n3: 2.0,
+    }
+}

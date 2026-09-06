@@ -12559,3 +12559,114 @@ LOC (o `primitive.rs` passou dos `700` e foi **partido** por responsabilidade: o
 família saiu para o `primitive_family.rs`).
 **Smoke:** *MODEL* > *Add shape…* > **Superquadric**, e arrastar os dois expoentes; ou a cena `=24`,
 que mostra quatro pontos do mesmo knob.
+
+---
+
+## §129 — W128: a SUPERFÓRMULA de Gielis — uma fórmula, um catálogo (06/09)
+
+A de maior razão **forma/linha-de-código** do levantamento: folhas, conchas, flores, estrelas do
+mar, com oito números.
+
+### §129.1 — ⭐⭐⭐ O achado que a torna implementável: ela é a estrutura da W127
+
+O sólido de Gielis é o **produto esférico** de duas curvas planas,
+
+```text
+p = ( r₁(θ)cosθ · r₂(φ)cosφ ,  r₂(φ)sinφ ,  r₁(θ)sinθ · r₂(φ)cosφ )
+```
+
+e isso **não é uma função radial**: o ângulo polar do ponto não é `φ`, logo `‖p‖ − R(direcção)`
+descreve outra superfície.
+
+⭐ Mas escreva-se a **medida de Minkowski** de uma curva estrelada — `G(v) = ‖v‖ / r(ângulo de v)`.
+Com `u = (x, z)`, o produto esférico dá `G₁(u) = r₂(φ)cosφ` e `y = r₂(φ)sinφ` ⇒ *o par `(G₁(u), y)`
+**é** um ponto da segunda curva* ⇒ a superfície é exactamente `G₂( G₁(u), y ) = 1`.
+
+**Duas medidas encaixadas** — a mesma forma da superquadrática (§128), com as normas-`n` trocadas
+por estas. E daí sai tudo o resto: `g` é homogénea de grau `1` ⇒ `∇g` é homogénea de grau **zero**
+⇒ o máximo sobre a superfície **é** o máximo global.
+
+### §129.2 — ⛔⛔⛔ E o divisor pediu QUATRO correcções, todas na direcção perigosa
+
+Um divisor **curto** faz a marcha atravessar a superfície. Medido sobre `1 728` combinações
+(`simetria 1..24 × n1 × n2 × n3`), o **défice** de cada tentativa:
+
+| a varredura | pior défice |
+|---|---:|
+| grelha uniforme em `θ`, `512` amostras | **`16,3 %`** |
+| + bracket e secção áurea em cada pico | `4,5 %` |
+| contagem a seguir a simetria (`64`/lobo) | `23,9 %` (a `m = 1`) |
+| **em `α`, um período** + secção áurea | `1,7 %` |
+| **+ os ângulos críticos como candidatos** | **`0,0000 %`** |
+
+1. ⭐ **A variável errada.** A estrutura vive em `α = m(θ+π)/4`: uma feição de largura `Δα` mede
+   `4Δα/m` em `θ`, logo a `m = 24` ela encolhe **24×** e a grelha passa entre as amostras. *Adensar
+   não era a cura* — o erro de uma grelha sobre um pico cai como `1/n²`, e a árvore é recozida **por
+   quadro**.
+2. ⭐ **A janela do perfil não está centrada em zero.** `φ ∈ [−π/2, π/2]` dá `α ∈ [mπ/8, 3mπ/8]`, e
+   eu varria `[−largura, largura]`: **`69 %` curto**. *Uma janela de varredura são DOIS números, e
+   escrever só a largura deixa o centro por dizer.*
+3. ⛔ **`>=` dos dois lados faz de cada amostra de um PATAMAR um pico** — refinava as `512` e o
+   divisor passou a custar **`1,45 ms` por quadro**.
+4. ⭐⭐ **Os ângulos críticos.** Com `n₃ = 1` a derivada de `A` **salta** em `α = kπ/2`, e o supremo é
+   um limite lateral que nenhuma grelha atinge. *A fórmula diz onde estão as suas próprias esquinas*
+   ⇒ avalia-se em `kπ/2 ± ε`. Foi o que levou o défice a zero.
+
+⭐ Custo final: **`71 µs` por quadro** para as duas varreduras, e o campo custa **`3,8×`** uma esfera
+(contra `28×` do gyroid).
+
+### §129.3 — ⛔⛔ E a normalização é PRODUTO, não matemática
+
+Sem ela, `r = A^(−1/n1)` chega a `8`: uma peça de meia-medida `0,35` media **`2,8`**, e a marcha
+começava **dentro** dela. *Mexer num EXPOENTE mudava o TAMANHO* — e a caixa envolvente do documento
+passava a descrever outra coisa, o que estraga o recorte, o gizmo e a exportação. As duas curvas
+passam a ser divididas pelo próprio `max r`, e há gate: `the_piece_never_leaves_the_box_it_was_given`
+mede que a peça **encosta** na caixa e **não passa**.
+
+### §129.4 — ⛔ A simetria é INTEIRA, e a razão é a costura
+
+O `atan2` corta o círculo em `±π`. `A(θ)` é **par**, logo o VALOR atravessa; a **derivada** troca de
+sinal e deixa um vinco, a não ser que ela seja zero ali. Com o argumento deslocado de meia volta a
+costura cai em `α = 0` e `α = mπ/2`, onde `A = 1` e `A' = 0` — **e as duas só coincidem se `m` for
+inteiro**. *Um `m` fraccionário não faz uma forma nova: faz uma peça rachada de lado a lado.*
+
+⚠️ **E não é o gate dos lobos que o apanha** — medido por mutação: tirar o deslocamento deixa a
+contagem verde e reprova o **divisor**. O vinco é uma descontinuidade da DERIVADA, e contar máximos
+do raio não a vê. *Uma leitura rápida esperaria o contrário.*
+
+### §129.5 — As cercas, cada uma com a sua tabela
+
+| knob | faixa | o que a fixa |
+|---|---|---|
+| **Symmetry** | `1..16`, **inteira** | preço: `16` custa `41` passos = `5,1×` a esfera, a faixa que o `MAX_STAR_POINTS` fixou |
+| **N1** | `0,3 .. 40` | a `0,05` a marcha **não chega à peça**; a `0,3` custa `4,25×`. No topo o `K` está a `0,8 %` do limite |
+| **N2, N3** | `1 .. 4` | abaixo de `1` há **cúspides** e o divisor salta para `6,5·10⁶`; o custo é uma **bacia** com mínimo em `2` |
+
+⚠️ **A esquina da caixa está declarada:** com os três no pior sítio ao mesmo tempo (`m = 16`,
+`n1 = 0,3`, `n2 = n3 = 4`) a marcha paga **`113` passos** (`14×`). *É preço, não defeito* — o campo
+continua a ser um minorante honesto em toda a caixa, e é isso que o censo mede.
+
+### §129.6 — ⚠️ E a régua dos DOIS EIXOS esteve errada DUAS vezes, pela mesma razão
+
+Num produto esférico **a direcção que se sonda não é o parâmetro da curva**:
+
+1. o corte `X–Y` atravessa os lobos do **plano**, logo acusava lobos num perfil liso;
+2. o raio contra a elevação num azimute fixo é a curva do perfil **esticada** por `r₁(θ)` — com um
+   perfil neutro ele desenha uma **elipse**, e a excursão dela lia `0,104`.
+
+⭐ A régua que separa é o **desvio da elipse** ajustada pelos dois semi-eixos medidos: um perfil
+neutro é a elipse (`< 0,01`), um perfil com lobos não é (`0,0959`). ⚠️ E antes disso a contagem de
+lobos leu **`237`** numa silhueta lisa — *uma régua de contagem sem limiar de proeminência mede o
+ruído do último dígito*.
+
+**Provas de mutação (4, todas mortas):** tirar os ângulos críticos (mata 3 gates) · tirar a
+normalização do perfil no divisor · tirar a normalização da curva de cima na árvore · tirar o
+deslocamento da costura. ⚠️ **Uma quinta «sobreviveu» e era o filtro:** o `python` abortou no
+`assert` e o ficheiro ficou intacto — *um verde de uma mutação que não se aplicou lê-se igual a uma
+que sobreviveu*.
+
+**Gates:** censo (26, com o representante novo) · as 5 provas novas · shell · fmt · clippy · LOC (o
+`dims_write.rs` e o `primitive_tree.rs` passaram dos `700` e foram **partidos** por
+responsabilidade: as arms das formas por fórmula saíram para irmãos).
+**Smoke:** *MODEL* > *Add shape…* > **Superformula**, e a cena `=25` com seis formas da mesma
+fórmula.

@@ -439,7 +439,7 @@ mesma fórmula com `points` e a razão interna certa —, `sdPie`, `sdCutDisk`, 
 |---|---|---|
 | **Hélice / mola** | **B** ⭐⭐⭐ | **O irmão 3D da espiral, e o mecanismo já está pago**: a volta mais próxima sai de um `round()`, exactamente como na W123. Molas, parafusos, cabos, corrimãos, DNA, escadas em caracol |
 | **Gyroid e a família TPMS** | **C** ⭐⭐⭐ | `sin x·cos y + sin y·cos z + sin z·cos x = 0` — **uma linha** dá um enchimento infinito. É o que a impressão 3D usa dentro das peças, e o que um artista usa para «isto é uma estrutura». ⚠️ Não é distância exacta; o limite sai por **dividir pelo gradiente máximo**, que é a lei que a onda do `Document` acabou de estabelecer nesta linha |
-| **Superfórmula (Gielis)** | **C** ⭐⭐ | **Uma fórmula, centenas de formas orgânicas** — folhas, conchas, flores, estrelas do mar. Seis números. É a maior razão forma/linha-de-código de toda esta lista |
+| ~~**Superfórmula (Gielis)**~~ | — | ✅ **SHIPOU na W128** — o **produto esférico** de duas curvas, escrito como **duas medidas de Minkowski encaixadas** (a mesma estrutura da superquadrática). Divisor por duas varreduras de uma dimensão, `71 µs`/quadro, campo a `3,8×` uma esfera |
 | ~~**Superquadrática / superelipsóide**~~ | — | ✅ **SHIPOU na W127** — com **dois** expoentes (o de cima e o de lado), divisor em forma fechada e a esfera **exacta** no meio. ⛔ A astróide fica **fora com demonstração**: abaixo de `n = 1` o gradiente na superfície não tem limite (cúspides) |
 | **Nó de toro (p, q)** | **C** ⭐⭐ | Dois inteiros dão uma família inteira de nós. Decoração, joalharia, matemática |
 | **Rosca / knurling** | **B** ⭐ | A hélice varrida num cilindro — o parafuso a sério, e o punho serrilhado |
@@ -475,10 +475,10 @@ a ordena é o dono do produto.
 |---|---:|---|
 | §7.2 — catálogo **3D** | **3** | Plane · Death Star · Vesica Segment |
 | §7.3 — catálogo **2D** | **5** | Polygon(N) · Triangle · Bezier · Parabola · Circle Wave |
-| §7.4 — **famílias** fora de catálogo | **3** | Superfórmula · Nó de toro · Rosca |
-| **total** | **11** | |
+| §7.4 — **famílias** fora de catálogo | **2** | Nó de toro · Rosca |
+| **total** | **10** | |
 
-⚠️ **Actualizado em 06/09**: a **Superquadrática** saiu da conta (shipou na W127 — [doc 06 §128](06_resultados_cena_e_gizmo.md)).
+⚠️ **Actualizado em 06/09**: saíram da conta a **Superquadrática** (W127 — [doc 06 §128](06_resultados_cena_e_gizmo.md)) e a **Superfórmula** (W128 — [§129](06_resultados_cena_e_gizmo.md)).
 
 ⛔ **Fora desta conta, de propósito:** as **duas** que são modificadores e não formas (grade
 hexagonal, metabolas) e os **fractais** (§7.4), que são wave com medição própria. ⚠️ E o **Plane**

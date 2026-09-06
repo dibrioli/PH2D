@@ -467,6 +467,20 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             exponent_top: 4.0,
             exponent_side: 2.5,
         },
+        // ⚠️ **A ESTRELA DO MAR, com as duas curvas em sítios DIFERENTES** — se as duas
+        // estivessem no ponto neutro a peça era uma esfera, e o censo mediria a forma errada. E a
+        // peça é **torta**, que é o que separa uma permutação de eixos da identidade.
+        PrimitiveKind::Superformula => Primitive::Superformula {
+            half: [0.40, 0.22, 0.34],
+            top_symmetry: 5.0,
+            top_n1: 0.6,
+            top_n2: 1.7,
+            top_n3: 1.3,
+            side_symmetry: 2.0,
+            side_n1: 1.5,
+            side_n2: 2.0,
+            side_n3: 3.0,
+        },
     })
 }
 

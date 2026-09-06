@@ -36,6 +36,7 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
         Primitive::Sphere { .. }
         | Primitive::RoundedCylinder { .. }
         | Primitive::Superquadric { .. }
+        | Primitive::Superformula { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }

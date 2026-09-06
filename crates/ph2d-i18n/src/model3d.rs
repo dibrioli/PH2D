@@ -123,6 +123,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.add.gyroid" => "Gyroid Lattice",
         "panel.model3d.add.rounded_cylinder" => "Rounded Cylinder",
         "panel.model3d.add.superquadric" => "Superquadric",
+        "panel.model3d.add.superformula" => "Superformula",
         "panel.model3d.add.bolt" => "Lightning Bolt",
         "panel.model3d.add.shield" => "Shield",
         "panel.model3d.add.tag" => "Tag",
@@ -325,6 +326,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // desta casa é o `Y` — chamar-lhes pelos eixos obrigaria a decifrar qual é qual.
         "field.dim.exponent_top" => "Top Exponent",
         "field.dim.exponent_side" => "Side Exponent",
+        // ⚠️ **Os nomes da LITERATURA, e não uns amigáveis** — é a mesma decisão do alfabeto do
+        // L-System: `m`, `n1`, `n2` e `n3` são como toda publicação e todo tutorial de Gielis os
+        // chamam, e rebaptizá-los tornaria o conhecimento de fora inaplicável aqui.
+        "field.dim.top_symmetry" => "Top Symmetry",
+        "field.dim.top_n1" => "Top N1",
+        "field.dim.top_n2" => "Top N2",
+        "field.dim.top_n3" => "Top N3",
+        "field.dim.side_symmetry" => "Side Symmetry",
+        "field.dim.side_n1" => "Side N1",
+        "field.dim.side_n2" => "Side N2",
+        "field.dim.side_n3" => "Side N3",
         "field.dim.hole" => "Hole",
         "field.dim.notch" => "Notch",
         // ⚠️ Em GRAUS na cabeça do artista, mas o documento guarda radianos — o painel mostra o

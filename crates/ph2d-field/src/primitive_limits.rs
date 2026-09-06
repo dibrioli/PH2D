@@ -366,3 +366,63 @@ pub const MIN_SUPERQUADRIC_EXPONENT: f32 = 1.0;
 /// De `1` a `16` o controlo entrega **85 %** de toda a travessia; de `64` para cima sobra `2 %`, e
 /// quem quer a caixa perfeita tem a `Box` — que é exacta e mais barata.
 pub const MAX_SUPERQUADRIC_EXPONENT: f32 = 64.0;
+
+// ─────────────────────────── W128 — a superfórmula de Gielis ───────────────────────────
+
+/// ⭐ **Quantos lobos a curva tem** — e ela é **INTEIRA**, o que não é gosto: é a costura.
+///
+/// O `atan2` corta o círculo em `±π`. Com o argumento deslocado de meia volta a costura cai onde
+/// `A = 1` e `A' = 0` — e as duas pontas só coincidem se `m` for inteiro. *Um `m` fraccionário não
+/// faz uma forma nova: faz uma peça rachada de lado a lado.*
+pub const MIN_SUPERFORMULA_SYMMETRY: u32 = 1;
+
+/// ⭐ **O tecto da simetria, e é PREÇO** — a mesma régua do [`MAX_STAR_POINTS`].
+///
+/// O divisor cresce linearmente com `m`, e com ele os passos da marcha (uma esfera custa `8`):
+///
+/// | `m` | 1 | 5 | 8 | 12 | **16** | 24 | 32 | 64 |
+/// |---|---:|---:|---:|---:|---:|---:|---:|---:|
+/// | passos até tocar | `8` | `13` | `22` | `32` | **`41`** | `59` | `76` | `140` |
+///
+/// `16` custa `5,1×` a esfera — a faixa de preço que o `MAX_STAR_POINTS` fixou (`5,17×` recusado
+/// contra `3,80×` aceite, e aqui é o valor **dentro** dela).
+pub const MAX_SUPERFORMULA_SYMMETRY: u32 = 16;
+
+/// ⭐ **O piso do expoente de fora** (`r = A^(−1/n1)`) — baixo EXAGERA os lobos, e paga-se.
+///
+/// | `n1` | 0,05 | 0,1 | 0,2 | **0,3** | 0,5 | 1 | 2 |
+/// |---|---:|---:|---:|---:|---:|---:|---:|
+/// | passos (canto) | **desiste** | `172` | `56` | **`34`** | `21` | `13` | `10` |
+///
+/// A `0,05` a marcha **não chega à peça** dentro do orçamento. `0,3` custa `4,25×` a esfera.
+pub const MIN_SUPERFORMULA_N1: f32 = 0.3;
+
+/// ⭐ **O tecto do `n1` — e aqui não é preço, é o CONTROLO deixar de entregar forma.**
+///
+/// | `n1` | 2 | 8 | **40** | 200 |
+/// |---|---:|---:|---:|---:|
+/// | divisor `K` | `3,40` | `2,98` | **`2,88`** | `2,86` |
+///
+/// O limite é `1/raio = 2,857` (a curva vira um círculo). A `40` já se está a `0,8 %` dele, e os
+/// passos são os `8` de uma esfera desde o `8`.
+pub const MAX_SUPERFORMULA_N1: f32 = 40.0;
+
+/// ⭐⭐ **O piso dos expoentes dos dois braços — e ele é do CAMPO.**
+///
+/// Abaixo de `1` a curva tem **cúspides** e o gradiente da medida não tem limite: medido, o divisor
+/// salta para `6,5·10⁶` a `n = 0,6` e `2,4·10¹¹` a `0,3`, e a marcha deixa de sair do sítio. É a
+/// mesma cerca da [`MAX_SUPERQUADRIC_EXPONENT`] pelo mesmo mecanismo, um nível acima.
+pub const MIN_SUPERFORMULA_N: f32 = 1.0;
+
+/// ⭐ **O tecto dos braços** — e o custo é uma **bacia**, não uma rampa: o mínimo é em `2` (onde a
+/// curva é um círculo) e sobe para os dois lados.
+///
+/// | `n2 = n3` | 1 | 1,5 | **2** | 3 | **4** | 5 | 8 |
+/// |---|---:|---:|---:|---:|---:|---:|---:|
+/// | passos (`m = 5`, `n1 = 1`) | `13` | `10` | **`8`** | `15` | **`29`** | `49` | `156` |
+///
+/// `4` custa `3,6×` a esfera. ⚠️ **E a esquina da caixa está declarada:** com os três knobs no pior
+/// sítio ao mesmo tempo (`m = 16`, `n1 = 0,3`, `n2 = n3 = 4`) a marcha paga **`113` passos**
+/// (`14×`) — *bounded, e o campo continua a ser um minorante honesto em toda a caixa*, que é o que
+/// o censo mede. O preço de uma esquina não é o preço da forma.
+pub const MAX_SUPERFORMULA_N: f32 = 4.0;

@@ -527,6 +527,8 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
         23 => shapes::cena_23(),
         // ⭐⭐ A SUPERQUADRÁTICA da W127 — ver [`shapes::cena_24`].
         24 => shapes::cena_24(),
+        // ⭐⭐⭐ A SUPERFÓRMULA da W128 — ver [`shapes::cena_25`].
+        25 => shapes::cena_25(),
         _ => {
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"

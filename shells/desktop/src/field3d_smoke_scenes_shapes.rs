@@ -454,3 +454,46 @@ pub(crate) fn cena_24() -> Result<FieldDoc, ph2d_field::FieldError> {
         NodeId(4),
     )
 }
+
+/// ⭐⭐⭐ **A cena `=25`: SEIS FORMAS DA MESMA FÓRMULA** (W128) — a superfórmula de Gielis.
+///
+/// ⚠️ **Seis peças e não uma**: o que esta forma vende é *quantas coisas diferentes ela é*, e uma
+/// cópia só mostraria uma estrela do mar. Todas têm a MESMA fórmula e só os oito números mudam.
+pub(crate) fn cena_25() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 25 — A SUPERFORMULA (W128): esfera · estrela do mar · flor · folha · \
+         diamante · e uma com o PERFIL a mexer. A mesma formula nas seis."
+    );
+    #[allow(clippy::too_many_arguments)]
+    let peca = |tm: f32, t1: f32, t2: f32, t3: f32, sm: f32, s1: f32, s2: f32, s3: f32, x: f32| {
+        leaf(
+            Primitive::Superformula {
+                half: [0.17, 0.17, 0.17],
+                top_symmetry: tm,
+                top_n1: t1,
+                top_n2: t2,
+                top_n3: t3,
+                side_symmetry: sm,
+                side_n1: s1,
+                side_n2: s2,
+                side_n3: s3,
+            },
+            Xform {
+                translation: [x, 0.0, 0.0],
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    FieldDoc::new(
+        vec![
+            peca(4.0, 2.0, 2.0, 2.0, 4.0, 2.0, 2.0, 2.0, -1.05),
+            peca(5.0, 0.6, 1.7, 1.7, 4.0, 2.0, 2.0, 2.0, -0.63),
+            peca(6.0, 1.0, 1.0, 1.0, 4.0, 2.0, 2.0, 2.0, -0.21),
+            peca(3.0, 4.0, 4.0, 4.0, 4.0, 2.0, 2.0, 2.0, 0.21),
+            peca(4.0, 1.0, 1.0, 1.0, 4.0, 1.0, 1.0, 1.0, 0.63),
+            peca(4.0, 2.0, 2.0, 2.0, 2.0, 1.0, 4.0, 1.0, 1.05),
+            combine(Op::Union(Blend::Sharp), (0..6).map(NodeId).collect()),
+        ],
+        NodeId(6),
+    )
+}

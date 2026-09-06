@@ -36,7 +36,7 @@ plasticidade `0`, pino desligado, sem colisões, sem gravidade — i.e., **as om
 
 ## ⭐ O instrumento POR PASSO (`*.porpasso.txt.gz`, pedido do I em 2026-09-06)
 
-**O que é.** Para **nove** traços (⚠️ **conte-os**: `ls *.porpasso.txt.gz | wc -l`), as posições
+**O que é.** Para os **nove** traços da tabela abaixo — os `_origem` —, as posições
 **depois de CADA passo** — um ficheiro por traço com um
 bloco `passo k` por passo. **Como foi obtido:** o traço do binário é uma chamada só e a simulação vive
 dentro dela, logo não se pode «pausar»; mas a simulação **nunca olha para a frente**, então uma corrida
@@ -45,8 +45,15 @@ estado do passo `k` da corrida inteira. Cada ficheiro traz a **prova**: `prova_d
 diferença máxima por vértice entre o bloco `k = N` e uma corrida inteira da MESMA sessão — tem de ser
 `0,000000` (a 6 decimais).
 
-⚠️ **O pen-down de TODOS eles está NA ORIGEM do objecto** (`caminho` de `(0,0,0)` a `(0,6,0,0)`), e o
-sufixo `_origem` diz-o. Motivo, medido: o centro da área *Local* é o ponto de HOVER do cursor antes do
+⚠️⚠️ **`ls *.porpasso.txt.gz | wc -l` devolve `13`, e só NOVE deles são o instrumento** (R-pré,
+2026-09-06): os outros **quatro** são a 1.ª geração, com o pen-down em `x = −0,3`, e ⛔ **TRÊS deles
+NÃO passam a prova do fatiamento** — `plano_arrastar_radial_local` (`0.330421`),
+`plano_agarrar_radial_local_2passos` (`0.115064`) e `plano_gancho_radial_local_2passos` (`0.004244`).
+⛔ **Não os use como oráculo**: ficam como o REGISTO da medição que obrigou ao pen-down na origem.
+⭐ E o quarto, `plano_arrastar_radial_global`, dá `0.000000` — *porque a área dele é **Global** e não
+tem centro para ficar refém do sobrevoo*, que é exactamente o mecanismo explicado a seguir.
+⚠️ **O pen-down dos NOVE está NA ORIGEM do objecto** (`caminho` de `(0,0,0)` a `(0,6,0,0)`), e o
+sufixo `_origem` diz-o (o `_fraco` é um deles). Motivo, medido: o centro da área *Local* é o ponto de HOVER do cursor antes do
 pen-down, e num traço scriptado esse hover é **refém do ponteiro físico** — numa sessão inteira saiu
 certo, na seguinte saiu na origem em todas as corridas e a zero em duas. Com o pen-down na origem, o
 centro é o mesmo quer o hover dispare quer não ⇒ determinístico por construção. Os outros fixtures
@@ -209,6 +216,7 @@ o ficheiro diz o que contém.
 | `plano_apertar_ponto_radial_local.` | apertar_ponto | 12 | 2146 | `0.325769` |
 | `plano_apertar_ponto_radial_local_1passo.` | apertar_ponto | 2 | 171 | `0.09917` |
 | `plano_apertar_ponto_radial_local_origem.` | apertar_ponto | 12 | 2145 | `0.303401` |
+| `plano_apertar_ponto_radial_local_origem_fraco.` | apertar_ponto | 12 | 2029 | `0.004082` |
 | `plano_arrastar_plano_local.` | arrastar | 12 | 2146 | `0.8996` |
 | `plano_arrastar_radial_dinamica.` | arrastar | 12 | 2508 | `0.612821` |
 | `plano_arrastar_radial_dinamica_preset.` | arrastar | 12 | 2455 | `0.329617` |
@@ -242,4 +250,5 @@ o ficheiro diz o que contém.
 | `plano_inflar_radial_local_1passo.` | inflar | 2 | 171 | `0.09917` |
 | `plano_inflar_radial_local_origem.` | inflar | 12 | 2145 | `0.317081` |
 
-**53 traços** (47 da matriz + 6 do instrumento por passo). ⚠️ As fixtures de ESFERA são todas de área **Dinâmica** (centro no cursor). A área *Local* na esfera NÃO foi gravada: um traço scriptado não dispara o hover que fixa o centro da área Local, que fica na ORIGEM do objecto — e numa esfera unitária a origem põe toda a malha dentro da banda (ver ERRATA no ledger). A área Local está medida no PLANO (onde a origem cai na superfície).
+**56 traços** (47 da matriz + 9 do instrumento por passo) — ⚠️ **conte-os**
+(`ls *.deformado.txt.gz | wc -l`), esta linha já esteve parada em `53`. ⚠️ As fixtures de ESFERA são todas de área **Dinâmica** (centro no cursor). A área *Local* na esfera NÃO foi gravada: um traço scriptado não dispara o hover que fixa o centro da área Local, que fica na ORIGEM do objecto — e numa esfera unitária a origem põe toda a malha dentro da banda (ver ERRATA no ledger). A área Local está medida no PLANO (onde a origem cai na superfície).

@@ -63,16 +63,55 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   triangulares dá `11 / 26 / 88`); (4) os gates 15 e 17 citavam `51` e `50` traços de memória, com
   `54` no disco. Mais a decisão do §5.2-ter posta nas duas frases que o dono precisa de ler.
   Veredictos e detalhe: LEDGER §Papel R.
-  ⏳ **EMENDA Q12 de 2026-09-06 — AGUARDA o atestado do R-pré** (§4.2-bis NOVA · §4.3 · §4.4 ·
+  ✅ **EMENDA Q12 de 2026-09-06 — auditada contra §4.2 por R-pré em 2026-09-06** (§4.2-bis NOVA · §4.3 · §4.4 ·
   §4.6 NOVA · §10 contagem · §10.7 NOVA · §14 gates 22-24, + as duas fixtures por passo
   `plano_empurrar_radial_local_origem` e `plano_inflar_radial_local_origem` e o gerador do índice
   delas): a **normal da área** que o Push lê (quando é reavaliada, sobre que malha, em que raio, com
   que peso e com que regra de desempate), o **factor de escala** que a multiplica, a lei do **centro
   da área** (que fecha a pergunta em aberto no fim do §4.4), e o **censo das grandezas que são
   degeneradas num plano visto de frente e vivas numa superfície curva** — entre elas que o
-  deslocamento do cursor que sete dos oito modos lêem é a **projecção** no plano do ecrã, e que só o
-  arrasto lê a diferença dos dois pontos 3D. Escrita pelo subagente-E da mesma janela, com o fonte
+  deslocamento do cursor que os oito modos lêem (no guarda) e de que quatro consumidores tiram
+  direcção é a **projecção** no plano do ecrã, e que só o arrasto tira a direcção da diferença dos
+  dois pontos 3D. Escrita pelo subagente-E da mesma janela, com o fonte
   reaberto só para estas perguntas e com uma corrida NOVA do oráculo (as 26 corridas-prefixo do §10.7).
+  **R-pré: contexto novo, independente de quem a escreveu; leu os dois lados (o fonte por shell).**
+  ⛔ **ZERO achados de §4.2** — sem trecho, sem nome interno, sem wording de comentário/manual; a
+  regra dos dois baldes, a lei do centro da área e o censo do §4.6 estão em vocabulário do domínio, e
+  as fórmulas são matemática (§4.1.2). Sweep **verde** sobre a espec emendada + a pasta inteira das
+  fixtures + INBOX + os dois READMEs + `docs/3D/cloth/`, e sobre o **histórico** destes caminhos (os
+  dois hits do ledger são os pré-existentes de 2026-09-05, já registados lá para o R-pós).
+  ⭐⭐ **FIDELIDADE: os factos foram conferidos no fonte e os NÚMEROS reconstruídos do zero pelo
+  R-pré** — a reavaliação por passo sobre a malha **deformada** (com a lista completa do que a
+  congela), o disco de **meio** raio, o peso `3p²−2p³`, os dois baldes pelo sinal contra a vista, o
+  vector nulo sem `NaN`, o factor de escala de três números fixado no pen-down e aplicado componente a
+  componente, a lei do centro da área, e as **duas** metades da §4.6-1 (o deslocamento des-projectado
+  à profundidade do pen-down · o arrasto a ler a diferença dos dois pontos 3D). Reproduzem-se do zero:
+  `0,3518`/`+0,5 %` e `1,3184`/`+7,6 %` das calotas · `0,05455` e `0,01547` · `15,83°` e `1,039×` ·
+  `19,3 %` · a razão `0,06543/0,09347 = 0,7000 = 2R` · as **11** colunas dos dois rastreios do §10.7 ·
+  as contagens `0,236509` · `0,463862` · `0,325769` · `0,046715` · e o `gera_indice.py`, que
+  **regenera o `indice.json` byte-a-byte** (56 entradas para 56 ficheiros).
+  ⚠️ **A correcção à §5.2-bis (o duplicado nas costuras do *Dynamic*) confere**, e o mecanismo também:
+  o registo de pares é local a cada construção e cada cópia carrega a sua própria célula.
+  **SEIS curas aplicadas no acto pelo R-pré, todas funcionais:** (1) o desempate dos baldes é *o
+  primeiro que esteja não-vazio **E** cuja soma não se anule* — a redacção anterior mandava responder
+  o vector nulo num caso em que o alvo lê o outro balde; (2) o guarda de «passo parado» vale para os
+  **oito** modos (a célula da §4.6-1 lia-se como se o arrasto não o tivesse), e Push/Inflate/Expand
+  não lêem `δ` para a direcção nenhuma — não só o arrasto; (3) ⛔ **a §4.6-4 afirmava peso de ÁREA e
+  isso NÃO é demonstrável** com o que esta linha tem à mão (nem o corpus o decide: no plano todos os
+  pesos coincidem, na esfera UV a simetria em longitude apaga a diferença) — a linha passa a declarar
+  a FORMA e a nomear o peso como pergunta aberta, com a régua que a fecharia; (4) o §10.7 dizia que a
+  frente a `1R` **ultrapassa** o pen-down do Push e os próprios números dizem o contrário
+  (`0,1976 < 0,2195`); (5) o gate 22 dava a sequência de ângulos truncada em `…` — ficam os **11**
+  passos e a razão de ela ser simétrica; (6) o censo da §4.6 dizia «as oito fixtures de esfera» e
+  listava sete — a oitava é o **arrasto**, que é precisamente o CONTROLO do gate 22.
+  ⚠️ **E DUAS no README das fixtures, ambas de contagem, ambas da família que esta linha já pagou
+  duas vezes:** `ls *.porpasso.txt.gz` devolve **13** e não `9`, e os quatro que sobram são a 1.ª
+  geração — **três deles NÃO passam a prova do fatiamento** (`0.330421` · `0.115064` · `0.004244`) e
+  estavam debaixo da frase «o pen-down de TODOS eles está na origem»; ⭐ o quarto passa, e passa
+  *porque a área dele é Global e não tem centro para ficar refém do sobrevoo* — que é o mecanismo que
+  o próprio README explica. Mais o total do fim, parado em `53` com `56` no disco, e a fixture
+  `_fraco` que faltava na tabela das corridas (agora `56` linhas para `56` ficheiros).
+  Veredictos e detalhe: LEDGER §Papel R.
 Mapa de leitura da literatura (⭐ pública e lícita a TODOS os papéis):
   · Jakobsen, "Advanced Character Physics", GDC 2001 — integração de Verlet por posições + relaxação
     de restrições de distância por projecção. É EXACTAMENTE a família do solver do alvo.
@@ -463,13 +502,16 @@ direcção diferente assim que a superfície deixa de ser plana ou de estar em r
 
 **(4) A regra de desempate, que não é uma média.** Os vértices são repartidos em **dois** baldes pelo
 sinal de `n̂ · v̂` (`v̂` = a direcção da vista): `> 0` no balde da frente, `≤ 0` no de trás. A resposta é
-a soma normalizada do **PRIMEIRO balde não vazio, nesta ordem fixa** — nunca a mistura dos dois, e
-⛔ nunca «o balde com mais vértices». ⇒ basta **um** vértice virado para a vista para que os virados
-ao contrário não contem.
+a soma normalizada do **PRIMEIRO balde que esteja não-vazio E cuja soma tenha comprimento não-nulo,
+nesta ordem fixa** — nunca a mistura dos dois, e ⛔ nunca «o balde com mais vértices». ⇒ basta **um**
+vértice virado para a vista para que os virados ao contrário não contem.
+⚠️ **O balde da frente ser não-vazio não basta:** se a soma dele se anular (normais opostas que se
+cancelam), a resposta é a do balde de trás — o teste é *não-vazio **e** soma não-nula*, avaliado balde
+a balde e nesta ordem, ⛔ **não** «escolher o balde e só depois olhar para a soma».
 
-**(5) Quando não há resposta.** Se nenhum vértice qualifica, ou se a soma do balde escolhido tem
-comprimento zero, `n̂_área` é o **vector NULO** — e o Push desse passo é **força zero**, sem `NaN` e
-sem direcção de reserva.
+**(5) Quando não há resposta.** Se **nenhum** dos dois baldes passa esse teste (nenhum vértice
+qualifica, ou as duas somas têm comprimento zero), `n̂_área` é o **vector NULO** — e o Push desse passo
+é **força zero**, sem `NaN` e sem direcção de reserva.
 
 **(6) A forma de queda *Projected*** projecta ainda `n̂_área` no plano do ecrã e re-normaliza (com
 *Sphere*, a dos presets, não faz nada).
@@ -502,9 +544,14 @@ frente o caminho vive nesse plano e `δ` **é** a diferença dos pontos, ao bit;
 os dois vectores separam-se.
 ⚠️ **Quem lê `δ`:** o guarda de «passo sem movimento» de TODOS os modos · a âncora do Agarrar (que o
 acumula) · a âncora e o avanço do centro do Snake Hook · a **normal do plano de queda** (§4.4) · o
-`x̂` do referencial local do traço (§4.4). ⛔ **O arrasto é o único modo que NÃO o lê para a
-direcção:** ela é a diferença **dos dois pontos 3D** do cursor, normalizada (§4.2) — e é por isso que
-o arrasto é o modo que se comporta igual nas duas superfícies.
+`x̂` do referencial local do traço (§4.4). ⛔ **O guarda de «passo sem movimento» vale para os OITO
+modos, o arrasto incluído** — ele corre antes de o modo ser escolhido.
+⛔ **E o arrasto é o único modo que tira a direcção do MOVIMENTO do cursor e NÃO a tira de `δ`:** ela
+é a diferença **dos dois pontos 3D** do cursor, normalizada (§4.2) — e é por isso que o arrasto é o
+modo que se comporta igual nas duas superfícies. ⚠️ **Push, Inflate e Expand não lêem deslocamento de
+cursor nenhum para a direcção** (normal da área · normal do vértice · nenhuma), e o aperto de ponto
+também não (vértice → cursor) — eles só encontram `δ` no guarda e, se o falloff for de plano, na
+normal desse plano.
 ⚠️ **Números na esfera das fixtures** (esfera unitária, caminho de `x = −0,3` a `+0,3` em 12 passos,
 vista ao longo do eixo de profundidade — M): `δ` vale `(0,05455, 0, 0)` em **todos** os passos,
 enquanto a diferença dos pontos 3D chega a `(0,05455, ∓0,01547, 0)` — **`15,83°`** de diferença de
@@ -629,12 +676,23 @@ numa esfera passam a variar. *Um port calibrado só no plano acerta nelas por ac
 
 | # | grandeza | no plano visto de frente | numa superfície curva | quem a lê |
 |---|---|---|---|---|
-| 1 | **o deslocamento do cursor `δ`** (§4.3) | **igual** à diferença dos dois pontos 3D | a componente de profundidade é **descartada**: `15,83°` de diferença de direcção nas fixtures de esfera, `1,039×` de módulo, `0,04569` de desvio acumulado (`19,3 %` do maior deslocamento do Agarrar) | Agarrar · Snake Hook · normal do plano de queda · `x̂` do referencial · o guarda de «passo parado» de todos ⛔ **menos** o arrasto |
+| 1 | **o deslocamento do cursor `δ`** (§4.3) | **igual** à diferença dos dois pontos 3D | a componente de profundidade é **descartada**: `15,83°` de diferença de direcção nas fixtures de esfera, `1,039×` de módulo, `0,04569` de desvio acumulado (`19,3 %` do maior deslocamento do Agarrar) | Agarrar · Snake Hook · normal do plano de queda · `x̂` do referencial · e o guarda de «passo parado» dos **oito** modos (o arrasto incluído) — ⛔ o que o arrasto **não** tira de `δ` é a **direcção** |
 | 2 | **a normal da área** (§4.2-bis) | exactamente a normal da folha, em todos os passos, até a folha se cavar | média com peso `3p²−2p³` das normais **actuais** num disco de **meio** raio: não é a normal no ponto do cursor, e roda com a vala que o traço vai abrindo | Push · plano de queda · `ẑ` do referencial |
 | 3 | **o centro da área** (§4.4) | praticamente o cursor | mistura pesada que **puxa para o cursor**, e não o centroide do disco | plano de queda |
-| 4 | **a normal do vértice** | `+ẑ` para todos, seja qual for o peso usado ao somar as faces | soma das normais de face **não normalizadas** (⇒ peso de ÁREA) das faces que tocam o vértice, sobre a malha **actual**, depois normalizada: peso por área, por ângulo e uniforme dão respostas **diferentes** | Inflate |
-| 5 | **a repartição em dois baldes** pelo sinal de `n̂ · v̂` (§4.2-bis) | um balde só: o segundo nunca é usado | o segundo balde enche-se assim que o disco alcança a silhueta, e ⛔ ele só é lido se o primeiro estiver **vazio** | normal e centro da área |
+| 4 | **a normal do vértice** | `+ẑ` para todos, seja qual for o peso usado ao somar as faces | **soma das normais das faces que tocam o vértice, sobre a malha ACTUAL, normalizada no fim** (uma soma de comprimento zero cai num eixo fixo do objecto); ⚠️ **o PESO dessa soma (área · ângulo · uniforme) NÃO está estabelecido** — ver a nota abaixo | Inflate |
+| 5 | **a repartição em dois baldes** pelo sinal de `n̂ · v̂` (§4.2-bis) | um balde só: o segundo nunca é usado | o segundo balde enche-se assim que o disco alcança a silhueta, e ⛔ ele só é lido se o primeiro estiver **vazio ou somar zero** (§4.2-bis-4) | normal e centro da área |
 | 6 | **a distância** ao cursor e à localização da área | a distância no plano | **corda 3D, nunca geodésica**: na esfera unitária o disco de `R = 0,35` é uma calota de arco `0,3518` (`+0,5 %`) e o limite da área de `3,5R = 1,225` é uma calota de arco `1,3184` (**`+7,6 %`**) | a curva de queda, o filtro de raio, a banda da área, o filtro de construção |
+
+⚠️⚠️ **A linha 4 tem uma metade ABERTA, e ela é a única do censo (R-pré, 2026-09-06).** O que está
+demonstrado é a FORMA (somar as normais das faces incidentes e normalizar no fim, sobre a malha
+actual) e o consumidor (Inflate). O **peso** de cada face nessa soma — área (somar normais de face
+não normalizadas), ângulo do canto, ou uniforme — **não é demonstrável com o que esta linha tem à
+mão**, e ⛔ **o corpus também não o decide**: no plano todos os pesos dão `+ẑ`, e na esfera UV a
+simetria em longitude põe os três a menos de ruído um do outro. ⇒ **um port escolhe um, escreve qual
+escolheu ao lado da linha, e a pergunta fica na fila** — a régua que a fecharia é um traço de Inflate
+do oráculo sobre uma malha **deliberadamente irregular** (triângulos de áreas e ângulos muito
+diferentes à volta do mesmo vértice), que hoje não existe no corpus. *Uma ausência de régua não é uma
+resposta, e esta linha está declarada em vez de adivinhada.*
 
 ⚠️ **A leitura das oito fixtures de esfera (M) sai desta tabela, e ela NÃO é uma família só:**
 - **Agarrar · Snake Hook · Aperto de linha** — linha 1 (e a 2 no aperto de linha, que monta o
@@ -649,6 +707,9 @@ numa esfera passam a variar. *Um port calibrado só no plano acerta nelas por ac
   vértice), e o maior deslocamento da fixture é `0,046715` sobre uma malha cuja aresta no equador
   mede `0,0491`×`0,0654` ⇒ *o denominador da razão é menor que uma aresta*, exactamente como no
   `plano_expandir_radial_local_1passo`. Ele pertence à pergunta do Expand no plano.
+- **Arrasto** — é a **OITAVA** fixture de esfera e não tem linha nenhuma da tabela: a direcção dele é
+  a diferença dos dois pontos 3D (linha 1, o ⛔). ⭐ É por isso que ele é o **CONTROLO** da 2.ª metade
+  do gate 22: se um port projectar em toda a parte, é esta fixture que o denuncia.
 
 ⚠️ **A malha da esfera das fixtures é ANISOTRÓPICA** (96 meridianos × 64 paralelos ⇒ no equador
 `0,0654` na longitude contra `0,0491` na latitude — M): os comprimentos de repouso das restrições de
@@ -1435,8 +1496,8 @@ traço a partir do pen-down) e do vértice mais próximo do cursor do passo:
    a vala** enquanto o Inflate empurra ao longo da normal **do próprio vértice**.
 3. **O aro está preso nos dois** (`3,5R` fica em `0,0004`/`0,0005` ao fim de 12 passos, `4R` em zero
    exacto) — o mesmo aro do §10.2, ⇒ estes dois traços **não** medem a fronteira, medem o interior.
-4. **A frente a `1R` cresce monotonamente nos dois** e ultrapassa o pen-down do Push no passo 12
-   (`0,1976` contra `0,2195`, quase a alcançá-lo) — é a onda que a relaxação leva para fora, e ela é
+4. **A frente a `1R` cresce monotonamente nos dois** e **quase alcança** o pen-down do Push no passo
+   12 (`0,1976` contra `0,2195` — ⛔ não o ultrapassa em passo nenhum dos doze) — é a onda que a relaxação leva para fora, e ela é
    a coluna que mais depende do número de passagens (§5.2-bis).
 
 ---
@@ -1543,7 +1604,7 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 20 | **A barra dos apertos é a da ORDEM, e mede-se, não se escolhe**: a assimetria de espelho da NOSSA saída dividida pelo maior `|u|` não pode passar a do ORÁCULO no mesmo passo (`0,675` no passo 3 do aperto de ponto); e a paridade por vértice do gate 15 **não se aplica** a um passo com faces invertidas — ali a barra é esta. ⛔ Barra derivada do oráculo, ⛔ nunca um epsilon de conforto | a do oráculo, passo a passo | §5.2-ter · §10.6 |
 | 21 | **Fora da inversão o aperto é tão comparável quanto o arrasto**: sobre a fixture de força fraca (zero faces invertidas nos 12 passos) a paridade por vértice do aperto de ponto tem de ficar no mesmo patamar da do arrasto — se ficar pior, o defeito **não** é a ordem e há lei em falta | o erro relativo do arrasto no mesmo traço | §10.6 · fixture `plano_apertar_ponto_radial_local_origem_fraco` |
 | 17 | **É só o ramo *Local***: a mesma experiência que melhora os traços *Local* tem de **piorar** os *Global* e os *Dynamic* — um port que dobre a relaxação em toda a parte passa o gate 16 e reprova aqui | sinal do erro relativo, em **todos** os traços de §10 (⛔ contados, nunca citados de memória) | §5.2-bis · §10.3 |
-| 22 | **O deslocamento do cursor é a PROJECÇÃO, e só o arrasto não o usa**: sobre as fixtures de esfera, o `δ` que alimenta a âncora do Agarrar, a do Snake Hook, a normal do plano de queda e o `x̂` do referencial tem componente **exactamente zero** ao longo do eixo da vista em **todos** os passos; e a direcção do arrasto no mesmo traço **tem** componente de profundidade, com o ângulo entre as duas a reproduzir `15,83° · 12,61° · 9,42° · 6,27° · 3,13° · 0° · …` ⇒ ⚠️ **duas metades**, e a segunda é o controlo: um port que use a diferença dos pontos 3D em toda a parte passa a 1.ª e reprova a 2.ª, e um que projecte em toda a parte faz o inverso | `0` exacto numa metade · a tabela do §4.3 na outra | §4.3 · §4.6 · fixtures de esfera |
+| 22 | **O deslocamento do cursor é a PROJECÇÃO, e só o arrasto não o usa**: sobre as fixtures de esfera, o `δ` que alimenta a âncora do Agarrar, a do Snake Hook, a normal do plano de queda e o `x̂` do referencial tem componente **exactamente zero** ao longo do eixo da vista em **todos** os passos; e a direcção do arrasto no mesmo traço **tem** componente de profundidade, com o ângulo entre as duas a reproduzir, nos **11** passos, `15,83° · 12,61° · 9,42° · 6,27° · 3,13° · 0°` **e o espelho** (`3,13° · 6,27° · 9,42° · 12,61° · 15,83°`) — a sequência é simétrica porque o caminho é simétrico em relação ao topo da esfera, ⛔ e não é uma tabela a copiar: sai de `atan(Δy/Δx)` sobre a esfera unitária ⇒ ⚠️ **duas metades**, e a segunda é o controlo: um port que use a diferença dos pontos 3D em toda a parte passa a 1.ª e reprova a 2.ª, e um que projecte em toda a parte faz o inverso | `0` exacto numa metade · a tabela do §4.3 na outra | §4.3 · §4.6 · fixtures de esfera |
 | 23 | **A normal do Push é REAVALIADA sobre a malha DEFORMADA**: congelá-la na normal de repouso tem de **mudar** `plano_empurrar_radial_local_origem` acima da barra do gate 15, e tem de deixar `plano_empurrar_radial_local_1passo` **byte-idêntico** ⇒ ⚠️ **duas metades**, e a segunda é o controlo (no 1.º passo simulado a malha ainda está em repouso, logo lá as duas leis coincidem por construção) | mutação: A/B com a normal congelada | §4.2-bis · §10.7 |
 | 24 | **A razão `2R` do Push, e a igualdade Push/Inflate no 1.º passo simulado**: no passo 2 dos dois traços do §10.7 o vértice do pen-down move `0,06543` e `0,09347`, razão `0,7000 = 2·R`; e a divergência entre os dois só pode começar no passo **3** — se começar no 2, o port está a ler duas normais diferentes numa folha plana em repouso, onde elas são a mesma | razão `2R ± f32` · igualdade de direcção no passo 2 | §4.2-bis · §10.1 · §10.7 |
 

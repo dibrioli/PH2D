@@ -164,7 +164,93 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 | R-pré (errata) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a errata (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (errata)» |
 | R-pré (emendas Q8/Q9/Q10) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu as emendas (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emendas Q8, Q9 e Q10)» |
 | R-pré (emenda Q11) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emenda Q11)» |
+| R-pré (emenda Q12) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emenda Q12)» |
 | R-pós | ⏳ | — |
+
+### Auditoria R-pré — 2026-09-06 (emenda Q12)
+
+**Âmbito.** A emenda Q12 (commit local `a138534df`): cabeçalho · §4.2-bis NOVA · §4.3 · §4.4 · §4.6
+NOVA · §5.2-bis (correcção do *Dynamic*) · §10 contagem · §10.7 NOVA · §14 gates 22-24, mais as duas
+fixtures por passo `plano_{empurrar,inflar}_radial_local_origem` (`.deformado` + `.porpasso` +
+`.porpasso.rastreio`), o `gera_indice.py` NOVO, o `indice.json` regenerado e o README das fixtures.
+
+**Conformidade §4.2 — ZERO achados.** Nenhum trecho, nenhum nome interno (funções, variáveis,
+ficheiros, structs, macros), nenhum comentário nem wording de manual. A secção que mais arriscava —
+a amostragem com desempate — está escrita como *comportamento observável* em vocabulário do domínio
+(«baldes», «balde da frente», «soma normalizada»), e as fórmulas (`3p²−2p³`, `c + (p−c)(1−a)`,
+`max|escala|/escala`, `−n̂·R·escala·2`) são matemática, que §4.1.2 abre sem limite. Os nomes que
+aparecem são **rótulos de UI** que o artista vê (*Normal Radius*, *Original Normal/Plane*, *Sculpt
+Plane*, *Accumulate*, *Sphere*, *Projected*), o que o §4.1.13 permite. A organização por (1)-(7) é
+uma sequência de perguntas funcionais — *quando · de que malha · de que vértices · desempate · sem
+resposta · projectada · escala* —, não a ordem de nada.
+
+**Sweep (§7.1).** `bash scripts/cleanroom-sweep.sh` com a vassoura de 70 entradas sobre a espec
+emendada + a pasta **inteira** das fixtures + INBOX + os dois READMEs + `docs/3D/cloth/`: **exit 0,
+verde**. Sobre o **histórico** dos mesmos caminhos: verde. Sobre **este ledger**: os mesmos **DOIS**
+hits pré-existentes de 2026-09-05 já registados acima para o R-pós — ⛔ não vêm desta emenda.
+
+**Fidelidade — conferida no fonte, e os números reconstruídos do zero.** Correctos: a reavaliação da
+normal da área **a cada passo**, só na passagem principal de simetria, com as outras a receberem-na
+espelhada/rodada; a lista do que a congela; a leitura sobre as posições e normais **actuais** (a rota
+das posições de partida está atrás de uma condição que o pincel de tecido não satisfaz — e nenhum
+preset de tecido usa traço ancorado, §8.2); o filtro `d ≤ R·«Normal Radius»` com «Normal Radius»
+`0,5` por omissão; o peso `3p²−2p³` saturado; a repartição em dois baldes pelo sinal contra a
+direcção da vista; o vector nulo sem `NaN`; a projecção no plano do ecrã com a forma de queda
+*Projected*; o factor de escala de **três** números, fixado no pen-down, com `max(|escala|)` no
+numerador e a escala **assinada** no denominador, multiplicado componente a componente; o sinal
+negativo do deslocamento do Push; a lei do centro da área (e que, neste pincel, o raio dele coincide
+com o da normal); a origem do referencial ser o cursor; o `δ` des-projectado **à profundidade do
+pen-down** nas duas pontas ⇒ projecção no plano do ecrã; o arrasto a tirar a direcção da diferença
+dos dois pontos 3D; e a **correcção à §5.2-bis** — o registo de pares é local a cada construção, o
+*Dynamic* constrói por passo, e cada cópia carrega a **sua** célula (logo só é projectada quando essa
+célula está activa). Reconstruídos independentemente: `0,3518` (`+0,5 %`) e `1,3184` (`+7,6 %`);
+`0,05455` e `0,01547`; `15,83°`, `12,61°`, `9,42°`, `6,27°`, `3,13°`, `0°` **e o espelho**; `1,039×`;
+`19,3 %`; `0,06543/0,09347 = 0,7000 = 2·0,35`; as 11 linhas dos dois rastreios do §10.7 casam coluna
+a coluna com a tabela da espec; `0,236509`, `0,463862`, `0,325769`, `0,046715` casam com o
+`indice.json`; e o `gera_indice.py` **regenera o `indice.json` byte-a-byte** (56/56).
+
+**SEIS curas na espec, aplicadas no acto, todas funcionais:**
+1. **§4.2-bis (4)+(5) — o desempate.** A redacção era «o primeiro balde não vazio» e, em (5), «se a
+   soma do balde escolhido tem comprimento zero ⇒ vector nulo». O alvo testa **não-vazio E soma
+   não-nula, balde a balde**: com o balde da frente não-vazio mas de soma nula ele lê o **de trás**,
+   e a espec mandava responder o vector nulo. Corrigido em (4), em (5) e na linha 5 do censo §4.6.
+2. **Quem lê `δ` (§4.3 e §4.6-1).** A célula do censo lia-se «o guarda de passo parado de todos ⛔
+   menos o arrasto» — o guarda vale para os **oito** modos, o arrasto incluído; o que o arrasto não
+   tira de `δ` é a **direcção**. E «o arrasto é o único que não o lê para a direcção» deixava supor
+   que Inflate/Expand/Push o lêem: nenhum deles lê deslocamento de cursor nenhum para a direcção.
+3. ⛔ **§4.6-4 — o peso da normal do vértice.** A linha afirmava «soma das normais de face **não
+   normalizadas** (⇒ peso de ÁREA)» como (F). O que é demonstrável é a **FORMA** (somar as normais
+   das faces incidentes sobre a malha actual e normalizar no fim); o **peso** (área · ângulo ·
+   uniforme) **não é demonstrável com o material desta linha** — a rotina que define a normal de face
+   está **fora** do checkout esparso —, e ⛔ **o corpus também não o decide**: no plano os três pesos
+   dão a mesma resposta e na esfera UV a simetria em longitude põe-nos a menos de ruído. ⇒ a linha
+   passa a declarar a forma, a marcar o peso como **pergunta aberta**, e a nomear a régua que a
+   fecharia (um traço de Inflate do oráculo sobre malha deliberadamente irregular). *Uma afirmação
+   (F) cuja evidência não está ao alcance é um palpite com cara de medição.*
+4. **§10.7 ponto 4** dizia que a frente a `1R` **ultrapassa** o pen-down do Push no passo 12 e os
+   números da própria frase dizem o contrário (`0,1976 < 0,2195`) — passou a «quase alcança», com o
+   ⛔ de que não o ultrapassa em passo nenhum.
+5. **Gate 22** dava a sequência de ângulos truncada em `…`, logo não era edificável sem adivinhar —
+   ficam os **11** passos, a simetria e a origem deles (`atan(Δy/Δx)` na esfera unitária).
+6. **§4.6** dizia «as oito fixtures de esfera» e a lista cobria **sete** — a oitava é o **arrasto**,
+   que não tem linha nenhuma do censo *porque* é o modo que lê a diferença 3D, e que é exactamente o
+   **controlo** da 2.ª metade do gate 22.
+
+**DUAS curas no README das fixtures, as duas de CONTAGEM** — a família que esta linha já pagou duas
+vezes (o `indice.json` envelhecido, os gates 15/17 parados em `51`/`50`):
+- A emenda actualizou «para **seis** traços» para «**nove**» e manteve a instrução `⚠️ conte-os:
+  `ls *.porpasso.txt.gz | wc -l``, que devolve **13**; e a frase seguinte — «o pen-down de **TODOS**
+  eles está na origem» — cobria **quatro** ficheiros da 1.ª geração, com o pen-down em `x = −0,3`,
+  ⛔ **três dos quais não passam a prova do fatiamento** (`0.330421` · `0.115064` · `0.004244`) e
+  estavam debaixo da frase que promete `0,000000` para cada ficheiro. Ficam nomeados, com o ⛔ de não
+  servirem de oráculo. ⭐ E o quarto (`plano_arrastar_radial_global`) **passa** — *porque a área dele
+  é Global e não tem centro para ficar refém do sobrevoo do ponteiro*, que é o mecanismo que o próprio
+  README explica duas linhas abaixo.
+- O total do fim estava em «**53 traços** (47 da matriz + 6 do instrumento)» com **56** no disco, e a
+  tabela das corridas não tinha a fixture `_fraco` da emenda Q11. Agora: `56` linhas para `56`
+  ficheiros, e o total com a instrução de o contar.
+
+**Veredicto: ATESTADO** — a emenda Q12 pode ser lida pela janela-mãe.
 
 ### Auditoria R-pré — 2026-09-06 (emenda Q11)
 

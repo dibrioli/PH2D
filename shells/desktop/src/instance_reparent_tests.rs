@@ -200,7 +200,7 @@ fn the_root_of_a_copy_is_never_reparented_into_the_library() {
 ///
 /// A receita passa de `Body > Head` para `Head > Body`, e na cópia o `Head` ainda está debaixo do
 /// `Body` no instante em que o passe corre. *Uma hierarquia com ciclo não é uma árvore — a
-/// travessia de transformes não termina, e o sintoma é um app que congela, não um teste vermelho.*
+/// travessia dos `Transform` não termina, e o sintoma é um app que congela, não um teste vermelho.*
 ///
 /// ⚠️⚠️ **E este gate CORRIGIU uma afirmação minha.** Eu escrevi que a pré-ordem do mestre *«é o
 /// que impede o ciclo»* e a mutação que inverte a travessia **sobreviveu**: os alvos são calculados

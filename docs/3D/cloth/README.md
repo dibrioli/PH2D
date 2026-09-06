@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**6 arquivos** · **0** citados pelo `CLAUDE.md` (marcados **◆**).
+**6 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -19,8 +19,8 @@
 | 02 |   | [02_plano.md](02_plano.md) | plano | Cloth (W10) — o plano |
 | 03 |   | [03_auditoria_2026-09-05.md](03_auditoria_2026-09-05.md) | auditoria | Cloth — auditoria de quatro lentes (2026-09-05) |
 | 04 |   | [04_espec_do_comportamento.md](04_espec_do_comportamento.md) | — | Cloth (W10) — a espec do comportamento |
-| 05 |   | [05_a_vitoria_medida.md](05_a_vitoria_medida.md) | — | 05 — A VITÓRIA, medida (o pincel de tecido, 2026-09-06) |
-| 06 |   | [06_o_plano_do_que_falta.md](06_o_plano_do_que_falta.md) | plano | 06 — O PLANO do que falta no pincel de tecido |
+| 05 | ◆ | [05_a_vitoria_medida.md](05_a_vitoria_medida.md) | — | 05 — A VITÓRIA, medida (o pincel de tecido, 2026-09-06) |
+| 06 | ◆ | [06_o_plano_do_que_falta.md](06_o_plano_do_que_falta.md) | plano | 06 — O PLANO do que falta no pincel de tecido |
 
 ---
 

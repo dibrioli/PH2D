@@ -226,6 +226,17 @@ extend-ignore-identifiers-re = [
     "^directos$",
     "^autorize$",
     "^cose$",
+    # `pior_defice` — pt-PT «défice» (o «déficit» do pt-BR), numa sonda do `ph2d-field-eval`
+    # que mede o PIOR défice relativo do majorante contra a varredura fina. O typos lê-a como
+    # `device`, palavra que este repo escreve a toda a hora — por isso a isenção é do
+    # IDENTIFICADOR INTEIRO e não da raiz: `defice` sozinho continua a ser acusado em
+    # qualquer outro sítio, que é exactamente onde um `device` mal escrito apareceria.
+    "^pior_defice$",
+    # `candidatos_criticos` — português: os pontos CRÍTICOS candidatos a extremo (a derivada
+    # anula-se) de uma superfície de Gielis. O typos quer o inglês `critics`, que troca
+    # «ponto crítico» por «crítico» (pessoa). Ancorada no identificador inteiro pela mesma
+    # razão do vizinho acima.
+    "^candidatos_criticos$",
 ]
 
 [default.extend-identifiers]
@@ -816,6 +827,13 @@ extend-exclude = [
     # upstream's spelling — same stance as the workspace `exclude`, the machete
     # ignores and the `[lints]` allow that keep our tooling off code we did not write.
     "crates/ph2d-audio-ml/vendor/**",
+    # As VASSOURAS do clean-room (`docs/3D/cleanroom/VASSOURA_*.txt`) são listas de nomes
+    # INTERNOS do alvo restrito, guardadas em **base64 de propósito** para que ninguém as leia
+    # por acidente — o Implementador tem um `deny` a proibi-lo de as abrir (`docs/3D/00-INDEX.md`,
+    # `LEDGER_*`). ⚠️ Não há prosa aqui para corrigir: o que o typos acusa é uma sílaba de base64
+    # (`…U05BS0VIT09L…` contém `VOR`), e a acusação muda com o CONTEÚDO CIFRADO, não com o texto.
+    # ⛔ Isentar a palavra em vez do ficheiro esconderia um `VOR`/`FOR` real no repo inteiro.
+    "docs/3D/cleanroom/VASSOURA_*.txt",
     # Spike fixtures may contain Luau intentionally
     "docs/scripting/examples/spike/**/*.luau",
     # PT-BR docs — typos-cli only knows en-US, would flag every "rever",

@@ -413,6 +413,12 @@ fn normais(pos: &[V3], faces: &[Vec<u32>]) -> Vec<V3> {
 /// família da ordem do oráculo — espec §3.1: «célula a célula, vértice a
 /// vértice»). A dispersão entre ordens NOSSAS é a barra do gate 15 (espec §14).
 fn reordenar(sim: &mut ph2d_cloth::verlet::Verlet) {
+    reordenar_com(sim, std::env::var("PH2D_ORDEM").ok().as_deref());
+}
+
+/// A mesma reordenação com a ordem DADA em vez de lida do ambiente — é o que
+/// deixa uma sonda correr as DUAS ordens no mesmo processo (o chão de ruído).
+fn reordenar_com(sim: &mut ph2d_cloth::verlet::Verlet, ordem: Option<&str>) {
     // Experimento (`PH2D_PARES=0`): SÓ as restrições de aresta (sem os pares de
     // vizinhos), para medir o que os pares compram.
     if std::env::var("PH2D_PARES").as_deref() == Ok("0") {
@@ -432,7 +438,7 @@ fn reordenar(sim: &mut ph2d_cloth::verlet::Verlet) {
             !matches!(r.b, ph2d_cloth::verlet::Alvo::Vertice(_)) || r.l <= menor * 1.05
         });
     }
-    let Ok(ordem) = std::env::var("PH2D_ORDEM") else {
+    let Some(ordem) = ordem else {
         return;
     };
     if ordem == "inversa" {
@@ -470,6 +476,11 @@ struct Leitura {
 /// de [`correr`] para que uma sonda possa medir outra grandeza sobre a mesma
 /// corrida sem reescrever o laço — *duas cópias do laço seriam duas leis.*
 fn correr_posicoes(nome: &str) -> Vec<V3> {
+    correr_posicoes_com(nome, std::env::var("PH2D_ORDEM").ok().as_deref())
+}
+
+/// Idem, com a ORDEM de resolução dada em vez de lida do ambiente.
+fn correr_posicoes_com(nome: &str, ordem: Option<&str>) -> Vec<V3> {
     let t = traco(nome);
     let sup = t.s("superficie").to_string();
     let rest = repouso(&sup);
@@ -518,7 +529,7 @@ fn correr_posicoes(nome: &str) -> Vec<V3> {
         };
         let simulou = tecido.passo(&pos, &anel, &passo);
         if k == 0 {
-            reordenar(&mut tecido.sim);
+            reordenar_com(&mut tecido.sim, ordem);
         }
         if simulou {
             for (v, act) in tecido.sim.activo.iter().enumerate() {
@@ -1714,4 +1725,84 @@ fn fora_da_inversao_o_aperto_e_tao_comparavel_quanto_o_arrastar() {
         rel(&fraco),
         rel(&arrasto)
     );
+}
+
+/// **O CHÃO DE RUÍDO de um traço** — quanto a nossa própria resposta se move
+/// quando muda uma escolha que é NOSSA: a ordem em que as restrições são
+/// resolvidas.
+///
+/// ⭐⭐⭐ **Gauss–Seidel não comuta**, e a ordem não vem do oráculo — vem de nós.
+/// ⇒ para cada traço há um chão abaixo do qual *«o nosso erro»* deixa de medir a
+/// lei e passa a medir a nossa ordenação. A grandeza é a **mesma** da barra de
+/// paridade (pior diferença por vértice, em unidades do deslocamento máximo do
+/// oráculo), para que as duas se possam comparar número a número.
+fn chao_de_ruido(nome: &str) -> (f64, f64) {
+    let indice = correr_posicoes_com(nome, None);
+    let inversa = correr_posicoes_com(nome, Some("inversa"));
+    let alvo = deformado(nome);
+    let rest = repouso(traco(nome).s("superficie"));
+    let max_o = alvo
+        .iter()
+        .zip(&rest)
+        .map(|(a, r)| dist(*a, *r))
+        .fold(0.0f64, f64::max);
+    let erro = indice
+        .iter()
+        .zip(&alvo)
+        .map(|(n, o)| dist(*n, *o))
+        .fold(0.0f64, f64::max);
+    let ruido = indice
+        .iter()
+        .zip(&inversa)
+        .map(|(a, b)| dist(*a, *b))
+        .fold(0.0f64, f64::max);
+    (erro / max_o.max(1e-12), ruido / max_o.max(1e-12))
+}
+
+/// **SONDA — o resíduo de cada traço em unidades do que uma ORDEM ERRADA custa.**
+///
+/// ⛔⛔⛔ **Leia o que esta sonda NÃO é, antes de a usar.** A 1.ª redacção dela
+/// chamava à coluna `ordem` um *chão de ruído* e partia o corpus em «ruído de
+/// ordem» contra «lei em falta». **As duas coisas estavam erradas**, e a medição
+/// derrubou-as no mesmo dia:
+///
+/// 1. **Inverter a ordem não é ruído — é OUTRA LEI, e uma lei errada.** A nossa
+///    ordem é a do oráculo, e a prova é esta sonda: `plano_arrastar_radial_local`
+///    erra `0,0713` contra o oráculo e move-se `0,2932` ao inverter a ordem, ou
+///    seja *estamos QUATRO vezes mais perto do alvo do que a ordem inversa está
+///    de nós.* Um chão de ruído nunca é maior que a distância ao alvo.
+/// 2. **A partição não tinha VALE.** As razões dos `25` abertos são um contínuo
+///    de `0,30` a `3,39` e o maior vazio é `0,92`, no topo, entre os dois últimos
+///    — qualquer barra a meio seria escolhida, não medida (CLAUDE.md §0.0).
+///
+/// ⭐ **O que ela mede, e para o que serve:** a coluna `ordem` é *quanto custa
+/// resolver as restrições na ordem errada*, na MESMA unidade da barra de
+/// paridade, e a razão `erro/ordem` diz **quão estrutural** é o resíduo de cada
+/// traço. Um traço com razão alta erra mais do que uma ordem errada custa — ali
+/// falta lei, e ela não se esconde atrás da não-comutatividade. Um traço com
+/// razão baixa vive num regime em que a ordem manda (a família do §5.2-ter).
+///
+/// ⇒ *é uma ORDENAÇÃO da fila, não um veredito por traço, e é por isso que não
+/// tem gate.*
+#[test]
+#[ignore = "sonda"]
+fn sonda_do_chao_de_ruido() {
+    let mut linhas: Vec<(f64, String)> = Vec::new();
+    for nome in todas() {
+        let (erro, ordem) = chao_de_ruido(&nome);
+        let razao = erro / ordem.max(1e-12);
+        let marca = if erro <= BARRA_PARIDADE { "bate" } else { "" };
+        linhas.push((
+            if erro <= BARRA_PARIDADE { -1.0 } else { razao },
+            format!("{nome:<46} {erro:>8.4} {ordem:>8.4} {razao:>7.2}  {marca}"),
+        ));
+    }
+    linhas.sort_by(|a, b| b.0.total_cmp(&a.0));
+    println!(
+        "{:<46} {:>8} {:>8} {:>7}",
+        "traco (do mais ESTRUTURAL ao menos)", "erro", "ordem", "razao"
+    );
+    for (_, l) in linhas {
+        println!("{l}");
+    }
 }

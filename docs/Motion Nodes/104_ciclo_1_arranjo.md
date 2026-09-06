@@ -267,6 +267,22 @@ que já calcula o `inert` do nó inteiro — para a row **dizer** que não tem s
 no ciclo que possuir o grupo do CARIMBO. ⛔ Esconder a row está fora: o artista precisa de a ver
 para saber que entrada ligar.
 
+### §5.3-ter — A TABELA DO TUTORIAL passou a mentir, e a FACE foi a causa
+
+⛔ **O tutorial do ciclo 1 tem uma tabela de controlos DERIVADA, e ela ficou errada no dia em que
+o cartão passou a vestir a unidade do artista** (§5.2): ela saía do `param_ui` **cru**, e das
+`39` células dos nove nós do tutorial **`23` têm escala ou sufixo**. A tabela imprimia
+*«Gap X: 0 a 10 px»* sobre um controlo que o cartão mostra como *«0 a 1000 px»* — cem vezes.
+*Uma tabela derivada não é honesta por ser derivada: é honesta se for derivada da MESMA porta.*
+
+⇒ ela sai agora do `build_params_snapshot`, a porta de onde o painel e o cartão tiram os números.
+⭐ E a troca melhorou-a de três maneiras que a porta trouxe de graça: um **enum** deixa de ser
+*«0 a 2»* e passa a listar as opções (`Rect · Circle · Ring`), os **teclos digitáveis** ficam
+corretos, e uma linha nova diz **o que só aparece noutro modo** (`Hole aparece quando Shape é
+Ring`) — derivada dos `ParamGate` do registry, porque a porta do painel esconde o que está
+gateado e numa tabela de REFERÊNCIA a omissão é pior que no painel: ali o controlo está a um
+clique e vê-se aparecer; aqui ele simplesmente não existiria.
+
 ### §5.3-bis — *«Point Scale faz exatamente o que o nó Scale faz? E Transfer faz o quê?»*
 
 Perguntas do Enio (2026-09-06), respondidas por medição — as duas sondas vivem na crate do nó
@@ -362,6 +378,22 @@ meia-extensão de uma cópia **é** o `size` e não metade dele (o gate da sobre
 disso). O gate novo, `the_shape_port_is_fed_by_a_shape_source_and_the_points_port_by_an_arrangement`,
 sobe pela entrada 0 de cada carimbo até à **origem** do braço — entre a fonte e o carimbo há
 transformes e tints, e olhar só o vizinho imediato não responderia.
+
+⛔⛔ **E o report era UMA de TRÊS.** O censo sobre as cenas do roteador (`19` carimbos) achou
+mais duas a fazer o mesmo — **`=62`** (a junção) e **`=98`** (*«o vocabulário do carimbo»*, a
+cena que é literalmente sobre este nó). Curar a que ele apontou e deixar as irmãs é curar
+**metade de uma família**; as três estão convertidas, e o censo virou o gate
+`every_stamps_shape_port_is_fed_by_a_thing_to_draw`, com a **catraca de duas metades**: a lista
+de fontes legítimas cresce de propósito, e uma entrada que cena nenhuma usa tem de sair.
+
+⚠️ **Duas coisas que a conversão do `=62` mudou por baixo de um gate, e o gate é que estava a
+descrever o mundo antigo:** ele afirmava *«com Point Scale 0 o carimbo não emite `size`»* — o que
+era verdade porque uma grelha nua não tem `size` nenhum. Uma FORMA a sério tem, então o que a
+cena ensina agora é o que ela de facto mostra: **todas do mesmo tamanho, o da forma**. ⭐ E a
+conversão descobriu um defeito ao lado: o `motion.drive(Size, **Set**)` sobre uma rampa `0..1`
+dava `size = 0` ao primeiro ponto — **a primeira cópia saía invisível**, sete pontos e seis peças
+na tela. Passou a `Add` (a escala vai de `1` a `1 + scale`), com gate a exigir que nenhuma cópia
+tenha tamanho zero.
 ⚠️ **A semente do `Random` é uma CALIBRAÇÃO com gate:** cinco sorteios sobre três formas deixam
 uma de fora com facilidade — **9 das 24** primeiras sementes fazem-no, e a banda passaria a
 ler-se como *«Random escolhe entre duas»*. O `PICK_SEED = 9` é o número que a varredura deu, e o

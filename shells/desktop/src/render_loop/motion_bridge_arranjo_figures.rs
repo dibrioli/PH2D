@@ -205,55 +205,191 @@ fn dump_arranjo_figures() {
         eprintln!("  {:>6} pontos │ {}", pts.len(), path.display());
     }
 
-    // A tabela dos controlos, DERIVADA do registry — nunca escrita à mão.
-    let m = MotionState::new();
+    // ⭐⭐⭐ **A TABELA DOS CONTROLOS, DERIVADA DA MESMA PORTA QUE O CARTÃO LÊ.**
+    //
+    // ⚠️ **Ela era derivada do `param_ui` CRU, e isso passou a ser uma mentira em 2026-09-05**,
+    // quando o cartão passou a vestir a FACE do artista: das 39 células deste tutorial, **23**
+    // têm escala ou sufixo — o `Gap X` de uma grade mostra-se em **px** (×100) e a tabela
+    // imprimia o número em unidades de mundo. *Um tutorial que diz «0 a 4» sobre um controlo que
+    // mostra «0 a 400 px» ensina o contrário do que acontece.*
+    //
+    // ⇒ a tabela sai agora do `build_params_snapshot`, que é a porta de onde o painel e o cartão
+    // tiram os números — então ela não pode divergir do que o artista vê.
+    //
+    // ⚠️ **Ela lista o que o nó MOSTRA no estado de omissão** (a mesma lei de visibilidade do
+    // cartão): um controlo escondido por modo não entra, exactamente como não aparece no nó
+    // acabado de largar.
     let mut html = String::from("<!-- GERADO por dump_arranjo_figures. Nao editar a mao. -->\n");
     for fig in FIGS {
         let mut aux = MotionState::new();
         let id = aux.doc.graph.add_node(fig.node.to_string());
         let tid = aux.doc.graph.node(id).expect("no'").type_id();
-        let nome = m
+        let nome = aux
             .registry
             .ui_manifest(tid)
             .map_or(fig.node, |u| u.display_name);
-        html.push_str(&format!("<h4 id=\"p-{}\">{nome}</h4>\n<table class=\"params\">\n<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>\n", fig.file));
-        let unidades = m.registry.param_units(tid);
-        for h in m.registry.param_ui(tid).unwrap_or(&[]) {
-            let u = unidades
-                .iter()
-                .flat_map(|us| us.iter())
-                .find(|d| d.param == h.param)
-                .map_or("", |d| match d.unit {
-                    ph2d_node_registry::ParamUnit::Length => "px",
-                    ph2d_node_registry::ParamUnit::Angle => "graus",
-                    ph2d_node_registry::ParamUnit::Seconds => "s",
-                    ph2d_node_registry::ParamUnit::Hertz => "Hz",
-                    ph2d_node_registry::ParamUnit::Decibel => "dB",
-                    _ => "",
-                });
-            // ⚠️ **A faixa do DESLIZANTE não é o tecto do param.** A 1.ª versão desta
-            // tabela escrevia só `min..max` do hint e o PDF ensinava que o `Radius` de um
-            // leque vai «até 20 px» — enquanto a caixa aceita `4000` e a própria figura deste
-            // tutorial usa `200`. *Uma faixa que diz um máximo que não é o máximo é a família
-            // do controlo que mente.* Quando há tecto duro e ele difere, a tabela di-lo.
-            let duro = m.registry.param_hard_max(tid, h.param);
-            let faixa = match duro {
-                Some(d) if (d - h.max).abs() > f32::EPSILON => {
-                    format!(
-                        "{} a {} <span class=\"soft\">(digitável até {d})</span>",
-                        h.min, h.max
-                    )
+        ph2d_panel_motion_graph::set_graph_selection(vec![id.0]);
+        let painel = crate::render_loop::motion_bridge::params::build_params_snapshot(
+            &aux,
+            ph2d_editor::ProjectSettings::default(),
+        );
+        ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+        let painel = painel.unwrap_or_else(|| panic!("o painel de `{}` monta", fig.node));
+        html.push_str(&format!(
+            "<h4 id=\"p-{}\">{nome}</h4>\n<table class=\"params\">\n<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>\n",
+            fig.file
+        ));
+        let mut linhas = 0usize;
+        for row in &painel.rows {
+            let (label, faixa, unidade) = match row {
+                // ⚠️ **A faixa do DESLIZANTE não é o tecto do param.** A 1.ª versão desta tabela
+                // escrevia só `min..max` e o PDF ensinava que o `Radius` de um leque vai «até 20
+                // px» — enquanto a caixa aceita `4000` e a figura deste tutorial usa `200`.
+                ph2d_panel_motion_params::ParamRow::Scalar(r) => {
+                    let faixa = if (r.hard_max - r.max).abs() > 1e-6 {
+                        format!(
+                            "{} a {} <span class=\"soft\">(digitável até {})</span>",
+                            fmt_num(r.min),
+                            fmt_num(r.max),
+                            fmt_num(r.hard_max)
+                        )
+                    } else {
+                        format!("{} a {}", fmt_num(r.min), fmt_num(r.max))
+                    };
+                    (r.label.clone(), faixa, r.display.suffix.to_string())
                 }
-                _ => format!("{} a {}", h.min, h.max),
+                ph2d_panel_motion_params::ParamRow::Angle(r) => (
+                    r.label.clone(),
+                    format!("{} a {}", fmt_num(r.min_deg), fmt_num(r.max_deg)),
+                    "graus".to_string(),
+                ),
+                ph2d_panel_motion_params::ParamRow::Seed(r) => (
+                    r.label.clone(),
+                    format!("{} a {}", fmt_num(r.min), fmt_num(r.max)),
+                    String::new(),
+                ),
+                ph2d_panel_motion_params::ParamRow::Toggle(r) => {
+                    (r.label.clone(), "liga / desliga".to_string(), String::new())
+                }
+                // ⭐ Um enum não tem faixa: tem OPÇÕES, e é isso que serve a quem lê o tutorial.
+                ph2d_panel_motion_params::ParamRow::Enum(r) => {
+                    (r.label.clone(), r.labels.join(" · "), String::new())
+                }
+                _ => continue,
             };
+            linhas += 1;
             html.push_str(&format!(
-                "<tr><td>{}</td><td>{faixa}</td><td>{u}</td></tr>\n",
-                h.label
+                "<tr><td>{label}</td><td>{faixa}</td><td>{unidade}</td></tr>\n"
             ));
         }
+        assert!(linhas > 0, "`{}` nao pos uma linha na tabela", fig.node);
         html.push_str("</table>\n");
+        // ⭐⭐ **E OS CONTROLOS QUE SÓ APARECEM NOUTRO MODO.**
+        //
+        // ⚠️ A tabela lista o que o nó mostra por omissão, e por isso o `Hole` de uma grade
+        // sumia dela — ele só é pintado com `Shape = Ring`. *Numa tabela de REFERÊNCIA a
+        // omissão é pior que no painel:* ali um controlo escondido está a um clique e vê-se
+        // aparecer; aqui ele simplesmente não existe, e o artista não sabe o que procurar.
+        // ⇒ a nota diz o que existe **e o que o acende**, derivada dos `ParamGate` do registry.
+        let mostrados: Vec<&str> = painel.rows.iter().flat_map(|r| r.params()).collect();
+        let hints = aux.registry.param_ui(tid).unwrap_or(&[]);
+        let rotulo = move |nome: &'static str| -> &'static str {
+            hints
+                .iter()
+                .find(|h| h.param == nome)
+                .map_or(nome, |h| h.label)
+        };
+        let mut notas: Vec<String> = Vec::new();
+        for g in aux.registry.param_gates(tid).unwrap_or(&[]) {
+            if mostrados.contains(&g.param) {
+                continue; // já está na tabela: o modo de omissão acende-o
+            }
+            // Os VALORES do gate são índices do enum que o acende — o artista lê nomes.
+            let opcoes = hints.iter().find(|h| h.param == g.when).map(|h| h.widget);
+            let quais: Vec<String> = g
+                .values
+                .iter()
+                .map(|v| match opcoes {
+                    Some(ph2d_node_registry::ParamWidget::Enum { labels }) => labels
+                        .get(*v as usize)
+                        .map_or_else(|| v.to_string(), |s| (*s).to_string()),
+                    _ => v.to_string(),
+                })
+                .collect();
+            notas.push(format!(
+                "<b>{}</b> aparece quando <b>{}</b> é {}",
+                rotulo(g.param),
+                rotulo(g.when),
+                quais.join(" ou ")
+            ));
+        }
+        if !notas.is_empty() {
+            html.push_str(&format!(
+                "<p class=\"soft\">Só noutro modo: {}.</p>\n",
+                notas.join(" · ")
+            ));
+        }
     }
     let path = dir.join("params.html");
     std::fs::write(&path, html).expect("escrever a tabela");
     eprintln!("  tabela derivada │ {}", path.display());
+}
+
+/// Um número para a tabela: inteiro quando é inteiro, senão até três casas — o mesmo critério
+/// do `format_number` da casa, sem os zeros que uma faixa não precisa.
+fn fmt_num(v: f64) -> String {
+    if (v - v.round()).abs() < 1e-6 {
+        format!("{}", v.round() as i64)
+    } else {
+        let t = format!("{v:.3}");
+        t.trim_end_matches('0').trim_end_matches('.').to_string()
+    }
+}
+
+/// **A TABELA DO TUTORIAL AINDA DIZ O QUE O CARTÃO MOSTRA?** — a pergunta que a FACE abriu
+/// (2026-09-05): o cartão passou a vestir a unidade do artista (`94 px` onde o documento tem
+/// `0,94`), e a tabela do tutorial é derivada do `param_ui` **cru**. Se algum param do grupo
+/// tiver escala de face, a tabela impressa passa a mentir sobre a faixa.
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --bins does_the_tutorial_table_still_match_the_card -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de censo, nao um gate"]
+fn does_the_tutorial_table_still_match_the_card() {
+    let mut vestidos: Vec<String> = Vec::new();
+    let mut total = 0usize;
+    for fig in FIGS {
+        let mut m = MotionState::new();
+        let id = m.doc.graph.add_node(fig.node.to_string());
+        ph2d_panel_motion_graph::set_graph_selection(vec![id.0]);
+        let Some(painel) = crate::render_loop::motion_bridge::params::build_params_snapshot(
+            &m,
+            ph2d_editor::ProjectSettings::default(),
+        ) else {
+            continue;
+        };
+        for row in &painel.rows {
+            let ph2d_panel_motion_params::ParamRow::Scalar(r) = row else {
+                continue;
+            };
+            total += 1;
+            if (r.display.scale - 1.0).abs() > 1e-9 || !r.display.suffix.is_empty() {
+                vestidos.push(format!(
+                    "{}::{} escala {:.1} sufixo {:?}",
+                    fig.node, r.name, r.display.scale, r.display.suffix
+                ));
+            }
+        }
+    }
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+    eprintln!(
+        "\n  {total} controlos nos {} nos do tutorial · {} com FACE (escala ou sufixo):\n",
+        FIGS.len(),
+        vestidos.len()
+    );
+    for v in &vestidos {
+        eprintln!("    {v}");
+    }
+    eprintln!();
 }

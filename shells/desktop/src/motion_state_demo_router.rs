@@ -574,3 +574,8 @@ pub(crate) fn build_level(
 #[cfg(test)]
 #[path = "motion_state_demo_router_tests.rs"]
 mod tests;
+
+/// As SONDAS das cenas — irmãs por responsabilidade (HR-18): os gates afirmam, estas imprimem.
+#[cfg(test)]
+#[path = "motion_state_demo_router_census.rs"]
+mod census;

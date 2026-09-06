@@ -27,6 +27,9 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 const BAND_DY: f32 = 3.2;
 /// Quantos pontos a fileira do carimbo tem.
 const STAMPS: f32 = 7.0;
+/// O raio da forma carimbada. ⚠️ **Raio, não lado:** a geometria de um `source.shape` vive em
+/// raio 1 e o `size` escala-a.
+const SHAPE_SIZE: f32 = 0.22;
 /// As duas grelhas que a junção mistura — 9 + 4 = 13 linhas.
 const LEFT: f32 = 3.0;
 const RIGHT: f32 = 2.0;
@@ -55,11 +58,13 @@ fn place(g: &mut Graph, head: NodeId, dy: f32, x: f32, y: f32) -> Option<NodeId>
 /// **A banda do CARIMBO**: uma fileira de pontos cujo `size` cresce ao longo dela, carimbada
 /// com um quadrado. `point_scale` decide se essa escala chega ao carimbo.
 fn stamp_band(g: &mut Graph, point_scale: f32, y: f32) -> Option<NodeId> {
-    // A forma: um ponto só, que o carimbo replica.
-    let shape = g.add_node("motion.grid");
+    // ⭐ **A FORMA é um `source.shape`, e não uma grelha de uma célula** (report do Enio,
+    // 2026-09-06: *«você colocou grid entrando em Shape de Duplicator! Essa aplicação é
+    // correta?»*). As duas portas do carimbo são o mesmo tipo, então só a semântica as
+    // distingue — e uma grelha ali **funciona** e ensina o idioma errado a quem lê o grafo.
+    let shape = g.add_node("source.shape");
     g.set_pos(shape, Pos { x: 0.0, y });
-    g.set_param(shape, "rows", 1.0);
-    g.set_param(shape, "cols", 1.0);
+    g.set_param(shape, ph2d_node_motion_shape::param::SIZE, SHAPE_SIZE);
 
     // Os pontos, e a escala POR PONTO que um espalhamento produz.
     let pts = g.add_node("motion.grid");
@@ -92,7 +97,10 @@ fn stamp_band(g: &mut Graph, point_scale: f32, y: f32) -> Option<NodeId> {
         },
     );
     g.set_param(sized, "channel", 3.0); // Size
-    g.set_param(sized, "mode", 1.0); // Set
+    // ⚠️ **`Add` e não `Set`**, desde 2026-09-06: com `Set` o primeiro ponto da fileira recebia
+    // `size = 0` (a rampa começa em zero) e a primeira cópia saía **invisível** — sete pontos e
+    // seis peças na tela. Com `Add` a escala vai de `1` a `1 + scale`, e todas se veem.
+    g.set_param(sized, "mode", 0.0); // Add
     g.set_param(sized, "scale", 1.6);
     wire(g, pts, 0, sized, 0)?;
     wire(g, ramp, 0, sized, 1)?;

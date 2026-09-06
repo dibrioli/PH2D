@@ -6,185 +6,6 @@
 
 use super::*;
 
-/// **NENHUMA CENA DA CONFERÊNCIA MONTA UM GRAFO COM BURACO DE SETUP.**
-///
-/// ⚠️ **Este portão nasceu de um smoke reprovado** (Enio, 2026-08-20: *"6.
-/// EMPUXO com a coluna `density`. Todas as peças paradas"*). A causa era um fio
-/// que faltava na cena `=71`: o `value.instance_field` que alimentava a
-/// densidade estava **solto**, e o doc dele diz *"unconnected → one degenerate
-/// value"* — ele dava UM valor, o `motion.drive` transmitia-o a todos, e ele era
-/// ZERO. Densidade zero é empuxo nenhum.
-///
-/// ⚠️ **A casa já sabia diagnosticar isto, e ninguém perguntava.** O
-/// `ph2d_motion_diagnose` reporta `MissingSource`/`MissingInput` exactamente para
-/// um nó sem nada ligado; o que não existia era uma porta por onde um gate
-/// pudesse MONTAR uma cena e perguntar — daí o [`build_level`].
-/// *Um instrumento que nenhum passo invoca não protege coisa nenhuma.*
-///
-/// ⚠️ **A barra é ZERO, e ela foi MEDIDA antes de virar barra.** A sonda achou
-/// **seis** cenas marcadas (`=3`, `=31`, `=38`, `=57`, `=61`, `=71`) — e as seis
-/// estavam CERTAS: o falso positivo era do diagnoser, cuja isenção exigia que a
-/// aresta atrasada viesse do PRÓPRIO nó, quando o laço canónico de força a
-/// recebe do integrador. Curado lá; aqui sobra o zero.
-///
-/// ⛔ **Se uma cena futura encenar um defeito DE PROPÓSITO**, ela não entra numa
-/// allowlist muda: ou o defeito não é de SETUP (a `=45` encena um nome que não
-/// resolve, e passa), ou o gate ganha o nível NOMEADO com o motivo ao lado.
-/// **O QUE UMA CENA DE FACTO DESENHA** — a caixa de cada banda, medida.
-///
-/// ⚠️ **Este instrumento nasceu de um smoke reprovado** (Enio, 2026-08-21: *"esses
-/// exemplos não são compreensíveis. tudo misturado e bagunçado"*), e a causa não era
-/// nenhuma das features: era eu a **autorar cenas às cegas**. Um `motion.move(dx, dy)`
-/// diz onde o CENTRO de uma banda vai; ele não diz nada sobre a LARGURA dela, e a
-/// largura sai de `(cols − 1) · gap`, três nós acima. Duas bandas cujos centros
-/// distam 12 unidades sobrepõem-se alegremente se cada uma medir 8.
-///
-/// ⚠️ **Não há como ver isto sem cozinhar.** O grafo é o que eu escrevo; a IMAGEM é o
-/// que o cook devolve — e até esta sonda existir, o único instrumento que media a
-/// diferença entre os dois era o olho do Enio, depois de compilar em release.
-///
-/// `PH2D_LAYOUT_LEVEL=73 cargo test -p ph2d-host-desktop --bins
-/// measure_scene_layout -- --ignored --nocapture` (sem a env, varre tudo).
-#[test]
-#[ignore = "sonda de layout, não um gate — `-- --ignored --nocapture`"]
-fn measure_scene_layout() {
-    let only = std::env::var("PH2D_LAYOUT_LEVEL").ok();
-    for level in 1..=MAX_DEMO_LEVEL {
-        if only.as_deref().is_some_and(|w| w != level.to_string()) {
-            continue;
-        }
-        // ⚠️ **Um `MotionState` inteiro, e não um `MotionDoc` solto.** Uma cena de FORMA
-        // ou de TEXTO lê a geometria por CANAL EXTERNO, que só o shell publica — um cook
-        // virgem não tem external nenhum e devolve **zero instâncias**, que esta sonda
-        // imprimiria como `VAZIA`. Seria ela a acusar a cena de um defeito dela própria,
-        // pela terceira vez nesta linha (a sonda de movimento e o harness do texto
-        // pagaram as outras duas).
-        let mut state = MotionState::new();
-        let sinks = build_level(Some(&level.to_string()), &mut state.doc, &state.registry);
-        if sinks.is_empty() {
-            continue;
-        }
-        crate::render_loop::motion_externals::publish_all(&mut state, 0.0);
-        println!("--- cena =`{level}` · {} bandas", sinks.len());
-        for (k, sink) in sinks.iter().enumerate() {
-            match band_box(&mut state, *sink) {
-                Some((n, lo, hi)) => println!(
-                    "  banda {:>2}: n={n:<6} x [{:>7.2} .. {:>7.2}]  y [{:>7.2} .. {:>7.2}]  ({:.2} x {:.2})",
-                    k + 1,
-                    lo[0],
-                    hi[0],
-                    lo[1],
-                    hi[1],
-                    hi[0] - lo[0],
-                    hi[1] - lo[1]
-                ),
-                None => println!("  banda {:>2}: VAZIA", k + 1),
-            }
-        }
-    }
-}
-
-/// A contagem e a caixa envolvente de uma banda, cozinhada em `t = 0`.
-///
-/// ⚠️ **A caixa é a das POSIÇÕES, não a da tinta.** Uma banda de uma instância só —
-/// típica de uma cena de FORMA, em que a arte inteira é um `geometry_id` — mede
-/// `0.00 x 0.00`, e isso não quer dizer *vazia*: quer dizer *um ponto*. A extensão
-/// desenhada ali é a do `VecPath` vezes a coluna `size`, e vive no store, não no stream.
-fn band_box(
-    state: &mut MotionState,
-    sink: ph2d_nodegraph::graph::NodeId,
-) -> Option<(usize, [f32; 2], [f32; 2])> {
-    use ph2d_nodegraph::attr::Column;
-    // ⚠️ O cook do PRÓPRIO estado — é nele que o `publish_all` escreveu os externals.
-    let out = state
-        .pump
-        .cook
-        .cook(&state.doc.graph, &state.registry, sink, 0.0)
-        .ok()?;
-    let s = out.first()?.as_stream();
-    let Some(Column::Vec2(p)) = s.get("P") else {
-        return None;
-    };
-    if p.is_empty() {
-        return None;
-    }
-    let mut lo = [f32::INFINITY; 2];
-    let mut hi = [f32::NEG_INFINITY; 2];
-    for q in p {
-        for a in 0..2 {
-            lo[a] = lo[a].min(q[a]);
-            hi[a] = hi[a].max(q[a]);
-        }
-    }
-    Some((p.len(), lo, hi))
-}
-
-/// **QUANTO UMA CENA DE FACTO ANDA** — a irmã temporal da [`measure_scene_layout`].
-///
-/// ⚠️ **Ela nasceu de um smoke reprovado E provou-se contra uma cena APROVADA**
-/// (Enio, 2026-08-21: *"tudo foi levado pelo vento. nada rasgou"*). A primeira
-/// versão desta sonda dizia que a `=75` não andava — e dizia o mesmo da **`=71`**,
-/// que o Enio já tinha aprovado. Foi isso que provou que o erro era do HARNESS: o
-/// `pre` de um circuito sequencial só avança quando o quadro FECHA
-/// ([`Cook::advance_tick`]), e um laço que só `cook`a lê o mesmo tique N vezes.
-///
-/// *Uma sonda que acusa a cena boa está a acusar-se a si própria.*
-///
-/// `PH2D_LAYOUT_LEVEL=75 cargo test -p ph2d-host-desktop --bins
-/// measure_scene_motion -- --ignored --nocapture`
-#[test]
-#[ignore = "sonda de movimento, não um gate — `-- --ignored --nocapture`"]
-fn measure_scene_motion() {
-    /// Quantos tiques a sonda corre — **cinco** segundos a 60 fps.
-    ///
-    /// ⚠️ **Dois segundos não chegavam, e isso é uma medição:** a cena `=75` faz o
-    /// vento SUBIR ao longo de 4 s, e o pano só solta lá pelos 2. Com a janela curta
-    /// as duas metades saíam com o mesmo número — a sonda dizia *"não há diferença"*
-    /// sobre uma cena que a tem, cinco décimos de segundo mais tarde.
-    const TICKS: u32 = 300;
-    use ph2d_nodegraph::attr::Column;
-    let mut reg = NodeRegistry::new();
-    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registra");
-    let only = std::env::var("PH2D_LAYOUT_LEVEL").ok();
-    for level in (1..=MAX_DEMO_LEVEL).map(|l| l.to_string()) {
-        if only.as_deref().is_some_and(|w| *w != level) {
-            continue;
-        }
-        let level = level.as_str();
-        let mut doc = MotionDoc::default();
-        let sinks = build_level(Some(level), &mut doc, &reg);
-        if sinks.is_empty() {
-            continue;
-        }
-        for (k, sink) in sinks.iter().enumerate() {
-            let mut cook = ph2d_nodegraph::cook::Cook::new();
-            let (mut a, mut b) = (Vec::new(), Vec::new());
-            for t in 0..TICKS {
-                let ph = f64::from(t) / 60.0;
-                let out = cook.cook(&doc.graph, &reg, *sink, ph).expect("cozinha");
-                if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
-                    if t == 0 {
-                        a = p.clone();
-                    }
-                    b = p.clone();
-                }
-                cook.advance_tick(&doc.graph, &reg, ph).expect("avança");
-            }
-            if a.is_empty() || b.is_empty() {
-                continue;
-            }
-            // O MAIOR percurso da banda, não o do elemento 0: uma banda cujo
-            // primeiro elemento esteja pinado andaria zero e leria como parada.
-            let d = a
-                .iter()
-                .zip(&b)
-                .map(|(p, q)| (q[0] - p[0]).abs() + (q[1] - p[1]).abs())
-                .fold(0.0_f32, f32::max);
-            println!("  cena ={level} banda {:>2}: maior percurso {d:.4}", k + 1);
-        }
-    }
-}
-
 #[test]
 fn no_conference_scene_ships_a_setup_hole() {
     let mut reg = NodeRegistry::new();
@@ -220,88 +41,6 @@ fn no_conference_scene_ships_a_setup_hole() {
     // `build_level` deixar de montar (um `_ =>` que engula tudo, um refactor do
     // env). Uma varredura que não acha nada não prova nada.
     assert!(built >= 60, "controle: a varredura montou só {built} cenas");
-}
-
-/// **QUANTAS PORTAS DE REALIMENTAÇÃO ESTÃO VAZIAS** — a medição que decide se escondê-las é
-/// livre ou se custa uma capacidade.
-///
-/// ```text
-/// cargo test -p ph2d-host-desktop --bins measure_feedback_ports -- --ignored --nocapture
-/// ```
-///
-/// ⚠️ **A pergunta vem de um report do Enio (2026-08-27, com foto): a porta de estado do
-/// `motion.boids` lê-se como *"uma reentrada de link"* e confunde.** O doc 03 §3 já tinha o
-/// diagnóstico em três partes — *o usuário não deveria (i) ver uma porta chamada `state`,
-/// (ii) desenhar o fechamento, (iii) ler um laço cruzando o grafo* — e a wave O1 curou (ii) e
-/// (iii). A (i) nunca foi fechada, e é exactamente o que a foto mostra.
-///
-/// ⛔ **Esconder sem condição TIRA uma capacidade que já shipa:** o `motion.integrate` recebe a
-/// cadeia de forças no `forces`, e o `motion.soft_body` recebe `motion.pin_constraint` e
-/// `field.index_range` no `state` (cenas da conferência). *Um clamp no caminho do estado é um
-/// clamp persistente — coisa que a referência não faz.*
-///
-/// ⇒ o que esta sonda mede é a razão entre os dois estados: quantas portas seguram **só o
-/// auto-laço do motor** (nada autorado, e aí a porta não oferece nada) contra quantas seguram
-/// uma cadeia. É esse número que diz se «esconder enquanto vazia» resolve o report ou é cosmética.
-#[test]
-#[ignore = "sonda: imprime numeros, nao afirma"]
-fn measure_feedback_ports() {
-    let mut reg = NodeRegistry::new();
-    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registra");
-    let (mut vazias, mut com_cadeia, mut cenas) = (0usize, 0usize, 0usize);
-    let mut por_tipo: std::collections::BTreeMap<&str, (usize, usize)> = Default::default();
-    for level in 1..=MAX_DEMO_LEVEL {
-        let mut doc = MotionDoc::default();
-        if build_level(Some(&level.to_string()), &mut doc, &reg).is_empty() {
-            continue;
-        }
-        cenas += 1;
-        for n in doc.graph.nodes() {
-            let Some(op) = ph2d_nodegraph::cook::OpResolver::resolve(&reg, n.type_id()) else {
-                continue;
-            };
-            let man = op.manifest();
-            let Some(out0) = man.outputs.first() else {
-                continue;
-            };
-            let Some((port, _)) = man
-                .inputs
-                .iter()
-                .enumerate()
-                .find(|(_, p)| matches!(p.name, "state" | "forces") && p.ty == out0.ty)
-            else {
-                continue;
-            };
-            // Uma aresta NÃO-atrasada a entrar na porta é autoria; só o `pre` é o motor.
-            let autorada = doc
-                .graph
-                .edges()
-                .iter()
-                .any(|e| !e.delayed && e.to == (n.id, port as u16));
-            let slot = por_tipo.entry(man.name).or_default();
-            if autorada {
-                com_cadeia += 1;
-                slot.1 += 1;
-            } else {
-                vazias += 1;
-                slot.0 += 1;
-            }
-        }
-    }
-    let total = vazias + com_cadeia;
-    println!("\n[feedback] {cenas} cenas · {total} portas de realimentacao");
-    println!(
-        "  so' o auto-laco do motor : {vazias:>4}  ({:.0}%)",
-        100.0 * vazias as f32 / total as f32
-    );
-    println!(
-        "  com cadeia AUTORADA      : {com_cadeia:>4}  ({:.0}%)",
-        100.0 * com_cadeia as f32 / total as f32
-    );
-    println!("\n  {:<26} {:>7} {:>9}", "no'", "vazias", "c/cadeia");
-    for (ty, (v, c)) in &por_tipo {
-        println!("  {ty:<26} {v:>7} {c:>9}");
-    }
 }
 
 /// ⛔⛔ **A CURA DAS 107 CENAS NÃO TINHA GATE NENHUM, E A MUTAÇÃO SOBREVIVIA.**
@@ -377,156 +116,91 @@ fn the_sweep_ceiling_is_the_highest_arm_the_router_actually_has() {
     );
 }
 
-/// ⭐⭐⭐ **QUE ROTA CADA CENA DO PRODUTO TOMA** — a sonda que a auditoria de performance de
-/// 2026-09-01 pediu, e a única que responde à pergunta que decide o teto do módulo.
+/// ⭐⭐⭐ **O QUE ALIMENTA A PORTA `shape` DE UM CARIMBO É UMA FORMA, EM TODA CENA** — report do
+/// Enio, 2026-09-06: *«você colocou grid entrando em Shape de Duplicator! Essa aplicação é
+/// correta?»*
 ///
-/// ⛔⛔ **Por que ela existe.** A ponte cozinha no DEVICE por omissão, e o device faz **4,19 M
-/// partículas em 3,85 ms** (23% de um quadro) contra **195,9 ms da CPU** — `50,9×`, medido pelo
-/// `emitter_sim_ceiling_probe` nesta máquina. Mas o roteamento tem escadas-abismo
-/// ([`crate::render_loop::motion_bridge::gpu::gpu_route`]): **dois sinks** derrubam o grafo
-/// inteiro para a CPU, um **escopo de tempo** também, e uma fronteira sem estágio que despache
-/// também. E **nada na tela diz que aconteceu** — `GpuOutcome::FellThrough` é consumido pela
-/// ponte e não acende nada.
+/// Não era, e o censo irmão respondeu à pergunta seguinte: **três** cenas faziam o mesmo. Curar
+/// a que ele apontou e deixar as outras é a armadilha de curar METADE de uma família.
 ///
-/// ⚠️ **Ela IMPRIME e não julga.** Uma cena na CPU não é um defeito por si: a `=107` tem dois
-/// sinks de propósito, e uma cena com `motion.time_remap` **tem de** recuar. O que a sonda
-/// entrega é o CENSO — quantas das cenas que o produto expõe correm no caminho rápido —, para
-/// que ninguém volte a afirmar «GPU-resident por omissão» sem o número ao lado.
+/// ⚠️ **Nenhum gate de TIPOS pode apanhar isto:** as duas portas do `motion.duplicator` são o
+/// mesmo `Domain::Instances`, então uma grelha ali compila, cozinha e desenha o ladrilho de
+/// omissão. O que ela faz de errado é ENSINAR — quem lê o grafo aprende que uma forma se faz com
+/// uma grelha de 1×1.
 ///
-/// `cargo test -p ph2d-host-desktop --bins motion_route_census -- --ignored --nocapture`
+/// ⚠️ **A lista é uma CATRACA com as duas metades** (a lei do `CLAUDE.md` §5.0): uma fonte nova
+/// entra aqui de propósito, com uma linha a dizer porquê — e uma que já não é usada por cena
+/// nenhuma **tem de sair**, senão a lista vira licença.
 #[test]
-#[ignore = "sonda de rota, não um gate — `-- --ignored --nocapture`"]
-fn motion_route_census() {
-    use crate::render_loop::motion_bridge::gpu::{GpuRoute, gpu_route};
-    let (mut full, mut hybrid, mut cpu) = (0u32, 0u32, 0u32);
-    let (mut multi_total, mut multi_todos_gpu, mut multi_alguns_gpu) = (0u32, 0u32, 0u32);
-    let mut porques: std::collections::BTreeMap<&'static str, Vec<u32>> =
-        std::collections::BTreeMap::new();
+fn every_stamps_shape_port_is_fed_by_a_thing_to_draw() {
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("todo nó registra");
+    /// **O QUE É «uma coisa para desenhar»** — as fontes que trazem APARÊNCIA (geometria, uma
+    /// sprite, glifos), e não um ARRANJO, que só traz lugares.
+    const FONTES: &[&str] = &[
+        // Geometria vectorial viva. O doc dele nomeia esta composição à letra.
+        "source.shape",
+    ];
+    let mut vistas: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    let mut maus: Vec<String> = Vec::new();
+    let mut carimbos = 0usize;
     for level in 1..=MAX_DEMO_LEVEL {
-        let mut state = MotionState::new();
-        let sinks = build_level(Some(&level.to_string()), &mut state.doc, &state.registry);
-        if sinks.is_empty() {
+        let mut doc = MotionDoc::default();
+        if build_level(Some(&level.to_string()), &mut doc, &reg).is_empty() {
             continue;
         }
-        let scopes = ph2d_node_motion_time_remap::time_scopes(&state.doc.graph, &state.registry);
-        let plan =
-            ph2d_gpu_cook::plan(&state.doc.graph, &state.registry, &state.registry, sinks[0]);
-        let route = gpu_route(
-            true,
-            sinks.len(),
-            scopes.is_empty(),
-            &plan.boundaries,
-            plan.dispatching_stages(&state.registry),
-        );
-        // ⚠️ **A razão é a PRIMEIRA que morde**, na ordem em que o `gpu_route` as pergunta —
-        // uma cena pode ter duas, e nomear a segunda mandaria alguém curar a errada.
-        let porque = match route {
-            GpuRoute::FullyGpu => "1. device inteiro",
-            GpuRoute::Hybrid => "2. híbrido (prefixo na CPU)",
-            GpuRoute::Cpu if sinks.len() != 1 => "3. CPU: mais de UM sink",
-            GpuRoute::Cpu if !scopes.is_empty() => "4. CPU: escopo de tempo (time_remap)",
-            GpuRoute::Cpu => "5. CPU: fronteira sem estágio que despache",
-        };
-        porques.entry(porque).or_default().push(level);
-        // ⭐⭐ **O que a escada do multi-sink CUSTA a levantar**: se cada sink, planeado
-        // SOZINHO, já é reclamado pelo device, então a barreira não é o trabalho — é só a
-        // COMPOSIÇÃO de dois planos num buffer. Sem este número, «F2+ territory» é uma nota
-        // sobre um preço que ninguém mediu (§0.0).
-        if sinks.len() > 1 {
-            multi_total += 1;
-            let cada: Vec<_> = sinks
+        let g = &doc.graph;
+        for n in g
+            .nodes()
+            .iter()
+            .filter(|n| n.type_name == "motion.duplicator")
+        {
+            carimbos += 1;
+            let Some(e) = g.edges().iter().find(|e| e.to.0 == n.id && e.to.1 == 0) else {
+                maus.push(format!("=`{level}`: um carimbo com a porta `shape` VAZIA"));
+                continue;
+            };
+            let raiz = g
+                .nodes()
                 .iter()
-                .map(|&s| {
-                    ph2d_gpu_cook::plan(&state.doc.graph, &state.registry, &state.registry, s)
-                })
-                .collect();
-            if cada.iter().all(ph2d_gpu_cook::GpuPlan::is_fully_gpu) {
-                multi_todos_gpu += 1;
-            } else if cada.iter().any(ph2d_gpu_cook::GpuPlan::is_fully_gpu) {
-                multi_alguns_gpu += 1;
+                .find(|m| m.id == shape_origin(g, e.from.0))
+                .map(|m| m.type_name.clone())
+                .unwrap_or_default();
+            vistas.insert(raiz.clone());
+            if !FONTES.contains(&raiz.as_str()) {
+                maus.push(format!("=`{level}`: a porta `shape` nasce num `{raiz}`"));
             }
         }
-        match route {
-            GpuRoute::FullyGpu => full += 1,
-            GpuRoute::Hybrid => hybrid += 1,
-            GpuRoute::Cpu => cpu += 1,
-        }
     }
-    let total = full + hybrid + cpu;
-    eprintln!("=== CENSO DE ROTA · {total} cenas com sinks, de 1..={MAX_DEMO_LEVEL} ===");
-    for (porque, cenas) in &porques {
-        eprintln!(
-            "  {porque:<36} │ {:>3} cenas ({:>4.1}%)",
-            cenas.len(),
-            cenas.len() as f64 * 100.0 / total as f64
-        );
-        eprintln!("      {cenas:?}");
-    }
-    eprintln!("  ─────");
-    eprintln!(
-        "  device (inteiro ou híbrido) │ {:>3} ({:.1}%)   ·   CPU serial │ {cpu} ({:.1}%)",
-        full + hybrid,
-        (full + hybrid) as f64 * 100.0 / total as f64,
-        cpu as f64 * 100.0 / total as f64
+    assert!(
+        carimbos >= 15,
+        "controle: a varredura achou {carimbos} carimbos"
     );
-    eprintln!("  ─── a escada do MULTI-SINK, se alguem a levantar ───");
-    eprintln!(
-        "  cenas multi-sink │ {multi_total}   ·   TODOS os sinks ja seriam device │ {multi_todos_gpu} ({:.1}%)   ·   alguns │ {multi_alguns_gpu}",
-        multi_todos_gpu as f64 * 100.0 / multi_total.max(1) as f64
+    assert!(
+        maus.is_empty(),
+        "uma GRELHA (ou outro arranjo) alimenta a porta de FORMA de um carimbo — ela desenha o \
+         ladrilho de omissao e ensina o idioma errado a quem le^ o grafo:\n{}",
+        maus.join("\n")
+    );
+    // A metade da obsolescência: uma fonte declarada que nenhuma cena usa é licença parada.
+    let orfas: Vec<&&str> = FONTES.iter().filter(|f| !vistas.contains(**f)).collect();
+    assert!(
+        orfas.is_empty(),
+        "a lista declara fontes que cena nenhuma usa — apague-as: {orfas:?}"
     );
 }
 
-/// **EM QUE CENA E EM QUE NÓ o balão de perda aparece** — a sonda que o report do Enio de
-/// 2026-09-02 obrigou a escrever: *«não entendi esse teste»*.
-///
-/// ⛔⛔ **O defeito era do SMOKE, não do produto.** Eu escrevi *«passa o rato num nó; se ele
-/// perder colunas, aparece a lista»* — com uma palavra que ele não usa (*coluna*) e, pior, com
-/// uma **pré-condição que ele não tem como verificar**: sem saber QUAL nó perde, ele passaria o
-/// rato por vários, não veria nada, e concluiria que está partido. *Um smoke cuja condição o
-/// leitor não consegue avaliar reprova sobre produto correcto* (§0.8).
-///
-/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture where_the_drops_note_shows_up`
-#[test]
-#[ignore = "sonda de smoke, nao um gate"]
-fn where_the_drops_note_shows_up() {
-    // ⚠️ **A 1.ª versão varria as 109 e PENDUROU** — alguma cena coze algo enorme sob um
-    // `Cook` virgem (sem a bomba, sem o orçamento que o produto lhe dá). O alcance é uma env
-    // para quem quiser continuar a varredura por pedaços, em vez de a sonda ter de adivinhar
-    // qual cena é a cara.
-    let ate: u32 = std::env::var("PH2D_DROPS_SCAN_MAX")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(40);
-    let mut achados = 0;
-    for level in 1..=ate.min(MAX_DEMO_LEVEL) {
-        let mut state = MotionState::new();
-        let sinks = build_level(Some(&level.to_string()), &mut state.doc, &state.registry);
-        if sinks.is_empty() {
-            continue;
-        }
-        crate::render_loop::motion_externals::publish_all(&mut state, 0.0);
-        // UM cook basta: a pergunta é ESTRUTURAL (que colunas entram e saem), não temporal.
-        let mut cook = ph2d_nodegraph::cook::Cook::new();
-        if cook
-            .cook(&state.doc.graph, &state.registry, sinks[0], 0.0)
-            .is_err()
-        {
-            continue;
-        }
-        state.pump.cook = cook;
-        let ids: Vec<_> = state
-            .doc
-            .graph
-            .nodes()
-            .iter()
-            .map(|n| (n.id, n.type_name.clone()))
-            .collect();
-        for (id, ty) in ids {
-            if let Some(nota) = crate::render_loop::motion_bridge::columns::dropped_at(&state, id) {
-                eprintln!("  cena =`{level}` · no' `{ty}` -> drops {nota}");
-                achados += 1;
-            }
+/// Sobe pela porta 0 até um nó SEM entradas — a fonte daquele braço. Entre a fonte e o carimbo
+/// há transformes e tints, então olhar o vizinho imediato não responderia.
+pub(super) fn shape_origin(
+    g: &ph2d_nodegraph::graph::Graph,
+    mut id: ph2d_nodegraph::graph::NodeId,
+) -> ph2d_nodegraph::graph::NodeId {
+    for _ in 0..32 {
+        match g.edges().iter().find(|e| e.to.0 == id && e.to.1 == 0) {
+            Some(e) => id = e.from.0,
+            None => break,
         }
     }
-    eprintln!("  {achados} nos com nota, em 1..={ate}");
+    id
 }

@@ -28,6 +28,12 @@ precisava de `grid + transform + scale + tint` (quatro nós) para ser «uma form
 deixou de escolher entre três quadrados de cores diferentes e passa a escolher entre um
 círculo, uma estrela e um coração, que é a pergunta que ele responde.
 
+⛔⛔ **E o report do dono era UMA das três — o censo é obrigatório antes do veredito.** Curar a
+cena que ele apontou e deixar as irmãs é curar METADE de uma família: a varredura de todas as
+cenas do roteador achou **três** a alimentar a porta de forma com uma grelha (`=62`, `=98` e a
+que ele viu). O censo virou **gate com catraca de duas metades**: a lista de fontes legítimas
+cresce de propósito, e uma entrada que cena nenhuma usa **tem de sair**.
+
 ⚠️ **O gate que fecha isto segue a porta até à ORIGEM do braço** (sobe pela entrada 0 até um nó
 sem entradas) e afirma o tipo dela — não basta olhar o vizinho imediato, porque entre a fonte e
 o carimbo há transformes e tints.

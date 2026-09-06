@@ -39,6 +39,10 @@ const PIECES: f32 = 16.0;
 /// O tamanho de uma peça e o passo entre elas, em unidades de mundo.
 const PIECE: f32 = 0.2;
 const GAP: f32 = 0.26;
+/// O RAIO da forma carimbada. ⚠️ **Raio, não lado:** a geometria de um `source.shape` vive em
+/// raio 1, então uma forma de `0,2` mediria `0,4` de ponta a ponta e as dezasseis cópias
+/// encavalitavam-se num passo de `0,26`.
+const SHAPE_R: f32 = 0.11;
 /// Em quantos GRUPOS a 3.ª fileira parte a fila. `PIECES / GROUPS` peças em cada.
 const GROUPS: f32 = 4.0;
 
@@ -129,12 +133,21 @@ fn ramp_over(g: &mut Graph, head: NodeId, ey: f32, x: f32) -> Option<NodeId> {
 /// Uma banda das DUAS primeiras fileiras: uma forma cinzenta carimbada numa fila de pontos
 /// que trazem a rampa, com o `transfer` a decidir se a cor do ponto chega.
 fn stamp_band(g: &mut Graph, at: [f32; 2], ey: f32, transfer: f32) -> Option<NodeId> {
-    // A FORMA: uma peça só, com a cor dela.
-    let one = node(g, "motion.grid", &[("rows", 1.0), ("cols", 1.0)], ey, 80.0);
-    let sized = push(g, one, "motion.scale", &[("amount", PIECE)], ey, 220.0);
+    // ⭐ **A FORMA é um `source.shape`, e não uma grelha de uma célula** (report do Enio,
+    // 2026-09-06: *«você colocou grid entrando em Shape de Duplicator! Essa aplicação é
+    // correta?»*). As duas portas do carimbo são o mesmo tipo, então só a semântica as
+    // distingue — e uma grelha ali funciona, desenha o ladrilho de omissão, e ensina o idioma
+    // errado a quem lê o grafo. ⚠️ O `size` é param da forma, então o `motion.scale` sai.
+    let one = node(
+        g,
+        "source.shape",
+        &[(ph2d_node_motion_shape::param::SIZE, SHAPE_R)],
+        ey,
+        80.0,
+    );
     let shape = push(
         g,
-        sized,
+        one,
         "motion.tint",
         &[
             ("r", SHAPE_RGB[0]),

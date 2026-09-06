@@ -5,17 +5,28 @@
 //! iguais, porque todos mediam a montagem. Aqui cada par é cozido e a afirmação é sobre as
 //! COLUNAS que saem — se um par sair igual dos dois lados, o gate reprova antes do Enio.
 
-use super::*;
-use ph2d_nodegraph::attr::Column;
-use ph2d_nodegraph::cook::Cook;
+//! ⚠️ **O cook é o da SHELL, não um `Cook` nu** (desde 2026-09-06): a forma das quatro primeiras
+//! bandas é um `source.shape`, que lê um EXTERNAL que a shell publica — num cook virgem ele
+//! emite **zero**, e as bandas sairiam vazias com os gates a dizer que a cena não monta.
 
-fn scene() -> (MotionDoc, NodeRegistry, Vec<NodeId>) {
-    let mut reg = NodeRegistry::new();
-    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registram");
-    let mut doc = MotionDoc::default();
-    let sinks = build_stamp_demo_document(&mut doc, &reg).expect("a cena monta");
-    doc.graph.validate(&reg).expect("bem-tipada");
-    (doc, reg, sinks)
+use super::*;
+use crate::motion_state::MotionState;
+use ph2d_nodegraph::attr::Column;
+
+fn scene() -> (MotionState, Vec<NodeId>) {
+    let mut state = MotionState::new();
+    assert!(
+        state.doc.graph.nodes().is_empty(),
+        "desligue o PH2D_GPU_COOK_DEMO: o `MotionState::new` semearia outra cena"
+    );
+    let sinks = build_stamp_demo_document(&mut state.doc, &state.registry).expect("a cena monta");
+    state
+        .doc
+        .graph
+        .validate(&state.registry)
+        .expect("bem-tipada");
+    crate::render_loop::motion_shape_gen::publish(&mut state, 0.0);
+    (state, sinks)
 }
 
 struct Band {
@@ -23,12 +34,15 @@ struct Band {
     tint: Vec<[f32; 4]>,
 }
 
-fn bake(doc: &MotionDoc, reg: &NodeRegistry, sinks: &[NodeId]) -> Vec<Band> {
-    let mut cook = Cook::new();
+fn bake(state: &mut MotionState, sinks: &[NodeId]) -> Vec<Band> {
     sinks
         .iter()
         .map(|&s| {
-            let out = cook.cook(&doc.graph, reg, s, 0.0).expect("coze");
+            let out = state
+                .pump
+                .cook
+                .cook(&state.doc.graph, &state.registry, s, 0.0)
+                .expect("coze");
             let st = out[0].as_stream();
             Band {
                 p: match st.get("P") {
@@ -61,11 +75,11 @@ fn distinct_tints(b: &Band) -> usize {
 /// A cena monta as seis bandas, e as seis cospem as `PIECES` peças.
 #[test]
 fn the_stamp_scene_builds_all_six_bands() {
-    let (doc, reg, sinks) = scene();
+    let (mut state, sinks) = scene();
     assert_eq!(sinks.len(), 6, "tres pares");
     assert_eq!(band_labels().count(), 6, "um rotulo por banda");
     assert_eq!(captions().len(), 6, "uma ficha por banda");
-    for (k, b) in bake(&doc, &reg, &sinks).into_iter().enumerate() {
+    for (k, b) in bake(&mut state, &sinks).into_iter().enumerate() {
         assert_eq!(b.p.len(), PIECES as usize, "banda {k}: a fila inteira");
         assert_eq!(
             b.tint.len(),
@@ -80,8 +94,8 @@ fn the_stamp_scene_builds_all_six_bands() {
 /// cena existir.
 #[test]
 fn the_first_pair_loses_the_arrangements_colour_on_the_left_and_keeps_it_on_the_right() {
-    let (doc, reg, sinks) = scene();
-    let b = bake(&doc, &reg, &sinks);
+    let (mut state, sinks) = scene();
+    let b = bake(&mut state, &sinks);
     assert_eq!(
         distinct_tints(&b[0]),
         1,
@@ -99,8 +113,8 @@ fn the_first_pair_loses_the_arrangements_colour_on_the_left_and_keeps_it_on_the_
 /// cinzento e o neutro daquele modo é o branco.
 #[test]
 fn the_second_pair_tints_the_ramp_instead_of_replacing_it() {
-    let (doc, reg, sinks) = scene();
-    let b = bake(&doc, &reg, &sinks);
+    let (mut state, sinks) = scene();
+    let b = bake(&mut state, &sinks);
     let sum = |x: &Band| -> f32 {
         x.tint.iter().map(|t| t[0] + t[1] + t[2]).sum::<f32>() / x.tint.len() as f32
     };
@@ -121,8 +135,8 @@ fn the_second_pair_tints_the_ramp_instead_of_replacing_it() {
 /// montagem passaria por uma diferença de lei.
 #[test]
 fn the_two_point_wins_bands_are_the_same_scene() {
-    let (doc, reg, sinks) = scene();
-    let b = bake(&doc, &reg, &sinks);
+    let (mut state, sinks) = scene();
+    let b = bake(&mut state, &sinks);
     let (l, r) = (&b[1].tint, &b[2].tint);
     assert_eq!(l.len(), r.len());
     for (i, (a, c)) in l.iter().zip(r).enumerate() {
@@ -144,10 +158,13 @@ fn the_two_point_wins_bands_are_the_same_scene() {
 /// o posto. A cor existe para o olho do Enio; o gate lê o posto.
 #[test]
 fn the_third_pair_confines_the_shuffle_to_each_group() {
-    let (doc, reg, sinks) = scene();
-    let mut cook = Cook::new();
-    let rank_and_place = |sink: NodeId, cook: &mut Cook| -> Vec<(usize, usize)> {
-        let out = cook.cook(&doc.graph, &reg, sink, 0.0).expect("coze");
+    let (mut state, sinks) = scene();
+    let rank_and_place = |state: &mut MotionState, sink: NodeId| -> Vec<(usize, usize)> {
+        let out = state
+            .pump
+            .cook
+            .cook(&state.doc.graph, &state.registry, sink, 0.0)
+            .expect("coze");
         let st = out[0].as_stream();
         let p = match st.get("P") {
             Some(Column::Vec2(v)) => v.clone(),
@@ -172,8 +189,8 @@ fn the_third_pair_confines_the_shuffle_to_each_group() {
             })
             .collect()
     };
-    let global = rank_and_place(sinks[4], &mut cook);
-    let grouped = rank_and_place(sinks[5], &mut cook);
+    let global = rank_and_place(&mut state, sinks[4]);
+    let grouped = rank_and_place(&mut state, sinks[5]);
     let agree = |v: &[(usize, usize)]| v.iter().filter(|(a, b)| a == b).count();
     assert_eq!(
         agree(&grouped),
@@ -188,7 +205,7 @@ fn the_third_pair_confines_the_shuffle_to_each_group() {
          escolheu a identidade e a cena nao prova nada"
     );
     // ⚠️ E a metade que o olho vê: a rampa TEM de estar lá, senão a cena é ilegível.
-    let b = bake(&doc, &reg, &sinks);
+    let b = bake(&mut state, &sinks);
     assert!(
         distinct_tints(&b[5]) > 8,
         "a fileira agrupada continua a ser uma rampa (saiu com {} cores)",
@@ -199,9 +216,9 @@ fn the_third_pair_confines_the_shuffle_to_each_group() {
 /// Nenhuma banda sai do quadrante dela — a lei da cena `=73`, herdada.
 #[test]
 fn no_band_leaves_its_slot() {
-    let (doc, reg, sinks) = scene();
+    let (mut state, sinks) = scene();
     let want = (PIECES - 1.0) * GAP;
-    for (k, b) in bake(&doc, &reg, &sinks).into_iter().enumerate() {
+    for (k, b) in bake(&mut state, &sinks).into_iter().enumerate() {
         let lo = b.p.iter().map(|q| q[0]).fold(f32::MAX, f32::min);
         let hi = b.p.iter().map(|q| q[0]).fold(f32::MIN, f32::max);
         assert!(

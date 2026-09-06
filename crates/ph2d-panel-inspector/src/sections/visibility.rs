@@ -9,6 +9,7 @@
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorVisibilitySectionInfo;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 
 /// Label-above row with a single NumberInput. Returns the next `y`.
@@ -141,7 +142,7 @@ pub(crate) fn paint_visibility_section(
     // (`set_collapsed` in `pre_populate`). Clicking the header toggles
     // `is_collapsed(INSP_VIS_LAYER_HEADER)` via `apply_click` (the id is
     // marked collapsible). Bit `n` = layer `n+1`; absent component → ALL.
-    yy = paint_section_separator(scene, theme, x, w, yy);
+    yy = close_section(scene, theme, x, w, yy);
     let layer_header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let layer_header = section_header(store, ids::INSP_VIS_LAYER_HEADER, "Visibility Layer")
         .open_t(store.section_open_live(ids::INSP_VIS_LAYER_HEADER));

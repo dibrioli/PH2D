@@ -19,7 +19,9 @@ use crate::{
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, rect_to_vello, resolve};
-use ph2d_editor_core::widget::section_cards::{SectionCards, with_section_cards};
+use ph2d_editor_core::widget::section_cards::{
+    close_section, skip_section_header, with_section_cards,
+};
 use ph2d_editor_core::widget::{
     SectionFold, SectionHeader, TextInput, TextInputState, block_cells, grid_height,
     paint_section_header, paint_text_input_with_buffer,
@@ -80,9 +82,9 @@ pub(crate) fn paint_body(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    with_section_cards(scene, theme, y, |scene, cards| {
-        let ny = paint_sound_sections(y, x, w, b, scene, text_system, theme, hit_index, cards);
-        paint_asset_sections(ny, x, w, b, scene, text_system, theme, hit_index, cards)
+    with_section_cards(scene, theme, y, |scene| {
+        let ny = paint_sound_sections(y, x, w, b, scene, text_system, theme, hit_index);
+        paint_asset_sections(ny, x, w, b, scene, text_system, theme, hit_index)
     })
 }
 
@@ -101,7 +103,6 @@ fn paint_sound_sections(
     text_system: &mut TextSystem,
     theme: Theme,
     hit_index: &mut ClippedHits,
-    cards: &mut SectionCards,
 ) -> f32 {
     let (fold, ny) = section(
         y,
@@ -117,7 +118,7 @@ fn paint_sound_sections(
         hit_index,
     );
     y = ny;
-    cards.skip_header(y);
+    skip_section_header(y);
     if let Some(fold) = fold {
         y = paint_transport_section(
             y,
@@ -132,7 +133,7 @@ fn paint_sound_sections(
         );
         y = end_fold(fold, y, scene, hit_index);
     }
-    y = separator(y, x, w, scene, cards);
+    y = separator(y, x, w, scene, theme);
 
     let loop_read = crate::paint_loop::loop_readout();
     let (fold, ny) = section(
@@ -149,7 +150,7 @@ fn paint_sound_sections(
         hit_index,
     );
     y = ny;
-    cards.skip_header(y);
+    skip_section_header(y);
     if let Some(fold) = fold {
         y = crate::paint_loop::paint_loop_section(
             y,
@@ -165,7 +166,7 @@ fn paint_sound_sections(
         );
         y = end_fold(fold, y, scene, hit_index);
     }
-    y = separator(y, x, w, scene, cards);
+    y = separator(y, x, w, scene, theme);
 
     let (fold, ny) = section(
         y,
@@ -181,7 +182,7 @@ fn paint_sound_sections(
         hit_index,
     );
     y = ny;
-    cards.skip_header(y);
+    skip_section_header(y);
     if let Some(fold) = fold {
         y = crate::paint_edit::paint_edit_section(
             y,
@@ -198,7 +199,7 @@ fn paint_sound_sections(
         );
         y = end_fold(fold, y, scene, hit_index);
     }
-    y = separator(y, x, w, scene, cards);
+    y = separator(y, x, w, scene, theme);
 
     // Spectral sits between Edit and Effects: it IS editing (destructive, undoable), it
     // just edits in a domain the waveform cannot show. Reach for it after the cuts and
@@ -217,7 +218,7 @@ fn paint_sound_sections(
         hit_index,
     );
     y = ny;
-    cards.skip_header(y);
+    skip_section_header(y);
     if let Some(fold) = fold {
         y = crate::paint_spectral::paint_spectral_section(
             y,
@@ -233,7 +234,7 @@ fn paint_sound_sections(
         );
         y = end_fold(fold, y, scene, hit_index);
     }
-    y = separator(y, x, w, scene, cards);
+    y = separator(y, x, w, scene, theme);
 
     let (fold, ny) = section(
         y,
@@ -249,7 +250,7 @@ fn paint_sound_sections(
         hit_index,
     );
     y = ny;
-    cards.skip_header(y);
+    skip_section_header(y);
     if let Some(fold) = fold {
         y = crate::paint_fx::paint_fx_section(
             y,
@@ -264,7 +265,7 @@ fn paint_sound_sections(
         );
         y = end_fold(fold, y, scene, hit_index);
     }
-    y = separator(y, x, w, scene, cards);
+    y = separator(y, x, w, scene, theme);
 
     y
 }
@@ -282,7 +283,6 @@ fn paint_asset_sections(
     text_system: &mut TextSystem,
     theme: Theme,
     hit_index: &mut ClippedHits,
-    cards: &mut SectionCards,
 ) -> f32 {
     let mark_read = crate::paint_loop::markers_readout();
     let (fold, ny) = section(
@@ -299,7 +299,7 @@ fn paint_asset_sections(
         hit_index,
     );
     y = ny;
-    cards.skip_header(y);
+    skip_section_header(y);
     if let Some(fold) = fold {
         y = crate::paint_loop::paint_markers_section(
             y,
@@ -314,7 +314,7 @@ fn paint_asset_sections(
         );
         y = end_fold(fold, y, scene, hit_index);
     }
-    y = separator(y, x, w, scene, cards);
+    y = separator(y, x, w, scene, theme);
 
     let var_read = crate::paint_variation::variation_readout();
     let (fold, ny) = section(
@@ -331,7 +331,7 @@ fn paint_asset_sections(
         hit_index,
     );
     y = ny;
-    cards.skip_header(y);
+    skip_section_header(y);
     if let Some(fold) = fold {
         y = crate::paint_variation::paint_variation_section(
             y,
@@ -345,7 +345,7 @@ fn paint_asset_sections(
         );
         y = end_fold(fold, y, scene, hit_index);
     }
-    y = separator(y, x, w, scene, cards);
+    y = separator(y, x, w, scene, theme);
 
     let del_read = crate::paint_delivery::delivery_readout();
     let (fold, ny) = section(
@@ -362,7 +362,7 @@ fn paint_asset_sections(
         hit_index,
     );
     y = ny;
-    cards.skip_header(y);
+    skip_section_header(y);
     if let Some(fold) = fold {
         y = crate::paint_delivery::paint_delivery_section(
             y,

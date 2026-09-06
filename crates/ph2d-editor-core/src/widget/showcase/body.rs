@@ -90,6 +90,9 @@ pub fn paint_showcase_body(
     let inner_w = (rect.w - BODY_PAD * 2.0 - scrollbar_reserve).max(0.0);
     let body_top_y = content_top - scroll_y + Spacing::Xs.px();
     let mut y = body_top_y;
+    // ⭐⭐ **A galeria também mostra o CARTÃO** — ela é a fonte de verdade do cromo (DIRETRIZ
+    //    §5.2), logo um risco aqui seria a galeria a ensinar o que o app já não faz.
+    crate::widget::section_cards::begin_section_cards(scene, theme, body_top_y);
     // Publish the body's screen-Y origin so the right-click dispatch
     // can convert screen-y → body-y when computing `before_section`
     // for a new note (`section_index_below_body_y`). Inspector's live
@@ -182,7 +185,7 @@ pub fn paint_showcase_body(
             }
             y = new_y;
             paint_pending_notes!();
-            y = paint_section_separator(scene, theme, inner_x, inner_w, y);
+            y = crate::widget::section_cards::close_section(scene, theme, inner_x, inner_w, y);
             #[allow(unused_assignments)]
             {
                 section_idx += 1;
@@ -268,6 +271,7 @@ pub fn paint_showcase_body(
         }
     }
 
+    crate::widget::section_cards::end_section_cards(scene);
     scene.pop_layer();
     paint_panel_corner_dot(rect, scene, theme);
     crate::widget::panel_chrome::paint_panel_corner_dot_bl(rect, scene, theme);

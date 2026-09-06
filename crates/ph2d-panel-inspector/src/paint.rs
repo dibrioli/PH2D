@@ -17,7 +17,7 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::screens::{HeroLayout, HeroSelection};
-use ph2d_editor_core::widget::showcase::paint_section_separator;
+use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 use ph2d_vector::VectorScene;
@@ -194,7 +194,7 @@ fn paint_inspector(
                 y,
             )
         });
-        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
+        y = close_section(scene, theme, inner_x, inner_w, y);
     }
     if visibility_info.is_some() {
         y = live_section!(ids::INSP_LIVE_VISIBILITY_SECTION, 1, ROW_H_PX, {
@@ -225,7 +225,7 @@ fn paint_inspector(
             }
             yy
         });
-        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
+        y = close_section(scene, theme, inner_x, inner_w, y);
     }
     if transform_info.is_some() {
         y = live_section!(ids::INSP_LIVE_TRANSFORM_SECTION, 2, SECTION_HEAD_H, {
@@ -240,7 +240,7 @@ fn paint_inspector(
                 y,
             )
         });
-        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
+        y = close_section(scene, theme, inner_x, inner_w, y);
     }
     // **As três seções da SPRITE** — §3 Render Source, §6 Color & Tint e §4 Sprite Sheet —
     // moram em `paint_frame_shared` pelo mesmo cap que levou lá as compartilhadas. Elas andam
@@ -359,19 +359,6 @@ fn paint_inspector(
         section_tops_y,
     );
     // ⭐ **O fecho, simétrico do [`crate::paint_body::open_body`]** — os popovers diferidos, o
-    // `pop_layer` do clip que ele abriu, os cantos e o re-registo dos hits.
+    // `pop_layer` do clip que ele abriu, os cantos, o re-registo dos hits e os CARTÕES.
     crate::paint_body::close_body(scene, text_system, theme, hit_index, rect);
-}
-
-/// The section separator, callable from `paint_frame`'s extracted section
-/// painters. A thin forward rather than a second import path, so there stays
-/// exactly one place that knows what a separator looks like.
-pub(crate) fn paint_section_separator_at(
-    scene: &mut ph2d_vector::VectorScene,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
-    paint_section_separator(scene, theme, x, w, y)
 }

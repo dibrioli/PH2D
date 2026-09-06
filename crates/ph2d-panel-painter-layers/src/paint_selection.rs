@@ -10,7 +10,7 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::showcase::paint_section_separator;
+use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::{
     Card, SegmentedAdaptive, SegmentedOption, measure_segmented_adaptive, paint_card,
     paint_segmented_adaptive, slider_with_chip_height,
@@ -113,7 +113,7 @@ pub(crate) fn paint_selection_section(
     // Operation card (Enio 2026-07-04).
     y = offset_card(ctx, theme, x, content_w, y, brush.selection_offset);
 
-    y = paint_section_separator(ctx.scene, theme, x, content_w, y);
+    y = close_section(ctx.scene, theme, x, content_w, y);
 
     // Edit Gizmos — reveal EVERY isolated shape gizmo at once, each manipulable (ADR-0103 Am.2 v2). It
     // does NOT bake a curve; the Convert button does that.

@@ -11,6 +11,7 @@
 
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, NoteData, WidgetStore};
+use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::showcase::take_pending_dropdown_chip;
 use ph2d_editor_core::widget::{self, Dropdown, DropdownOption};
 
@@ -54,7 +55,7 @@ pub(crate) fn paint_shared_sections(
     // COM ou SEM o componente — sem ele mostra só o «+ Add 9-Slice». Uma seção que só existe
     // depois de a feature estar ligada é uma feature que ninguém descobre.
     if let Some(sl) = slice {
-        y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
+        y = close_section(scene, theme, inner_x, inner_w, y);
         let y_before = y;
         begin_section(
             section_tops_y,
@@ -92,7 +93,7 @@ pub(crate) fn paint_shared_sections(
     }
     // §7 Ordering / Sorting — vale para qualquer entidade com Transform, não só sprites.
     if let Some(ord) = ordering {
-        y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
+        y = close_section(scene, theme, inner_x, inner_w, y);
         let y_before = y;
         begin_section(
             section_tops_y,
@@ -130,7 +131,7 @@ pub(crate) fn paint_shared_sections(
     }
     // §9 Sampling — irmã da §7.
     if let Some(samp) = sampling {
-        y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
+        y = close_section(scene, theme, inner_x, inner_w, y);
         let y_before = y;
         begin_section(
             section_tops_y,
@@ -168,7 +169,7 @@ pub(crate) fn paint_shared_sections(
     }
     // §10 Material & Blend — irmã da §9.
     if let Some(bl) = blend {
-        y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
+        y = close_section(scene, theme, inner_x, inner_w, y);
         let y_before = y;
         begin_section(
             section_tops_y,
@@ -242,7 +243,7 @@ pub(crate) fn paint_anchor_section(
     // final (já corrigido contra o tamanho da lista, na linha acima), enquanto o despacho só
     // corre quando alguém clica.
     crate::state::set_open_anchor_row((!anch.rows.is_empty()).then_some(*selected));
-    y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
+    y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
         section_tops_y,
@@ -312,7 +313,7 @@ pub(crate) fn paint_sprite_sections(
         (ids::INSP_LIVE_SHEET_SECTION, 5, 2),
     ] {
         if which > 0 {
-            y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
+            y = close_section(scene, theme, inner_x, inner_w, y);
         }
         let y_before = y;
         begin_section(
@@ -478,7 +479,7 @@ pub(crate) fn paint_anim_section(
         return y;
     };
     *selected = (*selected).min(an.rows.len().saturating_sub(1));
-    y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
+    y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
         section_tops_y,

@@ -10,7 +10,8 @@
 
 use super::paint_sections::{BodyCtx, LABEL_COL_W};
 use ph2d_editor_core::paint::{paint_text, paint_text_block, resolve};
-use ph2d_editor_core::widget::showcase::{paint_section_separator, read_number_input};
+use ph2d_editor_core::widget::section_cards::close_section;
+use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
     Button, ButtonKind, Checkbox, CheckboxValue, ColorSwatch, NumberInput, SwatchSize,
     paint_button, paint_checkbox, paint_color_swatch, paint_number_input_with_buffer,
@@ -71,7 +72,7 @@ impl BodyCtx<'_> {
 
     /// A linha canônica ENTRE seções (nunca dentro de uma).
     pub(crate) fn separator(&mut self, y: f32) -> f32 {
-        paint_section_separator(self.scene, self.theme, self.inner_x, self.inner_w, y)
+        close_section(self.scene, self.theme, self.inner_x, self.inner_w, y)
     }
 
     /// **Uma linha de CHECKBOX** — caixa à esquerda, rótulo à direita.

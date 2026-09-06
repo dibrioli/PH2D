@@ -21,7 +21,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
-use ph2d_editor_core::widget::showcase::paint_section_separator;
+use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::{BrushBlend, BrushSettings, Falloff, MAX_BRUSH_BLEND_MODES, MAX_FALLOFF};
@@ -99,7 +99,7 @@ pub(crate) fn paint_brush_body(
     // Mask section (Mask tool only): collapsible block at the TOP — sub-brush, canvas ops, overlay colour.
     if brush.is_mask {
         y = crate::paint_mask::paint_mask_section(ctx, theme, x, content_w, y, brush);
-        y = paint_section_separator(ctx.scene, theme, x, content_w, y);
+        y = close_section(ctx.scene, theme, x, content_w, y);
     }
 
     // ⚠️ **Os básicos do topo saíram para uma porta própria** — não por tamanho, por assunto: acima

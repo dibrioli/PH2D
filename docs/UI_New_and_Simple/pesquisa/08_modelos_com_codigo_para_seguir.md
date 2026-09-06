@@ -751,6 +751,60 @@ já não é a única.*
    censo de outra pessoa aponta para ele.* **É a segunda vez que esta linha paga isto** (a
    primeira foi o cartão de asset, na wave 6): a isenção passa a ser pelo **módulo**.
 
+### 7.15 — ✅ WAVE 12 (2026-09-06): os 23 riscos azuis acabaram — o app inteiro usa cartões
+
+**Ordem do dono:** *«Excelente! Continue!»*, sobre a fila que a wave 9 deixou nomeada.
+
+**Convertidos:** Inspector (18) · Painter Layers (5) · Vector (1) · a **galeria de widgets** (1) —
+que é a fonte de verdade do cromo (DIRETRIZ §5.2), logo um risco ali seria a galeria a ensinar o
+que o app já não faz. Com o editor de áudio da wave 9, **zero riscos azuis no produto**.
+
+#### ⭐⭐ A porta mudou de forma três vezes, e cada mudança foi cobrada por uma medição
+
+1. **O livro deixou de viajar na assinatura.** Enfiá-lo por todos os pintores de secção custava
+   **~20 assinaturas só no Inspector**, para responder vinte vezes a uma pergunta que o quadro
+   responde uma vez. ⇒ um `thread_local`, que é **o padrão desta casa para estado de pintura
+   por-quadro** e tem a razão escrita no [`published.rs`](../../../crates/ph2d-editor-core/src/published.rs):
+   *a shell publica, a folha lê*.
+2. **Ganhou um par `begin`/`end`** além do fecho, porque **nem todo corpo cabe numa closure**: o do
+   Inspector é um troço linear de ~230 linhas entre o `open_body` e o `close_body`, com dezenas de
+   locais vivos. É a mesma forma do `push_clip`/`pop_layer` que esta casa já usa.
+3. **E o `begin` deixou de devolver um guarda.** Ele era `#[must_use]` e o chamador carregava-o até
+   ao fecho — o que custou **UMA linha** no destructuring do `paint_inspector`, que estava a `263`
+   de uma catraca cuja regra é *«as folgas encolhem; elas nunca crescem»*. ⇒ a cena estacionada
+   mudou-se para a **pilha, ao lado do livro**, e o guarda desapareceu. ⚠️ Antes disso, o custo já
+   tinha sido pago com um corte: o par mudou-se para dentro do `open_body`/`close_body`, *porque
+   abrir e fechar um corpo nunca foi orquestração de secção* — é a mesma frase que aquela folga já
+   tinha escrito, duas vezes, sobre outras extracções.
+
+#### ⚠️ E o livro é uma PILHA, não um slot — provado por uma mutação que SOBREVIVEU primeiro
+
+Um corpo pode abrir dentro de outro. Com um slot único, o de dentro apagaria o de fora ao sair — e
+o de fora perderia os cartões **e o conteúdo**, porque a cena estacionada mora ao lado do livro.
+
+⚠️⚠️ **A primeira redacção do gate não via isso.** Ela media a cena no FIM: com o livro perdido, o
+`close_section` do corpo externo cai no braço clássico, **desenha um risco** (a contagem final
+continua alta) e devolve um `y` que também avança. *Duas coisas diferentes que dão o mesmo número
+no fim.* ⇒ a régua passou a medir o **instante**: um cartão não pinta nada quando fecha — ele é
+recolhido, e só chega à cena no `end`; um risco pinta-se ali e já. Se a contagem de caminhos sobe
+**naquela linha**, o livro perdeu-se.
+
+#### ⭐ O censo que impede o 24.º risco
+
+[`the_boundary_of_a_section_is_a_card`](../../../crates/ph2d-editor-core/tests/the_boundary_of_a_section_is_a_card.rs),
+com **duas** metades — e a segunda é a que o torna honesto:
+
+- nenhum painel nomeia `paint_section_separator`;
+- ⚠️ **e o braço CLÁSSICO tem de continuar a nomeá-lo**, senão `PH2D_UI_NEW=0` fica sem fronteira
+  nenhuma — um defeito de produto que nenhum outro gate desta linha vê. *Um censo de ausência
+  precisa de uma testemunha de presença.*
+
+⚠️⚠️ **E essa testemunha nasceu VÁCUA:** ela fazia `contains` sobre o ficheiro inteiro, e o doc do
+próprio módulo **cita a chamada antiga em prosa** — apagar o braço clássico do código deixava-a
+verde. A mutação apanhou-o. *Um censo de presença que lê comentários testemunha a documentação,
+não o produto.* (É a terceira vacuidade desta espécie em três waves: a assinatura dentro do corpo,
+o nome de ficheiro numa isenção, e agora a prosa de um doc.)
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

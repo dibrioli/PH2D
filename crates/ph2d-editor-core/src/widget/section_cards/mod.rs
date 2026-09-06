@@ -112,26 +112,12 @@ impl SectionCards {
         }
     }
 
-    /// Fecha o cartão da **secção** que vinha a correr e abre o seguinte. Devolve o `y` de onde o
-    /// próximo conteúdo começa — a mesma semântica que o risco tinha.
-    ///
-    /// ⚠️ **Recebe a cena porque no CLÁSSICO ele desenha o risco, ali e já** — só no moderno é que
-    /// há um cartão a recolher. *A escolha vive nesta função, e é por isso que nenhum painel tem
-    /// um `if` de tema.*
-    pub fn close(&mut self, scene: &mut VectorScene, x: f32, w: f32, y: f32) -> f32 {
+    fn close(&mut self, scene: &mut VectorScene, x: f32, w: f32, y: f32) -> f32 {
         self.close_at(scene, x, w, y, CardDepth::Section)
     }
 
-    /// O mesmo, para o corpo de uma **subsecção**.
-    pub fn close_sub(&mut self, scene: &mut VectorScene, x: f32, w: f32, y: f32) -> f32 {
+    fn close_sub(&mut self, scene: &mut VectorScene, x: f32, w: f32, y: f32) -> f32 {
         self.close_at(scene, x, w, y, CardDepth::Subsection)
-    }
-
-    /// ⚠️ **Um cabeçalho que fica FORA do cartão** — o título de uma secção vive sobre o painel, e
-    /// o de uma subsecção sobre o cartão do pai. Quem pinta um avança o cursor sem fechar nada,
-    /// senão o cartão engoliria o próprio título.
-    pub fn skip_header(&mut self, y: f32) {
-        self.cursor = y;
     }
 
     fn close_at(
@@ -182,18 +168,42 @@ pub fn with_section_cards<R>(
     scene: &mut VectorScene,
     theme: Theme,
     top: f32,
-    body: impl FnOnce(&mut VectorScene, &mut SectionCards) -> R,
+    body: impl FnOnce(&mut VectorScene) -> R,
 ) -> R {
-    let mut cards = SectionCards::new(theme, top);
-    if !theme.is_modern() {
-        return body(scene, &mut cards);
-    }
+    begin_section_cards(scene, theme, top);
+    let out = body(scene);
+    end_section_cards(scene);
+    out
+}
 
-    // A cena real sai de cena; o corpo pinta-se numa vazia.
+/// ⭐⭐⭐ **Abre um corpo com cartões.** O par do [`end_section_cards`].
+///
+/// Existe ao lado do [`with_section_cards`] porque **nem todo corpo cabe num fecho**: o do
+/// Inspector é um troço linear de ~230 linhas entre o `open_body` e o `close_body`, com dezenas de
+/// locais vivos, e embrulhá-lo numa closure custaria mais do que a lei que se quer aplicar.
+///
+/// ⚠️ **Não devolve nada, e isso é medido:** a 1.ª versão devolvia um guarda `#[must_use]` que o
+/// chamador tinha de carregar até ao fecho — e no Inspector isso custou **uma linha** no
+/// destructuring, que é exactamente o que o tecto de 200 LOC por função daquele orquestrador não
+/// tinha para dar. *A pilha já existia para o livro; a cena estacionada mora ao lado dele.*
+///
+/// ⛔ Esquecer o [`end_section_cards`] deixa a cena real estacionada e o painel **desaparece** —
+/// falha alta, como o `push_clip`/`pop_layer` desta casa.
+pub fn begin_section_cards(scene: &mut VectorScene, theme: Theme, top: f32) {
+    if !theme.is_modern() {
+        // ⛔ No clássico não há livro: o [`close_section`] desenha o risco de sempre.
+        return;
+    }
     let mut parked = VectorScene::new();
     std::mem::swap(scene, &mut parked);
-    let out = body(scene, &mut cards);
+    LEDGER.with(|l| l.borrow_mut().push((SectionCards::new(theme, top), parked)));
+}
 
+/// **Fecha o corpo:** pinta os cartões na cena real e devolve o corpo por cima.
+pub fn end_section_cards(scene: &mut VectorScene) {
+    let Some((cards, mut parked)) = LEDGER.with(|l| l.borrow_mut().pop()) else {
+        return;
+    };
     // O corpo sai; a cena real volta.
     let mut painted_body = VectorScene::new();
     std::mem::swap(scene, &mut painted_body);
@@ -201,7 +211,64 @@ pub fn with_section_cards<R>(
 
     cards.paint_into(scene);
     scene.inner_mut().append(painted_body.inner(), None);
-    out
+}
+
+thread_local! {
+    /// A PILHA dos corpos a serem pintados agora — o livro de cada um e a cena que ele estacionou.
+    ///
+    /// ⚠️ **É o mesmo padrão do [`crate::published`]** — *a shell publica, a folha lê* — e pela
+    /// mesma razão medida: enfiar o livro na assinatura de cada pintor de secção custaria ~20
+    /// assinaturas **só no Inspector**, para responder vinte vezes a uma pergunta que o quadro
+    /// responde uma vez. ⚠️ **É uma PILHA e não um slot**: um painel pintado dentro de outro
+    /// devolve o corpo do pai ao sair, em vez de o apagar.
+    static LEDGER: std::cell::RefCell<Vec<(SectionCards, VectorScene)>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// ⭐⭐⭐ **A FRONTEIRA de uma secção** — a função que substitui `paint_section_separator`.
+///
+/// Devolve o `y` de onde o próximo conteúdo começa, exactamente como o risco devolvia.
+///
+/// ⚠️ **Sem um [`with_section_cards`] à volta ela desenha o RISCO**, e isso é a decisão: um painel
+/// meio-convertido mostra a fronteira antiga — visível, e portanto corrigível — em vez de perder a
+/// fronteira toda. *A falha silenciosa aqui seria uma secção sem princípio nem fim.*
+pub fn close_section(scene: &mut VectorScene, theme: Theme, x: f32, w: f32, y: f32) -> f32 {
+    close_with(scene, theme, x, w, y, CardDepth::Section)
+}
+
+/// O mesmo, para o corpo de uma **subsecção** — o cartão mais claro, sobre o do pai.
+pub fn close_subsection(scene: &mut VectorScene, theme: Theme, x: f32, w: f32, y: f32) -> f32 {
+    close_with(scene, theme, x, w, y, CardDepth::Subsection)
+}
+
+fn close_with(
+    scene: &mut VectorScene,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    depth: CardDepth,
+) -> f32 {
+    let Some((mut cards, parked)) = LEDGER.with(|l| l.borrow_mut().pop()) else {
+        return crate::widget::showcase::paint_section_separator(scene, theme, x, w, y);
+    };
+    let next = match depth {
+        CardDepth::Section => cards.close(scene, x, w, y),
+        CardDepth::Subsection => cards.close_sub(scene, x, w, y),
+    };
+    LEDGER.with(|l| l.borrow_mut().push((cards, parked)));
+    next
+}
+
+/// ⚠️ **Um cabeçalho fica FORA do cartão** — o título de uma secção vive sobre o painel, e o de
+/// uma subsecção sobre o cartão do pai. Quem pinta um avança o cursor sem fechar nada, senão o
+/// cartão engoliria o próprio título. Fora de um [`with_section_cards`] é um no-op.
+pub fn skip_section_header(y: f32) {
+    LEDGER.with(|l| {
+        if let Some((c, _)) = l.borrow_mut().last_mut() {
+            c.cursor = y;
+        }
+    });
 }
 
 #[cfg(test)]

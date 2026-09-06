@@ -17,6 +17,7 @@
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorAnchorInfo;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_editor_core::widget::section_cards::close_section;
 
 const FIELD_H: f32 = 24.0; // LITERAL-PX-OK: altura de campo do Inspector
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
@@ -458,7 +459,7 @@ pub(crate) fn paint_anchors_section(
     cur_y += BTN_H + Spacing::Sm.px();
 
     if let Some(row) = info.rows.get(selected) {
-        cur_y = paint_section_separator(scene, theme, x, w, cur_y);
+        cur_y = close_section(scene, theme, x, w, cur_y);
         cur_y = anchor_editor(
             scene,
             text_system,

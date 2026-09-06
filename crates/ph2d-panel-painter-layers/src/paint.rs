@@ -320,7 +320,12 @@ fn paint_brush_view(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, rect: Rect, h
     let body_paint_top = body_top + Spacing::Md.px() - scroll_y;
 
     ctx.scene.push_clip(&rect_to_vello(body_rect));
+    // ⭐⭐ **O corpo pinta-se DENTRO de cartões** (2026-09-06) — o par abre depois do `push_clip`
+    //    de propósito: a cena estacionada leva o recorte aberta, e o corpo é devolvido para
+    //    dentro dele. *Trocar a ordem faria o cartão ignorar a rolagem.*
+    ph2d_editor_core::widget::section_cards::begin_section_cards(ctx.scene, theme, body_paint_top);
     let content_bottom = crate::paint_brush::paint_brush_body(ctx, theme, rect, body_paint_top);
+    ph2d_editor_core::widget::section_cards::end_section_cards(ctx.scene);
     ctx.scene.pop_layer();
 
     let content_h = (content_bottom - body_paint_top + PANEL_HEAD_PAD).max(0.0);

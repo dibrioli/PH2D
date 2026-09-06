@@ -11,7 +11,7 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::showcase::paint_section_separator;
+use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::{
     Card, SegmentedAdaptive, SegmentedOption, measure_segmented_adaptive, paint_card,
     paint_segmented_adaptive,
@@ -69,7 +69,7 @@ pub(crate) fn paint_deform_section(
     match brush.deform_temperament {
         ph2d_tool_painter::DEFORM_TEMPERAMENT_RESHAPE => {
             y = paint_reshape_body(ctx, theme, x, content_w, y, brush);
-            y = paint_section_separator(ctx.scene, theme, x, content_w, y);
+            y = close_section(ctx.scene, theme, x, content_w, y);
             y = paint_actions(ctx, theme, x, content_w, y);
         }
         ph2d_tool_painter::DEFORM_TEMPERAMENT_TRANSFORM => {
@@ -81,7 +81,7 @@ pub(crate) fn paint_deform_section(
                 y,
                 brush.deform_transform_mode as usize,
             );
-            y = paint_section_separator(ctx.scene, theme, x, content_w, y);
+            y = close_section(ctx.scene, theme, x, content_w, y);
             y = paint_actions(ctx, theme, x, content_w, y);
         }
         _ => {} // nothing picked yet — just the temperament toggle

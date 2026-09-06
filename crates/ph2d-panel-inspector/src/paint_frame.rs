@@ -15,6 +15,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::stroke_rounded_rect;
+use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{Radius, Spacing, StrokeToken};
@@ -118,7 +119,7 @@ pub(crate) fn paint_physics_sections(
     // without a body: the empty state is the Add button, and without it a
     // sprite could never become physical (ADR-0131 D8).
     if let Some(phys) = physics {
-        y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
+        y = close_section(scene, theme, inner_x, inner_w, y);
         let y_before = y;
         begin_section(
             section_tops_y,
@@ -159,7 +160,7 @@ pub(crate) fn paint_physics_sections(
     // joint, and the gesture that creates one lives in §11, where the two
     // bodies you want to join are what you are looking at.
     if let Some(j) = joint {
-        y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
+        y = close_section(scene, theme, inner_x, inner_w, y);
         let y_before = y;
         begin_section(
             section_tops_y,
@@ -200,7 +201,7 @@ pub(crate) fn paint_physics_sections(
     // objeto que não é roldana, e o gesto que cria uma mora na §12, onde está a
     // corda que vai atravessá-la.
     if let Some(wh) = wheel {
-        y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
+        y = close_section(scene, theme, inner_x, inner_w, y);
         let y_before = y;
         begin_section(
             section_tops_y,
@@ -240,7 +241,7 @@ pub(crate) fn paint_physics_sections(
     // a face vazia é o botão que faz o comportamento existir, e sem ela ele
     // seria alcançável só onde já existe (a lição da §11 do W2a).
     if let Some(pl) = player {
-        y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
+        y = close_section(scene, theme, inner_x, inner_w, y);
         let y_before = y;
         begin_section(
             section_tops_y,

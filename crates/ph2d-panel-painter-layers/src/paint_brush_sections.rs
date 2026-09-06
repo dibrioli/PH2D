@@ -7,7 +7,7 @@
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
-use ph2d_editor_core::widget::showcase::paint_section_separator;
+use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_tool_painter::{BrushSettings, PaintMedia};
 
 /// Paint the **Paint Mode** chip, stashing the open popover for the deferred pass. Returns the next `y`.
@@ -68,8 +68,10 @@ pub(crate) fn paint_appearance_sections(
 ) -> f32 {
     use crate::paint_brush_top::paint_randomize_section;
 
-    // Sections below are separated by the Inspector's discreet divider line (Enio 2026-06-25).
-    let sep = paint_section_separator;
+    // ⭐ **A fronteira entre secções é a borda de um CARTÃO** desde 2026-09-06 (ordem do dono:
+    //    *«vamos eliminar os nossos divisores azuis»*) — o nome `sep` fica porque ele já dizia
+    //    *fronteira*, não *risco*.
+    let sep = close_section;
 
     // ── **Paint Mode** — the paint's MEDIUM, and then that medium's own section and no other.
     //

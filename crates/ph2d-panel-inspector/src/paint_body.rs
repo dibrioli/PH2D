@@ -40,6 +40,7 @@ pub(crate) fn open_body(
     store: &ph2d_editor_core::interaction::WidgetStore,
 ) -> BodyFrame {
     use ph2d_editor_core::widget::panel_chrome::paint_panel_surface;
+    use ph2d_editor_core::widget::section_cards::begin_section_cards;
     use ph2d_tokens::Spacing;
     let rect = layout.inspector;
     paint_panel_surface(rect, scene, theme);
@@ -81,6 +82,9 @@ pub(crate) fn open_body(
     let scrollbar_reserve = ph2d_editor_core::widget::SCROLLBAR_W + Spacing::Sm.px();
     ph2d_editor_core::widget::showcase::LAST_BODY_TOP_SCREEN_Y
         .with(|c| c.set(content_top + Spacing::Xs.px()));
+    let body_top_y = content_top - scroll_y + Spacing::Xs.px();
+    // ⭐⭐ **O corpo pinta-se DENTRO de cartões** — o fecho é o `close_body`, simétrico deste.
+    begin_section_cards(scene, theme, body_top_y);
     BodyFrame {
         rect,
         content_top,
@@ -88,7 +92,7 @@ pub(crate) fn open_body(
         scroll_y,
         inner_x: rect.x + crate::paint::BODY_PAD,
         inner_w: (rect.w - crate::paint::BODY_PAD * 2.0 - scrollbar_reserve).max(0.0),
-        body_top_y: content_top - scroll_y + Spacing::Xs.px(),
+        body_top_y,
     }
 }
 
@@ -104,6 +108,8 @@ pub(crate) fn close_body(
     hit_index: &mut ph2d_editor_core::interaction::HitIndex,
     rect: ph2d_editor_core::zones::Rect,
 ) {
+    // ⭐ Os cartões vão para BAIXO do corpo, antes de tudo o que se pinta por cima.
+    ph2d_editor_core::widget::section_cards::end_section_cards(scene);
     // **OS TRÊS POPOVERS DIFERIDOS**, pintados por último para ficarem acima de tudo.
     // ⚠️ Saíram do orquestrador em 2026-08-23: os três andam juntos porque partilham UMA lei — o
     // popover pinta-se fora da ordem das seções.

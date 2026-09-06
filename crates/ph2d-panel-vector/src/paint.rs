@@ -418,9 +418,13 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
             font,
             open_fold: None,
         };
-        // A ORDEM das seções (e os separadores entre elas) vive em
-        // `BodyCtx::paint_body` — o orquestrador aqui só monta o contexto e mede.
+        // A ORDEM das seções (e as fronteiras entre elas) vive em `BodyCtx::paint_body` — o
+        // orquestrador aqui só monta o contexto e mede.
+        // ⭐⭐ **O corpo pinta-se DENTRO de cartões** (2026-09-06) — o par abre depois do
+        //    `push_clip`, para que o corpo devolvido caia dentro do recorte da rolagem.
+        ph2d_editor_core::widget::section_cards::begin_section_cards(b.scene, theme, body_top_y);
         let y = b.paint_body(&snap, body_top_y);
+        ph2d_editor_core::widget::section_cards::end_section_cards(b.scene);
 
         // Total painted height (independent of scroll — both ends shift with it).
         let content_h = (y - body_top_y + PANEL_HEAD_PAD).max(0.0);

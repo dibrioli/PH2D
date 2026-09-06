@@ -163,6 +163,16 @@ arredonda se estiver na borda **da linha e da coluna**, e os quatro blocos do ed
 cada**, com quatro cantos em vez de dezasseis.
 [`pesquisa/08 §7.14`](pesquisa/08_modelos_com_codigo_para_seguir.md).
 
+⭐⭐⭐ **E a wave 12 (06/09) acabou com os riscos azuis: são ZERO no produto.** Inspector (18),
+Painter Layers (5), Vector (1) e a própria **galeria de widgets** (1) — que é a fonte de verdade do
+cromo, logo um risco ali ensinaria o que o app já não faz. ⚠️ A porta mudou de forma **três** vezes
+no caminho, e cada mudança foi cobrada por uma medição: o livro dos cartões saiu das assinaturas
+(~20 só no Inspector) para um `thread_local`, ganhou um par `begin`/`end` porque o corpo do
+Inspector não cabe numa closure, e perdeu o guarda porque ele custava **uma linha** numa catraca
+cuja regra é *«as folgas encolhem; elas nunca crescem»*. ⛔ O tema clássico continua a desenhar o
+risco, e há um censo de **duas** metades a garantir as duas coisas.
+[`pesquisa/08 §7.15`](pesquisa/08_modelos_com_codigo_para_seguir.md).
+
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
 cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·
 esbatimento do rótulo e inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis, animado) —

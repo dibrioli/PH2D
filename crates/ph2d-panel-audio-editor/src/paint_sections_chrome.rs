@@ -92,12 +92,6 @@ pub(super) fn end_fold(
 /// lado. ⚠️ **A porta é a mesma para as duas famílias**: no clássico ela ainda desenha o risco
 /// de sempre — ver [`ph2d_editor_core::widget::section_cards`]. Este painel continua a não ter
 /// um `if` de tema, que era o que a nota anterior aqui defendia e continua a valer.
-pub(super) fn separator(
-    y: f32,
-    x: f32,
-    w: f32,
-    scene: &mut VectorScene,
-    cards: &mut SectionCards,
-) -> f32 {
-    cards.close(scene, x, w, y)
+pub(super) fn separator(y: f32, x: f32, w: f32, scene: &mut VectorScene, theme: Theme) -> f32 {
+    close_section(scene, theme, x, w, y)
 }

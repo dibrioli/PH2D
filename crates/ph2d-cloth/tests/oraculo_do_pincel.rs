@@ -650,6 +650,53 @@ fn todas() -> Vec<String> {
     nomes
 }
 
+/// ⭐⭐⭐ **GATE — os traços de UM passo de força saem AO BIT do oráculo.**
+///
+/// Sete traços: os seis modos de força (arrastar · apertar_ponto · apertar_linha
+/// · empurrar · inflar · forca05) e a massa `2`. Num passo só, as restrições
+/// ainda não responderam (espec §5.2: a relaxação vem antes da integração, e no
+/// 1.º passo simulado corre sobre a malha em repouso) ⇒ o deslocamento é a lei
+/// da força PURA: `f · B · dt / massa` na direcção do modo. **Não há solver a
+/// esconder um erro de força aqui**, e é por isso que estes sete são a
+/// fundação: a curva de queda, o `10·α`, o `2R` do Push, a normal do Inflate e
+/// o ganho inverso da massa.
+///
+/// ⚠️ **A barra é a PRECISÃO DO FICHEIRO, não um epsilon de conforto:** as
+/// fixtures trazem seis decimais (piso de arredondamento `5e-7`); `1e-5` é `20×`
+/// o piso. ⛔ O bug da massa contada duas vezes lia `0,0248` contra `0,0496`
+/// (erro `0,025`) — `2 500×` esta barra.
+#[test]
+fn os_tracos_de_um_passo_de_forca_saem_ao_bit() {
+    const UM_PASSO: [&str; 7] = [
+        "plano_arrastar_radial_local_1passo",
+        "plano_apertar_ponto_radial_local_1passo",
+        "plano_apertar_linha_radial_local_1passo",
+        "plano_empurrar_radial_local_1passo",
+        "plano_inflar_radial_local_1passo",
+        "plano_arrastar_radial_local_forca05_1passo",
+        "plano_arrastar_radial_local_massa2_1passo",
+    ];
+    for nome in UM_PASSO {
+        let l = correr(nome);
+        // Controlo anti-vácuo: o traço tem de ter MOVIDO alguma coisa nos dois
+        // lados, senão `0 == 0` aprovaria um pincel morto.
+        assert!(
+            l.movidos_oraculo > 100 && l.movidos_nos > 100,
+            "{nome}: movidos {} (nos) / {} (oraculo) -- vacuo",
+            l.movidos_nos,
+            l.movidos_oraculo
+        );
+        assert!(
+            l.erro_max <= 1e-5,
+            "{nome}: pior erro por vertice {:.3e} contra a precisao do ficheiro \
+             (barra 1e-5); max nosso {:.5} / oraculo {:.5}",
+            l.erro_max,
+            l.max_nos,
+            l.max_oraculo
+        );
+    }
+}
+
 /// **SONDA — a tabela de paridade dos 46 traços.** `erro/max` é o pior erro por
 /// vértice sobre o maior deslocamento do oráculo: `0` seria o bit, `1` seria não
 /// ter feito nada.

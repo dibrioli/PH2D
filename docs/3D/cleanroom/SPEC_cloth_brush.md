@@ -109,6 +109,28 @@ A área simulada é um **conjunto de células**, escolhido a cada passo (F):
 `L` = *Simulation Limit* (omissão `2,5`, faixa `0,1..10` (F)). O teste célula-esfera é o do ponto
 da caixa da célula mais próximo do centro (distância² < raio²), sobre as caixas **actuais** (F).
 
+⭐⭐ **A célula-folha tem no máximo 2 500 FACES (F), logo numa malha pequena há POUCAS células:** a
+grelha de 4 225 vértices (~4 096 quads) é ~2 células; a esfera de 6 050 (~6 144 quads) ~3. ⇒ a
+activação é **grossa** — activar uma célula que a esfera da área toca traz consigo um pedaço grande
+da malha. ⚠️ **O que impede esses vértices longínquos de se moverem é o peso de banda `w` DENTRO do
+factor por vértice `φ` (§5.2), não a granularidade da célula:** há DOIS portões, e são diferentes —
+o **grosso** (a célula inactiva: as suas restrições são saltadas e os seus vértices não são
+integrados) e o **fino** (`w = 0` além do limite ⇒ `φ = 0` ⇒ nem a correcção de restrição nem a
+velocidade retida movem o vértice, mesmo que a célula dele esteja activa). No plano, o Local pára
+**exactamente** no disco de `3,5 R` por causa do portão fino (M — §10).
+
+⭐⭐ **Local contra Dynamic — o que difere no fonte, além do centro fixo e de `R₀` (F):**
+- **o centro de TUDO** (a esfera de células, a banda `w`, a distância da força, a retenção de
+  velocidade) é a **localização inicial fixa** no Local e a **do cursor, a cada passo** no Dynamic;
+- **a criação de restrições é filtrada por raio** no Local (só vértices com `|p⁰ − c| < R₀·(1+L)`, em
+  posições de repouso), e **sem filtro** (todos os vértices das células tocadas) no Dynamic/Global;
+- as restrições nascem **de uma vez, no 1.º passo** no Local; **incrementalmente**, à medida que
+  novas células entram na área, no Dynamic;
+- a banda `w` do Local é avaliada com o centro FIXO, logo o fim de um traço longo cai mais longe do
+  centro da força ⇒ menos deslocamento lá; no Dynamic o centro segue o cursor e o traço inteiro
+  recebe força cheia. ⇒ para o mesmo traço, o Dynamic desloca mais que o Local, e é ≈ Global. (A
+  razão exacta é emergente; a alavanca dominante é o centro fixo vs. móvel.)
+
 ⚠️ **A célula é a unidade de activação, e isso tem um efeito visível:** todo vértice de uma célula
 activa é integrado (fase 5), mesmo que esteja fora da esfera — o que o segura é o **peso de
 banda** (§2.2), que vale `0` fora do limite. E uma restrição pertence à célula onde foi CRIADA
@@ -179,18 +201,26 @@ Ao construir uma célula, para cada vértice **visível** `v` da célula que est
 construção (*Local*: `|p⁰(v) − c| < R₀·(1+L)`, avaliado em posições de repouso; *Dynamic*/*Global*:
 todos) (F):
 
-1. uma restrição de distância `(v, n)` para cada vizinho topológico `n` de `v` (anel-1 por
-   arestas, através das faces não escondidas);
+1. uma restrição de distância `(v, n)` para cada vizinho topológico `n` de `v`;
 2. uma restrição de distância `(a, b)` para **cada par ordenado de vizinhos distintos** `a ≠ b` de `v`.
 
+⭐⭐ **O anel-1 é o das ARESTAS DAS FACES POLIGONAIS, não de uma triangulação (confirmado por leitura
+do fonte, 2026-09-06):** o vizinho de `v` é, por cada face que o contém, os DOIS cantos adjacentes a
+`v` NAQUELA face (o anterior e o seguinte), deduplicados. ⇒ **numa grelha de quads um vértice
+interior tem exactamente 4 vizinhos** (N, S, E, O) — ⛔ **não** 6, e **nenhuma diagonal do quad é
+vizinha**. Numa malha de triângulos regular são 6. A diagonal só aparece como restrição de PAR
+(passo 2): dos 4 vizinhos de um vértice de grelha saem `4·3 = 12` pares ordenados ⇒ 6 não ordenados
+= as 2 «diâmetros» N-S / E-O (comprimento `2h`, o papel de dobra) + as 4 diagonais N-E… (`√2·h`,
+cisalhamento). O sistema de escultura NÃO triangula a malha para escolher vizinhos.
+
 Cada par não ordenado entra **uma vez** por simulação (conjunto global de arestas já criadas — H:
-D8007 curou a duplicação). ⭐ **O que isso produz:** numa grelha de quads, para cada vértice
-interior, as 4 arestas (estrutural) + as 2 «diagonais longas» N–S / E–W (dobra, comprimento `2h`) +
-as 4 diagonais N–E… (cisalhamento, `√2·h`). Numa malha de triângulos regular (6 vizinhos): as 6
-arestas + os 15 pares do anel — 6 deles são arestas do anel (já estruturais de outro vértice) e 9
-atravessam o anel (3 «diâmetros» de comprimento `2h` + 6 cordas de `√3·h`). ⇒ **a rigidez de dobra
-NÃO tem modelo próprio: é a restrição de distância ao segundo vizinho pelo anel.** Os autores
-chamam-lhe, por escrito, «básico» e sabem que repete restrições (H: D6715).
+D8007 curou a duplicação). ⭐ **O que isso produz** (grelha de quads, vértice interior de 4 vizinhos):
+as **4** arestas (estrutural) + as **2** «diagonais longas» N-S / E-O (dobra, `2h`) + as **4**
+diagonais N-E… (cisalhamento, `√2·h`) — o «4 + 2 + 4» do gate 8. Numa malha de triângulos (6
+vizinhos): as 6 arestas + os pares do anel — os 6 pares vizinhos são arestas do anel (já estruturais
+de outro vértice) e os restantes atravessam-no (3 «diâmetros» `2h` + 6 cordas `√3·h`). ⇒ **a rigidez
+de dobra NÃO tem modelo próprio: é a restrição de distância ao segundo vizinho pelo anel.** Os
+autores chamam-lhe, por escrito, «básico» e sabem que repete restrições (H: D6715).
 
 - **Comprimento de repouso:** a distância entre os dois vértices nas **posições de repouso do
   traço** — ou nas posições da **base persistente** se o pincel estiver em modo *Persistent* e
@@ -390,6 +420,20 @@ h  = Δ/2
   memória segue o vértice e nunca o puxa; com `ρ = 1` o vértice volta à memória e ela não se
   mexe; entre os dois, a forma «lembra-se» parcialmente do que foi deformado (H: D9187 — a
   1.ª versão pregava à posição ORIGINAL e rompia com gravidade e com o Grab).
+
+⚠️ **Confirmação de fonte (2026-09-06), para o arnês de paridade:**
+- **A correcção é `Δ/2`, não `Δ` inteiro**, para TODA espécie (`correction_vector_half = Δ·0,5`). Numa
+  restrição estrutural, cada um dos dois vértices leva `Δ/2` ⇒ juntos fecham `Δ`. **Numa âncora, B não
+  é vértice e NÃO se move: só A leva `Δ/2`** ⇒ a âncora fecha só metade por varredura (é «mole» de
+  propósito, e por isso precisa das 5 varreduras para chegar). *Se um port dá abaixo do oráculo com
+  `Δ/2`, o défice está noutro factor (o `σ` por passo do Snake Hook, o `s`, ou a re-ancoragem por
+  passo), não em trocar `Δ/2` por `Δ` — o fonte é `Δ/2`.*
+- **O `σ` (o factor por passo) multiplica SÓ as âncoras de DEFORMAÇÃO** (Grab, Snake Hook, pincel
+  alheio): `deformation_strength = 1` por omissão, e só é reescrito para `(σ_A+σ_B)/2` quando a
+  restrição é de deformação. ⛔ O **pino** e o **corpo mole** NÃO o levam (o seu peso é a força `s` e,
+  no corpo mole, a plasticidade `ρ`).
+- **A força `s` do Grab radial é `0,1 · curva(d⁰)` com a curva do PINCEL** (o preset de falloff do
+  pincel activo avaliado na distância de repouso ao centro), não uma curva fixa.
 
 ⚠️ **Só a POSIÇÃO é corrigida — não há projecção de velocidade separada**: a velocidade do passo
 seguinte sai da diferença de posições (§5.4), logo as correcções das restrições **entram na
@@ -668,7 +712,7 @@ como proveniência (as mensagens de commit são públicas; o texto foi re-dito).
 
 ## §10 — Vectores de teste (o oráculo)
 
-⭐ **46 traços do binário 5.2.1 sobre malhas NOSSAS** (grelha plana 64×64, esfera UV 96×64), um por
+⭐ **47 traços do binário 5.2.1 sobre malhas NOSSAS** (grelha plana 64×64, esfera UV 96×64), um por
 modo e por variante de solver, em `fixtures/cloth/` (proveniência e verificador no README de lá).
 Colunas: **movidos** = vértices com `|u| > 1e-5` · **máx `|u|`** em unidades de objecto · **alcance/R**
 = distância máxima de um vértice movido ao caminho, sobre o raio · **fracção normal** = `Σ|u·n⁰|/Σ|u|`
@@ -716,13 +760,14 @@ deslocamentos grandes (`1` = uma direcção só; `0` = radial) · **Δárea** = 
 | `plano_gancho_radial_local_24passos` | Snake Hook | radial | local | 24 | 2142 | `0.0293` | `3.49` | `0.00` | `1.00` | -0.02 % |
 | `plano_gancho_radial_local_2passos` | Snake Hook | radial | local | 3 | 1950 | `0.3648` | `3.43` | `0.00` | `0.99` | +1.07 % |
 | `plano_gancho_radial_local_amort06` | Snake Hook | radial | local | 12 | 2135 | `0.0634` | `3.49` | `0.00` | `1.00` | -0.01 % |
-| `esfera_arrastar_radial_local` | Drag | radial | local | 12 | 6050 | `0.5315` | `5.65` | `0.54` | `0.99` | — |
-| `esfera_expandir_radial_local` | Expand | radial | local | 12 | 6050 | `0.0537` | `5.65` | `0.72` | `0.98` | — |
-| `esfera_agarrar_radial_dinamica` | Grab | radial | dynamic | 12 | 1862 | `0.2366` | `3.49` | `0.65` | `0.99` | — |
-| `esfera_inflar_radial_local` | Inflate | radial | local | 12 | 6050 | `0.1675` | `5.65` | `0.59` | `0.70` | — |
-| `esfera_apertar_ponto_radial_local` | Pinch Point | radial | local | 12 | 6050 | `0.3305` | `5.65` | `0.58` | `0.76` | — |
-| `esfera_empurrar_radial_local` | Push | radial | local | 12 | 6050 | `0.4358` | `5.65` | `0.87` | `1.00` | — |
-| `esfera_gancho_radial_local` | Snake Hook | radial | local | 12 | 6050 | `0.2622` | `5.65` | `0.52` | `0.95` | — |
+| `esfera_arrastar_radial_dinamica` | Drag | radial | dynamic | 12 | 2183 | `0.5828` | `3.48` | `0.59` | `0.96` | — |
+| `esfera_expandir_radial_dinamica` | Expand | radial | dynamic | 12 | 2096 | `0.0467` | `3.44` | `0.83` | `0.98` | — |
+| `esfera_agarrar_radial_dinamica` | Grab | radial | dynamic | 12 | 1863 | `0.2365` | `3.49` | `0.65` | `0.99` | — |
+| `esfera_inflar_radial_dinamica` | Inflate | radial | dynamic | 12 | 2181 | `0.2670` | `3.48` | `0.70` | `0.91` | — |
+| `esfera_apertar_linha_radial_dinamica` | Pinch Perpendicular | radial | dynamic | 12 | 2162 | `0.2497` | `3.47` | `0.59` | `0.21` | — |
+| `esfera_apertar_ponto_radial_dinamica` | Pinch Point | radial | dynamic | 12 | 2183 | `0.4639` | `3.47` | `0.61` | `0.76` | — |
+| `esfera_empurrar_radial_dinamica` | Push | radial | dynamic | 12 | 2102 | `0.4794` | `3.47` | `0.93` | `1.00` | — |
+| `esfera_gancho_radial_dinamica` | Snake Hook | radial | dynamic | 12 | 2234 | `0.1690` | `3.52` | `0.62` | `0.88` | — |
 
 ### §10.1 — O que os dumps confirmam (cada número casa com a secção citada)
 
@@ -733,13 +778,19 @@ deslocamentos grandes (`1` = uma direcção só; `0` = radial) · **Δárea** = 
 - **Área (§2.1):** Local — alcance `3.49 R` (a esfera de células `R₀(1+L) = 3,5 R` a partir do pen-down); Dynamic — `3.49 R` a partir do caminho, `máx` `0.6128` (segue o cursor); Global — todos os `4225` vértices.
 - **Âncoras (§4.3):** Grab radial 12 passos `máx` `0.1699` e 24 passos `0.1585` (mesmo percurso: a resposta depende do percurso, não do número de passos); Grab de plano `0.3076`; Snake Hook `0.0915` (12) e `0.0293` (24 — metade do delta por passo ⇒ ~metade da resposta: lei quadrática no falloff); com damping `0,6` (o dos presets de Grab): Grab `0.1315`, e com `L = 5` `0.1326`.
 - **Expand (§4.5):** 12 passos, `máx|u|` `0.0115` (`0.25` arestas) e Δárea `+0.002 %`.
-- **Esfera:** os oito modos sobre a esfera de raio `1` (o raio `0,35` cobre `6050` de 6 050 vértices pela área Local `3,5 R`): fracção normal Inflate `0.59`, Push `0.87`, Drag `0.54`, Pinch Point `0.58` — o relevo nasce da curvatura e das restrições, não da força.
+(em falta: 'sphere_drag_radial_local')
 
-⚠️ **Duas fixtures de esfera (Grab Local, Pinch Perpendicular Local) NÃO foram gravadas**: o centro
-da área *Local* é o ponto de hover, que o harness scriptado semeia por um redesenho antes do traço;
-nessas duas, sobre a esfera, o hover não fixou e o dump saía com `0` movidos. Ambos os modos estão
-medidos no plano (e o Grab também na esfera *Dynamic*), logo a ausência não deixa buraco de
-comportamento — só de fixture. Registado no [ledger](LEDGER_blender-cloth.md) e no README das fixtures.
+⚠️⚠️ **As fixtures de ESFERA são todas de área DINÂMICA (ERRATA de 2026-09-06).** A 1.ª entrega
+gravou-as como *Local*, mas um traço scriptado **não dispara o hover** que fixa o centro da área
+Local — esse centro fica na ORIGEM do objecto (o valor obsoleto de `initial_location`). Numa esfera
+unitária a origem põe **toda** a malha dentro da banda (todo vértice a `1,0` < início da banda
+`1,006`), então a saída lida `6 050 / 6 050` movidos, uniformes — a esfera a deslocar-se como um
+CORPO, que é **artefacto do arnês, não comportamento Local do alvo**. ⭐ **O R₀ estava certo (`0,35`,
+tamanho travado à cena); o defeito era o CENTRO.** A área Dinâmica, cujo centro é o cursor de cada
+passo (que o traço scriptado FORNECE), funciona: as 8 fixtures de esfera param no bordo da banda
+(`alcance ≈ 3,5 R`, `0` vértices além), e é sobre elas que se lê o relevo fora do plano numa
+superfície curva. A área **Local** fica medida **só no plano** (onde a origem cai na superfície e o
+disco de `3,5 R` é exacto). Mecanismo e a errata completa: [ledger](LEDGER_blender-cloth.md).
 
 ---
 
@@ -831,6 +882,6 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 12 | **Snake Hook zera as forças de âncora fora do pincel a cada passo**; o Grab não | exacta | §4.3 |
 | 13 | **Grab mede na malha de partida**: mover o pano não muda o conjunto agarrado | exacta | §4.3 |
 | 14 | **A simetria é por passagem** e a 2.ª passagem vê a 1.ª | fixture com espelho | §6.6 |
-| 15 | **Paridade com o oráculo** — os 46 traços (§10): a barra é a **discretização** e o **`f32`**: a nossa malha é a mesma (gerada pela mesma lei), logo a comparação é por vértice; a barra por vértice é a aresta × a diferença de ordem das restrições (Gauss–Seidel não comuta) — MEDIR primeiro a dispersão entre duas ordens nossas e usar essa dispersão como barra (⛔ não um epsilon de conforto; ⛔ não bit-parity — ADR-0162) | derivada por medição | §10 |
+| 15 | **Paridade com o oráculo** — os 47 traços (§10): a barra é a **discretização** e o **`f32`**: a nossa malha é a mesma (gerada pela mesma lei), logo a comparação é por vértice; a barra por vértice é a aresta × a diferença de ordem das restrições (Gauss–Seidel não comuta) — MEDIR primeiro a dispersão entre duas ordens nossas e usar essa dispersão como barra (⛔ não um epsilon de conforto; ⛔ não bit-parity — ADR-0162) | derivada por medição | §10 |
 
 ---

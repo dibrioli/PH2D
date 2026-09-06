@@ -272,6 +272,42 @@ não afirma nada que só o fonte daria: cada linha estrutural cita manual/API/no
 resumo de busca» apontam para páginas que **nem tinham conteúdo**. ⇒ **nenhuma janela queimada; a
 janela-mãe continua I.** Declaração dela registada na Corrente I.
 
+## Erratas / seguimento do I (2026-09-06)
+
+⭐ **Seis perguntas fechadas do I, nascidas do arnês de paridade contra as fixtures. Respostas por
+leitura do fonte + medição; as que mexiam na espec foram emendadas (§3.1, §2.1, §5.2, §10).**
+
+- **Q1 — o anel-1 das restrições:** é sobre as **arestas das FACES POLIGONAIS** (o vizinho de `v` são,
+  por face, os dois cantos adjacentes a `v` naquela face, deduplicados), **não** sobre uma
+  triangulação. ⇒ **quad interior = 4 vizinhos**, sem diagonal como vizinho; a diagonal só entra como
+  restrição de PAR. O gate 8 («4 + 2 + 4») **está correcto** e o §3.1 passou a dizê-lo explicitamente.
+  *A leitura do arnês de que «o Local casa com a grelha triangulada (6 vizinhos)» é do porte/harness,
+  não do alvo — o alvo usa 4.*
+- **Q2 — o `φ` das restrições inclui a banda `w(p⁰)`? SIM** (o factor por vértice é pré-calculado
+  dobrando a banda, e a retenção de velocidade re-aplica-a). Há DOIS portões: a **célula inactiva**
+  (grosso) e `w = 0` além do limite (fino). No plano o Local pára exactamente no disco de `3,5 R` pelo
+  portão fino.
+- **Q3 — Local vs Dynamic (fonte):** diferem em (a) o CENTRO de tudo (fixo no pen-down vs. o cursor a
+  cada passo), (b) `R₀` vs `R`, (c) a criação de restrições ser filtrada por raio no Local e sem
+  filtro no Dynamic, (d) construção de uma vez (Local) vs incremental (Dynamic), (e) a banda/força/
+  retenção centradas no ponto fixo (Local) ⇒ o fim de um traço longo recebe menos força. A alavanca
+  dominante do «Local < Dynamic» é o centro fixo vs. móvel; a razão exacta é emergente. §2.1 emendado.
+- **Q4 — célula-folha ≤ 2 500 FACES (fonte):** a grelha de 4 225 v é ~2 células; a esfera de 6 050 ~3.
+  A activação é grossa, mas a «parede» é a banda em `φ`, não a granularidade. §2.1 emendado.
+- **Q5 — âncoras (fonte):** a correcção é **`Δ/2`** (`correction_vector·0,5`) para toda espécie; numa
+  âncora **B não se move, só A leva `Δ/2`** ⇒ fecha metade por varredura. O **`σ` por passo multiplica
+  SÓ as âncoras de deformação** (pino e corpo mole não o levam). A força `s` do Grab radial é
+  `0,1 · curva_do_pincel(d⁰)`. *Um port que fique abaixo do oráculo com `Δ/2` tem o défice noutro
+  factor, não em trocar `Δ/2` por `Δ`.* §5.2 reforçado.
+- **Q6 / ERRATA das fixtures de ESFERA:** a 1.ª entrega gravou-as como área **Local**, e estava
+  errada — um traço scriptado não dispara o hover que fixa o centro da área Local, que ficou na
+  **ORIGEM do objecto**; numa esfera unitária a origem põe toda a malha dentro da banda (todo vértice
+  a `1,0` < início `1,006`) ⇒ `6 050/6 050` movidos, a esfera a mover-se como um corpo — **artefacto
+  do arnês**. O `R₀` estava certo (`0,35`); o defeito era o CENTRO. **Corrigido:** as 8 fixtures de
+  esfera foram **regeradas como área Dinâmica** (centro no cursor, que o traço fornece) — param no
+  bordo da banda (`≈ 3,5 R`, zero além). A área **Local** fica medida só no PLANO (onde a origem cai
+  na superfície). Commit da errata: (ver abaixo).
+
 ## Fechamento R
 
 ⏳

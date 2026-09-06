@@ -113,12 +113,13 @@ o ficheiro diz o que contém.
 | `plano_gancho_radial_local_24passos` | gancho | 24 | 2142 | `0.02932` |
 | `plano_gancho_radial_local_2passos` | gancho | 3 | 1950 | `0.364813` |
 | `plano_gancho_radial_local_amort06` | gancho | 12 | 2135 | `0.063396` |
-| `esfera_arrastar_radial_local` | arrastar | 12 | 6050 | `0.531513` |
-| `esfera_expandir_radial_local` | expandir | 12 | 6050 | `0.05374` |
-| `esfera_agarrar_radial_dinamica` | agarrar | 12 | 1862 | `0.236625` |
-| `esfera_inflar_radial_local` | inflar | 12 | 6050 | `0.167462` |
-| `esfera_apertar_ponto_radial_local` | apertar_ponto | 12 | 6050 | `0.330488` |
-| `esfera_empurrar_radial_local` | empurrar | 12 | 6050 | `0.435752` |
-| `esfera_gancho_radial_local` | gancho | 12 | 6050 | `0.262211` |
+| `esfera_arrastar_radial_dinamica` | arrastar | 12 | 2183 | `0.582806` |
+| `esfera_expandir_radial_dinamica` | expandir | 12 | 2096 | `0.046715` |
+| `esfera_agarrar_radial_dinamica` | agarrar | 12 | 1863 | `0.236509` |
+| `esfera_inflar_radial_dinamica` | inflar | 12 | 2181 | `0.267017` |
+| `esfera_apertar_linha_radial_dinamica` | apertar_linha | 12 | 2162 | `0.249739` |
+| `esfera_apertar_ponto_radial_dinamica` | apertar_ponto | 12 | 2183 | `0.463862` |
+| `esfera_empurrar_radial_dinamica` | empurrar | 12 | 2102 | `0.479385` |
+| `esfera_gancho_radial_dinamica` | gancho | 12 | 2234 | `0.169025` |
 
-**46 traços.** ⚠️ Grab Local e Pinch Perpendicular Local **na esfera** não foram gravados (o hover do harness não fixou o centro da área Local nessas duas — os dois modos estão medidos no plano; o Grab também na esfera Dynamic).
+**47 traços.** ⚠️ As fixtures de ESFERA são todas de área **Dinâmica** (centro no cursor). A área *Local* na esfera NÃO foi gravada: um traço scriptado não dispara o hover que fixa o centro da área Local, que fica na ORIGEM do objecto — e numa esfera unitária a origem põe toda a malha dentro da banda (ver ERRATA no ledger). A área Local está medida no PLANO (onde a origem cai na superfície).

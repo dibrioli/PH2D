@@ -184,8 +184,34 @@ centro para fora*, *das pontas para o centro*, *aleatória*, *por posição em v
 **compõe** com a ordem. *Duas portas para a mesma pergunta é como as duas divergem* ⇒ decidir na
 implementação, com a contagem dos documentos afectados.
 
-**Gates:** cada ordem produz uma permutação DISTINTA; `From Center` é simétrica; `Random` com a
-mesma semente é determinista; o default é byte-idêntico.
+#### ✅ W2 FECHOU (2026-09-06) — e a lista de SETE virou TRÊS por medição
+
+`order.rs` é a porta única (`raw_at`), lida pela CPU e pelo WGSL. `order` + `seed` apendados,
+`seed` gateado ao `Random`, default `Index` **byte-idêntico**. **27 gates verdes** na crate.
+
+⛔⛔ **Quatro das sete entradas do plano caíram, e por duas razões diferentes:**
+
+- **`Reverse` e `From Edges` são a COMPOSIÇÃO que já existe.** O `reverse` espelha o `raw`, e
+  espelhar o *«do meio para fora»* **é** o *«das pontas para o meio»* — a mesma curva. ⭐ O
+  desenho que fica é melhor que o das referências (o Cavalry lista as duas separadas):
+  **três ordens × dois sentidos = seis comportamentos, com três entradas e um toggle que já
+  existia.** O gate `from_edges_is_from_center_mirrored_and_needs_no_entry` mede a identidade **e**
+  trava a lista em três, para ela não crescer sem medir.
+- **`By X` e `By Y` pedem um POSTO, e um posto é uma ordenação** — saber que lugar `i` ocupa em
+  `x` exige olhar todos os outros: não é um mapa por-elemento, e pô-lo aqui derrubava o nó para a
+  CPU (a lei nº 1 do ciclo). ⚠️ **A saída existe e tem nome:** `motion.sort(key = X)` a montante
+  com a `Index` aqui — e ela tem um efeito que esta porta não tem (**reordena as linhas**, então
+  tudo a jusante vê outra lista). *Duas ferramentas, dois efeitos.*
+
+⚠️ **E o `Random` NÃO é uma permutação, de propósito:** uma permutação pediria a mesma ordenação.
+O que um stagger aleatório quer é *um atraso próprio para cada um*, e é isso que um hash de
+`(i, seed)` dá — por elemento, sem olhar para ninguém, igual em toda corrida.
+
+⚠️⚠️ **E o gate da paridade WGSL apanhou-SE A SI PRÓPRIO.** A 1.ª redacção comparava os quatro
+mixers escritos em decimal **à mão** dos dois lados — e **três dos quatro estavam errados**. Ele
+acusou o WGSL, e ao corrigir vi que a lista do teste tinha o mesmo defeito. *Um gate que compara
+duas cópias à mão não prova nada: ele tem de DERIVAR um dos lados* — hoje ele formata os `u32` do
+Rust e procura-os no texto.
 
 ### W3 — O `motion.delay` E O DISPOSITIVO
 

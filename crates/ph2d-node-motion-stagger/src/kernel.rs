@@ -72,6 +72,12 @@ const SG_PARAMS: &[&str] = &[
     "ease_dir",
     "reverse",
     "offset",
+    // ⭐ A ORDEM (ciclo 2, W2) — o device faz a MESMA conta que o `order::raw_at`.
+    "order",
+    "seed",
+    // ⭐ A ORDEM (ciclo 2, W2) — o device faz a MESMA conta que o `order::raw_at`.
+    "order",
+    "seed",
 ];
 
 /// The falloff mask, bound identically by every variant.
@@ -136,11 +142,29 @@ const SG_LIB: &str = "\
         }\n\
         return sg_ease_in(curve, t);\n\
     }\n\
-    fn sg_delta(i: u32) -> f32 {\n\
-        var raw = 0.0;\n\
-        if (params.count > 1u) {\n\
-        \x20   raw = f32(i) / (f32(params.count) - 1.0);\n\
+    fn sg_hash01(i: u32, seed: u32) -> f32 {\n\
+        var x = i * 2654435769u + seed * 2246822507u;\n\
+        x = x ^ (x >> 16u);\n\
+        x = x * 2146121005u;\n\
+        x = x ^ (x >> 15u);\n\
+        x = x * 2221713035u;\n\
+        x = x ^ (x >> 16u);\n\
+        return f32(x) / 4294967296.0;\n\
+    }\n\
+    fn sg_raw_at(i: u32) -> f32 {\n\
+        if (params.count <= 1u) { return 0.0; }\n\
+        let last = f32(params.count) - 1.0;\n\
+        let ord = i32(sg_round(params.order));\n\
+        if (ord == 1) {\n\
+        \x20   return abs(2.0 * f32(i) - last) / last;\n\
         }\n\
+        if (ord == 2) {\n\
+        \x20   return sg_hash01(i, u32(max(sg_round(params.seed), 0.0)));\n\
+        }\n\
+        return f32(i) / last;\n\
+    }\n\
+    fn sg_delta(i: u32) -> f32 {\n\
+        var raw = sg_raw_at(i);\n\
         if (params.reverse >= 0.5) { raw = 1.0 - raw; }\n\
         if (params.offset != 0.0) {\n\
         \x20   // Ver o `eval`: com o knob no neutro o `frac` nem corre,\n\

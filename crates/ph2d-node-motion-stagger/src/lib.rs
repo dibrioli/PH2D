@@ -32,6 +32,7 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 mod channel;
 mod ease;
 mod kernel;
+pub mod order;
 use channel::{apply_channel_delta, falloff_at};
 use ease::ease;
 use ph2d_curve::Curve;
@@ -89,6 +90,16 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "reverse",
             default: 0.0,
         },
+        // ⭐⭐⭐ **A ORDEM** (ciclo 2, W2 — ver [`order`]). Apendada no fim, e o default é
+        // `Index`: todo grafo já autorado lê exactamente a onda que lia.
+        ParamSpec {
+            name: "order",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "seed",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -123,6 +134,10 @@ impl NodeOp for MotionStagger {
         let dir = ctx.param("ease_dir").round() as i32;
         let reverse = ctx.param("reverse") >= 0.5;
         let offset = ctx.param("offset");
+        // ⭐ A ORDEM em que a onda corre pela fila (ciclo 2, W2 — ver [`order`]).
+        let ordem = ctx.param("order").round() as i32;
+        #[expect(clippy::cast_sign_loss, reason = "uma semente e' um padrao de bits")]
+        let semente = ctx.param("seed").max(0.0).round() as u32;
         // A forma DESENHADA (`ease_curve = Custom`). Parseada UMA vez, fora do laço: ela
         // é uniforme na fileira inteira, e um parse por elemento seria uma string por
         // instância.
@@ -132,12 +147,9 @@ impl NodeOp for MotionStagger {
             let n = input.count();
             let deltas: Vec<f32> = (0..n)
                 .map(|i| {
-                    // Position in the stream, `0..1` (a single instance → 0).
-                    let raw = if n <= 1 {
-                        0.0
-                    } else {
-                        i as f32 / (n as f32 - 1.0)
-                    };
+                    // A posição na onda, `0..1` — pela porta única, a mesma que o WGSL usa.
+                    #[expect(clippy::cast_possible_truncation, reason = "a contagem cabe num u32")]
+                    let raw = order::raw_at(ordem, i as u32, n as u32, semente);
                     let raw = if reverse { 1.0 - raw } else { raw };
                     // ⚠️ **O `frac` só corre com o knob armado, e a razão é a
                     // PONTA da rampa:** o último elemento senta exactamente em
@@ -213,6 +225,13 @@ static PARAM_GATES: &[ParamGate] = &[
         param: "ease_dir",
         when: "ease_curve",
         values: &[1, 2, 3, 4, 5, 6, 7],
+    },
+    // ⚠️ **A semente só é lida no `Random`** (ciclo 2, W2) — um controlo que o cook não abre
+    // não é pintado.
+    ParamGate {
+        param: "seed",
+        when: "order",
+        values: &[order::ORDER_RANDOM],
     },
 ];
 
@@ -299,6 +318,26 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Toggle,
+    },
+    // ⭐⭐ **TRÊS ordens, e não sete** — ver o doc de [`order`]: `Reverse`/`From Edges` são o
+    // toggle que já existe, e `By X`/`By Y` pedem uma ordenação (o `motion.sort` a montante).
+    ParamUiHint {
+        param: "order",
+        label: "Order",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Index", "From Center", "Random"],
+        },
+    },
+    ParamUiHint {
+        param: "seed",
+        label: "Seed",
+        min: 0.0,
+        max: 999.0,
+        step: 1.0,
+        widget: ParamWidget::Seed,
     },
 ];
 

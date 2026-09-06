@@ -121,8 +121,12 @@ fn measure_segmented_group_adaptive(
     }
     let widths = segmented_natural_widths(labels, text_system);
     let rows = segmented_row_counts(rect_w, &widths).len();
-    let row_gap = Spacing::Xs.px();
-    row_h * rows as f32 + row_gap * (rows as f32 - 1.0)
+    // ⚠️⚠️ **A MESMA porta que o pintor usa** — ele passou a empilhar as fileiras com o traço de
+    // um pixel (a lei do grupo do Blender, 2026-09-06) e este medidor somava `Spacing::Xs`. *Um
+    // contentor medido por uma regra e preenchido por outra é como a secção seguinte pinta por
+    // cima destes botões e lhes mata o alvo* — está escrito no doc do `segmented_row_counts`, e
+    // era exactamente o que ia acontecer.
+    super::grid_height(rows, row_h)
 }
 
 /// Each label's natural width — the text plus the canonical breathing room. The paint side and the
@@ -177,6 +181,31 @@ pub(crate) fn segmented_row_counts(rect_w: f32, widths: &[f32]) -> Vec<usize> {
 
 #[cfg(test)]
 mod tests {
+
+    /// ⭐⭐⭐ **O QUE MEDE E O QUE PINTA devolvem a MESMA altura.**
+    ///
+    /// O doc do [`segmented_row_counts`] já dizia porquê: *«um contentor medido por uma regra e
+    /// preenchido por outra é como a secção seguinte pinta por cima destes botões e lhes mata o
+    /// alvo»*. Em 2026-09-06 esse defeito quase entrou: a lei do grupo do Blender fez o PINTOR
+    /// empilhar as fileiras com o traço de um pixel, e este medidor continuava a somar
+    /// `Spacing::Xs` por fileira — **4 px de dívida por quebra de linha**, invisíveis num grupo
+    /// de uma fileira e cumulativos nos outros.
+    ///
+    /// ⚠️ **Nenhum gate desta crate o via**, e é por isso que este existe: a régua tem de comparar
+    /// as DUAS respostas, não conferir uma delas.
+    #[test]
+    fn the_measured_height_is_the_painted_height() {
+        let row_h = ph2d_tokens::ROW_H_PX;
+        for rows in 1..=6usize {
+            let painted = super::super::grid_height(rows, row_h);
+            let measured =
+                row_h * rows as f32 + super::super::SEGMENT_HAIRLINE * (rows as f32 - 1.0);
+            assert!(
+                (painted - measured).abs() < 1e-3,
+                "{rows} fileira(s): o pintor reserva {painted} e a conta dá {measured}"
+            );
+        }
+    }
     use super::*;
 
     /// **The group WRAPS by flowing, not by stacking leftovers one per line.**

@@ -848,6 +848,41 @@ novo (`two_nested_depths_never_paint_the_same_tone`) fecha isso, e nasceu errado
 A exceção é **herdada** do gate irmão `a_card_stands_off_its_panel`, que já a media e nomeava a
 cura do Godot (*Draw Extra Borders*); **não é regressão desta wave**.
 
+### 7.17 — ✅ WAVE 14 (2026-09-06): o agrupamento chega a 101 painéis por UMA porta
+
+Depois do *smoke OK*, a fila dizia *«levar o agrupamento de botões aos outros painéis»* — e o censo
+mudou o plano: converter as fileiras à mão dava **12** sítios, mas este app já tem o widget que
+**significa** «escolha entre irmãos» — o `SegmentedAdaptive`, com **101 consumidores**. ⇒ a lei
+entra na porta, não nos sítios.
+
+**O que mudou, num sítio cada:**
+
+| | antes | agora |
+|---|---|---|
+| `segmented_gap()` | `Spacing::Xs` = 4 px | **`SEGMENT_HAIRLINE`** = 1 px |
+| cada segmento | quatro cantos | **`GroupCell`** — só as bordas de fora |
+| um grupo que QUEBRA de linha | fileiras separadas por 4 px | **um bloco**: as fileiras encostam e só os quatro cantos do BLOCO arredondam |
+
+⭐ **Um grupo que quebra continua a ser UM corpo.** Sem isso, uma escolha entre irmãos passaria a
+ler-se como dois controlos só por ter mudado de linha — que é o contrário do que a lei diz.
+
+#### ⚠️ E o defeito que quase entrou estava PREVISTO no doc do próprio ficheiro
+
+O `segmented_row_counts` já avisava: *«um contentor medido por uma regra e preenchido por outra é
+como a secção seguinte pinta por cima destes botões e lhes mata o alvo»* — com o gate que o provou
+citado ao lado. Pois: o **pintor** passou a empilhar as fileiras com o traço de 1 px e o
+**medidor de altura** continuava a somar `Spacing::Xs` por fileira. **4 px de dívida por quebra de
+linha** — invisível num grupo de uma fileira, cumulativo nos outros.
+
+⚠️ **Nenhum gate desta crate o via**, porque todos conferiam UMA das duas respostas. O novo compara
+as **duas** (`the_measured_height_is_the_painted_height`), e ambas passam a sair da mesma porta
+(`grid_height`). *Um aviso escrito no doc não é um gate — e este ficheiro tinha o aviso há meses.*
+
+⛔ **O `paint_segmented_button` mantém a assinatura antiga** (delega, pintando `GroupCell::Only`):
+há **15** chamadores diretos que montam as próprias fileiras — Vector, Motion Params, Grid Snap,
+Flip. Convertê-los é a wave seguinte; quebrar-lhes a assinatura agora seria pagar 15 edições antes
+de saber se o dono aprova o resultado nos 101.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

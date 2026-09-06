@@ -7,11 +7,11 @@
 //! outra vez: arquivo irmão sob o mesmo módulo, então nenhum caminho de chamada muda.
 
 use crate::interaction::HitIndex;
-use crate::paint::{fill_rounded_rect, paint_text_centered, resolve};
+use crate::paint::{paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 /// Canonical segmented / toggle-group button — **the single source of
 /// truth for grouped 2–3-way selectors** (Mode pickers, render-strategy
@@ -30,6 +30,34 @@ pub fn paint_segmented_button(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+) {
+    paint_segmented_button_in_group(
+        rect,
+        label,
+        selected,
+        visual,
+        scene,
+        text_system,
+        theme,
+        crate::widget::GroupCell {
+            col: crate::widget::GroupPos::Only,
+            row: crate::widget::GroupPos::Only,
+        },
+    );
+}
+
+/// ⭐⭐ **O mesmo segmento, sabendo ONDE está no grupo** — a lei do Blender que o dono apontou:
+/// numa fileira de vizinhos só as bordas de FORA arredondam.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_segmented_button_in_group(
+    rect: Rect,
+    label: &str,
+    selected: bool,
+    visual: (crate::widget::ButtonState, f32),
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    pos: crate::widget::GroupCell,
 ) {
     use crate::widget::ButtonState;
     let (state, hover_t) = visual;
@@ -85,7 +113,9 @@ pub fn paint_segmented_button(
     } else {
         resolve(bg, theme)
     };
-    fill_rounded_rect(scene, rect, radius, fill);
+    // ⭐⭐ **Só as bordas de FORA do grupo arredondam** — a lei do Blender (report do dono,
+    //    2026-09-06). Um segmento sozinho continua a arredondar os quatro cantos.
+    crate::paint::fill_rounded_rect_radii(scene, rect, pos.radii(radius), fill);
     crate::paint::stroke_frame(
         scene,
         rect,
@@ -111,7 +141,7 @@ pub fn paint_segmented_button(
 /// painter read this so the spacing never diverges (some groups, e.g.
 /// the Widget Gallery's Low/Mid/High, previously had zero gap).
 pub fn segmented_gap() -> f32 {
-    Spacing::Xs.px()
+    crate::widget::SEGMENT_HAIRLINE
 }
 
 /// Canonical segmented / toggle GROUP: lays out `segments` as N
@@ -133,13 +163,24 @@ pub fn paint_segmented_group(
     if n == 0 {
         return;
     }
-    let gap = segmented_gap();
-    let seg_w = ((rect.w - gap * (n as f32 - 1.0)) / n as f32).max(0.0);
-    for (i, (label, selected, id)) in segments.iter().enumerate() {
-        let seg = Rect::new(rect.x + (seg_w + gap) * i as f32, rect.y, seg_w, rect.h);
-        let visual = store.button_visual(*id);
-        paint_segmented_button(seg, label, *selected, visual, scene, text_system, theme);
-        hit_index.register(*id, seg);
+    // ⭐⭐ **Uma fileira de irmãos ENCOSTA, e só as pontas de fora arredondam** — a lei do Blender.
+    for (i, (rect_i, cell)) in crate::widget::segment_rects(rect, n)
+        .into_iter()
+        .enumerate()
+    {
+        let (label, selected, id) = segments[i];
+        let visual = store.button_visual(id);
+        paint_segmented_button_in_group(
+            rect_i,
+            label,
+            selected,
+            visual,
+            scene,
+            text_system,
+            theme,
+            cell,
+        );
+        hit_index.register(id, rect_i);
     }
 }
 
@@ -171,7 +212,7 @@ pub fn paint_segmented_group_adaptive(
     if n == 0 {
         return 0.0;
     }
-    let gap = segmented_gap();
+    let _gap = segmented_gap();
     let labels: Vec<&str> = segments.iter().map(|(l, _, _)| *l).collect();
     let widths = crate::widget::segmented_adaptive::segmented_natural_widths(&labels, text_system);
     // ONE answer to "how does this group wrap", shared with the measurer. See `segmented_row_counts`:
@@ -179,20 +220,17 @@ pub fn paint_segmented_group_adaptive(
     let rows = crate::widget::segmented_adaptive::segmented_row_counts(rect.w, &widths);
 
     let row_h = rect.h;
-    let row_gap = Spacing::Xs.px();
-    let mut y = rect.y;
+    // ⭐⭐⭐ **Um grupo que QUEBRA continua a ser UM corpo** — as fileiras encostam entre si como
+    //    as peças encostam dentro de cada uma, e só os quatro cantos do BLOCO arredondam. É a lei
+    //    do Blender nas duas direcções (`block_cells`), e é o que impede uma escolha entre irmãos
+    //    de se ler como dois controlos por ter mudado de linha.
+    let block = crate::widget::block_cells(Rect::new(rect.x, rect.y, rect.w, 0.0), &rows, row_h);
     let mut i = 0usize;
     for (r, count) in rows.iter().enumerate() {
-        if r > 0 {
-            y += row_h + row_gap;
-        }
-        // Within a row the buttons share the width evenly — the canonical segmented look
-        // (`paint_segmented_group`), so a half-full last row reads as part of the same control.
-        let seg_w = ((rect.w - gap * (*count as f32 - 1.0)) / *count as f32).max(0.0);
         for k in 0..*count {
             let (label, selected, id) = segments[i + k];
-            let seg = Rect::new(rect.x + (seg_w + gap) * k as f32, y, seg_w, row_h);
-            paint_segmented_button(
+            let (seg, cell) = block[r][k];
+            paint_segmented_button_in_group(
                 seg,
                 label,
                 selected,
@@ -200,11 +238,12 @@ pub fn paint_segmented_group_adaptive(
                 scene,
                 text_system,
                 theme,
+                cell,
             );
             hit_index.register(id, seg);
         }
         i += count;
     }
 
-    y + row_h - rect.y
+    crate::widget::grid_height(rows.len(), row_h)
 }

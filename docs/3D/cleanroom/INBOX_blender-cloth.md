@@ -40,3 +40,53 @@ Arnês: `crates/ph2d-cloth/tests/oraculo_do_pincel.rs` (a lei nossa em `ph2d-clo
   `R₀` da corrida Local na esfera era maior que `0,35` (o alcance medido é `5,65R` ≈ o antípoda), ou
   o conjunto activo do Local é a malha inteira nessa malha (folhas grandes) e o φ NÃO tem banda.
   Pergunta 6 ao E.
+
+## Q8 — a AMPLITUDE do Local: medição por passo, curva inteira (2026-09-06, sessão 1246816c)
+
+Instrumento: `sonda_passo_a_passo` sobre os quatro traços `*.porpasso` da Q7, com a experiência
+`PH2D_VARREDURAS=<n>` (quantas varreduras de relaxação de restrições por passo de pincel; a nossa
+constante de produção é `VARREDURAS = 5`, e ela veio das seis fixtures de UM passo de força).
+
+**⭐ O resultado é uma assimetria Local/Global de factor ~2, e é a CURVA INTEIRA, não um ponto.**
+
+| traço | varreduras que reproduzem o oráculo | evidência |
+|---|---|---|
+| `plano_arrastar_radial_global_origem` | **5** | 12 passos × 5 colunas, erro ≤ 4 % (`c0` k12 `0,6399` vs `0,6457`; `2.9R` `0,05398` vs `0,05157`; `3.5R` `0,03887` vs `0,03738`; `4R` `0,03492` vs `0,03378`) |
+| `plano_arrastar_radial_local_origem` | **10** | 12 passos × 5 colunas, erro ≤ 3 % (`c0` k3..k12 `0,1661 0,2114 0,2451 0,2705 0,2873 0,2933 0,2856 0,2635 0,2337 0,2144` contra `0,1676 0,2131 0,2471 0,2729 0,2904 0,2974 0,2910 0,2701 0,2406 0,2202`) |
+| `plano_agarrar_radial_local_2passos_origem` | **~9** (cruza entre 9 e 10) | `c0` k3 por varredura: 6→`0,1252` · 7→`0,1327` · 8→`0,1391` · 9→`0,1446` · 10→`0,1495` · 11→`0,1539`; oráculo `0,1457` |
+
+⭐⭐ **Não é um botão monótono a acertar um número:** o Arrastar **DESCE** com varreduras
+(`5`→`0,6341`, `30`→`0,0305`) e o Agarrar **SOBE** (`6`→`0,1252`, `11`→`0,1539`) — direcções
+opostas — e os dois cruzam o oráculo entre `9` e `10`. E a `5` a curva Local do Arrastar é
+**monótona crescente**; a `10` ela ganha o **pico-e-recuo** do oráculo (máximo no passo 8, recuo até
+ao passo 12). *A mudança é qualitativa, não de escala.*
+
+⚠️ **A nossa Local É a nossa Global, coluna a coluna** (`c0` k12 `0,6341` vs `0,6399`; as 12 linhas
+coincidem em 3 casas): na nossa lei a área *Local* não muda nada no interior — só o aro, que já está
+certo (`3.5R` `0,00023` vs `0,00032`; `4R` `0` vs `0`). No oráculo a Local é `0,34×` a Global no
+centro. ⇒ o que falta é **interior**, não fronteira, e a Q3 («a razão exacta é emergente») fica
+respondida por medição: a razão emerge de o Local relaxar ~2× o que a Global relaxa.
+
+⛔ **REFUTADO no mesmo dia — a triangulação NÃO é o mecanismo** (fecha a Q1 pela metade que faltava):
+`PH2D_TRI=1` a 5 varreduras acerta o Arrastar Local (`0,2327` vs `0,2202`) e **derruba o Global**
+(`0,2699` vs `0,6457`) e **afasta** o Agarrar Local (`0,0838` vs `0,1457`). A triangulação é uma
+propriedade da MALHA, partilhada pelos dois ramos ⇒ não pode explicar uma diferença entre eles.
+*Ela acertava um traço por rigidez a mais, exactamente como o E dissera.* O anel fica nas ARESTAS.
+
+⚠️ **Facto que restringe a resposta:** no oráculo o **passo 2 do Local e do Global é IDÊNTICO**
+(`0,09347` / `0,00072` / zeros, nas duas fixtures) e eles só divergem no passo 3. Na nossa lei o
+passo 2 também é insensível às varreduras (`0,0935` a 5 e a 10). Portanto o mecanismo pode ser
+constante desde o início — não precisa de acumular.
+
+### As perguntas
+
+- **Q8.1** — Quantas passagens de resolução de restrições o ramo *Local* faz por passo de pincel,
+  comparado com o *Global*? (Um número em cada ramo, ou um multiplicador.)
+- **Q8.2** — A lista de restrições do *Local* é DEDUPLICADA? Uma lista construída por-vértice sem
+  dedup põe cada aresta interior duas vezes (uma por extremo) e mede-se como ~2× relaxação no
+  interior e ~1× na fronteira — o que casaria com esta medição sem mudar contagem de iterações.
+- **Q8.3** — Se nenhuma das duas: o *Local* corre o solver mais de uma vez por passo, ou com `dt`
+  menor / sub-passos?
+
+*Formato de resposta pedido: número + onde ele vive (nome público do knob, se houver), sem uma
+linha de expressão do alvo.*

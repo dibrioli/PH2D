@@ -712,6 +712,7 @@ fn sonda_passo_a_passo() {
         "{:>4} | {:>7} {:>7} | {:>7} {:>7} | {:>7} {:>7} | {:>7} {:>7} | {:>8} {:>8}",
         "k", "c0 nos", "c0 orac", "2.9R nos", "2.9R or", "3.5R nos", "3.5R or", "4R nos", "4R orac", "max nos", "max orac"
     );
+    println!("      (as duas ultimas colunas sao a distancia do PICO ao cursor, em raios)");
     for k in 0..pp.caminho.len() {
         let cursor = pp.caminho[k];
         let prev = pp.caminho[k.saturating_sub(1)];
@@ -756,18 +757,31 @@ fn sonda_passo_a_passo() {
         let u_o = |v: usize| dist(rest[v], bloco[v]);
         let ck = perto(cursor);
         let (mut max_n, mut max_o, mut err) = (0.0f64, 0.0f64, 0.0f64);
+        // ⭐ ONDE está o pico, não só quanto ele vale: um modo cuja amplitude
+        // bate e cujo `arg max` está noutro sítio tem defeito de LUGAR, e as
+        // colunas de amplitude são cegas a ele (medido no Snake Hook, 06/09).
+        let (mut arg_n, mut arg_o) = (0usize, 0usize);
         for v in 0..rest.len() {
-            max_n = max_n.max(u_n(v));
-            max_o = max_o.max(u_o(v));
+            if u_n(v) > max_n {
+                max_n = u_n(v);
+                arg_n = v;
+            }
+            if u_o(v) > max_o {
+                max_o = u_o(v);
+                arg_o = v;
+            }
             err = err.max(dist(pos[v], bloco[v]));
         }
         let _ = (err, ck);
+        // A distância do pico ao cursor DESTE passo, em raios de pincel.
+        let (pico_n, pico_o) = (dist(rest[arg_n], cursor) / r, dist(rest[arg_o], cursor) / r);
         let (c0v, bnd, lim, fora) = (nomeados[0].1, nomeados[3].1, nomeados[5].1, nomeados[6].1);
         println!(
-            "{:>4} | {:>7.4} {:>7.4} | {:>8.5} {:>8.5} | {:>8.5} {:>8.5} | {:>7.5} {:>7.5} | {:>8.4} {:>8.4}{}",
+            "{:>4} | {:>7.4} {:>7.4} | {:>8.5} {:>8.5} | {:>8.5} {:>8.5} | {:>7.5} {:>7.5} | {:>8.4} {:>8.4} | {:>5.2}R {:>5.2}R{}",
             k + 1,
             u_n(c0v), u_o(c0v), u_n(bnd), u_o(bnd), u_n(lim), u_o(lim), u_n(fora), u_o(fora),
             max_n, max_o,
+            pico_n, pico_o,
             if glitch { "  (bloco = repouso: glitch do dump, ignorar)" } else { "" }
         );
     }

@@ -496,6 +496,20 @@ fn correr_posicoes(nome: &str) -> Vec<V3> {
 
 /// Idem, com a ORDEM de resolução dada em vez de lida do ambiente.
 fn correr_posicoes_com(nome: &str, ordem: Option<&str>) -> Vec<V3> {
+    correr_com_pincel(nome, ordem).0
+}
+
+/// A MESMA corrida, devolvendo também o pincel no fim — é o que uma sonda
+/// precisa para imprimir `φ` e a retenção sem reescrever o laço.
+///
+/// ⛔⛔ **Nenhuma sonda desta bancada volta a ter laço próprio.** A
+/// `sonda_do_perfil` teve um durante três jornadas e ele divergiu do produto em
+/// TRÊS sítios de uma vez — o eixo da vista escrito à mão (`+z`, logo errado em
+/// toda fixture de esfera), a condição de «passo parado» sem a metade do `δ`
+/// nulo, e o delta do Agarrar sem o ramo que o acumula. *Uma sonda que mede
+/// outro programa que o produto responde com confiança a perguntas sobre uma
+/// coisa que ninguém corre.*
+fn correr_com_pincel(nome: &str, ordem: Option<&str>) -> (Vec<V3>, PincelTecido) {
     let t = traco(nome);
     let sup = t.s("superficie").to_string();
     let rest = repouso(&sup);
@@ -555,7 +569,7 @@ fn correr_posicoes_com(nome: &str, ordem: Option<&str>) -> Vec<V3> {
         }
     }
 
-    pos
+    (pos, tecido)
 }
 
 /// As posições que o ORÁCULO gravou para este traço.
@@ -608,45 +622,9 @@ fn correr(nome: &str) -> Leitura {
 fn sonda_do_perfil() {
     let nome = std::env::var("PH2D_TRACO").unwrap_or_else(|_| "plano_arrastar_radial_local".into());
     let t = traco(&nome);
-    let sup = t.s("superficie").to_string();
-    let rest = repouso(&sup);
-    let fs = faces(&sup, &rest);
-    let an = aneis(rest.len(), &fs);
-    let anel = |v: u32| an[v as usize].clone();
-    let pincel = t.pincel();
-    let mut pos = rest.clone();
-    let mut tecido = PincelTecido::pen_down(pincel, &pos, t.caminho[0]);
-    for k in 0..t.caminho.len() {
-        let cursor = t.caminho[k];
-        let prev = t.caminho[k.saturating_sub(1)];
-        let d3 = [
-            cursor[0] - prev[0],
-            cursor[1] - prev[1],
-            cursor[2] - prev[2],
-        ];
-        let delta = projecta(d3, eixo_da_vista(&sup));
-        let nrm = normais(&pos, &fs);
-        let passo = Passo {
-            cursor,
-            delta,
-            delta_3d: d3,
-            parado: k == 0,
-            vista: [0.0, 0.0, 1.0],
-            normais: &nrm,
-            pressao: 1.0,
-        };
-        let simulou = tecido.passo(&pos, &anel, &passo);
-        if k == 0 {
-            reordenar(&mut tecido.sim);
-        }
-        if simulou {
-            for (v, act) in tecido.sim.activo.iter().enumerate() {
-                if *act {
-                    pos[v] = tecido.sim.x[v];
-                }
-            }
-        }
-    }
+    let rest = repouso(t.s("superficie"));
+    // ⛔ A MESMA corrida do produto (ver `correr_com_pincel`) — não um laço irmão.
+    let (pos, tecido) = correr_com_pincel(&nome, std::env::var("PH2D_ORDEM").ok().as_deref());
     println!(
         "{nome}: restricoes={} activos={}",
         tecido.sim.restricoes.len(),
@@ -656,14 +634,19 @@ fn sonda_do_perfil() {
         "{:>8} {:>8} {:>8} {:>6} {:>6}",
         "x", "nos", "oraculo", "phi", "w0"
     );
-    let mut linha: Vec<usize> = (0..rest.len())
-        .filter(|v| rest[*v][1].abs() < 1e-6)
-        .collect();
+    // A linha do traço: os vértices sobre o caminho. ⚠️ No plano ela é `y = 0`;
+    // na esfera o caminho pousa em `y = −√(1−x²)`, e uma sonda que fixasse
+    // `y ≈ 0` imprimiria a linha ERRADA (ou nenhuma).
+    let na_linha = |v: usize| {
+        if t.s("superficie") == "plano" {
+            rest[v][1].abs() < 1e-6
+        } else {
+            rest[v][2].abs() < 1e-3 && rest[v][1] < 0.0
+        }
+    };
+    let mut linha: Vec<usize> = (0..rest.len()).filter(|v| na_linha(*v)).collect();
     linha.sort_by(|a, b| rest[*a][0].total_cmp(&rest[*b][0]));
     for v in linha {
-        if rest[v][0] < -0.8 || rest[v][0] > 1.1 {
-            continue;
-        }
         println!(
             "{:>8.3} {:>8.4} {:>8.4} {:>6.3} {:>6.3}",
             rest[v][0],

@@ -36,7 +36,8 @@ plasticidade `0`, pino desligado, sem colisões, sem gravidade — i.e., **as om
 
 ## ⭐ O instrumento POR PASSO (`*.porpasso.txt.gz`, pedido do I em 2026-09-06)
 
-**O que é.** Para **seis** traços, as posições **depois de CADA passo** — um ficheiro por traço com um
+**O que é.** Para **nove** traços (⚠️ **conte-os**: `ls *.porpasso.txt.gz | wc -l`), as posições
+**depois de CADA passo** — um ficheiro por traço com um
 bloco `passo k` por passo. **Como foi obtido:** o traço do binário é uma chamada só e a simulação vive
 dentro dela, logo não se pode «pausar»; mas a simulação **nunca olha para a frente**, então uma corrida
 NOVA com só os primeiros `k` elementos do MESMO caminho, sobre uma malha fresca, termina exactamente no
@@ -44,7 +45,7 @@ estado do passo `k` da corrida inteira. Cada ficheiro traz a **prova**: `prova_d
 diferença máxima por vértice entre o bloco `k = N` e uma corrida inteira da MESMA sessão — tem de ser
 `0,000000` (a 6 decimais).
 
-⚠️ **O pen-down destes seis está NA ORIGEM do objecto** (`caminho` de `(0,0,0)` a `(0,6,0,0)`), e o
+⚠️ **O pen-down de TODOS eles está NA ORIGEM do objecto** (`caminho` de `(0,0,0)` a `(0,6,0,0)`), e o
 sufixo `_origem` diz-o. Motivo, medido: o centro da área *Local* é o ponto de HOVER do cursor antes do
 pen-down, e num traço scriptado esse hover é **refém do ponteiro físico** — numa sessão inteira saiu
 certo, na seguinte saiu na origem em todas as corridas e a zero em duas. Com o pen-down na origem, o
@@ -68,6 +69,8 @@ sobre estas posições, e o rastreio dá o lado MEDIDO da comparação.
 | `plano_apertar_ponto_radial_local_origem` | 12 | `0.000000` | 2145 | `0.303401` |
 | `plano_apertar_linha_radial_local_origem` | 12 | `0.000000` | 2137 | `0.100744` |
 | `plano_apertar_ponto_radial_local_origem_fraco` | 12 | `0.000000` | 2029 | `0.004082` |
+| `plano_empurrar_radial_local_origem` | 12 | `0.000000` | 2145 | `0.259368` |
+| `plano_inflar_radial_local_origem` | 12 | `0.000000` | 2145 | `0.317081` |
 
 ⭐⭐ **O `_fraco` (2026-09-06) é um CONTROLO, não mais um traço** — a espec §10.6 e §5.2-ter. É o
 traço de aperto de ponto da linha acima com **uma** coisa mudada, a força (`1,0 → 0,2`), e existe
@@ -84,6 +87,15 @@ rastreio deles mostra o que o traço inteiro esconde: sob o pen-down o aperto de
 monótono** (`0,093 · 0,184 · 0,118 · 0,106 · 0,197 · 0,208 · 0,201 · 0,187 · 0,160 · 0,149 · 0,154`
 nos passos 2..12) — a força aponta para o cursor, que se afasta, logo o vértice é puxado e largado a
 cada passo; e o de LINHA quase não move o pen-down (`≤ 0,006`) e move o vizinho a `1R`.
+
+⭐ **Os dois de FORÇA NORMAL — `empurrar` e `inflar` — foram acrescentados em 2026-09-06, também a
+pedido do I** (espec §10.7). Eles são o par que separa as **duas** normais do alvo: no 1.º passo
+simulado a folha está plana e em repouso, logo a normal da área e a normal do vértice são a mesma
+coisa e a razão dos dois é exactamente `2R` (`0,06543 / 0,09347 = 0,7000`); a partir do passo 3 elas
+divergem, e a do Push **roda com a vala que o traço abre** (espec §4.2-bis). ⚠️ O rastreio mostra o
+que o traço inteiro esconde: sob o pen-down o Push **satura e recua** (`0,2397` no passo 7 → `0,2195`
+no 12) enquanto o Inflate fica (`0,2701` → `0,2629`), e nos dois o aro está preso (`3,5R` em
+`0,0004`/`0,0005`, `4R` em zero exacto).
 `plano_arrastar_radial_local_origem` — `|u|` depois do passo k (excerto do rastreio):
 
 | passo | sob o pen-down | a 1R | no limite 3,5R | fora, 4R | sob o cursor do passo |
@@ -150,6 +162,10 @@ o ficheiro diz o que contém.
   precisamente os mais usados. ⇒ **regenere-o** varrendo os `.deformado.txt.gz` sempre que
   acrescentar um; a contagem certa é `ls *.deformado.txt.gz | wc -l`, ⛔ nunca um número escrito
   aqui. *Um índice derivado que ninguém regenera é uma lista escrita à mão com cara de derivada.*
+  ⭐ **Desde 2026-09-06 ele TEM gerador: `python3 gera_indice.py`** (neste diretório) — varre os
+  `.deformado.txt.gz`, escreve uma entrada por ficheiro com as chaves do cabeçalho deles, e imprime a
+  contagem. *A regra da casa é «índice de diretório se GERA, não se escreve»; até aqui a regra estava
+  escrita e a ferramenta não existia, e foi por isso que ele envelheceu duas vezes.*
 - `analise.json` — 46 objectos com as grandezas que a espec §10 tabela, calculadas pelo harness do E
   a partir de repouso + deformado (⛔ **não são oráculo**: são leituras NOSSAS sobre o dado):
   `fixture` · `corrida_oraculo` (o nome interno da corrida no harness — só para o E regenerar) ·
@@ -213,6 +229,7 @@ o ficheiro diz o que contém.
 | `plano_empurrar_plano_local.` | empurrar | 12 | 2146 | `0.520138` |
 | `plano_empurrar_radial_local.` | empurrar | 12 | 2145 | `0.258986` |
 | `plano_empurrar_radial_local_1passo.` | empurrar | 2 | 171 | `0.069419` |
+| `plano_empurrar_radial_local_origem.` | empurrar | 12 | 2145 | `0.259368` |
 | `plano_expandir_radial_local.` | expandir | 12 | 2134 | `0.011523` |
 | `plano_expandir_radial_local_1passo.` | expandir | 2 | 848 | `0.001902` |
 | `plano_gancho_radial_local.` | gancho | 12 | 2140 | `0.09155` |
@@ -223,5 +240,6 @@ o ficheiro diz o que contém.
 | `plano_gancho_radial_local_amort06.` | gancho | 12 | 2135 | `0.063396` |
 | `plano_inflar_radial_local.` | inflar | 12 | 2146 | `0.317159` |
 | `plano_inflar_radial_local_1passo.` | inflar | 2 | 171 | `0.09917` |
+| `plano_inflar_radial_local_origem.` | inflar | 12 | 2145 | `0.317081` |
 
 **53 traços** (47 da matriz + 6 do instrumento por passo). ⚠️ As fixtures de ESFERA são todas de área **Dinâmica** (centro no cursor). A área *Local* na esfera NÃO foi gravada: um traço scriptado não dispara o hover que fixa o centro da área Local, que fica na ORIGEM do objecto — e numa esfera unitária a origem põe toda a malha dentro da banda (ver ERRATA no ledger). A área Local está medida no PLANO (onde a origem cai na superfície).

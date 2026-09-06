@@ -63,6 +63,16 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   triangulares dá `11 / 26 / 88`); (4) os gates 15 e 17 citavam `51` e `50` traços de memória, com
   `54` no disco. Mais a decisão do §5.2-ter posta nas duas frases que o dono precisa de ler.
   Veredictos e detalhe: LEDGER §Papel R.
+  ⏳ **EMENDA Q12 de 2026-09-06 — AGUARDA o atestado do R-pré** (§4.2-bis NOVA · §4.3 · §4.4 ·
+  §4.6 NOVA · §10 contagem · §10.7 NOVA · §14 gates 22-24, + as duas fixtures por passo
+  `plano_empurrar_radial_local_origem` e `plano_inflar_radial_local_origem` e o gerador do índice
+  delas): a **normal da área** que o Push lê (quando é reavaliada, sobre que malha, em que raio, com
+  que peso e com que regra de desempate), o **factor de escala** que a multiplica, a lei do **centro
+  da área** (que fecha a pergunta em aberto no fim do §4.4), e o **censo das grandezas que são
+  degeneradas num plano visto de frente e vivas numa superfície curva** — entre elas que o
+  deslocamento do cursor que sete dos oito modos lêem é a **projecção** no plano do ecrã, e que só o
+  arrasto lê a diferença dos dois pontos 3D. Escrita pelo subagente-E da mesma janela, com o fonte
+  reaberto só para estas perguntas e com uma corrida NOVA do oráculo (as 26 corridas-prefixo do §10.7).
 Mapa de leitura da literatura (⭐ pública e lícita a TODOS os papéis):
   · Jakobsen, "Advanced Character Physics", GDC 2001 — integração de Verlet por posições + relaxação
     de restrições de distância por projecção. É EXACTAMENTE a família do solver do alvo.
@@ -422,6 +432,58 @@ zero**, sem `NaN`, sem direcção de reserva e sem o vértice ser saltado. Um v�
 recebe a força **inteira** (F). ⇒ *o ponto onde o aperto é mais forte é o ponto onde a direcção dele
 está pior determinada.*
 
+### §4.2-bis — A NORMAL DA ÁREA e o factor de ESCALA do Push (F, 2026-09-06)
+
+⭐⭐⭐ **O Push é o único modo cuja direcção não é lida da malha vértice a vértice nem do gesto: ela é
+UM vector por passo, e é a lei da casa do *Sculpt Plane*.** O deslocamento que ele empilha é
+
+```
+u = − n̂_área · R · escala · 2          (R = o raio do pincel neste passo)
+```
+
+**(1) Quando `n̂_área` é reavaliada.** A cada passo do traço, na **primeira** passagem de simetria; as
+outras passagens recebem-na espelhada/rodada. As únicas coisas que a congelam são as opções
+*Original Normal* / *Original Plane* do pincel (ambas **desligadas** nos presets de tecido — A) e o
+facto de o pincel ser o *Grab* da casa (⛔ que **não** é o modo Agarrar do tecido: a regra de congelar
+nomeia o pincel, não o modo de deformação). ⇒ **nas fixtures ela muda a cada passo.**
+
+**(2) De que malha.** Das posições e normais **ACTUAIS** — a malha como o passo a encontra, já
+deformada pelos passos anteriores. ⛔ Não é a malha de repouso do traço: a rota que lê as posições de
+partida só é tomada por pincéis que oferecem a opção *Accumulate*, e o pincel de tecido não está
+nessa família (F).
+
+**(3) De que vértices, e com que peso.** De cada vértice **visível** das células que o pincel juntou
+(§2.1) cuja distância ao cursor seja `d ≤ R · «Normal Radius»`, com a distância medida pela forma de
+queda do pincel (3D com *Sphere*, que é a dos presets — A). Cada um contribui com a **normal do
+vértice** multiplicada por `3p² − 2p³`, `p = 1 − d/(R·«Normal Radius»)`, saturado a `[0,1]`; o
+resultado é a **soma normalizada**.
+⚠️⚠️ **O «Normal Radius» dos presets de tecido é `0,5` (A)** ⇒ **a normal é amostrada num disco de
+METADE do raio do pincel**, não no disco inteiro. *Um port que a tire do disco inteiro tem uma
+direcção diferente assim que a superfície deixa de ser plana ou de estar em repouso.*
+
+**(4) A regra de desempate, que não é uma média.** Os vértices são repartidos em **dois** baldes pelo
+sinal de `n̂ · v̂` (`v̂` = a direcção da vista): `> 0` no balde da frente, `≤ 0` no de trás. A resposta é
+a soma normalizada do **PRIMEIRO balde não vazio, nesta ordem fixa** — nunca a mistura dos dois, e
+⛔ nunca «o balde com mais vértices». ⇒ basta **um** vértice virado para a vista para que os virados
+ao contrário não contem.
+
+**(5) Quando não há resposta.** Se nenhum vértice qualifica, ou se a soma do balde escolhido tem
+comprimento zero, `n̂_área` é o **vector NULO** — e o Push desse passo é **força zero**, sem `NaN` e
+sem direcção de reserva.
+
+**(6) A forma de queda *Projected*** projecta ainda `n̂_área` no plano do ecrã e re-normaliza (com
+*Sphere*, a dos presets, não faz nada).
+
+**(7) O `escala`.** É um vector de **três** números fixado no pen-down, e ele não depende do passo,
+nem da pressão, nem da malha: `escala_eixo = max(|escala do objecto em x, y, z|) / escala do objecto
+nesse eixo`. A multiplicação é **componente a componente** ⇒ num objecto de escala **uniforme** ele é
+`(1, 1, 1)` e o módulo do deslocamento é exactamente `2R` (M: `plano_empurrar_radial_local_1passo`
+dá `0,06942 = 2 · 0,35 · 0,0992`, §10.1); num objecto de escala **não-uniforme** ele **entorta a
+direcção** além de mudar o módulo — não é um factor escalar.
+
+⚠️ **O mesmo `n̂_área` é o `ẑ` do referencial local do traço e a normal que o falloff de plano usa
+(§4.4)** — as três leituras são a mesma grandeza, calculada uma vez por passo.
+
 ### §4.3 — Os modos de ÂNCORA (dois) — e o delta de agarrar
 
 **O delta de agarrar `δ`** é um vector em espaço do objecto, derivado do ECRÃ (F): o ponto do
@@ -430,6 +492,25 @@ subtraído ao ponto anterior. Para o **Grab** o delta **acumula** desde o pen-do
 ponto original: um vector total); para os **outros sete modos** é **incremental** (ponto actual −
 ponto anterior). Com *Normal Weight* `> 0` (omissão `0`) o delta é inclinado para a normal da
 área como no Grab da casa. Com falloff *Projected* é achatado no plano da vista.
+
+⭐⭐⭐ **A consequência que só uma superfície CURVA revela: `δ` NÃO é a diferença dos dois pontos 3D do
+cursor — é a PROJECÇÃO dessa diferença no plano do ecrã** (F, 2026-09-06). As duas des-projecções são
+feitas à **mesma** profundidade (a do pen-down), logo numa vista **ortográfica** a componente do
+deslocamento ao longo do eixo da vista é **descartada por construção**, e numa vista em perspectiva
+ela é descartada *e* o resto é reescalado pela razão de profundidades. ⇒ numa folha plana vista de
+frente o caminho vive nesse plano e `δ` **é** a diferença dos pontos, ao bit; numa superfície curva
+os dois vectores separam-se.
+⚠️ **Quem lê `δ`:** o guarda de «passo sem movimento» de TODOS os modos · a âncora do Agarrar (que o
+acumula) · a âncora e o avanço do centro do Snake Hook · a **normal do plano de queda** (§4.4) · o
+`x̂` do referencial local do traço (§4.4). ⛔ **O arrasto é o único modo que NÃO o lê para a
+direcção:** ela é a diferença **dos dois pontos 3D** do cursor, normalizada (§4.2) — e é por isso que
+o arrasto é o modo que se comporta igual nas duas superfícies.
+⚠️ **Números na esfera das fixtures** (esfera unitária, caminho de `x = −0,3` a `+0,3` em 12 passos,
+vista ao longo do eixo de profundidade — M): `δ` vale `(0,05455, 0, 0)` em **todos** os passos,
+enquanto a diferença dos pontos 3D chega a `(0,05455, ∓0,01547, 0)` — **`15,83°`** de diferença de
+direcção no 1.º e no último passo, `0°` a meio, e até `1,039×` de módulo. No **Agarrar**, que
+acumula, o desvio entre o `δ` acumulado e a diferença acumulada dos pontos chega a **`0,04569`** a
+meio do caminho, que é **`19,3 %`** do maior deslocamento daquela fixture (`0,236509`).
 
 ⚠️ **A localização do cursor** (`c`, centro do disco de influência):
 - Drag/Push/Pinch/Inflate/Expand: **re-apanhada na superfície a cada passo** (raio contra a malha).
@@ -500,6 +581,34 @@ NÃO é o do pen-down nem o da vista — é o plano do centro da área com a nor
 movimento, **recalculado a cada passo** (salvo *Original Plane/Normal*); **(12)** a simetria é
 expandida **por passagem** e cada passagem corre gesto+solver inteiros (§1).
 
+⭐⭐⭐ **O «CENTRO DA ÁREA» não é o centroide do disco — e é isso que fecha a pergunta que ficou em
+aberto no INBOX** (F, 2026-09-06). Ele sai da **mesma** varredura que a normal (§4.2-bis: mesmo
+conjunto de células, mesmo disco de raio `R · «Normal Radius»` = **metade** do raio do pincel, mesmos
+dois baldes com a mesma regra do primeiro balde não vazio, mesmas posições **actuais**), mas o que se
+soma **não é a posição do vértice**:
+
+```
+contribuição(v) = c + (p_v − c) · (1 − a_v)      a_v = 3p² − 2p³,  p = 1 − d_v/(R·«Normal Radius»)
+centro da área  = média das contribuições do balde escolhido
+                = c   se nenhum vértice qualificar
+```
+
+⇒ **o peso `1 − a` vale ZERO no cursor e cresce para a borda do disco**: cada vértice é *puxado para
+o cursor* antes de entrar na média, e quanto mais perto do cursor está, mais completamente é
+substituído por ele. Numa folha em repouso com o cursor sobre ela o centro da área **é praticamente o
+cursor**; numa folha já cavada ele fica **muito mais perto do cursor** do que o centroide das
+posições.
+⚠️⚠️ **É por isso que a medição do I — «o plano pelo CURSOR reproduz o alvo e o plano pelo centro da
+área afasta-o» — não refuta esta secção: o que foi medido foi um CENTROIDE, e o alvo não usa um
+centroide.** *Uma recusa medida responde a uma pergunta, e aquela respondeu «o centroide não serve»,
+não «o centro da área não serve».* O plano pelo cursor é a **aproximação de primeira ordem** do
+centro da área, e é por isso que ele passa quase.
+⚠️ **A origem do referencial local NÃO é o centro da área — é o cursor `c`** (o bloco acima já o
+diz): as duas grandezas têm consumidores diferentes, e só o plano de queda lê o centro da área.
+⚠️ Na área *Local* o centro da área e a localização inicial da área (§2.1) são **coisas distintas**:
+o centro da área é reavaliado a cada passo à volta do cursor; a localização inicial fica no pen-down
+durante todo o traço.
+
 ### §4.5 — Expand — o modo que muda o REPOUSO
 
 `Expand` não aplica força nem âncora: para cada vértice sob o pincel, um **desvio de repouso**
@@ -509,6 +618,43 @@ de toda restrição `(a, b)` passa a ser `ℓ + (τ_a + τ_b)/2` (§5.2). Com `f
 - A ordem de grandeza: a força máxima, `B = 0,1` ⇒ `τ` cresce `0,001` por passo no centro — e é
   **absoluto** (não relativo à aresta): numa aresta de `0,047` (a grelha do oráculo) são `2 %` por
   passo (M, §10).
+
+### §4.6 — O que é DEGENERADO num plano visto de frente e VIVO numa superfície curva (F+M, 2026-09-06)
+
+⛔⛔⛔ **Leia isto antes de procurar uma lei «para superfície curva»: não existe nenhuma.** Nenhuma
+decisão do alvo — nem no gesto, nem no solver, nem na construção — pergunta pela curvatura, pela
+normal do ponto do cursor ou pelo tipo de malha. O que existe é uma lista **fechada** de grandezas
+que, numa grelha plana vista de frente e em repouso, valem sempre a mesma coisa (ou zero), e que
+numa esfera passam a variar. *Um port calibrado só no plano acerta nelas por acidente.*
+
+| # | grandeza | no plano visto de frente | numa superfície curva | quem a lê |
+|---|---|---|---|---|
+| 1 | **o deslocamento do cursor `δ`** (§4.3) | **igual** à diferença dos dois pontos 3D | a componente de profundidade é **descartada**: `15,83°` de diferença de direcção nas fixtures de esfera, `1,039×` de módulo, `0,04569` de desvio acumulado (`19,3 %` do maior deslocamento do Agarrar) | Agarrar · Snake Hook · normal do plano de queda · `x̂` do referencial · o guarda de «passo parado» de todos ⛔ **menos** o arrasto |
+| 2 | **a normal da área** (§4.2-bis) | exactamente a normal da folha, em todos os passos, até a folha se cavar | média com peso `3p²−2p³` das normais **actuais** num disco de **meio** raio: não é a normal no ponto do cursor, e roda com a vala que o traço vai abrindo | Push · plano de queda · `ẑ` do referencial |
+| 3 | **o centro da área** (§4.4) | praticamente o cursor | mistura pesada que **puxa para o cursor**, e não o centroide do disco | plano de queda |
+| 4 | **a normal do vértice** | `+ẑ` para todos, seja qual for o peso usado ao somar as faces | soma das normais de face **não normalizadas** (⇒ peso de ÁREA) das faces que tocam o vértice, sobre a malha **actual**, depois normalizada: peso por área, por ângulo e uniforme dão respostas **diferentes** | Inflate |
+| 5 | **a repartição em dois baldes** pelo sinal de `n̂ · v̂` (§4.2-bis) | um balde só: o segundo nunca é usado | o segundo balde enche-se assim que o disco alcança a silhueta, e ⛔ ele só é lido se o primeiro estiver **vazio** | normal e centro da área |
+| 6 | **a distância** ao cursor e à localização da área | a distância no plano | **corda 3D, nunca geodésica**: na esfera unitária o disco de `R = 0,35` é uma calota de arco `0,3518` (`+0,5 %`) e o limite da área de `3,5R = 1,225` é uma calota de arco `1,3184` (**`+7,6 %`**) | a curva de queda, o filtro de raio, a banda da área, o filtro de construção |
+
+⚠️ **A leitura das oito fixtures de esfera (M) sai desta tabela, e ela NÃO é uma família só:**
+- **Agarrar · Snake Hook · Aperto de linha** — linha 1 (e a 2 no aperto de linha, que monta o
+  referencial): o `δ` projectado.
+- **Push** — linha 2 (e a 5): a normal da área.
+- **Inflate** — linha 4: a normal por vértice da malha deformada.
+- **Aperto de ponto** — ⛔ **não é curvatura**: o maior deslocamento da fixture de esfera (`0,4639`)
+  é **maior** que o do plano (`0,3258`), logo ela está no **regime que o §5.2-ter descreve**, onde a
+  malha inverte e quem decide o vértice é a ordem de resolução. A régua ali é a dos **dois regimes**
+  do gate 20, não uma barra por vértice.
+- **Expand** — ⛔ **também não é curvatura**: ele não lê nenhuma das seis linhas (só o factor por
+  vértice), e o maior deslocamento da fixture é `0,046715` sobre uma malha cuja aresta no equador
+  mede `0,0491`×`0,0654` ⇒ *o denominador da razão é menor que uma aresta*, exactamente como no
+  `plano_expandir_radial_local_1passo`. Ele pertence à pergunta do Expand no plano.
+
+⚠️ **A malha da esfera das fixtures é ANISOTRÓPICA** (96 meridianos × 64 paralelos ⇒ no equador
+`0,0654` na longitude contra `0,0491` na latitude — M): os comprimentos de repouso das restrições de
+par do anel (§3.1) não são todos iguais, e os pólos são vértices de valência `96`. ⛔ Nada disso é
+uma regra nova — é a mesma construção do §3.1 sobre outra topologia —, mas um port que assuma uma
+grelha regular ao escrever o anel mede-se bem no plano e mal aqui.
 
 ---
 
@@ -601,7 +747,22 @@ em 2020-09-14 (H: D8884 — «impedia as dobras de se formarem»).
 ⭐⭐⭐ **O facto.** Com área *Local*, o conjunto de restrições contém **cada restrição exactamente
 duas vezes** — duas cópias idênticas, na ordem «a lista inteira, e a seguir a lista inteira outra
 vez». Não é uma decisão de rigidez nem um parâmetro: é a consequência de a fase 0 construir **sem
-activar** (§1, §3.1, §3.3). Com *Global* e *Dynamic* cada restrição aparece **uma** vez.
+activar** (§1, §3.1, §3.3). Com *Global* cada restrição aparece **uma** vez.
+
+⚠️⚠️ **CORRECÇÃO de 2026-09-06 (F) — no *Dynamic* a lista NÃO é simples: ela é simples DENTRO de cada
+passo e duplicada nas COSTURAS entre passos.** O registo de pares já criados vive **uma construção**
+(§3.1) e no *Dynamic* há **uma construção por passo** (a de cada passo constrói as células que
+acabaram de entrar no alcance e ainda não foram activadas). Um par cujos dois vértices vivem em
+células construídas em passos **diferentes** é criado **duas** vezes: uma pela célula que chegou
+primeiro (com o anel do vértice dela a alcançar a vizinha) e outra pela célula que chegou depois.
+⇒ **a frente que varre a malha deixa atrás de si uma costura de restrições em duplicado**, uma por
+fronteira entre lotes de construção. ⛔ As duas cópias carregam **células diferentes**, logo cada uma
+só é projectada nos passos em que a **sua** célula está activa — e num passo em que as duas estejam
+activas, o par é projectado a dobrar. *No *Local* isto não acontece* (o conjunto de células é fixo e
+constrói-se duas vezes inteiro); no *Global* também não (uma construção só, a malha toda).
+⚠️ Isto vale para as **10** fixtures de área *Dynamic* — as 2 do plano e as **8 da esfera** —, e é uma
+grandeza que se **conta**, não se escolhe: são os pares cujos dois extremos caíram em lotes de
+construção distintos.
 
 **O que isso faz.** As `5` varreduras (§5.2) percorrem a lista sequencialmente (Gauss–Seidel), logo
 no *Local* cada restrição é projectada **`10` vezes por passo** em vez de `5`, com a 2.ª projecção a
@@ -995,9 +1156,11 @@ como proveniência (as mensagens de commit são públicas; o texto foi re-dito).
 
 ## §10 — Vectores de teste (o oráculo)
 
-⭐ **54 traços do binário 5.2.1 sobre malhas NOSSAS** — ⚠️ **CONTE-OS, não cite este número de
+⭐ **56 traços do binário 5.2.1 sobre malhas NOSSAS** — ⚠️ **CONTE-OS, não cite este número de
 memória** (`ls docs/3D/cleanroom/fixtures/cloth/*.deformado.txt.gz | wc -l`): esta linha esteve em
-`51` depois de a §10.5 acrescentar dois e a §10.6 mais um. Malhas: grelha plana 64×64 e esfera UV
+`51` depois de a §10.5 acrescentar dois, a §10.6 mais um e a §10.7 mais dois.
+⚠️ **O `indice.json` é DERIVADO e regenera-se** — `python3 fixtures/cloth/gera_indice.py` (uma
+entrada por `.deformado.txt.gz`); ⛔ não o edite à mão, e não confie num número escrito aqui. Malhas: grelha plana 64×64 e esfera UV
 96×64; um traço por modo e por variante de solver, em `fixtures/cloth/` (proveniência e verificador
 no README de lá).
 Colunas: **movidos** = vértices com `|u| > 1e-5` · **máx `|u|`** em unidades de objecto · **alcance/R**
@@ -1234,6 +1397,48 @@ momento em que se inverte, a barra tem de ser a do gate 20, não a por vértice.
 prova de que o aperto está certo** — ela prova o contrário do que parece: prova que o que separava as
 duas leituras era a inversão, não uma lei.
 
+### §10.7 — Os dois traços de FORÇA NORMAL por passo (corrida NOVA do oráculo, 2026-09-06, a pedido do I)
+
+`plano_empurrar_radial_local_origem` e `plano_inflar_radial_local_origem` — **`.deformado` +
+`.porpasso` + `.porpasso.rastreio`**, 12 passos cada, `prova_do_fatiamento = 0,000000` nos dois
+(26 corridas-prefixo: `k = 1..12` de cada traço mais a corrida inteira da mesma sessão).
+⚠️ **Pen-down na ORIGEM**, pela mesma razão das §10.2/§10.5: o centro da área *Local* de um traço
+scriptado é a **localização inicial** guardada, e um traço cujo pen-down não é a origem depende de o
+sobrevoo ter chegado (errata do §10). ⛔ Não confunda estes dois com os `plano_empurrar_radial_local`
+e `plano_inflar_radial_local` do corpus (pen-down em `x = −0,3`): são o **mesmo gesto** com outro
+ponto de partida, e os números abaixo são os destes.
+
+`|u|` **depois** do passo `k`, dos vértices de repouso nomeados (deslocamentos perpendiculares ao
+traço a partir do pen-down) e do vértice mais próximo do cursor do passo:
+
+| passo | Push: pen-down | Push: 1R | Push: 3,5R | Push: sob o cursor | Inflate: pen-down | Inflate: 1R | Inflate: 3,5R | Inflate: sob o cursor |
+|---|---|---|---|---|---|---|---|---|
+| 2 | `0.06543` | `0.00050` | `0.00000` | `0.06990` | `0.09347` | `0.00072` | `0.00000` | `0.09986` |
+| 3 | `0.17038` | `0.00423` | `0.00000` | `0.18733` | `0.22771` | `0.00857` | `0.00000` | `0.24879` |
+| 4 | `0.22446` | `0.02977` | `0.00000` | `0.24728` | `0.26348` | `0.05248` | `0.00000` | `0.28459` |
+| 5 | `0.23493` | `0.07046` | `0.00001` | `0.25578` | `0.26706` | `0.10238` | `0.00001` | `0.29137` |
+| 6 | `0.23822` | `0.10596` | `0.00003` | `0.25839` | `0.26888` | `0.13989` | `0.00004` | `0.30880` |
+| 7 | `0.23968` | `0.13452` | `0.00007` | `0.24698` | `0.27012` | `0.16933` | `0.00010` | `0.31915` |
+| 8 | `0.23848` | `0.15728` | `0.00013` | `0.23497` | `0.27060` | `0.19245` | `0.00018` | `0.32474` |
+| 9 | `0.23546` | `0.17465` | `0.00020` | `0.22357` | `0.27017` | `0.20985` | `0.00026` | `0.32592` |
+| 10 | `0.23108` | `0.18680` | `0.00026` | `0.23925` | `0.26880` | `0.22213` | `0.00035` | `0.32387` |
+| 11 | `0.22561` | `0.19418` | `0.00032` | `0.23761` | `0.26641` | `0.23007` | `0.00043` | `0.31358` |
+| 12 | `0.21945` | `0.19761` | `0.00036` | `0.23225` | `0.26294` | `0.23452` | `0.00049` | `0.31013` |
+
+⭐ **O que eles dizem, e que o traço inteiro esconde:**
+1. **O passo 2 confirma a razão `2R` ao bit** — Push `0,06543` contra Inflate `0,09347` dá
+   `0,7000` = `2 · 0,35` (§10.1). *No 1.º passo simulado a normal da área e a normal do vértice são a
+   MESMA coisa (a folha está plana e em repouso): os dois traços só divergem a partir do passo 3.*
+2. **O pen-down do Push satura e RECUA** (`0,2397` no passo 7 → `0,2195` no passo 12) e o do Inflate
+   **fica** (`0,2701` → `0,2629`) — ⛔ e a diferença não é o módulo da força: é que a normal da área é
+   uma média sobre meio raio (§4.2-bis), logo o Push empurra ao longo de uma direcção que **roda com
+   a vala** enquanto o Inflate empurra ao longo da normal **do próprio vértice**.
+3. **O aro está preso nos dois** (`3,5R` fica em `0,0004`/`0,0005` ao fim de 12 passos, `4R` em zero
+   exacto) — o mesmo aro do §10.2, ⇒ estes dois traços **não** medem a fronteira, medem o interior.
+4. **A frente a `1R` cresce monotonamente nos dois** e ultrapassa o pen-down do Push no passo 12
+   (`0,1976` contra `0,2195`, quase a alcançá-lo) — é a onda que a relaxação leva para fora, e ela é
+   a coluna que mais depende do número de passagens (§5.2-bis).
+
 ---
 
 ## §11 — Comportamento de borda, caso a caso (F salvo indicação)
@@ -1338,5 +1543,8 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 20 | **A barra dos apertos é a da ORDEM, e mede-se, não se escolhe**: a assimetria de espelho da NOSSA saída dividida pelo maior `|u|` não pode passar a do ORÁCULO no mesmo passo (`0,675` no passo 3 do aperto de ponto); e a paridade por vértice do gate 15 **não se aplica** a um passo com faces invertidas — ali a barra é esta. ⛔ Barra derivada do oráculo, ⛔ nunca um epsilon de conforto | a do oráculo, passo a passo | §5.2-ter · §10.6 |
 | 21 | **Fora da inversão o aperto é tão comparável quanto o arrasto**: sobre a fixture de força fraca (zero faces invertidas nos 12 passos) a paridade por vértice do aperto de ponto tem de ficar no mesmo patamar da do arrasto — se ficar pior, o defeito **não** é a ordem e há lei em falta | o erro relativo do arrasto no mesmo traço | §10.6 · fixture `plano_apertar_ponto_radial_local_origem_fraco` |
 | 17 | **É só o ramo *Local***: a mesma experiência que melhora os traços *Local* tem de **piorar** os *Global* e os *Dynamic* — um port que dobre a relaxação em toda a parte passa o gate 16 e reprova aqui | sinal do erro relativo, em **todos** os traços de §10 (⛔ contados, nunca citados de memória) | §5.2-bis · §10.3 |
+| 22 | **O deslocamento do cursor é a PROJECÇÃO, e só o arrasto não o usa**: sobre as fixtures de esfera, o `δ` que alimenta a âncora do Agarrar, a do Snake Hook, a normal do plano de queda e o `x̂` do referencial tem componente **exactamente zero** ao longo do eixo da vista em **todos** os passos; e a direcção do arrasto no mesmo traço **tem** componente de profundidade, com o ângulo entre as duas a reproduzir `15,83° · 12,61° · 9,42° · 6,27° · 3,13° · 0° · …` ⇒ ⚠️ **duas metades**, e a segunda é o controlo: um port que use a diferença dos pontos 3D em toda a parte passa a 1.ª e reprova a 2.ª, e um que projecte em toda a parte faz o inverso | `0` exacto numa metade · a tabela do §4.3 na outra | §4.3 · §4.6 · fixtures de esfera |
+| 23 | **A normal do Push é REAVALIADA sobre a malha DEFORMADA**: congelá-la na normal de repouso tem de **mudar** `plano_empurrar_radial_local_origem` acima da barra do gate 15, e tem de deixar `plano_empurrar_radial_local_1passo` **byte-idêntico** ⇒ ⚠️ **duas metades**, e a segunda é o controlo (no 1.º passo simulado a malha ainda está em repouso, logo lá as duas leis coincidem por construção) | mutação: A/B com a normal congelada | §4.2-bis · §10.7 |
+| 24 | **A razão `2R` do Push, e a igualdade Push/Inflate no 1.º passo simulado**: no passo 2 dos dois traços do §10.7 o vértice do pen-down move `0,06543` e `0,09347`, razão `0,7000 = 2·R`; e a divergência entre os dois só pode começar no passo **3** — se começar no 2, o port está a ler duas normais diferentes numa folha plana em repouso, onde elas são a mesma | razão `2R ± f32` · igualdade de direcção no passo 2 | §4.2-bis · §10.1 · §10.7 |
 
 ---

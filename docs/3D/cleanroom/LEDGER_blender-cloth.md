@@ -409,6 +409,7 @@ nunca a profundidade).
 | v1-er | idem — errata atestada; curas do R-pré (3 nomes internos · 1 higiene) | `4cfc1745a` (2026-09-06, R-pré) |
 | v1-q | idem — EMENDAS Q8/Q9/Q10 do E (a lista duplicada do *Local* · o centro atrasado do gancho e o zeramento das âncoras · os dois traços de aperto por passo) | `52e6f75a0` · `bdc378b5f` · `82ecde1b6` · `9a79c1721` (2026-09-06, E) |
 | v1-qr | idem — emendas atestadas; curas do R-pré (1 nome interno no §10.4 · 1 insuficiência no gate 16) | este commit (2026-09-06, R-pré) |
+| v1-q12 | idem — EMENDA Q12 do E (a normal da área e o factor de escala do Push · a projecção do deslocamento do cursor · a lei do centro da área · o censo do que é degenerado num plano · a costura duplicada do *Dynamic* · dois traços de força normal por passo) | este commit (2026-09-06, E) — ⏳ **aguarda o atestado do R-pré** |
 
 ---
 
@@ -733,6 +734,101 @@ e o ledger é, por desenho do §6, o sítio onde a proveniência vive e que a ja
 linhas em vocabulário do domínio (e então o histórico continua a tê-las, o que só o `--git-history`
 vê), ou declarar a excepção do ledger por escrito no fechamento. ⛔ O que não pode ficar é
 implícito — a barra do §7.2 é «zero hits sobre a árvore inteira».
+
+### Q12 — o PUSH e a ESFERA (perguntas do I de 2026-09-06; resposta no mesmo dia, com corrida NOVA do oráculo)
+
+**Perguntas (INBOX):** Q12.1 como é que o alvo calcula a normal que o Push usa ao longo do traço
+(reavaliada, congelada no pen-down, ou da lei da casa com estado próprio?) e de que é função o factor
+de escala que multiplica os dois raios · Q12.2 há alguma coisa que o alvo faça **só** em superfície
+curva · Q12.3 (prioridade baixa) os dumps por passo de dois traços do plano.
+
+**Q12.1 — respostas, do fonte (F, travessia reaberta em 2026-09-06 sobre o pincel de tecido, o
+módulo do traço e a lei da casa que produz a normal e o centro da área):**
+
+- **É REAVALIADA a cada passo**, sobre a malha **deformada** (as posições e normais actuais). O que a
+  congelaria são as duas opções *Original Normal / Original Plane* do pincel, **desligadas** nos
+  presets de tecido; e a regra que congela a normal durante o traço nomeia o pincel *Grab* da casa,
+  ⛔ **não** o modo Agarrar do tecido. A rota que lê as posições de partida só é tomada por pincéis da
+  família que oferece *Accumulate*, e o de tecido não está nela.
+- **É a lei da casa (*Sculpt Plane*)** — com *Area* (o valor do preset usado, A) é a normal da área;
+  com *View* é a direcção da vista; com *X/Y/Z* é um eixo fixo.
+- **A normal da área tem quatro coisas que a espec não dizia:** o disco de amostragem é
+  `R · «Normal Radius»`, e **«Normal Radius» vale `0,5` no preset (A)** ⇒ **METADE do raio do
+  pincel** · o peso por vértice é `3p² − 2p³` com `p = 1 − d/(R·«Normal Radius»)` · os vértices são
+  repartidos em **dois baldes** pelo sinal de `n̂ · v̂` e a resposta é a soma normalizada do **primeiro
+  balde não vazio**, nunca a mistura e nunca o mais populoso · se nada qualificar, a normal é o
+  **vector nulo** e o Push desse passo é força zero.
+- **O factor de escala** é um vector de três números fixado no pen-down —
+  `max(|escala do objecto|) / escala do objecto`, eixo a eixo — multiplicado **componente a
+  componente**: `(1,1,1)` num objecto de escala uniforme (⇒ módulo exactamente `2R`, e é o caso das
+  fixtures), e num objecto de escala não-uniforme ele **entorta a direcção**. Não depende do passo,
+  da pressão nem da malha.
+- ⭐ **E fecha a pergunta que ficou em aberto no INBOX sobre o «centro da área»:** ele NÃO é o
+  centroide do disco. Sai da mesma varredura da normal, mas cada vértice entra como
+  `c + (p_v − c)·(1 − a_v)` — *puxado para o cursor*, com peso nulo no cursor — e a média disso é o
+  centro; sem vértices, é o próprio cursor. ⇒ **a medição do I («o plano pelo cursor reproduz o alvo,
+  o plano pelo centro da área afasta-o») não refuta a espec: ela mediu um CENTROIDE, e o alvo não usa
+  um centroide.** O plano pelo cursor é a aproximação de 1.ª ordem do centro da área.
+
+**Q12.2 — a resposta é «NADA», e ela é útil (F+M):** nenhuma decisão do alvo pergunta pela curvatura,
+pela normal do ponto do cursor ou pelo tipo de malha. O que existe é uma lista **fechada** de seis
+grandezas que numa grelha plana vista de frente e em repouso valem sempre a mesma coisa (ou zero) e
+numa esfera passam a variar — espec §4.6, com a tabela. A de maior alcance:
+
+- ⭐⭐⭐ **o deslocamento do cursor `δ` NÃO é a diferença dos dois pontos 3D: é a PROJECÇÃO dela no
+  plano do ecrã** (as duas des-projecções são feitas à **mesma** profundidade, a do pen-down). Numa
+  folha plana vista de frente as duas coincidem ao bit; na esfera das fixtures `δ` vale
+  `(0,05455, 0, 0)` em todos os passos enquanto a diferença dos pontos chega a
+  `(0,05455, ∓0,01547, 0)` — **`15,83°`** de direcção no 1.º e no último passo, `0°` a meio, até
+  `1,039×` de módulo, e **`0,04569`** de desvio acumulado a meio (= **`19,3 %`** do maior
+  deslocamento da fixture de Agarrar).
+  ⚠️ **Quem lê `δ`:** o guarda de «passo parado» de todos os modos, a âncora do Agarrar, a âncora e o
+  avanço do centro do Snake Hook, a normal do plano de queda e o `x̂` do referencial local.
+  ⛔ **O arrasto é o único modo cuja direcção NÃO vem de `δ`** — vem da diferença dos dois pontos 3D
+  do cursor, normalizada. *É exactamente o modo que o I mede a bater na esfera.*
+- As outras cinco: a **normal da área** (§4.2-bis), o **centro da área** (§4.4), a **normal do
+  vértice** (soma das normais de face **não normalizadas** ⇒ peso de ÁREA, sobre a malha actual — que
+  é o que o Inflate lê), a **repartição em dois baldes**, e a **distância como corda 3D e nunca
+  geodésica** (na esfera unitária o limite da área de `3,5R` é uma calota de arco `+7,6 %`).
+- ⛔ **Duas das sete fixtures de esfera NÃO pertencem a esta pergunta, e está medido:** o **aperto de
+  ponto** tem na esfera um deslocamento máximo (`0,4639`) **maior** que no plano (`0,3258`) ⇒ está no
+  regime do §5.2-ter, onde a ordem decide e a régua é a dos dois regimes do gate 20; e o **Expand**
+  não lê nenhuma das seis grandezas e tem deslocamento máximo `0,046715` sobre uma malha de aresta
+  `0,0491`×`0,0654` ⇒ *o denominador da razão é menor que uma aresta*, como no
+  `plano_expandir_radial_local_1passo`. Ele pertence à pergunta do Expand no plano.
+
+**Um facto NOVO que a releitura devolveu e que a espec dizia ao contrário (F):** no *Dynamic* a lista
+de restrições **não** é simples. O registo de pares vive **uma construção**, e no *Dynamic* há uma
+construção por passo (a das células que acabaram de entrar no alcance) ⇒ **um par cujos dois vértices
+caem em células construídas em passos diferentes é criado DUAS vezes**, e a frente que varre a malha
+deixa atrás de si uma costura de restrições em duplicado. Vale para as **10** fixtures de área
+*Dynamic* (2 do plano, 8 da esfera). No *Local* não acontece (conjunto fixo, construído duas vezes
+inteiro) e no *Global* também não (uma construção só). Espec §5.2-bis, com a correcção marcada.
+
+**Q12.3 — ENTREGUE.** `plano_empurrar_radial_local_origem` e `plano_inflar_radial_local_origem`,
+`.deformado` + `.porpasso` + `.porpasso.rastreio`, 12 passos cada,
+`prova_do_fatiamento = 0,000000` nos dois. Corrida nova do binário 5.2.1: **26** execuções (12
+prefixos + a corrida inteira de cada traço), auto-verificação do centro `ok` em todas.
+⚠️ **Pen-down na ORIGEM**, pela razão já registada nas §10.2/§10.5: numa sessão scriptada o centro da
+área *Local* é refém do sobrevoo do ponteiro físico — a 1.ª tentativa desta corrida, com o pen-down
+em `x = −0,3`, deu «centro obsoleto» nas 26 execuções e nas 4 repetições de cada uma, e foi
+descartada. *A fixture só é fixture se o centro dela for determinístico.*
+⭐ **O que os dois traços entregam de novo:** no passo 2 a razão Push/Inflate é `0,06543 / 0,09347 =
+0,7000 = 2R` **ao bit** — numa folha plana em repouso a normal da área e a normal do vértice são a
+mesma coisa, logo os dois traços **só podem** divergir a partir do passo 3; e ao longo do traço o
+pen-down do Push **satura e recua** (`0,2397` no passo 7 → `0,2195` no 12) enquanto o do Inflate fica
+(`0,2701` → `0,2629`), que é a assinatura de a direcção do Push rodar com a vala.
+
+**Ficheiros:** `fixtures/cloth/plano_{empurrar,inflar}_radial_local_origem.{deformado,porpasso}.txt.gz`
++ `.porpasso.rastreio.txt`; **`fixtures/cloth/gera_indice.py` (NOVO)** — o `indice.json` era declarado
+derivado e não tinha gerador, que é a razão por que envelheceu duas vezes; agora tem, e foi
+regenerado (**56** entradas para 56 ficheiros); README das fixtures actualizado.
+**Espec:** cabeçalho · **§4.2-bis (nova)** · §4.3 · §4.4 · **§4.6 (nova)** · §5.2-bis · §10 · **§10.7
+(nova)** · §14 gates **22-24**; cabeçalho marcado ⏳ **aguarda o atestado do R-pré**.
+**Sweep:** verde sobre a espec, o README, a pasta inteira das fixtures, este ledger (menos os dois
+hits pré-existentes de 2026-09-05 já registados acima) e o texto do report ao I.
+**Instrumento:** o arnês do oráculo de 05/09 com um ficheiro de corridas novo e um montador próprio,
+os dois **fora da árvore**, em `~/Referencias/`.
 
 ## Fechamento R
 

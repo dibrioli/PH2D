@@ -54,6 +54,12 @@ pub use snapshot::{
 };
 pub use state::MotionGraphPanelState;
 
+/// ⭐ **O que um clique numa row do cartão FAZ** — a porta única do gesto, exposta porque o
+/// **censo** do que o cartão ainda não alcança tem de ler a MESMA lei. Uma lista de espécies
+/// escrita à mão do lado de fora deixaria uma espécie nova entrar no produto sem entrar na
+/// conta, que é a forma do knob inalcançável.
+pub use interact::param_row::{ClickDoes, click_does};
+
 /// The `node-cat-*` colour token for a UI category — the single source shared by the graph menu row dot
 /// and the shell's full-screen "Add Node" palette model (so the two never disagree on a category's hue).
 pub use paint::{PortLabel, cat_token, input_label_budget_px};

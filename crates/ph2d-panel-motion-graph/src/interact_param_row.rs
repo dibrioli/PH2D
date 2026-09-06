@@ -113,34 +113,71 @@ pub(super) fn apply_param_row(
             //
             // O arrasto continua a varrer — é o *number field* do Blender inteiro: arrastar dá
             // *«um pouco mais»*, clicar dá *«exactamente isto»*.
-            if crate::paint::paint_card_params::shows_a_level(p) {
-                crate::param_edit::arm(state, node, row, p);
-                state.interaction = Interaction::Idle;
-                return;
-            }
-            match p.hint.widget {
-                ph2d_node_registry::ParamWidget::Toggle => {
-                    push_intent(GraphIntent::SetParam {
-                        node,
-                        param: p.hint.param,
-                        value: p.to_stored(f32::from(u8::from(p.value < 0.5))),
-                    });
+            match click_does(p) {
+                ClickDoes::Type => {
+                    crate::param_edit::arm(state, node, row, p);
+                    state.interaction = Interaction::Idle;
+                    return;
                 }
-                ph2d_node_registry::ParamWidget::Enum { labels } if !labels.is_empty() => {
-                    let n = labels.len() as f32;
-                    let proxima = (p.value.round() + 1.0).rem_euclid(n);
+                ClickDoes::Toggle => push_intent(GraphIntent::SetParam {
+                    node,
+                    param: p.hint.param,
+                    value: p.to_stored(f32::from(u8::from(p.value < 0.5))),
+                }),
+                ClickDoes::Cycle(n) => {
+                    let proxima = (p.value.round() + 1.0).rem_euclid(n as f32);
                     push_intent(GraphIntent::SetParam {
                         node,
                         param: p.hint.param,
                         value: p.to_stored(proxima),
                     });
                 }
-                _ => {}
+                ClickDoes::Nothing => {}
             }
             state.interaction = Interaction::Idle;
         }
         GesturePhase::End | GesturePhase::DoubleClick => {
             state.interaction = Interaction::Idle;
         }
+    }
+}
+
+/// ⭐⭐⭐ **O QUE UM CLIQUE NUMA ROW DO CARTÃO FAZ — a porta única.**
+///
+/// ⚠️ **Ela existe porque a mesma pergunta tem DOIS leitores, e uma segunda cópia mentiria:** o
+/// gesto (que executa) e o **censo** que pergunta *«que controlos o cartão ainda não alcança?»*.
+/// Enquanto a lei viveu só dentro do `match` do gesto, a resposta do censo teria de ser uma
+/// lista de espécies escrita à mão — e uma espécie nova entraria no produto sem entrar na lista,
+/// que é exactamente a forma do knob INALCANÇÁVEL (`CLAUDE.md §5.0`).
+///
+/// ⛔ **`Nothing` NÃO é um defeito por si:** é o estado declarado dos editores ricos (cor, curva,
+/// gradiente, paleta, texto, ficheiro, canais, fonte) enquanto o painel lateral ainda existe —
+/// o cartão pinta o selo, o painel abre o editor. Ele **passa** a ser um defeito no dia em que o
+/// painel sair, e é essa a conta que o censo faz.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ClickDoes {
+    /// Abre a caixa de escrita (a row mostra um NÍVEL).
+    Type,
+    /// Vira o interruptor.
+    Toggle,
+    /// Avança para a opção seguinte de `n`, com volta ao princípio.
+    Cycle(usize),
+    /// **Nada** — o cartão diz que o controlo existe e não o abre.
+    Nothing,
+}
+
+/// A lei, num sítio só. ⚠️ Quem responde *«isto é um número?»* continua a ser o **PINTOR**
+/// (`shows_a_level`): a row que desenha um nível é exactamente a que aceita um nível escrito.
+#[must_use]
+pub fn click_does(p: &crate::CardParam) -> ClickDoes {
+    if crate::paint::paint_card_params::shows_a_level(p) {
+        return ClickDoes::Type;
+    }
+    match p.hint.widget {
+        ph2d_node_registry::ParamWidget::Toggle => ClickDoes::Toggle,
+        ph2d_node_registry::ParamWidget::Enum { labels } if !labels.is_empty() => {
+            ClickDoes::Cycle(labels.len())
+        }
+        _ => ClickDoes::Nothing,
     }
 }

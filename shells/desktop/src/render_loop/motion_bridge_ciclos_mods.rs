@@ -41,3 +41,9 @@ mod animadores_probe;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_bridge_arranjo_figures.rs"]
 mod arranjo_figures;
+
+/// ⭐ **A medição que tem de vir ANTES de o painel lateral sair** — o que o cartão pinta e não
+/// abre. Ela mora aqui porque é do protocolo dos ciclos (o substrato do ciclo 1), não da ponte.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_panel_exit_probe.rs"]
+mod panel_exit_probe;

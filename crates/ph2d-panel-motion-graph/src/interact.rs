@@ -494,7 +494,7 @@ mod param_row_tests;
 /// laçar, cortar) e aquele dos gestos que o cartão passou a ter **dentro de si** (arrastar um
 /// número, alternar um estado, dobrar uma secção). Crescem por razões diferentes.
 #[path = "interact_param_row.rs"]
-mod param_row;
+pub(crate) mod param_row;
 use param_row::apply_param_row;
 
 /// **PUXAR UM FIO** — irmão cortado no mesmo tecto e pela mesma régua: este ficheiro decide

@@ -386,3 +386,82 @@ fn sonda_do_neutro_dos_sete_knobs() {
         p.solver.varreduras, d.solver.varreduras
     );
 }
+
+/// **SONDA — a GEOMETRIA do oráculo, corrida pelo caminho do PRODUTO.**
+///
+/// ⚠️⚠️ **Existe porque o gate de artefacto do produto corre num regime que o
+/// corpus inteiro do oráculo não alcança:** ali o deslocamento máximo vale
+/// `4,8 · R`, e o traço mais fundo de 78 fixtures — incluindo o de **36 passos**,
+/// gravado de propósito para o alcançar — satura em `0,76 · R`. *Ou o produto
+/// entrega outra coisa que a lei, ou a fixtura dele é outro gesto.* Esta sonda
+/// põe as duas geometrias lado a lado e imprime o número.
+#[test]
+#[ignore = "sonda"]
+fn sonda_da_geometria_do_oraculo_pelo_produto() {
+    use crate::Verb;
+    use crate::stroke::cloth_artefatos_tests::plano_n;
+    use crate::stroke::cloth_tests::dab_em;
+    for (n, raio, passos, avanco, area) in [
+        // A do oráculo: grelha 64², raio `0,35`, caminho `0,6` em 11 avanços.
+        (
+            64usize,
+            0.35f32,
+            12usize,
+            0.6f32 / 11.0,
+            crate::ClothArea::Local,
+        ),
+        // A mesma, em 36 passos — o traço longo.
+        (64, 0.35, 36, 0.6 / 35.0, crate::ClothArea::Local),
+        // A mesma, na área DINÂMICA — que é a omissão do produto.
+        (64, 0.35, 12, 0.6 / 11.0, crate::ClothArea::Dynamic),
+        // A do gate de artefacto do produto, nas duas áreas.
+        (144, 0.30, 35, 0.02, crate::ClothArea::Dynamic),
+        (144, 0.30, 35, 0.02, crate::ClothArea::Local),
+    ] {
+        let antes = plano_n(n);
+        let mut mesh = plano_n(n);
+        let b = Brush {
+            verb: Verb::Cloth,
+            radius: raio,
+            strength: 1.0,
+            cloth_area: area,
+            ..Brush::default()
+        };
+        let pc = crate::stroke::stroke_cloth_ref::pincel_de_para_sonda(&b, 1);
+        println!(
+            "   pincel: curva={:?} dureza={} forca={} area={:?} queda={:?} limite={} banda={} massa={} amort={}",
+            pc.curva,
+            pc.dureza,
+            pc.forca,
+            pc.area,
+            pc.falloff_forca,
+            pc.limite,
+            pc.banda,
+            pc.solver.massa,
+            pc.solver.amortecimento
+        );
+        let mut s = SculptStroke::default();
+        s.begin(&mesh);
+        for k in 0..passos {
+            let c = [avanco * k as f32, 0.0, 0.0];
+            let passo = if k == 0 { [0.0; 3] } else { [avanco, 0.0, 0.0] };
+            s.dab(
+                &mut mesh,
+                &b,
+                &dab_em(c, b.radius, passo),
+                Symmetry::default(),
+            );
+        }
+        let max = (0..antes.vert_count())
+            .map(|v| {
+                let (p, q) = (antes.positions()[v], mesh.positions()[v]);
+                ((p[0] - q[0]).powi(2) + (p[1] - q[1]).powi(2) + (p[2] - q[2]).powi(2)).sqrt()
+            })
+            .fold(0.0f32, f32::max);
+        println!(
+            "n={n:>4} R={raio:.2} passos={passos:>3} area={area:?} caminho={:.3}R  ->  max={max:.4} = {:.2}R",
+            avanco * (passos - 1) as f32 / raio,
+            max / raio
+        );
+    }
+}

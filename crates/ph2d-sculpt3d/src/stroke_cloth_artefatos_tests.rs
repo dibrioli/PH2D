@@ -281,7 +281,7 @@ fn sonda_da_resolucao() {
 
 /// Uma grade plana de `n × n` células sobre `[-1, 1]` — a mesma forma do
 /// [`plano`], com a densidade como parâmetro.
-fn plano_n(n: usize) -> Mesh {
+pub(super) fn plano_n(n: usize) -> Mesh {
     let s = 2.0 / n as f32;
     let mut pos = Vec::new();
     for j in 0..=n {
@@ -414,6 +414,23 @@ fn sonda_do_orcamento_contra_o_passo() {
 /// em **catorze** deles. *Uma barra que o próprio alvo não passa é a terceira
 /// desta linha a cair pelo mesmo motivo* (a do espinho e a da estica caíram em
 /// 05/09).
+///
+/// # ⭐⭐ E o `4,8 · R` desta célula é da MALHA, não da lei (medido 07/09)
+///
+/// A profundidade daqui parecia impossível: o traço mais fundo das 78 fixtures do
+/// oráculo — incluindo o de **36 passos**, gravado de propósito para o alcançar —
+/// satura em `0,76 · R`, e aqui o pincel move `4,8 · R`. ⇒ *ou o produto entrega
+/// outra coisa que a lei, ou a fixtura é outro gesto.*
+///
+/// ⭐ **É a fixtura.** A malha do oráculo é uma grelha `64²` de lado **`3,0`**
+/// (aresta `0,0469`) e a [`plano_n`] é uma grelha de lado **`2,0`** — a `144`
+/// células a aresta é `0,0139`, **3,4× mais fina** para o mesmo raio de pincel.
+/// Mais vértices sob a mesma queda é mais impulso na mesma área.
+///
+/// ⛔ **E o produto está ILIBADO com número:** o gate
+/// `o_produto_corre_a_lei_do_oraculo` corre CINCO traços do corpus pela porta do
+/// artista, sobre a malha do próprio oráculo, e reproduz-os a `3`–`21 · 10⁻⁶`.
+/// *A lei chega inteira à mão; o que muda aqui é a peça em que ela corre.*
 ///
 /// # ⚠️ E a régua NÃO é adimensional na densidade — o `(h/R)²` sub-normaliza
 ///

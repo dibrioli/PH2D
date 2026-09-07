@@ -49,3 +49,10 @@ ph2d-painter-brush = { path = "../ph2d-painter-brush" }
 # (e da `ph2d-wet-paint`, o outro porte de JS deste repo) ⇒ é ARESTA, não pacote
 # novo no `Cargo.lock`.
 libm = { version = "=0.2.16", default-features = false }
+
+# Só o gate `o_produto_corre_a_lei_do_oraculo` (`tests/`) precisa de inflar os
+# `.gz` das fixtures do oráculo do pincel de tecido — a lib continua sem ele.
+# `miniz_oxide` e não `flate2`, pela mesma razão da `ph2d-cloth` e da
+# `ph2d-quadfill`: já está na árvore.
+[dev-dependencies]
+miniz_oxide = "0.8"

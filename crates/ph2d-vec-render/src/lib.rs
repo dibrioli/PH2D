@@ -319,21 +319,15 @@ pub fn dispatch(
     // de sempre — `open_after` e `close_after` não fazem nada sem `view.clips`.
     let mut frames = frame_clip::OpenClips::default();
     // ⭐⭐⭐ **O ISOLAMENTO do *Edit Prefab*** (Enio, 2026-09-07): com uma receita aberta, o mundo
-    // **recua** e ela desenha-se por cima, nítida. ⛔ Sem receita aberta isto é `false` e cada linha
-    // abaixo é a de sempre.
+    // fica atrás de um **vidro jateado** e ela desenha-se por cima, nítida. ⛔ Sem receita aberta
+    // isto é `false` e cada linha abaixo é a de sempre.
+    //
+    // ⚠️⚠️ **Aqui só existe a metade do MUNDO.** O borrão não é uma camada do Vello — é um passe
+    // sobre a textura em que este desenho aterra (`ph2d_render::FrostPass`), e o que fica por cima
+    // dele é a cena que o [`dispatch_isolated`] produz. *Uma camada de opacidade aqui recuaria a
+    // arte vectorial e deixaria o fundo do canvas e as sprites nítidos por baixo dela — metade do
+    // mundo atrás do vidro e metade à frente.*
     let isolating = view.isolating();
-    // ⚠️ **UMA camada para o mundo inteiro, e não uma opacidade por forma:** a segunda faria cada
-    // objecto desvanecer contra os vizinhos e a cena inteira mudaria de aspecto por dentro. *Uma
-    // camada compõe o resultado e só depois o esbate — que é o que «o fundo recua» quer dizer.*
-    let backdrop = isolating;
-    if backdrop {
-        let [bx, by, bw, bh] = view.isolation_screen;
-        target.push_object_layer(
-            &Rect::new(bx, by, bx + bw, by + bh),
-            blend::vello_blend(ph2d_vec_scene::BlendMode::Normal).unwrap_or_default(),
-            ph2d_vec_scene::ISOLATION_BACKDROP_ALPHA,
-        );
-    }
     for path in scene.paths() {
         // ⚠️ **A ordem dentro do laço é a LEI**: desenha, depois abre, depois fecha. A moldura é o
         // PRIMEIRO membro da própria sub-árvore (a pilha de z é o DFS na ordem — o filho desenha
@@ -351,22 +345,45 @@ pub fn dispatch(
         frames.close_after(path.id, view, target);
     }
     frames.close_all(target);
-    if backdrop {
-        target.pop_layer();
+}
+
+/// ⭐⭐⭐ **SÓ a receita aberta** — o que fica ACIMA do vidro jateado (Enio, 2026-09-07).
+///
+/// Irmã do [`dispatch`] e **exactamente o complemento dela**: aquela salta o que está em
+/// [`ph2d_vec_scene::VecViewState::isolated`], esta desenha só isso. ⛔ Sem receita aberta ela não
+/// desenha nada, e o presente nem a compõe.
+///
+/// ⚠️ **Cena própria, e não a mesma com um `push_layer` no meio:** o que separa as duas metades é
+/// um passe de GPU (o borrão) sobre a textura do mundo, e um passe de GPU não cabe no meio de uma
+/// codificação de Vello. *É isto que faz a receita ficar acima do borrão em vez de dentro dele.*
+///
+/// ⚠️ **Sem as MOLDURAS**, de propósito: um recorte de moldura é um intervalo sobre a pilha de z
+/// do mundo, e a receita já não está nessa pilha — ela flutua acima de tudo. Cortá-la por uma
+/// moldura de que ela não faz parte era o defeito que a primeira versão desta lei já evitava, ao
+/// desenhá-la depois do `close_all`.
+#[allow(clippy::too_many_arguments)]
+pub fn dispatch_isolated(
+    scene: &VecScene,
+    view: &VecViewState,
+    xforms: &VecXforms,
+    live: &LiveGeometry,
+    fx: &FxImages,
+    skins: &WidgetSkins,
+    patterns: &PatternTiles,
+    brushes: &BrushArts,
+    dilated: &DilatedPaints,
+    camera: Affine,
+    target: &mut VectorScene,
+) {
+    if !view.isolating() {
+        return;
     }
-    // ⭐⭐⭐ **A SEGUNDA PASSAGEM: a receita aberta, ACIMA DE TUDO e sem o recuo** (Enio,
-    // 2026-09-07). ⚠️ Ela corre **depois** do `close_all` de propósito — os recortes de moldura são
-    // um intervalo sobre a ordem de z, e desenhar aqui dentro deles poria a receita a ser cortada
-    // por uma moldura de que ela não faz parte. ⛔ Vazia no caminho comum: sem isolamento este laço
-    // não corre e o desenho é byte-idêntico ao de sempre.
-    if isolating {
-        for path in scene.paths() {
-            if view.is_isolated(path.id) && !view.is_hidden(path.id) {
-                draw_one(
-                    path, scene, view, xforms, live, fx, skins, patterns, brushes, dilated, camera,
-                    target,
-                );
-            }
+    for path in scene.paths() {
+        if view.is_isolated(path.id) && !view.is_hidden(path.id) {
+            draw_one(
+                path, scene, view, xforms, live, fx, skins, patterns, brushes, dilated, camera,
+                target,
+            );
         }
     }
 }

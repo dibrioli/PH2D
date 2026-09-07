@@ -68,7 +68,7 @@ pub use paint_stack::{
 // não precisar de nomear a folha — a mesma cortesia que o `WarpStyle` e o `WidthProfile` já têm.
 pub use ph2d_blend_mode::{BlendMode, MAX_BLEND_MODES};
 mod structure;
-pub use structure::{ISOLATION_BACKDROP_ALPHA, VecClip, VecClipSpan, VecViewState};
+pub use structure::{VecClip, VecClipSpan, VecViewState};
 
 /// ADR-0111: a geometria do path é LOCAL. O afim que a leva ao mundo vem da
 /// entidade (`Transform` ∘ cadeia de pais) e é publicado pela shell a cada frame.

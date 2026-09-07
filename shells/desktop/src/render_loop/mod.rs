@@ -352,6 +352,10 @@ pub(crate) mod point_gizmo;
 mod present;
 /// ⭐⭐⭐ **As faixas de desenho** (ADR-0154 Fase 2) — irmão por assunto do [`present`].
 mod present_bands;
+/// ⭐⭐⭐ O VIDRO JATEADO por trás da receita aberta (o *Edit Prefab*).
+mod present_frost;
+/// ⭐⭐ Os passes de LUZ do quadro (a sprite emissiva e o glow do Motion).
+mod present_fx;
 /// ⚠️ `pub(crate)`: os gates do [`crate::preview_drive`] correm o tique de fora do `render_loop` —
 /// é ele o motor que declara a §11 como pré-visualização, e um gate que o encenasse à mão mediria
 /// a encenação.
@@ -1229,6 +1233,12 @@ impl crate::App {
             // ela não tem consumidor — e o `_` diz isso, ao contrário de um binding nomeado que
             // parece um esquecimento.
             library_cache: _,
+            // ⭐⭐⭐ **O VIDRO JATEADO** (2026-09-07) — o passe é do presente; aqui escrevem-se as
+            // duas cenas que ele separa e o interruptor do quadro.
+            frost: _,
+            frost_doc_scene,
+            frost_front_scene,
+            frosting,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
@@ -9396,19 +9406,6 @@ impl crate::App {
                 vec_scene.reorder_to(&order);
             }
             let mut vec_view = crate::vec_entities::view_state(sim, &self.vec_entities);
-            // ⭐⭐⭐ **O LIMITE da camada que recua o mundo** (o isolamento do *Edit Prefab*).
-            //
-            // ⚠️ **A janela inteira, e não o rectângulo do canvas:** o doc do `push_object_layer`
-            // diz que uma caixa pequena demais **recorta a arte em silêncio**, e o que a camada
-            // esbate não é o ecrã — é o que for desenhado DENTRO dela, que é só a cena vetorial (os
-            // painéis entram depois, fora do `pop`). *Uma caixa generosa não pinta a mais; uma
-            // caixa curta apaga desenho.*
-            vec_view.isolation_screen = [
-                0.0,
-                0.0,
-                f64::from(window_size.width),
-                f64::from(window_size.height),
-            ];
             // **As MOLDURAS** (plano UI/UX W0): que intervalo da pilha cada uma recorta. Sai do
             // MESMO snapshot que acabou de ditar a pilha de z — derivá-lo de outra fonte seria uma
             // segunda resposta a *"em que ordem estas formas estão?"* — e da pilha FINAL, porque o
@@ -10609,6 +10606,16 @@ impl crate::App {
                 &vec_xf,
             );
             band_doc_scenes.clear();
+            // ⭐⭐⭐ **HÁ RECEITA ABERTA NESTE QUADRO?** — o interruptor do vidro jateado, escrito
+            // UMA vez e lido pelo presente (re-derivá-lo lá seria a segunda resposta, e um quadro
+            // em que as duas discordassem desenharia a receita duas vezes ou nenhuma).
+            //
+            // ⚠️⚠️ **A pergunta é ao MUNDO e não à vista do vetor:** o `isolated` dela é enchido a
+            // partir das FORMAS marcadas, e uma receita feita só de imagens deixa-o vazio — o vidro
+            // nunca subiria justamente para os prefabs de sprite.
+            *frosting = crate::render_loop::master_editing::any_open(sim);
+            frost_doc_scene.reset();
+            frost_front_scene.reset();
             let doc_bands = crate::draw_bands::doc_bands_of(frame_order);
             for band in &doc_bands {
                 let keep = frame_order.vector_ids_in(*band);
@@ -10637,6 +10644,15 @@ impl crate::App {
             if !doc_bands.is_empty() {
                 // O documento já foi codificado nas faixas — a cena do chrome fica só com o chrome.
             } else {
+                // ⭐⭐⭐ **COM O VIDRO, o documento sai da cena do CHROME.** Ele tem de aterrar no
+                // acumulador do mundo **antes** do borrão, e os painéis entram depois dele; na
+                // mesma cena, os dois seriam borrados ou nítidos juntos. ⛔ Sem receita aberta é a
+                // cena de sempre, byte a byte.
+                let target: &mut ph2d_vector::VectorScene = if *frosting {
+                    frost_doc_scene
+                } else {
+                    vector_scene
+                };
                 ph2d_vec_render::dispatch(
                     vec_scene,
                     &vec_view,
@@ -10648,9 +10664,26 @@ impl crate::App {
                     brush_arts,
                     self.paint_dilate_live.out(),
                     cam_affine,
-                    vector_scene,
+                    target,
                 );
             }
+            // ⭐⭐⭐ **E A RECEITA, sozinha, na cena que fica ACIMA do vidro.** ⚠️ Ela é codificada
+            // aqui **em todos os casos** — com faixas ou sem elas —, porque o `dispatch` e as
+            // faixas saltam-na sempre: sem esta chamada a receita aberta simplesmente não desenha.
+            // ⛔ Sem receita aberta a porta devolve sem escrever nada.
+            ph2d_vec_render::dispatch_isolated(
+                vec_scene,
+                &vec_view,
+                &vec_xf,
+                &vec_live,
+                vec_fx,
+                &vec_skins,
+                vec_patterns,
+                brush_arts,
+                self.paint_dilate_live.out(),
+                cam_affine,
+                frost_front_scene,
+            );
             // ⚠️ **O mapa que foi DESENHADO fica guardado, e é ele que o PICK lê.**
             //
             // O `vec_gizmo_pick` declara no próprio doc que a pergunta *"o que está desenhado

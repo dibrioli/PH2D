@@ -41,23 +41,18 @@ pub struct VecViewState {
     /// nós dela não se desenham) — aqui ela deixa de ser um caso especial da shell e passa a ser
     /// uma propriedade da vista, com dois leitores: o desenho dos gizmos e o [`Self::is_pickable`].
     pub derived: Vec<VecPathId>,
-    /// ⭐⭐⭐ **As formas EXEMPTAS do recuo** — a receita que o *Edit Prefab* abriu (2026-09-07).
+    /// ⭐⭐⭐ **As formas da RECEITA aberta** — o que o *Edit Prefab* levanta acima do vidro
+    /// jateado (2026-09-07).
     ///
-    /// Vazia no caminho comum. Com conteúdo, o desenho ganha duas leis, e as duas vivem na porta
-    /// única (`ph2d_vec_render::dispatch`): tudo o que **não** está aqui desenha-se com
-    /// [`ISOLATION_BACKDROP_ALPHA`], e o que está aqui desenha-se **por último** — acima de tudo.
+    /// Vazia no caminho comum. Com conteúdo, o desenho parte-se em dois: o
+    /// [`ph2d_vec_render::dispatch`] **salta** estas formas (elas não pertencem ao mundo que vai
+    /// ser borrado) e o `dispatch_isolated` desenha **só** elas, numa cena própria que o presente
+    /// compõe depois do borrão.
     ///
     /// ⚠️ **Estado de VISTA, nunca do documento** (o precedente é o `isolated` do modelador 3D):
-    /// escrever a opacidade nas formas seria uma EDIÇÃO, com passo de undo e bytes no ficheiro,
-    /// por uma coisa que só existe enquanto o artista está a olhar.
+    /// escrever isto nas formas seria uma EDIÇÃO, com passo de undo e bytes no ficheiro, por uma
+    /// coisa que só existe enquanto o artista está a olhar.
     pub isolated: Vec<VecPathId>,
-    /// O rectângulo do CANVAS em coordenadas de ecrã (`x, y, w, h`) — o limite da camada que
-    /// recua o mundo.
-    ///
-    /// ⚠️ **Ele é obrigatório, e não uma comodidade:** o doc do `push_object_layer` diz que uma
-    /// caixa pequena demais **recorta a arte em silêncio**, e o Vello aloca a mistura sobre ela.
-    /// Quem sabe onde o canvas está é a shell; o renderer não tem a janela.
-    pub isolation_screen: [f64; 4],
     /// As MOLDURAS que recortam neste frame (`ph2d_ecs::VecFrame`), já resolvidas para o
     /// intervalo que cada uma ocupa na pilha de z. Vazio = nenhuma moldura recorta, e o desenho é
     /// **byte-idêntico** ao mundo pré-moldura.
@@ -139,22 +134,13 @@ pub struct VecClipSpan {
     pub last: VecPathId,
 }
 
-/// ⭐⭐⭐ **QUANTO o mundo recua quando um prefab está aberto** (Enio, 2026-09-07: *«o canvas deve
-/// ser borrado levemente… e o Prefab aparece no centro, acima de tudo»*).
-///
-/// ⚠️ **É a opacidade do FUNDO, e não uma cor**: dizer *«isto não é o assunto agora»* apagando cor
-/// perderia a forma do que está por baixo, e o artista precisa de continuar a reconhecer a cena
-/// para saber onde a receita vai aterrar. ⛔ E não é `0`: esconder o resto é outro modo (o
-/// isolamento do 3D), e ele apaga a referência.
-pub const ISOLATION_BACKDROP_ALPHA: f32 = 0.25;
-
 impl VecViewState {
     /// ⭐⭐⭐ **Esta forma está a ser EDITADA como receita?** — o isolamento do *Edit Prefab*.
     ///
-    /// ⚠️ **Uma lista de EXEMPTAS, e não de esmaecidas:** a lei é *«tudo recua menos isto»*, e
-    /// guardar o complemento faria cada forma nova nascer no lado errado — uma cena que ganha um
-    /// objecto enquanto a receita está aberta teria de o acrescentar à lista, e quem esquecesse
-    /// deixaria um objecto nítido no meio do fundo recuado.
+    /// ⚠️ **Uma lista de LEVANTADAS, e não de recuadas:** a lei é *«tudo fica atrás do vidro menos
+    /// isto»*, e guardar o complemento faria cada forma nova nascer no lado errado — uma cena que
+    /// ganha um objecto enquanto a receita está aberta teria de o acrescentar à lista, e quem
+    /// esquecesse deixaria um objecto nítido por cima do borrão.
     ///
     /// ⛔ **Vazia = nada muda, e o desenho é byte-idêntico ao de sempre.**
     #[must_use]
@@ -164,13 +150,13 @@ impl VecViewState {
 
     /// **Há um prefab aberto neste frame?** — a pergunta que liga o modo.
     ///
-    /// ⚠️ **As duas metades**: há exemptas E há caixa. Sem a caixa a camada recortaria o mundo a
-    /// zero, e o artista veria o canvas ficar **vazio** em vez de recuar.
+    /// ⚠️ **Uma metade só, desde que o vidro existe** (2026-09-07): ela era *«há exemptas E há
+    /// caixa»*, porque o recuo era uma camada do Vello e uma caixa a zero recortava o mundo
+    /// inteiro. O borrão não é uma camada — é um passe sobre a textura do mundo —, e o renderer
+    /// deixou de precisar de saber onde o canvas está.
     #[must_use]
     pub fn isolating(&self) -> bool {
         !self.isolated.is_empty()
-            && self.isolation_screen[2] > 0.0
-            && self.isolation_screen[3] > 0.0
     }
 
     /// A pose que o AUTO LAYOUT deu a `id` neste frame — identidade quando ele não a colocou.

@@ -215,3 +215,29 @@ fn a_recipe_reports_itself_opened_once_and_not_every_frame() {
         "reabrir depois de fechar tem de voltar a enquadrar"
     );
 }
+
+/// ⭐⭐⭐ **UMA RECEITA SÓ DE IMAGENS também levanta o vidro.**
+///
+/// ⚠️ **É a família que a primeira redacção deixava de fora:** o interruptor perguntava à vista do
+/// VETOR (`VecViewState::isolated`), que é enchida a partir das formas vectoriais marcadas — e um
+/// ragdoll ou um cartão de sprite não tem nenhuma. O vidro nunca subiria para eles.
+///
+/// **Mutação que deve sangrar:** o `any_open` filtrar por qualquer coisa além do `MasterEditing`.
+#[test]
+fn a_recipe_made_only_of_images_still_raises_the_glass() {
+    let (mut sim, root, _piece, _) = scene();
+    assert!(
+        !super::any_open(&mut sim),
+        "sem receita aberta o vidro nao pode subir — o quadro comum pagaria os passes"
+    );
+    mark(&mut sim, Some(root.to_bits()));
+    assert!(
+        super::any_open(&mut sim),
+        "a receita esta' aberta e o vidro nao subiu — as pecas raster dela ficariam no fundo"
+    );
+    mark(&mut sim, None::<u64>);
+    assert!(
+        !super::any_open(&mut sim),
+        "fechar a receita tem de baixar o vidro"
+    );
+}

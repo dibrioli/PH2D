@@ -54,6 +54,7 @@ impl SpriteRenderer {
             None,
             scene_viewport,
             None,
+            None,
         );
     }
 
@@ -81,6 +82,11 @@ impl SpriteRenderer {
         // ⭐⭐ **A FAIXA de desenho** (ADR-0154 Fase 2) — `Some((lo, hi))` desenha só as instâncias
         // cujo rank cai em `[lo, hi)`. `None` = a cena inteira, **byte-idêntico** ao de sempre.
         rank_window: Option<(u32, u32)>,
+        // ⭐⭐⭐ **AS RETIDAS** (o vidro jateado do *Edit Prefab*) — as entidades que esta passagem
+        // NÃO desenha porque outra as desenha depois, por cima do borrão. `None` = ninguém. Ver o
+        // doc de [`crate::sprite_collect::collect_sorted_instances`] para o porquê de ser por
+        // entidade e não por faixa de rank.
+        held_back: Option<&std::collections::BTreeSet<ph2d_ecs::Entity>>,
     ) {
         // Collect scene instances + the `extra` slice into `scratch` and sort
         // (extracted to keep this file under its LOC cap; M0.T11).
@@ -89,6 +95,7 @@ impl SpriteRenderer {
             present,
             extra,
             rank_window,
+            held_back,
         );
         self.draw_scratch(
             target,

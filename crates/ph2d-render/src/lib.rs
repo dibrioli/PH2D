@@ -31,6 +31,7 @@ pub mod compressed_pipeline;
 /// makes [`SpriteSource::CookedTexture`] render. See
 /// [`docs/plans/2026-05-texture-compression-waves.md`](../../../docs/plans/2026-05-texture-compression-waves.md).
 pub mod cooked_texture;
+pub mod frost;
 pub mod fx_stack;
 /// O WGSL da pilha de FX (irmão do `fx_stack` pelo teto de LOC — o que o device executa).
 mod fx_stack_field;
@@ -101,6 +102,7 @@ pub use compressed_pipeline::{
     MipUploadLayout, UploadedCompressedTexture, compressed_size_per_format,
 };
 pub use cooked_texture::{CookedTextureError, CookedTextureStore};
+pub use frost::{FROST_VEIL_ALPHA, FrostPass};
 pub use fx_stack::{FxOpGpu, FxStackPass, stack_reach};
 pub use fx_stack_res::make_output_texture;
 pub use game_rt::GameRt;

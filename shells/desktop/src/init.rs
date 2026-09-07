@@ -297,6 +297,8 @@ pub(crate) fn build_initial_state(
     // intercalar vetor e sprite.
     let world_rt = ph2d_render::WorldRt::new(surface.gpu(), (size.width, size.height));
     let band_blit = ph2d_render::BandBlit::new(surface.gpu(), ph2d_render::WorldRt::FORMAT);
+    // ⭐⭐⭐ O vidro jateado do *Edit Prefab*: ele borra o acumulador, então nasce no formato DELE.
+    let frost = ph2d_render::FrostPass::new(surface.gpu(), ph2d_render::WorldRt::FORMAT);
     // doc 67: the Motion module's own HDR glow pass, sized to the surface like
     // game_rt. Inert until the artist authors bloom on the active Motion doc.
     let motion_fx = ph2d_render::MotionFx::new(surface.gpu(), (size.width, size.height));
@@ -498,6 +500,10 @@ pub(crate) fn build_initial_state(
         game_rt,
         world_rt,
         band_blit,
+        frost,
+        frost_doc_scene: ph2d_vector::VectorScene::new(),
+        frost_front_scene: ph2d_vector::VectorScene::new(),
+        frosting: false,
         band_doc_scenes: Vec::new(),
         compositor_reads_world: false,
         motion_fx,

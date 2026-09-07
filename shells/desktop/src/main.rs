@@ -1090,6 +1090,7 @@ impl App {
             show_colliders: true,
             onion_ghosts: Vec::new(),
             emissive_instances: Vec::new(),
+            frost_instances: Vec::new(),
             interaction: ph2d_physics_ecs::InteractionSettings::default(),
             blast_flash: None,
             bake_channels: crate::render_loop::physics_bake::BakeChannels::default(),

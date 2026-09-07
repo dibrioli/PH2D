@@ -114,6 +114,24 @@ pub(crate) struct AppGfx {
     /// ⚠️ Vazio ⇒ o documento foi codificado na cena do chrome, como sempre, e o presente não tem
     /// faixa de vetor nenhuma a desenhar.
     pub(crate) band_doc_scenes: Vec<ph2d_vector::VectorScene>,
+    /// ⭐⭐⭐ **O VIDRO JATEADO** (2026-09-07) — o passe que borra o acumulador do mundo entre o
+    /// desenho dele e o da receita aberta. Ver [`crate::render_loop::present_frost`].
+    pub(crate) frost: ph2d_render::FrostPass,
+    /// O DOCUMENTO sem a receita aberta, para o quadro que põe o vidro.
+    ///
+    /// ⚠️ **Cena própria e não a do chrome:** com o vidro, o documento tem de aterrar no
+    /// acumulador ANTES do borrão, e o chrome depois dele. Vazia (e nunca desenhada) sem receita
+    /// aberta, ou quando o quadro está intercalado — aí o documento já vive nas faixas.
+    pub(crate) frost_doc_scene: ph2d_vector::VectorScene,
+    /// A RECEITA sozinha — o que fica nítido acima do vidro.
+    pub(crate) frost_front_scene: ph2d_vector::VectorScene,
+    /// Há uma receita aberta NESTE quadro? Escrito pela codificação, lido pelo presente.
+    ///
+    /// ⚠️ **Um campo, e não uma segunda pergunta ao mundo:** quem sabe é a vista do vetor
+    /// (`VecViewState::isolating`), que só existe dentro do bloco de codificação; o presente
+    /// re-derivá-la seria a segunda resposta, e um quadro em que as duas discordassem desenharia
+    /// a receita duas vezes ou nenhuma.
+    pub(crate) frosting: bool,
     /// O compositor está a ler o acumulador (em vez da saída do tonemap)?
     ///
     /// ⚠️ **Ele guarda o `game_view` num bind group construído uma vez**, então trocar a fonte é um
@@ -816,6 +834,11 @@ pub(crate) struct App {
     /// **todo frame**, e uma `Vec` nova por frame seria uma alocação no laço quente. Vazio (e
     /// portanto grátis) em toda cena que não tenha um emissor — que são todas, por omissão.
     pub(crate) emissive_instances: Vec<ph2d_render::RenderInstance>,
+    /// As peças RASTER da receita aberta — retidas pelo fundo e desenhadas acima do vidro.
+    ///
+    /// ⚠️ Vive aqui pelo mesmo motivo do vizinho: é lixo de quadro, e re-alocá-lo por quadro seria
+    /// uma alocação por frame para uma lista quase sempre vazia.
+    pub(crate) frost_instances: Vec<ph2d_render::RenderInstance>,
     /// **A ferramenta de INTERAÇÃO com a física** (W-Hand) — o que o ponteiro faz
     /// a uma cena que está rodando: a MÃO (segura um corpo), a EXPLOSÃO (um
     /// estouro radial) ou a ATRAÇÃO (um campo sustentado).

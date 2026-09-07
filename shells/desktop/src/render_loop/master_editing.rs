@@ -97,9 +97,30 @@ pub(crate) fn mark(sim: &mut SimWorld, selection: impl IntoIterator<Item = u64>)
 /// seleccionada, e enquadrar a câmera com ela prenderia a vista à receita para sempre.
 pub(crate) struct Marked {
     /// Alguma marca foi posta ou tirada — o mundo mudou.
+    ///
+    /// ⚠️ **Só os gates o leem**, e é deliberado: o quadro carimba e segue, porque quem consome a
+    /// marca (o extract e a cadeia de visibilidade do vetor) lê o MUNDO, não este retorno. *Um
+    /// campo que o produto não lê e o gate lê é a assinatura de uma pergunta que só o teste faz —
+    /// e apagá-lo tiraria aos gates a única forma de perguntar «o passe fez alguma coisa?».*
+    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) touched: bool,
     /// As raízes que passaram de fechadas a abertas NESTE quadro.
     pub(crate) opened: Vec<Entity>,
+}
+
+/// ⭐⭐⭐ **Há ALGUMA receita aberta neste quadro?** — a pergunta que liga o vidro jateado.
+///
+/// ⚠️⚠️ **Ela pergunta ao MUNDO, e não à vista do vetor, e a diferença é uma família inteira de
+/// prefabs:** o `VecViewState::isolated` é enchido a partir das FORMAS vectoriais marcadas, então
+/// uma receita feita só de imagens (um ragdoll, um cartão de sprite) deixava-o vazio — e o vidro
+/// nunca subia para o único caso em que só as peças raster precisavam de ser levantadas. *Uma
+/// pergunta respondida pelo lado que tem a resposta mais ESTREITA é um modo que não liga para
+/// metade dos sujeitos dele.*
+pub(crate) fn any_open(sim: &mut SimWorld) -> bool {
+    let mut q = sim
+        .world_mut()
+        .query_filtered::<Entity, bevy_ecs::query::With<MasterEditing>>();
+    q.iter(sim.world()).next().is_some()
 }
 
 /// A sub-árvore de `root`, ela incluída.

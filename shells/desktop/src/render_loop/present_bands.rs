@@ -29,6 +29,8 @@ pub(super) struct BandGear<'a> {
     pub band_blit: &'a mut ph2d_render::BandBlit,
     pub vello_pass: &'a mut ph2d_render::VelloPass,
     pub band_doc_scenes: &'a [ph2d_vector::VectorScene],
+    /// As peças da receita aberta — retidas em toda faixa do fundo. `None` sem vidro.
+    pub held_back: Option<&'a std::collections::BTreeSet<ph2d_ecs::Entity>>,
 }
 
 /// O plano de faixas deste quadro — as quatro respostas que os dois passes e o compositor leem.
@@ -97,6 +99,10 @@ pub(super) fn draw_lower_bands(
                     None,
                     g.scene_viewport,
                     Some((band.lo, band.hi)),
+                    // ⚠️ **As RETIDAS valem para TODA faixa do fundo**: a receita aberta fica
+                    // acima do vidro, e uma faixa que a desenhasse pô-la-ia atrás dele — nítida
+                    // por baixo do próprio borrão.
+                    g.held_back,
                 );
                 g.tonemap.run(gpu);
                 g.band_blit.blit(

@@ -31,17 +31,39 @@ use ph2d_ecs::PresentWorld;
 /// isso não tem rank (`z_order = 0` por construção). Ele pertence à faixa que corre o resto do
 /// pipeline — a última de sprites —, e é lá que o chamador o passa; nas outras faixas ele chega
 /// vazio.
+///
+/// ⭐⭐⭐ **`held_back` são as entidades que ESTA passagem não desenha porque OUTRA as desenha
+/// depois** (o vidro jateado do *Edit Prefab*, 2026-09-07). `None` = ninguém, e é o caminho de
+/// sempre.
+///
+/// ⚠️ **Ela é por ENTIDADE e não por faixa de rank, e a diferença é medida:** o rank canónico
+/// **não** garante corrida contígua para uma sub-árvore — este ficheiro já o diz a propósito do
+/// agrupamento de recorte (*«a foreign sprite whose rank lands between the clip-parent and a
+/// descendant»*). Uma janela de rank levantaria essa sprite estranha junto com a receita, e o
+/// artista veria um objecto alheio nítido por cima do vidro.
+///
+/// ⚠️ **E ela é uma RETENÇÃO, não uma ocultação:** quem a passa fica obrigado a desenhar essas
+/// entidades noutra passagem. *A alternativa — desenhar duas vezes e deixar a nítida por cima —
+/// deixa o borrão da peça a escapar por fora da silhueta dela, como um halo.*
 pub(crate) fn collect_sorted_instances(
     scratch: &mut Vec<RenderInstance>,
     present: &mut PresentWorld,
     extra: &[RenderInstance],
     rank_window: Option<(u32, u32)>,
+    held_back: Option<&std::collections::BTreeSet<ph2d_ecs::Entity>>,
 ) {
     scratch.clear();
-    let mut q = present.world_mut().query::<&RenderInstance>();
-    for inst in q.iter(present.world()) {
+    let mut q = present
+        .world_mut()
+        .query::<(&RenderInstance, Option<&ph2d_ecs::SimRef>)>();
+    for (inst, sim_ref) in q.iter(present.world()) {
         if let Some((lo, hi)) = rank_window
             && (inst.z_order < lo || inst.z_order >= hi)
+        {
+            continue;
+        }
+        if let (Some(held), Some(sim_ref)) = (held_back, sim_ref)
+            && held.contains(&sim_ref.0)
         {
             continue;
         }

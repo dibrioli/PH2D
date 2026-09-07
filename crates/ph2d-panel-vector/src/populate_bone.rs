@@ -25,27 +25,32 @@ pub(super) fn populate_bone(store: &mut WidgetStore) {
     for id in ids::VECTOR_BONE_ACTION_IDS {
         button(store, id);
     }
-    button(store, ids::VECTOR_BONE_BIND);
-    button(store, ids::VECTOR_BONE_EXPAND);
-    button(store, ids::VECTOR_BONE_RELEASE);
+    // ⭐⭐⭐ **OS VERBOS, pela TABELA** ([`ids::VECTOR_BONE_VERBS`]) — a mesma que decide o que
+    // atravessa para a shell. Registá-los à mão aqui e encaminhá-los à mão ali são duas respostas à
+    // mesma pergunta, e foi assim que o *Add IK* nasceu pintado, aceso e MUDO.
+    //
+    // ⚠️ **Todos são registados, mesmo sendo pintados um de cada vez** (o *Add IK* e o *Remove IK*
+    // excluem-se): o registo diz *«este id existe»* ao índice de acerto e ao AccessKit, e a pintura
+    // é que decide qual deles o artista vê.
+    for id in ids::VECTOR_BONE_VERBS {
+        button(store, id);
+    }
     // ⚠️ **Pela porta do MUNDO** (`world_number_field`, sem `set_number_range`): o comprimento de um
     // osso vive nas unidades do documento, e emprestar-lhe a faixa de outro recurso é exactamente
     // o defeito que o `CLAUDE.md` §0.0 nomeia — a v21 já o pagou com a largura de traço a limitar
     // um deslocamento.
-    world_number_field(store, ids::VECTOR_BONE_LENGTH, 0.0);
-    world_number_field(store, ids::VECTOR_BONE_STRENGTH, 1.0);
+    // ⚠️ **Pela porta do MUNDO** (`world_number_field`, sem `set_number_range`) e pela TABELA que o
+    // encaminhamento também lê: o comprimento de um osso vive nas unidades do documento, e
+    // emprestar-lhe a faixa de outro recurso é exactamente o defeito que o `CLAUDE.md` §0.0 nomeia
+    // — a v21 já o pagou com a largura de traço a limitar um deslocamento. `Mix` e `Softness` são
+    // adimensionais e `Chain` conta ossos: nenhum é medida de desenho.
+    for id in ids::VECTOR_BONE_FIELDS {
+        world_number_field(store, id, 0.0);
+    }
     // ⭐⭐⭐ A ÂNCORA DE IK — os dois verbos e os três números dela.
     //
     // ⚠️ **Os dois botões são registados SEMPRE**, mesmo sendo pintados um de cada vez: o registo é
     // o que diz *«este id existe»* ao índice de acerto e ao AccessKit, e a pintura é que decide
     // qual dos dois o artista vê. Registar só o pintado faria o outro nascer **morto sob o dedo** —
     // o defeito dos quatro chips da booleana, que só o gesto real apanhou.
-    button(store, ids::VECTOR_BONE_IK_ADD);
-    button(store, ids::VECTOR_BONE_IK_REMOVE);
-    // ⚠️ Pela porta do MUNDO, como os dois de cima: `Mix` e `Softness` são adimensionais e `Chain`
-    // conta ossos — nenhum deles é uma medida de desenho, e emprestar-lhes a faixa de um recurso
-    // alheio é o defeito que o §0.0 nomeia.
-    world_number_field(store, ids::VECTOR_BONE_IK_MIX, 1.0);
-    world_number_field(store, ids::VECTOR_BONE_IK_SOFTNESS, 0.0);
-    world_number_field(store, ids::VECTOR_BONE_IK_CHAIN, 2.0);
 }

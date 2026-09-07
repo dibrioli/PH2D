@@ -144,6 +144,53 @@ fn is_morph_states_control(id: ph2d_a11y::NodeId) -> bool {
         })
 }
 
+/// ⭐⭐ **OS VERBOS QUE PRENDEM UMA FORMA A OUTRA COISA** — e a soltam.
+///
+/// ⚠️ **Corte por RESPONSABILIDADE** (o teto de 200 LOC por função do HR-18 pediu-o em 2026-09-07,
+/// a `203`): envelope, texto-em-caminho, motivo-em-caminho e contorno são a mesma pergunta com
+/// quatro sujeitos — *esta forma passa a responder a outra*. Todos escrevem um **componente da
+/// entidade**, logo o clique é da shell; guardá-los no painel seria uma segunda cópia do mesmo
+/// facto, e ela discordaria assim que o artista seleccionasse outra forma.
+fn binds_a_shape_to_something(id: ph2d_a11y::NodeId) -> bool {
+    id == ids::VECTOR_ENVELOPE_RUN
+        || id == ids::VECTOR_ENVELOPE_EXPAND
+        || id == ids::VECTOR_ENVELOPE_RELEASE
+        || id == ids::VECTOR_ENVELOPE_PERSPECTIVE
+        || id == ids::VECTOR_ENVELOPE_MESH
+        || id == ids::VECTOR_ENVELOPE_PINS
+        || id == ids::VECTOR_ENVELOPE_CLEAR_PINS
+        // Text on Path: prender / soltar / o lado. Todos mexem no DOCUMENTO (o componente
+        // `VecTextPath` da entidade), então atravessam para a shell como os do envelope.
+        || id == ids::VECTOR_TEXTPATH_LINK
+        // Pick Path: arma o Picker (a shell captura o texto em foco e espera o clique do guia).
+        || id == ids::VECTOR_TEXTPATH_PICK
+        || id == ids::VECTOR_TEXTPATH_DETACH
+        || id == ids::VECTOR_TEXTPATH_FLIP
+        || id == ids::VECTOR_TEXTPATH_FLIP_OFF
+        // Pattern on Path: prender / soltar / o lado. Todos mexem no DOCUMENTO (o componente
+        // `VecPatternPath` da entidade), então atravessam para a shell como os do texto.
+        || id == ids::VECTOR_PATTERNPATH_LINK
+        // Pick Path: arma o Picker (a shell captura o motivo selecionado e espera o clique do guia).
+        || id == ids::VECTOR_PATTERNPATH_PICK
+        || id == ids::VECTOR_PATTERNPATH_DETACH
+        || id == ids::VECTOR_PATTERNPATH_FLIP
+        || id == ids::VECTOR_PATTERNPATH_FLIP_OFF
+        // Contour: criar / materializar / apagar + os dois trios exclusivos. ⚠️ Corner e Side
+        // atravessam para a shell (≠ os gêmeos da seção Expand, que são panel-local): lá eles
+        // armam o PRÓXIMO offset, aqui retunam um contour que já está na tela, e o que a fileira
+        // mostra sai do componente. Guardá-los no painel seria uma segunda cópia do mesmo fato,
+        // e ela discordaria assim que o artista selecionasse outra forma.
+        || id == ids::VECTOR_CONTOUR_ADD
+        || id == ids::VECTOR_CONTOUR_EXPAND
+        || id == ids::VECTOR_CONTOUR_REMOVE
+        || id == ids::VECTOR_CONTOUR_JOIN_MITER
+        || id == ids::VECTOR_CONTOUR_JOIN_ROUND
+        || id == ids::VECTOR_CONTOUR_JOIN_BEVEL
+        || id == ids::VECTOR_CONTOUR_SIDE_OUTER
+        || id == ids::VECTOR_CONTOUR_SIDE_INNER
+        || id == ids::VECTOR_CONTOUR_SIDE_BOTH
+}
+
 pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
     is_mode_pill(id)
         // Os dois botões da seção CUT — executar e descartar a linha de corte.
@@ -215,48 +262,15 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // O botão de SEÇÃO "Apply" (assa a pilha de efeitos). Fora daqui pintaria e estaria
         // MORTO — a shell classifica-o via `fx_bridge_dispatch::classify_click`.
         || id == ids::VECTOR_FX_APPLY
-        // ⭐⭐⭐ Os três verbos do ESQUELETO (estudo 42 item 5) — eles mexem no MUNDO (um componente
-        // da entidade), então o clique é da shell. A lição do bug #29 é literalmente esta linha.
-        || id == ids::VECTOR_BONE_BIND
-        || id == ids::VECTOR_BONE_EXPAND
-        || id == ids::VECTOR_BONE_RELEASE
-        || id == ids::VECTOR_ENVELOPE_RUN
-        || id == ids::VECTOR_ENVELOPE_EXPAND
-        || id == ids::VECTOR_ENVELOPE_RELEASE
-        || id == ids::VECTOR_ENVELOPE_PERSPECTIVE
-        || id == ids::VECTOR_ENVELOPE_MESH
-        || id == ids::VECTOR_ENVELOPE_PINS
-        || id == ids::VECTOR_ENVELOPE_CLEAR_PINS
-        // Text on Path: prender / soltar / o lado. Todos mexem no DOCUMENTO (o componente
-        // `VecTextPath` da entidade), então atravessam para a shell como os do envelope.
-        || id == ids::VECTOR_TEXTPATH_LINK
-        // Pick Path: arma o Picker (a shell captura o texto em foco e espera o clique do guia).
-        || id == ids::VECTOR_TEXTPATH_PICK
-        || id == ids::VECTOR_TEXTPATH_DETACH
-        || id == ids::VECTOR_TEXTPATH_FLIP
-        || id == ids::VECTOR_TEXTPATH_FLIP_OFF
-        // Pattern on Path: prender / soltar / o lado. Todos mexem no DOCUMENTO (o componente
-        // `VecPatternPath` da entidade), então atravessam para a shell como os do texto.
-        || id == ids::VECTOR_PATTERNPATH_LINK
-        // Pick Path: arma o Picker (a shell captura o motivo selecionado e espera o clique do guia).
-        || id == ids::VECTOR_PATTERNPATH_PICK
-        || id == ids::VECTOR_PATTERNPATH_DETACH
-        || id == ids::VECTOR_PATTERNPATH_FLIP
-        || id == ids::VECTOR_PATTERNPATH_FLIP_OFF
-        // Contour: criar / materializar / apagar + os dois trios exclusivos. ⚠️ Corner e Side
-        // atravessam para a shell (≠ os gêmeos da seção Expand, que são panel-local): lá eles
-        // armam o PRÓXIMO offset, aqui retunam um contour que já está na tela, e o que a fileira
-        // mostra sai do componente. Guardá-los no painel seria uma segunda cópia do mesmo fato,
-        // e ela discordaria assim que o artista selecionasse outra forma.
-        || id == ids::VECTOR_CONTOUR_ADD
-        || id == ids::VECTOR_CONTOUR_EXPAND
-        || id == ids::VECTOR_CONTOUR_REMOVE
-        || id == ids::VECTOR_CONTOUR_JOIN_MITER
-        || id == ids::VECTOR_CONTOUR_JOIN_ROUND
-        || id == ids::VECTOR_CONTOUR_JOIN_BEVEL
-        || id == ids::VECTOR_CONTOUR_SIDE_OUTER
-        || id == ids::VECTOR_CONTOUR_SIDE_INNER
-        || id == ids::VECTOR_CONTOUR_SIDE_BOTH
+        // ⭐⭐⭐ **Os verbos do ESQUELETO, pela TABELA** — eles mexem no MUNDO (um componente da
+        // entidade), então o clique é da shell.
+        //
+        // ⛔⛔ **Isto eram três linhas escritas à mão, e a lição do bug #29 estava escrita EM CIMA
+        // delas.** Não bastou: em 2026-09-07 a âncora acrescentou dois botões à mesma seção e não
+        // veio aqui — *«Add IK não funciona»*, com o botão a pintar e a acender. Uma advertência ao
+        // lado de uma lista não impede o esquecimento; uma TABELA impede.
+        || ids::VECTOR_BONE_VERBS.contains(&id)
+        || binds_a_shape_to_something(id)
         // Filters (a pilha de FX raster, plano 24): Add / ✕ / ↑ / ↓ / 👁 e a swatch de cor. O
         // drain da shell os traduz em edições do `VecFilter`. Fora daqui pintariam e estariam
         // MORTOS.

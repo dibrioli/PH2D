@@ -6218,6 +6218,16 @@ impl crate::App {
                         IkKnob::Chain => g.chain = v.max(0.0) as u32,
                     }
                 }
+            } else if pending_ik_add || pending_ik_remove {
+                // ⚠️ **Um verbo que morre em SILÊNCIO dá o mesmo sintoma que uma rota cortada** —
+                // e foi exactamente esse o report de 2026-09-07 (*«Add IK não funciona»*), cuja
+                // causa era outra. O painel só pinta estes botões com um osso em foco, então este
+                // braço é a janela de UM quadro entre a publicação do painel e a leitura do dreno;
+                // dizê-lo em voz alta é o que separa *«o app recusou»* de *«o botão está morto»*.
+                eprintln!(
+                    "[ph2d-vec] osso: nenhum OSSO em foco -- seleccione um osso (na Hierarquia ou \
+                     clicando nele com a ferramenta Bone) antes de Add/Remove IK"
+                );
             }
             if pending_create_envelope {
                 let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();

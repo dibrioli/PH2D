@@ -76,3 +76,43 @@ pub const VECTOR_BONE_IK_SOFTNESS: NodeId = hash_node_id("vector.bone.ik.softnes
 
 /// **Chain** — quantos ossos a âncora governa, contados da ponta para cima. `0` = até à raiz.
 pub const VECTOR_BONE_IK_CHAIN: NodeId = hash_node_id("vector.bone.ik.chain");
+
+/// ⭐⭐⭐ **OS VERBOS DA SEÇÃO SKELETON — uma tabela, dois consumidores.**
+///
+/// Todo botão desta seção mexe no **MUNDO** (um componente de uma entidade), logo o clique dele é
+/// da SHELL: o painel tem de o **encaminhar** ao barramento em vez de o consumir. Quem regista os
+/// widgets ([`ph2d_panel_vector`]'s `populate_bone`) e quem decide o que atravessa
+/// (`event_clicks::is_shell_click`) lêem **esta** lista.
+///
+/// ⛔⛔ **Ela existe porque a mesma rota morreu QUATRO vezes nesta linha.** Eram duas listas
+/// escritas à mão, e o modo de falha é o pior que há: o botão **pinta**, **acende sob o rato** e o
+/// clique **morre dentro do painel** — indistinguível, do lado de fora, de um verbo que recusou.
+/// Foi o bug #29 (três rotas de uma vez, com o gate de registo VERDE), e voltou em 2026-09-07 com
+/// o *Add IK* (report do dono: *«Add IK não funciona»*), acrescentado à seção sem vir aqui.
+///
+/// ⇒ *Uma lista escrita à mão ao lado de outra é duas respostas à mesma pergunta, e a que o artista
+/// vê é a que envelhece.* Com uma tabela só, acrescentar um verbo liga-o nos dois sítios.
+pub const VECTOR_BONE_VERBS: [NodeId; 5] = [
+    VECTOR_BONE_BIND,
+    VECTOR_BONE_EXPAND,
+    VECTOR_BONE_RELEASE,
+    VECTOR_BONE_IK_ADD,
+    VECTOR_BONE_IK_REMOVE,
+];
+
+/// ⭐⭐⭐ **OS CAMPOS NUMÉRICOS DA SEÇÃO SKELETON — a mesma tabela, os mesmos dois consumidores.**
+///
+/// Todos moram num componente de uma entidade, logo o VALOR é da **shell**: o painel tem de o
+/// encaminhar (`event::is_shell_number_field`) em vez de o guardar. Fora da lista, o campo aceita
+/// teclas e **não fala com ninguém** — a forma mais cara de um controlo nascer morto, porque parece
+/// vivo.
+///
+/// ⚠️ Ela existe pela mesma razão da [`VECTOR_BONE_VERBS`], e o custo já foi pago: o Z-index
+/// pagou-o uma vez, e o *Add IK* pagou-o outra na família ao lado.
+pub const VECTOR_BONE_FIELDS: [NodeId; 5] = [
+    VECTOR_BONE_LENGTH,
+    VECTOR_BONE_STRENGTH,
+    VECTOR_BONE_IK_MIX,
+    VECTOR_BONE_IK_SOFTNESS,
+    VECTOR_BONE_IK_CHAIN,
+];

@@ -562,15 +562,11 @@ fn is_shell_owned_number(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_ARRANGE_Z
         || id == ids::VECTOR_VERT_X
         || id == ids::VECTOR_VERT_Y
-        // ⭐ Os dois números do OSSO (estudo 42 item 5): eles moram num componente da entidade, logo
-        // são da shell. Fora daqui o campo aceita teclas e **não fala com ninguém** — a forma mais
-        // cara de um controlo nascer morto, porque parece vivo (o Z-index acima pagou-a).
-        || id == ids::VECTOR_BONE_LENGTH
-        || id == ids::VECTOR_BONE_STRENGTH
-        // ⭐ E os três da ÂNCORA, pela MESMA razão: eles moram num componente da entidade.
-        || id == ids::VECTOR_BONE_IK_MIX
-        || id == ids::VECTOR_BONE_IK_SOFTNESS
-        || id == ids::VECTOR_BONE_IK_CHAIN
+        // ⭐⭐⭐ **Os números do OSSO, pela TABELA** ([`ids::VECTOR_BONE_FIELDS`]) — eles moram num
+        // componente da entidade, logo são da shell. Fora daqui o campo aceita teclas e **não fala
+        // com ninguém** — a forma mais cara de um controlo nascer morto, porque parece vivo (o
+        // Z-index pagou-a uma vez, e o *Add IK* pagou-a na família ao lado em 2026-09-07).
+        || ids::VECTOR_BONE_FIELDS.contains(&id)
         || crate::populate::layout::LAYOUT_FIELDS.contains(&id)
 }
 

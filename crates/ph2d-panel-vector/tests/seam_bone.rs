@@ -14,6 +14,7 @@
 
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
@@ -53,6 +54,7 @@ fn limpa() {
     state::set_current_has_skeleton(false);
     state::set_current_skinned(false);
     state::set_current_bone(None);
+    state::set_current_bone_ik(None);
 }
 
 /// **O gesto REAL sobre um retângulo pintado**, e o que ele deixa no barramento.
@@ -81,30 +83,85 @@ fn clica(id: ph2d_a11y::NodeId, what: &str) -> Vec<EditorAction> {
     host.drained_actions()
 }
 
-/// ⭐⭐⭐ **OS TRÊS VERBOS DO ESQUELETO ATRAVESSAM O BARRAMENTO.**
+/// ⭐⭐⭐ **TODO VERBO DO ESQUELETO ATRAVESSA O BARRAMENTO** — a população sai da TABELA.
 ///
 /// ⚠️ **O oráculo é o `EditorAction`, nunca o `WidgetEvent`.** Um controlo que produz `Click` e não
 /// produz `ToolPanelEvent` acende sob o rato, consome o gesto e não faz nada — que é literalmente o
 /// report do bug #29 (*"o olho não funciona"*).
+///
+/// ⛔⛔ **E este gate estava VERDE sobre um verbo morto**, porque a população dele era uma lista de
+/// TRÊS escrita à mão. Em 2026-09-07 a âncora acrescentou o *Add IK* e o *Remove IK* à mesma seção;
+/// eles pintavam, acendiam e o clique morria no painel — report do dono: *«Add IK não funciona»*.
+/// *Um gate que existe para apanhar uma lista esquecida não pode ter a própria população escrita à
+/// mão.*
+///
+/// ⇒ a população é [`ids::VECTOR_BONE_VERBS`], a mesma tabela que o registo e o encaminhamento
+/// lêem. Um verbo novo entra aqui **sozinho** — e se ele não for pintado no estado que a `estado_de`
+/// declara, o gate reprova a dizer *«não foi PINTADO»*, que é a pergunta certa a fazer ao autor.
 #[test]
 fn every_verb_of_the_skeleton_reaches_the_bus() {
-    publica_tudo();
-    for (id, what) in [
-        (ids::VECTOR_BONE_BIND, "Bind to Skeleton"),
-        (ids::VECTOR_BONE_EXPAND, "Keep Pose"),
-        (ids::VECTOR_BONE_RELEASE, "Release"),
-    ] {
-        let acoes = clica(id, what);
+    for id in ids::VECTOR_BONE_VERBS {
+        estado_de(id);
+        let acoes = clica(id, "um verbo do esqueleto");
         assert!(
             acoes.iter().any(|a| matches!(
                 a,
                 EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if *c == id
             )),
-            "{what}: o Click nao chegou ao barramento — ele acende sob o rato e nao faz nada \
-             (falta a familia na allowlist do `event_clicks::forwards_plain_click`)"
+            "o Click de {id:?} nao chegou ao barramento — ele acende sob o rato e nao faz nada \
+             (falta a tabela `VECTOR_BONE_VERBS` na allowlist do `event_clicks`)"
         );
     }
     limpa();
+}
+
+/// ⭐⭐⭐ **TODO CAMPO NUMÉRICO DO ESQUELETO ATRAVESSA O BARRAMENTO** — o irmão do de cima, e o mesmo
+/// modo de falha com outra cara: fora da lista o campo **aceita teclas e não fala com ninguém**.
+///
+/// ⚠️ O oráculo é o `ToolPanelEvent(SetValue)`, e o gesto é o de um campo: focar e escrever.
+#[test]
+fn every_number_of_the_skeleton_reaches_the_bus() {
+    for id in ids::VECTOR_BONE_FIELDS {
+        estado_de(id);
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        assert!(
+            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+                .is_some(),
+            "{id:?} nao foi PINTADO — declare em `estado_de` sob que estado ele existe"
+        );
+        // ⚠️ O valor entra pelo STORE e o evento só diz *«este mudou»* — é o contrato do
+        // `ValueChanged`, e escrever o número no evento mediria outro programa.
+        host.store_mut().set_number_value(id, 0.5);
+        host.apply_panel_event::<VectorPanel>(&mut st, WidgetEvent::ValueChanged(id));
+        let acoes = host.drained_actions();
+        assert!(
+            acoes.iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::SetValue(c, _)) if *c == id
+            )),
+            "o valor de {id:?} nao chegou ao barramento — o campo aceita teclas e nao fala com \
+             ninguem (falta a tabela `VECTOR_BONE_FIELDS` no `event::is_shell_number_field`)"
+        );
+    }
+    limpa();
+}
+
+/// **Sob que estado cada controlo da seção é PINTADO.**
+///
+/// ⚠️ É a única metade que não se deriva: o *Add IK* e o *Remove IK* excluem-se por construção (um
+/// osso tem âncora ou não tem), e é por isso que a tabela sozinha não basta para os clicar. ⭐ Mas
+/// ela basta para os **descobrir**: um verbo novo que não venha aqui reprova a dizer *«não foi
+/// PINTADO»*, e essa é exactamente a pergunta que o autor tem de responder.
+fn estado_de(id: ph2d_a11y::NodeId) {
+    publica_tudo();
+    state::set_current_bone_ik(
+        (id == ids::VECTOR_BONE_IK_REMOVE
+            || id == ids::VECTOR_BONE_IK_MIX
+            || id == ids::VECTOR_BONE_IK_SOFTNESS
+            || id == ids::VECTOR_BONE_IK_CHAIN)
+            .then_some((1.0, 0.0, 2.0)),
+    );
 }
 
 /// ⭐ **O PILL do modo Osso troca a ferramenta.** É a metade que o bug #29 mediu no lado dos

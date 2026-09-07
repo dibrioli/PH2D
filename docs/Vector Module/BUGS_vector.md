@@ -155,7 +155,37 @@ mutação que tira o teto da rota do painel derruba **três** gates.
     o rato e consumiam o gesto. ⇒ *uma família nova responde às perguntas dela num MÓDULO, e ganha
     um `seam_*` com gesto real cujo oráculo é o `EditorAction`, nunca o `WidgetEvent`.*
 
-## Índice dos 31 FECHADOS — o mecanismo de cada um, em uma linha
+## Índice dos 32 FECHADOS — o mecanismo de cada um, em uma linha
+
+### #32 — *«Add IK não funciona»*: a MESMA rota do #29, na QUARTA vez ✅ 2026-09-07
+
+**Sintoma** (Enio): *«Add IK não funciona»*. O botão pintava, acendia sob o rato, consumia o
+clique — e não fazia nada. Indistinguível, do lado de fora, de um verbo que recusou.
+
+**A causa é a do #29, à letra:** o painel decide o que atravessa para a shell por uma **allowlist
+escrita à mão** (`event_clicks::is_shell_click`), e os dois botões da âncora foram acrescentados à
+seção SKELETON sem vir a ela. O comentário três linhas acima dos verbos que já lá estavam diz, em
+2026-09-05: *«A lição do bug #29 é literalmente esta linha»*. **Não bastou.**
+
+⛔⛔ **E o gate que existe EXACTAMENTE para isto ficou VERDE.** O `seam_bone.rs` nasceu com a wave
+anterior, faz o gesto real e tem por oráculo o `EditorAction` — tudo certo, menos a **população**:
+ela era uma lista de **TRÊS ids escrita à mão**. *Um gate que existe para apanhar uma lista
+esquecida não pode ter a própria população escrita à mão.*
+
+⇒ ⭐⭐⭐ **A cura é uma TABELA, não uma advertência melhor.** `ids::VECTOR_BONE_VERBS` e
+`ids::VECTOR_BONE_FIELDS` passam a ser lidas por **três** consumidores cada — quem regista o widget
+(`populate_bone`), quem decide o que atravessa (`event_clicks` / `event::is_shell_number_field`) e o
+**gate** (`seam_bone`). Um controlo novo na seção liga-se nos dois sítios e entra no gate sozinho; se
+faltar declarar sob que estado ele é pintado, o gate reprova a dizer *«não foi PINTADO»*, que é a
+pergunta certa a fazer ao autor.
+
+⚠️ **A lei generaliza, e é o que este bug custa quatro vezes para ensinar:** *uma advertência ao lado
+de uma lista não impede o esquecimento; só uma tabela com dois consumidores impede.* Toda família de
+controlos deste painel que ainda seja uma sequência de `|| id == …` é o próximo #32.
+
+**Prova de mutação:** apagar a tabela de qualquer uma das duas allowlists ⇒ os dois gates novos
+(`every_verb_of_the_skeleton_reaches_the_bus`, `every_number_of_the_skeleton_reaches_the_bus`)
+reprovam com o nome do id e a linha que falta.
 
 ### #31 — o ESQUELETO parecia morto, e o motor estava intacto ✅ 2026-09-06
 
@@ -398,4 +428,6 @@ devolve para poder ser medido.
 | 25 | Renomear na Hierarquia **disparava os atalhos** do Vector: a cura é **porta única**, não mais um `&&` no despacho. | 2026-08-05 |
 | 26 | Checkbox não redimensiona / Slider com altura fixa: **UM mecanismo, não dois bugs** — a razão é `h / ROW_H_PX` (⛔ ver as recusas no topo). | 2026-08-05 |
 | 27 | O traço virava **CANETA ELÍPTICA** sob Scale não-uniforme: no Vello o transform de um `stroke` multiplica a CANETA, não só a geometria. | 2026-08-23 |
+| 29..31 | (ver o índice abaixo) |  |
+| 32 | *«Add IK não funciona»*: dois botões novos na seção e a **allowlist do painel** escrita à mão — a MESMA rota do #29, na 4ª vez, com o aviso *«a lição do bug #29 é literalmente esta linha»* escrito TRÊS linhas acima. ⛔ E o `seam_*` que existe para isto ficou verde: a **população dele** também era uma lista à mão. ⇒ a cura é uma TABELA com três consumidores, nunca uma advertência melhor. | 2026-09-07 |
 | 28 | O **Build duplicava**: a sobra de uma forma tocada era `fonte − pintado`, e isso inclui o que está **escondido por baixo** das outras — ela re-criava, com a área EXACTA, as formas que o gesto não tocou. ⚠️ E a régua dos gates comparava geometria **local** com pontos de **mundo**, então ela pinava o defeito em vez de o acusar. | 2026-09-05 |

@@ -211,7 +211,20 @@ use serde::{Deserialize, Serialize};
 /// quatro bytes. ⇒ **não é compatível para trás**, e o `PROJECT_SCHEMA` sobe por arrasto (a pilha
 /// viaja no blob do `ph2d_field_ecs::FieldMods`). ⛔ Sem degrau de migração, pela decisão do Enio
 /// de 26/08 — um ficheiro antigo é **recusado em voz alta**.
-pub const FIELD_DOC_VERSION: u32 = 17;
+///
+/// # v18 — as QUATRO formas das W131–W135, e o degrau que a linha devia há cinco waves
+///
+/// O [`Primitive`] ganhou [`Primitive::Triangle`], [`Primitive::Polygon`],
+/// [`Primitive::TorusKnot`] e [`Primitive::Thread`]. São variantes **acrescentadas no fim**, então
+/// nenhum índice existente se move e um documento v17 continua a ler-se certo — **e o degrau sobe na
+/// mesma**, que é a lei que o v7 desta escada já escrevia com todas as letras para o mesmo caso.
+///
+/// ⚠️⚠️ **Ele foi achado no FECHO da linha, não nas waves** — cinco waves acrescentaram variantes e
+/// nenhuma o subiu. ⛔ **E o `collision-surface.sh` não o vê:** ele conta `PROJECT_SCHEMA`,
+/// `VEC_SCENE_SCHEMA`, `FLIP_SCHEMA` e o `DOC_VERSION` da timeline, e **este número não está na
+/// lista dele** — logo duas linhas que o subam em paralelo fundem-se sem que a sonda diga nada.
+/// *Um número que soma entre linhas e não está na sonda de colisão é um número que ninguém conta.*
+pub const FIELD_DOC_VERSION: u32 = 18;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

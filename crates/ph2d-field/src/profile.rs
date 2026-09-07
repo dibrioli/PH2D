@@ -20,6 +20,23 @@
 //! path, então o *corner widget* do editor vetorial já entregou os arcos. O módulo 3D não tem, e
 //! não deve ter, uma segunda resposta para "arredondar a quina de um contorno".
 //!
+//! # ⚠️ O EIXO da revolução é o Y, e o perfil não pode CRUZÁ-LO
+//!
+//! ⚠️ **Y, e não Z — de propósito, e ao contrário do [`crate::Primitive::Cylinder`] e do
+//! [`crate::Primitive::Torus`], que são simétricos em Z.** A regra que manda aqui não é a coerência
+//! entre primitivas, é a coerência com o **plano de desenho**: o perfil vem do editor vetorial, que
+//! desenha em XY, e o eixo de uma revolução tem de estar **dentro** do plano do perfil. A extrusão
+//! sai do plano (por Z), a revolução gira em torno de uma reta do plano (o Y). Quem quiser outro
+//! eixo roda o nó — é para isso que o [`crate::Xform`] existe.
+//!
+//! ⚠️ E o perfil **não pode cruzar o eixo** (`x < 0`): a superfície de revolução de um contorno que
+//! cruza o eixo auto-intersecta, e o campo que sai disso deixa de ser uma distância. O documento
+//! recusa ([`crate::FieldError::ProfileCrossesAxis`]) em vez de produzir a forma errada.
+//!
+//! ⚠️ **Esta prosa vivia na variante [`crate::Primitive::Revolve`], e mudou-se para cá quando a W135
+//! precisou das linhas** — é a lei que o doc daquele arquivo escreve: *toda primitiva nova paga a
+//! entrada dela mudando a prosa de uma variante antiga para o módulo do mecanismo.*
+//!
 //! # Por que a regra de preenchimento é COPIADA e não importada
 //!
 //! [`FillRule`] repete o tipo homónimo da `ph2d-vec-scene` de propósito. Esta crate é **o

@@ -88,6 +88,7 @@ pub fn shape_name(shape: &NodeShape) -> &'static str {
             Primitive::Superformula { .. } => "Superformula",
             Primitive::Triangle { .. } => "Triangle",
             Primitive::TorusKnot { .. } => "Torus Knot",
+            Primitive::Thread { .. } => "Thread",
         },
     }
 }

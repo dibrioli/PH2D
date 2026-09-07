@@ -38,6 +38,7 @@ li vale em todo o curso do controlo, ou só onde a forma nasce?***
 - [Uma régua que conta «quanto defeito SOBROU» premeia exagerar a cura — mede quantidade, não correcção](feedback_a_ruler_that_counts_leftover_defect_rewards_overshooting.md)
 - [Um tecto em graus SOBE quando a cura correcta piora o número — troque-o por uma IGUALDADE analítica](feedback_a_ceiling_in_degrees_ratchets_up_an_analytic_equality_does_not.md)
 - [Um gate que copia a FÓRMULA fica verde sobre uma lei que ninguém shipa — com oráculo analítico, atravesse o PRODUTO](feedback_a_gate_that_copies_the_formula_goes_green_over_a_law_nobody_ships.md)
+- ⭐⭐⭐ [Um ramo de união que é um semiespaço INFINITO ganha o `min` fundo DENTRO da peça, onde as coordenadas dele são singulares (`‖∇f‖ = 2,46`) — e a secção, o volume e a silhueta leem `0,000 %`: feche-o com a geometria em que ele assenta, e varra a CAIXA, não a casca](feedback_a_field_can_be_wrong_exactly_where_no_surface_ruler_looks.md)
 
 Vizinhas que ficam no índice por serem gerais: [[feedback_a_gate_that_measures_the_rare_case_leaves_the_normal_one_without_a_ruler]] ·
 [[feedback_a_second_error_can_be_load_bearing_for_the_first]] ·

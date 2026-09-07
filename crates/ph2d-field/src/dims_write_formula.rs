@@ -136,6 +136,42 @@ pub(super) fn write_formula(
                     .clamp(crate::MIN_KNOT_LOOPS, crate::max_knot_loops(*outro));
             }
         }
+        // ─────────────────────────── W135 ───────────────────────────
+        // ⚠️ **A PROFUNDIDADE re-assenta sozinha** quando o raio, o passo ou o flanco mudam — quem o
+        // faz é a coerção GERAL ([`super::dims_clamp::clamp_dims`]), que a porta corre depois de
+        // toda escrita e que lê a mesma tabela de faixas. É a lei que a W134 pagou por uma mutação
+        // sobrevivente: *duas leis a fazer a mesma coisa divergem no dia em que uma é corrigida.*
+        (Primitive::Thread { radius, .. }, 0) => *radius = value,
+        (Primitive::Thread { half_height, .. }, 1) => *half_height = half,
+        (Primitive::Thread { pitch, .. }, 2) => *pitch = value,
+        (
+            Primitive::Thread {
+                depth,
+                radius,
+                pitch,
+                flank,
+                ..
+            },
+            3,
+        ) => *depth = keep_below(value, crate::thread_depth_ceiling(*radius, *pitch, *flank)),
+        (Primitive::Thread { flank, .. }, 4) => {
+            *flank = value.clamp(crate::MIN_THREAD_FLANK_DEG, crate::MAX_THREAD_FLANK_DEG);
+        }
+        // ⭐⭐ **AS CONTAGENS só se coagem à faixa DELAS.**
+        (Primitive::Thread { starts: n, .. }, 5) => {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            {
+                *n = (value.round().max(0.0) as u32)
+                    .clamp(crate::MIN_THREAD_STARTS, crate::MAX_THREAD_STARTS);
+            }
+        }
+        (Primitive::Thread { hands: n, .. }, 6) => {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            {
+                *n = (value.round().max(0.0) as u32)
+                    .clamp(crate::MIN_THREAD_HANDS, crate::MAX_THREAD_HANDS);
+            }
+        }
         (Primitive::Superquadric { exponent_side, .. }, 4) => {
             *exponent_side = value.clamp(
                 crate::MIN_SUPERQUADRIC_EXPONENT,

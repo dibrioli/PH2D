@@ -297,9 +297,10 @@ pub(super) fn dims_plate(p: &Primitive) -> Vec<Dim> {
             super::dims_table_flow::dims_curve(p)
         }
         // ⭐ **E a MOLA, a REDE e o NÓ** (W124, W134) — as três são curvas com espessura.
-        p @ (Primitive::Helix { .. } | Primitive::Gyroid { .. } | Primitive::TorusKnot { .. }) => {
-            super::dims_table_flow::dims_lattice(p)
-        }
+        p @ (Primitive::Helix { .. }
+        | Primitive::Gyroid { .. }
+        | Primitive::TorusKnot { .. }
+        | Primitive::Thread { .. }) => super::dims_table_flow::dims_lattice(p),
         // ⭐ **E a EXACTA do catálogo** (W125).
         p @ (Primitive::RoundedCylinder { .. }
         | Primitive::Superquadric { .. }

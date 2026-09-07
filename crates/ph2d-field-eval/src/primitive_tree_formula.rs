@@ -82,6 +82,27 @@ pub(crate) fn formula(p: &Primitive) -> Tree {
             winds,
             loops,
         ),
+        Primitive::Thread {
+            radius,
+            half_height,
+            pitch,
+            depth,
+            flank,
+            starts,
+            hands,
+            round,
+            chamfer,
+        } => crate::ops_thread::sd_thread(
+            f64::from(radius),
+            f64::from(half_height),
+            f64::from(pitch),
+            f64::from(depth),
+            f64::from(flank),
+            starts,
+            hands,
+            f64::from(round),
+            f64::from(chamfer),
+        ),
         _ => unreachable!("o chamador só encaminha as formas por fórmula"),
     }
 }

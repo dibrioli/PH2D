@@ -13374,3 +13374,227 @@ a pergunta seguinte é qual dos gates mede a propriedade que a linha produz.*
 produto: *uma barra que o produto folgou de deixar para trás é uma barra que parou de medir.*
 
 **Smoke:** *MODEL* > **A** > *Torus Knot*, e `PH2D_FIELD_SMOKE=28` para os quatro pares lado a lado.
+
+---
+
+## §136 — W135: a ROSCA e o SERRILHADO, e o campo que era uma cunha INFINITA (07/09)
+
+> **Fecha a outra metade do Lote 10** ([plano 09](09_plano_das_dez_que_faltam.md)). A fila de formas
+> passa de **7** para **6**.
+
+### §136.0 — A pergunta do §5.0 foi feita, e a resposta é «METADE»
+
+`Union(Cylinder, Helix)` **já se faz hoje** e dá um parafuso — de filete **REDONDO**. O que a
+composição não alcança é exactamente o que faz uma rosca ser uma rosca:
+
+| o que falta à composição | por quê |
+|---|---|
+| o **flanco em V** | a hélice é um tubo de secção circular; a face inclinada que uma porca agarra não existe |
+| as **entradas** (`starts`) | seriam `N` hélices desfasadas — `N` nós, e o artista a alinhá-las à mão |
+| o **serrilhado** | é a união da mão direita com a ESQUERDA, e a esquerda é o **espelho** da direita: o `Mirror` desta casa **dobra o espaço** (dá meia peça e o reflexo dela), não une a peça com o espelho dela |
+
+⇒ primitiva. ⭐ **E DUAS portas da paleta, uma primitiva** — *Thread* e *Knurled Grip* diferem só nos
+números com que nascem, que é a lei que o tubo/anilha/arco de anel já escrevia.
+
+### §136.1 — O mecanismo: um PERFIL num plano meridiano, e a volta mais próxima
+
+Em cilíndricas o sólido é `{ perfil(ρ − núcleo, w) ≤ 0 }` com `w = z − b·φ` reduzido ao período
+`pitch`, e `b = starts·pitch/2π`. O perfil é um **triângulo** assente no cilindro do núcleo.
+
+⚠️ **É um CONJUNTO, não uma varredura** — ele não pode auto-intersectar-se, e por isso a inclinação
+não tem cerca de forma nenhuma. A secção meridiana é **exactamente o triângulo autorado a qualquer
+inclinação**, que é como uma rosca se especifica na oficina. *O que a inclinação muda não é a forma,
+é a DISTÂNCIA.*
+
+⚠️ **A costura do `atan2` não existe, e a razão é OUTRA que a do nó:** em `φ → φ − 2π` o `w` anda
+`starts·pitch`, que é um número **inteiro** de períodos ⇒ o reduzido não se mexe. ⭐ **`starts` é
+`u32` porque é isso que o torna contínuo** — uma entrada fraccionária racharia a peça de alto a
+baixo. A lição da W128 paga pela **representação**, como no nó, mas por outra via.
+
+### §136.2 — ⭐⭐⭐ A recta tangente da W134 outra vez, e aqui ela fecha em FORMA FECHADA
+
+A W134 pagou a lei: *decompor o desvio e encolher só o eixo que corre ao longo do fio*. Aqui a peça
+é uma **face**, não um fio, e a conta é exacta. Uma face de normal meridiana `(n_r, n_w)` tem, em 3D,
+
+```
+‖∇f‖ = √(n_r² + n_w²·(1 + β²)) = √(1 + β²·n_w²) = 1/k ,   β = b/ρ
+```
+
+porque `∇(ρ − núcleo)` e `∇w` são **ortogonais** (um é `ρ̂`, o outro vive em `φ̂`–`ẑ`). ⇒ multiplicar
+a face por `k` deixa-a **exactamente 1-Lipschitz**:
+
+| face | `n_w` | `k` |
+|---|---:|---|
+| o cilindro do núcleo | `0` | `1` — ela **já** é exacta |
+| um flanco do V | `cos α` | `1/√(1 + β²cos²α)` |
+| uma laje (o corte do comprimento) | `1` | `sin β`, que é o factor da mola |
+
+⚠️⚠️ **E o `k` multiplica cada FLANCO ANTES da junta, nunca a junta depois** — é a lei da W134 lida
+pelo lado oposto: uma folga aplicada a um campo que ainda vai ser **subtraído** desloca a superfície;
+aplicada a uma **distância** que vai ser **juntada**, ela só a torna honesta, e o zero de um `max`
+escalado não se mexe. *Escalar depois da junta encolheria o raio do filete sem ninguém pedir.*
+
+⭐⭐ **Os três cossenos de aresta saem da mesma conta, e nenhum é suposto.** Com
+`N(n_r, n_w) = (n_r, ∓β·n_w, n_w)`:
+
+| aresta | `cos_faces` | a `β = 0` |
+|---|---|---|
+| **crista** (os dois flancos da mesma mão) | `(sin²α − cos²α − β²cos²α)·k²` | `−cos 2α` |
+| **raiz** (flanco contra o cilindro) | `sin α · k` | `sin α` |
+| **cruz** (flancos de mãos OPOSTAS) | `(sin²α − cos²α + β²cos²α)·k²` | `−cos 2α` |
+| **arranque** (flanco contra a tampa — ver §136.4-ter) | `−cos α · k` | `−cos α` |
+
+⚠️ **A `β²` entra com sinal TROCADO nas duas primeiras** — é o que separa a crista, que a inclinação
+**afia** (a `β → ∞` os dois flancos ficam anti-paralelos: uma lâmina), do cruzamento, que ela
+**abre**. E cada uma é avaliada **no raio onde a aresta vive**.
+
+### §136.3 — ⛔⛔⛔ O DEFEITO: a cunha era INFINITA, e ganhava o `min` dentro da peça
+
+A primeira redacção fazia `min(dr, k·max(flanco₊, flanco₋))`. O `max` dos dois flancos é uma **cunha
+que continua para dentro até ao eixo** — e lá dentro ela **ganha** o `min` contra o cilindro, porque
+o termo `(|w| − a)·cos α` é negativo e empurra a cunha abaixo de `dr`. Ali `|∇w| = b/ρ` explode.
+
+Medido (`probe_thread_grad`, 72 células da região permitida):
+
+| | antes | depois |
+|---|---:|---:|
+| pior `‖∇f‖` na caixa | **`2,4562`** (a `ρ = 0,013`, com `starts = 4` e flanco `60°`) | `1,0131` |
+| pior `‖∇f‖` na pele | `1,1412` | `1,0107` |
+
+⚠️ O resíduo de `1,01` que fica é o **degrau da diferença central num vinco** — ele aparece onde um
+ramo do `min` troca, e não é do campo.
+
+⭐ **A cura é o terceiro semiespaço**, que é a afirmação honesta da forma: o filete **assenta** no
+núcleo. `max(flanco₊, flanco₋, −dr)`, e o `−dr` **não leva `k`** porque a face dele é o cilindro.
+
+⛔⛔ **E NENHUMA RÉGUA DE FORMA O VIA** — a secção meridiana lia `0,000 %` de erro antes e depois, o
+volume não muda, a silhueta não muda: *o ponto é fundo DENTRO da peça, onde só o gradiente fala.*
+⇒ a lei: **um campo pode estar errado exactamente onde nenhuma régua de superfície olha**, e a única
+sonda que lá chega é a que varre a caixa inteira em vez da casca.
+
+### §136.4 — As cercas, todas medidas
+
+**A PROFUNDIDADE tem DUAS paredes, e são de recursos diferentes** ([`thread_depth_ceiling`]):
+
+1. **o PERÍODO** — `pitch/(2·tan α)`. Acima dele o triângulo de uma volta invade a vizinha, e o campo
+   (que mede só a mais próxima) passa a dizer *«fora»* dentro da peça. É a cerca do **MODELO**, e no
+   limite exacto os filetes tocam-se na raiz — a rosca de profundidade cheia.
+2. **o NÚCLEO** — `radius·(1 − `[`THREAD_CORE_FLOOR`]`)`. O divisor vive no menor raio com matéria.
+
+**O tecto das ENTRADAS e o piso do NÚCLEO saem do MESMO critério, e ele é medido:** *duas peças ainda
+cabem num quadro* (`the_price_of_the_thread`, 07/09, `load 4,96`, 640×360; esfera `2,7 ms`).
+
+| `starts` | 1 | 8 | 32 | 64 | 96 | **128** | 192 | 256 | 384 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| ms | 2,6 | 3,4 | 4,3 | 5,3 | 6,5 | **8,3** | 8,8 | 11,0 | 13,2 |
+
+| núcleo | `0,60·R` | `0,45·R` | `0,35·R` | **`0,25·R`** | `0,15·R` | `0,08·R` | `0,04·R` |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| ms | 4,6 | 6,9 | 6,3 | **7,9** | 10,7 | 11,6 | **17,4** |
+
+⚠️⚠️ **O recurso das entradas NÃO é a árvore.** `starts` **não** acrescenta um ramo — ele só engorda
+`b`. Quem cresce é o **divisor**, o campo fica mais conservador e o passo da marcha encurta. ⛔ *Uma
+sonda que contasse nós diria que isto é grátis*, e é por isso que a régua é o **quadro** (a lei da
+W128, que o nó já tinha pago outra vez).
+
+⛔ **E o tecto NÃO é «até rebentar»:** a `384` uma peça sozinha ainda cabe num quadro (`79 %`), e um
+tecto ali entregaria uma forma que só existe se for a única coisa no ecrã. ⚠️ **A FORMA não põe tecto
+nenhum aqui** — o gradiente aguenta `≤ 1,0107` até `starts = 96` e a secção continua exacta: é mesmo
+só o relógio.
+
+**O FILETE** ([`thread_round_limit`]) é o `min` de duas alturas, e cada uma é de uma aresta:
+
+1. **a crista** — `depth·sin α`, o círculo inscrito no vértice do V;
+2. **a terra** — `(pitch/2 − depth·tan α)·cos α`. ⚠️ Acima dela a mistura da união alcança o **meio
+   da terra**, e ali o campo tem um vinco (o ponto onde a volta mais próxima muda de identidade).
+   *O `min` esconde-o enquanto a superfície ali for a do núcleo; um filete que chegue lá desenterra-o.*
+
+⇒ **no tecto da profundidade o filete morre**, e isso é a forma a dizer a verdade: uma rosca de
+profundidade cheia tem raiz viva por definição. É por isso que a entrada do catálogo nasce a `70 %`.
+
+### §136.4-bis — ⛔⛔ O CENSO apanhou o CHANFRO INERTE, e a causa é uma PRIMEIRA vez
+
+`every_shape_that_offers_a_chamfer_is_changed_by_it` reprovou: `50 290 → 50 358`, **`+0,000 %`** —
+o chanfro da rosca não cortava, **somava**.
+
+⭐⭐ **A rosca é a primeira forma desta casa em que as arestas CÔNCAVAS pesam mais que as convexas.**
+Por volta há **uma** crista (convexa, interior `2α`) e **duas** raízes (côncavas, interior `180° − α`),
+e a área que um recuo `c` move é a mesma nas duas (`½c²·sin 60°` — são duais por De Morgan). ⇒ o
+chanfro somava **o dobro** do que tirava. ⚠️ **Sete outras formas já usam `union_joint` com a `Edge`
+do artista** (a seta, o balão, a cruz, o pergaminho) e passam — porque nelas o convexo domina. *A
+premissa da régua nunca tinha sido testada.*
+
+⛔ **A cura não é afrouxar o gate — é o significado das duas palavras:**
+
+| | numa quina convexa | numa quina CÔNCAVA |
+|---|---|---|
+| **filete** | arredonda, tira | arredonda, **enche** — e é a coisa nomeada e pedida: a **raiz redonda** de um parafuso, onde a fadiga começa |
+| **chanfro** | corte recto a 45°, tira | **não corta nada, ENCHE** — e um controlo chamado *Chamfer* que engorda a peça é um controlo que mente |
+
+⇒ **o chanfro age só nas arestas convexas** (a crista e o aro da laje) e **o filete alcança as
+quatro**. ⚠️ **E o filete continua a somar volume** nesta forma — duas raízes contra uma crista —,
+que é o que um filete de rosca faz em qualquer CAD: está **declarado**, não é um descuido. ⛔ Não há
+gate a exigir que o filete corte, e escrever um cravaria esta forma pela geometria dela.
+
+### §136.4-ter — ⛔⛔ E o mesmo censo apanhou a QUARTA aresta: o ARRANQUE da rosca
+
+`the_fillet_reaches_every_edge_of_every_shape` reprovou logo a seguir: com o filete a metade do
+limite ainda havia **`10,0 %`** da superfície sobre um vinco, pior **`73,1°`**.
+
+⭐ **A sonda localizou-o antes de eu tocar em código** (`PH2D_MISS=thread probe_where_the_fillet_misses`):
+todos os pontos em `|z| = 0,345` com `h = 0,35` — **as tampas**. E a hipótese foi **testada**, não
+suposta: uma peça `4×` mais alta baixou a fracção para `4,4 %` sem as coordenadas saírem das tampas.
+
+⛔ **A laje estava escrita `Edge::square`, com o comentário «a parede do cilindro é ortogonal à
+tampa» — e é.** O que o comentário não dizia é que **a parede do cilindro não é a única coisa que
+encontra a tampa**: cortar a rosca a meio de uma volta deixa o **ARRANQUE**, uma cunha de flanco que
+encontra a tampa a `90° − α` — a `α = 30°`, **`30°`**. Uma faca, e é a mesma faca que faz um parafuso
+real levar um chanfro de entrada na ponta.
+
+⛔⛔⛔ **E A CURA FOI CONSTRUÍDA, MEDIDA E RECUSADA — as duas metades da mesma medição.**
+`Edge::at(round, chamfer, −cos α · k)` leva a fracção de **`10,0 %` a `0,1 %`**: ela funciona. ⛔ E o
+campo deixa de ser marchável — `intersection_round_at` num diedro de `30°` dá **`‖∇f‖ = 3,71`**
+contra o `1` que a marcha exige, e **não é do chanfro**: o **filete sozinho** mede o mesmo em
+`round = 0,003`, `0,010` e `0,016`.
+
+⚠️⚠️ **Isso REFUTA, com número, uma asserção do [`edge_shrink`]:** *«só o PAR encolhe — cada recuo
+sozinho já está dentro do balde»*. Ela foi calibrada num corpus **sem diedro agudo** (o pior era o
+prisma hexagonal, a `120°`), e a rosca é a primeira forma a exercê-lo. ⇒ pagar o divisor `4` aqui
+custaria **`4×` o quadro sempre que o artista pusesse um filete**.
+
+⇒ **fica a suposição ortogonal, e o arranque entra no `APEX_EXCEPTION` ao lado da MOLA** — que é
+literalmente a mesma laje a cortar um fio inclinado (`("helix", 6.0)`, W124). ⭐ **E é a forma
+certa:** um parafuso a sério tem a faca do arranque, e quem a tira é um **chanfro de entrada na
+ponta** — outra feature, não este filete.
+
+⚠️⚠️ **A lei: um comentário que afirma uma ortogonalidade descreve UMA das faces que ali se
+encontram.** Ele estava certo sobre o cilindro e cego ao arranque — e a régua que o desmentiu não foi
+a que mede a forma, foi a que **acha as arestas pela variação da normal**.
+
+### §136.5 — As MÃOS, e por que a régua delas é uma SIMETRIA
+
+`hands = 2` cruza a família da mão direita com a da esquerda — o losango de um punho. A prova de que
+o knob está vivo **e** de que faz a coisa certa é exacta, e não uma barra escolhida: sob `y → −y`
+temos `φ → −φ`, logo `w₁ = z − bφ` e `w₂ = z + bφ` **trocam**. Com as duas mãos o conjunto
+`{w₁, w₂}` é invariante ⇒ **o campo é espelhado ao bit**; com uma mão não é (medido `> 1e-3`).
+
+### §136.6 — Os gates
+
+| gate | o que ele mede |
+|---|---|
+| `the_thread_carries_the_profile_it_promises` | a secção meridiana **é** o triângulo autorado (`< 2 %` da profundidade), em 5 combinações — o gate nº 1, porque um minorante frouxo **infla** a peça |
+| `the_ridge_sits_on_the_core_and_never_reaches_the_axis` | dentro do núcleo o campo é o do cilindro **ao valor** — o defeito da §136.3 |
+| `the_seam_of_the_angle_does_not_crack_the_piece` | o salto na costura **encolhe** com o passo (uma descontinuidade não encolhe) |
+| `the_two_hands_are_a_mirror_and_one_hand_is_not` | a simetria exacta da §136.5, e os **dois** lados |
+| `a_start_written_with_a_fraction_lands_on_a_start` | `2,6 → 3`, e a faixa nas duas pontas |
+| `the_depth_ceiling_is_where_the_turns_touch` | `2·depth·tan α = pitch` no tecto, e o núcleo a mandar quando o passo é grosso |
+| `narrowing_the_pitch_reseats_the_depth` | a coerção geral repõe a invariante (a lei da W127) |
+| `the_thread_offers_a_fillet_and_it_dies_when_the_land_closes` | as duas metades do tecto do filete, e o painel a ler o MESMO número que a validação |
+| `every_start_count_keeps_the_field_marching` | `‖∇f‖ ≤ 1,02` em toda a faixa de entradas × mãos |
+
+⭐⭐ **A secção e o gradiente juntos dão o minorante DE GRAÇA** — *uma função 1-Lipschitz que se anula
+na fronteira é, por teorema, um minorante da distância a ela.* Não é preciso um terceiro gate a medir
+distâncias, e é por isso que ele não existe.
+
+**Smoke:** *MODEL* > **A** > *Thread* e *Knurled Grip*, e `PH2D_FIELD_SMOKE=29` para as quatro lado a
+lado.

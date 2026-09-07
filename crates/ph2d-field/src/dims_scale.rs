@@ -466,6 +466,24 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
                 *v *= factor;
             }
         }
+        // ─────────────────────────── W135 ───────────────────────────
+        // ⚠️ **O ÂNGULO e as CONTAGENS não escalam** — o flanco é uma forma, e as entradas e as
+        // mãos são ramos do campo.
+        Primitive::Thread {
+            radius,
+            half_height,
+            pitch,
+            depth,
+            flank: _,
+            starts: _,
+            hands: _,
+            round,
+            chamfer,
+        } => {
+            for v in [radius, half_height, pitch, depth, round, chamfer] {
+                *v *= factor;
+            }
+        }
         p @ (Primitive::Arrow { .. }
         | Primitive::Chevron { .. }
         | Primitive::BentArrow { .. }

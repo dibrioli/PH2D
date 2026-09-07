@@ -74,6 +74,7 @@ impl Primitive {
             Primitive::Superquadric { .. } => PrimitiveKind::Superquadric,
             Primitive::Superformula { .. } => PrimitiveKind::Superformula,
             Primitive::TorusKnot { .. } => PrimitiveKind::TorusKnot,
+            Primitive::Thread { .. } => PrimitiveKind::Thread,
             Primitive::Triangle { .. } => PrimitiveKind::Triangle,
             Primitive::Polygon { .. } => PrimitiveKind::Polygon,
         }

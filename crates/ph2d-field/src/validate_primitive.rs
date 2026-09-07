@@ -558,6 +558,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
         Primitive::RoundedCylinder { .. }
         | Primitive::Superquadric { .. }
         | Primitive::Superformula { .. }
-        | Primitive::TorusKnot { .. } => super::validate_flow::validate_exact(p, idx),
+        | Primitive::TorusKnot { .. }
+        | Primitive::Thread { .. } => super::validate_flow::validate_exact(p, idx),
     }
 }

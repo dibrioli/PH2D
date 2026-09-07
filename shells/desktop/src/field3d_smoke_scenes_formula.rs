@@ -301,3 +301,50 @@ pub(crate) fn cena_28() -> Result<FieldDoc, ph2d_field::FieldError> {
         NodeId(4),
     )
 }
+
+/// ⭐⭐⭐ **A CENA 29 — a ROSCA e o SERRILHADO** (W135).
+///
+/// ⚠️ **As quatro têm o MESMO cilindro** e mudam só o que a rosca é: o passo, o flanco, as entradas
+/// e as mãos. *A peça de fora não se mexe; o que muda é o filete que corre nela.*
+///
+/// # Errors
+/// Só se uma das quatro violar uma cerca do documento — o que é o gate a fazer o trabalho dele.
+pub(crate) fn cena_29() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 29 — A ROSCA: (1) parafuso fino · (2) passo grosso, mesmo flanco · \
+         (3) QUATRO entradas -- o filete sobe quatro vezes mais depressa · (4) SERRILHADO, as duas \
+         maos cruzadas. A profundidade e sempre uma fraccao do tecto, que depende do passo E do \
+         flanco."
+    );
+    let peca = |pitch: f32, flank: f32, starts: u32, hands: u32, fraccao: f32, x: f32| {
+        let radius = 0.17_f32;
+        leaf(
+            Primitive::Thread {
+                radius,
+                half_height: 0.24,
+                pitch,
+                depth: ph2d_field::thread_depth_ceiling(radius, pitch, flank) * fraccao,
+                flank,
+                starts,
+                hands,
+                round: 0.0,
+                chamfer: 0.0,
+            },
+            Xform {
+                translation: [x, 0.0, 0.0],
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    FieldDoc::new(
+        vec![
+            peca(0.045, 30.0, 1, 1, 0.75, -0.72),
+            peca(0.090, 30.0, 1, 1, 0.75, -0.24),
+            peca(0.090, 30.0, 4, 1, 0.75, 0.24),
+            // ⚠️ **`10` entradas, e o número é o ÂNGULO DE CRUZAMENTO** — ver [`a_knurl`].
+            peca(0.075, 45.0, 10, 2, 0.70, 0.72),
+            combine(Op::Union(Blend::Sharp), (0..4).map(NodeId).collect()),
+        ],
+        NodeId(4),
+    )
+}

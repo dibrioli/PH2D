@@ -520,6 +520,20 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             winds: 2,
             loops: 3,
         },
+        // ⚠️ **Uma rosca de VERDADE, e não o ponto neutro** — `starts = 1` com `hands = 1` é o
+        // parafuso, que é onde esta forma é ela. ⚠️ E a profundidade sai do TECTO (a lição da
+        // linha acima): ela depende do passo E do flanco.
+        PrimitiveKind::Thread => Primitive::Thread {
+            radius: 0.5,
+            half_height: 0.45,
+            pitch: 0.16,
+            depth: ph2d_field::thread_depth_ceiling(0.5, 0.16, 30.0) * 0.75,
+            flank: 30.0,
+            starts: 1,
+            hands: 1,
+            round: 0.0,
+            chamfer: 0.0,
+        },
     })
 }
 

@@ -408,6 +408,13 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
         Primitive::TorusKnot {
             radius, tube, cord, ..
         } => radius + tube + cord,
+        // ─────────────────────────── W135 ───────────────────────────
+        // ⭐ **Exacto**: `radius` é a CRISTA, e nada da peça passa dela — o filete só a come.
+        Primitive::Thread {
+            radius,
+            half_height,
+            ..
+        } => radius.hypot(*half_height),
         Primitive::Triangle {
             a,
             b,

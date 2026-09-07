@@ -379,6 +379,49 @@ pub(super) fn validate_exact(p: &Primitive, idx: u32) -> Result<(), FieldError> 
             }
             Ok(())
         }
+        // ─────────────────────────── W135 ───────────────────────────
+        Primitive::Thread {
+            radius,
+            half_height,
+            pitch,
+            depth,
+            flank,
+            starts,
+            hands,
+            ..
+        } => {
+            positive(radius, "radius")?;
+            positive(half_height, "half_height")?;
+            positive(pitch, "pitch")?;
+            positive(depth, "depth")?;
+            if !(crate::MIN_THREAD_FLANK_DEG..=crate::MAX_THREAD_FLANK_DEG).contains(&flank) {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "flank",
+                });
+            }
+            if !(crate::MIN_THREAD_STARTS..=crate::MAX_THREAD_STARTS).contains(&starts) {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "starts",
+                });
+            }
+            if !(crate::MIN_THREAD_HANDS..=crate::MAX_THREAD_HANDS).contains(&hands) {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "hands",
+                });
+            }
+            // ⚠️ **A profundidade abaixo do tecto MEDIDO** — a mesma função que o painel usa para a
+            // faixa, e ela carrega os DOIS recursos (o período do modelo e o núcleo da marcha).
+            if depth > crate::thread_depth_ceiling(radius, pitch, flank) {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "depth",
+                });
+            }
+            Ok(())
+        }
         // ─────────────────────────── W127 ───────────────────────────
         Primitive::Superquadric {
             half,

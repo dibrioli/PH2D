@@ -442,7 +442,7 @@ mesma fórmula com `points` e a razão interna certa —, `sdPie`, `sdCutDisk`, 
 | ~~**Superfórmula (Gielis)**~~ | — | ✅ **SHIPOU na W128** — o **produto esférico** de duas curvas, escrito como **duas medidas de Minkowski encaixadas** (a mesma estrutura da superquadrática). Divisor por duas varreduras de uma dimensão, `71 µs`/quadro, campo a `3,8×` uma esfera |
 | ~~**Superquadrática / superelipsóide**~~ | — | ✅ **SHIPOU na W127** — com **dois** expoentes (o de cima e o de lado), divisor em forma fechada e a esfera **exacta** no meio. ⛔ A astróide fica **fora com demonstração**: abaixo de `n = 1` o gradiente na superfície não tem limite (cúspides) |
 | ~~**Nó de toro (p, q)**~~ | — | ✅ **SHIPOU na W134** — o `min` sobre os **`p` fios** que cortam cada plano meridiano, com a distância à **recta tangente** (só um eixo encolhe). ⭐ A costura do `atan2` **não existe** aqui: o conjunto `{ψ_n}` é invariante a `φ → φ − 2π`, e um `min` sobre um conjunto invariante é contínuo. ⚠️ E `p`/`q` são `u32` — a contagem de ramos de uma árvore não admite fracção, logo a lição da W128 não se paga com coerção |
-| **Rosca / knurling** | **B** ⭐ | A hélice varrida num cilindro — o parafuso a sério, e o punho serrilhado |
+| ~~**Rosca / knurling**~~ | — | ✅ **SHIPOU na W135** — um **perfil** varrido por movimento de parafuso, e não a hélice. ⭐ O factor da recta tangente fecha em **forma fechada** aqui (`k = 1/√(1 + β²n_w²)`), e com ele os **três** cossenos de aresta. ⚠️ `starts` é `u32` porque é isso que faz a costura do `atan2` **não existir** (o `w` anda um número inteiro de períodos), e `hands = 2` é o serrilhado — provado por uma **simetria exacta**, não por uma barra |
 
 ⚠️ **E há duas que são MODIFICADORES, não formas:** a **grade hexagonal** (favo de mel) é a
 repetição que falta ao lado do `Array` e do `Radial`, e as **metabolas** são o `smooth-min` que já
@@ -475,10 +475,10 @@ a ordena é o dono do produto.
 |---|---:|---|
 | §7.2 — catálogo **3D** | **3** | Plane · Death Star · Vesica Segment |
 | §7.3 — catálogo **2D** | **3** | Bezier · Parabola · Circle Wave |
-| §7.4 — **famílias** fora de catálogo | **1** | Rosca |
-| **total** | **7** | |
+| §7.4 — **famílias** fora de catálogo | **0** | ~~Rosca~~ |
+| **total** | **6** | |
 
-⚠️ **Actualizado em 07/09**: saiu da conta o **Nó de toro** (W134 — [doc 06 §135](06_resultados_cena_e_gizmo.md)), que fecha metade do lote 10.
+⚠️ **Actualizado em 07/09**: saíram da conta o **Nó de toro** (W134 — [doc 06 §135](06_resultados_cena_e_gizmo.md)) e a **Rosca** (W135 — [§136](06_resultados_cena_e_gizmo.md)), que **fecham o lote 10**. ⚠️ E a Rosca fecha a §7.4 INTEIRA: das seis famílias fora de catálogo, as que ficam são as duas que são **modificadores** e os fractais, e nenhuma das três é uma forma.
 
 ⚠️ **Actualizado em 06/09**: saíram da conta a **Superquadrática** (W127 — [doc 06 §128](06_resultados_cena_e_gizmo.md)) e a **Superfórmula** (W128 — [§129](06_resultados_cena_e_gizmo.md)). E no mesmo dia o **Triângulo** (W131 — [§132](06_resultados_cena_e_gizmo.md)) e o **Polígono de `N`** (W132 — [§133](06_resultados_cena_e_gizmo.md)), que fecham o lote 9.
 

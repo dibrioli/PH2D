@@ -54,6 +54,8 @@ pub mod radius;
 pub mod radius_extents;
 /// ⭐ Até onde o filete de cada forma vai — ver [`radius_limit`].
 pub mod radius_limit;
+/// ⭐ A ROSCA e as cercas dela — ver [`thread`].
+pub mod thread;
 /// ⭐⭐ Que formas têm VÉRTICES autorados, e onde eles estão na lista de linhas — ver
 /// [`vertex_rows`].
 pub mod vertex_rows;
@@ -67,6 +69,11 @@ pub use knot::{
     max_knot_loops,
 };
 pub use mods::{Unary, UnaryKind};
+pub use thread::{
+    MAX_THREAD_FLANK_DEG, MAX_THREAD_HANDS, MAX_THREAD_STARTS, MIN_THREAD_FLANK_DEG,
+    MIN_THREAD_HANDS, MIN_THREAD_STARTS, THREAD_CORE_FLOOR, thread_depth_ceiling,
+    thread_round_limit,
+};
 // ⚠️ **O `pub use` é o que mantém `ph2d_field::Primitive`** — cortar um arquivo não pode custar uma
 // reescrita em cada sítio que o chamava.
 pub use polygon::{

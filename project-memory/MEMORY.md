@@ -62,7 +62,7 @@
 - [Duas metades de uma cura, cada uma recusada SOZINHA, não a refutam — corra a célula (1,1)](feedback_two_halves_of_a_cure_each_refused_alone_do_not_refute_the_cure.md)
 - [E o caso SIMÉTRICO: curar METADE de uma família pode piorar, porque a outra compensava o erro](feedback_curing_half_a_family_can_leave_the_other_half_worse.md)
 - ⭐ [Um SEGUNDO erro pode ser load-bearing para o primeiro — o sinal é a cura não melhorar com o knob que devia curá-la](feedback_a_second_error_can_be_load_bearing_for_the_first.md)
-- ⭐ [**Campo IMPLÍCITO (SDF) e réguas de FORMA** — a família inteira (13): união coplanar incha · `max` cru = aresta viva · a coerção estaciona na cerca · o gate no REPRESENTANTE](reference_topic_implicit_field_laws.md)
+- ⭐ [**Campo IMPLÍCITO (SDF) e réguas de FORMA** — a família inteira (14): união coplanar incha · `max` cru = aresta viva · o semiespaço INFINITO ganha o `min` dentro da peça · o gate no REPRESENTANTE](reference_topic_implicit_field_laws.md)
 - [Apertar uma entrada FROUXA consome a margem que fazia a constante bastar — re-meça a tabela, não troque a linha](feedback_tightening_an_input_invalidates_the_constant_that_was_calibrated_around_it.md)
 - [Erro de INTERVALOS é de 1.ª ordem: grelha uniforme paga n³ — branch-and-bound, e o minorante sai de graça](feedback_interval_error_is_first_order_so_a_uniform_grid_pays_n_cubed.md)
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO — a variável da varredura é parte da correcção (16,3 % → 0,0000 %)](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)

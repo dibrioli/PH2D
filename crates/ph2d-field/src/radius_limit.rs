@@ -54,6 +54,14 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
             let r = crate::triangle_inradius(f(a), f(b), f(c)) as f32;
             Some(r.min(*half_height))
         }
+        // ⭐⭐ **A ROSCA** (W135) — o `min` da altura da crista e da terra entre voltas; a conta e as
+        // duas arestas que ela protege vivem em [`crate::thread_round_limit`].
+        Primitive::Thread {
+            pitch,
+            depth,
+            flank,
+            ..
+        } => Some(crate::thread_round_limit(*pitch, *depth, *flank)),
         Primitive::Sphere { .. }
         | Primitive::RoundedCylinder { .. }
         | Primitive::Superquadric { .. }

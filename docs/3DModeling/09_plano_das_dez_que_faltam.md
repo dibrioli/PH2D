@@ -24,8 +24,8 @@ número um.
 |---|---:|---|
 | catálogo **2D** | **3** | ~~Polygon(N)~~ · ~~Triangle~~ · Bezier · Parabola · Circle Wave |
 | catálogo **3D** | **3** | Plane · Death Star · Vesica Segment |
-| **famílias** fora de catálogo | **1** | ~~Nó de toro~~ · Rosca / knurling |
-| **total** | **7** | |
+| **famílias** fora de catálogo | **0** | ~~Nó de toro~~ · ~~Rosca / knurling~~ |
+| **total** | **6** | |
 
 ✅ **O LOTE 9 FECHOU em 06/09** — o *Triangle* na W131 ([doc 06 §132](06_resultados_cena_e_gizmo.md)) e
 o *Polygon(N)* na W132 ([§133](06_resultados_cena_e_gizmo.md)).
@@ -90,14 +90,20 @@ previsões deste plano estavam erradas**, o que vale reler antes da Rosca:
 | *«esperar a mesma lição da superfórmula: um `m` fraccionário racha a peça»* | ⛔ a costura **não existe**: o conjunto `{ψ_n}` é invariante a `φ → φ − 2π`. E `p` não pode ser fraccionário — ele é a contagem de ramos |
 | *«o minorante sai de dividir pelo gradiente máximo»* | ⛔⛔ **isso ENGORDA a peça**: `(minorante) − corda` desloca a superfície para fora, e a `(2,3)` saía um toro maciço. A folga tem de multiplicar o campo **inteiro**, cujo zero não se mexe |
 
-- **Rosca / knurling:** a hélice **varrida** num cilindro — o parafuso a sério e o punho serrilhado.
-  ⭐ O `sd_helix` já existe; o que falta é a **intersecção com o cilindro** e o perfil do filete.
-  ⚠️ **E o nó deixou uma ferramenta pronta para ela:** a distância à **recta tangente** (decompor em
-  `radial` + `ao_longo` e encolher só um eixo) é o que dá a secção certa de uma corda inclinada — a
-  `sd_helix` de hoje usa a corda crua e **engorda o tubo `1/c`**, o que passa despercebido só porque
-  numa mola típica `c = 0,992`.
-- ⚠️ **Medir o QUADRO, não a amostra** — foi exactamente esse o erro da W128 (doc 06 §130), e o nó
-  pagou-o outra vez: `p = 12` custa `32,1 ms` e `p = 16` custa `61,1`.
+✅ **E A ROSCA SHIPOU na W135** ([doc 06 §136](06_resultados_cena_e_gizmo.md)) — **o lote 10 fechou**.
+⛔ **Três previsões deste plano estavam erradas outra vez**, e vale relê-las:
+
+| o plano dizia | o que a implementação mediu |
+|---|---|
+| *«a hélice VARRIDA num cilindro»* | ⛔ **não é a hélice** — é um **perfil** varrido por movimento de parafuso. O `sd_helix` mede a distância a uma CURVA; uma rosca é uma face, e é isso que faz o factor da recta tangente fechar em forma fechada (`k = 1/√(1 + β²n_w²)`) em vez de pedir a correcção de curvatura que o nó pagou |
+| *«falta a intersecção com o cilindro»* | ⚠️ é uma **UNIÃO**, não uma intersecção — o filete assenta sobre o núcleo. ⛔ E foi por eu escrever a cunha do filete **sem fundo** que o campo lia `‖∇f‖ = 2,4562` dentro da peça, onde nenhuma régua de forma olha |
+| *«medir o quadro, não a amostra»* | ✅ certo, **e por outro mecanismo**: aqui `starts` **não** acrescenta um ramo à árvore (ao contrário do `p` do nó) — ele engorda o divisor, e quem paga é a **marcha** |
+
+⏳ **FICA ABERTO e nomeado:** a `sd_helix` continua a usar a corda crua e a **engordar o tubo `1/c`**
+(invisível só porque numa mola típica `c = 0,992`). ⚠️ A ferramenta para a curar está agora escrita
+**duas** vezes (W134 e W135) e a conta dela, para uma curva, é `hypot(dr, dz·sin β)` — que é
+**exactamente 1-Lipschitz**, e portanto estritamente melhor que o `c` de hoje. *Ela não entrou na
+W135 porque mexer numa forma que já shipou pede a sua própria régua de antes/depois.*
 
 ### Lote 11 — **Bezier, Parabola e Circle Wave** ⭐ *(as curvas com espessura)*
 

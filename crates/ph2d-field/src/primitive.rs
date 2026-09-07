@@ -63,19 +63,8 @@ pub enum Primitive {
         round: f32,
         chamfer: f32,
     },
-    /// **O perfil girado em torno do eixo Y.** O `x` do perfil é a distância ao eixo e o `y` é a
-    /// altura.
-    ///
-    /// ⚠️ **Y, e não Z — de propósito, e ao contrário do [`Primitive::Cylinder`] e do
-    /// [`Primitive::Torus`], que são simétricos em Z.** A regra que manda aqui não é a coerência
-    /// entre primitivas, é a coerência com o **plano de desenho**: o perfil vem do editor vetorial,
-    /// que desenha em XY, e o eixo de uma revolução tem de estar **dentro** do plano do perfil. A
-    /// extrusão sai do plano (por Z), a revolução gira em torno de uma reta do plano (o Y). Quem
-    /// quiser outro eixo roda o nó — é para isso que o [`Xform`] existe.
-    ///
-    /// ⚠️ O perfil **não pode cruzar o eixo** (`x < 0`): a superfície de revolução de um contorno
-    /// que cruza o eixo auto-intersecta, e o campo que sai disso deixa de ser uma distância. O
-    /// documento recusa ([`FieldError::ProfileCrossesAxis`]) em vez de produzir a forma errada.
+    /// **O perfil girado em torno do eixo Y** (o `x` dele é a distância ao eixo). ⚠️ **Porquê Y, e
+    /// porque ele não pode CRUZAR o eixo:** as duas razões vivem em [`crate::profile`].
     Revolve { profile: Profile },
     /// ⭐⭐ **Cone reto no eixo Z, possivelmente TRUNCADO** (W101) — raio `bottom` em
     /// `−half_height`, `top` em `+half_height`, com o **aro** arredondado em `round`.
@@ -398,10 +387,8 @@ pub enum Primitive {
     /// ⚠️ **`inner > 0` é obrigatório, e a cerca é o que impede a segunda fórmula**: sem furo isto
     /// seria a [`Primitive::Pie`], e duas primitivas para a mesma superfície é o defeito que a
     /// [`Primitive::Cone`] evita desde a W101. *Um tubo tem furo por definição; sem furo é uma
-    /// fatia.*
-    ///
-    /// ⚠️ **Três portas da paleta, uma primitiva** — tubo (alto), anilha (chato) e arco de anel
-    /// (com sector) diferem só nos números com que nascem.
+    /// fatia.* ⚠️ E **três portas da paleta, uma primitiva** — tubo, anilha e arco de anel diferem
+    /// só nos números com que nascem.
     Tube {
         outer: f32,
         inner: f32,
@@ -675,16 +662,29 @@ pub enum Primitive {
         round: f32,
         chamfer: f32,
     },
-    /// ⭐⭐⭐ **O NÓ DE TORO `(p, q)`** — a corda que dá `winds` voltas ao eixo enquanto dá `loops`
-    /// voltas ao tubo do toro `(radius, tube)`. ⚠️ **Fechada, logo SEM ARESTA** — sem `round` nem
-    /// `chamfer` —, e as contagens são `u32` porque são os **ramos** do campo, que não admitem
-    /// fracção. Mecanismo e cercas: [`crate::knot`].
+    /// ⭐⭐⭐ **O NÓ DE TORO `(p, q)`** — a corda que dá `winds` voltas ao eixo enquanto dá `loops` ao
+    /// tubo. ⚠️ **Fechada, logo SEM ARESTA**, e as contagens são `u32` porque são os **ramos** do
+    /// campo, que não admitem fracção. Mecanismo e cercas: [`crate::knot`].
     TorusKnot {
         radius: f32,
         tube: f32,
         cord: f32,
         winds: u32,
         loops: u32,
+    },
+    // ─────────────────────────── W135 ───────────────────────────
+    /// ⭐⭐⭐ **ROSCA / SERRILHADO** — o cilindro de crista `radius` com o filete helicoidal em V. O
+    /// modelo, e a razão de `starts` e `hands` serem CONTAGENS, vivem em [`crate::thread`].
+    Thread {
+        radius: f32,
+        half_height: f32,
+        pitch: f32,
+        depth: f32,
+        flank: f32,
+        starts: u32,
+        hands: u32,
+        round: f32,
+        chamfer: f32,
     },
     Superformula {
         half: [f32; 3],

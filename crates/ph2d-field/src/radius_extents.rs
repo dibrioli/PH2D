@@ -364,6 +364,13 @@ pub fn bounding_half_extents(p: &Primitive) -> [f32; 3] {
             let fora = radius + tube + cord;
             [fora, fora, tube + cord]
         }
+        // ─────────────────────────── W135 ───────────────────────────
+        // ⚠️ **O cilindro da crista, e a laje** — a rosca nunca sai de dentro dele.
+        Primitive::Thread {
+            radius,
+            half_height,
+            ..
+        } => [*radius, *radius, *half_height],
         // ⚠️ **A caixa é o maior |coordenada| de cada eixo** — o triângulo não é simétrico, e um
         // lado pode estender-se mais que o outro. *Uma caixa que só olha um lado corta a peça no
         // recorte por região.*

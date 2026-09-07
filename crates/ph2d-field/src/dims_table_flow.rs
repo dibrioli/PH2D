@@ -400,6 +400,69 @@ pub(crate) fn dims_lattice(p: &Primitive) -> Vec<Dim> {
                 },
             },
         ],
+        // ─────────────────────────── W135 ───────────────────────────
+        // ⚠️ **A ORDEM É A IDENTIDADE DA LINHA** — o painel manda o índice, não o nome.
+        Primitive::Thread {
+            radius,
+            half_height,
+            pitch,
+            depth,
+            flank,
+            starts,
+            hands,
+            round,
+            chamfer,
+        } => vec![
+            Dim {
+                key: "field.dim.radius",
+                value: *radius,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.height",
+                value: half_height * 2.0,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.pitch",
+                value: *pitch,
+                span: Span::Positive,
+            },
+            // ⚠️ **A parede é MEDIDA e tem DOIS recursos** — ver [`crate::thread_depth_ceiling`].
+            Dim {
+                key: "field.dim.thread_depth",
+                value: *depth,
+                span: Span::Wall(crate::thread_depth_ceiling(*radius, *pitch, *flank)),
+            },
+            // ⚠️ **Em GRAUS, e adimensional ⇒ a vista não tem voto** (ver [`Span::Range`]).
+            Dim {
+                key: "field.dim.thread_flank",
+                value: *flank,
+                span: Span::Range {
+                    min: crate::MIN_THREAD_FLANK_DEG,
+                    max: crate::MAX_THREAD_FLANK_DEG,
+                },
+            },
+            // ⭐⭐ **CONTAGENS, e não números** — ver [`crate::thread`].
+            Dim {
+                key: "field.dim.thread_starts",
+                value: *starts as f32,
+                span: Span::Count {
+                    min: crate::MIN_THREAD_STARTS,
+                    max: crate::MAX_THREAD_STARTS,
+                },
+            },
+            Dim {
+                key: "field.dim.thread_hands",
+                value: *hands as f32,
+                span: Span::Count {
+                    min: crate::MIN_THREAD_HANDS,
+                    max: crate::MAX_THREAD_HANDS,
+                },
+            },
+            chamfer_dim(p, *chamfer),
+            round_dim(p, *round),
+        ],
         Primitive::Gyroid {
             half,
             cell,

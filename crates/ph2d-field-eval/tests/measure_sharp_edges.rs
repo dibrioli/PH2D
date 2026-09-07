@@ -383,6 +383,44 @@ fn where_the_curvature_breaks_are() {
     }
 }
 
+/// ⭐ **ONDE uma forma QUALQUER quebra a curvatura** — a irmã geral da
+/// [`where_the_curvature_breaks_are`], que é da estrela e só dela.
+///
+/// ⚠️ **Ela nasceu porque a irmã não servia:** as faixas daquela (*ponta*, *vale*, *aro*) são da
+/// estrela, e perguntar a uma forma nova onde ela quebra pedia coordenadas, não baldes com nome de
+/// outra peça. *Uma sonda com as faixas de uma forma responde por essa forma só.*
+///
+/// `PH2D_MISS=<forma> cargo test … -- --ignored probe_where_a_shape_breaks_curvature --nocapture`
+#[test]
+#[ignore = "sonda: as coordenadas da quebra de curvatura de uma forma qualquer"]
+fn probe_where_a_shape_breaks_curvature() {
+    let alvo = std::env::var("PH2D_MISS").unwrap_or_else(|_| "thread".into());
+    for k in PrimitiveKind::ALL {
+        if k.key() != alvo {
+            continue;
+        }
+        let p = representative(k).expect("rep");
+        let Some(q) = with_round(&p, 0.999) else {
+            continue;
+        };
+        let (_, media) = curvature_break(&q, 2048);
+        let quebras = curvature_points(&q, 2048);
+        println!(
+            "  {alvo}: quebra média {media:.2}, {} pontos acima de 1,0",
+            quebras.len()
+        );
+        for (c, v) in quebras.iter().take(16) {
+            println!(
+                "    [{:+.3} {:+.3} {:+.3}]  rho {:.3}  quebra {v:.2}",
+                c[0],
+                c[1],
+                c[2],
+                c[0].hypot(c[1])
+            );
+        }
+    }
+}
+
 /// Os pontos cuja quebra de curvatura passa de `1,0`.
 fn curvature_points(p: &Primitive, seeds: usize) -> Vec<([f64; 3], f64)> {
     let doc = FieldDoc::new(
@@ -545,6 +583,21 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
         | PrimitiveKind::Revolve
         | PrimitiveKind::Polygon
         | PrimitiveKind::TorusKnot => return None,
+        // ⭐ **A ROSCA entra, ao contrário do nó** — ela TEM arestas, e três espécies: a crista
+        // (dois flancos), a raiz (flanco contra o cilindro) e o aro da laje. ⚠️ A profundidade sai
+        // a `0,6` do tecto de propósito: no tecto a terra fecha e o filete da raiz não tem onde
+        // caber, o que é a lei que o [`ph2d_field::thread_round_limit`] escreve.
+        PrimitiveKind::Thread => Primitive::Thread {
+            radius: 0.45,
+            half_height: 0.35,
+            pitch: 0.18,
+            depth: ph2d_field::thread_depth_ceiling(0.45, 0.18, 30.0) * 0.6,
+            flank: 30.0,
+            starts: 1,
+            hands: 1,
+            round: 0.0,
+            chamfer: 0.0,
+        },
         PrimitiveKind::Cone => Primitive::Cone {
             bottom: 0.45,
             top: 0.12,
@@ -1123,7 +1176,7 @@ fn where_the_creases_are() {
 /// ⚠️ **O pior vinco lê `57,5°`, abaixo dos `80°–140°` de uma aresta VIVA** — é a mesma assinatura
 /// do raio e do gyroid nesta lista. E é a **forma**: o vale afiado entre lobos é o que a família
 /// tem de bonito, e quem o abre é o `n1`, que é um controlo que ela já tem.
-const APEX_EXCEPTION: [(&str, f64); 8] = [
+const APEX_EXCEPTION: [(&str, f64); 9] = [
     // ⚠️ **As folgas saem do que o GATE mede**, e não da tabela da sonda: ela amostra `8192`
     // pontos e o gate `2048×4`, e a `pie` lê `1,1 %` numa escala e `2,57 %` na outra.
     // *Uma folga calibrada no instrumento errado descreve outra coisa.*
@@ -1156,6 +1209,23 @@ const APEX_EXCEPTION: [(&str, f64); 8] = [
     // `5,6 %` da superfície sobre um vinco de `56,0°`. Ver o cabeçalho da
     // [`ph2d_field_eval::ops_spiral`] para os três cortes alternativos que foram medidos abaixo.
     ("helix", 6.0),
+    // ⭐⭐⭐ **O ARRANQUE DA ROSCA** (W135) — a IRMÃ da linha acima, e o mecanismo é o mesmo: uma
+    // laje a cortar um fio inclinado a meio de uma volta. ⚠️ Aqui o fio tem **flanco**, então o que
+    // fica não é uma pena — é uma **FACA**: o flanco encontra a tampa a `90° − α`, que a `α = 30°`
+    // são `30°`. É a mesma faca que faz um parafuso real levar um chanfro de entrada na ponta.
+    //
+    // ⭐ **A sonda localizou-o e a hipótese foi TESTADA antes da cura:** todos os pontos em
+    // `|z| = h`, e uma peça `4×` mais alta baixou a fracção de `10,0 %` para `4,4 %` sem as
+    // coordenadas saírem das tampas.
+    //
+    // ⛔⛔ **A CURA FOI CONSTRUÍDA, MEDIDA E RECUSADA.** Dar à laje o cosseno verdadeiro
+    // (`−cos α · k`) leva a fracção de **`10,0 %` a `0,1 %`** — e o campo deixa de ser marchável:
+    // `‖∇f‖ = 3,71` contra o `1` da marcha, com o **filete sozinho** (`round = 0,003`/`0,010`/
+    // `0,016`, todos `3,70`–`3,71`). ⚠️ E isso refuta, com número, a asserção do
+    // [`ph2d_field::edge_shrink`] de que *«cada recuo sozinho já está dentro do balde»* — ela foi
+    // calibrada num corpus sem diedro agudo (o pior era o hexágono, a `120°`). Pagar o divisor `4`
+    // aqui custaria **`4×` o quadro sempre que houvesse um filete**.
+    ("thread", 11.0),
     // ⭐⭐⭐ **O GYROID, e a régua está certa: é uma junção TANGENTE, e há coordenadas.**
     //
     // A sonda irmã [`probe_where_the_fillet_misses`] põe os `321` pontos de vinco **todos** em
@@ -1586,7 +1656,29 @@ fn the_valley_of_a_star_meets_the_cap_without_a_crease() {
 /// ⚠️ **E o RAIO entra pela mesma porta**: a faixa do filete dele encontra as faces planas do
 /// zigue-zague, e a curvatura salta de `1/r` para `0` em cada uma das seis quinas. ⛔ Curar isso é a
 /// mesma A/B que a gota já pagou — e nela a união arredondada mediu **pior em toda a faixa**.
-const TANGENT_JOIN_EXCEPTION: [(&str, f64); 5] = [
+const TANGENT_JOIN_EXCEPTION: [(&str, f64); 6] = [
+    // ⭐⭐⭐ **A ROSCA** (W135) — e a causa está escrita no doc da [`ph2d_field_eval::ops`]
+    // `slab_and_walls`, palavra por palavra: *«ela recebe o perfil JÁ COMPOSTO, e por isso a mistura
+    // do aro herda a costura interna dele e põe-na no aro»*.
+    //
+    // ⭐ **A sonda [`probe_where_a_shape_breaks_curvature`] põe os `151` pontos TODOS em
+    // `z = +0,350`** (a tampa, com `h = 0,35`) e a `ρ ≈ 0,325`, que é o raio do núcleo menos
+    // exactamente o raio do filete: eles estão na linha em que o arco do aro encosta na tampa. E a
+    // quebra varia de `2,2` a `16,3` **à volta da peça** — os picos caem onde o aro atravessa a
+    // RAIZ, que é a costura da união.
+    //
+    // ⛔ **A cura publicada pela casa não serve aqui:** o `intersection_joint_n` do `slab_and_walls`
+    // exige um perfil que seja **INTERSECÇÃO** de peças, e o corpo de uma rosca é uma **UNIÃO**
+    // (núcleo ∪ filete) — o mesmo motivo pelo qual a cruz e a nuvem não a usam.
+    //
+    // ⛔ **E apertar o tecto do filete é a direcção ERRADA, com precedente medido nesta lista:** a
+    // gota é *«a única forma cuja quebra PIORA com mais filete»*, ou seja em todas as outras a
+    // quebra **desce** quando o arco engorda. Um tecto mais apertado aqui aumentaria-a.
+    //
+    // ⚠️ E o artista só chega a isto com o filete **no máximo**: a entrada do catálogo nasce a
+    // METADE do tecto (a lei `every_new_shape_that_can_round_is_born_round`, que apanhou esta forma
+    // a nascer de aresta viva).
+    ("thread", 4.2),
     ("drop", 4.6),
     ("cloud", 9.0),
     ("bolt", 4.2),

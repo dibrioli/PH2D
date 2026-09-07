@@ -58,6 +58,8 @@ pub mod ops_spiral;
 pub mod ops_super;
 /// ⭐ Os SÍMBOLOS — ver [`ops_symbols`].
 pub mod ops_symbols;
+/// ⭐ A ROSCA e o SERRILHADO — ver [`ops_thread`].
+pub mod ops_thread;
 /// ⭐ O TRIÂNGULO de vértices quaisquer — ver [`ops_triangle`].
 pub mod ops_triangle;
 pub mod profile;

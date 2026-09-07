@@ -286,6 +286,9 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
         // ⚠️ **A CORDA, e não o raio do anel**: é ela a menor medida que define a peça, e é dela
         // que um filete de junção tem de saber.
         Primitive::TorusKnot { cord, .. } => *cord,
+        // ⚠️ **A PROFUNDIDADE do filete** — é a menor medida que define a rosca, e é dela que um
+        // filete de junção tem de saber.
+        Primitive::Thread { depth, .. } => *depth,
         Primitive::Superquadric { half, .. } | Primitive::Superformula { half, .. } => {
             half[0].min(half[1]).min(half[2])
         }

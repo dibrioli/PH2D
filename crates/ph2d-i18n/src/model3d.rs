@@ -129,6 +129,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ **"Torus Knot" e não "Knot"**: é o nome que toda a literatura e todo o outro programa
         // 3D lhe dá, e um artista que já o viu procura por ele.
         "panel.model3d.add.torus_knot" => "Torus Knot",
+        "panel.model3d.add.thread" => "Thread",
+        "panel.model3d.add.knurl" => "Knurled Grip",
         "panel.model3d.add.bolt" => "Lightning Bolt",
         "panel.model3d.add.shield" => "Shield",
         "panel.model3d.add.tag" => "Tag",
@@ -337,6 +339,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // e "Winds"/"Loops" é o que eles fazem para quem nunca leu nenhum.
         "field.dim.knot_p" => "P · Winds",
         "field.dim.knot_q" => "Q · Loops",
+        "field.dim.thread_depth" => "Thread Depth",
+        "field.dim.thread_flank" => "Flank Angle",
+        "field.dim.thread_starts" => "Starts",
+        "field.dim.thread_hands" => "Hands",
         // ⚠️ **"Top" e "Side" e não "XY" e "Z"**: o artista escolhe pelo que VÊ, e o eixo de cima
         // desta casa é o `Y` — chamar-lhes pelos eixos obrigaria a decifrar qual é qual.
         "field.dim.exponent_top" => "Top Exponent",

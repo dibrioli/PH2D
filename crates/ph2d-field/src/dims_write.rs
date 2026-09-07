@@ -570,6 +570,13 @@ pub(super) fn write_dim(
             | Primitive::TorusKnot { .. }),
             i,
         ) => return super::dims_write_formula::write_formula(p, node, i, value),
+        // ─────────────────────────── W135 ───────────────────────────
+        // ⚠️ **Só até ao `6`, e é isso que a separa das outras quatro**: a rosca TEM aresta, e as
+        // duas últimas linhas dela são o chanfro e o filete, que entram pelos portões genéricos
+        // abaixo. *Um `i` sem tecto aqui engoliria as duas e o slider do filete morria calado.*
+        (p @ Primitive::Thread { .. }, i @ 0..=6) => {
+            return super::dims_write_formula::write_formula(p, node, i, value);
+        }
         // ─────────────────────────── W131 ───────────────────────────
         // ⚠️ **A ordem é `ax ay bx by cx cy`**, e é ela que o painel pinta — ver a tabela.
         (Primitive::Triangle { a: v, .. }, i @ 0..=1)
@@ -638,7 +645,8 @@ pub(super) fn write_dim(
             | Primitive::Gyroid { .. }
             | Primitive::TorusArc { .. }
             | Primitive::Triangle { .. }
-            | Primitive::Polygon { .. }),
+            | Primitive::Polygon { .. }
+            | Primitive::Thread { .. }),
             i,
         ) if Some(i) == round_index(p) => {
             return set_round(p, node, value);

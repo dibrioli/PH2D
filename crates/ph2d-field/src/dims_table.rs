@@ -517,7 +517,8 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
         | Primitive::RoundedCylinder { .. }
         | Primitive::Superquadric { .. }
         | Primitive::Superformula { .. }
-        | Primitive::TorusKnot { .. }) => super::dims_table_plates::dims_plate(p),
+        | Primitive::TorusKnot { .. }
+        | Primitive::Thread { .. }) => super::dims_table_plates::dims_plate(p),
         // ⭐⭐ **O POLÍGONO delega ao irmão** — ver [`super::dims_table_polygon`]. Ele é o único
         // desta casa cujo número de linhas depende do valor de uma linha.
         Primitive::Polygon { .. } => super::dims_table_polygon::dims_polygon(p),

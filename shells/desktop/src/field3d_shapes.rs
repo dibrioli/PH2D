@@ -505,6 +505,18 @@ pub(crate) const SHAPES: &[Shape] = &[
         family: Family::Rings,
         make: Make::Formula(a_torus_knot),
     },
+    // ⭐⭐ **W135: as DUAS vão para `Round`** — são um cilindro antes de serem outra coisa, e é aí que
+    // um artista procura um parafuso. ⚠️ **Uma primitiva, duas portas** (a lei do tubo/anilha).
+    Shape {
+        key: "panel.model3d.add.thread",
+        family: Family::Round,
+        make: Make::Formula(a_thread),
+    },
+    Shape {
+        key: "panel.model3d.add.knurl",
+        family: Family::Round,
+        make: Make::Formula(a_knurl),
+    },
     Shape {
         key: "panel.model3d.add.polygon",
         family: Family::Plates,

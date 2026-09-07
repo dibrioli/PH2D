@@ -366,3 +366,54 @@ pub(crate) fn a_torus_knot(r: f32) -> Primitive {
         loops,
     }
 }
+
+/// ⭐⭐⭐ **A ROSCA** (W135) — o parafuso: uma entrada, uma mão, flanco de `30°` (a métrica ISO).
+///
+/// ⚠️ **A profundidade a `70 %` do tecto, e não no tecto**: no tecto os filetes tocam-se na raiz e
+/// a terra entre eles fecha — o que faz o [`ph2d_field::thread_round_limit`] cair a zero, e uma
+/// forma que nasce com o filete indisponível ensina o contrário do que o painel oferece.
+/// ⭐ **E ela NASCE com filete**, que é a lei da casa (`every_new_shape_that_can_round_is_born_round`)
+/// e é também a rosca certa: uma raiz redonda é onde um parafuso a sério não parte por fadiga.
+pub(crate) fn a_thread(r: f32) -> Primitive {
+    let (radius, pitch, flank) = (r * 0.55, r * 0.18, 30.0);
+    let depth = ph2d_field::thread_depth_ceiling(radius, pitch, flank) * 0.70;
+    Primitive::Thread {
+        radius,
+        half_height: r * 0.50,
+        pitch,
+        depth,
+        flank,
+        starts: 1,
+        hands: 1,
+        round: ph2d_field::thread_round_limit(pitch, depth, flank) * 0.5,
+        chamfer: 0.0,
+    }
+}
+
+/// ⭐⭐ **O PUNHO SERRILHADO** (W135) — a MESMA primitiva com as duas mãos cruzadas e seis entradas,
+/// que é o losango de um punho de ferramenta.
+///
+/// ⚠️ **Duas portas da paleta, uma primitiva** — a mesma lei do tubo/anilha/arco de anel: elas
+/// diferem só nos números com que nascem. ⛔ E a composição **não** o alcança: a mão esquerda é o
+/// ESPELHO da direita, e o `Mirror` desta casa DOBRA o espaço (dá meia peça e o reflexo dela), não
+/// une a peça com o espelho dela.
+///
+/// ⚠️ **As `12` entradas são o LOSANGO, e não um número redondo.** O fio faz `atan(ρ/b)` com o eixo,
+/// e as duas mãos cruzam-se ao dobro disso: a `6` entradas o cruzamento é de `138°` e o losango sai
+/// **esmagado**; a `12` ele é de `106°`, que é quase quadrado. *A régua de um serrilhado é o ângulo
+/// de cruzamento, não a contagem.*
+pub(crate) fn a_knurl(r: f32) -> Primitive {
+    let (radius, pitch, flank) = (r * 0.55, r * 0.22, 45.0);
+    let depth = ph2d_field::thread_depth_ceiling(radius, pitch, flank) * 0.60;
+    Primitive::Thread {
+        radius,
+        half_height: r * 0.50,
+        pitch,
+        depth,
+        flank,
+        starts: 12,
+        hands: 2,
+        round: ph2d_field::thread_round_limit(pitch, depth, flank) * 0.5,
+        chamfer: 0.0,
+    }
+}

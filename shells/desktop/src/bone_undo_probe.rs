@@ -78,6 +78,14 @@ impl crate::App {
             return;
         }
         let f = FRAME.fetch_add(1, Ordering::Relaxed);
+        // ⚠️ **`=2` é a CONTAGEM DE PASSOS, e ela tem de correr sozinha** (report do dono,
+        // 2026-09-07: *«undo tem poucos passos»*): o roteiro `=1` desfaz duas vezes e a 2.ª apaga a
+        // cena inteira, então a fase de arrastos não tinha o que arrastar. *Duas perguntas no mesmo
+        // roteiro medem a segunda sobre o estado que a primeira deixou.*
+        if std::env::var_os("PH2D_BONE_UNDO_PROBE").is_some_and(|v| v == "2") {
+            self.bone_undo_steps_probe(f);
+            return;
+        }
         match f {
             // A cena dos ossos monta em dois tempos (o `vec_bone_smoke` precisa do `sync`), e o
             // painel precisa de mais um quadro para publicar o osso em foco.
@@ -91,6 +99,10 @@ impl crate::App {
             // é **recortado** pela banda visível ⇒ o botão não existe para o dedo enquanto não se
             // rola. *Uma sonda que não rola mede um painel que o artista nunca vê inteiro.*
             42..=47 => self.probe_scroll_panel(),
+            // ⚠️⚠️ **E o verbo TRANSFORMAR** — sem ele o `press` sobre uma alça apenas SELECCIONA
+            // (é a lei do modo *Criar*), e o arrasto da âncora nunca acontece. *Uma sonda que não
+            // escolhe o verbo mede o outro gesto.*
+            48 => self.probe_click(ph2d_editor::ids::VECTOR_BONE_ACT_TRANSFORM, "Transform"),
             49 => self.probe_what_is_reachable(),
             // ⚠️⚠️ **O Down e o Up em QUADROS DIFERENTES** — é o que uma mão humana faz, e é a
             // ÚNICA diferença que sobrava contra o roteiro que passou. Dois dos cinco motivos de
@@ -122,6 +134,12 @@ impl crate::App {
             105 => self.smoke_pointer_up(),
             112 => self.probe_press(ph2d_editor::ids::VECTOR_BONE_IK_REMOVE, "Remove IK"),
             114 => self.smoke_pointer_up(),
+            // ⭐⭐⭐ **QUANTOS PASSOS N ACÇÕES PRODUZEM** (report do dono, 2026-09-07: *«undo tem
+            // poucos passos»*). Quatro arrastos SEPARADOS da mesma âncora, com quadros parados
+            // entre eles: a resposta certa é **quatro** passos, um por arrasto.
+            130 => self.probe_marker("--- 4 arrastos separados ---"),
+            132 | 140 | 148 | 156 => self.probe_drag_the_anchor(),
+            165 => self.probe_marker("--- fim dos 4 arrastos ---"),
             _ => {}
         }
         // ⭐⭐⭐ **A DERIVA** — o documento a mudar SEM entrada nenhuma. Medida em 2026-09-07: `913`
@@ -131,7 +149,7 @@ impl crate::App {
         if (30..=34).contains(&f) {
             self.probe_which_rows_drift();
         }
-        if (38..=125).contains(&f) {
+        if (38..=170).contains(&f) {
             let (ancoras, alvos) = self.probe_counts();
             eprintln!(
                 "[probe-ik-undo] f={f} undo={undo} redo={redo} ancoras={ancoras} alvos={alvos} \
@@ -262,6 +280,40 @@ impl crate::App {
             .and_then(|g| g.hero_screen.as_ref())
             .map(|h| h.gizmo.iter_selected().collect())
             .unwrap_or_default()
+    }
+
+    /// ⭐⭐⭐ **O roteiro da CONTAGEM** (`PH2D_BONE_UNDO_PROBE=2`) — N acções distintas, e quantos
+    /// passos de undo elas produzem.
+    ///
+    /// ⚠️ **Nenhum `Ctrl+Z` aqui**, de propósito: a pergunta é *quantos passos nascem*, e desfazer
+    /// no meio mede outra coisa.
+    fn bone_undo_steps_probe(&mut self, f: u32) {
+        match f {
+            35 => self.probe_click(ph2d_editor::ids::VECTOR_MODE_BONE, "o pill Bone"),
+            42..=47 => self.probe_scroll_panel(),
+            48 => self.probe_click(ph2d_editor::ids::VECTOR_BONE_ACT_TRANSFORM, "Transform"),
+            50 => self.probe_pick_a_bone_without_anchor(),
+            53 => self.probe_press(ph2d_editor::ids::VECTOR_BONE_IK_ADD, "Add IK"),
+            55 => self.smoke_pointer_up(),
+            60 => self.probe_marker("--- comecam os 5 arrastos ---"),
+            62 | 70 | 78 | 86 | 94 => self.probe_drag_the_anchor(),
+            100 => self.probe_marker("--- fim: 1 Add IK + 5 arrastos = 6 accoes ---"),
+            _ => {}
+        }
+        if (50..=102).contains(&f) {
+            let (ancoras, _) = self.probe_counts();
+            eprintln!(
+                "[probe-passos] f={f} undo={undo} ancoras={ancoras} pose={pose:.4} held={held:?}",
+                undo = self.undo.depth(),
+                pose = self.probe_chain_bend(),
+                held = self.held_button,
+            );
+        }
+    }
+
+    /// Uma marca no log, para as fases do roteiro se lerem sem contar quadros.
+    fn probe_marker(&self, texto: &str) {
+        eprintln!("[probe-ik-undo] {texto} (undo={})", self.undo.depth());
     }
 
     /// ⭐ **Arrasta a âncora no CANVAS**, pelo ponteiro: acha o losango pela porta do módulo e

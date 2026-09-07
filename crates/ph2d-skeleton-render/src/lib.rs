@@ -364,6 +364,35 @@ pub fn draw_bones(
     }
 }
 
+/// ⭐⭐⭐ **O RAIO DO LOSANGO** — a porta única do desenho e do dedo, e ela é **maior que a bolinha
+/// de propósito**.
+///
+/// ⛔ **É um report do dono** (2026-09-07): *«quando colocamos um IK num bone no meio dos ossos, o
+/// losango do IK e o círculo do outro osso ficam sobrepostos»*. Uma âncora criada no MEIO de uma
+/// corrente nasce exactamente sobre a junta do osso seguinte — dois alvos concêntricos com verbos
+/// diferentes, e o dedo não tem como escolher.
+///
+/// ⭐ **A cura é a que ele propôs, e é a única que funciona para alvos concêntricos: eles têm de
+/// diferir em TAMANHO.** O losango fica por FORA, a bolinha por dentro, e o anel entre os dois é a
+/// zona exclusiva da âncora.
+///
+/// ⚠️ **A largura desse anel é DERIVADA, não escolhida:** ela é exactamente
+/// [`BONE_JOINT_R_PX`] — a tolerância do dedo desta casa (o mesmo `HANDLE_HIT_PX` que toda alça do
+/// vector usa). ⇒ o artista tem sempre **um dedo inteiro** de anel para agarrar a âncora, seja qual
+/// for o zoom, mesmo quando a bolinha por dentro está no tamanho máximo.
+#[must_use]
+pub fn goal_radius_px(comp: f64) -> f64 {
+    joint_radius_px(comp) + BONE_JOINT_R_PX
+}
+
+/// A espessura do traço do losango.
+///
+/// ⚠️ **Mais grossa que a das outras alças, e o dono pediu-o pelo nome** (*«que seu gizmo tenha
+/// espessura maior»*): num par concêntrico o que está por FORA tem de se ler como o alvo maior,
+/// senão o anel exclusivo existe e não se vê. ⛔ Número de PRODUTO, e declarado como tal — o recurso
+/// que ele nomeia é a leitura da tela, e o smoke é quem o julga.
+const GOAL_LINE_PX: f64 = 2.5;
+
 /// **Uma âncora, como o desenho a lê** — `(osso, alvo, origem do osso, ponta do osso)` em MUNDO.
 ///
 /// ⚠️ O segmento do osso vem junto porque o tamanho do losango sai da mesma porta da bolinha
@@ -429,24 +458,20 @@ pub fn draw_goals(
             None,
             &fio,
         );
-        let r = joint_radius_px(comp);
+        let r = goal_radius_px(comp);
         let mut losango = BezPath::new();
         losango.move_to(Point::new(p.x, p.y - r));
         losango.line_to(Point::new(p.x + r, p.y));
         losango.line_to(Point::new(p.x, p.y + r));
         losango.line_to(Point::new(p.x - r, p.y));
         losango.close_path();
-        if sel {
-            target.inner_mut().fill(
-                Fill::NonZero,
-                Affine::IDENTITY,
-                &Brush::Solid(cor),
-                None,
-                &losango,
-            );
-        }
+        // ⛔ **O losango NÃO se enche, ao contrário das outras alças.** Ele é o de FORA de um par
+        // concêntrico: enchê-lo tapava a bolinha do osso que vive por dentro dele, e o artista
+        // deixava de ver o alvo que o clique de dentro pega. *A gramática do preenchimento vale
+        // para alças que estão sozinhas.* Aqui quem diz «escolhido» é a COR, que é o outro canal.
+        let _ = sel;
         target.inner_mut().stroke(
-            &Stroke::new(LINE_PX),
+            &Stroke::new(GOAL_LINE_PX),
             Affine::IDENTITY,
             &Brush::Solid(cor),
             None,

@@ -223,132 +223,6 @@ fn deleting_the_target_leaves_the_chain_where_it_was() {
         "apagar o alvo endireitou o braco"
     );
 }
-
-/// ⭐⭐ **O QUE A RESTRIÇÃO ESCREVE É PRÉ-VISUALIZAÇÃO** — o documento é a pose da ÂNCORA.
-///
-/// ⚠️ Sem isto, cada clique com a âncora fora do sítio empilharia um passo de undo cujo conteúdo é
-/// *«o solver mexeu»* — vinte cliques, vinte Ctrl+Z mudos, que é o defeito que a auditoria da §11
-/// mediu e que o `preview_drive` existe para curar.
-#[test]
-fn the_pose_the_constraint_writes_is_preview_not_document() {
-    let (mut sim, [ombro, cotovelo]) = braco();
-    add(&mut sim, cotovelo).expect("a ancora");
-    let autorada = *sim.world().get::<Transform>(ombro).expect("t");
-    let mut pv = PreviewDrive::default();
-    drag_anchor(&mut sim, cotovelo, [4.0, 9.0]);
-    solve(&mut sim, &mut pv);
-    assert!(
-        sim.world().get::<Transform>(ombro).expect("t").rotation != autorada.rotation,
-        "a fixtura nao produz o fenomeno: a restricao nao mexeu no ombro"
-    );
-    // A fotografia repõe o autorado…
-    let vivo = pv.substitute_authored(&mut sim);
-    assert_eq!(
-        sim.world().get::<Transform>(ombro).expect("t").rotation,
-        autorada.rotation,
-        "a captura viu a pose CONDUZIDA - ela iria para o undo e para o save"
-    );
-    // …e devolve o vivo logo a seguir, senão o artista veria o braco saltar para tras.
-    crate::preview_drive::PreviewDrive::restore_live(&mut sim, &vivo);
-    assert!(
-        sim.world().get::<Transform>(ombro).expect("t").rotation != autorada.rotation,
-        "o vivo nao voltou"
-    );
-}
-
-/// **A CORRENTE tem o comprimento que a âncora pede** — o *Chain Length* do Blender, e a razão de
-/// o valor de nascimento ser `2` e não `0`.
-#[test]
-fn the_chain_length_decides_how_many_bones_bend() {
-    let (mut sim, [ombro, cotovelo]) = braco();
-    let punho = osso(&mut sim, "Wrist", [10.0, 0.0], 10.0, Some(cotovelo));
-    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    assert_eq!(governed(&sim, punho, 0).len(), 3, "0 = ate' a raiz");
-    assert_eq!(
-        governed(&sim, punho, 2),
-        vec![cotovelo, punho],
-        "os DOIS de baixo"
-    );
-    assert_eq!(governed(&sim, punho, 1), vec![punho], "so' a ponta");
-    assert_eq!(
-        governed(&sim, punho, 99).len(),
-        3,
-        "um numero absurdo e' aparado pela ARVORE, nao por uma constante"
-    );
-    let _ = ombro;
-}
-
-/// ⭐⭐ **O LOSANGO SUBSTITUI O ANEL, e não se soma a ele** — um ponto, um verbo.
-///
-/// ⚠️ Duas alças desenhadas por cima uma da outra prometeriam dois verbos onde há um, e o dedo
-/// escolheria pela ordem em que as perguntas correm — que é a forma de defeito que este módulo já
-/// pagou com o anel do objecto vazio por cima da bolinha da junta.
-#[test]
-fn an_anchored_end_stops_showing_the_plain_tip_ring() {
-    let (mut sim, [_, cotovelo]) = braco();
-    assert_eq!(
-        unanchored_ends(&sim),
-        vec![cotovelo.to_bits()],
-        "sem ancora, a ponta mostra o anel"
-    );
-    add(&mut sim, cotovelo).expect("a ancora");
-    assert!(
-        unanchored_ends(&sim).is_empty(),
-        "a ponta ancorada continua a mostrar o anel - dois verbos no mesmo ponto"
-    );
-    assert_eq!(anchors(&sim).len(), 1, "e o losango passa a existir");
-}
-
-/// ⛔⛔ **O ALVO NÃO GANHA O ANEL DE OBJECTO VAZIO** — ele tem alça própria.
-///
-/// ⚠️ Um alvo é um objecto com `Transform` e sem pixels, então ele responde *sim* à pergunta do
-/// objecto vazio **por construção**. Sem a marca, ele nasceria com um segundo anel concêntrico com
-/// o losango — e o disco desse anel **disputaria o clique** com a alça que arrasta a corrente
-/// inteira. É o report de 06/09 (*«alguns bones têm círculos grandes e pequenos»*) outra vez, e o
-/// doc daquela cura já tinha escrito a lei.
-#[test]
-fn the_anchor_object_does_not_get_a_second_ring() {
-    let (mut sim, [_, cotovelo]) = braco();
-    let alvo = add(&mut sim, cotovelo).expect("a ancora");
-    assert!(
-        !crate::group_gizmo_view::is_empty_object(&sim, alvo),
-        "o alvo respondeu 'sou um objecto vazio' - ele ganha um 2.o anel E um disco a disputar o \
-         clique com a propria alca"
-    );
-    // A metade que prova que a fixtura produz o fenómeno: sem a marca, ele responderia sim.
-    sim.world_mut()
-        .entity_mut(alvo)
-        .remove::<ph2d_skeleton_ecs::IkTarget>();
-    assert!(
-        crate::group_gizmo_view::is_empty_object(&sim, alvo),
-        "a fixtura nao produz o fenomeno: sem a marca o alvo ja' nao era um objecto vazio, entao o \
-         gate acima estava verde por outro motivo"
-    );
-}
-
-/// ⭐⭐⭐ **A ÂNCORA É AGARRÁVEL LONGE DE TODO OSSO** — a razão de o dedo a procurar ANTES do osso.
-///
-/// ⚠️ O `hit` só devolve um osso quando o ponteiro está a `BONE_HIT_PX` do **segmento**. Uma âncora
-/// arrastada para fora de alcance fica longe de tudo, e testá-la depois do osso tornaria a alça
-/// inalcançável exactamente no estado em que ela mais se distingue da ponta.
-#[test]
-fn the_anchor_is_grabbable_far_away_from_every_bone() {
-    let (mut sim, [_, cotovelo]) = braco();
-    add(&mut sim, cotovelo).expect("a ancora");
-    // Bem para fora do alcance (a corrente mede 20) e longe de todo segmento.
-    let longe = [80.0, 60.0];
-    drag_anchor(&mut sim, cotovelo, longe);
-    let mut pv = PreviewDrive::default();
-    solve(&mut sim, &mut pv);
-    assert!(
-        crate::bone_gesture::hit(&sim, longe, 1.0).is_none(),
-        "a fixtura nao produz o fenomeno: ha' um osso debaixo do ponteiro"
-    );
-    let h = crate::bone_gesture::hover(&sim, longe, 1.0, None).expect("a ancora tem de ser achada");
-    assert_eq!(h.bone, cotovelo.to_bits());
-    assert_eq!(h.part, ph2d_skeleton_render::BonePart::Tip);
-}
-
 /// ⭐⭐ **FORA DE ALCANCE, A CORRENTE ESTICA e NÃO se rasga** — e a âncora fica onde o artista a pôs,
 /// que é o único estado em que o tracejado tem o que dizer.
 #[test]
@@ -522,6 +396,9 @@ fn probe_does_the_anchor_cross_the_undo_capture() {
 #[path = "skeleton_agenda_tests.rs"]
 mod agenda;
 
+#[path = "skeleton_handle_tests.rs"]
+mod handle;
+
 /// ⭐⭐⭐ **APAGAR A ÂNCORA DEVOLVE A POSE QUE O ARTISTA AUTOROU** (report do dono, 2026-09-07:
 /// *«Remove IK … não funciona plenamente»*).
 ///
@@ -553,32 +430,86 @@ fn removing_the_anchor_gives_the_authored_pose_back() {
     );
     let _ = ombro;
 }
-
-/// ⚠️ **E o que ele devolve é o AUTORADO, não a pose de repouso** — se o artista girou o ombro à
-/// mão antes de criar a âncora, é ESSA pose que volta.
+/// ⭐⭐ **POSAR À MÃO UM OSSO SOB RESTRIÇÃO NÃO É ENGOLIDO** — e este gate DEFENDE a propriedade,
+/// não cura um defeito.
 ///
-/// ⛔ Um gate que só medisse *«voltou ao que estava antes de arrastar»* ficaria verde sobre uma
-/// implementação que endireitasse a corrente, e o artista perderia trabalho.
+/// ⛔⛔ **Ele nasceu de um diagnóstico MEU que a medição derrubou** (2026-09-07, a caçar o report
+/// *«undo tem poucos passos»*). O raciocínio era: com a corrente assente a restrição não escreve,
+/// logo não declara condução, logo o memo fica com o autorado velho e a fotografia repõe-o por cima
+/// da pose que o artista acabou de fazer ⇒ nenhum passo nasce. Construí a cura (declarar a condução
+/// **todo quadro**) e ela ficou verde… e o desenho ORIGINAL também. ⇒ **a cura era redundante e foi
+/// revertida.**
+///
+/// ⭐ A razão está na regra da **outra mão** que o [`crate::preview_drive::PreviewDrive::driven`] já
+/// tinha: perturbar um osso governado muda a solução, então a restrição **volta a escrever** no
+/// quadro seguinte — e nessa escrita o `before` é a pose do artista, que passa a ser o autorado.
+/// *O buraco fechava-se sozinho porque o motor reage ao que a outra mão fez.*
+///
+/// ⚠️ **E TRÊS fixturas não produziram o fenómeno antes desta**, cada uma por uma metade diferente:
+/// a régua era `solve() == 0` (que conta escritas de 1 ULP, não movimento) · a cadeia do `braco()`
+/// nunca assenta · e sem um arrasto ANTES não há entrada no memo para ficar velha. *A primeira
+/// vermelha que vi era a régua errada, não o produto.*
+///
+/// ⚠️ **O gate mede o que a CAPTURA vê**, não o mundo: no mundo a pose do artista está lá — é na
+/// fotografia que ela poderia desaparecer, e é a fotografia que vira o passo de undo.
 #[test]
-fn what_comes_back_is_the_authored_pose_not_the_rest_pose() {
-    let (mut sim, [ombro, cotovelo]) = braco();
-    // O artista posa o ombro À MÃO, e só então cria a âncora.
-    sim.world_mut()
-        .get_mut::<Transform>(ombro)
-        .expect("t")
-        .rotation = 0.4;
-    add(&mut sim, cotovelo).expect("a ancora");
-    let autorada = crate::skeleton_live::bone_segments(&sim);
+fn posing_a_governed_bone_by_hand_is_not_swallowed_by_the_ledger() {
+    // ⚠️⚠️ **A CADEIA DA CENA REAL, e não o `braco()`.** A do `braco()` continua a escrever no
+    // ÚLTIMO BIT do `f32` para sempre — e uma restrição que escreve todo quadro **declara** todo
+    // quadro, o que faz o memo estar sempre fresco **por acidente**. *Uma fixtura que nunca assenta
+    // não testa o que acontece quando ela assenta*, e foi a segunda a não produzir o fenómeno.
+    let mut sim = SimWorld::default();
+    let mut pai: Option<Entity> = None;
+    let (mut ombro, mut punho) = (None, None);
+    for i in 0..3 {
+        let x = -8.2 + f64::from(i) * (6.4 / 3.0);
+        let bits = crate::bone_gesture::create(&mut sim, pai, [x, 2.5], [x + 6.4 / 3.0, 2.5])
+            .expect("osso");
+        pai = Some(Entity::from_bits(bits));
+        ombro = ombro.or(pai);
+        punho = pai;
+    }
+    let punho = punho.expect("punho");
+    let _ = ombro;
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    add(&mut sim, punho).expect("a ancora");
     let mut pv = PreviewDrive::default();
-    drag_anchor(&mut sim, cotovelo, [2.0, 12.0]);
-    solve(&mut sim, &mut pv);
-    remove(&mut sim, cotovelo, &mut pv);
-    // ⚠️ A comparação é em `f32`, que é o tipo em que a pose VIVE: alargá-la para `f64` e comparar
-    // com o literal `0.4` mede o arredondamento do `f32`, não o produto.
+    // ⚠️⚠️ **A âncora tem de ESCREVER antes de assentar** — é a escrita que cria a entrada no memo,
+    // e é uma entrada VELHA que engole a pose do artista. Sem este arrasto o memo está vazio, a
+    // fotografia não tem o que repor e o gate fica verde sobre o defeito. *Terceira fixtura desta
+    // sessão a não produzir o fenómeno, e as três falhavam por metades diferentes.*
+    drag_anchor(&mut sim, punho, [-3.0, 6.0]);
+    let mut anterior = crate::skeleton_live::bone_segments(&sim);
+    for _ in 0..200 {
+        solve(&mut sim, &mut pv);
+        let agora = crate::skeleton_live::bone_segments(&sim);
+        if agora == anterior {
+            break;
+        }
+        anterior = agora;
+    }
     assert_eq!(
-        sim.world().get::<Transform>(ombro).expect("t").rotation,
-        0.4_f32,
-        "o ombro voltou ao repouso em vez da pose que o artista tinha feito"
+        solve(&mut sim, &mut pv),
+        0,
+        "a fixtura nao produz o fenomeno: a corrente ainda escreve, entao ela declara todo quadro \
+         por acidente e o memo nunca fica velho"
     );
-    assert_eq!(crate::skeleton_live::bone_segments(&sim), autorada);
+    // O artista posa o ombro À MÃO.
+    // ⚠️ O ombro do meio da cadeia governada — a âncora nasce em `chain = 2`, então ela manda nos
+    // DOIS de baixo; o `ombro` aqui é a raiz, e o que se mede é o osso que ela de facto governa.
+    let governado = *governed(&sim, punho, 2).first().expect("a corrente");
+    sim.world_mut()
+        .get_mut::<Transform>(governado)
+        .expect("t")
+        .rotation = 1.1;
+    solve(&mut sim, &mut pv);
+    // A fotografia: o autorado tem de ser o que o artista acabou de fazer.
+    let vivo = pv.substitute_authored(&mut sim);
+    let fotografado = sim.world().get::<Transform>(governado).expect("t").rotation;
+    crate::preview_drive::PreviewDrive::restore_live(&mut sim, &vivo);
+    assert!(
+        (f64::from(fotografado) - 1.1).abs() < 1e-3,
+        "a fotografia viu {fotografado} e o artista pos 1.1 - a pose dele foi ENGOLIDA pelo memo, \
+         e nenhum passo de undo nasce dela"
+    );
 }

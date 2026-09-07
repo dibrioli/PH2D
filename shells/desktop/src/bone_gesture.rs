@@ -255,9 +255,26 @@ pub(crate) fn hover(
     // osso (fora de alcance, ou porque o artista a arrastou para lá), e o `hit` só devolve um osso
     // quando o ponteiro está a `BONE_HIT_PX` do **segmento**. Testá-la depois tornaria a alça
     // inalcançável exactamente quando ela mais se distingue da ponta.
-    if let Some((b, ..)) = crate::skeleton_goal::anchors(sim)
-        .into_iter()
-        .find(|(_, a, ..)| (a[0] - world[0]).hypot(a[1] - world[1]) <= BONE_HIT_PX * px_to_world)
+    //
+    // ⭐⭐⭐ **E ela é um ANEL, não um disco** (report do dono, 2026-09-07: *«o losango do IK e o
+    // círculo do outro osso ficam sobrepostos»*). Uma âncora criada no MEIO de uma corrente nasce
+    // em cima da junta do osso seguinte — dois alvos concêntricos com verbos diferentes. A regra é
+    // a que ele propôs: **por fora da bolinha pega a ÂNCORA, por dentro pega o osso**, e é o furo
+    // no meio deste teste que deixa o clique de dentro chegar ao [`hit`] lá abaixo.
+    if let Some((b, ..)) =
+        crate::skeleton_goal::anchors(sim)
+            .into_iter()
+            .find(|&(bits, a, o, p)| {
+                let d =
+                    (a[0] - world[0]).hypot(a[1] - world[1]) / px_to_world.max(f64::MIN_POSITIVE);
+                let comp = (p[0] - o[0]).hypot(p[1] - o[1]) / px_to_world.max(f64::MIN_POSITIVE);
+                // ⚠️ O miolo só se descarta se houver mesmo um osso lá dentro: com a âncora longe de
+                // tudo, o disco inteiro é dela — senão o centro do losango seria um buraco morto.
+                let miolo = ph2d_skeleton_render::joint_radius_px(comp);
+                let tapado = hit(sim, world, px_to_world).is_some_and(|h| h != bits)
+                    || grabbed_the_joint(Some(sim), bits, world, px_to_world);
+                d <= ph2d_skeleton_render::goal_radius_px(comp) && !(tapado && d <= miolo)
+            })
     {
         return Some(BoneHover {
             bone: b,

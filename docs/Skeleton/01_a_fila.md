@@ -210,6 +210,58 @@ a cena assenta nas duas leis. Quem separa é a **independência da ordem**.
 
 ---
 
+### F4 — ⏳ *«undo tem poucos passos»* — **ABERTO, e o meu diagnóstico foi REFUTADO**
+
+**Sintoma** (verbatim, 2026-09-07): *«undo tem poucos passos»* — o `Ctrl+Z` tem menos etapas do que
+o artista fez.
+
+**O que está MEDIDO, e ilibado:**
+
+| medida | resultado |
+|---|---|
+| 5 arrastos separados no canvas | **5** passos (`PH2D_BONE_UNDO_PROBE=2`) |
+| *Add IK* pelo botão real | **1** passo, e o `Ctrl+Z` desfá-lo |
+| posar à mão um osso governado | **não** é engolido pela fotografia |
+
+⛔⛔ **A minha explicação era esta, e a medição derrubou-a:** *«com a corrente assente a restrição
+não escreve, logo não declara condução, logo o memo fica com o autorado velho e a fotografia repõe-o
+por cima da pose do artista»*. Construí a cura (declarar a condução **todo quadro**) — e o desenho
+**original** passou o mesmo gate. ⇒ **revertida.** A razão é a regra da **outra mão** que o
+`preview_drive` já tem: perturbar um osso governado muda a solução, então a restrição **volta a
+escrever** no quadro seguinte, e nessa escrita o `before` é a pose do artista.
+
+⚠️ **E TRÊS fixturas não produziram o fenómeno antes de a quarta o fazer**, cada uma por uma metade
+diferente: a régua era `solve() == 0` (que conta escritas de **1 ULP**, não movimento) · a cadeia do
+`braco()` **nunca assenta** · e sem um arrasto ANTES não há entrada no memo para ficar velha.
+*A primeira vermelha que vi era a régua errada, não o produto.*
+
+⇒ **O que falta é a sequência do dono.** O instrumento existe (`PH2D_BONE_UNDO_PROBE=2` conta
+passos; `PH2D_UNDO_LOG=1` nomeia qual dos cinco motivos suprimiu). ⚠️ E há **uma armadilha da cena**
+já medida que produz este sintoma sem ser um defeito: o smoke monta-se **sem entrada nenhuma**, então
+o **primeiro clique** regista um passo cujo *antes* é a **cena vazia** — as acções feitas antes dele
+**fundem-se** todas nesse passo.
+
+---
+
+### F5 — ✅ O losango e a bolinha ficavam SOBREPOSTOS — **CURADO** (2026-09-07)
+
+**Report** (verbatim): *«quando colocamos um IK num bone no meio dos ossos, o losango do IK e o
+círculo do outro osso ficam sobrepostos. Sugiro que o losango seja maior e que seu gizmo tenha
+espessura maior. Então ao clicar no gizmo do losango, move-se o IK, se clicar no círculo interior
+move-se o outro bone.»*
+
+⭐ **Feito como ele desenhou, e é a única cura que serve para alvos concêntricos: eles diferem em
+TAMANHO.** `goal_radius_px = joint_radius_px + BONE_JOINT_R_PX` — a largura do anel é **derivada**,
+não escolhida: ela é exactamente a tolerância do dedo desta casa, então há sempre **um dedo inteiro**
+de anel para agarrar a âncora, em qualquer zoom. O traço é mais grosso (`GOAL_LINE_PX`), e o losango
+**deixou de se encher** quando seleccionado — enchê-lo tapava a bolinha que vive por dentro dele.
+
+⚠️ **O dedo tem um FURO no meio**, e é ele que deixa o clique de dentro chegar ao osso. ⛔ Mas só
+quando há mesmo um osso lá: com a âncora longe de tudo o disco inteiro é dela, senão o centro do
+losango seria um alvo morto.
+
+---
+
 ## Aberto de waves anteriores (as opções que o dono ainda não escolheu)
 
 | # | O quê | Estado |

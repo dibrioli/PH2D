@@ -2001,3 +2001,88 @@ fn a_nossa_particao_reproduz_a_do_alvo() {
     let tamanhos = |o: &[u32]| o.len();
     assert_eq!(tamanhos(&por_x), tamanhos(&por_y));
 }
+
+/// O `|u|` de um vértice de repouso dado, passo a passo, nosso e do oráculo.
+fn por_vertice(nome: &str, repouso_do_vertice: V3) -> (Vec<f64>, Vec<f64>) {
+    let (rest, _, nossos) = correr_por_passo(nome);
+    let v = (0..rest.len())
+        .min_by(|a, b| {
+            dist(rest[*a], repouso_do_vertice).total_cmp(&dist(rest[*b], repouso_do_vertice))
+        })
+        .expect("malha nao vazia");
+    assert!(
+        dist(rest[v], repouso_do_vertice) < 1e-6,
+        "{nome}: nao ha' vertice em {repouso_do_vertice:?}"
+    );
+    let pp = por_passo(nome);
+    let nosso = nossos.iter().map(|p| dist(p[v], rest[v])).collect();
+    let alvo = pp.blocos.iter().map(|b| dist(b[v], rest[v])).collect();
+    (nosso, alvo)
+}
+
+/// ⭐⭐⭐ **GATE 35 — a ASSIMETRIA DE ESPELHO é um retrato da ORDEM, e nós temos de
+/// a reproduzir** (espec §10.10).
+///
+/// Numa cena com simetria de espelho perfeita — a mesma malha, a mesma queda, a
+/// mesma força — a única coisa que distingue os dois lados do traço é a **ORDEM**,
+/// e ela é toda conduzida por ÍNDICE, que não é simétrico: a partição do plano
+/// parte exactamente na fileira do pen-down (§3.1-bis), logo um dos lados é
+/// visitado antes do outro, e o anel de cada vértice sai das faces por índice
+/// crescente (§3.1).
+///
+/// ⇒ o oráculo desloca o vértice a `(0, +0,328125, 0)` de `0,00421` no passo `3`
+/// e o espelhado dele de `0,00477` — **`13 %` acima**. ⛔ *Um port que não
+/// reproduza a assimetria tem a ordem errada mesmo quando o `máx |u|` bate*, e é
+/// por isso que este gate mede a RAZÃO entre os dois lados e não cada lado.
+///
+/// ⚠️ **A fixture é a `_parado`, de propósito:** ali a força só existe no passo 2,
+/// e do 3 ao 12 tudo o que acontece é solver — *a assimetria não pode vir da fase
+/// do gesto, porque ela está calada.*
+///
+/// ⚠️⚠️ **E é esta régua que QUALIFICA o «o solver está exonerado» que a fixture
+/// `_parado` parecia dizer.** Ela bate a `0,001` de `err/máx`, o que exonera a
+/// AMPLITUDE do solver; a assimetria de espelho mede a ORDEM dele, e aí nós
+/// reproduzimo-la sem a acertar: `1,1102` contra `1,1333` no passo `3`, e a do
+/// alvo **decai mais depressa** que a nossa (no passo `5` do Inflate são `1,0940`
+/// contra `1,0570`). *Um número agregado pequeno não exonera a estrutura fina que
+/// ele agrega.*
+#[test]
+fn a_assimetria_de_espelho_reproduz_a_ordem_do_oraculo() {
+    for nome in [
+        "plano_empurrar_radial_local_origem_parado",
+        "plano_inflar_radial_local_origem_parado",
+    ] {
+        let (cima_n, cima_o) = por_vertice(nome, [0.0, 0.328_125, 0.0]);
+        let (baixo_n, baixo_o) = por_vertice(nome, [0.0, -0.328_125, 0.0]);
+        // O passo 3 é o primeiro em que a relaxação trabalha (§5.2-quater), e é
+        // onde o oráculo tem a assimetria mais nítida.
+        let k = 2usize;
+        let (ro, rn) = (baixo_o[k] / cima_o[k], baixo_n[k] / cima_n[k]);
+        assert!(
+            (ro - 1.0).abs() > 0.05,
+            "{nome}: o ORACULO nao e' assimetrico neste passo ({ro:.4}) -- a \
+             fixtura nao produz o fenomeno e este gate seria vacuo"
+        );
+        assert!(
+            (rn - 1.0).abs() > 0.05,
+            "{nome}: NOS nao somos assimetricos ({rn:.4}) -- a nossa ordem nao e' \
+             conduzida por indice, ou nao e' a do alvo de todo"
+        );
+        assert!(
+            (rn - 1.0).signum() == (ro - 1.0).signum(),
+            "{nome}: a assimetria vai para o LADO CONTRARIO ({rn:.4} contra {ro:.4})"
+        );
+        // ⏳ **O que sobra, medido e registado:** reproduzimos a assimetria e não
+        // o valor dela. A folga é a mesma dos [`ABERTOS`] — ela só encolhe.
+        let medido = match nome {
+            "plano_empurrar_radial_local_origem_parado" => 0.0231,
+            _ => 0.0161,
+        };
+        assert!(
+            (rn - ro).abs() <= medido * FOLGA_ABERTO,
+            "{nome}: a nossa assimetria e' {rn:.4} contra {ro:.4} do oraculo -- \
+             o desvio {:.4} passa o medido {medido:.4} (folga {FOLGA_ABERTO}x)",
+            (rn - ro).abs()
+        );
+    }
+}

@@ -15,7 +15,7 @@
 > *«Undo não funciona para add IK. Múltiplos IKs numa cadeia de bones tem resultado ruim. Mas não
 > precisa fazer isso agora. Coloque na fila de implementação para o melhor momento possível.»*
 
-### F1 — ⛔ O `Add IK` não é desfazível
+### F1 — ⚠️ O `Add IK` não é desfazível — **NÃO REPRODUZ** (medido 2026-09-07)
 
 **Sintoma** (verbatim): *«Undo não funciona para add IK»*. Carregar em *Add IK* cria o alvo e a
 restrição; o `Ctrl+Z` seguinte não os leva embora.
@@ -47,6 +47,48 @@ linha é o que as separa.
    `adding_an_anchor_moves_nothing`): o alvo nasce exactamente na ponta. ⇒ o único sinal na tela é
    o **losango** aparecer e desaparecer. Um `Ctrl+Z` que funcionasse e um que não funcionasse
    diferem só nisso, e é por isso que o log importa mais aqui do que noutro sítio.
+
+## ⭐⭐⭐ MEDIDO, e as TRÊS metades estão ilibadas
+
+A sonda existe: **`PH2D_BONE_UNDO_PROBE=1`**
+([`bone_undo_probe.rs`](../../shells/desktop/src/bone_undo_probe.rs)). Ela percorre o caminho
+**completo do artista** — carrega no pill *Bone*, **rola o painel** (a secção SKELETON fica abaixo da
+dobra, e o índice de acerto é recortado), escolhe um osso sem âncora, faz `Down` num quadro e `Up`
+**três quadros depois** (como uma mão humana) e manda `Ctrl+Z` — tudo pelo roteamento do `winit`.
+
+```text
+f=49 undo=1 ancoras=1        <- antes
+Down em Add IK em (696, 717)
+f=50..52  held=Some(Primary) <- o botao segurado por TRES quadros
+f=53 Up
+f=54 undo=2 ancoras=2        <- o passo NASCEU e a ancora foi criada
+f=70 Ctrl+Z
+f=71 undo=1 redo=1 ancoras=1 <- a ancora do botao FOI EMBORA
+```
+
+| metade | medida | resultado |
+|---|---|---|
+| a fotografia VÊ a âncora? | `parts_that_differ` | **sim** (`["world"]`) |
+| o restauro leva-a embora? | despawn + `IkGoal` fora | **sim** |
+| o PASSO nasce no clique real? | `undo` `1 → 2` | **sim** |
+| o `Ctrl+Z` desfaz? | `ancoras` `2 → 1` | **sim** |
+
+⇒ **o defeito não está no caminho que a sonda percorre.** O que falta é a **sequência exacta do
+dono**, e há duas hipóteses baratas de eliminar — as duas com o mesmo sintoma (*«o Ctrl+Z não fez
+nada»*):
+
+1. **Ele arrastou a âncora depois de a criar.** O arrasto é um passo **próprio**; desfazê-lo move o
+   losango de volta uns píxeis, o que se lê como *nada aconteceu*. O segundo `Ctrl+Z` é que apaga a
+   âncora.
+2. **O `Ctrl+Z` foi roteado para outro dono** — o `undo_or_redo` escolhe entre o Áudio, o Painter, o
+   global e o image-edit.
+
+⛔⛔ **E há uma armadilha ESTRUTURAL desta cena, medida aqui e que não é da âncora:** a cena de smoke
+monta-se **sem entrada nenhuma**, então o **primeiro clique** do dono — seja ele qual for — regista
+um passo cujo *antes* é a **cena vazia**. Um `Ctrl+Z` a mais apaga o desenho inteiro. (Medido: `913`
+supressões em 15 s, todas a mesma diferença constante repetida — e **`0`** sem smoke nenhum. ⚠️ A
+primeira leitura disto foi *«há uma deriva por quadro»*, e era falsa: duas capturas no MESMO quadro
+são idênticas. *Um contador de supressões conta a mesma diferença N vezes, não N diferenças.*)
 
 **Suspeito nomeado, e não é o primeiro a verificar:** o passe da âncora escreve a pose dos ossos
 governados **todo quadro** através do `preview_drive`, e essa condução **nunca larga** (uma

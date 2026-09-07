@@ -1007,6 +1007,7 @@ impl crate::App {
         self.svg_import_smoke();
         self.vec_stack_smoke();
         self.vec_bone_smoke();
+        self.bone_undo_probe();
         self.nest_smoke();
         self.physics_smoke();
         self.instance_smoke();

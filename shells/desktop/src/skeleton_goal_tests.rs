@@ -467,3 +467,54 @@ fn measure_the_price_of_one_frame_of_anchors() {
         com / 16_700.0 * 100.0
     );
 }
+
+/// ⚠️ **SONDA:** a âncora atravessa a captura do undo? (Report do dono, 2026-09-07: *«Undo não
+/// funciona para add IK»*.)
+///
+/// Ela separa as DUAS metades que o sintoma não distingue: *a fotografia não vê a âncora* (e aí o
+/// passo nasce vazio) contra *a fotografia vê e o passo não é registado* (e aí a causa é um dos
+/// cinco motivos de supressão do `post_frame_undo`).
+#[test]
+#[ignore = "sonda de medição: imprime, não julga"]
+fn probe_does_the_anchor_cross_the_undo_capture() {
+    use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
+    let mut reg = ComponentRegistry::new();
+    register_ecs_components(&mut reg);
+    ph2d_render::register_render_components(&mut reg);
+    ph2d_skeleton_ecs::register_skeleton_components(&mut reg);
+
+    let (mut sim, [_, cotovelo]) = braco();
+    let vec = ph2d_vec_scene::VecScene::new();
+    let mut cache = ph2d_ecs::scene::incremental::CaptureCache::new();
+    let tirar = |sim: &mut SimWorld, cache: &mut ph2d_ecs::scene::incremental::CaptureCache| {
+        crate::undo::ProjectState::capture(
+            &PreviewDrive::default(),
+            sim,
+            &vec,
+            &ph2d_flip::FlipDoc::new(),
+            &ph2d_guides::GuideSet::default(),
+            &ph2d_ui_state::StateSets::default(),
+            &crate::project_library::LibraryDoc::default(),
+            &reg,
+            cache,
+            None,
+        )
+    };
+    let antes = tirar(&mut sim, &mut cache);
+    let alvo = add(&mut sim, cotovelo).expect("a ancora");
+    let depois = tirar(&mut sim, &mut cache);
+    eprintln!(
+        "[probe] a captura VE' a ancora? {} (partes que diferem: {:?})",
+        antes != depois,
+        depois.parts_that_differ(&antes)
+    );
+    // E o restauro leva-a embora?
+    let _ = antes.restore(&mut sim, &reg);
+    eprintln!(
+        "[probe] depois do restore: alvo vivo? {} · o osso ainda tem ancora? {}",
+        sim.world().get_entity(alvo).is_ok(),
+        sim.world()
+            .iter_entities()
+            .any(|er| er.contains::<ph2d_skeleton_ecs::IkGoal>())
+    );
+}

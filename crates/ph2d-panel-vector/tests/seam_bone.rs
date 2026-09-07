@@ -195,3 +195,76 @@ fn the_two_bone_numbers_need_a_bone_in_focus() {
     );
     limpa();
 }
+
+/// Põe a ferramenta no modo Osso com o verbo pedido — o estado em que o grupo alternável existe.
+fn modo_osso(action: ph2d_tool_vector::BoneAction) {
+    state::set_current_vector_style(Some(ph2d_tool_vector::VectorStyleSnapshot {
+        mode: ph2d_tool_vector::DrawMode::Bone,
+        bone_action: action,
+        ..Default::default()
+    }));
+}
+
+/// ⭐⭐⭐ **OS DOIS SEGMENTOS DE CRIAR × TRANSFORMAR CHEGAM À FERRAMENTA** (Enio, 2026-09-07).
+///
+/// ⚠️ **O oráculo é o `EditorAction`, nunca o `WidgetEvent`** — a lição do bug #29: um controlo que
+/// produz `Click` e não produz `ToolPanelEvent` acende sob o rato, consome o gesto e **não faz
+/// nada**. Um grupo alternável que não troca o verbo é exactamente o defeito que ele existe para
+/// curar, com uma camada de confusão a mais.
+#[test]
+fn both_segments_of_create_and_transform_reach_the_tool() {
+    publica_tudo();
+    modo_osso(ph2d_tool_vector::BoneAction::Create);
+    for (id, nome) in [
+        (ids::VECTOR_BONE_ACT_CREATE, "Create"),
+        (ids::VECTOR_BONE_ACT_TRANSFORM, "Transform"),
+    ] {
+        let acoes = clica(id, nome);
+        assert!(
+            acoes.iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if *c == id
+            )),
+            "o segmento {nome} nao chegou a' ferramenta"
+        );
+    }
+    limpa();
+    state::set_current_vector_style(None);
+}
+
+/// ⛔ **O grupo só existe no MODO Osso.** Fora dele o arrasto não faz osso nenhum, então perguntar
+/// *o que ele faz* é oferecer um controlo sem sujeito — a classe de knob morto que o `CLAUDE.md`
+/// §5.0 nomeia.
+///
+/// ⚠️ **As duas metades**, senão o gate fica verde sobre um painel que o mostra sempre.
+#[test]
+fn the_create_transform_group_exists_only_in_the_bone_mode() {
+    let pintado = |id| {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+            .is_some()
+    };
+    publica_tudo();
+    modo_osso(ph2d_tool_vector::BoneAction::Create);
+    assert!(
+        pintado(ids::VECTOR_BONE_ACT_CREATE) && pintado(ids::VECTOR_BONE_ACT_TRANSFORM),
+        "no modo Osso os dois segmentos tem de ser pintados"
+    );
+    // Com esqueleto na cena mas NOUTRO modo: a seção continua (os números do osso valem em toda
+    // ferramenta), e o grupo do verbo NÃO.
+    state::set_current_vector_style(Some(ph2d_tool_vector::VectorStyleSnapshot {
+        mode: ph2d_tool_vector::DrawMode::Select,
+        ..Default::default()
+    }));
+    assert!(
+        !pintado(ids::VECTOR_BONE_ACT_CREATE) && !pintado(ids::VECTOR_BONE_ACT_TRANSFORM),
+        "fora do modo Osso o grupo do verbo nao tem sujeito e nao pode ser oferecido"
+    );
+    assert!(
+        pintado(ids::VECTOR_BONE_BIND),
+        "a seccao SKELETON continua fora do modo Osso - o controlo dela e' que nao"
+    );
+    limpa();
+    state::set_current_vector_style(None);
+}

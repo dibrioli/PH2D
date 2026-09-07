@@ -18,6 +18,13 @@ use ph2d_editor_core::interaction::WidgetStore;
 
 /// Os widgets do esqueleto: prender, as duas saídas, e os dois números do osso.
 pub(super) fn populate_bone(store: &mut WidgetStore) {
+    // ⭐⭐⭐ **Os dois segmentos de CRIAR × TRANSFORMAR** (Enio, 2026-09-07). ⚠️ Um segmento
+    // registado por LOOP a partir da lista de ids é o mesmo idioma que o gate irmão
+    // `table_driven_chips_are_registered_too` existe para apanhar — aqui a lista é a fonte, então
+    // acrescentar um terceiro estado ao vocabulário regista-o sozinho.
+    for id in ids::VECTOR_BONE_ACTION_IDS {
+        button(store, id);
+    }
     button(store, ids::VECTOR_BONE_BIND);
     button(store, ids::VECTOR_BONE_EXPAND);
     button(store, ids::VECTOR_BONE_RELEASE);

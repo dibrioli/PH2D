@@ -137,6 +137,9 @@ pub struct VectorTool {
     /// De onde a largura do traço de lápis vem (W1d). Estado AUTORADO da ferramenta, como o
     /// estabilizador: o documento guarda o `WidthStops` que ele produziu, não a fonte.
     pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource,
+    /// ⭐ **O que o arrasto faz no modo Osso** (Enio, 2026-09-07). A tool é a dona; o painel pinta
+    /// os dois segmentos e a shell lê o espelho.
+    bone_action: crate::params::BoneAction,
     /// **O estilo da SIMETRIA de desenho** (plano 25 W6.3) — que espelho, quantas cópias, funde
     /// ou não. O LUGAR da linha não está aqui: ele pertence ao desenho e viaja no componente dele
     /// (`ph2d_ecs::VecSymmetry`). Um centro guardado na ferramenta seria um campo que nunca se lê.
@@ -218,6 +221,7 @@ impl Default for VectorTool {
             pencil_fidelity_px: crate::params::PENCIL_FIDELITY_DEFAULT_PX,
             pencil_stabilizer: crate::params::PENCIL_STABILIZER_DEFAULT,
             pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource::default(),
+            bone_action: crate::params::BoneAction::default(),
             symmetry: ph2d_symmetry::SymmetryStyle::default(),
             marquee: crate::params::MarqueeShape::default(),
             mode: DrawMode::Select,
@@ -475,6 +479,7 @@ impl VectorTool {
             values: self.shape_values(self.mode.shape_kind(self.shape).unwrap_or(self.shape)),
             pencil_stabilizer: self.pencil_stabilizer,
             pencil_width_source: self.pencil_width_source,
+            bone_action: self.bone_action,
             symmetry: self.symmetry,
             marquee: self.marquee,
         }
@@ -521,6 +526,7 @@ impl VectorTool {
             mode: self.mode,
             blend_stack_up: self.blend_stack_up,
             pencil_width_source: self.pencil_width_source,
+            bone_action: self.bone_action,
             symmetry: self.symmetry,
             marquee: self.marquee,
             shape: self.shape,

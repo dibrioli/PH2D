@@ -4450,6 +4450,8 @@ impl App {
                         if let Some(world) = self.vec_world_at(self.last_pointer) {
                             let px = self.vec_px_to_world();
                             let sel = self.selected_bone_bits();
+                            // ⭐ O VERBO do arrasto, que o grupo alternável da seção SKELETON diz.
+                            let acao = self.vec_draw_config.bone_action;
                             let decisao = self.gfx.as_ref().map(|g| {
                                 crate::bone_gesture::press(
                                     &g.sim,
@@ -4458,6 +4460,7 @@ impl App {
                                     world,
                                     px,
                                     sel,
+                                    acao,
                                 )
                             });
                             match decisao {
@@ -4473,6 +4476,26 @@ impl App {
                                         hero.gizmo.extra_selection.clear();
                                     }
                                 }
+                                // ⭐ Em *Criar*, tocar num osso só o ACENDE — é assim que se
+                                // escolhe de qual ponta o próximo cresce. ⛔ Sem armar pose.
+                                Some(crate::bone_gesture::BonePress::Select { bone }) => {
+                                    if let Some(gfx) = self.gfx.as_mut()
+                                        && let Some(hero) = gfx.hero_screen.as_mut()
+                                    {
+                                        hero.gizmo.selection = Some(bone);
+                                        hero.gizmo.extra_selection.clear();
+                                    }
+                                }
+                                // ⭐ Em *Transformar*, um press fora de osso aponta a forma e mais
+                                // nada — o *Bind* precisa do sujeito, e nenhum osso nasce aqui.
+                                Some(crate::bone_gesture::BonePress::Pick { path: Some(pid) }) => {
+                                    self.vec_pen.select(Some(pid));
+                                }
+                                // ⛔ Sem forma sob o cursor, um press em *Transformar* não faz
+                                // NADA — nem cria, nem DESMARCA: desmarcar tiraria o sujeito do
+                                // `Bind` a cada clique no vazio, e o artista clica no vazio o tempo
+                                // todo.
+                                Some(crate::bone_gesture::BonePress::Pick { path: None }) => {}
                                 Some(crate::bone_gesture::BonePress::Start { origin, pick }) => {
                                     self.vec_bone_drag = Some(origin);
                                     // ⚠️ **O clique que SELECCIONA e o arrasto que faz osso são o
@@ -4754,13 +4777,10 @@ impl App {
                     if let Some(origem) = self.vec_bone_drag.take() {
                         let px = self.vec_px_to_world();
                         if let Some(ponta) = self.vec_world_at(self.last_pointer) {
-                            // ⛔ Um arrasto mais curto que o raio das alças NÃO faz osso: um osso de
-                            // comprimento zero não tem eixo, logo não pesa ponto nenhum e é
-                            // invisível — seria lixo que só o `Delete` da Hierarquia acha. O limiar
-                            // é em píxeis de TELA, então basta aproximar o zoom para fazer um menor.
-                            let curto = (ponta[0] - origem[0]).hypot(ponta[1] - origem[1])
-                                < crate::bone_gesture::BONE_HIT_PX * px;
-                            if !curto && let Some(gfx) = self.gfx.as_mut() {
+                            // ⚠️ A decisão vem da porta ÚNICA que a pré-visualização também
+                            // consulta — senão o artista vê um osso a crescer e o `Up` não o faz.
+                            let vale = crate::bone_gesture::drag_makes_a_bone(origem, ponta, px);
+                            if vale && let Some(gfx) = self.gfx.as_mut() {
                                 let pai = gfx
                                     .hero_screen
                                     .as_ref()

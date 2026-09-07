@@ -32,6 +32,29 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
+        // ⭐⭐⭐ **CRIAR × TRANSFORMAR, no TOPO da seção** (Enio, 2026-09-07: *«do modo como está
+        // fica confuso para o usuário»*). Ele vem antes dos verbos porque **decide o que os outros
+        // controlos significam**: com *Criar* o arrasto faz osso, com *Transformar* ele posa — e
+        // ler isso depois de já ter carregado é tarde.
+        //
+        // ⚠️ **Ele só aparece no MODO Osso**, e é a mesma lei da seção: os números de um osso valem
+        // em toda ferramenta (o osso posa-se com a seta), mas *o que o arrasto faz* só tem sujeito
+        // onde há arrasto de osso.
+        if snap.mode == ph2d_tool_vector::params::DrawMode::Bone {
+            let acoes: [(ph2d_a11y::NodeId, &str, bool); 2] = [
+                (
+                    ids::VECTOR_BONE_ACT_CREATE,
+                    tr("panel.vector.bone.create"),
+                    snap.bone_action == ph2d_tool_vector::BoneAction::Create,
+                ),
+                (
+                    ids::VECTOR_BONE_ACT_TRANSFORM,
+                    tr("panel.vector.bone.transform"),
+                    snap.bone_action == ph2d_tool_vector::BoneAction::Transform,
+                ),
+            ];
+            y = self.segmented(tr("panel.vector.bone.action"), &acoes, y);
+        }
         // Tabela tipada como a do Blend e a do Envelope (HR-12): o `action_button` delega ao
         // `paint_button` canónico, que é quem costura o AccessKit — e nomear o [`ph2d_a11y::NodeId`]
         // aqui é o idioma que o gate `every_widget_file_wires_a11y` lê.

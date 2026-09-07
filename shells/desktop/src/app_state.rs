@@ -1706,6 +1706,13 @@ pub(crate) struct App {
     /// ⚠️ Resolvido UMA vez por quadro pelas **mesmas** funções que o clique usa
     /// ([`crate::bone_gesture::hover`]) — a lei do [`Self::hovered_object`], e aqui mais apertada.
     pub(crate) bone_hover: Option<ph2d_skeleton_render::BoneHover>,
+    /// ⭐⭐ **O OSSO QUE ESTÁ A NASCER** neste quadro — `(origem, ponta, chega-a-ser-osso)`, e `None`
+    /// fora de um arrasto de criação (Enio, 2026-09-07).
+    ///
+    /// ⚠️ Resolvido ao lado do [`Self::bone_hover`] porque é a MESMA pergunta — *o que o ponteiro
+    /// significa agora* — e porque o sítio do desenho já não tem `&self` livre: o `gfx` está
+    /// emprestado mutável, e ler a câmara ali seria o segundo empréstimo.
+    pub(crate) bone_preview: Option<([f64; 2], [f64; 2], bool)>,
     /// ⭐⭐⭐ **O OSSO em desenho** (estudo 42 item 5) — a origem em MUNDO que o press marcou, e
     /// `None` fora do gesto. O `release` faz o osso dali até onde a mão soltou.
     ///

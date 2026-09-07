@@ -16,6 +16,9 @@ pub struct VectorStyleSnapshot {
     pub fill: [u8; 4],
     pub stroke_width_px: f64,
     pub mode: DrawMode,
+    /// ⭐ **O que o arrasto faz no modo Osso** — o painel pinta os dois segmentos a partir disto e
+    /// não sabe o que uma acção É; a tool é a dona.
+    pub bone_action: BoneAction,
     /// **Blend:** cada passo nasce ACIMA do anterior (o checkbox da seção Blend). A tool é a dona;
     /// o painel só o pinta.
     pub blend_stack_up: bool,
@@ -91,6 +94,7 @@ impl Default for VectorStyleSnapshot {
             fill: [90, 150, 230, 255],
             stroke_width_px: super::tool::DEFAULT_STROKE_WIDTH_PX,
             mode: DrawMode::Pen,
+            bone_action: BoneAction::default(),
             blend_stack_up: true,
             pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource::default(),
             symmetry: ph2d_symmetry::SymmetryStyle::default(),

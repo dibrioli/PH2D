@@ -115,20 +115,33 @@ pub(crate) fn create(
 /// recusar. *Uma decisão que só existe dentro do dispatch é uma decisão que nenhum gate lê.*
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum BonePress {
-    /// Acertou um osso: selecciona-o e ARMA o verbo que a `part` diz.
+    /// **Transformar:** acertou um osso — selecciona-o e ARMA o verbo que a `part` diz.
     Grab {
         bone: u64,
         part: ph2d_skeleton_render::BonePart,
     },
-    /// Não acertou osso: marca a ORIGEM de um osso novo (já encaixada na ponta do pai, se perto) e
-    /// diz que FORMA estava sob o cursor — é essa a metade que o *Bind* precisa.
+    /// **Criar:** acertou um osso — apenas o SELECCIONA. É assim que se escolhe onde ramificar, e
+    /// ⛔ sem armar pose nenhuma: neste verbo o arrasto é para fazer um osso, não para posar.
+    Select { bone: u64 },
+    /// **Criar:** não acertou osso — marca a ORIGEM de um osso novo (já encaixada na ponta do osso
+    /// aceso) e diz que FORMA estava sob o cursor, que é a metade que o *Bind* precisa.
     Start {
         origin: [f64; 2],
         pick: Option<ph2d_vec_scene::VecPathId>,
     },
+    /// **Transformar:** não acertou osso — aponta a forma sob o cursor e mais nada. ⛔ Nenhum osso
+    /// nasce neste verbo, nem por arrasto longo.
+    Pick {
+        path: Option<ph2d_vec_scene::VecPathId>,
+    },
 }
 
 /// A decisão do press, sem tocar em nada.
+///
+/// ⭐⭐⭐ **O `action` é o que resolve a ambiguidade do PONTEIRO** (Enio, 2026-09-07: *«do modo como
+/// está fica confuso para o usuário»*). Antes, o mesmo arrasto criava OU posava consoante o que
+/// estava por baixo do cursor — e isso torna inalcançáveis dois gestos legítimos: começar um osso
+/// **em cima** de outro, e posar um osso **sem medo** de criar um por engano.
 pub(crate) fn press(
     sim: &SimWorld,
     scene: &ph2d_vec_scene::VecScene,
@@ -136,14 +149,26 @@ pub(crate) fn press(
     world: [f64; 2],
     px_to_world: f64,
     selected: Option<u64>,
+    action: ph2d_tool_vector::BoneAction,
 ) -> BonePress {
+    use ph2d_tool_vector::BoneAction;
     // ⭐⭐⭐ **O clique PERGUNTA AO REALCE** — não é uma segunda varredura que um gate compara com a
     // primeira: é a MESMA função. O que o artista vê aceso é, por construção, o que ele vai pegar.
     let foco = selected_bone(sim, selected);
     if let Some(h) = hover(sim, world, px_to_world, foco) {
-        return BonePress::Grab {
-            bone: h.bone,
-            part: h.part,
+        return match action {
+            BoneAction::Transform => BonePress::Grab {
+                bone: h.bone,
+                part: h.part,
+            },
+            BoneAction::Create => BonePress::Select { bone: h.bone },
+        };
+    }
+    if action == BoneAction::Transform {
+        // ⛔ Em *Transformar* um press no vazio **não arma osso nenhum** — ele só aponta a forma,
+        // que é o que o *Bind* precisa. É esta linha que faz o verbo ser um só.
+        return BonePress::Pick {
+            path: pen.path_at(scene, world, BONE_HIT_PX * px_to_world),
         };
     }
     // ⭐⭐⭐ **O FILHO NASCE NA PONTA DO PAI, SEMPRE** — não "quando o press cai perto dela".
@@ -375,9 +400,40 @@ impl crate::App {
     }
 }
 
+/// **O segmento de MUNDO de um osso** — a fixtura que os dois módulos de teste partilham.
+///
+/// ⚠️ Ela vive aqui, e não num deles, porque os dois a usam: uma cópia por ficheiro divergiria no
+/// primeiro ajuste, e é o mesmo defeito que este módulo já curou no raio da junta.
+#[cfg(test)]
+pub(crate) fn test_segment(sim: &SimWorld, bits: u64) -> ([f64; 2], [f64; 2]) {
+    crate::skeleton_live::bone_segments(sim)
+        .into_iter()
+        .find(|(b, _, _)| *b == bits)
+        .map(|(_, a, b)| (a, b))
+        .expect("o osso")
+}
+
+/// Uma corrente de `n` ossos de 10 unidades, deitada sobre o eixo X. Devolve `[raiz, .., ponta]`.
+#[cfg(test)]
+pub(crate) fn test_chain(sim: &mut SimWorld, n: usize) -> Vec<u64> {
+    let mut out = Vec::new();
+    let mut pai = None;
+    for i in 0..n {
+        let x = f64::from(u16::try_from(i).unwrap_or(0)) * 10.0;
+        let b = create(sim, pai, [x, 0.0], [x + 10.0, 0.0]).expect("osso");
+        pai = Some(Entity::from_bits(b));
+        out.push(b);
+    }
+    out
+}
+
 #[cfg(test)]
 #[path = "bone_gesture_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "bone_pose_tests.rs"]
+mod pose_tests;
 
 impl crate::App {
     /// **Resolve a metade de osso sob o ponteiro**, uma vez por quadro
@@ -386,8 +442,13 @@ impl crate::App {
     /// ⚠️ **Sem ponteiro no canvas ⇒ LIMPA**, como o realce do Trim e o do Balde: um realce que
     /// sobrevive ao cursor sair da tela é uma alça que finge estar apontada.
     pub(crate) fn refresh_bone_hover(&mut self, pointer: (f32, f32)) {
+        // ⚠️⚠️ **OS DOIS SLOTS SAEM DA MESMA LEITURA, e a saída antecipada tem de limpar OS DOIS.**
+        // A 1.ª redacção desta função limpava só o realce e deixava a pré-visualização congelada:
+        // o cursor sai do canvas e um osso fantasma fica desenhado na tela até ao gesto seguinte.
+        // *Um par de slots resolvido no mesmo sítio esquece-se meio a meio.*
         let Some(world) = self.vec_world_at(pointer) else {
             self.bone_hover = None;
+            self.bone_preview = None;
             return;
         };
         let px_to_world = self.vec_px_to_world();
@@ -398,6 +459,10 @@ impl crate::App {
             .gfx
             .as_ref()
             .and_then(|gfx| hover(&gfx.sim, world, px_to_world, foco));
+        // ⭐ E o osso que está a NASCER, pela mesma leitura do ponteiro.
+        self.bone_preview = self
+            .vec_bone_drag
+            .map(|o| (o, world, drag_makes_a_bone(o, world, px_to_world)));
     }
 }
 
@@ -435,4 +500,20 @@ fn reach_chain(sim: &mut SimWorld, tip: Entity, goal: [f64; 2]) -> bool {
         mexeu |= pose(sim, e, juntas[i + 1], ph2d_skeleton_render::BonePart::Body);
     }
     mexeu
+}
+
+/// ⭐⭐⭐ **ESTE ARRASTO CHEGA A FAZER UM OSSO?** — a porta única do `Up` e da pré-visualização.
+///
+/// ⛔ Um arrasto mais curto que o raio das alças **não** faz osso: um osso de comprimento zero não
+/// tem eixo, logo não pesa ponto nenhum e é invisível — seria lixo que só o `Delete` da Hierarquia
+/// acha. O limiar é em píxeis de TELA, então basta aproximar o zoom para fazer um menor.
+///
+/// ⚠️⚠️ **Ela existe porque a PRÉ-VISUALIZAÇÃO nasceu** (Enio, 2026-09-07). Enquanto o osso só
+/// aparecia no `Up`, esta decisão podia viver lá dentro; com o desenho vivo, a mesma pergunta passa
+/// a ter **dois** leitores — e o `CLAUDE.md` §5.0 diz o que acontece quando eles divergem: *uma
+/// cena que ensina o contrário do que acontece é pior que uma cena ausente*. O artista veria um
+/// osso a crescer e o `Up` não faria nada.
+#[must_use]
+pub(crate) fn drag_makes_a_bone(origin: [f64; 2], tip: [f64; 2], px_to_world: f64) -> bool {
+    (tip[0] - origin[0]).hypot(tip[1] - origin[1]) >= BONE_HIT_PX * px_to_world
 }

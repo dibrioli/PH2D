@@ -133,7 +133,7 @@ pub enum TextAlign {
 /// consome não percebe o corte.
 #[path = "params_mode.rs"]
 mod mode;
-pub use mode::{DrawMode, MarqueeShape};
+pub use mode::{BoneAction, DrawMode, MarqueeShape};
 
 /// UI-facing vertex type for the docked panel's Vertex section (mirror of
 /// `ph2d_vec_scene::VertexKind`; the shell maps between them). Lives in the tool
@@ -396,6 +396,10 @@ pub fn opacity_to_slider(a: u8) -> f32 {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct VectorDrawConfig {
     pub mode: DrawMode,
+    /// ⭐ **O que o arrasto faz no modo Osso** (Enio, 2026-09-07). Viaja no config pela MESMA razão
+    /// do estabilizador do lápis: quem o lê é o `input_dispatch` da shell, e alcançar a tool por
+    /// downcast num handler de press seria trabalho por evento para ler um enum de dois estados.
+    pub bone_action: BoneAction,
     /// **A estabilização autorada do lápis** (0 = ponteiro cru). Viaja no config porque quem a
     /// aplica é o `input_dispatch` da shell, por movimento de ponteiro — e ali a única alça para o
     /// tool é este espelho publicado a cada frame; alcançar o tool por downcast num handler de move
@@ -427,6 +431,7 @@ impl Default for VectorDrawConfig {
     fn default() -> Self {
         Self {
             mode: DrawMode::Select,
+            bone_action: BoneAction::default(),
             shape: ShapeKind::Rectangle,
             values: ShapeKind::Rectangle.defaults(),
             pencil_stabilizer: PENCIL_STABILIZER_DEFAULT,

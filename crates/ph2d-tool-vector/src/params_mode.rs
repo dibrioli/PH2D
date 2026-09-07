@@ -10,6 +10,35 @@ use ph2d_vec_scene::ShapeKind;
 /// draw + edit-anchor gesture (`PenTool`); the shape modes are drag-to-size
 /// (`ShapeTool`). The tool owns the mode; the docked panel's segmented row sets
 /// it and highlights the active one from the published snapshot.
+/// ⭐⭐⭐ **O QUE O ARRASTO FAZ NO MODO OSSO** — criar ou transformar (Enio, 2026-09-07:
+/// *«do modo como está fica confuso para o usuário»*).
+///
+/// ⛔ **Antes eram os dois ao mesmo tempo, e a ambiguidade era do PONTEIRO:** um arrasto sobre um
+/// osso posava-o, um arrasto no vazio criava. Isso torna **inalcançáveis** dois gestos legítimos —
+/// começar um osso *em cima* de outro, e posar um osso *sem medo* de criar um por engano — e
+/// obriga o artista a saber o que está por baixo do cursor antes de carregar.
+///
+/// É a mesma partição que o Moho faz com ferramentas separadas (*Add Bone* × *Translate/Rotate
+/// Bone*) e o Spine com modos, e a razão é a mesma: **um gesto, um verbo**.
+///
+/// ⚠️ Ele é um estado do MODO Osso, e não um par de pills na fileira de modos: a fileira responde
+/// *«que ferramenta»*, este responde *«o que ela faz»* — e são perguntas de níveis diferentes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum BoneAction {
+    /// Arrastar **faz** um osso, a partir da ponta do osso aceso (ou do ponto do press).
+    /// Carregar num osso apenas o **selecciona** — é assim que se escolhe onde ramificar.
+    #[default]
+    Create,
+    /// Arrastar **posa** o que está sob o cursor: corpo gira, bolinha desloca, quadradinho da
+    /// mancha muda a força, anel duplo da ponta dobra a corrente (IK). ⛔ Nunca cria.
+    Transform,
+}
+
+impl BoneAction {
+    /// As duas, na ordem em que o grupo as mostra. ⛔ Fonte única da iteração.
+    pub const ALL: [BoneAction; 2] = [BoneAction::Create, BoneAction::Transform];
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum DrawMode {
     /// Seta preta: seleciona e TRANSFORMA a forma pelo gizmo. Não toca a geometria.

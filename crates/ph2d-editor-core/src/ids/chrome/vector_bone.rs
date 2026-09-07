@@ -41,3 +41,19 @@ pub const VECTOR_BONE_LENGTH: NodeId = hash_node_id("vector.bone.length");
 /// ⚠️ Múltiplo e não distância, de propósito: é o que torna a lei adimensional, e o mesmo rig
 /// desenhado dez vezes maior deforma-se igual.
 pub const VECTOR_BONE_STRENGTH: NodeId = hash_node_id("vector.bone.strength");
+
+/// ⭐⭐⭐ **O grupo alternável CRIAR × TRANSFORMAR** (Enio, 2026-09-07: *«do modo como está fica
+/// confuso para o usuário»*) — o cabeçalho do par.
+pub const VECTOR_BONE_ACTION: NodeId = hash_node_id("vector.bone.action");
+
+/// **Criar** — arrastar faz um osso; carregar num osso apenas o selecciona (é assim que se escolhe
+/// onde ramificar).
+pub const VECTOR_BONE_ACT_CREATE: NodeId = hash_node_id("vector.bone.action.create");
+
+/// **Transformar** — arrastar posa o que está sob o cursor (girar · deslocar · força · IK), e
+/// ⛔ nunca cria.
+pub const VECTOR_BONE_ACT_TRANSFORM: NodeId = hash_node_id("vector.bone.action.transform");
+
+/// Os dois segmentos, **índice-alinhados** com [`ph2d_tool_vector::BoneAction::ALL`]. ⚠️ Alinhar
+/// por índice é o que impede a lista do painel e a do vocabulário de divergirem em silêncio.
+pub const VECTOR_BONE_ACTION_IDS: [NodeId; 2] = [VECTOR_BONE_ACT_CREATE, VECTOR_BONE_ACT_TRANSFORM];

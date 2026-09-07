@@ -108,6 +108,12 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
             // `Click` morre no painel — o modo nunca troca. É a metade do bug #29 que só o gesto
             // REAL apanha.
             || x == ids::VECTOR_MODE_BONE
+            // ⭐⭐⭐ **CRIAR × TRANSFORMAR** (Enio, 2026-09-07) — pela MESMA rota dos pills, e pela
+            // mesma razão: quem é dono da resposta é a TOOL (ela guarda o verbo do arrasto), não o
+            // mundo. ⛔ Fora daqui os dois pintam, acendem sob o rato e o `Click` morre no painel —
+            // que é a metade do bug #29 que só o gesto REAL apanha.
+            || x == ids::VECTOR_BONE_ACT_CREATE
+            || x == ids::VECTOR_BONE_ACT_TRANSFORM
             || x == ids::VECTOR_PATH_WELD
             // A FONTE da largura do lápis (W1d) — três chips exclusivos, do mesmo assunto:
             // com que ferramenta, e como, o traço nasce.

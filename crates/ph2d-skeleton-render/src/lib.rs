@@ -142,6 +142,133 @@ pub fn influence_handle(a: [f64; 2], b: [f64; 2], radius: f64) -> Option<[f64; 2
 /// Espessura do contorno, em píxeis.
 const LINE_PX: f64 = 1.25;
 
+/// Como um osso se apresenta — as três chaves que a gramática usa.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Look {
+    /// O corpo aceso (apontado ou seleccionado).
+    corpo: bool,
+    /// A bolinha da raiz acesa.
+    junta: bool,
+    /// O corpo PREENCHIDO — reservado à selecção.
+    cheio: bool,
+}
+
+/// ⭐⭐⭐ **UM OSSO, DESENHADO — a porta única.** Devolve o comprimento em píxeis de tela.
+///
+/// ⚠️ **Ela existe por causa da PRÉ-VISUALIZAÇÃO** (Enio, 2026-09-07: *«o osso deve aparecer logo
+/// no mouse down e crescer conforme o usuário arrasta»*): o osso que está a nascer tem de ser
+/// desenhado pelo MESMO código que desenha o que já existe, senão o artista vê uma coisa enquanto
+/// arrasta e recebe outra ao soltar. *Duas pinturas do mesmo objecto divergem no primeiro ajuste.*
+fn glyph(
+    pa: Point,
+    pb: Point,
+    look: Look,
+    (aceso, apagado): (VelloColor, VelloColor),
+    target: &mut VectorScene,
+) -> f64 {
+    let (dx, dy) = (pb.x - pa.x, pb.y - pa.y);
+    let comp = dx.hypot(dy);
+    if comp > f64::EPSILON {
+        // A perpendicular unitária, em TELA — é ela que dá a largura constante em píxeis.
+        let (nx, ny) = (-dy / comp, dx / comp);
+        // O ombro do losango fica a um quarto do caminho: é o que faz a silhueta ler como uma seta
+        // e não como um triângulo, e é a proporção que as três referências usam.
+        let ombro = Point::new(pa.x + dx * 0.25, pa.y + dy * 0.25);
+        // ⚠️ O `min(comp * 0.25)` continua por cima da lei, e não é redundante: num osso curtíssimo
+        // ele impede o ombro de ficar mais largo que o próprio comprimento (a silhueta deixaria de
+        // ser uma seta e viraria um losango gordo).
+        let w = bone_half_width_px(comp).min(comp * 0.25);
+        let mut p = BezPath::new();
+        p.move_to(pa);
+        p.line_to(Point::new(ombro.x + nx * w, ombro.y + ny * w));
+        p.line_to(pb);
+        p.line_to(Point::new(ombro.x - nx * w, ombro.y - ny * w));
+        p.close_path();
+        if look.cheio {
+            target.inner_mut().fill(
+                Fill::NonZero,
+                Affine::IDENTITY,
+                &Brush::Solid(aceso),
+                None,
+                &p,
+            );
+        }
+        target.inner_mut().stroke(
+            &Stroke::new(LINE_PX),
+            Affine::IDENTITY,
+            &Brush::Solid(if look.corpo { aceso } else { apagado }),
+            None,
+            &p,
+        );
+    }
+    // A JUNTA: a bolinha na raiz é o que se agarra para posar, e é ela que mostra que dois ossos
+    // partilham um ponto quando a cadeia é contínua.
+    //
+    // ⭐ **Apontada, ela ENCHE** — e aqui o preenchimento não colide com a selecção porque o corpo
+    // já a diz: uma bolinha cheia sobre um corpo apagado lê-se *"o clique aqui desloca"*, que é a
+    // única coisa que o artista precisa de saber antes de carregar.
+    //
+    // ⚠️ **Ela é desenhada mesmo com o corpo de comprimento ZERO**, e é isso que faz o osso
+    // «aparecer no mouse down»: no instante do press ainda não há eixo nenhum, e o que o artista
+    // tem de ver é que o gesto COMEÇOU.
+    let raio = joint_radius_px(comp);
+    let bolinha = Circle::new(pa, raio);
+    if look.junta && !look.cheio {
+        target.inner_mut().fill(
+            Fill::NonZero,
+            Affine::IDENTITY,
+            &Brush::Solid(aceso),
+            None,
+            &bolinha,
+        );
+    }
+    target.inner_mut().stroke(
+        &Stroke::new(LINE_PX),
+        Affine::IDENTITY,
+        &Brush::Solid(if look.junta { aceso } else { apagado }),
+        None,
+        &bolinha,
+    );
+    comp
+}
+
+/// ⭐⭐⭐ **O OSSO QUE ESTÁ A NASCER** — a pré-visualização do arrasto (Enio, 2026-09-07).
+///
+/// ⛔ **Sem ela o osso só aparecia no `Up`**, e o artista desenhava às cegas: ele escolhia
+/// direcção e comprimento sem ver nenhum dos dois.
+///
+/// ⚠️⚠️ **`armed` diz se este arrasto CHEGA a fazer um osso**, e não é decoração: o `Up` recusa um
+/// arrasto mais curto que o raio das alças (um osso de comprimento zero não pesa ponto nenhum e é
+/// invisível). Sem esta distinção a pré-visualização **prometeria** um osso que o `Up` não faz —
+/// e o `CLAUDE.md` §5.0 nomeia isso: *uma cena que ensina o contrário do que acontece é pior que
+/// uma cena ausente*. Armado = aceso; ainda curto = apagado.
+///
+/// ⛔ A decisão do `armed` **não é tomada aqui** — ela vem da mesma porta que o `Up` consulta.
+pub fn draw_bone_preview(
+    origin: [f64; 2],
+    tip: [f64; 2],
+    armed: bool,
+    transform: Affine,
+    theme: Theme,
+    target: &mut VectorScene,
+) {
+    let c = ColorToken::Accent.resolve(theme);
+    let aceso = VelloColor::from_rgba8(c.r, c.g, c.b, c.a);
+    let d = ColorToken::AccentSoft.resolve(theme);
+    let apagado = VelloColor::from_rgba8(d.r, d.g, d.b, d.a);
+    glyph(
+        transform * Point::new(origin[0], origin[1]),
+        transform * Point::new(tip[0], tip[1]),
+        Look {
+            corpo: armed,
+            junta: armed,
+            cheio: false,
+        },
+        (aceso, apagado),
+        target,
+    );
+}
+
 /// **Desenha os ossos** `(bits, origem, ponta)` em MUNDO. `selected` acende um deles, `hover` diz
 /// o que está sob o ponteiro.
 ///
@@ -181,67 +308,21 @@ pub fn draw_bones(
         if comp <= f64::EPSILON {
             continue;
         }
-        // A perpendicular unitária, em TELA — é ela que dá a largura constante em píxeis.
-        let (nx, ny) = (-dy / comp, dx / comp);
-        // O ombro do losango fica a um quarto do caminho: é o que faz a silhueta ler como uma seta
-        // e não como um triângulo, e é a proporção que as três referências usam.
-        let ombro = Point::new(pa.x + dx * 0.25, pa.y + dy * 0.25);
-        // ⚠️ O `min(comp * 0.25)` continua por cima da lei, e não é redundante: num osso curtíssimo
-        // ele impede o ombro de ficar mais largo que o próprio comprimento (a silhueta deixaria de
-        // ser uma seta e viraria um losango gordo).
-        let w = bone_half_width_px(comp).min(comp * 0.25);
-        let mut p = BezPath::new();
-        p.move_to(pa);
-        p.line_to(Point::new(ombro.x + nx * w, ombro.y + ny * w));
-        p.line_to(pb);
-        p.line_to(Point::new(ombro.x - nx * w, ombro.y - ny * w));
-        p.close_path();
         let sel = Some(bits) == selected;
         // ⚠️ O hover é lido POR PARTE: ele escolhe qual das alças acende, e as outras ficam no tom
         // apagado mesmo com o ponteiro sobre o mesmo osso.
         let sob = hover.filter(|h| h.bone == bits);
         let parte = |q: BonePart| sob.is_some_and(|h| h.part == q);
-        let corpo_aceso = sel || parte(BonePart::Body);
-        let junta_acesa = sel || parte(BonePart::Joint);
-        if sel {
-            target.inner_mut().fill(
-                Fill::NonZero,
-                Affine::IDENTITY,
-                &Brush::Solid(aceso),
-                None,
-                &p,
-            );
-        }
-        target.inner_mut().stroke(
-            &Stroke::new(LINE_PX),
-            Affine::IDENTITY,
-            &Brush::Solid(if corpo_aceso { aceso } else { apagado }),
-            None,
-            &p,
-        );
-        // A JUNTA: a bolinha na raiz é o que se agarra para posar, e é ela que mostra que dois
-        // ossos partilham um ponto quando a cadeia é contínua.
-        //
-        // ⭐ **Apontada, ela ENCHE** — e aqui o preenchimento não colide com a selecção porque o
-        // corpo já a diz: uma bolinha cheia sobre um corpo apagado lê-se *"o clique aqui desloca"*,
-        // que é a única coisa que o artista precisa de saber antes de carregar.
-        let raio = joint_radius_px(comp);
-        let bolinha = Circle::new(pa, raio);
-        if junta_acesa && !sel {
-            target.inner_mut().fill(
-                Fill::NonZero,
-                Affine::IDENTITY,
-                &Brush::Solid(aceso),
-                None,
-                &bolinha,
-            );
-        }
-        target.inner_mut().stroke(
-            &Stroke::new(LINE_PX),
-            Affine::IDENTITY,
-            &Brush::Solid(if junta_acesa { aceso } else { apagado }),
-            None,
-            &bolinha,
+        let raio = glyph(
+            pa,
+            pb,
+            Look {
+                corpo: sel || parte(BonePart::Body),
+                junta: sel || parte(BonePart::Joint),
+                cheio: sel,
+            },
+            (aceso, apagado),
+            target,
         );
         // ⭐⭐⭐ **A PONTA de quem fecha a corrente** — o *end effector*. Ela só existe onde não há
         // osso filho: em toda outra junta, a ponta de um osso É a raiz do seguinte, e ali já há

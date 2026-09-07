@@ -10690,6 +10690,20 @@ impl crate::App {
                         vector_scene,
                     );
                 }
+                // ⭐⭐⭐ **O OSSO QUE ESTÁ A NASCER** (Enio, 2026-09-07: *«deve aparecer logo no
+                // mouse down e crescer conforme o usuário arrasta»*). ⛔ Ele fica FORA do `if
+                // !ossos.is_empty()` de propósito: o PRIMEIRO osso de uma cena nasce quando não há
+                // osso nenhum, e era exactamente esse que o artista desenhava às cegas.
+                if let Some((origem, ponta, arma)) = self.bone_preview {
+                    ph2d_skeleton_render::draw_bone_preview(
+                        origem,
+                        ponta,
+                        arma,
+                        cam_affine,
+                        hero.theme,
+                        vector_scene,
+                    );
+                }
             }
             // **A LINHA DE CORTE** (W4) — hachurada, com a tesoura na ponta. Ela é a única
             // geometria da cena que o render de ARTE não desenha (perde fill e stroke ao ser

@@ -86,6 +86,14 @@ impl VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_BONE => {
                 self.mode = DrawMode::Bone;
             }
+            // ⭐⭐⭐ **CRIAR × TRANSFORMAR** (Enio, 2026-09-07). ⚠️ Eles NÃO trocam de modo: um osso
+            // desenha-se e posa-se na mesma ferramenta, e o que muda é o VERBO do arrasto.
+            PanelEvent::Click(id) if id == ids::VECTOR_BONE_ACT_CREATE => {
+                self.bone_action = crate::params::BoneAction::Create;
+            }
+            PanelEvent::Click(id) if id == ids::VECTOR_BONE_ACT_TRANSFORM => {
+                self.bone_action = crate::params::BoneAction::Transform;
+            }
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_PENCIL => {
                 self.mode = DrawMode::Pencil;
             }

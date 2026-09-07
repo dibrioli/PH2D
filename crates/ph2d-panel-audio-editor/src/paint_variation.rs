@@ -10,7 +10,7 @@
 //! The row labels + strategy name come from `variation_state` (the shell publishes
 //! labels; the panel owns the selected row and the jitter slider positions).
 
-use crate::paint::{ClippedHits, button, buttons_block};
+use crate::paint::{ClippedHits, buttons_block, stepper_row};
 use crate::{
     AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_ENABLED, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD,
     AEDIT_VAR_PITCH, AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE,
@@ -25,7 +25,6 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken, list_
 use ph2d_vector::VectorScene;
 
 /// Width of the `◀` / `▶` strategy selector arrows (matches the effects selector).
-const ARROW_W: f32 = 26.0; // LITERAL-PX-OK: selector arrow button width (chrome)
 /// Height of one variation list row — **a linha do app** (wave 17). Ela escrevia `22.0` a
 /// mao, que por acaso era o valor do token: uma coincidencia nao e uma derivacao, e o proximo
 /// pedido de «mais compacto» deixava esta lista para tras.
@@ -35,7 +34,7 @@ const VAR_ROW_H: f32 = ROW_H_PX;
 /// the shared button row height. Play/Remove/Weight need a variation to exist.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_variation_section(
-    mut y: f32,
+    y: f32,
     x: f32,
     w: f32,
     row_h: f32,
@@ -44,49 +43,26 @@ pub(crate) fn paint_variation_section(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
     let count = variation_state::count();
     let has_any = count > 0;
 
     // No title row: the section header above carries the name AND the count.
 
-    // Strategy selector: ◀ | name | ▶.
-    button(
-        Rect::new(x, y, ARROW_W, row_h),
-        "\u{25c0}",
+    // ⭐ O selector de estratégia é um corpo (wave 20b) — ver o irmão em `paint_fx::paint_presets`.
+    let y = stepper_row(
+        Rect::new(x, y, w, row_h),
+        &variation_state::strategy_name(),
         true,
         AEDIT_VAR_STRATEGY_PREV,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    paint_text_centered(
-        text_system,
-        scene,
-        &variation_state::strategy_name(),
-        Rect::new(
-            x + ARROW_W + gap,
-            y,
-            (w - (ARROW_W + gap) * 2.0).max(1.0),
-            row_h,
-        ),
-        TypeToken::Sm.px(),
-        resolve(ColorToken::Text1, theme),
-    );
-    button(
-        Rect::new(x + w - ARROW_W, y, ARROW_W, row_h),
-        "\u{25b6}",
-        true,
         AEDIT_VAR_STRATEGY_NEXT,
         scene,
         text_system,
         theme,
         hit_index,
     );
-    y += row_h + gap;
 
     // The clip list (selectable rows).
+    let mut y = y + ph2d_tokens::control_gap_px();
     y = paint_var_list(y, x, w, scene, text_system, theme, hit_index);
 
     // ⭐⭐⭐ **Os sete são UM corpo** (wave 20, report do dono: *«tudo o que puder ser ajuntado,

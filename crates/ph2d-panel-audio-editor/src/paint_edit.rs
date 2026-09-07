@@ -21,7 +21,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::widget::{block_cells, grid_height};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Spacing, Theme};
+use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
 /// The toolbar at the top of the section: the tools, then the clipboard, then the structure.
@@ -213,7 +213,11 @@ pub(crate) fn paint_edit_section(
         theme,
         hit_index,
     );
-    y += grid_height(5, ROW_H) + Spacing::Md.px();
+    // ⚠️ **Era `Spacing::Md` (8) escrito à mão** — o vão exagerado que o dono apontou
+    //    (2026-09-07, 1.ª seta vermelha). ⛔ O censo da wave 19 não o via: ele procura a
+    //    CAUDA de um pintor (uma expressão sem `;`) e esta fronteira é uma **instrução** a
+    //    meio da função. *Um censo que conhece uma forma da mesma pergunta é cego às outras.*
+    y += grid_height(5, ROW_H) + ph2d_tokens::control_gap_px();
 
     // Selection range ops — enabled only when a waveform selection exists (drag on the overlay
     // with the Select tool to make one). Cut/Copy/Paste used to live down here; they are basic

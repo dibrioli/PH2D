@@ -23,6 +23,7 @@ mod paint;
 mod paint_delivery;
 mod paint_edit;
 mod paint_fx;
+mod paint_groups;
 mod paint_loop;
 mod paint_sections;
 mod paint_spectral;

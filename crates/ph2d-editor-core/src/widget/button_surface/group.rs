@@ -194,6 +194,62 @@ pub fn block_cells(
         .collect()
 }
 
+/// ⭐⭐⭐ **Um bloco cujas fileiras têm peças de LARGURAS DIFERENTES** — o irmão geral do
+/// [`block_cells`], que reparte cada fileira em partes iguais.
+///
+/// Enio, 2026-09-07, sobre o selector de preset do editor de áudio: *«ficaria mais pro se as setas
+/// ficassem no mesmo grupo dos botões Apply, Save e Load»*.
+///
+/// ⚠️ **É o STEPPER que obriga a isto:** `◀ | nome | ▶` é uma fileira de três peças em que as das
+/// pontas são estreitas e fixas e a do meio ocupa o resto. O [`block_cells`] não a exprime — ele
+/// divide por `n` —, e por isso aquela fileira ficava **fora** do grupo dos botões de baixo, com um
+/// vão a separá-la. *Uma porta que só sabe repartir em partes iguais deixa toda forma irregular a
+/// escrever a disposição à mão.*
+///
+/// Cada fileira é uma lista de larguras; elas são usadas **como vêm** (o chamador é quem sabe o que
+/// é fixo e o que é o resto), e as peças **encostam** — o `SEGMENT_HAIRLINE` entra entre elas, como
+/// em toda a família.
+#[must_use]
+pub fn block_cells_of(
+    origin: Rect,
+    rows_widths: &[&[f32]],
+    row_h: f32,
+) -> Vec<Vec<(Rect, GroupCell)>> {
+    let rows = rows_widths.len();
+    rows_widths
+        .iter()
+        .enumerate()
+        .map(|(r, widths)| {
+            let y = origin.y + r as f32 * (row_h + SEGMENT_HAIRLINE);
+            let mut x = origin.x;
+            widths
+                .iter()
+                .enumerate()
+                .map(|(c, &w)| {
+                    let rect = Rect::new(x, y, w, row_h);
+                    x += w + SEGMENT_HAIRLINE;
+                    (
+                        rect,
+                        GroupCell {
+                            col: GroupPos::of(c, widths.len()),
+                            row: GroupPos::of(r, rows),
+                        },
+                    )
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// A largura que sobra para a peça do MEIO de um stepper `◀ | nome | ▶`, com as pontas a `side`.
+///
+/// ⚠️ Ela desconta os **dois** fios que separam as três peças: quem a escrever à mão esquece-os, e
+/// a peça da direita sai `2 px` fora do painel.
+#[must_use]
+pub fn stepper_middle_w(total_w: f32, side: f32) -> f32 {
+    (total_w - side * 2.0 - SEGMENT_HAIRLINE * 2.0).max(1.0)
+}
+
 /// A altura total que uma grelha de `rows` linhas ocupa — incluindo os traços entre elas.
 #[must_use]
 pub fn grid_height(rows: usize, row_h: f32) -> f32 {

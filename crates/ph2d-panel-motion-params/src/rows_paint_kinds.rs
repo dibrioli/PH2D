@@ -353,7 +353,7 @@ pub(super) fn paint_channels_row(
                 );
                 hit_index.register(bid, brect);
             }
-            y += grid_height(erows.len(), ROW_H_PX) + Spacing::Xs.px();
+            y += grid_height(erows.len(), ROW_H_PX) + ph2d_tokens::control_gap_px();
         }
         // The raw text field for anything not listed (honest placeholder, never "e.g. sin(t)").
         let used = paint_text_row(

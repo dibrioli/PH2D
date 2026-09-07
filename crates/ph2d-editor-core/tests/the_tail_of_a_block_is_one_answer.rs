@@ -92,6 +92,61 @@ fn is_a_tail(line: &str) -> bool {
     CURSORS.contains(&head) && t[head.len()..].trim_start().starts_with('+')
 }
 
+/// A linha é a fronteira de um bloco escrita como **INSTRUÇÃO** — `y += grid_height(…) + rung;`?
+///
+/// ⛔⛔ **Esta metade nasceu de um report do dono** (2026-09-07, 1.ª seta vermelha: *«um
+/// espaçamento exagerado»*, entre os dois blocos da secção EDIT do editor de áudio). A metade de
+/// cima deste censo procura a **CAUDA** de um pintor — uma expressão final, sem `;` — e aquele
+/// sítio é uma **instrução a meio da função**: `y += grid_height(5, ROW_H) + Spacing::Md.px();`.
+///
+/// ⚠️ *Um censo que conhece uma forma da mesma pergunta é cego às outras* — é a sexta vez nesta
+/// jornada, e a primeira em que foi o **olho do dono** a apanhá-la em vez de um gate. A régua é o
+/// `grid_height`: ele é a altura que a porta do grupo devolve, logo somar-lhe um degrau é, por
+/// construção, responder *«quanto fica depois deste bloco»*.
+fn hand_written_block_steps() -> Vec<String> {
+    let root = repo_root();
+    let mut out = Vec::new();
+    for p in ui_sources() {
+        let Ok(src) = fs::read_to_string(&p) else {
+            continue;
+        };
+        let rel = p
+            .strip_prefix(&root)
+            .unwrap_or(&p)
+            .to_string_lossy()
+            .replace('\\', "/");
+        for (n, line) in src.lines().enumerate() {
+            let t = line.trim();
+            if t.starts_with("//") || !t.contains("grid_height(") {
+                continue;
+            }
+            if RUNGS
+                .iter()
+                .any(|r| t.contains(&format!("Spacing::{r}.px()")))
+            {
+                out.push(format!("{rel}:{}: {t}", n + 1));
+            }
+        }
+    }
+    out
+}
+
+/// ⭐⭐ **A fronteira de um bloco também não se escreve numa INSTRUÇÃO.**
+///
+/// **Mutação que deve sangrar:** repor `y += grid_height(5, ROW_H) + Spacing::Md.px();` no
+/// `paint_edit.rs` — é exactamente o vão que o dono fotografou.
+#[test]
+fn the_step_after_a_block_is_never_written_at_the_painting_site() {
+    let found = hand_written_block_steps();
+    assert!(
+        found.is_empty(),
+        "{} sitio(s) somam um degrau a' altura de um BLOCO em vez de chamar \
+         `ph2d_tokens::control_gap_px()`:\n  {}",
+        found.len(),
+        found.join("\n  ")
+    );
+}
+
 fn hand_written_tails() -> Vec<String> {
     let root = repo_root();
     let mut out = Vec::new();

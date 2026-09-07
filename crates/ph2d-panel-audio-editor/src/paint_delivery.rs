@@ -19,19 +19,16 @@
 //! encoders, sizes every file for real (no bitrate guesses) and publishes the readouts as
 //! finished strings via `delivery_state`.
 
-use crate::paint::{ClippedHits, button};
+use crate::paint::{ClippedHits, button, stepper_row};
 use crate::{
     AEDIT_CODEC_NEXT, AEDIT_CODEC_PREV, AEDIT_EXPORT_SET, AEDIT_OGG_QUALITY, delivery_state,
 };
-use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
+use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider, paint_slider_track};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
-
-/// Width of the `◀` / `▶` codec selector arrows (matches the other selectors).
-const ARROW_W: f32 = 26.0; // LITERAL-PX-OK: selector arrow button width (chrome)
 
 /// A clip eating more than this share of the audio subsystem's RAM budget (HR-13,
 /// 30 MB) is worth a second look — one sound should not be most of the envelope.
@@ -41,7 +38,7 @@ const BUDGET_WARN_FRAC: f32 = 0.25; // LITERAL-PX-OK: share of a RAM budget, not
 /// dims when there is no clip: there is nothing to price.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_delivery_section(
-    mut y: f32,
+    y: f32,
     x: f32,
     w: f32,
     loaded: bool,
@@ -59,40 +56,12 @@ pub(crate) fn paint_delivery_section(
 
     // Codec selector: ◀ | name | ▶. It drives both the readout and the Export button,
     // so there is exactly one place the codec is decided.
-    button(
-        Rect::new(x, y, ARROW_W, row_h),
-        "\u{25c0}",
+    // ⭐ O selector de formato é um corpo (wave 20b) — ver o irmão em `paint_fx::paint_presets`.
+    let mut y = stepper_row(
+        Rect::new(x, y, w, row_h),
+        &delivery_state::codec_name(),
         loaded,
         AEDIT_CODEC_PREV,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    paint_text_centered(
-        text_system,
-        scene,
-        &delivery_state::codec_name(),
-        Rect::new(
-            x + ARROW_W + gap,
-            y,
-            (w - (ARROW_W + gap) * 2.0).max(1.0),
-            row_h,
-        ),
-        TypeToken::Sm.px(),
-        resolve(
-            if loaded {
-                ColorToken::Text1
-            } else {
-                ColorToken::Text2
-            },
-            theme,
-        ),
-    );
-    button(
-        Rect::new(x + w - ARROW_W, y, ARROW_W, row_h),
-        "\u{25b6}",
-        loaded,
         AEDIT_CODEC_NEXT,
         scene,
         text_system,

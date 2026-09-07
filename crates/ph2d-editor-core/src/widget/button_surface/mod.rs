@@ -308,5 +308,6 @@ mod chip_axis_tests {
 /// ali, *que FORMA ele tem quando tem vizinhos*.
 mod group;
 pub use group::{
-    GroupCell, GroupPos, SEGMENT_HAIRLINE, block_cells, grid_cells, grid_height, segment_rects,
+    GroupCell, GroupPos, SEGMENT_HAIRLINE, block_cells, block_cells_of, grid_cells, grid_height,
+    segment_rects, stepper_middle_w,
 };

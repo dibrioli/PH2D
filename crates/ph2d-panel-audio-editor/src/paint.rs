@@ -282,7 +282,7 @@ pub(crate) fn fmt_time(secs: f64) -> String {
 /// ⚠️ **Em repouso o resultado é BYTE-IDÊNTICO ao que shipava:** `hover_axis` devolve `None` no
 /// neutro ([`motion::SETTLED`]) e o chamador cai no token duro — que para `Normal` é o `Bg3` de
 /// sempre.
-fn action_bg(
+pub(crate) fn action_bg(
     rest: ColorToken,
     hot: ColorToken,
     press: ColorToken,
@@ -352,59 +352,12 @@ pub(crate) fn button(
 }
 
 /// O mesmo botão, sabendo **onde está numa fileira** — ver [`GroupPos`].
-/// ⭐⭐⭐ **N botões em várias fileiras, e o conjunto é UM CORPO** (wave 20, report do dono:
-/// *«tudo o que puder ser ajuntado, ajunte; apenas quando o grupo for nitidamente de função
-/// diferente é que deve permanecer afastado»*).
-///
-/// ⚠️ **Este painel já agrupava na HORIZONTAL e não na VERTICAL:** o `segment_rects` juntava
-/// *Add Marker | Delete*, e a seguir um `y += row_h + gap` escrito à mão punha *Split at Markers*
-/// **fora** do corpo — três botões do mesmo assunto lidos como dois controlos. A lei do grupo tem
-/// duas dimensões desde a wave 11 (`block_cells`); o que faltava era um sítio por onde este painel
-/// a alcançasse.
-///
-/// Devolve o `y` **imediatamente abaixo** do bloco — sem vão: quem chama decide se o que vem a
-/// seguir é o mesmo assunto (nada) ou outro (`control_gap_px`).
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn buttons_block(
-    rect: Rect,
-    cols_per_row: &[usize],
-    items: &[(&str, bool, NodeId)],
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut ClippedHits,
-) -> f32 {
-    debug_assert_eq!(
-        items.len(),
-        cols_per_row.iter().sum::<usize>(),
-        "a grelha declarada nao cobre os botoes"
-    );
-    let block = ph2d_editor_core::widget::block_cells(
-        Rect::new(rect.x, rect.y, rect.w, 0.0),
-        cols_per_row,
-        rect.h,
-    );
-    let mut i = 0usize;
-    for (r, count) in cols_per_row.iter().enumerate() {
-        for k in 0..*count {
-            let (label, enabled, id) = items[i + k];
-            let (seg, cell) = block[r][k];
-            button_in_group(
-                seg,
-                label,
-                enabled,
-                id,
-                cell,
-                scene,
-                text_system,
-                theme,
-                hit_index,
-            );
-        }
-        i += count;
-    }
-    rect.y + ph2d_editor_core::widget::grid_height(cols_per_row.len(), rect.h)
-}
+// ⭐ **As portas de GRUPO vivem no irmão** (`paint_groups.rs`, wave 20b): elas respondem *como N
+//    peças formam um corpo*, e este ficheiro responde *como se pinta UMA peça*. Re-exportadas por
+//    nome para que nenhum sítio de chamada mude — o mesmo idioma do `command_palette`.
+pub(crate) use crate::paint_groups::{
+    ARROW_W, buttons_block, display_in_group, stepper_over_buttons, stepper_row,
+};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn button_in_group(

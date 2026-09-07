@@ -14,7 +14,10 @@
 //! kind index, and the shell publishes each slot's label + already-formatted value
 //! (`audio/fx_params.rs`), so no DSP range or unit ever lands here.
 
-use crate::paint::{ClippedHits, ROW_H, button, buttons_block, toggle};
+use crate::paint::{
+    ARROW_W, ClippedHits, ROW_H, action_bg, button, button_in_group, buttons_block,
+    display_in_group, stepper_over_buttons, toggle,
+};
 use crate::{
     AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
     AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_STAGE_ONS,
@@ -25,16 +28,15 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::widget::{
-    ButtonState, IconButtonStyle, IconGlyph, Slider, SliderOrientation, paint_icon_button,
-    paint_slider,
+    ButtonState, GroupCell, IconButtonStyle, IconGlyph, SEGMENT_HAIRLINE, Slider,
+    SliderOrientation, paint_icon_button, paint_slider,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// Width of the `◀` / `▶` selector arrows.
-const ARROW_W: f32 = 26.0; // LITERAL-PX-OK: selector arrow button width (chrome)
 /// **Uma linha de lista não tem quinas** — ver o sítio que a usa.
 const LIST_ROW_RADIUS_PX: f32 = 0.0; // LITERAL-PX-OK: a ausencia de raio E' a lei da linha de lista
 
@@ -80,47 +82,19 @@ pub(crate) fn paint_fx_section(
 /// user preset **files** via a native dialog — the OS browser is their picker, so no
 /// in-panel list is needed. Sits above the effect selector: a preset is a starting
 /// point you then tune.
-fn paint_presets(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -> f32 {
-    let gap = Spacing::Xs.px();
+fn paint_presets(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -> f32 {
     let has_presets = presets::preset_count() > 0;
-    button(
-        Rect::new(x, y, ARROW_W, row_h),
-        "\u{25c0}",
+    // ⭐⭐⭐ **O selector e as três ordens são UM corpo** (report do dono, 2026-09-07, setas verdes:
+    //    *«ficaria mais pro se as setas ficassem no mesmo grupo dos botões Apply, Save e Load»*).
+    //
+    // Apply (factory) · Save · Load (files). Apply needs a preset to load; Save/Load need a clip
+    // loaded, like every other file action.
+    let y = stepper_over_buttons(
+        Rect::new(x, y, w, row_h),
+        &presets::preset_name(),
         has_presets,
         AEDIT_PRESET_PREV,
-        ctx.scene,
-        ctx.text_system,
-        ctx.theme,
-        ctx.hit_index,
-    );
-    let name_x = x + ARROW_W + gap;
-    let name_w = (w - 2.0 * (ARROW_W + gap)).max(1.0);
-    paint_text_centered(
-        ctx.text_system,
-        ctx.scene,
-        &presets::preset_name(),
-        Rect::new(name_x, y, name_w, row_h),
-        TypeToken::Sm.px(),
-        resolve(text_tone(has_presets), ctx.theme),
-    );
-    button(
-        Rect::new(x + w - ARROW_W, y, ARROW_W, row_h),
-        "\u{25b6}",
-        has_presets,
         AEDIT_PRESET_NEXT,
-        ctx.scene,
-        ctx.text_system,
-        ctx.theme,
-        ctx.hit_index,
-    );
-    y += row_h + gap;
-
-    // Apply (factory) · Save · Load (files). Apply needs a preset to load; Save/Load
-    // need a clip loaded, like every other file action.
-    // ⭐ Os três são UM corpo (wave 20): o mesmo assunto — *o que fazer com um preset*.
-    let y = buttons_block(
-        Rect::new(x, y, w, row_h),
-        &[3],
         &[
             ("Apply", has_presets, AEDIT_PRESET_APPLY),
             ("Save", loaded, AEDIT_PRESET_SAVE),
@@ -137,50 +111,113 @@ fn paint_presets(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut
 /// `◀ | effect name | ⟲ | ▶` — sets the SELECTED stage's kind. The Reset icon is
 /// frameless, sits beside the name, and puts that stage's parameters back on their
 /// neutral defaults. It is dimmed while they already are.
-fn paint_selector(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -> f32 {
-    let gap = Spacing::Xs.px();
-    button(
-        Rect::new(x, y, ARROW_W, row_h),
+/// **Um ÍCONE que é peça de um grupo** — o `↺` do selector de efeito.
+///
+/// ⚠️ **O irmão solto (`icon_button`) não pinta superfície nenhuma**, e dentro de um corpo isso
+/// abre um buraco: as vizinhas têm fundo e ele não. Aqui ele ganha a superfície e as quinas da
+/// célula, como qualquer outra peça.
+fn icon_in_group(
+    rect: Rect,
+    icon: IconId,
+    enabled: bool,
+    id: NodeId,
+    pos: GroupCell,
+    ctx: &mut Ctx,
+) {
+    let bg = action_bg(
+        ColorToken::Bg3,
+        ColorToken::BgElev,
+        ColorToken::AccentSoft,
+        ctx.hit_index.visual(id),
+        enabled,
+        ctx.theme,
+    );
+    ph2d_editor_core::paint::fill_rounded_rect_radii(
+        ctx.scene,
+        rect,
+        pos.radii(ph2d_editor_core::paint::frame_radius(
+            ctx.theme,
+            Radius::Sm.px(),
+        )),
+        bg,
+    );
+    ph2d_editor_core::paint::paint_icon(
+        ctx.scene,
+        icon,
+        rect,
+        resolve(
+            if enabled {
+                ColorToken::Text1
+            } else {
+                ColorToken::TextDisabled
+            },
+            ctx.theme,
+        ),
+        ph2d_tokens::StrokeToken::Default.px(),
+    );
+    if enabled {
+        ctx.hit_index.register(id, rect);
+    }
+}
+
+fn paint_selector(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -> f32 {
+    // ⭐⭐ **As quatro peças são UM corpo** (report do dono, 2026-09-07, 2.ª seta verde): a mesma
+    //    lei do selector de preset acima — as setas pertencem ao selector, não flutuam ao lado
+    //    dele. Aqui há uma peça a mais, o `↺`, que repõe o efeito escolhido.
+    let icon_w = row_h;
+    // ⚠️ Os fios são `pecas − 1`, DERIVADO: escrever `3` a' mao aqui e' a mesma especie de
+    //    numero que o `stepper_middle_w` existe para evitar.
+    const PIECES: f32 = 4.0; // LITERAL-PX-OK: contagem de pecas do selector, nao um px
+    let name_w = (w - ARROW_W * 2.0 - icon_w - SEGMENT_HAIRLINE * (PIECES - 1.0)).max(1.0);
+    let cells = ph2d_editor_core::widget::block_cells_of(
+        Rect::new(x, y, w, 0.0),
+        &[&[ARROW_W, name_w, icon_w, ARROW_W]],
+        row_h,
+    );
+    let cells = &cells[0];
+    let (kind, _) = snapshot::fx_sel_stage();
+    button_in_group(
+        cells[0].0,
         "\u{25c0}",
         loaded,
         AEDIT_FX_PREV,
+        cells[0].1,
         ctx.scene,
         ctx.text_system,
         ctx.theme,
         ctx.hit_index,
     );
-    let icon_w = row_h;
-    let name_x = x + ARROW_W + gap;
-    let reset_x = x + w - ARROW_W - gap - icon_w;
-    let name_w = (reset_x - gap - name_x).max(1.0);
-    let (kind, _) = snapshot::fx_sel_stage();
-    paint_text_centered(
-        ctx.text_system,
-        ctx.scene,
+    display_in_group(
+        cells[1].0,
         &snapshot::fx_kind_name(kind),
-        Rect::new(name_x, y, name_w, row_h),
-        TypeToken::Sm.px(),
-        resolve(text_tone(loaded), ctx.theme),
+        loaded,
+        cells[1].1,
+        ctx.scene,
+        ctx.text_system,
+        ctx.theme,
     );
-    icon_button(
-        Rect::new(reset_x, y, icon_w, icon_w),
+    // ⚠️ O `↺` é uma PEÇA do corpo, e não um ícone solto por cima dele: ele partilha a superfície
+    //    e as quinas com as vizinhas, senão o corpo abre um buraco onde ele está.
+    icon_in_group(
+        cells[2].0,
         IconId::Reset,
         loaded && !snapshot::fx_at_defaults(),
         AEDIT_FX_RESET,
+        cells[2].1,
         ctx,
     );
-    button(
-        Rect::new(x + w - ARROW_W, y, ARROW_W, row_h),
+    button_in_group(
+        cells[3].0,
         "\u{25b6}",
         loaded,
         AEDIT_FX_NEXT,
+        cells[3].1,
         ctx.scene,
         ctx.text_system,
         ctx.theme,
         ctx.hit_index,
     );
-    y += row_h + Spacing::Md.px();
-    y
+    y + row_h + ph2d_tokens::control_gap_px()
 }
 
 /// One row per parameter of the selected stage: `label ......... value`, with the
@@ -393,12 +430,18 @@ fn paint_commit_row(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &
         ctx.theme,
         ctx.hit_index,
     );
-    y += row_h;
+    y += row_h + ph2d_tokens::control_gap_px();
 
-    // ⭐⭐ **Bypass e Apply|Cancel são UM corpo** (wave 20): os três respondem à mesma pergunta —
-    //    *o que fazer com o que está a tocar*. ⚠️ O `Bypass` continua a ser um TOGGLE (ele tem
-    //    estado ligado/desligado, os outros dois não), então ele pinta-se sozinho e o que encosta
-    //    é a geometria: a fileira de baixo começa exactamente onde ele acaba.
+    // ⛔⛔ **O `Bypass` NÃO entra no corpo do `Apply | Cancel`, e a wave 20 juntou-os por engano**
+    //    (report do dono, 2026-09-07, 2.ª seta vermelha: *«a ausência de espaçamento»*). A régua é
+    //    a dele, e ela separa os dois: o `Bypass` é um **estado** que se liga e desliga; `Apply` e
+    //    `Cancel` são **ordens** que terminam a audição. *«Apenas quando o grupo for nitidamente de
+    //    função diferente é que deve permanecer grupos afastados»* — e um interruptor ao lado de
+    //    dois comandos é exactamente esse caso.
+    //
+    // ⚠️ **A lição é sobre a régua, não sobre este par:** «respondem à mesma pergunta» é larga
+    //    demais — quase tudo numa secção responde à mesma pergunta. A que decide é *o que a peça
+    //    É*: um estado, uma ordem, uma escolha.
     //
     // Apply is dimmed while bypassed: what sounds is the dry clip, so committing
     // would land nothing. Release Bypass to commit what the chain does.

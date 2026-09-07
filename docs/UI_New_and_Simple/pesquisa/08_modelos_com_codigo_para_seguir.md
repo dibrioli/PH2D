@@ -1310,6 +1310,66 @@ separados — o mesmo par, dois idiomas, escolhidos pelo widget e não pelo dese
 `ph2d-timeline::nesting_clock`, **3 de 3 verde sozinha** com `load 36` impresso ao lado); clippy
 `--all-targets -D warnings` limpo na workspace inteira.
 
+### 7.24 — ✅ WAVE 20b (2026-09-07): os três reports do smoke da 20
+
+**Report do dono**, foto do Audio Editor com duas setas vermelhas e duas verdes.
+
+#### 🔴 1 — «um espaçamento exagerado» (entre os dois blocos do EDIT)
+
+`y += grid_height(5, ROW_H) + Spacing::Md.px();` — um `8` escrito à mão. ⛔ **O censo da wave 19
+não o via:** ele procura a **CAUDA** de um pintor (uma expressão final, sem `;`) e esta fronteira é
+uma **instrução a meio da função**. *Um censo que conhece uma forma da mesma pergunta é cego às
+outras* — é a sexta vez nesta jornada, e a **primeira em que foi o olho do dono a apanhá-la** em vez
+de um gate. ⇒ o censo ganhou a metade que lê `grid_height(…) + rung` (2 sítios; o irmão vivia no
+`motion-params`).
+
+#### 🔴 2 — «a ausência de espaçamento» (Bypass colado ao Apply | Cancel)
+
+⛔⛔ **A wave 20 juntou-os por engano, e a régua que eu usei era larga demais.** Eu escrevi *«os três
+respondem à mesma pergunta»* — mas quase tudo dentro de uma secção responde à mesma pergunta. A
+régua que decide é a **dele**, e ela pergunta *o que a peça É*: o `Bypass` é um **estado** que se
+liga e desliga; `Apply` e `Cancel` são **ordens** que terminam a audição. *«Apenas quando o grupo
+for nitidamente de função diferente é que deve permanecer grupos afastados»* — um interruptor ao
+lado de dois comandos é exactamente esse caso.
+
+#### 🟢 3 — «as setas no mesmo grupo dos botões Apply, Save e Load»
+
+⚠️ **A fileira de cima tem larguras DESIGUAIS** — duas setas estreitas e fixas, o nome a ocupar o
+resto —, e é por isso que ela ficava de fora: o `block_cells` reparte cada fileira em partes
+**iguais**. ⇒ nasce o `block_cells_of` (larguras dadas) e o `stepper_middle_w`.
+
+⭐ **O nome ganha SUPERFÍCIE**, e não é decoração: sem ela o corpo tem um buraco no meio da primeira
+fileira e o que se lê é *duas setas soltas* em vez de *um selector*. É o mostrador de um stepper — a
+peça do meio de `[−][ valor ][+]`. ⛔ E ela **não é clicável**: o nome não abre lista nenhuma, e uma
+affordance que o painel não pode honrar é pior que nenhuma.
+
+Vale para os **três** selectores do painel (preset, efeito, estratégia de variação) e o do
+**Delivery** — o do efeito tem uma peça a mais, o `↺`, que passou a ser **peça do corpo** e não um
+ícone solto por cima dele.
+
+⚠️ **E o `ARROW_W = 26.0` estava declarado TRÊS vezes**, uma por ficheiro de selector — a mesma
+espécie do `Bg1` com doze cópias e do vão de linha atrás de um campo.
+
+#### ⛔⛔ E a bancada de MUTAÇÃO tinha um defeito que escondia a verdade
+
+Restaurar com `mv f.bak f` devolve o mtime do **backup**, anterior ao do ficheiro mutado que o cargo
+acabou de compilar — e o cargo mede frescura por **mtime**. ⇒ ele guarda o artefacto **da mutação**,
+e a corrida seguinte mede o programa errado. Apanhei-o porque um gate acusou `dois CONTROLOS (8)`
+sobre uma fonte que diz `3`, com um aviso de *«`widget_margin_y_px` never used»* sobre uma função
+visivelmente chamada. *Quando o compilador contradiz o ficheiro aberto à frente, suspeite do
+artefacto.* ⚠️ **Ele escondia-se atrás do `cargo fmt`** (que actualiza o mtime ao reescrever), e é
+por isso que sobreviveu a várias waves. Cura: `touch` no fim de toda restauração.
+
+| prova de mutação | resultado |
+|---|---|
+| o vão exagerado do EDIT volta | ✅ morreu |
+| o controlo passa a valer 10 | ✅ morreu |
+
+**Portão:** `13 073` testes / `0` falhados; clippy `--all-targets -D warnings` limpo. ⚠️ O teto de
+LOC do `paint.rs` do editor de áudio (767 de 600) foi pago por **corte** — as portas de grupo
+saíram para `paint_groups.rs`, e a linha do corte é a pergunta: o pai pinta **uma peça**, o irmão
+diz **como N peças formam um corpo**.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

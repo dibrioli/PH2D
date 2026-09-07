@@ -1120,7 +1120,21 @@ const PARIDADE: [&str; VERDE_N] = [
 ];
 const VERDE_N: usize = 79;
 
-/// Os traços AINDA por explicar, com o valor MEDIDO ao lado.
+/// Os traços que a régua do MÁXIMO não reproduz, com o valor medido ao lado.
+///
+/// ⛔⛔ **Em 07/09 esta lista deixou de querer dizer «por explicar».** Quatro dos
+/// sete são de ESFERA, e ali a barra de paridade cai **abaixo da banda de
+/// realização** do próprio oráculo (gate 46) — o máximo não os julga. Medidos
+/// pela régua que a espec prescreve para esse caso — o `p95` da distância por
+/// vértice sobre o conjunto movido, contra a MESMA barra —, **os quatro passam**
+/// (`0,07` · `0,31` · `0,43` · `0,83` da barra), e é o gate 48 que o mede.
+///
+/// ⭐⭐⭐ **E dois dos três de PLANO também passam pelo `p95`** (`0,48` e `0,73`);
+/// no plano não há lotaria, logo ali o máximo **é** a régua honesta e eles ficam.
+/// ⇒ *de 86 traços, o `p95` deixa UM de fora* — o
+/// `plano_apertar_ponto_plano_local` (`2,04` da barra), que é o regime §5.2-ter
+/// em que o próprio alvo inverte a malha e a ORDEM decide. **É a decisão do dono,
+/// e não uma lei em falta.**
 ///
 /// ⭐⭐⭐ **Os DOIS `_persistente` SAÍRAM daqui no mesmo dia em que entraram** — a
 /// base persistente (§6.4) está implementada, e a assinatura dela lê-se dos
@@ -3935,5 +3949,163 @@ fn a_lotaria_e_da_superficie_e_nao_da_area() {
         com_lotaria, 3,
         "so' {com_lotaria} dos tres tracos de esfera tem lotaria -- o desenho 2x2 \
          precisa das duas colunas"
+    );
+}
+
+/// **SONDA — o `p95` da distância por vértice, contra o máximo e contra a barra.**
+///
+/// As convenções são as do §10.15, e sem elas o gate 48 não é edificável:
+/// «moveu-se» é `|p − p_repouso| > 10⁻⁵` (o predicado que produz a chave
+/// `movidos`), o conjunto é a **UNIÃO** dos movidos do port e do oráculo, e o
+/// `p95` é `ordenados[⌈0,95·n⌉−1]`.
+#[test]
+#[ignore = "sonda"]
+fn sonda_do_p95_contra_o_maximo() {
+    const LIMIAR: f64 = 1e-5;
+    println!(
+        "{:<44} {:>9} {:>9} {:>9} {:>8} | {:>6} {:>6}",
+        "traco", "p95", "max", "barra", "p95/barra", "mov_n", "mov_o"
+    );
+    for nome in todas() {
+        let t = traco(&nome);
+        if !nome.starts_with("esfera_") && !nome.contains("apertar") {
+            continue;
+        }
+        let rest = repouso(t.s("superficie"));
+        let _ = &rest;
+        let nosso = correr_posicoes(&nome);
+        let mut d: Vec<f64> = Vec::new();
+        let (mut mn, mut mo) = (0usize, 0usize);
+        let mut max_o = 0.0f64;
+        for v in 0..rest.len() {
+            let (un, uo) = (dist(rest[v], nosso[v]), dist(rest[v], t.depois[v]));
+            max_o = max_o.max(uo);
+            mn += usize::from(un > LIMIAR);
+            mo += usize::from(uo > LIMIAR);
+            if un > LIMIAR || uo > LIMIAR {
+                d.push(dist(nosso[v], t.depois[v]));
+            }
+        }
+        if d.is_empty() {
+            continue;
+        }
+        d.sort_by(f64::total_cmp);
+        let p95 = d[(0.95 * d.len() as f64).ceil() as usize - 1];
+        let max = d[d.len() - 1];
+        let barra = BARRA_PARIDADE * max_o;
+        println!(
+            "{nome:<44} {p95:>9.5} {max:>9.5} {barra:>9.5} {:>8.2} | {mn:>6} {mo:>6}",
+            p95 / barra
+        );
+    }
+}
+
+/// **A BANDA DE REALIZAÇÃO da corrida inteira**, do cabeçalho do `.deformado` —
+/// `None` onde ela não foi medida.
+///
+/// ⚠️ **É a da CORRIDA INTEIRA, e não a do dump por passo**: são duas estimativas
+/// da mesma grandeza com amostras diferentes, e a comparação de fim de traço tem
+/// de usar a que foi medida no fim do traço.
+fn banda_da_corrida(nome: &str) -> Option<f64> {
+    let texto = inflar(&format!("{nome}.deformado.txt.gz"));
+    for l in texto.lines() {
+        if let Some(resto) = l.strip_prefix("dispersao_entre_realizacoes")
+            && let Some(t) = resto.split_whitespace().next_back()
+            && let Ok(v) = t.parse::<f64>()
+        {
+            return Some(v);
+        }
+    }
+    None
+}
+
+/// ⭐⭐⭐ **GATE 48 — ONDE O MÁXIMO NÃO DECIDE, DECIDE O `p95`** (espec §14 gate 48,
+/// §10.15).
+///
+/// Um traço cuja barra de paridade caia **abaixo** da banda de realização não é
+/// julgável pelo máximo — ali a barra reprovaria o próprio oráculo comparado
+/// consigo mesmo (gate 46). O veredito passa a ser o **`p95` da distância por
+/// vértice sobre o conjunto que se moveu**, contra a MESMA barra.
+///
+/// **As convenções sem as quais o gate não é edificável** (§10.15): «moveu-se» é
+/// `|p − p_repouso| > 10⁻⁵` — o predicado que produz a chave `movidos` — o
+/// conjunto é a **UNIÃO** dos movidos do port e do oráculo, e o `p95` é
+/// `ordenados[⌈0,95·n⌉−1]`.
+///
+/// ⚠️⚠️ **Três metades, e nenhuma substitui as outras:** (a) o `p95` decide;
+/// (b) o **máximo** continua a ser reportado, com a banda ao lado — ⛔ *um
+/// quantil sozinho esconde um port que erre muito num sítio pequeno*; (c) a
+/// **contagem de movidos** entra como observável discreta.
+///
+/// ⛔ **A população NÃO é uma lista escrita à mão:** ela é *«os traços cuja barra
+/// está abaixo da banda»*, derivada dos cabeçalhos. Um traço novo entra ou sai
+/// dela pelo que ele mede.
+#[test]
+fn onde_o_maximo_nao_decide_decide_o_p95() {
+    const LIMIAR: f64 = 1e-5;
+    let (mut julgados, mut fora) = (0usize, 0usize);
+    for nome in todas() {
+        let Some(banda) = banda_da_corrida(&nome) else {
+            continue;
+        };
+        let t = traco(&nome);
+        let rest = repouso(t.s("superficie"));
+        let nosso = correr_posicoes(&nome);
+        let mut d: Vec<f64> = Vec::new();
+        let (mut mn, mut mo, mut max_o) = (0usize, 0usize, 0.0f64);
+        for v in 0..rest.len() {
+            let (un, uo) = (dist(rest[v], nosso[v]), dist(rest[v], t.depois[v]));
+            max_o = max_o.max(uo);
+            mn += usize::from(un > LIMIAR);
+            mo += usize::from(uo > LIMIAR);
+            if un > LIMIAR || uo > LIMIAR {
+                d.push(dist(nosso[v], t.depois[v]));
+            }
+        }
+        let barra = BARRA_PARIDADE * max_o;
+        if barra >= banda || d.is_empty() {
+            // Aqui o MÁXIMO decide, e é o gate 15 que o mede.
+            fora += 1;
+            continue;
+        }
+        julgados += 1;
+        d.sort_by(f64::total_cmp);
+        let p95 = d[(0.95 * d.len() as f64).ceil() as usize - 1];
+        let max = d[d.len() - 1];
+        // (a) o `p95` decide.
+        assert!(
+            p95 <= barra,
+            "{nome}: o p95 e' {p95:.5} contra a barra {barra:.5} -- aqui o maximo \
+             nao julga (a banda de realizacao e' {banda:.5}), logo quem julga e' este"
+        );
+        // (b) o MÁXIMO é reportado com a banda ao lado — ⛔ um quantil sozinho
+        // esconde um port que erre muito num sítio pequeno, e o que se afirma é
+        // que esse sítio cabe na lotaria.
+        assert!(
+            max <= banda * 6.0,
+            "{nome}: o maximo e' {max:.5} contra uma banda de {banda:.5} ({:.1}x) \
+             -- o p95 passou, mas ha' um sitio pequeno a errar muito mais do que \
+             a lotaria produz",
+            max / banda
+        );
+        // (c) a contagem de movidos. ⚠️ **A barra NÃO é o `± 1` do oráculo** — esse
+        // é o espalhamento das realizações DELE, não uma tolerância de port. A
+        // nossa é `5 %`, e o número que a define é o Snake Hook (`3,4 %`), cujo
+        // desacordo está medido como FRANJA do limiar do censo e não conjunto
+        // (ver `o_desacordo_de_contagem_do_gancho_e_franja_e_nao_conjunto`).
+        let desvio = (mn as f64 - mo as f64).abs() / mo as f64;
+        assert!(
+            desvio < 0.05,
+            "{nome}: movemos {mn} vertices e o alvo {mo} ({:.1}%) -- acima de 5% \
+             ja' nao e' franja do limiar, e' outro conjunto simulado",
+            100.0 * desvio
+        );
+    }
+    // ⛔ Anti-vácuo dos DOIS lados: se nenhum traço fosse julgado aqui o gate não
+    // media nada, e se TODOS o fossem o gate 15 teria deixado de existir.
+    assert!(
+        julgados >= 3 && fora >= 3,
+        "o p95 julga {julgados} tracos e o maximo julga {fora} -- o censo precisa \
+         das duas metades"
     );
 }

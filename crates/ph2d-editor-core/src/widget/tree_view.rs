@@ -116,7 +116,7 @@ impl TreeView {
     /// expansion without triggering selection.
     pub fn chevron_rect(&self, host: Rect, visible_index: usize, depth: usize, row_h: f32) -> Rect {
         let pad_x = Spacing::Md.px();
-        let indent = Spacing::Lg.px();
+        let indent = ph2d_tokens::list_indent_px();
         let chev_size = (row_h * 0.6).clamp(10.0, 16.0); // LITERAL-PX-OK: TreeView chev sized as 60% of row height with min/max
         let y = host.y + row_h * visible_index as f32;
         let x = host.x + pad_x + indent * depth as f32;
@@ -164,7 +164,7 @@ pub fn paint_tree_view(
     row_h: f32,
 ) {
     let pad_x = Spacing::Md.px();
-    let indent = Spacing::Lg.px();
+    let indent = ph2d_tokens::list_indent_px();
     let chev_size = (row_h * 0.6).clamp(10.0, 16.0); // LITERAL-PX-OK: chev 60% of row height with min/max
     let icon_size = (row_h * 0.6).clamp(12.0, 18.0); // LITERAL-PX-OK: icon 60% of row height with min/max
     let font = TypeToken::Base.px();

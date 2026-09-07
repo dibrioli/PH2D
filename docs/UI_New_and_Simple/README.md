@@ -229,10 +229,26 @@ sítios herdam sem saber*. **65 sítios** convertidos, byte-idênticos no cláss
 prometida («cromo contra canvas») tem **três** classes: uma **FORMA** (`Radius::Full`) fica de fora
 porque **a porta achata** — uma pílula sairia rectângulo —, e isso é gate, não zelo.
 
-⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
-cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·
-esbatimento do rótulo e inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis, animado) —
-a lista dizia o contrário.
+⭐⭐ **E a wave 23 (07/09) deu ao RECUO de um filho um número só**
+([§7.28](pesquisa/08_modelos_com_codigo_para_seguir.md)) — cinco superfícies recuavam, com
+**quatro respostas** (`16` na Hierarquia · `16` no editor de variantes · `14` no Painter Layers ·
+`8` no catálogo de assets), e a lei do modelo é `MAX(3 · increased_margin, 12)` = **12**.
+⭐⭐ **A galeria de widgets já tinha a resposta e nenhuma superfície do produto a copiou** — o
+simétrico da wave 12, onde a galeria estava atrasada: nos dois casos ninguém compara. ⚠️ O piso da
+porta tem **recurso** (a coluna da seta: um passo mais estreito põe a seta do filho sobre a do
+pai), e como os dois lados do `max` valem 12 hoje ele **não é observável** — daí a derivação viver
+numa função com os termos abertos. ⛔ E o único sítio que ALARGA expôs o preço: a coluna do
+catálogo tinha a largura escrita à mão com a composição só no comentário, então o passo maior
+comeria 12 px do nome mais fundo — hoje ela é a **soma**, e o que sobrevive é o orçamento de texto.
+
+⏳ **O que sobra do estudo §5.3 — RE-AUDITADO contra o código em 07/09, e QUATRO dos cinco itens
+já tinham fechado sem ninguém reabrir a lista:** ⛔ os cantos dos painéis (a porta do tema dá `3`,
+não `16`) · ⛔ a moldura dos cartões (o `stroke_frame` devolve `Stroke::NONE` no moderno) · ⛔ a
+moldura permanente das caixas de texto (o `Chrome::field_border` só é visível no clássico) · ⛔ as
+etiquetas e amostras como pílulas (as duas passam pela porta do raio desde a wave 22). **Sobra
+um:** o esbatimento do rótulo e a inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis,
+animado) — a lista dizia o contrário. *O placar de uma linha envelhece à velocidade das waves
+dela: meça antes de pegar um item.*
 
 ## ⚠️ `referencias/` é gitignorada — e isso é a decisão, não um esquecimento
 

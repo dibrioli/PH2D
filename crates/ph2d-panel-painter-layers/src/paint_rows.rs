@@ -24,7 +24,6 @@ use std::collections::BTreeSet;
 
 // Per-row layout metrics. Component-specific layout (not global Spacing steps),
 // hence the single-line LITERAL-PX-OK justifications.
-const LAYER_INDENT_STEP: f32 = 14.0; // LITERAL-PX-OK: per-nesting-level indent for group children
 const BLEND_CHIP_W: f32 = 92.0; // LITERAL-PX-OK: blend-mode dropdown chip column width
 pub(crate) const OPACITY_PCT_W: f32 = 44.0; // LITERAL-PX-OK: plain "NN%" readout column right of the bare opacity slider
 const REORDER_W: f32 = 16.0; // LITERAL-PX-OK: far-right reorder button column width
@@ -51,7 +50,11 @@ pub(crate) fn paint_layer_subtree(
     dragging: Option<HierarchyDragState>,
     drag_rows: &mut Vec<(ph2d_a11y::NodeId, Rect, bool)>,
 ) -> f32 {
-    let indent = depth as f32 * LAYER_INDENT_STEP;
+    // ⭐ **O recuo de um nível vem da porta** (wave 23). ⚠️ As SEIS leituras desta constante
+    //    faziam a mesma pergunta — a linha recua `depth`, e os params de ajuste, o editor de
+    //    textura e a sub-linha de máscara recuam *um nível a mais* que a linha que os hospeda.
+    let step = ph2d_tokens::list_indent_px();
+    let indent = depth as f32 * step;
     let last = ids.len().saturating_sub(1);
     for (i, &id) in ids.iter().enumerate() {
         let Some(layer) = stack.get(id) else { continue };
@@ -95,8 +98,8 @@ pub(crate) fn paint_layer_subtree(
                 theme,
                 id.0,
                 &adj.params,
-                row_x + LAYER_INDENT_STEP,
-                (row_w - LAYER_INDENT_STEP).max(0.0),
+                row_x + step,
+                (row_w - step).max(0.0),
                 y,
             );
         }
@@ -105,8 +108,8 @@ pub(crate) fn paint_layer_subtree(
         if let LayerKind::Texture(tex) = &layer.kind
             && active == Some(id)
         {
-            let tx = row_x + LAYER_INDENT_STEP;
-            let tw = (row_w - LAYER_INDENT_STEP).max(0.0);
+            let tx = row_x + step;
+            let tw = (row_w - step).max(0.0);
             y = crate::paint_texture::paint_texture_layer_editor(ctx, theme, tex, tx, tw, y);
         }
 
@@ -117,7 +120,7 @@ pub(crate) fn paint_layer_subtree(
                 stack.get(mask_id).map(|l| &l.kind),
                 Some(LayerKind::Mask(mk)) if mk.inverted
             );
-            let mask_indent = (depth + 1) as f32 * LAYER_INDENT_STEP;
+            let mask_indent = (depth + 1) as f32 * step;
             y = crate::paint_mask_row::paint_mask_row(
                 ctx,
                 theme,

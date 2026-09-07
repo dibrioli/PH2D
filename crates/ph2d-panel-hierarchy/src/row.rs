@@ -107,6 +107,22 @@ fn row_tall(row: Rect, x: f32, w: f32) -> Rect {
     Rect::new(x, row.y, w, row.h)
 }
 
+/// ⭐⭐ **O RECUO INTERNO de uma linha — e ele era escrito em DOIS ficheiros.**
+///
+/// A linha declarava-o aqui e o desenhador das linhas de parentesco declarava-o outra vez em
+/// `paint.rs`, cada um com metade de um comentário a mandar sincronizar (*«MUST match»* /
+/// *«sync with row.rs»*). ⚠️ **Um par sincronizado à mão não é uma lei — é duas leis que hoje
+/// concordam**, e a que derivasse punha a linha de parentesco ao lado da seta em vez de por
+/// baixo dela, que é um report que este painel já pagou (Enio, 2026-05-26).
+///
+/// ⏳ **O modelo discorda do VALOR, e isso fica NOMEADO, não corrigido:** o Godot Modern dá
+/// `Tree.inner_item_margin_left = base_margin` = **4 px** contra os **2** desta casa. Mexer nele
+/// desloca toda linha da hierarquia para a direita — é medição de uma wave e veredito do dono,
+/// não um número a trocar de passagem.
+pub(crate) fn row_inset_px() -> f32 {
+    Spacing::Xxs.px()
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_hierarchy_row(
     entity: &fixture::HierarchyEntity,
@@ -121,16 +137,10 @@ pub(crate) fn paint_hierarchy_row(
     direct_match: bool,
 ) {
     paint_row_background(entity, rect, scene, theme);
-    // Internal row inset. MUST match `paint.rs::row_inner_pad` — the
-    // parentesco tree lines in `paint.rs` are drawn at
-    // `col_chev_x + half_chev` using row_inner_pad as the inner offset.
-    // If pad ≠ row_inner_pad, the vertical guide line drifts horizontally
-    // away from the chevron of the parent row (Enio 2026-05-26: "A linha
-    // que mostra parentesco deveria sair exatamente abaixo da setinha
-    // mas está deslocada. Para corrigir coloque mais para a esquerda
-    // a setinha, o ícone e o nome dos objetos").
-    let pad = Spacing::Xxs.px(); // sync with paint.rs::row_inner_pad
-    let chev_w = Spacing::Lg.px();
+    // As DUAS medidas vêm de uma porta cada (wave 23) — antes eram cópias sincronizadas à mão
+    // com `paint.rs`, e a que derivasse deslocava a linha de parentesco para fora da seta.
+    let pad = row_inset_px();
+    let chev_w = ph2d_tokens::tree_chevron_col_px();
     // Chev → icon gap tightened Xs (4) → Xxs (2) 2026-05-24 per user:
     // "quero os ícones mais próximos das setas". Godot's Scene panel
     // packs them flush together; we keep a 2-px hairline so click

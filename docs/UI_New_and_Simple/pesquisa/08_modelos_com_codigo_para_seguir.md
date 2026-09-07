@@ -1518,6 +1518,112 @@ fica **nomeado na isenção** com a cura (um token de tamanho), para não se per
 
 **Portão:** `13 083` testes / `0` falhados; clippy `--all-targets -D warnings` limpo.
 
+### 7.28 — ✅ WAVE 23 (2026-09-07): o RECUO de um filho é UM número
+
+**Não fecha item de handoff — nasce de uma AUDITORIA do placar.** O «⏳ o que sobra do estudo
+§5.3» do [README](../README.md) tinha cinco itens medidos em 04/09, e **quatro já tinham fechado**
+sem ninguém reabrir a lista: os cantos dos painéis (a porta do tema dá 3), a moldura dos cartões
+(`stroke_frame` devolve `Stroke::NONE` no moderno), a moldura permanente das caixas de texto
+(o `Chrome::field_border` só é visível no clássico) e as pílulas de etiqueta e amostra (as duas
+passam pela porta do raio desde a wave 22). *O placar de uma linha envelhece à velocidade das
+próprias waves dela* — e o que sobrava de verdade não estava na lista.
+
+#### ⛔⛔ O que o censo achou: CINCO superfícies, QUATRO respostas
+
+A pergunta é uma: *quanto se desloca para a direita a linha de um filho?*
+
+| superfície | escrevia | passo |
+|---|---|---|
+| Hierarquia | `Spacing::Xl` | **16** |
+| `variant_editor` | `INDENT_PX = 16.0` à mão | **16** |
+| Painter Layers | `LAYER_INDENT_STEP = 14.0` à mão | **14** |
+| Catálogo do Asset Browser | `Spacing::Md` | **8** |
+| `tree_view` (a GALERIA) | `Spacing::Lg` | **12** ✅ |
+
+⭐⭐ **A galeria de widgets já tinha a resposta do modelo, e nenhuma superfície do produto a
+copiou.** O `tree_view` é a peça de referência do cromo e só é pintado na bancada — *uma
+referência que ninguém chama não ensina nada; ela só regista que a resposta certa já era
+conhecida.* É o simétrico exacto da wave 12, onde a galeria pintava um risco azul que o produto
+já não fazia: ali a referência estava atrasada, aqui está adiantada, e nos dois casos ninguém
+compara.
+
+#### A lei, e o recurso do piso dela
+
+Godot Modern (MIT, `theme_modern.cpp:653`):
+
+```cpp
+item_margin = EDSCALE_RND(MAX(3 * increased_margin, 12))
+```
+
+Com o `increased_margin` desta casa (`Spacing::Xs` = 4): `MAX(12, 12)` = **12 px**. Porta:
+[`ph2d_tokens::list_indent_px`](../../../crates/ph2d-tokens/src/spacing.rs).
+
+⚠️ **O piso não é um número de segurança: ele tem RECURSO, e o recurso é a coluna da seta.** Dois
+níveis consecutivos põem as suas setas a *um passo* de distância, logo um passo mais estreito que
+a seta faz a do filho entrar por cima da do pai. É por isso que ele é escrito como
+`.max(tree_chevron_col_px())` e não contra o `12` cru do Godot — *um limite legítimo diz de que
+recurso ele é* (§0.0). ⭐ E a coluna da seta desta casa é `Spacing::Lg` = 12: as duas derivações
+independentes caem no mesmo número.
+
+⚠️⚠️ **Hoje os dois lados do `max` valem 12, logo o piso NÃO é observável no produto** — apagá-lo
+devolve o mesmo valor e a mutação sobrevive. Por isso a derivação vive numa função com os dois
+termos abertos (`indent_from`), que o teste chama com uma escala apertada. *Uma cerca que só se lê
+no valor de hoje é uma cerca que a próxima mutação atravessa sem acordar ninguém.*
+
+#### ⭐ A segunda metade: os dois números que a hierarquia sincronizava à MÃO
+
+A linha desenha a seta (`row.rs`) e o desenhador do parentesco desenha o fio que sai de baixo dela
+(`paint.rs`). As **duas medidas que os dois têm de partilhar** — a coluna da seta e o recuo interno
+da linha — estavam escritas nos dois ficheiros, cada uma com metade de um comentário a mandar
+sincronizar (*«MUST match `paint.rs::row_inner_pad`»* / *«sync with row.rs chev_w»*).
+
+⚠️ **Um par sincronizado por comentário não é uma lei: são duas leis que hoje concordam** — e a que
+derivasse tirava o fio de baixo da seta, que é um report que este painel já pagou (Enio,
+2026-05-26: *«a linha que mostra parentesco deveria sair exactamente abaixo da setinha»*).
+
+⏳ **E o modelo discorda do VALOR do recuo interno, o que fica NOMEADO e não corrigido:**
+`Tree.inner_item_margin_left = base_margin` = **4 px** contra os **2** desta casa. Mexer nele
+desloca toda linha da hierarquia — é medição de uma wave própria.
+
+#### ⛔⛔ O preço escondido: apertar uma entrada invalidou a constante calibrada à volta dela
+
+O catálogo do Asset Browser é o único que **alarga** (8 → 12), e a coluna dele tinha
+`NOMINAL_W = 140.0` escrito à mão com a composição só no comentário: *«recuo + até três níveis de
+indentação + um rótulo de ~12 caracteres + a contagem»*. Com a largura fixa, o passo maior comeria
+**12 px do nome mais fundo** — exactamente o defeito que aquele número existia para evitar.
+
+⇒ a largura passa a ser a **soma** (`recuo + 3·passo + texto + margem`), e o que sobrevive à
+mudança é o **orçamento de TEXTO** (`CONTENT_W = 98`, contado do que o `140` shipava), nunca o
+total. *O número que shipou é a evidência do que cabia.* ⚠️ E as duas metades do comentário estavam
+**desactualizadas**: ele dizia `Spacing::Md` de recuo onde o código escreve `Spacing::Sm`.
+
+#### O portão
+
+`crates/ph2d-editor-core/tests/the_indent_of_a_child_is_one_number.rs` — 5 testes:
+
+1. toda superfície que recua por nível chama a porta;
+2. **a metade de obsolescência**: as 5 declaradas ainda recuam;
+3. nenhuma constante de recuo nasce fora da porta;
+4. o passo nunca fica mais estreito que a coluna da seta;
+5. os dois ficheiros da hierarquia lêem a geometria partilhada de **uma** declaração cada — ⚠️ este
+   **nasceu de uma mutação que SOBREVIVEU**, e é a **5.ª vez** que esta linha escreve a porta certa
+   e não a gateia.
+
+Mais 3 testes de unidade em `spacing.rs` (o valor do modelo · o piso com escala apertada · o piso
+contra a coluna da seta) e 2 em `paint_catalog.rs` (o orçamento de texto sobrevive ao recuo · a
+largura É a soma).
+
+⚠️ **A régua distingue `*` de `*`.** Um passo por nível lê-se como uma multiplicação por uma
+profundidade, e a varredura ingénua (*a linha fala de `depth` e tem um `*`*) acusa dois inocentes,
+os dois porque o `*` deles é uma **desreferência** (`*rect`, `(*v as f32)`). A régua exige o `*`
+binário, que o `rustfmt` escreve sempre com espaço dos dois lados e que um deref nunca tem. *Um
+censo que parseia o fonte tem de saber todas as formas do que lê* — 7.ª ocorrência.
+
+**Provas de mutação: 7 escritas, 7 mortas** (Painter Layers re-escolhe o passo · a porta perde o
+piso · nasce uma constante própria · a coluna da seta volta a ser cópia · o recuo interno volta a
+ser cópia · uma declaração partilhada desaparece [controlo de vacuidade] · a largura da coluna
+volta a ser escolhida).
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

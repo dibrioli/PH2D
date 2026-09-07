@@ -250,6 +250,70 @@ pub fn list_row_gap_px() -> f32 {
     (Spacing::Xs.px() * 0.175).round().powi(3)
 }
 
+/// ⭐⭐⭐ **A COLUNA DO CHEVRON de uma linha de árvore** — e ela era escrita em DOIS ficheiros.
+///
+/// A hierarquia declarava-a em `row.rs` (`chev_w`) e outra vez em `paint.rs` (`chev_col_w`), esta
+/// segunda com o comentário `// sync with row.rs chev_w` ao lado. ⚠️ **Um comentário que manda
+/// sincronizar é a confissão de que falta uma porta** — e as duas cópias não estavam a ser
+/// vigiadas por nada: cada uma estava certa sozinha, e a que derivasse desalinhava a linha de
+/// parentesco por baixo da seta, que é literalmente um report que este painel já pagou
+/// (Enio, 2026-05-26: *«a linha que mostra parentesco deveria sair exactamente abaixo da
+/// setinha»*).
+///
+/// ⚠️ **Ela é também o PISO do recuo** ([`list_indent_px`]): um passo mais estreito que a coluna
+/// da seta punha a seta de um filho por cima da do pai.
+pub fn tree_chevron_col_px() -> f32 {
+    Spacing::Lg.px()
+}
+
+/// ⭐⭐⭐ **O RECUO de um filho numa árvore — e é UM número, não quatro.**
+///
+/// **O número é derivado, não escolhido** (Godot Modern, MIT, `theme_modern.cpp:653`):
+///
+/// ```text
+/// item_margin = EDSCALE_RND(MAX(3 * increased_margin, 12))
+/// ```
+///
+/// ⇒ com o `increased_margin` desta casa (`Spacing::Xs` = 4): `MAX(12, 12)` = **12 px**.
+///
+/// ⛔⛔ **E nós tínhamos QUATRO respostas, uma por superfície** — censadas em 2026-09-07:
+///
+/// | superfície | escrevia | passo |
+/// |---|---|---|
+/// | Hierarquia | `Spacing::Xl` | **16** |
+/// | `variant_editor` | `INDENT_PX = 16.0` à mão | **16** |
+/// | Painter Layers | `LAYER_INDENT_STEP = 14.0` à mão | **14** |
+/// | Catálogo do Asset Browser | `Spacing::Md` | **8** |
+/// | `tree_view` (a GALERIA) | `Spacing::Lg` | **12** ✅ |
+///
+/// ⭐⭐ **A galeria de widgets já tinha a resposta do modelo, e nenhuma superfície do produto a
+/// copiou** — o `tree_view` é a peça de referência do cromo e vive só na bancada. *Uma referência
+/// que ninguém chama não ensina nada: ela só regista que a resposta certa já era conhecida.*
+///
+/// ⚠️ **O PISO tem recurso, e o recurso é a coluna da seta** ([`tree_chevron_col_px`], 12 px):
+/// dois níveis consecutivos põem as suas setas a `passo` de distância, logo um passo abaixo da
+/// largura da seta faz a do filho entrar por cima da do pai. É por isso que ele é escrito como um
+/// `max` contra ESSA largura, e não contra o `12` cru que o Godot escreve — *um limite legítimo
+/// diz de que recurso ele é* (§0.0).
+///
+/// ⚠️ **Hoje os dois lados do `max` valem 12, logo o piso não é observável no produto** — e é
+/// exactamente por isso que a derivação vive em [`indent_from`], que os testes chamam com um
+/// `increased_margin` menor. *Uma cerca que só se lê no valor de hoje é uma cerca que a próxima
+/// mutação atravessa sem acordar ninguém.*
+pub fn list_indent_px() -> f32 {
+    indent_from(Spacing::Xs.px(), tree_chevron_col_px())
+}
+
+/// A derivação do [`list_indent_px`], com os dois termos ABERTOS.
+///
+/// ⚠️ **Existe para o piso ser matável por mutação.** Com os números de hoje `3 · 4` e a coluna da
+/// seta valem os dois `12`, então apagar o `.max(..)` devolve o mesmo valor e a mutação
+/// **sobrevive** — o defeito que esta linha já pagou quatro vezes (*escrevo a guarda certa e não a
+/// gateio*). Chamada com um `increased_margin` menor, a cerca volta a ser observável.
+fn indent_from(increased_margin: f32, chevron_col: f32) -> f32 {
+    (increased_margin * 3.0).max(chevron_col)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -293,5 +357,37 @@ mod tests {
     #[test]
     fn comfortable_is_default() {
         assert_eq!(Density::default(), Density::Comfortable);
+    }
+
+    /// ⭐ **O recuo e' o `item_margin` do modelo** — `MAX(3 * increased_margin, 12)`.
+    #[test]
+    fn the_indent_is_the_models_item_margin() {
+        assert_eq!(list_indent_px(), Spacing::Lg.px());
+        assert_eq!(list_indent_px(), 12.0);
+    }
+
+    /// ⛔⛔ **O PISO existe, e o recurso dele e' a coluna da seta.**
+    ///
+    /// Com os numeros de hoje os dois lados do `max` valem 12, logo apagar o piso nao muda o
+    /// produto e a mutacao SOBREVIVE. Este teste chama a derivacao com um `increased_margin`
+    /// menor, que e' onde a cerca se le^.
+    #[test]
+    fn a_narrower_scale_never_pushes_a_child_arrow_over_its_parents() {
+        let chev = tree_chevron_col_px();
+        // Uma escala apertada (`increased_margin` = 2) pediria um passo de 6 px — metade da
+        // coluna da seta. O piso segura-o na largura dela.
+        assert_eq!(indent_from(2.0, chev), chev);
+        // E acima do piso a derivacao manda: uma escala larga passa a 3x a margem.
+        assert_eq!(indent_from(8.0, chev), 24.0);
+    }
+
+    /// ⚠️ **A coluna da seta e' UM numero** — ela era declarada em dois ficheiros da hierarquia.
+    #[test]
+    fn the_chevron_column_is_the_floor_of_the_indent() {
+        assert!(
+            list_indent_px() >= tree_chevron_col_px(),
+            "o passo do recuo ficou menor que a coluna da seta: a seta de um filho entra por \
+             cima da do pai"
+        );
     }
 }

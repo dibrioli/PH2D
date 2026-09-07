@@ -102,11 +102,11 @@ fn paint_parentage_lines(
     // it). The deepest column (c == depth - 1) gets an L-stub:
     // vertical down to mid-row, then horizontal to the chevron.
     if depth > 0 {
-        // Internal row pad MUST match `row.rs::pad` exactly — both
-        // resolve to `Spacing::Xxs.px()` (= 2 px). Drift = vertical
-        // tree line stops sitting under the parent's chevron.
-        let row_inner_pad = Spacing::Xxs.px();
-        let chev_col_w = Spacing::Lg.px(); // sync with row.rs chev_w
+        // ⭐ As duas medidas vêm da MESMA porta que a linha usa (wave 23). Antes eram cópias,
+        //    com um comentário a mandar sincronizá-las à mão: a que derivasse tirava a linha de
+        //    parentesco de baixo da seta do pai.
+        let row_inner_pad = crate::row::row_inset_px();
+        let chev_col_w = ph2d_tokens::tree_chevron_col_px();
         let half_chev = chev_col_w * 0.5;
         // Tree lines: bumped from `Border` → `Text3` 2026-05-24
         // per user: "linhas com mais contraste pois quase não
@@ -177,6 +177,29 @@ fn paint_parentage_lines(
 }
 
 #[allow(clippy::too_many_arguments)]
+/// **A profundidade de cada linha** — e ela tem DUAS fontes, não uma.
+///
+/// Com entradas vivas a árvore vem da cena e a profundidade viaja no próprio registo (`indent`);
+/// sem elas quem a sabe é o `WidgetStore`. ⚠️ Saiu do corpo do painel para pagar, por CORTE, as
+/// linhas que a wave 23 lhe acrescentou — *as tolerâncias encolhem, nunca crescem*.
+fn row_depths(
+    order: &[ph2d_a11y::NodeId],
+    entities_by_id: &std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity>,
+    store: &WidgetStore,
+) -> Vec<u32> {
+    let live_mode = current_live_entries().is_some();
+    order
+        .iter()
+        .map(|id| {
+            if live_mode {
+                entities_by_id.get(id).map(|e| e.indent as u32).unwrap_or(0)
+            } else {
+                store.hierarchy_depth_of(*id)
+            }
+        })
+        .collect()
+}
+
 fn paint_hierarchy_body(
     layout: &HeroLayout,
     scene: &mut VectorScene,
@@ -304,19 +327,12 @@ fn paint_hierarchy_body(
     let order: Vec<ph2d_a11y::NodeId> = store.hierarchy_order().to_vec();
     let dragging = store.hierarchy_drag().filter(|d| d.active);
 
-    let indent_px: f32 = Spacing::Xl.px();
+    // ⭐ **O recuo vem da porta** (wave 23): era `Spacing::Xl` (16) aqui, `14` no Painter Layers,
+    //    `16` no `variant_editor` e `8` no catálogo — quatro respostas para *«quanto recua um
+    //    filho?»*. O modelo dá `MAX(3 · increased_margin, 12)` = 12.
+    let indent_px: f32 = ph2d_tokens::list_indent_px();
     let mut row_rects: Vec<(ph2d_a11y::NodeId, Rect)> = Vec::with_capacity(order.len());
-    let live_mode = current_live_entries().is_some();
-    let depths: Vec<u32> = order
-        .iter()
-        .map(|id| {
-            if live_mode {
-                entities_by_id.get(id).map(|e| e.indent as u32).unwrap_or(0)
-            } else {
-                store.hierarchy_depth_of(*id)
-            }
-        })
-        .collect();
+    let depths = row_depths(&order, &entities_by_id, store);
     let query = search_text.trim().to_lowercase();
     let search_active = !query.is_empty();
     let (display_mask, direct_match_mask): (Vec<bool>, Vec<bool>) = if search_active {

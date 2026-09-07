@@ -24,8 +24,6 @@ use ph2d_vector::VectorScene;
 /// blow the layout.
 pub const MAX_VARIANT_DEPTH: usize = 4;
 
-/// Indent applied per nesting level.
-const INDENT_PX: f32 = 16.0; // LITERAL-PX-OK: per-level dict indent
 /// Fraction of the row width given to a dict child's key column.
 const KEY_COL_FRACTION: f32 = 0.3; // LITERAL-PX-OK: layout proportion (key column share)
 /// Fraction of the remaining row width given to the kind dropdown chip.
@@ -109,7 +107,7 @@ impl VariantValue {
 /// One flattened row of a (possibly nested) variant tree.
 #[derive(Clone, Debug, PartialEq)]
 pub struct VariantRow {
-    /// Nesting level (0 = root). Indent = `depth * INDENT_PX`.
+    /// Nesting level (0 = root). Indent = `depth * ph2d_tokens::list_indent_px()`.
     pub depth: usize,
     /// Dictionary key for this row, when it is a child of a `Dict`.
     pub key: Option<String>,
@@ -182,7 +180,7 @@ impl VariantEditor {
     /// row strip; `row_h` the per-row height. The dropdown sits after
     /// the row's indent and (optional) key column.
     pub fn kind_chip_rect(host: Rect, row: &VariantRow, row_index: usize, row_h: f32) -> Rect {
-        let indent = row.depth as f32 * INDENT_PX;
+        let indent = row.depth as f32 * ph2d_tokens::list_indent_px();
         let key_w = if row.key.is_some() {
             host.w * KEY_COL_FRACTION
         } else {
@@ -221,7 +219,7 @@ pub fn paint_variant_editor(
     let rows = editor.rows();
     let font = TypeToken::Sm.px();
     for (i, row) in rows.iter().enumerate() {
-        let indent = row.depth as f32 * INDENT_PX;
+        let indent = row.depth as f32 * ph2d_tokens::list_indent_px();
         let row_y = host.y + i as f32 * row_h;
         // Key column (for dict children).
         let key_w = if row.key.is_some() {

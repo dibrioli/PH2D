@@ -28,16 +28,43 @@ use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Density, Radius, Spacing, StrokeToken, TypeToken};
 
-/// A largura nominal da coluna, em px.
+/// Quantos níveis de aninhamento a largura da coluna ORÇA.
 ///
-/// ⚠️ **Medida contra o conteúdo, não escolhida**: `Spacing::Md` de recuo + até três níveis de
-/// indentação (`Spacing::Md` cada) + um rótulo de ~12 caracteres a `TypeToken::Sm` + a contagem à
-/// direita. Abaixo disto o nome de um catálogo de 2.º nível deixa de caber, e uma coluna que corta
-/// todos os nomes não é uma coluna.
-const NOMINAL_W: f32 = 140.0; // LITERAL-PX-OK: largura da coluna, domínio do painel
+/// ⚠️ **Não é um comprimento: é uma CONTAGEM**, e por isso não sai de um token de espaçamento. Um
+/// catálogo mais fundo que isto continua a desenhar-se — só deixa de caber inteiro, que é o que
+/// esta coluna sempre fez.
+const BUDGETED_LEVELS: f32 = 3.0; // LITERAL-PX-OK: contagem de níveis, não um px
+
+/// O que a coluna reserva para o TEXTO — o rótulo de ~12 caracteres a `TypeToken::Sm` mais a
+/// contagem à direita.
+///
+/// ⚠️ **É o que a largura de 140 px shipava**, contado do código: `140 − Sm(6) − 3·8 − Lg(12)`.
+/// *O número que shipou é a evidência do que cabia*, então ele é o que sobrevive à mudança do
+/// recuo — não a largura total, que era a soma.
+const CONTENT_W: f32 = 98.0; // LITERAL-PX-OK: orcamento de texto da coluna, dominio do painel
 
 /// Abaixo disto ela colapsa: uma coluna que não mostra um nome não vale a largura que come.
 const MIN_W: f32 = 96.0; // LITERAL-PX-OK: piso da coluna, domínio do painel
+
+/// ⭐⭐ **A largura nominal da coluna — DERIVADA do que ela tem de conter.**
+///
+/// ```text
+/// recuo interno + 3 níveis de indentação + texto + margem direita
+/// ```
+///
+/// ⛔⛔ **Ela era `140.0` à mão, com a composição só no comentário — e a wave 23 mostrou o preço
+/// disso.** O comentário dizia *«`Spacing::Md` de recuo + até três níveis (`Spacing::Md` cada)»*, e
+/// as duas metades estavam desactualizadas: o código recua `Spacing::Sm` e o passo passou a vir da
+/// porta ([`ph2d_tokens::list_indent_px`], 12 px). Com a largura fixa, apertar o passo de 8 para 12
+/// comeria **12 px do nome mais fundo** — exactamente o defeito que o número existia para evitar.
+/// *Apertar uma entrada consome a margem que fazia a constante bastar; a cura é remedir a soma,
+/// nunca trocar a linha.*
+fn nominal_w() -> f32 {
+    Spacing::Sm.px()
+        + ph2d_tokens::list_indent_px() * BUDGETED_LEVELS
+        + CONTENT_W
+        + Spacing::Lg.px()
+}
 
 /// ⭐⭐ **A largura que a coluna pode ter neste quadro** — `0.0` = colapsada.
 ///
@@ -49,7 +76,7 @@ pub(crate) fn col_w(state: &AssetBrowserState, rect: Rect, pad: f32) -> f32 {
         return 0.0;
     }
     let avail = rect.w - pad * 2.0;
-    let w = NOMINAL_W.min(avail - state.cell_px);
+    let w = nominal_w().min(avail - state.cell_px);
     if w < MIN_W { 0.0 } else { w }
 }
 
@@ -207,7 +234,10 @@ pub(crate) fn paint(
                 resolve(ColorToken::AccentSoft, theme),
             );
         }
-        let indent = Spacing::Sm.px() + Spacing::Md.px() * r.depth as f32;
+        // ⭐ **O passo por nível vem da porta** (wave 23): era `Spacing::Md` (8) — o mais
+        //    estreito das quatro respostas que o app tinha, e o único abaixo do piso do modelo.
+        //    O `Spacing::Sm` da frente FICA: ele é o recuo interno da linha, não o passo.
+        let indent = Spacing::Sm.px() + ph2d_tokens::list_indent_px() * r.depth as f32;
         paint_text(
             ctx.text_system,
             ctx.scene,
@@ -304,5 +334,38 @@ pub(crate) fn scope_of(pick: CatalogPick) -> ph2d_asset_index::CatalogScope {
         CatalogPick::All => ph2d_asset_index::CatalogScope::All,
         CatalogPick::Unassigned => ph2d_asset_index::CatalogScope::Unassigned,
         CatalogPick::One(id) => with_catalogs(|t| t.scope_of(id)),
+    }
+}
+
+#[cfg(test)]
+mod width_tests {
+    use super::*;
+
+    /// ⛔⛔ **A coluna guarda o orçamento de TEXTO seja qual for o recuo.**
+    ///
+    /// Este é o teste que faltava quando o `140.0` era escrito à mão: com a largura fixa, mudar o
+    /// passo do recuo de 8 para 12 comia 12 px do nome mais fundo e **nada ficava vermelho**.
+    #[test]
+    fn the_column_keeps_its_text_budget_whatever_the_indent() {
+        let deepest_label_start =
+            Spacing::Sm.px() + ph2d_tokens::list_indent_px() * BUDGETED_LEVELS;
+        let room = nominal_w() - deepest_label_start - Spacing::Lg.px();
+        assert!(
+            room >= CONTENT_W,
+            "a coluna deixou {room} px para o nome de um catalogo de 3.o nivel, contra os \
+             {CONTENT_W} que ela shipava: apertar o recuo comeu o orcamento do texto"
+        );
+    }
+
+    /// ⚠️ E ela não cresce sem motivo: a largura É a soma, não um número escolhido ao lado dela.
+    #[test]
+    fn the_width_is_the_sum_of_what_it_holds() {
+        assert_eq!(
+            nominal_w(),
+            Spacing::Sm.px()
+                + ph2d_tokens::list_indent_px() * BUDGETED_LEVELS
+                + CONTENT_W
+                + Spacing::Lg.px()
+        );
     }
 }

@@ -44,12 +44,14 @@ pub fn populate_shared(store: &mut WidgetStore) {
 /// `is_focusable` responde `false`, e o botão fica **pintado, hit-registado e morto sob o ponteiro**
 /// — a espécie de controlo morto que este repo varre a cada wave.
 fn populate_prefab_bar(store: &mut WidgetStore) {
-    store.register(
-        ids::PREFAB_EDIT_DONE,
-        InteractiveState::Button {
-            state: crate::widget::ButtonState::Normal,
-        },
-    );
+    for id in [ids::PREFAB_EDIT_DONE, ids::PREFAB_EDIT_CANCEL] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: crate::widget::ButtonState::Normal,
+            },
+        );
+    }
 }
 
 fn populate_samples(store: &mut WidgetStore) {

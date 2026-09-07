@@ -1037,6 +1037,9 @@ impl App {
             hovered_object: None,
             prefab_stage_pending: None,
             prefab_stage: None,
+            prefab_editing: None,
+            prefab_cancel: None,
+            prefab_cancel_pending: false,
             pending_ui_sound: None,
             ui_burst: ph2d_editor::motion_burst::BurstField::default(),
             hover_outline: Vec::new(),
@@ -1404,6 +1407,11 @@ impl App {
         // quadro (as edições do Inspector já chegaram ao mundo) e ANTES da captura (senão a
         // escrita do sync vira um passo de undo que ninguém deu). Ver o doc da função.
         self.sync_instances();
+        // ⭐⭐⭐ **A SAÍDA da sessão de receita** (`Done`/`Enter` · `Cancel`/`Esc`) — servida aqui,
+        // com o `self` livre, e ANTES do `post_frame_undo`: um cancelamento é uma mudança do
+        // documento como outra qualquer, e o passo por diff regista-o (o `Ctrl+Z` traz as edições
+        // de volta). Ver [`crate::prefab_stage`].
+        self.serve_prefab_exit();
         self.post_frame_undo();
         // **O menu Ficheiro**, no mesmo sítio e pela mesma razão: `self` está livre do borrow do
         // render loop, e um diálogo nativo é modal — abri-lo a meio do frame prenderia o `gfx`.

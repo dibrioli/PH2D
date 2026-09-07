@@ -95,3 +95,79 @@ fn the_visible_area_has_one_door_and_both_clients_use_it() {
         );
     }
 }
+
+/// ⭐⭐⭐ **A SESSÃO SÓ ACABA PELAS DUAS PORTAS** (Enio, 2026-09-07: *«só permita sair da edição
+/// apertando Done ou a tecla Enter»*).
+///
+/// A trava é armada na abertura e servida no fim do quadro. ⚠️ Se o serviço deixar de ser chamado,
+/// **nada na suíte fica vermelho**: a trava fecha-se, a barra continua a pintar-se, e o artista fica
+/// preso num modo sem saída — que é o pior resultado possível desta feature.
+#[test]
+fn the_session_only_ends_through_the_two_doors() {
+    let frame = code_of("render_loop/mod.rs");
+    assert!(
+        frame.contains("self.prefab_editing = Some("),
+        "a abertura ja' nao fecha a trava — clicar no vazio volta a fechar a sessao por acidente"
+    );
+    let main = code_of("main.rs");
+    let serve = main
+        .find("self.serve_prefab_exit();")
+        .expect("o pedido de saida nunca e' servido — o artista fica preso no modo");
+    let undo = main
+        .find("self.post_frame_undo();")
+        .expect("o passo por diff do quadro desapareceu");
+    assert!(
+        serve < undo,
+        "a saida e' servida DEPOIS do passo por diff — um cancelamento deixaria de ser \
+         desfazivel, e seria a unica accao irreversivel do app"
+    );
+}
+
+/// ⭐⭐⭐ **O `Cancel` repõe o DOCUMENTO, e as duas saídas largam a trava e a selecção.**
+///
+/// ⚠️ Sem a segunda metade o carimbo do quadro seguinte **reabria a sessão a partir da selecção** —
+/// a trava era solta e o modo voltava, o que se lê como *«o botão não funciona»*.
+#[test]
+fn cancelling_restores_the_document_and_both_exits_let_go() {
+    let body = code_of("prefab_stage.rs");
+    let at = body
+        .find("fn serve_prefab_exit")
+        .expect("o servico da saida desapareceu");
+    let arm = &body[at..];
+    assert!(
+        arm.contains("apply_project("),
+        "o `Cancel` deixou de repor o documento — ele passaria a sair GUARDANDO o que o artista \
+         mandou deitar fora"
+    );
+    assert!(
+        arm.contains("self.prefab_editing = None;") && arm.contains("replace_selection(None)"),
+        "uma das saidas nao larga a trava ou a seleccao — a sessao reabre no quadro seguinte"
+    );
+}
+
+/// ⭐⭐ **As teclas são a MESMA porta dos botões, e devolvem o teclado a quem escreve.**
+///
+/// ⛔⛔ **A guarda do campo de texto não é cortesia:** a sessão dura minutos, então renomear uma
+/// peça dentro da receita e carregar `Enter` para confirmar o nome **fecharia a sessão**, e o `Esc`
+/// que desiste do nome **cancelaria tudo o que foi feito**.
+#[test]
+fn the_keys_are_the_same_door_and_yield_to_a_text_field() {
+    let keys = code_of("input_dispatch/keyboard_escapes.rs");
+    assert!(
+        keys.contains("request_prefab_exit("),
+        "as teclas deixaram de passar pela porta dos botoes — dois caminhos para o mesmo fim"
+    );
+    assert!(
+        keys.contains("Exit::Cancel") && keys.contains("Exit::Done"),
+        "uma das duas teclas perdeu o fim dela"
+    );
+    let stage = code_of("prefab_stage.rs");
+    let at = stage
+        .find("fn request_prefab_exit")
+        .expect("a porta do pedido desapareceu");
+    let arm = &stage[at..(at + 800).min(stage.len())];
+    assert!(
+        arm.contains("text_entry_focused()"),
+        "a porta deixou de devolver o teclado a quem esta' a escrever:\n{arm}"
+    );
+}

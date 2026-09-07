@@ -46,9 +46,34 @@ use ph2d_ecs::{Entity, MasterEditing, SimWorld};
 ///
 /// ⚠️ **N receitas ao mesmo tempo é o comportamento certo, não uma tolerância:** seleccionar duas
 /// linhas de biblioteca e ver as duas é o que a multi-selecção promete em todo o resto do app.
-pub(crate) fn mark(sim: &mut SimWorld, selection: impl IntoIterator<Item = u64>) -> Marked {
+///
+/// ⭐⭐⭐ **A TRAVA** (Enio, 2026-09-07: *«só permita sair da edição apertando Done ou a tecla
+/// Enter»*): enquanto `latch` aponta uma receita, ela fica aberta **independentemente da
+/// selecção**. Sem ela, clicar no vazio fechava a sessão — a saída era um acidente, e o artista não
+/// tinha como saber que o clique lá custava o modo.
+///
+/// ⚠️ **Ela é a UNIÃO com o derivado da selecção, e não uma substituição:** é o derivado que ABRE
+/// (as quatro superfícies do verbo seleccionam a raiz), e a trava que SEGURA. Trocar a união por
+/// *«só a trava»* tornaria impossível abrir uma segunda receita sem sair da primeira.
+///
+/// ⚠️ **E ela solta-se sozinha quando a receita MORRE** — apagá-la a meio da sessão deixaria o
+/// artista num modo sem barra (a barra é derivada do mundo) e portanto sem saída.
+pub(crate) fn mark(
+    sim: &mut SimWorld,
+    selection: impl IntoIterator<Item = u64>,
+    latch: &mut Option<u64>,
+) -> Marked {
+    if let Some(bits) = *latch {
+        let e = Entity::from_bits(bits);
+        if sim.world().get_entity(e).is_err()
+            || sim.world().get::<ph2d_ecs::MasterRoot>(e).is_none()
+        {
+            *latch = None;
+        }
+    }
     let editing: Vec<Entity> = selection
         .into_iter()
+        .chain(*latch)
         .map(Entity::from_bits)
         .filter(|&e| sim.world().get_entity(e).is_ok())
         .filter_map(|e| ph2d_ecs::master_root_of(sim.world(), e))

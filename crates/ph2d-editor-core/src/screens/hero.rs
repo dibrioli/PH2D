@@ -293,6 +293,13 @@ pub struct HeroScreen {
     /// `grid_view`: quem sabe que existe uma receita aberta (e quantas cópias ela tem) é o mundo, e
     /// esta crate não o alcança. Um bool próprio aqui seria a segunda porta que diverge.
     pub prefab_edit: Option<prefab_bar::PrefabEditView>,
+    /// ⭐⭐⭐ **O PEDIDO DE SAÍDA** que a barra deixou — `.take()`n pela shell, como os `pending_*`
+    /// desta struct.
+    ///
+    /// ⚠️ **A barra não sai sozinha, e é isso que a trava exige**: quem fecha a sessão é o dono do
+    /// mundo (ele solta a trava, desfaz o palco e, no `Cancel`, repõe o documento), e nada disso é
+    /// alcançável desta crate.
+    pub prefab_exit: Option<prefab_bar::PrefabExit>,
     /// ⭐ **O layout que o último quadro resolveu** — para quem trata PONTEIRO ler os mesmos rects
     /// que o desenho usou, em vez de os re-derivar.
     ///
@@ -378,6 +385,7 @@ impl HeroScreen {
         Self {
             motion: crate::motion::UiMotion::default(),
             prefab_edit: None,
+            prefab_exit: None,
             palette_open_secs: 0.0,
             ui_sound: false,
             tether: crate::tether::Tether::default(),

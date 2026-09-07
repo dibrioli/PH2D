@@ -303,7 +303,7 @@ pub(crate) fn master_editing_mark_for_tests(
     sim: &mut ph2d_ecs::SimWorld,
     selection: Option<u64>,
 ) -> bool {
-    master_editing::mark(sim, selection).touched
+    master_editing::mark(sim, selection, &mut None).touched
 }
 /// doc 89 folha 14: a metade do shell do `source.text` — o bloco vira uma
 /// instância POR CARACTERE, com a geometria de cada glifo internada no MESMO
@@ -2785,6 +2785,10 @@ impl crate::App {
                     .into_iter()
                     .chain(h.gizmo.extra_selection.iter().copied())
             }),
+            // ⭐⭐⭐ **A TRAVA** (Enio, 2026-09-07) — enquanto ela aponta uma receita, clicar no
+            // vazio já não fecha a sessão. Solta-se pelo `Done`/`Enter`, pelo `Cancel`/`Esc`, ou
+            // sozinha se a receita morrer.
+            &mut self.prefab_editing,
         )
         .opened;
         // ⭐⭐⭐ **A RECEITA QUE ABRE SOBE AO PALCO** (Enio, 2026-09-07: *«o prefab deve aparecer na
@@ -2797,6 +2801,17 @@ impl crate::App {
         // uma linha primeiro, e é essa que sobe.
         if let Some(first) = opened.first() {
             self.prefab_stage_pending = Some(first.to_bits());
+            // ⭐⭐⭐ **A trava fecha-se na abertura** — a partir daqui só `Done`/`Enter` ou
+            // `Cancel`/`Esc` a soltam.
+            self.prefab_editing = Some(first.to_bits());
+            // ⭐⭐⭐ **E a FOTOGRAFIA que o `Cancel` repõe** (Enio, 2026-09-07: *«um botão Cancel
+            // para cancelar as modificações e deixar a edição sem fazer mudanças»*).
+            //
+            // ⚠️ **PEDIDA aqui e TIRADA no fim do quadro**, e não por conforto: a captura leva o
+            // `&mut self` inteiro (ela reconcilia o documento antes de fotografar) e aqui o `gfx`
+            // está emprestado. O fim do quadro é o sítio onde ela já vive — e o documento não muda
+            // entre os dois pontos, porque abrir uma receita não é uma edição.
+            self.prefab_cancel_pending = true;
         }
         sim_extract::run(
             dt,

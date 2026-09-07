@@ -129,6 +129,30 @@ impl App {
         {
             return true;
         }
+        // ⭐⭐⭐ **A SESSÃO DE RECEITA: `Enter` sai, `Esc` cancela** (Enio, 2026-09-07).
+        //
+        // ⚠️⚠️ **Ela é a ÚLTIMA da cadeia, e isso não contradiz a lei do cabeçalho** — *«o gesto
+        // mais modal primeiro»* fala de gestos TRANSIENTES (um caminho a meio, uma figura por
+        // assar), que duram segundos e para os quais a tecla é inequivocamente deles. Esta sessão
+        // dura MINUTOS e é a mais externa de todas: pô-la à frente faria o `Esc` que fecha um
+        // caminho aberto dentro da receita **cancelar a sessão inteira**, apagando o trabalho.
+        //
+        // ⚠️ Consome só com sessão aberta (o formato de todos os irmãos), então fora dela as duas
+        // teclas continuam a cair no blur de widget e nos campos de texto.
+        if state == ElementState::Pressed && !repeat {
+            let exit = match physical_key {
+                PhysicalKey::Code(KeyCode::Escape) => Some(crate::prefab_stage::Exit::Cancel),
+                PhysicalKey::Code(KeyCode::Enter | KeyCode::NumpadEnter) => {
+                    Some(crate::prefab_stage::Exit::Done)
+                }
+                _ => None,
+            };
+            if let Some(exit) = exit
+                && self.request_prefab_exit(exit)
+            {
+                return true;
+            }
+        }
 
         false
     }

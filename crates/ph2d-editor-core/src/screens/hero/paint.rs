@@ -330,10 +330,16 @@ pub fn paint_hero_screen(
     // ⚠️ **Aqui, e não com os painéis:** ela é chrome do CANVAS (ancora na área de desenho e
     // desaparece com o modo), então pertence à camada dos gizmos — acima da cena, abaixo dos
     // painéis flutuantes. ⛔ Sem receita aberta nada é pintado nem registado.
+    //
+    // ⚠️⚠️ **A âncora é o `last_content`, e não a `draw_area`** (report do Enio, 2026-09-07: *«a
+    // barra está em cima da régua»*): a `draw_area` inclui a faixa das réguas, e a barra pousava
+    // **sobre** elas. O `last_content` é o que sobra DEPOIS delas — escrito neste mesmo ficheiro,
+    // acima, e sob a mesma condição que decide pintá-las, que é o que impede as duas de
+    // discordarem. Sem réguas na tela ele É a `draw_area`, e a barra não se mexe.
     if let Some(view) = hero.prefab_edit.as_ref() {
         super::prefab_bar::paint(
             scene,
-            layout.draw_area,
+            hero.last_content,
             view,
             hero.theme,
             text_system,

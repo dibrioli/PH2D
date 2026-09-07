@@ -279,6 +279,16 @@ impl crate::App {
         // motores não declararam neste quadro. Quem parou volta a ser documento **já nesta
         // fotografia** — é isso que faz uma corrida inteira colapsar em UM passo, em vez de zero.
         self.preview_drive.settle();
+        // ⭐⭐⭐ **A FOTOGRAFIA que o `Cancel` da sessão de receita repõe** — pedida quando a sessão
+        // abriu, tirada aqui, onde o `self` está livre (a captura reconcilia o documento antes de
+        // fotografar e leva o `&mut self` inteiro).
+        //
+        // ⚠️ **DEPOIS do `settle`, e é a mesma razão de toda a gente aqui**: ela é a captura do
+        // documento, e a pose de PALCO da receita é pré-visualização. Sem esta ordem o
+        // cancelamento repunha a receita no meio do canvas — como documento.
+        if std::mem::take(&mut self.prefab_cancel_pending) {
+            self.prefab_cancel = self.capture_project();
+        }
         // ⭐⭐⭐ **E o que o módulo 3D autorou SEM evento** (W115) — a forma que a paleta escolheu,
         // a escultura que o diálogo carregou. Elas chegam por **pedido servido noutro quadro**, e
         // sem esta metade nasciam **sem passo próprio**, fundindo-se na acção seguinte do artista.

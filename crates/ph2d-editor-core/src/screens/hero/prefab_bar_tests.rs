@@ -5,7 +5,7 @@
 //! verde com ele **fora** da cadeia gerada do `chrome::dispatch_all`, que é exactamente o estado em
 //! que o botão nasce pintado, registado e **morto sob o ponteiro**.
 
-use super::{PrefabEditView, bar_rect, done_rect, title};
+use super::{PrefabEditView, PrefabExit, bar_rect, cancel_rect, done_rect, title};
 use crate::ids;
 use crate::interaction::WidgetEvent;
 use crate::screens::hero::HeroScreen;
@@ -86,35 +86,92 @@ fn the_done_button_lives_inside_the_bar() {
     );
 }
 
-/// ⛔ **O botão tem estado no store** — sem ele o `is_focusable` responde `false`, ele nunca vira
-/// `active` no Down e **nunca emite `Click`**: pintado, hit-registado e morto sob o ponteiro.
+/// ⛔ **Os DOIS botões têm estado no store** — sem ele o `is_focusable` responde `false`, o botão
+/// nunca vira `active` no Down e **nunca emite `Click`**: pintado, hit-registado e morto sob o
+/// ponteiro.
 #[test]
-fn the_exit_button_is_alive_in_the_store() {
+fn the_exit_buttons_are_alive_in_the_store() {
     let hero = HeroScreen::new(NodeId(1));
+    for (id, nome) in [
+        (ids::PREFAB_EDIT_DONE, "Done"),
+        (ids::PREFAB_EDIT_CANCEL, "Cancel"),
+    ] {
+        assert!(
+            hero.store.get(id).is_some(),
+            "o `{nome}` da barra do modo nao esta' no store"
+        );
+    }
+}
+
+/// ⭐⭐ **O `Cancel` fica à ESQUERDA do `Done`**, e os dois dentro da barra.
+///
+/// ⚠️ A ordem é a do sistema operativo e a de todo diálogo desta casa: a acção destrutiva à
+/// esquerda, a de confirmação encostada ao canto. Trocá-las faz a mão que decorou o canto
+/// **desfazer** o trabalho ao tentar guardá-lo.
+#[test]
+fn the_cancel_sits_left_of_the_done_and_both_fit_inside() {
+    let mut text = TextSystem::without_system_fonts();
+    let bar = bar_rect(AREA, &mut text, &view(4));
+    let done = done_rect(bar);
+    let cancel = cancel_rect(bar);
     assert!(
-        hero.store.get(ids::PREFAB_EDIT_DONE).is_some(),
-        "o `Done` da barra do modo nao esta' no store"
+        cancel.x + cancel.w <= done.x + 0.01,
+        "o Cancel encavalitou o Done: {cancel:?} contra {done:?}"
+    );
+    assert!(
+        cancel.x >= bar.x && done.x + done.w <= bar.x + bar.w + 0.01,
+        "um dos botoes saiu da barra"
     );
 }
 
-/// ⭐⭐⭐ **Carregar em `Done` LARGA A SELECÇÃO** — e é isso que fecha o modo inteiro (a marca
-/// `MasterEditing` é derivada dela, e com ela caem o vidro, o palco e a receita na cena).
+/// ⭐⭐⭐ **Cada botão PEDE a sua saída** — e o pedido chega ao campo que a shell serve.
 ///
 /// ⚠️ **Pela porta do app** (`apply_event`), que é o que prende o handler à cadeia gerada do
-/// `chrome::dispatch_all`.
+/// `chrome::dispatch_all`. Um gate que chamasse o handler direto ficaria verde com o botão fora
+/// dela — pintado, registado e morto sob o ponteiro.
 ///
-/// **Mutação que deve sangrar:** apagar a linha do `prefab_bar` do `dispatch_all` (o gerador
-/// re-escreve-a, mas um `z` removido não), ou o handler deixar de largar a selecção.
+/// ⚠️ **E os dois pedidos são DISTINTOS**: um `Cancel` que chegasse como `Done` sairia da sessão
+/// **guardando** o que o artista mandou deitar fora, e nada na tela diria porquê.
+///
+/// **Mutação que deve sangrar:** o `z` do handler sair da cadeia gerada, ou os dois braços
+/// colapsarem num só.
 #[test]
-fn clicking_done_drops_the_selection_and_closes_the_mode() {
-    let mut hero = HeroScreen::new(NodeId(1));
-    hero.gizmo.replace_selection(Some(0x0BEE));
+fn each_button_asks_for_its_own_exit() {
+    for (id, want) in [
+        (ids::PREFAB_EDIT_DONE, PrefabExit::Done),
+        (ids::PREFAB_EDIT_CANCEL, PrefabExit::Cancel),
+    ] {
+        let mut hero = HeroScreen::new(NodeId(1));
+        assert!(
+            hero.apply_event(WidgetEvent::Click(id)),
+            "o clique nao foi consumido por ninguem — o handler nao esta' na cadeia"
+        );
+        assert_eq!(
+            hero.prefab_exit,
+            Some(want),
+            "o botao pediu a saida errada (ou nenhuma)"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **A barra pousa ABAIXO DA RÉGUA** (report do Enio, 2026-09-07: *«agora está em cima da
+/// régua»*).
+///
+/// ⚠️ A lei é pura e recebe um rect — quem escolhe QUAL rect é o chamador, e é lá que o defeito
+/// vive. ⛔ Por isso este gate lê o sítio da chamada: a `draw_area` inclui a faixa das réguas; o
+/// `last_content` é o que sobra depois delas.
+#[test]
+fn the_bar_hangs_below_the_ruler_not_over_it() {
+    let paint = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/screens/hero/paint.rs"),
+    )
+    .expect("paint.rs");
+    let at = paint
+        .find("prefab_bar::paint(")
+        .expect("a barra deixou de ser pintada");
+    let arm = &paint[at..(at + 200).min(paint.len())];
     assert!(
-        hero.apply_event(WidgetEvent::Click(ids::PREFAB_EDIT_DONE)),
-        "o clique no `Done` nao foi consumido por ninguem — o handler nao esta' na cadeia"
-    );
-    assert_eq!(
-        hero.gizmo.selection, None,
-        "o modo nao fechou: a receita continua seleccionada, logo continua aberta"
+        arm.contains("hero.last_content"),
+        "a barra voltou a ancorar na `draw_area`, que inclui a faixa das reguas:\n{arm}"
     );
 }

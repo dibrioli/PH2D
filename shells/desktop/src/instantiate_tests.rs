@@ -412,7 +412,7 @@ fn duplicating_a_master_gives_a_plain_object_that_is_on_the_canvas() {
     let master = spawn_master(&mut sim);
     let copy = duplicate(&mut sim, &r, master).expect("duplicado");
     // Ninguém está a editar receita nenhuma — o estado normal.
-    crate::render_loop::master_editing::mark(&mut sim, None::<u64>);
+    crate::render_loop::master_editing::mark(&mut sim, None::<u64>, &mut None);
     for (what, e) in [("a copia", copy), ("a peca dela", piece(&sim, copy, "Arm"))] {
         assert!(
             !crate::render_loop::off_canvas::is_off_canvas(sim.world(), e),

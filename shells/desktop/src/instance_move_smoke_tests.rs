@@ -179,7 +179,7 @@ fn every_row_the_step_names_is_actually_in_the_list() {
     ];
 
     // ⚠️ **A metade JUSTA vem primeiro:** sem selecção nenhuma, a receita não está na lista.
-    crate::render_loop::master_editing::mark(&mut sim, std::iter::empty());
+    crate::render_loop::master_editing::mark(&mut sim, std::iter::empty(), &mut None);
     for (i, &e) in rows.iter().enumerate() {
         assert!(
             crate::render_loop::off_canvas::is_unedited_recipe(sim.world(), e),
@@ -189,7 +189,11 @@ fn every_row_the_step_names_is_actually_in_the_list() {
     }
 
     // E é isto que a cena faz ao montar: escolhe a receita, e as quatro linhas aparecem.
-    crate::render_loop::master_editing::mark(&mut sim, std::iter::once(master.to_bits()));
+    crate::render_loop::master_editing::mark(
+        &mut sim,
+        std::iter::once(master.to_bits()),
+        &mut None,
+    );
     for (i, &e) in rows.iter().enumerate() {
         assert!(
             !crate::render_loop::off_canvas::is_unedited_recipe(sim.world(), e),

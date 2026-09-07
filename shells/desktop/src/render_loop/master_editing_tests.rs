@@ -36,13 +36,13 @@ fn scene() -> (SimWorld, Entity, Entity, Entity) {
 #[test]
 fn the_recipe_comes_back_while_it_is_being_edited() {
     let (mut sim, root, piece, _) = scene();
-    mark(&mut sim, None::<u64>);
+    mark(&mut sim, None::<u64>, &mut None);
     assert!(
         is_off_canvas(sim.world(), root) && is_off_canvas(sim.world(), piece),
         "a receita esta' na cena sem ninguem a editar — dois objetos empilhados"
     );
     // O gesto: escolher uma PEÇA dela na Hierarquia.
-    mark(&mut sim, Some(piece.to_bits()));
+    mark(&mut sim, Some(piece.to_bits()), &mut None);
     assert!(
         !is_off_canvas(sim.world(), root) && !is_off_canvas(sim.world(), piece),
         "a receita nao voltou ao escolher uma peca dela — a forma do mestre fica inalcancavel"
@@ -56,9 +56,9 @@ fn the_recipe_comes_back_while_it_is_being_edited() {
 #[test]
 fn changing_the_selection_puts_the_recipe_back_out_of_the_scene() {
     let (mut sim, root, piece, loose) = scene();
-    mark(&mut sim, Some(root.to_bits()));
+    mark(&mut sim, Some(root.to_bits()), &mut None);
     assert!(!is_off_canvas(sim.world(), piece));
-    mark(&mut sim, Some(loose.to_bits()));
+    mark(&mut sim, Some(loose.to_bits()), &mut None);
     assert!(
         is_off_canvas(sim.world(), root) && is_off_canvas(sim.world(), piece),
         "a receita ficou visivel depois de o artista mudar de selecao"
@@ -84,7 +84,7 @@ fn changing_the_selection_puts_the_recipe_back_out_of_the_scene() {
 fn a_recipe_selected_as_an_extra_lights_up_too() {
     let (mut sim, root, piece, loose) = scene();
     // O gesto: clicar no objeto solto e depois Shift-clicar a linha da receita.
-    mark(&mut sim, [loose.to_bits(), root.to_bits()]);
+    mark(&mut sim, [loose.to_bits(), root.to_bits()], &mut None);
     assert!(
         !is_off_canvas(sim.world(), root) && !is_off_canvas(sim.world(), piece),
         "a receita ficou escondida por nao ser a selecao PRIMARIA — e a linha dela esta' realcada"
@@ -94,7 +94,7 @@ fn a_recipe_selected_as_an_extra_lights_up_too() {
         "acender a receita apagou o outro selecionado"
     );
     // E as duas metades continuam a valer com N: largar tudo apaga.
-    mark(&mut sim, None::<u64>);
+    mark(&mut sim, None::<u64>, &mut None);
     assert!(
         is_off_canvas(sim.world(), root),
         "a receita ficou acesa depois de a selecao esvaziar"
@@ -146,7 +146,7 @@ fn the_smoke_scene_shows_its_recipe_only_after_the_row_is_clicked() {
     assert!(recipe.len() > 1, "a receita do smoke nao tem pecas");
 
     // O quadro 0 do smoke: ninguém escolheu nada.
-    mark(&mut sim, None::<u64>);
+    mark(&mut sim, None::<u64>, &mut None);
     for &e in &recipe {
         assert!(
             is_off_canvas(sim.world(), e),
@@ -155,7 +155,7 @@ fn the_smoke_scene_shows_its_recipe_only_after_the_row_is_clicked() {
         );
     }
     // O PASSO 1 que o texto agora manda dar.
-    mark(&mut sim, Some(master.to_bits()));
+    mark(&mut sim, Some(master.to_bits()), &mut None);
     for &e in &recipe {
         assert!(
             !is_off_canvas(sim.world(), e),
@@ -169,10 +169,10 @@ fn the_smoke_scene_shows_its_recipe_only_after_the_row_is_clicked() {
 #[test]
 fn a_loose_object_lights_nothing_and_the_eye_still_wins() {
     let (mut sim, root, _, loose) = scene();
-    mark(&mut sim, Some(loose.to_bits()));
+    mark(&mut sim, Some(loose.to_bits()), &mut None);
     assert!(!is_off_canvas(sim.world(), loose), "o objeto solto sumiu");
     // O olho fechado esconde mesmo a receita que está a ser editada — ele é autoria do artista.
-    mark(&mut sim, Some(root.to_bits()));
+    mark(&mut sim, Some(root.to_bits()), &mut None);
     sim.world_mut()
         .entity_mut(root)
         .insert(Visibility::hidden());
@@ -194,23 +194,25 @@ fn a_loose_object_lights_nothing_and_the_eye_still_wins() {
 fn a_recipe_reports_itself_opened_once_and_not_every_frame() {
     let (mut sim, root, piece, _) = scene();
     assert!(
-        mark(&mut sim, None::<u64>).opened.is_empty(),
+        mark(&mut sim, None::<u64>, &mut None).opened.is_empty(),
         "sem selecção não há nada a abrir"
     );
-    let first = mark(&mut sim, Some(piece.to_bits())).opened;
+    let first = mark(&mut sim, Some(piece.to_bits()), &mut None).opened;
     assert_eq!(
         first,
         vec![root],
         "abrir pela peça tem de reportar a RAIZ — é ela que a câmera enquadra"
     );
     assert!(
-        mark(&mut sim, Some(piece.to_bits())).opened.is_empty(),
+        mark(&mut sim, Some(piece.to_bits()), &mut None)
+            .opened
+            .is_empty(),
         "o segundo quadro reportou a mesma abertura — a vista ficaria presa à receita"
     );
     // E fechar e reabrir volta a reportar: a transição é o facto, não a primeira vez.
-    mark(&mut sim, None::<u64>);
+    mark(&mut sim, None::<u64>, &mut None);
     assert_eq!(
-        mark(&mut sim, Some(root.to_bits())).opened,
+        mark(&mut sim, Some(root.to_bits()), &mut None).opened,
         vec![root],
         "reabrir depois de fechar tem de voltar a enquadrar"
     );
@@ -230,12 +232,12 @@ fn a_recipe_made_only_of_images_still_raises_the_glass() {
         !super::any_open(&mut sim),
         "sem receita aberta o vidro nao pode subir — o quadro comum pagaria os passes"
     );
-    mark(&mut sim, Some(root.to_bits()));
+    mark(&mut sim, Some(root.to_bits()), &mut None);
     assert!(
         super::any_open(&mut sim),
         "a receita esta' aberta e o vidro nao subiu — as pecas raster dela ficariam no fundo"
     );
-    mark(&mut sim, None::<u64>);
+    mark(&mut sim, None::<u64>, &mut None);
     assert!(
         !super::any_open(&mut sim),
         "fechar a receita tem de baixar o vidro"
@@ -261,7 +263,7 @@ fn the_bar_and_the_glass_answer_the_same_question() {
         super::open_view(&mut sim).is_some(),
         "fechada: uma das duas ja' se acha aberta"
     );
-    mark(&mut sim, Some(piece.to_bits()));
+    mark(&mut sim, Some(piece.to_bits()), &mut None);
     assert!(super::any_open(&mut sim), "controle: a receita abriu");
     let view = super::open_view(&mut sim).expect("a barra nao viu a receita que o vidro ve");
     assert_eq!(view.name, "Badge", "a barra nomeia a receita errada");
@@ -283,10 +285,48 @@ fn the_bar_counts_the_copies_that_follow() {
     // E uma cópia de OUTRA receita, que não pode entrar na conta.
     sim.world_mut()
         .spawn((Transform::IDENTITY, ph2d_ecs::InstanceOf { master: 99 }));
-    mark(&mut sim, Some(root.to_bits()));
+    mark(&mut sim, Some(root.to_bits()), &mut None);
     assert_eq!(
         super::open_view(&mut sim).map(|v| v.copies),
         Some(3),
         "a conta apanhou copias de outra receita, ou perdeu as desta"
     );
+}
+
+/// ⭐⭐⭐ **A TRAVA segura a sessão quando a selecção sai** (Enio, 2026-09-07: *«só permita sair da
+/// edição apertando Done ou a tecla Enter»*).
+///
+/// ⚠️ **O controlo negativo é a metade que importa:** sem a trava, a MESMA chamada fecha a receita
+/// — é o comportamento que o report descreve, e um gate sem ele passaria com a trava ignorada.
+///
+/// **Mutação que deve sangrar:** o `.chain(*latch)` sair da montagem do `editing`.
+#[test]
+fn the_latch_keeps_the_recipe_open_when_the_selection_leaves() {
+    let (mut sim, root, piece, loose) = scene();
+    let mut latch = None;
+    mark(&mut sim, Some(piece.to_bits()), &mut latch);
+    latch = Some(root.to_bits());
+    // O gesto: clicar noutro objecto (ou no vazio) — a selecção sai da receita.
+    mark(&mut sim, Some(loose.to_bits()), &mut latch);
+    assert!(
+        !is_off_canvas(sim.world(), piece),
+        "a sessao fechou ao clicar fora — a saida volta a ser um acidente"
+    );
+    // Controlo: sem a trava, a mesma chamada fecha.
+    mark(&mut sim, Some(loose.to_bits()), &mut None);
+    assert!(
+        is_off_canvas(sim.world(), piece),
+        "controlo: sem trava, sair da seleccao TEM de fechar"
+    );
+}
+
+/// ⚠️ **A trava solta-se sozinha quando a receita MORRE.** Apagá-la a meio da sessão deixaria o
+/// artista num modo sem barra (ela é derivada do mundo) e portanto **sem saída**.
+#[test]
+fn the_latch_lets_go_when_the_recipe_dies() {
+    let (mut sim, root, _piece, _) = scene();
+    let mut latch = Some(root.to_bits());
+    sim.world_mut().entity_mut(root).despawn();
+    mark(&mut sim, None::<u64>, &mut latch);
+    assert_eq!(latch, None, "a trava ficou presa a uma receita que morreu");
 }

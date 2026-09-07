@@ -39,6 +39,18 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
+/// ⭐⭐⭐ **COMO a sessão acabou** — o pedido que a barra deixa para a shell servir.
+///
+/// ⚠️ **Dois fins, não um com modificador:** *sair* e *sair desfazendo* são coisas diferentes, e
+/// quem carrega no segundo tem de o poder ler no botão.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PrefabExit {
+    /// Fechar, ficando com o que foi feito.
+    Done,
+    /// Fechar **desfazendo** tudo o que a sessão mudou.
+    Cancel,
+}
+
 /// O que a barra mostra — publicado pela shell a cada quadro.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PrefabEditView {
@@ -48,8 +60,8 @@ pub struct PrefabEditView {
     pub copies: usize,
 }
 
-/// A largura do botão de saída. ⚠️ Fixa e não derivada do texto: a barra inteira é centrada, e um
-/// botão que encolhesse com o rótulo faria a barra **saltar** de largura entre receitas.
+/// A largura de CADA botão de saída. ⚠️ Fixa e não derivada do texto: a barra inteira é centrada, e
+/// um botão que encolhesse com o rótulo faria a barra **saltar** de largura entre receitas.
 const DONE_W: f32 = 72.0; // LITERAL-PX-OK: largura do botão de saída, entre `Spacing::Xl4` (48) e o dobro dela
 
 /// A largura mínima da barra — abaixo disto o nome de uma receita curta ficaria colado ao botão.
@@ -63,7 +75,8 @@ const MIN_W: f32 = 260.0; // LITERAL-PX-OK: largura mínima da barra (≈ 5,4 ×
 #[must_use]
 pub fn bar_rect(draw_area: Rect, text: &mut TextSystem, view: &PrefabEditView) -> Rect {
     let label = title(view);
-    let w = (text_w(text, &label) + DONE_W + Spacing::Xl2.px() * 2.0).max(MIN_W);
+    // Dois botões, e o vão entre eles.
+    let w = (text_w(text, &label) + DONE_W * 2.0 + Spacing::Xl2.px() * 2.0).max(MIN_W);
     // ⚠️ **A altura é o PASSO DE UMA LINHA** (`row_pitch_px`), e não `ROW_H + um espaçamento
     // escolhido aqui`: a barra é uma linha com a respiração dela, e essa pergunta já tem uma
     // resposta na casa — escrevê-la no sítio da pintura é a segunda (e há gate a dizê-lo).
@@ -76,7 +89,7 @@ pub fn bar_rect(draw_area: Rect, text: &mut TextSystem, view: &PrefabEditView) -
     )
 }
 
-/// O rectângulo do botão de saída, dentro da barra.
+/// O rectângulo do botão `Done`, dentro da barra — o último à direita.
 #[must_use]
 pub fn done_rect(bar: Rect) -> Rect {
     let inset = Spacing::Xxs.px();
@@ -86,6 +99,17 @@ pub fn done_rect(bar: Rect) -> Rect {
         DONE_W,
         bar.h - inset - inset,
     )
+}
+
+/// O rectângulo do botão `Cancel` — à ESQUERDA do `Done`.
+///
+/// ⚠️ **A ordem é a da casa e a do sistema operativo:** a acção destrutiva à esquerda, a de
+/// confirmação à direita, encostada ao canto. Trocá-las faz a mão que decorou o canto **desfazer**
+/// o trabalho ao tentar guardá-lo.
+#[must_use]
+pub fn cancel_rect(bar: Rect) -> Rect {
+    let done = done_rect(bar);
+    Rect::new(done.x - DONE_W, done.y, DONE_W, done.h)
 }
 
 /// ⭐ **A frase, montada num sítio só** — o pintor e a medida da largura leem a MESMA.
@@ -133,11 +157,12 @@ pub fn paint(
         resolve(ColorToken::Accent, theme),
     );
     let done = done_rect(bar);
-    // O texto ocupa o que sobra à esquerda do botão.
+    let cancel = cancel_rect(bar);
+    // O texto ocupa o que sobra à esquerda dos botões.
     let label_rect = Rect::new(
         bar.x + Spacing::Lg.px(),
         bar.y,
-        (done.x - bar.x - Spacing::Lg.px() * 2.0).max(0.0),
+        (cancel.x - bar.x - Spacing::Lg.px() * 2.0).max(0.0),
         bar.h,
     );
     paint_text_centered(
@@ -148,6 +173,18 @@ pub fn paint(
         TypeToken::Sm.px(),
         resolve(ColorToken::Text1, theme),
     );
+    // ⚠️ **O `Cancel` NÃO leva a tinta de acento**: ele desfaz trabalho, e um botão destrutivo com a
+    // cor da confirmação é o que faz a mão carregar no errado. Ele é um botão de texto sobre o
+    // fundo da barra, como o `Cancel` de todo diálogo desta casa.
+    paint_text_centered(
+        text,
+        scene,
+        "Cancel",
+        cancel,
+        TypeToken::Sm.px(),
+        resolve(ColorToken::Text2, theme),
+    );
+    hit_index.register(ids::PREFAB_EDIT_CANCEL, cancel);
     fill_rounded_rect(
         scene,
         done,
@@ -165,22 +202,29 @@ pub fn paint(
     hit_index.register(ids::PREFAB_EDIT_DONE, done);
 }
 
-/// ⭐⭐⭐ **Sair do modo é LARGAR A SELECÇÃO** — e mais nada.
+/// ⭐⭐⭐ **A barra PEDE a saída; quem a serve é a shell.**
+///
+/// ⚠️⚠️ **A 1.ª versão largava a selecção aqui, e a razão dela DISSOLVEU no mesmo dia**: enquanto o
+/// modo era derivado da selecção, largá-la era sair — e uma acção própria seria um segundo caminho
+/// para o mesmo facto. Com a **trava** (Enio, 2026-09-07: *«só permita sair apertando Done ou
+/// Enter»*) a selecção deixou de ser a saída: quem a solta é o dono da trava, e ele vive na shell,
+/// com o mundo. ⇒ o pedido fica pousado num campo que a shell `take()`, como os outros
+/// `pending_*` desta struct. *Uma recusa medida responde uma pergunta, e a pergunta mudou.*
 ///
 /// ⚠️ Chamado pelo irmão em `chrome/prefab_bar.rs`, que é quem entra na cadeia gerada do
 /// [`super::chrome::dispatch_all`].
-///
-/// O `MasterEditing` é derivado dela, então o vidro, o palco e a receita na cena desfazem-se no
-/// quadro seguinte, pela mesma lei que os montou. ⛔ Uma acção própria no barramento seria um
-/// segundo caminho para o mesmo facto, e o dia em que um deles ganhasse um filtro elas divergiriam.
 pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let WidgetEvent::Click(id) = event else {
         return false;
     };
-    if id != ids::PREFAB_EDIT_DONE {
+    let exit = if id == ids::PREFAB_EDIT_DONE {
+        PrefabExit::Done
+    } else if id == ids::PREFAB_EDIT_CANCEL {
+        PrefabExit::Cancel
+    } else {
         return false;
-    }
-    hero.gizmo.replace_selection(None);
+    };
+    hero.prefab_exit = Some(exit);
     true
 }
 

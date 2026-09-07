@@ -661,6 +661,21 @@ pub(crate) struct App {
     pub(crate) prefab_stage_pending: Option<u64>,
     /// A receita que está EM CENA, com a pose de bastidor que o palco lhe devolve ao fechar.
     pub(crate) prefab_stage: Option<crate::prefab_stage::Stage>,
+    /// ⭐⭐⭐ **A TRAVA da sessão de receita** (Enio, 2026-09-07: *«só permita sair apertando Done ou
+    /// a tecla Enter»*), em bits de `Entity`.
+    ///
+    /// ⚠️ **Ela é o que tira o modo das mãos da SELECÇÃO.** Enquanto ela aponta uma receita, clicar
+    /// no vazio já não fecha a sessão — e é por isso que a saída passou a precisar de um botão: o
+    /// gesto que fechava por acidente deixou de fechar.
+    pub(crate) prefab_editing: Option<u64>,
+    /// ⭐⭐⭐ **O documento no instante em que a sessão ABRIU** — o que o `Cancel` repõe.
+    ///
+    /// ⚠️ **É a mesma captura do undo e do save** (`capture_project`), e por isso ela já vem com a
+    /// pré-visualização substituída pelo autorado: a pose de PALCO não está lá dentro, e repor esta
+    /// fotografia devolve a receita ao bastidor sem uma linha de código própria.
+    pub(crate) prefab_cancel: Option<crate::undo::ProjectState>,
+    /// A sessão abriu neste quadro e a fotografia ainda não foi tirada — ver o `post_frame_undo`.
+    pub(crate) prefab_cancel_pending: bool,
     /// **O som de UI que este quadro deve tocar** (estudo de UI viva, D1), ou `None`.
     ///
     /// ⚠️ **Um canal diferido, e não uma chamada no sítio do gesto**, pelo empréstimo: quase todo

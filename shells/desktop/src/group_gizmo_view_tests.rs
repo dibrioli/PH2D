@@ -289,14 +289,14 @@ fn the_recipe_being_edited_gets_its_ring_its_finger_and_its_box_back() {
     ph2d_ecs::assign_master_pieces(sim.world_mut());
 
     // Controlo NEGATIVO: sem ninguém a editar, a receita não está na cena e não tem anel.
-    crate::render_loop::master_editing::mark(&mut sim, None::<u64>);
+    crate::render_loop::master_editing::mark(&mut sim, None::<u64>, &mut None);
     assert!(
         !super::empty_objects(&sim).contains(&recipe),
         "a receita ganhou anel sem ninguem a editar — o gate mediria o estado errado"
     );
 
     // O gesto: escolher a linha dela na Hierarquia.
-    crate::render_loop::master_editing::mark(&mut sim, Some(recipe.to_bits()));
+    crate::render_loop::master_editing::mark(&mut sim, Some(recipe.to_bits()), &mut None);
     assert!(
         super::empty_objects(&sim).contains(&recipe),
         "a receita editada continua sem anel — ela nao tem UM pixel no canvas"

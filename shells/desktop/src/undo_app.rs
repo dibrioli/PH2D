@@ -233,6 +233,43 @@ impl crate::App {
         // do restauro, e o `Ctrl+Z` a seguir devolveria a mão ao objecto errado.
         self.undo_baseline_selection = self.field_selection_mark();
         self.title_dirty = true;
+        // ⭐⭐⭐ **A ORDEM DAS RAÍZES, DEPOIS DO RESTAURO** (report do Enio, 2026-09-07:
+        // *«reordenei objectos na hierarquia e não funcionou o undo»*).
+        //
+        // ⚠️ **A pergunta que o log NÃO sabia responder**: o passo nasce (o `world` difere) e o
+        // restauro corre — mas *a ordem volta?* Entre as duas coisas há a reposição das linhas, a
+        // reconstrução das pontes e a re-derivação da pilha de z, e nenhuma delas se via. ⛔ Sem
+        // esta linha o diagnóstico obriga a adivinhar em três sítios; com ela, a próxima corrida
+        // diz se a ordem restaurada é a que o passo guardava.
+        if Self::undo_log_on() {
+            eprintln!(
+                "[undo]   ordem das raizes depois do restauro: {:?}",
+                self.root_order_digest()
+            );
+        }
+    }
+
+    /// **A ordem das raízes AGORA**, em `(StableId, RootOrder)` — o dedo do diagnóstico da ordem.
+    ///
+    /// ⚠️ `RootOrder` ausente sai como `None`, e isso é informação: uma cena onde ninguém arrastou
+    /// nada tem as três raízes sem ele, e é o arrasto que as numera.
+    pub(crate) fn root_order_digest(&mut self) -> Vec<(u64, Option<u32>)> {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return Vec::new();
+        };
+        let mut q = gfx
+            .sim
+            .world_mut()
+            .query_filtered::<(
+                &ph2d_ecs::StableId,
+                Option<&ph2d_ecs::RootOrder>,
+            ), ph2d_ecs::Without<ph2d_ecs::ChildOf>>();
+        let mut v: Vec<(u64, Option<u32>)> = q
+            .iter(gfx.sim.world())
+            .map(|(s, r)| (s.0, r.map(|r| r.0)))
+            .collect();
+        v.sort_unstable();
+        v
     }
 
     /// Desfaz (ou refaz) um passo da fila global: empurra o estado atual pro outro
@@ -386,6 +423,11 @@ impl crate::App {
             return; // nada mudou desde o último passo
         }
         if Self::undo_log_on() {
+            // ⭐ **A ordem que este passo está a guardar** — o outro lado da pergunta do restauro.
+            // ⚠️ Tirada ANTES de emprestar o baseline: ela precisa do `gfx` mutável (a query), e o
+            // empréstimo do baseline atravessa todo o bloco abaixo.
+            let ordem = self.root_order_digest();
+            eprintln!("[undo]   ordem das raizes AGORA: {ordem:?}");
             let base = self.undo_baseline.as_ref();
             // ⭐ O que a captura INCREMENTAL fez (F2): quantas linhas o pré-filtro acusou,
             // quantas de facto mudaram, e **quantos bytes** o passo custa. ⚠️ Um `sujas` muito

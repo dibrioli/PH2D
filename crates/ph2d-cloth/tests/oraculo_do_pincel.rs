@@ -2295,3 +2295,50 @@ fn sem_memoria_de_velocidade_o_traco_deixa_de_assentar() {
         pico_n / pico_o
     );
 }
+
+/// ⭐⭐ **GATE 24 — a razão `2R` do Push, e a igualdade Push/Inflate no 1.º passo
+/// simulado** (espec §4.2-bis · §10.7).
+///
+/// No passo `2` dos dois traços o vértice do pen-down move `0,06543` e `0,09347`,
+/// razão **`0,7000 = 2·R`** — é o Push a empurrar `2R` contra o Inflate a empurrar
+/// `1`.
+///
+/// ⚠️⚠️ **E a divergência entre os dois só pode começar no passo `3`.** Numa folha
+/// **plana e em repouso** a normal da ÁREA e a normal do VÉRTICE são a mesma
+/// coisa; ⇒ *se um port os separa já no passo `2`, ele está a ler duas normais
+/// diferentes onde só existe uma.*
+#[test]
+fn a_razao_do_push_e_dois_raios_e_os_dois_modos_so_divergem_no_passo_tres() {
+    let (emp_n, emp_o) = por_vertice("plano_empurrar_radial_local_origem", [0.0; 3]);
+    let (inf_n, inf_o) = por_vertice("plano_inflar_radial_local_origem", [0.0; 3]);
+    let r = traco("plano_empurrar_radial_local_origem").f("raio");
+    for (lado, emp, inf) in [("oraculo", &emp_o, &inf_o), ("nos", &emp_n, &inf_n)] {
+        let razao = emp[1] / inf[1];
+        assert!(
+            (razao - 2.0 * r).abs() < 1e-4,
+            "{lado}: a razao Push/Inflate no passo 2 e' {razao:.5} e nao 2R = {:.5}",
+            2.0 * r
+        );
+    }
+    // ⚠️ A DIREÇÃO tem de ser a mesma no passo 2 — a divergência começa no 3.
+    let (rest, _, nossos) = correr_por_passo("plano_empurrar_radial_local_origem");
+    let (_, _, inflar) = correr_por_passo("plano_inflar_radial_local_origem");
+    let v = (0..rest.len())
+        .min_by(|a, b| dist(rest[*a], [0.0; 3]).total_cmp(&dist(rest[*b], [0.0; 3])))
+        .expect("malha");
+    let unit_de = |p: V3, q: V3| {
+        let d = [p[0] - q[0], p[1] - q[1], p[2] - q[2]];
+        let n = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt().max(1e-30);
+        [d[0] / n, d[1] / n, d[2] / n]
+    };
+    let (a, b) = (
+        unit_de(nossos[1][v], rest[v]),
+        unit_de(inflar[1][v], rest[v]),
+    );
+    let cos = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    assert!(
+        (cos.abs() - 1.0).abs() < 1e-9,
+        "no passo 2 as duas direccoes ja' diferem (cos {cos:.9}) -- numa folha \
+         plana em repouso a normal da AREA e a do VERTICE sao a mesma coisa"
+    );
+}

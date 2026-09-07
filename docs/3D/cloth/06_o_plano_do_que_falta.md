@@ -122,6 +122,7 @@ que é decisão do dono.
 | tirar a banda só do termo de **ACELERAÇÃO** da integração (a outra leitura da §5.4) | **byte-idêntico nos 65 traços** — e a razão é estrutural: dentro do pincel a banda vale `1`, e fora dele a força vale `0`. *Onde `a ≠ 0` a banda é `1`* ⇒ a frase da espec e o nosso código dizem a mesma coisa, e o knob seria morto |
 | **mais varreduras**, RE-MEDIDO com a ordem de visita certa | `5` é agora um óptimo AGUDO e quem o diz é o arrasto: `0,011 · 0,254 · 0,555 · 0,705` para `5 · 6 · 8 · 10`. ⚠️ E o Push/Inflate MELHORAM com `8` (`0,164`/`0,162`) — *dois erros a compensarem-se, não a lei que falta* |
 | o **peso** da normal por vértice, medido pela TERCEIRA vez | com a ordem de visita certa: `inflar 0,245 → 0,245`, `empurrar 0,237 → 0,237`. A metade que a §4.6 declara aberta continua sem o corpus a decidir |
+| **re-apanhar o cursor na superfície deformada** (o vértice mais próximo no plano do ecrã, posição actual) | destrói tudo: `arrastar 0,012 → 0,814`, `empurrar 0,252 → 0,825`, `inflar 0,248 → 0,630`. ⚠️ **A recusa é da APROXIMAÇÃO, não da ideia** — o vértice mais próximo faz o cursor saltar de vértice em vértice e herdar a cova inteira. O `caminho` das fixtures traz `z = 0` nos doze passos, e a §4.3 diz que o cursor é re-apanhado; a pergunta continua aberta |
 | a regressão do §9 nº 20 da espec como causa do aperto | foi **fechada em 2024**, dois anos antes da versão que gravou as fixtures |
 
 ## §4 — ⛔⛔ A DECISÃO que é do DONO (e não há terceira saída)

@@ -984,10 +984,9 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_apertar_linha_radial_local_1passo",
     "plano_apertar_linha_radial_local_origem",
     "plano_apertar_ponto_radial_local_1passo",
-    // ⭐⭐ O MESMO traço do `plano_apertar_ponto_radial_local_origem`, com a força
-    // `1,0 → 0,2`. Ele lê `0,002` e o de força cheia continua ABERTO a `0,968` —
-    // *a nossa lei do aperto está certa, e o que diverge é o regime em que o
-    // ALVO deixa de ser determinista* (§5.2-ter).
+    // ⭐⭐ O MESMO traço do `..._origem`, com a força `1,0 → 0,2`: lê `0,002` onde
+    // o de força cheia continua ABERTO — *a lei do aperto está certa, e o que
+    // diverge é o regime em que o ALVO deixa de ser determinista* (§5.2-ter).
     "plano_apertar_ponto_radial_local_origem_fraco",
     "plano_arrastar_radial_dinamica",
     "plano_arrastar_radial_dinamica_preset",
@@ -1007,6 +1006,12 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_arrastar_radial_local_plast05",
     "plano_empurrar_plano_local",
     "plano_empurrar_radial_local_1passo",
+    "plano_empurrar_radial_local_origem_forca025",
+    // ⭐⭐⭐ **O SOLVER, SOZINHO, REPRODUZ O ALVO.** Um impulso conhecido no passo
+    // 2 e depois DEZ passos sem força nenhuma: `0,001` nos dois modos, com erro
+    // absoluto de `0,0001`. ⇒ *a relaxação está exonerada, e o resíduo do Push e
+    // do Inflate vive na aplicação REPETIDA de força sobre malha já deformada.*
+    "plano_empurrar_radial_local_origem_parado",
     "plano_expandir_radial_global_origem_1passo",
     "plano_expandir_radial_local",
     "plano_expandir_radial_local_1passo",
@@ -1020,15 +1025,12 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_gancho_radial_local_2passos_origem",
     "plano_gancho_radial_local_amort06",
     "plano_gancho_radial_local_origem_1passo",
-    // ⭐⭐⭐ Os controlos do §5.2-quater — e o que eles provam MUDOU DE SINAL em
-    // 06/09: com a ordem de visita certa, o gancho de `δ` GRANDE também bate
-    // (`0,432 → 0,000`). *O «degrau» que se atribuía à rede sob passo grande era
-    // a NOSSA ordem de construção.*
     "plano_gancho_radial_local_origem_1passo_constante",
     "plano_gancho_radial_local_origem_1passo_curto",
     "plano_inflar_radial_local_1passo",
+    "plano_inflar_radial_local_origem_parado",
 ];
-const VERDE_N: usize = 50;
+const VERDE_N: usize = 53;
 
 /// Os traços AINDA por explicar, com o valor MEDIDO em 2026-09-06 ao lado.
 ///
@@ -1058,12 +1060,17 @@ const ABERTOS: [(&str, f64); ABERTO_N] = [
     ("plano_apertar_ponto_radial_local", 0.650),
     ("plano_apertar_ponto_radial_local_origem", 0.968),
     ("plano_arrastar_plano_local", 0.150),
+    ("plano_empurrar_radial_global_origem", 0.375),
     ("plano_empurrar_radial_local", 0.237),
     ("plano_empurrar_radial_local_origem", 0.252),
+    ("plano_empurrar_radial_local_origem_amort1", 0.342),
+    ("plano_empurrar_radial_local_origem_forca05", 0.169),
+    ("plano_empurrar_radial_local_origem_massa2", 0.235),
     ("plano_inflar_radial_local", 0.245),
     ("plano_inflar_radial_local_origem", 0.248),
+    ("plano_inflar_radial_local_origem_massa2", 0.206),
 ];
-const ABERTO_N: usize = 15;
+const ABERTO_N: usize = 20;
 
 /// A folga de regressão sobre o valor medido de um traço ABERTO.
 const FOLGA_ABERTO: f64 = 1.25;

@@ -253,6 +253,8 @@ pub const SCULPT3D_CLOTH_FORCE_FALLOFF: [NodeId; 2] = [
 ];
 /// ***Pin Simulation Boundary*** — só existe na área *Local* (espec §2.3).
 pub const SCULPT3D_CLOTH_PIN: NodeId = hash_node_id("sculpt3d.cloth_pin");
+/// ***Use Collisions*** — o pano pára nas outras peças da cena (espec §5.6).
+pub const SCULPT3D_CLOTH_COLLISIONS: NodeId = hash_node_id("sculpt3d.cloth_collisions");
 /// ***Persistent*** — a construção lê a base congelada (espec §6.4).
 pub const SCULPT3D_CLOTH_PERSISTENT: NodeId = hash_node_id("sculpt3d.cloth_persistent");
 /// ***Set Persistent Base*** — congela as posições de agora.

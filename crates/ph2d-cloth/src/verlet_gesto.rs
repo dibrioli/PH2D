@@ -215,6 +215,21 @@ impl PincelTecido {
         anel: &dyn Fn(u32) -> Vec<u32>,
         passo: &Passo<'_>,
     ) -> bool {
+        self.passo_com_colisores(posicoes, anel, passo, &[])
+    }
+
+    /// **O MESMO PASSO, com colisores** (espec §5.6).
+    ///
+    /// ⚠️ **A lista é montada UMA vez, quando a simulação nasce** (cláusula 1) —
+    /// quem a monta é o chamador, e passá-la a cada passo é o que permite que ela
+    /// seja a MESMA lista: a lei não a re-monta nem a guarda.
+    pub fn passo_com_colisores(
+        &mut self,
+        posicoes: &[V3],
+        anel: &dyn Fn(u32) -> Vec<u32>,
+        passo: &Passo<'_>,
+        colisores: &[crate::verlet::Colisor],
+    ) -> bool {
         let n = posicoes.len();
         debug_assert_eq!(n, self.sim.len());
         let cursor = passo.cursor;
@@ -360,7 +375,7 @@ impl PincelTecido {
         // fase 4 — o gesto
         self.gesto(posicoes, passo);
         // fase 5 — o passo de simulação
-        self.sim.passo(&self.pincel.solver);
+        self.sim.passo_com_colisores(&self.pincel.solver, colisores);
         self.anterior = cursor;
         true
     }

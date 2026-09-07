@@ -402,6 +402,15 @@ pub struct Brush {
     /// repouso do traço), e é por isso que o painel oferece os dois: o
     /// interruptor e o botão que o torna observável.
     pub cloth_persistent: bool,
+    /// ***Use Collisions*** (espec §5.6) — o pano pára nas OUTRAS peças da cena.
+    ///
+    /// ⚠️ **A lista de colisores é montada UMA vez, no 1.º passo do traço**, na
+    /// pose desse instante ⇒ *uma peça que se mova durante o traço não se move
+    /// para o pano, e uma que apareça a meio não entra.*
+    ///
+    /// ⛔ **Nasce desligada**, e não por conservadorismo: cada vértice activo
+    /// paga um raio por colisor e por passo.
+    pub cloth_collisions: bool,
 }
 
 impl Default for Brush {
@@ -532,6 +541,7 @@ impl Default for Brush {
             cloth_damping: 0.01,
             cloth_plasticity: 0.0,
             cloth_persistent: false,
+            cloth_collisions: false,
         }
     }
 }

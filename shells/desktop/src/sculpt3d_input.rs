@@ -198,6 +198,27 @@ impl App {
                 // velha, isso é um pânico no primeiro dab.
                 scene.aim(pos.0, pos.1);
                 scene.stroke.begin(scene.objects[scene.active].stack.mesh());
+                // ⭐⭐ **A LISTA DE COLISORES é montada AQUI, uma vez, na pose
+                // deste instante** (espec §5.6 cláusula 1) — as OUTRAS peças da
+                // cena. ⇒ *uma peça que se mova durante o traço não se move para
+                // o pano, e uma que apareça a meio não entra.*
+                //
+                // ⚠️ **Só com a opção ligada NESTE instante**, e a fotografia é
+                // pelo mesmo motivo: a simulação nasce e morre com o traço (§6.3).
+                // ⛔ E a pose de cada peça entra na cópia — a lei recebe posições
+                // em espaço do MUNDO, e o `Multires::mesh` está em espaço local.
+                scene.stroke.cloth_colliders.clear();
+                if scene.brush.verb == Verb::Cloth && scene.brush.cloth_collisions {
+                    let activo = scene.active;
+                    for (i, o) in scene.objects.iter().enumerate() {
+                        if i != activo {
+                            scene
+                                .stroke
+                                .cloth_colliders
+                                .push((o.stack.mesh().clone(), o.pose));
+                        }
+                    }
+                }
                 // ⚠️ **Depois do `aim`**: a foto é da peça que este traço vai
                 // esculpir, e antes do `aim` ela seria a da peça anterior.
                 scene.open_dyntopo_stroke();

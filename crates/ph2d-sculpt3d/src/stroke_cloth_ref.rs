@@ -24,7 +24,7 @@
 
 use crate::{Brush, Dab, Falloff, SculptStroke, Symmetry};
 use ph2d_cloth::V3;
-use ph2d_cloth::verlet::{Solver, norm};
+use ph2d_cloth::verlet::{Solver, dist, norm, unit};
 use ph2d_cloth::verlet_gesto::{Curva, Passo, Pincel, PincelTecido};
 use ph2d_mesh::{Face, Mesh};
 
@@ -192,6 +192,9 @@ fn pincel_de(brush: &Brush, passagens: u32) -> Pincel {
         ..Pincel::default()
     }
 }
+
+/// Um colisor já com dono — o `Vec` local tem de o segurar enquanto a lei corre.
+type Caixa<'a> = Box<dyn Fn(V3, V3) -> Option<ph2d_cloth::verlet::Impacto> + 'a>;
 
 fn v3(p: [f32; 3]) -> V3 {
     [f64::from(p[0]), f64::from(p[1]), f64::from(p[2])]
@@ -385,10 +388,68 @@ impl SculptStroke {
             normais,
             pressao: f64::from(dab.pressure.clamp(0.0, 1.0)),
         };
+        // ⭐⭐ **OS COLISORES** (espec §5.6) — as outras peças da cena, na pose em
+        // que a simulação nasceu. ⚠️ **Cada um é uma FUNÇÃO** e não uma malha: a
+        // busca é de quem tem a cena, a correcção é da lei.
+        //
+        // ⛔⛔ **DIVERGÊNCIA DECLARADA:** a espec dá ao *cast* uma **espessura de
+        // raio** de `0,3` em unidades de mundo, e o `Mesh::raycast` desta casa
+        // lança um raio FINO. Num colisor fino e visto de raspão o nosso passa e
+        // o do alvo apanharia. *Fica nomeado em vez de arrumado como igual* — e
+        // ⚠️ não há fixture de colisor no corpus, logo nada disto tem lado
+        // aprovado (o gate 53 declara-se de ESPEC pela mesma razão).
+        // ⚠️ **Os colisores saem do `self` durante o passo**, como a sessão logo
+        // acima: as funções que a lei recebe emprestam-nos, e o `capture` do undo
+        // logo a seguir precisa do `&mut self`. *Tirar e repor é o que deixa as
+        // duas coisas coexistirem sem uma cópia.*
+        let colisores = std::mem::take(&mut self.cloth_colliders);
         let simulou = {
             let anel = |v: u32| anel_de(mesh, v);
-            ses.tecido.passo(&pos, &anel, &passo)
+            if brush.cloth_collisions && !colisores.is_empty() {
+                let fs: Vec<Caixa<'_>> = colisores
+                    .iter()
+                    .map(|(c, pose)| {
+                        let f = move |de: V3, ate: V3| -> Option<ph2d_cloth::verlet::Impacto> {
+                            let d = [ate[0] - de[0], ate[1] - de[1], ate[2] - de[2]];
+                            let comprimento = norm(d);
+                            if comprimento <= 0.0 {
+                                return None;
+                            }
+                            // ⚠️ **O RAIO vai ao espaço LOCAL do colisor**, e o
+                            // acerto volta ao mundo: transformar a malha inteira
+                            // custaria uma cópia por peça e por traço.
+                            let mundo = ph2d_mesh::Ray::new(
+                                [de[0] as f32, de[1] as f32, de[2] as f32],
+                                [d[0] as f32, d[1] as f32, d[2] as f32],
+                            );
+                            let h = c.raycast(&pose.ray_to_local(&mundo))?;
+                            let ponto = v3(pose.point_to_world(h.point));
+                            // ⚠️ **Só conta DENTRO do comprimento do raio** (espec
+                            // §5.6), e ⛔ a comparação é feita no MUNDO: o `t` do
+                            // `Hit` mede em unidades LOCAIS, e o doc dele avisa
+                            // que comparar `t` entre escalas dá a resposta errada.
+                            if dist(ponto, de) > comprimento {
+                                return None;
+                            }
+                            Some(ph2d_cloth::verlet::Impacto {
+                                ponto,
+                                // ⚠️ A normal do `Hit` **não é garantidamente
+                                // unitária** (o doc dela di-lo), e a lei do §5.6
+                                // afasta o vértice `0,005` ao longo dela.
+                                normal: unit(v3(pose.vector_to_world(h.normal))),
+                            })
+                        };
+                        Box::new(f) as Caixa<'_>
+                    })
+                    .collect();
+                let refs: Vec<ph2d_cloth::verlet::Colisor> =
+                    fs.iter().map(std::convert::AsRef::as_ref).collect();
+                ses.tecido.passo_com_colisores(&pos, &anel, &passo, &refs)
+            } else {
+                ses.tecido.passo(&pos, &anel, &passo)
+            }
         };
+        self.cloth_colliders = colisores;
         if simulou {
             // ⚠️ Todo vértice ACTIVO é capturado antes de ser escrito: o `pre` é
             // o que o undo devolve (a mesma lei do `build_cloth` do VBD).

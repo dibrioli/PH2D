@@ -62,6 +62,8 @@ mod topology_tests;
 #[cfg(test)]
 mod vbd_tests;
 #[cfg(test)]
+mod verlet_gesto_area_tests;
+#[cfg(test)]
 mod verlet_gesto_tests;
 #[cfg(test)]
 mod verlet_solver_tests;

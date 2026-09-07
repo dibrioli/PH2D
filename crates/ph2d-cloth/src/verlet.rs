@@ -332,11 +332,7 @@ impl Verlet {
     /// ⚠️ **A porta é uma FUNÇÃO por colisor e não uma malha** — a busca é de
     /// quem tem a cena, a correcção é da lei. A `ph2d-cloth` não sabe o que é um
     /// triângulo, e é isso que a mantém gateável sem GPU e sem escultura.
-    pub fn passo_com_colisores(
-        &mut self,
-        solver: &Solver,
-        colisores: &[&dyn Fn(V3, V3) -> Option<Impacto>],
-    ) {
+    pub fn passo_com_colisores(&mut self, solver: &Solver, colisores: &[Colisor]) {
         let rho = solver.plasticidade.clamp(0.0, 1.0);
         for _ in 0..solver.varreduras {
             for k in 0..self.restricoes.len() {
@@ -476,6 +472,10 @@ pub struct Impacto {
     pub ponto: V3,
     pub normal: V3,
 }
+
+/// **UM COLISOR, como a lei o vê** — uma função que responde *«este segmento
+/// bate?»*. ⚠️ A busca é de quem tem a cena; a correcção é da lei.
+pub type Colisor<'a> = &'a dyn Fn(V3, V3) -> Option<Impacto>;
 
 /// **A ESPESSURA DO RAIO da colisão** (espec §5.6), em unidades de MUNDO.
 ///

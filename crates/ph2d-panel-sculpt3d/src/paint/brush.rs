@@ -408,6 +408,20 @@ fn paint_cloth_rows(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
         w,
         y,
     );
+    // **A COLISÃO** — o pano pára nas outras peças da cena.
+    //
+    // ⚠️ **Ela nasce desligada e o painel não a esconde:** o custo é um raio por
+    // vértice activo, por colisor e por passo, e é o artista que decide se o
+    // paga. *Um controlo caro escondido é um controlo que ninguém sabe que tem.*
+    let y = toggle(
+        ctx,
+        ids::SCULPT3D_CLOTH_COLLISIONS,
+        tr("panel.sculpt3d.cloth_collisions"),
+        snap.ui.brush.cloth_collisions,
+        x,
+        w,
+        y,
+    );
     // **O PINO DA FRONTEIRA**, e só onde a lei existe. ⚠️ A pergunta é a mesma
     // que [`ph2d_sculpt3d`] faz ao construir o pincel — a lei recusa o pino fora
     // da área *Local* (espec §2.3), e a caixa nos outros dois terços do selector

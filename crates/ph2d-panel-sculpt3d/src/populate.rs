@@ -145,6 +145,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::SCULPT3D_SCRAPE_DYNAMIC,
         ids::SCULPT3D_CLOTH_PIN,
         ids::SCULPT3D_CLOTH_PERSISTENT,
+        ids::SCULPT3D_CLOTH_COLLISIONS,
         ids::SCULPT3D_CLOSE,
     ] {
         button(store, id);

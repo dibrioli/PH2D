@@ -79,6 +79,20 @@ pub struct SculptStroke {
     /// cai no repouso do traço sozinha, sem ninguém ter de se lembrar de a
     /// apagar.
     pub persistent_base: Vec<[f32; 3]>,
+    /// ⭐⭐ **AS OUTRAS PEÇAS DA CENA, para a colisão do tecido** (espec §5.6).
+    ///
+    /// ⚠️ **A lista é montada UMA vez, quando a simulação nasce**, e cada peça
+    /// fica na pose desse instante — é por isso que ela é uma FOTOGRAFIA e não
+    /// uma referência: *um colisor animado não se move durante o traço, e um que
+    /// apareça a meio não entra.*
+    ///
+    /// ⚠️ Vazia = sem colisores, que é a omissão. Quem a enche é a shell, que é
+    /// quem sabe o que mais há na cena.
+    /// ⚠️ **A POSE viaja com a malha** — a lei recebe posições em espaço do
+    /// MUNDO e o `Multires::mesh` de cada peça está em espaço LOCAL. Guardar as
+    /// duas e levar o RAIO ao espaço local (`Pose::ray_to_local`) é mais barato
+    /// e mais exacto que transformar a malha inteira.
+    pub cloth_colliders: Vec<(Mesh, ph2d_mesh::Pose)>,
     base_pos: Vec<[f32; 3]>,
     base_nrm: Vec<[f32; 3]>,
     base_mask: Vec<f32>,

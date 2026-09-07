@@ -6,6 +6,10 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal, seam_reset_button};
 use ph2d_sculpt3d::{Alpha, Falloff, FilterKind, RefMode, TransformKind, Verb};
 
+/// Os seis interruptores, em tabela — ver o doc do módulo.
+#[path = "event_toggles.rs"]
+mod toggles;
+
 use crate::rows;
 use crate::state::{self, Sculpt3dIntent};
 
@@ -148,80 +152,16 @@ pub(crate) fn apply_event(
             arm_alpha_chip(&snapshot, i);
             true
         }
-        // ⚠️ **Recusa fora dos verbos de carimbo.** O pintor já não o oferece
-        // ali, mas o roteador é a outra metade: um clique sintético (ou um id
-        // que sobreviveu a uma troca de verbo no mesmo frame) armaria um flag
-        // que nenhum dab lê, e o painel voltaria a mostrá-lo marcado no próximo
-        // verbo que o oferece — um estado que o artista não pediu.
-        WidgetEvent::Click(id)
-            if id == ids::SCULPT3D_ACCUMULATE && snapshot.ui.brush.verb.accumulates() =>
-        {
+        // **OS SEIS INTERRUPTORES**, e o guard é a porta que pergunta ao MOTOR
+        // se a lei existe com este pincel na mão — a mesma que o pintor faz para
+        // decidir se desenha a caixa. Sem ela um clique sintético (ou um id que
+        // sobreviveu a uma troca de verbo no mesmo quadro) armaria um flag que
+        // nenhum dab lê, e o painel voltaria a mostrá-lo marcado no próximo
+        // pincel que oferece a lei — um estado que o artista não pediu.
+        WidgetEvent::Click(id) if toggles::oferecido(&snapshot.ui, id) => {
             seam_reset_button(host, id);
             let mut ui = snapshot.ui;
-            ui.brush.accumulate = !ui.brush.accumulate;
-            state::push_intent(Sculpt3dIntent::SetUi(ui));
-            true
-        }
-        // ⚠️ **Gateado na LEI, como a caixa que o pinta.** Sem o guard um
-        // clique sintético (ou um id que sobreviveu a uma troca de modo no
-        // mesmo frame) armaria um flag que nenhum dab consulta — o braço
-        // `Ignored` do kernel nem o lê —, e o painel o mostraria marcado no
-        // próximo modo que oferece a lei.
-        WidgetEvent::Click(id)
-            if id == ids::SCULPT3D_FRONT_FACES && snapshot.ui.brush.offers_front_faces() =>
-        {
-            seam_reset_button(host, id);
-            let mut ui = snapshot.ui;
-            ui.brush.front_faces_only = !ui.brush.front_faces_only;
-            state::push_intent(Sculpt3dIntent::SetUi(ui));
-            true
-        }
-        // ⚠️ **Gateado no VERBO, como a row que o pinta** — a mesma razão do
-        // vizinho acima: um clique sintético (ou um id que sobreviveu a uma
-        // troca de verbo no mesmo frame) armaria um modo que nenhum dab lê, e o
-        // painel voltaria a mostrá-lo marcado na próxima lâmina.
-        WidgetEvent::Click(id)
-            if id == ids::SCULPT3D_SCRAPE_DYNAMIC
-                && snapshot.ui.brush.verb == Verb::MultiplaneScrape =>
-        {
-            seam_reset_button(host, id);
-            let mut ui = snapshot.ui;
-            ui.brush.scrape_dynamic = !ui.brush.scrape_dynamic;
-            state::push_intent(Sculpt3dIntent::SetUi(ui));
-            true
-        }
-        // ⚠️ **Gateado na ÁREA, como a caixa que o pinta** — e a pergunta é a
-        // MESMA porta (`ClothArea::offers_pin`) que a tradução `Brush → Pincel`
-        // faz para honrar a recusa da lei. Sem o guard um clique sintético
-        // armaria um pino que a área *Global* nem constrói.
-        WidgetEvent::Click(id)
-            if id == ids::SCULPT3D_CLOTH_PIN
-                && snapshot.ui.brush.verb == Verb::Cloth
-                && snapshot.ui.brush.cloth_area.offers_pin() =>
-        {
-            seam_reset_button(host, id);
-            let mut ui = snapshot.ui;
-            ui.brush.cloth_pin = !ui.brush.cloth_pin;
-            state::push_intent(Sculpt3dIntent::SetUi(ui));
-            true
-        }
-        // ⚠️ **Gateado no padrão armado, como a row que o pinta.** Sem o guard
-        // o clique chegaria a um interruptor que ninguém desenhou — e o estado
-        // dele mudaria pelas costas do artista, que é a forma exata de um
-        // controle nascer mentindo sobre o que a tela mostra.
-        WidgetEvent::Click(id)
-            if id == ids::SCULPT3D_ALPHA_PREVIEW && snapshot.ui.brush.alpha.is_some() =>
-        {
-            seam_reset_button(host, id);
-            let mut ui = snapshot.ui;
-            ui.alpha_preview = !ui.alpha_preview;
-            state::push_intent(Sculpt3dIntent::SetUi(ui));
-            true
-        }
-        WidgetEvent::Click(id) if id == ids::SCULPT3D_WIREFRAME => {
-            seam_reset_button(host, id);
-            let mut ui = snapshot.ui;
-            ui.wireframe = !ui.wireframe;
+            toggles::virar(&mut ui, id);
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }

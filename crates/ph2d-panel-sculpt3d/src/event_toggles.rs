@@ -1,0 +1,83 @@
+//! **OS SEIS INTERRUPTORES DO PAINEL, EM TABELA** — irmão (`#[path]`) do
+//! [`super::event`], cortado por ASSUNTO.
+//!
+//! Cada um responde às MESMAS três perguntas — *que id sou eu*, *a lei que eu
+//! ligo existe com este pincel na mão*, e *que campo eu viro* —, e enquanto elas
+//! viviam em seis braços de `match` cada braço repetia as quatro linhas do corpo
+//! (`seam_reset_button` · clonar a UI · virar o campo · `push_intent`).
+//!
+//! ⚠️ **A segunda pergunta é a que não pode faltar, e é por isso que ela está na
+//! tabela e não num `if` do pintor:** um clique sintético — ou um id que
+//! sobreviveu a uma troca de verbo no mesmo quadro — armaria um flag que nenhum
+//! dab lê, e o painel voltaria a mostrá-lo marcado no próximo pincel que oferece
+//! a lei. *O pintor não pinta a caixa onde a lei não existe; esta tabela recusa
+//! o clique pela mesma razão, e as duas perguntam à mesma porta do motor.*
+//!
+//! ⚠️ **O gate de LOC foi o gatilho, não a razão.** O `apply_event` cruzou os 200
+//! do `architecture_panel_loc_cap` quando o tecido ganhou o *Pin Simulation
+//! Boundary*, e o que saiu foi a metade com fronteira própria — não a última
+//! coisa que alguém escreveu.
+
+use ph2d_a11y::NodeId;
+use ph2d_editor_core::ids;
+use ph2d_sculpt3d::Verb;
+
+use crate::state::Sculpt3dUi;
+
+/// **UM INTERRUPTOR**: o id, a pergunta que decide se ele existe agora, e o
+/// campo que ele vira.
+pub(super) type Toggle = (NodeId, fn(&Sculpt3dUi) -> bool, fn(&mut Sculpt3dUi));
+
+/// `(o id · a lei existe? · o que virar)`.
+///
+/// ⚠️ **A lei é perguntada ao MOTOR** (`Verb::accumulates`,
+/// `Brush::offers_front_faces`, `ClothArea::offers_pin`), nunca a uma lista de
+/// nomes aqui — o pintor faz a mesma pergunta para decidir se desenha a caixa, e
+/// duas cópias divergiriam num interruptor que aparece e não muda um vértice.
+pub(super) const TOGGLES: [Toggle; 6] = [
+    (
+        ids::SCULPT3D_ACCUMULATE,
+        |u| u.brush.verb.accumulates(),
+        |u| u.brush.accumulate = !u.brush.accumulate,
+    ),
+    (
+        ids::SCULPT3D_FRONT_FACES,
+        |u| u.brush.offers_front_faces(),
+        |u| u.brush.front_faces_only = !u.brush.front_faces_only,
+    ),
+    (
+        ids::SCULPT3D_SCRAPE_DYNAMIC,
+        |u| u.brush.verb == Verb::MultiplaneScrape,
+        |u| u.brush.scrape_dynamic = !u.brush.scrape_dynamic,
+    ),
+    (
+        ids::SCULPT3D_CLOTH_PIN,
+        |u| u.brush.verb == Verb::Cloth && u.brush.cloth_area.offers_pin(),
+        |u| u.brush.cloth_pin = !u.brush.cloth_pin,
+    ),
+    (
+        ids::SCULPT3D_ALPHA_PREVIEW,
+        |u| u.brush.alpha.is_some(),
+        |u| u.alpha_preview = !u.alpha_preview,
+    ),
+    // ⚠️ O arame **não pergunta nada**: ele é da VISTA, e toda ferramenta o tem.
+    (
+        ids::SCULPT3D_WIREFRAME,
+        |_| true,
+        |u| u.wireframe = !u.wireframe,
+    ),
+];
+
+/// **Este id é um interruptor que a lei OFERECE agora?** — a porta única das duas
+/// perguntas, e o guard do braço de `match` que os despacha.
+pub(super) fn oferecido(ui: &Sculpt3dUi, id: NodeId) -> bool {
+    TOGGLES.iter().any(|(tid, lei, _)| *tid == id && lei(ui))
+}
+
+/// Vira o campo deste id. ⚠️ Só é chamada depois de [`oferecido`] — o `find` que
+/// falha aqui é um caminho que o guard já recusou.
+pub(super) fn virar(ui: &mut Sculpt3dUi, id: NodeId) {
+    if let Some((_, _, vira)) = TOGGLES.iter().find(|(tid, _, _)| *tid == id) {
+        vira(ui);
+    }
+}

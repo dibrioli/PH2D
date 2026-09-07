@@ -38,6 +38,14 @@ mod shading;
 mod topology;
 pub use topology::TOPOLOGY;
 
+/// Os cinco números do pincel de TECIDO — ver o doc do módulo.
+#[path = "rows_cloth.rs"]
+mod cloth;
+
+/// Os dois números do EXTRACT — ver o doc do módulo.
+#[path = "rows_extract.rs"]
+mod extract;
+
 /// As perguntas que o PADRÃO faz — ver o doc do módulo.
 #[path = "rows_alpha.rs"]
 mod alpha;
@@ -66,13 +74,6 @@ const MAX_EXTRACT_SMOOTH: f32 = 8.0; // LITERAL-PX-OK: contagem de passadas MEDI
 /// Sempre visível. ⚠️ `pub(super)` porque a tabela do sombreamento é um
 /// módulo FILHO e as duas a partilham — duas cópias divergiriam no dia em que
 /// *sempre* ganhasse uma exceção.
-/// **Esta row é do pincel de TECIDO?** — a pergunta é ao VERBO, e é a mesma que
-/// o roteador faz para honrar o clique. ⛔ Uma lista paralela de nomes aqui seria
-/// um knob que aparece noutra ferramenta e não move um vértice.
-fn is_cloth(u: &Sculpt3dUi) -> bool {
-    u.brush.verb == Verb::Cloth
-}
-
 pub(super) fn always(_: &Sculpt3dUi) -> bool {
     true
 }
@@ -557,122 +558,17 @@ static BRUSH: &[Row] = &[
     //
     // ⚠️ **A pergunta de visibilidade é ao VERBO**, como a das duas fileiras de
     // chip: com outro pincel na mão eles não movem um vértice.
-    Row {
-        label: "panel.sculpt3d.cloth_limit",
-        slider: ids::SCULPT3D_CLOTH_LIMIT,
-        chip: ids::SCULPT3D_CLOTH_LIMIT_NUM,
-        // A faixa é a do alvo (espec §8.1). O recurso que ela nomeia é TEMPO ×
-        // ALCANCE: o limite é `R·(1+L)`, logo `10` simula uma esfera de `11·R`.
-        min: 0.1,
-        max: 10.0,
-        step: 0.1, // LITERAL-PX-OK: passo de um knob em raios de pincel
-        decimals: 2,
-        get: |u| u.brush.cloth_limit,
-        set: |u, v| u.brush.cloth_limit = v,
-        show: is_cloth,
-        level: UiLevel::Basic,
-        place: Place::Knobs,
-    },
-    Row {
-        label: "panel.sculpt3d.cloth_falloff",
-        slider: ids::SCULPT3D_CLOTH_FALLOFF,
-        chip: ids::SCULPT3D_CLOTH_FALLOFF_NUM,
-        min: 0.0,
-        max: 1.0,
-        step: 0.05, // LITERAL-PX-OK: knob adimensional
-        decimals: 2,
-        get: |u| u.brush.cloth_falloff,
-        set: |u, v| u.brush.cloth_falloff = v,
-        show: is_cloth,
-        level: UiLevel::Basic,
-        place: Place::Knobs,
-    },
-    Row {
-        label: "panel.sculpt3d.cloth_mass",
-        slider: ids::SCULPT3D_CLOTH_MASS,
-        chip: ids::SCULPT3D_CLOTH_MASS_NUM,
-        // ⚠️ **O piso não é zero e não é escolha:** a massa é um ganho INVERSO
-        // (espec §5.4), logo `0` é uma divisão por zero com o nome de knob.
-        min: 0.01,
-        max: 2.0,
-        step: 0.05, // LITERAL-PX-OK: knob adimensional
-        decimals: 2,
-        get: |u| u.brush.cloth_mass,
-        set: |u, v| u.brush.cloth_mass = v,
-        show: is_cloth,
-        level: UiLevel::Basic,
-        place: Place::Knobs,
-    },
-    Row {
-        label: "panel.sculpt3d.cloth_damping",
-        slider: ids::SCULPT3D_CLOTH_DAMPING,
-        chip: ids::SCULPT3D_CLOTH_DAMPING_NUM,
-        // ⚠️ **O piso é `0,01`, que é a omissão** — a faixa do alvo abre onde ele
-        // a põe, e é medido que a retenção de velocidade é o que faz o traço
-        // ASSENTAR: a `1` o pano pára no instante em que a mão pára.
-        min: 0.01,
-        max: 1.0,
-        step: 0.01, // LITERAL-PX-OK: knob adimensional
-        decimals: 2,
-        get: |u| u.brush.cloth_damping,
-        set: |u, v| u.brush.cloth_damping = v,
-        show: is_cloth,
-        level: UiLevel::Basic,
-        place: Place::Knobs,
-    },
-    Row {
-        label: "panel.sculpt3d.cloth_plasticity",
-        slider: ids::SCULPT3D_CLOTH_PLASTICITY,
-        chip: ids::SCULPT3D_CLOTH_PLASTICITY_NUM,
-        min: 0.0,
-        max: 1.0,
-        step: 0.05, // LITERAL-PX-OK: knob adimensional
-        decimals: 2,
-        get: |u| u.brush.cloth_plasticity,
-        set: |u, v| u.brush.cloth_plasticity = v,
-        show: is_cloth,
-        level: UiLevel::Basic,
-        place: Place::Knobs,
-    },
+    cloth::CLOTH_LIMIT,
+    cloth::CLOTH_FALLOFF,
+    cloth::CLOTH_MASS,
+    cloth::CLOTH_DAMPING,
+    cloth::CLOTH_PLASTICITY,
     // ── Os dois números do EXTRACT ──────────────────────────────────────────
     //
     // ⚠️ **Eles são os ARGUMENTOS de um botão, e ficam colados nele** — não são
     // knobs do pincel. É a mesma decisão que trouxe a pista de `Alpha Scale`
     // para a cauda: um controle e o que ele governa têm de estar no campo de
     // visão um do outro.
-    Row {
-        label: "panel.sculpt3d.extract_thickness",
-        slider: ids::SCULPT3D_EXTRACT_THICK,
-        chip: ids::SCULPT3D_EXTRACT_THICK_NUM,
-        // ⚠️ **A faixa é sobre a ESCALA LOCAL da malha, e as primitivas desta
-        // casa nascem com raio 1** — meia unidade é meia peça, e é a faixa
-        // confortável do arrasto. O sinal escolhe o lado: para fora é armadura,
-        // para dentro é forro. **Zero é uma folha só**, e é ele que está no meio
-        // da pista de propósito.
-        min: -0.5,
-        max: 0.5,
-        step: 0.01, // LITERAL-PX-OK: passo de uma espessura em unidades de malha
-        decimals: 3,
-        get: |u| u.extract.thickness,
-        set: |u, v| u.extract.thickness = v,
-        show: |_| true,
-        level: UiLevel::Basic,
-        place: Place::AfterExtract,
-    },
-    Row {
-        label: "panel.sculpt3d.extract_smooth",
-        slider: ids::SCULPT3D_EXTRACT_SMOOTH,
-        chip: ids::SCULPT3D_EXTRACT_SMOOTH_NUM,
-        min: 0.0,
-        max: MAX_EXTRACT_SMOOTH,
-        step: 1.0, // LITERAL-PX-OK: uma passada e' inteira
-        decimals: 0,
-        get: |u| u.extract.smooth as f32,
-        // ⚠️ O `round` é a fronteira de DISPLAY: a pista fala em `f32` como toda
-        // row desta tabela, e o que o kernel conta é uma passada inteira.
-        set: |u, v| u.extract.smooth = v.round().max(0.0) as u32,
-        show: |_| true,
-        level: UiLevel::Basic,
-        place: Place::AfterExtract,
-    },
+    extract::EXTRACT_THICKNESS,
+    extract::EXTRACT_SMOOTH,
 ];

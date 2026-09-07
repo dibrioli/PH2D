@@ -93,6 +93,21 @@ impl ClothMode {
     pub fn repica(self) -> bool {
         !matches!(self, Self::Grab | Self::SnakeHook)
     }
+
+    /// **ESTE MODO LEVA O `δ` TOTAL desde o pen-down?** (espec §4.3)
+    ///
+    /// ⭐ **Só o Grab.** Os outros sete levam o incremento desde o dab anterior,
+    /// que é o que o [`crate::Dab`] dá por definição. ⛔ **A distinção não é
+    /// visível no tipo** — os dois são um `[f32; 3]` — e o preço de a errar está
+    /// medido: com o incremento, o Grab move `0,0147` onde a lei move `0,1690`,
+    /// **`11,5×` menos**.
+    ///
+    /// ⚠️ É uma porta e não um `match` dentro do adaptador porque tem **dois**
+    /// leitores: quem constrói o delta e o gate que o prova.
+    #[must_use]
+    pub fn leva_o_delta_total(self) -> bool {
+        matches!(self, Self::Grab)
+    }
 }
 
 /// **Que pedaço da malha entra na simulação** (espec §2.1).

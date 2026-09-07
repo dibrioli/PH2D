@@ -138,7 +138,7 @@ fn traco(nome: &str) -> Traco {
 /// de esfera do corpus são de área *Dynamic* com o olho a mudar, e o Grab/Snake
 /// Hook levam o `δ` TOTAL, que o `Dab::hooking` não exprime (ele é o incremento).
 /// *Um gate que varresse as 78 fixtures mediria o arnês, não o adaptador.*
-const TRACOS: [(&str, ph2d_sculpt3d::ClothMode, ClothArea); 5] = [
+const TRACOS: [(&str, ph2d_sculpt3d::ClothMode, ClothArea); 6] = [
     (
         "plano_arrastar_radial_local_origem",
         ClothMode::Drag,
@@ -162,6 +162,11 @@ const TRACOS: [(&str, ph2d_sculpt3d::ClothMode, ClothArea); 5] = [
     (
         "plano_apertar_linha_radial_local_origem",
         ClothMode::PinchPerpendicular,
+        ClothArea::Local,
+    ),
+    (
+        "plano_agarrar_radial_local_origem",
+        ClothMode::Grab,
         ClothArea::Local,
     ),
 ];

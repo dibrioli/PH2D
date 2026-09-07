@@ -531,3 +531,86 @@ fn sonda_do_custo_de_um_dab_de_tecido() {
         );
     }
 }
+
+/// ⭐⭐⭐ **GATE — A BASE PERSISTENTE CHEGA AO MOTOR PELA PORTA DO ARTISTA, e ela
+/// SATURA** (espec §6.4).
+///
+/// ⛔⛔ **É o gate que separa «a lei existe» de «o artista alcança-a»** — a
+/// `ph2d-cloth` reproduz as fixtures do oráculo, e entre ela e a mão há o
+/// interruptor, o botão que congela a base e a validação por comprimento.
+///
+/// ⚠️ **A ORDEM é a lei, e as duas metades estão aqui:** gravar a base **antes**
+/// dos traços faz a deformação saturar; gravá-la **depois** de um traço é um
+/// **no-op exacto**, porque ali ela É o repouso do traço seguinte. *A experiência
+/// que ocorre primeiro a quem a desenha é a segunda, e ela não mede nada.*
+#[test]
+fn a_base_persistente_chega_ao_motor_e_satura() {
+    use crate::Verb;
+    use crate::stroke::cloth_artefatos_tests::plano_n;
+    use crate::stroke::cloth_tests::dab_em;
+    let antes = plano_n(48);
+    let pico = |m: &ph2d_mesh::Mesh| {
+        (0..antes.vert_count())
+            .map(|v| {
+                let (p, q) = (antes.positions()[v], m.positions()[v]);
+                ((p[0] - q[0]).powi(2) + (p[1] - q[1]).powi(2) + (p[2] - q[2]).powi(2)).sqrt()
+            })
+            .fold(0.0f32, f32::max)
+    };
+    // `quando`: `None` = sem base · `Some(0)` = base ANTES do 1.º traço ·
+    // `Some(1)` = base DEPOIS do 1.º (a armadilha de autoria).
+    let correr = |tracos: usize, quando: Option<usize>| -> f32 {
+        let mut mesh = plano_n(48);
+        let b = Brush {
+            verb: Verb::Cloth,
+            cloth_mode: crate::ClothMode::Grab,
+            cloth_area: crate::ClothArea::Local,
+            radius: 0.35,
+            strength: 1.0,
+            cloth_persistent: quando.is_some(),
+            ..Brush::default()
+        };
+        let mut s = SculptStroke::default();
+        for t in 0..tracos {
+            if quando == Some(t) {
+                s.set_persistent_base(&mesh);
+            }
+            // ⚠️ O `begin` mata a sessão do traço anterior (`cloth_ref`), que é
+            // o que faz cada traço nascer com um pen-down novo.
+            s.begin(&mesh);
+            for k in 0..12 {
+                let c = [0.05 * k as f32, 0.0, 0.0];
+                let passo = if k == 0 { [0.0; 3] } else { [0.05, 0.0, 0.0] };
+                s.dab(
+                    &mut mesh,
+                    &b,
+                    &dab_em(c, b.radius, passo),
+                    Symmetry::default(),
+                );
+            }
+        }
+        pico(&mesh)
+    };
+    let (um, dois, tres) = (correr(1, None), correr(2, None), correr(3, None));
+    let (p1, p2, p3) = (correr(1, Some(0)), correr(2, Some(0)), correr(3, Some(0)));
+    // (1) SEM base, acumula.
+    assert!(
+        dois > um * 1.4 && tres > dois * 1.2,
+        "sem base tem de ACUMULAR: {um:.4} -> {dois:.4} -> {tres:.4}"
+    );
+    // (2) COM a base gravada ANTES, satura — e o 1.º traço é o mesmo dos dois
+    // (ali a base É o repouso do traço, logo a opção é um no-op exacto).
+    assert_eq!(um, p1, "o 1.º traco tem de ser identico com e sem base");
+    assert!(
+        p2 < p1 * 1.15 && p3 < p1 * 1.25,
+        "com base tem de SATURAR: {p1:.4} -> {p2:.4} -> {p3:.4}"
+    );
+    // (3) ⛔ **A ARMADILHA:** a base gravada DEPOIS do 1.º traço é um no-op —
+    // ela é o repouso do 2.º, e as quatro leituras da §6.4 não mudam.
+    assert_eq!(
+        correr(2, Some(1)),
+        dois,
+        "gravar a base DEPOIS do 1.º traco tem de ser um NO-OP exacto -- se \
+         mudar alguma coisa, a base esta' a ser lida onde a espec diz que nao e'"
+    );
+}

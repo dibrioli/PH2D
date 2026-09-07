@@ -391,6 +391,17 @@ pub struct Brush {
     /// segue o vértice e nunca o puxa; `1` = o vértice volta à memória.
     /// Faixa `0..1`, omissão `0`.
     pub cloth_plasticity: f32,
+    /// ***Persistent*** (espec §6.4) — a construção lê a **base congelada** no
+    /// lugar das posições de repouso do traço.
+    ///
+    /// ⭐⭐ **O efeito é SATURAÇÃO, não atenuação:** o mesmo traço repetido dá
+    /// `0,169 → 0,306 → 0,415` sem base e `0,169 → 0,171 → 0,176` com ela — *a
+    /// deformação pára de acumular e assenta no que UM traço faz*.
+    ///
+    /// ⚠️ **Ligado SEM base gravada é um no-op exacto** (a construção cai no
+    /// repouso do traço), e é por isso que o painel oferece os dois: o
+    /// interruptor e o botão que o torna observável.
+    pub cloth_persistent: bool,
 }
 
 impl Default for Brush {
@@ -520,6 +531,7 @@ impl Default for Brush {
             cloth_mass: 1.0,
             cloth_damping: 0.01,
             cloth_plasticity: 0.0,
+            cloth_persistent: false,
         }
     }
 }

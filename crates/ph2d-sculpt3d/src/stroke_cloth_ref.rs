@@ -283,6 +283,18 @@ impl SculptStroke {
             // ⚠️ **É propriedade da MALHA, e por isso é derivada UMA vez, no
             // pen-down**, sobre as posições que passam a ser o repouso do traço.
             let normais = mesh.normals().iter().map(|n| v3(*n)).collect();
+            let mut tecido = tecido;
+            // ⭐⭐⭐ **A BASE PERSISTENTE entra no PEN-DOWN e em mais lado nenhum**
+            // (espec §6.4): as quatro leituras que a lêem vivem todas na
+            // construção das restrições, que acontece aqui.
+            //
+            // ⚠️ **A validação é o COMPRIMENTO**, não uma bandeira: um remesh muda
+            // a contagem de vértices e a base deixa de descrever a malha ⇒ a lei
+            // cai no repouso do traço sozinha. E ligar a opção **sem** base
+            // gravada é um no-op exacto, que é o que a espec §6.4 mede.
+            if brush.cloth_persistent && self.persistent_base.len() == pos.len() {
+                tecido.sim.base = self.persistent_base.iter().map(|p| v3(*p)).collect();
+            }
             self.cloth_ref[copy] = Some(ClothRef { tecido, normais });
         }
         let Some(mut ses) = self.cloth_ref[copy].take() else {
@@ -335,6 +347,26 @@ impl SculptStroke {
         // plana vista de frente as duas coisas são a MESMA ao bit; numa
         // superfície curva separam-se `15,83°` nas fixtures do oráculo.
         // ⛔ Só o ARRASTO lê o caminho 3D — dele sai a direcção dele.
+        // ⛔⛔⛔ **O AGARRAR LEVA O `δ` TOTAL, e o `Dab` só sabe dar o incremento**
+        // (espec §4.3: *«para o Grab o delta ACUMULA desde o pen-down; para os
+        // outros sete modos é incremental»*).
+        //
+        // ⚠️⚠️ **Até 07/09 o produto entregava-lhe o incremento**, e o Grab do
+        // artista movia `0,0147` onde a lei move `0,1690` — **`11,5×` menos**. E
+        // nenhum gate o via: a bancada constrói o delta total no laço dela, e o
+        // gate de costura `o_produto_corre_a_lei_do_oraculo` não tinha nenhum
+        // traço de Agarrar na lista. *Cinco traços a `10⁻⁶` não dizem nada sobre
+        // o sexto modo.*
+        //
+        // ⚠️ O `Dab::path` é o incremento **por definição** (o doc dele diz-o), e
+        // é a coisa certa para os outros sete — quem sabe que este modo quer
+        // outra é quem tem a sessão, porque só ela guarda o pen-down.
+        let path = if brush.cloth_mode.leva_o_delta_total() {
+            let (c, i) = (cursor, ses.tecido.inicio);
+            [c[0] - i[0], c[1] - i[1], c[2] - i[2]]
+        } else {
+            path
+        };
         let k = path[0] * eye[0] + path[1] * eye[1] + path[2] * eye[2];
         let delta = [
             path[0] - eye[0] * k,

@@ -66,6 +66,19 @@ pub struct SculptStroke {
     stamp: Vec<u32>,
     epoch: u32,
     touched: Vec<u32>,
+    /// ⭐⭐⭐ **A BASE PERSISTENTE do pincel de tecido** (espec §6.4) — as posições
+    /// que o artista congelou com *Set Persistent Base*. **Vazia = sem base.**
+    ///
+    /// ⚠️ **Ela vive AQUI e não na malha, e a espec autoriza-o:** *«em malhas sem
+    /// atributos persistentes a base vive só na sessão de escultura»*. O
+    /// `SculptStroke` da cena sobrevive aos traços e morre com ela, que é
+    /// exactamente essa duração.
+    ///
+    /// ⚠️ **E ela é validada pelo COMPRIMENTO, não por uma bandeira:** um remesh
+    /// muda a contagem de vértices e a base deixa de descrever a malha ⇒ a lei
+    /// cai no repouso do traço sozinha, sem ninguém ter de se lembrar de a
+    /// apagar.
+    pub persistent_base: Vec<[f32; 3]>,
     base_pos: Vec<[f32; 3]>,
     base_nrm: Vec<[f32; 3]>,
     base_mask: Vec<f32>,
@@ -213,6 +226,26 @@ impl SculptStroke {
     /// re-sorteia sozinho. Ela cobre só o caso de re-rolar a MESMA pose.
     pub fn set_filter_seed(&mut self, seed: u32) {
         self.filter_seed = seed;
+    }
+
+    /// **CONGELA A BASE PERSISTENTE** nas posições de agora (espec §6.4, o
+    /// operador *Set Persistent Base*).
+    ///
+    /// ⚠️⚠️ **A ORDEM é a lei:** para a opção morder, a base tem de ser gravada
+    /// **ANTES** do traço que a há-de contradizer. Gravá-la DEPOIS de um traço é
+    /// um **no-op exacto** — ali ela É o repouso do traço seguinte, e as quatro
+    /// leituras da §6.4 não mudam. *A experiência «deformar → gravar → repetir»
+    /// não mede nada, e é a que ocorre primeiro a quem a desenha.*
+    pub fn set_persistent_base(&mut self, mesh: &Mesh) {
+        self.persistent_base.clear();
+        self.persistent_base.extend_from_slice(mesh.positions());
+    }
+
+    /// **APAGA a base persistente** — o gesto oposto, e ele existe porque uma
+    /// base gravada é invisível: sem ele o artista não tem como voltar ao pano
+    /// que acumula sem trocar de cena.
+    pub fn clear_persistent_base(&mut self) {
+        self.persistent_base.clear();
     }
 
     pub fn begin(&mut self, mesh: &Mesh) {

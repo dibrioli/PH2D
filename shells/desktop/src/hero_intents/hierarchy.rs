@@ -314,3 +314,7 @@ pub(crate) fn drain_reparent(
     }
     false
 }
+
+#[cfg(test)]
+#[path = "hierarchy_order_tests.rs"]
+mod order_tests;

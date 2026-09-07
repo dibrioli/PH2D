@@ -430,6 +430,26 @@ fn correr_posicoes_com(nome: &str, ordem: Option<&str>) -> Vec<V3> {
 /// outro programa que o produto responde com confiança a perguntas sobre uma
 /// coisa que ninguém corre.*
 fn correr_com_pincel(nome: &str, ordem: Option<&str>) -> (Vec<V3>, PincelTecido) {
+    let (pos, tecido, _) = correr_com_blocos(nome, ordem, None);
+    (pos, tecido)
+}
+
+/// A MESMA corrida, com o CAMINHO dado (o dos dumps por passo, quando difere) e
+/// devolvendo o estado da malha DEPOIS DE CADA PASSO.
+///
+/// ⛔⛔⛔ **É o único laço da bancada, e isso é uma cura, não arrumação.** A
+/// `sonda_do_perfil` e a `correr_por_passo` tiveram laços próprios, e os dois
+/// divergiram do produto — o segundo escrevia o guarda de «passo parado» como
+/// `k == 0`, sem a metade do `δ` nulo, logo aplicava força nos dez passos em que
+/// o alvo não aplica nenhuma. *Medido: no `plano_empurrar_radial_local_origem_parado`
+/// isso dá `0,1810` contra `0,1214` já no passo 3, enquanto o gate de paridade —
+/// que corre o laço CERTO — lê `0,001` no mesmo traço.* ⇒ **três laços irmãos,
+/// três divergências, num dia.**
+fn correr_com_blocos(
+    nome: &str,
+    ordem: Option<&str>,
+    caminho: Option<&[V3]>,
+) -> (Vec<V3>, PincelTecido, Vec<Vec<V3>>) {
     let t = traco(nome);
     let sup = t.s("superficie").to_string();
     let rest = repouso(&sup);
@@ -442,20 +462,24 @@ fn correr_com_pincel(nome: &str, ordem: Option<&str>) -> (Vec<V3>, PincelTecido)
     let an = aneis(rest.len(), &fs);
     let anel = |v: u32| an[v as usize].clone();
     let pincel = t.pincel();
-    let passos = t.f("passos") as usize;
+    // ⚠️ O caminho DADO ganha ao do cabeçalho — os dumps por passo trazem o
+    // deles, e correr dois caminhos diferentes pelo mesmo nome foi o defeito.
+    let caminho: Vec<V3> = caminho.map_or_else(|| t.caminho.clone(), <[V3]>::to_vec);
+    let passos = caminho.len();
     assert_eq!(
-        passos,
+        t.f("passos") as usize,
         t.caminho.len(),
         "{nome}: passos != pontos do caminho"
     );
 
     let mut pos = rest.clone();
-    let mut tecido = PincelTecido::pen_down(pincel, &pos, t.caminho[0], ordem_de_visita(&sup));
+    let mut blocos: Vec<Vec<V3>> = Vec::with_capacity(passos);
+    let mut tecido = PincelTecido::pen_down(pincel, &pos, caminho[0], ordem_de_visita(&sup));
     for k in 0..passos {
-        let cursor = t.caminho[k];
-        let prev = t.caminho[k.saturating_sub(1)];
+        let cursor = caminho[k];
+        let prev = caminho[k.saturating_sub(1)];
         let d3 = if pincel.modo == Modo::Agarrar {
-            let c0 = t.caminho[0];
+            let c0 = caminho[0];
             [cursor[0] - c0[0], cursor[1] - c0[1], cursor[2] - c0[2]]
         } else {
             [
@@ -487,9 +511,10 @@ fn correr_com_pincel(nome: &str, ordem: Option<&str>) -> (Vec<V3>, PincelTecido)
                 }
             }
         }
+        blocos.push(pos.clone());
     }
 
-    (pos, tecido)
+    (pos, tecido, blocos)
 }
 
 /// As posições que o ORÁCULO gravou para este traço.
@@ -1402,51 +1427,18 @@ fn sonda_dos_artefatos_do_oraculo() {
 /// ⚠️ Extraída da [`sonda_passo_a_passo`] para os gates 19–21 medirem sobre a
 /// MESMA corrida que a sonda imprime — duas cópias do laço seriam duas leis.
 fn correr_por_passo(nome: &str) -> (Vec<V3>, Vec<Vec<u32>>, Vec<Vec<V3>>) {
+    // ⛔ O laço do PRODUTO, com o caminho do dump por passo — ver
+    // [`correr_com_blocos`]. Zero laço irmão.
     let pp = por_passo(nome);
-    let t = traco(nome);
-    let sup = t.s("superficie").to_string();
+    let sup = traco(nome).s("superficie").to_string();
     let rest = repouso(&sup);
     let fs = faces(&sup, &rest);
-    let an = aneis(rest.len(), &fs);
-    let anel = |v: u32| an[v as usize].clone();
-    let pincel = t.pincel();
-    let c0 = pp.caminho[0];
-    let mut pos = rest.clone();
-    let mut tecido = PincelTecido::pen_down(pincel, &pos, c0, ordem_de_visita(&sup));
-    let mut saida = Vec::with_capacity(pp.caminho.len());
-    for k in 0..pp.caminho.len() {
-        let cursor = pp.caminho[k];
-        let prev = pp.caminho[k.saturating_sub(1)];
-        let d3 = if pincel.modo == Modo::Agarrar {
-            [cursor[0] - c0[0], cursor[1] - c0[1], cursor[2] - c0[2]]
-        } else {
-            [
-                cursor[0] - prev[0],
-                cursor[1] - prev[1],
-                cursor[2] - prev[2],
-            ]
-        };
-        let delta = projecta(d3, eixo_da_vista(&sup));
-        let nrm = normais(&pos, &fs);
-        let passo = Passo {
-            cursor,
-            delta,
-            delta_3d: d3,
-            parado: k == 0,
-            vista: eixo_da_vista(&sup),
-            normais: &nrm,
-            pressao: 1.0,
-        };
-        if tecido.passo(&pos, &anel, &passo) {
-            for (v, act) in tecido.sim.activo.iter().enumerate() {
-                if *act {
-                    pos[v] = tecido.sim.x[v];
-                }
-            }
-        }
-        saida.push(pos.clone());
-    }
-    (rest, fs, saida)
+    let (_, _, blocos) = correr_com_blocos(
+        nome,
+        std::env::var("PH2D_ORDEM").ok().as_deref(),
+        Some(&pp.caminho),
+    );
+    (rest, fs, blocos)
 }
 
 /// **QUADRILÁTEROS DE ORIENTAÇÃO INVERTIDA** (espec §5.2-ter): a face cuja
@@ -2020,7 +2012,7 @@ fn por_vertice(nome: &str, repouso_do_vertice: V3) -> (Vec<f64>, Vec<f64>) {
     (nosso, alvo)
 }
 
-/// ⭐⭐⭐ **GATE 35 — a ASSIMETRIA DE ESPELHO é um retrato da ORDEM, e nós temos de
+/// ⭐⭐⭐ **A ASSIMETRIA DE ESPELHO é um retrato da ORDEM, e nós temos de
 /// a reproduzir** (espec §10.10).
 ///
 /// Numa cena com simetria de espelho perfeita — a mesma malha, a mesma queda, a
@@ -2085,4 +2077,221 @@ fn a_assimetria_de_espelho_reproduz_a_ordem_do_oraculo() {
             (rn - ro).abs()
         );
     }
+}
+
+/// O `máx |u|` sobre a malha, por passo, nosso e do oráculo.
+fn maximos_por_passo(nome: &str) -> (Vec<f64>, Vec<f64>) {
+    let (rest, _, nossos) = correr_por_passo(nome);
+    let pp = por_passo(nome);
+    let pico = |bloco: &Vec<V3>| {
+        bloco
+            .iter()
+            .zip(&rest)
+            .map(|(p, r)| dist(*p, *r))
+            .fold(0.0f64, f64::max)
+    };
+    (
+        nossos.iter().map(pico).collect(),
+        pp.blocos.iter().map(pico).collect(),
+    )
+}
+
+/// ⭐⭐⭐ **GATE 35 — o SOLVER SOZINHO, sem uma única leitura da malha pela fase do
+/// gesto** (espec §5.7-bis · §10.10).
+///
+/// Nas fixtures `_parado` a força só existe no passo `2`; do `3` ao `12` não há
+/// força, nem curva de queda, nem normal — **só retenção e projecções**. ⇒ é o
+/// gate mais forte do corpus para a relaxação.
+///
+/// ⚠️ **É também o DISCRIMINADOR:** um port que passe aqui e falhe o
+/// `plano_empurrar_radial_local_origem` tem o defeito na **fase do gesto**; um
+/// que falhe aqui tem-no no **solver**, e o primeiro passo a divergir diz onde.
+/// ⛔ *Um port não pode falhar os dois e declarar «é a relaxação» sem correr
+/// este.*
+#[test]
+fn o_solver_sozinho_reproduz_o_oraculo_nos_doze_passos() {
+    for nome in [
+        "plano_empurrar_radial_local_origem_parado",
+        "plano_inflar_radial_local_origem_parado",
+    ] {
+        let (rest, _, nossos) = correr_por_passo(nome);
+        let pp = por_passo(nome);
+        assert_eq!(nossos.len(), pp.blocos.len(), "{nome}: passos diferentes");
+        for (k, (nosso, alvo)) in nossos.iter().zip(&pp.blocos).enumerate() {
+            let max_o = alvo
+                .iter()
+                .zip(&rest)
+                .map(|(p, r)| dist(*p, *r))
+                .fold(0.0f64, f64::max);
+            if max_o <= 0.0 {
+                continue;
+            }
+            let erro = nosso
+                .iter()
+                .zip(alvo)
+                .map(|(a, b)| dist(*a, *b))
+                .fold(0.0f64, f64::max);
+            assert!(
+                erro / max_o <= BARRA_PARIDADE,
+                "{nome}: passo {} erra {:.4} da barra {BARRA_PARIDADE} -- o \
+                 defeito esta' no SOLVER, e este e' o primeiro passo a divergir",
+                k + 1,
+                erro / max_o
+            );
+        }
+    }
+}
+
+/// ⭐⭐ **GATE 36 — a resposta NÃO é proporcional ao impulso** (espec §10.10).
+///
+/// O impulso do passo `2` escala com o **quadrado** da força (`0,2500` e
+/// `0,0625` para força `0,5` e `0,25`) e o `|u|` do passo `12` escala `0,6677` e
+/// `0,3388`. ⇒ *um port que compare só o fim do traço não pode concluir nada
+/// sobre uma lei.*
+///
+/// ⛔⛔ **A barra é a do FICHEIRO, não a do `f32`:** o oráculo lê `0,2499924` e
+/// `0,0624943` a seis casas, e uma barra de `f32` **reprovaria a fixture que a
+/// define**. `±2·10⁻⁵` sai da resolução do ficheiro.
+#[test]
+fn a_resposta_nao_e_proporcional_ao_impulso() {
+    const BARRA_DO_FICHEIRO: f64 = 2e-5;
+    let pen_down = [0.0, 0.0, 0.0];
+    let (cheia, _) = por_vertice("plano_empurrar_radial_local_origem", pen_down);
+    for (nome, razao_impulso) in [
+        ("plano_empurrar_radial_local_origem_forca05", 0.25),
+        ("plano_empurrar_radial_local_origem_forca025", 0.0625),
+        ("plano_empurrar_radial_local_origem_massa2", 0.5),
+    ] {
+        let (nosso, alvo) = por_vertice(nome, pen_down);
+        // (1.ª metade) o passo 2 é aritmética da fase do gesto: exacta.
+        let (r_n, r_o) = (nosso[1] / cheia[1], alvo[1] / cheia[1]);
+        assert!(
+            (r_o - razao_impulso).abs() <= BARRA_DO_FICHEIRO,
+            "{nome}: o ORACULO da' {r_o:.7} e nao {razao_impulso} -- a fixtura \
+             nao e' o que este gate julga"
+        );
+        assert!(
+            (r_n - r_o).abs() <= BARRA_DO_FICHEIRO,
+            "{nome}: o nosso impulso do passo 2 e' {r_n:.7} contra {r_o:.7}"
+        );
+        // (2.ª metade) o fim do traço vive noutro regime, e a razão NÃO é a mesma.
+        let fim = alvo[alvo.len() - 1] / cheia[cheia.len() - 1];
+        assert!(
+            (fim - razao_impulso).abs() > 10.0 * BARRA_DO_FICHEIRO,
+            "{nome}: o fim do traco escala {fim:.4} como o impulso ({razao_impulso}) \
+             -- entao nao ha' nao-linearidade e esta secao esta' errada"
+        );
+    }
+}
+
+/// ⭐ **GATE 37 — uma projecção vale `15,1 %` do planalto, e é a régua de
+/// qualquer resíduo** (espec §5.2-bis · §10.10).
+///
+/// No mesmo traço, `Global` (`5` projecções por restrição) e `Local` (`10`) dão a
+/// **mesma malha no passo 2** — ali a rede ainda não agiu — e planaltos na razão
+/// `0,8493`.
+///
+/// ⇒ ⚠️ **a conversão traz o VÃO da régua dentro:** os `15,1 %` medem **`5`**
+/// projecções a mais, logo um resíduo de `x %` no planalto vale `5·x/15,1`
+/// projecções — a `4 %` isso é `1,3`.
+///
+/// ⚠️ **A 1.ª metade é o CONTROLO da régua:** se o passo `2` já diferir, o defeito
+/// não é a contagem de projecções.
+#[test]
+fn uma_projeccao_vale_quinze_por_cento_do_planalto() {
+    let l = por_passo("plano_empurrar_radial_local_origem");
+    let g = por_passo("plano_empurrar_radial_global_origem");
+    // (1.ª metade) no passo 2 as duas áreas dão a MESMA malha, sobre os 4 225.
+    let diff = l.blocos[1]
+        .iter()
+        .zip(&g.blocos[1])
+        .map(|(a, b)| dist(*a, *b))
+        .fold(0.0f64, f64::max);
+    assert!(
+        diff < 5e-7,
+        "as duas areas ja' diferem no passo 2 (max {diff:.7}) -- o controlo da \
+         regua caiu, e a razao abaixo nao mede projeccoes"
+    );
+    // (2.ª metade) os PLANALTOS — a série do vértice do pen-down (§10.10),
+    // ⛔ não o `máx |u|` sobre a malha, que é a régua do gate 38.
+    // ⚠️ **Cada um no SEU passo de planalto** — o `Local` culmina no passo `7`
+    // (`0,23968`) e o `Global` no `9` (`0,28222`) —, e a razão é `Local/Global`.
+    // *Comparar os dois no mesmo passo lê `1,17` e não `0,85`.*
+    let planalto = |nome: &str| {
+        let (nosso, alvo) = por_vertice(nome, [0.0; 3]);
+        let pico = |v: &[f64]| v.iter().copied().fold(0.0f64, f64::max);
+        (pico(&nosso), pico(&alvo))
+    };
+    let (nl, ol) = planalto("plano_empurrar_radial_local_origem");
+    let (ng, og) = planalto("plano_empurrar_radial_global_origem");
+    assert!(
+        (ol / og - 0.8493).abs() < 5e-4,
+        "o ORACULO da' {:.4} e nao 0,8493 -- a fixtura nao e' o que este gate julga",
+        ol / og
+    );
+    let razao = nl / ng;
+    assert!(
+        (razao - 0.8493).abs() < 5e-3,
+        "a nossa razao Local/Global do planalto e' {razao:.4} contra 0,8493 do \
+         oraculo -- uma projeccao deixou de valer 15,1 %"
+    );
+}
+
+/// **GATE 38 — sem memória de velocidade o traço deixa de assentar** (espec §5.3
+/// · §5.4 · §10.10).
+///
+/// ⚠️ **A régua é o `máx |u|` sobre a MALHA, por passo** — ⛔ não o vértice do
+/// pen-down, onde as duas configurações passam por um máximo e o discriminador
+/// desaparece.
+///
+/// ⛔⛔ **E a régua da 2.ª metade é o ARGMAX, nunca «decresce depois do
+/// máximo»:** a cauda do `_origem` **volta a subir** nos dois últimos passos,
+/// porque o vértice que realiza o máximo **viaja com o cursor** — exigir
+/// decrescimento reprovaria o próprio oráculo.
+#[test]
+fn sem_memoria_de_velocidade_o_traco_deixa_de_assentar() {
+    // (a) `damping = 1`: estritamente crescente nos onze passos simulados.
+    let (nosso, alvo) = maximos_por_passo("plano_empurrar_radial_local_origem_amort1");
+    for (lado, seq) in [("oraculo", &alvo), ("nos", &nosso)] {
+        assert!(
+            seq[1..].windows(2).all(|w| w[1] > w[0]),
+            "{lado}: com damping 1 a sequencia tinha de ser estritamente crescente: {seq:?}"
+        );
+    }
+    // (b) `damping = 0,01`: o ORÁCULO tem o máximo dos onze no passo 6 e a cauda
+    // volta a SUBIR — é o controlo da régua.
+    let (nosso, alvo) = maximos_por_passo("plano_empurrar_radial_local_origem");
+    let argmax = |seq: &[f64]| {
+        (1..seq.len())
+            .max_by(|a, b| seq[*a].total_cmp(&seq[*b]))
+            .expect("passos")
+            + 1
+    };
+    assert_eq!(argmax(&alvo), 6, "o ORACULO assenta no passo 6: {alvo:?}");
+    let n = alvo.len();
+    assert!(
+        alvo[n - 1] > alvo[n - 2],
+        "a cauda do ORACULO tinha de VOLTAR A SUBIR -- o vertice do maximo viaja \
+         com o cursor, e exigir decrescimento reprovaria o proprio oraculo"
+    );
+
+    // ⏳ **ABERTO, e é o mesmo resíduo de `5 %` do Push:** nós assentamos **um
+    // passo mais cedo** (`5`) e **mais baixo** (`0,2627` contra `0,27794`), e a
+    // nossa cauda **não** volta a subir no último passo. ⚠️ *A forma bate quase
+    // toda e o valor não* — que é exactamente o que o gate 38 avisa que pode
+    // acontecer: «um port cuja retenção esteja errada pode acertar a forma e
+    // falhar o valor».
+    assert!(
+        argmax(&nosso).abs_diff(6) <= 1,
+        "nos assentamos no passo {} -- a mais de um passo do oraculo, o defeito \
+         deixou de ser o residuo conhecido: {nosso:?}",
+        argmax(&nosso)
+    );
+    let pico_n = nosso.iter().copied().fold(0.0f64, f64::max);
+    let pico_o = alvo.iter().copied().fold(0.0f64, f64::max);
+    assert!(
+        (1.0 - pico_n / pico_o) <= 0.055 * FOLGA_ABERTO,
+        "o nosso planalto e' {:.4} do oraculo -- o defice passou o medido de 5,5 %",
+        pico_n / pico_o
+    );
 }

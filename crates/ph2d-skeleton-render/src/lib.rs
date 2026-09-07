@@ -376,14 +376,27 @@ pub fn draw_bones(
 /// diferir em TAMANHO.** O losango fica por FORA, a bolinha por dentro, e o anel entre os dois é a
 /// zona exclusiva da âncora.
 ///
-/// ⚠️ **A largura desse anel é DERIVADA, não escolhida:** ela é exactamente
-/// [`BONE_JOINT_R_PX`] — a tolerância do dedo desta casa (o mesmo `HANDLE_HIT_PX` que toda alça do
-/// vector usa). ⇒ o artista tem sempre **um dedo inteiro** de anel para agarrar a âncora, seja qual
-/// for o zoom, mesmo quando a bolinha por dentro está no tamanho máximo.
+/// ⚠️ **O PISO desse anel é DERIVADO, não escolhido:** ele é exactamente [`BONE_JOINT_R_PX`] — a
+/// tolerância do dedo desta casa (o mesmo `HANDLE_HIT_PX` que toda alça do vector usa). ⇒ o artista
+/// tem sempre **pelo menos um dedo inteiro** de anel para agarrar a âncora, seja qual for o zoom e
+/// mesmo com a bolinha por dentro no tamanho máximo.
+///
+/// ⭐ **E por cima do piso vem o [`GOAL_BIGGER`], que é decisão do DONO** (2026-09-07: *«o losango
+/// deve ser 25% maior»*), depois de ver a primeira versão na tela. ⛔ Ele **não** é um teto nem um
+/// limite de recurso — é a leitura, e quem a julga é o smoke. Medido: num osso longo o losango passa
+/// de `24` para **`30` px** de meia-diagonal, e o anel exclusivo de `12` para **`18`**.
 #[must_use]
 pub fn goal_radius_px(comp: f64) -> f64 {
-    joint_radius_px(comp) + BONE_JOINT_R_PX
+    (joint_radius_px(comp) + BONE_JOINT_R_PX) * GOAL_BIGGER
 }
+
+/// Quanto o losango cresce por cima do piso derivado — **veredito do dono sobre a tela**, e por isso
+/// um número de produto e não uma medição.
+///
+/// ⚠️ Ele multiplica o RAIO inteiro, e não só o anel: *«25% maior»* é sobre o losango que se vê. E
+/// como o piso já garantia um dedo de anel, subir aqui só **alarga** a zona exclusiva da âncora —
+/// nunca a aperta.
+const GOAL_BIGGER: f64 = 1.25;
 
 /// A espessura do traço do losango.
 ///

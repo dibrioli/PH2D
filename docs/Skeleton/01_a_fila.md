@@ -251,10 +251,15 @@ espessura maior. Então ao clicar no gizmo do losango, move-se o IK, se clicar n
 move-se o outro bone.»*
 
 ⭐ **Feito como ele desenhou, e é a única cura que serve para alvos concêntricos: eles diferem em
-TAMANHO.** `goal_radius_px = joint_radius_px + BONE_JOINT_R_PX` — a largura do anel é **derivada**,
-não escolhida: ela é exactamente a tolerância do dedo desta casa, então há sempre **um dedo inteiro**
-de anel para agarrar a âncora, em qualquer zoom. O traço é mais grosso (`GOAL_LINE_PX`), e o losango
-**deixou de se encher** quando seleccionado — enchê-lo tapava a bolinha que vive por dentro dele.
+TAMANHO.** `goal_radius_px = (joint_radius_px + BONE_JOINT_R_PX) × 1,25` — o **piso** do anel é
+**derivado**, não escolhido: ele é exactamente a tolerância do dedo desta casa, então há sempre *pelo
+menos* um dedo inteiro de anel para agarrar a âncora, em qualquer zoom. O traço é mais grosso
+(`GOAL_LINE_PX`), e o losango **deixou de se encher** quando seleccionado — enchê-lo tapava a
+bolinha que vive por dentro dele.
+
+⚠️ **O `× 1,25` é veredito do DONO sobre a tela** (2.º report, depois de ver a 1.ª versão: *«o
+losango deve ser 25% maior»*) — ⛔ não é medição nem teto de recurso. Medido: num osso longo o
+losango passa de `24` para **`30` px** de meia-diagonal, e o anel exclusivo de `12` para **`18`**.
 
 ⚠️ **O dedo tem um FURO no meio**, e é ele que deixa o clique de dentro chegar ao osso. ⛔ Mas só
 quando há mesmo um osso lá: com a âncora longe de tudo o disco inteiro é dela, senão o centro do

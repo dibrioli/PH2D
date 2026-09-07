@@ -786,21 +786,21 @@ fn a_base_persistente_entra_em_quatro_leituras_e_em_nenhuma_mais() {
 fn sem_base_a_construcao_le_o_repouso_ao_bit() {
     let (rest, _) = grelha(9, 0.20);
     let mut sim = crate::verlet::Verlet::nascer(rest.clone());
-    for v in 0..rest.len() {
+    for (v, r) in rest.iter().enumerate() {
         assert_eq!(
             sim.base_de(v),
-            rest[v],
+            *r,
             "sem base, o vertice {v} nao le o repouso"
         );
     }
     // ⚠️ E uma base do TAMANHO ERRADO também não conta — a porta compara os
     // comprimentos, e não a existência.
     sim.base = vec![[9.0; 3]; rest.len() - 1];
-    for v in 0..rest.len() {
+    for (v, r) in rest.iter().enumerate() {
         assert_eq!(
             sim.base_de(v),
-            rest[v],
-            "uma base truncada foi lida como base"
+            *r,
+            "uma base truncada foi lida como base ({v})"
         );
     }
 }

@@ -14,8 +14,10 @@
 //! O I lê-as; regenerá-las é acto do E.
 
 use ph2d_cloth::V3;
-use ph2d_cloth::verlet::{Solver, dist};
-use ph2d_cloth::verlet_gesto::{Area, Curva, FalloffForca, Modo, Passo, Pincel, PincelTecido};
+use ph2d_cloth::verlet::{Solver, dist, norm, unit};
+use ph2d_cloth::verlet_gesto::{
+    Area, Curva, FalloffForca, Modo, Passo, Pincel, PincelTecido, RAIO_DA_NORMAL,
+};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -303,14 +305,26 @@ fn normal_da_face(pos: &[V3], f: &[u32]) -> V3 {
 /// Normais por vértice das posições ACTUAIS, somadas face a face e
 /// normalizadas no fim (espec §4.6 linha 4).
 ///
-/// ⚠️⚠️ **O PESO de cada face nessa soma é a metade que a §4.6 declara ABERTA** —
-/// a espec demonstra a FORMA e o consumidor (o Inflate) e diz que o peso (área ·
-/// ângulo · uniforme) não é demonstrável com o que esta linha tem à mão. Nós
-/// escolhemos **área** (Newell traz a área embutida), e o experimento
-/// `PH2D_PESO_NORMAL=uniforme` corre a alternativa para a medição não depender da
-/// escolha. *Uma escolha declarada mede-se; uma escolha escondida herda-se.*
+/// ⭐⭐⭐ **O PESO de cada face nessa soma é UNIFORME, e isso deixou de ser uma
+/// escolha em 2026-09-07: é MEDIDO** (a §4.6 linha 4 declarava-o aberto).
+///
+/// A régua é a fixture de dois traços (`plano_inflar_radial_local_1passo_2tracos`):
+/// o 2.º traço lê as normais da cova que o 1.º abriu, logo a direcção por vértice
+/// do impulso dele **é** a normal que se procura, e ela lê-se dos ficheiros do
+/// oráculo sem passar pelo nosso código. Mediana do desvio de direcção:
+///
+/// | peso | mediana | contra as normais PLANAS |
+/// |---|---|---|
+/// | **uniforme** (a normal da face, normalizada) | **`1,7·10⁻⁵`** | `0,299` |
+/// | área (Newell traz a área embutida) | `6,6·10⁻⁴` | `0,299` |
+///
+/// ⇒ **`38×`**, e o `1,7·10⁻⁵` é o dígito que a espec §10.11 cita para esta
+/// fixture. ⛔ Não é o chão da resolução do ficheiro: restringindo aos vértices
+/// que se movem mais de `10⁻²`, o uniforme desce a `9,4·10⁻⁶` e a área ESTACIONA
+/// em `3,7·10⁻⁴` — *um resíduo que não encolhe com o sinal não é ruído, é lei
+/// errada.* O experimento `PH2D_PESO_NORMAL=area` corre a alternativa.
 fn normais(pos: &[V3], faces: &[Vec<u32>]) -> Vec<V3> {
-    let uniforme = std::env::var("PH2D_PESO_NORMAL").as_deref() == Ok("uniforme");
+    let uniforme = std::env::var("PH2D_PESO_NORMAL").as_deref() != Ok("area");
     let mut n = vec![[0.0f64; 3]; pos.len()];
     for f in faces {
         // Newell: normal de um polígono qualquer, com área embutida.
@@ -347,12 +361,11 @@ fn normais(pos: &[V3], faces: &[Vec<u32>]) -> Vec<V3> {
 /// célula espacial do vértice de origem, em ordem de varrimento, que é a
 /// família da ordem do oráculo — espec §3.1: «célula a célula, vértice a
 /// vértice»). A dispersão entre ordens NOSSAS é a barra do gate 15 (espec §14).
-fn reordenar(sim: &mut ph2d_cloth::verlet::Verlet) {
-    reordenar_com(sim, std::env::var("PH2D_ORDEM").ok().as_deref());
-}
-
-/// A mesma reordenação com a ordem DADA em vez de lida do ambiente — é o que
-/// deixa uma sonda correr as DUAS ordens no mesmo processo (o chão de ruído).
+///
+/// ⚠️ O envelope sem argumento (`reordenar`) MORREU em 07/09 com o último laço
+/// irmão que o chamava: quem quer a ordem do ambiente lê-a onde entra no laço
+/// único. *Uma função cujo único chamador era um laço que media outro programa
+/// não é uma facilidade — é o rasto dele.*
 fn reordenar_com(sim: &mut ph2d_cloth::verlet::Verlet, ordem: Option<&str>) {
     // Experimento (`PH2D_PARES=0`): SÓ as restrições de aresta (sem os pares de
     // vizinhos), para medir o que os pares compram.
@@ -430,7 +443,7 @@ fn correr_posicoes_com(nome: &str, ordem: Option<&str>) -> Vec<V3> {
 /// outro programa que o produto responde com confiança a perguntas sobre uma
 /// coisa que ninguém corre.*
 fn correr_com_pincel(nome: &str, ordem: Option<&str>) -> (Vec<V3>, PincelTecido) {
-    let (pos, tecido, _) = correr_com_blocos(nome, ordem, None);
+    let (pos, tecido, _, _) = correr_com_blocos(nome, ordem, None);
     (pos, tecido)
 }
 
@@ -449,7 +462,7 @@ fn correr_com_blocos(
     nome: &str,
     ordem: Option<&str>,
     caminho: Option<&[V3]>,
-) -> (Vec<V3>, PincelTecido, Vec<Vec<V3>>) {
+) -> (Vec<V3>, PincelTecido, Vec<Vec<V3>>, Vec<V3>) {
     let t = traco(nome);
     let sup = t.s("superficie").to_string();
     let rest = repouso(&sup);
@@ -484,6 +497,9 @@ fn correr_com_blocos(
     };
     let mut pos = rest.clone();
     let mut blocos: Vec<Vec<V3>> = Vec::with_capacity(passos);
+    // ⭐ A NORMAL DA ÁREA de cada passo (espec §4.2-bis): o vector NULO diz que o
+    // gesto se calou naquele passo, que é o regime normal do Push (§4.2-bis (8)).
+    let mut gestos: Vec<V3> = Vec::with_capacity(passos);
     let mut tecido = PincelTecido::pen_down(pincel, &rest, caminho[0], ordem_de_visita(&sup));
     for _traco in 0..tracos {
         // ⭐ O repouso do traço e as normais dele são a malha que ESTE traço encontra.
@@ -532,10 +548,20 @@ fn correr_com_blocos(
                 }
             }
             blocos.push(pos.clone());
+            // ⭐⭐⭐ **O vector do gesto deste passo** (espec §4.2-bis, §10.11): a
+            // normal da área, e o **vector NULO** quando o Push não escreve força
+            // nenhuma. São DUAS as razões de ele ser nulo e as duas contam como
+            // «calado» no instrumento do oráculo — o passo sem movimento (§4.3) e
+            // o **disco de amostragem vazio** (§4.2-bis (8)).
+            gestos.push(if simulou && !parado {
+                tecido.normal_da_area
+            } else {
+                [0.0; 3]
+            });
         }
     }
 
-    (pos, tecido, blocos)
+    (pos, tecido, blocos, gestos)
 }
 
 /// As posições que o ORÁCULO gravou para este traço.
@@ -714,7 +740,6 @@ fn sonda_passo_a_passo() {
     let rest = repouso(&sup);
     let fs = faces(&sup, &rest);
     let an = aneis(rest.len(), &fs);
-    let anel = |v: u32| an[v as usize].clone();
     let pincel = t.pincel();
     let c0 = pp.caminho[0];
     let r = pincel.raio;
@@ -737,10 +762,16 @@ fn sonda_passo_a_passo() {
     .map(|(n, k)| ((*n).to_string(), perto([c0[0], c0[1] + k * r, c0[2]])))
     .collect();
 
-    let mut pos = rest.clone();
-    // ⚠️ UMA vez, no pen-down (espec §4.2-ter).
-    let normais_do_traco = normais(&pos, &fs);
-    let mut tecido = PincelTecido::pen_down(pincel, &pos, c0, ordem_de_visita(&sup));
+    // ⛔⛔ **O laço é o de [`correr_com_blocos`]** — esta sonda teve um próprio até
+    // 07/09, com `parado: k == 0` (sem a metade do `δ` nulo) e as normais lidas
+    // por passo. *O quarto laço-irmão desta bancada, com a mesma causa dos três
+    // primeiros: uma sonda com laço próprio responde com confiança a perguntas
+    // sobre um programa que ninguém corre.*
+    let (_, _, nossos, gestos) = correr_com_blocos(
+        &nome,
+        std::env::var("PH2D_ORDEM").ok().as_deref(),
+        Some(&pp.caminho),
+    );
     // ⭐⭐ **As colunas nomeadas são as do anel PRÓXIMO (`1R`, `2R`)**, e a troca
     // é de 06/09: um defeito que vive num vértice só não se vê nas colunas do
     // ARO, que são justamente onde a lei já bate. O aperto de ponto lê `1R`
@@ -773,42 +804,14 @@ fn sonda_passo_a_passo() {
     println!("      (as duas ultimas colunas sao a distancia do PICO ao cursor, em raios)");
     for k in 0..pp.caminho.len() {
         let cursor = pp.caminho[k];
-        let prev = pp.caminho[k.saturating_sub(1)];
-        let d3 = if pincel.modo == Modo::Agarrar {
-            [cursor[0] - c0[0], cursor[1] - c0[1], cursor[2] - c0[2]]
+        let pos = &nossos[k];
+        // ⭐ `*` diz que o gesto DISPAROU neste passo; um espaço, que ele se calou
+        // por o disco de amostragem ter ficado vazio (espec §4.2-bis (8)).
+        let disparou = if dist(gestos[k], [0.0; 3]) > 0.0 {
+            "*"
         } else {
-            [
-                cursor[0] - prev[0],
-                cursor[1] - prev[1],
-                cursor[2] - prev[2],
-            ]
+            " "
         };
-        let delta = projecta(d3, eixo_da_vista(&sup));
-        // ⭐⭐⭐ **As normais são as da superfície que o TRAÇO ENCONTROU**, não as
-        // de agora (espec §4.2-ter): dentro de um traço o pincel deforma a malha
-        // e continua a ler as normais com que o traço começou. ⛔ Recalculá-las
-        // por passo é o que fazia o Push e o Inflate errarem `0,24`.
-        let nrm = &normais_do_traco;
-        let passo = Passo {
-            cursor,
-            delta,
-            delta_3d: d3,
-            parado: k == 0,
-            vista: eixo_da_vista(&sup),
-            normais: nrm,
-            pressao: 1.0,
-        };
-        let simulou = tecido.passo(&pos, &anel, &passo);
-        if k == 0 {
-            reordenar(&mut tecido.sim);
-        }
-        if simulou {
-            for (v, act) in tecido.sim.activo.iter().enumerate() {
-                if *act {
-                    pos[v] = tecido.sim.x[v];
-                }
-            }
-        }
         let Some(bloco) = pp.blocos.get(k) else {
             continue;
         };
@@ -869,8 +872,9 @@ fn sonda_passo_a_passo() {
             cursor[2] - rest[c0v][2],
         ];
         println!(
-            "{:>4} | {:>7.4} {:>7.4} | {:>8.5} {:>8.5} | {:>8.5} {:>8.5} | {:>7.5} {:>7.5} | {:>8.4} {:>8.4} | {:>5.2}R {:>5.2}R | ERRO {:>8.5} | anel {:>7.4} {:>7.4} | c0a {:>5.2}R {:>5.2}R | u_nos [{:>7.4} {:>7.4} {:>7.4}] u_or [{:>7.4} {:>7.4} {:>7.4}] cursor-rest [{:>7.4} {:>7.4} {:>7.4}]{}",
+            "{:>4}{} | {:>7.4} {:>7.4} | {:>8.5} {:>8.5} | {:>8.5} {:>8.5} | {:>7.5} {:>7.5} | {:>8.4} {:>8.4} | {:>5.2}R {:>5.2}R | ERRO {:>8.5} | anel {:>7.4} {:>7.4} | c0a {:>5.2}R {:>5.2}R | u_nos [{:>7.4} {:>7.4} {:>7.4}] u_or [{:>7.4} {:>7.4} {:>7.4}] cursor-rest [{:>7.4} {:>7.4} {:>7.4}]{}",
             k + 1,
+            disparou,
             u_n(c0v),
             u_o(c0v),
             u_n(bnd),
@@ -1041,6 +1045,7 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_apertar_linha_radial_local_origem",
     "plano_apertar_ponto_radial_local_1passo",
     "plano_apertar_ponto_radial_local_origem_fraco",
+    "plano_arrastar_plano_local",
     "plano_arrastar_radial_dinamica",
     "plano_arrastar_radial_dinamica_preset",
     "plano_arrastar_radial_global",
@@ -1089,7 +1094,7 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_inflar_radial_local_origem_massa2",
     "plano_inflar_radial_local_origem_parado",
 ];
-const VERDE_N: usize = 67;
+const VERDE_N: usize = 68;
 
 /// Os traços AINDA por explicar, com o valor MEDIDO em 2026-09-06 ao lado.
 ///
@@ -1108,20 +1113,37 @@ const VERDE_N: usize = 67;
 /// bit — o percurso face a face de um vértice interior de grelha devolve
 /// `[S, O, E, N]`, que já é a ordem crescente de índice.
 const ABERTOS: [(&str, f64); ABERTO_N] = [
-    ("esfera_agarrar_radial_dinamica", 0.191),
+    ("esfera_agarrar_radial_dinamica", 0.182),
     ("esfera_apertar_linha_radial_dinamica", 0.630),
-    ("esfera_apertar_ponto_radial_dinamica", 0.650),
+    ("esfera_apertar_ponto_radial_dinamica", 0.646),
     ("esfera_expandir_radial_dinamica", 0.581),
     ("esfera_gancho_radial_dinamica", 0.255),
-    ("plano_apertar_ponto_plano_local", 0.522),
-    ("plano_apertar_ponto_radial_local", 0.650),
-    ("plano_apertar_ponto_radial_local_origem", 0.968),
-    ("plano_arrastar_plano_local", 0.132),
+    ("plano_apertar_ponto_plano_local", 0.636),
+    ("plano_apertar_ponto_radial_local", 0.600),
+    ("plano_apertar_ponto_radial_local_origem", 0.908),
 ];
-const ABERTO_N: usize = 9;
+const ABERTO_N: usize = 8;
 
 /// A folga de regressão sobre o valor medido de um traço ABERTO.
 const FOLGA_ABERTO: f64 = 1.25;
+
+/// ⭐ **A RESOLUÇÃO DO FICHEIRO, acumulada nos doze passos** — a barra dos traços
+/// cuja lei é EXACTA, em unidades ABSOLUTAS de posição.
+///
+/// Cada coordenada dos dumps traz seis casas ⇒ `≤ 5·10⁻⁷` de arredondamento por
+/// número, e um traço integra doze blocos desses.
+///
+/// ⚠️ **A espec §14 gate 41 escreve `5·10⁻⁶` e a tabela dela lê `0,000003`–`0,000005`;
+/// nós lemos `5,2·10⁻⁶` no pior dos dez** (o `_parado`), que arredonda ao mesmo
+/// `0,000005`. ⛔ Pôr a barra no valor medido seria pôr a barra EM CIMA da
+/// medição: ela fica na casa seguinte, que é a que o ficheiro nomeia.
+///
+/// ⚠️⚠️ **Ela é ABSOLUTA de propósito.** A barra relativa da [`BARRA_PARIDADE`]
+/// divide pelo maior deslocamento do traço, e os traços do corpus têm sinais que
+/// diferem por `80×` — a fixture de força fraca move `0,004` e o arrasto move
+/// `0,33`. *Comparar erros relativos entre eles é comparar duas resoluções de
+/// ficheiro diferentes e chamar-lhe qualidade de lei.*
+const BARRA_DO_FICHEIRO: f64 = 1e-5;
 
 /// **GATE — a paridade com o oráculo não regride** (espec §14 gates 15 e 17).
 #[test]
@@ -1269,6 +1291,74 @@ fn a_lista_do_local_vem_em_duplicado() {
             l.movidos_oraculo,
             dif * 100.0
         );
+    }
+}
+
+/// **OS DEZ TRAÇOS DE EMPURRAR/INFLAR POR PASSO** (espec §10.11) — os sete do
+/// Push e os três do Inflate, cada um com os doze blocos do oráculo.
+///
+/// ⚠️ Eles são a população dos gates 40 e 41, e a lista é dos FICHEIROS: um
+/// `.porpasso` novo de empurrar/inflar que não entre aqui não é medido.
+const POR_PASSO_DE_FORCA: [&str; 10] = [
+    "plano_empurrar_radial_local_origem",
+    "plano_empurrar_radial_global_origem",
+    "plano_empurrar_radial_local_origem_forca05",
+    "plano_empurrar_radial_local_origem_forca025",
+    "plano_empurrar_radial_local_origem_massa2",
+    "plano_empurrar_radial_local_origem_amort1",
+    "plano_empurrar_radial_local_origem_parado",
+    "plano_inflar_radial_local_origem",
+    "plano_inflar_radial_local_origem_massa2",
+    "plano_inflar_radial_local_origem_parado",
+];
+
+/// **SONDA — O DISPARO DO PUSH, passo a passo** (espec §4.2-bis (8), §10.11).
+///
+/// ⭐⭐⭐ O disco que decide se a normal da área existe tem raio `R · 0,5` e
+/// mede-se contra as posições **de agora**. Numa folha que o próprio Push já
+/// afundou chega um passo em que nenhum vértice está a menos disso do cursor —
+/// e nesse passo o gesto **não escreve aceleração nenhuma**. Depois volta a
+/// disparar, à medida que o cursor avança para terreno pouco afundado.
+///
+/// Colunas: `min` é o `min_v |p_v − c_k|` do ORÁCULO (a malha com que o passo
+/// começa, que é o bloco `k−1` do dump), `nos` diz se NÓS disparámos, e `erro` é
+/// o pior erro por vértice contra o bloco do oráculo no fim do passo.
+#[test]
+#[ignore = "sonda"]
+fn sonda_do_disparo_do_empurrar() {
+    for nome in POR_PASSO_DE_FORCA {
+        let pp = por_passo(nome);
+        let t = traco(nome);
+        let sup = t.s("superficie").to_string();
+        let rest = repouso(&sup);
+        let alcance = t.pincel().raio * ph2d_cloth::verlet_gesto::RAIO_DA_NORMAL;
+        let (_, _, nossos, gestos) = correr_com_blocos(nome, None, Some(&pp.caminho));
+        let mut linha = String::new();
+        let mut pior = 0.0f64;
+        for k in 0..pp.caminho.len() {
+            let antes: &[V3] = if k == 0 { &rest } else { &pp.blocos[k - 1] };
+            let min = antes
+                .iter()
+                .map(|p| dist(*p, pp.caminho[k]))
+                .fold(f64::INFINITY, f64::min);
+            let nos = dist(gestos[k], [0.0; 3]) > 0.0;
+            let erro = pp.blocos.get(k).map_or(0.0, |b| {
+                b.iter()
+                    .zip(&nossos[k])
+                    .map(|(a, c)| dist(*a, *c))
+                    .fold(0.0, f64::max)
+            });
+            pior = pior.max(erro);
+            linha += &format!(
+                "  {:>2}{} min {:.5}{} erro {:.6}\n",
+                k + 1,
+                if nos { "*" } else { " " },
+                min,
+                if min <= alcance { "<" } else { ">" },
+                erro
+            );
+        }
+        println!("{nome}  (disco {alcance:.5})  pior erro {pior:.6}\n{linha}");
     }
 }
 
@@ -1462,7 +1552,7 @@ fn correr_por_passo(nome: &str) -> (Vec<V3>, Vec<Vec<u32>>, Vec<Vec<V3>>) {
     let sup = traco(nome).s("superficie").to_string();
     let rest = repouso(&sup);
     let fs = faces(&sup, &rest);
-    let (_, _, blocos) = correr_com_blocos(
+    let (_, _, blocos, _) = correr_com_blocos(
         nome,
         std::env::var("PH2D_ORDEM").ok().as_deref(),
         Some(&pp.caminho),
@@ -1686,13 +1776,33 @@ fn fora_da_inversao_o_aperto_e_tao_comparavel_quanto_o_arrastar() {
         fraco.movidos_nos,
         fraco.movidos_oraculo
     );
+    // ⚠️⚠️ **A régua é ABSOLUTA, e a troca é de 07/09.** Ela era
+    // `rel(fraco) ≤ rel(arrasto) · 1,5` — uma razão cujo DENOMINADOR é a nossa
+    // própria qualidade: quando a cura do `φ` da integração levou o arrasto de
+    // `1,1·10⁻²` para `1,1·10⁻⁵` de erro relativo, a barra apertou-se sozinha
+    // por `1000×` e o gate reprovou sobre produto que só tinha MELHORADO.
+    // ⛔ E o aperto de força fraca nem podia acompanhar: ele move `0,004` contra
+    // `0,33` do arrasto, logo a MESMA resolução de ficheiro vale `80×` mais em
+    // unidades relativas (medido: `7,5·10⁻⁶` e `3,7·10⁻⁶` de erro ABSOLUTO, que
+    // são a mesma coisa; `1,8·10⁻³` e `1,1·10⁻⁵` de erro relativo, que não são).
+    for (nome, l) in [("aperto fraco", &fraco), ("arrasto", &arrasto)] {
+        assert!(
+            l.erro_max <= BARRA_DO_FICHEIRO,
+            "{nome}: erra {:.3e} em posicao, contra a resolucao do ficheiro \
+             ({BARRA_DO_FICHEIRO:.0e}) -- fora da inversao os dois reproduzem-se \
+             ao ficheiro, e se o aperto nao o fizer ha' lei em falta",
+            l.erro_max
+        );
+    }
+    // ⛔ **O discriminador fica:** o irmão à força CHEIA erra `0,908` relativo —
+    // é ele que a §5.2-ter explica pela ORDEM, e é por isso que este gate tem de
+    // correr sobre a fixture que NÃO inverte uma única face.
+    let cheio = correr("plano_apertar_ponto_radial_local_origem");
     assert!(
-        rel(&fraco) <= rel(&arrasto) * 1.5,
-        "fora da inversao o aperto erra {:.3} contra {:.3} do arrasto no mesmo \
-         retalho -- ha lei em falta, e a divergencia do irmao a forca cheia deixa \
-         de ser explicada pela ORDEM",
-        rel(&fraco),
-        rel(&arrasto)
+        rel(&cheio) > 0.5,
+        "o aperto a forca cheia erra so' {:.3} -- sem a divergencia dele este \
+         gate nao ILIBA nada",
+        rel(&cheio)
     );
 }
 
@@ -2369,5 +2479,526 @@ fn a_razao_do_push_e_dois_raios_e_os_dois_modos_so_divergem_no_passo_tres() {
         (cos.abs() - 1.0).abs() < 1e-9,
         "no passo 2 as duas direccoes ja' diferem (cos {cos:.9}) -- numa folha \
          plana em repouso a normal da AREA e a do VERTICE sao a mesma coisa"
+    );
+}
+
+/// **A distância entre duas direcções UNITÁRIAS**, `‖û − v̂‖` — a régua irmã do
+/// §10.11, a que **não** depende do `a_v` do ajuste.
+///
+/// ⚠️ Ela existe porque o resíduo do ajuste mede a direcção **e** a amplitude ao
+/// mesmo tempo, logo os dígitos dele só se reproduzem com a queda do §4.1 já
+/// exacta. Esta lê só a direcção, e o vão que interessa é de ordens de grandeza
+/// (`10⁻⁵` contra `10⁻¹`), nunca o dígito.
+fn desvio_de_direccao(a: V3, b: V3) -> f64 {
+    let (a, b) = (unit(a), unit(b));
+    dist(a, b)
+}
+
+/// A mediana de uma amostra (a régua do §10.11 para o campo por vértice).
+fn mediana(mut v: Vec<f64>) -> f64 {
+    if v.is_empty() {
+        return f64::NAN;
+    }
+    v.sort_by(f64::total_cmp);
+    v[v.len() / 2]
+}
+
+/// ⭐⭐⭐ **GATE 39 — AS NORMAIS SÃO AS DA SUPERFÍCIE QUE O TRAÇO ENCONTROU**
+/// (espec §14 gate 39, §4.2-ter, §10.11).
+///
+/// **Três metades, e cada uma mata uma leitura diferente:**
+///
+/// **(b) o Push** — em `plano_empurrar_radial_local_origem` a normal da área é
+/// `(0, 0, 1)` a cinco casas em **todos** os passos em que o gesto dispara, sobre
+/// uma folha que já afundou `0,2`. ⛔ Um port que some as normais de AGORA lê ali
+/// um vector inclinado, porque a cova o inclina.
+///
+/// **(c) e não são as do OBJECTO, são as do TRAÇO** — em
+/// `plano_inflar_radial_local_1passo_2tracos` a direcção por vértice do 2.º traço
+/// bate as normais da malha **no pen-down dele** e **não** as planas, e o vão é
+/// de ordens de grandeza. ⛔ **É esta metade que apanha um port que fotografe as
+/// normais uma vez, no início da SESSÃO:** ele passa (a) e (b) e reprova aqui.
+///
+/// **(a) o Inflate** — a metade edificável dela é o DISCRIMINANTE: no fim de
+/// `plano_inflar_radial_local_origem` as duas leis candidatas (normais de repouso
+/// do traço · normais de agora) estão a uma distância de direcção da ordem de
+/// `10⁻¹` por vértice, e é com as de repouso que os doze passos saem à resolução
+/// do ficheiro (gate 41). ⚠️ **Sem o discriminante o gate 41 seria vácuo naquele
+/// traço** — uma paridade que passa com as duas leis não escolhe nenhuma.
+/// ⛔ A forma do §10.11 (resíduo do ajuste por mínimos quadrados) mede a direcção
+/// **e** a amplitude ao mesmo tempo; a régua irmã, que é esta, isola a direcção.
+#[test]
+fn as_normais_sao_as_da_superficie_que_o_traco_encontrou() {
+    // ── (b) o Push, sobre a folha já afundada ──────────────────────────────
+    let nome = "plano_empurrar_radial_local_origem";
+    let pp = por_passo(nome);
+    let rest = repouso("plano");
+    let (_, _, nossos, gestos) = correr_com_blocos(nome, None, Some(&pp.caminho));
+    let mut disparos = 0;
+    for (k, g) in gestos.iter().enumerate() {
+        if norm(*g) == 0.0 {
+            continue;
+        }
+        disparos += 1;
+        let desvio = desvio_de_direccao(*g, [0.0, 0.0, 1.0]);
+        assert!(
+            desvio < 1e-5,
+            "{nome}: no passo {} a normal da area e' [{:.6} {:.6} {:.6}], a \
+             {desvio:.6} da vertical -- com as normais de AGORA a cova inclina-a",
+            k + 1,
+            g[0],
+            g[1],
+            g[2]
+        );
+    }
+    assert!(
+        disparos >= 4,
+        "so' {disparos} passos dispararam (anti-vacuo)"
+    );
+    // E a folha AFUNDOU de verdade — senão a asserção acima é sobre um plano.
+    let cova = nossos
+        .last()
+        .expect("sem passos")
+        .iter()
+        .zip(&rest)
+        .map(|(p, r)| dist(*p, *r))
+        .fold(0.0f64, f64::max);
+    assert!(
+        cova > 0.15,
+        "a folha so' afundou {cova:.4} -- num plano em repouso as duas leis \
+         coincidem ao bit e este gate nao distingue nada"
+    );
+
+    // ── (c) as normais são as do TRAÇO, não as do objecto ──────────────────
+    let nome = "plano_inflar_radial_local_1passo_2tracos";
+    let fs = faces("plano", &rest);
+    let planas = normais(&rest, &fs);
+    // ⚠️⚠️ **A malha que o 1.º traço deixou é a do ORÁCULO**, não a da nossa
+    // corrida: `plano_inflar_radial_local_1passo` é literalmente o 1.º traço
+    // desta fixture (mesmo caminho, mesmos parâmetros, `tracos 1` contra `2`).
+    // ⛔ Com a nossa, o `u` do 2.º traço leva o nosso resíduo do 1.º (`~10⁻⁶`)
+    // dentro dele, e num vértice que se move `10⁻⁵` isso É a direcção: a mediana
+    // subia de `10⁻⁵` para `6·10⁻⁴` e o vão caía de `18 000×` para `451×`.
+    // *Um instrumento que mede uma direcção do alvo não pode ter o nosso erro no
+    // numerador.*
+    let depois_do_1o = deformado("plano_inflar_radial_local_1passo");
+    let do_2o_traco = normais(&depois_do_1o, &fs);
+    let final_do_alvo = deformado(nome);
+    let (mut contra_traco, mut contra_planas): (Vec<(f64, f64)>, Vec<f64>) =
+        (Vec::new(), Vec::new());
+    for v in 0..rest.len() {
+        let u = [
+            final_do_alvo[v][0] - depois_do_1o[v][0],
+            final_do_alvo[v][1] - depois_do_1o[v][1],
+            final_do_alvo[v][2] - depois_do_1o[v][2],
+        ];
+        // Só quem se moveu tem direcção (a régua do campo `movidos` das fixtures).
+        if norm(u) <= 1e-5 {
+            continue;
+        }
+        contra_traco.push((norm(u), desvio_de_direccao(u, do_2o_traco[v])));
+        contra_planas.push(desvio_de_direccao(u, planas[v]));
+    }
+    assert!(
+        contra_traco.len() >= 100,
+        "so' {} vertices se moveram no 2.º traco (anti-vacuo)",
+        contra_traco.len()
+    );
+    let (m_traco, m_planas) = (
+        mediana(contra_traco.iter().map(|(_, d)| *d).collect()),
+        mediana(contra_planas),
+    );
+    assert!(
+        m_traco < 1e-4,
+        "{nome}: a direccao do 2.º traco desvia {m_traco:.6} das normais da malha \
+         que ELE encontrou -- deviam ser as mesmas"
+    );
+    assert!(
+        m_planas > 0.1,
+        "{nome}: as normais PLANAS desviam so' {m_planas:.6} -- sem vao nao ha' \
+         nada a distinguir, e a metade (c) fica vacua"
+    );
+    assert!(
+        m_planas / m_traco > 1e3,
+        "{nome}: o vao e' de {:.0}x -- a espec mede ordens de grandeza",
+        m_planas / m_traco
+    );
+
+    // ── (a) o Inflate: o DISCRIMINANTE das duas leis no fim do traço ───────
+    let nome = "plano_inflar_radial_local_origem";
+    let fim = deformado(nome);
+    let agora = normais(&fim, &fs);
+    let desvios: Vec<f64> = (0..rest.len())
+        .filter(|v| dist(rest[*v], fim[*v]) > 1e-5)
+        .map(|v| desvio_de_direccao(planas[v], agora[v]))
+        .collect();
+    assert!(
+        desvios.len() >= 100,
+        "anti-vacuo: {} movidos",
+        desvios.len()
+    );
+    let m = mediana(desvios);
+    assert!(
+        m > 0.05,
+        "{nome}: as normais de repouso e as de agora so' diferem {m:.6} -- o \
+         gate 41 nao escolheria entre as duas leis neste traco"
+    );
+}
+
+/// ⭐⭐⭐ **GATE 40 — O PUSH CALA-SE QUANDO A COVA PASSA O DISCO DE AMOSTRAGEM, E
+/// VOLTA A DISPARAR** (espec §14 gate 40, §4.2-bis (8), §10.11).
+///
+/// A régua, por inteiro: no passo `k`, `min_v |p_v − c_k|` com `p_v` as posições
+/// do bloco `k−1` do ficheiro por passo (a malha com que o passo começa), `c_k` o
+/// `k`-ésimo ponto do caminho, o mínimo sobre **todos** os vértices e a distância
+/// **3D** — contra `R · «Normal Radius»` (`0,175` com as omissões).
+///
+/// **(a) o PADRÃO** de disparo tem de bater o do oráculo passo a passo. ⛔ Um
+/// port que se cale para sempre à primeira falha reprova: o oráculo **volta** a
+/// disparar quando o cursor avança para terreno pouco afundado.
+///
+/// **(b) o LIMIAR não é escolhido:** o maior `min_v` de um passo em que NÓS
+/// disparámos e o menor de um em que nos calámos deixam entre si um vão de
+/// `0,003` — `1,6 %` do próprio disco —, e `R · 0,5` cai lá dentro. ⚠️ **A
+/// classificação de (b) é a NOSSA**, de propósito: classificá-la pelo limiar
+/// tornaria a asserção circular, e um port que empurre em todos os passos
+/// passaria por vacuidade — é o que os dois censos abaixo impedem.
+#[test]
+fn o_push_cala_se_quando_a_cova_passa_o_disco_e_volta_a_disparar() {
+    let (mut com, mut sem) = (0.0f64, f64::INFINITY);
+    let (mut n_com, mut n_sem) = (0usize, 0usize);
+    let mut alcance_comum = 0.0f64;
+    for nome in &POR_PASSO_DE_FORCA[..7] {
+        let pp = por_passo(nome);
+        let t = traco(nome);
+        let sup = t.s("superficie").to_string();
+        let rest = repouso(&sup);
+        let alcance = t.pincel().raio * RAIO_DA_NORMAL;
+        alcance_comum = alcance;
+        let vista = eixo_da_vista(&sup);
+        let (_, _, _, gestos) = correr_com_blocos(nome, None, Some(&pp.caminho));
+        for (k, gesto) in gestos.iter().enumerate().skip(1) {
+            let (c, prev) = (pp.caminho[k], pp.caminho[k - 1]);
+            let d3 = [c[0] - prev[0], c[1] - prev[1], c[2] - prev[2]];
+            // ⛔ O passo SEM movimento não escreve força por outra razão (§4.3) e
+            // fica fora desta régua — é o que a espec chama «os 67 passos com o
+            // cursor em movimento».
+            if norm(projecta(d3, vista)) == 0.0 {
+                continue;
+            }
+            // `blocos[k]` e' a malha DEPOIS do passo `k+1` (1-based) ⇒ a malha
+            // com que o passo `k` comeca e' `blocos[k-1]`, e o repouso no 1.º.
+            let antes: &[V3] = if k == 0 { &rest } else { &pp.blocos[k - 1] };
+            let min = antes
+                .iter()
+                .map(|p| dist(*p, c))
+                .fold(f64::INFINITY, f64::min);
+            let nosso = norm(*gesto) > 0.0;
+            assert_eq!(
+                nosso,
+                min <= alcance,
+                "{nome}: no passo {} o disco mede {min:.5} contra {alcance:.5} e \
+                 nos {} -- o padrao do oraculo e' 'dispara sse a cova nao passou \
+                 o disco', e ele VOLTA a disparar",
+                k + 1,
+                if nosso { "disparamos" } else { "calamo-nos" }
+            );
+            if nosso {
+                com = com.max(min);
+                n_com += 1;
+            } else {
+                sem = sem.min(min);
+                n_sem += 1;
+            }
+        }
+    }
+    // ⛔ Anti-vácuo dos DOIS lados: um port que empurre sempre esvazia `n_sem`, e
+    // um que se cale para sempre esvazia `n_com`.
+    assert_eq!(
+        (n_com, n_sem),
+        (53, 14),
+        "o censo dos sete tracos de empurrar mudou -- a espec mede 53 passos com \
+         gesto e 14 calados sobre os 67 com o cursor em movimento"
+    );
+    assert!(
+        com < alcance_comum && alcance_comum <= sem,
+        "o limiar {alcance_comum:.5} nao separa: com gesto ate' {com:.5}, sem \
+         gesto desde {sem:.5}"
+    );
+    assert!(
+        sem - com < 0.005,
+        "o vao e' {:.5} -- a espec mede 0,00273, e um vao largo diria que a \
+         constante e' escolhida em vez de medida",
+        sem - com
+    );
+}
+
+/// ⭐⭐ **GATE 41 — OS DEZ TRAÇOS DE EMPURRAR/INFLAR POR PASSO, À RESOLUÇÃO DO
+/// FICHEIRO** (espec §14 gate 41, §10.11).
+///
+/// Com os gates 39 e 40 honrados, os dez traços reproduzem-se sobre a **malha
+/// inteira** e nos **doze** passos com `err_max ≤ 5·10⁻⁶` — ⛔ não «na barra do
+/// gate 15»: aqui a barra é a discretização de seis casas do próprio ficheiro,
+/// porque a lei é exacta.
+///
+/// ⚠️ **Isto substitui a leitura antiga de que Push e Inflate ficavam `5`–`9 %`
+/// abaixo:** aquele défice era o vector do gesto, não a resposta ao esticão.
+#[test]
+fn os_dez_tracos_de_empurrar_e_inflar_saem_a_resolucao_do_ficheiro() {
+    for nome in POR_PASSO_DE_FORCA {
+        let pp = por_passo(nome);
+        let sup = traco(nome).s("superficie").to_string();
+        let rest = repouso(&sup);
+        let (_, _, nossos, _) = correr_com_blocos(nome, None, Some(&pp.caminho));
+        assert_eq!(nossos.len(), pp.blocos.len(), "{nome}: passos diferentes");
+        for (k, (nosso, alvo)) in nossos.iter().zip(&pp.blocos).enumerate() {
+            let erro = nosso
+                .iter()
+                .zip(alvo)
+                .map(|(a, b)| dist(*a, *b))
+                .fold(0.0f64, f64::max);
+            assert!(
+                erro <= BARRA_DO_FICHEIRO,
+                "{nome}: passo {} erra {erro:.6} sobre a malha inteira, contra a \
+                 resolucao do ficheiro ({BARRA_DO_FICHEIRO:.0e})",
+                k + 1
+            );
+        }
+        // Anti-vácuo: o traço tem de ter deformado.
+        let max_o = pp
+            .blocos
+            .last()
+            .expect("sem blocos")
+            .iter()
+            .zip(&rest)
+            .map(|(p, r)| dist(*p, *r))
+            .fold(0.0f64, f64::max);
+        assert!(max_o > 0.05, "{nome}: o oraculo mal deformou ({max_o:.4})");
+    }
+}
+
+/// ⭐ **GATE 42 — A DIRECÇÃO DO PUSH É A NORMAL DA ÁREA, NÃO A DA VISTA** (espec
+/// §14 gate 42, §4.2-bis, §4.2-ter, §10.11) — e só uma superfície CURVA o diz.
+///
+/// Em `esfera_empurrar_radial_local_1passo` a relaxação é um no-op por construção
+/// (um passo simulado a partir do repouso) ⇒ o deslocamento **é** `u · f(v) · dt`,
+/// e o campo inteiro é COLINEAR. Essa direcção tem de estar praticamente sobre a
+/// normal da superfície no cursor e **longe** da normal da vista.
+///
+/// ⚠️ **O controlo ao lado é obrigatório:** sem o `esfera_inflar_radial_local_1passo`
+/// (direcção por VÉRTICE, campo não-colinear), um port que ponha a direcção certa
+/// pela razão errada — o vector cursor→centro do objecto, que nesta cena coincide
+/// com a normal — passaria. ⭐ E a razão dos dois módulos é o `2R` do §4.2-bis (7).
+#[test]
+fn a_direccao_do_push_e_a_normal_da_area_nao_a_da_vista() {
+    let rest = repouso("esfera");
+    let vista = eixo_da_vista("esfera");
+    let t = traco("esfera_empurrar_radial_local_1passo");
+    // ⚠️ **O cursor do passo SIMULADO**, não o do pen-down: o 1.º passo nunca
+    // simula (§1 fase 0), e o disco da normal é centrado no cursor do passo que
+    // corre. Na esfera os dois estão a `34,9°` um do outro — medi-lo pelo
+    // pen-down lê exactamente esse ângulo e acusa a lei certa.
+    let cursor = t.caminho[1];
+    // A normal da superfície no cursor: a esfera das fixtures é centrada, logo é
+    // radial — e o centroide do repouso é quem o diz, não um número escrito.
+    let centro = {
+        let n = rest.len() as f64;
+        let mut c = [0.0; 3];
+        for p in &rest {
+            for k in 0..3 {
+                c[k] += p[k] / n;
+            }
+        }
+        c
+    };
+    let n_superficie = unit([
+        cursor[0] - centro[0],
+        cursor[1] - centro[1],
+        cursor[2] - centro[2],
+    ]);
+    let campo = |nome: &str| -> Vec<(usize, V3)> {
+        let fim = deformado(nome);
+        (0..rest.len())
+            .map(|v| {
+                (
+                    v,
+                    [
+                        fim[v][0] - rest[v][0],
+                        fim[v][1] - rest[v][1],
+                        fim[v][2] - rest[v][2],
+                    ],
+                )
+            })
+            .filter(|(_, u)| norm(*u) > 1e-5)
+            .collect()
+    };
+    let empurrar = campo("esfera_empurrar_radial_local_1passo");
+    let inflar = campo("esfera_inflar_radial_local_1passo");
+    assert!(
+        empurrar.len() >= 100 && inflar.len() >= 100,
+        "anti-vacuo: {} e {} vertices movidos",
+        empurrar.len(),
+        inflar.len()
+    );
+    // A direcção do Push: a soma normalizada do campo (ele é colinear).
+    let mut soma = [0.0; 3];
+    for (_, u) in &empurrar {
+        for k in 0..3 {
+            soma[k] += u[k];
+        }
+    }
+    let u_hat = unit(soma);
+    let graus = |a: V3, b: V3| -> f64 {
+        let c: f64 = (0..3).map(|k| a[k] * b[k]).sum();
+        c.clamp(-1.0, 1.0).acos().to_degrees()
+    };
+    // O Push empurra para DENTRO ⇒ a direcção é `−n̂_área`.
+    let ao_normal = graus(unit([-u_hat[0], -u_hat[1], -u_hat[2]]), n_superficie);
+    let a_vista = graus(unit([-u_hat[0], -u_hat[1], -u_hat[2]]), unit(vista));
+    assert!(
+        ao_normal < 0.1,
+        "a direccao do Push esta' a {ao_normal:.3}° da normal da superficie"
+    );
+    assert!(
+        a_vista > 10.0,
+        "a direccao do Push esta' a {a_vista:.3}° da normal da VISTA -- nesta \
+         cena as duas estao a ~17,4°, e um port que use a vista le' ~0°"
+    );
+    // ⛔ O CONTROLO: o campo do Push é colinear e o do Inflate NÃO é — se os dois
+    // fossem colineares, a direcção do Push podia vir de qualquer coisa que
+    // coincida com a normal nesta cena.
+    let espalhamento = |campo: &[(usize, V3)]| -> f64 {
+        let mut s = [0.0; 3];
+        for (_, u) in campo {
+            let d = unit(*u);
+            for k in 0..3 {
+                s[k] += d[k];
+            }
+        }
+        1.0 - norm(s) / campo.len() as f64
+    };
+    let (e_push, e_inflar) = (espalhamento(&empurrar), espalhamento(&inflar));
+    assert!(
+        e_push < 1e-5,
+        "o campo do Push nao e' colinear ({e_push:.2e}) -- ele tem UM vector por passo"
+    );
+    assert!(
+        e_inflar > 1e-3,
+        "o campo do Inflate e' colinear ({e_inflar:.2e}) -- ele le' a normal de \
+         CADA vertice, e sem isso o controlo deste gate nao controla nada"
+    );
+    // E a direcção por vértice do Inflate é a normal do próprio vértice.
+    let fs = faces("esfera", &rest);
+    let nrm = normais(&rest, &fs);
+    let m = mediana(
+        inflar
+            .iter()
+            .map(|(v, u)| desvio_de_direccao(*u, nrm[*v]))
+            .collect(),
+    );
+    assert!(
+        m < 1e-3,
+        "a direccao do Inflate desvia {m:.6} da normal de repouso de cada vertice"
+    );
+    // ⭐ A razão dos módulos é o `2R` (espec §4.2-bis (7)): os dois traços têm o
+    // mesmo campo de queda e só o `|u|` os separa.
+    let pico = |campo: &[(usize, V3)]| campo.iter().map(|(_, u)| norm(*u)).fold(0.0, f64::max);
+    let razao = pico(&empurrar) / pico(&inflar);
+    let dois_r = 2.0 * t.pincel().raio;
+    assert!(
+        (razao - dois_r).abs() < 2e-5,
+        "a razao Push/Inflate e' {razao:.6} e 2R e' {dois_r:.6}"
+    );
+}
+
+/// ⭐⭐⭐ **GATE — O NOSSO RELEVO LOCAL NÃO PASSA O DO ORÁCULO** (a régua da AGULHA
+/// do `ph2d-sculpt3d`, corrida com o LADO APROVADO ao lado).
+///
+/// A régua é `max_v |u_v − média(u dos 4 vizinhos de grelha)| / max(u) / (h/R)²`
+/// — o pior vértice contra a própria vizinhança, em unidades do chão da
+/// discretização.
+///
+/// ⚠️⚠️ **Existe porque a barra daquele gate (`20`) foi calibrada sobre a lei
+/// VBD**, que o dono reprovou três vezes, e o caminho de omissão passou a ser a
+/// da referência. *Uma barra calibrada sem o lado aprovado mede os nossos
+/// próprios defeitos* — e aqui há lado aprovado.
+///
+/// ⭐⭐ **E o que ele diz é que `20` é uma barra que o PRÓPRIO ALVO não passa:**
+/// sobre os 56 traços de plano do corpus, a saída do oráculo lê `3,8` a **`62,7`**
+/// nesta régua, e passa `20` em catorze deles (o aperto de linha lê `45`–`63`, o
+/// Expand `31`–`33`, o Snake Hook `25`–`38`). ⇒ é a **terceira** das barras de
+/// artefacto desta linha a ser reprovada pela saída do alvo.
+///
+/// O que se pode afirmar com o lado aprovado é isto: o nosso relevo local não
+/// passa o dele. E passa — traço a traço, quase sempre ao décimo.
+#[test]
+fn o_nosso_relevo_local_nao_passa_o_do_oraculo() {
+    let rest = repouso("plano");
+    // A grelha das fixtures: `(n+1)²` vértices em `[-1,1]²`. O `(i,j)` de cada
+    // vértice deriva-se da POSIÇÃO, nunca da ordem do ficheiro.
+    let n = (rest.len() as f64).sqrt().round() as usize - 1;
+    let h = 2.0 / n as f64;
+    let idx = |i: usize, j: usize| -> usize {
+        let (x, y) = (-1.0 + i as f64 * h, -1.0 + j as f64 * h);
+        (0..rest.len())
+            .min_by(|a, b| dist(rest[*a], [x, y, 0.0]).total_cmp(&dist(rest[*b], [x, y, 0.0])))
+            .expect("malha vazia")
+    };
+    let grelha: Vec<usize> = (0..=n)
+        .flat_map(|j| (0..=n).map(move |i| (i, j)))
+        .map(|(i, j)| idx(i, j))
+        .collect();
+    let regua = |depois: &[V3], raio: f64| -> f64 {
+        let u = |v: usize| dist(rest[v], depois[v]);
+        let max = (0..rest.len()).map(u).fold(0.0f64, f64::max);
+        let piso = (h / raio).powi(2);
+        let at = |i: usize, j: usize| grelha[j * (n + 1) + i];
+        let mut pior = 0.0f64;
+        for j in 1..n {
+            for i in 1..n {
+                let d = u(at(i, j));
+                let m =
+                    (u(at(i - 1, j)) + u(at(i + 1, j)) + u(at(i, j - 1)) + u(at(i, j + 1))) / 4.0;
+                pior = pior.max((d - m).abs() / max.max(1e-12) / piso);
+            }
+        }
+        pior
+    };
+    /// A folga sobre o lado aprovado. ⚠️ Ela é `1,4` e não `1,05` por causa de
+    /// UM traço: `plano_apertar_ponto_radial_local` lê `60,2` contra `46,5`
+    /// (`1,29×`) — e ele é um dos oito ABERTOS, no regime em que o próprio alvo
+    /// deixa de ser determinista (§5.2-ter). Nos outros 55 a razão é `1,00`.
+    const FOLGA: f64 = 1.4;
+    let (mut medidos, mut pior) = (0usize, 0.0f64);
+    for nome in todas() {
+        if !nome.starts_with("plano_") {
+            continue;
+        }
+        let raio = traco(&nome).pincel().raio;
+        let (nosso, alvo) = (
+            regua(&correr_posicoes(&nome), raio),
+            regua(&deformado(&nome), raio),
+        );
+        // Anti-vácuo: um traço que não deformou dá `0` dos dois lados.
+        assert!(alvo > 1.0, "{nome}: o oraculo mal tem relevo ({alvo:.2})");
+        medidos += 1;
+        pior = pior.max(nosso / alvo);
+        assert!(
+            nosso <= alvo * FOLGA,
+            "{nome}: o nosso relevo local e' {nosso:.1} contra {alvo:.1} do \
+             oraculo ({:.2}x, folga {FOLGA}) -- a agulha e' NOSSA",
+            nosso / alvo
+        );
+    }
+    assert!(
+        medidos >= 50,
+        "so' {medidos} tracos de plano medidos (anti-vacuo)"
+    );
+    // ⛔ A outra metade: a folga tem de ser JUSTA. Se o pior descer muito abaixo
+    // dela, ela deixou de descrever o corpus e esconde uma degradação futura.
+    assert!(
+        pior > FOLGA / 2.0,
+        "o pior e' {pior:.2}x contra a folga {FOLGA} -- a folga ja' nao descreve \
+         o corpus e tem de descer"
     );
 }

@@ -365,6 +365,21 @@ pub struct PincelTecido {
     pub ordem: Vec<u32>,
     /// A máscara por vértice em `[0,1]` (`1` = imóvel); vazia = sem máscara.
     pub mascara: Vec<f64>,
+    /// ⭐⭐⭐ **A NORMAL DA ÁREA do último passo** (espec §4.2-bis) — um vector
+    /// por passo, e a mesma grandeza que o Push usa como direcção, o referencial
+    /// local usa como `ẑ` e o falloff de plano usa como normal (§4.4).
+    ///
+    /// ⚠️⚠️ **O vector NULO aqui não é um caso degenerado: é o regime normal do
+    /// Push à força de omissão** (§4.2-bis (5) e (8)). O disco de amostragem tem
+    /// raio `R · 0,5` e mede-se contra as posições **de agora**; numa folha que o
+    /// próprio Push já afundou chega um passo em que nenhum vértice está a menos
+    /// disso do cursor — e nesse passo **o gesto não escreve aceleração nenhuma**.
+    /// ⭐ E volta a disparar quando o cursor avança para terreno pouco afundado.
+    ///
+    /// *Ela é pública porque é o único observável que separa «empurrei com uma
+    /// direcção inclinada» de «não empurrei» — as duas coisas que faziam a frente
+    /// de ataque ficar `16×` mais curta que a do alvo.*
+    pub normal_da_area: V3,
     /// Ainda não houve passo nenhum? (o 1.º constrói e não simula)
     pub primeiro: bool,
 }
@@ -396,6 +411,7 @@ impl PincelTecido {
             dentro: Vec::new(),
             ordem,
             mascara: Vec::new(),
+            normal_da_area: [0.0; 3],
             primeiro: true,
         }
     }
@@ -572,8 +588,12 @@ impl PincelTecido {
         // φ e a retenção de banda são lidos no REPOUSO do traço (espec §2.2).
         for v in 0..n {
             let p0 = self.sim.repouso[v];
-            self.sim.phi[v] =
-                (1.0 - self.mascara_de(v)) * self.w_com(p0, cursor, self.pincel.escala_phi);
+            let m = 1.0 - self.mascara_de(v);
+            // §5.2 — o factor das varreduras traz a banda.
+            self.sim.phi[v] = m * self.w_com(p0, cursor, self.pincel.escala_phi);
+            // §5.4 — o da integração NÃO a traz; ela entra uma vez, e só na
+            // velocidade, por `w_repouso`.
+            self.sim.phi_integracao[v] = m;
             self.sim.w_repouso[v] = self.w_com(p0, cursor, self.pincel.escala_retencao);
         }
         // fase 4 — o gesto
@@ -657,6 +677,7 @@ impl PincelTecido {
             r,
             passo.vista,
         );
+        self.normal_da_area = n_area;
         // O referencial local do traço (espec §4.4).
         let x_hat = unit(cruz(n_area, delta_u));
         // ⛔ **O guarda de «passo sem movimento» vale para os OITO modos** (espec

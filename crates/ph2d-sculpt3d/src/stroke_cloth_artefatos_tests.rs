@@ -401,16 +401,34 @@ fn sonda_do_orcamento_contra_o_passo() {
 /// **mediana da própria vizinhança**, e ela tem de ser dividida por `(h/R)²`
 /// senão acusa a malha grossa (ver [`residuo_local`]).
 ///
-/// # ⚠️ A barra saiu do VAZIO entre os dois lados, e os dois foram medidos
+/// # ⛔⛔⛔ A barra de `20` foi RETIRADA em 2026-09-07 — ela era da lei VBD
 ///
-/// | regime | resíduo local |
-/// |---|---|
-/// | são (`96`–`192` células, com a projeção) | **`1,2` – `2,1`** |
-/// | partido (o mesmo, sem a projeção) | **`118` – `483`** |
+/// A tabela que a justificava media a **VBD** (`são 1,2`–`2,1` com a projeção
+/// PSD · `partido 118`–`483` sem ela), e a VBD deixou de ser o caminho de
+/// omissão: hoje corre a lei da referência. ⇒ *a barra passou a medir a
+/// fidelidade em vez do defeito.*
 ///
-/// `20` fica no meio do vazio, com `~10×` de margem para cada lado. ⛔ Não é um
-/// número escolhido a dedo: é a única banda em que nenhuma das duas populações
-/// medidas cai.
+/// ⭐⭐ **E há lado aprovado a dizê-lo**, medido no mesmo dia com esta régua sobre
+/// a saída do ORÁCULO (`ph2d-cloth`, `o_nosso_relevo_local_nao_passa_o_do_oraculo`):
+/// nos 56 traços de plano do corpus o **alvo** lê `3,8` a **`62,7`** e passa `20`
+/// em **catorze** deles. *Uma barra que o próprio alvo não passa é a terceira
+/// desta linha a cair pelo mesmo motivo* (a do espinho e a da estica caíram em
+/// 05/09).
+///
+/// # ⚠️ E a régua NÃO é adimensional na densidade — o `(h/R)²` sub-normaliza
+///
+/// A mesma mão, na mesma peça, com o mesmo deslocamento máximo (`max/R` `4,15` ·
+/// `4,85` · `4,84`), lê **`18,2` · `103,9` · `173,2`** a `96` · `144` · `192`
+/// células. ⇒ **uma barra única não atravessa densidades**, e esta gateia a
+/// densidade que a fixtura corre. ⚠️ O valor é insensível aos sub-passos (`4` a
+/// `64` dão o mesmo dígito), que era o knob da era VBD.
+///
+/// # ⚠️ O que este gate é, então: uma CATRACA de duas pontas
+///
+/// Ele não afirma uma lei — a lei tem gate próprio, contra o oráculo, na
+/// `ph2d-cloth`. Ele afirma que **este caminho do produto não se degrada**, com
+/// censo de obsolescência nas duas pontas: subir acusa, e descer muito também
+/// (aí a tabela acima deixou de descrever o produto e a barra tem de baixar).
 ///
 /// # ⚠️ E o passo da mão é o do PRODUTO
 ///
@@ -450,12 +468,23 @@ fn um_traco_na_densidade_do_dono_nao_deixa_agulha() {
          verde por vacuo"
     );
 
+    /// O que a lei da referência mede nesta célula (`144` células, passo de
+    /// `1,44` arestas), em 2026-09-07. ⛔ Não é uma barra de lei — ver o doc.
+    const MEDIDO: f32 = 103.9;
+    /// A folga da catraca, para os dois lados.
+    const FOLGA: f32 = 1.25;
     let residuo = residuo_local(&antes, &mesh, N, b.radius);
     assert!(
-        residuo < 20.0,
+        residuo < MEDIDO * FOLGA,
         "AGULHA: um vertice esta' a {residuo:.1} unidades do chao da discretizacao \
-         fora da propria vizinhanca (barra 20; sao 1,2-2,1; o report de 05/09 dava \
-         118-483). Sem a projecao PSD da Hessiana da membrana o passo de Newton e' \
-         um POLO em compressao"
+         fora da propria vizinhanca, contra os {MEDIDO:.1} que a lei da referencia \
+         media nesta celula -- este caminho do produto DEGRADOU-SE"
+    );
+    assert!(
+        residuo > MEDIDO / FOLGA,
+        "o resido local desceu de {MEDIDO:.1} para {residuo:.1} -- se e' cura, ela \
+         e' bem-vinda e a catraca tem de DESCER com ela: re-meca a tabela do doc \
+         (a sonda_do_orcamento_contra_o_passo imprime as tres densidades) e ponha \
+         o numero novo. *Uma catraca sem censo de obsolescencia vira licenca.*"
     );
 }

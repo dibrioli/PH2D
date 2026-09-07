@@ -105,9 +105,25 @@ pub struct Verlet {
     pub sigma: Vec<f64>,
     /// A memória de forma (corpo mole), que nasce na posição de repouso.
     pub memoria: Vec<V3>,
-    /// `φ_v = (1 − máscara) · auto-máscara · w(p⁰_v)` (espec §5.2).
+    /// `φ_v = (1 − máscara) · auto-máscara · w(p⁰_v)` (espec §5.2) — o factor
+    /// das cinco varreduras de RELAXAÇÃO, e o único dos três que traz a banda.
     pub phi: Vec<f64>,
-    /// A retenção de banda `w(p⁰_v)` da velocidade (espec §5.3).
+    /// ⚠️⚠️ **O `φ_v` da INTEGRAÇÃO é OUTRO, e NÃO traz a banda** (espec §5.4):
+    /// ele é `(1 − máscara) · auto-máscara`, e a banda entra uma vez só, e só no
+    /// termo da velocidade, por [`Self::w_repouso`].
+    ///
+    /// ⛔⛔ **Enquanto os dois eram o mesmo vector, a retenção valia `banda²`** —
+    /// invisível na área *Global* (onde a banda é `1` em toda a malha) e
+    /// invisível no termo da aceleração (a força já corta em `d ≥ R`, e a banda
+    /// só desce a partir de `2,875·R`), mas **não** no anel entre `2,875·R` e
+    /// `3,5·R`, que é justamente onde a simulação empurra material. Medido em
+    /// 07/09 sobre os doze passos de `plano_arrastar_radial_local_origem`: o erro
+    /// contra o oráculo ia a `3,9·10⁻³` com `banda²` e cai à resolução do
+    /// ficheiro com a banda uma vez só — enquanto o mesmo traço em área *Global*
+    /// já lia `2·10⁻⁵` nas duas leituras. *Um factor a mais num anel que nenhuma
+    /// barra de `0,13` alcança.*
+    pub phi_integracao: Vec<f64>,
+    /// A retenção de banda `w(p⁰_v)` da velocidade (espec §5.3, §5.4).
     pub w_repouso: Vec<f64>,
     /// Quem é integrado neste passo (a «célula activa» — espec §2.1).
     pub activo: Vec<bool>,
@@ -135,6 +151,7 @@ impl Verlet {
             sigma: vec![0.0; n],
             memoria: repouso.clone(),
             phi: vec![1.0; n],
+            phi_integracao: vec![1.0; n],
             w_repouso: vec![1.0; n],
             activo: vec![false; n],
             construido: vec![false; n],
@@ -327,7 +344,9 @@ impl Verlet {
             if !self.activo[i] {
                 continue;
             }
-            let phi = self.phi[i];
+            // ⚠️ **O `φ` da integração é o de §5.4** — sem banda; ela entra uma
+            // vez só, no termo da velocidade, por `w_repouso`.
+            let phi = self.phi_integracao[i];
             let v = [
                 self.x[i][0] - self.x_prev[i][0],
                 self.x[i][1] - self.x_prev[i][1],

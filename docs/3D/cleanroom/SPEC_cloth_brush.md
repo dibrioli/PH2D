@@ -384,6 +384,30 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
            END{if(e&&!a)print "SEM ATESTADO: "substr(e,1,50)}' docs/3D/cleanroom/SPEC_cloth_brush.md
   Silêncio = tudo atestado. ⛔ Não substitua isto por um número: um número envelhece a cada emenda, e
   a linha que o guarda passa a ser mais uma coisa que alguém tem de lembrar de mexer.
+  ✅ **EMENDA Q18 de 2026-09-07** (**§4.2-quater NOVA** · **§4.6 linha 4 FECHADA** · §5.2 · §5.4 ·
+  **§5.4-bis NOVA** · §10 contagem · **§10.12 · §10.13 · §10.14 NOVAS** · §11 · §14 gates 43-47, + as
+  **cinco** fixtures novas: os dois traços LONGOS de plano
+  `plano_arrastar_radial_{local,global}_origem_36passos` — 36 passos, `.deformado` **e** por passo —
+  e os **três** por passo de esfera `esfera_{agarrar,gancho,expandir}_radial_dinamica`): as quatro
+  perguntas do I devolvem **SIM · SIM (com o mecanismo maior que a pergunta) · SIM (com a premissa
+  refutada) · SIM (com uma advertência nova)**. (1) O par de `φ` confirma-se lado a lado no fonte —
+  o factor das cinco varreduras **traz** a banda, o da integração **não**, e dentro da integração a
+  banda entra **uma vez só**, depois do amortecimento e **antes** do termo de velocidade (§5.4-bis);
+  as duas letras deixam de ter o mesmo nome. (2) O peso da soma por face é **uniforme** — e a razão
+  é maior que a pergunta: o programa tem **DUAS** leis de normal por vértice, e a que corre no
+  caminho da escultura é a soma **sem peso** das normais unitárias das faces; a outra, que só se lê
+  numa malha que nunca foi esculpida, é **ponderada pelo ângulo do canto**, e é ela que a esfera do
+  corpus traz (§4.2-quater). (3) O traço longo está gravado — ⛔ **e a premissa «um traço mais longo
+  é mais fundo» está REFUTADA**: em área *Local* a profundidade **satura** em `0,76 R` com 36 passos
+  (contra `0,94 R` com 12), e os `5,4 R` do regime que o I procura são um facto da **ÁREA**, não do
+  comprimento (§10.12). (4) Os três por passo de esfera estão gravados — ⛔ **e a esfera não é
+  reproduzível**: quatro corridas da MESMA configuração dão saídas que diferem entre si até `0,036`
+  (`11 %`–`60 %` do sinal), a divergência nasce no 1.º passo simulado (`4,3·10⁻⁴`) e amplifica
+  `~65×`; o plano dá `0,000000`. Cada bloco por passo leva por isso a **banda de realização** ao
+  lado, que é a régua sem a qual uma comparação por passo na esfera não quer dizer nada (§10.13).
+  Escrita pelo subagente-E da mesma janela, com o fonte reaberto só para estas perguntas e com
+  corridas NOVAS do oráculo (**304** execuções: 113 que viraram fixture, 162 do censo de realização
+  e da banda, 29 de sonda) mais **11** corridas de leitura de normais.
 Mapa de leitura da literatura (⭐ pública e lícita a TODOS os papéis):
   · Jakobsen, "Advanced Character Physics", GDC 2001 — integração de Verlet por posições + relaxação
     de restrições de distância por projecção. É EXACTAMENTE a família do solver do alvo.
@@ -1104,6 +1128,58 @@ existe, e o que a dispara é a configuração da VISTA, não o facto de haver um
 também a mais barata e a mais estável: uma fotografia das normais no pen-down, ao lado da fotografia
 das posições que a simulação já guarda (§5.2-quater).
 
+### §4.2-quater — ⭐⭐⭐ HÁ **DUAS** LEIS DE NORMAL POR VÉRTICE, e a do caminho da escultura é a SEM PESO (F+M, 2026-09-07)
+
+⛔⛔ **O peso da soma por face (§4.6 linha 4) estava aberto porque a pergunta tinha duas respostas
+certas.** O programa calcula a normal de um vértice de **duas maneiras**, e qual delas está no
+vector quando o gesto o lê depende do **estado** da malha, não do modo do pincel:
+
+| lei | quando corre | como a normal do vértice se forma |
+|---|---|---|
+| **incremental** (⭐ a do caminho da escultura) | sempre que a malha **já traz normais calculadas de antes** e só alguns pedaços dela se mexeram — isto é, **a cada refrescamento durante e depois de uma escultura** | **soma SEM PESO das normais UNITÁRIAS das faces incidentes**, normalizada no fim; se a soma tiver comprimento zero, a resposta é um **eixo fixo do objecto** |
+| **reconstrução total** | quando não há normais de antes para aproveitar — na prática, a **primeira** avaliação de uma malha que ainda não foi esculpida | **soma ponderada pelo ÂNGULO DO CANTO** que a face faz naquele vértice, normalizada no fim |
+
+⚠️ **Nos dois casos a normal da face é UNITÁRIA antes de entrar na soma** — é isso que faz a
+primeira lei ser *uniforme* e não *por área*: uma soma de normais de face **não** normalizadas
+traria a área embutida, e não é o que acontece.
+
+**A medição** (M, 2026-09-07 — leituras do vector de normais do próprio programa, comparadas com as
+três candidatas calculadas sobre as MESMAS posições; a grandeza é o ângulo entre direcções
+unitárias, em graus, e a resolução do canal é `≈ 0,027°`):
+
+| malha lida | uniforme | ângulo | área | veredito |
+|---|---|---|---|---|
+| esculpida, vértices movidos, refrescada sobre a forma de agora (4 malhas: 2 esferas agarradas/infladas + 2 muito deformadas) | **mediana `0,000`–`1,3·10⁻³` · máx `≤ 0,027`** | mediana `0,022`–`0,059` · máx `1,62` | mediana `0,031`–`0,073` · máx `2,36` | ⭐ **uniforme, à resolução do canal** |
+| grelha de quadriláteros nunca esculpida, com vértices deslocados ao acaso | mediana `3,51` · máx `17,4` | **mediana `0,000` · máx `0,023`** | mediana `4,25` · máx `31,6` | ⭐ **ângulo** |
+| a mesma, triangulada | mediana `6,06` · máx `72,6` | **mediana `0,000` · máx `0,027`** | mediana `9,34` · máx `94,3` | ⭐ **ângulo** |
+| esfera UV nunca esculpida, com vértices deslocados ao acaso | mediana `4,30` · máx `115,8` | **mediana `2,3·10⁻³` · máx `0,027`** | mediana `5,52` · máx `83,5` | ⭐ **ângulo** |
+
+⚠️ **A separação entre as candidatas é da mesma ordem do erro de cada uma** — isto é, a que ganha
+ganha por ser exacta, não por ser a menos má; e o `máx ≤ 0,027°` da vencedora é o mesmo em todas as
+linhas, porque é o chão do canal e não uma propriedade da lei.
+
+⛔⛔ **CONSEQUÊNCIA PARA O CORPUS, e é uma que se lê ao contrário com facilidade:** as fixtures de
+esfera são **primeiros traços sobre uma malha nunca esculpida** ⇒ as normais que o gesto delas leu
+são as da lei **ponderada pelo ângulo**. As fixtures de plano têm todas as normais `(0,0,1)` nas
+duas leis. E o 2.º traço da fixture de dois traços lê a lei **sem peso**, porque a região já tinha
+sido movida. ⇒ *o corpus contém as duas leis, e não é o modo do pincel que escolhe.*
+
+⭐ **O que um port faz, e porquê:** implementar a lei **sem peso** (é a do caminho da escultura, e é
+a única que vale a partir do segundo traço). O preço de a usar também no primeiro traço está
+medido e é **desprezável neste corpus**: na esfera em repouso as duas leis diferem por mediana
+`0,021°` e máximo `0,029°` — sobre um deslocamento de `0,25` isso é `1,3·10⁻⁴`, duas ordens abaixo
+da barra do gate 15. ⛔ **Mas isso é uma propriedade da malha, não da lei:** numa malha de
+triângulos irregulares as duas separam-se por **graus** (até `116°` medido), e é por isso que a
+diferença fica NOMEADA aqui em vez de arrumada como ruído.
+
+⚠️ **Fronteira honesta:** a lei da reconstrução total foi estabelecida por **medição** (as três
+linhas de malha nunca esculpida acima); ⛔ o código que a executa **não vive na parte do fonte que
+esta linha tem**, ao contrário da lei incremental, que está confirmada no fonte. A lei incremental
+é a que o port precisa, e essa está confirmada dos dois lados.
+
+⚠️ **E há uma terceira população, que esta secção não cobre:** malhas de subdivisão e topologia
+dinâmica têm cada uma o seu próprio fornecedor de normais (§6.7). Nada aqui se aplica a elas.
+
 ### §4.3 — Os modos de ÂNCORA (dois) — e o delta de agarrar
 
 **O delta de agarrar `δ`** é um vector em espaço do objecto, derivado do ECRÃ (F): o ponto do
@@ -1317,32 +1393,30 @@ numa esfera passam a variar. *Um port calibrado só no plano acerta nelas por ac
 | 1 | **o deslocamento do cursor `δ`** (§4.3) | **igual** à diferença dos dois pontos 3D | a componente de profundidade é **descartada**: `15,83°` de diferença de direcção nas fixtures de esfera, `1,039×` de módulo, `0,04569` de desvio acumulado (`19,3 %` do maior deslocamento do Agarrar) | Agarrar · Snake Hook · normal do plano de queda · `x̂` do referencial · e o guarda de «passo parado» dos **oito** modos (o arrasto incluído) — ⛔ o que o arrasto **não** tira de `δ` é a **direcção** |
 | 2 | **a normal da área** (§4.2-bis) | exactamente a normal da folha em todos os passos em que existe — e ⚠️ **passa a NÃO EXISTIR** (vector nulo, força zero) assim que a cova afasta todo o vértice do disco de amostragem: §4.2-bis (8) | média com peso `3p²−2p³` das normais **da superfície que o traço encontrou** (§4.2-ter — ⛔ **não** as de agora; esta célula dizia «actuais» até 2026-09-07), amostradas num disco de **meio** raio cujas POSIÇÕES são as de agora: não é a normal no ponto do cursor, e o que roda com a vala é o CONJUNTO amostrado, não as normais | Push · plano de queda · `ẑ` do referencial |
 | 3 | **o centro da área** (§4.4) | praticamente o cursor | mistura pesada que **puxa para o cursor**, e não o centroide do disco | plano de queda |
-| 4 | **a normal do vértice** | `+ẑ` para todos, seja qual for o peso usado ao somar as faces | **soma das normais das faces que tocam o vértice, normalizada no fim** (uma soma de comprimento zero cai num eixo fixo do objecto), sobre a superfície **que o traço encontrou** no pincel (§4.2-ter — ⛔ esta célula dizia «a malha ACTUAL» até 2026-09-07) e sobre a **malha de agora** no filtro (§7); ⚠️ **o PESO dessa soma (área · ângulo · uniforme) NÃO está estabelecido** — ver a nota abaixo | Inflate (pincel e filtro, com leis opostas quanto ao INSTANTE) |
+| 4 | **a normal do vértice** | `+ẑ` para todos, seja qual for o peso usado ao somar as faces | **soma das normais UNITÁRIAS das faces que tocam o vértice, SEM peso, normalizada no fim** (uma soma de comprimento zero cai num eixo fixo do objecto), sobre a superfície **que o traço encontrou** no pincel (§4.2-ter — ⛔ esta célula dizia «a malha ACTUAL» até 2026-09-07) e sobre a **malha de agora** no filtro (§7). ⭐ **O peso FECHOU em 2026-09-07: é uniforme** — e há uma **segunda** lei, ponderada pelo ângulo do canto, que só se lê numa malha nunca esculpida e que é a que as fixtures de ESFERA trazem: **§4.2-quater** | Inflate (pincel e filtro, com leis opostas quanto ao INSTANTE) |
 | 5 | **a repartição em dois baldes** pelo sinal de `n̂ · v̂` (§4.2-bis) | um balde só: o segundo nunca é usado | o segundo balde enche-se assim que o disco alcança a silhueta, e ⛔ ele só é lido se o primeiro estiver **vazio ou somar zero** (§4.2-bis-4) | normal e centro da área |
 | 6 | **a distância** ao cursor e à localização da área | a distância no plano | **corda 3D, nunca geodésica**: na esfera unitária o disco de `R = 0,35` é uma calota de arco `0,3518` (`+0,5 %`) e o limite da área de `3,5R = 1,225` é uma calota de arco `1,3184` (**`+7,6 %`**) | a curva de queda, o filtro de raio, a banda da área, o filtro de construção |
 
-⚠️⚠️ **A linha 4 tem uma metade ABERTA, e ela é a única do censo (R-pré, 2026-09-06).** O que está
-demonstrado é a FORMA (somar as normais das faces incidentes e normalizar no fim, sobre a malha
-actual) e o consumidor (Inflate). O **peso** de cada face nessa soma — área (somar normais de face
-não normalizadas), ângulo do canto, ou uniforme — **não é demonstrável com o que esta linha tem à
-mão**, e ⛔ **o corpus de 2026-09-06 não o decidia**: no plano todos os pesos dão `+ẑ`, e na esfera UV a
-simetria em longitude põe os três a menos de ruído um do outro. ⇒ **um port escolhe um, escreve qual
-escolheu ao lado da linha, e a pergunta fica na fila** — a régua que a fecharia é um traço de Inflate
-do oráculo sobre uma malha **deliberadamente irregular** (triângulos de áreas e ângulos muito
-diferentes à volta do mesmo vértice), que hoje não existe no corpus. *Uma ausência de régua não é uma
-resposta, e esta linha está declarada em vez de adivinhada.*
+⭐⭐⭐ **A LINHA 4 FECHOU em 2026-09-07, e o censo não tem mais nenhuma metade aberta.** O caminho
+até aqui vale por si, porque cada degrau foi lido ao contrário do seguinte:
+- **2026-09-06** — declarada aberta: no plano os três pesos dão `+ẑ` e na esfera UV a simetria em
+  longitude põe-nos a menos de ruído um do outro ⇒ *o corpus não decide*. **Certo, e ainda é.**
+- **2026-09-07 (errata)** — a fixture de dois traços deu **uniforme `1,7·10⁻⁵` · ângulo `3,0·10⁻⁴`
+  · área `6,6·10⁻⁴`** (mediana sobre os `171` movidos), e a nota passou a *indicação*.
+  ⚠️ **A indicação estava certa e o intervalo de confiança não:** medidas as três candidatas contra
+  o vector de normais do próprio programa **naquela mesma malha**, elas concordam entre si a
+  `≤ 0,31°` de máximo e `0,000°` de mediana — *aquela fixture não separa nada; o que a fez
+  responder foi a lei estar certa, não a régua ser boa.*
+- **2026-09-07 (Q18.2)** — a resposta, com a régua que a decide: perguntar as normais **ao próprio
+  programa** sobre malhas em que os três pesos discordam por graus. ⇒ **uniforme**, à resolução do
+  canal — e, de brinde, uma **segunda** lei que ninguém procurava (**§4.2-quater**).
 
-⭐⭐ **ERRATA de 2026-09-07 (R-pré): a fixture NOVA de dois traços RESPONDE em parte, e a nota acima
-envelheceu no dia em que ela entrou.** No 2.º traço de `plano_inflar_radial_local_1passo_2tracos` a
-superfície já **não** é plana, e as três somas deixam de coincidir. Medida a distância entre a
-direcção observada e a normal candidata, vértice a vértice (mediana sobre os `171` movidos):
-**uniforme `1,7·10⁻⁵` · ângulo `3,0·10⁻⁴` · área `6,6·10⁻⁴`** (contra `0,299` para as normais
-planas). ⇒ o peso **uniforme** — somar normais de face já normalizadas — é `18×`–`38×` melhor que os
-outros dois. ⚠️ **É uma INDICAÇÃO, não a prova**: os três ficam muito abaixo de qualquer barra de
-gate, a cova é rasa (`0,0992`) e a fixture não foi desenhada para esta pergunta. ⇒ *um port que
-tenha de escolher hoje escolhe o uniforme e escreve porquê*; a malha irregular continua a ser a
-régua que fecha a linha. *E a lição do §0.0: quem acrescenta uma fixture tem de reconferir as notas
-que diziam «o corpus não decide isto».*
+⇒ **Um port implementa a soma SEM PESO de normais de face unitárias.** ⚠️ E a régua que 2026-09-06
+prescrevia — *«um traço de Inflate sobre uma malha deliberadamente irregular»* — continua a ser a
+régua certa para a **outra** metade, a que separa as duas leis do §4.2-quater num traço a sério; o
+que a Q18.2 fez foi responder à pergunta sem ela, medindo a grandeza em vez do efeito dela.
+*Uma régua indirecta que acerta não deixa de ser indirecta: aqui ela acertou o veredito com um
+intervalo de confiança `20×` mais estreito do que o que a malha permitia.*
 
 ⚠️ **A leitura das oito fixtures de esfera (M) sai desta tabela, e ela NÃO é uma família só:**
 - **Agarrar · Snake Hook · Aperto de linha** — linha 1 (e a 2 no aperto de linha, que monta o
@@ -1383,9 +1457,22 @@ global), não há limitação de esticão, não há dobra própria, não há aut
 
 ### §5.2 — As 5 varreduras de relaxação
 
-Antes das varreduras, um **factor por vértice** `φ_v = (1 − máscara) · auto-máscara ·
-w(p⁰_v)` é pré-calculado para TODOS os vértices (`w` na posição de repouso do traço; sem banda
-nas ferramentas sem área) (F).
+Antes das varreduras, um **factor por vértice** é pré-calculado para TODOS os vértices da malha,
+**uma vez por passo** (F):
+
+```
+φ_relax(v) = (1 − máscara_v) · auto-máscara_v · w(p⁰_v)          ⭐ TRAZ a banda
+```
+
+(`w` avaliado na posição de **repouso** do traço; sem banda nas ferramentas sem área, e `w ≡ 1` em
+*Global* — §2.2.)
+
+⚠️⚠️ **ESTE NÃO É O FACTOR DA INTEGRAÇÃO, e a espec chamava aos dois `φ`.** A §5.4 usa um
+`φ_int(v) = (1 − máscara_v) · auto-máscara_v` **sem** a banda, e a banda entra lá **uma vez só**, no
+termo da velocidade. Um port que use um vector só para as duas coisas paga `banda²` na retenção de
+velocidade — e ⛔ o erro é **invisível em três sítios ao mesmo tempo**. O par está lado a lado, com
+o censo da invisibilidade, na **§5.4-bis**; leia-a antes de escrever qualquer um dos dois.
+⛔ **Abaixo, `φ_A` e `φ_B` são sempre `φ_relax`.**
 
 Para `k = 1..5`, para cada restrição `(A, B, ℓ, s)` **cuja célula esteja activa**, em ordem (F):
 
@@ -1794,23 +1881,70 @@ banda**: retenção efectiva `= (1 − damping) · w(p⁰_v)` (H: D9084 — «aj
 áreas dinâmicas, porque o amortecimento cresce quando o vértice se afasta»). ⇒ a documentação
 («quanto as forças se propagam») é a leitura invertida de «quanta velocidade sobrevive».
 
-### §5.4 — A integração (por célula activa, por vértice, com `φ_v = (1 − máscara) · auto-máscara`)
+### §5.4 — A integração (por célula activa, por vértice, com `φ_int = (1 − máscara) · auto-máscara`, ⛔ SEM banda)
 
 ```
+φ_int(v) = (1 − máscara_v) · auto-máscara_v            ⛔ NÃO traz a banda (≠ φ_relax da §5.2)
+
 v̄        = x − x_prev                    (x já corrigido pelas 5 varreduras deste passo;
                                           x_prev = o x corrigido do passo ANTERIOR)
 x_prev   ← x
-x       += a · φ_v · 0,01                 (a = Σ forças / massa; dt = 0,01)
-x       += v̄ · φ_v · (1 − damping) · w(p⁰_v)
+x       += a · φ_int · 0,01               (a = Σ forças / massa; dt = 0,01)   ⛔ sem banda
+x       += v̄ · φ_int · (1 − damping) · w(p⁰_v)                              ⭐ a banda, UMA vez
 colisão (§5.6)
 x_col    ← x                              (origem do raio de colisão do próximo passo)
 a        ← 0
 ```
 
+⚠️⚠️ **A banda aparece EXACTAMENTE uma vez neste bloco, e o `φ` daqui não é o da §5.2** — a lei
+inteira, os três sítios em que a banda podia entrar e o que cada engano custa estão na **§5.4-bis**.
 ⚠️ O termo de aceleração **não** é multiplicado por `w` aqui (a força já o trazia, §4.1) — mas é
-pelo `φ_v` de máscara. ⚠️ **A massa é um ganho inverso puro** sobre um `dt` fixo: dobrar a massa
+pelo `φ_int` de máscara. ⚠️ **A massa é um ganho inverso puro** sobre um `dt` fixo: dobrar a massa
 divide exactamente por dois o deslocamento por força num passo (F; M — §10). Faixa `0,01..2`,
 omissão `1`.
+
+### §5.4-bis — ⭐⭐⭐ OS DOIS `φ` E OS TRÊS SÍTIOS DA BANDA (F, 2026-09-07 — confirmado lado a lado a pedido do I)
+
+⛔⛔ **A espec chamava `φ` a duas grandezas diferentes, em duas secções, e a diferença entre elas é
+a diferença entre `banda` e `banda²`.** Esta secção existe para que isso deixe de depender de o
+leitor reparar. Confirmado no fonte, os **três** sítios em que a banda `w(p⁰_v)` poderia entrar num
+passo, e o que de facto acontece em cada um:
+
+| # | sítio | traz a banda? | o factor completo |
+|---|---|---|---|
+| 1 | o factor das **cinco varreduras** de relaxação (§5.2), pré-calculado uma vez por passo para a malha inteira | ⭐ **SIM** | `φ_relax = (1 − máscara) · auto-máscara · w(p⁰)` |
+| 2 | o termo de **aceleração** da integração (§5.4) | ⛔ **NÃO** | `φ_int = (1 − máscara) · auto-máscara` |
+| 3 | o termo de **velocidade** da integração (§5.4) | ⭐ **SIM, e é a única vez ali** | `φ_int · (1 − damping) · w(p⁰)` |
+
+⚠️ **A ordem dentro da integração é load-bearing e mede-se:** o factor chega à integração **sem**
+banda; o termo de aceleração consome-o assim; **depois** ele é escalado por `(1 − damping)`;
+**depois** disso é multiplicado pela banda; e só então escala a velocidade. ⇒ um port que aplique a
+banda ao factor **à entrada** da integração escreve `banda` também no termo de aceleração, e um que
+use `φ_relax` nos dois escreve `banda²` na retenção de velocidade.
+
+⚠️ **A banda dos dois é avaliada na posição de REPOUSO** (`p⁰`), não na de agora — nos dois sítios,
+e é a mesma lei do §2.2. E nos dois ela só entra **quando há traço activo**: no filtro (§7), que não
+tem traço, não há banda nenhuma.
+
+⛔⛔⛔ **O CENSO DA INVISIBILIDADE — é por isto que um `φ` só sobrevive a um corpus inteiro** (M, o I
+mediu-o em 2026-09-07 e a leitura confere com a lei acima): o erro `banda²` está calado em três
+sítios ao mesmo tempo —
+
+1. na área ***Global*** a banda é `1` em toda a malha ⇒ `1² = 1`, e **todos** os traços *Global* do
+   corpus ficam byte-idênticos;
+2. no termo de **aceleração** o factor extra vale exactamente `1` de qualquer maneira, porque a
+   força já corta em `d ≥ R` e a banda só começa a descer a `R(1+L·F) = 2,875 R` — os dois suportes
+   **não se tocam**;
+3. no anel entre `2,875 R` e `3,5 R`, que é o único sítio onde ele morde, o deslocamento já é de
+   ordem `10⁻³` ⇒ o erro fica três ordens de grandeza abaixo da barra do gate 15.
+
+⇒ **o único instrumento do corpus que o vê é um traço de plano em área *Local*, comparado por
+vértice sobre a malha inteira** (não pelo máximo, não pelo centro): ali o erro sobe a `3,9·10⁻³`
+contra `< 5·10⁻⁶` com a lei certa, enquanto o mesmo traço em *Global* sai **byte-idêntico** com as
+duas leis (ali `banda ≡ 1`, logo `banda² = banda`; o I mediu `2·10⁻⁵` nos dois casos) — é a razão
+entre esses dois traços que denuncia o defeito, e não o valor de nenhum deles.
+*Uma grandeza que só é observável num anel de `0,6 R` de espessura precisa de uma régua que olhe
+para a malha inteira; um máximo nunca lá chega.*
 
 ### §5.5 — Massa, passo de tempo, iterações: os números e o RECURSO que cada um nomeia
 
@@ -2093,10 +2227,11 @@ como proveniência (as mensagens de commit são públicas; o texto foi re-dito).
 
 ## §10 — Vectores de teste (o oráculo)
 
-⭐ **76 traços do binário 5.2.1 sobre malhas NOSSAS** — ⚠️ **CONTE-OS, não cite este número de
+⭐ **Os traços do binário 5.2.1 sobre malhas NOSSAS** — ⚠️ **CONTE-OS, não cite número nenhum de
 memória** (`ls docs/3D/cleanroom/fixtures/cloth/*.deformado.txt.gz | wc -l`): esta linha esteve em
 `51` depois de a §10.5 acrescentar dois, a §10.6 mais um, a §10.7 mais dois, a §10.8 mais **nove**,
-a §10.10 mais **oito** e a §10.11 mais **três**.
+a §10.10 mais **oito**, a §10.11 mais **três** e a §10.12 mais **dois** — e esteve parada em `76`
+enquanto a §10.12 entrava.
 ⚠️ **A tabela abaixo NÃO é o corpus** — ela tem as `47` linhas da 1.ª geração, e os traços das
 §10.2–§10.11 vivem nas secções delas. O corpus é o directório.
 ⚠️ **O `indice.json` é DERIVADO e regenera-se** — `python3 fixtures/cloth/gera_indice.py` (uma
@@ -2649,6 +2784,166 @@ qualquer dos dois centros possíveis ⇒ elas fixam a direcção e a magnitude d
 ⏳ **O que fica por gravar, e é a extensão natural:** um traço de esfera de **doze** passos em área
 *Local* (por passo) — só ele mede a lei do §4.2-ter numa superfície **curva** ao longo de um traço,
 onde a normal do início e a de agora divergem por vértice e não só por passo.
+⭐ **Meio pedido foi honrado em 2026-09-07 (§10.13): existem TRÊS traços de esfera por passo** —
+agarrar, gancho e expandir. ⛔ **Mas são de área *Dynamic*, não *Local***, e sobretudo: a §10.13
+mede que **na esfera duas corridas da mesma configuração não dão a mesma saída**, com a diferença a
+crescer de `4,3·10⁻⁴` no 1.º passo simulado a `0,027`–`0,037` ao 12.º. ⇒ *um traço de esfera por
+passo mede o que quer, desde que a régua traga a banda de realização ao lado* — e é por isso que os
+três a trazem.
+
+### §10.12 — ⭐⭐⭐ OS DOIS TRAÇOS LONGOS, e a premissa REFUTADA: a profundidade é da ÁREA, não do comprimento (2026-09-07, a pedido do I)
+
+**O pedido.** O gate de artefacto do produto corre um traço de **35 eventos** cujo deslocamento
+máximo vale `4,8 R`, e o traço mais fundo do corpus valia `0,94 R` em `12` passos ⇒ *não havia lado
+aprovado no regime em que o dono esculpe*. Pediu-se um traço de arrasto de `≥ 30` passos sobre a
+malha de plano, com as omissões e força `1`.
+
+**As duas fixtures novas** (as duas com `.deformado` **e** por passo, pen-down na origem,
+`36` passos sobre o **mesmo caminho** de `0,6` das fixtures `_origem` de `12`, tudo o resto igual):
+
+| fixture | área | movidos | máx `\|u\|` | em raios | prova do fatiamento |
+|---|---|---|---|---|---|
+| `plano_arrastar_radial_local_origem_36passos` | *Local* | `2145` | `0.267205` | `0,76 R` | `0.000000` |
+| `plano_arrastar_radial_global_origem_36passos` | *Global* | `4225` | `1.893192` | **`5,41 R`** | `0.000000` |
+
+⛔⛔⛔ **E a medição refuta a premissa que gerou o pedido: em área *Local* um traço mais longo NÃO é
+mais fundo — satura.** Varrida a contagem de passos sobre o mesmo caminho, com tudo o resto igual:
+
+| passos | `12` | `24` | `36` | `48` | `36` (caminho `1,2`) | `36` (caminho `0,3`) |
+|---|---|---|---|---|---|---|
+| máx `\|u\|` | `0,32965` | `0,24864` | `0,26721` | `0,26124` | `0,23219` | `0,26723` |
+| em raios | `0,94 R` | `0,71 R` | `0,76 R` | `0,75 R` | `0,66 R` | `0,76 R` |
+
+⇒ a profundidade **não é monótona** na contagem de passos e **não depende** do comprimento do
+caminho: ela vive numa banda de `0,66`–`0,94 R` em toda a família.
+⭐⭐ **E o rastreio diz mais que o máximo: em *Local* o vértice do pen-down ASSENTA.** Ele sobe até
+`0,28635` no passo `12` e depois **desce** monotonamente até `0,14411` no passo `36` — a folha
+relaxa para trás enquanto o cursor se afasta. ⛔ Em *Global* o mesmo vértice **cresce nos 36 passos**
+(`0,0993 → 1,0550`), sem um único passo de descida. *É esta a diferença que o máximo da malha
+esconde, e é a régua mais forte das duas.* Mecanismo, e é o desenho da área
+*Local*: a área é uma bola **fixa** de raio `R(1+L) = 3,5 R` centrada no pen-down (§2.2), e a banda
+leva o factor a zero na borda dela ⇒ a folha só pode esticar-se até onde a rede de restrições a
+prende, e mais impulso deixa de acumular. *Um traço mais longo espalha; não afunda.*
+
+⭐⭐ **O regime de `4,8 R` existe e é um facto da ÁREA.** No mesmo caminho e nos mesmos `36` passos:
+
+| o que muda | máx `\|u\|` | em raios |
+|---|---|---|
+| área *Global* | `1,89319` | **`5,41 R`** |
+| queda da força *Plane* (área *Local*) | `0,69343` | `1,98 R` |
+| *Local*, agarrar | `0,15596` | `0,45 R` |
+| *Local*, expandir | `0,03477` | `0,10 R` |
+| *Local*, gancho | `0,02043` | `0,06 R` |
+
+⇒ **a fixture *Global* é o lado aprovado no regime do gate de artefacto** (`5,41 R` contra os
+`4,8 R` dele), e o rastreio dela mostra porquê: o vértice do pen-down passa de `0,0993` no passo `2`
+a `1,0550` no passo `36`, **sem assentar** — em *Global* não há banda (`w ≡ 1`), a malha inteira é
+simulada e nada prende a folha.
+⚠️⚠️ **E isto é um diagnóstico para o lado limpo, não só uma fixture:** se o gate de artefacto do
+produto correr um traço em área ***Local*** e chegar a `4,8 R`, o motor está a deformar **`6×`** o
+que o alvo deforma naquele regime, e o defeito é anterior a qualquer régua de relevo. *A pergunta
+«qual é a barra?» tinha uma pergunta antes dela: «a nossa cena é sequer a cena do alvo?».*
+
+⭐ **As duas são exactamente reproduzíveis** — três corridas de cada, dispersão `0,000000` por
+vértice —, e por isso o instrumento por passo delas é um **fatiamento** legítimo (`prova = 0.000000`
+nas duas), ao contrário do da esfera (§10.13).
+
+### §10.13 — ⛔⛔⛔ OS TRÊS TRAÇOS DE ESFERA POR PASSO — e a esfera NÃO É REPRODUZÍVEL (2026-09-07, a pedido do I)
+
+**O pedido.** Não havia um único dump por passo de esfera; para o plano eles resolveram cinco
+perguntas seguidas. Pediram-se três: agarrar, gancho e expandir, em área *Dynamic*, no mesmo
+formato.
+
+⛔⛔⛔ **Estão gravados, e a primeira coisa que a gravação devolveu foi um defeito do INSTRUMENTO:
+na esfera, uma corrida-prefixo de `k` elementos NÃO é o passo `k` da corrida inteira** — porque
+**duas corridas da mesma configuração já não são a mesma corrida**. Medido, quatro realizações de
+cada configuração, na mesma sessão:
+
+| configuração | dispersão entre realizações | máx `\|u\|` | razão |
+|---|---|---|---|
+| **plano**, arrastar *Local*, 12 passos (**CONTROLO**) | **`0,000000`** | `0,32965` | `0,0 %` |
+| plano, arrastar *Local*/*Global*, 36 passos (**CONTROLO**) | **`0,000000`** | `0,26721` / `1,89319` | `0,0 %` |
+| esfera, gancho *Dynamic*, **1 passo simulado** | `0,000432` | `0,02672` | `1,6 %` |
+| esfera, gancho *Dynamic*, 4 passos | `0,002011` | `0,07313` | `2,7 %` |
+| esfera, agarrar *Dynamic*, 12 passos | `0,027055` | `0,23653` | `11,4 %` |
+| esfera, gancho *Dynamic*, 12 passos | `0,036836` | `0,16906` | `21,8 %` |
+| esfera, expandir *Dynamic*, 12 passos | `0,028415` | `0,04735` | **`60,0 %`** |
+
+⚠️ **A leitura é uma só: a divergência nasce no PRIMEIRO passo simulado (`4,3·10⁻⁴`) e amplifica
+`~65×` ao longo de doze passos.** Não é um erro que se acumule linearmente — é um estado inicial
+minimamente diferente numa dinâmica que o amplifica.
+
+⛔ **Quatro explicações foram medidas e REFUTADAS** (⚠️ leia-as antes de propor uma quinta):
+
+| hipótese | experiência | resultado |
+|---|---|---|
+| é concorrência (a integração corre em paralelo por célula, e células vizinhas partilham vértices) | repetir com **uma** só linha de execução | dispersão `0,035897` — **igual** |
+| é a semeadura do sobrevoo do cursor | repetir com o traço de semeadura de um elemento | `0,041243` — **igual** |
+| idem, com a semeadura por traço anterior | repetir com o pré-traço de dois elementos | `0,038208` — **igual** |
+| é o desenho da vista não ter acontecido | repetir forçando dois desenhos antes do traço | `0,033121` — **igual** |
+
+⭐ **E a forma da diferença exclui «um punhado de vértices de fronteira»:** ao 1.º passo simulado,
+`481` dos `631` vértices movidos já diferem entre duas realizações — é **difuso**, como um estado
+inicial ligeiramente diferente, não como uma disputa pontual.
+
+⇒ ⭐⭐ **os três ficheiros por passo levam a BANDA DE REALIZAÇÃO por passo** (a maior diferença por
+vértice entre quatro realizações do MESMO prefixo), numa coluna do `.rastreio`. Ela é a régua sem a
+qual uma comparação por passo na esfera não quer dizer nada:
+
+| passo | `1` | `2` | `3` | `4` | `5` | `6` | `7` | `8` | `9` | `10` | `11` | `12` |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| agarrar — banda | `0` | `0,00020` | `0,00047` | `0,00065` | `0,00219` | `0,00115` | `0,00505` | `0,00562` | `0,01125` | `0,01402` | `0,01166` | `0,01457` |
+| agarrar — máx `\|u\|` | `0` | `0,00866` | `0,02260` | `0,04181` | `0,06648` | `0,09696` | `0,12115` | `0,14376` | `0,16644` | `0,18927` | `0,21282` | `0,23669` |
+| gancho — banda | `0` | `0,00012` | `0,00077` | `0,00222` | `0,00465` | `0,00193` | `0,00992` | `0,03561` | `0,03449` | `0,02108` | `0,03997` | `0,03157` |
+| gancho — máx `\|u\|` | `0` | `0,02672` | `0,04813` | `0,07312` | `0,09445` | `0,10771` | `0,11566` | `0,12469` | `0,13436` | `0,14551` | `0,15726` | `0,16862` |
+| expandir — banda | `0` | `0,00004` | `0,00018` | `0,00023` | `0,00099` | `0,00316` | `0,00760` | `0,00846` | `0,00638` | `0,00991` | `0,01456` | `0,03042` |
+| expandir — máx `\|u\|` | `0` | `0,00139` | `0,00289` | `0,00540` | `0,00908` | `0,01519` | `0,02299` | `0,03501` | `0,03806` | `0,04038` | `0,04200` | `0,04772` |
+
+⭐⭐ **E a prova de que a «falha» do fatiamento é EXACTAMENTE a lotaria, e nada mais:** os três
+números que a mediriam coincidem, traço a traço —
+
+| traço | prova do fatiamento (`k=12` vs corrida inteira) | banda da corrida inteira | desvio ao `.deformado` já no repo |
+|---|---|---|---|
+| `esfera_agarrar_radial_dinamica` | `0,017736` | `0,019998` | `0,018878` |
+| `esfera_gancho_radial_dinamica` | `0,036474` | `0,036202` | `0,034033` |
+| `esfera_expandir_radial_dinamica` | `0,021864` | `0,021773` | `0,021234` |
+
+*Se a corrida-prefixo fosse um instrumento errado, a 1.ª coluna seria maior que a 2.ª; ela é igual —
+logo o prefixo é o passo `k`, a menos da realização.* Os três ficheiros trazem as três colunas no
+cabeçalho, com o nome delas.
+
+⛔⛔ **O QUE ISTO OBRIGA A RELER — e é a metade que interessa ao lado limpo:** os `.deformado` de
+esfera do corpus são **uma** realização cada, e nenhum port pode ficar abaixo de `≈ 0,02`–`0,036`
+neles. Sobre os quatro traços de esfera que ainda erram: `agarrar` `0,182` (banda `0,020` ⇒ `11 %`
+do erro), `gancho` `0,255` (`0,036` ⇒ `14 %`), `expandir` `0,581` (`0,022` ⇒ `4 %`). ⇒ **a lotaria
+NÃO explica nenhum dos três** — os erros são `5×` a `26×` a banda, e há lei em falta — **mas ela põe
+um chão**, e uma barra escrita abaixo dele é uma barra que reprova o próprio oráculo. ⚠️ E é o
+mesmo chão que diz onde procurar: nos passos `2` a `5` a banda é `10⁻⁴`–`10⁻³`, três ordens abaixo
+dos erros finais ⇒ **a divergência real, se nasce cedo, é visível nesses passos**, e é para isso que
+estes três ficheiros servem.
+
+⚠️ **Fronteira honesta:** a causa da lotaria **não** está estabelecida. O que está medido é que ela
+existe, que é da esfera e não do plano, que nasce no 1.º passo simulado, e que **não** é nenhuma
+das quatro hipóteses acima. ⛔ Um port não pode reproduzi-la nem deve tentar.
+
+### §10.14 — As onze corridas que leram o VECTOR DE NORMAIS ao próprio programa (2026-09-07)
+
+⭐ **O instrumento que fechou a §4.6 linha 4 não mede um efeito — mede a grandeza.** Em vez de
+inferir o peso da soma por face a partir da direcção de um impulso (o que a errata de 2026-09-07
+fez, e ver §4.6 para o que isso custou), pediram-se as normais **ao programa** e compararam-se com
+as três candidatas calculadas sobre as **mesmas** posições.
+
+**As onze corridas** (todas sobre malhas geradas por nós): **seis** de malha nunca esculpida —
+grelha de quadriláteros, a mesma triangulada e esfera UV, cada uma limpa e com os vértices
+deslocados por um gerador determinístico nosso —; **duas** que repõem numa grelha nova as posições
+de duas fixtures do repo, para medir o que aquela malha podia decidir; e **três** dentro de uma
+sessão de escultura, que esculpem e depois pedem um refrescamento das normais sobre a forma de
+agora, para ler a lei que corre no caminho da escultura. As tabelas estão no **§4.2-quater**.
+
+⚠️ **A corrida de refrescamento usa um facto do §1** (um traço de **um** elemento nunca simula, logo
+não move nada) para forçar o refrescamento sem alterar a malha — *sem isso as normais lidas são as
+de um instante anterior, e a leitura sai a `84°` de qualquer candidata*, que foi a primeira coisa
+que esta medição devolveu e é, de passagem, uma quarta confirmação independente do §4.2-ter.
 
 ---
 
@@ -2686,6 +2981,10 @@ onde a normal do início e a de agora divergem por vértice e não só por passo
 | plasticidade `1` | o vértice é sempre puxado à memória de forma inicial (o pano «recupera») |
 | filtro com força negativa | inverte todas as forças e o Scale encolhe |
 | filtro com *Use Face Sets* | vértices fora do face set activo: factor `0` |
+| **vértice numa malha que NUNCA foi esculpida** | a normal por vértice dele é a da lei ponderada pelo **ângulo do canto**; a partir do 1.º refrescamento depois de a vizinhança se mover passa a ser a soma **sem peso** (§4.2-quater) ⇒ ⚠️ uma malha meio esculpida carrega as **duas** leis ao mesmo tempo, e não é o pincel que escolhe |
+| **soma de normais de face de comprimento zero** (vértice em cume perfeito, faces opostas) | a normal cai num **eixo fixo do objecto** — sem `NaN`, sem saltar o vértice (§4.2-quater) |
+| **repetir o MESMO traço sobre a MESMA malha, numa superfície curva** | ⛔ **não dá a mesma saída**: quatro corridas do mesmo traço de esfera diferem entre si até `0,036` (`11 %`–`60 %` do sinal), com a divergência a nascer no 1.º passo simulado (§10.13). No plano dá `0,000000`. ⚠️ Não é concorrência nem semeadura de cursor: as quatro hipóteses estão medidas e refutadas |
+| **traço de arrasto muito longo em área *Local*** | a profundidade **satura**: `0,94 R` a 12 passos, `0,71`–`0,76 R` a 24/36/48, e o comprimento do caminho não a move (§10.12). Em *Global* o mesmo traço chega a `5,41 R` e não assenta |
 
 ---
 
@@ -2778,6 +3077,11 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 36 | ⭐⭐ **A resposta NÃO é proporcional ao impulso, e a não-linearidade tem número**: o impulso do passo 2 escala com o **quadrado** da força (`0,2500` e `0,0625` para força `0,5` e `0,25`), e o `\|u\|` do passo 12 escala `0,6677` e `0,3388`. ⛔ **A barra é a do FICHEIRO (`±2·10⁻⁵` na razão), NÃO a do `f32`** — o oráculo lê `0,2499924` e `0,0624943` e uma barra de `f32` reprovaria a fixture que a define; a razão da massa (`0,5000000`) é a única exacta. ⚠️ **As duas metades são a régua:** a 1.ª é aritmética da fase do gesto (§4.1) e a 2.ª é o regime do solver — ⛔ **um port que compare só o fim do traço não pode concluir nada sobre uma lei**, e um cujo erro relativo **não** varie ao longo desta faixa tem um ganho constante, não um defeito de esticão | `0,2500`/`0,0625 ± f32` numa metade · as razões do §10.10 na outra | §10.10 · fixtures `plano_empurrar_radial_local_origem_forca05`, `…_forca025`, `…_massa2`, `plano_inflar_radial_local_origem_massa2` |
 | 37 | ⭐ **Uma projecção vale `15,1 %` do planalto, e é a régua de qualquer resíduo**: no mesmo traço, `Global` (`5` projecções) e `Local` (`10`) têm de dar a **MESMA MALHA** no passo 2 (⭐ não só a mesma célula: `máx` da diferença por vértice `= 0,000000` sobre os `4 225` — ali a rede ainda não agiu) e planaltos na razão `0,8493`. ⇒ ⚠️ **a conversão traz o VÃO da régua dentro**: os `15,1 %` medem **`5`** projecções a mais por restrição e por passo (`5 → 10`), logo um resíduo de `x %` no planalto vale `5 · x / 15,1` projecções — a `4 %` isso é `1,3`, que é a leitura do §10.10 (⛔ a 1.ª redacção dizia `x / 15,1` e contradizia, cinco linhas acima, o «uma projecção a mais» da própria secção). ⚠️ **A 1.ª metade é o controlo da régua**: se o passo 2 já diferir, o defeito não é a contagem de projecções | malha idêntica no passo 2 · razão `0,8493` | §5.2-bis · §10.10 · fixture `plano_empurrar_radial_global_origem` |
 | 38 | **Sem memória de velocidade o traço deixa de assentar.** ⚠️ **A régua é o `máx \|u\|` sobre a MALHA, por passo** (⛔ não o vértice do pen-down: ali as duas configurações passam por um máximo, e o discriminador desaparece). Com `damping = 1` a sequência tem de ser **estritamente crescente** nos 11 passos simulados (`0,06990 → 0,19698`); com `damping = 0,01`, o mesmo traço tem de ter o **máximo dos onze no passo `6`** (`0,27794`). ⛔ **A régua da 2.ª metade é o ARGMAX, nunca «decresce depois do máximo»**: a cauda do `_origem` **volta a subir** nos dois últimos passos (`0,24762 → 0,25738 → 0,25937`), porque o vértice que realiza o máximo viaja com o cursor — exigir decrescimento reprova o oráculo. ⚠️ **Duas metades**: a monotonia é a forma, e a paridade por vértice do gate 15 é o valor — um port cuja retenção esteja errada pode acertar a forma e falhar o valor | monotonia exacta (inteiros de comparação) · a barra do gate 15 | §5.3 · §5.4 · §10.10 · fixtures `plano_empurrar_radial_local_origem_amort1` e `plano_empurrar_radial_local_origem` |
+| 43 | ⭐⭐⭐ **A BANDA ENTRA UMA VEZ NA VELOCIDADE E NENHUMA NA ACELERAÇÃO — e a régua tem de olhar para a MALHA INTEIRA.** Sobre `plano_arrastar_radial_local_origem` (por passo), a paridade por vértice tem de dar `err_max < 5·10⁻⁶` nos doze passos; com a banda aplicada **duas** vezes (o factor da §5.2 usado também na integração) o mesmo traço sobe a `3,9·10⁻³`. ⚠️ **A metade que faz o gate existir é o CONTROLO, e ele é EXACTO**: o **mesmo** traço em área *Global* (`plano_arrastar_radial_global_origem`) tem de sair **byte-idêntico** com as duas leis — em *Global* a banda é `1` em toda a malha, logo `banda² = banda` **por construção**, e o erro do port não se move (o I mediu `≈ 2·10⁻⁵` nas duas). ⇒ é a **razão** entre os dois traços que denuncia o defeito, e não o valor de nenhum deles. ⛔ Um port que meça só o máximo, ou só o vértice do pen-down, ou só traços *Global*, passa com `banda²` lá dentro: o erro vive num anel de `2,875 R` a `3,5 R` onde o deslocamento já é de ordem `10⁻³` | `5·10⁻⁶` (resolução do ficheiro) contra `3,9·10⁻³`; e o *Global* invariante | §5.2 · §5.4 · §5.4-bis |
+| 44 | ⭐⭐ **A NORMAL POR VÉRTICE É A SOMA SEM PESO DE NORMAIS DE FACE UNITÁRIAS** — e a régua não é um traço, é a grandeza. Sobre uma malha de triângulos **irregulares** (áreas e ângulos muito diferentes à volta do mesmo vértice), a normal que o motor usa tem de bater a soma sem peso a `< 0,03°` e afastar-se da ponderada por **área** por `> 1°` em pelo menos um vértice. ⚠️ **Duas metades**, e a 2.ª é a que impede passar por sorte: numa grelha regular ou numa esfera UV as três candidatas concordam a `< 0,04°` ⇒ *uma malha regular não testa este gate*. ⛔ E o gate **não** pode ser escrito sobre uma fixture do corpus: no plano as três dão `(0,0,1)` e na fixture de dois traços concordam a `0,31°` de máximo | `0,03°` de um lado, `1°` do outro | §4.2-quater · §4.6 linha 4 |
+| 45 | ⭐ **UM TRAÇO MAIS LONGO NÃO É MAIS FUNDO EM ÁREA *LOCAL*** — e é o gate que impede calibrar uma régua de relevo num regime que o alvo não produz. **Três metades, e a do meio é o discriminador forte:** (a) sobre `plano_arrastar_radial_local_origem_36passos` o máximo da malha tem de ficar em `0,76 R` (`0.267205`), **abaixo** do mesmo caminho em `12` passos (`0,94 R`); (b) ⭐ no MESMO traço, o vértice do pen-down tem de **subir até ao passo `12` (`0,28635`) e depois DESCER até `0,14411` no `36`** — ele *assenta*, e o traço continua a acontecer à volta dele; (c) sobre `plano_arrastar_radial_global_origem_36passos` o mesmo vértice tem de crescer em **todos** os 36 passos, de `0,0993` a `1,0550`, chegando a `5,41 R` de máximo de malha (`1.893192`). ⚠️ Um motor que afunde monotonamente com o número de passos passa (c) e reprova (a) **e** (b) ⇒ ⛔ **um gate de artefacto do produto que corra um traço *Local* de ~35 eventos e chegue a `4,8 R` está a medir uma cena que o alvo não produz**, e a barra dele não é calibrável ali | os dois máximos, na barra do gate 15 · o argmax `12` e a monotonia (inteiros) | §2.2 · §10.12 |
+| 46 | ⛔⛔ **NA ESFERA, A BARRA TEM UM CHÃO QUE NÃO É NOSSO — e ele mede-se, não se escolhe.** Nenhum gate de paridade sobre um traço de esfera pode ter barra abaixo da **banda de realização** daquele traço (`0,020` agarrar · `0,036` gancho · `0,022` expandir, medidas com quatro corridas da mesma configuração), sob pena de reprovar o próprio oráculo. ⚠️ **E a metade que evita a leitura preguiçosa:** os erros abertos hoje são `5×` a `26×` a banda (`0,182` · `0,255` · `0,581`) ⇒ ⛔ **a lotaria NÃO os explica** e há lei em falta; quem invocar esta linha para relaxar uma barra tem de mostrar o quociente. ⭐ **O sítio de procurar é cedo**: nos passos `2`–`5` a banda é `10⁻⁴`–`10⁻³`, três ordens abaixo do erro final, logo uma divergência que nasça aí é visível nos ficheiros por passo | a banda medida, por traço | §10.13 |
+| 47 | ⭐ **O FATIAMENTO É UM INSTRUMENTO, E ELE TEM UM CONTROLO** — que é o que separa «o prefixo não é o passo `k`» de «a corrida não se repete». Em todo traço novo por passo, `prova_do_fatiamento` tem de ser `0,000000` **ou** ficar `≤` à **banda de realização da corrida inteira** do mesmo traço. ⛔ Uma prova acima da banda diz que o prefixo não reproduz o passo e o ficheiro **não é oráculo**; igual à banda diz que reproduz, a menos da realização (é o caso dos três de esfera: `0,0177` vs `0,0200` · `0,0365` vs `0,0362` · `0,0219` vs `0,0218`). ⚠️ **Sem a 2.ª coluna a 1.ª não tem leitura**, e foi assim que quatro ficheiros da 1.ª geração ficaram no directório a parecer oráculo | `0,000000`, ou `≤` a banda | §10.12 · §10.13 |
 | 24 | **A razão `2R` do Push, e a igualdade Push/Inflate no 1.º passo simulado**: no passo 2 dos dois traços do §10.7 o vértice do pen-down move `0,06543` e `0,09347`, razão `0,7000 = 2·R`; e a divergência entre os dois só pode começar no passo **3** — se começar no 2, o port está a ler duas normais diferentes numa folha plana em repouso, onde elas são a mesma | razão `2R ± f32` · igualdade de direcção no passo 2 | §4.2-bis · §10.1 · §10.7 |
 
 ---

@@ -24,13 +24,16 @@ na esfera, sobre o equador visível (`y < 0`). Raio do pincel em espaço de obje
 plasticidade `0`, pino desligado, sem colisões, sem gravidade — i.e., **as omissões do código**
 (espec §8.1), não as dos presets (§8.2).
 
-⚠️⚠️ **As excepções a este parágrafo são VINTE E QUATRO de `76`, e a régua está escrita aqui porque
+⚠️⚠️ **As excepções a este parágrafo são VINTE E QUATRO de `78`, e a régua está escrita aqui porque
 ela é metade da conta** (2026-09-06 — ⛔ leia sempre o cabeçalho da fixture, nunca esta lista):
 compara-se o cabeçalho de cada `.deformado.txt.gz` com **as nove grandezas que o parágrafo fixa sem
 ressalva** (`raio · limite · banda · massa · amortecimento · plasticidade · pino · força · curva`)
 mais o **percurso**, medido como `max(x) − min(x)` sobre as linhas `c`, mais o **número de traços**
 (a chave `tracos`, ausente = `1`); a **área** fica de fora
-porque o parágrafo já lhe põe o «salvo indicação», e por ela `16` das `76` não são *Local*.
+porque o parágrafo já lhe põe o «salvo indicação», e por ela `17` das `78` não são *Local*.
+⭐ **As duas fixtures de 2026-09-07 (os traços LONGOS) NÃO são excepção em grandeza nenhuma** — só
+em `passos` (`36`, que o parágrafo não fixa) e, numa delas, na área; o percurso continua a ser `0,6`
+nas duas.
 
 | grandeza | quantas | quais |
 |---|---|---|
@@ -101,8 +104,9 @@ estado do passo `k` da corrida inteira. Cada ficheiro traz a **prova**: `prova_d
 diferença máxima por vértice entre o bloco `k = N` e uma corrida inteira da MESMA sessão — tem de ser
 `0,000000` (a 6 decimais).
 
-⚠️⚠️ **`ls *.porpasso.txt.gz | wc -l` devolve `21`, e só DEZASSETE deles são o instrumento**
-(R-pré, 2026-09-06; a contagem era `13`/`9` antes das oito da emenda Q16 — ⛔ **conte-os**):
+⚠️⚠️ **`ls *.porpasso.txt.gz | wc -l` devolve `26`, e só VINTE E DOIS deles são o instrumento**
+(R-pré, 2026-09-06; a contagem era `13`/`9` antes das oito da emenda Q16 e `21`/`17` antes das cinco
+da Q18 — ⛔ **conte-os**):
 os outros **quatro** são a 1.ª geração, com o pen-down em `x = −0,3`, e ⛔ **TRÊS deles
 NÃO passam a prova do fatiamento** — `plano_arrastar_radial_local` (`0.330421`),
 `plano_agarrar_radial_local_2passos` (`0.115064`) e `plano_gancho_radial_local_2passos` (`0.004244`).
@@ -144,6 +148,24 @@ sobre estas posições, e o rastreio dá o lado MEDIDO da comparação.
 | `plano_inflar_radial_local_origem_massa2` | 12 | `0.000000` | 2145 | `0.296328` |
 | `plano_empurrar_radial_local_origem_amort1` | 12 | `0.000000` | 2133 | `0.19698` |
 | `plano_empurrar_radial_global_origem` | 12 | `0.000000` | 4225 | `0.324889` |
+| `plano_arrastar_radial_local_origem_36passos` | 36 | `0.000000` | 2145 | `0.267205` |
+| `plano_arrastar_radial_global_origem_36passos` | 36 | `0.000000` | 4225 | `1.893192` |
+| `esfera_agarrar_radial_dinamica` | 12 | `0.017736` ⚠️ | 1863 | `0.236509` |
+| `esfera_gancho_radial_dinamica` | 12 | `0.036474` ⚠️ | 2234 | `0.169025` |
+| `esfera_expandir_radial_dinamica` | 12 | `0.021864` ⚠️ | 2096 | `0.046715` |
+
+⚠️⚠️ **As três últimas linhas têm a prova do fatiamento DIFERENTE DE ZERO, e isso não é um defeito
+do ficheiro — é um facto da esfera** (2026-09-07, espec §10.13): **duas corridas da mesma
+configuração de esfera não dão a mesma saída**. Quatro realizações de cada uma diferem entre si até
+`0,020` (agarrar) · `0,036` (gancho) · `0,022` (expandir), e a prova do fatiamento de cada uma é
+**igual a essa banda** — *se o prefixo não fosse o passo `k`, a prova seria MAIOR que a banda; ela
+é igual.* ⇒ os três ficheiros trazem no cabeçalho `dispersao_entre_realizacoes_da_corrida_inteira`
+e `desvio_ao_deformado_deste_repo`, e o `.rastreio` deles tem uma coluna a mais,
+**`banda_de_realizacao`**, com a banda medida **por passo** (`0` no passo `1`, `~10⁻⁴` no `2`,
+`0,015`–`0,040` no `12`). ⛔ **Uma comparação por passo na esfera que não leia essa coluna não quer
+dizer nada**; e uma barra de gate escrita abaixo dela reprova o próprio oráculo.
+⭐ No **plano** a dispersão é `0,000000` (medida em três realizações dos dois traços longos e quatro
+do de 12 passos), e é por isso que ali a prova do fatiamento é literal.
 
 ⭐⭐ **O `_fraco` (2026-09-06) é um CONTROLO, não mais um traço** — a espec §10.6 e §5.2-ter. É o
 traço de aperto de ponto da linha acima com **uma** coisa mudada, a força (`1,0 → 0,2`), e existe
@@ -247,6 +269,38 @@ sub-conjunto valem todas `(0, 0, 1)`. Estas três resolvem-no:
 ⚠️ **A terceira é a única fixture do corpus com DOIS traços** (chave `tracos 2` no cabeçalho, ausente
 em todas as outras); o `caminho` dela é o dos dois, que são o mesmo.
 
+⛔⛔ **ERRATA de 2026-09-07: a última célula da tabela acima responde a uma pergunta que aquela malha
+NÃO consegue decidir.** Medidas as três candidatas de peso contra o vector de normais que o **próprio
+programa** guarda para aquela mesma malha, elas concordam entre si a **`0,000°` de mediana e `0,31°`
+de máximo** — a cova é rasa e a grelha é regular, logo os três pesos dão praticamente a mesma
+normal. ⇒ o veredito *uniforme* está **certo** (§4.2-quater fecha-o com a régua que o decide), mas
+não é esta fixture que o prova. *Uma régua indirecta que acerta continua a ser indirecta.*
+
+### ⭐⭐⭐ As CINCO fixtures de 2026-09-07 da emenda Q18 (espec §10.12 e §10.13)
+
+**Duas** respondem à pergunta *«qual é a saída do alvo num traço LONGO?»* e **três** à pergunta
+*«em que passo nasce a divergência na esfera?»*.
+
+| fixture | passos | o que ela decide |
+|---|---|---|
+| `plano_arrastar_radial_local_origem_36passos` | 36 | ⛔ **um traço mais longo NÃO é mais fundo**: `0,76 R` contra `0,94 R` do mesmo caminho em 12 passos. Em área *Local* a profundidade satura, e o comprimento do caminho não a move (`0,66`–`0,94 R` em toda a família varrida) |
+| `plano_arrastar_radial_global_origem_36passos` | 36 | ⭐⭐ **o regime FUNDO existe e é um facto da ÁREA**: `5,41 R`, sem assentar (o vértice do pen-down cresce nos 36 passos, de `0,0993` a `1,0550`). É o lado aprovado para qualquer régua de relevo local que viva acima de `1 R` |
+| `esfera_agarrar_radial_dinamica` (por passo) | 12 | os três primeiros dumps por passo de ESFERA do corpus. ⚠️ **Cada bloco é UMA realização**, e o `.rastreio` traz a coluna `banda_de_realizacao` com a diferença medida entre quatro corridas do mesmo prefixo |
+| `esfera_gancho_radial_dinamica` (por passo) | 12 | idem — é a de maior banda (`0,036` ao 12.º passo, `21,8 %` do sinal) |
+| `esfera_expandir_radial_dinamica` (por passo) | 12 | idem — é a de menor sinal, e por isso a de maior razão banda/sinal (`60 %`) |
+
+⛔⛔⛔ **O achado que estas cinco trouxeram, e que muda como se lê o corpus inteiro: na ESFERA duas
+corridas da mesma configuração não dão a mesma saída.** Medido com quatro realizações de cada
+configuração, na mesma sessão: o **plano** dá `0,000000` (em traços de 12 **e** de 36 passos, nas
+duas áreas); a esfera dá `0,027`–`0,037` ao 12.º passo, e a divergência já existe ao **1.º passo
+simulado** (`4,3·10⁻⁴`), amplificando `~65×`. ⛔ **Quatro explicações foram medidas e refutadas** —
+concorrência (uma só linha de execução dá `0,036`), semeadura do sobrevoo (`0,041`), pré-traço
+(`0,038`) e desenho forçado da vista (`0,033`) — e a diferença é **difusa** (`481` de `631` vértices
+movidos já diferem ao 1.º passo simulado), não pontual.
+⇒ **os `.deformado` de esfera são UMA realização cada**, e uma barra de gate escrita abaixo da banda
+reprova o próprio oráculo. ⚠️ **E não é desculpa para os erros abertos**: eles são `5×` a `26×` a
+banda. Detalhe e tabelas: espec §10.13.
+
 ## ⚠️ O EIXO DA VISTA (não está no cabeçalho, e é diferente nos dois corpora)
 
 As corridas são em vista **ORTOGRÁFICA**. O cabeçalho traz o `caminho` (as linhas `c`, em espaço do
@@ -306,7 +360,7 @@ o ficheiro diz o que contém.
   `desloc_no_fim` (deslocamento medido no 1.º / no último ponto do caminho, conforme o harness) ·
   `delta_area` (fracção; só significativa no plano) · `passos` · `raio`.
   ⚠️⚠️ **ESTA DESCRIÇÃO NÃO É A DO FICHEIRO — conferido em 2026-09-06.** O `analise.json` que está no
-  disco tem **47** objectos (contra `76` fixtures em 2026-09-07 — eram `54` quando isto foi escrito
+  disco tem **47** objectos (contra `78` fixtures em 2026-09-07 — eram `54` quando isto foi escrito
   e `73` quando isto foi conferido, e o desvio só cresce) e as chaves **do harness**, não as de cima; a linha
   que dizia «renomeado pelo R-pré em 2026-09-05 … 46/46» descrevia uma renomeação que **não está no
   ficheiro**. Ele continua a ser dado nosso e o sweep passa sobre ele; o que não vale é acreditar
@@ -351,6 +405,7 @@ o ficheiro diz o que contém.
 | `plano_arrastar_radial_dinamica_preset.` | arrastar | 12 | 2455 | `0.329617` |
 | `plano_arrastar_radial_global.` | arrastar | 12 | 4225 | `0.644607` |
 | `plano_arrastar_radial_global_origem.` | arrastar | 12 | 4225 | `0.645708` |
+| `plano_arrastar_radial_global_origem_36passos.` | arrastar | 36 | 4225 | `1.893192` |
 | `plano_arrastar_radial_local.` | arrastar | 12 | 2144 | `0.331637` |
 | `plano_arrastar_radial_local_1passo.` | arrastar | 2 | 171 | `0.09917` |
 | `plano_arrastar_radial_local_2passos.` | arrastar | 3 | 1438 | `0.135888` |
@@ -361,6 +416,7 @@ o ficheiro diz o que contém.
 | `plano_arrastar_radial_local_massa2.` | arrastar | 12 | 2143 | `0.154596` |
 | `plano_arrastar_radial_local_massa2_1passo.` | arrastar | 2 | 171 | `0.049585` |
 | `plano_arrastar_radial_local_origem.` | arrastar | 12 | 2145 | `0.329649` |
+| `plano_arrastar_radial_local_origem_36passos.` | arrastar | 36 | 2145 | `0.267205` |
 | `plano_arrastar_radial_local_pino.` | arrastar | 12 | 2144 | `0.323528` |
 | `plano_arrastar_radial_local_plast05.` | arrastar | 12 | 2141 | `0.234305` |
 | `plano_empurrar_plano_local.` | empurrar | 12 | 2146 | `0.520138` |
@@ -394,11 +450,12 @@ o ficheiro diz o que contém.
 | `plano_inflar_radial_local_origem.` | inflar | 12 | 2145 | `0.317081` |
 | `plano_inflar_radial_local_origem_massa2.` | inflar | 12 | 2145 | `0.296328` |
 | `plano_inflar_radial_local_origem_parado.` | inflar | 12 | 2145 | `0.144297` |
-**76 traços** (47 da matriz + 9 do instrumento por passo + 9 das corridas que isolam a REDE de
+**78 traços** (47 da matriz + 9 do instrumento por passo + 9 das corridas que isolam a REDE de
 restrições + 8 das corridas que separam a fase do GESTO da fase do SOLVER, de 2026-09-06, + 3 das
-corridas que fixam a que superfície pertencem as NORMAIS do gesto, de 2026-09-07 —
-espec §10.8, §10.10 e §10.11) — ⚠️ **conte-os**
-(`ls *.deformado.txt.gz | wc -l`), esta linha já esteve parada em `53`, em `56`, em `65` e em `73`.
+corridas que fixam a que superfície pertencem as NORMAIS do gesto e **2 dos traços LONGOS**, de
+2026-09-07 — espec §10.8, §10.10, §10.11 e §10.12) — ⚠️ **conte-os**
+(`ls *.deformado.txt.gz | wc -l`), esta linha já esteve parada em `53`, em `56`, em `65`, em `73` e
+em `76`.
 ⚠️ **As fixtures de ESFERA de DOZE passos são todas de área Dinâmica** (centro no cursor), e a área
 *Local* de doze passos na esfera continua por gravar. ⛔ **A razão escrita aqui até 2026-09-07 estava
 ERRADA e mandava não tentar:** dizia que «um traço scriptado não dispara o hover que fixa o centro

@@ -81,6 +81,15 @@ Registado **antes** de qualquer leitura do fonte, em 2026-09-05.
 | escreve | `SPEC_cloth_brush.md` (commit único, pós-filtragem) · este ledger · `VASSOURA_blender-cloth.txt` · fixtures do oráculo · `README` de 3 linhas |
 | ⛔ nunca | código de produto; `git push`; `git add -A`; `git stash` |
 
+### Passagens do papel E (uma linha por subagente, com o que cada um reabriu)
+
+| passagem | data | id | o que leu do fonte, e o que produziu |
+|---|---|---|---|
+| E (travessia inicial) | 2026-09-05 | subagente-E da janela `1246816c-…` | a travessia integral abaixo; a espec, o ledger, a vassoura, as fixtures da 1.ª geração |
+| E (Q8 · Q9 · Q10) | 2026-09-06 | idem | o laço das varreduras, a construção do conjunto *Local*, o instante do centro do gancho |
+| E (Q11 · Q12 · Q14 · Q15 · Q16 · Q17) | 2026-09-06/07 | idem | o aperto, a normal e o factor de escala do empurrar, a rede de restrições, a ordem de criação, o censo do esticão, o instante das normais |
+| **E (Q18)** | **2026-09-07** | **subagente-E da janela `1246816c-63cf-414b-842d-663a8baa86ca`** | **o par de factores por vértice (o das varreduras e o da integração) lado a lado; a lei incremental da normal por vértice, na árvore de aceleração do desenho; produziu a EMENDA Q18 (§4.2-quater · §4.6 linha 4 · §5.2 · §5.4 · §5.4-bis · §10.12–§10.14 · §11 · gates 43-47) e CINCO fixtures novas** |
+
 ### Cobertura da travessia (§3.E) — 2026-09-05, por shell (`cat`/`sed`/`grep`), fonte v5.2.0
 
 | área | ficheiros (caminho relativo a `source/blender/` ou `scripts/`) | linhas | lido |
@@ -1537,6 +1546,90 @@ seguinte), está escrito no cabeçalho da espec, e **tem controlo**: apagar a li
 faz o instrumento acusá-la.
 
 **Veredicto: ATESTADO.** A emenda Q17 pode ser lida e implementada pela janela-mãe.
+
+### Q18 — o par de `φ`, o PESO da normal, o traço LONGO e os dumps de ESFERA (perguntas do I de 2026-09-07; resposta no mesmo dia, com corridas NOVAS do oráculo)
+
+**As quatro perguntas e o veredito, um a um.**
+
+**Q18.1 — o par de `φ`. CONFIRMADO no fonte, lado a lado.** Os **três** sítios em que a banda podia
+entrar num passo: o factor das cinco varreduras de relaxação **traz** a banda; o termo de aceleração
+da integração **não**; o termo de velocidade **traz**, e é a única vez que ela entra ali. Confirmada
+também a **ordem**, que é o que faz a diferença: o factor chega à integração sem banda, o termo de
+aceleração consome-o assim, depois ele é escalado pelo amortecimento, **depois** disso pela banda, e
+só então escala a velocidade. E nos dois sítios a banda é avaliada na posição de **repouso**, e só
+quando há traço activo. ⇒ espec §5.2 (o factor passa a chamar-se `φ_relax`), §5.4 (`φ_int`) e
+**§5.4-bis nova**, que põe o par numa tabela só. ⭐ A medição do I (`3,9·10⁻³ → < 5·10⁻⁶` no
+controlo) é a leitura certa da lei, e o censo da invisibilidade dela confere: *Global* dá `1² = 1`,
+o suporte da força e o da banda **não se tocam**, e o anel onde ela morde tem deslocamento de ordem
+`10⁻³`.
+
+**Q18.2 — o peso da soma por face. CONFIRMADO uniforme, e o mecanismo é maior que a pergunta.**
+⭐⭐⭐ O programa tem **DUAS** leis de normal por vértice. A que corre no caminho da escultura — o
+refrescamento incremental, sempre que a estrutura de normais já está preenchida e só alguns pedaços
+mudaram — é a soma **sem peso** de normais de face **unitárias**, normalizada no fim, com um eixo
+fixo do objecto como resposta quando a soma tem comprimento zero: isto está **confirmado no fonte**.
+A outra, a reconstrução total, corre na primeira avaliação de uma malha que ainda não foi
+esculpida, e é **ponderada pelo ângulo do canto**: ⛔ o código dela **não vive na parte do fonte que
+esta linha tem**, e por isso ela está estabelecida por **medição** (o mesmo estatuto do empate de
+eixos da Q15).
+⚠️ **A medição do I não estava errada — estava a medir a malha certa pela via indirecta.** Medidas
+as três candidatas contra o vector de normais que o próprio programa guarda **para aquela mesma
+malha**, elas concordam a `0,000°` de mediana e `0,31°` de máximo ⇒ *a fixture de dois traços não
+separa nada; o que a fez responder foi a lei estar certa.* A régua que decide é perguntar as
+normais ao programa sobre malhas em que os três pesos discordam por **graus** (11 corridas, §10.14):
+esculpida e refrescada dá **uniforme** a `mediana 0,000°` e `máx ≤ 0,027°` contra `0,022`–`0,073` de
+mediana das outras duas; malha nunca esculpida com vértices deslocados ao acaso dá **ângulo** a
+`máx ≤ 0,027°` contra `17°`–`116°` das outras.
+⛔ **Consequência que se lê ao contrário com facilidade:** as fixtures de **esfera** são primeiros
+traços sobre malha nunca esculpida ⇒ elas trazem a lei do **ângulo**; o 2.º traço da fixture de dois
+traços traz a lei **sem peso**. *O corpus contém as duas, e não é o pincel que escolhe.* O preço de
+usar a lei sem peso em toda a parte está medido e é `0,021°` de mediana na esfera em repouso
+(`1,3·10⁻⁴` sobre um deslocamento de `0,25`), duas ordens abaixo da barra. ⇒ espec **§4.2-quater
+nova**, §4.6 linha 4 **fechada**, §11 (duas linhas novas), gate **44**.
+
+**Q18.3 — o traço LONGO. GRAVADO, e a premissa REFUTADA.** Duas fixtures novas de `36` passos sobre
+o mesmo caminho de `0,6` das `_origem`, com `.deformado` **e** por passo. ⛔ **Em área *Local* um
+traço mais longo não é mais fundo**: `0,94 R` (12 passos) · `0,71` (24) · `0,76` (36) · `0,75` (48),
+e mudar o comprimento do caminho não o move (`0,66`–`0,76 R`). Mecanismo: a área *Local* é uma bola
+fixa de `3,5 R` no pen-down e a banda leva o factor a zero na borda ⇒ a folha satura. ⭐⭐ **O regime
+de `4,8 R` que o gate de artefacto do produto corre existe e é um facto da ÁREA**: o mesmo traço em
+*Global* chega a **`5,41 R`** e não assenta. ⇒ isso é também um **diagnóstico para o lado limpo**:
+um gate que corra um traço *Local* de ~35 eventos e chegue a `4,8 R` está a medir uma cena que o
+alvo não produz. ⇒ espec **§10.12 nova**, §11, gate **45**.
+
+**Q18.4 — os três dumps de ESFERA por passo. GRAVADOS, com uma advertência nova que muda como se lê
+o corpus.** ⛔⛔⛔ **Na esfera, duas corridas da mesma configuração não dão a mesma saída.** Quatro
+realizações de cada uma: plano `0,000000` (12 **e** 36 passos, nas duas áreas); esfera `0,027`
+(agarrar) · `0,037` (gancho) · `0,028` (expandir) — `11 %`, `22 %` e `60 %` do sinal. A divergência
+nasce no **1.º passo simulado** (`4,3·10⁻⁴`), amplifica `~65×`, e é **difusa** (`481` de `631`
+vértices movidos já diferem ali). ⛔ Quatro explicações medidas e **refutadas**: concorrência (uma só
+linha de execução dá `0,036`), semeadura do sobrevoo (`0,041`), pré-traço (`0,038`), desenho forçado
+da vista (`0,033`). ⇒ os três ficheiros levam a **banda de realização por passo** no `.rastreio` e
+três colunas de honestidade no cabeçalho; e a prova de que o instrumento continua válido é que
+`prova_do_fatiamento ≈ banda da corrida inteira ≈ desvio ao `.deformado` do repo` nos três
+(`0,0177`/`0,0200`/`0,0189` · `0,0365`/`0,0362`/`0,0340` · `0,0219`/`0,0218`/`0,0212`) — *se o
+prefixo não fosse o passo `k`, a 1.ª coluna seria maior que a 2.ª*. ⚠️ **A lotaria NÃO explica os
+erros abertos** (`0,182`/`0,255`/`0,581` são `5×` a `26×` a banda), mas põe um **chão** para
+qualquer barra de esfera. ⇒ espec **§10.13 nova**, §10.11 (a nota do que faltava gravar), §11,
+gates **46** e **47**.
+
+**A corrida NOVA do oráculo: 304 execuções do binário 5.2.1**, mais 11 de leitura de normais —
+113 que viraram fixture (74 dos dois traços longos por passo + 39 da 1.ª tentativa de esfera),
+162 do censo de realização e da banda por passo, 29 de sonda (as varreduras de contagem de passos e
+de modo, os controlos de uma linha de execução / semeadura / pré-traço / desenho forçado). Malhas
+**nossas**, geradas pelo mesmo harness e pela mesma lei das outras fixtures; ⛔ nenhum activo do alvo.
+
+**Entregue:** espec §4.2-quater (nova) · §4.6 linha 4 (fechada) · §5.2 · §5.4 · §5.4-bis (nova) ·
+§10 (contagem `76 → 78`) · §10.11 (nota) · §10.12 · §10.13 · §10.14 (novas) · §11 (quatro linhas) ·
+§14 gates **43-47**.
+**Fixtures:** `+2` `.deformado` (`78`) e `+5` por passo (`26`); `indice.json` regenerado (78/78);
+README das fixtures com a secção nova das cinco, a errata da célula do peso, e as contagens
+actualizadas (`24` de `78`, `17` não-*Local*, `26`/`22` por passo).
+**Verificador:** `verifica_traco.py` **verde sobre os 78** (`78 OK`, `0 BAD`, exit `0`).
+**Sweep:** verde sobre a espec emendada, a pasta inteira das fixtures, o INBOX, os dois READMEs e
+este ledger (menos os hits pré-existentes de 2026-09-05 já registados acima).
+**Auditoria §4.2 (R-pré): ⏳ POR CORRER.** ⛔ Enquanto ela não estiver no cabeçalho da espec, a
+janela-mãe **não lê** a emenda Q18 (§3.R).
 
 ## Fechamento R
 

@@ -693,6 +693,28 @@
   }
  ],
  [
+  "plano_arrastar_radial_global_origem_36passos",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "global",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 36,
+   "passos_com_cursor_parado": 0,
+   "movidos": 4225,
+   "max_deslocamento": 1.893192
+  }
+ ],
+ [
   "plano_arrastar_radial_local",
   {
    "superficie": "plano",
@@ -900,6 +922,28 @@
    "passos": 12,
    "movidos": 2145,
    "max_deslocamento": 0.329649
+  }
+ ],
+ [
+  "plano_arrastar_radial_local_origem_36passos",
+  {
+   "superficie": "plano",
+   "modo": "arrastar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 36,
+   "passos_com_cursor_parado": 0,
+   "movidos": 2145,
+   "max_deslocamento": 0.267205
   }
  ],
  [

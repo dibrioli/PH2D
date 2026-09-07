@@ -41,6 +41,20 @@ impl BodyCtx<'_> {
                 y,
             );
         }
+        // ⭐⭐⭐ **Promover uma CÓPIA faz uma versão nova do prefab** — o mesmo verbo e o mesmo id
+        // do botão acima, com o rótulo a dizer o que ele faz **neste** sujeito. O menu da
+        // Hierarquia já o oferecia (a tabela dele é plana); aqui ele não era pintado, e o artista
+        // que vive no painel não tinha como criar uma variante.
+        //
+        // ⚠️ **A condição vem do PRODUTOR** (`can_make_variant`), e não de `is_instance`: só o
+        // modelo geral tem esta lei — ver o doc daquele campo.
+        if c.can_make_variant {
+            y = self.action_button(
+                ids::VECTOR_COMPONENT_CREATE,
+                tr("panel.vector.component.make_variant"),
+                y,
+            );
+        }
         if c.is_main {
             y = self.action_button(
                 ids::VECTOR_COMPONENT_PLACE,

@@ -63,6 +63,14 @@ pub struct ComponentState {
     pub has_overrides: bool,
     /// O mestre desta instância **não resolve** — o readout de órfã.
     pub main_missing: bool,
+    /// ⭐⭐⭐ **Esta cópia pode virar uma VERSÃO NOVA do prefab** (report do Enio, 2026-09-06:
+    /// *«Make Prefab só aparece no menu da hierarchy e não no painel vector»*).
+    ///
+    /// ⚠️ **Não é derivável de `is_instance` aqui dentro, e a razão é o OUTRO motor:** promover uma
+    /// cópia a variante é lei do modelo geral (ADR-0164), e o produtor vetorial não a tem. Um
+    /// painel que a inferisse pintaria, no motor velho, um botão cujo dreno faz outra coisa.
+    /// *Quem sabe o que o gesto faz é o produtor; o painel oferece o que lhe é publicado.*
+    pub can_make_variant: bool,
     /// O conta-gotas do *Swap* está ARMADO (o próximo clique no canvas escolhe o mestre).
     ///
     /// ⚠️ Sem isto o botão pareceria não ter feito nada: um pick modal que não se anuncia é

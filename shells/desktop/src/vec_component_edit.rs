@@ -110,6 +110,10 @@ pub(crate) fn selected_component(
         is_main: sim.world().get::<VecComponentMain>(e).is_some(),
         is_instance: inst.is_some(),
         has_overrides: inst.is_some_and(|i| !i.overrides.is_empty()),
+        // ⛔ **O motor velho não tem variantes de cópia.** Promover uma instância aqui chamaria o
+        // `create_main` sobre ela, que é outra coisa — o botão nasceria vivo e a fazer o que o
+        // rótulo não diz. *A lei é do modelo geral (ADR-0164), e por isso a resposta é `false`.*
+        can_make_variant: false,
         swap_armed,
         // ⚠️ A órfã é decidida pelo PRODUTOR, e o painel lê a resposta dele. Re-perguntar aqui
         // (*"o mestre existe?"*) seria a segunda resposta, e ela divergiria no frame em que o

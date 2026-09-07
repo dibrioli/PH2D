@@ -199,6 +199,103 @@ fn instantiating_from_the_copy_adds_another_copy() {
     );
 }
 
+/// ⛔⛔⛔ **A secção oferece FAZER UMA VERSÃO NOVA a partir de uma cópia** (report do Enio,
+/// 2026-09-06: *«Make Prefab só aparece no menu da hierarchy e não no painel vector»*).
+///
+/// O menu da Hierarquia já o oferecia porque a **tabela dele é plana** — ela não sabe o que a linha
+/// é. O painel sabe, e a regra que ele herdou do motor vetorial dizia *«uma cópia não é candidata a
+/// promover»*, que ali era verdade: lá não há variantes. ⇒ *a terceira vez, nesta secção, em que a
+/// lente do painel era mais estreita que a do verbo.*
+///
+/// **Mutação que deve sangrar:** `can_make_variant: link.is_some()` a virar `false`.
+#[test]
+fn the_section_offers_making_a_variant_out_of_a_copy() {
+    let (mut sim, r, mut map, id, e) = scene();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    assert!(
+        !state_of(&mut sim, &map, &[id], false)
+            .expect("a seccao existe")
+            .can_make_variant,
+        "uma forma comum nao e' candidata a VERSAO de nada"
+    );
+    let (_, out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
+    let copy = out.map(Entity::from_bits).expect("a copia");
+    let copy_id: VecPathId = 2;
+    map.insert(copy_id, copy.to_bits());
+    assert!(
+        state_of(&mut sim, &map, &[copy_id], false)
+            .expect("a seccao existe sobre a copia")
+            .can_make_variant,
+        "o painel nao oferece fazer uma versao nova a partir da copia — o gesto so' existe no menu"
+    );
+}
+
+/// ⭐⭐ **E o botão não é decoração: promover a cópia dá uma VARIANTE de verdade.**
+///
+/// Uma variante é `MasterRoot` **e** `InstanceOf` ao mesmo tempo — ela segue a base *e* é a receita
+/// das cópias dela. *Sem a segunda metade isto seria apenas um segundo prefab solto.*
+#[test]
+fn promoting_a_copy_gives_a_variant_that_still_follows_its_base() {
+    let (mut sim, r, _map, _id, e) = scene();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    let (_, out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
+    let copy = out.map(Entity::from_bits).expect("a copia");
+    let base = master_id(&mut sim, copy).expect("o elo da copia");
+
+    let (changed, out) = run(ComponentEdit::Create, &mut sim, &r, copy, &mut toasts);
+
+    assert!(changed, "promover a copia nao fez nada");
+    assert!(
+        sim.world().get::<MasterRoot>(copy).is_some(),
+        "a copia nao virou receita"
+    );
+    assert_eq!(
+        sim.world()
+            .get::<ph2d_ecs::InstanceOf>(copy)
+            .map(|l| l.master),
+        Some(base),
+        "a versao nova deixou de seguir a base — isto e' um prefab solto, nao uma variante"
+    );
+    let mine = out.map(Entity::from_bits).expect("a copia da variante");
+    assert_ne!(mine, copy, "nao ficou copia nenhuma no lugar");
+}
+
+/// ⛔⛔⛔ **E ela não aterra EM CIMA da anterior** (report do Enio, 2026-09-06: *«instantiate não
+/// desloca a cópia, deixa exatamente sobre a outra»*).
+///
+/// # O mecanismo, que é o mesmo do botão que sumia
+///
+/// A cascata pergunta *«quantas cópias esta receita já tem?»* para saber de quanto afastar a nova.
+/// Ela lia o `StableId` da **linha clicada**, e desde que o *Make* move a selecção para a cópia, a
+/// linha clicada é uma **cópia** — cujas instâncias são **zero**. ⇒ `n = 0` e o passo saía nulo,
+/// **em silêncio**, sobre um verbo que fez tudo o resto certo.
+///
+/// ⚠️ **A linha estava certa quando foi escrita**: ela é anterior ao `master_subject`, quando o
+/// verbo só aceitava a receita. *Quem alarga a lente de um verbo tem de reconferir tudo o que lia o
+/// sujeito antigo.*
+///
+/// **Mutação que deve sangrar:** `cascade(sim, inst, <id de `entity`>, …)`.
+#[test]
+fn a_copy_instantiated_from_a_copy_does_not_land_on_top_of_it() {
+    let (mut sim, r, _map, _id, e) = scene();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    let (_, out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
+    let first = out.map(Entity::from_bits).expect("a 1a copia");
+    let (_, out) = run(ComponentEdit::Place, &mut sim, &r, first, &mut toasts);
+    let second = out.map(Entity::from_bits).expect("a 2a copia");
+
+    let at = |sim: &SimWorld, x: Entity| {
+        sim.world()
+            .get::<Transform>(x)
+            .map(|t| t.translation.x)
+            .expect("pose")
+    };
+    assert!(
+        (at(&sim, second) - at(&sim, first)).abs() > 1e-6,
+        "a copia nova nasceu exactamente sobre a anterior — o artista ve' UMA forma onde ha' duas"
+    );
+}
+
 /// ⭐⭐⭐ **PLACE põe uma cópia a mais, e ela é uma sub-árvore de ENTIDADES** — a diferença que o
 /// motor velho não tem (lá a cópia é um rectângulo de suporte com o desenho derivado).
 ///

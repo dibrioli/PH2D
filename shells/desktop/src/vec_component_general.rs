@@ -132,6 +132,12 @@ pub(crate) fn state_of(
         // pelo lado dele.
         main_missing: link
             .is_some_and(|l| crate::instance_verbs::entity_for_stable_id(sim, l.master).is_none()),
+        // ⭐⭐⭐ **Uma cópia pode virar uma VERSÃO NOVA do prefab** (report do Enio, 2026-09-06:
+        // *«Make Prefab só aparece no menu da hierarchy e não no painel vector»*). É o `Verb::Make`
+        // sobre uma cópia — a lei da F5 critério 2 —, e o menu da Hierarquia já o oferecia porque a
+        // tabela dele é PLANA. *A terceira vez, nesta secção, em que a lente do painel era mais
+        // estreita que a do verbo.*
+        can_make_variant: link.is_some(),
         swap_armed: pick_armed,
     })
 }

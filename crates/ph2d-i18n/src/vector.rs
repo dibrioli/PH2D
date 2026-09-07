@@ -86,6 +86,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.anchors.stretch" => "Stretch",
         "panel.vector.section.component" => "Prefab",
         "panel.vector.component.create" => "Make Prefab",
+        // ⭐ O MESMO verbo sobre uma CÓPIA faz uma versão nova do prefab — o rótulo diz o que ele
+        // faz neste sujeito, e o id do botão é o mesmo (ver `paint_components`).
+        "panel.vector.component.make_variant" => "Make Variant",
         "panel.vector.component.place" => "Instantiate",
         "panel.vector.component.detach" => "Detach from Prefab",
         "panel.vector.component.reset" => "Revert to Prefab",

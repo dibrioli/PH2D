@@ -443,7 +443,19 @@ pub(crate) fn drain(
             {
                 Ok(inst) => {
                     // ⭐ A cópia não aterra em cima do mestre nem das irmãs — ver [`cascade`].
-                    if let Some(id) = sim.world().get::<StableId>(entity).map(|s| s.0) {
+                    //
+                    // ⛔⛔⛔ **O id é o do SUJEITO, e não o da linha clicada** (report do Enio,
+                    // 2026-09-06: *«instantiate não desloca a cópia, deixa exatamente sobre a
+                    // outra»*). A cascata conta *quantas cópias esta receita já tem*; com o
+                    // `entity` a ser uma **cópia** — que é o caminho normal desde que o *Make*
+                    // move a selecção para ela — `instances_of` contava as instâncias **da
+                    // cópia**, que são **zero**, e o passo saía `0 × step`.
+                    //
+                    // ⚠️ **A linha estava certa quando foi escrita**, e envelheceu por baixo: ela
+                    // é anterior ao `master_subject`, quando o verbo só aceitava a receita. *Quem
+                    // alarga a lente de um verbo tem de reconferir tudo o que lia o sujeito
+                    // antigo* — e o resto deste braço já usa `subject`, só esta linha ficou.
+                    if let Some(id) = sim.world().get::<StableId>(subject).map(|s| s.0) {
                         cascade(sim, inst, id, place_step);
                     }
                     // ⭐ **A cópia que acabou de nascer é o que o artista quer na mão** — e é ela

@@ -164,6 +164,24 @@ fn each_verb_appears_only_where_it_makes_sense() {
     };
     assert!(rect_under(clean, ids::VECTOR_COMPONENT_DETACH).is_some());
     assert!(rect_under(clean, ids::VECTOR_COMPONENT_RESET).is_none());
+    // ⭐⭐⭐ **E o *Create* volta a aparecer sobre uma cópia quando o PRODUTOR o autoriza** (report
+    // do Enio, 2026-09-06). ⚠️ **As duas metades:** com `can_make_variant` o botão existe (é como
+    // se faz uma VERSÃO nova); sem ele — o motor vetorial, que não tem essa lei — ele continua
+    // ausente, e o caminho de omissão fica como estava. *Um painel que inferisse isto de
+    // `is_instance` pintaria, no motor velho, um botão cujo dreno faz outra coisa.*
+    assert!(
+        rect_under(clean, ids::VECTOR_COMPONENT_CREATE).is_none(),
+        "o Create apareceu sobre uma copia que o produtor NAO autorizou a virar versao"
+    );
+    let can_vary = ComponentState {
+        is_instance: true,
+        can_make_variant: true,
+        ..ComponentState::default()
+    };
+    assert!(
+        rect_under(can_vary, ids::VECTOR_COMPONENT_CREATE).is_some(),
+        "o gesto de fazer uma VERSAO nova nao tem botao no painel — ele so' existe no menu"
+    );
     clear();
 }
 

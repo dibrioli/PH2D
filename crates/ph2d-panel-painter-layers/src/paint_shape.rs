@@ -447,7 +447,7 @@ fn paint_shape_preview(
         1.0,
         resolve(ColorToken::Border, theme),
     );
-    y + ph + ph2d_tokens::block_gap_px()
+    y + ph + ph2d_tokens::control_gap_px()
 }
 
 /// The **Shape** ramp preview LUT (256-entry sRGB-straight RGBA, incl. the B&W filter), so the

@@ -443,6 +443,10 @@ fn paint_strip(
                 strip.muted,
                 ColorToken::Danger,
                 strip.mute_id,
+                ph2d_editor_core::widget::GroupCell {
+                    col: ph2d_editor_core::widget::GroupPos::Only,
+                    row: ph2d_editor_core::widget::GroupPos::Only,
+                },
                 scene,
                 text_system,
                 theme,
@@ -451,14 +455,15 @@ fn paint_strip(
             );
         }
         Some(solo_id) => {
-            let gap = Spacing::Xs.px();
-            let half = ((col_w - gap) * 0.5).max(1.0);
+            // ⭐ `M | S` é UM par (wave 20): as duas coisas que se fazem à audição de uma faixa.
+            let ms = ph2d_editor_core::widget::segment_rects(Rect::new(col_x, y, col_w, MUTE_H), 2);
             paint_toggle(
-                Rect::new(col_x, y, half, MUTE_H),
+                ms[0].0,
                 "M",
                 strip.muted,
                 ColorToken::Danger,
                 strip.mute_id,
+                ms[0].1,
                 scene,
                 text_system,
                 theme,
@@ -466,11 +471,12 @@ fn paint_strip(
                 hit_index,
             );
             paint_toggle(
-                Rect::new(col_x + half + gap, y, half, MUTE_H),
+                ms[1].0,
                 "S",
                 strip.soloed,
                 ColorToken::Warn,
                 solo_id,
+                ms[1].1,
                 scene,
                 text_system,
                 theme,

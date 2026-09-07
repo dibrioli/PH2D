@@ -66,7 +66,7 @@ pub(crate) fn paint_slider_chip_row(
         text_system,
         theme,
     );
-    y + used + ph2d_tokens::row_gap_px()
+    y + used + ph2d_tokens::control_gap_px()
 }
 
 /// A canonical checkbox row (box + label) driven by the brush snapshot. The id stays a `Button` in the

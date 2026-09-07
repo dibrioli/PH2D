@@ -165,7 +165,7 @@ pub(super) fn paint_jitter_card(
         brush.jitter_rotate,
     );
     let _ = iy;
-    y + card_h + ph2d_tokens::block_gap_px()
+    y + card_h + ph2d_tokens::control_gap_px()
 }
 
 /// A contagem de marcas do spray na pista `0..1` do slider — a INVERSA exata do mapeamento que o

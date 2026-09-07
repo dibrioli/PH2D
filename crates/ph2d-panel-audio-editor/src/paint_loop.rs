@@ -11,7 +11,7 @@
 //! export. The readout `(start, end)` seconds are published by the shell
 //! (`loop_state::set_loop_span`).
 
-use crate::paint::{ClippedHits, button, button_in_group};
+use crate::paint::{ClippedHits, button, button_in_group, buttons_block};
 use crate::{
     AEDIT_LOOP_BAKE, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD,
     AEDIT_MARK_DEL, AEDIT_SPLIT, loop_state,
@@ -126,7 +126,7 @@ pub(crate) fn paint_loop_section(
         theme,
         hit_index,
     );
-    y + row_h + ph2d_tokens::block_gap_px()
+    y + row_h + ph2d_tokens::control_gap_px()
 }
 
 /// The region readout: `1.20\u{2013}3.40s`, or `No loop` when unset.
@@ -151,36 +151,13 @@ pub(crate) fn paint_markers_section(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let mut y = y;
-    let gap = Spacing::Xs.px();
     let count = loop_state::marker_count();
 
-    // Add (at playhead) | Delete (nearest).
-    let seg = segment_rects(Rect::new(x, y, w, row_h), 2);
-    button_in_group(
-        seg[0].0,
-        "Add Marker",
-        loaded,
-        AEDIT_MARK_ADD,
-        seg[0].1,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    button_in_group(
-        seg[1].0,
-        "Delete",
-        count > 0,
-        AEDIT_MARK_DEL,
-        seg[1].1,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += row_h + gap;
-
+    // ⭐⭐ **Os três marcadores são UM corpo** (wave 20, o dono nomeou esta secção: *«na seção
+    //    Markers os botões podem ser agrupados pois se referem ao mesmo assunto»*). Antes eram
+    //    dois controlos: o par `Add | Delete` agrupado na horizontal, e o `Split` **fora** dele,
+    //    separado por um `y += row_h + gap` escrito à mão.
+    //
     // **Split at Markers** — cut the clip at every marker, and nothing else. It lives here and not
     // in Edit because the markers ARE the cuts: a session of N takes with N-1 markers between them
     // falls into N pieces you can then select, drag and stretch.
@@ -188,17 +165,20 @@ pub(crate) fn paint_markers_section(
     // It used to encode those pieces to disk and adopt them as a variation set — an emitting verb
     // wearing an edit verb's name. That is **Export Pieces** now, in Delivery, where emitting
     // lives.
-    button(
+    let y = buttons_block(
         Rect::new(x, y, w, row_h),
-        "Split at Markers",
-        loaded && count > 0,
-        AEDIT_SPLIT,
+        &[2, 1],
+        &[
+            ("Add Marker", loaded, AEDIT_MARK_ADD),
+            ("Delete", count > 0, AEDIT_MARK_DEL),
+            ("Split at Markers", loaded && count > 0, AEDIT_SPLIT),
+        ],
         scene,
         text_system,
         theme,
         hit_index,
     );
-    y + row_h + ph2d_tokens::block_gap_px()
+    y + ph2d_tokens::control_gap_px()
 }
 
 /// The Markers readout, for the section header: the panel says how many cue points the

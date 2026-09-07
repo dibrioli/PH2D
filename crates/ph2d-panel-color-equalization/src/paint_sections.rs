@@ -20,7 +20,7 @@ use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, Dropdown, DropdownOption, paint_button, paint_dropdown_chip,
-    paint_slider_with_chip_layout_adaptive,
+    paint_slider_with_chip_layout_adaptive, segment_rects,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -444,7 +444,6 @@ pub(crate) fn paint_apply_cta_section(
     layout: SectionLayout,
     y_in: f32,
 ) -> f32 {
-    let btn_gap = Spacing::Sm.px();
     let reset_rect = Rect::new(layout.inner_x, y_in, layout.inner_w, layout.row_h);
     let reset_state = store.button_visual(ids::CEQ_RESET);
     let reset = Button::new(ids::CEQ_RESET, "Reset to Defaults")
@@ -454,26 +453,25 @@ pub(crate) fn paint_apply_cta_section(
     hit_index.register(ids::CEQ_RESET, reset_rect);
     let mut y = y_in + layout.row_h + layout.row_gap;
 
-    let half_btn = ((layout.inner_w - btn_gap) * 0.5).max(0.0);
-    let cancel_rect = Rect::new(layout.inner_x, y, half_btn, layout.row_h);
+    // ⭐⭐ `Cancel | Apply` é UM par (wave 20) — ver o irmão no `ph2d-panel-padding`.
+    let seg = segment_rects(
+        Rect::new(layout.inner_x, y, layout.inner_w, layout.row_h),
+        2,
+    );
     let cancel_state = store.button_visual(ids::CEQ_CANCEL);
     let cancel = Button::new(ids::CEQ_CANCEL, "Cancel")
         .kind(ButtonKind::Default)
-        .visual(cancel_state);
-    paint_button(&cancel, cancel_rect, scene, text_system, theme);
-    hit_index.register(ids::CEQ_CANCEL, cancel_rect);
-    let apply_rect = Rect::new(
-        layout.inner_x + half_btn + btn_gap,
-        y,
-        half_btn,
-        layout.row_h,
-    );
+        .visual(cancel_state)
+        .in_group(seg[0].1);
+    paint_button(&cancel, seg[0].0, scene, text_system, theme);
+    hit_index.register(ids::CEQ_CANCEL, seg[0].0);
     let apply_state = store.button_visual(ids::CEQ_APPLY);
     let apply = Button::new(ids::CEQ_APPLY, "Apply")
         .kind(ButtonKind::Accent)
-        .visual(apply_state);
-    paint_button(&apply, apply_rect, scene, text_system, theme);
-    hit_index.register(ids::CEQ_APPLY, apply_rect);
+        .visual(apply_state)
+        .in_group(seg[1].1);
+    paint_button(&apply, seg[1].0, scene, text_system, theme);
+    hit_index.register(ids::CEQ_APPLY, seg[1].0);
     y += layout.row_h;
     y
 }

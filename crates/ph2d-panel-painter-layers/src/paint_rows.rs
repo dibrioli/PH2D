@@ -365,7 +365,7 @@ fn paint_layer_row(
         paint_relief_line(ctx, theme, layer, x, content_right, depth_y, font, cell_gap);
     }
 
-    y + row_total_h + ph2d_tokens::block_gap_px()
+    y + row_total_h + ph2d_tokens::control_gap_px()
 }
 
 /// Live drop indicator for an in-progress layer drag, painted on top of the

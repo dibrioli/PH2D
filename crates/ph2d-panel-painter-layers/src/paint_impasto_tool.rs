@@ -79,5 +79,5 @@ pub(crate) fn paint_tool_card(
             hit_index,
         );
     }
-    y + card_h + ph2d_tokens::block_gap_px()
+    y + card_h + ph2d_tokens::control_gap_px()
 }

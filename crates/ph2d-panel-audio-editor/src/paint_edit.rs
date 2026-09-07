@@ -121,7 +121,7 @@ fn paint_toolbar(
         theme,
         hit_index,
     );
-    y + grid_height(3, ROW_H) + ph2d_tokens::block_gap_px()
+    y + grid_height(3, ROW_H) + ph2d_tokens::control_gap_px()
 }
 
 /// The Edit ops block: the toolbar (tools · clipboard · structure), then whole-clip
@@ -251,5 +251,5 @@ pub(crate) fn paint_edit_section(
     // since `HitIndex::hit` walks back-to-front, the copy up here was a ghost: painted,
     // and unclickable. Enio spotted the duplicate on sight (2026-07-12);
     // `no_control_is_painted_twice` keeps it spotted.
-    y + ph2d_tokens::block_gap_px()
+    y + ph2d_tokens::control_gap_px()
 }

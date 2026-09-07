@@ -141,7 +141,7 @@ fn filter_row(
         store,
         hit_index,
     );
-    y + used + ph2d_tokens::row_gap_px()
+    y + used + ph2d_tokens::control_gap_px()
 }
 
 /// The **Depth** row (Height family). Paint-loads, signed: the sign is the tool. Positive Layer lays a coat,
@@ -175,7 +175,7 @@ fn depth_row(
         text_system,
         theme,
     );
-    y + used + ph2d_tokens::row_gap_px()
+    y + used + ph2d_tokens::control_gap_px()
 }
 
 /// The **Angle** row (Chisel only). Degrees, and the bottom of the track is not a dead zone — at 0° the
@@ -209,7 +209,7 @@ fn angle_row(
         text_system,
         theme,
     );
-    y + used + ph2d_tokens::row_gap_px()
+    y + used + ph2d_tokens::control_gap_px()
 }
 
 /// The **Smoothness** row (Inflate only) — the Radius knob for the ball dilation's hard edge (Enio
@@ -244,7 +244,7 @@ fn smooth_row(
         text_system,
         theme,
     );
-    y + used + ph2d_tokens::row_gap_px()
+    y + used + ph2d_tokens::control_gap_px()
 }
 
 /// The **Offset** row (plane family). The chip shows **paint-loads** — signed, because the sign is the whole
@@ -285,7 +285,7 @@ fn offset_row(
         text_system,
         theme,
     );
-    y + used + ph2d_tokens::row_gap_px()
+    y + used + ph2d_tokens::control_gap_px()
 }
 
 /// The **Radius** row. The slider rides the usual `0..1` track; the chip shows the number the artist
@@ -321,5 +321,5 @@ fn radius_row(
         text_system,
         theme,
     );
-    y + used + ph2d_tokens::row_gap_px()
+    y + used + ph2d_tokens::control_gap_px()
 }

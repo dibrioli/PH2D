@@ -69,7 +69,9 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
     let scrollbar_reserve = SCROLLBAR_W + Spacing::Sm.px();
     let inner_w = (rect.w - PANEL_HEAD_PAD * 2.0 - scrollbar_reserve).max(0.0);
     let row_h = ROW_H_PX;
-    let row_gap = Spacing::Xs.px();
+    // ⚠️ Era `Spacing::Xs.px()` a' mao — uma copia do vao de controlo escondida atras de um
+    //    CAMPO, que nenhuma varredura por operador ve^ (a licao da wave 8, 4.ª ocorrencia).
+    let row_gap = ph2d_tokens::control_gap_px();
     let chip_w = NUMBER_INPUT_MIN_W_PX;
     let font = TypeToken::Base.px();
 

@@ -15,9 +15,9 @@
 //! nenhum com as secções — só o `y` que já vinha a descer.
 
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
+use ph2d_editor_core::widget::{Button, ButtonKind, paint_button, segment_rects};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{Spacing, Theme};
+use ph2d_tokens::Theme;
 
 use crate::ids;
 
@@ -45,7 +45,6 @@ pub(crate) fn paint_action_rows(
 ) -> f32 {
     let mut y = y_in;
     // ── Reset (ghost, full width) row ──────────────────────────────
-    let btn_gap = Spacing::Sm.px();
     let reset_rect = Rect::new(inner_x, y, inner_w, row_h);
     let reset_state = store.button_visual(ids::EQS_RESET);
     let reset = Button::new(ids::EQS_RESET, "Reset to Defaults")
@@ -56,21 +55,25 @@ pub(crate) fn paint_action_rows(
     y += row_h + row_gap;
 
     // ── Cancel + Apply row ─────────────────────────────────────────
-    let half_btn = ((inner_w - btn_gap) * 0.5).max(0.0);
-    let cancel_rect = Rect::new(inner_x, y, half_btn, row_h);
+    // ⭐⭐ **`Cancel | Apply` é UM par** (wave 20): a mesma pergunta — *o que fazer com a edição
+    //    pendente*. ⚠️ O editor de áudio já os juntava (`button_in_group`) e estas quatro
+    //    ferramentas de imagem desenhavam-nos separados, porque o `Button` não conhecia a lei do
+    //    grupo e o chip segmentado conhecia. Hoje conhece.
+    let seg = segment_rects(Rect::new(inner_x, y, inner_w, row_h), 2);
     let cancel_state = store.button_visual(ids::EQS_CANCEL);
     let cancel = Button::new(ids::EQS_CANCEL, "Cancel")
         .kind(ButtonKind::Default)
-        .visual(cancel_state);
-    paint_button(&cancel, cancel_rect, scene, text_system, theme);
-    hit_index.register(ids::EQS_CANCEL, cancel_rect);
-    let apply_rect = Rect::new(inner_x + half_btn + btn_gap, y, half_btn, row_h);
+        .visual(cancel_state)
+        .in_group(seg[0].1);
+    paint_button(&cancel, seg[0].0, scene, text_system, theme);
+    hit_index.register(ids::EQS_CANCEL, seg[0].0);
     let apply_state = store.button_visual(ids::EQS_APPLY);
     let apply = Button::new(ids::EQS_APPLY, "Apply")
         .kind(ButtonKind::Accent)
-        .visual(apply_state);
-    paint_button(&apply, apply_rect, scene, text_system, theme);
-    hit_index.register(ids::EQS_APPLY, apply_rect);
+        .visual(apply_state)
+        .in_group(seg[1].1);
+    paint_button(&apply, seg[1].0, scene, text_system, theme);
+    hit_index.register(ids::EQS_APPLY, seg[1].0);
     y += row_h;
     y
 }

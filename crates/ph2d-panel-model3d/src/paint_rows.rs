@@ -161,7 +161,7 @@ pub(crate) fn paint_row(
         text_system,
         theme,
     );
-    y + used + ph2d_tokens::row_gap_px()
+    y + used + ph2d_tokens::control_gap_px()
 }
 
 /// ⭐ **Uma linha como FACTO**: o rótulo e o número, em texto apagado, sem controle nenhum.
@@ -225,7 +225,7 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
         store,
         hit_index,
     );
-    y + used.max(ROW_H_PX) + ph2d_tokens::row_gap_px()
+    y + used.max(ROW_H_PX) + ph2d_tokens::control_gap_px()
 }
 
 fn paint_fact(ctx: &mut PaintCtx, row: &ParamRow, x: f32, w: f32, y: f32) -> f32 {

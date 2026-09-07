@@ -1222,6 +1222,94 @@ secção tem hoje o nome dele. *Renomear não move um pixel — move quem respon
 **Portão:** `13 069` testes / `0` falhados; clippy `--all-targets -D warnings` limpo na **workspace
 inteira**.
 
+### 7.23 — ✅ WAVE 20 (2026-09-07): o GRUPO chega aos botões soltos, e o ritmo interno é UM número
+
+**Report do dono**, com três fotos: *«vários grupos de botões em vários painéis (flip, Audio
+Editor, etc) ainda estão sem seus grupos de botões ajuntados no novo formato. Tudo o que puder for
+ajuntado, ajunte. Apenas quando o grupo for nitidamente de função diferente é que deve permanecer
+grupos afastados. Já na seção Markers os botões podem ser agrupados pois se referem ao mesmo
+assunto.»* — mais: *«entre grupos de botões temos um espaçamento, entre sliders outro espaçamento.
+Para ambos vamos colocar o padrão de espaçamento de 3 px».*
+
+#### Parte B — ⭐ O `3 px` dele é EXACTAMENTE o número do modelo
+
+`GridContainer.v_separation = round(widget_margin.y − 2)` = `(4 + 1) − 2` = **3**
+(`theme_modern.cpp:983`, com `widget_margin.y = increased_margin + 1` em `:286`). O corpo de um
+painel desta casa **é** uma grelha de controlos, e era a constante da grelha que faltava. *Ele
+chegou ao número pelo olho; eu fui buscar a derivação.*
+
+⛔⛔ **Isto FUNDE duas portas que a wave 19 separou — um dia antes — e o motivo não é o veredito do
+dono: é a PREMISSA da 19 ter dissolvido.** Aquela wave defendeu um `block_gap` (6) maior que o
+`row_gap` (4) assim: *«a fronteira de um bloco tem de se ler mais que a fronteira entre duas linhas
+DELE»*. Isso só vale enquanto as linhas de um bloco distam o vão de linha — e **a parte A desta
+wave junta os botões em grupos, onde as peças distam um fio de 1 px**. Com o interior a `1`, uma
+fronteira a `3` lê-se com folga, e o degrau do meio deixa de se pagar. ⇒ §0.0: *quem muda o
+substrato tem de reconferir a nota que dependia dele.*
+
+A escada fica com **três** degraus, cada um uma constante do Godot Modern:
+
+| pergunta | porta | valor | derivação |
+|---|---|---|---|
+| duas linhas de uma LISTA | `list_row_gap_px` | 1 | `Tree.v_separation` |
+| dois CONTROLOS de uma secção | **`control_gap_px`** | **3** | `GridContainer.v_separation` |
+| dois CARTÕES de secção | `section_gap_px` | 8 | `Separator separation` |
+
+⚠️ **O nome é `control_gap` e não `row_gap`, de propósito:** o antigo descrevia uma população mais
+estreita do que a que o chamava — e é exactamente assim que um `block_gap` nasce ao lado dele.
+*Um nome que só cobre metade dos leitores convida o segundo número.* **95 sítios** renomeados.
+
+#### Parte A — o que estava ajuntado e o que não estava
+
+| painel | o que era | o que passou a ser |
+|---|---|---|
+| **Flip · Mode** | três controlos (`3` + `3` + `2`) com vão entre eles | **um corpo** de 8 peças, `3·3·2` |
+| **Flip · Sculpt Brush** | dois controlos de 4 | **um corpo**, `4·4` |
+| **Flip · Self Overlap / Airbrush** | dois chips soltos | **um par**, `1·1` |
+| **Áudio · Markers** *(o dono nomeou-a)* | `Add | Delete` junto **+** `Split` fora | **um corpo**, `2·1` |
+| **Áudio · presets** | `Apply Save Load` com vão, largura dividida à mão | **um corpo** de 3 |
+| **Áudio · commit** | `Bypass` **+** `Apply | Cancel` | **um corpo**, o toggle encosta na fileira |
+| **Áudio · Variations** | quatro controlos | **um corpo**, `2·2·1·2` |
+| **Mixer · M / S** | dois interruptores com vão | **um par** |
+| **4 ferramentas de imagem + upscale** | `Cancel | Apply` com vão | **um par**, nas cinco |
+| **Tokens** | duas ordens com vão | **um par** |
+
+⚠️ **E o Flip reimplementava a disposição inteira:** largura dividida por `N`, `Spacing::Sm` de vão
+e o botão de quatro quinas — enquanto a porta existia desde a wave 10. *Uma cópia da disposição não
+se lê como cópia: lê-se como um painel que ainda não foi convertido.* O painel tinha ainda o
+**próprio vão de linha atrás de um CAMPO** (`row_gap: Spacing::Xs.px()`), a 4.ª ocorrência da
+lição da wave 8.
+
+#### ⭐⭐⭐ A causa dos dois dialectos era um WIDGET que não conhecia a lei
+
+O chip segmentado sabia a lei do grupo desde a wave 10; o **`Button` não**. Por isso o editor de
+áudio juntava `Apply | Cancel` e **cinco** ferramentas de imagem desenhavam `Cancel | Apply`
+separados — o mesmo par, dois idiomas, escolhidos pelo widget e não pelo desenho. ⇒ `Button::cell`
+(neutro `Only`, **byte-idêntico** para os ~100 botões soltos) e o mesmo para o interruptor do mixer.
+*Uma lei que só metade dos widgets conhece produz dois dialectos no mesmo aplicativo.*
+
+#### O que os gates apanharam
+
+- ⭐ **O censo achou QUATRO sítios que eu não tinha visto** (mixer, color-equalization, tokens,
+  upscale) — a conversão foi feita pela lista que eu li, o censo varreu a árvore.
+- ⛔ **Duas isenções nasceram OBSOLETAS**: escrevi-as a partir do que o código era **antes** das
+  minhas próprias conversões. A metade de obsolescência acusou-as na primeira corrida.
+- ⚠️ **O gate de geometria nasceu com a fixtura errada:** um `Button` de tipo `Default` num tema
+  moderno é **fantasma** — não pinta fundo nem moldura —, e a régua leu `0` segmentos. *Uma régua
+  de geometria precisa de uma fixtura que emita geometria*; o piso disse-o em voz alta.
+- ⚠️⚠️ **O `#[allow]` mudou de dono outra vez** (2.ª vez em três waves): a função nova entrou entre
+  o atributo e a função a que ele pertencia, em **dois** ficheiros. Só o *duplicado* é que o clippy
+  vê.
+
+| prova de mutação | resultado |
+|---|---|
+| o `Button` esquece a célula do grupo | ✅ morreu |
+| uma ferramenta volta a dispor a fileira à mão | ✅ morreu |
+| o controlo passa a valer o mesmo que a secção | ✅ morreu |
+
+**Portão:** `13 072` testes / `0` falhados (a única vermelha foi a flake conhecida
+`ph2d-timeline::nesting_clock`, **3 de 3 verde sozinha** com `load 36` impresso ao lado); clippy
+`--all-targets -D warnings` limpo na workspace inteira.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

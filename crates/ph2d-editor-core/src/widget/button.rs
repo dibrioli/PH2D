@@ -10,7 +10,7 @@
 //! discrete `Border` outline (see [`Button::border_color`]).
 
 use crate::icons::IconId;
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, stroke_rounded_rect};
+use crate::paint::{paint_icon, paint_text_centered, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -60,6 +60,15 @@ pub struct Button {
     /// ⚠️ **Campo com NEUTRO** (`1.0`), o molde do `SkinParam` e dos canais do `KernelResolver`:
     /// quem não o define não sabe que ele existe, e pinta o que pintava antes.
     pub hover_t: f32,
+    /// ⭐⭐⭐ **ONDE este botão está no grupo dele** (wave 20). Neutro = [`GroupPos::Only`], que
+    /// arredonda os quatro cantos — quem não o define pinta o que pintava antes, ao bit.
+    ///
+    /// ⚠️ **A lei do grupo já vivia no chip segmentado desde a wave 10, e não no BOTÃO** — e é por
+    /// isso que o editor de áudio junta `Apply | Cancel` e as quatro ferramentas de imagem
+    /// desenham `Cancel | Apply` **separados**: o mesmo par, dois idiomas, porque um deles usa o
+    /// widget que sabia a lei e o outro o que não sabia. *Uma lei que só metade dos widgets
+    /// conhece produz dois dialectos no mesmo aplicativo.*
+    pub cell: crate::widget::GroupCell,
 }
 
 impl Button {
@@ -70,7 +79,18 @@ impl Button {
             state: ButtonState::Normal,
             kind: ButtonKind::Default,
             hover_t: 1.0,
+            cell: crate::widget::GroupCell {
+                col: crate::widget::GroupPos::Only,
+                row: crate::widget::GroupPos::Only,
+            },
         }
+    }
+
+    /// ⭐ **Este botão é uma PEÇA de um grupo** — só as bordas de fora do grupo arredondam.
+    #[must_use]
+    pub fn in_group(mut self, cell: crate::widget::GroupCell) -> Self {
+        self.cell = cell;
+        self
     }
 
     /// Convenience: filled accent CTA.
@@ -250,11 +270,14 @@ pub fn paint_button(
     theme: Theme,
 ) {
     let radius = button.radius();
+    // ⭐ As quatro quinas saem da POSIÇÃO no grupo (wave 20). Um botão sozinho devolve as quatro
+    //    iguais ao `radius`, e o desenho é byte-idêntico ao de antes.
+    let radii = button.cell.radii(radius);
     if let Some(bg) = button.bg_color(theme) {
-        fill_rounded_rect(
+        crate::paint::fill_rounded_rect_radii(
             scene,
             rect,
-            radius,
+            radii,
             ph2d_vector::Color::from_rgba8(bg.r, bg.g, bg.b, bg.a), // LITERAL-COLOR-OK: token-bridge — `bg` is ColorToken-resolved
         );
     }

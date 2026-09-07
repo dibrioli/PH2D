@@ -231,7 +231,7 @@ fn paint_contrast(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) 
             warn,
         );
     }
-    y + ph2d_tokens::block_gap_px()
+    y + ph2d_tokens::control_gap_px()
 }
 
 /// `[swatch]  chave-do-token  [→ alvo]      [⚠] [elo] [Reset]`
@@ -371,7 +371,16 @@ pub(crate) fn command(
     w: f32,
     y: f32,
 ) -> f32 {
-    command_at(ctx, id, label, Rect::new(x, y, w, ROW_H_PX));
+    command_at(
+        ctx,
+        id,
+        label,
+        Rect::new(x, y, w, ROW_H_PX),
+        ph2d_editor_core::widget::GroupCell {
+            col: ph2d_editor_core::widget::GroupPos::Only,
+            row: ph2d_editor_core::widget::GroupPos::Only,
+        },
+    );
     y + ROW_H_PX
 }
 
@@ -389,27 +398,28 @@ fn command_pair(
     w: f32,
     y: f32,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
-    let half = ((w - gap) * 0.5).max(0.0);
-    command_at(ctx, left.0, left.1, Rect::new(x, y, half, ROW_H_PX));
-    command_at(
-        ctx,
-        right.0,
-        right.1,
-        Rect::new(x + half + gap, y, half, ROW_H_PX),
-    );
+    // ⭐ As duas ordens são UM par (wave 20): mesma fileira, mesmo assunto.
+    let seg = ph2d_editor_core::widget::segment_rects(Rect::new(x, y, w, ROW_H_PX), 2);
+    command_at(ctx, left.0, left.1, seg[0].0, seg[0].1);
+    command_at(ctx, right.0, right.1, seg[1].0, seg[1].1);
     y + ROW_H_PX
 }
 
 /// Um comando num rect dado — a pintura e o registro de hit, num sítio só.
-fn command_at(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, label: &str, rect: Rect) {
+fn command_at(
+    ctx: &mut PaintCtx,
+    id: ph2d_a11y::NodeId,
+    label: &str,
+    rect: Rect,
+    cell: ph2d_editor_core::widget::GroupCell,
+) {
     let theme = ctx.host.theme();
     let state = ctx.host.store().button_visual(id);
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (_, hit_index) = ctx.host.store_and_hit_index_mut();
     paint_button(
-        &Button::new(id, label).visual(state),
+        &Button::new(id, label).visual(state).in_group(cell),
         rect,
         scene,
         text_system,

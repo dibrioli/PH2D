@@ -66,14 +66,21 @@ impl BodyCtx<'_> {
         // **Self Overlap** (03 §8) — o toggle de auto-sobreposição com acúmulo. Um chip
         // largura-cheia (segmented de 1 opção, sem caption): destaca quando ligado, e o
         // clique ALTERNA (o `PanelEvent::Click` cai no arm de toggle da tool). Só no Draw.
-        y = self.segmented(
-            "",
-            [(ids::FLIP_SELF_OVERLAP, "Self Overlap", snap.self_overlap)],
-            y,
-        );
+
         // **Airbrush** (03 §8) — o toggle do pincel airbrush analítico (falloff físico de dab
         // esférico; o slider Hardness vira a densidade). Mesmo idioma do chip acima. Só no Draw.
-        y = self.segmented("", [(ids::FLIP_AIRBRUSH, "Airbrush", snap.airbrush)], y);
+        // ⭐ Os dois são UM corpo (wave 20): duas fileiras de uma peça, encostadas. Eles são a
+        //    mesma pergunta — *como é que o pincel se comporta?* —, e o Cap acima é outra (*que
+        //    forma tem a ponta?*), por isso fica separado.
+        y = self.segmented_block(
+            "",
+            &[
+                (ids::FLIP_SELF_OVERLAP, "Self Overlap", snap.self_overlap),
+                (ids::FLIP_AIRBRUSH, "Airbrush", snap.airbrush),
+            ],
+            &[1, 1],
+            y,
+        );
         y
     }
 }

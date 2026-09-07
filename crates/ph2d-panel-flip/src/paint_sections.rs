@@ -42,17 +42,19 @@ pub(crate) struct BodyCtx<'a> {
 }
 
 impl BodyCtx<'_> {
-    /// Mode row (Select / Draw / Erase · Fill / Sculpt / Edit) — the gizmo is live only
-    /// in Select.
+    /// Mode row (Select / Draw / Erase · Fill / Sculpt / Edit · Colorize / Trace) — o gizmo só
+    /// está vivo no Select.
     ///
-    /// **Duas fileiras de três**, e não uma de seis: o [`BodyCtx::segmented`] DIVIDE a
-    /// largura interna por `N` (não reflui), então seis chips num painel docado deixariam
-    /// ~33 px por rótulo e "Sculpt" não caberia. Mesmo formato que a seção Sculpt (duas
-    /// fileiras de quatro).
-    pub(crate) fn mode_row(&mut self, snap: &FlipStyleSnapshot, mut y: f32) -> f32 {
-        y = self.segmented(
+    /// ⭐⭐ **É UM corpo de oito peças em três fileiras** (wave 20, report do dono: *«tudo o que
+    /// puder ser ajuntado, ajunte»*): os oito respondem à MESMA pergunta — *que modo está na mão?*
+    /// —, logo separá-los em três controlos era dizer ao olho que são três assuntos.
+    ///
+    /// ⚠️ **A grelha `3·3·2` é MEDIDA e fica**: o painel docado dá ~33 px por rótulo numa fileira
+    /// de seis, e «Sculpt» não cabe. O que muda é as três fileiras passarem a **encostar**.
+    pub(crate) fn mode_row(&mut self, snap: &FlipStyleSnapshot, y: f32) -> f32 {
+        self.segmented_block(
             "Mode",
-            [
+            &[
                 (
                     ids::FLIP_MODE_SELECT,
                     "Select",
@@ -60,12 +62,6 @@ impl BodyCtx<'_> {
                 ),
                 (ids::FLIP_MODE_DRAW, "Draw", snap.mode == FlipMode::Draw),
                 (ids::FLIP_MODE_ERASE, "Erase", snap.mode == FlipMode::Erase),
-            ],
-            y,
-        );
-        y = self.segmented(
-            "",
-            [
                 (ids::FLIP_MODE_FILL, "Fill", snap.mode == FlipMode::Fill),
                 (
                     ids::FLIP_MODE_RESHAPE,
@@ -73,14 +69,6 @@ impl BodyCtx<'_> {
                     snap.mode == FlipMode::Reshape,
                 ),
                 (ids::FLIP_MODE_EDIT, "Edit", snap.mode == FlipMode::Edit),
-            ],
-            y,
-        );
-        // Colorize (C2) + Trace numa 3ª fileira própria — o `segmented` não reflui,
-        // então um 7º chip numa fileira de três apertaria os rótulos.
-        self.segmented(
-            "",
-            [
                 (
                     ids::FLIP_MODE_COLORIZE,
                     "Colorize",
@@ -88,6 +76,7 @@ impl BodyCtx<'_> {
                 ),
                 (ids::FLIP_MODE_TRACE, "Trace", snap.mode == FlipMode::Trace),
             ],
+            &[3, 3, 2],
             y,
         )
     }
@@ -178,7 +167,7 @@ impl BodyCtx<'_> {
     /// Strength (see [`BodyCtx::brush`]). A second pair of sliders for the same two
     /// quantities would be duplicate state — and the user would have to re-tune the
     /// brush every time they switched between erasing and sculpting.
-    pub(crate) fn reshape_section(&mut self, snap: &FlipStyleSnapshot, mut y: f32) -> f32 {
+    pub(crate) fn reshape_section(&mut self, snap: &FlipStyleSnapshot, y: f32) -> f32 {
         if snap.mode != FlipMode::Reshape {
             return y;
         }
@@ -194,8 +183,11 @@ impl BodyCtx<'_> {
             }
             out
         };
-        y = self.segmented("Sculpt Brush", ids4(0), y);
-        self.segmented("", ids4(4), y)
+        // ⭐ Os oito pincéis são UM corpo em duas fileiras de quatro (wave 20) — mesma pergunta,
+        //    mesma resposta visual.
+        let all: Vec<(ph2d_a11y::NodeId, &str, bool)> =
+            ids4(0).into_iter().chain(ids4(4)).collect();
+        self.segmented_block("Sculpt Brush", &all, &[4, 4], y)
     }
 
     /// Color section — a Stroke colour swatch (opens the shared OKLCH picker).

@@ -288,7 +288,7 @@ fn mode_card(
             hit_index,
         );
     }
-    y + card_h + ph2d_tokens::block_gap_px()
+    y + card_h + ph2d_tokens::control_gap_px()
 }
 
 /// Build + paint one adaptive segmented group and register its per-segment hits; returns next `y`. Reflows
@@ -322,7 +322,7 @@ fn seg_group(
         store,
         hit_index,
     );
-    y + used + ph2d_tokens::row_gap_px()
+    y + used + ph2d_tokens::control_gap_px()
 }
 
 #[cfg(test)]

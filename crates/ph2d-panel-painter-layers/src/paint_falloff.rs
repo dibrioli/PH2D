@@ -181,7 +181,7 @@ pub(crate) fn paint_falloff_section(
         crate::state::set_falloff_geom(canvas, &[], GRAB_R, false);
     }
 
-    y + CANVAS_H + ph2d_tokens::block_gap_px()
+    y + CANVAS_H + ph2d_tokens::control_gap_px()
 }
 
 /// Paint one control-point handle: a ring under a fill dot. A `Vector` handle

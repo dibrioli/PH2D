@@ -15,7 +15,7 @@ pub(crate) fn pad() -> f32 {
 /// isso o censo por `grep` de 2026-09-06 a subestimou. Ela devolvia `Sm` (6 px) enquanto o resto
 /// do app avançava 4, e é o que fazia este painel respirar diferente dos vizinhos. Delega.
 pub(crate) fn row_gap() -> f32 {
-    ph2d_tokens::row_gap_px()
+    ph2d_tokens::control_gap_px()
 }
 pub(crate) const LABEL_FONT_SIZE: f32 = TypeToken::Base.px();
 /// Column where the widget (right side of a "Label: [widget]" row)

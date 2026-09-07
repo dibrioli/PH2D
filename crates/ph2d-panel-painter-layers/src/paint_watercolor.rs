@@ -159,7 +159,7 @@ fn wetness_button_row(
         store,
         hit_index,
     );
-    y + used + ph2d_tokens::row_gap_px()
+    y + used + ph2d_tokens::control_gap_px()
 }
 
 /// Card 1: WASH — how the stroke dries (the flat glaze + its dried character).

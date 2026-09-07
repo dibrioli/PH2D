@@ -157,44 +157,49 @@ pub const ROW_H_PX: f32 = crate::generated::CHROME_ROW_H;
 /// **grelha** tem `widget_margin.y − 2` = **3**. ⇒ quando esta casa precisar de uma dessas, ela
 /// nasce **aqui, com nome e derivação**, e não num `+ Spacing::Qualquer` no sítio da pintura.
 pub fn row_pitch_px() -> f32 {
-    ROW_H_PX + row_gap_px()
+    ROW_H_PX + control_gap_px()
 }
 
-/// ⭐⭐ **O VÃO sozinho — para quem empilha linhas de ALTURA VARIÁVEL.**
-///
-/// É este o primitivo do modelo, e o [`row_pitch_px`] é a conveniência: no Godot o que tem nome é
-/// a **separação** (`separation_margin`), e é o contentor que a soma à altura de cada filho.
-/// ⚠️ Descobri-o pela construção — a 1.ª versão desta porta só sabia responder `altura + vão`, e
-/// havia sítios a empilhar uma caixa cuja altura é medida em tempo de pintura (`y + h + vão`).
-/// *Uma porta que só serve a metade dos chamadores deixa a outra metade a escrever o número.*
-pub fn row_gap_px() -> f32 {
-    Spacing::Xs.px()
+/// **A margem vertical de um WIDGET no modelo** — `increased_margin + 1`, com o `increased_margin`
+/// a ser o `base_spacing` desta casa (`theme_modern.cpp:286`). Existe só para o
+/// [`control_gap_px`] poder ser escrito como o Godot o escreve.
+fn widget_margin_y_px() -> f32 {
+    Spacing::Xs.px() + 1.0
 }
 
-/// ⭐⭐⭐ **O que fica DEPOIS de um bloco — o degrau do meio, e ele estava escrito 78 vezes.**
+/// ⭐⭐⭐ **O VÃO ENTRE DOIS CONTROLOS de uma secção — e é UM número, para tudo.**
 ///
-/// Esta casa tem **três** ritmos verticais, e até à wave 19 só os dois das pontas tinham nome:
+/// Enio, 2026-09-07, com a foto do painel *3D Model*: *«entre grupos de botões temos um
+/// espaçamento, entre sliders outro espaçamento. Para ambos vamos colocar o padrão de espaçamento
+/// de 3 px».*
+///
+/// ⭐ **O 3 dele é EXACTAMENTE o número do modelo, e ele chegou lá pelo olho:**
+/// `GridContainer.v_separation = round(widget_margin.y − 2)` = `(4 + 1) − 2` = **3**
+/// (`theme_modern.cpp:983`). O corpo de um painel desta casa **é** uma grelha de controlos, e era
+/// a constante da grelha que faltava.
+///
+/// ⛔⛔ **Ela FUNDE duas portas que a wave 19 tinha separado — um dia antes — e o motivo não é o
+/// veredito do dono, é a PREMISSA da 19 ter dissolvido.** Aquela wave defendeu um `block_gap` (6)
+/// maior que o `row_gap` (4) com este argumento: *«a fronteira de um bloco tem de se ler mais que
+/// a fronteira entre duas linhas DELE»*. Isso só vale enquanto as linhas de um bloco distam o vão
+/// de linha — e a wave 20 **junta os botões em grupos**, onde as peças distam um **fio de 1 px**.
+/// ⇒ com o interior a `1`, uma fronteira a `3` já se lê com folga, e o degrau do meio deixa de
+/// pagar-se. *Uma recusa medida responde uma pergunta; quando alguém muda o substrato, ela tem de
+/// ser reconferida* (§0.0).
+///
+/// ⇒ a escada fica com **três** degraus, cada um uma constante do Godot Modern:
 ///
 /// | pergunta | porta | valor | derivação |
 /// |---|---|---|---|
-/// | de uma LINHA para a seguinte | [`row_gap_px`] / [`list_row_gap_px`] | 4 / 1 | `separation_margin` · `Tree.v_separation` |
-/// | de um BLOCO para o seguinte | **esta** | **6** | `base_margin · 1,5` |
-/// | de um CARTÃO DE SECÇÃO para o seguinte | [`section_gap_px`] | 8 | `base_margin · 2` |
+/// | duas linhas de uma LISTA | [`list_row_gap_px`] | 1 | `Tree.v_separation` |
+/// | dois CONTROLOS de uma secção | **esta** | **3** | `GridContainer.v_separation` |
+/// | dois CARTÕES de secção | [`section_gap_px`] | 8 | `Separator separation` |
 ///
-/// ⛔ **Censo de 2026-09-07: 78 sítios respondiam à cauda de um bloco, com QUATRO respostas** —
-/// `Sm` (6) em 40 · `Xs` (4) em 29 · `Md` (8) em 8 · `Lg` (12) em 1. ⭐ **E a resposta maioritária
-/// era a certa**: não porque 40 é muito, mas porque **6 é o único valor que a escada admite** — um
-/// bloco tem de separar-se mais que duas linhas do mesmo bloco (4) e menos que duas secções (8),
-/// senão a hierarquia que o olho lê deixa de bater com a hierarquia que existe.
-///
-/// **A derivação é a do modelo:** `base_margin · 1,5`, e o `1,5` é um degrau que o Godot Modern usa
-/// **13 vezes** (`theme_modern.cpp:289`, `:328`, `:565`, `:617`, `:659`, …). Com o `base_spacing`
-/// desta casa (4) dá **6**, que é o `Spacing::Sm`.
-///
-/// ⚠️ **Os 9 sítios que escreviam 8 e 12 APERTAM** — a direcção que o dono pediu cinco vezes. Os
-/// outros 69 não mudam de valor; mudam de **dono**, que é o que impede a quinta resposta.
-pub fn block_gap_px() -> f32 {
-    Spacing::Sm.px()
+/// ⚠️ **O nome é `control_gap`, e não `row_gap`, de propósito.** O antigo descrevia uma população
+/// mais estreita do que a que o chamava — e é exactamente assim que um `block_gap` nasce ao lado
+/// dele. *Um nome que só cobre metade dos leitores convida o segundo número.*
+pub fn control_gap_px() -> f32 {
+    widget_margin_y_px() - 2.0
 }
 
 /// ⭐⭐ **O que fica depois de um CARTÃO DE SECÇÃO** — e este número já era shipado, sem nome.

@@ -38,7 +38,7 @@
 //! ⛔ **O que este censo NÃO proíbe, e porquê:** `+ Spacing::Md` / `+ Spacing::Lg` depois de uma
 //! altura de linha é o fim de um GRUPO, que é outra pergunta — o Godot também lhe dá outro
 //! número (`Separator separation = base_margin · 2` = 8). Ela fica **nomeada e por unificar**
-//! ⇒ **FECHOU na wave 19** (`ph2d_tokens::block_gap_px`, 78 sítios). ⚠️ E o `chrome.section-gap`
+//! ⇒ **FECHOU na wave 19** (`ph2d_tokens::control_gap_px`, 78 sítios). ⚠️ E o `chrome.section-gap`
 //! (14) que esta nota dizia não servir foi RENOMEADO para `chrome.inline-icon`, porque os
 //! seus **quatro** consumidores usam-no como TAMANHO DE ÍCONE, não como vão de secção.
 
@@ -137,7 +137,7 @@ fn the_row_pitch_is_never_written_at_the_painting_site() {
     assert!(
         found.is_empty(),
         "{} sítio(s) escrevem o passo de uma linha em vez de chamar \
-         `ph2d_tokens::row_pitch_px()` (ou `row_gap_px()`, se a altura for medida em tempo de \
+         `ph2d_tokens::row_pitch_px()` (ou `control_gap_px()`, se a altura for medida em tempo de \
          pintura). Cada um é a segunda resposta a uma pergunta que já tem uma:\n  {}",
         found.len(),
         found.join("\n  ")
@@ -181,7 +181,7 @@ fn a_function_named_row_gap_delegates_instead_of_choosing_a_rung() {
     assert!(
         offenders.is_empty(),
         "{} função(ões) chamadas «vão de linha» escolhem um degrau em vez de delegar em \
-         `ph2d_tokens::row_gap_px()`:\n  {}",
+         `ph2d_tokens::control_gap_px()`:\n  {}",
         offenders.len(),
         offenders.join("\n  ")
     );

@@ -130,5 +130,5 @@ pub(crate) fn paint(
         resolve(ColorToken::Text1, theme),
     );
 
-    y + row_h + ph2d_tokens::row_gap_px()
+    y + row_h + ph2d_tokens::control_gap_px()
 }

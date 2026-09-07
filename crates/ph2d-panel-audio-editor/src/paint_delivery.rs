@@ -224,7 +224,7 @@ pub(crate) fn paint_delivery_section(
         theme,
         hit_index,
     );
-    y + row_h + ph2d_tokens::block_gap_px()
+    y + row_h + ph2d_tokens::control_gap_px()
 }
 
 /// The download size, for the section header. Empty when there is nothing to price.

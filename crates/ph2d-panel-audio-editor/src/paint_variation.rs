@@ -10,7 +10,7 @@
 //! The row labels + strategy name come from `variation_state` (the shell publishes
 //! labels; the panel owns the selected row and the jitter slider positions).
 
-use crate::paint::{ClippedHits, button, button_in_group, toggle};
+use crate::paint::{ClippedHits, button, buttons_block};
 use crate::{
     AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_ENABLED, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD,
     AEDIT_VAR_PITCH, AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE,
@@ -18,7 +18,7 @@ use crate::{
     MAX_VARIATIONS, variation_state,
 };
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
-use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider, segment_rects};
+use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken, list_row_gap_px};
@@ -89,96 +89,40 @@ pub(crate) fn paint_variation_section(
     // The clip list (selectable rows).
     y = paint_var_list(y, x, w, scene, text_system, theme, hit_index);
 
-    // Add file | Add folder (import by convention: a folder of `name_01..NN`).
-    let seg = segment_rects(Rect::new(x, y, w, row_h), 2);
-    button_in_group(
-        seg[0].0,
-        "Add\u{2026}",
-        true,
-        AEDIT_VAR_ADD,
-        seg[0].1,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    button_in_group(
-        seg[1].0,
-        "Add Folder\u{2026}",
-        true,
-        AEDIT_VAR_ADD_FOLDER,
-        seg[1].1,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += row_h + gap;
-
-    // The two things you do to ONE entry — one of them reversible, one not, side by side so
-    // the difference is obvious. Enabled takes an entry out of the pick without deleting it:
-    // the A/B of a variation set (mute the take you are unsure about, hear the set without it,
-    // put it back) rather than removing the file and having to find it again.
+    // ⭐⭐⭐ **Os sete são UM corpo** (wave 20, report do dono: *«tudo o que puder ser ajuntado,
+    //    ajunte»*). Eles respondem todos à mesma pergunta — *o que se faz a este conjunto?* — e
+    //    estavam em **quatro** controlos separados por vãos escritos à mão, com `Add | Add Folder`
+    //    a ser o único par que já falava com a porta.
+    //
+    // Add file | Add folder: import by convention (a folder of `name_01..NN`).
+    // Enabled | Remove: as duas coisas que se fazem a UMA entrada — uma reversível, a outra não,
+    // lado a lado para a diferença ser óbvia. `Enabled` tira a entrada do sorteio sem a apagar: o
+    // A/B de um conjunto (calar a take de que se duvida, ouvir o conjunto sem ela, repô-la) em vez
+    // de remover o ficheiro e ter de o procurar outra vez.
+    // Play: audiciona a variação seguinte. Weight ÷2 | ×2: o peso da entrada escolhida.
     let on = variation_state::selected_enabled();
-    let half = ((w - gap) * 0.5).max(1.0);
-    toggle(
-        Rect::new(x, y, half, row_h),
-        if on { "Enabled" } else { "Disabled" },
-        on,
-        has_any,
-        AEDIT_VAR_ENABLED,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    button(
-        Rect::new(x + half + gap, y, half, row_h),
-        "Remove",
-        has_any,
-        AEDIT_VAR_REMOVE,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += row_h + gap;
-
-    // Play (audition the next variation).
-    button(
+    let y = buttons_block(
         Rect::new(x, y, w, row_h),
-        "Play Variation",
-        has_any,
-        AEDIT_VAR_PLAY,
+        &[2, 2, 1, 2],
+        &[
+            ("Add\u{2026}", true, AEDIT_VAR_ADD),
+            ("Add Folder\u{2026}", true, AEDIT_VAR_ADD_FOLDER),
+            (
+                if on { "Enabled" } else { "Disabled" },
+                has_any,
+                AEDIT_VAR_ENABLED,
+            ),
+            ("Remove", has_any, AEDIT_VAR_REMOVE),
+            ("Play Variation", has_any, AEDIT_VAR_PLAY),
+            ("Weight \u{00f7}2", has_any, AEDIT_VAR_WEIGHT_DOWN),
+            ("Weight \u{00d7}2", has_any, AEDIT_VAR_WEIGHT_UP),
+        ],
         scene,
         text_system,
         theme,
         hit_index,
     );
-    y += row_h + gap;
-
-    // Weight of the selected entry: ÷2 | ×2 (the row label shows the result).
-    button(
-        Rect::new(x, y, half, row_h),
-        "Weight \u{00f7}2",
-        has_any,
-        AEDIT_VAR_WEIGHT_DOWN,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    button(
-        Rect::new(x + half + gap, y, half, row_h),
-        "Weight \u{00d7}2",
-        has_any,
-        AEDIT_VAR_WEIGHT_UP,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += row_h + Spacing::Sm.px();
+    let mut y = y + ph2d_tokens::control_gap_px();
 
     // Per-play jitter (container-level). Always adjustable — they are set properties.
     y = paint_jitter_slider(
@@ -206,28 +150,20 @@ pub(crate) fn paint_variation_section(
         hit_index,
     );
 
-    // Save | Load the set (manifest files).
-    button(
-        Rect::new(x, y, half, row_h),
-        "Save\u{2026}",
-        has_any,
-        AEDIT_VAR_SAVE,
+    // ⭐ Save | Load do conjunto (ficheiros de manifesto) — um par, pela porta.
+    let y = buttons_block(
+        Rect::new(x, y, w, row_h),
+        &[2],
+        &[
+            ("Save\u{2026}", has_any, AEDIT_VAR_SAVE),
+            ("Load\u{2026}", true, AEDIT_VAR_LOAD),
+        ],
         scene,
         text_system,
         theme,
         hit_index,
     );
-    button(
-        Rect::new(x + half + gap, y, half, row_h),
-        "Load\u{2026}",
-        true,
-        AEDIT_VAR_LOAD,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y + row_h + ph2d_tokens::block_gap_px()
+    y + ph2d_tokens::control_gap_px()
 }
 
 /// The variation list: one selectable row per clip (the selected row is tinted). Rows
@@ -293,7 +229,7 @@ fn paint_var_list(
         hit_index.register(AEDIT_VAR_ROWS[i], rect);
         y += VAR_ROW_H + list_row_gap_px();
     }
-    y + ph2d_tokens::row_gap_px()
+    y + ph2d_tokens::control_gap_px()
 }
 
 /// A labelled, always-adjustable jitter slider (`0..1`; the shell maps it to a `±`
@@ -329,7 +265,7 @@ fn paint_jitter_slider(
     slider.set_value(value);
     paint_slider(&slider, track, scene, theme);
     hit_index.register(id, track);
-    y + track_h + ph2d_tokens::block_gap_px()
+    y + track_h + ph2d_tokens::control_gap_px()
 }
 
 /// The Variations readout, for the section header — how many clips the set holds,

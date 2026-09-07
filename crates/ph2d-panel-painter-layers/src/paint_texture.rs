@@ -478,7 +478,7 @@ pub(crate) fn paint_texture_preview(
         1.0,
         resolve(ColorToken::Border, theme),
     );
-    y + ph + ph2d_tokens::block_gap_px()
+    y + ph + ph2d_tokens::control_gap_px()
 }
 
 /// The **Grain** ramp preview LUT (the same bake the tool paints with, incl. the B&W filter), so the

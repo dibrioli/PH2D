@@ -182,7 +182,7 @@ fn paint_segments_row(
         text_system,
         theme,
     );
-    y + used + ph2d_tokens::row_gap_px()
+    y + used + ph2d_tokens::control_gap_px()
 }
 
 /// A full-width labelled **mode-entry** button (the colour-picker-button analogue): pressing it arms a

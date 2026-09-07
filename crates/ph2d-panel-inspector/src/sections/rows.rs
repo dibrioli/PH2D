@@ -58,7 +58,7 @@ pub(super) fn seg_row(
         hit_index,
     );
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-    y + label_h + seg_h + ph2d_tokens::block_gap_px()
+    y + label_h + seg_h + ph2d_tokens::control_gap_px()
 }
 
 /// A altura que uma [`num_row`] consome — rótulo + caixa + respiro.

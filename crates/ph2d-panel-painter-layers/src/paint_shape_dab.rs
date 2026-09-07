@@ -127,5 +127,5 @@ pub(crate) fn paint_shape_dab_gizmo(
     );
     fill_circle(ctx.scene, cx, cy, DOT_R, resolve(ColorToken::Danger, theme));
 
-    y + size + ph2d_tokens::block_gap_px()
+    y + size + ph2d_tokens::control_gap_px()
 }

@@ -59,7 +59,7 @@ pub(crate) fn pad() -> f32 {
 ///
 /// ⛔ **A SÉTIMA cópia da mesma resposta** (censo de 2026-09-06). Delega para a porta.
 fn gap() -> f32 {
-    ph2d_tokens::row_gap_px()
+    ph2d_tokens::control_gap_px()
 }
 
 /// Geometria com que o painel nasce.

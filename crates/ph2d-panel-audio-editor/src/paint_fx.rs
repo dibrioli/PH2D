@@ -14,7 +14,7 @@
 //! kind index, and the shell publishes each slot's label + already-formatted value
 //! (`audio/fx_params.rs`), so no DSP range or unit ever lands here.
 
-use crate::paint::{ClippedHits, ROW_H, button, button_in_group, toggle};
+use crate::paint::{ClippedHits, ROW_H, button, buttons_block, toggle};
 use crate::{
     AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
     AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_STAGE_ONS,
@@ -26,7 +26,7 @@ use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::widget::{
     ButtonState, IconButtonStyle, IconGlyph, Slider, SliderOrientation, paint_icon_button,
-    paint_slider, segment_rects,
+    paint_slider,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -40,9 +40,6 @@ const LIST_ROW_RADIUS_PX: f32 = 0.0; // LITERAL-PX-OK: a ausencia de raio E' a l
 
 /// Buttons in the chain action row (Add · Remove · Up · Down).
 const ACTION_BUTTONS: f32 = 4.0; // LITERAL-PX-OK: fixed count, divides the row width
-/// Buttons in the preset action row (Apply · Save · Load).
-const PRESET_BUTTONS: f32 = 3.0; // LITERAL-PX-OK: fixed count, divides the row width
-
 /// The painter's shared borrows, bundled so each section fits one argument list.
 struct Ctx<'a, 'h> {
     scene: &'a mut VectorScene,
@@ -120,27 +117,21 @@ fn paint_presets(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut
 
     // Apply (factory) · Save · Load (files). Apply needs a preset to load; Save/Load
     // need a clip loaded, like every other file action.
-    let bw = ((w - gap * (PRESET_BUTTONS - 1.0)) / PRESET_BUTTONS).max(1.0);
-    for (i, (label, enabled, id)) in [
-        ("Apply", has_presets, AEDIT_PRESET_APPLY),
-        ("Save", loaded, AEDIT_PRESET_SAVE),
-        ("Load", loaded, AEDIT_PRESET_LOAD),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        button(
-            Rect::new(x + (bw + gap) * i as f32, y, bw, row_h),
-            label,
-            enabled,
-            id,
-            ctx.scene,
-            ctx.text_system,
-            ctx.theme,
-            ctx.hit_index,
-        );
-    }
-    y + row_h + ph2d_tokens::block_gap_px()
+    // ⭐ Os três são UM corpo (wave 20): o mesmo assunto — *o que fazer com um preset*.
+    let y = buttons_block(
+        Rect::new(x, y, w, row_h),
+        &[3],
+        &[
+            ("Apply", has_presets, AEDIT_PRESET_APPLY),
+            ("Save", loaded, AEDIT_PRESET_SAVE),
+            ("Load", loaded, AEDIT_PRESET_LOAD),
+        ],
+        ctx.scene,
+        ctx.text_system,
+        ctx.theme,
+        ctx.hit_index,
+    );
+    y + ph2d_tokens::control_gap_px()
 }
 
 /// `◀ | effect name | ⟲ | ▶` — sets the SELECTED stage's kind. The Reset icon is
@@ -275,7 +266,7 @@ fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 
         );
         y += label_h + gap;
     }
-    y + ph2d_tokens::row_gap_px()
+    y + ph2d_tokens::control_gap_px()
 }
 
 /// The chain: a header carrying the `+ | trash | ▲ | ▼` actions, then one row per
@@ -380,7 +371,7 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
         icon_button(eye, glyph, loaded, AEDIT_FX_STAGE_ONS[i], ctx);
         y += stage_h;
     }
-    y + ph2d_tokens::block_gap_px()
+    y + ph2d_tokens::control_gap_px()
 }
 
 /// `Bypass` (global A/B) over `Apply | Cancel`. Bypass mutes the whole chain so the
@@ -402,34 +393,28 @@ fn paint_commit_row(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &
         ctx.theme,
         ctx.hit_index,
     );
-    y += row_h + gap;
+    y += row_h;
 
+    // ⭐⭐ **Bypass e Apply|Cancel são UM corpo** (wave 20): os três respondem à mesma pergunta —
+    //    *o que fazer com o que está a tocar*. ⚠️ O `Bypass` continua a ser um TOGGLE (ele tem
+    //    estado ligado/desligado, os outros dois não), então ele pinta-se sozinho e o que encosta
+    //    é a geometria: a fileira de baixo começa exactamente onde ele acaba.
+    //
     // Apply is dimmed while bypassed: what sounds is the dry clip, so committing
     // would land nothing. Release Bypass to commit what the chain does.
-    let seg = segment_rects(Rect::new(x, y, w, row_h), 2);
-    button_in_group(
-        seg[0].0,
-        "Apply",
-        loaded && !bypassed,
-        AEDIT_FX_APPLY,
-        seg[0].1,
+    let y = buttons_block(
+        Rect::new(x, y, w, row_h),
+        &[2],
+        &[
+            ("Apply", loaded && !bypassed, AEDIT_FX_APPLY),
+            ("Cancel", auditioning, AEDIT_FX_CANCEL),
+        ],
         ctx.scene,
         ctx.text_system,
         ctx.theme,
         ctx.hit_index,
     );
-    button_in_group(
-        seg[1].0,
-        "Cancel",
-        auditioning,
-        AEDIT_FX_CANCEL,
-        seg[1].1,
-        ctx.scene,
-        ctx.text_system,
-        ctx.theme,
-        ctx.hit_index,
-    );
-    y + row_h + gap
+    y + gap
 }
 
 /// A frameless icon button. Disabled ones are dimmed and — crucially — do **not**

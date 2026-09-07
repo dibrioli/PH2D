@@ -492,6 +492,11 @@ pub(crate) fn paint_voronoi_cfg(
         kind: ButtonKind::Default,
         // Neutro: este sítio ainda não adere ao eixo do hover (ver `ph2d_editor_core::motion`).
         hover_t: 1.0,
+        // Neutro: um botão sozinho arredonda os quatro cantos (a lei do grupo, wave 20).
+        cell: ph2d_editor_core::widget::GroupCell {
+            col: ph2d_editor_core::widget::GroupPos::Only,
+            row: ph2d_editor_core::widget::GroupPos::Only,
+        },
     };
     paint_button(&btn, reseed_rect, scene, text_system, theme);
     hit_index.register(ids::GS_CFG_VORONOI_RESEED, reseed_rect);

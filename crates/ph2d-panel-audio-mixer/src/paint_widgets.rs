@@ -17,7 +17,7 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::motion::{self, hover_of, pressed_of};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, resolve};
+use ph2d_editor_core::paint::{paint_text_centered, resolve};
 use ph2d_editor_core::widget::{ButtonState, Slider, SliderOrientation, paint_slider};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -64,7 +64,7 @@ pub(crate) fn paint_labeled_slider(
     slider.set_value(value.clamp(0.0, 1.0));
     paint_slider(&slider, slider_rect, scene, theme);
     hit_index.register(id, slider_rect);
-    y + track_h + ph2d_tokens::block_gap_px()
+    y + track_h + ph2d_tokens::control_gap_px()
 }
 
 /// Paint one toggle button (mute / solo / effect enable): `active_bg` tint +
@@ -82,6 +82,7 @@ pub(crate) fn paint_toggle(
     active: bool,
     active_bg: ColorToken,
     id: NodeId,
+    cell: ph2d_editor_core::widget::GroupCell,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -114,10 +115,15 @@ pub(crate) fn paint_toggle(
                 |c| VelloColor::from_rgba8(c.r, c.g, c.b, c.a), // LITERAL-COLOR-OK: token-bridge
             )
     };
-    fill_rounded_rect(
+    // ⭐ As quatro quinas saem da POSIÇÃO no grupo (wave 20): `M | S` de uma faixa encostam, e um
+    //    interruptor sozinho continua a arredondar os quatro.
+    ph2d_editor_core::paint::fill_rounded_rect_radii(
         scene,
         rect,
-        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+        cell.radii(ph2d_editor_core::paint::frame_radius(
+            theme,
+            Radius::Sm.px(),
+        )),
         bg,
     );
     paint_text_centered(

@@ -247,7 +247,6 @@ fn paint_body_sections(
     y += readout_font + row_gap;
 
     // ── Reset (ghost, full width) row ──────────────────────────────
-    let btn_gap = Spacing::Sm.px();
     let reset_rect = Rect::new(inner_x, y, inner_w, row_h);
     let reset_state = store.button_visual(ids::UPS_RESET);
     let reset = Button::new(ids::UPS_RESET, "Reset to Defaults")
@@ -258,21 +257,22 @@ fn paint_body_sections(
     y += row_h + row_gap;
 
     // ── Cancel (ghost) + Apply (accent CTA) row ────────────────────
-    let half_btn = ((inner_w - btn_gap) * 0.5).max(0.0);
-    let cancel_rect = Rect::new(inner_x, y, half_btn, row_h);
+    // ⭐⭐ `Cancel | Apply` é UM par (wave 20) — ver o irmão no `ph2d-panel-padding`.
+    let seg = ph2d_editor_core::widget::segment_rects(Rect::new(inner_x, y, inner_w, row_h), 2);
     let cancel_state = store.button_visual(ids::UPS_CANCEL);
     let cancel = Button::new(ids::UPS_CANCEL, "Cancel")
         .kind(ButtonKind::Default)
-        .visual(cancel_state);
-    paint_button(&cancel, cancel_rect, scene, text_system, theme);
-    hit_index.register(ids::UPS_CANCEL, cancel_rect);
-    let apply_rect = Rect::new(inner_x + half_btn + btn_gap, y, half_btn, row_h);
+        .visual(cancel_state)
+        .in_group(seg[0].1);
+    paint_button(&cancel, seg[0].0, scene, text_system, theme);
+    hit_index.register(ids::UPS_CANCEL, seg[0].0);
     let apply_state = store.button_visual(ids::UPS_APPLY);
     let apply = Button::new(ids::UPS_APPLY, "Apply")
         .kind(ButtonKind::Accent)
-        .visual(apply_state);
-    paint_button(&apply, apply_rect, scene, text_system, theme);
-    hit_index.register(ids::UPS_APPLY, apply_rect);
+        .visual(apply_state)
+        .in_group(seg[1].1);
+    paint_button(&apply, seg[1].0, scene, text_system, theme);
+    hit_index.register(ids::UPS_APPLY, seg[1].0);
     y += row_h;
     y
 }

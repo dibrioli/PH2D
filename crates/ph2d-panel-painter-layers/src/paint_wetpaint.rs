@@ -342,7 +342,7 @@ fn paint_resolution_readout(
         content_w - 2.0 * Spacing::Sm.px(),
         resolve(ColorToken::Text2, theme),
     );
-    y + font + ph2d_tokens::row_gap_px()
+    y + font + ph2d_tokens::control_gap_px()
 }
 
 #[cfg(test)]

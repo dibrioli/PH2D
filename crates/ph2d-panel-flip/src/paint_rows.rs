@@ -10,7 +10,8 @@ use crate::paint_sections::{BodyCtx, LABEL_COL_W};
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{paint_icon, paint_text, resolve};
 use ph2d_editor_core::widget::paint_slider_with_chip_layout_adaptive;
-use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
+use ph2d_editor_core::widget::panel_chrome::paint_segmented_button_in_group;
+use ph2d_editor_core::widget::{block_cells, grid_height};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Spacing, StrokeToken, TypeToken};
 
@@ -132,13 +133,38 @@ impl BodyCtx<'_> {
         &mut self,
         label: &str,
         opts: [(ph2d_a11y::NodeId, &str, bool); N],
+        y: f32,
+    ) -> f32 {
+        self.segmented_block(label, &opts, &[N], y)
+    }
+
+    /// ⭐⭐⭐ **N opções em várias fileiras, e o conjunto é UM CORPO** (wave 20, report do dono:
+    /// *«tudo o que puder ser ajuntado, ajunte»*).
+    ///
+    /// ⚠️ **Este painel reimplementava a disposição de um grupo** — largura dividida por `N`, um
+    /// `Spacing::Sm` de vão entre chips e o `paint_segmented_button` de quatro quinas — enquanto a
+    /// casa já tinha a porta (`segment_rects` / `block_cells` + `paint_segmented_button_in_group`)
+    /// desde a wave 10. *Uma cópia da disposição não se lê como cópia: lê-se como um painel que
+    /// «ainda não foi convertido», e a diferença só aparece a olho.*
+    ///
+    /// ⛔ **As fileiras são DADAS, não refluídas.** O `paint_segmented_group_adaptive` decide a
+    /// quebra pela largura dos rótulos, e aqui o autor já a escolheu (`Mode` é `3·3·2` porque
+    /// «Sculpt» não cabe num sexto de painel docado) — reflectir isso é preservar uma medição que
+    /// já foi feita, não teimosia.
+    pub(crate) fn segmented_block(
+        &mut self,
+        label: &str,
+        opts: &[(ph2d_a11y::NodeId, &str, bool)],
+        cols_per_row: &[usize],
         mut y: f32,
     ) -> f32 {
-        let sd_font = TypeToken::Sm.px();
-        let sd_gap = Spacing::Sm.px();
-        let cols = N as f32;
-        let sd_w = ((self.inner_w - sd_gap * (cols - 1.0)) / cols).max(1.0);
+        debug_assert_eq!(
+            opts.len(),
+            cols_per_row.iter().sum::<usize>(),
+            "a grelha declarada nao cobre as opcoes"
+        );
         if !label.is_empty() {
+            let sd_font = TypeToken::Sm.px();
             paint_text(
                 self.text_system,
                 self.scene,
@@ -151,21 +177,31 @@ impl BodyCtx<'_> {
             );
             y += sd_font + Spacing::Xs.px();
         }
-        for (i, (id, lbl, active)) in opts.iter().enumerate() {
-            let rx = self.inner_x + i as f32 * (sd_w + sd_gap);
-            let rect = Rect::new(rx, y, sd_w, self.row_h);
-            let st = self.store.button_visual(*id);
-            paint_segmented_button(
-                rect,
-                lbl,
-                *active,
-                st,
-                self.scene,
-                self.text_system,
-                self.theme,
-            );
-            self.hit_index.register(*id, rect);
+        let block = block_cells(
+            Rect::new(self.inner_x, y, self.inner_w, 0.0),
+            cols_per_row,
+            self.row_h,
+        );
+        let mut i = 0usize;
+        for (r, count) in cols_per_row.iter().enumerate() {
+            for k in 0..*count {
+                let (id, lbl, active) = opts[i + k];
+                let (rect, cell) = block[r][k];
+                let st = self.store.button_visual(id);
+                paint_segmented_button_in_group(
+                    rect,
+                    lbl,
+                    active,
+                    st,
+                    self.scene,
+                    self.text_system,
+                    self.theme,
+                    cell,
+                );
+                self.hit_index.register(id, rect);
+            }
+            i += count;
         }
-        y + self.row_h + self.row_gap
+        y + grid_height(cols_per_row.len(), self.row_h) + self.row_gap
     }
 }

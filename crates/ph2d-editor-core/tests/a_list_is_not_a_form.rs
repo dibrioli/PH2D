@@ -170,7 +170,7 @@ fn the_declared_list_surfaces_still_exist() {
 #[test]
 fn a_list_breathes_less_than_a_form_and_still_breathes() {
     let list = ph2d_tokens::list_row_gap_px();
-    let form = ph2d_tokens::row_gap_px();
+    let form = ph2d_tokens::control_gap_px();
     assert!(
         list > 0.0,
         "o vao de lista e' {list} — a zero duas linhas seleccionadas fundem-se numa"

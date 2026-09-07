@@ -329,7 +329,7 @@ fn paint_chips(
         store,
         hit_index,
     );
-    y + used + ph2d_tokens::block_gap_px()
+    y + used + ph2d_tokens::control_gap_px()
 }
 
 /// Texto puro — um fato, não um controle. Sem hit-index: uma affordance que ele não pode honrar
@@ -383,7 +383,7 @@ fn paint_note(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32) -> f32 {
     );
     // O avanço é MEDIDO: uma nota quebra em duas linhas num painel estreito ou num idioma mais
     // comprido, e um avanço fixo escreveria a linha seguinte por cima dela.
-    y + (ROW_H_PX - font).mul_add(0.5, used).max(ROW_H_PX) + ph2d_tokens::row_gap_px()
+    y + (ROW_H_PX - font).mul_add(0.5, used).max(ROW_H_PX) + ph2d_tokens::control_gap_px()
 }
 
 /// O rodapé: quantos nós, e **quanto custou o último quadro**.

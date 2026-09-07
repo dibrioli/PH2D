@@ -205,6 +205,15 @@ intenção dele, então **só os 9 discordantes mudam de valor**, e sempre a ape
 `chrome.inline-icon`, e o vão de secção (que já era shipado sem nome, dentro do fecho do cartão)
 ganha o dele.
 
+⭐⭐⭐ **E a wave 20 (07/09) levou o GRUPO aos botões soltos e deu ao interior de uma secção UM
+ritmo** ([§7.23](pesquisa/08_modelos_com_codigo_para_seguir.md)). ⭐ **O `3 px` que o dono sugeriu é
+exactamente o `GridContainer.v_separation` do Godot** — o corpo de um painel é uma grelha, e era a
+constante da grelha que faltava. ⛔ Isso **funde** o degrau do meio que a wave 19 tinha criado, e o
+motivo é a premissa dela ter dissolvido: juntar os botões põe o interior de um bloco a **1 px**,
+logo uma fronteira a `3` já se lê. ⭐⭐⭐ **E a causa dos dois dialectos era um widget:** o chip
+segmentado conhecia a lei do grupo desde a wave 10 e o `Button` não — por isso o mesmo par
+`Cancel | Apply` aparecia junto num painel e separado em cinco outros.
+
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
 cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·
 esbatimento do rótulo e inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis, animado) —

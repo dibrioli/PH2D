@@ -4,8 +4,8 @@
 //!
 //! | pergunta | porta | valor | derivação (Godot Modern, MIT) |
 //! |---|---|---|---|
-//! | de uma LINHA para a seguinte | `row_gap_px` / `list_row_gap_px` | 4 / 1 | `separation_margin` · `Tree.v_separation` |
-//! | de um BLOCO para o seguinte | `block_gap_px` | **6** | `base_margin · 1,5` (13 usos no tema) |
+//! | de uma LINHA para a seguinte | `control_gap_px` / `list_row_gap_px` | 4 / 1 | `separation_margin` · `Tree.v_separation` |
+//! | de um BLOCO para o seguinte | `control_gap_px` | **6** | `base_margin · 1,5` (13 usos no tema) |
 //! | de um CARTÃO DE SECÇÃO para o seguinte | `section_gap_px` | 8 | `Separator separation = base_margin · 2` |
 //!
 //! ⛔ **Censo de 2026-09-07: 78 sítios respondiam à cauda de um bloco, com QUATRO respostas** —
@@ -129,38 +129,40 @@ fn the_tail_of_a_block_is_never_written_at_the_painting_site() {
     assert!(
         found.is_empty(),
         "{} sitio(s) escrevem a cauda de um bloco em vez de chamar \
-         `ph2d_tokens::block_gap_px()` (ou `row_gap_px()`, se o que acaba ali e' uma LINHA). \
+         `ph2d_tokens::control_gap_px()` (ou `control_gap_px()`, se o que acaba ali e' uma LINHA). \
          Cada um e' a segunda resposta a uma pergunta que ja' tem uma:\n  {}",
         found.len(),
         found.join("\n  ")
     );
 }
 
-/// ⭐⭐ **Os três degraus são uma ESCADA, e a ordem deles é a lei.**
+/// ⭐⭐ **A escada tem TRÊS degraus, e a ordem deles é a lei.**
 ///
-/// ⚠️ **Deliberadamente não re-escrevo nenhuma das três expressões aqui** — comparar cada porta
-/// com a própria conta seria o gate vácuo que esta jornada já pagou três vezes. O que se afirma é
-/// a **relação** entre elas, que é a frase inteira da wave e não é derivável de nenhuma sozinha.
+/// ⚠️ **Deliberadamente não re-escrevo nenhuma das expressões aqui** — comparar cada porta com a
+/// própria conta seria o gate vácuo que esta jornada já pagou três vezes. O que se afirma é a
+/// **relação** entre elas, que não é derivável de nenhuma sozinha.
+///
+/// ⛔⛔ **A wave 20 tirou um degrau desta escada, e a razão está no doc do
+/// [`ph2d_tokens::control_gap_px`]:** o `block_gap` (6) da wave 19 justificava-se por a fronteira
+/// de um bloco ter de se ler mais que a fronteira entre duas linhas DELE — e isso pressupõe que as
+/// linhas de um bloco distam o vão de linha. A wave 20 **junta os botões em grupos**, onde as
+/// peças distam um **fio de 1 px**, e a premissa dissolve-se. *Uma recusa medida responde uma
+/// pergunta; quem muda o substrato tem de a reconferir.*
 #[test]
-fn a_block_breathes_more_than_a_row_and_less_than_a_section() {
+fn a_control_breathes_more_than_a_list_row_and_less_than_a_section() {
     let list = ph2d_tokens::list_row_gap_px();
-    let row = ph2d_tokens::row_gap_px();
-    let block = ph2d_tokens::block_gap_px();
+    let control = ph2d_tokens::control_gap_px();
     let section = ph2d_tokens::section_gap_px();
     assert!(
-        list < row,
-        "uma lista ({list}) nao esta' mais apertada que um formulario ({row})"
+        list < control,
+        "uma LISTA ({list}) nao esta' mais apertada que dois controlos ({control}) — as linhas de \
+         uma lista deixaram de encostar"
     );
     assert!(
-        row < block,
-        "um BLOCO ({block}) nao se separa mais que duas linhas dele ({row}) — a fronteira de um \
-         bloco passa a ler-se como mais uma linha"
-    );
-    assert!(
-        block < section,
-        "um bloco ({block}) separa-se tanto ou mais que duas SECCOES ({section}) — um bloco \
-         interior passa a ler-se como uma seccao, que e' a confusao que a escada existe para \
-         impedir"
+        control < section,
+        "dois CONTROLOS ({control}) separam-se tanto ou mais que duas SECCOES ({section}) — um \
+         controlo interior passa a ler-se como uma seccao, que e' a confusao que a escada existe \
+         para impedir"
     );
 }
 
@@ -168,7 +170,7 @@ fn a_block_breathes_more_than_a_row_and_less_than_a_section() {
 ///
 /// ⚠️ **É a metade que impede a lei de se partir em duas outra vez.** O `SectionCards::close_at`
 /// avança `y + section_gap_px()`; se alguém lá escrever de novo um `pad * 2.0` — ou qualquer outro
-/// número —, o vão que o app DESENHA entre dois cartões deixa de ser o que o `block_gap_px` diz
+/// número —, o vão que o app DESENHA entre dois cartões deixa de ser o que o `control_gap_px` diz
 /// que ele é, e a escada acima passa a comparar-se com uma constante que ninguém pinta.
 ///
 /// **Mutação que deve sangrar:** trocar o `section_gap_px()` do `close_at` por `pad * 2.0`.

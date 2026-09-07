@@ -273,7 +273,7 @@ fn player_block(
         text_system,
         theme,
     );
-    cur_y + BTN_H + ph2d_tokens::block_gap_px()
+    cur_y + BTN_H + ph2d_tokens::control_gap_px()
 }
 
 /// Pinta a §11 e devolve o `y` a seguir a ela.

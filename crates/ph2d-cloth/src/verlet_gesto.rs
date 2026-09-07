@@ -238,8 +238,11 @@ impl PincelTecido {
             let vi = v as usize;
             let dentro = match self.pincel.area {
                 Area::Global => true,
-                // ⚠️ Local: o teste da construção é sobre o REPOUSO (espec §3.1).
-                Area::Local => dist(self.sim.repouso[vi], c) < alcance,
+                // ⚠️ Local: o teste da construção é sobre o REPOUSO (espec §3.1)
+                // — ou sobre a BASE PERSISTENTE, se houver (§6.4 leitura 2): é a
+                // base que decide **quem entra na simulação**, não só quão
+                // esticado ele está.
+                Area::Local => dist(self.sim.base_de(vi), c) < alcance,
                 Area::Dinamica => dist(posicoes[vi], c) < alcance,
             };
             if dentro {
@@ -289,7 +292,9 @@ impl PincelTecido {
                 // As âncoras de deformação nascem com o vértice (espec §4.3).
                 match self.pincel.modo {
                     Modo::Agarrar => {
-                        let d0 = dist(self.sim.repouso[vi], self.inicio);
+                        // Espec §6.4 leitura 3: o teste E a força da âncora radial
+                        // saem da BASE ⇒ com base, o conjunto agarrado é o dela.
+                        let d0 = dist(self.sim.base_de(vi), self.inicio);
                         match self.pincel.falloff_forca {
                             FalloffForca::Radial => {
                                 if d0 < self.raio0 {
@@ -309,8 +314,12 @@ impl PincelTecido {
                 // Espec §2.3: o pino da fronteira, só em Local, força `1 − w`.
                 // ⚠️ Ele é o ÚLTIMO do bloco do vértice (§5.2 nº 1).
                 if self.pincel.pino && self.pincel.area == Area::Local {
+                    // Espec §6.4 leitura 4: a CONDIÇÃO de criação do pino é
+                    // avaliada na BASE. ⛔ O ALVO dele continua a ser o repouso do
+                    // traço (`Alvo::Repouso`), e a banda `w` do factor por vértice
+                    // também — a base muda a rede, nunca o alvo nem o peso.
                     let wv = banda(
-                        self.sim.repouso[vi],
+                        self.sim.base_de(vi),
                         cursor,
                         self.raio0,
                         self.pincel.limite,

@@ -641,3 +641,166 @@ fn o_agarrar_nao_segue_o_cursor_nem_na_area_dinamica() {
          nenhum seguisse, este gate afirmava que a area dinamica nao existe"
     );
 }
+
+/// ⭐⭐⭐ **GATE 52 — A BASE PERSISTENTE ENTRA EM QUATRO LEITURAS E EM NENHUMA
+/// MAIS** (espec §14 gate 52, §6.4).
+///
+/// O censo mede-se pelo que MUDA quando a base difere do repouso. As quatro que
+/// **têm** de mudar: o comprimento de repouso estrutural · o filtro de raio que
+/// decide quem entra · o teste e o peso da âncora radial do Agarrar · a condição
+/// de criação do pino. As que **têm de ficar intactas**: os **alvos** da âncora,
+/// do pino e da memória de forma (que apontam para o repouso do TRAÇO) e a
+/// **banda `w`** nas varreduras e na integração.
+///
+/// ⚠️ **Um port que faça a banda ler a base muda a fronteira do movimento sem
+/// mudar o máximo** — *o defeito vive no anel de `2,875 R` a `3,5 R`*, e só uma
+/// régua de malha inteira o vê (a lição do gate 43). É por isso que este gate
+/// olha para os alvos e para `φ`, e não só para o resultado.
+#[test]
+fn a_base_persistente_entra_em_quatro_leituras_e_em_nenhuma_mais() {
+    let (rest, faces) = grelha(21, 0.10);
+    let an = aneis(rest.len(), &faces);
+    let anel = |v: u32| an[v as usize].clone();
+    // Uma base DIFERENTE do repouso: a folha inteira empurrada em `z`, o que
+    // muda toda distância de vértice a vértice e ao centro da área.
+    let base: Vec<V3> = rest
+        .iter()
+        .map(|p| [p[0] * 1.3, p[1] * 1.3, p[2] + 0.2])
+        .collect();
+    let pincel = Pincel {
+        modo: Modo::Agarrar,
+        area: Area::Local,
+        raio: 0.35,
+        pino: true,
+        ..Pincel::default()
+    };
+    let normais = vec![[0.0, 0.0, 1.0]; rest.len()];
+    let correr = |com_base: bool| {
+        let mut pos = rest.clone();
+        let mut t = PincelTecido::pen_down(pincel, &pos, [0.0; 3], Vec::new());
+        if com_base {
+            t.sim.base.clone_from(&base);
+        }
+        for k in 0..3 {
+            let delta = if k == 0 { [0.0; 3] } else { [0.06, 0.0, 0.0] };
+            let passo = Passo {
+                cursor: [0.06 * k as f64, 0.0, 0.0],
+                delta,
+                delta_3d: delta,
+                parado: k == 0,
+                vista: [0.0, 0.0, 1.0],
+                normais: &normais,
+                pressao: 1.0,
+            };
+            if t.passo(&pos, &anel, &passo) {
+                for (v, act) in t.sim.activo.iter().enumerate() {
+                    if *act {
+                        pos[v] = t.sim.x[v];
+                    }
+                }
+            }
+        }
+        (pos, t)
+    };
+    let (_, sem) = correr(false);
+    let (_, com) = correr(true);
+
+    // ── O que TEM de mudar ────────────────────────────────────────────────
+    // (1) o comprimento de repouso das estruturais.
+    let l_de = |t: &PincelTecido| -> Vec<f64> {
+        t.sim
+            .restricoes
+            .iter()
+            .filter(|r| matches!(r.b, crate::verlet::Alvo::Vertice(_)))
+            .map(|r| r.l)
+            .collect()
+    };
+    assert_ne!(
+        l_de(&sem),
+        l_de(&com),
+        "leitura 1: o comprimento de repouso estrutural nao leu a base"
+    );
+    // (2) o filtro de raio ⇒ quem tem restrições construídas.
+    let construidos = |t: &PincelTecido| t.sim.construido.iter().filter(|c| **c).count();
+    assert_ne!(
+        construidos(&sem),
+        construidos(&com),
+        "leitura 2: o filtro de raio nao leu a base -- ela decide QUEM entra"
+    );
+    // (3) o teste e a força da âncora radial do Agarrar.
+    let ancoras = |t: &PincelTecido| -> Vec<f64> {
+        t.sim
+            .restricoes
+            .iter()
+            .filter(|r| matches!(r.b, crate::verlet::Alvo::Ancora))
+            .map(|r| r.s)
+            .collect()
+    };
+    assert_ne!(
+        ancoras(&sem),
+        ancoras(&com),
+        "leitura 3: a ancora radial do Agarrar nao leu a base"
+    );
+    // (4) a condição de criação do pino.
+    let pinos = |t: &PincelTecido| {
+        t.sim
+            .restricoes
+            .iter()
+            .filter(|r| matches!(r.b, crate::verlet::Alvo::Repouso))
+            .count()
+    };
+    assert_ne!(
+        pinos(&sem),
+        pinos(&com),
+        "leitura 4: a condicao do pino nao leu a base"
+    );
+
+    // ── E o que NÃO pode mudar ────────────────────────────────────────────
+    // ⛔ Os ALVOS das três espécies de alvo próprio apontam para o repouso do
+    // TRAÇO — a base muda a rede e o comprimento dela, nunca o alvo.
+    assert_eq!(
+        com.sim.repouso, rest,
+        "o repouso do traco foi contaminado pela base -- ele e' o alvo do pino e \
+         da memoria de forma"
+    );
+    // ⛔ E a banda `φ` mede sempre sobre o repouso do traço: um port que a faça
+    // ler a base muda a fronteira do movimento sem mudar o máximo.
+    assert_eq!(
+        sem.sim.phi, com.sim.phi,
+        "a banda `phi` leu a base -- ela mede sempre sobre o repouso do traco, e \
+         o defeito viveria no anel de 2,875R a 3,5R"
+    );
+    assert_eq!(
+        sem.sim.w_repouso, com.sim.w_repouso,
+        "a retencao de banda leu a base"
+    );
+}
+
+/// ⛔⛔ **GATE — SEM BASE, TUDO LÊ O REPOUSO AO BIT** (espec §6.4: as três
+/// maneiras de a opção ser um no-op EXACTO).
+///
+/// ⚠️ **É a metade que impede a leitura preguiçosa do gate acima:** ele afirma
+/// que quatro coisas mudam com a base, e este afirma que **nenhuma** muda sem
+/// ela. Sem os dois, uma porta que lesse a base sempre passaria o primeiro.
+#[test]
+fn sem_base_a_construcao_le_o_repouso_ao_bit() {
+    let (rest, _) = grelha(9, 0.20);
+    let mut sim = crate::verlet::Verlet::nascer(rest.clone());
+    for v in 0..rest.len() {
+        assert_eq!(
+            sim.base_de(v),
+            rest[v],
+            "sem base, o vertice {v} nao le o repouso"
+        );
+    }
+    // ⚠️ E uma base do TAMANHO ERRADO também não conta — a porta compara os
+    // comprimentos, e não a existência.
+    sim.base = vec![[9.0; 3]; rest.len() - 1];
+    for v in 0..rest.len() {
+        assert_eq!(
+            sim.base_de(v),
+            rest[v],
+            "uma base truncada foi lida como base"
+        );
+    }
+}

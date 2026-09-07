@@ -495,6 +495,10 @@ fn correr_com_blocos(
     } else {
         1
     };
+    // ⭐⭐⭐ **A BASE PERSISTENTE** (espec §6.4): gravada **no repouso**, ANTES do
+    // 1.º traço. ⚠️ **É essa a ordem que faz a opção morder** — gravá-la DEPOIS
+    // de um traço é um no-op exacto, porque aí ela É o repouso do traço seguinte.
+    let persistente = t.chaves.contains_key("persistente") && t.f("persistente") != 0.0;
     let mut pos = rest.clone();
     let mut blocos: Vec<Vec<V3>> = Vec::with_capacity(passos);
     // ⭐ A NORMAL DA ÁREA de cada passo (espec §4.2-bis): o vector NULO diz que o
@@ -506,6 +510,9 @@ fn correr_com_blocos(
         let repouso_do_traco = pos.clone();
         let normais_do_traco = normais(&pos, &fs);
         tecido = PincelTecido::pen_down(pincel, &pos, caminho[0], ordem_de_visita(&sup));
+        if persistente {
+            tecido.sim.base.clone_from(&rest);
+        }
         let _ = &repouso_do_traco;
         for k in 0..passos {
             let cursor = caminho[k];
@@ -1049,7 +1056,9 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_agarrar_radial_dinamica",
     "plano_agarrar_radial_local_origem",
     "plano_agarrar_radial_local_origem_2tracos",
+    "plano_agarrar_radial_local_origem_2tracos_persistente",
     "plano_agarrar_radial_local_origem_3tracos",
+    "plano_agarrar_radial_local_origem_3tracos_persistente",
     "plano_agarrar_radial_local_origem_pesonormal05",
     "plano_agarrar_radial_local_origem_pesonormal1",
     "plano_agarrar_radial_local_preset",
@@ -1109,12 +1118,13 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_inflar_radial_local_origem_massa2",
     "plano_inflar_radial_local_origem_parado",
 ];
-const VERDE_N: usize = 77;
+const VERDE_N: usize = 79;
 
 /// Os traços AINDA por explicar, com o valor MEDIDO ao lado.
 ///
-/// ⭐⭐⭐ **Os DOIS `_persistente` entraram em 07/09, e a assinatura deles lê-se
-/// dos números sem abrir uma linha de espec:**
+/// ⭐⭐⭐ **Os DOIS `_persistente` SAÍRAM daqui no mesmo dia em que entraram** — a
+/// base persistente (§6.4) está implementada, e a assinatura dela lê-se dos
+/// números sem abrir uma linha de espec:
 ///
 /// | traços seguidos | sem *Persistent* (nós e o alvo) | com *Persistent* (o alvo) |
 /// |---|---|---|
@@ -1122,11 +1132,10 @@ const VERDE_N: usize = 77;
 /// | `2` | `0,306` | **`0,171`** |
 /// | `3` | `0,415` | **`0,177`** |
 ///
-/// ⇒ **sem ele a deformação ACUMULA entre traços; com ele não.** Nós entregamos
-/// a coluna do meio nos dois casos, porque a lei não está implementada — e é a
-/// última do §8.1 que falta ao pincel. ⚠️ *A assinatura só aparece ao TERCEIRO
-/// traço: com dois, `0,306` contra `0,171` ainda se lia como uma amplitude
-/// errada; com três, `0,415` contra `0,177` diz que o alvo não está a somar.*
+/// ⇒ **sem ele a deformação ACUMULA entre traços; com ele SATURA.** ⚠️ *A
+/// assinatura só aparece ao TERCEIRO traço: com dois, `0,306` contra `0,171`
+/// ainda se lia como uma amplitude errada; com três, `0,415` contra `0,177` diz
+/// que o alvo não está a somar.* Hoje entregamos `0,171` e `0,177`.
 ///
 /// ⚠️ **A lista tem censo de obsolescência nas DUAS pontas** (CLAUDE.md §5.0:
 /// *uma catraca sem censo não desce, vira licença*): um traço daqui que passe a
@@ -1143,14 +1152,6 @@ const VERDE_N: usize = 77;
 /// bit — o percurso face a face de um vértice interior de grelha devolve
 /// `[S, O, E, N]`, que já é a ordem crescente de índice.
 const ABERTOS: [(&str, f64); ABERTO_N] = [
-    (
-        "plano_agarrar_radial_local_origem_2tracos_persistente",
-        0.788,
-    ),
-    (
-        "plano_agarrar_radial_local_origem_3tracos_persistente",
-        1.387,
-    ),
     ("esfera_apertar_linha_radial_dinamica", 0.630),
     ("esfera_apertar_ponto_radial_dinamica", 0.646),
     ("esfera_expandir_radial_dinamica", 0.581),
@@ -1159,7 +1160,7 @@ const ABERTOS: [(&str, f64); ABERTO_N] = [
     ("plano_apertar_ponto_radial_local", 0.600),
     ("plano_apertar_ponto_radial_local_origem", 0.908),
 ];
-const ABERTO_N: usize = 9;
+const ABERTO_N: usize = 7;
 
 /// A folga de regressão sobre o valor medido de um traço ABERTO.
 const FOLGA_ABERTO: f64 = 1.25;
@@ -3727,5 +3728,212 @@ fn o_desacordo_de_contagem_do_gancho_e_franja_e_nao_conjunto() {
         perto_deles > limite - 0.5 && perto_deles < limite,
         "o grupo do alvo comeca a {perto_deles:.2}R -- ele tem de encostar ao \
          limite da banda ({limite:.2}R) por dentro, senao nao e' franja"
+    );
+}
+
+/// ⭐⭐⭐ **GATE 51 — A BASE PERSISTENTE SATURA, NÃO ATENUA** (espec §14 gate 51,
+/// §6.4 · §10.16).
+///
+/// Repetindo o MESMO traço de Agarrar sobre a mesma folha, o maior deslocamento:
+///
+/// | traços | sem base | com base gravada no REPOUSO |
+/// |---|---|---|
+/// | `1` | `0,169046` | `0,169046` |
+/// | `2` | `0,305822` (`+81 %`) | `0,171050` (`+1,2 %`) |
+/// | `3` | `0,414513` (`+145 %`) | `0,176485` (`+4,4 %`) |
+///
+/// ⛔⛔ **Um port que apenas ATENUE o 2.º traço passa o par de dois e reprova o de
+/// três** — é por isso que a fixture de três existe: com dois, `0,306` contra
+/// `0,171` ainda se lê como uma amplitude errada; com três, `0,415` contra
+/// `0,177` diz que o alvo **não está a somar**.
+#[test]
+fn a_base_persistente_satura_e_nao_atenua() {
+    let rest = repouso("plano");
+    let pico = |nome: &str| {
+        correr_posicoes(nome)
+            .iter()
+            .zip(&rest)
+            .map(|(p, r)| dist(*p, *r))
+            .fold(0.0f64, f64::max)
+    };
+    let sem: Vec<f64> = [
+        "plano_agarrar_radial_local_origem",
+        "plano_agarrar_radial_local_origem_2tracos",
+        "plano_agarrar_radial_local_origem_3tracos",
+    ]
+    .iter()
+    .map(|n| pico(n))
+    .collect();
+    let com: Vec<f64> = [
+        "plano_agarrar_radial_local_origem",
+        "plano_agarrar_radial_local_origem_2tracos_persistente",
+        "plano_agarrar_radial_local_origem_3tracos_persistente",
+    ]
+    .iter()
+    .map(|n| pico(n))
+    .collect();
+    // (1) SEM base, a deformação acumula — e cresce muito.
+    assert!(
+        sem[1] > sem[0] * 1.5 && sem[2] > sem[1] * 1.25,
+        "sem base o traco tem de ACUMULAR: {:.6} -> {:.6} -> {:.6}",
+        sem[0],
+        sem[1],
+        sem[2]
+    );
+    // (2) COM base, ela satura — e o 1.º traço é o MESMO nos dois (a base é o
+    // repouso dele, logo ali a opção é um no-op exacto).
+    assert_eq!(sem[0], com[0], "o 1.º traco tem de ser identico nos dois");
+    assert!(
+        com[1] < com[0] * 1.05 && com[2] < com[0] * 1.10,
+        "com base o traco tem de SATURAR: {:.6} -> {:.6} -> {:.6}",
+        com[0],
+        com[1],
+        com[2]
+    );
+    // (3) ⛔ E o TERCEIRO traço é o discriminador: um port que só atenuasse o 2.º
+    // ficaria com a razão do 3.º parecida com a do 2.º.
+    let (razao2, razao3) = (sem[1] / com[1], sem[2] / com[2]);
+    assert!(
+        razao3 > razao2 * 1.25,
+        "a razao sem/com e' {razao2:.2}x no 2.º traco e {razao3:.2}x no 3.º -- se \
+         nao ABRIR, um port que apenas atenue o 2.º passa por aqui"
+    );
+}
+
+/// ⭐ **GATE 49 — O AGARRAR NÃO TEM ÁREA MÓVEL, NEM EM *DYNAMIC*** (espec §14
+/// gate 49, §2.1 · §4.3) — e o gate corre no **PLANO**, onde a lotaria é zero.
+///
+/// Sobre `plano_agarrar_radial_dinamica`, o maior `x` de um vértice movido tem de
+/// ser **`+0,890625`**: o último vértice da grelha dentro de `R₀(1+L) = 1,225`
+/// medido a partir do **pen-down** (`x = −0,3`). ⛔ **E não em torno do fim do
+/// caminho** (`x = +0,3`), onde o conjunto chegaria ao bordo da folha (`+1,5`,
+/// mais **13** colunas de vértices).
+///
+/// ⚠️ **O número é EXACTO porque a grelha é nossa e o plano não tem lotaria** —
+/// é o mesmo traço que na esfera só se lê a menos da banda de realização.
+#[test]
+fn o_agarrar_nao_tem_area_movel_nem_em_dynamic() {
+    const LIMIAR: f64 = 1e-5;
+    let nome = "plano_agarrar_radial_dinamica";
+    let rest = repouso("plano");
+    let nosso = correr_posicoes(nome);
+    let mut maior_x = f64::NEG_INFINITY;
+    let mut movidos = 0usize;
+    for v in 0..rest.len() {
+        if dist(rest[v], nosso[v]) > LIMIAR {
+            movidos += 1;
+            maior_x = maior_x.max(rest[v][0]);
+        }
+    }
+    assert_eq!(
+        movidos, 2128,
+        "movidos = {movidos} e o oraculo diz 2128 -- no plano a lotaria e' ZERO, \
+         logo esta contagem e' exacta"
+    );
+    assert!(
+        (maior_x - 0.890_625).abs() < 1e-9,
+        "o maior x de um vertice movido e' {maior_x:.6} e tem de ser +0,890625 -- \
+         o ultimo da grelha dentro de R0(1+L) medido do PEN-DOWN (x = -0,3). Se \
+         a area seguisse o cursor ele iria ate' ao bordo da folha (+1,5)"
+    );
+}
+
+/// ⛔⛔ **GATE 50 — O *NORMAL WEIGHT* NÃO EXISTE NESTE PINCEL, E O GATE É UMA
+/// IDENTIDADE** (espec §14 gate 50, §4.3 · §8.1).
+///
+/// As três fixtures — o mesmo traço com o valor a `0`, `0,5` e `1` — têm de dar o
+/// **mesmo bloco de vértices, linha a linha**.
+///
+/// ⛔ **Os FICHEIROS não são byte-idênticos e não podem ser:** o cabeçalho de
+/// cada um regista o próprio valor, logo um `cmp` cru reprova por construção — a
+/// comparação é do bloco de posições.
+///
+/// ⚠️ **A de `0,5` é load-bearing:** um port que só aplicasse a inclinação no
+/// extremo passaria com `0` e `1` só.
+#[test]
+fn o_normal_weight_nao_existe_neste_pincel() {
+    let base = deformado("plano_agarrar_radial_local_origem");
+    for nome in [
+        "plano_agarrar_radial_local_origem_pesonormal05",
+        "plano_agarrar_radial_local_origem_pesonormal1",
+    ] {
+        let outro = deformado(nome);
+        assert_eq!(
+            base.len(),
+            outro.len(),
+            "{nome}: contagem de vertices diferente"
+        );
+        for (v, (a, b)) in base.iter().zip(&outro).enumerate() {
+            assert_eq!(
+                a, b,
+                "{nome}: o vertice {v} difere do traco com o valor a ZERO -- se o \
+                 knob movesse alguma coisa, ele existiria neste pincel"
+            );
+        }
+    }
+    // ⛔ Anti-vácuo: o traço tem de ter deformado, senão «tudo igual» é verdade
+    // sobre três malhas em repouso.
+    let rest = repouso("plano");
+    let max = base
+        .iter()
+        .zip(&rest)
+        .map(|(p, r)| dist(*p, *r))
+        .fold(0.0f64, f64::max);
+    assert!(max > 0.1, "o traco de base mal deformou ({max:.4})");
+}
+
+/// ⭐⭐ **GATE 54 — A LOTARIA É DA SUPERFÍCIE, NÃO DA ÁREA** (espec §14 gate 54,
+/// §10.13 · §10.15) — **e nenhuma barra se relaxa com «é a *Dynamic*»**.
+///
+/// O desenho `superfície × área`, com quatro realizações por célula: no **plano**
+/// a dispersão entre realizações é `0,000000` nas **três** configurações
+/// (incluindo a *Dynamic*); na **esfera** ela vale `10,3 %` em *Dynamic* e
+/// `11,2 %` em *Local*.
+///
+/// ⚠️ **O que fica isolado é «a superfície», não «a curvatura»** — as duas malhas
+/// diferem também em contagem, partição em células e leques polares. ⛔ *Escrever
+/// «curvatura» é afirmar mais do que a medição dá.*
+#[test]
+fn a_lotaria_e_da_superficie_e_nao_da_area() {
+    let banda = |nome: &str| -> f64 {
+        let texto = inflar(&format!("{nome}.deformado.txt.gz"));
+        for l in texto.lines() {
+            if let Some(resto) = l.strip_prefix("dispersao_entre_realizacoes")
+                && let Some(t) = resto.split_whitespace().next_back()
+                && let Ok(v) = t.parse::<f64>()
+            {
+                return v;
+            }
+        }
+        panic!("{nome}: sem `dispersao_entre_realizacoes` no cabecalho");
+    };
+    // ⭐ As três configurações de PLANO, a *Dynamic* incluída: zero EXACTO.
+    for nome in [
+        "plano_arrastar_radial_dinamica",
+        "plano_arrastar_radial_dinamica_preset",
+        "plano_agarrar_radial_dinamica",
+    ] {
+        assert_eq!(
+            banda(nome),
+            0.0,
+            "{nome}: o plano tem lotaria -- e ele e' a metade que torna a esfera \
+             uma propriedade da SUPERFICIE e nao da area"
+        );
+    }
+    // ⛔ E a esfera, na MESMA área, tem-na — senão a comparação não compara nada.
+    let mut com_lotaria = 0usize;
+    for nome in [
+        "esfera_arrastar_radial_dinamica",
+        "esfera_agarrar_radial_dinamica",
+        "esfera_gancho_radial_dinamica",
+    ] {
+        if banda(nome) > 0.0 {
+            com_lotaria += 1;
+        }
+    }
+    assert_eq!(
+        com_lotaria, 3,
+        "so' {com_lotaria} dos tres tracos de esfera tem lotaria -- o desenho 2x2 \
+         precisa das duas colunas"
     );
 }

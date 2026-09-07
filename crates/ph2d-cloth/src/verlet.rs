@@ -97,6 +97,26 @@ pub struct Verlet {
     pub a: Vec<V3>,
     /// As posições de REPOUSO DO TRAÇO — de quando a simulação nasceu.
     pub repouso: Vec<V3>,
+    /// ⭐⭐⭐ **A BASE PERSISTENTE** (espec §6.4) — as posições que o artista
+    /// congelou com *Set Persistent Base*. **Vazia = sem base**, e aí tudo lê o
+    /// repouso do traço.
+    ///
+    /// ⚠️⚠️ **Ela substitui o repouso em EXACTAMENTE QUATRO leituras, e as quatro
+    /// vivem na CONSTRUÇÃO:** o comprimento de repouso de cada restrição
+    /// estrutural · o filtro de raio que decide quem recebe restrições · o teste
+    /// e a força da âncora radial do Agarrar · a condição de criação do pino.
+    ///
+    /// ⛔ **E o que NÃO a lê:** os **alvos** das três espécies de alvo próprio (a
+    /// âncora, o pino e a memória de forma apontam para o repouso do TRAÇO) e a
+    /// **banda `w`** do factor por vértice, nas varreduras e na integração. ⇒ *a
+    /// base muda a REDE e o comprimento dela; nunca o alvo nem o peso.*
+    ///
+    /// ⭐⭐ **O efeito medido é SATURAÇÃO, não atenuação:** o mesmo traço de
+    /// Agarrar repetido dá `0,169 → 0,306 → 0,415` sem base e
+    /// `0,169 → 0,171 → 0,176` com ela. *A deformação pára de acumular e assenta
+    /// no que UM traço faz.* ⚠️ E é preciso o **terceiro** traço para o dizer —
+    /// com dois, `0,306` contra `0,171` ainda se lê como amplitude errada.
+    pub base: Vec<V3>,
     /// O desvio de repouso por vértice do `Expand` (espec §4.5).
     pub tau: Vec<f64>,
     /// A âncora de deformação de cada vértice (o ponto B de [`Alvo::Ancora`]).
@@ -150,6 +170,7 @@ impl Verlet {
             ancora: repouso.clone(),
             sigma: vec![0.0; n],
             memoria: repouso.clone(),
+            base: Vec::new(),
             phi: vec![1.0; n],
             phi_integracao: vec![1.0; n],
             w_repouso: vec![1.0; n],
@@ -200,6 +221,21 @@ impl Verlet {
         }
     }
 
+    /// **A posição que a CONSTRUÇÃO lê** para `v` — a base persistente se houver,
+    /// senão o repouso do traço (espec §6.4).
+    ///
+    /// ⚠️ **Sem base ela é o repouso ao bit**, e é isso que faz as três maneiras
+    /// de a opção ser um no-op sair exactas: base ausente · base gravada DEPOIS
+    /// do traço (ela é o repouso do seguinte) · base gravada e um traço só.
+    #[must_use]
+    pub fn base_de(&self, v: usize) -> V3 {
+        if self.base.len() == self.repouso.len() {
+            self.base[v]
+        } else {
+            self.repouso[v]
+        }
+    }
+
     pub fn construir(&mut self, v: u32, anel: &[u32]) {
         let vi = v as usize;
         if self.construido[vi] {
@@ -224,7 +260,8 @@ impl Verlet {
         if !self.pares.insert(chave) {
             return;
         }
-        let (pa, pb) = (self.repouso[a as usize], self.repouso[b as usize]);
+        // Espec §6.4 leitura 1: o comprimento de repouso sai da BASE.
+        let (pa, pb) = (self.base_de(a as usize), self.base_de(b as usize));
         self.restricoes.push(Restricao {
             a,
             b: Alvo::Vertice(b),

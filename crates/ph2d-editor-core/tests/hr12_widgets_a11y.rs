@@ -427,6 +427,20 @@ const WIDGET_DELEGATE_MARKERS: &[&str] = &[
 /// da categoria (b) está a justificar a isenção com um facto que não se verifica, e o gate — que
 /// só lê o par `(caminho, razão)` — não sabe a diferença.
 const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
+    // ⛔⛔ **VERMELHO PRÉ-EXISTENTE, achado em 2026-09-07 pelo `collision-surface.sh`.** O
+    // ficheiro nasceu em 2026-09-06 do corte que a ÁRVORE COMBINADA impôs ao `paint.rs` (617 de
+    // 600), e o portão daquela linha não o viu **porque não corria a suíte do `ph2d-editor-core`**
+    // — que é onde este gate vive. *Um fecho que só corre as crates que a linha EDITOU é cego aos
+    // gates que vivem noutra.*
+    //
+    // ⚠️ **A isenção é a MESMA do `paint_socket.rs` abaixo, e pela mesma razão MEDIDA:** o
+    // ficheiro não regista **um único id** (zero ocorrências de `NodeId`, `hit_index` ou
+    // `register`) — ele desenha pixels e devolve um rect. Quem junta os hits e os publica é o
+    // pai, que os quer numa lista só.
+    (
+        "ph2d-panel-motion-graph/src/paint_card.rs",
+        "pure-paint helper (a moldura, o cabecalho, a faixa de params, o veu e o selo), cortado do paint.rs pelo teto de LOC da arvore combinada; nao regista um unico id — os hit rects e a a11y do cartao ficam no pai",
+    ),
     (
         "ph2d-panel-motion-graph/src/paint_socket.rs",
         "pure-paint helper (o glifo do socket, o halo de alvo e o dominio da porta), cortado do paint.rs pelo teto de LOC na wave 4 do redesenho; os hit rects e a a11y dos sockets ficam no pai",

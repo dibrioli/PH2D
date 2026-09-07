@@ -39,7 +39,7 @@ const MARGIN: f32 = 8.0; // LITERAL-PX-OK: floating editor margin from the canva
 ///
 /// ⛔ **E não move o teto de paradas** (`MAX_GRADIENT_STOPS`): ele é derivado da superfície mais
 /// ESTREITA em que o editor vive, que continua a ser a row do painel. *Folga não é licença.*
-const JANELA: f32 = 1.3;
+const JANELA: f32 = 1.3; // LITERAL-PX-OK: FACTOR adimensional, nao uma medida — o «uns 30%» do dono
 
 /// **Que editor está aberto** — a espécie decide o que se desenha e o que uma edição escreve.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

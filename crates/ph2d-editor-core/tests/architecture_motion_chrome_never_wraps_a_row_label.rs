@@ -54,7 +54,17 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// As crates cujo chrome é varrido por inteiro.
-const SCANNED_CRATES: &[&str] = &["ph2d-panel-motion-graph", "ph2d-panel-motion-params"];
+const SCANNED_CRATES: &[&str] = &[
+    "ph2d-panel-motion-graph",
+    "ph2d-panel-motion-params",
+    // ⭐ **A LEI SEGUE O CÓDIGO** (2026-09-07): os três editores ricos (curva, gradiente,
+    // paleta) mudaram-se para esta crate-folha quando ganharam um segundo hospedeiro — o
+    // cartão do nó. Os rótulos que eles cortam são os MESMOS; sem esta linha o censo caía de
+    // `30` para `27` e ler-se-ia como *«alguém apagou três»*, quando o que houve foi uma
+    // mudança de casa. *Um gate que varre um DIRECTÓRIO afirma sobre o directório, e uma lei
+    // que não se mudou com o código deixa de a medir.*
+    "ph2d-param-editors",
+];
 
 /// Ficheiros avulsos de `ph2d-editor-core` que desenham rótulos de linha do Motion.
 // ⚠️⚠️ **O ficheiro virou PASTA na integracao de 2026-09-04** (`line/UIUX`, tecto de LOC), e este

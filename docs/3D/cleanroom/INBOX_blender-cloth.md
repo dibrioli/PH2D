@@ -593,3 +593,64 @@ corpus **não discrimina** as duas leis. Shipa a da espec, e a medição não te
   problema um nível acima: nós construímos por ordem de índice de vértice. No plano isso é benigno
   (⚠️ presunção minha, não medida); na esfera não sei dizer. Há alguma coisa nas fixtures — ou que
   possa passar a haver — que fixe essa ordem?
+
+## Q16 — Push e Inflate ficam `5`–`9 %` ABAIXO, e é o que sobra de determinista (2026-09-06)
+
+A emenda Q15 está implementada (faces do alvo · partição em células · ordem de visita como argumento
+obrigatório do pen-down · a partição derivada no produto). **`50` dos `65` traços batem a barra e
+`17` saem praticamente ao bit** — eram `29` de `56` de manhã.
+
+⭐⭐ **E o que sobra parte-se limpo em dois**, pela razão *erro ÷ o que uma ordem errada custa*:
+
+| traço | erro | ordem errada | razão | |
+|---|---|---|---|---|
+| `esfera_empurrar_radial_dinamica` | `0,3431` | `0,0940` | **`3,65`** | Push |
+| `plano_inflar_radial_local`(`_origem`) | `0,2446` | `0,0954` | **`2,56`** | Inflate |
+| `plano_empurrar_radial_local`(`_origem`) | `0,2369` | `0,1020` | **`2,32`** | Push |
+| `esfera_inflar_radial_dinamica` | `0,3717` | `0,2157` | `1,72` | Inflate |
+| os quatro do **aperto** | `0,54`–`0,97` | `0,56`–`1,04` | `0,89`–`1,14` | o regime do §5.2-ter |
+
+⇒ **Push e Inflate são os dois únicos resíduos onde a ordem quase não mexe.** Todo o resto ou bate,
+ou é o regime em que o próprio alvo deixa de ser determinista.
+
+### O que o passo a passo diz (fixtures `plano_{empurrar,inflar}_radial_local_origem`)
+
+| | passo 2 | passo 3 | passo 6 | passo 12 |
+|---|---|---|---|---|
+| **Push** `c0` nosso/alvo | `0,0654`/`0,0654` | `0,1701`/`0,1704` | `0,2293`/`0,2382` | `0,2100`/`0,2195` |
+| **Push** `1R` nosso/alvo | `0,00050`/`0,00050` | `0,00423`/`0,00423` | `0,10137`/`0,10596` | `0,18484`/`0,19761` |
+| **Inflate** `c0` nosso/alvo | `0,0935`/`0,0935` | `0,2268`/`0,2277` | `0,2528`/`0,2689` | `0,2423`/`0,2629` |
+| **Inflate** `1R` nosso/alvo | `0,00071`/`0,00072` | `0,00857`/`0,00857` | `0,13133`/`0,13989` | `0,21351`/`0,23452` |
+
+⭐ **O passo 2 sai ao bit e o passo 3 é onde nasce** — que é **exactamente** o primeiro passo em que a
+relaxação tem trabalho para fazer (no 2 a malha ainda está em repouso e toda a correcção é zero,
+§5.2-quater). A partir daí é um **défice quase constante em fracção**: `0,92`–`0,96` no cursor e
+`0,91`–`0,94` a um raio, nos dois modos, e **a posição do pico bate**.
+
+⭐⭐ **E o ARRASTO, no mesmo corpus e com a mesma relaxação, lê `0,011`.** O que separa os três: o
+arrasto empurra **no plano da folha** (translação quase rígida, os pares mal esticam) e o Push e o
+Inflate empurram **para fora dele** (os pares esticam por construção). ⇒ *o resíduo está na resposta
+ao ESTICÃO, e não na força nem na normal.*
+
+### ⛔ O que já foi medido e REFUTADO deste lado (não repita)
+
+| tentado | número |
+|---|---|
+| o **peso** da normal por vértice (área · uniforme), **três** medições | `0,245 → 0,245` · `0,237 → 0,237` |
+| **mais varreduras** (`6` · `8` · `10`) | melhora o Push/Inflate (`0,164`/`0,162` a `8`) e **destrói o arrasto** (`0,011 → 0,555`) |
+| tirar a **banda** do `φ` da relaxação | arrasto `0,011 → 0,443` |
+| tirar a banda só do termo de **aceleração** | **byte-idêntico** — onde `a ≠ 0` a banda vale `1` |
+| a escala da banda (`0,4`–`1,3`) e a da retenção (`0,6`–`1,3`) | `1,0` é óptimo agudo nas duas |
+
+### As perguntas
+
+- **Q16.1 (a maior)** — há alguma coisa na projecção de uma restrição de distância que dependa de
+  quanto o par está esticado, além do factor `(1 − ℓ'/D)`? Um limite, um segundo passe, uma correcção
+  de segunda ordem, ou o comprimento de repouso a ser lido de outro sítio quando o par se afasta
+  muito do repouso?
+- **Q16.2** — o Push e o Inflate empurram a folha PARA FORA do plano dela. Existe alguma restrição,
+  peso ou termo que só entre quando o deslocamento tem componente ao longo da normal — por exemplo um
+  modelo de dobra, uma rigidez angular, ou uma restrição que a §3.2 não liste?
+- **Q16.3** — o `dt` e a massa: a §5.4 diz `dt = 0,01` fixo e a massa um ganho inverso puro. O passo 2
+  bate ao bit nos dois modos, o que os fixa. Mas há **sub-passos**? Um traço de doze passos do alvo
+  corre doze integrações, ou o alvo subdivide cada passo quando o deslocamento é grande?

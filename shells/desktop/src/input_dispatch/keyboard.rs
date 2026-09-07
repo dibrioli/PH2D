@@ -49,6 +49,16 @@ impl App {
         text: Option<winit::keyboard::SmolStr>,
     ) {
         self.any_input_this_frame = true;
+        // ⭐ **Estação ZERO do Ctrl+Z.** Ver [`crate::App::diag_undo_chord`] — ela corre antes de
+        // toda guarda de propósito, porque o que este report precisa de saber primeiro é se a
+        // tecla sequer entrou na janela.
+        if state == ElementState::Pressed
+            && !repeat
+            && physical_key == PhysicalKey::Code(KeyCode::KeyZ)
+            && (self.modifiers.control_key() || self.modifiers.super_key())
+        {
+            self.diag_undo_chord("RECEBIDA pela janela");
+        }
         let keycode = match physical_key {
             PhysicalKey::Code(code) => code as u32,
             PhysicalKey::Unidentified(_) => 0,

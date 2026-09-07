@@ -25,6 +25,14 @@ impl App {
         if matches!((state, repeat), (ElementState::Pressed, false))
             && let PhysicalKey::Code(code) = physical_key
         {
+            // ⭐ **Estação 2 do Ctrl+Z: sobreviveu aos ~20 `return` da cadeia.** Ver
+            // [`crate::App::diag_undo_chord`]. Sem esta linha, «engolido a meio» e «engolido pelo
+            // campo de texto do `handle_editor_key`» leem-se iguais — e são troços diferentes.
+            if code == KeyCode::KeyZ
+                && (self.modifiers.control_key() || self.modifiers.super_key())
+            {
+                self.diag_undo_chord("SOBREVIVEU A CADEIA");
+            }
             self.handle_editor_key(code);
         }
         // ⭐ **SOLTAR `P` ESCOLHE** (estudo de UI viva, E4) — e é a única tecla deste app cuja

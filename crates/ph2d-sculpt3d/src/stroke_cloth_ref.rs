@@ -98,9 +98,22 @@ fn anel_por_triangulacao() -> bool {
 }
 
 /// O anel-1 de `v` pelas ARESTAS das faces (ou pela triangulação, para bissecar).
-fn anel_de(mesh: &Mesh, v: u32) -> Vec<u32> {
+pub(super) fn anel_de(mesh: &Mesh, v: u32) -> Vec<u32> {
     let adj = mesh.adjacency();
     if !anel_por_triangulacao() {
+        // ⚠️⚠️ **A ORDEM do anel é a das FACES à volta do vértice** (espec
+        // §3.1): por cada face que contém `v`, os DOIS cantos adjacentes a ele
+        // naquela face, deduplicados. Ela fixa a ordem em que as restrições
+        // entram na lista, e a lista é resolvida em Gauss-Seidel, que não comuta.
+        //
+        // ⭐ **É exactamente o que o `vert_verts` da casa já devolve** — ele é
+        // construído percorrendo as faces do vértice e tomando o anterior e o
+        // seguinte —, e por isso não há aqui lei própria a reescrevê-lo.
+        // ⛔ Reescrevê-la foi tentado em 06/09 e a mutação que a apagava
+        // SOBREVIVEU: as duas davam o mesmo vector, vértice a vértice. O que
+        // fica é o gate que amarra a dependência
+        // (`o_anel_vem_pela_ordem_das_faces_e_nao_pela_dos_indices`), porque um
+        // `sort` do outro lado partiria o tecido em silêncio.
         return adj.vert_verts.neighbours(v as usize).to_vec();
     }
     let mut out = Vec::new();

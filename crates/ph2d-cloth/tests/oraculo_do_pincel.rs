@@ -328,15 +328,34 @@ fn triangular(faces: Vec<Vec<u32>>) -> Vec<Vec<u32>> {
 fn aneis(n: usize, faces: &[Vec<u32>]) -> Vec<Vec<u32>> {
     let mut a = vec![Vec::new(); n];
     for f in faces {
-        for k in 0..f.len() {
-            let (p, q) = (f[k] as usize, f[(k + 1) % f.len()] as usize);
-            a[p].push(q as u32);
-            a[q].push(p as u32);
+        let m = f.len();
+        for k in 0..m {
+            // ⛔ **Por CANTO, nunca por aresta.** Percorrer as arestas e empurrar
+            // os dois lados dá `(seguinte, anterior)` ao vértice que está na
+            // posição `0` da face e `(anterior, seguinte)` a todos os outros —
+            // um pólo de valência 96 saía com os dois primeiros trocados.
+            a[f[k] as usize].push(f[(k + m - 1) % m]);
+            a[f[k] as usize].push(f[(k + 1) % m]);
         }
     }
+    // ⚠️⚠️ **A ORDEM DO ANEL é a das FACES à volta do vértice, e não a dos
+    // índices** (espec §3.1): ela fixa a ordem em que as `(v, n)` e os pares
+    // `(a, b)` entram na lista, e a lista é resolvida em Gauss-Seidel, que não
+    // comuta. ⛔ Um `sort` aqui é uma ordem NOSSA a substituir a do alvo — e era
+    // o que estava escrito.
+    // A deduplicação é uma varredura linear, e não um conjunto: um anel tem meia
+    // dúzia de vizinhos (96 num pólo), e a casa proíbe os contentores por hash
+    // porque a ordem deles é o oposto do que esta função existe para preservar.
     for l in &mut a {
-        l.sort_unstable();
-        l.dedup();
+        let mut visto: Vec<u32> = Vec::with_capacity(l.len());
+        l.retain(|v| {
+            if visto.contains(v) {
+                false
+            } else {
+                visto.push(*v);
+                true
+            }
+        });
     }
     a
 }
@@ -1001,13 +1020,16 @@ fn os_tracos_de_um_passo_de_forca_saem_ao_bit() {
 #[ignore = "sonda"]
 fn sonda_da_paridade_com_o_oraculo() {
     println!(
-        "{:<46} {:>6} {:>6} | {:>8} {:>8} | {:>8} {:>8} {:>7}",
+        "{:<46} {:>6} {:>6} | {:>10} {:>10} | {:>8} {:>8} {:>7}",
         "traco", "mov_n", "mov_o", "max_n", "max_o", "err_max", "err_rms", "err/max"
     );
+    // ⚠️ Os máximos saem a SEIS casas, que é a precisão com que o cabeçalho de
+    // cada fixture grava o dele — a quatro casas a razão Local/Global de um
+    // traço de Expand tem `±4 %` de incerteza só do arredondamento.
     for nome in todas() {
         let l = correr(&nome);
         println!(
-            "{:<46} {:>6} {:>6} | {:>8.4} {:>8.4} | {:>8.4} {:>8.4} {:>7.3}",
+            "{:<46} {:>6} {:>6} | {:>10.6} {:>10.6} | {:>8.4} {:>8.4} {:>7.3}",
             nome,
             l.movidos_nos,
             l.movidos_oraculo,
@@ -1097,14 +1119,21 @@ const VERDE_N: usize = 35;
 /// que dobre a relaxação em TODA a parte passaria o gate 16 e mandaria o
 /// `plano_arrastar_radial_global` de `0,301` para `0,583` (medido), o que cai
 /// fora da folga e reprova aqui.
+/// ⚠️ **As SETE de esfera mudaram em 06/09 com a ordem do ANEL** (§3.1: ela é a
+/// das FACES, não a dos índices) — `4` pioraram e `3` melhoraram, e **todas as
+/// mudanças cabem dentro da dispersão de ordem do próprio traço** (`1 %` a `30 %`
+/// dela, medida pela [`sonda_do_chao_de_ruido`]). ⇒ *o corpus não discrimina as
+/// duas leis aqui*, e o que shipa é a da espec. ⛔ No plano as duas coincidem ao
+/// bit — o percurso face a face de um vértice interior de grelha devolve
+/// `[S, O, E, N]`, que já é a ordem crescente de índice.
 const ABERTOS: [(&str, f64); ABERTO_N] = [
-    ("esfera_agarrar_radial_dinamica", 0.196),
-    ("esfera_apertar_linha_radial_dinamica", 0.673),
-    ("esfera_apertar_ponto_radial_dinamica", 0.542),
-    ("esfera_empurrar_radial_dinamica", 0.323),
-    ("esfera_expandir_radial_dinamica", 0.557),
-    ("esfera_gancho_radial_dinamica", 0.245),
-    ("esfera_inflar_radial_dinamica", 0.378),
+    ("esfera_agarrar_radial_dinamica", 0.195),
+    ("esfera_apertar_linha_radial_dinamica", 0.785),
+    ("esfera_apertar_ponto_radial_dinamica", 0.688),
+    ("esfera_empurrar_radial_dinamica", 0.345),
+    ("esfera_expandir_radial_dinamica", 0.528),
+    ("esfera_gancho_radial_dinamica", 0.256),
+    ("esfera_inflar_radial_dinamica", 0.371),
     ("plano_apertar_linha_radial_local", 1.024),
     ("plano_apertar_linha_radial_local_origem", 0.263),
     ("plano_apertar_ponto_plano_local", 0.546),
@@ -1818,4 +1847,56 @@ fn sonda_do_chao_de_ruido() {
     for (_, l) in linhas {
         println!("{l}");
     }
+}
+
+/// ⭐⭐ **GATE — o anel do ARNÊS vem pela ordem das FACES, não pela dos índices**
+/// (espec §3.1).
+///
+/// ⛔⛔ **O gate de paridade não o apanha, e a razão é a forma dele:** os
+/// [`ABERTOS`] só acusam um traço que se DEGRADE acima da folga ou que passe a
+/// bater. Voltar a ordenar o anel por índice **melhora** quatro traços de esfera
+/// e piora três, todos longe da barra ⇒ a lista fica verde sobre a lei errada.
+/// *Um censo que só olha para um lado da mudança não gateia a lei, gateia a
+/// regressão.*
+///
+/// ⚠️ **No plano as duas ordens coincidem ao bit** — o percurso face a face de um
+/// vértice interior de grelha devolve `[S, O, E, N]`, que já é a ordem crescente
+/// de índice —, e é por isso que este gate corre sobre a ESFERA.
+#[test]
+fn o_anel_do_arnes_vem_pela_ordem_das_faces() {
+    let rest = repouso("esfera");
+    let fs = faces("esfera", &rest);
+    let an = aneis(rest.len(), &fs);
+
+    // A primeira face que contém cada vértice, na ordem da lista de faces.
+    let mut primeira: Vec<Option<usize>> = vec![None; rest.len()];
+    for (i, f) in fs.iter().enumerate() {
+        for &v in f {
+            primeira[v as usize].get_or_insert(i);
+        }
+    }
+    let mut fora_de_ordem = 0usize;
+    for (v, anel) in an.iter().enumerate() {
+        assert!(!anel.is_empty(), "vertice {v} sem anel");
+        if anel.windows(2).any(|w| w[0] > w[1]) {
+            fora_de_ordem += 1;
+        }
+        let f = &fs[primeira[v].expect("todo vertice esta' nalguma face")];
+        let n = f.len();
+        let k = f
+            .iter()
+            .position(|c| *c as usize == v)
+            .expect("v na face dele");
+        let (ant, seg) = (f[(k + n - 1) % n], f[(k + 1) % n]);
+        assert_eq!(
+            (anel[0], anel[1]),
+            (ant, seg),
+            "o anel de {v} nao comeca pelos dois cantos vizinhos na 1.a face dele: {anel:?}"
+        );
+    }
+    assert!(
+        fora_de_ordem > 0,
+        "nenhum anel sai fora da ordem dos indices -- a fixtura nao separa as \
+         duas leis, e este gate passaria com um `sort` la' dentro"
+    );
 }

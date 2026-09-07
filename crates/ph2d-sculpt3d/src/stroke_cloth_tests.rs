@@ -340,3 +340,75 @@ fn um_traco_novo_nao_herda_a_regiao() {
 // três como sucesso: **arcos escuros** (rachaduras), **bicos** nas pontas do
 // traço, e **um espinho** disparado para fora da peça. Esta sonda mede cada uma.
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐ **A ORDEM DO ANEL-1 é a das FACES à volta do vértice, não a dos ÍNDICES**
+/// (espec §3.1).
+///
+/// Por cada face que contém `v`, os DOIS cantos adjacentes a ele **naquela
+/// face** — o anterior e o seguinte —, deduplicados mantendo a primeira
+/// aparição. ⇒ ela fixa a ordem em que as `(v, n)` e os pares `(a, b)` entram na
+/// lista de restrições, e a lista é resolvida em Gauss–Seidel, **que não
+/// comuta**.
+///
+/// ⭐⭐ **O `vert_verts` da casa JÁ o faz** — ele percorre as faces do vértice e
+/// toma o anterior e o seguinte —, e é por isso que o tecido não tem lei própria
+/// aqui. ⛔ Este gate existe para amarrar essa DEPENDÊNCIA: um `sort` dentro do
+/// `ph2d-mesh` partiria o pincel de tecido em silêncio, e nenhum gate daquela
+/// crate mede a ordem do anel. *Uma reimplementação foi tentada em 06/09 e a
+/// mutação que a apagava sobreviveu — as duas davam o mesmo vector.*
+/// ⚠️ **Numa GRELHA as duas coincidem** — o percurso face a face de um vértice interior devolve
+/// `[S, O, E, N]`, que é a ordem crescente de índice —, e é por isso que este
+/// gate corre sobre uma ESFERA: *uma fixtura em que as duas leis dão o mesmo não
+/// testa nenhuma das duas.*
+#[test]
+fn o_anel_vem_pela_ordem_das_faces_e_nao_pela_dos_indices() {
+    let m = ph2d_mesh::shapes::uv_sphere(12, 16, 1.0);
+    let adj = m.adjacency();
+
+    // (a) O CONJUNTO tem de ser o do `adjacency` — a ordem é que muda.
+    let mut fora_de_ordem = 0usize;
+    for v in 0..m.vert_count() as u32 {
+        let anel = super::stroke_cloth_ref::anel_de(&m, v);
+        let mut nosso = anel.clone();
+        nosso.sort_unstable();
+        let mut deles = adj.vert_verts.neighbours(v as usize).to_vec();
+        deles.sort_unstable();
+        assert_eq!(
+            nosso, deles,
+            "o anel de {v} mudou de CONJUNTO, nao so' de ordem"
+        );
+        assert_eq!(
+            anel,
+            adj.vert_verts.neighbours(v as usize),
+            "o tecido deixou de consumir o anel da casa"
+        );
+        if anel.windows(2).any(|w| w[0] > w[1]) {
+            fora_de_ordem += 1;
+        }
+    }
+    assert!(
+        fora_de_ordem > 0,
+        "nenhum anel sai fora da ordem dos indices -- a fixtura nao separa as \
+         duas leis, e este gate passaria com um `sort` la' dentro"
+    );
+
+    // (b) A LEI, no vértice onde ela é mais visível: os dois primeiros do anel
+    // são os cantos adjacentes a `v` na PRIMEIRA face que o contém.
+    let v = (0..m.vert_count() as u32)
+        .find(|v| {
+            super::stroke_cloth_ref::anel_de(&m, *v)
+                .windows(2)
+                .any(|w| w[0] > w[1])
+        })
+        .expect("ha' pelo menos um, pelo assert acima");
+    let anel = super::stroke_cloth_ref::anel_de(&m, v);
+    let primeira = adj.vert_faces.neighbours(v as usize)[0];
+    let cantos = m.faces()[primeira as usize].verts();
+    let n = cantos.len();
+    let k = cantos.iter().position(|c| *c == v).expect("v na face dele");
+    assert_eq!(
+        (anel[0], anel[1]),
+        (cantos[(k + n - 1) % n], cantos[(k + 1) % n]),
+        "o anel de {v} nao comeca pelos dois cantos vizinhos na 1.a face dele: {anel:?}"
+    );
+}

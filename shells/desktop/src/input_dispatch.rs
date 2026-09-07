@@ -40,8 +40,8 @@ use ph2d_host::{
 use crate::App;
 use crate::Transform;
 use crate::forwarding::{
-    cursor_over_hero_panel, forward_text_to_hero, forward_to_hero, forward_wheel_to_hero,
-    resolve_live_entry,
+    cursor_over_hero_panel, forward_blur_to_hero, forward_text_to_hero, forward_to_hero,
+    forward_wheel_to_hero, resolve_live_entry,
 };
 use ph2d_tool_vector::params::MarqueeShape;
 
@@ -3401,6 +3401,35 @@ impl App {
                     self.asset_drag_up(x, y);
                 }
             }
+        }
+        // ⭐⭐⭐ **UM APERTO NO CANVAS SOLTA O TECLADO QUE UM CAMPO DO PAINEL SEGURAVA.**
+        //
+        // ⛔ **Ele vem ANTES dos três consumidores abaixo, e é aí que está a cura.** Os três
+        // — a cena de escultura, a janela de modelagem, a alça do gizmo de âncora — TOMAM o
+        // aperto e devolvem `return` antes do `forward_to_hero`, que é o único sítio onde a
+        // partida de foco corre. Sem esta linha, tocar num chip numérico de painel e voltar
+        // ao canvas deixava `focus_id` preso naquele chip **para o resto da sessão**, e com
+        // ele morriam `Delete`, `Ctrl+Z` e todo atalho do módulo que tomou o gesto (Enio,
+        // 2026-09-07: *"a tecla del parou de funcionar e não temos undo/redo para Cloth"* —
+        // dois relatos, um defeito, nenhum deles do pincel de tecido).
+        //
+        // ⚠️ **A guarda é a MESMA que os consumidores usam** (`pointer_over_chrome`): um
+        // aperto SOBRE o chrome não é um aperto no canvas, e para esse o despachante lá
+        // abaixo continua a decidir sozinho — inclusive quando ele cai em espaço morto de
+        // painel, que é blur pela lei dele.
+        //
+        // ⚠️ **E ela não presume que alguém vá consumir**: a porta é idempotente, então
+        // quando ninguém toma o gesto o `dispatch_down` a seguir não tem o que refazer.
+        // *Condicionar a soltura a QUEM tomou seria uma lista de consumidores a apodrecer no
+        // dia em que nasce o quarto.*
+        if state == ElementState::Pressed
+            && !crate::chrome_hit::pointer_over_chrome(
+                self.gfx.as_ref(),
+                self.last_pointer.0,
+                self.last_pointer.1,
+            )
+        {
+            forward_blur_to_hero(self.gfx.as_mut());
         }
         // ADR-0150 W1/M2: a cena 3D toma o botão para navegar. Inerte (e
         // portanto invisível) sem cena armada.

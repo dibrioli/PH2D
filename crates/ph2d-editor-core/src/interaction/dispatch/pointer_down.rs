@@ -10,10 +10,7 @@ use super::hover::set_widget_pressed;
 use super::number_input::{apply_number_stepper_if_hit, update_drag_value};
 use super::scroll::scrollbar_panel_for_id;
 use super::text_ops::{byte_offset_from_click_xy, place_text_caret};
-use super::{
-    commit_hex_buffer, commit_number_buffer, init_number_buffer, reset_focused_visual_state,
-    select_all_in_text_widget,
-};
+use super::{init_number_buffer, select_all_in_text_widget};
 use crate::interaction::ContextMenuKind;
 use crate::interaction::flip_strip::FlipStripGesture;
 use crate::interaction::types::{BlenderHitKind, GesturePhase, GraphGesture, TimelineGesture};
@@ -361,16 +358,12 @@ pub(super) fn dispatch_down<'frame>(
             }
         }
     }
-    let prev_focus = store.focus_id();
-    if let Some(old) = prev_focus
-        && new_focus != Some(old)
-    {
-        commit_number_buffer(store, old, events, false);
-        commit_hex_buffer(store, old, events);
-        reset_focused_visual_state(store, old);
-        events.push(WidgetEvent::Blur(old));
-        store.set_focus(None);
-    }
+    // ⚠️ **A partida de foco é uma PORTA, e este é um dos dois chamadores dela** —
+    // ver [`super::blur`]. O outro é a shell, que a chama à frente de um consumidor
+    // de canvas que devolve cedo (a cena 3D, a janela de modelagem, a alça de
+    // âncora): sem isso o foco fica preso num chip numérico para sempre, e com ele
+    // morrem `Delete`, `Ctrl+Z` e todo atalho daquele módulo.
+    super::blur::depart_focus(store, new_focus, events);
 
     // Detect double-click against the previous Down. Use the
     // raw hit id (not `new_focus`) so hierarchy companion ids

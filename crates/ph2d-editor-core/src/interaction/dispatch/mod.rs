@@ -12,6 +12,7 @@
 //! TreeView/ContextMenu/ColorPicker/Modal/Tabs in Phase D.
 
 mod blender;
+mod blur;
 pub mod clipboard;
 mod curve;
 mod focus;
@@ -31,6 +32,7 @@ mod text_ops;
 pub mod tick;
 
 use blender::{apply_blender_channel_value, derive_blender_channel_value};
+pub use blur::blur_focus;
 pub use clipboard::apply_clipboard_paste;
 pub use key::{dispatch_key, graph_key_for};
 pub use keymap::{

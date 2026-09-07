@@ -495,6 +495,19 @@ impl HeroScreen {
         )
     }
 
+    /// **Largue o teclado que um campo do chrome estava a segurar** — para quem
+    /// TOMA um gesto de canvas e devolve antes do despachante de ponteiro.
+    ///
+    /// ⚠️ **Existe porque um `return` cedo herda as obrigações da porta saltada**:
+    /// o `dispatch_down` compromete o buffer e solta o foco em todo clique que não
+    /// cai num widget, e um consumidor de canvas que devolve antes dele deixava o
+    /// foco preso num chip numérico **para o resto da sessão** — matando `Delete`,
+    /// `Ctrl+Z` e todo atalho do módulo que tomou o gesto. Mecanismo:
+    /// [`crate::interaction::blur_focus`].
+    pub fn blur_focus<'frame>(&mut self, arena: &'frame Bump) -> &'frame [WidgetEvent] {
+        crate::interaction::blur_focus(&mut self.store, arena)
+    }
+
     pub fn handle_key<'frame>(
         &mut self,
         event: KeyEvent,

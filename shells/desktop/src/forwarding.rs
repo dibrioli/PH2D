@@ -98,6 +98,44 @@ pub fn forward_to_hero(
     reparent
 }
 
+/// ⭐⭐⭐ **O CLIQUE NO CANVAS SOLTA O TECLADO DO PAINEL** — o irmão de
+/// [`forward_to_hero`] para quem TOMA o gesto e devolve antes dele.
+///
+/// # O report que a criou
+///
+/// Enio, 2026-09-07: *«a tecla del para deletar o mesh parou de funcionar e não temos undo/redo
+/// para Cloth»*. **Os dois são o MESMO defeito, e nenhum é do tecido.** Tocar num chip numérico
+/// do painel de escultura (são 37; o pincel de tecido acrescentou cinco) põe o foco do teclado
+/// nele. Voltar ao barro NÃO o tirava: o `sculpt3d_pointer_down` toma o clique e devolve `return`
+/// **antes** do [`forward_to_hero`], então a partida de foco do despachante nunca corria e
+/// `focus_id` ficava preso naquele chip **para o resto da sessão**. Dali em diante o
+/// `sculpt3d_key` recusa na primeira linha (`text_entry_focused`) e morrem, juntos, `Delete`,
+/// `Ctrl+Z`, `Ctrl+Shift+Z` e todo atalho da cena 3D.
+///
+/// ⚠️ **A cura é chamar a MESMA lei, nunca repeti-la** — [`ph2d_editor::interaction::blur_focus`]
+/// compromete o buffer numérico por confirmar, repõe o visual do widget e emite o `Blur`. Um
+/// `set_focus(None)` à mão aqui perderia o número que o artista digitou e deixaria o campo a
+/// desenhar o cursor de texto sem ter o teclado.
+///
+/// ⚠️ **Idempotente**: sem foco é um no-op exacto, e depois dela o bloco do `dispatch_down` não
+/// tem o que fazer. É isso que a torna segura à frente de um consumidor que talvez não consuma.
+pub fn forward_blur_to_hero(gfx: Option<&mut AppGfx>) {
+    let Some(gfx) = gfx else {
+        return;
+    };
+    let Some(hero) = gfx.hero_screen.as_mut() else {
+        return;
+    };
+    // Mesmo idioma do irmão: fotografa antes de aplicar, porque o `apply_event`
+    // muta o hero e a fatia vive na arena.
+    let snapshot: Vec<WidgetEvent> = hero.blur_focus(&gfx.hero_arena).to_vec();
+    for e in snapshot {
+        if !hero.apply_event(e) && !expected_unhandled(&e) {
+            eprintln!("[hero] unhandled event: {e:?}");
+        }
+    }
+}
+
 /// *Este evento chegar sem handler é ESPERADO?* — a isenção do detector de seam morto.
 ///
 /// ⚠️ Ela é por MOTIVO, nunca por conveniência. O log ao lado é como um widget pintado-mas-mudo

@@ -26,7 +26,7 @@ use crate::{Brush, Dab, Falloff, SculptStroke, Symmetry};
 use ph2d_cloth::V3;
 use ph2d_cloth::verlet::norm;
 use ph2d_cloth::verlet_gesto::{Curva, FalloffForca, Passo, Pincel, PincelTecido};
-use ph2d_mesh::Mesh;
+use ph2d_mesh::{Face, Mesh};
 
 /// **O que muda de uma CÓPIA DE SIMETRIA para a outra**, num dab.
 ///
@@ -50,7 +50,7 @@ struct Copia {
 /// **A sessão da lei da referência de UMA cópia de simetria, num traço.**
 #[derive(Clone, Debug)]
 pub(super) struct ClothRef {
-    tecido: PincelTecido,
+    pub(super) tecido: PincelTecido,
 }
 
 /// A lei em vigor é a da referência? — lido UMA vez.
@@ -235,7 +235,18 @@ impl SculptStroke {
         let cursor = v3(center);
         let pos: Vec<V3> = mesh.positions().iter().map(|p| v3(*p)).collect();
         if self.cloth_ref[copy].is_none() {
-            let tecido = PincelTecido::pen_down(pincel_de(brush, passagens), &pos, cursor);
+            let mut tecido = PincelTecido::pen_down(pincel_de(brush, passagens), &pos, cursor);
+            // ⭐⭐⭐ **A ORDEM DE VISITA da malha** (espec §3.1-bis) — a partição em
+            // células da árvore espacial. ⛔ **Não é uma optimização: é metade da
+            // lei.** Ela fixa a ordem em que as restrições entram na lista, a
+            // lista é resolvida em Gauss-Seidel, e Gauss-Seidel não comuta —
+            // medido nas 65 fixtures do oráculo, varrer por índice crescente
+            // deixa `30` traços acima da barra e pela célula ficam `15`.
+            //
+            // ⚠️ **É propriedade da MALHA, e por isso é derivada UMA vez, no
+            // pen-down**, sobre as posições que passam a ser o repouso do traço.
+            let caras: Vec<&[u32]> = mesh.faces().iter().map(Face::verts).collect();
+            tecido.ordem = ph2d_cloth::particao::ordem_de_visita(&pos, &caras);
             self.cloth_ref[copy] = Some(ClothRef { tecido });
         }
         let Some(mut ses) = self.cloth_ref[copy].take() else {

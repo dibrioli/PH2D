@@ -1933,3 +1933,65 @@ fn a_ordem_de_visita_e_uma_permutacao_agrupada_por_celula() {
         );
     }
 }
+
+/// ⭐⭐⭐ **GATE 33 — a NOSSA partição reproduz a do alvo, elemento a elemento**
+/// (espec §3.1-bis).
+///
+/// A ordem de visita que [`ph2d_cloth::particao::ordem_de_visita`] deriva das
+/// posições e das faces tem de ser **a mesma sequência** que a fixture de células
+/// traz, nas DUAS malhas. ⇒ *é o que torna a lei aplicável a uma malha qualquer
+/// da cena, e não só às duas do oráculo.*
+///
+/// ⚠️ **É a única maneira honesta de levar esta lei ao produto:** o adaptador não
+/// tem fixture nenhuma para consultar, então ou ele deriva a partição pela mesma
+/// lei, ou o produto e a bancada medem programas diferentes.
+#[test]
+fn a_nossa_particao_reproduz_a_do_alvo() {
+    let compara = |sup: &str, nossa: &[u32], dele: &[u32]| -> Option<usize> {
+        if nossa.len() != dele.len() {
+            panic!("{sup}: {} vertices contra {}", nossa.len(), dele.len());
+        }
+        nossa.iter().zip(dele).position(|(a, b)| a != b)
+    };
+
+    // ⭐ O PLANO não tem ambiguidade nenhuma: `x = y = 3` e `z = 0`, o empate
+    // entre `x` e `y` dá `Y` pela regra da espec, e é por `Y` que o alvo parte.
+    let rest = repouso("plano");
+    let fs = faces("plano", &rest);
+    let nossa = ph2d_cloth::particao::ordem_de_visita(&rest, &fs);
+    let dele = ordem_de_visita("plano");
+    assert_eq!(
+        compara("plano", &nossa, &dele),
+        None,
+        "plano: a nossa particao nao reproduz a do alvo"
+    );
+
+    // ⛔⛔ **A ESFERA é irresolúvel com a precisão que temos, e o gate diz
+    // EXACTAMENTE em quê.** As posições de repouso vêm a seis casas, e nelas as
+    // extensões de `x` e de `y` são iguais ao bit (`2,000001` as duas) contra
+    // `2,000000` de `z`. A regra da §3.1-bis dá `Y` a esse empate; o alvo parte
+    // por `X`. ⇒ *nos dados dele `x` era estritamente maior, e as seis casas
+    // apagaram os bits que o decidiam.*
+    let rest = repouso("esfera");
+    let fs = faces("esfera", &rest);
+    let dele = ordem_de_visita("esfera");
+    let por_x = ph2d_cloth::particao::ordem_de_visita_com_eixo_raiz(&rest, &fs, Some(0));
+    assert_eq!(
+        compara("esfera", &por_x, &dele),
+        None,
+        "esfera: com o empate resolvido por X a particao tinha de reproduzir o alvo"
+    );
+    // ⚠️ **A segunda metade é o CONTROLO** — sem ela este gate estaria verde sobre
+    // «qualquer eixo serve», e o achado (que a ambiguidade é de UM bit) evapora.
+    let por_y = ph2d_cloth::particao::ordem_de_visita_com_eixo_raiz(&rest, &fs, Some(1));
+    assert!(
+        compara("esfera", &por_y, &dele).is_some(),
+        "esfera: resolver o empate por Y tambem reproduz o alvo -- entao nao ha' \
+         ambiguidade nenhuma e esta secao inteira esta' errada"
+    );
+    // ⚠️ E as duas dão o MESMO tamanho de folha, que é o que a simetria da esfera
+    // impõe: *contar não discrimina aqui, e foi por isso que a 1.ª leitura desta
+    // medição concluiu «bate» sobre uma partição espelhada.*
+    let tamanhos = |o: &[u32]| o.len();
+    assert_eq!(tamanhos(&por_x), tamanhos(&por_y));
+}

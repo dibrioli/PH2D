@@ -412,3 +412,59 @@ fn o_anel_vem_pela_ordem_das_faces_e_nao_pela_dos_indices() {
         "o anel de {v} nao comeca pelos dois cantos vizinhos na 1.a face dele: {anel:?}"
     );
 }
+
+/// ⭐⭐⭐ **O traço arma a ORDEM DE VISITA da malha no pen-down** (espec §3.1-bis).
+///
+/// ⛔⛔ **Este gate existe porque a mutação que apaga a fiação SOBREVIVEU:** a
+/// bancada de paridade corre sobre as fixtures do oráculo e arma a ordem a partir
+/// da fixture de células, então ela nunca toca no caminho do produto. *Uma lei
+/// medida na bancada e não ligada no produto é uma lei que o artista não tem.*
+///
+/// ⚠️ **A malha tem de passar de [`ph2d_cloth::particao::FACES_POR_FOLHA`]**, senão
+/// a árvore tem uma folha só e a ordem de visita degenera na crescente — que é
+/// exactamente o que a fiação errada produziria. *Uma fixtura pequena não separa
+/// as duas leis.*
+#[test]
+fn o_traco_arma_a_ordem_de_visita_da_malha() {
+    use ph2d_mesh::Face;
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(64, 96, 1.0);
+    assert!(
+        mesh.faces().len() > ph2d_cloth::particao::FACES_POR_FOLHA,
+        "a malha cabe numa folha -- a fixtura nao produz o fenomeno"
+    );
+    let mut brush = pincel();
+    brush.radius = 0.3;
+    let mut s = SculptStroke::default();
+    s.begin(&mesh);
+    s.dab(
+        &mut mesh,
+        &brush,
+        &dab_em([0.0, -1.0, 0.0], brush.radius, [0.0; 3]),
+        Symmetry::default(),
+    );
+    let sessao = s
+        .cloth_ref
+        .iter()
+        .flatten()
+        .next()
+        .expect("o dab tinha de abrir uma sessao de tecido");
+    let esperada = {
+        let pos: Vec<ph2d_cloth::V3> = mesh
+            .positions()
+            .iter()
+            .map(|p| [f64::from(p[0]), f64::from(p[1]), f64::from(p[2])])
+            .collect();
+        let caras: Vec<&[u32]> = mesh.faces().iter().map(Face::verts).collect();
+        ph2d_cloth::particao::ordem_de_visita(&pos, &caras)
+    };
+    assert_eq!(
+        sessao.tecido.ordem, esperada,
+        "o traco nao armou a ordem de visita da particao"
+    );
+    // ⚠️ **CONTROLO:** ela tem de ser diferente da crescente, senão este gate
+    // ficaria verde com a fiação apagada.
+    assert!(
+        sessao.tecido.ordem.windows(2).any(|w| w[0] > w[1]),
+        "a ordem armada e' a crescente -- a malha nao parte em celulas"
+    );
+}

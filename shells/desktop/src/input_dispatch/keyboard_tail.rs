@@ -28,8 +28,7 @@ impl App {
             // ⭐ **Estação 2 do Ctrl+Z: sobreviveu aos ~20 `return` da cadeia.** Ver
             // [`crate::App::diag_undo_chord`]. Sem esta linha, «engolido a meio» e «engolido pelo
             // campo de texto do `handle_editor_key`» leem-se iguais — e são troços diferentes.
-            if code == KeyCode::KeyZ
-                && (self.modifiers.control_key() || self.modifiers.super_key())
+            if code == KeyCode::KeyZ && (self.modifiers.control_key() || self.modifiers.super_key())
             {
                 self.diag_undo_chord("SOBREVIVEU A CADEIA");
             }

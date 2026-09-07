@@ -169,6 +169,18 @@ impl Panel for MotionGraphPanel {
                 state.rename = None;
                 EventOutcome::Consumed
             }
+            // ⭐⭐ **O TEXTO ESCRITO** (report do Enio, 2026-09-07: *«não funcionou. Tempo
+            // permaneceu»*). Um `TextInput` comita por **`Submit`** — o `ValueChanged` abaixo é
+            // do `NumberInput`, e é o que ele produz depois de ANALISAR o buffer como número.
+            //
+            // ⛔⛔ **A caixa de texto abria, aceitava, e o `Enter` caía no `_ => Ignored`.** O
+            // gate que eu tinha chamava o `param_edit::commit` **directamente** — e o cabeçalho
+            // deste ficheiro avisa exactamente contra isso: *um teste que empurra o gesto já
+            // assumiu a resposta*. A lei estava certa; ninguém a chamava.
+            WidgetEvent::Submit(id) if id == hits::param_edit_id() => {
+                param_edit::commit(state, _host.store());
+                EventOutcome::Consumed
+            }
             // ⭐ **O NÚMERO ESCRITO** (report do Enio, 2026-09-05). Um `NumberInput` comita por
             // `ValueChanged` — é o que o `Enter` produz depois de analisar o buffer, e também o
             // que as setinhas e o arrasto DENTRO da caixa produzem.

@@ -372,18 +372,28 @@ fn no_published_text_no_box_but_an_empty_one_still_opens() {
     crate::snapshot::set_card_texts(Vec::new());
 }
 
-/// ⭐⭐ **O QUE SE ESCREVE CHEGA AO DOCUMENTO** — pela porta de texto, e não pela dos números.
+/// ⭐⭐⭐ **O QUE SE ESCREVE CHEGA AO DOCUMENTO — pelo EVENTO, não pela função.**
 ///
-/// FALSIFICADO por o `commit` cair no ramo do número: `number_value` devolve `None` sobre um
-/// `TextInput` e a edição evapora **em silêncio**.
+/// ⛔⛔ **A 1.ª versão deste gate chamava `param_edit::commit` directamente, e passou verde
+/// sobre o produto quebrado** (report do Enio, 2026-09-07: *«não funcionou. Tempo permaneceu»*).
+/// O commit estava ligado a `WidgetEvent::ValueChanged`, que é o que um **`NumberInput`** produz
+/// depois de analisar o buffer como número — uma caixa de TEXTO comita por **`Submit`**, e esse
+/// braço não existia: o `Enter` caía no `_ => Ignored`.
+///
+/// *O cabeçalho deste ficheiro já avisava — «um teste que empurra o gesto já assumiu a
+/// resposta» — e eu escrevi o gate que ele proíbe.*
+///
+/// FALSIFICADO por apagar o braço `WidgetEvent::Submit(param_edit_id())` do `apply_event`.
 #[test]
 fn what_is_typed_leaves_by_the_text_door() {
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::panel::PanelHostInternal;
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::MotionGraphPanel>();
     crate::snapshot::set_card_texts(vec![(7, "expr", LONGO.to_string())]);
     let mut state = MotionGraphPanelState::default();
     crate::param_edit::arm_text(&mut state, 7, 0, "expr");
     crate::snapshot::set_card_texts(Vec::new());
-    let mut store = WidgetStore::default();
-    store.register(
+    host.store_mut().register(
         crate::hits::param_edit_id(),
         InteractiveState::TextInput {
             state: TextInputState::Focused,
@@ -393,11 +403,43 @@ fn what_is_typed_leaves_by_the_text_door() {
         },
     );
     let _ = drain_intents();
-    crate::param_edit::commit(&state, &store);
+    let saida = host.apply_panel_event::<crate::MotionGraphPanel>(
+        &mut state,
+        WidgetEvent::Submit(crate::hits::param_edit_id()),
+    );
+    assert_eq!(
+        saida,
+        ph2d_editor_core::panel::EventOutcome::Consumed,
+        "o painel tem de CONSUMIR o Submit da sua propria caixa"
+    );
     let saiu = drain_intents();
     let Some(GraphIntent::SetTextParam { param, value, .. }) = saiu.first() else {
         panic!("o texto tem de sair pela porta de TEXTO, e saiu {saiu:?}");
     };
     assert_eq!(*param, "expr");
     assert_eq!(value, "vendas");
+}
+
+/// ⚠️ **E o `Esc` continua a fechar pelo `Blur`** — a lei que o `apply_event` escreve ao lado:
+/// *o `Blur` é o ÚNICO fecho, e tem de ser*, porque é o que os três caminhos têm em comum.
+///
+/// ⛔ A 1.ª versão da caixa de texto chamava `mark_cancel_on_escape`, que manda o `Esc` para um
+/// braço `Cancel` **que não existe** — a caixa ficava no ecrã a comer o teclado.
+///
+/// FALSIFICADO por voltar a marcar o Esc: o `Blur` deixa de ser o que a fecha.
+#[test]
+fn the_text_box_closes_by_blur_like_the_number_one() {
+    use ph2d_editor_core::interaction::WidgetEvent;
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::MotionGraphPanel>();
+    crate::snapshot::set_card_texts(vec![(7, "expr", "sin(t)".to_string())]);
+    let mut state = MotionGraphPanelState::default();
+    crate::param_edit::arm_text(&mut state, 7, 0, "expr");
+    crate::snapshot::set_card_texts(Vec::new());
+    assert!(state.param_edit.is_some(), "a caixa abriu");
+    let saida = host.apply_panel_event::<crate::MotionGraphPanel>(
+        &mut state,
+        WidgetEvent::Blur(crate::hits::param_edit_id()),
+    );
+    assert_eq!(saida, ph2d_editor_core::panel::EventOutcome::Consumed);
+    assert!(state.param_edit.is_none(), "o Blur FECHA a caixa de texto");
 }

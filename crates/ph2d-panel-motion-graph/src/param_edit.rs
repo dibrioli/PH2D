@@ -163,8 +163,11 @@ fn open_box(store: &mut WidgetStore, e: &ParamEdit) {
                 selection_anchor: Some(0),
             },
         );
+        // ⛔ **SEM `mark_cancel_on_escape`, e a razão está escrita no `apply_event`:** o `Blur`
+        // é o ÚNICO fecho desta caixa, e tem de ser — é o que os três caminhos têm em comum
+        // (o `Enter`, o `Esc` e o clique fora). Marcar o Esc como `Cancel` mandava-o para um
+        // braço que não existe, e a caixa ficava no ecrã **a comer o teclado**.
         store.set_focus(Some(id));
-        store.mark_cancel_on_escape(id);
         return;
     }
     let value = e.seed.parse::<f64>().unwrap_or(0.0);

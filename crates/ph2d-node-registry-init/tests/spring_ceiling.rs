@@ -140,28 +140,40 @@ fn the_declared_ceilings_are_honoured_at_the_corner() {
     );
 }
 
-/// **E o teto do `friction` é o do PIOR caso — a tensão MÍNIMA.**
+/// **E o teto do `friction` é o do PIOR CANTO — a tensão no TETO dela.**
 ///
-/// Este é o gate load-bearing da escolha: o limite verdadeiro é `2 / sub_dt`, e o `sub_dt`
-/// encolhe com a tensão ⇒ sob tensão alta um `friction` de 200 é estável. Escolher aquele
-/// número deixaria o artista digitar 200 e ver a mola explodir ao baixar a tensão — *o valor
-/// certo seria função de OUTRO knob*, que esta casa trata como bug de desenho. O único número
-/// que nunca mente é o do pior caso.
+/// ⚠️⚠️ **Este gate mudou de canto em 2026-09-07, e a mudança É o achado.** Ele probava a tensão
+/// MÍNIMA, porque a derivação original dizia que ali estava o pior caso (um sub-passo só,
+/// `sub_dt = MAX_DT`, logo `2 / 0,1 = 20`). Depois de a W1 do ciclo 2 curar o buraco de
+/// estabilidade da mola, a medição diz o contrário: **no piso a mola aguenta 1.280** e só
+/// explode a 1.400. O canto que prende passou a ser o oposto — os dois tetos ao mesmo tempo.
+///
+/// ⇒ O gate afirma a mesma PROPRIEDADE de sempre (*o teto é a borda, não folga*) contra o canto
+/// que de facto a produz: `20` é sadio e `40` explode. ⛔ Ele **não** compara com um literal —
+/// dirige a mola pela porta do produto e mede o que ela faz.
+///
+/// ⚠️ E a metade do PISO fica, porque continua a ser uma afirmação verdadeira e útil: um teto
+/// que só valesse na tensão alta deixaria o artista baixar a tensão e ver a mola explodir.
 #[test]
-fn the_friction_ceiling_holds_at_the_lowest_tension_not_just_the_highest() {
-    let f = ceiling("friction");
+fn the_friction_ceiling_is_the_edge_at_the_corner_that_binds() {
+    let (t, f) = (ceiling("tension"), ceiling("friction"));
     let floor_tension = 0.1; // o piso que o `eval` aplica (`ctx.param("tension").max(0.1)`)
     assert_eq!(
         run(floor_tension, f),
         Verdict::Sane,
-        "com a tensao no PISO o friction no teto ({f}) ainda tem de ser estavel"
+        "com a tensao no PISO o friction no teto ({f}) tem de ser estavel"
+    );
+    assert_eq!(
+        run(t, f),
+        Verdict::Sane,
+        "e no CANTO (tension {t}) tambem -- e' o mesmo teto"
     );
     // E logo acima ele deixa de ser: é isto que torna o número um teto, e não uma folga.
     assert_ne!(
-        run(floor_tension, f * 2.0),
+        run(t, f * 2.0),
         Verdict::Sane,
-        "o DOBRO do teto de friction, com a tensao no piso, nao pode ser sadio -- se for, o teto \
-         esta baixo demais e esta a roubar faixa util do artista"
+        "o DOBRO do teto de friction, no canto, nao pode ser sadio -- se for, o teto esta baixo \
+         demais e esta a roubar faixa util do artista"
     );
 }
 

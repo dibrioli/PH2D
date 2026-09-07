@@ -473,17 +473,31 @@ static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
 /// integrador. Um teto que só vale a 60 fps é um teto que depende da MÁQUINA — a mola do artista
 /// explodiria na primeira engasgada, e nada na tela diria por quê.
 ///
-/// **`friction` — o teto é 20, e ele COINCIDE com o slider.** O termo de amortecimento é
-/// explícito, logo estável enquanto `friction · sub_dt < 2`; no pior caso `sub_dt = MAX_DT`
-/// (tensão baixa ⇒ um sub-passo só) ⇒ **`2 / 0,1 = 20`**. Medido a `MAX_DT`, com o valor de
-/// fronteira já explodindo:
+/// **`friction` — o teto é 20, e ele COINCIDE com o slider.**
 ///
-/// | tension | sub-passos | teto previsto | último sadio | primeiro a explodir |
-/// |---|---|---|---|---|
-/// | 0,1 | 1 | 20 | **20** | 21 |
-/// | 8 (default) | 2 | 40 | 21 | **40** |
-/// | 60 (slider) | 4 | 80 | 40 | **80** |
-/// | 20.480 | 64 | 1.280 | 200 | **1.280** |
+/// ⚠️⚠️ **O NÚMERO ficou, e a RAZÃO inverteu-se** (re-medido em 2026-09-07, depois da W1 do
+/// ciclo 2 curar o buraco de estabilidade da mola). A derivação original dizia que o pior caso
+/// era a **tensão MÍNIMA** — um sub-passo só, `sub_dt = MAX_DT`, logo `2 / 0,1 = 20`. Hoje, na
+/// tensão do piso, a mola aguenta `1.280` e só explode a `1.400`: aquele canto deixou de
+/// prender. Quem prende agora é o canto **OPOSTO**, a tensão no TETO dela.
+///
+/// | tensão | último `friction` sadio | primeiro mau |
+/// |---|---|---|
+/// | 0,1 (piso) | 1.280 | 1.400 (EXPLODE) |
+/// | 8 (default) | 1.280 | 1.400 (EXPLODE) |
+/// | 60 (slider) | 1.280 | 1.400 (EXPLODE) |
+/// | 20.480 | 40 | 45 (SALTA) |
+/// | **1.600.000 (o teto)** | **20** | **40 (EXPLODE)** |
+///
+/// ⚠️ **É por isso que o teto continua em 20 e não sobe para 40**: a `20.480` o `40` ainda é
+/// sadio, mas no CANTO (os dois tetos ao mesmo tempo) ele explode — e o canto é o que um teto
+/// tem de sobreviver. *Subi-lo para o que a tensão média aguenta seria fazer o número certo
+/// depender de OUTRO knob, que é o bug de desenho que esta casa recusa por escrito.*
+///
+/// ⛔ **E a lição é do §0.0, ao contrário do costume:** aqui quem mexeu no número que tornava
+/// algo instável foi esta mesma linha, e a nota que estava ao lado do teto **descrevia um
+/// mecanismo que já não existe**. O valor sobreviveu à re-medição por coincidência; a
+/// explicação não.
 ///
 /// ⚠️ **Isto é o achado, e ele é sobre o slider:** o `20,0` do `ParamUiHint` **não era um número
 /// de gosto** — é `2 / MAX_DT`, o limite de estabilidade do amortecimento explícito no pior

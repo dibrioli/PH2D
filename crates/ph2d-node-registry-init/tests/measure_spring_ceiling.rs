@@ -212,7 +212,14 @@ fn measure_where_the_spring_stops_honouring_its_numbers() {
             "tension", "friction", "pico |Y|", "diverge?"
         );
         for &tension in &[0.1, 8.0, 60.0, 20_480.0] {
-            for &friction in &[1.5, 20.0, 21.0, 40.0, 80.0, 120.0, 200.0, 1_280.0, 1_400.0] {
+            // ⚠️ **A faixa fina entre 40 e 80 entrou em 2026-09-07**, quando a W1 do ciclo 2
+            // curou o buraco de estabilidade da mola: o teto de `20` deixou de ser a borda e
+            // passou a ser folga, e a borda que interessa mudou-se para ESTA janela — no canto
+            // de tensão ALTA, que é o que de facto prende o número.
+            for &friction in &[
+                1.5, 20.0, 21.0, 40.0, 45.0, 50.0, 55.0, 60.0, 65.0, 70.0, 75.0, 80.0, 120.0,
+                200.0, 1_280.0, 1_400.0,
+            ] {
                 let (mut g, spring, step) = spring_scene(tension, friction);
                 let (_, peak, ja) = march(&mut g, &reg, spring, step, 600, dt);
                 println!(

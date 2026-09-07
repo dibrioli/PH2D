@@ -73,9 +73,14 @@ const SG_PARAMS: &[&str] = &[
     "reverse",
     "offset",
     // ⭐ A ORDEM (ciclo 2, W2) — o device faz a MESMA conta que o `order::raw_at`.
-    "order",
-    "seed",
-    // ⭐ A ORDEM (ciclo 2, W2) — o device faz a MESMA conta que o `order::raw_at`.
+    //
+    // ⛔⛔ **ESTE PAR ESTAVA AQUI DUAS VEZES**, e o efeito não era cosmético: o gerador declara
+    // um campo por nome no `struct` de uniformes, e `order: f32` duas vezes é
+    // `redefinition of 'order'` — o WGSL **não compila**. Ou seja, desde a W2 do ciclo 2 o
+    // `motion.stagger` deixou de ter kernel no dispositivo, em silêncio, e o gate que o diz
+    // (`every_registered_kernel_validates_across_the_whole_presence_space`) vive numa crate que
+    // o fecho daquela wave não corria. *Uma lista de nomes com um duplicado lê-se como uma
+    // lista mais longa; só o compilador do device sabe que é a MESMA coisa duas vezes.*
     "order",
     "seed",
 ];

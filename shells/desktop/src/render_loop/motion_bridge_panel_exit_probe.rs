@@ -343,9 +343,10 @@ fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
     let clique = |m: &mut MotionState, id: ph2d_nodegraph::graph::NodeId| -> Option<String> {
         let _ = drain_intents();
         let _ = ph2d_panel_motion_params::drain_param_intents();
-        push_intent(GraphIntent::CycleSource {
+        push_intent(GraphIntent::StepChoice {
             node: id.0,
             param: "path",
+            delta: 1,
         });
         crate::render_loop::motion_bridge::apply_graph_intents(
             m,
@@ -376,7 +377,7 @@ fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
     let at = |x: f32| Stream::new(1).with("P", Column::Vec2(vec![[x, 0.0]]));
     m.pump.cook.set_external("Estrela".to_string(), at(1.0));
     m.pump.cook.set_external("Lua".to_string(), at(2.0));
-    let lista = super::super::params::source_options_live(&m);
+    let lista = super::super::params::choices::source_options_live(&m);
     assert_eq!(lista.len(), 2, "as duas formas sao pickaveis: {lista:?}");
 
     let primeira = clique(&mut m, id).expect("com lista, o clique escolhe");

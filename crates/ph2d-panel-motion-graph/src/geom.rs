@@ -206,6 +206,81 @@ pub(crate) fn readout_top(n: &GraphNodeView) -> f32 {
     param_band_top(n) + card_param_rows(n) * ROW_H
 }
 
+/// Recuo da FAIXA em relação à borda do cartão — o mesmo dos dois lados, para a row ler como
+/// uma peça POUSADA no cartão e não como uma banda que o atravessa.
+///
+/// ⚠️ **Vive aqui, e não no pintor, pela razão de [`card_h`]:** desde que o clique passou a
+/// depender de ONDE dentro da row ele caiu (as setas de um selector), o pintor e o gesto têm de
+/// medir a MESMA faixa. Duas cópias e a seta desenhada deixa de ser a seta clicada.
+pub(crate) const TRACK_INSET_X: f32 = 6.0; // LITERAL-PX-OK: card param track x-inset
+/// Folga vertical dentro da fileira: a faixa não encosta na de cima nem na de baixo.
+pub(crate) const TRACK_INSET_Y: f32 = 2.0; // LITERAL-PX-OK: card param track y-inset
+
+/// **A FAIXA desenhada dentro da fileira `i`** — o rectângulo que o pintor preenche e contra o
+/// qual o gesto mede as zonas. Uma porta, dois leitores.
+pub(crate) fn param_track_rect(row: Rect, z: f32) -> Rect {
+    Rect::new(
+        row.x + TRACK_INSET_X * z,
+        row.y + TRACK_INSET_Y * z,
+        (row.w - 2.0 * TRACK_INSET_X * z).max(0.0),
+        (row.h - 2.0 * TRACK_INSET_Y * z).max(0.0),
+    )
+}
+
+/// Largura do alvo de UMA seta de selector, em px lógicos.
+///
+/// ⚠️ **É o alvo, não o desenho:** o triângulo tem `ARROW_R` de meio-lado (`3,5`), e o resto é
+/// a folga que faz o dedo acertar. `13 px` a `zoom 1` deixam `152` dos `178` da faixa para o
+/// nome e o valor — e a `zoom 2`, que é a régua do tablet, cada seta mede `26 px`.
+pub(crate) const ARROW_W: f32 = 13.0; // LITERAL-PX-OK: card selector arrow hit width
+/// Meio-lado do triângulo de uma seta — o mesmo do chevron de secção, para as duas marcas do
+/// cartão lerem como a mesma família.
+pub(crate) const ARROW_R: f32 = 3.5; // LITERAL-PX-OK: card selector arrow half-size
+
+/// ⭐⭐⭐ **ONDE DENTRO DE UMA ROW O CLIQUE CAIU** (report do Enio, 2026-09-07: *«para esse tipo
+/// de campo deveríamos ter duas setas laterais e se clicar no centro abre-se um dropdown»* —
+/// o selector do Blender).
+///
+/// ⚠️ **Só um SELECTOR lê isto** (um enum, uma fonte publicada, um canal). Numa row de número a
+/// faixa inteira é uma coisa só — o nível arrasta-se em qualquer ponto, que é o *number field*
+/// do Blender —, e cortar-lhe as pontas roubaria alcance ao arrasto sem dar nada em troca.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum RowZone {
+    /// A seta da esquerda: a opção ANTERIOR.
+    Prev,
+    /// O nome: abre a LISTA.
+    Centre,
+    /// A seta da direita: a opção SEGUINTE.
+    Next,
+}
+
+/// A zona de `x` dentro da faixa. ⚠️ **Uma faixa estreita não tem centro**: abaixo de duas setas
+/// mais um resto, tudo é `Centre` — a lista é sempre legível (o menu é chrome, não escala com o
+/// zoom), e duas setas coladas uma à outra seriam dois alvos que ninguém acerta.
+pub(crate) fn row_zone(track: Rect, z: f32, x: f32) -> RowZone {
+    let Some(seta) = arrow_slot(track, z) else {
+        return RowZone::Centre;
+    };
+    if x < track.x + seta {
+        RowZone::Prev
+    } else if x > track.x + track.w - seta {
+        RowZone::Next
+    } else {
+        RowZone::Centre
+    }
+}
+
+/// **A largura de cada seta, ou `None` quando não há onde as pôr** — a porta que o pintor e o
+/// gesto leem, para a seta desenhada ser a seta clicada.
+///
+/// ⚠️ **Uma faixa estreita não tem centro**: com menos de três larguras de seta, as duas
+/// colariam uma à outra e o nome ficaria sem alvo. Aí não se desenha nenhuma e a faixa inteira
+/// abre a lista — que é legível a qualquer zoom, porque o popup é chrome e não escala.
+pub(crate) fn arrow_slot(track: Rect, z: f32) -> Option<f32> {
+    let seta = ARROW_W * z;
+    (track.w >= 3.0 * seta).then_some(seta)
+}
+
 /// O rect de ECRÃ da row de param `i` — a faixa inteira do cartão, que é também o alvo de
 /// arrasto (o número arrasta-se em qualquer ponto da row, como no Blender).
 ///

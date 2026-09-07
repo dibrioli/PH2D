@@ -23,11 +23,10 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_node_registry::ParamWidget;
 use ph2d_tokens::{ColorToken, Theme};
 
-/// Recuo da faixa em relação à borda do cartão — o mesmo dos dois lados, para a row ler como
-/// uma peça POUSADA no cartão e não como uma banda que o atravessa.
-const TRACK_INSET_X: f32 = 6.0; // LITERAL-PX-OK: card param track x-inset
-/// Folga vertical dentro da fileira: a faixa não encosta na de cima nem na de baixo.
-const TRACK_INSET_Y: f32 = 2.0; // LITERAL-PX-OK: card param track y-inset
+/// ⚠️ **Os recuos da faixa mudaram-se para o [`geom`]** quando o clique passou a depender de
+/// ONDE dentro da row ele caiu: o pintor e o gesto medem a mesma faixa ou a seta desenhada
+/// deixa de ser a seta clicada.
+use geom::TRACK_INSET_X;
 /// Raio da faixa — o mesmo do cartão dividido por dois, para a peça pequena não parecer um
 /// cartão pequeno.
 const TRACK_R: f32 = 4.0; // LITERAL-PX-OK: card param track corner radius
@@ -216,6 +215,38 @@ fn draw_section_header(
     );
 }
 
+/// **Esta row é um SELECTOR?** — a porta do clique, lida aqui para o desenho e o gesto nunca
+/// discordarem sobre onde estão as setas.
+fn seletor(p: &CardParam) -> Option<()> {
+    matches!(
+        crate::interact::param_row::click_does(p),
+        crate::ClickDoes::Cycle(_) | crate::ClickDoes::CycleSource | crate::ClickDoes::CycleChannel
+    )
+    .then_some(())
+}
+
+/// As duas setas, uma em cada ponta da faixa — triângulos da mesma família do chevron de secção
+/// (o cartão desenha as suas marcas em geometria, nunca em glifos).
+fn draw_arrows(ctx: &mut PaintCtx, track: Rect, seta: f32, z: f32, theme: Theme) {
+    let r = geom::ARROW_R * z;
+    let cy = track.y + track.h * 0.5;
+    let cor = resolve(ColorToken::Text3, theme);
+    for (cx, dir) in [
+        (track.x + seta * 0.5, -1.0),
+        (track.x + track.w - seta * 0.5, 1.0),
+    ] {
+        ph2d_editor_core::paint_shapes::fill_polygon(
+            ctx.scene,
+            &[
+                (cx + r * CHEVRON_TIP * dir, cy),
+                (cx - r * CHEVRON_FLAT * dir, cy - r),
+                (cx - r * CHEVRON_FLAT * dir, cy + r),
+            ],
+            cor,
+        );
+    }
+}
+
 /// Desenha a faixa de params de um cartão. **Nada acontece abaixo do LOD**
 /// ([`geom::params_are_drawn`]) — nem o desenho nem, do lado do hit-test, o registo: uma row
 /// pintada onde não se clica é um controlo morto, e uma registada onde não se vê é um alvo
@@ -239,12 +270,7 @@ pub(super) fn draw_card_params(ctx: &mut PaintCtx, n: &GraphNodeView, view: &Vie
             }
             None => break,
         };
-        let track = Rect::new(
-            row.x + TRACK_INSET_X * z,
-            row.y + TRACK_INSET_Y * z,
-            (row.w - 2.0 * TRACK_INSET_X * z).max(0.0),
-            (row.h - 2.0 * TRACK_INSET_Y * z).max(0.0),
-        );
+        let track = geom::param_track_rect(row, z);
         fill_rounded_rect(
             ctx.scene,
             track,
@@ -270,6 +296,20 @@ pub(super) fn draw_card_params(ctx: &mut PaintCtx, n: &GraphNodeView, view: &Vie
         if !com_texto {
             continue;
         }
+        // ⭐⭐⭐ **AS DUAS SETAS DE UM SELECTOR** (report do Enio, 2026-09-07, com a foto do
+        // selector do Blender). Elas dizem, sem uma palavra, que ali há uma LISTA — e que o
+        // centro é outro alvo.
+        //
+        // ⚠️ **Quem responde *«isto é um selector?»* é a porta do CLIQUE** (`click_does`), não
+        // uma segunda lista de espécies aqui: uma espécie nova de selector ganha as setas no
+        // mesmo dia em que ganha o gesto, e nunca uma sem a outra.
+        let track = match seletor(p).and_then(|_| geom::arrow_slot(track, z)) {
+            Some(seta) => {
+                draw_arrows(ctx, track, seta, z, theme);
+                Rect::new(track.x + seta, track.y, track.w - 2.0 * seta, track.h)
+            }
+            None => track,
+        };
         let text_y = row.y + TEXT_PAD_Y * z;
         let size = geom::PARAM_LABEL_SIZE * z;
         let (label_tone, value_tone) = if p.driven {

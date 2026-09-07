@@ -104,6 +104,15 @@ pub(super) fn apply_param_row(
         // ⚠️ **Só o CLIQUE**, nunca o `End` de um arrasto: senão largar o dedo depois de varrer
         // dava mais um passo, e o valor saltava por cima do que o artista tinha escolhido.
         GesturePhase::Click => {
+            // ⚠️ **A faixa desta row, medida UMA vez** e pela porta que o pintor usa — a zona de
+            // um selector (seta / nome / seta) tem de ser lida contra o rectângulo desenhado.
+            let view = View::new(rect, state.view);
+            let row_rect = crate::geom::param_row_rect(view_node, &view, row as usize);
+            let zona = crate::geom::row_zone(
+                crate::geom::param_track_rect(row_rect, view.zoom),
+                view.zoom,
+                g.x,
+            );
             // ⭐⭐⭐ **UM CLIQUE NUM NÚMERO ABRE-O PARA ESCRITA** (report do Enio, 2026-09-05:
             // *«vários nós não permitem clicar no número para usar o teclado para escrever»*).
             //
@@ -124,8 +133,32 @@ pub(super) fn apply_param_row(
                     param: p.hint.param,
                     value: p.to_stored(f32::from(u8::from(p.value < 0.5))),
                 }),
+                // ⭐⭐⭐ **UM SELECTOR TEM DUAS SETAS E UMA LISTA** (report do Enio,
+                // 2026-09-07, com a foto do selector do Blender: *«para esse tipo de campo
+                // deveríamos ter duas setas laterais e se clicar no centro (nome) abre-se um
+                // dropdown»*).
+                //
+                // ⚠️ **O «avança» sozinho é O(n) cliques para uma lista de 48 opções**, e não
+                // diz quais são: para escolher é preciso passar por todas, e para saber o que
+                // existe é preciso ter passado. As setas dão o passo nos dois sentidos; o
+                // centro dá a lista.
+                //
+                // ⚠️ **A zona sai da porta única** ([`crate::geom::row_zone`]) contra a MESMA
+                // faixa que o pintor desenha — duas medidas e a seta desenhada deixa de ser a
+                // seta clicada.
                 ClickDoes::Cycle(n) => {
-                    let proxima = (p.value.round() + 1.0).rem_euclid(n as f32);
+                    let passo = match zona {
+                        crate::geom::RowZone::Prev => -1.0,
+                        crate::geom::RowZone::Next => 1.0,
+                        crate::geom::RowZone::Centre => {
+                            open_options(state, node, p, row_rect);
+                            state.interaction = Interaction::Idle;
+                            return;
+                        }
+                    };
+                    // ⚠️ `rem_euclid` e não `%`: o resto de `-1` em Rust é `-1`, e a opção
+                    // anterior à primeira é a ÚLTIMA — a volta ao princípio nos dois sentidos.
+                    let proxima = (p.value.round() + passo).rem_euclid(n as f32);
                     push_intent(GraphIntent::SetParam {
                         node,
                         param: p.hint.param,
@@ -141,19 +174,27 @@ pub(super) fn apply_param_row(
                     state.interaction = Interaction::Idle;
                     return;
                 }
-                ClickDoes::CycleSource => push_intent(GraphIntent::CycleSource {
-                    node,
-                    param: p.hint.param,
-                }),
-                // ⭐⭐ **O canal seguinte.** ⚠️ Ele NÃO é um `Cycle` de enum, e a diferença
-                // não é cosmética: um enum guarda o ÍNDICE da opção no próprio param, e um
-                // canal guarda o NOME da coluna num param de texto mais um `mode` noutro. A
-                // shell resolve qual é o seguinte porque a lista inclui o que a corrente de
-                // cima cozinhou **neste quadro**.
-                ClickDoes::CycleChannel => push_intent(GraphIntent::CycleChannel {
-                    node,
-                    param: p.hint.param,
-                }),
+                // ⭐⭐ **Uma fonte e um canal têm as MESMAS duas setas e a mesma lista** — o
+                // que muda é quem resolve o passo: a lista deles é VIVA (o que o artista
+                // desenhou, o que a corrente de cima cozinhou), logo é a shell que sabe qual é
+                // a seguinte. ⚠️ E um canal escreve DOIS params (a coluna e o `mode`), que é a
+                // outra razão de o passo não ser um `SetParam` daqui.
+                ClickDoes::CycleSource | ClickDoes::CycleChannel => {
+                    let delta = match zona {
+                        crate::geom::RowZone::Prev => -1,
+                        crate::geom::RowZone::Next => 1,
+                        crate::geom::RowZone::Centre => {
+                            open_options(state, node, p, row_rect);
+                            state.interaction = Interaction::Idle;
+                            return;
+                        }
+                    };
+                    push_intent(GraphIntent::StepChoice {
+                        node,
+                        param: p.hint.param,
+                        delta,
+                    });
+                }
                 // ⛔ Vazio de PROPÓSITO: o `pointer_down` já abriu o selector, e este braço só
                 // corre se a marca faltar — caso em que escrever aqui esconderia o defeito.
                 ClickDoes::OpensPicker | ClickDoes::Nothing => {}
@@ -164,6 +205,48 @@ pub(super) fn apply_param_row(
             state.interaction = Interaction::Idle;
         }
     }
+}
+
+/// ⭐⭐⭐ **ABRE A LISTA DE UM SELECTOR** — o *dropdown* que o report do Enio de 2026-09-07 pediu.
+///
+/// ⚠️ **Reusa o popup que este painel já tem** (o mesmo do menu de nó, dos tints de um backdrop e
+/// das portas de um cartão): a lista, o recorte ao canvas, a rolagem, a barra e o hit-test são os
+/// mesmos. Um segundo popup seria a segunda resposta a *«como se mostra uma lista aqui?»*.
+///
+/// ⚠️ **Sem opções publicadas não abre nada**, e é a resposta certa: uma lista vazia diria que
+/// não há nada a escolher quando o que houve foi a shell não ter publicado — e um popup vazio
+/// come o clique seguinte para se fechar.
+///
+/// Ancorada por baixo da row e alinhada com o cartão, que é onde a lista de um selector nasce em
+/// toda a gente (a caixa abre por baixo do campo que a abriu).
+fn open_options(
+    state: &mut MotionGraphPanelState,
+    node: u32,
+    p: &crate::CardParam,
+    row_rect: Rect,
+) {
+    let Some((labels, current)) = crate::snapshot::card_choices_of(node, p.hint.param) else {
+        return;
+    };
+    if labels.is_empty() {
+        return;
+    }
+    state.menu = Some(crate::state::Menu {
+        scroll: 0.0,
+        screen: (row_rect.x, row_rect.y + row_rect.h),
+        // ⛔ Uma lista de opções não faz nascer nó nenhum: o ponto de nascimento do popup
+        // não a alcança, e escrever ali a posição do cartão seria dar sentido a um campo
+        // que este corpo não lê.
+        spawn: (0.0, 0.0),
+        body: crate::state::MenuBody::ParamOptions {
+            node,
+            param: p.hint.param,
+            title: p.hint.label,
+            labels,
+            current,
+            kind: click_does(p),
+        },
+    });
 }
 
 /// ⭐⭐⭐ **O QUE UM CLIQUE NUMA ROW DO CARTÃO FAZ — a porta única.**

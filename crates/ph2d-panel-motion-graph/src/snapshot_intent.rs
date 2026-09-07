@@ -68,24 +68,37 @@ pub enum GraphIntent {
     /// extensões aqui faria o cartão ser a segunda resposta à mesma pergunta — exactamente o que
     /// a row do painel já recusou pelo mesmo motivo.
     PickFile { node: u32, param: &'static str },
-    /// ⭐ **O ARTISTA CLICOU NUMA ESCOLHA DE FONTE PUBLICADA** (doc 65) — a lista de nomes é
-    /// **viva** (muda quando o artista desenha), e por isso ela não viaja no cartão: o cartão
-    /// diz *«a seguinte»* e a shell, que possui a lista, resolve qual é.
+    /// ⭐⭐ **O ARTISTA CARREGOU NUMA SETA DE UM SELECTOR DO CARTÃO** — a opção anterior
+    /// (`delta = -1`) ou a seguinte (`+1`), para uma fonte publicada (doc 65) ou um canal.
     ///
-    /// ⚠️ **É isso que mantém o [`crate::CardParam`] sem uma única `String`** — a medição que
-    /// pôs os params dentro do nó conta alocações por quadro, e uma lista de nomes por row
-    /// seria exactamente o que ela recusou.
-    CycleSource { node: u32, param: &'static str },
-    /// ⭐⭐ **O ARTISTA CLICOU NUM SELECTOR DE CANAL** — o irmão exacto do [`Self::CycleSource`],
-    /// e pela mesma razão: a lista é **viva** (os canais curados que o nó declara MAIS as
-    /// colunas que a corrente de cima de facto cozinhou neste quadro), logo ela não cabe no
-    /// cartão — o cartão diz *«o seguinte»* e a shell, que a possui, resolve qual é.
+    /// ⚠️ **A lista é VIVA** — muda quando o artista desenha, e a de um canal inclui as colunas
+    /// que a corrente de cima cozinhou NESTE quadro —, e por isso ela não viaja no cartão: o
+    /// cartão diz *«a seguinte»* e a shell, que a possui, resolve qual é. É isso que mantém o
+    /// [`crate::CardParam`] sem uma única `String` (a medição que pôs os params dentro do nó
+    /// conta alocações por quadro).
     ///
-    /// ⚠️ **Um canal escreve DOIS params** (a coluna, que é texto, e o `mode`, que é um
-    /// número), e é por isso que ele não é um `Cycle` de enum: o valor guardado não é o
-    /// índice da opção. A tradução emite as duas escritas pelas mesmas portas que a row do
-    /// painel usa.
-    CycleChannel { node: u32, param: &'static str },
+    /// ⛔ **Um ENUM não passa por aqui**: o valor dele **é** o índice da opção, e a lista vive
+    /// no `ParamUiHint` que o cartão já carrega — a shell não teria nada a resolver, e o passo
+    /// sai como um [`Self::SetParam`] normal.
+    StepChoice {
+        node: u32,
+        param: &'static str,
+        /// `-1` a anterior, `+1` a seguinte. ⚠️ **Um passo, não um destino:** quem sabe onde o
+        /// nó está é o documento, e mandar o índice de destino daqui seria decidir sobre uma
+        /// lista que pode ter mudado entre o desenho e o clique.
+        delta: i8,
+    },
+    /// ⭐⭐ **O ARTISTA ESCOLHEU UMA LINHA DA LISTA de um selector do cartão** (report do Enio,
+    /// 2026-09-07). O índice é contra a lista que a shell PUBLICOU e o menu desenhou — a mesma,
+    /// pela mesma porta —, e é a shell que sabe o que cada índice significa (uma fonte escreve
+    /// um nome; um canal escreve a coluna **e** o `mode`).
+    ///
+    /// ⛔ **Um ENUM também não passa por aqui**, e pela mesma razão do [`Self::StepChoice`].
+    PickChoice {
+        node: u32,
+        param: &'static str,
+        index: u16,
+    },
     /// ⭐ **O ARTISTA ESCREVEU UM TEXTO NUM CARTÃO** — um nome de coluna, um sinal, uma fórmula.
     /// Sai pela porta de texto que a row do painel já usa (`MotionParamIntent::SetTextParam`),
     /// para o undo e o memo do cook serem os mesmos nas duas superfícies.

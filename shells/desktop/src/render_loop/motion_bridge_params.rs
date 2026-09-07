@@ -66,6 +66,15 @@ pub(crate) mod params_visible;
 #[path = "motion_bridge_params_visible_tests.rs"]
 mod params_visible_tests;
 
+/// **AS OPÇÕES DE UM SELECTOR** — irmão de `card` pela mesma lei do corte: aquele responde
+/// *«que params o cartão carrega»*, este *«que opções um selector oferece, e o que uma escolha
+/// escreve»*.
+#[path = "motion_bridge_choices.rs"]
+pub(crate) mod choices;
+#[cfg(test)]
+pub(crate) use choices::{channel_labels_for_tests, channel_walk_for_tests};
+pub(crate) use choices::{pick_choice, step_choice};
+
 /// **O QUE O CARTÃO CARREGA** — irmão cortado no tecto de LOC (600), e por RESPONSABILIDADE:
 /// este ficheiro responde *«o que o PAINEL mostra»* e aquele *«o que o CARTÃO carrega»*, que é
 /// a mesma pergunta feita a duas superfícies (ciclo 1, doc 103).
@@ -108,49 +117,6 @@ pub(crate) fn driven_value_for_probe(
 #[cfg(test)]
 pub(crate) fn source_options_for_tests(motion: &MotionState) -> Vec<String> {
     params_stream::source_options(motion)
-}
-
-/// **A LISTA VIVA de nomes publicados e a lei de andar por ela** — as duas metades da mesma
-/// pergunta, expostas ao irmão `intents` porque o **cartão** as pede (`GraphIntent::CycleSource`)
-/// e a row do painel as usa. ⚠️ Uma cópia de qualquer das duas do lado do cartão faria o mesmo
-/// clique escolher coisas diferentes conforme a superfície.
-pub(super) fn source_options_live(motion: &MotionState) -> Vec<String> {
-    params_stream::source_options(motion)
-}
-
-/// A **fonte seguinte** na lista viva — ver [`source_options_live`].
-pub(super) fn next_source_for(opcoes: &[String], atual: &str) -> Option<String> {
-    params_stream::next_source(opcoes, atual)
-}
-
-/// ⭐⭐ **O CANAL SEGUINTE de um selector de canais** — o irmão de [`next_source_for`], pedido
-/// pelo cartão (`GraphIntent::CycleChannel`) e resolvido aqui porque a lista é **viva**: ela é
-/// os canais curados do nó MAIS as colunas que a corrente de cima cozinhou neste quadro.
-///
-/// Devolve `(coluna, mode)` — as **duas** escritas que um canal faz, num par, porque escrever
-/// só uma deixaria o nó a ler a coluna certa no modo errado (que é ler zeros em silêncio).
-pub(super) fn next_channel_for(
-    motion: &MotionState,
-    node: ph2d_nodegraph::graph::NodeId,
-    text_param: &str,
-    mode_param: &str,
-    channels: &'static [ph2d_node_registry::ReadChannel],
-) -> Option<(String, i32)> {
-    let (lista, atual) =
-        params_stream::channel_walk(motion, node, text_param, mode_param, channels);
-    params_stream::next_channel(&lista, &atual)
-}
-
-/// A LISTA por onde o clique anda, para o gate que a ata à ordem que o painel PINTA.
-#[cfg(test)]
-pub(crate) fn channel_walk_for_tests(
-    motion: &MotionState,
-    node: ph2d_nodegraph::graph::NodeId,
-    text_param: &str,
-    mode_param: &str,
-    channels: &'static [ph2d_node_registry::ReadChannel],
-) -> (Vec<(String, i32)>, (String, i32)) {
-    params_stream::channel_walk(motion, node, text_param, mode_param, channels)
 }
 
 /// O caminho REAL de uma edição de param, para os gates que a medem de ponta a ponta —

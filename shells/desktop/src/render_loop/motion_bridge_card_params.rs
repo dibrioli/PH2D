@@ -251,6 +251,8 @@ pub(crate) fn stamp_card_params(
     }
     // ⭐ E o texto INTEIRO ao lado, para a caixa de edição do cartão nunca abrir com o truncado.
     publish_card_texts(motion, snap);
+    // ⭐ E as OPÇÕES de cada selector, para as setas e a lista do dropdown (report 07/09).
+    super::choices::publish_card_choices(motion, snap);
 }
 
 /// Os gates desta faixa — irmão de teste, como em todo o módulo. ⚠️ **Dois ficheiros, duas

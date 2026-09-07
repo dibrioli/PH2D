@@ -88,6 +88,20 @@ pub(crate) fn menu_rows<'a>(_snap: &GraphViewSnapshot, menu: &'a Menu) -> Vec<Me
                     }),
             )
             .collect(),
+        // ⭐ **As opções de um selector do cartão** (report do Enio, 07/09). Ponto neutro: uma
+        // opção não tem categoria a tingir. `selected` marca onde o nó ESTÁ — que é o que
+        // distingue uma lista de escolha de uma lista de acções.
+        MenuBody::ParamOptions {
+            labels, current, ..
+        } => labels
+            .iter()
+            .enumerate()
+            .map(|(i, l)| MenuRow {
+                label: l,
+                dot: ColorToken::Text2,
+                selected: i == *current as usize,
+            })
+            .collect(),
     }
 }
 

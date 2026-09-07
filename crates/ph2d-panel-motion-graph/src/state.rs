@@ -352,6 +352,31 @@ pub(crate) enum MenuBody {
     /// drops the single-subject rows (Rename); `group` (the single subject is a collapsed card)
     /// adds the group-only rows (Enter / Ungroup) — [`NodeAction::visible`].
     NodeActions { multi: bool, group: bool },
+    /// ⭐⭐⭐ **AS OPÇÕES DE UM SELECTOR DO CARTÃO** (report do Enio, 2026-09-07: *«se clicar no
+    /// centro (nome) abre-se um dropdown»*, com a foto do selector do Blender).
+    ///
+    /// ⚠️ **Reusa o popup que já existe** em vez de nascer um segundo: a lista, o recorte ao
+    /// canvas, a rolagem, a barra e o hit-test são os mesmos das outras três — um popup novo
+    /// seria a segunda resposta a *«como se mostra uma lista neste painel?»*.
+    ///
+    /// `labels` é capturado ao ABRIR, não re-derivado por quadro: a lista de um canal inclui o
+    /// que a corrente de cima cozinhou, e ela não pode mudar debaixo de um cursor que já viaja
+    /// para uma linha (a mesma razão que o [`Self::CardPorts`] já documenta).
+    ParamOptions {
+        node: u32,
+        param: &'static str,
+        /// O rótulo do param — o cabeçalho diz QUE pergunta a lista está a fazer.
+        title: &'static str,
+        labels: Vec<String>,
+        /// Em qual opção o nó está. ⚠️ `>= labels.len()` = **nenhuma**, e é uma resposta certa
+        /// (uma coluna escrita à mão, uma forma ainda não desenhada).
+        current: u16,
+        /// **Como a escolha se escreve** — a MESMA porta que classifica o clique na row
+        /// ([`crate::ClickDoes`]), nunca uma segunda lista de espécies aqui: o valor de um enum
+        /// **é** o índice (escrita directa), e uma fonte ou um canal precisam da shell, que
+        /// possui a lista e sabe o que cada índice significa.
+        kind: crate::ClickDoes,
+    },
 }
 
 /// Retained panel state.

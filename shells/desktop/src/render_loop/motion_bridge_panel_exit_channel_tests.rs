@@ -28,9 +28,10 @@ fn the_card_walks_the_channel_list_and_writes_both_halves() {
         |m: &mut MotionState, id: ph2d_nodegraph::graph::NodeId| -> Option<(String, f64)> {
             let _ = drain_intents();
             let _ = ph2d_panel_motion_params::drain_param_intents();
-            push_intent(GraphIntent::CycleChannel {
+            push_intent(GraphIntent::StepChoice {
                 node: id.0,
                 param: "attr",
+                delta: 1,
             });
             crate::render_loop::motion_bridge::apply_graph_intents(
                 m,
@@ -167,4 +168,218 @@ fn the_card_names_a_channel_the_way_the_panel_names_it() {
         "uma_coluna_minha",
         "fora da lista curada o nome E' a coluna"
     );
+}
+
+/// ⭐⭐⭐ **A LINHA QUE A LISTA MOSTRA É A LINHA QUE A ESCOLHA ESCREVE** (report do Enio,
+/// 2026-09-07: *«se clicar no centro (nome) abre-se um dropdown»*).
+///
+/// ⚠️ **Um dropdown tem DUAS metades que podem discordar em silêncio:** a lista desenhada e a
+/// resolução do índice. Se elas saíssem de duas derivações, o artista clicaria em `Speed` e o nó
+/// passaria a ler `Size` — e nada na tela diria porquê, porque a linha certa ficou realçada.
+/// Aqui as duas são amarradas contra a MESMA `channel_walk`, opção a opção.
+///
+/// FALSIFICADO por o `pick_choice` resolver o índice contra outra lista (por exemplo só os
+/// canais curados, ignorando as colunas vivas).
+#[test]
+fn the_line_the_list_shows_is_the_line_the_pick_writes() {
+    use ph2d_panel_motion_graph::{GraphIntent, drain_intents, push_intent};
+    use ph2d_panel_motion_params::MotionParamIntent as I;
+
+    let mut m = MotionState::new();
+    let id = m.doc.graph.add_node("value.attribute");
+    let (lista, _) = crate::render_loop::motion_bridge::params::channel_walk_for_tests(
+        &m,
+        id,
+        "attr",
+        "mode",
+        ph2d_node_value_attribute::READ_CHANNELS,
+    );
+    assert!(lista.len() >= 2, "ha' lista por onde escolher");
+
+    for (k, esperado) in lista.iter().enumerate() {
+        let _ = drain_intents();
+        let _ = ph2d_panel_motion_params::drain_param_intents();
+        push_intent(GraphIntent::PickChoice {
+            node: id.0,
+            param: "attr",
+            index: u16::try_from(k).expect("a lista cabe num u16"),
+        });
+        crate::render_loop::motion_bridge::apply_graph_intents(
+            &mut m,
+            &mut ph2d_core::Playhead::default(),
+            &mut ph2d_editor::ToastQueue::default(),
+            &mut ph2d_editor::screens::layout::CenterSplit::None,
+        );
+        let saiu = ph2d_panel_motion_params::drain_param_intents();
+        let coluna = saiu.iter().find_map(|i| match i {
+            I::SetTextParam { param, value, .. } if *param == "attr" => Some(value.clone()),
+            _ => None,
+        });
+        let modo = saiu.iter().find_map(|i| match i {
+            I::SetParam { param, value, .. } if *param == "mode" => Some(*value),
+            _ => None,
+        });
+        assert_eq!(
+            (coluna.as_deref(), modo),
+            (Some(esperado.0.as_str()), Some(f64::from(esperado.1))),
+            "a linha {k} da lista tem de escrever a opcao {k}"
+        );
+    }
+}
+
+/// ⭐⭐ **UM ÍNDICE FORA DA LISTA NÃO ESCREVE NADA.**
+///
+/// ⚠️ A lista é **viva** — as colunas que a corrente de cima cozinhou entram e saem —, então
+/// entre desenhar o popup e clicar nele ela pode ter encolhido. Escrever «a última» seria pôr o
+/// nó a ler uma coisa que o artista não apontou.
+#[test]
+fn an_index_past_the_end_of_a_live_list_writes_nothing() {
+    use ph2d_panel_motion_graph::{GraphIntent, drain_intents, push_intent};
+    let mut m = MotionState::new();
+    let id = m.doc.graph.add_node("value.attribute");
+    let _ = drain_intents();
+    let _ = ph2d_panel_motion_params::drain_param_intents();
+    push_intent(GraphIntent::PickChoice {
+        node: id.0,
+        param: "attr",
+        index: u16::MAX,
+    });
+    crate::render_loop::motion_bridge::apply_graph_intents(
+        &mut m,
+        &mut ph2d_core::Playhead::default(),
+        &mut ph2d_editor::ToastQueue::default(),
+        &mut ph2d_editor::screens::layout::CenterSplit::None,
+    );
+    let saiu = ph2d_panel_motion_params::drain_param_intents();
+    assert!(saiu.is_empty(), "um indice fora da lista e' mudo: {saiu:?}");
+}
+
+/// ⭐⭐ **OS RÓTULOS QUE A LISTA MOSTRA SÃO OS NOMES DO PAINEL, E A MARCA ESTÁ NA OPÇÃO CERTA.**
+///
+/// ⚠️ **Um `current` fora do fim é a resposta CERTA** (nenhuma das opções: uma coluna escrita à
+/// mão), e é o que faz a lista abrir sem nada marcado. Inventar uma marca diria que o nó está
+/// numa opção em que ele não está.
+#[test]
+fn the_list_shows_the_panels_names_and_marks_where_the_node_is() {
+    let mut m = MotionState::new();
+    let id = m.doc.graph.add_node("value.attribute");
+    let curados = ph2d_node_value_attribute::READ_CHANNELS;
+
+    let (rotulos, atual) = crate::render_loop::motion_bridge::params::channel_labels_for_tests(
+        &m, id, "attr", "mode", curados,
+    );
+    assert!(
+        atual as usize >= rotulos.len(),
+        "sem coluna escolhida, nenhuma opcao esta' marcada (atual {atual} de {})",
+        rotulos.len()
+    );
+    assert_eq!(
+        rotulos.first().map(String::as_str),
+        Some(curados[0].label),
+        "o primeiro rotulo e' o NOME do primeiro canal curado"
+    );
+
+    m.doc
+        .graph
+        .set_text_param(id, "attr", curados[1].column.to_string());
+    m.doc.graph.set_param(id, "mode", curados[1].mode as f32);
+    let (_, atual) = crate::render_loop::motion_bridge::params::channel_labels_for_tests(
+        &m, id, "attr", "mode", curados,
+    );
+    assert_eq!(atual, 1, "com o 2.o canal escolhido, a marca esta' nele");
+}
+
+/// ⭐⭐⭐ **A LISTA INCLUI O QUE A CORRENTE DE CIMA COZINHOU** — e é isso que a torna VIVA.
+///
+/// ⚠️⚠️ **Sem esta fixtura os outros gates desta wave passavam sobre metade da lei:** um
+/// `value.attribute` **desligado** não tem colunas a montante, logo a lista viva coincide com a
+/// lista curada, e uma resolução que ignorasse as vivas ficaria verde. *Uma fixtura em que as
+/// duas metades coincidem não testa nenhuma das duas.*
+///
+/// Aqui uma tabela real entra na porta 0, e as colunas dela — que nenhum canal curado cobre —
+/// têm de aparecer no fim da lista, escolhíveis pelo índice.
+///
+/// FALSIFICADO por o `channel_walk` deixar de concatenar as colunas vivas, ou por o
+/// `pick_choice` resolver o índice só contra os canais curados.
+#[test]
+fn the_live_columns_the_stream_cooked_are_in_the_list_and_pickable() {
+    use ph2d_nodegraph::graph::Edge;
+    use ph2d_panel_motion_graph::{GraphIntent, drain_intents, push_intent};
+    use ph2d_panel_motion_params::MotionParamIntent as I;
+
+    // Um CSV próprio deste gate (nome único: o vizinho partilhado já custou uma reprovação).
+    let csv = std::env::temp_dir().join(format!(
+        "ph2d_canal_vivo_{}_{}.csv",
+        std::process::id(),
+        line!()
+    ));
+    std::fs::write(&csv, "mes,nivel\njan,0.2\nfev,0.8\n").expect("o CSV de teste escreve-se");
+
+    let mut m = MotionState::new();
+    let src = m.doc.graph.add_node("source.table");
+    m.doc
+        .graph
+        .set_text_param(src, "file", csv.to_string_lossy().into_owned());
+    let attr = m.doc.graph.add_node("value.attribute");
+    m.doc
+        .graph
+        .connect(Edge {
+            from: (src, 0),
+            to: (attr, 0),
+            delayed: false,
+        })
+        .expect("a tabela liga-se ao atributo");
+    // ⚠️ A tabela chega ao cook por um canal EXTERNO que só a shell escreve — sem este passo o
+    // stream vem vazio, que é a assinatura exacta da feature partida.
+    crate::render_loop::motion_table_gen::publish(&mut m);
+    let reg = std::mem::take(&mut m.registry);
+    let cozeu = m.pump.cook.cook(&m.doc.graph, &reg, attr, 0.0).is_ok();
+    m.registry = reg;
+    assert!(cozeu, "a fixtura tem de cozer, senao nao ha' colunas vivas");
+
+    let (lista, _) = crate::render_loop::motion_bridge::params::channel_walk_for_tests(
+        &m,
+        attr,
+        "attr",
+        "mode",
+        ph2d_node_value_attribute::READ_CHANNELS,
+    );
+    let curados = ph2d_node_value_attribute::READ_CHANNELS.len();
+    assert!(
+        lista.len() > curados,
+        "a lista tem de crescer com o que a corrente cozinhou: {lista:?}"
+    );
+    let vivas: Vec<&str> = lista[curados..].iter().map(|(c, _)| c.as_str()).collect();
+    assert!(
+        vivas.contains(&"nivel"),
+        "a coluna `nivel` da tabela tem de ser escolhivel: {vivas:?}"
+    );
+
+    // E o índice dela escreve-a — a metade que o resto do gate não alcança.
+    let k = lista
+        .iter()
+        .position(|(c, _)| c == "nivel")
+        .expect("acabou de ser encontrada");
+    let _ = drain_intents();
+    let _ = ph2d_panel_motion_params::drain_param_intents();
+    push_intent(GraphIntent::PickChoice {
+        node: attr.0,
+        param: "attr",
+        index: u16::try_from(k).expect("cabe"),
+    });
+    crate::render_loop::motion_bridge::apply_graph_intents(
+        &mut m,
+        &mut ph2d_core::Playhead::default(),
+        &mut ph2d_editor::ToastQueue::default(),
+        &mut ph2d_editor::screens::layout::CenterSplit::None,
+    );
+    let saiu = ph2d_panel_motion_params::drain_param_intents();
+    assert!(
+        saiu.iter().any(|i| matches!(
+            i,
+            I::SetTextParam { param, value, .. } if *param == "attr" && value == "nivel"
+        )),
+        "escolher a linha da coluna viva tem de a escrever: {saiu:?}"
+    );
+    let _ = std::fs::remove_file(&csv);
 }

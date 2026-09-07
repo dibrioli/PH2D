@@ -364,6 +364,60 @@ thread_local! {
     /// molde já existe — é o mesmo dos outros seis publicadores acima.
     static CARD_TEXTS: RefCell<Vec<(u32, &'static str, String)>> =
         const { RefCell::new(Vec::new()) };
+
+    /// ⭐⭐⭐ **AS OPÇÕES DE CADA SELECTOR** — o que a LISTA de um enum, de uma fonte publicada
+    /// ou de um canal oferece, e em qual delas o nó está (report do Enio, 2026-09-07: *«se
+    /// clicar no centro (nome) abre-se um dropdown»*).
+    ///
+    /// ⚠️ **Um canal lateral, e não um campo do [`CardParam`], pela mesma razão do
+    /// [`CARD_TEXTS`]** — mas aqui há uma segunda: uma lista de nomes por row é exactamente a
+    /// alocação por quadro que a medição do doc 103 recusou. Daí a [`CardChoices`] ter duas
+    /// caras: um enum do registry viaja como `&'static` (**zero** alocação, e são 138 das 143
+    /// rows de selector do catálogo), e só as listas VIVAS — o que o artista desenhou, o que a
+    /// corrente de cima cozinhou — pagam `String`s, que são meia dúzia.
+    static CARD_CHOICES: RefCell<Vec<(u32, &'static str, CardChoices, u16)>> =
+        const { RefCell::new(Vec::new()) };
+}
+
+/// **O que a lista de um selector oferece** — em duas caras, porque as duas fontes têm custos
+/// diferentes e a diferença é medida (ver [`CARD_CHOICES`]).
+#[derive(Clone, Debug, PartialEq)]
+pub enum CardChoices {
+    /// Rótulos que vivem no binário — os `labels` de um `ParamWidget::Enum`.
+    Static(&'static [&'static str]),
+    /// Rótulos VIVOS — as formas que o artista desenhou, as colunas que a corrente cozinhou.
+    Live(Vec<String>),
+}
+
+impl CardChoices {
+    /// Os rótulos, uma cópia só — chamada **ao ABRIR** a lista, nunca por quadro.
+    fn labels(&self) -> Vec<String> {
+        match self {
+            Self::Static(l) => l.iter().map(|s| (*s).to_string()).collect(),
+            Self::Live(l) => l.clone(),
+        }
+    }
+}
+
+/// Publica as opções de cada selector de cada cartão (shell → painel). Ver [`CARD_CHOICES`].
+pub fn set_card_choices(choices: Vec<(u32, &'static str, CardChoices, u16)>) {
+    CARD_CHOICES.with(|c| *c.borrow_mut() = choices);
+}
+
+/// As opções de `(nó, param)` e o índice do que está escolhido — `None` quando a shell não as
+/// publicou (o param não é um selector, ou o cartão não está na vista).
+///
+/// ⚠️ **O índice pode ser `>= labels.len()`, e isso é a resposta certa:** significa *nenhuma
+/// das opções* — uma coluna escrita à mão, uma forma que ainda não foi desenhada. A lista abre
+/// sem nada marcado, que é honesto; inventar uma marca diria que o nó está numa opção em que
+/// ele não está.
+pub(crate) fn card_choices_of(node: u32, param: &str) -> Option<(Vec<String>, u16)> {
+    CARD_CHOICES.with(|c| {
+        c.borrow()
+            .iter()
+            .find(|(n, p, _, _)| *n == node && *p == param)
+            .map(|(_, _, ch, cur)| (ch.labels(), *cur))
+    })
 }
 
 /// Publish whether the node-help system is on (shell bridge → panel, ADR-0155). Set

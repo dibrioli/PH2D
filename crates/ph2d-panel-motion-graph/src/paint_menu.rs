@@ -29,10 +29,13 @@ pub(super) fn draw_menu(
     let rows = menu_rows(snap, menu);
     // The header names the question being asked. "Add Node" for the library; for a wire
     // dropped on a collapsed card, the question is which port INSIDE it the wire lands on.
-    let header = match menu.body {
+    let header = match &menu.body {
         MenuBody::CardPorts { .. } => "Connect Inside Group",
         MenuBody::BackdropTints { .. } => "Backdrop",
         MenuBody::NodeActions { .. } => "Node",
+        // ⭐ O cabeçalho de uma lista de opções é o RÓTULO do param — a lista de um selector
+        // não diz *o que* se está a escolher, e "Read" ou "Waveform" é a pergunta inteira.
+        MenuBody::ParamOptions { title, .. } => title,
     };
     let panel = geom::menu_panel(menu, rows.len(), canvas);
     fill_rounded_rect(

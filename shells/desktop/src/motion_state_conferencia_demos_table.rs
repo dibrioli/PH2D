@@ -48,17 +48,39 @@ pub(crate) fn fixture_path() -> std::path::PathBuf {
 /// funciona»"* — que é exactamente o que aconteceria com o `TMPDIR` só-leitura, o disco cheio,
 /// ou o ficheiro já lá de outro dono.
 ///
-/// ⚠️ O caminho é FIXO e três testes do mesmo binário escrevem-no em paralelo. Medido: escrevem
-/// os **mesmos bytes**, então a corrida é benigna — e um caminho por-processo custaria ao
-/// artista o gesto que a cena ensina (*editar o ficheiro e voltar a escolhê-lo*), porque ele
-/// mudaria a cada arranque.
+/// ⚠️ O caminho é FIXO — um caminho por-processo custaria ao artista o gesto que a cena ensina
+/// (*editar o ficheiro e voltar a escolhê-lo*), porque ele mudaria a cada arranque — e três
+/// testes do mesmo binário escrevem-no em paralelo.
+///
+/// ⛔⛔ **E a nota que dizia que a corrida era BENIGNA estava errada, com o mecanismo à vista:**
+/// *«escrevem os mesmos bytes»* é verdade sobre o RESULTADO e falsa sobre o percurso — um
+/// `fs::write` **trunca e depois escreve**, e nessa janela o ficheiro tem menos bytes que
+/// qualquer das duas corridas pretendia. Um leitor que caia ali lê uma tabela cortada, o
+/// quadrado de baixo pára de seguir a coluna, e o gate reprova sobre produto CERTO (visto em
+/// 2026-09-07, `the_lower_square_follows_the_table_over_time`, verde sozinho).
+///
+/// ⇒ escreve-se num vizinho ÚNICO e **renomeia-se** por cima: o `rename` no mesmo sistema de
+/// ficheiros é atómico, então um leitor vê ou o ficheiro antigo inteiro ou o novo inteiro, e
+/// nunca meio. *Duas escritas dos mesmos bytes só são a mesma escrita se ninguém puder olhar
+/// para o meio delas.*
 fn write_fixture() -> std::path::PathBuf {
     let p = fixture_path();
-    if let Err(e) = std::fs::write(&p, CSV) {
+    let queixa = |e: &dyn std::fmt::Display| {
         eprintln!(
             "[cena 109] ⚠️ NAO consegui escrever o ficheiro de exemplo em {}: {e}\n             As duas colunas vao desenhar NADA — o defeito e' este, nao o no'.",
             p.display()
         );
+    };
+    // Um nome por PROCESSO: dois processos a renomear por cima é a mesma corrida benigna que o
+    // `rename` resolve, e dentro de um processo as threads partilham este vizinho sem se
+    // atropelarem (escrevem os mesmos bytes e o `rename` é o último a falar).
+    let tmp = p.with_extension(format!("{}.tmp", std::process::id()));
+    if let Err(e) = std::fs::write(&tmp, CSV) {
+        queixa(&e);
+        return p;
+    }
+    if let Err(e) = std::fs::rename(&tmp, &p) {
+        queixa(&e);
     }
     p
 }

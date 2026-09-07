@@ -168,68 +168,22 @@ pub(super) fn apply_graph_intents(
                     );
                 }
             }
-            // ⭐ **A fonte seguinte** — o cartão pede *«a seguinte»*, a shell sabe QUAIS há
-            // (a lista é viva: muda quando o artista desenha) e escreve pela mesma porta de
-            // texto que a chip do painel usa. ⚠️ Com nada publicado não há o que escolher, e
-            // o clique não escreve — um valor inventado seria pior que um clique mudo.
+            // ⭐⭐ **UMA SETA DE UM SELECTOR** — o cartão pede *«a anterior»* / *«a seguinte»*,
+            // e a shell, que possui a lista viva, resolve qual é e escreve pelas mesmas portas
+            // que a chip do painel usa. ⚠️ Com nada publicado não há o que escolher, e o clique
+            // não escreve — um valor inventado seria pior que um clique mudo.
             #[cfg(feature = "panel-motion-params")]
-            GraphIntent::CycleSource { node, param } => {
+            GraphIntent::StepChoice { node, param, delta } => {
                 if let subgraph::Target::Node(n) = subgraph::target(node) {
-                    let atual = motion
-                        .doc
-                        .graph
-                        .node_text_param_overrides(n)
-                        .and_then(|m| m.get(param))
-                        .cloned()
-                        .unwrap_or_default();
-                    let opcoes = super::params::source_options_live(motion);
-                    if let Some(proxima) = super::params::next_source_for(&opcoes, &atual) {
-                        ph2d_panel_motion_params::push_param_intent(
-                            ph2d_panel_motion_params::MotionParamIntent::SetTextParam {
-                                node: n.0,
-                                param,
-                                value: proxima,
-                            },
-                        );
-                    }
+                    super::params::step_choice(motion, n, param, delta);
                 }
             }
-            // ⭐⭐ **O canal seguinte** — o irmão do `CycleSource`, e a mesma razão para a
-            // lista viver aqui: ela inclui as colunas que a corrente de cima cozinhou NESTE
-            // quadro. ⚠️ **Duas escritas, sempre juntas** (a coluna e o `mode`): escrever só a
-            // coluna deixaria o nó a ler o sítio certo no modo errado, que é ler zeros em
-            // silêncio — o mesmo par que a chip do painel escreve.
+            // ⭐⭐ **UMA LINHA DA LISTA** (o dropdown do report de 07/09) — o índice é contra a
+            // lista que a shell publicou e o popup desenhou, resolvido pela MESMA porta.
             #[cfg(feature = "panel-motion-params")]
-            GraphIntent::CycleChannel { node, param } => {
-                if let subgraph::Target::Node(n) = subgraph::target(node)
-                    && let Some(tid) = motion.doc.graph.node(n).map(|i| i.type_id())
-                    && let Some(ph2d_node_registry::ParamWidget::Channels {
-                        mode_param,
-                        channels,
-                    }) = motion
-                        .registry
-                        .param_ui(tid)
-                        .unwrap_or(&[])
-                        .iter()
-                        .find(|h| h.param == param)
-                        .map(|h| h.widget)
-                    && let Some((coluna, modo)) =
-                        super::params::next_channel_for(motion, n, param, mode_param, channels)
-                {
-                    ph2d_panel_motion_params::push_param_intent(
-                        ph2d_panel_motion_params::MotionParamIntent::SetTextParam {
-                            node: n.0,
-                            param,
-                            value: coluna,
-                        },
-                    );
-                    ph2d_panel_motion_params::push_param_intent(
-                        ph2d_panel_motion_params::MotionParamIntent::SetParam {
-                            node: n.0,
-                            param: mode_param,
-                            value: f64::from(modo),
-                        },
-                    );
+            GraphIntent::PickChoice { node, param, index } => {
+                if let subgraph::Target::Node(n) = subgraph::target(node) {
+                    super::params::pick_choice(motion, n, param, index);
                 }
             }
             // ⭐ O texto escrito no cartão sai pela porta de texto do painel — a mesma que a

@@ -188,6 +188,40 @@ pub(super) fn resolve_menu(
                 super::key::apply_key(state, acts[i - tints].1, rect, snap);
             }
         }
+        // ⭐⭐⭐ **A LINHA ESCOLHIDA DE UM SELECTOR DO CARTÃO** (report do Enio, 2026-09-07).
+        //
+        // ⚠️ **Duas escritas diferentes, e a diferença é de SUBSTRATO, não de gosto:** o valor
+        // de um enum **É** o índice da opção, então a escolha é uma escrita directa daqui; uma
+        // fonte e um canal guardam um NOME (e o canal ainda um `mode` ao lado), e quem sabe o
+        // que o índice `i` significa é a shell, que possui a lista. Perguntar aqui seria a
+        // segunda resposta a *«quais são as opções?»*.
+        //
+        // ⚠️ O índice é contra [`menu_rows`], que é a lista que o pintor desenhou — a mesma
+        // razão que este ficheiro já documenta para as outras três.
+        MenuBody::ParamOptions {
+            node, param, kind, ..
+        } => match kind {
+            crate::ClickDoes::Cycle(_) => push_intent(GraphIntent::SetParam {
+                node: *node,
+                param,
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "o indice de uma opcao cabe num f32 muito antes de o menu caber num ecra"
+                )]
+                value: i as f32,
+            }),
+            crate::ClickDoes::CycleSource | crate::ClickDoes::CycleChannel => {
+                push_intent(GraphIntent::PickChoice {
+                    node: *node,
+                    param,
+                    index: u16::try_from(i).unwrap_or(u16::MAX),
+                });
+            }
+            // ⛔ Inalcançável por construção — só um selector abre esta lista
+            // (`open_options` lê o `click_does`) —, e um `unreachable!` aqui seria um
+            // pânico a defender uma invariante que o tipo já defende noutro sítio.
+            _ => {}
+        },
         // **The node context menu** (doc 62): the pick acts on the selection the right-press
         // left set (`open_on_right_press`). The SAME `visible` list the paint drew, so row `i`
         // is the verb the label showed.

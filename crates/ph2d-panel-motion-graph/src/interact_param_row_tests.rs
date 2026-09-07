@@ -258,6 +258,53 @@ fn click(snap: &GraphViewSnapshot, row: u16) -> Vec<GraphIntent> {
     click_state(snap, row).1
 }
 
+/// ⭐⭐ **O `x` de uma ZONA da row `row`**, medido pela MESMA geometria que o painel desenha
+/// (report do Enio, 2026-09-07: um selector tem duas setas e um centro).
+///
+/// ⚠️ Um teste que escolhesse o `x` à mão estaria a afirmar onde a seta está — e é exactamente
+/// isso que o produto tem de responder. A `RECT` e o `ViewState::default()` são os que o
+/// `click_state` usa.
+fn zone_x(snap: &GraphViewSnapshot, row: u16, zona: crate::geom::RowZone) -> f32 {
+    let view = crate::geom::View::new(RECT, crate::state::ViewState::default());
+    let n = &snap.nodes[0];
+    let faixa = crate::geom::param_track_rect(
+        crate::geom::param_row_rect(n, &view, row as usize),
+        view.zoom,
+    );
+    let seta = crate::geom::arrow_slot(faixa, view.zoom).expect("a faixa do cartao tem setas");
+    match zona {
+        crate::geom::RowZone::Prev => faixa.x + seta * 0.5,
+        crate::geom::RowZone::Centre => faixa.x + faixa.w * 0.5,
+        crate::geom::RowZone::Next => faixa.x + faixa.w - seta * 0.5,
+    }
+}
+
+/// Um clique numa ZONA da row — o estado que deixa e o que saiu.
+fn click_zone(
+    snap: &GraphViewSnapshot,
+    row: u16,
+    zona: crate::geom::RowZone,
+) -> (MotionGraphPanelState, Vec<GraphIntent>) {
+    let _ = drain_intents();
+    let mut st = MotionGraphPanelState {
+        fitted: true,
+        ..MotionGraphPanelState::default()
+    };
+    super::apply_gesture(
+        &mut st,
+        gesture(
+            GraphHitKind::ParamRow { node: 7, row },
+            GesturePhase::Click,
+            zone_x(snap, row, zona),
+            60.0,
+        ),
+        RECT,
+        CENTER,
+        snap,
+    );
+    (st, drain_intents())
+}
+
 /// ⭐⭐ **UM CLIQUE AVANÇA O ENUM, COM VOLTA AO PRINCÍPIO** — é o gesto de quem quer *a
 /// seguinte*, e o `Enum` é **20 % de todas as rows do catálogo, em 85 nós** (censo de
 /// 2026-09-05). Arrastar continua a varrer, que é como se atravessa um enum de 48 opções.
@@ -265,20 +312,116 @@ fn click(snap: &GraphViewSnapshot, row: u16) -> Vec<GraphIntent> {
 /// não dar a volta (a última opção prende).
 #[test]
 fn a_click_advances_an_enum_and_wraps() {
+    use crate::geom::RowZone;
+    let passo = |v: f32, zona: RowZone| -> f32 {
+        let snap = card(vec![enum_param(v, &["Sine", "Triangle", "Square"])]);
+        let saiu = click_zone(&snap, 0, zona).1;
+        let Some(GraphIntent::SetParam { value, param, .. }) = saiu.first() else {
+            panic!("a seta tem de mover o enum, e saiu {saiu:?}");
+        };
+        assert_eq!(*param, "mode");
+        *value
+    };
+    assert_eq!(passo(0.0, RowZone::Next), 1.0, "de Sine para Triangle");
+    assert_eq!(
+        passo(2.0, RowZone::Next),
+        0.0,
+        "da ultima volta ao principio"
+    );
+    // ⭐ E o OUTRO sentido, que é o que a seta da esquerda comprou: sem ela, chegar à opção
+    // anterior custava `n-1` cliques numa lista de 48.
+    assert_eq!(passo(1.0, RowZone::Prev), 0.0, "de Triangle para Sine");
+    assert_eq!(
+        passo(0.0, RowZone::Prev),
+        2.0,
+        "e a anterior a` primeira e' a ULTIMA"
+    );
+}
+
+/// ⭐⭐⭐ **UM CLIQUE NO NOME ABRE A LISTA** (report do Enio, 2026-09-07, com a foto do selector
+/// do Blender: *«se clicar no centro (nome) abre-se um dropdown»*).
+///
+/// ⚠️ **E não escreve nada.** Abrir uma lista é uma pergunta, não uma resposta — um clique que
+/// mudasse o valor *e* abrisse a lista faria o artista escolher a partir de um estado que ele
+/// não pediu.
+///
+/// FALSIFICADO por o centro voltar a avançar a opção (o menu fica fechado e sai um `SetParam`).
+#[test]
+fn a_click_on_the_name_opens_the_list_and_writes_nothing() {
+    crate::snapshot::set_card_choices(vec![(
+        7,
+        "mode",
+        crate::CardChoices::Static(&["Sine", "Triangle", "Square"]),
+        0,
+    )]);
     let snap = card(vec![enum_param(0.0, &["Sine", "Triangle", "Square"])]);
-    let saiu = click(&snap, 0);
+    let (st, saiu) = click_zone(&snap, 0, crate::geom::RowZone::Centre);
+    assert!(
+        crate::menu_is_open(&st),
+        "o clique no nome tem de abrir a lista"
+    );
+    assert!(
+        saiu.is_empty(),
+        "abrir uma lista nao escreve nada: {saiu:?}"
+    );
+    crate::snapshot::set_card_choices(Vec::new());
+}
+
+/// ⭐⭐⭐ **E ESCOLHER UMA LINHA DA LISTA ESCREVE ESSA OPÇÃO** — a segunda metade do dropdown, e
+/// a que o gate de abertura não alcança.
+///
+/// ⚠️ **O clique na linha chega como `Background`, e isso é o mecanismo**: com o menu aberto o
+/// painel regista um escudo de canvas inteiro por cima de tudo, para uma linha desenhada sobre
+/// um cartão não ser comida pelo cartão. Um teste que mandasse o gesto como `ParamRow` estaria a
+/// testar um caminho que o produto não usa.
+///
+/// FALSIFICADO por o braço de `ParamOptions` do `resolve_menu` não escrever (o artista escolhe e
+/// nada muda — o defeito mais caro de um dropdown, porque a lista fecha e parece que funcionou).
+#[test]
+fn picking_a_line_of_the_list_writes_that_option() {
+    use crate::geom::RowZone;
+    crate::snapshot::set_card_choices(vec![(
+        7,
+        "mode",
+        crate::CardChoices::Static(&["Sine", "Triangle", "Square"]),
+        2,
+    )]);
+    let snap = card(vec![enum_param(2.0, &["Sine", "Triangle", "Square"])]);
+    let (mut st, _) = click_zone(&snap, 0, RowZone::Centre);
+    let linha = crate::first_menu_row(&st, RECT).expect("a lista abriu com linhas");
+    let _ = drain_intents();
+    super::apply_gesture(
+        &mut st,
+        gesture(
+            GraphHitKind::Background,
+            GesturePhase::Click,
+            linha.x + linha.w * 0.5,
+            linha.y + linha.h * 0.5,
+        ),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    let saiu = drain_intents();
     let Some(GraphIntent::SetParam { value, param, .. }) = saiu.first() else {
-        panic!("o clique tem de avancar o enum, e saiu {saiu:?}");
+        panic!("escolher a 1.a linha tem de escrever a 1.a opcao, e saiu {saiu:?}");
     };
     assert_eq!(*param, "mode");
-    assert_eq!(*value, 1.0, "de Sine para Triangle");
+    assert_eq!(*value, 0.0, "a 1.a linha e' `Sine`, que e' o indice 0");
+    assert!(!crate::menu_is_open(&st), "e a lista fecha-se ao escolher");
+    crate::snapshot::set_card_choices(Vec::new());
+}
 
-    let snap = card(vec![enum_param(2.0, &["Sine", "Triangle", "Square"])]);
-    let saiu = click(&snap, 0);
-    let Some(GraphIntent::SetParam { value, .. }) = saiu.first() else {
-        panic!("sem intencao na ultima opcao");
-    };
-    assert_eq!(*value, 0.0, "da ultima volta ao principio");
+/// ⛔ **SEM OPÇÕES PUBLICADAS, O CENTRO NÃO ABRE NADA** — e é a resposta certa: uma lista vazia
+/// diria que não há o que escolher quando o que houve foi a shell não ter publicado, e um popup
+/// vazio ainda come o clique seguinte para se fechar.
+#[test]
+fn the_name_opens_nothing_when_the_shell_published_no_options() {
+    crate::snapshot::set_card_choices(Vec::new());
+    let snap = card(vec![enum_param(0.0, &["Sine", "Triangle", "Square"])]);
+    let (st, saiu) = click_zone(&snap, 0, crate::geom::RowZone::Centre);
+    assert!(!crate::menu_is_open(&st), "sem lista publicada, nada abre");
+    assert!(saiu.is_empty(), "e nada se escreve: {saiu:?}");
 }
 
 /// **UM CLIQUE VIRA O INTERRUPTOR** — nos dois sentidos. FALSIFICADO por o clique escrever
@@ -353,18 +496,24 @@ fn clicking_a_number_row_opens_the_typing_box_and_writes_nothing() {
     );
 }
 
-/// ⭐⭐ **UM ENUM CONTINUA A AVANÇAR, e NÃO abre caixa** — não há número para escrever ali, e o
-/// clique já era o gesto de *«a opção seguinte»*. FALSIFICADO por o braço novo engolir o clique de
-/// todas as espécies (o enum deixaria de avançar) ou por abrir uma caixa sobre um enum.
+/// ⭐⭐ **UM ENUM NÃO ABRE CAIXA DE NÚMERO, EM ZONA NENHUMA** — não há número para escrever ali.
+/// A seta move a opção, o nome abre a lista, e **nenhum dos dois** arma o teclado.
+///
+/// FALSIFICADO por o braço da escrita engolir o clique de todas as espécies (o enum abriria uma
+/// caixa sobre `1` e comitá-la escreveria um índice de opção como se fosse um número).
 #[test]
-fn clicking_an_enum_row_still_advances_it_and_opens_no_box() {
+fn clicking_an_enum_row_never_opens_a_number_box() {
+    use crate::geom::RowZone;
     let snap = card(vec![enum_param(0.0, &["Off", "Cycle", "Random"])]);
-    let (st, saiu) = click_state(&snap, 0);
-    assert!(st.param_edit.is_none(), "um enum nao abre caixa de numero");
+    let (st, saiu) = click_zone(&snap, 0, RowZone::Next);
+    assert!(st.param_edit.is_none(), "a seta nao abre caixa de numero");
     let Some(GraphIntent::SetParam { value, .. }) = saiu.first() else {
-        panic!("o enum tem de avancar, e saiu {saiu:?}");
+        panic!("a seta tem de mover o enum, e saiu {saiu:?}");
     };
     assert!((*value - 1.0).abs() < 1e-6, "avancou para {value}");
+    // E o centro também não — ali abre-se uma LISTA, que é outra superfície.
+    let (st, _) = click_zone(&snap, 0, RowZone::Centre);
+    assert!(st.param_edit.is_none(), "o nome nao abre caixa de numero");
 }
 
 /// ⭐⭐⭐ **O ARRASTO TAMBÉM VOLTA À UNIDADE DO DOCUMENTO** — a barra, o número e o dedo trabalham
@@ -427,11 +576,20 @@ fn a_click_on_a_file_row_asks_the_shell_for_the_dialog() {
 #[test]
 fn a_click_on_a_source_row_asks_for_the_next_published_name() {
     let snap = card(vec![source_param()]);
-    let saiu = click(&snap, 0);
-    let Some(GraphIntent::CycleSource { param, .. }) = saiu.first() else {
-        panic!("o clique tem de pedir a fonte seguinte, e saiu {saiu:?}");
+    let saiu = click_zone(&snap, 0, crate::geom::RowZone::Next).1;
+    let Some(GraphIntent::StepChoice { param, delta, .. }) = saiu.first() else {
+        panic!("a seta tem de pedir a fonte seguinte, e saiu {saiu:?}");
     };
     assert_eq!(*param, "path");
+    assert_eq!(*delta, 1, "a seta da direita pede a SEGUINTE");
+    let atras = click_zone(&snap, 0, crate::geom::RowZone::Prev).1;
+    assert!(
+        matches!(
+            atras.first(),
+            Some(GraphIntent::StepChoice { delta: -1, .. })
+        ),
+        "e a da esquerda a ANTERIOR: {atras:?}"
+    );
     assert!(
         !saiu
             .iter()

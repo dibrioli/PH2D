@@ -187,14 +187,32 @@ fn keep_extra_columns<'a>(
 /// - `atual` vazio ou fora da lista ⇒ **a primeira** (o artista ainda não escolheu nada);
 /// - senão ⇒ a seguinte, com volta ao princípio — a mesma lei do enum no cartão;
 /// - lista vazia ⇒ `None`: **não há nada para escolher**, e o clique não escreve.
-pub(super) fn next_source(opcoes: &[String], atual: &str) -> Option<String> {
-    if opcoes.is_empty() {
+pub(super) fn next_source(opcoes: &[String], atual: &str, delta: i8) -> Option<String> {
+    let i = opcoes.iter().position(|o| o == atual);
+    step_index(opcoes.len(), i, delta).map(|k| opcoes[k].clone())
+}
+
+/// ⭐⭐ **O PASSO NUMA LISTA, nos DOIS sentidos** — a lei que a seta da esquerda e a da direita
+/// partilham, escrita uma vez (report do Enio, 2026-09-07: *«deveríamos ter duas setas
+/// laterais»*).
+///
+/// - lista vazia ⇒ `None`: **não há o que escolher**, e o clique não escreve (um nome inventado
+///   seria pior que um clique mudo);
+/// - fora da lista ⇒ a **primeira** indo para a frente, a **última** indo para trás — que é o
+///   que «o seguinte» e «o anterior» querem dizer quando não se está em lado nenhum;
+/// - dentro ⇒ o vizinho, **com volta ao princípio nos dois sentidos**.
+///
+/// ⚠️ `rem_euclid` e não `%`: o resto de `-1` em Rust é `-1`, e o anterior ao primeiro é o
+/// último.
+fn step_index(len: usize, atual: Option<usize>, delta: i8) -> Option<usize> {
+    if len == 0 {
         return None;
     }
-    let i = opcoes.iter().position(|o| o == atual);
-    Some(match i {
-        Some(k) => opcoes[(k + 1) % opcoes.len()].clone(),
-        None => opcoes[0].clone(),
+    let n = len as isize;
+    Some(match atual {
+        Some(k) => (k as isize + isize::from(delta)).rem_euclid(n) as usize,
+        None if delta >= 0 => 0,
+        None => len - 1,
     })
 }
 
@@ -245,15 +263,10 @@ pub(super) fn channel_walk(
 pub(super) fn next_channel(
     lista: &[(String, i32)],
     atual: &(String, i32),
+    delta: i8,
 ) -> Option<(String, i32)> {
-    if lista.is_empty() {
-        return None;
-    }
     let i = lista.iter().position(|o| o == atual);
-    Some(match i {
-        Some(k) => lista[(k + 1) % lista.len()].clone(),
-        None => lista[0].clone(),
-    })
+    step_index(lista.len(), i, delta).map(|k| lista[k].clone())
 }
 
 #[cfg(test)]

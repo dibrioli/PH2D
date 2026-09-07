@@ -136,6 +136,7 @@ fn the_box_dies_when_that_row_no_longer_holds_that_param() {
         max: 20.0,
         step: 0.1,
         face_scale: 1.0,
+        text: false,
         opened: true,
     };
     let view = crate::geom::View::new(RECT, ViewState::default());
@@ -186,6 +187,7 @@ fn the_typed_number_reaches_the_document() {
             max: 1_000_000.0,
             step: 0.1,
             face_scale: 1.0,
+            text: false,
             opened: true,
         }),
         ..MotionGraphPanelState::default()
@@ -214,6 +216,7 @@ fn an_integer_param_commits_a_whole_number() {
             max: 20.0,
             step: 1.0,
             face_scale: 1.0,
+            text: false,
             opened: true,
         }),
         ..MotionGraphPanelState::default()
@@ -249,6 +252,7 @@ fn painted(com_caixa: bool) -> (u32, u32) {
             max: 20.0,
             step: 0.1,
             face_scale: 1.0,
+            text: false,
             opened: true,
         }),
         ..MotionGraphPanelState::default()
@@ -299,6 +303,7 @@ fn a_typed_number_in_the_artists_unit_reaches_the_document_in_the_documents_unit
             max: 1000.0,
             step: 0.1,
             face_scale: 100.0, // 100 px por unidade de mundo
+            text: false,
             opened: true,
         }),
         ..MotionGraphPanelState::default()
@@ -312,4 +317,87 @@ fn a_typed_number_in_the_artists_unit_reaches_the_document_in_the_documents_unit
         (*value - 0.94).abs() < 1e-5,
         "94 px tem de virar 0,94 no documento, e virou {value}"
     );
+}
+
+/// Uma fórmula mais comprida do que a row consegue mostrar — é ela que faz a diferença entre
+/// **semear com o inteiro** e semear com o que se lê.
+const LONGO: &str = "clamp(sin(t * 2.0) * amplitude + offset, min, max)";
+
+/// ⭐⭐⭐ **A CAIXA DE TEXTO ABRE COM O VALOR INTEIRO, NUNCA COM O QUE A ROW MOSTRA.**
+///
+/// ⛔⛔ **É a armadilha do número uma letra acima.** A row do cartão carrega um
+/// [`crate::RowText`] — o que **cabe** na largura —, e semear a caixa com ele faria um `Enter`
+/// distraído gravar meia fórmula. Ali perdiam-se casas decimais; aqui perde-se metade do valor.
+///
+/// ⚠️ **O controlo é a primeira asserção**: sem ela o gate seria vácuo no dia em que o texto
+/// coubesse inteiro na row, e passaria a não medir nada.
+///
+/// FALSIFICADO por `arm_text` semear a partir do [`CardParam`] em vez do canal lateral.
+#[test]
+fn the_text_box_opens_with_the_whole_value_never_with_the_row_text() {
+    assert_ne!(
+        crate::RowText::new(LONGO).as_str(),
+        LONGO,
+        "controle: este valor TEM de ser truncado pela row, senao o gate nao mede nada"
+    );
+    crate::snapshot::set_card_texts(vec![(7, "expr", LONGO.to_string())]);
+    let mut state = MotionGraphPanelState::default();
+    crate::param_edit::arm_text(&mut state, 7, 0, "expr");
+    let e = state.param_edit.as_ref().expect("a caixa abre");
+    assert!(e.text, "e' uma caixa de TEXTO");
+    assert_eq!(e.seed, LONGO, "a semente e' o valor INTEIRO");
+    crate::snapshot::set_card_texts(Vec::new());
+}
+
+/// ⛔ **SEM SEMENTE PUBLICADA A CAIXA NÃO ABRE** — abrir vazia sobre um valor que existe
+/// apagá-lo-ia com um `Enter`. ⚠️ E um param de texto **vazio** continua a poder receber o
+/// primeiro caractere: o vazio publicado É uma semente.
+///
+/// FALSIFICADO por `arm_text` cair num `unwrap_or_default()` quando o canal não tem o par.
+#[test]
+fn no_published_text_no_box_but_an_empty_one_still_opens() {
+    crate::snapshot::set_card_texts(Vec::new());
+    let mut state = MotionGraphPanelState::default();
+    crate::param_edit::arm_text(&mut state, 7, 0, "expr");
+    assert!(
+        state.param_edit.is_none(),
+        "sem valor publicado a caixa nao pode abrir"
+    );
+    crate::snapshot::set_card_texts(vec![(7, "expr", String::new())]);
+    crate::param_edit::arm_text(&mut state, 7, 0, "expr");
+    assert!(
+        state.param_edit.is_some(),
+        "um param de texto VAZIO ainda tem de aceitar o primeiro caractere"
+    );
+    crate::snapshot::set_card_texts(Vec::new());
+}
+
+/// ⭐⭐ **O QUE SE ESCREVE CHEGA AO DOCUMENTO** — pela porta de texto, e não pela dos números.
+///
+/// FALSIFICADO por o `commit` cair no ramo do número: `number_value` devolve `None` sobre um
+/// `TextInput` e a edição evapora **em silêncio**.
+#[test]
+fn what_is_typed_leaves_by_the_text_door() {
+    crate::snapshot::set_card_texts(vec![(7, "expr", LONGO.to_string())]);
+    let mut state = MotionGraphPanelState::default();
+    crate::param_edit::arm_text(&mut state, 7, 0, "expr");
+    crate::snapshot::set_card_texts(Vec::new());
+    let mut store = WidgetStore::default();
+    store.register(
+        crate::hits::param_edit_id(),
+        InteractiveState::TextInput {
+            state: TextInputState::Focused,
+            text: "vendas".to_string(),
+            caret: 6,
+            selection_anchor: None,
+        },
+    );
+    let _ = drain_intents();
+    crate::param_edit::commit(&state, &store);
+    let saiu = drain_intents();
+    let Some(GraphIntent::SetTextParam { param, value, .. }) = saiu.first() else {
+        panic!("o texto tem de sair pela porta de TEXTO, e saiu {saiu:?}");
+    };
+    assert_eq!(*param, "expr");
+    assert_eq!(value, "vendas");
 }

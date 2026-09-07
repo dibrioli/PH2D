@@ -26,6 +26,35 @@ use super::*;
 /// ⚠️ **Zero `String`**: [`ph2d_panel_motion_graph::CardParam`] leva o `ParamUiHint` do
 /// registry (`Copy`, `&'static`) e o `f32` vivo — a medição do doc 103 §7 diz porquê (uma row
 /// custa 13,5 µs, e 20 cartões × 5 rows seriam 200 alocações por quadro).
+/// ⭐⭐ **O TEXTO INTEIRO de cada param de texto**, publicado ao lado do snapshot.
+///
+/// ⚠️ **Publica-se mesmo VAZIO.** A caixa de edição do cartão recusa abrir sem semente — abrir
+/// vazia sobre um valor que existe apagá-lo-ia com um `Enter` distraído —, e um param de texto
+/// ainda por escrever tem de poder receber o primeiro caractere.
+fn publish_card_texts(motion: &MotionState, snap: &ph2d_panel_motion_graph::GraphViewSnapshot) {
+    let mut fora: Vec<(u32, &'static str, String)> = Vec::new();
+    for node in &snap.nodes {
+        let nid = ph2d_nodegraph::graph::NodeId(node.id);
+        let Some(type_id) = motion.doc.graph.node(nid).map(|i| i.type_id()) else {
+            continue;
+        };
+        for h in motion.registry.param_ui(type_id).unwrap_or(&[]) {
+            if h.widget != ph2d_node_registry::ParamWidget::Text {
+                continue;
+            }
+            let valor = motion
+                .doc
+                .graph
+                .node_text_param_overrides(nid)
+                .and_then(|m| m.get(h.param))
+                .cloned()
+                .unwrap_or_default();
+            fora.push((node.id, h.param, valor));
+        }
+    }
+    ph2d_panel_motion_graph::set_card_texts(fora);
+}
+
 pub(crate) fn stamp_card_params(
     motion: &MotionState,
     project: ph2d_editor::ProjectSettings,
@@ -220,6 +249,8 @@ pub(crate) fn stamp_card_params(
         node.params = params;
         node.sections = sections;
     }
+    // ⭐ E o texto INTEIRO ao lado, para a caixa de edição do cartão nunca abrir com o truncado.
+    publish_card_texts(motion, snap);
 }
 
 /// Os gates desta faixa — irmão de teste, como em todo o módulo. ⚠️ **Dois ficheiros, duas

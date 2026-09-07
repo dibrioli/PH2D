@@ -267,6 +267,12 @@ pub(crate) struct ParamEdit {
     /// artista (`94 px`), e o documento recebe o dele (`0,94`). Guardada aqui e não relida da
     /// row porque a conversão de VOLTA acontece no `commit`, que já não tem a row à mão.
     pub face_scale: f32,
+    /// ⭐ **A caixa é de TEXTO** (um nome de coluna, um sinal, uma fórmula) e não de número.
+    ///
+    /// ⚠️ **Um `bool` e não um enum, porque a pergunta tem duas respostas e nenhuma terceira à
+    /// vista** — e porque as duas metades divergem em quatro sítios (abrir, desenhar, comitar, e
+    /// a faixa digitável, que só existe num número).
+    pub text: bool,
     /// `false` até o quadro em que a caixa toma o teclado (o `settle_focus`), como no [`Rename`].
     pub opened: bool,
 }

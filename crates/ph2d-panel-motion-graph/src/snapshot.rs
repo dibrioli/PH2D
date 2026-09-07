@@ -350,12 +350,42 @@ thread_local! {
     /// resolved graph geometry — and the shell owns it (the diagnoser rides it). ON
     /// until the shell says otherwise, so a paint before the first frame shows help on.
     static NODE_HELP: RefCell<bool> = const { RefCell::new(true) };
+    /// ⭐⭐ **O TEXTO INTEIRO de cada param de texto** — `(nó, param, valor)`, publicado pela
+    /// shell ao lado do snapshot.
+    ///
+    /// ⛔⛔ **Existe porque o [`CardParam`] guarda o texto TRUNCADO** ([`RowText`], o que cabe na
+    /// row) e semear uma caixa de edição com ele **destruiria o resto da string** no `Enter` —
+    /// que é, uma letra acima, a armadilha que o `param_edit` já nomeia para o número
+    /// (*«a row mostra `0.50` e comitar essa leitura destruiria um `0.503`»*).
+    ///
+    /// ⚠️ **E é um canal lateral, não um campo:** o [`GraphNodeView`] é construído em **31
+    /// sítios** desta árvore, e apender-lhe um campo é a forma que a memória do repo nomeia
+    /// (*«tipo construído em N sítios prefere componente opcional a campo apendado»*). Aqui o
+    /// molde já existe — é o mesmo dos outros seis publicadores acima.
+    static CARD_TEXTS: RefCell<Vec<(u32, &'static str, String)>> =
+        const { RefCell::new(Vec::new()) };
 }
 
 /// Publish whether the node-help system is on (shell bridge → panel, ADR-0155). Set
 /// every frame from `MotionState::node_help_enabled` so the toolbar chip draws the
 /// live state; the panel reads it with [`node_help`] to draw the chip and to compute
 /// the toggle it requests.
+/// Publica o texto INTEIRO dos params de texto de cada cartão (shell → painel). Ver
+/// [`CARD_TEXTS`]: o cartão desenha o truncado e a caixa de edição abre com este.
+pub fn set_card_texts(texts: Vec<(u32, &'static str, String)>) {
+    CARD_TEXTS.with(|c| *c.borrow_mut() = texts);
+}
+
+/// O texto inteiro de `(nó, param)` — `None` quando a shell não o publicou.
+pub(crate) fn card_text_of(node: u32, param: &str) -> Option<String> {
+    CARD_TEXTS.with(|c| {
+        c.borrow()
+            .iter()
+            .find(|(n, p, _)| *n == node && *p == param)
+            .map(|(_, _, v)| v.clone())
+    })
+}
+
 pub fn set_node_help(on: bool) {
     NODE_HELP.with(|c| *c.borrow_mut() = on);
 }

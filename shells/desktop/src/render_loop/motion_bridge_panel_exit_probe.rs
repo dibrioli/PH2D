@@ -85,6 +85,7 @@ fn censo() -> Censo {
                 ClickDoes::PickFile => "abre ficheiro",
                 ClickDoes::CycleSource => "avança a fonte",
                 ClickDoes::OpensPicker => "abre o selector",
+                ClickDoes::TypeText => "escreve texto",
                 ClickDoes::Nothing => "NADA",
             };
             *veredito.entry(v).or_default() += 1;
@@ -151,6 +152,40 @@ fn the_side_panel_cannot_leave_while_the_card_cannot_open_these() {
         "a conta dos controlos que só o painel abre mudou ({inalcancaveis} contra \
          {TRANCADOS_NO_PAINEL}) — corra `what_the_card_still_cannot_reach` e reconcilie o \
          número com a MEDIÇÃO, nunca ao contrário"
+    );
+}
+
+/// ⭐⭐ **O TEXTO ESCRITO NO CARTÃO CHEGA À PORTA DE TEXTO DO PAINEL** — a segunda metade do
+/// gesto, e a que o painel não pode provar sozinho.
+///
+/// FALSIFICADO por apagar o braço `GraphIntent::SetTextParam` do `apply_graph_intents`: o
+/// artista escreve, carrega `Enter`, e a edição evapora sem uma palavra.
+#[test]
+fn the_text_typed_on_a_card_reaches_the_panels_text_door() {
+    use ph2d_panel_motion_graph::{GraphIntent, drain_intents, push_intent};
+    let mut m = MotionState::new();
+    let id = m.doc.graph.add_node("motion.expression");
+    let _ = drain_intents();
+    let _ = ph2d_panel_motion_params::drain_param_intents();
+    push_intent(GraphIntent::SetTextParam {
+        node: id.0,
+        param: "expr",
+        value: "sin(t)".to_string(),
+    });
+    crate::render_loop::motion_bridge::apply_graph_intents(
+        &mut m,
+        &mut ph2d_core::Playhead::default(),
+        &mut ph2d_editor::ToastQueue::default(),
+        &mut ph2d_editor::screens::layout::CenterSplit::None,
+    );
+    let saiu = ph2d_panel_motion_params::drain_param_intents();
+    assert!(
+        saiu.iter().any(|i| matches!(
+            i,
+            ph2d_panel_motion_params::MotionParamIntent::SetTextParam { node, param, value }
+                if *node == id.0 && *param == "expr" && value == "sin(t)"
+        )),
+        "o texto do cartao nao chegou a` porta do painel: {saiu:?}"
     );
 }
 
@@ -350,13 +385,13 @@ fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
     );
 }
 
-/// **Medido em 2026-09-06: `15` de `683` rows** (eram `26` — saíram os **3** de ficheiro, as
-/// **4** fontes publicadas e as **4** cores; a tabela abaixo já os mostra fora) — reconciliado pela sonda, nunca escrito de
+/// **Medido em 2026-09-07: `6` de `683` rows** (eram `26` — saíram os **3** de ficheiro, as
+/// **4** fontes publicadas, as **4** cores e os **9** campos de texto; a tabela mostra-os fora) — reconciliado pela sonda, nunca escrito de
 /// memória. Em sete espécies, e a maior é o campo de texto (9):
 ///
 /// | espécie | quantos | nós |
 /// |---|---:|---|
-/// | campo de TEXTO | 9 | `source.text` (×2) · `value.table` (×2) · `motion.expression` · `pulse.signal` · `rig.skeleton` · `value.pattern` · `motion.sub_uv` |
+/// | ~~campo de TEXTO~~ | ~~9~~ | ✅ **curado**: a caixa abre com o valor INTEIRO |
 /// | ~~amostra + selector de COR~~ | ~~4~~ | ✅ **curado**: o id da amostra passou a carregar o NÓ |
 /// | ~~selector de FONTE publicada~~ | ~~4~~ | ✅ **curado**: o clique anda pela lista viva |
 /// | ~~caminho + diálogo de FICHEIRO~~ | ~~3~~ | ✅ **curado**: o cartão pede, a shell abre |
@@ -390,4 +425,4 @@ fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
 /// `apply_graph_intents` **já traduzia** as intenções do cartão para as do painel (é assim que
 /// o `SetParam` de um arrasto no cartão chega ao documento), então o ficheiro custou **um
 /// braço em cada lado** — nenhuma lei nova, nenhuma segunda porta.
-const TRANCADOS_NO_PAINEL: usize = 15;
+const TRANCADOS_NO_PAINEL: usize = 6;

@@ -194,6 +194,20 @@ pub(super) fn apply_graph_intents(
                     }
                 }
             }
+            // ⭐ O texto escrito no cartão sai pela porta de texto do painel — a mesma que a
+            // chip de uma fonte e o campo de uma fórmula usam.
+            #[cfg(feature = "panel-motion-params")]
+            GraphIntent::SetTextParam { node, param, value } => {
+                if let subgraph::Target::Node(n) = subgraph::target(node) {
+                    ph2d_panel_motion_params::push_param_intent(
+                        ph2d_panel_motion_params::MotionParamIntent::SetTextParam {
+                            node: n.0,
+                            param,
+                            value,
+                        },
+                    );
+                }
+            }
             GraphIntent::Disconnect { to_node, to_port } => {
                 if let Some((t, tp)) = subgraph::resolve_port(motion, to_node, to_port, true) {
                     apply_disconnect(motion, toasts, t.0, tp);

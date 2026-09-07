@@ -76,6 +76,14 @@ pub enum GraphIntent {
     /// pôs os params dentro do nó conta alocações por quadro, e uma lista de nomes por row
     /// seria exactamente o que ela recusou.
     CycleSource { node: u32, param: &'static str },
+    /// ⭐ **O ARTISTA ESCREVEU UM TEXTO NUM CARTÃO** — um nome de coluna, um sinal, uma fórmula.
+    /// Sai pela porta de texto que a row do painel já usa (`MotionParamIntent::SetTextParam`),
+    /// para o undo e o memo do cook serem os mesmos nas duas superfícies.
+    SetTextParam {
+        node: u32,
+        param: &'static str,
+        value: String,
+    },
     /// **O ARTISTA DOBROU OU ABRIU UMA SECÇÃO** do cartão (ciclo 1). Estado de EDITOR: a shell
     /// guarda-o ao lado do resto do que a vista resolve, e por isso [`crate::geom::card_h`]
     /// continua a ser função pura do snapshot.

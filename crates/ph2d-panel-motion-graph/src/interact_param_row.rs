@@ -136,6 +136,11 @@ pub(super) fn apply_param_row(
                     node,
                     param: p.hint.param,
                 }),
+                ClickDoes::TypeText => {
+                    crate::param_edit::arm_text(state, node, row, p.hint.param);
+                    state.interaction = Interaction::Idle;
+                    return;
+                }
                 ClickDoes::CycleSource => push_intent(GraphIntent::CycleSource {
                     node,
                     param: p.hint.param,
@@ -176,6 +181,8 @@ pub enum ClickDoes {
     PickFile,
     /// **Avança para a fonte publicada seguinte** — a lista é viva e vive na shell.
     CycleSource,
+    /// **Abre a caixa para ESCREVER um texto** — um nome de coluna, um sinal, uma fórmula.
+    TypeText,
     /// **Abre o selector de cor** — ⚠️ e quem o abre **não é este gesto**: a amostra está
     /// registada como *picker swatch*, e o `pointer_down` do `editor-core` intercepta o clique
     /// antes de ele chegar aqui. Esta variante existe para o **censo** saber que a row é
@@ -199,6 +206,7 @@ pub fn click_does(p: &crate::CardParam) -> ClickDoes {
         }
         ph2d_node_registry::ParamWidget::File { .. } => ClickDoes::PickFile,
         ph2d_node_registry::ParamWidget::Source => ClickDoes::CycleSource,
+        ph2d_node_registry::ParamWidget::Text => ClickDoes::TypeText,
         ph2d_node_registry::ParamWidget::Color { .. } => ClickDoes::OpensPicker,
         _ => ClickDoes::Nothing,
     }

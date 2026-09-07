@@ -63,6 +63,41 @@ pub(crate) fn arm(state: &mut MotionGraphPanelState, node: u32, row: u16, p: &Ca
         max: f64::from(p.hard_max),
         step: f64::from(p.step),
         face_scale: p.face_scale,
+        text: false,
+        opened: false,
+    });
+}
+
+/// ⭐⭐ **ABRIR A CAIXA DE TEXTO** — um nome de coluna, um sinal, uma fórmula.
+///
+/// ⛔⛔ **A semente é o valor INTEIRO, e não o que a row desenha.** A row carrega um
+/// [`crate::RowText`] — o que **cabe** na largura do cartão —, e semear com ele destruiria o
+/// resto da string no `Enter`. É a mesma armadilha que o [`arm`] já nomeia para o número
+/// (*a row mostra `0.50` e comitar isso mata um `0.503`*), e aqui ela é pior: ali perdiam-se
+/// casas decimais, aqui perde-se metade de uma fórmula.
+///
+/// ⇒ o valor vem do canal lateral que a shell publica ([`crate::snapshot::card_text_of`]).
+/// ⚠️ **Sem ele publicado a caixa NÃO abre** — abrir vazia sobre um valor que existe é a forma
+/// de apagar o que lá estava com um `Enter` distraído.
+pub(crate) fn arm_text(
+    state: &mut MotionGraphPanelState,
+    node: u32,
+    row: u16,
+    param: &'static str,
+) {
+    let Some(seed) = crate::snapshot::card_text_of(node, param) else {
+        return;
+    };
+    state.param_edit = Some(ParamEdit {
+        node,
+        row,
+        param,
+        seed,
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        face_scale: 1.0,
+        text: true,
         opened: false,
     });
 }
@@ -117,6 +152,21 @@ pub(crate) fn settle_focus(
 /// caractere substitui, e o número antigo ainda ali está para quem só queria emendar um dígito.
 fn open_box(store: &mut WidgetStore, e: &ParamEdit) {
     let id = param_edit_id();
+    if e.text {
+        // O molde é o do [`crate::rename`] — o mesmo campo efémero, o mesmo buffer no store.
+        store.register(
+            id,
+            InteractiveState::TextInput {
+                state: TextInputState::Focused,
+                text: e.seed.clone(),
+                caret: e.seed.chars().count(),
+                selection_anchor: Some(0),
+            },
+        );
+        store.set_focus(Some(id));
+        store.mark_cancel_on_escape(id);
+        return;
+    }
     let value = e.seed.parse::<f64>().unwrap_or(0.0);
     store.register(
         id,
@@ -154,6 +204,33 @@ pub(crate) fn paint(
         return;
     };
     let theme = ctx.host.theme();
+    if e.text {
+        let (fstate, texto, caret, anchor) = match ctx.host.store().get(param_edit_id()) {
+            Some(InteractiveState::TextInput {
+                state,
+                text,
+                caret,
+                selection_anchor,
+            }) => (*state, text.clone(), *caret, *selection_anchor),
+            // No quadro em que abre ela ainda não está registada — desenha-se semeada, para
+            // nunca piscar vazia (a mesma nota do `rename`).
+            _ => (TextInputState::Focused, e.seed.clone(), 0, None),
+        };
+        let input = ph2d_editor_core::widget::TextInput::new(param_edit_id(), "")
+            .visual((fstate, ctx.host.store().hover_live(param_edit_id())));
+        ph2d_editor_core::widget::paint_text_input_with_buffer(
+            &input,
+            Some(&texto),
+            Some(caret),
+            anchor,
+            field,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+        );
+        ctx.host.hit_index_mut().register(param_edit_id(), field);
+        return;
+    }
     let (fstate, value, buf, caret, anchor) =
         ph2d_editor_core::widget::showcase::read_number_input(ctx.host.store(), param_edit_id());
     // No quadro em que a caixa abre ela ainda não está registada (um gesto abriu-a, e o store é
@@ -197,6 +274,17 @@ pub(crate) fn commit(state: &MotionGraphPanelState, store: &WidgetStore) {
     let Some(e) = state.param_edit.as_ref() else {
         return;
     };
+    if e.text {
+        let Some(InteractiveState::TextInput { text, .. }) = store.get(param_edit_id()) else {
+            return;
+        };
+        push_intent(GraphIntent::SetTextParam {
+            node: e.node,
+            param: e.param,
+            value: text.clone(),
+        });
+        return;
+    }
     let Some(v) = store.number_value(param_edit_id()) else {
         return;
     };

@@ -3537,3 +3537,166 @@ fn sonda_de_onde_a_esfera_diverge() {
         }
     }
 }
+
+/// **SONDA — ONDE estão os vértices que o alvo move e nós não** (e vice-versa).
+///
+/// ⚠️ **A contagem de movidos é o observável mais ESTREITO deste corpus para uma
+/// pergunta de CONJUNTO** — foi ela que achou a lei do Agarrar (`2123` contra
+/// `1863`). Mas um desacordo de contagem tem **duas** leituras que se leem igual:
+/// um conjunto simulado diferente, ou os mesmos vértices com um deslocamento a
+/// cavalo do limiar do censo. *Esta sonda separa as duas dizendo ONDE eles estão
+/// e QUANTO o alvo os moveu.*
+#[test]
+#[ignore = "sonda"]
+fn sonda_de_quem_o_alvo_move_e_nos_nao() {
+    let nome =
+        std::env::var("PH2D_TRACO").unwrap_or_else(|_| "esfera_gancho_radial_dinamica".into());
+    let t = traco(&nome);
+    let sup = t.s("superficie").to_string();
+    let rest = repouso(&sup);
+    let alvo = t.depois.clone();
+    let nosso = correr_posicoes(&nome);
+    let c0 = t.caminho[0];
+    let r = t.pincel().raio;
+    const LIMIAR: f64 = 1e-5;
+    let (mut so_alvo, mut so_nosso) = (Vec::new(), Vec::new());
+    for v in 0..rest.len() {
+        let (a, n) = (dist(rest[v], alvo[v]), dist(rest[v], nosso[v]));
+        if a > LIMIAR && n <= LIMIAR {
+            so_alvo.push((v, a, dist(rest[v], c0) / r));
+        } else if n > LIMIAR && a <= LIMIAR {
+            so_nosso.push((v, n, dist(rest[v], c0) / r));
+        }
+    }
+    for (quem, lista) in [
+        ("SO' O ALVO move", &so_alvo),
+        ("SO' NOS movemos", &so_nosso),
+    ] {
+        println!("\n{nome} — {quem}: {} vertices", lista.len());
+        if lista.is_empty() {
+            continue;
+        }
+        let mut d: Vec<f64> = lista.iter().map(|(_, _, d)| *d).collect();
+        d.sort_by(f64::total_cmp);
+        let mut u: Vec<f64> = lista.iter().map(|(_, u, _)| *u).collect();
+        u.sort_by(f64::total_cmp);
+        println!(
+            "  distancia ao pen-down, em raios: min {:.2} p50 {:.2} max {:.2}   (o limite da banda e' 3,5R)",
+            d[0],
+            d[d.len() / 2],
+            d[d.len() - 1]
+        );
+        println!(
+            "  deslocamento: min {:.2e} p50 {:.2e} max {:.2e}   (o limiar do censo e' {LIMIAR:.0e})",
+            u[0],
+            u[u.len() / 2],
+            u[u.len() - 1]
+        );
+    }
+}
+
+/// ⭐⭐ **GATE — O DESACORDO DE CONTAGEM DO SNAKE HOOK É FRANJA, NÃO CONJUNTO**
+/// (medido em 2026-09-07).
+///
+/// ⛔⛔ **Existe porque a contagem de movidos foi o que achou a lei do Agarrar**
+/// (`2123` contra `1863`, e a cura levou-a a `1864`) — e no Snake Hook da esfera
+/// ela lê `2158` contra `2234`, o **único** desacordo estrutural que sobra no
+/// corpus. *Um desacordo de contagem tem duas leituras que se leem igual: um
+/// conjunto simulado diferente, ou os mesmos vértices com um deslocamento a
+/// cavalo do limiar do censo.*
+///
+/// **Medido, são as duas metades da FRANJA:**
+///
+/// | quem | quantos | distância ao pen-down | deslocamento |
+/// |---|---|---|---|
+/// | só o alvo move | `100` | `3,13`–`3,72 R` | `1,0·10⁻⁵` – `1,7·10⁻⁴` |
+/// | só nós movemos | `24` | `4,02`–`4,60 R` | `1,2·10⁻⁵` – `5,0·10⁻⁴` |
+///
+/// ⇒ os primeiros estão **em cima do limite da banda** (`3,5 R`) com um
+/// deslocamento encostado ao limiar do censo (`10⁻⁵`), e os segundos estão
+/// **para lá dele** — que é o que a área *Dynamic* produz por construção, porque
+/// ali a banda é medida a partir do cursor que ANDA. ⛔ **Nenhum dos dois grupos
+/// se move o bastante para ser uma lei:** o maior vale `0,3 %` da amplitude do
+/// traço.
+///
+/// ⚠️ **A metade que faz o gate existir é a comparação com os IRMÃOS:** os outros
+/// seis traços de esfera concordam a `±4` vértices. Se este passar a discordar em
+/// AMPLITUDE — algum do par a mexer-se mais que a franja —, aí sim há conjunto.
+#[test]
+fn o_desacordo_de_contagem_do_gancho_e_franja_e_nao_conjunto() {
+    /// O limiar do censo `movidos` das fixtures.
+    const LIMIAR: f64 = 1e-5;
+    let nome = "esfera_gancho_radial_dinamica";
+    let t = traco(nome);
+    let rest = repouso("esfera");
+    let nosso = correr_posicoes(nome);
+    let r = t.pincel().raio;
+    // O limite da banda, em raios: `1 + L` — daqui para fora a força não alcança
+    // e só o cursor que anda pode ter passado por lá.
+    let limite = 1.0 + t.pincel().limite;
+    let (mut so_alvo, mut so_nosso) = (Vec::new(), Vec::new());
+    for v in 0..rest.len() {
+        let (a, n) = (dist(rest[v], t.depois[v]), dist(rest[v], nosso[v]));
+        let d = dist(rest[v], t.caminho[0]) / r;
+        if a > LIMIAR && n <= LIMIAR {
+            so_alvo.push((a, d));
+        } else if n > LIMIAR && a <= LIMIAR {
+            so_nosso.push((n, d));
+        }
+    }
+    // Anti-vácuo: o desacordo TEM de existir, senão este gate não descreve nada.
+    assert!(
+        so_alvo.len() > 50 && !so_nosso.is_empty(),
+        "o desacordo desapareceu ({} e {}) -- se ele foi curado, este gate tem de \
+         sair; se mudou de forma, a tabela do doc tem de ser re-medida",
+        so_alvo.len(),
+        so_nosso.len()
+    );
+    let maior = t
+        .depois
+        .iter()
+        .zip(&rest)
+        .map(|(p, q)| dist(*p, *q))
+        .fold(0.0f64, f64::max);
+    // (1) Nenhum deles se move o bastante para ser lei.
+    for (quem, lista) in [("so' o alvo", &so_alvo), ("so' nos", &so_nosso)] {
+        for (u, _) in lista {
+            assert!(
+                *u < 0.01 * maior,
+                "{quem}: um vertice move {u:.2e}, que e' mais de 1% da amplitude \
+                 do traco ({maior:.4}) -- isso ja' nao e' franja"
+            );
+        }
+    }
+    // (2) ⭐ **E os dois grupos NÃO SE MISTURAM**, que é o que os torna franja e
+    // não conjunto: o que só o alvo move fica no bordo da banda, e o que só nós
+    // movemos fica **para lá** dele — onde a força não alcança e só o cursor que
+    // ANDA (a área *Dynamic*) pode ter passado.
+    let longe_deles = so_alvo.iter().map(|(_, d)| *d).fold(0.0f64, f64::max);
+    let perto_nosso = so_nosso
+        .iter()
+        .map(|(_, d)| *d)
+        .fold(f64::INFINITY, f64::min);
+    assert!(
+        longe_deles < perto_nosso,
+        "os dois grupos misturam-se: o alvo vai ate' {longe_deles:.2}R e nos \
+         comecamos em {perto_nosso:.2}R -- se se sobrepoem, e' conjunto e nao franja"
+    );
+    assert!(
+        perto_nosso > limite,
+        "os vertices que so' NOS movemos comecam a {perto_nosso:.2}R, dentro do \
+         limite da banda ({limite:.2}R) -- ali a forca alcanca, e a diferenca \
+         deixa de ser explicada pelo cursor que anda"
+    );
+    // ⚠️ O do alvo encosta ao limite pelos dois lados (`3,13`–`3,72 R`): ele
+    // ESTRADDLA a fronteira, e é isso que uma franja faz.
+    let perto_deles = so_alvo
+        .iter()
+        .map(|(_, d)| *d)
+        .fold(f64::INFINITY, f64::min);
+    assert!(
+        perto_deles > limite - 0.5 && perto_deles < limite,
+        "o grupo do alvo comeca a {perto_deles:.2}R -- ele tem de encostar ao \
+         limite da banda ({limite:.2}R) por dentro, senao nao e' franja"
+    );
+}

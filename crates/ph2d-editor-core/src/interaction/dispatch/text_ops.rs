@@ -92,8 +92,9 @@ pub(super) fn byte_offset_from_click_xy(
         Some(InteractiveState::TextInput { text, .. }) => {
             let is_hex = store.blender_hex_parent(id).is_some();
             if is_hex {
-                // Hex field paints label "Hex" + value text at Sm.
-                (text.as_str(), rect.x + 8.0 + 36.0, rect.y, font_sm, false)
+                // Pela porta do widget: a etiqueta "Hex" e o recuo saem de `hex_field`.
+                let x = crate::widget::hex_field_text_origin_x(rect);
+                (text.as_str(), x, rect.y, font_sm, false)
             } else if text.contains('\n') {
                 // ⚠️ **Pela porta do WIDGET, e não por uma cópia dos números dele.** Estas três
                 // grandezas eram `rect.x + 12.0`, `rect.y + 8.0` e `font_size + 4.0` sob um
@@ -105,24 +106,22 @@ pub(super) fn byte_offset_from_click_xy(
                 let m = crate::widget::text_area_metrics(rect);
                 (text.as_str(), m.inner_x, m.inner_y, font_base, true)
             } else {
-                (text.as_str(), rect.x + 12.0, rect.y, font_base, false)
+                let x = crate::widget::text_input_text_origin_x(rect);
+                (text.as_str(), x, rect.y, font_base, false)
             }
         }
         Some(InteractiveState::NumberInput { buffer, .. }) => {
-            // Plain NumberInput uses Spacing::Lg pad. Channel chips
-            // are centered — their click→byte offset depends on the
-            // current text width which we don't measure here, so we
-            // approximate by treating the chip as if text starts at
-            // its left padding.
-            (buffer.as_str(), rect.x + 12.0, rect.y, font_base, false)
+            // O campo numérico partilha o recuo do campo de texto, e lê-o pela mesma porta.
+            // ⚠️ Os chips de canal são CENTRADOS — o clique→byte deles depende da largura do
+            // texto, que não é medida aqui; aproximamo-los pelo recuo esquerdo.
+            let x = crate::widget::text_input_text_origin_x(rect);
+            (buffer.as_str(), x, rect.y, font_base, false)
         }
         Some(InteractiveState::Combobox { query, .. }) => {
-            // Combobox text sits AFTER the search icon + gap, not at
-            // the left edge of the pill. Mirrors the painter math
-            // `inner_x = rect.x + pad_x + icon_size + Spacing::Md`.
-            let icon_size = (rect.h * 0.5).clamp(14.0, 18.0);
-            let inner_x = rect.x + 12.0 + icon_size + 8.0;
-            (query.as_str(), inner_x, rect.y, font_base, false)
+            // O texto do combobox começa DEPOIS do ícone de busca — e a conta é a do pintor,
+            // pedida pela porta em vez de refeita aqui.
+            let x = crate::widget::combobox_text_origin_x(rect);
+            (query.as_str(), x, rect.y, font_base, false)
         }
         _ => return 0,
     };

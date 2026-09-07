@@ -177,6 +177,28 @@ pub fn paint_text_input(
 /// `selection_anchor` is the other end of an active selection (for
 /// double-click "select all" + Shift+Arrow); when None, no selection
 /// is drawn.
+/// ⭐⭐⭐ **O RECUO HORIZONTAL de um campo de texto** — e ele tem um SEGUNDO leitor que não pinta.
+///
+/// ⛔⛔ **O caret copiava este número**, e a cópia era o valor de **FÁBRICA**: `rect.x + 12.0` no
+/// mapeador de clique contra `Spacing::Lg.px()` aqui. Desde que a escala numérica virou
+/// **autorável**, o pintor lê o valor VIVO e a cópia não — logo bastava o artista mexer no
+/// `spacing.lg` para o utilizador clicar numa letra e o cursor cair noutra.
+///
+/// ⚠️ **A família já tinha sido diagnosticada e curada pela METADE:** o `TextArea` ganhou a porta
+/// dele (`text_area_metrics`) com este mecanismo escrito ao lado, e os outros **três** braços do
+/// mesmo `match` ficaram a copiar. *Curar um braço de uma família deixa os outros com o defeito e
+/// com a aparência de resolvido.*
+#[must_use]
+pub fn field_pad_x() -> f32 {
+    Spacing::Lg.px()
+}
+
+/// **Onde o texto de um campo começa** — a porta que o pintor usa e que o caret PERGUNTA.
+#[must_use]
+pub fn text_origin_x(rect: Rect) -> f32 {
+    rect.x + field_pad_x()
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn paint_text_input_with_buffer(
     input: &TextInput,
@@ -228,7 +250,7 @@ pub fn paint_text_input_with_buffer(
         }
     }
 
-    let pad_x = Spacing::Lg.px();
+    let pad_x = field_pad_x();
     let pad_y = Spacing::Md.px();
     let font_size = TypeToken::Base.px();
     let inner_x = rect.x + pad_x;

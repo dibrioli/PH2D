@@ -1624,6 +1624,87 @@ piso · nasce uma constante própria · a coluna da seta volta a ser cópia · o
 ser cópia · uma declaração partilhada desaparece [controlo de vacuidade] · a largura da coluna
 volta a ser escolhida).
 
+### 7.29 — ✅ WAVE 24 (2026-09-07): o CARET pergunta ao pintor onde o texto começa
+
+**Nasce de um censo abortado.** A wave ia ser *«o vão entre um ícone e o seu rótulo»* — cinco
+respostas medidas (`12` num toast, `8` em seis sítios, `6` em dois, `4` na hierarquia). ⛔ **E o `4`
+da hierarquia é VEREDITO ESCRITO do dono**, com data e citação no código: *«Icon → name gap
+tightened Md (8) → Xs (4) 2026-05-24 per user: "nome mais próximos dos ícones"»*. Uniformizar em
+`6` — o `Tree.icon_h_separation` do modelo — sobreporia uma decisão dele com uma derivação minha.
+⇒ *o censo fica medido e a escolha é dele*; a wave seguiu para a metade que é mecanismo puro.
+
+#### ⛔⛔ O defeito: o mapeador de clique→caret COPIAVA os números do pintor
+
+`text_ops::byte_offset_from_click_xy` tem um braço por classe de campo, e cada um precisa de saber
+onde o pintor pôs a primeira letra:
+
+| braço | o pintor desenha em | o caret procurava em |
+|---|---|---|
+| `TextInput` de uma linha | `rect.x + Spacing::Lg.px()` | `rect.x + 12.0` |
+| `NumberInput` | `rect.x + Spacing::Lg.px()` | `rect.x + 12.0` |
+| `Combobox` | `+ Lg + ícone + Md` | `+ 12.0 + ícone + 8.0` |
+| campo `Hex` | `rect.x + Spacing::Md.px() + 36` | `rect.x + 8.0 + 36.0` |
+
+⭐⭐⭐ **Os números da direita são os valores de FÁBRICA dos da esquerda**, e é isso que torna o
+defeito invisível: enquanto ninguém autora a escala numérica, as duas contas dão o mesmo. Desde que
+ela virou autorável, o pintor lê o valor **vivo** e a cópia não — mexer no `spacing.lg` faz o
+utilizador clicar numa letra e escrever noutra.
+
+#### ⚠️⚠️ A família já tinha sido diagnosticada e curada pela METADE
+
+O braço do `TextArea` ganhou a porta dele (`text_area_metrics`) com **este mecanismo escrito ao
+lado, em prosa**, e um gate a prová-lo com a escala autorada (*medido: com `md = 20`, clicar no meio
+de qualquer linha punha o caret na linha seguinte*). Os outros **três braços do mesmo `match`**
+ficaram a copiar. *Curar um braço de uma família deixa os outros com o defeito **e** com a
+aparência de resolvidos — e o diagnóstico correcto, escrito ao lado do primeiro, não os alcança.*
+
+#### As portas
+
+`field_pad_x()` (o recuo horizontal de um campo, partilhado pelo campo de texto e pelo numérico) ·
+`text_input::text_origin_x` · `combobox::text_origin_x` · `combobox::inline_icon_size` ·
+`hex_field::text_origin_x`. Os pintores passam a ler as mesmas.
+
+⭐ **E a fórmula do tamanho do ícone do combobox estava em TRÊS cópias** — o pintor, o
+`clear_button_rect` e o mapeador de caret (esta última com os limites em literais). *Três cópias de
+uma conta são três leis que hoje concordam.*
+
+#### O portão
+
+`caret_doors.rs`, 6 testes. Os dois comportamentais correm **duas vezes** — escala de fábrica como
+CONTROLE (o mundo em que a cópia acerta por coincidência; sozinho ele é verde sobre o produto
+quebrado) e escala **autorada** como discriminador. A forma é herdada do braço já curado.
+
+⭐ **O 6.º teste encodifica o defeito directamente:** *o mapeador de caret não escreve NÚMEROS de
+geometria*. É a única régua que o apanharia **antes** de alguém autorar a escala. Ele isenta duas
+coisas, as duas nomeadas: o `0.0` de um `max` e a `APPROX_ADVANCE_RATIO`.
+
+⚠️ **E a 1.ª corrida do censo da fórmula acusou o PRÓPRIO GATE** como segundo dono — a agulha
+aparece literalmente dentro dele. *Uma varredura de fonte que não se exclui mede-se a si própria.*
+
+**Provas de mutação: 7 escritas, 6 mortas.** A 7.ª **sobreviveu e não é buraco**: repor a conta em
+linha no pintor do hex devolve a mesma expressão (os dois termos são o mesmo token e a mesma
+constante), e o pintor é o dono dela — é a leitura *«a linha era redundante»*, não *«falta um
+gate»*. ⚠️ Duas das seis só morreram **depois** de eu escrever o gate que faltava, e as duas eram
+cópias que *hoje concordam* — a mesma espécie do piso do recuo na wave 23.
+
+#### ⏳ Fica medido e por decidir (é do dono)
+
+O vão entre um ícone e o seu rótulo tem **cinco respostas**: `12` (o toast, um literal cru), `8`
+(`list_item`, `tree_view`, combobox, topbar, showcase), `6` (menu de contexto, cabeçalho de secção
+— e é o do modelo), `4` (hierarquia, **por veredito dele**) e dois locais. O modelo parte a
+pergunta por classe (`Tree.icon_h_separation` = 6 · `Button.h_separation` = 4 ·
+`CheckBox.h_separation` = 8 — e a nossa caixa de verificação **já está** nos 8). *Uniformizar exige
+saber se o «mais próximos» de 2026-05-24 vale para todo o app ou só para a hierarquia.*
+
+#### ⏳ E um ponto cego do portão de números mágicos, medido aqui
+
+O gate `no_magic_numeric` varre `widget/`, `screens/` e os painéis — **nunca a raiz de
+`ph2d-editor-core/src`**, que é onde vivem os primitivos que todo pintor chama. Medido com a régua
+do próprio gate: **759 sítios**, dos quais ~570 são fixturas de `dispatch/tests/`. O resto real é
+liderado por `paint.rs` (14 — o pintor do **toast**, inteiramente fora do sistema de tokens),
+`grid_snap/state.rs` (12), `floating_panel.rs` (11), `ruler.rs` (10) e `zones.rs` (8). *Um gate que
+varre um directório afirma sobre o directório.*
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

@@ -241,6 +241,17 @@ numa função com os termos abertos. ⛔ E o único sítio que ALARGA expôs o p
 catálogo tinha a largura escrita à mão com a composição só no comentário, então o passo maior
 comeria 12 px do nome mais fundo — hoje ela é a **soma**, e o que sobrevive é o orçamento de texto.
 
+⭐⭐⭐ **E a wave 24 (07/09) pôs o CARET a perguntar ao pintor onde o texto começa**
+([§7.29](pesquisa/08_modelos_com_codigo_para_seguir.md)) — o mapeador de clique→caret tinha um
+braço por campo de texto e **três** deles copiavam os números do pintor. ⭐ Os números copiados
+eram os valores de **fábrica** dos tokens que o pintor lê **vivos**: enquanto ninguém autora a
+escala as duas contas dão o mesmo, e no momento em que alguém a autora o artista clica numa letra
+e escreve noutra. ⚠️⚠️ **A família já tinha sido diagnosticada e curada pela METADE** — o
+`TextArea` ganhou a porta dele com este mecanismo escrito ao lado, em prosa, e os outros três
+braços do mesmo `match` ficaram a copiar. ⛔ E a wave ia ser outra: o censo do **vão entre um ícone
+e o seu rótulo** achou cinco respostas, mas a mais apertada é **veredito escrito do dono** (*«nome
+mais próximos dos ícones»*, 2026-05-24) — fica medido, e a escolha é dele.
+
 ⏳ **O que sobra do estudo §5.3 — RE-AUDITADO contra o código em 07/09, e QUATRO dos cinco itens
 já tinham fechado sem ninguém reabrir a lista:** ⛔ os cantos dos painéis (a porta do tema dá `3`,
 não `16`) · ⛔ a moldura dos cartões (o `stroke_frame` devolve `Stroke::NONE` no moderno) · ⛔ a

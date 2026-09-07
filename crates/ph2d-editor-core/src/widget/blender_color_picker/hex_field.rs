@@ -59,6 +59,18 @@ fn expand_nibble(s: &str) -> Option<u8> {
     Some(n * 0x11)
 }
 
+/// A largura da etiqueta `Hex` à esquerda do valor.
+const LABEL_W: f32 = 36.0; // LITERAL-PX-OK: coluna da etiqueta do campo hex
+
+/// ⭐⭐ **Onde o valor do campo hex começa** — a porta que o pintor usa e o caret PERGUNTA.
+///
+/// ⛔ O mapeador de clique escrevia `rect.x + 8.0 + 36.0`, com o `8` a ser o valor de **fábrica**
+/// do `Spacing::Md`. Autorar a escala movia o texto e deixava o cursor para trás.
+#[must_use]
+pub fn text_origin_x(rect: Rect) -> f32 {
+    rect.x + Spacing::Md.px() + LABEL_W
+}
+
 pub fn paint_hex_field(
     hex: &str,
     rect: Rect,
@@ -130,7 +142,7 @@ pub fn paint_hex_field_with_state(
         resolve(border, theme),
     );
     let pad = Spacing::Md.px();
-    let label_w = 36.0;
+    let label_w = LABEL_W;
     let label_rect = Rect::new(rect.x + pad, rect.y, label_w, rect.h);
     paint_text(
         text_system,
@@ -151,7 +163,7 @@ pub fn paint_hex_field_with_state(
         Some(b) if focused => b,
         _ => fallback_hex,
     };
-    let text_x = rect.x + pad + label_w;
+    let text_x = text_origin_x(rect);
     let text_y = rect.y + (rect.h - TypeToken::Sm.px()) * 0.5;
     let text_w = rect.w - pad * 2.0 - label_w;
     if focused

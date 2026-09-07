@@ -68,6 +68,7 @@ mod vector3_editor;
 
 pub use avatar::{Avatar, AvatarShape, AvatarState, paint_avatar};
 pub use bitmask_grid32::{BITMASK_COLS, BITMASK_ROWS, BitmaskGrid32, paint_bitmask_grid32};
+pub use blender_color_picker::hex_field::text_origin_x as hex_field_text_origin_x;
 pub use blender_color_picker::{
     BlenderColorPicker, BlenderSubIds, ChannelMode, ColorPalette, Harmony, InterpolationMode,
     apply_blender_value_pick, apply_blender_wheel_pick, default_palette, harmony_partners,
@@ -86,7 +87,8 @@ pub use checkbox::{CHECKBOX_BOX_PX, Checkbox, CheckboxState, CheckboxValue, pain
 pub use color_picker::{ColorPicker, ColorPickerMode, paint_color_picker};
 pub use color_swatch::{ColorSwatch, SwatchSize, SwatchState, paint_color_swatch};
 pub use combobox::{
-    Combobox, ComboboxOption, ComboboxState, paint_combobox, paint_combobox_with_state,
+    Combobox, ComboboxOption, ComboboxState, inline_icon_size as combobox_icon_size,
+    paint_combobox, paint_combobox_with_state, text_origin_x as combobox_text_origin_x,
 };
 pub use context_menu::{ContextMenu, ContextMenuEntry, paint_context_menu};
 pub use divider::{Divider, DividerOrientation, paint_divider};
@@ -175,7 +177,10 @@ pub use text_area::{
     TextArea, TextAreaMetrics, metrics as text_area_metrics, min_height as text_area_min_height,
     paint_text_area, paint_text_area_with_state,
 };
-pub use text_input::{TextInput, TextInputState, paint_text_input, paint_text_input_with_buffer};
+pub use text_input::{
+    TextInput, TextInputState, field_pad_x, paint_text_input, paint_text_input_with_buffer,
+    text_origin_x as text_input_text_origin_x,
+};
 pub use toggle::{Toggle, ToggleState, paint_toggle};
 pub use tool_rail::{
     CHIP_X_OFFSET_PX, COMPOUND_TOTAL_H_PX, DIVIDER_GAP_PX, EntrySlot, LABEL_TO_CHIP_GAP_PX,

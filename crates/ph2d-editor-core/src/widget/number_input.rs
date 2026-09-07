@@ -215,7 +215,7 @@ pub fn paint_number_input_with_buffer(
     );
 
     let chip_w = stepper_width(rect);
-    let pad_x = Spacing::Lg.px();
+    let pad_x = crate::widget::field_pad_x();
     let value_text_owned;
     let value_text: &str = match buffer {
         Some(b) if input.state == TextInputState::Focused => b,

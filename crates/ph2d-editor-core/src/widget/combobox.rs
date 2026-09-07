@@ -47,6 +47,26 @@ pub struct Combobox {
     pub open: bool,
 }
 
+/// ⭐⭐ **O tamanho do ícone em linha do combobox** — e ele estava escrito TRÊS vezes.
+///
+/// A mesma expressão vivia no pintor, no [`Combobox::clear_button_rect`] e — pior — no mapeador de
+/// clique→caret, noutro módulo, com os limites em literais. ⚠️ *Três cópias de uma conta são três
+/// leis que hoje concordam.*
+#[must_use]
+pub fn inline_icon_size(host: Rect) -> f32 {
+    (host.h * 0.5).clamp(14.0, 18.0) // LITERAL-PX-OK: ícone a 50% da altura do hospedeiro, com piso e teto
+}
+
+/// ⭐⭐⭐ **Onde o texto do combobox começa** — depois do ícone de busca, e é a porta que o caret
+/// pergunta em vez de refazer a conta.
+///
+/// ⛔ O mapeador de clique escrevia `rect.x + 12.0 + icon_size + 8.0`: os valores de **fábrica** de
+/// `Spacing::Lg` e `Spacing::Md`. Com a escala autorada, o pintor movia o texto e o caret ficava.
+#[must_use]
+pub fn text_origin_x(host: Rect) -> f32 {
+    host.x + crate::widget::field_pad_x() + inline_icon_size(host) + Spacing::Md.px()
+}
+
 impl Combobox {
     pub fn new(id: NodeId, label: impl Into<String>, options: Vec<ComboboxOption>) -> Self {
         Self {
@@ -130,8 +150,8 @@ impl Combobox {
         if self.query.is_empty() || self.state == ComboboxState::Disabled {
             return None;
         }
-        let pad_x = Spacing::Lg.px();
-        let size = (host.h * 0.5).clamp(14.0, 18.0); // LITERAL-PX-OK: clear-icon sized 50% of host height with min/max
+        let pad_x = crate::widget::field_pad_x();
+        let size = inline_icon_size(host);
         Some(Rect::new(
             host.x + host.w - pad_x * 0.5 - size,
             host.y + (host.h - size) * 0.5,
@@ -199,8 +219,8 @@ pub fn paint_combobox_with_state(
         resolve(border, theme),
     );
 
-    let pad_x = Spacing::Lg.px();
-    let icon_size = (rect.h * 0.5).clamp(14.0, 18.0); // LITERAL-PX-OK: search icon scales 50% of host with min/max
+    let pad_x = crate::widget::field_pad_x();
+    let icon_size = inline_icon_size(rect);
     let search_rect = Rect::new(
         rect.x + pad_x * 0.5,
         rect.y + (rect.h - icon_size) * 0.5,
@@ -215,7 +235,7 @@ pub fn paint_combobox_with_state(
         StrokeToken::Default.px(),
     );
     let font_size = TypeToken::Base.px();
-    let inner_x = rect.x + pad_x + icon_size + Spacing::Md.px();
+    let inner_x = text_origin_x(rect);
     let inner_y = rect.y + (rect.h - font_size) * 0.5;
     // Reserve room for the inline clear-✕ icon at the right edge so
     // the text/caret/selection never slide under it. `clear_button_rect`

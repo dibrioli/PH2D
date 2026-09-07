@@ -10,7 +10,10 @@
 
 ## §1 — O estado, em números
 
-⭐⭐⭐ **`71` dos `78` traços do oráculo estão dentro da barra de paridade (`0,13`) e os DEZ traços
+⭐⭐⭐ **`79` dos `86` traços do oráculo estão dentro da barra de paridade (`0,13`) pelo MÁXIMO — e
+pela régua que a espec prescreve onde o máximo não julga (o `p95`), fica UM de fora em 86.** ⇒ o que
+resta é o `plano_apertar_ponto_plano_local`, que é o regime §5.2-ter em que o próprio alvo inverte a
+malha e a ORDEM decide: **decisão do dono, não lei em falta.** Os DEZ traços
 por passo de empurrar/inflar reproduzem-se sobre a malha inteira e nos doze passos à RESOLUÇÃO DO
 FICHEIRO** (`err_max ≤ 5,2·10⁻⁶`, contra os `0,2369`/`0,2446` de 06/09). *A barra de `0,13` deixou de
 ser a régua desses traços: a lei ali é exacta.* — 07/09.
@@ -42,7 +45,7 @@ só a pertença não move nada, e as duas dão `0,033`. ⇒ INBOX **Q20**.
 RELATIVO por uma banda ABSOLUTA); na mesma unidade ele é `1,19×`–`2,15×`. A leitura *«a lotaria não
 os explica»* sobrevive, com uma ordem de grandeza menos margem. ⇒ INBOX **Q19**.
 
-> A leitura de 06/09 dizia `31 de 56`; a de 05/09 dizia `29 de 56`. O corpus cresceu (`78` traços) e
+> A leitura de 06/09 dizia `31 de 56`; a de 05/09 dizia `29 de 56`. O corpus cresceu (`86` traços) e
 > a contagem muda com ele — **conte-a com a [`sonda_da_paridade_com_o_oraculo`]**, nunca daqui.
 
 ⭐⭐⭐ **E a fila deixou de ser ordenada pelo TAMANHO do erro** (06/09, 3.ª sessão). O tamanho não diz
@@ -172,6 +175,25 @@ e os três de *Simulation Area* eram pintados, hit-indexados e roteados — e **
 `every_painted_control_is_clickable_where_it_is_drawn` arma o **Crease**, e com outro pincel na mão a
 fileira do tecido nem é desenhada. *A fixtura tem de conter o fenómeno* — a sexta vez que aquele
 módulo o escreve, e a primeira em que a frase custou uma wave inteira de controlos.
+
+### ✅ FECHADO em 07/09 — a BASE PERSISTENTE, e o AGARRAR que o artista tinha estava a `1/11` da lei
+
+⭐⭐ **A base persistente (§6.4) é a última lei do §8.1 que faltava.** Ela substitui o repouso em
+EXACTAMENTE quatro leituras, todas na construção — o comprimento estrutural, o filtro de raio, o
+teste e a força da âncora radial do Agarrar, e a condição do pino — e **não** toca nos alvos nem na
+banda. O efeito medido é **saturação**: `0,169 → 0,306 → 0,415` sem base, `0,169 → 0,171 → 0,176`
+com ela. ⚠️ *É preciso o TERCEIRO traço para o dizer* — com dois, `0,306` contra `0,171` ainda se lê
+como amplitude errada.
+
+⛔⛔⛔ **E ligá-la ao produto descobriu um defeito de `11,5×`:** a §4.3 diz que o Grab leva o `δ`
+**acumulado desde o pen-down** e os outros sete o incremental; o `Dab::path` é o incremento **por
+definição**, e o adaptador entregava-o aos oito. O Grab do artista movia `0,0147` onde a lei move
+`0,1690`. ⚠️ **A bancada nunca o veria** — ela constrói o delta total no laço dela —, e o gate de
+costura escrito nessa mesma manhã não tinha um traço de Agarrar na lista. *Cinco traços a `10⁻⁶` não
+dizem nada sobre o sexto modo;* quem o apanhou foi a metade **anti-vácuo** dele.
+
+⛔ **E o *Normal Weight* NÃO EXISTE neste pincel:** as três fixtures (`0`, `0,5`, `1`) dão o mesmo
+bloco de vértices, linha a linha. Uma lei a menos para escrever.
 
 ### ⭐ 1.º — o SNAKE HOOK de poucos passos
 

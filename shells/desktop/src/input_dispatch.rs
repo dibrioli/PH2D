@@ -2575,7 +2575,7 @@ impl App {
 
     /// Um quadro de POSE de osso — no-op sem osso agarrado.
     fn vec_bone_pose_move(&mut self) -> bool {
-        let Some((bits, junta)) = self.vec_bone_pose else {
+        let Some((bits, parte)) = self.vec_bone_pose else {
             return false;
         };
         let Some(world) = self.vec_world_at(self.last_pointer) else {
@@ -2588,7 +2588,7 @@ impl App {
             &mut gfx.sim,
             ph2d_ecs::Entity::from_bits(bits),
             world,
-            junta,
+            parte,
         )
     }
 
@@ -4461,11 +4461,11 @@ impl App {
                                 )
                             });
                             match decisao {
-                                Some(crate::bone_gesture::BonePress::Grab { bone, joint }) => {
+                                Some(crate::bone_gesture::BonePress::Grab { bone, part }) => {
                                     // Agarrar o osso é o gesto de o POSAR (o gizmo de sprite não
                                     // serve — ver `bone_gesture::pose`), e também o que o
                                     // selecciona: o pai do próximo osso é o que está aceso.
-                                    self.vec_bone_pose = Some((bone, joint));
+                                    self.vec_bone_pose = Some((bone, part));
                                     if let Some(gfx) = self.gfx.as_mut()
                                         && let Some(hero) = gfx.hero_screen.as_mut()
                                     {

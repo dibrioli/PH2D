@@ -351,7 +351,12 @@ fn probe_the_smoke_sequence() {
     let antes = quadro(&sim, &mut scene, id);
     // Posa o ÚLTIMO osso pela porta do gesto.
     let ultimo = pai.expect("ultimo");
-    let ok = crate::bone_gesture::pose(&mut sim, ultimo, [-2.0, 6.0], false);
+    let ok = crate::bone_gesture::pose(
+        &mut sim,
+        ultimo,
+        [-2.0, 6.0],
+        ph2d_skeleton_render::BonePart::Body,
+    );
     eprintln!("[probe] pose devolveu {ok}");
     let depois = quadro(&sim, &mut scene, id);
     eprintln!("[probe] desvio = {}", pior_desvio(&antes, &depois));

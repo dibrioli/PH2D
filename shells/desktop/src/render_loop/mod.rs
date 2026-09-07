@@ -6135,7 +6135,9 @@ impl crate::App {
                     );
                 } else {
                     eprintln!(
-                        "[ph2d-vec] osso: {n} forma(s) presa(s) -- pegue a seta (Select), clique                          num osso e gire-o"
+                        "[ph2d-vec] osso: {n} forma(s) presa(s) -- no modo Bone, arraste o CORPO \
+                         de um osso para girar, a bolinha para deslocar, e o quadradinho da mancha \
+                         para mudar a forca"
                     );
                 }
             }
@@ -10657,6 +10659,27 @@ impl crate::App {
             if overlay.bones {
                 let ossos = crate::skeleton_live::bone_segments(sim);
                 if !ossos.is_empty() {
+                    // ⭐⭐⭐ **A REGIÃO DE INFLUÊNCIA do osso em foco** — o *Bone Strength* do Moho.
+                    // Ela entra ANTES dos ossos: é um fundo, e o rig desenha-se por cima dela.
+                    //
+                    // ⚠️ **O foco é a SELECÇÃO, e é a mesma pergunta que o dedo faz** — a alça só é
+                    // agarrável onde ela é pintada (`bone_gesture::hover` recebe o mesmo `foco`).
+                    //
+                    // ⚠️ A selecção CRUA basta e filtra-se sozinha: `influence_region` devolve
+                    // `None` para o que não é osso, então não há aqui uma segunda pergunta
+                    // *"isto é um osso?"* a divergir da que o `hover` faz.
+                    ph2d_skeleton_render::draw_influence(
+                        hero.gizmo
+                            .selection
+                            .and_then(|b| crate::skeleton_live::influence_region(sim, b)),
+                        matches!(
+                            self.bone_hover,
+                            Some(h) if h.part == ph2d_skeleton_render::BonePart::Influence
+                        ),
+                        cam_affine,
+                        hero.theme,
+                        vector_scene,
+                    );
                     ph2d_skeleton_render::draw_bones(
                         &ossos,
                         hero.gizmo.selection,

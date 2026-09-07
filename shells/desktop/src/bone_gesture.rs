@@ -115,8 +115,11 @@ pub(crate) fn create(
 /// recusar. *Uma decisão que só existe dentro do dispatch é uma decisão que nenhum gate lê.*
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum BonePress {
-    /// Acertou um osso: selecciona-o e ARMA a pose (`joint` ⇒ desloca em vez de girar).
-    Grab { bone: u64, joint: bool },
+    /// Acertou um osso: selecciona-o e ARMA o verbo que a `part` diz.
+    Grab {
+        bone: u64,
+        part: ph2d_skeleton_render::BonePart,
+    },
     /// Não acertou osso: marca a ORIGEM de um osso novo (já encaixada na ponta do pai, se perto) e
     /// diz que FORMA estava sob o cursor — é essa a metade que o *Bind* precisa.
     Start {
@@ -134,10 +137,13 @@ pub(crate) fn press(
     px_to_world: f64,
     selected: Option<u64>,
 ) -> BonePress {
-    if let Some(bone) = hit(sim, world, px_to_world) {
+    // ⭐⭐⭐ **O clique PERGUNTA AO REALCE** — não é uma segunda varredura que um gate compara com a
+    // primeira: é a MESMA função. O que o artista vê aceso é, por construção, o que ele vai pegar.
+    let foco = selected_bone(sim, selected);
+    if let Some(h) = hover(sim, world, px_to_world, foco) {
         return BonePress::Grab {
-            bone,
-            joint: grabbed_the_joint(Some(sim), bone, world, px_to_world),
+            bone: h.bone,
+            part: h.part,
         };
     }
     // ⭐⭐⭐ **O FILHO NASCE NA PONTA DO PAI, SEMPRE** — não "quando o press cai perto dela".
@@ -151,9 +157,7 @@ pub(crate) fn press(
     // PONTA dele para onde a mão for. Para começar um osso solto, basta que nenhum osso esteja
     // aceso — e clicar numa forma (o ramo `pick` abaixo) faz exactamente isso.
     let r = BONE_HIT_PX * px_to_world;
-    let origin = selected_bone(sim, selected)
-        .and_then(|b| tip_of(sim, b))
-        .unwrap_or(world);
+    let origin = foco.and_then(|b| tip_of(sim, b)).unwrap_or(world);
     BonePress::Start {
         origin,
         pick: pen.path_at(scene, world, r),
@@ -203,11 +207,33 @@ pub(crate) fn hover(
     sim: &SimWorld,
     world: [f64; 2],
     px_to_world: f64,
+    focused: Option<u64>,
 ) -> Option<ph2d_skeleton_render::BoneHover> {
+    use ph2d_skeleton_render::{BoneHover, BonePart};
+    // ⭐ **A alça da FORÇA primeiro, e só a do osso em FOCO** — ela é a única que se desenha para um
+    // osso só (`draw_influence`), então o dedo tem de fazer exactamente a mesma pergunta. ⛔ Uma
+    // alça agarrável onde nada está desenhado é pior que uma alça ausente.
+    //
+    // ⚠️ E ela vem ANTES do corpo porque vive FORA do osso, longe do eixo: se o corpo ganhasse, um
+    // osso vizinho largo engoliria a alça de outro.
+    if let Some(f) = focused
+        && let Some((r, a, b)) = crate::skeleton_live::influence_region(sim, f)
+        && let Some(h) = ph2d_skeleton_render::influence_handle(a, b, r)
+        && (h[0] - world[0]).hypot(h[1] - world[1]) <= BONE_HIT_PX * px_to_world
+    {
+        return Some(BoneHover {
+            bone: f,
+            part: BonePart::Influence,
+        });
+    }
     let bone = hit(sim, world, px_to_world)?;
-    Some(ph2d_skeleton_render::BoneHover {
+    Some(BoneHover {
         bone,
-        joint: grabbed_the_joint(Some(sim), bone, world, px_to_world),
+        part: if grabbed_the_joint(Some(sim), bone, world, px_to_world) {
+            BonePart::Joint
+        } else {
+            BonePart::Body
+        },
     })
 }
 
@@ -220,10 +246,43 @@ pub(crate) fn hover(
 ///
 /// - **Pelo CORPO** ⇒ gira (a origem fica, a ponta segue o ponteiro).
 /// - **Pela JUNTA** (a bolinha da raiz) ⇒ desloca.
+/// - **Pela ALÇA DA FORÇA** (o quadradinho na borda da mancha) ⇒ muda o alcance.
 ///
 /// *Duas coisas diferentes precisam de dois gestos*: sem o segundo, um esqueleto inteiro não se
 /// move do sítio onde nasceu, e a única saída seria o painel de Transform.
-pub(crate) fn pose(sim: &mut SimWorld, bone: Entity, world: [f64; 2], desloca: bool) -> bool {
+pub(crate) fn pose(
+    sim: &mut SimWorld,
+    bone: Entity,
+    world: [f64; 2],
+    part: ph2d_skeleton_render::BonePart,
+) -> bool {
+    use ph2d_skeleton_render::BonePart;
+    // ⭐⭐ **A FORÇA sai antes de tudo**, e por um caminho próprio: ela não é uma pose (não toca no
+    // `Transform`), é uma propriedade do osso. O raio novo é a **distância do ponteiro ao
+    // SEGMENTO** — a mesma grandeza que a lei do peso mede (`dist2_to_segment`), então o que o
+    // artista arrasta é literalmente a borda que a mistura usa.
+    if part == BonePart::Influence {
+        let Some((_, a, b)) = crate::skeleton_live::bone_segments(sim)
+            .into_iter()
+            .find(|(x, _, _)| *x == bone.to_bits())
+        else {
+            return false;
+        };
+        let comp = (b[0] - a[0]).hypot(b[1] - a[1]);
+        if comp <= f64::EPSILON {
+            return false;
+        }
+        let raio = ph2d_skeleton::dist2_to_segment(world, a, b).sqrt();
+        let Some(mut osso) = sim.world_mut().get_mut::<Bone>(bone) else {
+            return false;
+        };
+        // ⛔ Piso em zero e **sem tecto**: §0.0 — não há recurso nenhum a limitar o alcance de um
+        // osso, e um tecto aqui seria o desenho a decidir pelo artista. Força zero é legal e
+        // significa *"só alcança quem não tem mais ninguém"* (o desempate do órfão).
+        osso.strength = (raio / comp).max(0.0);
+        return true;
+    }
+    let desloca = part == BonePart::Joint;
     // O espaço do PAI — a pose local vive nele. Sem pai, o mundo.
     let pai = sim.world().get::<ChildOf>(bone).map(ChildOf::parent);
     let pai_mundo = pai.map_or(Xform::IDENTITY, |p| {
@@ -309,9 +368,12 @@ impl crate::App {
             return;
         };
         let px_to_world = self.vec_px_to_world();
+        // ⚠️ O osso em FOCO entra: a alça da força só existe onde ela se desenha, e o que a desenha
+        // é a selecção. Sem ele o dedo procuraria uma alça que não está na tela.
+        let foco = self.selected_bone_bits();
         self.bone_hover = self
             .gfx
             .as_ref()
-            .and_then(|gfx| hover(&gfx.sim, world, px_to_world));
+            .and_then(|gfx| hover(&gfx.sim, world, px_to_world, foco));
     }
 }

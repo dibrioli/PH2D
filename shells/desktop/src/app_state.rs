@@ -1716,7 +1716,7 @@ pub(crate) struct App {
     /// `false` = pelo corpo ⇒ gira). `None` fora do gesto.
     ///
     /// ⚠️ Como o irmão acima, é estado de GESTO: morre no Up, não entra no snapshot.
-    pub(crate) vec_bone_pose: Option<(u64, bool)>,
+    pub(crate) vec_bone_pose: Option<(u64, ph2d_skeleton_render::BonePart)>,
     /// A rede de arcos guardada, com a chave do documento que a produziu.
     ///
     /// ⚠️ **Guardada porque montá-la custa `3,8 ms` a 20 traços e `188 ms` a 80** (medido), contra

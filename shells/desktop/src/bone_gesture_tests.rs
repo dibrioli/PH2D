@@ -1,6 +1,7 @@
 //! Os gates do gesto do modo Osso — o que o artista aponta contra o que o documento guarda.
 
 use super::*;
+use ph2d_skeleton_render::BonePart;
 
 fn mundo(sim: &SimWorld, bits: u64) -> ([f64; 2], [f64; 2]) {
     crate::skeleton_live::bone_segments(sim)
@@ -89,7 +90,7 @@ fn grabbing_the_body_turns_the_bone_and_grabbing_the_joint_moves_it() {
     let mut sim = SimWorld::default();
     let osso = Entity::from_bits(create(&mut sim, None, [0.0, 0.0], [10.0, 0.0]).expect("osso"));
     // Apontar para cima: a ponta sobe, a ORIGEM fica.
-    assert!(pose(&mut sim, osso, [0.0, 7.0], false));
+    assert!(pose(&mut sim, osso, [0.0, 7.0], BonePart::Body));
     let (a, b) = mundo(&sim, osso.to_bits());
     assert!(
         a[0].abs() < 1e-5 && a[1].abs() < 1e-5,
@@ -100,7 +101,7 @@ fn grabbing_the_body_turns_the_bone_and_grabbing_the_joint_moves_it() {
         "a ponta devia ir para (0,10) e foi para {b:?}"
     );
     // Pela junta: a origem vai para o ponteiro e o osso leva a direcção consigo.
-    assert!(pose(&mut sim, osso, [4.0, 4.0], true));
+    assert!(pose(&mut sim, osso, [4.0, 4.0], BonePart::Joint));
     let (a2, b2) = mundo(&sim, osso.to_bits());
     assert!(
         (a2[0] - 4.0).abs() < 1e-5 && (a2[1] - 4.0).abs() < 1e-5,
@@ -119,7 +120,7 @@ fn aiming_at_the_bones_own_origin_does_nothing() {
     let mut sim = SimWorld::default();
     let osso = Entity::from_bits(create(&mut sim, None, [3.0, 1.0], [9.0, 1.0]).expect("osso"));
     let antes = mundo(&sim, osso.to_bits());
-    assert!(!pose(&mut sim, osso, [3.0, 1.0], false));
+    assert!(!pose(&mut sim, osso, [3.0, 1.0], BonePart::Body));
     assert_eq!(antes, mundo(&sim, osso.to_bits()));
 }
 
@@ -179,7 +180,7 @@ fn a_press_over_a_shape_in_the_bone_tool_picks_it_so_bind_has_a_subject() {
         g,
         BonePress::Grab {
             bone: osso,
-            joint: false
+            part: BonePart::Body
         },
         "sobre o CORPO de um osso o press agarra-o, nao aponta a forma"
     );
@@ -239,18 +240,18 @@ fn the_hover_lights_exactly_what_the_click_would_grab() {
     let mut viu_corpo = false;
     for i in 0..=100 {
         let p = [f64::from(i), 0.0];
-        let h = hover(&sim, p, 1.0).expect("o ponteiro esta' sobre o osso");
+        let h = hover(&sim, p, 1.0, Some(osso)).expect("o ponteiro esta' sobre o osso");
         assert_eq!(h.bone, osso);
-        let BonePress::Grab { bone, joint } = press(&sim, &scene, &pen, p, 1.0, Some(osso)) else {
+        let BonePress::Grab { bone, part } = press(&sim, &scene, &pen, p, 1.0, Some(osso)) else {
             panic!("o press devia agarrar o osso em {p:?}");
         };
         assert_eq!(
-            (h.bone, h.joint),
-            (bone, joint),
+            (h.bone, h.part),
+            (bone, part),
             "em {p:?} o realce e o clique discordam - o artista ve' um verbo e recebe outro"
         );
-        viu_junta |= h.joint;
-        viu_corpo |= !h.joint;
+        viu_junta |= h.part == BonePart::Joint;
+        viu_corpo |= h.part == BonePart::Body;
     }
     // ⚠️ O controlo: a varredura tem de produzir os DOIS estados, senão o gate compara um lado só.
     assert!(
@@ -309,4 +310,115 @@ fn a_short_bone_keeps_half_of_itself_grabbable_for_rotation() {
     // A lei, nos dois lados da dobra: longo ⇒ o tecto da casa; curto ⇒ um quarto do comprimento.
     assert!((ph2d_skeleton_render::joint_radius_px(200.0) - 12.0).abs() < 1e-12);
     assert!((ph2d_skeleton_render::joint_radius_px(20.0) - 5.0).abs() < 1e-12);
+}
+
+/// ⭐⭐⭐ **A MANCHA MOSTRA EXACTAMENTE A REGIÃO QUE O PESO USA** — a costura que, partida, faz o
+/// desenho MENTIR ao artista.
+///
+/// A lei da pele (`ph2d_skeleton::SkinBone::new`) faz `raio = |eixo| × força`, e o overlay faz o
+/// mesmo com o eixo de MUNDO. ⚠️ São **duas contas** em duas crates, e a única coisa que as mantém
+/// juntas é este gate: divergindo, a mancha passa a cobrir uma área e a deformação a obedecer
+/// outra — o defeito mais caro possível numa ferramenta cuja razão de existir é *ver* o alcance.
+#[test]
+fn the_influence_blob_covers_exactly_the_region_the_weight_law_uses() {
+    let mut sim = SimWorld::default();
+    let osso = create(&mut sim, None, [0.0, 0.0], [40.0, 0.0]).expect("osso");
+    for forca in [0.25, 1.0, 2.5] {
+        {
+            let mut b = sim
+                .world_mut()
+                .get_mut::<ph2d_skeleton_ecs::Bone>(Entity::from_bits(osso))
+                .expect("Bone");
+            b.strength = forca;
+        }
+        let desenhado = crate::skeleton_live::influence_radius(&sim, osso).expect("raio");
+        // A MESMA pergunta, feita à lei da pele: um osso em repouso sobre uma forma na identidade.
+        let lei = ph2d_skeleton::SkinBone::new(
+            ph2d_skeleton::Xform::IDENTITY,
+            40.0,
+            forca,
+            ph2d_skeleton::Xform::IDENTITY,
+            ph2d_skeleton::Xform::IDENTITY,
+        )
+        .expect("o osso da pele")
+        .radius;
+        assert!(
+            (desenhado - lei).abs() < 1e-9,
+            "a forca {forca} desenha {desenhado} e pesa {lei} - a mancha esta' a mentir"
+        );
+    }
+}
+
+/// ⭐⭐ **ARRASTAR A ALÇA MUDA A FORÇA, e a grandeza é a distância ao SEGMENTO** — a mesma que a lei
+/// do peso mede (`dist2_to_segment`). ⇒ o artista arrasta literalmente a borda que a mistura usa.
+#[test]
+fn dragging_the_influence_handle_sets_the_strength_to_what_the_pointer_reaches() {
+    let mut sim = SimWorld::default();
+    let osso = Entity::from_bits(create(&mut sim, None, [0.0, 0.0], [20.0, 0.0]).expect("osso"));
+    // A 30 de distância perpendicular, num osso de 20 ⇒ força 1,5.
+    assert!(pose(&mut sim, osso, [10.0, 30.0], BonePart::Influence));
+    let f = sim
+        .world()
+        .get::<ph2d_skeleton_ecs::Bone>(osso)
+        .expect("Bone")
+        .strength;
+    assert!((f - 1.5).abs() < 1e-9, "a forca saiu {f} e devia ser 1,5");
+    // ⛔ E ela nunca fica negativa — mas o ZERO é legal: significa *"só alcança pelo desempate do
+    // órfão"*, e um piso acima de zero tiraria esse estado do artista.
+    assert!(pose(&mut sim, osso, [10.0, 0.0], BonePart::Influence));
+    assert_eq!(
+        sim.world()
+            .get::<ph2d_skeleton_ecs::Bone>(osso)
+            .expect("Bone")
+            .strength,
+        0.0
+    );
+    // ⚠️ E arrastar a alça NÃO move o osso: a força não é uma pose.
+    assert_eq!(mundo(&sim, osso.to_bits()), ([0.0, 0.0], [20.0, 0.0]));
+}
+
+/// ⛔ **A ALÇA DA FORÇA SÓ É AGARRÁVEL ONDE ELA É PINTADA** — no osso em FOCO, e em mais nenhum.
+///
+/// ⚠️ *Uma alça agarrável onde nada está desenhado é pior que uma alça ausente*: o artista carrega
+/// no vazio e o app faz uma coisa que ele não pediu. O `draw_influence` pinta a região de UM osso
+/// (a selecção) e o `hover` recebe esse mesmo `foco` — este gate afirma que os dois concordam.
+/// ⚠️⚠️ **A 1.ª redacção deste gate SOBREVIVEU à mutação** (pôr a alça em todo osso apanhado, e não
+/// só no do foco), e a razão é a 3.ª leitura da memória: *a fixtura não produzia o fenómeno*. Ela
+/// punha a alça a `20` unidades do eixo — fora do raio de acerto do CORPO (`12`) —, então sem foco
+/// o `hit` também devolvia `None` e os dois lados concordavam por acidente.
+///
+/// ⇒ a força desce para `0,3` (raio `6`), e a alça passa a cair **dentro** do corpo. Aí as duas
+/// respostas divergem: com foco é `Influence`, sem foco é `Body`. É esse par que o gate mede.
+#[test]
+fn the_strength_handle_exists_only_on_the_focused_bone() {
+    let mut sim = SimWorld::default();
+    let osso = create(&mut sim, None, [0.0, 0.0], [20.0, 0.0]).expect("osso");
+    {
+        let mut b = sim
+            .world_mut()
+            .get_mut::<ph2d_skeleton_ecs::Bone>(Entity::from_bits(osso))
+            .expect("Bone");
+        b.strength = 0.3; // raio 6 ⇒ a alça cai DENTRO do raio de acerto do corpo (12)
+    }
+    // Meio do osso (10,0) mais 6 na perpendicular.
+    let alca = [10.0, 6.0];
+    assert_eq!(
+        hover(&sim, alca, 1.0, Some(osso)).map(|h| h.part),
+        Some(BonePart::Influence),
+        "com o osso em foco a alca tem de ganhar o ponto"
+    );
+    assert_eq!(
+        hover(&sim, alca, 1.0, None).map(|h| h.part),
+        Some(BonePart::Body),
+        "sem foco nao ha' mancha desenhada - o mesmo ponto tem de ser CORPO, e o clique girar"
+    );
+    // E o caso longe continua a valer: sem foco, nem sequer há osso ali.
+    {
+        let mut b = sim
+            .world_mut()
+            .get_mut::<ph2d_skeleton_ecs::Bone>(Entity::from_bits(osso))
+            .expect("Bone");
+        b.strength = 1.0;
+    }
+    assert_eq!(hover(&sim, [10.0, 20.0], 1.0, None), None);
 }

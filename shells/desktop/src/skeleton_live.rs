@@ -261,6 +261,33 @@ pub(crate) fn release(
     feitos
 }
 
+/// ⭐⭐ **O RAIO DE INFLUÊNCIA de um osso, em MUNDO** — a porta única do desenho, do dedo e do
+/// arrasto.
+///
+/// A lei é a da pele (`SkinBone::new`): o raio é `força × comprimento do eixo`. ⚠️ **Aqui o eixo é
+/// o de MUNDO** e lá é o do espaço da forma — e é isso que faz este número ser o que o artista vê:
+/// a mancha cobre, na tela, exactamente o que o osso alcança no desenho que está por baixo dela.
+///
+/// `None` se o osso não existe. Zero é legal e significa *"não alcança ninguém pelo raio"* — o osso
+/// só ganha um ponto pelo desempate do órfão.
+pub(crate) fn influence_radius(sim: &SimWorld, bits: u64) -> Option<f64> {
+    let e = Entity::from_bits(bits);
+    let forca = sim.world().get::<Bone>(e)?.strength;
+    let (_, a, b) = bone_segments(sim)
+        .into_iter()
+        .find(|(x, _, _)| *x == bits)?;
+    Some((b[0] - a[0]).hypot(b[1] - a[1]) * forca.max(0.0))
+}
+
+/// **A região de influência de um osso** — `(raio, origem, ponta)` em MUNDO, para o overlay.
+pub(crate) fn influence_region(sim: &SimWorld, bits: u64) -> Option<(f64, [f64; 2], [f64; 2])> {
+    let r = influence_radius(sim, bits)?;
+    let (_, a, b) = bone_segments(sim)
+        .into_iter()
+        .find(|(x, _, _)| *x == bits)?;
+    Some((r, a, b))
+}
+
 #[cfg(test)]
 #[path = "skeleton_live_tests.rs"]
 mod tests;

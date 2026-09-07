@@ -21,7 +21,8 @@
 
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{
-    Affine, BezPath, Brush, Circle, Color as VelloColor, Fill, Point, Stroke, VectorScene,
+    Affine, BezPath, Brush, Cap, Circle, Color as VelloColor, Fill, Point, Rect, Stroke,
+    VectorScene,
 };
 
 /// ⭐⭐⭐ **A LARGURA DE UM OSSO É UMA FRACÇÃO DO COMPRIMENTO DELE**, nunca um número de píxeis.
@@ -89,16 +90,50 @@ pub fn joint_radius_px(comp: f64) -> f64 {
     BONE_JOINT_R_PX.min(comp * 0.25)
 }
 
-/// **O que está sob o ponteiro**, para o realce dizer qual VERBO o clique vai executar.
+/// **A PARTE de um osso que o ponteiro aponta** — e cada uma executa um verbo diferente.
 ///
-/// ⚠️ Não é «que osso» — é «que METADE de que osso»: a junta desloca e o corpo gira, e um realce
-/// que não distinguisse os dois deixaria a pergunta que ele existe para responder por responder.
+/// ⚠️ **Não é «que osso», é «que parte de que osso»**: as alças vivem umas dentro/em cima das
+/// outras, e um realce que não as distinguisse deixaria por responder a pergunta que ele existe
+/// para responder — *o que acontece se eu carregar aqui?*
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BonePart {
+    /// O losango. **Gira** o osso.
+    Body,
+    /// A bolinha da raiz. **Desloca** o osso.
+    Joint,
+    /// A alça na borda da região de influência. Muda a **força** — quanto o osso alcança.
+    Influence,
+}
+
+/// **O que está sob o ponteiro**, para o realce dizer qual VERBO o clique vai executar.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BoneHover {
     /// Os bits da entidade do osso apontado.
     pub bone: u64,
-    /// `true` ⇒ o ponteiro está na bolinha da raiz (deslocar); `false` ⇒ no corpo (girar).
-    pub joint: bool,
+    /// Qual das três alças dele.
+    pub part: BonePart,
+}
+
+/// ⭐⭐⭐ **ONDE FICA A ALÇA DA FORÇA** — a porta única do desenho e do dedo.
+///
+/// No **meio** do osso, na perpendicular, à distância do raio de influência. ⚠️ **O meio, e não a
+/// raiz nem a ponta, é o único sítio onde ela não disputa com nada**: a raiz tem a bolinha e a
+/// ponta tem a bolinha do osso seguinte, e as duas executam outros verbos.
+///
+/// `None` quando o osso é degenerado (origem e ponta no mesmo sítio) — sem eixo não há
+/// perpendicular, e inventar uma faria a alça saltar de lado a cada quadro.
+#[must_use]
+pub fn influence_handle(a: [f64; 2], b: [f64; 2], radius: f64) -> Option<[f64; 2]> {
+    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+    let comp = dx.hypot(dy);
+    if comp <= f64::EPSILON {
+        return None;
+    }
+    // A perpendicular unitária, no MESMO sentido em que o osso aponta rodado de 90° — assim a alça
+    // acompanha a rotação do osso em vez de saltar para o outro lado a meio de um giro.
+    let (nx, ny) = (-dy / comp, dx / comp);
+    let meio = [f64::midpoint(a[0], b[0]), f64::midpoint(a[1], b[1])];
+    Some([meio[0] + nx * radius, meio[1] + ny * radius])
 }
 
 /// Espessura do contorno, em píxeis.
@@ -158,11 +193,12 @@ pub fn draw_bones(
         p.line_to(Point::new(ombro.x - nx * w, ombro.y - ny * w));
         p.close_path();
         let sel = Some(bits) == selected;
-        // ⚠️ O hover é lido POR METADE: `h.joint` escolhe qual das duas acende, e a outra fica no
-        // tom apagado mesmo com o ponteiro sobre o mesmo osso.
+        // ⚠️ O hover é lido POR PARTE: ele escolhe qual das alças acende, e as outras ficam no tom
+        // apagado mesmo com o ponteiro sobre o mesmo osso.
         let sob = hover.filter(|h| h.bone == bits);
-        let corpo_aceso = sel || sob.is_some_and(|h| !h.joint);
-        let junta_acesa = sel || sob.is_some_and(|h| h.joint);
+        let parte = |q: BonePart| sob.is_some_and(|h| h.part == q);
+        let corpo_aceso = sel || parte(BonePart::Body);
+        let junta_acesa = sel || parte(BonePart::Joint);
         if sel {
             target.inner_mut().fill(
                 Fill::NonZero,
@@ -205,6 +241,91 @@ pub fn draw_bones(
         );
     }
 }
+
+/// Alfa da mancha de influência — **a região é um FUNDO, não um objecto**: ela tem de dizer *até
+/// onde este osso alcança* sem competir com o desenho que está por baixo dela, que é o que o
+/// artista está a julgar.
+///
+/// ⚠️ Número de PRODUTO, não medido — e declarado como tal. O recurso que ele nomeia é a leitura do
+/// desenho: a `0,18` a arte lê-se através da mancha, e o smoke é quem o julga.
+const INFLUENCE_ALPHA: f32 = 0.18;
+
+/// ⭐⭐⭐ **A REGIÃO DE INFLUÊNCIA de UM osso** — a mancha semi-transparente do *Bone Strength* do
+/// Moho, mais a alça que a arrasta.
+///
+/// > *«a semi-transparent region appears around each bone that indicates the strength of the bone»*
+/// > — manual do Moho.
+///
+/// ⚠️ **A forma é uma CÁPSULA e sai de graça**: o conjunto dos pontos a menos de `radius` de um
+/// SEGMENTO é exactamente o que um traço de largura `2·radius` com ponta redonda pinta. ⛔ Construir
+/// dois arcos e duas rectas à mão seria a segunda resposta para a mesma pergunta — e a que diverge
+/// da lei do peso, que também mede distância ao segmento (`dist2_to_segment`).
+///
+/// ⚠️ **A largura entra em MUNDO** (o afim é passado ao `stroke`), ao contrário de tudo o resto
+/// deste ficheiro: a região é uma grandeza do documento — ela cresce com o zoom porque a área que
+/// ela cobre no desenho é a coisa que o artista está a decidir. A alça, essa, é chrome e mede-se em
+/// píxeis.
+///
+/// ⛔ **UMA região de cada vez**, a do osso em foco. Todas ao mesmo tempo seriam sopa: elas
+/// sobrepõem-se por construção (é o que faz a mistura ser suave), e o que o artista precisa de ver
+/// é *quanto ESTE osso alcança*.
+pub fn draw_influence(
+    region: Option<(f64, [f64; 2], [f64; 2])>,
+    hovered: bool,
+    transform: Affine,
+    theme: Theme,
+    target: &mut VectorScene,
+) {
+    let Some((radius, a, b)) = region else {
+        return;
+    };
+    if !(radius.is_finite() && radius > 0.0) {
+        return;
+    }
+    let c = ColorToken::Accent.resolve(theme);
+    let cor = VelloColor::from_rgba8(c.r, c.g, c.b, c.a);
+    let mut eixo = BezPath::new();
+    eixo.move_to(Point::new(a[0], a[1]));
+    eixo.line_to(Point::new(b[0], b[1]));
+    target.inner_mut().stroke(
+        &Stroke::new(2.0 * radius).with_caps(Cap::Round),
+        transform,
+        &Brush::Solid(cor.multiply_alpha(INFLUENCE_ALPHA)),
+        None,
+        &eixo,
+    );
+    // A ALÇA — quadrada, e a forma é que a distingue: a bolinha da junta é REDONDA, e duas alças
+    // redondas em sítios diferentes obrigariam o artista a decorar qual é qual.
+    let Some(h) = influence_handle(a, b, radius) else {
+        return;
+    };
+    let p = transform * Point::new(h[0], h[1]);
+    let r = INFLUENCE_HANDLE_R_PX;
+    let quad = Rect::new(p.x - r, p.y - r, p.x + r, p.y + r);
+    if hovered {
+        target.inner_mut().fill(
+            Fill::NonZero,
+            Affine::IDENTITY,
+            &Brush::Solid(cor),
+            None,
+            &quad,
+        );
+    }
+    target.inner_mut().stroke(
+        &Stroke::new(LINE_PX),
+        Affine::IDENTITY,
+        &Brush::Solid(cor),
+        None,
+        &quad,
+    );
+}
+
+/// Meia-aresta do quadradinho da força, em píxeis de tela.
+///
+/// ⚠️ **Ele é MENOR que a bolinha da junta** (`12`), e isso é hierarquia, não descuido: deslocar um
+/// osso é um gesto que se faz o tempo todo; mudar a força dele é um ajuste. ⛔ O ALVO do dedo,
+/// esse, continua a ser a tolerância da casa — ver `bone_gesture::hover`.
+pub const INFLUENCE_HANDLE_R_PX: f64 = 5.0;
 
 #[cfg(test)]
 mod tests {

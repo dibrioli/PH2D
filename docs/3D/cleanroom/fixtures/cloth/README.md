@@ -166,6 +166,18 @@ e `desvio_ao_deformado_deste_repo`, e o `.rastreio` deles tem uma coluna a mais,
 dizer nada**; e uma barra de gate escrita abaixo dela reprova o próprio oráculo.
 ⭐ No **plano** a dispersão é `0,000000` (medida em três realizações dos dois traços longos e quatro
 do de 12 passos), e é por isso que ali a prova do fatiamento é literal.
+⚠️⚠️ **«Facto da esfera» é a leitura CÓMODA e não é a que a medição sustenta** (R-pré, 2026-09-07):
+os três traços daqui são todos de área ***Dynamic*** e todos os controlos de plano são de
+*Local*/*Global* ⇒ *superfície* e *área* variaram juntas. O que está demonstrado é o par
+**«esfera + *Dynamic*»** contra **«plano + *Local*/*Global*»**; o controlo que separa os dois já
+existe como configuração no directório (`plano_arrastar_radial_dinamica`) e ainda não foi corrido em
+quatro realizações. ⛔ Até lá, nenhuma barra se escreve nem se relaxa com o argumento «é a
+curvatura».
+⚠️ **E as três colunas de honestidade comparam pares de realizações DIFERENTES** — a prova é o bloco
+`k = N` contra uma corrida inteira separada, a dispersão é entre quatro corridas inteiras, e o
+desvio é dessa corrida inteira ao `.deformado`. ⛔ **Refazer o desvio com o bloco publicado dá outro
+número** (`0,007919` · `0,035424` · `0,014350`) e **isso não é defeito**: é o quarto sorteio, dentro
+da mesma banda. Espec §10.13.
 
 ⭐⭐ **O `_fraco` (2026-09-06) é um CONTROLO, não mais um traço** — a espec §10.6 e §5.2-ter. É o
 traço de aperto de ponto da linha acima com **uma** coisa mudada, a força (`1,0 → 0,2`), e existe
@@ -297,6 +309,13 @@ simulado** (`4,3·10⁻⁴`), amplificando `~65×`. ⛔ **Quatro explicações f
 concorrência (uma só linha de execução dá `0,036`), semeadura do sobrevoo (`0,041`), pré-traço
 (`0,038`) e desenho forçado da vista (`0,033`) — e a diferença é **difusa** (`481` de `631` vértices
 movidos já diferem ao 1.º passo simulado), não pontual.
+⭐ **Duas confirmações a mais, reconstruídas destes ficheiros pelo R-pré em 2026-09-07:** o bloco
+`passo 1` (o repouso) é **bit-idêntico nos três** ⇒ não é o arnês a entregar malha diferente; e o
+plano corre o caso de vértices partilhados entre células **no ponto de maior contenção possível**
+(a divisória das duas células cai na fileira do pen-down: `53` dos `65` partilhados movem-se no
+traço de 36 passos, e um deles carrega o máximo da malha) e ainda assim dá `0,000000` ⇒ a
+concorrência sobre partilhados está refutada sem depender de como se impôs uma linha de execução.
+⛔ **O que continua por isolar é o nome:** *esfera* e *Dynamic* variaram juntas (ver acima).
 ⇒ **os `.deformado` de esfera são UMA realização cada**, e uma barra de gate escrita abaixo da banda
 reprova o próprio oráculo. ⚠️ **E não é desculpa para os erros abertos**: eles são `5×` a `26×` a
 banda. Detalhe e tabelas: espec §10.13.

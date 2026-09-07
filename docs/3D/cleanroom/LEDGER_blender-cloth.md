@@ -1628,8 +1628,65 @@ actualizadas (`24` de `78`, `17` não-*Local*, `26`/`22` por passo).
 **Verificador:** `verifica_traco.py` **verde sobre os 78** (`78 OK`, `0 BAD`, exit `0`).
 **Sweep:** verde sobre a espec emendada, a pasta inteira das fixtures, o INBOX, os dois READMEs e
 este ledger (menos os hits pré-existentes de 2026-09-05 já registados acima).
-**Auditoria §4.2 (R-pré): ⏳ POR CORRER.** ⛔ Enquanto ela não estiver no cabeçalho da espec, a
-janela-mãe **não lê** a emenda Q18 (§3.R).
+**Auditoria §4.2 (R-pré): ✅ CORRIDA em 2026-09-07 — ATESTADO no cabeçalho da espec.**
+Subagente R-pré de contexto NOVO, independente do subagente-E que escreveu a emenda; leu os dois
+lados (o fonte por shell, que é o que o deny da linha permite).
+
+**Veredicto de EXPRESSÃO (§4.2): ZERO achados.** Sem trecho, sem nome interno do alvo, sem wording
+de comentário ou de manual, sem tabela verbatim, sem organização ficheiro-a-ficheiro. Os termos
+novos (`φ_relax`/`φ_int`, *banda de realização*, *prova do fatiamento*, *lei incremental*,
+*reconstrução total*) são vocabulário do domínio, e `Local`/`Global`/`Dynamic`/`Plane`/`Inflate`/
+`damping` são nomes que o artista vê (§4.1.13 — a propriedade de amortecimento é rotulada na porta
+de propriedades, conferido).
+
+**Sweep (§7.1):** verde sobre a espec emendada + a pasta INTEIRA das fixtures + o INBOX + os
+READMEs + `docs/3D/cloth/`, e sobre o **histórico** de todos esses caminhos e o texto do report
+final. Os únicos ✗ são pré-existentes e já adjudicados neste ledger: (a) as duas linhas de cobertura
+daqui (2026-09-05), e (b) no `--git-history` de `docs/3D/cloth/`, os commits de 2026-09-05 em que o
+próprio R-pré **curou** o doc `01` — o patch de uma cura contém necessariamente os dois lados, e o
+texto vivo passa limpo. Nenhum vem da Q18 (conferido: o patch de `098e45be4`, sozinho, passa limpo).
+
+**FIDELIDADE — os quatro factos conferidos no fonte, os números reconstruídos do zero.**
+`Q18.1` **confere lado a lado**: o factor das cinco varreduras é pré-calculado uma vez por passo
+para a malha inteira e traz a banda avaliada na posição de repouso; o da integração não a traz, e
+ela entra uma só vez, no termo de velocidade; nos dois só há banda quando existe traço activo (o que
+fecha a nota do filtro). Os suportes disjuntos conferem (`2,875 R` contra o corte da força em `R`).
+`Q18.2` **confere**: a lei incremental (soma sem peso de normais de face, normalização no fim, eixo
+fixo `+z` na soma nula) está no fonte; a da reconstrução total **não vive** na parte do fonte que
+esta linha tem, tal como a emenda declara.
+`Q18.3` e `Q18.4` reproduzem-se célula a célula das fixtures — `0.267205` (`0,76 R`) · `1.893192`
+(`5,41 R`) · o pen-down `0,28635 → 0,14411` **monotonamente** em *Local* e `0,0993 → 1,0550` sem uma
+descida em *Global* · `prova = 0.000000` nos dois traços longos (ali o bloco `k = N` **é** o
+`.deformado`, ao bit) · as **seis** linhas da tabela por passo da esfera · `24` de `78` excepções e
+`17` não-*Local* no README · `verifica_traco.py` **78 OK / 0 BAD / exit 0** · `indice.json`
+regenerado **byte-a-byte** (78/78).
+
+**NOVE curas aplicadas no acto, todas funcionais** (detalhe no cabeçalho da espec): três frases que
+contradiziam números da própria emenda (as «três ordens» do censo da §5.4-bis, o «não depende do
+comprimento do caminho» da §10.12, a faixa `10⁻⁴`–`10⁻³` do gate 46); a narração da ORDEM de
+escritas de um acumulador na §5.4-bis, trocada pelos dois PRODUTOS que a medição de facto separa
+(§4.3); a proveniência da normal de face **unitária**, que estava sob «confirmada no fonte» e é
+`(M)`; o eixo do caso de soma nula, nomeado; a desambiguação global do `φ` sem índice; os operandos
+das três colunas de honestidade dos ficheiros de esfera, com o quarto sorteio medido
+(`0,007919`/`0,035424`/`0,014350`); e — a de maior alcance — a atribuição **não isolada** de
+«a esfera não é reproduzível».
+
+⛔⛔ **O achado que o R-pré devolve como pedido de trabalho ao E:** todas as corridas de esfera da
+§10.13 são de área *Dynamic* e todos os controlos de plano são de *Local*/*Global* ⇒ **superfície e
+área variaram juntas**, e a §10.13 concluía «é da esfera e não do plano» enquanto o §11 já o
+escrevia como lei. O que está demonstrado é o par «esfera + *Dynamic*» contra «plano +
+*Local*/*Global*». ⭐ **O controlo que separa os dois já existe como configuração no corpus**
+(`plano_arrastar_radial_dinamica`, e o `_preset`): quatro realizações dele, medidas como as da
+§10.13, decidem numa corrida. ⏳ **Pedido, e não bloqueante** — o veredito operacional da secção (há
+lei em falta, a caça continua, a lotaria é só um chão) não depende dele.
+⭐⭐ **E o R-pré acrescentou duas confirmações que o repo já continha**, reconstruídas das fixtures
+sem correr o oráculo, e que valem mais que duas das quatro hipóteses refutadas por não dependerem de
+a experiência ter «pegado»: o bloco de repouso é **bit-idêntico nos três ficheiros de esfera** (não é
+o arnês a devolver malha diferente), e o **plano** exercita vértices partilhados entre células no
+ponto de **maior contenção possível** — a divisória cai na fileira do pen-down, `53` dos `65`
+partilhados movem-se e um deles carrega o máximo da malha — e ainda assim dá `0,000000`.
+
+**Veredicto: ATESTADO.** A janela-mãe pode ler a emenda Q18.
 
 ## Fechamento R
 

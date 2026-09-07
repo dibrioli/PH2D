@@ -10,12 +10,33 @@
 
 ## §1 — O estado, em números
 
-⭐⭐⭐ **`68` dos `76` traços do oráculo estão dentro da barra de paridade (`0,13`), `24` saem
-praticamente ao bit, e os DEZ traços por passo de empurrar/inflar reproduzem-se sobre a malha inteira
-e nos doze passos à RESOLUÇÃO DO FICHEIRO** (`err_max ≤ 5,2·10⁻⁶`, contra os `0,2369`/`0,2446` de
-06/09). *A barra de `0,13` deixou de ser a régua desses traços: a lei ali é exacta.* — 07/09.
+⭐⭐⭐ **`70` dos `78` traços do oráculo estão dentro da barra de paridade (`0,13`) e os DEZ traços
+por passo de empurrar/inflar reproduzem-se sobre a malha inteira e nos doze passos à RESOLUÇÃO DO
+FICHEIRO** (`err_max ≤ 5,2·10⁻⁶`, contra os `0,2369`/`0,2446` de 06/09). *A barra de `0,13` deixou de
+ser a régua desses traços: a lei ali é exacta.* — 07/09.
 
-> A leitura de 06/09 dizia `31 de 56`; a de 05/09 dizia `29 de 56`. O corpus cresceu (`76` traços) e
+⭐⭐ **E o PRODUTO corre a mesma lei, com número:** o gate `o_produto_corre_a_lei_do_oraculo`
+(`ph2d-sculpt3d/tests/`) constrói a malha do oráculo, corre o caminho dele **pela porta do artista**
+(`SculptStroke::dab`) e reproduz **cinco** traços a `3`–`21 · 10⁻⁶`. ⛔ Até 07/09 nada ligava as duas
+metades: a bancada provava a lei e o adaptador — a tradução `Brush → Pincel`, a ordem de visita, o
+anel-1, o `δ` projectado — podia entregar outra coisa com a suíte inteira verde. **Três mutações do
+adaptador passam pelos 363 testes da crate e morrem lá.**
+
+⛔⛔⛔ **DOS OITO QUE SOBRAM, SÓ QUATRO SÃO DECIDÍVEIS PELA BARRA.** A emenda Q18 gravou a **banda de
+realização** da esfera — quatro corridas da MESMA configuração do oráculo dão saídas diferentes —, e
+posta na unidade da barra (`0,13 × o maior deslocamento`) ela diz:
+
+| traço | barra em posição | banda | nosso erro | veredito |
+|---|---|---|---|---|
+| `esfera_agarrar_radial_dinamica` | `0,0307` | `0,0200` | `0,0430` | ⭐ decidível, `2,15×` a lotaria ⇒ **lei em falta** |
+| `esfera_gancho_radial_dinamica` | `0,0220` | `0,0362` | `0,0431` | ⛔ **INDECIDÍVEL** — a barra está `1,6×` ABAIXO da lotaria |
+| `esfera_expandir_radial_dinamica` | `0,0061` | `0,0218` | `0,0271` | ⛔ **INDECIDÍVEL** — `3,6×` abaixo |
+
+⚠️ **E o quociente que a espec publica mistura unidades** (`5×`–`26×` sai de dividir um erro
+RELATIVO por uma banda ABSOLUTA); na mesma unidade ele é `1,19×`–`2,15×`. A leitura *«a lotaria não
+os explica»* sobrevive, com uma ordem de grandeza menos margem. ⇒ INBOX **Q19**.
+
+> A leitura de 06/09 dizia `31 de 56`; a de 05/09 dizia `29 de 56`. O corpus cresceu (`78` traços) e
 > a contagem muda com ele — **conte-a com a [`sonda_da_paridade_com_o_oraculo`]**, nunca daqui.
 
 ⭐⭐⭐ **E a fila deixou de ser ordenada pelo TAMANHO do erro** (06/09, 3.ª sessão). O tamanho não diz

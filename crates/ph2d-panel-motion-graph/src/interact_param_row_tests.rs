@@ -215,6 +215,20 @@ fn file_param() -> CardParam {
     )
 }
 
+fn source_param() -> CardParam {
+    CardParam::from_hint(
+        ParamUiHint {
+            param: "path",
+            label: "Shape",
+            min: 0.0,
+            max: 0.0,
+            step: 0.0,
+            widget: ParamWidget::Source,
+        },
+        0.0,
+    )
+}
+
 /// Um CLIQUE (pressão e largada sem varrer) na row `row` — o **estado** que ele deixa e o que
 /// saiu na fila. As duas coisas, porque desde 2026-09-05 um clique num número não escreve: ele
 /// abre uma caixa, e isso só se vê no estado.
@@ -402,6 +416,30 @@ fn a_click_on_a_file_row_asks_the_shell_for_the_dialog() {
     );
 }
 
+/// ⭐⭐ **UM CLIQUE NUMA ESCOLHA DE FONTE PEDE A SEGUINTE** — e o cartão **não diz qual**.
+///
+/// ⚠️ **A lista é VIVA** (ela muda quando o artista desenha outra forma), e mandá-la para dentro
+/// do cartão poria uma `Vec<String>` por row num snapshot que a medição do ciclo 1 manteve sem
+/// **uma única** alocação. O cartão pede *«a seguinte»*; quem sabe quais há é a shell.
+///
+/// FALSIFICADO por o braço voltar ao `Nothing`, ou por o cartão tentar escrever um nome (que
+/// seria inventar um valor que ele não pode conhecer).
+#[test]
+fn a_click_on_a_source_row_asks_for_the_next_published_name() {
+    let snap = card(vec![source_param()]);
+    let saiu = click(&snap, 0);
+    let Some(GraphIntent::CycleSource { param, .. }) = saiu.first() else {
+        panic!("o clique tem de pedir a fonte seguinte, e saiu {saiu:?}");
+    };
+    assert_eq!(*param, "path");
+    assert!(
+        !saiu
+            .iter()
+            .any(|i| matches!(i, GraphIntent::SetParam { .. })),
+        "o cartao nao conhece os nomes publicados: {saiu:?}"
+    );
+}
+
 /// ⛔ **E o veredito do clique é a PORTA ÚNICA, lida também pelo censo.** Este gate prende as
 /// duas leituras: se alguém acrescentar uma espécie ao gesto sem ela aparecer no `click_does`,
 /// o censo do catálogo continua a contá-la como inalcançável e a conta mente para o lado
@@ -410,6 +448,7 @@ fn a_click_on_a_file_row_asks_the_shell_for_the_dialog() {
 fn the_click_law_answers_for_every_species_the_gesture_handles() {
     use crate::{ClickDoes, click_does};
     assert_eq!(click_does(&file_param()), ClickDoes::PickFile);
+    assert_eq!(click_does(&source_param()), ClickDoes::CycleSource);
     assert_eq!(
         click_does(&enum_param(0.0, &["A", "B"])),
         ClickDoes::Cycle(2)

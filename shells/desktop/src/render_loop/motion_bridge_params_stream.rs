@@ -176,6 +176,28 @@ fn keep_extra_columns<'a>(
     out
 }
 
+/// ⭐ **A FONTE SEGUINTE** — a lei do «um clique avança», aplicada à lista viva de nomes
+/// publicados.
+///
+/// ⚠️ **Ela mora ao lado de [`source_options`] de propósito:** *andar* por uma lista e
+/// *produzir* a lista são a mesma pergunta vista de dois lados, e a ordem tem de ser a mesma
+/// nas duas — se o cartão andasse por uma ordem e o painel desenhasse outra, o mesmo clique
+/// escolheria coisas diferentes conforme a superfície.
+///
+/// - `atual` vazio ou fora da lista ⇒ **a primeira** (o artista ainda não escolheu nada);
+/// - senão ⇒ a seguinte, com volta ao princípio — a mesma lei do enum no cartão;
+/// - lista vazia ⇒ `None`: **não há nada para escolher**, e o clique não escreve.
+pub(super) fn next_source(opcoes: &[String], atual: &str) -> Option<String> {
+    if opcoes.is_empty() {
+        return None;
+    }
+    let i = opcoes.iter().position(|o| o == atual);
+    Some(match i {
+        Some(k) => opcoes[(k + 1) % opcoes.len()].clone(),
+        None => opcoes[0].clone(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::{INTERNAL, keep_extra_columns};

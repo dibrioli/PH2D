@@ -83,6 +83,7 @@ fn censo() -> Censo {
                 ClickDoes::Toggle => "vira",
                 ClickDoes::Cycle(_) => "avança",
                 ClickDoes::PickFile => "abre ficheiro",
+                ClickDoes::CycleSource => "avança a fonte",
                 ClickDoes::Nothing => "NADA",
             };
             *veredito.entry(v).or_default() += 1;
@@ -193,15 +194,80 @@ fn the_cards_file_click_reaches_the_same_door_the_panel_row_uses() {
     );
 }
 
-/// **Medido em 2026-09-06: `23` de `683` rows** (eram `26` — os **3** de ficheiro saíram na
-/// primeira wave, e a tabela abaixo já os mostra fora) — reconciliado pela sonda, nunca escrito de
+/// ⭐⭐ **O CLIQUE ANDA PELA LISTA VIVA, E PÁRA QUANDO NÃO HÁ LISTA.**
+///
+/// As três metades que só juntas fazem o gesto: a **primeira** escolha quando nada está
+/// escolhido, a **volta ao princípio** no fim, e — a que interessa — **nada escrito** quando o
+/// artista ainda não desenhou nada. ⚠️ *Um clique que inventasse um nome escreveria uma
+/// referência a uma forma que não existe, e o nó ficaria mudo sem dizer porquê.*
+///
+/// FALSIFICADO por `next_source` devolver `Some` sobre uma lista vazia, ou por não dar a volta.
+#[test]
+fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
+    use ph2d_nodegraph::attr::{Column, Stream};
+    use ph2d_panel_motion_graph::{GraphIntent, drain_intents, push_intent};
+
+    let clique = |m: &mut MotionState, id: ph2d_nodegraph::graph::NodeId| -> Option<String> {
+        let _ = drain_intents();
+        let _ = ph2d_panel_motion_params::drain_param_intents();
+        push_intent(GraphIntent::CycleSource {
+            node: id.0,
+            param: "path",
+        });
+        crate::render_loop::motion_bridge::apply_graph_intents(
+            m,
+            &mut ph2d_core::Playhead::default(),
+            &mut ph2d_editor::ToastQueue::default(),
+            &mut ph2d_editor::screens::layout::CenterSplit::None,
+        );
+        ph2d_panel_motion_params::drain_param_intents()
+            .into_iter()
+            .find_map(|i| match i {
+                ph2d_panel_motion_params::MotionParamIntent::SetTextParam { value, .. } => {
+                    Some(value)
+                }
+                _ => None,
+            })
+    };
+
+    // (a) NADA publicado — o clique não escreve.
+    let mut m = MotionState::new();
+    let id = m.doc.graph.add_node("motion.path");
+    assert_eq!(
+        clique(&mut m, id),
+        None,
+        "sem nada desenhado nao ha' o que escolher, e o clique nao pode inventar um nome"
+    );
+
+    // (b) duas formas publicadas — a primeira, a seguinte, e a volta.
+    let at = |x: f32| Stream::new(1).with("P", Column::Vec2(vec![[x, 0.0]]));
+    m.pump.cook.set_external("Estrela".to_string(), at(1.0));
+    m.pump.cook.set_external("Lua".to_string(), at(2.0));
+    let lista = super::super::params::source_options_live(&m);
+    assert_eq!(lista.len(), 2, "as duas formas sao pickaveis: {lista:?}");
+
+    let primeira = clique(&mut m, id).expect("com lista, o clique escolhe");
+    assert_eq!(primeira, lista[0], "sem escolha feita, escolhe a primeira");
+    m.doc.graph.set_text_param(id, "path", primeira.clone());
+    let segunda = clique(&mut m, id).expect("e avanca");
+    assert_eq!(segunda, lista[1], "de {primeira} para a seguinte");
+    m.doc.graph.set_text_param(id, "path", segunda);
+    assert_eq!(
+        clique(&mut m, id).as_deref(),
+        Some(lista[0].as_str()),
+        "e da ultima volta ao principio, como o enum do cartao"
+    );
+}
+
+/// **Medido em 2026-09-06: `19` de `683` rows** (eram `26`: saíram os **3** de ficheiro e as
+/// **4** fontes publicadas, e a tabela abaixo já os mostra fora) — reconciliado pela sonda, nunca escrito de
 /// memória. Em sete espécies, e a maior é o campo de texto (9):
 ///
 /// | espécie | quantos | nós |
 /// |---|---:|---|
 /// | campo de TEXTO | 9 | `source.text` (×2) · `value.table` (×2) · `motion.expression` · `pulse.signal` · `rig.skeleton` · `value.pattern` · `motion.sub_uv` |
 /// | amostra + selector de COR | 4 | `motion.tint` · `fx.glow` · `fx.drop_shadow` · `motion.strobe` |
-/// | selector de FONTE publicada | 4 | `motion.path` · `motion.spline_wrap` · `fx.glow` · `source.object` |
+/// | ~~selector de FONTE publicada~~ | ~~4~~ | ✅ **curado**: o clique anda pela lista viva |
 /// | ~~caminho + diálogo de FICHEIRO~~ | ~~3~~ | ✅ **curado**: o cartão pede, a shell abre |
 /// | editor de CURVA | 2 | `value.curve` · `motion.strobe` |
 /// | editor de GRADIENTE | 2 | `motion.color_ramp` · `fx.glow` |
@@ -216,4 +282,4 @@ fn the_cards_file_click_reaches_the_same_door_the_panel_row_uses() {
 /// `apply_graph_intents` **já traduzia** as intenções do cartão para as do painel (é assim que
 /// o `SetParam` de um arrasto no cartão chega ao documento), então o ficheiro custou **um
 /// braço em cada lado** — nenhuma lei nova, nenhuma segunda porta.
-const TRANCADOS_NO_PAINEL: usize = 23;
+const TRANCADOS_NO_PAINEL: usize = 19;

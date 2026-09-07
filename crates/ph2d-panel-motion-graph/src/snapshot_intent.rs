@@ -68,6 +68,14 @@ pub enum GraphIntent {
     /// extensões aqui faria o cartão ser a segunda resposta à mesma pergunta — exactamente o que
     /// a row do painel já recusou pelo mesmo motivo.
     PickFile { node: u32, param: &'static str },
+    /// ⭐ **O ARTISTA CLICOU NUMA ESCOLHA DE FONTE PUBLICADA** (doc 65) — a lista de nomes é
+    /// **viva** (muda quando o artista desenha), e por isso ela não viaja no cartão: o cartão
+    /// diz *«a seguinte»* e a shell, que possui a lista, resolve qual é.
+    ///
+    /// ⚠️ **É isso que mantém o [`crate::CardParam`] sem uma única `String`** — a medição que
+    /// pôs os params dentro do nó conta alocações por quadro, e uma lista de nomes por row
+    /// seria exactamente o que ela recusou.
+    CycleSource { node: u32, param: &'static str },
     /// **O ARTISTA DOBROU OU ABRIU UMA SECÇÃO** do cartão (ciclo 1). Estado de EDITOR: a shell
     /// guarda-o ao lado do resto do que a vista resolve, e por isso [`crate::geom::card_h`]
     /// continua a ser função pura do snapshot.

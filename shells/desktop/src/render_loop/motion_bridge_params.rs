@@ -110,6 +110,19 @@ pub(crate) fn source_options_for_tests(motion: &MotionState) -> Vec<String> {
     params_stream::source_options(motion)
 }
 
+/// **A LISTA VIVA de nomes publicados e a lei de andar por ela** — as duas metades da mesma
+/// pergunta, expostas ao irmão `intents` porque o **cartão** as pede (`GraphIntent::CycleSource`)
+/// e a row do painel as usa. ⚠️ Uma cópia de qualquer das duas do lado do cartão faria o mesmo
+/// clique escolher coisas diferentes conforme a superfície.
+pub(super) fn source_options_live(motion: &MotionState) -> Vec<String> {
+    params_stream::source_options(motion)
+}
+
+/// A **fonte seguinte** na lista viva — ver [`source_options_live`].
+pub(super) fn next_source_for(opcoes: &[String], atual: &str) -> Option<String> {
+    params_stream::next_source(opcoes, atual)
+}
+
 /// O caminho REAL de uma edição de param, para os gates que a medem de ponta a ponta —
 /// `push_param_intent` de fora, este dreno aqui.
 ///

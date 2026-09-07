@@ -136,6 +136,10 @@ pub(super) fn apply_param_row(
                     node,
                     param: p.hint.param,
                 }),
+                ClickDoes::CycleSource => push_intent(GraphIntent::CycleSource {
+                    node,
+                    param: p.hint.param,
+                }),
                 ClickDoes::Nothing => {}
             }
             state.interaction = Interaction::Idle;
@@ -168,6 +172,8 @@ pub enum ClickDoes {
     Cycle(usize),
     /// **Pede à shell que abra o diálogo de ficheiro** — o cartão nunca abre um por si.
     PickFile,
+    /// **Avança para a fonte publicada seguinte** — a lista é viva e vive na shell.
+    CycleSource,
     /// **Nada** — o cartão diz que o controlo existe e não o abre.
     Nothing,
 }
@@ -185,6 +191,7 @@ pub fn click_does(p: &crate::CardParam) -> ClickDoes {
             ClickDoes::Cycle(labels.len())
         }
         ph2d_node_registry::ParamWidget::File { .. } => ClickDoes::PickFile,
+        ph2d_node_registry::ParamWidget::Source => ClickDoes::CycleSource,
         _ => ClickDoes::Nothing,
     }
 }

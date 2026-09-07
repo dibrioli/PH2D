@@ -168,6 +168,32 @@ pub(super) fn apply_graph_intents(
                     );
                 }
             }
+            // ⭐ **A fonte seguinte** — o cartão pede *«a seguinte»*, a shell sabe QUAIS há
+            // (a lista é viva: muda quando o artista desenha) e escreve pela mesma porta de
+            // texto que a chip do painel usa. ⚠️ Com nada publicado não há o que escolher, e
+            // o clique não escreve — um valor inventado seria pior que um clique mudo.
+            #[cfg(feature = "panel-motion-params")]
+            GraphIntent::CycleSource { node, param } => {
+                if let subgraph::Target::Node(n) = subgraph::target(node) {
+                    let atual = motion
+                        .doc
+                        .graph
+                        .node_text_param_overrides(n)
+                        .and_then(|m| m.get(param))
+                        .cloned()
+                        .unwrap_or_default();
+                    let opcoes = super::params::source_options_live(motion);
+                    if let Some(proxima) = super::params::next_source_for(&opcoes, &atual) {
+                        ph2d_panel_motion_params::push_param_intent(
+                            ph2d_panel_motion_params::MotionParamIntent::SetTextParam {
+                                node: n.0,
+                                param,
+                                value: proxima,
+                            },
+                        );
+                    }
+                }
+            }
             GraphIntent::Disconnect { to_node, to_port } => {
                 if let Some((t, tp)) = subgraph::resolve_port(motion, to_node, to_port, true) {
                     apply_disconnect(motion, toasts, t.0, tp);

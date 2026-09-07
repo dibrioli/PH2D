@@ -1046,6 +1046,12 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_agarrar_radial_local_2passos_origem",
     "plano_agarrar_radial_local_amort06",
     "plano_agarrar_radial_local_origem_1passo",
+    "plano_agarrar_radial_dinamica",
+    "plano_agarrar_radial_local_origem",
+    "plano_agarrar_radial_local_origem_2tracos",
+    "plano_agarrar_radial_local_origem_3tracos",
+    "plano_agarrar_radial_local_origem_pesonormal05",
+    "plano_agarrar_radial_local_origem_pesonormal1",
     "plano_agarrar_radial_local_preset",
     "plano_apertar_linha_radial_local",
     "plano_apertar_linha_radial_local_1passo",
@@ -1103,9 +1109,24 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_inflar_radial_local_origem_massa2",
     "plano_inflar_radial_local_origem_parado",
 ];
-const VERDE_N: usize = 71;
+const VERDE_N: usize = 77;
 
-/// Os traços AINDA por explicar, com o valor MEDIDO em 2026-09-06 ao lado.
+/// Os traços AINDA por explicar, com o valor MEDIDO ao lado.
+///
+/// ⭐⭐⭐ **Os DOIS `_persistente` entraram em 07/09, e a assinatura deles lê-se
+/// dos números sem abrir uma linha de espec:**
+///
+/// | traços seguidos | sem *Persistent* (nós e o alvo) | com *Persistent* (o alvo) |
+/// |---|---|---|
+/// | `1` | `0,169` | — |
+/// | `2` | `0,306` | **`0,171`** |
+/// | `3` | `0,415` | **`0,177`** |
+///
+/// ⇒ **sem ele a deformação ACUMULA entre traços; com ele não.** Nós entregamos
+/// a coluna do meio nos dois casos, porque a lei não está implementada — e é a
+/// última do §8.1 que falta ao pincel. ⚠️ *A assinatura só aparece ao TERCEIRO
+/// traço: com dois, `0,306` contra `0,171` ainda se lia como uma amplitude
+/// errada; com três, `0,415` contra `0,177` diz que o alvo não está a somar.*
 ///
 /// ⚠️ **A lista tem censo de obsolescência nas DUAS pontas** (CLAUDE.md §5.0:
 /// *uma catraca sem censo não desce, vira licença*): um traço daqui que passe a
@@ -1122,6 +1143,14 @@ const VERDE_N: usize = 71;
 /// bit — o percurso face a face de um vértice interior de grelha devolve
 /// `[S, O, E, N]`, que já é a ordem crescente de índice.
 const ABERTOS: [(&str, f64); ABERTO_N] = [
+    (
+        "plano_agarrar_radial_local_origem_2tracos_persistente",
+        0.788,
+    ),
+    (
+        "plano_agarrar_radial_local_origem_3tracos_persistente",
+        1.387,
+    ),
     ("esfera_apertar_linha_radial_dinamica", 0.630),
     ("esfera_apertar_ponto_radial_dinamica", 0.646),
     ("esfera_expandir_radial_dinamica", 0.581),
@@ -1130,7 +1159,7 @@ const ABERTOS: [(&str, f64); ABERTO_N] = [
     ("plano_apertar_ponto_radial_local", 0.600),
     ("plano_apertar_ponto_radial_local_origem", 0.908),
 ];
-const ABERTO_N: usize = 7;
+const ABERTO_N: usize = 9;
 
 /// A folga de regressão sobre o valor medido de um traço ABERTO.
 const FOLGA_ABERTO: f64 = 1.25;

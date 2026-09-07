@@ -1,4 +1,5 @@
-//! Os gates do modo GERAL da secção *Prefab* (F4.6c, waves 1 e 2).
+//! Os gates do modo GERAL da secção *Prefab* (F4.6c, waves 1 a 3 — desde 2026-09-06 ele é o
+//! caminho de OMISSÃO).
 //!
 //! ⚠️ **O oráculo é o que a SECÇÃO oferece e o que o clique FAZ** — nunca *«a função devolveu
 //! algo»*. Uma secção que oferecesse *Detach* sobre uma forma comum, ou um *Place* que não põe
@@ -76,18 +77,35 @@ fn run_full(
     ((changed, select_out), arm_pick)
 }
 
-/// ⛔⛔⛔ **A PORTA É UMA SÓ, e sem a env var ela está FECHADA.**
+/// ⭐⭐⭐ **A PORTA É UMA SÓ, e desde 2026-09-06 ela está ABERTA por omissão.**
 ///
-/// É o que torna esta wave incapaz de regredir: os dois sítios que decidem (o que a secção MOSTRA e
-/// o que o clique FAZ) lêem a mesma função, e sem a variável o caminho de omissão é o de sempre.
+/// Ela esteve fechada enquanto havia algo por fechar — os três controlos que o motor velho tinha a
+/// mais. Com os três medidos e o dono a aprovar três smokes seguidos, o motor novo passa a ser o
+/// caminho de omissão, que é o precedente do `PH2D_RETOPO_EXTRACT` levado até ao fim.
 ///
-/// ⚠️ **Este gate corre no processo de teste**, onde a env var não está posta — ele mede a
-/// omissão, que é exactamente o estado em que o dono vai receber a build.
+/// ⚠️ **Este gate corre no processo de teste**, onde a env var não está posta — ele mede exactamente
+/// o estado em que o dono recebe a build.
 #[test]
-fn the_new_mode_is_closed_unless_the_env_var_opens_it() {
+fn the_new_mode_is_the_default_path() {
     assert!(
-        !armed(),
-        "o modo novo esta' ARMADO por omissao — a wave passa a poder regredir o editor vetorial"
+        armed(),
+        "o modo novo deixou de ser o caminho de omissao — o dono recebe o motor velho sem o pedir"
+    );
+}
+
+/// ⛔⛔ **E o bissector continua a ser UM zero** — nem `1`, nem qualquer outra coisa.
+///
+/// ⚠️ **A lei mede-se sem tocar no processo:** pôr e tirar uma variável de ambiente dentro de um
+/// teste escreve numa global enquanto os outros correm em paralelo. *Um ramo que só se mede assim
+/// fica sem gate — e o ramo do bissector é precisamente o que ninguém volta a correr.*
+#[test]
+fn only_a_zero_sends_the_panel_back_to_the_old_motor() {
+    use super::armed_from;
+    assert!(!armed_from(Some("0")), "o `0` deixou de desligar");
+    assert!(armed_from(None), "a ausencia da variavel deixou de ligar");
+    assert!(
+        armed_from(Some("1")),
+        "um `=1` na memoria do dono deixou de ligar"
     );
 }
 

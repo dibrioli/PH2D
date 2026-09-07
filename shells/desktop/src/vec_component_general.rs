@@ -15,17 +15,33 @@
 //! *Dois motores para o mesmo estado é pior que um motor lento* — e é a razão pela qual a F4.6c
 //! existe no plano desde o início.
 //!
-//! # ⛔ Por que ele nasce DESLIGADO, e isto não é timidez
+//! # ⭐⭐⭐ Ele é o caminho de OMISSÃO desde 2026-09-06, e a data importa
 //!
-//! Esta secção é um fluxo que **o dono usa** e que **eu não posso smokar** — ela vive no editor
-//! vetorial, atrás de uma janela. Trocar o motor por baixo dela e entregar sem rede seria pedir-lhe
-//! que descobrisse a regressão por mim. ⇒ `PH2D_VEC_COMPONENT_GENERAL=1` **arma** o modo novo, e
-//! sem a variável **nada muda, por construção**: o `armed()` é a única porta, e ela é lida nos
-//! **três** sítios que decidem — o que o painel MOSTRA, o que o clique do botão FAZ, e o **segundo
-//! clique do conta-gotas** (que vive no `input_dispatch`; ver [`swap_by_pick`]).
+//! Ele **nasceu desligado**, e isso não era timidez: esta secção é um fluxo que **o dono usa** e
+//! que **eu não posso smokar** — ela vive no editor vetorial, atrás de uma janela. Trocar o motor
+//! por baixo dela e entregar sem rede seria pedir-lhe que descobrisse a regressão por mim.
 //!
-//! ⚠️ **É o precedente do `PH2D_RETOPO_EXTRACT`**: o motor novo shipa desligado, com a tabela da
-//! comparação ao lado, e o caminho de omissão fica **byte-idêntico**.
+//! ⇒ o precedente é **o do `PH2D_RETOPO_EXTRACT`, inteiro**: shipa desligado, o dono smoka, e
+//! **quando ele aprova, o motor novo passa a ser o caminho de omissão**. Aqui foram **três** smokes
+//! aprovados em sequência (o modo · o conta-gotas do *Swap* · a cascata + o *Make Variant*), e a
+//! última coisa que faltava — os três controlos que o motor velho tinha a mais — está medida na
+//! tabela abaixo. *A lei «tudo o que é novo shipa desligado» vale enquanto houver algo por fechar;
+//! ela não é um estado permanente.*
+//!
+//! ⚠️ **`PH2D_VEC_COMPONENT_GENERAL=0` volta ao motor vetorial**, e é assim que se bissecta. O
+//! `armed()` continua a ser a única porta, lida nos **três** sítios que decidem — o que o painel
+//! MOSTRA, o que o clique do botão FAZ, e o **segundo clique do conta-gotas** (que vive no
+//! `input_dispatch`; ver [`swap_by_pick`]).
+//!
+//! ⛔ **O que isto NÃO faz:** apagar o `VecInstance` (~2 961 LOC em 24 ficheiros) — a F4.6c wave 3,
+//! que continua bloqueada **na prática** enquanto a `line/Vector` estiver viva (conferido em
+//! `git worktree list`, 2026-09-06). O que esta wave compra é que **ninguém cria estado novo
+//! daquele motor**, que é a pré-condição para o apagar sem perder trabalho de ninguém.
+//!
+//! ⚠️ **Uma instância vetorial GRAVADA antes desta data lê-se como forma comum** neste modo (o
+//! painel oferece-lhe *Make Prefab*). Não há projectos gravados — decisão do Enio, registada no
+//! §5 — e a partir daqui não há como criar uma; a nota fica porque a ausência é o que torna a
+//! troca barata, e não uma propriedade do código.
 //!
 //! # ⭐⭐⭐ Os TRÊS controlos que o motor velho tinha a mais, e onde cada um foi parar
 //!
@@ -47,15 +63,32 @@ use ph2d_vec_scene::VecPathId;
 
 use crate::vec_entities::VecEntityMap;
 
-/// **O modo geral está armado?** Porta única — ver o cabeçalho.
+/// **O modo geral está armado?** Porta única — ver o cabeçalho. **Sim, por omissão**; só
+/// `PH2D_VEC_COMPONENT_GENERAL=0` o desliga.
 ///
 /// ⚠️ **Lida em TRÊS sítios** (o que o painel mostra · o que o clique do botão faz · o segundo
 /// clique do conta-gotas) e por isso é uma função, não um `if` copiado: dois deles a discordarem dá
 /// uma secção que oferece um verbo que o dreno recusa, ou um gesto que arma num motor e resolve no
 /// outro.
+///
+/// ⚠️ **A AUSÊNCIA da variável é o `true`** — o `is_ok_and` de antes dizia `false` sem ela, que é
+/// exactamente o contrário do que esta wave decidiu. *O bissector é o `0`, e nada mais: um
+/// `PH2D_VEC_COMPONENT_GENERAL=1` continua a ligar, para não partir um dedo que o dono já tem na
+/// memória.*
 #[must_use]
 pub(crate) fn armed() -> bool {
-    std::env::var("PH2D_VEC_COMPONENT_GENERAL").is_ok_and(|v| v != "0")
+    armed_from(std::env::var("PH2D_VEC_COMPONENT_GENERAL").ok().as_deref())
+}
+
+/// A LEI da porta, sem o ambiente — é ela que os gates medem.
+///
+/// ⚠️ **Separada de propósito:** pôr e tirar uma variável de ambiente dentro de um teste é escrever
+/// numa global do processo enquanto outros testes correm em paralelo, e em edição 2024 isso é
+/// `unsafe` por essa exacta razão. *Uma lei que só se mede mexendo no processo inteiro fica sem
+/// gate, e o ramo do bissector é o que ninguém volta a correr.*
+#[must_use]
+pub(crate) fn armed_from(value: Option<&str>) -> bool {
+    value != Some("0")
 }
 
 /// A forma seleccionada (uma só) e a entidade dela — o mesmo critério do motor velho.

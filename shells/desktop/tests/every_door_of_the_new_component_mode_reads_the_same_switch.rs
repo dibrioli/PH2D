@@ -93,12 +93,17 @@ fn the_lists_the_new_mode_does_not_serve_are_published_empty() {
     );
 }
 
-/// ⛔⛔ **O caminho de OMISSÃO fica intacto** — o motor velho continua a ser chamado no `else`.
+/// ⛔⛔ **O motor velho continua ALCANÇÁVEL** — ele é o `else`, e o `PH2D_VEC_COMPONENT_GENERAL=0`
+/// é quem lá chega.
 ///
-/// É o que torna esta wave incapaz de regredir: sem a env var, o que corre é exactamente o que
-/// corria antes. *Um modo novo que apaga o velho antes de o dono o aprovar não é reversível.*
+/// ⚠️ **Este gate mudou de lei em 2026-09-06, e o nome mudou com ela**: ele dizia *«o velho é o
+/// caminho de omissão»*, e desde que o dono aprovou o modo novo o de omissão é o outro. O que ele
+/// defende agora é o **bissector** — apagar o `else` tira o único caminho de volta, e a F4.6c
+/// wave 3 (apagar os ~2 961 LOC do `VecInstance`) é uma fatia PRÓPRIA, hoje bloqueada na prática
+/// pela `line/Vector` estar viva. *Um motor que se apaga de raspão, dentro da wave que o
+/// substitui, não deixa como comparar os dois quando o próximo report chegar.*
 #[test]
-fn the_old_motor_is_still_the_default_path() {
+fn the_old_motor_is_still_reachable_for_bisecting() {
     let body = code_of("render_loop/mod.rs");
     assert!(
         body.contains("vec_component_edit::selected_component("),

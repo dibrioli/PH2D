@@ -43,6 +43,8 @@ pub mod ops_flowchart;
 /// ⭐ A SUPERFÓRMULA de Gielis — ver [`ops_gielis`].
 pub mod ops_gielis;
 pub mod ops_joint;
+/// ⭐ O NÓ DE TORO — ver [`ops_knot`].
+pub mod ops_knot;
 /// ⭐ O GYROID e a família das redes — ver [`ops_lattice`].
 pub mod ops_lattice;
 pub(crate) mod ops_norm;

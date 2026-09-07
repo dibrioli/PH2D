@@ -452,6 +452,20 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
                 *v *= factor;
             }
         }
+        // ─────────────────────────── W134 ───────────────────────────
+        // ⚠️ **As CONTAGENS não escalam** — é a mesma lei do `turns` da mola: ampliar a peça não
+        // pode dar-lhe mais voltas.
+        Primitive::TorusKnot {
+            radius,
+            tube,
+            cord,
+            winds: _,
+            loops: _,
+        } => {
+            for v in [radius, tube, cord] {
+                *v *= factor;
+            }
+        }
         p @ (Primitive::Arrow { .. }
         | Primitive::Chevron { .. }
         | Primitive::BentArrow { .. }

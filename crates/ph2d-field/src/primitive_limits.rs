@@ -365,6 +365,18 @@ pub const MIN_SUPERQUADRIC_EXPONENT: f32 = 1.0;
 ///
 /// De `1` a `16` o controlo entrega **85 %** de toda a travessia; de `64` para cima sobra `2 %`, e
 /// quem quer a caixa perfeita tem a `Box` — que é exacta e mais barata.
+///
+/// # ⭐ O que cada expoente FAZ (mudou-se para cá em 06/09)
+///
+/// `exponent_top` governa o que se vê **de cima** (`1` losango · `2` círculo · alto quadrado) e
+/// `exponent_side` o que se vê **de lado** (`1` bipirâmide · `2` elipse · alto prisma). A esfera é
+/// `2` nos dois, e nesse ponto o campo é a distância **exacta**.
+///
+/// ⚠️ **O eixo de cima desta casa é o `Y`** (a `half[1]` chama-se *Height* em toda forma de caixa),
+/// então o *de cima* é o par `X–Z` e o *de lado* é o `Y`.
+///
+/// ⚠️ **A prosa saiu do [`crate::Primitive`] porque aquele arquivo é um `enum` no tecto de LOC** —
+/// o doc dele nomeia esta saída, e a W134 foi quem a cobrou.
 pub const MAX_SUPERQUADRIC_EXPONENT: f32 = 64.0;
 
 // ─────────────────────────── W128 — a superfórmula de Gielis ───────────────────────────

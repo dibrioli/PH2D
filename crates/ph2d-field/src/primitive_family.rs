@@ -73,6 +73,7 @@ impl Primitive {
             Primitive::RoundedCylinder { .. } => PrimitiveKind::RoundedCylinder,
             Primitive::Superquadric { .. } => PrimitiveKind::Superquadric,
             Primitive::Superformula { .. } => PrimitiveKind::Superformula,
+            Primitive::TorusKnot { .. } => PrimitiveKind::TorusKnot,
             Primitive::Triangle { .. } => PrimitiveKind::Triangle,
             Primitive::Polygon { .. } => PrimitiveKind::Polygon,
         }

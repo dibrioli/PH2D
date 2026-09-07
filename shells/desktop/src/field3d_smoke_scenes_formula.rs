@@ -1,5 +1,5 @@
-//! ⭐⭐ **AS CENAS DAS FORMAS POR FÓRMULA E DE VÉRTICES AUTORADOS** (W125–W132) — o cilindro com
-//! bojo, a superquadrática, a superfórmula, o triângulo e o polígono de `N`.
+//! ⭐⭐ **AS CENAS DAS FORMAS POR FÓRMULA E DE VÉRTICES AUTORADOS** (W125–W134) — o cilindro com
+//! bojo, a superquadrática, a superfórmula, o triângulo, o polígono de `N` e o nó de toro.
 //!
 //! # Por que um arquivo irmão
 //!
@@ -251,6 +251,51 @@ pub(crate) fn cena_27() -> Result<FieldDoc, ph2d_field::FieldError> {
                 0.099,
                 0.72,
             ),
+            combine(Op::Union(Blend::Sharp), (0..4).map(NodeId).collect()),
+        ],
+        NodeId(4),
+    )
+}
+
+/// ⭐⭐⭐ **A cena `=28`: O NÓ DE TORO `(p, q)`** (W134) — quatro pares, e nenhum é o vizinho do outro.
+///
+/// ⚠️ **As quatro respondem a perguntas diferentes**, e é isso que faz uma cena valer mais do que um
+/// gate: o **trevo** `(2,3)` é a forma que dá nome à família; o `(3,2)` é **o mesmo par ao
+/// contrário** e desenha outra peça, que é o que prova que os dois números não são intermutáveis; o
+/// `(2,5)` mostra que **`q` aperta a corda ao tubo** sem tocar na árvore; e o `(5,2)` mostra que
+/// **`p` a espalha em torno do eixo** e, com ela, o vazio no meio.
+///
+/// ⚠️ **A corda é sempre uma fracção do TECTO, nunca um número fixo** — o tecto depende de `p` e de
+/// `q` ([`ph2d_field::knot_cord_ceiling`]), então uma corda literal desenharia quatro peças com
+/// folgas diferentes e a cena leria como ruído.
+pub(crate) fn cena_28() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 28 — O NO DE TORO (p,q): (1) trevo 2,3 · (2) 3,2 -- o MESMO par ao \
+         contrario da outra peca · (3) 2,5 -- o q aperta a corda ao tubo · (4) 5,2 -- o p espalha \
+         em volta do eixo. A corda e' sempre 55% do tecto, que depende de p e de q."
+    );
+    let peca = |winds: u32, loops: u32, x: f32| {
+        let (radius, tube) = (0.20_f32, 0.085_f32);
+        leaf(
+            Primitive::TorusKnot {
+                radius,
+                tube,
+                cord: ph2d_field::knot_cord_ceiling(radius, tube, winds, loops) * 0.55,
+                winds,
+                loops,
+            },
+            Xform {
+                translation: [x, 0.0, 0.0],
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    FieldDoc::new(
+        vec![
+            peca(2, 3, -0.72),
+            peca(3, 2, -0.24),
+            peca(2, 5, 0.24),
+            peca(5, 2, 0.72),
             combine(Op::Union(Blend::Sharp), (0..4).map(NodeId).collect()),
         ],
         NodeId(4),

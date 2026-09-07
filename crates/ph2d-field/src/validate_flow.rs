@@ -339,6 +339,46 @@ pub(super) fn validate_exact(p: &Primitive, idx: u32) -> Result<(), FieldError> 
             }
             Ok(())
         }
+        // ─────────────────────────── W134 ───────────────────────────
+        Primitive::TorusKnot {
+            radius,
+            tube,
+            cord,
+            winds,
+            loops,
+        } => {
+            positive(radius, "radius")?;
+            positive(tube, "tube")?;
+            positive(cord, "cord")?;
+            if !(crate::MIN_KNOT_WINDS..=crate::MAX_KNOT_WINDS).contains(&winds) {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "winds",
+                });
+            }
+            if loops < crate::MIN_KNOT_LOOPS || loops > crate::max_knot_loops(winds) {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "loops",
+                });
+            }
+            // ⚠️ **O tubo dentro do anel**: com `tube >= radius` a superfície passa pelo eixo e o
+            // divisor do campo perde o chão (o `ρ_min` dele fica ≤ 0).
+            if tube >= radius {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "tube",
+                });
+            }
+            // ⚠️ **A corda abaixo do tecto MEDIDO** — a mesma função que o painel usa para a faixa.
+            if cord > crate::knot_cord_ceiling(radius, tube, winds, loops) {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "cord",
+                });
+            }
+            Ok(())
+        }
         // ─────────────────────────── W127 ───────────────────────────
         Primitive::Superquadric {
             half,

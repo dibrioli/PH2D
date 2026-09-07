@@ -23,6 +23,14 @@ touch {} +` (ou `shutil.copy` em vez de `copy2`).
 fonte correto" é *"o gate está errado"* ou *"eu li mal o fonte"*, e a resposta natural é
 mexer no código certo. O defeito não está em nenhum dos dois: está no relógio do arquivo.
 
+⚠️⚠️ **SEGUNDA ocorrência, 2026-09-07 (`line/3DModeling`, W134), e com OUTRO sintoma:** ali eu usei
+`shutil.copy` (que **não** preserva o mtime) para o backup — e `shutil.move(bak, alvo)` no restore
+devolve na mesma o carimbo do **backup**, que é anterior ao build da versão mutada. ⇒ o cargo serviu
+o binário MUTADO nas corridas seguintes, e cinco mutações leram-se como *«MORTA»*/*«SOBREVIVEU»* sobre
+o programa errado. O que o denunciou não foi a suíte: foi **a aritmética à mão discordar do código**
+(`0,0906` contra `0,1355`) — *se eu não tivesse conferido uma conta, a wave shipava com os vereditos
+trocados*. ⇒ **`copy` não chega: o que tem de ser carimbado é o RESTORE.**
+
 **How to apply:** todo arnês de mutação **carimba o restore** (`touch`) e **re-roda a suíte
 como último passo**, exigindo verde — o restore só está provado quando o verde volta.
 ⚠️ E **`git status` não serve de conferência quando a crate é nova**: dentro de um diretório

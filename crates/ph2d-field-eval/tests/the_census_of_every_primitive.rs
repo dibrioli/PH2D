@@ -506,6 +506,16 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             round: 0.02,
             chamfer: 0.0,
         },
+        // ⚠️ **O TREVO `(2, 3)`, e não o anel `(1, 1)`** — o `(1,1)` é um desenho que a composição
+        // já faz, e uma forma nova mede-se no sítio em que ela **é ela**. ⚠️ E o `p = 2` põe DOIS
+        // ramos no `min`, que é a estrutura que esta forma tem e nenhuma outra do censo tem.
+        PrimitiveKind::TorusKnot => Primitive::TorusKnot {
+            radius: 0.55,
+            tube: 0.24,
+            cord: 0.09,
+            winds: 2,
+            loops: 3,
+        },
     })
 }
 

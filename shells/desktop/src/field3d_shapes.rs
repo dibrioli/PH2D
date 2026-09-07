@@ -497,6 +497,14 @@ pub(crate) const SHAPES: &[Shape] = &[
     // ─────────────────────────── W132 ───────────────────────────
     // ⭐ **Vai para `Plates`, ao lado do triângulo** — é a mesma pergunta («que contorno tem esta
     // chapa?») com a contagem aberta.
+    // ─────────────────────────── W134 ───────────────────────────
+    // ⭐ **Vai para `Rings`** — a família do que tem furo no meio por construção, que é onde um
+    // artista procura um nó depois de olhar para o toro.
+    Shape {
+        key: "panel.model3d.add.torus_knot",
+        family: Family::Rings,
+        make: Make::Formula(a_torus_knot),
+    },
     Shape {
         key: "panel.model3d.add.polygon",
         family: Family::Plates,

@@ -126,6 +126,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.add.superformula" => "Superformula",
         "panel.model3d.add.triangle" => "Triangle",
         "panel.model3d.add.polygon" => "Polygon",
+        // ⚠️ **"Torus Knot" e não "Knot"**: é o nome que toda a literatura e todo o outro programa
+        // 3D lhe dá, e um artista que já o viu procura por ele.
+        "panel.model3d.add.torus_knot" => "Torus Knot",
         "panel.model3d.add.bolt" => "Lightning Bolt",
         "panel.model3d.add.shield" => "Shield",
         "panel.model3d.add.tag" => "Tag",
@@ -324,6 +327,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ **"Bulge" e não "Fillet"**: ele arredonda a PAREDE inteira, não só o aro — chamar-lhe
         // filete prometeria o controlo por aresta que as outras formas têm, que é outra coisa.
         "field.dim.bulge" => "Bulge",
+        // ⭐⭐ **AS DO NÓ DE TORO** (W134). ⚠️ **"Radius" e "Thickness" são as MESMAS palavras do
+        // toro simples**, e de propósito: um nó é uma corda que anda na superfície de um toro, e
+        // reusar o vocabulário é o que torna as duas formas legíveis lado a lado. A corda tem
+        // palavra própria porque é a terceira medida, que o toro não tem.
+        "field.dim.cord" => "Cord",
+        // ⚠️ **A LETRA DA LITERATURA E a palavra simples, no mesmo rótulo** — a mesma decisão dos
+        // `n1`/`n2` de Gielis, com a metade que falta lá: `p` e `q` são como todo tutorial os chama,
+        // e "Winds"/"Loops" é o que eles fazem para quem nunca leu nenhum.
+        "field.dim.knot_p" => "P · Winds",
+        "field.dim.knot_q" => "Q · Loops",
         // ⚠️ **"Top" e "Side" e não "XY" e "Z"**: o artista escolhe pelo que VÊ, e o eixo de cima
         // desta casa é o `Y` — chamar-lhes pelos eixos obrigaria a decifrar qual é qual.
         "field.dim.exponent_top" => "Top Exponent",

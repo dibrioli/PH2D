@@ -82,6 +82,60 @@ pub(super) fn write_formula(
         | (Primitive::Superformula { side_n3: n, .. }, 10) => {
             *n = value.clamp(crate::MIN_SUPERFORMULA_N, crate::MAX_SUPERFORMULA_N);
         }
+        // ─────────────────────────── W134 ───────────────────────────
+        (Primitive::TorusKnot { radius, .. }, 0) => *radius = value,
+        // ⚠️ **COAGE, não recusa** — a lei desta casa: a faixa já não oferece nada acima da parede,
+        // então um valor de fora só chega por outra porta, e recusar ali rejeitaria a peça inteira.
+        (Primitive::TorusKnot { tube, radius, .. }, 1) => *tube = keep_below(value, *radius),
+        (
+            Primitive::TorusKnot {
+                cord,
+                radius,
+                tube,
+                winds,
+                loops,
+            },
+            2,
+        ) => {
+            *cord = keep_below(
+                value,
+                crate::knot_cord_ceiling(*radius, *tube, *winds, *loops),
+            )
+        }
+        // ⭐⭐ **A contagem muda e a CORDA pode deixar de caber** — a parede dela depende de `p` e
+        // de `q`, então subir uma volta com a corda no tecto fundiria os fios. ⚠️ *A porta repõe a
+        // invariante*: é a lei que a W127 pagou (uma escrita que deixa a peça inválida apaga a
+        // cena inteira).
+        // ⭐⭐ **AS CONTAGENS só se coagem à faixa DELAS.**
+        //
+        // ⚠️⚠️ **E o re-assentar da corda NÃO se escreve aqui — três linhas que o faziam
+        // SOBREVIVERAM a uma mutação.** A parede da corda depende de `p` e de `q`, e subir uma
+        // contagem com a corda no tecto deixaria a peça inválida — mas quem repõe isso é a coerção
+        // GERAL ([`super::dims_clamp::clamp_dims`]), que a porta corre depois de **toda** escrita e
+        // que lê a mesma tabela de faixas. *Duas leis a fazer a mesma coisa divergem no dia em que
+        // uma delas é corrigida* — e o gate `raising_a_count_reseats_the_cord` mede a propriedade,
+        // que é o que interessa, e não qual das duas a produziu.
+        (Primitive::TorusKnot { winds: n, .. }, 3) => {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            {
+                *n = (value.round().max(0.0) as u32)
+                    .clamp(crate::MIN_KNOT_WINDS, crate::MAX_KNOT_WINDS);
+            }
+        }
+        (
+            Primitive::TorusKnot {
+                loops: n,
+                winds: outro,
+                ..
+            },
+            4,
+        ) => {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            {
+                *n = (value.round().max(0.0) as u32)
+                    .clamp(crate::MIN_KNOT_LOOPS, crate::max_knot_loops(*outro));
+            }
+        }
         (Primitive::Superquadric { exponent_side, .. }, 4) => {
             *exponent_side = value.clamp(
                 crate::MIN_SUPERQUADRIC_EXPONENT,

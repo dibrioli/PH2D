@@ -343,3 +343,26 @@ pub(crate) fn a_polygon(r: f32) -> Primitive {
         chamfer: 0.0,
     }
 }
+
+// ─────────────────────────── W134 — o nó de toro ───────────────────────────
+
+/// ⭐⭐ **O TREVO `(2, 3)`** — o nó mais simples que existe, e o que toda a gente reconhece.
+///
+/// ⚠️ **Ela NÃO nasce no `(1, 1)`**, que é o ponto neutro desta família: ali a corda é uma argola
+/// enrolada, que a composição já faz — *uma forma nova nasce no sítio em que ela é ELA*, e é essa a
+/// lei que a W128 pagou com a superfórmula a nascer esfera.
+///
+/// ⚠️ **A corda a `55 %` do tecto**: no tecto os fios ENCOSTAM-SE (é a definição dele, ver
+/// [`ph2d_field::knot_cord_ceiling`]) e a peça lê-se como um toro grosso; a metade deixa o vazio
+/// entre os fios visível, que é o que faz um nó parecer um nó.
+pub(crate) fn a_torus_knot(r: f32) -> Primitive {
+    let (radius, tube) = (r * 0.60, r * 0.26);
+    let (winds, loops) = (2, 3);
+    Primitive::TorusKnot {
+        radius,
+        tube,
+        cord: ph2d_field::knot_cord_ceiling(radius, tube, winds, loops) * 0.55,
+        winds,
+        loops,
+    }
+}

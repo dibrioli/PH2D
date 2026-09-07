@@ -58,6 +58,7 @@
 - ⭐ [Passe que RECONCILIA transforma um apagar em desfazer silencioso — a guarda vai no GESTO, e a cerca vizinha não serve](feedback_a_reconciling_pass_turns_a_delete_into_a_silent_undo_of_another_edit.md)
 - [Regra fora do caminho não existe](feedback_a_rule_only_exists_if_it_is_on_the_path_of_who_executes_it.md) · [detector num GESTO perde o `return` cedo](feedback_a_change_detector_on_a_gesture_path_misses_the_gestures_that_return_early.md) · [ferramenta adotada = passo a NOMEIA](feedback_a_tool_is_adopted_only_when_a_written_step_names_it.md) · [arquivar sem indexar recusas](feedback_archiving_without_indexing_the_refusals_deletes_them.md)
 - [«Knob ausente» pode esconder um DEFEITO; e sonda com param no default mede o param desligado](feedback_a_missing_knob_cell_can_hide_a_defect_measure_before_pricing.md)
+- ⭐ [Cerca que nunca morde ESCONDE a que morde: num `min` de tectos, a mais apertada branqueia a mutação de todas as outras](feedback_a_fence_that_never_bites_hides_the_one_that_does.md)
 - [Duas metades de uma cura, cada uma recusada SOZINHA, não a refutam — corra a célula (1,1)](feedback_two_halves_of_a_cure_each_refused_alone_do_not_refute_the_cure.md)
 - [E o caso SIMÉTRICO: curar METADE de uma família pode piorar, porque a outra compensava o erro](feedback_curing_half_a_family_can_leave_the_other_half_worse.md)
 - ⭐ [Um SEGUNDO erro pode ser load-bearing para o primeiro — o sinal é a cura não melhorar com o knob que devia curá-la](feedback_a_second_error_can_be_load_bearing_for_the_first.md)

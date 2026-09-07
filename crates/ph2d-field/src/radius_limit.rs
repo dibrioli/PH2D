@@ -58,6 +58,7 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
         | Primitive::RoundedCylinder { .. }
         | Primitive::Superquadric { .. }
         | Primitive::Superformula { .. }
+        | Primitive::TorusKnot { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }

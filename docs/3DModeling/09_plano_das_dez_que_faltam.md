@@ -24,8 +24,8 @@ número um.
 |---|---:|---|
 | catálogo **2D** | **3** | ~~Polygon(N)~~ · ~~Triangle~~ · Bezier · Parabola · Circle Wave |
 | catálogo **3D** | **3** | Plane · Death Star · Vesica Segment |
-| **famílias** fora de catálogo | **2** | Nó de toro · Rosca / knurling |
-| **total** | **8** | |
+| **famílias** fora de catálogo | **1** | ~~Nó de toro~~ · Rosca / knurling |
+| **total** | **7** | |
 
 ✅ **O LOTE 9 FECHOU em 06/09** — o *Triangle* na W131 ([doc 06 §132](06_resultados_cena_e_gizmo.md)) e
 o *Polygon(N)* na W132 ([§133](06_resultados_cena_e_gizmo.md)).
@@ -79,16 +79,25 @@ preço aqui poria o caminho lento (desenhar, `2,6×`–`3,1×`) a mandar no ráp
 ⏳ **Fica aberto e nomeado:** o filete do polígono é do **aro**, então a quina que o artista digita
 fica viva — e a cura não é afinação (um polígono côncavo não é uma intersecção de semiplanos).
 
-### Lote 10 — **Nó de toro e Rosca** ⭐⭐ *(a família da hélice, que já está paga)*
+### Lote 10 — **Nó de toro** ✅ *(FECHADO em 07/09)* **e Rosca**
 
-- **Nó de toro `(p, q)`:** dois inteiros dão uma família inteira. ⚠️ **O mecanismo é o da W123/W124**
-  — a volta mais próxima sai de um `round()`, e o minorante sai de dividir pelo gradiente máximo.
-  A diferença é que aqui a curva-guia fecha sobre si própria em `p` voltas, o que **muda a costura**:
-  esperar a mesma lição da superfórmula (*um `m` fraccionário racha a peça*).
+✅ **O NÓ DE TORO SHIPOU na W134** ([doc 06 §135](06_resultados_cena_e_gizmo.md)) — e ⛔ **três das
+previsões deste plano estavam erradas**, o que vale reler antes da Rosca:
+
+| o plano dizia | o que a implementação mediu |
+|---|---|
+| *«a volta mais próxima sai de um `round()`»* | ⛔ **não** — são `p` fios a cortar cada plano meridiano, e a resposta é um **`min` sobre `p` ramos**, a forma do polígono da W132 |
+| *«esperar a mesma lição da superfórmula: um `m` fraccionário racha a peça»* | ⛔ a costura **não existe**: o conjunto `{ψ_n}` é invariante a `φ → φ − 2π`. E `p` não pode ser fraccionário — ele é a contagem de ramos |
+| *«o minorante sai de dividir pelo gradiente máximo»* | ⛔⛔ **isso ENGORDA a peça**: `(minorante) − corda` desloca a superfície para fora, e a `(2,3)` saía um toro maciço. A folga tem de multiplicar o campo **inteiro**, cujo zero não se mexe |
+
 - **Rosca / knurling:** a hélice **varrida** num cilindro — o parafuso a sério e o punho serrilhado.
   ⭐ O `sd_helix` já existe; o que falta é a **intersecção com o cilindro** e o perfil do filete.
-- ⚠️ **Os dois herdam o custo da família:** a mola custou `11,9×` uma esfera na W124. **Medir o
-  quadro, não a amostra** — foi exactamente esse o erro da W128 (doc 06 §130).
+  ⚠️ **E o nó deixou uma ferramenta pronta para ela:** a distância à **recta tangente** (decompor em
+  `radial` + `ao_longo` e encolher só um eixo) é o que dá a secção certa de uma corda inclinada — a
+  `sd_helix` de hoje usa a corda crua e **engorda o tubo `1/c`**, o que passa despercebido só porque
+  numa mola típica `c = 0,992`.
+- ⚠️ **Medir o QUADRO, não a amostra** — foi exactamente esse o erro da W128 (doc 06 §130), e o nó
+  pagou-o outra vez: `p = 12` custa `32,1 ms` e `p = 16` custa `61,1`.
 
 ### Lote 11 — **Bezier, Parabola e Circle Wave** ⭐ *(as curvas com espessura)*
 

@@ -283,6 +283,9 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
             ..
         } => radius.min(*half_height),
         // ─────────────────────────── W127 ───────────────────────────
+        // ⚠️ **A CORDA, e não o raio do anel**: é ela a menor medida que define a peça, e é dela
+        // que um filete de junção tem de saber.
+        Primitive::TorusKnot { cord, .. } => *cord,
         Primitive::Superquadric { half, .. } | Primitive::Superformula { half, .. } => {
             half[0].min(half[1]).min(half[2])
         }

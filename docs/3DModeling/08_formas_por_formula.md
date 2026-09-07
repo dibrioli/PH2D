@@ -441,7 +441,7 @@ mesma fórmula com `points` e a razão interna certa —, `sdPie`, `sdCutDisk`, 
 | **Gyroid e a família TPMS** | **C** ⭐⭐⭐ | `sin x·cos y + sin y·cos z + sin z·cos x = 0` — **uma linha** dá um enchimento infinito. É o que a impressão 3D usa dentro das peças, e o que um artista usa para «isto é uma estrutura». ⚠️ Não é distância exacta; o limite sai por **dividir pelo gradiente máximo**, que é a lei que a onda do `Document` acabou de estabelecer nesta linha |
 | ~~**Superfórmula (Gielis)**~~ | — | ✅ **SHIPOU na W128** — o **produto esférico** de duas curvas, escrito como **duas medidas de Minkowski encaixadas** (a mesma estrutura da superquadrática). Divisor por duas varreduras de uma dimensão, `71 µs`/quadro, campo a `3,8×` uma esfera |
 | ~~**Superquadrática / superelipsóide**~~ | — | ✅ **SHIPOU na W127** — com **dois** expoentes (o de cima e o de lado), divisor em forma fechada e a esfera **exacta** no meio. ⛔ A astróide fica **fora com demonstração**: abaixo de `n = 1` o gradiente na superfície não tem limite (cúspides) |
-| **Nó de toro (p, q)** | **C** ⭐⭐ | Dois inteiros dão uma família inteira de nós. Decoração, joalharia, matemática |
+| ~~**Nó de toro (p, q)**~~ | — | ✅ **SHIPOU na W134** — o `min` sobre os **`p` fios** que cortam cada plano meridiano, com a distância à **recta tangente** (só um eixo encolhe). ⭐ A costura do `atan2` **não existe** aqui: o conjunto `{ψ_n}` é invariante a `φ → φ − 2π`, e um `min` sobre um conjunto invariante é contínuo. ⚠️ E `p`/`q` são `u32` — a contagem de ramos de uma árvore não admite fracção, logo a lição da W128 não se paga com coerção |
 | **Rosca / knurling** | **B** ⭐ | A hélice varrida num cilindro — o parafuso a sério, e o punho serrilhado |
 
 ⚠️ **E há duas que são MODIFICADORES, não formas:** a **grade hexagonal** (favo de mel) é a
@@ -475,8 +475,10 @@ a ordena é o dono do produto.
 |---|---:|---|
 | §7.2 — catálogo **3D** | **3** | Plane · Death Star · Vesica Segment |
 | §7.3 — catálogo **2D** | **3** | Bezier · Parabola · Circle Wave |
-| §7.4 — **famílias** fora de catálogo | **2** | Nó de toro · Rosca |
-| **total** | **8** | |
+| §7.4 — **famílias** fora de catálogo | **1** | Rosca |
+| **total** | **7** | |
+
+⚠️ **Actualizado em 07/09**: saiu da conta o **Nó de toro** (W134 — [doc 06 §135](06_resultados_cena_e_gizmo.md)), que fecha metade do lote 10.
 
 ⚠️ **Actualizado em 06/09**: saíram da conta a **Superquadrática** (W127 — [doc 06 §128](06_resultados_cena_e_gizmo.md)) e a **Superfórmula** (W128 — [§129](06_resultados_cena_e_gizmo.md)). E no mesmo dia o **Triângulo** (W131 — [§132](06_resultados_cena_e_gizmo.md)) e o **Polígono de `N`** (W132 — [§133](06_resultados_cena_e_gizmo.md)), que fecham o lote 9.
 

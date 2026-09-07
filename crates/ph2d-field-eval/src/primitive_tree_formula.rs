@@ -1,5 +1,5 @@
-//! ⭐ **AS FORMAS POR FÓRMULA baixam aqui** (W125–W128) — o cilindro com bojo, a superquadrática e
-//! a superfórmula de Gielis.
+//! ⭐ **AS FORMAS POR FÓRMULA baixam aqui** (W125–W134) — o cilindro com bojo, a superquadrática, a
+//! superfórmula de Gielis e o nó de toro.
 //!
 //! # Por que elas saíram do irmão
 //!
@@ -66,6 +66,22 @@ pub(crate) fn formula(p: &Primitive) -> Tree {
                 cv(side_symmetry, side_n1, side_n2, side_n3),
             )
         }
-        _ => unreachable!("o chamador só encaminha as três formas por fórmula"),
+        // ─────────────────────────── W134 ───────────────────────────
+        // ⚠️ **Sem `round`/`chamfer`, e não por esquecimento**: a corda é fechada, logo não há
+        // aresta nenhuma para arredondar — ver [`crate::ops_knot`].
+        Primitive::TorusKnot {
+            radius,
+            tube,
+            cord,
+            winds,
+            loops,
+        } => crate::ops_knot::sd_torus_knot(
+            f64::from(radius),
+            f64::from(tube),
+            f64::from(cord),
+            winds,
+            loops,
+        ),
+        _ => unreachable!("o chamador só encaminha as formas por fórmula"),
     }
 }

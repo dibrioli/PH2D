@@ -81,6 +81,7 @@ pub(super) fn set_chamfer(p: &mut Primitive, node: u32, value: f32) -> Result<()
         | Primitive::RoundedCylinder { .. }
         | Primitive::Superquadric { .. }
         | Primitive::Superformula { .. }
+        | Primitive::TorusKnot { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }
@@ -163,6 +164,7 @@ pub(super) fn set_round(p: &mut Primitive, node: u32, value: f32) -> Result<(), 
         | Primitive::RoundedCylinder { .. }
         | Primitive::Superquadric { .. }
         | Primitive::Superformula { .. }
+        | Primitive::TorusKnot { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }
@@ -252,6 +254,7 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
         | Primitive::RoundedCylinder { .. }
         | Primitive::Superquadric { .. }
         | Primitive::Superformula { .. }
+        | Primitive::TorusKnot { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }

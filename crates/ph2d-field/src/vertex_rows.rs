@@ -116,6 +116,7 @@ pub fn vertex_rows(p: &Primitive) -> Option<VertexRows> {
         | Primitive::Gyroid { .. }
         | Primitive::RoundedCylinder { .. }
         | Primitive::Superquadric { .. }
-        | Primitive::Superformula { .. } => None,
+        | Primitive::Superformula { .. }
+        | Primitive::TorusKnot { .. } => None,
     }
 }

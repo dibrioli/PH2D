@@ -26,6 +26,14 @@ filete nenhum). A frase viveu waves em código shipado, e o doc da **própria va
 contrário e certo (*«as arestas verticais são o que o perfil desenhou»*), duas camadas acima. Eu
 escrevi um gate para a frase errada, e foi o gate que a derrubou.
 
+⭐⭐⭐ **E a MESMA lei pelo outro lado (2026-09-07, W134, o nó de toro): um minorante frouxo não deixa
+a peça conservadora — ele ENGORDA-A.** O zero de `m·c − raio` está em `m = raio/c`, logo apertar o
+divisor `c` para tornar o campo 1-Lipschitz **desloca a superfície para fora**: com `c` a `0,60` a
+corda do nó engolia o toro inteiro, e os gates de campo (gradiente, minorante) estavam todos verdes.
+⇒ **a folga que a marcha pede tem de multiplicar o campo INTEIRO** (`λ·(m − raio)` tem o mesmo
+conjunto-zero) e **nunca o divisor de dentro**. *Um campo pode estar certo como minorante e errado
+como forma, e nenhuma régua de marcha vê a diferença.*
+
 **How to apply:** ao herdar uma receita de arredondamento, **meça de que ARESTA o filete é** antes de
 prometer o que ele faz — não é obrigatoriamente de todas. E quando duas notas do mesmo mecanismo
 discordam, a que está encostada ao tipo costuma ser a certa; a que está no algoritmo é a que

@@ -537,7 +537,14 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
         // barra dela para as 40 restantes. *Uma sonda que responde a uma pergunta e é alimentada com
         // outra não mede nada.* A quina viva do polígono é item **aberto** da W132, e o sítio dele é
         // o handoff, não uma isenção calada aqui.
-        PrimitiveKind::Extrude | PrimitiveKind::Revolve | PrimitiveKind::Polygon => return None,
+        // ⚠️ **E o NÓ DE TORO também fica de fora, e a razão é a mais forte de todas**: ele é uma
+        // corda **fechada**, logo não tem aresta nenhuma — o `round_limit` dele devolve `None` e o
+        // painel não oferece filete. *Uma sonda que pergunta «o filete alcança toda aresta?» a uma
+        // forma sem arestas mede o vazio.*
+        PrimitiveKind::Extrude
+        | PrimitiveKind::Revolve
+        | PrimitiveKind::Polygon
+        | PrimitiveKind::TorusKnot => return None,
         PrimitiveKind::Cone => Primitive::Cone {
             bottom: 0.45,
             top: 0.12,

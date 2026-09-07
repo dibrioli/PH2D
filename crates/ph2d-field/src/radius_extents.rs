@@ -355,6 +355,15 @@ pub fn bounding_half_extents(p: &Primitive) -> [f32; 3] {
         // ⭐ **As duas curvas são NORMALIZADAS** (`max r = 1`), então a caixa é justa: a peça
         // encosta nela e nunca passa.
         Primitive::Superquadric { half, .. } | Primitive::Superformula { half, .. } => *half,
+        // ─────────────────────────── W134 ───────────────────────────
+        // ⚠️ **O eixo do nó é o Z** (como o do toro desta casa): no plano ele chega a
+        // `radius + tube + cord`, e em Z só a `tube + cord`.
+        Primitive::TorusKnot {
+            radius, tube, cord, ..
+        } => {
+            let fora = radius + tube + cord;
+            [fora, fora, tube + cord]
+        }
         // ⚠️ **A caixa é o maior |coordenada| de cada eixo** — o triângulo não é simétrico, e um
         // lado pode estender-se mais que o outro. *Uma caixa que só olha um lado corta a peça no
         // recorte por região.*

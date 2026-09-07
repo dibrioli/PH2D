@@ -402,6 +402,12 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
         Primitive::Superquadric { half, .. } | Primitive::Superformula { half, .. } => {
             hyp(hyp(half[0], half[1]), half[2])
         }
+        // ─────────────────────────── W134 ───────────────────────────
+        // ⭐ **Exacto**: toda a corda vive a `tube + cord` do anel de raio `radius`, e o ponto mais
+        // longe do centro é o de fora do anel, no plano dele.
+        Primitive::TorusKnot {
+            radius, tube, cord, ..
+        } => radius + tube + cord,
         Primitive::Triangle {
             a,
             b,

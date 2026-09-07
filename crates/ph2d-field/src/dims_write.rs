@@ -566,7 +566,8 @@ pub(super) fn write_dim(
         (
             p @ (Primitive::RoundedCylinder { .. }
             | Primitive::Superquadric { .. }
-            | Primitive::Superformula { .. }),
+            | Primitive::Superformula { .. }
+            | Primitive::TorusKnot { .. }),
             i,
         ) => return super::dims_write_formula::write_formula(p, node, i, value),
         // ─────────────────────────── W131 ───────────────────────────

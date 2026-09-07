@@ -34,6 +34,8 @@ pub mod dims_scale;
 /// ⭐ E a metade dos SINAIS e das formas novas — ver [`dims_scale_signs`].
 #[path = "dims_scale_signs.rs"]
 mod dims_scale_signs;
+/// ⭐ O NÓ DE TORO e as cercas dele — ver [`knot`].
+pub mod knot;
 pub mod mods;
 pub mod mods_dims;
 /// ⭐ O polígono de `N` vértices autorados — ver [`polygon`].
@@ -60,6 +62,10 @@ pub mod xform;
 pub use axis::Axis;
 pub use blend::{Blend, Character, Joint};
 pub use dims::{Dim, Param, Span, clamp_dims, clamp_round, dims, scale_primitive, set_dim};
+pub use knot::{
+    MAX_KNOT_LOOPS_OVER_WINDS, MAX_KNOT_WINDS, MIN_KNOT_LOOPS, MIN_KNOT_WINDS, knot_cord_ceiling,
+    max_knot_loops,
+};
 pub use mods::{Unary, UnaryKind};
 // ⚠️ **O `pub use` é o que mantém `ph2d_field::Primitive`** — cortar um arquivo não pode custar uma
 // reescrita em cada sítio que o chamava.

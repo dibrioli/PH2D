@@ -12,10 +12,10 @@
 //! ⚠️ O `pub use` no [`super`] mantém `ph2d_field::Primitive` — cortar um arquivo não pode custar
 //! uma reescrita em cada sítio que o chamava.
 //!
-//! ⛔⛔ **ESTE ARQUIVO ESTÁ NO TECTO, e ele é UM `enum`** (06/09): não há corte por responsabilidade
-//! a fazer — variante e doc são a mesma coisa. ⇒ a próxima primitiva **não cabe**, e a saída é a que
-//! a `Polygon` usou: o doc da variante fica com o essencial e a prosa vai para o módulo do mecanismo
-//! ([`crate::polygon`]). ⛔ Nunca uma entrada na allowlist.
+//! ⛔⛔ **ESTE ARQUIVO ESTÁ NO TECTO, e ele é UM `enum`**: não há corte por responsabilidade a
+//! fazer — variante e doc são a mesma coisa. ⇒ **toda primitiva nova paga a entrada dela mudando a
+//! prosa de uma variante antiga para o módulo do mecanismo** (a W134 mudou a da `Superquadric` para
+//! [`crate::MAX_SUPERQUADRIC_EXPONENT`]). ⛔ Nunca uma entrada na allowlist.
 
 use crate::Profile;
 use serde::{Deserialize, Serialize};
@@ -628,14 +628,8 @@ pub enum Primitive {
     },
     // ─────────────────────────── W127 ───────────────────────────
     /// ⭐⭐⭐ **SUPERQUADRÁTICA** — a bola da norma-`n` encaixada: *um* knob atravessa a família
-    /// inteira.
-    ///
-    /// `exponent_top` governa o que se vê **de cima** (`1` losango · `2` círculo · alto quadrado) e
-    /// `exponent_side` o que se vê **de lado** (`1` bipirâmide · `2` elipse · alto prisma). A esfera
-    /// é `2` nos dois, e nesse ponto o campo é a distância **exacta**.
-    ///
-    /// ⚠️ **O eixo de cima desta casa é o `Y`** (a `half[1]` chama-se *Height* em toda forma de
-    /// caixa), então o *de cima* é o par `X–Z` e o *de lado* é o `Y`.
+    /// inteira. O que cada expoente faz, e por que o *de cima* é o par `X–Z`, vive ao lado do tecto
+    /// deles ([`crate::MAX_SUPERQUADRIC_EXPONENT`]).
     ///
     /// ⚠️ **Não tem `round` nem `chamfer`, e é a mesma decisão do [`Primitive::RoundedCylinder`]**:
     /// o expoente já É o arredondamento desta forma.
@@ -648,11 +642,9 @@ pub enum Primitive {
     /// ⭐⭐⭐ **A SUPERFÓRMULA DE GIELIS** — o produto esférico de duas curvas planas: uma traça o
     /// que se vê **de cima** e a outra o **perfil**. Folhas, conchas, flores, estrelas do mar.
     ///
-    /// ⚠️ **A simetria é INTEIRA** e a razão é a costura do `atan2` — ver
-    /// [`crate::MIN_SUPERFORMULA_SYMMETRY`]. ⚠️ **As duas curvas são NORMALIZADAS**: sem isso, mexer
-    /// num expoente multiplicava o tamanho da peça por oito.
-    ///
-    /// ⚠️ **Não tem `round` nem `chamfer`** — a mesma decisão do [`Primitive::Superquadric`].
+    /// ⚠️ **A simetria é INTEIRA** (a costura do `atan2` — [`crate::MIN_SUPERFORMULA_SYMMETRY`]) e
+    /// **as duas curvas são NORMALIZADAS**: sem isso, mexer num expoente multiplicava o tamanho da
+    /// peça por oito. ⚠️ Sem `round`/`chamfer`, como a [`Primitive::Superquadric`].
     // ─────────────────────────── W131 ───────────────────────────
     /// ⭐⭐ **TRIÂNGULO de três vértices QUAISQUER** — a rampa, a empena, a ponta de seta.
     ///
@@ -682,6 +674,17 @@ pub enum Primitive {
         half_height: f32,
         round: f32,
         chamfer: f32,
+    },
+    /// ⭐⭐⭐ **O NÓ DE TORO `(p, q)`** — a corda que dá `winds` voltas ao eixo enquanto dá `loops`
+    /// voltas ao tubo do toro `(radius, tube)`. ⚠️ **Fechada, logo SEM ARESTA** — sem `round` nem
+    /// `chamfer` —, e as contagens são `u32` porque são os **ramos** do campo, que não admitem
+    /// fracção. Mecanismo e cercas: [`crate::knot`].
+    TorusKnot {
+        radius: f32,
+        tube: f32,
+        cord: f32,
+        winds: u32,
+        loops: u32,
     },
     Superformula {
         half: [f32; 3],

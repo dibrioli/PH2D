@@ -71,6 +71,7 @@ impl FieldDoc {
                 | Primitive::RoundedCylinder { .. }
                 | Primitive::Superquadric { .. }
                 | Primitive::Superformula { .. }
+                | Primitive::TorusKnot { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
                 | Primitive::Capsule { .. }
@@ -225,6 +226,7 @@ impl NodeShape {
                 | Primitive::RoundedCylinder { .. }
                 | Primitive::Superquadric { .. }
                 | Primitive::Superformula { .. }
+                | Primitive::TorusKnot { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
                 | Primitive::Capsule { .. }
@@ -342,6 +344,7 @@ pub fn set_shape_radius(shape: &mut NodeShape, node: u32, radius: f32) -> Result
                 | Primitive::RoundedCylinder { .. }
                 | Primitive::Superquadric { .. }
                 | Primitive::Superformula { .. }
+                | Primitive::TorusKnot { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
                 | Primitive::Capsule { .. }
@@ -544,6 +547,7 @@ pub fn fillet_inflates(p: &Primitive) -> bool {
         | Primitive::RoundedCylinder { .. }
         | Primitive::Superquadric { .. }
         | Primitive::Superformula { .. }
+        | Primitive::TorusKnot { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }

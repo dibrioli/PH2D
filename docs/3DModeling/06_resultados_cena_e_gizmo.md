@@ -13116,3 +13116,157 @@ dois foram cortados **por responsabilidade** — as medidas em pixels, a metade 
 projecção das alças de vértice e o enquadramento da câmera saíram para irmãos. ⛔ Nenhuma isenção.
 
 **Smoke:** *MODEL* > **A** > *Polygon* (ou *Triangle*), e arrastar um quadradinho branco no canvas.
+
+---
+
+## §135 — W134: o NÓ DE TORO `(p, q)`, e as TRÊS réguas que eu tive de corrigir antes do algoritmo (07/09)
+
+> **Enio, 06/09:** *«vamos seguir implementando»* — o lote 10 do
+> [plano 09](09_plano_das_dez_que_faltam.md) é a família da hélice, e o nó é a primeira metade dela.
+
+A corda que dá `p` voltas ao eixo enquanto dá `q` voltas ao tubo. Dois inteiros dão uma família
+inteira — trevo, cinquefoil, e tudo o que a joalharia e a matemática desenham com eles.
+⛔ **Nada do que existe a alcança**: o toro é `q = 0`, a mola é **aberta** (tem duas pontas), e o
+`Link` é uma argola achatada.
+
+### §135.1 — ⭐⭐ A metade que a torna exprimível: num plano meridiano há EXACTAMENTE `p` fios
+
+A curva é `φ = p·t`, `ψ = q·t`. Fixado `φ`, os parâmetros que lá passam são `t_n = (φ + 2πn)/p` para
+`n = 0..p−1` ⇒ o plano meridiano daquele `φ` é cortado por **`p` pontos**, em `ψ_n = q(φ + 2πn)/p`.
+A distância é o **`min` sobre `p` ramos** — a mesma forma do polígono da W132, e **não** a do
+arredondamento da espiral.
+
+⭐⭐⭐ **E é por isso que a costura do `atan2` não existe aqui.** Na W128 um `m` fraccionário rachava a
+peça porque a fórmula lia `φ` **cru**; aqui `φ` só entra dentro do CONJUNTO `{ψ_n}`, e sob
+`φ → φ − 2π` esse conjunto **é o mesmo** (`n` desliza um, e `n = −1` reencontra `n = p−1` a menos de
+`2πq`, que é zero módulo `2π`). *Um `min` sobre um conjunto invariante é contínuo mesmo quando cada
+termo não é.*
+
+⚠️ **E `p` e `q` são `u32`.** A lição da W128 não se paga aqui com coerção: a contagem de ramos de
+uma árvore **não pode** ser fraccionária, logo o estado inválido é **inexprimível**. *Quando a
+representação certa existe, a validação deixa de ter trabalho.*
+
+### §135.2 — ⛔⛔⛔ O defeito de PRODUTO que a primeira medição achou: um minorante frouxo ENGORDA a peça
+
+A primeira versão era a forma da mola: a **corda** no plano meridiano, vezes um divisor constante
+`c`, menos a espessura. A varredura deu `‖∇f‖ = 12,05` e `f/d = 1,90`, e a cura óbvia — encolher o
+divisor — pôs as duas colunas em `1,00` a `λ = 0,64`.
+
+⛔ **E destruiu a forma.** Com `λ = 0,60` o gate `the_knot_holds_the_curve_it_promises` acusou:
+**toda** a superfície do toro dentro da peça (`−0,042`), e o meio entre dois fios dentro a `80 %` do
+tecto da corda. *O zero de `m·c − corda` está em `m = corda/c`*: um minorante frouxo composto com a
+subtracção de um raio **desloca a superfície para fora**.
+
+⭐⭐⭐ **É a lei do `(flat + r) − r ≠ flat` outra vez, do outro lado:** compor um minorante com o
+inverso do que ele minora não é a identidade. ⇒ **a folga não pode viver no divisor.**
+
+⭐⭐ **A forma certa é a DISTÂNCIA À TANGENTE, e ela é exacta.** Decompondo o deslocamento no plano
+meridiano em `radial` (atravessa o fio) e `ao_longo` (corre com ele), e com
+`sin β = ρ/√(ρ² + K²)`, `K = r·q/p`:
+
+```text
+d(P, recta tangente) = √(radial² + (ao_longo · sin β)²)      — exacto
+```
+
+Só **um** eixo encolhe. A secção do tubo passa a ser a elipse que ela de facto é, e a peça deixa de
+engordar. ⭐ **E a folga que a marcha ainda precisa passa a multiplicar o campo INTEIRO** —
+`λ·(m − corda)` tem exactamente o mesmo conjunto-zero, logo a peça não se mexe e só o *ritmo* muda.
+
+### §135.3 — ⭐⭐ A SATURAÇÃO, que curou o eixo e tornou o majorante derivável
+
+Junto do eixo `‖∇φ‖ = 1/ρ` e as duas componentes rodavam com ele: `‖∇f‖ = 3,59` na `(1,1)`.
+⇒ as duas saturam na **meia-distância entre fios** (o tecto da corda). Isso **não toca na peça** (na
+superfície as duas valem no máximo a corda, que é `≤` o tecto), **só baixa** o valor — logo o
+minorante continua minorante — e além do tecto o valor não queria dizer nada, porque ali já há outro
+fio mais perto.
+
+⭐ **E foi a saturação que tornou o majorante do gradiente derivável em toda a parte:**
+
+```text
+|∂m/∂ψ| ≤ S/c + c·(S + r)          azimutal ≤ (q/p)/ρ · (S/c + c·(S + r))
+‖∇f‖ ≤ 1,25 · √(1 + azimutal²)     com ρ = R − r − corda, S = o tecto da corda
+```
+
+⛔⛔ **A primeira redacção dele derivava com `m ≈ corda`, e o censo apanhou-a nas DUAS pontas:** lia
+`1,14` na peça representativa e **`5,65`** ao arrastar o raio para dentro do tubo. *Uma derivação
+«junto da superfície» não descreve a banda em que a marcha decide.*
+
+**Medido depois da cura** (`probe_knot_grid`, corda a `60 %` do tecto dela, `p, q ∈ 1..12`):
+**`1,00` nas `144` células**, com a margem `1,00` a deixar `1,18` na pior.
+
+### §135.4 — ⭐⭐ O TECTO DA CORDA teve de ser corrigido QUATRO vezes, e a régua é o ALCANCE
+
+A primeira fórmula media a **corda no plano meridiano** entre fios vizinhos. Contra o oráculo — a
+varredura da curva contra ela própria, por pares **duplamente críticos** mais o **raio de
+curvatura** — ela excedia o alcance real em até **`4,68×`**.
+
+| correcção | o que ela era, e o que ficou |
+|---|---|
+| a **perpendicular**, não a corda | dois fios são duas **rectas inclinadas do mesmo lado**; a parte que corre ao longo dos dois não os aproxima ⇒ `× sin β` |
+| o `sin β` no lado de **DENTRO** | tomá-lo no raio do anel descreve o fio onde ele está mais **folgado** ⇒ `1,26×` a mais |
+| **ATRAVÉS DO FURO** | os dois lados de dentro do anel distam `2(R − r)` — a corda de um lado encontra a do outro. ⚠️ **Só um toro GORDO a revela** (com `r` pequeno ela nunca decide), e foi preciso pôr uma segunda proporção no corpus da régua |
+| a **MARGEM `0,85`**, medida | as três são geometria de **rectas paralelas**, e a corda não é recta; a medição diz que elas sobram até `4,1 %` |
+
+⛔⛔⛔ **E uma QUINTA candidata foi construída e MEDIDA MORTA: a curvatura da própria corda.** Ela é
+legítima em teoria — um tubo mais gordo que o raio de curvatura cruza-se **sozinho** — e é o mínimo
+em **`0` de `486 720` células** (a álgebra diz porquê: `1/κ < R − r` exige `R − r > r`, e `1/κ < r`
+exige o contrário). ⚠️ **Ela sobreviveu a DUAS rondas de mutação** antes de eu fazer a pergunta certa,
+que não era *«que gate falta?»* e sim ***«quantas células ela decide?»***. Hoje isso é um gate
+(`every_candidate_of_the_cord_ceiling_decides_somewhere`), com a metade justa: ele reprova também
+quem acrescentar uma cerca que nunca morde.
+
+⚠️⚠️ **E antes disso a mesma candidata do FURO esteve cá com o número ERRADO** (`(R − r)/2`, metade
+do certo, escolhida e não derivada). Sendo a mais apertada de todas, ela **mascarava** as outras: com
+ela no `min`, apagar qualquer candidata era uma mutação que sobrevivia. *Uma cerca que não morde
+esconde a que morde.*
+
+⇒ o tecto é o `min` de **três** candidatas mais a margem, e a razão contra o alcance medido fica
+**≤ `1,00`** nas duas proporções de toro do corpus.
+
+⚠️ **`gcd(p, q) > 1` NÃO é recusado**: ali a curva fecha antes de gastar os `p` ramos e o desenho
+degenera para o nó `(p/g, q/g)` percorrido `g` vezes — uma peça **válida**. *Recusá-la seria proibir
+uma forma por causa do nome que a matemática lhe dá.* ⛔ E o oráculo teve de aprender isso: o alcance
+de uma curva que se repete é **zero**, e metade da grelha lia `inf` antes de ele reduzir pelo `gcd`.
+
+### §135.5 — ⚠️ E a régua da COSTURA mediu a coisa errada DUAS vezes
+
+| régua | por que ela não servia |
+|---|---|
+| **um limite absoluto** (`salto < 1e-3`) | perto do eixo o mesmo passo em `y` é um passo ENORME em `φ`, e o campo depende de `φ` por construção ⇒ reprovava sobre produto correcto |
+| um **controlo noutro ângulo** | compara pontos com sensibilidades diferentes: leu `0` onde a costura lia `0,0018`, e a diferença era a **geometria**, não a costura |
+| ⭐ **o degrau ENCOLHE com o passo** | *uma descontinuidade não encolhe*: `8×` menos passo dá `8×` menos degrau num campo contínuo, e o **mesmo** degrau numa racha |
+
+### §135.6 — O que a wave shipou
+
+- `Primitive::TorusKnot { radius, tube, cord, winds: u32, loops: u32 }`, **sem `round` nem
+  `chamfer`** — a corda é fechada, logo **não tem aresta**; o `round_limit` devolve `None` e o painel
+  não pinta a linha.
+- Cinco linhas de painel: *Radius* · *Thickness* · *Cord* · *P · Winds* · *Q · Loops*. ⚠️ As duas
+  primeiras são **as mesmas palavras do toro simples**, de propósito: um nó é uma corda que anda na
+  superfície de um toro.
+- ⭐ **Subir uma contagem RE-ASSENTA a corda** — a parede dela depende de `p` e de `q`, e sem isso
+  subir uma volta com a corda no tecto deixaria a peça **inválida**, que é a lei da W127 (*uma
+  escrita que deixa a peça inválida apaga a CENA INTEIRA*).
+- Catálogo em **Rings**, cena de smoke **`=28`** com quatro pares — e o `(3,2)` está lá **por ser o
+  `(2,3)` ao contrário**, que é o que prova que os dois números não são intermutáveis.
+- ⚠️ **`primitive.rs` estava no tecto de LOC** e o doc dele já nomeava a saída: a prosa da
+  `Superquadric` mudou-se para ao lado do tecto dos expoentes dela. *Toda primitiva nova paga a
+  entrada dela.*
+
+### §135.7 — ⛔⛔⛔ E o ARNÊS DE MUTAÇÃO mediu o programa errado durante cinco mutações
+
+`shutil.move(bak, alvo)` devolve o ficheiro com o **mtime do backup** — anterior ao build feito da
+versão mutada. ⇒ o cargo deu o binário **mutado** por actualizado e não recompilou, e cinco
+mutações leram-se como *«MORTA»*/*«SOBREVIVEU»* sobre o programa errado.
+
+⚠️ **O que o denunciou não foi a suíte: foi a aritmética à mão discordar do código** (`0,0906`
+contra `0,1355` para o mesmo tecto). *Se eu não tivesse conferido uma conta, a wave shipava com os
+vereditos trocados.* ⛔ A memória do repo já tinha esta lição desde 24/08 — e o arnês desta wave
+usava `shutil.copy` (que **não** preserva o mtime) julgando que isso bastava. **O que tem de ser
+carimbado é o RESTORE.**
+
+Depois da cura: **dez mutações, dez mortas**, cada uma com o gate que a mata nomeado —
+`p`↔`q` · a saturação · o `sin β` do campo · o `sin β` do tecto · a casca do toro · o majorante do
+gradiente · as três candidatas do tecto · a margem dele.
+
+**Smoke:** *MODEL* > **A** > *Torus Knot*, e `PH2D_FIELD_SMOKE=28` para os quatro pares lado a lado.

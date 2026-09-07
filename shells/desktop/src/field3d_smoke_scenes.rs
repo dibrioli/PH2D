@@ -533,6 +533,8 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
         26 => formula::cena_26(),
         // ⭐⭐ O POLÍGONO de `N` vértices da W132 — ver [`shapes::cena_27`].
         27 => formula::cena_27(),
+        // ⭐⭐⭐ O NÓ DE TORO da W134 — ver [`formula::cena_28`].
+        28 => formula::cena_28(),
         _ => {
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"

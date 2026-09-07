@@ -352,6 +352,54 @@ pub(crate) fn dims_lattice(p: &Primitive) -> Vec<Dim> {
             chamfer_dim(p, *chamfer),
             round_dim(p, *round),
         ],
+        // ─────────────────────────── W134 ───────────────────────────
+        // ⚠️ **A ORDEM É A IDENTIDADE DA LINHA** — o painel manda o índice, não o nome.
+        Primitive::TorusKnot {
+            radius,
+            tube,
+            cord,
+            winds,
+            loops,
+        } => vec![
+            Dim {
+                key: "field.dim.radius",
+                value: *radius,
+                span: Span::Positive,
+            },
+            // ⚠️ **O tubo tem PAREDE**: acima de `radius` o anel do toro passa pelo eixo e a peça
+            // deixa de ser uma superfície de revolução — é lá que o divisor do campo perde o chão.
+            Dim {
+                key: "field.dim.thickness",
+                value: *tube,
+                span: Span::Wall(*radius),
+            },
+            // ⚠️ **A corda tem a parede MEDIDA** — a menor das duas distâncias entre fios vizinhos.
+            // Ver [`crate::knot_cord_ceiling`], que é a mesma função que a validação usa.
+            Dim {
+                key: "field.dim.cord",
+                value: *cord,
+                span: Span::Wall(crate::knot_cord_ceiling(*radius, *tube, *winds, *loops)),
+            },
+            // ⭐⭐ **CONTAGENS, e não números** — ver [`crate::knot`]: elas são os ramos do campo.
+            Dim {
+                key: "field.dim.knot_p",
+                value: *winds as f32,
+                span: Span::Count {
+                    min: crate::MIN_KNOT_WINDS,
+                    max: crate::MAX_KNOT_WINDS,
+                },
+            },
+            Dim {
+                key: "field.dim.knot_q",
+                value: *loops as f32,
+                // ⚠️ **O tecto DEPENDE de `p`** — ver [`crate::MAX_KNOT_LOOPS_OVER_WINDS`]: o
+                // recurso é a marcha, e ela paga a razão.
+                span: Span::Count {
+                    min: crate::MIN_KNOT_LOOPS,
+                    max: crate::max_knot_loops(*winds),
+                },
+            },
+        ],
         Primitive::Gyroid {
             half,
             cell,

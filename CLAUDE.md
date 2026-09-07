@@ -261,6 +261,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   pelas TRÊS assinaturas: gate de razão · **zero linhas de diff** da linha acusada naquela crate ·
   5 de 5 verde sozinha · e o **conjunto de reprovadas MUDOU** entre duas corridas da mesma árvore,
   onde a corrida anterior tinha acusado outro teste, esse **real**).
+  `the_cost_of_a_player_is_linear_in_their_number`
+  ([`ph2d-physics-ecs`](crates/ph2d-physics-ecs/tests/measure_player_budget.rs) — promovido pela
+  integração de 2026-09-07, a pedido da `line/UIUX`; ⚠️ **é o TERCEIRO cujo doc-comment se declara
+  imune** (*«gate de FORMA, não de relógio … uma razão entre duas contagens»*) e cujos dois lados são
+  `ms_per_tick`: *dividir dois relógios não deixa de ser um relógio por a razão ser adimensional*).
   *Todo gate que compara duas medianas de um RECURSO é candidato, e a lista nunca estará completa.*
 - ⚠️ **Gates de GPU são `#[ignore]`** e precisam de adapter — *skip gracioso não é verde*; e o `nextest` **cancela na
   primeira falha**: use `--no-fail-fast`, senão suítes inteiras nunca chegam a correr.
@@ -420,7 +425,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⭐ **A falha documentada do Godot está corrigida:** a `deadzone` dele tem **dois papéis** (ponto de disparo *e* offset de
   normalização — proposta #3709); aqui são **dois números** (`dead_zone` · `press_point`), os dois lêem o valor **CRU**, e
   `press_point >= dead_zone` é **coagido na porta**. ⛔ **LEI Nº 1 honrada:** a `InputTape` grava a **acção resolvida**, nunca a
-  tecla — remapear não reescreve o passado nem parte o `physics_ecs_c9`. ⚠️ **Faltam os CONTEXTOS com prioridade** (o que o Unreal
+  tecla — remapear não reescreve o passado nem parte o `physics_ecs_c9`. ⚠️ **Faltam os âmbitos com prioridade** (o que o Unreal
   tem e o Godot não): **bloqueado** — só têm sentido com um modo de jogo, e o `shells/game`/R1 está adiado pelo Enio; a cura de
   hoje é uma **lista negra à mão** no [`player_input.rs`](shells/desktop/src/player_input.rs). ⏳ Falta também o *override*
   por-jogador em `~/.ph2d/` ·
@@ -850,6 +855,33 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **Smokes:** `PH2D_SIGNAL_SMOKE=1|2` (+ `PH2D_SIGNAL_LOG=1`).
   **Ler:** [`docs/Runtime/`](docs/Runtime/) · [handoffs](docs/Runtime/handoffs/README.md) ·
   [história](docs/archive/estado-2026-08-18/runtime.md)
+
+- **UI/UX — redesenho plano** (Godot 4.6 «Modern» + modelo de painel do Blender; `PH2D_UI_NEW=0` volta ao clássico):
+  quatro temas derivados, e a moldura · o vão · a quina · o **recuo** · o vão **ícone→rótulo** cada um por UMA porta em
+  [`ph2d-tokens`](crates/ph2d-tokens/src/spacing.rs) — mais o **cartão** no lugar do risco azul, a **lei do grupo**, os
+  **apelidos de cor** que resolvem pelo PAI (⛔ **57 valores saíram do `tokens.json`**: editar um deles funde limpo e a
+  edição **evapora**), o **chão da janela** (`WindowGround`, degrau ABSOLUTO de `0,04`) que faz de cada área um cartão, e
+  o **gesto que fecha uma coluna** arrastando a borda para dentro — cuja lei é uma **INVOLUÇÃO**
+  ([`hero::dock_columns`](crates/ph2d-editor-core/src/screens/hero/dock_columns.rs): reabrir devolve exactamente o que
+  aquele fecho levou; re-derivar do registo abria **22** onde o fecho levara **1** — *uma involução é uma MEMÓRIA, nunca
+  uma re-derivação*).
+  ⚠️ **`HIER_ROW_H_PX` e `SECTION_GAP_PX` deixaram de existir** — a linha da hierarquia usa o `ROW_H_PX` como todas as
+  outras, e o vão de secção é a porta `section_gap_px()`. ⛔ A cura de um uso novo é **converter**, nunca repor a
+  constante.
+  **Aberto:** o **DESENHO das abas de painel** (medido contra o Godot e **não construído**: falta largura por conteúdo,
+  quina só nos dois cantos de cima, fundo da aba inactiva, ícone e afordância de transbordo) · a incoerência entre as
+  abas de ENCAIXE (`BgElev`/`Text1`) e as de LAYOUT (`AccentSoft`/`Accent`) — **nada no repo escolhe qual está errada** ·
+  o alvo de toque de uma aba tem **22 px** num app cujo alvo é TABLET · esvaziar os painéis (**1 de 25** censuados) ·
+  ⏳ **as superfícies de UI que as outras cinco linhas de 07/09 trouxeram foram escritas contra a lei de espaçamento
+  ANTIGA e não passam pelas portas do ritmo** — não é regressão nem trabalho da integração, é wave do dono da UI.
+  **Smokes:** abrir o app (a UI nova é o caminho de omissão) · fechar e reabrir a coluna da direita pela borda ·
+  `PH2D_UI_NEW=0` (o clássico tem de ficar byte a byte) · *View → Reset Panel Layout*.
+  ⚠️ **A arrumação vive fora do repo** (`~/.ph2d/layout.txt`, XOR contra o `DEFAULT_VISIBLE`) — um ficheiro velho abre o
+  app com um painel fechado, e **apagá-lo é o reset**, não sintoma de regressão.
+  **Ler:** [`docs/UI_New_and_Simple/`](docs/UI_New_and_Simple/) ·
+  [handoff de 07/09](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-07.md) (⚠️ o §6 tem o que a
+  fusão parte e é previsível; o §11 as **sete** leis que a jornada pagou) ·
+  [handoffs](docs/UI_New_and_Simple/handoffs/README.md)
 
 - **Editor / shell — undo, persistência, inspector** — **uma** fila de undo, snapshot-based, registrada por **DIFF num só
   ponto** (`App::post_frame_undo`), cuja unidade é `ProjectState = {WorldSnapshot + VecScene}` — a MESMA captura que a

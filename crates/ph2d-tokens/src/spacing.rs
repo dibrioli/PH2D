@@ -304,6 +304,38 @@ pub fn list_indent_px() -> f32 {
     indent_from(Spacing::Xs.px(), tree_chevron_col_px())
 }
 
+/// ⭐⭐⭐ **O VÃO entre um ÍCONE e o rótulo dele — e é UM número, decidido pelo dono.**
+///
+/// ⛔⛔ **Este número NÃO vem do modelo, e a divergência é deliberada e datada.** O Godot Modern
+/// parte a pergunta por classe de widget — `Tree.icon_h_separation` = `base_margin · 1,5` = **6**,
+/// `Button.h_separation` = **4**, `CheckBox.h_separation` = **8** — e a casa tinha **cinco**
+/// respostas, censadas em 2026-09-07:
+///
+/// | superfície | escrevia |
+/// |---|---|
+/// | balão de aviso (*toast*) | `12.0` à mão |
+/// | lista, árvore, combobox, barra do topo | `Md` = **8** |
+/// | menu de contexto, cabeçalho de secção | `Sm` = **6** |
+/// | Hierarquia, camadas do Painter, pilha do Vector | `Xs` = **4** |
+///
+/// ⭐ **O `4` da Hierarquia era veredito ESCRITO do dono** — *«Icon → name gap tightened Md (8) →
+/// Xs (4) 2026-05-24 per user: "nome mais próximos dos ícones"»*, com data e citação no código.
+/// Perguntado em 2026-09-07 se aquilo valia só para aquele painel ou para o app inteiro, ele
+/// respondeu: **«para o app todo»**.
+///
+/// ⇒ o valor é `Spacing::Xs` = **4**, e ele ganha da derivação do modelo *porque um veredito de
+/// produto medido no ecrã ganha de um número portado*. ⚠️ **A divergência fica escrita aqui**: quem
+/// vier comparar esta casa com o Godot vai achar `6` do outro lado, e a diferença não é deriva —
+/// é uma decisão com dono e data.
+///
+/// ⚠️ **O que este vão NÃO é**, e cada um tem lei própria: o vão entre a **seta** e o ícone que a
+/// segue (a Hierarquia dá-lhe `Xxs` = 2, por outro veredito do mesmo dia); o vão entre **dois
+/// ícones** de uma fileira de botões (é a lei do grupo, wave 20); e o vão entre um ícone e um
+/// **chip** (dois widgets, não um widget e a legenda dele).
+pub fn icon_label_gap_px() -> f32 {
+    Spacing::Xs.px()
+}
+
 /// A derivação do [`list_indent_px`], com os dois termos ABERTOS.
 ///
 /// ⚠️ **Existe para o piso ser matável por mutação.** Com os números de hoje `3 · 4` e a coluna da

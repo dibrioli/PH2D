@@ -342,7 +342,7 @@ pub(crate) fn paint_hierarchy_row(
 
     // Icon → name gap tightened Md (8) → Xs (4) 2026-05-24 per user:
     // "nome mais próximos dos ícones".
-    let name_x = icon_rect.x + icon_w + Spacing::Xs.px();
+    let name_x = icon_rect.x + icon_w + ph2d_tokens::icon_label_gap_px();
     let name_color = if entity.muted {
         ColorToken::TextDisabled
     } else if direct_match {

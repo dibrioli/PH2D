@@ -352,7 +352,7 @@ pub(super) fn paint_top_bar_cluster(
                 chev_size,
                 chev_size,
             );
-            let name_x = icon_rect.x + icon_size + Spacing::Md.px();
+            let name_x = icon_rect.x + icon_size + ph2d_tokens::icon_label_gap_px();
             let name_y = inner.y + (inner.h - font) * 0.5;
             let name_w = (chev_rect.x - name_x - Spacing::Sm.px()).max(0.0);
             paint_text(

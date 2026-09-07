@@ -64,7 +64,10 @@ pub fn inline_icon_size(host: Rect) -> f32 {
 /// `Spacing::Lg` e `Spacing::Md`. Com a escala autorada, o pintor movia o texto e o caret ficava.
 #[must_use]
 pub fn text_origin_x(host: Rect) -> f32 {
-    host.x + crate::widget::field_pad_x() + inline_icon_size(host) + Spacing::Md.px()
+    host.x
+        + crate::widget::field_pad_x()
+        + inline_icon_size(host)
+        + ph2d_tokens::icon_label_gap_px()
 }
 
 impl Combobox {

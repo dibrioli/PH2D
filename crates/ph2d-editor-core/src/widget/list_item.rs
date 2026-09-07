@@ -84,6 +84,16 @@ impl ListItem {
     }
 }
 
+/// **O tamanho do ícone de uma linha de lista** — 60 % da altura, com piso e teto.
+///
+/// ⚠️ Existe porque a fórmula estava escrita **duas** vezes no mesmo ficheiro: aqui e na função
+/// que calcula a folga do valor, esta com um comentário a apontar *«espelha o pintor, linha 106»*.
+/// *Um comentário que aponta uma linha é um ponteiro que envelhece na primeira edição.*
+#[must_use]
+pub fn icon_size(rect: Rect) -> f32 {
+    (rect.h * 0.6).clamp(14.0, 20.0) // LITERAL-PX-OK: ícone a 60% da altura da linha, com piso e teto
+}
+
 pub fn paint_list_item(
     item: &ListItem,
     rect: Rect,
@@ -103,7 +113,7 @@ pub fn paint_list_item(
     }
 
     let pad_x = Spacing::Lg.px();
-    let icon_w = (rect.h * 0.6).clamp(14.0, 20.0); // LITERAL-PX-OK: list icon sized 60% of row height with min/max
+    let icon_w = icon_size(rect);
     let mut cursor_x = rect.x + pad_x;
     if let Some(icon) = item.leading_icon {
         let icon_rect = Rect::new(cursor_x, rect.y + (rect.h - icon_w) * 0.5, icon_w, icon_w);
@@ -121,7 +131,7 @@ pub fn paint_list_item(
             resolve(icon_color, theme),
             StrokeToken::Default.px(),
         );
-        cursor_x += icon_w + Spacing::Md.px();
+        cursor_x += icon_w + ph2d_tokens::icon_label_gap_px();
     }
 
     let chevron_w = if item.trailing_chevron { icon_w } else { 0.0 };
@@ -216,13 +226,14 @@ fn value_pill_width_in(item: &ListItem, room: f32, font: f32, text_system: &mut 
 fn value_pill_room(item: &ListItem, rect: Rect) -> f32 {
     let pad_x = Spacing::Lg.px();
     // A MESMA aritmética do pintor para o que vem ANTES do valor — ela não é o que o gate mede
-    // (o gate mede a borda), é só a fixture chegar ao mesmo `room`.
-    let icon_w = (rect.h * 0.6).clamp(14.0, 20.0); // LITERAL-PX-OK: espelha o pintor, linha 106
+    // (o gate mede a borda), é só a fixture chegar ao mesmo `room`. ⚠️ **Pela porta**: até à wave
+    // 25 esta função REFAZIA a fórmula do ícone, com um comentário a apontar a linha do pintor.
+    let icon_w = icon_size(rect);
     let chevron_w = if item.trailing_chevron { icon_w } else { 0.0 };
     let cursor_x = rect.x
         + pad_x
         + if item.leading_icon.is_some() {
-            icon_w + Spacing::Md.px()
+            icon_w + ph2d_tokens::icon_label_gap_px()
         } else {
             0.0
         };

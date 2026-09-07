@@ -105,7 +105,7 @@ impl BodyCtx<'_> {
         );
 
         // O RÓTULO ocupa o que sobra — e é ele que ABRE a camada.
-        let lx = self.inner_x + ICON_W + gap;
+        let lx = self.inner_x + ICON_W + ph2d_tokens::icon_label_gap_px();
         let lw = (x - gap - lx).max(1.0);
         let rid = ids::vector_paint_row_id(i);
         let lr = Rect::new(lx, y, lw, self.row_h);

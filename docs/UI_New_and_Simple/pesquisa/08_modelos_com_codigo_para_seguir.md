@@ -1705,6 +1705,65 @@ liderado por `paint.rs` (14 — o pintor do **toast**, inteiramente fora do sist
 `grid_snap/state.rs` (12), `floating_panel.rs` (11), `ruler.rs` (10) e `zones.rs` (8). *Um gate que
 varre um directório afirma sobre o directório.*
 
+### 7.30 — ✅ WAVE 25 (2026-09-07): o vão ícone→rótulo é **4**, por decisão do dono
+
+**Fecha o item que a wave 24 devolveu.** O censo estava feito e a escolha era dele: perguntado se
+o veredito de 2026-05-24 na Hierarquia (*«nome mais próximos dos ícones»*, `Md`→`Xs`) valia só
+para aquele painel ou para o app inteiro, respondeu **«para o app todo»**.
+
+⛔⛔ **O número diverge do modelo, e a divergência é deliberada, datada e gateada.** O Godot Modern
+parte a pergunta por classe — `Tree.icon_h_separation` = `base_margin·1,5` = **6** ·
+`Button.h_separation` = **4** · `CheckBox.h_separation` = **8** — e esta casa passa a ter **4** para
+todos. *Um veredito de produto medido no ecrã ganha de um número portado*, e há um teste com o nome
+inteiro a impedir que alguém «corrija» a casa de volta para o `6`.
+
+As cinco respostas que morreram: `12` à mão no balão de aviso · `8` na lista, na árvore, no
+combobox e na barra do topo · `6` no menu de contexto e no cabeçalho de secção · `4` na Hierarquia,
+nas camadas do Painter e na pilha do Vector · e dois locais.
+
+#### ⭐ O que NÃO é esta pergunta — três leis vizinhas, cada uma com dono
+
+- **seta → ícone**: a Hierarquia dá-lhe `Xxs` = 2, por outro veredito do mesmo dia;
+- **ícone → ícone** numa fileira: é a lei do GRUPO (wave 20), e ali as peças **encostam**;
+- **ícone → chip**: dois widgets, não um widget e a legenda dele.
+
+As três estão na lista de isenções **com o mecanismo escrito**, porque a régua textual não as
+distingue — e uma isenção sem motivo é a porta pela qual a sexta resposta volta.
+
+#### ⚠️⚠️ A régua teve de aprender a ler INSTRUÇÕES, e o adversário foi o `cargo fmt`
+
+A 1.ª redacção lia **linhas**, e o formatador do próprio repo derrotou-a no mesmo dia: ele partiu
+`host.x + field_pad_x() + inline_icon_size(host) + icon_label_gap_px()` em quatro linhas, e
+**nenhuma** tinha ao mesmo tempo o nome do ícone e o vão. *Um censo que parseia o fonte tem de
+saber todas as formas do que lê* — 8.ª ocorrência nesta linha, e a primeira em que o adversário é
+uma ferramenta do repo, não um autor.
+
+⇒ a régua normaliza o fonte em **instruções**: comentários fora, continuações juntas, e o corte é
+`;` e chaveta **sempre**, mais a vírgula **só a profundidade zero de parênteses**. ⚠️ Cada metade
+desse corte foi paga por um falso positivo: sem a chaveta, os braços de um `match` colam-se e o
+planeador da barra do Flip aparecia com o `ICON_W` de um braço e o `Spacing::Xs` de outro; com a
+vírgula a cortar em qualquer profundidade, `paint(x + ícone + vão, …)` partia-se ao meio.
+
+⚠️ **E a régua acusou-se a si própria** (2.ª vez em duas waves): o gate contém, por construção, a
+composição que afirma — os testes internos passam a ficar fora da varredura.
+
+#### ⭐ E o censo é de MUNDO ABERTO
+
+A 1.ª redacção só olhava a lista declarada — e uma superfície **nova**, que é precisamente como
+uma sexta resposta nasce, passava sem ser vista. *Um censo que só mede a própria lista não impede
+nada.* Hoje ele varre a árvore e exige a porta ou uma isenção nomeada. As três metades de
+obsolescência (declaradas · isentas · o valor) impedem que ele envelheça para verde.
+
+#### ⭐ Um mirror a menos, de borla
+
+O `list_item` calculava a folga do valor **refazendo a aritmética do pintor**, com a fórmula do
+tamanho do ícone copiada e um comentário a apontar *«espelha o pintor, linha 106»*. *Um comentário
+que aponta um número de linha é um ponteiro que envelhece na primeira edição.* Hoje as duas leem
+`list_item::icon_size`. É a mesma espécie que a wave 24 curou no combobox.
+
+**Provas de mutação: 3 escritas, 3 mortas** (a árvore re-escolhe o vão · alguém repõe o `6` do
+modelo · nasce uma superfície com número cru — esta última é a que a régua de LINHA não via).
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

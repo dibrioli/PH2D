@@ -146,7 +146,7 @@ pub fn paint_section_header(
         header.fold_t(),
         resolve(ColorToken::Text2, theme),
     );
-    cursor_x += icon_w + Spacing::Sm.px();
+    cursor_x += icon_w + ph2d_tokens::icon_label_gap_px();
 
     // Label in UPPERCASE, painted at SEMI_BOLD (600) to match panel
     // titles — user feedback 2026-05-24 ("quase negrito"). Parley

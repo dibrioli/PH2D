@@ -351,7 +351,7 @@ pub fn paint_context_menu_overlay(
             );
         }
         let text_x = if has_glyph {
-            glyph_x + icon_size + Spacing::Sm.px()
+            glyph_x + icon_size + ph2d_tokens::icon_label_gap_px()
         } else {
             glyph_x
         };

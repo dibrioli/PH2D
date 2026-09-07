@@ -252,6 +252,15 @@ braços do mesmo `match` ficaram a copiar. ⛔ E a wave ia ser outra: o censo do
 e o seu rótulo** achou cinco respostas, mas a mais apertada é **veredito escrito do dono** (*«nome
 mais próximos dos ícones»*, 2026-05-24) — fica medido, e a escolha é dele.
 
+⭐⭐ **E a wave 25 (07/09) fechou o vão ÍCONE→RÓTULO em `4`, por decisão do dono**
+([§7.30](pesquisa/08_modelos_com_codigo_para_seguir.md)) — o censo da 24 tinha achado **cinco**
+respostas e devolvido a escolha; ele estendeu ao app inteiro o veredito que já dera à Hierarquia
+em 2026-05-24. ⛔ **Diverge do modelo de propósito** (o Godot dá 6 a uma árvore) e há um teste com
+o nome inteiro a impedir a «correcção» de volta. ⚠️⚠️ **E a régua teve de aprender a ler
+INSTRUÇÕES**: a 1.ª redacção lia linhas e o `cargo fmt` derrotou-a no mesmo dia, partindo a
+expressão em quatro — *a primeira vez que o adversário de um censo desta linha é uma ferramenta do
+repo, e não um autor*.
+
 ⏳ **O que sobra do estudo §5.3 — RE-AUDITADO contra o código em 07/09, e QUATRO dos cinco itens
 já tinham fechado sem ninguém reabrir a lista:** ⛔ os cantos dos painéis (a porta do tema dá `3`,
 não `16`) · ⛔ a moldura dos cartões (o `stroke_frame` devolve `Stroke::NONE` no moderno) · ⛔ a

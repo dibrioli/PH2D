@@ -230,7 +230,7 @@ pub fn paint_tree_view(
                 resolve(ColorToken::Text2, theme),
                 StrokeToken::Default.px(),
             );
-            cursor_x += icon_size + Spacing::Md.px();
+            cursor_x += icon_size + ph2d_tokens::icon_label_gap_px();
         }
         let label_y = y + (row_h - font) * 0.5;
         paint_text(

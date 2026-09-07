@@ -440,7 +440,7 @@ impl Paint for ToastQueue {
             paint_icon(scene, icon, icon_rect, severity_color, 1.5);
 
             // Message text fills the rest, left-aligned with padding.
-            let text_x = icon_rect.x + icon_w + 12.0;
+            let text_x = icon_rect.x + icon_w + ph2d_tokens::icon_label_gap_px();
             let text_rect = Rect {
                 x: text_x,
                 y: r.y,

@@ -151,7 +151,7 @@ fn the_combobox_icon_size_has_one_owner() {
         host.x
             + crate::widget::field_pad_x()
             + crate::widget::combobox_icon_size(host)
-            + Spacing::Md.px()
+            + ph2d_tokens::icon_label_gap_px()
     );
 }
 

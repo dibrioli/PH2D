@@ -1,12 +1,18 @@
 //! LeftRail painter — vertical strip of editor tools.
 //!
 //! Two faces, selected by mode:
-//! - **Object mode** (default): panel toggles · Translate/Rotate/Scale/Pivot ·
+//! - **Object mode** (default): Translate/Rotate/Scale/Pivot ·
 //!   Coordinate-space + Frame-view · Undo/Redo.
 //! - **Painter mode** (the Painter image-edit tool is active): the transform
 //!   block is replaced by the paint tools (Brush · Eyedropper · Eraser · Clone ·
 //!   Smear · Blur · Mask · Inpaint · Shapes). The Shapes button reveals a flyout
-//!   of shape options to its right. Panel toggles + space/view + Undo/Redo stay.
+//!   of shape options to its right. Space/view + Undo/Redo stay.
+//!
+//! ⚠️ **Os dois TOGGLES DE PAINEL saíram desta fila em 2026-08-30**, para o menu *Ver* — e este
+//! cabeçalho ainda os listava em 2026-09-07, sete dias e uma dezena de waves depois. O motivo da
+//! saída está escrito no [`tool_section`], que é onde a mudança doeu; aqui ficou a descrição de
+//! uma fila que já não existe. *Um comentário de topo descreve o ficheiro no dia em que foi
+//! escrito, e nada o obriga a envelhecer com ele.*
 //!
 //! Highlights whichever tool's `ButtonState` is `Pressed` (the radio selection
 //! lives in the store; dispatch in `chrome/rail_tools.rs` + `chrome/rail_painter_tools.rs`).

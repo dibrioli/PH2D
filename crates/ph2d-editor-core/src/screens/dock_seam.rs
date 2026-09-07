@@ -95,6 +95,23 @@ impl HeroLayout {
         }
     }
 
+    /// ⭐⭐ **QUEM ocupa este lado** — e a resposta é DERIVADA, não uma tabela.
+    ///
+    /// A hierarquia e o inspector trocam de lado com o `ui_mirrored`, e uma tabela `Left →
+    /// "hierarchy"` mentiria no espelho. Aqui a pergunta responde-se pela mesma comparação de `x`
+    /// que ordena o [`Self::side_columns`], logo as duas nunca podem discordar.
+    ///
+    /// ⚠️ Serve o **recolher por arrasto**: a costura sabe o LADO e a visibilidade é indexada pelo
+    /// NOME do painel; sem esta porta, o gesto teria de reescrever a regra do espelho.
+    #[must_use]
+    pub fn dock_tenant(&self, side: DockSide) -> &'static str {
+        let hierarchy_is_left = self.hierarchy.x <= self.inspector.x;
+        match (side, hierarchy_is_left) {
+            (DockSide::Left, true) | (DockSide::Right, false) => "hierarchy",
+            _ => "inspector",
+        }
+    }
+
     /// **A faixa de agarre que redimensiona esta coluna** — os últimos [`DOCK_SEAM_PX`] px dela,
     /// do lado da área de desenho.
     ///
@@ -120,6 +137,58 @@ impl HeroLayout {
             DockSide::Left => Rect::new(col.x + col.w - w, col.y, w, col.h),
             DockSide::Right => Rect::new(col.x, col.y, w, col.h),
         }
+    }
+
+    /// ⭐⭐⭐ **A ALÇA que traz de volta uma coluna FECHADA** — o espelho exacto da [`Self::dock_seam`].
+    ///
+    /// A costura vive na borda **interior** de uma coluna aberta; esta vive na borda **exterior**
+    /// de uma coluna fechada, que é o sítio onde a borda estava antes de ela fechar. *A mão volta
+    /// a puxar de onde empurrou.*
+    ///
+    /// ⛔⛔ **Sem ela, o gesto de fechar seria uma armadilha num tablet.** A costura não é pintada
+    /// — ela vive do cursor, e num ecrã de toque não há cursor; o que a torna descobrível é a
+    /// borda visível da coluna. Fechada a coluna, essa borda desaparece, e sem alça o caminho de
+    /// volta seria outra vez o menu. ⇒ esta é **pintada** (`hero::dock_reopen`), ao contrário da
+    /// irmã.
+    ///
+    /// ⚠️ A coluna fechada **mantém o rect reservado** (medido: `57,64,308,960` com e sem painel);
+    /// o que muda é a ocupação. É isso que dá geometria à alça sem inventar número nenhum.
+    #[must_use]
+    pub fn dock_reopen(&self, side: DockSide) -> Rect {
+        let (left_col, right_col) = self.side_columns();
+        let col = match side {
+            DockSide::Left => left_col,
+            DockSide::Right => right_col,
+        };
+        let occupied = match side {
+            DockSide::Left => self.docks.left,
+            DockSide::Right => self.docks.right,
+        };
+        if occupied || col.w <= 0.0 || col.h <= 0.0 {
+            return Rect::new(col.x, col.y, 0.0, 0.0);
+        }
+        let w = DOCK_SEAM_PX.min(col.w);
+        match side {
+            // A borda EXTERIOR — o oposto da costura, que toma a interior.
+            DockSide::Left => Rect::new(col.x, col.y, w, col.h),
+            DockSide::Right => Rect::new(col.x + col.w - w, col.y, w, col.h),
+        }
+    }
+
+    /// **Sobre qual ALÇA de reabertura está o ponteiro, se alguma.**
+    ///
+    /// ⚠️ Porta separada da [`Self::dock_seam_at`] de propósito: as duas nunca podem responder ao
+    /// mesmo tempo (uma exige a coluna aberta, a outra fechada), e uma porta só devolveria um
+    /// `DockSide` que não diz **qual das duas coisas** o dedo pediu.
+    #[must_use]
+    pub fn dock_reopen_at(&self, p: (f32, f32)) -> Option<DockSide> {
+        for side in [DockSide::Left, DockSide::Right] {
+            let r = self.dock_reopen(side);
+            if r.w > 0.0 && p.0 >= r.x && p.0 < r.x + r.w && p.1 >= r.y && p.1 < r.y + r.h {
+                return Some(side);
+            }
+        }
+        None
     }
 
     /// **Sobre qual costura de largura está o ponteiro, se alguma** — a porta única do gesto e do

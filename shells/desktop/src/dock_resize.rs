@@ -36,13 +36,38 @@ impl crate::App {
         if self.dock_seam_drag.is_some() {
             return Some(winit::window::CursorIcon::EwResize);
         }
-        self.hero_layout()?
+        let layout = self.hero_layout()?;
+        // ⚠️ **A alça de uma coluna FECHADA promete o mesmo gesto** — puxar a borda — logo tem de
+        //    mostrar a mesma seta. Um cursor diferente diria que é outra coisa, e o que muda é só
+        //    a direcção em que a borda ainda pode ir.
+        if layout.dock_reopen_at((x, y)).is_some() {
+            return Some(winit::window::CursorIcon::EwResize);
+        }
+        layout
             .dock_seam_at((x, y))
             .map(|_| winit::window::CursorIcon::EwResize)
     }
 
     /// Press: começa o arrasto se o ponto estiver na costura. `true` = a tecla foi consumida.
     pub(crate) fn dock_seam_down(&mut self, x: f32, y: f32) -> bool {
+        // ⭐⭐⭐ **A ALÇA vem PRIMEIRO** — ela e a costura nunca coexistem no mesmo lado (uma exige
+        //    a coluna aberta, a outra fechada), mas perguntar por ela primeiro deixa a lei escrita
+        //    numa ordem em vez de depender dessa exclusão continuar verdadeira.
+        //
+        // ⚠️ **Reabrir acontece no DOWN, não no clique**, e é isso que faz o mesmo gesto servir o
+        //    toque e o arrasto: um toque reabre a coluna na largura que ela tinha; um arrasto
+        //    reabre-a e continua a redimensioná-la, que é *puxar a borda de volta*.
+        if let Some(side) = self.hero_layout().and_then(|l| l.dock_reopen_at((x, y))) {
+            let tenant = self.hero_layout().map(|l| l.dock_tenant(side));
+            if let (Some(tenant), Some(hero)) = (
+                tenant,
+                self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()),
+            ) {
+                hero.panel_visibility.insert(tenant, true);
+                self.dock_seam_drag = Some(side);
+                return true;
+            }
+        }
         let Some(side) = self.hero_layout().and_then(|l| l.dock_seam_at((x, y))) else {
             return false;
         };
@@ -63,9 +88,24 @@ impl crate::App {
             return false;
         };
         let w = layout.dock_width_for(side, x);
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.store.set_dock_width(side, w);
+        let tenant = layout.dock_tenant(side);
+        let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
+            return true;
+        };
+        // ⭐⭐⭐ **Arrastar para dentro, para além do mínimo, FECHA a coluna** — o gesto do Blender,
+        //    e a maior alavanca de ecrã que a medição do tablet encontrou (fechar as duas devolve
+        //    89–92 %). Até aqui o arrasto travava no mínimo e fechar custava dois passeios ao menu.
+        //
+        // ⚠️ **Fecha pela MESMA porta que o menu usa** (`panel_visibility`): um segundo caminho
+        //    para esconder um painel daria dois estados de «fechado» que podiam discordar — e o
+        //    interruptor do menu passaria a mentir sobre o que o dedo fez.
+        if w < ph2d_editor::interaction::WidgetStore::DOCK_W_COLLAPSE {
+            hero.panel_visibility.insert(tenant, false);
+            // O arrasto acaba aqui: a costura que ele agarrava deixou de existir.
+            self.dock_seam_drag = None;
+            return true;
         }
+        hero.store.set_dock_width(side, w);
         true
     }
 

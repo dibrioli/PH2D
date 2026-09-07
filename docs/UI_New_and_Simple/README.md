@@ -73,9 +73,10 @@ E três defeitos concretos, com foto:
 | **H** | separar LAYOUT de PALETA | ⛔ **a trava não existe**: `PanelLayout` não tem leitor de produção (medido) |
 | **I** | cortar os temas `4 → 2` | ⛔ **RESPONDIDO por medição (07/09)**: o número não é o problema — Godot e Blender shipam ~8 cada, porque um tema DERIVADO é barato. O caro é a paleta à mão, e é só a família clássica que a tem (68 slots contra 5 entradas) |
 
-⏳ **E duas que a restrição de ecrã abriu e ninguém pegou:** um **gesto de RECOLHER** as colunas
-(hoje são dois itens de menu, e recolher dá `89–92 %` de tela) · a **fila de ferramentas DOBRA**
-(`54 → 108 px`) no iPad 11 e no mini com o pincel em mãos.
+✅ **E as duas que a restrição de ecrã abriu FECHARAM:** a **fila de ferramentas** deixou de dobrar
+em 31/08 (é sempre uma linha; o excesso vive atrás do `⋯`), e o **gesto de RECOLHER** chegou em
+07/09 — arrastar a borda para dentro fecha a coluna, uma alça pintada na margem trá-la de volta.
+⭐ Recolher as duas devolve `89–92 %` de tela, mais do que todo o chrome somado vale.
 
 ### O redesenho dos widgets ([`pesquisa/07 §15.2`](pesquisa/07_o_redesenho_dos_widgets.md))
 

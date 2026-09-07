@@ -83,9 +83,33 @@ A faixa é **sempre uma linha**; o que não cabe vive atrás do `⋯` (`tool_bar
 Fechar as duas colunas devolve **89 a 92 %** do ecrã em qualquer dos três. É mais do que todas as
 faixas de chrome somadas valem.
 
-⚠️ **E hoje isso custa dois gestos de menu** (*View → Hierarchy*, *View → Inspector*), um por
-coluna. Não há um gesto de *recolher*. ⏳ É a alavanca com melhor razão custo/benefício que esta
-medição encontra, e é **decisão de produto** (que gesto, que tecla, se as colunas voltam sozinhas).
+### ✅ FEITO (2026-09-07) — e o gesto é o do Blender
+
+⚠️ **Até aqui isso custava dois gestos de menu** (*View → Hierarchy*, *View → Inspector*), um por
+coluna, num aparelho sem teclado.
+
+⭐ **Hoje é um gesto: arrastar a borda da coluna para dentro, para além do mínimo, fecha-a**; uma
+alça pintada na margem trá-la de volta. O dono delegou a decisão (*«faça o que achar melhor
+buscando o estado da arte»*), e a escolha tem três razões medidas:
+
+1. o artista **já arrasta esta borda** — a costura shipou em 2026-08-30, e até aqui apenas travava
+   no mínimo;
+2. funciona **sem teclado**, que é a condição no alvo. O `Ctrl+Space` do Blender e o modo sem
+   distracções do Godot (`Ctrl+Shift+F11`) resolvem o mesmo problema **com uma tecla**, e uma tecla
+   não existe num tablet;
+3. **não custa chrome permanente**: a alça só existe enquanto a coluna está fechada, e nesse estado
+   troca `304–308 px` por `6`.
+
+⚠️ **A alça é PINTADA, ao contrário da costura** — e essa assimetria é a wave inteira num detalhe: a
+costura vive do **cursor**, e num ecrã de toque não há cursor; o que a torna descobrível é a borda
+visível da coluna. Fechada a coluna, essa borda desaparece, e sem alça o caminho de volta seria
+outra vez o menu.
+
+⚠️ O degrau de fecho está **uma linha abaixo do mínimo** (`ROW_H_PX`): chegar ao mínimo é um
+objectivo legítimo, logo tocar-lhe não pode fechar nada — e `22 px` é dez vezes o tremor de um
+toque. As duas leis do degrau são **erro de compilação**, não teste.
+
+⭐ E o fecho **sobrevive ao reinício**: a visibilidade de um painel já entrava na arrumação gravada.
 
 ---
 

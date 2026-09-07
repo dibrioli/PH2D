@@ -1980,6 +1980,76 @@ custa **5 entradas**; um clássico custa **68 slots afinados à mão**. ⇒ a re
 contagem, é a família clássica deixar de crescer — e esta wave já lhe tirou 57 valores. ⛔ Derivá-la
 está **fora**: o clássico é o refúgio do `PH2D_UI_NEW=0` e tem de ficar byte a byte.
 
+### 7.34 — ✅ WAVE 29 (2026-09-07): uma coluna FECHA pelo gesto que já a redimensiona
+
+**Fecha a maior alavanca de ecrã que a medição de tablet encontrou.** Recolher as duas colunas
+devolve **89 a 92 %** do ecrã nos três alvos — *mais do que todas as faixas de chrome somadas
+valem* — e até aqui isso custava **dois passeios ao menu** *Ver*, um por coluna, num aparelho sem
+teclado.
+
+#### ⚠️ Duas das três obras de tablet já estavam feitas
+
+A fila de ferramentas que dobrava (`54 → 108 px`) foi curada em 31/08. ⇒ **sétima pendência desta
+jornada que a medição achou já feita.** E ao medir apareceu o **sexto comentário velho**: o
+cabeçalho do `left_rail.rs` ainda anunciava os dois interruptores de painel como parte da fila —
+eles saíram para o menu em 30/08, e o motivo está escrito no `tool_section`, dez linhas abaixo.
+*Um comentário de topo descreve o ficheiro no dia em que foi escrito.*
+
+#### A decisão, delegada e fundamentada
+
+O dono delegou (*«faça o que achar melhor buscando o estado da arte»*). O gesto é o do **Blender**:
+arrastar a borda de uma região para dentro fecha-a, e uma alça na margem trá-la de volta.
+
+1. o artista **já arrasta esta borda** — a costura shipou em 30/08 e até aqui apenas travava no
+   mínimo;
+2. funciona **sem teclado**, que é a condição no alvo. O `Ctrl+Space` do Blender e o
+   `Ctrl+Shift+F11` do Godot resolvem o mesmo problema **com uma tecla**, e uma tecla não existe
+   num tablet;
+3. **não custa chrome permanente**: a alça só existe com a coluna fechada, e troca `304–308 px`
+   por `6`.
+
+#### ⭐⭐⭐ A assimetria que é a wave inteira num detalhe
+
+**A costura NÃO é pintada; a alça É.** A costura vive do **cursor** — e num ecrã de toque não há
+cursor. O que a torna descobrível é a **borda visível da coluna**; fechada a coluna, essa borda
+desaparece, e sem alça o caminho de volta seria outra vez o menu. *Um gesto que fecha sem caminho
+de volta é uma armadilha; num tablet é uma armadilha sem saída.*
+
+#### As leis, e onde cada uma vive
+
+- **o degrau**: `DOCK_W_COLLAPSE = DOCK_W_MIN − ROW_H_PX`. Chegar ao mínimo é um objectivo legítimo
+  do artista, logo tocar-lhe não pode fechar nada; uma linha é a menor coisa que a coluna sabe
+  mostrar, e `22 px` é dez vezes o tremor de um toque;
+- **quem ocupa cada lado**: `dock_tenant`, **derivado** da mesma comparação de `x` que ordena as
+  colunas — uma tabela `Left → hierarquia` mentiria no espelho e o gesto fecharia a coluna errada;
+- **a alça**: `dock_reopen`, o espelho exacto da costura — ela toma a borda **exterior** de uma
+  coluna fechada, que é onde a borda estava. *A mão volta a puxar de onde empurrou;*
+- **fechar e reabrir** passam pela **mesma porta que o menu usa** (`panel_visibility`): um segundo
+  caminho daria dois estados de «fechado» que podem discordar, e o interruptor do menu passaria a
+  mentir sobre o que o dedo fez.
+
+⭐ E o fecho **sobrevive ao reinício** — a visibilidade de um painel já entrava na arrumação gravada.
+
+#### ⚠️⚠️ Duas correcções ao meu próprio instrumento
+
+**(a) O comando de mutação filtrava ZERO testes num alvo.** `--test X --lib filtro` aplica o filtro
+aos dois alvos: o de integração corria `running 0 tests` e o arnês imprimia um veredito sobre nada.
+**Segunda vez na mesma jornada** que leio uma sobrevivência que não existiu — a primeira foi uma
+agulha que casava 4 vezes. O arnês passou a ter controlo sobre o **filtro** além da agulha, e recusa
+dar veredito quando qualquer alvo corre zero.
+
+**(b) O clippy recusou duas asserções minhas** — *«this assertion has a constant value»* — e a
+recusa aponta para cima: uma propriedade que o compilador consegue decidir não devia esperar por
+uma corrida de testes. As duas leis do degrau são hoje `const _: () = assert!(…)`, erro de
+compilação. *Um teste que o clippy chama de constante é um teste que queria ser uma cerca.*
+
+**Provas de mutação: 6 escritas, 6 mortas** (a alça passa a existir com a coluna aberta · troca de
+borda · o degrau encosta ao mínimo · o inquilino vira tabela fixa · o gesto é desligado na shell ·
+ninguém pinta a alça). ⚠️ As duas últimas só são vistas por um gate que **lê o fonte da shell**,
+porque o `dock_seam_move` faz `return` no `input_dispatch` e nenhum teste de ponteiro o alcança —
+é o idioma que o irmão `the_arrangement_is_read_at_boot_and_written_on_change` já usa, com o motivo
+escrito.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

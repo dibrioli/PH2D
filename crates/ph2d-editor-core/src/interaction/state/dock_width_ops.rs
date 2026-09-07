@@ -55,7 +55,48 @@ impl WidgetStore {
     /// ⚠️ **O mínimo é o do painel** (`PANEL_MIN_W_PX`, 220) — abaixo dele o cabeçalho e uma linha
     /// deixam de caber juntos. O máximo é medido pelo mesmo critério do `clamp_panel_rect`: 70 % de
     /// uma janela de referência, para uma coluna nunca comer a área de desenho inteira.
-    const DOCK_W_MIN: f32 = ph2d_tokens::PANEL_MIN_W_PX;
+    /// O mínimo de uma coluna **aberta**.
+    pub const DOCK_W_MIN: f32 = ph2d_tokens::PANEL_MIN_W_PX;
+
+    /// ⭐⭐⭐ **A largura abaixo da qual o arrasto deixa de ser «encolher» e passa a ser «fechar».**
+    ///
+    /// Medido em `docs/UI_New_and_Simple/medicoes/06`: fechar as duas colunas devolve **89 a 92 %**
+    /// do ecrã em qualquer dos três tablets — mais do que todas as faixas de chrome somadas valem.
+    /// E até 2026-09-07 isso custava **dois passeios ao menu** *Ver*, um por coluna, num aparelho
+    /// sem teclado.
+    ///
+    /// ⭐ **O gesto é o do Blender**, que é a referência que o dono nomeou: arrastar a borda de uma
+    /// região para dentro **fecha-a**, e uma alça na margem trá-la de volta. Escolhido por três
+    /// razões medidas: o artista **já arrasta esta borda** (a costura shipou em 2026-08-30 e hoje
+    /// apenas trava no mínimo); funciona **sem teclado**, que é a condição num tablet — o
+    /// `Ctrl+Space` do Blender e o modo sem distracções do Godot não servem lá; e não custa chrome
+    /// permanente, porque a alça só existe enquanto a coluna está fechada.
+    ///
+    /// ⚠️ **O degrau é UMA LINHA de folga abaixo do mínimo, e o recurso tem nome:** chegar ao
+    /// mínimo é um objectivo legítimo do artista, logo tocar-lhe não pode fechar nada. Uma linha
+    /// (`ROW_H_PX`) é a menor coisa que a coluna sabe mostrar — pedir menos do que *o mínimo menos
+    /// aquilo que ela mostraria* é pedir para não haver coluna. ⛔ Não é folga de dedo: `22 px` é
+    /// dez vezes o tremor de um toque, e a distinção tem de ser deliberada.
+    pub const DOCK_W_COLLAPSE: f32 = Self::DOCK_W_MIN - ph2d_tokens::ROW_H_PX;
+}
+
+// ⭐⭐ **As duas leis do degrau são erro de COMPILAÇÃO, não teste.**
+//
+// ⚠️ Elas nasceram como asserções num gate e o clippy recusou-as — *«this assertion has a constant
+// value»*. Ele tinha razão, e a recusa aponta para cima: uma propriedade que o compilador consegue
+// decidir não devia esperar por uma corrida de testes. *Um teste que o clippy chama de constante é
+// um teste que queria ser uma cerca.*
+const _: () = assert!(
+    WidgetStore::DOCK_W_COLLAPSE < WidgetStore::DOCK_W_MIN,
+    "o degrau de fechar tem de estar ABAIXO do minimo, senao arrastar ate' ao fim fecha por acidente"
+);
+const _: () = assert!(
+    WidgetStore::DOCK_W_MIN - WidgetStore::DOCK_W_COLLAPSE > 10.0,
+    "a folga entre o minimo e o fecho entrou no tremor de um toque: fechar deixou de ser deliberado"
+);
+
+#[allow(dead_code)]
+impl WidgetStore {
     const DOCK_W_MAX: f32 = 720.0; // LITERAL-PX-OK: teto de largura de coluna docada
 }
 

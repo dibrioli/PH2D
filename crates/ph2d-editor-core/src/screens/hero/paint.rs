@@ -490,6 +490,9 @@ pub fn paint_hero_screen(
     // paint after this (unchanged). Painter mode = Image-Tools on AND the
     // active tool is the Painter (mirrored shell-side into `active_tool_id`),
     // which swaps the transform block for the paint tools.
+    // ⭐⭐ **A ALÇA de uma coluna fechada** — antes do rail, porque ela vive na margem e nada se
+    //    sobrepõe a ela. Não pinta nada com as colunas abertas.
+    super::dock_reopen::paint_dock_reopen(&layout, scene, hero.theme);
     let painter_active = hero.rail_shows_painter_tools();
     if hero.view.legacy_chrome {
         paint_left_rail(

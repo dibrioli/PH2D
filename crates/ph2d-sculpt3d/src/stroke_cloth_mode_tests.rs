@@ -465,3 +465,69 @@ fn sonda_da_geometria_do_oraculo_pelo_produto() {
         );
     }
 }
+
+/// **SONDA — O QUE UM DAB DE TECIDO CUSTA, e onde ele encosta no quadro.**
+///
+/// ⛔⛔ **Ela existe porque não há tecto nenhum no caminho do tecido, e nunca
+/// houve medição.** Nem a `ph2d-cloth` nem o adaptador escrevem um `MAX_*`, um
+/// «por ora» ou uma cerca de densidade — o que está certo pela §0.0 do CLAUDE.md
+/// (*meça antes de limitar*), e deixa a outra metade por fazer: **ninguém sabe
+/// onde o pincel deixa de caber num quadro.** *Um limite que ninguém escreveu e
+/// um limite que ninguém mediu leem-se igual até o artista abrir uma peça densa.*
+///
+/// Colunas: `1.º` é o dab que CONSTRÓI a lista de restrições (uma vez por traço)
+/// e `regime` é a mediana dos seguintes. O orçamento de um quadro a 60 fps é
+/// `16,7 ms`. ⚠️ **Não asserta nada** — é relógio, e o `/proc/loadavg` do momento
+/// manda mais que o código (CLAUDE.md §5).
+#[test]
+#[ignore = "sonda"]
+fn sonda_do_custo_de_um_dab_de_tecido() {
+    use crate::Verb;
+    use crate::stroke::cloth_artefatos_tests::plano_n;
+    use crate::stroke::cloth_tests::dab_em;
+    use std::time::Instant;
+    println!(
+        "{:>6} {:>9} | {:>10} {:>10} {:>10} | {:>8}",
+        "n", "vertices", "1.º (ms)", "regime(ms)", "pior (ms)", "% quadro"
+    );
+    for (n, area) in [
+        (64usize, crate::ClothArea::Dynamic),
+        (128, crate::ClothArea::Dynamic),
+        (160, crate::ClothArea::Dynamic),
+        (160, crate::ClothArea::Global),
+    ] {
+        let mut mesh = plano_n(n);
+        let b = Brush {
+            verb: Verb::Cloth,
+            radius: 0.30,
+            strength: 1.0,
+            cloth_area: area,
+            ..Brush::default()
+        };
+        let mut s = SculptStroke::default();
+        s.begin(&mesh);
+        let mut ms: Vec<f64> = Vec::new();
+        for k in 0..20 {
+            let c = [0.02 * k as f32, 0.0, 0.0];
+            let passo = if k == 0 { [0.0; 3] } else { [0.02, 0.0, 0.0] };
+            let t0 = Instant::now();
+            s.dab(
+                &mut mesh,
+                &b,
+                &dab_em(c, b.radius, passo),
+                Symmetry::default(),
+            );
+            ms.push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        let primeiro = ms[0];
+        let mut resto: Vec<f64> = ms[1..].to_vec();
+        resto.sort_by(f64::total_cmp);
+        let mediana = resto[resto.len() / 2];
+        let pior = resto[resto.len() - 1];
+        println!(
+            "{n:>6} {:>9} | {primeiro:>10.2} {mediana:>10.2} {pior:>10.2} | {:>7.1}% {area:?}",
+            mesh.vert_count(),
+            100.0 * mediana / 16.7
+        );
+    }
+}

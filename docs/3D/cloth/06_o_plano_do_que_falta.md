@@ -260,6 +260,38 @@ cargo test --release -p ph2d-cloth --test oraculo_do_pincel <sonda> -- --ignored
 Experiências por env, para bissecar: `PH2D_VARREDURAS` · `PH2D_ORDEM` (`inversa`, `celula:<n>`) ·
 `PH2D_PARES=0` · `PH2D_TRI` · `PH2D_ESC_PHI` · `PH2D_ESC_RET`. No produto: `PH2D_CLOTH_LAW=vbd`.
 
+## §7 — ⭐⭐⭐ O CUSTO, MEDIDO (2026-09-07) — e o tecto que ele nomeia
+
+⛔⛔ **Não há um único tecto escrito no caminho do tecido** — nem a `ph2d-cloth` nem o adaptador têm um
+`MAX_*`, um «por ora» ou uma cerca de densidade. Isso está **certo** pela §0.0 do CLAUDE.md (*meça
+antes de limitar*) e deixava a outra metade por fazer: ninguém sabia onde o pincel deixa de caber num
+quadro. Medido agora ([`sonda_do_custo_de_um_dab_de_tecido`](../../../crates/ph2d-sculpt3d/src/stroke_cloth_mode_tests.rs),
+`load 5,6`, duas corridas a concordar a `1 %`):
+
+| grelha | vértices | 1.º dab (constrói) | regime | % de um quadro de 60 fps |
+|---|---|---|---|---|
+| `64²` | `4 225` | `1,6 ms` | **`1,43 ms`** | `8,5 %` |
+| `128²` | `16 641` | `6,9 ms` | **`6,0 ms`** | `36 %` |
+| `160²` | `25 921` | `10,3 ms` | **`9,1 ms`** | `55 %` |
+| `160²` (área *Global*) | `25 921` | `11,7 ms` | `10,1 ms` | `60 %` |
+
+⭐ **É LINEAR nos vértices, e o coeficiente é `0,35 µs` por vértice por dab** (`0,34` · `0,36` ·
+`0,35` nas três densidades). ⇒ **um quadro de `16,7 ms` compra `~48 000` vértices a um dab por
+quadro**, e o dono esculpe a `~25 000`.
+
+⚠️ **O recurso que este tecto nomeia é TEMPO DE CPU nas cinco varreduras de relaxação** — e ⛔ **elas
+não são paralelizáveis, por construção e não por preguiça:** a ordem em que as restrições são
+resolvidas é **metade da lei** desta linha (Gauss–Seidel não comuta; varrer por índice crescente
+deixa `30` traços acima da barra e pela célula deixam `15`). *Uma varredura paralela responde outra
+coisa, e é a coisa que este módulo passou uma semana a provar que importa.*
+
+⚠️ **E o número é POR DAB, não por quadro:** o traço emite a `0,15 × raio` de espaçamento, logo uma
+mão rápida entrega vários dabs no mesmo quadro e multiplica isto. *A medição diz o preço de um; quem
+decide quantos cabem é o dono.*
+
+⛔ **Nada disto é licença para optimizar** (§0.0): é a tabela que tem de existir **antes** de alguém
+escrever um limite, para que ele diga de que recurso é e traga o número ao lado.
+
 ## §6 — O PROTOCOLO, em quatro passos
 
 1. **Meça** com a sonda por passo até localizar o defeito num vértice, num passo, ou numa grandeza.

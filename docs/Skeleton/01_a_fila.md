@@ -1,0 +1,121 @@
+# 01 — A FILA do módulo do esqueleto
+
+> **O que está ABERTO, na ordem em que faz sentido pegar.** Cada item traz o **mecanismo** (ou o
+> instrumento que o nomeia numa corrida) e o que as referências fazem — não uma promessa.
+>
+> ⚠️ **Uma nota de diferido não é uma spec.** O que torna um item desta fila pegável não é ele estar
+> escrito: é ele dizer *por onde começar a medir*. Um item sem isso é trabalho a redescobrir.
+>
+> ⚠️ **A ordem é uma recomendação, não uma decisão.** Quem escolhe é o dono.
+
+---
+
+## Aberto por REPORT do dono (2026-09-07, no smoke da âncora)
+
+> *«Undo não funciona para add IK. Múltiplos IKs numa cadeia de bones tem resultado ruim. Mas não
+> precisa fazer isso agora. Coloque na fila de implementação para o melhor momento possível.»*
+
+### F1 — ⛔ O `Add IK` não é desfazível
+
+**Sintoma** (verbatim): *«Undo não funciona para add IK»*. Carregar em *Add IK* cria o alvo e a
+restrição; o `Ctrl+Z` seguinte não os leva embora.
+
+**⚠️ A causa NÃO está medida, e este parágrafo existe para não a fabricar.** Há **cinco** motivos
+pelos quais o `App::post_frame_undo` suprime um passo, e eles suprimem **igual** — o
+[`undo_app.rs`](../../shells/desktop/src/undo_app.rs) nomeia-os por escrito, na ordem do
+diagnóstico: *botão do rato em baixo* · *arrasto do gizmo 3D em curso* · *colorize a recalcular* ·
+*transição de estado de UI ao vivo* · *sem entrada neste quadro*.
+
+⭐ **O PRIMEIRO passo é uma corrida, não uma hipótese:**
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector \
+  && env PH2D_VEC_BONE_SMOKE=1 PH2D_UNDO_LOG=1 cargo run -p ph2d-host-desktop --release
+```
+
+…carregar em *Add IK* e ler a linha `[undo] ⛔ o documento MUDOU em … e o passo foi SUPRIMIDO —
+motivo: …`. Ela responde a pergunta inteira. ⛔ **Se ela NÃO aparecer**, o passo foi registado e o
+defeito está no outro lado (o `restore`), que é uma investigação diferente — e a ausência dessa
+linha é o que as separa.
+
+⚠️ **Duas coisas que este report NÃO distingue, e que a medição tem de separar:**
+
+1. **Um passo SUPRIMIDO e um passo AUSENTE leem-se iguais de fora**, e as causas são opostas — o
+   doc do `post_frame_undo` diz-o à letra. Um suprimido **funde-se no passo seguinte**, então o
+   sintoma pode ser *«o Ctrl+Z desfaz demais»* uma acção depois.
+2. ⚠️ **Criar a âncora é um no-op VISUAL por construção** (gate
+   `adding_an_anchor_moves_nothing`): o alvo nasce exactamente na ponta. ⇒ o único sinal na tela é
+   o **losango** aparecer e desaparecer. Um `Ctrl+Z` que funcionasse e um que não funcionasse
+   diferem só nisso, e é por isso que o log importa mais aqui do que noutro sítio.
+
+**Suspeito nomeado, e não é o primeiro a verificar:** o passe da âncora escreve a pose dos ossos
+governados **todo quadro** através do `preview_drive`, e essa condução **nunca larga** (uma
+restrição é permanente por definição). O `settle()` corre no topo do `post_frame_undo` e a
+`substitute_authored` repõe o autorado durante a fotografia — está desenhado para isto, mas é a
+primeira vez que um motor **nunca** solta o que conduz. ⇒ se o log disser *«sem entrada»* ou nada,
+é aqui que se olha a seguir.
+
+---
+
+### F2 — ⛔ Duas âncoras na mesma corrente brigam
+
+**Sintoma** (verbatim): *«Múltiplos IKs numa cadeia de bones tem resultado ruim»*.
+
+**⭐ O mecanismo está MEDIDO por leitura, e são três defeitos, não um:**
+
+1. ⛔ **A ordem de resolução é a dos ARQUÉTIPOS.** O
+   [`skeleton_goal::solve`](../../shells/desktop/src/skeleton_goal.rs) recolhe as âncoras com
+   `iter_entities()` e **não ordena**. Com correntes independentes isso não se nota; com correntes
+   que se sobrepõem, **a ordem É a resposta** — e ela não é sequer estável entre sessões.
+2. ⛔ **Ninguém impõe RAIZ PRIMEIRO.** Se a âncora de baixo resolve antes da de cima, a de cima
+   move os pais e **arrasta** a solução da de baixo — o resultado é sempre a última a correr, e a
+   outra não vale nada.
+3. ⛔ **Nada proíbe duas âncoras sobre o MESMO osso.** Elas escrevem a mesma rotação em sequência,
+   todo quadro: a corrente vibra entre duas poses. É a família do defeito que a wave de 07/09 já
+   curou uma vez (*«uma corrente parada não escreve»*), com outra origem.
+
+**O que as referências fazem** — e as três dão a mesma resposta, que é *a ordem é AUTORADA*:
+
+| Referência | como resolve |
+|---|---|
+| **Spine** | as restrições têm uma **ordem explícita na árvore**, que o artista reordena. É feature, não detalhe. |
+| **Blender** | avalia por **ordem da hierarquia de ossos** (raiz primeiro) e, dentro de um osso, pela ordem da pilha de constraints. |
+| **Rive** | ordem de dependência derivada do grafo, com o ciclo **recusado**. |
+
+⇒ **O desenho provável** (não implementado, não decidido): a ordem sai da **profundidade na
+hierarquia** (raiz primeiro, que é derivada e não precisa de UI), e duas âncoras sobre o mesmo osso
+é **estado inválido** — a segunda é recusada em voz alta, como o `add()` já recusa uma segunda
+âncora no mesmo osso hoje.
+
+⚠️ **A cerca que JÁ EXISTE e não cobre isto:** o `add()` recusa uma segunda âncora **no mesmo
+osso**, e o `feeds_back` recusa um alvo **dentro da própria corrente**. Nenhuma das duas vê duas
+âncoras em ossos **diferentes** cujas correntes se **cruzam** — que é exactamente o caso do report.
+
+**A régua que falta é a que apanharia isto sozinha:** resolver a mesma cena **duas vezes** e exigir
+a mesma pose (o `solving_twice_from_its_own_output_gives_the_same_pose` existe para UMA corrente, em
+`ph2d-skeleton`; o irmão para N âncoras não existe). ⭐ *Um gate de ponto fixo é o que separa «ordem
+arbitrária» de «ordem errada».*
+
+---
+
+## Aberto de waves anteriores (as opções que o dono ainda não escolheu)
+
+| # | O quê | Estado |
+|---|---|---|
+| F3 | **Smart Bones** (Moho) — girar um osso toca uma animação inteira | nunca começado |
+| F4 | **Limites de ângulo por junta** — o cotovelo que não dobra para trás | nunca começado |
+| F5 | **Pole target** — quem decide para que lado o joelho aponta, autorado em vez de derivado da pose | a lei do lado existe (`STRAIGHT`, desempate determinístico); falta o alvo autorado |
+| F6 | **A segunda mídia** (raster/Flip) | ⛔ **bloqueado**: precisa de uma malha sobre a imagem, que não existe — meça o preço antes de prometer |
+| F7 | **O painel próprio do módulo** | ⏸️ adiado até F3–F5 lhe darem conteúdo (medido: hoje são 3 botões e 5 campos, que cabem na seção do vetor) |
+
+---
+
+## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
+
+| O quê | Por quê | Onde |
+|---|---|---|
+| Guardar os **pesos** numa tabela por ordem de varredura | é o *vector paralelo* que o `corner_radius` proíbe por escrito; derivar custa **0,146 %** de um quadro | [`ph2d-skeleton-ecs`](../../crates/ph2d-skeleton-ecs/src/lib.rs) |
+| Referenciar um osso por `Entity::to_bits()` | **medido `0 de 2`**: o undo re-spawna e os bits são ids de alocação — a pele morria em silêncio; e o `from_bits` **aborta o processo** com bits de outra sessão | degrau 122 da escada |
+| Misturar FK↔IK pelas **posições** das juntas | encurta os ossos (a corda é mais curta que o arco); a mistura é sobre o **ângulo** | `ph2d_skeleton::blend_angle` |
+| Um `Driver` novo no `preview_drive` para a âncora | dois memos sobre o **mesmo componente** repõem `Transform`s diferentes na mesma fotografia, e quem ganha é a ordem do `BTreeMap` | `skeleton_goal` (cabeçalho) |
+| `chain = 0` (*até à raiz*) como valor de nascimento | é o default do Blender e a queixa nº 1 documentada da feature dele: ao primeiro arrasto o esqueleto inteiro dobra | `DEFAULT_CHAIN = 2` |

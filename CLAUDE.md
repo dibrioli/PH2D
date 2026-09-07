@@ -768,6 +768,22 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   escrita à mão. ⚠️ Antes disso o `round` do **cone** e do **prisma** era **inerte** (`+0,0 %` de
   volume, campo bit a bit igual) e o da **cunha** fazia a peça **crescer 41 %**; o **arco de toro** não
   tinha controle de filete nenhum. `FIELD_DOC_VERSION` **4 → 10**. Cena **`=11`**.
+  ⭐⭐ **E o catálogo tem 68 entradas sobre 58 primitivas** (07/09, W131–W135: *Triangle*, *Polygon(N)*
+  com os vértices **arrastáveis no canvas**, *Torus Knot* `(p,q)`, *Thread* e *Knurled Grip*), com a
+  fila de formas por fórmula a fechar de 10 para **6** ([doc 09](docs/3DModeling/09_plano_das_dez_que_faltam.md)).
+  ⛔ **Conte os três no código**, nunca aqui: `PrimitiveKind::ALL` · `grep -c 'key: "panel.model3d.add'`
+  · as `CENAS` do smoke. `FIELD_DOC_VERSION` **17 → 18** — ⚠️⚠️ **e o `collision-surface.sh` NÃO o vê**
+  (ele conta `PROJECT_SCHEMA`, `VEC_SCENE_SCHEMA`, `FLIP_SCHEMA` e o `DOC_VERSION` da timeline, e este
+  fica de fora): duas linhas que o subam em paralelo fundem **mudas**. Cenas **`=26`..`=29`**.
+  ⚠️ **O `Thread` NÃO é a `Helix` com um cilindro à volta** — a mola mede a distância a uma CURVA, a
+  rosca é um **perfil varrido por movimento de parafuso**, e é isso que fecha o factor da tangente em
+  forma fechada. ⏳ **ABERTO:** a `sd_helix` engorda o tubo `1/c` (a ferramenta da cura já está escrita
+  **duas** vezes) · o arranque da rosca fica afiado (cura medida e **recusada** — a saída é um chanfro
+  de entrada) · o [doc 06](docs/3DModeling/06_resultados_cena_e_gizmo.md) está em **~850 KB**, muito
+  além do joelho de 80–110 KB, e o `doc-split.py` é devido.
+  [Handoff de 07/09](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_2026-09-07.md) (⚠️ o §8
+  tem **seis** coisas que uma leitura rápida do diff entende ao contrário, e o §9 as **seis** premissas
+  que a medição derrubou).
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

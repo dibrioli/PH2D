@@ -237,6 +237,19 @@ extend-ignore-identifiers-re = [
     # «ponto crítico» por «crítico» (pessoa). Ancorada no identificador inteiro pela mesma
     # razão do vizinho acima.
     "^candidatos_criticos$",
+    # `dialectos` — pt-PT de «dialetos», e a palavra é o SUJEITO do censo do realce da
+    # `line/UIUX` (*«cinco listas, QUATRO dialectos»*): cada lista pintava a selecção à sua
+    # maneira. O typos quer o inglês `dialects`. ⚠️ Ancorada só no PLURAL, que é a única forma
+    # que ele assinala — `dialecto` no singular passa, e um `dialect` inglês mal escrito
+    # continua a ser acusado em qualquer sítio.
+    "^dialectos$",
+    # `transforme` / `transformes` — português, e as duas são de famílias diferentes que o typos
+    # empurra para o mesmo inglês. O `transforme` é IMPERATIVO (o `doc-index.sh` a dizer *«colha
+    # a saída dele … e transforme cada corrida num gate»*, a lei do §0.9); o `transformes` é o
+    # PLURAL do substantivo do módulo Motion (*«há transformes e tints»* — os nós que escrevem
+    # o `Transform` de uma linha). O typos oferece `transfer`/`transformers`, que trocariam uma
+    # ORDEM por um verbo de transferência e um NÓ por um filme.
+    "^transformes?$",
 ]
 
 [default.extend-identifiers]

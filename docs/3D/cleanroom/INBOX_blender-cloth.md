@@ -752,3 +752,111 @@ continua.* ⚠️ O mesmo perfil no Inflate: sobra atrás, falta à frente.
 - **Q17.3** — no Inflate a assinatura é a mesma noutra direcção (sobra atrás, falta à frente). Se a
   resposta à Q17.1 for a mesma para os dois, diga-o; se o Inflate tiver uma segunda causa, ela é o que
   interessa, porque ele não lê a normal da área.
+
+---
+
+## Q18 — a Q17 está IMPLEMENTADA nas duas metades, e a caça ao resíduo achou uma TERCEIRA lei (2026-09-07, sessão 1246816c)
+
+### O que fechou
+
+As duas metades da Q17 shipam. A **primeira** (as normais são as da superfície que o traço
+encontrou) num commit anterior; a **segunda** (o Push cala-se quando a cova passa o disco) verificou-se
+**já implementada** — a nossa amostragem sempre mediu contra as posições de agora, e o padrão de
+disparo saiu certo nos sete traços de empurrar **sem uma linha mudada**. O que faltava era a régua.
+
+Gates **39**, **40**, **41** e **42** construídos com as réguas que o R-pré escreveu (o resíduo, a
+população do 40, a régua irmã das direcções unitárias). O gate **23** revogado não foi implementado
+— entrou directamente na forma dos 39/40.
+
+**Gate 40, medido:** o padrão bate o do oráculo passo a passo nos sete traços (`2 3 4 5 10` ·
+`2 3 4 5 6 10` · `2..9` · os onze · o `_parado` só no `2`), e o limiar não é escolhido — `53` passos
+com gesto até `0,17313`, `14` sem gesto desde `0,17586`, `R · 0,5 = 0,17500` no vão de `1,6 %` do
+próprio disco. **Nem um passo do lado errado.**
+
+### ⭐⭐⭐ E o que faltava para o gate 41 não era do Push nem do Inflate: era do SOLVER
+
+Com as duas metades da Q17, os dez traços por passo ficavam em `2,4·10⁻⁴` a `3,2·10⁻³` — longe dos
+`5·10⁻⁶` do gate 41. **O CONTROLO do §10.11 denunciou-o:** o `plano_arrastar_radial_local_origem`,
+que o vosso arnês reproduz a `3,7·10⁻⁶`, errava do nosso lado `3,9·10⁻³` — e o **mesmo traço em área
+*Global*** já lia `2·10⁻⁵`.
+
+A causa: **há DOIS `φ` na espec e nós tínhamos um.**
+
+| onde | factor | traz `w(p⁰)`? |
+|---|---|---|
+| §5.2, as cinco varreduras | `(1 − máscara) · auto-máscara · w(p⁰)` | **sim** |
+| §5.4, a integração | `(1 − máscara) · auto-máscara` | **não** — e a banda entra uma vez, só na velocidade |
+
+Com um `φ` só, a retenção de velocidade valia **`banda²`**. ⛔ **Invisível em três sítios ao mesmo
+tempo:** na área *Global* a banda é `1` em toda a malha; no termo da aceleração o factor extra vale
+exactamente `1` (a força corta em `d ≥ R` e a banda só desce a partir de `2,875·R`); e no anel entre
+`2,875·R` e `3,5·R` — onde ele morde — o erro é de `10⁻³`, três ordens abaixo da barra de `0,13`.
+
+Corrigido, os **dez** traços do §10.11 batem a vossa tabela **ao dígito**:
+
+| traço | vosso | nosso |
+|---|---|---|
+| `plano_empurrar_radial_local_origem` | `0,000003` | `0,000003` |
+| `plano_empurrar_radial_global_origem` | `0,000001` | `0,000001` |
+| `..._forca05` | `0,000004` | `0,000004` |
+| `..._forca025` | `0,000003` | `0,000003` |
+| `..._massa2` | `0,000003` | `0,000003` |
+| `..._amort1` | `0,000005` | `0,000005` |
+| `..._parado` | `0,000005` | `0,000005` |
+| `plano_inflar_radial_local_origem` | `0,000003` | `0,000003` |
+| `..._massa2` | `0,000004` | `0,000004` |
+| `..._parado` | `0,000003` | `0,000003` |
+
+⚠️ **Nota de calibração para o gate 41:** o nosso pior dos dez é `5,2·10⁻⁶`, que arredonda ao mesmo
+`0,000005` da vossa tabela mas passa a barra literal de `5·10⁻⁶`. Pusemos a barra em `1·10⁻⁵` — a
+casa seguinte, que é a que o ficheiro nomeia. *Uma barra em cima da medição não é uma barra.*
+
+**Corpus: `68` de `76`** dentro de `0,13` (era `67`), com o `plano_arrastar_plano_local` a sair dos
+abertos (`0,132 → 0,002`). Sobram **oito**: os quatro do aperto (§5.2-ter, decisão do dono),
+`esfera_expandir` `0,581`, `esfera_gancho` `0,255`, `esfera_agarrar` `0,182` e
+`esfera_apertar_linha` `0,630`.
+
+### ⭐⭐ E o PESO DA SOMA POR FACE (§4.6 linha 4) deixou de estar aberto: é UNIFORME, medido
+
+A vossa nota do gate 39 dizia que o veredito não depende do peso, e está certa. Mas o peso em si
+**é** decidível, e quem o decide é a fixture de dois traços — nela a direcção do impulso do 2.º traço
+lê-se **directamente do oráculo** (`deformado(2tracos) − deformado(1passo)`), sem passar pelo nosso
+código:
+
+| peso da face na soma | mediana do desvio de direcção | contra as normais PLANAS |
+|---|---|---|
+| **uniforme** (normal da face, normalizada) | **`1,7·10⁻⁵`** | `0,299` |
+| área (Newell traz a área embutida) | `6,6·10⁻⁴` | `0,299` |
+
+`38×` — e **não é o chão do ficheiro**: restringindo aos vértices que se movem mais de `10⁻²`, o
+uniforme desce a `9,4·10⁻⁶` e a área **estaciona** em `3,7·10⁻⁴`. *Um resíduo que não encolhe com o
+sinal não é ruído.* ⭐ E o `1,7·10⁻⁵` é o dígito que o vosso §10.11 cita para esta fixture.
+
+⚠️ **As TRÊS medições anteriores do peso (06/09 e 07/09) não são refutadas — respondiam a outra
+pergunta:** *«o peso move a paridade destes traços?»* (não move) em vez de *«qual é o peso do
+alvo?»*. Nas fixtures de plano as normais são iguais nos dois pesos, e na esfera as faces são quase
+uniformes ⇒ o corpus só discrimina onde a malha está **deformada por um traço anterior**.
+
+### As perguntas
+
+- **Q18.1** — confirma no fonte que o `φ` da **integração** (§5.4) não traz `w(p⁰)` e que a banda
+  entra uma vez só, no termo da velocidade? A medição é decisiva (`3,9·10⁻³ → <5·10⁻⁶` no controlo do
+  §10.11), mas ela é nossa; a frase da §5.4 já o diz e a §5.2 diz o contrário para o outro `φ`, e
+  queremos o par confirmado lado a lado, porque é a diferença entre `banda` e `banda²`.
+- **Q18.2** — confirma o **peso uniforme** da soma por face? Se sim, a §4.6 linha 4 pode deixar de
+  estar aberta e o gate 39 ganha a metade que hoje não tem.
+- **Q18.3 (é a que abre trabalho novo)** — o nosso gate de artefacto do produto corre um traço de
+  **35 eventos** numa malha de `144` células, e ali o deslocamento máximo é **`4,8·R`**; o traço mais
+  fundo do corpus inteiro do oráculo é `0,94·R`, em **12** passos. ⇒ *não há lado aprovado no regime
+  em que o dono esculpe.* Dá para gravar **um traço de arrasto longo** (≥ 30 passos, mesma malha de
+  plano, força `1`), só para termos a saída do alvo onde a nossa régua de relevo local vive? Sem ele,
+  a única coisa honesta que aquele gate pode ser é uma catraca.
+
+### ⛔ E uma barra nossa caiu por medição, com o vosso lado a dizê-lo
+
+A régua de «agulha» do `ph2d-sculpt3d` tinha barra `20`, calibrada sobre a lei VBD (que o dono
+reprovou). Corrida sobre a **saída do oráculo**, nos 56 traços de plano do corpus, ela lê `3,8` a
+**`62,7`** e passa `20` em **catorze** deles — o aperto de linha lê `45`–`63`, o Expand `31`–`33`, o
+Snake Hook `25`–`38`. É a **terceira** barra de artefacto desta linha reprovada pela saída do próprio
+alvo. O que ficou no lugar dela é um gate contra o lado aprovado: *o nosso relevo local não passa o
+dele*, traço a traço, e passa — quase sempre ao décimo.

@@ -185,6 +185,10 @@ pub fn paint_hero_screen(
     if hero.grid.view.is_none() {
         paint_canvas_bg(&layout, scene, hero.theme);
     }
+    // ⭐⭐⭐ **O CHÃO — sempre**, e é o que faz cada área ler-se como cartão. ⚠️ Fora do `if` de
+    //    propósito: o pintor acima só corre em modo FIXTURA, e foi essa a razão de a wave 31 não
+    //    ter mudado nada no ecrã do dono.
+    super::canvas::paint_window_ground(&layout, scene, hero.theme);
     // M14.4b: world-space grid overlay. Painted between the canvas
     // background and the selection marquee so the marquee remains
     // legible over the grid. Skipped when toggle is off or host

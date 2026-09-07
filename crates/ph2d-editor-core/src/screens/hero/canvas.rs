@@ -32,31 +32,70 @@ pub fn canvas_backdrop(theme: Theme) -> ph2d_tokens::Color {
     ColorToken::Bg1.resolve(theme)
 }
 
-/// ⭐⭐⭐ **O CHÃO da janela, e a ÁREA como um cartão sobre ele.**
+/// A tolerância com que uma curva é achatada em segmentos ao construir o caminho do chão.
+///
+/// ⚠️ **Não é uma medida de desenho:** é o erro máximo, em pixels, entre a curva verdadeira e a
+/// polilinha que a aproxima — a mesma grandeza que o `kurbo` chama `tolerance`. Um décimo de pixel
+/// está bem abaixo do que um ecrã mostra, e o caminho é construído uma vez por quadro sobre dois
+/// contornos.
+const FLATTEN_TOL: f64 = 0.1; // LITERAL-PX-OK: tolerância de achatamento de curva, não desenho
+
+/// ⭐⭐⭐ **O CHÃO da janela, com um FURO onde a área de desenho aparece.**
 ///
 /// Enio, 2026-09-07, com o Godot ao lado: *«os painéis, o canvas, a timeline, na Godot parecem
-/// cards, e assim os espaços entre cards ficam legais… a aparência de cards me parece mais pro»*.
+/// cards… a aparência de cards me parece mais pro»*.
 ///
-/// ⛔⛔ **A divisória da wave 30 não bastou, e a razão estava AQUI:** o fundo da janela era o `Bg0`
-/// e a seguir o `Bg1` cobria-o inteiro — os dois **mais claros** que o painel (`#1B1B1B` e
-/// `#1F1F1F` contra `#131313` no Dark). ⇒ o vão de 4 px mostrava uma cor mais **clara** que as
-/// superfícies que ele separava, que é o oposto de uma divisória. *Um espaço só se lê se o que
-/// aparece nele estiver ATRÁS das duas coisas que ele separa.*
+/// ⛔⛔⛔ **A 1.ª tentativa editou um pintor que o PRODUTO NÃO CORRE, e o aviso estava escrito no
+/// ficheiro ao lado.** O [`paint_canvas_bg`] só corre em modo FIXTURA: em modo vivo — que é sempre,
+/// no produto — o compositor mostra o `game_rt` por baixo de onde o vello tem `α = 0`, e por isso o
+/// `HeroScreen` **salta** o fill do canvas. O doc do `canvas_clear.rs` di-lo em três linhas:
+/// *«quem procurar a cor do fundo no painter vai encontrar código que o produto não corre»*.
+/// *Sétima vez nesta jornada que a resposta já estava escrita e eu não a fui ler.*
 ///
-/// ⇒ o chão passa a ser o [`ColorToken::WindowGround`], um degrau abaixo do painel, e o fundo do
-/// desenho passa a cobrir a **`draw_area`** com quina — deixando o chão à vista nas divisórias.
-///
-/// ⚠️ **A cor do fundo do desenho não mudou** (`canvas_backdrop`, o `Bg1` que o dono aprovou): o
-/// que mudou é onde ela acaba.
-pub fn paint_canvas_bg(layout: &HeroLayout, scene: &mut VectorScene, theme: Theme) {
+/// ⇒ o chão **não pode ser um fill por baixo** (taparia o desenho): ele é a janela inteira **menos**
+/// a área, recortada com regra PAR-ÍMPAR. Dentro do furo o vello não pinta nada, o `α` fica a zero,
+/// e o compositor mostra lá o que a área tem — que é o que faz dela um cartão em vez de um buraco.
+pub fn paint_window_ground(layout: &HeroLayout, scene: &mut VectorScene, theme: Theme) {
+    use ph2d_vector::Shape;
+    let r = layout.draw_area;
+    if r.w <= 0.0 || r.h <= 0.0 {
+        return;
+    }
+    let radius = crate::paint::frame_radius(theme, ph2d_tokens::Radius::Md.px());
+    let mut path = ph2d_vector::BezPath::new();
+    // O contorno exterior: a janela.
+    path.extend(
+        ph2d_vector::Rect::new(
+            f64::from(layout.viewport.x),
+            f64::from(layout.viewport.y),
+            f64::from(layout.viewport.x + layout.viewport.w),
+            f64::from(layout.viewport.y + layout.viewport.h),
+        )
+        .path_elements(FLATTEN_TOL),
+    );
+    // O furo: a área, com quina.
+    path.extend(
+        ph2d_vector::RoundedRect::new(
+            f64::from(r.x),
+            f64::from(r.y),
+            f64::from(r.x + r.w),
+            f64::from(r.y + r.h),
+            f64::from(radius),
+        )
+        .path_elements(FLATTEN_TOL),
+    );
+    scene.push_clip_with_rule(&path, ph2d_vector::Fill::EvenOdd);
     scene.fill_rect(
         rect_to_vello(layout.viewport),
         resolve(ColorToken::WindowGround, theme),
     );
-    crate::paint::fill_rounded_rect(
-        scene,
-        layout.draw_area,
-        crate::paint::frame_radius(theme, ph2d_tokens::Radius::Md.px()),
+    scene.pop_layer();
+}
+
+/// O fundo do desenho — ⚠️ **só em modo FIXTURA**; ver [`paint_window_ground`].
+pub fn paint_canvas_bg(layout: &HeroLayout, scene: &mut VectorScene, theme: Theme) {
+    scene.fill_rect(
+        rect_to_vello(layout.draw_area),
         crate::paint::token_to_vello(canvas_backdrop(theme)),
     );
 }

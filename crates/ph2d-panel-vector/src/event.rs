@@ -567,6 +567,10 @@ fn is_shell_owned_number(id: ph2d_a11y::NodeId) -> bool {
         // cara de um controlo nascer morto, porque parece vivo (o Z-index acima pagou-a).
         || id == ids::VECTOR_BONE_LENGTH
         || id == ids::VECTOR_BONE_STRENGTH
+        // ⭐ E os três da ÂNCORA, pela MESMA razão: eles moram num componente da entidade.
+        || id == ids::VECTOR_BONE_IK_MIX
+        || id == ids::VECTOR_BONE_IK_SOFTNESS
+        || id == ids::VECTOR_BONE_IK_CHAIN
         || crate::populate::layout::LAYOUT_FIELDS.contains(&id)
 }
 

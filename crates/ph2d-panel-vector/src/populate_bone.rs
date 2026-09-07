@@ -34,4 +34,18 @@ pub(super) fn populate_bone(store: &mut WidgetStore) {
     // um deslocamento.
     world_number_field(store, ids::VECTOR_BONE_LENGTH, 0.0);
     world_number_field(store, ids::VECTOR_BONE_STRENGTH, 1.0);
+    // ⭐⭐⭐ A ÂNCORA DE IK — os dois verbos e os três números dela.
+    //
+    // ⚠️ **Os dois botões são registados SEMPRE**, mesmo sendo pintados um de cada vez: o registo é
+    // o que diz *«este id existe»* ao índice de acerto e ao AccessKit, e a pintura é que decide
+    // qual dos dois o artista vê. Registar só o pintado faria o outro nascer **morto sob o dedo** —
+    // o defeito dos quatro chips da booleana, que só o gesto real apanhou.
+    button(store, ids::VECTOR_BONE_IK_ADD);
+    button(store, ids::VECTOR_BONE_IK_REMOVE);
+    // ⚠️ Pela porta do MUNDO, como os dois de cima: `Mix` e `Softness` são adimensionais e `Chain`
+    // conta ossos — nenhum deles é uma medida de desenho, e emprestar-lhes a faixa de um recurso
+    // alheio é o defeito que o §0.0 nomeia.
+    world_number_field(store, ids::VECTOR_BONE_IK_MIX, 1.0);
+    world_number_field(store, ids::VECTOR_BONE_IK_SOFTNESS, 0.0);
+    world_number_field(store, ids::VECTOR_BONE_IK_CHAIN, 2.0);
 }

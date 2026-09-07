@@ -222,6 +222,18 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
             }
         }
     }
+    // ⭐ E os três da ÂNCORA, pela mesma porta e com o mesmo guarda de foco.
+    if let Some((mix, softness, chain)) = state::current_bone_ik() {
+        for (id, v) in [
+            (ids::VECTOR_BONE_IK_MIX, mix),
+            (ids::VECTOR_BONE_IK_SOFTNESS, softness),
+            (ids::VECTOR_BONE_IK_CHAIN, chain),
+        ] {
+            if store.focus_id() != Some(id) {
+                store.set_number_value(id, v);
+            }
+        }
+    }
     // Seed the Transform fields from the published bbox. 1-frame post-commit lag, ok.
     if let Some([tx, ty, tw, th]) = state::current_transform() {
         let focus = store.focus_id();

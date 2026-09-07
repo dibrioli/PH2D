@@ -1,4 +1,4 @@
-//! **A família do ESQUELETO** — os 2 componentes de `ph2d-skeleton-ecs`.
+//! **A família do ESQUELETO** — os 4 componentes de `ph2d-skeleton-ecs`.
 //!
 //! ⚠️ **Família própria, e não uma prateleira do vetor.** Ela nasceu em 2026-09-06, quando os
 //! ossos saíram de dentro do módulo vectorial: nas quatro referências do mercado um esqueleto só
@@ -25,6 +25,15 @@ pub const DESCS: &[D] = &[
     // ⭐ O OSSO — `authored`: ele TEM `Default` (comprimento 1, força 1 é um osso legítimo), logo
     // a paleta do `+` consegue construí-lo no ponto neutro.
     D::authored("ph2d::skeleton::Bone", "Bone", C::Skeleton, O::ANY, &[]),
+    // ⭐ A ÂNCORA — `intrinsic` pela mesma razão da pele: ela chega com o gesto (*Add IK*), que cria
+    // o ALVO no mesmo passo. Pendurá-la por paleta daria uma restrição sem alvo — inerte, e sem
+    // caminho pelo qual o artista a completasse.
+    //
+    // ⚠️ O rótulo é o nome que as quatro referências usam (*IK*), e não o do tipo.
+    D::intrinsic("ph2d::skeleton::IkGoal", "IK Goal", C::Skeleton, &[]),
+    // ⭐ A MARCA do alvo — `intrinsic` pela mesma razão: ela chega com o gesto, e pendurá-la à mão
+    // num objecto qualquer só o esconderia do anel de objecto vazio sem lhe dar alça nenhuma.
+    D::intrinsic("ph2d::skeleton::IkTarget", "IK Target", C::Skeleton, &[]),
     // ⭐ A PELE — `intrinsic`: ela chega com o GESTO (*Bind*) e **não tem `Default`**, porque uma
     // pele sem a fonte autorada dentro não é uma pele, é uma forma prestes a sumir.
     D::intrinsic("ph2d::skeleton::Skin", "Skin", C::Skeleton, &[]),

@@ -3333,6 +3333,16 @@ impl crate::App {
             let mut pending_bone_bind = false;
             let mut pending_bone_release: Option<crate::skeleton_live::Keep> = None;
             let mut pending_bone_knob: Option<(bool, f64)> = None;
+            /// Qual dos três números da ÂNCORA o campo escreveu.
+            #[derive(Clone, Copy, PartialEq)]
+            enum IkKnob {
+                Mix,
+                Softness,
+                Chain,
+            }
+            let mut pending_ik_add = false;
+            let mut pending_ik_remove = false;
+            let mut pending_ik_knob: Option<(IkKnob, f64)> = None;
             // ⚠️ **O osso seleccionado lê-se AQUI, antes de o mundo ser emprestado mutável** — os
             // verbos lá em baixo já seguram `sim`, e uma leitura de `self` no meio deles não
             // compila. O valor é do QUADRO, e é o mesmo que o gesto e o overlay usam.
@@ -3620,6 +3630,11 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_BONE_BIND {
                                 // ⭐⭐⭐ O ESQUELETO (estudo 42 item 5): prende a seleção aos ossos.
                                 pending_bone_bind = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_BONE_IK_ADD {
+                                // ⭐⭐⭐ A ÂNCORA: dá ao osso em foco um alvo que a corrente persegue.
+                                pending_ik_add = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_BONE_IK_REMOVE {
+                                pending_ik_remove = true;
                             } else if *id == ph2d_editor::ids::VECTOR_BONE_EXPAND {
                                 // Solta e fica com a pose de AGORA (o Expand do envelope).
                                 pending_bone_release = Some(crate::skeleton_live::Keep::Deformed);
@@ -4049,6 +4064,12 @@ impl crate::App {
                                 // rota dos campos do Transform e do layout.
                                 pending_bone_knob =
                                     Some((*id == ph2d_editor::ids::VECTOR_BONE_STRENGTH, *v));
+                            } else if *id == ph2d_editor::ids::VECTOR_BONE_IK_MIX {
+                                pending_ik_knob = Some((IkKnob::Mix, *v));
+                            } else if *id == ph2d_editor::ids::VECTOR_BONE_IK_SOFTNESS {
+                                pending_ik_knob = Some((IkKnob::Softness, *v));
+                            } else if *id == ph2d_editor::ids::VECTOR_BONE_IK_CHAIN {
+                                pending_ik_knob = Some((IkKnob::Chain, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_X {
                                 pending_vec_vert = Some((false, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_Y {
@@ -6158,6 +6179,44 @@ impl crate::App {
                     osso.strength = v.max(0.0);
                 } else {
                     osso.length = v.max(0.0);
+                }
+            }
+            // ⭐⭐⭐ **A ÂNCORA DE IK** — os dois verbos e os três números, aplicados aqui como os do
+            // esqueleto: o dreno acima só CAPTURA.
+            if let Some(bits) = osso_selecionado {
+                let osso = ph2d_ecs::Entity::from_bits(bits);
+                if pending_ik_add {
+                    match crate::skeleton_goal::add(sim, osso) {
+                        Some(_) => eprintln!(
+                            "[ph2d-vec] osso: ancora de IK criada na ponta -- arraste o LOSANGO e a                              corrente segue-o, para sempre (a timeline anima-o como qualquer objecto)"
+                        ),
+                        None => eprintln!(
+                            "[ph2d-vec] osso: este osso ja' tem ancora -- so' pode haver uma por corrente"
+                        ),
+                    }
+                }
+                if pending_ik_remove {
+                    crate::skeleton_goal::remove(sim, osso);
+                }
+                if let Some((qual, v)) = pending_ik_knob
+                    && let Some(mut g) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::IkGoal>(osso)
+                {
+                    match qual {
+                        // ⛔ `0..1` é a faixa da LEI, não uma escolha: fora dela o `blend_angle`
+                        // satura nos extremos, e um campo que aceita `7` mentiria sobre o efeito.
+                        IkKnob::Mix => g.mix = v.clamp(0.0, 1.0),
+                        // ⛔ Piso em zero e SEM tecto: a suavidade é uma fracção do alcance, e o
+                        // `softened_distance` já a apara pelo próprio alcance — §0.0, o limite é do
+                        // recurso e não um palpite.
+                        IkKnob::Softness => g.softness = v.max(0.0),
+                        // ⛔ Idem: quem apara a corrente é a ARVORE, no passe.
+                        #[expect(
+                            clippy::cast_possible_truncation,
+                            clippy::cast_sign_loss,
+                            reason = "o campo é f64 e a contagem de ossos é u32; o piso em 0 já corre acima"
+                        )]
+                        IkKnob::Chain => g.chain = v.max(0.0) as u32,
+                    }
                 }
             }
             if pending_create_envelope {
@@ -8759,15 +8818,22 @@ impl crate::App {
                 ph2d_panel_vector::set_current_has_skeleton(
                     !crate::skeleton_live::bone_segments(sim).is_empty(),
                 );
-                ph2d_panel_vector::set_current_bone(
-                    crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected()).and_then(
-                        |b| {
-                            sim.world()
-                                .get::<ph2d_skeleton_ecs::Bone>(ph2d_ecs::Entity::from_bits(b))
-                                .map(|v| (v.length, v.strength))
-                        },
-                    ),
-                );
+                let osso_em_foco =
+                    crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected());
+                ph2d_panel_vector::set_current_bone(osso_em_foco.and_then(|b| {
+                    sim.world()
+                        .get::<ph2d_skeleton_ecs::Bone>(ph2d_ecs::Entity::from_bits(b))
+                        .map(|v| (v.length, v.strength))
+                }));
+                // ⭐⭐⭐ **A ÂNCORA do osso em foco** — é isto que decide entre *Add IK* e *Remove IK*
+                // no painel, e se os três números dela têm sujeito. ⚠️ Pela MESMA porta que publica
+                // os números do osso (`selected_bone`): duas perguntas *"qual osso está aceso?"*
+                // divergiriam no primeiro clique.
+                ph2d_panel_vector::set_current_bone_ik(osso_em_foco.and_then(|b| {
+                    sim.world()
+                        .get::<ph2d_skeleton_ecs::IkGoal>(ph2d_ecs::Entity::from_bits(b))
+                        .map(|g| (g.mix, g.softness, f64::from(g.chain)))
+                }));
                 // Text on Path (plano 22): as duas perguntas que só a shell sabe responder —
                 // *"esta seleção permite prender?"* (um texto + um caminho) e *"o texto em foco
                 // já cavalga alguma coisa, e com que valores?"*. A primeira usa a MESMA porta
@@ -9296,6 +9362,15 @@ impl crate::App {
             // partir de uma fonte guardada em bytes — e DEPOIS dele, porque a pele fala de formas
             // que já existem na cena e o envelope pode acabar de reescrever uma.
             //
+            // ⭐⭐⭐ **AS ÂNCORAS** — a cinemática INVERSA que persiste. Corre **imediatamente antes**
+            // do recook da pele, e a ordem é load-bearing: ela escreve a pose dos ossos, e o recook
+            // é quem transforma a pose em geometria. Ao contrário, a pele mostraria a pose do quadro
+            // anterior — um atraso de um quadro, invisível parado e visível a arrastar.
+            //
+            // ⚠️ O `preview_drive` entra na assinatura porque o que este passe escreve é
+            // **pré-visualização**: o documento é a pose da ÂNCORA, e a rotação dos ossos governados
+            // é derivada dela.
+            crate::skeleton_goal::solve(sim, &mut self.preview_drive);
             // ⚠️ Sem `xforms`: a pele resolve a pose de cada osso e da forma pela hierarquia (a
             // propagação de `Transform` que a casa já corre), que é a mesma razão de a cinemática
             // directa não precisar de código.
@@ -10684,7 +10759,19 @@ impl crate::App {
                         &ossos,
                         hero.gizmo.selection,
                         self.bone_hover,
-                        &crate::skeleton_live::chain_ends(sim),
+                        // ⭐⭐ **As pontas SEM âncora** — num osso ancorado o anel é substituído pelo
+                        // losango do alvo, e desenhar os dois prometeria dois verbos onde há um.
+                        &crate::skeleton_goal::unanchored_ends(sim),
+                        cam_affine,
+                        hero.theme,
+                        vector_scene,
+                    );
+                    // ⭐⭐⭐ **AS ÂNCORAS DE IK** — o losango do alvo e o tracejado até à ponta. Elas
+                    // vêm DEPOIS dos ossos porque o alvo é o que a mão agarra: ele fica por cima.
+                    ph2d_skeleton_render::draw_goals(
+                        &crate::skeleton_goal::anchors(sim),
+                        hero.gizmo.selection,
+                        self.bone_hover,
                         cam_affine,
                         hero.theme,
                         vector_scene,

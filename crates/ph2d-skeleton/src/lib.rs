@@ -233,7 +233,9 @@ mod reach;
 #[cfg(test)]
 #[path = "reach_tests.rs"]
 mod reach_tests;
-pub use reach::{DEFAULT_ITERATIONS, MAX_ITERATIONS, Reach, reach, softened_distance};
+pub use reach::{
+    DEFAULT_ITERATIONS, MAX_ITERATIONS, Reach, blend_angle, reach, softened_distance, wrap_pi,
+};
 
 #[cfg(test)]
 #[path = "tests.rs"]

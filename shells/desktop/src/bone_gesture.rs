@@ -251,11 +251,30 @@ pub(crate) fn hover(
             part: BonePart::Influence,
         });
     }
+    // ⭐⭐⭐ **A ÂNCORA vem ANTES do [`hit`], e a razão é geométrica:** ela pode estar longe de todo
+    // osso (fora de alcance, ou porque o artista a arrastou para lá), e o `hit` só devolve um osso
+    // quando o ponteiro está a `BONE_HIT_PX` do **segmento**. Testá-la depois tornaria a alça
+    // inalcançável exactamente quando ela mais se distingue da ponta.
+    if let Some((b, ..)) = crate::skeleton_goal::anchors(sim)
+        .into_iter()
+        .find(|(_, a, ..)| (a[0] - world[0]).hypot(a[1] - world[1]) <= BONE_HIT_PX * px_to_world)
+    {
+        return Some(BoneHover {
+            bone: b,
+            part: BonePart::Tip,
+        });
+    }
     let bone = hit(sim, world, px_to_world)?;
     // ⭐ **A PONTA antes da junta e do corpo**: ela vive DENTRO do raio de acerto do osso, então
     // sem esta ordem o corpo ganhava-a sempre e o *end effector* seria inalcançável.
-    // ⚠️ E só existe onde ela é desenhada — em quem fecha a corrente.
+    // ⚠️ E só existe onde ela é desenhada — em quem fecha a corrente **e não tem âncora**: num osso
+    // ancorado o desenho põe o losango na âncora e a alça foi já apanhada acima, então repetir aqui
+    // daria duas respostas para o mesmo dedo.
     if crate::skeleton_live::chain_ends(sim).contains(&bone)
+        && sim
+            .world()
+            .get::<ph2d_skeleton_ecs::IkGoal>(Entity::from_bits(bone))
+            .is_none()
         && let Some((_, a, b)) = crate::skeleton_live::bone_segments(sim)
             .into_iter()
             .find(|(x, _, _)| *x == bone)
@@ -327,23 +346,31 @@ pub(crate) fn pose(
     }
     // ⭐⭐⭐ **A PONTA faz CINEMÁTICA INVERSA** — a corrente inteira dobra para o *end effector*
     // chegar onde a mão foi. É o degrau que separa um editor de esqueletos de um de animação.
+    //
+    // ⭐⭐ **Com ÂNCORA, o mesmo gesto move o ALVO em vez de posar a corrente**, e não é uma
+    // conveniência: a restrição reescreve a pose dos ossos a cada quadro, então posá-los aqui seria
+    // apagado no quadro seguinte e o artista veria o braço **voltar** debaixo do dedo. O que ele
+    // arrasta passa a ser o objecto AUTORADO, que é o que o documento guarda — e é o modelo do
+    // Blender e do Spine, onde um osso sob restrição não se posa à mão.
     if part == BonePart::Tip {
+        if sim.world().get::<ph2d_skeleton_ecs::IkGoal>(bone).is_some() {
+            return crate::skeleton_goal::drag_anchor(sim, bone, world);
+        }
         return reach_chain(sim, bone, world);
     }
-    let desloca = part == BonePart::Joint;
-    // O espaço do PAI — a pose local vive nele. Sem pai, o mundo.
-    let pai = sim.world().get::<ChildOf>(bone).map(ChildOf::parent);
-    let pai_mundo = pai.map_or(Xform::IDENTITY, |p| {
-        crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(sim, p))
-    });
-    let Some(inv) = pai_mundo.inverse() else {
-        return false;
-    };
-    let p = inv.apply(world);
-    let Some(mut t) = sim.world_mut().get_mut::<Transform>(bone) else {
-        return false;
-    };
-    if desloca {
+    if part == BonePart::Joint {
+        // O espaço do PAI — a pose local vive nele. Sem pai, o mundo.
+        let pai = sim.world().get::<ChildOf>(bone).map(ChildOf::parent);
+        let pai_mundo = pai.map_or(Xform::IDENTITY, |p| {
+            crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(sim, p))
+        });
+        let Some(inv) = pai_mundo.inverse() else {
+            return false;
+        };
+        let p = inv.apply(world);
+        let Some(mut t) = sim.world_mut().get_mut::<Transform>(bone) else {
+            return false;
+        };
         #[expect(
             clippy::cast_possible_truncation,
             reason = "o `Transform` da casa é f32; a geometria do documento é f64"
@@ -353,21 +380,50 @@ pub(crate) fn pose(
         }
         return true;
     }
-    let o = [f64::from(t.translation.x), f64::from(t.translation.y)];
-    let d = [p[0] - o[0], p[1] - o[1]];
-    // ⛔ Sobre a própria origem não há DIRECÇÃO — apontar para lá daria um ângulo arbitrário, e o
-    // osso saltaria. Ficar quieto é a resposta certa.
-    if d[0].hypot(d[1]) < f64::EPSILON {
+    // ⛔ Sobre a própria origem não há DIRECÇÃO — a porta devolve `None` e o osso fica quieto, que
+    // é a resposta certa (apontar para lá daria um ângulo arbitrário e ele saltaria).
+    let Some(r) = aim_rotation(sim, bone, world) else {
         return false;
-    }
+    };
+    let Some(mut t) = sim.world_mut().get_mut::<Transform>(bone) else {
+        return false;
+    };
     #[expect(
         clippy::cast_possible_truncation,
-        reason = "idem — a rotação do `Transform` é f32"
+        reason = "a rotação do `Transform` da casa é f32; a geometria do documento é f64"
     )]
     {
-        t.rotation = d[1].atan2(d[0]) as f32;
+        t.rotation = r as f32;
     }
     true
+}
+
+/// ⭐⭐⭐ **A MIRA** — que rotação LOCAL este osso precisa de ter para apontar a `world`?
+///
+/// ⚠️ **Porta única de dois consumidores**: o gesto que gira um osso à mão ([`pose`]) e a restrição
+/// que o gira a cada quadro ([`crate::skeleton_goal`]). Escrita duas vezes, ela divergiria na
+/// primeira vez que alguém corrigisse a composição do espaço do pai — e o sintoma seria o osso a
+/// saltar entre o que o dedo faz e o que a âncora faz, que é indistinguível de um defeito da
+/// própria cinemática.
+///
+/// ⚠️ **A pose é LOCAL do pai, e deriva-se levando o PONTO ao espaço dele** — nunca subtraindo
+/// ângulos. Compor `rot − rot_do_pai` só está certo com um pai conforme; transformar o ponto está
+/// certo com qualquer afim.
+///
+/// `None` quando o pai é singular, ou quando `world` cai **sobre a própria origem** do osso: ali não
+/// há direcção nenhuma, e apontar para lá daria um ângulo arbitrário — o osso saltaria.
+#[must_use]
+pub(crate) fn aim_rotation(sim: &SimWorld, bone: Entity, world: [f64; 2]) -> Option<f64> {
+    let pai = sim.world().get::<ChildOf>(bone).map(ChildOf::parent);
+    let pai_mundo = pai.map_or(Xform::IDENTITY, |p| {
+        crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(sim, p))
+    });
+    let inv = pai_mundo.inverse()?;
+    let p = inv.apply(world);
+    let t = sim.world().get::<Transform>(bone)?;
+    let o = [f64::from(t.translation.x), f64::from(t.translation.y)];
+    let d = [p[0] - o[0], p[1] - o[1]];
+    (d[0].hypot(d[1]) >= f64::EPSILON).then(|| d[1].atan2(d[0]))
 }
 
 /// **A selecção do gizmo é um OSSO?** — a porta única da pergunta.

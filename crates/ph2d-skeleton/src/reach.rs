@@ -99,6 +99,19 @@ const TOLERANCE: f64 = 1e-4;
 /// estado em que um esqueleto acabado de desenhar nasce.
 const BOW: f64 = 1e-3;
 
+/// **Quão recta é "recta"** — o seno do ângulo entre dois ossos abaixo do qual eles não têm lado.
+///
+/// ⚠️ **Mesmo valor do [`BOW`] e constante PRÓPRIA, de propósito.** Os dois nascem do mesmo facto
+/// (uma corrente colinear não tem para onde cair) mas medem grandezas diferentes — aquele é uma
+/// fracção do ALCANCE e este o seno de um ÂNGULO. Partilhar o literal e não o nome é o que impede
+/// que afinar um mude o outro em silêncio, que é o defeito que este módulo já pagou com o raio da
+/// ponta.
+///
+/// ⭐ E ele cobre com folga o ruído medido: um `Transform` em `f32` erra a posição em `~1e-6`, e a
+/// raiz quadrada da lei dos cossenos amplifica isso para `~5e-4` de ângulo (medido no braço da cena
+/// de smoke). `1e-3` são `0,057°` — invisíveis, e acima do ruído.
+const STRAIGHT: f64 = BOW;
+
 fn unit(v: [f64; 2], fallback: [f64; 2]) -> [f64; 2] {
     let n = v[0].hypot(v[1]);
     if n > f64::EPSILON {
@@ -142,13 +155,63 @@ fn two_bone(
     let to_goal = [goal[0] - root[0], goal[1] - root[1]];
     let u = unit(to_goal, [1.0, 0.0]);
     let bruto = to_goal[0].hypot(to_goal[1]);
+    // ⭐⭐⭐ **UMA CORRENTE RECTA NÃO TEM LADO, e ler o sinal do resíduo faz o joelho VIBRAR.**
+    //
+    // ⚠️ Isto é um defeito MEDIDO (2026-09-07, `probe_a_still_chain_keeps_writing`): o braço da cena
+    // de smoke, **parado**, escrevia em `300` de `300` quadros e o punho oscilava `±5e-4 rad` com a
+    // amplitude a **crescer**. O mecanismo é uma raiz quadrada: perto da extensão máxima
+    // `cos a → 1`, e `sin a = √(1 − cos²a)` transforma um erro de POSIÇÃO de `1e-6` (o que o
+    // `Transform` da casa perde por ser `f32`) num erro de ÂNGULO de `1e-3` — mil vezes maior. O
+    // sinal desse ângulo vem de `bend`, que numa corrente recta é o produto vectorial de dois
+    // vectores paralelos: **ruído**. Cada quadro sorteava um lado.
+    //
+    // ⇒ o desempate é DETERMINÍSTICO, e é o mesmo lado para que o [`break_collinearity`] arqueia a
+    // corrente de 3+ ossos: *não se escolhe um desempate melhor, não se tem empate.*
+    let bend = if bend.abs() <= STRAIGHT * l1 * l2 {
+        1.0
+    } else {
+        bend
+    };
     // Longe demais ⇒ amortecido; perto demais (a corrente dobrada sobre si) ⇒ o piso é o que os
     // dois ossos conseguem encolher.
     let d = softened_distance(bruto, l1 + l2, soft).max((l1 - l2).abs().max(f64::EPSILON));
+    // ⭐⭐⭐ **NA EXTENSÃO MÁXIMA A RESPOSTA É A RECTA, EXACTAMENTE** — e é a MESMA lei que o ramo de
+    // 3+ ossos já tem trinta linhas abaixo, em falta aqui.
+    //
+    // ⚠️ Lá ela existe porque o FABRIK se aproxima da recta **assimptoticamente**; aqui porque a
+    // forma fechada, embora exacta, é **mal condicionada** ali: `cos a → 1`, e `sin a = √(1 − cos²a)`
+    // transforma um erro de posição de `1e-6` — o que o `Transform` da casa perde por ser `f32` —
+    // num erro de ângulo de `1e-3`. *A derivada de uma raiz quadrada na origem é infinita.*
+    //
+    // ⛔ **Medido, e o sintoma é visível:** sem esta linha o braço da cena de smoke, **parado**,
+    // reescrevia a pose em `300` de `300` quadros e o punho oscilava `±5e-4 rad` com a amplitude a
+    // crescer. Uma corrente esticada que treme é a queixa que o artista faz.
+    //
+    // ⚠️ Com `softness > 0` isto **nunca** dispara, por construção — a distância amortecida é sempre
+    // menor que o alcance, que é a razão de a suavidade existir.
+    if d >= (l1 + l2) * (1.0 - TOLERANCE) {
+        return [
+            [root[0] + l1 * u[0], root[1] + l1 * u[1]],
+            [root[0] + (l1 + l2) * u[0], root[1] + (l1 + l2) * u[1]],
+        ];
+    }
     // Higiene de vírgula flutuante: na extensão máxima o quociente é exactamente `1` em aritmética
     // real e `1 + 1e-16` nesta — e a raiz de um negativo devolveria um membro `NaN`.
     let cos_a = ((l1 * l1 + d * d - l2 * l2) / (2.0 * l1 * d)).clamp(-1.0, 1.0);
-    let sin_a = (1.0 - cos_a * cos_a).sqrt() * if bend < 0.0 { -1.0 } else { 1.0 };
+    // ⭐⭐⭐ **O SINAL É O OPOSTO do produto vectorial, e a álgebra prova-o.**
+    //
+    // Com `b = raiz + l1·osso1` e `c = raiz + d·u`, o produto vectorial das duas metades é
+    // `v1 × v2 = l1·d·(osso1 × u)`, e `osso1 × u = −sin a` (basta expandir a rotação de `u` por
+    // `a`). ⇒ `cross = −l1·d·sin a`: **eles têm sinal contrário**.
+    //
+    // ⛔ **Isto estava ao contrário desde que a lei existe** (medido 2026-09-07,
+    // `a_straight_chain_never_draws_lots_for_the_bend_side`): igualar os dois sinais faz cada
+    // passagem **negar** o `sin a` da anterior, e o cotovelo salta de lado a cada resolução. O doc
+    // desta função promete *«o solver preserva a dobra que o artista já vê»* e ela fazia o
+    // contrário — invisível enquanto a cinemática inversa era só um arrasto (ali cada passagem tem
+    // um alvo novo e a troca lê-se como tremor), e **impossível de ignorar** com uma restrição que
+    // re-resolve todo quadro.
+    let sin_a = (1.0 - cos_a * cos_a).sqrt() * if bend > 0.0 { -1.0 } else { 1.0 };
     let osso1 = [u[0] * cos_a - u[1] * sin_a, u[0] * sin_a + u[1] * cos_a];
     [
         [root[0] + l1 * osso1[0], root[1] + l1 * osso1[1]],
@@ -281,4 +344,48 @@ pub fn reach(joints: &mut [[f64; 2]], lengths: &[f64], goal: [f64; 2], opts: Rea
             break;
         }
     }
+}
+
+/// ⭐⭐⭐ **A MISTURA** — o *Mix* do Spine, o *Influence* do Blender, o *Strength* do Rive.
+///
+/// Uma restrição de cinemática inversa que só sabe ligar e desligar não serve para animar: o que o
+/// artista quer é **quanto** dela, e quer poder animar esse número (a mão que larga a corrimão).
+/// As quatro referências têm-no, e nós tínhamos **zero**.
+///
+/// ⭐⭐ **Mistura-se o ÂNGULO, nunca a POSIÇÃO**, e a razão é exactidão: interpolar as posições das
+/// juntas encurta os ossos (a corda de um arco é mais curta que o arco), e o comprimento de um osso
+/// é invariante das duas leis desta crate — há gate a dizê-lo. Misturar o ângulo preserva-o **ao
+/// bit**, porque o comprimento nem entra na conta.
+///
+/// ⚠️ **Pelo caminho CURTO.** Sem o embrulho, um ombro a `+179°` e um alvo a `−179°` (dois graus de
+/// distância) fariam a mistura percorrer **358°** ao contrário: o braço dá uma volta completa a meio
+/// de uma animação. É o defeito clássico da interpolação de ângulos, e a cura é uma linha.
+///
+/// `mix <= 0` devolve `de` **ao bit** (a restrição desligada é o no-op que a lei da casa exige);
+/// `mix >= 1` devolve `para` ao bit.
+#[must_use]
+pub fn blend_angle(de: f64, para: f64, mix: f64) -> f64 {
+    // ⚠️ O `is_nan` é EXPLÍCITO, e não um `!(mix > 0.0)` a apanhá-lo de lado: uma mistura que não é
+    // um número não move nada, e essa decisão tem de se ler no código em vez de sair da forma como
+    // a comparação trata `NaN`.
+    if mix.is_nan() || mix <= 0.0 {
+        return de;
+    }
+    if mix >= 1.0 {
+        return para;
+    }
+    de + wrap_pi(para - de) * mix
+}
+
+/// Traz um ângulo para `(-π, π]` — a diferença mais curta entre duas direcções.
+#[must_use]
+pub fn wrap_pi(a: f64) -> f64 {
+    use std::f64::consts::{PI, TAU};
+    let mut r = (a + PI).rem_euclid(TAU) - PI;
+    // `rem_euclid` devolve `[0, TAU)`, então o extremo superior cai em `-π` e não em `+π`. A
+    // diferença é invisível no produto e não no gate, que compara com o valor exacto.
+    if r <= -PI {
+        r += TAU;
+    }
+    r
 }

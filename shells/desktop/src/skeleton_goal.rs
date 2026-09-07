@@ -1,0 +1,369 @@
+//! ⭐⭐⭐ **A ÂNCORA, viva** — a restrição de cinemática inversa que corre a cada quadro.
+//!
+//! O arrasto da ponta (que já existia) **posa**: acaba quando o dedo levanta. Isto **persiste** — o
+//! artista anima UM objecto e a corrente inteira o segue, através da timeline e do save. É o degrau
+//! que separa *«um editor de esqueletos»* de *«um editor de animação»*, e é o que as quatro
+//! referências entregam (ver o doc do [`ph2d_skeleton_ecs::IkGoal`], com a tabela).
+//!
+//! # ⚠️ A pose que este passe escreve é PRÉ-VISUALIZAÇÃO, não documento
+//!
+//! É a lei do [`crate::preview_drive`], e ela cabe aqui à letra: *o documento é o valor **AUTORADO**;
+//! o que um motor está a escrever agora vê-se, não se guarda nem se desfaz.* O que o artista autora
+//! é a pose da **ÂNCORA** (e os três números da restrição); a rotação dos ossos governados é
+//! **derivada** dela. Sem o ledger, cada clique enquanto a âncora está fora do sítio empilharia um
+//! passo de undo cujo conteúdo é *«o solver mexeu»* — o defeito que a auditoria da §11 mediu.
+//!
+//! ⚠️ **O motor é o [`crate::preview_drive::Driver::SolverPose`], e não um novo**: o doc dele já
+//! declara que a pose escrita por um motor é *«o mesmo facto vindo de outro motor»* — é assim que a
+//! física e as curvas da timeline já partilham aquela chave. Uma chave nova sobre o **mesmo
+//! componente** poria dois memos a repor `Transform`s diferentes na mesma fotografia, e quem
+//! ganhasse seria a ordem do `BTreeMap`.
+//!
+//! # O preço, MEDIDO
+//!
+//! `measure_the_price_of_one_frame_of_anchors`, sobre uma cena de **2000 objectos** (a ordem de um
+//! documento cheio), em release:
+//!
+//! | cena | por quadro | de um quadro de 16,7 ms |
+//! |---|---|---|
+//! | sem âncora nenhuma | `16,4 µs` | **`0,098 %`** |
+//! | com uma âncora viva | `65,5 µs` | **`0,392 %`** |
+//!
+//! ⚠️ A linha de cima é o que TODA cena paga, e é por isso que as duas travessias saem cedo antes
+//! de construir índice nenhum: sem essa guarda o custo seria função do tamanho da cena em vez do
+//! número de restrições.
+//!
+//! # ⛔ O alvo nunca é descendente da corrente
+//!
+//! Mover o osso moveria o alvo, que moveria o osso. O passe **recusa** esse caso (e diz-o no
+//! `PH2D_BONE_LOG`) em vez de o resolver, porque não há resposta certa para um laço.
+
+use ph2d_ecs::{ChildOf, Entity, Name, RootOrder, SimWorld, StableId, Transform};
+use ph2d_skeleton_ecs::{Bone, IkGoal};
+
+use crate::preview_drive::{Driven, PreviewDrive};
+
+/// O nome que uma âncora nova recebe. ⚠️ Em inglês, como toda a UI da casa.
+const ANCHOR_NAME: &str = "IK Goal";
+
+/// **O índice `StableId → entidade` de TUDO** — o alvo de uma âncora é um objecto qualquer, não um
+/// osso, então este índice é mais largo que o [`crate::skeleton_live`]'s.
+///
+/// ⚠️ Construído uma vez por quadro e passado adiante, que é o que o doc do
+/// [`ph2d_ecs::entity_of_stable_id`] manda fazer.
+fn index(sim: &SimWorld) -> std::collections::BTreeMap<StableId, Entity> {
+    sim.world()
+        .iter_entities()
+        .filter_map(|er| er.get::<StableId>().map(|s| (*s, er.id())))
+        .collect()
+}
+
+/// **A corrente que esta âncora governa** — os `n` ossos que acabam em `tip`, da raiz para a ponta.
+///
+/// ⚠️ `chain == 0` significa *até à raiz do esqueleto*, que é a leitura do Blender. E o tecto real
+/// é a corrente que EXISTE: um número absurdo vindo de um ficheiro é aparado pela árvore, não por
+/// uma constante escolhida.
+pub(crate) fn governed(sim: &SimWorld, tip: Entity, chain: u32) -> Vec<Entity> {
+    let toda = crate::skeleton_live::chain_to(sim, tip.to_bits());
+    if chain == 0 {
+        return toda;
+    }
+    let n = (chain as usize).min(toda.len());
+    toda[toda.len() - n..].to_vec()
+}
+
+/// ⛔ **O alvo está DENTRO da corrente?** — o laço que este passe recusa em vez de resolver.
+///
+/// Sobe do alvo pelos pais: se encontrar qualquer osso governado, mover a corrente moveria o alvo.
+fn feeds_back(sim: &SimWorld, alvo: Entity, corrente: &[Entity]) -> bool {
+    let mut e = alvo;
+    loop {
+        if corrente.contains(&e) {
+            return true;
+        }
+        let Some(p) = sim.world().get::<ChildOf>(e).map(ChildOf::parent) else {
+            return false;
+        };
+        e = p;
+    }
+}
+
+/// ⭐⭐⭐ **AS ÂNCORAS DA CENA** — `(osso, âncora, origem do osso, ponta do osso)` em MUNDO, ordenado.
+///
+/// ⚠️ **Uma varredura, três consumidores**: o desenho (o losango e o tracejado), o dedo (o realce) e
+/// o arrasto. Uma segunda varredura com outra regra divergiria desta na primeira ramificação — é a
+/// mesma lei que o [`crate::skeleton_live::bone_segments`] já declara.
+///
+/// ⚠️ O **segmento do osso** vem junto porque o tamanho do losango sai da mesma porta da bolinha
+/// (`joint_radius_px`, sobre o comprimento do osso **na tela**) — sem ele o desenho teria de
+/// re-encontrar o osso, que é a segunda resposta à mesma pergunta.
+///
+/// ⚠️ Um osso cuja âncora perdeu o alvo **não entra**: não há onde desenhar nem o que agarrar.
+pub(crate) fn anchors(sim: &SimWorld) -> Vec<ph2d_skeleton_render::Goal> {
+    // ⚠️ **A saída cedo vem ANTES do índice, e não é micro-optimização:** esta função corre no
+    // caminho de DESENHO de todo quadro, e o índice é uma travessia do mundo inteiro. A cena comum
+    // não tem âncora nenhuma — fazê-la pagar uma varredura por quadro para descobrir isso seria o
+    // custo a ser função do tamanho da cena em vez do número de restrições.
+    if !sim
+        .world()
+        .iter_entities()
+        .any(|er| er.contains::<IkGoal>())
+    {
+        return Vec::new();
+    }
+    let idx = index(sim);
+    let segs = crate::skeleton_live::bone_segments(sim);
+    let mut out: Vec<ph2d_skeleton_render::Goal> = sim
+        .world()
+        .iter_entities()
+        .filter_map(|er| {
+            let g = er.get::<IkGoal>()?;
+            let alvo = idx.get(&g.target).copied()?;
+            let (_, o, ponta) = segs
+                .iter()
+                .copied()
+                .find(|(x, _, _)| *x == er.id().to_bits())?;
+            let a = crate::vec_transform::xform_of_transform(
+                crate::vec_transform::world_transform(sim, alvo),
+            )
+            .apply([0.0, 0.0]);
+            Some((er.id().to_bits(), a, o, ponta))
+        })
+        .collect();
+    out.sort_by_key(|g| g.0);
+    out
+}
+
+/// **As pontas de corrente que ainda mostram o ANEL** — as que não têm âncora.
+///
+/// ⭐ É esta subtracção que faz o losango **substituir** o anel em vez de se somar a ele: num osso
+/// ancorado a ponta deixa de ser agarrável (o que se arrasta é o alvo), e desenhar as duas coisas
+/// por cima uma da outra prometeria dois verbos onde há um.
+pub(crate) fn unanchored_ends(sim: &SimWorld) -> Vec<u64> {
+    crate::skeleton_live::chain_ends(sim)
+        .into_iter()
+        .filter(|&b| sim.world().get::<IkGoal>(Entity::from_bits(b)).is_none())
+        .collect()
+}
+
+/// **Move a âncora deste osso para `world`.** Devolve `false` se ele não tem âncora viva.
+///
+/// ⚠️ É por aqui que o arrasto da ponta passa quando há restrição: ele deixa de posar a corrente
+/// (que o passe reescreveria no quadro seguinte, e o artista veria o osso voltar) e passa a mover o
+/// **objecto autorado**, que é o que o documento guarda.
+pub(crate) fn drag_anchor(sim: &mut SimWorld, bone: Entity, world: [f64; 2]) -> bool {
+    let Some(g) = sim.world().get::<IkGoal>(bone).copied() else {
+        return false;
+    };
+    let Some(alvo) = index(sim).get(&g.target).copied() else {
+        return false;
+    };
+    // O espaço do PAI do ALVO — a pose local vive nele. Uma âncora nasce raiz, então isto costuma
+    // ser a identidade; mas o artista pode tê-la pendurado num objecto, e aí o que ele arrasta é a
+    // posição de mundo e o que se grava é a local.
+    let pai = sim.world().get::<ChildOf>(alvo).map(ChildOf::parent);
+    let pai_mundo = pai.map_or(ph2d_vec_scene::Xform::IDENTITY, |p| {
+        crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(sim, p))
+    });
+    let Some(inv) = pai_mundo.inverse() else {
+        return false;
+    };
+    let p = inv.apply(world);
+    let Some(mut t) = sim.world_mut().get_mut::<Transform>(alvo) else {
+        return false;
+    };
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "o `Transform` da casa é f32; a geometria do documento é f64"
+    )]
+    {
+        t.translation = ph2d_core::Vec2::new(p[0] as f32, p[1] as f32);
+    }
+    true
+}
+
+/// ⭐⭐⭐ **CRIA a âncora** deste osso, com o alvo pousado na ponta dele. Devolve o alvo.
+///
+/// ⚠️ **Nasce COINCIDENTE com a ponta**, e isso é a lei da casa aplicada: *todo motor novo é no-op
+/// no ponto neutro*. Carregar em *Add IK* não pode mover o desenho — se movesse, o artista perderia
+/// a pose que acabou de fazer e a feature seria uma armadilha.
+///
+/// ⚠️ **O alvo nasce RAIZ**, e não filho do osso: filho da corrente é exactamente o laço que o
+/// [`feeds_back`] recusa.
+///
+/// `None` se `bone` não é um osso, ou se ele já tem âncora (o painel não oferece o botão nesse
+/// caso — e recusar aqui também é o que impede duas âncoras a puxar a mesma corrente).
+pub(crate) fn add(sim: &mut SimWorld, bone: Entity) -> Option<Entity> {
+    if sim.world().get::<Bone>(bone).is_none() || sim.world().get::<IkGoal>(bone).is_some() {
+        return None;
+    }
+    let ponta = crate::bone_gesture::tip_of(sim, bone.to_bits())?;
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "o `Transform` da casa é f32; a geometria do documento é f64"
+    )]
+    let alvo = sim
+        .world_mut()
+        .spawn((
+            Transform {
+                translation: ph2d_core::Vec2::new(ponta[0] as f32, ponta[1] as f32),
+                ..Transform::IDENTITY
+            },
+            Name::new(ANCHOR_NAME),
+            RootOrder(0),
+            // ⚠️ **A marca vem no spawn**, e não depois: entre o spawn e um `insert` seguinte corre
+            // pelo menos um `empty_objects`, e o alvo apareceria com o anel do objecto vazio por um
+            // quadro. *Um piscar de um quadro é indistinguível de um defeito intermitente.*
+            ph2d_skeleton_ecs::IkTarget,
+        ))
+        .id();
+    // ⚠️ **Semear o id ANTES de o guardar** — um objecto criado neste quadro ainda não tem
+    // `StableId` (a varredura corre uma vez por quadro), e sem isto a âncora nomearia `NONE`. É o
+    // mesmo que o `skeleton_live::bind` faz, e pela mesma razão.
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let id = ph2d_ecs::stable_id_of(sim.world(), alvo)?;
+    sim.world_mut().entity_mut(bone).insert(IkGoal {
+        target: id,
+        ..IkGoal::default()
+    });
+    Some(alvo)
+}
+
+/// **APAGA a âncora** deste osso, e o alvo com ela. Devolve `true` se havia uma.
+///
+/// ⚠️ **O alvo morre junto**, e a razão é que ele existe *para* a restrição: deixá-lo para trás
+/// encheria a Hierarquia de objectos vazios que não fazem nada, e o artista não teria como saber
+/// quais podia apagar. ⛔ Quem o quiser guardar tem o Ctrl+Z, que é a porta da casa para isso.
+pub(crate) fn remove(sim: &mut SimWorld, bone: Entity) -> bool {
+    let Some(g) = sim.world().get::<IkGoal>(bone).copied() else {
+        return false;
+    };
+    if let Some(alvo) = index(sim).get(&g.target).copied() {
+        let _ = sim.world_mut().despawn(alvo);
+    }
+    sim.world_mut().entity_mut(bone).remove::<IkGoal>();
+    true
+}
+
+/// ⭐⭐⭐ **UM QUADRO DE RESTRIÇÕES.** Devolve quantas correntes moveu.
+///
+/// Corre **antes** do [`crate::skeleton_live::recook`] — ele lê a pose de agora, e a pose de agora é
+/// o que este passe acaba de escrever.
+pub(crate) fn solve(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
+    let ancoras: Vec<(Entity, IkGoal)> = sim
+        .world()
+        .iter_entities()
+        .filter_map(|er| Some((er.id(), *er.get::<IkGoal>()?)))
+        .collect();
+    if ancoras.is_empty() {
+        return 0;
+    }
+    let log = std::env::var_os("PH2D_BONE_LOG").is_some();
+    let idx = index(sim);
+    let mut feitas = 0;
+    for (tip, g) in ancoras {
+        let corrente = governed(sim, tip, g.chain);
+        if corrente.is_empty() {
+            continue;
+        }
+        let Some(alvo) = idx.get(&g.target).copied() else {
+            if log {
+                eprintln!("[bone] ancora de {tip:?} sem alvo vivo - corrente em paz");
+            }
+            continue;
+        };
+        if feeds_back(sim, alvo, &corrente) {
+            if log {
+                eprintln!(
+                    "[bone] ancora de {tip:?} RECUSADA: o alvo esta' dentro da propria corrente"
+                );
+            }
+            continue;
+        }
+        let goal = crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(
+            sim, alvo,
+        ))
+        .apply([0.0, 0.0]);
+        if solve_one(sim, preview, &corrente, goal, g) {
+            feitas += 1;
+        }
+    }
+    if log && feitas > 0 {
+        eprintln!("[bone] {feitas} corrente(s) sob ancora");
+    }
+    feitas
+}
+
+/// Uma corrente, um alvo. Separada por responsabilidade e pelo teto de LOC por função (HR-18).
+fn solve_one(
+    sim: &mut SimWorld,
+    preview: &mut PreviewDrive,
+    corrente: &[Entity],
+    goal: [f64; 2],
+    g: IkGoal,
+) -> bool {
+    let segs = crate::skeleton_live::bone_segments(sim);
+    let mut juntas: Vec<[f64; 2]> = Vec::with_capacity(corrente.len() + 1);
+    let mut comps: Vec<f64> = Vec::with_capacity(corrente.len());
+    for (i, &e) in corrente.iter().enumerate() {
+        let Some((_, a, b)) = segs.iter().copied().find(|(x, _, _)| *x == e.to_bits()) else {
+            return false;
+        };
+        juntas.push(a);
+        comps.push((b[0] - a[0]).hypot(b[1] - a[1]));
+        if i + 1 == corrente.len() {
+            juntas.push(b);
+        }
+    }
+    let alcance: f64 = comps.iter().sum();
+    if alcance <= f64::EPSILON {
+        return false;
+    }
+    // ⚠️ A suavidade é uma FRACÇÃO do alcance (adimensional, como a força do osso) e a lei do
+    // `reach` quer unidades de MUNDO — a conversão vive aqui, que é a porta onde as duas se
+    // encontram.
+    ph2d_skeleton::reach(
+        &mut juntas,
+        &comps,
+        goal,
+        ph2d_skeleton::Reach {
+            softness: g.softness.max(0.0) * alcance,
+            ..ph2d_skeleton::Reach::default()
+        },
+    );
+    let mix = g.mix.clamp(0.0, 1.0);
+    let mut mexeu = false;
+    for (i, &e) in corrente.iter().enumerate() {
+        // ⭐⭐ A MIRA é a mesma porta do gesto, e a MISTURA é sobre o ÂNGULO: interpolar as posições
+        // das juntas encurtaria os ossos.
+        let Some(alvo_rot) = crate::bone_gesture::aim_rotation(sim, e, juntas[i + 1]) else {
+            continue;
+        };
+        let Some(antes) = sim.world().get::<Transform>(e).copied() else {
+            continue;
+        };
+        let nova = ph2d_skeleton::blend_angle(f64::from(antes.rotation), alvo_rot, mix);
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "a rotação do `Transform` da casa é f32; a lei do módulo é f64"
+        )]
+        let nova = nova as f32;
+        if nova == antes.rotation {
+            continue;
+        }
+        let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) else {
+            continue;
+        };
+        t.rotation = nova;
+        let depois = *t;
+        // ⚠️ O ledger: a rotação que esta restrição escreve é PRÉ-VISUALIZAÇÃO. O que o artista
+        // autora é a pose da ÂNCORA.
+        preview.driven(e, Driven::SolverPose(antes), Driven::SolverPose(depois));
+        mexeu = true;
+    }
+    mexeu
+}
+
+#[cfg(test)]
+#[path = "skeleton_goal_tests.rs"]
+mod tests;

@@ -76,24 +76,62 @@ fn out_of_reach_the_chain_points_straight_at_the_goal() {
 /// ⚠️ É o defeito que um bit de «lado» produz e que nenhuma quantidade de afinação cura: com o
 /// lado fixo, a mão a atravessar a recta raiz→alvo faz o cotovelo trocar de lado num quadro. Aqui
 /// o sinal sai do produto vectorial da pose que o artista já vê.
+///
+/// ⛔⛔ **A 1.ª redacção deste gate CODIFICAVA a inversão que ele diz proibir, e ficou verde sobre
+/// ela** (achado 2026-09-07). Ela chamava `lado = +1` a um cotovelo em `+y` e exigia que a saída
+/// tivesse produto vectorial **positivo** — mas a entrada com o cotovelo em `+y` tem produto
+/// **negativo** (`v1 = [10,5]`, `v2 = [10,−5]` ⇒ `−100`). O gate pedia, à letra, que a dobra
+/// trocasse. E o produto fazia-o: a álgebra dá `v1 × v2 = −l1·d·sin a`, e o solver igualava os dois
+/// sinais em vez de os opor. *Um gate verde pode pinar um defeito de produto.*
+///
+/// ⇒ o lado da entrada **deriva-se da própria fixtura**, nunca de um nome que alguém escolheu.
 #[test]
 fn the_elbow_keeps_the_side_it_is_already_bent_to() {
+    let cruz_de = |q: &[[f64; 2]; 3]| {
+        let (v1, v2) = (
+            [q[1][0] - q[0][0], q[1][1] - q[0][1]],
+            [q[2][0] - q[1][0], q[2][1] - q[1][1]],
+        );
+        v1[0].mul_add(v2[1], -(v1[1] * v2[0]))
+    };
     for lado in [1.0_f64, -1.0] {
         let j = [[0.0, 0.0], [10.0, 5.0 * lado], [20.0, 0.0]];
         let l = comprimentos(&j);
+        let entrada = cruz_de(&j);
         // Varre a mão de um lado ao outro da recta raiz→alvo e confere que a dobra nunca inverte.
         for k in -20..=20 {
             let alvo = [15.0, f64::from(k)];
             let mut q = j;
             reach(&mut q, &l, alvo, Reach::default());
-            let (v1, v2) = (
-                [q[1][0] - q[0][0], q[1][1] - q[0][1]],
-                [q[2][0] - q[1][0], q[2][1] - q[1][1]],
-            );
-            let cruz = v1[0] * v2[1] - v1[1] * v2[0];
+            let cruz = cruz_de(&q);
             assert!(
-                cruz * lado >= -1e-9,
-                "o cotovelo trocou de lado no alvo {alvo:?} (cruz {cruz}, lado {lado})"
+                cruz * entrada >= -1e-9,
+                "o cotovelo trocou de lado no alvo {alvo:?} (entrada {entrada}, saida {cruz})"
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **E RESOLVER DUAS VEZES DÁ A MESMA POSE** — a metade que a 1.ª redacção do gate acima não
+/// tinha, e é ela que apanha a inversão sem depender de convenção nenhuma.
+///
+/// ⚠️ Uma restrição de IK re-resolve **todo quadro** a partir da própria saída. Um solver que
+/// inverta a dobra a cada passagem produz uma corrente a **vibrar** — e nenhum gate que resolva
+/// UMA vez o vê.
+#[test]
+fn solving_twice_from_its_own_output_gives_the_same_pose() {
+    for lado in [1.0_f64, -1.0] {
+        for k in [-14, -5, 0, 7, 16] {
+            let alvo = [15.0, f64::from(k)];
+            let mut q = [[0.0, 0.0], [10.0, 5.0 * lado], [20.0, 0.0]];
+            let l = comprimentos(&q);
+            reach(&mut q, &l, alvo, Reach::default());
+            let uma = q;
+            reach(&mut q, &l, alvo, Reach::default());
+            let d = (q[1][0] - uma[1][0]).hypot(q[1][1] - uma[1][1]);
+            assert!(
+                d < 1e-9,
+                "a 2.a passagem moveu o cotovelo {d} no alvo {alvo:?} - a pose nao e' um ponto fixo"
             );
         }
     }
@@ -200,4 +238,141 @@ fn measure_the_price_of_one_reach() {
             us / 16_700.0 * 100.0
         );
     }
+}
+
+/// ⭐⭐⭐ **A MISTURA DESLIGADA É O NO-OP AO BIT** — a lei da casa (*todo motor novo é no-op no ponto
+/// neutro*), aplicada ao número que o artista vai animar de `0` a `1`.
+#[test]
+fn a_mix_of_zero_returns_the_pose_that_was_already_there() {
+    for de in [-3.0, -1.0, 0.0, 0.7, 3.1] {
+        for para in [-2.5, 0.0, 1.9, std::f64::consts::PI] {
+            for mix in [0.0, -0.5, f64::NAN] {
+                let r = super::blend_angle(de, para, mix);
+                assert!(
+                    r.to_bits() == de.to_bits(),
+                    "mix={mix} moveu o angulo de {de} para {r} - a restricao desligada tem de ser \
+                     o no-op AO BIT"
+                );
+            }
+        }
+    }
+}
+
+/// E a mistura CHEIA entrega o alvo ao bit — sem resíduo de `de + (para − de)·1`, que em `f64` não
+/// devolve `para` exactamente.
+#[test]
+fn a_full_mix_returns_the_goal_exactly() {
+    for (de, para) in [(0.3, 1.7), (-3.0, 2.9), (1e-9, 1e9)] {
+        for mix in [1.0, 1.5, 2.0] {
+            let r = super::blend_angle(de, para, mix);
+            assert!(
+                r.to_bits() == para.to_bits(),
+                "mix={mix} entregou {r} em vez de {para} ao bit"
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **PELO CAMINHO CURTO** — a meia-mistura entre `+179°` e `−179°` cai em `180°`, e não em `0°`.
+///
+/// ⚠️ Sem o embrulho o braço **dá uma volta completa** a meio de uma animação, e é o defeito
+/// clássico da interpolação de ângulos. A meia-mistura é onde ele é máximo, e por isso é aqui que
+/// se mede.
+#[test]
+fn the_mix_takes_the_short_way_around() {
+    let de = 179.0_f64.to_radians();
+    let para = (-179.0_f64).to_radians();
+    let meio = super::blend_angle(de, para, 0.5);
+    // O caminho curto são 2°, então o meio está a 1° de cada um — em 180°.
+    let esperado = 180.0_f64.to_radians();
+    let erro = super::wrap_pi(meio - esperado).abs();
+    assert!(
+        erro < 1e-12,
+        "a meia-mistura deu {:.4}° em vez de 180° - ela foi pelo caminho LONGO (358°)",
+        meio.to_degrees()
+    );
+    // A metade que prova que não é coincidência: o caminho longo passaria por 0°.
+    assert!(
+        super::wrap_pi(meio).abs() > 3.0,
+        "a meia-mistura passou perto de 0° - isso E' o caminho longo"
+    );
+}
+
+/// ⚠️ **O embrulho devolve `(-π, π]` e não `[-π, π)`** — os dois leem-se iguais até alguém comparar
+/// com o valor exacto. `rem_euclid` sozinho cai no extremo errado, e é a linha que este gate mede.
+#[test]
+fn the_wrap_lands_on_the_positive_end_of_the_turn() {
+    use std::f64::consts::{PI, TAU};
+    for k in -3..=3 {
+        let r = super::wrap_pi(PI + f64::from(k) * TAU);
+        assert!(
+            (r - PI).abs() < 1e-12,
+            "meia volta + {k} voltas deu {r} em vez de +pi"
+        );
+    }
+}
+
+/// **A MISTURA NÃO MEXE NO COMPRIMENTO** — a razão de ela ser sobre o ÂNGULO.
+///
+/// Interpolar as POSIÇÕES das juntas encolhe o osso (a corda é mais curta que o arco); aqui o
+/// comprimento nem entra na conta, e o gate mede-o sobre a excursão inteira.
+#[test]
+fn blending_the_angle_never_changes_the_length_of_a_bone() {
+    let comp = 37.5_f64;
+    let de = 0.4_f64;
+    let para = 2.9_f64;
+    for i in 0..=20 {
+        let mix = f64::from(i) / 20.0;
+        let a = super::blend_angle(de, para, mix);
+        let ponta = [comp * a.cos(), comp * a.sin()];
+        let medido = ponta[0].hypot(ponta[1]);
+        assert!(
+            (medido - comp).abs() < 1e-12,
+            "com mix={mix} o osso mede {medido} e devia medir {comp}"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **UMA CORRENTE RECTA NÃO SORTEIA UM LADO** — o desempate determinístico.
+///
+/// ⚠️ **O caso não é exótico: é o estado em que um esqueleto acabado de desenhar NASCE.** Com a
+/// corrente recta o produto vectorial das duas metades é o de dois vectores paralelos — **ruído** —,
+/// e ler o sinal dele faz o cotovelo cair para um lado diferente a cada quadro. Uma restrição de IK
+/// re-resolve todo quadro, então isso é uma corrente a **vibrar**.
+///
+/// ⚠️ **O gate mede a ESTABILIDADE, não qual lado** (*não se escolhe um desempate melhor, não se
+/// tem empate*): o que ele exige é que dez passagens seguidas devolvam a MESMA resposta, e que ela
+/// seja a mesma para um resíduo positivo e um negativo.
+#[test]
+fn a_straight_chain_never_draws_lots_for_the_bend_side() {
+    let (l1, l2) = (10.0, 10.0);
+    // O alvo bem DENTRO do alcance (12 de 20): o atalho da recta não dispara, e a corrente tem de
+    // dobrar de verdade.
+    let goal = [0.0, 12.0];
+    // Duas correntes rectas que diferem só no ULP — o «lado» que o resíduo sugere é oposto.
+    let lados: Vec<f64> = [1.0, -1.0]
+        .into_iter()
+        .map(|s| {
+            let mut juntas = [[0.0, 0.0], [l1, s * 1e-12], [l1 + l2, 0.0]];
+            let mut anterior = 0.0_f64;
+            for i in 0..10 {
+                super::reach(&mut juntas, &[l1, l2], goal, super::Reach::default());
+                let lado = juntas[1][0].mul_add(goal[1], -(juntas[1][1] * goal[0]));
+                if i > 0 {
+                    assert!(
+                        lado.signum() == anterior.signum(),
+                        "a corrente trocou de lado entre passagens ({anterior} -> {lado}) - ela \
+                         VIBRA, e uma restricao de IK re-resolve todo quadro"
+                    );
+                }
+                anterior = lado;
+            }
+            anterior.signum()
+        })
+        .collect();
+    assert_eq!(
+        lados[0], lados[1],
+        "duas correntes rectas que diferem num ULP cairam para lados OPOSTOS - o desempate esta' a \
+         ler o sinal do ruido"
+    );
 }

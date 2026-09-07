@@ -90,6 +90,45 @@ impl BodyCtx<'_> {
             for (id, label, step) in campos {
                 y = self.labeled_number_field(label, id, step, y);
             }
+            y = self.ik_rows(y);
+        }
+        y
+    }
+
+    /// ⭐⭐⭐ **A ÂNCORA DE IK** do osso em foco — a porta de entrada, ou os três números dela.
+    ///
+    /// ⚠️ **É um OU exclusivo, e é a lei do controlo morto:** *Add IK* só aparece em quem não tem
+    /// âncora, e *Remove IK* mais os três números só em quem tem. Oferecer as duas portas ao mesmo
+    /// tempo daria um botão que só sabe recusar — e o gesto recusa-o também, então o painel estaria
+    /// a prometer o que o app não faz.
+    fn ik_rows(&mut self, y: f32) -> f32 {
+        let Some(_) = state::current_bone_ik() else {
+            return self.action_button(ids::VECTOR_BONE_IK_ADD, tr("panel.vector.bone.ik.add"), y);
+        };
+        let mut y = self.action_button(
+            ids::VECTOR_BONE_IK_REMOVE,
+            tr("panel.vector.bone.ik.remove"),
+            y,
+        );
+        let campos: [(ph2d_a11y::NodeId, &str, f64); 3] = [
+            (
+                ids::VECTOR_BONE_IK_MIX,
+                tr("panel.vector.bone.ik.mix"),
+                MIX_STEP,
+            ),
+            (
+                ids::VECTOR_BONE_IK_SOFTNESS,
+                tr("panel.vector.bone.ik.softness"),
+                MIX_STEP,
+            ),
+            (
+                ids::VECTOR_BONE_IK_CHAIN,
+                tr("panel.vector.bone.ik.chain"),
+                CHAIN_STEP,
+            ),
+        ];
+        for (id, label, step) in campos {
+            y = self.labeled_number_field(label, id, step, y);
         }
         y
     }
@@ -101,3 +140,10 @@ const LENGTH_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do documento, 
 /// Passo do campo de força — ela é um **múltiplo do comprimento do osso**, então a escala útil é
 /// a unidade, e o passo é o décimo dela.
 const STRENGTH_STEP: f64 = 0.1; // LITERAL-PX-OK: passo no domínio do documento, não medida de design
+
+/// Passo dos dois números adimensionais da âncora (`Mix` e `Softness`), que vivem em `0..1`: o
+/// décimo da unidade, como o da força do osso.
+const MIX_STEP: f64 = 0.1; // LITERAL-PX-OK: passo no domínio do documento, não medida de design
+
+/// Passo da CORRENTE — ela conta ossos, então o passo é **um osso**.
+const CHAIN_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do documento, não medida de design

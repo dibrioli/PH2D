@@ -122,8 +122,9 @@ pub use ph2d_editor_core::ids::{
 /// ⭐ **O ESQUELETO** (estudo 42 item 5): o 17º pill, o cabeçalho da seção e os cinco controlos.
 pub use ph2d_editor_core::ids::{
     VECTOR_BONE_ACT_CREATE, VECTOR_BONE_ACT_TRANSFORM, VECTOR_BONE_ACTION, VECTOR_BONE_ACTION_IDS,
-    VECTOR_BONE_BIND, VECTOR_BONE_EXPAND, VECTOR_BONE_LENGTH, VECTOR_BONE_RELEASE,
-    VECTOR_BONE_STRENGTH, VECTOR_MODE_BONE, VECTOR_SECTION_BONE,
+    VECTOR_BONE_BIND, VECTOR_BONE_EXPAND, VECTOR_BONE_IK_ADD, VECTOR_BONE_IK_CHAIN,
+    VECTOR_BONE_IK_MIX, VECTOR_BONE_IK_REMOVE, VECTOR_BONE_IK_SOFTNESS, VECTOR_BONE_LENGTH,
+    VECTOR_BONE_RELEASE, VECTOR_BONE_STRENGTH, VECTOR_MODE_BONE, VECTOR_SECTION_BONE,
 };
 /// ⭐⭐⭐ **A secção BRUSH** (plano 36, W4) — knobs PRÓPRIOS, e não mais um alvo da família do padrão:
 /// um pincel tem avanço e escala relativa, um padrão tem reticulado, fase e modo de repetição.

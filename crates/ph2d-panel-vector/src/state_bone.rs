@@ -55,3 +55,34 @@ pub(crate) fn current_bone() -> Option<(f64, f64)> {
         )
     })
 }
+
+thread_local! {
+    /// O osso em foco tem ÂNCORA de IK? Decide entre *Add IK* e *Remove IK*, e se os três números
+    /// dela têm sujeito. ⛔ Sem isto o painel ofereceria as duas portas ao mesmo tempo, e uma delas
+    /// só saberia recusar.
+    static CURRENT_HAS_IK: Cell<bool> = const { Cell::new(false) };
+    static CURRENT_IK_MIX: Cell<f64> = const { Cell::new(1.0) };
+    static CURRENT_IK_SOFTNESS: Cell<f64> = const { Cell::new(0.0) };
+    static CURRENT_IK_CHAIN: Cell<f64> = const { Cell::new(2.0) };
+}
+
+/// A âncora do osso em foco e os três números dela (`mix`, `softness`, `chain`). `None` ⇒ ele não
+/// tem uma, e o painel oferece a porta de entrada.
+pub fn set_current_bone_ik(v: Option<(f64, f64, f64)>) {
+    CURRENT_HAS_IK.with(|c| c.set(v.is_some()));
+    if let Some((mix, softness, chain)) = v {
+        CURRENT_IK_MIX.with(|c| c.set(mix));
+        CURRENT_IK_SOFTNESS.with(|c| c.set(softness));
+        CURRENT_IK_CHAIN.with(|c| c.set(chain));
+    }
+}
+
+pub(crate) fn current_bone_ik() -> Option<(f64, f64, f64)> {
+    CURRENT_HAS_IK.with(Cell::get).then(|| {
+        (
+            CURRENT_IK_MIX.with(Cell::get),
+            CURRENT_IK_SOFTNESS.with(Cell::get),
+            CURRENT_IK_CHAIN.with(Cell::get),
+        )
+    })
+}

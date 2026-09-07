@@ -82,6 +82,10 @@ fn publishes_its_own_handles(sim: &SimWorld, e: Entity) -> bool {
         || w.get::<ph2d_field_ecs::FieldObject>(e).is_some()
         || w.get::<ph2d_field_ecs::FieldNode>(e).is_some()
         || w.get::<ph2d_skeleton_ecs::Bone>(e).is_some()
+        // ⭐ o **ALVO de uma âncora de IK** tem o losango que o `draw_goals` pinta, e o anel de
+        // objecto vazio seria o segundo anel concêntrico do report de 06/09 — mais um disco a
+        // disputar o clique com a alça que arrasta a corrente inteira.
+        || w.get::<ph2d_skeleton_ecs::IkTarget>(e).is_some()
 }
 
 /// ⭐ **«Este objeto é um VAZIO?»** — a pergunta que TODOS os consumidores fazem.

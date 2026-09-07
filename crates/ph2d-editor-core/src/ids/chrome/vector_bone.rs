@@ -57,3 +57,22 @@ pub const VECTOR_BONE_ACT_TRANSFORM: NodeId = hash_node_id("vector.bone.action.t
 /// Os dois segmentos, **índice-alinhados** com [`ph2d_tool_vector::BoneAction::ALL`]. ⚠️ Alinhar
 /// por índice é o que impede a lista do painel e a do vocabulário de divergirem em silêncio.
 pub const VECTOR_BONE_ACTION_IDS: [NodeId; 2] = [VECTOR_BONE_ACT_CREATE, VECTOR_BONE_ACT_TRANSFORM];
+
+/// ⭐⭐⭐ **Add IK** — dá a este osso uma ÂNCORA: um alvo que a corrente persegue a cada quadro.
+///
+/// ⚠️ Só é pintado num osso que ainda **não** tem uma — duas âncoras a puxar a mesma corrente é
+/// estado inalcançável, e o gesto recusa-o também.
+pub const VECTOR_BONE_IK_ADD: NodeId = hash_node_id("vector.bone.ik.add");
+
+/// **Remove IK** — apaga a âncora e o alvo com ela.
+pub const VECTOR_BONE_IK_REMOVE: NodeId = hash_node_id("vector.bone.ik.remove");
+
+/// **Mix** — quanto da restrição vale (`0..1`). O *Mix* do Spine, o *Influence* do Blender.
+pub const VECTOR_BONE_IK_MIX: NodeId = hash_node_id("vector.bone.ik.mix");
+
+/// **Softness** — a que fracção do alcance a corrente começa a abrandar, para o joelho não estalar
+/// ao esticar. O *Softness* do Spine.
+pub const VECTOR_BONE_IK_SOFTNESS: NodeId = hash_node_id("vector.bone.ik.softness");
+
+/// **Chain** — quantos ossos a âncora governa, contados da ponta para cima. `0` = até à raiz.
+pub const VECTOR_BONE_IK_CHAIN: NodeId = hash_node_id("vector.bone.ik.chain");

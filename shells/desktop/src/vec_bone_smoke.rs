@@ -50,6 +50,18 @@ fn cadeia(sim: &mut ph2d_ecs::SimWorld, a: [f64; 2], b: [f64; 2], n: usize) -> O
     raiz
 }
 
+/// A PONTA de uma cadeia — desce pelo 1.º filho até não haver osso abaixo.
+fn ponta_da_cadeia(sim: &ph2d_ecs::SimWorld, raiz: Entity) -> Entity {
+    let mut e = raiz;
+    while let Some(f) = sim.world().get::<ph2d_ecs::Children>(e).and_then(|c| {
+        c.iter()
+            .find(|c| sim.world().get::<ph2d_skeleton_ecs::Bone>(**c).is_some())
+    }) {
+        e = *f;
+    }
+    e
+}
+
 impl crate::App {
     /// No prólogo do frame. No-op sem a env.
     pub(crate) fn vec_bone_smoke(&mut self) {
@@ -156,12 +168,25 @@ impl crate::App {
                 }
             }
         }
+        // ⭐⭐⭐ **O BRAÇO NASCE COM ÂNCORA DE IK** — a restrição que persiste.
+        //
+        // ⚠️ **Ela nasce COINCIDENTE com a ponta**, então a cena abre com o braço exactamente onde
+        // estava: o losango é a única coisa nova na tela, e o artista descobre o que ele faz
+        // arrastando-o. ⛔ Uma cena que abrisse já dobrada não distinguiria *«a âncora funciona»* de
+        // *«a cena montou torta»*.
+        let ancorado = pecas
+            .first()
+            .and_then(|(_, raiz)| *raiz)
+            .map(|raiz| ponta_da_cadeia(&gfx.sim, raiz))
+            .and_then(|ponta| crate::skeleton_goal::add(&mut gfx.sim, ponta))
+            .is_some();
         eprintln!(
-            "[vec-bone-smoke] {presas} forma(s) presa(s): o BRACO (3 ossos, RETO) e o TENTACULO \
-             (6, ja' CURVADO pela cena -- e' o motor a trabalhar sem gesto nenhum). A \
-             FOLHA roxa tem esqueleto e NAO esta' presa -- seleccione-a e carregue em `Bind to \
-             Skeleton`. Para POSAR, fique na ferramenta Bone: arraste o CORPO de um osso para o \
-             girar, ou a BOLINHA da junta para o deslocar."
+            "[vec-bone-smoke] {presas} forma(s) presa(s): o BRACO (3 ossos, RETO, com ANCORA DE \
+             IK: {ancorado}) e o TENTACULO (6, ja' CURVADO pela cena -- e' o motor a trabalhar sem \
+             gesto nenhum). A FOLHA roxa tem esqueleto e NAO esta' presa -- seleccione-a e \
+             carregue em `Bind to Skeleton`. Para POSAR, fique na ferramenta Bone: arraste o CORPO \
+             de um osso para o girar, a BOLINHA da junta para o deslocar, e o LOSANGO na ponta do \
+             braco para a corrente inteira o seguir -- esse fica."
         );
     }
 }

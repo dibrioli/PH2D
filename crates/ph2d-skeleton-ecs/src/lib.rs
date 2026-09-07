@@ -74,6 +74,109 @@ impl Default for Bone {
 
 impl SimComponent for Bone {}
 
+/// ⭐⭐⭐ **A ÂNCORA** — a restrição de cinemática inversa que **FICA**.
+///
+/// Ela mora no osso da PONTA da corrente, que é o modelo do Blender (*Inverse Kinematics* é uma
+/// *bone constraint* no último osso) e o que faz undo, save, olho, cadeado e timeline valerem aqui
+/// sem uma linha de código próprio — pela mesma razão de o osso ser uma entidade.
+///
+/// # ⭐⭐ Por que ela não é o arrasto que já existia
+///
+/// O arrasto da ponta **posa** — acaba quando o dedo levanta. Uma restrição **persiste**: o artista
+/// anima UM objecto (a mão) e o braço inteiro segue-o, para sempre e através da timeline. É a
+/// diferença entre *«um editor de esqueletos»* e *«um editor de animação»*, e as quatro referências
+/// entregam-na assim:
+///
+/// | Referência | onde vive | o quanto | a corrente | a suavidade |
+/// |---|---|---|---|---|
+/// | Blender | *bone constraint* na ponta | *Influence* `0..1` | *Chain Length* (`0` = tudo) | — |
+/// | Spine | `IkConstraint` | *Mix* `0..1` | lista de ossos | *Softness* |
+/// | Rive | `IKConstraint` | *Strength* `0..100` | *Bone Count* | — |
+/// | Moho | *bone constraint* | — | a cadeia do osso | — |
+///
+/// ⚠️ **O ALVO é uma entidade qualquer**, e é isso que o torna poderoso: ele tem `Transform`, logo
+/// a timeline anima-o, o gizmo move-o, o undo desfá-lo e a Hierarquia mostra-o — tudo de graça.
+///
+/// ⛔ **O alvo NUNCA pode ser descendente da corrente.** Mover o osso moveria o alvo, que moveria o
+/// osso: o laço realimenta-se e a corrente vibra. O passe **recusa** esse caso em vez de o resolver,
+/// porque não há resposta certa para ele.
+#[derive(Component, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct IkGoal {
+    /// A identidade durável do objecto que a ponta persegue. [`StableId::NONE`] ⇒ a restrição está
+    /// inerte (o alvo foi apagado), e o passe deixa a corrente em paz.
+    ///
+    /// ⚠️ Mesma cerca do [`Tendon::bone`], e pelo mesmo defeito medido: bits de alocação não
+    /// sobrevivem ao respawn do undo.
+    pub target: StableId,
+    /// Quantos ossos a corrente tem, **contados da ponta para cima**. `0` = até à raiz do esqueleto.
+    ///
+    /// ⚠️ **Não tem tecto escrito, e é de propósito:** quem o limita é a corrente REAL
+    /// (`min(chain, comprimento da cadeia)`), que é um número derivado do documento e não um palpite
+    /// — um valor absurdo vindo de um ficheiro é aparado pela árvore, não por uma constante.
+    ///
+    /// ⭐ O valor de NASCIMENTO é **2** — o membro, o par que a lei fechada resolve exactamente. ⛔ O
+    /// `0` do Blender (*«até à raiz»*) é o default dele e é a queixa nº 1 documentada da feature: ao
+    /// primeiro arrasto o esqueleto inteiro dobra.
+    pub chain: u32,
+    /// ⭐ **A MISTURA** (`0..1`) — o *Mix* do Spine. `0` = a restrição está desligada e a pose é a
+    /// que o artista autorou; `1` = a corrente obedece ao alvo.
+    ///
+    /// ⚠️ Ela mistura **ângulos**, não posições — ver [`ph2d_skeleton::blend_angle`]: interpolar
+    /// posições encurtaria os ossos.
+    pub mix: f64,
+    /// ⭐ **A SUAVIDADE** — o *Softness* do Spine, em **fracção do alcance da corrente**.
+    ///
+    /// ⚠️ **Fracção e não distância, de propósito** — a mesma decisão do [`Bone::strength`]: assim a
+    /// lei é adimensional e o mesmo rig desenhado dez vezes maior abranda no mesmo sítio. `0` = o
+    /// corte a seco de sempre, **ao bit**.
+    pub softness: f64,
+}
+
+impl Default for IkGoal {
+    fn default() -> Self {
+        Self {
+            target: StableId::NONE,
+            chain: DEFAULT_CHAIN,
+            mix: 1.0,
+            softness: 0.0,
+        }
+    }
+}
+
+/// Quantos ossos uma âncora nova governa — **o membro**.
+///
+/// ⭐ Dois é a corrente que a lei dos cossenos resolve **fechada e exacta** (sem iteração nenhuma),
+/// e é a anatomia de um braço e de uma perna. ⛔ O `0` do Blender (*«até à raiz»*) é o default dele
+/// e a queixa nº 1 da feature: um clique e o esqueleto inteiro passa a dobrar.
+pub const DEFAULT_CHAIN: u32 = 2;
+
+impl SimComponent for IkGoal {}
+
+/// ⭐ **ESTE OBJECTO É UMA ÂNCORA DE IK** — a marca que o alvo carrega.
+///
+/// # ⚠️ Por que uma marca, e não uma pergunta derivada
+///
+/// A pergunta *«alguma âncora nomeia este objecto?»* é derivável do [`IkGoal`], e **o preço a
+/// tornaria O(n²)**: quem precisa dela é o `group_gizmo_view::empty_objects`, que **varre o mundo
+/// inteiro a cada quadro** e faria uma varredura de âncoras por entidade visitada.
+///
+/// ⛔ E ela **tem de ser registada**: sem isso o `WorldSnapshot` descarta-a em silêncio, e a marca
+/// evapora no primeiro Ctrl+Z — o anel de objecto vazio voltaria a aparecer por cima do losango,
+/// **só depois de desfazer**, que é o pior modo de falha possível (intermitente e sem erro).
+///
+/// # ⭐⭐ O que ela compra
+///
+/// Um alvo é um objecto com `Transform` e sem pixels ⇒ ele responde *sim* ao
+/// `group_gizmo_view::is_empty_object`, e ganharia **um segundo anel** concêntrico com o losango,
+/// mais um disco a **disputar o clique** com a alça. ⚠️ É o defeito literal que o report do dono de
+/// 2026-09-06 (*«alguns bones têm círculos grandes e pequenos»*) já custou uma vez, e o doc daquela
+/// cura escreveu a lei: *uma família nova que ganhe alças próprias e não venha a esta lista nasce
+/// com duas caixas sobre o mesmo objecto*.
+#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IkTarget;
+
+impl SimComponent for IkTarget {}
+
 /// Um osso a que **esta** coisa está presa, com a pose de repouso dele no instante do bind.
 ///
 /// ⭐ O nome é o do Rive, que chama a mesma coisa exactamente assim — um *Tendon* liga um osso a
@@ -158,6 +261,14 @@ pub fn register_skeleton_components(reg: &mut ComponentRegistry) {
     // `register`: uma pele sem a fonte autorada dentro não é uma pele, é uma forma prestes a sumir
     // — ela chega pelo GESTO (*Bind*) e nunca por um botão de "acrescentar componente".
     reg.register::<SkinBind>("ph2d::skeleton::Skin");
+    // `register` pela MESMA razão: uma âncora sem alvo não governa nada. Ela chega pelo gesto
+    // (*Add IK*), que cria o alvo no mesmo passo — pendurá-la por paleta daria uma restrição inerte
+    // que o artista não teria como completar.
+    reg.register::<IkGoal>("ph2d::skeleton::IkGoal");
+    // ⚠️ **Registada, e o esquecimento seria INTERMITENTE:** a marca do alvo evaporaria no primeiro
+    // Ctrl+Z e o anel de objecto vazio voltaria por cima do losango — um defeito que só aparece
+    // depois de desfazer, que é o pior modo de falha que há.
+    reg.register_default::<IkTarget>("ph2d::skeleton::IkTarget");
 }
 
 #[cfg(test)]
@@ -171,9 +282,11 @@ mod tests {
     fn registers_every_skeleton_component() {
         let mut reg = ComponentRegistry::new();
         register_skeleton_components(&mut reg);
-        assert_eq!(reg.len(), 2);
+        assert_eq!(reg.len(), 4);
         assert!(reg.get_by_name("ph2d::skeleton::Bone").is_some());
         assert!(reg.get_by_name("ph2d::skeleton::Skin").is_some());
+        assert!(reg.get_by_name("ph2d::skeleton::IkGoal").is_some());
+        assert!(reg.get_by_name("ph2d::skeleton::IkTarget").is_some());
     }
 
     /// ⭐ **O NOME CANÓNICO NÃO DIZ "VECTOR"** — e é a metade destrutiva-depois desta wave.

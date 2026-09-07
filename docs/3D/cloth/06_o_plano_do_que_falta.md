@@ -176,6 +176,21 @@ e os três de *Simulation Area* eram pintados, hit-indexados e roteados — e **
 fileira do tecido nem é desenhada. *A fixtura tem de conter o fenómeno* — a sexta vez que aquele
 módulo o escreve, e a primeira em que a frase custou uma wave inteira de controlos.
 
+### ✅ FECHADO em 07/09 — o pincel tem AGORA todos os controlos que o alvo oferece
+
+Os **três** que faltavam do §8.1 fecharam no mesmo dia, e cada um por uma razão diferente:
+
+| controlo | veredito |
+|---|---|
+| ***Normal Weight*** | ⛔ **NÃO EXISTE neste pincel** — as três fixtures (`0`, `0,5`, `1`) dão o mesmo bloco de vértices, linha a linha. Uma lei a menos para escrever, e duas linhas saem da espec |
+| ***Persistent* + *Set Persistent Base*** | ⭐ implementado, e ele **satura** em vez de atenuar |
+| ***Use Collisions*** | ⭐ implementado, e o sujeito estava lá: a cena de escultura guarda **várias peças** |
+
+⛔⛔ **DIVERGÊNCIA DECLARADA na colisão:** a espec dá ao *cast* uma **espessura de raio** de `0,3` em
+unidades de mundo e o `Mesh::raycast` desta casa lança um raio FINO — num colisor fino visto de
+raspão o nosso passa e o do alvo apanharia. ⚠️ **Não há fixture de colisor no corpus**, logo o gate 53
+declara-se de ESPEC (as cinco cláusulas verificadas por construção) e nada disto tem lado aprovado.
+
 ### ✅ FECHADO em 07/09 — a BASE PERSISTENTE, e o AGARRAR que o artista tinha estava a `1/11` da lei
 
 ⭐⭐ **A base persistente (§6.4) é a última lei do §8.1 que faltava.** Ela substitui o repouso em
@@ -306,6 +321,19 @@ não são paralelizáveis, por construção e não por preguiça:** a ordem em q
 resolvidas é **metade da lei** desta linha (Gauss–Seidel não comuta; varrer por índice crescente
 deixa `30` traços acima da barra e pela célula deixam `15`). *Uma varredura paralela responde outra
 coisa, e é a coisa que este módulo passou uma semana a provar que importa.*
+
+⭐⭐ **E a COLISÃO tem preço próprio, medido no mesmo dia** — ela acrescenta **um raio por vértice
+activo, por colisor e por passo**:
+
+| grelha | vértices | colisores | sem | com | razão |
+|---|---|---|---|---|---|
+| `64²` | `4 225` | `1` | `1,53 ms` | `4,24 ms` | **`2,8×`** |
+| `64²` | `4 225` | `3` | `1,52 ms` | `9,24 ms` | **`6,1×`** |
+| `128²` | `16 641` | `1` | `6,40 ms` | `16,63 ms` | **`2,6×`** |
+| `128²` | `16 641` | `3` | `6,41 ms` | `35,97 ms` | **`5,6×`** |
+
+⇒ **com um colisor a `16 641` vértices o dab já é um quadro inteiro**, e com três são dois. *É este
+número que justifica a opção nascer desligada* — e ⛔ ele é o preço de UM dab, não de um quadro.
 
 ⚠️ **E o número é POR DAB, não por quadro:** o traço emite a `0,15 × raio` de espaçamento, logo uma
 mão rápida entrega vários dabs no mesmo quadro e multiplica isto. *A medição diz o preço de um; quem

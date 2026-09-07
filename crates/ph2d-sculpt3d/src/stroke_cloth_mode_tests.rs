@@ -614,3 +614,68 @@ fn a_base_persistente_chega_ao_motor_e_satura() {
          mudar alguma coisa, a base esta' a ser lida onde a espec diz que nao e'"
     );
 }
+
+/// **SONDA — o que a COLISÃO custa** (espec §5.6).
+///
+/// ⛔⛔ **Ela existe pela §0.0 do CLAUDE.md:** a colisão acrescenta **um raio por
+/// vértice activo, por colisor e por passo** ao dab, e um número desses tem de
+/// ser medido **antes** de alguém escrever um tecto ou de o artista o pagar sem
+/// saber. *A opção nasce desligada, e é este número que diz porquê.*
+#[test]
+#[ignore = "sonda"]
+fn sonda_do_custo_da_colisao() {
+    use crate::Verb;
+    use crate::stroke::cloth_artefatos_tests::plano_n;
+    use crate::stroke::cloth_tests::dab_em;
+    use std::time::Instant;
+    println!(
+        "{:>6} {:>9} {:>10} | {:>10} {:>10} {:>8}",
+        "n", "vertices", "colisores", "sem (ms)", "com (ms)", "razao"
+    );
+    for n in [64usize, 128] {
+        for colisores in [1usize, 3] {
+            let medir = |com: bool| -> f64 {
+                let mut mesh = plano_n(n);
+                let b = Brush {
+                    verb: Verb::Cloth,
+                    radius: 0.30,
+                    strength: 1.0,
+                    cloth_collisions: com,
+                    ..Brush::default()
+                };
+                let mut s = SculptStroke::default();
+                s.begin(&mesh);
+                if com {
+                    // Esferas pequenas fora do caminho: o custo do RAIO é o
+                    // mesmo, e o resultado não é o que esta sonda mede.
+                    for k in 0..colisores {
+                        let c = ph2d_mesh::shapes::uv_sphere(16, 8, 0.2);
+                        s.cloth_colliders
+                            .push((c, ph2d_mesh::Pose::at([0.0, 0.0, -2.0 - k as f32])));
+                    }
+                }
+                let mut ms: Vec<f64> = Vec::new();
+                for k in 0..12 {
+                    let c = [0.02 * k as f32, 0.0, 0.0];
+                    let passo = if k == 0 { [0.0; 3] } else { [0.02, 0.0, 0.0] };
+                    let t0 = Instant::now();
+                    s.dab(
+                        &mut mesh,
+                        &b,
+                        &dab_em(c, b.radius, passo),
+                        Symmetry::default(),
+                    );
+                    ms.push(t0.elapsed().as_secs_f64() * 1e3);
+                }
+                ms.sort_by(f64::total_cmp);
+                ms[ms.len() / 2]
+            };
+            let (sem, com) = (medir(false), medir(true));
+            println!(
+                "{n:>6} {:>9} {colisores:>10} | {sem:>10.2} {com:>10.2} {:>8.2}x",
+                (n + 1) * (n + 1),
+                com / sem
+            );
+        }
+    }
+}

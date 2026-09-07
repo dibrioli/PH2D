@@ -372,8 +372,21 @@ pub struct PincelTecido {
 impl PincelTecido {
     /// O pen-down: a simulação nasce nas posições ACTUAIS, que passam a ser o
     /// repouso do traço.
+    ///
+    /// ⚠️⚠️ **A `ordem` é um ARGUMENTO e não é derivada aqui, de propósito.** Ela
+    /// é a ordem de visita da malha ([`Self::ordem`]), e quem a sabe é quem tem a
+    /// topologia: o produto deriva-a com
+    /// [`crate::particao::ordem_de_visita`], e a bancada de paridade **lê-a da
+    /// fixture do alvo** — porque na esfera o desempate do eixo da bissecção não
+    /// é resolúvel com a precisão que as fixtures têm. *Se ela fosse derivada
+    /// aqui, a bancada mediria uma partição espelhada e chamar-lhe-ia paridade.*
+    ///
+    /// ⛔ **E é obrigatória porque esquecê-la é silencioso:** ela muda o
+    /// resultado e não muda a compilação. Passar `Vec::new()` diz «esta malha não
+    /// tem partição conhecida» e cai na ordem crescente — que é o que uma malha
+    /// abaixo do tecto da folha dá de qualquer maneira.
     #[must_use]
-    pub fn pen_down(pincel: Pincel, posicoes: &[V3], cursor: V3) -> Self {
+    pub fn pen_down(pincel: Pincel, posicoes: &[V3], cursor: V3, ordem: Vec<u32>) -> Self {
         Self {
             raio0: pincel.raio,
             pincel,
@@ -381,7 +394,7 @@ impl PincelTecido {
             inicio: cursor,
             anterior: cursor,
             dentro: Vec::new(),
-            ordem: Vec::new(),
+            ordem,
             mascara: Vec::new(),
             primeiro: true,
         }

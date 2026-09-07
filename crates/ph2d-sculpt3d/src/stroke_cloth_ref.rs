@@ -235,7 +235,13 @@ impl SculptStroke {
         let cursor = v3(center);
         let pos: Vec<V3> = mesh.positions().iter().map(|p| v3(*p)).collect();
         if self.cloth_ref[copy].is_none() {
-            let mut tecido = PincelTecido::pen_down(pincel_de(brush, passagens), &pos, cursor);
+            let caras: Vec<&[u32]> = mesh.faces().iter().map(Face::verts).collect();
+            let tecido = PincelTecido::pen_down(
+                pincel_de(brush, passagens),
+                &pos,
+                cursor,
+                ph2d_cloth::particao::ordem_de_visita(&pos, &caras),
+            );
             // ⭐⭐⭐ **A ORDEM DE VISITA da malha** (espec §3.1-bis) — a partição em
             // células da árvore espacial. ⛔ **Não é uma optimização: é metade da
             // lei.** Ela fixa a ordem em que as restrições entram na lista, a
@@ -245,8 +251,6 @@ impl SculptStroke {
             //
             // ⚠️ **É propriedade da MALHA, e por isso é derivada UMA vez, no
             // pen-down**, sobre as posições que passam a ser o repouso do traço.
-            let caras: Vec<&[u32]> = mesh.faces().iter().map(Face::verts).collect();
-            tecido.ordem = ph2d_cloth::particao::ordem_de_visita(&pos, &caras);
             self.cloth_ref[copy] = Some(ClothRef { tecido });
         }
         let Some(mut ses) = self.cloth_ref[copy].take() else {

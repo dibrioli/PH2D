@@ -450,8 +450,7 @@ fn correr_com_pincel(nome: &str, ordem: Option<&str>) -> (Vec<V3>, PincelTecido)
     );
 
     let mut pos = rest.clone();
-    let mut tecido = PincelTecido::pen_down(pincel, &pos, t.caminho[0]);
-    tecido.ordem = ordem_de_visita(&sup);
+    let mut tecido = PincelTecido::pen_down(pincel, &pos, t.caminho[0], ordem_de_visita(&sup));
     for k in 0..passos {
         let cursor = t.caminho[k];
         let prev = t.caminho[k.saturating_sub(1)];
@@ -693,7 +692,7 @@ fn sonda_passo_a_passo() {
     .collect();
 
     let mut pos = rest.clone();
-    let mut tecido = PincelTecido::pen_down(pincel, &pos, c0);
+    let mut tecido = PincelTecido::pen_down(pincel, &pos, c0, ordem_de_visita(&sup));
     // ⭐⭐ **As colunas nomeadas são as do anel PRÓXIMO (`1R`, `2R`)**, e a troca
     // é de 06/09: um defeito que vive num vértice só não se vê nas colunas do
     // ARO, que são justamente onde a lei já bate. O aperto de ponto lê `1R`
@@ -1145,7 +1144,7 @@ fn a_lista_do_local_vem_em_duplicado() {
 
     let lista_de = |area: Area| -> Vec<ph2d_cloth::verlet::Restricao> {
         let pincel = Pincel { area, ..t.pincel() };
-        let mut tecido = PincelTecido::pen_down(pincel, &rest, c0);
+        let mut tecido = PincelTecido::pen_down(pincel, &rest, c0, ordem_de_visita(&sup));
         let passo = Passo {
             cursor: c0,
             delta: [0.0; 3],
@@ -1240,7 +1239,7 @@ fn o_centro_do_snake_hook_esta_um_passo_atrasado() {
     let r = pincel.raio;
     let c0 = pp.caminho[0];
     let mut pos = rest.clone();
-    let mut tecido = PincelTecido::pen_down(pincel, &pos, c0);
+    let mut tecido = PincelTecido::pen_down(pincel, &pos, c0, ordem_de_visita(&sup));
     let mut argmax = (0usize, 0.0f64);
     let mut cursor = c0;
     for k in 0..2 {
@@ -1406,7 +1405,7 @@ fn correr_por_passo(nome: &str) -> (Vec<V3>, Vec<Vec<u32>>, Vec<Vec<V3>>) {
     let pincel = t.pincel();
     let c0 = pp.caminho[0];
     let mut pos = rest.clone();
-    let mut tecido = PincelTecido::pen_down(pincel, &pos, c0);
+    let mut tecido = PincelTecido::pen_down(pincel, &pos, c0, ordem_de_visita(&sup));
     let mut saida = Vec::with_capacity(pp.caminho.len());
     for k in 0..pp.caminho.len() {
         let cursor = pp.caminho[k];

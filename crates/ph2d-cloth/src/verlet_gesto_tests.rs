@@ -81,7 +81,7 @@ fn nenhum_vertice_guarda_a_forca_por_passo_de_um_passo_anterior() {
         let r = pincel.raio;
         let mut pos = rest.clone();
         let inicio = [-0.5, 0.0, 0.0];
-        let mut tecido = PincelTecido::pen_down(pincel, &pos, inicio);
+        let mut tecido = PincelTecido::pen_down(pincel, &pos, inicio, Vec::new());
         let mut cursor = inicio;
         let normais = vec![[0.0, 0.0, 1.0]; rest.len()];
         for k in 0..24 {
@@ -404,7 +404,7 @@ fn as_quatro_especies_nascem_pela_ordem_da_referencia() {
         ..Pincel::default()
     };
     p.solver.plasticidade = 0.5;
-    let mut t = PincelTecido::pen_down(p, &pos, cursor);
+    let mut t = PincelTecido::pen_down(p, &pos, cursor, Vec::new());
     let passo = Passo {
         cursor,
         delta: [0.05, 0.0, 0.0],

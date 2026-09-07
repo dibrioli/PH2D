@@ -1435,7 +1435,108 @@ como inteiro; README das fixtures com a régua de excepções alargada (`24` de 
 **Verificador:** `verifica_traco.py` **verde sobre os 76**.
 **Sweep:** verde sobre a espec emendada, a pasta inteira das fixtures, o INBOX, os dois READMEs e
 este ledger (menos os hits pré-existentes de 2026-09-05 já registados acima).
-**Auditoria §4.2 (R-pré): ⏳ POR CORRER.** ⛔ A janela-mãe não implementa antes do atestado (§3.R).
+**Auditoria §4.2 (R-pré): ✅ CORRIDA E ATESTADA em 2026-09-07** — ver a secção abaixo.
+
+### R-pré da emenda Q17 (2026-09-07) — ATESTADO
+
+**Quem:** subagente R-pré despachado com contexto novo, independente do subagente-E que escreveu a
+emenda. Leu os **dois** lados — o fonte por shell (`cat`/`grep`/`sed`), nunca pela ferramenta de
+leitura, que o deny da linha nega. Não escreveu nem ditou código de produto.
+
+**§4.2 (expressão): ZERO achados.** Sem trecho, sem nome interno do alvo, sem wording de comentário
+ou de manual, sem pseudo-código espelhado, sem organização ficheiro-a-ficheiro. Conferências feitas
+de propósito: (a) **nenhum comentário do fonte fala do instante das normais** — a §4.2-ter é
+medição, não tradução de um comentário; (b) o bloco de fórmula da §10.11 é o modelo do **nosso**
+arnês de ajuste, não uma transcrição; (c) a §5.7-bis FECHO mantém a ordem das **perguntas do INBOX**,
+que é onde um censo de ausências escorrega para a organização do alvo; (d) considerada e **liberada**
+uma proximidade de ideia (a espec chama à sua fotografia de normais «a mais barata», e o alvo tem um
+comentário sobre custo noutro contexto): a espec não atribui razão nenhuma ao alvo, e a frase é
+sobre a NOSSA escolha.
+
+**Sweep:** verde sobre a espec emendada + a pasta inteira das fixtures + INBOX + os dois READMEs +
+`docs/3D/cloth/`; e sobre o **histórico** desses caminhos os únicos hits são os **pré-existentes de
+2026-09-05** já adjudicados acima. ⭐ Controlo extra: o **patch do commit da emenda**, varrido
+sozinho, passa limpo.
+
+**FIDELIDADE — as duas correcções são verdadeiras, e o mecanismo de cada uma foi isolado:**
+1. **As normais que o gesto lê são as da superfície que o traço encontrou.** O mecanismo é que quem
+   as refresca é o **passo de preparação do objecto para edição**, e um traço corre-o **uma vez**; a
+   escrita de posições da escultura marca as normais da **árvore de desenho** e ⛔ **não** as da
+   malha. ⇒ a normal da área do Push e a normal por vértice do Inflate saem da **mesma** fotografia.
+2. **O disco de amostragem mede contra as posições de agora.** Existe um ramo que leria as posições
+   e as normais **de partida**, e ele está atrás de uma condição que **este pincel não activa** —
+   por isso as duas grandezas vêm de superfícies diferentes, que é o ponto da errata. Quando o disco
+   fica vazio a resposta é o **vector nulo** e o deslocamento do Push é exactamente zero, sem
+   direcção de reserva.
+
+**Números reconstruídos do zero pelo R-pré, a partir das fixtures (script próprio, fora do repo):**
+- **O limiar, célula a célula.** Sete traços de empurrar por passo ⇒ **`67`** passos com o cursor em
+  movimento. Medindo `min_v |p_v(bloco k−1) − c_k|` sobre **todos** os vértices: **`53` abaixo** de
+  `0,175` com máximo **`0,17313`**, **`14` acima** com mínimo **`0,17586`**; `R · 0,5 = 0,17500` cai
+  no vão, **nem um passo do lado errado**. Os quatro padrões de disparo saem os quatro:
+  `2 3 4 5 10` (*Local*) · `2 3 4 5 6 10` (*Global*) · `2..9` (massa `2`) · **os onze** (forças `0,5`
+  e `0,25`, onde a folha nunca chega a `0,175`).
+- **A esfera.** `esfera_empurrar_radial_local_1passo`: deslocamento colinear (fracção não-colinear
+  `1,5·10⁻⁵`), direcção `(+0,2996, −0,9541, 0)` ⇒ **`0,03°`** da normal da superfície no cursor e
+  **`17,43°`** do eixo da vista (⭐ o `17,43` da espec reproduz-se exactamente com a direcção do
+  ajuste; um estimador ingénuo dá `17,44`, e a barra do gate 42 (`≈ 17,4°`) é robusta aos dois).
+  Controlo `esfera_inflar_radial_local_1passo`: direcção por vértice = a normal de repouso do próprio
+  vértice, mediana `7,0·10⁻⁵`.
+- **Os dois traços.** No 2.º traço a direcção por vértice bate as normais da malha deixada pelo 1.º
+  com mediana **`1,7·10⁻⁵`** e as planas com **`0,299`**; inclinação máxima das normais **`22,38°`**
+  (a espec diz `22,4°` ✓) e cova do 1.º traço **`0,09917`**.
+- **Saúde do corpus.** `verifica_traco.py` **verde sobre os 76**; `gera_indice.py` regenera o
+  `indice.json` **byte-a-byte** (76 entradas para 76 ficheiros); a tabela «As corridas» tem **76**
+  linhas e o conjunto de nomes é **igual ao disco**; o censo das excepções do README dá **`24`
+  distintas de `76`** (as linhas somam `25` porque `plano_agarrar_radial_local_preset` é excepção em
+  duas grandezas) e **`16`** fora da área *Local*.
+
+**NOVE curas aplicadas no acto, todas funcionais (nenhum facto perdido):**
+1. **§4.6 linha 2** ainda dizia que a normal da área é a média das normais **actuais** e que «roda
+   com a vala»; passa a dizer que o que roda é o **conjunto amostrado** e que a grandeza **deixa de
+   existir** quando o disco fica vazio.
+2. **§4.6 linha 4** dizia «sobre a malha ACTUAL» e a leitura do censo dizia «da malha deformada» —
+   as duas corrigidas, com a nota de que a fixture de esfera de **um** passo não separa os dois
+   instantes (ali coincidem por construção).
+3. **§4.2-ter** afirmava que *nada mais no pincel lê normais*: há um **terceiro leitor**, o recorte
+   *Front Faces Only* do §4.1, que obedece à mesma lei e está **desligado** nos presets (logo o
+   corpus não o observa). A colisão lê normais **do colisor**, que é outra geometria.
+4. ⭐⭐ **O §7 estava certo e virou divergência não-nomeada: o FILTRO faz o CONTRÁRIO.** Cada passo
+   do filtro repete a preparação do objecto para edição, logo ali as normais **são** as de agora.
+   *A mesma palavra («Inflate») nomeia duas leis neste documento* — agora as duas dizem-no, e a §4.6
+   linha 4 nomeia os dois consumidores.
+5. **Gate 23:** «REVOGADO E **INVERTIDO**» é a palavra errada e é perigosa. O veredito não se
+   inverte — o que se reavalia a cada passo é o **conjunto amostrado**, logo um port que **congele**
+   o vector do gesto e empurre em todos os passos continua errado (é o gate 40 que o apanha). A razão
+   real de o gate sair é ser **ambíguo**: num plano a mutação dele é byte-idêntica à lei correcta em
+   todo passo de disco não-vazio.
+6. **A régua do resíduo** não estava definida em lado nenhum e os gates 39/41/42 penduram-se nela —
+   fica escrita (`‖r − a⊗u‖ / ‖r‖`, com `1,00` = nenhum vector explica nada), com o ⛔ de que a
+   barra é o **vão de ordens de grandeza** e não o dígito (ela mede a direcção **e** o `a_v`), e com
+   uma régua irmã que não depende da queda, calibrada com números que o R-pré mediu.
+7. **Gate 40:** a régua não dizia sobre que vértices corria o mínimo, contra que posições, nem com
+   que índice de cursor — fica escrita como foi reconstruída.
+8. **A cova do 1.º traço** era `0,0999` na espec e no README; o ficheiro diz **`0,09917`**.
+9. **Dois totais do README** ainda em `73` com `76` no disco (o do bloco das fixtures de topologia e
+   o da deriva do `analise.json`).
+
+**⭐⭐⭐ E um ACHADO que não é cura: a fixture nova RESPONDE em parte a uma pergunta que a §4.6
+declarava indecidível.** O **peso** da soma por face (área · ângulo · uniforme) era «não decidível
+pelo corpus» porque no plano os três dão `+ẑ` e na esfera UV a simetria os iguala. O 2.º traço da
+fixture de dois traços corre sobre uma superfície **já não plana**, e ali os três separam-se:
+mediana do desvio **uniforme `1,7·10⁻⁵` · ângulo `3,0·10⁻⁴` · área `6,6·10⁻⁴`**. É **indicação**, não
+prova (os três passam qualquer barra, a cova é rasa e a fixture não foi desenhada para isto), e está
+escrito como tal. ⚠️ *Quem acrescenta uma fixture tem de reconferir as notas que diziam «o corpus não
+decide isto»* (CLAUDE.md §0.0).
+
+**⚠️ E o instrumento que confere os atestados nasceu errado DUAS vezes.** A 1.ª (no INBOX) era
+case-sensitive e lia `4` para `8`. A 2.ª — a redacção que a curava — **contava-se a si própria**: a
+linha que ensinava a contar casava com o próprio padrão, e o awk devolvia um falso verde. ⇒ o censo
+honesto não é uma contagem, é **por bloco** (nenhuma linha `EMENDA Q<n>` sem atestado antes da
+seguinte), está escrito no cabeçalho da espec, e **tem controlo**: apagar a linha do atestado da Q17
+faz o instrumento acusá-la.
+
+**Veredicto: ATESTADO.** A emenda Q17 pode ser lida e implementada pela janela-mãe.
 
 ## Fechamento R
 

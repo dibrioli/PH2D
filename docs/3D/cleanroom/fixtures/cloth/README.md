@@ -242,7 +242,7 @@ sub-conjunto valem todas `(0, 0, 1)`. Estas três resolvem-no:
 |---|---|
 | `esfera_empurrar_radial_local_1passo` | ⭐ **a direcção do empurrar é a normal da ÁREA, não a da vista.** Num passo simulado sobre a esfera em repouso a relaxação é um no-op (as restrições nascem satisfeitas), logo o deslocamento é `u · f(v) · dt` e `u` lê-se por mínimos quadrados: dá `\|u\| = 0,700000 = 2R` com resíduo `6,1·10⁻⁷`, a **`0,023°`** da normal de repouso no cursor e a **`17,43°`** da normal da vista |
 | `esfera_inflar_radial_local_1passo` | o **controlo** do anterior: mesma cena, mesmo passo, mas a direcção é **por vértice**; amplitude `1,000000`, resíduo `5,0·10⁻⁵` contra a normal da esfera |
-| `plano_inflar_radial_local_1passo_2tracos` | ⭐⭐ **as normais são as da superfície que O TRAÇO encontrou, e refrescam-se de traço para traço.** O 1.º traço deixa uma cova de `0,0999` (normais inclinadas até **`22,4°`**); no 2.º, a direcção por vértice bate as normais da malha **no pen-down dele** com resíduo `3,5·10⁻⁷` e amplitude `1,00000`, contra resíduo `0,32` e amplitude `0,946` para as normais planas do 1.º |
+| `plano_inflar_radial_local_1passo_2tracos` | ⭐⭐ **as normais são as da superfície que O TRAÇO encontrou, e refrescam-se de traço para traço.** O 1.º traço deixa uma cova de `0,0992` (é o `max_deslocamento` de `plano_inflar_radial_local_1passo`, `0.09917`; normais inclinadas até **`22,4°`**); no 2.º, a direcção por vértice bate as normais da malha **no pen-down dele** com resíduo `3,5·10⁻⁷` e amplitude `1,00000`, contra resíduo `0,32` e amplitude `0,946` para as normais planas do 1.º. ⭐ **E ela discrimina uma coisa que a espec dava por indecidível** — o PESO da soma por face (espec §4.6 linha 4): medida a distância entre direcções unitárias, a mediana sobre os `171` movidos é `1,7·10⁻⁵` (uniforme) · `3,0·10⁻⁴` (ângulo) · `6,6·10⁻⁴` (área) |
 
 ⚠️ **A terceira é a única fixture do corpus com DOIS traços** (chave `tracos 2` no cabeçalho, ausente
 em todas as outras); o `caminho` dela é o dos dois, que são o mesmo.
@@ -306,8 +306,8 @@ o ficheiro diz o que contém.
   `desloc_no_fim` (deslocamento medido no 1.º / no último ponto do caminho, conforme o harness) ·
   `delta_area` (fracção; só significativa no plano) · `passos` · `raio`.
   ⚠️⚠️ **ESTA DESCRIÇÃO NÃO É A DO FICHEIRO — conferido em 2026-09-06.** O `analise.json` que está no
-  disco tem **47** objectos (contra `73` fixtures em 2026-09-06 — eram `54` quando isto foi escrito,
-  e o desvio só cresce) e as chaves **do harness**, não as de cima; a linha
+  disco tem **47** objectos (contra `76` fixtures em 2026-09-07 — eram `54` quando isto foi escrito
+  e `73` quando isto foi conferido, e o desvio só cresce) e as chaves **do harness**, não as de cima; a linha
   que dizia «renomeado pelo R-pré em 2026-09-05 … 46/46» descrevia uma renomeação que **não está no
   ficheiro**. Ele continua a ser dado nosso e o sweep passa sobre ele; o que não vale é acreditar
   nesta secção. ⇒ **quem o regenerar escreve-o com as chaves de cima e com uma entrada por
@@ -414,7 +414,7 @@ a área. *Uma fixture prova o que contém.*
 ## ⭐ As QUATRO fixtures de TOPOLOGIA (2026-09-06, emenda Q15 — espec §3.1-bis e §10.9)
 
 ⚠️ **Estas quatro NÃO são traços** — não têm posições, não entram no `indice.json` (o gerador só vê
-`*.deformado.txt.gz`) e não contam para os `73` acima. Elas descrevem a **malha**, e existem porque
+`*.deformado.txt.gz`) e não contam para os `76` acima. Elas descrevem a **malha**, e existem porque
 a ordem de criação das restrições (espec §3.1) é *célula → vértice próprio → anel*, e nenhuma das
 três se lê das posições de repouso: quem reconstrói a malha casando-a com as fixtures **por posição**
 fica com os índices de VÉRTICE certos e sem as faces nem as células.

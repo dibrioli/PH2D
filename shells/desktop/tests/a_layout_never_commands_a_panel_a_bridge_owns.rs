@@ -200,7 +200,13 @@ fn a_layout_names_the_inspector_exactly_when_its_canvas_owner_does_not_take_it_o
         "controlo: só {} ferramentas tomam o inspector ({takeover:?}) — a varredura partiu-se",
         takeover.len()
     );
-    for known in ["motion", "vector", "flip"] {
+    // ⚠️ **O `motion` SAIU desta lista em 2026-09-07, e não foi a varredura que se partiu:** os
+    // params dos nós passaram a viver dentro dos cartões (doc 103) e o `motion_params` deixou de
+    // ocupar a coluna da direita — sem ninguém a tomar o lugar, esconder o inspector seria tirar
+    // uma superfície e não pôr nenhuma. *Um controlo que nomeia ferramentas tem de ser reconciliado
+    // quando o PRODUTO muda; deixá-lo cá com o `motion` faria este gate exigir para sempre uma
+    // tomada de conta que já não existe.*
+    for known in ["vector", "flip"] {
         assert!(
             takeover.iter().any(|t| t == known),
             "controlo: a ponte do `{known}` faz a tomada de conta e o censo não a vê: {takeover:?}"

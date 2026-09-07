@@ -383,3 +383,45 @@ fn the_live_columns_the_stream_cooked_are_in_the_list_and_pickable() {
     );
     let _ = std::fs::remove_file(&csv);
 }
+
+/// ⭐⭐⭐ **COM O PAINEL FORA, O CARTÃO CONTINUA A ESCREVER** — a metade load-bearing da saída.
+///
+/// ⛔⛔ **O `publish` do painel é quem DRENA as intenções de param**, e desde o ciclo 1 a maioria
+/// delas vem do CARTÃO (o `apply_graph_intents` traduz-as). Saltá-lo com o painel desligado —
+/// que é a optimização óbvia, já que ninguém lê mais o snapshot — pararia **o cartão inteiro**:
+/// todo arrasto, toda caixa, todo selector ficariam mudos, e nada no ecrã diria porquê.
+///
+/// As duas metades: o snapshot **não** se publica (não há quem o leia) e a edição **passa**.
+///
+/// FALSIFICADO por o `publish` sair antes do `apply_param_edits` quando o painel está fora.
+#[test]
+fn with_the_side_panel_out_the_card_still_writes() {
+    let mut m = MotionState::new();
+    let id = m.doc.graph.add_node("motion.oscillator");
+    let antes = crate::render_loop::motion_bridge::params::param_value(&m, id, "frequency");
+    let _ = ph2d_panel_motion_params::drain_param_intents();
+    ph2d_panel_motion_params::push_param_intent(
+        ph2d_panel_motion_params::MotionParamIntent::SetParam {
+            node: id.0,
+            param: "frequency",
+            value: f64::from(antes) + 3.0,
+        },
+    );
+    let mut store = ph2d_editor::interaction::WidgetStore::default();
+    crate::render_loop::motion_bridge::params::publish_for_tests(
+        &mut m,
+        &mut store,
+        true,
+        ph2d_editor::ProjectSettings::default(),
+        &mut ph2d_editor::ToastQueue::default(),
+    );
+    assert!(
+        ph2d_panel_motion_params::current_params().is_none(),
+        "com o painel fora, o snapshot nao se constroi para ninguem"
+    );
+    let depois = crate::render_loop::motion_bridge::params::param_value(&m, id, "frequency");
+    assert!(
+        (depois - antes - 3.0).abs() < 1e-4,
+        "a edicao do cartao tem de passar mesmo com o painel fora: {antes} -> {depois}"
+    );
+}

@@ -185,11 +185,16 @@ impl TaskLayout {
             Self::Nodes => LayoutSpec {
                 title: "Nodes",
                 wire: "nodes",
-                // ⚠️ O `motion_graph` é o **centro** (ele parte a área de desenho) e o
-                // `motion_params` é da ponte — os dois vêm com a ferramenta. A linha do tempo é
-                // nomeada porque é do layout, e a ponte do motion só a **abre** por cortesia
-                // (nunca a fecha), o que é a mesma resposta por dois caminhos.
-                open: &["hierarchy", "timeline"],
+                // ⚠️ O `motion_graph` é o **centro** (ele parte a área de desenho) e vem com a
+                // ferramenta. A linha do tempo é nomeada porque é do layout, e a ponte do motion
+                // só a **abre** por cortesia (nunca a fecha), o que é a mesma resposta por dois
+                // caminhos.
+                //
+                // ⭐⭐ **O `inspector` passou a ser nomeado** (2026-09-07): o `motion_params`
+                // saiu — os params dos nós vivem dentro dos cartões (doc 103) — e com ele saiu a
+                // tomada de conta da coluna da direita. *Um layout cujo dono do canvas já não
+                // toma o inspector TEM de o nomear, senão ele fecha e não há quem o reabra.*
+                open: &["hierarchy", "inspector", "timeline"],
                 slots: &[],
                 canvas: CanvasOwner::Tool("motion"),
             },

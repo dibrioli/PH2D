@@ -533,7 +533,13 @@ pub fn set_current_params(snapshot: Option<ParamsSnapshot>) {
 }
 
 /// Read the published params (panel `paint` / `apply_event`).
-pub(crate) fn current_params() -> Option<ParamsSnapshot> {
+///
+/// ⚠️ **`pub` desde 2026-09-07**, quando o painel lateral saiu: a shell deixou de construir o
+/// snapshot com o painel fora (ninguém o lê), e o gate que mede essa saída tem de o poder
+/// verificar. *Uma optimização que ninguém consegue observar é uma optimização que ninguém
+/// consegue defender.*
+#[must_use]
+pub fn current_params() -> Option<ParamsSnapshot> {
     CURRENT.with(|c| c.borrow().clone())
 }
 

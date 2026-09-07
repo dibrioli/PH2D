@@ -101,6 +101,8 @@ use number_rows::{
     ANGLE_DECIMALS, SEED_DECIMALS, mirror_chip, mirror_number, mirror_slider, next_seed,
     number_is_typing, number_value, paint_angle_row, paint_seed_row,
 };
+/// ⚠️ **`pub` desde a saída do painel lateral** — ver o doc dele.
+pub use snapshot::current_params;
 pub use snapshot::{
     AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, FileRow, GradientRow, MAX_ENUM_OPTIONS,
     MAX_PARAM_ROWS, MotionParamIntent, PaletteRow, ParamRow, ParamsSnapshot, RowDisplay, ScalarRow,
@@ -108,9 +110,8 @@ pub use snapshot::{
     param_pal_swatch_id, param_swatch_id, push_param_intent, scalar_text, set_current_params,
 };
 use snapshot::{
-    CHANNELS_EXTRA_BASE, current_params, param_checkbox_id, param_chip_id, param_enum_id,
-    param_file_browse_id, param_number_id, param_reroll_id, param_reset_id, param_slider_id,
-    param_text_id,
+    CHANNELS_EXTRA_BASE, param_checkbox_id, param_chip_id, param_enum_id, param_file_browse_id,
+    param_number_id, param_reroll_id, param_reset_id, param_slider_id, param_text_id,
 };
 use text_rows::{mirror_text, paint_text_row, text_is_typing, text_value};
 

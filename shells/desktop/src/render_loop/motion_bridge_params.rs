@@ -165,12 +165,39 @@ pub(super) fn publish(
     }
     // Apply this frame's edits (colour picks + scalar sliders) BEFORE rebuilding, so the
     // panel reflects them; then seed each colour swatch's picker from the fresh snapshot.
+    //
+    // ⛔⛔ **ISTO CORRE COM O PAINEL FORA, e é load-bearing:** o `apply_param_edits` é quem
+    // DRENA as intenções de param — e desde o ciclo 1 a maioria delas vem do CARTÃO, traduzida
+    // pelo `apply_graph_intents`. Saltá-lo com o painel desligado pararia o cartão inteiro.
     apply_param_edits(motion, store, toasts);
+    // ⭐ **O que se constrói para NINGUÉM ver não se constrói.** Com o painel fora, a única
+    // leitora do snapshot é a row dele — e ele é a construção cara desta função (uma `String`
+    // por row do nó selecionado, por quadro). Os gates e o gerador de tutoriais chamam o
+    // `build_params_snapshot` directamente, então continuam a medir o mesmo produto.
+    if !super::painel_lateral() {
+        ph2d_panel_motion_params::set_current_params(None);
+        return;
+    }
     let snap = build_params_snapshot(motion, project);
     if let Some(s) = &snap {
         super::color::seed_color_swatches(store, s);
     }
     ph2d_panel_motion_params::set_current_params(snap);
+}
+
+/// O caminho REAL do quadro, para o gate que mede a saída do painel — ele tem de chamar o
+/// `publish`, e não o `apply_param_edits` por dentro: um gate que chamasse a função interna
+/// ficaria verde no dia em que o `publish` deixasse de a chamar, que é exactamente o defeito
+/// que a saída do painel podia introduzir.
+#[cfg(test)]
+pub(crate) fn publish_for_tests(
+    motion: &mut MotionState,
+    store: &mut ph2d_editor::interaction::WidgetStore,
+    motion_active: bool,
+    project: ph2d_editor::ProjectSettings,
+    toasts: &mut ph2d_editor::ToastQueue,
+) {
+    publish(motion, store, motion_active, project, toasts);
 }
 
 /// The single selected Motion node's `NodeId.0`, or `None` unless exactly one

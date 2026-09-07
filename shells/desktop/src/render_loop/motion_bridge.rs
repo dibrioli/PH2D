@@ -39,6 +39,13 @@ use ph2d_editor::{HeroScreen, ToastQueue, ToolId, ToolRegistry};
 pub(crate) mod gpu;
 
 #[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+/// **O que a ferramenta ABRE e FECHA** — a visibilidade dos painéis, a divisão do centro e o
+/// relógio que arranca. Irmão por RESPONSABILIDADE (HR-18): este ficheiro é o laço por quadro,
+/// aquele é *o que muda quando a ferramenta entra e sai*.
+#[path = "motion_bridge_surfaces.rs"]
+mod surfaces;
+pub(crate) use surfaces::painel_lateral;
+
 #[path = "motion_bridge_params.rs"]
 pub(crate) mod params;
 
@@ -218,62 +225,7 @@ pub(super) fn dispatch(
         .active()
         .is_some_and(|t| t.id() == ToolId::new("motion"));
 
-    // ── 1. Panel visibility (mirror of the Vector dock takeover) ──────────
-    hero.panel_visibility.insert(
-        ph2d_editor::screens::hero::PANEL_MOTION_GRAPH,
-        motion_active,
-    );
-    hero.panel_visibility.insert("motion_params", motion_active);
-
-    // Graph keyboard focus follows the cursor, re-evaluated EVERY frame (not just
-    // on move) so a cursor that stopped over the graph before the panel published
-    // its rect still gets focus by the time a key is pressed. `panel_rect` is from
-    // last frame's paint (stable); `None` off the graph → the scene owns keys.
-    let over_graph = motion_active
-        && hero
-            .store
-            .panel_rect(ph2d_editor::ids::MOTION_GRAPH_PANEL)
-            .is_some_and(|r| r.contains(cursor.0, cursor.1));
-    hero.store
-        .set_graph_focused(over_graph.then_some(ph2d_editor::ids::MOTION_GRAPH_PANEL));
-
-    // ── 2. Center split + Inspector takeover — edge-triggered on activation ──
-    {
-        use std::sync::atomic::Ordering;
-        let was = LAST_ACTIVE.swap(motion_active, Ordering::Relaxed);
-        if was != motion_active {
-            hero.panel_visibility.insert("inspector", !motion_active);
-            if motion_active {
-                // Split into scene ⟂ graph. Keep any orientation the user already
-                // chose (SplitH/SplitV chips); default to Cavalry-style horizontal.
-                if !hero.view.center_split.is_split() {
-                    hero.view.center_split = CenterSplit::Horizontal {
-                        t: CenterSplit::T_DEFAULT,
-                    };
-                }
-                // Auto-play on entry so time-driven behaviours animate live the
-                // moment the tool opens (Cavalry/AE preview semantics). Space
-                // toggles pause; nothing moves until a `Temporal` node is wired.
-                // This plays the EDITOR's clock (W4.T7) — the timeline runs with
-                // the graph, which is the point of there being only one.
-                playhead.play();
-                // …and the timeline COMES WITH IT (W4.T4). It was already running (the bridge
-                // and the snapshot never cared whether it was visible) and already driving this
-                // very clock — it just was not on screen unless the artist happened to have
-                // pressed `L`. A tool that auto-plays and hides the transport is a tool that
-                // asks you to scrub blind. The layout gives it a band of its own under the
-                // graph (`HeroLayout::dock_timeline_into_motion`).
-                //
-                // Leaving the tool does NOT hide it again: it is the GLOBAL timeline, and taking
-                // away a panel the artist can see is not ours to do. `L` still toggles it.
-                hero.panel_visibility
-                    .insert(ph2d_editor::screens::hero::PANEL_TIMELINE, true);
-            } else {
-                hero.view.center_split = CenterSplit::None;
-            }
-        }
-    }
-
+    surfaces::open_and_close(hero, playhead, motion_active, cursor);
     // ── Apply the panel's edits, then publish the fresh view (M1.E10) ──────
     // The panel pushed `GraphIntent`s during last frame's paint; apply them to
     // the doc (each a single undo step) BEFORE rebuilding the snapshot so the

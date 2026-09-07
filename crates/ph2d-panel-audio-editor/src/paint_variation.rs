@@ -21,13 +21,15 @@ use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider, segment_rects};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken, list_row_gap_px};
 use ph2d_vector::VectorScene;
 
 /// Width of the `◀` / `▶` strategy selector arrows (matches the effects selector).
 const ARROW_W: f32 = 26.0; // LITERAL-PX-OK: selector arrow button width (chrome)
-/// Height of one variation list row.
-const VAR_ROW_H: f32 = 22.0; // LITERAL-PX-OK: variation list row height (chrome)
+/// Height of one variation list row — **a linha do app** (wave 17). Ela escrevia `22.0` a
+/// mao, que por acaso era o valor do token: uma coincidencia nao e uma derivacao, e o proximo
+/// pedido de «mais compacto» deixava esta lista para tras.
+const VAR_ROW_H: f32 = ROW_H_PX;
 
 /// Paint the Variations section starting at `y`; returns the `y` below it. `row_h` is
 /// the shared button row height. Play/Remove/Weight need a variation to exist.
@@ -251,7 +253,13 @@ fn paint_var_list(
             TypeToken::Xs.px(),
             resolve(ColorToken::Text2, theme),
         );
-        return y + VAR_ROW_H + Spacing::Sm.px();
+        // ⚠️ **O MESMO fecho do braço cheio, abaixo.** Esta linha dizia `Sm` (6) e a outra `Xs`
+        // (4): duas respostas à mesma pergunta — *quanto ar fica DEPOIS desta lista?* — na mesma
+        // função, e a lista muda de altura conforme está vazia ou não. O número certo do fim de
+        // um grupo é a pergunta aberta nº 4 do handoff (o Godot dá `base·2` = 8); ⛔ escolhê-lo
+        // aqui seria adivinhá-lo para uma lista só. O que esta wave faz é pôr as duas a dizer
+        // o mesmo, para que a wave que o decidir mexa num sítio.
+        return y + VAR_ROW_H + Spacing::Xs.px();
     }
     let sel = variation_state::variation_sel();
     for (i, name) in names.iter().enumerate().take(MAX_VARIATIONS) {
@@ -283,7 +291,7 @@ fn paint_var_list(
             resolve(fg, theme),
         );
         hit_index.register(AEDIT_VAR_ROWS[i], rect);
-        y += VAR_ROW_H + Spacing::Xs.px();
+        y += VAR_ROW_H + list_row_gap_px();
     }
     y + Spacing::Xs.px()
 }

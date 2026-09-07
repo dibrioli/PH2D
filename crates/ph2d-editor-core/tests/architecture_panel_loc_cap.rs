@@ -87,8 +87,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-hierarchy/src/row.rs",
         "paint_hierarchy_row",
-        248,
-        "row painter (icons + twirl + rename + companions); 291 -> 281 em 2026-08-22 (a tabela de TOM dos selos saiu para `badge_tone`), 281 -> 267 em 2026-08-23 quando o realce de proveniencia lhe acrescentou linhas e o tecto foi pago por EXTRACCAO: o fundo da linha saiu para `paint_row_background`. As tolerancias encolhem, nunca crescem — e uma feature nova paga-as com um corte, nao com um numero maior. 267 -> 248 em 2026-08-31: o selo `*N` das propriedades entre chaves acrescentou-lhe a lei em doc-comment e levou-o a 275, e o tecto foi pago por EXTRACCAO — o NOME (clip + texto + pop) saiu para `paint_row_name`, funcao irma no mesmo ficheiro, que e' onde a lei do rotulo derivado e' lida por quem for mexer nela.",
+        232,
+        "row painter (icons + twirl + rename + companions); 291 -> 281 em 2026-08-22 (a tabela de TOM dos selos saiu para `badge_tone`), 281 -> 267 em 2026-08-23 quando o realce de proveniencia lhe acrescentou linhas e o tecto foi pago por EXTRACCAO: o fundo da linha saiu para `paint_row_background`. As tolerancias encolhem, nunca crescem — e uma feature nova paga-as com um corte, nao com um numero maior. 267 -> 248 em 2026-08-31: o selo `*N` das propriedades entre chaves acrescentou-lhe a lei em doc-comment e levou-o a 275, e o tecto foi pago por EXTRACCAO — o NOME (clip + texto + pop) saiu para `paint_row_name`, funcao irma no mesmo ficheiro, que e' onde a lei do rotulo derivado e' lida por quem for mexer nela. 248 -> 232 na wave 17 (2026-09-06): os quatro alvos de clique dos companheiros deixaram de inflar o rectangulo do icone com folga propria e passam pela porta `row_tall`, que lhes da' a altura DA LINHA — 16 linhas a menos sem uma feature sair.",
     ),
     // ⚠️ `ph2d-panel-hierarchy/src/event.rs::apply_event` ESTEVE aqui, tolerado a 216 — e a
     // entrada foi REMOVIDA em 2026-08-19, não subida para 219. O "Pack into Sheet" ia

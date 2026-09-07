@@ -10,7 +10,9 @@ use super::*;
 use ph2d_editor_core::screens::hero::InspectorAnimInfo;
 
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
-const ROW_H: f32 = 22.0; // LITERAL-PX-OK: altura de uma linha da lista
+// ⭐ **A linha de uma LISTA e a linha do app** (wave 17): o `22.0` a mao coincidia com o
+// token, e uma coincidencia nao segue quem mexe no token.
+const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 /// Onde o resumo (`2-5 · Forward`) começa, como fração da largura.
 const SUMMARY_COL_FRAC: f32 = 0.52; // LITERAL-PX-OK: fração de layout
 
@@ -118,7 +120,7 @@ pub(crate) fn paint_library(
                 w,
                 summary_color,
             );
-            cur_y += ROW_H;
+            cur_y += ROW_H + ph2d_tokens::list_row_gap_px();
         }
         cur_y += Spacing::Sm.px();
         if let Some(row) = info.rows.get(selected.min(info.rows.len() - 1)) {

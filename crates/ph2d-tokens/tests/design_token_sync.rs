@@ -35,10 +35,10 @@ use std::path::PathBuf;
 
 use ph2d_tokens::{
     CHECKBOX_BOX_PX, DIVIDER_GAP_PX, Density, EDGE_PAD_PX, FontWeight, HERO_VIEWPORT_H_PX,
-    HERO_VIEWPORT_W_PX, HIER_ROW_H_PX, HIERARCHY_W_PX, HUD_BOTTOM_PAD_PX, HUD_H_PX,
-    ICON_BTN_SIZE_PX, INSPECTOR_W_PX, LetterSpacing, LineHeight, PANEL_HEAD_PAD_PX,
-    PANEL_RADIUS_PX, PANEL_RESIZE_HANDLE_SIZE_PX, PILL_PADDING_PX, ROW_H_PX, Radius,
-    SECTION_GAP_PX, Spacing, StrokeToken, TOOL_CHIP_PX, TOPBAR_GAP_PX, TOPBAR_H_PX, TypeToken,
+    HERO_VIEWPORT_W_PX, HIERARCHY_W_PX, HUD_BOTTOM_PAD_PX, HUD_H_PX, ICON_BTN_SIZE_PX,
+    INSPECTOR_W_PX, LetterSpacing, LineHeight, PANEL_HEAD_PAD_PX, PANEL_RADIUS_PX,
+    PANEL_RESIZE_HANDLE_SIZE_PX, PILL_PADDING_PX, ROW_H_PX, Radius, SECTION_GAP_PX, Spacing,
+    StrokeToken, TOOL_CHIP_PX, TOPBAR_GAP_PX, TOPBAR_H_PX, TypeToken,
 };
 use serde_json::Value;
 
@@ -189,7 +189,6 @@ fn chrome_consts_match_tokens_json() {
         ("hud-bottom-pad", HUD_BOTTOM_PAD_PX),
         ("panel-radius", PANEL_RADIUS_PX),
         ("panel-head-pad", PANEL_HEAD_PAD_PX),
-        ("hier-row-h", HIER_ROW_H_PX),
         ("panel-resize-handle-size", PANEL_RESIZE_HANDLE_SIZE_PX),
         ("tool-chip", TOOL_CHIP_PX),
         ("divider-gap", DIVIDER_GAP_PX),

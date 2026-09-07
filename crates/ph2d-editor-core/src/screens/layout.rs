@@ -11,8 +11,8 @@
 
 use crate::zones::Rect;
 use ph2d_tokens::{
-    EDGE_PAD_PX, HERO_VIEWPORT_H_PX, HERO_VIEWPORT_W_PX, HIER_ROW_H_PX, HIERARCHY_W_PX,
-    HUD_BOTTOM_PAD_PX, HUD_H_PX, INSPECTOR_W_PX, TOPBAR_GAP_PX, TOPBAR_H_PX,
+    EDGE_PAD_PX, HERO_VIEWPORT_H_PX, HERO_VIEWPORT_W_PX, HIERARCHY_W_PX, HUD_BOTTOM_PAD_PX,
+    HUD_H_PX, INSPECTOR_W_PX, TOPBAR_GAP_PX, TOPBAR_H_PX,
 };
 
 /// Default mockup viewport (iPad 12.9 landscape).
@@ -52,7 +52,6 @@ pub const INSPECTOR_MAX_H: f32 = 880.0; // LITERAL-PX-OK: Inspector max height c
 pub const HIERARCHY_W: f32 = HIERARCHY_W_PX;
 pub const HUD_H: f32 = HUD_H_PX;
 pub const HUD_BOTTOM_PAD: f32 = HUD_BOTTOM_PAD_PX;
-pub const HIER_ROW_H: f32 = HIER_ROW_H_PX;
 
 /// A lei do divisor do centro — [`crate::screens::center_split`].
 ///

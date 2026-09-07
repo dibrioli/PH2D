@@ -56,9 +56,6 @@ pub const PANEL_HEAD_PAD_PX: f32 = crate::generated::CHROME_PANEL_HEAD_PAD;
 /// o teto de paradas do editor de gradiente (bloco Z, doc 91), que era um `8` sem derivação.
 pub const PANEL_MIN_W_PX: f32 = crate::generated::CHROME_PANEL_MIN_W;
 
-/// Hierarchy row height. Per tokens.json `chrome.hier-row-h`.
-pub const HIER_ROW_H_PX: f32 = crate::generated::CHROME_HIER_ROW_H;
-
 /// Panel resize-gripper hit-zone square edge.
 /// Per tokens.json `chrome.panel-resize-handle-size`.
 pub const PANEL_RESIZE_HANDLE_SIZE_PX: f32 = crate::generated::CHROME_PANEL_RESIZE_HANDLE_SIZE;

@@ -475,7 +475,7 @@ Com o `base_spacing = 4` de fábrica (`editor_theme_manager.h:67`):
 |---|---|---|
 | **G1 — nenhum espaço é escolhido** | tudo é `base_margin · k`, `k ∈ {0.75, 1, 1.5, 1.75, 2, 2.5, 3, 4}` | — |
 | **G2 — o vão entre irmãos tem NOME** | `separation_margin`, lido por `BoxContainer`, `HBox`, `VBox`, `GridContainer`, `FlowContainer`, `FoldableContainer` | **4** |
-| **G3 — uma LISTA não tem vão: as linhas encostam** | `Tree.v_separation = pow(base_margin · 0.175, 3)` = `0,343` | **0** |
+| **G3 — uma LISTA encosta sobre um FIO** | `Tree.v_separation = pow(EDSCALE_RND(base_margin · 0.175), 3)` ⚠️ **corrigido na wave 17**: o `EDSCALE_RND` arredonda `0,7` para `1` ANTES do cubo — esta linha dizia `0,343 ⇒ 0` por truncar. E há um **segundo ramo**: com `enable_touch_optimizations` o Godot dá `separation_margin · 0,9` = **3** | **1** |
 | **G4 — uma GRELHA é mais apertada que uma pilha** | `GridContainer.v_separation = widget_margin.y − 2` | **3** |
 | **G5 — o separador de secção é `base · 2`** | `Separator.separation`, com o `StyleBoxLine` a levar margens **negativas** de `−base_margin` | **8** |
 | **G6 — o vão vertical é forçado a PAR** | *«if the vsep is odd it will be lopsided»* — `forced_even_separation` | par |
@@ -962,6 +962,95 @@ e contar glifos.
 
 ⛔ E a metade de baixo mede que um rótulo **que cabe** sai igual em duas larguras diferentes — sem
 ela, um recuo que encolhesse os rótulos curtos passaria.
+
+### 7.20 — ✅ WAVE 17 (2026-09-06): uma LISTA não é um formulário, e a linha mais alta do app desceu
+
+**Vem do §8 do handoff, itens 2 e 7** — os dois eram a mesma frase: *a hierarquia é a linha mais
+alta do aplicativo (32 px contra 22), e duas superfícies de LISTA não seguem a lei do Godot.*
+
+#### O censo: cinco listas, QUATRO respostas
+
+| superfície | altura | vão escrito |
+|---|---|---|
+| hierarquia | `HIER_ROW_H` = **32** (token só dela) | `Spacing::Xxs` = 2 |
+| variações do áudio | `VAR_ROW_H` = 22 **à mão** | `Spacing::Xs` = 4 |
+| inspector da grade | `ROW_H` = 22 **à mão** | `ROW_GAP` = 2 (const local) |
+| âncoras do Inspector | `ROW_H` = 22 **à mão** | **0** (implícito) |
+| animações do Inspector | `ROW_H` = 22 **à mão** | **0** (implícito) |
+
+⚠️⚠️ **A lição está nas duas últimas: a resposta certa já estava escrita DUAS vezes e não era
+alcançável.** Elas avançam `cur_y += ROW_H`, sem termo nenhum — e como isso é a **ausência** de uma
+soma, nenhuma varredura por operador a vê, nenhum doc a afirma e ninguém a podia copiar. *Uma lei
+escrita em dois sítios ainda não é uma lei; só uma PORTA é.* (É a terceira vez que esta linha paga
+esta frase: o `row_pitch_px` da wave 8 e o `stroke_uniform` do Vector foram as outras duas.)
+
+⚠️ **E as quatro alturas «22 à mão» eram uma COINCIDÊNCIA, não uma derivação:** elas batiam com o
+`chrome.row-h` de hoje e não seguiriam o próximo pedido de «mais compacto». As quatro passam a
+derivar, e as quatro **saem** da lista de isenções do `the_row_height_is_one_number` — que as
+acusou sozinho, pela metade de obsolescência dele.
+
+#### ⛔ O número do modelo NÃO era o que eu tinha registado
+
+```cpp
+// theme_modern.cpp:650
+int tree_v_sep = enable_touch_optimizations
+    ? (separation_margin * 0.9)                       // 4 * 0.9 = 3.6 -> int 3
+    : Math::pow(EDSCALE_RND(base_margin * 0.175), 3); // round(0.7) = 1 -> 1^3 = 1
+```
+
+A wave 8 registou *«`= 0`»* truncando `0,7³ = 0,343`. O `EDSCALE_RND` **arredonda primeiro**, e o
+cubo é de `1`. ⇒ **as linhas de uma lista encostam sobre um FIO de 1 px** — o mesmo
+`SEGMENT_HAIRLINE` de que uma peça de grupo é feita, que é a lei da wave 10 virada na vertical.
+⛔ **Não é zero:** dois itens seleccionados em seguida têm de continuar a ler-se como dois.
+*Uma derivação copiada sem se avaliar a expressão inteira é um número escolhido com cara de lei.*
+
+⏳ **E ela tem um SEGUNDO ramo, que fica nomeado e por construir:** com `enable_touch_optimizations`
+o modelo dá `separation_margin · 0,9` = **3 px**. O alvo desta casa é tablet, e o próprio Godot dá
+à lista mais ar quando o dedo é o ponteiro — ⛔ ligar isso exige o interruptor que não existe, e é
+decisão do dono.
+
+#### A linha da hierarquia: medida antes de descer
+
+O conteúdo é o galo (`Lg` = 12) e quatro ícones de `Xl` = **16 px**. Em 22 sobram **3 px** acima e
+abaixo do mais alto — o mesmo ar que a linha de formulário dá ao controlo dela. ⇒ o token
+`chrome.hier-row-h` **morreu**: um número que existe para ser diferente de outro é a segunda
+resposta a *«que altura tem uma linha?»*. O passo da hierarquia vai de **34 px para 23** (−32 %).
+
+#### ⭐⭐ O defeito que esta wave CRIARIA se ficasse pela metade
+
+Os quatro companheiros de uma linha (galo, olho, grupo, cadeado) inflavam o rectângulo do ícone com
+folga própria — `16 + 2·4 = 24`, `12 + 12 = 24`. Isso cabia numa linha de 32 e **transborda** numa
+de 22, e no `HitIndex` **quem regista depois ganha** ⇒ a fatia de baixo da linha `N−1` passaria a
+comandar o olho da linha `N`. ⚠️ **Nenhum gate de registo o veria** — o companheiro está vivo,
+registado e alcançável; só está grande demais. ⇒ `row_tall`: a folga fica na horizontal e a vertical
+é a da linha, que é o que o `Tree` do Godot faz (a célula de um botão **é** a linha). Isso tirou 16
+LOC ao `paint_hierarchy_row` e **a catraca de LOC desceu de 248 para 232**, sozinha.
+
+#### O que os gates apanharam
+
+- ⭐ **O censo achou um sítio que eu não tinha visto, e era de OUTRA pergunta:** o
+  `paint_variation.rs` fechava a **mesma** lista com `Sm` (6) no braço vazio e `Xs` (4) no cheio —
+  duas respostas a *«quanto ar fica DEPOIS desta lista?»* na mesma função. A régua passou a separar
+  o **avanço** (`+=`) da **saída** (`return`), e as duas saídas passaram a dizer o mesmo, para que a
+  wave que decidir o fim-de-grupo (item 4 do handoff) mexa num sítio. *Uma régua larga demais ainda
+  acusa verdades — só não é sobre elas que ela fala.*
+- ⛔ **Os dois PISOS do gate medido são load-bearing:** a fixtura do painel tem **uma** linha
+  («Scene Root»), então sem entregar uma cena viva toda lei sobre o que acontece *entre* duas
+  linhas seria verdadeira por vacuidade. O arnês ganhou `MockPanelHost::set_hierarchy_rows` —
+  método NOMEADO, nunca um `store_mut()`, no molde do `set_panel_scroll`.
+
+| prova de mutação | resultado |
+|---|---|
+| o vão da hierarquia volta a `Xxs` | ✅ morreu (passo lê 24, a lei dá 23) |
+| a linha volta a 32 px | ✅ morreu |
+| o alvo do olho volta a inflar | ✅ morreu (sai da linha) |
+| a lista de áudio escolhe o próprio vão | ✅ morreu (censo) |
+| a lista de âncoras volta ao literal `22.0` | ✅ morreu (censo de altura) |
+
+**Portão:** `13 060` testes / `0` falhados (a única vermelha da corrida foi a
+`ph2d-timeline::nesting_clock::the_cost_of_depth_is_linear_not_explosive`, membro confirmado da
+família de flakes de recurso do CLAUDE.md §5.0 — **3 de 3 verde sozinha**, com `load 50` impresso ao
+lado, e zero linhas do diff naquela crate).
 
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 

@@ -173,6 +173,20 @@ cuja regra é *«as folgas encolhem; elas nunca crescem»*. ⛔ O tema clássico
 risco, e há um censo de **duas** metades a garantir as duas coisas.
 [`pesquisa/08 §7.15`](pesquisa/08_modelos_com_codigo_para_seguir.md).
 
+⭐⭐ **E as waves 13 a 17 (06/09) fecharam os reports do smoke, um por um.** O **cartão do Painter
+não sumiu — foi ENGOLIDO** por outro do mesmo tom, e o `Bg1` tinha **doze** cópias fora da porta
+([§7.16](pesquisa/08_modelos_com_codigo_para_seguir.md)) · o **agrupamento chegou a 101 painéis por
+UMA porta** ([§7.17](pesquisa/08_modelos_com_codigo_para_seguir.md)) · a **palavra que não cabe
+ELIDE** em vez de cair para baixo e sumir, e 15 grelhas à mão acabaram
+([§7.18](pesquisa/08_modelos_com_codigo_para_seguir.md)) · o **rótulo ganhou RESPIRO** de 8 px, que
+só se paga no caso apertado ([§7.19](pesquisa/08_modelos_com_codigo_para_seguir.md)) · e a **LISTA
+deixou de ser um formulário** ([§7.20](pesquisa/08_modelos_com_codigo_para_seguir.md)): as linhas
+encostam sobre um fio de 1 px (a lei do `Tree` do Godot, cujo valor **eu tinha registado errado** —
+o `EDSCALE_RND` arredonda antes do cubo), a hierarquia desceu de **32 para 22 px** e o token
+`chrome.hier-row-h` morreu. ⚠️ **A lição da 17:** a resposta certa já estava escrita duas vezes,
+como a **ausência** de um termo (`cur_y += ROW_H`) — invisível a toda varredura, e por isso
+incopiável.
+
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
 cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·
 esbatimento do rótulo e inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis, animado) —

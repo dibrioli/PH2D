@@ -29,10 +29,20 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, HIER_ROW_H_PX, ROW_H_PX, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken, Theme, TypeToken, list_row_gap_px};
 use ph2d_vector::VectorScene;
 
-const HIER_ROW_H: f32 = HIER_ROW_H_PX;
+/// ⭐⭐ **A linha da hierarquia é a linha do app** (wave 17, 2026-09-06).
+///
+/// Ela era **32 px** contra as 22 de toda linha de formulário — a mais alta do aplicativo, com um
+/// token só dela (`chrome.hier-row-h`), e o token **morreu nesta wave**: um número que existe para
+/// ser diferente de outro é a segunda resposta a *«que altura tem uma linha?»*.
+///
+/// **Medido antes de descer:** o conteúdo desta linha é o galo (`Spacing::Lg` = 12) e quatro
+/// ícones de `Spacing::Xl` = **16 px** (o do objecto, o olho, o grupo e o cadeado). Em 22 sobram
+/// **3 px** acima e abaixo do mais alto — o mesmo ar que a linha de formulário dá ao seu controlo.
+/// ⛔ *Não é o token que decide se cabe; é o conteúdo, e ele foi contado.*
+const HIER_ROW_H: f32 = ROW_H_PX;
 
 pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(HierarchyPanel::ID) {
@@ -284,7 +294,7 @@ fn paint_hierarchy_body(
             // (≈ same as the panel chevrons) so the relationship is
             // clear without competing with the row content.
             let line_color = resolve(ColorToken::Text3, theme);
-            // Inter-row gap (set by `y += HIER_ROW_H + Spacing::Xxs.px()`
+            // Inter-row gap (set by `y += HIER_ROW_H + list_row_gap_px()`
             // below). Extend each vertical segment by this amount on the
             // bottom so it fuses with the next row's segment without a
             // visible break, AND extend "my column" upward to the
@@ -292,7 +302,7 @@ fn paint_hierarchy_body(
             // parent's arrow (Enio 2026-05-26 round 2: "não vamos
             // deixar esses espaços entre as linhas, mas desenhe a
             // linha até chegar bem perto da setinha ou da outra linha").
-            let row_gap = Spacing::Xxs.px();
+            let row_gap = list_row_gap_px();
             let parent_chev_y = row_rect.y - HIER_ROW_H * 0.5 - row_gap;
             for c in 0..(depth as usize) {
                 let col_chev_x = rect.x + body_pad + c as f32 * indent_px + row_inner_pad;
@@ -365,7 +375,7 @@ fn paint_hierarchy_body(
         if is_collapsed {
             collapsed_gate = Some(depth);
         }
-        y += HIER_ROW_H + Spacing::Xxs.px();
+        y += HIER_ROW_H + list_row_gap_px();
     }
     if let Some(d) = dragging {
         let mut drew = false;

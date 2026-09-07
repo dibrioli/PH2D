@@ -133,10 +133,11 @@ pub const ROW_H_PX: f32 = crate::generated::CHROME_ROW_H;
 /// **O valor é o do modelo:** `separation_margin` do Godot Modern = `base_spacing` = **4 px**,
 /// que é o `Spacing::Xs` desta casa. ⚠️ E ele é o número da PILHA de linhas de formulário, que
 /// é a superfície destes painéis — o Godot tem outros dois para outras duas superfícies, e cada
-/// um é derivado, nunca escolhido: uma **lista** (`Tree`) tem `pow(base·0.175, 3)` = **0**, as
-/// linhas encostam; uma **grelha** tem `widget_margin.y − 2` = **3**. ⇒ quando esta casa precisar
-/// de uma dessas, ela nasce **aqui, com nome e derivação**, e não num `+ Spacing::Qualquer` no
-/// sítio da pintura.
+/// um é derivado, nunca escolhido: uma **lista** (`Tree`) tem `pow(round(base·0.175), 3)` = **1**
+/// — as linhas encostam sobre um fio, e desde a wave 17 isso é a porta [`list_row_gap_px`]
+/// (⚠️ esta linha dizia **0** por truncar `0,7³`: o `EDSCALE_RND` arredonda ANTES do cubo); uma
+/// **grelha** tem `widget_margin.y − 2` = **3**. ⇒ quando esta casa precisar de uma dessas, ela
+/// nasce **aqui, com nome e derivação**, e não num `+ Spacing::Qualquer` no sítio da pintura.
 pub fn row_pitch_px() -> f32 {
     ROW_H_PX + row_gap_px()
 }
@@ -150,6 +151,37 @@ pub fn row_pitch_px() -> f32 {
 /// *Uma porta que só serve a metade dos chamadores deixa a outra metade a escrever o número.*
 pub fn row_gap_px() -> f32 {
     Spacing::Xs.px()
+}
+
+/// ⭐⭐⭐ **O vão entre duas linhas de uma LISTA — e ele NÃO é o de um formulário.**
+///
+/// Um formulário empilha controlos INDEPENDENTES (`label | control`), e o vão diz *estes são
+/// dois assuntos*. Uma lista empilha os ITENS DE UMA COISA SÓ — as camadas, os objectos da cena,
+/// as variações de um som —, e ali o vão diz o contrário: *isto é um corpo*. É a mesma lei do
+/// grupo de botões que a wave 10 portou, virada na vertical.
+///
+/// **O número é derivado, não escolhido** (Godot Modern, MIT, `theme_modern.cpp:650`):
+///
+/// ```text
+/// tree_v_sep = enable_touch_optimizations
+///     ? separation_margin * 0.9                     // 4 * 0.9 = 3.6 -> int 3
+///     : pow(EDSCALE_RND(base_margin * 0.175), 3);   // round(0.7) = 1 -> 1^3 = 1
+/// ```
+///
+/// ⇒ com o `base_spacing` desta casa (`Spacing::Xs` = 4) dá **1 px**: as linhas encostam sobre um
+/// fio, exactamente como as peças de um grupo (`SEGMENT_HAIRLINE`). ⛔ **Não é zero** — dois itens
+/// seleccionados em seguida têm de continuar a ler-se como dois.
+///
+/// ⚠️⚠️ **E o `0` que este repo escreveu duas vezes era MEU, não do modelo.** A wave 8 registou
+/// *«`Tree.v_separation = pow(base·0.175,3) = 0`»* por truncar `0,7³ = 0,343`; o `EDSCALE_RND`
+/// **arredonda primeiro** e o cubo é de `1`. *Uma derivação copiada sem se avaliar a expressão
+/// inteira é um número escolhido com cara de lei.*
+///
+/// ⏳ **O ramo de TOQUE fica NOMEADO e por construir** (`separation_margin · 0,9` = **3 px**): o
+/// alvo desta casa é tablet, e o próprio modelo dá à lista mais ar quando o dedo é o ponteiro.
+/// Ligá-lo é decisão do dono, e exige o interruptor que ainda não existe — ⛔ não o adivinhe.
+pub fn list_row_gap_px() -> f32 {
+    (Spacing::Xs.px() * 0.175).round().powi(3)
 }
 
 #[cfg(test)]

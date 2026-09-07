@@ -10,10 +10,12 @@
 //! ⇒ toda constante cujo NOME diz «altura de linha» ou **deriva do token**, ou está declarada
 //! aqui com o que ela é. As duas famílias existem e são legítimas:
 //!
-//! - **a linha de PAINEL** (`ROW_H_PX`): o formulário, o transporte, a linha do picker;
-//! - **uma lista DENSA ou a geometria de um canvas**, que tem a sua própria régua (22 px numa
-//!   lista de âncoras, a linha de socket do grafo que escala com o zoom, o alvo de 44 px de uma
-//!   barra de progresso).
+//! - **a linha de PAINEL** (`ROW_H_PX`): o formulário, o transporte, a linha do picker — e, desde
+//!   a wave 17, **a linha de LISTA também**: as quatro que escreviam `22.0` à mão escreviam, por
+//!   coincidência, o valor do token, e uma coincidência não segue quem mexe no token;
+//! - **a geometria de um CANVAS**, que tem a sua própria régua (a linha de socket do grafo, que
+//!   escala com o zoom; o alvo de 44 px de uma barra de progresso; o menu flutuante sobre a
+//!   vista 3D).
 //!
 //! ⚠️ **A régua separa PALAVRAS, não subcadeias** — a primeira versão deste censo, escrita a
 //! `grep`, acusou `DUR_ARROW_HALF_W` e `NARROW_HALF` três vezes, porque `ROW_H` vive dentro de
@@ -30,11 +32,6 @@ const OWN_RULER: &[(&str, &str, &str)] = &[
         "a barra de progresso e' um ALVO DE TOQUE (44 px), nao uma linha de formulario",
     ),
     (
-        "crates/ph2d-editor-core/src/grid_snap/inspect.rs",
-        "ROW_H",
-        "lista densa do inspector da grade",
-    ),
-    (
         "crates/ph2d-editor-core/src/widget/blender_color_picker/paint.rs",
         "SLIDER_ROW_H",
         "a linha de um slider de canal do picker e' mais baixa que a de formulario, de proposito",
@@ -48,21 +45,6 @@ const OWN_RULER: &[(&str, &str, &str)] = &[
         "crates/ph2d-panel-motion-graph/src/geom.rs",
         "MENU_ROW_H",
         "a linha do menu de adicionar no canvas do grafo: idem",
-    ),
-    (
-        "crates/ph2d-panel-audio-editor/src/paint_variation.rs",
-        "VAR_ROW_H",
-        "lista densa de variacoes",
-    ),
-    (
-        "crates/ph2d-panel-inspector/src/sections/anchors.rs",
-        "ROW_H",
-        "lista densa de ancoras",
-    ),
-    (
-        "crates/ph2d-panel-inspector/src/sections/anim_rows.rs",
-        "ROW_H",
-        "lista densa de animacoes",
     ),
     (
         "shells/desktop/src/field3d_view_menu.rs",

@@ -21,7 +21,9 @@ use ph2d_editor_core::widget::section_cards::close_section;
 
 const FIELD_H: f32 = 24.0; // LITERAL-PX-OK: altura de campo do Inspector
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
-const ROW_H: f32 = 22.0; // LITERAL-PX-OK: altura de uma linha da lista
+// ⭐ **A linha de uma LISTA e a linha do app** (wave 17): o `22.0` a mao coincidia com o
+// token, e uma coincidencia nao segue quem mexe no token.
+const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 /// Onde o rótulo do TIPO começa, como fração da largura da linha. ⚠️ Fração de layout, não uma
 /// medida em pixels: o painel é redimensionável, e uma coluna fixa em px descolaria do nome.
 const KIND_COL_FRAC: f32 = 0.62; // LITERAL-PX-OK: fração de largura, não um token de espaçamento
@@ -187,7 +189,7 @@ fn anchor_list(
             w,
             resolve(ColorToken::Text3, theme),
         );
-        cur_y += ROW_H;
+        cur_y += ROW_H + ph2d_tokens::list_row_gap_px();
     }
     cur_y + Spacing::Sm.px()
 }

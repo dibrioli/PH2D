@@ -9,13 +9,13 @@
 //! call sites inside `ph2d-editor` keep working unchanged.
 //!
 //! Hero-layout constants (EDGE_PAD, TOPBAR_H, rail_w(), HIERARCHY_W,
-//! INSPECTOR_W, HUD_H, HUD_BOTTOM_PAD, HIER_ROW_H, TOPBAR_GAP,
+//! INSPECTOR_W, HUD_H, HUD_BOTTOM_PAD, TOPBAR_GAP,
 //! HERO_VIEWPORT_*) stay here — they describe the hero orchestrator's
 //! 4-zone layout, not the per-panel chrome.
 
 use crate::widget::ButtonState;
 use ph2d_tokens::{
-    ColorToken, EDGE_PAD_PX, HERO_VIEWPORT_H_PX, HERO_VIEWPORT_W_PX, HIER_ROW_H_PX, HIERARCHY_W_PX,
+    ColorToken, EDGE_PAD_PX, HERO_VIEWPORT_H_PX, HERO_VIEWPORT_W_PX, HIERARCHY_W_PX,
     HUD_BOTTOM_PAD_PX, HUD_H_PX, INSPECTOR_W_PX, TOPBAR_GAP_PX, TOPBAR_H_PX,
 };
 
@@ -49,11 +49,6 @@ pub const INSPECTOR_W: f32 = INSPECTOR_W_PX;
 pub const HIERARCHY_W: f32 = HIERARCHY_W_PX;
 pub const HUD_H: f32 = HUD_H_PX;
 pub const HUD_BOTTOM_PAD: f32 = HUD_BOTTOM_PAD_PX;
-
-/// Hierarchy row height — used by the hero orchestrator + the
-/// hierarchy panel chrome layout. Stays here because it's specific
-/// to the live Hierarchy panel, not a per-panel chrome primitive.
-pub const HIER_ROW_H: f32 = HIER_ROW_H_PX;
 
 /// Pick a chrome icon's foreground tint based on its interactive
 /// state. Used by TopBar single-icon clusters and the LeftRail tools.

@@ -185,6 +185,28 @@ impl MockPanelHost {
         self.store.set_panel_scroll(panel, y);
     }
 
+    /// **A cena tem N objectos** — a ordem de linhas que o host entrega à Hierarquia a cada quadro.
+    ///
+    /// ⚠️ **Sem isto, um gate de LISTA é estruturalmente impossível neste harness:** o `populate`
+    /// da Hierarquia semeia **uma** linha (`HIER_PLAYER`), então tudo o que a pintura faz *entre*
+    /// duas linhas — o passo, o vão, a linha de parentesco, o alvo de clique que invade a vizinha —
+    /// nunca acontece. Uma cena de um objecto só é o único caso em que **toda** lei de lista é
+    /// verdadeira por vacuidade.
+    ///
+    /// ⚠️ Método NOMEADO, nunca um `store_mut()`: responde a UMA pergunta — *e se a cena tiver mais
+    /// que um objecto?* — em vez de abrir o store para um gate semear o que depois vai "provar"
+    /// (o mesmo argumento do [`Self::set_panel_scroll`] e do [`Self::settle_section_folds`]).
+    ///
+    /// ⚠️ Os ids têm de ser os da **fixtura** (`ids::HIER_*`): sem entradas vivas o pintor procura
+    /// cada linha em `fixture::hierarchy()`, e um id que ela não conhece não é pintado.
+    pub fn set_hierarchy_rows(&mut self, ids: &[NodeId]) {
+        for id in ids {
+            self.store
+                .register_if_absent(*id, ph2d_editor_core::interaction::InteractiveState::Plain);
+        }
+        self.store.set_hierarchy_order(ids.to_vec());
+    }
+
     /// **O relógio de movimento correu até ao fim** — toda dobra de secção salta para o seu
     /// alvo semântico (`is_collapsed` ⇒ 0, senão 1).
     ///

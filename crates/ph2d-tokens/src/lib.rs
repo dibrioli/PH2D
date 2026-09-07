@@ -85,9 +85,9 @@ pub(crate) mod generated {
 
 pub use chrome::{
     CHECKBOX_BOX_PX, DIVIDER_GAP_PX, EDGE_PAD_PX, HERO_VIEWPORT_H_PX, HERO_VIEWPORT_W_PX,
-    HIER_ROW_H_PX, HIERARCHY_W_PX, HUD_BOTTOM_PAD_PX, HUD_H_PX, INSPECTOR_W_PX, PANEL_HEAD_PAD_PX,
-    PANEL_MIN_W_PX, PANEL_RADIUS_PX, PANEL_RESIZE_HANDLE_SIZE_PX, PILL_PADDING_PX, TOOL_CHIP_PX,
-    TOPBAR_GAP_PX, TOPBAR_H_PX,
+    HIERARCHY_W_PX, HUD_BOTTOM_PAD_PX, HUD_H_PX, INSPECTOR_W_PX, PANEL_HEAD_PAD_PX, PANEL_MIN_W_PX,
+    PANEL_RADIUS_PX, PANEL_RESIZE_HANDLE_SIZE_PX, PILL_PADDING_PX, TOOL_CHIP_PX, TOPBAR_GAP_PX,
+    TOPBAR_H_PX,
 };
 pub use color::{
     Color, ColorToken, ColorValue, oklch_in_gamut, oklch_to_linear_srgb, oklch_to_srgb,
@@ -99,7 +99,8 @@ pub use num::NumToken;
 pub use radius::Radius;
 pub use slider_style::{SLIDER_DENSITIES, SLIDER_RADII, SliderDesign, SliderStyle, UiLook};
 pub use spacing::{
-    Density, ICON_BTN_SIZE_PX, ROW_H_PX, SECTION_GAP_PX, Spacing, row_gap_px, row_pitch_px,
+    Density, ICON_BTN_SIZE_PX, ROW_H_PX, SECTION_GAP_PX, Spacing, list_row_gap_px, row_gap_px,
+    row_pitch_px,
 };
 pub use stroke::StrokeToken;
 pub use theme::{PanelLayout, Theme};

@@ -94,6 +94,22 @@ fn paint_row_background(
     }
 }
 
+/// ⭐⭐⭐ **O alvo de clique de um companheiro tem a altura DA LINHA — nunca mais que ela.**
+///
+/// Os quatro companheiros desta linha (o galo, o olho, o grupo, o cadeado) inflavam o rectângulo
+/// do ícone com uma folga própria: `16 + 2·4 = 24 px` para os três da direita, `12 + 12 = 24` para
+/// o galo. Com a linha a **32 px** isso cabia; com a linha do app (**22**, wave 17) cada um passa
+/// a transbordar **2 px** para a linha de cima — e no `HitIndex` **quem regista depois ganha**, ou
+/// seja, a fatia de baixo da linha `N−1` passa a comandar o olho da linha `N`.
+///
+/// ⚠️ **Não é um caso limite: é o modo de falha que o dono reportaria como «o olho errado apagou»**
+/// — e nenhum gate de registo o veria, porque o companheiro está vivo e registado; só está grande
+/// demais. ⇒ a folga fica na HORIZONTAL (é lá que os ícones respiram uns dos outros) e a vertical
+/// é a da linha, por construção. É o que o `Tree` do Godot faz: a célula de um botão **é** a linha.
+fn row_tall(row: Rect, x: f32, w: f32) -> Rect {
+    Rect::new(x, row.y, w, row.h)
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_hierarchy_row(
     entity: &fixture::HierarchyEntity,
@@ -139,10 +155,9 @@ pub(crate) fn paint_hierarchy_row(
             StrokeToken::Default.px(),
         );
         if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
-            let hit_rect = Rect::new(
+            let hit_rect = row_tall(
+                rect,
                 chev_rect.x - Spacing::Sm.px(),
-                chev_rect.y - Spacing::Sm.px(),
-                chev_w + Spacing::Lg.px(),
                 chev_w + Spacing::Lg.px(),
             );
             idx.register(ids::hier_expand_companion(row_id), hit_rect);
@@ -211,12 +226,7 @@ pub(crate) fn paint_hierarchy_row(
     );
     if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
         let hit_pad = Spacing::Xs.px();
-        let hit_rect = Rect::new(
-            eye_rect.x - hit_pad,
-            eye_rect.y - hit_pad,
-            eye_rect.w + hit_pad * 2.0,
-            eye_rect.h + hit_pad * 2.0,
-        );
+        let hit_rect = row_tall(rect, eye_rect.x - hit_pad, eye_rect.w + hit_pad * 2.0);
         idx.register(ids::hier_eye_companion(row_id), hit_rect);
     }
     right_x -= eye_size + icon_cluster_gap;
@@ -253,12 +263,7 @@ pub(crate) fn paint_hierarchy_row(
     );
     if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
         let hit_pad = Spacing::Xs.px();
-        let hit_rect = Rect::new(
-            group_rect.x - hit_pad,
-            group_rect.y - hit_pad,
-            group_rect.w + hit_pad * 2.0,
-            group_rect.h + hit_pad * 2.0,
-        );
+        let hit_rect = row_tall(rect, group_rect.x - hit_pad, group_rect.w + hit_pad * 2.0);
         idx.register(ids::hier_group_companion(row_id), hit_rect);
     }
     right_x -= icon_btn + icon_cluster_gap;
@@ -291,12 +296,7 @@ pub(crate) fn paint_hierarchy_row(
     );
     if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
         let hit_pad = Spacing::Xs.px();
-        let hit_rect = Rect::new(
-            lock_rect.x - hit_pad,
-            lock_rect.y - hit_pad,
-            lock_rect.w + hit_pad * 2.0,
-            lock_rect.h + hit_pad * 2.0,
-        );
+        let hit_rect = row_tall(rect, lock_rect.x - hit_pad, lock_rect.w + hit_pad * 2.0);
         idx.register(ids::hier_lock_companion(row_id), hit_rect);
     }
     right_x -= icon_btn + icon_cluster_gap;

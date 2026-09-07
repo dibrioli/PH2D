@@ -17,7 +17,7 @@ use ph2d_grid::GridMath;
 use ph2d_grid::Vec2;
 use ph2d_grid::hex::{HexCell, axial_to_cube, axial_to_offset};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Spacing, Theme};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, list_row_gap_px};
 use ph2d_vector::VectorScene;
 
 /// Shift the probe pair into the active grid's local space by
@@ -32,8 +32,9 @@ fn local_probes(state: &GridSnapState) -> (Vec2, Vec2) {
 }
 
 const SECTION_HEADER_H: f32 = 22.0;
-const ROW_H: f32 = 22.0;
-const ROW_GAP: f32 = 2.0;
+// ⭐ **A linha de uma LISTA e a linha do app** (wave 17): o `22.0` a mao coincidia com o
+// token, e uma coincidencia nao segue quem mexe no token.
+const ROW_H: f32 = ROW_H_PX;
 const LABEL_FONT_SIZE: f32 = 12.0;
 
 /// Snapshot of computed values for the current probe pair.
@@ -230,7 +231,7 @@ fn snapshot_chunks(state: &GridSnapState) -> InspectSnapshot {
 /// header + 5 label rows + 2 probe-input rows (A X/Y + B X/Y).
 /// Used by `panel.rs` for vertical layout.
 pub fn height() -> f32 {
-    SECTION_HEADER_H + ROW_GAP + 8.0 * (ROW_H + ROW_GAP)
+    SECTION_HEADER_H + list_row_gap_px() + 8.0 * (ROW_H + list_row_gap_px())
 }
 
 /// Paint the inspect section at `rect`. The caller is responsible
@@ -268,7 +269,7 @@ pub fn paint(
     );
 
     let snap = snapshot(state);
-    let mut y = rect.y + SECTION_HEADER_H + ROW_GAP;
+    let mut y = rect.y + SECTION_HEADER_H + list_row_gap_px();
     let x = rect.x + Spacing::Sm.px();
     let label_color = resolve(ColorToken::Text2, theme);
 
@@ -321,11 +322,11 @@ pub fn paint(
                 label_color,
             );
         }
-        y += ROW_H + ROW_GAP;
+        y += ROW_H + list_row_gap_px();
     }
 
     // Probe-input rows — 2 small NumberInputs per probe, side by side.
-    y += ROW_GAP;
+    y += list_row_gap_px();
     paint_probe_pair_row(
         "Probe A",
         super::ids::GS_PROBE_A_X,
@@ -342,7 +343,7 @@ pub fn paint(
         display_unit,
         pixels_per_meter,
     );
-    y += ROW_H + ROW_GAP;
+    y += ROW_H + list_row_gap_px();
     paint_probe_pair_row(
         "Probe B",
         super::ids::GS_PROBE_B_X,

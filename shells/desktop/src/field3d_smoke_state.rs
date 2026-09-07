@@ -238,6 +238,13 @@ pub(crate) struct Smoke {
     /// ⚠️ A âncora atravessa o quadro em vez de ser recalculada aqui de propósito: o `draw` não tem
     /// mundo nenhum, e dar-lhe um significaria o traçado passar a depender do ECS.
     pub(crate) gizmo: Option<crate::field3d_gizmo::Anchor>,
+    /// ⭐⭐ **Os vértices da forma escolhida** (W133), publicados pela mesma ponte que a âncora —
+    /// `None` quando o que está escolhido não tem pontos autorados.
+    ///
+    /// ⚠️ **CACHE do quadro, e não vista**: eles são **derivados do documento** a cada quadro, como
+    /// a âncora. Guardá-los ao fechar o painel seria guardar uma cópia de uma coisa que a peça já
+    /// tem — e ela pode ter mudado entretanto.
+    pub(crate) vertices: Option<crate::field3d_gizmo::Vertices>,
     /// A alça sob o cursor. Só realce — quem manda no arrasto é o `drag`.
     pub(crate) gizmo_hot: Option<crate::field3d_gizmo::Handle>,
     /// O que o arrasto pediu e a ponte ainda não aplicou: `(entidade, pedido)`.
@@ -246,7 +253,11 @@ pub(crate) struct Smoke {
     /// guardar só o último faria a peça andar menos do que a mão — devagar, e só quando o rato vai
     /// depressa, que é o defeito mais difícil de acreditar. Cada verbo acumula à maneira dele
     /// (`Motion::merge`).
-    pub(crate) pending_move: Option<(u64, crate::field3d_gizmo::Motion)>,
+    pub(crate) pending_move: Option<(
+        u64,
+        crate::field3d_gizmo::Target,
+        crate::field3d_gizmo::Motion,
+    )>,
     /// ⭐ **O arrasto do gizmo em curso**, congelado no instante da pegada.
     ///
     /// ⚠️ **A âncora é congelada de propósito.** Ela é republicada a cada quadro a partir da pose do
@@ -385,6 +396,12 @@ pub(crate) struct Grip {
     pub(crate) from: [f32; 2],
     /// O que o mundo **já recebeu** deste gesto. O que falta aplicar é `total.since(applied)`.
     pub(crate) applied: crate::field3d_gizmo::Motion,
+    /// ⭐⭐ **O SUJEITO deste gesto** (W133) — o nó, ou o vértice `n`.
+    ///
+    /// ⚠️ **Congelado com a âncora, e pela mesma razão dela**: o cancelamento e o número digitado
+    /// publicam contra a pegada, e nesses dois caminhos a alça já não está em mão. *Derivar o
+    /// sujeito no fim do gesto é perguntá-lo a um estado que o gesto já mudou.*
+    pub(crate) target: crate::field3d_gizmo::Target,
 }
 
 /// O gesto de navegação em curso.

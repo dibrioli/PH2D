@@ -23,7 +23,7 @@ use ph2d_vector::{
 
 use crate::field3d_gizmo::{
     GRIP_HALF_PX, HEAD_HALF_W_PX, HEAD_PX, Handle, INNER_PX, Motion, Projected, SHAFT_HALF_W_PX,
-    Shape,
+    Shape, VERTEX_HALF_PX,
 };
 
 /// Quanto o realce levanta a luminosidade do token, em OKLCH.
@@ -71,6 +71,7 @@ pub(crate) fn paint(
             }
             Shape::Arc(pts) => ribbon(scene, pts, c, at),
             Shape::Grip { from, to } => grip(scene, *from, *to, c, at),
+            Shape::Point { center } => vertex_dot(scene, *center, c, at),
         }
     }
 }
@@ -80,6 +81,12 @@ fn colour_of(handle: Handle, theme: Theme) -> Color {
         Handle::Axis(0) | Handle::Plane(0) | Handle::Ring(0) => ColorToken::AxisX,
         Handle::Axis(1) | Handle::Plane(1) | Handle::Ring(1) => ColorToken::AxisY,
         Handle::Axis(2) | Handle::Plane(2) | Handle::Ring(2) => ColorToken::AxisZ,
+        // ⭐ **Um VÉRTICE também não é um eixo, e a cor tem de dizer isso** (W133): ele anda no
+        // plano do contorno, que não tem uma das três direções. ⚠️ **E não é o [`ColorToken::Accent`]
+        // da marca de selecção**, que já contorna a peça: um ponto da cor do contorno em cima do
+        // contorno é um ponto que ninguém vê. *A cor é a única legenda que um gizmo tem, e a de um
+        // ponto agarrável sem direcção é a mesma do punho e da argola de vista.*
+        Handle::Vertex(_) => ColorToken::Text1,
         // ⚠️ **Nem o disco/argola de vista nem o punho de tamanho são eixos.** Os dois primeiros
         // agem no plano da TELA, que não tem direção no mundo; o terceiro muda o tamanho, que não
         // tem direção nenhuma. Pintá-los com uma das três cores diria uma coisa falsa sobre o que
@@ -368,6 +375,26 @@ fn ribbon(scene: &mut VectorScene, pts: &[[f32; 2]], c: Color, at: Affine) {
 
 /// O punho de tamanho: um traço fino até um quadrado. ⚠️ O traço é **decoração** — quem se agarra é
 /// o quadrado (ver `hits`), e desenhá-lo mais grosso prometeria uma alça que não existe.
+/// ⭐ **O quadradinho de um vértice** (W133) — cheio, e a razão é o contraste.
+///
+/// ⚠️ **Cheio e não um anel, ao contrário do disco de vista.** Aquele é vazado porque tapava o ponto
+/// da peça que ele marca; este **É** o ponto da peça, e um anel de `3 px` sobre a silhueta lê-se como
+/// ruído do traçado. *A pergunta é sempre a mesma — o que está por baixo importa? — e aqui a resposta
+/// é a oposta.*
+fn vertex_dot(scene: &mut VectorScene, center: [f32; 2], c: Color, at: Affine) {
+    quad(
+        scene,
+        [
+            [center[0] - VERTEX_HALF_PX, center[1] - VERTEX_HALF_PX],
+            [center[0] + VERTEX_HALF_PX, center[1] - VERTEX_HALF_PX],
+            [center[0] + VERTEX_HALF_PX, center[1] + VERTEX_HALF_PX],
+            [center[0] - VERTEX_HALF_PX, center[1] + VERTEX_HALF_PX],
+        ],
+        c,
+        at,
+    );
+}
+
 fn grip(scene: &mut VectorScene, from: [f32; 2], to: [f32; 2], c: Color, at: Affine) {
     ribbon(scene, &[from, to], with_alpha(c, PLANE_ALPHA), at);
     quad(

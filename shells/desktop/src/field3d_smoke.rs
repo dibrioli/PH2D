@@ -146,6 +146,7 @@ fn boot() -> Option<Smoke> {
         last_pointer: (0.0, 0.0),
         gizmo: None,
         gizmo_hot: None,
+        vertices: None,
         pending_move: None,
         drag_grip: None,
         snapping: false,

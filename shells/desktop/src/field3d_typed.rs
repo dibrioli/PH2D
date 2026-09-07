@@ -110,8 +110,12 @@ pub(crate) fn value_of(text: &str) -> Option<f32> {
 }
 
 /// ⭐ **Esta alça aceita um número?** Ver a nota do módulo: só onde ele tem um significado.
+/// ⚠️ **Um VÉRTICE também não aceita** (W133), e a razão é a mesma dos dois planos: ele anda em
+/// **duas** coordenadas, e um número só não diz qual delas. ⭐ E aqui a ausência não deixa buraco —
+/// *o sítio de digitar um vértice é a linha do painel*, que é exactamente o par de números que a
+/// alça arrasta. As duas superfícies dividem-se limpo: **canvas para a mão, painel para o número.**
 pub(crate) fn accepts(handle: Handle) -> bool {
-    !matches!(handle, Handle::Plane(_) | Handle::View)
+    !matches!(handle, Handle::Plane(_) | Handle::View | Handle::Vertex(_))
 }
 
 /// ⭐ **O TOTAL que este número pede**, na unidade da ficha.
@@ -138,7 +142,7 @@ pub(crate) fn total(
         // e o `scale_by` do mundo recusa-o de qualquer forma. Devolver `None` deixa o texto na tela
         // (o artista continua a escrever) sem mandar nada ao mundo.
         Handle::Grip => (value > 0.0).then_some(Motion::Scale(value)),
-        Handle::Plane(_) | Handle::View => None,
+        Handle::Plane(_) | Handle::View | Handle::Vertex(_) => None,
     }
 }
 
@@ -151,7 +155,7 @@ pub(crate) fn label(handle: Handle, text: &str) -> String {
         Handle::Axis(n) => format!("{} {text}", ["X", "Y", "Z"][n.min(2)]),
         Handle::Ring(_) | Handle::ViewRing => format!("{text}°"),
         Handle::Grip => format!("x {text}"),
-        Handle::Plane(_) | Handle::View => text.to_string(),
+        Handle::Plane(_) | Handle::View | Handle::Vertex(_) => text.to_string(),
     }
 }
 

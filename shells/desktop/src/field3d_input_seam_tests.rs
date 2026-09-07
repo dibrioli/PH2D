@@ -88,7 +88,7 @@ fn pressing_on_an_arrow_grabs_it_instead_of_orbiting() {
         // E arrastar move a PEÇA, não a vista.
         assert!(advance(s, p.0 + 60.0, p.1));
         assert_eq!(s.vp().cam, before, "a câmera não pode ter-se mexido");
-        let (entity, motion) = s.pending_move.expect("o arrasto tem de pedir um movimento");
+        let (entity, _, motion) = s.pending_move.expect("o arrasto tem de pedir um movimento");
         assert_eq!(entity, 7, "e tem de pedi-lo para a entidade da âncora");
         assert!(
             !motion.is_idle(),
@@ -143,9 +143,9 @@ fn pointer_events_between_two_frames_add_up() {
         let p = mid_of_axis(s, 0);
         begin(s, winit::event::MouseButton::Left, Drag::Orbit, false, p);
         advance(s, p.0 + 30.0, p.1);
-        let one = translation_of(s.pending_move.expect("primeiro evento").1);
+        let one = translation_of(s.pending_move.expect("primeiro evento").2);
         advance(s, p.0 + 60.0, p.1);
-        let two = translation_of(s.pending_move.expect("segundo evento").1);
+        let two = translation_of(s.pending_move.expect("segundo evento").2);
         assert!(
             (two[0] - one[0] * 2.0).abs() < one[0].abs() * 1e-3,
             "dois passos iguais têm de somar: {one:?} depois {two:?}"

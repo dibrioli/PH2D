@@ -284,6 +284,9 @@ mod dims_table_plates;
 /// [`dims_table_polygon`].
 #[path = "dims_table_polygon.rs"]
 mod dims_table_polygon;
+/// ⭐ Onde as coordenadas de um vértice começam na lista de um polígono — a [`crate::vertex_rows`]
+/// lê-a daqui, e não de um número escrito à mão do outro lado.
+pub(crate) use dims_table_polygon::ROWS_BEFORE_VERTICES;
 /// ⭐ E a metade dos SINAIS — ver [`dims_table_signs`].
 #[path = "dims_table_signs.rs"]
 mod dims_table_signs;

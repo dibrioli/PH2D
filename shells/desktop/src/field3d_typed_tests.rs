@@ -28,6 +28,7 @@ fn holding(handle: Handle, applied: Motion) {
             entity: ENTITY,
             origin: [0.0; 3],
             axes: AXES,
+            local: AXES,
         };
         s.gizmo = Some(anchor);
         s.drag = Some(Drag::Gizmo(handle));
@@ -35,8 +36,9 @@ fn holding(handle: Handle, applied: Motion) {
             anchor,
             from: [400.0, 300.0],
             applied,
+            target: handle.target(),
         });
-        s.pending_move = Some((ENTITY, applied));
+        s.pending_move = Some((ENTITY, handle.target(), applied));
         s.typed = None;
         s.last_pointer = (400.0, 300.0);
     });
@@ -44,7 +46,7 @@ fn holding(handle: Handle, applied: Motion) {
 
 /// O que o mundo recebeu deste gesto, somado.
 fn banked() -> Option<Motion> {
-    armed(|s| s.pending_move.map(|(_, m)| m))
+    armed(|s| s.pending_move.map(|(_, _, m)| m))
 }
 
 fn type_in(text: &str) {
@@ -161,6 +163,7 @@ fn the_typed_number_speaks_the_units_of_the_readout() {
         entity: ENTITY,
         origin: [0.0; 3],
         axes: AXES,
+        local: AXES,
     };
     let fwd = [0.0, 0.0, -1.0];
 

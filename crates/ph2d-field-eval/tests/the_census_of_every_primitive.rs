@@ -2185,3 +2185,105 @@ fn no_dim_write_can_produce_a_piece_the_document_refuses() {
         acusados.join("\n  ")
     );
 }
+
+/// ⭐⭐⭐ **A PORTA DOS VÉRTICES CONHECE TODA FORMA QUE TEM UM** (W133) — o censo dos dois lados.
+///
+/// # ⚠️ O buraco que ele fecha
+///
+/// Enio, 2026-09-07: *«para esse tipo de objeto **e todos os outros que dependem de posição de
+/// vertex**, os vertex devem aparecer no canvas»*. O `match` da [`ph2d_field::vertex_rows`] é
+/// exaustivo, então uma primitiva nova é erro de compilação lá — mas o compilador não sabe se a
+/// **resposta** está certa: escrever `None` para uma forma com vértices compila, e a forma nasce
+/// sem alça nenhuma no canvas, em silêncio.
+///
+/// ⭐ **A régua é a tabela de linhas**, e não uma lista escrita à mão: uma coordenada de vértice é
+/// uma [`Span::Free`] (uma POSIÇÃO — o piso dela é negativo), e elas vêm **aos pares**. Toda forma
+/// que declare um par tem de ser conhecida pela porta, com os índices e os valores a bater.
+#[test]
+fn the_vertex_door_knows_every_shape_with_free_rows() {
+    use ph2d_field::Span;
+    let mut com_vertices = 0;
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else { continue };
+        let linhas = ph2d_field::dims(&p);
+        let livres: Vec<usize> = linhas
+            .iter()
+            .enumerate()
+            .filter(|(_, d)| matches!(d.span, Span::Free))
+            .map(|(i, _)| i)
+            .collect();
+        match ph2d_field::vertex_rows(&p) {
+            None => assert!(
+                livres.is_empty(),
+                "«{}» declara {} linha(s) de POSIÇÃO e a porta dos vértices diz que não tem nenhum \
+                 — ela nasce sem alça no canvas, e nada avisa",
+                k.key(),
+                livres.len()
+            ),
+            Some(v) => {
+                com_vertices += 1;
+                let esperado: Vec<usize> =
+                    (0..2 * v.points.len()).map(|i| v.first_row + i).collect();
+                assert_eq!(
+                    livres,
+                    esperado,
+                    "«{}»: a porta diz que os vértices começam na linha {} e são {}, mas as linhas \
+                     de POSIÇÃO da tabela dela são {livres:?} — uma alça escreveria noutro número",
+                    k.key(),
+                    v.first_row,
+                    v.points.len()
+                );
+                for (i, ponto) in v.points.iter().enumerate() {
+                    let (x, y) = (linhas[v.first_row + 2 * i], linhas[v.first_row + 2 * i + 1]);
+                    assert!(
+                        (x.value - ponto[0]).abs() < f32::EPSILON
+                            && (y.value - ponto[1]).abs() < f32::EPSILON,
+                        "«{}»: o vértice {i} vale {ponto:?} na porta e ({}, {}) na tabela — a alça \
+                         seria desenhada num sítio e escreveria noutro",
+                        k.key(),
+                        x.value,
+                        y.value
+                    );
+                }
+            }
+        }
+    }
+    assert!(
+        com_vertices >= 2,
+        "o censo achou {com_vertices} forma(s) com vértices, e são pelo menos duas (o triângulo e o \
+         polígono) — o `representative` deve ter deixado de as construir, e o gate ficou vácuo"
+    );
+}
+
+/// ⭐⭐ **E as duas formas de CONTORNO respondem `None` à mesma porta** — medido, e não presumido.
+///
+/// ⛔⛔ **Elas fazem `return None` no [`representative`]**, logo o censo acima **não lhes toca** — e
+/// essa é exactamente a forma de buraco que a W132 pagou (`fillet_inflates(Extrude)` viveu waves sem
+/// régua pela mesma razão). Aqui a peça é construída à mão, com um contorno, e a resposta é medida.
+///
+/// ⚠️ O `None` delas **não é uma omissão**: os pontos de um `Extrude` são do editor vetorial e o
+/// vínculo re-coze-os a cada quadro; uma alça sobre eles seria escrita e apagada no quadro seguinte.
+#[test]
+fn the_two_drawn_shapes_answer_the_vertex_door_with_none() {
+    let profile =
+        ph2d_field::polygon_profile(vec![[-0.3, -0.2], [0.3, -0.2], [0.3, 0.2], [-0.3, 0.2]])
+            .expect("o contorno");
+    for (nome, p) in [
+        (
+            "extrude",
+            Primitive::Extrude {
+                profile: profile.clone(),
+                half_height: 0.2,
+                round: 0.0,
+                chamfer: 0.0,
+            },
+        ),
+        ("revolve", Primitive::Revolve { profile }),
+    ] {
+        assert!(
+            ph2d_field::vertex_rows(&p).is_none(),
+            "«{nome}» passou a oferecer alças de vértice — os pontos dele são do editor vetorial, e \
+             o vínculo reescreve-os no quadro seguinte"
+        );
+    }
+}

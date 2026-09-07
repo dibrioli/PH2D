@@ -62,8 +62,8 @@ pub(crate) fn ecs_bridge(
         .collect();
     // ⭐ **O arrasto do gizmo entra AQUI**, antes do retrato e do cozimento, pela mesma razão que os
     // intents do painel: o mundo é a verdade e este é o único sítio que a escreve.
-    if let Some((bits, motion)) = pending {
-        apply_motion(sim, bits, &chosen, motion);
+    if let Some((bits, target, motion)) = pending {
+        apply_motion(sim, bits, &chosen, target, motion);
     }
     let (cooked, born) = sync_scene_and_birth(sim, seed.as_ref(), &chosen, ms, scene);
     // ⭐ **O clique é resolvido AQUI**, e não no ponteiro: a pergunta *"de quem é este ponto?"*
@@ -78,8 +78,12 @@ pub(crate) fn ecs_bridge(
         // arrasto, nunca ambos.
         .or_else(|| lasso.and_then(|(a, b)| resolve_lasso(sim, cooked.as_ref(), a, b, subtracts)));
     let anchor = anchor_for(sim, selected, &chosen);
+    // ⭐⭐ **Os vértices saem da MESMA travessia que a âncora** (W133): os dois precisam do mundo, e
+    // publicá-los em quadros diferentes deixaria a alça a marcar um ponto que a peça já não tem.
+    let vertices = vertices_for(sim, selected, &chosen);
     with_smoke(|s| {
         s.gizmo = anchor;
+        s.vertices = vertices;
         // ⚠️ Só se escreve quando MUDOU: atribuir todo quadro faria o documento parecer novo e
         // re-traçar para sempre, matando o "só se traça o que mudou".
         if s.doc != cooked {
@@ -105,7 +109,7 @@ pub(crate) use gizmo::apply_motion_for_test;
 pub(crate) use gizmo::duplicate_node;
 #[cfg(test)]
 pub(crate) use gizmo::selection_pivot;
-use gizmo::{anchor_for, apply_motion, resolve_lasso, resolve_pick};
+use gizmo::{anchor_for, apply_motion, resolve_lasso, resolve_pick, vertices_for};
 // ⚠️ Só os gates a chamam pela porta do pai — a produção entra pelo `duplicate_node`, que a
 // envolve com a vista.
 #[cfg(test)]
@@ -155,6 +159,11 @@ mod lasso_catch_tests;
 #[cfg(test)]
 #[path = "field3d_polygon_rows_tests.rs"]
 mod polygon_rows_tests;
+
+// ⭐⭐⭐ **AS ALÇAS DE VÉRTICE no canvas** (W133) — a lei, a precedência e a COSTURA do gesto.
+#[cfg(test)]
+#[path = "field3d_vertex_gizmo_tests.rs"]
+mod vertex_gizmo_tests;
 
 /// ⭐ **DE ONDE se coze** — a peça inteira, ou só o nó isolado (W38).
 ///

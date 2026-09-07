@@ -308,6 +308,7 @@ fn the_law_moves_along_the_anchors_axes_not_the_worlds() {
         entity: 1,
         origin: [0.0; 3],
         axes: Frame::Local.axes([0.0, 0.0, s, s]),
+        local: Frame::Local.axes([0.0, 0.0, s, s]),
     };
     let c = cam();
     let sc = screen(&c);

@@ -80,6 +80,7 @@ fn a_drag_moves_every_selected_node() {
         &mut sim,
         leaves[0].to_bits(),
         &[leaves[0], leaves[2]],
+        crate::field3d_gizmo::Target::Node,
         crate::field3d_gizmo::Motion::Translate([0.0, 0.5, 0.0]),
     );
 
@@ -112,6 +113,7 @@ fn rotating_a_selection_swings_them_around_the_shared_pivot() {
         &mut sim,
         left.to_bits(),
         &[left, right],
+        crate::field3d_gizmo::Target::Node,
         crate::field3d_gizmo::Motion::Rotate {
             axis: [0.0, 1.0, 0.0],
             angle: std::f32::consts::PI,
@@ -147,6 +149,7 @@ fn with_one_node_the_law_is_the_old_one() {
         &mut sim,
         one.to_bits(),
         &[one],
+        crate::field3d_gizmo::Target::Node,
         crate::field3d_gizmo::Motion::Rotate {
             axis: [0.0, 1.0, 0.0],
             angle: std::f32::consts::FRAC_PI_2,
@@ -163,6 +166,7 @@ fn with_one_node_the_law_is_the_old_one() {
         &mut sim,
         one.to_bits(),
         &[one],
+        crate::field3d_gizmo::Target::Node,
         crate::field3d_gizmo::Motion::Scale(2.0),
     );
     let after = world_pos(sim.world(), one);
@@ -182,6 +186,7 @@ fn scaling_a_selection_spreads_them_from_the_shared_pivot() {
         &mut sim,
         left.to_bits(),
         &[left, right],
+        crate::field3d_gizmo::Target::Node,
         crate::field3d_gizmo::Motion::Scale(2.0),
     );
 
@@ -216,6 +221,7 @@ fn a_child_of_a_selected_node_does_not_move_twice() {
         &mut sim,
         group.to_bits(),
         &[group, leaves[0]],
+        crate::field3d_gizmo::Target::Node,
         crate::field3d_gizmo::Motion::Translate([0.0, 0.0, 0.25]),
     );
 
@@ -255,7 +261,13 @@ fn the_pivot_survives_the_motion_it_applies() {
             angle: -1.2,
         },
     ] {
-        crate::field3d_scene::apply_motion_for_test(&mut sim, sel[0].to_bits(), &sel, motion);
+        crate::field3d_scene::apply_motion_for_test(
+            &mut sim,
+            sel[0].to_bits(),
+            &sel,
+            crate::field3d_gizmo::Target::Node,
+            motion,
+        );
         let now = crate::field3d_scene::selection_pivot(sim.world(), &sel);
         assert!(
             now.iter().zip(before).all(|(a, b)| (a - b).abs() < 1e-4),
@@ -313,6 +325,7 @@ fn a_hidden_node_has_no_gizmo_and_does_not_move_with_the_selection() {
         &mut sim,
         a.to_bits(),
         &[a, b],
+        crate::field3d_gizmo::Target::Node,
         crate::field3d_gizmo::Motion::Translate([0.0, 0.4, 0.0]),
     );
     assert!(
@@ -355,6 +368,7 @@ fn the_padlock_stops_the_gesture_and_the_group_locks_its_children() {
         &mut sim,
         a.to_bits(),
         &[a, b],
+        crate::field3d_gizmo::Target::Node,
         crate::field3d_gizmo::Motion::Translate([0.0, 0.4, 0.0]),
     );
     assert!(

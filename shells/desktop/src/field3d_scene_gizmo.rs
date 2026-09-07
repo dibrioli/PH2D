@@ -28,8 +28,20 @@ pub(super) fn apply_motion(
     sim: &mut SimWorld,
     primary: u64,
     chosen: &[bevy_ecs::entity::Entity],
+    target: crate::field3d_gizmo::Target,
     motion: crate::field3d_gizmo::Motion,
 ) {
+    // ⭐⭐⭐ **UM VÉRTICE NÃO É UMA POSE** (W133) — ele é um número da FORMA, e por isso sai por outra
+    // porta: a mesma [`ph2d_field_ecs::set_param`] que a linha do painel usa.
+    //
+    // ⚠️ **É isso que lhe dá de graça** a validação, a coerção da faixa, a recusa de um polígono
+    // degenerado e o passo de undo — nenhuma delas escrita outra vez aqui. *Uma alça de canvas que
+    // escrevesse no `Primitive` directamente seria a segunda porta pela qual um documento inválido
+    // entra, e a W126 já pagou essa família inteira (um número recusado apaga a CENA).*
+    if let crate::field3d_gizmo::Target::Vertex(i) = target {
+        apply_vertex(sim, primary, i, motion);
+        return;
+    }
     let world = sim.world_mut();
     let primary = bevy_ecs::entity::Entity::from_bits(primary);
     // ⚠️ **Quem está agarrado entra sempre**, mesmo que a seleção do app já não o contenha: o gesto
@@ -64,9 +76,10 @@ pub(crate) fn apply_motion_for_test(
     sim: &mut SimWorld,
     primary: u64,
     chosen: &[bevy_ecs::entity::Entity],
+    target: crate::field3d_gizmo::Target,
     motion: crate::field3d_gizmo::Motion,
 ) {
-    apply_motion(sim, primary, chosen, motion);
+    apply_motion(sim, primary, chosen, target, motion);
 }
 
 /// ⭐ **Este nó pode ser mexido por um gesto?** — a pergunta única, e ela junta duas leis da CASA.
@@ -306,6 +319,15 @@ pub(super) fn anchor_for(
         // ⚠️ Os eixos viajam **já resolvidos**: a lei do gizmo não sabe que existe uma escolha de
         // referencial, e quem a faz é quem tem a pose. Ver `Anchor::axes`.
         axes: frame.axes(pose.rotation),
+        // ⭐⭐ **Os eixos das ALÇAS DE VÉRTICE, sempre LOCAIS e JÁ escalados** (W133) — ver
+        // [`crate::field3d_gizmo::Anchor::local`].
+        //
+        // ⚠️ **Ler o `frame` aqui seria o defeito**: um vértice não tem escolha de referencial, e com
+        // o seletor em *Global* a alça andaria num plano do mundo enquanto o número do painel mexia
+        // no plano da forma. *A alça e a linha do painel são a mesma grandeza, ou uma delas mente.*
+        local: crate::field3d_gizmo::Frame::Local
+            .axes(pose.rotation)
+            .map(|a| [a[0] * pose.scale, a[1] * pose.scale, a[2] * pose.scale]),
     })
 }
 
@@ -369,5 +391,102 @@ fn view() -> Option<(ph2d_field_render::Orbit, ph2d_field_render::Screen)> {
                 s.vp().cam.half_extent,
             ),
         )
+    })
+}
+
+/// ⭐⭐⭐ **MOVER UM VÉRTICE** (W133) — o deslocamento de mundo vira as duas coordenadas locais que o
+/// painel mostra, e entra pela porta de sempre.
+///
+/// ⚠️ **A conversão é a INVERSA exacta da projecção**: a alça é desenhada em
+/// `origem + x·px + y·py` com os eixos locais **já escalados**
+/// ([`crate::field3d_gizmo::Anchor::local`]), e aqui o deslocamento é projectado nos mesmos dois
+/// eixos com `dot(d, x) / dot(x, x)`. *Duas contas diferentes fariam a alça andar uma coisa e o
+/// número mudar outra — o defeito que ninguém chama de bug de projecção.*
+///
+/// ⚠️ **Ele lê o vértice do DOCUMENTO, e não do pedido.** O arrasto publica o total desde a pegada
+/// em deltas, e cada delta soma-se ao que a peça tem **agora** — que é o que faz um arrasto sobre um
+/// vértice coagido (o polígono que recusou a escrita) parar em vez de acumular no vazio.
+fn apply_vertex(
+    sim: &mut SimWorld,
+    primary: u64,
+    index: usize,
+    motion: crate::field3d_gizmo::Motion,
+) {
+    let crate::field3d_gizmo::Motion::Translate(d) = motion else {
+        // ⚠️ **Inalcançável pelo caminho do produto** e não um `unreachable!`: a alça de vértice só
+        // produz translação ([`crate::field3d_gizmo_drag`]), mas um `panic` aqui trocaria um gesto
+        // impossível pela morte da janela. *Um pedido que não é uma translação não move um ponto.*
+        return;
+    };
+    let entity = bevy_ecs::entity::Entity::from_bits(primary);
+    let world = sim.world_mut();
+    if !movable(world, entity) {
+        return;
+    }
+    let Some(node) = world.get::<FieldNode>(entity) else {
+        return;
+    };
+    let ph2d_field::NodeShape::Leaf(p) = &node.shape else {
+        return;
+    };
+    let Some(v) = ph2d_field::vertex_rows(p) else {
+        return;
+    };
+    let Some(atual) = v.points.get(index).copied() else {
+        return;
+    };
+    let pose = ph2d_field_ecs::world_xform(world, entity);
+    let eixos = crate::field3d_gizmo::Frame::Local
+        .axes(pose.rotation)
+        .map(|a| [a[0] * pose.scale, a[1] * pose.scale, a[2] * pose.scale]);
+    let projecta = |a: [f32; 3]| {
+        let dd = ph2d_field::xform::dot(a, a);
+        if dd <= f32::MIN_POSITIVE {
+            0.0
+        } else {
+            ph2d_field::xform::dot(d, a) / dd
+        }
+    };
+    let alvo = [atual[0] + projecta(eixos[0]), atual[1] + projecta(eixos[1])];
+    // ⚠️ **Duas escritas, e a ordem não importa** — cada uma é uma linha independente, e a porta
+    // revalida a peça inteira nas duas. ⛔ Uma escrita «de par» seria uma segunda lei de escrita ao
+    // lado da que o painel usa, e é o painel que tem de continuar a mandar.
+    for (k, valor) in [(0_usize, alvo[0]), (1, alvo[1])] {
+        #[allow(clippy::cast_possible_truncation)]
+        let row = (v.first_row + 2 * index + k) as u16;
+        let _ = ph2d_field_ecs::set_param(world, entity, ph2d_field::Param::Dim(row), valor);
+    }
+}
+
+/// ⭐⭐ **OS VÉRTICES DA FORMA ESCOLHIDA** (W133) — publicados a cada quadro, ao lado da âncora.
+///
+/// `None` quando o que está escolhido não tem pontos autorados, está escondido/trancado, ou quando
+/// há **mais do que um** nó escolhido.
+///
+/// ⚠️ **A regra do «um só» não é economia**: com dois, *de quem são estes pontos?* não tem resposta,
+/// e a [`crate::field3d_gizmo::Anchor::origin`] passa a ser o **pivô** da selecção — o plano do
+/// contorno nasceria deslocado, e a alça agarraria ao lado do ponto que ela desenha.
+pub(super) fn vertices_for(
+    sim: &mut SimWorld,
+    selected: Option<u64>,
+    chosen: &[bevy_ecs::entity::Entity],
+) -> Option<crate::field3d_gizmo::Vertices> {
+    let bits = selected?;
+    let entity = bevy_ecs::entity::Entity::from_bits(bits);
+    if chosen.iter().any(|e| *e != entity) {
+        return None;
+    }
+    let world = sim.world_mut();
+    if !movable(world, entity) {
+        return None;
+    }
+    let ph2d_field::NodeShape::Leaf(p) = &world.get::<FieldNode>(entity)?.shape else {
+        return None;
+    };
+    let v = ph2d_field::vertex_rows(p)?;
+    Some(crate::field3d_gizmo::Vertices {
+        entity: bits,
+        first_row: v.first_row,
+        points: v.points,
     })
 }

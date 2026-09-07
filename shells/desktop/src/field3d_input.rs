@@ -41,7 +41,32 @@ pub(crate) fn handles(s: &Smoke) -> Vec<field3d_gizmo::Projected> {
     let (Some(anchor), Some(screen)) = (s.gizmo, area_screen(s)) else {
         return Vec::new();
     };
-    field3d_gizmo::project(anchor, &s.vp().cam, screen, s.gizmo_mode)
+    // ⭐⭐⭐ **OS VÉRTICES VÊM PRIMEIRO, e a ordem é a decisão** (W133).
+    //
+    // A lista é ordenada **por prioridade de apontar** — o [`field3d_gizmo::pick`] devolve a
+    // primeira que casa — e é pintada ao contrário, do fundo para a frente. Pôr os pontos à cabeça
+    // faz as duas coisas de uma vez: eles são **os últimos a pintar** (ficam por cima) e **os
+    // primeiros a agarrar**.
+    //
+    // ⚠️ **O contrário seria a affordance que mente:** um braço do gizmo mede `90 px` e é quase todo
+    // vazio; um ponto mede `3` e está desenhado por cima dele. Se o braço ganhasse, o artista veria
+    // o quadradinho aceso debaixo do cursor e a peça inteira andaria. *O que se vê tem de ser o que
+    // se agarra.* ⛔ O preço é o disco de vista perder os poucos pixels que um ponto lhe tapa — e ele
+    // é um alvo grande, enquanto o ponto é o mais pequeno que esta janela oferece.
+    //
+    // ⚠️ **Eles existem nos TRÊS verbos**, e não só no *Move*: um vértice não é um verbo do nó — é a
+    // forma. Escondê-los em *Rotate* obrigaria a trocar de modo para mexer num ponto.
+    let mut saida = match &s.vertices {
+        Some(v) => field3d_gizmo::project_vertices(anchor, &v.points, &s.vp().cam, screen),
+        None => Vec::new(),
+    };
+    saida.extend(field3d_gizmo::project(
+        anchor,
+        &s.vp().cam,
+        screen,
+        s.gizmo_mode,
+    ));
+    saida
 }
 
 /// ⭐ **O enquadramento deste módulo é o da ÁREA — nunca o do traçado.**
@@ -131,42 +156,6 @@ const FRAME_MARGIN: f32 = 1.10;
 /// errado nos dois sinais até um smoke a pegar. Aqui o gate traça a peça e **mede-a na tela**.
 #[path = "field3d_input_law.rs"]
 pub(crate) mod law;
-
-/// ⭐ **Enquadra a peça que o smoke tem em mãos** — o elo entre a lei pura e o documento.
-///
-/// ⚠️ **`false` quando não há peça**, e quem chama decide o que fazer com isso: o `Home` já repôs a
-/// orientação e fica assim (não há o que enquadrar); o pedido de um load simplesmente não tem efeito
-/// e volta a ser feito no quadro seguinte, quando o documento já estiver cozido.
-pub(crate) fn frame_the_part(s: &mut Smoke) -> bool {
-    let mut to = s.vp().cam;
-    if !frame_into(s, &mut to) {
-        return false;
-    }
-    crate::field3d_smoke::fly_to(s, to);
-    true
-}
-
-/// A mesma conta, escrita num destino em vez de na câmera — é ela que faz o `Home` **compor** o
-/// repor com o enquadrar numa viagem só, em vez de duas.
-pub(crate) fn frame_into(s: &Smoke, to: &mut ph2d_field_render::Orbit) -> bool {
-    let Some(doc) = s.doc.as_ref() else {
-        return false;
-    };
-    let reg = crate::field3d_smoke::sampled_registry();
-    let Some(ball) = ph2d_field_eval::bounds::bounding_ball(doc, &reg) else {
-        return false;
-    };
-    law::frame(to, ball);
-    true
-}
-
-/// ⭐ **Partir para uma vista nomeada**: a orientação dela **e** o enquadramento, numa viagem só.
-pub(crate) fn fly_to_view(s: &mut Smoke, view: crate::field3d_views::Standard) {
-    let mut to = s.vp().cam;
-    to.rotation = view.rotation();
-    frame_into(s, &mut to);
-    crate::field3d_smoke::fly_to(s, to);
-}
 
 impl App {
     /// O ponteiro desceu. Devolve `true` se a janela 3D tomou o gesto.
@@ -581,3 +570,8 @@ mod tests;
 #[cfg(test)]
 #[path = "field3d_frame_tests.rs"]
 mod frame_tests;
+
+/// ⭐ **Enquadrar a peça** vive no irmão — ver [`field3d_framing`](self::framing).
+#[path = "field3d_framing.rs"]
+mod framing;
+pub(crate) use framing::{fly_to_view, frame_into, frame_the_part};

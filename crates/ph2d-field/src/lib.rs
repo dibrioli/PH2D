@@ -52,6 +52,9 @@ pub mod radius;
 pub mod radius_extents;
 /// ⭐ Até onde o filete de cada forma vai — ver [`radius_limit`].
 pub mod radius_limit;
+/// ⭐⭐ Que formas têm VÉRTICES autorados, e onde eles estão na lista de linhas — ver
+/// [`vertex_rows`].
+pub mod vertex_rows;
 pub mod xform;
 
 pub use axis::Axis;
@@ -85,6 +88,7 @@ pub use radius::{
 };
 pub use radius_extents::bounding_half_extents;
 pub use radius_limit::{round_limit, star_round_limit};
+pub use vertex_rows::{VertexRows, vertex_rows};
 pub use xform::Xform;
 
 use serde::{Deserialize, Serialize};

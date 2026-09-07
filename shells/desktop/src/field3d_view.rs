@@ -121,6 +121,10 @@ impl View {
             drag: _,
             last_pointer: _,
             gizmo: _,
+            // ⚠️ **Cache, pela mesma lei da âncora acima**: os vértices são DERIVADOS do documento a
+            // cada quadro, e o que atravessa um fecho é a preferência de bancada — nunca uma cópia
+            // de uma coisa que a peça já tem.
+            vertices: _,
             gizmo_hot: _,
             pending_move: _,
             drag_grip: _,

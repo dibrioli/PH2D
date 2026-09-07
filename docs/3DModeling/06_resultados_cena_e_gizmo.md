@@ -13043,3 +13043,76 @@ Depois da cura: **26 de 26 verdes**, com o polígono dentro de todos eles.
 ⚠️ **E a primeira leitura desta sonda foi MINHA e estava errada:** a minha réplica media só a grelha
 grossa `24³` e leu `1,0003` — *o número inteiro vive na CASCA*, que é a segunda varredura do censo.
 Uma régua que não sabe onde a grandeza mora responde «está tudo bem» com a mesma confiança.
+
+---
+
+## §134 — W133: os VÉRTICES no canvas, e o arrasto pela alça (07/09)
+
+> **Enio, 07/09:** *«para esse tipo de objeto e todos os outros que dependem de posição de vertex, os
+> vertex devem aparecer no canvas em tempo real e o usuário então poderá movê-los através do gizmo no
+> próprio canvas»*.
+
+### §134.1 — ⭐⭐⭐ «E todos os outros» é o pedido inteiro, e por isso a lista é DERIVADA
+
+Uma lista escrita à mão no shell responderia hoje e ficaria para trás na primeira forma nova — o
+defeito que a W103 pagou com quatro constantes `SHAPES.len() − N`. A porta é
+`ph2d_field::vertex_rows(p)`, um `match` **exaustivo** sobre a primitiva: uma forma nova com pontos
+digitados é **erro de compilação** ali, e quem a escrever tem de dizer onde eles vivem.
+
+⭐ **E há um censo do outro lado**, porque o compilador só impede o esquecimento — não a resposta
+errada. O `the_vertex_door_knows_every_shape_with_free_rows` percorre `PrimitiveKind::ALL` e exige
+que **toda** forma cuja tabela declare um par de `Span::Free` (uma coordenada é uma **posição**: o
+piso dela é negativo) seja conhecida pela porta, com os **índices e os valores a bater**.
+
+⚠️ **E as duas formas de CONTORNO respondem `None` com medição própria** — elas fazem `return None`
+no censo (precisam de um desenho), que é a forma de buraco que a W132 acabou de pagar. O gate irmão
+constrói-as à mão e mede. *O `None` delas não é omissão: os pontos de um `Extrude` são do editor
+vetorial, e o vínculo re-coze-os no quadro seguinte.*
+
+Hoje a porta responde `Some` a **duas**: o triângulo (`first_row = 0`) e o polígono (`first_row = 1`,
+a contagem à frente). ⚠️ **As duas tabelas põem as coordenadas em sítios diferentes**, e é aí que uma
+alça escreve no número errado — há gate de costura para as duas.
+
+### §134.2 — ⭐⭐ O que a alça É, e o que ela NÃO é
+
+| pergunta | resposta, e o porquê |
+|---|---|
+| **onde ela anda** | no plano **XY LOCAL** da forma, sempre. ⛔ Nunca num eixo do seletor *Global/Local*: um vértice tem **duas** coordenadas, e a alça e a linha do painel têm de ser a **mesma** grandeza |
+| **quem ganha o pixel** | o **vértice**. Um braço do gizmo mede `90 px` e é quase todo vazio; um ponto mede `3` e está pintado por cima dele. *O que se vê tem de ser o que se agarra* |
+| **em que verbos aparece** | nos **três**. Um vértice não é um verbo do nó — é a forma; escondê-lo em *Rotate* obrigaria a trocar de modo para mexer num ponto |
+| **quantos nós escolhidos** | **um**. Com dois, *de quem são estes pontos?* não tem resposta — e a âncora passa a ser o **pivô** da selecção, o que poria o plano do contorno no sítio errado |
+| **aceita número digitado?** | **não**, e a ausência não deixa buraco: *o sítio de digitar um vértice é a linha do painel*, que é exactamente o par de números que a alça arrasta. **Canvas para a mão, painel para o número** |
+
+⭐ **E ela escreve pela porta do painel** (`set_param`), e não no `Primitive`: daí vêm de graça a
+validação, a coerção da faixa, a recusa de um polígono degenerado e o passo de undo. *Uma alça que
+escrevesse na forma directamente seria a segunda porta pela qual um documento inválido entra — e a
+W126 já pagou essa família inteira (um número recusado apaga a CENA).*
+
+### §134.3 — ⛔⛔ Duas mutações SOBREVIVERAM, e as duas eram buracos dos meus gates
+
+| mutação | o que sobreviveu, e porquê |
+|---|---|
+| **a ORDEM da lista** (vértices ao fim) | o gate montava a lista **dentro do teste** ⇒ media a ordem que ele próprio escrevera. *Um gate que copia a fórmula fica verde sobre uma lei que ninguém shipa.* ⇒ passou a perguntar à `field3d_input::handles` |
+| **o `first_row` do polígono a `0`** | o gate pedia *«o vértice 0 mexeu-se»*. Com `first_row = 0` o par de linhas passa a ser *(contagem, v1.x)*, o `x` do vértice 0 muda à mesma e nenhum vizinho se mexe ⇒ **verde sobre a escrita deslocada**. ⇒ passou a exigir o valor **exacto** |
+
+Depois da cura, **quatro mutações e quatro mortas**, cada uma com o gate que a mata nomeado: a ordem
+da lista · o plano do vértice a ler o eixo do seletor · o `first_row` a ignorar a contagem · os dois
+eixos trocados na conversão de mundo para local.
+
+⚠️ **E a primeira tentativa de mutação nem compilou** — exit `101`, que se lê como RED e prova
+**nada**. *Uma prova de mutação precisa de saber a diferença entre «o gate mordeu» e «o ficheiro
+ficou partido».*
+
+### §134.4 — ⭐ O que a wave achou de caminho
+
+O doc do `publish` (o cano do pedido de arrasto) promete *«um só sítio a escrever `pending_move`»* — e
+o mesmo ficheiro tinha **dois**, com a acumulação copiada. A lei nova (acumular **só sobre o mesmo
+SUJEITO**, porque duas alças da mesma peça já não são o mesmo pedido) só existe dentro da porta, e a
+cópia teria nascido a somar o deslocamento de um vértice noutro. *Uma lei escrita em dois sítios ainda
+não é uma lei.*
+
+**Tetos de LOC:** a wave levou `field3d_gizmo.rs` e `field3d_input.rs` acima dos `600` do shell, e os
+dois foram cortados **por responsabilidade** — as medidas em pixels, a metade que **aponta**, a
+projecção das alças de vértice e o enquadramento da câmera saíram para irmãos. ⛔ Nenhuma isenção.
+
+**Smoke:** *MODEL* > **A** > *Polygon* (ou *Triangle*), e arrastar um quadradinho branco no canvas.

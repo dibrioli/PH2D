@@ -44,89 +44,10 @@
 use ph2d_field::xform::{cross, dot};
 use ph2d_field_render::{Orbit, Screen};
 
-/// **O comprimento do braço, EM PIXELS** — o gizmo tem tamanho de tela constante, como o do Blender.
-///
-/// ⚠️ Constante na tela e não no mundo, de propósito: um gizmo de tamanho de mundo fixo fica maior
-/// do que a janela ao aproximar e some ao afastar, e é a mesma peça que se está a manipular nos dois
-/// casos. O comprimento em mundo sai daqui dividido por [`Screen::px_per_world`].
-pub(crate) const ARM_PX: f32 = 90.0;
-
-/// A folga no centro. Nada é desenhado nem apontável dentro dela — é ela que separa as três setas
-/// umas das outras e do disco de vista.
-pub(crate) const INNER_PX: f32 = 15.0;
-
-/// O raio de agarre: a que distância do traço um clique ainda é daquela alça.
-pub(crate) const GRAB_PX: f32 = 9.0;
-
-/// Comprimento e meia-largura da ponta da seta.
-pub(crate) const HEAD_PX: f32 = 17.0;
-pub(crate) const HEAD_HALF_W_PX: f32 = 5.5;
-
-/// Espessura do traço da haste (e das argolas).
-pub(crate) const SHAFT_HALF_W_PX: f32 = 1.3;
-
-/// Onde fica o quadrado de plano, em fração do braço, e o lado dele.
-pub(crate) const PLANE_AT: f32 = 0.38;
-pub(crate) const PLANE_SIDE: f32 = 0.22;
-
-/// ⚠️ **O comprimento projetado abaixo do qual uma seta deixa de ser uma alça** — e o número é
-/// **derivado**, não escolhido.
-///
-/// Uma seta apontada para o observador projeta-se curta. A partir de certo ponto a região que a
-/// agarra deixa de ser distinguível do centro: a haste começa em [`INNER_PX`] e o agarre tem
-/// [`GRAB_PX`] de raio dos dois lados, então uma haste mais curta do que `INNER_PX + 2·GRAB_PX`
-/// **não tem um único pixel que seja só dela**. Aí ela não é um controle — é uma lotaria entre três.
-///
-/// Escondê-la é o que o Blender faz, e o efeito colateral é bom: com a seta escondida sobra o
-/// quadrado de plano perpendicular a ela, que é exatamente o gesto que aquele enquadramento pede.
-pub(crate) const MIN_ARM_PX: f32 = INNER_PX + 2.0 * GRAB_PX;
-
-/// Em quantos pedaços uma argola é amostrada. Ela é um **círculo do mundo**, e o que se pinta e se
-/// aponta é a projeção dele — uma elipse, que só uma poligonal aproxima.
-pub(crate) const RING_SEGMENTS: usize = 48;
-
-/// ⚠️ **O quanto uma argola tem de estar virada para o observador** — também **derivado**.
-///
-/// Vista de perfil, uma argola projeta-se numa reta: o eixo menor da elipse mede
-/// `ARM_PX · |cos θ|`, com θ o ângulo entre o eixo dela e a direção da vista. Abaixo de
-/// [`GRAB_PX`] ela deixa de ser uma argola apontável e passa a ser um traço — e, pior, o arrasto
-/// degenera junto (o plano de rotação fica de perfil e o raio do cursor não o encontra).
-///
-/// A saída existe e é a [`Handle::ViewRing`]: a argola do plano da tela nunca fica de perfil
-/// consigo mesma.
-pub(crate) const RING_MIN_DOT: f32 = GRAB_PX / ARM_PX;
-
-/// ⚠️ **O piso que decide o que está «atrás», e ele nomeia o recurso: a precisão da representação.**
-///
-/// A argola de VISTA fica, por construção, **exatamente** no plano da câmera: a profundidade de todo
-/// ponto dela é zero. Em `f32` esse zero sai como ±10⁻⁷ aleatório, e um teste `>= 0` transformaria a
-/// argola numa fieira de pedaços soltos — medido (o gate `the_front_half_of_a_ring_is_one_unbroken_run`
-/// apanhou-a a sair com **3 pontos** de 48).
-///
-/// 10⁻⁵ está duas ordens acima do ruído e cinco abaixo de qualquer fronteira real de meia-argola: o
-/// pior que ele faz é deixar passar um segmento a mais na borda, que ninguém vê.
-///
-/// (É o irmão do `PRECISION_FLOOR` do traçador, e pelo mesmo motivo.)
-const RING_FRONT_EPS: f32 = 1.0e-5;
-
-/// O raio da argola de vista, em frações do braço. Ela fica **por fora** das três, como a branca do
-/// Blender — é a de fora que se agarra sem pensar.
-pub(crate) const VIEW_RING_R: f32 = 1.18;
-
-/// Meia-aresta do punho de tamanho.
-pub(crate) const GRIP_HALF_PX: f32 = 6.5;
-
-/// ⚠️ **A direção do punho de tamanho é de TELA, e ela é cosmética.**
-///
-/// Ele não é um eixo — é um punho, como o canto de uma janela —, e a lei do arrasto depende só do
-/// **raio** ao centro, nunca desta direção. Pô-lo em cima e à direita é a convenção de todo punho de
-/// redimensionar; movê-lo para outro canto não mudaria uma linha da conta.
-///
-/// (`y` cresce para BAIXO em pixels, daí o sinal.)
-pub(crate) const GRIP_DIR: [f32; 2] = [
-    std::f32::consts::FRAC_1_SQRT_2,
-    -std::f32::consts::FRAC_1_SQRT_2,
-];
+/// ⭐ **As medidas em pixels** vivem no irmão — ver [`field3d_gizmo_metrics`](self::metrics).
+#[path = "field3d_gizmo_metrics.rs"]
+mod metrics;
+pub(crate) use metrics::*;
 
 /// **O que o gizmo faz agora.** Os três verbos, num seletor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -170,6 +91,49 @@ pub(crate) enum Handle {
     ViewRing,
     /// Escalar **uniformemente**. Uma só, e o doc do módulo diz porquê.
     Grip,
+    /// ⭐⭐⭐ **UM VÉRTICE do contorno**, pelo índice (W133) — a alça que move um ponto da forma, e
+    /// não a forma inteira.
+    ///
+    /// Enio, 2026-09-07: *«os vertex devem aparecer no canvas em tempo real e o usuário então poderá
+    /// movê-los através do gizmo no próprio canvas»*.
+    ///
+    /// ⚠️ **O índice é do VÉRTICE, e não da linha do painel** — quem converte é a ponte, que é quem
+    /// sabe onde a tabela daquela forma põe as coordenadas ([`ph2d_field::vertex_rows`]). *A lei do
+    /// gizmo não pode saber a ordem das linhas de uma tabela: seria a segunda cópia dela.*
+    Vertex(usize),
+}
+
+/// ⭐⭐⭐ **O SUJEITO de um pedido de arrasto** (W133) — o nó inteiro, ou **um ponto** dele.
+///
+/// ⚠️ **Ele viaja com o pedido, e não é derivado no destino.** A ponte com a cena recebe um
+/// deslocamento de mundo e tem de saber o que mover; perguntar «que alça estava agarrada?» ali
+/// obrigaria o estado do gesto a atravessar mais uma fronteira, e é entre quadros que a selecção
+/// pode mudar. *Quem sabe o sujeito é quem agarrou.*
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Target {
+    /// O nó — mover, rodar ou escalar a peça.
+    Node,
+    /// Um vértice do contorno, pelo índice.
+    Vertex(usize),
+}
+
+impl Handle {
+    /// **Quem esta alça move.**
+    ///
+    /// ⚠️ **Lista FECHADA de propósito**: uma alça nova que mexa noutra coisa que não o nó (uma
+    /// aresta, uma tangente) é **erro de compilação** aqui, e quem a escrever tem de dizer o
+    /// sujeito. Um `_ => Node` faria a próxima nascer a mover a peça inteira, em silêncio.
+    pub(crate) fn target(self) -> Target {
+        match self {
+            Handle::Vertex(i) => Target::Vertex(i),
+            Handle::Axis(_)
+            | Handle::Plane(_)
+            | Handle::View
+            | Handle::Ring(_)
+            | Handle::ViewRing
+            | Handle::Grip => Target::Node,
+        }
+    }
 }
 
 /// **Onde o gizmo está e para onde ele aponta**, no mundo. Publicado pela ponte com a cena, que é
@@ -187,6 +151,18 @@ pub(crate) struct Anchor {
     /// função daqui teria de perguntar «global ou local?» — o mesmo `if` repetido em cinco sítios,
     /// que é como um deles fica para trás.
     pub(crate) axes: [[f32; 3]; 3],
+    /// ⭐⭐ **Os três eixos LOCAIS do nó, no mundo, JÁ com a escala dentro** (W133) — e eles são
+    /// SEMPRE locais, ao contrário dos de cima.
+    ///
+    /// ⚠️ **Não é redundância com o [`Anchor::axes`], e a diferença é o sujeito.** Aqueles são os do
+    /// gesto e obedecem ao seletor Global/Local, porque mover a peça ao longo do eixo do mundo é um
+    /// gesto legítimo. Um **vértice** não tem essa escolha: ele mora no plano do contorno, que é o
+    /// XY local, e um seletor de referencial não muda onde o ponto vive. *Ler o campo errado aqui
+    /// faria a alça andar num plano e o número mudar noutro.*
+    ///
+    /// ⭐ **A escala vai DENTRO** porque é o que faz `origem + x·px + y·py` ser a posição de mundo do
+    /// vértice `(px, py)` — a mesma conta nos dois sentidos, sem um factor solto a meio.
+    pub(crate) local: [[f32; 3]; 3],
 }
 
 impl Anchor {
@@ -197,8 +173,27 @@ impl Anchor {
             entity,
             origin,
             axes: WORLD_AXES,
+            local: WORLD_AXES,
         }
     }
+}
+
+/// ⭐⭐⭐ **OS VÉRTICES DA FORMA ESCOLHIDA** (W133) — publicados pela ponte com a cena, que é quem
+/// tem o mundo **e** o documento.
+///
+/// ⚠️ **Só com UM nó escolhido**, e não é uma simplificação: com dois, *de quem são estes pontos?*
+/// não tem resposta — e a [`Anchor::origin`] passa a ser o **pivô** da selecção em vez da origem do
+/// nó, o que poria o plano do contorno no sítio errado.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Vertices {
+    /// A entidade dona — a mesma da âncora. ⚠️ Ela viaja porque o arrasto **não pode** voltar a
+    /// procurá-la: entre a pegada e o largar a selecção pode mudar.
+    pub(crate) entity: u64,
+    /// O índice, na lista de linhas daquela forma, do `x` do primeiro vértice
+    /// ([`ph2d_field::vertex_rows`]).
+    pub(crate) first_row: usize,
+    /// Os pontos, em coordenadas **locais** — os mesmos números que o painel mostra.
+    pub(crate) points: Vec<[f32; 2]>,
 }
 
 /// **Em que referencial os eixos do gizmo apontam.**
@@ -249,6 +244,12 @@ pub(crate) enum Shape {
     Arc(Vec<[f32; 2]>),
     /// Punho de tamanho: um quadrado no fim de um traço a partir do centro.
     Grip { from: [f32; 2], to: [f32; 2] },
+    /// ⭐ **Um ponto do contorno** (W133) — o quadradinho de um vértice.
+    ///
+    /// ⚠️ **Quadrado e não círculo**, e é a convenção que todo modelador usa para distinguir *um
+    /// ponto da malha* de *um punho do gizmo* (o [`Shape::Disc`] já é o disco de vista). Um artista
+    /// que veja dois círculos tem de descobrir qual é qual experimentando.
+    Point { center: [f32; 2] },
 }
 
 /// Uma alça pronta. `live = false` ⇒ **nem pintada nem apontável** neste enquadramento.
@@ -268,6 +269,20 @@ pub(crate) struct Projected {
 #[path = "field3d_gizmo_drag.rs"]
 mod drag_law;
 pub(crate) use drag_law::{Motion, drag, snap_step};
+
+/// ⭐⭐ **A projecção das ALÇAS DE VÉRTICE** vive no irmão — ver
+/// [`field3d_vertex_handles`](self::vertex_handles).
+///
+/// ⚠️ O re-export mantém `field3d_gizmo::project_vertices` — cortar um arquivo não pode custar uma
+/// reescrita a cada chamador.
+#[path = "field3d_vertex_handles.rs"]
+mod vertex_handles;
+pub(crate) use vertex_handles::project_vertices;
+
+/// ⭐ **A metade que APONTA** vive no irmão — ver [`field3d_gizmo_pick`](self::pick_law).
+#[path = "field3d_gizmo_pick.rs"]
+mod pick_law;
+pub(crate) use pick_law::pick;
 
 /// Os três eixos do mundo.
 const WORLD_AXES: [[f32; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
@@ -468,6 +483,10 @@ fn front_arc(
     out
 }
 
+#[cfg(test)]
+#[path = "field3d_gizmo_tests.rs"]
+mod tests;
+
 /// Dois vetores unitários que geram o plano perpendicular a `axis`.
 ///
 /// ⚠️ O parceiro do produto vetorial é escolhido pelo **eixo menos alinhado** com `axis`. Um
@@ -482,41 +501,6 @@ fn basis_of(axis: [f32; 3]) -> ([f32; 3], [f32; 3]) {
     helper[small] = 1.0;
     let u = normalize(cross(a, helper));
     (u, cross(a, u))
-}
-
-/// **De quem é este ponto?** — `None` quando nenhuma alça o reclama.
-pub(crate) fn pick(projected: &[Projected], p: [f32; 2]) -> Option<Handle> {
-    projected
-        .iter()
-        .find(|h| h.live && hits(&h.shape, p))
-        .map(|h| h.handle)
-}
-
-fn hits(shape: &Shape, p: [f32; 2]) -> bool {
-    match shape {
-        Shape::Disc { center, radius } => dist(*center, p) <= *radius,
-        Shape::Quad(q) => point_in_quad(*q, p),
-        // ⚠️ A haste começa DEPOIS da folga: sem isto as três setas disputariam o centro com o
-        // disco, e qual ganha dependeria da ordem da lista em vez da geometria.
-        Shape::Arrow { from, to } => {
-            let d = [to[0] - from[0], to[1] - from[1]];
-            let len = (d[0] * d[0] + d[1] * d[1]).sqrt();
-            if len <= INNER_PX {
-                return false;
-            }
-            let u = [d[0] / len, d[1] / len];
-            let start = [from[0] + u[0] * INNER_PX, from[1] + u[1] * INNER_PX];
-            dist_to_segment(start, *to, p) <= GRAB_PX
-        }
-        Shape::Arc(pts) => pts
-            .windows(2)
-            .any(|w| dist_to_segment(w[0], w[1], p) <= GRAB_PX),
-        // O punho é o quadrado do fim; o traço até ele é decoração e não se agarra.
-        Shape::Grip { to, .. } => {
-            (p[0] - to[0]).abs() <= GRIP_HALF_PX + GRAB_PX * 0.5
-                && (p[1] - to[1]).abs() <= GRIP_HALF_PX + GRAB_PX * 0.5
-        }
-    }
 }
 
 fn offset(p: [f32; 3], dir: [f32; 3], k: f32) -> [f32; 3] {
@@ -538,39 +522,3 @@ fn normalize(v: [f32; 3]) -> [f32; 3] {
 fn dist(a: [f32; 2], b: [f32; 2]) -> f32 {
     (a[0] - b[0]).hypot(a[1] - b[1])
 }
-
-fn dist_to_segment(a: [f32; 2], b: [f32; 2], p: [f32; 2]) -> f32 {
-    let d = [b[0] - a[0], b[1] - a[1]];
-    let dd = d[0].mul_add(d[0], d[1] * d[1]);
-    if dd <= f32::MIN_POSITIVE {
-        return dist(a, p);
-    }
-    let t = ((p[0] - a[0]) * d[0] + (p[1] - a[1]) * d[1]) / dd;
-    let t = t.clamp(0.0, 1.0);
-    dist([a[0] + d[0] * t, a[1] + d[1] * t], p)
-}
-
-/// ⚠️ **Por produto vetorial, e não por «está dentro da caixa»**: o quadrilátero é um quadrado do
-/// MUNDO já projetado, então ele é um losango qualquer na tela. Um teste de caixa alinhada
-/// reclamaria pixels que não são dele — e como as três alças de plano se tocam nos cantos, o gesto
-/// escolheria a errada exatamente onde a diferença importa.
-fn point_in_quad(q: [[f32; 2]; 4], p: [f32; 2]) -> bool {
-    let mut positive = false;
-    let mut negative = false;
-    for i in 0..4 {
-        let a = q[i];
-        let b = q[(i + 1) % 4];
-        let cross = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
-        if cross > 0.0 {
-            positive = true;
-        }
-        if cross < 0.0 {
-            negative = true;
-        }
-    }
-    !(positive && negative)
-}
-
-#[cfg(test)]
-#[path = "field3d_gizmo_tests.rs"]
-mod tests;

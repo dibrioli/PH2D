@@ -163,6 +163,7 @@ pub(crate) fn begin(
             anchor,
             from,
             applied: field3d_gizmo::drag(h, anchor, &s.vp().cam, screen, from, from).neutral(),
+            target: h.target(),
         })
     });
     s.gizmo_hot = grabbed;
@@ -231,7 +232,7 @@ pub(crate) fn typed_key(s: &mut Smoke, stroke: crate::field3d_typed::Stroke) -> 
             if let Some(grip) = s.drag_grip {
                 let back = grip.applied.neutral().since(grip.applied);
                 if !back.is_idle() {
-                    publish(s, grip.anchor.entity, back);
+                    publish(s, grip.anchor.entity, grip.target, back);
                 }
             }
             s.drag = None;
@@ -276,7 +277,7 @@ fn apply_typed(s: &mut Smoke, handle: Handle) {
     };
     let delta = total.since(grip.applied);
     if !delta.is_idle() {
-        publish(s, grip.anchor.entity, delta);
+        publish(s, grip.anchor.entity, grip.target, delta);
         if let Some(g) = s.drag_grip.as_mut() {
             g.applied = total;
         }
@@ -288,12 +289,21 @@ fn apply_typed(s: &mut Smoke, handle: Handle) {
 /// ⚠️ **Um só sítio a escrever `pending_move`**: o ponteiro e o teclado mandam a mesma coisa pelo
 /// mesmo cano, e duas cópias da acumulação divergiriam no dia em que os dois acontecessem no mesmo
 /// quadro — que é exactamente o que digitar durante um arrasto é.
-fn publish(s: &mut Smoke, entity: u64, delta: field3d_gizmo::Motion) {
+fn publish(
+    s: &mut Smoke,
+    entity: u64,
+    target: field3d_gizmo::Target,
+    delta: field3d_gizmo::Motion,
+) {
+    // ⚠️ **Só acumula sobre o MESMO sujeito** (W133): dois pedidos da mesma entidade podem ser de
+    // vértices diferentes, e somá-los moveria um ponto com o deslocamento do outro. *A entidade
+    // deixou de ser a identidade do pedido no dia em que uma peça passou a ter N alças.*
     s.pending_move = Some((
         entity,
+        target,
         s.pending_move
-            .filter(|(e, _)| *e == entity)
-            .map_or(delta, |(_, acc)| acc.merge(delta)),
+            .filter(|(e, t, _)| *e == entity && *t == target)
+            .map_or(delta, |(_, _, acc)| acc.merge(delta)),
     ));
 }
 
@@ -417,12 +427,11 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
             // devolve zero, e escrever esse zero acordaria o traçado para redesenhar o mesmo quadro.
             let delta = total.since(grip.applied);
             if !delta.is_idle() {
-                s.pending_move = Some((
-                    grip.anchor.entity,
-                    s.pending_move
-                        .filter(|(e, _)| *e == grip.anchor.entity)
-                        .map_or(delta, |(_, acc)| acc.merge(delta)),
-                ));
+                // ⚠️ **Pela PORTA, e não por uma segunda cópia da acumulação** (W133) — o doc do
+                // [`publish`] promete *«um só sítio a escrever `pending_move`»* e este arquivo tinha
+                // **dois**. A lei nova (acumular só sobre o mesmo SUJEITO) só existe lá dentro, e
+                // uma cópia aqui nasceria a somar o deslocamento de um vértice noutro.
+                publish(s, grip.anchor.entity, grip.target, delta);
                 if let Some(g) = s.drag_grip.as_mut() {
                     g.applied = total;
                 }

@@ -213,6 +213,29 @@ pub(crate) fn drag(
             let (_, _, fwd) = cam.basis();
             Motion::Translate(plane_delta(fwd, anchor.origin, cam, screen, from_px, to_px))
         }
+        // ⭐⭐⭐ **UM VÉRTICE ANDA NO PLANO DO CONTORNO** (W133) — e é a mesma conta do
+        // [`Handle::Plane`], com o plano a vir de outro sítio.
+        //
+        // ⚠️ **A normal é o `Z` LOCAL, e nunca um eixo do seletor Global/Local.** Um vértice tem
+        // **duas** coordenadas, e elas vivem no plano XY da forma: deixá-lo andar num plano do mundo
+        // faria a alça seguir o rato e o número do painel mexer noutra direcção. *A alça e a linha
+        // têm de ser a mesma grandeza.*
+        //
+        // ⚠️ **O plano passa pela ORIGEM DO NÓ**, e isso é exacto e não uma aproximação: o contorno
+        // vive em `z = 0` local, que é o plano que passa pela origem com aquela normal. Um plano
+        // pelo vértice daria o **mesmo** plano — e a origem é o que a âncora já tem.
+        //
+        // ⛔ **Devolve um deslocamento de MUNDO**, e quem o converte para as duas coordenadas locais
+        // é a ponte ([`crate::field3d_scene_gizmo`]) — a lei do gizmo não sabe que existe uma tabela
+        // de linhas nem qual é a ordem dela.
+        Handle::Vertex(_) => Motion::Translate(plane_delta(
+            anchor.local[2],
+            anchor.origin,
+            cam,
+            screen,
+            from_px,
+            to_px,
+        )),
         Handle::Ring(n) => spin(anchor.axes[n], anchor.origin, cam, screen, from_px, to_px),
         Handle::ViewRing => {
             let (_, _, fwd) = cam.basis();

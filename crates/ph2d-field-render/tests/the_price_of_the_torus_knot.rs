@@ -48,12 +48,22 @@ fn the_price_of_the_torus_knot() {
     );
     println!("\n── e o nó, volta a volta (q = 3) ──");
     let mut linhas = Vec::new();
-    for p in [1_u32, 2, 3, 4, 6, 8, 10, 12, 14, 16, 20, 24] {
+    for p in [1_u32, 2, 3, 4, 6, 8, 10, 12] {
         linhas.push((p, cronometra(&format!("nó (p = {p}, q = 3)"), no(p, 3))));
     }
     println!("\n── e voltando ao tubo, no PIOR `q/p` que existe (p = 1) ──");
-    for q in [1_u32, 2, 3, 4, 6, 8, 10, 12, 14, 16] {
-        cronometra(&format!("nó (p = 1, q = {q})"), no(1, q));
+    // ⚠️ O tecto de `q` é `4·p`, então com `p = 1` a faixa acaba em `4` — pedir mais é uma peça que
+    // o documento RECUSA, e a sonda estava a rebentar aí em silêncio.
+    for (pp, qq) in [
+        (1_u32, 1_u32),
+        (1, 2),
+        (1, 3),
+        (1, 4),
+        (2, 8),
+        (3, 12),
+        (12, 48),
+    ] {
+        cronometra(&format!("nó (p = {pp}, q = {qq})"), no(pp, qq));
     }
     println!("\n  esfera {esfera:.1} ms · toro {toro:.1} ms");
     println!("  ⇒ o nó custa, por volta:");

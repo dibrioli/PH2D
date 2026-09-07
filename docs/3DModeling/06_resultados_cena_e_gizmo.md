@@ -13269,4 +13269,108 @@ Depois da cura: **dez mutações, dez mortas**, cada uma com o gate que a mata n
 `p`↔`q` · a saturação · o `sin β` do campo · o `sin β` do tecto · a casca do toro · o majorante do
 gradiente · as três candidatas do tecto · a margem dele.
 
+### §135.8 — ⭐⭐⭐ O report do Enio (*«Torus Knot não é perfeito»*, 07/09): TRÊS defeitos de forma, e TRÊS réguas que morreram a caminho
+
+⚠️ **Nenhum deles era visível às réguas de campo** — gradiente, minorante e o censo inteiro estavam
+verdes. A régua que os vê é outra: **andar à volta da corda no plano PERPENDICULAR a ela** e
+perguntar, por direcção, o raio da peça e o **salto da normal** entre direcções vizinhas.
+
+**(a) DOIS RISCOS ao comprido da corda.** Medido: a **casca do toro** decidia em `60` de `60`
+secções (até `4` das `24` direcções de cada uma). Ali a superfície desenhada era a do **toro** e não
+a da corda, e a normal saltava.
+
+⛔⛔ **E a cura óbvia — dar folga à casca para ela se calar — trocou o vinco por uma BARRIGA**
+(`|z| = 0,385` contra `0,330`): ela não era só o campo longínquo, era a **tampa** que segurava a
+saturação do fio. ⇒ a cura certa é **de estrutura**: `|h − r|` e o `melhor` medem a **mesma
+grandeza** (a distância à curva), logo combinam-se com um `max` **antes** da subtracção e da divisão,
+e não depois. Assim a fronteira não se mexe e, no aro em que empatam, os dois gradientes são a mesma
+direcção radial — não há vinco. Depois: `0` de `60`, e a peça volta a caber em `0,325`.
+
+**(b) A CORDA FORA DE REDONDA** — `1,142` de excentricidade na peça de nascimento. ⭐⭐ **A régua que
+separa «defeito» de «erro de aproximação» é varrer a ESPESSURA da corda**: a ovalidade medida foi
+`1,142 · 1,077 · 1,038 · 1,012` para cordas de `0,55 · 0,30 · 0,15 · 0,05` do tecto — **exactamente
+proporcional**, que é a assinatura de um erro de **1.ª ordem em `corda × κ`**, e não de um defeito.
+
+⇒ a curva deixa de ser aproximada pela **recta** tangente. Minimizando `|v − û·s − κ⃗·s²/2|²` em `s`
+sai forma **fechada**: `d² = |v|² − (v·û)²/(1 − v·κ⃗)`, com `κ⃗` a sair das **duas voltas** que o fio
+dá (`cos²β/r` para o centro do tubo, `sin²β/ρ` para o eixo). Medido: `1,142 → 1,036` na `(2,3)`,
+`1,034 → 1,001` na `(3,2)`, `1,009 → 1,0003` na `(5,2)`.
+
+⚠️ **E metade da ovalidade era mais simples:** a inclinação `β` era lida no raio do **ponto
+amostrado** e não no raio a que o **fio** passa.
+
+**(c) A SATURAÇÃO mordia EM CIMA da peça.** Na superfície o `radial` vale no máximo a corda, mas o
+`ao_longo` vale `corda/sin β` — **três vezes mais** quando o fio é muito inclinado. Saturar antes de
+o eixo ser encolhido punha um vinco duro na própria superfície: `118,5°` de salto na `(2,8)`. ⇒
+satura-se a **contribuição**, que na superfície nunca passa a corda.
+
+### §135.9 — ⛔⛔ As TRÊS réguas que morreram, e o que cada uma ensinou
+
+| régua | por que ela deixou de medir |
+|---|---|
+| *«qual TERMO decide aqui?»* | acusava a casca em `60/60` — e ficou **vácua** no dia em que a casca mudou de sítio. *Uma régua que mede o NOME do termo morre quando o termo muda de sítio; a que mede a SUPERFÍCIE não* |
+| a **bissecção num intervalo largo** | pressupõe que o campo muda de sinal uma vez, e a corda tem **vizinhas**: ela convergia para a superfície do fio do lado e acusava `87,5°` numa peça cuja secção é redonda a `1,0001` |
+| a **saturação suave** que eu escrevi para substituir a cerca dura | acertava no ponto neutro e **errava na derivada** (`−sin²β` onde é `−cos²β`): melhorava a `(2,3)` e piorava a `(3,2)` e a `(5,2)`. *Uma aproximação que acerta no valor e erra na inclinação lê-se como cura numa peça e como defeito na vizinha* |
+
+### §135.10 — ⭐⭐⭐ E o que FECHOU a família: um TECTO que é do MODELO, não da geometria
+
+A costura não é uniforme na família — ela cresce com a **pegada da corda no tubo**. A secção da corda
+no plano meridiano é uma elipse de semi-eixo `corda/sin β`, e quando ela deixa de ser um arco pequeno
+do tubo o modelo (um cruzamento por plano meridiano, com o eixo encolhido pela inclinação) **sai da
+validade dele**: a corda deixa de ser redonda e a normal salta.
+
+⭐⭐ **A régua que o nomeou foi a mesma forma com a corda MAIS FINA:** a `(1,3)` a `55 %` do tecto lia
+`115°` e a `20 %` lia `26°`; e a `(3,9)` — que é a **mesma curva** com a corda mais fina por o tecto
+de `p = 3` ser menor — já lia `21,7°`. *Duas peças com a mesma forma e cordas diferentes separam «o
+modelo» de «a forma».*
+
+⇒ **quinta candidata do tecto da corda: `corda ≤ ζ · r · sin β`**, com `ζ` medido no topo do controlo
+(corda a `95 %` do tecto, nove pares):
+
+| `ζ` | `0,20` | **`0,30`** | `0,40` | `0,55` |
+|---|---:|---:|---:|---:|
+| pior salto da normal | `18,0°` | **`21,4°`** | `29,5°` | `92,2°` |
+
+Depois dele, a família inteira **no topo do controlo** (chão: `15,0°`):
+
+| par | `(2,3)` | `(3,2)` | `(5,2)` | `(2,5)` | `(1,2)` | `(1,3)` | `(1,4)` | `(2,8)` | `(8,32)` |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| salto máximo | `16,1°` | `15,1°` | `15,0°` | `19,1°` | `17,2°` | `21,4°` | `27,5°` | `26,4°` | `21,1°` |
+
+⚠️ **A tabela é uma catraca com as duas metades**: uma regressão reprova, **e uma melhoria também** —
+para ela descer em vez de envelhecer.
+
+### §135.11 — ⚠️ E os DOIS tectos tiveram de ser re-medidos, porque eu movi o número
+
+`CLAUDE.md` §0: *quem move o número que tornava algo inalcançável tem de reconferir a nota*. As curas
+desta jornada mudaram **o campo e o tecto da corda**, logo as duas tabelas do dia anterior deixaram de
+descrever o produto:
+
+| tecto | ontem | hoje | o que mudou |
+|---|---|---|---|
+| **`p`** (relógio) | `12`, com `p = 12` a `32,1 ms` | **`8`** | o campo de hoje custa `34,0 ms` a `p = 8` e `35,9` a `12`; até `6` custa `16,9`, menos que a base do módulo (`26,7`) |
+| **`q/p`** (forma) | `4`, escolhido pelo relógio | **`4`**, agora pela FORMA | o relógio deixou de ser o binding (`q/p = 4` custa `14,0 ms`); quem manda é o salto da normal, que vai de `27,5°` a `q/p = 4` para **`128,5°`** a `5` |
+
+⛔⛔ **E eu quase shipei um `q/p = 3` medido sobre números que a minha própria mudança seguinte
+invalidou** — o tecto da pegada baratou as peças `3×` e o `q/p = 4` passou de `56,2` para `14,0 ms`.
+*Uma tabela medida antes da última cura descreve um programa que já não existe.*
+
+### §135.12 — ⚠️ E as mutações desta metade apontaram TRÊS vezes para o gate errado
+
+Três curas leram-se como *«SOBREVIVEU»* na primeira ronda — e as três **eram** load-bearing. O que
+falhava era o alvo: eu apontava a mutação ao gate da **secção** (a excentricidade), e quem as mata é
+o da **costura**. ⇒ *uma mutação sobrevivente diz «este gate não a vê», e não «nenhum gate a vê» —
+a pergunta seguinte é qual dos gates mede a propriedade que a linha produz.*
+
+| mutação | o que ela faz | quem a mata |
+|---|---|---|
+| a correcção de curvatura apagada | secção `1,014 → 1,139` e costura `19,1° → 25,4°` | a **costura** |
+| a inclinação lida no PONTO | secção `1,014 → 1,079` e costura `16,1° → 19,5°` | a **costura** |
+| a casca fora do `max` interno | o campo longínquo perde o tecto | `every_primitive_honours_the_march` |
+| o encolher do eixo apagado | secção `→ 1,329` | a **secção** |
+| a pegada fora do tecto | costura `→ 92,2°` | a **costura** |
+
+⭐ **E a barra da secção desceu de `1,15` para `1,10`** no dia em que o tecto da pegada apertou o
+produto: *uma barra que o produto folgou de deixar para trás é uma barra que parou de medir.*
+
 **Smoke:** *MODEL* > **A** > *Torus Knot*, e `PH2D_FIELD_SMOKE=28` para os quatro pares lado a lado.

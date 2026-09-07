@@ -512,7 +512,11 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
         PrimitiveKind::TorusKnot => Primitive::TorusKnot {
             radius: 0.55,
             tube: 0.24,
-            cord: 0.09,
+            // ⚠️ **A corda sai do TECTO, e não de um literal** — ele depende de `R`, `r`, `p` e `q`,
+            // e um número escrito à mão aqui deixa de ser válido no dia em que uma cerca do
+            // documento aperta. *Foi exactamente o que aconteceu em 07/09: `0,09` passou a ser uma
+            // peça que o documento RECUSA, e quatro gates do censo estouraram a construí-la.*
+            cord: ph2d_field::knot_cord_ceiling(0.55, 0.24, 2, 3) * 0.85,
             winds: 2,
             loops: 3,
         },

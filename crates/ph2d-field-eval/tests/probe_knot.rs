@@ -284,3 +284,232 @@ fn probe_knot_cord_ceiling() {
         println!();
     }
 }
+
+/// ⛔ **SONDA do report do Enio (07/09): «Torus Knot não é perfeito».**
+///
+/// Anda à volta da corda no plano PERPENDICULAR a ela e devolve, por ângulo: o raio da peça, e
+/// **qual dos dois termos decide** ali (o fio, ou a casca do toro). Uma troca de termo ao longo da
+/// volta é um vinco na normal — e é isso que se vê como risco ao comprido da corda.
+#[test]
+#[ignore]
+fn probe_knot_section() {
+    let (r, tb) = (0.55_f64, 0.24_f64);
+    for (p, q, fr) in [
+        (1_u32, 3_u32, 0.55_f64),
+        (1, 3, 0.40),
+        (1, 3, 0.30),
+        (1, 3, 0.20),
+        (1, 2, 0.55),
+        (1, 2, 0.30),
+        (2, 3, 0.55),
+    ] {
+        let cord = f64::from(ph2d_field::knot_cord_ceiling(r as f32, tb as f32, p, q)) * fr;
+        let bound = ops_knot::knot_gradient_bound(r, tb, cord, p, q);
+        println!("\n── ({p},{q}) fracção {fr:.2} · corda {cord:.4}, majorante {bound:.3} ──");
+        let ponto = |t: f64| {
+            let (sq, cq) = (f64::from(q) * t).sin_cos();
+            let (sp, cp) = (f64::from(p) * t).sin_cos();
+            let rad = tb.mul_add(cq, r);
+            [rad * cp, rad * sp, tb * sq]
+        };
+        let f = Field::from_tree(&ops_knot::sd_torus_knot(r, tb, cord, p, q));
+        // ⚠️ Varre a CORDA INTEIRA, e não um `t` só: um vinco que aparece a meio da volta não é
+        // visível numa secção.
+        let mut relatorio: Vec<(f64, f64, f64, f64)> = Vec::new();
+        for ti in 0..60 {
+            let t = std::f64::consts::TAU * f64::from(ti) / 60.0;
+            let c = ponto(t);
+            let h = 1.0e-5;
+            let (a, b) = (ponto(t - h), ponto(t + h));
+            let unit = |v: [f64; 3]| {
+                let n = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+                [v[0] / n, v[1] / n, v[2] / n]
+            };
+            let cruz = |x: [f64; 3], y: [f64; 3]| {
+                [
+                    x[1] * y[2] - x[2] * y[1],
+                    x[2] * y[0] - x[0] * y[2],
+                    x[0] * y[1] - x[1] * y[0],
+                ]
+            };
+            let u = unit([b[0] - a[0], b[1] - a[1], b[2] - a[2]]);
+            let e1 = unit(cruz(u, [0.0, 0.0, 1.0]));
+            let e2 = unit(cruz(u, e1));
+            let (mut rmin, mut rmax) = (f64::INFINITY, 0.0_f64);
+            let (mut salto, mut anterior) = (0.0_f64, None::<[f64; 3]>);
+            for i in 0..24 {
+                let ang = std::f64::consts::TAU * f64::from(i) / 24.0;
+                let (s, co) = ang.sin_cos();
+                let d = [
+                    e1[0] * co + e2[0] * s,
+                    e1[1] * co + e2[1] * s,
+                    e1[2] * co + e2[2] * s,
+                ];
+                // ⚠️ A PRIMEIRA travessia — ver a nota no gate irmão: uma bissecção larga mede o
+                // fio VIZINHO.
+                let passo = cord * 0.02;
+                let mut lo = 0.0_f64;
+                let mut hi = passo;
+                while hi < cord * 4.0
+                    && f.at(c[0] + d[0] * hi, c[1] + d[1] * hi, c[2] + d[2] * hi) < 0.0
+                {
+                    lo = hi;
+                    hi += passo;
+                }
+                for _ in 0..40 {
+                    let m = 0.5 * (lo + hi);
+                    if f.at(c[0] + d[0] * m, c[1] + d[1] * m, c[2] + d[2] * m) < 0.0 {
+                        lo = m;
+                    } else {
+                        hi = m;
+                    }
+                }
+                // ⚠️⚠️ **A régua do VINCO é o salto da NORMAL, e não «quem decide».** O detector antigo
+                // comparava o valor do campo com a casca — e deixou de medir seja o que for no dia em
+                // que a casca passou a entrar ANTES da divisão. *Uma régua que mede o nome do termo
+                // morre quando o termo muda de sítio; a que mede a superfície não.*
+                let pt = [c[0] + d[0] * lo, c[1] + d[1] * lo, c[2] + d[2] * lo];
+                let eps = 1.0e-5;
+                let g = [
+                    f.at(pt[0] + eps, pt[1], pt[2]) - f.at(pt[0] - eps, pt[1], pt[2]),
+                    f.at(pt[0], pt[1] + eps, pt[2]) - f.at(pt[0], pt[1] - eps, pt[2]),
+                    f.at(pt[0], pt[1], pt[2] + eps) - f.at(pt[0], pt[1], pt[2] - eps),
+                ];
+                let n = (g[0] * g[0] + g[1] * g[1] + g[2] * g[2])
+                    .sqrt()
+                    .max(1.0e-30);
+                let normal = [g[0] / n, g[1] / n, g[2] / n];
+                if let Some(ant) = anterior {
+                    let pn: [f64; 3] = ant;
+                    let cosang: f64 = normal[0] * pn[0] + normal[1] * pn[1] + normal[2] * pn[2];
+                    salto = salto.max(cosang.clamp(-1.0, 1.0).acos().to_degrees());
+                }
+                anterior = Some(normal);
+                rmin = rmin.min(lo);
+                rmax = rmax.max(lo);
+            }
+            relatorio.push((t, rmin, rmax, salto));
+        }
+        let pior = relatorio
+            .iter()
+            .map(|(_, a, b, _)| b / a)
+            .fold(0.0_f64, f64::max);
+        let pior_salto = relatorio
+            .iter()
+            .map(|(_, _, _, s)| *s)
+            .fold(0.0_f64, f64::max);
+        println!(
+            "  raio da corda: pior excentricidade {pior:.4} · maior salto da NORMAL entre duas das \
+             24 direcções: {pior_salto:.1}° (uma secção lisa dá ~15°)"
+        );
+        println!(
+            "  pedido {cord:.5} · menor {:.5} · maior {:.5}",
+            relatorio
+                .iter()
+                .map(|(_, a, _, _)| *a)
+                .fold(f64::INFINITY, f64::min),
+            relatorio
+                .iter()
+                .map(|(_, _, b, _)| *b)
+                .fold(0.0_f64, f64::max)
+        );
+    }
+}
+
+/// Onde é que a peça chega em `z`, e o que o campo diz lá.
+#[test]
+#[ignore]
+fn probe_knot_extents() {
+    let (r, tb, cord) = (0.55_f64, 0.24_f64, 0.09_f64);
+    let (p, q) = (2_u32, 3_u32);
+    let f = Field::from_tree(&ops_knot::sd_torus_knot(r, tb, cord, p, q));
+    let n = 200_usize;
+    let e = 1.0_f64;
+    let at = |i: usize| -e + 2.0 * e * (i as f64 + 0.5) / n as f64;
+    let (mut zmax, mut onde) = (0.0_f64, [0.0_f64; 3]);
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
+                let (x, y, z) = (at(i), at(j), at(k));
+                if f.at(x, y, z) <= 0.0 && z.abs() > zmax {
+                    zmax = z.abs();
+                    onde = [x, y, z];
+                }
+            }
+        }
+    }
+    println!(
+        "tube+cord = {:.4} · a peça chega a |z| = {zmax:.4} em {onde:?}",
+        tb + cord
+    );
+    let [x, y, z] = onde;
+    let rho = x.hypot(y);
+    let h = (rho - r).hypot(z);
+    println!(
+        "  ρ={rho:.4} h={h:.4} |h-r|={:.4} · casca(2c)={:.4} · f={:.5}",
+        (h - tb).abs(),
+        (h - tb).abs() - 2.0 * cord,
+        f.at(x, y, z)
+    );
+    println!(
+        "  majorante {:.3} · tecto da saturação {:.4}",
+        ops_knot::knot_gradient_bound(r, tb, cord, p, q),
+        ph2d_field::knot_cord_ceiling(r as f32, tb as f32, p, q)
+    );
+}
+
+/// O perfil do campo ao longo de um raio perpendicular à corda, na `(2,8)` onde o gate acusa.
+#[test]
+#[ignore]
+fn probe_knot_ray() {
+    let (r, tb) = (0.55_f64, 0.24_f64);
+    let (p, q) = (2_u32, 8_u32);
+    let cord = f64::from(ph2d_field::knot_cord_ceiling(r as f32, tb as f32, p, q)) * 0.55;
+    println!("corda pedida {cord:.5}");
+    let f = Field::from_tree(&ops_knot::sd_torus_knot(r, tb, cord, p, q));
+    let ponto = |t: f64| {
+        let (sq, cq) = (f64::from(q) * t).sin_cos();
+        let (sp, cp) = (f64::from(p) * t).sin_cos();
+        let rad = tb.mul_add(cq, r);
+        [rad * cp, rad * sp, tb * sq]
+    };
+    let unit = |v: [f64; 3]| {
+        let n = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+        [v[0] / n, v[1] / n, v[2] / n]
+    };
+    let cruz = |x: [f64; 3], y: [f64; 3]| {
+        [
+            x[1] * y[2] - x[2] * y[1],
+            x[2] * y[0] - x[0] * y[2],
+            x[0] * y[1] - x[1] * y[0],
+        ]
+    };
+    let t = 0.524_f64;
+    let c = ponto(t);
+    let h = 1.0e-5;
+    let u = unit([
+        ponto(t + h)[0] - ponto(t - h)[0],
+        ponto(t + h)[1] - ponto(t - h)[1],
+        ponto(t + h)[2] - ponto(t - h)[2],
+    ]);
+    let e1 = unit(cruz(u, [0.0, 0.0, 1.0]));
+    let e2 = unit(cruz(u, e1));
+    for angdeg in [30_u32, 45, 60] {
+        let ang = f64::from(angdeg).to_radians();
+        let (s, co) = ang.sin_cos();
+        let d = [
+            e1[0] * co + e2[0] * s,
+            e1[1] * co + e2[1] * s,
+            e1[2] * co + e2[2] * s,
+        ];
+        print!("  ang {angdeg:>3}°:");
+        for i in 0..14 {
+            let m = 0.01 * f64::from(i);
+            print!(
+                " {:+.4}",
+                f.at(c[0] + d[0] * m, c[1] + d[1] * m, c[2] + d[2] * m)
+            );
+        }
+        println!();
+    }
+}

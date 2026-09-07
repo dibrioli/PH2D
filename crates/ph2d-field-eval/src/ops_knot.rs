@@ -88,6 +88,12 @@ fn saturacao(radius: f64, tube: f64, winds: u32, loops: u32) -> f32 {
     ph2d_field::knot_cord_ceiling(radius as f32, tube as f32, winds, loops)
 }
 
+/// ⭐ **A folga do piso da correcção de curvatura** — quão suave é a aterragem.
+///
+/// ⛔ Medido pelo salto da normal na secção da corda (`the_cord_has_no_seam_running_along_it`): a
+/// tabela vive lá.
+pub const KNOT_SOFT_FLOOR: f64 = 0.25;
+
 /// ⭐ **O que a conta acima ainda SUBESTIMA, medido.**
 ///
 /// A derivação é um majorante de termos independentes, e nenhum ponto os atinge todos ao mesmo
@@ -123,19 +129,25 @@ pub fn sd_torus_knot(radius: f64, tube: f64, cord: f64, winds: u32, loops: u32) 
     // As coordenadas do ponto no plano meridiano: `a` para fora do anel, `b` para cima.
     let a = rho.clone() - Tree::constant(radius);
     let b = Tree::z();
-    // ⭐⭐⭐ O SENO DA INCLINAÇÃO do fio — ver o cabeçalho. Ele encolhe **um** eixo, e é local.
+    // ⭐⭐⭐ O SENO DA INCLINAÇÃO do fio — ver o cabeçalho. Ele encolhe **um** eixo.
     let k = tube * q / p;
-    let c = rho.clone() / safe_sqrt(rho.clone().square() + Tree::constant(k * k));
     // ⭐ Os `p` fios que cortam este plano — ver o cabeçalho.
     let mut melhor: Option<Tree> = None;
     for n in 0..winds.max(1) {
         let psi = (phi.clone() + Tree::constant(tau * f64::from(n))) * Tree::constant(q / p);
         let (cs, sn) = (psi.clone().cos(), psi.sin());
+        // ⚠️⚠️ **A inclinação é a DO FIO, tomada no raio a que ELE passa** (`R + r·cos ψ`), e não
+        // no raio do ponto amostrado. Ela decide o eixo curto da secção, e lê-la no ponto faz a
+        // corda engordar de um lado e afinar do outro — metade do report de 07/09.
+        let rho_fio = Tree::constant(radius) + cs.clone() * Tree::constant(tube);
+        let den_b = rho_fio.clone().square() + Tree::constant(k * k);
+        let sin2b = rho_fio.clone().square() / den_b.clone();
+        let cos2b = Tree::constant(k * k) / den_b;
         let va = a.clone() - cs.clone() * Tree::constant(tube);
         let vb = b.clone() - sn.clone() * Tree::constant(tube);
         // ⭐⭐ As DUAS componentes: `radial` atravessa o fio, `ao_longo` corre com ele.
         let radial = va.clone() * cs.clone() + vb.clone() * sn.clone();
-        let ao_longo = vb * cs - va * sn;
+        let ao_longo = vb * cs.clone() - va * sn.clone();
         // ⭐⭐⭐ **SATURADAS NA MEIA-DISTÂNCIA ENTRE FIOS** — e isto não toca na peça: na superfície
         // as duas valem no máximo a corda, que é sempre `≤` o tecto. ⛔ **Fora** dela é que elas
         // cresciam com a distância ao eixo e rodavam com `φ` a `q/(p·ρ)` por unidade de comprimento
@@ -143,19 +155,72 @@ pub fn sd_torus_knot(radius: f64, tube: f64, cord: f64, winds: u32, loops: u32) 
         // logo o minorante continua minorante, e o zero fica onde estava.
         let teto = f64::from(saturacao(radius, tube, winds, loops));
         let sat = |t: Tree| t.max(Tree::constant(-teto)).min(Tree::constant(teto));
-        let d = safe_sqrt(sat(radial).square() + sat(ao_longo * c.clone()).square());
+        // ⛔⛔⛔ **A SATURAÇÃO VEM DEPOIS DO EIXO SER ENCOLHIDO, e a ordem é o defeito.** Na
+        // superfície o `radial` vale no máximo a corda, mas o `ao_longo` vale `corda/sin β` — três
+        // vezes mais quando o fio é muito inclinado. Saturar **antes** mordia em cima da peça, e
+        // isso é um vinco duro: medido, `118,5°` de salto da normal na `(2,8)`, contra `27,6°` sem
+        // saturação nenhuma. ⇒ satura-se a **contribuição**, que na superfície nunca passa a corda.
+        //
+        // ⚠️ O `v·κ⃗` usa as componentes CRUAS saturadas, porque ele só precisa de ser limitado — não
+        // é ele que decide onde a superfície está.
+        let (vr, vt) = (sat(radial.clone()), sat(ao_longo.clone()));
+        // ⭐⭐⭐ **A CURVA NÃO É A TANGENTE DELA, e a diferença é de 1.ª ordem na corda.**
+        //
+        // Com `C(t) ≈ Q + û·s + (κ⃗/2)·s²`, minimizar `|v − û·s − κ⃗·s²/2|²` em `s` dá **forma
+        // fechada**: `d² = |v|² − (v·û)²/(1 − v·κ⃗)`. Com `κ⃗ = 0` isto é exactamente a distância à
+        // recta tangente, que era o que estava aqui.
+        //
+        // ⚠️ **`κ⃗` sai das DUAS voltas que o fio dá**, cada uma com a fracção do andamento que lhe
+        // toca: a do tubo (`cos²β/r`, para o centro do tubo) e a do anel (`sin²β/ρ`, para o eixo).
+        //
+        // ⛔ **Medido**: sem esta correcção a secção da corda ficava `1,142` de excentricidade na
+        // `(2,3)` de nascimento, e a ovalidade era **proporcional à corda** — a assinatura de um
+        // erro de 1.ª ordem em `corda × κ`, e não de um defeito.
+        let kappa_r = -(sin2b.clone() / rho_fio.clone() * cs.clone()
+            + cos2b.clone() * Tree::constant(1.0 / tube));
+        let sin2b_c = sin2b.clone();
+        let kappa_t = sin2b / rho_fio * sn.clone();
+        let vk = vr.clone() * kappa_r + vt * kappa_t;
+        // ⚠️ O piso do denominador é `cos²β` — o valor que mantém o termo não-negativo; ali a
+        // correcção degenera na distância **radial**, que é um minorante honesto. ⛔ Uma saturação
+        // «suave» que escrevi para o substituir tinha o coeficiente de 1.ª ordem errado (`−sin²β`
+        // onde é `−cos²β`) e **piorava** a `(3,2)` e a `(5,2)` enquanto melhorava a `(2,3)`.
+        // ⛔⛔ **E o piso do denominador NÃO pode ser um `max`.** Ele é o valor em que a correcção
+        // degenera, e um ponto que lá encosta tem a derivada a saltar: medido, `35,6°` de salto da
+        // normal na `(2,8)`, cujo `cos²β` é grande (o fio corre quase todo à volta do tubo) e onde
+        // a superfície **encosta na cerca**. ⇒ escreve-se `den = cos²β + sin²β · x`, com
+        // `x = 1 − v·κ⃗/sin²β` passado por `½(x + √(x² + ε²))` — que vale `x` para `x` folgado e
+        // tende a `0⁺` sem nunca lá chegar. *Uma cerca que a peça alcança é um vinco com outro nome.*
+        let x = Tree::constant(1.0) - vk / sin2b_c.clone();
+        let suave = (x.clone() + safe_sqrt(x.square() + Tree::constant(KNOT_SOFT_FLOOR.powi(2))))
+            * Tree::constant(0.5);
+        let den = cos2b.clone() + sin2b_c * suave;
+        let along = ao_longo * safe_sqrt(Tree::constant(1.0) - cos2b / den);
+        let d = safe_sqrt(sat(radial).square() + sat(along).square());
         melhor = Some(match melhor {
             None => d,
             Some(m) => m.min(d),
         });
     }
     let melhor = melhor.expect("winds >= 1 garante pelo menos um ramo");
-    // ⭐⭐⭐ O campo INTEIRO dividido pelo majorante — o zero não se mexe, o ritmo sim.
-    let fio = (melhor - Tree::constant(cord))
-        * Tree::constant(1.0 / knot_gradient_bound(radius, tube, cord, winds, loops));
-    // ⭐⭐⭐ **A CASCA DO TORO, que é EXACTA** — ver o cabeçalho: fora da coroa o divisor constante
-    // deixa de valer, e é este termo que manda lá.
-    let casca =
-        (safe_sqrt(a.square() + b.square()) - Tree::constant(tube)).abs() - Tree::constant(cord);
-    fio.max(casca)
+    // ⭐⭐⭐ **A CASCA DO TORO entra AQUI, antes da subtracção e da divisão** — e é isso que a impede
+    // de fazer um vinco na peça.
+    //
+    // `|h − r|` minora a distância à CURVA (todo ponto dela está a `r` do anel), tal como o `melhor`
+    // minora; **as duas medem a mesma grandeza**, então combiná-las é um `max` de dois minorantes da
+    // MESMA coisa, e a subtracção e a divisão vêm depois, uma vez.
+    //
+    // ⛔⛔ **A primeira versão fazia `max(fio, casca)` DEPOIS da divisão, e isso pôs a casca a
+    // decidir em `60` de `60` secções da corda** (report do Enio, 07/09): ali a superfície desenhada
+    // era a do toro, com a normal a saltar — dois riscos ao comprido da peça. ⚠️ **E dar folga à
+    // casca para ela se calar trocou o vinco por uma BARRIGA** (`|z| = 0,385` contra `0,330`): ela
+    // não era só o campo longínquo, era a **tampa** que segurava a saturação do fio, que sozinha
+    // deixa matéria fantasma onde o fio satura.
+    //
+    // ⭐ Assim os dois vivem no mesmo espaço: na superfície `melhor = corda` e `|h − r| ≤ corda`,
+    // logo a fronteira **não se mexe**; e no aro em que empatam os dois gradientes são a MESMA
+    // direcção radial, logo não há vinco.
+    let casca = (safe_sqrt(a.square() + b.square()) - Tree::constant(tube)).abs();
+    (melhor.max(casca) - Tree::constant(cord))
+        * Tree::constant(1.0 / knot_gradient_bound(radius, tube, cord, winds, loops))
 }

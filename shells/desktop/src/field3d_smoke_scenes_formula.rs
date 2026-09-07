@@ -272,7 +272,7 @@ pub(crate) fn cena_28() -> Result<FieldDoc, ph2d_field::FieldError> {
     println!(
         "[field-smoke] cena 28 — O NO DE TORO (p,q): (1) trevo 2,3 · (2) 3,2 -- o MESMO par ao \
          contrario da outra peca · (3) 2,5 -- o q aperta a corda ao tubo · (4) 5,2 -- o p espalha \
-         em volta do eixo. A corda e' sempre 55% do tecto, que depende de p e de q."
+         em volta do eixo. A corda e sempre 85% do tecto, que depende de p e de q."
     );
     let peca = |winds: u32, loops: u32, x: f32| {
         let (radius, tube) = (0.20_f32, 0.085_f32);
@@ -280,7 +280,7 @@ pub(crate) fn cena_28() -> Result<FieldDoc, ph2d_field::FieldError> {
             Primitive::TorusKnot {
                 radius,
                 tube,
-                cord: ph2d_field::knot_cord_ceiling(radius, tube, winds, loops) * 0.55,
+                cord: ph2d_field::knot_cord_ceiling(radius, tube, winds, loops) * 0.85,
                 winds,
                 loops,
             },

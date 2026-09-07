@@ -31,31 +31,40 @@ pub const MIN_KNOT_LOOPS: u32 = 1;
 /// ⭐ **O TECTO DE `p`** — e o recurso dele é o **relógio do quadro**, porque `p` é a contagem de
 /// ramos da árvore.
 ///
-/// Medido pelo traçado (`the_price_of_the_torus_knot`, uma peça a 640×360, `q = 3`, `load 4,06`):
+/// Medido pelo traçado (`the_price_of_the_torus_knot`, uma peça a 640×360, `q = 3`, `load 4,15`):
 ///
-/// | `p` | 1 | 2 | 3 | 4 | 6 | 8 | 10 | **12** | 14 | 16 | 20 | 24 |
-/// |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-/// | ms | `17,8` | `18,2` | `15,0` | `21,8` | `19,3` | `31,0` | `36,0` | **`32,1`** | `49,2` | `61,1` | `78,1` | `80,9` |
+/// | `p` | 1 | 2 | 3 | 4 | **6** | 8 | 10 | 12 |
+/// |---|---:|---:|---:|---:|---:|---:|---:|---:|
+/// | ms | `12,5` | `13,2` | `11,1` | `18,0` | **`16,9`** | `34,0` | `41,2` | `35,9` |
 ///
-/// Calibração da mesma sonda: esfera `2,4` · toro `2,5` · caixa `8,9` · **só um desenho na cena
-/// `14,3`** · desenho + esfera `18,9`. ⇒ até `p = 12` um nó custa o que uma cena com um desenho já
-/// custa; de `14` para cima ele **dobra** e passa a ser a peça mais cara do módulo.
-pub const MAX_KNOT_WINDS: u32 = 12;
+/// Calibração da mesma sonda: esfera `3,0` · toro `2,8`; e a base do módulo é `26,7 ms` num quadro de
+/// **movimento** (doc 06 §13.0). ⇒ até `p = 6` um nó custa menos do que a base; de `8` para cima ele
+/// **dobra**.
+///
+/// ⛔ **Este número desceu de `12` para `8` em 07/09**, e a razão é o `CLAUDE.md` §0: *quem move o
+/// número que tornava algo inalcançável tem de reconferir a nota*. A tabela de `12` foi medida com o
+/// campo de ontem; o de hoje é outro (a correcção de curvatura, o tecto da pegada) e o joelho
+/// mudou de sítio. ⚠️ O `8` é o degrau em que a tabela ainda foi medida — o `6` é onde ela é barata,
+/// e a folga entre os dois é a que a sonda não distingue de ruído.
+pub const MAX_KNOT_WINDS: u32 = 8;
 
-/// ⭐⭐ **O TECTO DE `q` É RELATIVO A `p`**, e o recurso dele é OUTRO: a **marcha**.
+/// ⭐⭐ **O TECTO DE `q` É RELATIVO A `p`**, e o recurso dele é OUTRO: a **FORMA**.
 ///
-/// A árvore não cresce com `q` — o que cresce é o divisor do minorante, que vale `~q/p`, e com ele o
-/// número de passos que a marcha dá dentro da coroa. Medido no pior `q/p` que existe (`p = 1`,
-/// mesma sonda):
+/// A árvore não cresce com `q`; o que cresce é o quão **inclinado** o fio corre, e o modelo do campo
+/// (um cruzamento por plano meridiano, com o eixo encolhido pela inclinação) é de 1.ª ordem nisso.
+/// Medido pelo salto máximo da normal na secção da corda, no topo do controlo:
 ///
-/// | `q` (com `p = 1`) | 1 | 2 | 3 | **4** | 6 | 8 | 10 | 12 | 16 |
-/// |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-/// | ms | `8,4` | `14,1` | `21,2` | **`23,5`** | `39,5` | `46,0` | `50,0` | `50,2` | `60,3` |
+/// | `q/p` | 1 | 2 | 3 | **4** | 5 | 6 |
+/// |---|---:|---:|---:|---:|---:|---:|
+/// | salto da normal | `17,2°` | `19,1°` | `21,4°` | **`27,5°`** | `128,5°` | `142,0°` |
 ///
-/// ⇒ o joelho está em `q/p = 4`: ali um nó custa `23,5 ms`, a classe de *desenho + esfera*; a `6` ele
-/// já é `39,5`. ⛔ **Um tecto ABSOLUTO em `q` seria o caminho lento a mandar no rápido** (§0): com
-/// `p = 12` a mesma razão custa o mesmo, e proibi-la seria proibir metade da família por causa do
-/// caso `p = 1`.
+/// (uma secção lisa amostrada em `24` direcções dá `15,0°` — é esse o chão.)
+///
+/// ⇒ o joelho está entre `4` e `5`, e não é gradual: **a peça passa de `27°` para `128°`**. E o
+/// relógio concorda que ali ainda é barato (`p = 1, q = 4` custa `14,0 ms`).
+///
+/// ⛔ **Um tecto ABSOLUTO em `q` seria o caminho lento a mandar no rápido** (§0): com `p` grande a
+/// mesma razão dá a mesma forma, e proibi-la seria proibir metade da família por causa do `p = 1`.
 pub const MAX_KNOT_LOOPS_OVER_WINDS: u32 = 4;
 
 /// O tecto de `q` para este `p` — ver [`MAX_KNOT_LOOPS_OVER_WINDS`].
@@ -100,6 +109,8 @@ pub fn knot_cord_ceiling(radius: f32, tube: f32, winds: u32, loops: u32) -> f32 
     // mais folgado.*
     let dentro = (radius - tube).max(f32::EPSILON);
     let sin_b = dentro / dentro.hypot(k);
+    // ⚠️ A pegada mede-se no raio do ANEL, que é onde a elipse é maior.
+    let sin_b_fora = radius / radius.hypot(k);
     let cos_b = k / dentro.hypot(k);
     let entre_fios = if winds <= 1 {
         tube
@@ -127,8 +138,36 @@ pub fn knot_cord_ceiling(radius: f32, tube: f32, winds: u32, loops: u32) -> f32 
     //    curvatura, cuja mutação SOBREVIVIA. *Uma cerca que não morde esconde a que morde* — e o
     //    número errado escondia a família certa.
     let furo = dentro;
-    KNOT_CORD_MARGIN * entre_fios.min(entre_voltas).min(furo)
+    // 4. ⭐⭐⭐ **A PEGADA DA CORDA NO TUBO** — e é esta que o report de 07/09 obrigou a escrever.
+    //    A secção da corda no plano meridiano é uma elipse com semi-eixo `corda/sin β` ao longo do
+    //    círculo do tubo. Quando essa pegada deixa de ser um arco PEQUENO do tubo, o modelo (um
+    //    cruzamento por plano meridiano, com o eixo encolhido pela inclinação) sai da validade dele
+    //    e a corda deixa de ser redonda. Medido pelo salto da normal na secção: `ζ ≈ 0,3` dá
+    //    `15°`–`22°`; `ζ = 0,6` dá `31°`; `ζ = 0,77` dá `95°`.
+    let pegada = KNOT_FOOTPRINT * tube * sin_b_fora;
+    KNOT_CORD_MARGIN * entre_fios.min(entre_voltas).min(furo).min(pegada)
 }
+
+/// ⭐⭐⭐ **QUANTO DO TUBO A CORDA PODE OCUPAR** — a fracção do raio do tubo que a pegada dela cobre.
+///
+/// ⛔ **Este é o tecto que o report do Enio de 07/09 obrigou a escrever**, e ele é do **MODELO**, não
+/// da geometria: a secção da corda no plano meridiano é uma elipse de semi-eixo `corda/sin β`, e
+/// quando ela deixa de ser um arco pequeno do tubo o campo (um cruzamento por plano meridiano, com o
+/// eixo encolhido pela inclinação) sai da validade dele e a corda deixa de ser redonda.
+///
+/// Medido pelo salto máximo da normal na secção, com a corda a **`95 %` do tecto** (o pior sítio a
+/// que o controlo chega), sobre nove pares:
+///
+/// | `ζ` | `0,20` | **`0,30`** | `0,40` | `0,55` |
+/// |---|---:|---:|---:|---:|
+/// | pior salto | `18,0°` | **`21,4°`** | `29,5°` | `92,2°` |
+///
+/// (uma secção lisa amostrada em `24` direcções dá `15,0°` — é esse o chão, e não zero.)
+///
+/// ⇒ `0,30` mantém a família inteira a menos de `6,4°` do chão **no topo do controlo**; a `0,55` a
+/// pior peça vai a `92°`, que é o risco que o dono viu. ⚠️ **Uma corda mais gorda continua
+/// alcançável** — por *Thickness*, porque a pegada é proporcional ao raio do tubo.
+pub const KNOT_FOOTPRINT: f32 = 0.30;
 
 /// ⭐ **O que as três candidatas ainda SOBRAM, medido.**
 ///

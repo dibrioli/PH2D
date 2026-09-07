@@ -121,9 +121,9 @@ fn the_two_counts_are_not_interchangeable() {
 /// termo não é.*
 #[test]
 fn the_seam_of_the_angle_does_not_crack_the_piece() {
-    // ⚠️ O `(2, 8)` está EXACTAMENTE no tecto de `q` para `p = 2` — a costura tem de aguentar a
+    // ⚠️ O `(2, 6)` está EXACTAMENTE no tecto de `q` para `p = 2` — a costura tem de aguentar a
     // ponta da faixa, que é onde o divisor é mais apertado.
-    for (p, q) in [(2_u32, 3_u32), (3, 2), (5, 2), (2, 8), (7, 2)] {
+    for (p, q) in [(2_u32, 3_u32), (3, 2), (5, 2), (2, 6), (7, 2)] {
         let f = campo(no(p, q, 0.55));
         // ⚠️⚠️ **A RÉGUA MEDE SE O DEGRAU ENCOLHE COM O PASSO, e as duas primeiras não mediam.**
         // Um limite ABSOLUTO reprova sobre produto correcto (perto do eixo o mesmo passo em `y` é
@@ -423,7 +423,7 @@ fn the_cord_ceiling_is_below_the_curve_that_measures_itself() {
 /// perguntar, no plano PERPENDICULAR ao fio, quanto a peça mede em cada direcção.
 #[test]
 fn the_cord_is_as_thick_across_the_strand_as_along_it() {
-    for (p, q) in [(2_u32, 3_u32), (3, 2), (5, 2), (2, 8)] {
+    for (p, q) in [(2_u32, 3_u32), (3, 2), (5, 2), (2, 6)] {
         let no = no(p, q, 0.55);
         let Primitive::TorusKnot { cord, .. } = no else {
             panic!("é um nó")
@@ -473,11 +473,17 @@ fn the_cord_is_as_thick_across_the_strand_as_along_it() {
             maior = maior.max(lo);
         }
         println!("({p},{q}) excentricidade {:.4}", maior / menor);
-        // ⭐ **A BARRA SAI DO VAZIO ENTRE OS DOIS LADOS**, e não de um palpite: o produto mede
-        // `1,102` (o resíduo de aproximar a curva pela TANGENTE), e a mutação que apaga o `sin β`
-        // mede `1,334`. ⛔ Uma barra em `1,10` reprovava produto correcto.
+        // ⭐ **A BARRA SAI DO VAZIO ENTRE OS DOIS LADOS**, e não de um palpite (a pior das quatro
+        // peças do corpus):
+        //
+        // | | produto | sem o encolher do eixo | sem a correcção de curvatura | com a inclinação lida no PONTO |
+        // |---|---:|---:|---:|---:|
+        // | hoje | **`1,050`** | `1,329` | `1,139` | `1,079` |
+        //
+        // ⛔ E ela desceu de `1,15` para `1,10` no dia em que o tecto da pegada apertou o produto:
+        // *uma barra que o produto folgou de deixar para trás é uma barra que parou de medir.*
         assert!(
-            maior / menor < 1.20,
+            maior / menor < 1.10,
             "({p},{q}): a secção da corda é uma ELIPSE de {maior:.4} por {menor:.4} \
              ({:.3}×) — a corda foi medida no plano do corte em vez de perpendicular ao fio",
             maior / menor
@@ -544,6 +550,120 @@ fn every_candidate_of_the_cord_ceiling_decides_somewhere() {
             n > 0,
             "a candidata `{nome}` do tecto da corda NUNCA é o mínimo, sobre {total} células — ela é \
              código morto, e apagá-la é uma mutação que sobrevive a todos os outros gates"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **A CORDA NÃO TEM COSTURA AO COMPRIDO** — o gate que o report do Enio de 07/09 obrigou a
+/// escrever (*«Torus Knot não é perfeito»*, com foto).
+///
+/// # ⚠️ O que ele mede, e as DUAS réguas que morreram antes desta
+///
+/// A primeira perguntava *«qual TERMO decide aqui?»* e acusava a casca do toro em `60` de `60`
+/// secções — e deixou de medir seja o que for no dia em que a casca mudou de sítio. *Uma régua que
+/// mede o NOME do termo morre quando o termo muda de sítio; a que mede a superfície não.*
+///
+/// ⛔⛔ A segunda **bissecava num intervalo largo**, e isso pressupõe que o campo muda de sinal uma
+/// vez: ela convergia para a superfície do fio **VIZINHO** e acusava `87,5°` numa peça cuja secção é
+/// redonda a `1,0001`. ⇒ acha-se a **primeira** travessia a passo, e só depois se bisseca nela.
+///
+/// # A catraca, e por que ela é por PAR
+///
+/// A costura **não é uniforme na família**: ela cresce com o quão inclinado o fio corre, e o modelo
+/// (um cruzamento por plano meridiano, com o eixo encolhido pela inclinação) é de 1.ª ordem nisso.
+/// ⛔ **Uma barra única ou seria vácua para os pares bons ou proibiria metade da família** — o
+/// cinquefoil `(2,5)` e o `7₁ (2,7)` são nós clássicos, não casos de canto.
+///
+/// ⇒ cada par carrega o número que hoje MEDE, com folga de `2°`. Uma regressão reprova; uma
+/// melhoria também reprova, **e é assim que a tabela desce** em vez de envelhecer.
+#[test]
+fn the_cord_has_no_seam_running_along_it() {
+    // ⚠️ **A tabela é o estado MEDIDO em 07/09**, com a folga de `2°`. Uma secção lisa amostrada em
+    // `24` direcções dá `15,0°` — é esse o chão, e não zero.
+    for (p, q, medido) in [
+        (2_u32, 3_u32, 16.1_f64),
+        (3, 2, 15.1),
+        (5, 2, 15.0),
+        (2, 5, 19.1),
+        (1, 2, 17.2),
+        (1, 3, 21.4),
+        (1, 4, 27.5),
+        (2, 8, 26.4),
+        (8, 32, 21.1),
+    ] {
+        let peca = no(p, q, 0.95);
+        let f = campo(peca);
+        let unit = |v: [f64; 3]| {
+            let n = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
+                .sqrt()
+                .max(1.0e-30);
+            [v[0] / n, v[1] / n, v[2] / n]
+        };
+        let cruz = |x: [f64; 3], y: [f64; 3]| {
+            [
+                x[1] * y[2] - x[2] * y[1],
+                x[2] * y[0] - x[0] * y[2],
+                x[0] * y[1] - x[1] * y[0],
+            ]
+        };
+        let mut pior = 0.0_f64;
+        for ti in 0..24 {
+            let t = std::f64::consts::TAU * f64::from(ti) / 24.0;
+            let c = ponto_da_curva(t, p, q);
+            let h = 1.0e-5;
+            let (aa, bb) = (ponto_da_curva(t - h, p, q), ponto_da_curva(t + h, p, q));
+            let u = unit([bb[0] - aa[0], bb[1] - aa[1], bb[2] - aa[2]]);
+            let e1 = unit(cruz(u, [0.0, 0.0, 1.0]));
+            let e2 = unit(cruz(u, e1));
+            let mut anterior: Option<[f64; 3]> = None;
+            for i in 0..24 {
+                let ang = std::f64::consts::TAU * f64::from(i) / 24.0;
+                let (s, co) = ang.sin_cos();
+                let d = [
+                    e1[0] * co + e2[0] * s,
+                    e1[1] * co + e2[1] * s,
+                    e1[2] * co + e2[2] * s,
+                ];
+                // ⚠️ A PRIMEIRA travessia, achada a passo — ver o cabeçalho.
+                let passo = 0.002_f64;
+                let mut lo = 0.0_f64;
+                let mut hi = passo;
+                while hi < 0.5 && f.at(c[0] + d[0] * hi, c[1] + d[1] * hi, c[2] + d[2] * hi) < 0.0 {
+                    lo = hi;
+                    hi += passo;
+                }
+                for _ in 0..40 {
+                    let m = 0.5 * (lo + hi);
+                    if f.at(c[0] + d[0] * m, c[1] + d[1] * m, c[2] + d[2] * m) < 0.0 {
+                        lo = m;
+                    } else {
+                        hi = m;
+                    }
+                }
+                let pt = [c[0] + d[0] * lo, c[1] + d[1] * lo, c[2] + d[2] * lo];
+                let eps = 1.0e-5;
+                let n = unit([
+                    f.at(pt[0] + eps, pt[1], pt[2]) - f.at(pt[0] - eps, pt[1], pt[2]),
+                    f.at(pt[0], pt[1] + eps, pt[2]) - f.at(pt[0], pt[1] - eps, pt[2]),
+                    f.at(pt[0], pt[1], pt[2] + eps) - f.at(pt[0], pt[1], pt[2] - eps),
+                ]);
+                if let Some(a) = anterior {
+                    let cosang = n[0] * a[0] + n[1] * a[1] + n[2] * a[2];
+                    pior = pior.max(cosang.clamp(-1.0, 1.0).acos().to_degrees());
+                }
+                anterior = Some(n);
+            }
+        }
+        println!("  ({p},{q}) pior salto {pior:.1}° (tabela {medido:.1}°)");
+        assert!(
+            pior <= medido + 2.0,
+            "({p},{q}): a normal salta {pior:.1}° e a tabela diz {medido:.1}° — a costura ao \
+             comprido da corda PIOROU"
+        );
+        assert!(
+            pior >= medido - 2.0,
+            "({p},{q}): a costura MELHOROU para {pior:.1}° e a tabela ainda diz {medido:.1}° — \
+             desça a tabela, senão ela vira licença"
         );
     }
 }

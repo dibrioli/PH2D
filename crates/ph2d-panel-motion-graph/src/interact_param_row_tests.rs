@@ -450,6 +450,23 @@ fn the_click_law_answers_for_every_species_the_gesture_handles() {
     assert_eq!(click_does(&file_param()), ClickDoes::PickFile);
     assert_eq!(click_does(&source_param()), ClickDoes::CycleSource);
     assert_eq!(
+        click_does(&CardParam::from_hint(
+            ParamUiHint {
+                param: "r",
+                label: "Colour",
+                min: 0.0,
+                max: 1.0,
+                step: 0.01,
+                widget: ParamWidget::Color {
+                    channels: ["r", "g", "b", "a"]
+                },
+            },
+            0.0,
+        )),
+        ClickDoes::OpensPicker,
+        "uma amostra abre o selector — e quem o abre e' o `pointer_down`, nao este gesto"
+    );
+    assert_eq!(
         click_does(&enum_param(0.0, &["A", "B"])),
         ClickDoes::Cycle(2)
     );

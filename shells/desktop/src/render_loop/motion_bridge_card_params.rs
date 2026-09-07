@@ -163,6 +163,14 @@ pub(crate) fn stamp_card_params(
                         }
                         _ => None,
                     },
+                    // O id da amostra — com o NÓ dentro, para dois cartões do mesmo tipo não
+                    // pedirem o mesmo selector. Ver `color::card_swatch_id`.
+                    swatch_id: match h.widget {
+                        ph2d_node_registry::ParamWidget::Color { channels } => {
+                            Some(super::super::color::card_swatch_id(nid.0, channels[0]).0)
+                        }
+                        _ => None,
+                    },
                     text: card_text(motion, nid, h),
                 }
             })

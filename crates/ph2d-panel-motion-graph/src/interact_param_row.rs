@@ -140,7 +140,9 @@ pub(super) fn apply_param_row(
                     node,
                     param: p.hint.param,
                 }),
-                ClickDoes::Nothing => {}
+                // ⛔ Vazio de PROPÓSITO: o `pointer_down` já abriu o selector, e este braço só
+                // corre se a marca faltar — caso em que escrever aqui esconderia o defeito.
+                ClickDoes::OpensPicker | ClickDoes::Nothing => {}
             }
             state.interaction = Interaction::Idle;
         }
@@ -174,6 +176,11 @@ pub enum ClickDoes {
     PickFile,
     /// **Avança para a fonte publicada seguinte** — a lista é viva e vive na shell.
     CycleSource,
+    /// **Abre o selector de cor** — ⚠️ e quem o abre **não é este gesto**: a amostra está
+    /// registada como *picker swatch*, e o `pointer_down` do `editor-core` intercepta o clique
+    /// antes de ele chegar aqui. Esta variante existe para o **censo** saber que a row é
+    /// alcançável; o braço do gesto é, e tem de ser, vazio.
+    OpensPicker,
     /// **Nada** — o cartão diz que o controlo existe e não o abre.
     Nothing,
 }
@@ -192,6 +199,7 @@ pub fn click_does(p: &crate::CardParam) -> ClickDoes {
         }
         ph2d_node_registry::ParamWidget::File { .. } => ClickDoes::PickFile,
         ph2d_node_registry::ParamWidget::Source => ClickDoes::CycleSource,
+        ph2d_node_registry::ParamWidget::Color { .. } => ClickDoes::OpensPicker,
         _ => ClickDoes::Nothing,
     }
 }

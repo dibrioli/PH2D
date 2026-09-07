@@ -51,6 +51,17 @@ pub struct CardParam {
     /// **linear**, e quem sabe passar isso a sRGB é o `linear_rgba_to_srgb8` que o bridge de
     /// cor já usa para semear o picker. Converter aqui seria a segunda cópia dessa lei.
     pub swatch: Option<[u8; 4]>,
+    /// ⭐⭐ **O ID DO WIDGET DA AMOSTRA** — atribuído pela **shell**, e o cartão nunca o calcula.
+    ///
+    /// ⚠️ **Ele atravessa como um INTEIRO OPACO**, que é o padrão desta casa para um id que
+    /// nasce noutro lado (o `GraphHitKind::Chrome { id }` diz a mesma coisa: *«o editor-core
+    /// nunca o interpreta»*). É isso que deixa a amostra do cartão abrir o **mesmo** selector
+    /// que a row do painel abre, sem este crate passar a depender do painel dos params.
+    ///
+    /// ⛔ **E o id carrega o NÓ**, ao contrário do id da row do painel — que é função só do nome
+    /// do param, porque ali há **um** nó selecionado de cada vez. No canvas há vinte cartões, e
+    /// dois nós do mesmo tipo pediriam o mesmo id: escolher a cor de um escreveria no outro.
+    pub swatch_id: Option<u64>,
     /// ⭐⭐ **O VALOR DE TEXTO QUE A ROW MOSTRA** — o nome da forma escolhida, o do ficheiro, a
     /// coluna. Vazio ⇒ a row desenha o selo de *«há um editor aqui»*.
     ///
@@ -146,6 +157,7 @@ impl CardParam {
             value,
             driven: false,
             swatch: None,
+            swatch_id: None,
             text: RowText::default(),
             min: hint.min,
             max: hint.max,

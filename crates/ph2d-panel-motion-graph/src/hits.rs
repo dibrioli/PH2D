@@ -125,8 +125,17 @@ pub(crate) fn push_param_row_hits(
         }
         let Ok(row) = u16::try_from(i) else { continue };
         if let Some(r) = clip_rect(crate::geom::param_row_rect(n, view, i), canvas) {
+            // ⭐ Uma row de COR regista-se com o id da AMOSTRA (que a shell atribuiu, com o nó
+            // lá dentro): é ele que o selector de cor reconhece. As outras usam o id derivado
+            // da posição, como sempre.
+            let id = match crate::geom::band_at(n, i) {
+                Some(crate::geom::BandRow::Param(k)) => n.params[k]
+                    .swatch_id
+                    .map_or_else(|| param_row_hit_id(n.id, row), NodeId),
+                _ => param_row_hit_id(n.id, row),
+            };
             hits.push((
-                param_row_hit_id(n.id, row),
+                id,
                 GraphHitKind::ParamRow {
                     node: n.id as u64,
                     row,
@@ -437,3 +446,26 @@ pub(crate) fn wire_hit_id(to_node: u32, to_port: u16) -> NodeId {
 #[cfg(test)]
 #[path = "hits_tests.rs"]
 mod tests;
+
+/// ⭐⭐ **AS AMOSTRAS DE COR DE UM CARTÃO SÃO SELECTORES** — a marca que faz um clique nelas
+/// abrir o selector OKLCH, exactamente como na row do painel.
+///
+/// ⚠️ **São DUAS coisas e não uma:** o alvo (o `register` que [`register_hits`] faz, com o id
+/// que a shell atribuiu) e a **marca** aqui. Sem a marca a amostra é pintada, é clicável, e não
+/// abre nada — a forma do controlo morto que este painel já pagou no cabeçalho de secção.
+pub(crate) fn register_card_swatches(ctx: &mut PaintCtx, snap: &GraphViewSnapshot) {
+    let store = ctx.host.store_mut();
+    for n in &snap.nodes {
+        for p in &n.params {
+            let (Some(id), Some(rgba)) = (p.swatch_id, p.swatch) else {
+                continue;
+            };
+            // ⚠️ **A SEMENTE é a terceira coisa, e sem ela o selector abre CINZENTO.** O
+            // `pointer_down` lê `widget_color(id)` para o abrir na cor que lá está, e o
+            // omisso é `0x888888`: o artista clicaria num vermelho e veria o selector abrir
+            // num cinzento — e o primeiro toque escreveria esse cinzento no nó.
+            store.set_widget_color(NodeId(id), rgba);
+            store.register_picker_swatch(NodeId(id));
+        }
+    }
+}

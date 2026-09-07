@@ -104,6 +104,75 @@ pub(super) fn seed_color_swatches(
 /// edge — a whole colour/stop pick coalesces into ONE step (like a slider drag). Read-only;
 /// the caller opens the history bracket, THEN calls [`apply_picker_readback`] (writes must
 /// land inside the bracket).
+/// ⭐⭐⭐ **O ID DA AMOSTRA DE COR DE UM CARTÃO — e ele carrega o NÓ.**
+///
+/// ⛔⛔ **Por que não se reusa o do painel.** O [`ph2d_panel_motion_params::param_swatch_id`] é
+/// função **só do nome do param âncora**, e o doc dele diz porquê: *«unique within a node»*. No
+/// painel isso basta — há **um** nó selecionado de cada vez. No **cartão** a premissa cai: vinte
+/// cartões estão visíveis ao mesmo tempo, e dois `motion.tint` na tela pediriam o MESMO id.
+/// *Escolher a cor de um escreveria no outro, em silêncio.*
+///
+/// ⚠️ **São dois espaços de nomes, não duas respostas:** a amostra do painel e a do cartão são
+/// widgets diferentes, em sítios diferentes. Quem responde *«que param este selector edita?»*
+/// continua a ser **uma** função — [`picker_target_of`] —, e estes ids são a entrada dela.
+///
+/// ⚠️ Sem alocar: o `format!` deste id correria por cada row de cor de cada cartão, todo quadro.
+pub(super) fn card_swatch_id(node: u32, anchor: &str) -> ph2d_editor::NodeId {
+    // FNV-1a, a convenção de id desta casa — cada crate tem a sua cópia (o painel dos params, o
+    // do grafo), e esta é a da shell.
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut come = |bytes: &[u8]| {
+        for b in bytes {
+            h ^= u64::from(*b);
+            h = h.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+    };
+    come(b"motion-card/swatch/");
+    come(&node.to_le_bytes());
+    come(b"/");
+    come(anchor.as_bytes());
+    ph2d_editor::NodeId(h)
+}
+
+/// ⭐⭐ **QUE (NÓ, GRUPO DE CANAIS) O SELECTOR ABERTO ESTÁ A EDITAR** — a porta única.
+///
+/// Duas superfícies podem ter aberto o selector: a row do **painel** (id só com a âncora, e
+/// então o nó é o SELECCIONADO) ou uma amostra de **cartão** (id com o nó lá dentro, e então o
+/// nó sai do próprio id — o cartão clicado nem precisa de estar selecionado).
+///
+/// ⚠️ **A varredura pelos nós só corre com um selector ABERTO**, que é um gesto do artista e
+/// não um quadro qualquer.
+pub(super) fn picker_target_of(
+    motion: &MotionState,
+    sel: Option<ph2d_nodegraph::graph::NodeId>,
+    groups: &[[&'static str; 4]],
+    store: &ph2d_editor::interaction::WidgetStore,
+) -> Option<(ph2d_nodegraph::graph::NodeId, [&'static str; 4])> {
+    use ph2d_node_registry::ParamWidget;
+    use ph2d_panel_motion_params::param_swatch_id;
+    let alvo = store.picker_target()?;
+    // (a) a row do painel — o nó é o seleccionado.
+    if let Some(nid) = sel
+        && let Some(ch) = groups.iter().find(|ch| param_swatch_id(ch[0]) == alvo)
+    {
+        return Some((nid, *ch));
+    }
+    // (b) uma amostra de cartão — o nó vem do id.
+    for inst in motion.doc.graph.nodes() {
+        let Some(hints) = motion.registry.param_ui(inst.type_id()) else {
+            continue;
+        };
+        for h in hints {
+            if let ParamWidget::Color { channels } = h.widget
+                && card_swatch_id(inst.id.0, channels[0]) == alvo
+            {
+                return Some((inst.id, channels));
+            }
+        }
+    }
+    None
+}
+
 pub(super) fn picker_session(
     motion: &MotionState,
     sel: Option<ph2d_nodegraph::graph::NodeId>,
@@ -112,10 +181,7 @@ pub(super) fn picker_session(
     pal_params: &[&'static str],
     store: &ph2d_editor::interaction::WidgetStore,
 ) -> bool {
-    use ph2d_panel_motion_params::param_swatch_id;
-    let color = groups
-        .iter()
-        .any(|ch| store.picker_target() == Some(param_swatch_id(ch[0])));
+    let color = picker_target_of(motion, sel, groups, store).is_some();
     let grad = sel.is_some_and(|nid| {
         grad_params
             .iter()
@@ -141,16 +207,16 @@ pub(super) fn apply_picker_readback(
     pal_params: &[&'static str],
     store: &ph2d_editor::interaction::WidgetStore,
 ) {
-    use ph2d_panel_motion_params::param_swatch_id;
-    let Some(nid) = sel else { return };
     let pick = || store.blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER);
-    for ch in groups {
-        if store.picker_target() == Some(param_swatch_id(ch[0]))
-            && let Some((value, _, _, _)) = pick()
-        {
-            apply_color_to_node(motion, nid, *ch, value.rgba);
-        }
+    // ⭐ A cor vai ao nó que o ID nomeia — que pode NÃO ser o seleccionado, quando o artista
+    // clicou a amostra num cartão. As duas outras famílias abaixo continuam presas ao
+    // seleccionado, porque os ids delas ainda não carregam o nó (gradiente e paleta).
+    if let Some((alvo, ch)) = picker_target_of(motion, sel, groups, store)
+        && let Some((value, _, _, _)) = pick()
+    {
+        apply_color_to_node(motion, alvo, ch, value.rgba);
     }
+    let Some(nid) = sel else { return };
     for p in grad_params {
         if let Some(stop) = gradient_picker_stop(motion, nid, p, store)
             && let Some((value, _, _, _)) = pick()

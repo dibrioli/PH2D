@@ -84,6 +84,7 @@ fn censo() -> Censo {
                 ClickDoes::Cycle(_) => "avança",
                 ClickDoes::PickFile => "abre ficheiro",
                 ClickDoes::CycleSource => "avança a fonte",
+                ClickDoes::OpensPicker => "abre o selector",
                 ClickDoes::Nothing => "NADA",
             };
             *veredito.entry(v).or_default() += 1;
@@ -191,6 +192,46 @@ fn the_cards_file_click_reaches_the_same_door_the_panel_row_uses() {
                 if *node == id.0 && *param == "file"
         )),
         "o pedido do cartao nao chegou a` porta do painel: {saiu:?}"
+    );
+}
+
+/// ⭐⭐⭐ **DOIS CARTÕES DO MESMO TIPO NÃO PEDEM O MESMO SELECTOR** — e o nó sai do ID, não da
+/// selecção.
+///
+/// ⛔⛔ **É o defeito que esta wave existe para não ter.** O id da amostra do painel é função
+/// **só do nome do param âncora** (*«unique within a node»*, diz o doc dele) — verdade ali,
+/// onde há **um** nó selecionado. No canvas há vinte cartões: com esse id, escolher a cor de um
+/// `motion.tint` escreveria no outro, **em silêncio**.
+///
+/// As duas metades:
+/// 1. os ids de dois nós do mesmo tipo **diferem**;
+/// 2. com o selector apontado ao cartão de **B**, a porta devolve **B** — mesmo com **A**
+///    selecionado. *Uma amostra de cartão não precisa de selecionar o nó para o editar.*
+///
+/// FALSIFICADO por o `card_swatch_id` ignorar o nó (1 falha) ou por a porta voltar a presumir o
+/// nó selecionado (2 falha).
+#[test]
+fn two_cards_of_the_same_type_never_ask_for_the_same_colour_picker() {
+    use super::super::color::{card_swatch_id, picker_target_of};
+    let mut m = MotionState::new();
+    let a = m.doc.graph.add_node("motion.tint");
+    let b = m.doc.graph.add_node("motion.tint");
+    let (ida, idb) = (card_swatch_id(a.0, "r"), card_swatch_id(b.0, "r"));
+    assert_ne!(
+        ida, idb,
+        "dois `motion.tint` pediriam o MESMO selector — escolher a cor de um escreveria no outro"
+    );
+
+    let tipo = m.doc.graph.node(a).expect("o no' existe").type_id();
+    let grupos = super::super::color::color_groups(&m.registry, tipo);
+    assert!(!grupos.is_empty(), "o `motion.tint` tem um grupo de cor");
+    let mut store = ph2d_editor::interaction::WidgetStore::default();
+    store.set_picker_target(Some(idb));
+    let alvo = picker_target_of(&m, Some(a), &grupos, &store);
+    assert_eq!(
+        alvo.map(|(n, _)| n),
+        Some(b),
+        "o selector aponta ao cartao de B: a cor tem de ir a B, com A seleccionado"
     );
 }
 
@@ -309,14 +350,14 @@ fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
     );
 }
 
-/// **Medido em 2026-09-06: `19` de `683` rows** (eram `26`: saíram os **3** de ficheiro e as
-/// **4** fontes publicadas, e a tabela abaixo já os mostra fora) — reconciliado pela sonda, nunca escrito de
+/// **Medido em 2026-09-06: `15` de `683` rows** (eram `26` — saíram os **3** de ficheiro, as
+/// **4** fontes publicadas e as **4** cores; a tabela abaixo já os mostra fora) — reconciliado pela sonda, nunca escrito de
 /// memória. Em sete espécies, e a maior é o campo de texto (9):
 ///
 /// | espécie | quantos | nós |
 /// |---|---:|---|
 /// | campo de TEXTO | 9 | `source.text` (×2) · `value.table` (×2) · `motion.expression` · `pulse.signal` · `rig.skeleton` · `value.pattern` · `motion.sub_uv` |
-/// | amostra + selector de COR | 4 | `motion.tint` · `fx.glow` · `fx.drop_shadow` · `motion.strobe` |
+/// | ~~amostra + selector de COR~~ | ~~4~~ | ✅ **curado**: o id da amostra passou a carregar o NÓ |
 /// | ~~selector de FONTE publicada~~ | ~~4~~ | ✅ **curado**: o clique anda pela lista viva |
 /// | ~~caminho + diálogo de FICHEIRO~~ | ~~3~~ | ✅ **curado**: o cartão pede, a shell abre |
 /// | editor de CURVA | 2 | `value.curve` · `motion.strobe` |
@@ -349,4 +390,4 @@ fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
 /// `apply_graph_intents` **já traduzia** as intenções do cartão para as do painel (é assim que
 /// o `SetParam` de um arrasto no cartão chega ao documento), então o ficheiro custou **um
 /// braço em cada lado** — nenhuma lei nova, nenhuma segunda porta.
-const TRANCADOS_NO_PAINEL: usize = 19;
+const TRANCADOS_NO_PAINEL: usize = 15;

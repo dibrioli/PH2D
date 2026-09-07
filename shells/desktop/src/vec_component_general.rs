@@ -83,8 +83,34 @@ pub(crate) fn state_of(
             .get::<ph2d_ecs::ObjectInstance>(r)
             .is_some_and(|o| !o.overrides.is_empty())
     });
+    // ⭐⭐⭐ **`is_main` pergunta *«há receita para instanciar?»*, e não *«isto É a receita?»***
+    // (report do Enio, 2026-09-06: *«não existe mais a opção instanciate»*).
+    //
+    // # ⛔⛔ Duas decisões certas deste ficheiro desfaziam-se uma à outra
+    //
+    // O *Make Prefab* **move a selecção para a cópia**, de propósito ([`crate::instance_verbs`],
+    // o doc do `select_out`: é o que o Figma e o Unity fazem, e é a forma que o artista continua
+    // a editar). Só que a condição que PINTA o *Instantiate* foi herdada do motor vetorial, onde
+    // criar **nunca** tirava a selecção do mestre — logo, no modo geral, o gesto seguinte da fila
+    // ficava **inalcançável**: a seleção era a cópia, `is_main` era `false`, e o botão nunca mais
+    // era pintado. ⚠️ **E a receita fica invisível no canvas** (`is_unedited_recipe`), então nem
+    // clicando nela o artista a reavia — só pela linha da Hierarquia.
+    //
+    // ⚠️ **A cerca não caiu, ela alinha-se com o CONSUMIDOR:** o `Verb::Place` já resolve a
+    // receita a partir de uma cópia desde 2026-08-31 (`instance_verbs_walk::master_subject`,
+    // curado no fluxo da Hierarquia pelo report *«me mostre o fluxo inteiro de criar variações»*).
+    // ⇒ *a lente do PAINEL era mais estreita que a do consumidor*, que é o inverso do knob morto:
+    // um verbo vivo sem controlo pintado. Uma forma que não é nem receita nem cópia continua a
+    // não oferecer nada, porque aí o `master_subject` devolve a própria entidade.
+    //
+    // ⛔ E a órfã continua de fora: com o elo pendurado o `master_subject` não resolve, logo
+    // `is_main` é `false` — *instanciar a partir de uma cópia cuja receita sumiu não tem sujeito*.
+    let has_recipe = {
+        let subject = crate::instance_verbs_walk::master_subject(sim, e);
+        sim.world().get::<MasterRoot>(subject).is_some()
+    };
     Some(ph2d_panel_vector::state::ComponentState {
-        is_main: sim.world().get::<MasterRoot>(e).is_some(),
+        is_main: has_recipe,
         is_instance: link.is_some(),
         has_overrides,
         // ⚠️ O elo existe e o mestre não resolve — é a órfã do modelo geral

@@ -110,6 +110,41 @@ fn no_screen_sentence_about_the_reusable_thing_uses_the_old_words() {
     );
 }
 
+/// ⛔⛔ **E o NOME DE RECURSO de uma receita sem nome também é tela** (achado de 2026-09-06).
+///
+/// O censo acima só olha **frases** — literais com espaço — porque uma palavra sozinha costuma ser
+/// chave de i18n, nome de ficheiro ou de variável de ambiente. ⚠️ **Isso deixou passar duas**:
+/// `master_named(..).unwrap_or_else(|| "component".to_string())`, que vai para dentro de aspas
+/// curvas num toast (*«Editing “component”»*). *Uma exclusão desenhada para reduzir falsos
+/// positivos é um buraco com a forma exacta do que ela exclui.*
+///
+/// **Mutação que deve sangrar:** pôr `"component"` de volta em qualquer um dos dois fallbacks.
+#[test]
+fn the_fallback_name_of_an_unnamed_recipe_is_not_an_old_word() {
+    let root = repo_root();
+    let mut offenders: Vec<String> = Vec::new();
+    for rel in SURFACES {
+        let Ok(body) = std::fs::read_to_string(root.join(rel)) else {
+            panic!("o ficheiro {rel} mudou de sitio — reancore este censo");
+        };
+        let mut rest = body.as_str();
+        while let Some(i) = rest.find("unwrap_or_else(|| \"") {
+            let after = &rest[i + "unwrap_or_else(|| \"".len()..];
+            let Some(j) = after.find('"') else { break };
+            let word = &after[..j];
+            if BANNED.iter().any(|w| word.contains(w)) {
+                offenders.push(format!("{rel}: fallback {word:?}"));
+            }
+            rest = &after[j + 1..];
+        }
+    }
+    assert!(
+        offenders.is_empty(),
+        "um nome de recurso mostrado ao artista voltou a usar a palavra antiga:\n  {}",
+        offenders.join("\n  ")
+    );
+}
+
 /// ⭐⭐ **E as TABELAS de rótulos dizem `Prefab`** — o que o artista lê nos botões.
 ///
 /// ⛔ A metade justa: elas têm de conter a palavra nova. Um censo que só proíbe a antiga fica verde

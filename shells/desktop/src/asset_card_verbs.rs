@@ -135,7 +135,11 @@ pub(crate) fn drain(
             };
             *select_out = Some(bits);
             let name = crate::instance_verbs::master_named(sim, stable_id)
-                .unwrap_or_else(|| "component".to_string());
+                // ⚠️ **O nome de recurso de uma receita sem nome é «prefab»** — este literal ESCAPOU à
+                // unificação de vocabulário porque o censo dela só olha frases (literais com espaço), e
+                // *uma palavra sozinha lê-se como chave de i18n ou nome de ficheiro*. Aqui ela vai para
+                // dentro de aspas curvas num toast, logo é tela.
+                .unwrap_or_else(|| "prefab".to_string());
             toasts.push(Toast::success(format!(
                 "Editing \u{201c}{name}\u{201d} \u{2014} move a piece and every copy follows"
             )));
@@ -355,7 +359,11 @@ fn replace_selection(
         return false;
     }
     let name = crate::instance_verbs::master_named(sim, stable_id)
-        .unwrap_or_else(|| "component".to_string());
+        // ⚠️ **O nome de recurso de uma receita sem nome é «prefab»** — este literal ESCAPOU à
+        // unificação de vocabulário porque o censo dela só olha frases (literais com espaço), e
+        // *uma palavra sozinha lê-se como chave de i18n ou nome de ficheiro*. Aqui ela vai para
+        // dentro de aspas curvas num toast, logo é tela.
+        .unwrap_or_else(|| "prefab".to_string());
     let mut say = format!(
         "Replaced {done} object(s) with \u{201c}{name}\u{201d} \u{2014} {kept} override(s) kept"
     );

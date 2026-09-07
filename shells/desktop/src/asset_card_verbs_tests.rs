@@ -442,7 +442,7 @@ fn an_image_cannot_replace_a_copy_and_it_says_so() {
     );
     assert!(!acted);
     assert!(
-        spoke.contains("not a component"),
+        spoke.contains("not a prefab"),
         "a recusa nao nomeia o FACTO: {spoke:?}"
     );
     assert_eq!(master_of(&sim, copy), before, "a copia mexeu-se");

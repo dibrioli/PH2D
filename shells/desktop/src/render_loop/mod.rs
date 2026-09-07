@@ -9787,31 +9787,44 @@ impl crate::App {
                 // ⭐⭐⭐ **E o modo GERAL da F4.6c entra AQUI, atrás de uma porta** — ver o
                 // cabeçalho do [`crate::vec_component_general`]. Sem a env var este ramo é o de
                 // sempre, byte a byte; com ela, a secção passa a descrever o modelo geral.
-                // ⚠️ As listas de PEÇAS e de VARIANTS logo abaixo lêem o `VecInstance` e por isso
-                // saem **vazias** sozinhas no modo novo — o painel não pinta o que não recebe, e é
-                // isso que impede um controlo de aparecer sem fazer nada.
-                ph2d_panel_vector::state::set_component_state(
-                    if crate::vec_component_general::armed() {
-                        crate::vec_component_general::state_of(sim, &self.vec_entities, &sel)
-                    } else {
-                        crate::vec_component_edit::selected_component(
-                            sim,
-                            &self.vec_entities,
-                            &sel,
-                            self.instance_live.orphans(),
-                            matches!(
-                                self.vec_path_pick,
-                                Some(crate::vec_pick::PathPick::InstanceMain(_))
-                            ),
-                        )
-                    },
-                );
+                // ⛔⛔⛔ **AS DUAS LISTAS SAEM VAZIAS POR DECLARAÇÃO, e não por acidente**
+                // (auditoria de 2026-09-06). Este comentário dizia que elas *«saem vazias
+                // sozinhas»* porque lêem o `VecInstance` — e isso **quebra num estado
+                // alcançável**: o `VecInstance` é componente REGISTADO e não está no `DROPPED`
+                // ([`crate::instance_docs`]), logo a cópia profunda do *Make* leva-o. Uma
+                // instância vetorial promovida a prefab geral dá uma cópia com `InstanceOf` **e**
+                // `VecInstance` ⇒ as listas enchiam-se e o painel pintava **peças e variants que
+                // o dreno geral recusa em silêncio** (`general_verb` devolve `None` para as duas).
+                //
+                // ⇒ o modo novo publica-as vazias, e o painel não pinta o que não recebe. *Um
+                // controlo que come o clique sem voz é o defeito que esta linha caçou três vezes.*
+                //
+                // ⚠️ **UMA leitura do interruptor para tudo o que a secção MOSTRA** — o estado e
+                // as duas listas são a MESMA decisão. Duas leituras aqui podiam divergir, e o
+                // sintoma seria uma secção a descrever um motor e a listar as peças do outro.
+                let general_prefabs = crate::vec_component_general::armed();
+                ph2d_panel_vector::state::set_component_state(if general_prefabs {
+                    crate::vec_component_general::state_of(sim, &self.vec_entities, &sel)
+                } else {
+                    crate::vec_component_edit::selected_component(
+                        sim,
+                        &self.vec_entities,
+                        &sel,
+                        self.instance_live.orphans(),
+                        matches!(
+                            self.vec_path_pick,
+                            Some(crate::vec_pick::PathPick::InstanceMain(_))
+                        ),
+                    )
+                });
                 // **AS PEÇAS da instância selecionada** (W5b) — a porta do override. A lista sai
                 // da MESMA travessia que resolve um clique nela (`addressed_pieces`), e é a
                 // sub-árvore INTEIRA do mestre: só as visíveis fariam o interruptor perder a
                 // própria linha ao esconder uma peça.
                 let pieces = sel
                     .first()
+                    // ⛔ No modo geral esta lista é VAZIA por declaração — ver acima.
+                    .filter(|_| !general_prefabs)
                     .and_then(|id| self.vec_entities.get(id))
                     .map(|&bits| ph2d_ecs::Entity::from_bits(bits))
                     .and_then(|e| Some((e, sim.world().get::<ph2d_ecs::VecInstance>(e)?.clone())))
@@ -9834,6 +9847,8 @@ impl crate::App {
                 // sintoma seria o chip `Large` a escolher `Medium`, sem erro nenhum.
                 let variants = sel
                     .first()
+                    // ⛔ Idem — a fileira de variants ainda não fala o modelo geral.
+                    .filter(|_| !general_prefabs)
                     .and_then(|id| self.vec_entities.get(id))
                     .and_then(|&bits| {
                         let e = ph2d_ecs::Entity::from_bits(bits);

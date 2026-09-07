@@ -1806,13 +1806,22 @@ impl App {
         }
         let Some(gfx) = self.gfx.as_mut() else { return };
         let sim = &mut gfx.sim;
+        // ⛔⛔ **A RECUSA FALA NA TELA, e não no terminal** (auditoria de 2026-09-06). As duas
+        // recusas deste atalho saíam só por `eprintln!`, que o artista **não vê** — e o gémeo
+        // deste gesto, o item *Group* do menu da Hierarquia, já respondia com toast. *Um gesto
+        // que não faz nada e não diz porquê ensina que a feature está partida*, e foi assim que
+        // um smoke desta linha mandou o dono agrupar um objecto só e ficar a olhar para o nada.
         if group {
             let name = format!("Group {}", sel.len());
             if crate::vec_entities::group_entities(sim, &sel, name).is_none() {
-                eprintln!("[ph2d-vec] group: selecione >= 2 objetos distintos");
+                gfx.toasts.push(ph2d_editor::Toast::warning(
+                    "Select two or more objects to group",
+                ));
             }
         } else if crate::vec_entities::ungroup_entities(sim, &sel) == 0 {
-            eprintln!("[ph2d-vec] ungroup: a selecao nao esta em nenhum grupo");
+            gfx.toasts.push(ph2d_editor::Toast::warning(
+                "That selection is not inside a group",
+            ));
         }
     }
 

@@ -52,6 +52,29 @@ fn both_doors_of_the_new_component_mode_read_the_same_switch() {
     );
 }
 
+/// ⛔⛔⛔ **As DUAS listas que o modo novo ainda não serve saem VAZIAS por DECLARAÇÃO.**
+///
+/// O comentário daquele bloco afirmava que elas *«saem vazias sozinhas»* porque lêem o
+/// `VecInstance` — e isso **quebra num estado alcançável**: aquele componente é REGISTADO e não
+/// está no `DROPPED`, logo a cópia profunda do *Make* leva-o, e uma instância vetorial promovida a
+/// prefab geral dá uma cópia com os dois. Aí o painel pintava **peças e variants** cujo clique o
+/// `general_verb` recusa devolvendo `None` — **em silêncio**.
+///
+/// ⚠️ **A régua é o interruptor no caminho das listas**, e não a ausência do sintoma: uma fixtura
+/// que não produza a cópia mista lê verde sobre o defeito.
+///
+/// **Mutação que deve sangrar:** apagar qualquer um dos dois `filter`.
+#[test]
+fn the_lists_the_new_mode_does_not_serve_are_published_empty() {
+    let body = code_of("render_loop/mod.rs");
+    assert_eq!(
+        body.matches("filter(|_| !general_prefabs)").count(),
+        2,
+        "uma das listas (pecas / variants) voltou a ser publicada no modo geral — o painel pinta \
+         controlos que o dreno recusa em silencio"
+    );
+}
+
 /// ⛔⛔ **O caminho de OMISSÃO fica intacto** — o motor velho continua a ser chamado no `else`.
 ///
 /// É o que torna esta wave incapaz de regredir: sem a env var, o que corre é exactamente o que

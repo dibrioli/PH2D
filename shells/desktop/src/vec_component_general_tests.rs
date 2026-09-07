@@ -127,6 +127,64 @@ fn after_create_the_section_offers_place() {
     assert!(s.is_main, "a receita nao se anuncia como mestre");
 }
 
+/// ⛔⛔⛔ **E ela oferece-o ONDE A SELECÇÃO FICOU — na CÓPIA** (report do Enio, 2026-09-06:
+/// *«não existe mais a opção instanciate»*).
+///
+/// # Porque o gate acima estava VERDE por cima deste defeito
+///
+/// Ele mede `state_of` sobre `id`, o path **original**, que o mapa ainda liga ao mestre — ou seja,
+/// **a porta em que o artista não está**. O teste imediatamente antes dele AFIRMA que o
+/// `select_out` aponta para outra entidade, e nenhum dos dois compõe o outro: *duas metades certas
+/// que nunca se encontram*. No app, o `select_out` vai ao gizmo e o gizmo volta ao pen, então a
+/// pergunta seguinte da secção é feita sobre a **cópia** — e ali `is_main` era `false`, com o
+/// botão a desaparecer para sempre (a receita fica invisível no canvas).
+///
+/// **Mutação que deve sangrar:** `is_main` voltar a ser `get::<MasterRoot>(e).is_some()`.
+#[test]
+fn the_section_still_offers_place_where_the_selection_landed() {
+    let (mut sim, r, mut map, _id, e) = scene();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    let (_, select_out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
+    let copy = select_out
+        .map(Entity::from_bits)
+        .expect("a seleccao segue a copia");
+
+    // É o que a shell faz: o pen passa a ter o path da cópia seleccionado.
+    let copy_id: VecPathId = 2;
+    map.insert(copy_id, copy.to_bits());
+    let s = state_of(&mut sim, &map, &[copy_id]).expect("a seccao existe sobre a copia");
+
+    assert!(
+        s.is_main,
+        "a seccao nao oferece Instantiate sobre a copia — o gesto seguinte da fila e' inalcancavel"
+    );
+    assert!(s.is_instance, "a copia deixou de se anunciar como copia");
+}
+
+/// ⭐⭐⭐ **E o botão que voltou não é um botão morto: o verbo FUNCIONA a partir da cópia.**
+///
+/// ⚠️ **A metade justa.** Alargar a condição que PINTA sem provar que o consumidor aceita o mesmo
+/// sujeito seria trocar um botão ausente por um botão mudo — o defeito que este repo caça. O
+/// `Verb::Place` resolve a receita a partir de uma cópia desde 2026-08-31
+/// (`instance_verbs_walk::master_subject`), e é isso que este gate fixa.
+#[test]
+fn instantiating_from_the_copy_adds_another_copy() {
+    let (mut sim, r, _map, _id, e) = scene();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    let (_, select_out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
+    let copy = select_out.map(Entity::from_bits).expect("a copia");
+    let before = copies_of(&mut sim, e);
+
+    let (changed, _) = run(ComponentEdit::Place, &mut sim, &r, copy, &mut toasts);
+
+    assert!(changed, "instanciar a partir da copia nao fez nada");
+    assert_eq!(
+        copies_of(&mut sim, e),
+        before + 1,
+        "o numero de copias da receita nao subiu — o botao seria pintado sobre um verbo mudo"
+    );
+}
+
 /// ⭐⭐⭐ **PLACE põe uma cópia a mais, e ela é uma sub-árvore de ENTIDADES** — a diferença que o
 /// motor velho não tem (lá a cópia é um rectângulo de suporte com o desenho derivado).
 ///

@@ -46,6 +46,21 @@ pub(crate) fn drain_reparent(
     toasts: &mut ph2d_editor::ToastQueue,
 ) -> bool {
     use ph2d_ecs::Transform;
+    // ⭐⭐⭐ **O QUE O ARRASTO PEDIU** (report do Enio, 2026-09-07: *«reordenei objectos na
+    // hierarquia e não funcionou o undo»*).
+    //
+    // ⚠️ **A corrida com `PH2D_UNDO_LOG=1` mostrou que a ORDEM não mudou** (`ordem das raizes
+    // AGORA` idêntica antes e depois) enquanto **uma** linha mudava de bytes. ⇒ o passo de undo
+    // nasce sem nada visível dentro, e o `Ctrl+Z` parece morto. ⛔ O que faltava era ver o PEDIDO:
+    // um `before`/`after` vazio manda a peça para o FIM da lista (que numa peça que já é a última
+    // é um no-op), e um `new_parent` cheio é um *drop DENTRO* — três gestos com a mesma cara no
+    // ecrã e três resultados diferentes.
+    if crate::App::undo_log_on() {
+        eprintln!(
+            "[hier] pedido: dragged={:?} new_parent={:?} before={:?} after={:?}",
+            intent.dragged, intent.new_parent, intent.before, intent.after
+        );
+    }
     let Some(dragged_bits) = live.bridge.entity_for(intent.dragged) else {
         return false;
     };
@@ -259,6 +274,18 @@ pub(crate) fn drain_reparent(
     // (mirrors the additive skew cascade in `Transform::compose`). The
     // translation inverse drops parent skew — matching every other gizmo
     // helper; sprites carry skew only on leaves, never on rig ancestors.
+    if crate::App::undo_log_on() {
+        let mut q = sim
+            .world_mut()
+            .query_filtered::<(&ph2d_ecs::StableId, Option<&ph2d_ecs::RootOrder>), ph2d_ecs::Without<ph2d_ecs::ChildOf>>();
+        let mut v: Vec<(u64, Option<u32>)> = q
+            .iter(sim.world())
+            .map(|(s, r)| (s.0, r.map(|r| r.0)))
+            .collect();
+        v.sort_unstable();
+        eprintln!("[hier] ordem das raizes logo depois de aplicar: {v:?}");
+    }
+    let sim_w = sim.world_mut();
     if let Some(old_world) = old_world {
         let new_parent = ph2d_ecs::parent_world_transform(sim_w, dragged);
         let np = ph2d_editor::TransformSnapshot {

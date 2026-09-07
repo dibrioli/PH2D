@@ -108,7 +108,7 @@ pub(crate) fn apply_levels(sim: &mut SimWorld, clicked: Entity) -> Vec<ApplyLeve
             continue;
         }
         let name =
-            crate::instance_verbs::master_named(sim, id).unwrap_or_else(|| "component".to_string());
+            crate::instance_verbs::master_named(sim, id).unwrap_or_else(|| "prefab".to_string());
         out.push(ApplyLevel { master: id, name });
     }
     out

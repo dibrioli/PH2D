@@ -57,7 +57,7 @@ pub(super) fn build_instance_info(
         .map(|l| l.master);
     let master_name = root_master
         .and_then(|id| master_named(sim, id))
-        .unwrap_or_else(|| "component".to_string());
+        .unwrap_or_else(|| "prefab".to_string());
 
     // ⚠️ **Só as chaves DESTA peça** — ver o doc do modelo: o conjunto mora na raiz e chaveia por
     // `(peça, tipo)`, então mostrar tudo diria ao artista que ele mexeu noutro sítio da cópia.
@@ -223,7 +223,7 @@ pub(crate) fn family_members(
         }
         members.push(ph2d_editor::screens::hero::variant_axes::VariantMember {
             master: id,
-            name: master_named(sim, id).unwrap_or_else(|| "component".to_string()),
+            name: master_named(sim, id).unwrap_or_else(|| "prefab".to_string()),
         });
     }
     // ⭐⭐ **A ESTRUTURA sai daqui e a LEI sai de lá.** O shell responde *«quem é da família»*

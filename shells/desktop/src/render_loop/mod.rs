@@ -6808,6 +6808,7 @@ impl crate::App {
                         crate::input_dispatch::PASTE_OFFSET_PX,
                     );
                     let mut select_out = None;
+                    let mut arm_pick = false;
                     if let Some(subject) = subject {
                         let mut docs = crate::instance_docs::OwnedDocs {
                             vec_scene,
@@ -6823,12 +6824,19 @@ impl crate::App {
                             &mut docs,
                             [step.0 as f32, step.1 as f32],
                             &mut select_out,
+                            &mut arm_pick,
                         ) {
                             self.title_dirty = true;
                         }
                     }
                     if let Some(bits) = select_out {
                         hero.gizmo.replace_selection(Some(bits));
+                    }
+                    // ⭐⭐ **A shell só ESCREVE o pick — quem decide é o módulo do modo.** O
+                    // `PathPick` vive no `App`, e por isso o dreno não lhe chega; mas a pergunta
+                    // *«este verbo abre o gesto de duas mãos?»* é lei do modo, e fica lá.
+                    if arm_pick && let Some(&at) = sel.first() {
+                        self.vec_path_pick = Some(crate::vec_pick::PathPick::InstanceMain(at));
                     }
                 } else {
                     match verb {
@@ -9804,7 +9812,18 @@ impl crate::App {
                 // sintoma seria uma secção a descrever um motor e a listar as peças do outro.
                 let general_prefabs = crate::vec_component_general::armed();
                 ph2d_panel_vector::state::set_component_state(if general_prefabs {
-                    crate::vec_component_general::state_of(sim, &self.vec_entities, &sel)
+                    crate::vec_component_general::state_of(
+                        sim,
+                        &self.vec_entities,
+                        &sel,
+                        // ⚠️ **A MESMA pergunta que o ramo velho faz** — o rótulo do botão troca
+                        // enquanto o gesto de duas mãos está aberto, e é ele que diz ao artista
+                        // que o app está à espera do segundo clique.
+                        matches!(
+                            self.vec_path_pick,
+                            Some(crate::vec_pick::PathPick::InstanceMain(_))
+                        ),
+                    )
                 } else {
                     crate::vec_component_edit::selected_component(
                         sim,
@@ -11545,7 +11564,7 @@ impl crate::App {
             // Uma confirmação igual para os dois deixaria o artista sem saber qual carregou.
             if let Some((entity_bits, master)) = apply_to_level {
                 let name = inspector_instance::master_named(sim, master)
-                    .unwrap_or_else(|| "component".to_string());
+                    .unwrap_or_else(|| "prefab".to_string());
                 match crate::instance_apply_deep::apply_to_level(
                     sim,
                     component_registry,
@@ -11599,7 +11618,7 @@ impl crate::App {
                     Ok(p) => {
                         let name =
                             crate::render_loop::inspector_instance::master_named(sim, p.master)
-                                .unwrap_or_else(|| "the component".to_string());
+                                .unwrap_or_else(|| "the prefab".to_string());
                         toasts.push(Toast::success(format!(
                             "Added {} piece(s) to \u{201c}{name}\u{201d} \u{2014} every copy gets them",
                             p.pieces

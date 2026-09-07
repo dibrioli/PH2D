@@ -50,6 +50,27 @@ const LABEL_TABLES: &[&str] = &[
 /// As palavras que a coisa reutilizável **não** pode ter na tela.
 const BANNED: &[&str] = &["Master", "master", "Component", "component", "Main missing"];
 
+/// Todo `.rs` sob `shells/desktop/src` — a população do censo dos fallbacks, **derivada**.
+fn rust_files_of_the_shell() -> Vec<std::path::PathBuf> {
+    let mut out = Vec::new();
+    let mut stack = vec![Path::new(env!("CARGO_MANIFEST_DIR")).join("src")];
+    while let Some(dir) = stack.pop() {
+        let Ok(rd) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else if p.extension().is_some_and(|x| x == "rs") {
+                out.push(p);
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
 fn repo_root() -> &'static Path {
     // `CARGO_MANIFEST_DIR` é `shells/desktop`.
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -118,14 +139,31 @@ fn no_screen_sentence_about_the_reusable_thing_uses_the_old_words() {
 /// curvas num toast (*«Editing “component”»*). *Uma exclusão desenhada para reduzir falsos
 /// positivos é um buraco com a forma exacta do que ela exclui.*
 ///
-/// **Mutação que deve sangrar:** pôr `"component"` de volta em qualquer um dos dois fallbacks.
+/// ⚠️ **A população é DERIVADA, e não uma lista escrita à mão** — todo `.rs` da shell. A 1.ª
+/// redacção deste censo reusou a lista `SURFACES` acima e leu **duas** ocorrências; a árvore tinha
+/// **seis**, e as outras quatro (o cartão do Inspector, a escada do *Aplicar*, a fileira de
+/// versões) são as que o artista lê com mais frequência. *Um censo que herda a lista do vizinho
+/// herda também o recorte dele.*
+///
+/// **Mutação que deve sangrar:** pôr `"component"` de volta em qualquer um dos seis fallbacks.
 #[test]
 fn the_fallback_name_of_an_unnamed_recipe_is_not_an_old_word() {
-    let root = repo_root();
     let mut offenders: Vec<String> = Vec::new();
-    for rel in SURFACES {
-        let Ok(body) = std::fs::read_to_string(root.join(rel)) else {
-            panic!("o ficheiro {rel} mudou de sitio — reancore este censo");
+    let files = rust_files_of_the_shell();
+    assert!(
+        files.len() > 100,
+        "a varredura da shell devolveu {} ficheiros — ela partiu-se e um censo vazio le-se como \
+         aprovado",
+        files.len()
+    );
+    for path in files {
+        let rel = path
+            .strip_prefix(repo_root())
+            .unwrap_or(&path)
+            .display()
+            .to_string();
+        let Ok(body) = std::fs::read_to_string(&path) else {
+            continue;
         };
         let mut rest = body.as_str();
         while let Some(i) = rest.find("unwrap_or_else(|| \"") {

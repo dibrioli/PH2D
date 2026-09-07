@@ -1,4 +1,4 @@
-//! Os gates do modo GERAL da secção *Component* (F4.6c, wave 1).
+//! Os gates do modo GERAL da secção *Prefab* (F4.6c, waves 1 e 2).
 //!
 //! ⚠️ **O oráculo é o que a SECÇÃO oferece e o que o clique FAZ** — nunca *«a função devolveu
 //! algo»*. Uma secção que oferecesse *Detach* sobre uma forma comum, ou um *Place* que não põe
@@ -42,9 +42,22 @@ fn run(
     subject: Entity,
     toasts: &mut ph2d_editor::ToastQueue,
 ) -> (bool, Option<u64>) {
+    run_full(verb, sim, r, subject, toasts).0
+}
+
+/// O mesmo dreno, devolvendo também **se o conta-gotas armou** — é a saída que o gesto de duas
+/// mãos usa, e a que separa *«o verbo não fez nada»* de *«o verbo abriu um gesto»*.
+fn run_full(
+    verb: ComponentEdit,
+    sim: &mut SimWorld,
+    r: &ph2d_ecs::scene::ComponentRegistry,
+    subject: Entity,
+    toasts: &mut ph2d_editor::ToastQueue,
+) -> ((bool, Option<u64>), bool) {
     let (mut sc, mut mp) = crate::instance_docs::empty_docs();
     let mut echo = crate::instance_sync::MasterEcho::default();
     let mut select_out = None;
+    let mut arm_pick = false;
     let changed = dispatch(
         verb,
         sim,
@@ -58,8 +71,9 @@ fn run(
         },
         [0.25, 0.0],
         &mut select_out,
+        &mut arm_pick,
     );
-    (changed, select_out)
+    ((changed, select_out), arm_pick)
 }
 
 /// ⛔⛔⛔ **A PORTA É UMA SÓ, e sem a env var ela está FECHADA.**
@@ -81,7 +95,7 @@ fn the_new_mode_is_closed_unless_the_env_var_opens_it() {
 #[test]
 fn a_plain_shape_offers_only_create() {
     let (mut sim, _r, map, id, _e) = scene();
-    let s = state_of(&mut sim, &map, &[id]).expect("uma forma tem seccao");
+    let s = state_of(&mut sim, &map, &[id], false).expect("uma forma tem seccao");
     assert!(
         !s.is_main && !s.is_instance,
         "uma forma comum nao e' nenhum dos dois"
@@ -123,7 +137,7 @@ fn after_create_the_section_offers_place() {
     let (mut sim, r, map, id, e) = scene();
     let mut toasts = ph2d_editor::ToastQueue::default();
     run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
-    let s = state_of(&mut sim, &map, &[id]).expect("a seccao existe");
+    let s = state_of(&mut sim, &map, &[id], false).expect("a seccao existe");
     assert!(s.is_main, "a receita nao se anuncia como mestre");
 }
 
@@ -152,7 +166,7 @@ fn the_section_still_offers_place_where_the_selection_landed() {
     // É o que a shell faz: o pen passa a ter o path da cópia seleccionado.
     let copy_id: VecPathId = 2;
     map.insert(copy_id, copy.to_bits());
-    let s = state_of(&mut sim, &map, &[copy_id]).expect("a seccao existe sobre a copia");
+    let s = state_of(&mut sim, &map, &[copy_id], false).expect("a seccao existe sobre a copia");
 
     assert!(
         s.is_main,
@@ -238,21 +252,102 @@ fn last_copy(sim: &mut SimWorld, master: Entity) -> Option<Entity> {
     all.pop()
 }
 
-/// ⛔⛔ **O conta-gotas do *Swap* FALA em vez de morrer.**
+/// ⭐⭐ **O botão do *Swap* ARMA o conta-gotas — ele não age e não fala.**
 ///
-/// O painel pinta aquele botão para toda instância, e no modo novo ele não tem consumidor. *Um
-/// controlo que come o clique em silêncio é pior que um ausente* — e a voz nomeia a saída que
-/// **existe**: o *Replace selection with this* da biblioteca.
+/// ⚠️ **`changed == false` aqui NÃO é um clique comido:** o gesto é de duas mãos, e a resposta ao
+/// primeiro clique é o painel trocar de rótulo para *Click a prefab to swap* (o `swap_armed` que a
+/// shell publica). *Um toast a dizer «agora clique noutra coisa» seria a terceira maneira de dizer
+/// o que o botão já diz.*
 ///
-/// (Mutação: apagar o braço do `Swap` ⇒ RED.)
+/// (Mutação: `*arm_pick = true` a virar `false` ⇒ RED.)
 #[test]
-fn the_eyedropper_swap_says_where_to_do_it_instead() {
+fn the_swap_button_arms_the_eyedropper_instead_of_acting() {
     let (mut sim, r, _map, _id, e) = scene();
     let mut toasts = ph2d_editor::ToastQueue::default();
-    let (changed, _) = run(ComponentEdit::Swap, &mut sim, &r, e, &mut toasts);
-    assert!(!changed, "o Swap mudou o mundo no modo novo");
+    let ((changed, _), armed_pick) = run_full(ComponentEdit::Swap, &mut sim, &r, e, &mut toasts);
+    assert!(!changed, "o Swap mudou o mundo no primeiro clique");
     assert!(
-        toasts.iter().any(|t| t.message.contains("Replace")),
-        "o Swap comeu o clique em silencio — nao ha' voz a dizer onde fazer"
+        armed_pick,
+        "o botao do Swap nao armou o conta-gotas — o gesto de duas maos nao chega a abrir"
     );
+}
+
+/// ⭐⭐ **E a secção DIZ que está à espera** — é o `swap_armed` que troca o rótulo do botão.
+#[test]
+fn the_section_says_the_eyedropper_is_waiting() {
+    let (mut sim, _r, map, id, _e) = scene();
+    let idle = state_of(&mut sim, &map, &[id], false).expect("a seccao existe");
+    let waiting = state_of(&mut sim, &map, &[id], true).expect("a seccao existe");
+    assert!(!idle.swap_armed && waiting.swap_armed);
+}
+
+/// ⭐⭐⭐ **O SEGUNDO clique troca o prefab da cópia — e o alvo é uma CÓPIA do prefab que se quer.**
+///
+/// ⚠️ **É a lei que devolveu o `Instantiate`, aplicada ao gesto:** a receita está escondida no
+/// canvas, então clicar nela é impossível; clicar numa cópia dela quer dizer *«esta também passa a
+/// ser um destes»*. A fixtura monta a família como o artista a monta — um prefab, e uma **variante**
+/// dele — porque sem parentesco o mapa determinístico não existe e a troca recusa (por desenho).
+///
+/// (Mutação: `master_subject` a virar `clicked` ⇒ RED, porque a cópia clicada não é um `MasterRoot`.)
+#[test]
+fn the_second_click_makes_the_copy_a_copy_of_the_clicked_prefab() {
+    let (mut sim, r, _map, _id, e) = scene();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    // A é a receita, `copy_a` é a cópia que fica no lugar.
+    let (_, out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
+    let copy_a = out.map(Entity::from_bits).expect("a copia de A");
+    // Promover uma cópia faz uma VARIANTE — é assim que a família nasce.
+    let (_, out) = run(ComponentEdit::Create, &mut sim, &r, copy_a, &mut toasts);
+    let copy_b = out.map(Entity::from_bits).expect("a copia da variante B");
+    let b_id = master_id(&mut sim, copy_b).expect("o elo da copia de B");
+    // E uma segunda cópia de A, que é quem vai trocar.
+    let (_, out) = run(ComponentEdit::Place, &mut sim, &r, e, &mut toasts);
+    let mine = out.map(Entity::from_bits).expect("a segunda copia de A");
+    assert_ne!(master_id(&mut sim, mine), Some(b_id), "ja' nasceu como B");
+
+    let mut echo = crate::instance_sync::MasterEcho::default();
+    let did = super::swap_by_pick(&mut sim, &mut echo, &mut toasts, mine, copy_b);
+
+    assert!(did, "o segundo clique nao trocou nada");
+    assert_eq!(
+        master_id(&mut sim, mine),
+        Some(b_id),
+        "a copia continua a seguir a receita antiga — o alvo nao foi resolvido pela copia clicada"
+    );
+}
+
+/// ⛔⛔ **E clicar numa forma comum RECUSA em voz alta, sem desarmar.**
+///
+/// *Um gesto de duas mãos que se desarma no primeiro clique fora do alvo faz o artista pensar que a
+/// troca aconteceu* — a mesma lei que o motor velho já escrevia no comentário dele.
+#[test]
+fn clicking_a_plain_shape_with_the_eyedropper_refuses_out_loud() {
+    let (mut sim, r, _map, _id, e) = scene();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    let (_, out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
+    let copy = out.map(Entity::from_bits).expect("a copia");
+    let plain = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Loose")))
+        .id();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let before = master_id(&mut sim, copy);
+
+    let mut echo = crate::instance_sync::MasterEcho::default();
+    let did = super::swap_by_pick(&mut sim, &mut echo, &mut toasts, copy, plain);
+
+    assert!(!did, "trocou por uma forma que nao e' prefab nenhum");
+    assert_eq!(master_id(&mut sim, copy), before, "a copia mexeu-se");
+    assert!(
+        toasts.iter().any(|t| t.message.contains("not a copy")),
+        "a recusa nao diz o que clicar"
+    );
+}
+
+/// O `StableId` do mestre que esta cópia segue.
+fn master_id(sim: &mut SimWorld, e: Entity) -> Option<u64> {
+    let root = crate::instance_verbs::instance_root_of(sim, e)?;
+    sim.world()
+        .get::<ph2d_ecs::InstanceOf>(root)
+        .map(|l| l.master)
 }

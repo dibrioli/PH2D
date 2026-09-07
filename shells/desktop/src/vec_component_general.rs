@@ -1,4 +1,4 @@
-//! ⭐⭐⭐ **A SECÇÃO *Component* DO PAINEL VETORIAL, LIGADA AO MECANISMO GERAL** (F4.6c, wave 1).
+//! ⭐⭐⭐ **A SECÇÃO *Prefab* DO PAINEL VETORIAL, LIGADA AO MECANISMO GERAL** (F4.6c, waves 1 e 2).
 //!
 //! # O que esta wave resolve
 //!
@@ -21,18 +21,26 @@
 //! vetorial, atrás de uma janela. Trocar o motor por baixo dela e entregar sem rede seria pedir-lhe
 //! que descobrisse a regressão por mim. ⇒ `PH2D_VEC_COMPONENT_GENERAL=1` **arma** o modo novo, e
 //! sem a variável **nada muda, por construção**: o `armed()` é a única porta, e ela é lida nos
-//! **dois** sítios que decidem (o que o painel MOSTRA e o que o clique FAZ).
+//! **três** sítios que decidem — o que o painel MOSTRA, o que o clique do botão FAZ, e o **segundo
+//! clique do conta-gotas** (que vive no `input_dispatch`; ver [`swap_by_pick`]).
 //!
 //! ⚠️ **É o precedente do `PH2D_RETOPO_EXTRACT`**: o motor novo shipa desligado, com a tabela da
 //! comparação ao lado, e o caminho de omissão fica **byte-idêntico**.
 //!
-//! # ⚠️ O que o modo novo ainda NÃO oferece — e por que isso não deixa botão morto
+//! # ⭐⭐⭐ Os TRÊS controlos que o motor velho tinha a mais, e onde cada um foi parar
 //!
-//! Três verbos do motor velho não têm ainda equivalente publicado aqui: o **conta-gotas** do *Swap*,
-//! a lista de **peças** (o olho por peça) e a fileira de **variants**. ⇒ no modo novo a shell
-//! publica essas listas **VAZIAS**, e o painel simplesmente **não as pinta** — a secção oferece
-//! exactamente o que o gesto faz. *Um controlo que aparece e não faz nada é o defeito que este
-//! repo caça; um que não aparece é uma feature por construir, e ela está nomeada.*
+//! A F4.6c media *«um porte MENOS três features»*. Medidas uma a uma em 2026-09-06, **duas já
+//! existiam noutra superfície do modelo geral** e a terceira foi construída:
+//!
+//! | controlo do painel vetorial | no modelo geral |
+//! |---|---|
+//! | **conta-gotas do *Swap*** | ⭐ **construído aqui** ([`swap_by_pick`]) — o mesmo gesto de duas mãos, com o alvo resolvido pelo `master_subject` e re-key determinístico, que o *Swap* do vetor nunca teve |
+//! | **lista de peças** (o olho · a cor por peça) | ⛔ **não se porta: as peças são ENTIDADES REAIS.** O olho é o da Hierarquia e a cor é qualquer ferramenta sobre a peça seleccionada — as duas portas estão medidas em [`crate::instance_piece_override_tests`]. *A lista existia porque naquele modelo a peça não tinha endereço; aqui tem.* |
+//! | **fileira de variants** | ⛔ **não se porta: ela já é pintada**, no cartão *Properties* do Inspector (`variant_axes::axes_for`, alimentado pelo `family_members`), derivada pelo MESMO mapa que a troca usa. Uma segunda fileira noutro painel seria a mesma pergunta com duas respostas. |
+//!
+//! ⚠️ **E é por isso que a shell publica as duas listas VAZIAS** neste modo — não por elas ficarem
+//! vazias sozinhas (o `VecInstance` viaja na cópia profunda), mas por DECLARAÇÃO. *Um controlo que
+//! aparece e não faz nada é o defeito que este repo caça.*
 
 use ph2d_ecs::{Entity, MasterRoot, SimWorld};
 use ph2d_vec_scene::VecPathId;
@@ -41,8 +49,10 @@ use crate::vec_entities::VecEntityMap;
 
 /// **O modo geral está armado?** Porta única — ver o cabeçalho.
 ///
-/// ⚠️ **Lida em DOIS sítios** (o que o painel mostra e o que o clique faz) e por isso é uma função,
-/// não um `if` copiado: os dois a discordarem dá uma secção que oferece um verbo que o dreno recusa.
+/// ⚠️ **Lida em TRÊS sítios** (o que o painel mostra · o que o clique do botão faz · o segundo
+/// clique do conta-gotas) e por isso é uma função, não um `if` copiado: dois deles a discordarem dá
+/// uma secção que oferece um verbo que o dreno recusa, ou um gesto que arma num motor e resolve no
+/// outro.
 #[must_use]
 pub(crate) fn armed() -> bool {
     std::env::var("PH2D_VEC_COMPONENT_GENERAL").is_ok_and(|v| v != "0")
@@ -71,6 +81,10 @@ pub(crate) fn state_of(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     selected: &[VecPathId],
+    // ⭐ **O conta-gotas está armado?** — o mesmo dado que o produtor vetorial recebe. Ele vive no
+    // `App::vec_path_pick`, que é da shell: publicá-lo é o que faz o botão trocar de rótulo para
+    // *Click a prefab to swap* enquanto o gesto está aberto.
+    pick_armed: bool,
 ) -> Option<ph2d_panel_vector::state::ComponentState> {
     let e = subject(map, selected)?;
     if sim.world().get_entity(e).is_err() {
@@ -118,9 +132,7 @@ pub(crate) fn state_of(
         // pelo lado dele.
         main_missing: link
             .is_some_and(|l| crate::instance_verbs::entity_for_stable_id(sim, l.master).is_none()),
-        // ⛔ O conta-gotas ainda não está ligado ao modelo geral — ver o cabeçalho. Publicá-lo
-        // armado daria um botão que arma um pick que ninguém consome.
-        swap_armed: false,
+        swap_armed: pick_armed,
     })
 }
 
@@ -162,6 +174,8 @@ pub(crate) fn dispatch(
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
     place_step: [f32; 2],
     select_out: &mut Option<u64>,
+    // ⭐ Sai `true` quando o verbo abre o gesto de duas mãos do conta-gotas — ver o braço do `Swap`.
+    arm_pick: &mut bool,
 ) -> bool {
     let e = subject;
     // O *Reset* tem porta própria — ver [`general_verb`].
@@ -178,16 +192,12 @@ pub(crate) fn dispatch(
         )));
         return r.count > 0;
     }
-    // ⛔⛔ **O conta-gotas do *Swap* FALA em vez de morrer.** O painel pinta aquele botão para toda
-    // instância, e no modo novo ele não tem consumidor — *um controlo que come o clique em silêncio
-    // é pior que um ausente*, e é o defeito que esta linha caçou três vezes. ⚠️ A saída que a voz
-    // nomeia **existe e é melhor**: o *Replace selection with this* da biblioteca (F5.8) escolhe o
-    // mestre por nome e com os **três modos** de emparelhamento, contra o palpite de um clique.
+    // ⭐⭐⭐ **O conta-gotas ARMA e sai** — o clique seguinte no canvas é dele
+    // ([`swap_by_pick`]). ⚠️ **Quem escreve o `PathPick` é a shell**, porque ele vive no `App`; o
+    // que este módulo devolve é a DECISÃO, para a lei do modo ficar toda aqui. *Um `if verb ==
+    // Swap` escrito lá em cima seria a terceira leitura do interruptor a decidir sozinha.*
     if verb == crate::vec_component_edit::ComponentEdit::Swap {
-        toasts.push(ph2d_editor::Toast::info(
-            "Swapping by eyedropper is not in the new component mode \u{2014} use \u{201c}Replace \
-             selection with this\u{201d} in the library",
-        ));
+        *arm_pick = true;
         return false;
     }
     let Some(v) = general_verb(verb) else {
@@ -204,6 +214,97 @@ pub(crate) fn dispatch(
         place_step,
         select_out,
     )
+}
+
+/// ⭐⭐⭐ **O SEGUNDO clique do conta-gotas, no modelo geral** — a cópia `source` passa a ser uma
+/// cópia do prefab de `clicked`.
+///
+/// # ⚠️ O alvo é «uma CÓPIA do prefab que eu quero», e não o prefab
+///
+/// No motor vetorial o mestre era uma forma **visível** no canvas, e o conta-gotas clicava-a. No
+/// modelo geral a receita está **escondida** (`is_unedited_recipe`) — clicar nela é impossível.
+/// ⇒ o alvo resolve-se pela porta que os outros verbos já usam
+/// ([`crate::instance_verbs_walk::master_subject`]): clicar uma cópia do prefab B quer dizer
+/// *«esta também passa a ser um B»*, e clicar a receita, quando ela está aberta, também serve.
+/// *É a mesma lei que devolveu o `Instantiate` ao painel — a lente do gesto acompanha a do verbo.*
+///
+/// ⛔ **`WhenUnrelated::Refuse`**: sem antepassado comum não há mapa determinístico, e um clique não
+/// é um sítio para escolher modo de emparelhamento — os três modos vivem no item de menu que os
+/// nomeia (F5.8). *Um palpite silencioso num gesto de duas mãos é a pior das duas coisas.*
+///
+/// Devolve `true` quando o mundo mudou (e aí o pick desarma-se).
+pub(crate) fn swap_by_pick(
+    sim: &mut SimWorld,
+    echo: &mut crate::instance_sync::MasterEcho,
+    toasts: &mut ph2d_editor::ToastQueue,
+    source: Entity,
+    clicked: Entity,
+) -> bool {
+    let Some(root) = crate::instance_verbs::instance_root_of(sim, source) else {
+        toasts.push(ph2d_editor::Toast::warning(
+            "That is not a copy of a prefab",
+        ));
+        return false;
+    };
+    let target = crate::instance_verbs_walk::master_subject(sim, clicked);
+    let Some(id) = sim
+        .world()
+        .get::<ph2d_ecs::StableId>(target)
+        .map(|s| s.0)
+        .filter(|_| sim.world().get::<MasterRoot>(target).is_some())
+    else {
+        // ⚠️ **A recusa NOMEIA o que fazer** — o artista clicou numa forma comum, e o gesto fica
+        // armado de propósito (desarmar aqui faria um clique fora do alvo parecer uma troca).
+        toasts.push(ph2d_editor::Toast::warning(
+            "That shape is not a copy of a prefab \u{2014} click one, or the open prefab",
+        ));
+        return false;
+    };
+    match crate::instance_variant::swap(
+        sim,
+        echo,
+        root,
+        id,
+        crate::instance_swap_match::WhenUnrelated::Refuse,
+    ) {
+        Ok(r) => {
+            let name = crate::instance_verbs::master_named(sim, id)
+                .unwrap_or_else(|| "prefab".to_string());
+            let mut say = format!(
+                "Now a copy of \u{201c}{name}\u{201d} \u{2014} {} override(s) kept",
+                r.overrides_kept
+            );
+            // ⚠️ **O que se PERDEU é dito no mesmo fôlego.** O motor velho escrevia isto num
+            // `eprintln!`, que o artista não vê — e o que ele vê é uma peça a desaparecer.
+            if r.dropped > 0 {
+                say.push_str(&format!(
+                    " \u{b7} {} piece(s) the new prefab does not have were removed",
+                    r.dropped
+                ));
+            }
+            toasts.push(ph2d_editor::Toast::success(say));
+            true
+        }
+        Err(crate::instance_variant::SwapRefusal::Already) => {
+            toasts.push(ph2d_editor::Toast::info(
+                "It is already a copy of that prefab",
+            ));
+            false
+        }
+        Err(crate::instance_variant::SwapRefusal::Unrelated) => {
+            toasts.push(ph2d_editor::Toast::warning(
+                "Those two prefabs are unrelated \u{2014} use \u{201c}Replace selection with \
+                 this\u{201d} in the library to choose how to match the pieces",
+            ));
+            false
+        }
+        Err(_) => {
+            toasts.push(ph2d_editor::Toast::warning(
+                "That copy cannot become this prefab",
+            ));
+            false
+        }
+    }
 }
 
 #[cfg(test)]

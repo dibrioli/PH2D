@@ -1,5 +1,11 @@
-//! ⛔⛔ **O MODO NOVO DA SECÇÃO *Component* TEM DUAS PORTAS, E AS DUAS LÊEM A MESMA PERGUNTA**
-//! (F4.6c, wave 1).
+//! ⛔⛔ **O MODO NOVO DA SECÇÃO *Prefab* TEM TRÊS PORTAS, E AS TRÊS LÊEM A MESMA PERGUNTA**
+//! (F4.6c, waves 1 e 2).
+//!
+//! ⚠️ **Eram duas até 2026-09-06** — o que a secção MOSTRA e o que o clique do botão FAZ. A wave 2
+//! trouxe o **conta-gotas**, cujo segundo clique vive no `input_dispatch`: armar pelo modo novo e
+//! resolver pelo velho trocaria o mestre pela porta errada, e o sintoma seria uma cópia que muda de
+//! desenho e mantém o elo antigo. *Uma porta nova de um modo é sempre uma leitura nova do
+//! interruptor — e o dia em que ela não for, o modo tem duas verdades.*
 //!
 //! # Porque é textual
 //!
@@ -29,17 +35,29 @@ fn code_of(rel: &str) -> String {
         .join("\n")
 }
 
-/// ⭐⭐⭐ **As DUAS portas leem o `armed()`** — nem uma a mais, nem uma a menos.
+/// ⭐⭐⭐ **As TRÊS portas leem o `armed()`** — nem uma a mais, nem uma a menos.
 ///
-/// **Mutação que deve sangrar:** apagar um dos dois `if`.
+/// **Mutação que deve sangrar:** apagar qualquer um dos três `if`.
 #[test]
-fn both_doors_of_the_new_component_mode_read_the_same_switch() {
+fn every_door_of_the_new_component_mode_reads_the_same_switch() {
     let body = code_of("render_loop/mod.rs");
     assert_eq!(
         body.matches("vec_component_general::armed()").count(),
         2,
-        "o interruptor do modo novo deixou de ser lido nos DOIS sitios que decidem — o que a \
-         seccao MOSTRA e o que o clique FAZ"
+        "o interruptor do modo novo deixou de ser lido nos DOIS sitios da render_loop que decidem \
+         — o que a seccao MOSTRA e o que o clique do botao FAZ"
+    );
+    assert_eq!(
+        code_of("input_dispatch.rs")
+            .matches("vec_component_general::armed()")
+            .count(),
+        1,
+        "o SEGUNDO clique do conta-gotas deixou de ler o interruptor — ele passa a resolver pelo \
+         motor errado, e a copia muda de desenho mantendo o elo antigo"
+    );
+    assert!(
+        code_of("input_dispatch.rs").contains("vec_component_general::swap_by_pick("),
+        "o conta-gotas do modo geral perdeu o consumidor — o gesto arma e nunca resolve"
     );
     // A porta que publica o estado, e a que despacha o verbo.
     assert!(

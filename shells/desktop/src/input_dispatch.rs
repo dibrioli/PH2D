@@ -2323,28 +2323,53 @@ impl App {
             ),
             // **Swap Main** (W5b): o clicado tem de ser um MESTRE. Se não for, o pick fica
             // armado — desarmar aqui faria um clique fora do alvo parecer que a troca aconteceu.
-            crate::vec_pick::PathPick::InstanceMain(inst) => self
-                .vec_entities
-                .get(&inst)
-                .copied()
-                .and_then(|bits| {
-                    crate::vec_component_pieces::swap_main(
-                        &mut gfx.sim,
-                        &gfx.vec_scene,
-                        &self.vec_entities,
-                        ph2d_ecs::Entity::from_bits(bits),
-                        guide,
-                    )
-                })
-                .is_some_and(|(swapped, dropped)| {
-                    if swapped && dropped > 0 {
-                        eprintln!(
-                            "[ph2d-vec] swap: {dropped} override(s) descartado(s) — as pecas nao \
-                             existem no mestre novo"
-                        );
-                    }
-                    swapped
-                }),
+            // ⭐⭐⭐ **A TERCEIRA porta do modo geral** (F4.6c, wave 2) — as outras duas são o que a
+            // secção MOSTRA e o que o clique do botão FAZ. Ela tem de ler o MESMO interruptor:
+            // armar pelo modo novo e resolver pelo velho trocaria o mestre pela porta errada, e o
+            // sintoma seria uma cópia que muda de desenho e mantém o elo antigo.
+            crate::vec_pick::PathPick::InstanceMain(inst) => {
+                let pair = self
+                    .vec_entities
+                    .get(&inst)
+                    .copied()
+                    .zip(self.vec_entities.get(&guide).copied());
+                if crate::vec_component_general::armed() {
+                    pair.is_some_and(|(src, dst)| {
+                        crate::vec_component_general::swap_by_pick(
+                            &mut gfx.sim,
+                            &mut self.instance_echo,
+                            &mut gfx.toasts,
+                            ph2d_ecs::Entity::from_bits(src),
+                            ph2d_ecs::Entity::from_bits(dst),
+                        )
+                    })
+                } else {
+                    // **Swap Main** (W5b): o clicado tem de ser um MESTRE. Se não for, o pick fica
+                    // armado — desarmar aqui faria um clique fora do alvo parecer que a troca
+                    // aconteceu.
+                    self.vec_entities
+                        .get(&inst)
+                        .copied()
+                        .and_then(|bits| {
+                            crate::vec_component_pieces::swap_main(
+                                &mut gfx.sim,
+                                &gfx.vec_scene,
+                                &self.vec_entities,
+                                ph2d_ecs::Entity::from_bits(bits),
+                                guide,
+                            )
+                        })
+                        .is_some_and(|(swapped, dropped)| {
+                            if swapped && dropped > 0 {
+                                eprintln!(
+                                    "[ph2d-vec] swap: {dropped} override(s) descartado(s) — as \
+                                     pecas nao existem no mestre novo"
+                                );
+                            }
+                            swapped
+                        })
+                }
+            }
             // ⭐ **A ARTE de um padrão** (plano 33 W7): a fonte é a forma COM o padrão, o clicado
             // é a forma que passa a ser o desenho que se repete. ⚠️ O `guide == pick.source()` logo
             // acima já barra o ciclo — e a `source_shape` do memo barra-o outra vez, porque o

@@ -3037,3 +3037,417 @@ fn o_nosso_relevo_local_nao_passa_o_do_oraculo() {
          o corpus e tem de descer"
     );
 }
+
+/// **Um número do cabeçalho de um dump POR PASSO** (`chave <valor>` na última
+/// coluna da linha). ⚠️ A `prova_do_fatiamento` traz uma fórmula entre a chave e
+/// o número, e é por isso que se lê o ÚLTIMO campo e não o segundo.
+fn campo_do_por_passo(nome: &str, chave: &str) -> f64 {
+    let texto = inflar(&format!("{nome}.porpasso.txt.gz"));
+    for l in texto.lines() {
+        let l = l.trim_start_matches("# ").trim();
+        if let Some(resto) = l.strip_prefix(chave) {
+            if let Some(t) = resto.split_whitespace().next_back() {
+                if let Ok(v) = t.parse::<f64>() {
+                    return v;
+                }
+            }
+        }
+    }
+    panic!("{nome}: sem `{chave}` no cabecalho do dump por passo");
+}
+
+/// ⭐⭐⭐ **GATE 43 — A BANDA ENTRA UMA VEZ NA VELOCIDADE E NENHUMA NA ACELERAÇÃO**
+/// (espec §14 gate 43, §5.2 · §5.4 · §5.4-bis).
+///
+/// ⚠️⚠️ **A metade que faz o gate existir é o CONTROLO, e ele é EXACTO:** o
+/// **mesmo** traço em área *Global* sai byte-idêntico com as duas leis, porque
+/// ali a banda é `1` em toda a malha e `banda² = banda` **por construção**. ⇒ é a
+/// **razão** entre os dois traços que denuncia o defeito, e não o valor de
+/// nenhum deles.
+///
+/// ⛔ **Um port que meça só o máximo, ou só o vértice do pen-down, ou só traços
+/// *Global*, passa com `banda²` lá dentro:** o erro vive no anel de `2,875 R` a
+/// `3,5 R`, onde o deslocamento já é de ordem `10⁻³`. Medido: `1,9·10⁻²` na borda
+/// de dentro, `6,1·10⁻³` a meio, `3,2·10⁻⁴` na borda de fora.
+#[test]
+fn a_banda_entra_uma_vez_na_velocidade_e_nenhuma_na_aceleracao() {
+    let erro_de = |nome: &str| -> f64 {
+        let pp = por_passo(nome);
+        let (_, _, nossos, _) = correr_com_blocos(nome, None, Some(&pp.caminho));
+        nossos
+            .iter()
+            .zip(&pp.blocos)
+            .map(|(n, a)| {
+                n.iter()
+                    .zip(a)
+                    .map(|(x, y)| dist(*x, *y))
+                    .fold(0.0f64, f64::max)
+            })
+            .fold(0.0f64, f64::max)
+    };
+    let local = erro_de("plano_arrastar_radial_local_origem");
+    let global = erro_de("plano_arrastar_radial_global_origem");
+    assert!(
+        local <= BARRA_DO_FICHEIRO,
+        "o arrasto LOCAL erra {local:.6} nos doze passos -- com a banda aplicada \
+         DUAS vezes ele lia 3,9e-3, e a barra e' a resolucao do ficheiro"
+    );
+    // ⭐⭐ **A RAZÃO é o gate.** O *Global* não se move com a lei errada (a banda
+    // é `1` ali), logo ele é o denominador honesto: com `banda²` o *Local* fica
+    // `190×` acima dele, e hoje está ABAIXO.
+    assert!(
+        local < global,
+        "o arrasto LOCAL erra {local:.6} e o GLOBAL {global:.6} -- o Global e' \
+         invariante a esta lei, logo o Local acima dele denuncia a banda a dobrar"
+    );
+    // Anti-vácuo: o controlo tem de medir alguma coisa.
+    assert!(
+        global > 0.0 && global <= 5.0 * BARRA_DO_FICHEIRO,
+        "o controlo Global lê {global:.6}"
+    );
+}
+
+/// ⭐ **GATE 45 — UM TRAÇO MAIS LONGO NÃO É MAIS FUNDO EM ÁREA *LOCAL***
+/// (espec §14 gate 45, §2.2 · §10.12).
+///
+/// ⛔⛔ **É o gate que impede calibrar uma régua de relevo num regime que o alvo
+/// não produz.** Três metades, e a do meio é o discriminador forte:
+///
+/// - **(a)** o traço de `36` passos em *Local* pára em `0,76 R`, **abaixo** do
+///   mesmo caminho em `12` passos (`0,94 R`);
+/// - **(b)** ⭐ no MESMO traço, o vértice do pen-down **sobe até ao passo `12` e
+///   depois DESCE** — ele *assenta*, e o traço continua a acontecer à volta dele;
+/// - **(c)** em *Global* o mesmo vértice cresce em **todos** os 36 passos, e a
+///   malha chega a `5,41 R`.
+///
+/// ⚠️ Um motor que afunde monotonamente com o número de passos passa (c) e
+/// reprova (a) **e** (b).
+#[test]
+fn um_traco_mais_longo_nao_e_mais_fundo_em_area_local() {
+    let rest = repouso("plano");
+    let pico = |pos: &[V3]| {
+        pos.iter()
+            .zip(&rest)
+            .map(|(p, r)| dist(*p, *r))
+            .fold(0.0f64, f64::max)
+    };
+    let r = traco("plano_arrastar_radial_local_origem").pincel().raio;
+    // (a) mais passos, menos fundo.
+    let longo = pico(&deformado("plano_arrastar_radial_local_origem_36passos"));
+    let curto = pico(&deformado("plano_arrastar_radial_local_origem"));
+    assert!(
+        longo < curto,
+        "o traco de 36 passos afunda {:.3}R e o de 12 afunda {:.3}R -- em area \
+         Local a profundidade SATURA",
+        longo / r,
+        curto / r
+    );
+    // (b) o vértice do pen-down sobe e depois desce, e o cume é no passo 12.
+    let pen_down = traco("plano_arrastar_radial_local_origem_36passos").caminho[0];
+    let v0 = (0..rest.len())
+        .min_by(|a, b| dist(rest[*a], pen_down).total_cmp(&dist(rest[*b], pen_down)))
+        .expect("malha vazia");
+    let u_por_passo = |nome: &str| -> Vec<f64> {
+        por_passo(nome)
+            .blocos
+            .iter()
+            .map(|b| dist(rest[v0], b[v0]))
+            .collect()
+    };
+    let u = u_por_passo("plano_arrastar_radial_local_origem_36passos");
+    let cume = (0..u.len())
+        .max_by(|a, b| u[*a].total_cmp(&u[*b]))
+        .expect("sem passos");
+    assert_eq!(
+        cume + 1,
+        12,
+        "o cume do vertice do pen-down esta' no passo {} e o oraculo poe-no no 12",
+        cume + 1
+    );
+    assert!(
+        u[u.len() - 1] < u[cume] * 0.6,
+        "o vertice do pen-down acaba em {:.5} contra o cume {:.5} -- ele tem de \
+         ASSENTAR, e nao ficar onde chegou",
+        u[u.len() - 1],
+        u[cume]
+    );
+    // (c) em Global ele cresce em TODOS os passos, e a malha vai a `5,41 R`.
+    let g = u_por_passo("plano_arrastar_radial_global_origem_36passos");
+    for k in 1..g.len() {
+        assert!(
+            g[k] > g[k - 1],
+            "em Global o vertice do pen-down desceu do passo {k} para o {} \
+             ({:.5} -> {:.5})",
+            k + 1,
+            g[k - 1],
+            g[k]
+        );
+    }
+    let fundo = pico(&deformado("plano_arrastar_radial_global_origem_36passos")) / r;
+    assert!(
+        fundo > 5.0,
+        "o traco Global de 36 passos so' afunda {fundo:.2}R -- o oraculo faz 5,41R"
+    );
+}
+
+/// ⛔⛔⛔ **GATE 46 — NA ESFERA, A BARRA TEM UM CHÃO QUE NÃO É NOSSO — e em DOIS
+/// dos três traços ela está ABAIXO dele** (espec §14 gate 46, §10.13).
+///
+/// Quatro corridas da MESMA configuração do oráculo dão saídas que diferem entre
+/// si — a **banda de realização**. Posta na mesma unidade que a barra de
+/// paridade (`0,13 × o maior deslocamento do alvo`), ela diz o seguinte:
+///
+/// | traço | barra em posição | banda | nosso erro | veredito |
+/// |---|---|---|---|---|
+/// | `esfera_agarrar_radial_dinamica` | `0,0307` | `0,0200` | `0,0430` | ⭐ **decidível**, e erramos `2,15×` a lotaria ⇒ **lei em falta** |
+/// | `esfera_gancho_radial_dinamica` | `0,0220` | `0,0362` | `0,0431` | ⛔ **INDECIDÍVEL** — a barra está `1,6×` ABAIXO da lotaria |
+/// | `esfera_expandir_radial_dinamica` | `0,0061` | `0,0218` | `0,0271` | ⛔ **INDECIDÍVEL** — a barra está `3,6×` ABAIXO |
+///
+/// ⇒ ⭐⭐⭐ **dos traços de esfera que sobram, só o AGARRAR tem prova de lei em
+/// falta.** Nos outros dois a barra de `0,13` reprovaria o **próprio oráculo**
+/// comparado consigo mesmo, e o nosso erro está a `1,2×` da lotaria.
+///
+/// ⛔⛔ **E o quociente que a espec publica MISTURA UNIDADES** (medido aqui,
+/// 2026-09-07): o gate 46 escreve *«os erros abertos são `5×` a `26×` a banda»*, e
+/// esse número sai de dividir um erro **RELATIVO** (`0,182` · `0,255` · `0,581`,
+/// já divididos pelo maior deslocamento) por uma banda **ABSOLUTA** (uma
+/// distância por vértice). Na mesma unidade o quociente é `2,15×` · `1,19×` ·
+/// `1,24×` — *uma ordem de grandeza menos margem do que a espec afirma*. A
+/// leitura «há lei em falta» sobrevive **no agarrar** e mais nada.
+#[test]
+fn na_esfera_a_barra_tem_um_chao_que_nao_e_nosso() {
+    let rest = repouso("esfera");
+    /// O que a medição de 07/09 diz de cada um: `(decidível?, quociente erro/banda)`.
+    ///
+    /// ⚠️ **É um censo, não uma tolerância:** ele existe para que a próxima
+    /// leitura não volte a chamar «lei em falta» a um traço cuja barra está
+    /// debaixo da lotaria.
+    const CENSO: [(&str, bool); 3] = [
+        ("esfera_agarrar_radial_dinamica", true),
+        ("esfera_gancho_radial_dinamica", false),
+        ("esfera_expandir_radial_dinamica", false),
+    ];
+    let mut decidiveis = 0usize;
+    for (nome, decidivel) in CENSO {
+        let banda = campo_do_por_passo(nome, "dispersao_entre_realizacoes_da_corrida_inteira");
+        assert!(banda > 0.0, "{nome}: banda de realizacao nao lida");
+        let alvo = deformado(nome);
+        let nosso = correr_posicoes(nome);
+        let max_o = alvo
+            .iter()
+            .zip(&rest)
+            .map(|(p, r)| dist(*p, *r))
+            .fold(0.0f64, f64::max);
+        let erro = nosso
+            .iter()
+            .zip(&alvo)
+            .map(|(a, b)| dist(*a, *b))
+            .fold(0.0f64, f64::max);
+        let barra = BARRA_PARIDADE * max_o;
+        assert_eq!(
+            barra > banda,
+            decidivel,
+            "{nome}: a barra de paridade vale {barra:.4} em posicao e a banda de \
+             realizacao e' {banda:.4} -- o censo diz decidivel={decidivel}"
+        );
+        // ⛔ Em qualquer dos casos o nosso erro tem de ficar ACIMA da lotaria:
+        // abaixo dela nao ha' nada a caçar, e a leitura muda por inteiro.
+        assert!(
+            erro > banda,
+            "{nome}: o nosso erro {erro:.4} esta' ABAIXO da banda de realizacao \
+             {banda:.4} -- a lotaria explica-o"
+        );
+        // A margem, com o número dentro. Sair desta faixa quer dizer que a
+        // medição de 07/09 envelheceu, e a tabela do doc com ela.
+        let q = erro / banda;
+        assert!(
+            (1.0..4.0).contains(&q),
+            "{nome}: o quociente erro/banda e' {q:.2}x -- medido em 07/09 ele vale \
+             1,19x a 2,15x"
+        );
+        decidiveis += usize::from(decidivel);
+    }
+    // ⛔ Anti-vácuo dos DOIS lados: se TODOS fossem decidíveis o censo não diria
+    // nada, e se NENHUM o fosse a esfera sairia inteira do corpus sem que
+    // ninguém o tivesse decidido.
+    assert_eq!(
+        decidiveis, 1,
+        "o censo diz {decidiveis} decidiveis de 3 -- em 07/09 era UM (o agarrar)"
+    );
+}
+
+/// ⭐ **GATE 47 — O FATIAMENTO É UM INSTRUMENTO, E ELE TEM UM CONTROLO** (espec
+/// §14 gate 47, §10.12 · §10.13).
+///
+/// Um dump por passo é feito de corridas-prefixo: o bloco `k` é uma corrida de
+/// `k` elementos sobre malha fresca. A **prova do fatiamento** compara o último
+/// bloco com a corrida inteira — se ela não for zero, o prefixo não reproduz o
+/// passo e **o ficheiro não é oráculo**.
+///
+/// ⚠️⚠️ **Sem a 2.ª coluna a 1.ª não tem leitura:** na esfera nada é zero, porque
+/// nada se repete; ali a prova tem de ficar **ao nível da banda de realização**.
+/// *Foi assim que quatro ficheiros da 1.ª geração ficaram no directório a parecer
+/// oráculo.*
+#[test]
+fn o_fatiamento_e_um_instrumento_e_ele_tem_um_controlo() {
+    /// ⛔ **OS TRÊS FICHEIROS DA 1.ª GERAÇÃO**, com a prova deles e o motivo.
+    ///
+    /// Neles o bloco `k` é *«as posições depois do passo `k` do MESMO traço»* e
+    /// não uma corrida-prefixo, e o `.deformado` ao lado é **outra corrida, com
+    /// outro caminho** — é por isso que a prova não é zero. ⚠️ Os três são
+    /// exactamente os traços **sem `_origem`** no nome, que é a marca de que o
+    /// caminho do dump e o do cabeçalho diferem.
+    ///
+    /// ⚠️ **A lista tem censo de obsolescência:** um deles que passe a ler zero é
+    /// acusado aqui, porque deixou de precisar de excepção.
+    const PRIMEIRA_GERACAO: [(&str, f64); 3] = [
+        ("plano_agarrar_radial_local_2passos", 0.115_064),
+        ("plano_arrastar_radial_local", 0.330_421),
+        ("plano_gancho_radial_local_2passos", 0.004_244),
+    ];
+    let mut vistos = 0usize;
+    for nome in todas() {
+        let f = fixture_dir().join(format!("{nome}.porpasso.txt.gz"));
+        if !f.exists() {
+            continue;
+        }
+        vistos += 1;
+        let prova = campo_do_por_passo(&nome, "prova_do_fatiamento");
+        if let Some((_, esperado)) = PRIMEIRA_GERACAO.iter().find(|(n, _)| *n == nome) {
+            assert!(
+                (prova - esperado).abs() < 1e-5,
+                "{nome}: a prova e' {prova:.6} e a 1.ª geracao dizia {esperado:.6}"
+            );
+            assert!(
+                prova > 0.0,
+                "{nome}: a prova passou a ZERO -- ele deixou de precisar da \
+                 excepcao, e a linha dele tem de sair da lista"
+            );
+            continue;
+        }
+        if prova == 0.0 {
+            continue;
+        }
+        let banda = campo_do_por_passo(&nome, "dispersao_entre_realizacoes_da_corrida_inteira");
+        // ⚠️ A folga é de `5 %` e é da MEDIÇÃO: os três de esfera lêem
+        // `0,0177/0,0200`, `0,0365/0,0362` e `0,0219/0,0218` — o segundo passa a
+        // banda por `0,8 %`, que é o que duas amostras de uma lotaria fazem.
+        assert!(
+            prova <= banda * 1.05,
+            "{nome}: a prova do fatiamento e' {prova:.6} contra a banda de \
+             realizacao {banda:.6} -- o prefixo NAO reproduz o passo, e este \
+             ficheiro nao e' oraculo"
+        );
+    }
+    assert!(
+        vistos >= 20,
+        "so' {vistos} dumps por passo varridos (anti-vacuo)"
+    );
+}
+
+/// ⭐⭐ **GATE 44 — A NORMAL POR VÉRTICE É A SOMA SEM PESO DE NORMAIS DE FACE
+/// UNITÁRIAS** (espec §14 gate 44, §4.2-quater · §4.6 linha 4).
+///
+/// ⚠️⚠️ **A régua não é um traço, é a GRANDEZA — e ela não pode ser escrita sobre
+/// uma fixture do corpus:** no plano as três candidatas dão `(0,0,1)`, na esfera
+/// UV concordam a `< 0,04°` e na fixture de dois traços a `0,31°` de máximo.
+/// *Uma malha regular não testa este gate.* Por isso a fixtura é construída aqui,
+/// e é um leque de triângulos com áreas e ângulos muito diferentes à volta do
+/// mesmo vértice.
+///
+/// **Duas metades**, e a 2.ª é a que impede passar por sorte: a lei tem de bater
+/// a soma **sem peso** a `< 0,03°` **e** afastar-se da ponderada por **ÁREA** por
+/// `> 1°` em pelo menos um vértice.
+///
+/// ⛔ **E ela corre sobre os DOIS motores desta casa:** o `normais` desta bancada
+/// e o `ph2d_mesh::Mesh::normals`, que é o que o PRODUTO lê. Enquanto só um deles
+/// estivesse gateado, a bancada podia medir o produto por baixo — foi o que
+/// aconteceu até 07/09, com a bancada a somar por área.
+#[test]
+fn a_normal_por_vertice_e_a_soma_sem_peso_de_normais_unitarias() {
+    // Um leque IRREGULAR: raios de `0,2` a `3,0` e ângulos muito desiguais, com
+    // o `z` a variar para as faces não serem coplanares.
+    let mut pos: Vec<V3> = vec![[0.0, 0.0, 0.0]];
+    let anel: [(f64, f64); 6] = [
+        (0.0, 1.0),
+        (20.0, 0.2),
+        (45.0, 3.0),
+        (120.0, 0.5),
+        (200.0, 2.0),
+        (300.0, 0.3),
+    ];
+    for (graus, raio) in anel {
+        let t = graus * std::f64::consts::PI / 180.0;
+        pos.push([raio * t.cos(), raio * t.sin(), 0.3 * (2.0 * t).sin()]);
+    }
+    let n = anel.len();
+    let faces: Vec<Vec<u32>> = (0..n)
+        .map(|i| {
+            vec![
+                0u32,
+                u32::try_from(i + 1).expect("indice"),
+                u32::try_from((i + 1) % n + 1).expect("indice"),
+            ]
+        })
+        .collect();
+    // As três candidatas, calculadas aqui sobre as MESMAS posições.
+    let candidata = |peso_de_area: bool| -> Vec<V3> {
+        let mut acc = vec![[0.0f64; 3]; pos.len()];
+        for f in &faces {
+            let mut fnrm = normal_da_face(&pos, f);
+            if !peso_de_area {
+                fnrm = unit(fnrm);
+            }
+            for v in f {
+                for c in 0..3 {
+                    acc[*v as usize][c] += fnrm[c];
+                }
+            }
+        }
+        acc.iter().map(|a| unit(*a)).collect()
+    };
+    let sem_peso = candidata(false);
+    let por_area = candidata(true);
+    let graus = |a: V3, b: V3| -> f64 {
+        let c: f64 = (0..3).map(|k| a[k] * b[k]).sum();
+        c.clamp(-1.0, 1.0).acos().to_degrees()
+    };
+    // (1) O motor da BANCADA.
+    let bancada = normais(&pos, &faces);
+    // (2) O motor do PRODUTO.
+    let m = ph2d_mesh::Mesh::from_parts(
+        pos.iter()
+            .map(|p| [p[0] as f32, p[1] as f32, p[2] as f32])
+            .collect(),
+        faces
+            .iter()
+            .map(|f| ph2d_mesh::Face::tri(f[0], f[1], f[2]))
+            .collect(),
+    )
+    .expect("leque irregular");
+    let produto: Vec<V3> = m
+        .normals()
+        .iter()
+        .map(|q| [f64::from(q[0]), f64::from(q[1]), f64::from(q[2])])
+        .collect();
+    for (quem, lei) in [("bancada", &bancada), ("produto", &produto)] {
+        for v in 0..pos.len() {
+            let d = graus(lei[v], sem_peso[v]);
+            assert!(
+                d < 0.03,
+                "{quem}: o vertice {v} desvia {d:.4}° da soma SEM PESO -- a lei do \\
+                 caminho da escultura e' essa"
+            );
+        }
+    }
+    // (2) O anti-sorte: numa malha regular as três coincidem, e este gate seria
+    // vácuo. Aqui elas TÊM de separar-se.
+    let pior = (0..pos.len())
+        .map(|v| graus(sem_peso[v], por_area[v]))
+        .fold(0.0f64, f64::max);
+    assert!(
+        pior > 1.0,
+        "a soma sem peso e a ponderada por AREA so' se separam {pior:.4}° nesta \\
+         fixtura -- ela e' regular demais, e o gate passaria por sorte"
+    );
+}

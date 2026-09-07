@@ -166,7 +166,98 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 | R-pré (emenda Q11) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emenda Q11)» |
 | R-pré (emenda Q12) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emenda Q12)» |
 | R-pré (emenda Q14) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emenda Q14)» |
+| R-pré (emendas Q15 **e** Q16) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu as emendas (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestadas no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emendas Q15 e Q16)». ⚠️ **A Q15 tinha shipado SEM atestação** e foi auditada aqui |
 | R-pós | ⏳ | — |
+
+### Auditoria R-pré — 2026-09-06 (emendas Q15 e Q16)
+
+**Âmbito.** A emenda **Q16** (cabeçalho · **§5.7-bis NOVA** · §10 contagem · **§10.10 NOVA** · §11
+uma linha · §14 gate 31 reescrito + gates **35-38**, mais as **oito** fixtures por passo, o
+`indice.json` regenerado e o README das fixtures) — e, por ausência descoberta durante ela, a
+emenda **Q15** (§2.1 errata · §3.1 · **§3.1-bis NOVA** · **§10.9 NOVA** · §14 gates **32-34** e as
+quatro fixtures de topologia), que **não tinha atestação nenhuma** no quadro do cabeçalho nem secção
+neste ledger, e cujos factos **já estavam implementados** (§3.R: *sem esse atestado, a janela não
+implementa*). ⇒ ⛔ **o defeito de processo fica registado**: uma emenda pode chegar ao código sem
+passar por aqui, e o único instrumento que a apanhou foi a leitura do quadro pelo R-pré seguinte.
+
+**Conformidade §4.2 — ZERO achados de expressão nas duas.** Sem trecho, sem nome interno (funções,
+variáveis, ficheiros, structs, macros), sem wording de manual ou de comentário. ⭐ **O risco
+nomeado no briefing — um censo de ausências alinhar-se pela ORGANIZAÇÃO do fonte — foi conferido
+linha a linha: a ordem das dez linhas do §5.7-bis é a das PERGUNTAS do INBOX Q16**, e nada nela
+segue a disposição do alvo. Os nomes das oito fixtures novas, a chave nova do cabeçalho
+(`passos_com_cursor_parado`) e o vocabulário das quatro alavancas são do domínio.
+
+**CINCO higienes §4.2/§4.3 curadas no acto, por re-expressão e sem perder facto** — três na Q16:
+um termo de código em inglês onde a palavra do domínio já dizia tudo; *«há uma lista e um laço»*,
+que descrevia a FORMA do código (passa a *o conjunto é percorrido inteiro, `5` vezes, e nenhuma
+passagem selecciona as esticadas*); e *«uma constante do ficheiro»*, que localizava a constante no
+fonte (passa a *um valor fixo do programa*). E duas na Q15: *«um passo explícito do código»* e, a
+mais séria das cinco, *«o próprio código a declara»* — **citar a prosa do alvo como autoridade**,
+hoje escrita como o comportamento que ela descreve.
+
+**FIDELIDADE — Q16.** As **dez** linhas do censo conferidas no fonte, uma a uma: o factor único da
+projecção e o guarda de separação nula · ausência de tecto · **uma** travessia do conjunto, repetida
+`5` vezes, sem passe selectivo sobre as esticadas · correcção linear na separação · comprimento de
+repouso escrito **uma** vez na criação, com **um** sítio de escrita para o desvio do Expand · nenhum
+termo que dependa da normal dentro da projecção · nenhuma restrição sobre ângulo · **quatro**
+espécies, nem uma quinta · **um** passo de solver por passo de pincel, sem laço de sub-passos · o
+passo de tempo como valor fixo, lido num sítio só. ⭐ Todos os números do §10.10 **reconstruídos do
+zero** das fixtures, com script próprio fora do repo: as `2 × 11` do pen-down, as `2 × 11` a `1R`,
+as `4 × 11` do máximo da malha, a amplitude e a calibração; mais a **prova do fatiamento
+recalculada** (bloco `k = 12` contra o `.deformado`: `0,000000` nas oito), as oito contagens de
+`movidos`, os oito `max_deslocamento`, o `indice.json` a regenerar-se **byte-a-byte** (73/73) e o
+`verifica_traco.py` **verde sobre os 73**. As duas armadilhas reportadas pelo E conferem: a faixa da
+massa declarada pela porta de propriedades é `0,01..2` (logo o `4` pedido foi coagido, e a §5.4 já
+dizia `0,01..2`), e a régua das excepções do README dá **`23` de `73`** com a repartição
+`6/6/4/3/2/1/1/1` e `16` fora da área *Local*.
+
+**CINCO correcções de fidelidade/suficiência na Q16, aplicadas no acto:**
+1. o manifesto da emenda dizia tocar a **§5.2** e o diff não lhe põe uma linha;
+2. o máximo da malha do Push `_parado` vira no passo **`5`**, não no `4` (o `4` é o do Inflate
+   `_parado`) — os três viram em passos diferentes;
+3. ⛔ o gate 37 convertia resíduo em projecções por `x / 15,1` e **esquecia o vão da própria régua**
+   (os `15,1 %` valem **`5`** projecções), contradizendo o *«uma projecção a mais»* da secção que o
+   gera ⇒ `5 · x / 15,1`;
+4. ⛔ o gate 36 punha a barra em `f32` sobre razões lidas de um ficheiro de **seis casas**, e o
+   oráculo lê `0,2499924`/`0,0624943` — *a barra reprovaria a fixture que a define* ⇒ `±2·10⁻⁵`,
+   derivada da resolução (e o «ao bit» do §10.10 caiu);
+5. ⛔ o gate 38 mandava a sequência «descer» depois do máximo, e a cauda do `_origem` **volta a
+   subir** nos dois últimos passos (`0,24762 → 0,25738 → 0,25937`), porque o vértice que realiza o
+   máximo viaja com o cursor ⇒ a régua é o **argmax**.
+⭐⭐ **Mais duas de suficiência:** a linha `1R` do §10.10 não nomeava a sonda e o vértice
+**espelhado** dá outros números (`0,00477` contra `0,00421` no passo 3) — ficam as duas escritas por
+coordenada, com o achado que vem de graça: *numa cena de simetria perfeita a única coisa que separa
+os dois lados é a ORDEM (§3.1-bis parte o plano na fileira do pen-down), o que é uma medição a favor
+da explicação (a) do §5.7-bis*; e o controlo do gate 37 sobe de uma célula para **a malha inteira**
+(no passo 2 as duas áreas dão `máx` da diferença por vértice `= 0,000000` sobre os `4 225`).
+
+**FIDELIDADE — Q15.** Reconstruídos do zero das quatro fixtures de topologia: plano `2` células
+(`2 145` + `2 080`, `2 048` faces cada, **`1`** descenso, as duas **contíguas**, a de índice `1` a
+ser `[2080..4224]`) · esfera `4` células (`1 569`/`1 520`/`1 504`/`1 457`, `1 536` faces cada,
+**`3`** descensos) · somas exactas (`4 225` e `6 050`, sem repetidos) · anéis divergentes `128`
+(`3,0 %`) e `5 959` (`98,5 %`) · o mais próximo dos `128` a `1,5` do pen-down, `0` dentro de
+`1,2250` e `126` dentro de `2,1000` · os «dois `2 145` diferentes», intersecção `1 099`. No fonte:
+tecto de `2 500` faces por folha e profundidade `99`; a lista de vértices da folha **ordenada** e
+reclamada por índice crescente de folha (é isso que faz os próprios saírem crescentes); e o teste
+`centro[eixo] ≥ limiar` a mandar o lado `≥` para o **primeiro** filho, no qual a recursão desce
+primeiro. ⛔ **UMA correcção:** a regra do **empate de eixos** era dada como facto de fonte e a
+função que a resolve **não está na parte do fonte que esta linha tem** (o checkout é esparso) — a
+metade `X`↔`Y` fica **provada pela partição medida do plano** (a caixa empata `3,0`/`3,0` e a
+partição sai por `y`, com a célula `1` do lado `≥` — o que também confirma as duas cláusulas
+seguintes), e a metade `Y`↔`Z` fica nomeada como a única cláusula da secção sem prova deste lado.
+
+**Sweep.** ✅ verde sobre a espec emendada + a pasta **inteira** das fixtures + INBOX + os dois
+READMEs + `docs/3D/cloth/`. `--git-history` sobre `docs/3D/cleanroom/`: os **dois** hits são os
+pré-existentes de 2026-09-05 (linhas deste ledger, já registadas em «Achados de PAREDE»), e nenhum
+vem das emendas Q15/Q16. ⚠️ **Fora do âmbito, e para o R-pós:** `git grep` acusa **quatro** linhas do
+produto e de um handoff de 2026-08-16 que citam proveniência por nome interno de ficheiro do alvo —
+são **anteriores** a esta linha e já vivem no `ACHADO_proveniencia_por_nome_interno.md`.
+
+⚠️ **Nota para o E, não para a espec:** existe no fonte um valor declarado com o sentido de «tecto de
+restrições por vértice» e **nada o lê** — não há tecto nenhum. Fica aqui para que a pergunta não
+reabra o censo do §5.7-bis.
+
+**Veredicto: ATESTADAS as duas** — as emendas Q15 e Q16 podem ser lidas pela janela-mãe.
 
 ### Auditoria R-pré — 2026-09-06 (emenda Q14)
 

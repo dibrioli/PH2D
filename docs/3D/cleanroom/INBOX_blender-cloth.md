@@ -654,3 +654,31 @@ ao ESTICÃO, e não na força nem na normal.*
 - **Q16.3** — o `dt` e a massa: a §5.4 diz `dt = 0,01` fixo e a massa um ganho inverso puro. O passo 2
   bate ao bit nos dois modos, o que os fixa. Mas há **sub-passos**? Um traço de doze passos do alvo
   corre doze integrações, ou o alvo subdivide cada passo quando o deslocamento é grande?
+
+## ⚠️ INCIDENTE DE PROCESSO (I, 2026-09-06) — implementei a Q15 sem atestado
+
+**O que aconteceu.** A emenda Q15 chegou e eu confirmei o cabeçalho com um `grep 'Q15'`, li o bloco
+dela e **presumi** que a linha de atestação lá estava porque a Q14 a tinha. Não estava. Li a §3.1-bis
+e implementei-a — a partição em células, a ordem de visita, as faces do alvo — **antes** de o R-pré a
+ter auditado.
+
+**O que isso arriscava.** O R-pré é a cerca do §4.2: ele é quem confere que a espec descreve
+comportamento e não carrega expressão do alvo. Implementar antes dele é implementar sobre texto que
+ninguém conferiu.
+
+**O que se sabe hoje.** O R-pré da Q16 deu por falta do atestado da Q15, auditou-a, e devolveu **ZERO
+achados de §4.2** nas duas. ⇒ *não houve contaminação*, e a implementação fica. Mas o resultado é uma
+absolvição, não uma defesa: se tivesse havido um achado, o código já estaria escrito sobre ele.
+
+**A lição, e ela é sobre o INSTRUMENTO e não sobre atenção.** Eu conferi o cabeçalho — o passo que o
+protocolo manda — e mesmo assim passei. O que falhou foi a forma de conferir: um `grep` pelo NOME da
+emenda encontra o bloco dela e diz nada sobre o atestado. ⇒ **a pergunta certa é pelo ATESTADO, não
+pela emenda**, e ela tem uma forma só:
+
+```
+grep -c 'AUDITADA contra §4.2 por R-pré' docs/3D/cleanroom/SPEC_<alvo>.md
+```
+
+com a contagem a ter de bater o número de emendas. ⚠️ **E o único instrumento que apanhou isto foi um
+R-pré seguinte a ler o quadro inteiro** — quer dizer, uma emenda que fosse a última da linha teria
+shipado sem auditoria nenhuma e ninguém saberia.

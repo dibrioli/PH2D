@@ -676,12 +676,28 @@ emenda encontra o bloco dela e diz nada sobre o atestado. ⇒ **a pergunta certa
 pela emenda**, e ela tem uma forma só:
 
 ```
-grep -c 'AUDITADA contra §4.2 por R-pré' docs/3D/cleanroom/SPEC_<alvo>.md
+grep -ci 'auditada[s]* contra §4.2 por r-pré' docs/3D/cleanroom/SPEC_<alvo>.md
 ```
 
 com a contagem a ter de bater o número de emendas. ⚠️ **E o único instrumento que apanhou isto foi um
 R-pré seguinte a ler o quadro inteiro** — quer dizer, uma emenda que fosse a última da linha teria
 shipado sem auditoria nenhuma e ninguém saberia.
+
+### ⛔⛔ E o INSTRUMENTO acima nasceu ERRADO — a 1.ª redacção dele subcontava (2026-09-07)
+
+A 1.ª versão era `grep -c 'AUDITADA contra §4.2 por R-pré'`, **sensível a maiúsculas**, e as
+atestações do quadro estão escritas em **três** formas: `AUDITADA` (Q14-Q16), `auditada` (Q11, Q12) e
+`auditadas`, no plural, para as **três** emendas que foram auditadas de uma vez (Q8, Q9, Q10). ⇒ ele
+lia **`4`** onde a verdade é **`8`**, e um relatório concluiu daí que havia *«`4` atestados para `7`
+emendas»* — uma dívida de auditoria que **não existe**: até à Q16 está tudo atestado, e só a Q17 não
+está.
+
+⚠️⚠️ **A lição é sobre a espécie do defeito, não sobre o `-i`:** *o instrumento que se escreve como
+cura de um erro é escrito no mesmo estado de espírito que o erro* — e este contava uma **frase** num
+documento redigido por vários papéis ao longo de dias, onde a mesma afirmação é dita de maneiras
+diferentes de propósito. Um censo textual sobre prosa **tem de nomear as formas que aceita**, e
+provar que as viu todas. ⛔ *Uma contagem que subconta lê-se como dívida e manda auditar o que já foi
+auditado; uma que sobreconta lê-se como quitação e deixa passar o que falta.*
 
 ## Q17 — o resíduo do Push/Inflate está na BORDA DE ATAQUE, e o solver está ilibado (2026-09-07)
 

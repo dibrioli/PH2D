@@ -383,4 +383,21 @@
 /// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08 — e aqui com uma razão a
 /// mais, medida em 06/09: os dois `.ph2dproj` da máquina do dono são de 26/08, **onze dias antes de
 /// os ossos existirem**, logo nenhum ficheiro no mundo tem um tendão para migrar.
-pub(crate) const PROJECT_SCHEMA: u32 = 122;
+///
+/// # 122 -> 123 — A ÂNCORA DE IK (`line/Vector`)
+///
+/// Dois componentes REGISTADOS novos: `ph2d_skeleton_ecs::IkGoal` (a restrição, no osso da ponta) e
+/// `ph2d_skeleton_ecs::IkTarget` (a marca que o alvo carrega, para ele não ganhar o anel de objecto
+/// vazio por cima do losango).
+///
+/// ⚠️ **Um componente NOVO move o número, e o mecanismo está no `snapshot_to_world`:** ele resolve
+/// cada `ComponentBlob` por `type_id` e faz `ok_or(RegistryError::UnknownTypeId)?` — um blob que o
+/// binário não conhece **recusa o load inteiro**. Sem o degrau isso apareceria como um erro de tipo
+/// desconhecido no meio da travessia; com ele, como *«este ficheiro é de outra versão»*, que é a
+/// frase que diz ao dono o que fazer. É o mesmo motivo dos degraus `89`, `90`, `91` e `92`.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **sétima** vez nesta escada: os componentes viajam em
+/// `ComponentBlob`s, e a tripla mede a forma da `VecScene` e do `FlipDoc`.
+pub(crate) const PROJECT_SCHEMA: u32 = 123;

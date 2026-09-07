@@ -170,8 +170,9 @@ fn a_press_over_a_shape_in_the_bone_tool_picks_it_so_bind_has_a_subject() {
         "apontar a forma tem de a devolver - sem isto o `Bind` nunca tem sujeito"
     );
     // E um press sobre um OSSO nao e' uma escolha de forma: e' agarrar o osso.
-    // ⚠️ O osso é LONGO de propósito: a `BONE_JOINT_R_PX` vale 6 unidades a este zoom, então num
-    // osso curto TODO ponto é a junta — e a fixtura mediria o verbo errado.
+    // ⚠️ O ponto é LONGE da raiz de propósito: o raio da junta é `joint_radius_px(24) = 6` a este
+    // zoom (o tecto de `comp/4` mandando), e num ponto perto da raiz TODO press seria junta — a
+    // fixtura mediria o verbo errado.
     let osso = create(&mut sim, None, [3.0, 4.0], [27.0, 4.0]).expect("osso");
     let g = press(&sim, &scene, &pen, [20.0, 4.0], 1.0, None);
     assert_eq!(
@@ -216,4 +217,96 @@ fn with_a_bone_selected_the_next_one_grows_from_its_tip() {
         },
         "sem pai, a origem e' o ponto apontado"
     );
+}
+
+/// ⭐⭐⭐ **O REALCE ACENDE EXACTAMENTE O QUE O CLIQUE PEGA** — a lei que o `pick_hovered_object`
+/// já declara para as formas (*«um realce que acendesse outra coisa que a que o clique pega seria
+/// pior que não haver realce nenhum»*), e que aqui é mais apertada: as duas alças estão **uma
+/// dentro da outra** e executam VERBOS diferentes.
+///
+/// ⚠️ Ele varre o osso de ponta a ponta e compara, ponto a ponto, o que o hover diz com o que o
+/// `press` decide. Uma segunda varredura escrita ao lado do realce passaria neste gate só por
+/// coincidência — é por isso que o `hover` chama o `hit`/`grabbed_the_joint`, e não uma cópia.
+///
+/// (Mutação: o `hover` decidir a junta por outro raio ⇒ RED.)
+#[test]
+fn the_hover_lights_exactly_what_the_click_would_grab() {
+    let mut sim = SimWorld::default();
+    let osso = create(&mut sim, None, [0.0, 0.0], [100.0, 0.0]).expect("osso");
+    let scene = ph2d_vec_scene::VecScene::new();
+    let pen = ph2d_vec_edit::PenTool::default();
+    let mut viu_junta = false;
+    let mut viu_corpo = false;
+    for i in 0..=100 {
+        let p = [f64::from(i), 0.0];
+        let h = hover(&sim, p, 1.0).expect("o ponteiro esta' sobre o osso");
+        assert_eq!(h.bone, osso);
+        let BonePress::Grab { bone, joint } = press(&sim, &scene, &pen, p, 1.0, Some(osso)) else {
+            panic!("o press devia agarrar o osso em {p:?}");
+        };
+        assert_eq!(
+            (h.bone, h.joint),
+            (bone, joint),
+            "em {p:?} o realce e o clique discordam - o artista ve' um verbo e recebe outro"
+        );
+        viu_junta |= h.joint;
+        viu_corpo |= !h.joint;
+    }
+    // ⚠️ O controlo: a varredura tem de produzir os DOIS estados, senão o gate compara um lado só.
+    assert!(
+        viu_junta && viu_corpo,
+        "a fixtura nao produziu as duas metades (junta={viu_junta}, corpo={viu_corpo})"
+    );
+}
+
+/// ⭐⭐ **A JUNTA TEM A TOLERÂNCIA DA CASA, não metade dela** — o report de 2026-09-06 (*«a bolinha
+/// e sua área sensível ao mouse precisa ser maior pois está difícil selecioná-la»*).
+///
+/// O corpo do osso já pedia emprestado o `HANDLE_HIT_PX = 12` do `input_dispatch` *«para o dedo do
+/// artista ter sempre a mesma tolerância»*, e a junta ficava com `6` — **o alvo menor por dentro do
+/// maior**. Este gate mede o que o dedo alcança, e ⚠️ **mede-o no MESMO número que o desenho usa**:
+/// se os dois divergirem, o realce acende num sítio e o clique pega noutro.
+///
+/// (Mutação: `BONE_JOINT_R_PX` de volta a `6.0` ⇒ RED.)
+#[test]
+fn the_joint_gets_the_houses_finger_tolerance_and_the_dot_is_that_same_number() {
+    let mut sim = SimWorld::default();
+    let osso = create(&mut sim, None, [0.0, 0.0], [100.0, 0.0]).expect("osso");
+    // A tolerância da casa, declarada no `input_dispatch` e emprestada pelo `BONE_HIT_PX`.
+    assert!(
+        grabbed_the_joint(Some(&sim), osso, [11.0, 0.0], 1.0),
+        "a 11 px da raiz o dedo ainda tem de apanhar a junta - ela recebe a tolerancia da casa (12)"
+    );
+    assert!(
+        !grabbed_the_joint(Some(&sim), osso, [13.0, 0.0], 1.0),
+        "a 13 px a junta ja' acabou, senao ela come o corpo"
+    );
+    // ⚠️ E o alvo é o DESENHO: uma segunda constante aqui separaria o dedo do olho.
+    assert!(
+        (ph2d_skeleton_render::joint_radius_px(100.0) - 12.0).abs() < 1e-12,
+        "o raio DESENHADO deixou de ser o mesmo que o dedo procura"
+    );
+}
+
+/// ⛔ **Num osso CURTO a junta encolhe, e o recurso é o verbo de GIRAR.** Duas juntas de raio `r`
+/// comem `2r` do comprimento; sem tecto, um osso curto fica todo junta e não há onde agarrar para
+/// rodar — a cerca que o `grabbed_the_joint` já declarava por escrito.
+///
+/// (Mutação: tirar o `.min(comp * 0.25)` ⇒ RED.)
+#[test]
+fn a_short_bone_keeps_half_of_itself_grabbable_for_rotation() {
+    let mut sim = SimWorld::default();
+    let curto = create(&mut sim, None, [0.0, 0.0], [20.0, 0.0]).expect("curto");
+    // Raio 5 (20/4) ⇒ o meio do osso, a 10, é CORPO e não junta.
+    assert!(
+        !grabbed_the_joint(Some(&sim), curto, [10.0, 0.0], 1.0),
+        "num osso de 20 px a junta chegou ao meio - nao sobra corpo para girar"
+    );
+    assert!(
+        grabbed_the_joint(Some(&sim), curto, [4.0, 0.0], 1.0),
+        "a junta encolheu demais e deixou de ser agarravel"
+    );
+    // A lei, nos dois lados da dobra: longo ⇒ o tecto da casa; curto ⇒ um quarto do comprimento.
+    assert!((ph2d_skeleton_render::joint_radius_px(200.0) - 12.0).abs() < 1e-12);
+    assert!((ph2d_skeleton_render::joint_radius_px(20.0) - 5.0).abs() < 1e-12);
 }

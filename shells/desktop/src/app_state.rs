@@ -1697,6 +1697,15 @@ pub(crate) struct App {
     /// em MUNDO, e `None` quando ele não aponta região nenhuma. O realce desenha-a e o clique
     /// deposita-a, **pela mesma resposta**.
     pub(crate) vec_bucket_face: Option<crate::vec_bucket::BucketHit>,
+    /// ⭐⭐ **A METADE DE OSSO sob o ponteiro** neste quadro (Enio, 2026-09-06: *«precisamos de um
+    /// efeito hover na bolinha e no corpo do osso»*), e `None` quando ele não aponta osso nenhum.
+    ///
+    /// ⚠️ **É a metade, não o osso** — a bolinha DESLOCA e o corpo GIRA, e as duas alças estão uma
+    /// dentro da outra. Sem dizer qual está acesa, a única forma de descobrir o verbo é executá-lo.
+    ///
+    /// ⚠️ Resolvido UMA vez por quadro pelas **mesmas** funções que o clique usa
+    /// ([`crate::bone_gesture::hover`]) — a lei do [`Self::hovered_object`], e aqui mais apertada.
+    pub(crate) bone_hover: Option<ph2d_skeleton_render::BoneHover>,
     /// ⭐⭐⭐ **O OSSO em desenho** (estudo 42 item 5) — a origem em MUNDO que o press marcou, e
     /// `None` fora do gesto. O `release` faz o osso dali até onde a mão soltou.
     ///

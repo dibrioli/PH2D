@@ -565,6 +565,12 @@ impl crate::App {
         // com a seta branca, e a área tem de acompanhar. O realce só lê a rede já guardada.
         self.bucket_upkeep();
         self.refresh_bucket_hover(pointer);
+        // ⭐⭐ **A metade de OSSO sob o ponteiro** (Enio, 2026-09-06) — ao lado dos dois de cima, e
+        // pela mesma razão: é a pergunta *"o que está sob o cursor?"*, resolvida UMA vez por quadro
+        // e num sítio só. ⚠️ Ela NÃO se gateia pelo modo, ao contrário do Trim e do Balde: os ossos
+        // desenham-se em TODO modo da ferramenta de vetor (`vec_overlay::bones`), então o realce
+        // deles tem de existir onde eles existem.
+        self.refresh_bone_hover(pointer);
         // PH2D_PAINT_PERF: whole-frame timer (aggregated on scope exit, paired with the dispatch info).
         let _paint_frame_timer = PaintFrameTimer(paint_perf::on().then(std::time::Instant::now));
         // Phase 2.1: drop finished-sample Arcs on the main thread (HR-3).
@@ -10654,6 +10660,7 @@ impl crate::App {
                     ph2d_skeleton_render::draw_bones(
                         &ossos,
                         hero.gizmo.selection,
+                        self.bone_hover,
                         cam_affine,
                         hero.theme,
                         vector_scene,

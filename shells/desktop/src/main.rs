@@ -1268,6 +1268,7 @@ impl App {
             vec_trim_hit: None,
             vec_trim_piece: Vec::new(),
             vec_bucket_face: None,
+            bone_hover: None,
             vec_bone_drag: None,
             vec_bone_pose: None,
             vec_bucket_cache: None,

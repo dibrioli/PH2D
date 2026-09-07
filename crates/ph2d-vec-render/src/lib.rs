@@ -99,7 +99,7 @@ pub use envelope::{
 // ⛔ **O desenho dos OSSOS mudou-se em 2026-09-06** para a `ph2d-skeleton-render`, quando o
 // esqueleto virou módulo próprio: ele nunca importou a cena vectorial (só a stack de desenho e os
 // tokens), então um esqueleto sobre uma imagem ou sobre uma malha desenha-se com o MESMO código.
-// ⇒ `ph2d_skeleton_render::{draw_bones, BONE_JOINT_R_PX}`.
+// ⇒ `ph2d_skeleton_render::{draw_bones, joint_radius_px}`.
 
 /// A **alça do texto em caminho** (plano 22, W5) — módulo irmão (LOC cap). A bolinha onde o
 /// texto começa no caminho; arrastá-la corre o texto ao longo dele.

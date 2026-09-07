@@ -177,13 +177,38 @@ pub(crate) fn grabbed_the_joint(
     crate::skeleton_live::bone_segments(sim)
         .into_iter()
         .find(|(b, _, _)| *b == bits)
-        .is_some_and(|(_, a, _)| {
-            // ⚠️ O raio é o da BOLINHA DESENHADA (`BONE_JOINT_R_PX`), e não o do osso: são duas
-            // perguntas — *acertei o osso?* e *acertei a junta DELE?* — e usar o mesmo número faria
-            // um osso curto ser todo junta, logo impossível de girar.
+        .is_some_and(|(_, a, b)| {
+            // ⚠️ O raio é o da BOLINHA DESENHADA, pela porta única
+            // ([`ph2d_skeleton_render::joint_radius_px`]): são duas perguntas — *acertei o osso?* e
+            // *acertei a junta DELE?* — mas a bolinha que o dedo procura tem de ser exactamente a
+            // que o olho vê, senão o realce acende num sítio e o clique pega noutro.
+            //
+            // ⚠️ **O comprimento entra em píxeis de TELA**, que é onde a lei da bolinha vive: o
+            // `px_to_world` é a régua, e dividir por ele é o que leva o osso do mundo para lá.
+            let comp_px = (b[0] - a[0]).hypot(b[1] - a[1]) / px_to_world.max(f64::MIN_POSITIVE);
             (a[0] - world[0]).hypot(a[1] - world[1])
-                <= ph2d_skeleton_render::BONE_JOINT_R_PX * px_to_world
+                <= ph2d_skeleton_render::joint_radius_px(comp_px) * px_to_world
         })
+}
+
+/// ⭐⭐ **O QUE ESTÁ SOB O PONTEIRO** — o osso e a METADE dele, para o realce dizer qual verbo o
+/// clique vai executar (Enio, 2026-09-06).
+///
+/// ⚠️ **Ele sai das MESMAS duas funções que o clique usa** ([`hit`] e [`grabbed_the_joint`]) e não
+/// de uma varredura própria — é a lei que o `pick_hovered_object` já declara para as formas: *«um
+/// realce que acendesse outra coisa que a que o clique pega seria pior que não haver realce
+/// nenhum»*. Aqui isso é mais forte ainda, porque as duas alças estão **uma dentro da outra** e
+/// executam verbos diferentes.
+pub(crate) fn hover(
+    sim: &SimWorld,
+    world: [f64; 2],
+    px_to_world: f64,
+) -> Option<ph2d_skeleton_render::BoneHover> {
+    let bone = hit(sim, world, px_to_world)?;
+    Some(ph2d_skeleton_render::BoneHover {
+        bone,
+        joint: grabbed_the_joint(Some(sim), bone, world, px_to_world),
+    })
 }
 
 /// **POSAR um osso** — as duas metades do gesto, e por que são duas.
@@ -271,3 +296,22 @@ impl crate::App {
 #[cfg(test)]
 #[path = "bone_gesture_tests.rs"]
 mod tests;
+
+impl crate::App {
+    /// **Resolve a metade de osso sob o ponteiro**, uma vez por quadro
+    /// ([`crate::App::bone_hover`]).
+    ///
+    /// ⚠️ **Sem ponteiro no canvas ⇒ LIMPA**, como o realce do Trim e o do Balde: um realce que
+    /// sobrevive ao cursor sair da tela é uma alça que finge estar apontada.
+    pub(crate) fn refresh_bone_hover(&mut self, pointer: (f32, f32)) {
+        let Some(world) = self.vec_world_at(pointer) else {
+            self.bone_hover = None;
+            return;
+        };
+        let px_to_world = self.vec_px_to_world();
+        self.bone_hover = self
+            .gfx
+            .as_ref()
+            .and_then(|gfx| hover(&gfx.sim, world, px_to_world));
+    }
+}

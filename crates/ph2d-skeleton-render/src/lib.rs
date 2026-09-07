@@ -64,20 +64,65 @@ pub fn bone_half_width_px(comp: f64) -> f64 {
 ///
 /// ⚠️ **Dois números fariam o dedo pegar a junta e a bolinha acender noutro sítio** — e aqui seria
 /// pior que uma bolinha errada: a junta e o corpo executam VERBOS diferentes (deslocar × girar), e o
-/// artista veria o osso andar quando queria girá-lo.
-pub const BONE_JOINT_R_PX: f64 = 6.0;
+/// artista veria o osso andar quando queria girá-lo. ⭐ Com o **hover** (2026-09-06) essa lei ficou
+/// mais forte, não mais fraca: o realce tem de acender exactamente o que o clique pega.
+///
+/// ⛔⛔ **Era `6.0` e foi um defeito reportado** (Enio, 2026-09-06: *«a bolinha e sua área sensível
+/// ao mouse precisa ser maior pois está difícil selecioná-la»*). O número **não foi escolhido, foi
+/// achado**: a casa declara UMA tolerância de dedo para toda alça — `HANDLE_HIT_PX = 12` no
+/// `input_dispatch` — e o `BONE_HIT_PX` do CORPO já a pedia emprestada *«para o dedo do artista ter
+/// sempre a mesma tolerância»*. ⇒ o osso dava ao corpo a tolerância da casa e à junta **metade**
+/// dela, e o alvo menor estava por dentro do maior.
+pub const BONE_JOINT_R_PX: f64 = 12.0;
+
+/// ⭐ **O raio da junta DESTE osso** — a porta única do desenho e do dedo.
+///
+/// ⚠️ **Ele encolhe num osso curto, e o recurso tem nome: o próprio verbo de GIRAR.** Duas juntas
+/// de raio `r` comem `2r` do comprimento, e a partir daí o osso é todo junta — *«impossível de
+/// girar»*, que é a cerca que o `grabbed_the_joint` já declarava. Com o tecto em `comp/4` sobra
+/// sempre **metade** do corpo para o giro.
+///
+/// Medido nos ossos do smoke (107,52 · 163,84 · 192,00 px): os três ficam no `12` cheio, e a
+/// redução só entra abaixo de `48 px` — um osso que na tela já é um risco.
+#[must_use]
+pub fn joint_radius_px(comp: f64) -> f64 {
+    BONE_JOINT_R_PX.min(comp * 0.25)
+}
+
+/// **O que está sob o ponteiro**, para o realce dizer qual VERBO o clique vai executar.
+///
+/// ⚠️ Não é «que osso» — é «que METADE de que osso»: a junta desloca e o corpo gira, e um realce
+/// que não distinguisse os dois deixaria a pergunta que ele existe para responder por responder.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BoneHover {
+    /// Os bits da entidade do osso apontado.
+    pub bone: u64,
+    /// `true` ⇒ o ponteiro está na bolinha da raiz (deslocar); `false` ⇒ no corpo (girar).
+    pub joint: bool,
+}
 
 /// Espessura do contorno, em píxeis.
 const LINE_PX: f64 = 1.25;
 
-/// **Desenha os ossos** `(bits, origem, ponta)` em MUNDO. `selected` acende um deles.
+/// **Desenha os ossos** `(bits, origem, ponta)` em MUNDO. `selected` acende um deles, `hover` diz
+/// o que está sob o ponteiro.
 ///
 /// ⚠️ **A cor NÃO é o estado da selecção sozinha**: o seleccionado vem `Accent` **cheio** e os
 /// outros `AccentSoft` **vazados**, que é a mesma gramática do `envelope.rs` (forma + preenchimento
 /// carregam o estado) — assim lê-se qual está aceso sem depender de distinguir dois tons.
+///
+/// ⭐⭐ **E o HOVER usa o canal que sobrava, sem colidir com a selecção** (Enio, 2026-09-06:
+/// *«precisamos de um efeito hover na bolinha e no corpo do osso»*): a **COR** diz apontado
+/// (`AccentSoft` → `Accent`), o **PREENCHIMENTO** diz seleccionado. A escada lê-se de uma vez:
+/// *traço apagado → traço aceso → cheio*.
+///
+/// ⚠️⚠️ **E o realce é por METADE, não por osso** — só a metade apontada acende. É o que faz o
+/// artista SABER, antes de carregar, se vai **girar** (corpo) ou **deslocar** (junta): as duas
+/// alças estão uma dentro da outra, e sem isto a única forma de descobrir o verbo é executá-lo.
 pub fn draw_bones(
     bones: &[(u64, [f64; 2], [f64; 2])],
     selected: Option<u64>,
+    hover: Option<BoneHover>,
     transform: Affine,
     theme: Theme,
     target: &mut VectorScene,
@@ -113,6 +158,11 @@ pub fn draw_bones(
         p.line_to(Point::new(ombro.x - nx * w, ombro.y - ny * w));
         p.close_path();
         let sel = Some(bits) == selected;
+        // ⚠️ O hover é lido POR METADE: `h.joint` escolhe qual das duas acende, e a outra fica no
+        // tom apagado mesmo com o ponteiro sobre o mesmo osso.
+        let sob = hover.filter(|h| h.bone == bits);
+        let corpo_aceso = sel || sob.is_some_and(|h| !h.joint);
+        let junta_acesa = sel || sob.is_some_and(|h| h.joint);
         if sel {
             target.inner_mut().fill(
                 Fill::NonZero,
@@ -125,18 +175,33 @@ pub fn draw_bones(
         target.inner_mut().stroke(
             &Stroke::new(LINE_PX),
             Affine::IDENTITY,
-            &Brush::Solid(if sel { aceso } else { apagado }),
+            &Brush::Solid(if corpo_aceso { aceso } else { apagado }),
             None,
             &p,
         );
         // A JUNTA: a bolinha na raiz é o que se agarra para posar, e é ela que mostra que dois
         // ossos partilham um ponto quando a cadeia é contínua.
+        //
+        // ⭐ **Apontada, ela ENCHE** — e aqui o preenchimento não colide com a selecção porque o
+        // corpo já a diz: uma bolinha cheia sobre um corpo apagado lê-se *"o clique aqui desloca"*,
+        // que é a única coisa que o artista precisa de saber antes de carregar.
+        let raio = joint_radius_px(comp);
+        let bolinha = Circle::new(pa, raio);
+        if junta_acesa && !sel {
+            target.inner_mut().fill(
+                Fill::NonZero,
+                Affine::IDENTITY,
+                &Brush::Solid(aceso),
+                None,
+                &bolinha,
+            );
+        }
         target.inner_mut().stroke(
             &Stroke::new(LINE_PX),
             Affine::IDENTITY,
-            &Brush::Solid(if sel { aceso } else { apagado }),
+            &Brush::Solid(if junta_acesa { aceso } else { apagado }),
             None,
-            &Circle::new(pa, BONE_JOINT_R_PX),
+            &bolinha,
         );
     }
 }
@@ -153,21 +218,52 @@ mod tests {
     /// contra ela que a proporção tem de valer.
     const COMPRIMENTOS_MEDIDOS_PX: [f64; 3] = [107.52, 163.84, 192.00];
 
-    /// ⭐⭐⭐ **O CORPO DO OSSO É MAIS LARGO QUE O ANEL DA JUNTA** — o defeito reportado, dito como
-    /// número.
+    /// ⭐⭐⭐ **O CORPO DO OSSO NÃO É UM FIO DE CABELO** — o defeito reportado, dito como número.
     ///
-    /// Com a lei antiga (`4 px` fixos) o corpo media **8 px** de largura contra os **12 px** de
-    /// diâmetro do anel: *o enfeite era maior que a coisa*, e o olho só via o círculo. Este gate é
-    /// vermelho com aquela constante e verde com a lei do Blender.
+    /// Com a lei antiga (`4 px` fixos) um osso de `192 px` saía com **8 px** de largura: uma
+    /// proporção de **24:1**, desenhada a traço de `1,25 px`. A referência entrega ~`5:1` (o
+    /// octaedro do Blender), e é essa a barra.
+    ///
+    /// ⚠️⚠️ **A 1.ª redacção deste gate comparava o corpo com o DIÂMETRO DO ANEL, e essa régua era
+    /// um PROXY que se invalidou horas depois:** o anel cresceu de `6` para `12` px de raio por uma
+    /// razão independente e medida (a tolerância de dedo da casa — report de 2026-09-06, *«está
+    /// difícil selecioná-la»*), e a comparação passou a reprovar um corpo que **não** regrediu.
+    /// ⛔ *Uma barra que se move quando o outro lado dela muda por outro motivo não estava a medir a
+    /// propriedade que nomeia* — e afrouxá-la teria sido esconder isso. A propriedade real é a
+    /// PROPORÇÃO, que é o que a lei do Blender declara e o que de facto mudou (24:1 → 5:1).
+    ///
+    /// Este gate continua **vermelho com a constante antiga** — era ele o ponto —, e agora sem
+    /// depender de um número que não é dele.
     #[test]
-    fn the_body_of_a_bone_reads_wider_than_the_joint_ring_that_decorates_it() {
+    fn the_body_of_a_bone_is_not_a_hairline() {
+        /// A proporção que a referência entrega, com folga: o octaedro do Blender fica perto de
+        /// `5:1` e a nossa lei dá `5:1` até ao tecto (`14 px`), onde um osso muito longo chega a
+        /// `192/28 ≈ 6,9:1`. ⛔ Acima de `8:1` volta a ler-se como uma linha.
+        const PIOR_PROPORCAO: f64 = 8.0;
         for comp in COMPRIMENTOS_MEDIDOS_PX {
             let largura = 2.0 * bone_half_width_px(comp);
-            let anel = 2.0 * BONE_JOINT_R_PX;
+            let proporcao = comp / largura;
             assert!(
-                largura > anel,
-                "um osso de {comp} px sai com {largura} px de corpo contra um anel de {anel} px - \
-                 e' o defeito de 2026-09-06 ('os ossos viraram circulos') a voltar"
+                proporcao <= PIOR_PROPORCAO,
+                "um osso de {comp} px sai com {largura} px de corpo ({proporcao:.1}:1) - e' o \
+                 defeito de 2026-09-06 ('os ossos viraram circulos') a voltar"
+            );
+        }
+    }
+
+    /// ⛔ **E o ANEL nunca engole o osso inteiro** — a metade da régua antiga que continua a valer,
+    /// dita sobre a grandeza certa: o anel da junta vive na raiz, e um osso cujo comprimento não
+    /// passa do diâmetro dele não tem corpo nenhum para agarrar.
+    ///
+    /// ⚠️ É o mesmo recurso que o tecto do [`joint_radius_px`] nomeia (o verbo de GIRAR), visto do
+    /// outro lado — e é por isso que a barra é `comp > 2 × raio DESTE osso`, nunca da constante.
+    #[test]
+    fn the_joint_ring_never_swallows_the_bone_it_sits_on() {
+        for comp in [8.0, 20.0, 48.0, 107.52, 192.0, 1000.0] {
+            let anel = 2.0 * joint_radius_px(comp);
+            assert!(
+                anel <= comp,
+                "num osso de {comp} px o anel mede {anel} px - ele cobre o osso inteiro"
             );
         }
     }

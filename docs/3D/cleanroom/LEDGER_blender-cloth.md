@@ -1358,6 +1358,85 @@ reescrito + gates **35-38**.
 **Sweep:** verde sobre a espec emendada, a pasta inteira das fixtures, o INBOX, os dois READMEs e
 este ledger (menos os hits pré-existentes de 2026-09-05 já registados acima).
 
+### Q17 — a FRENTE DE ATAQUE: as três perguntas devolvem NÃO, e o defeito estava na ESPEC, não no port (perguntas do I de 2026-09-07; resposta no mesmo dia, com corrida NOVA do oráculo)
+
+**As perguntas do I.** `53` dos `73` traços batem a barra; o gate 35 (dez passos de relaxação pura
+depois de um impulso conhecido) passa em toda a malha, o que pelo critério da própria §14 põe o
+resíduo do Push e do Inflate na **fase do gesto**; e o perfil localiza-o na **borda de ataque** (no
+núcleo `4`–`7 %`, em `x = 0,844` o alvo desloca `0,0830` contra `0,0204` nossos). Q17.1: há diferença
+entre o corte `d ≥ R` do alvo e o nosso? Q17.2: o conjunto de células acresce ou é re-decidido, e a
+unidade é a célula ou o vértice? Q17.3: o Inflate tem uma segunda causa? Q17.4 (se as três derem
+nada): há algo que **acumule ao longo do traço**?
+
+⭐⭐⭐ **O método foi outro, e é o que fez a diferença: em vez de um censo, um CONTROLO.** Construí,
+fora da árvore, um arnês independente que implementa a espec tal como estava, alimentado pelas
+fixtures. Ele reproduz `plano_arrastar_radial_local_origem` com **`err_max = 3,7·10⁻⁶`** sobre os
+`4 225` vértices e nos 12 passos — e reproduz o produto do I em `plano_empurrar_radial_local_origem`
+a **quatro algarismos** (`0,21019` · `0,24185` · `0,12501` · `0,06556` · `0,02048` · `0,00338`
+contra os `0,2100` · `0,2417` · `0,1249` · `0,0654` · `0,0204` · `0,0033` que o I reportou).
+⇒ *o port está fiel à espec; a espec é que estava errada* — e como o arrasto atravessa exactamente
+o mesmo corte, a mesma banda, o mesmo conjunto de células, a mesma ordem de criação e a mesma lista
+em duplicado, as três perguntas ficam respondidas **por resultado**, não por leitura.
+
+**Q17.1 — NÃO (F + M).** O corte é `d ≥ cache.radius` sobre a distância do vértice **actual** ao
+cursor (esférica, ou no plano da vista com queda projectada), exactamente como a §4.1 já dizia; o
+Grab é a única excepção e mede no repouso. Nenhum outro raio, nenhum outro espaço.
+
+**Q17.2 — NEM UMA NEM OUTRA, e a §2.1/§3.1-bis já o diziam (F).** O conjunto de células é
+**re-decidido por inteiro a cada passo**, e na área *Local* os dois números que o decidem — o centro
+inicial e o raio inicial — são constantes, logo o conjunto é o mesmo em todos os passos. As
+**restrições**, essas, **acrescem**: uma célula só é construída enquanto nunca tiver sido activada, e
+a activação é o que a fecha. A unidade da decisão do **conjunto** é a **célula**; a do filtro de raio
+da construção é o **vértice** (posição de repouso contra o centro fixo); e os vértices visitados são
+os **próprios** da célula.
+
+**Q17.3 — SIM, e é a MESMA causa vista de outro lado (M).** O Inflate lê a normal **por vértice** e
+nunca fica sem direcção — ele dispara nos onze passos. O que estava errado é **de que superfície** a
+normal sai: das que o **traço encontrou**, não das actuais. Ajuste por mínimos quadrados sobre
+`plano_inflar_radial_local_origem` e `…_massa2`: resíduo `7·10⁻⁶ … 7,4·10⁻⁴` contra a normal de
+repouso, `0,32 … 0,77` contra a actual, com amplitude `1,00000` nos 22 passos.
+
+**Q17.4 — SIM: o que acumula é a COVA, e ela CALA o Push (M).** A normal da área é amostrada num
+disco de `R · «Normal Radius» = 0,175` medido contra as posições **de agora**; quando a folha afunda
+mais do que isso sob o cursor, **nenhum** vértice qualifica, a normal é o vector nulo e o Push não
+escreve força nenhuma (a §4.2-bis (5) já tinha a regra, como caso degenerado). Limiar medido sobre
+`67` passos de sete traços: maior `min_v |v−c|` **com** gesto `0,17313`, menor **sem** gesto
+`0,17586`, e `R·0,5 = 0,17500` cai no vão — zero passos do lado errado. E ele **volta** a disparar
+quando o cursor avança para terreno raso, o que dá quatro padrões diferentes no mesmo caminho
+(`2 3 4 5 10` · `2 3 4 5 6 10` · `2..9` · os onze).
+
+**Verificação ponta-a-ponta:** com as duas correcções, os **dez** traços de empurrar/inflar por passo
+reproduzem-se com `err_max ≤ 5·10⁻⁶` sobre a malha inteira e nos 12 passos.
+
+**⛔ Uma afirmação da espec REVOGADA E INVERTIDA:** o gate 23 dizia *«a normal do Push é REAVALIADA
+sobre a malha DEFORMADA»* e mandava reprovar quem a congelasse. A metade dele que estava certa era o
+**controlo** (no 1.º passo simulado as duas leis coincidem por construção) — e é por isso que ele
+nunca distinguiu nada. Substituído pelos gates 39-42.
+
+**⛔ Uma leitura minha (Q16) que a medição derrubou:** *«o resíduo está na resposta ao ESTICÃO»*. O
+défice crescia com o esticão porque o esticão é o que afunda a cova, e a cova é o que cala o gesto.
+*Duas grandezas que crescem juntas, e a que se mediu não era a causa.*
+
+**Corrida nova do oráculo (E, fora da árvore):** 6 execuções — 3 que viraram fixture
+(`esfera_empurrar_radial_local_1passo` · `esfera_inflar_radial_local_1passo` ·
+`plano_inflar_radial_local_1passo_2tracos`) e 3 de sonda (dois prefixos de esfera e um par de
+preseed que foi refeito na convenção do corpus).
+⭐ **A de esfera refuta uma nota do README das fixtures**: dizia que um traço scriptado não fixa o
+centro da área *Local* numa esfera. Fixa, se o hover for semeado — mas nessas duas fixtures a
+**banda** não é observável (`120` vértices movidos, todos onde `w = 1` sob qualquer dos dois centros
+possíveis), e isso está escrito ao lado delas.
+
+**Espec:** cabeçalho · §4.2 (linha do Inflate) · §4.2-bis (2) ERRATA + (5) + **(8) novo** ·
+**§4.2-ter (nova)** · §5.7-bis (fecho) · §10 (contagem `73 → 76`) · **§10.11 (nova)** · §14 gate
+**23 revogado e invertido** + gates **39-42**.
+**Fixtures:** `+3` (`76`); `indice.json` regenerado (76/76); `gera_indice.py` passa a ler `tracos`
+como inteiro; README das fixtures com a régua de excepções alargada (`24` de `76`; a coluna nova é o
+**número de traços**) e a secção das três novas.
+**Verificador:** `verifica_traco.py` **verde sobre os 76**.
+**Sweep:** verde sobre a espec emendada, a pasta inteira das fixtures, o INBOX, os dois READMEs e
+este ledger (menos os hits pré-existentes de 2026-09-05 já registados acima).
+**Auditoria §4.2 (R-pré): ⏳ POR CORRER.** ⛔ A janela-mãe não implementa antes do atestado (§3.R).
+
 ## Fechamento R
 
 ⏳

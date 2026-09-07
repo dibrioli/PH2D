@@ -105,6 +105,27 @@
   }
  ],
  [
+  "esfera_empurrar_radial_local_1passo",
+  {
+   "superficie": "esfera",
+   "modo": "empurrar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 2,
+   "movidos": 120,
+   "max_deslocamento": 0.069165
+  }
+ ],
+ [
   "esfera_expandir_radial_dinamica",
   {
    "superficie": "esfera",
@@ -165,6 +186,27 @@
    "passos": 12,
    "movidos": 2181,
    "max_deslocamento": 0.267017
+  }
+ ],
+ [
+  "esfera_inflar_radial_local_1passo",
+  {
+   "superficie": "esfera",
+   "modo": "inflar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 2,
+   "movidos": 120,
+   "max_deslocamento": 0.098807
   }
  ],
  [
@@ -1473,6 +1515,28 @@
    "passos": 2,
    "movidos": 171,
    "max_deslocamento": 0.09917
+  }
+ ],
+ [
+  "plano_inflar_radial_local_1passo_2tracos",
+  {
+   "superficie": "plano",
+   "modo": "inflar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 2,
+   "tracos": 2,
+   "movidos": 171,
+   "max_deslocamento": 0.178894
   }
  ],
  [

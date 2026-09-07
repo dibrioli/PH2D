@@ -299,6 +299,28 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   a favor da explicação (a) do §5.7-bis*; e o controlo do gate 37 sobe de uma célula para **a malha
   inteira** (no passo 2 as duas áreas dão `máx` da diferença por vértice `= 0,000000` sobre os `4 225`).
   **Veredicto: ATESTADO** — a emenda Q16 pode ser lida pela janela-mãe. Detalhe: LEDGER §Papel R.
+  ✅ **EMENDA Q17 de 2026-09-07** (§4.2 linha do Inflate · **§4.2-bis (2) ERRATA + (5) + (8) NOVO** ·
+  **§4.2-ter NOVA** · §5.7-bis FECHO · §10 contagem · **§10.11 NOVA** · §14 gate 23 **REVOGADO E
+  INVERTIDO** + gates **39-42**, + as TRÊS fixtures `esfera_empurrar_radial_local_1passo` ·
+  `esfera_inflar_radial_local_1passo` · `plano_inflar_radial_local_1passo_2tracos`): as três
+  perguntas do I devolvem **NÃO** as três — não há diferença no corte `d ≥ R`, nem na banda, nem no
+  conjunto de células, e a prova não é um censo mas um **CONTROLO**: um arnês independente que
+  implementa a espec tal como estava reproduz o **arrasto** com `err_max = 3,7·10⁻⁶` sobre a malha
+  inteira e nos 12 passos, e reproduz o produto do I no **empurrar** a quatro algarismos. ⇒ o defeito
+  estava na espec, e na **fase do gesto**: (1) as NORMAIS que o gesto lê — a normal da área do Push e
+  a normal por vértice do Inflate — são as da superfície **que o traço encontrou**, não as da
+  deformada (a §4.2-bis dizia o contrário, com um ⛔ a proibir a leitura certa); (2) por causa disso,
+  o disco de amostragem da normal da área — que mede contra as posições **de agora** — fica **VAZIO**
+  assim que a cova passa `R · «Normal Radius» = 0,175`, e o Push **não escreve força nenhuma** nesse
+  passo (o padrão de disparo é `2 3 4 5 10` de onze no traço de referência, e **volta** a disparar
+  quando o cursor avança). Com as duas, os **dez** traços de empurrar/inflar por passo descem de
+  `0,2369`/`0,2446` para `err_max ≤ 5·10⁻⁶` — a resolução do ficheiro. Escrita pelo subagente-E da
+  mesma janela, com o fonte reaberto só para estas perguntas e com uma corrida NOVA do oráculo
+  (3 execuções que viraram fixture + 3 de sonda).
+  ⏳ **AUDITORIA §4.2 (R-pré): AINDA NÃO CORRIDA para esta emenda** — ⛔ a janela-mãe **não a pode
+  implementar** antes do atestado (§3.R); confira pelo ATESTADO, não pelo nome da emenda:
+  `grep -c 'AUDITADA contra §4.2 por R-pré' docs/3D/cleanroom/SPEC_cloth_brush.md` tem de bater o
+  número de emendas.
 Mapa de leitura da literatura (⭐ pública e lícita a TODOS os papéis):
   · Jakobsen, "Advanced Character Physics", GDC 2001 — integração de Verlet por posições + relaxação
     de restrições de distância por projecção. É EXACTAMENTE a família do solver do alvo.
@@ -823,7 +845,7 @@ A força de um vértice é `F = f · u`, com `u` o vector abaixo; ela entra como
 | **Push** | ⭐ **`− n̂_área · 2R · escala`** — para DENTRO, ao longo da **normal da área** do pincel, com magnitude proporcional ao raio (`escala` corrige objectos com escala não-uniforme) | normal da área (média das normais sob o pincel; congelável com *Original Normal*) | idem |
 | **Pinch Point** | vector unitário do vértice **para o cursor** (actual) | objecto | ⭐ **muda o alvo**: `u` passa a ser o unitário **para o PLANO** (perpendicular ao plano, com o sinal da distância assinada) |
 | **Pinch Perpendicular** | do unitário «vértice → cursor», **só as componentes** ao longo de `x̂ = n̂ × d̂` (perpendicular ao traço, no plano tangente) e de `ẑ = n̂` — a componente ao longo do traço é descartada ⇒ converge para a **LINHA** do traço e para o **plano** dela. Não re-normalizado (magnitude ≤ 1) | referencial local do traço (§4.4) | só a forma de `f` |
-| **Inflate** | a **normal do vértice** (actual) | objecto | só a forma de `f` |
+| **Inflate** | a **normal do vértice** — ⚠️ **da superfície que o TRAÇO ENCONTROU**, não da deformada (§4.2-ter; a redacção anterior dizia «actual» e está **refutada por medição**) | objecto | só a forma de `f` |
 | **Gravidade** (todos os modos) | `− ĝ · g`, com `ĝ` a normal +Z do objecto de gravidade (ou +Z do mundo) trazida ao espaço do objecto, `g` = *Gravity* da escultura (omissão **`0`** — M, instalação limpa) | mundo → objecto | — |
 
 ⚠️ **A gravidade é aplicada ANTES do corte no raio e da curva**: o seu factor é só
@@ -877,10 +899,17 @@ outras passagens recebem-na espelhada/rodada. As únicas coisas que a congelam s
 facto de o pincel ser o *Grab* da casa (⛔ que **não** é o modo Agarrar do tecido: a regra de congelar
 nomeia o pincel, não o modo de deformação). ⇒ **nas fixtures ela muda a cada passo.**
 
-**(2) De que malha.** Das posições e normais **ACTUAIS** — a malha como o passo a encontra, já
-deformada pelos passos anteriores. ⛔ Não é a malha de repouso do traço: a rota que lê as posições de
-partida só é tomada por pincéis que oferecem a opção *Accumulate*, e o pincel de tecido não está
-nessa família (F).
+**(2) De que malha — ⛔⛔ ERRATA DE 2026-09-07 (M): esta linha estava INVERTIDA na metade que decide,
+e as DUAS grandezas não vêm da mesma superfície.**
+
+| grandeza | de que superfície | prova |
+|---|---|---|
+| as **POSIÇÕES** que o disco de amostragem testa | a de **AGORA**, já deformada | é o que faz o disco poder ficar **vazio** — item (8) |
+| as **NORMAIS** que entram na soma | ⭐ as da superfície **que o traço encontrou** (§4.2-ter) | a direcção recuperada do oráculo é `(0, 0, 1)` **a cinco casas** em todos os passos em que o gesto dispara, sobre uma folha que já afundou `0,2` — onde a normal *actual* sob o cursor não é vertical |
+
+⚠️ A redacção anterior dizia «das posições e normais **ACTUAIS**» e acrescentava um ⛔ a proibir a
+leitura de repouso. A metade das posições estava certa; a das normais está **refutada por medição**
+(§10.11), e é ela que decide a direcção do gesto.
 
 **(3) De que vértices, e com que peso.** De cada vértice **visível** das células que o pincel juntou
 (§2.1) cuja distância ao cursor seja `d ≤ R · «Normal Radius»`, com a distância medida pela forma de
@@ -903,6 +932,7 @@ a balde e nesta ordem, ⛔ **não** «escolher o balde e só depois olhar para a
 **(5) Quando não há resposta.** Se **nenhum** dos dois baldes passa esse teste (nenhum vértice
 qualifica, ou as duas somas têm comprimento zero), `n̂_área` é o **vector NULO** — e o Push desse passo
 é **força zero**, sem `NaN` e sem direcção de reserva.
+⚠️⚠️ **Isto NÃO é um caso degenerado: é o regime normal do Push à força de omissão** — item (8).
 
 **(6) A forma de queda *Projected*** projecta ainda `n̂_área` no plano do ecrã e re-normaliza (com
 *Sphere*, a dos presets, não faz nada).
@@ -914,8 +944,81 @@ nesse eixo`. A multiplicação é **componente a componente** ⇒ num objecto de
 dá `0,06942 = 2 · 0,35 · 0,0992`, §10.1); num objecto de escala **não-uniforme** ele **entorta a
 direcção** além de mudar o módulo — não é um factor escalar.
 
+**(8) ⭐⭐⭐ O PUSH CALA-SE QUANDO A FOLHA AFUNDA MAIS DO QUE O DISCO DE AMOSTRAGEM (M, 2026-09-07).**
+Juntando (2) e (3): o disco tem raio `R · «Normal Radius» = 0,175` com as omissões, e mede-se contra
+as posições **de agora**. Numa folha que o próprio Push já afundou, chega um momento em que **nenhum
+vértice** está a menos de `0,175` do cursor (que continua no plano de partida) ⇒ `n̂_área` é o vector
+nulo ⇒ **o gesto não escreve aceleração nenhuma nesse passo, e o passo é só solver.**
+
+⚠️ **É medido, e a régua é um limiar limpo.** Recuperando do oráculo, passo a passo, o vector do
+gesto (§10.11) sobre **sete** traços de empurrar do plano — `67` passos com o cursor em movimento:
+
+| | quantos | `min_v \|v_agora − cursor\|` |
+|---|---|---|
+| o gesto **DISPARA** (`\|u\| = 0,70000 = 2R`) | `53` | de `0,00767` até **`0,17313`** |
+| o gesto está **CALADO** (`\|u\| = 0`) | `14` | de **`0,17586`** até `0,19656` |
+
+⇒ o vão é `0,17313 … 0,17586` e **`R · 0,5 = 0,17500` cai dentro dele**. ⛔ Não há um único passo do
+lado errado, e a régua não é escolhida: o `0,5` é o *Normal Radius* dos presets, já declarado em (3).
+
+⭐⭐ **E ele volta a disparar**, o que é o que torna o padrão irreconhecível de fora: à medida que o
+cursor avança para terreno ainda pouco afundado, o disco volta a apanhar vértices. Em
+`plano_empurrar_radial_local_origem` o gesto escreve nos passos `2, 3, 4, 5` e `10`, e cala-se nos
+outros seis; no mesmo traço em área *Global* escreve em `2..6` e `10`; com massa `2` escreve em
+`2..9`; e às forças `0,5` e `0,25` — em que a folha nunca afunda `0,175` — escreve nos **onze**.
+⇒ *o mesmo caminho, o mesmo raio e a mesma curva dão quatro padrões de disparo diferentes, e o que
+os separa é a profundidade da cova.*
+
+⚠️ **Consequência para um port, e é a resposta à pergunta que gerou esta emenda:** um port que
+reavalie a normal sobre a malha deformada **e** aplique força em todos os passos entrega uma frente
+de ataque `16×` mais curta do que a do alvo — não porque o corte no raio, a banda ou o conjunto de
+células estejam errados (não estão: §10.11), mas porque **empurra com uma direcção inclinada em
+passos em que o alvo não empurra de todo.**
+
 ⚠️ **O mesmo `n̂_área` é o `ẑ` do referencial local do traço e a normal que o falloff de plano usa
 (§4.4)** — as três leituras são a mesma grandeza, calculada uma vez por passo.
+
+### §4.2-ter — ⭐⭐⭐ AS NORMAIS QUE O GESTO LÊ SÃO AS DA SUPERFÍCIE QUE O TRAÇO ENCONTROU (M, 2026-09-07)
+
+**A lei, em uma frase: dentro de um traço, o pincel deforma a malha mas continua a ler as normais
+com que o traço começou.** Só duas coisas as lêem — a **normal da área** do Push (§4.2-bis) e a
+**normal por vértice** do Inflate (§4.2) — e as duas obedecem. ⛔ Nada mais no pincel lê normais: o
+arrasto tira a direcção do cursor, os dois apertos do vector para o alvo, o Expand do comprimento de
+repouso, e as duas âncoras do delta.
+
+⚠️ **Isto é uma propriedade do TRAÇO, não do programa:** de um traço para o seguinte as normais
+**refrescam-se**, e a superfície que o traço seguinte encontra é a que o anterior deixou.
+
+**A medição (§10.11), em três leituras independentes:**
+
+| o que se mede | a favor de «a superfície que o traço encontrou» | a favor de «a superfície de agora» |
+|---|---|---|
+| **Inflate**, direcção por vértice, `11` passos × `2` fixtures | resíduo `7·10⁻⁶ … 7,4·10⁻⁴`, amplitude `1,00000` | resíduo `0,32 … 0,77` |
+| **Push**, direcção por passo, `53` passos com gesto | `(0, 0, 1)` a **cinco casas** em todos | a normal actual sob o cursor está a dezenas de graus da vertical |
+| **Inflate**, 2.º de dois traços sobre a mesma malha | resíduo `3,5·10⁻⁷`, amplitude `1,00000` **contra as normais do pen-down DESTE traço** | — |
+
+⭐ A terceira é a que separa **«a superfície do início do traço»** de **«a superfície original do
+objecto»**: o 1.º traço deixa uma cova de `0,0999` (normais inclinadas até `22,4°`), e o 2.º usa
+**essas** normais, não as planas — resíduo `0,32` e amplitude `0,946` se se insistir nas planas.
+Fixture: `plano_inflar_radial_local_1passo_2tracos`.
+
+⭐⭐ **E que é a normal da ÁREA, e não a da vista, decide-se fora do plano** — no plano as duas valem
+`(0,0,1) `e são indistinguíveis. Sobre a esfera, num passo simulado a partir do repouso (onde a
+relaxação é um no-op por construção, logo o deslocamento **é** `u · f(v) · dt`), o vector recuperado
+tem `|u| = 0,700000 = 2R` com resíduo `6,1·10⁻⁷`, e está a **`0,023°`** da normal da superfície no
+cursor contra **`17,43°`** da normal da vista. Fixture: `esfera_empurrar_radial_local_1passo`
+(controlo: `esfera_inflar_radial_local_1passo`, amplitude `1,000000`, resíduo `5,0·10⁻⁵`).
+
+⚠️⚠️ **O que esta linha NÃO pode afirmar, e a experiência que o fecharia.** Todo o corpus foi gravado
+com **um traço = uma invocação** do gesto. Dentro dessa invocação a malha é reescrita a cada passo e
+o pedido de reavaliação da cena só é honrado **entre** invocações — que é exactamente o que a 3.ª
+leitura mede. ⛔ **Não se pode concluir daqui que numa sessão interactiva, onde a cena é reavaliada
+entre dois eventos de ponteiro, as normais não sejam as de cada passo.** ⇒ é uma **divergência
+declarada**, com o preço: um traço interactivo do alvo pode diferir do que estas fixtures dizem, e
+quem quiser fechá-la precisa de um traço gravado evento a evento, com uma reavaliação de cena entre
+eles. ⭐ **A escolha que fica é a das fixtures**, porque é o corpus que gateia o port — e ela é
+também a mais barata e a mais estável: uma fotografia das normais no pen-down, ao lado da fotografia
+das posições que a simulação já guarda (§5.2-quater).
 
 ### §4.3 — Os modos de ÂNCORA (dois) — e o delta de agarrar
 
@@ -1687,6 +1790,18 @@ posição **actual** (§4.1). ⇒ *as três são separáveis por medição, e s�
 fim do traço está a ler **um** número de um regime não-linear; a comparação que localiza é a de
 **cada passo** (§10.2), e a que isola é a que **corta a força fora** (§10.10).
 
+⭐⭐⭐ **FECHO (2026-09-07, M — §10.11): era a (c), e o censo estava certo.** Nenhum facto faltava ao
+solver, e as três hipóteses eram separáveis: o mesmo arnês que reproduz o **arrasto** com
+`err_max = 3,7·10⁻⁶` sobre a malha inteira — usando exactamente esta ordem, esta população e esta
+retenção — reproduz o **empurrar** com `0,2369`. ⇒ a ordem e a população estão **ilibadas por
+resultado**, não por argumento. O que falhava eram **duas leituras da fase do gesto**, as duas sobre
+a mesma grandeza: as normais são as da superfície **que o traço encontrou** (§4.2-ter) e não as de
+agora, e por isso o Push **cala-se por completo** nos passos em que a cova passa o disco de
+amostragem (§4.2-bis (8)). Com as duas, os dez traços descem a `≤ 5·10⁻⁶` (gate 41).
+⚠️ **A leitura *«o resíduo está na resposta ao ESTICÃO»* (Q16 do INBOX) era a inferência natural e
+estava errada**: o défice crescia com o esticão porque o esticão é o que afunda a cova, e a cova é o
+que cala o gesto — *duas grandezas que crescem juntas, e a que se mediu não era a causa.*
+
 ---
 
 ## §6 — Como a deformação é cometida, o que sobrevive, undo, simetria
@@ -1879,12 +1994,12 @@ como proveniência (as mensagens de commit são públicas; o texto foi re-dito).
 
 ## §10 — Vectores de teste (o oráculo)
 
-⭐ **73 traços do binário 5.2.1 sobre malhas NOSSAS** — ⚠️ **CONTE-OS, não cite este número de
+⭐ **76 traços do binário 5.2.1 sobre malhas NOSSAS** — ⚠️ **CONTE-OS, não cite este número de
 memória** (`ls docs/3D/cleanroom/fixtures/cloth/*.deformado.txt.gz | wc -l`): esta linha esteve em
-`51` depois de a §10.5 acrescentar dois, a §10.6 mais um, a §10.7 mais dois, a §10.8 mais **nove** e
-a §10.10 mais **oito**.
+`51` depois de a §10.5 acrescentar dois, a §10.6 mais um, a §10.7 mais dois, a §10.8 mais **nove**,
+a §10.10 mais **oito** e a §10.11 mais **três**.
 ⚠️ **A tabela abaixo NÃO é o corpus** — ela tem as `47` linhas da 1.ª geração, e os traços das
-§10.2–§10.10 vivem nas secções delas. O corpus é o directório.
+§10.2–§10.11 vivem nas secções delas. O corpus é o directório.
 ⚠️ **O `indice.json` é DERIVADO e regenera-se** — `python3 fixtures/cloth/gera_indice.py` (uma
 entrada por `.deformado.txt.gz`); ⛔ não o edite à mão, e não confie num número escrito aqui. Malhas: grelha plana 64×64 e esfera UV
 96×64; um traço por modo e por variante de solver, em `fixtures/cloth/` (proveniência e verificador
@@ -2359,6 +2474,71 @@ que já existem. *O que faltava não era conhecimento: era um corpus que separas
 
 ---
 
+### §10.11 — ⭐⭐⭐ O INSTRUMENTO QUE LÊ O VECTOR DO GESTO DIRECTAMENTE DO ORÁCULO (2026-09-07)
+
+**A ideia, e é o que torna esta secção diferente de todas as anteriores: a resposta de um passo é
+AFIM no vector do gesto, logo o vector lê-se por mínimos quadrados em vez de se adivinhar.** Escrito
+por inteiro, um passo é
+
+```
+p_depois  =  relaxa(p_antes)  +  u ⊗ (a)  +  (relaxa(p_antes) − prev) · φ·(1−damping)
+                                  a_v = f(v) · dt / massa        ← conhecido (§4.1, §5.4)
+```
+
+e tudo menos `u` é computável a partir do **próprio oráculo**: `p_antes` é o bloco `k−1` do ficheiro
+por passo, `relaxa(·)` é a §5.2, e `prev` é `relaxa(bloco k−2)`. ⇒ `u = Σ a_v·resíduo_v / Σ a_v²`,
+com o **resíduo do ajuste** a dizer se o modelo é sequer da forma certa (um `u` por passo, ou uma
+direcção por vértice no caso do Inflate).
+
+⚠️⚠️ **O CONTROLO vem primeiro, e é ele que dá autoridade a tudo o resto.** O mesmo arnês, sobre
+`plano_arrastar_radial_local_origem`, devolve `|u| = 1,00000` e direcção `(1,0,0)` nos **onze** passos
+com resíduo `≤ 3,6·10⁻⁵`, e reproduz a malha inteira ao fim de 12 passos com **`err_max = 3,7·10⁻⁶`**
+— que é a resolução de seis casas do ficheiro. ⇒ *o corte no raio, a banda, o conjunto de células, a
+ordem de criação, a lista em duplicado, a retenção e a integração estão TODOS exactos* — e é por isso
+que o que sobra só pode estar no vector do gesto. ⛔ Sem este controlo, qualquer conclusão desta
+secção seria sobre o arnês.
+
+**Resultado 1 — o Push.** `|u| = 0,70000 = 2R` em todos os passos em que dispara (`53` de `67`),
+`(0, 0, 1)` a cinco casas, e **exactamente zero** nos outros `14` (ali o ajuste não encontra vector
+nenhum: resíduo relativo `1,00`). O limiar que os separa está em §4.2-bis (8).
+
+**Resultado 2 — o Inflate.** Amplitude `1,00000` em **todos** os passos, com a direcção por vértice a
+ser a **normal de repouso**: resíduo `7·10⁻⁶ … 7,4·10⁻⁴` contra `0,32 … 0,77` para a normal actual.
+⇒ o Inflate **nunca** se cala; ele não lê a normal da área, logo não tem por onde ficar sem direcção.
+
+**A verificação ponta-a-ponta da lei corrigida** (normais da superfície que o traço encontrou; Push
+calado quando o disco fica vazio), `err_max` sobre a **malha inteira** ao fim dos 12 passos:
+
+| traço | `err_max` | passos em que o gesto escreve |
+|---|---|---|
+| `plano_empurrar_radial_local_origem` | `0,000003` | `2 3 4 5 10` |
+| `plano_empurrar_radial_global_origem` | `0,000001` | `2 3 4 5 6 10` |
+| `plano_empurrar_radial_local_origem_forca05` | `0,000004` | os onze |
+| `plano_empurrar_radial_local_origem_forca025` | `0,000003` | os onze |
+| `plano_empurrar_radial_local_origem_massa2` | `0,000003` | `2 … 9` |
+| `plano_empurrar_radial_local_origem_amort1` | `0,000005` | os onze |
+| `plano_empurrar_radial_local_origem_parado` | `0,000005` | `2` (depois o cursor pára — §4.2) |
+| `plano_inflar_radial_local_origem` | `0,000003` | os onze |
+| `plano_inflar_radial_local_origem_massa2` | `0,000004` | os onze |
+| `plano_inflar_radial_local_origem_parado` | `0,000003` | `2` |
+
+⇒ **os dez traços de empurrar/inflar por passo ficam à resolução do ficheiro**, contra os `0,2446` e
+`0,2369` que a espec anterior deixava.
+
+⭐ **As três fixtures novas** (`esfera_empurrar_radial_local_1passo` ·
+`esfera_inflar_radial_local_1passo` · `plano_inflar_radial_local_1passo_2tracos`) e o que cada uma
+decide estão no [README das fixtures](fixtures/cloth/README.md); os números delas estão no §4.2-ter.
+⚠️ **As duas de esfera são de área *Local*** — o que refuta a nota do README que dizia que um traço
+scriptado não consegue fixar o centro da área Local numa esfera; consegue, se o hover for semeado.
+⚠️ **Mas nelas a BANDA não é observável**: só se movem `120` vértices, todos onde `w = 1` sob
+qualquer dos dois centros possíveis ⇒ elas fixam a direcção e a magnitude do gesto, não a área.
+
+⏳ **O que fica por gravar, e é a extensão natural:** um traço de esfera de **doze** passos em área
+*Local* (por passo) — só ele mede a lei do §4.2-ter numa superfície **curva** ao longo de um traço,
+onde a normal do início e a de agora divergem por vértice e não só por passo.
+
+---
+
 ## §11 — Comportamento de borda, caso a caso (F salvo indicação)
 
 | caso | o que o alvo faz |
@@ -2466,7 +2646,11 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 21 | **Fora da inversão o aperto é tão comparável quanto o arrasto**: sobre a fixture de força fraca (zero faces invertidas nos 12 passos) a paridade por vértice do aperto de ponto tem de ficar no mesmo patamar da do arrasto — se ficar pior, o defeito **não** é a ordem e há lei em falta | o erro relativo do arrasto no mesmo traço | §10.6 · fixture `plano_apertar_ponto_radial_local_origem_fraco` |
 | 17 | **É só o ramo *Local***: a mesma experiência que melhora os traços *Local* tem de **piorar** os *Global* e os *Dynamic* — um port que dobre a relaxação em toda a parte passa o gate 16 e reprova aqui | sinal do erro relativo, em **todos** os traços de §10 (⛔ contados, nunca citados de memória) | §5.2-bis · §10.3 |
 | 22 | **O deslocamento do cursor é a PROJECÇÃO, e só o arrasto não o usa**: sobre as fixtures de esfera, o `δ` que alimenta a âncora do Agarrar, a do Snake Hook, a normal do plano de queda e o `x̂` do referencial tem componente **exactamente zero** ao longo do eixo da vista em **todos** os passos; e a direcção do arrasto no mesmo traço **tem** componente de profundidade, com o ângulo entre as duas a reproduzir, nos **11** passos, `15,83° · 12,61° · 9,42° · 6,27° · 3,13° · 0°` **e o espelho** (`3,13° · 6,27° · 9,42° · 12,61° · 15,83°`) — a sequência é simétrica porque o caminho é simétrico em relação ao topo da esfera, ⛔ e não é uma tabela a copiar: sai de `atan(Δy/Δx)` sobre a esfera unitária ⇒ ⚠️ **duas metades**, e a segunda é o controlo: um port que use a diferença dos pontos 3D em toda a parte passa a 1.ª e reprova a 2.ª, e um que projecte em toda a parte faz o inverso | `0` exacto numa metade · a tabela do §4.3 na outra | §4.3 · §4.6 · fixtures de esfera |
-| 23 | **A normal do Push é REAVALIADA sobre a malha DEFORMADA**: congelá-la na normal de repouso tem de **mudar** `plano_empurrar_radial_local_origem` acima da barra do gate 15, e tem de deixar `plano_empurrar_radial_local_1passo` **byte-idêntico** ⇒ ⚠️ **duas metades**, e a segunda é o controlo (no 1.º passo simulado a malha ainda está em repouso, logo lá as duas leis coincidem por construção) | mutação: A/B com a normal congelada | §4.2-bis · §10.7 |
+| 23 | ⛔⛔ **REVOGADO E INVERTIDO em 2026-09-07 (M — §10.11).** Dizia *«a normal do Push é REAVALIADA sobre a malha DEFORMADA»* e mandava reprovar um port que a congelasse. É o **contrário**: as normais são as da superfície que o traço encontrou (§4.2-ter), e quem as reavalia erra a frente de ataque por `16×`. ⚠️ **A metade que estava certa era o CONTROLO** (no 1.º passo simulado as duas leis coincidem por construção, porque a malha ainda está em repouso) — e é precisamente por isso que ele não distinguia nada. O gate que ocupa este lugar é o **39** | — | §4.2-bis · §4.2-ter · §10.11 |
+| 39 | ⭐⭐⭐ **AS NORMAIS SÃO AS DA SUPERFÍCIE QUE O TRAÇO ENCONTROU.** ⚠️ **Três metades, e cada uma mata uma leitura diferente:** (a) **Inflate** — em `plano_inflar_radial_local_origem`, a direcção por vértice do impulso do passo `12` bate as normais de **repouso** com resíduo relativo `< 10⁻³` e as normais **actuais** com resíduo `> 0,5`; (b) **Push** — em `plano_empurrar_radial_local_origem`, o vector do gesto é `(0,0,−0,7)` a cinco casas em **todos** os passos em que dispara, sobre uma folha já afundada `0,2`; (c) **e não são as do objecto, são as do TRAÇO** — em `plano_inflar_radial_local_1passo_2tracos` a direcção do 2.º traço bate as normais da malha **no pen-down dele** (resíduo `3,5·10⁻⁷`, amplitude `1,00000`) e **não** as planas (resíduo `0,32`, amplitude `0,946`). ⛔ Um port que fotografe as normais **uma vez, no início da sessão** passa (a) e (b) e reprova (c) | resíduos do ajuste, nas três | §4.2-ter · §10.11 |
+| 40 | ⭐⭐⭐ **O PUSH CALA-SE QUANDO A COVA PASSA O DISCO DE AMOSTRAGEM, E VOLTA A DISPARAR.** Régua: em cada passo, `min_v \|v_agora − cursor\|` contra `R · «Normal Radius»` (`0,175` com as omissões). ⚠️ **Duas metades:** (a) o **padrão** de disparo tem de bater o do oráculo passo a passo — `2 3 4 5 10` em `plano_empurrar_radial_local_origem`, `2 3 4 5 6 10` no mesmo traço em *Global*, `2..9` com massa `2`, e **os onze** às forças `0,5` e `0,25` (onde a folha nunca chega a `0,175`); (b) o **limiar** não é escolhido: sobre os `67` passos com cursor em movimento dos sete traços de empurrar, o maior `min_v` com gesto é `0,17313` e o menor sem gesto é `0,17586`, e `R·0,5 = 0,17500` cai entre os dois — nem um passo do lado errado. ⛔ Um port que aplique força em todos os passos passa (b) por vacuidade e reprova (a); um que se cale para sempre à primeira falha reprova as duas (o oráculo volta a disparar no passo `10`) | padrão exacto (inteiros) · o vão medido | §4.2-bis (8) · §10.11 |
+| 41 | ⭐⭐ **A PARIDADE DOS DEZ TRAÇOS DE EMPURRAR/INFLAR POR PASSO, À RESOLUÇÃO DO FICHEIRO.** Com os gates 39 e 40 honrados, os dez traços do §10.11 têm de reproduzir-se com `err_max ≤ 5·10⁻⁶` sobre a **malha inteira** e nos **doze** passos — ⛔ não «na barra do gate 15»: aqui a barra é a discretização de seis casas do próprio ficheiro, porque a lei é exacta. ⚠️ **Isto substitui a leitura antiga de que Push e Inflate ficavam `5`–`9 %` abaixo** (§5.7-bis): aquele défice era o vector do gesto, não a resposta ao esticão | `5·10⁻⁶` (a resolução do ficheiro) | §10.11 |
+| 42 | ⭐ **A DIRECÇÃO DO PUSH É A NORMAL DA ÁREA, NÃO A DA VISTA** — e só uma superfície curva o diz. Em `esfera_empurrar_radial_local_1passo` (um passo simulado a partir do repouso, onde a relaxação é um no-op por construção ⇒ o deslocamento **é** `u·f(v)·dt`), o vector recuperado tem de estar a `< 0,1°` da normal da superfície no cursor e a `≈ 17,4°` da normal da vista, com `\|u\| = 2R ± f32`. ⚠️ **Controlo obrigatório ao lado**: `esfera_inflar_radial_local_1passo`, direcção por vértice, amplitude `1,000000` — sem ele, um port que ponha a direcção certa pela razão errada (por exemplo o vector cursor→centro do objecto, que nesta cena coincide) passa | ângulo `< 0,1°` contra `≈ 17,4°` | §4.2-bis · §4.2-ter · §10.11 |
 | 25 | ⛔⛔ **UM PASSO DE ACELERAÇÃO NÃO MOVE NADA FORA DO DISCO — e é o CONTROLO de que a relaxação não corre ali**. Régua, por inteiro: **movido** = `\|u\| > 1e-5` sobre as posições a seis casas; **disco** = posição de **repouso** a menos de `R` da **ponta do caminho**, que nestas fixtures (pen-down em `x = −0,3`) tem `173` vértices. Nos **sete** traços de um passo dos cinco modos que escrevem aceleração a contagem FORA do disco tem de ser **`0`**, e a de dentro `171` (arrastar · arrastar com massa `2` · empurrar · inflar · apertar ponto), `168` (arrastar com força `0,5`) e `156` (apertar linha); nos três de âncora/repouso a de fora tem de ser `675` (expandir) · `1151` (agarrar) · `1279` (gancho) e a de dentro `173` nos três. ⚠️ **Duas metades, e a 1.ª é o controlo:** um port cuja relaxação corra DEPOIS da integração passa a 2.ª e reprova a 1.ª | contagens exactas (inteiros dos dois lados) | §5.2 · §5.2-quater · as **dez** fixtures `plano_*_1passo` de pen-down em `x = −0,3` |
 | 26 | **A ÂNCORA vive na mesma lista e recebe `Δ/2`**: numa fixtura de uma restrição de âncora isolada com `φ = 1`, `s = 1` e `σ = 1`, a distância ao alvo após `k` varreduras é `(1 − 0,3)^k` da inicial — ⛔ **não** `(1 − 0,6)^k`, que é a lei das ESTRUTURAIS (gate 9). O **pino** segue a mesma lei da âncora. ⭐ E o **corpo mole** fecha a separação à MESMA taxa da âncora — `0,3ρ` do lado do vértice mais `0,3(1−ρ)` do lado da memória dá `0,3` para qualquer `ρ` —, o que o distingue não é a taxa, é **as duas pontas se moverem** | `0,7^5 = 0,16807 ± f32` nos três · e, no corpo mole, `\|Δvértice\| + \|Δmemória\| = Δ/2` exacto | §3.2 · §5.2 |
 | 27 | ⭐ **O alvo de cada espécie é lido no INSTANTE da projecção, e a memória de forma ANDA**: com plasticidade `0 < ρ < 1` e uma restrição de corpo mole isolada, a memória tem de ter-se deslocado no fim do passo — e os dois têm de convergir para o ponto **`(1 − ρ)·A₀ + ρ·B₀`** (`A` = vértice, `B` = memória), que é a combinação que a projecção **conserva**: cada varredura move `A` de `+0,3ρ(B−A)` e `B` de `−0,3(1−ρ)(B−A)`, e `(1−ρ)A + ρB` fica invariante. ⛔ Não é o ponto médio: com `ρ = 0` o encontro é em `A₀` (a memória vai ter com o vértice) e com `ρ = 1` é em `B₀`. ⚠️ **Controlo:** com a âncora de deformação, o alvo tem de ficar **exactamente** onde o gesto o pôs, ao bit, no fim das 10 projecções | ponto de encontro `= (1−ρ)A₀ + ρB₀ ± f32` · posição da âncora idêntica ao bit | §3.2 · §5.2 |

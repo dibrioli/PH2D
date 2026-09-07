@@ -5,7 +5,7 @@ escreve à mão, e regenera-se sempre que um traço é acrescentado. Exit 0 = es
 (Harness — não carrega algoritmo nenhum.)"""
 import gzip, json, glob, os, sys
 TEXTO = {'superficie', 'modo', 'falloff_da_forca', 'area', 'curva'}
-INTEIRO = {'pino', 'passos', 'passos_com_cursor_parado', 'movidos'}
+INTEIRO = {'pino', 'passos', 'passos_com_cursor_parado', 'tracos', 'movidos'}
 def cabecalho(path):
     h = {}
     with gzip.open(path, 'rt') as f:

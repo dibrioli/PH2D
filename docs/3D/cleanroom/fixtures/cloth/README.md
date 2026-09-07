@@ -24,12 +24,13 @@ na esfera, sobre o equador visível (`y < 0`). Raio do pincel em espaço de obje
 plasticidade `0`, pino desligado, sem colisões, sem gravidade — i.e., **as omissões do código**
 (espec §8.1), não as dos presets (§8.2).
 
-⚠️⚠️ **As excepções a este parágrafo são VINTE E TRÊS de `73`, e a régua está escrita aqui porque
+⚠️⚠️ **As excepções a este parágrafo são VINTE E QUATRO de `76`, e a régua está escrita aqui porque
 ela é metade da conta** (2026-09-06 — ⛔ leia sempre o cabeçalho da fixture, nunca esta lista):
 compara-se o cabeçalho de cada `.deformado.txt.gz` com **as nove grandezas que o parágrafo fixa sem
 ressalva** (`raio · limite · banda · massa · amortecimento · plasticidade · pino · força · curva`)
-mais o **percurso**, medido como `max(x) − min(x)` sobre as linhas `c`; a **área** fica de fora
-porque o parágrafo já lhe põe o «salvo indicação», e por ela `16` das `73` não são *Local*.
+mais o **percurso**, medido como `max(x) − min(x)` sobre as linhas `c`, mais o **número de traços**
+(a chave `tracos`, ausente = `1`); a **área** fica de fora
+porque o parágrafo já lhe põe o «salvo indicação», e por ela `16` das `76` não são *Local*.
 
 | grandeza | quantas | quais |
 |---|---|---|
@@ -41,11 +42,16 @@ porque o parágrafo já lhe põe o «salvo indicação», e por ela `16` das `73
 | **limite** ≠ `2,5` | `1` | `plano_agarrar_radial_local_preset` (**`5,0`**) — ⭐ load-bearing: é o **segundo ponto de `L`** que refuta a leitura antiga da banda (espec §2.2) |
 | **pino** ligado | `1` | `plano_arrastar_radial_local_pino` |
 | **curva** ≠ *Smooth* | `1` | `plano_gancho_radial_local_origem_1passo_constante` |
+| **traços** ≠ `1` | `1` | `plano_inflar_radial_local_1passo_2tracos` (**`2`**) — ⭐ load-bearing: é a única fixture do corpus em que o pincel encontra a malha **já deformada por um traço anterior**, e é ela que fixa a que superfície pertencem as NORMAIS que o gesto lê (espec §4.2-ter) |
 
 ⛔⛔ **Esta conta esteve em `SETE` e a régua é que estava errada, não o número:** ela varria só
 `força · curva · percurso · limite` e deixava de fora `amortecimento`, `massa`, `plasticidade` e
 `pino` — **nove** fixtures que o mesmo parágrafo também descreve mal. *Uma lista de excepções sem a
 régua ao lado não é auditável, e quem acrescenta um traço herda a régua que não vê.*
+⚠️ **E ela cresceu outra vez em 2026-09-07, pelo mesmo motivo:** a régua varria nove grandezas do
+cabeçalho e o **número de traços** não era uma delas — a fixture de dois traços escondia-se debaixo
+da frase «um traço scriptado por modo de deformação» sem acusar nada. *Uma grandeza nova no
+cabeçalho é uma coluna nova na régua, no mesmo commit.*
 ⚠️ E o percurso mede-se pelo **vão em `x`**: na esfera os pontos vivem no equador, logo a
 poli-linha entre eles mede `0,6093` — quem contar comprimento de caminho acusa os oito traços de
 esfera e não é isso que o parágrafo diz.
@@ -225,6 +231,22 @@ no 12) enquanto o Inflate fica (`0,2701` → `0,2629`), e nos dois o aro está p
 | 12 | `0.64571` | `0.32416` | `0.03738` | `0.03378` | `0.21922` |
 
 
+### ⭐⭐⭐ As TRÊS corridas de 2026-09-07 que fixam a que SUPERFÍCIE pertencem as normais do gesto (espec §4.2-ter e §10.11)
+
+Dois dos oito modos tiram a direcção de uma **normal da malha** — o *empurrar* (uma normal de área,
+uma por passo) e o *inflar* (a normal de cada vértice). O corpus do plano não podia decidir de que
+malha ela sai, porque no plano a normal de repouso, a normal da vista e a normal de qualquer
+sub-conjunto valem todas `(0, 0, 1)`. Estas três resolvem-no:
+
+| fixture | o que ela decide |
+|---|---|
+| `esfera_empurrar_radial_local_1passo` | ⭐ **a direcção do empurrar é a normal da ÁREA, não a da vista.** Num passo simulado sobre a esfera em repouso a relaxação é um no-op (as restrições nascem satisfeitas), logo o deslocamento é `u · f(v) · dt` e `u` lê-se por mínimos quadrados: dá `\|u\| = 0,700000 = 2R` com resíduo `6,1·10⁻⁷`, a **`0,023°`** da normal de repouso no cursor e a **`17,43°`** da normal da vista |
+| `esfera_inflar_radial_local_1passo` | o **controlo** do anterior: mesma cena, mesmo passo, mas a direcção é **por vértice**; amplitude `1,000000`, resíduo `5,0·10⁻⁵` contra a normal da esfera |
+| `plano_inflar_radial_local_1passo_2tracos` | ⭐⭐ **as normais são as da superfície que O TRAÇO encontrou, e refrescam-se de traço para traço.** O 1.º traço deixa uma cova de `0,0999` (normais inclinadas até **`22,4°`**); no 2.º, a direcção por vértice bate as normais da malha **no pen-down dele** com resíduo `3,5·10⁻⁷` e amplitude `1,00000`, contra resíduo `0,32` e amplitude `0,946` para as normais planas do 1.º |
+
+⚠️ **A terceira é a única fixture do corpus com DOIS traços** (chave `tracos 2` no cabeçalho, ausente
+em todas as outras); o `caminho` dela é o dos dois, que são o mesmo.
+
 ## ⚠️ O EIXO DA VISTA (não está no cabeçalho, e é diferente nos dois corpora)
 
 As corridas são em vista **ORTOGRÁFICA**. O cabeçalho traz o `caminho` (as linhas `c`, em espaço do
@@ -301,9 +323,11 @@ o ficheiro diz o que contém.
 | `esfera_apertar_ponto_radial_dinamica.` | apertar_ponto | 12 | 2183 | `0.463862` |
 | `esfera_arrastar_radial_dinamica.` | arrastar | 12 | 2183 | `0.582806` |
 | `esfera_empurrar_radial_dinamica.` | empurrar | 12 | 2102 | `0.479385` |
+| `esfera_empurrar_radial_local_1passo.` | empurrar | 2 | 120 | `0.069165` |
 | `esfera_expandir_radial_dinamica.` | expandir | 12 | 2096 | `0.046715` |
 | `esfera_gancho_radial_dinamica.` | gancho | 12 | 2234 | `0.169025` |
 | `esfera_inflar_radial_dinamica.` | inflar | 12 | 2181 | `0.267017` |
+| `esfera_inflar_radial_local_1passo.` | inflar | 2 | 120 | `0.098807` |
 | `plano_agarrar_plano_local.` | agarrar | 12 | 2146 | `0.307644` |
 | `plano_agarrar_radial_global_origem_1passo.` | agarrar | 2 | 881 | `0.094722` |
 | `plano_agarrar_radial_local.` | agarrar | 12 | 2139 | `0.16991` |
@@ -366,13 +390,24 @@ o ficheiro diz o que contém.
 | `plano_gancho_radial_local_origem_1passo_curto.` | gancho | 2 | 1129 | `0.032433` |
 | `plano_inflar_radial_local.` | inflar | 12 | 2146 | `0.317159` |
 | `plano_inflar_radial_local_1passo.` | inflar | 2 | 171 | `0.09917` |
+| `plano_inflar_radial_local_1passo_2tracos.` | inflar | 2 (×2 traços) | 171 | `0.178894` |
 | `plano_inflar_radial_local_origem.` | inflar | 12 | 2145 | `0.317081` |
 | `plano_inflar_radial_local_origem_massa2.` | inflar | 12 | 2145 | `0.296328` |
 | `plano_inflar_radial_local_origem_parado.` | inflar | 12 | 2145 | `0.144297` |
-**73 traços** (47 da matriz + 9 do instrumento por passo + 9 das corridas que isolam a REDE de
-restrições + 8 das corridas que separam a fase do GESTO da fase do SOLVER, de 2026-09-06 —
-espec §10.8 e §10.10) — ⚠️ **conte-os**
-(`ls *.deformado.txt.gz | wc -l`), esta linha já esteve parada em `53`, em `56` e em `65`. ⚠️ As fixtures de ESFERA são todas de área **Dinâmica** (centro no cursor). A área *Local* na esfera NÃO foi gravada: um traço scriptado não dispara o hover que fixa o centro da área Local, que fica na ORIGEM do objecto — e numa esfera unitária a origem põe toda a malha dentro da banda (ver ERRATA no ledger). A área Local está medida no PLANO (onde a origem cai na superfície).
+**76 traços** (47 da matriz + 9 do instrumento por passo + 9 das corridas que isolam a REDE de
+restrições + 8 das corridas que separam a fase do GESTO da fase do SOLVER, de 2026-09-06, + 3 das
+corridas que fixam a que superfície pertencem as NORMAIS do gesto, de 2026-09-07 —
+espec §10.8, §10.10 e §10.11) — ⚠️ **conte-os**
+(`ls *.deformado.txt.gz | wc -l`), esta linha já esteve parada em `53`, em `56`, em `65` e em `73`.
+⚠️ **As fixtures de ESFERA de DOZE passos são todas de área Dinâmica** (centro no cursor), e a área
+*Local* de doze passos na esfera continua por gravar. ⛔ **A razão escrita aqui até 2026-09-07 estava
+ERRADA e mandava não tentar:** dizia que «um traço scriptado não dispara o hover que fixa o centro
+da área Local». Dispara — basta o harness semear o hover, e as duas fixtures de esfera de **um**
+passo de 2026-09-07 são de área *Local*. ⚠️ **O que nelas não é observável é a BANDA**, e é por outro
+motivo: só se movem `120` vértices, todos a menos de `0,35` do cursor, onde `w = 1` quer o centro
+esteja no pen-down quer na origem do objecto (numa esfera unitária **toda** a superfície dista `1,0`
+da origem, e `1,0 < R(1+L·F) = 1,00625`) ⇒ elas fixam a **direcção** e a **magnitude** do gesto, não
+a área. *Uma fixture prova o que contém.*
 
 ---
 

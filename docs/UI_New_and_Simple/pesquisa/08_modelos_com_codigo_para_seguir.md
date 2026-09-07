@@ -883,6 +883,54 @@ há **15** chamadores diretos que montam as próprias fileiras — Vector, Motio
 Flip. Convertê-los é a wave seguinte; quebrar-lhes a assinatura agora seria pagar 15 edições antes
 de saber se o dono aprova o resultado nos 101.
 
+### 7.18 — ✅ WAVE 15 (2026-09-06): a palavra que não cabe ELIDE, e as grelhas à mão acabaram
+
+**Dois reports do dono na mesma mensagem.**
+
+#### (a) *«Quando a palavra é grande e estreitamos o painel, em vez dos três pontos (…) como no Blender, a palavra passa para baixo e some»*
+
+Duas fotos do mesmo painel a estreitar: `Surface Smooth` ficava `Surface`. **Mecanismo:** o
+`paint_text` recebia `max_width` como **orçamento de QUEBRA** (o doc dele dizia-o) e o parley
+obedecia — o rótulo virava duas linhas, a altura dobrava, e a segunda caía fora da linha de 22 px.
+**Cortada, não elidida.**
+
+⚠️ **A porta da elisão já existia** (`text_elide`, 55 consumidores) e os outros **~269** sítios não
+passavam por ela. *Uma porta que a maioria não chama ainda não é a lei.*
+
+A cura é um **argumento**, não um comportamento: `Lines::{ElideToOne, Wrap}`. O `paint_text`
+declara uma linha; o `paint_text_block` declara quebra — e é ele que **devolve a altura**, que é o
+que distingue os dois casos.
+
+⚠️⚠️ **E eu parti o caso oposto DUAS vezes na mesma jornada:** primeiro pondo a elisão no caminho
+**partilhado** (o `paint_text_block` delega lá), depois deixando o próprio `paint_text_block` a
+pedir `ElideToOne`. Nos dois casos caíram **três** gates de outras linhas
+(`a_hint_that_wraps_pushes_what_comes_after_it_down` e dois irmãos): uma dica que deixa de quebrar
+deixa de **empurrar**, e a fileira seguinte é escrita por cima dela. *Uma cura que só sabe o caso
+que a motivou apaga o caso oposto.*
+
+⚠️ **E o gate nasceu VÁCUO:** ele afirmava sobre `text_elide::fit(...)` — e a mutação que apagava a
+elisão de **dentro do pintor** sobreviveu, porque a porta continuava a elidir quando o teste lhe
+perguntava. *Um gate que interroga a porta testemunha a porta, não o pintor.* A régua passou a ser
+a **contagem de glifos** que a cena recebeu.
+
+#### (b) *«Em vários lugares não funciona. Veja: Vector: tools»*
+
+Os **15** chamadores que a wave 14 deixou nomeados — eles montam as próprias fileiras e por isso
+não viam a lei que entrou no widget. Convertidos: a `button_grid` do **Vector** (a foto dele), as
+**quatro** formas do **Grid Snap** (grelha de 3 colunas · coluna de largura inteira · par ·
+fileira) e as **quatro** do **Motion Params**.
+
+⭐ **Uma COLUNA também é um bloco:** a pilha vertical do Grid Snap é `n` fileiras de uma peça, e só
+o topo da primeira e o fundo da última arredondam. A porta já o exprimia sem código novo.
+
+⚠️ **E cada conversão trocou uma conta de altura à mão pela porta** (`grid_height`) — a conta
+antiga somava o vão de 4 px que já não existe, e *um contentor medido por uma regra e preenchido
+por outra escreve a fileira seguinte por cima desta*.
+
+⛔ **O invólucro «peça sozinha» do Grid Snap foi APAGADO** — depois de as quatro formas declararem
+a posição, ele ficou com zero chamadores. *Um invólucro sem chamador é lixo que a próxima pessoa lê
+como se fosse a porta.*
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

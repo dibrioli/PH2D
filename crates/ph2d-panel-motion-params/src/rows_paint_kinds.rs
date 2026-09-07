@@ -8,6 +8,8 @@ use crate::param_file_browse_id;
 use crate::snapshot::scalar_text;
 use crate::{ChannelsRow, ColorRow, EnumRow, ScalarRow, SourceRow, ToggleRow};
 use ph2d_editor_core::text_elide::paint_text_elided;
+use ph2d_editor_core::widget::panel_chrome::paint_segmented_button_in_group;
+use ph2d_editor_core::widget::{block_cells, grid_height};
 
 /// A coluna da DIREITA de uma row dirigida: o ícone de elo mais o nome de quem dirige.
 ///
@@ -224,15 +226,18 @@ pub(super) fn paint_enum_row(
     let k = row.labels.len().min(MAX_ENUM_OPTIONS);
     // Up to 4 buttons across, then wrap; a single option → 1.
     let cols = k.clamp(1, 4); // CLAMP-OK: segmented column count (option-count layout, not a UI metric)
-    let gap = Spacing::Xs.px();
-    let seg_w = ((inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
+    let _gap = Spacing::Xs.px();
+    // ⭐⭐ **A grelha é UM corpo** — a lei do Blender: as peças encostam e só os quatro cantos do
+    //    BLOCO arredondam. A última fileira pode estar incompleta, daí a contagem por linha.
+    let rows_n: Vec<usize> = (0..k.div_ceil(cols))
+        .map(|r| cols.min(k - r * cols))
+        .collect();
+    let block = block_cells(Rect::new(inner_x, y, inner_w, 0.0), &rows_n, ROW_H_PX);
     for (opt, caption) in row.labels.iter().enumerate().take(k) {
         let bid = param_enum_id(i, opt);
-        let rx = inner_x + (opt % cols) as f32 * (seg_w + gap);
-        let ry = y + (opt / cols) as f32 * (ph2d_tokens::row_pitch_px());
-        let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
+        let (brect, cell) = block[opt / cols][opt % cols];
         let bstate = store.button_visual(bid);
-        paint_segmented_button(
+        paint_segmented_button_in_group(
             brect,
             caption,
             opt == row.selected,
@@ -240,11 +245,11 @@ pub(super) fn paint_enum_row(
             scene,
             text_system,
             theme,
+            cell,
         );
         hit_index.register(bid, brect);
     }
-    let seg_rows = k.div_ceil(cols) as f32;
-    y += seg_rows * ROW_H_PX + (seg_rows - 1.0) * gap + row_gap;
+    y += grid_height(rows_n.len(), ROW_H_PX) + row_gap;
     y
 }
 
@@ -279,8 +284,11 @@ pub(super) fn paint_channels_row(
     let n = row.channels.len(); // Custom is the n-th button
     let k = (n + 1).min(MAX_ENUM_OPTIONS);
     let cols = k.clamp(1, 4); // CLAMP-OK: segmented column count, not a UI metric
-    let gap = Spacing::Xs.px();
-    let seg_w = ((inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
+    let _gap = Spacing::Xs.px();
+    let grows: Vec<usize> = (0..k.div_ceil(cols))
+        .map(|r| cols.min(k - r * cols))
+        .collect();
+    let gblock = block_cells(Rect::new(inner_x, y, inner_w, 0.0), &grows, ROW_H_PX);
     for opt in 0..k {
         let caption = if opt < n {
             row.channels[opt].0
@@ -288,11 +296,9 @@ pub(super) fn paint_channels_row(
             "Custom"
         };
         let bid = param_enum_id(i, opt);
-        let rx = inner_x + (opt % cols) as f32 * (seg_w + gap);
-        let ry = y + (opt / cols) as f32 * (ph2d_tokens::row_pitch_px());
-        let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
+        let (brect, cell) = gblock[opt / cols][opt % cols];
         let bstate = store.button_visual(bid);
-        paint_segmented_button(
+        paint_segmented_button_in_group(
             brect,
             caption,
             opt == row.selected,
@@ -300,11 +306,11 @@ pub(super) fn paint_channels_row(
             scene,
             text_system,
             theme,
+            cell,
         );
         hit_index.register(bid, brect);
     }
-    let seg_rows = k.div_ceil(cols) as f32;
-    y += seg_rows * ROW_H_PX + (seg_rows - 1.0) * gap + row_gap;
+    y += grid_height(grows.len(), ROW_H_PX) + row_gap;
     // Custom selected: the live-column picker (the roadmap's *dropdown populated at
     // runtime*) + the raw text field as the escape.
     if row.selected >= n {
@@ -326,14 +332,16 @@ pub(super) fn paint_channels_row(
             y += TypeToken::Sm.px() + Spacing::Xs.px();
             let ecols = ext.clamp(1, 4); // CLAMP-OK: segmented column count
             let egap = Spacing::Sm.px();
-            let ew = ((inner_w - egap * (ecols as f32 - 1.0)) / ecols as f32).max(1.0);
+            let _ew = ((inner_w - egap * (ecols as f32 - 1.0)) / ecols as f32).max(1.0);
+            let erows: Vec<usize> = (0..ext.div_ceil(ecols))
+                .map(|r| ecols.min(ext - r * ecols))
+                .collect();
+            let eblock = block_cells(Rect::new(inner_x, y, inner_w, 0.0), &erows, ROW_H_PX);
             for j in 0..ext {
                 let bid = param_enum_id(i, CHANNELS_EXTRA_BASE + j);
-                let rx = inner_x + (j % ecols) as f32 * (ew + egap);
-                let ry = y + (j / ecols) as f32 * (ROW_H_PX + egap);
-                let brect = Rect::new(rx, ry, ew, ROW_H_PX);
+                let (brect, cell) = eblock[j / ecols][j % ecols];
                 let bstate = store.button_visual(bid);
-                paint_segmented_button(
+                paint_segmented_button_in_group(
                     brect,
                     &row.extra[j],
                     row.extra[j] == row.custom,
@@ -341,11 +349,11 @@ pub(super) fn paint_channels_row(
                     scene,
                     text_system,
                     theme,
+                    cell,
                 );
                 hit_index.register(bid, brect);
             }
-            let erows = ext.div_ceil(ecols) as f32;
-            y += erows * ROW_H_PX + (erows - 1.0) * egap + Spacing::Xs.px();
+            y += grid_height(erows.len(), ROW_H_PX) + Spacing::Xs.px();
         }
         // The raw text field for anything not listed (honest placeholder, never "e.g. sin(t)").
         let used = paint_text_row(
@@ -406,14 +414,15 @@ pub(super) fn paint_source_row(
         y += TypeToken::Sm.px() + Spacing::Xs.px();
         let cols = n.clamp(1, 4); // CLAMP-OK: segmented column count, not a UI metric
         let gap = Spacing::Xs.px();
-        let seg_w = ((inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
+        let jrows: Vec<usize> = (0..n.div_ceil(cols))
+            .map(|r| cols.min(n - r * cols))
+            .collect();
+        let jblock = block_cells(Rect::new(inner_x, y, inner_w, 0.0), &jrows, ROW_H_PX);
         for j in 0..n {
             let bid = param_enum_id(i, j);
-            let rx = inner_x + (j % cols) as f32 * (seg_w + gap);
-            let ry = y + (j / cols) as f32 * (ph2d_tokens::row_pitch_px());
-            let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
+            let (brect, cell) = jblock[j / cols][j % cols];
             let bstate = store.button_visual(bid);
-            paint_segmented_button(
+            paint_segmented_button_in_group(
                 brect,
                 &row.options[j],
                 row.options[j] == row.current,
@@ -421,6 +430,7 @@ pub(super) fn paint_source_row(
                 scene,
                 text_system,
                 theme,
+                cell,
             );
             hit_index.register(bid, brect);
         }

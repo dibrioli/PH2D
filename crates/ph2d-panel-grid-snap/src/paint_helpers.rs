@@ -9,7 +9,9 @@ use ph2d_editor_core::NodeId;
 use ph2d_editor_core::grid_snap::{GridKind, GridSnapState};
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
-use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
+use ph2d_editor_core::widget::{
+    Button, ButtonKind, ButtonState, GroupCell, block_cells, grid_height, paint_button,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_grid::snap::SnapTarget;
 use ph2d_grid::square::SquareNeighborhood;
@@ -92,15 +94,21 @@ pub(crate) fn paint_snap_top_toggle(
     y + h + row_gap()
 }
 
-/// Generic segmented button row helper — paints one Button at `rect`
-/// with `Pressed` state when `pressed=true`, otherwise `Normal`.
-/// Hit-registers `id`. Used by every segmented group below.
+/// Pinta UM botão segmentado em `rect`, hit-registando `id` — o helper que todo grupo deste
+/// painel usa.
+///
+/// ⚠️ **A `cell` diz onde a peça está no grupo**, e é a lei do Blender que o dono apontou
+/// (2026-09-06): numa fileira ou grelha de vizinhos só as bordas de FORA arredondam. ⛔ O
+/// invólucro que pintava uma peça *sozinha* foi apagado no mesmo passo — depois de as quatro
+/// formas deste ficheiro passarem a declarar a posição, ele **não tinha um único chamador**, e
+/// um invólucro sem chamador é lixo que a próxima pessoa lê como se fosse a porta.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_segmented_button(
+pub(crate) fn paint_segmented_button_in_group(
     rect: Rect,
     label: &str,
     pressed: bool,
     id: NodeId,
+    cell: GroupCell,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -111,7 +119,7 @@ pub(crate) fn paint_segmented_button(
     // truth — `panel_chrome`) so every Grid-Snap toggle group (kind
     // grid, target stack, labeled rows) matches the rest of the app.
     let state = store.button_visual(id);
-    ph2d_editor_core::widget::panel_chrome::paint_segmented_button(
+    ph2d_editor_core::widget::panel_chrome::paint_segmented_button_in_group(
         rect,
         label,
         pressed,
@@ -119,6 +127,7 @@ pub(crate) fn paint_segmented_button(
         scene,
         text_system,
         theme,
+        cell,
     );
     hit_index.register(id, rect);
 }
@@ -158,19 +167,21 @@ pub(crate) fn paint_kind_button_grid(
     ];
     let cols = 3.0_f32; // LITERAL-PX-OK: kind-button grid column count (math constant)
     let gap = Spacing::Xs.px();
-    let col_w = ((w - gap * (cols - 1.0)) / cols).max(40.0); // LITERAL-PX-OK: minimum column width for kind buttons (panel-specific design floor)
+    let _col_w = ((w - gap * (cols - 1.0)) / cols).max(40.0); // LITERAL-PX-OK: minimum column width for kind buttons (panel-specific design floor)
     let h = ROW_H_PX;
-    let mut cy = y;
+    // ⭐⭐ **A grelha é UM corpo** — a lei do Blender: as peças encostam e só os quatro cantos do
+    //    BLOCO arredondam. A última fileira pode estar incompleta, daí a contagem por linha.
+    let rows: Vec<usize> = entries.chunks(3).map(<[_]>::len).collect();
+    let block = block_cells(Rect::new(x, y, w, 0.0), &rows, h);
     for (row_i, chunk) in entries.chunks(3).enumerate() {
-        let row_y = y + row_i as f32 * (h + gap);
         for (col_i, (kind, label, oid)) in chunk.iter().enumerate() {
-            let rx = x + col_i as f32 * (col_w + gap);
-            let rect = Rect::new(rx, row_y, col_w, h);
-            paint_segmented_button(
+            let (rect, cell) = block[row_i][col_i];
+            paint_segmented_button_in_group(
                 rect,
                 label,
                 state.kind == *kind,
                 *oid,
+                cell,
                 scene,
                 text_system,
                 theme,
@@ -178,9 +189,8 @@ pub(crate) fn paint_kind_button_grid(
                 store,
             );
         }
-        cy = row_y + h;
     }
-    cy + row_gap()
+    y + grid_height(rows.len(), h) + row_gap()
 }
 
 /// Vertical stack of 5 full-width Target buttons (Center,
@@ -199,7 +209,7 @@ pub(crate) fn paint_target_button_stack(
     state: &GridSnapState,
 ) -> f32 {
     let h = ROW_H_PX;
-    let gap = Spacing::Xs.px();
+    let _gap = Spacing::Xs.px();
     let entries: [(SnapTarget, &str, NodeId); 5] = [
         (SnapTarget::Center, "Center", ids::GS_SNAP_CENTER),
         (
@@ -219,24 +229,27 @@ pub(crate) fn paint_target_button_stack(
             ids::GS_SNAP_TARGET_OPT_CENTER_INTERSECTION_AND_CORNERS,
         ),
     ];
-    let mut cy = y;
+    let _cy = y;
+    // ⭐ **Uma COLUNA também é um bloco** — uma peça por fileira, e só o topo da primeira e o
+    //    fundo da última arredondam.
+    let rows: Vec<usize> = vec![1; entries.len()];
+    let block = block_cells(Rect::new(x, y, w, 0.0), &rows, h);
     for (i, (target, label, oid)) in entries.iter().enumerate() {
-        let row_y = y + i as f32 * (h + gap);
-        let rect = Rect::new(x, row_y, w, h);
-        paint_segmented_button(
+        let (rect, cell) = block[i][0];
+        paint_segmented_button_in_group(
             rect,
             label,
             state.snap_target == *target,
             *oid,
+            cell,
             scene,
             text_system,
             theme,
             hit_index,
             store,
         );
-        cy = row_y + h;
     }
-    cy + row_gap()
+    y + grid_height(rows.len(), h) + row_gap()
 }
 
 /// 2-button row for the Square-family Neighborhood (Von4 / Moore8)
@@ -274,7 +287,7 @@ pub(crate) fn paint_neighborhood_button_row(
 
     let h = ROW_H_PX;
     let gap = Spacing::Xs.px();
-    let half_w = (w - gap) * 0.5;
+    let _half_w = (w - gap) * 0.5;
     let (label_l, id_l, label_r, id_r, active_idx) = match family {
         NeighborhoodFamily::Square => {
             let n = neighborhood_for_active_kind(state);
@@ -302,24 +315,28 @@ pub(crate) fn paint_neighborhood_button_row(
             },
         ),
     };
-    let rect_l = Rect::new(x, y, half_w, h);
-    let rect_r = Rect::new(x + half_w + gap, y, half_w, h);
-    paint_segmented_button(
+    // ⭐ **Um par ENCOSTA** — a lei do Blender.
+    let seg = ph2d_editor_core::widget::segment_rects(Rect::new(x, y, w, h), 2);
+    let (rect_l, cell_l) = seg[0];
+    let (rect_r, cell_r) = seg[1];
+    paint_segmented_button_in_group(
         rect_l,
         label_l,
         active_idx == 0,
         id_l,
+        cell_l,
         scene,
         text_system,
         theme,
         hit_index,
         store,
     );
-    paint_segmented_button(
+    paint_segmented_button_in_group(
         rect_r,
         label_r,
         active_idx == 1,
         id_r,
+        cell_r,
         scene,
         text_system,
         theme,
@@ -363,15 +380,17 @@ pub(crate) fn paint_labeled_segmented_row(
     let h = ROW_H_PX;
     let gap = Spacing::Xs.px();
     let n = options.len() as f32;
-    let cell_w = ((w - gap * (n - 1.0)) / n).max(40.0); // LITERAL-PX-OK: minimum cell width for segmented row (panel-specific design floor)
+    let _cell_w = ((w - gap * (n - 1.0)) / n).max(40.0); // LITERAL-PX-OK: minimum cell width for segmented row (panel-specific design floor)
+    // ⭐ **A fileira ENCOSTA** — a lei do Blender.
+    let seg = ph2d_editor_core::widget::segment_rects(Rect::new(x, y, w, h), options.len());
     for (i, (lbl, oid)) in options.iter().enumerate() {
-        let rx = x + i as f32 * (cell_w + gap);
-        let rect = Rect::new(rx, y, cell_w, h);
-        paint_segmented_button(
+        let (rect, cell) = seg[i];
+        paint_segmented_button_in_group(
             rect,
             lbl,
             i == active_idx,
             *oid,
+            cell,
             scene,
             text_system,
             theme,

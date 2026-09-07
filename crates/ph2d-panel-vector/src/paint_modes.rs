@@ -27,7 +27,9 @@ use crate::paint_sections::BodyCtx;
 use crate::paint_sections::LABEL_COL_W;
 use crate::state;
 use ph2d_editor_core::paint::{paint_text, resolve};
-use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
+use ph2d_editor_core::widget::panel_chrome::{
+    paint_segmented_button, paint_segmented_button_in_group,
+};
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{NumberInput, paint_number_input_with_buffer};
 use ph2d_editor_core::zones::Rect;
@@ -323,15 +325,23 @@ impl BodyCtx<'_> {
         if n == 0 {
             return y;
         }
-        let gap = Spacing::Xs.px();
-        let w = ((self.inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
+        // ⭐⭐ **A grelha é UM corpo** — a lei do Blender que o dono apontou (foto do `TOOL` do
+        //    Vector, 2026-09-06): as peças encostam e só os quatro cantos do BLOCO arredondam.
+        //    ⚠️ A última fileira pode estar incompleta, e é por isso que a contagem por linha vai
+        //    numa lista: uma grelha rectangular daria peças fantasma no fim.
+        let rows: Vec<usize> = (0..n.div_ceil(cols))
+            .map(|r| cols.min(n - r * cols))
+            .collect();
+        let block = ph2d_editor_core::widget::block_cells(
+            Rect::new(self.inner_x, y, self.inner_w, 0.0),
+            &rows,
+            self.row_h,
+        );
         for i in 0..n {
             let (id, label, active) = item(i);
-            let rx = self.inner_x + (i % cols) as f32 * (w + gap);
-            let ry = y + (i / cols) as f32 * (self.row_h + gap);
-            let rect = Rect::new(rx, ry, w, self.row_h);
+            let (rect, cell) = block[i / cols][i % cols];
             let st = self.store.button_visual(id);
-            paint_segmented_button(
+            paint_segmented_button_in_group(
                 rect,
                 label,
                 active,
@@ -339,11 +349,14 @@ impl BodyCtx<'_> {
                 self.scene,
                 self.text_system,
                 self.theme,
+                cell,
             );
             self.hit_index.register(id, rect);
         }
-        let rows = n.div_ceil(cols) as f32;
-        y + rows * self.row_h + (rows - 1.0) * gap + self.row_gap
+        // ⚠️ **A altura sai da MESMA porta que dispôs as peças** — a conta à mão que estava aqui
+        // somava o vão antigo, e um contentor medido por uma regra e preenchido por outra escreve
+        // a fileira seguinte por cima desta.
+        y + ph2d_editor_core::widget::grid_height(rows.len(), self.row_h) + self.row_gap
     }
 
     /// Um campo numérico rotulado (`<rótulo> [ valor ]`), largura cheia — os parâmetros

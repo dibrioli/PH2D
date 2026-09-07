@@ -91,13 +91,38 @@ pub(crate) fn armed_from(value: Option<&str>) -> bool {
     value != Some("0")
 }
 
-/// A forma seleccionada (uma só) e a entidade dela — o mesmo critério do motor velho.
+/// ⭐⭐⭐ **O OBJECTO sobre o qual a secção fala** — e ele não é forçosamente um traço.
 ///
-/// ⚠️ **Uma só, de propósito:** um componente é sobre UMA coisa, e *«criar componente»* a partir de
+/// ⚠️ **Uma coisa só, de propósito:** um prefab é sobre UM objecto, e *«fazer prefab»* a partir de
 /// duas selecções é outra operação (agrupar primeiro).
-fn subject(map: &VecEntityMap, selected: &[VecPathId]) -> Option<Entity> {
-    let [only] = selected else { return None };
-    map.get(only).copied().map(Entity::from_bits)
+///
+/// # ⛔⛔ O GRUPO não é um path (report do Enio, 2026-09-07)
+///
+/// *«Com a pasta do grupo seleccionada não aparecem as opções de prefab; aparecem ao clicar nos
+/// filhos.»* A secção perguntava **só à caneta** (`vec_pen.selected_paths()`), e um grupo é uma
+/// entidade **comum com filhos** — ele não tem `VecPathRef`, logo não é path nenhum e a lista vinha
+/// vazia (ou com os dois filhos). ⇒ *a lente do painel era mais estreita que a do verbo*, pela
+/// **quarta** vez nesta secção: os verbos gerais trabalham sobre ENTIDADES, e o menu da Hierarquia
+/// já aceitava o grupo — que é, aliás, o único sítio por onde se faz um prefab de várias formas.
+///
+/// ⇒ duas fontes, nesta ordem: o path seleccionado (o caminho exacto de sempre) e, quando ele não
+/// responde, o **objecto único** que o gizmo tem na mão. ⚠️ **A ordem importa:** com um path
+/// seleccionado as duas concordam, e manter o path à frente deixa o caminho de omissão intocado.
+///
+/// ⚠️ **A MESMA função serve o que a secção MOSTRA e o que o clique FAZ** — duas resoluções dariam
+/// uma secção a oferecer um verbo sobre o grupo e um clique a agir sobre um filho, que é a espécie
+/// de defeito mais cara deste ficheiro.
+pub(crate) fn subject_of(
+    map: &VecEntityMap,
+    selected: &[VecPathId],
+    single_selected: Option<u64>,
+) -> Option<Entity> {
+    if let [only] = selected
+        && let Some(&bits) = map.get(only)
+    {
+        return Some(Entity::from_bits(bits));
+    }
+    single_selected.map(Entity::from_bits)
 }
 
 /// ⭐⭐ **O `ComponentState` lido do modelo GERAL.**
@@ -114,12 +139,14 @@ pub(crate) fn state_of(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     selected: &[VecPathId],
+    // ⭐ **O objecto único na mão do gizmo** — a segunda fonte do sujeito; ver [`subject_of`].
+    single_selected: Option<u64>,
     // ⭐ **O conta-gotas está armado?** — o mesmo dado que o produtor vetorial recebe. Ele vive no
     // `App::vec_path_pick`, que é da shell: publicá-lo é o que faz o botão trocar de rótulo para
     // *Click a copy of the prefab* enquanto o gesto está aberto.
     pick_armed: bool,
 ) -> Option<ph2d_panel_vector::state::ComponentState> {
-    let e = subject(map, selected)?;
+    let e = subject_of(map, selected, single_selected)?;
     if sim.world().get_entity(e).is_err() {
         return None;
     }
@@ -353,3 +380,8 @@ pub(crate) fn swap_by_pick(
 #[cfg(test)]
 #[path = "vec_component_general_tests.rs"]
 mod tests;
+
+/// ⭐ **Os gestos de DUAS MÃOS** — irmão por responsabilidade, e o corte que o tecto de LOC impôs.
+#[cfg(test)]
+#[path = "vec_component_general_pick_tests.rs"]
+mod pick_tests;

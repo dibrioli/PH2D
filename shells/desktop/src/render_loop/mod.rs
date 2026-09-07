@@ -6797,11 +6797,16 @@ impl crate::App {
                     // ⚠️ **O sujeito resolve-se ANTES dos documentos** — o mapa `path ⟺ entidade`
                     // entra no `OwnedDocs` emprestado mutavelmente, e pedi-lo outra vez lá dentro
                     // seria o segundo empréstimo.
-                    let subject = sel
-                        .first()
-                        .and_then(|id| self.vec_entities.get(id))
-                        .copied()
-                        .map(ph2d_ecs::Entity::from_bits);
+                    //
+                    // ⚠️ **Pela MESMA função que a secção usa para se MOSTRAR** — duas resoluções
+                    // dariam um botão oferecido sobre o grupo e um clique a agir sobre um filho.
+                    let subject = crate::vec_component_general::subject_of(
+                        &self.vec_entities,
+                        &sel,
+                        (hero.gizmo.selected_len() == 1)
+                            .then_some(hero.gizmo.selection)
+                            .flatten(),
+                    );
                     let step = crate::input_dispatch::screen_offset_world(
                         camera,
                         window_size,
@@ -9823,6 +9828,11 @@ impl crate::App {
                         sim,
                         &self.vec_entities,
                         &sel,
+                        // ⭐ **O objecto único na mão** — é o que faz a secção aparecer sobre um
+                        // GRUPO, que não é path nenhum. Ver [`vec_component_general::subject_of`].
+                        (hero.gizmo.selected_len() == 1)
+                            .then_some(hero.gizmo.selection)
+                            .flatten(),
                         // ⚠️ **A MESMA pergunta que o ramo velho faz** — o rótulo do botão troca
                         // enquanto o gesto de duas mãos está aberto, e é ele que diz ao artista
                         // que o app está à espera do segundo clique.

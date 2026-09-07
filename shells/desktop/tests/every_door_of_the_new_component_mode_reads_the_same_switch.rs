@@ -70,6 +70,34 @@ fn every_door_of_the_new_component_mode_reads_the_same_switch() {
     );
 }
 
+/// ⛔⛔⛔ **O que a secção MOSTRA e o que o clique FAZ resolvem o sujeito pela MESMA função**
+/// (report do Enio, 2026-09-07 — o grupo).
+///
+/// O sujeito deixou de ser *«o path seleccionado»* e passou a ser *«o objecto único na mão»*, porque
+/// um **grupo** não é path nenhum. ⚠️ **Duas resoluções aqui seriam a pior espécie de defeito deste
+/// ficheiro:** a secção a oferecer um verbo sobre o grupo e o clique a agir sobre um filho — as duas
+/// metades certas, e o artista a ver o prefab a nascer da forma errada.
+///
+/// ⚠️ **E as duas leituras do gizmo NÃO se juntam num `let`**, de propósito: o clique pode **mover a
+/// selecção** (o *Make* deixa-a na cópia), e um valor lido antes dele publicaria a secção sobre o
+/// objecto que o artista acabou de largar. *São dois instantes, não duas cópias de uma pergunta.*
+///
+/// **Mutação que deve sangrar:** um dos dois sítios a deixar de perguntar ao gizmo.
+#[test]
+fn the_section_and_the_click_resolve_the_subject_the_same_way() {
+    let body = code_of("render_loop/mod.rs");
+    assert!(
+        body.contains("vec_component_general::subject_of("),
+        "o clique deixou de resolver o sujeito pela porta que a seccao usa para se mostrar"
+    );
+    assert_eq!(
+        body.matches("hero.gizmo.selected_len() == 1").count(),
+        2,
+        "um dos dois sitios deixou de perguntar pelo OBJECTO UNICO na mao — o painel pode oferecer \
+         um verbo sobre o grupo e o clique agir sobre um filho (ou o contrario)"
+    );
+}
+
 /// ⛔⛔⛔ **As DUAS listas que o modo novo ainda não serve saem VAZIAS por DECLARAÇÃO.**
 ///
 /// O comentário daquele bloco afirmava que elas *«saem vazias sozinhas»* porque lêem o

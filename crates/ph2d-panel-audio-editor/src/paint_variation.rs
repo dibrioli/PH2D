@@ -17,11 +17,11 @@ use crate::{
     AEDIT_VAR_STRATEGY_NEXT, AEDIT_VAR_STRATEGY_PREV, AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP,
     MAX_VARIATIONS, variation_state,
 };
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
+use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken, list_row_gap_px};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken, list_row_gap_px};
 use ph2d_vector::VectorScene;
 
 /// Width of the `◀` / `▶` strategy selector arrows (matches the effects selector).
@@ -176,21 +176,32 @@ fn paint_var_list(
     let sel = variation_state::variation_sel();
     for (i, name) in names.iter().enumerate().take(MAX_VARIATIONS) {
         let rect = Rect::new(x, y, w, VAR_ROW_H);
-        let bg = if i == sel {
-            ColorToken::Accent
-        } else {
-            ColorToken::Bg3
-        };
-        let fg = if i == sel {
-            ColorToken::AccentFg
-        } else {
-            ColorToken::Text1
-        };
-        fill_rounded_rect(
+        // ⭐⭐ Pela porta (wave 21). ⛔ **Esta era a mais desviada das quatro:** toda linha enchia
+        //    `Bg3` (o repouso de um botão) e a escolhida enchia `Accent` CHEIO com texto invertido
+        //    — uma lista inteira de botões, com um deles aceso. Hoje ela tem a listra da paridade
+        //    por baixo e o realce por cima, como as outras quatro.
+        ph2d_editor_core::widget::paint_row_stripe(
             scene,
             rect,
-            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
-            resolve(bg, theme),
+            theme,
+            ph2d_editor_core::widget::section_cards::CardDepth::Section.token(),
+            i,
+        );
+        let fg = if i == sel {
+            ColorToken::Text1
+        } else {
+            ColorToken::Text2
+        };
+        ph2d_editor_core::widget::paint_row_highlight(
+            scene,
+            rect,
+            theme,
+            if i == sel {
+                ph2d_editor_core::widget::RowHighlight::Selected
+            } else {
+                ph2d_editor_core::widget::RowHighlight::None
+            },
+            0.0,
         );
         paint_text(
             text_system,

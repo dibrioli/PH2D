@@ -1406,6 +1406,64 @@ arredondam · o meio do stepper desconta os DOIS fios), e as três mutações pa
 
 **Portão:** `13 076` testes / `0` falhados; clippy `--all-targets -D warnings` limpo.
 
+### 7.26 — ✅ WAVE 21 (2026-09-07): a linha ESCOLHIDA de uma lista tem UMA voz
+
+**Report do dono**, foto da cadeia de efeitos: *«veja que o nome Low-Pass está com o fundo na cor
+dos botões, sem layout adequado, grudado nos botões abaixo. Os botões abaixo deveriam ser do mesmo
+grupo juntos. Estude o layout e corrija.»*
+
+#### ⛔⛔ Cinco listas, QUATRO dialectos para a mesma frase
+
+| lista | o que pintava | o que isso é |
+|---|---|---|
+| hierarquia | `AccentSoft` + raio + **moldura de acento** | uma caixa |
+| **cadeia de efeitos** | **`Bg3`** a sangrar, sem quinas | **o repouso de um BOTÃO** |
+| âncoras / animações | **`Bg2`** com raio | o tom do HOVER, numa caixa |
+| variações do áudio | **`Accent` cheio**, texto invertido | um botão aceso |
+
+⚠️ **Nenhum estava errado sozinho** — cada um lia-se bem no painel dele. O que estava errado era
+haver quatro: *duas superfícies que dizem a mesma coisa de maneiras diferentes ensinam ao artista
+que elas são coisas diferentes.*
+
+**A lei, com as três derivações:** o tom é `AccentSoft` — o *pressed* do modelo
+(`style_tree_selected = flat_button_pressed`, `theme_modern.cpp:709`), **nunca o repouso**; ela
+**SANGRA** (`content_margin_all(0)` do mesmo sítio); e ⛔ **não tem quinas nem moldura**, que é
+veredito do dono medido três vezes — *o que diz «botão» é a QUINA*.
+
+#### E a cadeia tinha MAIS TRÊS respostas só dela
+
+Altura **18 px** (contra as 22 de toda linha do app), vão **zero** (escrito como a ausência de um
+termo) e o realce acima. ⛔⛔ **E ela não estava no censo de listas** — que é uma lista **declarada
+à mão**: *uma superfície que ninguém declarou escapa a um censo por declaração.* Hoje ela é a
+sexta, com altura, vão, listra de paridade e realce pela porta.
+
+#### 🔴 «grudado nos botões abaixo» / «os botões abaixo deveriam ser do mesmo grupo»
+
+⚠️⚠️ **A wave 20b separou o `Bypass` do `Apply | Cancel` e a 20c pôs o `Bypass` na lista — as duas
+leituras estavam erradas, e o que as gerou foi eu procurar o sítio dele pela FUNÇÃO** (*«é um
+estado, não uma ordem»* · *«ele age sobre a cadeia»*) **em vez de pela SUPERFÍCIE**. Os três
+partilham a mesma faixa de acção no fim da secção, e é isso que o olho lê; a lista acima é outra
+superfície, e o que os separa é o vão que ela agora deixa. ⇒ `Bypass` / `Apply | Cancel` = um corpo
+`[1, 2]`, e a lista fecha com o vão de um controlo.
+
+#### O que os gates apanharam — e as duas vezes que a régua era a errada
+
+- **A hierarquia declara-se em `paint.rs` e pinta a linha em `row.rs`** — *uma superfície pode ser
+  dois ficheiros*, e um censo que lê um ficheiro por superfície acusa o inocente.
+- **O inspector da grade não tem linha escolhida nenhuma**, logo procurar a porta lá é procurar a
+  resposta a uma pergunta que ele não faz. ⇒ a lei do realce ganhou a **sua própria** lista de
+  sítios, com a metade que declara *«esta não tem realce, e é porquê»*.
+- ⚠️ **`list_rows.rs` virou pasta**, e a entrada de isenção do HR-12 passou a descrever um ficheiro
+  que já não existe: *um ficheiro que vira pasta renomeia-se aos olhos de todo censo por caminho.*
+
+| prova de mutação | resultado |
+|---|---|
+| a linha escolhida volta ao tom de um botão parado | ✅ morreu |
+| a linha escolhida ganha quinas | ✅ morreu |
+| uma lista volta a pintar o realce sozinha | ✅ morreu |
+
+**Portão:** `13 080` testes / `0` falhados; clippy `--all-targets -D warnings` limpo.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

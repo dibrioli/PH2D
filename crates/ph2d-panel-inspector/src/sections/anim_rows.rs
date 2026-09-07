@@ -81,14 +81,18 @@ pub(crate) fn paint_library(
             // casos — mas não quando a que toca deixou de caber na grelha.
             let is_open = i == selected;
             let is_current = info.current == row.name;
-            if is_open {
-                ph2d_editor_core::paint::fill_rounded_rect(
-                    scene,
-                    rect,
-                    Radius::Sm.px(),
-                    resolve(ColorToken::Bg2, theme),
-                );
-            }
+            // ⭐ Pela porta (wave 21) — ver o irmão em `anchors.rs`.
+            ph2d_editor_core::widget::paint_row_highlight(
+                scene,
+                rect,
+                theme,
+                if is_open {
+                    ph2d_editor_core::widget::RowHighlight::Selected
+                } else {
+                    ph2d_editor_core::widget::RowHighlight::None
+                },
+                0.0,
+            );
             let color = if is_current {
                 resolve(ColorToken::Accent, theme)
             } else if is_open {

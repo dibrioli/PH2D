@@ -56,9 +56,16 @@ const LIST_SURFACES: &[(&str, &str, &str)] = &[
     (
         "crates/ph2d-panel-audio-editor/src/paint_variation.rs",
         "VAR_ROW_H",
-        "TODA linha ja' enche o proprio fundo (`Bg3`, ou `Accent` na seleccionada): uma listra por \
-         baixo de um fundo opaco nao se ve^, e trocar o fundo de sempre por uma alternancia e' \
-         mudar o look daquela lista, nao aplicar-lhe a lei",
+        "",
+    ),
+    // ⛔⛔ **A SEXTA, e ela escapou a este censo durante duas waves** (report do dono,
+    //    2026-09-07). `LIST_SURFACES` é uma lista DECLARADA à mão — *uma superfície que ninguém
+    //    declarou escapa a um censo por declaração* —, e a cadeia de efeitos tinha altura, vão e
+    //    realce só dela: 18 px, zero, e `Bg3` (o repouso de um botão).
+    (
+        "crates/ph2d-panel-audio-editor/src/paint_fx.rs",
+        "CHAIN_ROW_H",
+        "",
     ),
     (
         "crates/ph2d-editor-core/src/grid_snap/inspect.rs",
@@ -214,6 +221,77 @@ fn every_list_stripes_its_rows_or_says_why_not() {
     assert!(
         offenders.is_empty(),
         "{} superficie(s) de lista fora da lei da listra:\n  {}",
+        offenders.len(),
+        offenders.join("\n  ")
+    );
+}
+
+/// `(onde o REALCE de uma linha é pintado, porquê se aquela lista não tem realce nenhum)`.
+///
+/// ⚠️ **É uma lista SEPARADA da `LIST_SURFACES`, e as duas primeiras corridas disseram porquê:**
+/// a hierarquia declara-se em `paint.rs` e pinta a linha em `row.rs` — *uma superfície pode ser
+/// dois ficheiros*, e um censo que lê um ficheiro por superfície acusa o inocente. E o inspector
+/// da grade **não tem linha escolhida** nenhuma, logo procurar a porta lá é procurar a resposta a
+/// uma pergunta que ele não faz.
+const ROW_HIGHLIGHT_SITES: &[(&str, &str)] = &[
+    ("crates/ph2d-panel-hierarchy/src/row.rs", ""),
+    ("crates/ph2d-panel-audio-editor/src/paint_fx.rs", ""),
+    ("crates/ph2d-panel-audio-editor/src/paint_variation.rs", ""),
+    ("crates/ph2d-panel-inspector/src/sections/anchors.rs", ""),
+    ("crates/ph2d-panel-inspector/src/sections/anim_rows.rs", ""),
+    (
+        "crates/ph2d-editor-core/src/grid_snap/inspect.rs",
+        "e' um BLOCO DE LEITURA rotulo/valor: nao ha' linha escolhida nenhuma para realcar",
+    ),
+];
+
+/// ⭐⭐⭐ **Toda lista diz «esta é a linha em mãos» com a MESMA voz.**
+///
+/// Enio, 2026-09-07, com a foto da cadeia de efeitos: *«veja que o nome Low-Pass está com o fundo
+/// na cor dos botões… estude o layout e corrija»*.
+///
+/// ⛔⛔ **Censo do realce, antes desta wave: cinco listas, QUATRO dialectos.**
+///
+/// | lista | o que pintava | o que isso é |
+/// |---|---|---|
+/// | hierarquia | `AccentSoft` + raio + **moldura de acento** | uma caixa |
+/// | cadeia de efeitos | **`Bg3`** a sangrar, sem quinas | o repouso de um BOTÃO |
+/// | âncoras / animações | **`Bg2`** com raio | o tom do HOVER, numa caixa |
+/// | variações do áudio | **`Accent` cheio** com texto invertido | um botão aceso |
+///
+/// ⚠️ **Nenhum estava errado sozinho** — cada um lia-se bem no painel dele. O que estava errado era
+/// haver quatro: *duas superfícies que dizem a mesma coisa de maneiras diferentes ensinam ao
+/// artista que elas são coisas diferentes.*
+///
+/// A lei e as suas três derivações vivem em `ph2d_editor_core::widget::list_rows::selection`.
+///
+/// **Mutação que deve sangrar:** repor o `fill_rounded_rect(..., Radius::Sm.px(), Bg2)` no
+/// `anchors.rs` — é exactamente um dos quatro dialectos.
+#[test]
+fn every_list_paints_its_selection_through_the_door() {
+    let mut offenders = Vec::new();
+    for (rel, why_none) in ROW_HIGHLIGHT_SITES {
+        let Some(src) = read(rel) else {
+            offenders.push(format!("{rel}: o ficheiro nao existe"));
+            continue;
+        };
+        let uses = src.contains("paint_row_highlight");
+        if !uses && why_none.is_empty() {
+            offenders.push(format!(
+                "{rel}: pinta o realce da linha escolhida sozinho, em vez de chamar \
+                 `ph2d_editor_core::widget::paint_row_highlight`"
+            ));
+        }
+        if uses && !why_none.is_empty() {
+            offenders.push(format!(
+                "{rel}: chama a porta E declara que nao tem realce — o motivo ja' nao descreve \
+                 nada:\n      «{why_none}»"
+            ));
+        }
+    }
+    assert!(
+        offenders.is_empty(),
+        "{} sitio(s) fora da lei do realce:\n  {}",
         offenders.len(),
         offenders.join("\n  ")
     );

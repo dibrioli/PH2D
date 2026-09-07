@@ -40,9 +40,17 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     //    papel e foco é a LINHA, que é registada pelo painel com o id do objecto dela. Dar um nó
     //    à listra poria um alvo focável por baixo de cada linha, a duplicar a linha inteira num
     //    leitor de ecrã; e um leitor de ecrã não lê tons.
+    // ⚠️ **`list_rows.rs` virou PASTA na wave 21** (a lei do realce ganhou casa ao lado da listra),
+    //    e a chave deste censo é o caminho relativo — logo uma entrada passa a ser duas. *Um
+    //    ficheiro que vira pasta renomeia-se aos olhos de todo censo por caminho.*
     (
-        "list_rows.rs",
+        "list_rows/mod.rs",
         "background tint painted behind list rows; the ROW owns name/role/focus",
+    ),
+    (
+        "list_rows/selection.rs",
+        "selection/hover tint painted behind a list row; the ROW owns name/role/focus, and a \
+         screen reader does not read tones",
     ),
     // ⚠️ **O cartão de secção não tem semântica própria, e a ausência é a decisão** (2026-09-06):
     // ele é o COMPOSITOR que põe o corpo de uma secção dentro de um cartão (o modelo de painel do

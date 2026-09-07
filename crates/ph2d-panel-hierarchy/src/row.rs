@@ -4,14 +4,14 @@
 
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::HitIndex;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
+use ph2d_editor_core::paint::{paint_icon, paint_text, resolve};
 use ph2d_editor_core::screens::hero::fixture;
 use ph2d_editor_core::screens::hero::ids;
 use ph2d_editor_core::widget::{Tag, TagState, TagTone, paint_tag};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{
-    ColorToken, ICON_BTN_SIZE_PX, INLINE_ICON_PX, Radius, Spacing, StrokeToken, Theme, TypeToken,
+    ColorToken, ICON_BTN_SIZE_PX, INLINE_ICON_PX, Spacing, StrokeToken, Theme, TypeToken,
 };
 use ph2d_vector::VectorScene;
 
@@ -62,36 +62,33 @@ fn paint_row_background(
     // ⭐ **O REALCE DE PROVENIÊNCIA** (estudo de UI viva, C2): o objecto sob o ponteiro acende a
     // linha dele, venha o ponteiro do canvas ou desta mesma lista.
     //
-    // ⚠️ **A seleção VENCE, e não é ordem de desenho — é significado.** Selecionado é um facto do
-    // documento (*estas são as formas em mãos*); apontado é um facto do ponteiro, que dura o que a
-    // mão durar. Pintar o hover por cima faria a linha selecionada mudar de cor por alguém passar
-    // o rato, e o artista perderia de vista o que tem em mãos.
-    //
     // ⚠️ **E é um tom SÓ, sem eixo** — a cerca do estudo §6.2: *o realce de uma lista OBEDECE ao
     // cursor*. Oito linhas meio-acesas ao mesmo tempo é rasto, não vida.
-    if !entity.selected && entity.hovered {
-        fill_rounded_rect(
-            scene,
-            rect,
-            Radius::Sm.px(),
-            resolve(ColorToken::Bg2, theme),
-        );
-    }
-    if entity.selected {
-        // ⭐ Pela porta do TEMA: a linha seleccionada é só tinta num tema moderno (a `selected`
-        //    do `Tree` do Godot).
-        let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
-        fill_rounded_rect(scene, rect, radius, resolve(ColorToken::AccentSoft, theme));
-        ph2d_editor_core::paint::stroke_frame(
-            scene,
-            rect,
-            radius,
-            theme,
-            ph2d_tokens::visuals::Feel::Active,
-            1.0,
-            resolve(ColorToken::Accent, theme),
-        );
-    }
+    //
+    // ⭐⭐⭐ **A LEI vive na porta desde a wave 21** — `widget::paint_row_highlight` —, e ela
+    // decide a precedência (escolhida vence apontada), o tom (o *pressed* do modelo, nunca o
+    // repouso de um botão), o sangramento e a AUSÊNCIA de quinas.
+    //
+    // ⛔ **Este sítio perdeu o raio e a moldura de acento, e isso é a padronização** (report do
+    // dono sobre a cadeia de efeitos, 2026-09-07): a hierarquia dizia *«esta é a linha em mãos»*
+    // com uma caixa arredondada e contornada, e a cadeia dizia o mesmo com uma faixa a sangrar.
+    // *Duas superfícies que dizem a mesma coisa de maneiras diferentes ensinam ao artista que elas
+    // são coisas diferentes.* ⚠️ E era a moldura que fazia a linha escolhida ler-se como um botão,
+    // que é o report que a cadeia levou **três** waves a fechar.
+    ph2d_editor_core::widget::paint_row_highlight(
+        scene,
+        rect,
+        theme,
+        if entity.selected {
+            ph2d_editor_core::widget::RowHighlight::Selected
+        } else if entity.hovered {
+            ph2d_editor_core::widget::RowHighlight::Hovered
+        } else {
+            ph2d_editor_core::widget::RowHighlight::None
+        },
+        // A hierarquia ocupa a largura toda do corpo: não há folga de cartão para transbordar.
+        0.0,
+    );
 }
 
 /// ⭐⭐⭐ **O alvo de clique de um companheiro tem a altura DA LINHA — nunca mais que ela.**

@@ -159,14 +159,19 @@ fn anchor_list(
             i,
         );
         let is_sel = i == selected;
-        if is_sel {
-            ph2d_editor_core::paint::fill_rounded_rect(
-                scene,
-                rect,
-                Radius::Sm.px(),
-                resolve(ColorToken::Bg2, theme),
-            );
-        }
+        // ⭐ Pela porta (wave 21): esta lista pintava `Bg2` **com raio** — o tom do HOVER, e uma
+        //    caixa. As cinco listas do app diziam «esta é a linha em mãos» de QUATRO maneiras.
+        ph2d_editor_core::widget::paint_row_highlight(
+            scene,
+            rect,
+            theme,
+            if is_sel {
+                ph2d_editor_core::widget::RowHighlight::Selected
+            } else {
+                ph2d_editor_core::widget::RowHighlight::None
+            },
+            0.0,
+        );
         let color = if is_sel {
             resolve(ColorToken::Text1, theme)
         } else {

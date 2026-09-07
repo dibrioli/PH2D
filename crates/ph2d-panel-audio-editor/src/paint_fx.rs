@@ -15,8 +15,8 @@
 //! (`audio/fx_params.rs`), so no DSP range or unit ever lands here.
 
 use crate::paint::{
-    ARROW_W, ClippedHits, ROW_H, action_bg, button, button_in_group, buttons_block,
-    display_in_group, toggle,
+    ARROW_W, ClippedHits, ROW_H, action_bg, button, button_in_group, display_in_group,
+    toggle_in_group,
 };
 use crate::{
     AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
@@ -26,7 +26,7 @@ use crate::{
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
+use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::widget::{
     ButtonState, IconButtonStyle, IconGlyph, SEGMENT_HAIRLINE, Slider, SliderOrientation,
     paint_icon_button, paint_slider,
@@ -36,9 +36,10 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-/// Width of the `◀` / `▶` selector arrows.
-/// **Uma linha de lista não tem quinas** — ver o sítio que a usa.
-const LIST_ROW_RADIUS_PX: f32 = 0.0; // LITERAL-PX-OK: a ausencia de raio E' a lei da linha de lista
+/// A altura de uma linha da CADEIA — **a linha do app** (wave 21). Ela era
+/// `TypeToken::Sm + Spacing::Sm` (≈ 18 px), uma terceira resposta a *«que altura tem uma
+/// linha?»* que nenhum teste podia ver, porque estava certa sozinha.
+const CHAIN_ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 
 /// Buttons in the chain action row (Add · Remove · Up · Down).
 const ACTION_BUTTONS: f32 = 4.0; // LITERAL-PX-OK: fixed count, divides the row width
@@ -355,7 +356,6 @@ fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 
 /// The panel does not scroll, so the actions ride the header rather than claiming a
 /// row of their own.
 fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -> f32 {
-    let stage_h = TypeToken::Sm.px() + Spacing::Sm.px();
     let count = snapshot::fx_stage_count();
     let sel = snapshot::fx_sel();
 
@@ -386,35 +386,41 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
         let rect = Rect::new(actions_x + row_h * i as f32, y, row_h, row_h);
         icon_button(rect, glyph, enabled, id, ctx);
     }
-    y += row_h + Spacing::Xs.px();
+    y += row_h + ph2d_tokens::control_gap_px();
 
+    // ⭐⭐⭐ **A cadeia é uma LISTA, e passa a obedecer às leis de uma** (wave 21, report do dono:
+    //    *«sem layout adequado… estude o layout e corrija»*). Ela tinha **três** respostas só
+    //    dela: a altura (`TypeToken::Sm + Spacing::Sm` ≈ 18 px, contra as 22 de toda linha do
+    //    app), o vão (zero, escrito como a ausência de um termo) e o realce (`Bg3`, o tom de um
+    //    botão parado). ⚠️ **E ela não estava no censo de listas** — que é uma lista DECLARADA à
+    //    mão: *uma superfície que ninguém declarou escapa a um censo por declaração.*
+    let stage_h = CHAIN_ROW_H;
+    // A folga do cartão que envolve a secção: é até aí que a faixa de uma linha sangra.
+    let bleed = Spacing::Xs.px();
     for i in 0..count.min(MAX_FX_STAGES) {
         let Some((name, enabled)) = snapshot::fx_stage_view(i) else {
             continue;
         };
         let row = Rect::new(x, y, w, stage_h);
-        if i == sel {
-            // ⭐⭐ **Uma linha de LISTA escolhida não é um botão premido — e a diferença é o
-            //    RECUO.** Enio, 2026-09-06: *«o nome de um efeito de áudio parece um botão»*, e
-            //    parecia: o realce tinha raio de chip (6 px) e a largura exacta do `Bypass` logo
-            //    abaixo. A lei do Godot Modern para o `selected` de uma `Tree` é o *flat pressed*
-            //    com **`content_margin_all(0)`** (`theme_modern.cpp:709`) — ele **SANGRA** de
-            //    ponta a ponta do corpo, sem recuo e sem moldura. Aqui isso é transbordar a folga
-            //    do cartão que envolve a secção.
-            let bleed = Spacing::Xs.px();
-            // ⛔ **E SEM QUINAS** — o dono voltou ao assunto: *«o nome do filtro continua a
-            //    parecer um botão»*. O sangramento sozinho não bastou, porque o que diz «botão»
-            //    é a QUINA: com a lei do grupo, um botão desta casa arredonda pelo menos um
-            //    canto, e uma linha de lista não arredonda **nenhum**. *É a mesma régua do
-            //    Blender, do outro lado: lá o que agrupa é a quina que fica, aqui o que separa
-            //    é a quina que não existe.*
-            fill_rounded_rect(
-                ctx.scene,
-                Rect::new(x - bleed, y, w + bleed * 2.0, stage_h),
-                LIST_ROW_RADIUS_PX,
-                resolve(ColorToken::Bg3, ctx.theme),
-            );
-        }
+        // ⭐ A listra da paridade (wave 18) vem primeiro, e o realce por cima dela.
+        ph2d_editor_core::widget::paint_row_stripe(
+            ctx.scene,
+            Rect::new(x - bleed, y, w + bleed * 2.0, stage_h),
+            ctx.theme,
+            ph2d_editor_core::widget::section_cards::CardDepth::Section.token(),
+            i,
+        );
+        ph2d_editor_core::widget::paint_row_highlight(
+            ctx.scene,
+            row,
+            ctx.theme,
+            if i == sel {
+                ph2d_editor_core::widget::RowHighlight::Selected
+            } else {
+                ph2d_editor_core::widget::RowHighlight::None
+            },
+            bleed,
+        );
         // The eye sits at the row's right edge and swallows its own clicks; the
         // rest of the row selects. Register the row FIRST so the eye's rect, which
         // is registered after, wins the overlap.
@@ -446,25 +452,36 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
             IconId::EyeClosed
         };
         icon_button(eye, glyph, loaded, AEDIT_FX_STAGE_ONS[i], ctx);
-        y += stage_h;
+        y += stage_h + ph2d_tokens::list_row_gap_px();
     }
-    // ⭐⭐ **Sem vão: o `Bypass` encosta aqui** (report do dono, 2026-09-07: *«pode juntar»*). Ele
-    //    silencia a CADEIA inteira — é o rodapé desta lista, não o vizinho de cima do `Apply`.
-    //    ⛔ E é por isso que ele saiu do corpo do `Apply | Cancel` na 20b: colado ali, um ESTADO
-    //    lia-se como uma terceira ordem.
-    y
+    // ⛔ **A lista acaba com o vão de um controlo, e o `Bypass` NÃO lhe encosta** (report do dono,
+    //    2026-09-07): colada a um botão, a última linha da lista volta a ler-se como um botão —
+    //    que é exactamente o defeito que esta wave veio curar.
+    y + ph2d_tokens::control_gap_px()
 }
 
 /// `Bypass` (global A/B) over `Apply | Cancel`. Bypass mutes the whole chain so the
 /// dry clip sounds and shows, without losing it — the fastest before/after there is.
 /// Apply turns exactly the buffer you heard into one undo step; Cancel drops it.
 /// Both are only meaningful while something is auditioning.
-fn paint_commit_row(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -> f32 {
-    let gap = Spacing::Xs.px();
+fn paint_commit_row(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -> f32 {
     let auditioning = snapshot::fx_auditioning();
     let bypassed = snapshot::fx_bypass();
-    toggle(
-        Rect::new(x, y, w, row_h),
+    // ⭐⭐⭐ **Os três são UM corpo** (report do dono, 2026-09-07: *«os botões abaixo deveriam ser
+    //    do mesmo grupo juntos»*). ⚠️ **A wave 20b separou-os e a 20c pôs o `Bypass` na lista — as
+    //    duas leituras estavam erradas, e o que as gerou foi eu procurar o sítio dele pela FUNÇÃO
+    //    («é um estado, não uma ordem») em vez de pela SUPERFÍCIE.** Estes três partilham a mesma
+    //    faixa de acção no fim da secção, e é isso que o olho lê; a lista acima é outra superfície,
+    //    e o que os separa é o vão que ela agora deixa.
+    //
+    // Bypass mutes the whole chain so the dry clip sounds and shows, without losing it — the
+    // fastest before/after there is. Apply turns exactly the buffer you heard into one undo step;
+    // Cancel drops it. Apply is dimmed while bypassed: what sounds is the dry clip, so committing
+    // would land nothing.
+    let block = ph2d_editor_core::widget::block_cells(Rect::new(x, y, w, 0.0), &[1, 2], row_h);
+    toggle_in_group(
+        block[0][0].0,
+        block[0][0].1,
         "Bypass",
         bypassed,
         auditioning,
@@ -474,34 +491,26 @@ fn paint_commit_row(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &
         ctx.theme,
         ctx.hit_index,
     );
-    y += row_h + ph2d_tokens::control_gap_px();
-
-    // ⛔⛔ **O `Bypass` NÃO entra no corpo do `Apply | Cancel`, e a wave 20 juntou-os por engano**
-    //    (report do dono, 2026-09-07, 2.ª seta vermelha: *«a ausência de espaçamento»*). A régua é
-    //    a dele, e ela separa os dois: o `Bypass` é um **estado** que se liga e desliga; `Apply` e
-    //    `Cancel` são **ordens** que terminam a audição. *«Apenas quando o grupo for nitidamente de
-    //    função diferente é que deve permanecer grupos afastados»* — e um interruptor ao lado de
-    //    dois comandos é exactamente esse caso.
-    //
-    // ⚠️ **A lição é sobre a régua, não sobre este par:** «respondem à mesma pergunta» é larga
-    //    demais — quase tudo numa secção responde à mesma pergunta. A que decide é *o que a peça
-    //    É*: um estado, uma ordem, uma escolha.
-    //
-    // Apply is dimmed while bypassed: what sounds is the dry clip, so committing
-    // would land nothing. Release Bypass to commit what the chain does.
-    let y = buttons_block(
-        Rect::new(x, y, w, row_h),
-        &[2],
-        &[
-            ("Apply", loaded && !bypassed, AEDIT_FX_APPLY),
-            ("Cancel", auditioning, AEDIT_FX_CANCEL),
-        ],
-        ctx.scene,
-        ctx.text_system,
-        ctx.theme,
-        ctx.hit_index,
-    );
-    y + gap
+    for (i, (label, on, id)) in [
+        ("Apply", loaded && !bypassed, AEDIT_FX_APPLY),
+        ("Cancel", auditioning, AEDIT_FX_CANCEL),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        button_in_group(
+            block[1][i].0,
+            label,
+            on,
+            id,
+            block[1][i].1,
+            ctx.scene,
+            ctx.text_system,
+            ctx.theme,
+            ctx.hit_index,
+        );
+    }
+    y + ph2d_editor_core::widget::grid_height(2, row_h) + ph2d_tokens::control_gap_px()
 }
 
 /// A frameless icon button. Disabled ones are dimmed and — crucially — do **not**

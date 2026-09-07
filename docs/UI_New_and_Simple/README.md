@@ -214,6 +214,14 @@ logo uma fronteira a `3` já se lê. ⭐⭐⭐ **E a causa dos dois dialectos er
 segmentado conhecia a lei do grupo desde a wave 10 e o `Button` não — por isso o mesmo par
 `Cancel | Apply` aparecia junto num painel e separado em cinco outros.
 
+⭐⭐⭐ **E a wave 21 (07/09) deu à linha ESCOLHIDA de uma lista uma voz só**
+([§7.26](pesquisa/08_modelos_com_codigo_para_seguir.md)): o app tinha **cinco listas e quatro
+dialectos** — e o da cadeia de efeitos era `Bg3`, o **repouso de um botão**, que é literalmente o
+report do dono. A lei vem do modelo (`selected` de uma `Tree` = `flat_button_pressed`, a sangrar,
+`content_margin_all(0)`) e o *sem quinas* é veredito dele, medido três vezes. ⛔ E a cadeia tinha
+mais três respostas só dela (altura 18, vão zero, realce próprio) porque **nunca foi declarada** no
+censo de listas — *uma superfície que ninguém declarou escapa a um censo por declaração*.
+
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
 cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·
 esbatimento do rótulo e inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis, animado) —

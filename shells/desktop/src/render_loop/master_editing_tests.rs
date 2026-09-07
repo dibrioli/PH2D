@@ -181,3 +181,37 @@ fn a_loose_object_lights_nothing_and_the_eye_still_wins() {
         "o modo de edicao passou por cima do olho da Hierarquia"
     );
 }
+
+/// ⭐⭐⭐ **«ABRIU AGORA» é reportado UMA vez, e não em todo quadro em que a receita está aberta.**
+///
+/// É a diferença entre a câmera **ir** à receita quando ela abre e a câmera ficar **presa** a ela:
+/// o segundo quadro tem a mesma selecção e a mesma marca, e um `opened` que continuasse cheio
+/// puxaria a vista de volta a cada quadro — o artista não conseguiria dar pan enquanto edita.
+///
+/// **Mutação que deve sangrar:** o `opened` deixar de filtrar pelo `have` (passa a ser *«o que
+/// está aberto»*, que é verdade sempre).
+#[test]
+fn a_recipe_reports_itself_opened_once_and_not_every_frame() {
+    let (mut sim, root, piece, _) = scene();
+    assert!(
+        mark(&mut sim, None::<u64>).opened.is_empty(),
+        "sem selecção não há nada a abrir"
+    );
+    let first = mark(&mut sim, Some(piece.to_bits())).opened;
+    assert_eq!(
+        first,
+        vec![root],
+        "abrir pela peça tem de reportar a RAIZ — é ela que a câmera enquadra"
+    );
+    assert!(
+        mark(&mut sim, Some(piece.to_bits())).opened.is_empty(),
+        "o segundo quadro reportou a mesma abertura — a vista ficaria presa à receita"
+    );
+    // E fechar e reabrir volta a reportar: a transição é o facto, não a primeira vez.
+    mark(&mut sim, None::<u64>);
+    assert_eq!(
+        mark(&mut sim, Some(root.to_bits())).opened,
+        vec![root],
+        "reabrir depois de fechar tem de voltar a enquadrar"
+    );
+}

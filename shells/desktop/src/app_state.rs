@@ -632,6 +632,15 @@ pub(crate) struct App {
     /// FUNDIDO (`vec_live_drawn`), que só fica pronto no fim do quadro. O atraso é de ~16 ms —
     /// abaixo do perceptível — e é a mesma escolha que os selos do papel booleano já fazem.
     pub(crate) hovered_object: Option<u64>,
+    /// ⭐⭐⭐ **A RECEITA que acabou de abrir e ainda espera pela câmera** (Enio, 2026-09-07), em
+    /// bits de `Entity`.
+    ///
+    /// ⚠️ **É um pedido diferido, e a razão é de ORDEM:** quem sabe que uma receita abriu é o
+    /// carimbo do [`crate::render_loop::master_editing`], que corre **antes** do extract; quem sabe
+    /// onde ela está é a caixa do gizmo, publicada **depois**. Um dos dois tem de esperar pelo
+    /// outro, e é o pedido — ele fica pendente até a caixa existir, e no quadro seguinte se ainda
+    /// não existir. Ver [`crate::prefab_framing`].
+    pub(crate) prefab_framing: Option<u64>,
     /// **O som de UI que este quadro deve tocar** (estudo de UI viva, D1), ou `None`.
     ///
     /// ⚠️ **Um canal diferido, e não uma chamada no sítio do gesto**, pelo empréstimo: quase todo

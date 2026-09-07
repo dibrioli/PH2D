@@ -303,7 +303,7 @@ pub(crate) fn master_editing_mark_for_tests(
     sim: &mut ph2d_ecs::SimWorld,
     selection: Option<u64>,
 ) -> bool {
-    master_editing::mark(sim, selection)
+    master_editing::mark(sim, selection).touched
 }
 /// doc 89 folha 14: a metade do shell do `source.text` — o bloco vira uma
 /// instância POR CARACTERE, com a geometria de cada glifo internada no MESMO
@@ -2767,7 +2767,7 @@ impl crate::App {
         // contradizer. ⚠️ **Antes do extract e antes da vista do vetor**, que são os dois leitores.
         // ⚠️ **A selecção INTEIRA — a primária e os extras** (auditoria §1.6): com só o primário,
         // Shift-clicar a linha de uma receita realçava-a na Hierarquia e não a trazia à cena.
-        master_editing::mark(
+        let opened = master_editing::mark(
             sim,
             hero_screen.as_ref().into_iter().flat_map(|h| {
                 h.gizmo
@@ -2775,7 +2775,19 @@ impl crate::App {
                     .into_iter()
                     .chain(h.gizmo.extra_selection.iter().copied())
             }),
-        );
+        )
+        .opened;
+        // ⭐⭐⭐ **A RECEITA QUE ABRE PEDE A CÂMERA** (Enio, 2026-09-07: *«o prefab não apareceu no
+        // centro relativo ao canvas visível»*). ⚠️ O pedido é **armado aqui e servido depois** —
+        // a caixa da receita só existe quando o `snapshots` publicar o gizmo dela, e é dela que o
+        // enquadramento sai (ver [`crate::prefab_framing::apply`]).
+        //
+        // ⚠️ **A primeira, e não todas:** seleccionar duas receitas de uma vez abre as duas, e uma
+        // câmera não pode ir a dois sítios. Enquadrar a união poria as duas pequenas e nenhuma no
+        // centro — o artista abriu uma linha primeiro, e é a ela que a vista vai.
+        if let Some(first) = opened.first() {
+            self.prefab_framing = Some(first.to_bits());
+        }
         sim_extract::run(
             dt,
             sim,
@@ -3035,6 +3047,23 @@ impl crate::App {
                 },
                 // O registo — ver o parâmetro na assinatura do `publish`.
                 component_registry,
+            );
+            // ⭐⭐⭐ **A CÂMERA VAI À RECEITA** (Enio, 2026-09-07) — servido AQUI porque é a linha
+            // acima que publica a caixa dela, e é dessa caixa que o enquadramento sai. ⚠️ O gizmo
+            // deste quadro já foi projectado com a câmera ANTIGA, então ele desenha um quadro
+            // atrasado; o desenho do mundo (que é encodado mais abaixo) já usa a nova. *Um quadro
+            // de 16 ms, contra a alternativa de reconstruir a vista inteira só para o esconder.*
+            crate::prefab_framing::apply(
+                &mut self.prefab_framing,
+                hero,
+                ph2d_editor::zones::Rect::new(
+                    0.0,
+                    0.0,
+                    window_size.width as f32,
+                    window_size.height as f32,
+                ),
+                window_size,
+                camera,
             );
             // Flip W7.5/§4.A: os gizmos do modo Edit — só na tool Flip em modo Edit. Os
             // dois campos próprios no `GizmoStateGroup` (append-only) são MUTUAMENTE

@@ -46,7 +46,7 @@ use ph2d_ecs::{Entity, MasterEditing, SimWorld};
 ///
 /// ⚠️ **N receitas ao mesmo tempo é o comportamento certo, não uma tolerância:** seleccionar duas
 /// linhas de biblioteca e ver as duas é o que a multi-selecção promete em todo o resto do app.
-pub(crate) fn mark(sim: &mut SimWorld, selection: impl IntoIterator<Item = u64>) -> bool {
+pub(crate) fn mark(sim: &mut SimWorld, selection: impl IntoIterator<Item = u64>) -> Marked {
     let editing: Vec<Entity> = selection
         .into_iter()
         .map(Entity::from_bits)
@@ -54,7 +54,7 @@ pub(crate) fn mark(sim: &mut SimWorld, selection: impl IntoIterator<Item = u64>)
         .filter_map(|e| ph2d_ecs::master_root_of(sim.world(), e))
         .collect();
     let mut want: std::collections::BTreeSet<Entity> = std::collections::BTreeSet::new();
-    for root in editing {
+    for &root in &editing {
         want.extend(subtree(sim, root));
     }
     let have: std::collections::BTreeSet<Entity> = {
@@ -63,6 +63,16 @@ pub(crate) fn mark(sim: &mut SimWorld, selection: impl IntoIterator<Item = u64>)
             .query_filtered::<Entity, bevy_ecs::query::With<MasterEditing>>();
         q.iter(sim.world()).collect()
     };
+    // ⭐⭐⭐ **QUEM ACABOU DE ABRIR** — a raiz que ainda não estava marcada. É esta a transição que
+    // o enquadramento da câmera espera ([`crate::prefab_framing`]), e ela mora AQUI de propósito:
+    // as quatro superfícies que abrem uma receita (o painel, a Hierarquia, o cartão da biblioteca,
+    // o cartão do Inspector) passam todas por esta marca, e uma delas que não passasse já não
+    // acenderia a receita. *Um evento derivado da mesma lei não pode ficar por fora de uma porta.*
+    let opened: Vec<Entity> = editing
+        .iter()
+        .copied()
+        .filter(|r| !have.contains(r))
+        .collect();
     let mut touched = false;
     for &e in want.difference(&have) {
         if let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
@@ -77,7 +87,19 @@ pub(crate) fn mark(sim: &mut SimWorld, selection: impl IntoIterator<Item = u64>)
             touched = true;
         }
     }
-    touched
+    Marked { touched, opened }
+}
+
+/// O que o passe fez neste quadro.
+///
+/// ⚠️ **`opened` não é «o que está aberto», é «o que ABRIU AGORA»** — as duas leem-se igual numa
+/// chamada e são coisas diferentes: a primeira é verdade em todo quadro enquanto a receita estiver
+/// seleccionada, e enquadrar a câmera com ela prenderia a vista à receita para sempre.
+pub(crate) struct Marked {
+    /// Alguma marca foi posta ou tirada — o mundo mudou.
+    pub(crate) touched: bool,
+    /// As raízes que passaram de fechadas a abertas NESTE quadro.
+    pub(crate) opened: Vec<Entity>,
 }
 
 /// A sub-árvore de `root`, ela incluída.

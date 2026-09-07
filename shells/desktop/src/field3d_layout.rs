@@ -112,19 +112,15 @@ impl Split {
 /// ocupa»* é este módulo, e o gizmo é só um dos consumidores. *Uma porta com o nome de um dos seus
 /// clientes convida à segunda cópia.*
 ///
-/// ⚠️ `last_content` **é** a `draw_area` publicada pelo quadro anterior, já sem as réguas — e sem
-/// elas na tela ela é a própria `draw_area`. No primeiro quadro é degenerada, e aí vale a janela,
-/// que é o comportamento de sempre.
+/// ⚠️⚠️ **E o convite foi aceite em 2026-09-07**: o enquadramento da receita ao abrir o *Edit
+/// Prefab* faz exactamente a mesma pergunta e não tem nada de 3D. ⇒ a lei mudou-se outra vez, para
+/// um módulo com o nome da PERGUNTA ([`crate::canvas_area::visible`]), e isto é o alias que os
+/// chamadores do 3D já tinham. *Um segundo cliente é o sinal de que o nome da porta estava errado.*
 pub(crate) fn area(
     hero: &ph2d_editor::screens::hero::HeroScreen,
     viewport: EditorRect,
 ) -> EditorRect {
-    let published = hero.last_content;
-    if published.w > 0.0 && published.h > 0.0 {
-        EditorRect::new(published.x, published.y, published.w, published.h)
-    } else {
-        viewport
-    }
+    crate::canvas_area::visible(hero, viewport)
 }
 
 /// Os retângulos de uma divisão — sem alocar, porque isto corre em todo quadro.

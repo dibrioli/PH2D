@@ -120,6 +120,8 @@ mod build_smoke_drive;
 /// A cena de smoke do **Expand** (Outline Stroke + Offset Path) — `PH2D_BUILD_SMOKE=17`.
 mod build_smoke_expand;
 mod build_smoke_router;
+/// ⭐⭐ **A ÁREA de desenho visível** — a porta única de *«onde o canvas de facto se vê?»*.
+mod canvas_area;
 /// ⭐⭐ **A cor com que a camada de sprites é limpa** — o fundo que o artista vê no canvas, hoje
 /// derivado da porta única em vez de escrito à mão. Ver o cabeçalho de lá.
 mod canvas_clear;
@@ -551,6 +553,8 @@ mod player_input;
 mod precision_convert;
 /// **As ferramentas que só movem pixels preservam a precisão** — veja os docs do módulo.
 mod precision_geometry;
+/// ⭐⭐⭐ **A câmera vai à RECEITA quando ela abre** — o enquadramento do *Edit Prefab*.
+mod prefab_framing;
 mod prefs;
 /// **Estado de PRÉ-VISUALIZAÇÃO contra estado de DOCUMENTO** — o conceito que faltava ao undo
 /// (Enio, 2026-08-23: *«precisamos corrigir o CtrlZ para ambas»*).
@@ -1031,6 +1035,7 @@ impl App {
             modifiers: ModifiersState::default(),
             last_pointer: (0.0, 0.0),
             hovered_object: None,
+            prefab_framing: None,
             pending_ui_sound: None,
             ui_burst: ph2d_editor::motion_burst::BurstField::default(),
             hover_outline: Vec::new(),

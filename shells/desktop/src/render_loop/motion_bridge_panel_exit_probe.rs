@@ -278,6 +278,23 @@ fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
 /// diálogo e a lista de publicados é a **SHELL**, não o painel — o cartão só precisa de emitir a
 /// mesma intenção. Os outros `15` pedem uma superfície de edição que hoje só o painel tem.
 ///
+/// ⛔⛔ **A COR NÃO É BARATA, e o obstáculo só apareceu ao medir — não é plumbing, é o ID.**
+/// O selector abre por **registo** (`WidgetStore::register_picker_swatch`), não por intenção, e
+/// o id de uma amostra é [`ph2d_panel_motion_params::param_swatch_id`], que é função **só do
+/// nome do param âncora**. O doc dele diz porquê: *«unique within a node»* — e é verdade **no
+/// painel**, onde existe **um** nó selecionado de cada vez.
+///
+/// ⚠️ **No CARTÃO essa premissa cai:** vinte cartões são visíveis ao mesmo tempo, e dois
+/// `motion.tint` na tela pediriam **o mesmo id**. E a leitura de volta
+/// (`motion_bridge_color::picker_session`) compara `store.picker_target()` com os grupos do nó
+/// **SELECCIONADO** — com o id ambíguo, escolher a cor de um cartão escreveria no outro, em
+/// silêncio.
+///
+/// ⇒ **A cura é o id passar a carregar o NÓ** (`param_swatch_id_for(node, anchor)`), com a
+/// leitura de volta a resolver o nó a partir do id em vez de o presumir. É uma wave própria:
+/// toca a pintura do painel, a semeadura e a leitura de volta — e ⛔ **um id só com o nome do
+/// param, copiado para o cartão, é a forma exacta de escrever no objecto errado**.
+///
 /// ⭐ **E o primeiro dos três provou que a estrada já estava construída:** o
 /// `apply_graph_intents` **já traduzia** as intenções do cartão para as do painel (é assim que
 /// o `SetParam` de um arrasto no cartão chega ao documento), então o ficheiro custou **um

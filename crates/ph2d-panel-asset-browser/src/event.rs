@@ -203,6 +203,9 @@ fn card_verb_of(id: ph2d_a11y::NodeId) -> Option<AssetCardAction> {
     match id {
         i if i == core_ids::CTX_MENU_ASSET_EDIT => Some(AssetCardAction::EditPrefab),
         i if i == core_ids::CTX_MENU_ASSET_INSTANTIATE => Some(AssetCardAction::Instantiate),
+        i if i == core_ids::CTX_MENU_ASSET_INSTANTIATE_LINKED => {
+            Some(AssetCardAction::InstantiateLinked)
+        }
         i if i == core_ids::CTX_MENU_ASSET_SELECT_USERS => Some(AssetCardAction::SelectUsers),
         i if i == core_ids::CTX_MENU_ASSET_REMOVE => Some(AssetCardAction::RemoveFromLibrary),
         // ⭐⭐⭐ A troca por um componente sem parentesco — **um id por MODO** (plano F5).

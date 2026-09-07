@@ -389,6 +389,8 @@ fn an_image_card_dispatches_every_verb_too_because_the_shell_is_who_refuses() {
         // é quem o impede.
         AssetCardAction::EditPrefab,
         AssetCardAction::Instantiate,
+        // ⭐⭐ O IRMÃO (2026-09-07): a cópia que divide a ARTE da receita.
+        AssetCardAction::InstantiateLinked,
         AssetCardAction::SelectUsers,
         AssetCardAction::RemoveFromLibrary,
         // ⭐⭐⭐ **As TRÊS trocas entraram em 2026-09-05** (plano F5, o último critério). Uma imagem
@@ -400,6 +402,9 @@ fn an_image_card_dispatches_every_verb_too_because_the_shell_is_who_refuses() {
         let id = match verb {
             AssetCardAction::EditPrefab => ph2d_editor_core::ids::CTX_MENU_ASSET_EDIT,
             AssetCardAction::Instantiate => ph2d_editor_core::ids::CTX_MENU_ASSET_INSTANTIATE,
+            AssetCardAction::InstantiateLinked => {
+                ph2d_editor_core::ids::CTX_MENU_ASSET_INSTANTIATE_LINKED
+            }
             AssetCardAction::SelectUsers => ph2d_editor_core::ids::CTX_MENU_ASSET_SELECT_USERS,
             AssetCardAction::RemoveFromLibrary => ph2d_editor_core::ids::CTX_MENU_ASSET_REMOVE,
             AssetCardAction::ReplaceSelection => ph2d_editor_core::ids::CTX_MENU_ASSET_REPLACE,
@@ -410,6 +415,24 @@ fn an_image_card_dispatches_every_verb_too_because_the_shell_is_who_refuses() {
                 ph2d_editor_core::ids::CTX_MENU_ASSET_REPLACE_BY_TREE
             }
         };
+        // ⛔⛔ **A metade da PRESENÇA, e ela nasceu de uma MUTAÇÃO SOBREVIVENTE** (2026-09-07):
+        // apagar a linha `Instantiate Linked` da tabela do menu deixava este gate VERDE, porque ele
+        // injecta o `Click` pelo id e nunca pergunta se o artista tem por onde o produzir. *É o
+        // mesmo par que o `Group`/`Ungroup` da Hierarquia já tinha, e que faltava aqui.*
+        //
+        // ⚠️ **Ela vive DENTRO deste laço de propósito:** um gate irmão seria uma segunda lista de
+        // verbos a envelhecer sozinha — aqui, o `match` exaustivo acima obriga um verbo novo a ser
+        // medido nas duas metades ou em nenhuma.
+        assert!(
+            ph2d_editor_core::screens::hero::menu_rows::menu_rows(
+                ph2d_editor_core::interaction::ContextMenuKind::AssetCard {
+                    cell: ids::asset_cell_id(0),
+                },
+            )
+            .iter()
+            .any(|(rid, _, _)| *rid == id),
+            "o menu do cartao nao oferece {verb:?} - o verbo esta' ligado a um item que ninguem ve^"
+        );
         let (mut host, mut st) = open_host();
         ph2d_panel_asset_browser::state::probe_set_painted(vec![AssetRef::Texture {
             asset: [9; 32],

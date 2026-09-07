@@ -51,6 +51,9 @@ pub enum AssetCardAction {
     EditPrefab,
     /// Pôr uma cópia na cena — o mesmo verbo do duplo-clique, sem ponto de queda.
     Instantiate,
+    /// ⭐⭐ **Pôr uma cópia que DIVIDE a arte da receita** (2026-09-07) — ver
+    /// [`crate::ids::CTX_MENU_ASSET_INSTANTIATE_LINKED`].
+    InstantiateLinked,
     /// ⭐⭐ **Quem usa isto?** — a metade que o Godot chama *Owners*, e a pergunta que precede
     /// *«posso apagar?»* (plano 07 D9).
     ///

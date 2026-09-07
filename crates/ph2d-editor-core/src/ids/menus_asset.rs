@@ -34,6 +34,14 @@ use super::*;
 /// conteúdo é uma vitrina.*
 pub const CTX_MENU_ASSET_EDIT: NodeId = hash_node_id("ctx_menu_asset_edit");
 pub const CTX_MENU_ASSET_INSTANTIATE: NodeId = hash_node_id("ctx_menu_asset_instantiate");
+/// ⭐⭐ **Instantiate Linked** (2026-09-07) — o irmão do de cima: a cópia **divide a ARTE** da
+/// receita (o `Alt+D` do Blender).
+///
+/// ⚠️ **Ele era a TERCEIRA superfície a que faltava o irmão** — a Hierarquia tinha-o, o painel
+/// vetorial não, e este cartão também não. *Um verbo cujo irmão vive noutro sítio do app não se
+/// usa*, e a escolha entre os dois só existe no instante em que se põe a cópia.
+pub const CTX_MENU_ASSET_INSTANTIATE_LINKED: NodeId =
+    hash_node_id("ctx_menu_asset_instantiate_linked");
 /// ⭐⭐ **Quem usa isto?** — a metade que o Godot chama *Owners* e que responde *«posso apagar?»*.
 ///
 /// ⚠️ Ela **selecciona** os utilizadores na cena em vez de os listar: uma lista diz um número, uma

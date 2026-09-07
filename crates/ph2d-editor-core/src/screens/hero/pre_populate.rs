@@ -433,6 +433,8 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         // que é o defeito nº 1 da auditoria da etapa A, uma camada acima.
         ids::CTX_MENU_ASSET_EDIT,
         ids::CTX_MENU_ASSET_INSTANTIATE,
+        // ⚠️ A segunda lista sobre a mesma população — ver a nota do `EDIT_PREFAB` da Hierarquia.
+        ids::CTX_MENU_ASSET_INSTANTIATE_LINKED,
         ids::CTX_MENU_ASSET_SELECT_USERS,
         ids::CTX_MENU_ASSET_USES,
         ids::CTX_MENU_ASSET_USED_BY,

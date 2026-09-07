@@ -480,6 +480,12 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             // alcança de duas maneiras.*
             (ids::CTX_MENU_ASSET_EDIT, "Edit Prefab", None),
             (ids::CTX_MENU_ASSET_INSTANTIATE, "Instantiate", None),
+            // ⭐⭐ **O IRMÃO, colado a ele** — a escolha entre os dois só existe neste instante.
+            (
+                ids::CTX_MENU_ASSET_INSTANTIATE_LINKED,
+                "Instantiate Linked",
+                None,
+            ),
             (ids::CTX_MENU_ASSET_SELECT_USERS, "Select users", None),
             // ⭐⭐ As duas metades de D9. ⚠️ Elas ficam DEPOIS do *Select users* de propósito: a
             // pergunta da cena vem antes da da biblioteca, que é a ordem em que o artista repara

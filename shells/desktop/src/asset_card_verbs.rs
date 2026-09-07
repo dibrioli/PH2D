@@ -157,13 +157,22 @@ pub(crate) fn drain(
         }
 
         // ── Instanciar ─────────────────────────────────────────────────────────────────────────
-        (AssetCardAction::Instantiate, DragPayload::Prefab { stable_id }) => {
+        // ⚠️ **Os dois pelo MESMO braço**, e o verbo é a única diferença: uma segunda cópia deste
+        // bloco divergiria no dia em que a recusa ou a voz mudasse num deles.
+        (
+            AssetCardAction::Instantiate | AssetCardAction::InstantiateLinked,
+            DragPayload::Prefab { stable_id },
+        ) => {
             let Some(bits) = crate::instance_verbs::entity_for_stable_id(sim, stable_id) else {
                 toasts.push(Toast::warning("That prefab is no longer in the project"));
                 return false;
             };
             crate::instance_verbs::drain(
-                crate::instance_verbs::Verb::Place,
+                if verb == AssetCardAction::InstantiateLinked {
+                    crate::instance_verbs::Verb::PlaceLinked
+                } else {
+                    crate::instance_verbs::Verb::Place
+                },
                 sim,
                 registry,
                 echo,
@@ -174,7 +183,10 @@ pub(crate) fn drain(
                 select_out,
             )
         }
-        (AssetCardAction::Instantiate, DragPayload::Image { .. }) => {
+        (
+            AssetCardAction::Instantiate | AssetCardAction::InstantiateLinked,
+            DragPayload::Image { .. },
+        ) => {
             // ⛔ A mesma recusa que o duplo-clique já declara, agora **em voz alta**: no
             // duplo-clique o silêncio era defensável (ninguém apertou um item que prometia algo);
             // num item de menu com o nome escrito, não é.
@@ -382,3 +394,8 @@ fn replace_selection(
 #[cfg(test)]
 #[path = "asset_card_verbs_tests.rs"]
 mod tests;
+
+/// ⭐ **A TROCA** — irmão por responsabilidade, e o corte que o tecto de LOC impôs.
+#[cfg(test)]
+#[path = "asset_card_replace_tests.rs"]
+mod replace_tests;

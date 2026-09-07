@@ -177,151 +177,52 @@ impl Traco {
 }
 
 /// As faces de uma superfície, em índices do FICHEIRO de repouso.
-fn faces(superficie: &str, rest: &[V3]) -> Vec<Vec<u32>> {
-    match superficie {
-        "plano" => {
-            // Detecção da grelha: as coordenadas distintas de x e de y, por ordem.
-            let mut xs: Vec<f64> = rest.iter().map(|p| p[0]).collect();
-            let mut ys: Vec<f64> = rest.iter().map(|p| p[1]).collect();
-            xs.sort_by(f64::total_cmp);
-            ys.sort_by(f64::total_cmp);
-            xs.dedup_by(|a, b| (*a - *b).abs() < 1e-6);
-            ys.dedup_by(|a, b| (*a - *b).abs() < 1e-6);
-            let ix = |x: f64| {
-                xs.iter()
-                    .position(|q| (q - x).abs() < 1e-6)
-                    .expect("x na grelha")
-            };
-            let iy = |y: f64| {
-                ys.iter()
-                    .position(|q| (q - y).abs() < 1e-6)
-                    .expect("y na grelha")
-            };
-            let mut em = vec![u32::MAX; xs.len() * ys.len()];
-            for (v, p) in rest.iter().enumerate() {
-                em[iy(p[1]) * xs.len() + ix(p[0])] = u32::try_from(v).expect("u32");
-            }
-            let id = |i: usize, j: usize| em[j * xs.len() + i];
-            // Experimento (`PH2D_TRI=1`): a grelha TRIANGULADA — cada quad partido
-            // pela mesma diagonal — para medir se o anel-1 do oráculo inclui a
-            // diagonal do quad (a espec §3.1 diz que não; a medição decide).
-            let mut f = Vec::new();
-            for j in 0..ys.len() - 1 {
-                for i in 0..xs.len() - 1 {
-                    f.push(vec![id(i, j), id(i + 1, j), id(i + 1, j + 1), id(i, j + 1)]);
-                }
-            }
-            let f = triangular(f);
-            assert!(
-                f.iter().all(|q| q.iter().all(|v| *v != u32::MAX)),
-                "grelha com buraco"
-            );
-            f
-        }
-        "esfera" => {
-            // A nossa esfera UV, casada por POSIÇÃO com o ficheiro de repouso.
-            // ⚠️ A nossa é Y-up e a do oráculo é Z-up: a rotação de +90° em X
-            // (`(x, y, z) → (x, −z, y)`) leva o pólo de `(0, r, 0)` a `(0, 0, r)`
-            // e PRESERVA a orientação das faces (uma troca de eixos espelharia
-            // as normais para dentro). A chave é a `1e-3`, porque vértices
-            // vizinhos distam `> 0,05` e o `f32` da nossa esfera contra as seis
-            // decimais do ficheiro não sobrevive a `1e-4` nas fronteiras de
-            // arredondamento.
-            // ⚠️ Medido: uma chave exacta a `1e-3` casa 6 046 de 6 050 — os quatro
-            // que faltam estão na fronteira de arredondamento. ⇒ células de
-            // `1e-2` e procura nas 27 vizinhas, aceitando a `< 1e-3`.
-            let celula = |p: V3| {
-                (
-                    (p[0] * 1e2).floor() as i64,
-                    (p[1] * 1e2).floor() as i64,
-                    (p[2] * 1e2).floor() as i64,
-                )
-            };
-            let mut alvo: BTreeMap<(i64, i64, i64), Vec<u32>> = BTreeMap::new();
-            for (v, p) in rest.iter().enumerate() {
-                alvo.entry(celula(*p))
-                    .or_default()
-                    .push(u32::try_from(v).expect("u32"));
-            }
-            let mais_perto = |q: V3| -> Option<u32> {
-                let (cx, cy, cz) = celula(q);
-                let mut melhor: Option<(f64, u32)> = None;
-                for dx in -1..=1 {
-                    for dy in -1..=1 {
-                        for dz in -1..=1 {
-                            if let Some(lista) = alvo.get(&(cx + dx, cy + dy, cz + dz)) {
-                                for &v in lista {
-                                    let d = dist(q, rest[v as usize]);
-                                    if d < 1e-3 && melhor.is_none_or(|(m, _)| d < m) {
-                                        melhor = Some((d, v));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                melhor.map(|(_, v)| v)
-            };
-            for (rings, segs) in [(64usize, 96usize), (96, 64)] {
-                let m = ph2d_mesh::shapes::uv_sphere(rings, segs, 1.0);
-                if m.vert_count() != rest.len() {
-                    continue;
-                }
-                let mapa: Option<Vec<u32>> = m
-                    .positions()
-                    .iter()
-                    .map(|p| mais_perto([f64::from(p[0]), -f64::from(p[2]), f64::from(p[1])]))
-                    .collect();
-                if let Some(mapa) = mapa {
-                    return triangular(
-                        m.faces()
-                            .iter()
-                            .map(|f| f.verts().iter().map(|v| mapa[*v as usize]).collect())
-                            .collect(),
-                    );
-                }
-            }
-            panic!(
-                "nenhuma esfera UV nossa casa por posicao com o repouso de {} vertices",
-                rest.len()
+fn faces(superficie: &str, _rest: &[V3]) -> Vec<Vec<u32>> {
+    // ⭐⭐⭐ **A lista de faces é do ALVO, e vem em fixture** (espec §3.1-bis,
+    // emenda Q15). Antes disto o arnês reconstruía a malha casando a NOSSA
+    // esfera UV com as posições de repouso **por posição**: os índices de vértice
+    // eram os do alvo e a ordem das FACES era do nosso gerador. ⛔ E a §3.1 diz
+    // que a ordem do anel é a ordem das faces incidentes, logo a lei era
+    // aplicável no plano (onde degenera) e **inaplicável na esfera**.
+    let mut fs = Vec::new();
+    for l in inflar(&format!("{superficie}.faces.txt.gz")).lines() {
+        if let Some(resto) = l.strip_prefix("f ") {
+            fs.push(
+                resto
+                    .split_whitespace()
+                    .map(|t| t.parse().expect("indice"))
+                    .collect(),
             );
         }
-        s => panic!("superficie {s}"),
     }
+    assert!(!fs.is_empty(), "{superficie}.faces sem faces");
+    fs
 }
 
-/// **TRIANGULA os quads** (`PH2D_TRI`): `1` = diagonal do 1.º ao 3.º canto ·
-/// `2` = do 2.º ao 4.º · `0`/ausente = quads intactos.
+/// ⭐⭐ **A ORDEM DE VISITA da malha** (espec §3.1-bis): a concatenação, por
+/// célula em índice crescente, dos vértices próprios de cada uma.
 ///
-/// ⭐ Medido em 2026-09-06: a ordem das restrições mal mexe (`0,55`–`0,64` no
-/// centro, em cinco ordens), e a triangulação leva o `Local` de `0,60` para
-/// `0,35` contra `0,33` do oráculo — **o anel-1 do alvo é o da malha
-/// TRIANGULADA**, e a leitura «4 + 2 + 4 por vértice» da espec §3.1 descrevia
-/// os quads que o alvo não vê. Registado no INBOX para o E emendar a espec.
-fn triangular(faces: Vec<Vec<u32>>) -> Vec<Vec<u32>> {
-    let modo = std::env::var("PH2D_TRI")
-        .ok()
-        .and_then(|s| s.parse::<u8>().ok())
-        .unwrap_or(0);
-    if modo == 0 {
-        return faces;
-    }
-    let mut out = Vec::with_capacity(faces.len() * 2);
-    for f in faces {
-        if f.len() == 4 {
-            let (a, b, c, d) = (f[0], f[1], f[2], f[3]);
-            if modo == 1 {
-                out.push(vec![a, b, c]);
-                out.push(vec![a, c, d]);
-            } else {
-                out.push(vec![a, b, d]);
-                out.push(vec![b, c, d]);
-            }
-        } else {
-            out.push(f);
+/// ⛔ **Não é a ordem crescente**, e no plano é a identidade RODADA — a célula `1`
+/// fica com `[2080..4224]` e a `2` com `[0..2079]`, com o único descenso
+/// exactamente no pen-down das fixtures `_origem`.
+fn ordem_de_visita(superficie: &str) -> Vec<u32> {
+    let mut ordem = Vec::new();
+    for l in inflar(&format!("{superficie}.celulas.txt.gz")).lines() {
+        if let Some(resto) = l.strip_prefix("cv ") {
+            // `cv <indice> <n> <vertices proprios...>`
+            ordem.extend(
+                resto
+                    .split_whitespace()
+                    .skip(2)
+                    .map(|t| t.parse::<u32>().expect("indice de vertice")),
+            );
         }
     }
-    out
+    assert!(
+        !ordem.is_empty(),
+        "{superficie}.celulas sem vertices proprios"
+    );
+    ordem
 }
 
 /// O anel-1 por ARESTAS (espec §3.1), de uma lista de faces.
@@ -550,6 +451,7 @@ fn correr_com_pincel(nome: &str, ordem: Option<&str>) -> (Vec<V3>, PincelTecido)
 
     let mut pos = rest.clone();
     let mut tecido = PincelTecido::pen_down(pincel, &pos, t.caminho[0]);
+    tecido.ordem = ordem_de_visita(&sup);
     for k in 0..passos {
         let cursor = t.caminho[k];
         let prev = t.caminho[k.saturating_sub(1)];
@@ -1045,44 +947,53 @@ fn sonda_da_paridade_com_o_oraculo() {
 /// A barra da PARIDADE (espec §14 gate 15) — o pior erro por vértice de um
 /// traço, em unidades do deslocamento máximo do oráculo.
 ///
-/// ⚠️ **Ela sai de um VALE MEDIDO, não de conforto:** com a lei de 06/09 os 53
-/// traços partem-se em `28` com `≤ 0,095` e `25` com `≥ 0,175`, e não há nada
-/// entre os dois. `0,13` é o meio desse vazio.
+/// ⭐⭐⭐ **Ela sai de um VALE MEDIDO, e o vale MUDOU de sítio em 06/09**, quando a
+/// ordem de visita passou a ser a da partição em células (§3.1-bis). Os `65`
+/// traços partem-se hoje assim:
 ///
-/// ⚠️⚠️ **E não se aperta em direcção ao grupo, porque a ORDEM de resolução
-/// custa mais do que o resíduo:** inverter a ordem das restrições — que é uma
-/// escolha nossa, e Gauss-Seidel não comuta — move a nossa resposta em média
-/// `0,0985` e até `0,256` nos mesmos 28 traços. *Estamos a bater o oráculo com
-/// folga MENOR do que o ruído de ordenação, o que só é possível se a nossa
-/// ordem for a dele; uma barra colada em `0,10` mediria a ordem, não a lei.*
+/// ```text
+/// 47 traços ≤ 0,024   ·   0,093 · 0,096 · 0,105   ·   [vazio de 0,045]   ·   0,150 …
+/// ```
+///
+/// ⇒ **`0,13` continua dentro de um vazio** (entre `0,105` e `0,150`), e o corpus
+/// deixou de ter meio-termo: `47` dos `65` estão a menos de `1/5` da barra e
+/// `17` saem praticamente ao bit.
+///
+/// ⚠️⚠️ **E a justificação ANTIGA desta barra caducou, ainda que o número não:**
+/// ela dizia *«os 53 traços partem-se em 28 com ≤ 0,095 e 25 com ≥ 0,175»* e
+/// apoiava-se em a dispersão entre duas ordens NOSSAS ser `0,0985` — o argumento
+/// era *«não aperte, senão mede a sua própria ordenação»*. Hoje a nossa ordem é a
+/// do alvo (medida, §3.1-bis), e o que sobra do outro lado do vazio já não é
+/// ordenação: é o regime em que o próprio alvo deixa de ser determinista
+/// (§5.2-ter) e os modos ainda por explicar.
 const BARRA_PARIDADE: f64 = 0.13;
 
 /// Os traços que a lei REPRODUZ (espec §14 gate 15).
 const PARIDADE: [&str; VERDE_N] = [
     "esfera_arrastar_radial_dinamica",
-    // ⭐⭐ Os DOIS que a lei do CENTRO DA ÁREA (§4.4) trouxe em 06/09: o plano de
-    // queda deixou de passar pelo cursor e passou a passar pelo centro da área,
-    // que é a média das posições PUXADAS PARA O CURSOR. Os quatro traços de
-    // falloff de plano melhoraram e mais nenhum se mexeu.
     "plano_agarrar_plano_local",
     "plano_agarrar_radial_global_origem_1passo",
     "plano_agarrar_radial_local",
     "plano_agarrar_radial_local_1passo",
-    "plano_agarrar_radial_local_origem_1passo",
     "plano_agarrar_radial_local_24passos",
     "plano_agarrar_radial_local_2passos",
     "plano_agarrar_radial_local_2passos_origem",
     "plano_agarrar_radial_local_amort06",
+    "plano_agarrar_radial_local_origem_1passo",
     "plano_agarrar_radial_local_preset",
+    "plano_apertar_linha_radial_local",
     "plano_apertar_linha_radial_local_1passo",
-    // ⭐⭐ O MESMO traço do `plano_apertar_ponto_radial_local_origem`, com a
-    // força `1,0 → 0,2` (fixture do especificador, 06/09). Ele lê `0,063` e o
-    // irmão a força cheia lê `1,079` — *a nossa lei do aperto está certa, e o
-    // que diverge é o regime em que o ALVO deixa de ser determinista* (ver os
-    // ABERTOS).
-    "plano_apertar_ponto_radial_local_origem_fraco",
+    "plano_apertar_linha_radial_local_origem",
     "plano_apertar_ponto_radial_local_1passo",
+    // ⭐⭐ O MESMO traço do `plano_apertar_ponto_radial_local_origem`, com a força
+    // `1,0 → 0,2`. Ele lê `0,002` e o de força cheia continua ABERTO a `0,968` —
+    // *a nossa lei do aperto está certa, e o que diverge é o regime em que o
+    // ALVO deixa de ser determinista* (§5.2-ter).
+    "plano_apertar_ponto_radial_local_origem_fraco",
+    "plano_arrastar_radial_dinamica",
     "plano_arrastar_radial_dinamica_preset",
+    "plano_arrastar_radial_global",
+    "plano_arrastar_radial_global_origem",
     "plano_arrastar_radial_local",
     "plano_arrastar_radial_local_1passo",
     "plano_arrastar_radial_local_2passos",
@@ -1097,18 +1008,28 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_arrastar_radial_local_plast05",
     "plano_empurrar_plano_local",
     "plano_empurrar_radial_local_1passo",
+    "plano_expandir_radial_global_origem_1passo",
+    "plano_expandir_radial_local",
+    "plano_expandir_radial_local_1passo",
+    "plano_expandir_radial_local_origem_1passo",
+    "plano_expandir_radial_local_origem_1passo_forca05",
+    "plano_gancho_radial_global_origem_1passo",
     "plano_gancho_radial_local",
+    "plano_gancho_radial_local_1passo",
     "plano_gancho_radial_local_24passos",
-    // ⭐⭐ Os DOIS controlos do §5.2-quater, e o que eles provam ao BATEREM: com
-    // `δ` de uma aresta (`_curto`) e com a queda CONSTANTE, a mesma lei que
-    // erra `0,432` no traço longo lê `0,088` e `0,104`. ⇒ *o resíduo do gancho
-    // é da rede sob `δ` grande, não da lei da âncora.*
+    "plano_gancho_radial_local_2passos",
+    "plano_gancho_radial_local_2passos_origem",
+    "plano_gancho_radial_local_amort06",
+    "plano_gancho_radial_local_origem_1passo",
+    // ⭐⭐⭐ Os controlos do §5.2-quater — e o que eles provam MUDOU DE SINAL em
+    // 06/09: com a ordem de visita certa, o gancho de `δ` GRANDE também bate
+    // (`0,432 → 0,000`). *O «degrau» que se atribuía à rede sob passo grande era
+    // a NOSSA ordem de construção.*
     "plano_gancho_radial_local_origem_1passo_constante",
     "plano_gancho_radial_local_origem_1passo_curto",
-    "plano_gancho_radial_local_amort06",
     "plano_inflar_radial_local_1passo",
 ];
-const VERDE_N: usize = 35;
+const VERDE_N: usize = 50;
 
 /// Os traços AINDA por explicar, com o valor MEDIDO em 2026-09-06 ao lado.
 ///
@@ -1127,44 +1048,23 @@ const VERDE_N: usize = 35;
 /// bit — o percurso face a face de um vértice interior de grelha devolve
 /// `[S, O, E, N]`, que já é a ordem crescente de índice.
 const ABERTOS: [(&str, f64); ABERTO_N] = [
-    ("esfera_agarrar_radial_dinamica", 0.195),
-    ("esfera_apertar_linha_radial_dinamica", 0.785),
-    ("esfera_apertar_ponto_radial_dinamica", 0.688),
-    ("esfera_empurrar_radial_dinamica", 0.345),
-    ("esfera_expandir_radial_dinamica", 0.528),
-    ("esfera_gancho_radial_dinamica", 0.256),
-    ("esfera_inflar_radial_dinamica", 0.371),
-    ("plano_apertar_linha_radial_local", 1.024),
-    ("plano_apertar_linha_radial_local_origem", 0.263),
-    ("plano_apertar_ponto_plano_local", 0.546),
-    ("plano_apertar_ponto_radial_local", 1.380),
-    ("plano_apertar_ponto_radial_local_origem", 1.079),
-    ("plano_arrastar_plano_local", 0.134),
-    ("plano_arrastar_radial_dinamica", 0.181),
-    ("plano_arrastar_radial_global", 0.175),
-    ("plano_arrastar_radial_global_origem", 0.301),
-    ("plano_empurrar_radial_local", 0.214),
-    // ⚠️ Os DOIS traços por passo que o especificador entregou em 06/09 para o
-    // Q12. Os dois divergem a partir do passo 3, e no empurrar o PICO está
-    // noutro sítio (`0,13R` contra `0,40R` do oráculo) — a mesma assinatura
-    // que o Snake Hook tinha antes do Q9.
-    ("plano_empurrar_radial_local_origem", 0.214),
-    ("plano_inflar_radial_local_origem", 0.252),
-    ("plano_expandir_radial_global_origem_1passo", 0.773),
-    ("plano_expandir_radial_local", 0.192),
-    // ⚠️ ZERO força e ZERO âncora: só a lista de restrições, a ordem dela e o
-    // número de passagens. A espec §5.2-quater manda fechá-lo PRIMEIRO.
-    ("plano_expandir_radial_local_origem_1passo", 0.554),
-    ("plano_expandir_radial_local_origem_1passo_forca05", 0.556),
-    ("plano_expandir_radial_local_1passo", 0.560),
-    ("plano_gancho_radial_global_origem_1passo", 0.432),
-    ("plano_gancho_radial_local_1passo", 0.416),
-    ("plano_gancho_radial_local_origem_1passo", 0.432),
-    ("plano_gancho_radial_local_2passos", 0.388),
-    ("plano_gancho_radial_local_2passos_origem", 0.420),
-    ("plano_inflar_radial_local", 0.253),
+    ("esfera_agarrar_radial_dinamica", 0.191),
+    ("esfera_apertar_linha_radial_dinamica", 0.682),
+    ("esfera_apertar_ponto_radial_dinamica", 0.650),
+    ("esfera_empurrar_radial_dinamica", 0.343),
+    ("esfera_expandir_radial_dinamica", 0.581),
+    ("esfera_gancho_radial_dinamica", 0.255),
+    ("esfera_inflar_radial_dinamica", 0.372),
+    ("plano_apertar_ponto_plano_local", 0.542),
+    ("plano_apertar_ponto_radial_local", 0.650),
+    ("plano_apertar_ponto_radial_local_origem", 0.968),
+    ("plano_arrastar_plano_local", 0.150),
+    ("plano_empurrar_radial_local", 0.237),
+    ("plano_empurrar_radial_local_origem", 0.252),
+    ("plano_inflar_radial_local", 0.245),
+    ("plano_inflar_radial_local_origem", 0.248),
 ];
-const ABERTO_N: usize = 30;
+const ABERTO_N: usize = 15;
 
 /// A folga de regressão sobre o valor medido de um traço ABERTO.
 const FOLGA_ABERTO: f64 = 1.25;
@@ -1985,5 +1885,51 @@ fn um_passo_de_aceleracao_nao_move_nada_fora_do_disco() {
             "{nome} (nos): {fnn} fora do disco -- a nossa relaxacao nao correu"
         );
         assert_eq!(dn, d_o, "{nome} (nos): o disco tem de mover-se todo");
+    }
+}
+
+/// ⭐⭐⭐ **GATE 32 — a ORDEM DE VISITA é a da partição em células, e NÃO a ordem
+/// crescente de índice** (espec §3.1-bis).
+///
+/// Cada vértice é próprio de **uma só** célula, logo a concatenação `célula 0 →
+/// célula 1 → …` dos próprios de cada uma é uma **permutação** da malha. No plano
+/// ela é a identidade **rodada** — a célula `1` fica com `[2080..4224]` e a `2`
+/// com `[0..2079]` —, com **um único descenso**, exactamente no meio da grelha,
+/// que é onde o pen-down das fixtures `_origem` está.
+///
+/// ⛔⛔ **Foi ela que o corpus estava a pagar:** com a ordem crescente `50` dos
+/// `65` traços erravam acima da barra; com a ordem da partição são `15`, e `17`
+/// saem praticamente ao bit. *A ordem de resolução não é um detalhe do solver —
+/// é metade da lei.*
+#[test]
+fn a_ordem_de_visita_e_uma_permutacao_agrupada_por_celula() {
+    for (sup, n_esperado, descensos) in [("plano", 4225usize, 1usize), ("esfera", 6050, 3)] {
+        let ordem = ordem_de_visita(sup);
+        assert_eq!(
+            ordem.len(),
+            n_esperado,
+            "{sup}: a ordem de visita nao cobre a malha"
+        );
+        // É uma PERMUTAÇÃO: cada vértice aparece exactamente uma vez.
+        let mut visto = vec![false; n_esperado];
+        for &v in &ordem {
+            let vi = v as usize;
+            assert!(
+                !visto[vi],
+                "{sup}: o vertice {v} e' proprio de DUAS celulas"
+            );
+            visto[vi] = true;
+        }
+        assert!(
+            visto.iter().all(|b| *b),
+            "{sup}: ha' vertices que nenhuma celula reclama"
+        );
+        // ⛔ E NÃO é a ordem crescente: conta os descensos.
+        let d = ordem.windows(2).filter(|w| w[0] > w[1]).count();
+        assert_eq!(
+            d, descensos,
+            "{sup}: {d} descensos na ordem de visita, esperava {descensos} \
+             (zero significaria a ordem crescente, que e' a lei ERRADA)"
+        );
     }
 }

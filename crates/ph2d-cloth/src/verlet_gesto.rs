@@ -346,8 +346,23 @@ pub struct PincelTecido {
     pub raio0: f64,
     /// O cursor do passo anterior (para o delta incremental).
     pub anterior: V3,
-    /// Quem está na área simulada neste passo.
+    /// Quem está na área simulada neste passo, **na ordem de visita**.
     pub dentro: Vec<u32>,
+    /// ⭐⭐⭐ **A ORDEM DE VISITA da malha** (espec §3.1-bis): a concatenação, por
+    /// célula da árvore espacial em índice crescente, dos **vértices próprios**
+    /// de cada uma em índice crescente.
+    ///
+    /// ⛔⛔ **Ela NÃO é a ordem crescente de índice**, e a diferença é
+    /// observável: cada vértice é próprio de UMA só célula, logo a sequência é
+    /// uma **permutação agrupada por célula**. Na grelha das fixtures ela é a
+    /// identidade **rodada** (a célula `1` fica com `[2080..4224]` e a `2` com
+    /// `[0..2079]`), com o único descenso exactamente no pen-down das fixtures
+    /// `_origem`.
+    ///
+    /// ⚠️ **É propriedade da MALHA, não do traço** — calcula-se uma vez, sobre as
+    /// posições de repouso, e não muda enquanto o traço corre. Vazia = a ordem
+    /// crescente, que é o que uma malha sem partição conhecida dá.
+    pub ordem: Vec<u32>,
     /// A máscara por vértice em `[0,1]` (`1` = imóvel); vazia = sem máscara.
     pub mascara: Vec<f64>,
     /// Ainda não houve passo nenhum? (o 1.º constrói e não simula)
@@ -366,6 +381,7 @@ impl PincelTecido {
             inicio: cursor,
             anterior: cursor,
             dentro: Vec::new(),
+            ordem: Vec::new(),
             mascara: Vec::new(),
             primeiro: true,
         }
@@ -425,15 +441,28 @@ impl PincelTecido {
         let (c, r) = self.localizacao_da_area(cursor);
         let alcance = r * (1.0 + self.pincel.limite);
         self.dentro.clear();
-        for (v, p) in posicoes.iter().enumerate() {
+        // ⚠️ **A varredura segue a ORDEM DE VISITA** (espec §3.1-bis) — célula a
+        // célula, vértice próprio a vértice próprio —, e é ela que fixa a ordem
+        // da lista de restrições. Sem partição conhecida, a ordem crescente.
+        let n_v = posicoes.len();
+        let visita: &[u32] = &self.ordem;
+        let crescente: Vec<u32>;
+        let visita = if visita.len() == n_v {
+            visita
+        } else {
+            crescente = (0..u32::try_from(n_v).unwrap_or(u32::MAX)).collect();
+            &crescente
+        };
+        for &v in visita {
+            let vi = v as usize;
             let dentro = match self.pincel.area {
                 Area::Global => true,
                 // ⚠️ Local: o teste da construção é sobre o REPOUSO (espec §3.1).
-                Area::Local => dist(self.sim.repouso[v], c) < alcance,
-                Area::Dinamica => dist(*p, c) < alcance,
+                Area::Local => dist(self.sim.repouso[vi], c) < alcance,
+                Area::Dinamica => dist(posicoes[vi], c) < alcance,
             };
             if dentro {
-                self.dentro.push(u32::try_from(v).unwrap_or(u32::MAX));
+                self.dentro.push(v);
             }
         }
         let novos: Vec<u32> = self

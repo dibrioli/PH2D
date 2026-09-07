@@ -311,6 +311,7 @@ pub fn paint_sprite_gizmo(
             );
         } else {
             fill_rounded_rect(scene, r, 2.0, handle_fill);
+            // FRAME-RAW-OK: as ALCAS de um gizmo sobre o CANVAS: o contorno e' o que as separa da imagem por baixo
             stroke_rounded_rect(scene, r, 2.0, 1.0, handle_stroke);
         }
     }
@@ -319,6 +320,7 @@ pub fn paint_sprite_gizmo(
         let r = Rect::new(cx - half, cy - half, HANDLE_SIZE_PX, HANDLE_SIZE_PX);
         hit_index.register(*id, r);
         fill_rounded_rect(scene, r, 2.0, handle_fill);
+        // FRAME-RAW-OK: as ALCAS de um gizmo sobre o CANVAS: o contorno e' o que as separa da imagem por baixo
         stroke_rounded_rect(scene, r, 2.0, 1.0, handle_stroke);
     }
     // Pivot dot at the TRUE pivot (`Transform.translation`), projected
@@ -658,6 +660,7 @@ pub fn paint_sprite_gizmo_keyed(
             );
         } else {
             fill_rounded_rect(scene, r, 2.0, handle_fill);
+            // FRAME-RAW-OK: as ALCAS de um gizmo sobre o CANVAS: o contorno e' o que as separa da imagem por baixo
             stroke_rounded_rect(scene, r, 2.0, 1.0, handle_stroke);
         }
     }
@@ -665,6 +668,7 @@ pub fn paint_sprite_gizmo_keyed(
         let r = Rect::new(cx - half, cy - half, HANDLE_SIZE_PX, HANDLE_SIZE_PX);
         register_keyed_handle(hit_index, hit_map, target, *id, *kind, r);
         fill_rounded_rect(scene, r, 2.0, handle_fill);
+        // FRAME-RAW-OK: as ALCAS de um gizmo sobre o CANVAS: o contorno e' o que as separa da imagem por baixo
         stroke_rounded_rect(scene, r, 2.0, 1.0, handle_stroke);
     }
 }

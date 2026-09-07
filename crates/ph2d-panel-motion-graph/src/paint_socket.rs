@@ -39,6 +39,7 @@ pub(super) fn highlight_socket(
     let d = 2.0 * r;
     // ⚠️ NÃO passa pela porta do tema: é o HALO de um alvo de ligação durante um arrasto — uma
     //    mensagem sobre conteúdo (`Accent` = compatível, `Danger` = incompatível), não moldura.
+    // FRAME-RAW-OK: o HALO de um socket-alvo durante um arrasto de fio: a mensagem
     stroke_rounded_rect(
         ctx.scene,
         Rect::new(cx - r, cy - r, d, d),

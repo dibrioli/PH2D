@@ -81,6 +81,7 @@ pub(super) fn paint(ctx: &mut PaintCtx, matrix: LayerMatrix, x: f32, y_in: f32) 
             // so it is a cell like any other — just outlined, so the eye can
             // find the axis of symmetry.
             if i == j {
+                // FRAME-RAW-OK: a diagonal da matriz de camadas, contornada para o olho achar o eixo de simetria
                 ph2d_editor_core::paint::stroke_rounded_rect(
                     ctx.scene,
                     cell,

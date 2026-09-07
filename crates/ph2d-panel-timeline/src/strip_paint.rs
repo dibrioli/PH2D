@@ -142,6 +142,7 @@ pub(crate) fn paint_strip(
             theme,
         ),
     );
+    // FRAME-RAW-OK: o contorno de uma STRIP: duas adjacentes com a mesma tinta so' se separam por ele
     stroke_rounded_rect(
         ctx.scene,
         body,

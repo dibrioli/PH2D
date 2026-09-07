@@ -52,6 +52,7 @@ pub(super) fn paint_classic_toggle(
         Some(ColorToken::BorderEmph.resolve(theme)),
     );
     if let Some(c) = emph {
+        // FRAME-RAW-OK: pintor SO' do classico (`PH2D_UI_NEW=0`); nunca corre num tema moderno
         stroke_rounded_rect(scene, rect, radius, 1.0, crate::paint::token_to_vello(c));
     } else if matches!(toggle.state, ToggleState::Hovered | ToggleState::Focused) {
         let stroke_w = if toggle.state == ToggleState::Focused {
@@ -59,6 +60,7 @@ pub(super) fn paint_classic_toggle(
         } else {
             1.0
         };
+        // FRAME-RAW-OK: pintor SO' do classico (`PH2D_UI_NEW=0`); nunca corre num tema moderno
         stroke_rounded_rect(
             scene,
             rect,

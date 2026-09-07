@@ -92,6 +92,7 @@ pub fn stroke_rect(scene: &mut VectorScene, rect: Rect, width: f32, color: Color
 
 /// Stroke a rect with rounded corners. Same defaults as
 /// [`stroke_rect`]. Pass `radius == 0` to fall through to sharp.
+// FRAME-RAW-OK: e' a CASA do primitivo — `stroke_rounded_rect` e' definido aqui
 pub fn stroke_rounded_rect(
     scene: &mut VectorScene,
     rect: Rect,

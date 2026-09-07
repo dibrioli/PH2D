@@ -102,6 +102,7 @@ pub fn paint_drop_overlay(
         Radius::Md.px(),
         resolve(ColorToken::BgElev, theme),
     );
+    // FRAME-RAW-OK: a moldura de «largue aqui» durante um arrasto: o contorno E' a mensagem
     stroke_rounded_rect(
         scene,
         card,

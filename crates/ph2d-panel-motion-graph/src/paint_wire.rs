@@ -154,6 +154,7 @@ fn draw_pre_badges(
         .flatten()
     {
         let r = crate::hits::PRE_BADGE_R * view.zoom;
+        // FRAME-RAW-OK: o anel do cracha' `pre` sobre um FIO do grafo: conteudo do documento, nao cromo
         stroke_rounded_rect(
             ctx.scene,
             Rect::new(cx - r, cy - r, 2.0 * r, 2.0 * r),

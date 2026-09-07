@@ -311,6 +311,10 @@ pub fn paint_button(
     }
     if button.focus_ring() {
         let ring = ColorToken::BorderEmph.resolve(theme);
+        // FRAME-RAW-OK: o ANEL DE FOCO. ⚠️ O traco de repouso logo acima PERGUNTA ao tema (o
+        // `Widgets::of(theme).inactive.bg_stroke.is_visible()` no `if`) e por isso nao leva
+        // marcador — este nao pergunta de proposito: onde esta' o foco tem de ver-se em qualquer
+        // pele, senao o teclado deixa de ter onde pousar.
         stroke_rounded_rect(
             scene,
             rect,

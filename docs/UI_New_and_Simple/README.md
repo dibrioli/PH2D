@@ -272,6 +272,17 @@ textual fecha isto, porque a cura deixa o ficheiro a *conhecer* a porta — o ga
 coluna nos dois temas e a contar caminhos. ⛔ E o `JobQueue` tinha uma armadilha: `derive(Default)`
 dava `cap = 0`, uma fila que descarta toda barra **em silêncio**.
 
+⭐⭐⭐ **E a wave 27 (07/09) pôs a pergunta da moldura na CHAMADA, e o motivo na LINHA**
+([§7.32](pesquisa/08_modelos_com_codigo_para_seguir.md)) — a pergunta por ficheiro era cega em três
+formas, e a terceira é a pior: uma menção a `visuals::` em qualquer linha abençoava o ficheiro
+inteiro. ⭐⭐ **O marcador `FRAME-RAW-OK` matou as duas listas do gate**, e a razão é que o motivo
+**já estava escrito no código** em três sítios sem o portão saber lê-lo — *a decisão vivia ao lado
+da linha e o portão consultava outra folha*. 27 contornos declaram-se hoje; dois vereditos novos (a
+amostra de cor, cujo contorno o tema não pode decidir porque **não sabe a cor**, e o anel de foco).
+⚠️⚠️ **Duas mutações sobreviveram e as duas eram defeitos da minha régua**: a prosa que explica o
+mecanismo disparava o detector do mecanismo, e o piso contra o vácuo estava calibrado sem o mundo
+partido ao lado (388/17 na varredura morta contra 1982/27 na viva).
+
 ⏳ **O que sobra do estudo §5.3 — RE-AUDITADO contra o código em 07/09, e QUATRO dos cinco itens
 já tinham fechado sem ninguém reabrir a lista:** ⛔ os cantos dos painéis (a porta do tema dá `3`,
 não `16`) · ⛔ a moldura dos cartões (o `stroke_frame` devolve `Stroke::NONE` no moderno) · ⛔ a

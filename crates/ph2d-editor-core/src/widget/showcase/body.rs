@@ -175,6 +175,7 @@ pub fn paint_showcase_body(
                 );
                 let outline_color =
                     ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: user-color — showcase preview outline from user-stored ColorValue
+                // FRAME-RAW-OK: a MARCA de realce que o utilizador escolheu (cor de marcador): conteudo autorado
                 crate::paint::stroke_rounded_rect(
                     scene,
                     block,

@@ -306,6 +306,7 @@ pub(crate) fn finish_section(
             (new_y - y_before + pad * 2.0).max(0.0),
         );
         let outline_color = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: HIGHLIGHTER_RGBA palette
+        // FRAME-RAW-OK: a MARCA de realce que o utilizador escolheu (cor de marcador): o gemeo do showcase
         stroke_rounded_rect(
             scene,
             block,

@@ -298,6 +298,7 @@ fn paint_drag_preview(
     snap: &FlipStripSnapshot,
 ) {
     for ghost in crate::strip_drag::preview_rects(state, ruler, snap) {
+        // FRAME-RAW-OK: o fantasma de onde a celula vai POUSAR durante um arrasto: a mensagem
         stroke_rounded_rect(
             ctx.scene,
             ghost,

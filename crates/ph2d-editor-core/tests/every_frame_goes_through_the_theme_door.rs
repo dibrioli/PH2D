@@ -15,98 +15,20 @@
 //!
 //! # A régua
 //!
-//! Todo `.rs` de produto em `src/widget/` e `src/screens/hero/` que chame `stroke_rounded_rect(`
-//! tem de **conhecer a porta** — chamar `stroke_frame(` ou consultar `visuals::` — ou estar numa
-//! das duas listas abaixo, cada uma com a metade de obsolescência que impede a lista de virar
-//! licença (`CLAUDE.md` §5.0).
+//! Toda CHAMADA a `stroke_rounded_rect(` num `.rs` de produto tem de **perguntar ao tema** — nos
+//! argumentos ou na guarda — ou **declarar-se** com `FRAME-RAW-OK: <motivo>` na própria linha.
+//!
+//! ⭐⭐⭐ **A unidade era o FICHEIRO até 2026-09-07, e as DUAS listas deste ficheiro morreram com
+//! a mudança.** Havia uma dívida (`NOT_YET`, vazia desde a wave 3) e uma tabela de isenções por
+//! ficheiro — e o motivo de cada isenção vivia ali, longe da linha que ele descrevia. Três sítios
+//! do repo já tinham o motivo escrito **no código**, em prosa, sem o gate saber lê-lo. *A decisão
+//! vivia ao lado da linha e o portão consultava outra folha.*
+//!
+//! ⇒ com o marcador na chamada não há duas cópias do motivo, logo não há a metade de obsolescência
+//! da lista para manter — sobra a do marcador, que é *«ele ainda fica sobre uma chamada crua?»*.
 
 use std::fs;
 use std::path::{Path, PathBuf};
-
-/// ⏳ **Dívida MEDIDA, e só encolhe.** Cada ficheiro aqui traça molduras sem perguntar ao tema —
-/// num tema moderno ele ainda desenha o contorno que a pele plana apagou nos vizinhos.
-///
-/// ⭐ **VAZIA desde 2026-09-05** (wave 3): os 22 ficheiros da wave 2 passaram pela porta — 20
-/// convertidos, 2 isentos por mecanismo (abaixo). ⚠️ **Não acrescente entradas.** Um pintor novo
-/// nasce com a porta; é uma chamada.
-const NOT_YET: &[&str] = &[];
-
-/// ⛔ **Isentos POR MECANISMO, cada um com o motivo** — e o motivo é sobre o que o ficheiro É,
-/// não sobre uma contagem que envelhece.
-const EXEMPT: &[(&str, &str)] = &[
-    (
-        "paint_rounded.rs",
-        "e' a CASA do primitivo: `stroke_rounded_rect` e' DEFINIDO aqui. ⚠️ Ao contrario da \
-         isencao que o `paint.rs` tinha, esta descreve o ficheiro INTEIRO — ele nao pinta mais \
-         nada.",
-    ),
-    (
-        "gizmo/paint.rs",
-        "as ALCAS de um gizmo sobre o CANVAS: o contorno e' o que as separa da imagem por baixo, \
-         mesma familia do marquee e do `rect2_editor`.",
-    ),
-    (
-        "widget/toggle_classic.rs",
-        "pintor SO' do classico (recuperado do git para o `PH2D_UI_NEW=0`); nunca corre num tema moderno.",
-    ),
-    (
-        "widget/skin.rs",
-        "a PELE de um DOCUMENTO (vetor autorado), nao cromo do editor — o raio e a moldura sao do artista.",
-    ),
-    (
-        "screens/hero/selection.rs",
-        "o marquee de seleccao sobre o CANVAS: um contorno e' o proprio significado, nao decoracao.",
-    ),
-    (
-        "screens/hero/canvas.rs",
-        "a moldura de «largue aqui» sobre o CANVAS durante um arrasto: o contorno E' a mensagem.",
-    ),
-    (
-        "screens/hero/slot_tabs.rs",
-        "o unico traco e' o contorno da aba DESTINO enquanto se arrasta outra: e' a mensagem, nao moldura de repouso.",
-    ),
-    (
-        "widget/rect2_editor.rs",
-        "as ALCAS de um gizmo sobre CONTEUDO (as pegas de mover/redimensionar um rect): o contorno e' o que as separa da imagem por baixo, como o marquee.",
-    ),
-    (
-        "widget/showcase/body.rs",
-        "o contorno de seccao do showcase e' a MARCA de realce que o utilizador escolheu (`Section outline`, cor de marcador): conteudo autorado, nao moldura de repouso.",
-    ),
-    // ── Painéis (wave 4) — o contorno que É a mensagem, ou conteúdo do documento ──
-    (
-        "ph2d-panel-flip-frames/src/paint_cells.rs",
-        "o fantasma de onde a celula vai POUSAR durante um arrasto: a mensagem, nao moldura de repouso.",
-    ),
-    (
-        "ph2d-panel-hierarchy/src/paint.rs",
-        "o indicador de «largar DENTRO deste no'» durante um arrasto: a mensagem, nao moldura de repouso.",
-    ),
-    (
-        "ph2d-panel-inspector/src/paint_frame.rs",
-        "o contorno de seccao e' a MARCA de realce que o utilizador escolheu (cor de marcador): conteudo autorado — o gemeo do showcase.",
-    ),
-    (
-        "ph2d-panel-motion-graph/src/paint_overlays.rs",
-        "o marquee de seleccao sobre o CANVAS do grafo: um contorno e' o proprio significado — o gemeo do `selection.rs`.",
-    ),
-    (
-        "ph2d-panel-motion-graph/src/paint_wire.rs",
-        "o anel do crachá `pre` sobre um FIO do grafo: conteudo do documento, nao cromo.",
-    ),
-    (
-        "ph2d-panel-motion-graph/src/paint_socket.rs",
-        "o HALO de um socket-alvo durante um arrasto de fio (`Accent` compativel · `Danger` incompativel): a mensagem, nao moldura de repouso.",
-    ),
-    (
-        "ph2d-panel-physics/src/paint/matrix.rs",
-        "a diagonal da matriz de camadas e' contornada para o olho achar o eixo de simetria: a mensagem, nao moldura.",
-    ),
-    (
-        "ph2d-panel-timeline/src/strip_paint.rs",
-        "o contorno de uma STRIP na lane: duas strips adjacentes com a mesma tinta so' se separam por ele — conteudo do documento.",
-    ),
-];
 
 fn src_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src")
@@ -148,44 +70,96 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
 }
 
 /// `(traça molduras?, conhece a porta?)` de um ficheiro de produto.
-fn classify(p: &Path) -> (bool, bool) {
+/// Cada chamada crua a `stroke_rounded_rect` deste ficheiro que **não pergunta ao tema nem se
+/// declara**.
+///
+/// ⛔⛔⛔ **Até 2026-09-07 esta pergunta era por FICHEIRO, e por isso era cega em três formas.**
+/// Ela lia *«este ficheiro menciona a porta?»* — logo (a) uma isenção escrita para uma função
+/// cobria o ficheiro inteiro (o balão de aviso, 290 linhas abaixo do corpo do `stroke_frame`),
+/// (b) um ficheiro que chamasse a porta **uma** vez ficava abençoado em todas as outras, e
+/// (c) uma menção a `visuals::` em qualquer linha bastava.
+///
+/// ⇒ hoje a unidade é a CHAMADA, e ela passa por uma de duas portas:
+///
+/// - **pergunta ao tema** — nos argumentos **ou na guarda**. ⚠️ A guarda é uma forma a sério, não
+///   uma tolerância: o traço de repouso de um `Button` está dentro de um
+///   `if …Widgets::of(theme).inactive.bg_stroke.is_visible()`, e a pergunta não aparece em
+///   argumento nenhum. *Um censo que só lê os argumentos declara cru o que o `if` já resolveu.*
+/// - **declara-se** com `FRAME-RAW-OK: <motivo>` na própria chamada.
+///
+/// ⭐ **O marcador substituiu uma lista de ficheiros**, e a razão é que o motivo já estava escrito
+/// no código em três sítios (`value_slider`, `probe`, `paint_rows`) sem o gate saber ler.
+/// *A decisão vivia ao lado da linha e o portão consultava outra folha.* Com o marcador não há
+/// duas cópias do motivo, logo não há a metade de obsolescência a manter.
+fn raw_calls(p: &Path) -> Vec<String> {
     let src = fs::read_to_string(p).expect("ficheiro legivel");
-    // ⚠️ Só o que PINTA: um `use` que nomeia a função não traça nada.
-    let body: String = src
-        .lines()
-        .filter(|l| !l.trim_start().starts_with("use "))
-        .collect::<Vec<_>>()
-        .join("\n");
-    let body = without_the_doors_own_body(&body);
-    let strokes = body.contains("stroke_rounded_rect(");
-    let door = body.contains("stroke_frame(") || body.contains("visuals::");
-    (strokes, door)
+    let body = match src.find("#[cfg(test)]") {
+        Some(at) => &src[..at],
+        None => &src[..],
+    };
+    let doors = door_bodies(body);
+    let lines: Vec<&str> = body.lines().collect();
+    let mut offs = Vec::with_capacity(lines.len());
+    let mut acc = 0usize;
+    for l in &lines {
+        offs.push(acc);
+        acc += l.len() + 1;
+    }
+    let mut out = Vec::new();
+    for (i, l) in lines.iter().enumerate() {
+        let t = l.trim_start();
+        if !l.contains("stroke_rounded_rect(") || t.starts_with("//") || t.starts_with("use ") {
+            continue;
+        }
+        if doors.iter().any(|(a, b)| offs[i] >= *a && offs[i] < *b) {
+            continue;
+        }
+        // ⚠️⚠️ **A janela da guarda ignora COMENTÁRIOS, e isto foi pago por uma mutação que
+        // sobreviveu.** O marcador do anel de foco explica, em prosa, que *o traço logo acima
+        // pergunta ao tema* — e a explicação nomeia `Widgets::of(theme)`. Com os comentários
+        // dentro da janela, esse texto fazia a régua declarar TEMADA a chamada que ele próprio
+        // dizia ser crua. *A prosa que descreve o mecanismo dispara o detector do mecanismo.*
+        let from = i.saturating_sub(8);
+        let window: String = lines[from..=i]
+            .iter()
+            .map(|l| match l.find("//") {
+                Some(at) => &l[..at],
+                None => l,
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        let asks_the_theme = [
+            "chrome.",
+            "Chrome::",
+            "visuals::",
+            "Widgets::",
+            "stroke_w",
+            ".width",
+        ]
+        .iter()
+        .any(|k| window.contains(k));
+        let declared = lines[i.saturating_sub(5)..=i]
+            .iter()
+            .any(|w| w.contains("FRAME-RAW-OK"));
+        if !asks_the_theme && !declared {
+            out.push(format!("{}:{}", p.display(), i + 1));
+        }
+    }
+    out
 }
 
-/// ⛔⛔⛔ **A PORTA não se isenta a si própria pelo FICHEIRO — só pelo próprio CORPO.**
-///
-/// O `paint.rs` estava na lista de isenções com o motivo *«é a PORTA: `stroke_frame` chama
-/// `stroke_rounded_rect` por definição»*. A frase é **verdadeira para aquela função** e a isenção
-/// cobria o **ficheiro inteiro** — e 290 linhas abaixo o pintor do balão de aviso traçava uma
-/// moldura crua a 1 px, desenhando num tema moderno o contorno que a pele plana apagou em toda a
-/// casa. *Uma isenção escrita para uma função protege tudo o que partilhe o ficheiro com ela*, e
-/// nada no gate dizia qual das duas coisas ela cobria.
-///
-/// ⇒ o censo apaga o corpo das funções que **são** a porta antes de perguntar, e a isenção de
-/// ficheiro deixa de ser precisa: ela sai da lista.
-fn without_the_doors_own_body(src: &str) -> String {
-    let mut out = String::with_capacity(src.len());
-    let mut rest = src;
-    while let Some(at) = rest.find("pub fn stroke_frame(") {
-        out.push_str(&rest[..at]);
-        // Do `{` de abertura até à chaveta que o fecha — o corpo da porta.
-        let after = &rest[at..];
-        let Some(open) = after.find('{') else {
+/// Os intervalos de bytes do corpo de cada `pub fn stroke_frame` — a porta não se mede a si mesma.
+fn door_bodies(src: &str) -> Vec<(usize, usize)> {
+    let mut out = Vec::new();
+    let mut from = 0usize;
+    while let Some(rel) = src[from..].find("pub fn stroke_frame(") {
+        let at = from + rel;
+        let Some(open) = src[at..].find('{').map(|o| at + o) else {
             break;
         };
         let mut depth = 0i32;
         let mut end = open;
-        for (i, c) in after[open..].char_indices() {
+        for (i, c) in src[open..].char_indices() {
             match c {
                 '{' => depth += 1,
                 '}' => {
@@ -198,9 +172,29 @@ fn without_the_doors_own_body(src: &str) -> String {
                 _ => {}
             }
         }
-        rest = &after[end..];
+        out.push((at, end));
+        from = end;
     }
-    out.push_str(rest);
+    out
+}
+
+/// Um marcador que já não fica sobre uma chamada crua — a metade de obsolescência do marcador.
+fn stale_markers(p: &Path) -> Vec<String> {
+    let src = fs::read_to_string(p).expect("ficheiro legivel");
+    let lines: Vec<&str> = src.lines().collect();
+    let mut out = Vec::new();
+    for (i, l) in lines.iter().enumerate() {
+        if !l.contains("FRAME-RAW-OK") {
+            continue;
+        }
+        let to = (i + 6).min(lines.len());
+        if !lines[i..to]
+            .iter()
+            .any(|w| w.contains("stroke_rounded_rect("))
+        {
+            out.push(format!("{}:{}", p.display(), i + 1));
+        }
+    }
     out
 }
 
@@ -208,102 +202,107 @@ fn is_test_file(rel: &str) -> bool {
     rel.contains("/tests") || rel.ends_with("_tests.rs") || rel.ends_with("tests.rs")
 }
 
-/// `(chave, traça molduras?, conhece a porta?)` para todo ficheiro de produto — os do
-/// `editor-core` com o caminho relativo a `src/` (`widget/…`, `screens/hero/…`, `paint.rs`), os
-/// dos painéis e da shell com o prefixo da crate (`ph2d-panel-x/src/…`, `shells/desktop/src/…`).
-fn census() -> Vec<(String, bool, bool)> {
+/// Todo ficheiro de produto que possa traçar uma moldura.
+fn product_sources() -> Vec<PathBuf> {
     let root = src_root();
-    // ⛔⛔ **A RAIZ INTEIRA** (wave 26). Até aqui o censo varria `widget/` e `screens/hero/` mais
-    // **um ficheiro escrito à mão** (`paint.rs`) — e o vizinho dele, o `progress.rs`, que pinta o
-    // outro inquilino da coluna do topo, nunca foi olhado. *Um censo que enumera directórios à
-    // mão afirma sobre os directórios que alguém se lembrou de escrever.*
     let mut files = Vec::new();
+    // ⛔⛔ **A RAIZ INTEIRA** (wave 26). Até àquela wave o censo varria `widget/` e `screens/hero/`
+    // mais **um ficheiro escrito à mão** (`paint.rs`) — e o vizinho dele, o `progress.rs`, que
+    // pinta o outro inquilino da coluna do topo, nunca foi olhado. *Um censo que enumera
+    // directórios à mão afirma sobre os que alguém se lembrou de escrever.*
     walk(&root, &mut files);
-    let mut out = Vec::new();
-    for p in files {
-        let rel = p
-            .strip_prefix(&root)
-            .expect("dentro de src/")
-            .to_string_lossy()
-            .replace('\\', "/");
-        if is_test_file(&rel) {
-            continue;
-        }
-        let (strokes, door) = classify(&p);
-        out.push((rel, strokes, door));
-    }
-    for (prefix, src) in panel_and_shell_roots() {
-        let mut files = Vec::new();
+    for (_, src) in panel_and_shell_roots() {
         walk(&src, &mut files);
-        for p in files {
-            let rel = p
-                .strip_prefix(&src)
-                .expect("dentro da raiz")
-                .to_string_lossy()
-                .replace('\\', "/");
-            if is_test_file(&rel) {
-                continue;
-            }
-            let (strokes, door) = classify(&p);
-            out.push((format!("{prefix}/{rel}"), strokes, door));
-        }
     }
-    out.sort();
-    out
+    files.retain(|p| {
+        let rel = p.to_string_lossy().replace('\\', "/");
+        !is_test_file(&rel)
+    });
+    files.sort();
+    files
 }
 
-/// ⭐⭐⭐ **CENSO: quem traça molduras conhece a porta — ou está na dívida declarada.**
+/// ⭐⭐⭐ **CENSO: toda moldura pergunta ao tema — ou DECLARA-SE na própria linha.**
 ///
-/// **Mutação que deve sangrar:** trocar o `stroke_frame` de `widget/card.rs` de volta por
-/// `stroke_rounded_rect` — o cartão volta a ter contorno num tema moderno, e este gate acusa-o.
+/// ⚠️ **A unidade é a CHAMADA** (wave 27). Enquanto era o ficheiro, três formas escapavam: uma
+/// isenção escrita para uma função cobria o ficheiro; um ficheiro que chamasse a porta uma vez
+/// ficava abençoado em todas as outras; e uma menção a `visuals::` em qualquer linha bastava.
+///
+/// **Mutação que deve sangrar:** apagar o `FRAME-RAW-OK` de qualquer contorno-mensagem, ou trocar
+/// o `stroke_frame` de `widget/card.rs` de volta por `stroke_rounded_rect`.
 #[test]
 fn every_frame_goes_through_the_theme_door() {
-    let stray: Vec<String> = census()
-        .into_iter()
-        .filter(|(rel, strokes, door)| {
-            *strokes
-                && !*door
-                && !NOT_YET.contains(&rel.as_str())
-                && !EXEMPT.iter().any(|(e, _)| e == rel)
-        })
-        .map(|(rel, ..)| rel)
+    let stray: Vec<String> = product_sources()
+        .iter()
+        .flat_map(|p| raw_calls(p))
         .collect();
     assert!(
         stray.is_empty(),
-        "estes ficheiros tracam molduras com `stroke_rounded_rect` directo e nao perguntam ao \
-         tema — num tema moderno eles desenham o contorno que a pele plana apagou: {stray:?}\n\
-         cura: `crate::paint::stroke_frame(scene, rect, radius, theme, feel, w, colour)` (e o raio \
-         por `crate::paint::frame_radius`)."
+        "estas CHAMADAS tracam uma moldura sem perguntar ao tema e sem se declarar — num tema \
+         moderno elas desenham o contorno que a pele plana apagou:\n  {}\n\ncura: \
+         `crate::paint::stroke_frame(scene, rect, radius, theme, feel, w, colour)`; se o contorno \
+         E' a mensagem (um marquee, um «largue aqui», um anel de foco, o halo de uma amostra de \
+         cor), declare-o com `// FRAME-RAW-OK: <motivo>` na chamada.",
+        stray.join("\n  ")
     );
 }
 
-/// ⛔ **A metade que impede as listas de virar licença.**
+/// ⛔⛔ **O PISO CONTRA O VÁCUO** — um censo que varre zero ficheiros também não acha nada.
+///
+/// As duas asserções acima são «a lista está vazia», e uma varredura partida satisfá-las por
+/// engano.
+///
+/// ⚠️⚠️ **Os pisos foram CALIBRADOS contra a varredura partida, não escolhidos** — e a 1.ª
+/// redacção deles foi morta por uma mutação: com `> 300` ficheiros e `> 15` marcadores, apagar
+/// as raízes dos painéis **sobrevivia**, porque o `editor-core` sozinho já os satisfazia.
+/// Medido em 2026-09-07:
+///
+/// | população | ficheiros | marcadores |
+/// |---|---|---|
+/// | só o `editor-core` (a varredura partida) | 388 | 17 |
+/// | com os painéis e a shell (a certa) | 1982 | 27 |
+///
+/// ⇒ os pisos ficam **entre** as duas colunas. *Um piso contra o vácuo calibrado sem o mundo
+/// partido ao lado mede a população que sobrou, não a que devia estar lá.*
 #[test]
-fn the_debt_and_the_exemptions_have_no_stale_entries() {
-    let all = census();
-    let by_name = |rel: &str| all.iter().find(|(r, ..)| r == rel);
-    // Uma entrada da dívida que já conhece a porta, ou que já não traça nada, sai.
-    let done: Vec<&&str> = NOT_YET
-        .iter()
-        .filter(|rel| match by_name(rel) {
-            Some((_, strokes, door)) => !*strokes || *door,
-            None => true,
-        })
-        .collect();
+fn the_census_actually_reaches_the_tree() {
+    let files = product_sources();
     assert!(
-        done.is_empty(),
-        "estas entradas ja' nao descrevem nada — o ficheiro ja' passa pela porta, ja' nao traca, \
-         ou nao existe: {done:?}\ncura: apague-as de NOT_YET. Uma catraca sem censo de \
-         obsolescencia nao desce, vira licenca."
+        files.len() > 1000,
+        "o censo varreu {} ficheiros de produto: a varredura partiu-se, e as outras duas \
+         asserticoes ficam VERDES por vacuo",
+        files.len()
     );
-    // E uma isenção tem de descrever um ficheiro que EXISTE e que TRAÇA — senão protege o nada.
-    let ghosts: Vec<&&str> = EXEMPT
+    let declared: usize = files
         .iter()
-        .map(|(e, _)| e)
-        .filter(|rel| !matches!(by_name(rel), Some((_, true, _))))
+        .map(|p| {
+            fs::read_to_string(p)
+                .map(|s| s.matches("FRAME-RAW-OK").count())
+                .unwrap_or(0)
+        })
+        .sum();
+    assert!(
+        declared > 20,
+        "so' {declared} contornos se declaram como a MENSAGEM: ou alguem os apagou em massa, ou o \
+         leitor de marcadores deixou de os ver"
+    );
+}
+
+/// ⛔ **A metade que impede o marcador de virar licença.**
+///
+/// Um `FRAME-RAW-OK` que já não fica sobre uma chamada crua descreve o nada — e um marcador órfão
+/// é pior que uma lista velha, porque parece uma decisão viva. ⭐ Note que esta é a **única**
+/// metade de obsolescência que sobra: quando o motivo vivia numa lista de ficheiros havia duas
+/// cópias dele para manter alinhadas; com o marcador há uma.
+#[test]
+fn no_stale_frame_markers() {
+    let stale: Vec<String> = product_sources()
+        .iter()
+        .flat_map(|p| stale_markers(p))
         .collect();
     assert!(
-        ghosts.is_empty(),
-        "isencoes sobre ficheiros que nao existem ou ja' nao tracam: {ghosts:?}"
+        stale.is_empty(),
+        "estes `FRAME-RAW-OK` ja' nao ficam sobre uma chamada crua — apague-os:\n  {}",
+        stale.join("\n  ")
     );
 }

@@ -416,6 +416,7 @@ pub(crate) fn paint_drop_indicator(
             if is_group {
                 // ⚠️ NÃO passa pela porta do tema: é o indicador de «largar DENTRO deste grupo»
                 //    durante um arrasto — a mensagem, não moldura de repouso.
+                // FRAME-RAW-OK: o indicador de «largar DENTRO deste grupo» durante um arrasto: a mensagem
                 stroke_rounded_rect(
                     ctx.scene,
                     rect,

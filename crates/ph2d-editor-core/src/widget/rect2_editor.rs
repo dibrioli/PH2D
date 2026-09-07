@@ -289,6 +289,7 @@ pub fn paint_rect2_handles(content: Rect, size: f32, scene: &mut VectorScene, th
             ColorToken::Bg3 // corners = resize
         };
         fill_rounded_rect(scene, *h, radius, resolve(fill, theme));
+        // FRAME-RAW-OK: as ALCAS de um gizmo sobre CONTEUDO: o contorno separa-as da imagem por baixo, como o marquee
         stroke_rounded_rect(
             scene,
             *h,

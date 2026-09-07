@@ -55,6 +55,7 @@ pub fn paint_selection_overlay(
     ] {
         let h_rect = Rect::new(hx, hy, handle, handle);
         fill_rounded_rect(scene, h_rect, 1.0, resolve(ColorToken::Bg0, theme));
+        // FRAME-RAW-OK: o marquee de seleccao sobre o CANVAS: o contorno E' o significado
         stroke_rounded_rect(scene, h_rect, 1.0, 2.0, resolve(ColorToken::Accent, theme));
     }
     let tag_w = 220.0_f32; // LITERAL-PX-OK: selection tag width (chrome-specific)
@@ -71,6 +72,7 @@ pub fn paint_selection_overlay(
         Radius::Sm.px(),
         resolve(ColorToken::BgElev, theme),
     );
+    // FRAME-RAW-OK: o marquee de seleccao sobre o CANVAS: o contorno E' o significado
     stroke_rounded_rect(
         scene,
         tag_rect,

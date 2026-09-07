@@ -340,6 +340,10 @@ pub fn paint_context_menu_overlay(
                 3.0, // LITERAL-PX-OK: context-menu swatch radius (chrome-specific accent)
                 VelloColor::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]), // LITERAL-COLOR-OK: user-color — swatch shows an outline-pick rgba, not a theme token
             );
+            // FRAME-RAW-OK: a AMOSTRA de uma cor escolhida pelo utilizador. ⚠️ O tema nao pode
+            // decidir se este contorno e' preciso, porque ele NAO SABE a cor: uma amostra branca
+            // sobre um fundo claro desaparece sem ele. E' o mesmo argumento do halo do cursor no
+            // selector de cor.
             stroke_rounded_rect(scene, sw, 3.0, 1.0, resolve(ColorToken::Border, theme)); // LITERAL-PX-OK: context-menu swatch radius (chrome-specific accent)
         } else if matches!(req.kind, ContextMenuKind::CreateNote { .. }) {
             paint_icon(

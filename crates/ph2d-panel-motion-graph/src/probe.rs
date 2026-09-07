@@ -44,6 +44,7 @@ pub(crate) fn draw(
     let card = geom::card_rect(node, view);
     // ⚠️ O anel NÃO passa pela porta do tema: ele é a mensagem («este número é DESTE cartão»),
     //    não moldura de repouso — sem ele o painel de números é órfão em qualquer família.
+    // FRAME-RAW-OK: o anel de proveniencia («este numero e' DESTE cartao»): a mensagem, nao moldura de repouso
     stroke_rounded_rect(
         ctx.scene,
         card,

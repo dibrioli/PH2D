@@ -81,6 +81,7 @@ pub fn paint_value_slider(
     // ⚠️ Este traço NÃO é moldura e não passa pela porta: é o HALO de contraste que separa o
     //    cursor claro de qualquer matiz da faixa (o grabber do Godot leva o mesmo contorno
     //    escuro). Sem ele, o cursor some sobre o amarelo.
+    // FRAME-RAW-OK: o HALO de contraste do cursor: sem ele o cursor claro some sobre o amarelo da faixa
     stroke_rounded_rect(scene, thumb_rect, 2.0, 1.0, resolve(ColorToken::Bg0, theme));
 }
 

@@ -373,6 +373,7 @@ pub fn paint_widget_skin_with(
                 Radius::Md.px(),
                 resolve(ColorToken::Bg2, theme),
             );
+            // FRAME-RAW-OK: a PELE de um DOCUMENTO (vetor autorado): o raio e a moldura sao do artista, nao do tema
             stroke_rounded_rect(
                 scene,
                 rect,

@@ -1853,6 +1853,68 @@ de um documento). Ficam ~**14 ficheiros sem veredito** — entre eles o anel de 
 contorno de erro de um campo, a amostra de cor de um menu e quatro do grafo de motion. *Cada um
 precisa da mesma pergunta que esta wave respondeu para dois: é moldura de repouso, ou é a mensagem?*
 
+### 7.32 — ✅ WAVE 27 (2026-09-07): a moldura pergunta-se por CHAMADA, e o motivo mora na linha
+
+**Fecha o item que a wave 26 nomeou.** Aquela wave achou dois buracos no censo da moldura; medindo
+a pergunta certa — por **chamada**, não por ficheiro — sobram **23 ficheiros com traço cru**, dos
+quais **6 sem veredito**. Não 14, como a estimativa dizia.
+
+#### ⛔⛔ A pergunta por FICHEIRO era cega em TRÊS formas
+
+O censo lia *«este ficheiro menciona a porta?»*. Logo:
+
+1. uma isenção escrita para uma **função** cobria o ficheiro (o balão de aviso, 290 linhas abaixo
+   do corpo do `stroke_frame` — o achado da wave 26);
+2. um ficheiro que chamasse a porta **uma** vez ficava abençoado em **todas** as outras;
+3. uma menção a `visuals::` em **qualquer** linha bastava.
+
+⇒ a unidade passa a ser a CHAMADA, e ela passa por uma de duas portas: **pergunta ao tema** (nos
+argumentos **ou na guarda**) ou **declara-se** com `FRAME-RAW-OK: <motivo>`.
+
+⚠️ **A guarda é uma forma a sério, não uma tolerância:** o traço de repouso de um `Button` vive
+dentro de um `if …Widgets::of(theme).inactive.bg_stroke.is_visible()`, e a pergunta não aparece em
+argumento nenhum. *Um censo que só lê os argumentos declara cru o que o `if` já resolveu.*
+
+#### ⭐⭐⭐ O marcador matou a lista, e a razão é que o motivo JÁ estava no código
+
+Três sítios — o halo do cursor no selector de cor, o anel de proveniência do grafo, o indicador de
+«largar dentro deste grupo» — **já traziam o veredito escrito em prosa ao lado da chamada**, e o
+gate consultava outra folha. *A decisão vivia ao lado da linha e o portão não a lia.*
+
+⇒ com `FRAME-RAW-OK` na chamada há **uma** cópia do motivo, logo desaparece a metade de
+obsolescência da lista; sobra a do marcador, que é *«ele ainda fica sobre uma chamada crua?»*.
+**27 contornos** declaram-se hoje. As duas listas de ficheiro (`NOT_YET` e `EXEMPT`) foram apagadas.
+
+Os **dois** vereditos novos: a **amostra de cor** de um menu (⚠️ o tema não pode decidir se aquele
+contorno é preciso, porque ele **não sabe a cor** — uma amostra branca sobre fundo claro desaparece
+sem ele) e o **anel de foco** de um botão (onde está o foco tem de ver-se em qualquer pele, senão o
+teclado deixa de ter onde pousar).
+
+#### ⚠️⚠️ Duas mutações sobreviveram, e as duas eram defeitos da MINHA régua
+
+**(a) A prosa disparou o detector.** O marcador do anel de foco explica que *o traço logo acima
+pergunta ao tema*, e a explicação nomeia `Widgets::of(theme)`. Com os comentários dentro da janela
+da guarda, esse texto fazia a régua declarar **temada** a chamada que ele próprio dizia ser crua.
+*O texto que descreve o mecanismo dispara o detector do mecanismo.* ⇒ a janela ignora comentários.
+
+**(b) O piso contra o vácuo estava calibrado sem o mundo partido.** Com `> 300` ficheiros e `> 15`
+marcadores, apagar as raízes dos painéis **sobrevivia** — o `editor-core` sozinho já os satisfazia.
+Medido: **388 ficheiros / 17 marcadores** na varredura partida contra **1982 / 27** na certa, e os
+pisos ficam **entre** as duas colunas. *Um piso calibrado sem o mundo partido ao lado mede a
+população que sobrou, não a que devia estar lá.*
+
+**Provas de mutação: 7 escritas, 7 mortas** (o cartão volta a contornar · o marcador do anel de
+proveniência sai · o balão volta ao traço cru · o marcador do anel de foco sai · o da amostra de
+cor sai · o censo deixa de varrer os painéis · a janela da guarda encolhe). ⚠️ **Duas só depois de
+curar a régua**, e uma oitava foi **mal formada** por mim — ela trocava o `stroke_frame` mantendo-o
+no ficheiro, logo não criava traço cru nenhum; o próprio doc do gate dizia qual era a mutação certa.
+
+#### ⚠️ E o teto de LOC cobrou o marcador
+
+Uma linha de marcador levou o `paint_hierarchy_body` de 289 para 290. Pago por **extracção pela
+quinta vez**: o bloco inteiro de *«onde a linha arrastada vai pousar»* saiu para
+`paint_drop_indicator` — **36 linhas devolvidas por uma**, e a tolerância desceu a `253`.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

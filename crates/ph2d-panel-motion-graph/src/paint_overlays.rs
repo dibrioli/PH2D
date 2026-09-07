@@ -56,6 +56,7 @@ pub(super) fn draw_canvas_overlays(
             0.0,
             resolve(ColorToken::GraphMarquee, theme),
         );
+        // FRAME-RAW-OK: o marquee de seleccao sobre o CANVAS do grafo: o gemeo do `selection.rs`
         stroke_rounded_rect(
             ctx.scene,
             band,

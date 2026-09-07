@@ -463,6 +463,7 @@ pub fn paint_drag_overlay(
             resolve(token, theme),
         );
         if under {
+            // FRAME-RAW-OK: o contorno da aba DESTINO enquanto se arrasta outra: a mensagem, nao moldura de repouso
             crate::paint::stroke_rounded_rect(
                 scene,
                 r,

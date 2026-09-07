@@ -200,6 +200,54 @@ fn row_depths(
         .collect()
 }
 
+/// **Onde a linha arrastada vai POUSAR** — irmã acima, e não uma parte do corpo do painel.
+///
+/// Três destinos, e o que os separa é a terça parte da linha em que o cursor está: acima dela é
+/// *ficar irmão, antes*; abaixo é *irmão, depois*; no meio é **entrar dentro** — e só esse terceiro
+/// desenha um contorno em vez de uma barra, porque a mensagem dele é *«este nó inteiro te recebe»*.
+/// `fallback` é a barra do fim da lista, para quando o cursor não está sobre linha nenhuma.
+///
+/// ⚠️ Saiu do corpo do painel para pagar, por CORTE, a linha que o marcador da wave 27 lhe
+/// acrescentou — *as tolerâncias encolhem, nunca crescem*.
+fn paint_drop_indicator(
+    d: ph2d_editor_core::interaction::HierarchyDragState,
+    row_rects: &[(ph2d_a11y::NodeId, Rect)],
+    fallback: Rect,
+    scene: &mut VectorScene,
+    theme: Theme,
+) {
+    for (id, rrect) in row_rects {
+        if *id == d.dragged {
+            continue;
+        }
+        let top = rrect.y;
+        let bot = rrect.y + rrect.h;
+        let inside_top = top + rrect.h * 0.3; // LITERAL-PX-OK: drop-zone partition ratio (30% sibling-above)
+        let inside_bot = top + rrect.h * 0.7; // LITERAL-PX-OK: drop-zone partition ratio (70% boundary)
+        if d.cursor_y < top || d.cursor_y >= bot {
+            continue;
+        }
+        let bar = if d.cursor_y < inside_top {
+            Rect::new(rrect.x, rrect.y - 1.0, rrect.w, 2.0)
+        } else if d.cursor_y < inside_bot {
+            // FRAME-RAW-OK: o indicador de «largar DENTRO deste no'» durante um arrasto: a mensagem
+            stroke_rounded_rect(
+                scene,
+                *rrect,
+                Spacing::Sm.px(),
+                StrokeToken::Thick.px(),
+                resolve(ColorToken::Accent, theme),
+            );
+            return;
+        } else {
+            Rect::new(rrect.x, rrect.y + rrect.h - 1.0, rrect.w, 2.0)
+        };
+        fill_rounded_rect(scene, bar, 1.0, resolve(ColorToken::Accent, theme));
+        return;
+    }
+    fill_rounded_rect(scene, fallback, 1.0, resolve(ColorToken::Accent, theme));
+}
+
 fn paint_hierarchy_body(
     layout: &HeroLayout,
     scene: &mut VectorScene,
@@ -440,44 +488,8 @@ fn paint_hierarchy_body(
         y += HIER_ROW_H + list_row_gap_px();
     }
     if let Some(d) = dragging {
-        let mut drew = false;
-        for (id, rrect) in &row_rects {
-            if *id == d.dragged {
-                continue;
-            }
-            let top = rrect.y;
-            let bot = rrect.y + rrect.h;
-            let inside_top = top + rrect.h * 0.3; // LITERAL-PX-OK: drop-zone partition ratio (30% sibling-above)
-            let inside_bot = top + rrect.h * 0.7; // LITERAL-PX-OK: drop-zone partition ratio (70% boundary)
-            if d.cursor_y < top || d.cursor_y >= bot {
-                continue;
-            }
-            if d.cursor_y < inside_top {
-                let indicator = Rect::new(rrect.x, rrect.y - 1.0, rrect.w, 2.0);
-                fill_rounded_rect(scene, indicator, 1.0, resolve(ColorToken::Accent, theme));
-                drew = true;
-                break;
-            } else if d.cursor_y < inside_bot {
-                stroke_rounded_rect(
-                    scene,
-                    *rrect,
-                    Spacing::Sm.px(),
-                    StrokeToken::Thick.px(),
-                    resolve(ColorToken::Accent, theme),
-                );
-                drew = true;
-                break;
-            } else {
-                let indicator = Rect::new(rrect.x, rrect.y + rrect.h - 1.0, rrect.w, 2.0);
-                fill_rounded_rect(scene, indicator, 1.0, resolve(ColorToken::Accent, theme));
-                drew = true;
-                break;
-            }
-        }
-        if !drew {
-            let indicator = Rect::new(rect.x + body_pad, y - 1.0, row_w, 2.0);
-            fill_rounded_rect(scene, indicator, 1.0, resolve(ColorToken::Accent, theme));
-        }
+        let fallback = Rect::new(rect.x + body_pad, y - 1.0, row_w, 2.0);
+        paint_drop_indicator(d, &row_rects, fallback, scene, theme);
     }
     scene.pop_layer();
     // ⛔ **As três alças saíram (2026-08-30)** — esta coluna é ANCORADA. Elas eram

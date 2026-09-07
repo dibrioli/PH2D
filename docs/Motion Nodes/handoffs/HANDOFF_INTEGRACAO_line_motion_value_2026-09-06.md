@@ -268,3 +268,87 @@ acontece**, que é a família que o [`CLAUDE.md §5.0`](../../../CLAUDE.md) regi
 pago. A vizinha perigosa é a **`line/UIUX`**, que acabou de passar o app inteiro para cartões e
 que já colidiu com esta **duas vezes na mesma pasta** (§8 e o commit `fd3f34c09`).
 ⇒ **ao reabrir esta linha, o passo 1 é conferir se a `UIUX` mexeu no painel do Motion.**
+
+---
+
+## §14 — ADENDO de 2026-09-07 · **o cartão alcança TUDO e o painel lateral SAIU**
+
+> ⚠️ **Este handoff foi escrito antes de 17 commits.** Este §14 é o delta, e é ele que um
+> integrador tem de ler: o resto do documento continua verdadeiro, mas **não menciona uma crate
+> nova, uma mudança de layout foundational nem a saída de um painel do produto**.
+
+### §14.1 — O que aconteceu, numa linha
+
+O censo `what_the_card_still_cannot_reach` foi de **26 → 0** (683 rows de cartão), e por isso o
+**painel lateral de params saiu** — a ordem do Enio de 05/09, cuja condição era exactamente esse
+número. `PH2D_MOTION_PANEL=1` traz-no de volta.
+
+| espécie | quantos | como fechou |
+|---|---:|---|
+| caminho + diálogo de FICHEIRO | 3 | o cartão pede, a shell abre |
+| selector de FONTE publicada | 4 | duas setas + lista, pela lista viva |
+| amostra + selector de COR | 4 | o id da amostra passou a carregar o NÓ |
+| campo de TEXTO | 9 | a caixa abre com o valor INTEIRO |
+| selector de CANAL | 1 | o clique anda pelos canais e escreve o PAR |
+| editor de CURVA · GRADIENTE · PALETA | 5 | **janela flutuante** sobre o cartão |
+
+### §14.2 — ⚠️ A CRATE NOVA: `ph2d-param-editors`
+
+Os três editores ricos (curva 403 · gradiente 484 · paleta 339 LOC) saíram do
+`ph2d-panel-motion-params` para uma **crate-folha com dois hospedeiros** (a row do painel e o
+cartão) — é a wave 2 do plano 101. **A membresia é por glob**, então o `Cargo.toml` da workspace
+não muda; o `Cargo.lock` ganha `+ph2d-param-editors` (é o único pacote novo, e a
+`collision-surface.sh` nomeia-o).
+
+- ⛔ **A mudança de casa não moveu um único ID**, e há gate (`moving_house_moves_no_id`): os ids
+  são FNV de uma string, e uma string diferente compilaria, desenharia e faria o arrasto falar de
+  um widget que ninguém pintou. As 17 funções de id do painel derivam hoje da MESMA `EditorKey`
+  que o adaptador passa.
+- **Censo de gates 80 → 82, ZERO desaparecidos** (comparado por NOME, com a árvore limpa de um
+  lado).
+
+### §14.3 — ⚠️ FOUNDATIONAL / PARTILHADO tocado desde o handoff (a lista inteira, 6 ficheiros)
+
+| ficheiro | o quê | risco de colisão |
+|---|---|---|
+| `Cargo.lock` | `+ph2d-param-editors` | trivial (regenera) |
+| `crates/ph2d-editor-core/src/screens/task_layout.rs` | o layout `Nodes` passa a **nomear `"inspector"`** | ⚠️ **uma linha, mas de outra linha**: quem mexer nos layouts colide |
+| `shells/desktop/tests/a_layout_never_commands_a_panel_a_bridge_owns.rs` | o controlo perdeu `"motion"` | ⚠️ é o gate que **obrigou** à linha acima |
+| `crates/ph2d-editor-core/tests/architecture_motion_chrome_never_wraps_a_row_label.rs` | `SCANNED_CRATES` ganha a crate nova | a lei segue o código |
+| `crates/ph2d-editor-core/tests/hr12_widgets_a11y.rs` | isenção do `paint_card.rs` | ⛔ **vermelho PRÉ-EXISTENTE de 06/09** |
+| `shells/desktop/src/motion_state_conferencia_demos_table.rs` | o CSV da cena escreve-se por `rename` atómico | cura de flake |
+
+### §14.4 — ⛔ As TRÊS coisas que um integrador entende ao contrário
+
+1. **«O painel foi apagado»** — não foi: ele está **desligado** (`PH2D_MOTION_PANEL=1`), e a crate
+   continua a ser a casa das rows que a shell constrói (o gerador de tutoriais, os params de um
+   subgrafo, a leitura de volta do selector). Apagá-la parte o cartão.
+2. **«O `publish` do painel já não é preciso»** — ele é quem **DRENA as intenções de param**, e
+   desde o ciclo 1 a maioria vem do CARTÃO. Saltá-lo com o painel fora pararia o cartão inteiro:
+   todo arrasto, toda caixa, todo selector ficariam mudos. Há gate
+   (`with_the_side_panel_out_the_card_still_writes`) e a mutação mata-o.
+3. **«O censo a ZERO autoriza tudo»** — ele mede o que um clique numa row FAZ, e é **cego** a
+   se a escolha CHEGA ao documento. A outra metade tem gates próprios, na shell
+   (`motion_bridge_color_card_tests`): a cor escolhida numa janela de cartão chega à string, e
+   dois cartões do mesmo tipo não partilham a amostra.
+
+### §14.5 — ⛔⛔ O portão desta jornada apanhou SETE vermelhos, e a causa foi uma só
+
+Todos apareceram no `collision-surface.sh` e em `ph2d-editor-core`, **não** nas crates que a
+linha editou: *um fecho que só corre as crates tocadas é cego aos gates que vivem noutra.*
+
+- **quatro tectos de LOC** (`geom.rs` 661 · `interact_param_row_tests.rs` 633 · `state.rs` 607 ·
+  `params/snapshot.rs` 610) — curados por **corte por responsabilidade**, nunca por tolerância;
+- o **censo de elisão** a cair 30 → 27 porque os editores mudaram de crate (a lei seguiu o
+  código);
+- o **HR-12 do `paint_card.rs`**, vermelho desde 06/09;
+- **dois números sem marcador** (uma contagem e um factor adimensional).
+
+⇒ **O fecho desta linha passa a correr `ph2d-editor-core` também.** Ele é onde vivem os gates de
+arquitectura que medem os painéis de toda a gente.
+
+### §14.6 — O que o Enio já smokou (e o que falta)
+
+✅ ficheiro · fonte · cor · texto · canal · setas+lista · curva · gradiente · paleta · a janela a
+30% · **a saída do painel**. ⏳ **Falta o smoke do TUTORIAL do ciclo 2** (o PDF), que é a
+aceitação do ciclo e o que o mantém `⏳ ABERTO` no doc 103 §5.

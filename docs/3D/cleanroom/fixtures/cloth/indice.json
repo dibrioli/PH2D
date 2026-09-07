@@ -17,7 +17,8 @@
    "curva": "smooth",
    "passos": 12,
    "movidos": 1863,
-   "max_deslocamento": 0.236509
+   "max_deslocamento": 0.236509,
+   "dispersao_entre_realizacoes": 0.025712
   }
  ],
  [
@@ -38,7 +39,8 @@
    "curva": "smooth",
    "passos": 12,
    "movidos": 2162,
-   "max_deslocamento": 0.249739
+   "max_deslocamento": 0.249739,
+   "dispersao_entre_realizacoes": 0.129298
   }
  ],
  [
@@ -59,7 +61,8 @@
    "curva": "smooth",
    "passos": 12,
    "movidos": 2183,
-   "max_deslocamento": 0.463862
+   "max_deslocamento": 0.463862,
+   "dispersao_entre_realizacoes": 0.260774
   }
  ],
  [
@@ -80,7 +83,8 @@
    "curva": "smooth",
    "passos": 12,
    "movidos": 2183,
-   "max_deslocamento": 0.582806
+   "max_deslocamento": 0.582806,
+   "dispersao_entre_realizacoes": 0.041931
   }
  ],
  [
@@ -101,7 +105,8 @@
    "curva": "smooth",
    "passos": 12,
    "movidos": 2102,
-   "max_deslocamento": 0.479385
+   "max_deslocamento": 0.479385,
+   "dispersao_entre_realizacoes": 0.038778
   }
  ],
  [
@@ -122,7 +127,8 @@
    "curva": "smooth",
    "passos": 2,
    "movidos": 120,
-   "max_deslocamento": 0.069165
+   "max_deslocamento": 0.069165,
+   "dispersao_entre_realizacoes": 0.0
   }
  ],
  [
@@ -143,7 +149,8 @@
    "curva": "smooth",
    "passos": 12,
    "movidos": 2096,
-   "max_deslocamento": 0.046715
+   "max_deslocamento": 0.046715,
+   "dispersao_entre_realizacoes": 0.021971
   }
  ],
  [
@@ -164,7 +171,8 @@
    "curva": "smooth",
    "passos": 12,
    "movidos": 2234,
-   "max_deslocamento": 0.169025
+   "max_deslocamento": 0.169025,
+   "dispersao_entre_realizacoes": 0.043373
   }
  ],
  [
@@ -185,7 +193,8 @@
    "curva": "smooth",
    "passos": 12,
    "movidos": 2181,
-   "max_deslocamento": 0.267017
+   "max_deslocamento": 0.267017,
+   "dispersao_entre_realizacoes": 0.011771
   }
  ],
  [
@@ -206,7 +215,8 @@
    "curva": "smooth",
    "passos": 2,
    "movidos": 120,
-   "max_deslocamento": 0.098807
+   "max_deslocamento": 0.098807,
+   "dispersao_entre_realizacoes": 0.0
   }
  ],
  [
@@ -228,6 +238,28 @@
    "passos": 12,
    "movidos": 2146,
    "max_deslocamento": 0.307644
+  }
+ ],
+ [
+  "plano_agarrar_radial_dinamica",
+  {
+   "superficie": "plano",
+   "modo": "agarrar",
+   "falloff_da_forca": "radial",
+   "area": "dinamica",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "movidos": 2128,
+   "max_deslocamento": 0.162721,
+   "dispersao_entre_realizacoes": 0.0
   }
  ],
  [
@@ -378,6 +410,28 @@
   }
  ],
  [
+  "plano_agarrar_radial_local_origem",
+  {
+   "superficie": "plano",
+   "modo": "agarrar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "peso_normal": 0.0,
+   "movidos": 2138,
+   "max_deslocamento": 0.169046
+  }
+ ],
+ [
   "plano_agarrar_radial_local_origem_1passo",
   {
    "superficie": "plano",
@@ -396,6 +450,142 @@
    "passos": 2,
    "movidos": 1323,
    "max_deslocamento": 0.134311
+  }
+ ],
+ [
+  "plano_agarrar_radial_local_origem_2tracos",
+  {
+   "superficie": "plano",
+   "modo": "agarrar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "tracos": 2,
+   "persistente": 0,
+   "movidos": 2143,
+   "max_deslocamento": 0.305822
+  }
+ ],
+ [
+  "plano_agarrar_radial_local_origem_2tracos_persistente",
+  {
+   "superficie": "plano",
+   "modo": "agarrar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "tracos": 2,
+   "persistente": 1,
+   "movidos": 2145,
+   "max_deslocamento": 0.17105
+  }
+ ],
+ [
+  "plano_agarrar_radial_local_origem_3tracos",
+  {
+   "superficie": "plano",
+   "modo": "agarrar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "tracos": 3,
+   "persistente": 0,
+   "movidos": 2144,
+   "max_deslocamento": 0.414513
+  }
+ ],
+ [
+  "plano_agarrar_radial_local_origem_3tracos_persistente",
+  {
+   "superficie": "plano",
+   "modo": "agarrar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "tracos": 3,
+   "persistente": 1,
+   "movidos": 2145,
+   "max_deslocamento": 0.176485
+  }
+ ],
+ [
+  "plano_agarrar_radial_local_origem_pesonormal05",
+  {
+   "superficie": "plano",
+   "modo": "agarrar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "peso_normal": 0.5,
+   "movidos": 2138,
+   "max_deslocamento": 0.169046
+  }
+ ],
+ [
+  "plano_agarrar_radial_local_origem_pesonormal1",
+  {
+   "superficie": "plano",
+   "modo": "agarrar",
+   "falloff_da_forca": "radial",
+   "area": "local",
+   "raio": 0.35,
+   "limite": 2.5,
+   "banda": 0.75,
+   "massa": 1.0,
+   "amortecimento": 0.01,
+   "plasticidade": 0.0,
+   "pino": 0,
+   "forca": 1.0,
+   "curva": "smooth",
+   "passos": 12,
+   "peso_normal": 1.0,
+   "movidos": 2138,
+   "max_deslocamento": 0.169046
   }
  ],
  [
@@ -626,7 +816,8 @@
    "curva": "smooth",
    "passos": 12,
    "movidos": 2508,
-   "max_deslocamento": 0.612821
+   "max_deslocamento": 0.612821,
+   "dispersao_entre_realizacoes": 0.0
   }
  ],
  [
@@ -647,7 +838,8 @@
    "curva": "smooth",
    "passos": 12,
    "movidos": 2455,
-   "max_deslocamento": 0.329617
+   "max_deslocamento": 0.329617,
+   "dispersao_entre_realizacoes": 0.0
   }
  ],
  [

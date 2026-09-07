@@ -478,6 +478,49 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   abertos são `5×` a `26×` a banda, logo **há lei em falta e a caça continua**; a lotaria é só um
   chão para as barras.
   **Veredicto: ATESTADO** — a emenda Q18 pode ser lida pela janela-mãe. Detalhe: LEDGER §Papel R.
+  ✅ **EMENDA Q19 de 2026-09-07 (leva dentro as Q20 e Q21)** — ⚠️ **o nome tem de ter esta forma:** o
+  censo de atestados do bloco acima procura `EMENDA Q<dígitos> de`, e uma emenda intitulada
+  «Q19-Q21» passa por ele **muda** (medido ao escrevê-la: o censo devolvia silêncio, que se lê como
+  *tudo atestado*) — (§2.1 · §4.3 · §5.6 · §6.4 · §8.1 · §8.4 · §10.13 ERRATA ·
+  **§10.15 · §10.16 NOVAS** · §11 · §14 gate **46 REESCRITO** + gates **48-54**, mais **OITO fixtures
+  novas** e a chave `dispersao_entre_realizacoes` no cabeçalho de **treze** `.deformado`): as três
+  perguntas do I devolvem **SIM (as duas correcções, e a segunda é maior do que ele pensava)**,
+  **SIM (a lei existe e o mecanismo é duplo)** e **NÃO É UM CONTROLO / SIM COM A ORDEM CORRIGIDA /
+  CINCO CLÁUSULAS**.
+  ⛔ **(Q19.1)** As duas tabelas conferem: o quociente misturava um erro relativo com uma banda
+  absoluta e, na mesma unidade, dá `2,15×` · `1,19×` · `1,25×`; e a barra de `0,13` fica abaixo da
+  banda — **em QUATRO dos oito traços de esfera de doze passos**, não em dois (o gancho, o expandir e
+  **os dois apertos**, cuja lotaria vale `52 %` e `56 %` do sinal).
+  ⭐⭐⭐ **(Q19.2)** A régua que decide não é nenhuma das duas saídas propostas: é **outra estatística
+  da mesma comparação**. O `p95` da distância por vértice sobre o conjunto movido põe **os oito**
+  abaixo da barra (pior margem `1,16×`) e a mediana põe-nos `37×`–`799×` abaixo; a **contagem de
+  movidos** varia `≤ 1` vértice; e os vértices nomeados dos `.rastreio` são `2,6×`–`235×` mais
+  quietos que a barra. ⛔ A saída «uma barra de `k ×` a banda» fica **recusada** (certifica ruído,
+  não acerto); a saída «comparar num passo cedo» **funciona**, com a fronteira medida por traço
+  (`k = 12` · `7` · `5`).
+  ⭐ **(Q19.3)** Os dois apertos têm banda, e mais onze traços com eles: **treze** medições de quatro
+  corridas cada, agora no cabeçalho de cada ficheiro.
+  ⭐⭐⭐ **(Q20)** Confirmado no fonte, e o mecanismo é **duplo e independente**: os modos de âncora não
+  relêem a localização do evento, e o Agarrar reescreve-a com o pen-down todo passo; além disso ele
+  conta como *ferramenta de agarrar*, o que lhe retira o tamanho por pressão (`R ≡ R₀`). ⇒ a área
+  simulada, a banda e o disco ficam no pen-down **nas três áreas**, e há fixture **no plano**
+  (`plano_agarrar_radial_dinamica`, lotaria `0,000000`).
+  ⛔⛔⛔ **(Q21.1)** **O *Normal Weight* não é um controlo deste pincel** — a capacidade que o desenha
+  não o lista, o painel nunca o mostra, e a porta que inclinaria o delta não é chamada. Três fixtures
+  byte-idênticas a `0`, `0,5` e `1` provam-no. ⇒ a §8.1 perde a linha e a §8.4 perde a menção; **a lei
+  da inclinação não entra na espec porque não pertence a este pincel**.
+  ⚠️ **(Q21.2)** A experiência pedida (deformar → gravar a base → 2.º traço) é um **no-op exacto**, e
+  há mais dois: opção ligada sem base, e base com um traço só. A fixture que morde grava a base **no
+  repouso**; medida em pares de 2 e 3 traços, ela mostra **SATURAÇÃO** (`+81 %`/`+145 %` sem base
+  contra `+1,2 %`/`+4,4 %` com). E a base entra em **quatro** leituras, não duas.
+  ⚠️ **(Q21.3)** É por-vértice depois da integração, **e há mais quatro cláusulas**: a lista de
+  colisores é montada uma vez no 1.º passo; as varreduras nunca vêem o colisor; ela ignora factor,
+  banda e máscara; a origem do raio é escrita **depois** da colisão; vários colisores resolvem-se em
+  sequência.
+  ⭐⭐ **E o controlo que a Q18 deixou pedido FECHOU de passagem:** a lotaria é da **superfície**, não
+  da área — plano + *Dynamic* dá `0,000000` em três configurações, esfera + *Local* dá `11,2 %`
+  (§10.15 · gate 54).
+  ⏳ **AUDITORIA §4.2 (R-pré): PENDENTE.** ⛔ **Sem ela, a janela-mãe não lê esta emenda** (§3.R).
 Mapa de leitura da literatura (⭐ pública e lícita a TODOS os papéis):
   · Jakobsen, "Advanced Character Physics", GDC 2001 — integração de Verlet por posições + relaxação
     de restrições de distância por projecção. É EXACTAMENTE a família do solver do alvo.
@@ -565,7 +608,7 @@ A área simulada é um **conjunto de células**, escolhido a cada passo (F):
 |---|---|---|---|
 | **Local** *(omissão do código)* | as que intersectam a esfera de centro `c` e raio `R₀·(1+L)` | a **localização inicial** do traço (fixa, por passagem de simetria) — ⚠️ é o ponto da superfície sob o cursor **no último HOVER antes do pen-down** (escrito pelo desenho do cursor, não pelo início do traço: M — um traço scriptado sem hover fica com o centro num ponto velho) | **`R₀` = raio no 1.º passo** (o raio por pressão não muda a área) |
 | **Global** | **todas** as células-folha | — | — |
-| **Dynamic** *(o que os presets usam — ver §8)* | as que intersectam a esfera de centro `c` e raio `R·(1+L)` | a **localização actual** do cursor | `R` = raio actual (com pressão) |
+| **Dynamic** *(o que os presets usam — ver §8)* | as que intersectam a esfera de centro `c` e raio `R·(1+L)` | a **localização do cursor tal como o MODO a define** (§4.3) — ⚠️ e no **Agarrar** ela fica no pen-down: ver o bloco ⭐⭐⭐ abaixo | `R` = raio actual (com pressão) — ⚠️ no **Agarrar**, `R₀` sempre |
 
 `L` = *Simulation Limit* (omissão `2,5`, faixa `0,1..10` (F)). O teste célula-esfera é o do ponto
 da caixa da célula mais próximo do centro (distância² < raio²), sobre as caixas **actuais** (F).
@@ -584,9 +627,41 @@ integrados) e o **fino** (`w = 0` além do limite ⇒ `φ = 0` ⇒ nem a correc�
 velocidade retida movem o vértice, mesmo que a célula dele esteja activa). No plano, o Local pára
 **exactamente** no disco de `3,5 R` por causa do portão fino (M — §10).
 
+⭐⭐⭐ **O AGARRAR NÃO TEM ÁREA MÓVEL EM ÁREA NENHUMA — nem na *Dynamic* (F+M, 2026-09-07).** A
+«localização do cursor» da linha *Dynamic* acima **não é o ponto onde o cursor está**: é a mesma
+grandeza que o §4.3 tabela modo a modo, e no Agarrar ela é **congelada no pen-down durante todo o
+traço**. ⇒ para o Agarrar, a área simulada, a banda `w` e o disco de influência **ficam onde o traço
+começou, com o raio do 1.º passo, nas TRÊS áreas**. São **dois** mecanismos independentes, e ambos
+alcançam a área:
+- **a localização** — os modos de âncora (Agarrar e Gancho) e os pincéis alheios que miram a
+  simulação **deixam de reler a localização do evento** a partir do 2.º passo; e, dos que sobram,
+  aqueles cujo delta é medido **desde o ponto de partida do traço** (o Agarrar entre eles) têm a
+  localização **reescrita com o ponto do pen-down, todo passo**. O Gancho, cujo delta é
+  incremental, faz o contrário: soma-lhe o delta (§4.3), e por isso a área dele **anda** — um passo
+  atrasada;
+- **o raio** — para o Agarrar o **tamanho por pressão está desactivado por capacidade**: o programa
+  nega-o aos modos que arrastam matéria, e o Agarrar é um deles ⇒ `R = R₀` sempre, mesmo com a opção
+  de tamanho por pressão ligada. (O Gancho de tecido **não** está nessa classe: o raio dele varia
+  com a pressão. ⚠️ A pressão também deixa de ser relida por passo neste modo — só o valor do 1.º
+  passo conta.)
+
+⇒ **para o Agarrar, *Local* e *Dynamic* diferem em três coisas só:** (a) qual dos dois pontos de
+pen-down é usado — a *Local* usa a localização **amostrada pelo sobrevoo do cursor** antes do
+pen-down, a *Dynamic* usa a do **primeiro elemento do traço** (coincidem quando houve sobrevoo);
+(b) o filtro de raio na criação de restrições, que só a *Local* aplica; (c) a lista duplicada da
+*Local* (§5.2-bis).
+
+⚠️ **MEDIDO dos dois lados** (2026-09-07): o lado limpo, ao pôr a pertença **e** a banda no pen-down,
+foi de `2123` para `1864` vértices movidos contra `1863` do alvo, e o erro em posição de `0,0427`
+para `0,0078` — **dentro** da banda de realização daquele traço (`0,0200`). ⛔ **Nenhuma das duas
+metades sozinha o faz** (só a banda: `1728`; só a pertença: `1666`). E há fixture no plano, onde a
+lotaria não existe: `plano_agarrar_radial_dinamica` (§10.16).
+
 ⭐⭐ **Local contra Dynamic — o que difere no fonte, além do centro fixo e de `R₀` (F):**
 - **o centro de TUDO** (a esfera de células, a banda `w`, a distância da força, a retenção de
-  velocidade) é a **localização inicial fixa** no Local e a **do cursor, a cada passo** no Dynamic;
+  velocidade) é a **localização inicial fixa** no Local e a **localização do modo, a cada passo** no
+  Dynamic — que segue o cursor nos seis modos de força, anda um passo atrasada no Gancho e **não sai
+  do pen-down** no Agarrar (bloco acima);
 - **a criação de restrições é filtrada por raio** no Local (só vértices com `|p⁰ − c| < R₀·(1+L)`, em
   posições de repouso), e **sem filtro** (todos os vértices das células tocadas) no Dynamic/Global;
 - as restrições nascem **de uma vez no 1.º passo — e OUTRA VEZ no 2.º**, logo em **DUPLICADO**, no Local (§1 fase 0, §5.2-bis); **incrementalmente e uma vez só**, à medida que
@@ -1263,8 +1338,19 @@ dinâmica têm cada uma o seu próprio fornecedor de normais (§6.7). Nada aqui 
 cursor é des-projectado à **profundidade da localização original de agarrar** (a do 1.º passo) e
 subtraído ao ponto anterior. Para o **Grab** o delta **acumula** desde o pen-down (ponto actual −
 ponto original: um vector total); para os **outros sete modos** é **incremental** (ponto actual −
-ponto anterior). Com *Normal Weight* `> 0` (omissão `0`) o delta é inclinado para a normal da
-área como no Grab da casa. Com falloff *Projected* é achatado no plano da vista.
+ponto anterior). Com falloff *Projected* é achatado no plano da vista.
+
+⛔⛔⛔ **A INCLINAÇÃO PARA A NORMAL NÃO EXISTE NESTE PINCEL (F+M, 2026-09-07 — errata: até esta
+emenda esta secção dizia que com *Normal Weight* `> 0` o delta era inclinado para a normal da área
+«como no Grab da casa», e isso é FALSO).** Três factos independentes, cada um bastante sozinho:
+(1) a inclinação vive numa **porta** que devolve o delta já inclinado, e o pincel de tecido **não a
+chama** — ele consome o delta cru; (2) a capacidade *«tem peso de normal»* da casa é declarada para
+**três** pincéis, e o de tecido não é nenhum deles ⇒ **o painel nunca mostra o controlo** para este
+pincel, e o artista não o alcança por gesto nenhum; (3) medido — o mesmo traço de Agarrar do plano
+com o valor a `0`, `0,5` e `1` dá saída **byte-idêntica** nos três (§10.16, e há três fixtures).
+⇒ ⛔ **um port que implemente a inclinação acrescenta comportamento que o alvo não tem**, e a lei
+dela não pertence a este documento porque não pertence a este pincel. ⚠️ Isto **não** vale para o
+achatamento *Projected* acima, que é outro ramo e alcança o pincel de tecido.
 
 ⭐⭐⭐ **A consequência que só uma superfície CURVA revela: `δ` NÃO é a diferença dos dois pontos 3D do
 cursor — é a PROJECÇÃO dessa diferença no plano do ecrã** (F, 2026-09-06). As duas des-projecções são
@@ -1314,10 +1400,14 @@ estarem a profundidades diferentes — numa vista em perspectiva os dois não po
 I mediu `0,265 → 0,605` no Agarrar e `0,351 → 0,663` no gancho): o plano é o do **ECRÃ**, e só numa
 folha vista de frente é que ele coincide com o plano tangente.
 
-⚠️ **A localização do cursor** (`c`, centro do disco de influência):
+⚠️ **A localização do cursor** (`c`) — ⭐⭐ **e esta é a MESMA grandeza que a §2.1 chama «centro da
+área» na linha *Dynamic* e que a §2.2 usa como centro da banda `w`**: há **uma** localização por
+passo, e estes três consumidores lêem-na. *Ler esta lista como se fosse só do disco de influência é
+o erro que a §2.1 tinha até 2026-09-07.*
 - Drag/Push/Pinch/Inflate/Expand: **re-apanhada na superfície a cada passo** (raio contra a malha).
 - **Grab**: **fica no ponto do pen-down** durante todo o traço (é o que faz o Grab «pegar» num
-  conjunto fixo de vértices).
+  conjunto fixo de vértices) — ⇒ com ela ficam também a **área simulada** e a **banda**, mesmo em
+  área *Dynamic* (§2.1), e o raio delas é `R₀` porque este modo não tem tamanho por pressão.
 - **Snake Hook**: `c ← c + δ` a cada passo — o centro **anda com o gancho no plano de profundidade
   original**, não é re-apanhado na superfície.
   ⚠️⚠️ **E o `δ` desse avanço é o do passo ANTERIOR, não o deste passo (F, 2026-09-06):** o avanço
@@ -2052,8 +2142,30 @@ para a malha inteira; um máximo nunca lá chega.*
 ### §5.6 — Colisão (opcional, *Use Collisions*, nasce desligada)
 
 Colisores = todos os objectos visíveis da cena **com modificador de colisão** e árvore de
-aceleração construída, na pose do quadro (F). Por vértice, depois da integração, para cada
-colisor (F):
+aceleração construída, na pose do quadro (F).
+
+⭐⭐ **A ORDEM, que é o que a Q21.3 perguntou — e ela tem cinco cláusulas, não uma (F, 2026-09-07):**
+1. **A lista de colisores é montada UMA vez, quando a simulação nasce** (isto é, no 1.º passo do
+   traço), e cada colisor é posto na pose desse instante. ⇒ um colisor **animado não se move durante
+   o traço**, e um colisor que apareça a meio não entra. Ela também só é montada se a opção estiver
+   ligada nesse instante (§6.3: a simulação morre com o traço).
+2. **O passo é: as 5 varreduras sobre a lista inteira de restrições → depois, célula activa a
+   célula activa, a integração.** A colisão é o **penúltimo** acto da integração de cada vértice,
+   depois do termo de velocidade — ⇒ **as varreduras nunca vêem o colisor**, e uma restrição pode
+   voltar a meter o vértice dentro dele no passo seguinte; quem o tira de lá é a colisão desse
+   passo seguinte, não a projecção.
+3. **Ela corre para TODOS os vértices da célula activa, sem factor, sem banda e sem máscara** — um
+   vértice que a banda congelou (`φ = 0`) e um vértice mascarado **são testados na mesma**. ⚠️ Um
+   port que a aplique só onde `φ > 0` diverge.
+4. **O ponto de partida do raio (`x_col`) é escrito DEPOIS da colisão**, não depois da integração
+   (a espec dizia «pós-integração» e é errata): o raio do passo `k` sai de onde o passo `k−1`
+   **acabou já corrigido**. Ele nasce nas posições de repouso do traço e só é escrito para vértices
+   de células **activas** ⇒ na primeira vez que uma célula acorda, o raio desse vértice é longo
+   (do repouso do traço até agora), e pode apanhar um colisor atravessado antes de a célula existir.
+5. **Vários colisores são resolvidos em sequência**, e cada um lê a posição já corrigida pelo
+   anterior mas **a mesma** origem de raio ⇒ a ordem entre colisores é observável.
+
+Por vértice, depois da integração, para cada colisor (F):
 
 1. raio, em espaço do MUNDO, de `x_col` (posição pós-integração do passo anterior) até `x`
    (actual), com comprimento `|x − x_col|`; o teste é raio-vs-triângulo (watertight na
@@ -2160,12 +2272,42 @@ estado da simulação — não há passo de «assar».
 ### §6.4 — Base persistente
 
 O operador *Set Persistent Base* copia as posições (e normais) actuais para um atributo da malha
-(F). Com *Persistent* ligado no pincel, **os comprimentos de repouso e o teste de raio da
-construção** usam essas posições em vez das actuais ⇒ o mesmo pano de partida pode ser simulado
-vezes seguidas com forças diferentes sem acumular (H: D8428). ⚠️ As âncoras do Grab, o pino e a
-memória de forma continuam a partir das posições **actuais** do início do traço (F). ⚠️ Em malhas
-sem atributos persistentes (multires) a base vive só na sessão de escultura (H: #133267); e
-houve um período em que a opção era no-op para o pincel de tecido (H: #134781, 2025-02).
+(F). Com *Persistent* ligado no pincel, **a construção de restrições lê essas posições no lugar das
+de repouso do traço** ⇒ o mesmo pano de partida pode ser simulado vezes seguidas com forças
+diferentes sem acumular (H: D8428). ⚠️ Em malhas sem atributos persistentes (multires) a base vive
+só na sessão de escultura (H: #133267); e houve um período em que a opção era no-op para o pincel
+de tecido (H: #134781, 2025-02).
+
+⭐⭐ **A base substitui as posições de repouso em EXACTAMENTE QUATRO leituras, e todas as quatro
+vivem na construção (F, 2026-09-07 — a redacção anterior nomeava duas):**
+1. o **comprimento de repouso** de cada restrição estrutural (a distância entre os dois vértices na
+   base);
+2. o **filtro de raio** que decide se o vértice recebe restrições (a distância dele ao centro da
+   área) — logo a base decide **quem entra na simulação**, não só quão esticado ele está;
+3. o **teste e a força da âncora radial do Agarrar** — a mesma distância decide se o vértice ganha
+   âncora (`< R₀`) e com que peso de curva ⇒ com base, o conjunto agarrado é o da base;
+4. a **condição de criação do pino** (o vértice está dentro da banda?), avaliada na base.
+
+⛔ **E o que NÃO lê a base**, apesar de a redacção anterior o sugerir a meio: os **alvos** das três
+espécies de alvo próprio — a âncora, o pino e a memória de forma apontam para as posições de
+**repouso do traço** — e a **banda `w`** do factor por vértice, nas varreduras e na integração, que
+mede sempre sobre o repouso do traço. ⇒ *a base muda a REDE e o comprimento dela; nunca o alvo nem o
+peso.*
+
+⭐⭐⭐ **MEDIDO, e o efeito é SATURAÇÃO, não atenuação** (§10.16, quatro fixtures): o mesmo traço de
+Agarrar repetido sobre a mesma folha dá, sem base, `0,169046 → 0,305822 → 0,414513` de máximo (1, 2
+e 3 traços: **+81 %**, **+145 %**); com a base gravada no repouso, `0,169046 → 0,171050 → 0,176485`
+(**+1,2 %**, **+4,4 %**). *A deformação pára de acumular e assenta no que um traço faz* — que é
+exactamente o que os autores dizem que a opção compra.
+
+⛔⛔ **TRÊS maneiras de a opção ser um NO-OP EXACTO, as três medidas byte a byte:** (a) *Persistent*
+ligado e **nenhuma base gravada** (o atributo não existe ⇒ a construção cai nas posições de repouso
+do traço — já estava no §11, agora tem prova); (b) a base gravada **depois** do 1.º traço e o 2.º
+traço por cima — a base **é** a malha deformada, que é o repouso do 2.º traço, logo as quatro
+leituras não mudam; (c) *Persistent* ligado com a base gravada no repouso e um traço **só** — a base
+é o repouso desse traço. ⇒ ⚠️ **a experiência que a Q21.2 pediu (deformar → gravar a base → segundo
+traço) é a variante (b), e não mede nada**: para a opção morder, a base tem de ser gravada
+**ANTES** do traço que a há-de contradizer.
 
 ### §6.5 — Undo
 
@@ -2235,8 +2377,15 @@ pincel — precisam de um cursor com direcção).
 | Soft Body Plasticity | `0,0` | `0..1` | — |
 | Use Collisions | off | bool | tempo |
 | Persistent | off | bool | — |
-| Normal Weight (só Grab/Snake Hook) | `0` | `0..1` | — |
 | Gravity (cena) | `0` (M) | — | — |
+
+⛔⛔ **UMA LINHA SAIU DESTA TABELA EM 2026-09-07: o *Normal Weight*.** Ela dizia «só Grab/Snake Hook,
+omissão `0`, faixa `0..1`» e estava errada nas três colunas, porque **o controlo não existe para
+este pincel**: a capacidade que o desenha é declarada para outros três pincéis da casa, o painel
+nunca o mostra aqui, e a porta que inclinaria o delta não é chamada por este pincel (§4.3, com as
+três provas e as três fixtures). ⚠️ **O valor continua a existir nos dados de cada pincel** — os
+*presets* trazem-no, e ele aparece em qualquer despejo de propriedades — ⇒ *ler um valor guardado
+num preset não prova que alguém o consome*, e foi assim que ele entrou aqui.
 
 ### §8.2 — Dos PRESETS que o artista vê (A — os 13 pincéis de tecido da biblioteca do binário)
 
@@ -2278,7 +2427,9 @@ Falloff = Plane*, em vez dos círculos: o segmento com setas do §4.4 (F).
 Simulation Area · [se ≠ Global] Simulation Limit · Simulation Falloff · [se Local] Pin Simulation
 Boundary · Deformation · Force Falloff · Cloth Mass · Cloth Damping · Soft Body Plasticity · Use
 Collisions — mais os genéricos da casa (Strength, Radius, Persistent + Set Persistent Base, Front
-Faces Only, Normal Weight nos modos de âncora, curva, dureza, textura, auto-mascaramento).
+Faces Only, curva, dureza, textura, auto-mascaramento). ⛔ **Sem *Normal Weight*** — esta linha
+listava-o «nos modos de âncora» e o painel **não o desenha para este pincel** em modo nenhum
+(§4.3 · §8.1, errata de 2026-09-07).
 
 ---
 
@@ -2881,6 +3032,13 @@ mede que **na esfera duas corridas da mesma configuração não dão a mesma sa�
 crescer de `4,3·10⁻⁴` no 1.º passo simulado a `0,027`–`0,037` ao 12.º. ⇒ *um traço de esfera por
 passo mede o que quer, desde que a régua traga a banda de realização ao lado* — e é por isso que os
 três a trazem.
+⚠️ **E em 2026-09-07 a metade que faltava foi MEDIDA, embora como CONTROLO e não como fixture:** um
+traço de esfera de doze passos em área *Local* corre e dá banda `0,057990` — a mesma ordem da
+*Dynamic* (§10.15), o que ilibou a área e deixou a superfície como a variável. ⛔ Ele **não** virou
+fixture porque só foi possível com a malha **deslocada** para pôr o pen-down na origem do objecto, e
+uma fixture com outra malha de repouso não é comparável com o resto do corpus. ⇒ o que fica por
+gravar é o mesmo traço **sobre a malha canónica**, e o que isso pede é um arnês que garanta o
+sobrevoo (§10.15).
 
 ### §10.12 — ⭐⭐⭐ OS DOIS TRAÇOS LONGOS, e a premissa REFUTADA: a profundidade é da ÁREA, não do comprimento (2026-09-07, a pedido do I)
 
@@ -3023,11 +3181,35 @@ cabeçalho de cada ficheiro** — são os que viajam ao lado do dado.
 
 ⛔⛔ **O QUE ISTO OBRIGA A RELER — e é a metade que interessa ao lado limpo:** os `.deformado` de
 esfera do corpus são **uma** realização cada, e nenhum port pode ficar abaixo de `≈ 0,02`–`0,036`
-neles. Sobre os quatro traços de esfera que ainda erram: `agarrar` `0,182` (banda `0,020` ⇒ `11 %`
-do erro), `gancho` `0,255` (`0,036` ⇒ `14 %`), `expandir` `0,581` (`0,022` ⇒ `4 %`). ⇒ **a lotaria
-NÃO explica nenhum dos três** — os erros são `5×` a `26×` a banda, e há lei em falta — **mas ela põe
-um chão**, e uma barra escrita abaixo dele é uma barra que reprova o próprio oráculo. ⚠️ E é o
-mesmo chão que diz onde procurar: nos passos `2` a `5` a banda é `4·10⁻⁵`–`4,7·10⁻³` (⚠️ o topo é
+neles.
+
+⛔⛔⛔ **ERRATA DE 2026-09-07 — a leitura publicada aqui MISTURAVA UNIDADES, e a margem é uma ordem
+de grandeza menor do que esta secção dizia.** A frase *«os erros são `5×` a `26×` a banda»* dividia
+um erro **RELATIVO** (`0,182` · `0,255` · `0,581` — já divididos pelo maior deslocamento do alvo)
+por uma banda **ABSOLUTA** (uma distância por vértice). Na mesma unidade:
+
+| traço | maior deslocamento | erro relativo | erro **absoluto** | banda (cabeçalho) | quociente |
+|---|---|---|---|---|---|
+| `esfera_agarrar_radial_dinamica` | `0,236509` | `0,182` | `0,04304` | `0,019998` | **`2,15×`** |
+| `esfera_gancho_radial_dinamica` | `0,169025` | `0,255` | `0,04310` | `0,036202` | **`1,19×`** |
+| `esfera_expandir_radial_dinamica` | `0,046715` | `0,581` | `0,02714` | `0,021773` | **`1,25×`** |
+
+⇒ a conclusão *«a lotaria não os explica»* **sobrevive** (um quociente acima de `1` é um erro maior
+do que a lotaria produz, e há lei em falta), mas o gancho está a `1,19×` do chão, praticamente
+nele. ⚠️ **E o mesmo erro de unidade tem a metade cara:** posta a barra do gate 15 (`0,13 × o maior
+deslocamento`) na unidade da banda, ela cai **ABAIXO da lotaria** em dois dos três —
+
+| traço | barra `0,13` em posição | banda | veredito |
+|---|---|---|---|
+| `esfera_agarrar_radial_dinamica` | `0,03075` | `0,019998` | ⭐ decide (`1,54×` acima) |
+| `esfera_gancho_radial_dinamica` | `0,02197` | `0,036202` | ⛔ **INDECIDÍVEL** (`1,65×` abaixo) |
+| `esfera_expandir_radial_dinamica` | `0,00607` | `0,021773` | ⛔ **INDECIDÍVEL** (`3,58×` abaixo) |
+
+⇒ **naqueles dois, uma barra de paridade em posição final reprovaria o próprio oráculo comparado
+consigo mesmo.** A régua que os decide **existe e está medida** — não é uma barra nova, é outra
+grandeza: §10.15.
+
+⚠️ E o chão também diz onde procurar: nos passos `2` a `5` a banda é `4·10⁻⁵`–`4,7·10⁻³` (⚠️ o topo é
 o gancho no passo `5`; a 1.ª redacção escrevia a faixa como `10⁻⁴`–`10⁻³` e a tabela acima
 discorda), **duas a três ordens** abaixo dos erros finais ⇒ **a divergência real, se nasce cedo, é visível nesses passos**, e é para isso que
 estes três ficheiros servem.
@@ -3056,10 +3238,29 @@ redacção dizia *«é da esfera e não do plano»*, e o §11 escrevia-o como *�
 plano são de área *Local*/*Global* ⇒ *superfície* e *área* variam juntas, e a medição não diz qual
 das duas manda. ⇒ o que está demonstrado é o par **«esfera + *Dynamic*» contra «plano +
 *Local*/*Global*»**, e a leitura segura é essa, não «curvatura».
-⭐ **O controlo que decide já existe como configuração no corpus** — `plano_arrastar_radial_dinamica`
-(e o `_preset`): quatro realizações dele, medidas como as desta secção, separam as duas explicações
-numa corrida. ⏳ Fica pedido; até lá, ⛔ **nenhuma barra deve ser escrita ou relaxada com o argumento
-«é a curvatura»**. ⛔ Um port não pode reproduzir a lotaria nem deve tentar.
+⭐⭐⭐ **FECHADO EM 2026-09-07, e a resposta é a SUPERFÍCIE: a área está ILIBADA.** As quatro células
+do desenho `superfície × área`, cada uma com quatro realizações da mesma configuração —
+
+| célula | traços medidos | maior deslocamento | banda | % do sinal |
+|---|---|---|---|---|
+| **plano** + *Local*/*Global* | arrastar, 12 e 36 passos (controlos antigos) | `0,32965` / `1,89319` | **`0,000000`** | `0,0 %` |
+| **plano** + ***Dynamic*** | arrastar · arrastar com plasticidade · **agarrar** | `0,61282` · `0,32962` · `0,16272` | **`0,000000`** nos três | `0,0 %` |
+| **esfera** + ***Dynamic*** | arrastar, 12 passos | `0,58264` | `0,059974` | `10,3 %` |
+| **esfera** + ***Local*** | arrastar, 12 passos | `0,51891` | `0,057990` | `11,2 %` |
+
+⇒ **as duas áreas da esfera dão a mesma ordem e as três configurações do plano dão zero exacto** —
+trocar a área não move a lotaria, trocar a malha move-a de `0` para `11 %`. ⚠️ **O que fica isolado
+é «a superfície», não «a curvatura»:** as duas malhas diferem também na contagem de vértices, na
+partição em células (`2` contra `4`) e em ter ou não leques de triângulos nos pólos.
+⚠️ **A célula esfera + *Local* exigiu um instrumento novo:** em área *Local* o centro sai do
+**sobrevoo do cursor**, e numa sessão em que o sobrevoo não chega ele fica na origem do objecto —
+que na esfera é o centro da bola, e a área passa a cobrir tudo (`6 050` movidos) ou nada. As quatro
+realizações desta linha correram com a malha **deslocada de modo a pôr o pen-down na origem do
+objecto** (o centro fica correcto por construção) e com um auto-teste que recusa a corrida se os
+movidos forem `< 50` ou mais de **metade** da malha. ⛔ **Antes desse auto-teste, quatro corridas de
+esfera + *Local* deram `0,53` de «banda» que era o ARNÊS e não o alvo** (duas delas com `6 050`
+movidos e duas com `0`) — *uma leitura de lotaria feita sem auto-teste mede o instrumento.*
+⛔ Um port não pode reproduzir a lotaria nem deve tentar.
 
 ### §10.14 — As onze corridas que leram o VECTOR DE NORMAIS ao próprio programa (2026-09-07)
 
@@ -3079,6 +3280,140 @@ agora, para ler a lei que corre no caminho da escultura. As tabelas estão no **
 não move nada) para forçar o refrescamento sem alterar a malha — *sem isso as normais lidas são as
 de um instante anterior, e a leitura sai a `84°` de qualquer candidata*, que foi a primeira coisa
 que esta medição devolveu e é, de passagem, uma quarta confirmação independente do §4.2-ter.
+
+### §10.15 — ⭐⭐⭐ A BANDA DE REALIZAÇÃO DE **TODO** TRAÇO DE ESFERA, e a régua que decide os que o MÁXIMO não decide (2026-09-07, a pedido do I)
+
+**O pedido** era a banda de dois traços (os dois apertos de esfera, que não a tinham). Mediram-se os
+**treze** — as **dez** fixtures de esfera do corpus e as **três** de plano em área *Dynamic* (as duas
+de arrastar e a de agarrar, que é nova) —, com **quatro** corridas inteiras de cada configuração, e a
+banda de cada um passa a viajar **no cabeçalho do próprio `.deformado`**, na chave
+`dispersao_entre_realizacoes` (⛔ **conte-os**: `zgrep -l dispersao_entre_realizacoes *.deformado.txt.gz`). *A régua que dá o chão tem de
+estar ao lado do dado, senão o gate vai buscá-la a uma tabela que envelhece.*
+
+| fixture | maior deslocamento | banda (**máximo** por vértice) | % do sinal | barra `0,13` | o máximo decide? |
+|---|---|---|---|---|---|
+| `esfera_arrastar_radial_dinamica` | `0,582806` | `0,041931` | `7,2 %` | `0,07577` | ✅ `1,81×` |
+| `esfera_empurrar_radial_dinamica` | `0,479385` | `0,038778` | `8,1 %` | `0,06232` | ✅ `1,61×` |
+| `esfera_inflar_radial_dinamica` | `0,267017` | `0,011771` | `4,4 %` | `0,03471` | ✅ `2,95×` |
+| `esfera_agarrar_radial_dinamica` | `0,236509` | `0,025712` | `10,9 %` | `0,03075` | ✅ `1,20×` |
+| `esfera_gancho_radial_dinamica` | `0,169025` | `0,043373` | `25,7 %` | `0,02197` | ⛔ `0,51×` |
+| `esfera_expandir_radial_dinamica` | `0,046715` | `0,021971` | `47,0 %` | `0,00607` | ⛔ `0,28×` |
+| `esfera_apertar_linha_radial_dinamica` | `0,249739` | `0,129298` | **`51,8 %`** | `0,03247` | ⛔ `0,25×` |
+| `esfera_apertar_ponto_radial_dinamica` | `0,463862` | `0,260774` | **`56,2 %`** | `0,06030` | ⛔ `0,23×` |
+| `esfera_empurrar_radial_local_1passo` | `0,069165` | **`0,000000`** | `0,0 %` | `0,00899` | ✅ exacto |
+| `esfera_inflar_radial_local_1passo` | `0,098807` | **`0,000000`** | `0,0 %` | `0,01284` | ✅ exacto |
+| `plano_arrastar_radial_dinamica` | `0,612818` | **`0,000000`** | `0,0 %` | — | ✅ exacto |
+| `plano_arrastar_radial_dinamica_preset` | `0,329616` | **`0,000000`** | `0,0 %` | — | ✅ exacto |
+| `plano_agarrar_radial_dinamica` | `0,162721` | **`0,000000`** | `0,0 %` | — | ✅ exacto |
+
+⛔⛔ **São QUATRO os traços de esfera que o máximo em posição NÃO decide, não dois** — e os dois
+piores são precisamente os dois apertos, onde a lotaria vale **metade do sinal**. ⭐ E **um passo
+simulado só é EXACTO** (as duas fixtures de um passo dão `0,000000` em quatro corridas), o que
+confirma pelo lado de baixo o que a §10.13 mediu pelo lado de cima: a divergência **nasce** cedo e
+**cresce** com o número de passos.
+
+⭐⭐⭐ **E a régua que decide os quatro existe, está medida, e não é uma barra nova: é outra ESTATÍSTICA
+da mesma comparação.** A lotaria é **concentrada** — um punhado de vértices em ~`2 200` carrega-a
+toda —, de modo que o **máximo** é a estatística mais frágil que se podia ter escolhido:
+
+| fixture | banda do **máximo** | banda do **p95** | banda da **mediana** | barra `0,13` ÷ p95 | ÷ mediana |
+|---|---|---|---|---|---|
+| `esfera_arrastar_radial_dinamica` | `0,041931` | `0,012110` | `0,000448` | `6,3×` | `169×` |
+| `esfera_empurrar_radial_dinamica` | `0,038778` | `0,003129` | `0,000078` | `19,9×` | `799×` |
+| `esfera_agarrar_radial_dinamica` | `0,025712` | `0,001726` | `0,000093` | `17,8×` | `331×` |
+| `esfera_gancho_radial_dinamica` | `0,043373` | `0,003507` | `0,000091` | `6,3×` | `241×` |
+| `esfera_expandir_radial_dinamica` | `0,021971` | `0,000522` | `0,000019` | `11,6×` | `320×` |
+| `esfera_apertar_linha_radial_dinamica` | `0,129298` | `0,008751` | `0,000198` | `3,7×` | `164×` |
+| `esfera_apertar_ponto_radial_dinamica` | `0,260774` | `0,051829` | `0,001639` | **`1,16×`** | `37×` |
+| `esfera_inflar_radial_dinamica` | `0,011771` | `0,001352` | `0,000220` | `25,7×` | `158×` |
+
+(o `p95` e a mediana são tomados **sobre os vértices que se moveram** em qualquer das duas
+realizações; fora deles a diferença é zero exacto e diluiria os quantis.)
+
+⇒ ⭐ **com o `p95` os OITO traços passam a ser decidíveis**, o pior com `1,16×` de margem; com a
+mediana, todos com `37×` a `799×`. ⚠️ **E há uma terceira observável, discreta e quase imune:** a
+**contagem de vértices movidos** varia no máximo **`1`** entre quatro realizações (`1862`–`1863` ·
+`2234`–`2235` · `2183`–`2184` · `2161`–`2163`; cinco dos oito não variam nada) — foi ela que decidiu
+a lei do §2.1, e é a régua mais estreita que este corpus tem para uma pergunta de **conjunto**.
+
+⭐⭐ **E o VÉRTICE NOMEADO é a quarta, com a margem maior de todas.** Os três vértices nomeados que
+carregam sinal (`sob_o_pen-down`, `a_1R`, `a_2R`) são **`2,6×` a `235×`** mais quietos que a barra,
+nos oito traços — a lotaria vive noutro sítio da malha. ⚠️ **A regra que escolhe cada vértice está no
+cabeçalho dos `.rastreio`** (o mais próximo do pen-down, e os que ficam a `1R` e `2R` dele numa
+direcção fixa); só três dos oito traços têm `.rastreio`, e é por isso que os valores dos oito estão
+aqui:
+
+| fixture | `sob_o_pen-down`: `\|u\|` · banda · barra÷banda | `a_1R` | `a_2R` |
+|---|---|---|---|
+| `arrastar` | `0,52263` · `0,00037` · `183×` | `0,00125` · `50×` | `0,00111` · `32×` |
+| `empurrar` | `0,42508` · `0,00024` · `235×` | `0,00031` · `152×` | `0,00019` · `3,3×` |
+| `agarrar` | `0,23571` · `0,00029` · `107×` | `0,00022` · `124×` | `0,00054` · `25×` |
+| `gancho` | `0,16263` · `0,00068` · `31×` | `0,00085` · `26×` | `0,00022` · `31×` |
+| `inflar` | `0,07330` · `0,00039` · `25×` | `0,00019` · `41×` | `0,00043` · `11×` |
+| `expandir` | `0,02114` · `0,00105` · `2,6×` | `0,00012` · `6,1×` | `0,00003` · `11×` |
+| `apertar_linha` | `0,05091` · `0,00061` · `11×` | `0,00043` · `13×` | `0,00008` · `14×` |
+| `apertar_ponto` | `0,34961` · `0,00930` · `4,9×` | `0,01001` · `4,3×` | `0,00202` · `11×` |
+
+⚠️ **A recomendação honesta é um PAR, não uma troca:** o `p95` (ou o perfil de vértices nomeados) é
+o que **decide**, porque tem chão; o **máximo** continua a ser **reportado**, com a banda ao lado, e
+⛔ nenhuma barra se escreve abaixo dela. *Um quantil sozinho esconde um port que erre muito num sítio
+pequeno; um máximo sozinho, na esfera, não distingue um port errado de um segundo sorteio.*
+
+⚠️⚠️ **A saída (b) que o lado limpo propôs — comparar num passo CEDO — também funciona, e a
+fronteira é por traço.** Nos ficheiros por passo, `0,13 × máx\|u\|(k)` fica acima da banda daquele
+passo até: **`k = 12` (todos)** no agarrar (menor margem `1,75×`, no passo `10`), **`k = 7`** no
+gancho (`1,52×`; no `8` cai para `0,46×`) e **`k = 5`** no expandir (`1,19×`; no `6` cai para
+`0,62×`). ⛔ **A saída (a) — uma barra escrita como `k ×` a banda — fica RECUSADA:** uma barra
+derivada do chão de ruído certifica *«estamos dentro do ruído»* e nunca *«estamos certos»*, e o
+CLAUDE.md §0.0 pede o contrário — a barra tem de sair do recurso (a discretização, gate 15) e o
+ruído tem de ficar **debaixo** dela.
+
+### §10.16 — As OITO fixtures novas: a área do Agarrar, a inclinação que não existe, e a base persistente (2026-09-07)
+
+**(1) `plano_agarrar_radial_dinamica`** — o Agarrar em área ***Dynamic*** sobre o **plano**, onde a
+lotaria é `0,000000` (quatro realizações byte-idênticas). É a fixture que fixa a lei do §2.1 sem a
+esfera pelo meio: com um caminho de `0,6` a partir de `x = −0,3`, o conjunto movido estende-se de
+`x = −1,5` (o bordo da folha) a `x = +0,890625` — que é **o último vértice da grelha dentro de
+`R₀(1+L) = 1,225` medido a partir do PEN-DOWN** (`1,190625 < 1,225`; o vértice seguinte, `+0,9375`,
+está a `1,2375` e fica de fora). ⛔ Um port cuja área *Dynamic* siga o cursor teria o centro em
+`+0,3` no último passo e o conjunto movido chegaria ao **bordo da folha** (`+1,5`) — `13` colunas de
+vértices a mais. `movidos = 2128`, `max = 0,162721`.
+
+**(2)–(4) A inclinação para a normal, medida como AUSÊNCIA** — `plano_agarrar_radial_local_origem`
+(o valor a `0`), `..._pesonormal05` (a `0,5`) e `..._pesonormal1` (a `1`): o **mesmo** traço de
+Agarrar de 12 passos com o pen-down na origem, e as três saídas são **byte-idênticas**
+(`movidos = 2138`, `max = 0,169046`, e os `4 225` vértices coincidem linha a linha). ⇒ o controlo é
+**inerte** neste pincel (§4.3 · §8.1). ⚠️ **A `0` e a `1` não bastavam:** um port que só aplicasse a
+inclinação no extremo passaria; a de `0,5` fecha essa porta.
+
+**(5)–(8) A base persistente** — quatro fixtures, duas a duas, o **mesmo** traço repetido sobre a
+mesma folha:
+
+| fixture | traços | base | movidos | maior deslocamento |
+|---|---|---|---|---|
+| `plano_agarrar_radial_local_origem` | 1 | — | `2138` | `0,169046` |
+| `plano_agarrar_radial_local_origem_2tracos` | 2 | — | `2143` | `0,305822` |
+| `plano_agarrar_radial_local_origem_2tracos_persistente` | 2 | gravada no **repouso** | `2145` | `0,171050` |
+| `plano_agarrar_radial_local_origem_3tracos` | 3 | — | `2144` | `0,414513` |
+| `plano_agarrar_radial_local_origem_3tracos_persistente` | 3 | gravada no **repouso** | `2145` | `0,176485` |
+
+⇒ ⭐⭐ **a assinatura é a SATURAÇÃO**: sem base, `+81 %` e depois `+145 %` sobre um traço; com base,
+`+1,2 %` e `+4,4 %`. A média sobre os movidos diz o mesmo e mais claro (`0,029510 → 0,056715 →
+0,081722` contra `0,029510 → 0,025818 → 0,027405`: com base ela **desce**). ⛔ Um port que apenas
+*atenuasse* o 2.º traço passaria a fixture de dois e reprovaria a de três — é para isso que ela
+existe.
+
+⚠️ **E as TRÊS corridas de controlo que provam que a fixture isola uma coisa só** (medidas, saída
+byte-idêntica ao respectivo controlo, e por isso **não** viraram ficheiro): a base gravada **depois**
+do 1.º traço · a opção ligada **sem base nenhuma** · a base gravada no repouso com **um** traço só.
+As três são no-ops exactos, pelas razões do §6.4.
+
+⚠️ **Todas as cinco fixtures de origem correm com o pen-down na ORIGEM do objecto**, e isso é
+load-bearing no arnês: em área *Local* o centro sai do sobrevoo do cursor, e numa sessão em que o
+sobrevoo não chega ele fica na origem — pôr o pen-down lá torna a corrida correcta por construção.
+⛔ **Sem isso, cinco corridas seguidas desta emenda saíram com a área centrada no sítio errado e o
+auto-teste do arnês apanhou-as** (a folha inteira movia-se simetricamente à volta de `x = 0` em vez
+do disco à volta de `x = −0,3`).
 
 ---
 
@@ -3101,11 +3436,15 @@ que esta medição devolveu e é, de passagem, uma quarta confirmação independ
 | cursor fora da malha (Drag/Push/…) | sem localização ⇒ o passo não acontece (o traço não «apanha»); para Grab/Snake Hook a localização é do pen-down e o traço continua fora da malha |
 | 1.º passo de cada passagem de simetria | nunca simula |
 | 2.º passo (o 1.º simulado) | força pura: as restrições ainda não respondem (§5.2); nos modos de âncora, ao contrário, a âncora É resolvida nesse passo (o alvo é escrito antes da relaxação) |
-| raio por pressão a variar | *Local* ignora (usa `R₀`); *Dynamic* usa `R` a cada passo; o factor do gesto usa `R` sempre |
+| raio por pressão a variar | *Local* ignora (usa `R₀`); *Dynamic* usa `R` a cada passo; o factor do gesto usa `R` sempre — ⚠️ **excepto no Agarrar**, que não tem tamanho por pressão em modo nenhum (`R ≡ R₀`, §2.1) |
+| **área *Dynamic* com o modo Agarrar** | a área **não segue o cursor**: fica no pen-down, com `R₀`, tal como em *Local* — e com ela a banda `w` (§2.1). Fixture no plano, sem lotaria: `plano_agarrar_radial_dinamica` (§10.16) |
+| ***Normal Weight* posto a qualquer valor** | **nada acontece**: o controlo não existe para este pincel (o painel não o desenha e a porta que o consumiria não é chamada) — medido byte a byte a `0`, `0,5` e `1` (§4.3 · §10.16) |
 | *Local* e o cursor sai da área | a área NÃO segue; o cursor pinta os limites a vermelho na localização inicial |
 | área *Dynamic* + pino | o pino é recusado (a opção não se aplica) |
 | área *Global* + pino | sem efeito (`w ≡ 1` ⇒ ninguém está na banda) |
-| *Persistent* sem base definida | comporta-se como sem *Persistent* |
+| *Persistent* sem base definida | comporta-se como sem *Persistent* — ⭐ **medido**, saída byte-idêntica ao controlo (§6.4 · §10.16) |
+| *Persistent* com a base gravada **depois** do traço que a há-de contradizer | **no-op exacto**: a base é a malha de agora, que já é o repouso do traço seguinte ⇒ as quatro leituras da construção não mudam (§6.4). ⚠️ É a variante que uma leitura natural do gesto produz, e ela não mede nada |
+| *Persistent* com base, num traço **só** | no-op exacto pela mesma razão (a base é o repouso desse traço) ⇒ a opção só é observável a partir do **segundo** traço |
 | traço anchored | a malha não é reposta por passo; a simulação continua |
 | passo cujo cursor não se deslocou | a fase do gesto desiste (§4.2) e o solver corre à mesma; ⭐ **MEDIDO** (§10.10): um caminho em que **todos** os pontos são o mesmo deixa a malha intacta (`0` movidos em 12 passos), e um em que o cursor pára ao 2.º ponto continua a deformar-se durante os `10` passos seguintes |
 | topologia dinâmica activa | o pincel recusa |
@@ -3118,7 +3457,7 @@ que esta medição devolveu e é, de passagem, uma quarta confirmação independ
 | filtro com *Use Face Sets* | vértices fora do face set activo: factor `0` |
 | **vértice numa malha que NUNCA foi esculpida** | a normal por vértice dele é a da lei ponderada pelo **ângulo do canto**; a partir do 1.º refrescamento depois de a vizinhança se mover passa a ser a soma **sem peso** (§4.2-quater) ⇒ ⚠️ uma malha meio esculpida carrega as **duas** leis ao mesmo tempo, e não é o pincel que escolhe |
 | **soma de normais de face de comprimento zero** (vértice em cume perfeito, faces opostas) | a normal cai num **eixo fixo do espaço do objecto, o `+z`** — sem `NaN`, sem saltar o vértice (§4.2-quater) |
-| **repetir o MESMO traço sobre a MESMA malha de ESFERA em área *Dynamic*** | ⛔ **não dá a mesma saída**: quatro corridas da mesma configuração diferem entre si até `0,036` (`11 %`–`60 %` do sinal), com a divergência a nascer no 1.º passo simulado (§10.13). No plano em *Local*/*Global* dá `0,000000`. ⚠️ Não é concorrência nem semeadura de cursor nem estado inicial: as quatro hipóteses e as duas confirmações estão medidas. ⛔ **A célula dizia «numa superfície curva» e isso não está isolado** — superfície e área variaram juntas (R-pré, 2026-09-07; o controlo que as separa é o plano em *Dynamic*, §10.13) |
+| **repetir o MESMO traço sobre a MESMA malha de ESFERA** | ⛔ **não dá a mesma saída**, em área nenhuma: quatro corridas da mesma configuração diferem entre si até `0,26` (`4 %`–`56 %` do sinal), com a divergência a nascer no 1.º passo simulado (§10.13 · §10.15). ⭐ **A variável é a SUPERFÍCIE, e a área está ilibada** (fechado 2026-09-07): esfera+*Dynamic* `10,3 %` e esfera+*Local* `11,2 %` contra `0,000000` exacto em **três** configurações de plano, *Dynamic* incluída. ⚠️ Não é concorrência, nem semeadura de cursor, nem estado inicial: as quatro hipóteses e as duas confirmações estão medidas. ⭐ **Um passo simulado só é EXACTO** (`0,000000` em quatro corridas) — ela nasce cedo e cresce com os passos |
 | **traço de arrasto muito longo em área *Local*** | a profundidade **satura**: `0,94 R` a 12 passos, `0,71`–`0,76 R` a 24/36/48, e o comprimento do caminho não a move (§10.12). Em *Global* o mesmo traço chega a `5,41 R` e não assenta |
 
 ---
@@ -3215,8 +3554,15 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 43 | ⭐⭐⭐ **A BANDA ENTRA UMA VEZ NA VELOCIDADE E NENHUMA NA ACELERAÇÃO — e a régua tem de olhar para a MALHA INTEIRA.** Sobre `plano_arrastar_radial_local_origem` (por passo), a paridade por vértice tem de dar `err_max < 5·10⁻⁶` nos doze passos; com a banda aplicada **duas** vezes (o factor da §5.2 usado também na integração) o mesmo traço sobe a `3,9·10⁻³`. ⚠️ **A metade que faz o gate existir é o CONTROLO, e ele é EXACTO**: o **mesmo** traço em área *Global* (`plano_arrastar_radial_global_origem`) tem de sair **byte-idêntico** com as duas leis — em *Global* a banda é `1` em toda a malha, logo `banda² = banda` **por construção**, e o erro do port não se move (o I mediu `≈ 2·10⁻⁵` nas duas). ⇒ é a **razão** entre os dois traços que denuncia o defeito, e não o valor de nenhum deles. ⛔ Um port que meça só o máximo, ou só o vértice do pen-down, ou só traços *Global*, passa com `banda²` lá dentro: o erro vive num anel de `2,875 R` a `3,5 R` onde o deslocamento já é de ordem `10⁻³` | `5·10⁻⁶` (resolução do ficheiro) contra `3,9·10⁻³`; e o *Global* invariante | §5.2 · §5.4 · §5.4-bis |
 | 44 | ⭐⭐ **A NORMAL POR VÉRTICE É A SOMA SEM PESO DE NORMAIS DE FACE UNITÁRIAS** — e a régua não é um traço, é a grandeza. Sobre uma malha de triângulos **irregulares** (áreas e ângulos muito diferentes à volta do mesmo vértice), a normal que o motor usa tem de bater a soma sem peso a `< 0,03°` e afastar-se da ponderada por **área** por `> 1°` em pelo menos um vértice. ⚠️ **Duas metades**, e a 2.ª é a que impede passar por sorte: numa grelha regular ou numa esfera UV as três candidatas concordam a `< 0,04°` ⇒ *uma malha regular não testa este gate*. ⛔ E o gate **não** pode ser escrito sobre uma fixture do corpus: no plano as três dão `(0,0,1)` e na fixture de dois traços concordam a `0,31°` de máximo | `0,03°` de um lado, `1°` do outro | §4.2-quater · §4.6 linha 4 |
 | 45 | ⭐ **UM TRAÇO MAIS LONGO NÃO É MAIS FUNDO EM ÁREA *LOCAL*** — e é o gate que impede calibrar uma régua de relevo num regime que o alvo não produz. **Três metades, e a do meio é o discriminador forte:** (a) sobre `plano_arrastar_radial_local_origem_36passos` o máximo da malha tem de ficar em `0,76 R` (`0.267205`), **abaixo** do mesmo caminho em `12` passos (`0,94 R`); (b) ⭐ no MESMO traço, o vértice do pen-down tem de **subir até ao passo `12` (`0,28635`) e depois DESCER até `0,14411` no `36`** — ele *assenta*, e o traço continua a acontecer à volta dele; (c) sobre `plano_arrastar_radial_global_origem_36passos` o mesmo vértice tem de crescer em **todos** os 36 passos, de `0,0993` a `1,0550`, chegando a `5,41 R` de máximo de malha (`1.893192`). ⚠️ Um motor que afunde monotonamente com o número de passos passa (c) e reprova (a) **e** (b) ⇒ ⛔ **um gate de artefacto do produto que corra um traço *Local* de ~35 eventos e chegue a `4,8 R` está a medir uma cena que o alvo não produz**, e a barra dele não é calibrável ali | os dois máximos, na barra do gate 15 · o argmax `12` e a monotonia (inteiros) | §2.2 · §10.12 |
-| 46 | ⛔⛔ **NA ESFERA, A BARRA TEM UM CHÃO QUE NÃO É NOSSO — e ele mede-se, não se escolhe.** Nenhum gate de paridade sobre um traço de esfera pode ter barra abaixo da **banda de realização** daquele traço (`0,020` agarrar · `0,036` gancho · `0,022` expandir, medidas com quatro corridas da mesma configuração), sob pena de reprovar o próprio oráculo. ⚠️ **E a metade que evita a leitura preguiçosa:** os erros abertos hoje são `5×` a `26×` a banda (`0,182` · `0,255` · `0,581`) ⇒ ⛔ **a lotaria NÃO os explica** e há lei em falta; quem invocar esta linha para relaxar uma barra tem de mostrar o quociente. ⭐ **O sítio de procurar é cedo**: nos passos `2`–`5` a banda é `4·10⁻⁵`–`4,7·10⁻³` (duas a três ordens abaixo do erro final), logo uma divergência que nasça aí é visível nos ficheiros por passo. ⚠️ **A banda que este gate usa é a do CABEÇALHO de cada ficheiro** — a secção traz três sorteios independentes dela e eles não coincidem (§10.13) | a banda medida, por traço | §10.13 |
+| 46 | ⛔⛔ **NA ESFERA, A BARRA TEM UM CHÃO QUE NÃO É NOSSO — e ele mede-se, não se escolhe.** Nenhum gate de paridade sobre um traço de esfera pode ter barra abaixo da **banda de realização** daquele traço, que viaja na chave `dispersao_entre_realizacoes` do **cabeçalho do próprio `.deformado`** e está medida para os **doze** traços (§10.15), sob pena de reprovar o próprio oráculo. ⚠️⚠️ **REESCRITO em 2026-09-07 nas DUAS metades, e a 1.ª redacção estava errada nas duas.** (a) **O quociente misturava unidades:** ele dividia um erro RELATIVO por uma banda ABSOLUTA e lia-se `5×` a `26×`; na mesma unidade os três abertos dão **`2,15×` · `1,19×` · `1,25×`** — a lotaria continua a não os explicar, mas a margem é uma ordem de grandeza menor e o gancho está praticamente no chão. Quem invocar esta linha para relaxar uma barra **tem de mostrar o quociente em POSIÇÃO**, nunca em fracção. (b) **A barra do gate 15 fica ABAIXO da banda em QUATRO dos oito traços de doze passos** (gancho `0,51×`, expandir `0,28×`, aperto de linha `0,25×`, aperto de ponto `0,23×`) ⇒ ali **um gate de paridade em posição máxima reprova o oráculo comparado consigo mesmo, e não pode existir**. ⇒ **este gate passa a ter uma coluna obrigatória: para cada traço de esfera, dizer se o máximo o decide** (`barra ÷ banda > 1`) e, quando não decide, nomear a régua que decide (gate 48) | a banda do cabeçalho, por traço; e o quociente em posição | §10.13 · §10.15 |
 | 47 | ⭐ **O FATIAMENTO É UM INSTRUMENTO, E ELE TEM UM CONTROLO** — que é o que separa «o prefixo não é o passo `k`» de «a corrida não se repete». Em todo traço novo por passo, `prova_do_fatiamento` tem de ser `0,000000` **ou** ficar `≤` à **banda de realização da corrida inteira** do mesmo traço. ⛔ Uma prova acima da banda diz que o prefixo não reproduz o passo e o ficheiro **não é oráculo**; igual à banda diz que reproduz, a menos da realização (é o caso dos três de esfera: `0,0177` vs `0,0200` · `0,0365` vs `0,0362` · `0,0219` vs `0,0218`). ⚠️ **Sem a 2.ª coluna a 1.ª não tem leitura**, e foi assim que quatro ficheiros da 1.ª geração ficaram no directório a parecer oráculo | `0,000000`, ou `≤` a banda | §10.12 · §10.13 |
+| 48 | ⭐⭐⭐ **NA ESFERA, A PARIDADE MEDE-SE POR QUANTIL, NÃO POR MÁXIMO — e a régua tem de trazer o CHÃO dela.** Onde o gate 46 diz que o máximo não decide, o veredito é o **`p95` da distância por vértice sobre o conjunto que se moveu**, contra a barra do gate 15: nos **oito** traços de doze passos ele fica `1,16×` a `19,9×` abaixo da barra (o pior é o aperto de ponto), e a **mediana** fica `37×` a `799×` abaixo. ⚠️ **Três metades obrigatórias, e nenhuma substitui as outras:** (a) o `p95` decide; (b) o **máximo** continua a ser reportado, com a banda ao lado — ⛔ um quantil sozinho esconde um port que erre muito num sítio pequeno; (c) a **contagem de vértices movidos** entra como observável discreta, e a barra dela é `± 1` (medido: quatro realizações variam no máximo um vértice, e cinco dos oito não variam nada). ⭐ Régua alternativa com a margem maior de todas: os vértices nomeados `sob_o_pen-down` · `a_1R` · `a_2R` dos `.rastreio`, cuja banda é `2,6×` a `235×` menor que a barra. ⛔ **Uma barra escrita como «`k ×` a banda» está RECUSADA por medição**: certifica «estamos dentro do ruído» e nunca «estamos certos» | `p95 < 0,13 × maior deslocamento`; `movidos ± 1` | §10.15 |
+| 49 | ⭐⭐⭐ **O AGARRAR NÃO TEM ÁREA MÓVEL, NEM EM *DYNAMIC*** — e o gate corre no **plano**, onde a lotaria é zero. Sobre `plano_agarrar_radial_dinamica` (`movidos = 2128`, `max = 0,162721`): o maior `x` de um vértice movido tem de ser **`+0,890625`** — o último vértice da grelha dentro de `R₀(1+L) = 1,225` medido a partir do **pen-down** (`x = −0,3`) — ⛔ e **não** em torno do fim do caminho (`x = +0,3`), onde o conjunto chegaria ao bordo da folha (`+1,5`, mais **13** colunas de vértices). ⚠️ **Duas metades, e nenhuma sozinha basta** (medido no lado limpo, na esfera): pôr só a **banda** no pen-down dá `1728` movidos, só a **pertença** dá `1666`, as duas dão `1864` contra `1863` do alvo. ⚠️ E o **raio** é a terceira: `R ≡ R₀` no Agarrar mesmo com tamanho por pressão ligado | o maior `x` **exacto** (a grelha é nossa) e `movidos` exacto — no plano a lotaria é `0` | §2.1 · §4.3 · §10.16 |
+| 50 | ⛔⛔ **O *NORMAL WEIGHT* NÃO EXISTE NESTE PINCEL, E O GATE É UMA IDENTIDADE.** As três fixtures `plano_agarrar_radial_local_origem`, `..._pesonormal05` e `..._pesonormal1` têm de sair **byte-idênticas** — o mesmo traço com o valor a `0`, `0,5` e `1`. ⛔ Um port que incline o delta para a normal da área falha as duas últimas. ⚠️ **A de `0,5` é load-bearing:** um port que só aplicasse a inclinação no extremo passaria com `0` e `1` só. ⚠️ E o gate irmão é de UI: **o painel não desenha o controlo** — expô-lo já é a divergência, mesmo que o motor o ignore | identidade exacta (`0`) | §4.3 · §8.1 · §10.16 |
+| 51 | ⭐⭐⭐ **A BASE PERSISTENTE SATURA, NÃO ATENUA** — e é preciso o **terceiro** traço para o dizer. Repetindo o mesmo traço de Agarrar: sem base, o maior deslocamento tem de ir de `0,169046` a `0,305822` e a `0,414513` (`+81 %`, `+145 %`); com a base gravada **no repouso**, de `0,169046` a `0,171050` e a `0,176485` (`+1,2 %`, `+4,4 %`), com a **média sobre os movidos a DESCER** (`0,029510 → 0,025818 → 0,027405`). ⛔ Um port que apenas atenue o 2.º traço passa o par de dois e reprova o de três. ⚠️ **Mais os três no-ops exactos**, cada um uma armadilha de autoria: base gravada **depois** do traço · opção ligada **sem base** · base com **um** traço só — os três têm de dar saída idêntica ao controlo sem base | os cinco máximos, na barra do gate 15; os três no-ops exactos | §6.4 · §10.16 |
+| 52 | ⭐⭐ **A BASE PERSISTENTE ENTRA EM QUATRO LEITURAS E EM NENHUMA MAIS** — o gate é um censo, e mede-se pelo que muda quando a base difere do repouso: o **comprimento de repouso** estrutural · o **filtro de raio** que decide quem entra na simulação · o **teste e o peso da âncora radial do Agarrar** · a **condição de criação do pino**. ⛔ E tem de deixar **intactos**: os **alvos** da âncora, do pino e da memória de forma (que apontam para o repouso do traço) e a **banda `w`** nas varreduras e na integração. ⚠️ Um port que faça a banda ler a base muda a fronteira do movimento sem mudar o máximo — *o defeito vive no anel de `2,875 R` a `3,5 R`*, e só uma régua de malha inteira o vê (a lição do gate 43) | o censo, com um controlo por linha | §6.4 |
+| 53 | ⭐⭐ **A COLISÃO É O PENÚLTIMO ACTO DA INTEGRAÇÃO, E TEM CINCO CLÁUSULAS** — todas verificáveis por construção num port, nenhuma observável no corpus de hoje (não há colisor em fixture nenhuma): a lista de colisores é montada **uma vez** no 1.º passo, na pose desse instante · as **5 varreduras nunca vêem o colisor** · ela corre para **todos** os vértices da célula activa, **sem factor, sem banda e sem máscara** · a origem do raio (`x_col`) é escrita **depois** da colisão e nasce nas posições de **repouso do traço** · vários colisores resolvem-se **em sequência**, cada um sobre a posição já corrigida mas a partir da **mesma** origem. ⛔ **Este é um gate de ESPEC** enquanto não houver fixture com colisor, e a linha diz isso de propósito | por construção | §5.6 |
+| 54 | ⭐⭐ **A LOTARIA É DA SUPERFÍCIE, NÃO DA ÁREA — e nenhuma barra se relaxa com «é a *Dynamic*».** O desenho `superfície × área` está medido com quatro realizações por célula: plano+*Local*/*Global* `0,000000`, plano+***Dynamic*** `0,000000` nas **três** configurações (arrastar, arrastar com plasticidade, agarrar), esfera+*Dynamic* `10,3 %`, esfera+*Local* `11,2 %`. ⚠️ **O que fica isolado é «a superfície», não «a curvatura»** (as duas malhas diferem também em contagem, partição em células e leques polares) — ⛔ escrever «curvatura» é afirmar mais do que a medição dá. ⚠️ **E a corrida de esfera em *Local* só é válida com auto-teste**: sem ele, quatro corridas deram `0,53` de «banda» que era o arnês (duas com a malha inteira a mover-se, duas com nada) | as quatro células, com `n = 4` cada | §10.13 · §10.15 |
 | 24 | **A razão `2R` do Push, e a igualdade Push/Inflate no 1.º passo simulado**: no passo 2 dos dois traços do §10.7 o vértice do pen-down move `0,06543` e `0,09347`, razão `0,7000 = 2·R`; e a divergência entre os dois só pode começar no passo **3** — se começar no 2, o port está a ler duas normais diferentes numa folha plana em repouso, onde elas são a mesma | razão `2R ± f32` · igualdade de direcção no passo 2 | §4.2-bis · §10.1 · §10.7 |
 
 ---

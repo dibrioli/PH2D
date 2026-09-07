@@ -24,13 +24,15 @@ na esfera, sobre o equador visível (`y < 0`). Raio do pincel em espaço de obje
 plasticidade `0`, pino desligado, sem colisões, sem gravidade — i.e., **as omissões do código**
 (espec §8.1), não as dos presets (§8.2).
 
-⚠️⚠️ **As excepções a este parágrafo são VINTE E QUATRO de `78`, e a régua está escrita aqui porque
-ela é metade da conta** (2026-09-06 — ⛔ leia sempre o cabeçalho da fixture, nunca esta lista):
+⚠️⚠️ **As excepções a este parágrafo são TRINTA de `86`, e a régua está escrita aqui porque
+ela é metade da conta** (2026-09-07 — ⛔ leia sempre o cabeçalho da fixture, nunca esta lista):
 compara-se o cabeçalho de cada `.deformado.txt.gz` com **as nove grandezas que o parágrafo fixa sem
 ressalva** (`raio · limite · banda · massa · amortecimento · plasticidade · pino · força · curva`)
 mais o **percurso**, medido como `max(x) − min(x)` sobre as linhas `c`, mais o **número de traços**
-(a chave `tracos`, ausente = `1`); a **área** fica de fora
-porque o parágrafo já lhe põe o «salvo indicação», e por ela `17` das `78` não são *Local*.
+(a chave `tracos`, ausente = `1`), mais as **duas chaves novas de 2026-09-07** (`peso_normal`,
+ausente = `0` · `persistente`, ausente = `0`); a **área** fica de fora
+porque o parágrafo já lhe põe o «salvo indicação», e por ela `18` das `86` não são *Local*.
+(As linhas da tabela somam `33` porque três fixtures são excepção em duas grandezas.)
 ⭐ **As duas fixtures de 2026-09-07 (os traços LONGOS) NÃO são excepção em grandeza nenhuma** — só
 em `passos` (`36`, que o parágrafo não fixa) e, numa delas, na área; o percurso continua a ser `0,6`
 nas duas.
@@ -45,7 +47,9 @@ nas duas.
 | **limite** ≠ `2,5` | `1` | `plano_agarrar_radial_local_preset` (**`5,0`**) — ⭐ load-bearing: é o **segundo ponto de `L`** que refuta a leitura antiga da banda (espec §2.2) |
 | **pino** ligado | `1` | `plano_arrastar_radial_local_pino` |
 | **curva** ≠ *Smooth* | `1` | `plano_gancho_radial_local_origem_1passo_constante` |
-| **traços** ≠ `1` | `1` | `plano_inflar_radial_local_1passo_2tracos` (**`2`**) — ⭐ load-bearing: é a única fixture do corpus em que o pincel encontra a malha **já deformada por um traço anterior**, e é ela que fixa a que superfície pertencem as NORMAIS que o gesto lê (espec §4.2-ter) |
+| **traços** ≠ `1` | `5` | `plano_inflar_radial_local_1passo_2tracos` (**`2`**) — ⭐ load-bearing: é a fixture que fixa a que superfície pertencem as NORMAIS que o gesto lê (espec §4.2-ter) · e os **dois pares** da base persistente, `plano_agarrar_radial_local_origem_{2,3}tracos[_persistente]` (`2` e `3`) |
+| **peso_normal** ≠ `0` | `2` | `plano_agarrar_radial_local_origem_pesonormal05` (`0,5`) · `…_pesonormal1` (`1,0`) — ⭐ as duas são **byte-idênticas** à de `0`: é assim que se prova que aquele controlo não existe neste pincel (espec §4.3) |
+| **persistente** ligado | `2` | `plano_agarrar_radial_local_origem_2tracos_persistente` · `…_3tracos_persistente` (base gravada no **repouso**) |
 
 ⛔⛔ **Esta conta esteve em `SETE` e a régua é que estava errada, não o número:** ela varria só
 `força · curva · percurso · limite` e deixava de fora `amortecimento`, `massa`, `plasticidade` e
@@ -315,10 +319,54 @@ plano corre o caso de vértices partilhados entre células **no ponto de maior c
 (a divisória das duas células cai na fileira do pen-down: `53` dos `65` partilhados movem-se no
 traço de 36 passos, e um deles carrega o máximo da malha) e ainda assim dá `0,000000` ⇒ a
 concorrência sobre partilhados está refutada sem depender de como se impôs uma linha de execução.
-⛔ **O que continua por isolar é o nome:** *esfera* e *Dynamic* variaram juntas (ver acima).
+⭐⭐ **O NOME ficou isolado em 2026-09-07: é a SUPERFÍCIE, e a área está ilibada** — plano +
+*Dynamic* dá `0,000000` em **três** configurações (arrastar, arrastar com plasticidade, agarrar) e
+esfera + *Local* dá `11,2 %`, contra `10,3 %` da esfera + *Dynamic*. ⚠️ O que fica isolado é «a
+superfície», não «a curvatura» (as duas malhas também diferem em contagem, em partição em células e
+em leques polares).
 ⇒ **os `.deformado` de esfera são UMA realização cada**, e uma barra de gate escrita abaixo da banda
-reprova o próprio oráculo. ⚠️ **E não é desculpa para os erros abertos**: eles são `5×` a `26×` a
-banda. Detalhe e tabelas: espec §10.13.
+reprova o próprio oráculo. ⚠️⚠️ **E o quociente «`5×` a `26×`» que estava escrito aqui MISTURAVA
+UNIDADES** (um erro relativo dividido por uma banda absoluta): na mesma unidade é `2,15×` · `1,19×` ·
+`1,25×`. Continua a haver lei em falta, com uma ordem de grandeza menos de margem. Detalhe e
+tabelas: espec §10.13 e §10.15.
+
+### ⭐⭐⭐ As OITO fixtures de 2026-09-07 da emenda Q19-Q21 (espec §10.15 e §10.16)
+
+**Uma** fixa a área do Agarrar, **três** provam que um controlo do painel da casa **não existe neste
+pincel**, e **quatro** (dois pares) fixam a base persistente.
+
+| fixture | traços | o que ela decide |
+|---|---|---|
+| `plano_agarrar_radial_dinamica` | 1 | ⭐⭐⭐ **a área do Agarrar não segue o cursor nem em *Dynamic***: o conjunto movido vai de `x = −1,5` a `x = +0,891`, que é o disco de `R₀(1+L) = 1,225` em torno do **pen-down** (`x = −0,3`) e não do fim do caminho (`+0,3`, que alcançaria `+1,525`). ⭐ **No plano**, logo sem lotaria: quatro realizações **byte-idênticas** |
+| `plano_agarrar_radial_local_origem` | 1 | o traço base das cinco de origem (pen-down na origem do objecto). Também é o membro `0` do trio abaixo |
+| `plano_agarrar_radial_local_origem_pesonormal05` | 1 | ⛔ **byte-idêntica à anterior**: o controlo de inclinação para a normal **não existe para este pincel** |
+| `plano_agarrar_radial_local_origem_pesonormal1` | 1 | idem no extremo. ⚠️ **As três são precisas**: com só `0` e `1` um port que aplicasse a inclinação apenas no extremo passaria |
+| `plano_agarrar_radial_local_origem_2tracos` | 2 | o controlo sem base: a deformação **acumula** (`0,169046 → 0,305822`, `+81 %`) |
+| `plano_agarrar_radial_local_origem_2tracos_persistente` | 2 | com a base gravada **no repouso**: `0,171050` — praticamente o que UM traço faz (`+1,2 %`) |
+| `plano_agarrar_radial_local_origem_3tracos` | 3 | sem base: `0,414513` (`+145 %` sobre um traço) |
+| `plano_agarrar_radial_local_origem_3tracos_persistente` | 3 | com base: `0,176485` (`+4,4 %`) ⇒ ⭐⭐ **a assinatura é SATURAÇÃO, e é preciso o terceiro traço para a ver** — um port que apenas *atenuasse* passa o par de dois |
+
+⚠️ **As cinco de origem têm o pen-down na ORIGEM do objecto de propósito:** em área *Local* o centro
+sai do **sobrevoo do cursor**, e numa sessão em que o sobrevoo não chega ele fica na origem — pôr o
+pen-down lá torna a corrida correcta por construção. ⛔ Sem isso, cinco corridas seguidas desta
+emenda saíram com a área centrada no sítio errado (a folha inteira a mover-se simetricamente em
+torno de `x = 0`), e quem as apanhou foi o auto-teste do arnês.
+
+⚠️ **Três corridas de CONTROLO não viraram ficheiro porque são no-ops exactos** (saída byte-idêntica
+ao respectivo controlo): a base gravada **depois** do 1.º traço · a opção ligada **sem base
+nenhuma** · a base no repouso com **um** traço só. *A experiência mais natural de imaginar —
+deformar, gravar a base, repetir — não mede nada.*
+
+### ⭐ A chave `dispersao_entre_realizacoes` no cabeçalho (2026-09-07)
+
+**Treze** `.deformado` passaram a trazer a **banda de realização** medida com **quatro** corridas
+inteiras da mesma configuração: as dez de esfera do corpus, `plano_arrastar_radial_dinamica`,
+`plano_arrastar_radial_dinamica_preset` e `plano_agarrar_radial_dinamica`
+(⛔ **conte-os**: `zgrep -l dispersao_entre_realizacoes *.deformado.txt.gz`). *A régua que dá o chão de
+um traço tem de viajar ao lado do dado* — antes dela só três traços tinham banda, e só dentro do
+`.rastreio`. As oito de esfera com doze passos vão de `0,011771` (inflar) a `0,260774` (aperto de
+ponto, **`56 %`** do sinal); as duas de esfera com **um** passo simulado e as três de plano dão
+`0,000000`. Tabela completa e a régua que decide quando o máximo não decide: espec §10.15.
 
 ## ⚠️ O EIXO DA VISTA (não está no cabeçalho, e é diferente nos dois corpora)
 
@@ -346,7 +394,13 @@ v <x> <y> <z>        # N linhas, índice = ordem
 ```
 superficie plano|esfera · modo · falloff_da_forca radial|plano · area local|global|dinamica
 raio · limite · banda · massa · amortecimento · plasticidade · pino · forca · curva · passos
+tracos <n>            # opcional, ausente = 1 (quantas vezes o MESMO traço foi repetido)
+peso_normal <f>       # opcional, ausente = 0 (e o valor é inerte -- espec §4.3)
+persistente 0|1       # opcional, ausente = 0 (1 = base persistente gravada NO REPOUSO)
 movidos <n>  max_deslocamento <d>          # recontados pelo verificador
+dispersao_entre_realizacoes <d>            # opcional: a maior diferença por vértice entre
+                                           # QUATRO corridas da mesma configuração. É o CHÃO de
+                                           # qualquer barra sobre este traço (espec §10.15)
 caminho <k>  +  k linhas  c <x> <y> <z>    # os pontos do cursor, em espaço de objecto
 vertices <N> +  N linhas  d <x> <y> <z>    # as posições DEPOIS do traço, mesma ordem do repouso
 ```
@@ -379,7 +433,7 @@ o ficheiro diz o que contém.
   `desloc_no_fim` (deslocamento medido no 1.º / no último ponto do caminho, conforme o harness) ·
   `delta_area` (fracção; só significativa no plano) · `passos` · `raio`.
   ⚠️⚠️ **ESTA DESCRIÇÃO NÃO É A DO FICHEIRO — conferido em 2026-09-06.** O `analise.json` que está no
-  disco tem **47** objectos (contra `78` fixtures em 2026-09-07 — eram `54` quando isto foi escrito
+  disco tem **47** objectos (contra `86` fixtures em 2026-09-07 — eram `54` quando isto foi escrito
   e `73` quando isto foi conferido, e o desvio só cresce) e as chaves **do harness**, não as de cima; a linha
   que dizia «renomeado pelo R-pré em 2026-09-05 … 46/46» descrevia uma renomeação que **não está no
   ficheiro**. Ele continua a ser dado nosso e o sweep passa sobre ele; o que não vale é acreditar
@@ -402,6 +456,7 @@ o ficheiro diz o que contém.
 | `esfera_inflar_radial_dinamica.` | inflar | 12 | 2181 | `0.267017` |
 | `esfera_inflar_radial_local_1passo.` | inflar | 2 | 120 | `0.098807` |
 | `plano_agarrar_plano_local.` | agarrar | 12 | 2146 | `0.307644` |
+| `plano_agarrar_radial_dinamica.` | agarrar | 12 | 2128 | `0.162721` |
 | `plano_agarrar_radial_global_origem_1passo.` | agarrar | 2 | 881 | `0.094722` |
 | `plano_agarrar_radial_local.` | agarrar | 12 | 2139 | `0.16991` |
 | `plano_agarrar_radial_local_1passo.` | agarrar | 2 | 1324 | `0.134099` |
@@ -409,7 +464,14 @@ o ficheiro diz o que contém.
 | `plano_agarrar_radial_local_2passos.` | agarrar | 3 | 1872 | `0.146115` |
 | `plano_agarrar_radial_local_2passos_origem.` | agarrar | 3 | 1869 | `0.14572` |
 | `plano_agarrar_radial_local_amort06.` | agarrar | 12 | 2131 | `0.131488` |
+| `plano_agarrar_radial_local_origem.` | agarrar | 12 | 2138 | `0.169046` |
 | `plano_agarrar_radial_local_origem_1passo.` | agarrar | 2 | 1323 | `0.134311` |
+| `plano_agarrar_radial_local_origem_2tracos.` | agarrar | 12 (×2 traços) | 2143 | `0.305822` |
+| `plano_agarrar_radial_local_origem_2tracos_persistente.` | agarrar | 12 (×2 traços) | 2145 | `0.17105` |
+| `plano_agarrar_radial_local_origem_3tracos.` | agarrar | 12 (×3 traços) | 2144 | `0.414513` |
+| `plano_agarrar_radial_local_origem_3tracos_persistente.` | agarrar | 12 (×3 traços) | 2145 | `0.176485` |
+| `plano_agarrar_radial_local_origem_pesonormal05.` | agarrar | 12 | 2138 | `0.169046` |
+| `plano_agarrar_radial_local_origem_pesonormal1.` | agarrar | 12 | 2138 | `0.169046` |
 | `plano_agarrar_radial_local_preset.` | agarrar | 12 | 4123 | `0.132623` |
 | `plano_apertar_linha_radial_local.` | apertar_linha | 12 | 2135 | `0.100451` |
 | `plano_apertar_linha_radial_local_1passo.` | apertar_linha | 2 | 156 | `0.087609` |
@@ -469,12 +531,13 @@ o ficheiro diz o que contém.
 | `plano_inflar_radial_local_origem.` | inflar | 12 | 2145 | `0.317081` |
 | `plano_inflar_radial_local_origem_massa2.` | inflar | 12 | 2145 | `0.296328` |
 | `plano_inflar_radial_local_origem_parado.` | inflar | 12 | 2145 | `0.144297` |
-**78 traços** (47 da matriz + 9 do instrumento por passo + 9 das corridas que isolam a REDE de
+**86 traços** (47 da matriz + 9 do instrumento por passo + 9 das corridas que isolam a REDE de
 restrições + 8 das corridas que separam a fase do GESTO da fase do SOLVER, de 2026-09-06, + 3 das
 corridas que fixam a que superfície pertencem as NORMAIS do gesto e **2 dos traços LONGOS**, de
-2026-09-07 — espec §10.8, §10.10, §10.11 e §10.12) — ⚠️ **conte-os**
-(`ls *.deformado.txt.gz | wc -l`), esta linha já esteve parada em `53`, em `56`, em `65`, em `73` e
-em `76`.
+2026-09-07, + **8 da emenda Q19-Q21** de 2026-09-07 — espec §10.8, §10.10, §10.11, §10.12 e §10.16)
+— ⚠️ **conte-os**
+(`ls *.deformado.txt.gz | wc -l`), esta linha já esteve parada em `53`, em `56`, em `65`, em `73`, em
+`76` e em `78`.
 ⚠️ **As fixtures de ESFERA de DOZE passos são todas de área Dinâmica** (centro no cursor), e a área
 *Local* de doze passos na esfera continua por gravar. ⛔ **A razão escrita aqui até 2026-09-07 estava
 ERRADA e mandava não tentar:** dizia que «um traço scriptado não dispara o hover que fixa o centro
@@ -484,6 +547,14 @@ motivo: só se movem `120` vértices, todos a menos de `0,35` do cursor, onde `w
 esteja no pen-down quer na origem do objecto (numa esfera unitária **toda** a superfície dista `1,0`
 da origem, e `1,0 < R(1+L·F) = 1,00625`) ⇒ elas fixam a **direcção** e a **magnitude** do gesto, não
 a área. *Uma fixture prova o que contém.*
+⚠️⚠️ **E a semeadura do sobrevoo NÃO é garantida — depende da sessão** (medido 2026-09-07): numa
+sessão em que a janela não recebe o movimento do ponteiro, o centro da área *Local* fica na **origem
+do objecto** e a corrida mede outro programa (no plano, a folha inteira move-se simetricamente em
+torno de `x = 0`; na esfera, a área cobre a bola toda ou nada). ⇒ **as corridas de área *Local* desta
+emenda correm com o pen-down NA ORIGEM** (ou, na esfera, com a malha deslocada para lá), o que as
+torna correctas por construção, e o arnês ganhou **auto-teste para a esfera** — antes ele só existia
+para o plano, e quatro corridas de esfera + *Local* produziram uma «banda» de `0,53` que era o
+instrumento.
 
 ---
 

@@ -2900,6 +2900,33 @@ fn a_direccao_do_push_e_a_normal_da_area_nao_a_da_vista() {
         m < 1e-3,
         "a direccao do Inflate desvia {m:.6} da normal de repouso de cada vertice"
     );
+    // ⭐⭐ **E a NOSSA direcção é a mesma** — sem esta metade o gate é uma
+    // afirmação sobre o oráculo que mutação nenhuma do nosso lado pode matar.
+    //
+    // ⛔⛔ **E ela lê a SAÍDA, não a normal da área que guardamos.** A 1.ª
+    // redacção perguntava ao `PincelTecido::normal_da_area` — o estado do
+    // PRODUTOR —, e a mutação que troca a direcção do Push pela da vista
+    // **SOBREVIVEU-LHE**: a normal da área continua certa, e é o consumidor que
+    // a deixa de usar. *Um gate que pergunta ao produtor é cego a quem lê.*
+    let nossas = correr_posicoes("esfera_empurrar_radial_local_1passo");
+    let mut soma_nossa = [0.0; 3];
+    for (v, u) in &empurrar {
+        let _ = u;
+        for k in 0..3 {
+            soma_nossa[k] += nossas[*v][k] - rest[*v][k];
+        }
+    }
+    let nosso = unit(soma_nossa);
+    assert!(
+        norm(soma_nossa) > 1e-5,
+        "o nosso Push nao moveu nada no unico passo simulado desta cena"
+    );
+    let nosso_ao_normal = graus(unit([-nosso[0], -nosso[1], -nosso[2]]), n_superficie);
+    assert!(
+        nosso_ao_normal < 0.1,
+        "a NOSSA direccao esta' a {nosso_ao_normal:.3}° da normal da superficie, \
+         e a do alvo a {ao_normal:.3}°"
+    );
     // ⭐ A razão dos módulos é o `2R` (espec §4.2-bis (7)): os dois traços têm o
     // mesmo campo de queda e só o `|u|` os separa.
     let pico = |campo: &[(usize, V3)]| campo.iter().map(|(_, u)| norm(*u)).fold(0.0, f64::max);

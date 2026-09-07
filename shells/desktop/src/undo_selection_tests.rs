@@ -75,7 +75,8 @@ fn a_three_d_node_that_survives_the_respawn_keeps_its_selection() {
     assert_eq!(
         ids,
         vec![StableId(11), StableId(22)],
-        "só os nós do MODELADOR entram — alargar isto mudaria módulos que não o pediram"
+        "um objecto de nenhuma das famílias nomeadas não entra — alargar a TUDO mudaria módulos \
+         que não o pediram"
     );
 
     // O mundo DEPOIS do respawn: os mesmos ids, entidades diferentes, e o `b` não sobreviveu.
@@ -112,4 +113,37 @@ fn a_node_without_a_stable_id_is_not_carried_across() {
         ))
         .id();
     assert!(field_selection_ids(&w, &[sem.to_bits()]).is_empty());
+}
+
+/// ⭐⭐⭐ **UM OSSO TAMBÉM CONTINUA ESCOLHIDO** (report do dono, 2026-09-07: *«undo … não funciona
+/// plenamente»*).
+///
+/// ⛔⛔ **O filtro tinha UMA família — «só quem é nó do MODELADOR» — e um osso não é.** Todo `Ctrl+Z`
+/// desescolhia o osso, a secção SKELETON perdia o sujeito, e `Length`, `Strength` e os verbos da
+/// âncora **desapareciam do painel**. O undo fazia o trabalho certo e o artista via o app
+/// partir-se — que é, à letra, o report que criou esta função quatro dias antes, noutro módulo.
+///
+/// ⚠️ **A nota que ficou aqui previu-o e não o impediu** (*«o resto da selecção segue as leis de
+/// quem a possui»*): nada obriga uma família nova a vir a uma lista escrita à mão. É a terceira
+/// desta linha a morder pelo mesmo mecanismo.
+///
+/// *Mutação que deve sangrar:* tirar o braço do `Bone` (ou o do `IkTarget`) do
+/// `keeps_its_selection`.
+#[test]
+fn a_bone_and_an_ik_target_keep_their_selection_too() {
+    use ph2d_ecs::StableId;
+    let mut antes = bevy_ecs::world::World::new();
+    let osso = antes
+        .spawn((ph2d_skeleton_ecs::Bone::default(), StableId(41)))
+        .id();
+    let alvo = antes
+        .spawn((ph2d_skeleton_ecs::IkTarget, StableId(42)))
+        .id();
+    let alheio = antes.spawn(StableId(43)).id();
+    assert_eq!(
+        field_selection_ids(&antes, &[osso.to_bits(), alvo.to_bits(), alheio.to_bits()]),
+        vec![StableId(41), StableId(42)],
+        "o osso e o alvo da ancora tem de sobreviver ao respawn - sem eles a seccao SKELETON \
+         perde o sujeito e os controlos dela somem a cada Ctrl+Z"
+    );
 }

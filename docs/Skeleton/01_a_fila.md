@@ -15,7 +15,29 @@
 > *«Undo não funciona para add IK. Múltiplos IKs numa cadeia de bones tem resultado ruim. Mas não
 > precisa fazer isso agora. Coloque na fila de implementação para o melhor momento possível.»*
 
-### F1 — ⚠️ O `Add IK` não é desfazível — **NÃO REPRODUZ** (medido 2026-09-07)
+### F1 — ✅ *«undo … não funciona plenamente»* — **CURADO** (2026-09-07, 2.ª volta)
+
+⭐⭐⭐ **A palavra era «plenamente», e ela nomeava o defeito:** o `Ctrl+Z` **desfazia** a criação da
+âncora — isso foi medido e está certo — e **perdia a SELECÇÃO**. Com o osso desescolhido, a secção
+SKELETON fica sem sujeito e `Length`, `Strength`, *Add IK* e os três números da âncora
+**desaparecem do painel**. O undo faz o trabalho certo e o artista vê o app partir-se.
+
+**A causa:** [`undo_selection::keeps_its_selection`] filtrava **uma família só** — *«só quem é nó do
+MODELADOR»* — e um osso não é. ⚠️ **A nota que ficou lá previu-o e não o impediu** (*«o resto da
+selecção segue as leis de quem a possui»*): nada obriga uma família nova a vir a uma lista escrita à
+mão. É a **terceira** desta linha a morder pelo mesmo mecanismo (as outras: o
+`publishes_its_own_handles` e a allowlist de cliques do painel).
+
+⛔ **A generalização — «tudo o que tem identidade durável sobrevive» — NÃO foi feita:** é uma cerca
+de Chesterton, e a decisão é de quem possui os outros módulos. O que se fez sem os acordar foi
+**nomear** as duas famílias do esqueleto, uma linha cada.
+
+**Medido no app:** `Ctrl+Z` passa de `sel=[]` para `sel=[<bits novos>]` — a mesma coisa, re-achada
+pelo `StableId`.
+
+<details><summary>a 1.ª volta, que ilibou a máquina do undo</summary>
+
+### F1 (1.ª volta) — o `Add IK` não é desfazível — **NÃO REPRODUZIA**
 
 **Sintoma** (verbatim): *«Undo não funciona para add IK»*. Carregar em *Add IK* cria o alvo e a
 restrição; o `Ctrl+Z` seguinte não os leva embora.
@@ -90,12 +112,31 @@ supressões em 15 s, todas a mesma diferença constante repetida — e **`0`** s
 primeira leitura disto foi *«há uma deriva por quadro»*, e era falsa: duas capturas no MESMO quadro
 são idênticas. *Um contador de supressões conta a mesma diferença N vezes, não N diferenças.*)
 
-**Suspeito nomeado, e não é o primeiro a verificar:** o passe da âncora escreve a pose dos ossos
-governados **todo quadro** através do `preview_drive`, e essa condução **nunca larga** (uma
-restrição é permanente por definição). O `settle()` corre no topo do `post_frame_undo` e a
-`substitute_authored` repõe o autorado durante a fotografia — está desenhado para isto, mas é a
-primeira vez que um motor **nunca** solta o que conduz. ⇒ se o log disser *«sem entrada»* ou nada,
-é aqui que se olha a seguir.
+**Suspeito nomeado, e não era o primeiro a verificar:** o passe da âncora escreve a pose dos ossos
+governados **todo quadro** através do `preview_drive`, e essa condução **nunca larga**. ⭐ Ele não
+era a causa do undo — mas era a do **F3**, o irmão que o mesmo report trouxe.
+
+</details>
+
+---
+
+### F3 — ✅ *«Remove IK não funciona plenamente»* — **CURADO** (2026-09-07)
+
+**O que faltava era a POSE.** O verbo tirava a âncora e o alvo — e deixava a corrente **dobrada onde
+a âncora a tinha posto**, sem caminho de volta.
+
+⛔⛔ **E isso contradizia a lei que este módulo escreveu:** o que a restrição escreve é
+**pré-visualização** — *vê-se, não se guarda*. Deixá-la ficar promovia-a a documento no `settle()` do
+quadro seguinte, que é exactamente o que o `preview_drive` existe para impedir. O Blender faz o que
+se faz agora: remover a *constraint* devolve o osso à pose de FK.
+
+⚠️ **A `settle` NÃO servia**, e a distinção é o achado: ela trata de um motor que **largou** (e aí o
+vivo *é* o documento); aqui o motor foi **desligado**, e o vivo é dele. Dois factos com a mesma
+forma ⇒ porta nova, `PreviewDrive::release_to_authored`.
+
+⚠️ **E o que volta é o AUTORADO, não o repouso** — se o artista girou o ombro à mão antes de criar a
+âncora, é essa pose que volta. Um gate que só medisse *«voltou ao que estava antes de arrastar»*
+ficaria verde sobre uma implementação que endireitasse a corrente, e o artista perderia trabalho.
 
 ---
 

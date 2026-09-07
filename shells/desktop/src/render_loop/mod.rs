@@ -6197,7 +6197,7 @@ impl crate::App {
                     }
                 }
                 if pending_ik_remove {
-                    crate::skeleton_goal::remove(sim, osso);
+                    crate::skeleton_goal::remove(sim, osso, &mut self.preview_drive);
                 }
                 if let Some((qual, v)) = pending_ik_knob
                     && let Some(mut g) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::IkGoal>(osso)

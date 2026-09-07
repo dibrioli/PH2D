@@ -315,19 +315,41 @@ pub(crate) fn add(sim: &mut SimWorld, bone: Entity) -> Option<Entity> {
     Some(alvo)
 }
 
-/// **APAGA a âncora** deste osso, e o alvo com ela. Devolve `true` se havia uma.
+/// **APAGA a âncora** deste osso, o alvo com ela, **e devolve a pose que o artista autorou**.
+/// Devolve `true` se havia uma.
 ///
 /// ⚠️ **O alvo morre junto**, e a razão é que ele existe *para* a restrição: deixá-lo para trás
 /// encheria a Hierarquia de objectos vazios que não fazem nada, e o artista não teria como saber
 /// quais podia apagar. ⛔ Quem o quiser guardar tem o Ctrl+Z, que é a porta da casa para isso.
-pub(crate) fn remove(sim: &mut SimWorld, bone: Entity) -> bool {
+///
+/// # ⭐⭐⭐ E a POSE volta — a metade que faltava
+///
+/// ⛔ **Sem ela, apagar a restrição ASSAVA a pose dela no documento, em silêncio** (report do dono,
+/// 2026-09-07: *«Remove IK … não funciona plenamente»*): a âncora saía e a corrente ficava dobrada
+/// onde ela a tinha posto, sem caminho de volta.
+///
+/// ⚠️ **E isso contradizia a lei que este próprio módulo escreveu:** o que a restrição escreve é
+/// **pré-visualização** — *vê-se, não se guarda*. Deixá-la ficar promovia-a a documento no
+/// `settle()` do quadro seguinte. O Blender faz o que se faz aqui: remover a *constraint* devolve
+/// o osso à pose de FK.
+///
+/// ⚠️ **A `settle` NÃO servia**: ela é para um motor que **largou** (e aí o vivo *é* o documento);
+/// aqui o motor foi **desligado**, e o vivo é dele. São dois factos diferentes com a mesma forma —
+/// ver [`PreviewDrive::release_to_authored`].
+pub(crate) fn remove(sim: &mut SimWorld, bone: Entity, preview: &mut PreviewDrive) -> bool {
     let Some(g) = sim.world().get::<IkGoal>(bone).copied() else {
         return false;
     };
+    // ⚠️ **A corrente lê-se ANTES de o componente sair** — depois dele o `governed` não tem por onde
+    // saber que ossos esta âncora governava.
+    let corrente = governed(sim, bone, g.chain);
     if let Some(alvo) = index(sim).get(&g.target).copied() {
         let _ = sim.world_mut().despawn(alvo);
     }
     sim.world_mut().entity_mut(bone).remove::<IkGoal>();
+    for e in corrente {
+        preview.release_to_authored(sim, e, crate::preview_drive::Driver::SolverPose);
+    }
     true
 }
 

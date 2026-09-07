@@ -521,3 +521,64 @@ fn probe_does_the_anchor_cross_the_undo_capture() {
 
 #[path = "skeleton_agenda_tests.rs"]
 mod agenda;
+
+/// ⭐⭐⭐ **APAGAR A ÂNCORA DEVOLVE A POSE QUE O ARTISTA AUTOROU** (report do dono, 2026-09-07:
+/// *«Remove IK … não funciona plenamente»*).
+///
+/// ⛔ **Sem isto o verbo ASSAVA a pose da restrição no documento, em silêncio**: a âncora saía e a
+/// corrente ficava dobrada onde ela a tinha posto, sem caminho de volta. E isso contradizia a lei
+/// que este módulo escreveu — *o que a restrição escreve é pré-visualização*.
+///
+/// ⚠️ **O gate mede a POSE, e não a ausência do componente.** Apagar o `IkGoal` já funcionava; o
+/// que não funcionava era *plenamente*, e a diferença entre as duas é exactamente a rotação dos
+/// ossos.
+#[test]
+fn removing_the_anchor_gives_the_authored_pose_back() {
+    let (mut sim, [ombro, cotovelo]) = braco();
+    add(&mut sim, cotovelo).expect("a ancora");
+    let autorada = crate::skeleton_live::bone_segments(&sim);
+    let mut pv = PreviewDrive::default();
+    drag_anchor(&mut sim, cotovelo, [4.0, 9.0]);
+    solve(&mut sim, &mut pv);
+    assert!(
+        crate::skeleton_live::bone_segments(&sim) != autorada,
+        "a fixtura nao produz o fenomeno: a restricao nao dobrou a corrente"
+    );
+    assert!(remove(&mut sim, cotovelo, &mut pv), "havia ancora");
+    assert_eq!(
+        crate::skeleton_live::bone_segments(&sim),
+        autorada,
+        "a corrente ficou dobrada onde a ancora a pos - o verbo ASSOU a pre-visualizacao no \
+         documento, e nao ha' caminho de volta"
+    );
+    let _ = ombro;
+}
+
+/// ⚠️ **E o que ele devolve é o AUTORADO, não a pose de repouso** — se o artista girou o ombro à
+/// mão antes de criar a âncora, é ESSA pose que volta.
+///
+/// ⛔ Um gate que só medisse *«voltou ao que estava antes de arrastar»* ficaria verde sobre uma
+/// implementação que endireitasse a corrente, e o artista perderia trabalho.
+#[test]
+fn what_comes_back_is_the_authored_pose_not_the_rest_pose() {
+    let (mut sim, [ombro, cotovelo]) = braco();
+    // O artista posa o ombro À MÃO, e só então cria a âncora.
+    sim.world_mut()
+        .get_mut::<Transform>(ombro)
+        .expect("t")
+        .rotation = 0.4;
+    add(&mut sim, cotovelo).expect("a ancora");
+    let autorada = crate::skeleton_live::bone_segments(&sim);
+    let mut pv = PreviewDrive::default();
+    drag_anchor(&mut sim, cotovelo, [2.0, 12.0]);
+    solve(&mut sim, &mut pv);
+    remove(&mut sim, cotovelo, &mut pv);
+    // ⚠️ A comparação é em `f32`, que é o tipo em que a pose VIVE: alargá-la para `f64` e comparar
+    // com o literal `0.4` mede o arredondamento do `f32`, não o produto.
+    assert_eq!(
+        sim.world().get::<Transform>(ombro).expect("t").rotation,
+        0.4_f32,
+        "o ombro voltou ao repouso em vez da pose que o artista tinha feito"
+    );
+    assert_eq!(crate::skeleton_live::bone_segments(&sim), autorada);
+}

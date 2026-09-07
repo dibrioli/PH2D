@@ -305,6 +305,34 @@ impl PreviewDrive {
         }
     }
 
+    /// ⭐⭐⭐ **DEVOLVE O AUTORADO E LARGA** — para um motor que é DESLIGADO, não que apenas parou.
+    ///
+    /// # ⚠️ Por que a [`Self::settle`] não serve aqui
+    ///
+    /// Ela trata de um motor que **largou**: o valor vivo passa a ser documento, e é isso que faz
+    /// uma corrida colapsar num passo (*«desfaz a corrida»*). Mas quando o artista **apaga** a
+    /// restrição, o valor vivo é o que ela escreveu — e promovê-lo a documento é exactamente o que
+    /// este módulo existe para impedir: *o que um motor escreveu vê-se, não se guarda*.
+    ///
+    /// ⛔ **Sem isto, apagar a restrição ASSA a pose dela no documento, em silêncio.** É o report
+    /// de 2026-09-07 (*«Remove IK … não funciona plenamente»*): o verbo tirava a âncora e deixava a
+    /// corrente dobrada onde a âncora a tinha posto, sem forma de voltar. O Blender faz o contrário
+    /// — remover a *constraint* devolve o osso à pose que o artista autorou.
+    ///
+    /// Devolve `true` se havia condução a devolver.
+    pub(crate) fn release_to_authored(
+        &mut self,
+        sim: &mut SimWorld,
+        entity: Entity,
+        driver: Driver,
+    ) -> bool {
+        let Some(e) = self.memo.remove(&(entity.to_bits(), driver)) else {
+            return false;
+        };
+        e.authored.write(sim, entity);
+        true
+    }
+
     /// **Esquece quem deixou de ser conduzido.** Uma vez por quadro, no topo do
     /// `post_frame_undo` — antes da captura, para que a fotografia deste quadro já veja o vivo de
     /// quem parou.

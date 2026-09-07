@@ -43,12 +43,39 @@ pub(crate) fn field_selection_ids(
 ) -> Vec<ph2d_ecs::StableId> {
     bits.iter()
         .map(|b| bevy_ecs::entity::Entity::from_bits(*b))
-        // ⚠️ **Só quem é nó do MODELADOR** — o resto da seleção segue as leis de quem a possui, e
-        // alargar isto seria mudar o comportamento de módulos que não o pediram.
-        .filter(|e| world.get::<ph2d_field_ecs::FieldNode>(*e).is_some())
+        .filter(|e| keeps_its_selection(world, *e))
         .filter_map(|e| ph2d_ecs::stable_id_of(world, e))
         .filter(|id| !id.is_none())
         .collect()
+}
+
+/// ⭐⭐⭐ **QUEM CONTINUA ESCOLHIDO DEPOIS DO RESPAWN** — as famílias cuja selecção não é um caminho
+/// vectorial (essas seguem a [`surviving_selection`]).
+///
+/// ⛔⛔ **Era uma família SÓ, e a segunda pagou o mesmo report** (Enio, 2026-09-07: *«undo … não
+/// funcionam plenamente»*). O filtro dizia *«só quem é nó do MODELADOR»* e um **osso** não é: todo
+/// `Ctrl+Z` desescolhia o osso, a secção SKELETON perdia o sujeito e os controlos dela
+/// **desapareciam** — o undo fazia o trabalho certo e o artista via o app partir-se. É, à letra, o
+/// report que criou esta função em 03/09 (*«o undo/redo do módulo não obedece cada etapa»*), noutro
+/// módulo.
+///
+/// ⚠️ **A nota que ficou aqui previu-o e não o impediu:** *«o resto da selecção segue as leis de
+/// quem a possui»* — e a lei do esqueleto nunca foi escrita, porque nada obriga uma família nova a
+/// vir aqui. É a terceira lista escrita à mão desta linha a morder pelo mesmo mecanismo (as outras
+/// duas: o `publishes_its_own_handles` e a allowlist de cliques do painel).
+///
+/// ⛔ **A generalização — *«tudo o que tem identidade durável sobrevive»* — NÃO foi feita aqui, e é
+/// uma cerca de Chesterton:** a nota original diz que alargar mudaria o comportamento de módulos que
+/// não o pediram, e essa decisão é de quem os possui. O que se pode fazer sem os acordar é
+/// **nomear** as famílias, uma linha cada, com o motivo ao lado.
+fn keeps_its_selection(world: &bevy_ecs::world::World, e: bevy_ecs::entity::Entity) -> bool {
+    // O modelador 3D (W113, report de 03/09) — a pose de um nó nem sequer é o `Transform` da casa.
+    world.get::<ph2d_field_ecs::FieldNode>(e).is_some()
+        // ⭐ O ESQUELETO (report de 07/09): o osso é o **sujeito** da secção SKELETON, e sem ele o
+        // painel deixa de mostrar `Length`, `Strength` e os verbos da âncora.
+        || world.get::<ph2d_skeleton_ecs::Bone>(e).is_some()
+        // ⭐ E o ALVO de uma âncora, que é o que o artista tem na mão enquanto anima a corrente.
+        || world.get::<ph2d_skeleton_ecs::IkTarget>(e).is_some()
 }
 
 /// E de volta: os bits **novos** de quem sobreviveu ao respawn. Quem morreu simplesmente não volta.

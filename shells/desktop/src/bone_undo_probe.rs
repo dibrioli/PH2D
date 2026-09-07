@@ -55,6 +55,12 @@
 //! move o losango de volta uns píxeis, o que se lê como *nada*; **(b)** o `Ctrl+Z` foi roteado para
 //! outro dono (o `undo_or_redo` escolhe entre o Áudio, o Painter, o global e o image-edit).
 //!
+//! ⚠️⚠️ **O ROTEIRO É FRÁGIL, e o sinal está no ecrã.** Ele acha os controlos por varredura do
+//! índice de acerto, e o índice depende de **onde o painel está rolado** — se o clique no pill
+//! falhar, a secção nem é pintada e nada a jusante acontece. ⛔ *Uma corrida sem a linha
+//! `Down em Add IK` não mediu o botão*, por mais verde que pareça: leia-a antes de acreditar no
+//! resto.
+//!
 //! ⛔ **E há uma armadilha estrutural nesta cena, medida aqui:** a cena de smoke monta-se **sem
 //! entrada nenhuma**, então o primeiro clique do dono — seja ele qual for — regista um passo cujo
 //! *antes* é a **cena vazia**. Um `Ctrl+Z` a mais apaga o desenho inteiro, e isso não é um defeito
@@ -95,10 +101,27 @@ impl crate::App {
                 eprintln!("[probe-ik-undo] --- Up (3 quadros depois do Down) ---");
                 self.smoke_pointer_up();
             }
+            // ⭐⭐⭐ **O ARRASTO da âncora, no CANVAS** — o report do dono é sobre o que sobra DEPOIS
+            // dele, e sem este passo a sonda media meio gesto.
+            60 => self.probe_drag_the_anchor(),
             70 => {
-                eprintln!("[probe-ik-undo] --- Ctrl+Z ---");
+                eprintln!("[probe-ik-undo] --- Ctrl+Z (1) ---");
                 self.smoke_undo(false);
             }
+            80 => {
+                eprintln!("[probe-ik-undo] --- Ctrl+Z (2) ---");
+                self.smoke_undo(false);
+            }
+            90 => {
+                eprintln!("[probe-ik-undo] --- Ctrl+Z (3) ---");
+                self.smoke_undo(false);
+            }
+            // E o outro verbo: criar de novo e REMOVER pelo botão.
+            100 => self.probe_pick_a_bone_without_anchor(),
+            103 => self.probe_press(ph2d_editor::ids::VECTOR_BONE_IK_ADD, "Add IK"),
+            105 => self.smoke_pointer_up(),
+            112 => self.probe_press(ph2d_editor::ids::VECTOR_BONE_IK_REMOVE, "Remove IK"),
+            114 => self.smoke_pointer_up(),
             _ => {}
         }
         // ⭐⭐⭐ **A DERIVA** — o documento a mudar SEM entrada nenhuma. Medida em 2026-09-07: `913`
@@ -108,13 +131,16 @@ impl crate::App {
         if (30..=34).contains(&f) {
             self.probe_which_rows_drift();
         }
-        if (38..=90).contains(&f) {
+        if (38..=125).contains(&f) {
             let (ancoras, alvos) = self.probe_counts();
             eprintln!(
-                "[probe-ik-undo] f={f} undo={} redo={} ancoras={ancoras} alvos={alvos} held={:?}",
-                self.undo.depth(),
-                self.undo.redo_depth(),
-                self.held_button,
+                "[probe-ik-undo] f={f} undo={undo} redo={redo} ancoras={ancoras} alvos={alvos} \
+                 pose={pose:.3} sel={sel:?} held={held:?}",
+                undo = self.undo.depth(),
+                redo = self.undo.redo_depth(),
+                pose = self.probe_chain_bend(),
+                sel = self.probe_selection(),
+                held = self.held_button,
             );
         }
     }
@@ -210,6 +236,56 @@ impl crate::App {
             }
             _ => eprintln!("[probe-ik-undo] ⛔ nao ha' osso sem ancora na cena"),
         }
+    }
+
+    /// **Quanto a corrente está DOBRADA** — a soma dos ângulos de todos os ossos, em radianos.
+    ///
+    /// ⚠️ É a metade que faltava: *«não funciona plenamente»* pode ser a âncora sair e a **POSE
+    /// ficar**. Contar âncoras não vê isso.
+    fn probe_chain_bend(&self) -> f64 {
+        self.gfx.as_ref().map_or(0.0, |g| {
+            g.sim
+                .world()
+                .iter_entities()
+                .filter(|e| e.contains::<ph2d_skeleton_ecs::Bone>())
+                .filter_map(|e| e.get::<ph2d_ecs::Transform>())
+                .map(|t| f64::from(t.rotation).abs())
+                .sum()
+        })
+    }
+
+    /// O que o gizmo tem seleccionado — a **mão** do artista. Uma fila de undo exacta sem a
+    /// selecção lê-se como uma fila partida.
+    fn probe_selection(&self) -> Vec<u64> {
+        self.gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .map(|h| h.gizmo.iter_selected().collect())
+            .unwrap_or_default()
+    }
+
+    /// ⭐ **Arrasta a âncora no CANVAS**, pelo ponteiro: acha o losango pela porta do módulo e
+    /// puxa-o. É o gesto que o dono faz depois de criar a restrição.
+    fn probe_drag_the_anchor(&mut self) {
+        let Some(gfx) = self.gfx.as_ref() else { return };
+        let Some(&(_, ancora, ..)) = crate::skeleton_goal::anchors(&gfx.sim).first() else {
+            eprintln!("[probe-ik-undo] ⛔ nao ha' ancora para arrastar");
+            return;
+        };
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "a câmera da casa é f32; a geometria do documento é f64"
+        )]
+        let p = gfx
+            .camera
+            .world_to_screen([ancora[0] as f32, ancora[1] as f32], gfx.surface.size());
+        eprintln!(
+            "[probe-ik-undo] arrastando a ancora de ({:.0}, {:.0})",
+            p.0, p.1
+        );
+        self.smoke_pointer_down(p.0, p.1);
+        self.smoke_pointer_move(p.0 + 40.0, p.1 - 40.0);
+        self.smoke_pointer_up();
     }
 
     /// Rola o painel do vector para baixo, com o cursor sobre ele.

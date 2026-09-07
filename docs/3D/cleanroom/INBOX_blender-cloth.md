@@ -1004,3 +1004,32 @@ a área fixa eles ficam, e mantêm o `σ = 1` que a §4.3 lhes dá. ⇒ a régua
 são **duas** escolhas: o Agarrar mede as posições de **repouso** contra o pen-down (o conjunto fixo em
 que a âncora nasceu) e o Snake Hook as de **agora** contra o cursor. *Um gate verde pela razão errada
 só se distingue de um verde no dia em que a razão errada é curada.*
+
+---
+
+## Q21 — os TRÊS controlos do §8.1 que o motor não tem, e nenhum deles é gateável com o corpus de hoje (2026-09-07)
+
+Com os sete da wave de hoje ligados, o que a §8.1 lista e a `ph2d-cloth` **não** implementa é:
+
+| controlo | onde a espec o define | porque não o implementámos ainda |
+|---|---|---|
+| ***Normal Weight*** (só Grab/Snake Hook, omissão `0`) | §4.3 | a espec diz que o `δ` é *«inclinado para a normal da área como no Grab da casa»* — ⛔ **a lei do «Grab da casa» não está neste documento**, e as 78 fixtures correm todas com `0` |
+| ***Persistent* + *Set Persistent Base*** | §6.4 | está definido (os comprimentos de repouso e o teste de raio passam a ler a base), mas **nenhuma fixture o liga** ⇒ um port dele nasce sem régua |
+| ***Use Collisions*** | §5.6 | precisa de colisores da cena, que a crate de lei pura não conhece — é trabalho de produto, não de lei |
+
+### As perguntas
+
+- **Q21.1** — dá para gravar **duas** fixtures de *Normal Weight* (o mesmo traço de Grab do plano com
+  `0`, `0,5` e `1`), e a lei da inclinação escrita por inteiro? Sem ela um port escreve a
+  interpolação que lhe parecer e nada o contradiz.
+- **Q21.2** — idem para o *Persistent*: um traço que deforme, um *Set Persistent Base*, e um segundo
+  traço por cima. ⭐ **É a única fixture do corpus que separaria «o repouso do traço» de «o repouso do
+  objecto»**, e a `plano_inflar_radial_local_1passo_2tracos` mostrou o quanto uma fixture de dois
+  traços decide.
+- **Q21.3** — o *Use Collisions* é o único dos três que muda de camada (a lei pura passaria a receber
+  colisores). Antes de o desenhar: ele é **por-vértice depois da integração** (§5.6) ou há mais
+  alguma coisa a saber sobre a ordem dele contra as varreduras?
+
+⚠️ **Nada disto bloqueia o que está fechado** — os sete controlos de hoje estão medidos contra o
+corpus e o produto reproduz cinco traços pela porta do artista. Estes três são o que falta para o
+pincel ter **tudo** o que o alvo oferece.

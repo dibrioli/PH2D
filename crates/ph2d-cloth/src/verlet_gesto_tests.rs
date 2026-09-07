@@ -66,6 +66,20 @@ fn aneis(n: usize, faces: &[Vec<u32>]) -> Vec<Vec<u32>> {
 /// ⚠️ **A régua é a espec, não a nossa aritmética:** `σ` é *«a força por passo,
 /// zerada em todo o objecto antes de ser reescrita»*, então o que se afirma é
 /// uma propriedade do estado no fim do passo, e não um número.
+///
+/// ⛔⛔ **E o CENTRO da régua é o do MODO, não o cursor** (corrigido em 07/09).
+/// A 1.ª redacção media a distância ao **cursor deste passo** nos dois modos, e
+/// para o Agarrar isso é a pergunta errada: a §4.3 diz que ali `σ` é reescrito
+/// *«só para quem o raio INICIAL alcança, que é o conjunto fixo em que a âncora
+/// nasceu»* — o disco do Agarrar fica no pen-down.
+///
+/// ⚠️⚠️ **Ela passava por um ACIDENTE que a lei do mesmo dia removeu:** enquanto
+/// a área *Dynamic* seguia o cursor, os vizinhos do pen-down **caíam fora do
+/// conjunto simulado** à medida que a mão se afastava, e o `σ.fill(0)` deixava-os
+/// a zero por não haver quem os reescrevesse. Com a área do Agarrar fixa no
+/// pen-down (a lei que o `esfera_agarrar_radial_dinamica` mediu) eles ficam, e
+/// mantêm o `σ = 1` que a espec lhes dá. *Um gate verde pela razão errada só se
+/// distingue de um verde no dia em que a razão errada é curada.*
 #[test]
 fn nenhum_vertice_guarda_a_forca_por_passo_de_um_passo_anterior() {
     for modo in [Modo::Agarrar, Modo::Gancho] {
@@ -120,14 +134,25 @@ fn nenhum_vertice_guarda_a_forca_por_passo_de_um_passo_anterior() {
         assert!(movidos > 100, "{modo:?}: só {movidos} movidos — vácuo");
         // E tem de haver quem esteja FORA do disco deste passo com σ escrito
         // num passo anterior, senão o gate não olha para nada.
+        // ⭐ **E são DUAS escolhas, não uma:** o Agarrar mede as posições de
+        // **REPOUSO** contra o pen-down — é o conjunto fixo em que a âncora
+        // nasceu —, e o Snake Hook mede as de **agora** contra o cursor.
+        // *Perguntar a mesma coisa aos dois é perguntar pelo modo errado num
+        // deles*, e foi o que esta régua fez até 07/09.
+        let (centro, no_repouso) = if modo == Modo::Agarrar {
+            (inicio, true)
+        } else {
+            (cursor, false)
+        };
         let mut fora = 0usize;
-        for (v, p) in pos.iter().enumerate() {
-            let d = crate::verlet::norm([p[0] - cursor[0], p[1] - cursor[1], p[2] - cursor[2]]);
+        for v in 0..pos.len() {
+            let p = if no_repouso { rest[v] } else { pos[v] };
+            let d = crate::verlet::norm([p[0] - centro[0], p[1] - centro[1], p[2] - centro[2]]);
             if d >= r {
                 fora += 1;
                 assert!(
                     tecido.sim.sigma[v] == 0.0,
-                    "{modo:?}: vertice {v} esta a {d:.4} do cursor (raio {r}) e guarda \
+                    "{modo:?}: vertice {v} esta a {d:.4} do centro do modo (raio {r}) e guarda \
                      forca por passo {} -- a espec §4.3 manda zerar em TODO o objecto",
                     tecido.sim.sigma[v]
                 );
@@ -545,5 +570,74 @@ fn o_desvio_de_repouso_entra_inteiro_nas_especies_de_alvo_proprio() {
     assert!(
         (correu(0.05, true) - inerte).abs() > 1e-9,
         "a `τ = D/2` o pino deixou de puxar -- o desvio esta' a apagar a restricao"
+    );
+}
+
+/// ⭐⭐⭐ **GATE — O AGARRAR NÃO SEGUE O CURSOR, nem sequer na área *Dynamic***
+/// (espec §2.1 · §4.3; lei MEDIDA em 2026-09-07).
+///
+/// A área simulada do Grab fica onde o traço começou, com o raio do 1.º passo,
+/// nas **três** áreas — se ela seguisse o cursor, material NOVO entraria na
+/// simulação a meio do traço, que é exactamente o que *pegar num conjunto fixo*
+/// exclui (§4.3).
+///
+/// ⚠️ **A régua é a PORTA, e não um traço:** [`PincelTecido::localizacao_da_area`]
+/// tem de devolver o pen-down e o raio inicial para o Agarrar em qualquer área.
+/// ⛔ **E o anti-vácuo é a outra metade:** para os outros sete modos a *Dynamic*
+/// **tem** de seguir o cursor, senão este gate estaria a afirmar que a área
+/// dinâmica não existe.
+#[test]
+fn o_agarrar_nao_segue_o_cursor_nem_na_area_dinamica() {
+    let pos = vec![[0.0, 0.0, 0.0]];
+    let inicio = [1.0, 2.0, 3.0];
+    let cursor = [9.0, 9.0, 9.0];
+    for area in [Area::Local, Area::Global, Area::Dinamica] {
+        let t = PincelTecido::pen_down(
+            Pincel {
+                modo: Modo::Agarrar,
+                area,
+                raio: 0.5,
+                ..Pincel::default()
+            },
+            &pos,
+            inicio,
+            Vec::new(),
+        );
+        let (c, r) = t.localizacao_da_area(cursor);
+        assert_eq!(
+            (c, r),
+            (inicio, 0.5),
+            "Agarrar em {area:?}: a area foi para {c:?} com raio {r} -- ela fica \
+             no pen-down, e e' isso que faz o Grab pegar num conjunto FIXO"
+        );
+    }
+    // ⛔ O anti-vácuo: nos outros modos a área *Dynamic* segue o cursor.
+    let mut seguem = 0usize;
+    for modo in [
+        Modo::Arrastar,
+        Modo::Empurrar,
+        Modo::ApertarPonto,
+        Modo::ApertarLinha,
+        Modo::Inflar,
+        Modo::Gancho,
+        Modo::Expandir,
+    ] {
+        let t = PincelTecido::pen_down(
+            Pincel {
+                modo,
+                area: Area::Dinamica,
+                raio: 0.5,
+                ..Pincel::default()
+            },
+            &pos,
+            inicio,
+            Vec::new(),
+        );
+        seguem += usize::from(t.localizacao_da_area(cursor).0 == cursor);
+    }
+    assert_eq!(
+        seguem, 7,
+        "so' {seguem} dos sete outros modos seguem o cursor em Dynamic -- se \
+         nenhum seguisse, este gate afirmava que a area dinamica nao existe"
     );
 }

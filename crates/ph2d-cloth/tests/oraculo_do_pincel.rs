@@ -1031,6 +1031,7 @@ const BARRA_PARIDADE: f64 = 0.13;
 /// percorre o MESMO caminho (`0,6`) que o de 12, em avanços três vezes mais
 /// finos, e move `0,267` contra `0,330` — *mais impulsos não é mais fundo*.
 const PARIDADE: [&str; VERDE_N] = [
+    "esfera_agarrar_radial_dinamica",
     "esfera_arrastar_radial_dinamica",
     "esfera_empurrar_radial_dinamica",
     "esfera_empurrar_radial_local_1passo",
@@ -1102,7 +1103,7 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_inflar_radial_local_origem_massa2",
     "plano_inflar_radial_local_origem_parado",
 ];
-const VERDE_N: usize = 70;
+const VERDE_N: usize = 71;
 
 /// Os traços AINDA por explicar, com o valor MEDIDO em 2026-09-06 ao lado.
 ///
@@ -1121,7 +1122,6 @@ const VERDE_N: usize = 70;
 /// bit — o percurso face a face de um vértice interior de grelha devolve
 /// `[S, O, E, N]`, que já é a ordem crescente de índice.
 const ABERTOS: [(&str, f64); ABERTO_N] = [
-    ("esfera_agarrar_radial_dinamica", 0.182),
     ("esfera_apertar_linha_radial_dinamica", 0.630),
     ("esfera_apertar_ponto_radial_dinamica", 0.646),
     ("esfera_expandir_radial_dinamica", 0.581),
@@ -1130,7 +1130,7 @@ const ABERTOS: [(&str, f64); ABERTO_N] = [
     ("plano_apertar_ponto_radial_local", 0.600),
     ("plano_apertar_ponto_radial_local_origem", 0.908),
 ];
-const ABERTO_N: usize = 8;
+const ABERTO_N: usize = 7;
 
 /// A folga de regressão sobre o valor medido de um traço ABERTO.
 const FOLGA_ABERTO: f64 = 1.25;
@@ -3189,45 +3189,43 @@ fn um_traco_mais_longo_nao_e_mais_fundo_em_area_local() {
     );
 }
 
-/// ⛔⛔⛔ **GATE 46 — NA ESFERA, A BARRA TEM UM CHÃO QUE NÃO É NOSSO — e em DOIS
-/// dos três traços ela está ABAIXO dele** (espec §14 gate 46, §10.13).
+/// ⛔⛔⛔ **GATE 46 — NA ESFERA, A BARRA TEM UM CHÃO QUE NÃO É NOSSO — e o
+/// AGARRAR já está DENTRO dele** (espec §14 gate 46, §10.13).
 ///
 /// Quatro corridas da MESMA configuração do oráculo dão saídas que diferem entre
-/// si — a **banda de realização**. Posta na mesma unidade que a barra de
-/// paridade (`0,13 × o maior deslocamento do alvo`), ela diz o seguinte:
+/// si — a **banda de realização**. Posta na mesma unidade que a barra de paridade
+/// (`0,13 × o maior deslocamento do alvo`), ela diz isto:
 ///
 /// | traço | barra em posição | banda | nosso erro | veredito |
 /// |---|---|---|---|---|
-/// | `esfera_agarrar_radial_dinamica` | `0,0307` | `0,0200` | `0,0430` | ⭐ **decidível**, e erramos `2,15×` a lotaria ⇒ **lei em falta** |
-/// | `esfera_gancho_radial_dinamica` | `0,0220` | `0,0362` | `0,0431` | ⛔ **INDECIDÍVEL** — a barra está `1,6×` ABAIXO da lotaria |
-/// | `esfera_expandir_radial_dinamica` | `0,0061` | `0,0218` | `0,0271` | ⛔ **INDECIDÍVEL** — a barra está `3,6×` ABAIXO |
+/// | `esfera_agarrar_radial_dinamica` | `0,0307` | `0,0200` | **`0,0078`** | ⭐⭐⭐ **DENTRO da lotaria** (`0,39×`) — reproduzido até onde o oráculo consegue distinguir |
+/// | `esfera_gancho_radial_dinamica` | `0,0220` | `0,0362` | `0,0431` | ⛔ **INDECIDÍVEL** — a barra está `1,6×` ABAIXO da lotaria; erramos `1,19×` a banda |
+/// | `esfera_expandir_radial_dinamica` | `0,0061` | `0,0218` | `0,0271` | ⛔ **INDECIDÍVEL** — `3,6×` abaixo; erramos `1,24×` |
 ///
-/// ⇒ ⭐⭐⭐ **dos traços de esfera que sobram, só o AGARRAR tem prova de lei em
-/// falta.** Nos outros dois a barra de `0,13` reprovaria o **próprio oráculo**
-/// comparado consigo mesmo, e o nosso erro está a `1,2×` da lotaria.
+/// ⭐⭐ **O agarrar entrou em 07/09**, quando a área simulada do Grab deixou de
+/// seguir o cursor (`PincelTecido::localizacao_da_area`): `0,182 → 0,033` de
+/// paridade, e o erro em posição de `0,0427` para `0,0078` — *de `2,1×` a lotaria
+/// para `0,39×` dela*.
 ///
-/// ⛔⛔ **E o quociente que a espec publica MISTURA UNIDADES** (medido aqui,
-/// 2026-09-07): o gate 46 escreve *«os erros abertos são `5×` a `26×` a banda»*, e
-/// esse número sai de dividir um erro **RELATIVO** (`0,182` · `0,255` · `0,581`,
-/// já divididos pelo maior deslocamento) por uma banda **ABSOLUTA** (uma
-/// distância por vértice). Na mesma unidade o quociente é `2,15×` · `1,19×` ·
-/// `1,24×` — *uma ordem de grandeza menos margem do que a espec afirma*. A
-/// leitura «há lei em falta» sobrevive **no agarrar** e mais nada.
+/// ⛔⛔ **E o quociente que a espec publica MISTURA UNIDADES:** o gate 46 escreve
+/// *«os erros abertos são `5×` a `26×` a banda»*, e esse número sai de dividir um
+/// erro **RELATIVO** por uma banda **ABSOLUTA**. Na mesma unidade nenhum deles
+/// passa de `1,24×`. ⇒ INBOX **Q19**.
 #[test]
 fn na_esfera_a_barra_tem_um_chao_que_nao_e_nosso() {
     let rest = repouso("esfera");
-    /// O que a medição de 07/09 diz de cada um: `(decidível?, quociente erro/banda)`.
+    /// `(traço, a barra decide?, estamos DENTRO da lotaria?)` — medido em 07/09.
     ///
     /// ⚠️ **É um censo, não uma tolerância:** ele existe para que a próxima
     /// leitura não volte a chamar «lei em falta» a um traço cuja barra está
-    /// debaixo da lotaria.
-    const CENSO: [(&str, bool); 3] = [
-        ("esfera_agarrar_radial_dinamica", true),
-        ("esfera_gancho_radial_dinamica", false),
-        ("esfera_expandir_radial_dinamica", false),
+    /// debaixo da lotaria, nem a um cujo erro já é menor que ela.
+    const CENSO: [(&str, bool, bool); 3] = [
+        ("esfera_agarrar_radial_dinamica", true, true),
+        ("esfera_gancho_radial_dinamica", false, false),
+        ("esfera_expandir_radial_dinamica", false, false),
     ];
-    let mut decidiveis = 0usize;
-    for (nome, decidivel) in CENSO {
+    let (mut decidiveis, mut dentro_da_lotaria) = (0usize, 0usize);
+    for (nome, decidivel, dentro) in CENSO {
         let banda = campo_do_por_passo(nome, "dispersao_entre_realizacoes_da_corrida_inteira");
         assert!(banda > 0.0, "{nome}: banda de realizacao nao lida");
         let alvo = deformado(nome);
@@ -3243,35 +3241,39 @@ fn na_esfera_a_barra_tem_um_chao_que_nao_e_nosso() {
             .map(|(a, b)| dist(*a, *b))
             .fold(0.0f64, f64::max);
         let barra = BARRA_PARIDADE * max_o;
+        // (1) A barra de paridade decide este traço, ou está debaixo da lotaria?
         assert_eq!(
             barra > banda,
             decidivel,
             "{nome}: a barra de paridade vale {barra:.4} em posicao e a banda de \
              realizacao e' {banda:.4} -- o censo diz decidivel={decidivel}"
         );
-        // ⛔ Em qualquer dos casos o nosso erro tem de ficar ACIMA da lotaria:
-        // abaixo dela nao ha' nada a caçar, e a leitura muda por inteiro.
-        assert!(
-            erro > banda,
-            "{nome}: o nosso erro {erro:.4} esta' ABAIXO da banda de realizacao \
-             {banda:.4} -- a lotaria explica-o"
-        );
-        // A margem, com o número dentro. Sair desta faixa quer dizer que a
-        // medição de 07/09 envelheceu, e a tabela do doc com ela.
+        // (2) O nosso erro cabe na lotaria, ou é maior que ela?
         let q = erro / banda;
+        assert_eq!(
+            erro < banda,
+            dentro,
+            "{nome}: erramos {erro:.4} contra a banda {banda:.4} ({q:.2}x) -- o \
+             censo diz dentro={dentro}"
+        );
+        // (3) A margem, com o número dentro. Sair desta faixa quer dizer que a
+        // medição de 07/09 envelheceu, e a tabela do doc com ela.
         assert!(
-            (1.0..4.0).contains(&q),
+            (0.2..2.0).contains(&q),
             "{nome}: o quociente erro/banda e' {q:.2}x -- medido em 07/09 ele vale \
-             1,19x a 2,15x"
+             0,39x (agarrar) a 1,24x"
         );
         decidiveis += usize::from(decidivel);
+        dentro_da_lotaria += usize::from(dentro);
     }
     // ⛔ Anti-vácuo dos DOIS lados: se TODOS fossem decidíveis o censo não diria
     // nada, e se NENHUM o fosse a esfera sairia inteira do corpus sem que
     // ninguém o tivesse decidido.
     assert_eq!(
-        decidiveis, 1,
-        "o censo diz {decidiveis} decidiveis de 3 -- em 07/09 era UM (o agarrar)"
+        (decidiveis, dentro_da_lotaria),
+        (1, 1),
+        "o censo diz {decidiveis} decidiveis e {dentro_da_lotaria} dentro da \
+         lotaria -- em 07/09 era UM e UM (os dois o agarrar)"
     );
 }
 
@@ -3449,4 +3451,89 @@ fn a_normal_por_vertice_e_a_soma_sem_peso_de_normais_unitarias() {
         "a soma sem peso e a ponderada por AREA so' se separam {pior:.4}° nesta \\
          fixtura -- ela e' regular demais, e o gate passaria por sorte"
     );
+}
+
+/// A coluna `banda_de_realizacao` do `.rastreio`, por passo (`k` base 1 no
+/// ficheiro; o índice `0` deste vector é o passo `1`).
+fn banda_por_passo(nome: &str) -> Vec<f64> {
+    let caminho = fixture_dir().join(format!("{nome}.porpasso.rastreio.txt"));
+    let texto =
+        std::fs::read_to_string(&caminho).unwrap_or_else(|e| panic!("{}: {e}", caminho.display()));
+    let mut cols: Option<usize> = None;
+    let mut out = Vec::new();
+    for l in texto.lines() {
+        if l.starts_with('#') {
+            continue;
+        }
+        let c: Vec<&str> = l.split_whitespace().collect();
+        if c.first().copied() == Some("passo") {
+            cols = c.iter().position(|t| *t == "banda_de_realizacao");
+            continue;
+        }
+        if let Some(i) = cols
+            && let Some(t) = c.get(i)
+            && let Ok(v) = t.parse::<f64>()
+        {
+            out.push(v);
+        }
+    }
+    assert!(!out.is_empty(), "{nome}: rastreio sem banda_de_realizacao");
+    out
+}
+
+/// **SONDA — ONDE, na esfera, a nossa lei se separa da do alvo** (espec §10.13,
+/// §14 gate 46).
+///
+/// ⭐⭐⭐ **É a sonda que a banda de realização torna possível.** Na esfera o
+/// oráculo não se repete, logo comparar por passo não queria dizer nada — até a
+/// emenda Q18 gravar, ao lado de cada bloco, **quanta diferença não significa
+/// nada**. Com ela, a pergunta passa a ter resposta: *em que passo o nosso erro
+/// deixa de caber na lotaria?*
+///
+/// ⚠️ **O sítio de procurar é CEDO:** nos passos `2`–`5` a banda é `4·10⁻⁵` a
+/// `4,7·10⁻³`, duas a três ordens abaixo do erro final — uma divergência que
+/// nasça aí é visível, e uma que só apareça no fim está afogada na lotaria.
+///
+/// Colunas: `erro` é o pior por vértice contra o bloco do oráculo, `banda` é a
+/// dispersão entre quatro realizações do mesmo prefixo, e `q` é o quociente —
+/// **`q ≤ 1` é ruído; `q ≫ 1` é lei.**
+#[test]
+#[ignore = "sonda"]
+fn sonda_de_onde_a_esfera_diverge() {
+    for nome in [
+        "esfera_agarrar_radial_dinamica",
+        "esfera_gancho_radial_dinamica",
+        "esfera_expandir_radial_dinamica",
+    ] {
+        let pp = por_passo(nome);
+        let banda = banda_por_passo(nome);
+        let (_, _, nossos, _) = correr_com_blocos(nome, None, Some(&pp.caminho));
+        let rest = repouso("esfera");
+        println!("\n{nome}");
+        println!(
+            "{:>4} {:>10} {:>10} {:>8} | {:>10} {:>10}",
+            "k", "erro", "banda", "q", "max_nosso", "max_alvo"
+        );
+        for (k, (alvo, nosso)) in pp.blocos.iter().zip(&nossos).enumerate() {
+            let erro = nosso
+                .iter()
+                .zip(alvo)
+                .map(|(a, b)| dist(*a, *b))
+                .fold(0.0f64, f64::max);
+            let b = banda.get(k).copied().unwrap_or(f64::NAN);
+            let pico = |p: &Vec<V3>| {
+                p.iter()
+                    .zip(&rest)
+                    .map(|(a, r)| dist(*a, *r))
+                    .fold(0.0f64, f64::max)
+            };
+            println!(
+                "{:>4} {erro:>10.6} {b:>10.6} {:>8.1} | {:>10.6} {:>10.6}",
+                k + 1,
+                erro / b.max(1e-12),
+                pico(nosso),
+                pico(alvo)
+            );
+        }
+    }
 }

@@ -151,6 +151,33 @@ impl PincelTecido {
     /// errada.*
     #[must_use]
     pub fn localizacao_da_area(&self, cursor: V3) -> (V3, f64) {
+        // ⭐⭐⭐ **O AGARRAR NÃO SEGUE O CURSOR — nem sequer na área *Dynamic*.**
+        //
+        // A lei já estava escrita neste ficheiro, uma porta adiante: o disco da
+        // normal da área é centrado em [`Self::inicio`] no Agarrar, *«é isso que
+        // faz o Grab pegar num conjunto FIXO de vértices»* (espec §4.3). Ela vale
+        // uma porta ANTES, na área simulada: se a esfera seguisse o cursor,
+        // material NOVO entraria na simulação a meio do traço — que é
+        // exactamente o que *pegar num conjunto fixo* exclui.
+        //
+        // ⚠️⚠️ **É o PAR que cura, e nenhuma metade sozinha o faz** (medido em
+        // 07/09 sobre `esfera_agarrar_radial_dinamica`, o único Agarrar em área
+        // *Dynamic* do corpus — os outros dez são *Local* ou *Global*, onde esta
+        // porta já devolvia o pen-down e nada muda):
+        //
+        // | o que fica no pen-down | vértices movidos (alvo `1863`) | erro |
+        // |---|---|---|
+        // | nada (a esfera segue o cursor) | `2123` | `0,182` |
+        // | só a BANDA | `1728` | `0,129` |
+        // | só a PERTENÇA | `1666` | `0,182` |
+        // | ⭐ **as duas** | **`1864`** | **`0,033`** |
+        //
+        // *Uma metade melhora pouco, a outra nada, e a célula `(1,1)` fecha o
+        // traço* — a família que a memória desta casa regista como «duas metades
+        // de uma cura, cada uma recusada sozinha, não a refutam».
+        if self.pincel.modo == Modo::Agarrar {
+            return (self.inicio, self.raio0);
+        }
         match self.pincel.area {
             Area::Local | Area::Global => (self.inicio, self.raio0),
             Area::Dinamica => (cursor, self.pincel.raio),

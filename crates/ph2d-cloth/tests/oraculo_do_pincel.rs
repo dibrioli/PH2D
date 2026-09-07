@@ -1024,6 +1024,12 @@ fn sonda_da_paridade_com_o_oraculo() {
 const BARRA_PARIDADE: f64 = 0.13;
 
 /// Os traços que a lei REPRODUZ (espec §14 gate 15).
+///
+/// ⭐ **Os dois `_36passos` entraram em 07/09** — o traço LONGO que a Q18.3 pediu,
+/// para o corpus ter um regime FUNDO com lado aprovado. ⚠️ **E a premissa que os
+/// gerou está refutada por eles:** a profundidade **satura**. O de 36 passos
+/// percorre o MESMO caminho (`0,6`) que o de 12, em avanços três vezes mais
+/// finos, e move `0,267` contra `0,330` — *mais impulsos não é mais fundo*.
 const PARIDADE: [&str; VERDE_N] = [
     "esfera_arrastar_radial_dinamica",
     "esfera_empurrar_radial_dinamica",
@@ -1050,6 +1056,7 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_arrastar_radial_dinamica_preset",
     "plano_arrastar_radial_global",
     "plano_arrastar_radial_global_origem",
+    "plano_arrastar_radial_global_origem_36passos",
     "plano_arrastar_radial_local",
     "plano_arrastar_radial_local_1passo",
     "plano_arrastar_radial_local_2passos",
@@ -1060,6 +1067,7 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_arrastar_radial_local_massa2",
     "plano_arrastar_radial_local_massa2_1passo",
     "plano_arrastar_radial_local_origem",
+    "plano_arrastar_radial_local_origem_36passos",
     "plano_arrastar_radial_local_pino",
     "plano_arrastar_radial_local_plast05",
     "plano_empurrar_plano_local",
@@ -1094,7 +1102,7 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_inflar_radial_local_origem_massa2",
     "plano_inflar_radial_local_origem_parado",
 ];
-const VERDE_N: usize = 68;
+const VERDE_N: usize = 70;
 
 /// Os traços AINDA por explicar, com o valor MEDIDO em 2026-09-06 ao lado.
 ///

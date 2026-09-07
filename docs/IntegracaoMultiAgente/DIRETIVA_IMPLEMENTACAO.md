@@ -35,6 +35,15 @@
 - [ ] Existe algoritmo de **referência publicado** (transfer sRGB/OKLab, math canônica de blend-mode,
       geometria kurbo/vello, K–M/Mixbox onde houver pigmento)? **Porte-o** antes de escrever a sua versão.
       Constante de magia inventada (`*_MAX`, `*_K`, fator solto) = **PARE** e ache a fonte.
+- [ ] ⭐⭐ **Existe um APP que já FAZ isto?** Então ele é um **ORÁCULO que se CORRE**, e correr é o
+      passo que vem **antes** de escrever a primeira linha ([`CLAUDE.md §0.9`](../../CLAUDE.md) ·
+      [`docs/_ComoInvestigarApps/`](../_ComoInvestigarApps/README.md)). Ponha-o a rodar **por script,
+      sem interface**, sobre **entradas nossas**, grave a saída como fixture **com cabeçalho** —
+      e cada corrida vira um **gate** que você não teve de inventar. ⚠️ **Triagem de licença é o
+      passo 1** (há **duas** portas permissivas instaladas: Godot MIT, OpenToonz BSD-3 — ali
+      **porta-se**). ⛔ **Não leia o fonte dele**, mesmo quando é legal: o fonte responde *como* e o
+      gate precisa de *o quê*, e ele descreve o **programa** enquanto o artista usa o **PRODUTO**.
+      ⚠️ Uma constante que você ia inventar quase sempre é uma **medição que ninguém fez**.
 
 ## 2 — Codando UI interativa (slider / botão / cycler): fie as pontas JUNTAS
 Um controle interativo atravessa o **seam painel↔tool**, no mínimo **7 sites**:

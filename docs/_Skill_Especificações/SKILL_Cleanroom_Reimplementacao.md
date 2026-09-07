@@ -19,6 +19,14 @@
 
 ---
 
+> ⭐⭐ **Esta SKILL é a PAREDE; o MÉTODO de colher o alvo vive noutro sítio:**
+> [`docs/_ComoInvestigarApps/`](../_ComoInvestigarApps/README.md) (`CLAUDE.md` §0.9) — *o alvo é um
+> **oráculo que se CORRE**, nunca um fonte que se lê*. Ele é **mais geral que esta SKILL**: vale
+> para alvo permissivo (onde não há parede nenhuma) e para toda implementação do app. Leia-o
+> **antes** de montar o pipeline daqui — o protocolo de 7 passos, as leis que ele já pagou (a barra
+> sem o lado aprovado · comparar por passo · a régua das excepções) e o arsenal medido de 13 apps
+> estão lá, e **não** são repetidos aqui de propósito.
+
 ## §0 — O que esta diretriz compra, e a única regra que a sustenta
 
 O pipeline tem **três âncoras legais independentes** — cada ato tem a sua, nenhum depende

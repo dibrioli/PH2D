@@ -64,6 +64,22 @@ MODE = sys.argv[1]
 # ---------------------------------------------------------------------------
 DIRS = [
     dict(
+        dir="docs/_ComoInvestigarApps",
+        titulo="`_ComoInvestigarApps` — o alvo é um ORÁCULO que se corre",
+        ordem="num",
+        o_que_e=(
+            "**Como usar um app de referência sem lhe ler o fonte:** ponha-o a correr por "
+            "script, colha a SAÍDA dele sobre entradas NOSSAS, e transforme cada corrida num "
+            "gate. É o método que produziu o pincel de tecido (86 traços ⇒ 86 gates), e ele "
+            "vale para **toda** implementação deste app, não só para as clean-room.\n>\n"
+            "> ⚠️ **Leia o `00` antes do `01`:** a tabela de apps sem o método é uma "
+            "lista de programas. E o passo 1 é sempre a TRIAGEM DE LICENÇA — há **duas** "
+            "portas permissivas instaladas nesta máquina (Godot MIT, OpenToonz BSD-3), e "
+            "gastar uma semana de clean-room onde havia porta aberta é a forma mais cara "
+            "deste erro."
+        ),
+    ),
+    dict(
         dir="docs/UI_New_and_Simple/handoffs",
         titulo="`UI_New_and_Simple / handoffs` — o registro por jornada da `line/UIUX`",
         ordem="data",

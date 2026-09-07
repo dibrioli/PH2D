@@ -14,6 +14,12 @@
 //!
 //! ⚠️ **As fixtures são DADOS, não expressão** (GPLv2 §0) — o mesmo estatuto que
 //! a bancada da `ph2d-cloth` declara no cabeçalho dela.
+//!
+//! ⭐ **Três mutações do ADAPTADOR, três mortes** (07/09, com o controlo verde):
+//! passar `Vec::new()` em vez da ordem de visita derivada · ler
+//! `mesh.normals()` de agora em vez da fotografia do pen-down · escrever
+//! `Area::Dinamica` literal em vez do que o pincel diz. *As três compilam, as
+//! três deixam a suíte de 363 testes da crate verde, e as três morrem aqui.*
 
 use ph2d_mesh::{Face, Mesh};
 use ph2d_sculpt3d::{Brush, ClothArea, ClothMode, Dab, SculptStroke, Symmetry, Verb};

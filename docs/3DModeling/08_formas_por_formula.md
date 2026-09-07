@@ -418,7 +418,7 @@ tem, não uma montagem:
 | Forma | Classe | Por que ela |
 |---|---|---|
 | **Polygon (N vértices arbitrários)** | **A** | ⭐⭐ O polígono **irregular** por fórmula. Hoje isto obriga a **desenhar**, e desenhar custa por segmento |
-| **Triangle (3 vértices arbitrários)** | **A** | ⭐ O prisma só faz **regulares**; um triângulo escaleno hoje é um desenho |
+| ~~**Triangle (3 vértices arbitrários)**~~ | — | ✅ **SHIPOU na W131** — o escaleno, com o tecto do filete a ser o **inraio**. ⛔ E a medição corrigiu a nota deste doc: desenhar custa `2,6×`–`3,1×` a fórmula, e não `1,27×` |
 | ~~**Egg**~~ | — | ⛔ **CONSTRUÍDO e RECUSADO na W125** — o knob de barriga degenera num círculo no valor natural (recusas medidas, abaixo) |
 | ~~**Stairs**~~ | — | ⛔ **CONSTRUÍDO 4× e RECUSADO na W125** — o filete dela é neutro em volume, e o gate que o exige está certo (recusas medidas, abaixo) |
 | **Bezier (quadrático)** | **A** | ⭐ Um traço curvo com espessura, sem desenhar |
@@ -474,9 +474,9 @@ a ordena é o dono do produto.
 | de onde | ainda faltam | quais |
 |---|---:|---|
 | §7.2 — catálogo **3D** | **3** | Plane · Death Star · Vesica Segment |
-| §7.3 — catálogo **2D** | **5** | Polygon(N) · Triangle · Bezier · Parabola · Circle Wave |
+| §7.3 — catálogo **2D** | **4** | Polygon(N) · Bezier · Parabola · Circle Wave |
 | §7.4 — **famílias** fora de catálogo | **2** | Nó de toro · Rosca |
-| **total** | **10** | |
+| **total** | **9** | |
 
 ⚠️ **Actualizado em 06/09**: saíram da conta a **Superquadrática** (W127 — [doc 06 §128](06_resultados_cena_e_gizmo.md)) e a **Superfórmula** (W128 — [§129](06_resultados_cena_e_gizmo.md)).
 

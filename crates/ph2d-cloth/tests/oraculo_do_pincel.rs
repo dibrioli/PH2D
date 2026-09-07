@@ -1900,3 +1900,90 @@ fn o_anel_do_arnes_vem_pela_ordem_das_faces() {
          duas leis, e este gate passaria com um `sort` la' dentro"
     );
 }
+
+/// Quantos vértices um traço move DENTRO e FORA do disco do pincel.
+///
+/// A régua, por inteiro (espec §14 gate 25): **movido** = `|u| > 1e-5` sobre as
+/// posições a seis casas — a mesma com que o cabeçalho de cada fixture enche o
+/// campo `movidos`; **disco** = posição de **repouso** a menos de `R` da **ponta
+/// do caminho**, que é o cursor do passo simulado.
+fn dentro_e_fora(nome: &str, pos: &[V3]) -> (usize, usize) {
+    let t = traco(nome);
+    let rest = repouso(t.s("superficie"));
+    let r = t.f("raio");
+    let ponta = *t.caminho.last().expect("caminho nao vazio");
+    let (mut dentro, mut fora) = (0usize, 0usize);
+    for (v, p) in pos.iter().enumerate() {
+        if dist(*p, rest[v]) <= 1e-5 {
+            continue;
+        }
+        if dist(rest[v], ponta) < r {
+            dentro += 1;
+        } else {
+            fora += 1;
+        }
+    }
+    (dentro, fora)
+}
+
+/// ⛔⛔⛔ **GATE 25 — UM PASSO DE ACELERAÇÃO NÃO MOVE NADA FORA DO DISCO**, e é o
+/// CONTROLO de que a relaxação corre ANTES da integração (espec §5.2-quater).
+///
+/// Num traço de um passo de um modo que escreve aceleração, a malha com que a
+/// relaxação se encontra está **em repouso**: todo par está exactamente no
+/// comprimento de repouso e `τ` é zero ⇒ **todas as correcções que ela calcula
+/// são identicamente zero**. O que sobra é a força, e ela só alcança o disco.
+///
+/// ⚠️⚠️ **É por isso que «o traço de um passo sai ao bit» NÃO prova que a rede de
+/// restrições está certa** — foi a premissa da minha própria pergunta Q14, e ela
+/// estava errada: aqueles traços **não exercitam uma única restrição de
+/// distância**. Os três que falham movem entre `5` e `8,5` vezes mais vértices,
+/// e a esmagadora maioria é material que força nenhuma tocou.
+///
+/// ⚠️ **Duas metades, e a 1.ª é o CONTROLO:** um port cuja relaxação corra DEPOIS
+/// da integração passa a 2.ª e reprova a 1.ª.
+#[test]
+fn um_passo_de_aceleracao_nao_move_nada_fora_do_disco() {
+    // (1.ª metade) os SETE traços dos cinco modos que escrevem aceleração.
+    // ⚠️ **A §4.2 chama «modos de força» a SEIS** — o Expand é um deles e está do
+    // OUTRO lado desta partição, porque escreve repouso e não aceleração.
+    let aceleracao: [(&str, usize); 7] = [
+        ("plano_arrastar_radial_local_1passo", 171),
+        ("plano_arrastar_radial_local_massa2_1passo", 171),
+        ("plano_arrastar_radial_local_forca05_1passo", 168),
+        ("plano_empurrar_radial_local_1passo", 171),
+        ("plano_inflar_radial_local_1passo", 171),
+        ("plano_apertar_ponto_radial_local_1passo", 171),
+        ("plano_apertar_linha_radial_local_1passo", 156),
+    ];
+    for (nome, esperado) in aceleracao {
+        for (lado, pos) in [("nos", correr_posicoes(nome)), ("oraculo", deformado(nome))] {
+            let (dentro, fora) = dentro_e_fora(nome, &pos);
+            assert_eq!(
+                fora, 0,
+                "{nome} ({lado}): {fora} vertices movidos FORA do disco -- a \
+                 relaxacao correu sobre uma malha que ja' tinha sido integrada"
+            );
+            assert_eq!(dentro, esperado, "{nome} ({lado}): movidos dentro do disco");
+        }
+    }
+
+    // (2.ª metade) os TRÊS que escrevem âncora ou repouso: a resposta deles É a
+    // rede. ⚠️ Os números exactos são os do ORÁCULO; os nossos ainda divergem
+    // nos dois de âncora, e é isso que sobra na fila.
+    let rede: [(&str, usize, usize); 3] = [
+        ("plano_expandir_radial_local_1passo", 173, 675),
+        ("plano_agarrar_radial_local_1passo", 173, 1151),
+        ("plano_gancho_radial_local_1passo", 173, 1279),
+    ];
+    for (nome, d_o, f_o) in rede {
+        let (d, f) = dentro_e_fora(nome, &deformado(nome));
+        assert_eq!((d, f), (d_o, f_o), "{nome} (oraculo): dentro/fora do disco");
+        let (dn, fnn) = dentro_e_fora(nome, &correr_posicoes(nome));
+        assert!(
+            fnn > 0,
+            "{nome} (nos): {fnn} fora do disco -- a nossa relaxacao nao correu"
+        );
+        assert_eq!(dn, d_o, "{nome} (nos): o disco tem de mover-se todo");
+    }
+}

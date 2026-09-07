@@ -129,7 +129,10 @@ pub(crate) fn paint_instance_card(
         })
         .sum::<f32>()
         + instance_orphans::rows_height(text_system, info, font, at.orphan_tw, line);
-    let fixed_rows = ladder.len()
+    // ⭐ **+1: o botão de ABRIR A RECEITA**, colado à linha que a nomeia. Ele existe sempre neste
+    // cartão — ele só é construído para uma CÓPIA, e toda cópia tem receita para abrir.
+    let fixed_rows = 1
+        + ladder.len()
         + beyond
         + instance_added::rows(info)
         + instance_removed::rows(info)
@@ -144,35 +147,7 @@ pub(crate) fn paint_instance_card(
     );
 
     let (tx, tw) = (at.tx, at.tw);
-    let mut ty = y + CARD_PAD;
-    // A linha de proveniência: **o que este objeto é**, e de que receita nasceu. É a única
-    // superfície que o diz — a Hierarquia mostra a árvore, não o vínculo. ⚠️ A frase sai do modelo
-    // (`provenance()`): *Instance* e *Variant* são estados diferentes, e escrevê-la aqui poria a
-    // escolha num sítio que nenhum gate de modelo alcança.
-    paint_text(
-        text_system,
-        scene,
-        &info.provenance(),
-        tx,
-        ty,
-        font,
-        tw,
-        resolve(ColorToken::Text1, theme),
-    );
-    // ⚠️ **O avanço é o MEDIDO** — ver a nota da altura: um `+= line` fixo aqui é exactamente o que
-    // punha o resumo por cima da 2.ª linha da proveniência.
-    ty += super::text_h(text_system, &info.provenance(), font, tw, line);
-    paint_text(
-        text_system,
-        scene,
-        &info.summary(),
-        tx,
-        ty,
-        small,
-        tw,
-        resolve(ColorToken::Text2, theme),
-    );
-    ty += super::text_h(text_system, &info.summary(), small, tw, line);
+    let mut ty = paint_head(info, scene, text_system, theme, store, hit_index, &at, y);
 
     // ⚠️ **Uma linha por componente overridado, pelo NOME que o `+` usa.** Sem elas o artista sabe
     // que «alguma coisa» está diferente e não sabe o quê — que é metade do defeito.
@@ -246,4 +221,63 @@ pub(crate) fn paint_instance_card(
     // 200 LOC desta função. *Um tecto paga-se com um corte.*
     let _ = instance_orphans::paint(scene, text_system, theme, hit_index, store, info, at, ty);
     y + card_h + SECTION_BOTTOM_PAD_PX
+}
+
+/// ⭐ **A CABEÇA do cartão** — a proveniência, o resumo, e a porta para a receita que eles nomeiam.
+///
+/// ⚠️ **Função própria, e não mais um bloco na mãe:** o botão de abrir pôs a `paint_instance_card`
+/// em `204` LOC contra o tecto de `200`, e a lei da casa é **decompor por responsabilidade, nunca
+/// subir a allowlist**. O corte é o que a própria mensagem do gate prescreve — *entra o `y`, sai o
+/// `y`*.
+#[allow(clippy::too_many_arguments)]
+fn paint_head(
+    info: &InspectorInstanceInfo,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    at: &CardMetrics,
+    y: f32,
+) -> f32 {
+    let (tx, tw, font, small, line) = (at.tx, at.tw, at.font, at.small, at.line);
+    let mut ty = y + CARD_PAD;
+    // A linha de proveniência: **o que este objeto é**, e de que receita nasceu. É a única
+    // superfície que o diz — a Hierarquia mostra a árvore, não o vínculo. ⚠️ A frase sai do modelo
+    // (`provenance()`): *Instance* e *Variant* são estados diferentes, e escrevê-la aqui poria a
+    // escolha num sítio que nenhum gate de modelo alcança.
+    paint_text(
+        text_system,
+        scene,
+        &info.provenance(),
+        tx,
+        ty,
+        font,
+        tw,
+        resolve(ColorToken::Text1, theme),
+    );
+    // ⚠️ **O avanço é o MEDIDO** — ver a nota da altura: um `+= line` fixo aqui é exactamente o que
+    // punha o resumo por cima da 2.ª linha da proveniência.
+    ty += super::text_h(text_system, &info.provenance(), font, tw, line);
+    paint_text(
+        text_system,
+        scene,
+        &info.summary(),
+        tx,
+        ty,
+        small,
+        tw,
+        resolve(ColorToken::Text2, theme),
+    );
+    ty += super::text_h(text_system, &info.summary(), small, tw, line);
+    // ⭐⭐⭐ **A porta para a receita que a linha acima NOMEIA** (2026-09-07). Este cartão era a
+    // única superfície a dizer de que prefab a cópia nasceu, e o nome era **texto** — *um app que
+    // nomeia um sítio inalcançável ensina que a feature está partida*.
+    let host = Rect::new(tx, ty, tw, line);
+    hit_index.register(ids::INSP_INSTANCE_OPEN_PREFAB, host);
+    let button = Button::new(ids::INSP_INSTANCE_OPEN_PREFAB, "Edit Prefab".to_string())
+        .kind(ButtonKind::Default)
+        .visual(store.button_visual(ids::INSP_INSTANCE_OPEN_PREFAB));
+    paint_button(&button, host, scene, text_system, theme);
+    ty + line
 }

@@ -33,6 +33,7 @@ pub(crate) fn populate_instance_card(store: &mut WidgetStore) {
     // ⭐ **Limpar as excepções SEM ALVO** (F5.3) — o gesto existe porque elas **nunca** se apagam
     // sozinhas (a lei do *«unused overrides»* do Unity).
     button(store, ids::INSP_INSTANCE_CLEAR_ORPHANS);
+    button(store, ids::INSP_INSTANCE_OPEN_PREFAB);
     // ⭐⭐⭐ **Os botões da ESCADA do *Aplicar*** (F5 critério 4).
     //
     // ⚠️ **Registados os OITO, e não só os que a cena de hoje pinta:** o `WidgetStore` é o estado

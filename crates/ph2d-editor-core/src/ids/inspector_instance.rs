@@ -14,6 +14,16 @@ use ph2d_a11y::NodeId;
 /// do artista em silêncio. ⇒ o gesto existe, e é explícito.
 pub const INSP_INSTANCE_CLEAR_ORPHANS: NodeId = hash_node_id("insp_instance_clear_orphans");
 
+/// ⭐⭐⭐ **ABRIR a receita que a linha de proveniência NOMEIA** (2026-09-07).
+///
+/// ⚠️ **Este cartão é a única superfície que diz de que receita a cópia nasceu** — *Instance of
+/// «Casa»* — e o nome era **texto**: o app nomeava um sítio e não dava como lá chegar. É o mesmo
+/// defeito que as três recusas de *«edite no prefab»* tinham, uma superfície adiante.
+///
+/// ⛔ O botão vive **colado à frase**, e não numa fileira de verbos: o cartão é sobre o que esta
+/// cópia É e o que ela possui — os verbos que a mudam vivem no painel e nos dois menus.
+pub const INSP_INSTANCE_OPEN_PREFAB: NodeId = hash_node_id("insp_instance_open_prefab");
+
 /// ⭐⭐⭐ **Quantas excepções SEM ALVO ganham botão próprio** (F5.3-ter).
 ///
 /// ⚠️ **É um teto de TABELA DE IDS, e ele diz de que recurso é** — a mesma razão do

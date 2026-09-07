@@ -4881,6 +4881,26 @@ impl crate::App {
                     // ⭐ **Limpar as excepções SEM ALVO** (ADR-0164 / F5.3). Aplicado JÁ, e não
                     // adiado para um local: ele não precisa de nada que este ponto não tenha, e o
                     // `post_frame_undo` (que corre no fim) vê a mudança e regista o passo.
+                    // ⭐⭐⭐ **ABRIR a receita que o cartão NOMEIA** (2026-09-07) — a quarta e
+                    // última superfície da família. ⚠️ Pelo MESMO dreno dos outros três acessos,
+                    // que é onde vivem a resolução do sujeito (`master_subject`) e a voz da recusa.
+                    EditorAction::InspectorOpenPrefab { root_bits } => {
+                        // ⚠️ **Aplicado JÁ, como os irmãos deste bloco** — ele não precisa de nada
+                        // que este ponto não tenha: a lei de abrir é SELECCIONAR, e a porta
+                        // (`instance_open`) é a mesma que os outros três acessos usam. ⛔ Deferi-lo
+                        // para o dreno dos verbos pediria um terceiro canal (bits, a par de `row` e
+                        // `stable_id`) para um verbo que não toca no documento.
+                        let mut select_out = None;
+                        crate::instance_open::open_prefab(
+                            sim,
+                            ph2d_ecs::Entity::from_bits(root_bits),
+                            toasts,
+                            &mut select_out,
+                        );
+                        if let Some(bits) = select_out {
+                            hero.gizmo.replace_selection(Some(bits));
+                        }
+                    }
                     EditorAction::InspectorClearUnusedOverrides { root_bits } => {
                         let n = inspector_instance::clear_orphans(sim, root_bits);
                         if n > 0 {

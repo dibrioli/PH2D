@@ -27,6 +27,23 @@ use ph2d_editor_core::panel::PanelHostInternal;
 ///
 /// ⚠️ **Função irmã, e não um braço do `apply_event_impl`** — o precedente é o
 /// [`add_component_click`] logo abaixo, e a razão é a mesma (o teto de LOC daquela função).
+/// ⭐⭐⭐ **ABRIR a receita que a linha de proveniência nomeia** (2026-09-07).
+///
+/// ⚠️ **O painel diz QUEM pediu** — o `root_bits` da cópia —, e quem resolve a receita é o verbo
+/// geral do lado da shell. *Uma segunda resolução aqui seria a quarta resposta a «de que prefab
+/// isto é cópia?».*
+pub(crate) fn open_prefab_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    if ev != WidgetEvent::Click(ids::INSP_INSTANCE_OPEN_PREFAB) {
+        return false;
+    }
+    let Some(root_bits) = crate::state::current_inspector_instance().map(|i| i.root_bits) else {
+        return false;
+    };
+    host.bus_mut()
+        .push(EditorAction::InspectorOpenPrefab { root_bits });
+    true
+}
+
 pub(crate) fn clear_orphans_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     if ev != WidgetEvent::Click(ids::INSP_INSTANCE_CLEAR_ORPHANS) {
         return false;

@@ -339,6 +339,14 @@ pub enum EditorAction {
         root_bits: u64,
     },
 
+    /// ⭐⭐⭐ **Abrir a RECEITA desta cópia** (2026-09-07) — o botão colado à linha de proveniência.
+    ///
+    /// `root_bits` é a RAIZ da cópia; quem resolve a receita a partir dela é o verbo geral
+    /// (`master_subject`), pela mesma porta dos outros três acessos.
+    InspectorOpenPrefab {
+        root_bits: u64,
+    },
+
     /// ⭐⭐⭐ **Largar UMA excepção sem alvo** (ADR-0164 / F5.3-ter) — o `✕` da linha dela.
     ///
     /// ⚠️ **A irmã acima apaga TODAS, e ter só ela era o gesto destrutivo mais barato deste

@@ -1,10 +1,11 @@
-//! ⛔⛔ **A CÂMERA VAI À RECEITA, e as duas metades vivem em pontas opostas do quadro** (Enio,
-//! 2026-09-07: *«o prefab não apareceu no centro relativo ao canvas visível»*).
+//! ⛔⛔ **A RECEITA VEM AO ARTISTA, e as duas metades vivem em pontas opostas do quadro** (Enio,
+//! 2026-09-07: *«o canvas busca a posição inicial do prefab. não deve ser assim. O prefab deve
+//! aparecer na posição central do canvas onde o canvas está»*).
 //!
 //! Quem sabe que uma receita ABRIU é o carimbo do `master_editing`, que corre antes do extract;
 //! quem sabe ONDE ela está é a caixa do gizmo, publicada depois do `snapshots`. ⚠️ Cada metade tem
-//! gate próprio e verde — e o que **nenhum dos dois vê** é o fio entre elas: apagar o `apply` do
-//! quadro deixa a suíte inteira verde e a receita a abrir fora do ecrã, que é exactamente o report.
+//! gate próprio e verde — e o que **nenhum dos dois vê** é o fio entre elas: apagar o `run` do
+//! quadro deixa a suíte inteira verde e a receita a abrir fora do ecrã, que é o primeiro report.
 //!
 //! ⛔ Ele é textual porque o fio vive dentro do laço de quadro da `render_loop`, cuja função tem
 //! ~35 argumentos e um `AppGfx` com uma surface de janela real.
@@ -24,29 +25,48 @@ fn code_of(rel: &str) -> String {
         .join("\n")
 }
 
-/// ⭐⭐⭐ **O quadro ARMA o pedido a partir da abertura, e SERVE-o com a câmera.**
+/// ⭐⭐⭐ **O quadro ARMA o pedido a partir da abertura, e SERVE-o com o mundo e o ledger.**
 ///
 /// **Mutação que deve sangrar:** apagar qualquer uma das duas linhas — sem a primeira o pedido
 /// nunca nasce; sem a segunda ele nunca é servido, e nos dois casos a receita abre onde estava.
 #[test]
-fn the_frame_arms_the_request_and_serves_it_with_the_camera() {
+fn the_frame_arms_the_request_and_serves_it_on_the_stage() {
     let body = code_of("render_loop/mod.rs");
     assert!(
         body.contains("master_editing::mark(") && body.contains(".opened"),
-        "o quadro deixou de ler QUEM ABRIU do carimbo — o pedido de camera nunca nasce"
+        "o quadro deixou de ler QUEM ABRIU do carimbo — o pedido de palco nunca nasce"
     );
     assert!(
-        body.contains("self.prefab_framing = Some("),
-        "a abertura ja' nao arma o pedido (`App::prefab_framing`)"
+        body.contains("self.prefab_stage_pending = Some("),
+        "a abertura ja' nao arma o pedido (`App::prefab_stage_pending`)"
     );
     let at = body
-        .find("prefab_framing::apply(")
+        .find("prefab_stage::run(")
         .expect("o quadro nao serve o pedido — a receita abre fora do ecra'");
-    let arm = &body[at..(at + 400).min(body.len())];
+    let arm = &body[at..(at + 500).min(body.len())];
     assert!(
-        arm.contains("camera"),
-        "o servico do pedido nao recebe a camera — ele nao pode mover vista nenhuma:\n{arm}"
+        arm.contains("sim") && arm.contains("preview_drive"),
+        "o servico do pedido nao recebe o mundo e o ledger — ou ele nao move nada, ou o \
+         movimento vira um passo de undo:\n{arm}"
     );
+}
+
+/// ⛔⛔⛔ **O PALCO NÃO TOCA NA CÂMERA** — é o report inteiro.
+///
+/// A primeira versão movia a vista até à receita: cumpria a letra (*«o prefab no centro»*) e
+/// falhava o pedido, porque o artista estava a olhar para outro sítio. ⚠️ Uma mutação que
+/// devolvesse a câmera a este módulo passaria por todos os gates de unidade dele — a lei pura
+/// devolve um deslocamento e nem recebe a câmera mutável.
+#[test]
+fn the_stage_never_moves_the_view() {
+    let body = code_of("prefab_stage.rs");
+    for proibido in ["camera.center", "height_world", "zoom"] {
+        assert!(
+            !body.contains(proibido),
+            "o palco voltou a mexer na vista (`{proibido}`) — o artista estava a olhar para \
+             outro sitio, e e' isso que o report diz"
+        );
+    }
 }
 
 /// ⭐⭐ **E a área é a VISÍVEL, com porta única.**
@@ -57,10 +77,10 @@ fn the_frame_arms_the_request_and_serves_it_with_the_camera() {
 /// mão.
 #[test]
 fn the_visible_area_has_one_door_and_both_clients_use_it() {
-    let framing = code_of("prefab_framing.rs");
+    let stage = code_of("prefab_stage.rs");
     assert!(
-        framing.contains("canvas_area::visible("),
-        "o enquadramento deixou de perguntar a` porta da area visivel"
+        stage.contains("canvas_area::visible("),
+        "o palco deixou de perguntar a` porta da area visivel"
     );
     let field3d = code_of("field3d_layout.rs");
     assert!(
@@ -68,7 +88,7 @@ fn the_visible_area_has_one_door_and_both_clients_use_it() {
         "o modulo 3D voltou a ter a propria copia da area visivel"
     );
     // E a porta é uma só: ninguém mais lê o `last_content` cru.
-    for rel in ["prefab_framing.rs", "field3d_layout.rs"] {
+    for rel in ["prefab_stage.rs", "field3d_layout.rs"] {
         assert!(
             !code_of(rel).contains("last_content"),
             "{rel} le o `last_content` cru — e' a segunda resposta a` mesma pergunta"

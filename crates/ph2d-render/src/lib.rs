@@ -102,7 +102,7 @@ pub use compressed_pipeline::{
     MipUploadLayout, UploadedCompressedTexture, compressed_size_per_format,
 };
 pub use cooked_texture::{CookedTextureError, CookedTextureStore};
-pub use frost::{FROST_VEIL_ALPHA, FrostPass};
+pub use frost::{FROST_VEIL_ALPHA, FROST_VEIL_DIM, FrostPass};
 pub use fx_stack::{FxOpGpu, FxStackPass, stack_reach};
 pub use fx_stack_res::make_output_texture;
 pub use game_rt::GameRt;

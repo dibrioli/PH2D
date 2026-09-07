@@ -553,8 +553,8 @@ mod player_input;
 mod precision_convert;
 /// **As ferramentas que só movem pixels preservam a precisão** — veja os docs do módulo.
 mod precision_geometry;
-/// ⭐⭐⭐ **A câmera vai à RECEITA quando ela abre** — o enquadramento do *Edit Prefab*.
-mod prefab_framing;
+/// ⭐⭐⭐ **A receita SOBE AO PALCO quando ela abre** — ela vem ao artista, e não o artista a ela.
+mod prefab_stage;
 mod prefs;
 /// **Estado de PRÉ-VISUALIZAÇÃO contra estado de DOCUMENTO** — o conceito que faltava ao undo
 /// (Enio, 2026-08-23: *«precisamos corrigir o CtrlZ para ambas»*).
@@ -1035,7 +1035,8 @@ impl App {
             modifiers: ModifiersState::default(),
             last_pointer: (0.0, 0.0),
             hovered_object: None,
-            prefab_framing: None,
+            prefab_stage_pending: None,
+            prefab_stage: None,
             pending_ui_sound: None,
             ui_burst: ph2d_editor::motion_burst::BurstField::default(),
             hover_outline: Vec::new(),

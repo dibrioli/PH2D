@@ -2787,16 +2787,16 @@ impl crate::App {
             }),
         )
         .opened;
-        // ⭐⭐⭐ **A RECEITA QUE ABRE PEDE A CÂMERA** (Enio, 2026-09-07: *«o prefab não apareceu no
-        // centro relativo ao canvas visível»*). ⚠️ O pedido é **armado aqui e servido depois** —
-        // a caixa da receita só existe quando o `snapshots` publicar o gizmo dela, e é dela que o
-        // enquadramento sai (ver [`crate::prefab_framing::apply`]).
+        // ⭐⭐⭐ **A RECEITA QUE ABRE SOBE AO PALCO** (Enio, 2026-09-07: *«o prefab deve aparecer na
+        // posição central do canvas onde o canvas está»*). ⚠️ O pedido é **armado aqui e servido
+        // depois** — a caixa da receita só existe quando o `snapshots` publicar o gizmo dela, e é
+        // dela que o deslocamento sai (ver [`crate::prefab_stage::run`]).
         //
-        // ⚠️ **A primeira, e não todas:** seleccionar duas receitas de uma vez abre as duas, e uma
-        // câmera não pode ir a dois sítios. Enquadrar a união poria as duas pequenas e nenhuma no
-        // centro — o artista abriu uma linha primeiro, e é a ela que a vista vai.
+        // ⚠️ **A primeira, e não todas:** seleccionar duas receitas de uma vez abre as duas, e o
+        // palco tem um centro só. Empilhá-las nele poria uma em cima da outra — o artista abriu
+        // uma linha primeiro, e é essa que sobe.
         if let Some(first) = opened.first() {
-            self.prefab_framing = Some(first.to_bits());
+            self.prefab_stage_pending = Some(first.to_bits());
         }
         sim_extract::run(
             dt,
@@ -3058,13 +3058,14 @@ impl crate::App {
                 // O registo — ver o parâmetro na assinatura do `publish`.
                 component_registry,
             );
-            // ⭐⭐⭐ **A CÂMERA VAI À RECEITA** (Enio, 2026-09-07) — servido AQUI porque é a linha
-            // acima que publica a caixa dela, e é dessa caixa que o enquadramento sai. ⚠️ O gizmo
-            // deste quadro já foi projectado com a câmera ANTIGA, então ele desenha um quadro
+            // ⭐⭐⭐ **A RECEITA VEM AO ARTISTA** (Enio, 2026-09-07) — servido AQUI porque é a linha
+            // acima que publica a caixa dela, e é dessa caixa que o deslocamento sai. ⚠️ O gizmo
+            // deste quadro já foi projectado com a pose ANTIGA, então ele desenha um quadro
             // atrasado; o desenho do mundo (que é encodado mais abaixo) já usa a nova. *Um quadro
             // de 16 ms, contra a alternativa de reconstruir a vista inteira só para o esconder.*
-            crate::prefab_framing::apply(
-                &mut self.prefab_framing,
+            crate::prefab_stage::run(
+                &mut self.prefab_stage_pending,
+                &mut self.prefab_stage,
                 hero,
                 ph2d_editor::zones::Rect::new(
                     0.0,
@@ -3074,6 +3075,8 @@ impl crate::App {
                 ),
                 window_size,
                 camera,
+                sim,
+                &mut self.preview_drive,
             );
             // Flip W7.5/§4.A: os gizmos do modo Edit — só na tool Flip em modo Edit. Os
             // dois campos próprios no `GizmoStateGroup` (append-only) são MUTUAMENTE

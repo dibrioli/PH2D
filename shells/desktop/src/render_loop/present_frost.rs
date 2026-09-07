@@ -120,15 +120,7 @@ pub(super) fn glass(gpu: &ph2d_gpu::GpuContext, g: Gear<'_>) {
     }
     // ⭐ **O VIDRO.** Ele lê e escreve a MESMA textura — as intermediárias vivem dentro do passe,
     // que é onde o wgpu exige que estejam.
-    g.frost.run(
-        gpu,
-        g.world_rt.blend_view(),
-        size,
-        wgpu::Color {
-            a: ph2d_render::FROST_VEIL_ALPHA,
-            ..g.clear
-        },
-    );
+    g.frost.run(gpu, g.world_rt.blend_view(), size, g.clear);
     // ⭐ **As peças RASTER da receita**, do outro lado do vidro. ⚠️ Elas re-usam o `game_rt` e o
     // tonemap — a mesma manobra de uma faixa de sprites, e pela mesma razão: a receita tem de
     // atravessar o MESMO AgX que o resto da cena, senão as cópias e a receita ficam de cores

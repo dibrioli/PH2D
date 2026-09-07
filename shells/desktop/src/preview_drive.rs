@@ -79,6 +79,9 @@ pub(crate) enum Driver {
     /// A pose que o solver escreve enquanto o mundo corre (ADR-0131) — e a que as curvas da
     /// timeline escrevem, que é o mesmo facto vindo de outro motor.
     SolverPose,
+    /// ⭐ O **PALCO** do *Edit Prefab*: enquanto a receita está aberta, a pose de mundo dela é da
+    /// VISTA. Ver [`Driven::StagePose`].
+    PrefabStage,
     /// A **opacidade** que uma curva de `Opacity` escreve (`Sprite::tint[3]`).
     SpriteAlpha,
     /// O `t` de um `VecMorph` que uma curva de `Morph` escreve.
@@ -129,6 +132,13 @@ pub(crate) enum Driven {
     /// a curva pode keyar qualquer um dos parâmetros dele (o alvo do servo, a taxa, os
     /// comprimentos). Guardar o struct é mais barato que uma variante por campo, e ele é `Copy`.
     JointParams(ph2d_physics_ecs::PhysicsJoint),
+    /// ⭐⭐⭐ **A pose de uma receita enquanto ela está no PALCO** (o *Edit Prefab*, 2026-09-07).
+    ///
+    /// ⚠️ **Mesmo componente do [`Self::SolverPose`], driver DIFERENTE, e é isso que importa:** a
+    /// chave do ledger é `(entidade, driver)`, e uma receita cuja raiz seja também um corpo
+    /// dinâmico é conduzida pelos dois. Reusar o driver do solver faria o palco e a corrida
+    /// escreverem na mesma entrada, e o `authored` de um apagaria o do outro.
+    StagePose(Transform),
 }
 
 impl Driven {
@@ -141,6 +151,7 @@ impl Driven {
             Self::MorphT(_) => Driver::MorphT,
             Self::MorphPair(_) => Driver::MorphPair,
             Self::JointParams(_) => Driver::JointParams,
+            Self::StagePose(_) => Driver::PrefabStage,
         }
     }
 
@@ -176,6 +187,7 @@ impl Driven {
             Driver::JointParams => Some(Self::JointParams(
                 *sim.world().get::<ph2d_physics_ecs::PhysicsJoint>(entity)?,
             )),
+            Driver::PrefabStage => Some(Self::StagePose(*sim.world().get::<Transform>(entity)?)),
         }
     }
 
@@ -184,7 +196,14 @@ impl Driven {
     ///
     /// ⚠️ **Escreve só quando MUDA**, pela razão de sempre nesta casa: o `bevy` marca a alteração
     /// no `deref_mut`, e um componente tocado todo o quadro é ruído para quem lê `Changed<…>`.
-    fn write(self, sim: &mut SimWorld, entity: Entity) {
+    ///
+    /// ⚠️ **`pub(crate)` desde 2026-09-07, e com uma obrigação colada:** quem escreve um facto de
+    /// pré-visualização por aqui tem de o **declarar** ([`PreviewDrive::driven`]) no mesmo quadro,
+    /// senão a `settle` esquece-o e o valor de pré-visualização vira documento. O primeiro
+    /// consumidor de fora é o palco do *Edit Prefab* ([`crate::prefab_stage`]), que escreve a pose
+    /// de palco e a repõe ao fechar — e usar esta porta é o que o impede de ter a sua própria
+    /// versão da regra *«só quando muda»*.
+    pub(crate) fn write(self, sim: &mut SimWorld, entity: Entity) {
         match self {
             Self::SpriteAnim {
                 elapsed_ticks,
@@ -244,6 +263,13 @@ impl Driven {
                     && *cur != j
                 {
                     *cur = j;
+                }
+            }
+            Self::StagePose(pose) => {
+                if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity)
+                    && *t != pose
+                {
+                    *t = pose;
                 }
             }
         }

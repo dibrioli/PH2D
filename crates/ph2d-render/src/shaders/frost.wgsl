@@ -22,7 +22,8 @@ struct Frost {
     // percurso (só um dos dois componentes é != 0).
     step: vec2<f32>,
     _pad: vec2<f32>,
-    // O véu, em LUZ LINEAR com a força no alfa — convertido aqui, como o `WorldRt::clear_linear`.
+    // O véu já composto pelo passe: a cor do canvas ESCURECIDA, em LUZ LINEAR, com a força no
+    // alfa — convertida aqui, como o `WorldRt::clear_linear` faz com a cor de limpeza.
     veil: vec4<f32>,
 };
 
@@ -88,6 +89,10 @@ fn fs_blur(in: VsOut) -> @location(0) vec4<f32> {
 // **De volta à tela cheia, com o VÉU.** O véu é o que separa *«está desfocado»* de *«está atrás do
 // vidro»*: sem ele um fundo de contraste baixo fica só ligeiramente mole, e a receita não ganha o
 // degrau de leitura que a põe à frente.
+//
+// ⚠️ **Ele ESCURECE** (Enio, 2026-09-07: *«além de borrar escureça um pouco o fundo»*), e escurecer
+// aqui não custa uma passagem: o mundo já é misturado com uma cor, então é a COR que muda — a do
+// canvas a `FROST_VEIL_DIM` do brilho dela.
 @fragment
 fn fs_up(in: VsOut) -> @location(0) vec4<f32> {
     let blurred = textureSample(src, src_sampler, in.uv);

@@ -37,10 +37,20 @@ use ph2d_gpu::GpuContext;
 /// receita não ganha frente), e a `1,0` apaga a cena (o artista perde a referência de onde a
 /// receita está no mundo, que é metade do que o modo serve).
 ///
-/// ⚠️ Ele herda o valor da camada que esta feature usava antes do vidro existir
-/// (`ISOLATION_BACKDROP_ALPHA`, 2026-09-07), e por isso o recuo do mundo **não muda de força** — o
-/// que muda é ele passar a ser um vidro em vez de uma cortina.
-pub const FROST_VEIL_ALPHA: f64 = 0.25;
+/// ⚠️ **`0,25` → `0,35` em 2026-09-07** (Enio: *«além de borrar escureça um pouco o fundo»*). Ele
+/// vinha da camada de opacidade que esta feature usava antes do vidro existir; com o borrão por
+/// baixo, o mesmo valor lê-se mais fraco — *um borrão baixa o contraste local e a cena continua a
+/// ter o mesmo brilho MÉDIO, que é exactamente a grandeza que o olho usa para dizer «isto está
+/// atrás»*.
+pub const FROST_VEIL_ALPHA: f64 = 0.35;
+
+/// **O quanto o véu ESCURECE** — ele é a cor de fundo do canvas a esta fracção do brilho.
+///
+/// ⚠️ **É o véu que escurece, e não um segundo passe:** o mundo já é misturado com uma cor, então
+/// escurecer é escolher uma cor mais escura — não há custo nenhum a acrescentar. ⛔ E a cor de
+/// partida continua a ser a do CANVAS (não um cinzento qualquer), senão o vidro teria um tom
+/// próprio e o app deixaria de ter uma cara só quando o tema mudasse.
+pub const FROST_VEIL_DIM: f64 = 0.35;
 
 /// O divisor da resolução de trabalho. Ver o cabeçalho do WGSL: ele **duplica o alcance** do mesmo
 /// kernel de 5 taps, e o quarto do custo é consequência.
@@ -242,15 +252,19 @@ impl FrostPass {
     /// ⭐⭐⭐ **Borra `view` no lugar** — a textura entra nítida e sai jateada.
     ///
     /// `view` tem de ser uma vista **crua** (sem sRGB) da textura de `size`, e serve de fonte e de
-    /// alvo; `veil_linear` é a cor do véu em **luz linear** com a força no alfa (a mesma convenção
-    /// do [`crate::world_rt::WorldRt::clear_linear`] — quem chama tem a cor do token, não a
+    /// alvo; `canvas_linear` é a cor de fundo do canvas em **luz linear** (a mesma convenção do
+    /// [`crate::world_rt::WorldRt::clear_linear`] — quem chama tem a cor do token, não a
     /// codificada).
+    ///
+    /// ⚠️ **O véu compõe-se AQUI, e não no chamador**: ele é [`FROST_VEIL_DIM`] da cor do canvas,
+    /// com [`FROST_VEIL_ALPHA`] de força. *O look do vidro é deste passe; a shell só sabe que cor
+    /// o canvas tem.*
     pub fn run(
         &mut self,
         gpu: &GpuContext,
         view: &wgpu::TextureView,
         size: (u32, u32),
-        veil_linear: wgpu::Color,
+        canvas_linear: wgpu::Color,
     ) {
         self.ensure_size(gpu, size);
         let Some(half) = self.half.as_ref() else {
@@ -258,10 +272,10 @@ impl FrostPass {
         };
         let (hw, hh) = (half.size.0 as f32, half.size.1 as f32);
         let veil = [
-            veil_linear.r as f32,
-            veil_linear.g as f32,
-            veil_linear.b as f32,
-            veil_linear.a as f32,
+            (canvas_linear.r * FROST_VEIL_DIM) as f32,
+            (canvas_linear.g * FROST_VEIL_DIM) as f32,
+            (canvas_linear.b * FROST_VEIL_DIM) as f32,
+            FROST_VEIL_ALPHA as f32,
         ];
         // O `down` amostra a tela CHEIA (o texel dela é o passo); os borrões andam no texel da
         // metade; o `up` não amostra vizinho nenhum e só carrega o véu.

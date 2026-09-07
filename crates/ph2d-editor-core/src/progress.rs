@@ -43,7 +43,7 @@
 //! never depends on this one. A DSP crate that has to link the editor's UI in order to say
 //! "42 %" is a DSP crate that can no longer be used without the editor.
 
-use crate::paint::{Paint, PaintCtx, fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{Paint, PaintCtx, fill_rounded_rect, paint_text, resolve};
 use crate::widget::{ProgressBar, paint_progress_bar};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeId};
@@ -275,10 +275,25 @@ impl<T: Send + 'static> Job<T> {
 ///
 /// Sibling of [`crate::toast::ToastQueue`], deliberately: same push-with-cap, same
 /// once-per-frame `tick` that drops what is finished, same silent drop when full.
-#[derive(Default)]
 pub struct JobQueue {
     inner: VecDeque<Progress>,
     cap: usize,
+}
+
+/// ⛔⛔ **`default()` é o `new()`, e o `derive` era uma ARMADILHA.**
+///
+/// Com o `#[derive(Default)]` o `cap` nascia a **zero** — e o `push` de uma fila cheia *devolve
+/// `false` em silêncio*, por desenho. Logo uma `JobQueue::default()` era uma fila que descartava
+/// **toda** barra sem erro nenhum, e a única diferença visível seria a ausência de uma barra de
+/// progresso que ninguém sabe que devia existir.
+///
+/// ⚠️ **O produto usa `new()`, então isto nunca mordeu o utilizador** — a primeira vítima foi o
+/// gate desta wave, que pintou uma coluna vazia e acusou o pintor. *Um `derive` que produz um
+/// estado que o construtor nunca produz é uma segunda definição do tipo, escrita por omissão.*
+impl Default for JobQueue {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl JobQueue {
@@ -396,11 +411,18 @@ fn paint_bar(p: &Progress, r: Rect, scene: &mut VectorScene, ctx: &mut PaintCtx)
         crate::paint::frame_radius(ctx.theme, Radius::Md.px()),
         resolve(ColorToken::BgElev, ctx.theme),
     );
-    stroke_rounded_rect(
+    // ⭐ **Pela porta do tema** (wave 26): a barra de trabalho é o SEGUNDO inquilino desta coluna,
+    //    e traçava a mesma moldura crua a 1 px que o balão de aviso — as duas desenhavam num tema
+    //    moderno o contorno que a pele plana apagou no resto da casa. ⛔ E este ficheiro **nunca
+    //    foi varrido**: o censo da moldura olha `widget/`, `screens/hero/` e UM ficheiro escrito à
+    //    mão (`paint.rs`), e o vizinho dele nunca entrou.
+    crate::paint::stroke_frame(
         scene,
         r,
         crate::paint::frame_radius(ctx.theme, Radius::Md.px()),
-        1.0,
+        ctx.theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        ph2d_tokens::StrokeToken::Thin.px(),
         resolve(ColorToken::Border, ctx.theme),
     );
 

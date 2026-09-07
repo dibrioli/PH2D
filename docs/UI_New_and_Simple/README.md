@@ -261,6 +261,17 @@ INSTRUÇÕES**: a 1.ª redacção lia linhas e o `cargo fmt` derrotou-a no mesmo
 expressão em quatro — *a primeira vez que o adversário de um censo desta linha é uma ferramenta do
 repo, e não um autor*.
 
+⭐⭐⭐ **E a wave 26 (07/09) achou a COLUNA DO TOPO fora de toda porta**
+([§7.31](pesquisa/08_modelos_com_codigo_para_seguir.md)) — o balão de aviso e a barra de trabalho
+traçavam moldura crua, logo desenhavam num tema moderno o contorno que a pele plana apagou em toda
+a casa. ⛔⛔ **E o censo tinha DOIS buracos, não um:** uma isenção escrita para uma FUNÇÃO
+(*«é a PORTA»*) cobria o FICHEIRO inteiro, e o balão vive 290 linhas abaixo dela; e o censo
+enumerava directórios **à mão**, então o `progress.rs` — o outro inquilino da mesma coluna — nunca
+foi olhado. ⭐ **A mutação sobreviveu à 1.ª tentativa e foi isso que mudou a régua**: nenhum censo
+textual fecha isto, porque a cura deixa o ficheiro a *conhecer* a porta — o gate passa a pintar a
+coluna nos dois temas e a contar caminhos. ⛔ E o `JobQueue` tinha uma armadilha: `derive(Default)`
+dava `cap = 0`, uma fila que descarta toda barra **em silêncio**.
+
 ⏳ **O que sobra do estudo §5.3 — RE-AUDITADO contra o código em 07/09, e QUATRO dos cinco itens
 já tinham fechado sem ninguém reabrir a lista:** ⛔ os cantos dos painéis (a porta do tema dá `3`,
 não `16`) · ⛔ a moldura dos cartões (o `stroke_frame` devolve `Stroke::NONE` no moderno) · ⛔ a

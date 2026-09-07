@@ -1764,6 +1764,95 @@ que aponta um número de linha é um ponteiro que envelhece na primeira edição
 **Provas de mutação: 3 escritas, 3 mortas** (a árvore re-escolhe o vão · alguém repõe o `6` do
 modelo · nasce uma superfície com número cru — esta última é a que a régua de LINHA não via).
 
+### 7.31 — ✅ WAVE 26 (2026-09-07): a COLUNA DO TOPO nunca passou por porta nenhuma
+
+**Nasce de um ponto cego que a wave 24 mediu e nomeou.** As waves 2–5 levaram a porta da moldura a
+44 pintores e puseram a catraca a **zero** — e os dois inquilinos da coluna do topo, o **balão de
+aviso** e a **barra de trabalho**, continuavam a traçar um `stroke_rounded_rect` cru a 1 px. Num
+tema moderno eles desenhavam o contorno que a pele plana apagou em toda a casa.
+
+#### ⛔⛔ Porque o censo não os viu — são DOIS buracos, não um
+
+**(a) Uma isenção escrita para uma FUNÇÃO protegia o FICHEIRO.** O `paint.rs` estava na lista com o
+motivo *«é a PORTA: `stroke_frame` chama `stroke_rounded_rect` por definição»*. A frase é verdade
+para o corpo daquela função — e o pintor do balão vive **290 linhas abaixo, no mesmo ficheiro**.
+*Uma isenção nomeia uma coisa e cobre tudo o que partilhe o ficheiro com ela.* ⇒ o censo passa a
+apagar o corpo das funções que **são** a porta antes de perguntar, e a isenção de ficheiro sai.
+
+**(b) O censo enumerava directórios À MÃO** — `widget/`, `screens/hero/` e **um ficheiro escrito à
+mão** (`paint.rs`). O `progress.rs`, que pinta o outro inquilino da mesma coluna, **nunca foi
+olhado**. ⇒ ele varre a raiz inteira do `editor-core`, e o alargamento acusou exactamente **três**
+ficheiros: o `progress.rs` (curado), o `paint_rounded.rs` (a casa do primitivo — isento, e ao
+contrário do `paint.rs` esta isenção descreve o ficheiro inteiro) e o `gizmo/paint.rs` (as alças de
+um gizmo sobre o canvas — mesma família do marquee).
+
+#### ⭐ O gate mede PIXEL, e tinha de medir
+
+⚠️ **O censo textual não podia fechar isto**, e a razão é que as duas curas deixam o ficheiro a
+*conhecer* a porta — logo ele fica verde mesmo com um traço cru ao lado. Pior: a cláusula
+`|| body.contains("visuals::")` abençoa o ficheiro inteiro por uma menção. ⇒ o gate desta wave
+pinta a coluna nos **dois** temas e conta caminhos: o clássico tem de emitir **mais** que o
+moderno. A régua é a DIFERENÇA, nunca um absoluto — um número absoluto envelheceria à primeira
+mudança de conteúdo do balão.
+
+⭐ E um terceiro teste exige que os **dois inquilinos percam o mesmo**: curar só o balão deixaria a
+mesma coluna com duas peles, que é pior que os dois errados por igual.
+
+#### ⭐ E os literais do balão eram TODOS tokens, ao valor exacto
+
+`13.0` = `TypeToken::Base` · `1.5` = `StrokeToken::Default` · `1.0` = `StrokeToken::Thin` ·
+`16.0` = `Spacing::Xl` · `4.0` = `Spacing::Xs`. *Um pintor fora do sistema não estava a divergir
+dele — estava a repetir a tabela de cor, à mão.* ⚠️ O recuo da faixa de acento passa a ser a
+**largura da moldura do tema**: num tema moderno não há moldura, e a faixa encosta à borda em vez
+de deixar um fio do fundo à mostra. ⏳ Só o lado do ícone (24) fica sem token — nomeado em
+`TOAST_ICON_PX`, porque o `inline-icon` (14) é o glifo de uma linha e o `icon-btn-size` (36) é um
+botão, e este está no meio.
+
+#### ⛔ E o `JobQueue` tinha uma armadilha de omissão
+
+`#[derive(Default)]` sobre um `cap: usize` dava **zero** — e o `push` de uma fila cheia devolve
+`false` **em silêncio**, por desenho. Logo `JobQueue::default()` era uma fila que descartava toda
+barra sem erro nenhum. ⚠️ **O produto usa `new()`, então nunca mordeu o utilizador: a primeira
+vítima foi o gate desta wave**, que pintou uma coluna vazia e acusou o pintor. *Um `derive` que
+produz um estado que o construtor nunca produz é uma segunda definição do tipo, escrita por
+omissão.* Curado (`Default = new`) e gateado pelo comportamento.
+
+**Provas de mutação: 3 escritas, 3 mortas** (o balão volta ao traço cru · a barra volta ao traço
+cru · a armadilha do `Default` volta). ⚠️ **A primeira delas SOBREVIVEU à primeira tentativa** —
+com o censo textual, porque a cláusula `visuals::` mantinha o ficheiro abençoado. *Foi essa
+sobrevivência que obrigou o gate a mudar de régua, de texto para pixel.*
+
+#### ⚠️ E o portão de fecho desta wave é o retrato da FAMÍLIA DE FLAKES DE CARGA
+
+Três corridas da **mesma árvore**, com a máquina entre `load 16` e `41`, devolveram **quatro
+reprovadas diferentes**:
+
+| corrida | reprovada | crate | o que ela mede |
+|---|---|---|---|
+| 1 | `a_wet_move_costs_what_the_footprint_costs…` | `ph2d-tool-painter` | razão de dois relógios |
+| 2 | `no_expression_allocates_no_link_frame` | `ph2d-timeline` | contador de alocações |
+| 3 | `the_mask_stroke_cost_does_not_follow_the_canvas` | `ph2d-tool-painter` | razão de dois relógios |
+| 3 | `the_cost_of_a_player_is_linear_in_their_number` | `ph2d-physics-ecs` | razão de dois relógios |
+
+As quatro deram **3 de 3 verde sozinhas** com o `/proc/loadavg` impresso ao lado, e o diff desta
+wave tem **zero linhas** nas três crates. ⭐ *A assinatura decisiva não é nenhuma delas
+individualmente: é o CONJUNTO de reprovadas MUDAR entre corridas do mesmo binário* — um defeito de
+lógica reprova sempre o mesmo caso.
+
+⏳ **Três das quatro já estão nomeadas na família do `CLAUDE.md §5`; a quarta não:** o
+`ph2d-physics-ecs::the_cost_of_a_player_is_linear_in_their_number` é membro novo confirmado, e fica
+registado aqui em vez de num ficheiro partilhado a meio da linha — a promoção dele para a lista do
+roteador é da integração. *A lista nunca estará completa, e é o próprio §5 que o diz.*
+
+#### ⏳ Fica medido e nomeado: o censo da moldura é por FICHEIRO, e a pergunta é por CHAMADA
+
+Medido em 2026-09-07 com uma régua por-chamada (o corpo da porta apagado, cada `stroke_rounded_rect`
+classificado pelos **próprios argumentos**): **29 chamadas cruas** em ~20 ficheiros. A maioria vive
+em ficheiros que já estão isentos com motivo escrito (o marquee, o «largue aqui», as alças, a pele
+de um documento). Ficam ~**14 ficheiros sem veredito** — entre eles o anel de foco de um botão, o
+contorno de erro de um campo, a amostra de cor de um menu e quatro do grafo de motion. *Cada um
+precisa da mesma pergunta que esta wave respondeu para dois: é moldura de repouso, ou é a mensagem?*
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

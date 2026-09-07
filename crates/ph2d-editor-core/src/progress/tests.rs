@@ -320,3 +320,23 @@ fn the_a11y_bounds_are_the_track_that_gets_painted() {
         "the track must sit inside its own card"
     );
 }
+
+/// ⛔ **A fila de omissão desenha** — o `derive(Default)` dava `cap = 0` e ela engolia tudo.
+#[test]
+fn the_default_queue_accepts_a_bar_like_a_new_one_does() {
+    let mut d = JobQueue::default();
+    assert!(
+        d.push(Progress::new("x")),
+        "a fila de omissao recusou a 1.a barra: o `cap` dela nasceu a zero e o `push` recusa \
+         em SILENCIO, logo o defeito aparece como uma barra que nunca existiu"
+    );
+    // E ela aceita tantas quantas a `new()` — o `cap` e' o mesmo, medido pelo comportamento.
+    let fill = |mut q: JobQueue| {
+        let mut n = 0;
+        while q.push(Progress::new("x")) {
+            n += 1;
+        }
+        n
+    };
+    assert_eq!(fill(JobQueue::default()), fill(JobQueue::new()));
+}

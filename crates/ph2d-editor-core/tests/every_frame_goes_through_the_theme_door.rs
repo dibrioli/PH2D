@@ -35,8 +35,15 @@ const NOT_YET: &[&str] = &[];
 /// não sobre uma contagem que envelhece.
 const EXEMPT: &[(&str, &str)] = &[
     (
-        "paint.rs",
-        "e' a PORTA: `stroke_frame` chama `stroke_rounded_rect` por definicao.",
+        "paint_rounded.rs",
+        "e' a CASA do primitivo: `stroke_rounded_rect` e' DEFINIDO aqui. ⚠️ Ao contrario da \
+         isencao que o `paint.rs` tinha, esta descreve o ficheiro INTEIRO — ele nao pinta mais \
+         nada.",
+    ),
+    (
+        "gizmo/paint.rs",
+        "as ALCAS de um gizmo sobre o CANVAS: o contorno e' o que as separa da imagem por baixo, \
+         mesma familia do marquee e do `rect2_editor`.",
     ),
     (
         "widget/toggle_classic.rs",
@@ -149,9 +156,52 @@ fn classify(p: &Path) -> (bool, bool) {
         .filter(|l| !l.trim_start().starts_with("use "))
         .collect::<Vec<_>>()
         .join("\n");
+    let body = without_the_doors_own_body(&body);
     let strokes = body.contains("stroke_rounded_rect(");
     let door = body.contains("stroke_frame(") || body.contains("visuals::");
     (strokes, door)
+}
+
+/// ⛔⛔⛔ **A PORTA não se isenta a si própria pelo FICHEIRO — só pelo próprio CORPO.**
+///
+/// O `paint.rs` estava na lista de isenções com o motivo *«é a PORTA: `stroke_frame` chama
+/// `stroke_rounded_rect` por definição»*. A frase é **verdadeira para aquela função** e a isenção
+/// cobria o **ficheiro inteiro** — e 290 linhas abaixo o pintor do balão de aviso traçava uma
+/// moldura crua a 1 px, desenhando num tema moderno o contorno que a pele plana apagou em toda a
+/// casa. *Uma isenção escrita para uma função protege tudo o que partilhe o ficheiro com ela*, e
+/// nada no gate dizia qual das duas coisas ela cobria.
+///
+/// ⇒ o censo apaga o corpo das funções que **são** a porta antes de perguntar, e a isenção de
+/// ficheiro deixa de ser precisa: ela sai da lista.
+fn without_the_doors_own_body(src: &str) -> String {
+    let mut out = String::with_capacity(src.len());
+    let mut rest = src;
+    while let Some(at) = rest.find("pub fn stroke_frame(") {
+        out.push_str(&rest[..at]);
+        // Do `{` de abertura até à chaveta que o fecha — o corpo da porta.
+        let after = &rest[at..];
+        let Some(open) = after.find('{') else {
+            break;
+        };
+        let mut depth = 0i32;
+        let mut end = open;
+        for (i, c) in after[open..].char_indices() {
+            match c {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = open + i + 1;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        rest = &after[end..];
+    }
+    out.push_str(rest);
+    out
 }
 
 fn is_test_file(rel: &str) -> bool {
@@ -163,11 +213,12 @@ fn is_test_file(rel: &str) -> bool {
 /// dos painéis e da shell com o prefixo da crate (`ph2d-panel-x/src/…`, `shells/desktop/src/…`).
 fn census() -> Vec<(String, bool, bool)> {
     let root = src_root();
+    // ⛔⛔ **A RAIZ INTEIRA** (wave 26). Até aqui o censo varria `widget/` e `screens/hero/` mais
+    // **um ficheiro escrito à mão** (`paint.rs`) — e o vizinho dele, o `progress.rs`, que pinta o
+    // outro inquilino da coluna do topo, nunca foi olhado. *Um censo que enumera directórios à
+    // mão afirma sobre os directórios que alguém se lembrou de escrever.*
     let mut files = Vec::new();
-    for top in ["widget", "screens/hero"] {
-        walk(&root.join(top), &mut files);
-    }
-    files.push(root.join("paint.rs"));
+    walk(&root, &mut files);
     let mut out = Vec::new();
     for p in files {
         let rel = p

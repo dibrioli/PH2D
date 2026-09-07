@@ -311,3 +311,40 @@ o ficheiro diz o que contém.
 **65 traços** (47 da matriz + 9 do instrumento por passo + 9 das corridas que isolam a REDE de
 restrições, de 2026-09-06 — espec §10.8) — ⚠️ **conte-os**
 (`ls *.deformado.txt.gz | wc -l`), esta linha já esteve parada em `53` e em `56`. ⚠️ As fixtures de ESFERA são todas de área **Dinâmica** (centro no cursor). A área *Local* na esfera NÃO foi gravada: um traço scriptado não dispara o hover que fixa o centro da área Local, que fica na ORIGEM do objecto — e numa esfera unitária a origem põe toda a malha dentro da banda (ver ERRATA no ledger). A área Local está medida no PLANO (onde a origem cai na superfície).
+
+---
+
+## ⭐ As QUATRO fixtures de TOPOLOGIA (2026-09-06, emenda Q15 — espec §3.1-bis e §10.9)
+
+⚠️ **Estas quatro NÃO são traços** — não têm posições, não entram no `indice.json` (o gerador só vê
+`*.deformado.txt.gz`) e não contam para os `65` acima. Elas descrevem a **malha**, e existem porque
+a ordem de criação das restrições (espec §3.1) é *célula → vértice próprio → anel*, e nenhuma das
+três se lê das posições de repouso: quem reconstrói a malha casando-a com as fixtures **por posição**
+fica com os índices de VÉRTICE certos e sem as faces nem as células.
+
+| ficheiro | o que traz |
+|---|---|
+| `plano.faces.txt.gz` · `esfera.faces.txt.gz` | a lista de faces na **ordem de armazenamento**, `f i j k …` por linha, na ordem de percurso da face, com os índices de vértice das fixtures de repouso |
+| `plano.celulas.txt.gz` · `esfera.celulas.txt.gz` | as células da árvore espacial por **índice crescente**: `cv <i> <n> …` = os vértices **próprios** da célula, na ordem de visita · `cf <i> <m> …` = as faces dela (para se poder calcular a caixa e aplicar o teste do §2.1) |
+
+| malha | vértices | faces | células | faces por célula | próprios por célula |
+|---|---|---|---|---|---|
+| plano `64×64` | `4 225` | `4 096` (todos quads) | `2` | `2 048` · `2 048` | `2 145` · `2 080` |
+| esfera `96×64` | `6 050` | `6 144` (`5 952` quads + `192` triângulos) | `4` | `1 536` × 4 | `1 569` · `1 520` · `1 504` · `1 457` |
+
+**Proveniência** — a mesma das outras: as malhas são **nossas**, geradas pelo mesmo harness e pela
+mesma lei (conferidas contra `plano.repouso` e `esfera.repouso` vértice a vértice, diferença máxima
+`0,0` às seis casas); o que a aplicação de referência calculou é a **partição**, e ela é **dado**
+(uma permutação de inteiros sobre uma malha nossa). ⛔ Regenerar continua a ser acto de **E**.
+
+⭐⭐ **A partição é MEDIDA, não derivada.** Ela não é observável pela API de scripting, mas a
+aplicação tem um gesto que **reordena a malha** para o consumo desta mesma árvore, pela mesma lei —
+e a permutação que ele devolve lê-se comparando as posições antes e depois (nas duas malhas todas as
+posições são distintas, logo o emparelhamento é exacto, sem tolerância). Ela bate a partição
+derivada **elemento a elemento nas duas malhas**. ⚠️ **A malha destas fixtures NÃO está reordenada**
+— esse gesto é um comando explícito do artista, o harness não o corre, e num port que assuma a malha
+reordenada a ordem de visita passaria a ser a crescente global, que é precisamente o caso errado.
+
+⚠️⚠️ **DOIS `2 145` diferentes no plano:** a célula `1` tem `2 145` vértices próprios **e** a banda
+de `3,5 R` contém `2 145` vértices — conjuntos distintos (intersecção `1 099`), e é o segundo que é
+a coluna `movidos` da tabela acima.

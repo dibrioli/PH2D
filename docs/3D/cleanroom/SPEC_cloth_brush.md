@@ -192,6 +192,29 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   ⚠️ Mais **uma cura no README das fixtures**: o parágrafo dos valores de omissão tinha **sete**
   excepções e nomeava uma — entre elas a fixture de `limite = 5,0` que a errata da banda agora usa.
   **Veredicto: ATESTADO** — a emenda Q14 pode ser lida pela janela-mãe. Detalhe: LEDGER §Papel R.
+  ✅ **EMENDA Q15 de 2026-09-06** (§2.1 errata · §3.1 · **§3.1-bis NOVA** · **§10.9 NOVA** ·
+  §14 gates 32-34, + as QUATRO fixtures de topologia `plano.faces` · `esfera.faces` ·
+  `plano.celulas` · `esfera.celulas`): **a ordem de criação passa a ser aplicável fora do plano.**
+  As três ordens da §3.1 ficam escritas por inteiro — as **células** por índice crescente (a busca
+  ORDENA o que devolve, logo a ordem não depende do cursor), dentro de cada uma os **vértices
+  PRÓPRIOS** dela por índice crescente (e cada vértice é próprio de uma só célula, logo a sequência
+  global é uma **permutação** agrupada por célula, ⛔ **não** a ordem crescente), e o **anel** pelas
+  faces incidentes por índice crescente de FACE, cada uma a dar o canto anterior e depois o seguinte
+  no sentido de percurso, com a deduplicação a guardar a primeira ocorrência. As quatro fixtures dão
+  ao lado limpo a lista de faces e a partição em células das duas malhas, que ele não podia
+  reconstruir (ele casa a malha dele com as fixtures **por posição**, logo tinha os índices de
+  vértice e não tinha nem as faces nem as células).
+  ⭐⭐ **A partição é MEDIDA, não derivada:** ela não é observável de fora, mas a aplicação de
+  referência tem um gesto que reordena a malha pela **mesma** lei, e a permutação que ele devolve
+  lê-se de Python e bate a partição derivada **elemento a elemento nas duas malhas** (§10.9).
+  ⛔⛔ **E DUAS presunções do I foram REFUTADAS:** «no plano a ordem das células é benigna» — o plano
+  tem **duas** células e a ordem de visita é a identidade **rodada** (`[2080..4224]` e depois
+  `[0..2079]`), com o descenso exactamente no pen-down das fixtures `_origem`; e «no plano a lei do
+  anel degenera» — ela degenera no **interior** e não no **bordo** (`128` vértices), e o corpus não a
+  vê porque esses `128` estão todos **fora da banda** com `limite = 2,5`. ⭐ A fixture
+  `plano_agarrar_radial_local_preset` (`limite = 5,0`) alcança `126` dos `128` e **discrimina**.
+  Escrita pelo subagente-E da mesma janela, com o fonte reaberto só para estas perguntas e com uma
+  corrida NOVA do harness (a geração das quatro fixtures e a validação da permutação).
 Mapa de leitura da literatura (⭐ pública e lícita a TODOS os papéis):
   · Jakobsen, "Advanced Character Physics", GDC 2001 — integração de Verlet por posições + relaxação
     de restrições de distância por projecção. É EXACTAMENTE a família do solver do alvo.
@@ -285,7 +308,11 @@ A área simulada é um **conjunto de células**, escolhido a cada passo (F):
 da caixa da célula mais próximo do centro (distância² < raio²), sobre as caixas **actuais** (F).
 
 ⭐⭐ **A célula-folha tem no máximo 2 500 FACES (F), logo numa malha pequena há POUCAS células:** a
-grelha de 4 225 vértices (~4 096 quads) é ~2 células; a esfera de 6 050 (~6 144 quads) ~3. ⇒ a
+grelha de 4 225 vértices (4 096 quads) dá **exactamente 2** células, de 2 048 faces cada; a esfera
+de 6 050 vértices (6 144 faces — **5 952 quads e 192 triângulos**, os dois anéis dos pólos) dá
+**exactamente 4**, de 1 536 faces cada (M, 2026-09-06 — ⛔ a redacção anterior dizia «~2» e «~3», e
+o `3` estava errado: a partição inteira, com os vértices próprios de cada célula, está no §3.1-bis e
+é fixture). ⇒ a
 activação é **grossa** — activar uma célula que a esfera da área toca traz consigo um pedaço grande
 da malha. ⚠️ **O que impede esses vértices longínquos de se moverem é o peso de banda `w` DENTRO do
 factor por vértice `φ` (§5.2), não a granularidade da célula:** há DOIS portões, e são diferentes —
@@ -431,9 +458,20 @@ autores chamam-lhe, por escrito, «básico» e sabem que repete restrições (H:
   sequencialmente (Gauss–Seidel). A ordem de criação é determinística dada a ordem das células (F).
   ⚠️⚠️ **E ela é EXACTAMENTE esta, o que só passou a ser preciso quando se soube que ela decide o
   resultado (§5.2-ter)** (F, 2026-09-06):
-  1. **célula a célula**, na ordem em que a busca da árvore espacial as devolve (é a ordem dos nós
-     dela, não a ordem dos índices de vértice);
-  2. dentro da célula, os **vértices visíveis** dela, na ordem própria da célula;
+  1. **célula a célula**, por **ordem CRESCENTE do índice da célula** no vector de células da árvore
+     (F, 2026-09-06). ⭐⭐ **A busca ORDENA o conjunto que devolve antes de o entregar** — a
+     ordenação é um passo explícito do código, não um efeito colateral ⇒ **a ordem das células não
+     depende do cursor** (ele decide QUAIS células entram, nunca a ordem relativa delas), nem de
+     paralelismo, nem da corrida. E a varredura *Global*, que leva todas as folhas, é construída
+     percorrendo o vector por índice crescente, logo dá a MESMA ordem relativa. ⇒ ⛔ *«a ordem em que
+     a busca as devolve» não é uma ordem opaca: é uma ordenação por inteiro, e é reprodutível.*
+  2. dentro da célula, os **vértices PRÓPRIOS e VISÍVEIS** dela — ⛔ **não** «todos os vértices que
+     as faces dela usam» —, por **ordem CRESCENTE de índice de vértice** (F, 2026-09-06). Os
+     escondidos são **retirados** dessa lista, preservando a ordem relativa dos que ficam (⚠️ é uma
+     filtragem, ⛔ nunca uma reordenação); com nada escondido, a lista é a dos próprios, tal e qual.
+     ⚠️ Cada vértice é próprio de **exactamente UMA** célula (§3.1-bis) ⇒ a construção visita cada
+     vértice **uma vez só**, e a sequência global de vértices é uma **PERMUTAÇÃO** de `0..N−1`
+     agrupada por célula — ⛔ **não** a ordem crescente global, nem no plano (§3.1-bis);
   3. dentro de um vértice, **nesta ordem**: o **corpo mole** (se houver plasticidade) · as
      `(v, n)` para cada vizinho do anel, **na ordem do anel** · as `(a, b)` de cada par ordenado de
      vizinhos distintos, na mesma ordem do anel · a **âncora de deformação** · o **pino**.
@@ -446,7 +484,23 @@ autores chamam-lhe, por escrito, «básico» e sabem que repete restrições (H:
      primeiro.
   ⚠️ **O anel de um vértice é percorrido face a face** (para cada face que contém `v`, os dois cantos
   adjacentes, deduplicados), logo a ordem do anel é a ordem das faces à volta do vértice — não uma
-  ordem angular nem a dos índices (F).
+  ordem angular nem a dos índices de VÉRTICE (F). ⭐⭐ **E «a ordem das faces» é, por inteiro
+  (F, 2026-09-06):**
+  - as faces incidentes em `v` vêm por **ordem CRESCENTE de índice de FACE** — a tabela
+    vértice→faces é **ordenada** num passo explícito, e o próprio código a declara como o passo que
+    torna o resultado determinístico (ela é preenchida em paralelo e a ordenação é o que lhe tira a
+    corrida) ⇒ ⛔ *não é a ordem de chegada das threads, e não é implementação-definida*;
+  - de cada face saem **dois** cantos, na ordem **anterior, depois seguinte** segundo o **sentido de
+    percurso (winding)** da face;
+  - a deduplicação guarda a **PRIMEIRA** ocorrência (uma face posterior que reapresente um vizinho
+    já visto **não** o move para o fim).
+  ⇒ ⭐ **Numa grelha de quads a lei DEGENERA na ordem crescente de índice de vértice** (o vértice
+  interior `2112` da grelha das fixtures tem faces `[2015, 2016, 2079, 2080]` e anel
+  `[2047, 2111, 2113, 2177]`, que já é crescente) — e **na esfera não** (o vértice `3025` tem faces
+  `[3059, 3061, 3118, 3120]` e anel `[3024, 2962, 3026, 3088]`, contra `[2962, 3024, 3026, 3088]`
+  da ordem de índice). ⚠️ **Um pólo da esfera tem `96` faces incidentes** e a lista delas **não é
+  contígua** no vector de faces (`33, 66, 189, 247, …`) ⇒ a ordem do anel de um pólo não é
+  adivinhável: sai da **lista de faces**, que é agora fixture (§3.1-bis). (M, 2026-09-06)
 - ⚠️ **O filtro de raio da construção só vale para as ESTRUTURAIS e para o corpo mole** (F,
   2026-09-06): a **âncora de deformação** e o **pino** ficam **FORA** dele — mas ⛔ isso **não** quer
   dizer «sem condição nenhuma»: cada uma tem a **sua**, e nenhuma delas é o raio da construção.
@@ -458,6 +512,117 @@ autores chamam-lhe, por escrito, «básico» e sabem que repete restrições (H:
   alvo. ⚠️ **Na área *Local* isso é observável só pela ORDEM da lista**, porque o factor por vértice
   dessas restrições extra é `0` (§5.2: `σ = 0` fora do conjunto que o gesto reescreve; `φ = 0` além
   do limite da banda) — mas a lista fica com outro comprimento e outra ordem, e isso basta (§5.2-ter).
+
+### §3.1-bis — A PARTIÇÃO EM CÉLULAS: a lei, e as duas fixtures que a fixam (F + M, 2026-09-06)
+
+⭐⭐⭐ **O problema que esta secção fecha:** a ordem de criação da §3.1 é *célula → vértice próprio →
+anel*, e nenhuma das três se lê das posições de repouso. O lado limpo reconstrói a malha das
+fixtures **por posição**, logo tem os índices de VÉRTICE do alvo e **não** tem nem a lista de faces
+nem a partição em células. ⇒ a lei era **inaplicável fora do plano**, onde ela degenera por acidente.
+As duas fixtures novas dão-lhe as duas coisas que faltavam.
+
+#### A lei da partição (F)
+
+A árvore é uma bissecção espacial das **faces**, construída uma vez por malha:
+
+- **centro de uma face** = o **ponto médio da caixa** dos vértices dela (⛔ **não** o centróide);
+- a **raiz** recebe a caixa da malha inteira (a fusão das caixas das faces); todo nó **interior**
+  recalcula a sua caixa como a **caixa dos centros** das faces que lhe cabem;
+- um nó é **folha** quando tem **≤ 2 500 faces** (ou quando a profundidade atinge `99`);
+- caso contrário parte-se pelo **eixo de maior extensão** da caixa (empate ⇒ o eixo de índice mais
+  alto: `X` só ganha se for estritamente maior que os outros dois; entre `Y` e `Z` empatados ganha
+  `Z`), no **ponto médio** desse eixo, e uma face vai ao **primeiro** filho sse
+  `centro[eixo] ≥ limiar`;
+- os dois filhos são reservados **em par**, no fim do vector de nós, e o **primeiro é o lado `≥`**;
+  a recursão desce **primeiro** no filho `≥` ⇒ os índices são atribuídos em **profundidade primeiro**.
+
+⚠️ **A ordem interna das faces dentro de uma folha é implementação-definida** (a partição não é
+estável) **e não é observável**: o que sai dela é sempre um CONJUNTO, e o passo seguinte ordena.
+
+Depois, por folha, e é aqui que nasce a ordem de visita:
+
+- o **conjunto** de vértices usados pelas faces da folha, **ordenado por índice crescente**;
+- percorrendo as folhas por **índice crescente**, cada uma **reclama** os vértices que ainda não
+  foram reclamados: esses são os **próprios** dela; os restantes são **partilhados** e ficam a cargo
+  de outra folha.
+⇒ ⭐ **os vértices próprios PARTICIONAM a malha** (a soma bate `N` exactamente, medido nas duas
+fixtures), e a concatenação `folha 0 → folha 1 → …` dos próprios de cada uma é **a ordem de visita
+da construção de restrições**, da integração e de toda a fase que a §1 escreve «por célula, por
+vértice».
+⚠️ **A partição é sobre os vértices que alguma FACE usa** — um vértice solto não pertence a célula
+nenhuma, logo **nunca é simulado nem integrado**, sob área nenhuma (F). Nas duas malhas das
+fixtures não há nenhum (a soma dos próprios bate `N`), mas o caso existe e é comportamento de borda.
+
+#### O que isso dá nas duas malhas das fixtures (M)
+
+| malha | vértices | faces | nós | folhas | faces por folha | próprios por folha | ordem de visita = crescente? |
+|---|---|---|---|---|---|---|---|
+| plano `64×64` | `4 225` | `4 096` | `3` | **`2`** | `2 048` · `2 048` | `2 145` · `2 080` | ⛔ **não** |
+| esfera `96×64` | `6 050` | `6 144` | `7` | **`4`** | `1 536` × 4 | `1 569` · `1 520` · `1 504` · `1 457` | ⛔ **não** |
+
+⭐⭐ **No PLANO a ordem é a identidade RODADA:** a folha de índice `1` fica com `[2080..4224]` e a de
+índice `2` com `[0..2079]`, as duas **contíguas** ⇒ a sequência de visita tem **um único descenso**,
+exactamente no meio da grelha — que é onde o pen-down das fixtures `_origem` está. ⇒ ⛔ *a presunção
+«no plano a ordem das células é benigna porque a construção acaba na mesma lista» está **REFUTADA**:
+a lista acaba com o mesmo CONJUNTO e com outra ORDEM, e a §5.2-ter já mostrou que a ordem decide o
+resultado assim que a malha se inverte debaixo do cursor.*
+
+⭐⭐ **Na ESFERA as quatro folhas são entrelaçadas** (nenhuma é um intervalo de índices: a folha `3`
+vai de `0` a `6 043` e a folha `4` de `20` a `6 049`) ⇒ **três descensos**, e a ordem não é
+adivinhável de nenhuma regra simples. É por isso que ela é fixture e não prosa.
+
+⚠️ **A partição é da MALHA, não do traço** — ela é calculada uma vez, sobre as posições de
+**repouso**, e não muda durante o traço (as caixas actualizam-se; a pertença não). O cursor entra só
+no passo que escolhe QUAIS células ficam activas (§2.1).
+
+#### As duas fixtures
+
+- **`plano.faces.txt.gz` · `esfera.faces.txt.gz`** — a lista de faces na ordem de armazenamento, com
+  os índices de vértice que as fixtures de repouso já usam (`f i j k …`, uma face por linha, na
+  ordem de percurso da face). É o que torna a lei do anel aplicável.
+- **`plano.celulas.txt.gz` · `esfera.celulas.txt.gz`** — as células por índice crescente; por
+  célula, `cv <i> <n> <vértices próprios, em ordem de visita>` e `cf <i> <m> <faces da célula>`.
+  A linha `cf` existe para o lado limpo poder calcular a **caixa** de cada célula e aplicar o teste
+  de intersecção do §2.1 sozinho, sem ter de reconstruir a árvore.
+
+⚠️ **As duas malhas foram conferidas contra as fixtures de repouso que já existiam, vértice a
+vértice, na ordem de índice: diferença máxima `0,0` às seis casas do ficheiro** ⇒ os índices são os
+mesmos, e é lícito cruzar as quatro fixtures novas com qualquer traço do §10.
+
+#### ⛔⛔ O plano NÃO degenera: a divergência existe e está TAPADA pela banda (M, 2026-09-06)
+
+Contando, vértice a vértice, quantos anéis a **ordem de face** entrega diferentes do que a **ordem
+de índice de vértice** entregaria:
+
+| malha | vértices | anéis divergentes | onde |
+|---|---|---|---|
+| plano | `4 225` | **`128`** (`3,0 %`) | **só no bordo** — `3 969` vértices interiores (4 vizinhos) saem todos crescentes, e dos `256` do bordo divergem exactamente metade |
+| esfera | `6 050` | **`5 959`** (`98,5 %`) | em toda a parte; e os dois pólos têm `96` vizinhos cada |
+
+⭐⭐ **E é por isso que o plano «não se mexeu um bit» quando a lei do anel foi corrigida — não porque
+ela degenere, mas porque os `128` vértices onde ela NÃO degenera estão todos fora da banda:** o mais
+próximo está a `1,5` do pen-down e a banda de `limite = 2,5` acaba a `3,5 R = 1,2250` ⇒ `0` dos
+`128` são alcançados, e `φ = 0` apaga a diferença (§5.2). ⇒ ⛔ *«o corpus não discrimina» é um facto
+sobre a BANDA das fixtures, não sobre a lei.*
+
+⭐⭐⭐ **E há UMA fixture de plano que discrimina, e ela já existe:**
+`plano_agarrar_radial_local_preset` corre com `limite = 5,0`, logo a banda acaba a
+`R(1+L) = 2,1000` e alcança **`126` dos `128`**. *Um port com o anel por índice tem de divergir
+nessa fixture e em nenhuma outra do plano.*
+
+⚠️⚠️ **DOIS `2 145` diferentes, e confundi-los inverte uma leitura:** a célula de índice `1` do
+plano tem `2 145` vértices próprios **e** a banda de `3,5 R` contém `2 145` vértices — são
+**conjuntos distintos** (intersecção `1 099`), e o segundo é que é o `movidos` do índice das
+fixtures. *A coincidência é do tamanho, não do conjunto.*
+
+⚠️⚠️ **A malha das fixtures NÃO está reorganizada espacialmente.** A aplicação de referência tem um
+gesto que **reordena** a malha para que os próprios de cada célula fiquem contíguos — e, nessa
+malha, a ordem de visita **passa a ser** a crescente global. Esse gesto é um comando explícito do
+artista (e um efeito colateral de remalhar), **não** acontece ao entrar em escultura, e o arnês não
+o corre ⇒ ⛔ *um port que assuma «os vértices são visitados por índice» está a implementar o caso
+reorganizado, e as fixtures são o caso normal.* ⭐ **É também o que torna esta secção MEDIDA e não
+derivada: correr esse gesto sobre a mesma malha devolve uma permutação observável de Python, e ela
+bate a partição derivada aqui EXACTAMENTE, nas duas malhas** (§10.9).
 
 ### §3.2 — As quatro espécies, e o que cada uma liga
 
@@ -1905,6 +2070,39 @@ di-lo (`curva constant`), e um port que ignore esse campo mede outro gesto.
 ⚠️ **As de área *Global* têm o pen-down na origem como as outras, mas a área *Global* não tem centro
 nenhum** (§2.1) — o pen-down delas importa só por ser onde o pincel está.
 
+### §10.9 — A PARTIÇÃO EM CÉLULAS, medida contra um observável (2026-09-06, a pedido do I)
+
+⚠️⚠️ **A partição em células não é observável do lado de fora** — ela vive numa estrutura interna que
+a API de scripting da aplicação de referência não expõe, e o binário instalado não se recompila (o
+checkout é esparso). ⇒ escrevê-la a partir da lei do §3.1-bis seria **derivar**, e a casa não aceita
+um número sem medição ao lado.
+
+⭐⭐⭐ **Há um observável, e ele é EXACTO.** A mesma aplicação tem um gesto que **reordena a malha**
+para o consumo desta árvore, e ele usa a **mesma** lei de partição, os **mesmos** `2 500` de tecto,
+a **mesma** ordenação e o **mesmo** critério de posse. A malha que ele devolve tem os vértices
+dispostos exactamente na **ordem de visita** desta secção — e essa ordem lê-se de Python, comparando
+as posições antes e depois (nas duas malhas **todas as posições são distintas**, logo o
+emparelhamento é uma bijecção, sem tolerância nenhuma).
+
+Corrido sobre as duas malhas das fixtures:
+
+| malha | posições duplicadas | permutação decodificada | folhas | **derivada == observada** |
+|---|---|---|---|---|
+| plano `64×64` | `0` | sim | `2` (índices `1`, `2`) | ✅ **igual, elemento a elemento** |
+| esfera `96×64` | `0` | sim | `4` (índices `3`..`6`) | ✅ **igual, elemento a elemento** |
+
+E, por célula, o bloco correspondente da permutação observada bate a lista de próprios derivada,
+na mesma ordem: plano `2 145` + `2 080`; esfera `1 569` + `1 520` + `1 504` + `1 457`. A soma bate
+`4 225` e `6 050` — **a partição é total, e nenhum vértice aparece duas vezes**.
+
+⇒ a tabela do §3.1-bis é **(M)**, não uma derivação: as fixtures `*.celulas.txt.gz` gravam uma
+permutação que a própria aplicação de referência reproduz.
+
+⚠️ **O que este observável NÃO prova:** que a árvore usada no traço seja construída no mesmo
+instante que a do gesto de reordenação. Prova que as duas leis coincidem sobre a mesma malha — o
+que basta, porque a partição depende só da malha em repouso (§3.1-bis) e a malha não muda de
+topologia durante um traço.
+
 ---
 
 ## §11 — Comportamento de borda, caso a caso (F salvo indicação)
@@ -2021,6 +2219,9 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 29 | ⭐⭐⭐ **O DEGRAU do gancho é da REDE, e o sítio dele desloca-se com o número de passagens.** Régua do perfil: §5.2-quater (eixo do traço, `k · aresta`, `k = 0..7`). ⚠️ **«Há degrau» tem de ser um predicado DERIVADO, não um tecto escolhido** — o critério é *a maior razão entre células consecutivas dividida pela MEDIANA das restantes* (`≥ 2` ⇒ há degrau). Ele separa o corpus por um vazio de `3,6×`: gancho `3,95` (*Local*) e `4,63` (*Global*) contra agarrar `1,05`/`1,10` e `_curto` `1,05`. ⛔ **Um tecto absoluto de `1,4` na razão máxima REPROVA o próprio oráculo** (o agarrar *Global* faz `1,47` sem degrau nenhum, só por decair mais depressa). **Metades:** (a) no gancho a maior razão tem de cair entre `0,536 R` e `0,670 R` na *Local* e entre `0,402 R` e `0,536 R` na *Global* (o oráculo dá `4,52` e `5,11`); (b) o **agarrar** não pode ter degrau (discriminador `≤ 1,2`), com a cauda a assentar em `1,32` *Local* / `1,47` *Global*; (c) o `_curto` (`δ = 0,05`) também não pode ter degrau — se tiver, o defeito não é a rede, é a lei da âncora | posição do máximo da razão, em células · discriminador `≥ 2` no gancho e `≤ 1,2` nos outros dois | §5.2-quater · §10.8 · fixtures `plano_gancho_radial_{local,global}_origem_1passo`, `…_curto`, `plano_agarrar_radial_{local,global}_origem_1passo` |
 | 30 | **A banda começa a `R(1+L·F)` e acaba a `R(1+L)`** — com as omissões, `2,875 R` e `3,5 R`, ⛔ **não** `1,875 R` e `2,5 R`. Régua: `movido` = `\|u\| > 1e-5`; num traço *Local* de 12 passos do plano com `limite = 2,5` o vértice movido mais distante do pen-down tem de ficar entre `3,49 R` e `3,50 R` (`25` fixtures dão `1,2221`–`1,2239` contra `3,5 R = 1,2250`; ⛔ isenta o controlo de força fraca, cuja franja cai na resolução do ficheiro). ⚠️ **Segunda metade, e é ela que refuta a leitura antiga:** com `limite = 5,0` o mesmo traço tem de chegar a `≈ 0,99 · R(1+L) = 2,08`, e `R·L` daria `1,75` — *um `L` só não distingue as duas fórmulas; dois distinguem* | `1,2221`–`1,2239` e `2,0745` (M) | §2.2 · fixtures `plano_{expandir,agarrar,gancho}_radial_local` e `plano_agarrar_radial_local_preset` |
 | 31 | **Um passo sem movimento de cursor ainda SIMULA**: dois traços com o mesmo caminho, um deles com um ponto repetido, não podem dar a mesma malha — o repetido tem de ter relaxado e integrado mais uma vez, com a âncora e o `σ` do passo anterior intactos. ⚠️ **É um gate de ESPEC, não de oráculo:** nenhuma fixture do §10 traz um ponto de caminho repetido, logo ele corre **A/B sobre o nosso motor** e a barra é *«diferem»*, não *«casam com o oráculo»*. Um port que trate o passo parado como no-op dá as duas malhas iguais | as duas malhas diferem acima da barra do gate 15 | §4.2 · §11 |
+| 32 | ⭐ **A ORDEM DE CRIAÇÃO lê-se de fixture, e é um inteiro dos dois lados**: (a) o anel de **cada** vértice das duas malhas tem de bater, elemento a elemento, o que sai de `*.faces.txt.gz` pela lei do §3.1 (faces incidentes por índice crescente; de cada face, o canto **anterior** e depois o **seguinte** no sentido de percurso; deduplicação que guarda a PRIMEIRA ocorrência) — `4 225` e `6 050` anéis, igualdade exacta; (b) a sequência de vértices que a construção visita tem de bater, elemento a elemento, a concatenação de `*.celulas.txt.gz` por ordem crescente de célula. ⚠️ **Duas metades de saúde da própria fixture, que um parse errado reprova:** a partição é **total** (`Σ próprios` = `4 225` / `6 050`, sem repetidos) e a sequência tem **exactamente `1`** descenso no plano e **`3`** na esfera | igualdade de inteiros | §3.1 · §3.1-bis · fixtures `plano.faces` · `esfera.faces` · `plano.celulas` · `esfera.celulas` |
+| 33 | ⭐⭐ **O anel É a ordem das FACES — e o corpus do plano só o prova numa fixture**: com o anel trocado para a ordem crescente de índice de vértice, (a) **todos** os traços de plano com `limite = 2,5` têm de ficar **byte-idênticos** (os `128` vértices onde as duas leis divergem estão no bordo, e o mais próximo está a `1,5` do pen-down contra uma banda que acaba a `1,2250` ⇒ `φ = 0`), e (b) `plano_agarrar_radial_local_preset` (`limite = 5,0`, banda até `2,1000`, alcança `126` dos `128`) e os **oito** traços de esfera (`98,5 %` dos anéis divergem) têm de **mudar**. ⚠️ **A 1.ª metade é o CONTROLO**: um port que passe só a (b) pode estar a mudar outra coisa qualquer | mutação A/B: byte-idêntico numa metade, diferente na outra | §3.1 · §3.1-bis |
+| 34 | ⭐⭐ **A ordem de visita é a das CÉLULAS, não a crescente global** — nem no plano: com a visita trocada para `0..N−1`, a saída tem de mudar. ⚠️ **A barra é «diferem», não «casam com o oráculo»**: é um A/B sobre o nosso motor, porque nenhuma fixture isola a ordem. ⛔ **Se não mudar em traço nenhum, o veredito NÃO é «a ordem não importa»** — é que este corpus não a observa, e isso vai ao ledger como recusa medida, com a contagem de traços por trás. ⚠️ E o par com o gate 20: num passo com faces invertidas, a ordem **decide** o resultado por vértice (§5.2-ter), logo é aí que a diferença tem de aparecer primeiro | mutação A/B, traço a traço | §3.1 · §3.1-bis · §5.2-ter |
 | 24 | **A razão `2R` do Push, e a igualdade Push/Inflate no 1.º passo simulado**: no passo 2 dos dois traços do §10.7 o vértice do pen-down move `0,06543` e `0,09347`, razão `0,7000 = 2·R`; e a divergência entre os dois só pode começar no passo **3** — se começar no 2, o port está a ler duas normais diferentes numa folha plana em repouso, onde elas são a mesma | razão `2R ± f32` · igualdade de direcção no passo 2 | §4.2-bis · §10.1 · §10.7 |
 
 ---

@@ -1117,6 +1117,76 @@ os scripts de análise — todos **fora da árvore**, em `~/Referencias/`.
 **Sweep:** verde sobre a espec, o README, a pasta inteira das fixtures, o INBOX, este ledger (menos
 os dois hits pré-existentes de 2026-09-05 já registados acima) e o texto do report ao I.
 
+### Q15 — a ORDEM DO ANEL e a PARTIÇÃO EM CÉLULAS (perguntas do I de 2026-09-06; resposta no mesmo dia, com corrida NOVA do harness)
+
+**A pergunta do I:** a §3.1 dizia que a ordem do anel é «a ordem das faces à volta do vértice», e
+essa lei é **inaplicável** do lado limpo na esfera — as fixtures trazem só posições de repouso, o
+arnês reconstrói a malha **por posição**, logo tem os índices de vértice do alvo e a lista de faces
+do gerador dele. Q15.1: dá para acrescentar a lista de faces? Q15.2: e a ordem em que a busca da
+árvore espacial devolve as células — é determinística? Q15.3: no plano a ordem das células importa?
+
+**Q15.1 — SIM, e a lei do anel fica fechada por inteiro (F).** As faces incidentes num vértice vêm
+por **ordem crescente de índice de face**: a tabela vértice→faces é preenchida em paralelo e depois
+**ordenada** num passo explícito, que o próprio código declara ser o que lhe tira a corrida. De cada
+face saem dois cantos, na ordem **anterior → seguinte** segundo o sentido de percurso da face, e a
+deduplicação guarda a **primeira** ocorrência. ⇒ a lista de faces basta para reconstruir o anel, e
+ela é agora fixture (`plano.faces.txt.gz` · `esfera.faces.txt.gz`).
+
+**Q15.2 — a ordem das CÉLULAS é determinística e não depende do cursor (F).** A busca **ordena** os
+índices das células antes de os entregar; a varredura *Global* percorre o vector por índice
+crescente. ⇒ o cursor decide QUAIS células entram, nunca a ordem relativa delas. ⛔ **Mas a pergunta
+por trás dela é outra, e essa não estava respondida:** dentro de uma célula a construção percorre os
+**vértices PRÓPRIOS** dela (⛔ não todos os que as faces dela usam), por índice crescente — e cada
+vértice é próprio de **exactamente uma** célula. ⇒ a sequência global é uma **permutação** de
+`0..N−1` agrupada por célula, ⛔ **não** a ordem crescente. Ela é agora fixture
+(`plano.celulas.txt.gz` · `esfera.celulas.txt.gz`).
+
+**Q15.3 — a presunção do I está REFUTADA.** O plano das fixtures tem `4 096` faces contra um tecto
+de `2 500` por folha ⇒ **duas** células, e a ordem de visita é a identidade **rodada**
+(`[2080..4224]` e depois `[0..2079]`), com o descenso exactamente no pen-down das fixtures `_origem`.
+A esfera tem **quatro** células entrelaçadas (nenhuma é um intervalo de índices) ⇒ três descensos.
+
+**⛔ E a segunda presunção — «no plano a lei do anel degenera» — também (M).** Ela degenera no
+INTERIOR (`3 969` vértices de 4 vizinhos saem todos crescentes) e **não no bordo**: `128` dos `4 225`
+divergem. O corpus não os vê porque estão **todos fora da banda** com `limite = 2,5` (o mais próximo
+está a `1,5` do pen-down, a banda acaba a `1,2250`) ⇒ `φ = 0`. ⭐ **Uma fixture do plano
+discrimina:** `plano_agarrar_radial_local_preset` corre com `limite = 5,0`, a banda vai a `2,1000` e
+alcança `126` dos `128`. Na esfera divergem `5 959` de `6 050` (`98,5 %`).
+
+**⭐⭐ A partição é MEDIDA, não derivada — e a medição foi o trabalho desta emenda.** Ela não é
+observável pela API de scripting e o binário instalado não se recompila. O observável é um gesto da
+própria aplicação que **reordena a malha** para o consumo desta mesma árvore, pela **mesma** lei de
+partição, o **mesmo** tecto de folha, a **mesma** ordenação e o **mesmo** critério de posse: a
+permutação que ele devolve lê-se de Python comparando posições antes/depois (nas duas malhas todas as
+posições são distintas ⇒ bijecção exacta, sem tolerância). **Derivada == observada, elemento a
+elemento, nas duas malhas**, e por célula os blocos batem: plano `2 145`+`2 080`, esfera
+`1 569`+`1 520`+`1 504`+`1 457`, somas `4 225` e `6 050`. ⚠️ A malha das fixtures **não** está
+reordenada (o gesto é um comando explícito do artista; o harness não o corre) — um port que assuma a
+malha reordenada implementa o caso em que a ordem de visita **é** a crescente global, que é o caso
+errado.
+
+**ERRATA achada de caminho (M):** a §2.1 dizia «a grelha é ~2 células; a esfera ~3». São
+**exactamente 2** e **exactamente 4**; e a esfera tem `6 144` faces, `5 952` quads e `192`
+triângulos (os dois anéis dos pólos), não «~6 144 quads».
+
+**⚠️ Armadilha registada:** no plano a célula `1` tem `2 145` vértices próprios **e** a banda de
+`3,5 R` contém `2 145` vértices — **conjuntos distintos** (intersecção `1 099`), e é o segundo que é
+a coluna `movidos` do índice. *A coincidência é do tamanho, não do conjunto.*
+
+**Corrida NOVA do harness** (⛔ não do oráculo: nenhum traço novo foi gravado): três execuções do
+binário 5.2.1 em `--background` sobre malhas geradas pelo mesmo gerador das fixtures — (1) derivação
+da partição e da lista de faces; (2) validação contra a permutação observável, `FINISHED` e igualdade
+exacta nas duas malhas; (3) conferência das posições contra `plano.repouso`/`esfera.repouso`,
+diferença máxima `0,0` às seis casas. Scripts **fora da árvore**, em
+`~/Referencias/blender-cloth/oracle/`.
+**Ficheiros:** quatro fixtures novas em `fixtures/cloth/` (`{plano,esfera}.{faces,celulas}.txt.gz`);
+README das fixtures com a subsecção de proveniência delas. ⚠️ `indice.json` **não** foi regenerado —
+o gerador só vê `*.deformado.txt.gz` e nenhum traço mudou (`65`).
+**Espec:** cabeçalho · §2.1 (errata) · §3.1 · **§3.1-bis (nova)** · **§10.9 (nova)** ·
+§14 gates **32-34**.
+**Sweep:** verde sobre a espec, o README, a pasta inteira das fixtures, o INBOX, este ledger (menos
+os dois hits pré-existentes de 2026-09-05 já registados acima) e o texto do report ao I.
+
 ## Fechamento R
 
 ⏳

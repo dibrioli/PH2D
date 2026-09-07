@@ -38,8 +38,8 @@ pub(super) const CLOTH_LIMIT: Row = Row {
     chip: ids::SCULPT3D_CLOTH_LIMIT_NUM,
     // A faixa é a do alvo (espec §8.1). O recurso que ela nomeia é TEMPO ×
     // ALCANCE: o limite é `R·(1+L)`, logo `10` simula uma esfera de `11·R`.
-    min: 0.1,
-    max: 10.0,
+    min: 0.1,  // LITERAL-PX-OK: piso da faixa do alvo, em raios de pincel
+    max: 10.0, // LITERAL-PX-OK: teto da faixa do alvo, em raios de pincel
     step: 0.1, // LITERAL-PX-OK: passo de um knob em raios de pincel
     decimals: 2,
     get: |u| u.brush.cloth_limit,
@@ -70,7 +70,7 @@ pub(super) const CLOTH_MASS: Row = Row {
     chip: ids::SCULPT3D_CLOTH_MASS_NUM,
     // ⚠️ **O piso não é zero e não é escolha:** a massa é um ganho INVERSO
     // (espec §5.4), logo `0` é uma divisão por zero com o nome de knob.
-    min: 0.01,
+    min: 0.01, // LITERAL-PX-OK: piso de um ganho INVERSO, nao metrica de design
     max: 2.0,
     step: 0.05, // LITERAL-PX-OK: knob adimensional
     decimals: 2,
@@ -88,7 +88,7 @@ pub(super) const CLOTH_DAMPING: Row = Row {
     // ⚠️ **O piso é `0,01`, que é a omissão** — a faixa do alvo abre onde ele
     // a põe, e é medido que a retenção de velocidade é o que faz o traço
     // ASSENTAR: a `1` o pano pára no instante em que a mão pára.
-    min: 0.01,
+    min: 0.01, // LITERAL-PX-OK: piso da faixa do alvo, nao metrica de design
     max: 1.0,
     step: 0.01, // LITERAL-PX-OK: knob adimensional
     decimals: 2,

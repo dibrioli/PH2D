@@ -279,3 +279,133 @@ fn a_construcao_de_um_vertice_interior_da_quatro_mais_dois_mais_quatro() {
         antes - chaves.len()
     );
 }
+
+/// ⭐⭐ **GATE 53 — A COLISÃO É O PENÚLTIMO ACTO DA INTEGRAÇÃO, E TEM CINCO
+/// CLÁUSULAS** (espec §14 gate 53, §5.6).
+///
+/// ⛔⛔ **É um gate de ESPEC, e a linha di-lo de propósito:** não há colisor em
+/// fixture nenhuma do oráculo, logo as cinco cláusulas são verificáveis **por
+/// construção** e não contra um lado aprovado. *Um gate que se declara assim é
+/// honesto; um que finge medir é que não.*
+///
+/// As cinco: (1) a lista é montada uma vez, na pose desse instante — é do
+/// chamador, e o que se afirma aqui é que a lei não a re-monta; (2) as cinco
+/// varreduras **nunca** vêem o colisor; (3) ela corre para **todos** os vértices
+/// da célula activa, **sem factor, sem banda e sem máscara**; (4) a origem do
+/// raio é escrita **depois** da colisão e nasce no repouso do traço; (5) vários
+/// colisores resolvem-se **em sequência**, cada um sobre a posição já corrigida
+/// mas a partir da **mesma** origem.
+#[test]
+fn a_colisao_e_o_penultimo_acto_da_integracao() {
+    use crate::verlet::{AFASTAMENTO, DESLIZAMENTO, Impacto, Solver, Verlet};
+    let rest = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]];
+    let solver = Solver::default();
+
+    // ── (4) a origem do raio NASCE no repouso do traço ─────────────────────
+    let v = Verlet::nascer(rest.clone());
+    assert_eq!(
+        v.x_col, rest,
+        "a origem do raio nao nasce no repouso do traco"
+    );
+
+    // Um plano colisor em `z = -0,5`, com normal `+z`.
+    let plano = |de: [f64; 3], ate: [f64; 3]| -> Option<Impacto> {
+        if de[2] >= -0.5 && ate[2] < -0.5 {
+            let t = (de[2] + 0.5) / (de[2] - ate[2]);
+            Some(Impacto {
+                ponto: [
+                    de[0] + (ate[0] - de[0]) * t,
+                    de[1] + (ate[1] - de[1]) * t,
+                    -0.5,
+                ],
+                normal: [0.0, 0.0, 1.0],
+            })
+        } else {
+            None
+        }
+    };
+    // Um segundo colisor que empurra para `x = 0` — só para ver a ORDEM.
+    let parede = |_de: [f64; 3], ate: [f64; 3]| -> Option<Impacto> {
+        (ate[0] > 0.1).then_some(Impacto {
+            ponto: [0.1, ate[1], ate[2]],
+            normal: [1.0, 0.0, 0.0],
+        })
+    };
+
+    // ── (3) sem factor, sem banda e sem máscara ────────────────────────────
+    /// Um colisor, como a lei o vê: *«este segmento bate?»*.
+    type Colisor<'a> = &'a dyn Fn([f64; 3], [f64; 3]) -> Option<Impacto>;
+    let correr = |cols: &[Colisor], phi: f64| {
+        let mut v = Verlet::nascer(rest.clone());
+        v.activo = vec![true; 2];
+        // ⚠️ `φ = 0` congela o vértice para a FORÇA e para a velocidade — e a
+        // colisão tem de o testar na mesma.
+        v.phi_integracao = vec![phi; 2];
+        v.w_repouso = vec![phi; 2];
+        // Um empurrão para baixo, forte o bastante para atravessar o plano.
+        v.a = vec![[0.0, 0.0, -200.0]; 2];
+        v.x_prev = rest.clone();
+        v.passo_com_colisores(&solver, cols);
+        v
+    };
+    let com = correr(&[&plano], 1.0);
+    assert!(
+        (com.x[0][2] - (-0.5 + AFASTAMENTO)).abs() < 1e-9,
+        "o vertice parou em {:.6} e a lei poe-no na superficie mais o afastamento",
+        com.x[0][2]
+    );
+    // ⛔ E com `φ = 0` o vértice NÃO se move — logo não atravessa nada, e a
+    // colisão não tem o que fazer. É a metade que prova que o teste não depende
+    // do `φ`: ele corre e devolve `None`, em vez de ser saltado.
+    let congelado = correr(&[&plano], 0.0);
+    assert_eq!(
+        congelado.x[0], rest[0],
+        "com phi = 0 o vertice tem de ficar parado"
+    );
+    assert_eq!(
+        congelado.x_col[0], rest[0],
+        "a origem do raio tem de ser escrita mesmo para um vertice congelado -- \
+         a clausula 3 diz que a colisao corre para TODOS os activos"
+    );
+
+    // ── (4) a origem do raio é escrita DEPOIS da colisão ───────────────────
+    assert_eq!(
+        com.x_col[0], com.x[0],
+        "a origem do proximo raio tem de ser a posicao JA' CORRIGIDA"
+    );
+
+    // ── (5) dois colisores em SEQUÊNCIA, e a ordem é observável ────────────
+    let ab = correr(&[&plano, &parede], 1.0);
+    let ba = correr(&[&parede, &plano], 1.0);
+    assert_ne!(
+        ab.x[1], ba.x[1],
+        "trocar a ordem dos colisores nao mudou nada -- a clausula 5 diz que ela \
+         e' observavel, e um port que os resolvesse em paralelo passaria aqui"
+    );
+    // ── O DESLIZAMENTO tangencial conservado é `0,35` ─────────────────────
+    //
+    // ⚠️ Um vértice que entra na superfície **de through**: o que ele pretendia
+    // deslizar ao longo dela fica reduzido a `0,35`, e o resto é a fricção.
+    let mut v = Verlet::nascer(rest.clone());
+    v.activo = vec![true; 2];
+    v.x_prev = rest.clone();
+    // Um empurrão em diagonal: atravessa `z = −0,5` e quer deslizar em `x`.
+    v.a = vec![[100.0, 0.0, -200.0]; 2];
+    // Onde a integração o poria sem colisor nenhum.
+    let mut livre = Verlet::nascer(rest.clone());
+    livre.activo = vec![true; 2];
+    livre.x_prev = rest.clone();
+    livre.a.clone_from(&v.a);
+    livre.passo(&solver);
+    v.passo_com_colisores(&solver, &[&plano]);
+    // O ponto de impacto: onde o segmento `repouso → livre` corta `z = −0,5`.
+    let t = 0.5 / (0.0 - livre.x[0][2]);
+    let px = livre.x[0][0] * t;
+    let esperado = px + DESLIZAMENTO * (livre.x[0][0] - px);
+    assert!(
+        (v.x[0][0] - esperado).abs() < 1e-9,
+        "o vertice deslizou ate' {:.6} e a lei conserva {DESLIZAMENTO} do que ele \
+         pretendia ({esperado:.6})",
+        v.x[0][0]
+    );
+}

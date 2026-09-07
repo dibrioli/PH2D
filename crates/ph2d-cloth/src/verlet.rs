@@ -145,6 +145,18 @@ pub struct Verlet {
     pub phi_integracao: Vec<f64>,
     /// A retenção de banda `w(p⁰_v)` da velocidade (espec §5.3, §5.4).
     pub w_repouso: Vec<f64>,
+    /// ⭐⭐ **A ORIGEM DO RAIO DE COLISÃO** (espec §5.6 cláusula 4) — *«onde o
+    /// passo anterior ACABOU, já corrigido pela colisão dele»*.
+    ///
+    /// ⚠️⚠️ **Ela é escrita DEPOIS da colisão, não depois da integração** — a
+    /// espec dizia «pós-integração» e corrigiu-se: o raio do passo `k` sai de
+    /// onde o passo `k−1` acabou **corrigido**.
+    ///
+    /// ⚠️ Nasce nas posições de **repouso do traço** e só é escrita para vértices
+    /// de células **ACTIVAS** ⇒ na primeira vez que uma célula acorda, o raio
+    /// desse vértice é longo (do repouso até agora) e **pode apanhar um colisor
+    /// atravessado antes de a célula existir**. *Isso é a lei, não um defeito.*
+    pub x_col: Vec<V3>,
     /// Quem é integrado neste passo (a «célula activa» — espec §2.1).
     pub activo: Vec<bool>,
     /// Este vértice já tem as suas restrições construídas? (uma vez por traço)
@@ -171,6 +183,7 @@ impl Verlet {
             sigma: vec![0.0; n],
             memoria: repouso.clone(),
             base: Vec::new(),
+            x_col: repouso.clone(),
             phi: vec![1.0; n],
             phi_integracao: vec![1.0; n],
             w_repouso: vec![1.0; n],
@@ -305,6 +318,25 @@ impl Verlet {
     /// integração. `x` tem de ter sido relido da malha antes (fase 2 do §1) e
     /// `a` preenchido pelo gesto (fase 4).
     pub fn passo(&mut self, solver: &Solver) {
+        self.passo_com_colisores(solver, &[]);
+    }
+
+    /// **O MESMO PASSO, com colisores** (espec §5.6).
+    ///
+    /// ⚠️ **A lista é montada UMA vez, quando a simulação nasce** (cláusula 1), e
+    /// cada colisor fica na pose desse instante ⇒ *um colisor animado não se move
+    /// durante o traço, e um que apareça a meio não entra.* Quem a monta é o
+    /// chamador; o que esta função garante é a ORDEM: as cinco varreduras nunca
+    /// vêem o colisor (cláusula 2), e ele é o penúltimo acto da integração.
+    ///
+    /// ⚠️ **A porta é uma FUNÇÃO por colisor e não uma malha** — a busca é de
+    /// quem tem a cena, a correcção é da lei. A `ph2d-cloth` não sabe o que é um
+    /// triângulo, e é isso que a mantém gateável sem GPU e sem escultura.
+    pub fn passo_com_colisores(
+        &mut self,
+        solver: &Solver,
+        colisores: &[&dyn Fn(V3, V3) -> Option<Impacto>],
+    ) {
         let rho = solver.plasticidade.clamp(0.0, 1.0);
         for _ in 0..solver.varreduras {
             for k in 0..self.restricoes.len() {
@@ -395,11 +427,68 @@ impl Verlet {
                 self.x[i][c] += self.a[i][c] * phi * DT;
                 self.x[i][c] += vc * kv;
             }
+            // ── colisão (espec §5.6) — o PENÚLTIMO acto da integração ───────
+            //
+            // ⚠️⚠️ **Ela corre para TODOS os vértices da célula activa, sem
+            // factor, sem banda e sem máscara** (cláusula 3): um vértice que a
+            // banda congelou (`φ = 0`) e um mascarado **são testados na mesma**.
+            // ⛔ Um port que a aplique só onde `φ > 0` diverge.
+            //
+            // ⚠️ **Vários colisores resolvem-se EM SEQUÊNCIA**, cada um sobre a
+            // posição já corrigida pelo anterior mas a partir da **mesma** origem
+            // de raio (cláusula 5) ⇒ *a ordem entre colisores é observável*.
+            for c in colisores {
+                if let Some(imp) = c(self.x_col[i], self.x[i]) {
+                    // O vértice pára na superfície, é afastado pela normal, e
+                    // conserva `0,35` do deslizamento tangencial que pretendia.
+                    let d = [
+                        self.x[i][0] - imp.ponto[0],
+                        self.x[i][1] - imp.ponto[1],
+                        self.x[i][2] - imp.ponto[2],
+                    ];
+                    let dn = d[0] * imp.normal[0] + d[1] * imp.normal[1] + d[2] * imp.normal[2];
+                    for (k, dk) in d.iter().enumerate() {
+                        // `d − (d·n̂)n̂` é a projecção de `x` no plano do impacto,
+                        // medida a partir do ponto de impacto.
+                        let tangencial = dk - dn * imp.normal[k];
+                        self.x[i][k] =
+                            imp.ponto[k] + imp.normal[k] * AFASTAMENTO + DESLIZAMENTO * tangencial;
+                    }
+                }
+            }
+            // ⚠️ **A origem do próximo raio é escrita DEPOIS da colisão**
+            // (cláusula 4), e não depois da integração.
+            self.x_col[i] = self.x[i];
             self.a[i] = [0.0; 3];
         }
         self.passos_simulados += 1;
     }
 }
+
+/// ⭐ **O QUE UM COLISOR DEVOLVE** (espec §5.6): o ponto de impacto e a normal
+/// dele, em espaço do MUNDO.
+///
+/// ⚠️ **A busca é de quem tem a cena; a CORRECÇÃO é da lei** — é por isso que o
+/// colisor entra como uma função que responde *«este segmento bate?»* e não como
+/// uma malha. A `ph2d-cloth` não sabe o que é um triângulo.
+#[derive(Clone, Copy, Debug)]
+pub struct Impacto {
+    pub ponto: V3,
+    pub normal: V3,
+}
+
+/// **A ESPESSURA DO RAIO da colisão** (espec §5.6), em unidades de MUNDO.
+///
+/// ⚠️ **É uma constante absoluta e não uma fracção do raio do pincel** — quem a
+/// lê é quem faz o *cast*, e ela viaja daqui para que o adaptador não a invente.
+pub const ESPESSURA_DO_RAIO: f64 = 0.3;
+
+/// **O AFASTAMENTO pela normal** depois de um impacto (espec §5.6).
+pub const AFASTAMENTO: f64 = 0.005;
+
+/// **A FRACÇÃO DO DESLIZAMENTO TANGENCIAL que o vértice conserva** (espec §5.6)
+/// — a fricção é `1 − isto`.
+pub const DESLIZAMENTO: f64 = 0.35;
 
 /// `|b − a|`.
 #[must_use]

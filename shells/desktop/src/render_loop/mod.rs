@@ -4549,6 +4549,13 @@ impl crate::App {
                     ) => {
                         instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Place));
                     }
+                    // ⭐⭐⭐ **ABRIR a receita desta cópia** — pelo MESMO dreno dos outros verbos,
+                    // que é onde vivem a resolução do sujeito e a voz de cada recusa.
+                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::EditPrefab {
+                        row,
+                    }) => {
+                        instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Edit));
+                    }
                     // ⭐ **O verbo de USAR do navegador de assets** (plano `docs/Components/07`,
                     // wave A7). ⚠️ O sujeito é o `StableId`, não uma `row`: o navegador não tem
                     // linhas, e uma receita está **escondida** da Hierarquia por construção — não

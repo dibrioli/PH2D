@@ -93,6 +93,9 @@ pub enum HierRequest {
     /// ⭐ **A seleção vira RECEITA** e uma instância fica no lugar dela (ADR-0164 / F4.5).
     MakeComponent { row: ph2d_a11y::NodeId },
 
+    /// ⭐⭐⭐ **Abrir a RECEITA desta cópia** (2026-09-07) — ver `ids::CTX_MENU_HIER_EDIT_PREFAB`.
+    EditPrefab { row: ph2d_a11y::NodeId },
+
     /// ⭐ **Instanciar** a receita desta linha (ADR-0164 / F4.5).
     Instantiate { row: ph2d_a11y::NodeId },
 

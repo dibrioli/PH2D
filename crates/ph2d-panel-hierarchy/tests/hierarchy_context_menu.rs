@@ -366,6 +366,44 @@ fn the_group_pair_raises_its_own_action_with_the_clicked_row() {
     }
 }
 
+/// ⭐⭐⭐ **ABRIR A RECEITA a partir da linha da CÓPIA** (2026-09-07) — as duas metades, pela mesma
+/// razão que o par `Group`/`Ungroup` as tem: o roteamento e a PRESENÇA são defeitos diferentes.
+///
+/// ⚠️ **A receita não tem linha na Hierarquia** enquanto ninguém a edita, então a única linha por
+/// onde se chega a ela é a da cópia. *Três recusas deste app mandavam «editar no prefab» sem dar um
+/// gesto, e o painel vetorial ganhou o botão primeiro — deixar o menu de fora seria meia feature.*
+#[test]
+fn the_menu_opens_the_prefab_and_says_so() {
+    use ph2d_editor_core::screens::hero::menu_rows::menu_rows;
+
+    // (a) o ROTEAMENTO: o clique levanta a acção com a linha clicada.
+    let mut hero = setup_hero();
+    let mut state = HierarchyState::default();
+    let row = NodeId(100_778);
+    stage_hierarchy_row_snapshot(&mut hero, row);
+    let consumed = dispatch(
+        &mut hero,
+        &mut state,
+        WidgetEvent::Click(ids::CTX_MENU_HIER_EDIT_PREFAB),
+    );
+    assert!(consumed, "o clique em `Edit Prefab` nao foi consumido");
+    assert_eq!(
+        hero.bus.drain().collect::<Vec<_>>(),
+        vec![EditorAction::Hierarchy(HierRequest::EditPrefab { row })],
+        "`Edit Prefab` nao levantou a accao dele com a linha clicada"
+    );
+
+    // (b) a PRESENÇA: apagar a linha da tabela deixaria (a) verde sobre um item que ninguém vê.
+    let rows = menu_rows(ContextMenuKind::HierarchyRow { row: NodeId(1) });
+    let achado = rows
+        .iter()
+        .find(|(rid, _, _)| *rid == ids::CTX_MENU_HIER_EDIT_PREFAB);
+    let (_, label, _) = achado.expect(
+        "o menu da Hierarquia nao oferece `Edit Prefab` - a receita volta a ser alcancavel so'          pelo cartao da biblioteca",
+    );
+    assert_eq!(*label, "Edit Prefab", "a linha mudou de nome");
+}
+
 /// ⭐⭐⭐ **AS DUAS LINHAS ESTÃO NO MENU** (Enio, 2026-08-30: *"no menu do botão direito da hierarquia
 /// 2 novas opções: agrupar e desagrupar"*).
 ///

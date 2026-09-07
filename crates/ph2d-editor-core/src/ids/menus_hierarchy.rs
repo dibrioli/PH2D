@@ -44,6 +44,13 @@ pub const CTX_MENU_HIER_RESET_TRANSFORM: NodeId = hash_node_id("ctx_menu_hier_re
 pub const CTX_MENU_HIER_REVERT_TO_MASTER: NodeId = hash_node_id("ctx_menu_hier_revert_to_master");
 /// ⭐ **A seleção vira RECEITA** (ADR-0164 / F4.5) — e uma instância fica no lugar dela.
 pub const CTX_MENU_HIER_MAKE_COMPONENT: NodeId = hash_node_id("ctx_menu_hier_make_component");
+/// ⭐⭐⭐ **ABRIR a receita desta cópia** (2026-09-07) — a metade irmã do botão do painel vetorial.
+///
+/// ⚠️ **A receita não tem linha na Hierarquia** enquanto ninguém a edita (`is_unedited_recipe` a
+/// esconde), então a linha por onde se chega a ela é a da **CÓPIA**. *O único caminho até uma
+/// receita era o cartão do navegador de assets, e três recusas deste app já mandavam o artista
+/// «editar no prefab» sem lhe dar um gesto.*
+pub const CTX_MENU_HIER_EDIT_PREFAB: NodeId = hash_node_id("ctx_menu_hier_edit_prefab");
 /// ⭐ **Instanciar** a receita escolhida (ADR-0164 / F4.5).
 pub const CTX_MENU_HIER_INSTANTIATE: NodeId = hash_node_id("ctx_menu_hier_instantiate");
 /// ⭐ **Instanciar LIGADO** (Enio, 2026-08-27) — o `Alt+D` do Blender: a cópia divide a ARTE da

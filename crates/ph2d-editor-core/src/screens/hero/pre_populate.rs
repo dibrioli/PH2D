@@ -418,6 +418,10 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_HIER_RESET_TRANSFORM,
         ids::CTX_MENU_HIER_REVERT_TO_MASTER,
         ids::CTX_MENU_HIER_MAKE_COMPONENT,
+        // ⚠️ **A TERCEIRA lista sobre a mesma população** (a tabela do menu · o guarda do
+        // `event.rs` · esta). Uma linha nova entra nas três, e o gate derivado da tabela é quem o
+        // cobra — foi ele que apanhou esta.
+        ids::CTX_MENU_HIER_EDIT_PREFAB,
         ids::CTX_MENU_HIER_INSTANTIATE,
         ids::CTX_MENU_HIER_INSTANTIATE_LINKED,
         ids::CTX_MENU_HIER_DETACH,

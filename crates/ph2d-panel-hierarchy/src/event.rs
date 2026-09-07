@@ -48,6 +48,7 @@ fn try_context_menu_row(
         || id == ids::CTX_MENU_HIER_RESET_TRANSFORM
         || id == ids::CTX_MENU_HIER_REVERT_TO_MASTER
         || id == ids::CTX_MENU_HIER_MAKE_COMPONENT
+        || id == ids::CTX_MENU_HIER_EDIT_PREFAB
         || id == ids::CTX_MENU_HIER_INSTANTIATE
         || id == ids::CTX_MENU_HIER_INSTANTIATE_LINKED
         || id == ids::CTX_MENU_HIER_DETACH
@@ -102,6 +103,9 @@ fn try_context_menu_row(
         } else if id == ids::CTX_MENU_HIER_MAKE_COMPONENT {
             host.bus_mut()
                 .push(EditorAction::Hierarchy(HierRequest::MakeComponent { row }));
+        } else if id == ids::CTX_MENU_HIER_EDIT_PREFAB {
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::EditPrefab { row }));
         } else if id == ids::CTX_MENU_HIER_INSTANTIATE {
             host.bus_mut()
                 .push(EditorAction::Hierarchy(HierRequest::Instantiate { row }));

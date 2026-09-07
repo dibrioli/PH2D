@@ -432,6 +432,9 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             // pôr outra cópia · promover a excepção · devolvê-la · cortar o vínculo.
             // ⚠️ Todos respondem numa linha a que não se aplicam — a tabela é plana.
             (ids::CTX_MENU_HIER_MAKE_COMPONENT, "Make Prefab", None),
+            // ⭐⭐⭐ **ABRIR** vem logo a seguir a CRIAR, e antes de instanciar: é a ordem em que o
+            // artista os encontra — faço um, entro nele, ponho mais cópias.
+            (ids::CTX_MENU_HIER_EDIT_PREFAB, "Edit Prefab", None),
             (ids::CTX_MENU_HIER_INSTANTIATE, "Instantiate", None),
             (
                 ids::CTX_MENU_HIER_INSTANTIATE_LINKED,

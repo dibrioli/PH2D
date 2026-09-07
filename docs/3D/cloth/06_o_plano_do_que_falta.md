@@ -119,6 +119,33 @@ Gates **39** (as normais são as do traço, três metades) · **40** (o silênci
 medido) · **41** (os dez traços à resolução do ficheiro) · **42** (a direcção é a normal da área, não
 a da vista). A espec **revogou o gate 23**, que dizia o contrário sobre as normais.
 
+### ✅ FECHADO em 07/09 — os SETE controlos que o motor tinha e o artista não
+
+A tradução `Brush → Pincel` escrevia `Radial` **literal** na forma de queda e caía no
+`Pincel::default()` para os outros seis. O corpus do oráculo tem fixture para **cada um**:
+
+| controlo | o que o mede |
+|---|---|
+| *Force Falloff* (Radial · Plane) | os quatro `plano_*_plano_local` |
+| *Simulation Limit* `L` | `plano_agarrar_radial_local_preset` (limite `5`) |
+| *Simulation Falloff* `F` | a errata da banda (§2.2) |
+| *Pin Simulation Boundary* | `plano_arrastar_radial_local_pino` |
+| *Cloth Mass* | `*_massa2` (quatro traços) |
+| *Cloth Damping* | `*_amort05`, `*_amort1`, `*_amort06` |
+| *Soft Body Plasticity* | `plano_arrastar_radial_local_plast05` |
+
+⚠️ **As sete omissões são as do CÓDIGO do alvo** (§8.1) ⇒ a tradução entrega exactamente o
+`Pincel::default()` que a bancada corre, e o mundo pré-wave é **byte-idêntico**. O gate
+`os_sete_knobs_do_tecido_chegam_ao_motor` tem as duas metades: cada knob fora da omissão move o pano,
+e o neutro é o de antes.
+
+⛔⛔ **E a wave achou que os chips de 06/09 estavam MORTOS SOB O PONTEIRO.** Os oito de *Deformation*
+e os três de *Simulation Area* eram pintados, hit-indexados e roteados — e **não estavam no
+`populate`**, logo o clique era descartado em silêncio. Nenhum gate o via: o
+`every_painted_control_is_clickable_where_it_is_drawn` arma o **Crease**, e com outro pincel na mão a
+fileira do tecido nem é desenhada. *A fixtura tem de conter o fenómeno* — a sexta vez que aquele
+módulo o escreve, e a primeira em que a frase custou uma wave inteira de controlos.
+
 ### ⭐ 1.º — o SNAKE HOOK de poucos passos
 
 **O que se sabe.** Os dois têm o traço de um passo **ao bit** e a ordem de resolução quase não os

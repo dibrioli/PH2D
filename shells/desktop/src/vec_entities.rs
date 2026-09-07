@@ -190,6 +190,16 @@ pub(crate) fn view_state(sim: &SimWorld, map: &VecEntityMap) -> VecViewState {
         if w.get::<ph2d_ecs::VecBucketFill>(e).is_some() {
             view.derived.push(id);
         }
+        // ⭐⭐⭐ **O ISOLAMENTO do *Edit Prefab*** (Enio, 2026-09-07: *«o canvas deve ser borrado
+        // levemente… e o Prefab aparece acima de tudo, livre do blur»*).
+        //
+        // ⚠️ **A pergunta é o `MasterEditing`, e ele é DERIVADO da selecção** — a mesma marca que
+        // faz a receita voltar a ser visível ([`crate::render_loop::master_editing`]), carimbada na
+        // sub-árvore inteira. ⇒ o conjunto exempto é exactamente o que já está na tela por causa
+        // do gesto, e não uma segunda resposta a *«o que é a receita aberta?»*.
+        if w.get::<ph2d_ecs::MasterEditing>(e).is_some() {
+            view.isolated.push(id);
+        }
     }
     view
 }
@@ -252,6 +262,38 @@ mod tests {
     // ⚠️ Só os gates a usam desde que a porta de «está na cena?» passou a ser o `off_canvas`.
     use ph2d_ecs::Visibility;
     use ph2d_vec_scene::rectangle;
+
+    /// ⭐⭐⭐ **A receita ABERTA entra na lista de EXEMPTAS do isolamento** (Enio, 2026-09-07).
+    ///
+    /// ⚠️ **A pergunta é o `MasterEditing`, a mesma marca que a faz voltar a ser visível** — e é
+    /// isso que impede o isolamento de ser uma segunda resposta a *«qual é a receita aberta?»*.
+    /// Sem receita aberta a lista é vazia, e o desenho é o de sempre.
+    ///
+    /// **Mutação que deve sangrar:** apagar o `view.isolated.push(id)`.
+    #[test]
+    fn the_open_prefab_is_isolated_in_the_view() {
+        let mut sim = SimWorld::new();
+        let mut map = VecEntityMap::default();
+        let mut scene = ph2d_vec_scene::VecScene::new();
+        let normal = scene.push_path(rectangle([0.0, 0.0], [10.0, 10.0]));
+        let receita = scene.push_path(rectangle([20.0, 0.0], [10.0, 10.0]));
+        sync(&mut sim, &mut scene, &mut map);
+        let aberta = bits(&map, receita);
+        sim.world_mut()
+            .entity_mut(aberta)
+            .insert(ph2d_ecs::MasterEditing);
+
+        let view = view_state(&sim, &map);
+
+        assert!(
+            view.is_isolated(receita),
+            "a receita aberta nao entrou nas exemptas — ela desenharia esbatida com o resto"
+        );
+        assert!(
+            !view.is_isolated(normal),
+            "uma forma comum entrou nas exemptas — o recuo ficaria com buracos nitidos"
+        );
+    }
 
     /// ⭐⭐⭐ **A arte VETORIAL de uma receita também sai da cena** (F4.6, o §14).
     ///

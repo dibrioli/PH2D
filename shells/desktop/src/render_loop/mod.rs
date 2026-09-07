@@ -9367,6 +9367,19 @@ impl crate::App {
                 vec_scene.reorder_to(&order);
             }
             let mut vec_view = crate::vec_entities::view_state(sim, &self.vec_entities);
+            // ⭐⭐⭐ **O LIMITE da camada que recua o mundo** (o isolamento do *Edit Prefab*).
+            //
+            // ⚠️ **A janela inteira, e não o rectângulo do canvas:** o doc do `push_object_layer`
+            // diz que uma caixa pequena demais **recorta a arte em silêncio**, e o que a camada
+            // esbate não é o ecrã — é o que for desenhado DENTRO dela, que é só a cena vetorial (os
+            // painéis entram depois, fora do `pop`). *Uma caixa generosa não pinta a mais; uma
+            // caixa curta apaga desenho.*
+            vec_view.isolation_screen = [
+                0.0,
+                0.0,
+                f64::from(window_size.width),
+                f64::from(window_size.height),
+            ];
             // **As MOLDURAS** (plano UI/UX W0): que intervalo da pilha cada uma recorta. Sai do
             // MESMO snapshot que acabou de ditar a pilha de z — derivá-lo de outra fonte seria uma
             // segunda resposta a *"em que ordem estas formas estão?"* — e da pilha FINAL, porque o

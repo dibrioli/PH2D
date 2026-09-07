@@ -318,83 +318,32 @@ pub fn dispatch(
     // As MOLDURAS abertas (`frame_clip`). Vazio no caminho comum, e então tudo abaixo é o desenho
     // de sempre — `open_after` e `close_after` não fazem nada sem `view.clips`.
     let mut frames = frame_clip::OpenClips::default();
+    // ⭐⭐⭐ **O ISOLAMENTO do *Edit Prefab*** (Enio, 2026-09-07): com uma receita aberta, o mundo
+    // **recua** e ela desenha-se por cima, nítida. ⛔ Sem receita aberta isto é `false` e cada linha
+    // abaixo é a de sempre.
+    let isolating = view.isolating();
+    // ⚠️ **UMA camada para o mundo inteiro, e não uma opacidade por forma:** a segunda faria cada
+    // objecto desvanecer contra os vizinhos e a cena inteira mudaria de aspecto por dentro. *Uma
+    // camada compõe o resultado e só depois o esbate — que é o que «o fundo recua» quer dizer.*
+    let backdrop = isolating;
+    if backdrop {
+        let [bx, by, bw, bh] = view.isolation_screen;
+        target.push_object_layer(
+            &Rect::new(bx, by, bx + bw, by + bh),
+            blend::vello_blend(ph2d_vec_scene::BlendMode::Normal).unwrap_or_default(),
+            ph2d_vec_scene::ISOLATION_BACKDROP_ALPHA,
+        );
+    }
     for path in scene.paths() {
         // ⚠️ **A ordem dentro do laço é a LEI**: desenha, depois abre, depois fecha. A moldura é o
         // PRIMEIRO membro da própria sub-árvore (a pilha de z é o DFS na ordem — o filho desenha
         // sobre o pai), então o preenchimento dela é o fundo do card **por sair primeiro**; abrir
         // antes de desenhar recortaria a moldura pela própria silhueta.
-        if !view.is_hidden(path.id) {
-            // ⭐⭐⭐ **A CAMADA DO OBJECTO** (v19): opacidade e modo de mistura da forma compõem-na
-            // UMA vez, com tudo o que ela desenha lá dentro. Opaca e `Normal` ⇒ nada é empurrado e
-            // o desenho é byte-idêntico ao de sempre. ⚠️ Ela envolve os TRÊS braços de propósito —
-            // a imagem de FX e a pele de widget substituem o desenho, mas continuam a ser **este
-            // objecto**, e desvanecer só o braço do meio seria a opacidade a funcionar até alguém
-            // ligar um filtro.
-            let bound = view.bound_style(path.id);
-            let layered =
-                blend::open_object_layer(target, scene, xforms, live, fx, path, bound, camera);
-            // O FX da forma, se houver, TOMA o lugar do desenho: a pilha já compôs tudo o que se
-            // vê desta forma (halo incluído) numa imagem só, no z dela.
-            if let Some(img) = fx.get(&path.id) {
-                draw_fx_image(img, target);
-            } else if let Some(skin) = skins.get(&path.id) {
-                // ⚠️ A pele já foi pintada em coordenadas de TELA (o shell cruzou a câmera para
-                // achar o retângulo da forma), então ela entra SEM transform — o mesmo contrato
-                // da `FxImage` ao lado, e pela mesma razão: quem sabe onde a forma está na tela é
-                // quem tem a câmera, e ele já respondeu.
-                target.inner_mut().append(skin.inner(), None);
-            } else {
-                // (A TINTA que os tokens dão a esta forma foi perguntada UMA vez, acima — e ela
-                // vale também para a geometria DERIVADA dela: as cópias de offset/pattern/espelho
-                // têm id próprio, então procurá-las na tabela não acharia nada e o token pararia
-                // na borda do primeiro efeito.)
-                // A derivada já está em MUNDO (a shell assou a pose dentro dela), então ela sobe
-                // pela CÂMERA e não pelo afim do path — aplicar a pose duas vezes foi bug real
-                // desta linha.
-                // ⚠️ **O ladrilho é procurado pelo id da FONTE, tal como a tinta dos tokens
-                // logo acima e pela mesma razão**: as cópias derivadas (offset/pattern-on-path/
-                // espelho) têm id próprio, então uma busca por elas não acharia nada e o padrão
-                // pararia na borda do primeiro efeito.
-                let tile = patterns.get(&(path.id, PatternSlot::Fill));
-                let stroke_tile = patterns.get(&(path.id, PatternSlot::Stroke));
-                // ⭐ **A arte do PINCEL, pelo id da FONTE — a mesma lei do ladrilho logo acima.**
-                let art = brushes.get(&path.id).map(Vec::as_slice);
-                if let Some(items) = live.get(&path.id) {
-                    for item in items {
-                        // ⛔ `None`: uma cópia DERIVADA tem id próprio, e a geometria
-                        // dilatada é indexada pelo id da FONTE — a mesma lei do ladrilho e da
-                        // arte de pincel logo acima. O censo `the_artless_draw_routes_are_
-                        // declared` conta esta rota.
-                        draw_path_tiled(
-                            &item.painted(bound),
-                            camera,
-                            target,
-                            Derived {
-                                tile,
-                                stroke_tile,
-                                brush_art: art,
-                                dilated: None,
-                            },
-                        );
-                    }
-                } else {
-                    let transform = path_to_screen(xforms, path.id, camera);
-                    draw_path_tiled(
-                        &path.painted(bound),
-                        transform,
-                        target,
-                        Derived {
-                            tile,
-                            stroke_tile,
-                            brush_art: art,
-                            dilated: Some(dilated),
-                        },
-                    );
-                }
-            }
-            if layered {
-                target.pop_layer();
-            }
+        if !view.is_hidden(path.id) && !(isolating && view.is_isolated(path.id)) {
+            draw_one(
+                path, scene, view, xforms, live, fx, skins, patterns, brushes, dilated, camera,
+                target,
+            );
         }
         // ⚠️ FORA do filtro de escondido: push e pop de camada têm de se emparelhar mesmo quando
         // a moldura não desenha (ver `frame_clip`).
@@ -402,6 +351,118 @@ pub fn dispatch(
         frames.close_after(path.id, view, target);
     }
     frames.close_all(target);
+    if backdrop {
+        target.pop_layer();
+    }
+    // ⭐⭐⭐ **A SEGUNDA PASSAGEM: a receita aberta, ACIMA DE TUDO e sem o recuo** (Enio,
+    // 2026-09-07). ⚠️ Ela corre **depois** do `close_all` de propósito — os recortes de moldura são
+    // um intervalo sobre a ordem de z, e desenhar aqui dentro deles poria a receita a ser cortada
+    // por uma moldura de que ela não faz parte. ⛔ Vazia no caminho comum: sem isolamento este laço
+    // não corre e o desenho é byte-idêntico ao de sempre.
+    if isolating {
+        for path in scene.paths() {
+            if view.is_isolated(path.id) && !view.is_hidden(path.id) {
+                draw_one(
+                    path, scene, view, xforms, live, fx, skins, patterns, brushes, dilated, camera,
+                    target,
+                );
+            }
+        }
+    }
+}
+
+/// **UM objecto da cena, com tudo o que ele desenha** — a porta que as DUAS passagens do
+/// [`dispatch`] partilham.
+///
+/// ⚠️ **Extraída, e não copiada:** a segunda passagem (a receita isolada) tem de desenhar
+/// exactamente o mesmo — a camada do objecto, o FX que substitui o desenho, a pele de widget, os
+/// ladrilhos, a arte de pincel e a geometria viva. *Uma segunda cópia deste corpo desenharia a
+/// receita sem o FX dela no dia em que alguém lhe pusesse um, e ninguém veria porquê.*
+#[allow(clippy::too_many_arguments)]
+fn draw_one(
+    path: &VecPath,
+    scene: &VecScene,
+    view: &VecViewState,
+    xforms: &VecXforms,
+    live: &LiveGeometry,
+    fx: &FxImages,
+    skins: &WidgetSkins,
+    patterns: &PatternTiles,
+    brushes: &BrushArts,
+    dilated: &DilatedPaints,
+    camera: Affine,
+    target: &mut VectorScene,
+) {
+    // ⭐⭐⭐ **A CAMADA DO OBJECTO** (v19): opacidade e modo de mistura da forma compõem-na
+    // UMA vez, com tudo o que ela desenha lá dentro. Opaca e `Normal` ⇒ nada é empurrado e
+    // o desenho é byte-idêntico ao de sempre. ⚠️ Ela envolve os TRÊS braços de propósito —
+    // a imagem de FX e a pele de widget substituem o desenho, mas continuam a ser **este
+    // objecto**, e desvanecer só o braço do meio seria a opacidade a funcionar até alguém
+    // ligar um filtro.
+    let bound = view.bound_style(path.id);
+    let layered = blend::open_object_layer(target, scene, xforms, live, fx, path, bound, camera);
+    // O FX da forma, se houver, TOMA o lugar do desenho: a pilha já compôs tudo o que se
+    // vê desta forma (halo incluído) numa imagem só, no z dela.
+    if let Some(img) = fx.get(&path.id) {
+        draw_fx_image(img, target);
+    } else if let Some(skin) = skins.get(&path.id) {
+        // ⚠️ A pele já foi pintada em coordenadas de TELA (o shell cruzou a câmera para
+        // achar o retângulo da forma), então ela entra SEM transform — o mesmo contrato
+        // da `FxImage` ao lado, e pela mesma razão: quem sabe onde a forma está na tela é
+        // quem tem a câmera, e ele já respondeu.
+        target.inner_mut().append(skin.inner(), None);
+    } else {
+        // (A TINTA que os tokens dão a esta forma foi perguntada UMA vez, acima — e ela
+        // vale também para a geometria DERIVADA dela: as cópias de offset/pattern/espelho
+        // têm id próprio, então procurá-las na tabela não acharia nada e o token pararia
+        // na borda do primeiro efeito.)
+        // A derivada já está em MUNDO (a shell assou a pose dentro dela), então ela sobe
+        // pela CÂMERA e não pelo afim do path — aplicar a pose duas vezes foi bug real
+        // desta linha.
+        // ⚠️ **O ladrilho é procurado pelo id da FONTE, tal como a tinta dos tokens
+        // logo acima e pela mesma razão**: as cópias derivadas (offset/pattern-on-path/
+        // espelho) têm id próprio, então uma busca por elas não acharia nada e o padrão
+        // pararia na borda do primeiro efeito.
+        let tile = patterns.get(&(path.id, PatternSlot::Fill));
+        let stroke_tile = patterns.get(&(path.id, PatternSlot::Stroke));
+        // ⭐ **A arte do PINCEL, pelo id da FONTE — a mesma lei do ladrilho logo acima.**
+        let art = brushes.get(&path.id).map(Vec::as_slice);
+        if let Some(items) = live.get(&path.id) {
+            for item in items {
+                // ⛔ `None`: uma cópia DERIVADA tem id próprio, e a geometria
+                // dilatada é indexada pelo id da FONTE — a mesma lei do ladrilho e da
+                // arte de pincel logo acima. O censo `the_artless_draw_routes_are_
+                // declared` conta esta rota.
+                draw_path_tiled(
+                    &item.painted(bound),
+                    camera,
+                    target,
+                    Derived {
+                        tile,
+                        stroke_tile,
+                        brush_art: art,
+                        dilated: None,
+                    },
+                );
+            }
+        } else {
+            let transform = path_to_screen(xforms, path.id, camera);
+            draw_path_tiled(
+                &path.painted(bound),
+                transform,
+                target,
+                Derived {
+                    tile,
+                    stroke_tile,
+                    brush_art: art,
+                    dilated: Some(dilated),
+                },
+            );
+        }
+    }
+    if layered {
+        target.pop_layer();
+    }
 }
 
 /// Encoda uma [`FxImage`] na cena, no retângulo de tela dela. RGBA reta (a mesma política do
@@ -694,3 +755,8 @@ mod open_contour_tests;
 #[cfg(test)]
 #[path = "standalone_tests.rs"]
 mod standalone_tests;
+
+/// ⭐⭐⭐ Os gates do ISOLAMENTO do *Edit Prefab* — irmão por assunto.
+#[cfg(test)]
+#[path = "isolation_tests.rs"]
+mod isolation_tests;

@@ -72,6 +72,92 @@ pub(crate) fn governed(sim: &SimWorld, tip: Entity, chain: u32) -> Vec<Entity> {
     toda[toda.len() - n..].to_vec()
 }
 
+/// ⭐⭐⭐ **A AGENDA — quem manda em que osso, e em que ORDEM.** (Report do dono, 2026-09-07:
+/// *«múltiplos IKs numa cadeia de bones tem resultado ruim»*.)
+///
+/// # ⛔ Os três defeitos que ela cura, e eram três
+///
+/// 1. **A ordem de resolução era a dos ARQUÉTIPOS** (`iter_entities()` sem ordenar). Com correntes
+///    que se sobrepõem, *a ordem É a resposta* — e ela não era sequer estável entre sessões.
+/// 2. **Ninguém impunha RAIZ PRIMEIRO.** A âncora de cima move os pais e **arrasta** a solução da
+///    de baixo: vale sempre a última a correr.
+/// 3. **Nada proibia duas âncoras sobre o MESMO osso.** Elas escreviam a mesma rotação em
+///    sequência, todo quadro.
+///
+/// # ⭐⭐ A lei: as correntes são DISJUNTAS, e resolvem-se da raiz para a ponta
+///
+/// **Passo 1 — a posse, da RAIZ para a ponta.** A âncora mais **rasa** reclama primeiro, e a mais
+/// funda fica com o que sobra **abaixo** dela. Uma corrente é cortada no último osso já reclamado:
+/// ⛔ uma corrente com um **buraco** no meio não é uma corrente — o osso do meio não obedeceria a
+/// ninguém e a cinemática do que está acima dele deixaria de fazer sentido.
+///
+/// ⚠️⚠️ **A ordem da posse é a RASA primeiro, e a inversa foi construída e MEDIDA como errada.** Com
+/// a funda a reclamar primeiro ela leva a corrente inteira e a de cima fica **inerte** — o artista
+/// põe duas âncoras e uma delas simplesmente não faz nada. Com a rasa primeiro, cada uma fica com o
+/// seu segmento e **as duas alcançam o próprio alvo**, que é o que ele quer: uma IK na coluna e
+/// outra na mão trabalham ao mesmo tempo, cada uma no seu pedaço.
+///
+/// **Passo 2 — a resolução, da RAIZ para a ponta.** Com as correntes disjuntas, mover uma corrente
+/// de cima muda a **origem** da de baixo; resolver a de baixo primeiro seria resolvê-la a partir de
+/// um sítio que ainda vai mudar. Nesta ordem, um passe basta e o resultado é um **ponto fixo** —
+/// que é o que o gate mede.
+///
+/// ⚠️ **A ordem é DERIVADA da hierarquia, e não autorada.** O Spine deixa o artista reordenar as
+/// restrições e o Blender avalia por ordem de osso; entre as duas, a segunda é a que não precisa de
+/// UI nenhuma e não tem estado a gravar. ⛔ E o desempate é o `StableId` (a identidade do
+/// documento), nunca o `to_bits`: *não se escolhe um desempate melhor, não se tem empate* — e um
+/// desempate por id de alocação mudaria a pose entre sessões.
+fn schedule(
+    sim: &SimWorld,
+    cruas: Vec<(Entity, IkGoal)>,
+    log: bool,
+) -> Vec<(Entity, IkGoal, Vec<Entity>)> {
+    // A profundidade de cada ponta na hierarquia de ossos — a régua das duas ordenações.
+    let mut com_fundo: Vec<(usize, StableId, Entity, IkGoal)> = cruas
+        .into_iter()
+        .map(|(tip, g)| {
+            let fundo = crate::skeleton_live::chain_to(sim, tip.to_bits()).len();
+            let id = ph2d_ecs::stable_id_of(sim.world(), tip).unwrap_or(StableId::NONE);
+            (fundo, id, tip, g)
+        })
+        .collect();
+    // PASSO 1: a posse, da mais RASA para a mais funda.
+    com_fundo.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+    let mut dono: std::collections::BTreeSet<Entity> = std::collections::BTreeSet::new();
+    let mut agenda: Vec<(usize, StableId, Entity, IkGoal, Vec<Entity>)> = Vec::new();
+    for (fundo, id, tip, g) in com_fundo {
+        let toda = governed(sim, tip, g.chain);
+        // A corrente é lida da RAIZ para a ponta; cortar num osso já reclamado significa manter só
+        // o pedaço que vai dele para baixo.
+        let corte = toda
+            .iter()
+            .rposition(|e| dono.contains(e))
+            .map_or(0, |i| i + 1);
+        let minha: Vec<Entity> = toda[corte..].to_vec();
+        if log && corte > 0 {
+            eprintln!(
+                "[bone] ancora de {tip:?}: {corte} osso(s) ja' tinham dono - a corrente dela fica                  com {} de {}",
+                minha.len(),
+                toda.len()
+            );
+        }
+        dono.extend(minha.iter().copied());
+        agenda.push((fundo, id, tip, g, minha));
+    }
+    // ⭐ **PASSO 2 — e ele não existe.** A resolução tem de ser da RAIZ para a ponta, que é
+    // **exactamente** a ordem em que a posse já correu ⇒ a `agenda` já sai ordenada.
+    //
+    // ⚠️ **Havia aqui um segundo `sort_by` idêntico, e uma mutação mostrou-o REDUNDANTE**: apagá-lo
+    // não moveu gate nenhum. Ele fazia sentido enquanto a posse era da ponta para a raiz (as duas
+    // ordens eram opostas); quando a posse passou a ser rasa-primeiro — a cura que faz as duas
+    // âncoras alcançarem os próprios alvos — as duas ordens colapsaram numa. *Uma linha que
+    // sobrevive a uma mudança de desenho ao lado dela costuma ter deixado de fazer alguma coisa.*
+    agenda
+        .into_iter()
+        .map(|(_, _, tip, g, corrente)| (tip, g, corrente))
+        .collect()
+}
+
 /// ⛔ **O alvo está DENTRO da corrente?** — o laço que este passe recusa em vez de resolver.
 ///
 /// Sobe do alvo pelos pais: se encontrar qualquer osso governado, mover a corrente moveria o alvo.
@@ -250,19 +336,19 @@ pub(crate) fn remove(sim: &mut SimWorld, bone: Entity) -> bool {
 /// Corre **antes** do [`crate::skeleton_live::recook`] — ele lê a pose de agora, e a pose de agora é
 /// o que este passe acaba de escrever.
 pub(crate) fn solve(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
-    let ancoras: Vec<(Entity, IkGoal)> = sim
+    let cruas: Vec<(Entity, IkGoal)> = sim
         .world()
         .iter_entities()
         .filter_map(|er| Some((er.id(), *er.get::<IkGoal>()?)))
         .collect();
-    if ancoras.is_empty() {
+    if cruas.is_empty() {
         return 0;
     }
     let log = std::env::var_os("PH2D_BONE_LOG").is_some();
     let idx = index(sim);
+    let ancoras = schedule(sim, cruas, log);
     let mut feitas = 0;
-    for (tip, g) in ancoras {
-        let corrente = governed(sim, tip, g.chain);
+    for (tip, g, corrente) in ancoras {
         if corrente.is_empty() {
             continue;
         }

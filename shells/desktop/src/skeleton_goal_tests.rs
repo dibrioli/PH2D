@@ -518,3 +518,6 @@ fn probe_does_the_anchor_cross_the_undo_capture() {
             .any(|er| er.contains::<ph2d_skeleton_ecs::IkGoal>())
     );
 }
+
+#[path = "skeleton_agenda_tests.rs"]
+mod agenda;

@@ -99,7 +99,31 @@ primeira vez que um motor **nunca** solta o que conduz. ⇒ se o log disser *«s
 
 ---
 
-### F2 — ⛔ Duas âncoras na mesma corrente brigam
+### F2 — ✅ Duas âncoras na mesma corrente brigam — **CURADO** (2026-09-07)
+
+**A cura: as correntes são DISJUNTAS e resolvem-se da RAIZ para a ponta** (`skeleton_goal::schedule`).
+A âncora mais **rasa** reclama primeiro e a mais funda fica com o que sobra **abaixo** dela ⇒ cada
+osso obedece a **uma** âncora e **as duas alcançam o próprio alvo** — uma IK na coluna e outra na
+mão trabalham ao mesmo tempo. A ordem é **derivada da hierarquia** (não autorada, sem UI, sem estado
+a gravar) e o desempate é o `StableId`, nunca o `to_bits`.
+
+⚠️ **A ordem de posse inversa foi construída e MEDIDA como errada:** com a funda a reclamar primeiro
+ela leva a corrente inteira e a de cima fica **inerte** — o artista põe duas âncoras e uma não faz
+nada.
+
+⛔⛔ **E TRÊS fixturas não discriminaram antes de a quarta o fazer.** *Convergir* e *alcançar o
+alvo* ficam verdes **mesmo sem agenda**, porque o FABRIK parte da pose que encontra e tende a
+**preservar** o trabalho da âncora anterior. ⇒ o defeito não é *«a cena não assenta»*: é *«ela
+assenta numa pose que depende da ordem dos ARQUÉTIPOS»*. O gate que separa é
+`the_plan_does_not_depend_on_the_order_the_anchors_are_found` (as duas permutações, plano idêntico).
+
+⚠️ E um segundo `sort_by` ficou **redundante** quando a posse mudou de sentido — apagado, com a
+razão escrita: *uma linha que sobrevive a uma mudança de desenho ao lado dela costuma ter deixado de
+fazer alguma coisa.*
+
+<details><summary>o diagnóstico original, para quem quiser o histórico</summary>
+
+### O mecanismo, como foi medido antes da cura
 
 **Sintoma** (verbatim): *«Múltiplos IKs numa cadeia de bones tem resultado ruim»*.
 
@@ -137,6 +161,11 @@ osso**, e o `feeds_back` recusa um alvo **dentro da própria corrente**. Nenhuma
 a mesma pose (o `solving_twice_from_its_own_output_gives_the_same_pose` existe para UMA corrente, em
 `ph2d-skeleton`; o irmão para N âncoras não existe). ⭐ *Um gate de ponto fixo é o que separa «ordem
 arbitrária» de «ordem errada».*
+
+⚠️ **Esta última frase estava ERRADA, e a implementação refutou-a:** o ponto fixo **não** separa —
+a cena assenta nas duas leis. Quem separa é a **independência da ordem**.
+
+</details>
 
 ---
 

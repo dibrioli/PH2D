@@ -34,6 +34,9 @@ pub use paint_chrome::chrome_hit_id_for_tests;
 pub use split::split_fraction;
 mod param_edit;
 mod param_editor;
+/// ⭐ O id de uma amostra do editor aberto sobre um cartão — lido pela SHELL, que faz a leitura
+/// de volta do selector para dentro da string. Ver [`param_editor::card_editor_swatch_id`].
+pub use param_editor::card_editor_swatch_id;
 mod probe;
 mod rename;
 mod snapshot;

@@ -35,6 +35,10 @@ const MARGIN: f32 = 8.0; // LITERAL-PX-OK: floating editor margin from the canva
 pub(crate) enum EditorKind {
     /// Uma curva de transferência: tela quadrada com pontos que se arrastam.
     Curve,
+    /// Um gradiente: barra com paradas que se arrastam e uma amostra por parada.
+    Gradient,
+    /// Uma paleta: tira de amostras que embrulha, com `+` e `−`.
+    Palette,
 }
 
 /// **O editor aberto.** Um de cada vez, e é a lei: ele é uma janela modal-por-costume (o clique
@@ -62,10 +66,29 @@ pub(crate) fn key_of(node: u32, param: &str) -> (String, String) {
     )
 }
 
+/// ⭐⭐⭐ **O ID DA `i`-ÉSIMA AMOSTRA de um editor aberto no CARTÃO** — a porta que a SHELL lê
+/// para saber que parada / que cor o selector aberto está a editar.
+///
+/// ⚠️ **Ela é `pub` por necessidade, não por conveniência:** o selector OKLCH abre por REGISTO
+/// (o `pointer_down` do `editor-core` vê a marca), e quem lê a escolha de volta para dentro da
+/// string é a shell, que tem o documento. Se a shell derivasse o id com uma segunda cópia desta
+/// string, a escolha do artista cairia num id que ninguém pintou — e nada no ecrã diria porquê.
+#[must_use]
+pub fn card_editor_swatch_id(node: u32, param: &str, i: usize) -> ph2d_a11y::NodeId {
+    let (own, swatch) = key_of(node, param);
+    EditorKey {
+        own: &own,
+        swatch: &swatch,
+    }
+    .swatch_id(i)
+}
+
 /// **Este param abre um editor rico?** — a porta única, lida pelo gesto e pelo pintor da row.
 pub(crate) fn kind_of(p: &CardParam) -> Option<EditorKind> {
     match p.hint.widget {
         ph2d_node_registry::ParamWidget::Curve => Some(EditorKind::Curve),
+        ph2d_node_registry::ParamWidget::Gradient => Some(EditorKind::Gradient),
+        ph2d_node_registry::ParamWidget::Palette => Some(EditorKind::Palette),
         _ => None,
     }
 }
@@ -93,7 +116,11 @@ pub(crate) fn arm(state: &mut MotionGraphPanelState, node: u32, p: &CardParam, r
 pub(crate) fn window(state: &MotionGraphPanelState, canvas: Rect) -> Option<Rect> {
     let open = state.editor.as_ref()?;
     let w = PANEL_MIN_W_PX;
-    let h = 2.0f32.mul_add(PANEL_HEAD_PAD_PX, content_h(open));
+    let valor = crate::snapshot::card_text_of(open.node, open.param).unwrap_or_default();
+    let h = 2.0f32.mul_add(
+        PANEL_HEAD_PAD_PX,
+        content_h(open, &valor, w - 2.0 * PANEL_HEAD_PAD_PX),
+    );
     // Encostada para dentro quando não cabe onde foi aberta — uma janela meio fora do canvas
     // tem metade dos controlos inalcançáveis.
     let x = open
@@ -110,9 +137,13 @@ pub(crate) fn window(state: &MotionGraphPanelState, canvas: Rect) -> Option<Rect
 }
 
 /// A altura do CONTEÚDO — a folha é quem a sabe, porque é ela que desenha.
-fn content_h(open: &Open) -> f32 {
+fn content_h(open: &Open, value: &str, w: f32) -> f32 {
     match open.kind {
         EditorKind::Curve => ph2d_param_editors::curve::height(),
+        EditorKind::Gradient => ph2d_param_editors::gradient::height(),
+        // ⚠️ Só a paleta depende do VALOR: a tira dela embrulha, e a caixa cresce com o número
+        // de cores.
+        EditorKind::Palette => ph2d_param_editors::palette::height(value, w),
     }
 }
 
@@ -147,7 +178,9 @@ pub(crate) fn paint(state: &MotionGraphPanelState, ctx: &mut PaintCtx, canvas: R
     let x = win.x + PANEL_HEAD_PAD_PX;
     let w = win.w - 2.0 * PANEL_HEAD_PAD_PX;
     let y = win.y + PANEL_HEAD_PAD_PX;
-    let mut sacola = ph2d_param_editors::curve::CurveWidgets::new();
+    let fonte = ph2d_tokens::TypeToken::Base.px();
+    let mut curva = ph2d_param_editors::curve::CurveWidgets::new();
+    let mut cor = ph2d_param_editors::gradient::ColourRowWidgets::new();
     match open.kind {
         EditorKind::Curve => {
             ph2d_param_editors::curve::paint(
@@ -157,23 +190,67 @@ pub(crate) fn paint(state: &MotionGraphPanelState, ctx: &mut PaintCtx, canvas: R
                 x,
                 w,
                 y,
-                ph2d_tokens::TypeToken::Base.px(),
+                fonte,
                 ctx.host.hit_index_mut(),
                 ctx.scene,
                 ctx.text_system,
                 theme,
-                &mut sacola,
+                &mut curva,
+            );
+        }
+        EditorKind::Gradient => {
+            ph2d_param_editors::gradient::paint(
+                open.title,
+                &valor,
+                key,
+                x,
+                w,
+                y,
+                fonte,
+                ctx.host.hit_index_mut(),
+                ctx.scene,
+                ctx.text_system,
+                theme,
+                &mut cor,
+            );
+        }
+        EditorKind::Palette => {
+            ph2d_param_editors::palette::paint(
+                open.title,
+                &valor,
+                key,
+                x,
+                w,
+                y,
+                fonte,
+                ctx.host.hit_index_mut(),
+                ctx.scene,
+                ctx.text_system,
+                theme,
+                &mut cor,
             );
         }
     }
-    register(ctx.host.store_mut(), &sacola);
+    register(ctx.host.store_mut(), &curva, &cor);
 }
 
 /// A fase MUTÁVEL: as alças viram `CurvePoint` (o despacho normaliza o arrasto contra a tela) e
 /// os botões viram botões. ⚠️ **Sem isto o editor desenha e não obedece a nada** — é a metade que
 /// o pintor não consegue fazer, porque ali o store é emprestado imutável.
-fn register(store: &mut WidgetStore, sacola: &ph2d_param_editors::curve::CurveWidgets) {
-    for &(id, parent, index, canvas) in &sacola.points {
+fn register(
+    store: &mut WidgetStore,
+    curva: &ph2d_param_editors::curve::CurveWidgets,
+    cor: &ph2d_param_editors::gradient::ColourRowWidgets,
+) {
+    // ⭐⭐ **Uma AMOSTRA de parada abre o selector OKLCH** — e a marca é a mesma que a amostra
+    // de uma cor simples do cartão usa. ⚠️ **Ela é semeada com a cor de agora**, senão o
+    // selector abre no que lá estava da última vez e o artista escolhe a partir do sítio
+    // errado.
+    for &(id, srgb) in &cor.swatches {
+        store.set_widget_color(id, srgb);
+        store.register_picker_swatch(id);
+    }
+    for &(id, parent, index, canvas) in curva.points.iter().chain(cor.markers.iter()) {
         store.register(
             id,
             InteractiveState::CurvePoint {
@@ -184,7 +261,7 @@ fn register(store: &mut WidgetStore, sacola: &ph2d_param_editors::curve::CurveWi
             },
         );
     }
-    for &id in &sacola.buttons {
+    for &id in curva.buttons.iter().chain(cor.buttons.iter()) {
         store.register(
             id,
             InteractiveState::Button {
@@ -215,7 +292,14 @@ pub(crate) fn on_drag(
         return false;
     }
     let valor = crate::snapshot::card_text_of(open.node, open.param).unwrap_or_default();
-    if let Some(novo) = ph2d_param_editors::curve::drain_drag(store, key, &valor) {
+    let novo = match open.kind {
+        EditorKind::Curve => ph2d_param_editors::curve::drain_drag(store, key, &valor),
+        EditorKind::Gradient => ph2d_param_editors::gradient::drain_drag(store, key, &valor),
+        // ⛔ Uma paleta não tem POSIÇÕES para arrastar — ela é uma lista ordenada, e as
+        // amostras dela abrem o selector. Não há arrasto para drenar.
+        EditorKind::Palette => None,
+    };
+    if let Some(novo) = novo {
         push_intent(GraphIntent::SetTextParam {
             node: open.node,
             param: open.param,
@@ -236,14 +320,52 @@ pub(crate) fn on_click(state: &MotionGraphPanelState, id: ph2d_a11y::NodeId) -> 
         swatch: &swatch,
     };
     let valor = crate::snapshot::card_text_of(open.node, open.param).unwrap_or_default();
-    let novo = if id == key.sub("add") {
-        ph2d_param_editors::curve::add_point(&valor)
-    } else if id == key.sub("remove") {
-        ph2d_param_editors::curve::remove_point(&valor, key)
-    } else if id == key.sub("interp") {
-        ph2d_param_editors::curve::cycle_interp(&valor, key)
-    } else {
-        return false;
+    // ⚠️ **Os NOMES dos botões são partilhados entre as espécies** (`add`, `remove`, `interp`) —
+    // e as leis não: acrescentar uma parada não é acrescentar um ponto. A espécie decide, e é
+    // por isso que o `match` vem primeiro e o id depois.
+    let novo = match open.kind {
+        EditorKind::Curve => {
+            if id == key.sub("add") {
+                ph2d_param_editors::curve::add_point(&valor)
+            } else if id == key.sub("remove") {
+                ph2d_param_editors::curve::remove_point(&valor, key)
+            } else if id == key.sub("interp") {
+                ph2d_param_editors::curve::cycle_interp(&valor, key)
+            } else {
+                return false;
+            }
+        }
+        EditorKind::Gradient => {
+            if id == key.sub("add") {
+                ph2d_param_editors::gradient::add_stop(&valor)
+            } else if id == key.sub("remove") {
+                ph2d_param_editors::gradient::remove_stop(&valor, key)
+            } else if id == key.sub("interp") {
+                ph2d_param_editors::gradient::cycle_interp(&valor, key)
+            } else if id == key.sub("space") {
+                ph2d_param_editors::gradient::cycle_space(&valor)
+            } else if id == key.sub("hue") {
+                ph2d_param_editors::gradient::cycle_hue(&valor)
+            } else if let Some(p) = (0..ph2d_param_editors::gradient::PRESET_COUNT)
+                .find(|&p| id == key.sub(&format!("preset/{p}")))
+            {
+                // Um molde CARREGA as paradas dele na rampa editável — ele não é um modo.
+                ph2d_param_editors::gradient::preset_gradient(p)
+            } else {
+                return false;
+            }
+        }
+        // ⚠️ A paleta não tem `interp` nem espaço: ela é uma lista de cores, não uma
+        // interpolação entre elas.
+        EditorKind::Palette => {
+            if id == key.sub("add") {
+                ph2d_param_editors::palette::add_color(&valor)
+            } else if id == key.sub("remove") {
+                ph2d_param_editors::palette::remove_color(&valor)
+            } else {
+                return false;
+            }
+        }
     };
     push_intent(GraphIntent::SetTextParam {
         node: open.node,

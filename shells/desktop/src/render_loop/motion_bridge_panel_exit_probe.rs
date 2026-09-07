@@ -394,28 +394,32 @@ fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
     );
 }
 
-/// **Medido em 2026-09-07: `3` de `683` rows** (eram `26`) — reconciliado pela sonda, nunca
-/// escrito de memória. Ficam **duas** espécies, e as duas são editores de COR:
+/// **Medido em 2026-09-07: `0` de `683` rows** (eram `26`) — reconciliado pela sonda, nunca
+/// escrito de memória.
 ///
-/// | espécie | quantos | nós |
+/// | espécie | quantos | como fechou |
 /// |---|---:|---|
-/// | ~~campo de TEXTO~~ | ~~9~~ | ✅ a caixa abre com o valor INTEIRO |
-/// | ~~amostra + selector de COR~~ | ~~4~~ | ✅ o id da amostra passou a carregar o NÓ |
-/// | ~~selector de FONTE publicada~~ | ~~4~~ | ✅ setas + lista, pela lista viva |
-/// | ~~caminho + diálogo de FICHEIRO~~ | ~~3~~ | ✅ o cartão pede, a shell abre |
-/// | ~~selector de CANAL~~ | ~~1~~ | ✅ o clique anda pelos canais e escreve o PAR |
-/// | ~~editor de CURVA~~ | ~~2~~ | ✅ **janela flutuante** sobre o cartão |
-/// | editor de GRADIENTE | 2 | `motion.color_ramp` · `fx.glow` |
-/// | editor de PALETA | 1 | `motion.color_array` |
+/// | campo de TEXTO | 9 | a caixa abre com o valor INTEIRO |
+/// | amostra + selector de COR | 4 | o id da amostra passou a carregar o NÓ |
+/// | selector de FONTE publicada | 4 | setas + lista, pela lista viva |
+/// | caminho + diálogo de FICHEIRO | 3 | o cartão pede, a shell abre |
+/// | selector de CANAL | 1 | o clique anda pelos canais e escreve o PAR |
+/// | editor de CURVA | 2 | **janela flutuante** sobre o cartão |
+/// | editor de GRADIENTE | 2 | a mesma janela |
+/// | editor de PALETA | 1 | a mesma janela |
 ///
-/// ⚠️ **A curva foi o primeiro dos que pedem uma SUPERFÍCIE**, e a wave que a trouxe foi mais
-/// larga que ela: os três editores saíram do painel para uma crate-folha
-/// ([`ph2d_param_editors`]) com dois hospedeiros. Os dois que ficam já estão **movidos** — o
-/// que lhes falta é a metade de COR do hospedeiro novo: uma amostra de parada abre o selector
-/// OKLCH, e a shell tem de saber ler a escolha de volta para dentro da string com o id do
-/// CARTÃO (que carrega o nó), e não com o do painel (que não carrega).
+/// ⛔⛔ **ZERO AQUI NÃO É AUTORIZAÇÃO PARA RETIRAR O PAINEL, e a razão é um PONTO CEGO desta
+/// sonda.** Ela pergunta *o que um clique nesta row FAZ* — e por isso conta um gradiente como
+/// alcançável no dia em que a janela ABRE, mesmo que a cor escolhida lá dentro não chegue a
+/// lado nenhum. *Um editor que abre, aceita o gesto e não guarda é a espécie de controlo morto
+/// que uma sonda de alcance lê como vivo.*
 ///
-/// ⛔ **A janela FLUTUA e isso é medido, não estético:** o cartão tem `190 px` de largura e o
-/// cabeçalho do editor de gradiente pede `~208` só para os cinco botões. Encolher um controlo
-/// que se ARRASTA é tirar-lhe a única coisa que ele oferece.
-const TRANCADOS_NO_PAINEL: usize = 3;
+/// ⇒ A outra metade tem gates PRÓPRIOS, e eles vivem do lado da shell porque é lá que a leitura
+/// de volta do selector acontece: [`super::super::color`] (`card_tests`) mede que a cor
+/// escolhida numa janela de cartão chega à string, e que dois cartões do mesmo tipo não
+/// partilham a amostra. **Antes de retirar o painel, corra as duas famílias.**
+///
+/// ⏳ **E fica um item de PRODUTO, não de alcance:** o painel lateral ainda mostra as rows, e
+/// retirá-lo é uma decisão do Enio com um smoke pelo meio — o cartão passou a alcançar tudo,
+/// que era a condição, não a ordem.
+const TRANCADOS_NO_PAINEL: usize = 0;

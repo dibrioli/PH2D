@@ -317,7 +317,11 @@ pub fn click_does(p: &crate::CardParam) -> ClickDoes {
         ph2d_node_registry::ParamWidget::Channels { .. } => ClickDoes::CycleChannel,
         ph2d_node_registry::ParamWidget::Text => ClickDoes::TypeText,
         ph2d_node_registry::ParamWidget::Color { .. } => ClickDoes::OpensPicker,
-        ph2d_node_registry::ParamWidget::Curve => ClickDoes::OpensEditor,
+        // ⚠️ **As três espécies com a MESMA resposta**, e é o que a janela flutuante comprou:
+        // a curva, o gradiente e a paleta são superfícies de desenho, não cliques.
+        ph2d_node_registry::ParamWidget::Curve
+        | ph2d_node_registry::ParamWidget::Gradient
+        | ph2d_node_registry::ParamWidget::Palette => ClickDoes::OpensEditor,
         _ => ClickDoes::Nothing,
     }
 }

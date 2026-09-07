@@ -127,7 +127,8 @@ pub fn paint(
 
     // ── The strip, WRAPPED. The height follows the count; nothing here caps it. ──
     let cols = per_line(w);
-    let mut used = ph2d_tokens::row_pitch_px();
+    // O topo da tira: o cabeçalho já foi desenhado.
+    let used = ph2d_tokens::row_pitch_px();
     for (i, c) in colors.iter().enumerate() {
         let (line, col) = (i / cols, i % cols);
         #[expect(
@@ -162,20 +163,79 @@ pub fn paint(
         hit_index.register(id, r);
         out.swatches.push((id, srgb));
     }
-    let lines = colors.len().div_ceil(cols);
+    // Pela PORTA — ver [`height`].
+    debug_assert!((used + strip_h(colors.len(), cols) - height(value, w)).abs() < 1e-3);
+    height(value, w)
+}
+
+/// **A ALTURA que esta paleta ocupa** — cabeçalho mais a tira, que EMBRULHA: ela segue a
+/// contagem de cores, e nada aqui a limita.
+///
+/// ⚠️ **Uma PORTA, dois leitores**: o `paint` devolve-a e o hospedeiro flutuante lê-a antes de
+/// desenhar (o fundo vem primeiro na cena). *Duas contas da mesma altura seriam um fundo que
+/// não cobre o que está lá dentro* — e numa paleta, que cresce, seria pior: o fundo ficaria
+/// certo até a nona cor.
+#[must_use]
+pub fn height(value: &str, w: f32) -> f32 {
+    let n = working(value).len();
+    ph2d_tokens::row_pitch_px() + strip_h(n, per_line(w))
+}
+
+/// A altura da tira embrulhada, em linhas.
+fn strip_h(n: usize, cols: usize) -> f32 {
+    let gap = Spacing::Xs.px();
     #[expect(
         clippy::cast_precision_loss,
         reason = "a line count; see the swatch-grid note above"
     )]
     {
-        used += lines as f32 * (SWATCH + gap);
+        n.div_ceil(cols.max(1)) as f32 * (SWATCH + gap)
     }
-    used
+}
+
+/// ⭐⭐ **O `+` ACRESCENTA UMA COR, SEM TETO** (Enio: *«tire os limites»*).
+///
+/// ⚠️ **A nova COPIA a última** — um artista acrescenta uma amostra para depois a EDITAR, e uma
+/// cópia vê-se onde um buraco preto é uma falha.
+#[must_use]
+pub fn add_color(value: &str) -> String {
+    let mut colors = working(value);
+    let last = *colors.last().unwrap_or(&[1.0, 1.0, 1.0, 1.0]);
+    colors.push(last);
+    ph2d_color::serialize_palette(&colors)
+}
+
+/// ⭐ **O `−` tira a ÚLTIMA, e para em UMA.** Uma paleta vazia deixaria o nó sem nada para
+/// ciclar e a tira sem nada em que clicar de volta.
+#[must_use]
+pub fn remove_color(value: &str) -> String {
+    let mut colors = working(value);
+    if colors.len() > 1 {
+        colors.pop();
+    }
+    ph2d_color::serialize_palette(&colors)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⭐⭐ **A PORTA DA ALTURA DIZ O QUE O PINTOR USOU** — a igualdade que o hospedeiro
+    /// flutuante depende para desenhar o fundo ANTES do conteúdo.
+    ///
+    /// ⚠️ Numa paleta ela não é constante: a tira EMBRULHA, então uma segunda conta ficaria
+    /// certa até a linha encher. FALSIFICADO por o `height` esquecer o cabeçalho.
+    #[test]
+    fn the_height_door_matches_what_the_paint_used() {
+        for n in [1usize, 3, 9, 17] {
+            let cores: Vec<[f32; 4]> = (0..n).map(|i| [i as f32 / 20.0, 0.2, 0.3, 1.0]).collect();
+            let (usada, _, _) = painted(&cores, 184.0);
+            assert!(
+                (usada - height(&ph2d_color::serialize_palette(&cores), 184.0)).abs() < 1e-3,
+                "com {n} cores o pintor usou {usada} e a porta diz outra coisa"
+            );
+        }
+    }
 
     /// What painting a palette of `colors` into a `w`-wide row actually produced: the height
     /// it claimed, **how many paths the scene really encodes**, and the paint bytes.

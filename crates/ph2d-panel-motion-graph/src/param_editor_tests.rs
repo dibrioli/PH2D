@@ -221,3 +221,91 @@ fn the_window_is_pushed_back_inside_the_canvas() {
         "cabe em y: {w:?}"
     );
 }
+
+/// ⭐⭐⭐ **AS TRÊS ESPÉCIES ABREM A MESMA JANELA** — e cada uma escreve a SUA serialização.
+///
+/// ⚠️ **Os nomes dos botões são partilhados** (`add`, `remove`, `interp`) e as leis não são:
+/// acrescentar uma parada a um gradiente não é acrescentar um ponto a uma curva. Um `if` por id
+/// antes do `match` por espécie faria o `+` de um gradiente inserir um ponto de curva na string
+/// — e o nó lia-a vazia, em silêncio.
+///
+/// FALSIFICADO por o `on_click` resolver o id antes da espécie.
+#[test]
+fn each_species_writes_its_own_serialisation() {
+    let caso = |kind: EditorKind, param: &'static str, valor: &str| -> String {
+        let st = MotionGraphPanelState {
+            editor: Some(Open {
+                node: NODE,
+                param,
+                title: "Ramp",
+                kind,
+                screen: (100.0, 100.0),
+            }),
+            ..MotionGraphPanelState::default()
+        };
+        set_card_texts(vec![(NODE, param, valor.to_string())]);
+        let (own, swatch) = key_of(NODE, param);
+        let key = EditorKey {
+            own: &own,
+            swatch: &swatch,
+        };
+        let _ = drain_intents();
+        assert!(on_click(&st, key.sub("add")), "o `+` e' deste editor");
+        let saiu = drain_intents();
+        let Some(GraphIntent::SetTextParam { value, .. }) = saiu.first() else {
+            panic!("o `+` tem de escrever, e saiu {saiu:?}");
+        };
+        set_card_texts(Vec::new());
+        value.clone()
+    };
+
+    let rampa = caso(EditorKind::Gradient, "ramp", "g1 2 0:1,0,0 1:0,0,1");
+    assert_eq!(
+        ph2d_color::parse_gradient(&rampa)
+            .expect("uma RAMPA, nao uma curva")
+            .len(),
+        3,
+        "o `+` de um gradiente acrescenta uma PARADA: {rampa}"
+    );
+
+    let paleta = caso(EditorKind::Palette, "palette", "");
+    assert_eq!(
+        ph2d_color::parse_palette(&paleta)
+            .expect("uma PALETA")
+            .len(),
+        ph2d_color::DEFAULT_PALETTE_FALLBACK.len() + 1,
+        "o `+` de uma paleta acrescenta uma COR a`s de fabrica: {paleta}"
+    );
+}
+
+/// ⭐⭐ **A CAIXA DE UMA PALETA CRESCE COM AS CORES** — e a de um gradiente não.
+///
+/// ⚠️ É a única das três cuja altura é função do VALOR: a tira embrulha. Uma altura constante
+/// aqui daria um fundo que corta a segunda linha de amostras.
+#[test]
+fn the_palette_window_grows_with_its_colours() {
+    let canvas = Rect::new(0.0, 0.0, 800.0, 600.0);
+    let alto = |valor: &str| -> f32 {
+        set_card_texts(vec![(NODE, "palette", valor.to_string())]);
+        let st = MotionGraphPanelState {
+            editor: Some(Open {
+                node: NODE,
+                param: "palette",
+                title: "Palette",
+                kind: EditorKind::Palette,
+                screen: (10.0, 10.0),
+            }),
+            ..MotionGraphPanelState::default()
+        };
+        let h = window(&st, canvas).expect("aberta").h;
+        set_card_texts(Vec::new());
+        h
+    };
+    let poucas: Vec<[f32; 4]> = (0..2).map(|i| [i as f32, 0.2, 0.3, 1.0]).collect();
+    let muitas: Vec<[f32; 4]> = (0..24).map(|i| [i as f32 / 30.0, 0.2, 0.3, 1.0]).collect();
+    assert!(
+        alto(&ph2d_color::serialize_palette(&muitas))
+            > alto(&ph2d_color::serialize_palette(&poucas)),
+        "24 cores tem de pedir mais caixa que 2"
+    );
+}

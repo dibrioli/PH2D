@@ -81,6 +81,17 @@ fn stop_srgb(stop: &RampStop) -> [u8; 4] {
     ]
 }
 
+/// **A ALTURA que este editor ocupa** — cabeçalho, barra, tira de amostras e chips de molde.
+/// Constante: um gradiente tem sempre a mesma caixa, quantas paradas tenha (a tira é uma linha).
+///
+/// ⚠️ **Uma PORTA, dois leitores**: o `paint` devolve-a e o hospedeiro flutuante lê-a antes de
+/// desenhar (o fundo do painel vem primeiro na cena).
+#[must_use]
+pub fn height() -> f32 {
+    let gap = Spacing::Xs.px();
+    ph2d_tokens::row_pitch_px() + BAR_H + gap + SWATCH_H + gap + PRESET_H
+}
+
 /// One COLOUR row's store-registration data — the Gradient editor and the Palette strip
 /// both fill it, because the palette needs an exact SUBSET (swatches + buttons, no
 /// markers: a palette has no positions to drag).
@@ -330,9 +341,11 @@ pub fn paint(
         out.buttons.push(id);
     }
 
-    // Content height (header + gap + bar + gap + swatches + gap + preset chips); the caller adds
-    // the inter-row gap.
-    (py0 + PRESET_H) - y
+    // Content height — pela PORTA, que é a mesma que o hospedeiro flutuante lê para desenhar
+    // o fundo ANTES do conteúdo. Duas contas da mesma altura seriam um fundo que não cobre o
+    // que está lá dentro. (⚠️ A igualdade é gateada: `the_height_door_matches_what_the_paint_used`.)
+    debug_assert!(((py0 + PRESET_H) - y - height()).abs() < 1e-3);
+    height()
 }
 
 /// A dragged marker landed in the store's `curve_point_drag` slot — fold its x into the

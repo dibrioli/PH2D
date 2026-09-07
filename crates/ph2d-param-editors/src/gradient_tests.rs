@@ -151,3 +151,34 @@ fn drain_drag_folds_the_position_and_never_lets_it_cross() {
         "slot drained"
     );
 }
+
+/// ⭐⭐ **A PORTA DA ALTURA DIZ O QUE O PINTOR USOU** — a igualdade de que o hospedeiro
+/// flutuante depende para desenhar o fundo ANTES do conteúdo.
+///
+/// FALSIFICADO por o `height` esquecer a tira de moldes (o fundo cortaria os quatro chips).
+#[test]
+fn the_height_door_matches_what_the_paint_used() {
+    let mut hit = ph2d_editor_core::interaction::HitIndex::default();
+    let mut scene = ph2d_vector::VectorScene::new();
+    let mut text = ph2d_text::TextSystem::without_system_fonts();
+    let mut out = ColourRowWidgets::new();
+    let usada = paint(
+        "Ramp",
+        "g1 2 0:1,0,0 1:0,0,1",
+        K,
+        0.0,
+        184.0,
+        0.0,
+        12.0,
+        &mut hit,
+        &mut scene,
+        &mut text,
+        ph2d_tokens::Theme::Dark,
+        &mut out,
+    );
+    assert!(
+        (usada - height()).abs() < 1e-3,
+        "o pintor usou {usada} e a porta diz {}",
+        height()
+    );
+}

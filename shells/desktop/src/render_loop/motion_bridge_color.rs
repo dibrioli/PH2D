@@ -181,7 +181,10 @@ pub(super) fn picker_session(
     pal_params: &[&'static str],
     store: &ph2d_editor::interaction::WidgetStore,
 ) -> bool {
-    let color = picker_target_of(motion, sel, groups, store).is_some();
+    let color = picker_target_of(motion, sel, groups, store).is_some()
+        // ⚠️ **A janela do cartão abre sessão como qualquer outra amostra**: sem isto, arrastar
+        // no selector com o gradiente aberto num cartão gravaria um passo de undo POR QUADRO.
+        || card::card_editor_pick(motion, store).is_some();
     let grad = sel.is_some_and(|nid| {
         grad_params
             .iter()
@@ -199,6 +202,31 @@ pub(super) fn picker_session(
 /// ([`apply_color_to_node`]) or a gradient stop's colour in the ramp string
 /// ([`apply_gradient_stop_pick`]). No-op when no picker is open. Must run INSIDE the undo
 /// bracket [`picker_session`] opened.
+/// A metade *«de QUEM é esta escolha»* quando quem abriu o selector foi um CARTÃO — irmã por
+/// responsabilidade, cortada no tecto de LOC da shell.
+#[path = "motion_bridge_color_card.rs"]
+mod card;
+
+/// Os gates da leitura de volta feita numa janela de CARTÃO — a metade que o censo de alcance
+/// não vê.
+#[cfg(test)]
+#[path = "motion_bridge_color_card_tests.rs"]
+mod card_tests;
+
+/// Quantas paradas a rampa serializada tem AGORA — a contagem que o editor pintou.
+pub(super) fn current_gradient_len(texto: &str) -> usize {
+    ph2d_color::parse_gradient(texto).unwrap_or_default().len()
+}
+
+/// Quantas cores a paleta serializada tem AGORA — irmã de [`current_gradient_len`], e as duas
+/// caem no MESMO default do editor quando o texto está vazio (senão a última amostra de uma
+/// paleta por autorar ficaria sem dono).
+pub(super) fn current_palette_len(texto: &str) -> usize {
+    ph2d_color::parse_palette(texto)
+        .filter(|p| !p.is_empty())
+        .map_or(ph2d_color::DEFAULT_PALETTE_FALLBACK.len(), |p| p.len())
+}
+
 pub(super) fn apply_picker_readback(
     motion: &mut MotionState,
     sel: Option<ph2d_nodegraph::graph::NodeId>,
@@ -215,6 +243,31 @@ pub(super) fn apply_picker_readback(
         && let Some((value, _, _, _)) = pick()
     {
         apply_color_to_node(motion, alvo, ch, value.rgba);
+    }
+    // ⭐⭐ **A escolha feita numa janela aberta SOBRE UM CARTÃO** — o nó sai do id, e por isso
+    // ela não depende de o cartão estar seleccionado. ⚠️ Vem ANTES do caminho do painel de
+    // propósito: os ids são disjuntos (prefixos diferentes), então nunca há duas respostas —
+    // mas se um dia houvesse, a superfície que o artista TOCOU tem de ganhar.
+    if let Some(escolha) = card::card_editor_pick(motion, store)
+        && let Some((value, _, _, _)) = pick()
+    {
+        if escolha.gradient {
+            apply_gradient_stop_pick(
+                motion,
+                escolha.node,
+                escolha.param,
+                escolha.index,
+                value.rgba,
+            );
+        } else {
+            apply_palette_pick(
+                motion,
+                escolha.node,
+                escolha.param,
+                escolha.index,
+                value.rgba,
+            );
+        }
     }
     let Some(nid) = sel else { return };
     for p in grad_params {

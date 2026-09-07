@@ -24,16 +24,31 @@ na esfera, sobre o equador visível (`y < 0`). Raio do pincel em espaço de obje
 plasticidade `0`, pino desligado, sem colisões, sem gravidade — i.e., **as omissões do código**
 (espec §8.1), não as dos presets (§8.2).
 
-⚠️ **As excepções a este parágrafo são SETE, e foram CONTADAS do `indice.json`** (R-pré, 2026-09-06 —
-a redacção anterior nomeava só `_forca05` e deixava as outras quatro debaixo de uma frase que as
-contradizia; ⛔ leia o cabeçalho da fixture, nunca esta lista, mas saiba que ela existe):
-- **força** ≠ `1,0` em **quatro**: `plano_apertar_ponto_radial_local_origem_fraco` (`0,2`),
-  `plano_arrastar_radial_local_forca05`, `…_forca05_1passo` e
-  `plano_expandir_radial_local_origem_1passo_forca05` (`0,5`);
-- **curva** ≠ *Smooth* em **uma**: `plano_gancho_radial_local_origem_1passo_constante`;
-- **percurso** ≠ `0,6` em **uma**: `plano_gancho_radial_local_origem_1passo_curto` (`0,05`);
-- **limite** ≠ `2,5` em **uma**: `plano_agarrar_radial_local_preset` (**`5,0`**) — ⭐ e essa é
-  load-bearing: é o **segundo ponto de `L`** que refuta a leitura antiga da banda (espec §2.2).
+⚠️⚠️ **As excepções a este parágrafo são VINTE E TRÊS de `73`, e a régua está escrita aqui porque
+ela é metade da conta** (2026-09-06 — ⛔ leia sempre o cabeçalho da fixture, nunca esta lista):
+compara-se o cabeçalho de cada `.deformado.txt.gz` com **as nove grandezas que o parágrafo fixa sem
+ressalva** (`raio · limite · banda · massa · amortecimento · plasticidade · pino · força · curva`)
+mais o **percurso**, medido como `max(x) − min(x)` sobre as linhas `c`; a **área** fica de fora
+porque o parágrafo já lhe põe o «salvo indicação», e por ela `16` das `73` não são *Local*.
+
+| grandeza | quantas | quais |
+|---|---|---|
+| **força** ≠ `1,0` | `6` | `plano_apertar_ponto_radial_local_origem_fraco` (`0,2`) · `plano_arrastar_radial_local_forca05` · `…_forca05_1passo` · `plano_expandir_radial_local_origem_1passo_forca05` (`0,5`) · `plano_empurrar_radial_local_origem_forca05` (`0,5`) · `…_forca025` (`0,25`) |
+| **amortecimento** ≠ `0,01` | `6` | `plano_arrastar_radial_local_amort05` · `…_amort1` · `plano_agarrar_radial_local_amort06` · `…_preset` · `plano_gancho_radial_local_amort06` · `plano_empurrar_radial_local_origem_amort1` |
+| **massa** ≠ `1` | `4` | `plano_arrastar_radial_local_massa2` · `…_massa2_1passo` · `plano_empurrar_radial_local_origem_massa2` · `plano_inflar_radial_local_origem_massa2` |
+| **percurso** ≠ `0,6` | `3` | `plano_gancho_radial_local_origem_1passo_curto` (`0,05`) · `plano_empurrar_radial_local_origem_parado` (`0,0545`) · `plano_inflar_radial_local_origem_parado` (`0,0545`) |
+| **plasticidade** ≠ `0` | `2` | `plano_arrastar_radial_local_plast05` · `plano_arrastar_radial_dinamica_preset` |
+| **limite** ≠ `2,5` | `1` | `plano_agarrar_radial_local_preset` (**`5,0`**) — ⭐ load-bearing: é o **segundo ponto de `L`** que refuta a leitura antiga da banda (espec §2.2) |
+| **pino** ligado | `1` | `plano_arrastar_radial_local_pino` |
+| **curva** ≠ *Smooth* | `1` | `plano_gancho_radial_local_origem_1passo_constante` |
+
+⛔⛔ **Esta conta esteve em `SETE` e a régua é que estava errada, não o número:** ela varria só
+`força · curva · percurso · limite` e deixava de fora `amortecimento`, `massa`, `plasticidade` e
+`pino` — **nove** fixtures que o mesmo parágrafo também descreve mal. *Uma lista de excepções sem a
+régua ao lado não é auditável, e quem acrescenta um traço herda a régua que não vê.*
+⚠️ E o percurso mede-se pelo **vão em `x`**: na esfera os pontos vivem no equador, logo a
+poli-linha entre eles mede `0,6093` — quem contar comprimento de caminho acusa os oito traços de
+esfera e não é isso que o parágrafo diz.
 
 ⚠️ **Duas coisas do harness que mudam a leitura de uma fixture:**
 - o centro da área *Local* é o ponto da superfície sob o cursor **no hover antes do pen-down** — o
@@ -58,8 +73,9 @@ variável cada:
 
 ⚠️ **Duas destas nove QUEBRAM o parágrafo acima, e os cabeçalhos dizem-no:**
 `plano_gancho_radial_local_origem_1passo_constante` é a **única fixture do corpus inteiro com curva
-`constant`** (todas as outras são `smooth`), e `…_curto` é a **única com um percurso que não é
-`0,6`** — leia-o no campo `caminho` dela, não nesta prosa.
+`constant`** (todas as outras são `smooth`), e `…_curto` tem um percurso que não é `0,6` — leia-o no
+campo `caminho` dela, não nesta prosa. ⚠️ **A cláusula «a ÚNICA com percurso ≠ `0,6`» caducou em
+2026-09-06**: as duas fixtures `_parado` da emenda Q16 avançam `0,0545` e depois param.
 ⚠️ **Validação da sessão, antes de qualquer uma ser gravada:** uma corrida de controlo do gancho com
 o caminho `0 → 0,3 → 0,6` devolveu `máx = 0,343869`, idêntico a seis casas ao da fixture
 `plano_gancho_radial_local_2passos_origem` da sessão anterior. *Sem esta corrida, um número novo e um
@@ -70,7 +86,7 @@ skill). Regenerar continua a ser acto de **E**.
 
 ## ⭐ O instrumento POR PASSO (`*.porpasso.txt.gz`, pedido do I em 2026-09-06)
 
-**O que é.** Para os **nove** traços da tabela abaixo — os `_origem` —, as posições
+**O que é.** Para os **dezassete** traços da tabela abaixo — os `_origem` —, as posições
 **depois de CADA passo** — um ficheiro por traço com um
 bloco `passo k` por passo. **Como foi obtido:** o traço do binário é uma chamada só e a simulação vive
 dentro dela, logo não se pode «pausar»; mas a simulação **nunca olha para a frente**, então uma corrida
@@ -79,15 +95,17 @@ estado do passo `k` da corrida inteira. Cada ficheiro traz a **prova**: `prova_d
 diferença máxima por vértice entre o bloco `k = N` e uma corrida inteira da MESMA sessão — tem de ser
 `0,000000` (a 6 decimais).
 
-⚠️⚠️ **`ls *.porpasso.txt.gz | wc -l` devolve `13`, e só NOVE deles são o instrumento** (R-pré,
-2026-09-06): os outros **quatro** são a 1.ª geração, com o pen-down em `x = −0,3`, e ⛔ **TRÊS deles
+⚠️⚠️ **`ls *.porpasso.txt.gz | wc -l` devolve `21`, e só DEZASSETE deles são o instrumento**
+(R-pré, 2026-09-06; a contagem era `13`/`9` antes das oito da emenda Q16 — ⛔ **conte-os**):
+os outros **quatro** são a 1.ª geração, com o pen-down em `x = −0,3`, e ⛔ **TRÊS deles
 NÃO passam a prova do fatiamento** — `plano_arrastar_radial_local` (`0.330421`),
 `plano_agarrar_radial_local_2passos` (`0.115064`) e `plano_gancho_radial_local_2passos` (`0.004244`).
 ⛔ **Não os use como oráculo**: ficam como o REGISTO da medição que obrigou ao pen-down na origem.
 ⭐ E o quarto, `plano_arrastar_radial_global`, dá `0.000000` — *porque a área dele é **Global** e não
 tem centro para ficar refém do sobrevoo*, que é exactamente o mecanismo explicado a seguir.
-⚠️ **O pen-down dos NOVE está NA ORIGEM do objecto** (`caminho` de `(0,0,0)` a `(0,6,0,0)`), e o
-sufixo `_origem` diz-o (o `_fraco` é um deles). Motivo, medido: o centro da área *Local* é o ponto de HOVER do cursor antes do
+⚠️ **O pen-down dos DEZASSETE está NA ORIGEM do objecto** (`caminho` de `(0,0,0)` a `(0,6,0,0)` —
+nas duas `_parado` o caminho pára em `(0,0545,0,0)`), e o sufixo `_origem` diz-o (o `_fraco` é um
+deles). Motivo, medido: o centro da área *Local* é o ponto de HOVER do cursor antes do
 pen-down, e num traço scriptado esse hover é **refém do ponteiro físico** — numa sessão inteira saiu
 certo, na seguinte saiu na origem em todas as corridas e a zero em duas. Com o pen-down na origem, o
 centro é o mesmo quer o hover dispare quer não ⇒ determinístico por construção. Os outros fixtures
@@ -112,6 +130,14 @@ sobre estas posições, e o rastreio dá o lado MEDIDO da comparação.
 | `plano_apertar_ponto_radial_local_origem_fraco` | 12 | `0.000000` | 2029 | `0.004082` |
 | `plano_empurrar_radial_local_origem` | 12 | `0.000000` | 2145 | `0.259368` |
 | `plano_inflar_radial_local_origem` | 12 | `0.000000` | 2145 | `0.317081` |
+| `plano_empurrar_radial_local_origem_parado` | 12 | `0.000000` | 2141 | `0.122854` |
+| `plano_inflar_radial_local_origem_parado` | 12 | `0.000000` | 2145 | `0.144297` |
+| `plano_empurrar_radial_local_origem_forca05` | 12 | `0.000000` | 2141 | `0.219673` |
+| `plano_empurrar_radial_local_origem_forca025` | 12 | `0.000000` | 2122 | `0.110869` |
+| `plano_empurrar_radial_local_origem_massa2` | 12 | `0.000000` | 2145 | `0.249664` |
+| `plano_inflar_radial_local_origem_massa2` | 12 | `0.000000` | 2145 | `0.296328` |
+| `plano_empurrar_radial_local_origem_amort1` | 12 | `0.000000` | 2133 | `0.19698` |
+| `plano_empurrar_radial_global_origem` | 12 | `0.000000` | 4225 | `0.324889` |
 
 ⭐⭐ **O `_fraco` (2026-09-06) é um CONTROLO, não mais um traço** — a espec §10.6 e §5.2-ter. É o
 traço de aperto de ponto da linha acima com **uma** coisa mudada, a força (`1,0 → 0,2`), e existe
@@ -121,6 +147,33 @@ oráculo passa a **quebrar a simetria de espelho do próprio traço** (`0,675` d
 passo 3); à força `0,2` não há uma única face invertida em doze passos e a quebra cai para `0,103`,
 que é o piso do arrasto. ⛔ **Não a use como fixture de amplitude** (o deslocamento é `0,004`, perto
 da resolução do ficheiro): ela serve às perguntas «inverteu?» e «quanto é que a ordem decide?».
+
+### ⭐⭐⭐ As OITO corridas de 2026-09-06 que separam a fase do GESTO da fase do SOLVER (espec §10.10)
+
+Gravadas a pedido do I para a emenda Q16, na **mesma** sessão e com o **mesmo** harness, todas com
+pen-down na **origem** e 12 passos, para serem comparáveis passo a passo com os `_origem` acima:
+
+| variante | o que muda | o que a alavanca retira |
+|---|---|---|
+| `…_parado` (empurrar · inflar) | ⭐ o caminho **avança uma vez e depois repete o mesmo ponto** `10` vezes — a 1.ª e única coisa do corpus com pontos de caminho repetidos | a fase do gesto inteira do passo 3 ao 12 (um passo sem deslocamento de cursor não aplica força — espec §4.2): ficam **dez passos de solver puro** |
+| `…_forca05` · `…_forca025` (empurrar) | a força (`1,0 → 0,5 → 0,25`), i.e. `¼` e `1/16` do impulso | a não-linearidade da resposta ao esticão |
+| `…_massa2` (empurrar · inflar) | a massa (`1 → 2`), i.e. metade do impulso com a fase do gesto **idêntica** | idem, pelo outro lado |
+| `…_amort1` (empurrar) | `amortecimento = 1` | a memória de velocidade de Verlet |
+| `plano_empurrar_radial_global_origem` | a área (*Local* → *Global*) | metade das projecções por restrição (`10 → 5`) e a banda (`w ≡ 1`) |
+
+⚠️⚠️ **DUAS coisas que se lêem ao contrário se não estiverem escritas:**
+- **O CONTROLO do instrumento não é fixture, é um número:** uma corrida cujo caminho tem **todos** os
+  pontos iguais devolve `0` vértices movidos e `máx |u| = 0,00000` em 12 passos, no empurrar e no
+  inflar. É a prova de que a fase do gesto está mesmo calada num passo parado — sem ela, o `_parado`
+  seria uma conjectura. (Reproduz-se com o caminho degenerado; não foi gravada como fixture porque é
+  uma malha de zeros.)
+- ⛔ **`massa2` chama-se assim porque `2` é o TECTO** — a corrida foi pedida com `4` e a porta de
+  propriedades do binário **coagiu para `2,0`, em silêncio**, e é o `2,0` que está no cabeçalho.
+  *Um valor pedido não é um valor aplicado: leia o cabeçalho, que traz o que ficou.*
+
+⚠️ **O cabeçalho destas oito traz uma chave NOVA — `passos_com_cursor_parado`** (quantos pontos do
+caminho repetem o anterior): `10` nas duas `_parado`, `0` nas outras seis. As fixtures anteriores
+**não** foram reescritas e não a têm; o `gera_indice.py` passou a conhecê-la como inteiro.
 
 ⭐ **Os dois de APERTO foram acrescentados em 2026-09-06 a pedido do I** (a divergência dos modos de
 aperto nasce entre o 1.º passo e o fim do traço, e só o dump por passo diz **em que** passo). ⚠️ O
@@ -231,7 +284,8 @@ o ficheiro diz o que contém.
   `desloc_no_fim` (deslocamento medido no 1.º / no último ponto do caminho, conforme o harness) ·
   `delta_area` (fracção; só significativa no plano) · `passos` · `raio`.
   ⚠️⚠️ **ESTA DESCRIÇÃO NÃO É A DO FICHEIRO — conferido em 2026-09-06.** O `analise.json` que está no
-  disco tem **47** objectos (para `54` fixtures) e as chaves **do harness**, não as de cima; a linha
+  disco tem **47** objectos (contra `73` fixtures em 2026-09-06 — eram `54` quando isto foi escrito,
+  e o desvio só cresce) e as chaves **do harness**, não as de cima; a linha
   que dizia «renomeado pelo R-pré em 2026-09-05 … 46/46» descrevia uma renomeação que **não está no
   ficheiro**. Ele continua a ser dado nosso e o sweep passa sobre ele; o que não vale é acreditar
   nesta secção. ⇒ **quem o regenerar escreve-o com as chaves de cima e com uma entrada por
@@ -286,9 +340,15 @@ o ficheiro diz o que contém.
 | `plano_arrastar_radial_local_pino.` | arrastar | 12 | 2144 | `0.323528` |
 | `plano_arrastar_radial_local_plast05.` | arrastar | 12 | 2141 | `0.234305` |
 | `plano_empurrar_plano_local.` | empurrar | 12 | 2146 | `0.520138` |
+| `plano_empurrar_radial_global_origem.` | empurrar | 12 | 4225 | `0.324889` |
 | `plano_empurrar_radial_local.` | empurrar | 12 | 2145 | `0.258986` |
 | `plano_empurrar_radial_local_1passo.` | empurrar | 2 | 171 | `0.069419` |
 | `plano_empurrar_radial_local_origem.` | empurrar | 12 | 2145 | `0.259368` |
+| `plano_empurrar_radial_local_origem_amort1.` | empurrar | 12 | 2133 | `0.19698` |
+| `plano_empurrar_radial_local_origem_forca025.` | empurrar | 12 | 2122 | `0.110869` |
+| `plano_empurrar_radial_local_origem_forca05.` | empurrar | 12 | 2141 | `0.219673` |
+| `plano_empurrar_radial_local_origem_massa2.` | empurrar | 12 | 2145 | `0.249664` |
+| `plano_empurrar_radial_local_origem_parado.` | empurrar | 12 | 2141 | `0.122854` |
 | `plano_expandir_radial_global_origem_1passo.` | expandir | 2 | 724 | `0.001525` |
 | `plano_expandir_radial_local.` | expandir | 12 | 2134 | `0.011523` |
 | `plano_expandir_radial_local_1passo.` | expandir | 2 | 848 | `0.001902` |
@@ -307,17 +367,19 @@ o ficheiro diz o que contém.
 | `plano_inflar_radial_local.` | inflar | 12 | 2146 | `0.317159` |
 | `plano_inflar_radial_local_1passo.` | inflar | 2 | 171 | `0.09917` |
 | `plano_inflar_radial_local_origem.` | inflar | 12 | 2145 | `0.317081` |
-
-**65 traços** (47 da matriz + 9 do instrumento por passo + 9 das corridas que isolam a REDE de
-restrições, de 2026-09-06 — espec §10.8) — ⚠️ **conte-os**
-(`ls *.deformado.txt.gz | wc -l`), esta linha já esteve parada em `53` e em `56`. ⚠️ As fixtures de ESFERA são todas de área **Dinâmica** (centro no cursor). A área *Local* na esfera NÃO foi gravada: um traço scriptado não dispara o hover que fixa o centro da área Local, que fica na ORIGEM do objecto — e numa esfera unitária a origem põe toda a malha dentro da banda (ver ERRATA no ledger). A área Local está medida no PLANO (onde a origem cai na superfície).
+| `plano_inflar_radial_local_origem_massa2.` | inflar | 12 | 2145 | `0.296328` |
+| `plano_inflar_radial_local_origem_parado.` | inflar | 12 | 2145 | `0.144297` |
+**73 traços** (47 da matriz + 9 do instrumento por passo + 9 das corridas que isolam a REDE de
+restrições + 8 das corridas que separam a fase do GESTO da fase do SOLVER, de 2026-09-06 —
+espec §10.8 e §10.10) — ⚠️ **conte-os**
+(`ls *.deformado.txt.gz | wc -l`), esta linha já esteve parada em `53`, em `56` e em `65`. ⚠️ As fixtures de ESFERA são todas de área **Dinâmica** (centro no cursor). A área *Local* na esfera NÃO foi gravada: um traço scriptado não dispara o hover que fixa o centro da área Local, que fica na ORIGEM do objecto — e numa esfera unitária a origem põe toda a malha dentro da banda (ver ERRATA no ledger). A área Local está medida no PLANO (onde a origem cai na superfície).
 
 ---
 
 ## ⭐ As QUATRO fixtures de TOPOLOGIA (2026-09-06, emenda Q15 — espec §3.1-bis e §10.9)
 
 ⚠️ **Estas quatro NÃO são traços** — não têm posições, não entram no `indice.json` (o gerador só vê
-`*.deformado.txt.gz`) e não contam para os `65` acima. Elas descrevem a **malha**, e existem porque
+`*.deformado.txt.gz`) e não contam para os `73` acima. Elas descrevem a **malha**, e existem porque
 a ordem de criação das restrições (espec §3.1) é *célula → vértice próprio → anel*, e nenhuma das
 três se lê das posições de repouso: quem reconstrói a malha casando-a com as fixtures **por posição**
 fica com os índices de VÉRTICE certos e sem as faces nem as células.

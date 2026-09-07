@@ -629,6 +629,7 @@ nunca a profundidade).
 | v1-q | idem — EMENDAS Q8/Q9/Q10 do E (a lista duplicada do *Local* · o centro atrasado do gancho e o zeramento das âncoras · os dois traços de aperto por passo) | `52e6f75a0` · `bdc378b5f` · `82ecde1b6` · `9a79c1721` (2026-09-06, E) |
 | v1-qr | idem — emendas atestadas; curas do R-pré (1 nome interno no §10.4 · 1 insuficiência no gate 16) | este commit (2026-09-06, R-pré) |
 | v1-q12 | idem — EMENDA Q12 do E (a normal da área e o factor de escala do Push · a projecção do deslocamento do cursor · a lei do centro da área · o censo do que é degenerado num plano · a costura duplicada do *Dynamic* · dois traços de força normal por passo) | este commit (2026-09-06, E) — ⏳ **aguarda o atestado do R-pré** |
+| v1-q16 | idem — EMENDA Q16 do E (o censo da resposta ao esticão: **nenhum** termo em falta nas três perguntas · o instrumento que corta o passo em duas metades, com `8` traços novos por passo e `2` controlos · a errata de contagem das excepções do README das fixtures) | este commit (2026-09-06, E) — ⏳ **aguarda o atestado do R-pré** |
 
 ---
 
@@ -1186,6 +1187,85 @@ o gerador só vê `*.deformado.txt.gz` e nenhum traço mudou (`65`).
 §14 gates **32-34**.
 **Sweep:** verde sobre a espec, o README, a pasta inteira das fixtures, o INBOX, este ledger (menos
 os dois hits pré-existentes de 2026-09-05 já registados acima) e o texto do report ao I.
+
+### Q16 — a RESPOSTA AO ESTICÃO: as três perguntas devolvem NÃO, e o que faltava era um INSTRUMENTO (perguntas do I de 2026-09-06; resposta no mesmo dia, com corrida NOVA do oráculo)
+
+**As perguntas do I.** Com a ordem de visita da Q15 implementada, `50` dos `65` traços batem a barra
+e `17` saem praticamente ao bit; o que sobra de determinista é **só** o Push e o Inflate, `5`–`9 %`
+ABAIXO, com o passo 2 ao bit e o erro a nascer no passo 3 — o primeiro em que a relaxação tem
+trabalho. Q16.1: há algo na projecção de uma restrição de distância que dependa de **quanto o par
+está esticado**, além do factor `(1 − ℓ'/D)`? Q16.2: há termo, peso ou restrição que só entre com
+componente ao longo da **normal** (dobra, rigidez angular)? Q16.3: há **sub-passos**?
+
+**Q16.1 — NÃO (F).** Releitura integral do laço de relaxação a partir desta pergunta: o factor é
+`(1 − ℓ'/D)` e mais nada; **sem tecto**, **sem segundo passe** sobre restrições muito esticadas,
+**sem termo de ordem superior** (a correcção é linear na separação, sempre), e o comprimento de
+repouso é gravado **uma vez, na criação**, com o único somando a ser o desvio do Expand (§4.5). O
+único guarda do laço continua a ser a separação nula.
+
+**Q16.2 — NÃO, e a §3.1 continua verdadeira (F).** Não há rigidez angular nem modelo de dobra
+próprio: o papel de dobra é feito pela restrição de **distância ao segundo vizinho pelo anel**, que
+é uma restrição de distância como as outras. As **quatro** espécies do §3.2 são a lista inteira, e a
+espécie só é lida **dentro** da projecção. Nada no gesto nem no solver testa a direcção do
+deslocamento contra a normal.
+
+**Q16.3 — NÃO (F).** Um passo de pincel corre **um** passo de solver; o número de varreduras é uma
+constante do ficheiro que não lê o `dt`, nem o tamanho do gesto, nem o estado da malha; o `dt` é
+fixo. (Confirma e reforça o censo do §5.2/§5.7 pela pergunta oposta.)
+
+**⇒ A 4.ª pergunta do I era a certa, e a resposta é o §10.10.** Se nenhum termo falta, uma
+divergência que **nasce com o esticão** só pode vir da **ORDEM** das projecções (sequencial: a
+influência da ordem cresce com o tamanho das correcções, logo é invisível num gesto quase-rígido),
+da **POPULAÇÃO** de restrições (quantas, e quantas vezes cada uma é projectada), ou da **fase do
+gesto** (que lê quase tudo na posição actual). ⛔ Nenhuma fixture do corpus antigo separava as três:
+todas misturam as duas fases em cada passo.
+
+**A corrida NOVA do oráculo: 107 execuções do binário 5.2.1, oito traços novos por passo.**
+- ⭐⭐⭐ **`plano_{empurrar,inflar}_radial_local_origem_parado`** — o caminho avança **uma** vez e
+  depois repete o mesmo ponto `10` vezes. Um passo sem deslocamento de cursor não aplica força
+  (§4.2) ⇒ **dez passos de solver puro** a seguir a um impulso conhecido. **CONTROLO medido:** um
+  caminho com **todos** os pontos iguais devolve `0` movidos e `máx |u| = 0,00000` em 12 passos, nos
+  dois modos ⇒ a fase do gesto está mesmo calada, e não é conjectura.
+- **`…_forca05` · `…_forca025` · `…_massa2`** (Push; `massa2` também no Inflate) — a mesma cena a
+  `¼`, `1/16` e `½` do impulso. ⭐ O impulso do passo 2 escala com o **quadrado** da força
+  (`0,2500` e `0,0625`, ao `f32`) e o fim do traço escala `0,6677` e `0,3388` ⇒ **a cena é
+  não-linear em toda a faixa do corpus**, e comparar só o fim do traço lê um regime, não uma lei.
+- **`…_amort1`** (`damping = 1`) — sem memória de velocidade. ⭐ Só ele é **estritamente crescente**
+  no `máx |u|` por passo (`0,06990 → 0,19698`); os outros três viram (passo `6` no `_origem`, `4` no
+  `_parado`). ⚠️ **No vértice do pen-down os quatro passam por um máximo** ⇒ a régua da monotonia
+  tem de ser a da malha (gate 38), senão o discriminador some.
+- **`plano_empurrar_radial_global_origem`** — `5` projecções por restrição em vez de `10`. ⭐⭐⭐ O
+  passo 2 é **idêntico** (`0,06543`) e os planaltos ficam em `0,23968` contra `0,28222` ⇒ **dobrar
+  as projecções custa `15,1 %` do planalto**, que é a régua com que um resíduo se lê (`4 %` ≈ um
+  quarto desse degrau).
+
+**⛔ Duas coisas que a corrida revelou e que um port lê ao contrário sem elas escritas:**
+1. **`massa2` chama-se assim porque `2` é o TECTO.** A corrida foi pedida com `4` e a porta de
+   propriedades do binário **coagiu para `2,0` em silêncio**; é o `2,0` que está no cabeçalho.
+   *Um valor pedido não é um valor aplicado.*
+2. **O gate 31 deixou de ser «gate de espec».** Ele declarava-se A/B sobre o nosso motor porque
+   *«nenhuma fixture do §10 traz um ponto de caminho repetido»* — as duas `_parado` trazem `10`, e o
+   gate passa a ter oráculo nas duas metades.
+
+**⛔⛔ ERRATA de CONTAGEM no README das fixtures, achada ao acrescentar as oito (M).** A nota «as
+excepções ao parágrafo de omissões são **SETE**» varria só `força · curva · percurso · limite` e
+deixava de fora `amortecimento`, `massa`, `plasticidade` e `pino` — que o **mesmo** parágrafo
+também fixa. Com a régua completa (as nove grandezas + o percurso pelo **vão em `x`**; a área fica
+de fora porque o parágrafo já lhe põe «salvo indicação») são **23 de 73**, e a régua ficou escrita
+ao lado da tabela. ⚠️ O percurso mede-se pelo vão em `x`: na esfera a poli-linha entre os pontos
+mede `0,6093` e acusaria os oito traços de esfera, que não é o que o parágrafo diz.
+
+**Ficheiros:** 8 fixtures novas × 3 ficheiros (`.deformado.txt.gz` · `.porpasso.txt.gz` ·
+`.porpasso.rastreio.txt`) em `fixtures/cloth/`; `indice.json` **regenerado** (`73` entradas para
+`73` ficheiros); `gera_indice.py` passa a conhecer a chave nova `passos_com_cursor_parado` como
+inteiro; README das fixtures (tabela das corridas **derivada** do índice, secção de proveniência das
+oito, régua das excepções, contagens do instrumento por passo `21`/`17`). ⚠️ **Nenhum cabeçalho de
+fixture pré-existente foi reescrito** — a chave nova existe só nas oito.
+**Espec:** cabeçalho · §5.7-bis (nova) · §10 (contagem) · **§10.10 (nova)** · §11 · §14 gate **31**
+reescrito + gates **35-38**.
+**Verificador:** `verifica_traco.py` **verde sobre os 73**.
+**Sweep:** verde sobre a espec emendada, a pasta inteira das fixtures, o INBOX, os dois READMEs e
+este ledger (menos os hits pré-existentes de 2026-09-05 já registados acima).
 
 ## Fechamento R
 

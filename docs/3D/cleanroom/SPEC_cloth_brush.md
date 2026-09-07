@@ -215,6 +215,23 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   `plano_agarrar_radial_local_preset` (`limite = 5,0`) alcança `126` dos `128` e **discrimina**.
   Escrita pelo subagente-E da mesma janela, com o fonte reaberto só para estas perguntas e com uma
   corrida NOVA do harness (a geração das quatro fixtures e a validação da permutação).
+  ✅ **EMENDA Q16 de 2026-09-06** (§5.2 · **§5.7-bis NOVA** · §10 contagem · **§10.10 NOVA** ·
+  §11 · §14 gate 31 reescrito + gates 35-38, + as **oito** fixtures por passo que separam a fase do
+  gesto da fase do solver): as três perguntas do I devolvem **NÃO** as três, e a resposta é um
+  **censo exaustivo**, não uma impressão — (1) nada na projecção de uma restrição de distância
+  depende de quanto o par está esticado além do factor `(1 − ℓ'/D)`: sem tecto, sem segundo passe,
+  sem correcção de ordem superior, e o comprimento de repouso é lido de **um** sítio só; (2) não
+  existe termo, peso ou espécie que só entre quando o deslocamento tem componente ao longo da
+  normal — as quatro espécies do §3.2 são a lista inteira e **não há rigidez angular nenhuma**; (3)
+  não há sub-passos: **um** passo de solver por passo de pincel, e o número de varreduras é uma
+  constante que não lê o tamanho do gesto. ⇒ ⭐⭐⭐ **a resposta útil não era um facto que faltasse, era
+  um INSTRUMENTO que faltava**, e ele é a 4.ª pergunta: **oito** traços novos que cortam o passo em
+  duas metades — `_parado` (um impulso conhecido no passo 2 e depois **dez passos sem força nenhuma**,
+  com um controlo que prova que a fase do gesto está calada), `_forca05`/`_forca025`/`_massa2` (a
+  mesma cena a **um quarto, um dezasseis avos e metade** da amplitude), `_amort1` (sem memória de
+  velocidade) e `_global` (metade das projecções por restrição). Escrita pelo subagente-E da mesma
+  janela, com o fonte reaberto só para estas perguntas e com uma corrida NOVA do oráculo (107
+  execuções: 104 que viraram fixture + 1 sonda do instrumento + 2 de controlo).
 Mapa de leitura da literatura (⭐ pública e lícita a TODOS os papéis):
   · Jakobsen, "Advanced Character Physics", GDC 2001 — integração de Verlet por posições + relaxação
     de restrições de distância por projecção. É EXACTAMENTE a família do solver do alvo.
@@ -1562,6 +1579,42 @@ de solver por passo de pincel) · sem projecção de velocidade · sem auto-coli
 contínua (o raio de colisão é o único CCD, e só contra colisores) · sem re-malhagem (o pincel
 recusa topologia dinâmica — F) · sem cache entre traços.
 
+### §5.7-bis — ⛔⛔⛔ O CENSO DA RESPOSTA AO ESTICÃO: as três coisas que um port procura quando fica abaixo do alvo, e que NÃO existem (F, 2026-09-06)
+
+⚠️ **Porque esta secção existe.** Um port fiel pode acertar o 1.º passo simulado **ao bit** e ficar
+`5`–`9 %` **abaixo** do alvo a partir do 3.º — que é o primeiro em que a relaxação tem trabalho para
+fazer (§5.2-quater) — e ficar assim **só** nos modos que empurram a folha para fora do plano dela,
+onde os pares esticam por construção. A leitura natural é *«falta-me um termo que só acorda com o
+esticão»*. **Não falta.** O fonte foi relido de propósito para esta pergunta, linha a linha, e o
+censo devolve **nenhum**:
+
+| o que se procurou | existe? |
+|---|---|
+| um segundo factor na projecção que dependa do esticão, além de `(1 − ℓ'/D)` | **não** — o factor é esse e mais nada; o único guarda é a separação nula (§5.2) |
+| um tecto (`clamp`) na correcção quando o par se afasta muito do repouso | **não** — e é o mesmo `não` do censo do §5.2, agora conferido a partir da pergunta oposta |
+| um **segundo passe** sobre as restrições muito esticadas | **não** — há uma lista e um laço, e o laço é `5` |
+| uma correcção de **ordem superior** (o termo é linear na separação, sempre) | **não** |
+| o comprimento de repouso lido de **outro** sítio quando o par estica | **não** — `ℓ` é gravado uma vez, na criação, e o único termo que lhe soma é o desvio do Expand (§4.5) |
+| uma restrição, peso ou termo que só entre com componente ao longo da **normal** | **não** — e ver o parágrafo seguinte |
+| rigidez **angular** / modelo de dobra próprio (uma restrição sobre um ÂNGULO) | **não** — a §3.1 continua verdadeira: o papel de dobra é feito pela restrição de **distância ao segundo vizinho pelo anel**, e é uma restrição de distância como as outras |
+| uma quinta espécie de restrição que a §3.2 não liste | **não** — são quatro, e a espécie só é lida **dentro** da projecção (§5.2) |
+| **sub-passos**: um passo de pincel que se subdivide quando o deslocamento é grande | **não** — um passo de pincel corre **um** passo de solver, e o número de varreduras é uma constante do ficheiro que não lê o `dt`, nem o tamanho do gesto, nem o estado da malha (§5.5) |
+| um `dt` variável, ou um `dt` que dependa do deslocamento | **não** — é a mesma constante em todo passo (§5.4) |
+
+⭐⭐⭐ **O que ISSO deixa como explicação, e é a razão de o §10.10 existir:** se nenhum termo falta,
+então uma diferença que **nasce com o esticão** só pode vir de (a) a **ordem** em que as projecções
+correm — a relaxação é sequencial, cada uma lê a posição que a anterior deixou, e a influência da
+ordem cresce com o tamanho das correcções, logo é **invisível** num gesto quase-rígido e visível
+assim que os pares esticam (§3.1-bis, §5.2-ter); ou (b) a **população** de restrições — quantas
+existem e quantas vezes cada uma é projectada (§5.2-bis); ou (c) um erro na **fase do gesto** que
+só se manifesta depois de a malha se mexer, porque quase tudo o que a fase do gesto lê é lido na
+posição **actual** (§4.1). ⇒ *as três são separáveis por medição, e são-no pelas oito fixtures do
+§10.10 — nenhuma delas precisa de um facto novo do alvo.*
+
+⚠️ **E há uma quarta que não é do solver nem do gesto: a régua.** Um port que compare `máx |u|` do
+fim do traço está a ler **um** número de um regime não-linear; a comparação que localiza é a de
+**cada passo** (§10.2), e a que isola é a que **corta a força fora** (§10.10).
+
 ---
 
 ## §6 — Como a deformação é cometida, o que sobrevive, undo, simetria
@@ -1754,11 +1807,12 @@ como proveniência (as mensagens de commit são públicas; o texto foi re-dito).
 
 ## §10 — Vectores de teste (o oráculo)
 
-⭐ **65 traços do binário 5.2.1 sobre malhas NOSSAS** — ⚠️ **CONTE-OS, não cite este número de
+⭐ **73 traços do binário 5.2.1 sobre malhas NOSSAS** — ⚠️ **CONTE-OS, não cite este número de
 memória** (`ls docs/3D/cleanroom/fixtures/cloth/*.deformado.txt.gz | wc -l`): esta linha esteve em
-`51` depois de a §10.5 acrescentar dois, a §10.6 mais um, a §10.7 mais dois e a §10.8 mais **nove**.
+`51` depois de a §10.5 acrescentar dois, a §10.6 mais um, a §10.7 mais dois, a §10.8 mais **nove** e
+a §10.10 mais **oito**.
 ⚠️ **A tabela abaixo NÃO é o corpus** — ela tem as `47` linhas da 1.ª geração, e os traços das
-§10.2–§10.8 vivem nas secções delas. O corpus é o directório.
+§10.2–§10.10 vivem nas secções delas. O corpus é o directório.
 ⚠️ **O `indice.json` é DERIVADO e regenera-se** — `python3 fixtures/cloth/gera_indice.py` (uma
 entrada por `.deformado.txt.gz`); ⛔ não o edite à mão, e não confie num número escrito aqui. Malhas: grelha plana 64×64 e esfera UV
 96×64; um traço por modo e por variante de solver, em `fixtures/cloth/` (proveniência e verificador
@@ -2105,6 +2159,114 @@ topologia durante um traço.
 
 ---
 
+### §10.10 — ⭐⭐⭐ O INSTRUMENTO QUE CORTA O PASSO EM DUAS METADES (2026-09-06, a pedido do I)
+
+⚠️ **A pergunta que ele responde não é «qual é a lei» — é «de que METADE do passo é o meu resíduo».**
+O §5.7-bis fecha a busca por um termo em falta: não há. Sobra localizar, e para isso o corpus
+antigo não servia: **todos** os seus traços misturam, em cada passo, a fase do gesto (que lê a
+malha deformada em quase tudo — §4.1) com a fase do solver. Estes oito cortam.
+
+#### As quatro alavancas, e o que cada uma RETIRA
+
+| fixture (todas `plano_…_origem…`, 12 passos, pen-down na origem) | o que muda | o que a alavanca RETIRA |
+|---|---|---|
+| `plano_empurrar_radial_local_origem_parado` · `plano_inflar_radial_local_origem_parado` | o cursor **pára** depois do 1.º avanço: o caminho traz o mesmo ponto repetido `10` vezes | ⭐⭐⭐ **a fase do gesto inteira, do passo 3 ao 12** — um impulso conhecido no passo 2 e depois **dez passos de solver puro**: sem força, sem curva de queda, sem normal da área, sem normal de vértice. *O que sobra é retenção + relaxação, e mais nada.* |
+| `plano_empurrar_radial_local_origem_forca05` · `…_forca025` · `…_massa2` · `plano_inflar_radial_local_origem_massa2` | a **amplitude**: `¼`, `1/16` e `½` do impulso, com a cena, a rede e a ordem idênticas | a **não-linearidade**: quanto mais pequeno o impulso, menos os pares esticam e menos a ordem das projecções pesa. *Um resíduo que encolhe com a amplitude é da resposta ao esticão; um que se mantém em proporção é um ganho constante.* |
+| `plano_empurrar_radial_local_origem_amort1` | `damping = 1` | ⭐ **a memória de velocidade**: sem o termo de Verlet, cada passo é *força + relaxação* e nada atravessa de um passo para o outro |
+| `plano_empurrar_radial_global_origem` | área **Global** | ⭐ **metade das projecções por restrição** (`5` em vez de `10`, §5.2-bis) e a banda (`w ≡ 1`), com a força idêntica — é a **calibração** de quanto vale uma projecção |
+
+⚠️ **Os oito trazem `prova_do_fatiamento = 0,000000`** (o bloco `k = 12` é igual à corrida inteira,
+a seis casas), e todos partilham a malha e o pen-down dos `_origem` que já existiam ⇒ são
+comparáveis passo a passo com eles.
+
+#### O CONTROLO do instrumento (M)
+
+⭐⭐ **Um caminho cujos pontos são TODOS o mesmo não move um único vértice** — `12` passos, `0`
+movidos, `máx |u| = 0,00000`, no Push e no Inflate. É a prova de que, num passo em que o cursor não
+se desloca, a fase do gesto está calada (§4.2) **e** de que o solver sobre uma malha em repouso é o
+no-op que a §5.2-quater diz. ⇒ nas duas fixtures `_parado` **tudo o que acontece a partir do passo 3
+é solver**, e isso é medido, não presumido.
+
+#### O que o instrumento MEDE (M) — `|u|` do vértice sob o pen-down, por passo
+
+| passo | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Push `_origem` (com força todo o traço) | `0,06543` | `0,17038` | `0,22446` | `0,23493` | `0,23822` | `0,23968` | `0,23848` | `0,23546` | `0,23108` | `0,22561` | `0,21945` |
+| **Push `_parado`** (força só no passo 2) | `0,06543` | `0,12140` | `0,14674` | `0,15216` | `0,15101` | `0,14754` | `0,14292` | `0,13771` | `0,13232` | `0,12707` | `0,12215` |
+| … o mesmo, a `1R` | `0,00050` | `0,00421` | `0,01568` | `0,03145` | `0,04795` | `0,06373` | `0,07779` | `0,08920` | `0,09759` | `0,10313` | `0,10635` |
+| Inflate `_origem` | `0,09347` | `0,22771` | `0,26348` | `0,26706` | `0,26888` | `0,27012` | `0,27060` | `0,27017` | `0,26880` | `0,26641` | `0,26294` |
+| **Inflate `_parado`** | `0,09347` | `0,16443` | `0,18318` | `0,18263` | `0,17842` | `0,17300` | `0,16696` | `0,16067` | `0,15450` | `0,14869` | `0,14331` |
+| … o mesmo, a `1R` | `0,00072` | `0,00854` | `0,02982` | `0,05347` | `0,07485` | `0,09331` | `0,10820` | `0,11908` | `0,12612` | `0,12997` | `0,13144` |
+
+⭐ **A leitura da forma:** o `_parado` **cresce depois de a força acabar** (o passo 2 põe `0,0654` e o
+solver sozinho leva-o a `0,1522` no passo 5), porque a retenção de velocidade é `99 %` e só a
+relaxação a trava; depois **decai** monotonicamente enquanto a onda se espalha para `1R`. *É o
+retrato do solver, sem uma única leitura da malha pela fase do gesto.*
+
+⚠️ **E há uma segunda régua, que é a do gate 38 e NÃO é o vértice do pen-down: o `máx |u|` sobre a
+MALHA, por passo** (o vértice que a realiza acompanha o cursor):
+
+| passo | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Push `_origem` | `0,06990` | `0,18733` | `0,25055` | `0,27167` | `0,27794` | `0,27316` | `0,26500` | `0,25553` | `0,24762` | `0,25738` | `0,25937` |
+| Push `_amort1` (`damping = 1`) | `0,06990` | `0,12540` | `0,15222` | `0,16657` | `0,17613` | `0,18272` | `0,18750` | `0,19104` | `0,19366` | `0,19558` | `0,19698` |
+| Push `_parado` | `0,06990` | `0,12837` | `0,15228` | `0,15619` | `0,15395` | `0,14958` | `0,14422` | `0,13841` | `0,13254` | `0,12714` | `0,12285` |
+| Inflate `_parado` | `0,09986` | `0,17289` | `0,18881` | `0,18649` | `0,18108` | `0,17472` | `0,16791` | `0,16104` | `0,15452` | `0,14912` | `0,14430` |
+
+⭐⭐ **Só o `_amort1` é estritamente crescente** — sem memória de velocidade o traço nunca assenta,
+e é **isso** que a retenção faz: o máximo dos outros três vira (passo `6` no `_origem`, passo `4`
+no `_parado`). ⚠️ *No vértice do pen-down os quatro passam por um máximo* ⇒ a régua da monotonia
+tem de ser a da malha, senão o discriminador some.
+
+#### A amplitude (M) — a mesma cena a `1`, `¼` e `1/16` do impulso
+
+| | força `1,0` | força `0,5` | força `0,25` |
+|---|---|---|---|
+| impulso do passo 2 (c0) | `0,06543` | `0,01636` | `0,00409` |
+| razão ao de força `1` | `1` | **`0,2500`** | **`0,0625`** |
+| `|u|` no passo 12 (c0) | `0,21945` | `0,14653` | `0,07435` |
+| razão ao de força `1` | `1` | `0,6677` | `0,3388` |
+
+⭐⭐ **O impulso escala com o QUADRADO da força, ao bit** (`0,2500` e `0,0625` — §4.1), e o **fim do
+traço não escala com nada**: a `¼` do impulso o resultado é `0,67` e a `1/16` é `0,34`. *A cena é
+não-linear em toda a faixa que o corpus cobre* ⇒ um port que compare só o fim do traço está a ler
+um regime, não uma lei. `_massa2` dá o mesmo corte pelo outro lado (metade do impulso, `0,03272`,
+`0,19434` no fim).
+
+#### A calibração (M) — quanto vale uma projecção
+
+| | `plano_empurrar_radial_local_origem` | `plano_empurrar_radial_global_origem` |
+|---|---|---|
+| projecções por restrição e por passo | `10` (a lista vem em duplicado — §5.2-bis) | `5` |
+| `|u|` no passo 2 (c0) | `0,06543` | `0,06543` (idêntico: a rede ainda não fez nada) |
+| planalto de `|u|` (c0) | `0,23968` (passo 7) | `0,28222` (passo 9) |
+| razão | — | **`0,8493`** |
+
+⭐⭐⭐ **Dobrar as projecções custa `15,1 %` do planalto.** É a régua que faltava para ler um resíduo:
+`4 %` abaixo do alvo é ***um quarto*** do que vale passar de `5` para `10` projecções — i.e. da
+ordem de **uma projecção a mais** por restrição e por passo, não de uma lei em falta. ⚠️ E o passo
+2 ser **idêntico** nos dois é o controlo da própria régua: ali as duas configurações só diferem em
+coisas que ainda não agiram.
+
+#### ⇒ Como o instrumento decide (a árvore, escrita para quem tem o resíduo)
+
+1. **O port bate o `_parado` passo a passo?** Se **sim**, a retenção, a relaxação, a rede e a ordem
+   estão certas, e o resíduo é da **fase do gesto** — que lê quase tudo na posição **actual**
+   (§4.1) e cuja única entrada que muda com a deformação é a distância ao cursor e as normais.
+   Se **não**, o resíduo é do solver e o passo em que a divergência aparece diz qual metade.
+2. **O resíduo encolhe em proporção quando a amplitude cai** (`_forca05`, `_forca025`)? Se encolhe
+   **mais depressa** que a amplitude, é a resposta ao esticão (ordem ou população de restrições);
+   se se mantém em proporção, é um **ganho** constante (força, massa, retenção).
+3. **O `_amort1` bate?** Se sim, o termo de Verlet está certo e o resíduo vive na relaxação ou na
+   força; se não, está na retenção.
+4. **O `_global` bate?** Se sim com `5` projecções e não com `10`, o defeito é a **duplicação da
+   lista** (§5.2-bis) e não a projecção.
+
+⛔ **Nenhum destes quatro exige um facto novo do alvo** — os quatro são A/B do port contra fixtures
+que já existem. *O que faltava não era conhecimento: era um corpus que separasse as metades.*
+
+---
+
 ## §11 — Comportamento de borda, caso a caso (F salvo indicação)
 
 | caso | o que o alvo faz |
@@ -2130,6 +2292,7 @@ topologia durante um traço.
 | área *Global* + pino | sem efeito (`w ≡ 1` ⇒ ninguém está na banda) |
 | *Persistent* sem base definida | comporta-se como sem *Persistent* |
 | traço anchored | a malha não é reposta por passo; a simulação continua |
+| passo cujo cursor não se deslocou | a fase do gesto desiste (§4.2) e o solver corre à mesma; ⭐ **MEDIDO** (§10.10): um caminho em que **todos** os pontos são o mesmo deixa a malha intacta (`0` movidos em 12 passos), e um em que o cursor pára ao 2.º ponto continua a deformar-se durante os `10` passos seguintes |
 | topologia dinâmica activa | o pincel recusa |
 | multires | funciona sobre a grelha do nível activo |
 | vértice dentro de um colisor | nunca é expulso (H) |
@@ -2218,10 +2381,14 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 28 | ⭐⭐ **`τ` entra ANTES da 1.ª varredura do MESMO passo, e é linear**: o traço de UM passo do Expand tem de mover `846` vértices (régua do gate 25; ⛔ um port que só aplique `τ` no passo seguinte move **zero**), e o mesmo traço a força `0,5` tem de dar `0,25 ×` o deslocamento — as duas leituras da razão são a **dos máximos** (`0,24999`) e a **mediana das razões por vértice** sobre os `662` vértices que os dois traços movem (`0,250000`); ⛔ dividir os dois `max_deslocamento` do cabeçalho, já arredondados a seis casas, dá `0,2497` e não é a régua. ⚠️ **Duas metades**, e a 2.ª mata a hipótese «move alguma coisa por outro motivo» | contagem exacta · razão `0,25 ± f32` | §4.5 · §10.8 · fixtures `plano_expandir_radial_local_origem_1passo`(+`_forca05`) |
 | 29 | ⭐⭐⭐ **O DEGRAU do gancho é da REDE, e o sítio dele desloca-se com o número de passagens.** Régua do perfil: §5.2-quater (eixo do traço, `k · aresta`, `k = 0..7`). ⚠️ **«Há degrau» tem de ser um predicado DERIVADO, não um tecto escolhido** — o critério é *a maior razão entre células consecutivas dividida pela MEDIANA das restantes* (`≥ 2` ⇒ há degrau). Ele separa o corpus por um vazio de `3,6×`: gancho `3,95` (*Local*) e `4,63` (*Global*) contra agarrar `1,05`/`1,10` e `_curto` `1,05`. ⛔ **Um tecto absoluto de `1,4` na razão máxima REPROVA o próprio oráculo** (o agarrar *Global* faz `1,47` sem degrau nenhum, só por decair mais depressa). **Metades:** (a) no gancho a maior razão tem de cair entre `0,536 R` e `0,670 R` na *Local* e entre `0,402 R` e `0,536 R` na *Global* (o oráculo dá `4,52` e `5,11`); (b) o **agarrar** não pode ter degrau (discriminador `≤ 1,2`), com a cauda a assentar em `1,32` *Local* / `1,47` *Global*; (c) o `_curto` (`δ = 0,05`) também não pode ter degrau — se tiver, o defeito não é a rede, é a lei da âncora | posição do máximo da razão, em células · discriminador `≥ 2` no gancho e `≤ 1,2` nos outros dois | §5.2-quater · §10.8 · fixtures `plano_gancho_radial_{local,global}_origem_1passo`, `…_curto`, `plano_agarrar_radial_{local,global}_origem_1passo` |
 | 30 | **A banda começa a `R(1+L·F)` e acaba a `R(1+L)`** — com as omissões, `2,875 R` e `3,5 R`, ⛔ **não** `1,875 R` e `2,5 R`. Régua: `movido` = `\|u\| > 1e-5`; num traço *Local* de 12 passos do plano com `limite = 2,5` o vértice movido mais distante do pen-down tem de ficar entre `3,49 R` e `3,50 R` (`25` fixtures dão `1,2221`–`1,2239` contra `3,5 R = 1,2250`; ⛔ isenta o controlo de força fraca, cuja franja cai na resolução do ficheiro). ⚠️ **Segunda metade, e é ela que refuta a leitura antiga:** com `limite = 5,0` o mesmo traço tem de chegar a `≈ 0,99 · R(1+L) = 2,08`, e `R·L` daria `1,75` — *um `L` só não distingue as duas fórmulas; dois distinguem* | `1,2221`–`1,2239` e `2,0745` (M) | §2.2 · fixtures `plano_{expandir,agarrar,gancho}_radial_local` e `plano_agarrar_radial_local_preset` |
-| 31 | **Um passo sem movimento de cursor ainda SIMULA**: dois traços com o mesmo caminho, um deles com um ponto repetido, não podem dar a mesma malha — o repetido tem de ter relaxado e integrado mais uma vez, com a âncora e o `σ` do passo anterior intactos. ⚠️ **É um gate de ESPEC, não de oráculo:** nenhuma fixture do §10 traz um ponto de caminho repetido, logo ele corre **A/B sobre o nosso motor** e a barra é *«diferem»*, não *«casam com o oráculo»*. Um port que trate o passo parado como no-op dá as duas malhas iguais | as duas malhas diferem acima da barra do gate 15 | §4.2 · §11 |
+| 31 | **Um passo sem movimento de cursor ainda SIMULA — e agora tem ORÁCULO** (a cláusula «gate de espec» de 2026-09-06 **caducou**: as fixtures `_parado` trazem `10` pontos de caminho repetidos). ⚠️ **Duas metades, e a 1.ª é o controlo:** (a) um caminho cujos pontos são **todos** o mesmo tem de deixar a malha intacta — `0` vértices movidos em `12` passos, exacto, nos dois modos (a fase do gesto desiste E o solver sobre uma malha em repouso é um no-op); (b) um caminho que avança **uma** vez e depois pára tem de continuar a deformar-se durante os `10` passos seguintes, e a barra é a paridade por vértice do gate 15 contra `plano_{empurrar,inflar}_radial_local_origem_parado` — ⛔ não «diferem». Um port que trate o passo parado como no-op reprova (b); um que aplique força num passo parado reprova (a) | (a) `0` movidos, inteiro · (b) a barra do gate 15 | §4.2 · §10.10 · §11 |
 | 32 | ⭐ **A ORDEM DE CRIAÇÃO lê-se de fixture, e é um inteiro dos dois lados**: (a) o anel de **cada** vértice das duas malhas tem de bater, elemento a elemento, o que sai de `*.faces.txt.gz` pela lei do §3.1 (faces incidentes por índice crescente; de cada face, o canto **anterior** e depois o **seguinte** no sentido de percurso; deduplicação que guarda a PRIMEIRA ocorrência) — `4 225` e `6 050` anéis, igualdade exacta; (b) a sequência de vértices que a construção visita tem de bater, elemento a elemento, a concatenação de `*.celulas.txt.gz` por ordem crescente de célula. ⚠️ **Duas metades de saúde da própria fixture, que um parse errado reprova:** a partição é **total** (`Σ próprios` = `4 225` / `6 050`, sem repetidos) e a sequência tem **exactamente `1`** descenso no plano e **`3`** na esfera | igualdade de inteiros | §3.1 · §3.1-bis · fixtures `plano.faces` · `esfera.faces` · `plano.celulas` · `esfera.celulas` |
 | 33 | ⭐⭐ **O anel É a ordem das FACES — e o corpus do plano só o prova numa fixture**: com o anel trocado para a ordem crescente de índice de vértice, (a) **todos** os traços de plano com `limite = 2,5` têm de ficar **byte-idênticos** (os `128` vértices onde as duas leis divergem estão no bordo, e o mais próximo está a `1,5` do pen-down contra uma banda que acaba a `1,2250` ⇒ `φ = 0`), e (b) `plano_agarrar_radial_local_preset` (`limite = 5,0`, banda até `2,1000`, alcança `126` dos `128`) e os **oito** traços de esfera (`98,5 %` dos anéis divergem) têm de **mudar**. ⚠️ **A 1.ª metade é o CONTROLO**: um port que passe só a (b) pode estar a mudar outra coisa qualquer | mutação A/B: byte-idêntico numa metade, diferente na outra | §3.1 · §3.1-bis |
 | 34 | ⭐⭐ **A ordem de visita é a das CÉLULAS, não a crescente global** — nem no plano: com a visita trocada para `0..N−1`, a saída tem de mudar. ⚠️ **A barra é «diferem», não «casam com o oráculo»**: é um A/B sobre o nosso motor, porque nenhuma fixture isola a ordem. ⛔ **Se não mudar em traço nenhum, o veredito NÃO é «a ordem não importa»** — é que este corpus não a observa, e isso vai ao ledger como recusa medida, com a contagem de traços por trás. ⚠️ E o par com o gate 20: num passo com faces invertidas, a ordem **decide** o resultado por vértice (§5.2-ter), logo é aí que a diferença tem de aparecer primeiro | mutação A/B, traço a traço | §3.1 · §3.1-bis · §5.2-ter |
+| 35 | ⭐⭐⭐ **O SOLVER SOZINHO, sem uma única leitura da malha pela fase do gesto**: sobre `plano_{empurrar,inflar}_radial_local_origem_parado`, a paridade por vértice do gate 15 tem de valer nos **doze** passos. ⚠️ **É o gate mais forte do corpus para a relaxação**, porque do passo 3 ao 12 não há força, nem curva de queda, nem normal: só retenção e projecções. ⚠️ **Segunda metade, e é o discriminador**: um port que passe este e falhe `plano_empurrar_radial_local_origem` tem o defeito na **fase do gesto**; um que falhe este tem-no no **solver**, e o primeiro passo a divergir diz onde (⛔ um port não pode falhar os dois e declarar «é a relaxação» sem correr este) | a barra do gate 15, passo a passo | §5.7-bis · §10.10 |
+| 36 | ⭐⭐ **A resposta NÃO é proporcional ao impulso, e a não-linearidade tem número**: o impulso do passo 2 escala com o **quadrado** da força (`0,2500` e `0,0625` para força `0,5` e `0,25`, ao `f32`), e o `\|u\|` do passo 12 escala `0,6677` e `0,3388`. ⚠️ **As duas metades são a régua:** a 1.ª é aritmética da fase do gesto (§4.1) e a 2.ª é o regime do solver — ⛔ **um port que compare só o fim do traço não pode concluir nada sobre uma lei**, e um cujo erro relativo **não** varie ao longo desta faixa tem um ganho constante, não um defeito de esticão | `0,2500`/`0,0625 ± f32` numa metade · as razões do §10.10 na outra | §10.10 · fixtures `plano_empurrar_radial_local_origem_forca05`, `…_forca025`, `…_massa2`, `plano_inflar_radial_local_origem_massa2` |
+| 37 | ⭐ **Uma projecção vale `15,1 %` do planalto, e é a régua de qualquer resíduo**: no mesmo traço, `Global` (`5` projecções) e `Local` (`10`) têm de dar o **mesmo** `\|u\|` no passo 2 (`0,06543`, ao `f32` — ali a rede ainda não agiu) e planaltos na razão `0,8493`. ⇒ um resíduo de `x %` no planalto vale `x / 15,1` projecções por restrição e por passo. ⚠️ **A 1.ª metade é o controlo da régua**: se o passo 2 já diferir, o defeito não é a contagem de projecções | `0,06543` idêntico · razão `0,8493` | §5.2-bis · §10.10 · fixture `plano_empurrar_radial_global_origem` |
+| 38 | **Sem memória de velocidade o traço deixa de assentar.** ⚠️ **A régua é o `máx \|u\|` sobre a MALHA, por passo** (⛔ não o vértice do pen-down: ali as duas configurações passam por um máximo, e o discriminador desaparece). Com `damping = 1` a sequência tem de ser **estritamente crescente** nos 11 passos simulados (`0,06990 → 0,19698`); com `damping = 0,01`, o mesmo traço tem de passar por um máximo no passo `6` (`0,27794`) e descer. ⚠️ **Duas metades**: a monotonia é a forma, e a paridade por vértice do gate 15 é o valor — um port cuja retenção esteja errada pode acertar a forma e falhar o valor | monotonia exacta (inteiros de comparação) · a barra do gate 15 | §5.3 · §5.4 · §10.10 · fixtures `plano_empurrar_radial_local_origem_amort1` e `plano_empurrar_radial_local_origem` |
 | 24 | **A razão `2R` do Push, e a igualdade Push/Inflate no 1.º passo simulado**: no passo 2 dos dois traços do §10.7 o vértice do pen-down move `0,06543` e `0,09347`, razão `0,7000 = 2·R`; e a divergência entre os dois só pode começar no passo **3** — se começar no 2, o port está a ler duas normais diferentes numa folha plana em repouso, onde elas são a mesma | razão `2R ± f32` · igualdade de direcção no passo 2 | §4.2-bis · §10.1 · §10.7 |
 
 ---

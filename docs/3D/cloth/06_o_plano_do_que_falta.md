@@ -10,7 +10,7 @@
 
 ## §1 — O estado, em números
 
-⭐⭐⭐ **`70` dos `78` traços do oráculo estão dentro da barra de paridade (`0,13`) e os DEZ traços
+⭐⭐⭐ **`71` dos `78` traços do oráculo estão dentro da barra de paridade (`0,13`) e os DEZ traços
 por passo de empurrar/inflar reproduzem-se sobre a malha inteira e nos doze passos à RESOLUÇÃO DO
 FICHEIRO** (`err_max ≤ 5,2·10⁻⁶`, contra os `0,2369`/`0,2446` de 06/09). *A barra de `0,13` deixou de
 ser a régua desses traços: a lei ali é exacta.* — 07/09.
@@ -28,9 +28,15 @@ posta na unidade da barra (`0,13 × o maior deslocamento`) ela diz:
 
 | traço | barra em posição | banda | nosso erro | veredito |
 |---|---|---|---|---|
-| `esfera_agarrar_radial_dinamica` | `0,0307` | `0,0200` | `0,0430` | ⭐ decidível, `2,15×` a lotaria ⇒ **lei em falta** |
+| `esfera_agarrar_radial_dinamica` | `0,0307` | `0,0200` | **`0,0078`** | ⭐⭐⭐ **DENTRO da lotaria** (`0,39×`) — ver abaixo |
 | `esfera_gancho_radial_dinamica` | `0,0220` | `0,0362` | `0,0431` | ⛔ **INDECIDÍVEL** — a barra está `1,6×` ABAIXO da lotaria |
 | `esfera_expandir_radial_dinamica` | `0,0061` | `0,0218` | `0,0271` | ⛔ **INDECIDÍVEL** — `3,6×` abaixo |
+
+⭐⭐⭐ **E o agarrar FECHOU no mesmo dia, com a única lei que faltava de facto: a área simulada do Grab
+não segue o cursor, nem na área *Dynamic*.** A pista não foi a amplitude — foi a **contagem**:
+movíamos `2123` vértices e o alvo move `1863`. Com a área fixa no pen-down movemos `1864`, e o erro
+cai de `0,0427` para `0,0078`. ⚠️ **É o PAR que cura** (a pertença e a banda): só a banda dá `0,129`,
+só a pertença não move nada, e as duas dão `0,033`. ⇒ INBOX **Q20**.
 
 ⚠️ **E o quociente que a espec publica mistura unidades** (`5×`–`26×` sai de dividir um erro
 RELATIVO por uma banda ABSOLUTA); na mesma unidade ele é `1,19×`–`2,15×`. A leitura *«a lotaria não

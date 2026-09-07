@@ -959,3 +959,48 @@ Posta a barra do gate 15 na mesma unidade (`0,13 × o maior deslocamento do alvo
   (`0,646`) não têm dump por passo nem banda. Eles são do regime §5.2-ter (a inversão), mas sem banda
   não sabemos se a barra os decide. Dá para gravar a banda de realização deles — quatro corridas da
   corrida inteira, sem o dump por passo, que é o barato da medição?
+
+---
+
+## Q20 — o AGARRAR não segue o cursor nem na área *Dynamic* (lei MEDIDA, 2026-09-07, sessão 1246816c)
+
+### O que a medição diz
+
+O `esfera_agarrar_radial_dinamica` era o **único** dos oito abertos com prova de lei em falta: a
+barra decide-o (`0,0307` em posição contra `0,0200` de banda) e errávamos `2,15×` a banda. ⚠️ **A
+pista não era a amplitude — era a CONTAGEM:** movíamos `2123` vértices e o alvo move `1863`.
+
+**A lei:** a área simulada do Grab fica onde o traço começou, com o raio do 1.º passo, **nas três
+áreas**. É o par que cura, e nenhuma metade sozinha o faz:
+
+| o que fica no pen-down | movidos (alvo `1863`) | erro relativo |
+|---|---|---|
+| nada (a esfera segue o cursor) | `2123` | `0,182` |
+| só a **banda** | `1728` | `0,129` |
+| só a **pertença** | `1666` | `0,182` |
+| ⭐ **as duas** | **`1864`** | **`0,033`** |
+
+⇒ erro em posição de `0,0427` para **`0,0078`**, contra uma banda de realização de `0,0200`:
+**estamos dentro da nuvem de realizações do próprio oráculo** (`0,39×` dela). Corpus: **71 de 78**.
+
+⚠️ **A frase já estava na espec, uma porta adiante:** a §4.3 diz que o disco da normal da área fica
+no pen-down no Agarrar, *«é isso que faz o Grab pegar num conjunto FIXO de vértices»*. O que a
+medição acrescenta é que isso vale **uma porta antes**, na área simulada — e a §2.1 não o diz.
+
+### As perguntas
+
+- **Q20.1** — confirmam no fonte que a área simulada do Grab ignora a área *Dynamic* e fica no
+  pen-down? Se sim, a §2.1 precisa da linha, e a §4.3 de a nomear como a mesma lei em dois sítios.
+- **Q20.2** — se **não** for isso, o que produz `1863` vértices? A nossa contagem passa a `1864` — um
+  vértice de diferença — e três leituras diferentes davam `2123`, `1728` e `1666`. *A contagem é o
+  observável mais estreito que este corpus tem para uma pergunta de conjunto, e ela aponta para aqui.*
+
+### ⚠️ E um gate nosso estava verde pela razão ERRADA — a cura revelou-o
+
+O `nenhum_vertice_guarda_a_forca_por_passo_de_um_passo_anterior` media a distância ao **cursor** nos
+dois modos de âncora. Enquanto a área do Grab seguia o cursor, os vizinhos do pen-down **caíam fora
+do conjunto simulado** e o zeramento de `σ` deixava-os a zero por não haver quem os reescrevesse; com
+a área fixa eles ficam, e mantêm o `σ = 1` que a §4.3 lhes dá. ⇒ a régua passa a ser a do **modo**, e
+são **duas** escolhas: o Agarrar mede as posições de **repouso** contra o pen-down (o conjunto fixo em
+que a âncora nasceu) e o Snake Hook as de **agora** contra o cursor. *Um gate verde pela razão errada
+só se distingue de um verde no dia em que a razão errada é curada.*

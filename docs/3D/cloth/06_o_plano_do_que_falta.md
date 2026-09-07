@@ -118,6 +118,10 @@ que é decisão do dono.
 | a **banda `φ`** das restrições como causa do espalhamento (`PH2D_ESC_PHI` de `0,4` a `1,3`) | `1,0` é um óptimo AGUDO e o corpus di-lo pelo arrasto: `plano_arrastar_radial_local` mede `0,482 · 0,359 · 0,192 · 0,071 · 0,447` na varredura, e o Push/Inflate mal se mexem (`0,214`/`0,253` contra `0,207`/`0,274` a `0,8`) |
 | **mais varreduras** de relaxação (`PH2D_VARREDURAS` `5 → 10 → 20`) | destrói o arrasto: `0,071 → 0,709 → 0,910`. ⚠️ O Inflate MELHORA (`0,253 → 0,191`) e não compra nada — *um knob que cura um traço e parte outro não é a lei que falta* |
 | a **retenção** de velocidade (`PH2D_ESC_RET` de `0,6` a `1,3`) | `1,0` está no óptimo e satura acima dele: `arrastar 0,138 · 0,082 · 0,071 · 0,070` |
+| tirar a **banda `φ`** da relaxação (leitura literal da §5.4, `PH2D_PHI_SEM_BANDA`) | destrói o arrasto: `plano_arrastar_radial_local` `0,011 → 0,443`, e o Push/Inflate pioram (`0,237 → 0,255`, `0,245 → 0,266`). ⇒ a banda **está** no `φ` da relaxação |
+| tirar a banda só do termo de **ACELERAÇÃO** da integração (a outra leitura da §5.4) | **byte-idêntico nos 65 traços** — e a razão é estrutural: dentro do pincel a banda vale `1`, e fora dele a força vale `0`. *Onde `a ≠ 0` a banda é `1`* ⇒ a frase da espec e o nosso código dizem a mesma coisa, e o knob seria morto |
+| **mais varreduras**, RE-MEDIDO com a ordem de visita certa | `5` é agora um óptimo AGUDO e quem o diz é o arrasto: `0,011 · 0,254 · 0,555 · 0,705` para `5 · 6 · 8 · 10`. ⚠️ E o Push/Inflate MELHORAM com `8` (`0,164`/`0,162`) — *dois erros a compensarem-se, não a lei que falta* |
+| o **peso** da normal por vértice, medido pela TERCEIRA vez | com a ordem de visita certa: `inflar 0,245 → 0,245`, `empurrar 0,237 → 0,237`. A metade que a §4.6 declara aberta continua sem o corpus a decidir |
 | a regressão do §9 nº 20 da espec como causa do aperto | foi **fechada em 2024**, dois anos antes da versão que gravou as fixtures |
 
 ## §4 — ⛔⛔ A DECISÃO que é do DONO (e não há terceira saída)

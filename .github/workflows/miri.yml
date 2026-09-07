@@ -1,8 +1,20 @@
 name: miri
 
 # Runs miri (UB detector) weekly + on-demand. Heavy job — not on every PR.
-# When the project gains real `unsafe` blocks (ph2d-gpu interop, ph2d-script
-# bridge), wire this into the standard PR check.
+#
+# ⚠️ HISTÓRIA QUE MUDA COMO SE LÊ ESTE FICHEIRO: entre 2026-05-11 e 2026-09-07
+# este job correu 18 vezes e falhou 18, SEMPRE no `cargo miri setup`, sem nunca
+# executar um teste. Cada segunda-feira gerava um e-mail de falha que não
+# descrevia defeito nenhum do produto. Quem o consertar de novo deve saber que
+# as três metades do conserto de 07/09 são independentes e todas necessárias:
+#   (1) a toolchain (env RUSTUP_TOOLCHAIN) — porque o job NÃO CORRIA;
+#   (2) as MIRIFLAGS — porque com as antigas ele abortava antes de verificar;
+#   (3) os alvos — porque os dois que ele apontava proíbem `unsafe`.
+#
+# ⛔ A nota antiga dizia "when the project gains real unsafe blocks (ph2d-gpu
+# interop, ph2d-script bridge)". Medido em 07/09: a `ph2d-script` tem
+# `#![forbid(unsafe_code)]` (nunca vai ganhar um), e o `unsafe` real do repo
+# nasceu noutro sítio — ver o censo junto aos passos.
 
 on:
   schedule:
@@ -11,7 +23,34 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  MIRIFLAGS: "-Zmiri-strict-provenance -Zmiri-symbolic-alignment-check"
+  # ⚠️ As duas mudanças abaixo são MEDIDAS (2026-09-07), não gosto:
+  #
+  # ⛔ `-Zmiri-strict-provenance` SAIU. Ele é mais estrito que UB: aborta em
+  #    `0 as *mut T` (ponteiro nulo, benigno) dentro de código transpilado de C.
+  #    Medido: derruba a `ph2d-audio-opus` em `unsafe_libopus::opus_encoder_create`
+  #    ANTES de qualquer verificação real acontecer — a flag transformava o
+  #    detector num linter de estilo sobre dependência de terceiros.
+  #
+  # ⭐ `-Zmiri-disable-isolation` ENTROU. O miri sandboxa por omissão e recusa
+  #    `clock_gettime`; a `ph2d-mcp` carimba a hora no log de auditoria, logo
+  #    abortava sem chegar a testar nada. Medido: com a flag, 8 + 4 testes verdes.
+  MIRIFLAGS: "-Zmiri-symbolic-alignment-check -Zmiri-disable-isolation"
+  # ⚠️ LOAD-BEARING — sem isto o job NUNCA correu (18 de 18 vermelhos, 11/05 a
+  # 07/09/2026, todos a morrer no `cargo miri setup` com "the 'miri' component
+  # ... is not available for the '1.98' toolchain").
+  #
+  # O MECANISMO: `dtolnay/rust-toolchain@nightly` instala a nightly e põe-na
+  # como *default*, mas a precedência do rustup é
+  #     +toolchain  >  RUSTUP_TOOLCHAIN  >  override de dir  >  rust-toolchain.toml  >  default
+  # e o `rust-toolchain.toml` da raiz fixa `channel = "1.98"`. Ele ganha ao
+  # default, logo TODO `cargo` do job voltava para a 1.98 — canal estável, onde
+  # o componente `miri` não existe. O passo de instalação passava (a nightly
+  # ficava instalada, com miri), e o passo seguinte usava a outra toolchain.
+  #
+  # ⛔ Não troque por `rustup default nightly`: a precedência acima diz que o
+  # ficheiro continua a ganhar. Só o env var (ou um `+nightly` em cada linha)
+  # está ACIMA do `rust-toolchain.toml`.
+  RUSTUP_TOOLCHAIN: nightly
 
 jobs:
   miri:
@@ -32,15 +71,64 @@ jobs:
       - name: cargo miri setup
         run: cargo miri setup
 
-      # Run miri only on crates that exercise unsafe (or that we want to harden
-      # against UB). Currently:
-      # - ph2d-script: mlua bridge surface
-      # - ph2d-mcp: serde / blake3 / governance state
-      # - tests/spike: c2_1_messaging uses raw pointer for handler shared state
-      - name: miri test ph2d-script
-        run: cargo miri test -p ph2d-script
-        continue-on-error: true # Allowed to fail until first real unsafe lands.
+      # ⚠️ O ALCANCE DESTE JOB É MEDIDO, e a lista antiga descrevia outra
+      # árvore. Censo de 2026-09-07 sobre `unsafe` REAL (bloco/fn/impl):
+      #
+      #   crates/ph2d-imageio-avif ...... 42  ⛔ libavif-sys = FFI para C.
+      #                                       O miri não executa função
+      #                                       estrangeira ⇒ inalcançável.
+      #   crates/ph2d-audio-opus .........  9  ⛔ ver §UB CONHECIDO abaixo.
+      #   .../ph2d-audio-ml/vendor ....... 12  (terceiro, vendorizado)
+      #   ph2d-script .................... ZERO — `#![forbid(unsafe_code)]`
+      #   ph2d-mcp ....................... ZERO — `#![forbid(unsafe_code)]`
+      #
+      # ⛔ As DUAS crates que este workflow apontava proíbem `unsafe` pelo
+      # compilador. Não são inúteis (o miri ainda verifica UB nas dependências
+      # que os testes delas EXECUTAM — serde, blake3, bevy_ecs, o lado Rust do
+      # mlua), mas o comentário antigo — "crates that exercise unsafe" — era
+      # falso para ambas desde que foi escrito.
+      #
+      # ⚠️ Cada alvo abaixo foi CORRIDO antes de entrar (2026-09-07), e o
+      # recorte `--lib`/`--bins` é o que a medição obrigou — não conveniência:
+      #
+      #   ph2d-script --lib ......... 17 testes ✅
+      #   ph2d-script (integração) .. ⛔ `hot_reload_per_entity` chama
+      #                                 `lua_newstate`; o Luau é C++, logo o
+      #                                 miri não o pode executar. Não é defeito.
+      #   ph2d-mcp --lib --bins ..... 8 + 4 testes ✅
+      #   ph2d-mcp tests/ ........... ⛔ `schema_snapshot` abre um `socketpair`
+      #                                 de tipo que o miri não modela.
+      #
+      # ⛔⛔ SEM `continue-on-error`. Os dois passos foram vistos VERDES antes
+      # de a rede sair: um passo que engole o veredito é um alarme que não pode
+      # tocar, e este job passou 18 semanas vermelho sem ninguém o notar.
+      - name: miri test ph2d-script (lib)
+        run: cargo miri test -p ph2d-script --lib
 
-      - name: miri test ph2d-mcp
-        run: cargo miri test -p ph2d-mcp
-        continue-on-error: true
+      - name: miri test ph2d-mcp (lib + bins)
+        run: cargo miri test -p ph2d-mcp --lib --bins
+
+      # ⛔⛔⛔ §UB CONHECIDO — `ph2d-audio-opus` NÃO entra neste job, e a razão
+      # é um ACHADO, não uma omissão (medido 2026-09-07, primeira vez que o
+      # miri correu neste repo):
+      #
+      #   error: Undefined Behavior: attempting a write access using <tag>
+      #   ... but that tag does not exist in the borrow stack for this location
+      #     --> unsafe-libopus-0.2.0/src/externs.rs:102  (memset)
+      #   criado por  crates/ph2d-audio-opus/src/encoder.rs:46
+      #               (`opus_encoder_create(48_000, .., &mut err)`)
+      #
+      # ⚠️ Reprova nos DOIS modelos de aliasing — Stacked Borrows E
+      # `-Zmiri-tree-borrows` (o mais permissivo). Duas reprovações
+      # independentes tornam-no forte demais para ser artefacto do modelo
+      # experimental.
+      #
+      # ⚠️ A violação mora na `unsafe-libopus` (port Rust de libopus gerado de
+      # C), que não é nossa e cujo modelo de aliasing é o do C. Pô-la aqui daria
+      # VERMELHO toda segunda sobre código que não podemos corrigir — que é
+      # exactamente o ruído que este commit veio apagar.
+      #
+      # ⚠️ Alcance real: só o caminho de EXPORTAR Opus (ADR-0116), atrás de
+      # feature. Reproduzir:
+      #   MIRIFLAGS="-Zmiri-symbolic-alignment-check -Zmiri-disable-isolation" \
+      #     cargo +nightly miri test -p ph2d-audio-opus

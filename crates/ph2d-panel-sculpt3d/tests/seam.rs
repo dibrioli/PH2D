@@ -663,6 +663,24 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
         .skip(sliders)
         .map(|(n, id)| (*id, n.clone()))
         .collect();
+    cada_botao_responde_no_proprio_centro(&mut host, &painted, &by_id);
+}
+
+/// **A metade SEM LISTA do gate acima**, extraída para ter DOIS chamadores.
+///
+/// ⚠️⚠️ **A extracção é de 07/09 e a razão é medida:** o gate irmão arma o
+/// **Crease**, e com outro pincel na mão as fileiras do TECIDO nem são
+/// desenhadas — os oito modos e as três áreas ficaram **mortos sob o ponteiro**
+/// desde 06/09 sem um único gate a acusá-lo. *A fixtura tem de conter o
+/// fenómeno*, e uma fixtura só nunca contém dois pincéis.
+///
+/// ⛔ Ela continua sem lista: o conjunto é o que o PAINT registou, então um
+/// controlo novo nasce coberto — não há aqui onde o esquecer.
+fn cada_botao_responde_no_proprio_centro(
+    host: &mut MockPanelHost,
+    painted: &[(ph2d_a11y::NodeId, ph2d_editor_core::zones::Rect)],
+    by_id: &std::collections::BTreeMap<ph2d_a11y::NodeId, String>,
+) {
     // ⚠️ **A exclusão é por GESTO, e a polaridade é o ponto:** o default é *tem
     // de responder a um clique*, e sai da varredura só o que é dirigido por
     // ARRASTO — as pistas, os chips numéricos e o puxador do próprio painel
@@ -678,7 +696,7 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
         ph2d_editor_core::widget::SCULPT3D_SCROLLBAR_ID,
     ]);
     let mut seen: Vec<ph2d_a11y::NodeId> = Vec::new();
-    for &(id, rect) in &painted {
+    for &(id, rect) in painted {
         if dragged.contains(&id) || seen.contains(&id) {
             continue;
         }
@@ -709,6 +727,80 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
              índice de hit mas não é focável no store"
         );
     }
+}
+
+/// ⭐⭐⭐ **GATE — com o PINCEL DE TECIDO na mão, tudo o que o painel desenha
+/// responde ao ponteiro.**
+///
+/// ⛔⛔ **Ele nasce vermelho sobre o que shipou em 06/09:** os oito chips de
+/// *Deformation* e os três de *Simulation Area* estavam pintados, hit-indexados
+/// e **fora do `populate`** ⇒ o clique era descartado em silêncio. O gate irmão
+/// não os via porque arma o **Crease**, e a fileira do tecido só existe com o
+/// tecido na mão. *A fixtura tem de conter o fenómeno* — a sexta vez que este
+/// ficheiro o escreve.
+///
+/// ⚠️ **A área é a *Local* de propósito:** é a única que oferece o *Pin
+/// Simulation Boundary* (espec §2.3), e com a omissão (*Dynamic*) aquela caixa
+/// não seria varrida.
+#[test]
+fn every_cloth_control_is_clickable_where_it_is_drawn() {
+    let mut ui = Sculpt3dUi::default();
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Cloth);
+    ui.brush.cloth_area = ph2d_sculpt3d::ClothArea::Local;
+    ui.ui_level = UiLevel::Pro;
+    let (mut host, mut state) = arrange(ui.clone());
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+
+    // ⚠️ **Anti-vácuo com NOME:** os cinco knobs do tecido, as três fileiras e a
+    // caixa do pino têm de estar entre o que foi pintado — senão a varredura
+    // abaixo passaria sobre um painel que não desenhou nada de tecido.
+    let mut want: Vec<(String, ph2d_a11y::NodeId)> = Vec::new();
+    for row in rows::rows() {
+        if row.visible(&ui) {
+            want.push((row.label.to_string(), row.slider));
+            want.push((row.label.to_string(), row.chip));
+        }
+    }
+    let sliders = want.len();
+    for (i, m) in ph2d_sculpt3d::ClothMode::ALL.into_iter().enumerate() {
+        want.push((
+            format!("cloth mode {}", m.label()),
+            ids::SCULPT3D_CLOTH_MODE[i],
+        ));
+    }
+    for (i, a) in ph2d_sculpt3d::ClothArea::ALL.into_iter().enumerate() {
+        want.push((
+            format!("cloth area {}", a.label()),
+            ids::SCULPT3D_CLOTH_AREA[i],
+        ));
+    }
+    for (i, f) in ph2d_sculpt3d::ClothForceFalloff::ALL
+        .into_iter()
+        .enumerate()
+    {
+        want.push((
+            format!("cloth force falloff {}", f.label()),
+            ids::SCULPT3D_CLOTH_FORCE_FALLOFF[i],
+        ));
+    }
+    want.push(("cloth pin".to_string(), ids::SCULPT3D_CLOTH_PIN));
+    assert!(
+        want.len() > sliders + 12,
+        "a fixtura de tecido varre {} controlos -- ela nao contem o fenomeno",
+        want.len()
+    );
+    for (name, id) in &want {
+        assert!(
+            painted.iter().any(|(pid, _)| pid == id),
+            "`{name}` ({id:?}) devia estar pintado com o tecido na mao"
+        );
+    }
+    let by_id: std::collections::BTreeMap<_, _> = want
+        .iter()
+        .skip(sliders)
+        .map(|(n, id)| (*id, n.clone()))
+        .collect();
+    cada_botao_responde_no_proprio_centro(&mut host, &painted, &by_id);
 }
 
 /// **As rows condicionais não são pintadas com a ferramenta errada.**

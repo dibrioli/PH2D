@@ -244,6 +244,35 @@ pub const SCULPT3D_CLOTH_AREA: [NodeId; 3] = [
     hash_node_id("sculpt3d.cloth_area.1"),
     hash_node_id("sculpt3d.cloth_area.2"),
 ];
+/// **A FORMA ESPACIAL do peso da força do tecido** —
+/// `ph2d_sculpt3d::ClothForceFalloff::ALL`. ⚠️ O tamanho se CONTA: o censo
+/// `the_panel_offers_every_cloth_knob_the_engine_has` compara-o com o `ALL`.
+pub const SCULPT3D_CLOTH_FORCE_FALLOFF: [NodeId; 2] = [
+    hash_node_id("sculpt3d.cloth_force_falloff.0"),
+    hash_node_id("sculpt3d.cloth_force_falloff.1"),
+];
+/// ***Pin Simulation Boundary*** — só existe na área *Local* (espec §2.3).
+pub const SCULPT3D_CLOTH_PIN: NodeId = hash_node_id("sculpt3d.cloth_pin");
+/// ***Simulation Limit* `L`** — quantos raios a área simulada alcança.
+pub const SCULPT3D_CLOTH_LIMIT: NodeId = hash_node_id("sculpt3d.cloth_limit");
+/// Chip ligado a [`SCULPT3D_CLOTH_LIMIT`].
+pub const SCULPT3D_CLOTH_LIMIT_NUM: NodeId = hash_node_id("sculpt3d.cloth_limit_num");
+/// ***Simulation Falloff* `F`** — onde, dentro do limite, a banda começa.
+pub const SCULPT3D_CLOTH_FALLOFF: NodeId = hash_node_id("sculpt3d.cloth_falloff");
+/// Chip ligado a [`SCULPT3D_CLOTH_FALLOFF`].
+pub const SCULPT3D_CLOTH_FALLOFF_NUM: NodeId = hash_node_id("sculpt3d.cloth_falloff_num");
+/// ***Cloth Mass*** — ganho inverso sobre o passo de tempo.
+pub const SCULPT3D_CLOTH_MASS: NodeId = hash_node_id("sculpt3d.cloth_mass");
+/// Chip ligado a [`SCULPT3D_CLOTH_MASS`].
+pub const SCULPT3D_CLOTH_MASS_NUM: NodeId = hash_node_id("sculpt3d.cloth_mass_num");
+/// ***Cloth Damping*** — a fracção de velocidade perdida por passo.
+pub const SCULPT3D_CLOTH_DAMPING: NodeId = hash_node_id("sculpt3d.cloth_damping");
+/// Chip ligado a [`SCULPT3D_CLOTH_DAMPING`].
+pub const SCULPT3D_CLOTH_DAMPING_NUM: NodeId = hash_node_id("sculpt3d.cloth_damping_num");
+/// ***Soft Body Plasticity* `ρ`** — quanto a forma se lembra do que foi deformado.
+pub const SCULPT3D_CLOTH_PLASTICITY: NodeId = hash_node_id("sculpt3d.cloth_plasticity");
+/// Chip ligado a [`SCULPT3D_CLOTH_PLASTICITY`].
+pub const SCULPT3D_CLOTH_PLASTICITY_NUM: NodeId = hash_node_id("sculpt3d.cloth_plasticity_num");
 /// Raio do pincel, em **pixels de tela**.
 pub const SCULPT3D_RADIUS: NodeId = hash_node_id("sculpt3d.radius");
 /// Chip ligado a [`SCULPT3D_RADIUS`].

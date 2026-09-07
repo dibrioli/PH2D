@@ -80,6 +80,18 @@ pub fn populate(store: &mut WidgetStore) {
         // affordance que não faz nada.
         &ids::SCULPT3D_RETOPO_MODE[..],
         &ids::SCULPT3D_FALLOFF[..],
+        // ⛔⛔ **AS TRÊS FILEIRAS DO TECIDO FALTAVAM AQUI desde 06/09** — os oito
+        // modos e as três áreas nasceram pintados, hit-indexados e **mortos sob
+        // o ponteiro**, que é literalmente o defeito que o cabeçalho deste
+        // ficheiro descreve. E nenhum gate o viu: o
+        // `every_painted_control_is_clickable_where_it_is_drawn` arma o **Crease**,
+        // e com outro pincel na mão a fileira do tecido nem é desenhada. *A
+        // fixtura tem de conter o fenómeno* — a SEXTA vez que este módulo o
+        // escreve, e a primeira em que a frase custou uma wave inteira de
+        // controlos.
+        &ids::SCULPT3D_CLOTH_MODE[..],
+        &ids::SCULPT3D_CLOTH_AREA[..],
+        &ids::SCULPT3D_CLOTH_FORCE_FALLOFF[..],
         &ids::SCULPT3D_ALPHA[..],
         &ids::SCULPT3D_DETAIL[..],
         &ids::SCULPT3D_ADD[..],
@@ -131,6 +143,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::SCULPT3D_ACCUMULATE,
         ids::SCULPT3D_FRONT_FACES,
         ids::SCULPT3D_SCRAPE_DYNAMIC,
+        ids::SCULPT3D_CLOTH_PIN,
         ids::SCULPT3D_CLOSE,
     ] {
         button(store, id);

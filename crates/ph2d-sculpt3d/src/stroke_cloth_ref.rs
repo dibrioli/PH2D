@@ -24,8 +24,8 @@
 
 use crate::{Brush, Dab, Falloff, SculptStroke, Symmetry};
 use ph2d_cloth::V3;
-use ph2d_cloth::verlet::norm;
-use ph2d_cloth::verlet_gesto::{Curva, FalloffForca, Passo, Pincel, PincelTecido};
+use ph2d_cloth::verlet::{Solver, norm};
+use ph2d_cloth::verlet_gesto::{Curva, Passo, Pincel, PincelTecido};
 use ph2d_mesh::{Face, Mesh};
 
 /// **O que muda de uma CÓPIA DE SIMETRIA para a outra**, num dab.
@@ -159,7 +159,7 @@ fn pincel_de(brush: &Brush, passagens: u32) -> Pincel {
     Pincel {
         modo: brush.cloth_mode.modo(),
         area: brush.cloth_area.area(),
-        falloff_forca: FalloffForca::Radial,
+        falloff_forca: brush.cloth_force_falloff.falloff(),
         curva: match brush.falloff {
             Falloff::Constant => Curva::Constante,
             Falloff::Sharper => Curva::Aguda,
@@ -169,6 +169,18 @@ fn pincel_de(brush: &Brush, passagens: u32) -> Pincel {
         forca: f64::from(brush.strength.clamp(0.0, 1.0)),
         dureza: f64::from(brush.hardness.clamp(0.0, 1.0)),
         flip: if brush.invert { -1.0 } else { 1.0 },
+        limite: f64::from(brush.cloth_limit.clamp(0.1, 10.0)),
+        banda: f64::from(brush.cloth_falloff.clamp(0.0, 1.0)),
+        // ⚠️ **A lei recusa o pino fora da *Local*** (espec §2.3), e a porta é
+        // aqui e não no painel: o painel pergunta o mesmo para não pintar um
+        // interruptor morto, mas quem honra a recusa é quem constrói o pincel.
+        pino: brush.cloth_pin && brush.cloth_area.offers_pin(),
+        solver: Solver {
+            massa: f64::from(brush.cloth_mass.clamp(0.01, 2.0)),
+            amortecimento: f64::from(brush.cloth_damping.clamp(0.01, 1.0)),
+            plasticidade: f64::from(brush.cloth_plasticity.clamp(0.0, 1.0)),
+            ..Solver::default()
+        },
         passagens,
         ..Pincel::default()
     }

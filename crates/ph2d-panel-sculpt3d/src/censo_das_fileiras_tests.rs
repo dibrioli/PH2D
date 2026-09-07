@@ -14,7 +14,7 @@
 //! sem valor no motor também — o segundo é o chip que aponta para nada.
 
 use ph2d_editor_core::ids;
-use ph2d_sculpt3d::{ClothArea, ClothMode, Falloff};
+use ph2d_sculpt3d::{ClothArea, ClothForceFalloff, ClothMode, Falloff};
 
 /// **GATE — o painel oferece TODA curva de falloff que o motor tem.**
 #[test]
@@ -50,6 +50,13 @@ fn the_panel_offers_every_cloth_mode_the_engine_has() {
         ids::SCULPT3D_CLOTH_AREA.len(),
         ClothArea::ALL.len()
     );
+    assert_eq!(
+        ids::SCULPT3D_CLOTH_FORCE_FALLOFF.len(),
+        ClothForceFalloff::ALL.len(),
+        "o painel tem {} chips de forma de queda e o motor tem {}",
+        ids::SCULPT3D_CLOTH_FORCE_FALLOFF.len(),
+        ClothForceFalloff::ALL.len()
+    );
 }
 
 /// **GATE — cada rótulo é distinto, e nenhum é vazio.**
@@ -61,7 +68,12 @@ fn the_panel_offers_every_cloth_mode_the_engine_has() {
 fn no_two_chips_of_a_row_carry_the_same_label() {
     let modos: Vec<&str> = ClothMode::ALL.iter().map(|m| m.label()).collect();
     let areas: Vec<&str> = ClothArea::ALL.iter().map(|a| a.label()).collect();
-    for (nome, rotulos) in [("deformacao", &modos), ("area", &areas)] {
+    let quedas: Vec<&str> = ClothForceFalloff::ALL.iter().map(|f| f.label()).collect();
+    for (nome, rotulos) in [
+        ("deformacao", &modos),
+        ("area", &areas),
+        ("forma de queda", &quedas),
+    ] {
         for (i, a) in rotulos.iter().enumerate() {
             assert!(!a.trim().is_empty(), "{nome}: o chip {i} nao tem rotulo");
             for b in rotulos.iter().skip(i + 1) {

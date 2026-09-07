@@ -122,6 +122,20 @@ impl ClothArea {
         }
     }
 
+    /// **ESTA ÁREA TEM PINO DE FRONTEIRA?** (espec §2.3) — a porta ÚNICA da
+    /// pergunta, e ela existe porque tem **dois** leitores: o painel, que não
+    /// pinta a caixa onde ela não existe, e a tradução `Brush → Pincel`, que
+    /// honra a recusa. ⛔ Duas cópias divergiriam num interruptor que aparece e
+    /// não muda um vértice — o defeito que esta casa varre a cada wave.
+    ///
+    /// ⚠️ Só a *Local*: nas outras a lei do alvo recusa-o (a fronteira da banda
+    /// não é uma coisa fixa quando a esfera segue o cursor, e na *Global* não há
+    /// banda nenhuma).
+    #[must_use]
+    pub fn offers_pin(self) -> bool {
+        matches!(self, Self::Local)
+    }
+
     /// A lei correspondente na `ph2d-cloth`.
     #[must_use]
     pub fn area(self) -> Area {

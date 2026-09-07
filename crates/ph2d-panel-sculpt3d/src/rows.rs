@@ -66,6 +66,13 @@ const MAX_EXTRACT_SMOOTH: f32 = 8.0; // LITERAL-PX-OK: contagem de passadas MEDI
 /// Sempre visível. ⚠️ `pub(super)` porque a tabela do sombreamento é um
 /// módulo FILHO e as duas a partilham — duas cópias divergiriam no dia em que
 /// *sempre* ganhasse uma exceção.
+/// **Esta row é do pincel de TECIDO?** — a pergunta é ao VERBO, e é a mesma que
+/// o roteador faz para honrar o clique. ⛔ Uma lista paralela de nomes aqui seria
+/// um knob que aparece noutra ferramenta e não move um vértice.
+fn is_cloth(u: &Sculpt3dUi) -> bool {
+    u.brush.verb == Verb::Cloth
+}
+
 pub(super) fn always(_: &Sculpt3dUi) -> bool {
     true
 }
@@ -538,6 +545,94 @@ static BRUSH: &[Row] = &[
         show: |u| directional_alpha(u) && !stamp_alpha(u),
         level: UiLevel::Basic,
         place: Place::AfterAlpha,
+    },
+    // ── Os CINCO números do pincel de TECIDO ────────────────────────────────
+    //
+    // ⚠️⚠️ **Eles existiam na lei e não existiam no painel.** A tradução
+    // `Brush → Pincel` escrevia os cinco como omissão literal, e o corpus do
+    // oráculo tem fixture para cada um (`massa2`, `amort05`, `amort1`,
+    // `plast05`, `pino`, `preset` com limite `5`). *Uma lei medida na bancada e
+    // não ligada no produto é uma lei que o artista não tem* — é a mesma conta
+    // que os oito modos e as três áreas pagaram em 06/09.
+    //
+    // ⚠️ **A pergunta de visibilidade é ao VERBO**, como a das duas fileiras de
+    // chip: com outro pincel na mão eles não movem um vértice.
+    Row {
+        label: "panel.sculpt3d.cloth_limit",
+        slider: ids::SCULPT3D_CLOTH_LIMIT,
+        chip: ids::SCULPT3D_CLOTH_LIMIT_NUM,
+        // A faixa é a do alvo (espec §8.1). O recurso que ela nomeia é TEMPO ×
+        // ALCANCE: o limite é `R·(1+L)`, logo `10` simula uma esfera de `11·R`.
+        min: 0.1,
+        max: 10.0,
+        step: 0.1, // LITERAL-PX-OK: passo de um knob em raios de pincel
+        decimals: 2,
+        get: |u| u.brush.cloth_limit,
+        set: |u, v| u.brush.cloth_limit = v,
+        show: is_cloth,
+        level: UiLevel::Basic,
+        place: Place::Knobs,
+    },
+    Row {
+        label: "panel.sculpt3d.cloth_falloff",
+        slider: ids::SCULPT3D_CLOTH_FALLOFF,
+        chip: ids::SCULPT3D_CLOTH_FALLOFF_NUM,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: knob adimensional
+        decimals: 2,
+        get: |u| u.brush.cloth_falloff,
+        set: |u, v| u.brush.cloth_falloff = v,
+        show: is_cloth,
+        level: UiLevel::Basic,
+        place: Place::Knobs,
+    },
+    Row {
+        label: "panel.sculpt3d.cloth_mass",
+        slider: ids::SCULPT3D_CLOTH_MASS,
+        chip: ids::SCULPT3D_CLOTH_MASS_NUM,
+        // ⚠️ **O piso não é zero e não é escolha:** a massa é um ganho INVERSO
+        // (espec §5.4), logo `0` é uma divisão por zero com o nome de knob.
+        min: 0.01,
+        max: 2.0,
+        step: 0.05, // LITERAL-PX-OK: knob adimensional
+        decimals: 2,
+        get: |u| u.brush.cloth_mass,
+        set: |u, v| u.brush.cloth_mass = v,
+        show: is_cloth,
+        level: UiLevel::Basic,
+        place: Place::Knobs,
+    },
+    Row {
+        label: "panel.sculpt3d.cloth_damping",
+        slider: ids::SCULPT3D_CLOTH_DAMPING,
+        chip: ids::SCULPT3D_CLOTH_DAMPING_NUM,
+        // ⚠️ **O piso é `0,01`, que é a omissão** — a faixa do alvo abre onde ele
+        // a põe, e é medido que a retenção de velocidade é o que faz o traço
+        // ASSENTAR: a `1` o pano pára no instante em que a mão pára.
+        min: 0.01,
+        max: 1.0,
+        step: 0.01, // LITERAL-PX-OK: knob adimensional
+        decimals: 2,
+        get: |u| u.brush.cloth_damping,
+        set: |u, v| u.brush.cloth_damping = v,
+        show: is_cloth,
+        level: UiLevel::Basic,
+        place: Place::Knobs,
+    },
+    Row {
+        label: "panel.sculpt3d.cloth_plasticity",
+        slider: ids::SCULPT3D_CLOTH_PLASTICITY,
+        chip: ids::SCULPT3D_CLOTH_PLASTICITY_NUM,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: knob adimensional
+        decimals: 2,
+        get: |u| u.brush.cloth_plasticity,
+        set: |u, v| u.brush.cloth_plasticity = v,
+        show: is_cloth,
+        level: UiLevel::Basic,
+        place: Place::Knobs,
     },
     // ── Os dois números do EXTRACT ──────────────────────────────────────────
     //

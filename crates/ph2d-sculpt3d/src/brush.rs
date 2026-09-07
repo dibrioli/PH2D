@@ -357,6 +357,40 @@ pub struct Brush {
     /// a `Local` constrói a lista de restrições em duplicado e entrega no centro
     /// `0,34×` o que a `Global` entrega.
     pub cloth_area: crate::ClothArea,
+    /// **A FORMA ESPACIAL do peso da força** ([`crate::ClothForceFalloff`]).
+    ///
+    /// ⚠️ **Ele era um LITERAL na tradução `Brush → Pincel`**, e o corpus do
+    /// oráculo tem quatro traços que só a forma de PLANO exercita.
+    pub cloth_force_falloff: crate::ClothForceFalloff,
+    /// ***Simulation Limit* `L`** — quantos raios de pincel a área simulada
+    /// alcança: o limite é `R·(1+L)` e a banda começa em `R·(1+L·F)` (espec §2.2).
+    ///
+    /// ⚠️ **É de TEMPO e de ALCANCE ao mesmo tempo** (espec §8.1): mais limite é
+    /// mais malha na simulação. Faixa `0,1..10`, omissão `2,5`.
+    pub cloth_limit: f32,
+    /// ***Simulation Falloff* `F`** — onde, dentro do limite, a banda começa a
+    /// descer. `1` põe o início no próprio limite (banda de largura zero) e `0`
+    /// põe-no no raio do pincel. Faixa `0..1`, omissão `0,75`.
+    pub cloth_falloff: f32,
+    /// ***Pin Simulation Boundary*** — os vértices da franja da banda ganham uma
+    /// restrição ao repouso com força `1 − w` (espec §2.3).
+    ///
+    /// ⚠️ **Só a área *Local* o tem**, e a lei recusa-o nas outras — o painel
+    /// pergunta o mesmo antes de o pintar, senão é um interruptor de coisa
+    /// nenhuma nos outros dois terços do selector.
+    pub cloth_pin: bool,
+    /// ***Cloth Mass*** — ganho inverso puro sobre o passo de tempo (espec §5.4):
+    /// dobrar divide exactamente por dois o deslocamento por força num passo.
+    /// Faixa `0,01..2`, omissão `1`.
+    pub cloth_mass: f32,
+    /// ***Cloth Damping*** — a fracção de velocidade PERDIDA por passo (espec
+    /// §5.3). ⚠️ Não é Rayleigh nem viscosidade. Faixa `0,01..1`, omissão `0,01`
+    /// (⇒ `99 %` de retenção, que é o que faz o traço assentar).
+    pub cloth_damping: f32,
+    /// ***Soft Body Plasticity* `ρ`** (espec §5.2): `0` = a memória de forma
+    /// segue o vértice e nunca o puxa; `1` = o vértice volta à memória.
+    /// Faixa `0..1`, omissão `0`.
+    pub cloth_plasticity: f32,
 }
 
 impl Default for Brush {
@@ -474,6 +508,18 @@ impl Default for Brush {
             hc_vertex: crate::HC_VERTEX_DEFAULT,
             cloth_mode: crate::ClothMode::default(),
             cloth_area: crate::ClothArea::default(),
+            // ⚠️ **As sete omissões são as do CÓDIGO do alvo** (espec §8.1), e
+            // não as dos presets — as dos presets já governam o `cloth_area`,
+            // com o número medido ao lado dele. Com estes valores a tradução
+            // `Brush → Pincel` entrega exactamente o `Pincel::default()` que a
+            // bancada de paridade corre ⇒ o mundo pré-wave é byte-idêntico.
+            cloth_force_falloff: crate::ClothForceFalloff::default(),
+            cloth_limit: 2.5,
+            cloth_falloff: 0.75,
+            cloth_pin: false,
+            cloth_mass: 1.0,
+            cloth_damping: 0.01,
+            cloth_plasticity: 0.0,
         }
     }
 }

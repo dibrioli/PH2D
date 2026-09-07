@@ -13,7 +13,7 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
-use ph2d_sculpt3d::{Alpha, ClothArea, ClothMode, Falloff, Verb};
+use ph2d_sculpt3d::{Alpha, ClothArea, ClothForceFalloff, ClothMode, Falloff, Verb};
 use ph2d_tokens::Spacing;
 
 use super::body::paint_one_row;
@@ -358,13 +358,46 @@ fn paint_cloth_rows(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
         .position(|&a| a == snap.ui.brush.cloth_area)
         .unwrap_or(0);
     let labels: Vec<&str> = ClothArea::ALL.iter().map(|a| a.label()).collect();
-    labelled_seg(
+    let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.cloth_area"),
         ids::SCULPT3D_SEC_BRUSH,
         &ids::SCULPT3D_CLOTH_AREA,
         &labels,
         selected,
+        x,
+        w,
+        y,
+    );
+    let selected = ClothForceFalloff::ALL
+        .iter()
+        .position(|&f| f == snap.ui.brush.cloth_force_falloff)
+        .unwrap_or(0);
+    let labels: Vec<&str> = ClothForceFalloff::ALL.iter().map(|f| f.label()).collect();
+    let y = labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.cloth_force_falloff"),
+        ids::SCULPT3D_SEC_BRUSH,
+        &ids::SCULPT3D_CLOTH_FORCE_FALLOFF,
+        &labels,
+        selected,
+        x,
+        w,
+        y,
+    );
+    // **O PINO DA FRONTEIRA**, e só onde a lei existe. ⚠️ A pergunta é a mesma
+    // que [`ph2d_sculpt3d`] faz ao construir o pincel — a lei recusa o pino fora
+    // da área *Local* (espec §2.3), e a caixa nos outros dois terços do selector
+    // seria um interruptor de coisa nenhuma. ⛔ Duas cópias da pergunta
+    // divergiriam; esta pergunta ao MOTOR, pelo mesmo `area()`.
+    if !snap.ui.brush.cloth_area.offers_pin() {
+        return y;
+    }
+    toggle(
+        ctx,
+        ids::SCULPT3D_CLOTH_PIN,
+        tr("panel.sculpt3d.cloth_pin"),
+        snap.ui.brush.cloth_pin,
         x,
         w,
         y,

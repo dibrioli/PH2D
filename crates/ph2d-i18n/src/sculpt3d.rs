@@ -34,6 +34,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // de lá procura essas duas palavras.
         "panel.sculpt3d.cloth_mode" => "Deformation",
         "panel.sculpt3d.cloth_area" => "Simulation Area",
+        "panel.sculpt3d.cloth_force_falloff" => "Force Falloff",
+        "panel.sculpt3d.cloth_pin" => "Pin Simulation Boundary",
+        "panel.sculpt3d.cloth_limit" => "Simulation Limit",
+        "panel.sculpt3d.cloth_falloff" => "Simulation Falloff",
+        "panel.sculpt3d.cloth_mass" => "Cloth Mass",
+        "panel.sculpt3d.cloth_damping" => "Cloth Damping",
+        "panel.sculpt3d.cloth_plasticity" => "Soft Body Plasticity",
         // ⚠️ **A row lê `Reference`, e os chips leem `S` · `B` · `L`** (§1.4 do
         // plano): o artista não sabe o que é o SculptGL, e o nome de um produto
         // de terceiro num botão é ruído que envelhece. Trocar para os nomes por

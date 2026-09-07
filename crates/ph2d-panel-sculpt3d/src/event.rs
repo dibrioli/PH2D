@@ -67,13 +67,13 @@ fn table_intent(id: ph2d_a11y::NodeId) -> Option<Sculpt3dIntent> {
     index_of(&ids::SCULPT3D_MASK_OP, id).map(|i| MASK_INTENTS[i].clone())
 }
 
-const ADD_INTENTS: [Sculpt3dIntent; 4] = [
+static ADD_INTENTS: [Sculpt3dIntent; 4] = [
     Sculpt3dIntent::AddSphere,
     Sculpt3dIntent::AddCube,
     Sculpt3dIntent::AddCylinder,
     Sculpt3dIntent::AddTorus,
 ];
-const MASK_INTENTS: [Sculpt3dIntent; 4] = [
+static MASK_INTENTS: [Sculpt3dIntent; 4] = [
     Sculpt3dIntent::MaskClear,
     Sculpt3dIntent::MaskInvert,
     Sculpt3dIntent::MaskBlur,
@@ -187,6 +187,21 @@ pub(crate) fn apply_event(
             seam_reset_button(host, id);
             let mut ui = snapshot.ui;
             ui.brush.scrape_dynamic = !ui.brush.scrape_dynamic;
+            state::push_intent(Sculpt3dIntent::SetUi(ui));
+            true
+        }
+        // ⚠️ **Gateado na ÁREA, como a caixa que o pinta** — e a pergunta é a
+        // MESMA porta (`ClothArea::offers_pin`) que a tradução `Brush → Pincel`
+        // faz para honrar a recusa da lei. Sem o guard um clique sintético
+        // armaria um pino que a área *Global* nem constrói.
+        WidgetEvent::Click(id)
+            if id == ids::SCULPT3D_CLOTH_PIN
+                && snapshot.ui.brush.verb == Verb::Cloth
+                && snapshot.ui.brush.cloth_area.offers_pin() =>
+        {
+            seam_reset_button(host, id);
+            let mut ui = snapshot.ui;
+            ui.brush.cloth_pin = !ui.brush.cloth_pin;
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }
@@ -394,6 +409,8 @@ fn group_chip_ui(
         ui.brush.cloth_mode = ph2d_sculpt3d::ClothMode::ALL[i];
     } else if let Some(i) = index_of(&ids::SCULPT3D_CLOTH_AREA, id) {
         ui.brush.cloth_area = ph2d_sculpt3d::ClothArea::ALL[i];
+    } else if let Some(i) = index_of(&ids::SCULPT3D_CLOTH_FORCE_FALLOFF, id) {
+        ui.brush.cloth_force_falloff = ph2d_sculpt3d::ClothForceFalloff::ALL[i];
     } else if let Some(i) = index_of(&ids::SCULPT3D_MATCAP, id) {
         // A opção `0` é o rig do artista e as seguintes são os matcaps, o mesmo
         // deslocamento que o pintor usa. `checked_sub` e não `- 1`: a opção zero

@@ -76,6 +76,16 @@ pub enum GraphIntent {
     /// pôs os params dentro do nó conta alocações por quadro, e uma lista de nomes por row
     /// seria exactamente o que ela recusou.
     CycleSource { node: u32, param: &'static str },
+    /// ⭐⭐ **O ARTISTA CLICOU NUM SELECTOR DE CANAL** — o irmão exacto do [`Self::CycleSource`],
+    /// e pela mesma razão: a lista é **viva** (os canais curados que o nó declara MAIS as
+    /// colunas que a corrente de cima de facto cozinhou neste quadro), logo ela não cabe no
+    /// cartão — o cartão diz *«o seguinte»* e a shell, que a possui, resolve qual é.
+    ///
+    /// ⚠️ **Um canal escreve DOIS params** (a coluna, que é texto, e o `mode`, que é um
+    /// número), e é por isso que ele não é um `Cycle` de enum: o valor guardado não é o
+    /// índice da opção. A tradução emite as duas escritas pelas mesmas portas que a row do
+    /// painel usa.
+    CycleChannel { node: u32, param: &'static str },
     /// ⭐ **O ARTISTA ESCREVEU UM TEXTO NUM CARTÃO** — um nome de coluna, um sinal, uma fórmula.
     /// Sai pela porta de texto que a row do painel já usa (`MotionParamIntent::SetTextParam`),
     /// para o undo e o memo do cook serem os mesmos nas duas superfícies.

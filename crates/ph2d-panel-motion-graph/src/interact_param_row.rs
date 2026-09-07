@@ -145,6 +145,15 @@ pub(super) fn apply_param_row(
                     node,
                     param: p.hint.param,
                 }),
+                // ⭐⭐ **O canal seguinte.** ⚠️ Ele NÃO é um `Cycle` de enum, e a diferença
+                // não é cosmética: um enum guarda o ÍNDICE da opção no próprio param, e um
+                // canal guarda o NOME da coluna num param de texto mais um `mode` noutro. A
+                // shell resolve qual é o seguinte porque a lista inclui o que a corrente de
+                // cima cozinhou **neste quadro**.
+                ClickDoes::CycleChannel => push_intent(GraphIntent::CycleChannel {
+                    node,
+                    param: p.hint.param,
+                }),
                 // ⛔ Vazio de PROPÓSITO: o `pointer_down` já abriu o selector, e este braço só
                 // corre se a marca faltar — caso em que escrever aqui esconderia o defeito.
                 ClickDoes::OpensPicker | ClickDoes::Nothing => {}
@@ -181,6 +190,10 @@ pub enum ClickDoes {
     PickFile,
     /// **Avança para a fonte publicada seguinte** — a lista é viva e vive na shell.
     CycleSource,
+    /// **Avança para o canal seguinte** — irmão do [`Self::CycleSource`]: a lista (canais
+    /// curados MAIS as colunas que a corrente de cima cozinhou) é viva e vive na shell, e um
+    /// canal escreve DOIS params (a coluna e o `mode`).
+    CycleChannel,
     /// **Abre a caixa para ESCREVER um texto** — um nome de coluna, um sinal, uma fórmula.
     TypeText,
     /// **Abre o selector de cor** — ⚠️ e quem o abre **não é este gesto**: a amostra está
@@ -206,6 +219,7 @@ pub fn click_does(p: &crate::CardParam) -> ClickDoes {
         }
         ph2d_node_registry::ParamWidget::File { .. } => ClickDoes::PickFile,
         ph2d_node_registry::ParamWidget::Source => ClickDoes::CycleSource,
+        ph2d_node_registry::ParamWidget::Channels { .. } => ClickDoes::CycleChannel,
         ph2d_node_registry::ParamWidget::Text => ClickDoes::TypeText,
         ph2d_node_registry::ParamWidget::Color { .. } => ClickDoes::OpensPicker,
         _ => ClickDoes::Nothing,

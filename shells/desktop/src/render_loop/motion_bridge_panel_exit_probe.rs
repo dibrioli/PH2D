@@ -18,6 +18,12 @@
 //! ```
 
 use crate::motion_state::MotionState;
+
+/// Os gates da wave que fechou o **selector de canal** — irmão por responsabilidade (o censo
+/// aqui, a lei do clique lá).
+#[cfg(test)]
+#[path = "motion_bridge_panel_exit_channel_tests.rs"]
+mod channel_tests;
 use ph2d_panel_motion_graph::{ClickDoes, click_does};
 use std::collections::BTreeMap;
 
@@ -84,6 +90,7 @@ fn censo() -> Censo {
                 ClickDoes::Cycle(_) => "avança",
                 ClickDoes::PickFile => "abre ficheiro",
                 ClickDoes::CycleSource => "avança a fonte",
+                ClickDoes::CycleChannel => "avança o canal",
                 ClickDoes::OpensPicker => "abre o selector",
                 ClickDoes::TypeText => "escreve texto",
                 ClickDoes::Nothing => "NADA",
@@ -385,9 +392,11 @@ fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
     );
 }
 
-/// **Medido em 2026-09-07: `6` de `683` rows** (eram `26` — saíram os **3** de ficheiro, as
-/// **4** fontes publicadas, as **4** cores e os **9** campos de texto; a tabela mostra-os fora) — reconciliado pela sonda, nunca escrito de
-/// memória. Em sete espécies, e a maior é o campo de texto (9):
+/// **Medido em 2026-09-07: `5` de `683` rows** (eram `26` — saíram os **3** de ficheiro, as
+/// **4** fontes publicadas, as **4** cores, os **9** campos de texto e o **1** selector de
+/// canal; a tabela mostra-os fora) — reconciliado pela sonda, nunca escrito de memória. Ficam
+/// **três** espécies, e todas pedem a mesma coisa: uma superfície de edição que hoje só o
+/// painel tem.
 ///
 /// | espécie | quantos | nós |
 /// |---|---:|---|
@@ -395,10 +404,16 @@ fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
 /// | ~~amostra + selector de COR~~ | ~~4~~ | ✅ **curado**: o id da amostra passou a carregar o NÓ |
 /// | ~~selector de FONTE publicada~~ | ~~4~~ | ✅ **curado**: o clique anda pela lista viva |
 /// | ~~caminho + diálogo de FICHEIRO~~ | ~~3~~ | ✅ **curado**: o cartão pede, a shell abre |
+/// | ~~selector de CANAL~~ | ~~1~~ | ✅ **curado**: o clique anda pelos canais e escreve o PAR |
 /// | editor de CURVA | 2 | `value.curve` · `motion.strobe` |
 /// | editor de GRADIENTE | 2 | `motion.color_ramp` · `fx.glow` |
 /// | editor de PALETA | 1 | `motion.color_array` |
-/// | selector de CANAL | 1 | `value.attribute` |
+///
+/// ⚠️ **O canal era o último dos BARATOS, e a régua de «barato» é uma só:** quem possui a lista
+/// é a **SHELL** (o selector, o diálogo, os publicados, as colunas que a corrente cozinhou),
+/// então o cartão só precisa de emitir a mesma intenção. Os **5** que ficam pedem uma
+/// superfície de EDIÇÃO — pontos que se arrastam, paradas que se movem, amostras que se
+/// acrescentam —, e essa não se pede por intenção nenhuma: ela tem de ser desenhada.
 ///
 /// ⚠️ **Os `4 + 3 + 4 = 11` de cor, ficheiro e fonte eram os BARATOS:** quem abre o selector, o
 /// diálogo e a lista de publicados é a **SHELL**, não o painel — o cartão só precisa de emitir a
@@ -425,4 +440,4 @@ fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
 /// `apply_graph_intents` **já traduzia** as intenções do cartão para as do painel (é assim que
 /// o `SetParam` de um arrasto no cartão chega ao documento), então o ficheiro custou **um
 /// braço em cada lado** — nenhuma lei nova, nenhuma segunda porta.
-const TRANCADOS_NO_PAINEL: usize = 6;
+const TRANCADOS_NO_PAINEL: usize = 5;

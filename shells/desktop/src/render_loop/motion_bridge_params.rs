@@ -123,6 +123,36 @@ pub(super) fn next_source_for(opcoes: &[String], atual: &str) -> Option<String> 
     params_stream::next_source(opcoes, atual)
 }
 
+/// ⭐⭐ **O CANAL SEGUINTE de um selector de canais** — o irmão de [`next_source_for`], pedido
+/// pelo cartão (`GraphIntent::CycleChannel`) e resolvido aqui porque a lista é **viva**: ela é
+/// os canais curados do nó MAIS as colunas que a corrente de cima cozinhou neste quadro.
+///
+/// Devolve `(coluna, mode)` — as **duas** escritas que um canal faz, num par, porque escrever
+/// só uma deixaria o nó a ler a coluna certa no modo errado (que é ler zeros em silêncio).
+pub(super) fn next_channel_for(
+    motion: &MotionState,
+    node: ph2d_nodegraph::graph::NodeId,
+    text_param: &str,
+    mode_param: &str,
+    channels: &'static [ph2d_node_registry::ReadChannel],
+) -> Option<(String, i32)> {
+    let (lista, atual) =
+        params_stream::channel_walk(motion, node, text_param, mode_param, channels);
+    params_stream::next_channel(&lista, &atual)
+}
+
+/// A LISTA por onde o clique anda, para o gate que a ata à ordem que o painel PINTA.
+#[cfg(test)]
+pub(crate) fn channel_walk_for_tests(
+    motion: &MotionState,
+    node: ph2d_nodegraph::graph::NodeId,
+    text_param: &str,
+    mode_param: &str,
+    channels: &'static [ph2d_node_registry::ReadChannel],
+) -> (Vec<(String, i32)>, (String, i32)) {
+    params_stream::channel_walk(motion, node, text_param, mode_param, channels)
+}
+
 /// O caminho REAL de uma edição de param, para os gates que a medem de ponta a ponta —
 /// `push_param_intent` de fora, este dreno aqui.
 ///

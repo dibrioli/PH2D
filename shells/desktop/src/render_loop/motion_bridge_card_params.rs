@@ -300,7 +300,27 @@ fn card_text(
         return vazio;
     }
     match h.widget {
-        W::Text | W::Source | W::Channels { .. } => ph2d_panel_motion_graph::RowText::new(bruto),
+        // ⭐⭐ **De um CANAL mostra-se o NOME que o artista lê no painel, não a coluna crua.**
+        // O selector segmentado do painel diz *«Speed»*; a row que dissesse `vel` seria a mesma
+        // escolha com dois nomes, e o clique que anda pela lista passaria a ler-se como se
+        // tivesse escolhido outra coisa. Fora da lista curada (uma coluna escrita à mão ou vinda
+        // da corrente de cima) o nome É a coluna, e é isso que se mostra.
+        W::Channels {
+            mode_param,
+            channels,
+        } => {
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "o `mode` e' um inteiro pequeno guardado num f32, como no painel"
+            )]
+            let modo = param_value(motion, nid, mode_param).round() as i32;
+            let rotulo = channels
+                .iter()
+                .find(|c| c.column == bruto && c.mode == modo)
+                .map_or(bruto, |c| c.label);
+            ph2d_panel_motion_graph::RowText::new(rotulo)
+        }
+        W::Text | W::Source => ph2d_panel_motion_graph::RowText::new(bruto),
         W::File { .. } => std::path::Path::new(bruto)
             .file_name()
             .and_then(|n| n.to_str())

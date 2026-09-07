@@ -194,6 +194,44 @@ pub(super) fn apply_graph_intents(
                     }
                 }
             }
+            // ⭐⭐ **O canal seguinte** — o irmão do `CycleSource`, e a mesma razão para a
+            // lista viver aqui: ela inclui as colunas que a corrente de cima cozinhou NESTE
+            // quadro. ⚠️ **Duas escritas, sempre juntas** (a coluna e o `mode`): escrever só a
+            // coluna deixaria o nó a ler o sítio certo no modo errado, que é ler zeros em
+            // silêncio — o mesmo par que a chip do painel escreve.
+            #[cfg(feature = "panel-motion-params")]
+            GraphIntent::CycleChannel { node, param } => {
+                if let subgraph::Target::Node(n) = subgraph::target(node)
+                    && let Some(tid) = motion.doc.graph.node(n).map(|i| i.type_id())
+                    && let Some(ph2d_node_registry::ParamWidget::Channels {
+                        mode_param,
+                        channels,
+                    }) = motion
+                        .registry
+                        .param_ui(tid)
+                        .unwrap_or(&[])
+                        .iter()
+                        .find(|h| h.param == param)
+                        .map(|h| h.widget)
+                    && let Some((coluna, modo)) =
+                        super::params::next_channel_for(motion, n, param, mode_param, channels)
+                {
+                    ph2d_panel_motion_params::push_param_intent(
+                        ph2d_panel_motion_params::MotionParamIntent::SetTextParam {
+                            node: n.0,
+                            param,
+                            value: coluna,
+                        },
+                    );
+                    ph2d_panel_motion_params::push_param_intent(
+                        ph2d_panel_motion_params::MotionParamIntent::SetParam {
+                            node: n.0,
+                            param: mode_param,
+                            value: f64::from(modo),
+                        },
+                    );
+                }
+            }
             // ⭐ O texto escrito no cartão sai pela porta de texto do painel — a mesma que a
             // chip de uma fonte e o campo de uma fórmula usam.
             #[cfg(feature = "panel-motion-params")]

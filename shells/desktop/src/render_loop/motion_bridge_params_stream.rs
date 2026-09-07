@@ -198,6 +198,64 @@ pub(super) fn next_source(opcoes: &[String], atual: &str) -> Option<String> {
     })
 }
 
+/// ⭐⭐ **A LISTA POR ONDE UM SELECTOR DE CANAL ANDA** — os canais **curados** que o nó declara,
+/// e a seguir as colunas **vivas** que a corrente de cima cozinhou neste quadro.
+///
+/// ⚠️ **A ORDEM é a que o painel PINTA** (o selector segmentado dos curados em cima, os chips
+/// das colunas vivas por baixo) e é dita aqui uma vez só. Se o cartão andasse por uma ordem e o
+/// painel desenhasse outra, o mesmo clique escolheria coisas diferentes conforme a superfície —
+/// e há gate a atar as duas (`the_card_walks_the_same_channel_order_the_panel_paints`).
+///
+/// Devolve também **onde o nó está agora** — `(coluna, mode)` —, porque as duas metades saem da
+/// mesma leitura do documento: uma segunda consulta poderia ler a coluna de um quadro e o modo
+/// de outro, e o «seguinte» saltaria uma opção.
+pub(super) fn channel_walk(
+    motion: &MotionState,
+    node: ph2d_nodegraph::graph::NodeId,
+    text_param: &str,
+    mode_param: &str,
+    channels: &'static [ph2d_node_registry::ReadChannel],
+) -> (Vec<(String, i32)>, (String, i32)) {
+    let atual = motion
+        .doc
+        .graph
+        .node_text_param_overrides(node)
+        .and_then(|m| m.get(text_param))
+        .cloned()
+        .unwrap_or_default();
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "o `mode` e' um inteiro pequeno guardado num f32, como no painel"
+    )]
+    let modo = super::param_value(motion, node, mode_param).round() as i32;
+    let covered: std::collections::BTreeSet<&str> = channels.iter().map(|c| c.column).collect();
+    let extra = upstream_scalar_columns(motion, node, &covered, &atual);
+    let mut lista: Vec<(String, i32)> = channels
+        .iter()
+        .map(|c| (c.column.to_string(), c.mode))
+        .collect();
+    // As colunas vivas entram em modo ESCALAR — o mesmo `0` que a chip do painel escreve.
+    lista.extend(extra.into_iter().map(|c| (c, 0)));
+    (lista, (atual, modo))
+}
+
+/// ⭐ **O CANAL SEGUINTE** — a mesma lei de [`next_source`], sobre a lista de [`channel_walk`]:
+/// fora da lista ⇒ **o primeiro**; dentro ⇒ o seguinte com volta ao princípio; lista vazia ⇒
+/// `None` (nada para escolher, e o clique não escreve).
+pub(super) fn next_channel(
+    lista: &[(String, i32)],
+    atual: &(String, i32),
+) -> Option<(String, i32)> {
+    if lista.is_empty() {
+        return None;
+    }
+    let i = lista.iter().position(|o| o == atual);
+    Some(match i {
+        Some(k) => lista[(k + 1) % lista.len()].clone(),
+        None => lista[0].clone(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::{INTERNAL, keep_extra_columns};

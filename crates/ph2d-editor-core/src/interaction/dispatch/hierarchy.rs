@@ -72,6 +72,48 @@ pub(crate) fn diag_on() -> bool {
     *ON.get_or_init(|| std::env::var_os("PH2D_UNDO_LOG").is_some())
 }
 
+/// ⭐⭐ **Estação 1 do arrasto de linha — e ela fala em TODA pressão, não só nas que acertam.**
+///
+/// ⚠️ A redacção anterior vivia **dentro** do braço `if let Some(hit)` e ainda por baixo do
+/// `is_focusable`: uma pressão no canvas — que é onde o dono de facto arrastou no smoke de
+/// 2026-09-07 — não deixava rasto nenhum, e **uma pressão sem log e um gesto que falha são a
+/// mesma linha em branco**. O diagnóstico passa a correr antes de qualquer triagem.
+///
+/// A moldura das linhas registadas é a metade que decide: ela separa *«pressionei o painel
+/// errado»* de *«o painel não me ouviu»*, que é a pergunta em aberto deste report e que nenhuma
+/// contagem de linhas responde (três linhas registadas dizem que a lista existe, nunca ONDE).
+pub(super) fn diag_down(store: &WidgetStore, hit_index: &HitIndex, x: f32, y: f32) {
+    if !diag_on() {
+        return;
+    }
+    let mut bbox: Option<[f32; 4]> = None;
+    for (id, r) in hit_index.iter_registrations() {
+        if !store.is_hierarchy_row(id) {
+            continue;
+        }
+        let b = bbox.get_or_insert([r.x, r.y, r.x + r.w, r.y + r.h]);
+        b[0] = b[0].min(r.x);
+        b[1] = b[1].min(r.y);
+        b[2] = b[2].max(r.x + r.w);
+        b[3] = b[3].max(r.y + r.h);
+    }
+    let alvo = match hit_index.hit_with_rect(x, y) {
+        Some((id, _)) if store.is_hierarchy_row(id) => "LINHA DA HIERARQUIA".to_string(),
+        Some((id, _)) => format!("outro widget {id:?}"),
+        None => "nada (canvas ou fundo de painel)".to_string(),
+    };
+    let n = store.hierarchy_row_count();
+    match bbox {
+        Some(b) => eprintln!(
+            "[hier] down em ({x:.0},{y:.0}) -> {alvo} | {n} linha(s) da hierarquia ocupam x {:.0}..{:.0}, y {:.0}..{:.0}",
+            b[0], b[2], b[1], b[3],
+        ),
+        None => eprintln!(
+            "[hier] down em ({x:.0},{y:.0}) -> {alvo} | {n} linha(s) no store e NENHUMA registada no ecra'"
+        ),
+    }
+}
+
 pub(super) fn find_hierarchy_drop(
     hit_index: &HitIndex,
     store: &WidgetStore,

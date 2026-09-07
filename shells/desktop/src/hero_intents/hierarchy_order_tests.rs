@@ -40,8 +40,6 @@ fn capture(
     )
 }
 
-
-
 #[test]
 fn the_capture_sees_a_reorder_so_the_step_can_be_born() {
     let reg = reg2();
@@ -193,7 +191,9 @@ fn the_incremental_capture_sees_a_reorder_too() {
             ph2d_ecs::RootOrder(1),
         ))
         .id();
-    let cap = |sim: &mut SimWorld, cache: &mut ph2d_ecs::scene::incremental::CaptureCache, base: Option<&ProjectState>| {
+    let cap = |sim: &mut SimWorld,
+               cache: &mut ph2d_ecs::scene::incremental::CaptureCache,
+               base: Option<&ProjectState>| {
         ProjectState::capture(
             &drive,
             sim,
@@ -216,9 +216,6 @@ fn the_incremental_capture_sees_a_reorder_too() {
         "com a cache incremental a captura NAO ve a reordenacao — o passo nunca nasce"
     );
 }
-
-
-
 
 #[test]
 fn the_real_root_drag_changes_the_capture() {
@@ -387,5 +384,3 @@ fn the_real_sibling_drag_reorders_and_sticks() {
     let _ = drive;
     let _ = reg;
 }
-
-

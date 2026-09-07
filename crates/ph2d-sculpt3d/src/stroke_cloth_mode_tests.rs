@@ -309,3 +309,80 @@ fn o_pino_e_inerte_fora_da_area_local() {
         );
     }
 }
+
+/// ⭐⭐ **GATE — o NEUTRO dos sete knobs é o pincel que a bancada corre**, e a
+/// ÚNICA diferença é a que o `f32` do painel não sabe representar.
+///
+/// ⛔⛔ **A 1.ª redacção desta wave afirmou «byte-idêntico» e a medição
+/// desmentiu-a:** o amortecimento de omissão é `0,01`, que **não existe em
+/// `f32`** — o knob do artista guarda `0,009999999776482582`, e antes desta wave
+/// a tradução caía no `Solver::default()`, que é `0,01` exacto em `f64`. ⇒ o
+/// neutro mudou por `2,2·10⁻¹⁰` relativos.
+///
+/// ⚠️ **E a cura não é fazer a porta «voltar» ao `f64` quando o knob está na
+/// omissão:** isso seria um caminho escondido em que o mesmo número na tela
+/// significa duas coisas conforme alguém lhe tenha tocado. *Um knob de `f32`
+/// exprime o que um `f32` exprime*, e é isso que este gate fixa — com o número
+/// dentro, para que a próxima leitura não tenha de o redescobrir.
+#[test]
+fn o_neutro_dos_sete_knobs_e_o_pincel_da_bancada() {
+    let b = pincel();
+    let p = crate::stroke::stroke_cloth_ref::pincel_de_para_sonda(&b, 1);
+    let d = ph2d_cloth::verlet_gesto::Pincel::default();
+    // Os que o `f32` representa EXACTAMENTE — aqui a igualdade é dura.
+    assert_eq!(p.limite, d.limite, "simulation limit");
+    assert_eq!(p.banda, d.banda, "simulation falloff");
+    assert_eq!(p.pino, d.pino, "pin");
+    assert_eq!(p.solver.massa, d.solver.massa, "cloth mass");
+    assert_eq!(p.solver.plasticidade, d.solver.plasticidade, "plasticity");
+    assert_eq!(p.solver.varreduras, d.solver.varreduras, "varreduras");
+    assert_eq!(
+        p.falloff_forca,
+        ph2d_cloth::verlet_gesto::FalloffForca::Radial,
+        "force falloff"
+    );
+    // ⚠️ **O amortecimento é o um que não cabe**, e o valor está aqui por
+    // extenso: ele é `f64::from(0.01_f32)`, e nada mais.
+    assert_eq!(
+        p.solver.amortecimento,
+        f64::from(0.01_f32),
+        "cloth damping: o `f32` do painel nao representa 0,01"
+    );
+    let desvio = (p.solver.amortecimento - d.solver.amortecimento).abs() / d.solver.amortecimento;
+    assert!(
+        desvio < f64::from(f32::EPSILON),
+        "o amortecimento desviou {desvio:.3e} do que a bancada corre -- acima do \
+         que o epsilon do `f32` explica ({:.3e}) -- alguem mexeu na omissao",
+        f64::from(f32::EPSILON)
+    );
+}
+
+/// **SONDA — o neutro dos sete knobs é o pincel de ANTES, ao bit.**/// **SONDA — o neutro dos sete knobs é o pincel de ANTES, ao bit.**
+///
+/// ⚠️ Ela existe porque a afirmação «o mundo pré-wave é byte-idêntico» não é
+/// demonstrável de dentro do produto de hoje: o pincel de antes já não existe.
+/// O que ela mede é o mesmo por outra via — os sete nas omissões entregam o
+/// `Pincel::default()` da bancada, e é ele que o corpus do oráculo corre.
+#[test]
+#[ignore = "sonda"]
+fn sonda_do_neutro_dos_sete_knobs() {
+    let b = pincel();
+    let p = crate::stroke::stroke_cloth_ref::pincel_de_para_sonda(&b, 1);
+    let d = ph2d_cloth::verlet_gesto::Pincel::default();
+    println!("limite {} vs {}", p.limite, d.limite);
+    println!("banda {} vs {}", p.banda, d.banda);
+    println!("pino {} vs {}", p.pino, d.pino);
+    println!("massa {} vs {}", p.solver.massa, d.solver.massa);
+    println!(
+        "amort {} vs {}",
+        p.solver.amortecimento, d.solver.amortecimento
+    );
+    println!(
+        "plast {} vs {}",
+        p.solver.plasticidade, d.solver.plasticidade
+    );
+    println!(
+        "varreduras {} vs {}",
+        p.solver.varreduras, d.solver.varreduras
+    );
+}

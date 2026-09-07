@@ -155,6 +155,13 @@ pub(super) fn anel_de(mesh: &Mesh, v: u32) -> Vec<u32> {
 /// o [`Brush::weight`] com a curva de força do modo — essa curva é de outros
 /// verbos. A curva de queda mapeia o que existe dos dois lados; o resto cai na
 /// `Suave`, que é a omissão do alvo.
+/// A MESMA porta, aberta para a sonda de paridade do neutro — ⛔ nenhum caminho
+/// de produto a chama.
+#[cfg(test)]
+pub(crate) fn pincel_de_para_sonda(brush: &Brush, passagens: u32) -> Pincel {
+    pincel_de(brush, passagens)
+}
+
 fn pincel_de(brush: &Brush, passagens: u32) -> Pincel {
     Pincel {
         modo: brush.cloth_mode.modo(),

@@ -331,7 +331,7 @@ impl SculptStroke {
             // a apontar para dentro da peça, e a convenção da espec §4.2-bis é a
             // oposta (`n̂ · v̂ > 0` é o balde da frente).
             vista: [-eye[0], -eye[1], -eye[2]],
-            normais: &normais,
+            normais,
             pressao: f64::from(dab.pressure.clamp(0.0, 1.0)),
         };
         let simulou = {

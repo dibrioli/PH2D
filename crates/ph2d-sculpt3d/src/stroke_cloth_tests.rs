@@ -548,9 +548,11 @@ fn o_traco_le_as_normais_da_superficie_que_encontrou() {
             );
             if trocar && k == 0 {
                 // Vira a fotografia de lado, a meio do traço.
-                for n in &mut s.cloth_ref[0].as_mut().expect("sessao").normais {
-                    *n = [1.0, 0.0, 0.0];
-                }
+                s.cloth_ref[0]
+                    .as_mut()
+                    .expect("sessao")
+                    .normais
+                    .fill([1.0, 0.0, 0.0]);
             }
         }
         mesh.positions().to_vec()

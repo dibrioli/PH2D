@@ -426,3 +426,43 @@ pub const MIN_SUPERFORMULA_N: f32 = 1.0;
 /// (`14×`) — *bounded, e o campo continua a ser um minorante honesto em toda a caixa*, que é o que
 /// o censo mede. O preço de uma esquina não é o preço da forma.
 pub const MAX_SUPERFORMULA_N: f32 = 4.0;
+
+// ─────────────────────────── W131 — o triângulo ───────────────────────────
+
+/// ⭐ **O raio da circunferência INSCRITA num triângulo** — `área / semiperímetro`.
+///
+/// ⚠️ **Ele mora na `ph2d-field` e não no avaliador** porque quem precisa dele é o **documento**: é
+/// o tecto exacto do filete e do chanfro, e a `round_limit` corre sem árvore nenhuma. *Uma lei
+/// escrita nos dois sítios divergiria no dia em que uma delas mudasse.*
+#[must_use]
+pub fn triangle_inradius(a: [f64; 2], b: [f64; 2], c: [f64; 2]) -> f64 {
+    let lado = |p: [f64; 2], q: [f64; 2]| ((q[0] - p[0]).powi(2) + (q[1] - p[1]).powi(2)).sqrt();
+    let s = (lado(a, b) + lado(b, c) + lado(c, a)) * 0.5;
+    if s <= f64::MIN_POSITIVE {
+        return 0.0;
+    }
+    let area2 = ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])).abs();
+    area2 * 0.5 / s
+}
+
+/// ⭐ **Quão fino um triângulo pode ser** — a razão entre o inraio e o maior lado.
+///
+/// # ⚠️ Ela NÃO é do campo — o campo aguenta qualquer lasca
+///
+/// Medido (`probe_triangle_sliver_margin`, a constante de Lipschitz **pela definição**, com o
+/// filete a zero **e** no tecto):
+///
+/// | `inraio/lado` | `0,118` | `0,012` | `0,0012` | **`0,00012`** |
+/// |---|---:|---:|---:|---:|
+/// | `L` | `0,707` | `0,707` | `0,707` | **`0,707`** |
+///
+/// ⇒ `1,0` ao bit em toda a travessia, oito mil vezes mais fina que longa. *A primeira redacção
+/// desta cerca estava em `0,02` e era um palpite meu a proteger o campo de um perigo que ele não
+/// corre* — e ela custava **17** escritas que o painel aceitava e o documento recusava.
+///
+/// # ⭐ O que ela é: a peça deixar de ser VISÍVEL
+///
+/// Uma peça de extensão `1` com esta razão tem `0,002` de espessura; numa vista de `640 px` sobre
+/// uma cena de `2` unidades isso é **`0,6 px`** — abaixo de um pixel em qualquer zoom usável. É o
+/// recurso que a fixa: o raster, não a marcha.
+pub const MIN_TRIANGLE_INRADIUS_OVER_SIDE: f32 = 0.001;

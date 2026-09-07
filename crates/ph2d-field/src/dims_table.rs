@@ -506,6 +506,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
         | Primitive::Banner { .. }
         | Primitive::Brace { .. }
         | Primitive::Parallelogram { .. }
+        | Primitive::Triangle { .. }
         | Primitive::Delay { .. }
         | Primitive::Display { .. }
         | Primitive::OffPage { .. }

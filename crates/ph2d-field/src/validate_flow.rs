@@ -125,6 +125,41 @@ pub(super) fn validate_flow(p: &Primitive, idx: u32) -> Result<(), FieldError> {
             maior_ou_igual(half_span * 2.0 * crate::MAX_OFFPAGE_POINT, point, "point")?;
             round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
+        // ─────────────────────────── W131 ───────────────────────────
+        Primitive::Triangle {
+            a,
+            b,
+            c,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            positive(half_height, "half_height")?;
+            for v in [a, b, c] {
+                for x in v {
+                    if !x.is_finite() {
+                        return Err(FieldError::NonPositive {
+                            node: idx,
+                            what: "vertex",
+                        });
+                    }
+                }
+            }
+            // ⛔ **A LASCA** — com os três pontos quase em linha não há interior, o inraio vai a
+            // zero e o filete deixa de ter onde morder. Ver `MIN_TRIANGLE_INRADIUS_OVER_SIDE`.
+            let f = |q: [f32; 2]| [f64::from(q[0]), f64::from(q[1])];
+            let lado = |p: [f32; 2], q: [f32; 2]| (q[0] - p[0]).hypot(q[1] - p[1]);
+            let maior = lado(a, b).max(lado(b, c)).max(lado(c, a));
+            #[allow(clippy::cast_possible_truncation)]
+            let inr = crate::triangle_inradius(f(a), f(b), f(c)) as f32;
+            if maior <= 0.0 || inr < maior * crate::MIN_TRIANGLE_INRADIUS_OVER_SIDE {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "vertex",
+                });
+            }
+            round_fits(round, chamfer, crate::round_limit(p).unwrap_or(0.0))
+        }
         _ => Ok(()),
     }
 }

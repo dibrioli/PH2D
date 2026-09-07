@@ -54,6 +54,7 @@ impl FieldDoc {
                 | Primitive::Check { round, .. }
                 | Primitive::Banner { round, .. }
                 | Primitive::Brace { round, .. }
+                | Primitive::Triangle { round, .. }
                 | Primitive::Parallelogram { round, .. }
                 | Primitive::Delay { round, .. }
                 | Primitive::Display { round, .. }
@@ -206,6 +207,7 @@ impl NodeShape {
                 | Primitive::Check { round, .. }
                 | Primitive::Banner { round, .. }
                 | Primitive::Brace { round, .. }
+                | Primitive::Triangle { round, .. }
                 | Primitive::Parallelogram { round, .. }
                 | Primitive::Delay { round, .. }
                 | Primitive::Display { round, .. }
@@ -322,6 +324,7 @@ pub fn set_shape_radius(shape: &mut NodeShape, node: u32, radius: f32) -> Result
                 | Primitive::Check { round, .. }
                 | Primitive::Banner { round, .. }
                 | Primitive::Brace { round, .. }
+                | Primitive::Triangle { round, .. }
                 | Primitive::Parallelogram { round, .. }
                 | Primitive::Delay { round, .. }
                 | Primitive::Display { round, .. }
@@ -495,6 +498,7 @@ pub fn fillet_inflates(p: &Primitive) -> bool {
         | Primitive::Check { .. }
         | Primitive::Banner { .. }
         | Primitive::Brace { .. }
+        | Primitive::Triangle { .. }
         | Primitive::Parallelogram { .. }
         | Primitive::Delay { .. }
         | Primitive::Display { .. }

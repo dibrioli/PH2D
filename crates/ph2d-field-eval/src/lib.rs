@@ -56,6 +56,8 @@ pub mod ops_spiral;
 pub mod ops_super;
 /// ⭐ Os SÍMBOLOS — ver [`ops_symbols`].
 pub mod ops_symbols;
+/// ⭐ O TRIÂNGULO de vértices quaisquer — ver [`ops_triangle`].
+pub mod ops_triangle;
 pub mod profile;
 /// ⭐⭐ O perfil como CONSULTA (W56) — a cura do custo linear nas arestas.
 pub mod profile_index;

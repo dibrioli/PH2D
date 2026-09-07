@@ -569,6 +569,12 @@ pub(super) fn write_dim(
             | Primitive::Superformula { .. }),
             i,
         ) => return super::dims_write_formula::write_formula(p, node, i, value),
+        // ─────────────────────────── W131 ───────────────────────────
+        // ⚠️ **A ordem é `ax ay bx by cx cy`**, e é ela que o painel pinta — ver a tabela.
+        (Primitive::Triangle { a: v, .. }, i @ 0..=1)
+        | (Primitive::Triangle { b: v, .. }, i @ 2..=3)
+        | (Primitive::Triangle { c: v, .. }, i @ 4..=5) => v[i % 2] = value,
+        (Primitive::Triangle { half_height, .. }, 6) => *half_height = half,
         (Primitive::Prism { sides, .. }, 0) => {
             // ⚠️ **COAGE, não recusa** — a lei do `Unary::Taper`, e pela mesma razão: a faixa já
             // não oferece nada fora de `[MIN, MAX]`, então um valor de fora só chega por outra
@@ -623,7 +629,8 @@ pub(super) fn write_dim(
             | Primitive::Document { .. }
             | Primitive::Helix { .. }
             | Primitive::Gyroid { .. }
-            | Primitive::TorusArc { .. }),
+            | Primitive::TorusArc { .. }
+            | Primitive::Triangle { .. }),
             i,
         ) if Some(i) == round_index(p) => {
             return set_round(p, node, value);

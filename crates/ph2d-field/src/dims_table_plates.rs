@@ -290,7 +290,8 @@ pub(super) fn dims_plate(p: &Primitive) -> Vec<Dim> {
         p @ (Primitive::Parallelogram { .. }
         | Primitive::Delay { .. }
         | Primitive::Display { .. }
-        | Primitive::OffPage { .. }) => super::dims_table_flow::dims_flow(p),
+        | Primitive::OffPage { .. }
+        | Primitive::Triangle { .. }) => super::dims_table_flow::dims_flow(p),
         // ⭐ **E as duas CURVAS** (W123) — ver [`super::dims_table_flow::dims_curve`].
         p @ (Primitive::Spiral { .. } | Primitive::Document { .. }) => {
             super::dims_table_flow::dims_curve(p)

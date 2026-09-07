@@ -488,6 +488,12 @@ pub(crate) const SHAPES: &[Shape] = &[
         family: Family::Round,
         make: Make::Formula(a_superformula),
     },
+    // ─────────────────────────── W131 ───────────────────────────
+    Shape {
+        key: "panel.model3d.add.triangle",
+        family: Family::Plates,
+        make: Make::Formula(a_triangle),
+    },
     Shape {
         key: "panel.model3d.add.torus",
         family: Family::Rings,

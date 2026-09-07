@@ -926,6 +926,16 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             side_n2: 2.0,
             side_n3: 3.0,
         },
+        // ⚠️ **ESCALENO e com a volta HORÁRIA de propósito** — os três lados diferentes é a única
+        // coisa que só esta forma alcança, e a ordem invertida prova que o construtor a corrige.
+        PrimitiveKind::Triangle => Primitive::Triangle {
+            a: [-0.34, -0.20],
+            b: [-0.10, 0.36],
+            c: [0.32, -0.08],
+            half_height: 0.13,
+            round: 0.02,
+            chamfer: 0.0,
+        },
     })
 }
 

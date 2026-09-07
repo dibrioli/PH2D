@@ -170,6 +170,55 @@ pub(crate) fn dims_flow(p: &Primitive) -> Vec<Dim> {
         ],
         // ⚠️ **Inalcançável pelo caminho do produto** — ver o cabeçalho. `Vec` vazio e não `panic`:
         // uma forma esquecida aqui aparece como painel sem linhas no gate que a conta.
+        // ─────────────────────────── W131 ───────────────────────────
+        // ⚠️ **Seis coordenadas, e cada uma é uma POSIÇÃO** (`Span::Free`): um vértice pode estar
+        // de qualquer lado da origem, e a volta horária é corrigida no construtor.
+        t @ Primitive::Triangle {
+            a,
+            b,
+            c,
+            half_height,
+            round,
+            chamfer,
+        } => vec![
+            Dim {
+                key: "field.dim.ax",
+                value: a[0],
+                span: Span::Free,
+            },
+            Dim {
+                key: "field.dim.ay",
+                value: a[1],
+                span: Span::Free,
+            },
+            Dim {
+                key: "field.dim.bx",
+                value: b[0],
+                span: Span::Free,
+            },
+            Dim {
+                key: "field.dim.by",
+                value: b[1],
+                span: Span::Free,
+            },
+            Dim {
+                key: "field.dim.cx",
+                value: c[0],
+                span: Span::Free,
+            },
+            Dim {
+                key: "field.dim.cy",
+                value: c[1],
+                span: Span::Free,
+            },
+            Dim {
+                key: "field.dim.height",
+                value: half_height * 2.0,
+                span: Span::Positive,
+            },
+            chamfer_dim(t, *chamfer),
+            round_dim(t, *round),
+        ],
         _ => Vec::new(),
     }
 }

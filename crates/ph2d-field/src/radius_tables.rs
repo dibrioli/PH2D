@@ -277,6 +277,20 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
         Primitive::Superquadric { half, .. } | Primitive::Superformula { half, .. } => {
             half[0].min(half[1]).min(half[2])
         }
+        // ⭐ **O INRAIO** — o maior disco que cabe no triângulo, e o tecto exacto dos dois recuos.
+        // ⚠️ Não é uma escolha: um recuo maior come a peça inteira.
+        Primitive::Triangle {
+            a,
+            b,
+            c,
+            half_height,
+            ..
+        } => {
+            let f = |p: &[f32; 2]| [f64::from(p[0]), f64::from(p[1])];
+            #[allow(clippy::cast_possible_truncation)]
+            let r = crate::triangle_inradius(f(a), f(b), f(c)) as f32;
+            r.min(*half_height)
+        }
     }
 }
 
@@ -655,6 +669,16 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
         Primitive::Superquadric { half, .. } | Primitive::Superformula { half, .. } => {
             hyp(hyp(half[0], half[1]), half[2])
         }
+        Primitive::Triangle {
+            a,
+            b,
+            c,
+            half_height,
+            ..
+        } => hyp(
+            hyp(a[0], a[1]).max(hyp(b[0], b[1])).max(hyp(c[0], c[1])),
+            *half_height,
+        ),
         // ⚠️ **As faixas do visto passam do vértice, e a espessura sai para fora das pontas.**
         Primitive::Check {
             half_width,

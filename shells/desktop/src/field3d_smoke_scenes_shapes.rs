@@ -497,3 +497,37 @@ pub(crate) fn cena_25() -> Result<FieldDoc, ph2d_field::FieldError> {
         NodeId(6),
     )
 }
+
+/// ⭐⭐ **A cena `=26`: O TRIÂNGULO QUE O PRISMA NÃO FAZ** (W131) — quatro que só ele alcança.
+pub(crate) fn cena_26() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 26 — O TRIANGULO de tres vertices quaisquer: escaleno · rectangulo · \
+         obtuso · e um com o filete no tecto (o INRAIO). O prisma so' faz regulares."
+    );
+    let peca = |a: [f32; 2], b: [f32; 2], c: [f32; 2], round: f32, x: f32| {
+        leaf(
+            Primitive::Triangle {
+                a,
+                b,
+                c,
+                half_height: 0.10,
+                round,
+                chamfer: 0.0,
+            },
+            Xform {
+                translation: [x, 0.0, 0.0],
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    FieldDoc::new(
+        vec![
+            peca([-0.20, -0.13], [0.21, -0.06], [-0.03, 0.22], 0.0, -0.72),
+            peca([-0.18, -0.16], [0.20, -0.16], [-0.18, 0.20], 0.0, -0.24),
+            peca([-0.24, -0.05], [0.24, -0.05], [0.05, 0.11], 0.0, 0.24),
+            peca([-0.20, -0.13], [0.21, -0.06], [-0.03, 0.22], 0.055, 0.72),
+            combine(Op::Union(Blend::Sharp), (0..4).map(NodeId).collect()),
+        ],
+        NodeId(4),
+    )
+}

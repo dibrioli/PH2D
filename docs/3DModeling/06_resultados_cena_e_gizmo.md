@@ -12800,3 +12800,92 @@ Não é visível; é o que impede a próxima forma de herdar a mesma armadilha.
 ⏳ **ABERTO, e é do MÓDULO e não da forma:** o quadro a `1920×1080` custa `8,8 ms` só para uma
 esfera. A alavanca que muda o que o dono sente está na **base** — e ela tem tabela desde Agosto
 (§13.0: a sobre-relaxação está fora, e atacar a montagem tem tecto medido de `20 %`).
+
+---
+
+## §132 — W131: o TRIÂNGULO que o prisma não faz — e a lei da casa que eu violei (06/09)
+
+O primeiro item do [plano das dez](09_plano_das_dez_que_faltam.md): o **escaleno**, que hoje obriga a
+desenhar.
+
+### §132.1 — ⭐ E a primeira medição corrigiu o levantamento
+
+O doc 08 dizia que desenhar custa *«por segmento»* e citava `1,27×`. Medido de novo
+(`probe_is_a_polygon_already_reachable`, contra uma esfera):
+
+| lados | 3 | 4 | 6 | 8 | 16 | 32 |
+|---|---:|---:|---:|---:|---:|---:|
+| **extrusão** | `4,66×` | `6,32×` | `7,81×` | `11,06×` | `19,70×` | `38,13×` |
+| **prisma** | `1,62×` | `2,03×` | `2,90×` | `3,61×` | `6,70×` | `14,51×` |
+| razão | `2,87×` | `3,11×` | `2,69×` | `3,07×` | `2,94×` | `2,63×` |
+
+⇒ a porta do desenho custa **`2,6×`–`3,1×`** a porta da fórmula, e não `1,27×`. ⛔ **E o prisma só
+faz REGULARES** — o escaleno não é alcançável por composição nenhuma.
+
+### §132.2 — ⛔⛔⛔ E eu violei a lei da casa: o n-ário com chanfro ZERO infla
+
+A 1.ª construção compôs os três semiplanos com o `intersection_joint_n`. Medido pela **definição de
+Lipschitz** (não pela diferença central), num triângulo de `10,7°`: **`1,94`** — a marcha
+atravessaria a superfície. *A lei estava escrita neste repo desde a W110 e eu voltei a escrevê-la.*
+
+⭐ A cura é dobrar **aos pares**, que é o padrão do `sd_prism`.
+
+### §132.3 — ⛔⛔ E o cosseno da quina — o padrão do prisma — parte na quina OBTUSA
+
+A 2.ª construção deu a cada junta o cosseno da própria quina (`Edge::at`). Num prisma **todas as
+quinas são iguais**; num triângulo qualquer não. Medido no triângulo que o censo varre (quinas de
+`8,1°`, `165°` e `6,7°`):
+
+| a 1.ª junta leva | `L` medido (barra `1,02`) |
+|---|---:|
+| `cos = −0,966` (a quina de `165°`) | **`5,35`** |
+| `cos = 0` (`Edge::square`) | **`0,99`** |
+
+⚠️ **É um DEGRAU, não uma degradação:** com o filete a `0` lê `0,707`, e com **qualquer** filete
+acima de zero lê `5,35` — o tamanho do filete não entra. ⚠️ **E não é a quina AGUDA:** um isósceles
+de `3°` com o filete a `90 %` do inraio lê `0,707`, e a varredura de `60°` a `3°` é toda `0,707`.
+
+⇒ *o operador do ângulo serve duas faces que se ENCONTRAM, e a `165°` elas são quase o mesmo plano* —
+a família das duas peças quase coincidentes, pelo lado que ele não cobre. Fica `Edge::square`, que é
+o caminho de toda chapa desta casa.
+
+### §132.4 — ⛔⛔ E a RÉGUA do censo sobre-lê num vinco convexo
+
+Antes de achar o mecanismo, a diferença central acusava `1,10`–`1,35` em triângulos cujo campo é
+**exactamente** `1,000`:
+
+| `ax` | −1,00 | 0,34 | 0,68 |
+|---|---:|---:|---:|
+| `L` pela **definição** | `0,9999` | `1,0000` | **`1,3725`** |
+| diferença **central** | `1,0973` | `1,3517` | `1,3725` |
+
+⚠️ *Numa quina convexa a diferença central lê o **acorde** do vinco, não a derivada* — e o doc do
+censo já nomeia o caso **côncavo** (que lê a menos). ⇒ toda medição desta wave passou a correr pela
+**definição**, e foi ela que separou o artefacto da régua do defeito real (`ax = 0,68`).
+
+### §132.5 — ⚠️ E a minha cerca da LASCA protegia o campo de um perigo que ele não corre
+
+Escrevi `MIN_TRIANGLE_INRADIUS_OVER_SIDE = 0,02` por precaução. Medido depois:
+
+| `inraio/lado` | `0,118` | `0,012` | `0,0012` | **`0,00012`** |
+|---|---:|---:|---:|---:|
+| `L` (filete `0` **e** no tecto) | `0,707` | `0,707` | `0,707` | **`0,707`** |
+
+⇒ `1,0` ao bit oito mil vezes mais fina que longa. ⛔ **E a cerca alta custava 17 escritas que o
+painel aceitava e o documento recusava** — o defeito do ecrã em branco, criado por mim, num sítio
+onde não havia perigo nenhum. Ela desce para **`0,001`**, e o recurso que a fixa passa a ser o
+**raster**: a essa razão a peça mede `0,6 px` numa vista de `640` sobre `2` unidades.
+
+### §132.6 — E quatro gates da casa apanharam a ligação, não a forma
+
+O `field.dim.round` do triângulo era **recusado**: a guarda do filete no `set_dim` casa uma **lista
+escrita à mão** de primitivas, e o triângulo não estava nela. ⚠️ *Quatro gates falharam com quatro
+mensagens diferentes e uma causa só* — `every_row_of_every_primitive_can_be_written` foi o que a
+nomeou.
+
+**Provas de mutação (2, ambas mortas):** voltar ao n-ário (morre no gate de Lipschitz) · tirar a
+correcção da volta (morre no gate da volta, `7,5e-1` de diferença).
+⚠️ **E uma «sobreviveu» e era o filtro** — o `python` abortou no `assert` e o ficheiro ficou intacto.
+**Terceira vez nesta jornada.**
+
+**Smoke:** *MODEL* > *Add shape…* > **Triangle**, e a cena `=26`.

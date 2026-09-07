@@ -648,6 +648,22 @@ pub enum Primitive {
     /// num expoente multiplicava o tamanho da peça por oito.
     ///
     /// ⚠️ **Não tem `round` nem `chamfer`** — a mesma decisão do [`Primitive::Superquadric`].
+    // ─────────────────────────── W131 ───────────────────────────
+    /// ⭐⭐ **TRIÂNGULO de três vértices QUAISQUER** — a rampa, a empena, a ponta de seta.
+    ///
+    /// ⛔ **O prisma só faz REGULARES**, e um escaleno hoje obriga a desenhar — medido, a extrusão
+    /// custa `2,6×`–`3,1×` o caminho por fórmula.
+    ///
+    /// ⚠️ **A ordem dos vértices não importa**: uma volta horária é corrigida no construtor, porque
+    /// ela inverte-se sozinha quando o artista arrasta um vértice para o outro lado.
+    Triangle {
+        a: [f32; 2],
+        b: [f32; 2],
+        c: [f32; 2],
+        half_height: f32,
+        round: f32,
+        chamfer: f32,
+    },
     Superformula {
         half: [f32; 3],
         top_symmetry: f32,

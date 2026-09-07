@@ -289,3 +289,22 @@ pub(crate) fn a_superformula(r: f32) -> Primitive {
         side_n3: 2.0,
     }
 }
+
+/// ⭐ **O TRIÂNGULO nasce ESCALENO** — os três lados diferentes.
+///
+/// ⚠️ **Nem equilátero nem rectângulo:** os dois são casos que o **prisma de 3 lados** e a **cunha**
+/// já entregam, e um botão que devolve o sósia de outra entrada não diz o que ele faz. *Uma forma
+/// nova nasce no sítio em que ela é ELA* — aqui, a única que só ela alcança.
+pub(crate) fn a_triangle(r: f32) -> Primitive {
+    Primitive::Triangle {
+        a: [-r, -r * 0.55],
+        b: [r * 0.9, -r * 0.2],
+        c: [-r * 0.25, r],
+        half_height: r * 0.35,
+        // ⚠️ **Nasce com FILETE**, como toda forma desta casa que o tem — `field3d_shapes_tests`
+        // tem a lei: *uma forma de aresta viva esconde o que o módulo do arredondamento faz*.
+        // O `0,06·r` fica bem abaixo do inraio desta configuração.
+        round: r * 0.06,
+        chamfer: 0.0,
+    }
+}

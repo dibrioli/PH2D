@@ -402,6 +402,24 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
         // ⚠️ **Os expoentes NÃO escalam** — eles são adimensionais, e multiplicá-los por um factor
         // de tamanho mudaria a FORMA ao redimensionar a peça.
         // ⚠️ **Nem os expoentes nem a simetria escalam** — são adimensionais.
+        // ⚠️ **Os três vértices escalam; o filete e o chanfro também** (a lei da W104).
+        Primitive::Triangle {
+            a,
+            b,
+            c,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [a, b, c] {
+                for x in v.iter_mut() {
+                    *x *= factor;
+                }
+            }
+            for x in [half_height, round, chamfer] {
+                *x *= factor;
+            }
+        }
         Primitive::Superquadric { half, .. } | Primitive::Superformula { half, .. } => {
             for v in half.iter_mut() {
                 *v *= factor;

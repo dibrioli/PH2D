@@ -54,7 +54,7 @@ pub mod xform;
 
 pub use axis::Axis;
 pub use blend::{Blend, Character, Joint};
-pub use dims::{Dim, Param, Span, clamp_round, dims, scale_primitive, set_dim};
+pub use dims::{Dim, Param, Span, clamp_dims, clamp_round, dims, scale_primitive, set_dim};
 pub use mods::{Unary, UnaryKind};
 // ⚠️ **O `pub use` é o que mantém `ph2d_field::Primitive`** — cortar um arquivo não pode custar uma
 // reescrita em cada sítio que o chamava.
@@ -67,6 +67,7 @@ pub use primitive_limits::{
     MAX_SUPERFORMULA_SYMMETRY, MAX_SUPERQUADRIC_EXPONENT, MIN_ARROW_HEADS, MIN_CLOUD_LOBES,
     MIN_GEAR_TEETH, MIN_GYROID_CELLS, MIN_PRISM_SIDES, MIN_STAR_POINTS, MIN_SUPERFORMULA_N,
     MIN_SUPERFORMULA_N1, MIN_SUPERFORMULA_SYMMETRY, MIN_SUPERQUADRIC_EXPONENT,
+    MIN_TRIANGLE_INRADIUS_OVER_SIDE, triangle_inradius,
 };
 pub use profile::{
     DEFAULT_PROFILE_RESOLUTION, FillRule, MAX_PROFILE_RESOLUTION, Profile, ProfileError, coarsen,

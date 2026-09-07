@@ -348,5 +348,19 @@ pub fn bounding_half_extents(p: &Primitive) -> [f32; 3] {
         // ⭐ **As duas curvas são NORMALIZADAS** (`max r = 1`), então a caixa é justa: a peça
         // encosta nela e nunca passa.
         Primitive::Superquadric { half, .. } | Primitive::Superformula { half, .. } => *half,
+        // ⚠️ **A caixa é o maior |coordenada| de cada eixo** — o triângulo não é simétrico, e um
+        // lado pode estender-se mais que o outro. *Uma caixa que só olha um lado corta a peça no
+        // recorte por região.*
+        Primitive::Triangle {
+            a,
+            b,
+            c,
+            half_height,
+            ..
+        } => [
+            a[0].abs().max(b[0].abs()).max(c[0].abs()),
+            a[1].abs().max(b[1].abs()).max(c[1].abs()),
+            *half_height,
+        ],
     }
 }

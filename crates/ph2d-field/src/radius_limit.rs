@@ -33,6 +33,21 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
         // Só a meia-altura: um `round` maior que a meia-largura do perfil é uma ABERTURA, não um
         // erro (ver a nota de [`Primitive::Extrude`]).
         Primitive::Extrude { half_height, .. } => Some(*half_height),
+        // ⭐ **O INRAIO do triângulo, cortado pela meia-altura** — o maior disco que cabe na chapa.
+        // ⚠️ A conta mora no [`crate::triangle_inradius`] e é lida também pela `dims`: *uma lei
+        // escrita em dois sítios divergiria no dia em que uma delas mudasse.*
+        Primitive::Triangle {
+            a,
+            b,
+            c,
+            half_height,
+            ..
+        } => {
+            let f = |q: &[f32; 2]| [f64::from(q[0]), f64::from(q[1])];
+            #[allow(clippy::cast_possible_truncation)]
+            let r = crate::triangle_inradius(f(a), f(b), f(c)) as f32;
+            Some(r.min(*half_height))
+        }
         Primitive::Sphere { .. }
         | Primitive::RoundedCylinder { .. }
         | Primitive::Superquadric { .. }

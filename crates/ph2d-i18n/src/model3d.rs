@@ -124,6 +124,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.add.rounded_cylinder" => "Rounded Cylinder",
         "panel.model3d.add.superquadric" => "Superquadric",
         "panel.model3d.add.superformula" => "Superformula",
+        "panel.model3d.add.triangle" => "Triangle",
         "panel.model3d.add.bolt" => "Lightning Bolt",
         "panel.model3d.add.shield" => "Shield",
         "panel.model3d.add.tag" => "Tag",
@@ -337,6 +338,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.dim.side_n1" => "Side N1",
         "field.dim.side_n2" => "Side N2",
         "field.dim.side_n3" => "Side N3",
+        // ⚠️ **Um vértice por LINHA, com o eixo no nome** — o painel é uma coluna de números, e
+        // «A» sozinho não diz qual dos dois é.
+        "field.dim.ax" => "A · X",
+        "field.dim.ay" => "A · Y",
+        "field.dim.bx" => "B · X",
+        "field.dim.by" => "B · Y",
+        "field.dim.cx" => "C · X",
+        "field.dim.cy" => "C · Y",
         "field.dim.hole" => "Hole",
         "field.dim.notch" => "Notch",
         // ⚠️ Em GRAUS na cabeça do artista, mas o documento guarda radianos — o painel mostra o

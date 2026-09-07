@@ -165,16 +165,16 @@ pub(crate) fn paint(state: &MotionGraphPanelState, ctx: &mut PaintCtx, canvas: R
     let (Some(open), Some(win)) = (state.editor.as_ref(), window(state, canvas)) else {
         return;
     };
-    fill_rounded_rect(
-        ctx.scene,
-        win,
-        Radius::Md.px(),
-        resolve(ColorToken::Bg2, theme),
-    );
+    // ⚠️ Pela porta do TEMA, como os outros ~100 controlos (`line/UIUX` w22): num tema moderno
+    //    esta janela pintava `4` enquanto o cartão por baixo dela pintava `3`. Convertido na
+    //    INTEGRAÇÃO de 2026-09-07 — a superfície é NOVA desta linha, logo nasceu depois da
+    //    varredura que converteu a árvore, e só o gate da árvore combinada a podia ver.
+    let win_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px());
+    fill_rounded_rect(ctx.scene, win, win_radius, resolve(ColorToken::Bg2, theme));
     ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         win,
-        Radius::Md.px(),
+        win_radius,
         theme,
         ph2d_tokens::visuals::Feel::Rest,
         1.0,

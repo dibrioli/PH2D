@@ -39,6 +39,7 @@
 - [Produto final, não MVP](feedback_final_product_every_node_ships_the_full_pro_param_set.md) · [wave de pesquisa recursa](feedback_a_research_fanout_recurses_bound_it.md)
 - ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo mesmo com a ferramenta defeituosa** ([§SUPRESSÃO, 29/08](feedback_perfection_no_deferrals.md)) — e meio-feito é pior que não começar
 - [`exit 0` de ferramenta automática não diz o que ela produziu (3× num dia)](feedback_an_automatic_tools_exit_code_says_nothing_about_what_it_produced.md)
+- ⛔ [Restaurar uma mutação com `mv` devolve mtime ANTIGO e o cargo guarda o build DA MUTAÇÃO — `touch` no fim](feedback_a_mutation_restore_by_mv_leaves_cargo_with_the_mutated_build.md)
 - [Painter: 4 causas](feedback_painter_inefficiency_4_causes.md) · [comentário velho mente](feedback_stale_comment_and_dead_code_lie.md) · [«design rejeita X»? grepe o gate](feedback_before_declaring_the_design_rejects_an_invariant_grep_for_its_gate.md)
 - ⭐ [Efeito que reescreve a GEOMETRIA de cada glifo paga-se POR QUADRO; cache nenhum o salva (font_embolden: caro e invisível)](feedback_a_per_glyph_outline_effect_is_paid_every_frame.md)
 - ⭐⭐ [Constante cara DENTRO do construtor de uma árvore corre onde a ÁRVORE é construída — 6 → 3 852 por quadro, com a imagem perfeita](feedback_a_constant_folded_into_a_tree_is_recomputed_wherever_the_tree_is.md)

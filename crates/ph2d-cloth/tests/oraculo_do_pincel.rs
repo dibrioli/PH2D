@@ -458,6 +458,13 @@ fn correr_com_pincel(nome: &str, ordem: Option<&str>) -> (Vec<V3>, PincelTecido)
 /// isso dá `0,1810` contra `0,1214` já no passo 3, enquanto o gate de paridade —
 /// que corre o laço CERTO — lê `0,001` no mesmo traço.* ⇒ **três laços irmãos,
 /// três divergências, num dia.**
+///
+/// ⚠️⚠️ **E a frase «o único» esteve FALSA durante um dia inteiro** (curado em
+/// 07/09): a `sonda_passo_a_passo` e o gate do Snake Hook mantiveram os deles, e
+/// nada os contradizia — o doc afirmava a unicidade e os dois estavam a dez
+/// linhas de distância. *Uma afirmação de unicidade envelhece no dia em que
+/// alguém escreve o segundo, e ela não tem gate.* Hoje há **um**, e os quatro
+/// chamadores passam por aqui.
 fn correr_com_blocos(
     nome: &str,
     ordem: Option<&str>,
@@ -1429,49 +1436,21 @@ fn o_centro_do_snake_hook_esta_um_passo_atrasado() {
     let t = traco(nome);
     let sup = t.s("superficie").to_string();
     let rest = repouso(&sup);
-    let fs = faces(&sup, &rest);
-    let an = aneis(rest.len(), &fs);
-    let anel = |v: u32| an[v as usize].clone();
-    let pincel = t.pincel();
-    let r = pincel.raio;
+    let r = t.pincel().raio;
     let c0 = pp.caminho[0];
-    let mut pos = rest.clone();
-    // ⚠️ UMA vez, no pen-down (espec §4.2-ter).
-    let normais_do_traco = normais(&pos, &fs);
-    let mut tecido = PincelTecido::pen_down(pincel, &pos, c0, ordem_de_visita(&sup));
+    // ⛔⛔ **O laço é o de [`correr_com_blocos`]** — este gate teve um próprio até
+    // 07/09, e o doc daquela função dizia-se «o único laço da bancada» enquanto
+    // ele existia. *Uma afirmação de unicidade envelhece no dia em que alguém
+    // escreve o segundo, e nada a contradiz.*
+    let (_, _, nossos, _) = correr_com_blocos(
+        nome,
+        std::env::var("PH2D_ORDEM").ok().as_deref(),
+        Some(&pp.caminho),
+    );
+    // O 1.º passo simulado é o SEGUNDO bloco: o pen-down constrói e não simula.
+    let pos = &nossos[1];
+    let cursor = pp.caminho[1];
     let mut argmax = (0usize, 0.0f64);
-    let mut cursor = c0;
-    for k in 0..2 {
-        cursor = pp.caminho[k];
-        let prev = pp.caminho[k.saturating_sub(1)];
-        let d3 = [
-            cursor[0] - prev[0],
-            cursor[1] - prev[1],
-            cursor[2] - prev[2],
-        ];
-        let delta = projecta(d3, eixo_da_vista(&sup));
-        // ⭐⭐⭐ **As normais são as da superfície que o TRAÇO ENCONTROU**, não as
-        // de agora (espec §4.2-ter): dentro de um traço o pincel deforma a malha
-        // e continua a ler as normais com que o traço começou. ⛔ Recalculá-las
-        // por passo é o que fazia o Push e o Inflate errarem `0,24`.
-        let nrm = &normais_do_traco;
-        let passo = Passo {
-            cursor,
-            delta,
-            delta_3d: d3,
-            parado: k == 0,
-            vista: eixo_da_vista(&sup),
-            normais: nrm,
-            pressao: 1.0,
-        };
-        if tecido.passo(&pos, &anel, &passo) {
-            for (v, act) in tecido.sim.activo.iter().enumerate() {
-                if *act {
-                    pos[v] = tecido.sim.x[v];
-                }
-            }
-        }
-    }
     for (v, p) in pos.iter().enumerate() {
         let u = dist(rest[v], *p);
         if u > argmax.1 {

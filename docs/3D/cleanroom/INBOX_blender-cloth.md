@@ -550,3 +550,46 @@ O mesmo caminho (`−0,3` → `+0,3`), o mesmo pincel, só a subdivisão a mudar
 - **Q14.3 (Expand)** — o `plano_expandir_radial_local_1passo` é o único traço de um passo de um modo
   **de força zero** e não sai ao bit. Ele só escreve `τ` (§4.5). O `τ` é somado ao comprimento de
   repouso **antes** da primeira varredura do mesmo passo, ou só passa a valer no passo seguinte?
+
+## Q15 — a ordem do anel é a das FACES, e nós não temos as FACES da esfera (2026-09-06)
+
+A emenda Q14 está implementada: a ordem de nascimento das quatro espécies, o desvio de repouso nas
+quatro, e a ordem do anel-1 pela face (§3.1). O corpus está em `35` de `65`.
+
+⭐ **A ordem do anel corrigiu-se e o plano não se mexeu um bit** — o percurso face a face de um
+vértice interior de grelha devolve `[S, O, E, N]`, que já é a ordem crescente de índice, e é
+exactamente a degenerescência que se esperava. Na **esfera** mexem-se os sete traços não-arrasto.
+
+### O problema, que é de SUFICIÊNCIA e não de facto
+
+As fixtures de esfera trazem as **posições de repouso**, e o arnês reconstrói a malha casando a
+**nossa** esfera UV com elas **por posição**. ⇒ os **índices de vértice são os do alvo**, mas a
+**lista de faces é do nosso gerador**. E a §3.1 diz que a ordem do anel é *«a ordem das faces à volta
+do vértice»* — logo, na esfera, o que implementámos é a nossa ordem de faces, não a do alvo.
+
+Medido, com a ordem de faces do nosso gerador contra a ordem de índices:
+
+| traço de esfera | por índice | por face | mudou | dispersão de ordem do próprio traço |
+|---|---|---|---|---|
+| `agarrar` | `0,196` | `0,195` | `−0,001` | `0,162` |
+| `apertar_linha` | `0,673` | `0,785` | `+0,112` | `0,738` |
+| `apertar_ponto` | `0,542` | `0,688` | `+0,146` | `0,484` |
+| `arrastar` | `0,092` | `0,091` | `−0,001` | `0,174` |
+| `empurrar` | `0,323` | `0,345` | `+0,022` | `0,095` |
+| `expandir` | `0,557` | `0,528` | `−0,029` | `0,273` |
+| `gancho` | `0,245` | `0,256` | `+0,011` | `0,289` |
+| `inflar` | `0,378` | `0,371` | `−0,007` | `0,241` |
+
+⇒ **cada mudança cabe dentro da dispersão de ordem do próprio traço** (`1 %` a `30 %` dela) — o
+corpus **não discrimina** as duas leis. Shipa a da espec, e a medição não tem o que dizer.
+
+### O pedido
+
+- **Q15.1** — pode acrescentar às fixtures de esfera a **lista de faces do alvo**, na ordem em que ele
+  as guarda, com os índices de vértice que as fixtures já usam? Sem ela, a lei da §3.1 é aplicável no
+  plano (onde degenera) e **inaplicável na esfera**, que é onde ela decide alguma coisa. Uma fixture
+  só já bastaria para conferir se a ordem do nosso gerador coincide com a dele.
+- **Q15.2** — a ordem em que a busca da árvore espacial devolve as **células** (§3.1 nº 1) tem o mesmo
+  problema um nível acima: nós construímos por ordem de índice de vértice. No plano isso é benigno
+  (⚠️ presunção minha, não medida); na esfera não sei dizer. Há alguma coisa nas fixtures — ou que
+  possa passar a haver — que fixe essa ordem?

@@ -234,6 +234,23 @@ pub fn paint_tool_palette_icons(
 }
 
 /// Center `text` inside `rect` (horizontally + vertically).
+/// ⭐⭐ **O que sobra da largura de uma caixa depois do RESPIRO das duas bordas.**
+///
+/// Enio, 2026-09-06, com duas fotos: *«algumas palavras ou mesmo os 3 pontos ficam muito próximos
+/// da borda do botão. Deveria ter algum espaço.»* — `Surface Smo…` acabava colado à moldura.
+///
+/// ⚠️ **Ele só MORDE quando o texto não caberia à mesma**: a centragem é simétrica, logo deflacionar
+/// os dois lados não move um rótulo que cabe — muda apenas o orçamento com que ele é elidido. *Um
+/// recuo que só se paga no caso apertado é o único que não custa nada no caso comum.*
+///
+/// **O número é do modelo:** `base_margin · 2` = 8 px, a margem de conteúdo horizontal de um botão
+/// no Godot 4.6 «Modern» (`theme_modern.cpp:289`) — e é o `Spacing::Md`, que a escada desta casa
+/// já nomeia *«default inline padding»*. ⛔ Não é o `Button::padding()` (12 px): aquele é o recuo
+/// de um botão que dimensiona a si próprio, e aqui a largura vem de fora.
+fn label_budget(w: f32) -> f32 {
+    (w - ph2d_tokens::Spacing::Md.px() * 2.0).max(1.0)
+}
+
 pub fn paint_text_centered(
     text_system: &mut TextSystem,
     scene: &mut VectorScene,
@@ -248,7 +265,7 @@ pub fn paint_text_centered(
     // orçamento de quebra o layout devolvia DUAS linhas e o `y` centrava-as, deixando a primeira
     // acima do topo da caixa. *Uma centragem que mede outra coisa do que se pinta é um deslocamento
     // com cara de arredondamento.*
-    let shown = crate::text_elide::fit(text_system, text, font_size, rect.w);
+    let shown = crate::text_elide::fit(text_system, text, font_size, label_budget(rect.w));
     let layout = text_system.layout(&shown, font_size, f32::INFINITY);
     let text_w = layout.width();
     let text_h = layout.height();

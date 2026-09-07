@@ -163,3 +163,58 @@ fn the_block_painter_still_wraps_and_reports_the_height() {
         "o bloco elidiu em vez de quebrar: emitiu poucos glifos de mais"
     );
 }
+
+/// ⭐⭐ **UM RÓTULO NUNCA ENCOSTA NA BORDA** — nem a palavra, nem as reticências.
+///
+/// Enio, 2026-09-06, com duas fotos: *«algumas palavras ou mesmo os 3 pontos ficam muito próximos
+/// da borda do botão. Deveria ter algum espaço.»* — `Surface Smo…` acabava colado à moldura.
+///
+/// ⚠️⚠️ **A régua chama o PINTOR e conta os glifos que ele emitiu.** A 1.ª redacção deste gate
+/// calculava `fit(...)` com o orçamento já recuado e comparava com ele próprio — ela passaria com
+/// o recuo **removido** do pintor. *É a terceira vez nesta jornada que um gate meu testemunha a
+/// porta em vez do pintor; a diferença é sempre a mesma: chamar o que o produto chama.*
+///
+/// ⛔ E a metade de baixo mede que um rótulo que CABE sai INTEIRO — um recuo que encolhesse os
+/// rótulos curtos seria pagar no caso comum por um defeito do caso apertado.
+#[test]
+fn a_centred_label_never_touches_the_edge() {
+    let mut text = TextSystem::without_system_fonts();
+    let pad = ph2d_tokens::Spacing::Md.px();
+    let paint_into_box = |text: &mut TextSystem, label: &str, w: f32| -> usize {
+        let mut scene = VectorScene::new();
+        paint_text_centered(
+            text,
+            &mut scene,
+            label,
+            Rect::new(0.0, 0.0, w, 22.0),
+            FONT,
+            Color::WHITE,
+        );
+        scene.inner().encoding().resources.glyphs.len()
+    };
+
+    // Uma caixa em que o rótulo INTEIRO caberia à justa — mas sem respiro nenhum.
+    let long = "Surface Smooth";
+    let box_w = text.prefix_width(long, FONT) + 2.0;
+
+    let painted = paint_into_box(&mut text, long, box_w);
+    let with_room = ph2d_editor_core::text_elide::fit(&mut text, long, FONT, box_w - pad * 2.0);
+    let expected = paint_into_box(&mut text, &with_room, box_w);
+    assert!(
+        with_room.ends_with('\u{2026}'),
+        "a fixtura não contém o fenómeno: `{long}` cabe em {box_w:.0} px MESMO com o respiro"
+    );
+    assert_eq!(
+        painted, expected,
+        "o pintor encheu a caixa até à borda: emitiu {painted} glifos onde o respiro de {pad} px \
+         de cada lado deixa `{with_room}`"
+    );
+
+    // E um rótulo que cabe com folga sai INTEIRO — o respiro não pode mordê-lo.
+    let short = "Cut";
+    assert_eq!(
+        paint_into_box(&mut text, short, 200.0),
+        paint_into_box(&mut text, short, 400.0),
+        "um rótulo curto mudou com a largura da caixa — o respiro está a morder o caso comum"
+    );
+}

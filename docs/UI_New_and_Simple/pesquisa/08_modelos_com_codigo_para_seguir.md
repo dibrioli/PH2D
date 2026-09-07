@@ -931,6 +931,38 @@ por outra escreve a fileira seguinte por cima desta*.
 a posição, ele ficou com zero chamadores. *Um invólucro sem chamador é lixo que a próxima pessoa lê
 como se fosse a porta.*
 
+### 7.19 — ✅ WAVE 16 (2026-09-06): o rótulo ganha RESPIRO — e ele só se paga no caso apertado
+
+**Report do dono**, com duas fotos: *«algumas palavras ou mesmo os 3 pontos ficam muito próximos da
+borda do botão. Deveria ter algum espaço.»* — `Surface Smo…` acabava colado à moldura, e o `Connect`
+/ `Chamfer` / `Bucket` do Vector encostavam nas duas.
+
+**Causa:** a elisão da wave 15 mede contra a largura **inteira** da caixa, então ela corta
+exactamente onde a moldura começa. O texto passou a caber — e a caber *até ao fim*.
+
+⭐⭐ **A cura não custa nada no caso comum, e a razão é geométrica:** a centragem é simétrica, logo
+deflacionar os **dois** lados não move um rótulo que cabe. O recuo muda **só** o orçamento com que
+o rótulo é elidido. *Um respiro que só se paga no caso apertado é o único que não se nota no
+outro.*
+
+**O número é do modelo:** `base_margin · 2` = **8 px**, a margem de conteúdo horizontal de um botão
+no Godot 4.6 «Modern» (`theme_modern.cpp:289`) — e é o `Spacing::Md`, que a escada desta casa já
+nomeia *«default inline padding»*. ⛔ **Não** é o `Button::padding()` (12 px): aquele é o recuo de
+um botão que **dimensiona a si próprio**, e aqui a largura vem de fora.
+
+Alcance: `paint_text_centered`, **79 sítios**.
+
+#### ⚠️⚠️ E o gate nasceu vácuo pela TERCEIRA vez nesta jornada
+
+A 1.ª redacção calculava `fit(...)` com o orçamento já recuado e comparava com ele próprio — ela
+passaria com o recuo **removido do pintor**. As outras duas foram a elisão (que interrogava a porta)
+e o censo do tom (que lia um comentário). *A diferença é sempre a mesma e sempre a mesma correcção:
+**chamar o que o produto chama** e medir o que ele emitiu.* Aqui: `paint_text_centered` numa cena,
+e contar glifos.
+
+⛔ E a metade de baixo mede que um rótulo **que cabe** sai igual em duas larguras diferentes — sem
+ela, um recuo que encolhesse os rótulos curtos passaria.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

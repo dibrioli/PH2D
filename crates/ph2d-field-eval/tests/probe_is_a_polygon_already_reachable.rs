@@ -60,8 +60,8 @@ fn probe_is_a_polygon_already_reachable() {
     // primitiva de polígono REGULAR podia custar.
     println!("\n── o custo de um polígono, pelas DUAS portas (contra a esfera) ──");
     println!(
-        "  {:<8} {:>12} {:>12}   {}",
-        "lados", "extrusão", "prisma", "razão extrusão/prisma"
+        "  {:<8} {:>12} {:>12}   razão extrusão/prisma",
+        "lados", "extrusão", "prisma"
     );
     for n in [3_usize, 4, 5, 6, 8, 12, 16, 24, 32] {
         let ext = cronometra(&campo(extrusao(n)));

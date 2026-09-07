@@ -35,8 +35,8 @@ fn probe_triangle_thin() {
     };
     println!("\n── o `ax` a afastar-se (passo × ‖∇f‖; barra 1,02) ──");
     println!(
-        "  {:>8} {:>12} {:>12}   {}",
-        "ax", "filete 0", "filete 0,02", "menor ângulo"
+        "  {:>8} {:>12} {:>12}   menor ângulo",
+        "ax", "filete 0", "filete 0,02"
     );
     for ax in [-0.34_f32, -0.6, -1.0, 0.34, 0.68, 1.36] {
         // o menor ângulo do triângulo
@@ -176,7 +176,6 @@ fn probe_triangle_by_angle() {
 #[test]
 #[ignore = "sonda: o caso do censo"]
 fn probe_triangle_census_case() {
-    const PASSO: f64 = std::f64::consts::FRAC_1_SQRT_2;
     // O representante do censo com `ay` arrastado para `0,800`.
     for (nome, a, round) in [
         ("nascimento", [-0.34_f32, -0.20_f32], 0.02_f32),

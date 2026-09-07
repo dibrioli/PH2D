@@ -2050,6 +2050,76 @@ porque o `dock_seam_move` faz `return` no `input_dispatch` e nenhum teste de pon
 é o idioma que o irmão `the_arrangement_is_read_at_boot_and_written_on_change` já usa, com o motivo
 escrito.
 
+### 7.35 — ✅ WAVE 30 (2026-09-07): os três defeitos do smoke da 29, e a DIVISÓRIA entre áreas
+
+Report do dono, no mesmo dia: *«hierarquia fechou e escondeu uma parte da régua do canvas. Inspector
+não fechou. "Onde a borda estava fica uma faixa fina com uma marca ao meio" — não vejo.»* Mais dois
+pedidos, com a captura do Godot: **divisórias entre as áreas** e **abas de painel bonitas**.
+
+#### ⛔⛔ Defeito 1 e 3 são o MESMO, e a lei que violei estava três linhas acima
+
+A alça era pintada na borda da área de desenho — e a régua **nasce** nessa borda. ⇒ ela tapava a
+régua, e o que o dono viu não foi uma faixa, foi a régua comida.
+
+⚠️ **O doc do `layout.rs` já dizia porquê, escrito por uma wave anterior:** *«uma coluna fechada não
+é reservada: a área cresce para dentro dela, senão a régua da esquerda ficaria a flutuar sobre o
+desenho»*. Eu pus lá um controlo **sem o reservar**. *A lei que a wave 29 violou estava no ficheiro
+que ela editou, três linhas acima da linha que ela mudou.*
+
+⇒ uma coluna fechada passa a reservar a largura da alça (`DOCK_SEAM_PX`).
+
+#### ⛔⛔ Defeito 2: uma coluna pode ter mais de UM inquilino
+
+A wave 29 escondia **um** painel, por uma tabela `lado → nome` (`dock_tenant`) que foi **invenção
+minha** sobre um modelo que já era plural: o `bgremoval` partilha o rect do Inspector, e o
+`painter_layers` também vive à direita. Escondido um, os outros continuavam a publicar o rect, o
+`DockSides::from_published` continuava a ver a coluna ocupada, e ela não fechava.
+
+⇒ a porta inventada foi **apagada**, e fechar passa a **contar** os inquilinos pelo mesmo facto que
+decide a ocupação: os rects publicados.
+
+⭐⭐ **E as duas metades do gesto perguntam a factos DIFERENTES — isso só apareceu ao curar.** Fechar
+conta os rects **publicados** (exacto); reabrir **não pode**, porque um painel fechado não publica
+nada — ele lê o **encaixe declarado** (`Slot::dock_side`), que sobrevive ao fecho e ao reinício.
+*As duas metades de um interruptor podem precisar de fontes de verdade diferentes, e é o estado que
+elas atravessam que decide qual.*
+
+#### ⭐⭐⭐ A divisória, e por que ela NÃO desfaz um veredito
+
+`area_gap_px()` = **4 px** (o `base_spacing` do modelo) em cada fronteira: painel ↔ canvas e canvas
+↔ linha do tempo.
+
+⛔ **Em 2026-08-30 o dono mandou TIRAR um espaço exactamente daqui** — *«a régua deve ficar colada na
+hierarquia, e a nossa tem um espaço ruim»*. O que saiu foi o `EDGE_PAD`, de **14 px**, e o doc
+registou porquê: *«o pior dos quatro espaços mortos, porque a régua nasce na borda da área e o
+buraco ficava entre ela e o painel»*. ⇒ **14 px lê-se como um buraco; 4 lê-se como uma divisória.**
+*Um veredito sobre um número não é um veredito sobre a pergunta* — e confirmar isso antes de
+executar é o que separa cumprir uma ordem de desfazer outra.
+
+#### ⚠️ A catraca de tablet reprovou, e estava certa
+
+Ela defende a ordem de 31/08 (*«não podemos ir perdendo espaço»*) contra a de hoje. Preço medido da
+divisória: **0,2 a 0,3 pontos percentuais**. Para comparar, o cabeçalho por área — recusado em
+31/08 — custava **1,5 pontos**, sete vezes mais, e não devolvia nada. ⇒ o piso desceu **com o nome,
+a data e a comparação escritos ao lado**. *Um piso que desce por pedido do dono continua a ser uma
+catraca: o que ela proíbe é descer em silêncio.*
+
+⚠️⚠️ **E eu caí na armadilha que o próprio ficheiro documenta.** Ele avisa que escrever a barra a
+partir do número **impresso** (arredondado) reprova sobre produto correcto. Presumi que o custo era
+`−0,2` uniforme e escrevi `43,8` para o iPad 11; ele é `−0,3` ali. *Um custo medido numa célula não
+se estende às outras por subtracção.* Fui ler as seis.
+
+#### ⚠️ E o meu gate de fiação descrevia a cura que eu tinha acabado de substituir
+
+Ele exigia `panel_visibility.insert(tenant, …)` — a tabela que o report matou. Hoje exige o que
+ficou: que o fecho pergunte aos rects publicados e a reabertura ao encaixe declarado.
+
+**Provas de mutação: 3 escritas, 3 mortas** (a divisória some · a coluna fechada deixa de reservar a
+alça · a faixa de baixo passa a contar como coluna).
+
+⏳ **As ABAS de painel ficam para a wave seguinte** — elas já existem (`slot_tabs`); o que o dono
+pediu é o desenho delas.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

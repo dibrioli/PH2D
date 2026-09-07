@@ -369,15 +369,31 @@ impl HeroLayout {
         };
         // ⚠️ Uma coluna VAZIA não é reservada — a área cresce para dentro dela; uma OCUPADA é,
         // seja quem for que lá esteja. Quem responde é o `DockSides::from_published`.
+        // ⭐⭐⭐ **AS ÁREAS NÃO SE TOCAM** (Enio, 2026-09-07, com a captura do Godot: *«entre os
+        //    painéis e o Canvas e entre os painéis e a timeline há espaços»*). Cada fronteira leva
+        //    uma divisória de [`ph2d_tokens::area_gap_px`] — 4 px, o `base_spacing` do modelo.
+        //
+        // ⛔⛔ **E isto NÃO desfaz o veredito de 2026-08-30.** O que saiu nesse dia foi o
+        //    `EDGE_PAD` de **14 px** (*«a régua deve ficar colada na hierarquia, e a nossa tem um
+        //    espaço ruim»*): 14 px lê-se como um buraco, 4 lê-se como uma divisória. *Um veredito
+        //    sobre um número não é um veredito sobre a pergunta.*
+        //
+        // ⚠️⚠️ **Uma coluna FECHADA reserva mais: a largura da ALÇA que a traz de volta.** A wave
+        //    29 pôs a alça a flutuar sobre a borda da área — e a área é onde a régua nasce, logo
+        //    ela **tapava a régua** (report do dono no mesmo dia). *A lei escrita três linhas
+        //    abaixo já dizia porquê: «uma coluna fechada não é reservada, senão a régua ficaria a
+        //    flutuar sobre o desenho» — e eu pus lá um controlo sem a reservar.*
+        let gap = ph2d_tokens::area_gap_px();
+        let closed_reserve = crate::screens::dock_seam::DOCK_SEAM_PX;
         let area_x0 = if docks.left {
-            left_col_right
+            left_col_right + gap
         } else {
-            viewport.x + rail_w
+            viewport.x + rail_w + closed_reserve
         };
         let area_x1 = if docks.right {
-            right_col_left
+            right_col_left - gap
         } else {
-            viewport.x + viewport.w
+            viewport.x + viewport.w - closed_reserve
         };
         let area_w = (area_x1 - area_x0).max(0.0);
         // ⭐⭐ **O SPLIT DO CENTRO PARTE A ÁREA, NÃO A JANELA** (Enio, 2026-08-31, com foto e duas
@@ -569,7 +585,9 @@ impl HeroLayout {
         if strip.y >= area_bottom {
             return; // a faixa está fora da área — nada a reclamar
         }
-        self.draw_area.h = (strip.y - self.draw_area.y).max(0.0);
+        // ⭐ **A DIVISÓRIA também é vertical** (Enio, 2026-09-07: *«entre os painéis e a timeline
+        //    há espaços»*): a área acaba uma divisória ANTES da faixa, não colada a ela.
+        self.draw_area.h = (strip.y - ph2d_tokens::area_gap_px() - self.draw_area.y).max(0.0);
     }
 
     /// **A região em que um popover flutuante pode nascer** — a BANDA DE CHROME, e nunca a janela

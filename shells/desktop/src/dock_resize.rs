@@ -57,16 +57,11 @@ impl crate::App {
         // ⚠️ **Reabrir acontece no DOWN, não no clique**, e é isso que faz o mesmo gesto servir o
         //    toque e o arrasto: um toque reabre a coluna na largura que ela tinha; um arrasto
         //    reabre-a e continua a redimensioná-la, que é *puxar a borda de volta*.
-        if let Some(side) = self.hero_layout().and_then(|l| l.dock_reopen_at((x, y))) {
-            let tenant = self.hero_layout().map(|l| l.dock_tenant(side));
-            if let (Some(tenant), Some(hero)) = (
-                tenant,
-                self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()),
-            ) {
-                hero.panel_visibility.insert(tenant, true);
-                self.dock_seam_drag = Some(side);
-                return true;
-            }
+        if let Some(side) = self.hero_layout().and_then(|l| l.dock_reopen_at((x, y)))
+            && self.open_column(side)
+        {
+            self.dock_seam_drag = Some(side);
+            return true;
         }
         let Some(side) = self.hero_layout().and_then(|l| l.dock_seam_at((x, y))) else {
             return false;
@@ -88,10 +83,6 @@ impl crate::App {
             return false;
         };
         let w = layout.dock_width_for(side, x);
-        let tenant = layout.dock_tenant(side);
-        let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
-            return true;
-        };
         // ⭐⭐⭐ **Arrastar para dentro, para além do mínimo, FECHA a coluna** — o gesto do Blender,
         //    e a maior alavanca de ecrã que a medição do tablet encontrou (fechar as duas devolve
         //    89–92 %). Até aqui o arrasto travava no mínimo e fechar custava dois passeios ao menu.
@@ -100,13 +91,106 @@ impl crate::App {
         //    para esconder um painel daria dois estados de «fechado» que podiam discordar — e o
         //    interruptor do menu passaria a mentir sobre o que o dedo fez.
         if w < ph2d_editor::interaction::WidgetStore::DOCK_W_COLLAPSE {
-            hero.panel_visibility.insert(tenant, false);
+            self.close_column(side);
             // O arrasto acaba aqui: a costura que ele agarrava deixou de existir.
             self.dock_seam_drag = None;
             return true;
         }
-        hero.store.set_dock_width(side, w);
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.store.set_dock_width(side, w);
+        }
         true
+    }
+
+    /// ⭐⭐⭐ **Fecha TODOS os inquilinos de uma coluna** — e eles são CONTADOS, não adivinhados.
+    ///
+    /// ⛔⛔ **A wave 29 escondia UM painel, por um nome derivado do lado** (`dock_tenant`), e o dono
+    /// reportou no mesmo dia: *«hierarquia fechou… Inspector não fechou»*. A causa é que uma coluna
+    /// pode ter **mais de um inquilino** — o `bgremoval` partilha o rect do Inspector, e o
+    /// `painter_layers` também vive à direita. Escondido um, os outros continuavam a publicar o
+    /// rect, o `DockSides::from_published` continuava a ver a coluna ocupada, e ela não fechava.
+    ///
+    /// ⚠️ *Uma tabela `lado → nome` era invenção minha sobre um modelo que já era plural.* Aqui a
+    /// pergunta é feita ao **mesmo facto** que decide a ocupação: o rect que cada painel PUBLICOU.
+    fn close_column(&mut self, side: ph2d_editor::screens::layout::DockSide) -> bool {
+        let Some(layout) = self.hero_layout() else {
+            return false;
+        };
+        let (left_col, right_col) = layout.side_columns();
+        let col = match side {
+            ph2d_editor::screens::layout::DockSide::Left => left_col,
+            ph2d_editor::screens::layout::DockSide::Right => right_col,
+        };
+        let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
+            return false;
+        };
+        let mut hide: Vec<&'static str> = Vec::new();
+        ph2d_editor::panel::with_registry_opt(|reg| {
+            for p in reg.panels() {
+                let m = &p.manifest;
+                if !hero.is_panel_visible(m.id) {
+                    continue;
+                }
+                let Some(r) = hero.store.panel_rect(m.panel_node_id) else {
+                    continue;
+                };
+                // ⚠️ **A MESMA lei que decide a ocupação**, e não uma cópia: um segundo critério
+                //    de «este painel toma a coluna» divergiria no dia em que só um fosse afinado.
+                let takes = ph2d_editor::screens::layout::DockSides::from_published(
+                    left_col,
+                    right_col,
+                    [r],
+                );
+                let mine = match side {
+                    ph2d_editor::screens::layout::DockSide::Left => takes.left,
+                    ph2d_editor::screens::layout::DockSide::Right => takes.right,
+                };
+                if mine {
+                    hide.push(m.id);
+                }
+            }
+        });
+        let _ = col;
+        for id in &hide {
+            hero.panel_visibility.insert(id, false);
+        }
+        !hide.is_empty()
+    }
+
+    /// ⭐⭐ **Reabre TODOS os painéis daquela coluna** — e a pergunta é OUTRA que a de fechar.
+    ///
+    /// Fechar conta os inquilinos pelos rects que eles **publicaram**, que é exacto. ⚠️ Mas um
+    /// painel fechado **não publica nada** — logo reabrir não pode usar o mesmo facto. O que
+    /// sobrevive a um painel fechado (e a um reinício) é o **encaixe que ele declara**, e é a ele
+    /// que esta metade pergunta.
+    ///
+    /// *As duas metades de um interruptor podem precisar de fontes de verdade diferentes, e é o
+    /// estado que elas atravessam que decide qual.*
+    fn open_column(&mut self, side: ph2d_editor::screens::layout::DockSide) -> bool {
+        let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
+            return false;
+        };
+        let mut show: Vec<&'static str> = Vec::new();
+        ph2d_editor::panel::with_registry_opt(|reg| {
+            for p in reg.panels() {
+                let m = &p.manifest;
+                if hero.is_panel_visible(m.id) {
+                    continue;
+                }
+                // O encaixe ARRUMADO ganha ao declarado — é o que o artista moveu.
+                let slot = hero
+                    .store
+                    .panel_slot(m.panel_node_id)
+                    .unwrap_or(m.default_slot);
+                if slot.dock_side() == Some(side) {
+                    show.push(m.id);
+                }
+            }
+        });
+        for id in &show {
+            hero.panel_visibility.insert(id, true);
+        }
+        !show.is_empty()
     }
 
     /// Release: fecha o arrasto. `true` se havia um.

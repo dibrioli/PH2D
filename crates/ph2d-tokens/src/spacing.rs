@@ -336,6 +336,25 @@ pub fn icon_label_gap_px() -> f32 {
     Spacing::Xs.px()
 }
 
+/// ⭐⭐⭐ **A DIVISÓRIA entre duas ÁREAS do ecrã** — painel ↔ canvas, canvas ↔ linha do tempo.
+///
+/// Enio, 2026-09-07, com a captura do Godot ao lado: *«entre os painéis e o Canvas e entre os
+/// painéis e a timeline há espaços (provavelmente 3 ou 4 px)»*.
+///
+/// ⛔⛔ **E ele já tinha mandado TIRAR um espaço daqui — não é contradição, é outro número.** Em
+/// 2026-08-30, com seta na foto: *«a régua deve ficar colada na hierarquia, e a nossa tem um
+/// espaço ruim»*. O que saiu nesse dia foi o `EDGE_PAD`, de **14 px**, e o doc do layout registou
+/// porquê: *«o pior dos quatro espaços mortos, porque a régua nasce na borda da área e o buraco
+/// ficava entre ela e o painel, onde salta à vista»*. ⇒ **14 px lê-se como um buraco; 4 lê-se como
+/// uma divisória.** *Um veredito sobre um número não é um veredito sobre a pergunta.*
+///
+/// O valor é o do modelo — `base_spacing` do Godot Modern, o mesmo `Spacing::Xs` de que saem o vão
+/// entre controlos e o vão ícone→rótulo. ⚠️ **Ela não é um recuo do conteúdo:** é a fronteira
+/// **entre** duas superfícies, e conta-se uma vez por fronteira, nunca uma por lado.
+pub fn area_gap_px() -> f32 {
+    Spacing::Xs.px()
+}
+
 /// A derivação do [`list_indent_px`], com os dois termos ABERTOS.
 ///
 /// ⚠️ **Existe para o piso ser matável por mutação.** Com os números de hoje `3 · 4` e a coluna da

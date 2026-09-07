@@ -95,23 +95,6 @@ impl HeroLayout {
         }
     }
 
-    /// ⭐⭐ **QUEM ocupa este lado** — e a resposta é DERIVADA, não uma tabela.
-    ///
-    /// A hierarquia e o inspector trocam de lado com o `ui_mirrored`, e uma tabela `Left →
-    /// "hierarchy"` mentiria no espelho. Aqui a pergunta responde-se pela mesma comparação de `x`
-    /// que ordena o [`Self::side_columns`], logo as duas nunca podem discordar.
-    ///
-    /// ⚠️ Serve o **recolher por arrasto**: a costura sabe o LADO e a visibilidade é indexada pelo
-    /// NOME do painel; sem esta porta, o gesto teria de reescrever a regra do espelho.
-    #[must_use]
-    pub fn dock_tenant(&self, side: DockSide) -> &'static str {
-        let hierarchy_is_left = self.hierarchy.x <= self.inspector.x;
-        match (side, hierarchy_is_left) {
-            (DockSide::Left, true) | (DockSide::Right, false) => "hierarchy",
-            _ => "inspector",
-        }
-    }
-
     /// **A faixa de agarre que redimensiona esta coluna** — os últimos [`DOCK_SEAM_PX`] px dela,
     /// do lado da área de desenho.
     ///

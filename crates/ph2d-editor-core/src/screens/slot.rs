@@ -44,6 +44,24 @@ pub enum Slot {
 }
 
 impl Slot {
+    /// ⭐⭐ **De que COLUNA lateral este encaixe faz parte, se de alguma.**
+    ///
+    /// ⚠️ Serve o gesto de reabrir uma coluna fechada: fechar conta os inquilinos pelos rects que
+    /// eles PUBLICARAM (exacto, mas um painel fechado não publica nada), logo **reabrir tem de
+    /// perguntar a outra coisa** — e o que sobrevive a um painel fechado, e a um reinício, é o
+    /// encaixe que ele declara.
+    ///
+    /// ⛔ `Bottom` e `Center` não são coluna, e devolvem `None` de propósito: reabrir a coluna da
+    /// esquerda não pode trazer de volta a linha do tempo.
+    #[must_use]
+    pub const fn dock_side(self) -> Option<crate::screens::layout::DockSide> {
+        match self {
+            Self::LeftTop | Self::LeftBottom => Some(crate::screens::layout::DockSide::Left),
+            Self::RightTop | Self::RightBottom => Some(crate::screens::layout::DockSide::Right),
+            Self::Bottom | Self::Center => None,
+        }
+    }
+
     /// Os seis, na ordem da declaração — a fonte de toda varredura.
     pub const ALL: [Self; 6] = [
         Self::LeftTop,

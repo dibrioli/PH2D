@@ -28,7 +28,18 @@ fn dragging_past_the_step_closes_the_column_through_the_menus_own_door() {
          volta a custar dois passeios ao menu"
     );
     assert!(
-        s.contains("panel_visibility.insert(tenant, false)"),
+        s.contains("fn close_column"),
+        "o arrasto nao chama o fecho da COLUNA — a wave 29 escondia UM painel por um nome derivado \
+         do lado, e o dono reportou no mesmo dia que «o Inspector nao fechou»: uma coluna pode ter \
+         mais de um inquilino"
+    );
+    assert!(
+        s.contains("DockSides::from_published"),
+        "o fecho nao pergunta pelos rects PUBLICADOS — um segundo criterio de «este painel toma a \
+         coluna» divergiria no dia em que so' um fosse afinado"
+    );
+    assert!(
+        s.contains("panel_visibility.insert(id, false)"),
         "o arrasto nao fecha pela porta `panel_visibility` — um segundo caminho para esconder um \
          painel daria dois estados de «fechado» que podem discordar, e o interruptor do menu \
          passaria a mentir sobre o que o dedo fez"
@@ -45,7 +56,19 @@ fn the_handle_reopens_the_column_it_closed() {
          toque nao ha' cursor que denuncie uma costura invisivel"
     );
     assert!(
-        s.contains("panel_visibility.insert(tenant, true)"),
+        s.contains("fn open_column"),
+        "a alca nao chama a reabertura da COLUNA"
+    );
+    // ⚠️ **As duas metades perguntam a factos DIFERENTES, e isso e' a lei.** Fechar conta os rects
+    //    PUBLICADOS (exacto); reabrir na~o pode, porque um painel fechado nao publica nada — ele le^
+    //    o ENCAIXE declarado, que sobrevive ao fecho e ao reinicio.
+    assert!(
+        s.contains("dock_side()"),
+        "a reabertura nao pergunta pelo encaixe: um painel fechado nao publica rect nenhum, logo \
+         reabrir pelo mesmo facto que fecha nao encontraria ninguem"
+    );
+    assert!(
+        s.contains("panel_visibility.insert(id, true)"),
         "a alca nao reabre a coluna pela mesma porta que a fechou"
     );
 }

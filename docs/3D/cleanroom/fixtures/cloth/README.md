@@ -48,7 +48,7 @@ nas duas.
 | **pino** ligado | `1` | `plano_arrastar_radial_local_pino` |
 | **curva** ≠ *Smooth* | `1` | `plano_gancho_radial_local_origem_1passo_constante` |
 | **traços** ≠ `1` | `5` | `plano_inflar_radial_local_1passo_2tracos` (**`2`**) — ⭐ load-bearing: é a fixture que fixa a que superfície pertencem as NORMAIS que o gesto lê (espec §4.2-ter) · e os **dois pares** da base persistente, `plano_agarrar_radial_local_origem_{2,3}tracos[_persistente]` (`2` e `3`) |
-| **peso_normal** ≠ `0` | `2` | `plano_agarrar_radial_local_origem_pesonormal05` (`0,5`) · `…_pesonormal1` (`1,0`) — ⭐ as duas são **byte-idênticas** à de `0`: é assim que se prova que aquele controlo não existe neste pincel (espec §4.3) |
+| **peso_normal** ≠ `0` | `2` | `plano_agarrar_radial_local_origem_pesonormal05` (`0,5`) · `…_pesonormal1` (`1,0`) — ⭐ as duas dão o **mesmo bloco de vértices, linha a linha**, que a de `0`: é assim que se prova que aquele controlo não existe neste pincel (espec §4.3). ⛔ **Os ficheiros diferem** — na linha `peso_normal` do cabeçalho, e só nela: um `cmp` cru reprova por construção |
 | **persistente** ligado | `2` | `plano_agarrar_radial_local_origem_2tracos_persistente` · `…_3tracos_persistente` (base gravada no **repouso**) |
 
 ⛔⛔ **Esta conta esteve em `SETE` e a régua é que estava errada, não o número:** ela varria só
@@ -326,9 +326,12 @@ superfície», não «a curvatura» (as duas malhas também diferem em contagem,
 em leques polares).
 ⇒ **os `.deformado` de esfera são UMA realização cada**, e uma barra de gate escrita abaixo da banda
 reprova o próprio oráculo. ⚠️⚠️ **E o quociente «`5×` a `26×`» que estava escrito aqui MISTURAVA
-UNIDADES** (um erro relativo dividido por uma banda absoluta): na mesma unidade é `2,15×` · `1,19×` ·
-`1,25×`. Continua a haver lei em falta, com uma ordem de grandeza menos de margem. Detalhe e
-tabelas: espec §10.13 e §10.15.
+UNIDADES** (um erro relativo dividido por uma banda absoluta): na mesma unidade, e **contra a banda
+que o cabeçalho de hoje traz**, é `1,67×` · **`0,99×`** · `1,24×` ⇒ ⛔ **no GANCHO a lotaria explica o
+erro inteiro** e não há ali prova de lei em falta; ela sobrevive no agarrar (já curado, espec §2.1) e
+à justa no expandir. ⚠️ Os `2,15× · 1,19× · 1,25×` que esta linha chegou a dizer dividem pelo sorteio
+de 06/09, que a chave `dispersao_entre_realizacoes` substituiu no mesmo dia em que nasceu (R-pré,
+2026-09-07). Detalhe e tabelas: espec §10.13 e §10.15.
 
 ### ⭐⭐⭐ As OITO fixtures de 2026-09-07 da emenda Q19-Q21 (espec §10.15 e §10.16)
 

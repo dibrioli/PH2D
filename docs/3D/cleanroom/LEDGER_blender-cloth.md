@@ -177,7 +177,7 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 | R-pré (emenda Q12) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emenda Q12)» |
 | R-pré (emenda Q14) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emenda Q14)» |
 | R-pré (emendas Q15 **e** Q16) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu as emendas (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestadas no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emendas Q15 e Q16)». ⚠️ **A Q15 tinha shipado SEM atestação** e foi auditada aqui |
-| R-pré (emenda Q19 · Q20 · Q21) | ⏳ **POR DESPACHAR** — tem de ser um subagente NOVO, independente do que escreveu a emenda | ⏳ 2026-09-07 — ⛔ **a janela-mãe NÃO pode ler esta emenda antes do atestado** (§3.R). ⚠️ **Ela também deve conferir três coisas que este E deixou nomeadas:** (a) o censo de atestados do cabeçalho é cego a um título da forma `EMENDA Q19-Q21` (só casa `EMENDA Q<dígitos> de`), e foi por isso que a emenda foi renomeada; (b) o `analise.json` continua com `47` objectos para `86` fixtures, e o README diz que não se acredite nele; (c) o `harness_q21.py` (fora da árvore) ganhou auto-teste de esfera e uma opção de deslocar a malha gerada — as duas são de arnês, não de produto |
+| R-pré (emenda Q19 · Q20 · Q21) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-07 — ✅ **ATESTADO no cabeçalho da espec**; veredictos em «R-pré da emenda Q19 … 2026-09-07». **ZERO achados de expressão · UMA higiene §4.2 · NOVE curas funcionais**, a maior delas a banda antiga a dividir os quocientes que a própria emenda tornou obsoletos. **Os três itens que o E deixou nomeados, conferidos:** (a) o censo do cabeçalho corre **silencioso** com o título renomeado, e o instrumento do I passa a ler `11`; (b) o `analise.json` tem mesmo `47` objectos com as chaves **do arnês** para `86` fixtures — ⛔ fica como está (é dado nosso, o sweep passa e o README já manda não acreditar nele), e o **índice derivado** é que é a fonte: `gera_indice.py` regenera-o byte-a-byte, 86 para 86; (c) o auto-teste do arnês vive **fora da árvore** e não é auditável daqui — o que o R-pré verificou é que a **regra registada** (`< 50` movidos ou mais de metade da malha) recusa exactamente os dois modos de falha que ela apanhou, porque a esfera tem `6 050` vértices e as corridas más deram `6 050` e `0` |
 | R-pós | ⏳ | — |
 
 ### Auditoria R-pré — 2026-09-06 (emendas Q15 e Q16)
@@ -1689,6 +1689,118 @@ ponto de **maior contenção possível** — a divisória cai na fileira do pen-
 partilhados movem-se e um deles carrega o máximo da malha — e ainda assim dá `0,000000`.
 
 **Veredicto: ATESTADO.** A janela-mãe pode ler a emenda Q18.
+
+### R-pré da emenda Q19 (que leva dentro as Q20 e Q21) — 2026-09-07 — ATESTADO
+
+**Quem:** subagente R-pré despachado com contexto novo, independente do subagente-E que escreveu a
+emenda. Leu os **dois** lados — o fonte por shell (`sed`/`rg`/`grep`), nunca pela ferramenta de
+leitura, que o deny da linha nega. Não escreveu nem ditou código de produto.
+
+**§4.2 (expressão): ZERO achados de trecho, tabela verbatim, comentário, wording de manual,
+pseudo-código espelhado ou organização ficheiro-a-ficheiro. UMA higiene curada no acto:** a §4.3
+citava, entre aspas, a **tradução de um identificador interno** do alvo para nomear a declaração de
+capacidade que gateia a linha do painel — é a espécie *«mesmos nomes traduzidos»* do §7.2-3. Passa a
+descrever o comportamento (*a declaração de capacidade de que o painel depende para desenhar este
+controlo*). ⭐ Liberados de propósito: `dispersao_entre_realizacoes` e *banda de realização*
+(vocabulário nosso), `peso_normal`/`persistente` (rótulos que o artista vê, §4.1.13), e as cinco
+cláusulas da colisão + as quatro leituras da base, que descrevem **ordem observável** e não a forma
+do código.
+
+**Sweep:** verde sobre a espec emendada + a pasta inteira das fixtures + INBOX + os dois READMEs +
+`docs/3D/cloth/` + `docs/3D/README.md`, e sobre o **histórico** destes caminhos. Os únicos ✗ são os
+**pré-existentes já adjudicados**: as duas linhas de cobertura deste ledger (2026-09-05) e, no
+histórico de `docs/3D/cloth/`, os commits do dia em que o R-pré curou o doc `01` — o texto vivo passa
+limpo. ⭐ Controlo extra: `--git-history` restrito à espec + fixtures + INBOX passa **limpo**.
+
+**Fidelidade — os quatro factos, conferidos no fonte:**
+
+- ⭐⭐⭐ **(Q21.1) A AFIRMAÇÃO NEGATIVA é verdadeira, e as três provas são independentes de facto.**
+  (a) A porta que devolve o delta já inclinado tem **três** chamadores e o pincel de tecido não é
+  nenhum deles — ele consome o delta cru, num sítio só; (b) a declaração de capacidade que gateia a
+  linha do painel nomeia **três** pincéis, o de tecido fora; (c) o painel desenha a linha **só** sob
+  essa condição. ⭐⭐ **E o R-pré alargou a pergunta ao ESCOPO DECLARADO da espec** — três fixtures
+  byte-idênticas provam que o botão não move *aquela cena*, nunca que o controlo não existe, e o
+  cabeçalho desta espec cobre também os pincéis alheios que miram a simulação: o selector de alvo de
+  deformação é exposto **exactamente** aos dois que o cabeçalho nomeia, e nenhum deles está na
+  capacidade ⇒ *a ausência vale para tudo o que este documento descreve.* ⚠️ **E o que saiu da espec
+  era só sobre ele:** a cláusula do achatamento *Projected* ficou intacta na §4.3, saiu **uma** linha
+  da tabela do §8.1 e **um** termo da ordem do painel do §8.4.
+- ⭐⭐ **(Q20) O mecanismo é mesmo DUPLO e as duas metades são independentes.** Os modos de âncora — e
+  os pincéis alheios que miram a simulação — deixam de reler a localização do evento a partir do 1.º
+  passo da passagem de simetria; e, entre os pincéis cujo delta acumula desde o ponto de partida, a
+  localização é **reescrita com o pen-down todo passo**. O Agarrar de tecido está nas duas listas. A
+  segunda metade é outra coisa: o tamanho por pressão é a **negação** de «é ferramenta de agarrar», e
+  ali o Agarrar de tecido está e ⭐ **o Gancho de tecido NÃO** — a parentese da emenda sobre o raio do
+  gancho variar com a pressão confere —, e a mesma classe deixa de reler a pressão por passo. A área
+  *Dynamic* lê exactamente a localização e o raio que essas duas metades congelam. ⭐ **E o «diferem
+  em três coisas só» confere:** o raio da criação de restrições é `R₀(1+L)` nas **duas** áreas, e o
+  que sobra é o centro, o filtro de raio e a lista duplicada.
+- ⭐ **(Q21.2)** A base substitui as posições de repouso em **exactamente quatro** leituras, todas na
+  construção, e **as exclusões também estão certas**: os alvos das três espécies de alvo próprio e a
+  banda por passo lêem o repouso do traço.
+- ⭐ **(Q21.3)** As **cinco** cláusulas conferem, a quinta incluída (cada colisor lê a posição já
+  corrigida pelo anterior mas **a mesma** origem de raio), e a origem do raio nasce nas posições de
+  repouso do traço.
+
+**Números reconstruídos do zero a partir das fixtures** (script próprio, fora do repo): as três de
+*peso normal* dão o **mesmo bloco de vértices** e diferem só na linha do botão ·
+`plano_agarrar_radial_dinamica` recalcula `max = 0,162721` e o maior `x` movido é **`+0,890625`**
+(`1,190625 < 1,225`; a coluna seguinte fica a `1,2375`), e ⭐ `1,225` é o corte da **banda** no fonte
+(`R(1+L)`), não o do filtro de restrições, que a *Dynamic* nem aplica · **treze** ficheiros trazem a
+chave nova e os treze valores batem a tabela do §10.15 · toda a coluna derivada do §10.15 recomputa ·
+o censo do README dá **`30` de `86`**, **`33`** linhas, `18` não-*Local* e os **três** de dupla
+excepção · `gera_indice.py` regenera o `indice.json` **byte-a-byte** (86 para 86) · o
+`verifica_traco.py` fica **verde sobre as 86** · a esfera tem `6 050` vértices ⇒ **a regra do
+auto-teste (`< 50` ou mais de metade) recusa exactamente os dois modos de falha que ele apanhou**
+(`6 050` movidos e `0`).
+
+⛔ **O que NÃO é reconstruível deste lado, e fica dito:** as bandas de `p95`, de mediana e dos
+vértices nomeados exigem **quatro** realizações e a fixture carrega **uma**. O R-pré verificou a
+**coerência interna** delas — todas as razões publicadas recomputam a partir das colunas ao lado —,
+não os valores.
+
+**Nove curas aplicadas no acto, todas funcionais. As cinco primeiras são a mesma espécie, e é a
+espécie desta emenda: ela RE-MEDIU a banda, escreveu o resultado no cabeçalho, e deixou os
+quocientes divididos pelo sorteio antigo.**
+
+1. ⛔⛔⛔ **A tabela do §10.13 chamava «banda (cabeçalho)» à banda que o cabeçalho já não tem** — e a
+   correcção derruba a conclusão da emenda num dos três traços: com a banda publicada por ela
+   própria, os quocientes são `1,67×` · **`0,99×`** · `1,24×` ⇒ **no gancho o erro aberto está dentro
+   da lotaria e ali não há prova de lei em falta.** A 1.ª redacção mandava o lado limpo caçar uma lei
+   onde só há ruído.
+2. A 2.ª tabela do §10.13 muda com ela: o agarrar decide com `1,20×` e não `1,54×`; os dois
+   indecidíveis passam a `1,97×` e `3,62×` abaixo.
+3. O **gate 46** repetia os três quocientes antigos e dizia a banda medida para **doze** traços — são
+   **treze**.
+4. O **gate 47** listava `0,0200` · `0,0362` · `0,0218` como a banda dos três; com a de hoje o gancho
+   deixa de ser o caso «igual à banda».
+5. A §2.1 dava a banda do agarrar como `0,0200` (é `0,025712`; o resultado do lado limpo fica **mais**
+   dentro dela, `0,30×`). ⚠️ **E a §10.13 tem uma SEXTA leitura da mesma grandeza:** a célula de
+   esfera + *Dynamic* do desenho `superfície × área` publica `0,58264` / `0,059974` onde a fixture
+   traz `0,582806` / `0,041931` — outro conjunto de quatro corridas, e sem esta nota quem compare as
+   duas tabelas conclui que uma está errada.
+6. ⛔ **A recusa da barra «`k ×` a banda» declarava-se «por MEDIÇÃO» em três sítios e não traz número
+   nenhum** — o argumento é o §0.0, que é um princípio. Passa a recusa **por princípio**, com a
+   medição que de facto existe ao lado (*o `p95` já tem chão abaixo da barra, logo ela não faz
+   falta*). ⚠️ *Uma recusa de princípio arquivada como recusa medida polui a única lista que impede
+   refazer trabalho já pago.*
+7. ⭐ **O gate 48 não era edificável do lado limpo:** «o conjunto que se moveu» não tinha limiar nem
+   dizia que campos se comparam, e o `p95` não tinha convenção — ficam escritos. Mais três
+   correcções no mesmo gate: o tecto do chão é `25,7×` e não `19,9×`; a barra da régua alternativa é
+   `0,13 × |u|` **daquele vértice**; e o `± 1` dos movidos é **em torno do valor do cabeçalho**, não
+   uma amplitude (uma das realizações varre `2161`–`2163`). ⏳ **Dívida nomeada:** a §10.15 abre com
+   *«a régua que dá o chão tem de estar ao lado do dado»* e só o chão do **máximo** viaja no
+   cabeçalho — o do `p95`, que é o que decide, vive numa tabela.
+8. ⭐ **O gate 50 mandava comparar ficheiros «byte-idênticos» que não podem sê-lo:** cada cabeçalho
+   regista o próprio valor do botão. A igualdade é do **bloco de vértices**, e é assim que está
+   verificada (espec e README).
+9. ⭐ **A §5.6 anunciava uma errata e deixava-a por corrigir duas linhas abaixo** — a cláusula 4 diz
+   que a origem do raio é escrita depois da colisão e a lista seguinte continuava a dizer
+   «pós-integração do passo anterior», que é onde um port a vai ler (a espécie que a Q17 já pagou
+   três vezes). Mais **duas** de contagem no §10.15: as duas linhas de plano davam `0,612818` /
+   `0,329616` e os ficheiros (e a recomputação) dão `0,612821` / `0,329617`.
+
+**Veredicto: ATESTADO.** A janela-mãe pode ler a emenda Q19 (com as Q20 e Q21 dentro).
 
 ## Fechamento R
 

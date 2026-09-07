@@ -488,7 +488,10 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   **SIM (a lei existe e o mecanismo é duplo)** e **NÃO É UM CONTROLO / SIM COM A ORDEM CORRIGIDA /
   CINCO CLÁUSULAS**.
   ⛔ **(Q19.1)** As duas tabelas conferem: o quociente misturava um erro relativo com uma banda
-  absoluta e, na mesma unidade, dá `2,15×` · `1,19×` · `1,25×`; e a barra de `0,13` fica abaixo da
+  absoluta e, na mesma unidade, dá `2,15×` · `1,19×` · `1,25×` ⛔ **contra o sorteio de 06/09 — que
+  ESTA MESMA emenda substituiu; contra a banda que ela escreveu no cabeçalho os três dão `1,67×` ·
+  `0,99×` · `1,24×`, e no GANCHO a lotaria explica o erro inteiro** (R-pré, 2026-09-07 — §10.13,
+  gate 46); e a barra de `0,13` fica abaixo da
   banda — **em QUATRO dos oito traços de esfera de doze passos**, não em dois (o gancho, o expandir e
   **os dois apertos**, cuja lotaria vale `52 %` e `56 %` do sinal).
   ⭐⭐⭐ **(Q19.2)** A régua que decide não é nenhuma das duas saídas propostas: é **outra estatística
@@ -520,7 +523,103 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   ⭐⭐ **E o controlo que a Q18 deixou pedido FECHOU de passagem:** a lotaria é da **superfície**, não
   da área — plano + *Dynamic* dá `0,000000` em três configurações, esfera + *Local* dá `11,2 %`
   (§10.15 · gate 54).
-  ⏳ **AUDITORIA §4.2 (R-pré): PENDENTE.** ⛔ **Sem ela, a janela-mãe não lê esta emenda** (§3.R).
+  ✅ **AUDITADA contra §4.2 por R-pré em 2026-09-07** — contexto novo, independente do subagente que
+  a escreveu; leu os dois lados (o fonte por shell). Sweep **verde** sobre a espec emendada + a pasta
+  inteira das fixtures + INBOX + os dois READMEs + `docs/3D/cloth/` + `docs/3D/README.md`, e sobre o
+  **histórico** destes caminhos (os únicos ✗ são pré-existentes e já adjudicados: as duas linhas de
+  cobertura do LEDGER de 2026-09-05 e, no histórico de `docs/3D/cloth/`, os commits do dia em que o
+  R-pré curou o doc `01` — o texto vivo passa limpo; achado de parede nº 1, Classe A).
+  ⛔ **ZERO achados de EXPRESSÃO** — sem trecho, sem tabela verbatim, sem wording de comentário ou de
+  manual, sem pseudo-código espelhado, e a organização é por fases funcionais. **UMA higiene §4.2
+  curada no acto:** a §4.3 citava, entre aspas, a **tradução de um identificador interno** do alvo
+  para nomear a declaração de capacidade (é a espécie *«mesmos nomes traduzidos»* do §7.2-3) —
+  passa a dizer o comportamento (*a declaração de capacidade de que o painel depende para desenhar
+  este controlo*). ⭐ Conferido de propósito: `dispersao_entre_realizacoes`, *banda de realização*,
+  `peso_normal` e `persistente` são vocabulário nosso ou o rótulo que o artista vê (§4.1.13).
+  ⭐⭐ **FIDELIDADE — os quatro factos foram conferidos no fonte, e as TRÊS provas da ausência são
+  verdadeiras uma a uma.** **(Q21.1)** A porta que devolve o delta já inclinado tem **três**
+  chamadores, e o pincel de tecido não é nenhum deles (ele consome o delta cru, num sítio só); a
+  declaração de capacidade que gateia a linha do painel nomeia **três** pincéis e o de tecido está
+  fora; e a linha do painel é desenhada **só** sob essa condição. ⭐⭐⭐ **E o R-pré alargou a pergunta
+  ao ESCOPO DECLARADO da espec, que é maior que o pincel:** o cabeçalho também cobre os pincéis
+  alheios que miram a simulação, e o selector de alvo de deformação é exposto **exactamente** aos
+  dois que o cabeçalho nomeia — nenhum deles na capacidade ⇒ *a ausência vale para tudo o que este
+  documento descreve, e não só para o pincel*. ⚠️ **E o que saiu da espec era mesmo só sobre ele:** a
+  cláusula do achatamento *Projected* ficou intacta na §4.3, saiu **uma** linha da tabela do §8.1 e
+  **um** termo da ordem do painel do §8.4 — mais nada.
+  **(Q20)** Os dois mecanismos são verdadeiros **e independentes**: os modos de âncora (e os pincéis
+  alheios que miram a simulação) deixam de reler a localização do evento a partir do 1.º passo da
+  passagem de simetria; e, entre os que medem o delta desde o ponto de partida, a localização é
+  **reescrita com o pen-down todo passo** — o Agarrar de tecido está nas duas listas. O segundo é
+  outro: o tamanho por pressão é a **negação** de «é ferramenta de agarrar», e ali o Agarrar de
+  tecido está e ⭐ **o Gancho de tecido NÃO** (a parentese da emenda sobre o raio do gancho confere),
+  e na mesma classe a pressão deixa de ser relida por passo. A área *Dynamic* lê exactamente a
+  localização e o raio que esses dois congelam. ⭐ **E o «diferem em três coisas só» confere:** o raio
+  da criação de restrições é `R₀(1+L)` nas duas áreas, e o que sobra é o centro, o filtro de raio e a
+  lista duplicada.
+  **(Q21.2)** A base substitui as posições de repouso em **exactamente quatro** leituras, todas na
+  construção, e **as exclusões também estão certas** — os alvos das três espécies e a banda por passo
+  lêem o repouso do traço.
+  **(Q21.3)** As **cinco** cláusulas da colisão conferem, a quinta incluída (cada colisor lê a
+  posição já corrigida pelo anterior e **a mesma** origem de raio).
+  ⭐ **NÚMEROS RECONSTRUÍDOS DO ZERO a partir das fixtures:** as três de *peso normal* dão o **mesmo
+  bloco de vértices** (mesmo `md5` do ficheiro sem a linha do botão) e diferem **só** nessa linha ·
+  `plano_agarrar_radial_dinamica` recalcula `max = 0,162721`, e o maior `x` movido é **`+0,890625`**
+  (`1,190625 < 1,225`; a coluna seguinte, `+0,9375`, fica a `1,2375`) — ⭐ e `1,225` é o corte da
+  **banda** no fonte, `R(1+L)`, não o do filtro de restrições (que a *Dynamic* nem aplica) ·
+  **treze** ficheiros trazem `dispersao_entre_realizacoes` e os treze valores batem a tabela do
+  §10.15 · toda a coluna derivada recomputa (`0,13 ×` o máximo · `%` do sinal · barra÷banda ·
+  barra÷`p95` · barra÷mediana · e as três colunas do vértice nomeado, com a barra **por vértice**) ·
+  o censo de excepções do README dá **`30` de `86`** com **`33`** linhas, `18` não-*Local* e os
+  **três** que são excepção em duas grandezas · `gera_indice.py` regenera o `indice.json`
+  **byte-a-byte** (86 para 86) e o `verifica_traco.py` fica **verde sobre as 86** · a esfera tem
+  `6 050` vértices ⇒ **a regra do auto-teste (`< 50` ou mais de metade) recusa exactamente os dois
+  modos de falha que ele apanhou** (`6 050` movidos e `0`).
+  ⛔ **O QUE NÃO É RECONSTRUÍVEL DESTE LADO, e fica dito em vez de glosado:** as bandas de `p95`, de
+  mediana e dos vértices nomeados exigem **quatro** realizações e a fixture carrega **uma** — o R-pré
+  verificou a coerência interna delas (todas as razões recomputam), não os valores.
+  ⛔⛔ **NOVE curas aplicadas no acto, todas funcionais** — ⚠️ **e as cinco primeiras são a mesma
+  espécie, que é a desta emenda: ela RE-MEDIU a banda, escreveu o resultado no cabeçalho, e deixou os
+  quocientes escritos contra o sorteio antigo.**
+  ⛔⛔⛔ **(1) A tabela do §10.13 chamava «banda (cabeçalho)» à banda que o cabeçalho JÁ NÃO TEM, e
+  isso derruba a conclusão da emenda num dos três traços.** Com a banda que ela própria publicou, os
+  quocientes são `1,67×` · **`0,99×`** · `1,24×` ⇒ **no gancho o erro aberto está DENTRO da lotaria e
+  ali não há prova de lei em falta** — a 1.ª redacção mandava o lado limpo caçar uma lei onde só há
+  ruído. (2) A 2.ª tabela do §10.13 muda com ela: o agarrar decide com `1,20×` e não `1,54×`, e os
+  dois indecidíveis passam a `1,97×` e `3,62×` abaixo. (3) O **gate 46** repetia os três quocientes
+  antigos e dizia a banda medida para **doze** traços — são **treze**. (4) O **gate 47** listava
+  `0,0200` · `0,0362` · `0,0218` como a banda dos três, e com a de hoje o gancho deixa de ser o caso
+  «igual à banda». (5) A §2.1 dava a banda do agarrar como `0,0200` (é `0,025712`; o resultado do
+  lado limpo fica **mais** dentro dela, `0,30×`). ⚠️ **E a §10.13 tem uma SEXTA leitura da mesma
+  grandeza:** a célula de esfera + *Dynamic* do desenho `superfície × área` publica `0,58264` /
+  `0,059974` onde a fixture traz `0,582806` / `0,041931` — **outro conjunto de quatro corridas**, e
+  sem esta linha quem compare as duas tabelas conclui que uma está errada (a conclusão da célula não
+  depende disso: as duas leituras de esfera estão na mesma ordem e as três de plano são zero
+  **exacto**).
+  ⛔ **(6) A recusa da barra «`k ×` a banda» declarava-se «por MEDIÇÃO» em três sítios e não traz
+  número nenhum** — o argumento dela é o §0.0, que é um princípio. Passa a **recusa por princípio**,
+  com a medição que de facto existe ao lado (*o `p95` já tem chão abaixo da barra, logo ela não faz
+  falta*): ⚠️ *uma recusa de princípio arquivada como recusa medida polui a única lista que impede
+  refazer trabalho já pago.*
+  ⭐ **(7) O gate 48 não era edificável do lado limpo** — «o conjunto que se moveu» não tinha limiar
+  nem dizia que campos se comparam, e o `p95` não tinha convenção: ficam escritos (`> 10⁻⁵`, o mesmo
+  predicado que produz `movidos`; a **união** dos movidos do port e do oráculo; o quantil por
+  posição). Mais três correcções no mesmo gate: o tecto do chão é `25,7×` e não `19,9×` (a 2.ª pior);
+  a barra da régua alternativa é `0,13 × |u|` **daquele vértice** e não a do traço; e o `± 1` dos
+  movidos é **em torno do valor do cabeçalho**, não uma amplitude — uma das quatro realizações varre
+  `2161`–`2163`. ⏳ **E fica nomeada a dívida que a própria §10.15 declarava resolvida:** a secção
+  abre com *«a régua que dá o chão tem de estar ao lado do dado»* e só o chão do **máximo** viaja no
+  cabeçalho — o do `p95`, que é o que decide, vive numa tabela.
+  ⭐ **(8) O gate 50 mandava comparar ficheiros «byte-idênticos» que não podem sê-lo:** cada cabeçalho
+  regista o próprio valor do botão, logo um `cmp` cru reprova por construção — a igualdade é do
+  **bloco de vértices**, e é assim que ela está verificada (na espec e no README).
+  ⭐ **(9) A §5.6 anunciava uma errata e deixava-a por corrigir duas linhas abaixo:** a cláusula 4
+  declara que a origem do raio é escrita **depois da colisão**, e a lista logo a seguir continuava a
+  dizer *«posição pós-integração do passo anterior»* — que é onde um port a vai ler (a espécie que a
+  Q17 já pagou três vezes). Mais **duas** de contagem no §10.15, onde as duas linhas de plano davam
+  `0,612818` / `0,329616` e os ficheiros (e a recomputação) dão `0,612821` / `0,329617`.
+  **Veredicto: ATESTADO** — a emenda Q19 (com as Q20 e Q21 dentro) pode ser lida pela janela-mãe.
+  Detalhe: LEDGER §Papel R.
 Mapa de leitura da literatura (⭐ pública e lícita a TODOS os papéis):
   · Jakobsen, "Advanced Character Physics", GDC 2001 — integração de Verlet por posições + relaxação
     de restrições de distância por projecção. É EXACTAMENTE a família do solver do alvo.
@@ -653,7 +752,9 @@ pen-down, a *Dynamic* usa a do **primeiro elemento do traço** (coincidem quando
 
 ⚠️ **MEDIDO dos dois lados** (2026-09-07): o lado limpo, ao pôr a pertença **e** a banda no pen-down,
 foi de `2123` para `1864` vértices movidos contra `1863` do alvo, e o erro em posição de `0,0427`
-para `0,0078` — **dentro** da banda de realização daquele traço (`0,0200`). ⛔ **Nenhuma das duas
+para `0,0078` — **dentro** da banda de realização daquele traço (`0,025712`, a do cabeçalho depois
+da re-medição de 2026-09-07: `0,30×` dela; ⚠️ o `0,0200` que esta linha citava é o sorteio ANTIGO,
+§10.15). ⛔ **Nenhuma das duas
 metades sozinha o faz** (só a banda: `1728`; só a pertença: `1666`). E há fixture no plano, onde a
 lotaria não existe: `plano_agarrar_radial_dinamica` (§10.16).
 
@@ -1344,8 +1445,9 @@ ponto anterior). Com falloff *Projected* é achatado no plano da vista.
 emenda esta secção dizia que com *Normal Weight* `> 0` o delta era inclinado para a normal da área
 «como no Grab da casa», e isso é FALSO).** Três factos independentes, cada um bastante sozinho:
 (1) a inclinação vive numa **porta** que devolve o delta já inclinado, e o pincel de tecido **não a
-chama** — ele consome o delta cru; (2) a capacidade *«tem peso de normal»* da casa é declarada para
-**três** pincéis, e o de tecido não é nenhum deles ⇒ **o painel nunca mostra o controlo** para este
+chama** — ele consome o delta cru; (2) a **declaração de capacidade de que o painel depende para
+desenhar este controlo** nomeia **três** pincéis da casa, e o de tecido não é nenhum deles ⇒ **o
+painel nunca mostra o controlo** para este
 pincel, e o artista não o alcança por gesto nenhum; (3) medido — o mesmo traço de Agarrar do plano
 com o valor a `0`, `0,5` e `1` dá saída **byte-idêntica** nos três (§10.16, e há três fixtures).
 ⇒ ⛔ **um port que implemente a inclinação acrescenta comportamento que o alvo não tem**, e a lei
@@ -2165,9 +2267,12 @@ aceleração construída, na pose do quadro (F).
 5. **Vários colisores são resolvidos em sequência**, e cada um lê a posição já corrigida pelo
    anterior mas **a mesma** origem de raio ⇒ a ordem entre colisores é observável.
 
-Por vértice, depois da integração, para cada colisor (F):
+Por vértice, **dentro** da integração e depois do termo de velocidade (cláusula 2 acima), para cada
+colisor (F):
 
-1. raio, em espaço do MUNDO, de `x_col` (posição pós-integração do passo anterior) até `x`
+1. raio, em espaço do MUNDO, de `x_col` — **a posição em que o passo anterior ACABOU, já corrigida
+   pela colisão dele** (⛔ não «pós-integração»: é a cláusula 4 acima, e esta linha dizia o
+   contrário) — até `x`
    (actual), com comprimento `|x − x_col|`; o teste é raio-vs-triângulo (watertight na
    precalculação, mas o cast é feito sem a bandeira watertight) com **espessura de raio `0,3`**
    (uma constante absoluta, em unidades de mundo — F).
@@ -3180,34 +3285,45 @@ discordar:** a 1.ª tabela (`0,027055` · `0,036836` · `0,028415`), o cabeçalh
 cabeçalho de cada ficheiro** — são os que viajam ao lado do dado.
 
 ⛔⛔ **O QUE ISTO OBRIGA A RELER — e é a metade que interessa ao lado limpo:** os `.deformado` de
-esfera do corpus são **uma** realização cada, e nenhum port pode ficar abaixo de `≈ 0,02`–`0,036`
-neles.
+esfera do corpus são **uma** realização cada, e nenhum port pode ficar abaixo da banda **daquele
+traço**, que viaja no cabeçalho dele. ⚠️ **A faixa `≈ 0,02`–`0,036` que esta linha dava ficou pequena
+ao re-medir:** as oito de doze passos vão de `0,011771` a **`0,260774`** (§10.15) — ⛔ leia o
+cabeçalho, nunca uma faixa escrita em prosa.
 
 ⛔⛔⛔ **ERRATA DE 2026-09-07 — a leitura publicada aqui MISTURAVA UNIDADES, e a margem é uma ordem
 de grandeza menor do que esta secção dizia.** A frase *«os erros são `5×` a `26×` a banda»* dividia
 um erro **RELATIVO** (`0,182` · `0,255` · `0,581` — já divididos pelo maior deslocamento do alvo)
 por uma banda **ABSOLUTA** (uma distância por vértice). Na mesma unidade:
 
-| traço | maior deslocamento | erro relativo | erro **absoluto** | banda (cabeçalho) | quociente |
-|---|---|---|---|---|---|
-| `esfera_agarrar_radial_dinamica` | `0,236509` | `0,182` | `0,04304` | `0,019998` | **`2,15×`** |
-| `esfera_gancho_radial_dinamica` | `0,169025` | `0,255` | `0,04310` | `0,036202` | **`1,19×`** |
-| `esfera_expandir_radial_dinamica` | `0,046715` | `0,581` | `0,02714` | `0,021773` | **`1,25×`** |
+| traço | maior deslocamento | erro relativo | erro **absoluto** | banda do sorteio de 06/09 | banda **do cabeçalho** (§10.15) | quociente |
+|---|---|---|---|---|---|---|
+| `esfera_agarrar_radial_dinamica` | `0,236509` | `0,182` | `0,04304` | `0,019998` | `0,025712` | **`1,67×`** |
+| `esfera_gancho_radial_dinamica` | `0,169025` | `0,255` | `0,04310` | `0,036202` | `0,043373` | ⛔ **`0,99×`** |
+| `esfera_expandir_radial_dinamica` | `0,046715` | `0,581` | `0,02714` | `0,021773` | `0,021971` | **`1,24×`** |
 
-⇒ a conclusão *«a lotaria não os explica»* **sobrevive** (um quociente acima de `1` é um erro maior
-do que a lotaria produz, e há lei em falta), mas o gancho está a `1,19×` do chão, praticamente
-nele. ⚠️ **E o mesmo erro de unidade tem a metade cara:** posta a barra do gate 15 (`0,13 × o maior
+⛔⛔⛔ **DUAS COLUNAS DE BANDA, E A 1.ª REDACÇÃO DESTA TABELA CHAMAVA «cabeçalho» À ERRADA** (R-pré,
+2026-09-07). A própria emenda Q19 **re-mediu** a banda com quatro corridas inteiras e escreveu o
+resultado no cabeçalho de cada `.deformado` (§10.15) — e os sorteios novos são **maiores**. Com a
+banda que o corpus de facto traz, os quocientes são `1,67×` · **`0,99×`** · `1,24×`, ⇒ **a conclusão
+*«a lotaria não os explica»* NÃO sobrevive no gancho**: `0,99×` é *dentro* da nuvem de realizações do
+próprio oráculo, logo ali **não há prova de lei em falta** e caçar uma é caçar ruído. Sobrevive no
+agarrar (`1,67×` — e esse foi CURADO pela Q20, §2.1) e, à justa, no expandir (`1,24×`).
+⚠️ *Um quociente contra uma banda antiga é uma afirmação sobre um número que a mesma emenda mudou
+(CLAUDE.md §0.0): quem move a banda tem de reconferir todo quociente que a divide.*
+
+⚠️ **E o mesmo erro de unidade tem a metade cara:** posta a barra do gate 15 (`0,13 × o maior
 deslocamento`) na unidade da banda, ela cai **ABAIXO da lotaria** em dois dos três —
 
-| traço | barra `0,13` em posição | banda | veredito |
+| traço | barra `0,13` em posição | banda **do cabeçalho** | veredito |
 |---|---|---|---|
-| `esfera_agarrar_radial_dinamica` | `0,03075` | `0,019998` | ⭐ decide (`1,54×` acima) |
-| `esfera_gancho_radial_dinamica` | `0,02197` | `0,036202` | ⛔ **INDECIDÍVEL** (`1,65×` abaixo) |
-| `esfera_expandir_radial_dinamica` | `0,00607` | `0,021773` | ⛔ **INDECIDÍVEL** (`3,58×` abaixo) |
+| `esfera_agarrar_radial_dinamica` | `0,03075` | `0,025712` | ⭐ decide (`1,20×` acima — era `1,54×` com o sorteio antigo) |
+| `esfera_gancho_radial_dinamica` | `0,02197` | `0,043373` | ⛔ **INDECIDÍVEL** (`1,97×` abaixo) |
+| `esfera_expandir_radial_dinamica` | `0,00607` | `0,021971` | ⛔ **INDECIDÍVEL** (`3,62×` abaixo) |
 
 ⇒ **naqueles dois, uma barra de paridade em posição final reprovaria o próprio oráculo comparado
-consigo mesmo.** A régua que os decide **existe e está medida** — não é uma barra nova, é outra
-grandeza: §10.15.
+consigo mesmo.** ⚠️ E o agarrar, que decidia com `1,54×` de folga, decide agora com `1,20×` — a
+margem também encolheu ao re-medir. A régua que os decide **existe e está medida** — não é uma barra
+nova, é outra grandeza: §10.15.
 
 ⚠️ E o chão também diz onde procurar: nos passos `2` a `5` a banda é `4·10⁻⁵`–`4,7·10⁻³` (⚠️ o topo é
 o gancho no passo `5`; a 1.ª redacção escrevia a faixa como `10⁻⁴`–`10⁻³` e a tabela acima
@@ -3252,6 +3368,15 @@ do desenho `superfície × área`, cada uma com quatro realizações da mesma co
 trocar a área não move a lotaria, trocar a malha move-a de `0` para `11 %`. ⚠️ **O que fica isolado
 é «a superfície», não «a curvatura»:** as duas malhas diferem também na contagem de vértices, na
 partição em células (`2` contra `4`) e em ter ou não leques de triângulos nos pólos.
+⚠️⚠️ **AS QUATRO CÉLULAS SÃO SORTEIOS PRÓPRIOS, e a de esfera + *Dynamic* NÃO é a do cabeçalho da
+fixture** (R-pré, 2026-09-07): ela lê `0,58264` / `0,059974` onde
+`esfera_arrastar_radial_dinamica.deformado` traz `0,582806` / `0,041931` (§10.15) — são **conjuntos
+de quatro corridas diferentes**, medidos para comparar células entre si. ⛔ Sem esta linha, quem
+compare as duas tabelas conclui que uma delas está errada; e **quem gateia usa o cabeçalho** (gate
+46), nunca esta tabela. ⚠️ A célula de esfera + *Local* corre além disso sobre a malha **deslocada**
+(ver abaixo), o que é a 2.ª razão para os números destas duas linhas não casarem com o corpus.
+⭐ *A conclusão não depende disso*: as duas leituras de esfera estão na mesma ordem de grandeza e as
+três de plano são zero **exacto**, que é o contraste que decide.
 ⚠️ **A célula esfera + *Local* exigiu um instrumento novo:** em área *Local* o centro sai do
 **sobrevoo do cursor**, e numa sessão em que o sobrevoo não chega ele fica na origem do objecto —
 que na esfera é o centro da bola, e a área passa a cobrir tudo (`6 050` movidos) ou nada. As quatro
@@ -3302,8 +3427,8 @@ estar ao lado do dado, senão o gate vai buscá-la a uma tabela que envelhece.*
 | `esfera_apertar_ponto_radial_dinamica` | `0,463862` | `0,260774` | **`56,2 %`** | `0,06030` | ⛔ `0,23×` |
 | `esfera_empurrar_radial_local_1passo` | `0,069165` | **`0,000000`** | `0,0 %` | `0,00899` | ✅ exacto |
 | `esfera_inflar_radial_local_1passo` | `0,098807` | **`0,000000`** | `0,0 %` | `0,01284` | ✅ exacto |
-| `plano_arrastar_radial_dinamica` | `0,612818` | **`0,000000`** | `0,0 %` | — | ✅ exacto |
-| `plano_arrastar_radial_dinamica_preset` | `0,329616` | **`0,000000`** | `0,0 %` | — | ✅ exacto |
+| `plano_arrastar_radial_dinamica` | `0,612821` | **`0,000000`** | `0,0 %` | — | ✅ exacto |
+| `plano_arrastar_radial_dinamica_preset` | `0,329617` | **`0,000000`** | `0,0 %` | — | ✅ exacto |
 | `plano_agarrar_radial_dinamica` | `0,162721` | **`0,000000`** | `0,0 %` | — | ✅ exacto |
 
 ⛔⛔ **São QUATRO os traços de esfera que o máximo em posição NÃO decide, não dois** — e os dois
@@ -3328,20 +3453,39 @@ toda —, de modo que o **máximo** é a estatística mais frágil que se podia 
 | `esfera_inflar_radial_dinamica` | `0,011771` | `0,001352` | `0,000220` | `25,7×` | `158×` |
 
 (o `p95` e a mediana são tomados **sobre os vértices que se moveram** em qualquer das duas
-realizações; fora deles a diferença é zero exacto e diluiria os quantis.)
+realizações; fora deles a diferença é zero exacto e diluiria os quantis. ⚠️ **«Moveu-se» é o
+predicado do corpus** — `|p − p_repouso| > 10⁻⁵`, o mesmo que produz a chave `movidos` do cabeçalho
+e que o `verifica_traco.py` corre; e o `p95` é o quantil por **posição**, `ordenados[⌈0,95·n⌉−1]`.
+⛔ Sem estas duas convenções escritas, dois portos honestos leem `p95` diferentes sobre a mesma
+malha — R-pré, 2026-09-07.)
+
+⛔⛔ **E o CHÃO desta régua não viaja no cabeçalho — só o do MÁXIMO viaja** (R-pré, 2026-09-07). A
+frase de abertura desta secção — *«a régua que dá o chão tem de estar ao lado do dado»* — está
+cumprida para o máximo (`dispersao_entre_realizacoes`) e **não** para o `p95`, que é justamente o que
+decide: as duas colunas de `p95` e de mediana exigem **quatro** realizações e a fixture carrega uma.
+⇒ **a dívida fica nomeada:** para um traço de esfera novo, o gate 48 corre (a barra é a do gate 15) mas
+**não se sabe se é decidível** enquanto ninguém medir o `p95` da banda dele; até lá, a única fonte
+das duas colunas é **esta tabela**, e ela envelhece como qualquer tabela.
 
 ⇒ ⭐ **com o `p95` os OITO traços passam a ser decidíveis**, o pior com `1,16×` de margem; com a
 mediana, todos com `37×` a `799×`. ⚠️ **E há uma terceira observável, discreta e quase imune:** a
-**contagem de vértices movidos** varia no máximo **`1`** entre quatro realizações (`1862`–`1863` ·
-`2234`–`2235` · `2183`–`2184` · `2161`–`2163`; cinco dos oito não variam nada) — foi ela que decidiu
-a lei do §2.1, e é a régua mais estreita que este corpus tem para uma pergunta de **conjunto**.
+**contagem de vértices movidos** fica a **`± 1` vértice do valor do cabeçalho** em quatro
+realizações (`1862`–`1863` · `2234`–`2235` · `2183`–`2184` · `2161`–`2163`; cinco dos oito não
+variam nada) — ⚠️ **o desvio é `± 1`, não a AMPLITUDE:** a última das quatro varre três valores
+(cabeçalho `2162`), e ler «varia no máximo `1`» como amplitude faz a tabela parecer errada (R-pré,
+2026-09-07). Foi ela que decidiu a lei do §2.1, e é a régua mais estreita que este corpus tem para
+uma pergunta de **conjunto**.
 
 ⭐⭐ **E o VÉRTICE NOMEADO é a quarta, com a margem maior de todas.** Os três vértices nomeados que
 carregam sinal (`sob_o_pen-down`, `a_1R`, `a_2R`) são **`2,6×` a `235×`** mais quietos que a barra,
 nos oito traços — a lotaria vive noutro sítio da malha. ⚠️ **A regra que escolhe cada vértice está no
 cabeçalho dos `.rastreio`** (o mais próximo do pen-down, e os que ficam a `1R` e `2R` dele numa
 direcção fixa); só três dos oito traços têm `.rastreio`, e é por isso que os valores dos oito estão
-aqui:
+aqui.
+⛔ **A barra desta tabela é POR VÉRTICE — `0,13 × |u|` DAQUELE vértice, não `0,13 × o maior
+deslocamento do traço`** (R-pré, 2026-09-07: com a barra do traço a 1.ª célula lê `205×` e não
+`183×`, e a tabela parece errada). ⚠️ Nas colunas `a_1R` e `a_2R` o `|u|` **não é impresso** — ali
+lê-se a banda e a razão, e a razão é o que se usa:
 
 | fixture | `sob_o_pen-down`: `\|u\|` · banda · barra÷banda | `a_1R` | `a_2R` |
 |---|---|---|---|
@@ -3363,10 +3507,14 @@ pequeno; um máximo sozinho, na esfera, não distingue um port errado de um segu
 fronteira é por traço.** Nos ficheiros por passo, `0,13 × máx\|u\|(k)` fica acima da banda daquele
 passo até: **`k = 12` (todos)** no agarrar (menor margem `1,75×`, no passo `10`), **`k = 7`** no
 gancho (`1,52×`; no `8` cai para `0,46×`) e **`k = 5`** no expandir (`1,19×`; no `6` cai para
-`0,62×`). ⛔ **A saída (a) — uma barra escrita como `k ×` a banda — fica RECUSADA:** uma barra
-derivada do chão de ruído certifica *«estamos dentro do ruído»* e nunca *«estamos certos»*, e o
-CLAUDE.md §0.0 pede o contrário — a barra tem de sair do recurso (a discretização, gate 15) e o
-ruído tem de ficar **debaixo** dela.
+`0,62×`). ⛔ **A saída (a) — uma barra escrita como `k ×` a banda — fica RECUSADA POR PRINCÍPIO, e a
+palavra importa** (R-pré, 2026-09-07: a 1.ª redacção dizia *«recusada por medição»* em três sítios e
+**não traz número nenhum** — uma recusa de princípio arquivada como recusa medida polui a lista das
+recusas medidas, que é o que impede refazer trabalho já pago): uma barra derivada do chão de ruído
+certifica *«estamos dentro do ruído»* e nunca *«estamos certos»*, e o CLAUDE.md §0.0 pede o
+contrário — a barra tem de sair do recurso (a discretização, gate 15) e o ruído tem de ficar
+**debaixo** dela. ⭐ **O que É medido é que ela não faz falta:** o `p95` põe o chão `1,16×` a `25,7×`
+**abaixo** da barra do gate 15 nos oito traços, logo há régua com chão sem inventar barra nenhuma.
 
 ### §10.16 — As OITO fixtures novas: a área do Agarrar, a inclinação que não existe, e a base persistente (2026-09-07)
 
@@ -3382,7 +3530,9 @@ vértices a mais. `movidos = 2128`, `max = 0,162721`.
 **(2)–(4) A inclinação para a normal, medida como AUSÊNCIA** — `plano_agarrar_radial_local_origem`
 (o valor a `0`), `..._pesonormal05` (a `0,5`) e `..._pesonormal1` (a `1`): o **mesmo** traço de
 Agarrar de 12 passos com o pen-down na origem, e as três saídas são **byte-idênticas**
-(`movidos = 2138`, `max = 0,169046`, e os `4 225` vértices coincidem linha a linha). ⇒ o controlo é
+(`movidos = 2138`, `max = 0,169046`, e os `4 225` vértices coincidem linha a linha) — ⚠️ **a
+IGUALDADE é do bloco de vértices, não dos ficheiros:** cada cabeçalho regista o próprio
+`peso_normal`, logo um `cmp` cru dos `.gz` reprova por construção (R-pré, 2026-09-07 · gate 50). ⇒ o controlo é
 **inerte** neste pincel (§4.3 · §8.1). ⚠️ **A `0` e a `1` não bastavam:** um port que só aplicasse a
 inclinação no extremo passaria; a de `0,5` fecha essa porta.
 
@@ -3554,11 +3704,11 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 43 | ⭐⭐⭐ **A BANDA ENTRA UMA VEZ NA VELOCIDADE E NENHUMA NA ACELERAÇÃO — e a régua tem de olhar para a MALHA INTEIRA.** Sobre `plano_arrastar_radial_local_origem` (por passo), a paridade por vértice tem de dar `err_max < 5·10⁻⁶` nos doze passos; com a banda aplicada **duas** vezes (o factor da §5.2 usado também na integração) o mesmo traço sobe a `3,9·10⁻³`. ⚠️ **A metade que faz o gate existir é o CONTROLO, e ele é EXACTO**: o **mesmo** traço em área *Global* (`plano_arrastar_radial_global_origem`) tem de sair **byte-idêntico** com as duas leis — em *Global* a banda é `1` em toda a malha, logo `banda² = banda` **por construção**, e o erro do port não se move (o I mediu `≈ 2·10⁻⁵` nas duas). ⇒ é a **razão** entre os dois traços que denuncia o defeito, e não o valor de nenhum deles. ⛔ Um port que meça só o máximo, ou só o vértice do pen-down, ou só traços *Global*, passa com `banda²` lá dentro: o erro vive num anel de `2,875 R` a `3,5 R` onde o deslocamento já é de ordem `10⁻³` | `5·10⁻⁶` (resolução do ficheiro) contra `3,9·10⁻³`; e o *Global* invariante | §5.2 · §5.4 · §5.4-bis |
 | 44 | ⭐⭐ **A NORMAL POR VÉRTICE É A SOMA SEM PESO DE NORMAIS DE FACE UNITÁRIAS** — e a régua não é um traço, é a grandeza. Sobre uma malha de triângulos **irregulares** (áreas e ângulos muito diferentes à volta do mesmo vértice), a normal que o motor usa tem de bater a soma sem peso a `< 0,03°` e afastar-se da ponderada por **área** por `> 1°` em pelo menos um vértice. ⚠️ **Duas metades**, e a 2.ª é a que impede passar por sorte: numa grelha regular ou numa esfera UV as três candidatas concordam a `< 0,04°` ⇒ *uma malha regular não testa este gate*. ⛔ E o gate **não** pode ser escrito sobre uma fixture do corpus: no plano as três dão `(0,0,1)` e na fixture de dois traços concordam a `0,31°` de máximo | `0,03°` de um lado, `1°` do outro | §4.2-quater · §4.6 linha 4 |
 | 45 | ⭐ **UM TRAÇO MAIS LONGO NÃO É MAIS FUNDO EM ÁREA *LOCAL*** — e é o gate que impede calibrar uma régua de relevo num regime que o alvo não produz. **Três metades, e a do meio é o discriminador forte:** (a) sobre `plano_arrastar_radial_local_origem_36passos` o máximo da malha tem de ficar em `0,76 R` (`0.267205`), **abaixo** do mesmo caminho em `12` passos (`0,94 R`); (b) ⭐ no MESMO traço, o vértice do pen-down tem de **subir até ao passo `12` (`0,28635`) e depois DESCER até `0,14411` no `36`** — ele *assenta*, e o traço continua a acontecer à volta dele; (c) sobre `plano_arrastar_radial_global_origem_36passos` o mesmo vértice tem de crescer em **todos** os 36 passos, de `0,0993` a `1,0550`, chegando a `5,41 R` de máximo de malha (`1.893192`). ⚠️ Um motor que afunde monotonamente com o número de passos passa (c) e reprova (a) **e** (b) ⇒ ⛔ **um gate de artefacto do produto que corra um traço *Local* de ~35 eventos e chegue a `4,8 R` está a medir uma cena que o alvo não produz**, e a barra dele não é calibrável ali | os dois máximos, na barra do gate 15 · o argmax `12` e a monotonia (inteiros) | §2.2 · §10.12 |
-| 46 | ⛔⛔ **NA ESFERA, A BARRA TEM UM CHÃO QUE NÃO É NOSSO — e ele mede-se, não se escolhe.** Nenhum gate de paridade sobre um traço de esfera pode ter barra abaixo da **banda de realização** daquele traço, que viaja na chave `dispersao_entre_realizacoes` do **cabeçalho do próprio `.deformado`** e está medida para os **doze** traços (§10.15), sob pena de reprovar o próprio oráculo. ⚠️⚠️ **REESCRITO em 2026-09-07 nas DUAS metades, e a 1.ª redacção estava errada nas duas.** (a) **O quociente misturava unidades:** ele dividia um erro RELATIVO por uma banda ABSOLUTA e lia-se `5×` a `26×`; na mesma unidade os três abertos dão **`2,15×` · `1,19×` · `1,25×`** — a lotaria continua a não os explicar, mas a margem é uma ordem de grandeza menor e o gancho está praticamente no chão. Quem invocar esta linha para relaxar uma barra **tem de mostrar o quociente em POSIÇÃO**, nunca em fracção. (b) **A barra do gate 15 fica ABAIXO da banda em QUATRO dos oito traços de doze passos** (gancho `0,51×`, expandir `0,28×`, aperto de linha `0,25×`, aperto de ponto `0,23×`) ⇒ ali **um gate de paridade em posição máxima reprova o oráculo comparado consigo mesmo, e não pode existir**. ⇒ **este gate passa a ter uma coluna obrigatória: para cada traço de esfera, dizer se o máximo o decide** (`barra ÷ banda > 1`) e, quando não decide, nomear a régua que decide (gate 48) | a banda do cabeçalho, por traço; e o quociente em posição | §10.13 · §10.15 |
-| 47 | ⭐ **O FATIAMENTO É UM INSTRUMENTO, E ELE TEM UM CONTROLO** — que é o que separa «o prefixo não é o passo `k`» de «a corrida não se repete». Em todo traço novo por passo, `prova_do_fatiamento` tem de ser `0,000000` **ou** ficar `≤` à **banda de realização da corrida inteira** do mesmo traço. ⛔ Uma prova acima da banda diz que o prefixo não reproduz o passo e o ficheiro **não é oráculo**; igual à banda diz que reproduz, a menos da realização (é o caso dos três de esfera: `0,0177` vs `0,0200` · `0,0365` vs `0,0362` · `0,0219` vs `0,0218`). ⚠️ **Sem a 2.ª coluna a 1.ª não tem leitura**, e foi assim que quatro ficheiros da 1.ª geração ficaram no directório a parecer oráculo | `0,000000`, ou `≤` a banda | §10.12 · §10.13 |
-| 48 | ⭐⭐⭐ **NA ESFERA, A PARIDADE MEDE-SE POR QUANTIL, NÃO POR MÁXIMO — e a régua tem de trazer o CHÃO dela.** Onde o gate 46 diz que o máximo não decide, o veredito é o **`p95` da distância por vértice sobre o conjunto que se moveu**, contra a barra do gate 15: nos **oito** traços de doze passos ele fica `1,16×` a `19,9×` abaixo da barra (o pior é o aperto de ponto), e a **mediana** fica `37×` a `799×` abaixo. ⚠️ **Três metades obrigatórias, e nenhuma substitui as outras:** (a) o `p95` decide; (b) o **máximo** continua a ser reportado, com a banda ao lado — ⛔ um quantil sozinho esconde um port que erre muito num sítio pequeno; (c) a **contagem de vértices movidos** entra como observável discreta, e a barra dela é `± 1` (medido: quatro realizações variam no máximo um vértice, e cinco dos oito não variam nada). ⭐ Régua alternativa com a margem maior de todas: os vértices nomeados `sob_o_pen-down` · `a_1R` · `a_2R` dos `.rastreio`, cuja banda é `2,6×` a `235×` menor que a barra. ⛔ **Uma barra escrita como «`k ×` a banda» está RECUSADA por medição**: certifica «estamos dentro do ruído» e nunca «estamos certos» | `p95 < 0,13 × maior deslocamento`; `movidos ± 1` | §10.15 |
+| 46 | ⛔⛔ **NA ESFERA, A BARRA TEM UM CHÃO QUE NÃO É NOSSO — e ele mede-se, não se escolhe.** Nenhum gate de paridade sobre um traço de esfera pode ter barra abaixo da **banda de realização** daquele traço, que viaja na chave `dispersao_entre_realizacoes` do **cabeçalho do próprio `.deformado`** e está medida para os **treze** traços (§10.15 — ⛔ **conte-os**: `zgrep -l dispersao_entre_realizacoes *.deformado.txt.gz`; esta linha dizia `doze`), sob pena de reprovar o próprio oráculo. ⚠️⚠️ **REESCRITO em 2026-09-07 nas DUAS metades, e a 1.ª redacção estava errada nas duas.** (a) **O quociente misturava unidades:** ele dividia um erro RELATIVO por uma banda ABSOLUTA e lia-se `5×` a `26×`; na mesma unidade, e **contra a banda que o cabeçalho de facto traz**, os três abertos dão **`1,67×` · `0,99×` · `1,24×`** ⇒ ⛔ **no GANCHO a lotaria explica o erro inteiro e não há prova de lei em falta ali** (R-pré, 2026-09-07: a 1.ª redacção lia `2,15× · 1,19× · 1,25×` contra o sorteio de 06/09, que a própria emenda substituiu). Quem invocar esta linha para relaxar uma barra **tem de mostrar o quociente em POSIÇÃO** (nunca em fracção) **e contra a banda do cabeçalho de hoje** (nunca contra uma tabela). (b) **A barra do gate 15 fica ABAIXO da banda em QUATRO dos oito traços de doze passos** (gancho `0,51×`, expandir `0,28×`, aperto de linha `0,25×`, aperto de ponto `0,23×`) ⇒ ali **um gate de paridade em posição máxima reprova o oráculo comparado consigo mesmo, e não pode existir**. ⇒ **este gate passa a ter uma coluna obrigatória: para cada traço de esfera, dizer se o máximo o decide** (`barra ÷ banda > 1`) e, quando não decide, nomear a régua que decide (gate 48) | a banda do cabeçalho, por traço; e o quociente em posição | §10.13 · §10.15 |
+| 47 | ⭐ **O FATIAMENTO É UM INSTRUMENTO, E ELE TEM UM CONTROLO** — que é o que separa «o prefixo não é o passo `k`» de «a corrida não se repete». Em todo traço novo por passo, `prova_do_fatiamento` tem de ser `0,000000` **ou** ficar `≤` à **banda de realização da corrida inteira** do mesmo traço. ⛔ Uma prova acima da banda diz que o prefixo não reproduz o passo e o ficheiro **não é oráculo**; igual à banda diz que reproduz, a menos da realização. ⚠️ **A banda é a do CABEÇALHO de hoje** (`dispersao_entre_realizacoes`), e com ela os três de esfera passam com folga: `0,0177` vs `0,025712` · `0,0365` vs `0,043373` · `0,0219` vs `0,021971` — ⛔ os pares `0,0200` · `0,0362` · `0,0218` que esta linha citava são o sorteio de 06/09, que a emenda Q19 substituiu (R-pré, 2026-09-07), e com eles o gancho lia-se «acima da banda». ⚠️ **Sem a 2.ª coluna a 1.ª não tem leitura**, e foi assim que quatro ficheiros da 1.ª geração ficaram no directório a parecer oráculo | `0,000000`, ou `≤` a banda do cabeçalho | §10.12 · §10.13 · §10.15 |
+| 48 | ⭐⭐⭐ **NA ESFERA, A PARIDADE MEDE-SE POR QUANTIL, NÃO POR MÁXIMO — e a régua tem de trazer o CHÃO dela.** Onde o gate 46 diz que o máximo não decide, o veredito é o **`p95` da distância por vértice sobre o conjunto que se moveu**, contra a barra do gate 15: nos **oito** traços de doze passos o chão dele fica `1,16×` a `25,7×` abaixo da barra (o pior é o aperto de ponto; ⛔ esta linha dizia `19,9×`, que é a 2.ª pior — R-pré, 2026-09-07), e a **mediana** fica `37×` a `799×` abaixo. ⚠️ **As DUAS convenções sem as quais o gate não é edificável** (§10.15): «moveu-se» é `\|p − p_repouso\| > 10⁻⁵` — o predicado que produz a chave `movidos` — e o conjunto é a UNIÃO dos movidos do port e do oráculo; o `p95` é `ordenados[⌈0,95·n⌉−1]`. ⚠️ **Três metades obrigatórias, e nenhuma substitui as outras:** (a) o `p95` decide; (b) o **máximo** continua a ser reportado, com a banda ao lado — ⛔ um quantil sozinho esconde um port que erre muito num sítio pequeno; (c) a **contagem de vértices movidos** entra como observável discreta, e a barra é `± 1` **em torno do valor do cabeçalho** (⛔ não `1` de amplitude: uma das quatro realizações varre `2161`–`2163` com o cabeçalho em `2162`). ⭐ Régua alternativa com a margem maior de todas: os vértices nomeados `sob_o_pen-down` · `a_1R` · `a_2R` dos `.rastreio`, cuja banda é `2,6×` a `235×` menor que a barra — ⚠️ **ali a barra é `0,13 × \|u\|` DAQUELE vértice**, não a do traço. ⛔ **Uma barra escrita como «`k ×` a banda» está RECUSADA por PRINCÍPIO** (§0.0: certifica «estamos dentro do ruído» e nunca «estamos certos») — ⚠️ **não por medição**, e a distinção é do R-pré: não há número por trás dela; o que está medido é que ela não faz falta. ⏳ **DÍVIDA NOMEADA:** o chão do `p95` **não** viaja no cabeçalho (só o do máximo viaja) ⇒ para um traço de esfera novo este gate corre, mas a decidibilidade dele fica por medir | `p95 < 0,13 × maior deslocamento`; `movidos ± 1` | §10.15 |
 | 49 | ⭐⭐⭐ **O AGARRAR NÃO TEM ÁREA MÓVEL, NEM EM *DYNAMIC*** — e o gate corre no **plano**, onde a lotaria é zero. Sobre `plano_agarrar_radial_dinamica` (`movidos = 2128`, `max = 0,162721`): o maior `x` de um vértice movido tem de ser **`+0,890625`** — o último vértice da grelha dentro de `R₀(1+L) = 1,225` medido a partir do **pen-down** (`x = −0,3`) — ⛔ e **não** em torno do fim do caminho (`x = +0,3`), onde o conjunto chegaria ao bordo da folha (`+1,5`, mais **13** colunas de vértices). ⚠️ **Duas metades, e nenhuma sozinha basta** (medido no lado limpo, na esfera): pôr só a **banda** no pen-down dá `1728` movidos, só a **pertença** dá `1666`, as duas dão `1864` contra `1863` do alvo. ⚠️ E o **raio** é a terceira: `R ≡ R₀` no Agarrar mesmo com tamanho por pressão ligado | o maior `x` **exacto** (a grelha é nossa) e `movidos` exacto — no plano a lotaria é `0` | §2.1 · §4.3 · §10.16 |
-| 50 | ⛔⛔ **O *NORMAL WEIGHT* NÃO EXISTE NESTE PINCEL, E O GATE É UMA IDENTIDADE.** As três fixtures `plano_agarrar_radial_local_origem`, `..._pesonormal05` e `..._pesonormal1` têm de sair **byte-idênticas** — o mesmo traço com o valor a `0`, `0,5` e `1`. ⛔ Um port que incline o delta para a normal da área falha as duas últimas. ⚠️ **A de `0,5` é load-bearing:** um port que só aplicasse a inclinação no extremo passaria com `0` e `1` só. ⚠️ E o gate irmão é de UI: **o painel não desenha o controlo** — expô-lo já é a divergência, mesmo que o motor o ignore | identidade exacta (`0`) | §4.3 · §8.1 · §10.16 |
+| 50 | ⛔⛔ **O *NORMAL WEIGHT* NÃO EXISTE NESTE PINCEL, E O GATE É UMA IDENTIDADE.** As três fixtures `plano_agarrar_radial_local_origem`, `..._pesonormal05` e `..._pesonormal1` têm de dar o **mesmo bloco de vértices, linha a linha** — o mesmo traço com o valor a `0`, `0,5` e `1`. ⛔ **Os FICHEIROS não são byte-idênticos e não podem ser** (R-pré, 2026-09-07): o cabeçalho de cada um regista o próprio `peso_normal`, logo um `cmp` cru reprova por construção — a comparação é do bloco `d` (e das chaves `movidos = 2138` · `max_deslocamento = 0,169046`), e é assim que ela está verificada. ⛔ Um port que incline o delta para a normal da área falha as duas últimas. ⚠️ **A de `0,5` é load-bearing:** um port que só aplicasse a inclinação no extremo passaria com `0` e `1` só. ⚠️ E o gate irmão é de UI: **o painel não desenha o controlo** — expô-lo já é a divergência, mesmo que o motor o ignore | identidade exacta (`0`) | §4.3 · §8.1 · §10.16 |
 | 51 | ⭐⭐⭐ **A BASE PERSISTENTE SATURA, NÃO ATENUA** — e é preciso o **terceiro** traço para o dizer. Repetindo o mesmo traço de Agarrar: sem base, o maior deslocamento tem de ir de `0,169046` a `0,305822` e a `0,414513` (`+81 %`, `+145 %`); com a base gravada **no repouso**, de `0,169046` a `0,171050` e a `0,176485` (`+1,2 %`, `+4,4 %`), com a **média sobre os movidos a DESCER** (`0,029510 → 0,025818 → 0,027405`). ⛔ Um port que apenas atenue o 2.º traço passa o par de dois e reprova o de três. ⚠️ **Mais os três no-ops exactos**, cada um uma armadilha de autoria: base gravada **depois** do traço · opção ligada **sem base** · base com **um** traço só — os três têm de dar saída idêntica ao controlo sem base | os cinco máximos, na barra do gate 15; os três no-ops exactos | §6.4 · §10.16 |
 | 52 | ⭐⭐ **A BASE PERSISTENTE ENTRA EM QUATRO LEITURAS E EM NENHUMA MAIS** — o gate é um censo, e mede-se pelo que muda quando a base difere do repouso: o **comprimento de repouso** estrutural · o **filtro de raio** que decide quem entra na simulação · o **teste e o peso da âncora radial do Agarrar** · a **condição de criação do pino**. ⛔ E tem de deixar **intactos**: os **alvos** da âncora, do pino e da memória de forma (que apontam para o repouso do traço) e a **banda `w`** nas varreduras e na integração. ⚠️ Um port que faça a banda ler a base muda a fronteira do movimento sem mudar o máximo — *o defeito vive no anel de `2,875 R` a `3,5 R`*, e só uma régua de malha inteira o vê (a lição do gate 43) | o censo, com um controlo por linha | §6.4 |
 | 53 | ⭐⭐ **A COLISÃO É O PENÚLTIMO ACTO DA INTEGRAÇÃO, E TEM CINCO CLÁUSULAS** — todas verificáveis por construção num port, nenhuma observável no corpus de hoje (não há colisor em fixture nenhuma): a lista de colisores é montada **uma vez** no 1.º passo, na pose desse instante · as **5 varreduras nunca vêem o colisor** · ela corre para **todos** os vértices da célula activa, **sem factor, sem banda e sem máscara** · a origem do raio (`x_col`) é escrita **depois** da colisão e nasce nas posições de **repouso do traço** · vários colisores resolvem-se **em sequência**, cada um sobre a posição já corrigida mas a partir da **mesma** origem. ⛔ **Este é um gate de ESPEC** enquanto não houver fixture com colisor, e a linha diz isso de propósito | por construção | §5.6 |

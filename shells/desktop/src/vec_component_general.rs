@@ -83,7 +83,7 @@ pub(crate) fn state_of(
     selected: &[VecPathId],
     // ⭐ **O conta-gotas está armado?** — o mesmo dado que o produtor vetorial recebe. Ele vive no
     // `App::vec_path_pick`, que é da shell: publicá-lo é o que faz o botão trocar de rótulo para
-    // *Click a prefab to swap* enquanto o gesto está aberto.
+    // *Click a copy of the prefab* enquanto o gesto está aberto.
     pick_armed: bool,
 ) -> Option<ph2d_panel_vector::state::ComponentState> {
     let e = subject(map, selected)?;

@@ -98,7 +98,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.component.variants_beyond" => "more variant options (use Swap Prefab)",
         "panel.vector.component.update_main" => "Apply to Prefab",
         "panel.vector.component.swap" => "Swap Prefab",
-        "panel.vector.component.swap_armed" => "Click a prefab to swap",
+        // ⚠️ **O alvo é uma CÓPIA, e o rótulo tem de o dizer** (F4.6c wave 2): no modelo geral a
+        // receita está escondida no canvas, então o que o artista pode clicar é uma cópia dela.
+        // *Um rótulo que manda clicar no que não se vê ensina que o gesto está partido.*
+        "panel.vector.component.swap_armed" => "Click a copy of the prefab",
         "panel.vector.section.states" => "States",
         "panel.vector.states.role.default" => "Default",
         "panel.vector.states.role.hover" => "Hover",

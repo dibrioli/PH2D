@@ -255,7 +255,7 @@ fn last_copy(sim: &mut SimWorld, master: Entity) -> Option<Entity> {
 /// ⭐⭐ **O botão do *Swap* ARMA o conta-gotas — ele não age e não fala.**
 ///
 /// ⚠️ **`changed == false` aqui NÃO é um clique comido:** o gesto é de duas mãos, e a resposta ao
-/// primeiro clique é o painel trocar de rótulo para *Click a prefab to swap* (o `swap_armed` que a
+/// primeiro clique é o painel trocar de rótulo para *Click a copy of the prefab* (o `swap_armed`
 /// shell publica). *Um toast a dizer «agora clique noutra coisa» seria a terceira maneira de dizer
 /// o que o botão já diz.*
 ///

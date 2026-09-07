@@ -153,7 +153,16 @@ struct Look {
     cheio: bool,
 }
 
-/// ⭐⭐⭐ **UM OSSO, DESENHADO — a porta única.** Devolve o comprimento em píxeis de tela.
+/// ⭐⭐⭐ **UM OSSO, DESENHADO — a porta única.** Devolve o **RAIO DA BOLINHA** que ela desenhou,
+/// para quem precisa de pousar outra alça no mesmo tamanho (a ponta da corrente).
+///
+/// ⛔⛔ **Ela devolvia o COMPRIMENTO, e isso foi um defeito reportado** (Enio, 2026-09-07, com
+/// foto: *«o círculo do IK ficou gigante»*). Na extracção desta porta o valor de retorno mudou de
+/// significado e a variável que o recebia **manteve o nome** (`raio`) — então o anel duplo da ponta
+/// passou a ser desenhado com o comprimento do osso como raio, `340 px` em vez de `12`.
+/// ⚠️ *Um valor de retorno que muda de significado numa refactoração não avisa ninguém: quem o lê
+/// é uma variável, e o nome dela não é verificado por nada.* ⇒ ela devolve agora a grandeza que o
+/// chamador de facto quer, e o gate `the_tip_ring_is_never_bigger_than_the_joint_ring` mede-a.
 ///
 /// ⚠️ **Ela existe por causa da PRÉ-VISUALIZAÇÃO** (Enio, 2026-09-07: *«o osso deve aparecer logo
 /// no mouse down e crescer conforme o usuário arrasta»*): o osso que está a nascer tem de ser
@@ -229,7 +238,7 @@ fn glyph(
         None,
         &bolinha,
     );
-    comp
+    raio
 }
 
 /// ⭐⭐⭐ **O OSSO QUE ESTÁ A NASCER** — a pré-visualização do arrasto (Enio, 2026-09-07).
@@ -313,7 +322,7 @@ pub fn draw_bones(
         // apagado mesmo com o ponteiro sobre o mesmo osso.
         let sob = hover.filter(|h| h.bone == bits);
         let parte = |q: BonePart| sob.is_some_and(|h| h.part == q);
-        let raio = glyph(
+        let raio_da_junta = glyph(
             pa,
             pb,
             Look {
@@ -339,7 +348,7 @@ pub fn draw_bones(
                     Affine::IDENTITY,
                     &Brush::Solid(cor),
                     None,
-                    &Circle::new(pb, raio * k),
+                    &Circle::new(pb, raio_da_junta * k),
                 );
             }
             if ponta_acesa {
@@ -348,7 +357,7 @@ pub fn draw_bones(
                     Affine::IDENTITY,
                     &Brush::Solid(aceso),
                     None,
-                    &Circle::new(pb, raio * 0.55),
+                    &Circle::new(pb, raio_da_junta * 0.55),
                 );
             }
         }
@@ -481,6 +490,47 @@ mod tests {
                 proporcao <= PIOR_PROPORCAO,
                 "um osso de {comp} px sai com {largura} px de corpo ({proporcao:.1}:1) - e' o \
                  defeito de 2026-09-06 ('os ossos viraram circulos') a voltar"
+            );
+        }
+    }
+
+    /// ⭐⭐⭐ **O ANEL DA PONTA NUNCA É MAIOR QUE O DA JUNTA** — o report de 2026-09-07 (*«o
+    /// círculo do IK ficou gigante»*), dito como número.
+    ///
+    /// As duas alças são o MESMO tamanho por lei (a tolerância de dedo da casa), e a da ponta
+    /// distingue-se por ser um anel DUPLO, não por ser maior. ⛔ O defeito era um valor de retorno
+    /// que mudou de significado numa refactoração — a porta passou a devolver o COMPRIMENTO e a
+    /// variável que o recebia manteve o nome `raio`, então num osso de `340 px` o anel saía com
+    /// `340` de raio em vez de `12`.
+    ///
+    /// ⚠️ Ele mede o que a PORTA devolve, e não uma conta repetida ao lado: é exactamente o valor
+    /// que o desenho da ponta usa.
+    #[test]
+    fn the_tip_ring_is_never_bigger_than_the_joint_ring() {
+        let mut cena = VectorScene::new();
+        let branco = VelloColor::from_rgba8(255, 255, 255, 255);
+        // Varre desde um osso minúsculo até um osso de zoom fechado.
+        for comp in [4.0, 24.0, 48.0, 107.52, 192.0, 340.0, 4000.0] {
+            let devolvido = glyph(
+                Point::new(0.0, 0.0),
+                Point::new(comp, 0.0),
+                Look {
+                    corpo: false,
+                    junta: false,
+                    cheio: false,
+                },
+                (branco, branco),
+                &mut cena,
+            );
+            assert!(
+                (devolvido - joint_radius_px(comp)).abs() < 1e-12,
+                "a porta devolveu {devolvido} num osso de {comp} px - o anel da ponta e' desenhado \
+                 com isto, e a lei da bolinha diz {}",
+                joint_radius_px(comp)
+            );
+            assert!(
+                devolvido <= BONE_JOINT_R_PX,
+                "a alca da ponta saiu com {devolvido} px de raio num osso de {comp} px"
             );
         }
     }

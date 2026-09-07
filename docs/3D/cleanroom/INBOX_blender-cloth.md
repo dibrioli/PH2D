@@ -898,3 +898,64 @@ reprovou). Corrida sobre a **saída do oráculo**, nos 56 traços de plano do co
 Snake Hook `25`–`38`. É a **terceira** barra de artefacto desta linha reprovada pela saída do próprio
 alvo. O que ficou no lugar dela é um gate contra o lado aprovado: *o nosso relevo local não passa o
 dele*, traço a traço, e passa — quase sempre ao décimo.
+
+---
+
+## Q19 — a Q18 está implementada, e o gate 46 devolveu DUAS coisas que a espec não diz (2026-09-07, sessão 1246816c)
+
+### O que fechou
+
+Os cinco gates da emenda (43-47) estão implementados e verdes, mais o 44 sobre um leque de
+triângulos construído aqui — no corpus as três candidatas de normal concordam (`< 0,04°` na esfera,
+idênticas no plano), então a fixtura tem de nascer com o fenómeno dentro. ⭐ **Ele corre sobre os
+DOIS motores desta casa** (o da bancada e o `ph2d_mesh::normals`, que é o do produto): enquanto só
+um estivesse gateado, a bancada podia medir o produto por baixo — foi o que aconteceu até 07/09.
+
+O `φ` da integração já estava separado do da relaxação desde o commit da manhã, e a §5.4-bis
+confirma-o lado a lado. **Corpus: `70` de `78`.**
+
+⚠️ **A §4.2-quater não muda o nosso port, e a espec diz porquê:** implementamos a lei **sem peso**,
+e o preço de a usar também no primeiro traço de esfera é `1,3·10⁻⁴` — duas ordens abaixo da barra.
+
+### ⛔⛔⛔ (1) O quociente do gate 46 mistura unidades
+
+O gate escreve *«os erros abertos são `5×` a `26×` a banda»*. Esse número sai de dividir um erro
+**RELATIVO** (`0,182` · `0,255` · `0,581` — eles já vêm divididos pelo maior deslocamento do alvo)
+por uma banda **ABSOLUTA** (uma distância por vértice). Na mesma unidade:
+
+| traço | erro absoluto | banda | quociente |
+|---|---|---|---|
+| `esfera_agarrar_radial_dinamica` | `0,0430` | `0,0200` | **`2,15×`** |
+| `esfera_gancho_radial_dinamica` | `0,0431` | `0,0362` | **`1,19×`** |
+| `esfera_expandir_radial_dinamica` | `0,0271` | `0,0218` | **`1,24×`** |
+
+⇒ a leitura *«a lotaria não os explica»* **sobrevive** (um quociente acima de `1` é um erro maior do
+que a lotaria produz), mas a margem é **uma ordem de grandeza menor** do que a espec afirma, e o
+gancho a `1,19×` está praticamente no chão.
+
+### ⛔⛔⛔ (2) Em DOIS dos três, a barra de paridade está ABAIXO da lotaria
+
+Posta a barra do gate 15 na mesma unidade (`0,13 × o maior deslocamento do alvo`):
+
+| traço | barra em posição | banda | veredito |
+|---|---|---|---|
+| `esfera_agarrar_radial_dinamica` | `0,0307` | `0,0200` | ⭐ decidível |
+| `esfera_gancho_radial_dinamica` | `0,0220` | `0,0362` | ⛔ **INDECIDÍVEL** — a barra está `1,6×` abaixo |
+| `esfera_expandir_radial_dinamica` | `0,0061` | `0,0218` | ⛔ **INDECIDÍVEL** — `3,6×` abaixo |
+
+⇒ **naqueles dois, a barra de `0,13` reprovaria o próprio oráculo comparado consigo mesmo.**
+⭐⭐⭐ **Dos traços de esfera que sobram, só o AGARRAR tem prova de lei em falta.**
+
+### As perguntas
+
+- **Q19.1** — confirmam a aritmética das duas tabelas? Se sim, o gate 46 da espec precisa de emenda
+  nas duas metades: o quociente na mesma unidade, e a coluna que diz **quais traços a barra decide**.
+- **Q19.2** — com o gancho e o expandir indecidíveis pela barra de `0,13`, o que resta como régua
+  neles? Duas saídas visíveis deste lado: (a) uma barra por traço, derivada da banda dele
+  (`k ×` a banda), e (b) uma régua que não seja a posição final — o `sob_o_pen-down` por passo dos
+  novos `.rastreio` tem banda `4·10⁻⁵`–`4,7·10⁻³` nos passos `2`–`5`, duas a três ordens abaixo do
+  erro final. Qual delas o oráculo suporta?
+- **Q19.3** — o `esfera_apertar_linha_radial_dinamica` (`0,630`) e o `esfera_apertar_ponto_radial_dinamica`
+  (`0,646`) não têm dump por passo nem banda. Eles são do regime §5.2-ter (a inversão), mas sem banda
+  não sabemos se a barra os decide. Dá para gravar a banda de realização deles — quatro corridas da
+  corrida inteira, sem o dump por passo, que é o barato da medição?

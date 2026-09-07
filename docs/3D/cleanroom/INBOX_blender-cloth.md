@@ -682,3 +682,57 @@ grep -c 'AUDITADA contra §4.2 por R-pré' docs/3D/cleanroom/SPEC_<alvo>.md
 com a contagem a ter de bater o número de emendas. ⚠️ **E o único instrumento que apanhou isto foi um
 R-pré seguinte a ler o quadro inteiro** — quer dizer, uma emenda que fosse a última da linha teria
 shipado sem auditoria nenhuma e ninguém saberia.
+
+## Q17 — o resíduo do Push/Inflate está na BORDA DE ATAQUE, e o solver está ilibado (2026-09-07)
+
+A emenda Q16 está implementada (gates 24, 31, 35-38 e a assimetria de espelho). **`53` dos `73`**
+traços batem a barra. E o instrumento do §10.10 fechou metade da pergunta da Q16:
+
+⭐⭐ **O gate 35 passa e o `_origem` falha** ⇒ pelo critério que a própria §14 escreve, *«um port que
+passe este e falhe o `_origem` tem o defeito na fase do GESTO»*. O solver está ilibado: dez passos
+de relaxação pura depois de um impulso conhecido reproduzem o alvo em toda a malha e nos doze passos.
+
+### E o perfil diz ONDE, o que muda a pergunta
+
+`plano_empurrar_radial_local_origem`, ao longo do eixo do traço (cursor final em `0,6`, `R = 0,35`):
+
+| `x` de repouso | nosso | alvo | razão |
+|---|---|---|---|
+| `0,000` (o pen-down) | `0,2100` | `0,2195` | `0,957` |
+| `0,469` | `0,2417` | `0,2594` | `0,932` |
+| `0,750` | `0,1249` | `0,1515` | `0,824` |
+| `0,797` | `0,0654` | `0,1165` | **`0,561`** |
+| `0,844` | `0,0204` | `0,0830` | **`0,246`** |
+| `0,891` | `0,0033` | `0,0546` | **`0,060`** |
+
+⇒ **o núcleo erra `4`–`7 %` e a BORDA DE ATAQUE erra `16×`**, e a diferença absoluta em `x = 0,844`
+(`0,0626`) é praticamente o `err_max` do traço (`0,0653`). *A nossa deformação pára onde a do alvo
+continua.* ⚠️ O mesmo perfil no Inflate: sobra atrás, falta à frente.
+
+### ⛔ O que já foi medido e REFUTADO deste lado (não repita)
+
+| tentado | número | controlo |
+|---|---|---|
+| re-apanhar o cursor na superfície deformada — **vértice mais próximo** | `empurrar 0,252 → 0,825` | arrasto `0,012` intacto |
+| re-apanhar o cursor — **interpolação suave** dos vizinhos no plano do ecrã | `empurrar 0,252 → 0,937` | arrasto `0,012` intacto |
+| a queda medida na posição de **REPOUSO** em vez da actual | `arrastar 0,012 → 0,654` | — |
+| o **peso** da normal por vértice (área · uniforme), **três** medições | `0,245 → 0,245` | — |
+| **mais varreduras** · a banda do `φ` · a escala da banda · a da retenção | todas destroem o arrasto | — |
+
+⇒ *o `caminho` das fixtures É o cursor que o alvo usa, e ele fica no plano de partida.*
+
+### As perguntas
+
+- **Q17.1 (a maior)** — o que decide se um vértice **à frente do cursor** ainda recebe força no passo
+  `k`? Do nosso lado são três coisas: pertencer às células juntas (§2.1), a banda (§2.2), e o corte
+  `d ≥ R` da §4.1 medido do **vértice actual** ao cursor. Numa folha que já afundou, a distância 3D
+  cresce e o corte fecha mais cedo. **Há alguma diferença entre esse corte e o do alvo** — a distância
+  medida noutro espaço, o corte contra outro raio, ou o conjunto de células a ser reavaliado de outra
+  maneira quando o cursor avança?
+- **Q17.2** — as **células** activas: nós juntamo-las por `|p⁰(v) − c| < R₀(1+L)` sobre o repouso
+  (§3.1) e reavaliamos a cada passo. O alvo **acrescenta** células ao conjunto do traço à medida que o
+  cursor anda, ou re-decide o conjunto inteiro em cada passo? E o que é decidido — a célula ou o
+  vértice?
+- **Q17.3** — no Inflate a assinatura é a mesma noutra direcção (sobra atrás, falta à frente). Se a
+  resposta à Q17.1 for a mesma para os dois, diga-o; se o Inflate tiver uma segunda causa, ela é o que
+  interessa, porque ele não lê a normal da área.

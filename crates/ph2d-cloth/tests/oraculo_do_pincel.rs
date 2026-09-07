@@ -3045,12 +3045,11 @@ fn campo_do_por_passo(nome: &str, chave: &str) -> f64 {
     let texto = inflar(&format!("{nome}.porpasso.txt.gz"));
     for l in texto.lines() {
         let l = l.trim_start_matches("# ").trim();
-        if let Some(resto) = l.strip_prefix(chave) {
-            if let Some(t) = resto.split_whitespace().next_back() {
-                if let Ok(v) = t.parse::<f64>() {
-                    return v;
-                }
-            }
+        if let Some(resto) = l.strip_prefix(chave)
+            && let Some(t) = resto.split_whitespace().next_back()
+            && let Ok(v) = t.parse::<f64>()
+        {
+            return v;
         }
     }
     panic!("{nome}: sem `{chave}` no cabecalho do dump por passo");

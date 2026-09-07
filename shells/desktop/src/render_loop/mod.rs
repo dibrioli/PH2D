@@ -2803,7 +2803,11 @@ impl crate::App {
             self.prefab_stage_pending = Some(first.to_bits());
             // ⭐⭐⭐ **A trava fecha-se na abertura** — a partir daqui só `Done`/`Enter` ou
             // `Cancel`/`Esc` a soltam.
-            self.prefab_editing = Some(first.to_bits());
+            //
+            // ⛔ **Ela guarda o `StableId`, e não os bits**: o `Ctrl+Z` respawna tudo com bits
+            // novos, e uma trava em bits expulsava o artista da sessão ao desfazer. Ver o doc do
+            // `master_editing::mark`.
+            self.prefab_editing = sim.world().get::<ph2d_ecs::StableId>(*first).map(|s| s.0);
             // ⭐⭐⭐ **E a FOTOGRAFIA que o `Cancel` repõe** (Enio, 2026-09-07: *«um botão Cancel
             // para cancelar as modificações e deixar a edição sem fazer mudanças»*).
             //

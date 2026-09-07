@@ -303,9 +303,13 @@ fn the_bar_counts_the_copies_that_follow() {
 #[test]
 fn the_latch_keeps_the_recipe_open_when_the_selection_leaves() {
     let (mut sim, root, piece, loose) = scene();
+    sim.world_mut()
+        .entity_mut(root)
+        .insert(ph2d_ecs::StableId(4242));
     let mut latch = None;
     mark(&mut sim, Some(piece.to_bits()), &mut latch);
-    latch = Some(root.to_bits());
+    // A trava guarda a identidade DURÁVEL da receita — ver o doc do `mark`.
+    latch = Some(4242);
     // O gesto: clicar noutro objecto (ou no vazio) — a selecção sai da receita.
     mark(&mut sim, Some(loose.to_bits()), &mut latch);
     assert!(
@@ -325,8 +329,64 @@ fn the_latch_keeps_the_recipe_open_when_the_selection_leaves() {
 #[test]
 fn the_latch_lets_go_when_the_recipe_dies() {
     let (mut sim, root, _piece, _) = scene();
-    let mut latch = Some(root.to_bits());
+    sim.world_mut()
+        .entity_mut(root)
+        .insert(ph2d_ecs::StableId(4242));
+    let mut latch = Some(4242);
     sim.world_mut().entity_mut(root).despawn();
     mark(&mut sim, None::<u64>, &mut latch);
     assert_eq!(latch, None, "a trava ficou presa a uma receita que morreu");
+}
+
+/// ⛔⛔⛔ **A SESSÃO SOBREVIVE A UM `Ctrl+Z`** — e a 1.ª versão da trava não sobrevivia.
+///
+/// O undo **respawna tudo com bits novos** (é a lei escrita do módulo do editor: *«referência
+/// durável entre objectos é o `StableId`, nunca os bits»*), e uma trava guardada em bits aponta,
+/// depois de um passo, para uma entidade morta. ⇒ desfazer uma edição feita DENTRO da receita
+/// **expulsava o artista da sessão**, e nada na tela dizia porquê.
+///
+/// ⚠️ **A fixtura reproduz o restauro pelo mecanismo**: a entidade morre e outra nasce com o MESMO
+/// `StableId` — que é exactamente o que o `apply_project` faz.
+///
+/// **Mutação que deve sangrar:** a trava voltar a resolver-se por bits.
+#[test]
+fn the_session_survives_an_undo_step() {
+    let (mut sim, root, piece, _) = scene();
+    sim.world_mut()
+        .entity_mut(root)
+        .insert(ph2d_ecs::StableId(4242));
+    let mut latch = None;
+    mark(&mut sim, Some(root.to_bits()), &mut latch);
+    latch = Some(4242);
+    assert!(
+        !is_off_canvas(sim.world(), piece),
+        "controlo: a sessao abriu"
+    );
+
+    // O `Ctrl+Z`: o mundo é reconstruído — entidades novas, MESMOS `StableId`.
+    sim.world_mut().entity_mut(piece).despawn();
+    sim.world_mut().entity_mut(root).despawn();
+    let root2 = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            Name::new("Badge"),
+            MasterRoot,
+            ph2d_ecs::StableId(4242),
+        ))
+        .id();
+    let piece2 = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Box"), ChildOf(root2)))
+        .id();
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+
+    // A selecção morreu com o passo (o restauro transporta-a por id estável, e a peça podia nem
+    // estar seleccionada) — é a TRAVA que tem de segurar a sessão.
+    mark(&mut sim, None::<u64>, &mut latch);
+    assert_eq!(latch, Some(4242), "a trava largou a receita ao desfazer");
+    assert!(
+        !is_off_canvas(sim.world(), piece2),
+        "o `Ctrl+Z` expulsou o artista da sessao"
+    );
 }

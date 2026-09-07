@@ -58,22 +58,32 @@ use ph2d_ecs::{Entity, MasterEditing, SimWorld};
 ///
 /// ⚠️ **E ela solta-se sozinha quando a receita MORRE** — apagá-la a meio da sessão deixaria o
 /// artista num modo sem barra (a barra é derivada do mundo) e portanto sem saída.
+///
+/// ⛔⛔⛔ **A trava é um `StableId`, e não os bits da entidade** — a 1.ª versão eram os bits, e por
+/// isso um `Ctrl+Z` dentro da sessão **expulsava o artista dela**: o undo respawna tudo com bits
+/// novos, e a trava passava a apontar para uma entidade morta. É a lei escrita do módulo do editor
+/// (*«referência durável entre objectos é o `StableId`, nunca os bits — o undo respawna tudo»*), e
+/// eu escrevi-a ao contrário; o gate `the_session_survives_an_undo_step` é a reprodução.
 pub(crate) fn mark(
     sim: &mut SimWorld,
     selection: impl IntoIterator<Item = u64>,
     latch: &mut Option<u64>,
 ) -> Marked {
-    if let Some(bits) = *latch {
-        let e = Entity::from_bits(bits);
-        if sim.world().get_entity(e).is_err()
-            || sim.world().get::<ph2d_ecs::MasterRoot>(e).is_none()
-        {
-            *latch = None;
-        }
+    // A trava resolve-se pela identidade DURÁVEL a cada quadro; ela larga quando a receita deixa de
+    // existir (ou deixa de ser uma receita).
+    let latched: Option<u64> = latch.and_then(|id| {
+        crate::instance_verbs_walk::entity_for_stable_id(sim, id).filter(|&bits| {
+            sim.world()
+                .get::<ph2d_ecs::MasterRoot>(Entity::from_bits(bits))
+                .is_some()
+        })
+    });
+    if latched.is_none() {
+        *latch = None;
     }
     let editing: Vec<Entity> = selection
         .into_iter()
-        .chain(*latch)
+        .chain(latched)
         .map(Entity::from_bits)
         .filter(|&e| sim.world().get_entity(e).is_ok())
         .filter_map(|e| ph2d_ecs::master_root_of(sim.world(), e))

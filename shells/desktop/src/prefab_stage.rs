@@ -46,9 +46,17 @@ use crate::preview_drive::{Driven, PreviewDrive};
 /// nomear a crate do chrome em cada sítio.
 pub(crate) use ph2d_editor::screens::hero::prefab_bar::PrefabExit as Exit;
 
-/// Uma receita em cena: a raiz, a pose de **bastidor** e o que o palco escreveu por último.
+/// Uma receita em cena: a identidade dela, a entidade viva, a pose de **bastidor** e o que o palco
+/// escreveu por último.
+///
+/// ⛔⛔ **A identidade é o `StableId`; os bits são só o ENDEREÇO de hoje.** Um `Ctrl+Z` dentro da
+/// sessão respawna tudo com bits novos — guardar só os bits fazia o palco desmontar-se ao desfazer,
+/// e a receita saltava de volta para o bastidor (fora do ecrã) com a sessão ainda aberta.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Stage {
+    /// A identidade DURÁVEL da receita.
+    pub(super) id: u64,
+    /// A entidade de agora — re-resolvida a cada quadro pelo [`hold`].
     pub(super) root: u64,
     /// Para onde ela volta quando o palco fecha.
     pub(super) authored: Transform,
@@ -133,10 +141,32 @@ pub(crate) fn hold(stage: &mut Option<Stage>, sim: &mut SimWorld, drive: &mut Pr
     let Some(st) = stage.as_mut() else {
         return;
     };
-    let root = Entity::from_bits(st.root);
-    if !is_open(sim, st.root) {
+    // ⭐ **O endereço re-resolve-se pela identidade a cada quadro** — ver o doc do [`Stage`].
+    let Some(bits) = crate::instance_verbs_walk::entity_for_stable_id(sim, st.id) else {
+        // A receita deixou de existir (apagada, ou um restauro que não a trouxe): não há onde
+        // repor, e insistir seria escrever numa entidade morta.
+        *stage = None;
+        return;
+    };
+    let root = Entity::from_bits(bits);
+    if !is_open(sim, bits) {
         Driven::StagePose(st.authored).write(sim, root);
         *stage = None;
+        return;
+    }
+    // ⭐⭐⭐ **O palco REMONTA-SE depois de um `Ctrl+Z`.** O restauro trouxe a receita com a pose de
+    // BASTIDOR (a captura substitui a pré-visualização pelo autorado), e numa entidade nova — logo
+    // a entrada do ledger também é nova, e a primeira declaração dela tem de carregar o autorado.
+    // ⛔ Sem isto a receita saltava para fora do ecrã a meio da sessão, e o passo seguinte gravava
+    // a pose de palco como documento.
+    if bits != st.root {
+        Driven::StagePose(st.last_written).write(sim, root);
+        drive.driven(
+            root,
+            Driven::StagePose(st.authored),
+            Driven::StagePose(st.last_written),
+        );
+        st.root = bits;
         return;
     }
     if let Some(now) = sim.world().get::<Transform>(root).copied() {
@@ -186,7 +216,14 @@ fn raise(
         // ⚠️ **A PRIMEIRA declaração é a que fixa o autorado** — o `before` dela é a pose de
         // bastidor, e é ela que a captura repõe enquanto o palco durar.
         drive.driven(root, Driven::StagePose(authored), Driven::StagePose(placed));
+        let Some(id) = sim.world().get::<ph2d_ecs::StableId>(root).map(|s| s.0) else {
+            // Sem identidade durável não há palco: ele não sobreviveria ao primeiro `Ctrl+Z`, e um
+            // palco que desmonta sozinho é pior que nenhum.
+            *pending = None;
+            return;
+        };
         *stage = Some(Stage {
+            id,
             root: bits,
             authored,
             last_written: placed,

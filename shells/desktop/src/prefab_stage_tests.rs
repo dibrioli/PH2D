@@ -158,6 +158,7 @@ fn on_stage() -> (SimWorld, super::Stage, Transform, Transform) {
             Transform::default(),
             ph2d_ecs::MasterRoot,
             ph2d_ecs::MasterEditing,
+            ph2d_ecs::StableId(7777),
         ))
         .id();
     let authored = *sim.world().get::<Transform>(root).unwrap();
@@ -165,6 +166,7 @@ fn on_stage() -> (SimWorld, super::Stage, Transform, Transform) {
     placed.translation.x = 42.0;
     Driven::StagePose(placed).write(&mut sim, root);
     let stage = super::Stage {
+        id: 7777,
         root: root.to_bits(),
         authored,
         last_written: placed,
@@ -259,6 +261,50 @@ fn dragging_the_recipe_on_stage_does_not_rewrite_the_backstage_pose() {
         sim.world().get::<Transform>(e).unwrap().translation.x,
         authored.translation.x,
         "o arrasto no palco virou documento — abrir e mexer moveria a receita para sempre"
+    );
+    PreviewDrive::restore_live(&mut sim, &live);
+}
+
+/// ⭐⭐⭐ **O PALCO REMONTA-SE depois de um `Ctrl+Z`.**
+///
+/// O restauro traz a receita numa entidade NOVA e com a pose de **bastidor** (a captura substitui a
+/// pré-visualização pelo autorado). ⛔ Sem esta metade a receita saltava para fora do ecrã a meio da
+/// sessão — e, pior, o passo seguinte gravava a pose de palco como documento, porque a entrada do
+/// ledger tinha ficado presa a uma entidade morta.
+///
+/// **Mutação que deve sangrar:** o braço do `bits != st.root` no [`super::hold`].
+#[test]
+fn the_stage_reassembles_itself_after_an_undo_step() {
+    let (mut sim, stage, authored, placed) = on_stage();
+    let mut st = Some(stage);
+    let mut drive = PreviewDrive::default();
+    let old = ph2d_ecs::Entity::from_bits(stage.root);
+    drive.driven(old, Driven::StagePose(authored), Driven::StagePose(placed));
+    // O `Ctrl+Z`: entidade nova, MESMO `StableId`, pose de bastidor.
+    sim.world_mut().entity_mut(old).despawn();
+    let novo = sim
+        .world_mut()
+        .spawn((
+            authored,
+            ph2d_ecs::MasterRoot,
+            ph2d_ecs::MasterEditing,
+            ph2d_ecs::StableId(7777),
+        ))
+        .id();
+
+    super::hold(&mut st, &mut sim, &mut drive);
+    assert!(st.is_some(), "o palco desmontou-se ao desfazer");
+    assert_eq!(
+        sim.world().get::<Transform>(novo).unwrap().translation.x,
+        placed.translation.x,
+        "a receita saltou para o bastidor a meio da sessao"
+    );
+    // E continua a ser pré-visualização: a captura vê o bastidor.
+    let live = drive.substitute_authored(&mut sim);
+    assert_eq!(
+        sim.world().get::<Transform>(novo).unwrap().translation.x,
+        authored.translation.x,
+        "depois do restauro a pose de palco virou documento"
     );
     PreviewDrive::restore_live(&mut sim, &live);
 }

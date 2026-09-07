@@ -105,9 +105,16 @@ fn the_visible_area_has_one_door_and_both_clients_use_it() {
 #[test]
 fn the_session_only_ends_through_the_two_doors() {
     let frame = code_of("render_loop/mod.rs");
+    let at = frame
+        .find("self.prefab_editing =")
+        .expect("a abertura ja' nao fecha a trava — clicar no vazio volta a fechar a sessao");
+    let arm = &frame[at..(at + 200).min(frame.len())];
+    // ⛔⛔ **E ela guarda a identidade DURÁVEL.** Um `Ctrl+Z` dentro da sessão respawna tudo com
+    // bits novos: uma trava em bits aponta para uma entidade morta e **expulsa o artista da
+    // sessão**. Foi assim que a 1.ª versão saiu, e é a lei escrita do módulo do editor.
     assert!(
-        frame.contains("self.prefab_editing = Some("),
-        "a abertura ja' nao fecha a trava — clicar no vazio volta a fechar a sessao por acidente"
+        arm.contains("StableId"),
+        "a trava voltou a guardar BITS — um `Ctrl+Z` dentro da sessao expulsa o artista:\n{arm}"
     );
     let main = code_of("main.rs");
     let serve = main

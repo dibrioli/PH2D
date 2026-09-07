@@ -7267,10 +7267,13 @@ name = "ph2d-panel-motion-graph"
 version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
+ "ph2d-color",
+ "ph2d-curve",
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-node-registry",
  "ph2d-nodegraph",
+ "ph2d-param-editors",
  "ph2d-tokens",
  "ph2d-ui-testkit",
 ]

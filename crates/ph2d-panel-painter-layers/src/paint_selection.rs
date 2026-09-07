@@ -244,7 +244,7 @@ fn operation_card(
             hit_index,
         );
     }
-    y + card_h + Spacing::Sm.px()
+    y + card_h + ph2d_tokens::block_gap_px()
 }
 
 /// The **Offset** controls (slider + Apply / Apply & Keep), wrapped in a titled card like [`operation_card`]
@@ -312,7 +312,7 @@ fn offset_card(
             hit_index,
         );
     }
-    y + card_h + Spacing::Sm.px()
+    y + card_h + ph2d_tokens::block_gap_px()
 }
 
 /// Build + paint one adaptive segmented Toggle group and register its per-segment hits; returns next `y`.
@@ -346,7 +346,7 @@ fn seg_group(
         store,
         hit_index,
     );
-    y + used + Spacing::Xs.px()
+    y + used + ph2d_tokens::row_gap_px()
 }
 
 #[cfg(test)]

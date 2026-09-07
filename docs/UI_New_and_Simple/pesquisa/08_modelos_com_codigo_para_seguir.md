@@ -1153,6 +1153,75 @@ idênticas os saltos têm de **alternar** entre dois valores, e o maior é o que
 
 **Portão:** `13 066` testes / `0` falhados; clippy `--all-targets -D warnings` limpo.
 
+### 7.22 — ✅ WAVE 19 (2026-09-07): a cauda de um BLOCO, e o token cujo nome mentia
+
+**Fecha os itens 3 e 4 do §8 do handoff** — e eles eram a mesma doença vista de dois lados.
+
+#### A escada tem TRÊS degraus, e só os das pontas tinham nome
+
+| pergunta | porta | valor | derivação (Godot Modern, MIT) |
+|---|---|---|---|
+| de uma LINHA para a seguinte | `row_gap_px` / `list_row_gap_px` | 4 / 1 | `separation_margin` · `Tree.v_separation` |
+| de um BLOCO para o seguinte | **`block_gap_px`** (nova) | **6** | `base_margin · 1,5` — um degrau que o tema usa **13** vezes |
+| de um CARTÃO DE SECÇÃO para o seguinte | **`section_gap_px`** (nova) | 8 | `Separator separation = base_margin · 2` (`:885`) |
+
+⛔ **Censo: 78 sítios respondiam à cauda de um bloco, com QUATRO respostas** — `Sm` (6) em 40 ·
+`Xs` (4) em 29 · `Md` (8) em 8 · `Lg` (12) em 1.
+
+⭐⭐ **A resposta maioritária era a certa, e não por ser maioria:** **6** é o único valor que a
+escada admite. Um bloco tem de separar-se **mais** que duas linhas dele (4) e **menos** que duas
+secções (8) — a `8` ele lê-se como uma secção, a `4` como mais uma linha. *A hierarquia que o olho
+vê tem de bater com a que existe.*
+
+⚠️ **E o `section_gap_px` não é número novo: ele já era shipado sem nome**, como `pad * 2.0` dentro
+do `SectionCards::close_at` (wave 9). ⭐ Duas derivações independentes no mesmo número — a nossa
+(`card_pad·2`) e a do Godot (`base·2`) —, e nenhuma escolhida. *Enquanto uma grandeza não tem nome,
+ela não é COMPARÁVEL com a vizinha* — e foi exactamente isso que deixou 8 sítios responderem à
+cauda de um bloco com o número da secção, sem que nada pudesse dizer que respondiam à pergunta
+errada.
+
+#### A conversão foi UNIFORME, e é isso que a torna segura
+
+⛔ **Nada de julgar 78 sítios um a um.** O degrau que cada sítio escreveu **é** a evidência da
+intenção dele: `Xs` disse *«sou uma linha»*, `Sm`/`Md`/`Lg` disseram *«sou um bloco»*. ⇒ **só os 9
+que discordavam da escada mudam de valor** (8 e 12 → **6**, a direcção que o dono pediu cinco
+vezes); os outros 69 mudam de **dono**. *Onde eu não tinha certeza, o valor não se mexe.*
+
+#### ⛔⛔ E o `chrome.section-gap` MENTIA — os quatro consumidores dele pedem um ÍCONE
+
+| onde | o que ele pede |
+|---|---|
+| `context_menu_overlay.rs` | o **glifo** de um item de menu |
+| `topbar/cluster_painter.rs` | o **galo** de um cluster do topo |
+| `section_header/mod.rs` | o **piso da altura** de um chip de cabeçalho |
+| `ph2d-panel-hierarchy/row.rs` | a **amostra de cor** de uma linha |
+
+⚠️ **Um token cujo nome descreve outra pergunta é pior que um número à solta:** quem quisesse
+apertar o vão entre secções mexeria neste e **encolheria quatro ícones**, em painéis diferentes,
+sem nada a ficar vermelho. E a pergunta que o nome reclamava ficou sem dono — que é como a cauda de
+um bloco chegou a quatro respostas. ⇒ ele passa a chamar-se **`chrome.inline-icon`**, e o vão de
+secção tem hoje o nome dele. *Renomear não move um pixel — move quem responde.*
+
+#### ⭐ O censo apanhou TRÊS sítios que a minha conversão não viu
+
+- **`card.rs:83`** — a cauda estava numa **tupla de retorno** e acabava em **vírgula**, não em fim
+  de linha. *Um censo que procura a forma de uma expressão é cego à pontuação que a rodeia* — é a
+  sexta vez nesta jornada que a lição volta, e desta vez foi o gate a apanhá-la, não o smoke.
+- **duas caudas com DOIS degraus** (`y + Spacing::Md.px() + …`) onde o primeiro `Md` era a **altura
+  da pista** de um slider, não um vão. A cura não é isentar: é **dar-lhe nome** (`track_h`), porque
+  uma altura escrita em linha que reaparece na cauda **lê-se como um segundo vão** — para o censo e
+  para quem lê.
+
+| prova de mutação | resultado |
+|---|---|
+| uma cauda volta a escolher o degrau (`+ Spacing::Md`) | ✅ morreu |
+| o cartão volta a computar o vão (`pad * 2.0`) | ✅ morreu |
+| o bloco passa a valer o mesmo que a secção | ✅ morreu |
+| o bloco passa a valer o mesmo que a linha | ✅ morreu |
+
+**Portão:** `13 069` testes / `0` falhados; clippy `--all-targets -D warnings` limpo na **workspace
+inteira**.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

@@ -66,7 +66,7 @@ fn check_row(
         .visual(store.checkbox_visual(id))
         .value(value);
     paint_checkbox(&cb, host, scene, text_system, theme);
-    y + h + Spacing::Sm.px()
+    y + h + ph2d_tokens::block_gap_px()
 }
 
 /// One left-label + single NumberInput row. Returns the next `y`.
@@ -117,7 +117,7 @@ fn number_row(
         theme,
     );
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-    y + h + Spacing::Sm.px()
+    y + h + ph2d_tokens::block_gap_px()
 }
 
 /// Sorting Layer dropdown row. Stashes the open popover for the deferred
@@ -172,7 +172,7 @@ fn layer_row(
         crate::state::set_pending_ordering_dd(Some((sel, rect)));
     }
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-    y + h + Spacing::Sm.px()
+    y + h + ph2d_tokens::block_gap_px()
 }
 
 /// Canonical dropdown options (value == label).

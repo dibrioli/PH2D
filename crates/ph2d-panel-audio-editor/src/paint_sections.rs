@@ -549,7 +549,7 @@ fn paint_transport_section(
         theme,
         hit_index,
     );
-    y + grid_height(4, ROW_H) + Spacing::Lg.px()
+    y + grid_height(4, ROW_H) + ph2d_tokens::block_gap_px()
 }
 
 #[cfg(test)]

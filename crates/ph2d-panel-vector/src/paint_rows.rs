@@ -163,7 +163,7 @@ impl BodyCtx<'_> {
             self.inner_w,
             resolve(ColorToken::Text2, self.theme),
         );
-        y + self.row_h + Spacing::Xs.px()
+        y + self.row_h + ph2d_tokens::row_gap_px()
     }
 
     /// **Uma DICA** — uma frase esmaecida que explica algo que o app mediu, e que pode quebrar em
@@ -191,7 +191,7 @@ impl BodyCtx<'_> {
         );
         // O piso é a altura de uma row: uma dica de uma linha ocupa o que uma linha sempre ocupou,
         // e só o excedente da quebra é acrescentado.
-        y + (self.row_h - font).mul_add(0.5, usado).max(self.row_h) + Spacing::Xs.px()
+        y + (self.row_h - font).mul_add(0.5, usado).max(self.row_h) + ph2d_tokens::row_gap_px()
     }
 
     /// **O mesmo readout, num RECT dado, e sem avançar o `y`** — para quando a linha partilha a
@@ -232,7 +232,7 @@ impl BodyCtx<'_> {
         let btn = Button::new(id, label).kind(kind).visual(st);
         paint_button(&btn, rect, self.scene, self.text_system, self.theme);
         self.hit_index.register(id, rect);
-        y + self.row_h + Spacing::Xs.px()
+        y + self.row_h + ph2d_tokens::row_gap_px()
     }
 
     /// **Uma linha de DOIS campos numéricos rotulados** (X | Y, W | H, Gap principal | transversal).

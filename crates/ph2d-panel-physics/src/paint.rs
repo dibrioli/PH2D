@@ -195,7 +195,7 @@ pub(crate) fn paint_hint(ctx: &mut PaintCtx, key: &str, x: f32, w: f32, y: f32) 
     );
     // O piso é a altura de row: uma dica de uma linha continua ocupando o mesmo
     // espaço que sempre ocupou, e só o excedente da quebra é acrescentado.
-    y + (ROW_H_PX - font).mul_add(0.5, used).max(ROW_H_PX) + Spacing::Xs.px()
+    y + (ROW_H_PX - font).mul_add(0.5, used).max(ROW_H_PX) + ph2d_tokens::row_gap_px()
 }
 
 fn paint_scrollbar_and_publish(

@@ -12,7 +12,7 @@ use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, Radius, Spacing};
+use ph2d_tokens::{ColorToken, Radius};
 use ph2d_tool_painter::{
     BrushSettings, Falloff, FootprintDeform, ImageMask, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
     TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, brush_falloff_weight_at, param_specs,
@@ -447,7 +447,7 @@ fn paint_shape_preview(
         1.0,
         resolve(ColorToken::Border, theme),
     );
-    y + ph + Spacing::Sm.px()
+    y + ph + ph2d_tokens::block_gap_px()
 }
 
 /// The **Shape** ramp preview LUT (256-entry sRGB-straight RGBA, incl. the B&W filter), so the

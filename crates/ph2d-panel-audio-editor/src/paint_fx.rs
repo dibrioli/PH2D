@@ -140,7 +140,7 @@ fn paint_presets(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut
             ctx.hit_index,
         );
     }
-    y + row_h + Spacing::Md.px()
+    y + row_h + ph2d_tokens::block_gap_px()
 }
 
 /// `◀ | effect name | ⟲ | ▶` — sets the SELECTED stage's kind. The Reset icon is
@@ -275,7 +275,7 @@ fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 
         );
         y += label_h + gap;
     }
-    y + Spacing::Xs.px()
+    y + ph2d_tokens::row_gap_px()
 }
 
 /// The chain: a header carrying the `+ | trash | ▲ | ▼` actions, then one row per
@@ -380,7 +380,7 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
         icon_button(eye, glyph, loaded, AEDIT_FX_STAGE_ONS[i], ctx);
         y += stage_h;
     }
-    y + Spacing::Sm.px()
+    y + ph2d_tokens::block_gap_px()
 }
 
 /// `Bypass` (global A/B) over `Apply | Cancel`. Bypass mutes the whole chain so the

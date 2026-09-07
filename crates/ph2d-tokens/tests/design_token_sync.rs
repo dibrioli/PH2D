@@ -2,7 +2,7 @@
 //! (`Spacing::px()`, `Radius::px()`, `StrokeToken::px()`,
 //! `Density::row_h_px()`, `TypeToken::px()`, `FontWeight::value()`,
 //! `LineHeight::ratio()`, `LetterSpacing::em()`, plus the
-//! `SECTION_GAP_PX`/`ICON_BTN_SIZE_PX`/`ROW_H_PX` chrome consts)
+//! `INLINE_ICON_PX`/`ICON_BTN_SIZE_PX`/`ROW_H_PX` chrome consts)
 //! agrees with the canonical `docs/design/tokens.json` source.
 //!
 //! ## Why this exists
@@ -24,8 +24,8 @@
 //! - `radius.{xs..full}` ↔ `Radius::*.px()`
 //! - `stroke.{hairline..heavy}` ↔ `StrokeToken::*.px()`
 //! - `density.{compact..comfortable}` ↔ `Density::*.row_h_px()`
-//! - `chrome.{row-h,icon-btn-size,section-gap}` ↔ `ROW_H_PX`,
-//!   `ICON_BTN_SIZE_PX`, `SECTION_GAP_PX`
+//! - `chrome.{row-h,icon-btn-size,inline-icon}` ↔ `ROW_H_PX`,
+//!   `ICON_BTN_SIZE_PX`, `INLINE_ICON_PX`
 //! - `typography.size.*` ↔ `TypeToken::*.px()`
 //! - `typography.weight.*` ↔ `FontWeight::*.value()`
 //! - `typography.line.*` ↔ `LineHeight::*.ratio()`
@@ -36,9 +36,9 @@ use std::path::PathBuf;
 use ph2d_tokens::{
     CHECKBOX_BOX_PX, DIVIDER_GAP_PX, Density, EDGE_PAD_PX, FontWeight, HERO_VIEWPORT_H_PX,
     HERO_VIEWPORT_W_PX, HIERARCHY_W_PX, HUD_BOTTOM_PAD_PX, HUD_H_PX, ICON_BTN_SIZE_PX,
-    INSPECTOR_W_PX, LetterSpacing, LineHeight, PANEL_HEAD_PAD_PX, PANEL_RADIUS_PX,
-    PANEL_RESIZE_HANDLE_SIZE_PX, PILL_PADDING_PX, ROW_H_PX, Radius, SECTION_GAP_PX, Spacing,
-    StrokeToken, TOOL_CHIP_PX, TOPBAR_GAP_PX, TOPBAR_H_PX, TypeToken,
+    INLINE_ICON_PX, INSPECTOR_W_PX, LetterSpacing, LineHeight, PANEL_HEAD_PAD_PX, PANEL_RADIUS_PX,
+    PANEL_RESIZE_HANDLE_SIZE_PX, PILL_PADDING_PX, ROW_H_PX, Radius, Spacing, StrokeToken,
+    TOOL_CHIP_PX, TOPBAR_GAP_PX, TOPBAR_H_PX, TypeToken,
 };
 use serde_json::Value;
 
@@ -176,7 +176,7 @@ fn chrome_consts_match_tokens_json() {
     let pairs: &[(&str, f32)] = &[
         ("row-h", ROW_H_PX),
         ("icon-btn-size", ICON_BTN_SIZE_PX),
-        ("section-gap", SECTION_GAP_PX),
+        ("inline-icon", INLINE_ICON_PX),
         // Wave 5 stage A additions (live in `chrome.rs`).
         ("hero-viewport-w", HERO_VIEWPORT_W_PX),
         ("hero-viewport-h", HERO_VIEWPORT_H_PX),

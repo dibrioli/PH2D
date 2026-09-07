@@ -81,8 +81,26 @@ impl Spacing {
     }
 }
 
-/// Fixed section gap (non-power-of-2). Per tokens.json `chrome.section-gap`.
-pub const SECTION_GAP_PX: f32 = crate::generated::CHROME_SECTION_GAP;
+/// ⭐⭐⭐ **O tamanho de um ÍCONE EM LINHA** (14 px). Per tokens.json `chrome.inline-icon`.
+///
+/// ⛔⛔ **Ele chamava-se `chrome.section-gap` até à wave 19, e o nome MENTIA.** Censo dos seus
+/// consumidores, 2026-09-07 — são **quatro**, e nenhum é um vão de secção:
+///
+/// | onde | o que ele pede |
+/// |---|---|
+/// | `context_menu_overlay.rs` | o **glifo** de um item de menu |
+/// | `topbar/cluster_painter.rs` | o **galo** de um cluster do topo |
+/// | `section_header/mod.rs` | o **piso da altura** de um chip de cabeçalho |
+/// | `ph2d-panel-hierarchy/row.rs` | a **amostra de cor** de uma linha |
+///
+/// ⚠️ **Um token cujo nome descreve outra pergunta é pior que um número à solta:** quem quisesse
+/// apertar o vão entre secções mexeria neste, e **encolheria quatro ícones** — em painéis
+/// diferentes, sem nada a ficar vermelho. E a pergunta que o nome dele reclamava ficou anos sem
+/// dono, o que é exactamente como a cauda de um bloco chegou a **quatro** respostas.
+///
+/// ⇒ o vão de secção tem hoje o nome dele ([`section_gap_px`], derivado), e este passa a chamar-se
+/// pelo que os seus quatro leitores pedem. *Renomear não move um pixel — move quem responde.*
+pub const INLINE_ICON_PX: f32 = crate::generated::CHROME_INLINE_ICON;
 
 /// Row height by density. Per tokens.json `density.*`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -151,6 +169,49 @@ pub fn row_pitch_px() -> f32 {
 /// *Uma porta que só serve a metade dos chamadores deixa a outra metade a escrever o número.*
 pub fn row_gap_px() -> f32 {
     Spacing::Xs.px()
+}
+
+/// ⭐⭐⭐ **O que fica DEPOIS de um bloco — o degrau do meio, e ele estava escrito 78 vezes.**
+///
+/// Esta casa tem **três** ritmos verticais, e até à wave 19 só os dois das pontas tinham nome:
+///
+/// | pergunta | porta | valor | derivação |
+/// |---|---|---|---|
+/// | de uma LINHA para a seguinte | [`row_gap_px`] / [`list_row_gap_px`] | 4 / 1 | `separation_margin` · `Tree.v_separation` |
+/// | de um BLOCO para o seguinte | **esta** | **6** | `base_margin · 1,5` |
+/// | de um CARTÃO DE SECÇÃO para o seguinte | [`section_gap_px`] | 8 | `base_margin · 2` |
+///
+/// ⛔ **Censo de 2026-09-07: 78 sítios respondiam à cauda de um bloco, com QUATRO respostas** —
+/// `Sm` (6) em 40 · `Xs` (4) em 29 · `Md` (8) em 8 · `Lg` (12) em 1. ⭐ **E a resposta maioritária
+/// era a certa**: não porque 40 é muito, mas porque **6 é o único valor que a escada admite** — um
+/// bloco tem de separar-se mais que duas linhas do mesmo bloco (4) e menos que duas secções (8),
+/// senão a hierarquia que o olho lê deixa de bater com a hierarquia que existe.
+///
+/// **A derivação é a do modelo:** `base_margin · 1,5`, e o `1,5` é um degrau que o Godot Modern usa
+/// **13 vezes** (`theme_modern.cpp:289`, `:328`, `:565`, `:617`, `:659`, …). Com o `base_spacing`
+/// desta casa (4) dá **6**, que é o `Spacing::Sm`.
+///
+/// ⚠️ **Os 9 sítios que escreviam 8 e 12 APERTAM** — a direcção que o dono pediu cinco vezes. Os
+/// outros 69 não mudam de valor; mudam de **dono**, que é o que impede a quinta resposta.
+pub fn block_gap_px() -> f32 {
+    Spacing::Sm.px()
+}
+
+/// ⭐⭐ **O que fica depois de um CARTÃO DE SECÇÃO** — e este número já era shipado, sem nome.
+///
+/// O modelo de cartão (wave 9) fecha cada secção com `y + card_pad()·2`, onde o `card_pad` é o
+/// `Spacing::Xs`: **8 px**, contados do fim do conteúdo, com o recuo de baixo do cartão a ser
+/// metade deles. ⭐ **É exactamente o `Separator separation = base_margin · 2` do Godot Modern**
+/// (`theme_modern.cpp:885`) — duas derivações independentes no mesmo número, e nenhuma delas
+/// escolhida.
+///
+/// ⚠️ **Dar-lhe nome não muda um pixel: muda quem responde.** Enquanto ele vivia como `pad * 2.0`
+/// dentro do `close_at`, a pergunta *«quanto separa dois blocos?»* não tinha onde ser comparada
+/// com *«quanto separa duas secções?»* — e foi essa ausência que deixou a cauda de um bloco crescer
+/// para quatro respostas, uma delas (`Md` = 8) **igual à da secção**, que é a que faz um bloco
+/// interior ler-se como uma secção.
+pub fn section_gap_px() -> f32 {
+    Spacing::Xs.px() * 2.0
 }
 
 /// ⭐⭐⭐ **O vão entre duas linhas de uma LISTA — e ele NÃO é o de um formulário.**

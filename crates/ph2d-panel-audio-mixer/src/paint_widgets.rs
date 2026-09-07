@@ -54,14 +54,17 @@ pub(crate) fn paint_labeled_slider(
     );
     let slider_x = content_x + FX_LABEL_W + Spacing::Sm.px();
     let slider_w = (content_w - FX_LABEL_W - Spacing::Sm.px()).max(1.0);
-    let slider_rect = Rect::new(slider_x, y, slider_w, Spacing::Md.px());
+    // ⚠️ A altura da PISTA tem nome desde a wave 19: escrita em linha, ela reaparecia na cauda
+    //    (`y + Spacing::Md.px() + …`) e lia-se como um segundo vão — o censo da cauda acusou-a.
+    let track_h = Spacing::Md.px();
+    let slider_rect = Rect::new(slider_x, y, slider_w, track_h);
     let mut slider = Slider::new(id, label)
         .orientation(SliderOrientation::Horizontal)
         .visual(store.slider_visual(id));
     slider.set_value(value.clamp(0.0, 1.0));
     paint_slider(&slider, slider_rect, scene, theme);
     hit_index.register(id, slider_rect);
-    y + Spacing::Md.px() + Spacing::Sm.px()
+    y + track_h + ph2d_tokens::block_gap_px()
 }
 
 /// Paint one toggle button (mute / solo / effect enable): `active_bg` tint +

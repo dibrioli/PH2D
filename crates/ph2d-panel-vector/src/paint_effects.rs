@@ -142,7 +142,7 @@ impl BodyCtx<'_> {
         self.inner_x = keep_x;
         self.inner_w = keep_w;
 
-        y + card_h + Spacing::Sm.px()
+        y + card_h + ph2d_tokens::block_gap_px()
     }
 
     /// O cabeçalho do card: o nome à esquerda, os ícones à direita.

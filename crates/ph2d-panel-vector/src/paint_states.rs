@@ -328,6 +328,6 @@ impl BodyCtx<'_> {
                 bx,
             );
         }
-        y + self.row_h + Spacing::Xs.px()
+        y + self.row_h + ph2d_tokens::row_gap_px()
     }
 }

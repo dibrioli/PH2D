@@ -476,7 +476,7 @@ pub(crate) fn seg_row_owned(
         store,
         hit_index,
     );
-    y + used + Spacing::Xs.px()
+    y + used + ph2d_tokens::row_gap_px()
 }
 
 /// A segmented option group as one card row (mirrors `paint_deform::seg_group`).
@@ -509,7 +509,7 @@ fn seg_row(
         store,
         hit_index,
     );
-    y + used + Spacing::Xs.px()
+    y + used + ph2d_tokens::row_gap_px()
 }
 
 /// The **Knife**'s card: **Plow**, and nothing else.

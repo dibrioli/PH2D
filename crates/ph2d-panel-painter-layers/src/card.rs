@@ -80,7 +80,7 @@ pub(crate) fn card_frame(
         x + pad,
         content_w - 2.0 * pad,
         y + pad + title_h,
-        y + card_h + Spacing::Sm.px(),
+        y + card_h + ph2d_tokens::block_gap_px(),
     )
 }
 

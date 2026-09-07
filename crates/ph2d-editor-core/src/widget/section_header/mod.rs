@@ -15,7 +15,7 @@ use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{
-    ColorToken, ICON_BTN_SIZE_PX, Radius, SECTION_GAP_PX, Spacing, Theme, TypeToken,
+    ColorToken, ICON_BTN_SIZE_PX, INLINE_ICON_PX, Radius, Spacing, Theme, TypeToken,
 };
 use ph2d_vector::{Affine, Brush, Circle, Color as VelloColor, Fill, Point, VectorScene};
 
@@ -201,7 +201,7 @@ pub fn paint_section_header(
         );
     } else if let Some(n) = header.count {
         let chip_w = ICON_BTN_SIZE_PX;
-        let chip_h = (rect.h - Spacing::Xs.px()).max(SECTION_GAP_PX);
+        let chip_h = (rect.h - Spacing::Xs.px()).max(INLINE_ICON_PX);
         let chip_rect = Rect::new(
             rect.x + rect.w - pad_x - chip_w,
             rect.y + (rect.h - chip_h) * 0.5,

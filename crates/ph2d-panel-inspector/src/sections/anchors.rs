@@ -116,7 +116,7 @@ pub(super) fn check_row(
         text_system,
         theme,
     );
-    y + cb_h + Spacing::Sm.px()
+    y + cb_h + ph2d_tokens::block_gap_px()
 }
 
 /// A lista de âncoras. Devolve o `y` seguinte.
@@ -204,7 +204,7 @@ fn anchor_list(
         );
         cur_y += ROW_H + ph2d_tokens::list_row_gap_px();
     }
-    cur_y + Spacing::Sm.px()
+    cur_y + ph2d_tokens::block_gap_px()
 }
 
 /// O editor da âncora selecionada. Devolve o `y` seguinte.

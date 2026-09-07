@@ -18,7 +18,7 @@ use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ROW_H_PX, Spacing};
+use ph2d_tokens::ROW_H_PX;
 use ph2d_tool_painter::BrushSettings;
 
 /// Slider range bounds — the parameter domains (matching the tool's `set_brush_*` clamps), not design
@@ -159,7 +159,7 @@ fn wetness_button_row(
         store,
         hit_index,
     );
-    y + used + Spacing::Xs.px()
+    y + used + ph2d_tokens::row_gap_px()
 }
 
 /// Card 1: WASH — how the stroke dries (the flat glaze + its dried character).

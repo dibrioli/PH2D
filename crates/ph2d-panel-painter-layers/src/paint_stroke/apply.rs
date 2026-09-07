@@ -208,7 +208,7 @@ pub(super) fn paint_offset_card(
         "Trim",
         brush.offset_trim,
     );
-    y + card_h + Spacing::Sm.px()
+    y + card_h + ph2d_tokens::block_gap_px()
 }
 
 /// Paint the trailing **✕** Delete square-icon at `ix` (the Convert-to-Curve button moved to its own

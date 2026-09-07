@@ -86,7 +86,7 @@ fn toggle_row(ctx: &mut Ctx, y: f32, label: &str, active: bool, id: NodeId) -> f
         ctx.store,
         ctx.hit_index,
     );
-    y + MUTE_H + Spacing::Sm.px()
+    y + MUTE_H + ph2d_tokens::block_gap_px()
 }
 
 /// A labeled thin-slider row; returns the next `y`.
@@ -175,7 +175,7 @@ fn paint_loudness(ctx: &mut Ctx, y: f32) -> f32 {
         TypeToken::Xs.px(),
         resolve(ColorToken::Text2, ctx.theme),
     );
-    y + TypeToken::Xs.px() + Spacing::Md.px()
+    y + TypeToken::Xs.px() + ph2d_tokens::block_gap_px()
 }
 
 fn paint_limiter(ctx: &mut Ctx, y: f32) -> f32 {
@@ -192,7 +192,7 @@ fn paint_eq(ctx: &mut Ctx, y: f32) -> f32 {
         y = slider_row(ctx, y, "High", AMIX_EQ_HIGH, eq[2]);
         y = end_fold(ctx, fold, y);
     }
-    y + Spacing::Sm.px()
+    y + ph2d_tokens::block_gap_px()
 }
 
 fn paint_reverb(ctx: &mut Ctx, y: f32) -> f32 {
@@ -204,7 +204,7 @@ fn paint_reverb(ctx: &mut Ctx, y: f32) -> f32 {
         y = sub_bus_rows(ctx, y, &SUB_SEND, snapshot::sub_send());
         y = end_fold(ctx, fold, y);
     }
-    y + Spacing::Sm.px()
+    y + ph2d_tokens::block_gap_px()
 }
 
 fn paint_delay(ctx: &mut Ctx, y: f32) -> f32 {
@@ -223,7 +223,7 @@ fn paint_delay(ctx: &mut Ctx, y: f32) -> f32 {
         y = sub_bus_rows(ctx, y, &SUB_DELAY_SEND, snapshot::sub_delay_send());
         y = end_fold(ctx, fold, y);
     }
-    y + Spacing::Sm.px()
+    y + ph2d_tokens::block_gap_px()
 }
 
 fn paint_comp(ctx: &mut Ctx, y: f32) -> f32 {
@@ -232,7 +232,7 @@ fn paint_comp(ctx: &mut Ctx, y: f32) -> f32 {
         y = sub_bus_rows(ctx, y, &SUB_COMP, snapshot::sub_comp());
         y = end_fold(ctx, fold, y);
     }
-    y + Spacing::Sm.px()
+    y + ph2d_tokens::block_gap_px()
 }
 
 fn paint_ducking(ctx: &mut Ctx, y: f32) -> f32 {
@@ -260,5 +260,5 @@ fn paint_ducking(ctx: &mut Ctx, y: f32) -> f32 {
         y = slider_row(ctx, y, "Depth", AMIX_DUCK_DEPTH, snapshot::duck_depth());
         y = end_fold(ctx, fold, y);
     }
-    y + Spacing::Sm.px()
+    y + ph2d_tokens::block_gap_px()
 }

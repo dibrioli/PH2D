@@ -196,6 +196,15 @@ faz servir o tema claro do Godot e o OLED sem uma tabela por tema. ⛔⛔ **E o 
 contar pelo índice do dado encostaria duas linhas do mesmo tom exactamente ao recolher um ramo — um
 defeito intermitente, e o gate tem uma fixtura construída para separar as duas leis.
 
+⭐⭐ **E a wave 19 (07/09) deu nome ao degrau do MEIO** ([§7.22](pesquisa/08_modelos_com_codigo_para_seguir.md)):
+a cauda de um bloco tinha **78 sítios e quatro respostas**, e a escada só admite uma — um bloco
+separa-se mais que duas linhas dele (4) e menos que duas secções (8), logo **6** (`base·1,5` do
+Godot). ⚠️ **A conversão foi uniforme**: o degrau que cada sítio escrevia era a evidência da
+intenção dele, então **só os 9 discordantes mudam de valor**, e sempre a apertar. ⛔ E o
+`chrome.section-gap` **mentia** — os quatro consumidores pedem um **tamanho de ícone**; ele passa a
+`chrome.inline-icon`, e o vão de secção (que já era shipado sem nome, dentro do fecho do cartão)
+ganha o dele.
+
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
 cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·
 esbatimento do rótulo e inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis, animado) —

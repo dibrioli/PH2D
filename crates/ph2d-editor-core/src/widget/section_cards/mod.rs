@@ -148,9 +148,12 @@ impl SectionCards {
             );
             self.rects.push((r, depth));
         }
-        // O vão entre dois cartões é o mesmo vão de sempre, contado do fim do CONTEÚDO — o `pad`
-        // de baixo do cartão já é metade dele.
-        let next = y + pad * 2.0;
+        // ⭐ **O vão entre dois cartões tem NOME desde a wave 19** — `ph2d_tokens::section_gap_px()`,
+        //    contado do fim do CONTEÚDO, com o `pad` de baixo do cartão a ser metade dele. Ele
+        //    sempre valeu `pad·2`; o que mudou é ele ser COMPARÁVEL com o vão de um bloco
+        //    interior, e foi essa ausência que deixou a cauda de um bloco crescer para quatro
+        //    respostas — uma delas igual a esta, que é a que faz um bloco ler-se como uma secção.
+        let next = y + ph2d_tokens::section_gap_px();
         self.cursor = next;
         next
     }

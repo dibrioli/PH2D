@@ -231,7 +231,7 @@ fn paint_contrast(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) 
             warn,
         );
     }
-    y + Spacing::Sm.px()
+    y + ph2d_tokens::block_gap_px()
 }
 
 /// `[swatch]  chave-do-token  [→ alvo]      [⚠] [elo] [Reset]`

@@ -145,7 +145,7 @@ pub(crate) fn paint_line_card(
         iy = paint_param_rows(ctx, theme, ix, iw, iy + gap, brush, kind);
     }
     let _ = iy;
-    y + card_h + Spacing::Sm.px()
+    y + card_h + ph2d_tokens::block_gap_px()
 }
 
 /// Quantas rows o TIPO acrescenta — **derivado das tabelas**, para que uma row nova mude a altura do

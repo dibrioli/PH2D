@@ -417,7 +417,7 @@ pub(super) fn paint_one_row(
 ) -> f32 {
     let value = (row.get)(&snap.ui);
     let used = super::paint_row(ctx, row, value, x, w, y);
-    y + used + Spacing::Sm.px()
+    y + used + ph2d_tokens::block_gap_px()
 }
 
 // ⚠️ **Oito, e o oitavo é o irmão simétrico do `tail`.** A alternativa era

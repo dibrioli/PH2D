@@ -160,5 +160,5 @@ pub(super) fn seg_row(
         store,
         hit_index,
     );
-    y + label_h + seg_h + Spacing::Sm.px()
+    y + label_h + seg_h + ph2d_tokens::block_gap_px()
 }

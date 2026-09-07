@@ -116,5 +116,5 @@ pub(crate) fn paint_stencil_card(
         0,
     );
     let _ = iy;
-    y + card_h + Spacing::Sm.px()
+    y + card_h + ph2d_tokens::block_gap_px()
 }

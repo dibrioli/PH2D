@@ -375,7 +375,7 @@ fn paint_verbs(
         .visual(store.button_visual(ids::INSP_PLAYER_REMOVE));
     paint_button(&btn, rect, scene, text_system, theme);
     hit_index.register(ids::INSP_PLAYER_REMOVE, rect);
-    yy + h + Spacing::Sm.px()
+    yy + h + ph2d_tokens::block_gap_px()
 }
 
 /// **Os oito cards de números**, na ordem da tabela — extraído do `paint` por

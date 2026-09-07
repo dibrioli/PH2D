@@ -227,7 +227,7 @@ pub(crate) fn paint_variation_section(
         theme,
         hit_index,
     );
-    y + row_h + Spacing::Md.px()
+    y + row_h + ph2d_tokens::block_gap_px()
 }
 
 /// The variation list: one selectable row per clip (the selected row is tinted). Rows
@@ -293,7 +293,7 @@ fn paint_var_list(
         hit_index.register(AEDIT_VAR_ROWS[i], rect);
         y += VAR_ROW_H + list_row_gap_px();
     }
-    y + Spacing::Xs.px()
+    y + ph2d_tokens::row_gap_px()
 }
 
 /// A labelled, always-adjustable jitter slider (`0..1`; the shell maps it to a `±`
@@ -321,12 +321,15 @@ fn paint_jitter_slider(
         resolve(ColorToken::Text2, theme),
     );
     y += label_h + Spacing::Xs.px();
-    let track = Rect::new(x, y, w, Spacing::Md.px());
+    // ⚠️ Ver o irmão no `audio-mixer/paint_widgets.rs`: a altura da PISTA ganha nome para não
+    //    se ler como um vão quando reaparece na cauda.
+    let track_h = Spacing::Md.px();
+    let track = Rect::new(x, y, w, track_h);
     let mut slider = Slider::new(id, label).orientation(SliderOrientation::Horizontal);
     slider.set_value(value);
     paint_slider(&slider, track, scene, theme);
     hit_index.register(id, track);
-    y + Spacing::Md.px() + Spacing::Sm.px()
+    y + track_h + ph2d_tokens::block_gap_px()
 }
 
 /// The Variations readout, for the section header — how many clips the set holds,

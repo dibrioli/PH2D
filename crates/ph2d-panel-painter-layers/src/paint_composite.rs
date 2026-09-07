@@ -108,7 +108,7 @@ pub(crate) fn paint_composite_card(
             iy = paint_layer_row(ctx, theme, ix, iw, iy, pos, brush);
         }
     }
-    y + card_h + Spacing::Sm.px()
+    y + card_h + ph2d_tokens::block_gap_px()
 }
 
 /// One composite layer row: `N Name` label · bare Strength slider · "0.50" readout · ↑/↓ reorder. The

@@ -19,7 +19,7 @@ use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{DropdownOption, SectionFold};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, Radius, Spacing};
+use ph2d_tokens::{ColorToken, Radius};
 use ph2d_tool_painter::{
     BrushSettings, ImageMask, RampAlphaMode, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN,
     TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, TextureLayer, TextureMapping, linear_to_srgb_byte,
@@ -478,7 +478,7 @@ pub(crate) fn paint_texture_preview(
         1.0,
         resolve(ColorToken::Border, theme),
     );
-    y + ph + Spacing::Sm.px()
+    y + ph + ph2d_tokens::block_gap_px()
 }
 
 /// The **Grain** ramp preview LUT (the same bake the tool paints with, incl. the B&W filter), so the

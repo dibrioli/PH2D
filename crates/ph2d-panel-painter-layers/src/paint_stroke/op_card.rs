@@ -58,5 +58,5 @@ pub(super) fn operation_card(
             hit_index,
         );
     }
-    y + card_h + Spacing::Sm.px()
+    y + card_h + ph2d_tokens::block_gap_px()
 }

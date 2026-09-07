@@ -6,7 +6,7 @@
 //! tokens.json. Designer fully owns the dimensional side of UI.
 //!
 //! The three originals (`ROW_H_PX`, `ICON_BTN_SIZE_PX`,
-//! `SECTION_GAP_PX`) remain in `spacing.rs` for source compatibility;
+//! `INLINE_ICON_PX`) remain in `spacing.rs` for source compatibility;
 //! semantically they are also chrome dims, but the imports were stable
 //! across the rest of the workspace by Wave 4.
 

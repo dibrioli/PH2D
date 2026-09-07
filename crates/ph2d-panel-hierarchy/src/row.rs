@@ -11,7 +11,7 @@ use ph2d_editor_core::widget::{Tag, TagState, TagTone, paint_tag};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{
-    ColorToken, ICON_BTN_SIZE_PX, Radius, SECTION_GAP_PX, Spacing, StrokeToken, Theme, TypeToken,
+    ColorToken, ICON_BTN_SIZE_PX, INLINE_ICON_PX, Radius, Spacing, StrokeToken, Theme, TypeToken,
 };
 use ph2d_vector::VectorScene;
 
@@ -301,7 +301,7 @@ pub(crate) fn paint_hierarchy_row(
     }
     right_x -= icon_btn + icon_cluster_gap;
     if let Some(swatch) = entity.swatch {
-        let sw = SECTION_GAP_PX;
+        let sw = INLINE_ICON_PX;
         let sw_rect = Rect::new(right_x - sw, rect.y + (rect.h - sw) * 0.5, sw, sw);
         // Canonical color swatch painter (single source of truth).
         let cs = ph2d_editor_core::widget::ColorSwatch::new(

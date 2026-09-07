@@ -13,7 +13,7 @@ use ph2d_editor_core::widget::{
     paint_button, paint_radio_group_with_labels, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ROW_H_PX, Spacing};
+use ph2d_tokens::ROW_H_PX;
 use ph2d_tool_painter::BrushSettings;
 
 use crate::paint_brush_top::{end_fold, paint_checkbox_row, paint_collapsible_section};
@@ -182,7 +182,7 @@ fn paint_segments_row(
         text_system,
         theme,
     );
-    y + used + Spacing::Xs.px()
+    y + used + ph2d_tokens::row_gap_px()
 }
 
 /// A full-width labelled **mode-entry** button (the colour-picker-button analogue): pressing it arms a

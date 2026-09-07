@@ -99,8 +99,8 @@ pub use num::NumToken;
 pub use radius::Radius;
 pub use slider_style::{SLIDER_DENSITIES, SLIDER_RADII, SliderDesign, SliderStyle, UiLook};
 pub use spacing::{
-    Density, ICON_BTN_SIZE_PX, ROW_H_PX, SECTION_GAP_PX, Spacing, list_row_gap_px, row_gap_px,
-    row_pitch_px,
+    Density, ICON_BTN_SIZE_PX, INLINE_ICON_PX, ROW_H_PX, Spacing, block_gap_px, list_row_gap_px,
+    row_gap_px, row_pitch_px, section_gap_px,
 };
 pub use stroke::StrokeToken;
 pub use theme::{PanelLayout, Theme};

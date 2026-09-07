@@ -177,7 +177,7 @@ pub(crate) fn paint_library(
         );
         cur_y += BTN_H;
     }
-    cur_y + Spacing::Sm.px()
+    cur_y + ph2d_tokens::block_gap_px()
 }
 
 /// O rótulo de uma direção, pelo tag. ⚠️ **Espelha `ph2d_ecs::AnimDirection::label`** porque este

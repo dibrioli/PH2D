@@ -10,7 +10,7 @@
 //! right-aligned layout. Neither is re-exported beyond `super`.
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, SECTION_GAP_PX, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, INLINE_ICON_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
 
 use crate::icons::IconId;
@@ -345,7 +345,7 @@ pub(super) fn paint_top_bar_cluster(
             } else {
                 store_name
             };
-            let chev_size = SECTION_GAP_PX;
+            let chev_size = INLINE_ICON_PX;
             let chev_rect = Rect::new(
                 inner.x + inner.w - pad_x - chev_size,
                 inner.y + (inner.h - chev_size) * 0.5,

@@ -137,7 +137,7 @@ impl BodyCtx<'_> {
         paint_button(&rbtn, rrect, self.scene, self.text_system, self.theme);
         self.hit_index.register(rid, rrect);
 
-        y + self.row_h + Spacing::Xs.px()
+        y + self.row_h + ph2d_tokens::row_gap_px()
     }
 }
 

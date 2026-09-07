@@ -15,7 +15,7 @@ use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{
-    ColorToken, ROW_H_PX, Radius, SECTION_GAP_PX, Spacing, StrokeToken, Theme, TypeToken,
+    ColorToken, INLINE_ICON_PX, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken,
 };
 use ph2d_vector::{Color as VelloColor, VectorScene};
 
@@ -308,7 +308,7 @@ pub fn paint_context_menu_overlay(
             );
         }
         let pad_x = Spacing::Md.px();
-        let icon_size = SECTION_GAP_PX;
+        let icon_size = INLINE_ICON_PX;
         let icon_y = r.y + (r.h - icon_size) * 0.5;
         // Bullet for currently-selected item (SceneList parity,
         // 2026-05-24 menu standardization).

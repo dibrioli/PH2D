@@ -183,7 +183,7 @@ pub(crate) fn paint_mount_row(
         );
         cur_y += BTN_H;
     }
-    cur_y + Spacing::Sm.px()
+    cur_y + ph2d_tokens::block_gap_px()
 }
 
 /// ⛔⛔ **O rótulo da caixa PARADA, e o bloqueador vai NELE.**
@@ -257,5 +257,5 @@ pub(crate) fn paint_visibility_rows(
         paint_checkbox(&cb, rect, scene, text_system, theme);
         cur_y += cb_h + Spacing::Xs.px();
     }
-    cur_y + Spacing::Xs.px()
+    cur_y + ph2d_tokens::row_gap_px()
 }

@@ -38,7 +38,8 @@
 //! ⛔ **O que este censo NÃO proíbe, e porquê:** `+ Spacing::Md` / `+ Spacing::Lg` depois de uma
 //! altura de linha é o fim de um GRUPO, que é outra pergunta — o Godot também lhe dá outro
 //! número (`Separator separation = base_margin · 2` = 8). Ela fica **nomeada e por unificar**
-//! (5 sítios, a escrever 8 e 12), e o `chrome.section-gap` (14) não serve para a responder: os
+//! ⇒ **FECHOU na wave 19** (`ph2d_tokens::block_gap_px`, 78 sítios). ⚠️ E o `chrome.section-gap`
+//! (14) que esta nota dizia não servir foi RENOMEADO para `chrome.inline-icon`, porque os
 //! seus **quatro** consumidores usam-no como TAMANHO DE ÍCONE, não como vão de secção.
 
 use std::fs;

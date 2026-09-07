@@ -126,7 +126,7 @@ pub(crate) fn paint_loop_section(
         theme,
         hit_index,
     );
-    y + row_h + Spacing::Md.px()
+    y + row_h + ph2d_tokens::block_gap_px()
 }
 
 /// The region readout: `1.20\u{2013}3.40s`, or `No loop` when unset.
@@ -198,7 +198,7 @@ pub(crate) fn paint_markers_section(
         theme,
         hit_index,
     );
-    y + row_h + Spacing::Md.px()
+    y + row_h + ph2d_tokens::block_gap_px()
 }
 
 /// The Markers readout, for the section header: the panel says how many cue points the

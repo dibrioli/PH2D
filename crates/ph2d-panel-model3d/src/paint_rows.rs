@@ -17,7 +17,7 @@ use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
 use ph2d_editor_core::widget::{NUMBER_INPUT_MIN_W_PX, paint_slider_with_chip_layout_adaptive};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, TypeToken};
 
 use crate::paint::{
     LABEL_COL_W, STEPS_ACROSS_THE_RANGE, TETO_DIGITAVEL, bound_is_wall, decimals_for_step,
@@ -161,7 +161,7 @@ pub(crate) fn paint_row(
         text_system,
         theme,
     );
-    y + used + Spacing::Xs.px()
+    y + used + ph2d_tokens::row_gap_px()
 }
 
 /// ⭐ **Uma linha como FACTO**: o rótulo e o número, em texto apagado, sem controle nenhum.
@@ -225,7 +225,7 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
         store,
         hit_index,
     );
-    y + used.max(ROW_H_PX) + Spacing::Xs.px()
+    y + used.max(ROW_H_PX) + ph2d_tokens::row_gap_px()
 }
 
 fn paint_fact(ctx: &mut PaintCtx, row: &ParamRow, x: f32, w: f32, y: f32) -> f32 {

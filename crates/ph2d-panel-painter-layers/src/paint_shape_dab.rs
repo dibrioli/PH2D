@@ -11,7 +11,7 @@ use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_circle, paint_text, resolve, stroke_polyline};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, TypeToken};
 use ph2d_tool_painter::BrushSettings;
 
 const GIZMO_PX: f32 = 104.0; // LITERAL-PX-OK: the square gizmo extent
@@ -127,5 +127,5 @@ pub(crate) fn paint_shape_dab_gizmo(
     );
     fill_circle(ctx.scene, cx, cy, DOT_R, resolve(ColorToken::Danger, theme));
 
-    y + size + Spacing::Sm.px()
+    y + size + ph2d_tokens::block_gap_px()
 }

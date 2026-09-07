@@ -23,7 +23,7 @@
 //!   `Spacing::X.px()`, `Radius::X.px()`, `StrokeToken::X.px()`,
 //!   `Density::X.row_h_px()`, `TypeToken::X.px()`,
 //!   `Duration::X.ms()`, the `ROW_H_PX` / `ICON_BTN_SIZE_PX` /
-//!   `SECTION_GAP_PX` consts, or `LineHeight::X.ratio()` /
+//!   `INLINE_ICON_PX` consts, or `LineHeight::X.ratio()` /
 //!   `LetterSpacing::X.em()`. Those return tokens, not literals.
 //! - **Float-typed constants** declared via the token system —
 //!   `f32::INFINITY`, `f32::NEG_INFINITY`, `f32::MIN`, `f32::MAX`.
@@ -55,7 +55,7 @@
 //! | stroke width    | `StrokeToken::X.px()` (cast to `f64` for kurbo) |
 //! | font size       | `TypeToken::X.px()` |
 //! | row height      | `Density::X.row_h_px()` or `ROW_H_PX` |
-//! | section gap     | `SECTION_GAP_PX` |
+//! | section gap     | `INLINE_ICON_PX` |
 //! | icon button     | `ICON_BTN_SIZE_PX` |
 //! | animation ms    | `Duration::X.ms()` |
 //!

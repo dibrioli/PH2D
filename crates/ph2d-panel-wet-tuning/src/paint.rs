@@ -309,7 +309,7 @@ fn paint_row(
         theme,
     );
     ctx.host.hit_index_mut().register(row.reset, reset_rect);
-    y + used + Spacing::Xs.px()
+    y + used + ph2d_tokens::row_gap_px()
 }
 
 /// Section header: chevron+label (collapse toggles on click), the group
@@ -432,7 +432,7 @@ fn note_text(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, y: f32, note: &st
     if !cur.is_empty() {
         emit(&cur, &mut yy, ctx);
     }
-    yy + Spacing::Xs.px()
+    yy + ph2d_tokens::row_gap_px()
 }
 
 fn paint_scrollbar_and_publish(

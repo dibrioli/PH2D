@@ -248,6 +248,80 @@ fn the_section_offers_making_a_variant_out_of_a_copy() {
     );
 }
 
+/// ⭐⭐⭐ **A secção oferece ABRIR A RECEITA de uma cópia** (2026-09-07).
+///
+/// A receita é escondida do canvas e da Hierarquia enquanto ninguém a edita, e o único caminho até
+/// ela era o cartão do navegador de assets — que exige saber o nome dela e ter aquele painel
+/// aberto. ⚠️ **E três recusas deste app já mandavam o artista *«editar no prefab»*** sem lhe dar um
+/// gesto para lá chegar: *um app que nomeia um sítio inalcançável ensina que a feature está
+/// partida.*
+///
+/// **Mutação que deve sangrar:** `can_edit_prefab: link.is_some()` a virar `false`.
+#[test]
+fn the_section_offers_opening_the_prefab_of_a_copy() {
+    let (mut sim, r, mut map, id, e) = scene();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    assert!(
+        !state_of(&mut sim, &map, &[id], false)
+            .expect("a seccao existe")
+            .can_edit_prefab,
+        "uma forma comum nao tem receita para abrir"
+    );
+    let (_, out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
+    let copy = out.map(Entity::from_bits).expect("a copia");
+    let copy_id: VecPathId = 2;
+    map.insert(copy_id, copy.to_bits());
+    assert!(
+        state_of(&mut sim, &map, &[copy_id], false)
+            .expect("a seccao existe sobre a copia")
+            .can_edit_prefab,
+        "o painel nao oferece abrir a receita — ela so' e' alcancavel pelo cartao da biblioteca"
+    );
+}
+
+/// ⭐⭐⭐ **E o clique SELECCIONA a receita — que é o que a faz aparecer.**
+///
+/// ⚠️ **O `MasterEditing` é DERIVADO da selecção**, então não há modo nem janela: pôr a selecção na
+/// raiz do mestre acende o canvas, arma o gizmo e enche o Inspector. *O verbo que faltava não era um
+/// modo: era um acesso.*
+///
+/// ⚠️ **E ele devolve `false`** — seleccionar não é editar, e devolver `true` poria um passo de undo
+/// sobre um gesto de *ver*.
+#[test]
+fn opening_the_prefab_selects_the_recipe_and_is_not_an_edit() {
+    let (mut sim, r, _map, _id, e) = scene();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    let (_, out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
+    let copy = out.map(Entity::from_bits).expect("a copia");
+
+    let (changed, out) = run(ComponentEdit::Edit, &mut sim, &r, copy, &mut toasts);
+
+    assert!(
+        !changed,
+        "abrir a receita registou-se como edicao do documento"
+    );
+    assert_eq!(
+        out.map(Entity::from_bits),
+        Some(e),
+        "a seleccao nao foi para a receita — o gesto nao leva o artista a lado nenhum"
+    );
+}
+
+/// ⛔ **E sobre uma forma comum ele RECUSA com voz** — a tabela do painel não o oferece ali, mas o
+/// dreno é partilhado com o menu da Hierarquia, cuja tabela é plana.
+#[test]
+fn opening_the_prefab_of_a_plain_shape_refuses_out_loud() {
+    let (mut sim, r, _map, _id, e) = scene();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    let (changed, out) = run(ComponentEdit::Edit, &mut sim, &r, e, &mut toasts);
+    assert!(!changed);
+    assert!(out.is_none(), "seleccionou alguma coisa sem haver receita");
+    assert!(
+        toasts.iter().any(|t| t.message.contains("not a copy")),
+        "a recusa nao diz o que escolher"
+    );
+}
+
 /// ⭐⭐ **E o botão não é decoração: promover a cópia dá uma VARIANTE de verdade.**
 ///
 /// Uma variante é `MasterRoot` **e** `InstanceOf` ao mesmo tempo — ela segue a base *e* é a receita

@@ -90,6 +90,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // faz neste sujeito, e o id do botão é o mesmo (ver `paint_components`).
         "panel.vector.component.make_variant" => "Make Variant",
         "panel.vector.component.place" => "Instantiate",
+        // ⭐ ABRIR a receita desta cópia — ela não está no canvas, e até 2026-09-07 só o cartão da
+        // biblioteca lá chegava.
+        "panel.vector.component.edit" => "Edit Prefab",
         "panel.vector.component.detach" => "Detach from Prefab",
         "panel.vector.component.reset" => "Revert to Prefab",
         "panel.vector.component.missing" => "Prefab missing",

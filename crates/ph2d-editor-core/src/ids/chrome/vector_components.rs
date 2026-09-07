@@ -33,6 +33,14 @@ pub const VECTOR_SECTION_COMPONENT: NodeId = hash_node_id("vector.section.compon
 pub const VECTOR_COMPONENT_CREATE: NodeId = hash_node_id("vector.component.create");
 /// **Place Instance** — põe uma cópia derivada do mestre selecionado.
 pub const VECTOR_COMPONENT_PLACE: NodeId = hash_node_id("vector.component.place");
+/// ⭐⭐⭐ **Edit Prefab** — abre a RECEITA desta cópia (2026-09-07).
+///
+/// ⚠️ **A receita não está no canvas**: no modelo geral ela é escondida da cena e da Hierarquia
+/// enquanto ninguém a edita, e o único caminho até ela era o cartão do navegador de assets — que
+/// exige saber o nome dela e ter aquele painel aberto. *Três recusas deste app já mandavam o
+/// artista «editar no prefab» sem lhe dar um gesto para lá chegar.*
+pub const VECTOR_COMPONENT_EDIT: NodeId = hash_node_id("vector.component.edit");
+
 /// **Detach** — a instância deixa de derivar: o que estava na tela vira geometria dela.
 pub const VECTOR_COMPONENT_DETACH: NodeId = hash_node_id("vector.component.detach");
 /// **Reset Overrides** — a instância volta a ser exactamente o mestre.

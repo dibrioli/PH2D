@@ -6843,6 +6843,13 @@ impl crate::App {
                         crate::vec_component_edit::ComponentEdit::Create => {
                             crate::vec_component_edit::create_main(sim, &self.vec_entities, &sel);
                         }
+                        // ⛔ **INALCANÇÁVEL neste motor, e o braço existe para o COMPILADOR o
+                        // dizer.** O botão só é pintado quando o produtor publica
+                        // `can_edit_prefab`, e o vetorial publica `false` — ali o mestre é uma
+                        // forma **visível** no canvas, que se alcança clicando nela. *Um verbo
+                        // novo do modelo geral tem de aparecer aqui como ausência declarada, senão
+                        // o dia em que alguém o publicar por engano ele cai num `_ =>` mudo.*
+                        crate::vec_component_edit::ComponentEdit::Edit => {}
                         crate::vec_component_edit::ComponentEdit::Place => {
                             if let Some(&main) = sel.first()
                                 && let Some(new_id) = crate::vec_component_edit::place_instance(

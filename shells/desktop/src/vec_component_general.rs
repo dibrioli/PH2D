@@ -171,6 +171,9 @@ pub(crate) fn state_of(
         // tabela dele é PLANA. *A terceira vez, nesta secção, em que a lente do painel era mais
         // estreita que a do verbo.*
         can_make_variant: link.is_some(),
+        // ⭐⭐⭐ **A receita está ESCONDIDA no canvas** (`is_unedited_recipe`), então chegar a ela é
+        // um gesto — e até 2026-09-07 o único era o cartão da biblioteca. Ver [`Verb::Edit`].
+        can_edit_prefab: link.is_some(),
         swap_armed: pick_armed,
     })
 }
@@ -185,6 +188,7 @@ fn general_verb(
     use crate::vec_component_edit::ComponentEdit as E;
     match verb {
         E::Create => Some(Verb::Make),
+        E::Edit => Some(Verb::Edit),
         E::Place => Some(Verb::Place),
         E::Detach => Some(Verb::Detach),
         E::UpdateMain => Some(Verb::Apply),

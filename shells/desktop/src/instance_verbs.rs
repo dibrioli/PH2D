@@ -323,6 +323,21 @@ pub(crate) enum Verb {
     /// *«não dá para tirar um asset da biblioteca»*). A lei das duas metades vive em
     /// [`crate::instance_unmake`], que é onde ela se lê inteira.
     Unmake,
+    /// ⭐⭐⭐ *Edit Prefab* — **abrir a receita a partir de uma CÓPIA dela** (F4.6c, 2026-09-07).
+    ///
+    /// # A receita não está no canvas, e até aqui só a biblioteca a alcançava
+    ///
+    /// Uma receita é `MasterPiece` sem `MasterEditing`, logo o `off_canvas` esconde-a da cena **e**
+    /// da Hierarquia. O único caminho para ela era o *Edit Prefab* do **cartão** do navegador de
+    /// assets — que exige saber o nome dela e ter aquele painel aberto. ⚠️ **E três recusas deste
+    /// módulo mandavam o artista para lá** (*«edit it in the prefab»*), o que faz da ausência deste
+    /// verbo um buraco que o próprio app já nomeava.
+    ///
+    /// ⭐ Ele **selecciona, e mais nada** — o `MasterEditing` é derivado da selecção
+    /// ([`crate::render_loop::master_editing`]), então pôr a selecção na raiz do mestre acende o
+    /// canvas, arma o gizmo, enche o Inspector, e cada peça mexida chega a todas as cópias no mesmo
+    /// quadro. *O verbo que faltava não era um modo nem uma janela: era um acesso.*
+    Edit,
 }
 
 /// ⭐ **O dreno dos quatro** — resolve a entidade, corre o verbo e **responde ao artista**.
@@ -515,6 +530,9 @@ pub(crate) fn drain(
         // deixam a cena em estados diferentes (uma não muda nada do que se vê, a outra faz
         // aparecer um objecto), e um artista que lesse a mesma frase nas duas concluiria que a
         // segunda inventou uma cópia.
+        // ⭐⭐⭐ **Abrir a receita a partir de uma cópia** — a lei vive em [`crate::instance_open`],
+        // como a dos outros verbos com lei própria; aqui só o roteamento.
+        Verb::Edit => crate::instance_open::open_prefab(sim, entity, toasts, select_out),
         Verb::Unmake => match crate::instance_unmake::unmake_master(sim, entity) {
             Ok(crate::instance_unmake::Unmade::Dissolved { copies }) => {
                 toasts.push(Toast::success(format!(

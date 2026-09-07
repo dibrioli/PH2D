@@ -71,6 +71,14 @@ pub struct ComponentState {
     /// painel que a inferisse pintaria, no motor velho, um botão cujo dreno faz outra coisa.
     /// *Quem sabe o que o gesto faz é o produtor; o painel oferece o que lhe é publicado.*
     pub can_make_variant: bool,
+    /// ⭐⭐⭐ **A receita desta cópia NÃO está no canvas** — ou seja, é preciso um gesto para lá
+    /// chegar (*Edit Prefab*).
+    ///
+    /// ⚠️ **É um FACTO do modelo, e não o mesmo que [`Self::can_make_variant`]** — hoje os dois
+    /// valem o mesmo, e por razões diferentes: no motor vetorial o mestre é uma forma **visível**,
+    /// que o artista alcança clicando nela, e por isso ali este verbo não teria sujeito nenhum.
+    /// *Colapsá-los faria a próxima mudança num deles mexer no outro sem que ninguém percebesse.*
+    pub can_edit_prefab: bool,
     /// O conta-gotas do *Swap* está ARMADO (o próximo clique no canvas escolhe o mestre).
     ///
     /// ⚠️ Sem isto o botão pareceria não ter feito nada: um pick modal que não se anuncia é

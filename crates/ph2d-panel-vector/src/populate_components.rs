@@ -16,6 +16,7 @@ use crate::ids;
 /// para trás da lista pintada.
 pub(crate) const COMPONENT_BUTTONS: &[ph2d_a11y::NodeId] = &[
     ids::VECTOR_COMPONENT_CREATE,
+    ids::VECTOR_COMPONENT_EDIT,
     ids::VECTOR_COMPONENT_PLACE,
     ids::VECTOR_COMPONENT_DETACH,
     ids::VECTOR_COMPONENT_RESET,

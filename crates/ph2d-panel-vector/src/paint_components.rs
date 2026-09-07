@@ -62,6 +62,19 @@ impl BodyCtx<'_> {
                 y,
             );
         }
+        // ⭐⭐⭐ **ABRIR a receita desta cópia.** Ele fica no topo dos verbos de cópia porque é o
+        // único que leva o artista para **outro sujeito** — os de baixo agem sobre esta cópia, e
+        // este muda para onde se está a olhar.
+        //
+        // ⚠️ A condição vem do PRODUTOR (`can_edit_prefab`): no motor vetorial o mestre é uma forma
+        // visível, que se alcança clicando nela — lá este botão não teria sujeito.
+        if c.can_edit_prefab {
+            y = self.action_button(
+                ids::VECTOR_COMPONENT_EDIT,
+                tr("panel.vector.component.edit"),
+                y,
+            );
+        }
         if c.is_instance {
             if c.main_missing {
                 y = self.label_line(tr("panel.vector.component.missing"), y);

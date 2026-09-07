@@ -32,6 +32,10 @@ use crate::vec_entities::VecEntityMap;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ComponentEdit {
     Create,
+    /// ⭐⭐⭐ **Edit Prefab** — abre a RECEITA desta cópia (2026-09-07). Ver
+    /// [`crate::instance_verbs::Verb::Edit`]: no modelo geral a receita está escondida do canvas,
+    /// e até aqui só o cartão da biblioteca lá chegava.
+    Edit,
     Place,
     Detach,
     Reset,
@@ -57,6 +61,7 @@ pub(crate) enum ComponentEdit {
 pub(crate) fn component_edit_for_id(id: ph2d_editor::NodeId) -> Option<ComponentEdit> {
     match id {
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_CREATE => Some(ComponentEdit::Create),
+        _ if id == ph2d_editor::ids::VECTOR_COMPONENT_EDIT => Some(ComponentEdit::Edit),
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_PLACE => Some(ComponentEdit::Place),
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_DETACH => Some(ComponentEdit::Detach),
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_RESET => Some(ComponentEdit::Reset),
@@ -114,6 +119,9 @@ pub(crate) fn selected_component(
         // `create_main` sobre ela, que é outra coisa — o botão nasceria vivo e a fazer o que o
         // rótulo não diz. *A lei é do modelo geral (ADR-0164), e por isso a resposta é `false`.*
         can_make_variant: false,
+        // ⛔ Idem: no motor vetorial o mestre é uma forma VISÍVEL no canvas, que se alcança
+        // clicando nela. *Um verbo para «ir até lá» não teria sujeito aqui.*
+        can_edit_prefab: false,
         swap_armed,
         // ⚠️ A órfã é decidida pelo PRODUTOR, e o painel lê a resposta dele. Re-perguntar aqui
         // (*"o mestre existe?"*) seria a segunda resposta, e ela divergiria no frame em que o

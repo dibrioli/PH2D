@@ -333,6 +333,8 @@ mod instance_live;
 mod instance_move_smoke;
 /// ⭐⭐ A cena da receita DENTRO da receita — irmã por assunto do `instance_smoke`.
 mod instance_nested_smoke;
+/// ⭐⭐⭐ **ABRIR a receita a partir de uma cópia** — o acesso que só a biblioteca tinha.
+mod instance_open;
 mod instance_refs;
 /// ⭐⭐ A cena do que é SÓ desta cópia — irmã por assunto do `instance_smoke`.
 mod instance_removed_smoke;

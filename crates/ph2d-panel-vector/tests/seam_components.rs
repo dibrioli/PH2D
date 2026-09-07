@@ -130,6 +130,18 @@ fn all_four_component_verbs_are_reachable_and_reach_the_bus() {
         ids::VECTOR_COMPONENT_RESET,
         "Revert to Prefab",
     );
+    // ⭐⭐⭐ **ABRIR A RECEITA** (2026-09-07) — o quinto verbo, e o único que leva o artista para
+    // outro sujeito. ⚠️ Ele só existe quando o PRODUTOR o autoriza: no motor vetorial o mestre é
+    // uma forma visível, e ali este botão não teria a quem ir.
+    click_reaches_bus(
+        ComponentState {
+            is_instance: true,
+            can_edit_prefab: true,
+            ..ComponentState::default()
+        },
+        ids::VECTOR_COMPONENT_EDIT,
+        "Edit Prefab",
+    );
     clear();
 }
 
@@ -181,6 +193,12 @@ fn each_verb_appears_only_where_it_makes_sense() {
     assert!(
         rect_under(can_vary, ids::VECTOR_COMPONENT_CREATE).is_some(),
         "o gesto de fazer uma VERSAO nova nao tem botao no painel — ele so' existe no menu"
+    );
+    // ⭐ E a metade da AUSÊNCIA do *Edit Prefab*: sem a autorização do produtor ele não é pintado,
+    // e o caminho do motor vetorial fica exactamente como estava.
+    assert!(
+        rect_under(clean, ids::VECTOR_COMPONENT_EDIT).is_none(),
+        "o Edit apareceu sobre uma copia cujo produtor NAO tem receita escondida para abrir"
     );
     clear();
 }

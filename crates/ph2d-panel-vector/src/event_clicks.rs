@@ -369,6 +369,7 @@ fn is_prefab_click(id: ph2d_a11y::NodeId) -> bool {
     // Os quatro verbos de COMPONENTE (plano UI/UX W5): mestre e instância moram no ECS, então
     // o clique é da SHELL — o painel só mostra que verbos fazem sentido.
     id == ids::VECTOR_COMPONENT_CREATE
+    || id == ids::VECTOR_COMPONENT_EDIT
     || id == ids::VECTOR_COMPONENT_PLACE
     || id == ids::VECTOR_COMPONENT_DETACH
     || id == ids::VECTOR_COMPONENT_RESET

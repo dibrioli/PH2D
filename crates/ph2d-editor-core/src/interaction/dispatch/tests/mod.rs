@@ -277,8 +277,8 @@ fn focused_text_input(text: &str, caret: usize, anchor: Option<usize>) -> Widget
     store
 }
 
-mod caret_doors;
 mod blur;
+mod caret_doors;
 mod clipboard;
 mod context_menu_close;
 mod curve;

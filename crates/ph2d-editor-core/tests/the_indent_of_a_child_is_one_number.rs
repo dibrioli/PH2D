@@ -108,12 +108,23 @@ fn without_tests(src: &str) -> String {
 /// ⚠️ **O `*` tem de ser binário.** O `rustfmt` normaliza um produto para ` * `; o `*` de uma
 /// desreferência cola no nome (`*rect`, `*v`). Sem esta distinção o censo acusa duas linhas que
 /// não fazem conta nenhuma — e uma delas é a cor de um cartão.
+///
+/// ⚠️⚠️ **E um NÍVEL é uma CONTAGEM, logo ele atravessa um `as f32` para virar coordenada.** Esta
+/// é a OITAVA forma que o censo teve de aprender, e ela chegou na integração de 2026-09-07: a
+/// `line/3DModeling` trouxe cinco linhas com ` * ` e a palavra `depth` que são a **profundidade
+/// de uma ROSCA** (`let depth = thread_depth_ceiling(..) * 0.70`), geometria de documento e não
+/// recuo de lista nenhum. ⭐ **A separação é derivada da população, não escolhida:** as `9` linhas
+/// das cinco superfícies declaradas em [`STEPS_BY_A_LEVEL`] convertem **todas** (`depth as f32`,
+/// `(*depth as f32)`, `(depth + 1) as f32`) — porque um nível vive num inteiro — e as `5` da
+/// geometria **nenhuma**, porque uma profundidade em milímetros já nasce `f32`.
+/// ⛔ Isto **não** afrouxa a barra: quem recua um filho continua a ser apanhado, e a metade de
+/// obsolescência ([`the_declared_surfaces_still_step_by_a_level`]) prova-o a cada corrida.
 fn steps_by_a_level(line: &str) -> bool {
     let s = line.trim_start();
     if s.starts_with("//") {
         return false;
     }
-    line.contains(" * ") && mentions_depth(line)
+    line.contains(" * ") && mentions_depth(line) && line.contains("as f32")
 }
 
 /// `depth` como PALAVRA (`depth`, `.depth`, `row.depth`) — nunca como pedaço de `depth_bias`.

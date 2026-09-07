@@ -385,6 +385,29 @@ fn paint_cloth_rows(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
         w,
         y,
     );
+    // **A BASE PERSISTENTE** — o interruptor e o botão que o torna observável.
+    //
+    // ⚠️⚠️ **Os DOIS, e nenhum basta sozinho:** ligar a opção sem base gravada é
+    // um **no-op exacto** (a construção cai no repouso do traço), e gravar a base
+    // com a opção desligada não muda nada. *Um controlo sozinho aqui seria um
+    // botão que o artista carrega e não vê acontecer nada.*
+    let y = toggle(
+        ctx,
+        ids::SCULPT3D_CLOTH_PERSISTENT,
+        tr("panel.sculpt3d.cloth_persistent"),
+        snap.ui.brush.cloth_persistent,
+        x,
+        w,
+        y,
+    );
+    let y = command(
+        ctx,
+        ids::SCULPT3D_CLOTH_SET_BASE,
+        tr("panel.sculpt3d.cloth_set_base"),
+        x,
+        w,
+        y,
+    );
     // **O PINO DA FRONTEIRA**, e só onde a lei existe. ⚠️ A pergunta é a mesma
     // que [`ph2d_sculpt3d`] faz ao construir o pincel — a lei recusa o pino fora
     // da área *Local* (espec §2.3), e a caixa nos outros dois terços do selector

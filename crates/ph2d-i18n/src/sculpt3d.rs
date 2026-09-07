@@ -36,6 +36,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.cloth_area" => "Simulation Area",
         "panel.sculpt3d.cloth_force_falloff" => "Force Falloff",
         "panel.sculpt3d.cloth_pin" => "Pin Simulation Boundary",
+        "panel.sculpt3d.cloth_persistent" => "Persistent",
+        "panel.sculpt3d.cloth_set_base" => "Set Persistent Base",
         "panel.sculpt3d.cloth_limit" => "Simulation Limit",
         "panel.sculpt3d.cloth_falloff" => "Simulation Falloff",
         "panel.sculpt3d.cloth_mass" => "Cloth Mass",

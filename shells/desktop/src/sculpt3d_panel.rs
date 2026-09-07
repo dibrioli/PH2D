@@ -423,6 +423,21 @@ impl Sculpt3dScene {
                     Err(e) => eprintln!("[sculpt3d] {}", e.explain()),
                 }
             }
+            // ⭐ **A base persistente vive na SESSÃO de escultura** — o
+            // `SculptStroke` da cena sobrevive aos traços e morre com ela, que é
+            // exactamente a duração que a espec §6.4 autoriza para uma malha sem
+            // atributos persistentes.
+            Sculpt3dIntent::SetClothPersistentBase => {
+                // ⚠️ O `to_vec` é o que quebra o empréstimo duplo (a malha e o
+                // traço vivem no mesmo `self`), e não uma cópia por acaso.
+                let pos: Vec<[f32; 3]> = self.mesh().positions().to_vec();
+                let n = pos.len();
+                self.stroke.set_persistent_base(&pos);
+                eprintln!(
+                    "[sculpt3d] base persistente congelada: {n} vertices -- ligue \
+                     `Persistent` para o pano deixar de acumular entre tracos"
+                );
+            }
             Sculpt3dIntent::BakeAo => {
                 let r = self.bake_ao();
                 eprintln!("[sculpt3d] AO assado: {} vertices em {:.0} ms", r.0, r.1);

@@ -253,6 +253,15 @@ pub const SCULPT3D_CLOTH_FORCE_FALLOFF: [NodeId; 2] = [
 ];
 /// ***Pin Simulation Boundary*** — só existe na área *Local* (espec §2.3).
 pub const SCULPT3D_CLOTH_PIN: NodeId = hash_node_id("sculpt3d.cloth_pin");
+/// ***Persistent*** — a construção lê a base congelada (espec §6.4).
+pub const SCULPT3D_CLOTH_PERSISTENT: NodeId = hash_node_id("sculpt3d.cloth_persistent");
+/// ***Set Persistent Base*** — congela as posições de agora.
+///
+/// ⚠️ **Ele é um COMANDO e o vizinho é um interruptor**, e os dois existem
+/// porque nenhum basta: ligar a opção sem base gravada é um no-op exacto, e
+/// gravar a base sem a opção ligada não muda nada. *Um controlo sozinho aqui
+/// seria um botão que o artista carrega e não vê acontecer nada.*
+pub const SCULPT3D_CLOTH_SET_BASE: NodeId = hash_node_id("sculpt3d.cloth_set_base");
 /// ***Simulation Limit* `L`** — quantos raios a área simulada alcança.
 pub const SCULPT3D_CLOTH_LIMIT: NodeId = hash_node_id("sculpt3d.cloth_limit");
 /// Chip ligado a [`SCULPT3D_CLOTH_LIMIT`].

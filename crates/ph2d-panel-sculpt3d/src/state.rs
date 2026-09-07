@@ -419,6 +419,18 @@ pub enum Sculpt3dIntent {
     /// destrutiva), esta preserva a topologia e alinha a grade à FORMA.
     QuadRemesh,
     CloseHoles,
+    /// ⭐⭐⭐ **Congela a BASE PERSISTENTE do pincel de tecido** nas posições de
+    /// agora (espec §6.4, o operador *Set Persistent Base*).
+    ///
+    /// ⚠️⚠️ **A ORDEM é a lei:** para a opção morder, a base tem de ser gravada
+    /// **ANTES** do traço que a há-de contradizer. Gravá-la DEPOIS de um traço é
+    /// um **no-op exacto** — ali ela É o repouso do traço seguinte. *É a
+    /// experiência que ocorre primeiro a quem desenha o botão, e ela não mede
+    /// nada.*
+    ///
+    /// ⚠️ Um comando e não um knob, pela mesma razão do [`Self::BakeAo`]: é um
+    /// gesto que o artista PEDE sobre a forma que está a ver.
+    SetClothPersistentBase,
     /// Mede quanto do céu cada vértice enxerga e instala o canal.
     ///
     /// ⚠️ Um comando e não um knob: o bake custa ~338 ms na malha da cena `=16`,

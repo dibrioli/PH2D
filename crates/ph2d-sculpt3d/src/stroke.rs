@@ -236,9 +236,12 @@ impl SculptStroke {
     /// um **no-op exacto** — ali ela É o repouso do traço seguinte, e as quatro
     /// leituras da §6.4 não mudam. *A experiência «deformar → gravar → repetir»
     /// não mede nada, e é a que ocorre primeiro a quem a desenha.*
-    pub fn set_persistent_base(&mut self, mesh: &Mesh) {
+    /// ⚠️ **Recebe as POSIÇÕES e não a `Mesh`**, e não é arrumação: quem chama
+    /// tem a malha e o traço no mesmo `self`, e pedir as duas de uma vez é um
+    /// empréstimo duplo. *A porta tem de caber no sítio onde o gesto acontece.*
+    pub fn set_persistent_base(&mut self, positions: &[[f32; 3]]) {
         self.persistent_base.clear();
-        self.persistent_base.extend_from_slice(mesh.positions());
+        self.persistent_base.extend_from_slice(positions);
     }
 
     /// **APAGA a base persistente** — o gesto oposto, e ele existe porque uma

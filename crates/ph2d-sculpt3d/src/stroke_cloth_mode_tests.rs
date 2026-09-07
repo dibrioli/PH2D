@@ -573,7 +573,7 @@ fn a_base_persistente_chega_ao_motor_e_satura() {
         let mut s = SculptStroke::default();
         for t in 0..tracos {
             if quando == Some(t) {
-                s.set_persistent_base(&mesh);
+                s.set_persistent_base(mesh.positions());
             }
             // ⚠️ O `begin` mata a sessão do traço anterior (`cloth_ref`), que é
             // o que faz cada traço nascer com um pen-down novo.

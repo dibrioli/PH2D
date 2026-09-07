@@ -14,10 +14,9 @@
 |---|---|
 | branch | `line/components` |
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-components` |
-| último commit de **CÓDIGO** | `75fd9871c500bc9eca42adb5024041ddfaf11856` |
-| HEAD do ramo | este documento, **um** commit acima do anterior (só `.md`) |
+| último commit de **CÓDIGO** | `aab5a22bb` (`style(diag)`, reformatação pura) |
 | merge-base com `main` | `815555aed` |
-| commits | **29** de código + este handoff |
+| commits | **31** — 30 de código + este handoff |
 | diff | **101 ficheiros**, `+7 520 / −840` |
 | testes novos | **90** `#[test]` |
 
@@ -30,10 +29,10 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && cargo run -p
 2.ª corrida da prova:
 
 ```
-    Finished `release` profile [optimized] target(s) in 0.18s
+    Finished `release` profile [optimized] target(s) in 0.19s
 ```
 
-zero linhas `Compiling`. ⚠️ Ela foi tirada **depois do último commit de código** (`75fd9871c`) e
+zero linhas `Compiling`. ⚠️ Ela foi tirada **depois do último commit de código** (`aab5a22bb`) e
 **depois** de reclamar o `incremental/` — qualquer edição de fonte posterior a invalida em
 silêncio. As edições que vieram a seguir são só deste `.md`, que não está em crate nenhuma.
 
@@ -351,7 +350,7 @@ dois como camadas somadas leva a reconstruir a que foi retirada.
 | `cargo test -p ph2d-host-desktop` | ✅ **5 429 passaram · 297 ignorados** |
 | `CARGO_INCREMENTAL=0 scripts/nextest-impacted.sh` | ✅ **14 444 correram · 14 444 passaram · 0 falharam · 1 469 saltados** (405 s) |
 | `rm -rf target/*/incremental` | ✅ **27 GB devolvidos** (`debug/incremental`; `ci-test` e `release` já estavam a `0 B`) |
-| build de release ×2 | ✅ 2.ª corrida `Finished … in 0.18s`, zero `Compiling` |
+| build de release ×2 | ✅ **as DUAS** corridas `Finished … in 0.19s`, zero `Compiling` — o binário já correspondia à árvore |
 
 ```
      Summary [ 405.365s] 14444 tests run: 14444 passed (4 slow), 1469 skipped
@@ -427,7 +426,7 @@ O §5 recebe **uma linha** (§1.5.9 item 8). A narrativa é este documento.
 
 ## 13. Estado
 
-**Linha `components` pronta.** HEAD `75fd9871c`, 29 commits, base `815555aed`.
-Smoke compilado: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && cargo run -p ph2d-host-desktop --release` (2.ª corrida: `Finished` em `0.18s`, zero `Compiling`).
+**Linha `components` pronta.** Último commit de código `aab5a22bb`, 31 commits ao todo, base `815555aed`.
+Smoke compilado: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && cargo run -p ph2d-host-desktop --release` (2.ª corrida: `Finished` em `0.19s`, zero `Compiling`).
 
 ⛔ **Aguardo ordem de integração.** Não integrei, não pushei.

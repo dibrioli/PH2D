@@ -420,6 +420,33 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
                 *x *= factor;
             }
         }
+        // ⭐⭐ **Aqui o contorno ESCALA, e é o oposto do [`Primitive::Extrude`] acima** — a razão é
+        // a mesma nos dois casos, lida do lado certo: lá os pontos são de outro módulo e reescrevê-los
+        // seria mexer no documento dele; aqui eles são **deste nó**, e deixá-los quietos faria a peça
+        // manter o tamanho enquanto o número ao lado dizia que ela mudou.
+        //
+        // ⚠️ **Se a reconstrução recusar, o contorno fica como estava.** Ela só pode recusar com um
+        // factor não-finito ou zero — e nesse caso a alternativa seria gravar um polígono colapsado,
+        // que é precisamente o estado que o [`crate::polygon::polygon_profile`] existe para não deixar
+        // entrar.
+        Primitive::Polygon {
+            profile,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            let pontos: Vec<[f32; 2]> = profile
+                .contours()
+                .first()
+                .map(|c| c.iter().map(|p| [p[0] * factor, p[1] * factor]).collect())
+                .unwrap_or_default();
+            if let Some(novo) = crate::polygon::polygon_profile(pontos) {
+                *profile = novo;
+            }
+            for x in [half_height, round, chamfer] {
+                *x *= factor;
+            }
+        }
         Primitive::Superquadric { half, .. } | Primitive::Superformula { half, .. } => {
             for v in half.iter_mut() {
                 *v *= factor;

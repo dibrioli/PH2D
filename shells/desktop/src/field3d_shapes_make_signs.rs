@@ -308,3 +308,38 @@ pub(crate) fn a_triangle(r: f32) -> Primitive {
         chamfer: 0.0,
     }
 }
+
+/// ⭐⭐ **O POLÍGONO nasce IRREGULAR e CÔNCAVO** (W132) — cinco vértices, um deles reentrante.
+///
+/// ⚠️ **Um pentágono regular seria o sósia do prisma de 5 lados**, e um convexo qualquer parece-se
+/// com meia dúzia de entradas do catálogo. O que **só** esta forma alcança é a quina que entra para
+/// dentro: *uma forma nova nasce no sítio em que ela é ELA*, e aqui esse sítio é a concavidade.
+///
+/// Medido sobre esta configuração (grelha de `400²` sobre a caixa): o maior disco que cabe na chapa
+/// tem raio **`0,405·r`**, então o filete de nascimento fica a `15 %` do que a forma aguenta — e o
+/// tecto que o painel oferece é a **meia-altura** (`0,35·r`), que é menor. ⇒ *subir o filete até ao
+/// topo do controlo nunca abre esta peça*, e quem quiser ver a abertura morfológica tem a cena de
+/// smoke com uma chapa estreita.
+pub(crate) fn a_polygon(r: f32) -> Primitive {
+    // ⚠️ **Sentido anti-horário e sem auto-intersecção** — conferido, e não suposto: o campo do
+    // enrolamento aceita as duas voltas, mas um contorno que se cruza deixa de ter dentro e fora.
+    let pontos = vec![
+        [-0.95 * r, -0.55 * r],
+        [0.90 * r, -0.30 * r],
+        [0.35 * r, 0.95 * r],
+        // ⭐ **O vértice REENTRANTE** — o entalhe que nenhuma outra forma desta paleta faz.
+        [0.05 * r, 0.10 * r],
+        [-0.55 * r, 0.70 * r],
+    ];
+    Primitive::Polygon {
+        // ⚠️ O `expect` é inalcançável e não é preguiça: os cinco pontos são literais deste arquivo,
+        // finitos e distintos, e a única porta que constrói o perfil já os validou. *Um `unwrap_or`
+        // aqui esconderia uma edição futura que colapsasse a lista.*
+        profile: ph2d_field::polygon_profile(pontos).expect("o polígono de nascimento é válido"),
+        half_height: r * 0.35,
+        // ⚠️ **Nasce com FILETE**, como toda forma desta casa que o tem — ver a lei em
+        // `field3d_shapes_tests`.
+        round: r * 0.06,
+        chamfer: 0.0,
+    }
+}

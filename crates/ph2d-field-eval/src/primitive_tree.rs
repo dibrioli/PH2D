@@ -678,24 +678,10 @@ fn primitive_raw(p: &Primitive) -> Tree {
         Primitive::RoundedCylinder { .. }
         | Primitive::Superquadric { .. }
         | Primitive::Superformula { .. } => crate::primitive_tree_formula::formula(p),
-        // ─────────────────────────── W131 ───────────────────────────
-        Primitive::Triangle {
-            a,
-            b,
-            c,
-            half_height,
-            round,
-            chamfer,
-        } => {
-            let f = |q: [f32; 2]| [f64::from(q[0]), f64::from(q[1])];
-            crate::ops_triangle::sd_triangle(
-                f(a),
-                f(b),
-                f(c),
-                f64::from(half_height),
-                f64::from(round),
-                f64::from(chamfer),
-            )
+        // ⭐⭐ **As formas de VÉRTICES AUTORADOS (W131–W132) baixam no irmão** — ver
+        // [`super::primitive_tree_vertices`].
+        Primitive::Triangle { .. } | Primitive::Polygon { .. } => {
+            crate::primitive_tree_vertices::by_vertices(p)
         }
     }
 }

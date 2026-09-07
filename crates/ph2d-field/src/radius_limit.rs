@@ -32,7 +32,13 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
         } => Some(radius.min(*half_height)),
         // Só a meia-altura: um `round` maior que a meia-largura do perfil é uma ABERTURA, não um
         // erro (ver a nota de [`Primitive::Extrude`]).
-        Primitive::Extrude { half_height, .. } => Some(*half_height),
+        // ⚠️ **E o polígono responde IGUAL, e não pelo inraio** — ao contrário do
+        // [`Primitive::Triangle`] logo abaixo. A diferença é a construção: o triângulo é uma
+        // intersecção de semiplanos e passar do inraio **parte** o campo; o polígono é a extrusão,
+        // e ali a mesma escrita produz uma peça correcta e menor.
+        Primitive::Extrude { half_height, .. } | Primitive::Polygon { half_height, .. } => {
+            Some(*half_height)
+        }
         // ⭐ **O INRAIO do triângulo, cortado pela meia-altura** — o maior disco que cabe na chapa.
         // ⚠️ A conta mora no [`crate::triangle_inradius`] e é lida também pela `dims`: *uma lei
         // escrita em dois sítios divergiria no dia em que uma delas mudasse.*

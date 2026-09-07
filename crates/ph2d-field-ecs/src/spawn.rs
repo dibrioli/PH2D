@@ -27,6 +27,7 @@ pub fn shape_name(shape: &NodeShape) -> &'static str {
             Primitive::Cylinder { .. } => "Cylinder",
             Primitive::Torus { .. } => "Torus",
             Primitive::Extrude { .. } => "Extrude",
+            Primitive::Polygon { .. } => "Polygon",
             Primitive::Revolve { .. } => "Revolve",
             // ⚠️ **Um cone TRUNCADO chama-se «Cone» na Hierarquia, e é de propósito**: o nome é a
             // identidade do objeto e o artista renomeia-o; um nome que mudasse ao arrastar o raio

@@ -22,10 +22,13 @@ número um.
 
 | de onde | faltam | quais |
 |---|---:|---|
-| catálogo **2D** | **5** | Polygon(N) · Triangle · Bezier · Parabola · Circle Wave |
+| catálogo **2D** | **3** | ~~Polygon(N)~~ · ~~Triangle~~ · Bezier · Parabola · Circle Wave |
 | catálogo **3D** | **3** | Plane · Death Star · Vesica Segment |
 | **famílias** fora de catálogo | **2** | Nó de toro · Rosca / knurling |
-| **total** | **10** | |
+| **total** | **8** | |
+
+✅ **O LOTE 9 FECHOU em 06/09** — o *Triangle* na W131 ([doc 06 §132](06_resultados_cena_e_gizmo.md)) e
+o *Polygon(N)* na W132 ([§133](06_resultados_cena_e_gizmo.md)).
 
 ⛔ **Fora da conta, de propósito:** os **dois modificadores** (grade hexagonal, metabolas) e os
 **fractais** — este último é wave com medição própria, porque o custo é por **iteração** e não por
@@ -35,7 +38,23 @@ nó, e isso muda o preço do quadro.
 
 ## 1. A ORDEM proposta, e por quê
 
-### Lote 9 — **Polygon(N) e Triangle** ⭐⭐ *(as que hoje obrigam a desenhar)*
+### ✅ Lote 9 — **Polygon(N) e Triangle** — FECHADO em 06/09
+
+> ⚠️ **A pergunta de desenho que este lote nomeava tinha resposta, e era «metade»** — e vale relê-la
+> antes do lote seguinte, porque o molde repete-se. O plano perguntava *«onde vivem os vértices? um
+> `Vec` dentro do `Primitive` mexe no `PROJECT_SCHEMA`»*: **não mexe** (o `Extrude` carrega um
+> `Profile` com `Vec<Vec<[f32;2]>>` desde sempre, e o `Primitive` é `serde`). E perguntava *«a
+> composição já o exprime?»*: a **geometria** sim, inteira — o que faltava era a **AUTORIA**, que é o
+> que decide se os pontos podem ter linha no painel. Mecanismo: [doc 06 §133.1](06_resultados_cena_e_gizmo.md).
+>
+> ⛔⛔ **E a wave achou dois defeitos que não eram dela:** a nota do `sd_extrude` prometia uma
+> *«abertura morfológica»* que a medição refutou (o filete é do **ARO**), e o
+> `fillet_inflates(Extrude) == false` **nunca tinha sido medido** — o censo reprovou a `1,0216` com o
+> chanfro sozinho sobre uma quina que não é recta. Os dois estão curados com a tabela ao lado
+> ([§133.2](06_resultados_cena_e_gizmo.md) e [§133.6](06_resultados_cena_e_gizmo.md)).
+
+<details><summary>O que este lote dizia antes de ser feito</summary>
+
 
 O polígono **irregular** e o triângulo **escaleno**. Hoje só se chega lá pelo editor vetorial, e
 desenhar custa **por segmento**.
@@ -51,6 +70,14 @@ desenhar custa **por segmento**.
   composição já o exprime).
 - **Cercas a medir:** `MAX_POLYGON_VERTICES` (o preço por segmento é linear e já está medido para o
   `Extrude` — `1,27×` com 6 lados, `134×` com 192).
+
+</details>
+
+⇒ **O que shipou:** `MAX_POLYGON_VERTICES = 27`, e ⛔ **o recurso NÃO é o preço** — é a família de
+linhas do painel (`2N + 10 ≤ MAX_ROWS = 64`), medida na cena e gateada nas duas pontas. Um teto de
+preço aqui poria o caminho lento (desenhar, `2,6×`–`3,1×`) a mandar no rápido.
+⏳ **Fica aberto e nomeado:** o filete do polígono é do **aro**, então a quina que o artista digita
+fica viva — e a cura não é afinação (um polígono côncavo não é uma intersecção de semiplanos).
 
 ### Lote 10 — **Nó de toro e Rosca** ⭐⭐ *(a família da hélice, que já está paga)*
 

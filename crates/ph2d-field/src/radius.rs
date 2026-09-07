@@ -55,6 +55,7 @@ impl FieldDoc {
                 | Primitive::Banner { round, .. }
                 | Primitive::Brace { round, .. }
                 | Primitive::Triangle { round, .. }
+                | Primitive::Polygon { round, .. }
                 | Primitive::Parallelogram { round, .. }
                 | Primitive::Delay { round, .. }
                 | Primitive::Display { round, .. }
@@ -208,6 +209,7 @@ impl NodeShape {
                 | Primitive::Banner { round, .. }
                 | Primitive::Brace { round, .. }
                 | Primitive::Triangle { round, .. }
+                | Primitive::Polygon { round, .. }
                 | Primitive::Parallelogram { round, .. }
                 | Primitive::Delay { round, .. }
                 | Primitive::Display { round, .. }
@@ -325,6 +327,7 @@ pub fn set_shape_radius(shape: &mut NodeShape, node: u32, radius: f32) -> Result
                 | Primitive::Banner { round, .. }
                 | Primitive::Brace { round, .. }
                 | Primitive::Triangle { round, .. }
+                | Primitive::Polygon { round, .. }
                 | Primitive::Parallelogram { round, .. }
                 | Primitive::Delay { round, .. }
                 | Primitive::Display { round, .. }
@@ -456,10 +459,37 @@ pub fn fillet_inflates(p: &Primitive) -> bool {
         //
         // ⚠️ **A gaiola entra aqui**: ela é a união de três caixas, cada uma pela receita da caixa,
         // e o `min` de uma união não infla.
-        Primitive::Box { .. }
-        | Primitive::Cylinder { .. }
-        | Primitive::Extrude { .. }
-        | Primitive::BoxFrame { .. } => false,
+        Primitive::Box { .. } | Primitive::Cylinder { .. } | Primitive::BoxFrame { .. } => false,
+        // ⭐⭐⭐ **AS DUAS DE CONTORNO, e elas são um caso PRÓPRIO — medido na W132 (06/09).**
+        //
+        // ⛔⛔ **O `Extrude` estava no braço `false` acima e NUNCA tinha sido medido:** ele
+        // `return None` no censo (precisa de um contorno desenhado), então a afirmação viveu por
+        // waves sem uma régua. O polígono é a primeira forma de contorno que o censo **alcança**, e
+        // reprovou o `a_chamfer_honours_the_march_on_every_shape` com `1,0216`.
+        //
+        // ⚠️ **E a causa não é o polígono nem a concavidade** — a mesma medição, com a régua do
+        // censo (grelha grossa + varredura fina sobre a casca):
+        //
+        // | contorno | só CHANFRO | só FILETE | OS DOIS |
+        // |---|---:|---:|---:|
+        // | quadrado (quinas de `90°`) | `1,0000` | `1,0000` | `0,7071` |
+        // | pentágono **convexo** (`108°`) | **`1,0267`** | `1,0000` | `0,7071` |
+        // | o côncavo do censo | **`1,0216`** | `1,0000` | `0,7071` |
+        //
+        // ⇒ o que infla é o **chanfro sozinho sobre uma quina que não é recta** — e o `Extrude` lê
+        // exactamente o mesmo que o `Polygon` em todas as células, o que torna isto uma correcção
+        // de um defeito **pré-existente** e não um preço da forma nova.
+        //
+        // ⭐ **Por que `c != 0.0 && r == 0.0` e não `r != 0.0 || c != 0.0`** (a fórmula das 17 de
+        // parede inclinada): a coluna «os dois» já lê `0,7071`, porque o divisor `2` do
+        // [`edge_shrink`] entra quando os **dois** recuos estão ligados. Devolver `true` ali levaria
+        // o [`edge_shrink`] a `4` e o campo a `0,177` — **4× mais conservador do que o medido**, e
+        // um passo 4× menor num módulo que já está acima do orçamento. *Uma cerca que não olha a
+        // célula que a acordou paga em toda a tabela.*
+        //
+        // ⚠️ O filete sozinho é `1,0000` **exacto** nas três, e a razão é a mesma que faz o filete
+        // deste braço ser o do **aro**: ali as duas coordenadas são ortogonais por construção.
+        Primitive::Extrude { .. } | Primitive::Polygon { .. } => c != 0.0 && r == 0.0,
         // ⭐⭐⭐ **As de parede NÃO-ORTOGONAL: QUALQUER um dos dois recuos infla** (2026-08-30).
         //
         // ⛔ A 1.ª redacção desta wave dizia que o chanfro sozinho nunca inflava, e o censo
@@ -573,7 +603,13 @@ impl Bound {
     }
 }
 
-/// ⭐ As duas tabelas por-forma — ver [`radius_tables`].
+/// ⭐ A tabela do BORDO de cada forma — ver [`radius_bounding`].
+///
+/// ⚠️ **Irmã da de cima, e a pergunta é OPOSTA**: a escala procura a menor medida, o bordo a maior.
+#[path = "radius_bounding.rs"]
+pub(crate) mod radius_bounding;
+/// ⭐ A tabela da ESCALA de cada forma — ver [`radius_tables`].
 #[path = "radius_tables.rs"]
 pub(crate) mod radius_tables;
-pub use radius_tables::{bounding_radius, characteristic_size};
+pub use radius_bounding::bounding_radius;
+pub use radius_tables::characteristic_size;

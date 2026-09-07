@@ -491,6 +491,21 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             round: 0.02,
             chamfer: 0.0,
         },
+        // ⚠️ **CÔNCAVO**, que é a única coisa que só esta forma alcança — um convexo qualquer
+        // mediria o que o prisma já mede.
+        PrimitiveKind::Polygon => Primitive::Polygon {
+            profile: ph2d_field::polygon_profile(vec![
+                [-0.38, -0.22],
+                [0.36, -0.12],
+                [0.14, 0.38],
+                [0.02, 0.04],
+                [-0.22, 0.28],
+            ])
+            .expect("o contorno"),
+            half_height: 0.13,
+            round: 0.02,
+            chamfer: 0.0,
+        },
     })
 }
 

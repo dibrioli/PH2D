@@ -36,6 +36,8 @@ pub mod dims_scale;
 mod dims_scale_signs;
 pub mod mods;
 pub mod mods_dims;
+/// ⭐ O polígono de `N` vértices autorados — ver [`polygon`].
+pub mod polygon;
 /// ⭐ O que uma forma **é** — ver [`primitive`].
 pub mod primitive;
 /// ⭐ O `match` forma → família — ver [`primitive_family`].
@@ -58,6 +60,10 @@ pub use dims::{Dim, Param, Span, clamp_dims, clamp_round, dims, scale_primitive,
 pub use mods::{Unary, UnaryKind};
 // ⚠️ **O `pub use` é o que mantém `ph2d_field::Primitive`** — cortar um arquivo não pode custar uma
 // reescrita em cada sítio que o chamava.
+pub use polygon::{
+    MAX_POLYGON_VERTICES, MIN_POLYGON_VERTICES, POLYGON_TOLERANCE, polygon_points, polygon_profile,
+    with_one_fewer_vertex, with_one_more_vertex,
+};
 pub use primitive::Primitive;
 pub use primitive_kind::PrimitiveKind;
 pub use primitive_limits::{

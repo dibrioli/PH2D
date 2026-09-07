@@ -11,6 +11,11 @@
 //!
 //! ⚠️ O `pub use` no [`super`] mantém `ph2d_field::Primitive` — cortar um arquivo não pode custar
 //! uma reescrita em cada sítio que o chamava.
+//!
+//! ⛔⛔ **ESTE ARQUIVO ESTÁ NO TECTO, e ele é UM `enum`** (06/09): não há corte por responsabilidade
+//! a fazer — variante e doc são a mesma coisa. ⇒ a próxima primitiva **não cabe**, e a saída é a que
+//! a `Polygon` usou: o doc da variante fica com o essencial e a prosa vai para o módulo do mecanismo
+//! ([`crate::polygon`]). ⛔ Nunca uma entrada na allowlist.
 
 use crate::Profile;
 use serde::{Deserialize, Serialize};
@@ -660,6 +665,20 @@ pub enum Primitive {
         a: [f32; 2],
         b: [f32; 2],
         c: [f32; 2],
+        half_height: f32,
+        round: f32,
+        chamfer: f32,
+    },
+    /// ⭐⭐⭐ **O POLÍGONO DE `N` VÉRTICES QUE O ARTISTA DIGITA** (W132) — irregular, podendo ser
+    /// **côncavo**, puxado de `−half_height` a `+half_height`.
+    ///
+    /// ⚠️ **O que o separa do [`Primitive::Extrude`] não é a superfície, é a AUTORIA.** Ali os
+    /// pontos são do **editor vetorial** e o vínculo reescreve-os a cada quadro — uma linha de
+    /// painel sobre eles seria um controlo morto; aqui o dono é este nó, e por isso eles têm linha.
+    /// ⇒ o campo é **literalmente o mesmo** (ver `primitive_tree_vertices`), e o documento recusa
+    /// mais do que **um** contorno: um polígono com buraco é um perfil, e o perfil já tem primitiva.
+    Polygon {
+        profile: Profile,
         half_height: f32,
         round: f32,
         chamfer: f32,

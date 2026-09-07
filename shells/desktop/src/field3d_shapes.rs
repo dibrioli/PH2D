@@ -494,6 +494,14 @@ pub(crate) const SHAPES: &[Shape] = &[
         family: Family::Plates,
         make: Make::Formula(a_triangle),
     },
+    // ─────────────────────────── W132 ───────────────────────────
+    // ⭐ **Vai para `Plates`, ao lado do triângulo** — é a mesma pergunta («que contorno tem esta
+    // chapa?») com a contagem aberta.
+    Shape {
+        key: "panel.model3d.add.polygon",
+        family: Family::Plates,
+        make: Make::Formula(a_polygon),
+    },
     Shape {
         key: "panel.model3d.add.torus",
         family: Family::Rings,

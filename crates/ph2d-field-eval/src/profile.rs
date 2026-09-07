@@ -150,9 +150,33 @@ fn sd_profile_inner(profile: &Profile, u: &Tree, v: &Tree, axis_seam: bool) -> T
 /// em `round` — no plano *e* na altura — e deslocar a superfície de volta. É o que faz o raio ser
 /// **exatamente** o pedido, e não uma aproximação.
 ///
-/// ⚠️ Encolher o perfil é uma **abertura morfológica**: um pescoço mais fino que `2·round`
-/// desaparece. É o comportamento correto de arredondar com esse raio, e é o mesmo que qualquer CAD
-/// faz — não é um caso de erro, e por isso o documento não o recusa.
+/// ⛔⛔⛔ **E ESTA NOTA DIZIA O CONTRÁRIO DO QUE O CÓDIGO FAZ — medido em 2026-09-06 (W132).**
+///
+/// Ela prometia uma **abertura morfológica** (*«um pescoço mais fino que `2·round` desaparece»*), e
+/// a álgebra desta função diz que não: junto da parede (`−round < flat < 0`, `|z|` pequeno) o
+/// resultado é `(flat + round) − round`, ou seja **`flat`** — o perfil **original**, sem recuo
+/// nenhum. Medido sobre um quadrado de meia-largura `0,2` com `round = 0,05`:
+///
+/// | ponto | `round = 0` | `round = 0,05` |
+/// |---|---:|---:|
+/// | quina **vertical** `(0,2 · 0,2 · 0)` | `−0,00000` | **`−0,00000`** |
+/// | meio da parede `(0,2 · 0 · 0)` | `−0,00000` | `−0,00000` |
+/// | **aro** `(0,2 · 0 · 0,30)` | `−0,00000` | **`+0,02071`** |
+///
+/// `0,02071` é exactamente `√2·r − r`: o aro é um quarto de círculo perfeito. ⇒ **este `round` é do
+/// ARO, e só dele** — que é precisamente o que o doc do [`ph2d_field::Primitive::Extrude`] sempre
+/// disse (*«as arestas verticais são o que o perfil desenhou»*), e o que esta nota contradizia a
+/// duas linhas de distância.
+///
+/// ⚠️ **Porque `f + r` não é a erosão:** ele é um **minorante** da distância ao conjunto erodido, e
+/// a igualdade falha exactamente numa quina convexa (ali a distância real é `√2·r` e o minorante dá
+/// `r`). Subtrair `r` de volta devolve o campo original. *Um minorante composto com o inverso do que
+/// ele minora não é a identidade que a nota supunha.*
+///
+/// ⇒ O campo continua **`1`-Lipschitz e correcto**; o que estava errado era a frase. Quem quiser as
+/// quinas do contorno redondas arredonda-as no editor vetorial — e um
+/// [`ph2d_field::Primitive::Polygon`], que não tem editor nenhum, fica com a quina que o artista
+/// digitou (nomeado na W132, e é o item aberto dela).
 #[must_use]
 pub fn sd_extrude(profile: &Profile, half_height: f64, round: f64, chamfer: f64) -> Tree {
     extrude_from(

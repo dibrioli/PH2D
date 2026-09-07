@@ -12889,3 +12889,157 @@ correcção da volta (morre no gate da volta, `7,5e-1` de diferença).
 **Terceira vez nesta jornada.**
 
 **Smoke:** *MODEL* > *Add shape…* > **Triangle**, e a cena `=26`.
+
+---
+
+## §133 — W132: o POLÍGONO de `N` vértices — e a nota que eu ia acreditar (06/09)
+
+O segundo item do [plano das dez](09_plano_das_dez_que_faltam.md), e o que fecha o lote 9: o
+polígono **irregular**, que hoje obriga a desenhar.
+
+### §133.1 — ⭐⭐⭐ A pergunta de desenho tinha resposta, e ela era «metade»
+
+O plano nomeava a pergunta que decidia a wave: *«onde vivem os vértices? Um `Vec<[f32;2]>` dentro do
+`Primitive` é um campo de tamanho variável… ⛔ isso mexe no `PROJECT_SCHEMA`»*, e mandava **medir se a
+composição já o exprime** antes de escrever código.
+
+Medido, e a resposta desmontou as duas metades:
+
+| a pergunta | o que a medição disse |
+|---|---|
+| *o `Primitive` aguenta um campo de tamanho variável?* | **Já aguenta há waves** — o `Extrude` carrega um `Profile`, que é `Vec<Vec<[f32;2]>>`, e o `Primitive` é `serde`. O `PROJECT_SCHEMA` **não se mexe** |
+| *a composição já exprime um polígono?* | **A GEOMETRIA sim, inteira**: a distância a um polígono simples (`min` sobre segmentos com o sinal do enrolamento) é literalmente o que a `sd_extrude` calcula, e ela ainda traz a especialização por ladrilho que uma segunda fórmula perderia |
+| *então o que falta?* | **A AUTORIA.** Um `Extrude` tem os pontos do editor vetorial, e o vínculo re-coze o perfil a cada quadro ⇒ uma linha de painel sobre eles seria escrita e **apagada no quadro seguinte** — um controlo morto |
+
+⇒ **o polígono é primitiva própria e partilha o campo**: `Primitive::Polygon` carrega um `Profile` de
+**um** contorno (o documento recusa dois) e a árvore dele é, ponto a ponto, a do `Extrude`. O gate
+`the_polygon_is_the_extrusion_of_its_own_contour` mede a diferença e ela é **`0,0`** — não «pequena».
+
+⭐ *A pergunta certa não era «o campo já existe?», era «quem é o DONO dos pontos?»* — e as duas
+respostas dão painéis opostos sobre a mesma superfície.
+
+### §133.2 — ⛔⛔⛔ A nota do `sd_extrude` dizia o CONTRÁRIO do que o código faz
+
+Ao escrever a parede do filete eu copiei a frase que estava no `sd_extrude` desde que ele existe:
+*«encolher o perfil é uma **abertura morfológica**: um pescoço mais fino que `2·round` desaparece»*.
+Escrevi um gate para ela — e ele reprovou.
+
+Medido (quadrado de meia-largura `0,2`, `half_height = 0,30`):
+
+| ponto | `round = 0` | `round = 0,05` |
+|---|---:|---:|
+| quina **vertical** `(0,2 · 0,2 · 0)` | `−0,00000` | **`−0,00000`** |
+| meio da parede `(0,2 · 0 · 0)` | `−0,00000` | `−0,00000` |
+| **aro** `(0,2 · 0 · 0,30)` | `−0,00000` | **`+0,02071`** |
+
+`0,02071` é exactamente `√2·r − r`: o aro é um quarto de círculo perfeito, e **a quina do contorno
+não se mexe**. E o pescoço fino de `0,07` com `round = 0,05` leu `−0,035` — ele **fica**.
+
+⭐ **O mecanismo:** `flat + r` é um **minorante** da distância ao conjunto erodido, e a igualdade
+falha exactamente numa quina convexa (ali a distância real é `√2·r` e o minorante dá `r`). Subtrair
+`r` de volta devolve `flat`, o campo **original**. *Compor um minorante com o inverso do que ele
+minora não é a identidade que a nota supunha.*
+
+⚠️ **E o doc da própria variante `Extrude` sempre esteve certo** (*«as arestas verticais são o que o
+perfil desenhou»*) — a frase errada vivia a duas camadas de distância, no `validate_primitive` e no
+`sd_extrude`. *Duas notas sobre o mesmo mecanismo, uma certa e uma errada, e a que eu li primeiro foi
+a errada.* As duas estão corrigidas com a tabela dentro.
+
+⛔ **E a cena de smoke ia ensinar isso.** A `=27` tinha uma quarta peça que se partia em duas «por
+abertura morfológica» — exactamente a §5.0 do `CLAUDE.md`: *uma cena que ensina o contrário do que
+acontece é pior que uma cena ausente, porque a ausente não é acreditada*. Ela passou a mostrar o
+filete no **tecto**, que é o que ele de facto faz.
+
+### §133.3 — ⭐⭐ A lei da CONTAGEM: o gesto que conta não muda a forma
+
+Subir a contagem **parte a aresta mais longa ao meio**; descer tira o vértice **mais colinear** (o
+que menos muda a área). As duas juntas dão uma propriedade que se mede:
+
+- **subir não move a superfície** — o ponto novo cai em cima da aresta antiga (`< 1e-6` sobre uma
+  grelha de `32²`);
+- **subir e descer é a IDENTIDADE ao bit** — o ponto acabado de nascer tem desvio de área
+  *exactamente* zero, logo é o primeiro que a lei de descer escolhe.
+
+⛔ As duas alternativas óbvias estão fora com o mecanismo: *«subir regenera um polígono regular»*
+apaga o trabalho do artista a cada clique, e *«descer tira o último»* faz a peça saltar.
+
+⚠️ **E uma escrita que não constrói um polígono válido não escreve nada.** O `Profile::new` **funde**
+pontos consecutivos repetidos — arrastar um vértice para cima do vizinho devolveria `N−1` pontos, e a
+**linha da contagem saltaria sozinha** debaixo do dedo de quem estava a arrastar outra linha.
+
+### §133.4 — ⭐⭐⭐ O TETO de vértices, e de que recurso ele é
+
+⛔ **Não é o relógio.** O preço por ponto é linear e caro, mas *o artista não tem rota mais barata*:
+a alternativa a um contorno irregular é **desenhá-lo**, e a §132.1 mediu que desenhar custa
+`2,6×`–`3,1×` a fórmula. Um teto de preço aqui poria o caminho lento a mandar no rápido (§0).
+
+⭐ **O recurso é o REGISTO de widgets.** O `populate` do painel corre antes de o documento existir e
+cunha ids às cegas para uma família de tamanho fixo (`MAX_ROWS = 64`); uma linha além dela fica **sem
+controlo**, e a última de um polígono é o *Fillet*. Medido **na cena** (não em aritmética ao lado):
+
+| vértices | linhas do painel | de 64 |
+|---:|---:|---:|
+| 3 | 16 | |
+| 8 | 26 | |
+| 16 | 42 | |
+| **27** | **64** | **no limite** |
+
+A lei é `2N + 10` — os `2N + 4` da forma mais os `6` da pose. ⇒ **`MAX_POLYGON_VERTICES = 27`**.
+
+⚠️ **As duas pontas têm gate**, e é isso que faz disto uma medição e não uma folga escolhida: o
+polígono no teto **cabe** e o seguinte **não caberia**. ⛔ E a primeira redacção do segundo gate
+**construía** o polígono de `MAX + 1` e explodiu — o documento recusa-o, que é a mesma cerca que o
+gate existe para medir; a lei mede-se em dois pontos válidos e é a recta que responde pelo lado de
+fora.
+
+### §133.5 — ⏳ ABERTO, medido e nomeado: a quina que o artista digita fica VIVA
+
+O filete deste polígono é do **aro**, e não das quinas do contorno (§133.2). Num `Extrude` isso não é
+buraco — as quinas arredondam-se no editor vetorial, de onde o contorno vem. **Aqui é**, porque não
+há editor nenhum: é a única chapa da paleta cujo *Fillet* não toca nas quinas.
+
+⛔ **E a cura não é afinação.** A receita do triângulo e do prisma (intersecção de semiplanos com
+`Edge::square`) **não transfere**: um polígono côncavo não é uma intersecção de semiplanos. A erosão
+exacta de um polígono simples é uma operação de topologia variável (pode partir, pode desaparecer), e
+é wave com espec própria.
+
+⚠️ **Por isso o polígono fica FORA do censo de arestas vivas** (`measure_sharp_edges`), com os dois
+irmãos de contorno e com a razão escrita ao lado: aquela sonda pergunta *«o filete alcança toda aresta
+desta forma?»*, e alimentá-la com uma forma cujo filete é de **outra** aresta faria uma sonda correcta
+acusar uma forma correcta.
+
+**Smoke:** *MODEL* > *Add shape…* > **Polygon**, e a cena `=27`.
+
+### §133.6 — ⛔⛔⛔ E o censo apanhou um defeito do `Extrude` que estava lá desde sempre
+
+Com o polígono no censo, `25` dos `26` gates passaram e um reprovou:
+`a_chamfer_honours_the_march_on_every_shape`, com `passo 1,0000 × ‖∇f‖ 1,0216`.
+
+⭐ **A causa não é o polígono, e não é a concavidade.** Medido com a régua do próprio censo (grelha
+grossa `24³` + varredura **fina** sobre a casca, `78³` com banda `|f| ≤ 0,03`):
+
+| contorno | só CHANFRO | só FILETE | OS DOIS |
+|---|---:|---:|---:|
+| quadrado (quinas de `90°`) | `1,0000` | `1,0000` | `0,7071` |
+| pentágono **convexo** (`108°`) | **`1,0267`** | `1,0000` | `0,7071` |
+| o côncavo do censo | **`1,0216`** | `1,0000` | `0,7071` |
+
+⇒ o que infla é o **chanfro sozinho sobre uma quina que não é recta**, e o `Extrude` lê
+**exactamente o mesmo** em todas as células. *É um defeito pré-existente, não um preço da forma nova
+— e ele viveu por waves porque o `Extrude` faz `return None` no censo (precisa de um contorno
+desenhado), então a afirmação `fillet_inflates(Extrude) == false` nunca teve régua nenhuma.*
+
+⭐⭐ **O polígono é a primeira forma de contorno que o censo ALCANÇA** — ele carrega o próprio
+contorno —, e foi por isso que o buraco apareceu agora.
+
+⚠️ **A cura é a célula, e não a família:** o braço passa a ser `c != 0.0 && r == 0.0`, e não o
+`r != 0.0 || c != 0.0` das 17 de parede inclinada. A coluna «os dois» já lê `0,7071` porque o divisor
+`2` do `edge_shrink` entra quando os dois recuos estão ligados; devolver `true` ali levaria o divisor
+a `4` e o campo a `0,177` — **4× mais conservador do que o medido**, e um passo 4× menor num módulo
+que já está acima do orçamento. *Uma cerca que não olha a célula que a acordou paga em toda a tabela.*
+
+Depois da cura: **26 de 26 verdes**, com o polígono dentro de todos eles.
+
+⚠️ **E a primeira leitura desta sonda foi MINHA e estava errada:** a minha réplica media só a grelha
+grossa `24³` e leu `1,0003` — *o número inteiro vive na CASCA*, que é a segunda varredura do censo.
+Uma régua que não sabe onde a grandeza mora responde «está tudo bem» com a mesma confiança.

@@ -527,7 +527,17 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             major: 0.4,
             minor: 0.15,
         },
-        PrimitiveKind::Extrude | PrimitiveKind::Revolve => return None,
+        // ⚠️ **E o POLÍGONO fica de fora COM ELES, e não por não ter representante** — ele carrega o
+        // próprio contorno, então construir um aqui era trivial. Fica porque a pergunta desta sonda
+        // não se aplica: ela mede *«o filete alcança toda aresta desta forma?»*, e nas três formas de
+        // **contorno** o filete é do **ARO** (a aresta entre a parede e a tampa) e nunca das quinas
+        // do contorno — medido em 2026-09-06, tabela no doc de `crate::profile::sd_extrude`.
+        //
+        // ⛔ **Incluí-lo faria esta sonda acusar uma forma correcta**, e a cura seria afrouxar a
+        // barra dela para as 40 restantes. *Uma sonda que responde a uma pergunta e é alimentada com
+        // outra não mede nada.* A quina viva do polígono é item **aberto** da W132, e o sítio dele é
+        // o handoff, não uma isenção calada aqui.
+        PrimitiveKind::Extrude | PrimitiveKind::Revolve | PrimitiveKind::Polygon => return None,
         PrimitiveKind::Cone => Primitive::Cone {
             bottom: 0.45,
             top: 0.12,

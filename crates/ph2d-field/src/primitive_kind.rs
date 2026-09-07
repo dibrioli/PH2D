@@ -88,11 +88,13 @@ pub enum PrimitiveKind {
     Superformula,
     // ─────────────────────────── W131 ───────────────────────────
     Triangle,
+    // ─────────────────────────── W132 ───────────────────────────
+    Polygon,
 }
 
 impl PrimitiveKind {
     /// **A fonte da contagem** — quem quiser saber *«que formas o motor sabe fazer?»* pergunta aqui.
-    pub const ALL: [PrimitiveKind; 55] = [
+    pub const ALL: [PrimitiveKind; 56] = [
         PrimitiveKind::Box,
         PrimitiveKind::Sphere,
         PrimitiveKind::Cylinder,
@@ -148,6 +150,7 @@ impl PrimitiveKind {
         PrimitiveKind::Superquadric,
         PrimitiveKind::Superformula,
         PrimitiveKind::Triangle,
+        PrimitiveKind::Polygon,
     ];
 
     /// O sufixo da chave do botão que a cria — `panel.model3d.add.<key>`.
@@ -209,6 +212,7 @@ impl PrimitiveKind {
             PrimitiveKind::Superquadric => "superquadric",
             PrimitiveKind::Superformula => "superformula",
             PrimitiveKind::Triangle => "triangle",
+            PrimitiveKind::Polygon => "polygon",
         }
     }
 }

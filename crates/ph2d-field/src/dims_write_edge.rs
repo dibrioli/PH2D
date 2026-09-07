@@ -43,6 +43,7 @@ pub(super) fn set_chamfer(p: &mut Primitive, node: u32, value: f32) -> Result<()
         | Primitive::OffPage { chamfer, .. }
         | Primitive::Cylinder { chamfer, .. }
         | Primitive::Extrude { chamfer, .. }
+        | Primitive::Polygon { chamfer, .. }
         | Primitive::Cone { chamfer, .. }
         | Primitive::Prism { chamfer, .. }
         | Primitive::Wedge { chamfer, .. }
@@ -124,6 +125,7 @@ pub(super) fn set_round(p: &mut Primitive, node: u32, value: f32) -> Result<(), 
         | Primitive::OffPage { round, .. }
         | Primitive::Cylinder { round, .. }
         | Primitive::Extrude { round, .. }
+        | Primitive::Polygon { round, .. }
         | Primitive::Cone { round, .. }
         | Primitive::Prism { round, .. }
         | Primitive::Wedge { round, .. }
@@ -198,6 +200,7 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
         | Primitive::OffPage { round, chamfer, .. }
         | Primitive::Cylinder { round, chamfer, .. }
         | Primitive::Extrude { round, chamfer, .. }
+        | Primitive::Polygon { round, chamfer, .. }
         | Primitive::Cone { round, chamfer, .. }
         | Primitive::Prism { round, chamfer, .. }
         | Primitive::Wedge { round, chamfer, .. }

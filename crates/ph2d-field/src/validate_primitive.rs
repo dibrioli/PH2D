@@ -17,8 +17,8 @@
 //! na malha, como uma superfície rasgada que ninguém liga ao número que a causou.
 
 use crate::{
-    FieldError, MAX_GEAR_TEETH, MAX_PRISM_SIDES, MAX_STAR_POINTS, MIN_GEAR_TEETH, MIN_PRISM_SIDES,
-    MIN_STAR_POINTS, Primitive, round_limit,
+    FieldError, MAX_GEAR_TEETH, MAX_POLYGON_VERTICES, MAX_PRISM_SIDES, MAX_STAR_POINTS,
+    MIN_GEAR_TEETH, MIN_POLYGON_VERTICES, MIN_PRISM_SIDES, MIN_STAR_POINTS, Primitive, round_limit,
 };
 
 pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldError> {
@@ -86,14 +86,48 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             chamfer,
         } => {
             positive(half_height, "half_height")?;
-            // ⚠️ O limite é a meia-altura, e **só** ela. Um `round` maior do que a meia-largura do
-            // perfil não é um erro: a receita (encolher a fonte, depois deslocar) é uma **abertura
-            // morfológica**, e o que ela faz a um pescoço mais fino que `2·round` é exatamente o
-            // que arredondar com esse raio deveria fazer — o pescoço desaparece. O campo continua a
-            // ser um limite conservador de distância; a forma é a certa.
+            // ⚠️ O limite é a meia-altura, e **só** ela — e a razão é mais simples do que esta
+            // nota dizia até 2026-09-06. ⛔ Ela prometia uma **abertura morfológica** (*«o pescoço
+            // mais fino que `2·round` desaparece»*), e a medição refutou-a: este `round` é do
+            // **ARO** e não da parede, então a meia-largura do perfil não entra na conta de todo.
+            // A tabela está no doc de `ph2d_field_eval::profile::sd_extrude`.
+            //
+            // Na altura é que há parede: com `round ≥ half_height` o termo axial inverte de sinal e
+            // o sólido deixa de existir — e isso, sim, é uma forma que ninguém pediu.
             //
             // Na altura não é assim: com `round ≥ half_height` o termo axial inverte de sinal e o
             // sólido deixa de existir — isso não é abertura, é uma forma que ninguém pediu.
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
+        }
+        // ⭐⭐ **O POLÍGONO tem a parede do [`Primitive::Extrude`] MAIS duas invariantes próprias**
+        // (W132), e as duas existem porque os pontos dele têm **linha no painel**:
+        //
+        // - **UM contorno.** Dois seriam um perfil com furo — que já tem primitiva —, e a
+        //   [`crate::dims`] mostraria as linhas de um só deles: *um painel que edita o primeiro de
+        //   dois contornos é um painel que mente sobre o que a peça é.*
+        // - **A contagem cabe na tabela de chaves.** Acima de [`MAX_POLYGON_VERTICES`] os vértices
+        //   extra não teriam rótulo, e o `ph2d_i18n::tr` de uma chave desconhecida pinta o
+        //   identificador cru **e vaza uma string por quadro**.
+        //
+        // ⚠️ O piso é o do [`MIN_POLYGON_VERTICES`], e o [`crate::Profile`] já o defende por baixo
+        // (ele recusa menos de três pontos); a verificação aqui é a que responde pela **chave**.
+        Primitive::Polygon {
+            ref profile,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            let contornos = profile.contours();
+            let n = contornos.first().map_or(0, Vec::len);
+            if contornos.len() != 1
+                || !(MIN_POLYGON_VERTICES as usize..=MAX_POLYGON_VERTICES as usize).contains(&n)
+            {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "vertices",
+                });
+            }
+            positive(half_height, "half_height")?;
             round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         Primitive::Revolve { ref profile } => {

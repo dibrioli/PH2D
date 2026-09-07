@@ -150,6 +150,12 @@ mod lasso_subtract_tests;
 #[path = "field3d_lasso_catch_tests.rs"]
 mod lasso_catch_tests;
 
+// ⭐⭐ **O TETO de vértices do polígono — a MEDIÇÃO dele** (W132), ver
+// [`field3d_polygon_rows_tests`].
+#[cfg(test)]
+#[path = "field3d_polygon_rows_tests.rs"]
+mod polygon_rows_tests;
+
 /// ⭐ **DE ONDE se coze** — a peça inteira, ou só o nó isolado (W38).
 ///
 /// # Isolar não precisou de lei nenhuma

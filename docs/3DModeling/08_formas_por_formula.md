@@ -417,7 +417,7 @@ tem, não uma montagem:
 
 | Forma | Classe | Por que ela |
 |---|---|---|
-| **Polygon (N vértices arbitrários)** | **A** | ⭐⭐ O polígono **irregular** por fórmula. Hoje isto obriga a **desenhar**, e desenhar custa por segmento |
+| ~~**Polygon (N vértices arbitrários)**~~ | — | ✅ **SHIPOU na W132** — `3`..**`27`** vértices, côncavo incluído, e o campo é **literalmente** o do `Extrude` (uma lei, um sítio). ⛔ O teto é a **família de linhas do painel** (`2N + 10 ≤ 64`), não o relógio. ⏳ E o filete dele é do **ARO**: a quina digitada fica viva — item aberto, com o mecanismo |
 | ~~**Triangle (3 vértices arbitrários)**~~ | — | ✅ **SHIPOU na W131** — o escaleno, com o tecto do filete a ser o **inraio**. ⛔ E a medição corrigiu a nota deste doc: desenhar custa `2,6×`–`3,1×` a fórmula, e não `1,27×` |
 | ~~**Egg**~~ | — | ⛔ **CONSTRUÍDO e RECUSADO na W125** — o knob de barriga degenera num círculo no valor natural (recusas medidas, abaixo) |
 | ~~**Stairs**~~ | — | ⛔ **CONSTRUÍDO 4× e RECUSADO na W125** — o filete dela é neutro em volume, e o gate que o exige está certo (recusas medidas, abaixo) |
@@ -459,7 +459,7 @@ um item de lote.*
 |---|---|---|
 | ✅ **4** (2) | **FECHADO na W124** — *Coil* e *Gyroid Lattice*. Mecanismo: [doc 06 §125](06_resultados_cena_e_gizmo.md) |
 | ✅ **5** (1) | **FECHADO na W125** — *Rounded Cylinder*, e ele é a primeira forma deste módulo com **distância exacta** (`‖∇f‖ = 1,0000`). ⛔ E das outras cinco que este lote nomeava: a **ferradura** e o **túnel** já se alcançam (acima); o **ovo** e a **escada** foram construídos e **recusados por medição** (o knob de barriga mente num quarto do curso; a escada tem o filete **neutro em volume**, `20 139 = 20 139`, e o gate que o mede está certo); e o **plano** precisa que a bola de recorte admita uma peça **infinita** — é maquinaria, não forma. Mecanismo: [doc 06 §126](06_resultados_cena_e_gizmo.md) |
-| **6** (2) | **Polygon(N)** · **Triangle** | as que hoje **obrigam a desenhar**. ⚠️ E elas têm um preço próprio: *os vértices arbitrários são o que o desenho já é* — o ganho é só o custo |
+| ✅ **6** (2) | **FECHADO nas W131/W132** — *Triangle* e *Polygon(N)*. ⛔ E a nota deste lote (*«os vértices arbitrários são o que o desenho já é — o ganho é só o custo»*) estava **meio certa e meio errada**: a geometria é mesmo a que o desenho já dá (o polígono partilha o campo do `Extrude`, com diferença `0,0`), mas o ganho **não** é o custo — é a **autoria**: os pontos passam a ter linha no painel, o que o vínculo ao desenho torna impossível (ele reescreve-os por quadro). Mecanismo: [doc 06 §133](06_resultados_cena_e_gizmo.md) |
 | **7** (2) | **Superquadrática** · **Superfórmula** | um knob que morfa uma família inteira; é onde a fórmula humilha o desenho |
 | ⏳ | Bezier · Parabola · Circle Wave · nó de toro · rosca | valem, e não são de primeira mão |
 
@@ -474,11 +474,11 @@ a ordena é o dono do produto.
 | de onde | ainda faltam | quais |
 |---|---:|---|
 | §7.2 — catálogo **3D** | **3** | Plane · Death Star · Vesica Segment |
-| §7.3 — catálogo **2D** | **4** | Polygon(N) · Bezier · Parabola · Circle Wave |
+| §7.3 — catálogo **2D** | **3** | Bezier · Parabola · Circle Wave |
 | §7.4 — **famílias** fora de catálogo | **2** | Nó de toro · Rosca |
-| **total** | **9** | |
+| **total** | **8** | |
 
-⚠️ **Actualizado em 06/09**: saíram da conta a **Superquadrática** (W127 — [doc 06 §128](06_resultados_cena_e_gizmo.md)) e a **Superfórmula** (W128 — [§129](06_resultados_cena_e_gizmo.md)).
+⚠️ **Actualizado em 06/09**: saíram da conta a **Superquadrática** (W127 — [doc 06 §128](06_resultados_cena_e_gizmo.md)) e a **Superfórmula** (W128 — [§129](06_resultados_cena_e_gizmo.md)). E no mesmo dia o **Triângulo** (W131 — [§132](06_resultados_cena_e_gizmo.md)) e o **Polígono de `N`** (W132 — [§133](06_resultados_cena_e_gizmo.md)), que fecham o lote 9.
 
 ⛔ **Fora desta conta, de propósito:** as **duas** que são modificadores e não formas (grade
 hexagonal, metabolas) e os **fractais** (§7.4), que são wave com medição própria. ⚠️ E o **Plane**

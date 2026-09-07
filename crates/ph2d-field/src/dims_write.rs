@@ -583,6 +583,12 @@ pub(super) fn write_dim(
             // não meio lado.
             *sides = (value.round() as u32).clamp(crate::MIN_PRISM_SIDES, crate::MAX_PRISM_SIDES);
         }
+        // ⭐⭐ **O POLÍGONO tem as linhas que mais nenhuma forma tem** — a contagem de vértices e
+        // os `2N` números deles. ⚠️ **A guarda exclui o filete e o chanfro de propósito**: eles
+        // entram pela porta dos dois recuos, logo abaixo, que é a mesma para as 45 formas.
+        (p @ Primitive::Polygon { .. }, i) if crate::polygon::owns_row(p, i) => {
+            crate::polygon::write_polygon_dim(p, i, value);
+        }
         // O filete é o último de cada forma que o tem — e ele passa pela lei do filete, que já
         // sabe recusar o que não cabe.
         (
@@ -630,7 +636,8 @@ pub(super) fn write_dim(
             | Primitive::Helix { .. }
             | Primitive::Gyroid { .. }
             | Primitive::TorusArc { .. }
-            | Primitive::Triangle { .. }),
+            | Primitive::Triangle { .. }
+            | Primitive::Polygon { .. }),
             i,
         ) if Some(i) == round_index(p) => {
             return set_round(p, node, value);

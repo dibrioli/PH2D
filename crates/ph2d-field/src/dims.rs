@@ -280,6 +280,10 @@ mod dims_table_flow;
 /// ⭐ A metade das CHAPAS daquela tabela — ver [`dims_table_plates`].
 #[path = "dims_table_plates.rs"]
 mod dims_table_plates;
+/// ⭐⭐ E a do POLÍGONO, a única forma cujo número de linhas depende de uma linha — ver
+/// [`dims_table_polygon`].
+#[path = "dims_table_polygon.rs"]
+mod dims_table_polygon;
 /// ⭐ E a metade dos SINAIS — ver [`dims_table_signs`].
 #[path = "dims_table_signs.rs"]
 mod dims_table_signs;

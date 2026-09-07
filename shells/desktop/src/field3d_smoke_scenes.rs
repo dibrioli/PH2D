@@ -524,13 +524,15 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
         // ⭐ A MOLA e a REDE da W124 — ver [`shapes::cena_22`].
         22 => shapes::cena_22(),
         // ⭐ O CILINDRO COM BOJO da W125 — ver [`shapes::cena_23`].
-        23 => shapes::cena_23(),
+        23 => formula::cena_23(),
         // ⭐⭐ A SUPERQUADRÁTICA da W127 — ver [`shapes::cena_24`].
-        24 => shapes::cena_24(),
+        24 => formula::cena_24(),
         // ⭐⭐⭐ A SUPERFÓRMULA da W128 — ver [`shapes::cena_25`].
-        25 => shapes::cena_25(),
+        25 => formula::cena_25(),
         // ⭐⭐ O TRIÂNGULO da W131 — ver [`shapes::cena_26`].
-        26 => shapes::cena_26(),
+        26 => formula::cena_26(),
+        // ⭐⭐ O POLÍGONO de `N` vértices da W132 — ver [`shapes::cena_27`].
+        27 => formula::cena_27(),
         _ => {
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"
@@ -576,6 +578,9 @@ mod scene_tests;
 #[path = "field3d_smoke_scenes_edge.rs"]
 mod edge;
 
+/// ⭐⭐ As cenas das formas por FÓRMULA e de VÉRTICES autorados — ver [`formula`].
+#[path = "field3d_smoke_scenes_formula.rs"]
+mod formula;
 /// ⭐ As cenas do lote de formas e da torção — ver [`lote`].
 #[path = "field3d_smoke_scenes_lote.rs"]
 mod lote;

@@ -389,8 +389,13 @@ impl RegionCompiler {
     pub fn new(doc: &FieldDoc) -> Self {
         let mut idx = std::collections::BTreeMap::new();
         for (i, node) in doc.nodes().iter().enumerate() {
+            // ⚠️ **O POLÍGONO entra aqui**, e esquecê-lo não daria erro nenhum: ele só perderia
+            // a especialização por ladrilho e ficaria mais lento em silêncio. *Um `if let` não
+            // fecha buraco nenhum* — o que fecha é o gate que mede o custo dele.
             if let NodeKind::Leaf(
-                Primitive::Extrude { profile, .. } | Primitive::Revolve { profile },
+                Primitive::Extrude { profile, .. }
+                | Primitive::Polygon { profile, .. }
+                | Primitive::Revolve { profile },
             ) = &node.kind
             {
                 idx.insert(i, profile_index::ProfileIndex::build(profile));
@@ -524,6 +529,12 @@ fn specialised_profile(
             half_height,
             round,
             chamfer,
+        }
+        | Primitive::Polygon {
+            profile,
+            half_height,
+            round,
+            chamfer,
         } => {
             // ⭐⭐⭐ **A região do EXTRUDE é o casco, não a caixa dele** (W59): o `(u, v)` dele é
             // `(x, y)`, então a pegada real do tubo no plano do perfil é o **polígono** dos cantos
@@ -592,4 +603,6 @@ fn axis_gap(lo: f32, hi: f32) -> f32 {
 mod primitive_tree;
 /// ⭐ As formas por FÓRMULA — ver [`primitive_tree_formula`].
 mod primitive_tree_formula;
+/// ⭐ As formas cujos VÉRTICES o artista autora — ver [`primitive_tree_vertices`].
+mod primitive_tree_vertices;
 pub(crate) use primitive_tree::primitive;

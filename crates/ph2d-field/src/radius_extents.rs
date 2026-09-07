@@ -7,7 +7,7 @@
 //! passou as `700` linhas do gate de LOC. ⚠️ **Partir para irmão, nunca uma entrada na allowlist.**
 
 use crate::Primitive;
-use crate::radius::radius_tables::gear_planar_reach;
+use crate::radius::radius_bounding::gear_planar_reach;
 
 /// ⭐⭐⭐ **AS MEIAS-EXTENSÕES da caixa alinhada aos eixos que contém a peça** — a irmã por EIXO do
 /// [`bounding_radius`] (Enio, 2026-08-31).
@@ -53,7 +53,14 @@ pub fn bounding_half_extents(p: &Primitive) -> [f32; 3] {
             [major + minor, major + minor, *minor]
         }
         // O perfil dá as duas do plano; a extrusão dá a terceira.
+        // ⚠️ O polígono responde como a extrusão: o contorno dá as duas do plano, a
+        // altura dá a terceira. *Mesma superfície, mesma caixa.*
         Primitive::Extrude {
+            profile,
+            half_height,
+            ..
+        }
+        | Primitive::Polygon {
             profile,
             half_height,
             ..

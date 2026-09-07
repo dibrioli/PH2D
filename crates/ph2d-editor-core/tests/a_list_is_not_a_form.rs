@@ -21,6 +21,11 @@
 //! doc o afirma e ninguém o podia copiar. *Uma lei escrita em dois sítios ainda não é uma lei; só
 //! uma PORTA é.*
 //!
+//! ⭐ **E há uma SEGUNDA lei de lista aqui** (wave 18, no mesmo dia): quando as linhas encostam, o
+//! que devolve *onde acaba uma e começa a outra* deixa de ser o vão e passa a ser o TOM — a
+//! alternância par/ímpar do *Outliner* do Blender, que o dono apontou. Ver
+//! [`every_list_stripes_its_rows_or_says_why_not`].
+//!
 //! **O número é derivado** (Godot Modern, MIT, `theme_modern.cpp:650`), e a derivação vive na
 //! porta [`ph2d_tokens::list_row_gap_px`]. ⚠️ **E ela corrigiu uma afirmação minha:** a wave 8
 //! registou `Tree.v_separation = pow(base·0.175,3) = 0` truncando `0,7³`; o `EDSCALE_RND`
@@ -36,20 +41,30 @@ use std::path::{Path, PathBuf};
 /// nenhum parser lê do fonte: uma pilha de linhas homogéneas e uma pilha de controlos diferentes
 /// escrevem-se com o mesmo `y += h + g`. O que o gate impede é a superfície declarada **responder
 /// à pergunta sozinha**, e a metade de baixo impede a lista de envelhecer.
-const LIST_SURFACES: &[(&str, &str)] = &[
-    ("crates/ph2d-panel-hierarchy/src/paint.rs", "HIER_ROW_H"),
-    (
-        "crates/ph2d-panel-audio-editor/src/paint_variation.rs",
-        "VAR_ROW_H",
-    ),
-    ("crates/ph2d-editor-core/src/grid_snap/inspect.rs", "ROW_H"),
+const LIST_SURFACES: &[(&str, &str, &str)] = &[
+    ("crates/ph2d-panel-hierarchy/src/paint.rs", "HIER_ROW_H", ""),
     (
         "crates/ph2d-panel-inspector/src/sections/anchors.rs",
         "ROW_H",
+        "",
     ),
     (
         "crates/ph2d-panel-inspector/src/sections/anim_rows.rs",
         "ROW_H",
+        "",
+    ),
+    (
+        "crates/ph2d-panel-audio-editor/src/paint_variation.rs",
+        "VAR_ROW_H",
+        "TODA linha ja' enche o proprio fundo (`Bg3`, ou `Accent` na seleccionada): uma listra por \
+         baixo de um fundo opaco nao se ve^, e trocar o fundo de sempre por uma alternancia e' \
+         mudar o look daquela lista, nao aplicar-lhe a lei",
+    ),
+    (
+        "crates/ph2d-editor-core/src/grid_snap/inspect.rs",
+        "ROW_H",
+        "e' um BLOCO DE LEITURA rotulo/valor de 5 linhas fixas, nao uma lista de itens \
+         escolhiveis: alternar tons ali desenha uma tabela onde nao ha' uma",
     ),
 ];
 
@@ -73,7 +88,7 @@ fn read(rel: &str) -> Option<String> {
 #[test]
 fn no_list_surface_writes_its_own_row_gap() {
     let mut offenders = Vec::new();
-    for (rel, row_h) in LIST_SURFACES {
+    for (rel, row_h, _) in LIST_SURFACES {
         let Some(src) = read(rel) else {
             continue; // a metade de baixo acusa o caminho morto
         };
@@ -123,7 +138,7 @@ fn no_list_surface_writes_its_own_row_gap() {
 #[test]
 fn the_declared_list_surfaces_still_exist() {
     let mut stale = Vec::new();
-    for (rel, row_h) in LIST_SURFACES {
+    for (rel, row_h, _) in LIST_SURFACES {
         match read(rel) {
             None => stale.push(format!("{rel}: o ficheiro nao existe")),
             Some(src) => {
@@ -164,5 +179,42 @@ fn a_list_breathes_less_than_a_form_and_still_breathes() {
         list < form,
         "o vao de lista ({list}) nao e' menor que o de formulario ({form}) — entao a lista nao \
          ficou mais compacta que o formulario, que e' a wave inteira"
+    );
+}
+
+/// ⭐⭐⭐ **A LISTRA: toda lista alterna o tom das linhas, ou diz porque não.**
+///
+/// Enio, 2026-09-06, com a foto do *Outliner* do Blender: *«linhas pares e ímpares têm tonalidade
+/// discretamente diferente».* É o companheiro da lei de cima: quando as linhas encostam, o que
+/// devolve *onde acaba uma e começa a outra* deixa de ser o vão e passa a ser o tom.
+///
+/// ⚠️ **As duas isenções são de PRODUTO e estão medidas**, não são «ainda não fizemos»: uma lista
+/// cujas linhas já têm fundo opaco não tem onde pôr uma listra, e um bloco de leitura de cinco
+/// linhas fixas não é uma lista de itens. Cada uma escreve o mecanismo ao lado.
+///
+/// **Mutação que deve sangrar:** apagar a chamada ao `paint_row_stripe` de qualquer uma das três.
+#[test]
+fn every_list_stripes_its_rows_or_says_why_not() {
+    let mut offenders = Vec::new();
+    for (rel, _, why_not) in LIST_SURFACES {
+        let Some(src) = read(rel) else { continue };
+        let stripes = src.contains("paint_row_stripe");
+        if stripes && !why_not.is_empty() {
+            offenders.push(format!(
+                "{rel}: chama `paint_row_stripe` E declara um motivo para nao o fazer — o motivo \
+                 ja' nao descreve nada:\n      «{why_not}»"
+            ));
+        }
+        if !stripes && why_not.is_empty() {
+            offenders.push(format!(
+                "{rel}: e' uma LISTA, nao alterna o tom das linhas e nao diz porque nao"
+            ));
+        }
+    }
+    assert!(
+        offenders.is_empty(),
+        "{} superficie(s) de lista fora da lei da listra:\n  {}",
+        offenders.len(),
+        offenders.join("\n  ")
     );
 }

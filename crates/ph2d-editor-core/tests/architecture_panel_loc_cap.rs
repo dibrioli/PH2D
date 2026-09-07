@@ -81,8 +81,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-hierarchy/src/paint.rs",
         "paint_hierarchy_body",
-        352,
-        "Wave 10 paint orchestrator; ratcheted 384->364 quando a wave do hover lhe acrescentou UMA linha e o tecto foi pago por extracção em vez de tolerância: a caixa de renomear saiu para `paint_rename_input`. As tolerâncias encolhem, nunca crescem. Ratcheted 364->354 em 2026-08-30, e a descida foi PAGA POR OUTRA COISA: a coluna passou a ser ANCORADA (Enio, «fixar os painéis nas laterais»), e as três alças de arrasto/resize saíram — o censo de obsolescência deste próprio gate apanhou a folga a descrever um número que já não existia. Desceu de novo em 2026-08-30 quando os pontinhos de canto sairam: eles eram a affordance das alcas de resize, que esta coluna deixou de ter.",
+        296,
+        "Wave 10 paint orchestrator; ratcheted 384->364 quando a wave do hover lhe acrescentou UMA linha e o tecto foi pago por extracção em vez de tolerância: a caixa de renomear saiu para `paint_rename_input`. As tolerâncias encolhem, nunca crescem. Ratcheted 364->354 em 2026-08-30, e a descida foi PAGA POR OUTRA COISA: a coluna passou a ser ANCORADA (Enio, «fixar os painéis nas laterais»), e as três alças de arrasto/resize saíram — o censo de obsolescência deste próprio gate apanhou a folga a descrever um número que já não existia. Desceu de novo em 2026-08-30 quando os pontinhos de canto sairam: eles eram a affordance das alcas de resize, que esta coluna deixou de ter. 352 -> 296 na wave 18 (2026-09-06): a LISTRA da linha impar acrescentou-lhe uma chamada e o tecto foi pago por EXTRACCAO — as LINHAS DE PARENTESCO (80 linhas, as guias no estilo do Godot) sairam para `paint_parentage_lines`, funcao irma no mesmo ficheiro. E' o terceiro corte deste ficheiro pela mesma lei.",
     ),
     (
         "ph2d-panel-hierarchy/src/row.rs",

@@ -145,6 +145,19 @@ fn anchor_list(
     {
         let rect = Rect::new(x, cur_y, w, ROW_H);
         hit_index.register(id, rect);
+        // ⭐ A listra da linha ímpar — aqui o índice do laço É o visual (nada é saltado).
+        // ⚠️ **O tom base vem da PORTA** (`CardDepth::Section.token()`), nunca do `ColorToken::Bg1`
+        //    escrito à mão: é a lei da wave 13, e o censo dela apanhou esta linha na 1.ª redacção.
+        //    ⛔ E é a `Section`, não a `Subsection`: a listra **não é uma superfície nova dentro do**
+        //    **cartão** — ela é o próprio fundo do cartão movido 5/255, e é esse tamanho que a
+        //    impede de se ler como um aninhamento.
+        ph2d_editor_core::widget::paint_row_stripe(
+            scene,
+            rect,
+            theme,
+            ph2d_editor_core::widget::section_cards::CardDepth::Section.token(),
+            i,
+        );
         let is_sel = i == selected;
         if is_sel {
             ph2d_editor_core::paint::fill_rounded_rect(

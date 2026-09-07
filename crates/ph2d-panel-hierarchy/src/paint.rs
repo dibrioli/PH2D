@@ -74,6 +74,108 @@ pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
     }
 }
 
+/// ⭐ **AS LINHAS DE PARENTESCO** — as guias no estilo do Godot que ligam um pai aos filhos.
+///
+/// ⚠️ Ela saiu de dentro do `paint_hierarchy_body` na wave 18 (2026-09-06), quando a LISTRA da
+/// linha ímpar lhe acrescentou uma chamada e o tecto de LOC foi pago por **extracção**, nunca por
+/// tolerância — a folga desce de `352` para `296`, que é a única direcção em que ela anda. É o
+/// terceiro corte deste ficheiro pela mesma lei (a caixa de renomear e as alças de arrasto foram
+/// os outros dois).
+///
+/// `col_origin_x` é onde a coluna `0` começa (`rect.x + body_pad` no chamador): a única coisa que
+/// este desenho precisa de saber sobre o painel.
+#[allow(clippy::too_many_arguments)]
+fn paint_parentage_lines(
+    scene: &mut VectorScene,
+    theme: Theme,
+    row_rect: Rect,
+    col_origin_x: f32,
+    indent_px: f32,
+    depth: u32,
+    depths: &[u32],
+    i: usize,
+) {
+    // Godot-style tree lines connecting parents to children. For
+    // each ancestor depth column c < depth, draw a vertical line
+    // (full row height) if a future row at depth ≥ c exists and
+    // the column is still "alive" (no closer-up ancestor closes
+    // it). The deepest column (c == depth - 1) gets an L-stub:
+    // vertical down to mid-row, then horizontal to the chevron.
+    if depth > 0 {
+        // Internal row pad MUST match `row.rs::pad` exactly — both
+        // resolve to `Spacing::Xxs.px()` (= 2 px). Drift = vertical
+        // tree line stops sitting under the parent's chevron.
+        let row_inner_pad = Spacing::Xxs.px();
+        let chev_col_w = Spacing::Lg.px(); // sync with row.rs chev_w
+        let half_chev = chev_col_w * 0.5;
+        // Tree lines: bumped from `Border` → `Text3` 2026-05-24
+        // per user: "linhas com mais contraste pois quase não
+        // aparecem no fundo". Text3 reads as a soft chrome dim
+        // (≈ same as the panel chevrons) so the relationship is
+        // clear without competing with the row content.
+        let line_color = resolve(ColorToken::Text3, theme);
+        // Inter-row gap (set by `y += HIER_ROW_H + list_row_gap_px()`
+        // below). Extend each vertical segment by this amount on the
+        // bottom so it fuses with the next row's segment without a
+        // visible break, AND extend "my column" upward to the
+        // parent's chevron mid-line so the L-stub touches the
+        // parent's arrow (Enio 2026-05-26 round 2: "não vamos
+        // deixar esses espaços entre as linhas, mas desenhe a
+        // linha até chegar bem perto da setinha ou da outra linha").
+        let row_gap = list_row_gap_px();
+        let parent_chev_y = row_rect.y - HIER_ROW_H * 0.5 - row_gap;
+        for c in 0..(depth as usize) {
+            let col_chev_x = col_origin_x + c as f32 * indent_px + row_inner_pad;
+            let line_x = col_chev_x + half_chev;
+            let is_my_column = c == (depth as usize) - 1;
+            // Does column `c+1` continue past row i? (Some future
+            // row has depth ≥ c+1 before any row drops below c+1.)
+            let target = c as u32 + 1;
+            let mut continues = false;
+            for &d in &depths[(i + 1)..] {
+                if d < target {
+                    break;
+                }
+                if d == target {
+                    continues = true;
+                    break;
+                }
+            }
+            if is_my_column {
+                // Vertical reaches up to the parent's chevron and
+                // down to either mid-row (L-stub, last child) or
+                // past the inter-row gap (T-junction, has siblings
+                // after).
+                let vert_bot = if continues {
+                    row_rect.y + row_rect.h + row_gap
+                } else {
+                    row_rect.y + row_rect.h * 0.5
+                };
+                let vert = Rect::new(
+                    line_x - 0.5, // LITERAL-PX-OK: 1-px line centered
+                    parent_chev_y,
+                    1.0,
+                    (vert_bot - parent_chev_y).max(0.0),
+                );
+                ph2d_editor_core::paint::fill_rounded_rect(scene, vert, 0.0, line_color);
+                let next_col_chev = col_origin_x + (c + 1) as f32 * indent_px + row_inner_pad;
+                let h_stub = Rect::new(
+                    line_x,
+                    row_rect.y + row_rect.h * 0.5 - 0.5,
+                    (next_col_chev - line_x).max(0.0),
+                    1.0,
+                );
+                ph2d_editor_core::paint::fill_rounded_rect(scene, h_stub, 0.0, line_color);
+            } else if continues {
+                // Ancestor column passes through this row; extend
+                // by `row_gap` so it meets the next row's segment.
+                let vert = Rect::new(line_x - 0.5, row_rect.y, 1.0, row_rect.h + row_gap);
+                ph2d_editor_core::paint::fill_rounded_rect(scene, vert, 0.0, line_color);
+            }
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn paint_hierarchy_body(
     layout: &HeroLayout,
@@ -259,6 +361,20 @@ fn paint_hierarchy_body(
         // up on a single-entity selection.
         entity.muted = entity.muted || dragging.map(|d| d.dragged == *id).unwrap_or(false);
         hit_index.register(*id, row_rect);
+        // ⭐⭐ **A listra da linha ímpar** (report do dono com a foto do Outliner, 2026-09-06).
+        //
+        // ⚠️ **O índice é `row_rects.len()` — quantas linhas já foram PINTADAS —, e não o `i` do
+        //    laço.** Este laço salta linhas por três motivos (ramo recolhido, filtro de busca,
+        //    entrada sem entidade), e contar pelo índice do modelo poria duas linhas do mesmo tom
+        //    encostadas exactamente quando o artista fecha um ramo: um defeito intermitente, que
+        //    se reporta como *«às vezes as listras somem»*.
+        ph2d_editor_core::widget::paint_row_stripe(
+            scene,
+            row_rect,
+            theme,
+            ColorToken::PanelBg,
+            row_rects.len(),
+        );
         let is_renaming = rename_target == Some(*id);
         if is_renaming {
             entity.name = String::new();
@@ -275,86 +391,16 @@ fn paint_hierarchy_body(
             is_collapsed,
             direct_match,
         );
-        // Godot-style tree lines connecting parents to children. For
-        // each ancestor depth column c < depth, draw a vertical line
-        // (full row height) if a future row at depth ≥ c exists and
-        // the column is still "alive" (no closer-up ancestor closes
-        // it). The deepest column (c == depth - 1) gets an L-stub:
-        // vertical down to mid-row, then horizontal to the chevron.
-        if depth > 0 {
-            // Internal row pad MUST match `row.rs::pad` exactly — both
-            // resolve to `Spacing::Xxs.px()` (= 2 px). Drift = vertical
-            // tree line stops sitting under the parent's chevron.
-            let row_inner_pad = Spacing::Xxs.px();
-            let chev_col_w = Spacing::Lg.px(); // sync with row.rs chev_w
-            let half_chev = chev_col_w * 0.5;
-            // Tree lines: bumped from `Border` → `Text3` 2026-05-24
-            // per user: "linhas com mais contraste pois quase não
-            // aparecem no fundo". Text3 reads as a soft chrome dim
-            // (≈ same as the panel chevrons) so the relationship is
-            // clear without competing with the row content.
-            let line_color = resolve(ColorToken::Text3, theme);
-            // Inter-row gap (set by `y += HIER_ROW_H + list_row_gap_px()`
-            // below). Extend each vertical segment by this amount on the
-            // bottom so it fuses with the next row's segment without a
-            // visible break, AND extend "my column" upward to the
-            // parent's chevron mid-line so the L-stub touches the
-            // parent's arrow (Enio 2026-05-26 round 2: "não vamos
-            // deixar esses espaços entre as linhas, mas desenhe a
-            // linha até chegar bem perto da setinha ou da outra linha").
-            let row_gap = list_row_gap_px();
-            let parent_chev_y = row_rect.y - HIER_ROW_H * 0.5 - row_gap;
-            for c in 0..(depth as usize) {
-                let col_chev_x = rect.x + body_pad + c as f32 * indent_px + row_inner_pad;
-                let line_x = col_chev_x + half_chev;
-                let is_my_column = c == (depth as usize) - 1;
-                // Does column `c+1` continue past row i? (Some future
-                // row has depth ≥ c+1 before any row drops below c+1.)
-                let target = c as u32 + 1;
-                let mut continues = false;
-                for &d in &depths[(i + 1)..] {
-                    if d < target {
-                        break;
-                    }
-                    if d == target {
-                        continues = true;
-                        break;
-                    }
-                }
-                if is_my_column {
-                    // Vertical reaches up to the parent's chevron and
-                    // down to either mid-row (L-stub, last child) or
-                    // past the inter-row gap (T-junction, has siblings
-                    // after).
-                    let vert_bot = if continues {
-                        row_rect.y + row_rect.h + row_gap
-                    } else {
-                        row_rect.y + row_rect.h * 0.5
-                    };
-                    let vert = Rect::new(
-                        line_x - 0.5, // LITERAL-PX-OK: 1-px line centered
-                        parent_chev_y,
-                        1.0,
-                        (vert_bot - parent_chev_y).max(0.0),
-                    );
-                    ph2d_editor_core::paint::fill_rounded_rect(scene, vert, 0.0, line_color);
-                    let next_col_chev =
-                        rect.x + body_pad + (c + 1) as f32 * indent_px + row_inner_pad;
-                    let h_stub = Rect::new(
-                        line_x,
-                        row_rect.y + row_rect.h * 0.5 - 0.5,
-                        (next_col_chev - line_x).max(0.0),
-                        1.0,
-                    );
-                    ph2d_editor_core::paint::fill_rounded_rect(scene, h_stub, 0.0, line_color);
-                } else if continues {
-                    // Ancestor column passes through this row; extend
-                    // by `row_gap` so it meets the next row's segment.
-                    let vert = Rect::new(line_x - 0.5, row_rect.y, 1.0, row_rect.h + row_gap);
-                    ph2d_editor_core::paint::fill_rounded_rect(scene, vert, 0.0, line_color);
-                }
-            }
-        }
+        paint_parentage_lines(
+            scene,
+            theme,
+            row_rect,
+            rect.x + body_pad,
+            indent_px,
+            depth,
+            &depths,
+            i,
+        );
         if is_renaming {
             let icon_x_local = rect.x
                 + Spacing::Md.px()

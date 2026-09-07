@@ -31,6 +31,7 @@ mod icon_button;
 mod key_value_list;
 mod level_meter;
 mod list_item;
+mod list_rows;
 mod modal;
 mod number_input;
 mod numeric_input_with_unit;
@@ -99,6 +100,7 @@ pub use icon_button::{IconButtonStyle, IconGlyph, icon_glyph, paint_icon_button}
 pub use key_value_list::{KeyValueEntry, KeyValueList, paint_key_value_list};
 pub use level_meter::{LevelMeter, paint_level_meter};
 pub use list_item::{ListItem, ListItemState, paint_list_item};
+pub use list_rows::paint_row_stripe;
 pub use modal::{Modal, paint_modal, pop_modal_body_clip, push_modal_body_clip};
 pub use number_input::{
     MIN_W_PX as NUMBER_INPUT_MIN_W_PX, NumberInput, format_number, paint_number_input,

@@ -1052,6 +1052,107 @@ LOC ao `paint_hierarchy_row` e **a catraca de LOC desceu de 248 para 232**, sozi
 família de flakes de recurso do CLAUDE.md §5.0 — **3 de 3 verde sozinha**, com `load 50` impresso ao
 lado, e zero linhas do diff naquela crate).
 
+### 7.21 — ✅ WAVE 18 (2026-09-06): as LISTRAS — o tom que separa duas linhas encostadas
+
+**Report do dono**, com a foto do *Outliner* do Blender: *«Outline do Blender tem algo interessante
+que ainda não temos: linhas pares e ímpares têm tonalidade discretamente diferente».*
+
+⭐ **É o companheiro exacto da wave 17.** Quando as linhas de uma lista encostam (vão de 1 px), o
+que devolve *onde acaba uma e começa a outra* deixa de ser o vão — e passa a ser o TOM. Sem a
+listra, a wave 17 teria trocado um problema por outro.
+
+#### ⛔ O número não podia vir do Blender
+
+O código dele é **GPL** e esta linha **não o lê** (a lei da triagem, `pesquisa/02`); o manual dele
+(CC-BY-SA) documenta o painel de temas **sem enumerar os valores**. ⇒ o número vem do **egui**
+(Apache-2.0 OR MIT, já vendorizado), que tem exactamente este slot com exactamente este propósito:
+
+```rust
+// crates/egui/src/style.rs:1512 e :1576
+faint_bg_color: Color32::from_additive_luminance(5), // visible, but barely so
+```
+
+⭐ **E é o MESMO nos dois modos dele** (claro e escuro) — o que se porta é a **magnitude**, `5` em
+255, nunca uma cor.
+
+#### A direcção é DERIVADA, e é isso que a faz servir os oito temas
+
+Somar sempre seria a lei do egui à letra, e parte-se num tema claro: um fundo a `250` sobe para
+`255` e encosta no tecto. ⇒ a régua é **afastar-se do extremo mais próximo**, medida pela
+`Color::relative_luminance`, que é a régua de claro-escuro que esta casa já usa nos testes de
+contraste. Num tema escuro a linha ímpar **clareia**; num claro **escurece**.
+
+⭐⭐ **E isso resolve de graça os dois temas em que uma lei fixa falharia:** o **Light** do Godot,
+em que a elevação escurece por decisão dele, e o **OLED**, em que o contraste é `0` e não há para
+onde escurecer — ali só há uma direcção possível, e a régua escolhe-a sozinha. *É o item 6 do §8 do
+handoff a ficar meio resolvido sem ninguém lhe tocar: no OLED as listras vêem-se.*
+
+⛔ **Não é o degrau da ESCADA de cartões** (12 e 10 em 255): esse diz *«isto está dentro daquilo»*.
+Um degrau desse tamanho entre duas linhas irmãs leria como **aninhamento** — que é precisamente a
+confusão que a palavra do dono (*discretamente*) exclui. Há gate: a listra anda **no máximo metade**
+do degrau de cartão.
+
+#### ⚠️ A listra é da LISTA, não da LINHA
+
+Uma linha não sabe onde está: o que ela sabe dizer sobre si é o **estado** (apontada, seleccionada,
+silenciada). A alternância é uma propriedade da **sequência**, e só quem itera a conhece. ⇒ a porta
+(`widget::list_rows::paint_row_stripe`) é chamada pelo laço, e o estado é pintado por cima depois —
+que é também a única ordem em que *seleccionado* se lê igual nas linhas pares e ímpares.
+
+#### ⛔⛔ O índice é o VISUAL, e é aí que estava o defeito difícil
+
+Uma hierarquia **salta** linhas: um ramo recolhido, um filtro de busca activo. Contar pelo índice do
+**dado** poria duas linhas do mesmo tom encostadas exactamente quando o artista fecha um ramo — um
+defeito **intermitente**, que se reporta como *«às vezes as listras somem»* e não se reproduz.
+
+⭐ **A fixtura do gate é construída para separar as duas leis:** oito linhas com nomes alternados
+`keep`/`drop`; filtrar por `keep` deixa visíveis os índices de dado `0,2,4,6` (**todos pares**) e
+por `drop` deixa `1,3,5,7` (**todos ímpares**). Pela lei visual os dois casos pintam **duas**
+listras — a mesma geometria; pelo índice do dado, um pinta **zero** e o outro **quatro**. ⇒ a
+igualdade É a afirmação.
+
+⚠️ **E ela é cega a uma coisa, o que exigiu um segundo gate:** se ninguém pintasse listra nenhuma,
+«par» e «ímpar» emitiriam a mesma geometria e a igualdade passaria. *Uma igualdade prova qual é a
+lei, nunca que a lei corre.* ⇒ o irmão mede o **custo de acrescentar uma linha**: com linhas
+idênticas os saltos têm de **alternar** entre dois valores, e o maior é o que traz a listra.
+
+#### Onde ela vai, e as duas que ficam de fora COM MOTIVO
+
+| lista | listra | porquê |
+|---|---|---|
+| hierarquia | ✅ | é a que o dono fotografou |
+| âncoras do Inspector | ✅ | |
+| animações do Inspector | ✅ | |
+| variações do áudio | ⛔ | **toda** linha já enche o próprio fundo (`Bg3`, ou `Accent` na seleccionada): uma listra por baixo de um fundo opaco não se vê |
+| inspector da grade | ⛔ | é um **bloco de leitura** rótulo/valor de 5 linhas fixas, não uma lista de itens escolhíveis |
+
+#### O que os gates apanharam — e um deles é uma lei minha
+
+- ⭐⭐ **`nothing_inside_a_section_wears_the_section_tone` (wave 13) apanhou-me a escrever
+  `ColorToken::Bg1` à mão** nas duas listas do Inspector. A cura é a lei: **o tom vem da PORTA**
+  (`CardDepth::Section.token()`). ⛔ E é a `Section`, não a `Subsection`: a listra não é uma
+  superfície nova dentro do cartão — é o próprio fundo do cartão movido 5/255.
+- ⚠️ **O `#[allow]` mudou de dono.** A extracção que pagou o tecto de LOC inseriu a função nova
+  **entre** o `#[allow(clippy::too_many_arguments)]` e o `fn paint_hierarchy_body` a que ele
+  pertencia: o atributo passou a ser meu e o dono ficou sem ele. Só o *duplicado* é que o clippy
+  viu — *a metade silenciosa é sempre a outra*.
+- **Catraca de LOC paga por corte, nunca por tolerância:** `paint_hierarchy_body` `352 → 296` (as
+  **linhas de parentesco**, 80 linhas, saíram para `paint_parentage_lines`). É o terceiro corte
+  daquele ficheiro pela mesma lei.
+- Mais três gates de arquitectura que um módulo de widget novo acorda: o bloco `mod` é **codegen**
+  (o doc-comment não pode viver lá dentro), a galeria exige secção ou isenção escrita, e o HR-12
+  exige a11y ou isenção. As duas isenções estão escritas com o mecanismo: *uma listra não regista
+  alvo nenhum, e um leitor de ecrã não lê tons.*
+
+| prova de mutação | resultado |
+|---|---|
+| a listra passa a seguir o índice do DADO | ✅ morreu |
+| a hierarquia deixa de pintar listra | ✅ morreu |
+| TODA linha ganha listra | ✅ morreu |
+| a direcção fica fixa (só soma) | ✅ morreu no tema claro |
+
+**Portão:** `13 066` testes / `0` falhados; clippy `--all-targets -D warnings` limpo.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

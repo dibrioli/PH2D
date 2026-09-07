@@ -25,6 +25,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (file slug under `widget/`, one-line reason).
 const WIDGET_OPT_OUT: &[(&str, &str)] = &[
     (
+        "list_rows",
+        "not a widget: it is the ALTERNATING TONE a list paints BEHIND its rows (the Blender Outliner law the owner pointed at, 2026-09-06) — it registers nothing, has no state and paints no control; a gallery section for it would show a rectangle 5/255 away from the one behind it, and the rows it stripes (`list_item`, the Hierarchy, the Inspector lists) are already shown. The law is proved by `widget::list_rows::tests` (which measures the SCENE) and by `ph2d-panel-hierarchy/tests/the_rows_of_the_list_touch.rs` (which measures the PRODUCT)",
+    ),
+    (
         "section_cards",
         "not a widget: it is the COMPOSER that puts a section's body inside a card (the Blender panel/subpanel model, 2026-09-06) — it paints no control of its own, and a gallery section for it would show the widgets it wraps, which the gallery already shows; the card itself is proved by `widget::section_cards::tests`, which measures the SCENE",
     ),

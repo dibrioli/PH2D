@@ -90,8 +90,8 @@ pub use chrome::{
     TOPBAR_H_PX,
 };
 pub use color::{
-    Color, ColorToken, ColorValue, oklch_in_gamut, oklch_to_linear_srgb, oklch_to_srgb,
-    srgb_to_oklch,
+    Color, ColorToken, ColorValue, faint_row_bg, oklch_in_gamut, oklch_to_linear_srgb,
+    oklch_to_srgb, srgb_to_oklch,
 };
 pub use layer::Layer;
 pub use motion::{Duration, Easing};

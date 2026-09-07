@@ -34,6 +34,16 @@ use std::path::{Path, PathBuf};
 //    `#[cfg(test)]`, porque já está dentro de um). *A enumeração apodrece; a lei não.*
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
+    // ⚠️ **A listra de uma lista não tem semântica própria, e a ausência é a decisão**
+    //    (2026-09-06): ela é o TOM que a lista pinta ATRÁS das suas linhas, para que duas linhas
+    //    encostadas se leiam como duas. Não regista alvo nenhum e não é focável — quem tem nome,
+    //    papel e foco é a LINHA, que é registada pelo painel com o id do objecto dela. Dar um nó
+    //    à listra poria um alvo focável por baixo de cada linha, a duplicar a linha inteira num
+    //    leitor de ecrã; e um leitor de ecrã não lê tons.
+    (
+        "list_rows.rs",
+        "background tint painted behind list rows; the ROW owns name/role/focus",
+    ),
     // ⚠️ **O cartão de secção não tem semântica própria, e a ausência é a decisão** (2026-09-06):
     // ele é o COMPOSITOR que põe o corpo de uma secção dentro de um cartão (o modelo de painel do
     // Blender). Não pinta controlo nenhum e não regista alvo nenhum — quem tem nome, papel e foco

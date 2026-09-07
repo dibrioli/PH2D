@@ -63,6 +63,19 @@ pub(crate) fn paint_library(
         for (i, (row, &id)) in info.rows.iter().zip(ids::INSP_ANIM_ROW.iter()).enumerate() {
             let rect = Rect::new(x, cur_y, w, ROW_H);
             hit_index.register(id, rect);
+            // ⭐ A listra da linha ímpar — aqui o índice do laço É o visual (nada é saltado).
+            // ⚠️ **O tom base vem da PORTA** (`CardDepth::Section.token()`), nunca do `ColorToken::Bg1`
+            //    escrito à mão: é a lei da wave 13, e o censo dela apanhou esta linha na 1.ª redacção.
+            //    ⛔ E é a `Section`, não a `Subsection`: a listra **não é uma superfície nova dentro do**
+            //    **cartão** — ela é o próprio fundo do cartão movido 5/255, e é esse tamanho que a
+            //    impede de se ler como um aninhamento.
+            ph2d_editor_core::widget::paint_row_stripe(
+                scene,
+                rect,
+                theme,
+                ph2d_editor_core::widget::section_cards::CardDepth::Section.token(),
+                i,
+            );
             // **Duas coisas diferentes, dois realces:** a que está ABERTA no editor (fundo), e a
             // que está a TOCAR (o texto aceso). Elas são a mesma na esmagadora maioria dos
             // casos — mas não quando a que toca deixou de caber na grelha.

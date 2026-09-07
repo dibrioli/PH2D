@@ -187,6 +187,15 @@ o `EDSCALE_RND` arredonda antes do cubo), a hierarquia desceu de **32 para 22 px
 como a **ausência** de um termo (`cur_y += ROW_H`) — invisível a toda varredura, e por isso
 incopiável.
 
+⭐⭐ **E a wave 18 (06/09) deu à lista as LISTRAS do *Outliner* do Blender**, apontadas pelo dono
+([§7.21](pesquisa/08_modelos_com_codigo_para_seguir.md)) — o companheiro exacto da 17: quando as
+linhas encostam, o que separa uma da outra passa a ser o TOM. ⛔ O número não podia vir do Blender
+(GPL, e o manual não o enumera): vem do **egui** (permissivo, vendorizado), `5` em 255 — *«visible,
+but barely so»*. ⚠️ **A direcção é derivada** (afastar-se do extremo mais próximo), e é isso que a
+faz servir o tema claro do Godot e o OLED sem uma tabela por tema. ⛔⛔ **E o índice é o VISUAL:**
+contar pelo índice do dado encostaria duas linhas do mesmo tom exactamente ao recolher um ramo — um
+defeito intermitente, e o gate tem uma fixtura construída para separar as duas leis.
+
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
 cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·
 esbatimento do rótulo e inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis, animado) —

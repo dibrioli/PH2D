@@ -990,6 +990,20 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   mutação que apagava o `populate` deles **SOBREVIVEU**): o gate irmão `table_driven_chips_are_registered_too` fecha-o,
   com **catraca de 9 tabelas por registar em 4 painéis de OUTRAS linhas** — ⛔ **ela só ENCOLHE**, e quem registar um
   desses chips tem de apagar a linha correspondente (o gate tem a metade *«já não descreve nada»*) ·
+  ⭐⭐ **O PREFAB ABRE-SE, e o `Ctrl+Z` da Hierarquia volta a funcionar** (07/09) — *Edit Prefab* por
+  **quatro** portas, com **vidro jateado** sobre o mundo ([`ph2d-render/frost.rs`](crates/ph2d-render/src/frost.rs),
+  o passe que só é possível porque os painéis **não** estão no `world_rt`), a receita conduzida ao centro da área
+  **visível** como pré-visualização (⛔ a câmera **não** se move — ordem do dono) e uma barra `Done`/`Cancel`
+  (`Enter`/`Esc`) que **tranca** a saída. ⛔⛔ **E o report *«reordenei objetos na hierarquia e não funcionou o undo»*
+  NÃO era o undo: era a ORDEM DO QUADRO** — o dreno do reparent corria ~2 340 linhas **depois** da projecção de z, a
+  captura ficava com `world` novo e `vec` velho, e nascia um passo **fantasma** `partes: ["vec"]` que o `Ctrl+Z` gastava
+  e o quadro seguinte recriava (fila parada em `5`). ⇒ *todo escritor da árvore corre antes de ela ser lida, e a leitura
+  antes da captura*; gate `a_hierarchy_drag_leaves_the_capture_a_fixed_point` — ⚠️ e **a lacuna era do ARNÊS**: o `Frame`
+  dele dizia-se *«o pedaço do quadro que muta o estado que o undo fotografa»* e não continha o dreno.
+  ⏳ Os outros verbos tardios (apagar · duplicar · *Remove from Sheet*) têm a mesma latência e **não** foram medidos.
+  [Handoff de 07/09](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_PREFAB_ABERTO_2026-09-07.md) (⚠️ o §10
+  tem **cinco** coisas que uma leitura rápida do diff entende ao contrário — entre elas que o `held_back` **obriga** quem
+  o passa a desenhar as retidas noutra passagem — e o §11 as **quatro** premissas que a medição derrubou) ·
   F2-F8 do [plano vivo](docs/Components/05_plano_de_implementacao.md).
   **Smokes:** abrir um `.ph2dproj` gravado ANTES de 24/08 (tem de dizer *"Project migrated from format 95 to N"*, com
   **N = o `PROJECT_SCHEMA` de hoje** — ⛔ não o copie para cá, leia-o em

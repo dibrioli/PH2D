@@ -149,6 +149,15 @@ impl WidgetStore {
         self.hierarchy_row_ids.contains(&id)
     }
 
+    /// Quantas linhas o painel registou neste quadro — o diagnóstico do arrasto de linha.
+    ///
+    /// ⚠️ Um `0` aqui e um id que não é linha são defeitos DIFERENTES: o primeiro é o painter que
+    /// não publicou, o segundo é um clique que caiu num companheiro (o cartão, o olho, o nome).
+    #[must_use]
+    pub fn hierarchy_row_count(&self) -> usize {
+        self.hierarchy_row_ids.len()
+    }
+
     // ── Painter layers-panel row drag (W3 T3.8) — mirror of the hierarchy
     //    drag, but the dispatch never mutates structure (the painter tool
     //    owns the LayerStack and resolves the emitted `PainterLayerReparent`).

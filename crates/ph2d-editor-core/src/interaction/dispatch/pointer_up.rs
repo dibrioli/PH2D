@@ -113,6 +113,16 @@ pub(super) fn dispatch_up<'frame>(
         events.push(WidgetEvent::LongPress(drag.dragged));
         suppress_click = true;
     }
+    // ⭐ **Estações 2 e 3: ACTIVAR e RESOLVER.** Um arrasto que nunca activa e um que activa e cai
+    // no `over_self` leem-se igual do lado de fora — e as curas são opostas.
+    if super::hierarchy::diag_on()
+        && let Some(drag) = drag_end
+    {
+        eprintln!(
+            "[hier] up: arrasto de {:?} · activo={} · y={:.1}",
+            drag.dragged, drag.active, event.y
+        );
+    }
     if let Some(drag) = drag_end
         && drag.active
     {
@@ -130,9 +140,15 @@ pub(super) fn dispatch_up<'frame>(
             })
             .unwrap_or(false);
         if over_self {
+            if super::hierarchy::diag_on() {
+                eprintln!("[hier] up: RECUSADO — o cursor voltou para dentro da propria linha");
+            }
             return;
         }
         let drop = find_hierarchy_drop(hit_index, store, event.y, drag.dragged);
+        if super::hierarchy::diag_on() {
+            eprintln!("[hier] up: destino resolvido = {drop:?}");
+        }
         match drop {
             HierDrop::Before(t) => {
                 store.hierarchy_move(drag.dragged, Some(t));

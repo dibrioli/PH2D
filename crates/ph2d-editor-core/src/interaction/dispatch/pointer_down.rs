@@ -589,6 +589,14 @@ pub(super) fn dispatch_down<'frame>(
         if store.is_hierarchy_row(id) {
             store.begin_hierarchy_drag(id, event.x, event.y, event.timestamp_ns);
         }
+        // ⭐ **Estação 1 do arrasto de linha: SEMEAR.** Ver `dispatch::hierarchy::diag_on`.
+        if super::hierarchy::diag_on() {
+            eprintln!(
+                "[hier] down: id={id:?} e' linha da hierarquia? {} (linhas registadas: {})",
+                store.is_hierarchy_row(id),
+                store.hierarchy_row_count(),
+            );
+        }
         // Painter layers-panel row drag (W3 T3.8) — same anchor as the
         // hierarchy; the Up handler resolves the drop into a
         // `PainterLayerReparent` for the painter tool to apply.

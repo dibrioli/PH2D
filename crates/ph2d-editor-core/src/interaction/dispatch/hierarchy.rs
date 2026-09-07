@@ -57,6 +57,21 @@ pub(crate) enum HierDrop {
 /// at the foot of a nested last-child still appends inside that
 /// child's parent — the user's "drop after t preserves parent"
 /// behavior. Skips the dragged row itself.
+/// ⭐⭐⭐ **O DIAGNÓSTICO DO ARRASTO DE LINHA** (report do Enio, 2026-09-07: *«reordenei objectos na
+/// hierarquia e não funcionou o undo»*).
+///
+/// ⚠️ A corrida com o log do undo provou que a ORDEM não muda e que o pedido **não chega** ao lado
+/// que a escreve — e o gesto tem TRÊS estações (semear no `Down`, activar no `Move`, resolver no
+/// `Up`), cada uma com a sua forma de morrer em silêncio. Sem isto, cada suspeita custa uma corrida
+/// do dono.
+///
+/// ⛔ Mesma env do log do undo (`PH2D_UNDO_LOG`), de propósito: o artista já a tem na mão, e uma
+/// segunda variável seria uma segunda coisa para ele saber.
+pub(crate) fn diag_on() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("PH2D_UNDO_LOG").is_some())
+}
+
 pub(super) fn find_hierarchy_drop(
     hit_index: &HitIndex,
     store: &WidgetStore,

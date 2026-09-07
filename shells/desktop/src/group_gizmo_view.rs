@@ -60,16 +60,28 @@ pub(crate) const EMPTY_HALF_PX: f32 = 2.0 * ph2d_editor::HANDLE_SIZE_PX;
 ///   ([`crate::render_loop::point_gizmo`]); uma caixa por cima engoliria o clique neles.
 /// - uma peça de **modelagem 3D** tem o gizmo do módulo MODEL — e a pose dela nem sequer é o
 ///   `Transform` da casa (é o `FieldPose`), então a caixa sairia na origem do mundo, longe da peça.
+/// - ⭐ um **OSSO** tem DUAS alças com verbos diferentes — o corpo GIRA, a bolinha da junta
+///   DESLOCA ([`crate::bone_gesture`]) —, e o corpo dele já é o losango que o
+///   [`ph2d_skeleton_render::draw_bones`] pinta.
 ///
 /// ⚠️ **É uma lista, e ela envelhece:** uma família nova que ganhe alças próprias e não venha aqui
 /// nasce com duas caixas sobre o mesmo objeto. O gate
 /// [`tests::a_joint_publishes_no_box_so_its_dots_keep_the_click`] guarda-a pelos dois lados.
+///
+/// ⛔⛔ **E foi exactamente isso que aconteceu ao osso** (report do dono, 2026-09-06, com foto:
+/// *«alguns bones têm círculos grandes e pequenos»*). O osso nasceu em 06/09 com alças próprias e
+/// não veio a esta lista ⇒ toda entidade dele respondia `is_empty_object` (tem `Transform`, não tem
+/// `Sprite` nem `VecPathRef`) e ganhava **um segundo anel**, o do objeto vazio, concêntrico com a
+/// bolinha da junta e ~3× maior. ⚠️ **E não era só tinta:** os três consumidores desta pergunta
+/// morrem juntos, então o disco do anel também **disputava o clique** com a junta — a alça de
+/// DESLOCAR do osso estava por baixo de um alvo que executa outro verbo.
 fn publishes_its_own_handles(sim: &SimWorld, e: Entity) -> bool {
     let w = sim.world();
     w.get::<ph2d_physics_ecs::PhysicsJoint>(e).is_some()
         || w.get::<ph2d_physics_ecs::PulleyWheel>(e).is_some()
         || w.get::<ph2d_field_ecs::FieldObject>(e).is_some()
         || w.get::<ph2d_field_ecs::FieldNode>(e).is_some()
+        || w.get::<ph2d_skeleton_ecs::Bone>(e).is_some()
 }
 
 /// ⭐ **«Este objeto é um VAZIO?»** — a pergunta que TODOS os consumidores fazem.

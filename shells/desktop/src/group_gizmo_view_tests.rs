@@ -371,3 +371,50 @@ fn the_ring_scales_by_the_geometric_mean() {
         base * 2.0
     );
 }
+
+/// ⛔⛔ **UM OSSO NÃO GANHA O ANEL DO OBJETO VAZIO** — o report de 2026-09-06, com foto:
+/// *«alguns bones têm círculos grandes e pequenos»*.
+///
+/// Um osso é `Transform` + `Bone`, sem `Sprite` e sem `VecPathRef` — a forma exacta de um objeto
+/// vazio. Sem a guarda ele ganha um **segundo** anel, concêntrico com a bolinha da junta e ~3×
+/// maior (o marcador do vazio mede `2 × HANDLE_SIZE_PX` de arte contra os `6 px` de tela da junta).
+///
+/// ⚠️ **E os três consumidores desta pergunta morrem juntos**, então o defeito não era só tinta: o
+/// **disco** do anel também disputava o clique com a junta — e a junta executa *deslocar* enquanto
+/// o corpo executa *girar*. Um alvo por cima do outro é o gesto a responder o verbo errado.
+///
+/// (Mutação: tirar `Bone` de `publishes_its_own_handles` ⇒ RED.)
+#[test]
+fn a_bone_publishes_no_empty_ring_because_it_already_has_a_body_and_a_joint() {
+    let mut sim = SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            Name::new("Bone 1"),
+            ph2d_skeleton_ecs::Bone::default(),
+        ))
+        .id();
+    assert!(
+        !crate::group_gizmo_view::is_empty_object(&sim, e),
+        "o osso passou por objeto vazio — ele ganha um 2.o anel e o disco dele rouba o clique na \
+         junta"
+    );
+    assert!(
+        boxed(&sim, e).is_none(),
+        "o osso publicou uma caixa de objeto vazio por cima do proprio corpo"
+    );
+    assert!(
+        !crate::group_gizmo_view::empty_objects(&sim).contains(&e),
+        "o osso entrou na varredura que PINTA os aneis de objeto vazio"
+    );
+    // O controlo POSITIVO: sem o componente, a mesma entidade ganha o marcador — senão este gate
+    // ficaria verde por a fixtura não produzir o fenómeno.
+    sim.world_mut()
+        .entity_mut(e)
+        .remove::<ph2d_skeleton_ecs::Bone>();
+    assert!(
+        boxed(&sim, e).is_some(),
+        "sem o osso a entidade continuou sem marcador — o gate estaria verde por outra razao"
+    );
+}

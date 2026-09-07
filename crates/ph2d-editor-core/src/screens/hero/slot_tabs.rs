@@ -243,6 +243,30 @@ pub fn tab_rects(bar: Rect, n: usize) -> Vec<Rect> {
         .collect()
 }
 
+/// ⭐⭐⭐ **QUEM aparece na fila, e ONDE** — a porta que emparelha ocupantes com rects.
+///
+/// ⛔⛔ **O emparelhamento ingénuo é `occ.iter().zip(tab_rects(bar, occ.len()))`, e ele descarta
+/// SEMPRE a aba escolhida.** O `zip` trunca pelo mais curto, os rects são `fit` no transbordo, e o
+/// escolhido é o **último** da ordem z (`panel_walk`: `occ.last()`). ⇒ com mais ocupantes do que
+/// cabem, **nenhuma das abas pintadas acende**, e o painel que está a desenhar não tem aba nenhuma.
+/// Foi metade do report de 2026-09-07 (*«abas espremidas»*, nenhuma marcada).
+///
+/// ⇒ **a janela é a do TOPO da ordem z**, isto é, os `fit` mais recentes — e ela contém o escolhido
+/// por construção, porque ele é o último.
+///
+/// ⚠️ **Isto é uma PORTA e não uma correcção no pintor**: o `zip` estava copiado em cinco sítios
+/// (o pintor e quatro testes), e *uma lei escrita em dois sítios ainda não é uma lei*. Quem
+/// precisar de saber que aba está onde chama isto.
+#[must_use]
+pub fn tab_layout(occ: &[Occupant], bar: Rect) -> Vec<(Occupant, Rect)> {
+    let rects = tab_rects(bar, occ.len());
+    if rects.is_empty() {
+        return Vec::new();
+    }
+    let start = occ.len().saturating_sub(rects.len());
+    occ[start..].iter().copied().zip(rects).collect()
+}
+
 /// Regista os controlos de aba dos painéis registados. Chamado pelo `pre_populate` do hero.
 ///
 /// ⛔⛔ **`with_registry_opt`, nunca `with_registry_ref` — e nas quatro funções deste ficheiro.**
@@ -280,12 +304,12 @@ pub fn paint_slot_tabs(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
-    let rects = tab_rects(bar, occ.len());
-    if rects.is_empty() {
+    let painted = tab_layout(occ, bar);
+    if painted.is_empty() {
         return;
     }
     scene.fill_rect(rect_to_vello(bar), resolve(ColorToken::Bg1, theme));
-    for (o, r) in occ.iter().zip(rects) {
+    for (o, r) in painted {
         let is_on = selected == Some(o.node);
         let state = store
             .button_state(tab_node_id(o.node))

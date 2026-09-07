@@ -31,6 +31,9 @@ pub mod chrome;
 pub mod color_picker_demo;
 mod context_menu_dialogs;
 pub mod context_menu_overlay;
+/// ⭐⭐⭐ **O interruptor de uma coluna** — fechar e reabrir como uma involução, e não como duas
+/// perguntas a factos diferentes.
+pub mod dock_columns;
 /// ⭐⭐ **O fantasma do arrasto** — o primeiro deste editor a seguir o cursor (plano
 /// `docs/Components/07`, B4).
 pub mod dock_reopen;
@@ -197,6 +200,16 @@ pub struct HeroScreen {
     /// reads it to publish chrome rects. `BTreeMap` (not `HashMap`)
     /// per HR-5: bit-determinism rules out non-fixed hashers.
     pub panel_visibility: std::collections::BTreeMap<&'static str, bool>,
+    /// ⭐⭐⭐ **O que cada fecho de coluna levou consigo** — `[esquerda, direita]`.
+    ///
+    /// ⚠️ **Sem isto, reabrir é uma re-derivação — e uma re-derivação é um SUPERCONJUNTO por
+    /// construção.** A informação que decide (*«o dono tinha este painel aberto?»*) não existe no
+    /// registo de painéis: ela existe num instante só, o do fecho. Ver
+    /// [`dock_columns`], que é a porta, e o report de 2026-09-07 que a pagou.
+    ///
+    /// ⛔ **Não é persistido**, e é a decisão: uma coluna fechada com o app aberto é um gesto em
+    /// curso; ao reiniciar, quem responde é a tarefa activa (`dock_columns::fallback`).
+    pub dock_closed: [Option<dock_columns::ClosedColumn>; 2],
     /// Wave 5 stage B: image-edit subsystem state — TopBar Image-Tools
     /// mode flag + undo-availability signal from host.
     pub image_edit: ImageEditState,
@@ -380,6 +393,7 @@ impl HeroScreen {
                 center_split: crate::screens::layout::CenterSplit::None,
             },
             panel_visibility: panel_ids::default_panel_visibility(),
+            dock_closed: [None, None],
             image_edit: ImageEditState::default(),
             gizmo: GizmoStateGroup::default(),
             grid: GridState::default(),

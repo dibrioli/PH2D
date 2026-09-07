@@ -39,6 +39,15 @@ pub fn apply(hero: &mut HeroScreen, layout: TaskLayout) {
         }
     });
 
+    // ⭐⭐ **E a memória de um fecho de COLUNA morre com a tarefa que a produziu.**
+    //
+    // ⚠️ Ela guarda *«estes painéis estavam nesta coluna quando o dedo a fechou»*, e a linha acima
+    // acabou de reescrever a visibilidade dos 26 pela lista desta tarefa. Sobreviver seria a
+    // reabertura da coluna trazer de volta o Motion Params dentro do modo de desenho — um conjunto
+    // que já não descreve nada. Ver [`super::dock_columns`], que cai no `fallback` quando não há
+    // memória, e o `fallback` lê exactamente a `LayoutSpec::open` que acabou de ser aplicada.
+    hero.dock_closed = [None, None];
+
     // As excepções de encaixe da tarefa anterior não são desta.
     hero.store.reset_panel_slots();
     crate::panel::with_registry_opt(|reg| {

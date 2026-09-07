@@ -15,8 +15,53 @@
 //! ⛔ **E o gesto corre ANTES do hit-test de chrome, de propósito.** A costura vive DENTRO da
 //! coluna (os últimos `DOCK_SEAM_PX` px dela), logo por cima do corpo do painel; sem a
 //! precedência, o painel comeria o press e a borda seria inerte.
+//!
+//! # ⭐⭐⭐ O que este ficheiro deixou de decidir (2026-09-07)
+//!
+//! *Quais painéis uma coluna leva consigo* **não mora aqui**. Ela é a
+//! [`ph2d_editor::screens::hero::dock_columns`], no `ph2d-editor-core` — e mudou de sítio por uma
+//! razão medida: enquanto foi uma `fn` privada de um `impl App` do **binário**, nenhum teste a
+//! alcançava, e o gate que a cobria lia o **fonte** com `contains()`. ⛔ *Ele leu a linha do
+//! defeito e chamou-lhe correcta.* Aqui fica só o **gesto**: onde o dedo está, o que ele arma, e
+//! quando ele solta.
 
+use ph2d_editor::screens::hero::dock_columns;
 use ph2d_editor::screens::layout::DockSide;
+
+/// O estado do arrasto de uma costura de coluna.
+///
+/// ⚠️ **Não é só o lado.** Ver [`SeamDrag::may_close`] — um arrasto que NASCEU de uma reabertura
+/// começa com o dedo na borda de fora, onde a largura medida é ~0, e sem a trava ele fecharia a
+/// coluna no primeiro pixel de movimento.
+// ⚠️ **`PartialEq` sem `Eq`**: o `width_at_start` é um `f32`, e `f32` não é `Eq` — não há igualdade
+// reflexiva sobre `NaN`. Declarar `Eq` aqui é erro de compilação, e está certo que seja.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub(crate) struct SeamDrag {
+    /// Que coluna está a ser redimensionada.
+    pub(crate) side: DockSide,
+    /// ⭐⭐⭐ **Este arrasto já pode fechar?**
+    ///
+    /// Um arrasto que agarra a costura de uma coluna **aberta** nasce com `true`: a mão está sobre
+    /// a borda dela, e puxar para dentro é o gesto de fechar.
+    ///
+    /// ⛔⛔ Um arrasto que nasce da **alça de reabertura** nasce com `false`, e a razão é
+    /// aritmética: a alça vive na borda **exterior** da janela, logo `dock_width_for` no ponto do
+    /// toque vale 0..6 px — muito abaixo do degrau de fecho. Sem a trava, o primeiro `CursorMoved`
+    /// depois de reabrir mandava fechar de imediato; e como os painéis recém-abertos ainda não
+    /// tinham pintado, não havia rect nenhum para encontrar, **nada era escondido, e o arrasto
+    /// morria com a coluna reaberta**. Era essa a sequência exacta da foto de 2026-09-07.
+    ///
+    /// Ele arma quando a largura medida chega uma vez ao mínimo legal — *a mão trouxe a borda de
+    /// volta para dentro do território onde fechar quer dizer alguma coisa.*
+    pub(crate) may_close: bool,
+    /// ⭐⭐ **A escolha de largura ANTES de este arrasto lhe tocar** — o que a reabertura devolve.
+    ///
+    /// ⛔ Capturada no `Down`, e não no instante do fecho: **cada pixel do arrasto escreve a
+    /// largura** (clampada ao mínimo pela porta do store), logo uma coluna de 400 px arrastada até
+    /// fechar já deixou `Some(220)` gravado muito antes de o degrau disparar. Lê-la no fecho
+    /// devolveria sempre o mínimo — que é metade do report *«a retração ainda está ruim»*.
+    pub(crate) width_at_start: Option<f32>,
+}
 
 impl crate::App {
     /// O layout que o último quadro resolveu, se já houve um.
@@ -60,29 +105,54 @@ impl crate::App {
         if let Some(side) = self.hero_layout().and_then(|l| l.dock_reopen_at((x, y)))
             && self.open_column(side)
         {
-            self.dock_seam_drag = Some(side);
+            // ⚠️ Capturada DEPOIS de reabrir: a largura de partida deste arrasto é a que a
+            //    reabertura acabou de repor, e é essa que um fecho seguinte tem de guardar.
+            self.dock_seam_drag = Some(SeamDrag {
+                side,
+                may_close: false,
+                width_at_start: self.dock_width_choice(side),
+            });
             return true;
         }
         let Some(side) = self.hero_layout().and_then(|l| l.dock_seam_at((x, y))) else {
             return false;
         };
-        self.dock_seam_drag = Some(side);
+        self.dock_seam_drag = Some(SeamDrag {
+            side,
+            may_close: true,
+            width_at_start: self.dock_width_choice(side),
+        });
         true
+    }
+
+    /// A escolha de largura de uma coluna, ou `None` se ninguém arrastou aquela borda.
+    fn dock_width_choice(&self, side: DockSide) -> Option<f32> {
+        self.gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .and_then(|h| h.store.dock_width_choice(side))
     }
 
     /// Move: escreve a largura nova. `true` enquanto o arrasto vive.
     ///
-    /// ⚠️ A largura sai de [`HeroLayout::dock_width_for`] — a conta é **do lado** (à esquerda a
-    /// coluna cresce com o `x`, à direita decresce), e é a inversão que se escreve ao contrário
-    /// sem o compilador reclamar. O clamp mora na porta do store, não aqui.
+    /// ⚠️ A largura sai de [`ph2d_editor::screens::layout::HeroLayout::dock_width_for`] — a conta é
+    /// **do lado** (à esquerda a coluna cresce com o `x`, à direita decresce), e é a inversão que
+    /// se escreve ao contrário sem o compilador reclamar. O clamp mora na porta do store.
     pub(crate) fn dock_seam_move(&mut self, x: f32) -> bool {
-        let Some(side) = self.dock_seam_drag else {
+        let Some(drag) = self.dock_seam_drag else {
             return false;
         };
         let Some(layout) = self.hero_layout() else {
             return false;
         };
-        let w = layout.dock_width_for(side, x);
+        let w = layout.dock_width_for(drag.side, x);
+        // A trava arma assim que a borda volta ao território legal. Ver [`SeamDrag::may_close`].
+        if !drag.may_close
+            && w >= ph2d_editor::interaction::WidgetStore::DOCK_W_MIN
+            && let Some(d) = self.dock_seam_drag.as_mut()
+        {
+            d.may_close = true;
+        }
         // ⭐⭐⭐ **Arrastar para dentro, para além do mínimo, FECHA a coluna** — o gesto do Blender,
         //    e a maior alavanca de ecrã que a medição do tablet encontrou (fechar as duas devolve
         //    89–92 %). Até aqui o arrasto travava no mínimo e fechar custava dois passeios ao menu.
@@ -90,107 +160,37 @@ impl crate::App {
         // ⚠️ **Fecha pela MESMA porta que o menu usa** (`panel_visibility`): um segundo caminho
         //    para esconder um painel daria dois estados de «fechado» que podiam discordar — e o
         //    interruptor do menu passaria a mentir sobre o que o dedo fez.
-        if w < ph2d_editor::interaction::WidgetStore::DOCK_W_COLLAPSE {
-            self.close_column(side);
-            // O arrasto acaba aqui: a costura que ele agarrava deixou de existir.
-            self.dock_seam_drag = None;
+        if w < ph2d_editor::interaction::WidgetStore::DOCK_W_COLLAPSE
+            && self.dock_seam_drag.is_some_and(|d| d.may_close)
+        {
+            // ⚠️ **O arrasto só acaba se o fecho ACONTECEU.** Largá-lo mesmo quando não há nada a
+            //    esconder deixava o dedo em baixo sobre uma costura que continuava a existir — e o
+            //    artista tinha de largar e voltar a agarrar sem nada lhe dizer porquê.
+            if self.close_column(drag.side, drag.width_at_start) {
+                self.dock_seam_drag = None;
+            }
             return true;
         }
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.store.set_dock_width(side, w);
+            hero.store.set_dock_width(drag.side, w);
         }
         true
     }
 
-    /// ⭐⭐⭐ **Fecha TODOS os inquilinos de uma coluna** — e eles são CONTADOS, não adivinhados.
-    ///
-    /// ⛔⛔ **A wave 29 escondia UM painel, por um nome derivado do lado** (`dock_tenant`), e o dono
-    /// reportou no mesmo dia: *«hierarquia fechou… Inspector não fechou»*. A causa é que uma coluna
-    /// pode ter **mais de um inquilino** — o `bgremoval` partilha o rect do Inspector, e o
-    /// `painter_layers` também vive à direita. Escondido um, os outros continuavam a publicar o
-    /// rect, o `DockSides::from_published` continuava a ver a coluna ocupada, e ela não fechava.
-    ///
-    /// ⚠️ *Uma tabela `lado → nome` era invenção minha sobre um modelo que já era plural.* Aqui a
-    /// pergunta é feita ao **mesmo facto** que decide a ocupação: o rect que cada painel PUBLICOU.
-    fn close_column(&mut self, side: ph2d_editor::screens::layout::DockSide) -> bool {
-        let Some(layout) = self.hero_layout() else {
-            return false;
-        };
-        let (left_col, right_col) = layout.side_columns();
-        let col = match side {
-            ph2d_editor::screens::layout::DockSide::Left => left_col,
-            ph2d_editor::screens::layout::DockSide::Right => right_col,
-        };
+    /// Fecha a coluna. A lei é a [`dock_columns::close`] — aqui fica só a travessia até ao `hero`.
+    fn close_column(&mut self, side: DockSide, width_at_start: Option<f32>) -> bool {
         let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
             return false;
         };
-        let mut hide: Vec<&'static str> = Vec::new();
-        ph2d_editor::panel::with_registry_opt(|reg| {
-            for p in reg.panels() {
-                let m = &p.manifest;
-                if !hero.is_panel_visible(m.id) {
-                    continue;
-                }
-                let Some(r) = hero.store.panel_rect(m.panel_node_id) else {
-                    continue;
-                };
-                // ⚠️ **A MESMA lei que decide a ocupação**, e não uma cópia: um segundo critério
-                //    de «este painel toma a coluna» divergiria no dia em que só um fosse afinado.
-                let takes = ph2d_editor::screens::layout::DockSides::from_published(
-                    left_col,
-                    right_col,
-                    [r],
-                );
-                let mine = match side {
-                    ph2d_editor::screens::layout::DockSide::Left => takes.left,
-                    ph2d_editor::screens::layout::DockSide::Right => takes.right,
-                };
-                if mine {
-                    hide.push(m.id);
-                }
-            }
-        });
-        let _ = col;
-        for id in &hide {
-            hero.panel_visibility.insert(id, false);
-        }
-        !hide.is_empty()
+        dock_columns::close(hero, side, width_at_start)
     }
 
-    /// ⭐⭐ **Reabre TODOS os painéis daquela coluna** — e a pergunta é OUTRA que a de fechar.
-    ///
-    /// Fechar conta os inquilinos pelos rects que eles **publicaram**, que é exacto. ⚠️ Mas um
-    /// painel fechado **não publica nada** — logo reabrir não pode usar o mesmo facto. O que
-    /// sobrevive a um painel fechado (e a um reinício) é o **encaixe que ele declara**, e é a ele
-    /// que esta metade pergunta.
-    ///
-    /// *As duas metades de um interruptor podem precisar de fontes de verdade diferentes, e é o
-    /// estado que elas atravessam que decide qual.*
-    fn open_column(&mut self, side: ph2d_editor::screens::layout::DockSide) -> bool {
+    /// Reabre a coluna. A lei é a [`dock_columns::open`].
+    fn open_column(&mut self, side: DockSide) -> bool {
         let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
             return false;
         };
-        let mut show: Vec<&'static str> = Vec::new();
-        ph2d_editor::panel::with_registry_opt(|reg| {
-            for p in reg.panels() {
-                let m = &p.manifest;
-                if hero.is_panel_visible(m.id) {
-                    continue;
-                }
-                // O encaixe ARRUMADO ganha ao declarado — é o que o artista moveu.
-                let slot = hero
-                    .store
-                    .panel_slot(m.panel_node_id)
-                    .unwrap_or(m.default_slot);
-                if slot.dock_side() == Some(side) {
-                    show.push(m.id);
-                }
-            }
-        });
-        for id in &show {
-            hero.panel_visibility.insert(id, true);
-        }
-        !show.is_empty()
+        dock_columns::open(hero, side)
     }
 
     /// Release: fecha o arrasto. `true` se havia um.
@@ -199,5 +199,5 @@ impl crate::App {
     }
 }
 
-/// O estado do arrasto — qual coluna está a ser redimensionada agora.
-pub(crate) type DockSeamDrag = Option<DockSide>;
+/// O estado do arrasto — qual coluna está a ser redimensionada agora, e se ela já pode fechar.
+pub(crate) type DockSeamDrag = Option<SeamDrag>;

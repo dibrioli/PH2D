@@ -184,6 +184,15 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             (ids::RAIL_SHOW_INSPECTOR, "Inspector", None),
             (ids::MENUBAR_VIEW_RULERS, "Rulers", None),
             (ids::MENUBAR_VIEW_THEME, "Theme\u{2026}", None),
+            // ⭐⭐⭐ **O verbo de RECUPERAÇÃO mora aqui** (2026-09-07). Ele existia só dentro do
+            // popup do TEMA, e o dono — a precisar dele depois de uma coluna lhe encher o ecrã de
+            // painéis — não o encontrou. ⚠️ *Um verbo de recuperação escondido dentro de um
+            // selector de aparência é um verbo que não existe no minuto em que é preciso.*
+            //
+            // ⚠️ **A nota acima proíbe repetir ESTADOS, e isto é um VERBO** — o id já se chama
+            // `MENUBAR_VIEW_…`, e o que aquela lei teme (dois estados a discordar à vista) não tem
+            // como acontecer a uma acção sem estado.
+            (ids::MENUBAR_VIEW_RESET_LAYOUT, "Reset Panel Layout", None),
         ],
         // ⭐ **Os treze toggles de módulo.** Entre a retirada da barra de pills (2026-08-30) e
         // esta barra, o único caminho até eles era a tecla `F9` — que é um interruptor de

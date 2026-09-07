@@ -35,6 +35,21 @@ pub fn populate_shared(store: &mut WidgetStore) {
     super::layout_tabs::populate(store);
     populate_scrollbars(store);
     populate_hierarchy_chrome(store);
+    populate_prefab_bar(store);
+}
+
+/// ⭐ **O botão de SAÍDA do modo de receita** (o *Edit Prefab*).
+///
+/// ⚠️ Registado como `Button` pela razão de sempre nesta casa: sem uma entrada no store o
+/// `is_focusable` responde `false`, e o botão fica **pintado, hit-registado e morto sob o ponteiro**
+/// — a espécie de controlo morto que este repo varre a cada wave.
+fn populate_prefab_bar(store: &mut WidgetStore) {
+    store.register(
+        ids::PREFAB_EDIT_DONE,
+        InteractiveState::Button {
+            state: crate::widget::ButtonState::Normal,
+        },
+    );
 }
 
 fn populate_samples(store: &mut WidgetStore) {

@@ -89,6 +89,8 @@ mod paint;
 mod panel_host;
 mod panel_walk;
 mod pre_dispatch;
+/// ⭐⭐⭐ **A BARRA DO MODO de edição de receita** — o nome, quantas cópias seguem, e a SAÍDA.
+pub mod prefab_bar;
 pub mod slot_tabs;
 pub mod variant_axes;
 // ⚠️ Re-exportado para o gate `every_registered_panel_is_reachable_by_the_z_order_walk`: uma
@@ -285,6 +287,12 @@ pub struct HeroScreen {
     /// duas se separassem, este rect prometeria um recuo que a tela não tem (ou o contrário).
     /// Igual ao [`Self::last_canvas`] quando elas estão desligadas.
     pub last_content: Rect,
+    /// ⭐⭐⭐ **A RECEITA que está aberta neste quadro**, ou `None` — o que a barra do modo mostra.
+    ///
+    /// ⚠️ **Publicado pela shell a cada quadro** ([`HeroScreen::set_prefab_edit`]), como o
+    /// `grid_view`: quem sabe que existe uma receita aberta (e quantas cópias ela tem) é o mundo, e
+    /// esta crate não o alcança. Um bool próprio aqui seria a segunda porta que diverge.
+    pub prefab_edit: Option<prefab_bar::PrefabEditView>,
     /// ⭐ **O layout que o último quadro resolveu** — para quem trata PONTEIRO ler os mesmos rects
     /// que o desenho usou, em vez de os re-derivar.
     ///
@@ -369,6 +377,7 @@ impl HeroScreen {
         Self::pre_populate_store(&mut store);
         Self {
             motion: crate::motion::UiMotion::default(),
+            prefab_edit: None,
             palette_open_secs: 0.0,
             ui_sound: false,
             tether: crate::tether::Tether::default(),
@@ -458,6 +467,14 @@ impl HeroScreen {
     /// camera is established.
     pub fn set_grid_view(&mut self, view: Option<crate::grid::GridView>) {
         self.grid.view = view;
+    }
+
+    /// ⭐⭐⭐ **Diz qual receita está aberta** — `None` fecha a barra do modo.
+    ///
+    /// ⚠️ A pergunta é do MUNDO (a marca `MasterEditing` e a contagem de cópias), e a shell é quem a
+    /// tem. Ver [`prefab_bar`].
+    pub fn set_prefab_edit(&mut self, view: Option<prefab_bar::PrefabEditView>) {
+        self.prefab_edit = view;
     }
 
     /// Mutable access to the grid configuration (spacing, colors,

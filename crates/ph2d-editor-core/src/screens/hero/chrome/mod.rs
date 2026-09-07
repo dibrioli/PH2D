@@ -70,6 +70,7 @@ mod new_image;
 mod onion_modal;
 mod palette_rename;
 mod physics_toggle;
+mod prefab_bar;
 mod radius;
 mod rail_painter_tools;
 mod rail_panels;
@@ -173,6 +174,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || scene_picker::apply(hero, event)
         || image_tools_toggle::apply(hero, event)
         || image_actions::apply(hero, event)
+        || prefab_bar::apply(hero, event)
         || curve_point_handle::apply(hero, event)
         || motion_path_handle::apply(hero, event)
         || falloff_handle::apply(hero, event)

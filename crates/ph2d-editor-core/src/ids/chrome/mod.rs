@@ -50,6 +50,8 @@ mod painter_tiling;
 mod painter_watercolor;
 mod painter_wetpaint;
 mod physics;
+/// **Os ids da BARRA DO MODO de edição de receita** — chrome do canvas, não de um painel.
+mod prefab;
 mod rail;
 mod rail_painter;
 /// **Os ids do painel da cena 3D** (ADR-0150, W12) — a ferramenta, o pincel, o espelho,
@@ -127,6 +129,7 @@ pub use painter_tiling::*;
 pub use painter_watercolor::*;
 pub use painter_wetpaint::*;
 pub use physics::*;
+pub use prefab::*;
 pub use rail::*;
 pub use rail_painter::*;
 pub use sculpt3d::*;

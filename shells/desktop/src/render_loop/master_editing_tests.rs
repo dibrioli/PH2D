@@ -241,3 +241,52 @@ fn a_recipe_made_only_of_images_still_raises_the_glass() {
         "fechar a receita tem de baixar o vidro"
     );
 }
+
+/// ⭐⭐⭐ **A BARRA aparece exactamente quando o VIDRO sobe** — as duas perguntas têm de concordar.
+///
+/// ⚠️ Elas são feitas por funções diferentes ([`super::any_open`] responde existência, o
+/// [`super::open_view`] responde identidade), e uma divergência dá um canvas borrado **sem barra**
+/// (ou uma barra sobre um canvas nítido). ⛔ Nenhum dos dois é diagnosticável a olho: o artista vê
+/// *«o modo está meio ligado»*.
+///
+/// **Mutação que deve sangrar:** o `open_view` deixar de exigir `MasterRoot` ou `MasterEditing`.
+#[test]
+fn the_bar_and_the_glass_answer_the_same_question() {
+    let (mut sim, root, piece, _) = scene();
+    sim.world_mut()
+        .entity_mut(root)
+        .insert(ph2d_ecs::StableId(77));
+    assert_eq!(
+        super::any_open(&mut sim),
+        super::open_view(&mut sim).is_some(),
+        "fechada: uma das duas ja' se acha aberta"
+    );
+    mark(&mut sim, Some(piece.to_bits()));
+    assert!(super::any_open(&mut sim), "controle: a receita abriu");
+    let view = super::open_view(&mut sim).expect("a barra nao viu a receita que o vidro ve");
+    assert_eq!(view.name, "Badge", "a barra nomeia a receita errada");
+    assert_eq!(view.copies, 0, "sem copias, a barra diz zero — nao mente");
+}
+
+/// ⭐⭐ **E ela CONTA as cópias** — é a promessa do modo, e a única coisa que o distingue de editar
+/// um objecto qualquer.
+#[test]
+fn the_bar_counts_the_copies_that_follow() {
+    let (mut sim, root, _piece, _) = scene();
+    sim.world_mut()
+        .entity_mut(root)
+        .insert(ph2d_ecs::StableId(77));
+    for _ in 0..3 {
+        sim.world_mut()
+            .spawn((Transform::IDENTITY, ph2d_ecs::InstanceOf { master: 77 }));
+    }
+    // E uma cópia de OUTRA receita, que não pode entrar na conta.
+    sim.world_mut()
+        .spawn((Transform::IDENTITY, ph2d_ecs::InstanceOf { master: 99 }));
+    mark(&mut sim, Some(root.to_bits()));
+    assert_eq!(
+        super::open_view(&mut sim).map(|v| v.copies),
+        Some(3),
+        "a conta apanhou copias de outra receita, ou perdeu as desta"
+    );
+}

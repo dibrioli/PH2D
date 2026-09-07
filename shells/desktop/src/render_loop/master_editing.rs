@@ -123,6 +123,39 @@ pub(crate) fn any_open(sim: &mut SimWorld) -> bool {
     q.iter(sim.world()).next().is_some()
 }
 
+/// ⭐⭐⭐ **O que a BARRA DO MODO mostra** — qual receita está aberta, e quantas cópias a seguem.
+///
+/// ⚠️ **Irmã do [`any_open`], uma pergunta mais fina, e há gate a prendê-las:** a barra tem de
+/// aparecer **exactamente** quando o vidro sobe. Duas respostas diferentes a *«há receita aberta?»*
+/// dariam um canvas borrado sem barra (ou uma barra sobre um canvas nítido), e nenhum dos dois é
+/// diagnosticável a olho.
+///
+/// ⚠️ **A primeira, e não todas:** a barra tem um sítio só. Com duas receitas abertas ela nomeia a
+/// de ordem mais baixa — a mesma que o palco levanta.
+///
+/// ⛔ `None` sem receita aberta, e aí o quadro não paga a varredura das cópias.
+pub(crate) fn open_view(
+    sim: &mut SimWorld,
+) -> Option<ph2d_editor::screens::hero::prefab_bar::PrefabEditView> {
+    let root = {
+        let mut q = sim
+            .world_mut()
+            .query_filtered::<(Entity, &ph2d_ecs::StableId), (
+                bevy_ecs::query::With<MasterEditing>,
+                bevy_ecs::query::With<ph2d_ecs::MasterRoot>,
+            )>();
+        q.iter(sim.world()).map(|(e, s)| (e, s.0)).min()?
+    };
+    let (entity, id) = root;
+    let _ = entity;
+    let copies = {
+        let mut q = sim.world_mut().query::<&ph2d_ecs::InstanceOf>();
+        q.iter(sim.world()).filter(|i| i.master == id).count()
+    };
+    let name = crate::instance_verbs::master_named(sim, id)?;
+    Some(ph2d_editor::screens::hero::prefab_bar::PrefabEditView { name, copies })
+}
+
 /// A sub-árvore de `root`, ela incluída.
 fn subtree(sim: &SimWorld, root: Entity) -> std::collections::BTreeSet<Entity> {
     let mut out = std::collections::BTreeSet::new();

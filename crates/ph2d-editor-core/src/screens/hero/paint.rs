@@ -324,6 +324,22 @@ pub fn paint_hero_screen(
             1.5, // LITERAL-PX-OK: espessura do contorno do gizmo de field (mesma do primário)
         );
     }
+    // ⭐⭐⭐ **A BARRA DO MODO DE RECEITA** (o *Edit Prefab*, 2026-09-07) — o nome do que se está a
+    // editar, quantas cópias seguem, e a SAÍDA. Ver [`super::prefab_bar`].
+    //
+    // ⚠️ **Aqui, e não com os painéis:** ela é chrome do CANVAS (ancora na área de desenho e
+    // desaparece com o modo), então pertence à camada dos gizmos — acima da cena, abaixo dos
+    // painéis flutuantes. ⛔ Sem receita aberta nada é pintado nem registado.
+    if let Some(view) = hero.prefab_edit.as_ref() {
+        super::prefab_bar::paint(
+            scene,
+            layout.draw_area,
+            view,
+            hero.theme,
+            text_system,
+            &mut hero.hit_index,
+        );
+    }
     // Onda 2C + z-order fix: the multi-selection extra + global gizmos
     // paint here — at the SAME layer as the primary gizmo, i.e. above the
     // scene but BELOW the floating panels (painted later in this fn). They

@@ -40,6 +40,7 @@ use bevy_ecs::component::Component;
 use serde::{Deserialize, Serialize};
 
 use ph2d_ecs::SimComponent;
+use ph2d_ecs::StableId;
 use ph2d_ecs::scene::ComponentRegistry;
 
 /// **UM OSSO.** A pose dele é o [`ph2d_ecs::Transform`] da entidade; a hierarquia dela é o
@@ -79,9 +80,27 @@ impl SimComponent for Bone {}
 /// uma pele.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Tendon {
-    /// Os bits da entidade do osso (u64 cru — o `ph2d-ecs` não exporta `Entity` para o postcard, e
-    /// o `VecEnvelope` já usa a mesma convenção para o path do filho).
-    pub bone: u64,
+    /// ⭐⭐⭐ **A IDENTIDADE DURÁVEL do osso** — o [`StableId`], nunca o `Entity::to_bits()`.
+    ///
+    /// ⚠️⚠️ **A 1.ª redacção guardava os bits da entidade, e MEDIU-SE que a pele morria em
+    /// silêncio no primeiro Ctrl+Z** (gate `a_skin_survives_the_respawn_that_undo_and_save_do`,
+    /// `0 de 2` tendões a resolver): o undo e o salvar são a mesma máquina, ela **despawna e
+    /// re-spawna no mesmo mundo**, e o `to_bits` é um **id de alocação** — a geração sobe e os bits
+    /// deixam de nomear nada. O sintoma não é um erro: a forma fica com a última geometria boa e
+    /// deixa de responder aos ossos.
+    ///
+    /// ⛔ E os bits guardados eram também um **pânico à espera**: o `Entity::from_bits` do
+    /// `bevy_ecs` aborta o processo com bits que nunca vieram de um `to_bits`, e é exactamente
+    /// isso que um ficheiro gravado noutra sessão entrega.
+    ///
+    /// ⭐ **O tipo é a cerca**, e não o nome do campo: com `StableId` aqui, escrever um
+    /// `e.to_bits()` neste sítio é **erro de compilação**. Foi a lição do anel da ponta — *um valor
+    /// que muda de significado e mantém a forma não avisa ninguém*.
+    ///
+    /// A porta de escrita é o [`ph2d_ecs::stable_id_of`] e a de leitura o
+    /// [`ph2d_ecs::entity_of_stable_id`]; é a mesma identidade por que a `PhysicsJoint` nomeia os
+    /// corpos dela desde a wave das instâncias.
+    pub bone: StableId,
     /// ⭐ **O TENDÃO** — o afim `osso → coisa` no instante em que se ligou, em `[a,b,c,d,e,f]`.
     ///
     /// É daqui que sai TUDO: o eixo de repouso (`rest·(0,0)` até `rest·(length,0)`, que é o que a

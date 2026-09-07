@@ -365,3 +365,81 @@ fn probe_the_smoke_sequence() {
         "a forma NAO deformou - reproduzido o report"
     );
 }
+
+/// ⭐⭐⭐ **A PELE ATRAVESSA O DESFAZER** — o gate que separa *"a pele existe"* de *"o app a tem"*.
+///
+/// Irmão do `field3d_snapshot_tests::the_whole_part_survives_the_world_snapshot_round_trip`, e pela
+/// mesma razão: o undo e o salvar são **a mesma máquina** (`world_to_snapshot` → `snapshot_to_world`),
+/// e ela **re-spawna** o mundo. Uma referência guardada que não sobreviva ao respawn morre **em
+/// silêncio** — a forma fica com a última geometria boa e deixa de responder aos ossos.
+///
+/// ⚠️⚠️ **A 1.ª redacção deste gate restaurava para um `SimWorld::new()` e passava** — porque num
+/// mundo virgem o alocador do bevy entrega os mesmos índices na mesma ordem, e os bits **coincidem
+/// por acaso**. O [`crate::undo::ProjectState::restore`] faz o contrário e diz-o à letra: ele
+/// *despawna* as entidades editáveis e re-spawna **no mesmo mundo** — *"ids do mundo são novos"* —,
+/// e é aí que a geração sobe. *Uma fixtura que não produz o fenómeno devolve verde sobre o defeito.*
+#[test]
+fn a_skin_survives_the_respawn_that_undo_and_save_do() {
+    use ph2d_ecs::scene::{
+        ComponentRegistry, WorldSnapshot, register_ecs_components, snapshot_to_world,
+        world_to_snapshot,
+    };
+    use ph2d_ecs::{TransformPropagationState, WorklistBuf};
+
+    let (mut sim, scene, map, id, _) = palco();
+    assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
+
+    let mut reg = ComponentRegistry::new();
+    register_ecs_components(&mut reg);
+    ph2d_skeleton_ecs::register_skeleton_components(&mut reg);
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let mut prop = TransformPropagationState::new(sim.world_mut());
+    let mut worklist = WorklistBuf::default();
+    let mut snap = WorldSnapshot::new();
+    world_to_snapshot(sim.world_mut(), &mut prop, &mut worklist, &reg, &mut snap)
+        .expect("o snapshot so' falha se um componente registado nao (de)serializa");
+
+    // O caminho do `ProjectState::restore`: despawna o editável e re-spawna NO MESMO mundo.
+    let editaveis: Vec<Entity> = sim
+        .world()
+        .iter_entities()
+        .filter(|er| er.get::<Transform>().is_some())
+        .map(|er| er.id())
+        .collect();
+    for e in editaveis {
+        let _ = sim.world_mut().despawn(e);
+    }
+    let mut renasceu = sim;
+    snapshot_to_world(renasceu.world_mut(), &snap, &reg).expect("restaura");
+
+    let peles: Vec<SkinBind> = renasceu
+        .world()
+        .iter_entities()
+        .filter_map(|er| er.get::<SkinBind>().cloned())
+        .collect();
+    assert_eq!(peles.len(), 1, "a pele nao atravessou o snapshot");
+    let ossos_vivos = renasceu
+        .world()
+        .iter_entities()
+        .filter(|er| er.get::<Bone>().is_some())
+        .count();
+    assert_eq!(ossos_vivos, 2, "os ossos nao atravessaram o snapshot");
+
+    let vivos = bone_index(&renasceu);
+    let resolvidos = peles[0]
+        .tendons
+        .iter()
+        .filter(|t| {
+            vivos
+                .get(&t.bone)
+                .is_some_and(|&e| renasceu.world().get::<Bone>(e).is_some())
+        })
+        .count();
+    assert_eq!(
+        resolvidos,
+        peles[0].tendons.len(),
+        "{resolvidos} de {} tendoes ainda nomeiam um osso vivo depois do respawn - a pele morreu \
+         em silencio, e o sintoma e' 'a forma deixou de seguir o esqueleto depois do Ctrl+Z'",
+        peles[0].tendons.len()
+    );
+}

@@ -591,4 +591,28 @@
 /// bit a bit igual, medido em `0.000000`.
 ///
 /// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08.
-pub(crate) const PROJECT_SCHEMA: u32 = 121;
+///
+/// # 121 -> 122 — o TENDÃO nomeia a IDENTIDADE do osso, não os bits dele (`line/Vector`)
+///
+/// O `ph2d_skeleton_ecs::Tendon::bone` deixou de ser `Entity::to_bits()` e passou a ser um
+/// [`ph2d_ecs::StableId`]. ⚠️ **Os BYTES não mudam** (o postcard serializa um newtype de `u64`
+/// transparentemente) — muda o **significado**, que é exactamente a espécie de degrau que este
+/// número existe para tornar audível: um v121 com esqueleto lido por este layout resolveria
+/// identidades a partir de ids de alocação de outra sessão, e a forma **deixaria de seguir os
+/// ossos sem uma linha de erro**.
+///
+/// ⭐ **A cura é MEDIDA, não teórica:** o gate
+/// `skeleton_live::tests::a_skin_survives_the_respawn_that_undo_and_save_do` lia **`0 de 2`**
+/// tendões a resolver depois do respawn que o `ProjectState::restore` faz. O undo e o salvar são a
+/// mesma máquina, ela despawna e re-spawna **no mesmo mundo**, e a geração do `Entity` sobe.
+///
+/// ⛔ E os bits eram também um **pânico à espera**: o `Entity::from_bits` do `bevy_ecs` aborta com
+/// bits que nunca vieram de um `to_bits`, que é o que um ficheiro de outra sessão entrega.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **sexta** vez nesta escada (99, 100, 114, 115, 120 e
+/// agora): os bytes vivem dentro de um `ComponentBlob`, que para ela é opaco.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08 — e aqui com uma razão a
+/// mais, medida em 06/09: os dois `.ph2dproj` da máquina do dono são de 26/08, **onze dias antes de
+/// os ossos existirem**, logo nenhum ficheiro no mundo tem um tendão para migrar.
+pub(crate) const PROJECT_SCHEMA: u32 = 122;

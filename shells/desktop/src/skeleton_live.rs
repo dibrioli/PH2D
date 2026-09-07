@@ -16,7 +16,7 @@
 //! cozer noutro devolve uma forma que salta para longe no instante do bind. A composição vive numa
 //! porta só ([`ph2d_skeleton::SkinBone::new`]) por causa disso.
 
-use ph2d_ecs::{ChildOf, Entity, SimWorld, VecPathRef};
+use ph2d_ecs::{ChildOf, Entity, SimWorld, StableId, VecPathRef};
 use ph2d_skeleton::{Skin, SkinBone, Xform};
 use ph2d_skeleton_ecs::{Bone, SkinBind, Tendon};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
@@ -110,15 +110,39 @@ pub(crate) fn skeleton_of(sim: &SimWorld, seed: Option<Entity>) -> Vec<Entity> {
     out
 }
 
+/// ⭐⭐ **O ÍNDICE `StableId → entidade` dos ossos** — a porta única da resolução de um tendão.
+///
+/// ⚠️ **Construído uma vez por quadro e passado adiante**, e é o que o doc do
+/// [`ph2d_ecs::entity_of_stable_id`] manda fazer: ele é uma varredura linear de propósito (um mapa
+/// permanente seria estado derivado a manter coerente com o mundo), e quem resolve muitos ids num
+/// quadro constrói o índice.
+///
+/// ⚠️ **Só ossos**, e é o filtro que faz a resposta ser a certa: um `StableId` de um osso apagado
+/// simplesmente não está aqui, e o tendão dele é saltado.
+fn bone_index(sim: &SimWorld) -> std::collections::BTreeMap<StableId, Entity> {
+    sim.world()
+        .iter_entities()
+        .filter(|er| er.get::<Bone>().is_some())
+        .filter_map(|er| er.get::<StableId>().map(|s| (*s, er.id())))
+        .collect()
+}
+
 /// A pele de uma forma, resolvida para ESTE quadro. `None` quando não há osso vivo nenhum (todos
 /// apagados) ou quando a pose da forma é singular — nos dois casos a forma fica em paz.
-fn resolve(sim: &SimWorld, skin: &SkinBind, shape: Entity) -> Option<Skin> {
+fn resolve(
+    sim: &SimWorld,
+    skin: &SkinBind,
+    shape: Entity,
+    index: &std::collections::BTreeMap<StableId, Entity>,
+) -> Option<Skin> {
     let shape_inv = world_of(sim, shape).inverse()?;
     let mut ossos = Vec::with_capacity(skin.tendons.len());
     for b in &skin.tendons {
-        let e = Entity::from_bits(b.bone);
-        // Um osso apagado é SALTADO e os outros renormalizam-se sozinhos: apagar um osso não pode
-        // apagar a forma.
+        // Um osso apagado — ou um cuja identidade não está no índice — é SALTADO, e os outros
+        // renormalizam-se sozinhos: apagar um osso não pode apagar a forma.
+        let Some(&e) = index.get(&b.bone) else {
+            continue;
+        };
         let Some(vb) = sim.world().get::<Bone>(e).copied() else {
             continue;
         };
@@ -160,8 +184,9 @@ pub(crate) fn recook(sim: &SimWorld, scene: &mut VecScene) {
             ossos_da_cena(sim).len()
         );
     }
+    let index = bone_index(sim);
     for (e, skin, id) in alvos {
-        let Some(pele) = resolve(sim, &skin, e) else {
+        let Some(pele) = resolve(sim, &skin, e, &index) else {
             if log {
                 eprintln!(
                     "[bone] pele de {id} NAO resolveu (ossos={})",
@@ -202,6 +227,10 @@ pub(crate) fn bind(
     if ossos.is_empty() {
         return 0;
     }
+    // ⚠️ **Um osso criado NESTE quadro ainda não tem `StableId`** — a varredura corre uma vez por
+    // quadro, e o gesto de prender pode vir antes dela. Semear aqui é o que o
+    // `inspector_joint_create` já faz pela mesma razão, e sem isto o tendão nomearia `NONE`.
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     let mut feitos = 0;
     for &id in paths {
         let Some(&bits) = map.get(&id) else { continue };
@@ -219,11 +248,16 @@ pub(crate) fn bind(
             continue;
         };
         // `rest = S⁻¹ ∘ B` — aplica o mundo do osso primeiro, depois leva ao espaço da forma.
+        //
+        // ⚠️ Um osso sem `StableId` é **saltado**: `StableId::NONE` não nomeia ninguém, e guardá-lo
+        // daria um tendão que resolve para nada — pior que um osso a menos, porque parece ligado.
         let tendoes: Vec<Tendon> = ossos
             .iter()
-            .map(|&e| Tendon {
-                bone: e.to_bits(),
-                rest: world_of(sim, e).then(&shape_inv).0,
+            .filter_map(|&e| {
+                Some(Tendon {
+                    bone: ph2d_ecs::stable_id_of(sim.world(), e)?,
+                    rest: world_of(sim, e).then(&shape_inv).0,
+                })
             })
             .collect();
         sim.world_mut()

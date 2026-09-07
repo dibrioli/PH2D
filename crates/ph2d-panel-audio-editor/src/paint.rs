@@ -355,9 +355,7 @@ pub(crate) fn button(
 // ⭐ **As portas de GRUPO vivem no irmão** (`paint_groups.rs`, wave 20b): elas respondem *como N
 //    peças formam um corpo*, e este ficheiro responde *como se pinta UMA peça*. Re-exportadas por
 //    nome para que nenhum sítio de chamada mude — o mesmo idioma do `command_palette`.
-pub(crate) use crate::paint_groups::{
-    ARROW_W, buttons_block, display_in_group, stepper_over_buttons, stepper_row,
-};
+pub(crate) use crate::paint_groups::{ARROW_W, buttons_block, display_in_group, stepper_row};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn button_in_group(

@@ -261,6 +261,82 @@ pub fn grid_height(rows: usize, row_h: f32) -> f32 {
 
 #[cfg(test)]
 mod group_tests {
+    /// ⭐⭐ **As peças de uma fileira de larguras dadas ENCOSTAM, e as fileiras encostam entre si.**
+    ///
+    /// ⛔ **Este teste nasceu de uma mutação que SOBREVIVEU** (2026-09-07): triplicar o fio entre
+    /// as peças do [`block_cells_of`] não acordou gate nenhum. A porta nasceu na wave 20b e ficou
+    /// **sem régua própria** — o que a usava (o cabeçalho do editor de áudio) só era medido por
+    /// censos de FONTE, que não olham para um pixel. *É a 4.ª vez nesta jornada que escrevo a peça
+    /// certa e não a gateio.*
+    #[test]
+    fn the_pieces_of_a_ragged_block_touch_on_one_hairline() {
+        let origin = Rect::new(10.0, 20.0, 120.0, 0.0);
+        let row_h = 22.0;
+        let block = block_cells_of(origin, &[&[26.0, 66.0, 26.0], &[40.0, 39.0, 39.0]], row_h);
+        assert_eq!(block.len(), 2);
+        for row in &block {
+            for pair in row.windows(2) {
+                let (a, _) = pair[0];
+                let (b, _) = pair[1];
+                assert!(
+                    (b.x - (a.x + a.w) - SEGMENT_HAIRLINE).abs() < 1e-4,
+                    "duas pecas distam {} e o fio e' {SEGMENT_HAIRLINE}: elas deixaram de encostar",
+                    b.x - (a.x + a.w)
+                );
+            }
+        }
+        let (first, _) = block[0][0];
+        let (second, _) = block[1][0];
+        assert!(
+            (second.y - (first.y + first.h) - SEGMENT_HAIRLINE).abs() < 1e-4,
+            "duas FILEIRAS distam {} e o fio e' {SEGMENT_HAIRLINE}",
+            second.y - (first.y + first.h)
+        );
+        // ⚠️ E a última peça acaba exactamente onde o bloco acaba — senão ela sai do painel.
+        let (last, _) = *block[0].last().unwrap();
+        assert!(
+            (last.x + last.w - (origin.x + origin.w)).abs() < 1e-4,
+            "a ultima peca acaba em {} e o bloco em {}",
+            last.x + last.w,
+            origin.x + origin.w
+        );
+    }
+
+    /// ⭐ **Só as quinas de FORA do bloco arredondam** — a lei do grupo, nas duas dimensões.
+    #[test]
+    fn only_the_outer_corners_of_a_ragged_block_round() {
+        let block = block_cells_of(
+            Rect::new(0.0, 0.0, 90.0, 0.0),
+            &[&[20.0, 68.0], &[44.0, 44.0]],
+            22.0,
+        );
+        assert_eq!(block[0][0].1.col, GroupPos::First);
+        assert_eq!(block[0][0].1.row, GroupPos::First);
+        assert_eq!(block[0][1].1.col, GroupPos::Last);
+        assert_eq!(block[1][1].1.col, GroupPos::Last);
+        assert_eq!(block[1][1].1.row, GroupPos::Last);
+        let (tl, _tr, br, _bl) = block[0][0].1.radii(4.0);
+        assert!(
+            tl > 0.0,
+            "o canto de cima-esquerda do bloco tem de arredondar"
+        );
+        assert_eq!(br, 0.0, "o canto de baixo-direita daquela peca e' INTERIOR");
+    }
+
+    /// ⚠️ **A largura do meio de um stepper desconta os DOIS fios** — quem a escrever à mão
+    /// esquece-os, e a peça da direita sai do painel.
+    #[test]
+    fn the_stepper_middle_leaves_room_for_both_hairlines() {
+        let total = 200.0;
+        let side = 26.0;
+        let mid = stepper_middle_w(total, side);
+        assert!(
+            (side + mid + side + SEGMENT_HAIRLINE * 2.0 - total).abs() < 1e-4,
+            "as tres pecas mais os dois fios dao {} e o total e' {total}",
+            side + mid + side + SEGMENT_HAIRLINE * 2.0
+        );
+    }
+
     use super::*;
     use Rect;
 

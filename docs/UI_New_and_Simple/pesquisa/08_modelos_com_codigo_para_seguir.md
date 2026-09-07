@@ -1370,6 +1370,42 @@ LOC do `paint.rs` do editor de áudio (767 de 600) foi pago por **corte** — as
 saíram para `paint_groups.rs`, e a linha do corte é a pergunta: o pai pinta **uma peça**, o irmão
 diz **como N peças formam um corpo**.
 
+### 7.25 — ✅ WAVE 20c (2026-09-07): *«pode juntar»* — os dois vãos que sobravam no EFFECTS
+
+**Report do dono**, foto com duas setas verdes sobre os dois vãos que restavam na secção.
+
+#### 🟢 1 — o CABEÇALHO da secção vira um corpo de três fileiras
+
+`◀ preset ▶` · `Apply | Save | Load` · `◀ efeito ↺ ▶`. As três respondem à mesma pergunta — *o que
+estou a editar?*: um preset é o ponto de partida da cadeia, as três ordens agem sobre ele, e o
+selector diz que efeito está aberto nos parâmetros logo abaixo.
+
+⚠️ **As fileiras têm larguras desiguais ENTRE SI** (`3` peças de larguras dadas · `3` iguais · `4`
+peças), e é o `block_cells_of` da wave 20b que as exprime.
+
+#### 🟢 2 — o `Bypass` encosta na CADEIA, não no `Apply | Cancel`
+
+⭐ **É a mesma pergunta da 20b resolvida do lado certo.** Ali eu tinha-o colado ao `Apply | Cancel`
+e o dono reprovou; separá-lo deixou-o a flutuar. A resposta é **onde ele age**: o `Bypass` silencia
+a **cadeia inteira** — ele é o rodapé daquela lista, não o vizinho de cima de duas ordens. ⇒ o vão
+acima dele fecha, o de baixo fica.
+
+#### ⛔⛔ E uma mutação SOBREVIVEU: a porta nova não tinha régua
+
+Triplicar o fio entre as peças do `block_cells_of` não acordou gate nenhum. A porta nasceu na 20b e
+o que a usava só era medido por **censos de FONTE**, que não olham para um pixel. *É a 4.ª vez nesta
+jornada que escrevo a peça certa e não a gateio.* ⇒ três réguas próprias (as peças encostam sobre um
+fio · as fileiras encostam · a última peça acaba onde o bloco acaba · só as quinas de fora
+arredondam · o meio do stepper desconta os DOIS fios), e as três mutações passam a morrer.
+
+| prova de mutação | resultado |
+|---|---|
+| as peças do bloco de larguras dadas deixam de encostar | ✅ morreu *(sobreviveu antes das réguas)* |
+| o meio do stepper esquece os dois fios | ✅ morreu |
+| toda peça do bloco arredonda os quatro cantos | ✅ morreu |
+
+**Portão:** `13 076` testes / `0` falhados; clippy `--all-targets -D warnings` limpo.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

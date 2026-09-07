@@ -16,7 +16,7 @@
 
 use crate::paint::{
     ARROW_W, ClippedHits, ROW_H, action_bg, button, button_in_group, buttons_block,
-    display_in_group, stepper_over_buttons, toggle,
+    display_in_group, toggle,
 };
 use crate::{
     AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
@@ -28,8 +28,8 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::widget::{
-    ButtonState, GroupCell, IconButtonStyle, IconGlyph, SEGMENT_HAIRLINE, Slider,
-    SliderOrientation, paint_icon_button, paint_slider,
+    ButtonState, IconButtonStyle, IconGlyph, SEGMENT_HAIRLINE, Slider, SliderOrientation,
+    paint_icon_button, paint_slider,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -70,47 +70,12 @@ pub(crate) fn paint_fx_section(
         theme,
         hit_index,
     };
-    let y = paint_presets(y, x, w, loaded, row_h, ctx);
-    let y = paint_selector(y, x, w, loaded, row_h, ctx);
+    let y = paint_head(y, x, w, loaded, row_h, ctx);
     let y = paint_params(y, x, w, loaded, ctx);
     let y = paint_chain(y, x, w, loaded, row_h, ctx);
     paint_commit_row(y, x, w, loaded, row_h, ctx)
 }
 
-/// The preset row: `◀ Factory preset ▶` over `Apply · Save · Load`. Apply loads the
-/// selected factory preset into the chain (it auditions at once); Save / Load are
-/// user preset **files** via a native dialog — the OS browser is their picker, so no
-/// in-panel list is needed. Sits above the effect selector: a preset is a starting
-/// point you then tune.
-fn paint_presets(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -> f32 {
-    let has_presets = presets::preset_count() > 0;
-    // ⭐⭐⭐ **O selector e as três ordens são UM corpo** (report do dono, 2026-09-07, setas verdes:
-    //    *«ficaria mais pro se as setas ficassem no mesmo grupo dos botões Apply, Save e Load»*).
-    //
-    // Apply (factory) · Save · Load (files). Apply needs a preset to load; Save/Load need a clip
-    // loaded, like every other file action.
-    let y = stepper_over_buttons(
-        Rect::new(x, y, w, row_h),
-        &presets::preset_name(),
-        has_presets,
-        AEDIT_PRESET_PREV,
-        AEDIT_PRESET_NEXT,
-        &[
-            ("Apply", has_presets, AEDIT_PRESET_APPLY),
-            ("Save", loaded, AEDIT_PRESET_SAVE),
-            ("Load", loaded, AEDIT_PRESET_LOAD),
-        ],
-        ctx.scene,
-        ctx.text_system,
-        ctx.theme,
-        ctx.hit_index,
-    );
-    y + ph2d_tokens::control_gap_px()
-}
-
-/// `◀ | effect name | ⟲ | ▶` — sets the SELECTED stage's kind. The Reset icon is
-/// frameless, sits beside the name, and puts that stage's parameters back on their
-/// neutral defaults. It is dimmed while they already are.
 /// **Um ÍCONE que é peça de um grupo** — o `↺` do selector de efeito.
 ///
 /// ⚠️ **O irmão solto (`icon_button`) não pinta superfície nenhuma**, e dentro de um corpo isso
@@ -121,7 +86,7 @@ fn icon_in_group(
     icon: IconId,
     enabled: bool,
     id: NodeId,
-    pos: GroupCell,
+    pos: ph2d_editor_core::widget::GroupCell,
     ctx: &mut Ctx,
 ) {
     let bg = action_bg(
@@ -160,64 +125,139 @@ fn icon_in_group(
     }
 }
 
-fn paint_selector(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -> f32 {
-    // ⭐⭐ **As quatro peças são UM corpo** (report do dono, 2026-09-07, 2.ª seta verde): a mesma
-    //    lei do selector de preset acima — as setas pertencem ao selector, não flutuam ao lado
-    //    dele. Aqui há uma peça a mais, o `↺`, que repõe o efeito escolhido.
+/// ⭐⭐⭐ **O cabeçalho da secção EFFECTS — TRÊS fileiras, UM corpo.**
+///
+/// `◀ preset ▶` · `Apply | Save | Load` · `◀ efeito ↺ ▶`. Report do dono, 2026-09-07 (*«pode
+/// juntar»*, sobre o vão que sobrava entre as duas primeiras e a terceira).
+///
+/// ⚠️ **As três respondem à mesma pergunta — *o que estou a editar?*** Um preset é um ponto de
+/// partida para a cadeia; as três ordens agem sobre ele; o selector diz que efeito da cadeia está
+/// aberto nos parâmetros abaixo. Separá-las dizia ao olho que são três controlos.
+///
+/// ⚠️ **As fileiras têm larguras DESIGUAIS entre si** (`3` peças · `3` iguais · `4` peças), e é o
+/// [`ph2d_editor_core::widget::block_cells_of`] que as exprime — o `block_cells` reparte cada
+/// fileira em partes iguais e não chega aqui.
+fn paint_head(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -> f32 {
+    let has_presets = presets::preset_count() > 0;
+    let (kind, _) = snapshot::fx_sel_stage();
     let icon_w = row_h;
-    // ⚠️ Os fios são `pecas − 1`, DERIVADO: escrever `3` a' mao aqui e' a mesma especie de
-    //    numero que o `stepper_middle_w` existe para evitar.
-    const PIECES: f32 = 4.0; // LITERAL-PX-OK: contagem de pecas do selector, nao um px
-    let name_w = (w - ARROW_W * 2.0 - icon_w - SEGMENT_HAIRLINE * (PIECES - 1.0)).max(1.0);
-    let cells = ph2d_editor_core::widget::block_cells_of(
+
+    let preset_mid = ph2d_editor_core::widget::stepper_middle_w(w, ARROW_W);
+    // ⚠️ Os fios são `peças − 1`, DERIVADO: escrever o número à mão aqui é a mesma espécie de
+    //    literal que o `stepper_middle_w` existe para evitar.
+    const FX_PIECES: f32 = 4.0; // LITERAL-PX-OK: contagem de pecas do selector, nao um px
+    let fx_mid = (w - ARROW_W * 2.0 - icon_w - SEGMENT_HAIRLINE * (FX_PIECES - 1.0)).max(1.0);
+    const ACTIONS: f32 = 3.0; // LITERAL-PX-OK: contagem de ordens de preset, nao um px
+    let third = ((w - SEGMENT_HAIRLINE * (ACTIONS - 1.0)) / ACTIONS).max(1.0);
+
+    let block = ph2d_editor_core::widget::block_cells_of(
         Rect::new(x, y, w, 0.0),
-        &[&[ARROW_W, name_w, icon_w, ARROW_W]],
+        &[
+            &[ARROW_W, preset_mid, ARROW_W],
+            &[third, third, third],
+            &[ARROW_W, fx_mid, icon_w, ARROW_W],
+        ],
         row_h,
     );
-    let cells = &cells[0];
-    let (kind, _) = snapshot::fx_sel_stage();
+
+    // Fileira 0 — o preset escolhido.
     button_in_group(
-        cells[0].0,
+        block[0][0].0,
         "\u{25c0}",
-        loaded,
-        AEDIT_FX_PREV,
-        cells[0].1,
+        has_presets,
+        AEDIT_PRESET_PREV,
+        block[0][0].1,
         ctx.scene,
         ctx.text_system,
         ctx.theme,
         ctx.hit_index,
     );
     display_in_group(
-        cells[1].0,
-        &snapshot::fx_kind_name(kind),
-        loaded,
-        cells[1].1,
+        block[0][1].0,
+        &presets::preset_name(),
+        has_presets,
+        block[0][1].1,
         ctx.scene,
         ctx.text_system,
         ctx.theme,
     );
-    // ⚠️ O `↺` é uma PEÇA do corpo, e não um ícone solto por cima dele: ele partilha a superfície
-    //    e as quinas com as vizinhas, senão o corpo abre um buraco onde ele está.
-    icon_in_group(
-        cells[2].0,
-        IconId::Reset,
-        loaded && !snapshot::fx_at_defaults(),
-        AEDIT_FX_RESET,
-        cells[2].1,
-        ctx,
-    );
     button_in_group(
-        cells[3].0,
+        block[0][2].0,
         "\u{25b6}",
-        loaded,
-        AEDIT_FX_NEXT,
-        cells[3].1,
+        has_presets,
+        AEDIT_PRESET_NEXT,
+        block[0][2].1,
         ctx.scene,
         ctx.text_system,
         ctx.theme,
         ctx.hit_index,
     );
-    y + row_h + ph2d_tokens::control_gap_px()
+
+    // Fileira 1 — o que se faz com ele. Apply carrega o preset de fábrica escolhido (audiciona já);
+    // Save / Load são FICHEIROS de preset por diálogo nativo — o browser do SO é o picker deles.
+    for (i, (label, on, id)) in [
+        ("Apply", has_presets, AEDIT_PRESET_APPLY),
+        ("Save", loaded, AEDIT_PRESET_SAVE),
+        ("Load", loaded, AEDIT_PRESET_LOAD),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        button_in_group(
+            block[1][i].0,
+            label,
+            on,
+            id,
+            block[1][i].1,
+            ctx.scene,
+            ctx.text_system,
+            ctx.theme,
+            ctx.hit_index,
+        );
+    }
+
+    // Fileira 2 — que efeito da cadeia está aberto, e o `↺` que o repõe.
+    button_in_group(
+        block[2][0].0,
+        "\u{25c0}",
+        loaded,
+        AEDIT_FX_PREV,
+        block[2][0].1,
+        ctx.scene,
+        ctx.text_system,
+        ctx.theme,
+        ctx.hit_index,
+    );
+    display_in_group(
+        block[2][1].0,
+        &snapshot::fx_kind_name(kind),
+        loaded,
+        block[2][1].1,
+        ctx.scene,
+        ctx.text_system,
+        ctx.theme,
+    );
+    icon_in_group(
+        block[2][2].0,
+        IconId::Reset,
+        loaded && !snapshot::fx_at_defaults(),
+        AEDIT_FX_RESET,
+        block[2][2].1,
+        ctx,
+    );
+    button_in_group(
+        block[2][3].0,
+        "\u{25b6}",
+        loaded,
+        AEDIT_FX_NEXT,
+        block[2][3].1,
+        ctx.scene,
+        ctx.text_system,
+        ctx.theme,
+        ctx.hit_index,
+    );
+
+    y + ph2d_editor_core::widget::grid_height(3, row_h) + ph2d_tokens::control_gap_px()
 }
 
 /// One row per parameter of the selected stage: `label ......... value`, with the
@@ -408,7 +448,11 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
         icon_button(eye, glyph, loaded, AEDIT_FX_STAGE_ONS[i], ctx);
         y += stage_h;
     }
-    y + ph2d_tokens::control_gap_px()
+    // ⭐⭐ **Sem vão: o `Bypass` encosta aqui** (report do dono, 2026-09-07: *«pode juntar»*). Ele
+    //    silencia a CADEIA inteira — é o rodapé desta lista, não o vizinho de cima do `Apply`.
+    //    ⛔ E é por isso que ele saiu do corpo do `Apply | Cancel` na 20b: colado ali, um ESTADO
+    //    lia-se como uma terceira ordem.
+    y
 }
 
 /// `Bypass` (global A/B) over `Apply | Cancel`. Bypass mutes the whole chain so the

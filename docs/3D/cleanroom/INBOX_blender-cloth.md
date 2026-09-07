@@ -852,6 +852,44 @@ uniformes ⇒ o corpus só discrimina onde a malha está **deformada por um tra�
   plano, força `1`), só para termos a saída do alvo onde a nossa régua de relevo local vive? Sem ele,
   a única coisa honesta que aquele gate pode ser é uma catraca.
 
+### ⭐⭐ E o corpus deixou de discriminar: os OITO que sobram estão todos abaixo de `1,14`
+
+A sonda do chão de ruído corre cada traço nas **duas** ordens de resolução e devolve
+`erro / (o que uma ordem errada custa)`. Em 06/09 a lista abria com `esfera_empurrar 3,39` e
+`plano_inflar 2,47` — *falta lei, e a ordem não a esconde*. Hoje, depois da Q17 e do `φ`:
+
+| traço | erro | ordem errada | razão |
+|---|---|---|---|
+| `esfera_apertar_ponto_radial_dinamica` | `0,6456` | `0,5672` | `1,14` |
+| `plano_apertar_ponto_radial_local_origem` | `0,9078` | `0,8278` | `1,10` |
+| `esfera_agarrar_radial_dinamica` | `0,1819` | `0,1925` | `0,95` |
+| `plano_apertar_ponto_plano_local` | `0,6358` | `0,6878` | `0,92` |
+| `esfera_gancho_radial_dinamica` | `0,2549` | `0,2931` | `0,87` |
+| `esfera_apertar_linha_radial_dinamica` | `0,6296` | `0,7705` | `0,82` |
+| `esfera_expandir_radial_dinamica` | `0,5811` | `0,7986` | `0,73` |
+| `plano_apertar_ponto_radial_local` | `0,5997` | `1,0678` | `0,56` |
+
+⇒ **nenhum dos oito está acima do que a nossa própria escolha de ordenação vale.** Os quatro do
+aperto são o §5.2-ter (decisão do dono). Os outros quatro são **todos da esfera**, e a partição
+deles é limpa:
+
+| na esfera | erro |
+|---|---|
+| os modos de força que lêem `δ` (arrastar · empurrar · inflar) | `0,092` · `0,066` · `0,074` — **batem** |
+| os dois modos de **ÂNCORA** (agarrar · gancho) | `0,182` · `0,255` |
+| o **Expand** (o único que escreve desvio de repouso) | `0,581` |
+
+⚠️ **E não é a área *Dynamic***: no plano ela lê `0,024` e `0,007`. É a **superfície curva** —
+exactamente onde a projecção do `δ` (§4.3, Q12) e o `τ` do Expand deixam de ser triviais.
+
+- **Q18.4** — ⛔ **não existe UM único dump `.porpasso` de esfera no corpus.** Para o plano eles
+  foram o instrumento que resolveu a Q8, a Q9, a Q14, a Q16 e a Q17; para a esfera só temos a malha
+  ao fim de doze passos, logo *não há como saber em que passo a divergência nasce*. Dá para gravar os
+  três — `esfera_agarrar_radial_dinamica`, `esfera_gancho_radial_dinamica` e
+  `esfera_expandir_radial_dinamica` — no mesmo formato por passo? ⭐ O vosso §10.11 já pede um irmão
+  disto (*«um traço de esfera de doze passos em área Local, por passo»*); estes três são o mesmo
+  pedido apontado ao que sobra.
+
 ### ⛔ E uma barra nossa caiu por medição, com o vosso lado a dizê-lo
 
 A régua de «agulha» do `ph2d-sculpt3d` tinha barra `20`, calibrada sobre a lei VBD (que o dono

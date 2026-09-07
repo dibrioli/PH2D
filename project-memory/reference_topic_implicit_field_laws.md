@@ -26,6 +26,8 @@ li vale em todo o curso do controlo, ou só onde a forma nasce?***
 - ⭐⭐⭐ [Para saber se a crista é do FILETE ou da FORMA, corra a régua com o knob nos dois extremos (gyroid: `36,74 → 7,86`, o filete TIRA-a)](feedback_to_tell_a_cures_ridge_from_the_shapes_own_curvature_run_the_knob_to_both_ends.md)
 - ⭐⭐ [Contínuo numa costura não é contínuo em todas — uma expressão com `round` tem uma costura por operador de escolha (`‖∇f‖ = 2596`)](feedback_continuous_at_one_seam_is_not_continuous_at_every_seam.md)
 
+- ⭐⭐⭐ [Encolher por `+r` e voltar por `−r` devolve o campo ORIGINAL — um MINORANTE composto com o inverso do que ele minora não é a identidade, e a quina convexa fica viva](feedback_a_minorant_composed_with_the_inverse_of_what_it_minorises_is_not_the_identity.md)
+
 ## As réguas — a forma medida no sítio errado
 
 - ⭐⭐⭐ [Uma COERÇÃO estaciona NA cerca, e uma cerca é por definição onde a forma DEGENERA — varra e ponha-a onde a peça volta a marchar (3 tentativas a aterrar no mesmo sítio mau)](feedback_a_coercion_parks_at_the_fence_which_is_where_the_shape_degenerates.md)

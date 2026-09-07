@@ -71,3 +71,4 @@ metadata:
 - [[feedback_a_gate_that_presumes_the_destination_of_an_effect_accuses_the_living]] — censo que pergunta pelo DESTINO (o barramento) acusa de morto o vivo com outro destino, e a mensagem manda construir a doença
 - [[feedback_a_census_that_shares_state_measures_the_previous_cases_side_effect]] — instância fresca por caso; e os acusados que sobram são os pontos cegos do ORÁCULO
 - [[feedback_when_the_only_consumer_of_an_artefact_is_an_llm_reading_numbers_visual_defects_survive]] — artefacto cujo único leitor é a LLM carrega defeito VISUAL indefinidamente: escreva o gate da classe que o seu leitor não vê
+- [[feedback_a_family_that_returns_none_in_a_census_has_its_declaration_unmeasured]] — família que faz `return None` num censo fica com as DECLARAÇÕES dela sem régua; o 1.º membro construível expõe o buraco (`1,0216` num defeito pré-existente)

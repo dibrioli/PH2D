@@ -20,3 +20,4 @@ as últimas linhas desapareciam em silêncio. Cada entrada continua a ser um fic
 - [⛔ Numa lista aplicada por varredura, NÃO nomear é comandar DESLIGADO](feedback_not_naming_a_thing_in_an_absolute_list_is_commanding_it_off.md)
 - [Tirar variante do MEIO de um enum serializado reescreve ficheiros gravados, sem erro](feedback_removing_a_middle_variant_from_a_serialized_enum_silently_rewrites_saved_files.md)
 - [bool onde havia ID apaga a próxima](feedback_publishing_a_bool_where_the_source_had_an_id_throws_away_the_next_feature.md) · [não-idempotente: autoria ≠ depósito](feedback_a_nonidempotent_target_excludes_nothing_split_authoring_from_deposit.md)
+- [[feedback_when_the_composition_already_expresses_the_geometry_ask_who_owns_the_numbers]] — «a composição já exprime isto?» tem duas metades: a GEOMETRIA e a AUTORIA. Se o dono dos números os reescreve por quadro, a linha de painel nasce MORTA — e é isso que decide se a forma nova existe

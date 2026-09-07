@@ -229,6 +229,12 @@ pub fn dist2_to_segment(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
     dx * dx + dy * dy
 }
 
+mod reach;
+#[cfg(test)]
+#[path = "reach_tests.rs"]
+mod reach_tests;
+pub use reach::{DEFAULT_ITERATIONS, MAX_ITERATIONS, Reach, reach, softened_distance};
+
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;

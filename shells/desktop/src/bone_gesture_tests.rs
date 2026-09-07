@@ -422,3 +422,90 @@ fn the_strength_handle_exists_only_on_the_focused_bone() {
     }
     assert_eq!(hover(&sim, [10.0, 20.0], 1.0, None), None);
 }
+
+/// Uma corrente de `n` ossos de 10 unidades, deitada sobre o eixo X. Devolve `[raiz, .., ponta]`.
+fn cadeia(sim: &mut SimWorld, n: usize) -> Vec<u64> {
+    let mut out = Vec::new();
+    let mut pai = None;
+    for i in 0..n {
+        let x = f64::from(u16::try_from(i).unwrap_or(0)) * 10.0;
+        let b = create(sim, pai, [x, 0.0], [x + 10.0, 0.0]).expect("osso");
+        pai = Some(Entity::from_bits(b));
+        out.push(b);
+    }
+    out
+}
+
+/// ⭐⭐⭐ **ARRASTAR A PONTA DOBRA A CORRENTE** — a cinemática inversa, pelo gesto.
+///
+/// É o degrau que separa *"um editor de esqueletos"* de *"um editor de animação"*: o artista sabe
+/// onde a MÃO tem de estar, e os ângulos são exactamente o que ele não quer digitar.
+#[test]
+fn dragging_the_tip_bends_the_whole_chain_until_it_reaches() {
+    for n in [2usize, 3, 6] {
+        let mut sim = SimWorld::default();
+        let ossos = cadeia(&mut sim, n);
+        let ponta = Entity::from_bits(*ossos.last().expect("ponta"));
+        let alcance = f64::from(u16::try_from(n).unwrap_or(1)) * 10.0;
+        let alvo = [alcance * 0.4, alcance * 0.35];
+        assert!(pose(&mut sim, ponta, alvo, BonePart::Tip));
+        let (_, chegou) = mundo(&sim, ponta.to_bits());
+        let erro = (chegou[0] - alvo[0]).hypot(chegou[1] - alvo[1]);
+        assert!(
+            erro < 1e-2 * alcance,
+            "com {n} ossos a ponta parou a {erro} do alvo {alvo:?}"
+        );
+    }
+}
+
+/// ⛔⛔ **A IK NUNCA ESTICA UM OSSO, E A RAIZ NÃO SAI DO SÍTIO** — os dois invariantes que fazem o
+/// resultado ler-se como um membro e não como um elástico.
+///
+/// ⚠️ Eles saem de graça da escolha de escrever a pose pela porta da ROTAÇÃO: uma rotação não muda
+/// comprimento nenhum, e o osso roda em torno da própria origem. Este gate existe para que essa
+/// escolha não seja desfeita por um atalho que escreva posições.
+#[test]
+fn inverse_kinematics_never_stretches_a_bone_nor_unpins_the_root() {
+    let mut sim = SimWorld::default();
+    let ossos = cadeia(&mut sim, 4);
+    let ponta = Entity::from_bits(*ossos.last().expect("ponta"));
+    let raiz_antes = mundo(&sim, ossos[0]).0;
+    for alvo in [[10.0, 10.0], [-20.0, 5.0], [1e4, 1e4], [0.0, 0.0]] {
+        pose(&mut sim, ponta, alvo, BonePart::Tip);
+        for (i, &b) in ossos.iter().enumerate() {
+            let (a, t) = mundo(&sim, b);
+            let comp = (t[0] - a[0]).hypot(t[1] - a[1]);
+            assert!(
+                (comp - 10.0).abs() < 1e-4,
+                "com alvo {alvo:?} o osso {i} ficou com {comp} em vez de 10"
+            );
+        }
+        let raiz = mundo(&sim, ossos[0]).0;
+        assert!(
+            (raiz[0] - raiz_antes[0]).abs() < 1e-6 && (raiz[1] - raiz_antes[1]).abs() < 1e-6,
+            "com alvo {alvo:?} a RAIZ da corrente andou para {raiz:?}"
+        );
+    }
+}
+
+/// ⛔ **A ALÇA DA PONTA SÓ EXISTE EM QUEM FECHA A CORRENTE.** Numa junta interior a ponta de um
+/// osso **é** a raiz do seguinte, e ali já há uma bolinha com outro verbo (deslocar) — duas alças
+/// no mesmo pixel a fazer coisas diferentes é o defeito que o realce por parte existe para evitar.
+#[test]
+fn only_the_bone_that_closes_a_chain_offers_the_end_effector() {
+    let mut sim = SimWorld::default();
+    let ossos = cadeia(&mut sim, 3);
+    // A ponta do 1.º osso (10,0) é a raiz do 2.º: ali NÃO há alça de ponta.
+    assert_eq!(
+        hover(&sim, [10.0, 0.0], 1.0, None).map(|h| h.part),
+        Some(BonePart::Joint),
+        "numa junta interior o verbo e' DESLOCAR, nao IK"
+    );
+    // A ponta do último (30,0) fecha a corrente.
+    assert_eq!(
+        hover(&sim, [30.0, 0.0], 1.0, None).map(|h| h.part),
+        Some(BonePart::Tip),
+        "a ponta da corrente tem de oferecer o end effector"
+    );
+    assert_eq!(crate::skeleton_live::chain_ends(&sim), vec![ossos[2]]);
+}

@@ -261,6 +261,45 @@ pub(crate) fn release(
     feitos
 }
 
+/// ⭐⭐⭐ **AS PONTAS DE CORRENTE** — os ossos que não têm osso filho, em bits.
+///
+/// São eles, e só eles, que ganham a alça do *end effector*: em toda outra junta a ponta de um osso
+/// **é** a raiz do seguinte, e ali já há uma bolinha com outro verbo.
+pub(crate) fn chain_ends(sim: &SimWorld) -> Vec<u64> {
+    let ossos: Vec<Entity> = ossos_da_cena(sim).into_iter().map(|(e, _)| e).collect();
+    let mut out: Vec<u64> = ossos
+        .iter()
+        .filter(|&&e| {
+            sim.world()
+                .get::<ph2d_ecs::Children>(e)
+                .is_none_or(|f| f.iter().all(|c| sim.world().get::<Bone>(*c).is_none()))
+        })
+        .map(|e| e.to_bits())
+        .collect();
+    out.sort_unstable();
+    out
+}
+
+/// **A CORRENTE que acaba neste osso** — da raiz até ele, na ordem em que a cinemática a resolve.
+///
+/// ⚠️ Ela sobe enquanto o PAI também for osso, que é a mesma regra do [`skeleton_of`] — parar no
+/// primeiro pai não-osso é o que permite pendurar um esqueleto dentro de um grupo sem ele deixar de
+/// ser um esqueleto.
+pub(crate) fn chain_to(sim: &SimWorld, bits: u64) -> Vec<Entity> {
+    let mut fila = vec![Entity::from_bits(bits)];
+    while let Some(&e) = fila.last() {
+        let Some(p) = sim.world().get::<ChildOf>(e).map(ChildOf::parent) else {
+            break;
+        };
+        if sim.world().get::<Bone>(p).is_none() {
+            break;
+        }
+        fila.push(p);
+    }
+    fila.reverse();
+    fila
+}
+
 /// ⭐⭐ **O RAIO DE INFLUÊNCIA de um osso, em MUNDO** — a porta única do desenho, do dedo e do
 /// arrasto.
 ///

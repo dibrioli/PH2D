@@ -103,6 +103,9 @@ pub enum BonePart {
     Joint,
     /// A alça na borda da região de influência. Muda a **força** — quanto o osso alcança.
     Influence,
+    /// ⭐ A bolinha na PONTA de um osso que fecha a corrente (o *end effector*). Arrastá-la faz
+    /// **cinemática inversa**: a corrente inteira dobra para a ponta chegar onde a mão foi.
+    Tip,
 }
 
 /// **O que está sob o ponteiro**, para o realce dizer qual VERBO o clique vai executar.
@@ -158,6 +161,7 @@ pub fn draw_bones(
     bones: &[(u64, [f64; 2], [f64; 2])],
     selected: Option<u64>,
     hover: Option<BoneHover>,
+    tips: &[u64],
     transform: Affine,
     theme: Theme,
     target: &mut VectorScene,
@@ -239,6 +243,34 @@ pub fn draw_bones(
             None,
             &bolinha,
         );
+        // ⭐⭐⭐ **A PONTA de quem fecha a corrente** — o *end effector*. Ela só existe onde não há
+        // osso filho: em toda outra junta, a ponta de um osso É a raiz do seguinte, e ali já há
+        // uma bolinha com outro verbo.
+        //
+        // ⚠️ Ela é um ANEL DUPLO, e a forma diz o que ela faz: as outras alças movem UM osso, esta
+        // dobra a CORRENTE inteira. *Uma alça que faz uma coisa maior tem de se ler como maior.*
+        if tips.contains(&bits) {
+            let ponta_acesa = parte(BonePart::Tip);
+            let cor = if ponta_acesa { aceso } else { apagado };
+            for k in [1.0, 0.55] {
+                target.inner_mut().stroke(
+                    &Stroke::new(LINE_PX),
+                    Affine::IDENTITY,
+                    &Brush::Solid(cor),
+                    None,
+                    &Circle::new(pb, raio * k),
+                );
+            }
+            if ponta_acesa {
+                target.inner_mut().fill(
+                    Fill::NonZero,
+                    Affine::IDENTITY,
+                    &Brush::Solid(aceso),
+                    None,
+                    &Circle::new(pb, raio * 0.55),
+                );
+            }
+        }
     }
 }
 

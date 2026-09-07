@@ -227,6 +227,24 @@ pub(crate) fn hover(
         });
     }
     let bone = hit(sim, world, px_to_world)?;
+    // ⭐ **A PONTA antes da junta e do corpo**: ela vive DENTRO do raio de acerto do osso, então
+    // sem esta ordem o corpo ganhava-a sempre e o *end effector* seria inalcançável.
+    // ⚠️ E só existe onde ela é desenhada — em quem fecha a corrente.
+    if crate::skeleton_live::chain_ends(sim).contains(&bone)
+        && let Some((_, a, b)) = crate::skeleton_live::bone_segments(sim)
+            .into_iter()
+            .find(|(x, _, _)| *x == bone)
+    {
+        let comp_px = (b[0] - a[0]).hypot(b[1] - a[1]) / px_to_world.max(f64::MIN_POSITIVE);
+        if (b[0] - world[0]).hypot(b[1] - world[1])
+            <= ph2d_skeleton_render::joint_radius_px(comp_px) * px_to_world
+        {
+            return Some(BoneHover {
+                bone,
+                part: BonePart::Tip,
+            });
+        }
+    }
     Some(BoneHover {
         bone,
         part: if grabbed_the_joint(Some(sim), bone, world, px_to_world) {
@@ -281,6 +299,11 @@ pub(crate) fn pose(
         // significa *"só alcança quem não tem mais ninguém"* (o desempate do órfão).
         osso.strength = (raio / comp).max(0.0);
         return true;
+    }
+    // ⭐⭐⭐ **A PONTA faz CINEMÁTICA INVERSA** — a corrente inteira dobra para o *end effector*
+    // chegar onde a mão foi. É o degrau que separa um editor de esqueletos de um de animação.
+    if part == BonePart::Tip {
+        return reach_chain(sim, bone, world);
     }
     let desloca = part == BonePart::Joint;
     // O espaço do PAI — a pose local vive nele. Sem pai, o mundo.
@@ -376,4 +399,40 @@ impl crate::App {
             .as_ref()
             .and_then(|gfx| hover(&gfx.sim, world, px_to_world, foco));
     }
+}
+
+/// ⭐⭐⭐ **A CORRENTE ALCANÇA `goal`** — cinemática inversa sobre a cadeia que acaba em `tip`.
+///
+/// ⚠️⚠️ **A escrita de volta passa pela MESMA porta que a rotação à mão** (`pose(.., Body)`), osso
+/// a osso e **do pai para o filho**. É isso que garante três coisas de graça: os comprimentos ficam
+/// (uma rotação não estica), a pose guardada continua a ser LOCAL do pai, e o que a IK escreve é
+/// indistinguível do que o artista escreveria a rodar cada osso — logo o undo, o save e a timeline
+/// não precisam de saber que a IK existe.
+///
+/// ⛔ **A ordem pai→filho é load-bearing**: cada `pose` lê o mundo do pai para converter o alvo para
+/// local, e um filho resolvido antes do pai leria um mundo que ainda vai mudar.
+fn reach_chain(sim: &mut SimWorld, tip: Entity, goal: [f64; 2]) -> bool {
+    let cadeia = crate::skeleton_live::chain_to(sim, tip.to_bits());
+    let segs = crate::skeleton_live::bone_segments(sim);
+    let mut juntas: Vec<[f64; 2]> = Vec::with_capacity(cadeia.len() + 1);
+    let mut comps: Vec<f64> = Vec::with_capacity(cadeia.len());
+    for &e in &cadeia {
+        let Some((_, a, b)) = segs.iter().copied().find(|(x, _, _)| *x == e.to_bits()) else {
+            return false;
+        };
+        juntas.push(a);
+        comps.push((b[0] - a[0]).hypot(b[1] - a[1]));
+        if e == tip {
+            juntas.push(b);
+        }
+    }
+    if comps.is_empty() || juntas.len() != comps.len() + 1 {
+        return false;
+    }
+    ph2d_skeleton::reach(&mut juntas, &comps, goal, ph2d_skeleton::Reach::default());
+    let mut mexeu = false;
+    for (i, &e) in cadeia.iter().enumerate() {
+        mexeu |= pose(sim, e, juntas[i + 1], ph2d_skeleton_render::BonePart::Body);
+    }
+    mexeu
 }

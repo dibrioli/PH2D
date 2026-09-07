@@ -6135,9 +6135,9 @@ impl crate::App {
                     );
                 } else {
                     eprintln!(
-                        "[ph2d-vec] osso: {n} forma(s) presa(s) -- no modo Bone, arraste o CORPO \
-                         de um osso para girar, a bolinha para deslocar, e o quadradinho da mancha \
-                         para mudar a forca"
+                        "[ph2d-vec] osso: {n} forma(s) presa(s) -- no modo Bone: CORPO gira, \
+                         bolinha desloca, quadradinho da mancha muda a forca, e o ANEL DUPLO na \
+                         ponta da corrente dobra a corrente inteira (IK)"
                     );
                 }
             }
@@ -10684,6 +10684,7 @@ impl crate::App {
                         &ossos,
                         hero.gizmo.selection,
                         self.bone_hover,
+                        &crate::skeleton_live::chain_ends(sim),
                         cam_affine,
                         hero.theme,
                         vector_scene,

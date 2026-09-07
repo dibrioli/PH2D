@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-param-editors"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# ⭐⭐⭐ Os EDITORES RICOS de um param — curva, gradiente e paleta — numa crate-folha com
+# DOIS hospedeiros (doc 101): a row do painel lateral e o cartão do nó no grafo.
+#
+# ⚠️ Ela nasce porque o painel lateral SAI (doc 103, ordem do Enio de 2026-09-05) e estes três
+# editores são a última coisa que só ele sabe abrir. Escrever uma segunda versão no cartão seria
+# a lei em dois sítios — *uma lei escrita em dois sítios ainda não é uma lei, só uma PORTA é*.
+
+[lib]
+
+[dependencies]
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-color = { path = "../ph2d-color" }
+ph2d-curve = { path = "../ph2d-curve" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-vector = { path = "../ph2d-vector" }

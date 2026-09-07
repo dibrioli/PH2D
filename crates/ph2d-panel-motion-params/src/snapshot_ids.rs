@@ -154,44 +154,9 @@ pub const MAX_ENUM_OPTIONS: usize = 48;
 /// nenhum erro.
 pub(crate) const CHANNELS_EXTRA_BASE: usize = MAX_ENUM_OPTIONS;
 
-/// Max control points a single Curve row's editor supports (matches the field.remap
-/// text param's practical ceiling; a handful of points shape any transfer). The
-/// per-point `CurvePoint` widgets are pooled positionally like the enum options.
-pub(crate) const MAX_CURVE_POINTS: usize = 8;
-
-/// **Máximo de paradas que o editor de gradiente oferece — MEDIDO** (doc 85; bloco Z, doc 91).
-///
-/// O modelo (`ph2d_color::MAX_RAMP_STOPS`) admite **32**; o `+` recusa acima daqui.
-///
-/// ⚠️ **O número estava certo e a RAZÃO não existia**, que é o defeito que a folha 09 da
-/// conferência acusou: dizia-se *"o painel é estreito e a faixa tem de ficar legível"* — uma
-/// frase, não um recurso (`CLAUDE.md` §0.0). A derivação é esta, e o gate
-/// `the_gradient_stop_ceiling_is_the_narrowest_panel_divided_by_a_pointer_target` refá-la a cada
-/// corrida:
-///
-/// | grandeza | de onde vem | px |
-/// |---|---|---|
-/// | painel mais estreito | `ph2d_tokens::PANEL_MIN_W_PX` (o piso do arrasto de redimensionar) | 220 |
-/// | recuo, dos dois lados | `ph2d_tokens::PANEL_HEAD_PAD_PX` × 2 | 36 |
-/// | **faixa útil** | | **184** |
-/// | alvo de ponteiro | `GRAB_R × 2` — a caixa de agarrar que este mesmo editor declara | 18 |
-/// | folga da célula | `pad × 2` do strip de amostras | 4 |
-/// | **por parada** | | **22** |
-///
-/// `184 / 22 = 8,36` ⇒ **8**.
-///
-/// ⚠️ **O recurso não é a legibilidade, é o ALVO DE PONTEIRO** — e a distinção decide o número.
-/// Uma amostra de 14 px lê-se perfeitamente; o que ela deixa de ser é *clicável*, e cada amostra
-/// abre o seletor de cor. A régua é a própria caixa de agarrar que este editor já declara para
-/// os marcadores: uma amostra mais estreita que o alvo dos marcadores ao lado dela é um alvo
-/// que a lei da casa já chama de pequeno demais.
-///
-/// ⚠️ **Contra o painel MAIS ESTREITO, não contra o de hoje**: um teto que só vale na largura
-/// confortável parte-se quando o artista aperta a janela — a lei do pior caso que o
-/// `motion.spring` já aplica ao relógio.
-///
-/// Os marcadores por-parada são registados a cada pintura, como as alças do Curve.
-pub(crate) const MAX_GRADIENT_STOPS: usize = 8;
+// ⛔ Os TETOS (`MAX_CURVE_POINTS`, `MAX_GRADIENT_STOPS`) mudaram-se para a folha COM a
+// derivação medida e **não voltam re-exportados**: quem os impõe é o `+` do editor, e uma
+// constante deste lado que ninguém lê seria um teto anunciado por quem não o aplica.
 
 /// Stable widget id for the `slot`-th param row's slider (pooled, positional —
 /// row `i` of whichever node is selected uses slot `i`).
@@ -255,39 +220,90 @@ pub(crate) fn param_file_browse_id(slot: usize) -> NodeId {
 /// handle carries, so `apply_event` routes the drained drag to the right row (the
 /// dispatch emits `ValueChanged(parent)` on a handle drag).
 pub(crate) fn param_curve_editor_id(slot: usize) -> NodeId {
-    fnv_id(&format!("motion_param/curve/{slot}"))
+    curve_key(slot).root()
 }
 
-/// The `slot`-th Curve row's `point`-th draggable control-point handle.
-pub(crate) fn param_curve_point_id(slot: usize, point: usize) -> NodeId {
-    fnv_id(&format!("motion_param/curve/{slot}/pt/{point}"))
+/// ⭐ **A CHAVE da row de curva `slot`** — a porta única de que os cinco ids abaixo derivam,
+/// e a MESMA que o [`crate::curve_row`] passa ao editor. Duas derivações e o botão desenhado
+/// deixa de ser o botão despachado, sem que nada deixe de compilar.
+fn curve_key(slot: usize) -> ph2d_param_editors::EditorKey<'static> {
+    // ⚠️ `Box::leak` e não um `String` local: a `EditorKey` empresta, e estes ids são pedidos de
+    // dentro de expressões que não têm onde guardar o dono. São `slot`s — um punhado por
+    // sessão, e o mesmo `slot` reusa a entrada.
+    ph2d_param_editors::EditorKey {
+        own: leaked(format!("motion_param/curve/{slot}")),
+        swatch: "motion_param/curve_swatch",
+    }
+}
+
+/// Guarda uma string para sempre e devolve-a emprestada — ver [`curve_key`]. ⚠️ **Só para
+/// chaves de widget**, que são um conjunto pequeno e fechado (um por `slot`).
+fn leaked(s: String) -> &'static str {
+    use std::collections::BTreeSet;
+    use std::sync::{Mutex, OnceLock};
+    static POOL: OnceLock<Mutex<BTreeSet<&'static str>>> = OnceLock::new();
+    let pool = POOL.get_or_init(|| Mutex::new(BTreeSet::new()));
+    let mut g = pool
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if let Some(v) = g.get(s.as_str()) {
+        return v;
+    }
+    let v: &'static str = Box::leak(s.into_boxed_str());
+    g.insert(v);
+    v
 }
 
 /// The `slot`-th Curve row's **add-point** button.
+/// The `slot`-th Curve row's `point`-th draggable control-point handle.
+///
+/// ⚠️ **`#[cfg(test)]` porque o PRODUTO já não o chama** — desde que o editor se mudou para a
+/// folha, quem desenha e quem despacha recebem o id dentro da sacola de widgets. Quem o lê são
+/// os gates, que perguntam se a alça ficou registada no store.
+///
+/// ⚠️ E ele *parecia* órfão a um `cargo check -p` da LIB antes de o ser: **«nunca usado» sem
+/// `--all-targets` não é um censo de uso** — os gates deste painel vivem dentro da própria lib.
+#[cfg(test)]
+pub(crate) fn param_curve_point_id(slot: usize, point: usize) -> NodeId {
+    curve_key(slot).sub(&format!("pt/{point}"))
+}
+
 pub(crate) fn param_curve_add_id(slot: usize) -> NodeId {
-    fnv_id(&format!("motion_param/curve/{slot}/add"))
+    curve_key(slot).sub("add")
 }
 
 /// The `slot`-th Curve row's **remove-point** button.
 pub(crate) fn param_curve_remove_id(slot: usize) -> NodeId {
-    fnv_id(&format!("motion_param/curve/{slot}/remove"))
+    curve_key(slot).sub("remove")
 }
 
 /// The `slot`-th Curve row's **interp** button — cycles the selected point's
 /// segment interpolation (Linear → Smooth → Hold).
 pub(crate) fn param_curve_interp_id(slot: usize) -> NodeId {
-    fnv_id(&format!("motion_param/curve/{slot}/interp"))
+    curve_key(slot).sub("interp")
 }
 
 /// The `slot`-th Gradient row's **editor parent** id — the `CurvePoint.parent` every
 /// position marker carries, so `apply_event` routes the drained drag to the right row.
 pub(crate) fn param_grad_editor_id(slot: usize) -> NodeId {
-    fnv_id(&format!("motion_param/grad/{slot}"))
+    grad_key(slot, "").root()
 }
 
-/// The `slot`-th Gradient row's `stop`-th draggable position marker.
-pub(crate) fn param_grad_stop_id(slot: usize, stop: usize) -> NodeId {
-    fnv_id(&format!("motion_param/grad/{slot}/stop/{stop}"))
+/// ⭐ **A CHAVE da row de gradiente** — a porta única de que os ids abaixo derivam, e a MESMA
+/// que o [`crate::gradient_row`] passa ao editor. Ver [`curve_key`].
+fn grad_key(slot: usize, name: &str) -> ph2d_param_editors::EditorKey<'static> {
+    ph2d_param_editors::EditorKey {
+        own: leaked(format!("motion_param/grad/{slot}")),
+        swatch: leaked(format!("motion_param/grad_swatch/{name}")),
+    }
+}
+
+/// A chave da row de PALETA — irmã de [`grad_key`].
+fn pal_key(slot: usize, name: &str) -> ph2d_param_editors::EditorKey<'static> {
+    ph2d_param_editors::EditorKey {
+        own: leaked(format!("motion_param/pal/{slot}")),
+        swatch: leaked(format!("motion_param/pal_swatch/{name}")),
+    }
 }
 
 /// Stable widget id for a Gradient row's `stop`-th colour swatch, keyed by the text-param
@@ -295,7 +311,7 @@ pub(crate) fn param_grad_stop_id(slot: usize, stop: usize) -> NodeId {
 /// node's hints to seed the swatch colour and read the OKLCH pick back into the string.
 /// `pub` for the bridge, exactly like [`param_swatch_id`].
 pub fn param_grad_swatch_id(name: &str, stop: usize) -> NodeId {
-    fnv_id(&format!("motion_param/grad_swatch/{name}/{stop}"))
+    grad_key(0, name).swatch_id(stop)
 }
 
 /// Stable widget id for a Palette row's `i`-th colour swatch, keyed by the text-param
@@ -306,39 +322,46 @@ pub fn param_grad_swatch_id(name: &str, stop: usize) -> NodeId {
 /// ⚠️ **Derived from a string, so there is no pool and no cap** — the 200th swatch has an
 /// id as readily as the 2nd, which is what lets the row have no length limit.
 pub fn param_pal_swatch_id(name: &str, i: usize) -> NodeId {
-    fnv_id(&format!("motion_param/pal_swatch/{name}/{i}"))
+    pal_key(0, name).swatch_id(i)
 }
 
 /// The `slot`-th Palette row's **add-colour** button.
 pub(crate) fn param_pal_add_id(slot: usize) -> NodeId {
-    fnv_id(&format!("motion_param/pal/{slot}/add"))
+    pal_key(slot, "").sub("add")
 }
 
 /// The `slot`-th Palette row's **remove-colour** button (drops the LAST colour).
 pub(crate) fn param_pal_remove_id(slot: usize) -> NodeId {
-    fnv_id(&format!("motion_param/pal/{slot}/remove"))
+    pal_key(slot, "").sub("remove")
 }
 
 /// The `slot`-th Gradient row's **add-stop** button.
+/// The `slot`-th Gradient row's `stop`-th draggable position marker — ver o aviso de
+/// [`param_curve_point_id`].
+#[cfg(test)]
+pub(crate) fn param_grad_stop_id(slot: usize, stop: usize) -> NodeId {
+    grad_key(slot, "").sub(&format!("stop/{stop}"))
+}
+
 pub(crate) fn param_grad_add_id(slot: usize) -> NodeId {
-    fnv_id(&format!("motion_param/grad/{slot}/add"))
+    grad_key(slot, "").sub("add")
 }
 
 /// The `slot`-th Gradient row's **remove-stop** button.
 pub(crate) fn param_grad_remove_id(slot: usize) -> NodeId {
-    fnv_id(&format!("motion_param/grad/{slot}/remove"))
+    grad_key(slot, "").sub("remove")
 }
 
 /// The `slot`-th Gradient row's **interp** button — cycles the ramp's global
 /// interpolation (Linear → Ease → Constant → Cardinal → B-Spline).
 pub(crate) fn param_grad_interp_id(slot: usize) -> NodeId {
-    fnv_id(&format!("motion_param/grad/{slot}/interp"))
+    grad_key(slot, "").sub("interp")
 }
 
 /// O botão de **ESPAÇO** da `slot`-ésima row de Gradiente — cicla RGB → HSV → HSL, o
 /// espaço em que dois stops vizinhos são interpolados (`RampColorMode`).
 pub(crate) fn param_grad_space_id(slot: usize) -> NodeId {
-    fnv_id(&format!("motion_param/grad/{slot}/space"))
+    grad_key(slot, "").sub("space")
 }
 
 /// O botão de **MATIZ** da `slot`-ésima row de Gradiente — cicla Near → Far → CW → CCW.
@@ -347,13 +370,13 @@ pub(crate) fn param_grad_space_id(slot: usize) -> NodeId {
 /// (o braço `Rgb` do `mix2` nunca chama `lerp_hue`); em RGB seria um botão que gira e não
 /// muda um pixel. O id existe sempre — quem decide é o pintor.
 pub(crate) fn param_grad_hue_id(slot: usize) -> NodeId {
-    fnv_id(&format!("motion_param/grad/{slot}/hue"))
+    grad_key(slot, "").sub("hue")
 }
 
 /// The `slot`-th Gradient row's `p`-th **preset seed** chip (Rainbow / Heat / Ice /
 /// Grayscale) — clicking it LOADS that preset's stops into the editable ramp (doc 85).
 pub(crate) fn param_grad_preset_id(slot: usize, p: usize) -> NodeId {
-    fnv_id(&format!("motion_param/grad/{slot}/preset/{p}"))
+    grad_key(slot, "").sub(&format!("preset/{p}"))
 }
 
 /// FNV-1a-64 of `key` (same scheme as the graph panel's dynamic hit ids).

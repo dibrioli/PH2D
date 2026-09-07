@@ -7283,6 +7283,7 @@ dependencies = [
  "ph2d-color",
  "ph2d-curve",
  "ph2d-editor-core",
+ "ph2d-param-editors",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-ui-testkit",
@@ -7487,6 +7488,19 @@ dependencies = [
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-ui-testkit",
+ "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-param-editors"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-color",
+ "ph2d-curve",
+ "ph2d-editor-core",
+ "ph2d-text",
+ "ph2d-tokens",
  "ph2d-vector",
 ]
 

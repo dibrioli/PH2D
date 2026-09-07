@@ -80,7 +80,9 @@ pub(crate) fn on_gradient_drag(
             let ParamRow::Gradient(row) = &snap.rows[slot] else {
                 return Some(EventOutcome::Ignored);
             };
-            if let Some(value) = gradient_row::drain_drag(host.store_mut(), slot, &row.value) {
+            if let Some(value) =
+                gradient_row::drain_drag(host.store_mut(), slot, row.name, &row.value)
+            {
                 push_param_intent(MotionParamIntent::SetTextParam {
                     node: snap.node,
                     param: row.name,
@@ -103,16 +105,16 @@ pub(crate) fn on_gradient_click(id: NodeId, snap: &ParamsSnapshot) -> Option<Eve
         let value = if id == param_grad_add_id(slot) {
             gradient_row::add_stop(&row.value)
         } else if id == param_grad_remove_id(slot) {
-            gradient_row::remove_stop(&row.value, slot)
+            gradient_row::remove_stop(&row.value, slot, row.name)
         } else if id == param_grad_interp_id(slot) {
-            gradient_row::cycle_interp(&row.value, slot)
+            gradient_row::cycle_interp(&row.value, slot, row.name)
         } else if id == param_grad_space_id(slot) {
-            gradient_row::cycle_space(&row.value, slot)
+            gradient_row::cycle_space(&row.value)
         } else if id == param_grad_hue_id(slot) {
             // ⚠️ Aceito em TODO espaço, inclusive em RGB, onde o botão não é pintado: um
             // clique só chega aqui se alguém o pintou, e recusar por modo seria uma SEGUNDA
             // resposta a *"este botão existe?"* — a primeira mora no `paint`.
-            gradient_row::cycle_hue(&row.value, slot)
+            gradient_row::cycle_hue(&row.value)
         } else if let Some(p) =
             (0..gradient_row::PRESET_COUNT).find(|&p| id == param_grad_preset_id(slot, p))
         {

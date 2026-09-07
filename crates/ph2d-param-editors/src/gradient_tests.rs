@@ -1,8 +1,13 @@
-//! Gates da **linha do gradiente** (doc 85) — separados do `gradient_row.rs` pelo
-//! tecto de LOC dos painéis (600, `architecture_panel_loc_cap`).
+//! Gates do **editor de gradiente** (doc 85) — irmãos de [`super`], separados pelo tecto de LOC.
 
 use super::*;
 use ph2d_editor_core::interaction::WidgetStore;
+
+/// A chave de teste — qualquer uma serve: o que os gates provam é que a lei é FUNÇÃO dela.
+const K: EditorKey<'static> = EditorKey {
+    own: "teste/grad/0",
+    swatch: "teste/grad_swatch/0",
+};
 
 /// **O TETO DE PARADAS É O PAINEL MAIS ESTREITO A DIVIDIR POR UM ALVO DE PONTEIRO.**
 ///
@@ -69,20 +74,20 @@ fn add_stop_stops_at_the_cap() {
 #[test]
 fn remove_keeps_at_least_two() {
     assert_eq!(
-        parse_gradient(&remove_stop("g1 2 0:0,0,0 1:1,1,1", 0))
+        parse_gradient(&remove_stop("g1 2 0:0,0,0 1:1,1,1", K))
             .unwrap()
             .len(),
         2
     );
-    SELECTED.with(|s| s.set(Some((0, 1))));
-    let r = parse_gradient(&remove_stop("g1 2 0:0,0,0 0.5:0,1,0 1:1,1,1", 0)).unwrap();
+    SELECTED.with(|s| s.set(Some((K.root().0, 1))));
+    let r = parse_gradient(&remove_stop("g1 2 0:0,0,0 0.5:0,1,0 1:1,1,1", K)).unwrap();
     assert_eq!(r.len(), 2);
 }
 
 #[test]
 fn cycle_interp_advances_and_wraps() {
     SELECTED.with(|s| s.set(None));
-    let v = cycle_interp("g1 2 0:0,0,0 1:1,1,1", 0); // Linear -> Ease (u8 2 -> 0)
+    let v = cycle_interp("g1 2 0:0,0,0 1:1,1,1", K); // Linear -> Ease (u8 2 -> 0)
     assert_eq!(parse_gradient(&v).unwrap().interp, RampInterp::Ease);
 }
 
@@ -91,8 +96,8 @@ fn cycle_interp_advances_and_wraps() {
 #[test]
 fn with_a_stop_selected_the_button_cycles_that_stops_interp() {
     let base = "g1 2 0:0,0,0 0.5:1,0,0 1:1,1,1";
-    SELECTED.with(|s| s.set(Some((0, 1))));
-    let v = cycle_interp(base, 0);
+    SELECTED.with(|s| s.set(Some((K.root().0, 1))));
+    let v = cycle_interp(base, K);
     let r = parse_gradient(&v).expect("volta");
     assert_eq!(
         r.interp,
@@ -108,11 +113,11 @@ fn with_a_stop_selected_the_button_cycles_that_stops_interp() {
 /// interpolação própria a um stop seria uma porta de sentido único.
 #[test]
 fn the_stops_wheel_comes_back_to_global() {
-    SELECTED.with(|s| s.set(Some((0, 1))));
+    SELECTED.with(|s| s.set(Some((K.root().0, 1))));
     let mut v = "g1 2 0:0,0,0 0.5:1,0,0 1:1,1,1".to_string();
     let mut seen = Vec::new();
     for _ in 0..6 {
-        v = cycle_interp(&v, 0);
+        v = cycle_interp(&v, K);
         seen.push(parse_gradient(&v).unwrap().stops()[1].interp);
     }
     assert_eq!(
@@ -130,23 +135,19 @@ fn the_stops_wheel_comes_back_to_global() {
 
 #[test]
 fn drain_drag_folds_the_position_and_never_lets_it_cross() {
-    let slot = 0;
     let mut store = WidgetStore::with_capacity(2);
     // Drag the MIDDLE stop (index 1) far right (x=2.0). It must clamp strictly below
     // its right neighbour's position — stops never cross.
-    store.set_curve_point_drag(param_grad_editor_id(slot), 0, 1, 2.0, 0.5);
-    let r =
-        parse_gradient(&drain_drag(&mut store, slot, "g1 2 0:1,0,0 0.5:0,1,0 1:0,0,1").unwrap())
-            .unwrap();
+    store.set_curve_point_drag(K.root(), 0, 1, 2.0, 0.5);
+    let r = parse_gradient(&drain_drag(&mut store, K, "g1 2 0:1,0,0 0.5:0,1,0 1:0,0,1").unwrap())
+        .unwrap();
     assert!(
         r.stops()[0].pos < r.stops()[1].pos && r.stops()[1].pos < r.stops()[2].pos,
         "position order preserved: {:?}",
         r.stops().iter().map(|s| s.pos).collect::<Vec<_>>()
     );
     assert!(
-        store
-            .take_curve_point_drag_if(|p| p == param_grad_editor_id(slot))
-            .is_none(),
+        store.take_curve_point_drag_if(|p| p == K.root()).is_none(),
         "slot drained"
     );
 }

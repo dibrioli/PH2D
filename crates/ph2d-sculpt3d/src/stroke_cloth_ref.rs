@@ -51,6 +51,18 @@ struct Copia {
 #[derive(Clone, Debug)]
 pub(super) struct ClothRef {
     pub(super) tecido: PincelTecido,
+    /// ⭐⭐⭐ **As normais da superfície que o TRAÇO ENCONTROU** (espec §4.2-ter).
+    ///
+    /// Dentro de um traço o pincel deforma a malha e **continua a ler estas** —
+    /// só a normal da área do Push e a normal por vértice do Inflate as lêem, e
+    /// as duas obedecem. ⛔ Recalculá-las por dab é o que fazia os dois errarem
+    /// `0,24` contra o oráculo; com a fotografia, `0,002` e `0,008`.
+    ///
+    /// ⚠️ **É propriedade do TRAÇO, não do programa:** de um traço para o
+    /// seguinte elas refrescam-se, e a superfície que o próximo encontra é a que
+    /// este deixou. ⚠️ E o **filtro** de tecido faz o CONTRÁRIO (§7) — ali cada
+    /// passo repete a preparação que o traço só corre ao começar.
+    pub(super) normais: Vec<V3>,
 }
 
 /// A lei em vigor é a da referência? — lido UMA vez.
@@ -251,7 +263,8 @@ impl SculptStroke {
             //
             // ⚠️ **É propriedade da MALHA, e por isso é derivada UMA vez, no
             // pen-down**, sobre as posições que passam a ser o repouso do traço.
-            self.cloth_ref[copy] = Some(ClothRef { tecido });
+            let normais = mesh.normals().iter().map(|n| v3(*n)).collect();
+            self.cloth_ref[copy] = Some(ClothRef { tecido, normais });
         }
         let Some(mut ses) = self.cloth_ref[copy].take() else {
             return;
@@ -293,7 +306,9 @@ impl SculptStroke {
         // a que estão virados, ficando com o PRIMEIRO que seja não-vazio e de
         // soma não-nula. *Nenhuma dessas três coisas cabe num chamador que só
         // sabe somar.*
-        let normais: Vec<V3> = mesh.normals().iter().map(|n| v3(*n)).collect();
+        // ⭐ A fotografia do pen-down, e ⛔ **nunca** `mesh.normals()` de agora —
+        // ver [`ClothRef::normais`] e a espec §4.2-ter.
+        let normais: &[V3] = &ses.normais;
         // ⭐⭐⭐ **`δ` é a PROJECÇÃO do caminho no plano do ECRÃ** (espec §4.3,
         // emenda Q12), e o eixo da vista é a direcção do olho deste dab. As duas
         // des-projecções do alvo são feitas à mesma profundidade, logo a

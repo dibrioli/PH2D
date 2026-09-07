@@ -468,3 +468,104 @@ fn o_traco_arma_a_ordem_de_visita_da_malha() {
         "a ordem armada e' a crescente -- a malha nao parte em celulas"
     );
 }
+
+/// ⭐⭐⭐ **O traço lê as normais da superfície que ENCONTROU, não as de agora**
+/// (espec §4.2-ter).
+///
+/// Dentro de um traço o pincel deforma a malha e continua a ler as normais com
+/// que o traço começou. Só duas coisas as lêem — a normal da área do Push e a
+/// normal por vértice do Inflate — e as duas obedecem.
+///
+/// ⛔⛔ **Este gate existe porque a mutação que apaga a lei SOBREVIVEU:** a
+/// bancada de paridade mede-a com as fixtures do oráculo e **nunca toca no
+/// caminho do produto**, que tem a sua própria fonte de normais (a malha). *Uma
+/// lei medida na bancada e não ligada no produto é uma lei que o artista não
+/// tem* — a segunda vez que este pincel paga esta conta.
+///
+/// ⚠️ **A fixtura tem de DEFORMAR o bastante para as duas leituras se separarem**,
+/// senão ela passaria com qualquer das duas.
+#[test]
+fn o_traco_le_as_normais_da_superficie_que_encontrou() {
+    let mut brush = pincel();
+    brush.cloth_mode = crate::ClothMode::Inflate;
+    brush.radius = 0.5;
+    brush.strength = 1.0;
+    let (mesh, s) = arrastar(8, &brush);
+    let sessao = s
+        .cloth_ref
+        .iter()
+        .flatten()
+        .next()
+        .expect("o traco tinha de abrir uma sessao de tecido");
+    // (a) A malha MOVEU-SE, senão as duas leituras coincidem e o gate é vácuo.
+    let agora: Vec<[f32; 3]> = mesh.normals().to_vec();
+    let desvio = sessao
+        .normais
+        .iter()
+        .zip(&agora)
+        .map(|(f, n)| {
+            let c = f[0] * f64::from(n[0]) + f[1] * f64::from(n[1]) + f[2] * f64::from(n[2]);
+            1.0 - c.abs()
+        })
+        .fold(0.0f64, f64::max);
+    assert!(
+        desvio > 1e-3,
+        "as normais de agora sao as mesmas da fotografia (desvio {desvio:.2e}) -- \
+         a fixtura nao deforma o bastante e este gate seria vacuo"
+    );
+    // (b) A fotografia é a do PEN-DOWN: as normais de uma folha plana em repouso.
+    for (v, f) in sessao.normais.iter().enumerate() {
+        assert!(
+            f[2].abs() > 0.999,
+            "a normal guardada do vertice {v} nao e' a da folha plana: {f:?} -- \
+             a sessao esta' a guardar as normais de um passo posterior"
+        );
+    }
+
+    // ⭐⭐ **(c) O CONSUMO, e é esta metade que apanha um consumidor desligado.**
+    // As duas acima medem o CAMPO; um port que o guarde e depois leia
+    // `mesh.normals()` na hora passa nas duas. ⇒ aqui a fotografia é **trocada a
+    // meio do traço** e a malha tem de mudar. *Uma lei sobre o que se lê
+    // prova-se mexendo no que é lido.*
+    //
+    // ⛔ **A régua NÃO é «o deslocamento é puramente vertical»** — foi a 1.ª
+    // redacção, e ela mede a composição: mesmo com as normais planas o SOLVER
+    // move os vértices de lado (`0,122` contra `0,438`), porque as restrições de
+    // distância puxam quando a folha estica. *Medir a saída do passo inteiro não
+    // isola a direcção que a força escolheu.*
+    let corre = |trocar: bool| -> Vec<[f32; 3]> {
+        let mut mesh = plano();
+        let mut s = SculptStroke::default();
+        s.begin(&mesh);
+        for k in 0..8 {
+            let c = [0.02 * k as f32, 0.0, 0.0];
+            let passo = if k == 0 { [0.0; 3] } else { [0.02, 0.0, 0.0] };
+            s.dab(
+                &mut mesh,
+                &brush,
+                &dab_em(c, brush.radius, passo),
+                Symmetry::default(),
+            );
+            if trocar && k == 0 {
+                // Vira a fotografia de lado, a meio do traço.
+                for n in &mut s.cloth_ref[0].as_mut().expect("sessao").normais {
+                    *n = [1.0, 0.0, 0.0];
+                }
+            }
+        }
+        mesh.positions().to_vec()
+    };
+    let (a, b) = (corre(false), corre(true));
+    let mudou = a
+        .iter()
+        .zip(&b)
+        .map(|(p, q)| {
+            ((p[0] - q[0]).powi(2) + (p[1] - q[1]).powi(2) + (p[2] - q[2]).powi(2)).sqrt()
+        })
+        .fold(0.0f32, f32::max);
+    assert!(
+        mudou > 1e-3,
+        "trocar a fotografia a meio do traco nao mudou a malha (max {mudou:.2e}) -- \
+         o gesto nao le' o campo, le' as normais da malha de agora"
+    );
+}

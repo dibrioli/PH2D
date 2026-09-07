@@ -472,46 +472,67 @@ fn correr_com_blocos(
         "{nome}: passos != pontos do caminho"
     );
 
+    // ⚠️⚠️ **`tracos` é quantas vezes o MESMO gesto é repetido sobre a malha que o
+    // anterior deixou** (omissão `1`). Ele existe porque é a única leitura que
+    // separa *«a superfície do INÍCIO do traço»* de *«a superfície original do
+    // objecto»* (espec §4.2-ter): o 2.º traço lê as normais da cova que o 1.º
+    // abriu, não as planas.
+    let tracos = if t.chaves.contains_key("tracos") {
+        t.f("tracos") as usize
+    } else {
+        1
+    };
     let mut pos = rest.clone();
     let mut blocos: Vec<Vec<V3>> = Vec::with_capacity(passos);
-    let mut tecido = PincelTecido::pen_down(pincel, &pos, caminho[0], ordem_de_visita(&sup));
-    for k in 0..passos {
-        let cursor = caminho[k];
-        let prev = caminho[k.saturating_sub(1)];
-        let d3 = if pincel.modo == Modo::Agarrar {
-            let c0 = caminho[0];
-            [cursor[0] - c0[0], cursor[1] - c0[1], cursor[2] - c0[2]]
-        } else {
-            [
-                cursor[0] - prev[0],
-                cursor[1] - prev[1],
-                cursor[2] - prev[2],
-            ]
-        };
-        let delta = projecta(d3, eixo_da_vista(&sup));
-        let parado = k == 0 || dist(delta, [0.0; 3]) == 0.0;
-        let nrm = normais(&pos, &fs);
-        let passo = Passo {
-            cursor,
-            delta,
-            delta_3d: d3,
-            parado,
-            vista: eixo_da_vista(&sup),
-            normais: &nrm,
-            pressao: 1.0,
-        };
-        let simulou = tecido.passo(&pos, &anel, &passo);
-        if k == 0 {
-            reordenar_com(&mut tecido.sim, ordem);
-        }
-        if simulou {
-            for (v, act) in tecido.sim.activo.iter().enumerate() {
-                if *act {
-                    pos[v] = tecido.sim.x[v];
+    let mut tecido = PincelTecido::pen_down(pincel, &rest, caminho[0], ordem_de_visita(&sup));
+    for _traco in 0..tracos {
+        // ⭐ O repouso do traço e as normais dele são a malha que ESTE traço encontra.
+        let repouso_do_traco = pos.clone();
+        let normais_do_traco = normais(&pos, &fs);
+        tecido = PincelTecido::pen_down(pincel, &pos, caminho[0], ordem_de_visita(&sup));
+        let _ = &repouso_do_traco;
+        for k in 0..passos {
+            let cursor = caminho[k];
+            let prev = caminho[k.saturating_sub(1)];
+            let d3 = if pincel.modo == Modo::Agarrar {
+                let c0 = caminho[0];
+                [cursor[0] - c0[0], cursor[1] - c0[1], cursor[2] - c0[2]]
+            } else {
+                [
+                    cursor[0] - prev[0],
+                    cursor[1] - prev[1],
+                    cursor[2] - prev[2],
+                ]
+            };
+            let delta = projecta(d3, eixo_da_vista(&sup));
+            let parado = k == 0 || dist(delta, [0.0; 3]) == 0.0;
+            // ⭐⭐⭐ **As normais são as da superfície que o TRAÇO ENCONTROU**, não as
+            // de agora (espec §4.2-ter): dentro de um traço o pincel deforma a malha
+            // e continua a ler as normais com que o traço começou. ⛔ Recalculá-las
+            // por passo é o que fazia o Push e o Inflate errarem `0,24`.
+            let nrm = &normais_do_traco;
+            let passo = Passo {
+                cursor,
+                delta,
+                delta_3d: d3,
+                parado,
+                vista: eixo_da_vista(&sup),
+                normais: nrm,
+                pressao: 1.0,
+            };
+            let simulou = tecido.passo(&pos, &anel, &passo);
+            if k == 0 {
+                reordenar_com(&mut tecido.sim, ordem);
+            }
+            if simulou {
+                for (v, act) in tecido.sim.activo.iter().enumerate() {
+                    if *act {
+                        pos[v] = tecido.sim.x[v];
+                    }
                 }
             }
+            blocos.push(pos.clone());
         }
-        blocos.push(pos.clone());
     }
 
     (pos, tecido, blocos)
@@ -717,6 +738,8 @@ fn sonda_passo_a_passo() {
     .collect();
 
     let mut pos = rest.clone();
+    // ⚠️ UMA vez, no pen-down (espec §4.2-ter).
+    let normais_do_traco = normais(&pos, &fs);
     let mut tecido = PincelTecido::pen_down(pincel, &pos, c0, ordem_de_visita(&sup));
     // ⭐⭐ **As colunas nomeadas são as do anel PRÓXIMO (`1R`, `2R`)**, e a troca
     // é de 06/09: um defeito que vive num vértice só não se vê nas colunas do
@@ -761,14 +784,18 @@ fn sonda_passo_a_passo() {
             ]
         };
         let delta = projecta(d3, eixo_da_vista(&sup));
-        let nrm = normais(&pos, &fs);
+        // ⭐⭐⭐ **As normais são as da superfície que o TRAÇO ENCONTROU**, não as
+        // de agora (espec §4.2-ter): dentro de um traço o pincel deforma a malha
+        // e continua a ler as normais com que o traço começou. ⛔ Recalculá-las
+        // por passo é o que fazia o Push e o Inflate errarem `0,24`.
+        let nrm = &normais_do_traco;
         let passo = Passo {
             cursor,
             delta,
             delta_3d: d3,
             parado: k == 0,
             vista: eixo_da_vista(&sup),
-            normais: &nrm,
+            normais: nrm,
             pressao: 1.0,
         };
         let simulou = tecido.passo(&pos, &anel, &passo);
@@ -995,6 +1022,10 @@ const BARRA_PARIDADE: f64 = 0.13;
 /// Os traços que a lei REPRODUZ (espec §14 gate 15).
 const PARIDADE: [&str; VERDE_N] = [
     "esfera_arrastar_radial_dinamica",
+    "esfera_empurrar_radial_dinamica",
+    "esfera_empurrar_radial_local_1passo",
+    "esfera_inflar_radial_dinamica",
+    "esfera_inflar_radial_local_1passo",
     "plano_agarrar_plano_local",
     "plano_agarrar_radial_global_origem_1passo",
     "plano_agarrar_radial_local",
@@ -1009,9 +1040,6 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_apertar_linha_radial_local_1passo",
     "plano_apertar_linha_radial_local_origem",
     "plano_apertar_ponto_radial_local_1passo",
-    // ⭐⭐ O MESMO traço do `..._origem`, com a força `1,0 → 0,2`: lê `0,002` onde
-    // o de força cheia continua ABERTO — *a lei do aperto está certa, e o que
-    // diverge é o regime em que o ALVO deixa de ser determinista* (§5.2-ter).
     "plano_apertar_ponto_radial_local_origem_fraco",
     "plano_arrastar_radial_dinamica",
     "plano_arrastar_radial_dinamica_preset",
@@ -1030,12 +1058,14 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_arrastar_radial_local_pino",
     "plano_arrastar_radial_local_plast05",
     "plano_empurrar_plano_local",
+    "plano_empurrar_radial_global_origem",
+    "plano_empurrar_radial_local",
     "plano_empurrar_radial_local_1passo",
+    "plano_empurrar_radial_local_origem",
+    "plano_empurrar_radial_local_origem_amort1",
     "plano_empurrar_radial_local_origem_forca025",
-    // ⭐⭐⭐ **O SOLVER, SOZINHO, REPRODUZ O ALVO.** Um impulso conhecido no passo
-    // 2 e depois DEZ passos sem força nenhuma: `0,001` nos dois modos, com erro
-    // absoluto de `0,0001`. ⇒ *a relaxação está exonerada, e o resíduo do Push e
-    // do Inflate vive na aplicação REPETIDA de força sobre malha já deformada.*
+    "plano_empurrar_radial_local_origem_forca05",
+    "plano_empurrar_radial_local_origem_massa2",
     "plano_empurrar_radial_local_origem_parado",
     "plano_expandir_radial_global_origem_1passo",
     "plano_expandir_radial_local",
@@ -1052,10 +1082,14 @@ const PARIDADE: [&str; VERDE_N] = [
     "plano_gancho_radial_local_origem_1passo",
     "plano_gancho_radial_local_origem_1passo_constante",
     "plano_gancho_radial_local_origem_1passo_curto",
+    "plano_inflar_radial_local",
     "plano_inflar_radial_local_1passo",
+    "plano_inflar_radial_local_1passo_2tracos",
+    "plano_inflar_radial_local_origem",
+    "plano_inflar_radial_local_origem_massa2",
     "plano_inflar_radial_local_origem_parado",
 ];
-const VERDE_N: usize = 53;
+const VERDE_N: usize = 67;
 
 /// Os traços AINDA por explicar, com o valor MEDIDO em 2026-09-06 ao lado.
 ///
@@ -1075,27 +1109,16 @@ const VERDE_N: usize = 53;
 /// `[S, O, E, N]`, que já é a ordem crescente de índice.
 const ABERTOS: [(&str, f64); ABERTO_N] = [
     ("esfera_agarrar_radial_dinamica", 0.191),
-    ("esfera_apertar_linha_radial_dinamica", 0.682),
+    ("esfera_apertar_linha_radial_dinamica", 0.630),
     ("esfera_apertar_ponto_radial_dinamica", 0.650),
-    ("esfera_empurrar_radial_dinamica", 0.343),
     ("esfera_expandir_radial_dinamica", 0.581),
     ("esfera_gancho_radial_dinamica", 0.255),
-    ("esfera_inflar_radial_dinamica", 0.372),
-    ("plano_apertar_ponto_plano_local", 0.542),
+    ("plano_apertar_ponto_plano_local", 0.522),
     ("plano_apertar_ponto_radial_local", 0.650),
     ("plano_apertar_ponto_radial_local_origem", 0.968),
-    ("plano_arrastar_plano_local", 0.150),
-    ("plano_empurrar_radial_global_origem", 0.375),
-    ("plano_empurrar_radial_local", 0.237),
-    ("plano_empurrar_radial_local_origem", 0.252),
-    ("plano_empurrar_radial_local_origem_amort1", 0.342),
-    ("plano_empurrar_radial_local_origem_forca05", 0.169),
-    ("plano_empurrar_radial_local_origem_massa2", 0.235),
-    ("plano_inflar_radial_local", 0.245),
-    ("plano_inflar_radial_local_origem", 0.248),
-    ("plano_inflar_radial_local_origem_massa2", 0.206),
+    ("plano_arrastar_plano_local", 0.132),
 ];
-const ABERTO_N: usize = 20;
+const ABERTO_N: usize = 9;
 
 /// A folga de regressão sobre o valor medido de um traço ABERTO.
 const FOLGA_ABERTO: f64 = 1.25;
@@ -1271,6 +1294,8 @@ fn o_centro_do_snake_hook_esta_um_passo_atrasado() {
     let r = pincel.raio;
     let c0 = pp.caminho[0];
     let mut pos = rest.clone();
+    // ⚠️ UMA vez, no pen-down (espec §4.2-ter).
+    let normais_do_traco = normais(&pos, &fs);
     let mut tecido = PincelTecido::pen_down(pincel, &pos, c0, ordem_de_visita(&sup));
     let mut argmax = (0usize, 0.0f64);
     let mut cursor = c0;
@@ -1283,14 +1308,18 @@ fn o_centro_do_snake_hook_esta_um_passo_atrasado() {
             cursor[2] - prev[2],
         ];
         let delta = projecta(d3, eixo_da_vista(&sup));
-        let nrm = normais(&pos, &fs);
+        // ⭐⭐⭐ **As normais são as da superfície que o TRAÇO ENCONTROU**, não as
+        // de agora (espec §4.2-ter): dentro de um traço o pincel deforma a malha
+        // e continua a ler as normais com que o traço começou. ⛔ Recalculá-las
+        // por passo é o que fazia o Push e o Inflate errarem `0,24`.
+        let nrm = &normais_do_traco;
         let passo = Passo {
             cursor,
             delta,
             delta_3d: d3,
             parado: k == 0,
             vista: eixo_da_vista(&sup),
-            normais: &nrm,
+            normais: nrm,
             pressao: 1.0,
         };
         if tecido.passo(&pos, &anel, &passo) {

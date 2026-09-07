@@ -18,6 +18,11 @@ authors.workspace = true
 
 [dependencies]
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+# ⭐ Os EDITORES RICOS (curva, gradiente, paleta) — a crate-folha com dois hospedeiros: a row do
+# painel lateral e o CARTÃO daqui (doc 101 / doc 103).
+ph2d-param-editors = { path = "../ph2d-param-editors" }
+# Só os GATES da janela do editor leem a curva de volta (o produto trata-a como texto).
+ph2d-curve = { path = "../ph2d-curve" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 # `PointerButton` — the add-node menu opens on a right-click (Secondary) on empty

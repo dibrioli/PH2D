@@ -33,6 +33,7 @@ pub use paint_chrome::chrome_hit_id_for_tests;
 /// atravessar as duas crates (a fórmula aqui, a aplicação no `HeroLayout`).
 pub use split::split_fraction;
 mod param_edit;
+mod param_editor;
 mod probe;
 mod rename;
 mod snapshot;
@@ -189,6 +190,17 @@ impl Panel for MotionGraphPanel {
                 param_edit::commit(state, _host.store());
                 EventOutcome::Consumed
             }
+            // ⭐⭐ **O ARRASTO DE UMA ALÇA do editor rico** chega como `ValueChanged(raiz)` — o
+            // despacho guardou o ponto normalizado e este braço dobra-o no texto. ⚠️ Ele vem
+            // DEPOIS do braço da caixa de número de propósito: aquele compara com um id fixo,
+            // este pergunta ao editor aberto.
+            WidgetEvent::ValueChanged(id)
+                if param_editor::on_drag(state, _host.store_mut(), id) =>
+            {
+                EventOutcome::Consumed
+            }
+            // ⭐ **Um botão do editor rico** (`+` / `−` / interp).
+            WidgetEvent::Click(id) if param_editor::on_click(state, id) => EventOutcome::Consumed,
             // ⚠️ **O `Blur` é o ÚNICO fecho, e tem de ser** — ele é o que os TRÊS caminhos têm em
             // comum: o `Enter` (que manda `ValueChanged` e depois este), o `Esc` (que repõe o
             // buffer e manda **só** este) e o clique fora. Fechar no `ValueChanged` deixaria o

@@ -309,7 +309,7 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // makes every click resolve as Background — so a menu row drawn over a card /
     // socket still reaches the menu, and a click off the menu dismisses it
     // (`interact::apply_background`).
-    if state.menu.is_some() {
+    if state.menu.is_some() || state.editor.is_some() {
         hits.push((bg_hit_id(), GraphHitKind::Background, rect));
     }
 
@@ -326,6 +326,9 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // a de renomear: é um widget sobre o cartão, registado DEPOIS dos hits do grafo, para o
     // clique dentro dela chegar a ela e não à row que está por baixo.
     crate::param_edit::paint(state, ctx, &snap, &view);
+    // ⭐⭐ **A janela do editor rico** — por cima de tudo, e com os widgets dela registados
+    // DEPOIS do escudo de fundo, para o clique numa alça chegar à alça e o clique fora fechar.
+    crate::param_editor::paint(state, ctx, rect, theme);
 }
 
 /// Scale + center a bounding box into `rect`. `selection = Some(ids)` frames only

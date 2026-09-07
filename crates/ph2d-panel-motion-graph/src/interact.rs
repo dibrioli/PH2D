@@ -325,6 +325,11 @@ fn apply_background(
             // A tap on the scrollbar scrolled; it chose nothing, and it must not close the menu.
             if matches!(state.interaction, Interaction::MenuScroll { .. }) {
                 state.interaction = Interaction::Idle;
+            } else if state.editor.is_some() {
+                // ⭐ **Um clique fora do editor rico FECHA-O.** Ele chega aqui pelo escudo de
+                // fundo; os widgets do próprio editor estão registados por cima do escudo, logo
+                // um clique numa alça nunca passa por este braço.
+                state.editor = None;
             } else if let Some(menu) = state.menu.take() {
                 // A primary click while the menu is open closes it; a click on a
                 // row also adds that node at the menu's spawn point.

@@ -92,6 +92,7 @@ fn censo() -> Censo {
                 ClickDoes::CycleSource => "avança a fonte",
                 ClickDoes::CycleChannel => "avança o canal",
                 ClickDoes::OpensPicker => "abre o selector",
+                ClickDoes::OpensEditor => "abre o editor",
                 ClickDoes::TypeText => "escreve texto",
                 ClickDoes::Nothing => "NADA",
             };
@@ -393,52 +394,28 @@ fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
     );
 }
 
-/// **Medido em 2026-09-07: `5` de `683` rows** (eram `26` — saíram os **3** de ficheiro, as
-/// **4** fontes publicadas, as **4** cores, os **9** campos de texto e o **1** selector de
-/// canal; a tabela mostra-os fora) — reconciliado pela sonda, nunca escrito de memória. Ficam
-/// **três** espécies, e todas pedem a mesma coisa: uma superfície de edição que hoje só o
-/// painel tem.
+/// **Medido em 2026-09-07: `3` de `683` rows** (eram `26`) — reconciliado pela sonda, nunca
+/// escrito de memória. Ficam **duas** espécies, e as duas são editores de COR:
 ///
 /// | espécie | quantos | nós |
 /// |---|---:|---|
-/// | ~~campo de TEXTO~~ | ~~9~~ | ✅ **curado**: a caixa abre com o valor INTEIRO |
-/// | ~~amostra + selector de COR~~ | ~~4~~ | ✅ **curado**: o id da amostra passou a carregar o NÓ |
-/// | ~~selector de FONTE publicada~~ | ~~4~~ | ✅ **curado**: o clique anda pela lista viva |
-/// | ~~caminho + diálogo de FICHEIRO~~ | ~~3~~ | ✅ **curado**: o cartão pede, a shell abre |
-/// | ~~selector de CANAL~~ | ~~1~~ | ✅ **curado**: o clique anda pelos canais e escreve o PAR |
-/// | editor de CURVA | 2 | `value.curve` · `motion.strobe` |
+/// | ~~campo de TEXTO~~ | ~~9~~ | ✅ a caixa abre com o valor INTEIRO |
+/// | ~~amostra + selector de COR~~ | ~~4~~ | ✅ o id da amostra passou a carregar o NÓ |
+/// | ~~selector de FONTE publicada~~ | ~~4~~ | ✅ setas + lista, pela lista viva |
+/// | ~~caminho + diálogo de FICHEIRO~~ | ~~3~~ | ✅ o cartão pede, a shell abre |
+/// | ~~selector de CANAL~~ | ~~1~~ | ✅ o clique anda pelos canais e escreve o PAR |
+/// | ~~editor de CURVA~~ | ~~2~~ | ✅ **janela flutuante** sobre o cartão |
 /// | editor de GRADIENTE | 2 | `motion.color_ramp` · `fx.glow` |
 /// | editor de PALETA | 1 | `motion.color_array` |
 ///
-/// ⚠️ **O canal era o último dos BARATOS, e a régua de «barato» é uma só:** quem possui a lista
-/// é a **SHELL** (o selector, o diálogo, os publicados, as colunas que a corrente cozinhou),
-/// então o cartão só precisa de emitir a mesma intenção. Os **5** que ficam pedem uma
-/// superfície de EDIÇÃO — pontos que se arrastam, paradas que se movem, amostras que se
-/// acrescentam —, e essa não se pede por intenção nenhuma: ela tem de ser desenhada.
+/// ⚠️ **A curva foi o primeiro dos que pedem uma SUPERFÍCIE**, e a wave que a trouxe foi mais
+/// larga que ela: os três editores saíram do painel para uma crate-folha
+/// ([`ph2d_param_editors`]) com dois hospedeiros. Os dois que ficam já estão **movidos** — o
+/// que lhes falta é a metade de COR do hospedeiro novo: uma amostra de parada abre o selector
+/// OKLCH, e a shell tem de saber ler a escolha de volta para dentro da string com o id do
+/// CARTÃO (que carrega o nó), e não com o do painel (que não carrega).
 ///
-/// ⚠️ **Os `4 + 3 + 4 = 11` de cor, ficheiro e fonte eram os BARATOS:** quem abre o selector, o
-/// diálogo e a lista de publicados é a **SHELL**, não o painel — o cartão só precisa de emitir a
-/// mesma intenção. Os outros `15` pedem uma superfície de edição que hoje só o painel tem.
-///
-/// ⛔⛔ **A COR NÃO É BARATA, e o obstáculo só apareceu ao medir — não é plumbing, é o ID.**
-/// O selector abre por **registo** (`WidgetStore::register_picker_swatch`), não por intenção, e
-/// o id de uma amostra é [`ph2d_panel_motion_params::param_swatch_id`], que é função **só do
-/// nome do param âncora**. O doc dele diz porquê: *«unique within a node»* — e é verdade **no
-/// painel**, onde existe **um** nó selecionado de cada vez.
-///
-/// ⚠️ **No CARTÃO essa premissa cai:** vinte cartões são visíveis ao mesmo tempo, e dois
-/// `motion.tint` na tela pediriam **o mesmo id**. E a leitura de volta
-/// (`motion_bridge_color::picker_session`) compara `store.picker_target()` com os grupos do nó
-/// **SELECCIONADO** — com o id ambíguo, escolher a cor de um cartão escreveria no outro, em
-/// silêncio.
-///
-/// ⇒ **A cura é o id passar a carregar o NÓ** (`param_swatch_id_for(node, anchor)`), com a
-/// leitura de volta a resolver o nó a partir do id em vez de o presumir. É uma wave própria:
-/// toca a pintura do painel, a semeadura e a leitura de volta — e ⛔ **um id só com o nome do
-/// param, copiado para o cartão, é a forma exacta de escrever no objecto errado**.
-///
-/// ⭐ **E o primeiro dos três provou que a estrada já estava construída:** o
-/// `apply_graph_intents` **já traduzia** as intenções do cartão para as do painel (é assim que
-/// o `SetParam` de um arrasto no cartão chega ao documento), então o ficheiro custou **um
-/// braço em cada lado** — nenhuma lei nova, nenhuma segunda porta.
-const TRANCADOS_NO_PAINEL: usize = 5;
+/// ⛔ **A janela FLUTUA e isso é medido, não estético:** o cartão tem `190 px` de largura e o
+/// cabeçalho do editor de gradiente pede `~208` só para os cinco botões. Encolher um controlo
+/// que se ARRASTA é tirar-lhe a única coisa que ele oferece.
+const TRANCADOS_NO_PAINEL: usize = 3;

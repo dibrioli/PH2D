@@ -422,6 +422,10 @@ pub struct MotionGraphPanelState {
     /// click-then-Delete idiom the alt-click Disconnect had no visible affordance for.
     pub(crate) selected_wires: BTreeSet<(u32, u16)>,
     pub(crate) interaction: Interaction,
+    /// ⭐⭐⭐ **O EDITOR RICO ABERTO** (curva, e a seguir gradiente e paleta) — a janela
+    /// flutuante que o cartão abre para os controlos que não cabem numa fileira de `22 px`.
+    /// Ver [`crate::param_editor`]. Estado de VISTA: morre com o painel, não é intenção nenhuma.
+    pub(crate) editor: Option<crate::param_editor::Open>,
     /// Open add-node popup, or `None`. Opened by R-click on empty canvas / `A`;
     /// closed by picking a row, clicking away, or Esc.
     pub(crate) menu: Option<Menu>,

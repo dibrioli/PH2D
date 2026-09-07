@@ -66,6 +66,17 @@ fn working(value: &str) -> Curve {
     }
 }
 
+/// **A ALTURA que este editor ocupa** — o cabeçalho mais a tela, e é constante: uma curva tem
+/// sempre a mesma caixa, quantos pontos tenha.
+///
+/// ⚠️ **Ela existe porque um hospedeiro FLUTUANTE precisa de saber a altura ANTES de desenhar**
+/// (o fundo do painel vem primeiro na cena), e o `paint` só a devolve depois. *Duas contas da
+/// mesma altura seriam um fundo que não cobre o que está lá dentro.*
+#[must_use]
+pub fn height() -> f32 {
+    ph2d_tokens::row_pitch_px() + CANVAS_H
+}
+
 /// One control point's store-registration data (the `CurvePoint` state the paint pass
 /// hands back for the caller's mutable-store pass — `lib.rs` Phase C — to apply).
 pub struct CurveWidgets {

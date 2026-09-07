@@ -39,7 +39,20 @@ fn publish_card_texts(motion: &MotionState, snap: &ph2d_panel_motion_graph::Grap
             continue;
         };
         for h in motion.registry.param_ui(type_id).unwrap_or(&[]) {
-            if h.widget != ph2d_node_registry::ParamWidget::Text {
+            // ⭐⭐ **Os EDITORES RICOS entram aqui, e a razão é a mesma da caixa de texto:**
+            // o valor deles é uma serialização inteira (`c1 0:0:L 0.5:1:S 1:0:L`), e o cartão
+            // guarda o TRUNCADO. A janela do editor abre com ESTE, senão o primeiro arrasto
+            // gravaria por cima do resto da curva.
+            //
+            // ⛔ **A row continua a não MOSTRAR nada** para eles (`card_text`) — mostrar é uma
+            // pergunta, publicar é outra: o selo é a resposta certa para texto de máquina.
+            if !matches!(
+                h.widget,
+                ph2d_node_registry::ParamWidget::Text
+                    | ph2d_node_registry::ParamWidget::Curve
+                    | ph2d_node_registry::ParamWidget::Gradient
+                    | ph2d_node_registry::ParamWidget::Palette
+            ) {
                 continue;
             }
             let valor = motion

@@ -174,6 +174,14 @@ pub(super) fn apply_param_row(
                     state.interaction = Interaction::Idle;
                     return;
                 }
+                // ⭐⭐⭐ **A JANELA DO EDITOR RICO** — a última família que só o painel lateral
+                // sabia abrir. ⚠️ Ela não é um `arm` de caixa: o que abre é uma superfície de
+                // DESENHO, com alças que se arrastam, e por isso vive numa janela própria.
+                ClickDoes::OpensEditor => {
+                    crate::param_editor::arm(state, node, p, row_rect);
+                    state.interaction = Interaction::Idle;
+                    return;
+                }
                 // ⭐⭐ **Uma fonte e um canal têm as MESMAS duas setas e a mesma lista** — o
                 // que muda é quem resolve o passo: a lista deles é VIVA (o que o artista
                 // desenhou, o que a corrente de cima cozinhou), logo é a shell que sabe qual é
@@ -279,6 +287,10 @@ pub enum ClickDoes {
     CycleChannel,
     /// **Abre a caixa para ESCREVER um texto** — um nome de coluna, um sinal, uma fórmula.
     TypeText,
+    /// **Abre o EDITOR RICO** — a janela flutuante de uma curva (e, a seguir, de um gradiente
+    /// e de uma paleta). Ver [`crate::param_editor`]: ela flutua porque não cabe numa fileira
+    /// de `22 px` de um cartão de `190`.
+    OpensEditor,
     /// **Abre o selector de cor** — ⚠️ e quem o abre **não é este gesto**: a amostra está
     /// registada como *picker swatch*, e o `pointer_down` do `editor-core` intercepta o clique
     /// antes de ele chegar aqui. Esta variante existe para o **censo** saber que a row é
@@ -305,6 +317,7 @@ pub fn click_does(p: &crate::CardParam) -> ClickDoes {
         ph2d_node_registry::ParamWidget::Channels { .. } => ClickDoes::CycleChannel,
         ph2d_node_registry::ParamWidget::Text => ClickDoes::TypeText,
         ph2d_node_registry::ParamWidget::Color { .. } => ClickDoes::OpensPicker,
+        ph2d_node_registry::ParamWidget::Curve => ClickDoes::OpensEditor,
         _ => ClickDoes::Nothing,
     }
 }

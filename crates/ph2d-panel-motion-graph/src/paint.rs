@@ -314,7 +314,7 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     }
 
     register_hits(ctx, rect, &hits);
-    crate::hits::register_card_swatches(ctx, &snap);
+    crate::hits::register_card_swatches(ctx, &snap, &view, rect);
     // O balão do socket sob o rato — UM por quadro, derivado da lista de hits acima.
     register_hot_tip(ctx, &snap.nodes, &hits);
 

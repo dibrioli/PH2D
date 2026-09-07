@@ -196,3 +196,102 @@ fn the_row_text_truncates_on_a_character_never_inside_one() {
     // E o caso curto passa inteiro.
     assert_eq!(crate::RowText::new("dados.csv").as_str(), "dados.csv");
 }
+
+/// A cor de teste e o id que a shell atribuiria à amostra.
+const SWATCH_RGBA: [u8; 4] = [200, 40, 60, 255];
+const SWATCH_ID: u64 = 0xC010_1234;
+
+fn swatch_node() -> GraphNodeView {
+    let mut n = node(1);
+    let mut p = CardParam::from_hint(
+        ParamUiHint {
+            param: "r",
+            label: "Colour",
+            min: 0.0,
+            max: 1.0,
+            step: 0.01,
+            widget: ParamWidget::Color {
+                channels: ["r", "g", "b", "a"],
+            },
+        },
+        0.0,
+    );
+    p.swatch = Some(SWATCH_RGBA);
+    p.swatch_id = Some(SWATCH_ID);
+    n.params = vec![p];
+    n
+}
+
+/// ⭐⭐⭐ **CLICAR NA AMOSTRA DE UM CARTÃO ABRE O SELECTOR** — pelo despachante REAL.
+///
+/// ⛔⛔ **É o gate que faltava, e o smoke do Enio cobrou-o**: *«o color picker não abre ao
+/// clicar na amostra de cor dentro do nó no grafo»*. Os dois gates que eu tinha mediam a **lei**
+/// — que o id carrega o nó, e que a shell resolve o nó a partir do id — e **nenhum dos dois está
+/// na estrada que o clique percorre**. A lei estava certa o tempo todo.
+///
+/// **O mecanismo:** tudo o que o `push_param_row_hits` produz é registado como
+/// [`ph2d_editor_core::interaction::InteractiveState::GraphSurface`], e o `pointer_down` do
+/// `editor-core` **captura toda superfície de grafo e RETORNA** — ~200 linhas antes do ramo que
+/// abre o selector. A amostra estava marcada, com o id certo e a cor semeada, e o clique nunca
+/// chegava ao sítio onde isso é lido.
+///
+/// ⚠️ **Por isso este gate tem de pintar e DESPACHAR**, nunca chamar o gesto do painel: um teste
+/// que empurra o gesto já assumiu a resposta (é o que o doc do `dispatch_pointer_event` avisa).
+///
+/// FALSIFICADO por voltar a registar a amostra em `push_param_row_hits`: a captura do grafo
+/// engole o Down e `picker_target()` fica `None`.
+#[test]
+fn clicking_a_card_swatch_opens_the_shared_colour_picker() {
+    use ph2d_editor_core::NodeId;
+    set_current_motion_graph(Some(GraphViewSnapshot {
+        level: None,
+        breadcrumb: Vec::new(),
+        nodes: vec![swatch_node()],
+        edges: Vec::new(),
+        backdrops: Vec::new(),
+        probe: None,
+        now: 0.0,
+    }));
+    let viewport = Rect::new(0.0, 0.0, W, H);
+    let mut layout = HeroLayout::for_viewport(viewport);
+    layout.motion_graph = viewport;
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionGraphPanel>();
+    let mut state = MotionGraphPanelState {
+        view: ViewState {
+            zoom: 1.0,
+            ..ViewState::default()
+        },
+        fitted: true,
+        ..MotionGraphPanelState::default()
+    };
+    let _ =
+        host.paint_and_count_geometry_with_layout::<MotionGraphPanel>(&mut state, layout, viewport);
+
+    // O centro da row da cor — a MESMA conta que a pintura usou.
+    let view = crate::geom::View::new(viewport, state.view);
+    let r = crate::geom::param_row_rect(&swatch_node(), &view, 0);
+    host.dispatch_pointer_event(ph2d_host::PointerEvent {
+        x: r.x + r.w * 0.5,
+        y: r.y + r.h * 0.5,
+        pressure: 1.0,
+        kind: ph2d_host::PointerKind::Down,
+        source: ph2d_host::PointerSource::Mouse,
+        button: ph2d_host::PointerButton::Primary,
+        timestamp_ns: 1,
+    });
+    set_current_motion_graph(None);
+
+    assert_eq!(
+        host.store().picker_target(),
+        Some(NodeId(SWATCH_ID)),
+        "o Down na amostra tem de ABRIR o selector — se ficou `None`, a captura da superficie \
+         de grafo engoliu o clique outra vez"
+    );
+    // ⚠️ E a SEMENTE: sem ela o selector abre no cinzento de omissao (`0x888888`), e o primeiro
+    // toque escreve esse cinzento no no'.
+    assert_eq!(
+        host.store().widget_color(NodeId(SWATCH_ID)),
+        Some(SWATCH_RGBA),
+        "o selector tem de abrir NA COR da amostra"
+    );
+}

@@ -123,19 +123,26 @@ pub(crate) fn push_param_row_hits(
             Some(_) => {}
             None => break,
         }
+        // ⛔⛔ **UMA ROW DE COR NÃO ENTRA AQUI, e o motivo é o DESPACHO.** Tudo o que esta
+        // lista produz é registado como [`InteractiveState::GraphSurface`] — e o
+        // `pointer_down` do `editor-core` **captura toda superfície de grafo e RETORNA**
+        // (~200 linhas antes do ramo que abre o selector de cor). Uma amostra registada como
+        // superfície fica marcada, com o id certo, com a cor semeada — e o clique nunca chega
+        // ao sítio onde isso é lido. *A lei estava certa e a estrada não passava por lá.*
+        //
+        // ⇒ a amostra é registada por [`register_card_swatches`], **só no índice de hits**,
+        // que é exactamente o que a row do painel faz (`hit_index.register(swatch_id, …)` e
+        // nenhum `store.register`). Ali `graph_surface_at_id` devolve `None`, o despacho
+        // atravessa, e o selector abre.
+        if matches!(crate::geom::band_at(n, i),
+            Some(crate::geom::BandRow::Param(k)) if n.params[k].swatch_id.is_some())
+        {
+            continue;
+        }
         let Ok(row) = u16::try_from(i) else { continue };
         if let Some(r) = clip_rect(crate::geom::param_row_rect(n, view, i), canvas) {
-            // ⭐ Uma row de COR regista-se com o id da AMOSTRA (que a shell atribuiu, com o nó
-            // lá dentro): é ele que o selector de cor reconhece. As outras usam o id derivado
-            // da posição, como sempre.
-            let id = match crate::geom::band_at(n, i) {
-                Some(crate::geom::BandRow::Param(k)) => n.params[k]
-                    .swatch_id
-                    .map_or_else(|| param_row_hit_id(n.id, row), NodeId),
-                _ => param_row_hit_id(n.id, row),
-            };
             hits.push((
-                id,
+                param_row_hit_id(n.id, row),
                 GraphHitKind::ParamRow {
                     node: n.id as u64,
                     row,
@@ -447,25 +454,53 @@ pub(crate) fn wire_hit_id(to_node: u32, to_port: u16) -> NodeId {
 #[path = "hits_tests.rs"]
 mod tests;
 
-/// ⭐⭐ **AS AMOSTRAS DE COR DE UM CARTÃO SÃO SELECTORES** — a marca que faz um clique nelas
-/// abrir o selector OKLCH, exactamente como na row do painel.
+/// ⭐⭐ **AS AMOSTRAS DE COR DE UM CARTÃO SÃO SELECTORES** — o alvo, a semente e a marca.
 ///
-/// ⚠️ **São DUAS coisas e não uma:** o alvo (o `register` que [`register_hits`] faz, com o id
-/// que a shell atribuiu) e a **marca** aqui. Sem a marca a amostra é pintada, é clicável, e não
-/// abre nada — a forma do controlo morto que este painel já pagou no cabeçalho de secção.
-pub(crate) fn register_card_swatches(ctx: &mut PaintCtx, snap: &GraphViewSnapshot) {
-    let store = ctx.host.store_mut();
+/// ⚠️ **São TRÊS coisas, e faltando qualquer uma o clique não abre nada:**
+/// 1. o **alvo** — o rectângulo no índice de hits, sob o id que a shell atribuiu. ⛔ E **só**
+///    ali: um `store.register` faria dele uma [`InteractiveState::GraphSurface`], e o
+///    `pointer_down` **captura toda superfície de grafo e retorna** antes do ramo do selector.
+///    É a mesma forma que a row do painel usa, e por isso ela funciona há meses;
+/// 2. a **semente** — sem ela o `pointer_down` lê `widget_color(id)` e encontra o omisso
+///    `0x888888`: o artista clica num vermelho, vê o selector abrir CINZENTO, e o primeiro
+///    toque escreve esse cinzento no nó;
+/// 3. a **marca** — sem ela a amostra é pintada, é clicável, e não abre nada.
+///
+/// ⚠️ **Corre DEPOIS do [`register_hits`]**, de propósito: no índice de hits ganha quem regista
+/// por último, e a amostra tem de ganhar ao corpo do cartão que está por baixo dela.
+pub(crate) fn register_card_swatches(
+    ctx: &mut PaintCtx,
+    snap: &GraphViewSnapshot,
+    view: &crate::geom::View,
+    canvas: Rect,
+) {
+    if !crate::geom::param_row_is_grabbable(view) {
+        return;
+    }
+    let mut alvos: Vec<(NodeId, [u8; 4], Rect)> = Vec::new();
     for n in &snap.nodes {
-        for p in &n.params {
+        for i in 0..crate::geom::band_len(n) {
+            let Some(crate::geom::BandRow::Param(k)) = crate::geom::band_at(n, i) else {
+                continue;
+            };
+            let p = &n.params[k];
             let (Some(id), Some(rgba)) = (p.swatch_id, p.swatch) else {
                 continue;
             };
-            // ⚠️ **A SEMENTE é a terceira coisa, e sem ela o selector abre CINZENTO.** O
-            // `pointer_down` lê `widget_color(id)` para o abrir na cor que lá está, e o
-            // omisso é `0x888888`: o artista clicaria num vermelho e veria o selector abrir
-            // num cinzento — e o primeiro toque escreveria esse cinzento no nó.
-            store.set_widget_color(NodeId(id), rgba);
-            store.register_picker_swatch(NodeId(id));
+            if let Some(r) = clip_rect(crate::geom::param_row_rect(n, view, i), canvas) {
+                alvos.push((NodeId(id), rgba, r));
+            }
         }
+    }
+    {
+        let store = ctx.host.store_mut();
+        for (id, rgba, _) in &alvos {
+            store.set_widget_color(*id, *rgba);
+            store.register_picker_swatch(*id);
+        }
+    }
+    let hit_index = ctx.host.hit_index_mut();
+    for (id, _, r) in &alvos {
+        hit_index.register(*id, *r);
     }
 }

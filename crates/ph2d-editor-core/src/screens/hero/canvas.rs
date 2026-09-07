@@ -32,13 +32,31 @@ pub fn canvas_backdrop(theme: Theme) -> ph2d_tokens::Color {
     ColorToken::Bg1.resolve(theme)
 }
 
+/// ⭐⭐⭐ **O CHÃO da janela, e a ÁREA como um cartão sobre ele.**
+///
+/// Enio, 2026-09-07, com o Godot ao lado: *«os painéis, o canvas, a timeline, na Godot parecem
+/// cards, e assim os espaços entre cards ficam legais… a aparência de cards me parece mais pro»*.
+///
+/// ⛔⛔ **A divisória da wave 30 não bastou, e a razão estava AQUI:** o fundo da janela era o `Bg0`
+/// e a seguir o `Bg1` cobria-o inteiro — os dois **mais claros** que o painel (`#1B1B1B` e
+/// `#1F1F1F` contra `#131313` no Dark). ⇒ o vão de 4 px mostrava uma cor mais **clara** que as
+/// superfícies que ele separava, que é o oposto de uma divisória. *Um espaço só se lê se o que
+/// aparece nele estiver ATRÁS das duas coisas que ele separa.*
+///
+/// ⇒ o chão passa a ser o [`ColorToken::WindowGround`], um degrau abaixo do painel, e o fundo do
+/// desenho passa a cobrir a **`draw_area`** com quina — deixando o chão à vista nas divisórias.
+///
+/// ⚠️ **A cor do fundo do desenho não mudou** (`canvas_backdrop`, o `Bg1` que o dono aprovou): o
+/// que mudou é onde ela acaba.
 pub fn paint_canvas_bg(layout: &HeroLayout, scene: &mut VectorScene, theme: Theme) {
     scene.fill_rect(
         rect_to_vello(layout.viewport),
-        resolve(ColorToken::Bg0, theme),
+        resolve(ColorToken::WindowGround, theme),
     );
-    scene.fill_rect(
-        rect_to_vello(layout.canvas),
+    crate::paint::fill_rounded_rect(
+        scene,
+        layout.draw_area,
+        crate::paint::frame_radius(theme, ph2d_tokens::Radius::Md.px()),
         crate::paint::token_to_vello(canvas_backdrop(theme)),
     );
 }

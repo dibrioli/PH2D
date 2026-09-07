@@ -374,6 +374,22 @@ color_tokens! {
     /// pure overlay. Lower transparency than `RailBg` — content
     /// readability stays priority on panel bodies.
     PanelBg => "panel-bg",
+    /// ⭐⭐⭐ `window-ground` — **o CHÃO da janela**, um degrau abaixo do painel.
+    ///
+    /// Enio, 2026-09-07, com o Godot ao lado: *«os painéis, o canvas, a timeline, na Godot parecem
+    /// cards, e assim os espaços entre cards ficam legais… a aparência de cards me parece mais
+    /// pro»*.
+    ///
+    /// ⛔⛔ **A divisória de 4 px sozinha não bastou, e a medição diz porquê:** o painel desta casa
+    /// **É** o tom mais escuro (`#131313` no Dark, mais fundo que o `bg-0`), logo ele já estava ao
+    /// nível do chão — e um vão entre duas superfícies do mesmo tom não mostra nada. *No Godot o
+    /// chão é o mais escuro e cada área SOBE dele; aqui não havia de onde subir.*
+    ///
+    /// ⚠️ **Quem desce é o CHÃO, não quem sobe é o painel** — pelo mesmo motivo que a wave 4
+    /// escreveu ao descer o painel: o `Bg1` responde a duas perguntas (o fundo do canvas e o de um
+    /// cartão), e mexer nele move o canvas que o dono aprovou. O chão é superfície nova e não tem
+    /// pergunta agarrada.
+    WindowGround => "window-ground",
 
     // ── Borders (3 levels) ─────────────────────────────────────────
     /// `border` — low-contrast separators.

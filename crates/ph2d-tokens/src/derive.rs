@@ -200,6 +200,11 @@ pub struct Roles {
     /// pergunta agarrada; o canvas fica byte a byte no que o dono aprovou. É também o que o
     /// Blender faz: os painéis são mais escuros que a área de trabalho.
     pub panel: Rgb,
+    /// ⭐⭐ **O CHÃO da janela** — um degrau abaixo do painel, na mesma família multiplicativa.
+    ///
+    /// É o que faz cada área ler-se como um cartão: sem ele o painel É o tom mais escuro, e a
+    /// divisória entre duas áreas não tem nada para mostrar.
+    pub ground: Rgb,
     pub contrast_1: Rgb,
     pub contrast_2: Rgb,
     pub font: Rgb,
@@ -214,6 +219,12 @@ pub struct Roles {
     pub extra_border_a: f32,
     pub contrast: f32,
 }
+
+/// **O degrau entre o painel e o CHÃO da janela**, em fracção de canal (≈ 10/255).
+///
+/// ⛔ Absoluto de propósito — ver a nota no `ground`. O valor é o piso a que a separação ainda se
+/// lê nos quatro temas modernos, e o gate `the_ground_stands_under_every_panel` mede-o.
+const GROUND_STEP: f32 = 0.04;
 
 impl Inputs {
     /// As entradas de um tema moderno; `None` para a família clássica.
@@ -278,6 +289,11 @@ impl Inputs {
                 Rgb::new(0.8, 0.22, 0.22),
             )
         };
+        // ⭐ O painel sai antes do `Roles` porque o CHÃO deriva DELE, e não da base: no tema claro
+        //    a escada da base satura (o painel já está a 1/255 do branco), e um degrau «mais um
+        //    passo na mesma direcção» não separa nada. Derivar do painel dá a mesma leitura nos
+        //    quatro: uma superfície um degrau ABAIXO daquela em que as áreas assentam.
+        let panel = base.lerp(Rgb::BLACK, c * 1.8);
         Roles {
             base,
             accent: self.accent,
@@ -289,7 +305,19 @@ impl Inputs {
             // Dark, 19 no Gray e 14 no Light (gate `a_card_stands_off_its_panel`), contra os 4
             // que o dono viu. ⛔ O OLED tem base preta: a família multiplicativa colapsa lá, e
             // quem separa é a *Draw Extra Borders*, como no Godot.
-            panel: base.lerp(Rgb::BLACK, c * 1.8),
+            panel,
+            // ⚠️ O degrau seguinte da mesma escada. ⛔ No OLED a base é preta e a família colapsa
+            //    — lá quem separa é a *Draw Extra Borders*, como no Godot e como o `panel` já nota.
+            // ⚠️ **Um degrau ABSOLUTO, e não uma fracção.** Uma fracção do painel dá 9/255 no
+            //    Dark e **114** no Light — porque o painel claro está a 1/255 do branco e a mesma
+            //    fracção cobre uma distância enorme. *Uma escada relativa mede-se em passos
+            //    diferentes conforme onde se está nela.*
+            ground: Rgb::new(
+                panel.r - GROUND_STEP,
+                panel.g - GROUND_STEP,
+                panel.b - GROUND_STEP,
+            )
+            .clamp(),
             contrast_1: base.lerp(mono, c_floor * 1.15),
             contrast_2: base.lerp(mono, c_floor * 1.725),
             font: mono.over(base, 0.8),
@@ -339,6 +367,7 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
         "bg-3" => r.base.lerp(r.mono, c * 0.5).color(),
         "bg-elev" => r.base.lerp(r.mono, c * 0.3).color(),
         "panel-bg" => r.panel.color(),
+        "window-ground" => r.ground.color(),
         // O trilho é da mesma família do painel: mais claro que ele faria o cromo lateral saltar
         // à frente do conteúdo.
         "rail-bg" => r.panel.with_alpha(0.85),

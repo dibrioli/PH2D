@@ -8,8 +8,19 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**33 handoffs** · **11** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
-§5 aponta como o detalhe de mecanismo de uma integração).
+**37 handoffs** (= ficheiros na pasta, conferido) · **18** marcados **◆** — mas
+⚠️ **só `14` são de facto citados pelo `CLAUDE.md`**, medido em 2026-09-07 assim:
+
+```
+for f in docs/3D/handoffs/*.md; do grep -q "$(basename $f)" CLAUDE.md && echo "$f"; done | wc -l
+```
+
+⛔ **Este cabeçalho dizia `33 · 11` com `37` ficheiros na pasta** — *uma nota ao
+lado de uma conta descreve a população que ela tinha quando foi escrita*, e quem
+acrescenta um handoff herda a conta que não vê. ⇒ **derive os dois números pelo
+comando acima antes de os citar**; a coluna **◆** é mantida à mão e está `4`
+marcas à frente da realidade (⏳ reconciliá-la é trabalho de quem tocar nas
+linhas marcadas, não desta).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -49,6 +60,7 @@
 | 2026-09-03 | ★ | [HANDOFF_line_quadextract_A_CALOTA_E_A_GRAVATA_2026-09-03.md](HANDOFF_line_quadextract_A_CALOTA_E_A_GRAVATA_2026-09-03.md) | linha | ⭐⭐⭐ **A ponta deixa de ser amputada na realização do PRÓPRIO dono** (`0/5` contra `1/5`, grade no bico `3,51 → 0,79`): a fase zero ganha uma **calota resolvida** por espinho afiado (`ph2d_remesh_iso::Cap`) e o acabamento passa a **desfazer gravatas** (`ph2d_quadfill::untangle_bowties`) — a candidata verde existia e perdia por UMA face dobrada, na 3.ª chave do selector. ⚠️ O log da decisão imprimia `n−1` das `n` chaves |
 | 2026-09-06 | ★ | [HANDOFF_line_sculpt3d_O_PINCEL_DE_TECIDO_2026-09-06.md](HANDOFF_line_sculpt3d_O_PINCEL_DE_TECIDO_2026-09-06.md) | linha | ⭐⭐⭐ **O pincel de TECIDO passa a ser o do alvo** — a lei da referência vira o caminho de omissão, com **29 dos 54** traços do oráculo dentro da barra (8 ao bit) e os **oito modos + três áreas na TELA**. Três leis achadas, e nenhuma era o que se procurava: a lista de restrições do *Local* vem em **duplicado**, o centro da queda do Snake Hook está **um passo atrasado**, e no aperto **não falta lei nenhuma** — ali o alvo inverte a malha e a ORDEM decide. ⚠️ Duas das três barras do gate de artefactos foram **retiradas**: elas reprovavam a saída do próprio alvo |
 | 2026-09-06 | ★ ◆ | [HANDOFF_INTEGRACAO_line_sculpt3d_TECIDO_2026-09-06.md](HANDOFF_INTEGRACAO_line_sculpt3d_TECIDO_2026-09-06.md) | integração | ⭐⭐⭐ **O handoff de INTEGRAÇÃO da linha do pincel de tecido** — 81 commits, 153 ficheiros, base `53832c884`. Crate **nova** `ph2d-cloth`. ⚠️ Superfície de colisão **limpa**: zero schema mexido, zero contrato congelado, zero ADR, zero tecto de LOC; o foundational tocado são **dois arrays de ids e duas chaves de i18n**, os dois em ficheiros que já são do sculpt3d e append-only. Traz as **seis** coisas que uma leitura rápida do diff entende ao contrário |
+| 2026-09-07 | ★ ◆ | [HANDOFF_INTEGRACAO_line_sculpt3d_FECHO_2026-09-07.md](HANDOFF_INTEGRACAO_line_sculpt3d_FECHO_2026-09-07.md) | integração | ⭐⭐⭐ **O FECHO da linha, com o smoke APROVADO pelo dono** — 74 commits, 124 ficheiros, base `815555aed`. O pincel de tecido passa a ter **todo controlo que o alvo oferece** (`86` traços, `79` dentro da barra), e três achados valem mais que os controlos: o ***Normal Weight* NÃO EXISTE neste pincel** (provado por duas fixtures idênticas ao bit), a base persistente **satura**, e a colisão custa `2,6×`–`6,1×` o dab — o número que justifica ela nascer desligada. ⛔⛔ **E o smoke devolveu um defeito que NÃO era do tecido:** tocar num chip numérico do painel prendia o foco nele para o resto da sessão e matava `Delete`, `Ctrl+Z` e todo atalho da cena 3D (*«o Del parou»* + *«não temos undo para Cloth»* eram **um defeito, dois relatos**). A cura é uma PORTA com dois chamadores, e vale para os **três** consumidores de canvas que devolvem cedo. ⚠️ O §7 traz **sete** coisas que uma leitura rápida do diff entende ao contrário |
 
 ---
 

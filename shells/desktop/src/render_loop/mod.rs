@@ -9417,6 +9417,41 @@ impl crate::App {
             for order in std::mem::take(&mut self.vec_restack) {
                 crate::vec_entities::restack(sim, &self.vec_entities, &order);
             }
+            // ⭐⭐⭐ **O ARRASTO DA HIERARQUIA ESCREVE A ÁRVORE, LOGO ELE MORA AQUI** — ao lado do
+            // `restack` e dos três `assign_missing_*`, e **antes** de a árvore ser lida.
+            //
+            // ⛔⛔ **Report do Enio, 2026-09-07: *«reordenei objectos na hierarquia e não funcionou
+            // o undo»*.** Ele estava certo, e o defeito NÃO era o undo: era este dreno correr
+            // ~2 340 linhas **depois** da projecção, dentro do `hierarchy::dispatch`. A sequência
+            // medida com `PH2D_UNDO_LOG=1`:
+            //
+            //   * quadro N — a árvore muda (`RootOrder` de `[(1,0),(2,1),(3,2)]` para
+            //     `[(1,0),(2,2),(3,1)]`), mas a projecção já correu sobre a árvore VELHA ⇒ a
+            //     captura do fim do quadro guarda `world` novo com `vec` **velho**;
+            //   * quadro N+1 — a projecção lê a árvore nova e reescreve a pilha; sem entrada, o
+            //     passo é SUPRIMIDO e funde-se no seguinte;
+            //   * mais tarde nasce um passo cujo conteúdo inteiro é `partes: ["vec"]`
+            //     (`base=[0,1,2] atual=[0,2,1] · só a ORDEM=true`) — um **fantasma**;
+            //   * `Ctrl+Z` repõe a pilha e **não** a árvore, a projecção do quadro seguinte
+            //     re-deriva a pilha da árvore que ninguém desfez, e o fantasma **renasce**. O log
+            //     do dono mostra o ciclo a repetir-se com a fila parada em `5`: cada `Ctrl+Z` gasta
+            //     um passo que o próprio quadro volta a criar, e o passo REAL (o `["world"]`)
+            //     nunca chega a ser alcançado.
+            //
+            // ⚠️ **É a doença que o [`crate::vec_entities::z_order`] já documenta** — *«a captura
+            // deixava de ser ponto fixo dos sistemas»* — a voltar por outra porta: ali era a forma
+            // recém-nascida contra a lista do painel, aqui é a árvore reordenada contra a projecção
+            // do mesmo quadro. ⇒ a lei não é sobre QUEM escreve, é sobre QUANDO: **todo escritor da
+            // árvore corre antes de ela ser lida, e a leitura antes da captura.**
+            //
+            // ⚠️ **O `take` é load-bearing:** o `hierarchy::dispatch` lá em baixo continua a receber
+            // o parâmetro (a assinatura é dele), e vê `None` — aplicar duas vezes reordenaria duas.
+            if let Some(intent) = reparent_intent.take()
+                && let Some(live) = hero_live.as_ref()
+            {
+                hero_intents::drain_reparent(intent, live, sim, toasts);
+                self.title_dirty = true;
+            }
             if let Some(live) = hero_live.as_mut() {
                 crate::build_hierarchy_snapshot(
                     sim.world(),

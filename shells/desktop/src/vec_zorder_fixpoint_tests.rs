@@ -70,9 +70,35 @@ impl Frame {
 
     /// Roda um frame de sistemas sobre o documento.
     fn run(&mut self, sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntityMap) {
+        self.run_with_drag(sim, scene, map, None);
+    }
+
+    /// O mesmo frame, **com o arrasto da Hierarquia dentro dele** — no sítio exacto em que o
+    /// `render_loop/mod.rs` o aplica: depois do `sync` e dos `assign_missing_*`, e **antes** de a
+    /// árvore ser lida pela projecção.
+    ///
+    /// ⛔⛔ **Era esta a lacuna que deixou passar o report de 2026-09-07.** Este arnês diz-se *«o
+    /// pedaço do frame que muta o estado que o undo fotografa»* e **não continha o dreno do
+    /// reparent** — logo nenhum gate deste ficheiro podia ver que, no produto, ele corria ~2 340
+    /// linhas DEPOIS da projecção. *Um arnês que modela o quadro mede exactamente os escritores
+    /// que alguém se lembrou de lhe pôr dentro.*
+    fn run_with_drag(
+        &mut self,
+        sim: &mut SimWorld,
+        scene: &mut VecScene,
+        map: &mut VecEntityMap,
+        drag: Option<(
+            &crate::HeroLive,
+            ph2d_editor::screens::hero::HierReparentIntent,
+        )>,
+    ) {
         sync(sim, scene, map);
         crate::vec_transform::settle_origins(sim, scene, map, &[]);
         ph2d_ecs::assign_missing_root_order(sim.world_mut());
+        if let Some((live, intent)) = drag {
+            let mut toasts = ph2d_editor::ToastQueue::new();
+            crate::hero_intents::drain_reparent(intent, live, sim, &mut toasts);
+        }
         build_hierarchy_snapshot(
             sim.world(),
             &mut self.walk,
@@ -340,5 +366,109 @@ fn a_shape_parented_to_a_sprite_survives_the_respawn_in_the_same_z_order() {
         frame.capture(&mut sim, &scene),
         shot,
         "e a captura deixou de ser ponto fixo"
+    );
+}
+
+/// ⭐⭐⭐ **UM ARRASTO NA HIERARQUIA DEIXA A CAPTURA EM PONTO FIXO** — o report do Enio de
+/// 2026-09-07 (*«reordenei objectos na hierarquia e não funcionou o undo»*), medido.
+///
+/// # O que estava partido
+///
+/// O dreno do reparent corria dentro do `hierarchy::dispatch`, **depois** da projecção de z do
+/// mesmo quadro. A corrida com `PH2D_UNDO_LOG=1` mostra a doença inteira:
+///
+/// ```text
+/// [hier] ordem das raizes logo depois de aplicar: [(1,0), (2,2), (3,1)]
+/// [undo] passo registrado (fila undo=4) — diff: world=true vec=false     ← só metade
+/// [undo] ⛔ o documento MUDOU em ["vec"] ... SUPRIMIDO — sem entrada     ← a outra, tarde
+/// [undo] passo registrado (fila undo=5) — partes: ["vec"]               ← o FANTASMA
+/// [undo]   vec: base=[0,1,2] atual=[0,2,1] · so a ORDEM=true
+/// [undo] Ctrl+Z respondido por Global
+/// [undo]   ordem das raizes depois do restauro: [(1,0), (2,2), (3,1)]   ← não voltou
+/// ```
+///
+/// O `Ctrl+Z` repõe a pilha e não a árvore; a projecção do quadro seguinte re-deriva a pilha da
+/// árvore que ninguém desfez, e o fantasma **renasce** — a fila fica parada em `5` e cada `Ctrl+Z`
+/// gasta um passo que o próprio quadro volta a criar. O passo REAL nunca é alcançado.
+///
+/// # Porque é ESTE o gate
+///
+/// A lei do módulo já estava escrita: *a captura tem de ser ponto fixo dos sistemas*. O que
+/// faltava era **um escritor da árvore dentro do arnês** — sem ele, o ponto fixo era medido sobre
+/// um quadro em que ninguém reordenava nada.
+///
+/// ⚠️ **A primeira metade é o CONTROLO.** Sem ela, um arrasto que não reordena passaria por ponto
+/// fixo — e um no-op é exactamente o que este report já produziu uma vez, quando o `before`/`after`
+/// vazio mandava a peça para o fim de uma lista em que ela já era a última.
+///
+/// ⚠️ **Prova de mutação:** mover o `drain_reparent` do `run_with_drag` para DEPOIS do
+/// `scene.reorder_to(&order)` — que é literalmente o produto de antes desta cura — deixa a segunda
+/// captura diferente da primeira e o gate fica VERMELHO.
+#[test]
+fn a_hierarchy_drag_leaves_the_capture_a_fixed_point() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let mut frame = Frame::new(&mut sim);
+
+    let [a, b, c] = three_fresh_shapes(&mut scene);
+    frame.run(&mut sim, &mut scene, &mut map);
+    assert_eq!(
+        z(&scene),
+        vec![a, b, c],
+        "a cena nao partiu da ordem da arvore"
+    );
+
+    // A ponte nó ↔ entidade, montada como o prólogo do quadro a monta.
+    let mut live = crate::HeroLive {
+        bridge: crate::hero_bridge::EntityNodeMap::new(),
+        walk_state: ph2d_ecs::scene::HierarchyWalkState::new(sim.world_mut()),
+        walk_scratch: Vec::new(),
+        snapshot: ph2d_ecs::scene::HierarchySnapshot::new(),
+        z_walk_state: ph2d_ecs::scene::HierarchyWalkState::new(sim.world_mut()),
+        z_walk_scratch: Vec::new(),
+        z_snapshot: ph2d_ecs::scene::HierarchySnapshot::new(),
+    };
+    build_hierarchy_snapshot(
+        sim.world(),
+        &mut live.walk_state,
+        &mut live.walk_scratch,
+        &mut live.snapshot,
+    );
+    let _ = live.bridge.sync_from_snapshot(&live.snapshot);
+    let node_of = |id: VecPathId| {
+        let bits = *map.get(&id).expect("a forma tem entidade depois do sync");
+        live.bridge
+            .node_for(bits)
+            .expect("a entidade esta na ponte")
+    };
+
+    // O GESTO: arrastar a última forma para ANTES da primeira.
+    let intent = ph2d_editor::screens::hero::HierReparentIntent {
+        dragged: node_of(c),
+        new_parent: None,
+        before: Some(node_of(a)),
+        after: None,
+    };
+    frame.run_with_drag(&mut sim, &mut scene, &mut map, Some((&live, intent)));
+    let depois_do_arrasto = frame.capture(&mut sim, &scene);
+
+    // ⚠️ **CONTROLO**: o arrasto tem de ter movido alguma coisa, senão o ponto fixo abaixo é
+    // vácuo. A `c` passa a ser a de TRÁS (o fundo da pilha é o começo da lista).
+    assert_eq!(
+        z(&scene),
+        vec![c, a, b],
+        "o arrasto real nao reordenou a pilha de z no MESMO quadro"
+    );
+
+    // E agora o quadro seguinte, **sem entrada nenhuma**.
+    frame.run(&mut sim, &mut scene, &mut map);
+    let quadro_seguinte = frame.capture(&mut sim, &scene);
+
+    assert!(
+        depois_do_arrasto == quadro_seguinte,
+        "a captura do quadro do arrasto NAO e ponto fixo: o quadro seguinte mudou o documento \
+         sozinho, e o `post_frame_undo` le isso como uma accao do artista — e' assim que nasce o \
+         passo fantasma de `partes: [\"vec\"]` que o Ctrl+Z nunca consegue esgotar"
     );
 }

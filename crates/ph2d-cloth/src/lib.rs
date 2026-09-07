@@ -61,6 +61,8 @@ mod topology_tests;
 mod vbd_tests;
 #[cfg(test)]
 mod verlet_gesto_tests;
+#[cfg(test)]
+mod verlet_solver_tests;
 
 pub use bending::Hinge;
 pub use topology::ClothTopology;

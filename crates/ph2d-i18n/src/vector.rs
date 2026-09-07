@@ -90,6 +90,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // faz neste sujeito, e o id do botão é o mesmo (ver `paint_components`).
         "panel.vector.component.make_variant" => "Make Variant",
         "panel.vector.component.place" => "Instantiate",
+        // ⭐⭐ O irmao: a copia DIVIDE a arte da receita (o `Alt+D` do Blender).
+        "panel.vector.component.place_linked" => "Instantiate Linked",
         // ⭐ ABRIR a receita desta cópia — ela não está no canvas, e até 2026-09-07 só o cartão da
         // biblioteca lá chegava.
         "panel.vector.component.edit" => "Edit Prefab",

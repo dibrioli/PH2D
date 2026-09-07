@@ -61,6 +61,14 @@ impl BodyCtx<'_> {
                 tr("panel.vector.component.place"),
                 y,
             );
+            // ⭐⭐ **O IRMÃO, colado a ele** — a cópia que divide a ARTE da receita. ⚠️ Eles ficam
+            // juntos pela mesma razão do par `Group`/`Ungroup` da Hierarquia: *a escolha entre os
+            // dois só existe neste instante*, e um verbo cujo irmão está noutro painel não se usa.
+            y = self.action_button(
+                ids::VECTOR_COMPONENT_PLACE_LINKED,
+                tr("panel.vector.component.place_linked"),
+                y,
+            );
         }
         // ⭐⭐⭐ **ABRIR a receita desta cópia.** Ele fica no topo dos verbos de cópia porque é o
         // único que leva o artista para **outro sujeito** — os de baixo agem sobre esta cópia, e

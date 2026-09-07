@@ -33,6 +33,13 @@ pub const VECTOR_SECTION_COMPONENT: NodeId = hash_node_id("vector.section.compon
 pub const VECTOR_COMPONENT_CREATE: NodeId = hash_node_id("vector.component.create");
 /// **Place Instance** — põe uma cópia derivada do mestre selecionado.
 pub const VECTOR_COMPONENT_PLACE: NodeId = hash_node_id("vector.component.place");
+/// ⭐⭐ **Instantiate Linked** (2026-09-07) — o irmão do de cima: a cópia **divide a ARTE** da
+/// receita, então editar a tinta ou o desenho dela sobe e chega a todas (o `Alt+D` do Blender).
+///
+/// ⚠️ **Ele estava no menu da Hierarquia e não aqui** — e *um verbo cujo irmão está noutro sítio do
+/// app não se usa*, porque o artista não sabe que a escolha existe. A diferença entre os dois só se
+/// vê no gesto SEGUINTE (pintar, mover um nó), e por isso os dois toasts a nomeiam.
+pub const VECTOR_COMPONENT_PLACE_LINKED: NodeId = hash_node_id("vector.component.place_linked");
 /// ⭐⭐⭐ **Edit Prefab** — abre a RECEITA desta cópia (2026-09-07).
 ///
 /// ⚠️ **A receita não está no canvas**: no modelo geral ela é escondida da cena e da Hierarquia

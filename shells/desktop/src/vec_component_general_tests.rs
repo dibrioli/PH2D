@@ -336,6 +336,54 @@ fn the_section_offers_making_a_variant_out_of_a_copy() {
     );
 }
 
+/// ⭐⭐ **E o IRMÃO do *Instantiate* põe uma cópia que DIVIDE a arte** (2026-09-07).
+///
+/// ⚠️ **A diferença entre os dois só se vê no gesto SEGUINTE** — pintar, mover um nó — e por isso
+/// ela é medida pela marca que o motor deixa em cada peça (`LinkedArt`), e não pelo toast. *Um gate
+/// escrito sobre a voz mediria a frase, não a lei.*
+///
+/// ⚠️ Ele vivia só no menu da Hierarquia: *um verbo cujo irmão está noutro sítio do app não se usa*,
+/// porque o artista não sabe que a escolha existe.
+///
+/// **Mutação que deve sangrar:** `general_verb(PlaceLinked)` a devolver `Verb::Place`.
+#[test]
+fn the_linked_twin_shares_the_art_and_the_plain_one_does_not() {
+    let (mut sim, r, _map, _id, e) = scene();
+    // A receita precisa de uma peça: a marca viaja peça a peça, não na raiz.
+    sim.world_mut().spawn((
+        Transform::IDENTITY,
+        Name::new("Box"),
+        ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+        ph2d_ecs::ChildOf(e),
+    ));
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
+
+    let (plain_changed, plain_out) = run(ComponentEdit::Place, &mut sim, &r, e, &mut toasts);
+    let plain = plain_out.map(Entity::from_bits).expect("a copia comum");
+    let (linked_changed, linked_out) =
+        run(ComponentEdit::PlaceLinked, &mut sim, &r, e, &mut toasts);
+    let linked = linked_out.map(Entity::from_bits).expect("a copia ligada");
+
+    assert!(plain_changed && linked_changed, "um dos dois nao pos copia");
+    let marked = |sim: &SimWorld, root: Entity| {
+        sim.world()
+            .get::<Children>(root)
+            .into_iter()
+            .flat_map(|k| k.iter().copied().collect::<Vec<_>>())
+            .any(|p| sim.world().get::<ph2d_ecs::LinkedArt>(p).is_some())
+    };
+    assert!(
+        marked(&sim, linked),
+        "a copia LIGADA nasceu sem a marca — ela nao divide a arte, e o botao faz o mesmo que o irmao"
+    );
+    assert!(
+        !marked(&sim, plain),
+        "a copia comum nasceu LIGADA — os dois botoes deixaram de ser uma escolha"
+    );
+}
+
 /// ⭐⭐⭐ **A secção oferece ABRIR A RECEITA de uma cópia** (2026-09-07).
 ///
 /// A receita é escondida do canvas e da Hierarquia enquanto ninguém a edita, e o único caminho até

@@ -217,6 +217,7 @@ fn general_verb(
         E::Create => Some(Verb::Make),
         E::Edit => Some(Verb::Edit),
         E::Place => Some(Verb::Place),
+        E::PlaceLinked => Some(Verb::PlaceLinked),
         E::Detach => Some(Verb::Detach),
         E::UpdateMain => Some(Verb::Apply),
         // O *Reset* não é um `Verb` — ele é o *Revert to Master*, que tem porta própria porque

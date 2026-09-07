@@ -37,6 +37,8 @@ pub(crate) enum ComponentEdit {
     /// e até aqui só o cartão da biblioteca lá chegava.
     Edit,
     Place,
+    /// ⭐⭐ **Instantiate Linked** (2026-09-07) — a cópia divide a ARTE da receita.
+    PlaceLinked,
     Detach,
     Reset,
     /// **Update Main** (W5b) — as diferenças desta instância passam a ser o mestre.
@@ -63,6 +65,9 @@ pub(crate) fn component_edit_for_id(id: ph2d_editor::NodeId) -> Option<Component
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_CREATE => Some(ComponentEdit::Create),
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_EDIT => Some(ComponentEdit::Edit),
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_PLACE => Some(ComponentEdit::Place),
+        _ if id == ph2d_editor::ids::VECTOR_COMPONENT_PLACE_LINKED => {
+            Some(ComponentEdit::PlaceLinked)
+        }
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_DETACH => Some(ComponentEdit::Detach),
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_RESET => Some(ComponentEdit::Reset),
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_UPDATE_MAIN => {

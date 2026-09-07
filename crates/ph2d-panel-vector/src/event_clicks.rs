@@ -371,6 +371,7 @@ fn is_prefab_click(id: ph2d_a11y::NodeId) -> bool {
     id == ids::VECTOR_COMPONENT_CREATE
     || id == ids::VECTOR_COMPONENT_EDIT
     || id == ids::VECTOR_COMPONENT_PLACE
+    || id == ids::VECTOR_COMPONENT_PLACE_LINKED
     || id == ids::VECTOR_COMPONENT_DETACH
     || id == ids::VECTOR_COMPONENT_RESET
     || id == ids::VECTOR_COMPONENT_UPDATE_MAIN

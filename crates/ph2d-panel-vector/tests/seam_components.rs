@@ -120,6 +120,13 @@ fn all_four_component_verbs_are_reachable_and_reach_the_bus() {
     clear();
     click_reaches_bus(plain(), ids::VECTOR_COMPONENT_CREATE, "Make Prefab");
     click_reaches_bus(main_shape(), ids::VECTOR_COMPONENT_PLACE, "Instantiate");
+    // ⭐⭐ **O IRMÃO** (2026-09-07): a cópia que divide a ARTE da receita. Ele estava no menu da
+    // Hierarquia e não aqui, e *um verbo cujo irmão vive noutro painel não se usa*.
+    click_reaches_bus(
+        main_shape(),
+        ids::VECTOR_COMPONENT_PLACE_LINKED,
+        "Instantiate Linked",
+    );
     click_reaches_bus(
         instance_with_overrides(),
         ids::VECTOR_COMPONENT_DETACH,
@@ -157,6 +164,7 @@ fn each_verb_appears_only_where_it_makes_sense() {
     assert!(rect_under(plain(), ids::VECTOR_COMPONENT_CREATE).is_some());
     for id in [
         ids::VECTOR_COMPONENT_PLACE,
+        ids::VECTOR_COMPONENT_PLACE_LINKED,
         ids::VECTOR_COMPONENT_DETACH,
         ids::VECTOR_COMPONENT_RESET,
     ] {

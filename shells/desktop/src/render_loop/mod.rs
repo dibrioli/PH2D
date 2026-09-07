@@ -6861,7 +6861,10 @@ impl crate::App {
                         // forma **visível** no canvas, que se alcança clicando nela. *Um verbo
                         // novo do modelo geral tem de aparecer aqui como ausência declarada, senão
                         // o dia em que alguém o publicar por engano ele cai num `_ =>` mudo.*
-                        crate::vec_component_edit::ComponentEdit::Edit => {}
+                        crate::vec_component_edit::ComponentEdit::Edit
+                        // ⛔ INALCANÇÁVEL neste motor, pela mesma razão do de cima: o produtor
+                        // vetorial não pinta o botão. A `ArtLink` é lei do modelo geral.
+                        | crate::vec_component_edit::ComponentEdit::PlaceLinked => {}
                         crate::vec_component_edit::ComponentEdit::Place => {
                             if let Some(&main) = sel.first()
                                 && let Some(new_id) = crate::vec_component_edit::place_instance(

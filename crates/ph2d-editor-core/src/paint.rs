@@ -242,12 +242,19 @@ pub fn paint_text_centered(
     font_size: f32,
     color: Color,
 ) {
-    let layout = text_system.layout(text, font_size, rect.w);
+    // ⚠️ **Centra o que vai ser PINTADO, não o que foi pedido.** O `paint_text` elide desde
+    // 2026-09-06 (report do dono: a palavra que não cabe *«passa para baixo e some»*), e medir
+    // aqui o texto INTEIRO punha um rótulo elidido fora do centro — pior, com `rect.w` como
+    // orçamento de quebra o layout devolvia DUAS linhas e o `y` centrava-as, deixando a primeira
+    // acima do topo da caixa. *Uma centragem que mede outra coisa do que se pinta é um deslocamento
+    // com cara de arredondamento.*
+    let shown = crate::text_elide::fit(text_system, text, font_size, rect.w);
+    let layout = text_system.layout(&shown, font_size, f32::INFINITY);
     let text_w = layout.width();
     let text_h = layout.height();
     let x = rect.x + (rect.w - text_w) / 2.0;
     let y = rect.y + (rect.h - text_h) / 2.0;
-    paint_text(text_system, scene, text, x, y, font_size, rect.w, color);
+    paint_text(text_system, scene, &shown, x, y, font_size, rect.w, color);
 }
 
 // -----------------------------------------------------------------------

@@ -32,7 +32,7 @@ pub fn paint_text(
     max_width: f32,
     color: Color,
 ) {
-    paint_text_weighted(
+    paint_text_lines(
         text_system,
         scene,
         text,
@@ -42,6 +42,7 @@ pub fn paint_text(
         max_width,
         color,
         FontWeight::MEDIUM,
+        Lines::ElideToOne,
     );
 }
 
@@ -65,7 +66,7 @@ pub fn paint_text_block(
     max_width: f32,
     color: Color,
 ) -> f32 {
-    paint_text_weighted(
+    paint_text_lines(
         text_system,
         scene,
         text,
@@ -75,6 +76,10 @@ pub fn paint_text_block(
         max_width,
         color,
         FontWeight::MEDIUM,
+        // ⚠️ **`Wrap`, e este é o ficheiro inteiro numa linha:** esta função existe PARA
+        //    quebrar — ela devolve a altura, e o chamador empurra o que vem abaixo com ela.
+        //    Pôr `ElideToOne` aqui (o que eu fiz na 1.ª tentativa) parte as dicas de três painéis.
+        Lines::Wrap,
     )
 }
 
@@ -124,6 +129,64 @@ pub(crate) fn paint_text_weighted(
     color: Color,
     weight: FontWeight,
 ) -> f32 {
+    paint_text_lines(
+        text_system,
+        scene,
+        text,
+        x,
+        y,
+        font_size,
+        max_width,
+        color,
+        weight,
+        Lines::Wrap,
+    )
+}
+
+/// ⭐⭐⭐ **Quantas linhas este texto pode ocupar** — e é a pergunta que faltava a esta família.
+///
+/// Enio, 2026-09-06, com duas fotos do painel a estreitar: *«quando a palavra é grande e
+/// estreitamos o painel, em vez dos três pontos (…) como no Blender, a palavra passa para baixo e
+/// some»*. `Surface Smooth` ficava `Surface`: o parley quebrava, a altura dobrava, e a segunda
+/// linha caía fora da caixa de 22 px — **cortada, não elidida**.
+///
+/// ⚠️⚠️ **A 1.ª cura pôs a elisão no caminho PARTILHADO, e partiu três gates de outras linhas**
+/// (`a_hint_that_wraps_pushes_what_comes_after_it_down`, e dois irmãos): o `paint_text_block`
+/// delega aqui, e ele existe **precisamente** para quebrar — ele devolve a altura e o chamador
+/// empurra o que vem abaixo. *O meu argumento («quem quebra sem saber a altura já perdeu») estava
+/// certo e a implementação apagou o caso em que ele NÃO se aplica.* ⇒ a escolha passa a ser um
+/// argumento, e cada porta declara a sua.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Lines {
+    /// Uma linha; o que não couber sai como `prefixo…`.
+    ElideToOne,
+    /// Quantas forem precisas — quem pede isto lê a altura devolvida.
+    Wrap,
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_text_lines(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    x: f32,
+    y: f32,
+    font_size: f32,
+    max_width: f32,
+    color: Color,
+    weight: FontWeight,
+    lines: Lines,
+) -> f32 {
+    // ⚠️ A elisão mede na espessura que ESTA função vai pintar, que é a lei que o `text_elide` já
+    // pagou: cortar em `Medium` e pintar em `SemiBold` transborda na fronteira em que o corte
+    // existe.
+    let elided;
+    let text = if lines == Lines::ElideToOne {
+        elided = crate::text_elide::fit_weighted(text_system, text, font_size, max_width, weight);
+        elided.as_str()
+    } else {
+        text
+    };
     let rendering = text_rendering();
     let layout = text_system.layout_for_rendering(text, font_size, max_width, weight, rendering);
     let height = layout.height();

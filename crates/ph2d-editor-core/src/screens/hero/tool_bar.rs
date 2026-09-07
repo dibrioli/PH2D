@@ -350,7 +350,7 @@ fn paint_flyout_below(
     fill_rounded_rect(
         scene,
         bg,
-        Radius::Md.px(),
+        crate::paint::frame_radius(theme, Radius::Md.px()),
         resolve(ColorToken::RailBg, theme),
     );
     paint_tool_rail_axis(

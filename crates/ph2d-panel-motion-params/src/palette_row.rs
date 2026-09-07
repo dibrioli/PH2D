@@ -109,7 +109,7 @@ pub(crate) fn paint_palette_row(
         fill_rounded_rect(
             scene,
             brect,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
             resolve(ColorToken::Bg2, theme),
         );
         paint_text_centered(
@@ -145,7 +145,7 @@ pub(crate) fn paint_palette_row(
         fill_rounded_rect(
             scene,
             r,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
             Color::from_rgba8(srgb[0], srgb[1], srgb[2], 255), // LITERAL-COLOR-OK: the palette's own colour is data, not a token (the swatch precedent)
         );
         // ⭐ Pela porta do TEMA: a amostra é plana num tema moderno.

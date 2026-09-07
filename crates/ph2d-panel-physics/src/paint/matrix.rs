@@ -84,7 +84,7 @@ pub(super) fn paint(ctx: &mut PaintCtx, matrix: LayerMatrix, x: f32, y_in: f32) 
                 ph2d_editor_core::paint::stroke_rounded_rect(
                     ctx.scene,
                     cell,
-                    Radius::Sm.px(),
+                    ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
                     StrokeToken::Default.px(),
                     resolve(ColorToken::Text2, theme),
                 );

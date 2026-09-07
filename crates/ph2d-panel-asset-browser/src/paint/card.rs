@@ -27,7 +27,7 @@ pub(super) fn paint_card(
     fill_rounded_rect(
         ctx.scene,
         thumb,
-        Radius::Sm.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
         resolve(ColorToken::Bg2, theme),
     );
     let inset = Spacing::Xs.px();
@@ -39,7 +39,7 @@ pub(super) fn paint_card(
             (thumb.w - inset * 2.0).max(0.0),
             (thumb.h - inset * 2.0).max(0.0),
         ),
-        Radius::Sm.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
         ph2d_editor_core::paint::token_to_vello(crate::card_backdrop::card_backdrop(
             theme,
             swatch,

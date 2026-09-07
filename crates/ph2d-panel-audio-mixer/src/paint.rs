@@ -93,7 +93,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     fill_rounded_rect(
         ctx.scene,
         rect,
-        Radius::Sm.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
         resolve(ColorToken::BgElev, theme),
     );
     paint_panel_surface(rect, ctx.scene, theme);

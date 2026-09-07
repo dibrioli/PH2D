@@ -189,7 +189,7 @@ pub fn paint_blender_color_picker_with_store(
     fill_rounded_rect(
         scene,
         drag_rect,
-        Radius::Sm.px(),
+        crate::paint::frame_radius(theme, Radius::Sm.px()),
         resolve(ColorToken::Bg2, theme),
     );
     let dot_y = drag_rect.y + drag_rect.h * 0.5 - 1.5;

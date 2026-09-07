@@ -251,7 +251,7 @@ fn paint_shape_blend_chip(
     {
         *o = false;
     }
-    let radius = Radius::Sm.px();
+    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(
         ctx.scene,
         rect,

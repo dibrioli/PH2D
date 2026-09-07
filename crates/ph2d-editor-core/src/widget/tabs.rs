@@ -158,7 +158,7 @@ pub fn paint_tabs_with_hover(
                 (r.w - Spacing::Xs.px()).max(0.0),
                 (r.h - Spacing::Xs.px()).max(0.0),
             );
-            let radius = (Radius::Md.px() - 2.0).max(0.0);
+            let radius = (crate::paint::frame_radius(theme, Radius::Md.px()) - 2.0).max(0.0);
             fill_rounded_rect(scene, inset, radius, resolve(ColorToken::Bg2, theme));
         }
         match tabs.variant {
@@ -197,7 +197,7 @@ pub fn paint_tabs_with_hover(
                     fill_rounded_rect(
                         scene,
                         inset,
-                        (Radius::Md.px() - 2.0).max(0.0),
+                        (crate::paint::frame_radius(theme, Radius::Md.px()) - 2.0).max(0.0),
                         resolve(ColorToken::AccentSoft, theme),
                     );
                 }

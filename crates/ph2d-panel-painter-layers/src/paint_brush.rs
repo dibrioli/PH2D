@@ -417,7 +417,7 @@ fn paint_color_swatch_row(
 
     let [r, g, b] = encode_rgb(brush.color);
     let col = ph2d_vector::Color::from_rgba8(r, g, b, 255); // LITERAL-COLOR-OK: brush colour (data)
-    let radius = Radius::Sm.px();
+    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(ctx.scene, rect, radius, col);
     let open = ctx.host.store().picker_target() == Some(core_ids::PAINTER_COLOR_THUMB);
     let border = if open {

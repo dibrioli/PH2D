@@ -144,7 +144,7 @@ fn paint_column(
     clipped: bool,
     theme: Theme,
 ) {
-    let radius = Radius::Xs.px();
+    let radius = crate::paint::frame_radius(theme, Radius::Xs.px());
     fill_rounded_rect(scene, col, radius, resolve(ColorToken::Bg2, theme));
     let rms = rms.clamp(0.0, 1.0);
     draw_segment(scene, col, 0.0, ZONE_WARN, rms, ColorToken::Success, theme);
@@ -189,7 +189,7 @@ fn draw_segment(
     let y0 = col.y + col.h * (1.0 - top);
     let y1 = col.y + col.h * (1.0 - lo);
     let seg = Rect::new(col.x, y0, col.w, (y1 - y0).max(0.0));
-    let radius = Radius::Xs.px().min(col.w * 0.5);
+    let radius = crate::paint::frame_radius(theme, Radius::Xs.px()).min(col.w * 0.5);
     fill_rounded_rect(scene, seg, radius, resolve(token, theme));
 }
 
@@ -214,7 +214,7 @@ fn draw_peak_hold(scene: &mut VectorScene, col: Rect, peak_hold: f32, theme: The
     fill_rounded_rect(
         scene,
         mark,
-        Radius::Xs.px().min(col.w * 0.5),
+        crate::paint::frame_radius(theme, Radius::Xs.px()).min(col.w * 0.5),
         resolve(token, theme),
     );
 }

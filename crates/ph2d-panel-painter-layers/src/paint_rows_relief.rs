@@ -87,7 +87,7 @@ pub(crate) fn paint_relief_line(
     fill_rounded_rect(
         ctx.scene,
         chip,
-        Radius::Sm.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
         // ⚠️ **O tom de REPOUSO por si.** Este chip não é um botão registado (o clique dele
         // corre noutro sítio), então pedi-lo por `flat_button_surface(Normal)` era fingir um
         // estado para chegar a `Bg2`. Nomear o token diz o que ele quer.

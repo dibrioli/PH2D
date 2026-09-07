@@ -385,7 +385,7 @@ fn paint_topbar_group_backdrop(
     fill_rounded_rect(
         scene,
         bg,
-        Radius::Md.px(),
+        crate::paint::frame_radius(theme, Radius::Md.px()),
         resolve(ColorToken::RailBg, theme),
     );
 }

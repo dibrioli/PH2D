@@ -99,7 +99,7 @@ pub(crate) fn paint_properties_card(
     fill_rounded_rect(
         scene,
         Rect::new(x, y, w, card_h),
-        Radius::Md.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px()),
         resolve(ColorToken::Bg2, theme),
     );
 

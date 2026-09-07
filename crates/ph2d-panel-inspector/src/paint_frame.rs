@@ -309,6 +309,10 @@ pub(crate) fn finish_section(
         stroke_rounded_rect(
             scene,
             block,
+            // ⛔ **FORA da porta do raio, e é a mesma família do post-it:** este contorno é o
+            //    MARCADOR do artista sobre uma secção — cor de highlighter fixa
+            //    (`HIGHLIGHTER_RGBA`), e este pintor não recebe tema nenhum. *Achatá-lo com
+            //    o cromo seria achatar a única marca que é de propósito um objeto do dono.*
             Radius::Md.px(),
             StrokeToken::Thick.px(),
             outline_color,

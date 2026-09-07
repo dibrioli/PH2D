@@ -466,7 +466,7 @@ pub fn paint_drag_overlay(
             crate::paint::stroke_rounded_rect(
                 scene,
                 r,
-                Radius::Sm.px(),
+                crate::paint::frame_radius(theme, Radius::Sm.px()),
                 DROP_OUTLINE_PX,
                 resolve(ColorToken::Accent, theme),
             );
@@ -479,7 +479,7 @@ pub fn paint_drag_overlay(
     fill_rounded_rect(
         scene,
         ghost,
-        Radius::Sm.px(),
+        crate::paint::frame_radius(theme, Radius::Sm.px()),
         resolve(ColorToken::Bg2, theme),
     );
     paint_text_centered(

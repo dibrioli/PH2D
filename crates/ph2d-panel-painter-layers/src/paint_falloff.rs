@@ -64,7 +64,7 @@ pub(crate) fn paint_falloff_section(
             fill_rounded_rect(
                 ctx.scene,
                 brect,
-                Radius::Sm.px(),
+                ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
                 resolve(ColorToken::Bg2, theme),
             );
             paint_text_centered(

@@ -27,7 +27,7 @@ pub fn paint_value_slider(
     scene: &mut VectorScene,
     theme: Theme,
 ) {
-    let radius = Radius::Sm.px();
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     // Filled with a rounded path (not a sharp `KurboRect`) so the
     // gradient terminates inside the rounded outline — earlier the
     // fill leaked past the stroke at the strip's corners as tiny

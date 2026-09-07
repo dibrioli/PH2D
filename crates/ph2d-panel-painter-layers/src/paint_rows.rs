@@ -208,7 +208,7 @@ fn paint_layer_row(
         fill_rounded_rect(
             ctx.scene,
             lift,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
             resolve(ColorToken::AccentSoft, theme),
         );
     }
@@ -222,7 +222,7 @@ fn paint_layer_row(
         fill_rounded_rect(
             ctx.scene,
             sel,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
             resolve(ColorToken::AccentSoft, theme),
         );
     }
@@ -392,7 +392,7 @@ pub(crate) fn paint_drop_indicator(
         fill_rounded_rect(
             ctx.scene,
             Rect::new(x, y - DROP_BAR_H * 0.5, w, DROP_BAR_H),
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
             accent,
         );
     };
@@ -416,7 +416,7 @@ pub(crate) fn paint_drop_indicator(
                 stroke_rounded_rect(
                     ctx.scene,
                     rect,
-                    Radius::Sm.px(),
+                    ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
                     StrokeToken::Thick.px(),
                     accent,
                 );
@@ -520,7 +520,7 @@ pub(crate) fn paint_reorder_btn(
         fill_rounded_rect(
             ctx.scene,
             rect,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
             flat_button_surface_color(visual, theme),
         );
     }

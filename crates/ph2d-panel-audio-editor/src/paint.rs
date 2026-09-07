@@ -61,7 +61,7 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     fill_rounded_rect(
         ctx.scene,
         rect,
-        Radius::Sm.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
         resolve(ColorToken::BgElev, theme),
     );
     paint_panel_surface_floating(rect, ctx.scene, theme);
@@ -388,7 +388,7 @@ pub(crate) fn button_in_group(
         rect,
         pos.radii(ph2d_editor_core::paint::frame_radius(
             theme,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
         )),
         bg,
     );
@@ -499,7 +499,7 @@ pub(crate) fn toggle_in_group(
         rect,
         pos.radii(ph2d_editor_core::paint::frame_radius(
             theme,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
         )),
         bg,
     );

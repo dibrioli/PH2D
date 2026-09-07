@@ -178,7 +178,7 @@ pub fn paint_showcase_body(
                 crate::paint::stroke_rounded_rect(
                     scene,
                     block,
-                    Radius::Md.px(),
+                    crate::paint::frame_radius(theme, Radius::Md.px()),
                     StrokeToken::Thick.px(),
                     outline_color,
                 );

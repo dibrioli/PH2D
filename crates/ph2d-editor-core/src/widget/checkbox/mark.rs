@@ -131,7 +131,7 @@ pub(crate) fn paint_boolean_mark(
         }
     }
 
-    let radius = Radius::Xs.px();
+    let radius = crate::paint::frame_radius(theme, Radius::Xs.px());
     let (bg_token, border_token) = match (state, value) {
         (CheckboxState::Disabled, _) => (ColorToken::Bg2, ColorToken::Border),
         (_, CheckboxValue::Checked | CheckboxValue::Indeterminate) => {

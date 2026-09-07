@@ -393,13 +393,13 @@ fn paint_bar(p: &Progress, r: Rect, scene: &mut VectorScene, ctx: &mut PaintCtx)
     fill_rounded_rect(
         scene,
         r,
-        Radius::Md.px(),
+        crate::paint::frame_radius(ctx.theme, Radius::Md.px()),
         resolve(ColorToken::BgElev, ctx.theme),
     );
     stroke_rounded_rect(
         scene,
         r,
-        Radius::Md.px(),
+        crate::paint::frame_radius(ctx.theme, Radius::Md.px()),
         1.0,
         resolve(ColorToken::Border, ctx.theme),
     );

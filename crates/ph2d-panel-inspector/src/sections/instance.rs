@@ -139,7 +139,7 @@ pub(crate) fn paint_instance_card(
     fill_rounded_rect(
         scene,
         card,
-        Radius::Md.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px()),
         resolve(ColorToken::Bg2, theme),
     );
 

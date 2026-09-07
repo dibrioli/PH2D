@@ -280,7 +280,7 @@ pub fn paint_rect2_editor_with_state(
 /// drawn in the accent tint to distinguish "move" from "resize".
 pub fn paint_rect2_handles(content: Rect, size: f32, scene: &mut VectorScene, theme: Theme) {
     let handles = Rect2Editor::handle_rects(content, size);
-    let radius = Radius::Sm.px();
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     let stroke = StrokeToken::Default.px();
     for (i, h) in handles.iter().enumerate() {
         let fill = if i + 1 == RECT2_HANDLE_COUNT {

@@ -1464,6 +1464,60 @@ superfície, e o que os separa é o vão que ela agora deixa. ⇒ `Bypass` / `Ap
 
 **Portão:** `13 080` testes / `0` falhados; clippy `--all-targets -D warnings` limpo.
 
+### 7.27 — ✅ WAVE 22 (2026-09-07): a QUINA de um controlo vem da porta do tema
+
+**Fecha o item 5 do §8 do handoff** — *«50 raios ainda passam ao lado da porta»*.
+
+#### ⛔⛔ O caso que nomeia a wave
+
+`Button::radius()` devolvia `Radius::Md` (**4**) sem perguntar nada, enquanto um chip segmentado
+ao lado pintava **3** (o `corner_radius` do Godot Modern, wave 8). *Dois widgets encostados na mesma
+fileira, dois raios.* E a causa não é um esquecimento pontual: a wave 2/3 levou a porta da
+**moldura** a 44 pintores, e o **raio** só a acompanhou onde o mesmo sítio já a chamava — ficando
+de fora dos **primitivos**. ⇒ **um primitivo que escolhe sozinho não é uma excepção: é a resposta
+que ~100 sítios herdam sem saber.**
+
+**65 sítios convertidos** em 48 ficheiros. No tema clássico o desenho é **byte-idêntico** (a porta
+devolve o que recebe); num tema moderno cada um passa a pintar o `3`.
+
+#### ⭐ A partição tem TRÊS classes, e não duas
+
+O handoff dizia *«cromo contra canvas»*. Medida, a partição tem uma terceira:
+
+| classe | fica | mecanismo |
+|---|---|---|
+| a quina de um **CONTROLO** | ⇒ pela porta | é a lei |
+| uma **FORMA** deliberada (`Radius::Full`) | ⛔ fora | **a porta ACHATA** — `visuals::radius` devolve `MODERN_CORNER_RADIUS_PX` para qualquer `classic > 0`, logo uma pílula sairia rectângulo e um avatar redondo sairia quadrado |
+| o **CANVAS** | ⛔ fora | o raio é geometria do documento (a régua da timeline, a célula da tira de filme, o marquee, o gizmo 3D) |
+
+⚠️ **A segunda classe tem gate próprio** (`the_door_flattens_every_positive_radius_including_a_pill`):
+sem ele, «as formas ficam de fora» lê-se como zelo em vez de mecanismo — e no dia em que a porta
+deixasse de achatar, a lista de isenções passaria a descrever uma razão que já não existe.
+
+#### E uma quarta coisa que se lê igual: o raio usado como TAMANHO
+
+`showcase/status.rs` usa `Radius::Xl2.px()` (20) como o **tamanho de um spinner**. É a mesma espécie
+do `chrome.section-gap` que a wave 19 renomeou — *um token cujo nome descreve outra pergunta* —, e
+fica **nomeado na isenção** com a cura (um token de tamanho), para não se perder.
+
+#### O que a construção corrigiu em mim
+
+- ⚠️ **A minha conversão passou por cima de duas decisões ESCRITAS** — o post-it do `showcase/notes`
+  e o contorno de marcador do Inspector têm, os dois, um comentário a dizer *porque* ficam fora da
+  porta, e o script converteu-os na mesma. *Um script que edita por forma não lê o motivo que está
+  duas linhas acima.* Revertidos, e agora são isenções declaradas.
+- ⚠️ **A 1.ª régua contava LINHAS e acusou dois inocentes**: duas chamadas já estavam dentro da
+  porta, numa chamada de três linhas. ⇒ a régua conta **parênteses para trás**. *É a sexta vez que
+  a forma multi-linha morde esta linha.*
+
+| prova de mutação | resultado |
+|---|---|
+| o `Button` volta a escolher a própria quina | ✅ morreu |
+| um painel volta a escolher a quina | ✅ morreu |
+| a porta deixa de achatar | ✅ morreu |
+
+**Portão:** `13 083` testes / `0` falhados; clippy `--all-targets -D warnings` limpo.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

@@ -222,6 +222,13 @@ report do dono. A lei vem do modelo (`selected` de uma `Tree` = `flat_button_pre
 mais três respostas só dela (altura 18, vão zero, realce próprio) porque **nunca foi declarada** no
 censo de listas — *uma superfície que ninguém declarou escapa a um censo por declaração*.
 
+⭐⭐ **E a wave 22 (07/09) levou a porta do RAIO aos primitivos**
+([§7.27](pesquisa/08_modelos_com_codigo_para_seguir.md)): o `Button` devolvia `4` sem perguntar
+nada enquanto o chip ao lado pintava `3` — *um primitivo que escolhe sozinho é a resposta que ~100
+sítios herdam sem saber*. **65 sítios** convertidos, byte-idênticos no clássico. ⭐ E a partição
+prometida («cromo contra canvas») tem **três** classes: uma **FORMA** (`Radius::Full`) fica de fora
+porque **a porta achata** — uma pílula sairia rectângulo —, e isso é gate, não zelo.
+
 ⏳ **O que sobra do estudo §5.3, medido em 04/09:** cantos dos painéis a `16 px` (o estudo diz `4`) ·
 cartões com moldura · caixas de texto com moldura permanente · etiquetas e amostras ainda pílulas ·
 esbatimento do rótulo e inércia da rolagem. ⛔ **As secções JÁ recolhem** (10 painéis, animado) —

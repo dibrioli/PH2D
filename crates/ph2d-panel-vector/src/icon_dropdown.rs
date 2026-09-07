@@ -99,7 +99,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, chip_rect: Rect, theme: Theme) {
     }
     let scroll = ctx.host.store().panel_scroll(id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
 
-    let radius = Radius::Md.px();
+    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(
         ctx.scene,
         panel,

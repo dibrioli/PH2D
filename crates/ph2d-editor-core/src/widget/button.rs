@@ -241,8 +241,16 @@ impl Button {
         Spacing::Lg.px()
     }
 
-    pub fn radius(&self) -> f32 {
-        Radius::Md.px()
+    /// ⭐⭐⭐ **A quina de um botão vem da PORTA DO TEMA** (wave 22), e a assinatura recebeu o tema
+    /// por isso.
+    ///
+    /// ⛔⛔ **Ela devolvia `Radius::Md` (4) sem perguntar nada, e isso é um dialecto no widget
+    /// mais usado do app:** um chip segmentado pintava `3` (o número do Godot Modern, wave 8) e um
+    /// botão pintava `4`, lado a lado, na mesma fileira. A porta chegou aos PAINÉIS na wave 2/3 e
+    /// não aos **primitivos** — e um primitivo que escolhe sozinho não é uma excepção: é a
+    /// resposta que ~100 sítios herdam sem saber.
+    pub fn radius(&self, theme: Theme) -> f32 {
+        crate::paint::frame_radius(theme, Radius::Md.px())
     }
 
     /// Build the AccessKit node. Per ADR-0023 §10: every interactive
@@ -269,7 +277,7 @@ pub fn paint_button(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let radius = button.radius();
+    let radius = button.radius(theme);
     // ⭐ As quatro quinas saem da POSIÇÃO no grupo (wave 20). Um botão sozinho devolve as quatro
     //    iguais ao `radius`, e o desenho é byte-idêntico ao de antes.
     let radii = button.cell.radii(radius);
@@ -418,7 +426,7 @@ mod tests {
 
     #[test]
     fn radius_uses_md_token() {
-        assert_eq!(fixture().radius(), Radius::Md.px());
+        assert_eq!(fixture().radius(Theme::Forge), Radius::Md.px());
     }
 
     #[test]

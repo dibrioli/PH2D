@@ -122,7 +122,7 @@ pub(crate) fn paint_toggle(
         rect,
         cell.radii(ph2d_editor_core::paint::frame_radius(
             theme,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
         )),
         bg,
     );

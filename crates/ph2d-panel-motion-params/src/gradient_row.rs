@@ -199,7 +199,7 @@ pub(crate) fn paint_gradient_row(
         fill_rounded_rect(
             scene,
             brect,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
             resolve(ColorToken::Bg2, theme),
         );
         paint_text_centered(
@@ -270,7 +270,7 @@ pub(crate) fn paint_gradient_row(
         fill_rounded_rect(
             scene,
             srect,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
             Color::from_rgba8(srgb[0], srgb[1], srgb[2], 255), // LITERAL-COLOR-OK: the stop's own colour is data
         );
         // ⭐ Pela porta do TEMA: a amostra é plana num tema moderno, e a ESCOLHIDA leva o anel de

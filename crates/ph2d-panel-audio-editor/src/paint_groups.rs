@@ -161,7 +161,7 @@ pub(crate) fn display_in_group(
         rect,
         pos.radii(ph2d_editor_core::paint::frame_radius(
             theme,
-            Radius::Sm.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
         )),
         resolve(ColorToken::Bg3, theme),
     );

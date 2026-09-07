@@ -110,7 +110,7 @@ pub(super) fn paint_lists_section(
     fill_rounded_rect(
         scene,
         body_rect,
-        Radius::Sm.px(),
+        crate::paint::frame_radius(theme, Radius::Sm.px()),
         resolve(ColorToken::Bg2, theme),
     );
     let (caption, tone) = match selected {

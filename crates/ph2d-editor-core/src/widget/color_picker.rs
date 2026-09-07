@@ -254,7 +254,7 @@ fn paint_placeholder(
     fill_rounded_rect(
         scene,
         rect,
-        Radius::Md.px(),
+        crate::paint::frame_radius(theme, Radius::Md.px()),
         resolve(ColorToken::Bg2, theme),
     );
     let label = match mode {

@@ -163,7 +163,7 @@ pub fn paint_numeric_input_with_unit(
     fill_rounded_rect(
         scene,
         chip,
-        Radius::Sm.px(),
+        crate::paint::frame_radius(theme, Radius::Sm.px()),
         resolve(ColorToken::Bg2, theme),
     );
     let font = TypeToken::Sm.px();

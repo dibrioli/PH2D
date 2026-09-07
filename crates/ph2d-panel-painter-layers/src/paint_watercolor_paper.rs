@@ -328,7 +328,7 @@ fn paint_paper_color_row(
     register_button(ctx.host.store_mut(), id);
     let [r, g, b] = encode_rgb3(brush.paper_color);
     let col = ph2d_vector::Color::from_rgba8(r, g, b, 255); // LITERAL-COLOR-OK: paper colour (data)
-    let radius = Radius::Sm.px();
+    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(ctx.scene, rect, radius, col);
     let open = ctx.host.store().picker_target() == Some(id);
     let border = if open {

@@ -132,7 +132,7 @@ pub(crate) fn paint(
     fill_rounded_rect(
         ctx.scene,
         col,
-        Radius::Sm.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
         resolve(ColorToken::Bg2, theme),
     );
 
@@ -203,7 +203,7 @@ pub(crate) fn paint(
             fill_rounded_rect(
                 ctx.scene,
                 row,
-                Radius::Xs.px(),
+                ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px()),
                 resolve(ColorToken::AccentSoft, theme),
             );
         }

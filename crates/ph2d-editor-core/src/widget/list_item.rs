@@ -91,7 +91,7 @@ pub fn paint_list_item(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let radius = Radius::Xs.px();
+    let radius = crate::paint::frame_radius(theme, Radius::Xs.px());
     let bg = match (item.selected, item.state) {
         (true, _) => Some(ColorToken::AccentSoft),
         (false, ListItemState::Hovered | ListItemState::Focused) => Some(ColorToken::Bg2),

@@ -407,7 +407,7 @@ impl Paint for ToastQueue {
         // chance to be read, so its slot must not move because some background job happens to
         // be running. `column_row` is the shared ruler for both tenants; it lives over there
         // because this file is at its frozen LOC ceiling (see the workspace LOC-cap gate).
-        let radius = Radius::Md.px();
+        let radius = crate::paint::frame_radius(ctx.theme, Radius::Md.px());
         for (i, toast) in self.iter().enumerate() {
             let r = crate::progress::column_row(ctx.viewport, i);
             // Body uses BgElev so the toast lifts off the canvas

@@ -211,7 +211,7 @@ pub fn paint_section_header(
         fill_rounded_rect(
             scene,
             chip_rect,
-            Radius::Xs.px(),
+            crate::paint::frame_radius(theme, Radius::Xs.px()),
             resolve(ColorToken::Bg3, theme),
         );
         let text = n.to_string();

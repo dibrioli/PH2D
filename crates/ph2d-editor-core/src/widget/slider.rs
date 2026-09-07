@@ -206,7 +206,7 @@ pub fn paint_slider_track(
     theme: Theme,
 ) {
     let (state, t) = visual;
-    let r = Radius::Xs.px();
+    let r = crate::paint::frame_radius(theme, Radius::Xs.px());
     let bg = blend_on_hover_axis(state, t, ColorToken::Bg2, ColorToken::Bg3, theme)
         .unwrap_or_else(|| resolve(track_tint(state), theme));
     fill_rounded_rect(scene, track, r, bg);
@@ -231,7 +231,7 @@ pub fn paint_slider_track(
 /// draws a flat `Border` track.
 pub fn paint_slider(slider: &Slider, rect: Rect, scene: &mut VectorScene, theme: Theme) {
     let track = track_rect(slider, rect);
-    let r = Radius::Xs.px();
+    let r = crate::paint::frame_radius(theme, Radius::Xs.px());
     if slider.state == SliderState::Disabled {
         fill_rounded_rect(scene, track, r, resolve(ColorToken::Border, theme));
         return;

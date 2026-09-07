@@ -463,7 +463,7 @@ fn paint_rail(
     fill_rounded_rect(
         scene,
         bg_rect,
-        Radius::Md.px(),
+        crate::paint::frame_radius(theme, Radius::Md.px()),
         resolve(ColorToken::RailBg, theme),
     );
     paint_tool_rail_t(
@@ -576,7 +576,7 @@ fn paint_rail_flyout(
     fill_rounded_rect(
         scene,
         bg_rect,
-        Radius::Md.px(),
+        crate::paint::frame_radius(theme, Radius::Md.px()),
         resolve(ColorToken::RailBg, theme),
     );
     paint_tool_rail_t(

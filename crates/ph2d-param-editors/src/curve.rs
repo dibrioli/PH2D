@@ -73,8 +73,10 @@ fn working(value: &str) -> Curve {
 /// (o fundo do painel vem primeiro na cena), e o `paint` só a devolve depois. *Duas contas da
 /// mesma altura seriam um fundo que não cobre o que está lá dentro.*
 #[must_use]
-pub fn height() -> f32 {
-    ph2d_tokens::row_pitch_px() + CANVAS_H
+///
+/// ⭐⭐ **A ESCALA é do HOSPEDEIRO** — ver [`crate::gradient::height`].
+pub fn height(scale: f32) -> f32 {
+    (ph2d_tokens::row_pitch_px() + CANVAS_H) * scale
 }
 
 /// One control point's store-registration data (the `CurvePoint` state the paint pass
@@ -112,13 +114,25 @@ pub fn paint(
     w: f32,
     y: f32,
     label_font: f32,
+    // `scale`: quanto a superfície do hospedeiro tem de folga — ver o doc de [`height`].
+    scale: f32,
     hit_index: &mut HitIndex,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
     out: &mut CurveWidgets,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
+    let gap = Spacing::Xs.px() * scale;
+    // ⚠️ **Uma multiplicação, um sítio** — o rect desenhado e o rect de hit saem literalmente
+    // das mesmas variáveis.
+    let (canvas_h, handle_r, grab_r, btn_w, interp_w, row_h) = (
+        CANVAS_H * scale,
+        HANDLE_R * scale,
+        GRAB_R * scale,
+        BTN_W * scale,
+        INTERP_W * scale,
+        ROW_H_PX * scale,
+    );
     let curve = working(value);
     let n = curve.points.len().min(MAX_CURVE_POINTS);
     let sel = selected_for(key).filter(|&p| p < n);
@@ -129,14 +143,14 @@ pub fn paint(
         scene,
         label,
         x,
-        y + (ROW_H_PX - label_font) * 0.5,
+        y + (row_h - label_font) * 0.5,
         label_font,
-        w - INTERP_W - BTN_W * 2.0 - gap * 3.0, // LITERAL-PX-OK: CONTAGEM (3 vaos entre os 4 elementos), nao medida
+        w - interp_w - btn_w * 2.0 - gap * 3.0, // LITERAL-PX-OK: CONTAGEM (3 vaos entre os 4 elementos), nao medida
         resolve(ColorToken::Text2, theme),
     );
-    let rem = Rect::new(x + w - BTN_W, y, BTN_W, ROW_H_PX);
-    let add = Rect::new(rem.x - BTN_W - gap, y, BTN_W, ROW_H_PX);
-    let interp = Rect::new(add.x - INTERP_W - gap, y, INTERP_W, ROW_H_PX);
+    let rem = Rect::new(x + w - btn_w, y, btn_w, row_h);
+    let add = Rect::new(rem.x - btn_w - gap, y, btn_w, row_h);
+    let interp = Rect::new(add.x - interp_w - gap, y, interp_w, row_h);
     let interp_label = interp_name(
         curve
             .points
@@ -166,10 +180,10 @@ pub fn paint(
         hit_index.register(id, brect);
         out.buttons.push(id);
     }
-    let cy0 = y + ph2d_tokens::row_pitch_px();
+    let cy0 = y + ph2d_tokens::row_pitch_px() * scale;
 
     // ── Canvas: bg + border + quarter grid ──
-    let canvas = Rect::new(x, cy0, w.max(1.0), CANVAS_H);
+    let canvas = Rect::new(x, cy0, w.max(1.0), canvas_h);
     // ⭐ Raio e moldura pela porta do TEMA: o canvas da curva é plano num tema moderno.
     let canvas_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(
@@ -224,16 +238,18 @@ pub fn paint(
         let id = key.sub(&format!("pt/{i}"));
         let cx = canvas.x + p.x.clamp(0.0, 1.0) * canvas.w;
         let cy = canvas.y + (1.0 - p.y.clamp(0.0, 1.0)) * canvas.h;
-        let grab = Rect::new(cx - GRAB_R, cy - GRAB_R, GRAB_R * 2.0, GRAB_R * 2.0);
+        let grab = Rect::new(cx - grab_r, cy - grab_r, grab_r * 2.0, grab_r * 2.0);
         hit_index.register(id, grab);
         out.points.push((id, key.root(), i as u8, canvas));
         let ring_col = if sel == Some(i) { accent } else { ring };
-        fill_circle(scene, cx, cy, HANDLE_R + RING_W, ring_col);
-        fill_circle(scene, cx, cy, HANDLE_R, fill);
+        fill_circle(scene, cx, cy, handle_r + RING_W, ring_col);
+        fill_circle(scene, cx, cy, handle_r, fill);
     }
 
     // Content height (header + gap + canvas); the caller adds the inter-row gap.
-    (cy0 + CANVAS_H) - y
+    // Pela PORTA — ver [`height`].
+    debug_assert!(((cy0 + canvas_h) - y - height(scale)).abs() < 1e-3);
+    height(scale)
 }
 
 /// A dragged handle landed in the store's `curve_point_drag` slot — fold it into the

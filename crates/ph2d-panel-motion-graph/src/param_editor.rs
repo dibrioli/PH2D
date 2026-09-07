@@ -30,6 +30,17 @@ use ph2d_tokens::{ColorToken, PANEL_HEAD_PAD_PX, PANEL_MIN_W_PX, Radius, Theme};
 /// A folga entre a janela e a borda do canvas — ela nunca encosta.
 const MARGIN: f32 = 8.0; // LITERAL-PX-OK: floating editor margin from the canvas edge
 
+/// ⭐⭐ **QUANTO MAIOR ESTA JANELA É QUE A ROW DO PAINEL** — decisão do dono (Enio, 2026-09-07:
+/// *«a janela do ramp ficou pequena, aumente uns 30%»*), depois de a ver a funcionar.
+///
+/// ⚠️ **Ele multiplica a GEOMETRIA e nada mais:** a barra fica mais longa (logo, uma parada
+/// arrasta-se com mais precisão) e as amostras ficam maiores (logo, acertam-se melhor) — o
+/// número de paradas, as posições e as cores são os mesmos.
+///
+/// ⛔ **E não move o teto de paradas** (`MAX_GRADIENT_STOPS`): ele é derivado da superfície mais
+/// ESTREITA em que o editor vive, que continua a ser a row do painel. *Folga não é licença.*
+const JANELA: f32 = 1.3;
+
 /// **Que editor está aberto** — a espécie decide o que se desenha e o que uma edição escreve.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum EditorKind {
@@ -115,11 +126,11 @@ pub(crate) fn arm(state: &mut MotionGraphPanelState, node: u32, p: &CardParam, r
 /// A janela, em ecrã — recortada para caber no canvas. `None` quando nada está aberto.
 pub(crate) fn window(state: &MotionGraphPanelState, canvas: Rect) -> Option<Rect> {
     let open = state.editor.as_ref()?;
-    let w = PANEL_MIN_W_PX;
+    let w = PANEL_MIN_W_PX * JANELA;
     let valor = crate::snapshot::card_text_of(open.node, open.param).unwrap_or_default();
     let h = 2.0f32.mul_add(
-        PANEL_HEAD_PAD_PX,
-        content_h(open, &valor, w - 2.0 * PANEL_HEAD_PAD_PX),
+        PANEL_HEAD_PAD_PX * JANELA,
+        content_h(open, &valor, w - 2.0 * PANEL_HEAD_PAD_PX * JANELA),
     );
     // Encostada para dentro quando não cabe onde foi aberta — uma janela meio fora do canvas
     // tem metade dos controlos inalcançáveis.
@@ -139,11 +150,11 @@ pub(crate) fn window(state: &MotionGraphPanelState, canvas: Rect) -> Option<Rect
 /// A altura do CONTEÚDO — a folha é quem a sabe, porque é ela que desenha.
 fn content_h(open: &Open, value: &str, w: f32) -> f32 {
     match open.kind {
-        EditorKind::Curve => ph2d_param_editors::curve::height(),
-        EditorKind::Gradient => ph2d_param_editors::gradient::height(),
+        EditorKind::Curve => ph2d_param_editors::curve::height(JANELA),
+        EditorKind::Gradient => ph2d_param_editors::gradient::height(JANELA),
         // ⚠️ Só a paleta depende do VALOR: a tira dela embrulha, e a caixa cresce com o número
         // de cores.
-        EditorKind::Palette => ph2d_param_editors::palette::height(value, w),
+        EditorKind::Palette => ph2d_param_editors::palette::height(value, w, JANELA),
     }
 }
 
@@ -175,10 +186,12 @@ pub(crate) fn paint(state: &MotionGraphPanelState, ctx: &mut PaintCtx, canvas: R
         swatch: &swatch,
     };
     let valor = crate::snapshot::card_text_of(open.node, open.param).unwrap_or_default();
-    let x = win.x + PANEL_HEAD_PAD_PX;
-    let w = win.w - 2.0 * PANEL_HEAD_PAD_PX;
-    let y = win.y + PANEL_HEAD_PAD_PX;
-    let fonte = ph2d_tokens::TypeToken::Base.px();
+    let x = win.x + PANEL_HEAD_PAD_PX * JANELA;
+    let w = win.w - 2.0 * PANEL_HEAD_PAD_PX * JANELA;
+    let y = win.y + PANEL_HEAD_PAD_PX * JANELA;
+    // ⚠️ A LETRA cresce com a caixa: um rótulo do tamanho de sempre numa janela 30% maior
+    // lê-se como uma janela mal preenchida, e é o mesmo texto que diz de que param ela é.
+    let fonte = ph2d_tokens::TypeToken::Base.px() * JANELA;
     let mut curva = ph2d_param_editors::curve::CurveWidgets::new();
     let mut cor = ph2d_param_editors::gradient::ColourRowWidgets::new();
     match open.kind {
@@ -191,6 +204,7 @@ pub(crate) fn paint(state: &MotionGraphPanelState, ctx: &mut PaintCtx, canvas: R
                 w,
                 y,
                 fonte,
+                JANELA,
                 ctx.host.hit_index_mut(),
                 ctx.scene,
                 ctx.text_system,
@@ -207,6 +221,7 @@ pub(crate) fn paint(state: &MotionGraphPanelState, ctx: &mut PaintCtx, canvas: R
                 w,
                 y,
                 fonte,
+                JANELA,
                 ctx.host.hit_index_mut(),
                 ctx.scene,
                 ctx.text_system,
@@ -223,6 +238,7 @@ pub(crate) fn paint(state: &MotionGraphPanelState, ctx: &mut PaintCtx, canvas: R
                 w,
                 y,
                 fonte,
+                JANELA,
                 ctx.host.hit_index_mut(),
                 ctx.scene,
                 ctx.text_system,

@@ -309,3 +309,44 @@ fn the_palette_window_grows_with_its_colours() {
         "24 cores tem de pedir mais caixa que 2"
     );
 }
+
+/// ⭐⭐ **A JANELA É MAIOR QUE A ROW DO PAINEL** (report do Enio, 2026-09-07: *«a janela do ramp
+/// ficou pequena, aumente uns 30%»*) — e o quanto sai de uma constante só.
+///
+/// ⚠️ **A escala multiplica a GEOMETRIA e nada mais**: este gate mede a CAIXA, e os gates da
+/// folha medem que a lei não se mexe (o mesmo texto entra e sai em qualquer escala).
+///
+/// FALSIFICADO por o `JANELA` voltar a `1.0` — a caixa encolhe para a largura da coluna do
+/// painel, que foi exactamente a queixa.
+#[test]
+fn the_floating_window_is_roomier_than_a_panel_row() {
+    let canvas = Rect::new(0.0, 0.0, 1600.0, 1200.0);
+    set_card_texts(vec![(NODE, "ramp", "g1 2 0:1,0,0 1:0,0,1".to_string())]);
+    let st = MotionGraphPanelState {
+        editor: Some(Open {
+            node: NODE,
+            param: "ramp",
+            title: "Ramp",
+            kind: EditorKind::Gradient,
+            screen: (100.0, 100.0),
+        }),
+        ..MotionGraphPanelState::default()
+    };
+    let w = window(&st, canvas).expect("aberta");
+    let coluna = ph2d_tokens::PANEL_MIN_W_PX;
+    assert!(
+        w.w > coluna * 1.2,
+        "a janela ({}) tem de ser bem mais larga que a coluna do painel ({coluna})",
+        w.w
+    );
+    let na_coluna = 2.0f32.mul_add(
+        ph2d_tokens::PANEL_HEAD_PAD_PX,
+        ph2d_param_editors::gradient::height(1.0),
+    );
+    assert!(
+        w.h > na_coluna * 1.2,
+        "e mais alta ({}) que a mesma rampa numa row ({na_coluna})",
+        w.h
+    );
+    set_card_texts(Vec::new());
+}

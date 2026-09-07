@@ -55,6 +55,9 @@ pub(crate) fn paint_curve_row(
         w,
         y,
         label_font,
+        // ⚠️ **`1.0`: a row do painel NÃO se mexe.** A escala é do hospedeiro, e esta vive numa
+        // coluna estreita — é ela, aliás, a superfície de que o teto de paradas foi derivado.
+        1.0,
         hit_index,
         scene,
         text_system,

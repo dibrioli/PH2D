@@ -59,9 +59,9 @@ fn swatch_srgb(c: [f32; 4]) -> [u8; 4] {
 
 /// How many swatches fit on one line of width `w`. At least one — a row narrower than a
 /// single swatch still has to draw something, and one-per-line is the honest degenerate.
-pub fn per_line(w: f32) -> usize {
-    let gap = Spacing::Xs.px();
-    (((w + gap) / (SWATCH + gap)) as usize).max(1)
+pub fn per_line(w: f32, scale: f32) -> usize {
+    let gap = Spacing::Xs.px() * scale;
+    (((w + gap) / (SWATCH * scale + gap)) as usize).max(1)
 }
 
 /// Paint the row and collect its store registrations. Returns the height used.
@@ -81,13 +81,17 @@ pub fn paint(
     w: f32,
     y: f32,
     label_font: f32,
+    // `scale`: quanto a superfície do hospedeiro tem de folga — ver o doc de [`height`].
+    scale: f32,
     hit_index: &mut HitIndex,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
     out: &mut crate::gradient::ColourRowWidgets,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
+    let gap = Spacing::Xs.px() * scale;
+    // ⚠️ **Uma multiplicação, um sítio.**
+    let (swatch, btn_w, row_h) = (SWATCH * scale, BTN_W * scale, ROW_H_PX * scale);
     let colors = working(value);
 
     // ── Header: label (left) + + / − (right) ──
@@ -96,13 +100,13 @@ pub fn paint(
         scene,
         label,
         x,
-        y + (ROW_H_PX - label_font) * 0.5,
+        y + (row_h - label_font) * 0.5,
         label_font,
-        w - BTN_W * 2.0 - gap * 2.0, // LITERAL-PX-OK: CONTAGEM (2 vaos), nao medida
+        w - btn_w * 2.0 - gap * 2.0, // LITERAL-PX-OK: CONTAGEM (2 vaos), nao medida
         resolve(ColorToken::Text2, theme),
     );
-    let rem = Rect::new(x + w - BTN_W, y, BTN_W, ROW_H_PX);
-    let add = Rect::new(rem.x - BTN_W - gap, y, BTN_W, ROW_H_PX);
+    let rem = Rect::new(x + w - btn_w, y, btn_w, row_h);
+    let add = Rect::new(rem.x - btn_w - gap, y, btn_w, row_h);
     for (brect, label, id) in [
         (add, "+", key.sub("add")),
         (rem, "\u{2212}", key.sub("remove")),
@@ -126,9 +130,9 @@ pub fn paint(
     }
 
     // ── The strip, WRAPPED. The height follows the count; nothing here caps it. ──
-    let cols = per_line(w);
+    let cols = per_line(w, scale);
     // O topo da tira: o cabeçalho já foi desenhado.
-    let used = ph2d_tokens::row_pitch_px();
+    let used = ph2d_tokens::row_pitch_px() * scale;
     for (i, c) in colors.iter().enumerate() {
         let (line, col) = (i / cols, i % cols);
         #[expect(
@@ -137,10 +141,10 @@ pub fn paint(
                       would not fit on any screen"
         )]
         let r = Rect::new(
-            x + col as f32 * (SWATCH + gap),
-            y + used + line as f32 * (SWATCH + gap),
-            SWATCH,
-            SWATCH,
+            x + col as f32 * (swatch + gap),
+            y + used + line as f32 * (swatch + gap),
+            swatch,
+            swatch,
         );
         let id = key.swatch_id(i);
         let srgb = swatch_srgb(*c);
@@ -164,8 +168,10 @@ pub fn paint(
         out.swatches.push((id, srgb));
     }
     // Pela PORTA — ver [`height`].
-    debug_assert!((used + strip_h(colors.len(), cols) - height(value, w)).abs() < 1e-3);
-    height(value, w)
+    debug_assert!(
+        (used + strip_h(colors.len(), cols, scale) - height(value, w, scale)).abs() < 1e-3
+    );
+    height(value, w, scale)
 }
 
 /// **A ALTURA que esta paleta ocupa** — cabeçalho mais a tira, que EMBRULHA: ela segue a
@@ -176,20 +182,24 @@ pub fn paint(
 /// não cobre o que está lá dentro* — e numa paleta, que cresce, seria pior: o fundo ficaria
 /// certo até a nona cor.
 #[must_use]
-pub fn height(value: &str, w: f32) -> f32 {
+///
+/// ⭐⭐ **A ESCALA é do HOSPEDEIRO** — ver [`crate::gradient::height`]. ⚠️ Aqui ela muda também
+/// **quantas cabem por linha**, e é por isso que o `per_line` a recebe: uma tira que
+/// embrulhasse por uma contagem e desenhasse por outra teria amostras fora da caixa.
+pub fn height(value: &str, w: f32, scale: f32) -> f32 {
     let n = working(value).len();
-    ph2d_tokens::row_pitch_px() + strip_h(n, per_line(w))
+    ph2d_tokens::row_pitch_px() * scale + strip_h(n, per_line(w, scale), scale)
 }
 
 /// A altura da tira embrulhada, em linhas.
-fn strip_h(n: usize, cols: usize) -> f32 {
-    let gap = Spacing::Xs.px();
+fn strip_h(n: usize, cols: usize, scale: f32) -> f32 {
+    let gap = Spacing::Xs.px() * scale;
     #[expect(
         clippy::cast_precision_loss,
         reason = "a line count; see the swatch-grid note above"
     )]
     {
-        n.div_ceil(cols.max(1)) as f32 * (SWATCH + gap)
+        n.div_ceil(cols.max(1)) as f32 * (SWATCH * scale + gap)
     }
 }
 
@@ -220,6 +230,11 @@ pub fn remove_color(value: &str) -> String {
 mod tests {
     use super::*;
 
+    /// A escala da row do painel — o que os gates de sempre medem.
+    fn painted(colors: &[[f32; 4]], w: f32) -> (f32, u32, Vec<u32>) {
+        painted_at(colors, w, 1.0)
+    }
+
     /// ⭐⭐ **A PORTA DA ALTURA DIZ O QUE O PINTOR USOU** — a igualdade que o hospedeiro
     /// flutuante depende para desenhar o fundo ANTES do conteúdo.
     ///
@@ -227,13 +242,18 @@ mod tests {
     /// certa até a linha encher. FALSIFICADO por o `height` esquecer o cabeçalho.
     #[test]
     fn the_height_door_matches_what_the_paint_used() {
-        for n in [1usize, 3, 9, 17] {
-            let cores: Vec<[f32; 4]> = (0..n).map(|i| [i as f32 / 20.0, 0.2, 0.3, 1.0]).collect();
-            let (usada, _, _) = painted(&cores, 184.0);
-            assert!(
-                (usada - height(&ph2d_color::serialize_palette(&cores), 184.0)).abs() < 1e-3,
-                "com {n} cores o pintor usou {usada} e a porta diz outra coisa"
-            );
+        for escala in [1.0_f32, 1.3] {
+            for n in [1usize, 3, 9, 17] {
+                let cores: Vec<[f32; 4]> =
+                    (0..n).map(|i| [i as f32 / 20.0, 0.2, 0.3, 1.0]).collect();
+                let w = 184.0 * escala;
+                let (usada, _, _) = painted_at(&cores, w, escala);
+                let porta = height(&ph2d_color::serialize_palette(&cores), w, escala);
+                assert!(
+                    (usada - porta).abs() < 1e-3,
+                    "a {escala}x com {n} cores o pintor usou {usada} e a porta diz {porta}"
+                );
+            }
         }
     }
 
@@ -245,7 +265,7 @@ mod tests {
     /// reserved space for the swatches and **drew nothing in it**, which is exactly what the
     /// artist saw ([[feedback_painted_is_not_populated_paint_gate]]). A number a painter
     /// returns is not evidence that a painter painted; `Scene::encoding()` is.
-    fn painted(colors: &[[f32; 4]], w: f32) -> (f32, u32, Vec<u32>) {
+    fn painted_at(colors: &[[f32; 4]], w: f32, escala: f32) -> (f32, u32, Vec<u32>) {
         let valor = ph2d_color::serialize_palette(colors);
         let mut hit = HitIndex::default();
         let mut scene = VectorScene::new();
@@ -262,6 +282,7 @@ mod tests {
             w,
             0.0,
             12.0,
+            escala,
             &mut hit,
             &mut scene,
             &mut text,
@@ -317,10 +338,14 @@ mod tests {
     /// have re-imposed the cap this wave removed the moment a colour ran off the edge.
     #[test]
     fn the_strip_wraps_instead_of_running_off_the_edge() {
-        let narrow = per_line(60.0);
+        let narrow = per_line(60.0, 1.0);
         assert!((2..20).contains(&narrow), "a narrow row fits few: {narrow}");
-        assert!(per_line(600.0) > narrow, "a wide row fits more");
-        assert_eq!(per_line(1.0), 1, "narrower than one swatch still draws one");
+        assert!(per_line(600.0, 1.0) > narrow, "a wide row fits more");
+        assert_eq!(
+            per_line(1.0, 1.0),
+            1,
+            "narrower than one swatch still draws one"
+        );
     }
 
     /// **A row with more colours is TALLER.** This is the executable form of "no limit":

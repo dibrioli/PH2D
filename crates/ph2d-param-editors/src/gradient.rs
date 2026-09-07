@@ -87,9 +87,18 @@ fn stop_srgb(stop: &RampStop) -> [u8; 4] {
 /// ⚠️ **Uma PORTA, dois leitores**: o `paint` devolve-a e o hospedeiro flutuante lê-a antes de
 /// desenhar (o fundo do painel vem primeiro na cena).
 #[must_use]
-pub fn height() -> f32 {
-    let gap = Spacing::Xs.px();
-    ph2d_tokens::row_pitch_px() + BAR_H + gap + SWATCH_H + gap + PRESET_H
+///
+/// ⭐⭐ **A ESCALA é do HOSPEDEIRO, não do editor** (report do Enio, 2026-09-07: *«a janela do
+/// ramp ficou pequena, aumente uns 30%»*). A row do painel vive numa coluna estreita e pede
+/// `1.0`; a janela flutuante não tem de caber em coluna nenhuma.
+///
+/// ⚠️ **Ela multiplica a GEOMETRIA e nunca as leis:** o número de paradas, as posições e as
+/// cores são os mesmos em qualquer escala. ⛔ E o teto de paradas (`MAX_GRADIENT_STOPS`)
+/// continua derivado da superfície mais ESTREITA — uma janela maior dá folga, não licença: a
+/// row do painel continua a ser onde as oito têm de caber.
+pub fn height(scale: f32) -> f32 {
+    let gap = Spacing::Xs.px() * scale;
+    (ph2d_tokens::row_pitch_px() + BAR_H + SWATCH_H + PRESET_H) * scale + gap + gap
 }
 
 /// One COLOUR row's store-registration data — the Gradient editor and the Palette strip
@@ -159,13 +168,29 @@ pub fn paint(
     w: f32,
     y: f32,
     label_font: f32,
+    // `scale`: quanto a superfície do hospedeiro tem de folga — ver o doc de [`height`].
+    scale: f32,
     hit_index: &mut HitIndex,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
     out: &mut ColourRowWidgets,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
+    let gap = Spacing::Xs.px() * scale;
+    // ⚠️ **Uma multiplicação, um sítio.** Escalar cada uso à mão é como um rect de hit deixa de
+    // ser o rect desenhado — e aqui os dois vêm literalmente das mesmas variáveis.
+    let (bar_h, swatch_h, preset_h, marker_r, grab_r, btn_w, interp_w, mode_w, swatch_pad, row_h) = (
+        BAR_H * scale,
+        SWATCH_H * scale,
+        PRESET_H * scale,
+        MARKER_R * scale,
+        GRAB_R * scale,
+        BTN_W * scale,
+        INTERP_W * scale,
+        MODE_W * scale,
+        SWATCH_PAD * scale,
+        ROW_H_PX * scale,
+    );
     let ramp = working(value);
     let n = ramp.len().min(MAX_GRADIENT_STOPS);
     let sel = selected_for(key).filter(|&p| p < n);
@@ -174,7 +199,7 @@ pub fn paint(
     //
     // ⚠️ **A LISTA é a régua.** Os botões são colocados da direita para a esquerda e a
     // largura do rótulo é a SOBRA — a constante escrita à mão que morava aqui
-    // (`- INTERP_W - BTN_W*2 - gap*3`, com um comentário contando os vãos) envelhece no
+    // (`- interp_w - btn_w*2 - gap*3`, com um comentário contando os vãos) envelhece no
     // dia em que um botão entra, e foi exatamente o que o espaço de interpolação fez.
     //
     // ⚠️ **O botão de MATIZ só existe fora do RGB**, onde ele decide alguma coisa: o braço
@@ -182,20 +207,20 @@ pub fn paint(
     // e não muda um pixel.
     let mut buttons: Vec<(f32, &'static str, NodeId)> = Vec::with_capacity(5);
     if ramp.color_mode != RampColorMode::Rgb {
-        buttons.push((MODE_W, ramp.hue.name(), key.sub("hue")));
+        buttons.push((mode_w, ramp.hue.name(), key.sub("hue")));
     }
-    buttons.push((MODE_W, ramp.color_mode.name(), key.sub("space")));
+    buttons.push((mode_w, ramp.color_mode.name(), key.sub("space")));
     // ⚠️ **O rótulo é o da PARADA quando há uma selecionada com interpolação
     // própria** — o botão cicla aquela, e um rótulo que continuasse a mostrar a
     // global seria pintar de uma fonte e despachar de outra.
     buttons.push((
-        INTERP_W,
+        interp_w,
         sel.and_then(|i| ramp.stops()[i].interp)
             .map_or_else(|| interp_name(ramp.interp), RampInterp::name),
         key.sub("interp"),
     ));
-    buttons.push((BTN_W, "+", key.sub("add")));
-    buttons.push((BTN_W, "\u{2212}", key.sub("remove")));
+    buttons.push((btn_w, "+", key.sub("add")));
+    buttons.push((btn_w, "\u{2212}", key.sub("remove")));
     // Um vão por botão: o do primeiro é o que o separa do rótulo.
     let used: f32 = buttons.iter().map(|(bw, _, _)| bw + gap).sum();
     paint_text_elided(
@@ -203,7 +228,7 @@ pub fn paint(
         scene,
         label,
         x,
-        y + (ROW_H_PX - label_font) * 0.5,
+        y + (row_h - label_font) * 0.5,
         label_font,
         (w - used).max(0.0),
         resolve(ColorToken::Text2, theme),
@@ -211,7 +236,7 @@ pub fn paint(
     let mut bx = x + w;
     for (bw, label, id) in buttons.into_iter().rev() {
         bx -= bw;
-        let brect = Rect::new(bx, y, bw, ROW_H_PX);
+        let brect = Rect::new(bx, y, bw, row_h);
         bx -= gap;
         fill_rounded_rect(
             scene,
@@ -232,8 +257,8 @@ pub fn paint(
     }
 
     // ── Gradient bar: adjacent vertical strips filled with eval(t) ──
-    let by0 = y + ph2d_tokens::row_pitch_px();
-    let bar = Rect::new(x, by0, w.max(1.0), BAR_H);
+    let by0 = y + ph2d_tokens::row_pitch_px() * scale;
+    let bar = Rect::new(x, by0, w.max(1.0), bar_h);
     paint_gradient_bar(scene, bar, &ramp);
     // ⭐ Pela porta do TEMA: a barra é plana num tema moderno.
     ph2d_editor_core::paint::stroke_frame(
@@ -253,19 +278,19 @@ pub fn paint(
         let id = key.sub(&format!("stop/{i}"));
         let cx = bar.x + stop.pos.clamp(0.0, 1.0) * bar.w;
         let cy = bar.y + bar.h;
-        let grab = Rect::new(cx - GRAB_R, cy - GRAB_R, GRAB_R * 2.0, GRAB_R * 2.0);
+        let grab = Rect::new(cx - grab_r, cy - grab_r, grab_r * 2.0, grab_r * 2.0);
         hit_index.register(id, grab);
         // The drag canvas is the BAR: the dispatch normalizes the pointer's x to
         // `pos ∈ [0,1]` across it (the y is ignored — a stop has only a position).
         out.markers.push((id, key.root(), i as u8, bar));
         let ring_col = if sel == Some(i) { accent } else { ring };
-        fill_circle(scene, cx, cy, MARKER_R + RING_W, ring_col);
+        fill_circle(scene, cx, cy, marker_r + RING_W, ring_col);
         let sr = stop_srgb(stop);
         fill_circle(
             scene,
             cx,
             cy,
-            MARKER_R,
+            marker_r,
             Color::from_rgba8(sr[0], sr[1], sr[2], 255), // LITERAL-COLOR-OK: the stop's own colour is data
         );
     }
@@ -276,12 +301,12 @@ pub fn paint(
     for (i, stop) in ramp.stops().iter().take(n).enumerate() {
         let sid = key.swatch_id(i);
         let srgb = stop_srgb(stop);
-        let pad = SWATCH_PAD;
+        let pad = swatch_pad;
         let srect = Rect::new(
             x + i as f32 * cell + pad,
             sy0,
             (cell - pad * 2.0).max(1.0),
-            SWATCH_H,
+            swatch_h,
         );
         fill_rounded_rect(
             scene,
@@ -316,16 +341,16 @@ pub fn paint(
     // one LOADS its stops into the editable ramp (doc 85) — the presets appear IN the editor and
     // become draggable/recolourable, not a separate immutable mode. The colours ARE the identity
     // (rainbow / warm / cool / grey), so no label is needed. ──
-    let py0 = sy0 + SWATCH_H + gap;
+    let py0 = sy0 + swatch_h + gap;
     let pcell = (w / GradientPreset::ALL.len() as f32).max(1.0);
     for (i, preset) in GradientPreset::ALL.into_iter().enumerate() {
         let id = key.sub(&format!("preset/{i}"));
-        let pad = SWATCH_PAD;
+        let pad = swatch_pad;
         let prect = Rect::new(
             x + i as f32 * pcell + pad,
             py0,
             (pcell - pad * 2.0).max(1.0),
-            PRESET_H,
+            preset_h,
         );
         paint_gradient_bar(scene, prect, &preset.ramp());
         ph2d_editor_core::paint::stroke_frame(
@@ -344,8 +369,8 @@ pub fn paint(
     // Content height — pela PORTA, que é a mesma que o hospedeiro flutuante lê para desenhar
     // o fundo ANTES do conteúdo. Duas contas da mesma altura seriam um fundo que não cobre o
     // que está lá dentro. (⚠️ A igualdade é gateada: `the_height_door_matches_what_the_paint_used`.)
-    debug_assert!(((py0 + PRESET_H) - y - height()).abs() < 1e-3);
-    height()
+    debug_assert!(((py0 + preset_h) - y - height(scale)).abs() < 1e-3);
+    height(scale)
 }
 
 /// A dragged marker landed in the store's `curve_point_drag` slot — fold its x into the

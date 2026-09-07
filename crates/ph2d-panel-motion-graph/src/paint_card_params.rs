@@ -111,12 +111,26 @@ fn shown(p: &CardParam) -> Shown {
         ),
         // Sem amostra (a shell não a preencheu) a row diz que há uma cor, não uma cor errada.
         ParamWidget::Color { .. } => p.swatch.map_or(Shown::Editor, Shown::Swatch),
-        ParamWidget::Channels { .. } | ParamWidget::Source => Shown::Editor,
-        ParamWidget::Text
+        // ⭐⭐ **O QUE ESTÁ ESCOLHIDO LÊ-SE NA ROW** quando a shell soube dizê-lo — o nome da
+        // forma, o do ficheiro, o da coluna. Sem isso o artista muda uma coisa que não consegue
+        // ler: o clique funciona, a tela responde, e a row continua a mostrar o mesmo selo.
+        //
+        // ⛔ **O selo NÃO é o caso de erro** — ele é a resposta certa para o texto de MÁQUINA
+        // (uma curva, um gradiente e uma paleta são serializações) e para o que ainda não foi
+        // escolhido. Quem decide qual é qual é a shell, que tem o documento; aqui só se desenha.
+        ParamWidget::Channels { .. }
+        | ParamWidget::Source
+        | ParamWidget::Text
         | ParamWidget::Curve
         | ParamWidget::Gradient
         | ParamWidget::Palette
-        | ParamWidget::File { .. } => Shown::Editor,
+        | ParamWidget::File { .. } => {
+            if p.text.is_empty() {
+                Shown::Editor
+            } else {
+                Shown::State(p.text.as_str().to_string())
+            }
+        }
     }
 }
 

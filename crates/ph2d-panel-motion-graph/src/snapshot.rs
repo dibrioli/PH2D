@@ -223,7 +223,7 @@ pub struct GraphNodeView {
 
 #[path = "snapshot_card.rs"]
 mod card;
-pub use card::{CardParam, CardSection};
+pub use card::{CardParam, CardSection, RowText};
 
 #[path = "snapshot_thumb.rs"]
 mod thumb;

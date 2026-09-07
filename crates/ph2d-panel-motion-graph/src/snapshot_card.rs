@@ -51,6 +51,30 @@ pub struct CardParam {
     /// **linear**, e quem sabe passar isso a sRGB é o `linear_rgba_to_srgb8` que o bridge de
     /// cor já usa para semear o picker. Converter aqui seria a segunda cópia dessa lei.
     pub swatch: Option<[u8; 4]>,
+    /// ⭐⭐ **O VALOR DE TEXTO QUE A ROW MOSTRA** — o nome da forma escolhida, o do ficheiro, a
+    /// coluna. Vazio ⇒ a row desenha o selo de *«há um editor aqui»*.
+    ///
+    /// ⚠️⚠️ **É um buffer INLINE, e não uma `String`, porque a lei do cartão é medida.** O doc
+    /// do `stamp_card_params` declara *«zero `String`»* com o número ao lado (20 cartões × 5
+    /// rows seriam **200 alocações por quadro**), e este tipo é `Copy` — que é o que o torna
+    /// barato de passar. Uma `Box<str>` aqui faria as duas coisas: alocava, e **tirava o
+    /// `Copy`**, que o compilador disse alto na primeira tentativa.
+    ///
+    /// ⇒ [`RowText`] guarda o que **cabe na row** e nada mais. Não é uma limitação escondida:
+    /// a coluna do valor de um cartão tem ~12 caracteres e o pintor **já elide**; um texto que
+    /// não coubesse aqui também não caberia no ecrã. ⛔ Quem precisar do valor INTEIRO (a wave
+    /// que faz o cartão EDITAR texto) lê-o do documento, que é onde ele vive.
+    ///
+    /// ⭐ **RE-MEDIDO depois de existir** (`measure_card_cost`, release, `load 3,80` — §5.0 ok):
+    /// **`1,74`–`1,87 µs` por row**, contra os **`2,8`** que o ciclo 1 registou, e `11,0`–`11,9 µs`
+    /// por cartão contra `11,3`. ⚠️ *A leitura mais baixa não é um ganho desta wave* — é outra
+    /// máquina e outro dia; o que ela afirma é o que interessa: **o texto inline não moveu o
+    /// custo da row.** 20 cartões × 8 rows = `0,54 ms` de um quadro de `16,67`.
+    ///
+    /// ⛔ **E há espécies que NÃO o trazem, de propósito:** uma curva, um gradiente e uma paleta
+    /// guardam texto de MÁQUINA (uma serialização), e mostrá-lo cru encheria a row de ruído que
+    /// não responde a pergunta nenhuma. Para essas o selo é a resposta certa.
+    pub text: RowText,
     /// ⭐⭐ **A FAIXA DO ARRASTO, RESOLVIDA** — e ⛔ **não** é `hint.min`/`hint.max`.
     ///
     /// A faixa de uma MAGNITUDE depende do canal que ela conduz (o `Amount` do `motion.drive`
@@ -122,6 +146,7 @@ impl CardParam {
             value,
             driven: false,
             swatch: None,
+            text: RowText::default(),
             min: hint.min,
             max: hint.max,
             step: hint.step,
@@ -142,5 +167,49 @@ impl CardParam {
     pub fn driven_by_wire(mut self) -> Self {
         self.driven = true;
         self
+    }
+}
+
+/// **UM TEXTO CURTO QUE CABE NUMA ROW DE CARTÃO** — sem alocar, e `Copy` como o resto da row.
+///
+/// ⚠️ **A truncagem é por CARÁCTER, nunca por byte.** Cortar um `&str` a meio de um carácter
+/// multibyte é um `panic` no melhor caso e um losango no pior — e um nome de ficheiro acentuado
+/// é o caso normal, não o exótico.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub struct RowText {
+    buf: [u8; ROW_TEXT_CAP],
+    len: u8,
+}
+
+/// O que cabe. ⚠️ **Não é um número escolhido:** a coluna do valor de um cartão mede ~12
+/// caracteres na fonte do cartão, e o pintor elide o que passa disso — este tecto é o dobro
+/// disso em bytes, folga suficiente para acentos sem tornar a row cara.
+const ROW_TEXT_CAP: usize = 28;
+
+impl RowText {
+    /// O prefixo de `s` que cabe, cortado numa fronteira de carácter.
+    #[must_use]
+    pub fn new(s: &str) -> Self {
+        let mut fim = s.len().min(ROW_TEXT_CAP);
+        while fim > 0 && !s.is_char_boundary(fim) {
+            fim -= 1;
+        }
+        let mut buf = [0u8; ROW_TEXT_CAP];
+        buf[..fim].copy_from_slice(&s.as_bytes()[..fim]);
+        Self {
+            buf,
+            len: u8::try_from(fim).unwrap_or(0),
+        }
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        // Construído sempre por [`Self::new`], que corta na fronteira — logo é UTF-8 válido.
+        std::str::from_utf8(&self.buf[..self.len as usize]).unwrap_or("")
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
     }
 }

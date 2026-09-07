@@ -137,3 +137,62 @@ fn the_text_of_a_param_row_appears_only_when_it_is_legible() {
         "a 1,0 as quatro rows escrevem rotulo e valor ({g_com_perto} contra {g_sem_perto})"
     );
 }
+
+/// ⭐⭐ **UMA ROW DE TEXTO MOSTRA O QUE ESTÁ ESCOLHIDO** — e cai no selo quando não há nada.
+///
+/// ⚠️ **Antes disto o cartão era MUDO sobre estes controlos:** o clique já mudava o valor (a
+/// forma publicada anda, o ficheiro abre o diálogo) e a row continuava a desenhar o mesmo selo.
+/// *Mudar uma coisa que não se consegue ler é meio controlo*, e a `§0.6` da casa chama a isso
+/// pior que não começado.
+///
+/// FALSIFICADO por o braço devolver `Shown::Editor` mesmo com texto — a row volta a ser muda.
+#[test]
+fn a_text_row_shows_what_is_chosen_and_falls_back_to_the_badge() {
+    let com = |t: &str| {
+        let mut p = crate::CardParam::from_hint(
+            ParamUiHint {
+                param: "path",
+                label: "Shape",
+                min: 0.0,
+                max: 0.0,
+                step: 0.0,
+                widget: ParamWidget::Source,
+            },
+            0.0,
+        );
+        p.text = crate::RowText::new(t);
+        p
+    };
+    assert!(
+        !crate::paint::paint_card_params::shows_a_level(&com("Estrela")),
+        "um nome nao e' um nivel: ele nao se arrasta"
+    );
+    assert_eq!(com("Estrela").text.as_str(), "Estrela");
+    assert!(
+        com("").text.is_empty(),
+        "sem valor, a row nao tem texto e o pintor desenha o selo"
+    );
+}
+
+/// ⚠️ **O TEXTO CORTA-SE POR CARÁCTER, NUNCA POR BYTE** — um nome de ficheiro acentuado é o
+/// caso normal, e cortar um `&str` a meio de um carácter multibyte é um `panic` no melhor caso.
+///
+/// FALSIFICADO por truncar em `s.len().min(CAP)` sem recuar até à fronteira.
+#[test]
+fn the_row_text_truncates_on_a_character_never_inside_one() {
+    // 30 caracteres de 2 bytes = 60 bytes: o corte cai bem dentro da cadeia.
+    let acentuado = "ç".repeat(30);
+    let t = crate::RowText::new(&acentuado);
+    assert!(!t.as_str().is_empty(), "alguma coisa tem de sobrar");
+    assert!(
+        t.as_str().chars().all(|c| c == 'ç'),
+        "o corte partiu um caracter: {:?}",
+        t.as_str()
+    );
+    assert!(
+        acentuado.starts_with(t.as_str()),
+        "o que fica e' um PREFIXO do que veio"
+    );
+    // E o caso curto passa inteiro.
+    assert_eq!(crate::RowText::new("dados.csv").as_str(), "dados.csv");
+}

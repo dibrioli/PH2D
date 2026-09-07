@@ -163,6 +163,7 @@ pub(crate) fn stamp_card_params(
                         }
                         _ => None,
                     },
+                    text: card_text(motion, nid, h),
                 }
             })
             .map(|c| (motion.registry.param_group(type_id, c.hint.param), c))
@@ -226,3 +227,45 @@ mod card_range_tests;
 #[cfg(test)]
 #[path = "motion_bridge_card_census.rs"]
 mod card_census;
+
+/// ⭐⭐ **O QUE UMA ROW DE TEXTO MOSTRA NO CARTÃO** — e as espécies que deliberadamente **não**
+/// mostram nada.
+///
+/// ⚠️ **O valor sai da MESMA expressão que a row do painel usa** (o override de texto do nó,
+/// vazio quando não há) — ver `params_text_rows`. Uma segunda forma de ler o mesmo campo seria
+/// como o cartão e o painel passam a discordar sobre o que está escolhido.
+///
+/// ⛔ **Uma CURVA, um GRADIENTE e uma PALETA não trazem texto**, e não é esquecimento: o valor
+/// deles é uma **serialização** (`0.0,0.0;0.5,1.0;…`), e pô-la na row encheria o cartão de um
+/// texto que não responde a pergunta nenhuma. Para essas o selo continua a ser a resposta.
+///
+/// ⚠️ **De um FICHEIRO mostra-se o NOME, não o caminho.** A coluna do valor tem ~12 caracteres
+/// e o elidor corta pelo FIM — um caminho absoluto mostraria `/home/enio/Doc…`, que é
+/// exactamente a metade que não identifica ficheiro nenhum. *Quando o espaço obriga a cortar,
+/// o que fica tem de ser a metade que responde.*
+fn card_text(
+    motion: &MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    h: &ph2d_node_registry::ParamUiHint,
+) -> ph2d_panel_motion_graph::RowText {
+    use ph2d_node_registry::ParamWidget as W;
+    let vazio = ph2d_panel_motion_graph::RowText::default();
+    let bruto = motion
+        .doc
+        .graph
+        .node_text_param_overrides(nid)
+        .and_then(|m| m.get(h.param))
+        .map(String::as_str)
+        .unwrap_or_default();
+    if bruto.is_empty() {
+        return vazio;
+    }
+    match h.widget {
+        W::Text | W::Source | W::Channels { .. } => ph2d_panel_motion_graph::RowText::new(bruto),
+        W::File { .. } => std::path::Path::new(bruto)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map_or(vazio, ph2d_panel_motion_graph::RowText::new),
+        _ => vazio,
+    }
+}

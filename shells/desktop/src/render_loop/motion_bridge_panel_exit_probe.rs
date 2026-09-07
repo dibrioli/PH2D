@@ -194,6 +194,56 @@ fn the_cards_file_click_reaches_the_same_door_the_panel_row_uses() {
     );
 }
 
+/// ⭐⭐⭐ **O CARTÃO DIZ O QUE ESTÁ ESCOLHIDO** — a metade que faltava às duas waves de hoje.
+///
+/// Depois delas o artista **muda** a forma e o ficheiro a partir do cartão; até agora não os
+/// **lia** — a row voltava ao selo, e mudar uma coisa que não se consegue ler é meio controlo.
+///
+/// As três afirmações, e a terceira é a que impede o ruído:
+/// 1. de uma **fonte publicada** mostra-se o nome, tal e qual;
+/// 2. de um **ficheiro** mostra-se o NOME, nunca o caminho (o elidor corta pelo fim, e um
+///    caminho absoluto mostraria a metade que não identifica ficheiro nenhum);
+/// 3. de uma **curva** não se mostra nada — o valor dela é uma serialização, texto de máquina.
+///
+/// FALSIFICADO por o `card_text` devolver o caminho inteiro (1 falha), ou por deixar passar a
+/// serialização de uma curva (3 falha).
+#[test]
+fn the_card_reads_back_the_name_the_file_and_never_a_machine_string() {
+    let texto_de = |tipo: &str, param: &'static str, valor: &str| -> String {
+        let mut m = MotionState::new();
+        let id = m.doc.graph.add_node(tipo.to_string());
+        m.doc.graph.set_text_param(id, param, valor.to_string());
+        let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+        crate::render_loop::motion_bridge::params::card::stamp_card_params(
+            &m,
+            ph2d_editor::ProjectSettings::default(),
+            &mut snap,
+        );
+        snap.nodes
+            .iter()
+            .find(|v| v.id == id.0)
+            .and_then(|v| v.params.iter().find(|p| p.hint.param == param))
+            .map(|p| p.text.as_str().to_string())
+            .unwrap_or_else(|| panic!("`{tipo}::{param}` nao esta' no cartao"))
+    };
+
+    assert_eq!(
+        texto_de("motion.path", "path", "Estrela"),
+        "Estrela",
+        "a forma escolhida le^-se na row"
+    );
+    assert_eq!(
+        texto_de("source.table", "file", "/home/enio/Documentos/dados.csv"),
+        "dados.csv",
+        "de um caminho fica o NOME — o elidor corta pelo fim"
+    );
+    assert_eq!(
+        texto_de("value.curve", "curve", "0.0,0.0;0.5,1.0;1.0,1.0"),
+        "",
+        "uma curva e' texto de MAQUINA: a row mostra o selo, nao a serializacao"
+    );
+}
+
 /// ⭐⭐ **O CLIQUE ANDA PELA LISTA VIVA, E PÁRA QUANDO NÃO HÁ LISTA.**
 ///
 /// As três metades que só juntas fazem o gesto: a **primeira** escolha quando nada está

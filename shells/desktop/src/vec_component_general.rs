@@ -158,7 +158,7 @@ pub(crate) fn state_of(
             .is_some_and(|o| !o.overrides.is_empty())
     });
     // ⭐⭐⭐ **`is_main` pergunta *«há receita para instanciar?»*, e não *«isto É a receita?»***
-    // (report do Enio, 2026-09-06: *«não existe mais a opção instanciate»*).
+    // (report do Enio, 2026-09-06: *«não existe mais a opção de instanciar»*).
     //
     // # ⛔⛔ Duas decisões certas deste ficheiro desfaziam-se uma à outra
     //

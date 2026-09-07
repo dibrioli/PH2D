@@ -247,7 +247,7 @@ fn after_create_the_section_offers_place() {
 }
 
 /// ⛔⛔⛔ **E ela oferece-o ONDE A SELECÇÃO FICOU — na CÓPIA** (report do Enio, 2026-09-06:
-/// *«não existe mais a opção instanciate»*).
+/// *«não existe mais a opção de instanciar»*).
 ///
 /// # Porque o gate acima estava VERDE por cima deste defeito
 ///

@@ -64,14 +64,14 @@ E três defeitos concretos, com foto:
 | | degrau | estado |
 |---|---|---|
 | **A** | modelo de ÁREAS (`Slot`, `allowed_slots`, `can_float`) | ✅ **feito**, com os 2 gates que a spec pedia |
-| **B** | fundir os 16 apelidos de cor | ⛔ **construído e REVERTIDO** — equivalência re-medida (0/64 divergências), mas a pergunta é de *design system*: **veredito do Enio** |
+| **B** | fundir os 16 apelidos de cor | ✅ **FEITO (07/09)** por ordem do dono — e a medição partiu a ordem: os **valores** fundiram (57 escritos à mão, zero pixels), os **nomes** ficam (16 linhas reguláveis no painel *Tokens*, e as duas referências fazem o mesmo) |
 | **C** | a barra de menus | ✅ **feito** — ⚠️ e em 04/09 apanhou o `Export SVG…`, que a substituição da superfície tinha deixado sem porta |
 | **D** | régua e trilho viram REGIÕES da área | ✅ **feito** — tapada `86,8 % → 0 %` (esq.) e `29,4 % → 0 %` (topo) |
 | **E** | painéis declaram onde podem viver · fuga do gizmo | ✅ a metade do chrome **docado**; ⏳ **falta a metade cara**: dar **ORIGEM à cena** (hoje o sub-rectângulo dela é ancorado em `(0,0)` por construção em toda a cadeia). Sem ela, um painel **arrastado à mão** ainda tapa a régua |
 | **F** | Layouts por tarefa + cabeçalho de área | ✅ **6 dos 8** (`TaskLayout`, abas, persistência, e o `canvas` que cada layout NOMEIA); o cabeçalho é um **pulldown** que custa `0 px`. ⛔ *Código* e *Runtime* estão bloqueados por outros (não há editor de texto; `shells/game`/R1 adiado) |
 | **G** | **esvaziar os painéis** | ⏳ **a maior obra aberta: 1 painel de 25 censado.** O `3D Model` perdeu `17` das `74` entradas; ⛔ **nenhum outro foi medido** — o «66 de 74» é só dele |
 | **H** | separar LAYOUT de PALETA | ⛔ **a trava não existe**: `PanelLayout` não tem leitor de produção (medido) |
-| **I** | cortar os temas `4 → 2` | ⏳ **veredito do Enio** (hoje: Forge · Workshop · Sunstone · Blueprint) |
+| **I** | cortar os temas `4 → 2` | ⛔ **RESPONDIDO por medição (07/09)**: o número não é o problema — Godot e Blender shipam ~8 cada, porque um tema DERIVADO é barato. O caro é a paleta à mão, e é só a família clássica que a tem (68 slots contra 5 entradas) |
 
 ⏳ **E duas que a restrição de ecrã abriu e ninguém pegou:** um **gesto de RECOLHER** as colunas
 (hoje são dois itens de menu, e recolher dá `89–92 %` de tela) · a **fila de ferramentas DOBRA**

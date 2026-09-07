@@ -50,6 +50,7 @@
 mod alias_walk;
 pub mod chrome;
 pub mod color;
+mod color_alias;
 /// **A camada de OVERRIDE de cor** (plano UI/UX W6) — o que o artista autora sobre a tabela
 /// gerada. Vazia, `ColorToken::resolve` é byte-idêntico ao de sempre.
 pub mod contrast;

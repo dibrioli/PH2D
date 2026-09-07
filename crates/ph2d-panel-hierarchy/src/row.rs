@@ -115,10 +115,15 @@ fn row_tall(row: Rect, x: f32, w: f32) -> Rect {
 /// concordam**, e a que derivasse punha a linha de parentesco ao lado da seta em vez de por
 /// baixo dela, que é um report que este painel já pagou (Enio, 2026-05-26).
 ///
-/// ⏳ **O modelo discorda do VALOR, e isso fica NOMEADO, não corrigido:** o Godot Modern dá
-/// `Tree.inner_item_margin_left = base_margin` = **4 px** contra os **2** desta casa. Mexer nele
-/// desloca toda linha da hierarquia para a direita — é medição de uma wave e veredito do dono,
-/// não um número a trocar de passagem.
+/// ⛔⛔ **O modelo discorda do VALOR, e o dono DECIDIU FICAR NOS 2 px** (2026-09-07, perguntado
+/// com a divergência na mão). O Godot Modern dá `Tree.inner_item_margin_left = base_margin` =
+/// **4 px**; esta casa fica nos **2**, e a divergência é deliberada, datada e gateada
+/// (`the_hierarchy_row_inset_is_the_owners_two`).
+///
+/// ⚠️ **Não é teimosia contra o modelo — é a segunda vez que o dono aperta esta linha.** Em
+/// 2026-05-24 ele já tinha mandado colar a seta ao ícone (`Xs`→`Xxs`) e o nome ao ícone
+/// (`Md`→`Xs`, estendido a todo o app na wave 25). *Um veredito de produto medido no ecrã ganha de
+/// um número portado, e três vereditos na mesma direcção são uma preferência, não um acaso.*
 pub(crate) fn row_inset_px() -> f32 {
     Spacing::Xxs.px()
 }

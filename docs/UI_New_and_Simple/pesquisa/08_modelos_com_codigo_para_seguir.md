@@ -1915,6 +1915,71 @@ Uma linha de marcador levou o `paint_hierarchy_body` de 289 para 290. Pago por *
 quinta vez**: o bloco inteiro de *«onde a linha arrastada vai pousar»* saiu para
 `paint_drop_indicator` — **36 linhas devolvidas por uma**, e a tolerância desceu a `253`.
 
+### 7.33 — ✅ WAVE 28 (2026-09-07): as três decisões do dono, e duas delas já estavam feitas
+
+O dono decidiu (2026-09-07): *«quanto às decisões faça o que achar melhor buscando o estado da
+arte… Vamos fundir os apelidos de cor»* e *«recuo interno de uma linha da Hierarquia: 2 px»*.
+
+#### ⭐⭐⭐ Os apelidos de cor: a medição partiu a ordem em duas metades
+
+A ordem vinha de uma nota de 30/08 que prometia *«83 → 67 slots por tema, zero pixels»*. Medido
+**antes** de executar:
+
+| metade | veredito | porquê |
+|---|---|---|
+| os **VALORES** — 57 escritos à mão (16 `forge` · 16 `sunstone` · 16 `blueprint` · 9 `workshop`) | ✅ **fundidos** | duplicação a sério, mantida em sincronia à mão |
+| os **NOMES** — 16 variantes de `ColorToken` | ⛔ **ficam** | cada um é uma linha **regulável** no painel *Tokens* e um destino de vínculo no editor vetorial |
+
+⭐ **E o estado da arte, que o dono mandou consultar, diz o mesmo.** Manual do Blender (CC-BY-SA):
+*«The colors for each editor can be set separately by simply selecting the editor you wish to
+change»* — uma secção por editor. `theme_modern.cpp` do Godot (MIT): cor por CONTROLO (`font_color`
+de `Tree`, de `Button`, …). *As duas referências mantêm tokens de componente e expõem-nos; o que
+elas não fazem é escrever o valor deles à mão.*
+
+⚠️⚠️ **E metade da ordem já estava feita:** a família moderna deriva tudo desde a wave 1, logo ali
+os 16 nunca tiveram valor próprio. *A nota descrevia um mundo que a wave 1 já tinha mudado.*
+
+Hoje `ColorToken::alias_parent` declara o pai e a fábrica resolve através dele. Prova de zero-pixel
+**contra o ficheiro antigo**: 64 pares, 0 divergências.
+
+⭐⭐ **E a fusão APAGOU O PRÓPRIO ORÁCULO** — foi uma mutação que o mostrou: depois dela, apontar um
+apelido para o pai errado **não acorda** o teste de resolução, porque ele passa a resolver *através*
+do pai que se declarar. A verdade que provava o par estava nos 57 valores que a wave apagou. ⇒ o que
+sobra para gatear é a **intenção**, e ela gateia-se por **congelamento** da lista de pares, não por
+medição. *Quando uma fusão apaga o oráculo, leva o gate com ela se ninguém reparar.*
+
+#### ⚠️ E o arnês de mutação MENTIU-ME
+
+Uma agulha que casava 4 vezes fez o `python` abortar, o teste correr sobre a árvore **intacta** e o
+arnês imprimir **«SOBREVIVEU»**. É o defeito que a memória do repo nomeia — *um filtro que casa zero
+lê-se como sobrevivência* — e o arnês passou a ter controlo sobre a própria agulha: hoje ele diz
+**«a agulha não se aplicou — não há veredito»**.
+
+#### ⭐ O OLED: a pendência estava CURADA e a nota é que envelheceu
+
+*«No OLED nenhum cartão é visível»* — medido: o `bg-0`, o `bg-1`, o `bg-2` e o `panel-bg` são os
+quatro `#000000`, o que confirma a premissa; mas o preset OLED **já liga o `extra_borders`** desde
+a derivação da wave 1, e ele chega às **três** tabelas (widgets, painéis, campos). Um cartão no
+OLED recebe hoje 1 px branco a 20 %. ⇒ **quinta pendência desta jornada que a medição achou já
+feita.** Fica gateada em `the_oled_theme_separates_by_border`, porque a cura não vive num pintor —
+vive numa entrada de tema, e nada no caminho de um cartão a menciona.
+
+#### O recuo da Hierarquia: 2 px, contra os 4 do modelo
+
+⚠️ **É o terceiro veredito do dono na mesma direcção**, e é isso que o torna preferência e não
+acaso: 2026-05-24 colou a **seta ao ícone** (`Xs`→`Xxs`) e o **nome ao ícone** (`Md`→`Xs`, que a
+wave 25 estendeu a todo o app por ordem dele). Gateado com a data e a frase.
+
+#### ⏳ Quantos temas (degrau `I`): a resposta medida é «o número não é o problema»
+
+O degrau pedia *«cortar os temas 4 → 2»*, escrito quando havia só os quatro clássicos. Hoje são
+**oito** (4 clássicos + 4 modernos). ⛔ **As duas referências shipam mais que dois** — o Godot tem
+~8 presets, o Blender ~8 temas —, e conseguem-no porque *um tema derivado é barato*. O que é caro é
+uma **paleta escrita à mão**, e é exactamente aí que está a assimetria desta casa: um tema moderno
+custa **5 entradas**; um clássico custa **68 slots afinados à mão**. ⇒ a resposta não é cortar a
+contagem, é a família clássica deixar de crescer — e esta wave já lhe tirou 57 valores. ⛔ Derivá-la
+está **fora**: o clássico é o refúgio do `PH2D_UI_NEW=0` e tem de ficar byte a byte.
+
 ### 7.3 — ⏳ O que a wave 1 NÃO fez (nomeado)
 
 - ~~os outros ~38 pintores continuam a escolher fundo/borda sozinhos~~ ✅ **§7.4 + §7.5** — 24

@@ -29,7 +29,7 @@ de que os painéis passam a ser derivados.
 | # | obra | por que não depende de nada | estado |
 |---|---|---|---|
 | **A** | **O modelo de ÁREAS** — `Slot` enumerado (6), `Area`, `Region`, e o que um painel **declara** (`allowed_slots`, `can_float`, `layout_key`) | ⭐ É a peça em que as nove decisões convergem, e é foundational puro | ✅ **FEITO** |
-| **B** | **Fundir os 16 apelidos de cor** (`timeline-*` → os slots gerais) | **Mudança de zero pixels** | ⛔ **RECUSADO por medição — decisão do Enio** |
+| **B** | **Fundir os 16 apelidos de cor** (`timeline-*` → os slots gerais) | **Mudança de zero pixels** | ✅ **FEITO (2026-09-07)** — e a ordem partiu-se em duas: os **valores** fundiram, os **nomes** ficaram |
 | **C** | **A barra de menus** — dar um sítio aos 148 itens que já existem | Os handlers já existem. É **realojamento**, não construção | ✅ **FEITO** |
 
 ### ⛔⛔ AUDITORIA (2026-09-01) — duas destas linhas mandavam construir o que JÁ EXISTE
@@ -42,21 +42,29 @@ de que os painéis passam a ser derivados.
 ⭐ O `DEFAULT_SLOT` chegou a ter default e ele foi **retirado por medição**: 20 dos 21 painéis
 herdavam-no e **três mentiam**.
 
-⛔⛔ **E a `B` é uma RECUSA MEDIDA, não uma obra pendente.** O gate que a mede
-([`the_sixteen_timeline_slots_are_pure_aliases`](../../../crates/ph2d-tokens/tests/the_sixteen_timeline_slots_are_pure_aliases.rs))
-traz o veredito no próprio doc-comment:
+✅ **E a `B` FOI FEITA em 2026-09-07, por ordem do dono** (*«Vamos fundir os apelidos de cor»*) —
+mas a medição feita **antes** de executar partiu a ordem em duas metades que a nota não separava:
 
-> *«equivalência não é desejabilidade… A referência que licenciámos (Adobe Spectrum) mantém tokens
-> de COMPONENTE a apelidar os globais **de propósito**: é o que deixa um componente divergir depois
-> sem tocar nos consumidores. Fundir troca 16 nomes por 58 sítios de chamada directos, e transforma
-> «a playhead passa a ter cor própria» de uma linha de token em sete de código. Essa é uma decisão
-> de **design system**, do Enio — não uma dedução que este gate autorize.»*
+| metade | veredito | porquê |
+|---|---|---|
+| os **VALORES** (57 escritos à mão: 16 `forge` · 16 `sunstone` · 16 `blueprint` · 9 `workshop`) | ✅ **fundidos** | duplicação a sério, mantida em sincronia à mão; um deles podia divergir sem ninguém ver |
+| os **NOMES** (16 variantes de `ColorToken`) | ⛔ **ficam** | cada um é uma linha **regulável** no painel *Tokens* (`ColorToken::ALL`) e um destino de vínculo no editor vetorial — apagá-los tirava ao artista 16 controlos que ele tem hoje |
 
-⚠️ **Esta linha do plano dizia «mudança de zero pixels, independente de tudo» e mandava fazê-la.**
-A equivalência foi **re-medida em 2026-09-01** (0 divergências em 64 comparações — a premissa
-continua verdadeira) e a fusão foi **construída e revertida**, porque *a pergunta nunca foi se dá o
-mesmo pixel; era se queremos perder a indirecção*. ⇒ ela espera **o veredito do Enio**, ao lado da
-`I` (quantos temas).
+⭐ **E o estado da arte, que o dono mandou consultar, diz o mesmo.** O manual do Blender (CC-BY-SA):
+*«The colors for each editor can be set separately by simply selecting the editor you wish to
+change»* — uma secção de cor por editor. O `theme_modern.cpp` do Godot (MIT) escreve cor por
+CONTROLO (`font_color` de `Tree`, de `Button`, …). *As duas referências mantêm tokens de componente
+e expõem-nos; o que elas não fazem é escrever o valor deles à mão.*
+
+⚠️⚠️ **E metade da ordem já estava feita sem ninguém saber:** a família moderna deriva tudo desde a
+wave 1, logo ali os 16 nunca tiveram valor próprio. *A nota de 30/08 descrevia um mundo que a wave
+1 já tinha mudado* — §0.0: quem move o número que tornava algo inalcançável tem de reconferir a
+nota. O que sobrava de duplicação real era só a família clássica.
+
+Hoje um apelido **declara pai** ([`ColorToken::alias_parent`](../../../crates/ph2d-tokens/src/color.rs))
+e a fábrica resolve através dele: não há valor a escrever, logo não há valor que possa divergir.
+Prova de zero-pixel contra o ficheiro ANTIGO: **64 pares, 0 divergências**. Gate:
+[`an_alias_has_no_value_it_has_a_parent`](../../../crates/ph2d-tokens/tests/an_alias_has_no_value_it_has_a_parent.rs).
 
 ⭐⭐ **A lei que isto deixa:** *quando uma linha de plano e o GATE que a mede discordam, manda o
 gate* — ele foi escrito por quem mediu, e a linha do plano é o resumo que envelhece.

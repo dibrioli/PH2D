@@ -615,8 +615,23 @@ impl ColorToken {
     ///
     /// ⚠️ Ela **não** é o caminho comum: quem pinta usa o `resolve`. Um widget que chamasse esta
     /// ficaria cego à re-vestida do artista, que é a razão de a camada existir.
+    /// **O slot GERAL de que este token nasce, quando ele é um APELIDO.**
+    ///
+    /// A lei, o porquê de os nomes ficarem e as duas referências vivem no irmão
+    /// [`crate::color_alias`] — este ficheiro estava no tecto de LOC, e a lei é uma unidade.
+    #[must_use]
+    pub const fn alias_parent(self) -> Option<Self> {
+        crate::color_alias::parent_of(self)
+    }
+
     #[must_use]
     pub fn factory(self, theme: Theme) -> Color {
+        // ⭐⭐ **Um APELIDO não tem valor: ele tem PAI.** Antes desta porta, os 16 `timeline-*`
+        //    eram 57 valores escritos à mão no `tokens.json` que por acaso batiam certo com o
+        //    slot geral — e «por acaso» é o que um gate mede, não o que uma lei garante.
+        if let Some(parent) = self.alias_parent() {
+            return parent.factory(theme);
+        }
         // ⭐ A família MODERNA não tem tabela: a fábrica dela é a DERIVAÇÃO (cinco entradas →
         //    todos os slots, `crate::derive`). Passa pela mesma porta para que a camada de
         //    override, o DTCG e o gate de contraste não saibam a diferença.

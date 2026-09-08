@@ -156,6 +156,26 @@ pub(crate) fn centre_in(area: EditorRect, safe: EditorRect) -> [f32; 2] {
 /// `d·frente`. ⚠️ O `y` da tela cresce **para baixo**, e é daí que vem o sinal do meio.
 pub(crate) fn balls(cam: &Orbit, area: EditorRect, safe: EditorRect) -> Vec<Ball> {
     let (right, up, fwd) = cam.basis();
+    balls_from_basis(right, up, fwd, area, safe)
+}
+
+/// ⭐⭐⭐ **AS SEIS BOLAS, A PARTIR DE UMA BASE DE CÂMERA** — a mesma lei, sem saber que câmera é.
+///
+/// ⚠️ **Ela nasceu porque a lei ganhou um SEGUNDO consumidor** (2026-09-08, ordem do Enio: *«veja o
+/// módulo de Modelagem 3d … traga esses features para esse módulo»*): a escultura tem a
+/// [`ph2d_mesh_render::Camera3d`], que é uma órbita com `yaw`/`pitch` e trava de polo, e não a
+/// [`Orbit`] livre deste módulo. O que os dois têm em comum é exactamente o que esta função pede —
+/// **a direita, o cima e o para-o-observador, em coordenadas de mundo**.
+///
+/// ⛔ *Copiar as vinte linhas para o outro módulo daria duas ideias de «de que lado estou a olhar»,
+/// e a que envelhece é a que ninguém está a ler no dia.*
+pub(crate) fn balls_from_basis(
+    right: [f32; 3],
+    up: [f32; 3],
+    fwd: [f32; 3],
+    area: EditorRect,
+    safe: EditorRect,
+) -> Vec<Ball> {
     let c = centre_in(area, safe);
     let mut out: Vec<Ball> = Standard::ALL
         .into_iter()

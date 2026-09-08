@@ -505,6 +505,20 @@ impl App {
             );
             return true;
         }
+        // ⭐⭐ **AS SEIS VISTAS NOMEADAS** (2026-09-08) — `Numpad1` frente · `Numpad3` direita ·
+        // `Numpad7` topo, e **`Ctrl`** dá a oposta.
+        //
+        // ⚠️ **A tabela é a do módulo vizinho, lida e não re-decidida**
+        // ([`crate::field3d_views::view_for_key`]): é a memória de dedo do Blender, e ter duas
+        // tabelas faria `Numpad3` significar coisas diferentes em dois cantos do mesmo app.
+        //
+        // ⚠️ **Os eixos, esses, são os NOSSOS** — o Blender é `Z` para cima e esta casa é `Y`
+        // (ver `Camera3d::UP`); o que se herda é a tecla, nunca o eixo.
+        if let Some(v) = crate::field3d_views::view_for_key(code, ctrl) {
+            scene.aim_view(v);
+            eprintln!("[sculpt3d] vista: {}", v.key());
+            return true;
+        }
         match code {
             K::BracketLeft | K::BracketRight => {
                 let f = if code == K::BracketRight {

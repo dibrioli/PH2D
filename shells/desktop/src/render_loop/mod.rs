@@ -11946,9 +11946,18 @@ impl crate::App {
                     hero,
                     ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
                 );
-                crate::field3d_smoke::note_safe(crate::field3d_navball::safe_corner(
-                    area, &obstacles,
-                ));
+                let safe = crate::field3d_navball::safe_corner(area, &obstacles);
+                crate::field3d_smoke::note_safe(safe);
+                // ⭐⭐⭐ **E A ESCULTURA LÊ O MESMO PAR** (2026-09-08, ordem do Enio: *«traga esses
+                // features para esse módulo»*). ⚠️ **Calculado UMA vez e publicado nos dois**, e não
+                // duas vezes com a mesma receita: a lista de obstáculos deste quadro é a coisa cara
+                // e é a que envelhece — dois censos dela divergiriam no quadro em que um painel
+                // abre. *A área do canvas 3D é uma pergunta só; ter dois donos é ter duas
+                // respostas.*
+                #[cfg(feature = "sculpt3d")]
+                if let Some(scene) = sculpt3d.as_mut() {
+                    scene.note_nav(area, safe, self.last_pointer);
+                }
             }
             // ⭐⭐ **A VIAGEM ENTRE VISTAS** (W51) — Enio: *"falta um Lerp() rápido para mudança
             // suave das views como no blender"*.
@@ -11992,6 +12001,31 @@ impl crate::App {
                 paint_ctx.text,
                 vector_scene,
             );
+            // ⭐⭐⭐ **O GIZMO DA VIEWPORT DA ESCULTURA** (2026-09-08) — as seis bolas de eixo, a
+            // MESMA lei e o MESMO pintor do módulo vizinho (`field3d_navball`), com a base desta
+            // câmera. Ver `sculpt3d_navball`.
+            //
+            // ⚠️ **Pintado aqui e não no bloco do anel do pincel**, que corre ~3 000 linhas acima:
+            // é aqui que o par `área`/`safe` deste quadro já foi publicado, e desenhá-lo antes
+            // usaria o do quadro anterior — meio widget deslocado sempre que uma coluna abrisse.
+            //
+            // ⚠️ **Sem barro na tela ele não é pintado**: o módulo está desarmado, e um gizmo de
+            // navegação sobre uma cena 2D prometeria um gesto que não existe ali.
+            #[cfg(feature = "sculpt3d")]
+            if let Some(scene) = sculpt3d.as_ref()
+                && scene.clay_on_screen()
+                && let Some((area, safe)) = scene.nav_rects()
+            {
+                let balls = scene.navball(area, safe);
+                crate::field3d_navball_paint::paint(
+                    vector_scene,
+                    &balls,
+                    scene.nav_hot(),
+                    hero.theme,
+                    [area.x, area.y],
+                    crate::field3d_navball::centre_in(area, safe),
+                );
+            }
             // ADR-0161 W4: o painel de modelagem abre sozinho na primeira vez que o
             // smoke desenha (auto-play), e só nessa — reabri-lo todo quadro faria o
             // botao de fechar dele nao funcionar.

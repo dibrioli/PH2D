@@ -47,6 +47,13 @@ mod filter;
 #[path = "sculpt3d_keys.rs"]
 mod keys;
 
+/// ⭐⭐ **O GIZMO DA VIEWPORT** — as seis bolas de eixo no canto e as seis vistas
+/// nomeadas (ordem do Enio, 2026-09-08). Filho (`#[path]`) pelo motivo dos
+/// vizinhos; a LEI do widget é a do módulo de modelagem
+/// ([`crate::field3d_navball`]) e o que mora aqui é **a câmera desta cena**.
+#[path = "sculpt3d_navball.rs"]
+mod navball;
+
 /// **O CURSOR** — onde a mão está mirando, na tela (W12). Irmão dos três abaixo,
 /// e o mais estreito: *onde o gesto vai pousar*, e nada além.
 #[path = "sculpt3d_cursor.rs"]
@@ -327,6 +334,19 @@ pub(crate) struct Sculpt3dScene {
     drag: Option<Drag>,
     last: (f32, f32),
     viewport: (u32, u32),
+    /// ⭐ **ONDE O GIZMO DE NAVEGAÇÃO MORA** — a área do canvas e a parte dela
+    /// que a moldura do app não tapa, publicadas pelo desenho.
+    ///
+    /// ⚠️ **Publicadas e não derivadas aqui**, pelo motivo do [`Self::viewport`]:
+    /// o ponteiro corre fora do quadro e não conhece nem o layout nem os
+    /// painéis que estão abertos. `None` até o primeiro desenho, e aí o gizmo
+    /// simplesmente não recebe gesto nenhum.
+    nav_area: Option<ph2d_editor::zones::Rect>,
+    nav_safe: Option<ph2d_editor::zones::Rect>,
+    /// A bola sob o cursor no último quadro — só realce.
+    nav_hot: Option<crate::field3d_views::Standard>,
+    /// O arrasto em curso no gizmo de navegação, se houver.
+    nav_drag: Option<navball::NavDrag>,
     /// **Com que luz o barro é mostrado** — `None` é o RIG DO ARTISTA, `Some(i)`
     /// é o matcap `i`. Ver [`ph2d_mesh_render::Shade::matcap`].
     ///

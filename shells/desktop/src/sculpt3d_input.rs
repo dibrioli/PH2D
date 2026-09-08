@@ -122,6 +122,24 @@ impl App {
             eprintln!("[sculpt3d] a cena esta' VAZIA -- nao ha' o que esculpir (Ctrl+Z devolve)");
             return false;
         }
+        // ⭐⭐⭐ **O GIZMO DE NAVEGAÇÃO VEM PRIMEIRO** (2026-09-08) — ele está POR
+        // CIMA da peça, e um clique tem de ser de quem está por cima.
+        //
+        // ⚠️ **Antes da guarda de cena vazia**, e é deliberado: girar a câmera
+        // não precisa de barro nenhum, e o widget existe exactamente para dizer
+        // de que lado se está a olhar. *A recusa que protege o `objects[active]`
+        // não tem nada a ver com navegar.*
+        //
+        // ⚠️ **Só o esquerdo**: o direito já é a órbita livre e o meio o pan, e
+        // um widget que engolisse os três roubaria dois gestos que a peça
+        // inteira oferece.
+        if button == winit::event::MouseButton::Left {
+            let (px, py) = pos;
+            if scene.nav_pointer_down(px, py) {
+                scene.last = pos;
+                return true;
+            }
+        }
         match button {
             winit::event::MouseButton::Left => {
                 // ⚠️ **Com o transform ARMADO o esquerdo transforma.** Não há
@@ -277,6 +295,12 @@ impl App {
         let Some(scene) = self.sculpt3d_scene_mut() else {
             return false;
         };
+        // ⭐ **Um pen-up sem movimento sobre uma bola é o CLIQUE dela** — ver
+        // [`super::Sculpt3dScene::nav_pointer_up`]. Ele devolve cedo porque um
+        // arrasto no gizmo nunca abriu um `Drag`.
+        if scene.nav_pointer_up() {
+            return true;
+        }
         let was = scene.drag.take();
         if was == Some(Drag::Sculpt) {
             // ⚠️ **ANTES do fecho, e sem isto o gesto perde a ponta.** O último
@@ -314,6 +338,14 @@ impl App {
         let Some(scene) = self.sculpt3d_scene_mut() else {
             return false;
         };
+        // ⚠️ **O gizmo de navegação NÃO usa o `Drag`**, e a razão é a captura: um
+        // arrasto nele orbita a câmera e nada mais, então ele não tem de passar
+        // pela tabela de verbos nem pelo `last` da peça. Perguntar-lhe primeiro
+        // é o que faz o gesto continuar dele mesmo quando o dedo sai do widget.
+        if scene.nav_pointer_move(x, y) {
+            scene.last = (x, y);
+            return true;
+        }
         let Some(drag) = scene.drag else {
             return false;
         };

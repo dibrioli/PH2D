@@ -80,7 +80,12 @@ impl Standard {
     }
 
     /// O `(yaw, pitch)` que põe o olho naquele eixo. Ver [`eye_axis`](Self::eye_axis).
-    fn yaw_pitch(self) -> (f32, f32) {
+    ///
+    /// ⚠️ **`pub(crate)` porque ganhou um SEGUNDO consumidor** (2026-09-08): a escultura
+    /// pede as mesmas seis vistas, e a câmera dela ([`ph2d_mesh_render::Camera3d`]) guarda
+    /// `yaw`/`pitch` directamente em vez de um quaternion. *A lista de vistas é UMA; o que
+    /// muda entre os dois módulos é só a câmera que a consome.*
+    pub(crate) fn yaw_pitch(self) -> (f32, f32) {
         let q = std::f32::consts::FRAC_PI_2;
         match self {
             Self::Front => (0.0, 0.0),

@@ -45,6 +45,10 @@ impl Sculpt3dScene {
             drag: None,
             last: (0.0, 0.0),
             viewport: (1, 1),
+            nav_area: None,
+            nav_safe: None,
+            nav_hot: None,
+            nav_drag: None,
             // **O MATERIAL COM QUE O APP ABRE** — ver
             // [`ph2d_mesh_render::DEFAULT_MATCAP`], hoje o `Skin Haz 2`.
             //

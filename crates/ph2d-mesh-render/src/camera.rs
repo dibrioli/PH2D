@@ -320,9 +320,20 @@ impl Camera3d {
     /// e a que mente é a que o artista está olhando.
     #[must_use]
     pub fn screen_basis(&self) -> (Vec3, Vec3) {
-        let axis = (self.eye() - self.target).normalize_or(Vec3::Z);
+        let axis = self.view_axis();
         let right = Self::UP.cross(axis).normalize_or(Vec3::X);
         (right, axis.cross(right))
+    }
+
+    /// ⭐ **O EIXO ALVO → OLHO**, unitário — *para que lado o observador está*.
+    ///
+    /// ⚠️ **Porta, e ela nasceu com o SEGUNDO consumidor** (o gizmo de navegação
+    /// da escultura, 2026-09-08): ele precisa da terceira perna da base que o
+    /// [`Self::screen_basis`] já derivava por dentro, e derivá-la no chamador
+    /// seria a fórmula do [`Self::eye`] escrita uma quarta vez.
+    #[must_use]
+    pub fn view_axis(&self) -> Vec3 {
+        (self.eye() - self.target).normalize_or(Vec3::Z)
     }
 
     /// Gira. `dx`/`dy` em radianos — a shell decide quantos radianos vale um
@@ -337,7 +348,32 @@ impl Camera3d {
     /// vez de argumentar sobre sinais.
     pub fn orbit(&mut self, dx: f32, dy: f32) {
         self.yaw += dx;
-        self.pitch = (self.pitch + dy).clamp(-PITCH_LIMIT, PITCH_LIMIT);
+        self.pitch = Self::clamp_pitch(self.pitch + dy);
+    }
+
+    /// ⭐⭐ **APONTA A CÂMERA** — o enquadramento NOMEADO, sem passar pelo gesto.
+    ///
+    /// ⚠️ **É uma porta, e não `cam.yaw = …; cam.pitch = …` no chamador**, porque
+    /// o `pitch` tem uma trava física ([`Self::clamp_pitch`]) e quem escreve os
+    /// campos à mão não a paga: uma vista de **topo** pedida como `π/2` exacto
+    /// põe a direcção da vista paralela ao [`Self::UP`] e a `look_at` produz
+    /// `NaN`. *Uma trava que só o gesto honra é uma trava que o primeiro
+    /// chamador não-gesto quebra.*
+    pub fn aim(&mut self, yaw: f32, pitch: f32) {
+        self.yaw = yaw;
+        self.pitch = Self::clamp_pitch(pitch);
+    }
+
+    /// ⭐ **A TRAVA DO POLO** — o `pitch` que esta câmera de facto consegue guardar.
+    ///
+    /// ⚠️ Ela é **pública** porque quem quiser reconhecer *«a câmera está na vista
+    /// de topo?»* tem de comparar contra o valor **preso**, nunca contra o ideal:
+    /// a `Top` pede `π/2` e a câmera guarda `π/2 − 0,01`, e um reconhecedor que
+    /// comparasse com o ideal diria *não* sobre a vista que ele próprio acabou de
+    /// pedir.
+    #[must_use]
+    pub fn clamp_pitch(pitch: f32) -> f32 {
+        pitch.clamp(-PITCH_LIMIT, PITCH_LIMIT)
     }
 
     /// Aproxima/afasta. `steps` positivo aproxima.

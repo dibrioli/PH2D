@@ -369,6 +369,11 @@ pub(crate) mod ear;
 /// da [`filter`], e o cabeçalho dela diz porquê.
 #[path = "sculpt3d_scenes_cloth_filter.rs"]
 pub(crate) mod cloth_filter;
+
+/// **A CENA DOS QUATRO VIEWPORTS** (`=38`) — irmã da [`cloth_filter`] pela mesma
+/// linha de corte: cada arquivo é a história de uma wave.
+#[path = "sculpt3d_scenes_viewports.rs"]
+pub(crate) mod viewports;
 /// **A CENA DA DEMÃO** (`=33`) — irmã da [`surface`] pela mesma linha de corte.
 #[path = "sculpt3d_scenes_layer.rs"]
 pub(crate) mod layer;

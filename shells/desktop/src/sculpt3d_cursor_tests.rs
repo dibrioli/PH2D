@@ -80,7 +80,7 @@ fn measure_what_the_screen_ring_overstates() {
     println!("  -----+---------+---------+-----------+----------");
     for deg in [0.0f32, 15.0, 30.0, 45.0, 60.0, 75.0, 85.0] {
         let n = tilted(&cam, deg);
-        let path = super::ring_on_surface(&cam, VIEWPORT, at, n, R_PX).expect("anel");
+        let path = super::ring_on_surface(&cam, VIEWPORT, (0.0, 0.0), at, n, R_PX).expect("anel");
         let (lo, hi) = extent(&path, &cam, at);
         println!(
             "  {deg:4.0}° | {lo:7.2} | {hi:7.2} |   {:5.3}   |   {:5.3}",
@@ -100,7 +100,7 @@ fn measure_what_the_screen_ring_overstates() {
 fn the_ring_reduces_to_the_screen_circle_when_the_surface_faces_the_camera() {
     let cam = camera();
     let at = [0.0, 0.0, 0.0];
-    let path = super::ring_on_surface(&cam, VIEWPORT, at, tilted(&cam, 0.0), R_PX).expect("anel");
+    let path = super::ring_on_surface(&cam, VIEWPORT, (0.0, 0.0), at, tilted(&cam, 0.0), R_PX).expect("anel");
     let (lo, hi) = extent(&path, &cam, at);
     assert!(
         (lo - R_PX).abs() < 0.5 && (hi - R_PX).abs() < 0.5,
@@ -124,7 +124,7 @@ fn the_ring_foreshortens_on_a_tilted_surface() {
     let at = [0.0, 0.0, 0.0];
     for (deg, want) in [(30.0f32, 0.866f32), (60.0, 0.5)] {
         let path =
-            super::ring_on_surface(&cam, VIEWPORT, at, tilted(&cam, deg), R_PX).expect("anel");
+            super::ring_on_surface(&cam, VIEWPORT, (0.0, 0.0), at, tilted(&cam, deg), R_PX).expect("anel");
         let (lo, hi) = extent(&path, &cam, at);
         assert!(
             (hi - R_PX).abs() < 1.0,
@@ -155,7 +155,7 @@ fn a_normal_that_names_no_direction_falls_back_to_the_screen_circle() {
         [0.0, f32::INFINITY, 0.0],
     ] {
         assert!(
-            super::ring_on_surface(&cam, VIEWPORT, [0.0, 0.0, 0.0], n, R_PX).is_none(),
+            super::ring_on_surface(&cam, VIEWPORT, (0.0, 0.0), [0.0, 0.0, 0.0], n, R_PX).is_none(),
             "uma normal degenerada ({n:?}) tem de recusar o anel, não desenhar um"
         );
     }
@@ -174,16 +174,16 @@ fn the_ring_is_whole_or_absent() {
     let cam = camera();
     let at = [0.0, 0.0, 0.0];
     assert!(
-        super::ring_on_surface(&cam, VIEWPORT, at, tilted(&cam, 0.0), 100_000.0).is_some(),
+        super::ring_on_surface(&cam, VIEWPORT, (0.0, 0.0), at, tilted(&cam, 0.0), 100_000.0).is_some(),
         "CONTROLE: de frente o anel nunca sai da profundidade dele, por maior que seja"
     );
-    let path = super::ring_on_surface(&cam, VIEWPORT, at, tilted(&cam, 89.0), 2000.0);
+    let path = super::ring_on_surface(&cam, VIEWPORT, (0.0, 0.0), at, tilted(&cam, 89.0), 2000.0);
     assert!(
         path.is_none(),
         "de perfil e enorme, metade do anel cai atrás do olho — ele tem de recusar \
          inteiro, nunca desenhar o pedaço que sobrou"
     );
-    let whole = super::ring_on_surface(&cam, VIEWPORT, at, tilted(&cam, 60.0), R_PX).expect("anel");
+    let whole = super::ring_on_surface(&cam, VIEWPORT, (0.0, 0.0), at, tilted(&cam, 60.0), R_PX).expect("anel");
     let pts = whole
         .elements()
         .iter()

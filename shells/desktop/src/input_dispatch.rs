@@ -1581,6 +1581,12 @@ impl App {
                 {
                     // ⭐ A costura da divisão do canvas 3D (W93) — a mesma fonte que o arrasto lê.
                     icon
+                } else if let Some(icon) = self.sculpt3d_seam_cursor() {
+                    // ⭐ **A costura da divisão da ESCULTURA** (2026-09-08) — a mesma lei do vizinho
+                    // acima, com a divisão da outra cena 3D. ⚠️ Ela sai da MESMA porta que o
+                    // arrasto pergunta (`Sculpt3dScene::seam_grab`), senão a seta aparece um pixel
+                    // ao lado de onde o gesto pega — o que se lê como *«às vezes não agarra»*.
+                    icon
                 } else if let Some(icon) = self.timeline_resize_cursor(h) {
                     icon
                 } else if let Some(icon) =

@@ -178,7 +178,7 @@ impl Sculpt3dScene {
     /// arrasto de janela.
     pub(super) fn radius_px(&self) -> f32 {
         let ceiling =
-            (RADIUS_MAX_FRAC_OF_HEIGHT * self.viewport.1.max(1) as f32).max(RADIUS_MIN_PX);
+            (RADIUS_MAX_FRAC_OF_HEIGHT * self.viewport().1.max(1) as f32).max(RADIUS_MIN_PX);
         self.radius_px.clamp(RADIUS_MIN_PX, ceiling)
     }
 
@@ -201,7 +201,7 @@ impl Sculpt3dScene {
         let world = pose.point_to_world(local_at);
         let radius = self
             .camera
-            .world_radius_for_screen_px(world, self.radius_px(), self.viewport);
+            .world_radius_for_screen_px(world, self.radius_px(), self.viewport());
         Brush {
             radius: (radius / pose.scale()).max(1e-6),
             alpha_stencil: Some(self.stencil_for(pose)),
@@ -229,7 +229,7 @@ impl Sculpt3dScene {
     /// deste módulo escala por um ESCALAR; uma escala não-uniforme cisalharia o
     /// par e o frame deixaria de ser uma base.
     pub(super) fn stencil_for(&self, pose: Pose) -> ph2d_sculpt3d::AlphaStencil {
-        stencil_of(&self.camera, self.viewport, pose)
+        stencil_of(&self.camera, self.viewport(), pose)
     }
 
     /// **Quem o cursor aponta, e ONDE nele** — `(objeto, acerto em coordenadas
@@ -372,7 +372,13 @@ impl Sculpt3dScene {
     /// três grips, o transform), e este arquivo é o que já responde *onde as
     /// coisas estão* — a pose, a direção local, o raio em pixels.
     pub(super) fn ray_at(&self, x: f32, y: f32) -> Ray {
-        self.camera.ray_through(x, y, self.viewport)
+        // ⚠️⚠️ **O ponto chega em coordenadas de JANELA e a câmera quer as da
+        // VISTA** (2026-09-08). Com uma vista só e ela a cobrir o ecrã, as duas
+        // coincidiam; com a área do canvas — e ainda mais com quatro quadrantes
+        // — a diferença é a quina do quadrante, e o sintoma é exactamente
+        // *«o lugar onde o mouse toca não corresponde ao local na malha»*.
+        let (vx, vy) = self.to_view(x, y);
+        self.camera.ray_through(vx, vy, self.viewport())
     }
 }
 

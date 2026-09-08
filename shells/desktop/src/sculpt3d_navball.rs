@@ -132,7 +132,7 @@ impl Sculpt3dScene {
     /// pen-**up** sem movimento que conta como clique. *Saltar já no down faria
     /// todo arrasto começar com um corte de câmera.*
     pub(crate) fn nav_pointer_down(&mut self, x: f32, y: f32) -> bool {
-        let (Some(area), Some(safe)) = (self.nav_area, self.nav_safe) else {
+        let Some((area, safe)) = self.nav_rects() else {
             return false;
         };
         if !crate::field3d_navball::hits_widget(area, safe, [x - area.x, y - area.y]) {
@@ -192,18 +192,28 @@ impl Sculpt3dScene {
     /// cursor está é o quadro e quem sabe onde as bolas caem é a lei — e a
     /// segunda depende da primeira. *Duas derivações do «qual bola está quente»
     /// divergiriam no quadro em que a câmera se mexe entre elas.*
-    pub(crate) fn note_nav(&mut self, area: EditorRect, safe: EditorRect, pointer: (f32, f32)) {
-        self.nav_area = Some(area);
+    pub(crate) fn note_nav(&mut self, safe: EditorRect, pointer: (f32, f32)) {
         self.nav_safe = Some(safe);
+        let Some((area, _)) = self.nav_rects() else {
+            self.nav_hot = None;
+            return;
+        };
         let at = [pointer.0 - area.x, pointer.1 - area.y];
         self.nav_hot = crate::field3d_navball::hits_widget(area, safe, at)
             .then(|| crate::field3d_navball::pick(&self.navball(area, safe), at))
             .flatten();
     }
 
-    /// Onde o widget mora agora, se o quadro já o publicou.
+    /// ⭐⭐ **Onde o widget mora agora** — `(a área do viewport ACTIVO, a parte
+    /// livre da moldura)`, ou `None` antes do primeiro desenho.
+    ///
+    /// ⚠️⚠️ **A área é a do QUADRANTE ACTIVO e o `safe` é do CANVAS INTEIRO**, e
+    /// a assimetria é o desenho: *um gizmo por quadrante seria quatro respostas
+    /// à mesma pergunta* (a lei está escrita no `field3d_smoke_draw`), e a
+    /// moldura do app que empurra o widget não conhece divisão nenhuma — ela
+    /// está por cima do canvas todo.
     pub(crate) fn nav_rects(&self) -> Option<(EditorRect, EditorRect)> {
-        Some((self.nav_area?, self.nav_safe?))
+        Some((self.vp_rect(self.vp_active())?, self.nav_safe?))
     }
 }
 

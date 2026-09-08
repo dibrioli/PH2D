@@ -122,6 +122,27 @@ impl App {
             eprintln!("[sculpt3d] a cena esta' VAZIA -- nao ha' o que esculpir (Ctrl+Z devolve)");
             return false;
         }
+        // ⭐⭐⭐ **A COSTURA DA DIVISÃO VEM ANTES DE TUDO** (2026-09-08) — ela é
+        // uma linha de chrome desenhada por cima das quatro vistas, e um clique
+        // sobre ela nunca é da peça.
+        if button == winit::event::MouseButton::Left && scene.seam_grab(pos.0, pos.1) {
+            scene.last = pos;
+            return true;
+        }
+        // ⭐⭐⭐ **DE QUEM É ESTE CLIQUE** (2026-09-08).
+        //
+        // ⚠️⚠️ **E o `None` é uma RECUSA, não um caso a ignorar:** desde que a
+        // peça passou a ser desenhada na ÁREA (e não na janela), um ponto fora
+        // dela não tem barro por baixo — antes desta wave a cena engolia cliques
+        // sobre as réguas e sobre a faixa da esquerda, porque a malha estava lá
+        // desenhada por baixo do chrome.
+        let Some(vp) = scene.vp_at(pos.0, pos.1) else {
+            return false;
+        };
+        // ⚠️ **Tocar num quadrante torna-o ACTIVO**, e é o que faz o gesto
+        // seguinte (o traço, o filtro, o transform) correr na vista em que a mão
+        // está. A troca guarda a câmera do que sai — ver `set_active_vp`.
+        scene.set_active_vp(vp);
         // ⭐⭐⭐ **O GIZMO DE NAVEGAÇÃO VEM PRIMEIRO** (2026-09-08) — ele está POR
         // CIMA da peça, e um clique tem de ser de quem está por cima.
         //
@@ -291,10 +312,26 @@ impl App {
     }
 
     /// O botão soltou.
+    /// **O cursor que a costura da divisão 3D pede**, ou `None`.
+    ///
+    /// ⚠️ **Sem barro na tela ela é muda**: com o módulo desarmado não há canvas
+    /// 3D nenhum, e uma seta de redimensionar sobre a cena 2D prometeria um
+    /// gesto que ali não existe.
+    pub(crate) fn sculpt3d_seam_cursor(&self) -> Option<winit::window::CursorIcon> {
+        let scene = self.gfx.as_ref()?.sculpt3d.as_ref()?;
+        scene
+            .clay_on_screen()
+            .then(|| scene.seam_cursor(self.last_pointer.0, self.last_pointer.1))
+            .flatten()
+    }
+
     pub(crate) fn sculpt3d_pointer_up(&mut self) -> bool {
         let Some(scene) = self.sculpt3d_scene_mut() else {
             return false;
         };
+        if scene.seam_release() {
+            return true;
+        }
         // ⭐ **Um pen-up sem movimento sobre uma bola é o CLIQUE dela** — ver
         // [`super::Sculpt3dScene::nav_pointer_up`]. Ele devolve cedo porque um
         // arrasto no gizmo nunca abriu um `Drag`.
@@ -338,6 +375,11 @@ impl App {
         let Some(scene) = self.sculpt3d_scene_mut() else {
             return false;
         };
+        // ⚠️ **A costura primeiro, pelo motivo do pen-down.**
+        if scene.seam_at(x, y) {
+            scene.last = (x, y);
+            return true;
+        }
         // ⚠️ **O gizmo de navegação NÃO usa o `Drag`**, e a razão é a captura: um
         // arrasto nele orbita a câmera e nada mais, então ele não tem de passar
         // pela tabela de verbos nem pelo `last` da peça. Perguntar-lhe primeiro
@@ -351,7 +393,7 @@ impl App {
         };
         let (dx, dy) = (x - scene.last.0, y - scene.last.1);
         scene.last = (x, y);
-        let height = scene.viewport.1.max(1) as f32;
+        let height = scene.viewport().1.max(1) as f32;
         match drag {
             // ⚠️ **Manipulação direta: o modelo segue a mão.** `yaw` positivo
             // leva o OLHO para `+X`, e a câmera indo para a direita faz o
@@ -571,12 +613,12 @@ impl Sculpt3dScene {
             // flip); zero acusa a percepção, e aí a causa é outra.
             let back = self
                 .camera
-                .project(self.pose().point_to_world(hit.point), self.viewport);
+                .project(self.pose().point_to_world(hit.point), self.viewport());
             let err = back.map(|(bx, by)| ((bx - x).hypot(by - y), bx, by));
             eprintln!(
                 "[sculpt3d] clique ({x:.1}, {y:.1}) viewport {:?} -> acerto {:?} \
                  -> volta {err:?}",
-                self.viewport, hit.point
+                self.viewport(), hit.point
             );
         }
         let brush = self.armed_brush(hit.point);

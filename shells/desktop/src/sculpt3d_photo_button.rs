@@ -111,7 +111,7 @@ fn the_artists_piece_through_the_button() {
     super::orientation_and_density("ENTRADA", &piece);
 
     let mut scene = crate::sculpt3d::Sculpt3dScene::new(&gpu.device, piece.clone(), 1.0);
-    scene.viewport = (900, 700);
+    scene.note_canvas(ph2d_editor::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
     // ⭐⭐⭐ **A FASE ZERO, medida ao lado do alvo que o slider pede.** ⛔ *Uma cadeia cuja
     // malha de trabalho é mais grossa que o alvo não pode entregar a densidade pedida* — e
     // as duas grandezas nunca tinham sido impressas na mesma linha.

@@ -353,7 +353,7 @@ impl Sculpt3dScene {
         let at = pose.translation;
         let step = self
             .camera
-            .screen_delta_to_world(at, 1.0, 0.0, self.viewport);
+            .screen_delta_to_world(at, 1.0, 0.0, self.viewport());
         let len = (step[0] * step[0] + step[1] * step[1] + step[2] * step[2]).sqrt();
         // Câmera degenerada (viewport zero) não tem "para a direita": a cópia
         // nasce em cima da original em vez de saltar para o infinito.

@@ -95,7 +95,7 @@ impl Sculpt3dScene {
         let landed = self.pick(x, y).and_then(|(i, hit)| {
             let pose = self.objects.get(i)?.pose;
             let at = pose.point_to_world(hit.point);
-            let (cx, cy) = self.camera.project(at, self.viewport)?;
+            let (cx, cy) = self.project_window(at)?;
             Some((i, hit, at, cx, cy))
         });
         // ⚠️ **O anel DEITA na superfície quando ela tem orientação conhecida**,
@@ -105,7 +105,7 @@ impl Sculpt3dScene {
         // existe quando a superfície está de perfil.
         let path = landed.as_ref().and_then(|&(i, ref hit, at, _, _)| {
             let n = self.surface_normal(i, hit)?;
-            ring_on_surface(&self.camera, self.viewport, at, n, self.radius_px())
+            ring_on_surface(&self.camera, self.viewport(), self.vp_origin(), at, n, self.radius_px())
         });
         let (cx, cy) = landed
             .as_ref()
@@ -163,6 +163,9 @@ impl Sculpt3dScene {
 pub(crate) fn ring_on_surface(
     cam: &Camera3d,
     viewport: (u32, u32),
+    // A quina do viewport activo, em coordenadas de janela — ver
+    // `Sculpt3dScene::project_window`.
+    origin: (f32, f32),
     at: [f32; 3],
     normal: [f32; 3],
     radius_px: f32,
@@ -183,7 +186,10 @@ pub(crate) fn ring_on_surface(
             at[2] + r * (ca * u[2] + sa * v[2]),
         ];
         let (sx, sy) = cam.project(p, viewport)?;
-        let pt = ph2d_vector::Point::new(f64::from(sx), f64::from(sy));
+        // ⚠️ **O anel é pintado em coordenadas de JANELA** e a projecção devolve
+        // as da VISTA: sem a quina, o cursor apareceria deslocado em todo
+        // quadrante que não seja o de cima à esquerda.
+        let pt = ph2d_vector::Point::new(f64::from(sx + origin.0), f64::from(sy + origin.1));
         if i == 0 {
             path.move_to(pt);
         } else {

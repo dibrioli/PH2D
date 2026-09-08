@@ -18,10 +18,6 @@ impl Sculpt3dScene {
         color: &wgpu::TextureView,
         size: (u32, u32),
     ) {
-        self.viewport = size;
-        // ⚠️ O viewport é atualizado ANTES da recusa: ele é o que converte um
-        // clique em raio, e um viewport parado faria o pincel cair no lugar
-        // errado no instante em que o artista voltasse ao barro.
         if !self.shows_clay() {
             return;
         }
@@ -42,26 +38,41 @@ impl Sculpt3dScene {
         // ⚠️ E a frescura é CONSUMIDA pelo `render`: pular esta chamada num frame
         // desenha sem oclusão, nunca com a do frame passado — uma medição de tela
         // descreve uma câmera, e a de ontem descreve outra.
-        if self.ssao > 0.0 {
-            self.renderer.render_ssao(
+        // ⭐⭐⭐ **UMA PASSAGEM POR VIEWPORT** (2026-09-08).
+        //
+        // ⚠️⚠️ **Medir e desenhar ALTERNAM por vista, e a ordem é load-bearing:**
+        // a frescura do AO de tela (`ssao_fresh`) é **uma** para o renderizador
+        // inteiro e é o `render_in` que a consome — medir as quatro e depois
+        // desenhar as quatro deixaria três vistas a amostrar a oclusão da
+        // última. Está escrito no doc do `render_ssao_in`, e este laço é o
+        // consumidor que o obriga.
+        //
+        // ⚠️ **Sem área publicada não se desenha NADA**, e é deliberado: o
+        // desenho e o pick derivam do mesmo rectângulo, e desenhar num de
+        // recurso enquanto o pick usa outro é a família inteira de *«o lugar
+        // onde o mouse toca não corresponde ao local na malha»*. Uma peça
+        // invisível é um defeito que se vê; meio pixel de desacordo não.
+        let vistas: Vec<_> = (0..self.vp_count())
+            .filter_map(|i| Some((self.vp_screen(i)?, self.cam_of(i))))
+            .collect();
+        let (params, shade, ssao) = (self.ssao_params(), self.shade(), self.ssao);
+        for (area, cam) in vistas {
+            if ssao > 0.0 {
+                self.renderer
+                    .render_ssao_in(&gpu.device, &gpu.queue, encoder, &cam, params, size, area);
+            }
+            self.renderer.render_in(
                 &gpu.device,
                 &gpu.queue,
                 encoder,
-                &self.camera,
-                self.ssao_params(),
+                color,
+                &cam,
+                resolved.as_ref(),
+                shade,
                 size,
+                area,
             );
         }
-        self.renderer.render(
-            &gpu.device,
-            &gpu.queue,
-            encoder,
-            color,
-            &self.camera,
-            resolved.as_ref(),
-            self.shade(),
-            size,
-        );
     }
 
     /// **COMO O BARRO É MOSTRADO** — a porta única das opções de vista.

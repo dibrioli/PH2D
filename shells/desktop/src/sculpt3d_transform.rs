@@ -99,7 +99,7 @@ impl Sculpt3dScene {
         // que o [`Self::transform_gesture`] usa; um pivô fora da tela não tem
         // referência a armar, e aí o gesto de girar já se recusa por conta
         // própria.
-        match self.camera.project(pivot_world, self.viewport) {
+        match self.project_window(pivot_world) {
             Some(c) => self.arm_sweep_at(c, x, y),
             None => self.twist = None,
         }
@@ -142,7 +142,7 @@ impl Sculpt3dScene {
                     pivot_world,
                     x - from.0,
                     y - from.1,
-                    self.viewport,
+                    self.viewport(),
                 );
                 // ⚠️ **O deslocamento DESCE a pose e a fração NÃO** — a mesma
                 // assimetria que o `turn_at` já carrega: um comprimento vive na
@@ -165,7 +165,7 @@ impl Sculpt3dScene {
                 // artista ter passado por um pixel onde a pergunta não tem
                 // resposta. É a mesma recusa do [`Self::scale_ratio`], pelo
                 // mesmo motivo: não se mira um centro que não está na tela.
-                let center = self.camera.project(pivot_world, self.viewport)?;
+                let center = self.project_window(pivot_world)?;
                 let axis = self.view_axis_local(pivot_world);
                 let radians = self.swept_angle_about(center, x, y)?;
                 Gesture::Rotate { axis, radians }
@@ -182,7 +182,7 @@ impl Sculpt3dScene {
     /// neutro em vez de inventar um número: escalar em torno de um centro que
     /// não está na tela é um gesto que o artista não consegue mirar.
     fn scale_ratio(&self, pivot_world: [f32; 3], from: (f32, f32), x: f32, y: f32) -> f32 {
-        let Some(c) = self.camera.project(pivot_world, self.viewport) else {
+        let Some(c) = self.project_window(pivot_world) else {
             return 1.0;
         };
         let d0 = (from.0 - c.0).hypot(from.1 - c.1).max(MIN_SCALE_REF_PX);

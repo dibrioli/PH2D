@@ -77,7 +77,7 @@ fn aspect() -> f32 {
 fn scene(device: &wgpu::Device) -> Sculpt3dScene {
     let mut s = Sculpt3dScene::new(device, uv_sphere(48, 72, 1.0), aspect());
     // O `render` é quem publica o viewport no produto; isto aqui não desenha.
-    s.viewport = (VW, VH);
+    s.note_canvas(ph2d_editor::zones::Rect::new(0.0, 0.0, f32::from(VW as u16), f32::from(VH as u16)));
     s.frame_all(aspect());
     // Fração da ALTURA da viewport (ver [`Camera3d::pan`]) — o suficiente para o
     // pivô sair umas duzentas colunas do centro, sem tirar a peça de quadro.
@@ -120,14 +120,14 @@ fn pivot_on_screen(s: &Sculpt3dScene) -> (f32, f32) {
         .pivot();
     let world = s.pose().point_to_world(pivot_local);
     s.camera
-        .project(world, s.viewport)
+        .project(world, s.viewport())
         .expect("o pivô está na tela")
 }
 
 /// Onde um vértice cai na tela, agora.
 fn vert_on_screen(s: &Sculpt3dScene, v: usize) -> (f32, f32) {
     let w = s.pose().point_to_world(s.mesh().positions()[v]);
-    s.camera.project(w, s.viewport).expect("na tela")
+    s.camera.project(w, s.viewport()).expect("na tela")
 }
 
 /// Os vértices com braço de alavanca suficiente para resolver um giro, espalhados

@@ -41,7 +41,7 @@ const DRAG_PX: f32 = 400.0;
 /// Uma cena com uma esfera e o verbo pedido em mãos.
 fn scene(device: &wgpu::Device, verb: Verb) -> Sculpt3dScene {
     let mut s = Sculpt3dScene::new(device, uv_sphere(24, 36, 1.0), 1.0);
-    s.viewport = (900, 700);
+    s.note_canvas(ph2d_editor::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
     s.brush.verb = verb;
     s
 }
@@ -441,7 +441,7 @@ fn the_pinch_anchor_lands_on_a_vertex_of_the_mesh() {
     // devolve o centro da caixa (a resposta honesta para «carregou fora do
     // barro»), e o gate mediria o fallback em vez da lei — foi o que ele fez na
     // 1.ª redacção, quando lia `self.last` em vez de receber o ponto.
-    let (cx, cy) = (s.viewport.0 as f32 * 0.5, s.viewport.1 as f32 * 0.5);
+    let (cx, cy) = (s.viewport().0 as f32 * 0.5, s.viewport().1 as f32 * 0.5);
     let ancora = s.filter_pinch_anchor(cx, cy);
     let mais_perto = verts
         .iter()

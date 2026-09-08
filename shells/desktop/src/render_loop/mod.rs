@@ -11956,7 +11956,11 @@ impl crate::App {
                 // respostas.*
                 #[cfg(feature = "sculpt3d")]
                 if let Some(scene) = sculpt3d.as_mut() {
-                    scene.note_nav(area, safe, self.last_pointer);
+                    // ⚠️ **A ÁREA primeiro, o gizmo depois** — o widget mora no
+                    // quadrante ACTIVO, e quem sabe onde ele está é a divisão,
+                    // que acaba de ser publicada.
+                    scene.note_canvas(area);
+                    scene.note_nav(safe, self.last_pointer);
                 }
             }
             // ⭐⭐ **A VIAGEM ENTRE VISTAS** (W51) — Enio: *"falta um Lerp() rápido para mudança
@@ -12014,17 +12018,44 @@ impl crate::App {
             #[cfg(feature = "sculpt3d")]
             if let Some(scene) = sculpt3d.as_ref()
                 && scene.clay_on_screen()
-                && let Some((area, safe)) = scene.nav_rects()
             {
-                let balls = scene.navball(area, safe);
-                crate::field3d_navball_paint::paint(
+                // ⭐⭐⭐ **O RÓTULO DE CADA VISTA** — só com a divisão aberta. Com uma vista só a
+                // pergunta *«qual é qual?»* não existe, e um rótulo permanente seria ruído sobre a
+                // peça. ⚠️ A chave sai da CÂMERA daquele quadrante, nunca do sítio dele: orbitar a
+                // vista de cima faz dela *User*, que é o que ela passou a ser.
+                let quadros = scene.vp_rects();
+                if quadros.len() > 1 {
+                    for (i, r) in quadros.iter().enumerate() {
+                        crate::field3d_gizmo_paint::paint_view_label(
+                            vector_scene,
+                            paint_ctx.text,
+                            *r,
+                            scene.vp_label_key(i),
+                            hero.theme,
+                        );
+                    }
+                }
+                // ⭐⭐ **AS COSTURAS E A MOLDURA DO ACTIVO** — o MESMO pintor do módulo vizinho.
+                // Ele já é no-op com uma vista só.
+                crate::field3d_gizmo_paint::paint_split(
                     vector_scene,
-                    &balls,
-                    scene.nav_hot(),
+                    &quadros,
+                    scene.vp_active(),
                     hero.theme,
-                    [area.x, area.y],
-                    crate::field3d_navball::centre_in(area, safe),
                 );
+                // ⭐⭐ **O GIZMO DA VIEWPORT**, por cima da moldura — que é onde um gizmo de janela
+                // vive. Ver `sculpt3d_navball`.
+                if let Some((area, safe)) = scene.nav_rects() {
+                    let balls = scene.navball(area, safe);
+                    crate::field3d_navball_paint::paint(
+                        vector_scene,
+                        &balls,
+                        scene.nav_hot(),
+                        hero.theme,
+                        [area.x, area.y],
+                        crate::field3d_navball::centre_in(area, safe),
+                    );
+                }
             }
             // ADR-0161 W4: o painel de modelagem abre sozinho na primeira vez que o
             // smoke desenha (auto-play), e só nessa — reabri-lo todo quadro faria o

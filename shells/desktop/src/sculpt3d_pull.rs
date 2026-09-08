@@ -60,7 +60,7 @@ impl Sculpt3dScene {
     fn finger_world(&self, at: [f32; 3], from: (f32, f32), x: f32, y: f32) -> [f32; 3] {
         let d = self
             .camera
-            .screen_delta_to_world(at, x - from.0, y - from.1, self.viewport);
+            .screen_delta_to_world(at, x - from.0, y - from.1, self.viewport());
         [at[0] + d[0], at[1] + d[1], at[2] + d[2]]
     }
 

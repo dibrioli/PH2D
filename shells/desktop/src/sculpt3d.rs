@@ -47,6 +47,13 @@ mod filter;
 #[path = "sculpt3d_keys.rs"]
 mod keys;
 
+/// ⭐⭐⭐ **OS QUATRO VIEWPORTS** — frente, lado, cima e a vista do artista, ao
+/// mesmo tempo (ordem do Enio, 2026-09-08). Filho (`#[path]`) pelo motivo dos
+/// vizinhos; a lei da DIVISÃO é a do módulo de modelagem
+/// ([`crate::field3d_layout`]) e o que mora aqui é **uma câmera por quadrante**.
+#[path = "sculpt3d_viewports.rs"]
+mod viewports;
+
 /// ⭐⭐ **O GIZMO DA VIEWPORT** — as seis bolas de eixo no canto e as seis vistas
 /// nomeadas (ordem do Enio, 2026-09-08). Filho (`#[path]`) pelo motivo dos
 /// vizinhos; a LEI do widget é a do módulo de modelagem
@@ -333,7 +340,27 @@ pub(crate) struct Sculpt3dScene {
     renderer: MeshRenderer,
     drag: Option<Drag>,
     last: (f32, f32),
-    viewport: (u32, u32),
+    /// ⭐⭐⭐ **A DIVISÃO DO CANVAS** — uma vista, ou as quatro.
+    split: crate::field3d_layout::Split,
+    /// ⭐⭐ **UMA CÂMERA POR QUADRANTE.**
+    ///
+    /// ⛔⛔ **A do ACTIVO está VELHA aqui de propósito** — quem manda nela é a
+    /// [`Self::camera`], que tem ~30 leitores neste módulo e todos querem
+    /// sempre a vista em que a mão está. Guardar e pegar acontece num sítio só
+    /// ([`Sculpt3dScene::set_active_vp`]) e ler por uma porta só
+    /// ([`Sculpt3dScene::cam_of`]). Ver a nota do [`viewports`].
+    vp_cams: Vec<ph2d_mesh_render::Camera3d>,
+    /// Qual quadrante recebe o gesto e o chrome.
+    vp_active: usize,
+    /// A costura agarrada — `(vertical, horizontal)`.
+    seam_drag: Option<(bool, bool)>,
+    /// ⭐⭐⭐ **A ÁREA DO CANVAS 3D**, publicada pelo quadro.
+    ///
+    /// ⛔ **Ela substituiu o campo `viewport`, que era escrito com o tamanho da
+    /// JANELA** — e por isso a peça era desenhada por baixo dos painéis e das
+    /// réguas, o mesmo defeito que o Enio reportou ao módulo vizinho em 31/08.
+    /// O tamanho da vista passa a ser DERIVADO ([`Sculpt3dScene::viewport`]).
+    canvas: Option<ph2d_editor::zones::Rect>,
     /// ⭐ **ONDE O GIZMO DE NAVEGAÇÃO MORA** — a área do canvas e a parte dela
     /// que a moldura do app não tapa, publicadas pelo desenho.
     ///
@@ -341,7 +368,6 @@ pub(crate) struct Sculpt3dScene {
     /// o ponteiro corre fora do quadro e não conhece nem o layout nem os
     /// painéis que estão abertos. `None` até o primeiro desenho, e aí o gizmo
     /// simplesmente não recebe gesto nenhum.
-    nav_area: Option<ph2d_editor::zones::Rect>,
     nav_safe: Option<ph2d_editor::zones::Rect>,
     /// A bola sob o cursor no último quadro — só realce.
     nav_hot: Option<crate::field3d_views::Standard>,

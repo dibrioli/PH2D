@@ -209,7 +209,8 @@ fn um_clique_na_bola_muda_a_camera_e_um_arrasto_nao() {
     // A área é a do canvas e o `safe` é ela inteira — sem painéis, o widget vai
     // para a quina de cima à direita.
     let area = Rect::new(0.0, 0.0, 900.0, 700.0);
-    s.note_nav(area, area, (0.0, 0.0));
+    s.note_canvas(area);
+    s.note_nav(area, (0.0, 0.0));
 
     // Onde a bola do TOPO está, agora, segundo a própria lei.
     let alvo = Standard::Top;

@@ -197,6 +197,13 @@ pub struct SculptStroke {
     /// As sessões da LEI DA REFERÊNCIA (`PH2D_CLOTH_LAW=ref`), uma por cópia de
     /// simetria — ver [`stroke_cloth_ref`]. Nascem no 1.º dab, morrem no `begin`.
     cloth_ref: Vec<Option<stroke_cloth_ref::ClothRef>>,
+    /// A sessão do FILTRO de tecido — ver [`stroke_cloth_filter`].
+    ///
+    /// ⚠️ **Uma só, e não uma por cópia de simetria:** o filtro corre sobre a
+    /// peça inteira, e uma segunda passagem simularia a mesma malha duas vezes.
+    /// ⚠️ Ela nasce no pen-down do filtro e morre no `begin` como as outras — é
+    /// isso que a impede de sobreviver a um traço.
+    cloth_filter: Option<ph2d_cloth::verlet_gesto::PincelTecido>,
     /// **A porta de ABLAÇÃO do orçamento do tecido** — só em teste, e ela existe
     /// para um gate poder afirmar que a lei do gesto **não depende** do número
     /// de sub-passos. Sem ela a propriedade não é observável de fora, e foi
@@ -310,6 +317,8 @@ impl SculptStroke {
         // simular a região do anterior, num lugar onde o artista já não está.
         self.cloth.clear();
         self.cloth_ref.clear();
+        // ⚠️ E a do FILTRO pela mesma razão: ela é do gesto, não do programa.
+        self.cloth_filter = None;
     }
 }
 
@@ -326,6 +335,12 @@ mod stroke_cloth;
 /// de `PH2D_CLOTH_LAW=ref`. Ver [`stroke_cloth_ref`].
 #[path = "stroke_cloth_ref.rs"]
 mod stroke_cloth_ref;
+/// ⭐ **O FILTRO de tecido** (espec §7) — o mesmo solver na peça inteira, sem
+/// pincel. Irmão do [`stroke_cloth_ref`], e o corte é o GESTO: lá um traço com
+/// carimbo, aqui um arrasto que não toca a malha.
+#[path = "stroke_cloth_filter.rs"]
+mod stroke_cloth_filter;
+pub use stroke_cloth_filter::ClothFilterStep;
 pub use stroke_cloth_ref::cloth_repica;
 
 /// **A ANATOMIA DE UM DAB** — a sequência que amarra os módulos acima. Ver
@@ -425,6 +440,10 @@ mod tests;
 #[cfg(test)]
 #[path = "stroke_cloth_tests.rs"]
 mod cloth_tests;
+
+#[cfg(test)]
+#[path = "stroke_cloth_filter_tests.rs"]
+mod cloth_filter_tests;
 
 /// ⭐ **Os SELECTORES do tecido chegam ao motor** — irmão do [`cloth_tests`], e
 /// o corte é *o que a LEI faz* contra *o que o PAINEL alcança*.

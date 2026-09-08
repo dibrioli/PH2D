@@ -167,3 +167,21 @@ pub(super) fn lazy_switch() {
         off = super::lazy_switch_demo::COOK_OFF_MS,
     );
 }
+
+/// **EM TORNO DE QUÊ** (`=111`) — a cena de smoke do ciclo 3 (doc 106).
+///
+/// ⚠️ Ela abre no DEFEITO encenado: o pano longe da origem, a torcer-se à volta de um ponto que
+/// está fora dele. O passo do smoke é trocar o `Pivot` do cartão `Twist`.
+pub(super) fn pivot() {
+    eprintln!(
+        "[cena 111] EM TORNO DE QUE (ciclo 3). Um pano LONGE do centro do mundo, a
+  torcer-se em volta de um ponto que esta' FORA dele -- e' o defeito, encenado.
+
+  1. No cartao `Twist`, na linha `Pivot`, troque `Point` por `Centroid`.
+     O pano passa a torcer-se sobre si proprio, sem ninguem digitar um numero.
+  2. Volte a `World Origin` para ver o defeito outra vez.
+  3. No cartao `Transform`, arraste `Skew X`: o pano INCLINA-SE (1 = 45 graus).
+
+  Tudo isto corre no dispositivo, o espelho incluido."
+    );
+}

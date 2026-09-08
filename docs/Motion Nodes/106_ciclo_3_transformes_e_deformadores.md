@@ -405,10 +405,44 @@ linha não está a mandar clicar numa linha que não existe — apanhou duas:
 `In X · In Y · Out X · Out Y` **quatro vezes**, sem dizer de que aresta é cada grupo — 24 rows
 em que o artista não consegue escolher.
 
+### ⛔⛔ O REPORT DO DONO — *«a simulação funciona nos nós mas não aparece no canvas»* (08/09)
+
+**A cena `=111` que eu entreguei era invisível, e o defeito era meu.** Os cartões cozinhavam
+`180 000` objectos, cada pré-visualização de nó tinha pontos, o canvas estava vazio.
+
+⚠️⚠️ **E o HUD dizia `0 inst`, o que quase mandou a investigação para o sítio errado.** Aquele
+contador conta **entidades `RenderInstance` do ECS** (`snapshots.rs`), e uma cena de motion
+residente no dispositivo **não cria nenhuma**: ele lê `0` em toda cena de motion que funciona.
+*Um contador que lê zero no caminho saudável não é evidência de nada.*
+
+⛔ **A causa, lida do código:** `ph2d_render::Camera2d` abre em `height_world = 10` e o zoom-out
+**pára** em `ZOOM_MAX_HEIGHT_WORLD = 100`. Eu dimensionei a cena no idioma dos demos de
+**performance** (`=12` é `700 × 700` a `1` unidade de passo) em vez do idioma das cenas que se
+**leem**, e pus o pano entre **`300` e `600`** unidades. *Ele não estava fora do ecrã: estava fora
+do ALCANCE, e nenhum gesto o encontrava.*
+
+#### ⭐⭐⭐ E a régua que faltava estava na própria árvore — não foi escolhida, foi MEDIDA
+
+`where_each_demo_scene_lives` varre o roteador inteiro e a partição aparece sozinha:
+
+| classe | quantas | onde vivem |
+|---|---:|---|
+| cenas **com legenda** (`=82`..`=110`) | **29** | todas dentro de **`±11`** unidades |
+| cenas **sem legenda** (`=1`, `=2`, `=6`, `=7`, `=12`..`=16`) | **9** | **`180`..`800`** — os demos de perf, que ninguém lê |
+| **`=111`, a minha** | 1 | **`300,5`..`599,5`** — a única com legenda do lado errado |
+
+⇒ **a LEGENDA é o discriminador**: uma cena que pousa uma ficha no canvas está, por construção, a
+dizer *«alguém vai ler isto»*. O gate
+`a_scene_with_a_legend_fits_inside_what_the_camera_can_reach` corre sobre o catálogo (⚠️ **constrói
+todas e só COZINHA as que têm legenda** — a `=1` tem 2 M elementos), com a barra lida do código
+(`ZOOM_MAX_HEIGHT_WORLD / 2`) e não escolhida. Prova de mutação: repor o `450` reprova com
+`cena 111: x 448,8..451,2 (alcance 451,2 > 50)`.
+
 ### 🔬 A CENA DE SMOKE — `PH2D_GPU_COOK_DEMO=111`
 
-`grid(300×300) → move → mirror → twist → transform → output`, com o pano a **450 unidades** da
-origem. ⚠️ **O deslocamento é a cena inteira:** com o pano centrado os três modos dão a mesma
+`grid(80×80) → scale → move → mirror → twist → transform → output`: um pano de **2,4 unidades**,
+`12 800` objectos, a **3,0 unidades** da origem (`1,25 ×` a largura dele — derivado, nunca digitado
+duas vezes). ⚠️ **O deslocamento é a cena inteira:** com o pano centrado os três modos dão a mesma
 imagem, e a cena ensinaria que a escolha não importa.
 
 ### ⏳ ABERTO — dois vermelhos de GPU que já estavam no `main`

@@ -39,20 +39,39 @@ use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::NodeId;
 
-/// Quão longe da origem o pano nasce, em unidades de mundo. ⚠️ **Não é um número escolhido:**
-/// é `1,5 ×` a largura do pano (`LADO × gap`), o mínimo para o eixo da torção cair **fora** dele
-/// com folga que se vê a olho.
-const DESLOCAMENTO: f32 = 450.0;
-/// 300 × 300 = 90 000 — grande o suficiente para o pano ler como pano e para o medidor de
-/// dispositivo dizer alguma coisa, pequeno o suficiente para a cena abrir depressa.
-const LADO: f32 = 300.0;
+/// O passo entre elementos, em unidades de MUNDO — e a peça, a metade dele (a mesma razão que
+/// as cenas da conferência usam, que é o que faz um pano ler como pano em vez de um borrão).
+const PASSO: f32 = 0.03;
+/// O tamanho de cada peça. O sink desenha um quad de tamanho `1`, e é o `motion.scale` que o põe
+/// à escala da cena.
+const PECA: f32 = 0.02;
+/// 80 × 80 = 6 400, que o espelho dobra para **12 800**.
+const LADO: f32 = 80.0;
+/// A largura do pano, derivada — nunca digitada duas vezes.
+const LARGURA: f32 = LADO * PASSO;
+
+/// Quão longe da origem o pano nasce. ⚠️ **É `1,25 ×` a largura do pano**, o mínimo para o eixo
+/// da torção cair **fora** dele com folga que se vê a olho.
+///
+/// ⛔⛔ **E o número tem um TETO que não é de gosto: a câmara.** Ela abre em
+/// `Camera2d::height_world = 10` e o zoom-out **pára em `ZOOM_MAX_HEIGHT_WORLD = 100`** — uma
+/// cena que viva para lá disso não está «fora do ecrã», está **fora do alcance**, e o artista não
+/// tem gesto que a encontre. *A primeira redacção desta cena punha o pano entre `300` e `600`
+/// unidades* (medido: `x ∈ [300,5 · 599,5]`), e o report foi *«a simulação funciona nos nós mas
+/// não aparece no canvas»* — os cartões cozinhavam, as pré-visualizações tinham pontos, e não
+/// havia nada para ver porque não havia como lá chegar.
+///
+/// ⚠️ **O `0 inst` do HUD não era prova de nada** e quase mandou a investigação para o sítio
+/// errado: aquele contador conta **entidades `RenderInstance` do ECS**, e uma cena de motion
+/// residente no dispositivo não cria nenhuma.
+const DESLOCAMENTO: f32 = LARGURA * 1.25;
 
 /// A legenda que a cena pousa no canvas.
 pub(super) fn captions() -> Vec<Caption> {
     vec![
         Caption::new([0.0, 0.0], "a origem do mundo"),
         Caption::new(
-            [DESLOCAMENTO, LADO * 0.6],
+            [DESLOCAMENTO, LARGURA * 1.1],
             "Twist ▸ Pivot: Point → Centroid",
         ),
     ]
@@ -66,8 +85,12 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     let grid = g.add_node("motion.grid");
     g.set_param(grid, "rows", LADO);
     g.set_param(grid, "cols", LADO);
-    g.set_param(grid, "gap_x", 1.0);
-    g.set_param(grid, "gap_y", 1.0);
+    g.set_param(grid, "gap_x", PASSO);
+    g.set_param(grid, "gap_y", PASSO);
+
+    // A peça — o sink desenha um quad de tamanho `1`, e sem isto o pano é um borrão sólido.
+    let fit = g.add_node("motion.scale");
+    g.set_param(fit, "amount", PECA);
 
     // O pano sai da origem — ver o cabeçalho: é isto que faz a escolha do pivô ter imagem.
     let mv = g.add_node("motion.move");
@@ -97,7 +120,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
     let out = g.add_node("motion.output");
 
-    for (i, n) in [grid, mv, mirror, twist, xform, out]
+    for (i, n) in [grid, fit, mv, mirror, twist, xform, out]
         .into_iter()
         .enumerate()
     {
@@ -105,15 +128,16 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
             n,
             Pos {
                 #[expect(clippy::cast_precision_loss, reason = "um indice de cartao")]
-                x: 60.0 + i as f32 * 185.0,
+                x: 40.0 + i as f32 * 172.0,
                 y: 140.0,
             },
         );
     }
-    g.set_pos(wind, Pos { x: 430.0, y: 330.0 });
+    g.set_pos(wind, Pos { x: 470.0, y: 330.0 });
 
     for (from, to, port) in [
-        (grid, mv, 0u16),
+        (grid, fit, 0u16),
+        (fit, mv, 0),
         (mv, mirror, 0),
         (mirror, twist, 0),
         (wind, twist, 1),

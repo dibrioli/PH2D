@@ -23,7 +23,9 @@ use super::*;
 /// não acusa (ele mede o piso). O que acusa é a cena nova nunca ser diagnosticada —
 /// então esta linha anda junto com o braço novo do `match`.
 #[cfg(test)]
-const MAX_DEMO_LEVEL: u32 = 111;
+/// ⚠️ `pub(crate)` desde o ciclo 3: a sonda que pergunta **onde cada cena vive** varre o
+/// intervalo inteiro, e um teto que ela não alcança não é um teto — é uma nota.
+pub(crate) const MAX_DEMO_LEVEL: u32 = 111;
 
 /// Os sinks da cena que o ambiente pediu — vazio quando ele não pediu nada, que é a TELA
 /// VAZIA com que o editor abre.
@@ -461,17 +463,7 @@ pub(crate) fn build_level(
         Some("111") => {
             let sinks = super::pivot_demo::build(doc, registry).unwrap_or_default();
             crate::motion_demo_legend::publish(super::pivot_demo::captions());
-            eprintln!(
-                "[cena 111] EM TORNO DE QUE (ciclo 3). Um pano LONGE do centro do mundo, a
-  torcer-se em volta de um ponto que esta' FORA dele -- e' o defeito, encenado.
-
-  1. No cartao `Twist`, na linha `Pivot`, troque `Point` por `Centroid`.
-     O pano passa a torcer-se sobre si proprio, sem ninguem digitar um numero.
-  2. Volte a `World Origin` para ver o defeito outra vez.
-  3. No cartao `Transform`, arraste `Skew X`: o pano INCLINA-SE (1 = 45 graus).
-
-  Tudo isto corre no dispositivo, o espelho incluido."
-            );
+            announce::pivot();
             sinks
         }
         Some("107") => {

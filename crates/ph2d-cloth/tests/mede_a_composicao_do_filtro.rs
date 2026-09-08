@@ -26,7 +26,7 @@
 //! nossos próprios defeitos.*
 
 use ph2d_cloth::V3;
-use ph2d_cloth::verlet_gesto::{Area, Curva, Modo, Passo, Pincel, PincelTecido};
+use ph2d_cloth::verlet_gesto::{Accionamento, Area, Curva, Modo, Passo, Pincel, PincelTecido};
 
 // ————————————————————————————————— as peças —————————————————————————————————
 
@@ -153,6 +153,22 @@ fn condicoes_de_filtro(modo: Modo, forca: f64) -> Pincel {
     }
 }
 
+/// **O pincel COMO FILTRO DE VERDADE** (espec §7) — pela porta
+/// [`Accionamento::Filtro`], que a medição desta bancada obrigou a existir.
+///
+/// ⚠️ **O raio fica na omissão e não faz falta**: com este accionamento o factor
+/// por vértice é `1 − máscara` (sem curva, sem corte de raio) e a área *Global*
+/// põe toda a malha activa sem olhar ao alcance. *Quem não tem pincel não tem
+/// raio* — que é precisamente o que a [`condicoes_de_filtro`] tinha de fingir.
+fn filtro(modo: Modo, s: f64) -> Pincel {
+    Pincel {
+        modo,
+        area: Area::Global,
+        accionamento: Accionamento::Filtro { s },
+        ..Pincel::default()
+    }
+}
+
 /// O que UM passo em condições de filtro produziu.
 struct Corrida {
     /// `x − posição de entrada`, por vértice.
@@ -161,6 +177,14 @@ struct Corrida {
     escreveu_tau: bool,
     /// Algum `σ` saiu de zero? (a assinatura dos modos de âncora)
     escreveu_ancora: bool,
+    /// **O ALVO da âncora por vértice**, no fim do passo.
+    ///
+    /// ⚠️ **É ele que uma lei de âncora AFIRMA, e não o deslocamento** — a
+    /// âncora é uma restrição com força `σ`, e o vértice acaba onde ela e as
+    /// molas do tecido se equilibram. Medir a lei no deslocamento mede as duas.
+    ancora: Vec<V3>,
+    /// As posições de repouso (o `p⁰` a que a lei da Escala se refere).
+    repouso: Vec<V3>,
 }
 
 /// Um quarto de volta em torno de `+Y`: `(x, y, z) → (z, y, −x)`.
@@ -228,6 +252,8 @@ fn corre_com(
             .collect(),
         escreveu_tau: t.sim.tau.iter().any(|v| v.abs() > 0.0),
         escreveu_ancora: t.sim.sigma.iter().any(|v| v.abs() > 0.0),
+        ancora: t.sim.ancora.clone(),
+        repouso: t.sim.repouso.clone(),
     }
 }
 
@@ -471,4 +497,165 @@ fn os_oito_modos_rodam_com_a_peca_logo_nenhum_e_uma_gravidade() {
         );
     }
     println!("pior desvio dos oito: {pior:.3e}");
+}
+
+// ————————————————————— os portões das DUAS leis novas —————————————————————
+
+/// ⭐⭐⭐ **O ARRASTO DO FILTRO É UMA RECTA COM SINAL** — o contrário exacto do
+/// traço, que o gate irmão mede quadrático e sem sinal.
+///
+/// A espec §7 põe `S = força_base · Δpx · 0,001`: dobrar os pixels dobra o
+/// efeito, e arrastar para o outro lado espelha-o. ⚠️ **A barra sai de uma
+/// medição, não de uma escolha:** o solver relaxa restrições depois da
+/// integração, e essa metade **não** é linear — por isso a linearidade afirma-se
+/// sobre UM passo simulado, onde ela é a lei que acabou de correr.
+#[test]
+fn o_arrasto_do_filtro_e_uma_recta_com_sinal() {
+    let (pos, faces) = grelha(21, 0.1);
+    let pico = |s: f64| {
+        let c = corre(filtro(Modo::Gravidade, s), &pos, &faces, 2, false);
+        c.desloc.iter().map(|d| norma(*d)).fold(0.0, f64::max)
+    };
+    // O ZERO é exacto: sem arrasto não há filtro nenhum.
+    assert_eq!(pico(0.0), 0.0, "com s = 0 a peca tem de ficar parada, ao bit");
+    let base = pico(1.0);
+    assert!(base > 1e-9, "a fixtura nao produz o fenomeno");
+    for s in [0.25, 0.5, 1.0] {
+        let m = pico(s);
+        let erro = (m - base * s).abs() / base;
+        println!("s {s:.2} -> pico {m:.6} contra a recta {:.6} (erro {erro:.2e})", base * s);
+        assert!(erro < 1e-9, "o arrasto do filtro nao e' linear em {s}");
+    }
+    // ⭐ E o SINAL vive no próprio `s` — não num `flip` ao lado.
+    let neg = corre(filtro(Modo::Gravidade, -1.0), &pos, &faces, 2, false);
+    let pos_ = corre(filtro(Modo::Gravidade, 1.0), &pos, &faces, 2, false);
+    let assimetria = neg
+        .desloc
+        .iter()
+        .zip(&pos_.desloc)
+        .map(|(a, b)| norma([a[0] + b[0], a[1] + b[1], a[2] + b[2]]))
+        .fold(0.0, f64::max)
+        / base;
+    println!("s = -1 contra -(s = +1): assimetria relativa {assimetria:.2e}");
+    assert!(
+        assimetria < 1e-9,
+        "arrastar para o outro lado nao espelhou o efeito (assimetria {assimetria:.2e})"
+    );
+}
+
+/// ⭐⭐⭐ **A GRAVIDADE DO FILTRO NÃO RODA COM A PEÇA — e é isso que ela É.**
+///
+/// O gate irmão mede que os oito modos do traço rodam junto com a peça e o gesto
+/// (equivariância `≤ 5,0e-11`), logo nenhum deles exprimia uma força de mundo.
+/// Aqui prova-se o outro lado: com a peça e o gesto rodados um quarto de volta e
+/// o eixo da gravidade PARADO, o deslocamento **não** acompanha.
+///
+/// ⚠️ **O CONTROLO corre no mesmo accionamento** (o *Inflate* como filtro): sem
+/// ele, um desvio grande leria-se como *«a gravidade é de mundo»* quando podia
+/// ser só a porta do filtro a estar partida.
+#[test]
+fn a_gravidade_do_filtro_nao_roda_com_a_peca_e_o_inflate_roda() {
+    let (pos, faces) = esfera(24, 12);
+    let equivariancia = |p: Pincel| {
+        let a = corre_com(p, &pos, &faces, 3, false, false);
+        let b = corre_com(p, &pos, &faces, 3, false, true);
+        let pico = a.desloc.iter().map(|d| norma(*d)).fold(0.0, f64::max);
+        assert!(pico > 1e-9, "a fixtura nao produz o fenomeno");
+        (
+            a.desloc
+                .iter()
+                .zip(&b.desloc)
+                .map(|(x, y)| {
+                    let r = roda(*x);
+                    norma([r[0] - y[0], r[1] - y[1], r[2] - y[2]])
+                })
+                .fold(0.0, f64::max)
+                / pico,
+            pico,
+        )
+    };
+    let (ctrl, pc) = equivariancia(filtro(Modo::Inflar, 1.0));
+    println!("CONTROLO Inflate como filtro: desvio {ctrl:.3e} (pico {pc:.6})");
+    assert!(
+        ctrl < 1e-9,
+        "o Inflate como filtro deixou de rodar com a peca -- a porta do filtro esta' partida, \
+         e sem este controlo o gate da gravidade nao afirma nada"
+    );
+    let (grav, pg) = equivariancia(filtro(Modo::Gravidade, 1.0));
+    println!("Gravidade: desvio {grav:.3e} (pico {pg:.6})");
+    assert!(
+        grav > 0.5,
+        "a gravidade rodou com a peca (desvio {grav:.3e}) -- entao ela nao e' uma forca de MUNDO"
+    );
+}
+
+/// ⭐⭐⭐ **A ESCALA DO FILTRO ANCORA EM `p⁰ + p⁰ · f` E HONRA OS EIXOS** (espec §7).
+///
+/// Duas afirmações numa fixtura só, porque elas são a mesma lei vista de dois
+/// lados: com os três eixos ligados o deslocamento é **radial a partir da origem
+/// do objecto**; com um eixo só, ele vive nesse eixo e em mais nenhum.
+///
+/// ⚠️ **A peça é uma esfera DESLOCADA da origem**, e isso é load-bearing: numa
+/// esfera centrada, «radial a partir da origem» e «ao longo da normal» são a
+/// MESMA direcção, e a fixtura não separaria a Escala do Inflate.
+///
+/// ⛔⛔ **A 1.ª redacção deste gate mediu o DESLOCAMENTO e reprovou com `0,889`
+/// de cosseno — e a régua é que estava errada.** Uma âncora não teletransporta
+/// o vértice: ela é uma restrição de força `0,01` que o solver relaxa CONTRA as
+/// molas do tecido, e uma homotetia estica **toda** aresta, logo as molas puxam
+/// de volta ao longo das arestas, que não são radiais. *O que a lei afirma é o
+/// ALVO; onde o vértice acaba é a lei MAIS o tecido.* ⇒ o gate mede a âncora, e
+/// o desvio do deslocamento fica ao lado como MEDIÇÃO, não como barra.
+#[test]
+fn a_escala_do_filtro_ancora_no_repouso_e_honra_os_eixos() {
+    let (base, faces) = esfera(24, 12);
+    let pos: Vec<V3> = base.iter().map(|p| [p[0] + 2.0, p[1] + 0.5, p[2]]).collect();
+
+    // (a) os três eixos: a ÂNCORA é `p⁰ · (1 + f)`, radial a partir da origem.
+    let c = corre(filtro(Modo::Escala, 1.0), &pos, &faces, 2, false);
+    let mut pior_cos = 1.0_f64;
+    let mut pico = 0.0_f64;
+    for (a, p0) in c.ancora.iter().zip(&c.repouso) {
+        let d = [a[0] - p0[0], a[1] - p0[1], a[2] - p0[2]];
+        let (md, mp) = (norma(d), norma(*p0));
+        pico = pico.max(md);
+        if md < 1e-12 || mp < 1e-12 {
+            continue;
+        }
+        pior_cos = pior_cos.min((d[0] * p0[0] + d[1] * p0[1] + d[2] * p0[2]) / (md * mp));
+    }
+    println!("tres eixos: pior cosseno da ANCORA contra o raio da origem {pior_cos:.9}");
+    assert!(pico > 1e-9, "a ancora nao saiu do repouso -- a fixtura nao produz o fenomeno");
+    assert!(
+        pior_cos > 1.0 - 1e-12,
+        "a ancora da Escala nao e' radial a partir da origem (pior cosseno {pior_cos:.9})"
+    );
+    // A MEDIÇÃO ao lado: quanto o tecido desvia o resultado da lei.
+    let mut cos_desloc = 1.0_f64;
+    for (d, p0) in c.desloc.iter().zip(&c.repouso) {
+        let (md, mp) = (norma(*d), norma(*p0));
+        if md < 1e-9 || mp < 1e-9 {
+            continue;
+        }
+        cos_desloc = cos_desloc.min((d[0] * p0[0] + d[1] * p0[1] + d[2] * p0[2]) / (md * mp));
+    }
+    println!(
+        "  e o DESLOCAMENTO desvia ate' {:.1}° do raio -- e' o tecido a resistir a` homotetia, \
+         nao a lei a falhar",
+        cos_desloc.clamp(-1.0, 1.0).acos().to_degrees()
+    );
+
+    // (b) só o eixo X: a âncora não sai desse eixo.
+    let mut so_x = filtro(Modo::Escala, 1.0);
+    so_x.referencial.activo = [true, false, false];
+    let c = corre(so_x, &pos, &faces, 2, false);
+    let (mut px, mut fuga) = (0.0_f64, 0.0_f64);
+    for (a, p0) in c.ancora.iter().zip(&c.repouso) {
+        let d = [a[0] - p0[0], a[1] - p0[1], a[2] - p0[2]];
+        px = px.max(d[0].abs());
+        fuga = fuga.max(d[1].abs().max(d[2].abs()));
+    }
+    println!("so' o eixo X: pico da ancora em x {px:.6}, fuga em y/z {fuga:.3e}");
+    assert!(px > 1e-9, "com o eixo X ligado a ancora tinha de sair do repouso em x");
+    assert_eq!(fuga, 0.0, "a ancora da Escala escapou dos eixos ligados");
 }

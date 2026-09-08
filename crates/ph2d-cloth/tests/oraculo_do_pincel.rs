@@ -153,6 +153,19 @@ impl Traco {
             banda: self.f("banda"),
             pino: self.f("pino") > 0.5,
             flip: 1.0,
+            // ⭐⭐ **AS 86 FIXTURES SÃO TODAS DO PINCEL** — o oráculo nunca correu
+            // o filtro (o §10 da espec não traz um único vector dele). Então os
+            // três campos do accionamento ficam no valor do TRAÇO, e é isso que
+            // faz este corpus continuar a medir a mesma lei que media antes de a
+            // porta do filtro existir.
+            //
+            // ⚠️ **Este literal escreve-se campo a campo de propósito:** um termo
+            // novo no [`Pincel`] é **erro de compilação** aqui, e quem o
+            // acrescentar tem de dizer o que ele vale para as 86 corridas — em
+            // vez de o herdar em silêncio de um `..default()`.
+            accionamento: ph2d_cloth::verlet_gesto::Accionamento::Traco,
+            eixo_da_gravidade: [0.0, 0.0, -1.0],
+            referencial: ph2d_cloth::verlet_gesto::Referencial::default(),
             // As fixtures do oráculo correm SEM simetria ⇒ uma passagem, e a
             // área *Local* constrói a lista `passagens + 1 = 2` vezes.
             passagens: 1,

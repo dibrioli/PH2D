@@ -13,7 +13,9 @@ use crate::verlet::{Verlet, dist, norm, unit};
 /// O VOCABULÁRIO DOS CONTROLOS — ver o doc do módulo.
 #[path = "verlet_gesto_pincel.rs"]
 mod pincel_mod;
-pub use pincel_mod::{Area, Curva, FalloffForca, Modo, Pincel, banda};
+pub use pincel_mod::{
+    Accionamento, Area, Curva, FalloffForca, Modo, Pincel, Referencial, banda,
+};
 
 /// A NORMAL E O CENTRO DA ÁREA — ver o doc do módulo.
 #[path = "verlet_gesto_area.rs"]
@@ -324,6 +326,13 @@ impl PincelTecido {
                         }
                     }
                     Modo::Gancho => self.sim.ancorar(v, 0.35),
+                    // Espec §7: a Escala é o único tipo do FILTRO por âncora, e a
+                    // força dela é a constante `0,01`. ⚠️ Ela nasce aqui, no
+                    // MESMO sítio e na mesma ordem das outras duas (§5.2 nº 1:
+                    // corpo mole → estruturais → âncora → pino) — Gauss-Seidel
+                    // não comuta, e uma âncora nascida noutro ponto da lista dá
+                    // outra resposta.
+                    Modo::Escala => self.sim.ancorar(v, 0.01),
                     _ => {}
                 }
                 // Espec §2.3: o pino da fronteira, só em Local, força `1 − w`.
@@ -408,6 +417,25 @@ impl PincelTecido {
     /// inicial no Agarrar · o cursor do passo ANTERIOR no Gancho), e o ponto do
     /// plano é sempre o centro da área do passo. *Enquanto os dois eram o mesmo
     /// argumento, o plano passava pelo cursor — a aproximação de primeira ordem.*
+    /// **O factor por vértice DO ACCIONAMENTO EM VIGOR** (espec §4.1 · §7).
+    ///
+    /// No traço é o [`Self::factor`] inteiro — máscara · banda · corte no raio ·
+    /// curva com dureza. No filtro **não há pincel**: a espec §7 dá
+    /// `(1 − máscara) · S`, e a parte da máscara já entra em cada arm, logo o que
+    /// sobra aqui é `1`.
+    ///
+    /// ⛔ **Isto não se finge com um raio enorme e uma curva constante.** Foi
+    /// medido: o [`Modo::Empurrar`] traz o raio DENTRO da magnitude, e um raio de
+    /// `1e3` faz o pico dele saltar `2000×`
+    /// (`tests/mede_a_composicao_do_filtro.rs`). *Um raio que finge ser infinito
+    /// é lido como comprimento por quem tem comprimento na lei.*
+    fn factor_accionado(&self, p: V3, centro: V3, r: f64, d: f64) -> f64 {
+        match self.pincel.accionamento {
+            Accionamento::Traco => self.factor(p, centro, r, d),
+            Accionamento::Filtro { .. } => 1.0,
+        }
+    }
+
     fn distancia(&self, p: V3, centro: V3, centro_area: V3, delta_u: V3) -> f64 {
         match self.pincel.falloff_forca {
             FalloffForca::Radial => dist(p, centro),
@@ -430,6 +458,20 @@ impl PincelTecido {
         let alpha = self.pincel.forca * self.pincel.forca;
         let flip = self.pincel.flip;
         let pressao = passo.pressao.clamp(0.0, 1.0);
+        // ⭐⭐⭐ **O ACCIONAMENTO** (espec §4.1 contra §7) — ver [`Accionamento`].
+        //
+        // ⚠️ **No traço o `B` muda por arm e no filtro NÃO**, e o factor entre os
+        // dois arms do traço é `100`. A espec §7 dá um `f` só aos cinco tipos do
+        // filtro, e as constantes que sobram (`0,01` do Expand, `0,01` da âncora
+        // da Escala) vivem dentro do tipo. ⛔ Escrever `b_expand = s / 100` aqui
+        // seria emprestar ao filtro uma escada que é do traço.
+        let (b_forca, b_expand) = match self.pincel.accionamento {
+            Accionamento::Traco => (
+                10.0 * alpha * flip * pressao,
+                0.1 * alpha * flip * pressao,
+            ),
+            Accionamento::Filtro { s } => (s, s),
+        };
         // ⚠️ Uma varredura, duas grandezas (espec §4.2-bis e §4.4): o mesmo disco
         // de meio raio, os mesmos dois baldes, o mesmo desempate.
         //
@@ -534,26 +576,67 @@ impl PincelTecido {
                 }
             }
             Modo::Expandir => {
-                let b = 0.1 * alpha * flip * pressao;
+                let b = b_expand;
                 for &v in &dentro {
                     let vi = v as usize;
                     let p = posicoes[vi];
                     let d = self.distancia(p, cursor, c_area, delta_u);
-                    let f = self.factor(p, cursor, r, d) * b * (1.0 - self.mascara_de(vi));
+                    let f = self.factor_accionado(p, cursor, r, d) * b * (1.0 - self.mascara_de(vi));
                     self.sim.tau[vi] += 0.01 * f;
+                }
+            }
+            // ⭐ **SÓ O FILTRO** (espec §7): a âncora `p⁰ + p⁰ · f`, com as
+            // componentes dos eixos desligados anuladas no referencial, e a força
+            // de âncora `0,01` — escrita na construção, como as outras duas.
+            //
+            // ⚠️ **A âncora é sobre `p⁰` CRU**, logo a homotetia é em torno da
+            // origem do objecto (e não do centroide) — a mesma escolha, e a mesma
+            // consequência nomeada, do `FilterKind::Scale` do filtro de malha.
+            //
+            // ⚠️ **`σ` é reescrito a cada passo como nos outros dois modos de
+            // âncora** (espec §4.3, emenda Q9): o passo começa com `σ ≡ 0` em
+            // toda a malha antes de o valor novo entrar.
+            Modo::Escala => {
+                self.sim.sigma.fill(0.0);
+                let eixos = self.pincel.referencial.eixos;
+                let activo = self.pincel.referencial.activo;
+                for &v in &dentro {
+                    let vi = v as usize;
+                    let p0 = self.sim.repouso[vi];
+                    let f = b_forca * (1.0 - self.mascara_de(vi));
+                    // O deslocamento `p⁰ · f`, com os eixos desligados anulados
+                    // **no referencial** — projecta, filtra, e volta.
+                    let mut desloc = [0.0; 3];
+                    for k in 0..3 {
+                        if !activo[k] {
+                            continue;
+                        }
+                        let e = eixos[k];
+                        let c = p0[0] * e[0] + p0[1] * e[1] + p0[2] * e[2];
+                        for (dc, ec) in desloc.iter_mut().zip(e) {
+                            *dc += c * ec;
+                        }
+                    }
+                    self.sim.ancora[vi] = [
+                        p0[0] + desloc[0] * f,
+                        p0[1] + desloc[1] * f,
+                        p0[2] + desloc[2] * f,
+                    ];
+                    self.sim.sigma[vi] = 0.01;
                 }
             }
             Modo::Arrastar
             | Modo::Empurrar
             | Modo::ApertarPonto
             | Modo::ApertarLinha
+            | Modo::Gravidade
             | Modo::Inflar => {
-                let b = 10.0 * alpha * flip * pressao;
+                let b = b_forca;
                 for &v in &dentro {
                     let vi = v as usize;
                     let p = posicoes[vi];
                     let d = self.distancia(p, cursor, c_area, delta_u);
-                    let f = self.factor(p, cursor, r, d) * b * (1.0 - self.mascara_de(vi));
+                    let f = self.factor_accionado(p, cursor, r, d) * b * (1.0 - self.mascara_de(vi));
                     if f == 0.0 {
                         continue;
                     }
@@ -590,6 +673,20 @@ impl PincelTecido {
                                 x_hat[2] * cx + n_area[2] * cz,
                             ]
                         }
+                        // ⭐⭐⭐ **A ÚNICA direcção deste ficheiro que não sai da
+                        // malha nem do cursor** (espec §7): o chamador dita-a, já
+                        // resolvida em coordenadas de mundo. Medido antes de
+                        // existir: os oito modos do traço rodam com a peça
+                        // (equivariância `≤ 5,0e-11`), logo nenhum deles a
+                        // exprimia — `tests/mede_a_composicao_do_filtro.rs`.
+                        Modo::Gravidade => unit(self.pincel.eixo_da_gravidade),
+                        // ⚠️ **A fotografia das normais é a que o CHAMADOR dá**
+                        // (espec §4.2-ter contra §7): o traço lê as do início e o
+                        // filtro refresca-as por passo. A lei é a mesma e o
+                        // parâmetro é [`Passo::normais`] — medido a divergir
+                        // **30,30%** em seis passos, e `0,000` num só (o
+                        // controlo). *A mesma palavra nomeia duas leis, e é o
+                        // chamador que escolhe qual.*
                         Modo::Inflar => unit(passo.normais[vi]),
                         _ => [0.0; 3],
                     };

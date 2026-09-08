@@ -34,6 +34,95 @@ pub enum Modo {
     Gancho,
     /// Desvio do comprimento de repouso, `τ += 0,01 · f` por passo.
     Expandir,
+    /// ⭐ **SÓ O FILTRO** (espec §7): força na direcção que o CHAMADOR dita —
+    /// [`Pincel::eixo_da_gravidade`] —, a mesma em toda a peça.
+    ///
+    /// ⚠️ **É a única direcção deste ficheiro que não sai da malha nem do
+    /// cursor, e isso foi MEDIDO antes de ela existir**
+    /// (`tests/mede_a_composicao_do_filtro.rs`): rodando a peça E o gesto um
+    /// quarto de volta, os oito modos do pincel rodam junto — desvio de
+    /// equivariância `≤ 5,0e-11` nos oito. *Uma força que roda com a peça não é
+    /// uma gravidade*, e é exactamente essa diferença que a orientação do filtro
+    /// compra.
+    ///
+    /// ⛔ **Não a confunda com o [`Self::Empurrar`]:** aquele também move a peça
+    /// toda para um lado só (constância `1,0000` medida numa esfera), mas a
+    /// direcção dele é a normal da **área** — a malha dita-a — e a magnitude
+    /// dele traz o raio dentro (`2R`).
+    Gravidade,
+    /// ⭐ **SÓ O FILTRO** (espec §7): o único tipo por ÂNCORA — `p⁰ + p⁰ · f`,
+    /// com as componentes dos eixos desligados anuladas no
+    /// [`Pincel::referencial`], e força de âncora `0,01`.
+    ///
+    /// ⚠️ **A homotetia é em torno da ORIGEM DO OBJECTO**, porque a âncora é
+    /// construída sobre `p⁰` cru. A consequência fica nomeada: *uma peça cujo
+    /// pivô não está no meio dela escala para longe do pivô* — a mesma nota que
+    /// o filtro de malha (`FilterKind::Scale`) já carrega, e pela mesma razão.
+    ///
+    /// ⛔ **Ela não é o [`Self::Agarrar`] com outro alvo:** o Grab põe a âncora
+    /// em `p⁰ + δ·f` (o `δ` do cursor) e σ vale `1`/`clamp(f)`; aqui o alvo é
+    /// função da PRÓPRIA posição de repouso e σ é a constante `0,01`.
+    Escala,
+}
+
+/// ⭐⭐⭐ **O QUE ACCIONA O GESTO** — o traço de um pincel, ou o arrasto de um
+/// filtro. É a fronteira que a medição de 2026-09-07 obrigou a nomear.
+///
+/// ⚠️⚠️ **Ela não é conforto de arrumação: as duas leis de força são de FAMÍLIAS
+/// diferentes, e isso está medido** (`tests/mede_a_composicao_do_filtro.rs`):
+/// o traço da espec §4.1 põe `B = 10 · força² · flip · pressão` — **quadrático e
+/// sem sinal** (picos `0,00625 / 0,025 / 0,100` para forças `0,25 / 0,50 / 1,00`,
+/// erro relativo `0,0000`; e força `−1` dá o **mesmo** que `+1`) — enquanto o
+/// filtro da §7 põe `S = força_base · Δpx · 0,001`, que é uma **recta com
+/// sinal**. Levar o `S` do filtro dentro de um traço obrigaria a
+/// `força = √|S/10|` mais `flip = sinal(S)`, e o preço não é estético: perto de
+/// `S = 0` a raiz tem derivada infinita, ou seja *os primeiros pixels de arrasto
+/// mexeriam a peça muito mais que os últimos*.
+///
+/// ⛔ **E o falloff também não se finge.** Esconder «não há pincel» atrás de um
+/// raio enorme foi medido a explodir o [`Modo::Empurrar`] `2000×` (pico `598`
+/// contra os `~0,3` dos outros sete), porque a magnitude dele traz o raio
+/// dentro. *Um raio que finge ser infinito não é neutro — é lido como
+/// comprimento por quem tem comprimento na lei.*
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Accionamento {
+    /// **O traço** (espec §4.1): falloff de raio e curva, dureza, banda, força
+    /// ao QUADRADO, sinal pelo `flip`, e a pressão da caneta.
+    Traco,
+    /// **O filtro** (espec §7): sem pincel nenhum — o factor por vértice é só
+    /// `1 − máscara`, e o accionamento é o escalar `s`, com sinal.
+    ///
+    /// ⚠️ **Ele é o MESMO para os cinco tipos.** No traço o `B` muda por arm
+    /// (`10` nos de força, `0,1` no Expand — um factor `100`); no filtro a espec
+    /// §7 dá um `f` só a toda a gente, e as constantes que sobram (`0,01` do
+    /// Expand, `0,01` da âncora da Escala) vivem **dentro** do tipo.
+    Filtro { s: f64 },
+}
+
+/// **O REFERENCIAL do filtro** (espec §7, *Orientation* + *Force Axis*) — os
+/// três eixos, **já resolvidos em coordenadas de mundo pelo chamador**, e quais
+/// deles estão ligados.
+///
+/// ⚠️ **Esta crate não sabe o que é uma vista nem uma matriz de objecto**, e é
+/// de propósito (o cabeçalho do [`super`] diz que ela não sabe sequer o que é
+/// uma malha). *Local* · *World* · *View* são escolhas que o adaptador resolve
+/// antes de chegar aqui — inclusive o caso especial em que, na vista, o «baixo»
+/// da gravidade é o eixo do ECRÃ e não a profundidade.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Referencial {
+    /// As direcções de mundo dos três eixos do referencial.
+    pub eixos: [V3; 3],
+    /// Que eixos a [`Modo::Escala`] deixa a âncora usar (omissão: os três).
+    pub activo: [bool; 3],
+}
+
+impl Default for Referencial {
+    fn default() -> Self {
+        Self {
+            eixos: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            activo: [true; 3],
+        }
+    }
 }
 
 /// A área simulada (espec §2.1).
@@ -133,6 +222,15 @@ pub struct Pincel {
     /// ⛔ Só os apertos: nos outros três a direcção é constante no passo, logo
     /// não há nada a convergir e o `min` seria uma lei NOVA.
     pub converge_aperto: bool,
+    /// ⭐⭐⭐ **O TRAÇO ou o FILTRO** — ver [`Accionamento`]. Omissão: o traço, e o
+    /// caminho dele é **byte-idêntico** ao de antes desta porta existir.
+    pub accionamento: Accionamento,
+    /// **A direcção de mundo da gravidade do filtro**, unitária (espec §7).
+    /// Só a [`Modo::Gravidade`] a lê; omissão `−Z`.
+    pub eixo_da_gravidade: V3,
+    /// **O referencial e os eixos ligados** (espec §7). Só a [`Modo::Escala`] o
+    /// lê; omissão: a identidade com os três eixos ligados.
+    pub referencial: Referencial,
 }
 
 impl Pincel {
@@ -178,6 +276,9 @@ impl Default for Pincel {
             escala_retencao: 1.0,
             passagens: 1,
             converge_aperto: false,
+            accionamento: Accionamento::Traco,
+            eixo_da_gravidade: [0.0, 0.0, -1.0],
+            referencial: Referencial::default(),
         }
     }
 }

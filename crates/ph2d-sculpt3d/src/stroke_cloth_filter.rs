@@ -241,22 +241,28 @@ impl SculptStroke {
     }
 }
 
-/// O anel-1 de um vértice, pelas ARESTAS das faces poligonais — a mesma lei do
-/// traço (`PH2D_CLOTH_ANEL` bissecta lá; aqui não há bissecção porque o filtro
-/// nunca teve outra).
+/// O anel-1 de um vértice — ⭐ **a MESMA porta do traço**
+/// ([`super::stroke_cloth_ref::anel_de`]), e não uma segunda.
+///
+/// ⛔⛔ **A 1.ª redacção deste ficheiro escreveu um anel próprio, e ele estava
+/// errado das DUAS maneiras que importam** (report do dono, 07/09: *«péssima
+/// performance, impossíveis de usar»*):
+///
+/// 1. **QUADRÁTICO.** Ele varria **todas as faces** por cada vértice — `O(V·F)` —
+///    onde a porta do traço lê a tabela pronta de `mesh.adjacency()` em `O(1)`.
+///    Medido: o pen-down crescia com `V^1,77` (`50,5 ms` a `6 836` vértices), o
+///    que na malha do smoke (**`98 306`**) é **~5,6 segundos** de paragem ao
+///    carregar o botão.
+/// 2. **NA ORDEM ERRADA.** Ele fazia `sort_unstable()`, e a espec §3.1 diz que a
+///    ordem do anel é a das **FACES** à volta do vértice — ela fixa a ordem em
+///    que as restrições entram na lista, e Gauss-Seidel **não comuta**. *Um
+///    `sort` é uma ordem NOSSA a substituir a do alvo*, e a bancada do pincel já
+///    tinha esse aviso escrito.
+///
+/// ⇒ *uma segunda resposta a uma pergunta que a casa já tinha respondido, e o
+/// preço dela foi um expoente e uma lei.*
 fn anel_da_malha(mesh: &Mesh, v: u32) -> Vec<u32> {
-    let mut r = Vec::new();
-    for f in mesh.faces() {
-        let vs = f.verts();
-        let Some(k) = vs.iter().position(|x| *x == v) else {
-            continue;
-        };
-        r.push(vs[(k + 1) % vs.len()]);
-        r.push(vs[(k + vs.len() - 1) % vs.len()]);
-    }
-    r.sort_unstable();
-    r.dedup();
-    r
+    super::stroke_cloth_ref::anel_de(mesh, v)
 }
 
 /// **O [`Pincel`] do filtro** (espec §7): área *Global*, sem banda, sem pino,

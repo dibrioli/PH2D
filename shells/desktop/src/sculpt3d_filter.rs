@@ -81,7 +81,7 @@ impl Sculpt3dScene {
     /// filtra — e a recusa é REPORTADA pelo chamador, como a do transform: um
     /// gesto que não faz nada e não diz nada é indistinguível de um botão que
     /// não chegou.
-    pub(super) fn begin_filter(&mut self, x: f32) -> bool {
+    pub(super) fn begin_filter(&mut self, x: f32, y: f32) -> bool {
         if !self.filter_arm() {
             return false;
         }
@@ -97,7 +97,7 @@ impl Sculpt3dScene {
             // este clique. Sem acerto (o artista carregou fora da peça) fica o
             // centro da caixa, que é a única resposta honesta.
             let brush = self.brush.clone();
-            let ponto = self.filter_pinch_anchor();
+            let ponto = self.filter_pinch_anchor(x, y);
             self.stroke.cloth_filter_begin(&mesh, &brush, kind, ponto);
         } else {
             self.stroke.filter_begin(&mesh);
@@ -106,9 +106,45 @@ impl Sculpt3dScene {
         true
     }
 
+    /// ⭐⭐⭐ **O QUADRO DRENA UM PASSO DO FILTRO DE TECIDO** — a metade que faz do
+    /// evento um registo e do quadro o relógio.
+    ///
+    /// ⚠️ **Ela roda uma vez por quadro, com ou sem arrasto**, e o `take()` é a
+    /// guarda inteira: sem evento pendente não há nada a fazer, e com dez
+    /// pendentes só o ÚLTIMO conta — que é a posição de agora, e a lei já é
+    /// função do arrasto TOTAL desde o pen-down.
+    ///
+    /// ⚠️ **E ela é chamada TAMBÉM no pen-up**, antes do fecho, pelo mesmo motivo
+    /// que o `flush_pending_grab`: o último movimento do dedo chega como evento e
+    /// fica pendente — *sem isso o gesto perde a ponta*, e o pano pararia onde o
+    /// último QUADRO o deixou.
+    pub(crate) fn flush_cloth_filter(&mut self) {
+        let Some(x) = self.cloth_filter_pending.take() else {
+            return;
+        };
+        let Some(kind) = self.filter_law.cloth() else {
+            return;
+        };
+        let amount = (x - self.filter_from_x) * FILTER_DRAG_PER_PX;
+        let passo = self.cloth_filter_step_of(amount);
+        let mesh = self.objects[self.active].stack.mesh_mut();
+        if self.stroke.cloth_filter_step(mesh, kind, &passo) == 0 {
+            return;
+        }
+        let touched = self.stroke.touched().to_vec();
+        Self::mesh_changed(
+            &mut self.objects[self.active].dirty,
+            &mut self.edits,
+            &touched,
+        );
+    }
+
     /// **Larga a sessão do filtro de tecido** — chamado no pen-up.
     pub(crate) fn end_cloth_filter(&mut self) {
         self.stroke.cloth_filter_end();
+        // ⚠️ O pendente morre com o gesto: deixá-lo vivo faria o primeiro quadro
+        // depois do pen-up correr um passo sobre uma pose já gravada como undo.
+        self.cloth_filter_pending = None;
     }
 
     /// **O ALVO CONGELADO do aperto** — onde o raio do pen-down bateu na peça.
@@ -125,8 +161,15 @@ impl Sculpt3dScene {
     /// cursor em vez do vértice dá erro `0,696942`; para o vértice, `0,010755` —
     /// **65× melhor**. *A diferença entre apertar para um ponto da malha e para
     /// um ponto que não pertence a ela.*
-    pub(super) fn filter_pinch_anchor(&self) -> [f32; 3] {
-        let (x, y) = self.last;
+    ///
+    /// ⛔⛔ **O ponto chega por ARGUMENTO, e não de `self.last`** — a 1.ª redacção
+    /// lia o campo, e ele está ERRADO exactamente aqui: o `sculpt3d_pointer_down`
+    /// escreve `scene.last` **depois** de chamar o `begin_filter`, e o
+    /// `sculpt3d_pointer_move` só o actualiza **com um arrasto em curso**. ⇒ no
+    /// pen-down ele ainda guarda *onde o gesto ANTERIOR acabou*, e o aperto
+    /// puxaria para lá. Quem o apanhou foi o gate do vértice, que leu a âncora no
+    /// centro da caixa (o raio nem sequer acertava na peça).
+    pub(super) fn filter_pinch_anchor(&self, x: f32, y: f32) -> [f32; 3] {
         let Some(o) = self.obj() else {
             return [0.0; 3];
         };
@@ -209,6 +252,29 @@ impl Sculpt3dScene {
     /// casa já pagou quatro vezes no relevo do Painter.
     pub(super) fn filter_at(&mut self, x: f32) {
         if !self.filter_arm() {
+            return;
+        }
+        // ⭐⭐⭐ **UM EVENTO DE PONTEIRO NÃO É UM PASSO DE SIMULAÇÃO.**
+        //
+        // ⛔⛔ O braço vizinho deste mesmo `match` já escreve a lei — *«um evento
+        // de ponteiro NÃO é um dab»* — e o filtro de tecido nasceu a violá-la: ele
+        // corria **um passo de solver por evento do sistema**, e um rato de
+        // `1000 Hz` entrega dezasseis por quadro. ⇒ *quantos passos a simulação
+        // avança passava a ser função da TAXA DE AMOSTRAGEM do rato*, que é a lei
+        // que esta casa já pagou **seis vezes** no relevo do Painter.
+        //
+        // ⚠️ **Ela é de CORRECÇÃO antes de ser de relógio:** dois artistas com
+        // ratos diferentes obtinham panos diferentes do mesmo gesto. Que também
+        // cure o report de performance é consequência, não a razão.
+        //
+        // ⇒ o evento **regista** e o QUADRO drena ([`Self::flush_cloth_filter`]),
+        // exactamente como o `flush_pending_grab` que já vive ao lado.
+        //
+        // ⛔ **As leis de MALHA continuam imediatas, e é deliberado:** elas repõem
+        // a pose congelada e reaplicam, logo são **idempotentes** no mesmo `x` —
+        // um evento a mais é trabalho repetido, nunca uma resposta diferente.
+        if self.filter_law.is_cloth() {
+            self.cloth_filter_pending = Some(x);
             return;
         }
         let amount = (x - self.filter_from_x) * FILTER_DRAG_PER_PX;

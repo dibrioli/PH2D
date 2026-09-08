@@ -23,6 +23,11 @@ impl App {
     pub(crate) fn sculpt3d_flush_grab(&mut self) {
         if let Some(scene) = self.sculpt3d_scene_mut() {
             scene.flush_pending_grab();
+            // ⭐ **E o passo do filtro de tecido, pela MESMA porta e pelo mesmo
+            // motivo**: um evento de ponteiro regista, o quadro corre. Sem isto o
+            // solver avançaria uma vez por evento do sistema, e um rato de
+            // `1000 Hz` entrega dezasseis por quadro.
+            scene.flush_cloth_filter();
         }
     }
 
@@ -134,7 +139,7 @@ impl App {
                     // Mirar antes de começar, pelo motivo dos dois vizinhos: o
                     // `begin_filter` congela a foto da malha ATIVA.
                     scene.aim(pos.0, pos.1);
-                    if scene.begin_filter(pos.0) {
+                    if scene.begin_filter(pos.0, pos.1) {
                         scene.drag = Some(Drag::Filter);
                     } else {
                         // ⚠️ **Este ramo é uma CONTRADIÇÃO, não um caso.** A
@@ -289,6 +294,11 @@ impl App {
         // `filter_begin` preenche os mesmos dois arrays que o `close_stroke`
         // grava. Ver o cabeçalho do `sculpt3d_filter`.
         if was == Some(Drag::Filter) {
+            // ⚠️ **ANTES do fecho, e sem isto o gesto perde a ponta** — a mesma
+            // lei (e o mesmo comentário) do `flush_pending_grab` do traço: o
+            // último movimento do dedo chega como evento e fica pendente, e o
+            // pano pararia onde o último QUADRO o deixou.
+            scene.flush_cloth_filter();
             // ⚠️ **A sessão de TECIDO morre antes do fecho** — ela é do gesto, e
             // deixá-la viva faria o arrasto seguinte continuar a simulação deste
             // sobre uma pose que já foi gravada como um passo de undo.

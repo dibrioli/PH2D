@@ -123,6 +123,81 @@ gravidade de cena não existem neste app. *Uma lei sem entrada não se mede.*
 
 ---
 
+## §3-bis — ⛔⛔ O REPORT DE PERFORMANCE (07/09), e os DOIS defeitos que ele tinha dentro
+
+> *«diferente dos filtros antigos e do pincel cloth que tem ótima performance,
+> esses filtros novos têm péssima performance e estão impossíveis de usar»*
+
+A sonda é
+[`mede_o_filtro_de_tecido.rs`](../../../crates/ph2d-sculpt3d/tests/mede_o_filtro_de_tecido.rs),
+e ela mede o **EXPOENTE** e não um relógio: um número de milissegundos desta
+workstation não sobrevive à carga, mas *se dobrar os vértices multiplica o custo
+por quatro, nenhuma máquina salva a ferramenta*.
+
+### (1) O anel-1 era QUADRÁTICO — e escrito por mim ao lado da porta certa
+
+A 1.ª redacção do adaptador escreveu um anel-1 próprio que **varria todas as
+faces por cada vértice** (`O(V·F)`), onde o pincel — no ficheiro **irmão** — já
+lia a tabela pronta de `mesh.adjacency()` em `O(1)`.
+
+| | antes | depois |
+|---|---|---|
+| expoente do pen-down | **`V^1,77`** | **`V^1,00`** |
+| pen-down a `6 836` vértices | `50,46 ms` | `4,12 ms` |
+| pen-down na malha do smoke (`98 306`) | **`~5,6 s`** de paragem | **`106 ms`** |
+
+⛔⛔ **E ele estava errado das DUAS maneiras que importam:** também fazia
+`sort_unstable()`, e a espec §3.1 diz que a ordem do anel é a das **FACES** —
+ela fixa a ordem da lista de restrições, e Gauss-Seidel **não comuta**. *Um
+`sort` é uma ordem NOSSA a substituir a do alvo*, e a bancada do pincel já tinha
+esse aviso escrito, em prosa, a três ficheiros de distância.
+
+⇒ *uma segunda resposta a uma pergunta que a casa já tinha respondido — e o preço
+dela foi um expoente **e** uma lei.*
+
+### (2) Um evento de ponteiro NÃO é um passo de simulação
+
+⛔⛔ O filtro corria **um passo de solver por evento do sistema operativo**. Um
+rato de `1000 Hz` entrega ~16 por quadro; um de `125 Hz`, dois. ⇒ *quantos passos
+a simulação avança era função da TAXA DE AMOSTRAGEM do rato* — **a lei que esta
+casa já pagou seis vezes no relevo do Painter**, e que o braço **vizinho** do
+mesmo `match` já escrevia: *«um evento de ponteiro NÃO é um dab»*.
+
+⚠️ **É de CORRECÇÃO antes de ser de relógio:** dois artistas com ratos diferentes
+obtinham panos diferentes do mesmo gesto. Que o report de performance caia junto
+é consequência.
+
+⇒ o evento **regista** e o **QUADRO** drena (`flush_cloth_filter`), exactamente
+como o `flush_pending_grab` que já vivia ao lado — incluindo a chamada no pen-up,
+*senão o gesto perde a ponta*. ⛔ As leis de **malha** continuam imediatas de
+propósito: elas repõem a pose congelada e reaplicam, logo são **idempotentes** no
+mesmo `x`.
+
+⭐ Gate: `the_cloth_filter_advances_per_frame_and_not_per_pointer_event`, com as
+três metades — o evento não mexe · o quadro mexe · **dez eventos e um quadro dão
+o MESMO que um evento e um quadro, ao bit**.
+
+### (3) E ele destapou um terceiro, que era de MIRA
+
+O gate do vértice leu a âncora do aperto no **centro da caixa** — o raio nem
+sequer acertava na peça. Causa: o `begin_filter` lia `self.last`, e o
+`sculpt3d_pointer_down` escreve esse campo **depois** de o chamar, enquanto o
+`pointer_move` só o actualiza **com um arrasto em curso**. ⇒ no pen-down ele
+guardava *onde o gesto ANTERIOR acabou*. Hoje o ponto chega por **argumento**.
+
+### O TECTO QUE SOBRA É A LEI, medido por ablação
+
+Na malha do smoke o passo custa **`47,5 ms`**. Com `VARREDURAS = 1` em vez de `5`
+ele custa **`12,8 ms`** ⇒ cada varredura vale `~8,7 ms` e **`~91 %` do passo é a
+relaxação das restrições**; tudo o resto são `~4 ms`.
+
+⇒ ⛔ **atacar as alocações compraria `8 %`**, e a relaxação **não se paraleliza**
+(Gauss-Seidel numa ordem que é metade da lei). *O tecto é o do modelo, não o da
+implementação* — quem quiser mais quadro por segundo reduz a **MALHA**, e o botão
+de retopologia já existe.
+
+---
+
 ## §4 — ⛔ O QUE FICA ABERTO, com o que acorda cada item
 
 | item | o que falta | o gatilho |

@@ -64,7 +64,10 @@ fn mean_radius(s: &Sculpt3dScene) -> f32 {
 /// Roda o gesto inteiro: arma, pousa em `x0`, arrasta até `x1`, solta.
 fn drag(s: &mut Sculpt3dScene, x0: f32, x1: f32) {
     assert!(s.arm_filter(), "a fixture nao conseguiu armar o filtro");
-    assert!(s.begin_filter(x0), "o begin recusou um verbo que filtra");
+    assert!(
+        s.begin_filter(x0, 300.0),
+        "o begin recusou um verbo que filtra"
+    );
     s.filter_at(x1);
     s.close_stroke();
 }
@@ -179,7 +182,7 @@ fn the_verb_seeds_the_law_and_never_rewrites_it() {
         "o arm apagou ao pegar outro verbo -- a lei e ESCOLHIDA, nao derivada"
     );
     assert!(
-        s.begin_filter(100.0),
+        s.begin_filter(100.0, 300.0),
         "o gesto recusou sobre um verbo sem lei propria, e a lei nao vem dele"
     );
     assert_eq!(
@@ -237,8 +240,14 @@ fn the_verbless_laws_are_reachable_from_a_gesture() {
 
         assert!(s.arm_filter(), "{kind:?}: o arm recusou");
         s.filter_law = kind;
-        assert!(s.begin_filter(400.0), "{kind:?}: o gesto recusou");
+        assert!(s.begin_filter(400.0, 300.0), "{kind:?}: o gesto recusou");
         s.filter_at(700.0);
+        // ⭐ **O dreno do QUADRO**, e ele é parte do caminho que o artista
+        // percorre: desde 07/09 um evento de ponteiro REGISTA e o quadro CORRE
+        // (`flush_cloth_filter`), para que quantos passos a simulação avança nao
+        // seja funcao da taxa de amostragem do rato. Sem esta linha o gate
+        // acusaria as cinco leis de tecido de nao chegar ao motor.
+        s.flush_cloth_filter();
 
         let worst = s
             .mesh()
@@ -270,7 +279,7 @@ fn the_whole_drag_is_one_undo_step() {
     let before: Vec<[f32; 3]> = s.mesh().positions().to_vec();
 
     assert!(s.arm_filter());
-    assert!(s.begin_filter(400.0));
+    assert!(s.begin_filter(400.0, 300.0));
     // ⚠️ **Cinco eventos, um gesto** — é aqui que um filtro que compusesse
     // incrementos em vez de reler a pose congelada se separaria de um que não
     // compõe, e é o mesmo caminho que o rato real percorre.
@@ -338,7 +347,7 @@ fn the_filter_undoes_the_geometry_whatever_verb_is_in_hand() {
     assert!(s.arm_filter(), "a fixture nao conseguiu armar o filtro");
     s.filter_law = FilterLaw::Mesh(FilterKind::Inflate);
     assert!(
-        s.begin_filter(400.0),
+        s.begin_filter(400.0, 300.0),
         "o begin recusou: a lei do filtro voltou a vir do verbo em maos"
     );
     for k in 1..=5 {
@@ -390,7 +399,7 @@ fn undoing_a_filter_tells_the_screen() {
 
     assert!(s.arm_filter(), "a fixture nao conseguiu armar o filtro");
     s.filter_law = FilterLaw::Mesh(FilterKind::Inflate);
-    assert!(s.begin_filter(400.0), "o begin recusou");
+    assert!(s.begin_filter(400.0, 300.0), "o begin recusou");
     s.filter_at(400.0 + DRAG_PX);
     s.close_stroke();
 
@@ -428,7 +437,12 @@ fn the_pinch_anchor_lands_on_a_vertex_of_the_mesh() {
     let gpu = gpu_or_skip!();
     let s = scene(&gpu.device, Verb::Draw);
     let verts: Vec<[f32; 3]> = s.mesh().positions().to_vec();
-    let ancora = s.filter_pinch_anchor();
+    // ⚠️ **O CENTRO do viewport**, que é onde a esfera está: sem acerto a porta
+    // devolve o centro da caixa (a resposta honesta para «carregou fora do
+    // barro»), e o gate mediria o fallback em vez da lei — foi o que ele fez na
+    // 1.ª redacção, quando lia `self.last` em vez de receber o ponto.
+    let (cx, cy) = (s.viewport.0 as f32 * 0.5, s.viewport.1 as f32 * 0.5);
+    let ancora = s.filter_pinch_anchor(cx, cy);
     let mais_perto = verts
         .iter()
         .map(|p| {
@@ -440,5 +454,74 @@ fn the_pinch_anchor_lands_on_a_vertex_of_the_mesh() {
         mais_perto, 0.0,
         "a ancora do aperto ({ancora:?}) nao e' um vertice da malha -- o mais proximo esta' a \
          {mais_perto:.6}, e o alvo aperta para o VERTICE activo"
+    );
+}
+
+/// ⭐⭐⭐ **QUANTOS PASSOS A SIMULAÇÃO AVANÇA É FUNÇÃO DOS QUADROS, NUNCA DOS
+/// EVENTOS DO RATO.**
+///
+/// ⛔⛔ **É a lei que esta casa pagou SEIS vezes no relevo do Painter** — *o traço
+/// é fato do CAMINHO, nunca de quão fino o motor amostrou o caminho* — e o filtro
+/// de tecido nasceu a violá-la: ele corria um passo de solver por evento do
+/// sistema, e um rato de `1000 Hz` entrega dezasseis por quadro contra os dois de
+/// um de `125 Hz`. ⇒ *dois artistas com ratos diferentes obtinham panos
+/// diferentes do mesmo gesto.*
+///
+/// ⚠️ **Ela é de CORRECÇÃO antes de ser de relógio.** Que o report de performance
+/// caia junto é consequência.
+///
+/// O gate tem as **três** metades:
+/// 1. um evento sozinho **não** mexe a peça;
+/// 2. o quadro mexe;
+/// 3. **dez eventos e um quadro dão o MESMO que um evento e um quadro**, ao bit,
+///    para o mesmo `x` final.
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn the_cloth_filter_advances_per_frame_and_not_per_pointer_event() {
+    let gpu = gpu_or_skip!();
+    let fotografar = |s: &Sculpt3dScene| -> Vec<[f32; 3]> { s.mesh().positions().to_vec() };
+    let pior = |a: &[[f32; 3]], b: &[[f32; 3]]| -> f32 {
+        a.iter()
+            .zip(b)
+            .map(|(p, q)| {
+                ((p[0] - q[0]).powi(2) + (p[1] - q[1]).powi(2) + (p[2] - q[2]).powi(2)).sqrt()
+            })
+            .fold(0.0, f32::max)
+    };
+
+    // (1) e (2) — o evento regista, o quadro corre.
+    let mut s = scene(&gpu.device, Verb::Draw);
+    s.filter_law = FilterLaw::Cloth(ClothFilterKind::Gravity);
+    assert!(s.arm_filter() && s.begin_filter(400.0, 300.0));
+    let ao_carregar = fotografar(&s);
+    for k in 1..=10 {
+        s.filter_at(400.0 + 30.0 * k as f32);
+    }
+    assert_eq!(
+        pior(&ao_carregar, &fotografar(&s)),
+        0.0,
+        "dez eventos de ponteiro moveram a peca SEM um quadro -- o filtro de tecido voltou a \
+         avancar por evento, e quantos passos ele da' passa a ser funcao da taxa do rato"
+    );
+    s.flush_cloth_filter();
+    let dez_eventos = fotografar(&s);
+    assert!(
+        pior(&ao_carregar, &dez_eventos) > 0.0,
+        "o quadro nao correu um passo -- o dreno esta' partido, e sem ele o filtro fica MUDO"
+    );
+
+    // (3) — a mesma mão, amostrada uma vez só.
+    let mut t = scene(&gpu.device, Verb::Draw);
+    t.filter_law = FilterLaw::Cloth(ClothFilterKind::Gravity);
+    assert!(t.arm_filter() && t.begin_filter(400.0, 300.0));
+    t.filter_at(400.0 + 30.0 * 10.0);
+    t.flush_cloth_filter();
+    let um_evento = fotografar(&t);
+    let desvio = pior(&dez_eventos, &um_evento);
+    println!("dez eventos contra um, no mesmo x final: desvio {desvio:.9}");
+    assert_eq!(
+        desvio, 0.0,
+        "a peca depende de QUANTOS eventos o rato mandou (desvio {desvio:.9}) -- \
+         o resultado tem de ser fato do CAMINHO, nao da amostragem"
     );
 }

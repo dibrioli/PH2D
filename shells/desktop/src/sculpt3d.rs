@@ -457,6 +457,13 @@ pub(crate) struct Sculpt3dScene {
     /// ⚠️ Estado de FERRAMENTA, como o [`Self::filter_law`]: ele é do artista e
     /// sobrevive a trocar de verbo.
     cloth_filter_orientation: ph2d_sculpt3d::ClothFilterOrientation,
+    /// **O `x` do último evento de ponteiro do filtro de TECIDO, por drenar.**
+    ///
+    /// ⚠️ **Um evento regista, o QUADRO corre** — ver
+    /// [`Sculpt3dScene::flush_cloth_filter`]. Irmão do `pending_grab`, e pela
+    /// mesma razão: sem isto, quantos passos a simulação avança seria função da
+    /// taxa de amostragem do rato.
+    cloth_filter_pending: Option<f32>,
     symmetry: Symmetry,
     /// **O rig de luz do artista** — as mesmas quatro lâmpadas que acendem a tinta
     /// do Painter (`ph2d-light`).

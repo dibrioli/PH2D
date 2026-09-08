@@ -316,30 +316,37 @@ fn duas_vistas_no_mesmo_quadro_sobrevivem_uma_a_outra() {
     r.upload_at(&device, &queue, 0, &mesh, &[]);
     let tex = target(&device);
     let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
-    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-    for x in [0, W / 2] {
-        let a = ScreenRect {
-            x,
-            y: 0,
-            w: W / 2,
-            h: H,
-        };
-        let cam = camera(&mesh, a.aspect());
-        r.render_in(
-            &device,
-            &queue,
-            &mut enc,
-            &view,
-            &cam,
-            None,
-            Shade {
-                ssao: 0.0,
-                ..Shade::default()
-            },
-            (W, H),
-            a,
-        );
-    }
+    // ⚠️ **Pela PORTA das N vistas**, e não com dois `render_in` no mesmo
+    // encoder: esse caminho desenha as duas com a câmera da última (ver o irmão
+    // `duas_vistas_no_mesmo_quadro_mostram_duas_cameras`). Aqui as duas câmeras
+    // são iguais de propósito — o que este gate mede é a assimetria
+    // `LoadOp::Load` na cor contra `Clear` na profundidade.
+    let vistas: Vec<_> = [0, W / 2]
+        .into_iter()
+        .map(|x| {
+            let a = ScreenRect {
+                x,
+                y: 0,
+                w: W / 2,
+                h: H,
+            };
+            (a, camera(&mesh, a.aspect()))
+        })
+        .collect();
+    r.render_views(
+        &device,
+        &queue,
+        &view,
+        &vistas,
+        None,
+        Shade {
+            ssao: 0.0,
+            ..Shade::default()
+        },
+        (W, H),
+        None,
+    );
+    let enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
     let px = readback(&device, &queue, enc, &tex);
     let esq = (0..H)
         .flat_map(|y| (0..W / 2).map(move |x| (x, y)))
@@ -361,5 +368,111 @@ fn duas_vistas_no_mesmo_quadro_sobrevivem_uma_a_outra() {
         d < 0.02,
         "as duas vistas identicas cobrem {esq} e {dir} pixels ({:.1}% de diferenca)",
         d * 100.0
+    );
+}
+
+/// ⭐⭐⭐ **DUAS VISTAS NO MESMO QUADRO MOSTRAM DUAS CÂMERAS DIFERENTES.**
+///
+/// ⛔⛔⛔ **REPORT DO ENIO, 2026-09-08:** *«com 4 views o mesh não está
+/// correspondendo às views e ao tentar esculpir nas outras views o pincel tem
+/// drift ou offset (esculpe no lugar errado)»* — **dois sintomas, uma causa.**
+///
+/// O renderizador tem **UM** buffer de uniform de câmera, e o
+/// [`MeshRenderer::render_in`] escreve-o com `queue.write_buffer` antes de
+/// gravar o passe. Mas `write_buffer` não é gravado no encoder: ele é agendado
+/// na **fila**, e todas as escritas de antes de um `submit` acontecem **antes**
+/// de qualquer comando desse submit correr. ⇒ com as quatro vistas num encoder
+/// só, **as quatro desenham com a câmera da ÚLTIMA**.
+///
+/// E é isso que produz os dois sintomas de uma vez: a imagem de um quadrante é
+/// a da última câmera, e o **pick** daquele quadrante usa a câmera **dele** —
+/// logo o pincel cai onde a peça *estaria* e não onde ela *está desenhada*.
+///
+/// ⚠️⚠️ **O gate irmão `duas_vistas_no_mesmo_quadro_sobrevivem_uma_a_outra` não
+/// o viu, e a razão é a de sempre: ele desenha as duas metades com a MESMA
+/// câmera** (só o aspecto difere). *Uma fixtura em que as duas metades são
+/// iguais não pode notar que uma delas ficou com a outra.*
+#[test]
+#[ignore = "precisa de GPU"]
+fn duas_vistas_no_mesmo_quadro_mostram_duas_cameras() {
+    let Some((device, queue)) = device() else {
+        eprintln!("no GPU adapter on this machine — nothing to assert");
+        return;
+    };
+    // ⚠️ **Uma peça ASSIMÉTRICA**: uma esfera dá a mesma silhueta de todo lado, e
+    // o gate não teria como separar «a vista certa» de «a vista da vizinha».
+    let mut mesh = esfera();
+    for p in mesh.positions_mut() {
+        p[0] *= 2.6;
+    }
+    let mut r = MeshRenderer::new(&device, FORMAT);
+    r.upload_at(&device, &queue, 0, &mesh, &[]);
+    let tex = target(&device);
+    let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+    let shade = Shade {
+        ssao: 0.0,
+        ..Shade::default()
+    };
+    // De FRENTE à esquerda (a peça é larga) e de LADO à direita (a peça é
+    // estreita) — a mesma peça, duas câmeras, pela PORTA das N vistas.
+    let vistas: Vec<_> = [(0, 0.0f32), (W / 2, std::f32::consts::FRAC_PI_2)]
+        .into_iter()
+        .map(|(x, yaw)| {
+            let a = ScreenRect {
+                x,
+                y: 0,
+                w: W / 2,
+                h: H,
+            };
+            let mut cam = Camera3d {
+                yaw,
+                pitch: 0.0,
+                ..Camera3d::default()
+            };
+            cam.frame(mesh.bounds(), a.aspect());
+            (a, cam)
+        })
+        .collect();
+    r.render_views(&device, &queue, &view, &vistas, None, shade, (W, H), None);
+    let enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    let px = readback(&device, &queue, enc, &tex);
+    let largura = |x0: u32, x1: u32| -> u32 {
+        let (mut a, mut b) = (W, 0u32);
+        for y in 0..H {
+            for x in x0..x1 {
+                if lit(&px, x, y) {
+                    a = a.min(x);
+                    b = b.max(x);
+                }
+            }
+        }
+        if b >= a { b - a + 1 } else { 0 }
+    };
+    let (esq, dir) = (largura(0, W / 2), largura(W / 2, W));
+    println!("silhueta: de frente {esq} px | de lado {dir} px");
+    assert!(esq > 0 && dir > 0, "uma das vistas nao desenhou nada");
+    // Vista de frente a peça é `2,6×` mais larga que funda; de lado é o inverso.
+    // Enquadradas, as duas ocupam a vista — o que muda é a ALTURA relativa, e o
+    // discriminador honesto é a razão largura/altura da silhueta.
+    let altura = |x0: u32, x1: u32| -> u32 {
+        let (mut a, mut b) = (H, 0u32);
+        for y in 0..H {
+            for x in x0..x1 {
+                if lit(&px, x, y) {
+                    a = a.min(y);
+                    b = b.max(y);
+                }
+            }
+        }
+        if b >= a { b - a + 1 } else { 0 }
+    };
+    let r_esq = esq as f32 / altura(0, W / 2).max(1) as f32;
+    let r_dir = dir as f32 / altura(W / 2, W).max(1) as f32;
+    println!("razao largura/altura: de frente {r_esq:.3} | de lado {r_dir:.3}");
+    assert!(
+        (r_esq - r_dir).abs() > 0.15,
+        "as duas vistas desenharam a MESMA imagem (razao {r_esq:.3} contra {r_dir:.3}) -- o \
+         uniform da camera e' UM so' e as escritas na fila acontecem todas antes do submit, \
+         entao as duas passagens leem a camera da ULTIMA"
     );
 }

@@ -24,10 +24,15 @@ impl Sculpt3dScene {
 
     /// Desenha a malha sobre o que já está no alvo. O upload acontece na
     /// primeira passagem — é aqui que o device é conhecido.
+    ///
+    /// ⚠️ **Ela deixou de receber um `encoder` em 2026-09-08**: com mais de uma
+    /// vista, o encoder tem de ser um POR VISTA e o `submit` tem de cair entre
+    /// elas — ver [`ph2d_mesh_render::MeshRenderer::render_views`]. Quem os cria
+    /// é a porta; um encoder emprestado de fora não teria como ser submetido no
+    /// meio.
     pub(crate) fn render(
         &mut self,
         gpu: &ph2d_gpu::GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
         color: &wgpu::TextureView,
         size: (u32, u32),
     ) {
@@ -51,14 +56,18 @@ impl Sculpt3dScene {
         // ⚠️ E a frescura é CONSUMIDA pelo `render`: pular esta chamada num frame
         // desenha sem oclusão, nunca com a do frame passado — uma medição de tela
         // descreve uma câmera, e a de ontem descreve outra.
-        // ⭐⭐⭐ **UMA PASSAGEM POR VIEWPORT** (2026-09-08).
+        // ⭐⭐⭐ **UMA PASSAGEM POR VIEWPORT, PELA PORTA DAS N VISTAS**
+        // (2026-09-08).
         //
-        // ⚠️⚠️ **Medir e desenhar ALTERNAM por vista, e a ordem é load-bearing:**
-        // a frescura do AO de tela (`ssao_fresh`) é **uma** para o renderizador
-        // inteiro e é o `render_in` que a consome — medir as quatro e depois
-        // desenhar as quatro deixaria três vistas a amostrar a oclusão da
-        // última. Está escrito no doc do `render_ssao_in`, e este laço é o
-        // consumidor que o obriga.
+        // ⛔⛔ **Ela existe por causa de um report do dono**, e a razão está no
+        // doc do [`ph2d_mesh_render::MeshRenderer::render_views`]: o uniform da
+        // câmera é **UM** e o `queue.write_buffer` corre na **fila**, não no
+        // encoder — quatro passes num encoder só desenhariam as quatro vistas
+        // com a câmera da última. *E o pick de cada quadrante usa a câmera dele,
+        // logo o pincel cai onde a peça estaria e não onde ela está desenhada.*
+        //
+        // ⚠️ **Este bloco não submete nada:** quem o faz é a porta, entre as
+        // vistas, que é o único sítio onde a ordem pode estar certa.
         //
         // ⚠️ **Sem área publicada não se desenha NADA**, e é deliberado: o
         // desenho e o pick derivam do mesmo rectângulo, e desenhar num de
@@ -68,24 +77,16 @@ impl Sculpt3dScene {
         let vistas: Vec<_> = (0..self.vp_count())
             .filter_map(|i| Some((self.vp_screen(i)?, self.cam_of(i))))
             .collect();
-        let (params, shade, ssao) = (self.ssao_params(), self.shade(), self.ssao);
-        for (area, cam) in vistas {
-            if ssao > 0.0 {
-                self.renderer
-                    .render_ssao_in(&gpu.device, &gpu.queue, encoder, &cam, params, size, area);
-            }
-            self.renderer.render_in(
-                &gpu.device,
-                &gpu.queue,
-                encoder,
-                color,
-                &cam,
-                resolved.as_ref(),
-                shade,
-                size,
-                area,
-            );
-        }
+        self.renderer.render_views(
+            &gpu.device,
+            &gpu.queue,
+            color,
+            &vistas,
+            resolved.as_ref(),
+            self.shade(),
+            size,
+            (self.ssao > 0.0).then(|| self.ssao_params()),
+        );
     }
 
     /// **COMO O BARRO É MOSTRADO** — a porta única das opções de vista.

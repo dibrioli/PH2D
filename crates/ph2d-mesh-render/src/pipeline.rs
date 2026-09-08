@@ -462,6 +462,65 @@ impl MeshRenderer {
         );
     }
 
+    /// ⭐⭐⭐ **DESENHA N VISTAS** — a porta dos quatro viewports, e a **única**
+    /// forma correcta de desenhar mais do que uma.
+    ///
+    /// ⛔⛔⛔ **REPORT DO ENIO, 2026-09-08:** *«com 4 views o mesh não está
+    /// correspondendo às views e ao tentar esculpir nas outras views o pincel
+    /// tem drift ou offset»* — **dois sintomas, uma causa.**
+    ///
+    /// Este renderizador tem **UM** buffer de uniform de câmera, e o
+    /// [`Self::render_in`] escreve-o com `queue.write_buffer` antes de gravar o
+    /// passe. ⚠️⚠️ **Mas `write_buffer` não é gravado no encoder:** ele é
+    /// agendado na **fila**, e toda escrita feita antes de um `submit` acontece
+    /// antes de **qualquer** comando desse submit. ⇒ quatro `render_in` num
+    /// encoder só desenham as quatro vistas com a câmera da **última**.
+    ///
+    /// E é isso que produz os dois sintomas de uma vez: a imagem de um
+    /// quadrante é a da última câmera, e o **pick** daquele quadrante usa a
+    /// câmera **dele** — logo o pincel cai onde a peça *estaria* e não onde ela
+    /// *está desenhada*.
+    ///
+    /// ⇒ **um encoder e um `submit` POR VISTA**, aqui dentro. As escritas de
+    /// cada vista ficam entre dois submits, que é o que as põe na ordem certa.
+    ///
+    /// ⚠️ **A porta existe para o perigo não ter como ser repetido.** Um
+    /// contrato em prosa a dizer *«submeta entre as chamadas»* é exactamente o
+    /// tipo de coisa que o próximo chamador não lê — e o modo de falha dele não
+    /// dá erro nenhum, dá uma imagem plausível na vista errada.
+    ///
+    /// ⚠️ **Medir e desenhar alternam DENTRO de cada vista**, e não em duas
+    /// varreduras: a frescura do AO (`ssao_fresh`) é uma para o renderizador
+    /// inteiro e é o `render_in` que a consome.
+    ///
+    /// `ssao` a `None` salta a medição de oclusão — é o que o `Shade::ssao == 0`
+    /// pede.
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_views(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        color_view: &wgpu::TextureView,
+        camera_by_view: &[(crate::ScreenRect, Camera3d)],
+        rig: Option<&ph2d_light::ResolvedRig>,
+        shade: crate::Shade,
+        size: (u32, u32),
+        ssao: Option<crate::SsaoParams>,
+    ) {
+        for (area, cam) in camera_by_view {
+            let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ph2d-mesh view"),
+            });
+            if let Some(p) = ssao {
+                self.render_ssao_in(device, queue, &mut enc, cam, p, size, *area);
+            }
+            self.render_in(
+                device, queue, &mut enc, color_view, cam, rig, shade, size, *area,
+            );
+            queue.submit([enc.finish()]);
+        }
+    }
+
     /// ⭐⭐⭐ **O MESMO, NUM SUB-RECTÂNGULO DO ALVO** — a metade que os quatro
     /// viewports da escultura pedem (ordem do Enio, 2026-09-08).
     ///
@@ -479,6 +538,12 @@ impl MeshRenderer {
     /// NDC ao rectângulo (é ele que faz a peça caber na vista) e o scissor
     /// **recorta**: sem o segundo, geometria fora do frustum lateral ainda
     /// escreveria nos vizinhos, porque o viewport não corta, só transforma.
+    ///
+    /// ⛔⛔⛔ **DUAS CHAMADAS DESTAS NO MESMO ENCODER DESENHAM AS DUAS COM A
+    /// ÚLTIMA CÂMERA** — o uniform é **um** e o `queue.write_buffer` corre na
+    /// fila, não no encoder. Para mais do que uma vista use o
+    /// [`Self::render_views`], que submete entre elas. *(Report do Enio,
+    /// 2026-09-08; gate `duas_vistas_no_mesmo_quadro_mostram_duas_cameras`.)*
     #[allow(clippy::too_many_arguments)]
     pub fn render_in(
         &mut self,

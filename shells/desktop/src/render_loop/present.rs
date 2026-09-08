@@ -298,21 +298,18 @@ impl crate::App {
                 //   `LoadOp::Load`, então a cena 2D fica por baixo. No-op sem
                 //   cena armada: num run normal `sculpt3d` é `None` e o frame é
                 //   byte-idêntico ao de antes deste bloco existir.
+                //
+                // ⚠️ **O ENCODER E O SUBMIT SÃO DA PORTA desde 2026-09-08**, e não deste sítio:
+                // com a divisão aberta há N vistas, e o uniform da câmera é UM — as escritas dele
+                // correm na FILA, então cada vista precisa do seu `submit` entre elas, senão as N
+                // desenham com a câmera da última (report do Enio; ver `render_views`).
                 #[cfg(feature = "sculpt3d")]
                 if let Some(scene) = sculpt3d.as_mut() {
-                    let gpu = surface.gpu();
-                    let mut enc =
-                        gpu.device
-                            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                label: Some("ph2d-mesh encoder"),
-                            });
                     scene.render(
-                        gpu,
-                        &mut enc,
+                        surface.gpu(),
                         game_rt.view(),
                         (window_size.width, window_size.height),
                     );
-                    gpu.queue.submit([enc.finish()]);
                 }
                 // Passes 1b-bis e 1c: **OS PASSES DE LUZ** — a sprite emissiva e o glow do
                 // Motion. Cortados para o irmão [`super::present_fx`] pelo tecto de LOC, e o

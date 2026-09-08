@@ -360,3 +360,57 @@ inalcançável.
 no vazio continua a filtrar. Um filtro age na peça **inteira** e a posição do
 dedo só importa para a âncora do aperto — exigir-lhe barro por baixo tiraria um
 gesto que funciona. O gatilho para rever é o dono reportar o mesmo sobre ele.
+
+---
+
+## §7-ter — ⛔⛔⛔ O TERCEIRO REPORT: **um uniform, quatro passes, um submit**
+
+> *«com 4 views o mesh não está correspondendo às views e ao tentar esculpir nas
+> outras views o pincel tem drift ou offset (esculpe no lugar errado)»*
+
+**Dois sintomas, UMA causa** — e ela é a mais clássica do wgpu.
+
+O renderizador tem **um** buffer de uniform de câmera, e o `render_in`
+escreve-o com `queue.write_buffer` antes de gravar o passe. ⚠️⚠️ **Mas
+`write_buffer` não é gravado no encoder: ele é agendado na FILA**, e toda
+escrita feita antes de um `submit` acontece antes de **qualquer** comando desse
+submit. ⇒ quatro `render_in` num encoder só desenham as quatro vistas com a
+câmera da **última**.
+
+E é isso que produz os dois sintomas de uma vez:
+
+| o que ele vê | porquê |
+|---|---|
+| «o mesh não corresponde às views» | os quatro quadrantes desenham a **mesma** câmera, espremida em quatro rectângulos de aspectos diferentes |
+| «o pincel esculpe no lugar errado» | o **pick** de cada quadrante usa a câmera **dele** (que está certa) — logo o dab cai onde a peça *estaria* e não onde ela *está desenhada* |
+
+### ⛔ E o meu gate de duas vistas não o viu
+
+O `duas_vistas_no_mesmo_quadro_sobrevivem_uma_a_outra` desenha as duas metades
+com a **MESMA** câmera (só o aspecto difere), porque o que ele mede é a
+assimetria `LoadOp::Load` na cor contra `Clear` na profundidade. *Uma fixtura em
+que as duas metades são iguais não pode notar que uma delas ficou com a outra.*
+É a **terceira** vez nesta jornada que a fixtura não produzia o fenómeno —
+depois do *fit* (esfera numa vista larga) e da tecla morta.
+
+⇒ gate novo `duas_vistas_no_mesmo_quadro_mostram_duas_cameras`, com uma peça
+**assimétrica** (esticada `2,6×` em `x`) e duas câmeras a `90°`. A régua é a
+razão largura/altura da silhueta: **`1,000` contra `1,000`** antes (a mesma
+imagem duas vezes), **`1,580` contra `1,000`** depois.
+
+### A cura é uma PORTA, e não um contrato em prosa
+
+`MeshRenderer::render_views(…)` — um encoder e um `submit` **por vista**, lá
+dentro. As escritas de cada vista ficam entre dois submits, que é o que as põe
+na ordem certa.
+
+⚠️ **Um contrato a dizer *«submeta entre as chamadas»* é exactamente o tipo de
+coisa que o próximo chamador não lê** — e o modo de falha dele não dá erro
+nenhum: dá uma imagem plausível na vista errada. ⇒ o `Sculpt3dScene::render`
+deixou de receber um `encoder`: um encoder emprestado de fora não teria como ser
+submetido no meio.
+
+⚠️ **Conferido de caminho:** o rectângulo das vistas e o alvo saem os dois de
+`surface.size()`, logo estão nas **mesmas unidades** — não há a segunda causa de
+*offset* (um rect em pixels lógicos contra um alvo em físicos) escondida por
+trás desta.

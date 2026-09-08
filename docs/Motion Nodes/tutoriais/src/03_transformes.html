@@ -121,16 +121,24 @@ fica <em>fora</em> do pano. É por isso que o pano é atirado em vez de torcido.
   <li><b>Aproxime o zoom</b> com a roda do mouse sobre o grafo, até ler as letras dentro dos
       cartões.
       <div class="out">Dentro de cada cartão aparecem os <b>controles</b>: nome à esquerda,
-      número à direita, e uma barra mostrando o quanto ele está alto.</div></li>
-  <li>No cartão <b>Twist</b>, ache a linha <code>Pivot</code>. Ela mostra a palavra
-      <code>Point</code>, não um número. <b>Clique nela.</b>
-      <div class="out">Ela troca para <code>Centroid</code>, e o pano passa a <b>torcer-se sobre
-      si próprio</b> — sem você ter digitado coordenada nenhuma.</div>
-      <div class="bad">Se clicar não fizer nada, você pegou no cabeçalho colorido do cartão — ele
-      é para arrastar o cartão. Desça uma linha.</div></li>
-  <li><b>Clique outra vez</b> na mesma linha, até voltar a <code>World Origin</code>.
-      <div class="out">O defeito volta: o pano é atirado à volta de um ponto vazio. Clique mais
-      uma vez para chegar a <code>Point</code>, e outra para <code>Centroid</code>.</div></li>
+      número à direita, e uma barra mostrando o quanto ele está alto.</div>
+      <div class="out">Há <b>três tipos de linha</b>, e cada uma responde a um gesto diferente:
+      um <b>número</b> arrasta-se (ou clica-se para digitar), um <b>liga/desliga</b> alterna com
+      um clique, e uma <b>palavra entre duas setinhas</b> é uma escolha — as setinhas andam uma
+      opção, e clicar na palavra abre a lista inteira.</div></li>
+  <li>No cartão <b>Twist</b>, ache a linha <code>Pivot</code>. Ela mostra uma <b>palavra</b>
+      (<code>Point</code>) entre duas setinhas, e não um número. <b>Clique na palavra</b>, no
+      meio da linha.
+      <div class="out">Abre uma <b>lista com as três opções</b>. Escolha <code>Centroid</code>: o
+      pano passa a <b>torcer-se sobre si próprio</b> — sem você ter digitado coordenada
+      nenhuma.</div>
+      <div class="bad">Se clicar não abrir lista nenhuma, você pegou no cabeçalho colorido do
+      cartão — ele é para arrastar o cartão. Desça uma linha.</div></li>
+  <li><b>Abra a lista outra vez</b> e escolha <code>World Origin</code>.
+      <div class="out">O defeito volta: o pano é atirado à volta de um ponto vazio. Volte a
+      <code>Centroid</code> quando tiver visto.</div>
+      <div class="out">As <b>setinhas</b> das pontas da linha fazem o mesmo sem abrir lista:
+      elas andam uma opção para trás e uma para a frente.</div></li>
 </ol>
 
 <div class="note"><b>As três respostas, e quando cada uma serve.</b>
@@ -181,9 +189,9 @@ com a folha original <em>e</em> com o reflexo dela.</p>
   <li>No cartão <b>Mirror</b>, <b>arraste <code>Axis Offset</code></b>.
       <div class="out">Os dois panos <b>afastam-se</b> um do outro: o eixo do espelho desliza, e
       o reflexo vai atrás dele.</div></li>
-  <li><b>Clique na linha <code>Axis</code></b>.
-      <div class="out">Ela troca a direção do espelho, e o par passa a ficar lado a lado em vez
-      de um sobre o outro.</div></li>
+  <li><b>Clique na palavra da linha <code>Axis</code></b> e escolha a outra opção.
+      <div class="out">A direção do espelho troca, e o par passa a ficar lado a lado em vez de um
+      sobre o outro.</div></li>
   <li><b>Clique em <code>Flip Orientation</code></b> (é um liga/desliga).
       <div class="out">Se os objetos tiverem uma direção própria, o reflexo passa a ficar
       virado ao contrário, como num espelho de verdade.</div>
@@ -302,8 +310,8 @@ não tem como receber um desenho. Enquanto isso não existir, pô-lo a rodar lá
   <tr><td><code>Pivot X</code> e <code>Pivot Y</code> somem do cartão</td><td>o
       <code>Pivot</code> saiu de <code>Point</code> — eles só existem nesse modo, porque nos
       outros dois ninguém os lê</td></tr>
-  <tr><td>Um controle que não arrasta</td><td>ele está sendo puxado por um fio — o número vem de
-      fora</td></tr>
+  <tr><td>Um controle que não arrasta</td><td>ou ele é uma <b>escolha</b> (uma palavra entre
+      setinhas — clique nela), ou está sendo puxado por um fio: aí o número vem de fora</td></tr>
   <tr><td>Uma linha com uma setinha</td><td>é uma <b>seção</b> dobrada: clique para abrir (o
       <code>Bezier Warp</code> tem cinco: uma para os cantos e uma por borda)</td></tr>
   <tr><td>O <code>Flip Orientation</code> do Mirror não muda nada</td><td>os pontinhos desta cena

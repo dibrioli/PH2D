@@ -1425,13 +1425,10 @@ impl App {
         // documento como outra qualquer, e o passo por diff regista-o (o `Ctrl+Z` traz as edições
         // de volta). Ver [`crate::prefab_stage`].
         self.serve_prefab_exit();
-        // ⭐⭐⭐ **A REDE DOS ESCRITORES TARDIOS DA ÁRVORE** (2026-09-08) — aqui, e a posição é a
-        // MESMA lei que o `sync_instances` duas linhas acima já declara: *depois do quadro, e antes
-        // da captura.* O `hierarchy::dispatch` (apagar · duplicar · *Remove from Sheet*) corre
-        // ~2 300 linhas DEPOIS da projecção de z; sem esta passagem a fotografia guarda um mundo e
-        // um documento que discordam, e o quadro seguinte reconcilia-os **sozinho** — que é o passo
-        // fantasma do report de 2026-09-07, por outro verbo. Ver [`crate::vec_tree_settle`].
-        self.settle_tree_before_capture();
+        // ⚠️ **A rede dos escritores tardios da árvore mudou-se para DENTRO do
+        // [`crate::undo_app`], colada à captura que ela serve** — ela custa uma varredura O(formas)
+        // e não tinha nada a proteger nos quadros em que a fotografia é suprimida. Ver
+        // [`crate::vec_tree_settle`] e o comentário no sítio novo.
         self.post_frame_undo();
         // **O menu Ficheiro**, no mesmo sítio e pela mesma razão: `self` está livre do borrow do
         // render loop, e um diálogo nativo é modal — abri-lo a meio do frame prenderia o `gfx`.

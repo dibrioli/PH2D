@@ -23,7 +23,7 @@
 | F1 | `StableId` + `SiblingOrder` + snapshot v2 + **a 1ª migração** + corte da Sprite | ✅ 2026-08-25 |
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
-| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ✅ **FECHADA 2026-09-07** — F4.1–F4.5 ✅ · F4.6a/b ✅ · F4.7 ✅ (os 3 smoke-gates) · **F4.6c ✅**: o motor de instância **do vetor** saiu (`VecInstance`/`VecComponentMain` e satélites, **−5 170 LOC líquidas** em 44 ficheiros), o `PROJECT_SCHEMA` subiu **123 → 124** e os **três** contadores desceram de `79`/`80`/`80` para `77`/`78`/`78`. O bloqueio era **prático** — a `line/Vector` viva — e dissolveu-se no dia em que ela integrou (§F4.6c-fecho) · **F4.6d ✅** (2026-09-08): os outros verbos tardios foram MEDIDOS — apagar e duplicar **produzem** o fantasma —, e a cura é uma **rede** antes da captura, que pelo caminho achou dois tetos QUADRÁTICOS que já se pagavam por quadro (§F4.6d) · **F4.6e ✅** (2026-09-08): a catraca das tabelas era **dívida que não existia** — as 9 entradas eram falsos positivos, e a cura foi a RÉGUA aprender quatro derivações, não riscar as linhas (§F4.6e) |
+| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ✅ **FECHADA 2026-09-07** — F4.1–F4.5 ✅ · F4.6a/b ✅ · F4.7 ✅ (os 3 smoke-gates) · **F4.6c ✅**: o motor de instância **do vetor** saiu (`VecInstance`/`VecComponentMain` e satélites, **−5 170 LOC líquidas** em 44 ficheiros), o `PROJECT_SCHEMA` subiu **123 → 124** e os **três** contadores desceram de `79`/`80`/`80` para `77`/`78`/`78`. O bloqueio era **prático** — a `line/Vector` viva — e dissolveu-se no dia em que ela integrou (§F4.6c-fecho) · **F4.6d ✅** (2026-09-08): os outros verbos tardios foram MEDIDOS — apagar e duplicar **produzem** o fantasma —, e a cura é uma **rede** antes da captura, que pelo caminho achou dois tetos QUADRÁTICOS que já se pagavam por quadro (§F4.6d) · **F4.6e ✅** (2026-09-08): a catraca das tabelas era **dívida que não existia** — as 9 entradas eram falsos positivos, e a cura foi a RÉGUA aprender quatro derivações, não riscar as linhas (§F4.6e) · **F4.6f ✅** (2026-09-08): a rede mudou-se para DENTRO do `post_frame_undo` — *ela corre exactamente quando a fotografia corre* —, e a peça «mais cara» foi medida a 20 000 formas e **não tem teto**: a faixa é linear (§F4.6f) |
 | F5 | Aninhamento + variantes + Overrides sem alvo + **a FORMA de uma cópia** | ✅ **FECHADA 2026-09-06** — **F5.1** aninhamento ✅ · **F5.3/F5.6** os órfãos são NOMEADOS e largam-se um a um ✅ (critério 3) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · **critério 4 — a escada do *Aplicar* ✅ 2026-09-04** (§F5.5) · **troca por mestre NÃO aparentado ✅ 2026-09-05** (3 modos + relatório, §F5.8) · **F5.9** a lista de órfãos fica accionável ✅ · **F5.10 — a peça RECUSADA ✅ 2026-09-06** (*Removed GameObject*, `PROJECT_SCHEMA` 115→116) · **F5.11 — a peça ACRESCENTADA ✅ 2026-09-06** (*Added GameObject*, **derivada**, schema intocado) · **F5.12 — mover uma peça na receita move-a em TODAS as cópias ✅ 2026-09-06** (a 3.ª metade da forma) · **F5.13/F5.14** as cenas de smoke corrigidas ✅ (3 passos impossíveis + 1 que pedia o gesto que a guarda não apanha) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ✅ 2026-08-30 (996 LOC + a taxonomia) |
 | F7 | O painel Asset Browser + o arrasto único | ✅ 2026-08-30 — etapas **A–D** do [plano 07](07_plano_do_navegador_de_assets.md); `DragPayload` com as duas famílias |
@@ -2832,3 +2832,52 @@ o veredito e o limite escritos ao lado.
 
 ⚠️ A última é a que importa: ela prova que a régua nova **ainda vê um chip morto de verdade**, e não
 se limitou a branquear a lista.
+
+---
+
+### ✅ §F4.6f — **A REDE CORRE ONDE A FOTOGRAFIA É TIRADA, e a peça «mais cara» não tinha teto** (2026-09-08)
+
+O §F4.6d deixou nomeado que o `build_hierarchy_snapshot` era a peça mais cara da rede e **não fora
+atacado**. Medido em quatro pontos (`--release`, com o `load` ao lado):
+
+| formas | sync | pivô | assigns | snapshot | projecção | **TOTAL** |
+|---|---|---|---|---|---|---|
+| 100 | `0,002` | `0,003` | `0,002` | `0,009` | `0,003` | **`0,020 ms` — 0,1 %** |
+| 1 000 | `0,065` | `0,035` | `0,009` | `0,093` | `0,093` | **`0,295 ms` — 1,8 %** |
+| 5 000 | `0,360` | `0,192` | `0,023` | `0,498` | `0,527` | **`1,601 ms` — 9,6 %** |
+| 20 000 | `1,862` | `0,801` | `0,061` | `1,973` | `2,282` | **`6,978 ms` — 41,8 %** |
+
+⛔ **Não há teto a curar: a faixa inteira é LINEAR** (4× as formas ⇒ `4,36×` o relógio, de 5 000
+para 20 000). O custo **é** a varredura — os dois quadráticos que doíam já tinham caído no §F4.6d.
+⇒ *optimizar a peça mais cara seria trabalho sobre um número que não tem folga; a folga está em
+QUANDO ela corre.*
+
+#### ⭐⭐⭐ A cura não é condicional — é a definição da rede
+
+O [`post_frame_undo`] **já** suprime a captura por cinco motivos nomeados (botão em baixo · arrasto
+do gizmo 3D · colorize a recalcular · transição de estado de UI · **sem entrada neste quadro**), e o
+comentário dele chama-lhe *«o passo caro do quadro»*. A rede estava no `render_frame`, a correr
+**antes** dessa decisão — logo pagava a varredura inteira nos ~60 quadros por segundo em que o app
+está parado e nenhuma fotografia é tirada.
+
+⇒ ela mudou-se para **dentro** do `post_frame_undo`, depois do bloco da supressão e antes do
+`capture_project` que vira passo. *A rede existe para a fotografia; ela corre exactamente quando a
+fotografia corre.*
+
+- ⛔ **Não é uma bandeira que um verbo novo tem de lembrar de levantar** — é a MESMA condição, já
+  escrita e já nomeada. Nenhuma lista a manter.
+- ⚠️ **Um verbo tardio da Hierarquia nunca cai num quadro suprimido**: ele vem de um clique, logo
+  `had_input` é verdade.
+- ⚠️ **O baseline do primeiro quadro também é uma fotografia** e recebe a rede pela mesma porta —
+  ele é a referência de todo passo seguinte, e nascer por reconciliar poria a convergência dos
+  sistemas dentro do primeiro diff do artista (gate `the_first_baseline_is_settled_too`).
+- ⚠️ **O `capture_project` do LOG de supressão corre SEM a rede**, de propósito: ali não há passo a
+  proteger. Com `PH2D_UNDO_LOG=1` ele pode nomear `partes` que a rede fecha no quadro do passo.
+
+#### Provas de mutação (3 de 3 mortas)
+
+| mutação | resultado |
+|---|---|
+| tirar a rede de antes do passo | vermelho |
+| tirar a rede de antes do baseline | vermelho |
+| pô-la de volta no `render_frame` (a correr em todo quadro) | vermelho |

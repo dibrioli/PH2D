@@ -179,7 +179,7 @@ fn the_second_pass_costs_this_much_of_a_frame() {
     println!(
         "  ├─────────┼──────────┼──────────┼──────────┼──────────┼──────────┼────────────────┤"
     );
-    for n in [100usize, 1_000, 5_000] {
+    for n in [100usize, 1_000, 5_000, 20_000] {
         let mut sim = SimWorld::default();
         let mut scene = VecScene::new();
         let mut map = VecEntityMap::new();

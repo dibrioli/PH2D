@@ -222,7 +222,41 @@ pub(crate) fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut Preview
         // pergunta têm nomes parecidos e respostas diferentes.*
         let dur = doc.clip_end_seconds(i);
         let quando = ph2d_skeleton::action_time(t, sb.from, sb.to, dur);
-        feitas += ph2d_timeline::apply_one_clip(sim.world_mut(), doc, i, quando);
+        let escritas = ph2d_timeline::apply_one_clip(sim.world_mut(), doc, i, quando);
+        if log {
+            // ⭐⭐⭐ **A LINHA QUE RESPONDE A PERGUNTA INTEIRA** — report do dono (2026-09-08:
+            // *«tudo configurado e a animação não rodou»*). ⚠️ Um controlo mudo tem **seis** causas
+            // que se leem exactamente igual de fora, e a linha nomeia todas de uma vez: o ângulo,
+            // a faixa, a duração (um clip sem chaves dá `0` e prende a acção no instante zero), o
+            // instante derivado, e **quantas** propriedades a acção conseguiu escrever contra
+            // quantas ela TEM. *Sem a segunda metade dessa razão, `0 escritas` não distingue «o
+            // clip está vazio» de «o objecto que ele anima já não existe».*
+            let tracks = doc.clips()[i].clip.tracks().len();
+            eprintln!(
+                "[bone] osso inteligente {e:?}: accao \"{}\" (clip {i}, activo {}) | rot {:+.2}° \
+                 faixa {:+.1}..{:+.1}° | dur {dur:.3}s -> t {quando:.3}s | escreveu {escritas} de \
+                 {tracks} propriedade(s)",
+                sb.clip,
+                doc.active_index(),
+                t.to_degrees(),
+                sb.from.to_degrees(),
+                sb.to.to_degrees(),
+            );
+            if escritas == 0 && tracks > 0 {
+                eprintln!(
+                    "[bone]   ⛔ a accao TEM {tracks} propriedade(s) e nenhuma foi escrita -- o \
+                     objecto que ela anima nao resolve nesta sessao (apagado, ou re-criado com \
+                     bits novos sem identidade estavel)"
+                );
+            }
+            if tracks == 0 {
+                eprintln!(
+                    "[bone]   ⛔ a accao esta' VAZIA -- grave chaves nela na timeline (mova o \
+                     cursor de tempo e mexa no objecto)"
+                );
+            }
+        }
+        feitas += escritas;
     }
     // ⭐ E a declaração é UMA, no fim: o ledger compara o antes de todos com o depois de todos.
     crate::timeline_preview::declare_timeline_writes(sim.world(), &antes, preview);

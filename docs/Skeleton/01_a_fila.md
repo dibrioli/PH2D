@@ -721,6 +721,47 @@ vermelho com *«a posição 0 devolveu o 1.º clip do DOCUMENTO em vez da 1.ª l
 transforma todo índice que alguém guardou noutra coisa* — e nenhum tipo, nenhum compilador e nenhum
 gate de registo vê isso, porque as duas listas têm o mesmo tipo e o mesmo tamanho no caso comum.
 
+
+### F3-e — ✅ *«tudo configurado e a animação não rodou ao rotacionar o bone»* (2026-09-08)
+
+⭐⭐⭐ **MEDIDO no app a correr, e o motor está ILIBADO.** A sonda nova `PH2D_BONE_SMART_PROBE=1`
+(sobre a cena dos ossos) liga o controlo à acção da cena, gira o osso `+4,58°` por quadro e imprime
+a linha que separa as causas:
+
+| osso | rotação ao longo dos quadros | a folha roxa |
+|---|---|---|
+| **livre** (a ponta do tentáculo) | `+21,8° → +58,4° → +95,1°` | `y +0,573 → +1,795 → +3,000` |
+| **governado** (do braço, sob a âncora de IK) | **PRESA em `+30,4°`** | `y` parado |
+
+⇒ **a causa é QUAL osso.** Um osso na corrente de uma âncora tem a pose **reescrita pelo solver
+depois** do passe do controlo (a ordem é lei e está documentada: o controlo escreve a pose de BASE e
+a IK tem de a ver corrigida) ⇒ girar não muda o ângulo, e a acção congela no mesmo instante.
+
+⭐ *Não é uma proibição que alguém escreveu: **o ângulo de um osso governado não é uma coisa que o
+artista escreve**.* É a mesma lei da pose de repouso de um corpo dinâmico — o dono do `Transform` é o
+solver, sempre. ⚠️ E a cena convida ao erro por construção: **o braço nasce com âncora**, então ele é
+o osso natural para experimentar.
+
+⇒ o app **avisa** (toast, no *Add Smart Bone*) e **anexa na mesma**: ⛔ recusar deixaria o artista
+sem caminho, porque tirar a âncora é um gesto que existe (*Remove IK*). O que não pode é ficar
+**calado** sobre um controlo que ele sabe que vai nascer mudo. Porta:
+`skeleton_goal::is_governed` · gate `a_bone_under_an_anchor_cannot_be_a_control` (com a metade que
+impede a régua de acusar a cena inteira).
+
+⚠️⚠️ **E a SONDA pagou a mesma lei DUAS vezes na mesma hora**, o que vale mais que o achado:
+
+1. A 1.ª versão armava **no quadro 30** e nunca disparou — *uma janela em segundo plano redesenha
+   poucas vezes* (medido: ~11 quadros em 25 s). ⇒ **não se contam quadros, pergunta-se o FATO**, que
+   é a lei que a cena ao lado desta já tinha escrito no cabeçalho dela.
+2. A 2.ª armava em `ossos.last()` e caiu num osso do **braço** — o governado. A leitura ingénua
+   disso teria sido *«o osso inteligente não funciona»*, e teria mandado reescrever um motor são.
+   ⇒ *uma sonda que arma no sujeito errado mede o passe do vizinho.*
+
+⚠️ E o log do passe (`PH2D_BONE_LOG=1`) passou a dizer a história inteira numa linha — ângulo, faixa,
+duração, instante derivado, e **quantas propriedades escreveu de quantas a acção TEM**. *Sem a
+segunda metade dessa razão, `0 escritas` não distingue «o clip está vazio» de «o objecto que ele
+anima já não existe».*
+
 ⚠️ **`PROJECT_SCHEMA` 125 → 126** (componente registado novo; o registo do esqueleto vai de **5 para
 6** e o catálogo idem — conte o delta). ⚠️ E o gate `every_registered_component_has_a_descriptor`
 apanhou-me a registar sem descrever: *o Inspector e o registo são duas listas, e o gate é o que as

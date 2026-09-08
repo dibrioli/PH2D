@@ -72,6 +72,32 @@ pub(crate) fn governed(sim: &SimWorld, tip: Entity, chain: u32) -> Vec<Entity> {
     toda[toda.len() - n..].to_vec()
 }
 
+/// ⭐⭐⭐ **ESTE OSSO É GOVERNADO POR UMA ÂNCORA?** — ou seja: *o ângulo dele é DERIVADO, e não
+/// autorado.*
+///
+/// ⛔⛔ **Ela nasce de um report do dono** (2026-09-08: *«tudo configurado e a animação não rodou ao
+/// rotacionar o bone»*) e a medição foi inequívoca: sobre um osso **livre** o controlo percorre a
+/// acção inteira (`rot +21,8° → +95,1°`, a folha de `y +0,573` a `+3,000`); sobre um osso da
+/// corrente de uma âncora a rotação fica **PRESA** (`+30,4°` quadro após quadro, com a sonda a somar
+/// `+4,58°` a cada um), porque o solver a reescreve **depois** do passe do controlo.
+///
+/// ⇒ *um osso governado não pode ser um CONTROLO, e não porque alguém o proibiu: o ângulo dele não
+/// é uma coisa que o artista escreve.* É a mesma razão pela qual a pose de repouso de um corpo
+/// dinâmico não propaga (o dono do `Transform` é o solver, sempre).
+///
+/// ⚠️ Ela varre as âncoras da cena — que são um punhado — e não a corrente de cada osso: a pergunta
+/// é *«alguém manda neste?»*, e quem sabe responder é o lado de quem manda.
+#[must_use]
+pub(crate) fn is_governed(sim: &SimWorld, bone: Entity) -> bool {
+    sim.world()
+        .iter_entities()
+        .filter_map(|er| {
+            er.get::<ph2d_skeleton_ecs::IkGoal>()
+                .map(|g| (er.id(), g.chain))
+        })
+        .any(|(tip, chain)| governed(sim, tip, chain).contains(&bone))
+}
+
 /// ⭐⭐⭐ **A AGENDA — quem manda em que osso, e em que ORDEM.** (Report do dono, 2026-09-07:
 /// *«múltiplos IKs numa cadeia de bones tem resultado ruim»*.)
 ///

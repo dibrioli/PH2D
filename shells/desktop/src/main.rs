@@ -96,6 +96,7 @@ mod bone_limit;
 mod bone_pose;
 /// ⭐⭐⭐ **A sonda do UNDO da âncora** (`PH2D_BONE_UNDO_PROBE=1`) — o gesto REAL sobre o *Add IK*, e
 /// o que ele deixa na fila de desfazer.
+mod bone_smart_probe;
 mod bone_undo_probe;
 /// Os GESTOS da booleana viva: armar (criar/re-mirar) e consolidar. O documento mora aqui; o
 /// motor, no `bool_live`.

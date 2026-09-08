@@ -1012,6 +1012,7 @@ impl crate::App {
         self.vec_stack_smoke();
         self.vec_bone_smoke();
         self.bone_undo_probe();
+        self.bone_smart_probe();
         self.nest_smoke();
         self.physics_smoke();
         self.instance_smoke();
@@ -6371,6 +6372,22 @@ impl crate::App {
                     sim.world_mut()
                         .entity_mut(osso)
                         .insert(ph2d_skeleton_ecs::SmartBone::default());
+                    // ⛔⛔ **E o app DIZ quando o osso escolhido não pode ser um controlo** — report
+                    // do dono (2026-09-08: *«tudo configurado e a animação não rodou ao rotacionar o
+                    // bone»*). A causa medida: um osso governado por uma âncora tem a rotação
+                    // **reescrita pelo solver depois** deste passe ⇒ girar não muda o ângulo, e a
+                    // acção congela. *O ângulo dele não é uma coisa que o artista escreve.*
+                    //
+                    // ⚠️ **Avisa e ANEXA na mesma**, ⛔ não recusa: tirar a âncora depois é um gesto
+                    // que existe (*Remove IK*), e um verbo que recusa deixaria o artista sem
+                    // caminho. O que não pode é o app ficar **calado** sobre um controlo que ele
+                    // sabe que vai nascer mudo.
+                    if crate::skeleton_goal::is_governed(sim, osso) {
+                        toasts.push(ph2d_editor::Toast::warning(
+                            "This bone is driven by an IK anchor, so its angle is derived - turning \
+                             it will not run the action. Use a free bone, or Remove IK.",
+                        ));
+                    }
                 }
                 // ⭐⭐⭐ **ARMAR O PICK DO ALVO** — o OSSO é capturado aqui, e não lido no clique
                 // seguinte: aquele clique MUDA a selecção, então lê-lo então leria o alvo no lugar

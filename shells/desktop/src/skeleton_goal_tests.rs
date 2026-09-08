@@ -519,3 +519,44 @@ fn posing_a_governed_bone_by_hand_is_not_swallowed_by_the_ledger() {
          e nenhum passo de undo nasce dela"
     );
 }
+
+/// ⭐⭐⭐ **UM OSSO GOVERNADO POR UMA ÂNCORA NÃO PODE SER UM CONTROLO** — o ângulo dele é DERIVADO.
+///
+/// ⛔⛔ **Report do dono (2026-09-08):** *«tudo configurado e a animação não rodou ao rotacionar o
+/// bone»*. A sonda `PH2D_BONE_SMART_PROBE=1` mediu-o no app a correr, e o contraste é o achado:
+///
+/// | osso | rotação ao longo dos quadros | a folha |
+/// |---|---|---|
+/// | **livre** (ponta do tentáculo) | `+21,8° → +95,1°` | `y +0,573 → +3,000` (a acção inteira) |
+/// | **governado** (do braço, sob a âncora) | **PRESA em `+30,4°`** | `y` parado |
+///
+/// A sonda somava `+4,58°` por quadro nos dois casos: no governado o solver reescreve a pose
+/// **depois** do passe do controlo, logo o ângulo nunca avança e a acção congela no mesmo instante.
+///
+/// ⇒ *não é uma proibição que alguém escreveu: o ângulo de um osso governado não é uma coisa que o
+/// artista escreve.* É a mesma lei da pose de repouso de um corpo dinâmico — o dono do `Transform`
+/// é o solver, sempre. O app **avisa e anexa na mesma**: tirar a âncora é um gesto que existe.
+#[test]
+fn a_bone_under_an_anchor_cannot_be_a_control() {
+    let (mut sim, [ombro, cotovelo]) = braco();
+    assert!(
+        !crate::skeleton_goal::is_governed(&sim, cotovelo),
+        "sem âncora nenhuma, nenhum osso é governado"
+    );
+    crate::skeleton_goal::add(&mut sim, cotovelo).expect("a âncora nasce na ponta");
+    // `DEFAULT_CHAIN` são DOIS ossos: a ponta e o pai dela. Os dois passam a ser derivados.
+    for (e, quem) in [(cotovelo, "a ponta"), (ombro, "o pai dela")] {
+        assert!(
+            crate::skeleton_goal::is_governed(&sim, e),
+            "{quem} está na corrente da âncora e não foi reconhecido como governado — o app deixaria \
+             de avisar, e o artista veria um controlo nascer mudo"
+        );
+    }
+    // E um osso de FORA continua livre — a metade que impede a régua de acusar toda a cena.
+    let solto = osso(&mut sim, "Free", [50.0, 0.0], 10.0, None);
+    assert!(
+        !crate::skeleton_goal::is_governed(&sim, solto),
+        "um osso fora de toda corrente foi dado como governado — o aviso passaria a aparecer sempre, \
+         e um aviso que aparece sempre não é lido nunca"
+    );
+}

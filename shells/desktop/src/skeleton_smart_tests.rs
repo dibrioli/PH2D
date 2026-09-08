@@ -473,3 +473,85 @@ fn the_chosen_position_resolves_against_the_list_the_panel_painted() {
          lista, então esta é a posição que um clique perdido produz"
     );
 }
+
+/// ⭐⭐⭐ **A CADEIA INTEIRA DA CENA DE SMOKE, ponta a ponta** — o que o dono configura, e o que ele
+/// espera ver.
+///
+/// ⛔⛔ **Report do dono (2026-09-08):** *«Painel funcionou OK. Mas tudo configurado e a animação não
+/// rodou ao rotacionar o bone»*. Os gates que existiam mediam o passe sobre uma fixtura MINHA; este
+/// mede-o sobre a cadeia que a **cena** monta — a mesma acção (`seed_demo_action`), o mesmo default
+/// do componente (`SmartBone::default()`, `0..90°`), e o osso girado como o artista o gira.
+///
+/// ⚠️ *Uma fixtura que não é a que o artista corre mede outro programa* — foi a 4.ª vez nesta linha.
+#[test]
+fn the_smoke_chain_moves_the_leaf_end_to_end() {
+    let mut sim = SimWorld::default();
+    let folha = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Leaf"), RootOrder(0)))
+        .id();
+    let controlo = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            Name::new("Bone 3"),
+            RootOrder(1),
+            ph2d_skeleton_ecs::Bone {
+                length: 10.0,
+                strength: 1.0,
+            },
+        ))
+        .id();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+
+    let mut doc = TimelineDoc::default();
+    crate::vec_bone_smoke::seed_demo_action(&mut doc, folha.to_bits());
+
+    // Exactamente o que o painel escreve: o default do componente + a acção escolhida na lista + o
+    // alvo escolhido no picker.
+    sim.world_mut()
+        .entity_mut(controlo)
+        .insert(ph2d_skeleton_ecs::SmartBone {
+            clip: crate::vec_bone_smoke::DEMO_ACTION.to_string(),
+            target: "Leaf".to_string(),
+            ..ph2d_skeleton_ecs::SmartBone::default()
+        });
+
+    let mut pv = PreviewDrive::default();
+    // No princípio da faixa a folha está em baixo.
+    assert_eq!(
+        drive(&mut sim, &doc, &mut pv),
+        1,
+        "o passe não escreveu nada"
+    );
+    let em_baixo = sim
+        .world()
+        .get::<Transform>(folha)
+        .expect("a folha")
+        .translation
+        .y;
+
+    // ...e no fim da faixa (o osso girado um quarto de volta), no fim.
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(controlo) {
+        #[expect(clippy::cast_possible_truncation, reason = "o Transform da casa é f32")]
+        {
+            t.rotation = (ph2d_skeleton::FULL_TURN / 4.0) as f32;
+        }
+    }
+    assert_eq!(
+        drive(&mut sim, &doc, &mut pv),
+        1,
+        "o passe não escreveu nada"
+    );
+    let em_cima = sim
+        .world()
+        .get::<Transform>(folha)
+        .expect("a folha")
+        .translation
+        .y;
+    assert!(
+        em_cima - em_baixo > 1.0,
+        "girar o osso um quarto de volta moveu a folha de {em_baixo} para {em_cima} — a cadeia que \
+         a cena monta não percorre a acção"
+    );
+}

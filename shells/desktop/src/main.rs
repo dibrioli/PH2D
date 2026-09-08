@@ -416,6 +416,9 @@ mod motion_animadores_probe;
 mod motion_autofix_smoke;
 mod motion_autofix_smoke_appropriate;
 mod motion_autofix_smoke_dead_branch;
+/// A auditoria do grupo do ciclo 3 (doc 106) — `#[cfg(test)]`, não entra no bin.
+#[cfg(test)]
+mod motion_deformadores_probe;
 mod motion_delay_smoke;
 /// **A legenda de uma cena de smoke, no canvas** (Enio 2026-08-23) — o rótulo pousa
 /// em cima do caso que ele explica, em vez de num terminal atrás da janela.

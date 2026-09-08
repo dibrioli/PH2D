@@ -617,6 +617,10 @@ mod render_loop;
 mod scroll_smoke;
 #[cfg(feature = "sculpt3d")]
 mod sculpt3d;
+/// ⭐⭐ O teclado da CÂMERA da escultura — a divisão em quatro e as seis vistas.
+/// Irmão do `sculpt3d::keys` pelo tecto de LOC; ver o cabeçalho dele.
+#[cfg(feature = "sculpt3d")]
+mod sculpt3d_keys_view;
 mod shape_build;
 mod shape_build_gesture;
 /// O BAKE da folha — as peças passam a ser N janelas para UMA textura (plano §7.3, W5.2).

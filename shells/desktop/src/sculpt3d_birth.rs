@@ -44,16 +44,10 @@ impl Sculpt3dScene {
             renderer: MeshRenderer::new(device, ph2d_render::GameRt::FORMAT),
             drag: None,
             last: (0.0, 0.0),
-            split: crate::field3d_layout::Split::One,
-            vp_cams: vec![camera],
-            vp_active: 0,
-            seam_drag: None,
-            gizmo_hot: None,
-            gizmo_grip: None,
-            canvas: None,
-            nav_safe: None,
-            nav_hot: None,
-            nav_drag: None,
+            // ⚠️ **A janela nasce com UMA vista e a câmera do artista** — a
+            // `Default` dela dá a lista vazia, e a lista segue a divisão no
+            // primeiro `note_canvas` (ver `Sculpt3dScene::note_canvas`).
+            janela: super::viewports::Janela::com(camera),
             // **O MATERIAL COM QUE O APP ABRE** — ver
             // [`ph2d_mesh_render::DEFAULT_MATCAP`], hoje o `Skin Haz 2`.
             //

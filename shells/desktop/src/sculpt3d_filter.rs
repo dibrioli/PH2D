@@ -358,3 +358,9 @@ fn referencial_e_gravidade(
 #[cfg(test)]
 #[path = "sculpt3d_filter_tests.rs"]
 mod tests;
+
+/// **Os gates do FILTRO DE TECIDO**, irmãos dos de cima pelo tecto de LOC — e o
+/// corte é por sujeito, não por tamanho. Ver o cabeçalho deles.
+#[cfg(test)]
+#[path = "sculpt3d_filter_cloth_tests.rs"]
+mod cloth_tests;

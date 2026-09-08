@@ -138,7 +138,16 @@ fn entering_with_no_scene_creates_one_from_the_one_primitive_door() {
 /// e ela deixa a metade positiva verde num arquivo que ainda "pergunta alguma coisa".
 #[test]
 fn the_scene_never_takes_a_click_that_belongs_to_the_chrome() {
-    let src = fs::read_to_string("src/sculpt3d_input.rs").expect("o módulo do gesto existe");
+    // ⚠️⚠️ **AS DUAS METADES DO DESPACHO**, e foi o controlo positivo deste gate
+    // que apanhou o corte (2026-09-08): o pen-down mudou-se para um irmão pelo
+    // tecto de LOC, e a varredura de um ficheiro só passou a ler o vazio.
+    // *Um gate que nomeia um FICHEIRO envelhece com o primeiro corte* — e este
+    // sabia-o, porque a mensagem do controlo positivo já o dizia.
+    let src: String = ["src/sculpt3d_input_down.rs", "src/sculpt3d_input.rs"]
+        .iter()
+        .map(|f| fs::read_to_string(f).expect("o módulo do gesto existe"))
+        .collect::<Vec<_>>()
+        .join("\n");
     assert!(
         src.contains("fn sculpt3d_pointer_down"),
         "controle positivo: o dono do gesto mudou de arquivo e este gate varreria o vazio"

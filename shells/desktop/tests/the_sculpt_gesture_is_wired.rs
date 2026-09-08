@@ -189,9 +189,14 @@ fn the_brush_radius_is_screen_pixels_converted_against_the_camera() {
     // O teto é do VIEWPORT: um número fixo de pixels muda de significado com a
     // resolução (medido: 160 px = 91% do modelo a 720p e 45% a 1440p).
     let port = function_body(&src, "radius_px(&self)");
+    // ⚠️ **`viewport()` e não `viewport`** desde 2026-09-08: com os quatro
+    // quadrantes o tamanho da vista deixou de ser um campo escrito com o tamanho
+    // da JANELA e passou a ser DERIVADO da área do canvas, da divisão e do
+    // quadrante activo. A lei que este gate afirma não mudou — o teto continua a
+    // ser fracção da altura da VISTA; o que mudou é quem responde por ela.
     assert!(
-        port.contains("self.viewport.1"),
-        "o teto do raio tem de ser fração da ALTURA da janela"
+        port.contains("self.viewport().1"),
+        "o teto do raio tem de ser fração da ALTURA da vista"
     );
     // E nada mais pode responder "de que tamanho é o pincel": um segundo sítio
     // é como o cursor e a tinta passam a discordar.
@@ -226,10 +231,22 @@ fn the_brush_radius_is_screen_pixels_converted_against_the_camera() {
     // porque é projetado. Mesma ajudante, mesmo ponto de acerto, mesmo
     // `radius_px()` ⇒ eles concordam **por construção**, que é a propriedade que
     // este gate existe para defender; um TERCEIRO sítio volta a reprovar.
+    // ⚠️ **E o TERCEIRO chegou em 2026-09-08, com nome e linha — que é o que a
+    // mensagem deste gate prescreve.** O gizmo de transformação
+    // (`sculpt3d_gizmo::SculptCam::px_per_world`) precisa de *quantos pixels vale
+    // uma unidade de mundo naquele ponto* para dimensionar o BRAÇO das alças: com
+    // a lente convergente uma unidade mede menos pixels quanto mais longe está, e
+    // um braço dimensionado pela constante do quadro encolheria com a peça a
+    // afastar-se.
+    //
+    // ⭐ **Ele é o RECÍPROCO da mesma ajudante, e é por isso que é legítimo:** o
+    // gizmo e o pincel medem a mesma grandeza na mesma profundidade, logo
+    // concordam **por construção** — que é exactamente a propriedade que este
+    // gate existe para defender. Um QUARTO sítio volta a reprovar.
     assert_eq!(
         src.matches("world_radius_for_screen_px(").count(),
-        2,
-        "apareceu um TERCEIRO sítio convertendo pixels→mundo: ou é uma pergunta \
+        3,
+        "apareceu um QUARTO sítio convertendo pixels→mundo: ou é uma pergunta \
          nova (e ela precisa de nome e de linha aqui), ou é a segunda resposta \
          a uma que já tem dono"
     );
@@ -240,8 +257,34 @@ fn the_brush_radius_is_screen_pixels_converted_against_the_camera() {
     let call = src
         .find("ring_on_surface(&")
         .expect("a chamada do anel conformado");
+    // ⚠️⚠️ **A chamada é lida até ao parêntese que FECHA, contando profundidade** —
+    // e não até ao primeiro `)`. A 1.ª redacção cortava no primeiro, o que
+    // funcionava enquanto TODOS os argumentos fossem campos; assim que um deles
+    // passou a ser uma chamada (`self.viewport()`, 2026-09-08) a fatia acabava
+    // antes do argumento que o gate existe para ver, e ele reprovava sobre código
+    // correcto. *Uma régua textual que supõe a forma dos argumentos mede a
+    // formatação, não a lei.*
+    let corpo = {
+        let resto = &src[call..];
+        let mut profundidade = 0usize;
+        let mut fim = resto.len();
+        for (i, c) in resto.char_indices() {
+            match c {
+                '(' => profundidade += 1,
+                ')' => {
+                    profundidade -= 1;
+                    if profundidade == 0 {
+                        fim = i + 1;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        &resto[..fim]
+    };
     assert!(
-        src[call..][..src[call..].find(')').map_or(0, |e| e + 1)].contains("self.radius_px()"),
+        corpo.contains("self.radius_px()"),
         "o anel pergunta o raio de mundo com um tamanho de pincel que não é o \
          do dab — o cursor deixa de descrever a tinta"
     );
@@ -851,8 +894,13 @@ fn the_rotation_takes_its_axis_and_its_centre_from_the_pivot() {
         arm.contains("view_axis_local(pivot_world)"),
         "o eixo do giro tem de ser a reta olho→pivô -- qualquer outra inclina, e a peça cambalhota"
     );
+    // ⚠️ **`project_window` e não `project`** desde 2026-09-08: as alças e a
+    // varredura vivem em coordenadas de JANELA e a câmera projecta no
+    // referencial da VISTA, então a quina do quadrante activo entra por uma
+    // porta só. A lei é a mesma — *a varredura é medida em torno do pivô
+    // PROJETADO* —, e é ela que este gate afirma.
     assert!(
-        arm.contains("project(pivot_world") && arm.contains("swept_angle_about(center"),
+        arm.contains("project_window(pivot_world") && arm.contains("swept_angle_about(center"),
         "a varredura tem de ser medida em torno do pivô PROJETADO"
     );
     // ⚠️ A asserção NEGATIVA é a que fecha a porta: sem ela, acrescentar o

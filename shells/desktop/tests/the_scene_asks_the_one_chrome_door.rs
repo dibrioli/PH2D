@@ -41,11 +41,19 @@ const DOOR: &str = "chrome_hit::pointer_over_chrome(";
 const SCENE_PORTS: [(&str, &str); 4] = [
     ("src/field3d_input.rs", "field3d_pointer_down"),
     ("src/field3d_input.rs", "field3d_wheel"),
-    ("src/sculpt3d_input.rs", "sculpt3d_pointer_down"),
+    // ⚠️ **O pen-down da escultura mudou-se para um irmão em 2026-09-08**, pelo tecto de LOC.
+    // *Um gate que nomeia um FICHEIRO envelhece com o primeiro corte* — e o modo de falha aqui é
+    // o pior: o `function_body` entra em pânico com «controlo positivo», que se lê como o gate
+    // partido em vez de como a lista desactualizada.
+    ("src/sculpt3d_input_down.rs", "sculpt3d_pointer_down"),
     ("src/sculpt3d_input.rs", "sculpt3d_wheel"),
 ];
 
-const SCENE_FILES: [&str; 2] = ["src/field3d_input.rs", "src/sculpt3d_input.rs"];
+const SCENE_FILES: [&str; 3] = [
+    "src/field3d_input.rs",
+    "src/sculpt3d_input_down.rs",
+    "src/sculpt3d_input.rs",
+];
 
 fn src(path: &str) -> String {
     fs::read_to_string(path).unwrap_or_else(|_| panic!("{path} existe"))

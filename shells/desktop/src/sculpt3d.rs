@@ -25,6 +25,11 @@ pub(crate) mod donation;
 /// **O GESTO** — as portas de ponteiro, roda e teclado. Filho (`#[path]`) para
 /// alcançar os campos privados da cena; o corte é *o que a cena É* (aqui) contra
 /// *o que a mão FAZ* (lá), o mesmo que separa a [`donation`].
+/// ⭐⭐ **QUEM TOMA O GESTO** — o pen-down, separado do que o gesto FAZ. Ver o
+/// cabeçalho dele: um é arbitragem, o outro é execução.
+#[path = "sculpt3d_input_down.rs"]
+mod input_down;
+
 #[path = "sculpt3d_input.rs"]
 mod input;
 
@@ -148,36 +153,13 @@ pub(crate) use scenes::{
     transform_scene, turn_scene, wants_canvas,
 };
 
-/// O que o arrasto está fazendo.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Drag {
-    Orbit,
-    Pan,
-    Sculpt,
-    /// **O TRANSFORM ARMADO** — o botão esquerdo move/gira/escala a parte livre
-    /// em vez de esculpir. Ver `sculpt3d_transform`.
-    Transform,
-    /// **O FILTRO ARMADO** — o arrasto horizontal dá a força com que o verbo
-    /// corrente roda na malha INTEIRA. Ver `sculpt3d_filter`.
-    Filter,
-}
-
-/// **O ângulo VARRIDO desde o pen-down**, acumulado evento a evento.
-///
-/// ⚠️ **Acumulado, e não um `atan2` da direção inicial à atual** — este é o
-/// único jeito de uma varredura passar de meia volta. Um ângulo com sinal
-/// satura em `±π`, então a 181° ele voltaria a `−179°` e a torção **inverteria**
-/// no meio do gesto. Somando os deltas (que são pequenos) o total cresce sem
-/// teto, e a soma é EXATA: ângulos se somam, então subdividir o caminho não
-/// muda o resultado — que é o que o [`Grip::Turn`] exige do gesto que o
-/// alimenta.
-struct TwistSweep {
-    /// A última direção unitária *âncora → cursor*, em componentes de CÂMERA.
-    /// `None` enquanto o cursor está dentro da zona morta: sem direção não há
-    /// delta a somar, e a próxima saída re-semeia sem inventar um salto.
-    last: Option<[f32; 2]>,
-    total: f32,
-}
+/// ⭐ **O VOCABULÁRIO DO ARRASTO** — o que um botão em baixo significa, e o
+/// acumulador de ângulo que a torção partilha. Irmão (`#[path]`) pelo tecto de
+/// LOC, e o corte é por RESPONSABILIDADE: aqui está *o que a cena É* e ali *como
+/// se nomeia um gesto em curso*.
+#[path = "sculpt3d_drag.rs"]
+mod drag_kinds;
+use drag_kinds::{Drag, TwistSweep};
 
 /// **A MÁSCARA** — as quatro operações que agem na malha inteira. Filho
 /// (`#[path]`) pelo motivo dos outros: o corte é de responsabilidade.
@@ -347,46 +329,16 @@ pub(crate) struct Sculpt3dScene {
     renderer: MeshRenderer,
     drag: Option<Drag>,
     last: (f32, f32),
-    /// ⭐⭐⭐ **A DIVISÃO DO CANVAS** — uma vista, ou as quatro.
-    split: crate::field3d_layout::Split,
-    /// ⭐⭐ **UMA CÂMERA POR QUADRANTE.**
+    /// ⭐⭐⭐ **O ESTADO DA JANELA 3D** — a divisão, as câmeras dos quadrantes, e
+    /// os dois gizmos que vivem por cima dela.
     ///
-    /// ⛔⛔ **A do ACTIVO está VELHA aqui de propósito** — quem manda nela é a
-    /// [`Self::camera`], que tem ~30 leitores neste módulo e todos querem
-    /// sempre a vista em que a mão está. Guardar e pegar acontece num sítio só
-    /// ([`Sculpt3dScene::set_active_vp`]) e ler por uma porta só
-    /// ([`Sculpt3dScene::cam_of`]). Ver a nota do [`viewports`].
-    vp_cams: Vec<ph2d_mesh_render::Camera3d>,
-    /// Qual quadrante recebe o gesto e o chrome.
-    vp_active: usize,
-    /// A costura agarrada — `(vertical, horizontal)`.
-    seam_drag: Option<(bool, bool)>,
-    /// A alça do gizmo de transformação sob o cursor — só realce.
-    gizmo_hot: Option<crate::field3d_gizmo::Handle>,
-    /// ⭐⭐ **A alça AGARRADA** — o que prende o gesto a um eixo ou a um plano.
-    ///
-    /// ⚠️ `None` **não** é «nada a fazer»: é o transform LIVRE, que é o gesto
-    /// modal que este módulo sempre teve. Ver [`Sculpt3dScene::constrain`].
-    gizmo_grip: Option<crate::field3d_gizmo::Handle>,
-    /// ⭐⭐⭐ **A ÁREA DO CANVAS 3D**, publicada pelo quadro.
-    ///
-    /// ⛔ **Ela substituiu o campo `viewport`, que era escrito com o tamanho da
-    /// JANELA** — e por isso a peça era desenhada por baixo dos painéis e das
-    /// réguas, o mesmo defeito que o Enio reportou ao módulo vizinho em 31/08.
-    /// O tamanho da vista passa a ser DERIVADO ([`Sculpt3dScene::viewport`]).
-    canvas: Option<ph2d_editor::zones::Rect>,
-    /// ⭐ **ONDE O GIZMO DE NAVEGAÇÃO MORA** — a área do canvas e a parte dela
-    /// que a moldura do app não tapa, publicadas pelo desenho.
-    ///
-    /// ⚠️ **Publicadas e não derivadas aqui**, pelo motivo do [`Self::viewport`]:
-    /// o ponteiro corre fora do quadro e não conhece nem o layout nem os
-    /// painéis que estão abertos. `None` até o primeiro desenho, e aí o gizmo
-    /// simplesmente não recebe gesto nenhum.
-    nav_safe: Option<ph2d_editor::zones::Rect>,
-    /// A bola sob o cursor no último quadro — só realce.
-    nav_hot: Option<crate::field3d_views::Standard>,
-    /// O arrasto em curso no gizmo de navegação, se houver.
-    nav_drag: Option<navball::NavDrag>,
+    /// ⚠️ **Dez campos num tipo só, e não dez campos aqui**: eles são uma coisa
+    /// (*como a peça é OLHADA*), nascem juntos, morrem juntos e são lidos pelos
+    /// mesmos três módulos. Espalhados na cena eles eram indistinguíveis dos
+    /// sessenta que descrevem *o que a peça É* — e foram eles que levaram este
+    /// ficheiro ao tecto de LOC. Ver [`viewports::Janela`].
+    janela: viewports::Janela,
+
     /// **Com que luz o barro é mostrado** — `None` é o RIG DO ARTISTA, `Some(i)`
     /// é o matcap `i`. Ver [`ph2d_mesh_render::Shade::matcap`].
     ///
@@ -641,17 +593,6 @@ pub(crate) struct Sculpt3dScene {
     rig_was: crate::baked_form::RigStamp,
     /// O carimbo da última doação entregue — `None` enquanto nada foi doado.
     donated: Option<FormStamp>,
-}
-
-impl Sculpt3dScene {
-    /// **O rig que esta cena tem na mão.** A luz é dela enquanto ela existe.
-    ///
-    /// ⚠️ Ele é lido pelo bake para AUTORAR o rig do objeto assado — ver
-    /// [`bake::follow_live_rig`]. O objeto guarda uma CÓPIA porque ele sobrevive
-    /// à cena; enquanto os dois existem, quem manda é esta.
-    pub(crate) fn rig(&self) -> &LightRig {
-        &self.rig
-    }
 }
 
 #[path = "sculpt3d_birth.rs"]

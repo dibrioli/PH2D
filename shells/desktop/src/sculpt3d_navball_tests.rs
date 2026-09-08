@@ -285,7 +285,14 @@ fn um_clique_na_bola_muda_a_camera_e_um_arrasto_nao() {
 /// primeiro pixel, e sem o `up` um clique nunca vira vista.
 #[test]
 fn as_tres_portas_do_gizmo_sao_chamadas_pelo_despacho_do_ponteiro() {
-    let fonte = include_str!("sculpt3d_input.rs");
+    // ⚠️ **AS DUAS METADES DO DESPACHO**: o pen-down vive num irmão desde que o
+    // tecto de LOC obrigou ao corte. *Um censo que nomeia um FICHEIRO envelhece
+    // com o primeiro corte — e um censo cego lê-se como aprovado.*
+    let fonte = concat!(
+        include_str!("sculpt3d_input_down.rs"),
+        "\n",
+        include_str!("sculpt3d_input.rs")
+    );
     for (porta, dentro) in [
         ("nav_pointer_down", "fn sculpt3d_pointer_down"),
         ("nav_pointer_move", "fn sculpt3d_pointer_move"),

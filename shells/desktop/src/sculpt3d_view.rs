@@ -9,6 +9,19 @@
 use super::Sculpt3dScene;
 
 impl Sculpt3dScene {
+    /// **O rig que esta cena tem na mão.** A luz é dela enquanto ela existe.
+    ///
+    /// ⚠️ Ele é lido pelo bake para AUTORAR o rig do objeto assado — ver
+    /// `bake::follow_live_rig`. O objeto guarda uma CÓPIA porque ele sobrevive
+    /// à cena; enquanto os dois existem, quem manda é esta.
+    ///
+    /// ⚠️ **Mudou-se do pai para aqui em 2026-09-08**, pelo tecto de LOC — e o
+    /// corte é o deste ficheiro, que já era *como a cena APARECE*: a luz é
+    /// exactamente isso.
+    pub(crate) fn rig(&self) -> &ph2d_light::LightRig {
+        &self.rig
+    }
+
     /// Desenha a malha sobre o que já está no alvo. O upload acontece na
     /// primeira passagem — é aqui que o device é conhecido.
     pub(crate) fn render(

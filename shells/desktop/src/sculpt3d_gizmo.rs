@@ -133,12 +133,12 @@ impl Sculpt3dScene {
 
     /// A alça sob o cursor no último quadro — só realce.
     pub(crate) fn gizmo_hot(&self) -> Option<Handle> {
-        self.gizmo_hot
+        self.janela.gizmo_hot
     }
 
     /// O quadro publica qual alça está quente.
     pub(crate) fn note_gizmo_hot(&mut self, pointer: (f32, f32)) {
-        self.gizmo_hot = self.gizmo_pick(pointer.0, pointer.1);
+        self.janela.gizmo_hot = self.gizmo_pick(pointer.0, pointer.1);
     }
 
     /// ⭐⭐ **O PEN-DOWN AGARROU UMA ALÇA?** — arma a restrição do gesto.
@@ -148,13 +148,13 @@ impl Sculpt3dScene {
     /// gizmo que tomasse conta do botão inteiro tiraria uma ferramenta que
     /// funciona para dar outra.*
     pub(crate) fn gizmo_grab(&mut self, x: f32, y: f32) -> bool {
-        self.gizmo_grip = self.gizmo_pick(x, y);
-        self.gizmo_grip.is_some()
+        self.janela.gizmo_grip = self.gizmo_pick(x, y);
+        self.janela.gizmo_grip.is_some()
     }
 
     /// Larga a alça — chamado pelo fecho do transform.
     pub(crate) fn gizmo_release(&mut self) {
-        self.gizmo_grip = None;
+        self.janela.gizmo_grip = None;
     }
 
     /// ⭐⭐⭐ **A RESTRIÇÃO QUE A ALÇA AGARRADA IMPÕE** — o coração desta wave.
@@ -167,7 +167,7 @@ impl Sculpt3dScene {
     /// de arrasto. O que a seta promete é *«só nesta direcção»*, e isso é a
     /// componente do deslocamento.
     pub(super) fn constrain(&self, g: Gesture) -> Gesture {
-        let Some(handle) = self.gizmo_grip else {
+        let Some(handle) = self.janela.gizmo_grip else {
             return g;
         };
         match (handle, g) {

@@ -260,3 +260,30 @@ O roteiro tem dez passos e cobre as três features; os rótulos citados saem do
 | `coverage()` do `gpu_render` a somar três `u8` | pânico em debug, **envolvimento silencioso** em release — `(86, 85, 85)` soma `256`, que módulo 256 é `0`, e a régua contava-o como **fundo** |
 | comparar guardas de tecla como **texto** | a mutação sobreviveu; a pergunta certa é *«podem as duas ser verdadeiras ao mesmo tempo?»* |
 | comparar **magnitudes** entre a argola de eixo e a de vista | nunca foram iguais (raios diferentes); a lei é sobre o **sentido** |
+
+---
+
+## §7 — ⚠️ Um achado de PAREDE, pré-existente e não desta jornada
+
+O `cleanroom-sweep.sh` sobre a crate `ph2d-sculpt3d` sai **`✗`**:
+
+```
+crates/ph2d-sculpt3d/src/verb_layer_front_face_tests.rs:16
+```
+
+Aquela linha cita **quatro nomes de ficheiro internos do alvo restrito**. Ela
+entrou no commit `1e03095b1` (*«cada ferramenta lembra a própria afinação»*),
+muito antes desta jornada — `git show --stat` confirma que nenhum dos quatro
+commits de 2026-09-08 lhe tocou, e a varredura sobre **só** o que eles
+escreveram sai limpa.
+
+⚠️ **É a espécie que o [`ACHADO_proveniencia_por_nome_interno`](cleanroom/ACHADO_proveniencia_por_nome_interno.md)
+cataloga** (~460 notas no repo inteiro). Fica **registado e não curado aqui**:
+reescrever um doc-comment de outra wave no meio desta seria misturar duas
+histórias num diff, e a cura tem dono e endereço próprios.
+
+⛔ **E o modo como ele quase passou despercebido vale mais que ele:** a corrida
+foi `bash scripts/cleanroom-sweep.sh … 2>&1 | tail -2`, e **o `tail` destruiu o
+código de saída** — a linha seguinte da cadeia correu como se estivesse verde. É
+exactamente o que o `CLAUDE.md` §2 avisa. *Um `tail` é uma JANELA, nunca um
+veredito.*

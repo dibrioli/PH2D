@@ -23,6 +23,10 @@ const SCENE: &str = include_str!("../src/sculpt3d.rs");
 /// se mover de novo: por isso as buscas usam [`scene_and_gesture`] em vez de
 /// nomear o arquivo de cada função.
 const INPUT: &str = include_str!("../src/sculpt3d_input.rs");
+/// ⚠️ **A outra metade do despacho** — o pen-down mudou-se para um irmão em
+/// 2026-09-08, pelo tecto de LOC. *A família é lida INTEIRA, senão o primeiro
+/// corte transforma este gate num «não achei» silencioso.*
+const INPUT_DOWN: &str = include_str!("../src/sculpt3d_input_down.rs");
 
 /// ⚠️ **E o DESENHO mora num terceiro** (`sculpt3d_view.rs`), pelo mesmo motivo e
 /// pelo mesmo gatilho: um canal de sombreamento novo (o AO de tela) cruzou o teto
@@ -35,7 +39,7 @@ const VIEW: &str = include_str!("../src/sculpt3d_view.rs");
 
 /// A cena, o gesto e o desenho como um só texto — ver [`INPUT`] e [`VIEW`].
 fn scene_and_gesture() -> String {
-    let all = format!("{SCENE}\n{INPUT}\n{VIEW}");
+    let all = format!("{SCENE}\n{INPUT_DOWN}\n{INPUT}\n{VIEW}");
     // **Controle positivo.** Um `include_str!` que apontasse para um arquivo
     // esvaziado por um corte deixaria toda busca abaixo devolver "não achei" —
     // e o gate falaria com confiança sobre um texto que não existe.

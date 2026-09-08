@@ -179,10 +179,17 @@ fn the_render_loop_actually_makes_the_modes_cede() {
 /// Este gate defende a porta que o artista bateu; o resto está nomeado no handoff.
 #[test]
 fn the_sculpt_pointer_refuses_an_empty_scene_before_it_indexes_one() {
-    let src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/sculpt3d_input.rs"),
-    )
-    .expect("o irmão da escultura existe");
+    // ⚠️ **AS DUAS METADES DO DESPACHO** (2026-09-08): a `line/sculpt3d` cortou
+    // o pen-down para um irmão pelo tecto de LOC, e este censo — que lia só o
+    // ficheiro antigo — passou a procurar a guarda onde ela já não estava.
+    // *Um censo que nomeia um FICHEIRO envelhece com o primeiro corte; ler a
+    // família inteira é o que o mantém a medir a mesma coisa.*
+    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let src: String = ["sculpt3d_input_down.rs", "sculpt3d_input.rs"]
+        .iter()
+        .map(|f| std::fs::read_to_string(raiz.join(f)).expect("o irmão da escultura existe"))
+        .collect::<Vec<_>>()
+        .join("\n");
     let code: Vec<&str> = src
         .lines()
         .filter(|l| !l.trim_start().starts_with("//"))

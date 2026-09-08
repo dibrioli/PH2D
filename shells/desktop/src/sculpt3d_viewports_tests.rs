@@ -252,7 +252,10 @@ fn a_costura_arrasta_e_o_eixo_certo_se_move() {
 /// com a mesma indentação, e isso está declarado aqui em vez de ser um silêncio.
 #[test]
 fn nenhuma_tecla_e_reivindicada_duas_vezes_com_a_mesma_guarda() {
-    use std::collections::HashMap;
+    // ⚠️ `BTreeMap` e não `HashMap`: é a espinha do determinismo desta casa
+    // (HR-5 + ADR-0022), e aqui ela dá de graça uma listagem ORDENADA quando o
+    // censo imprime o que achou.
+    use std::collections::BTreeMap;
 
     /// **O que este braço reivindica**: as teclas e a máscara de `(ctrl, shift)`.
     ///
@@ -304,7 +307,7 @@ fn nenhuma_tecla_e_reivindicada_duas_vezes_com_a_mesma_guarda() {
     }
 
     let fonte = include_str!("sculpt3d_keys.rs");
-    let mut vistos: HashMap<String, Vec<(String, u8)>> = HashMap::new();
+    let mut vistos: BTreeMap<String, Vec<(String, u8)>> = BTreeMap::new();
     for linha in fonte.lines() {
         let l = linha.trim();
         // ⚠️ Só condições, nunca prosa: um comentário que cite `code == K::X`

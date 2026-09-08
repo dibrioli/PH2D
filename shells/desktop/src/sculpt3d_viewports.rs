@@ -48,6 +48,71 @@ use crate::field3d_views::Standard;
 use ph2d_editor::zones::Rect as EditorRect;
 use ph2d_mesh_render::{Camera3d, ScreenRect};
 
+/// ⭐⭐⭐ **O ESTADO DA JANELA 3D** — como a peça é OLHADA.
+///
+/// ⚠️ **Um tipo e não dez campos na cena**: eles nascem juntos (a divisão cria as
+/// câmeras), morrem juntos e são lidos pelos mesmos três módulos — este, o
+/// [`super::navball`] e o [`super::gizmo`]. Soltos entre os sessenta campos que
+/// descrevem *o que a peça É*, eles eram indistinguíveis do resto.
+#[derive(Default)]
+pub(crate) struct Janela {
+    /// ⭐⭐⭐ **A DIVISÃO DO CANVAS** — uma vista, ou as quatro.
+    pub(super) split: crate::field3d_layout::Split,
+    /// ⭐⭐ **UMA CÂMERA POR QUADRANTE.**
+    ///
+    /// ⛔⛔ **A do ACTIVO está VELHA aqui de propósito** — quem manda nela é a
+    /// [`Self::camera`], que tem ~30 leitores neste módulo e todos querem
+    /// sempre a vista em que a mão está. Guardar e pegar acontece num sítio só
+    /// ([`Sculpt3dScene::set_active_vp`]) e ler por uma porta só
+    /// ([`Sculpt3dScene::cam_of`]). Ver a nota do [`viewports`].
+    pub(super) vp_cams: Vec<ph2d_mesh_render::Camera3d>,
+    /// Qual quadrante recebe o gesto e o chrome.
+    pub(super) vp_active: usize,
+    /// A costura agarrada — `(vertical, horizontal)`.
+    pub(super) seam_drag: Option<(bool, bool)>,
+    /// A alça do gizmo de transformação sob o cursor — só realce.
+    pub(super) gizmo_hot: Option<crate::field3d_gizmo::Handle>,
+    /// ⭐⭐ **A alça AGARRADA** — o que prende o gesto a um eixo ou a um plano.
+    ///
+    /// ⚠️ `None` **não** é «nada a fazer»: é o transform LIVRE, que é o gesto
+    /// modal que este módulo sempre teve. Ver [`Sculpt3dScene::constrain`].
+    pub(super) gizmo_grip: Option<crate::field3d_gizmo::Handle>,
+    /// ⭐⭐⭐ **A ÁREA DO CANVAS 3D**, publicada pelo quadro.
+    ///
+    /// ⛔ **Ela substituiu o campo `viewport`, que era escrito com o tamanho da
+    /// JANELA** — e por isso a peça era desenhada por baixo dos painéis e das
+    /// réguas, o mesmo defeito que o Enio reportou ao módulo vizinho em 31/08.
+    /// O tamanho da vista passa a ser DERIVADO ([`Sculpt3dScene::viewport`]).
+    pub(super) canvas: Option<ph2d_editor::zones::Rect>,
+    /// ⭐ **ONDE O GIZMO DE NAVEGAÇÃO MORA** — a área do canvas e a parte dela
+    /// que a moldura do app não tapa, publicadas pelo desenho.
+    ///
+    /// ⚠️ **Publicadas e não derivadas aqui**, pelo motivo do [`Self::viewport`]:
+    /// o ponteiro corre fora do quadro e não conhece nem o layout nem os
+    /// painéis que estão abertos. `None` até o primeiro desenho, e aí o gizmo
+    /// simplesmente não recebe gesto nenhum.
+    pub(super) nav_safe: Option<ph2d_editor::zones::Rect>,
+    /// A bola sob o cursor no último quadro — só realce.
+    pub(super) nav_hot: Option<crate::field3d_views::Standard>,
+    /// O arrasto em curso no gizmo de navegação, se houver.
+    pub(super) nav_drag: Option<super::navball::NavDrag>,
+}
+
+impl Janela {
+    /// A janela com que uma cena nasce: **uma** vista, com a câmera do artista.
+    ///
+    /// ⚠️ **A lista não nasce vazia** — o [`Sculpt3dScene::note_canvas`] só a
+    /// reconstrói quando a CONTAGEM muda, e uma lista vazia contra um
+    /// `Split::One` (que conta `1`) nunca dispararia essa reconstrução: o
+    /// `cam_of` cairia sempre no ramo de recurso e a divisão seria muda.
+    pub(crate) fn com(camera: ph2d_mesh_render::Camera3d) -> Self {
+        Self {
+            vp_cams: vec![camera],
+            ..Self::default()
+        }
+    }
+}
+
 impl Sculpt3dScene {
     /// ⭐⭐ **O QUADRO PUBLICA A ÁREA DO CANVAS 3D** — o que sobra do ecrã depois
     /// do chrome e das réguas.
@@ -58,28 +123,23 @@ impl Sculpt3dScene {
     /// **de propósito** — dois rects seriam a fonte por onde a imagem e a
     /// moldura voltam a discordar.
     pub(crate) fn note_canvas(&mut self, area: EditorRect) {
-        self.canvas = Some(area);
+        self.janela.canvas = Some(area);
         // A lista segue a divisão. ⚠️ **Só quando a CONTAGEM muda** — refazê-la
         // todo quadro deitaria fora as três câmeras que o artista posicionou.
-        let n = self.split.count();
-        if self.vp_cams.len() != n {
-            self.rebuild_viewports(n, self.vp_active);
+        let n = self.janela.split.count();
+        if self.janela.vp_cams.len() != n {
+            self.rebuild_viewports(n, self.janela.vp_active);
         }
-    }
-
-    /// A área do canvas, se o quadro já a publicou.
-    pub(crate) fn canvas(&self) -> Option<EditorRect> {
-        self.canvas
     }
 
     /// Quantos viewports a divisão tem — **a fonte da contagem** é o [`Split`].
     pub(crate) fn vp_count(&self) -> usize {
-        self.split.count()
+        self.janela.split.count()
     }
 
     /// Qual quadrante está activo.
     pub(crate) fn vp_active(&self) -> usize {
-        self.vp_active.min(self.vp_count().saturating_sub(1))
+        self.janela.vp_active.min(self.vp_count().saturating_sub(1))
     }
 
     /// ⭐ **O rectângulo de cada viewport**, em coordenadas de JANELA.
@@ -88,10 +148,10 @@ impl Sculpt3dScene {
     /// a área exactamente** — sem folga, sem sobreposição, e a soma das larguras
     /// é a largura.
     pub(crate) fn vp_rects(&self) -> Vec<EditorRect> {
-        let Some(area) = self.canvas else {
+        let Some(area) = self.janela.canvas else {
             return Vec::new();
         };
-        crate::field3d_layout::rects(area, self.split)
+        crate::field3d_layout::rects(area, self.janela.split)
             .as_slice()
             .to_vec()
     }
@@ -107,7 +167,7 @@ impl Sculpt3dScene {
         if i == self.vp_active() {
             self.camera
         } else {
-            self.vp_cams.get(i).copied().unwrap_or(self.camera)
+            self.janela.vp_cams.get(i).copied().unwrap_or(self.camera)
         }
     }
 
@@ -119,11 +179,11 @@ impl Sculpt3dScene {
             return;
         }
         let sai = self.vp_active();
-        if let Some(slot) = self.vp_cams.get_mut(sai) {
+        if let Some(slot) = self.janela.vp_cams.get_mut(sai) {
             *slot = self.camera;
         }
-        self.vp_active = i;
-        self.camera = self.vp_cams.get(i).copied().unwrap_or(self.camera);
+        self.janela.vp_active = i;
+        self.camera = self.janela.vp_cams.get(i).copied().unwrap_or(self.camera);
     }
 
     /// ⭐ **De quem é este ponto da janela** — `None` fora do canvas.
@@ -139,11 +199,11 @@ impl Sculpt3dScene {
     /// «a primeira»: o artista fecha a olhar para o quadrante que lhe interessa,
     /// e ficar com outro seria desfazer-lhe o gesto.
     pub(crate) fn toggle_split(&mut self) -> bool {
-        self.split = match self.split {
+        self.janela.split = match self.janela.split {
             Split::One => Split::quad(),
             Split::Quad { .. } => Split::One,
         };
-        let n = self.split.count();
+        let n = self.janela.split.count();
         let aberta = n > 1;
         // A câmera que o artista tinha vai com ele: para o quadrante 3 ao abrir,
         // e para o único ao fechar.
@@ -158,11 +218,6 @@ impl Sculpt3dScene {
         aberta
     }
 
-    /// A divisão está aberta?
-    pub(crate) fn split_open(&self) -> bool {
-        self.vp_count() > 1
-    }
-
     /// ⭐ **A LISTA SEGUE A DIVISÃO** — e este é o único sítio que a reconstrói.
     ///
     /// ⚠️ **As nomeadas nascem apontadas e a do artista é a que ele tinha.**
@@ -170,9 +225,9 @@ impl Sculpt3dScene {
     /// onde a disposição do Blender põe o *Top*.
     fn rebuild_viewports(&mut self, n: usize, activo: usize) {
         let artista = self.camera;
-        self.vp_cams = (0..n)
+        self.janela.vp_cams = (0..n)
             .map(|i| {
-                self.split.named(i).map_or(artista, |v| {
+                self.janela.split.named(i).map_or(artista, |v| {
                     let mut c = artista;
                     let (yaw, pitch) = super::navball::aim_of(v);
                     c.aim(yaw, pitch);
@@ -180,8 +235,8 @@ impl Sculpt3dScene {
                 })
             })
             .collect();
-        self.vp_active = activo.min(n - 1);
-        self.camera = self.vp_cams[self.vp_active];
+        self.janela.vp_active = activo.min(n - 1);
+        self.camera = self.janela.vp_cams[self.janela.vp_active];
     }
 
     /// ⭐⭐⭐ **O TAMANHO DO VIEWPORT ACTIVO** — o que o campo `viewport` era.
@@ -265,16 +320,16 @@ impl Sculpt3dScene {
 
     /// ⭐ **A COSTURA SOB O PONTEIRO** — que cursor pedir, ou `None`.
     pub(crate) fn seam_cursor(&self, x: f32, y: f32) -> Option<winit::window::CursorIcon> {
-        crate::field3d_layout::seam_cursor(self.canvas?, self.split, [x, y])
+        crate::field3d_layout::seam_cursor(self.janela.canvas?, self.janela.split, [x, y])
     }
 
     /// O pen-down agarrou uma costura? Devolve `true` se sim.
     pub(crate) fn seam_grab(&mut self, x: f32, y: f32) -> bool {
-        let Some(area) = self.canvas else {
+        let Some(area) = self.janela.canvas else {
             return false;
         };
-        self.seam_drag = crate::field3d_layout::seam_grab(area, self.split, [x, y]);
-        self.seam_drag.is_some()
+        self.janela.seam_drag = crate::field3d_layout::seam_grab(area, self.janela.split, [x, y]);
+        self.janela.seam_drag.is_some()
     }
 
     /// O dedo andou com uma costura na mão.
@@ -282,14 +337,14 @@ impl Sculpt3dScene {
         // ⚠️ **`(vertical, horizontal)`, nesta ordem** — a costura VERTICAL move o
         // `tx` e a HORIZONTAL move o `ty`. A primeira redacção trocou-os, e o
         // sintoma seria arrastar a linha de cima e ver a do lado mexer-se.
-        let (Some(area), Some((vert, horiz))) = (self.canvas, self.seam_drag) else {
+        let (Some(area), Some((vert, horiz))) = (self.janela.canvas, self.janela.seam_drag) else {
             return false;
         };
         let (tx, ty) = crate::field3d_layout::t_at(area, [x, y]);
-        let Split::Quad { tx: cx, ty: cy } = self.split else {
+        let Split::Quad { tx: cx, ty: cy } = self.janela.split else {
             return false;
         };
-        self.split = Split::Quad { tx: cx, ty: cy }.with_t(
+        self.janela.split = Split::Quad { tx: cx, ty: cy }.with_t(
             if vert { tx } else { cx },
             if horiz { ty } else { cy },
         );
@@ -298,7 +353,7 @@ impl Sculpt3dScene {
 
     /// Larga a costura. `true` se havia uma na mão.
     pub(crate) fn seam_release(&mut self) -> bool {
-        self.seam_drag.take().is_some()
+        self.janela.seam_drag.take().is_some()
     }
 }
 

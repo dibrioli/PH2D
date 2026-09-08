@@ -105,7 +105,7 @@ impl Sculpt3dScene {
 
     /// A bola sob o cursor no último quadro — o realce.
     pub(crate) fn nav_hot(&self) -> Option<Standard> {
-        self.nav_hot
+        self.janela.nav_hot
     }
 
     /// ⭐⭐ **APONTA A CÂMERA A UMA VISTA NOMEADA** — o clique numa bola, e as
@@ -139,7 +139,7 @@ impl Sculpt3dScene {
             return false;
         }
         let balls = self.navball(area, safe);
-        self.nav_drag = Some(NavDrag {
+        self.janela.nav_drag = Some(NavDrag {
             from: (x, y),
             moved: false,
             ball: crate::field3d_navball::pick(&balls, [x - area.x, y - area.y]),
@@ -149,7 +149,7 @@ impl Sculpt3dScene {
 
     /// O dedo andou sobre o widget: orbita. Devolve `true` se o gesto é dele.
     pub(crate) fn nav_pointer_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(drag) = self.nav_drag.as_mut() else {
+        let Some(drag) = self.janela.nav_drag.as_mut() else {
             return false;
         };
         let (dx, dy) = (x - drag.from.0, y - drag.from.1);
@@ -170,7 +170,7 @@ impl Sculpt3dScene {
 
     /// O dedo saiu. Um pen-up **sem movimento** sobre uma bola é o clique dela.
     pub(crate) fn nav_pointer_up(&mut self) -> bool {
-        let Some(drag) = self.nav_drag.take() else {
+        let Some(drag) = self.janela.nav_drag.take() else {
             return false;
         };
         if let Some(v) = drag.ball
@@ -193,13 +193,13 @@ impl Sculpt3dScene {
     /// segunda depende da primeira. *Duas derivações do «qual bola está quente»
     /// divergiriam no quadro em que a câmera se mexe entre elas.*
     pub(crate) fn note_nav(&mut self, safe: EditorRect, pointer: (f32, f32)) {
-        self.nav_safe = Some(safe);
+        self.janela.nav_safe = Some(safe);
         let Some((area, _)) = self.nav_rects() else {
-            self.nav_hot = None;
+            self.janela.nav_hot = None;
             return;
         };
         let at = [pointer.0 - area.x, pointer.1 - area.y];
-        self.nav_hot = crate::field3d_navball::hits_widget(area, safe, at)
+        self.janela.nav_hot = crate::field3d_navball::hits_widget(area, safe, at)
             .then(|| crate::field3d_navball::pick(&self.navball(area, safe), at))
             .flatten();
     }
@@ -213,7 +213,7 @@ impl Sculpt3dScene {
     /// moldura do app que empurra o widget não conhece divisão nenhuma — ela
     /// está por cima do canvas todo.
     pub(crate) fn nav_rects(&self) -> Option<(EditorRect, EditorRect)> {
-        Some((self.vp_rect(self.vp_active())?, self.nav_safe?))
+        Some((self.vp_rect(self.vp_active())?, self.janela.nav_safe?))
     }
 }
 

@@ -9,23 +9,11 @@ use super::{Family, Make, SHAPES, available, shape_at, slot_of};
 /// família de features inteira, completa e invisível. A corrente é
 /// `Primitive` novo ⇒ erro de compilação em `Primitive::kind` ⇒ variante nova em `PrimitiveKind`
 /// ⇒ `PrimitiveKind::ALL` não compila sem ela ⇒ **este laço reprova até haver a linha**.
-///
-/// # ⛔⛔ E a régua deste gate era uma CONVENÇÃO DE NOME até a W138
-///
-/// Ele perguntava `s.key.ends_with(k.key())`, e o doc-comment do [`Make::builds`] já explicava, com
-/// todas as letras, por que essa pergunta é a errada: ela **aprova uma chave que calhe de acabar
-/// bem sem construir nada daquilo**. A W138 tornou isso concreto — a entrada composta
-/// `add.cratered_sphere` acaba em `sphere` e satisfazia sozinha a exigência da
-/// [`ph2d_field::PrimitiveKind::Sphere`], **sem construir uma esfera**. ⇒ um catálogo que perdesse
-/// o botão da esfera passava neste gate por causa da cratera.
-///
-/// ⚠️ *Uma régua de string aprova pelo motivo errado muito antes de reprovar pelo certo* — a
-/// pergunta é ao [`Make`], que sabe o que produz.
 #[test]
 fn every_primitive_the_engine_can_make_is_in_the_catalogue() {
     for k in ph2d_field::PrimitiveKind::ALL {
         assert!(
-            SHAPES.iter().any(|s| s.make.builds() == Some(k)),
+            SHAPES.iter().any(|s| s.key.ends_with(k.key())),
             "a primitiva {k:?} não tem linha no catálogo - ela é inalcançável pela paleta"
         );
     }
@@ -62,28 +50,6 @@ fn only_the_formula_shapes_build_from_a_radius() {
                 "{} diz-se de fórmula e não construiu nada",
                 shape.key
             ),
-            // ⭐⭐ **Uma RECEITA sai de um raio — só não sai UMA primitiva** (W138), e é por isso
-            // que ela é medida pelas DUAS portas: o `shape_at` tem de recusar (devolver a primeira
-            // peça deixaria o chamador a criar meia forma sem erro nenhum) **e** o `recipe_at` tem
-            // de entregar. ⚠️ Sem a segunda metade, uma entrada composta que não construísse nada
-            // passava aqui como se fosse um `Extrude`.
-            Make::Composed(_) => {
-                assert!(
-                    built.is_none(),
-                    "{} é uma receita - o `shape_at` tem de recusar",
-                    shape.key
-                );
-                let receita = crate::field3d_shapes::recipe_at(slot, 0.5);
-                let receita = receita.unwrap_or_else(|| {
-                    panic!("{} diz-se composta e não devolveu receita", shape.key)
-                });
-                assert!(
-                    receita.parts.len() >= 2,
-                    "{} é uma receita de {} peça(s) - uma composição precisa de duas",
-                    shape.key,
-                    receita.parts.len()
-                );
-            }
             // ⚠️ Um contorno desenhado e um arquivo vivem **fora do mundo**: quem os trata é o
             // braço próprio, e um `Some` aqui seria uma forma nascida do nada no sítio errado.
             Make::Extrude | Make::Revolve | Make::Sculpt | Make::SculptScene => assert!(
@@ -112,7 +78,7 @@ fn only_what_needs_a_selection_waits_for_one() {
     for shape in SHAPES {
         let sempre = available(shape, false, false);
         match shape.make {
-            Make::Formula(_) | Make::Composed(_) | Make::Sculpt => assert!(
+            Make::Formula(_) | Make::Sculpt => assert!(
                 sempre,
                 "{} não depende de nada e devia estar sempre disponível",
                 shape.key
@@ -363,152 +329,6 @@ fn measure_marching_holes_on_a_combined_scene() {
             "  [{nome}] passo {passo:.4} — {batidas} raios, {furos} furos, \
              {degenerados} NORMAIS DEGENERADAS ({:.2} %), menor |grad| = {menor:.4}",
             100.0 * degenerados as f64 / batidas.max(1) as f64
-        );
-    }
-}
-
-// ─────────────────────────── W138 ───────────────────────────
-
-/// Coze a receita de um slot num documento e devolve o campo dela.
-///
-/// ⚠️ **Os filhos vêm ANTES do pai na arena** — o documento recusa uma referência para a frente, e
-/// é isso que torna a árvore acíclica por construção em vez de por teste.
-fn campo_da_receita(slot: usize, r: f32) -> ph2d_field_eval::Field {
-    let receita = crate::field3d_shapes::recipe_at(slot, r).expect("a receita");
-    let n = receita.parts.len();
-    let mut nos: Vec<ph2d_field::Node> = receita
-        .parts
-        .into_iter()
-        .map(|(prim, offset)| {
-            let mut x = ph2d_field::Xform::IDENTITY;
-            x.translation = offset;
-            ph2d_field::Node::new(x, ph2d_field::NodeKind::Leaf(prim))
-        })
-        .collect();
-    let filhos = (0..n)
-        .map(|i| ph2d_field::NodeId(u32::try_from(i).expect("cabe")))
-        .collect();
-    nos.push(ph2d_field::Node::new(
-        ph2d_field::Xform::IDENTITY,
-        ph2d_field::NodeKind::Combine {
-            op: receita.op,
-            children: filhos,
-        },
-    ));
-    let raiz = ph2d_field::NodeId(u32::try_from(n).expect("cabe"));
-    let doc = ph2d_field::FieldDoc::new(nos, raiz).expect("o documento aceita a receita");
-    ph2d_field_eval::Field::new(&doc)
-}
-
-/// ⭐⭐⭐ **A ESFERA COM CRATERA TEM UMA CRATERA** (W138) — e o gate mede a FORMA, não a compilação.
-///
-/// ⚠️ **Sem isto, uma receita com a segunda esfera longe demais entregaria uma esfera lisa** com o
-/// catálogo, o alcance e o painel todos verdes: *o nome prometia um buraco e ninguém perguntava se
-/// ele lá estava.* A régua é o eixo `x`, onde a cratera é por construção — dentro do lado oposto,
-/// fora onde a bola pequena morde, e **dentro outra vez** no fundo da cratera.
-#[test]
-fn the_cratered_sphere_actually_has_a_crater() {
-    let r = 0.5_f32;
-    let slot = slot_of("panel.model3d.add.cratered_sphere").expect("a entrada existe");
-    let f = campo_da_receita(slot, r);
-    let em = |x: f64| f.at(x * f64::from(r), 0.0, 0.0);
-    // O lado oposto à cratera é peça sólida.
-    assert!(
-        em(-0.90) < 0.0,
-        "o lado oposto devia ser sólido: {}",
-        em(-0.90)
-    );
-    // ⭐ **O bico onde a esfera estaria, COMIDO** — a bola pequena (`0,75·r` a `1,10·r`) cobre o
-    // eixo de `0,35·r` a `1,85·r`, logo o polo `+x` da bola grande está lá dentro.
-    assert!(
-        em(0.90) > 0.0,
-        "a cratera devia ter comido o polo +x: {}",
-        em(0.90)
-    );
-    // ⭐ **E o FUNDO dela está a `0,35·r`**: um pouco antes ainda é peça, um pouco depois é ar.
-    assert!(
-        em(0.28) < 0.0,
-        "antes do fundo da cratera é peça: {}",
-        em(0.28)
-    );
-    assert!(
-        em(0.42) > 0.0,
-        "depois do fundo da cratera é ar: {}",
-        em(0.42)
-    );
-}
-
-/// ⭐⭐⭐ **A LENTE É MAIS ALTA QUE LARGA** (W138) — é isso que a distingue de uma esfera cortada.
-///
-/// ⚠️ **Com os centros afastados de um raio** (a *vesica piscis* canónica) a meia altura é
-/// `√3/2 = 0,866·r` e a meia largura `0,5·r`. ⛔ Uma régua que só perguntasse *«há peça?»* aprovaria
-/// as duas esferas **sobrepostas por completo**, que é uma esfera.
-#[test]
-fn the_lens_is_taller_than_it_is_wide() {
-    let r = 0.5_f32;
-    let slot = slot_of("panel.model3d.add.lens").expect("a entrada existe");
-    let f = campo_da_receita(slot, r);
-    let em = |x: f64, y: f64| f.at(x * f64::from(r), y * f64::from(r), 0.0);
-    // Ao longo de `y` a peça chega a `0,866·r`.
-    assert!(
-        em(0.0, 0.80) < 0.0,
-        "a `0,80·r` em y ainda é peça: {}",
-        em(0.0, 0.80)
-    );
-    assert!(
-        em(0.0, 0.92) > 0.0,
-        "a `0,92·r` em y já é ar: {}",
-        em(0.0, 0.92)
-    );
-    // Ao longo de `x` ela acaba a `0,5·r` — o BICO da lente.
-    assert!(
-        em(0.44, 0.0) < 0.0,
-        "a `0,44·r` em x ainda é peça: {}",
-        em(0.44, 0.0)
-    );
-    assert!(
-        em(0.56, 0.0) > 0.0,
-        "a `0,56·r` em x já é ar: {}",
-        em(0.56, 0.0)
-    );
-}
-
-/// ⭐⭐ **AS DUAS COMPOSTAS HONRAM A MARCHA** — `‖∇f‖ ≤ 1`, medido, e é isto que dispensa a fórmula
-/// fechada.
-///
-/// ⚠️ **É a afirmação que decidiu não escrever duas primitivas** (`Make::Composed`): o `max` de
-/// funções 1-Lipschitz é 1-Lipschitz, e este gate mede-o em vez de o acreditar. ⛔ Se algum dia uma
-/// receita trouxer um verbo que infle (uma junta arredondada, por exemplo), é aqui que se vê.
-#[test]
-fn both_composed_shapes_honour_the_march() {
-    for chave in [
-        "panel.model3d.add.cratered_sphere",
-        "panel.model3d.add.lens",
-    ] {
-        let slot = slot_of(chave).expect("a entrada existe");
-        let f = campo_da_receita(slot, 0.5);
-        let eps = 1.0e-4;
-        let mut pior = 0.0_f64;
-        for i in 0..20 {
-            for j in 0..20 {
-                for k in 0..20 {
-                    let c =
-                        |t: usize| -1.0 + 2.0 * f64::from(u32::try_from(t).expect("cabe")) / 19.0;
-                    let (x, y, z) = (c(i), c(j), c(k));
-                    let g = [
-                        (f.at(x + eps, y, z) - f.at(x - eps, y, z)) / (2.0 * eps),
-                        (f.at(x, y + eps, z) - f.at(x, y - eps, z)) / (2.0 * eps),
-                        (f.at(x, y, z + eps) - f.at(x, y, z - eps)) / (2.0 * eps),
-                    ];
-                    pior = pior.max(g[0].mul_add(g[0], g[1].mul_add(g[1], g[2] * g[2])).sqrt());
-                }
-            }
-        }
-        // A folga é do INSTRUMENTO: a diferença central sobre uma quina lê um pouco acima de 1 por
-        // amostragem, e é a mesma `1,02` do censo das primitivas.
-        assert!(
-            pior <= 1.02,
-            "{chave}: ‖∇f‖ = {pior:.4} — a marcha atravessa a superfície"
         );
     }
 }

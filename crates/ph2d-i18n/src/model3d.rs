@@ -134,19 +134,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.add.bezier" => "Bezier Curve",
         "panel.model3d.add.parabola" => "Parabola",
         "panel.model3d.add.circle_wave" => "Circle Wave",
-        // ⭐⭐ **AS DUAS COMPOSTAS** (W138) — elas não são primitivas, são uma RECEITA de duas
-        // esferas com um verbo, e ficam editáveis na Hierarquia.
-        //
-        // ⚠️ **"Cratered Sphere" e não o nome que a literatura de SDF lhe dá.** A fórmula publicada
-        // chama-se `sdDeathStar`, e esse nome é uma marca registada de outra gente — um rótulo de
-        // produto não é uma citação bibliográfica. O nome que fica diz o que a peça É, que é
-        // também o que o §0.8 pede: quem nunca a viu sabe o que vai receber.
-        "panel.model3d.add.cratered_sphere" => "Cratered Sphere",
-        // ⚠️ **"Lens" e não "Vesica Segment"**: a `panel.model3d.add.vesica` já existe e é uma
-        // CHAPA (a lente 2D puxada em Z), e esta é o sólido de revolução. Dois rótulos que
-        // começassem pela mesma palavra fariam a busca da paleta devolver as duas para a mesma
-        // intenção, e é justamente a forma que o artista NÃO quer que ele escolheria primeiro.
-        "panel.model3d.add.lens" => "Lens",
         "panel.model3d.add.bolt" => "Lightning Bolt",
         "panel.model3d.add.shield" => "Shield",
         "panel.model3d.add.tag" => "Tag",

@@ -59,35 +59,11 @@ fn every_primitive_the_engine_can_make_has_a_button() {
     //
     // ⇒ toda linha do catálogo ou **nomeia** uma primitiva, ou é uma das quatro que não saem de um
     // raio (as duas de perfil, as duas esculturas). Uma chave inventada não cai em nenhum dos dois.
-    //
-    // ⚠️⚠️ **E a W138 abriu uma TERCEIRA categoria, que este controle teve de APRENDER — não de
-    // afrouxar.** Uma entrada COMPOSTA não nomeia uma primitiva: ela devolve uma **receita** de
-    // duas ou mais, com um verbo. ⛔ Ensinar-lhe `Make::Composed(_) => passa` seria apagar o
-    // controle para essa família; o que ele de facto defende — *o painel não promete o que o motor
-    // não tem* — traduz-se ali para **a receita existir e ter peças**, que é exactamente a mesma
-    // pergunta um nível acima.
     for (i, shape) in SHAPES.iter().enumerate() {
         let escultura = matches!(
             shape.make,
             crate::field3d_shapes::Make::Sculpt | crate::field3d_shapes::Make::SculptScene
         );
-        if matches!(shape.make, crate::field3d_shapes::Make::Composed(_)) {
-            let receita = crate::field3d_shapes::recipe_at(i, 0.5);
-            let receita = receita.unwrap_or_else(|| {
-                panic!(
-                    "{} é uma entrada composta e não devolveu receita — o painel promete uma \
-                     forma que ninguém constrói",
-                    shape.key
-                )
-            });
-            assert!(
-                receita.parts.len() >= 2,
-                "{} é uma composição de {} peça(s) — com menos de duas ela é uma primitiva a fingir",
-                shape.key,
-                receita.parts.len()
-            );
-            continue;
-        }
         assert!(
             construido[i].is_some() || escultura,
             "{} não produz primitiva nenhuma e não é uma escultura — o painel promete uma forma \

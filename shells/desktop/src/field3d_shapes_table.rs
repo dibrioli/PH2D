@@ -10,14 +10,14 @@
 use super::{Family, Make, Shape};
 use super::{
     a_banner, a_bent_arrow, a_bezier, a_bolt, a_box, a_box_frame, a_brace, a_capsule, a_check,
-    a_chevron, a_circle_segment, a_circle_wave, a_cloud, a_cone, a_cratered_sphere, a_cross,
-    a_cut_sphere, a_cylinder, a_delay, a_display, a_document, a_double_arrow, a_drop, a_gear,
-    a_gyroid, a_heart, a_helix, a_hollow_dome, a_knurl, a_lens, a_link, a_moon, a_parabola,
-    a_parallelogram, a_pie, a_polygon, a_prism, a_pyramid, a_rhombus, a_ring_arc, a_round_cone,
-    a_rounded_cylinder, a_shield, a_solid_angle, a_speech_oval, a_speech_rect, a_sphere, a_spiral,
-    a_star, a_superformula, a_superquadric, a_tag, a_thought, a_thread, a_torus, a_torus_arc,
-    a_torus_knot, a_trapezoid, a_triangle, a_truncated_cone, a_truncated_pyramid, a_tube, a_vesica,
-    a_washer, a_wedge, an_arrow, an_ellipsoid, an_octahedron, an_off_page,
+    a_chevron, a_circle_segment, a_circle_wave, a_cloud, a_cone, a_cross, a_cut_sphere, a_cylinder,
+    a_delay, a_display, a_document, a_double_arrow, a_drop, a_gear, a_gyroid, a_heart, a_helix,
+    a_hollow_dome, a_knurl, a_link, a_moon, a_parabola, a_parallelogram, a_pie, a_polygon, a_prism,
+    a_pyramid, a_rhombus, a_ring_arc, a_round_cone, a_rounded_cylinder, a_shield, a_solid_angle,
+    a_speech_oval, a_speech_rect, a_sphere, a_spiral, a_star, a_superformula, a_superquadric,
+    a_tag, a_thought, a_thread, a_torus, a_torus_arc, a_torus_knot, a_trapezoid, a_triangle,
+    a_truncated_cone, a_truncated_pyramid, a_tube, a_vesica, a_washer, a_wedge, an_arrow,
+    an_ellipsoid, an_octahedron, an_off_page,
 };
 
 pub(crate) const SHAPES: &[Shape] = &[
@@ -357,19 +357,6 @@ pub(crate) const SHAPES: &[Shape] = &[
         key: "panel.model3d.add.knurl",
         family: Family::Round,
         make: Make::Formula(a_knurl),
-    },
-    // ⭐⭐⭐ **W138: as DUAS COMPOSTAS** — as únicas entradas do catálogo que devolvem uma ÁRVORE em
-    // vez de uma primitiva. ⚠️ **As duas vão para `Round`**: uma bola com uma cratera e uma lente
-    // são redondas antes de serem outra coisa, e é aí que um artista procura.
-    Shape {
-        key: "panel.model3d.add.cratered_sphere",
-        family: Family::Round,
-        make: Make::Composed(a_cratered_sphere),
-    },
-    Shape {
-        key: "panel.model3d.add.lens",
-        family: Family::Round,
-        make: Make::Composed(a_lens),
     },
     // ─────────────────────────── W136 ───────────────────────────
     // ⭐⭐ **A BEZIER e a PARÁBOLA são a MESMA primitiva** — a segunda é a primeira com os três

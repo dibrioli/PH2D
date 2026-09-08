@@ -18,6 +18,15 @@ pub(crate) fn camera_key(
     code: winit::keyboard::KeyCode,
     ctrl: bool,
 ) -> bool {
+    // ⭐⭐ **`Escape` FECHA O MENU DE VISTAS — e só ele.**
+    //
+    // ⚠️ **Devolve `false` sem menu aberto**, e é isso que a mantém invisível:
+    // `Escape` é a tecla de desistir de meio mundo, e um handler que a
+    // reclamasse sempre roubaria o cancelar de quem vem a seguir no roteador.
+    // *Um popup só possui a tecla enquanto está aberto.*
+    if code == winit::keyboard::KeyCode::Escape {
+        return scene.close_view_menu();
+    }
     // ⭐⭐ **AS SEIS VISTAS NOMEADAS** (2026-09-08) — `Numpad1` frente · `Numpad3` direita ·
     // `Numpad7` topo, e **`Ctrl`** dá a oposta.
     //
@@ -100,3 +109,7 @@ impl App {
         true
     }
 }
+
+#[cfg(test)]
+#[path = "sculpt3d_keys_view_tests.rs"]
+mod tests;

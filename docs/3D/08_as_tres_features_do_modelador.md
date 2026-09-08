@@ -414,3 +414,49 @@ submetido no meio.
 `surface.size()`, logo estão nas **mesmas unidades** — não há a segunda causa de
 *offset* (um rect em pixels lógicos contra um alvo em físicos) escondida por
 trás desta.
+
+---
+
+## §7-quater — O NOME DA VISTA É UM BOTÃO
+
+> *«ao clicar nos nomes das views não aparece a lista de view como no módulo de
+> modelagem 3d»* (Enio, 2026-09-08, depois de dar o smoke por OK)
+
+A `=38` pintava o rótulo de cada quadrante e **deitava fora o rectângulo que o
+pintor mediu**. ⇒ o nome aparecia na tela e o clique atravessava-o: um alvo que
+não existe.
+
+⚠️ **Nada além de um censo apanha esta forma.** O gate de registo de painel mede
+**ids**, e aqui não há id nenhum — o alvo é um rectângulo publicado por quem
+pinta. ⇒ `o_quadro_publica_o_chip_e_o_rectangulo_que_o_pintor_mediu`; mutação
+(descartar o retorno, que é literalmente o defeito) **morta**.
+
+### A lei do menu é do vizinho, inteira
+
+`field3d_view_menu::{chip, menu_rect, row_at, model, widest_row}` e
+`field3d_gizmo_paint::paint_view_menu` são geometria + um modelo de
+`ContextMenu` — **zero câmera**. Foram lidos tal e qual; o que esta wave
+acrescenta é a fiação: quem guarda os chips, quem os aponta, e o que o clique
+faz.
+
+### ⛔⛔ E veio junto uma precedência que o vizinho já tinha pago
+
+**Um menu aberto ganha de tudo, e até da COSTURA.** O cabeçalho do quadrante de
+baixo-direita nasce encostado ao cruzamento das costuras, então o menu que ele
+abre cai **por cima da banda de agarrar o divisor** — metade das linhas dele
+ficaria inalcançável, com o ponteiro a virar seta de redimensionar por cima de
+um menu. *Uma precedência escrita por analogia («a costura ganha de tudo») deixa
+de valer quando nasce algo que é modal.*
+
+Ordem final do pen-down, com gate a prendê-la
+(`o_despacho_pergunta_menu_costura_chip_nesta_ordem`):
+
+**menu · costura · chip · quadrante · gizmo de navegação · arms · barro**
+
+⚠️ O **chip vem depois da costura** porque ele vive **dentro** de um viewport e
+ela vive **entre** eles. E o `seam_cursor` fica **mudo** com o menu aberto —
+*um ponteiro que mente é um controlo morto ao contrário: ele anuncia o que a mão
+NÃO vai conseguir fazer.*
+
+⚠️ **Com uma vista só não há rótulo, logo não há chip** — e a distinção importa:
+um alvo que sobrevivesse ao rótulo seria vivo sob o dedo e invisível ao olho.

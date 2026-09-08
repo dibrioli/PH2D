@@ -70,6 +70,18 @@ pub(crate) struct Janela {
     pub(super) vp_active: usize,
     /// A costura agarrada — `(vertical, horizontal)`.
     pub(super) seam_drag: Option<(bool, bool)>,
+    /// ⭐⭐ **O CHIP CLICÁVEL do rótulo de cada quadrante**, publicado por quem
+    /// pinta.
+    ///
+    /// ⚠️ **Publicado e não estimado**: a largura do chip é a do TEXTO, e só o
+    /// pintor a mede ([`ph2d_text::TextSystem::prefix_width`]). É a mesma lei do
+    /// `nav_safe` e da `canvas` — *«ainda não desenhei» e «o ponto não é meu» são
+    /// a mesma resposta*.
+    pub(super) vp_labels: Vec<Option<EditorRect>>,
+    /// Que quadrante tem o menu de vistas aberto.
+    pub(super) view_menu: Option<usize>,
+    /// O rectângulo do menu, publicado por quem o pinta.
+    pub(super) view_menu_rect: Option<EditorRect>,
     /// A alça do gizmo de transformação sob o cursor — só realce.
     pub(super) gizmo_hot: Option<crate::field3d_gizmo::Handle>,
     /// ⭐⭐ **A alça AGARRADA** — o que prende o gesto a um eixo ou a um plano.
@@ -239,6 +251,84 @@ impl Sculpt3dScene {
         self.camera = self.janela.vp_cams[self.janela.vp_active];
     }
 
+    /// ⭐⭐ **O QUADRO PUBLICA OS CHIPS DOS RÓTULOS** — um por quadrante, na
+    /// ordem deles. Vazio quando não há rótulos (uma vista só).
+    pub(crate) fn note_view_labels(&mut self, chips: Vec<Option<EditorRect>>) {
+        self.janela.vp_labels = chips;
+    }
+
+    /// ⭐ **A ÁREA DO CANVAS 3D**, se o quadro já a publicou.
+    ///
+    /// ⚠️ Ela nasceu, morreu como código morto e **voltou com um consumidor**: o
+    /// menu da vista precisa dela para ficar preso ao canvas — o chip do
+    /// quadrante de baixo-direita está a poucos pixels do canto, e um menu que
+    /// descesse dali sairia da janela.
+    pub(crate) fn canvas(&self) -> Option<EditorRect> {
+        self.janela.canvas
+    }
+
+    /// O chip do rótulo daquele quadrante, se ele foi pintado.
+    pub(crate) fn chip_of(&self, i: usize) -> Option<EditorRect> {
+        self.janela.vp_labels.get(i).copied().flatten()
+    }
+
+    /// Que quadrante tem o menu aberto, se algum.
+    pub(crate) fn view_menu_open(&self) -> Option<usize> {
+        self.janela.view_menu
+    }
+
+    /// O quadro publica onde o menu foi pintado.
+    pub(crate) fn note_view_menu_rect(&mut self, r: EditorRect) {
+        self.janela.view_menu_rect = Some(r);
+    }
+
+    /// O chip do rótulo sob este ponto, se houver.
+    pub(crate) fn chip_at(&self, x: f32, y: f32) -> Option<usize> {
+        self.janela.vp_labels.iter().position(|c| {
+            c.is_some_and(|r| x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h)
+        })
+    }
+
+    /// ⭐ **Abre o menu daquele quadrante.**
+    pub(crate) fn open_view_menu(&mut self, i: usize) {
+        self.janela.view_menu = Some(i);
+    }
+
+    /// Fecha-o. `true` se havia um aberto — é o que faz o `Escape` só ser dele
+    /// enquanto ele está aberto.
+    pub(crate) fn close_view_menu(&mut self) -> bool {
+        self.janela.view_menu.take().is_some()
+    }
+
+    /// ⭐⭐⭐ **O CLIQUE COM O MENU ABERTO** — dentro escolhe, fora fecha, e nos
+    /// dois casos ele é **consumido**.
+    ///
+    /// ⚠️ **Deixar o clique de fora passar orbitaria a peça no mesmo gesto em que
+    /// o artista só queria desistir do menu** — e é o que todo o chrome desta
+    /// casa já faz.
+    ///
+    /// ⚠️ **A vista vai para o quadrante que ABRIU o menu, e ele é o ACTIVO** —
+    /// o chip é a única porta que o abre, e ela acerta o activo antes. Trocar a
+    /// vista do quadrante errado seria pior do que não ter menu.
+    pub(crate) fn view_menu_click(&mut self, x: f32, y: f32) -> bool {
+        let Some(i) = self.janela.view_menu.take() else {
+            return false;
+        };
+        let escolha = self
+            .janela
+            .view_menu_rect
+            .and_then(|m| crate::field3d_view_menu::row_at(m, [x, y]));
+        if let Some(v) = escolha {
+            debug_assert_eq!(
+                i,
+                self.vp_active(),
+                "o menu so' se abre pelo chip, e o chip acerta o activo"
+            );
+            self.aim_view(v);
+        }
+        true
+    }
+
     /// ⭐⭐⭐ **O TAMANHO DO VIEWPORT ACTIVO** — o que o campo `viewport` era.
     ///
     /// ⚠️ **Derivado, e a mudança é uma CURA:** o campo era escrito com o tamanho
@@ -320,6 +410,17 @@ impl Sculpt3dScene {
 
     /// ⭐ **A COSTURA SOB O PONTEIRO** — que cursor pedir, ou `None`.
     pub(crate) fn seam_cursor(&self, x: f32, y: f32) -> Option<winit::window::CursorIcon> {
+        // ⛔⛔ **Com o menu aberto a costura é MUDA** — o chip do quadrante de
+        // baixo-direita nasce encostado ao cruzamento, então o menu que ele abre
+        // cai por cima da banda de agarrar o divisor. Se o cursor continuasse a
+        // ser a seta de redimensionar por cima das linhas, *a tela prometeria um
+        // gesto que ali já não existe*: um ponteiro que mente é um controlo
+        // morto ao contrário — ele anuncia o que a mão NÃO vai conseguir fazer.
+        // Lei do vizinho (`field3d_viewports::divider_cursor`), lida e não
+        // re-decidida.
+        if self.janela.view_menu.is_some() {
+            return None;
+        }
         crate::field3d_layout::seam_cursor(self.janela.canvas?, self.janela.split, [x, y])
     }
 

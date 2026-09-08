@@ -71,10 +71,43 @@ impl App {
             eprintln!("[sculpt3d] a cena esta' VAZIA -- nao ha' o que esculpir (Ctrl+Z devolve)");
             return false;
         }
+        // ⭐⭐⭐ **UM MENU ABERTO GANHA DE TUDO, E ATÉ DA COSTURA** (2026-09-08).
+        //
+        // ⛔⛔ **A precedência é do vizinho, e ele já a pagou:** o cabeçalho do
+        // quadrante de baixo-direita nasce encostado ao cruzamento das costuras,
+        // então o menu que ele abre cai **por cima da banda de agarrar o
+        // divisor** — e metade das linhas dele seria inalcançável, com o ponteiro
+        // a virar seta de redimensionar por cima de um menu. *Uma precedência
+        // escrita por analogia («a costura ganha de tudo») deixa de valer quando
+        // nasce algo que é modal.*
+        //
+        // ⚠️ **Ele consome o clique caia ele onde cair** — dentro escolhe, fora
+        // fecha. Deixar o de fora passar orbitaria a peça no mesmo gesto em que
+        // o artista só queria desistir do menu.
+        if button == winit::event::MouseButton::Left && scene.view_menu_open().is_some() {
+            scene.view_menu_click(pos.0, pos.1);
+            scene.last = pos;
+            return true;
+        }
         // ⭐⭐⭐ **A COSTURA DA DIVISÃO VEM ANTES DE TUDO** (2026-09-08) — ela é
         // uma linha de chrome desenhada por cima das quatro vistas, e um clique
         // sobre ela nunca é da peça.
         if button == winit::event::MouseButton::Left && scene.seam_grab(pos.0, pos.1) {
+            scene.last = pos;
+            return true;
+        }
+        // ⭐⭐ **O CHIP DO CABEÇALHO ABRE O MENU DAQUELA VISTA** — depois da
+        // costura, porque ele vive **dentro** de um viewport e ela vive entre
+        // eles.
+        //
+        // ⚠️ **Ele acerta o ACTIVO antes de abrir**, e é isso que faz a escolha
+        // do menu cair no quadrante certo: o `aim_view` aponta a câmera do
+        // activo, e este é o único caminho que abre o menu.
+        if button == winit::event::MouseButton::Left
+            && let Some(i) = scene.chip_at(pos.0, pos.1)
+        {
+            scene.set_active_vp(i);
+            scene.open_view_menu(i);
             scene.last = pos;
             return true;
         }

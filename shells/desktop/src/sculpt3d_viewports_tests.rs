@@ -212,157 +212,6 @@ fn a_costura_arrasta_e_o_eixo_certo_se_move() {
     );
 }
 
-/// ⭐⭐⭐ **DUAS TECLAS QUE PODEM CASAR O MESMO EVENTO: A SEGUNDA É MORTA.**
-///
-/// ⛔⛔ **Este gate nasceu de um defeito meu, escrito e apanhado no mesmo dia
-/// (2026-09-08).** A divisão dos viewports foi ligada a `K::Backquote` **sem
-/// modificador** — e a crase sozinha já tinha dono neste mesmo ficheiro (ela
-/// abre o painel, e o roteiro da cena `=37` manda o artista usá-la). O braço do
-/// painel corre antes e devolve `true`: a tecla nova **compilava, não dava
-/// warning nenhum, e nunca corria**.
-///
-/// ⚠️ **Nenhuma sonda deste repo vê isto.** O censo de ids de painel mede
-/// registo; os `seam_*` medem que o clique chega à ferramenta. *Um `match` de
-/// teclado com dois braços que casam o mesmo evento é a espécie de controlo
-/// morto que só a ORDEM de leitura revela.*
-///
-/// # ⛔⛔ E a PRIMEIRA redacção deste gate era fraca — a mutação SOBREVIVEU
-///
-/// Ela comparava as guardas como **texto**: `!ctrl && !shift` e `` (vazia,
-/// sempre verdadeira) são strings diferentes, então tirar o `&& ctrl` do braço
-/// novo — que é exactamente o defeito original — passava. *Uma régua que
-/// pergunta «as guardas são iguais?» responde a outra pergunta que não a
-/// «podem as duas ser verdadeiras ao mesmo tempo?».*
-///
-/// ⇒ cada guarda é **avaliada** sobre as quatro combinações de `(ctrl, shift)`,
-/// e o gate exige que os conjuntos sejam **disjuntos**. Um símbolo que o censo
-/// não saiba avaliar entra em pânico — *um censo que não entende o que lê tem
-/// de dizê-lo, e não devolver «nada a acusar»*.
-///
-/// # ⛔ O PONTO CEGO, e ele é NOMEADO em vez de tapado
-///
-/// Uma guarda pode ser do **bloco que envolve** o braço, e não da linha dele: o
-/// `K::KeyJ` aparece duas vezes com a mesma condição escrita, e não colidem
-/// porque uma delas vive dentro de um `if shift { … }`. A primeira redacção
-/// acusou-a — *um censo textual que não conhece o contexto acusa o vivo, e a
-/// cura que ele manda aplicar é a errada*.
-///
-/// ⇒ ele compara **só arms no mesmo NÍVEL DE INDENTAÇÃO**, que é o proxy honesto
-/// de *«no mesmo bloco»*. Ele deixa passar uma colisão entre blocos diferentes
-/// com a mesma indentação, e isso está declarado aqui em vez de ser um silêncio.
-#[test]
-fn nenhuma_tecla_e_reivindicada_duas_vezes_com_a_mesma_guarda() {
-    // ⚠️ `BTreeMap` e não `HashMap`: é a espinha do determinismo desta casa
-    // (HR-5 + ADR-0022), e aqui ela dá de graça uma listagem ORDENADA quando o
-    // censo imprime o que achou.
-    use std::collections::BTreeMap;
-
-    /// **O que este braço reivindica**: as teclas e a máscara de `(ctrl, shift)`.
-    ///
-    /// ⚠️ **Ele lê a condição INTEIRA, e não «a primeira tecla e o resto»** — um
-    /// braço pode nomear várias teclas (`code == K::Comma || code == K::Period`),
-    /// e as guardas de modificador são tokens soltos ligados por `&&`.
-    /// ⛔ Qualquer palavra que não seja uma dessas entra em pânico: *um censo que
-    /// não entende o que lê tem de dizê-lo, e não devolver «nada a acusar»*.
-    fn reivindica(cond: &str) -> (Vec<String>, u8) {
-        let mut teclas = Vec::new();
-        let mut guardas: Vec<&str> = Vec::new();
-        let limpo = cond
-            .replace("&&", " ")
-            .replace("||", " ")
-            .replace(['(', ')'], " ");
-        let mut it = limpo.split_whitespace().peekable();
-        while let Some(t) = it.next() {
-            match t {
-                "code" => {
-                    assert_eq!(it.next(), Some("=="), "forma inesperada depois de `code`");
-                    let k = it.next().expect("falta a tecla depois de `==`");
-                    teclas.push(
-                        k.strip_prefix("K::")
-                            .unwrap_or_else(|| panic!("`{k}` nao e' uma tecla `K::…`"))
-                            .to_string(),
-                    );
-                }
-                "ctrl" | "!ctrl" | "shift" | "!shift" => guardas.push(t),
-                outro => panic!(
-                    "o censo nao sabe avaliar `{outro}` na condicao `{cond}` -- ele nao pode \
-                     devolver «nada a acusar» sobre o que nao entende"
-                ),
-            }
-        }
-        let mut mask = 0u8;
-        for bit in 0..4u8 {
-            let (ctrl, shift) = (bit & 1 != 0, bit & 2 != 0);
-            let ok = guardas.iter().all(|t| match *t {
-                "ctrl" => ctrl,
-                "!ctrl" => !ctrl,
-                "shift" => shift,
-                _ => !shift,
-            });
-            if ok {
-                mask |= 1 << bit;
-            }
-        }
-        (teclas, mask)
-    }
-
-    let fonte = include_str!("sculpt3d_keys.rs");
-    let mut vistos: BTreeMap<String, Vec<(String, u8)>> = BTreeMap::new();
-    for linha in fonte.lines() {
-        let l = linha.trim();
-        // ⚠️ Só condições, nunca prosa: um comentário que cite `code == K::X`
-        // não reivindica tecla nenhuma, e contar prosa é o defeito que todo
-        // censo textual paga uma vez.
-        if l.starts_with("//") || !l.starts_with("if code == K::") {
-            continue;
-        }
-        let indent = linha.len() - linha.trim_start().len();
-        let cond = l
-            .trim_start_matches("if ")
-            .trim_end()
-            .trim_end_matches('{')
-            .trim();
-        let (teclas, mask) = reivindica(cond);
-        for k in teclas {
-            // ⚠️ **A indentação faz parte da chave** — ver o ponto cego no doc.
-            vistos
-                .entry(format!("{k}@{indent}"))
-                .or_default()
-                .push((cond.to_string(), mask));
-        }
-    }
-    assert!(
-        !vistos.is_empty(),
-        "o censo nao achou braco de tecla nenhum -- ele ficou cego (o `sculpt3d_keys` mudou de \
-         forma, e um censo cego le^-se como aprovado)"
-    );
-    let mut colisoes = Vec::new();
-    for (tecla, arms) in &vistos {
-        for i in 0..arms.len() {
-            for j in (i + 1)..arms.len() {
-                if arms[i].1 & arms[j].1 != 0 {
-                    colisoes.push(format!(
-                        "K::{tecla}: `{}` e `{}` aceitam o MESMO evento",
-                        arms[i].0, arms[j].0
-                    ));
-                }
-            }
-        }
-    }
-    let mut multi: Vec<_> = vistos
-        .iter()
-        .filter(|(_, a)| a.len() > 1)
-        .map(|(k, a)| (k.clone(), a.clone()))
-        .collect();
-    multi.sort();
-    println!("teclas com mais de um braco: {multi:?}");
-    assert!(
-        colisoes.is_empty(),
-        "{colisoes:?} -- o SEGUNDO braco nunca corre: o primeiro casa o mesmo evento e \
-         devolve `true`. Uma tecla que compila e nunca corre nao da' warning nenhum."
-    );
-}
-
 /// ⭐⭐⭐ **O *FIT* ENQUADRA PARA A VISTA, NÃO PARA A JANELA.**
 ///
 /// ⛔⛔ **A wave dos viewports criou uma SEGUNDA resposta a «qual é o aspecto?»**
@@ -450,75 +299,174 @@ fn o_fit_enquadra_para_a_vista_e_nao_para_a_janela() {
     );
 }
 
-/// ⭐⭐⭐ **UM BLOCO DE MODIFICADOR QUE DEVOLVE `false` É DONO DE TUDO ABAIXO
-/// DELE.**
+/// ⭐⭐⭐ **O NOME DA VISTA É UM BOTÃO: ele abre a lista, e a lista troca a
+/// câmera daquele quadrante.**
 ///
-/// ⛔⛔⛔ **REPORT DO ENIO, 2026-09-08: *«o atalho das 4 viewports não
-/// funciona»* — e o gate irmão desta suíte, escrito no mesmo dia CONTRA esta
-/// família de defeito, não o viu.**
+/// ⛔ **REPORT DO ENIO, 2026-09-08:** *«ao clicar nos nomes das views não
+/// aparece a lista de view como no módulo de modelagem 3d»*.
 ///
-/// O `sculpt3d_key` tem um catch-all:
-///
-/// ```text
-/// if ctrl {
-///     if code != K::KeyZ { return false; }   // ← daqui para baixo, Ctrl+ é dele
-///     …
-/// }
-/// ```
-///
-/// Ele existe por um bom motivo — sem ele um `Ctrl+1` dispararia o verbo do
-/// dígito `1` —, e o preço é que **todo braço que exija `ctrl` e venha depois
-/// dele está morto**. Foi o que matou a tecla da divisão *e* o `Ctrl+Numpad1`
-/// (a vista oposta), sem um warning e sem o outro gate se mexer.
-///
-/// ⚠️⚠️ **O gate irmão pergunta *«duas teclas iguais?»*, e a lei verdadeira é
-/// *«esta tecla é ALCANÇÁVEL?»*.** Duas claims da mesma tecla é só **uma** das
-/// formas de uma ficar inalcançável; um `return` a montante é outra, e a
-/// primeira régua é cega à segunda. *Uma régua que mede um caso de uma família
-/// lê-se como se medisse a família.*
+/// ⚠️ **Os chips são publicados à mão nesta fixture**, e é honesto: a GEOMETRIA
+/// deles é lei do módulo vizinho (`field3d_view_menu::chip`, já gateada lá) e o
+/// que esta wave acrescenta é a **fiação** — quem os guarda, quem os aponta, e
+/// o que o clique faz. Que o pintor os publique de verdade é o censo irmão.
 #[test]
-fn nenhum_braco_de_tecla_vive_debaixo_de_um_catch_all_do_mesmo_modificador() {
-    let fonte = include_str!("sculpt3d_keys.rs");
-    // Onde cada modificador passa a ser propriedade de um catch-all: um bloco
-    // `if <mod> {` cujo corpo contém um `return false;` sem condição de tecla.
-    let mut dono: Vec<(&str, usize)> = Vec::new();
-    for m in ["ctrl", "shift"] {
-        let abre = format!("if {m} {{");
-        let mut de = 0usize;
-        while let Some(i) = fonte[de..].find(&abre) {
-            let at = de + i;
-            // O corpo até ao fecho na mesma indentação — chega olhar as ~12
-            // linhas seguintes, que é onde um catch-all mora.
-            let corpo: String = fonte[at..].lines().take(12).collect::<Vec<_>>().join("\n");
-            if corpo.contains("return false;") {
-                dono.push((m, at));
-            }
-            de = at + abre.len();
-        }
-    }
-    assert!(
-        !dono.is_empty(),
-        "o censo nao achou catch-all nenhum -- ou o ficheiro mudou de forma, ou ele ficou cego \
-         (e um censo cego le^-se como aprovado)"
+fn o_nome_da_vista_abre_a_lista_e_a_lista_troca_a_camera() {
+    let mut s = cena_ou_sai!();
+    assert!(s.toggle_split());
+    // Um chip por quadrante, no canto de cada um.
+    let chips: Vec<_> = (0..4)
+        .map(|i| s.vp_rect(i).map(|r| Rect::new(r.x + 4.0, r.y + 4.0, 60.0, 20.0)))
+        .collect();
+    s.note_view_labels(chips.clone());
+
+    // (1) — o chip do quadrante 1 é apontável, e abre o menu DELE.
+    let c = chips[1].expect("o chip existe");
+    assert_eq!(s.chip_at(c.x + 2.0, c.y + 2.0), Some(1));
+    s.set_active_vp(1);
+    s.open_view_menu(1);
+    assert_eq!(s.view_menu_open(), Some(1));
+
+    // (2) — a escolha troca a câmera daquele quadrante.
+    let menu = Rect::new(c.x, c.y + c.h, 120.0, 26.0 * 6.0 + 16.0);
+    s.note_view_menu_rect(menu);
+    // A linha do `Top` é a quinta da lista (`Standard::ALL`).
+    let alvo = Standard::Top;
+    let i = Standard::ALL.iter().position(|v| *v == alvo).expect("Top esta' na lista");
+    let y = menu.y + 8.0 + 26.0 * i as f32 + 4.0;
+    assert!(s.view_menu_click(menu.x + 10.0, y), "o clique no menu nao foi consumido");
+    assert_eq!(s.view_menu_open(), None, "o menu tinha de fechar ao escolher");
+    assert_eq!(
+        super::super::navball::named_view(&s.cam_of(1)),
+        Some(alvo),
+        "escolher `{}` no menu do quadrante 1 nao lhe trocou a camera",
+        alvo.key()
     );
-    let mut mortos = Vec::new();
-    for (linha_n, linha) in fonte.lines().enumerate() {
-        let l = linha.trim();
-        if l.starts_with("//") || !l.starts_with("if code == K::") {
-            continue;
-        }
-        let at = fonte.find(linha).unwrap_or(0);
-        for (m, dono_at) in &dono {
-            if l.contains(&format!("&& {m}")) && at > *dono_at {
-                mortos.push(format!("linha {}: `{l}`", linha_n + 1));
-            }
-        }
-    }
-    println!("catch-alls: {dono:?}");
+}
+
+/// ⭐⭐ **UM CLIQUE FORA DO MENU FECHA-O — e não faz mais nada.**
+///
+/// ⚠️ **A segunda metade é o gate.** Deixar o clique de fora passar orbitaria a
+/// peça no mesmo gesto em que o artista só queria desistir do menu, e é o que
+/// todo o chrome desta casa já faz.
+#[test]
+fn um_clique_fora_do_menu_fecha_o_e_nao_faz_mais_nada() {
+    let mut s = cena_ou_sai!();
+    assert!(s.toggle_split());
+    s.set_active_vp(1);
+    s.open_view_menu(1);
+    let menu = Rect::new(500.0, 100.0, 120.0, 170.0);
+    s.note_view_menu_rect(menu);
+    let antes = super::super::navball::named_view(&s.cam_of(1));
+    // Bem longe do menu.
     assert!(
-        mortos.is_empty(),
-        "{mortos:?} -- estes bracos exigem um modificador cujo catch-all ja' devolveu `false` \
-         acima deles: eles COMPILAM e NUNCA correm. Ou o braco sobe, ou o atalho sai do \
-         `sculpt3d_key` (foi o que a tecla da divisao fez, para o despacho)"
+        s.view_menu_click(20.0, 600.0),
+        "o clique fora do menu tem de ser CONSUMIDO -- senao ele orbita a peca no mesmo gesto"
     );
+    assert_eq!(s.view_menu_open(), None, "o menu tinha de fechar");
+    assert_eq!(
+        super::super::navball::named_view(&s.cam_of(1)),
+        antes,
+        "desistir do menu trocou a camera na mesma"
+    );
+}
+
+/// ⭐ **`Escape` fecha o menu, e SÓ quando ele está aberto.**
+///
+/// ⚠️ A segunda metade é o que o mantém invisível: `Escape` é a tecla de
+/// desistir de meio mundo, e um handler que a reclamasse sempre roubaria o
+/// cancelar de quem vem a seguir no roteador.
+#[test]
+fn o_escape_fecha_o_menu_e_so_quando_ele_esta_aberto() {
+    let mut s = cena_ou_sai!();
+    assert!(
+        !s.close_view_menu(),
+        "sem menu aberto o `Escape` nao pode dizer que consumiu -- ele roubaria o cancelar de \
+         quem vem a seguir"
+    );
+    s.open_view_menu(0);
+    assert!(s.close_view_menu());
+    assert_eq!(s.view_menu_open(), None);
+}
+
+/// ⭐⭐ **COM UMA VISTA SÓ NÃO HÁ CHIP** — e é a diferença entre *inalcançável* e
+/// *invisível-mas-clicável*.
+///
+/// ⚠️ Com uma vista a pergunta *«qual é qual?»* não existe, então o rótulo não é
+/// pintado. Um alvo de clique que sobrevivesse ao rótulo seria exactamente o
+/// «controlo morto sob o dedo» que esta casa já caçou — só que ao contrário:
+/// vivo sob o dedo e invisível ao olho.
+#[test]
+fn com_uma_vista_so_nao_ha_chip() {
+    let mut s = cena_ou_sai!();
+    assert_eq!(s.vp_count(), 1);
+    s.note_view_labels(Vec::new());
+    assert_eq!(s.chip_at(10.0, 10.0), None);
+    assert_eq!(s.chip_at(W * 0.5, H * 0.5), None);
+}
+
+/// ⭐⭐⭐ **O DESPACHO PERGUNTA NA ORDEM CERTA: menu · costura · chip.**
+///
+/// ⛔⛔ **A precedência é do vizinho, e ele já a pagou:** o cabeçalho do quadrante
+/// de baixo-direita nasce encostado ao cruzamento das costuras, então o menu que
+/// ele abre cai **por cima da banda de agarrar o divisor** — metade das linhas
+/// dele ficaria inalcançável. *Uma precedência escrita por analogia («a costura
+/// ganha de tudo») deixa de valer quando nasce algo que é modal.*
+///
+/// ⚠️ E o **chip vem depois da costura**, porque ele vive **dentro** de um
+/// viewport e ela vive **entre** eles.
+#[test]
+fn o_despacho_pergunta_menu_costura_chip_nesta_ordem() {
+    let fonte = include_str!("sculpt3d_input_down.rs");
+    let onde = |agulha: &str| {
+        fonte
+            .find(agulha)
+            .unwrap_or_else(|| panic!("controlo positivo: `{agulha}` sumiu do despacho"))
+    };
+    let (menu, costura, chip, vp) = (
+        onde("scene.view_menu_open()"),
+        onde("scene.seam_grab("),
+        onde("scene.chip_at("),
+        onde("scene.vp_at("),
+    );
+    println!("ordem: menu {menu} < costura {costura} < chip {chip} < viewport {vp}");
+    assert!(
+        menu < costura,
+        "a costura e' perguntada antes do MENU -- o menu do quadrante de baixo-direita cai por \
+         cima da banda do divisor, e metade das linhas dele fica inalcancavel"
+    );
+    assert!(
+        costura < chip,
+        "o chip e' perguntado antes da COSTURA -- ele vive DENTRO de um viewport e ela vive ENTRE \
+         eles"
+    );
+    assert!(chip < vp, "o chip tem de ser perguntado antes do encaminhamento por viewport");
+}
+
+/// ⭐⭐ **O QUADRO PUBLICA O QUE O PINTOR MEDIU** — o chip e o rectângulo do menu.
+///
+/// ⛔ **Sem isto o botão é invisível ao ponteiro:** a largura do chip é a do
+/// TEXTO e só o pintor a mede, então descartar o retorno do `paint_view_label`
+/// deixa a lista de alvos vazia — o nome aparece na tela e o clique atravessa-o.
+/// *É a forma exacta do report, e nada além de um censo a apanha: o gate de
+/// registo mede ids, e aqui não há id nenhum.*
+#[test]
+fn o_quadro_publica_o_chip_e_o_rectangulo_que_o_pintor_mediu() {
+    let fonte = include_str!("render_loop/mod.rs");
+    for (chamada, porta) in [
+        ("paint_view_label(", "note_view_labels("),
+        ("paint_view_menu(", "note_view_menu_rect("),
+    ] {
+        let at = fonte
+            .find(chamada)
+            .unwrap_or_else(|| panic!("controlo positivo: `{chamada}` sumiu do quadro"));
+        // A publicação tem de vir depois da chamada, e perto dela.
+        let depois = &fonte[at..];
+        assert!(
+            depois
+                .find(porta)
+                .is_some_and(|d| d < 1500),
+            "o quadro chama `{chamada}` e nao publica o resultado por `{porta}` -- o alvo do \
+             clique fica vazio e o nome aparece na tela com o clique a atravessa'-lo"
+        );
+    }
 }

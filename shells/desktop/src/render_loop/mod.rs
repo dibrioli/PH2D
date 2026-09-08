@@ -12017,7 +12017,7 @@ impl crate::App {
             // ⚠️ **Sem barro na tela ele não é pintado**: o módulo está desarmado, e um gizmo de
             // navegação sobre uma cena 2D prometeria um gesto que não existe ali.
             #[cfg(feature = "sculpt3d")]
-            if let Some(scene) = sculpt3d.as_ref()
+            if let Some(scene) = sculpt3d.as_mut()
                 && scene.clay_on_screen()
             {
                 // ⭐⭐⭐ **O RÓTULO DE CADA VISTA** — só com a divisão aberta. Com uma vista só a
@@ -12025,17 +12025,28 @@ impl crate::App {
                 // peça. ⚠️ A chave sai da CÂMERA daquele quadrante, nunca do sítio dele: orbitar a
                 // vista de cima faz dela *User*, que é o que ela passou a ser.
                 let quadros = scene.vp_rects();
-                if quadros.len() > 1 {
-                    for (i, r) in quadros.iter().enumerate() {
-                        crate::field3d_gizmo_paint::paint_view_label(
-                            vector_scene,
-                            paint_ctx.text,
-                            *r,
-                            scene.vp_label_key(i),
-                            hero.theme,
-                        );
-                    }
-                }
+                // ⚠️ **O chip de cada rótulo é PUBLICADO por quem o pinta** — a largura dele é a do
+                // TEXTO, e só o pintor a mede. É ele o alvo do clique que abre o menu daquela
+                // vista; com **uma** vista não há rótulo e a lista fica vazia, o que faz o chip ser
+                // inalcançável em vez de invisível-mas-clicável.
+                let chips: Vec<_> = if quadros.len() > 1 {
+                    quadros
+                        .iter()
+                        .enumerate()
+                        .map(|(i, r)| {
+                            crate::field3d_gizmo_paint::paint_view_label(
+                                vector_scene,
+                                paint_ctx.text,
+                                *r,
+                                scene.vp_label_key(i),
+                                hero.theme,
+                            )
+                        })
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+                scene.note_view_labels(chips);
                 // ⭐⭐ **AS COSTURAS E A MOLDURA DO ACTIVO** — o MESMO pintor do módulo vizinho.
                 // Ele já é no-op com uma vista só.
                 crate::field3d_gizmo_paint::paint_split(
@@ -12080,6 +12091,25 @@ impl crate::App {
                         [area.x, area.y],
                         crate::field3d_navball::centre_in(area, safe),
                     );
+                }
+                // ⭐⭐⭐ **O MENU DA VISTA, POR CIMA DE TUDO** (report do Enio, 2026-09-08: *«ao
+                // clicar nos nomes das views não aparece a lista de view como no módulo de
+                // modelagem 3d»*) — ele é modal, e o clique seguinte é dele caia onde cair.
+                //
+                // ⚠️ **O rectângulo é PUBLICADO por quem o pinta**, como o chip: a largura dele é a
+                // da linha mais comprida, e só o pintor a mede. É o mesmo pintor do módulo vizinho.
+                if let Some(i) = scene.view_menu_open()
+                    && let (Some(chip), Some(canvas)) =
+                        (scene.chip_of(i), scene.canvas())
+                {
+                    let r = crate::field3d_gizmo_paint::paint_view_menu(
+                        vector_scene,
+                        paint_ctx.text,
+                        chip,
+                        canvas,
+                        hero.theme,
+                    );
+                    scene.note_view_menu_rect(r);
                 }
             }
             // ADR-0161 W4: o painel de modelagem abre sozinho na primeira vez que o

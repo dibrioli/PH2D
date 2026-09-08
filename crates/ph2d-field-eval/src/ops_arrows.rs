@@ -73,6 +73,15 @@ use crate::ops_plate2d::{paredes, quinas, rect_round_em};
 // compilação** lá. ⛔ Agrupar `round`+`chamfer` num [`Edge`] tiraria o argumento a mais e partiria a
 // forma da família — as outras treze chapas recebem os dois soltos, e uma família com duas
 // assinaturas é onde a próxima passa os parâmetros trocados.
+/// # ⚠️ Uma seta e uma seta DUPLA são a mesma forma (prosa vinda do [`ph2d_field::Primitive::Arrow`], W139)
+///
+/// Com `heads = 2` o contorno é dobrado por `|x|` e a segunda ponta sai de graça. Duas variantes
+/// dariam duas fórmulas para a mesma superfície — a lei do [`ph2d_field::Primitive::Cone`], e a
+/// segunda é a que envelhece. ⛔ **E ela não é «um `Mirror` sobre uma seta»**: o critério de entrada
+/// de uma paleta é o ALCANCE, e uma forma que exige montagem é uma forma que não está no menu.
+///
+/// ⚠️ `head` tem de ser **maior** que `shaft`, senão não há farpa e a peça é um retângulo com um
+/// bico — o documento recusa.
 #[allow(clippy::too_many_arguments)]
 pub fn sd_arrow(
     heads: u32,

@@ -242,7 +242,21 @@ use serde::{Deserialize, Serialize};
 /// documento já gravado — a peça fica igual, o que era colado à distância deixa de o ser. ⛔ Não é
 /// degrau de formato: os bytes lêem-se na mesma. *A escada versiona o que o ficheiro DIZ, nunca o
 /// que o avaliador FAZ com o que ele diz.*
-pub const FIELD_DOC_VERSION: u32 = 19;
+///
+/// # v20 — as DUAS ÚLTIMAS formas do catálogo (W139)
+///
+/// O [`Primitive`] ganhou [`Primitive::CrateredSphere`] e [`Primitive::Lens`], outra vez
+/// **acrescentadas no fim** ⇒ nenhum índice existente se move e um documento v19 continua a ler-se
+/// certo. O degrau sobe na mesma, pela terceira escada seguida.
+///
+/// ⚠️ **E este degrau tem uma história curta que vale a pena:** a wave anterior (W138) entregou as
+/// mesmas duas formas como **receitas** do catálogo — duas esferas e um verbo — e **não** precisou
+/// de degrau nenhum, precisamente por não acrescentar variante. O dono recusou-a (*«não quero
+/// receitas»*), e a lei que ele invocou já estava escrita no doc da
+/// [`ph2d_field_eval::ops_solids::sd_hollow_dome`]: *«compor é a resposta certa quando a composição
+/// é o que o artista pensa»*. ⇒ *o degrau que este número sobe é o preço de a peça ser UMA peça, e
+/// é um preço que se paga.*
+pub const FIELD_DOC_VERSION: u32 = 20;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

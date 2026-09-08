@@ -28,7 +28,8 @@
 //! ⚠️ **Isto NÃO substitui o [`super::clamp_round`]**: ele continua a ser a porta de quem mexe na
 //! *pose* (escalar uma peça também encolhe o filete), e essa não passa por aqui.
 
-use super::dims_write::{keep_below, write_dim};
+use super::dims_write::write_dim;
+use super::dims_write_coerce::keep_below;
 use super::{Span, dims};
 use crate::{FieldError, Primitive};
 
@@ -94,7 +95,7 @@ fn coagido(value: f32, span: Span) -> Option<f32> {
         // peça deixa de existir.
         Span::Walls(w) => (value.abs() >= w).then(|| value.signum() * keep_below(value.abs(), w)),
         // ⭐⭐ **O PISO** — a faixa da espécie B. Ver o cabeçalho.
-        Span::Floor(f) => (value <= f).then(|| super::dims_write::keep_above(value, f)),
+        Span::Floor(f) => (value <= f).then(|| super::dims_write_coerce::keep_above(value, f)),
         // ⭐ As duas pontas são do documento; coage-se para dentro das duas.
         Span::Range { min, max } => (value < min || value > max).then(|| value.clamp(min, max)),
         Span::Count { min, max } => {

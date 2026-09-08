@@ -23,7 +23,7 @@ número um.
 | de onde | faltam | quais |
 |---|---:|---|
 | catálogo **2D** | **0** | ~~Polygon(N)~~ · ~~Triangle~~ · ~~Bezier~~ · ~~Parabola~~ · ~~Circle Wave~~ |
-| catálogo **3D** | **3** | Plane · Death Star · Vesica Segment |
+| catálogo **3D** | **1** | Plane · ~~Death Star~~ · ~~Vesica Segment~~ (W139) |
 | **famílias** fora de catálogo | **0** | ~~Nó de toro~~ · ~~Rosca / knurling~~ |
 | **total** | **3** | |
 
@@ -121,8 +121,21 @@ custa `6,8×` uma esfera **por amostra** e `1,0×` **por quadro**.
 
 ### Lote 12 — **Death Star e Vesica Segment** ⭐
 
-As duas são **composição com a distância certa no encontro**: a nossa subtracção dá a forma e **não**
-dá a distância exacta na cratera. São formas pequenas e o mecanismo é o mesmo dos `plate_joint`.
+✅ **SHIPOU na W139** ([doc 06 §139](06_resultados_cena_e_gizmo.md)) como **duas primitivas** —
+*Cratered Sphere* e *Lens*. ⛔ **A tentativa anterior (W138) entregou-as como RECEITAS do catálogo e
+foi REVERTIDA por veredito do dono** (*«não quero receitas»*, 08/09): uma entrada da paleta devolve
+UMA peça, não três linhas na Hierarquia.
+
+⛔ **Duas premissas deste lote foram medidas e caíram:**
+
+| o plano dizia | o que a medição deu |
+|---|---|
+| *«a nossa subtracção não dá a distância exacta na cratera»* | verdade para a **cratera** (`0,5495` do que a distância é) e **falsa** para a **lente** (`0,9674`) — e o módulo nunca precisou da distância exacta, precisa de um MINORANTE (§124) |
+| *«o mecanismo é o mesmo dos `plate_joint`»* | é o mesmo do [`sd_cut_sphere`]: uma junta entre **duas esferas exactas**, sem redução ao meridiano — as duas são radialmente simétricas por construção |
+
+⚠️ **E a régua que decidiu não é a do campo:** a composição dá `‖∇f‖ = 1,000` nas duas, e a pergunta
+que manda é *«o artista pensa nisto como uma peça ou como duas?»* — que é a lei que o doc da
+[`sd_hollow_dome`] já escrevia desde a W103.
 
 ### ⏳ Fora de lote — **o Plane**
 

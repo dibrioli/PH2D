@@ -375,6 +375,34 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
             // deles fixo faria a aresta mudar de carácter ao redimensionar a forma.
             *chamfer *= factor;
         }
+        // ─────────────────────────── W139 ───────────────────────────
+        // ⚠️ **A cratera e a lente escalam TODOS os comprimentos** — a profundidade da mordida e o
+        // afastamento dos centros são medidas da peça como o raio, e uma delas fixa faria a forma
+        // mudar de carácter ao redimensionar.
+        Primitive::CrateredSphere {
+            radius,
+            crater,
+            depth,
+            round,
+            chamfer,
+        } => {
+            *radius *= factor;
+            *crater *= factor;
+            *depth *= factor;
+            *round *= factor;
+            *chamfer *= factor;
+        }
+        Primitive::Lens {
+            radius,
+            offset,
+            round,
+            chamfer,
+        } => {
+            *radius *= factor;
+            *offset *= factor;
+            *round *= factor;
+            *chamfer *= factor;
+        }
         Primitive::Vesica {
             radius,
             offset,

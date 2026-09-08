@@ -288,3 +288,79 @@ pub fn sd_solid_angle(radius: f64, angle: f64, round: f64, chamfer: f64) -> Tree
 #[cfg(test)]
 #[path = "ops_solids_tests.rs"]
 mod tests;
+
+// ─────────────────────────── W139 ───────────────────────────
+
+/// ⭐⭐⭐ **A ESFERA COM CRATERA** — a bola com uma tigela cavada no polo `+Z`.
+///
+/// # ⛔⛔ Por que ela é uma PRIMITIVA, e não duas esferas na Hierarquia
+///
+/// A W138 entregou-a como uma **receita** — o catálogo criava duas bolas e um verbo — e o dono
+/// recusou-a em uma frase: *«não quero receitas»*. ⚠️ **A lei já estava escrita no doc da
+/// [`sd_hollow_dome`], neste mesmo ficheiro:** *«não é a [`sd_cut_sphere`] menos outra esfera —
+/// seria, e daria **duas** entidades na Hierarquia para uma forma que é uma, com o artista a mexer
+/// em dois raios… compor é a resposta certa quando a composição é o que o artista pensa; aqui ele
+/// pensa «tigela»»*. Aqui ele pensa **«bola com uma cratera»**, que também é uma coisa só.
+///
+/// ⭐ *A régua não é «a composição dá o mesmo campo?» — dá, e foi medido (`‖∇f‖ = 1,000`). É «o
+/// artista pensa nisto como uma peça ou como duas?».*
+///
+/// # A parametrização é a que a MÃO conduz
+///
+/// ⚠️ **`depth` é o quanto a mordida entra**, medido da superfície da bola para dentro no eixo — não
+/// a posição do centro da esfera que morde, que é um número sem significado para quem desenha. O
+/// centro deriva-se: `c = radius − depth + crater`.
+///
+/// ⚠️ **E o tecto do `depth` é `2·radius`, que não é um palpite:** com `depth ≥ 2·radius` a esfera
+/// que morde **contém a bola inteira** (`|c| + radius ≤ crater` reduz-se exactamente a
+/// `2·radius ≤ depth`) e a peça fica **vazia**. É uma cerca de existência, e a faixa do documento
+/// põe-na como parede.
+///
+/// ⭐ **O `crater` é a LARGURA da tigela**: para a mesma profundidade, uma esfera maior cava um
+/// prato raso e larguíssimo, e uma pequena cava um poço.
+///
+/// ⚠️ **O filete ENCHE, não corta** — o aro de uma cratera é uma aresta **côncava**, e é a lei que a
+/// rosca (W135) pagou. É o que se quer: um prato de borda macia.
+#[must_use]
+pub fn sd_cratered_sphere(radius: f64, crater: f64, depth: f64, round: f64, chamfer: f64) -> Tree {
+    let bola = length3(&Tree::x(), &Tree::y(), &Tree::z()) - Tree::constant(radius);
+    let centro = radius - depth + crater;
+    let mordida = length3(
+        &Tree::x(),
+        &Tree::y(),
+        &(Tree::z() - Tree::constant(centro)),
+    ) - Tree::constant(crater);
+    // ⚠️ **A subtracção é a intersecção com o COMPLEMENTO** (De Morgan), que é como o documento a
+    // deriva desde sempre — `-d` é a distância exacta ao complemento de uma bola. ⛔ Uma segunda
+    // fórmula de subtracção aqui seria uma segunda resposta à mesma pergunta.
+    crate::ops_joint::intersection_joint(
+        &bola,
+        &(-mordida),
+        crate::ops_joint::Edge::square(round, chamfer),
+    )
+}
+
+/// ⭐⭐⭐ **A LENTE** — o sólido que duas esferas iguais partilham, com o eixo em `Z`.
+///
+/// ⚠️ **NÃO é a [`sd_vesica`](crate::ops_plates::sd_vesica)**, e a diferença é a razão de as duas
+/// existirem: aquela é uma **CHAPA** (a lente 2D puxada em Z, com `half_height`), esta é o **sólido
+/// de revolução**. Os dois primeiros números chamam-se o mesmo de propósito — `radius` e `offset`
+/// são a mesma geometria, e um artista que aprendeu uma sabe ler a outra.
+///
+/// ⚠️ **`offset < radius` é uma cerca de EXISTÊNCIA:** com os centros afastados de mais que um raio
+/// as duas esferas não se tocam e a peça é **vazia**. A meia-espessura é `radius − offset` e o aro
+/// fica a `√(radius² − offset²)` do eixo — é ele o ponto mais afastado da peça, e não o `radius`.
+///
+/// ⭐ **Com `offset = radius/2` isto é a *vesica piscis* canónica** (a meia-altura é `√3/2` do
+/// raio), e o aro é uma aresta viva de `120°` — as normais das duas esferas fazem `60°` entre si.
+#[must_use]
+pub fn sd_lens(radius: f64, offset: f64, round: f64, chamfer: f64) -> Tree {
+    let calota = |z: f64| {
+        length3(&Tree::x(), &Tree::y(), &(Tree::z() - Tree::constant(z))) - Tree::constant(radius)
+    };
+    crate::ops_joint::intersection_joint(
+        &calota(offset),
+        &calota(-offset),
+        crate::ops_joint::Edge::square(round, chamfer),
+    )
+}

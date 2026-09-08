@@ -137,6 +137,33 @@ pub(crate) fn formula(p: &Primitive) -> Tree {
             f64::from(round),
             f64::from(chamfer),
         ),
+        // ─────────────────────────── W139 ───────────────────────────
+        // ⭐⭐ **Os dois SÓLIDOS DE REVOLUÇÃO** — a bola com a tigela e a lente. Mecanismo, as duas
+        // cercas de existência e por que o filete de uma cratera CORTA: [`crate::ops_solids`].
+        Primitive::CrateredSphere {
+            radius,
+            crater,
+            depth,
+            round,
+            chamfer,
+        } => crate::ops_solids::sd_cratered_sphere(
+            f64::from(radius),
+            f64::from(crater),
+            f64::from(depth),
+            f64::from(round),
+            f64::from(chamfer),
+        ),
+        Primitive::Lens {
+            radius,
+            offset,
+            round,
+            chamfer,
+        } => crate::ops_solids::sd_lens(
+            f64::from(radius),
+            f64::from(offset),
+            f64::from(round),
+            f64::from(chamfer),
+        ),
         _ => unreachable!("o chamador só encaminha as formas por fórmula"),
     }
 }

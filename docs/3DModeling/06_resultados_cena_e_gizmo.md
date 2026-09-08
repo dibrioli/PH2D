@@ -13873,3 +13873,105 @@ o segundo lê `209` passos contra `57`.
 
 **Smoke:** *MODEL* > **A** > *Circle Wave*, com uma segunda forma longe dela e uma junta suave entre
 as duas — a onda deixa de a puxar.
+
+---
+
+## §139 — W138 SAI e W139 ENTRA: as duas últimas formas, agora como PEÇAS (08/09)
+
+### §139.0 — ⛔⛔ A RECUSA: *«não quero receitas»*
+
+A W138 entregou a *Death Star* e o *Vesica Segment* como **receitas** do catálogo — uma entrada
+criava duas esferas e um verbo, e a peça aparecia como **três linhas** na Hierarquia. A medição que
+a justificava estava certa e continua a valer:
+
+| peça | `‖∇f‖` | pior campo/verdade | passos de 1,0 | de 4,0 |
+|---|---:|---:|---:|---:|
+| esfera (controlo) | 1,000 | 1,0000 | 6 | 6 |
+| esfera com cratera composta | 1,000 | 0,5495 | 5 | 9 |
+| lente composta | 1,000 | 0,9674 | 10 | 8 |
+
+⛔ **E não era disso que a decisão tratava.** O dono recusou-a numa frase, e ⚠️ **a lei que ele
+invocou já estava escrita no módulo, no doc da [`sd_hollow_dome`]:** *«não é a `sd_cut_sphere` menos
+outra esfera — seria, e daria **duas** entidades na Hierarquia para uma forma que é uma, com o
+artista a mexer em dois raios para engrossar uma parede… **compor é a resposta certa quando a
+composição é o que o artista pensa**; aqui ele pensa "tigela"»*.
+
+⭐⭐⭐ *A régua não era «a composição dá o mesmo campo?» — dá, e foi medido. Era «o artista pensa
+nisto como uma peça ou como duas?», e essa pergunta tem dono.* A wave foi revertida por inteiro
+(`387c1f90e`) e ⛔ **o que não se reconstrói é a forma «catálogo que devolve uma árvore»**.
+
+### §139.1 — As duas formas, agora primitivas
+
+| forma | rótulo | números | mecanismo |
+|---|---|---|---|
+| bola com uma tigela cavada | **Cratered Sphere** | `radius` · `crater` · `depth` | `intersection_joint(bola, −mordida)` |
+| lente de revolução | **Lens** | `radius` · `offset` | `intersection_joint(calota, calota)` |
+
+⚠️ **`depth` é o quanto a mordida ENTRA**, medido da superfície para dentro — não a posição do
+centro da esfera que morde, que é um número sem significado para quem desenha. O centro deriva-se:
+`c = radius − depth + crater`.
+
+⚠️ **A `Lens` NÃO é a [`Primitive::Vesica`]**, que é a CHAPA (a mesma lente 2D puxada em Z). Os dois
+primeiros números chamam-se o mesmo de propósito; o rótulo é que os separa, **pela primeira
+palavra** — dois nomes começados em «Vesica» fariam a busca da paleta devolver os dois para a mesma
+intenção.
+
+### §139.2 — ⭐ As duas cercas são de EXISTÊNCIA, e a conta é exacta
+
+⚠️ **`depth < 2·radius`**: a esfera que morde contém a bola inteira quando `|c| + radius ≤ crater`,
+que se reduz **exactamente** a `2·radius ≤ depth` — acima disso a peça é **vazia**.
+⚠️ **`offset < radius`**: com os centros a mais de um raio as duas esferas não se tocam.
+
+⇒ *não são cercas de gosto: um botão do catálogo que às vezes não cria nada é a affordance que
+mente.* As duas são `Span::Wall` no painel (o slider pára ali) **e** recusa do documento.
+
+### §139.3 — ⛔⛔ E uma afirmação minha nasceu ao contrário: o aro de uma cratera é um LÁBIO
+
+A primeira redacção do gate do filete dizia *«ele ENCHE»*, por **analogia** com a lei que a rosca
+(W135) pagou (*«um chanfro numa quina côncava não corta — ele enche»*), a partir da palavra:
+*«uma cratera é um vinco»*.
+
+⛔ **Medido: o ganho de matéria é `0,00000` em toda a secção** — o filete nunca acrescenta nada.
+⭐ **A geometria diz porquê, e a conta cabe numa linha:** no aro do representante as duas normais
+exteriores da matéria fazem **`105°`** entre si ⇒ o diedro da peça ali é **`75°`**, que é
+**convexo**. O que a bola e a parede da tigela formam não é um vale — é um **lábio afiado**, e o
+filete embota-o, que é o que um artista quer de um prato.
+
+⚠️ *Uma lei paga noutra forma aplica-se pelo MECANISMO, nunca pelo nome* — «cratera» soa a
+concavidade e o aro dela é convexo. O gate ficou com as **duas** metades: ele corta, e **nunca**
+enche.
+
+### §139.4 — ⚠️ E um CONTROLO apontava uma coordenada em vez de fazer a pergunta
+
+O controlo da cerca (*«logo abaixo dela ainda sobra peça»*) media `(0, 0, −0,40)` por simetria com o
+polo oposto — e com `depth = 0,88` a mordida chega a `z = −0,43`, logo o ponto escolhido está
+**dentro dela**. *Um controlo que aponta uma coordenada afirma onde a peça está; a pergunta era só
+se ela existe.* Hoje ele **varre**.
+
+### §139.5 — Os gates, e o que o censo disse sozinho
+
+| gate | o que mede |
+|---|---|
+| `the_crater_floor_sits_where_the_depth_says` | o polo oposto sólido · o polo mordido em ar · o fundo a `radius − depth` |
+| `the_lens_is_wider_than_it_is_thick` | `radius − offset` no eixo contra `√(r²−off²)` no equador |
+| `raising_the_offset_thins_the_lens` | o CURSO do controlo, por bissecção no produto |
+| `the_crater_rim_is_a_lip_and_the_fillet_blunts_it` | o filete corta — e **nunca** enche |
+| `the_document_refuses_the_two_shapes_that_would_be_empty` | as duas cercas, com o controlo por varredura |
+
+⭐ **E o censo das 62 primitivas passou sem uma linha de afinação** — a marcha (`passo × ‖∇f‖`), o
+raio de contenção, o maior filete que o documento aceita, toda linha do painel escrita, e o campo
+distante da W137. *As cercas que se escreveram à mão foram verificadas por réguas que já existiam.*
+
+Três dos cinco gates reprovam com a mordida encostada por fora e a lente sobreposta.
+
+### §139.6 — O que a wave custou em arrumação
+
+`FIELD_DOC_VERSION` **19 → 20** (duas variantes no fim ⇒ um documento v19 continua a ler-se certo, e
+o degrau sobe na mesma). O `primitive.rs` estava em `697/700` e a prosa de mecanismo de **três**
+variantes (cunha · seta · tubo) mudou-se para o módulo do motor que as implementa — ⛔ **reposta lá,
+não apagada**. E o `dims_write.rs` passou a `715` e partiu-se por responsabilidade: as **leis de
+coerção** (encostar a uma parede, a um piso, achar as arestas perguntando à tabela) saíram para o
+[`dims_write_coerce.rs`](../../crates/ph2d-field/src/dims_write_coerce.rs).
+
+**Smoke:** `PH2D_FIELD_SMOKE=31` (três craterias e três lentes, cada trio a percorrer o controlo que
+a define) · *MODEL* > **A** > *Cratered Sphere* / *Lens*.

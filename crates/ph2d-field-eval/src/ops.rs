@@ -327,6 +327,14 @@ pub fn sd_prism(
 /// ⚠️ **`max` da caixa com o plano**: exacto na superfície e no interior, e um subestimador junto às
 /// quinas onde a face recta encontra a inclinada — a mesma troca do [`sd_cone`], com o mesmo
 /// `‖∇f‖ ≤ 1` por definição.
+/// # ⚠️ Por que a cunha NÃO é composição (prosa vinda do [`ph2d_field::Primitive::Wedge`], W139)
+///
+/// O motivo é a **ausência de um PLANO**: cortar uma caixa com outra caixa gigante rodada dá a forma
+/// certa e deixa na peça um objecto que não é a peça, com um tamanho que não quer dizer nada. *Uma
+/// equivalência que exige uma terceira entidade não é uma equivalência.*
+///
+/// ⭐ O plano do corte passa pela **origem** — ele liga `(−hx, +hz)` a `(+hx, −hz)`, e o ponto médio
+/// desses dois é o centro do nó.
 pub fn sd_wedge(half: [f64; 3], round: f64, chamfer: f64) -> Tree {
     let (hx, _hy, hz) = (half[0], half[1], half[2]);
     let d = (hx * hx + hz * hz).sqrt();

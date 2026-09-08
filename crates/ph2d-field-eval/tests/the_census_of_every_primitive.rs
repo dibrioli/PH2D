@@ -156,6 +156,22 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             round: 0.05,
             chamfer: 0.0,
         },
+        // ⚠️ **A cratera tem de MORDER de verdade** — com `depth` pequeno isto é uma esfera, e
+        // *uma forma nova nasce no sítio em que ela é ELA* (doc 06 §128).
+        PrimitiveKind::CrateredSphere => Primitive::CrateredSphere {
+            radius: 0.45,
+            crater: 0.30,
+            depth: 0.28,
+            round: 0.05,
+            chamfer: 0.0,
+        },
+        // ⚠️ **`offset = radius/2` é a vesica canónica** — mais perto e é quase uma esfera.
+        PrimitiveKind::Lens => Primitive::Lens {
+            radius: 0.55,
+            offset: 0.28,
+            round: 0.05,
+            chamfer: 0.0,
+        },
         PrimitiveKind::HollowDome => Primitive::HollowDome {
             radius: 0.45,
             cut: 0.1,

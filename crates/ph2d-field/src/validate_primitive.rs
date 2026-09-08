@@ -328,6 +328,47 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             }
             round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
+        // ─────────────────────────── W139 ───────────────────────────
+        // ⚠️ **`depth >= 2·radius` deixa a peça VAZIA**, e a conta é exacta: a esfera que morde tem
+        // centro em `c = radius − depth + crater` e contém a bola inteira quando
+        // `|c| + radius <= crater`, que se reduz a `2·radius <= depth`. É uma cerca de EXISTÊNCIA,
+        // não de gosto — e sem ela o catálogo entrega um botão que às vezes não cria nada.
+        Primitive::CrateredSphere {
+            radius,
+            crater,
+            depth,
+            round,
+            chamfer,
+        } => {
+            positive(radius, "radius")?;
+            positive(crater, "crater")?;
+            positive(depth, "depth")?;
+            if depth >= radius * 2.0 {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "depth",
+                });
+            }
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
+        }
+        // ⚠️ **`offset >= radius` e as duas esferas não se tocam** — a peça fica vazia. A mesma
+        // cerca da chapa [`Primitive::Vesica`], pela mesma razão.
+        Primitive::Lens {
+            radius,
+            offset,
+            round,
+            chamfer,
+        } => {
+            positive(radius, "radius")?;
+            positive(offset, "offset")?;
+            if offset >= radius {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "offset",
+                });
+            }
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
+        }
         Primitive::HollowDome {
             radius,
             cut,

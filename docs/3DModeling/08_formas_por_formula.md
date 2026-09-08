@@ -473,10 +473,17 @@ a ordena é o dono do produto.
 
 | de onde | ainda faltam | quais |
 |---|---:|---|
-| §7.2 — catálogo **3D** | **3** | Plane · Death Star · Vesica Segment |
+| §7.2 — catálogo **3D** | **1** | Plane · ~~Death Star~~ · ~~Vesica Segment~~ (W139) |
 | §7.3 — catálogo **2D** | **0** | ~~Bezier~~ · ~~Parabola~~ · ~~Circle Wave~~ |
 | §7.4 — **famílias** fora de catálogo | **0** | ~~Rosca~~ |
-| **total** | **3** | |
+| **total** | **1** | |
+
+⚠️ **Actualizado em 08/09 (W139 — [§139](06_resultados_cena_e_gizmo.md)):** a *Death Star* e o
+*Vesica Segment* shiparam como **primitivas** — *Cratered Sphere* e *Lens* —, com números próprios,
+filete próprio e uma linha só na Hierarquia. ⛔ **A tentativa anterior (W138) entregou-as como
+RECEITAS do catálogo e foi revertida por veredito do dono** (*«não quero receitas»*): o que não se
+reconstrói é a forma «uma entrada do catálogo devolve uma árvore». ⇒ **o que resta da fila é o
+Plane, que não é uma forma: é a bola de recorte a admitir uma peça infinita.**
 
 ⚠️ **Actualizado em 07/09 (2.ª vez)**: saiu da conta o **Lote 11 inteiro** (W136 — [§137](06_resultados_cena_e_gizmo.md)), e com **duas** formas construídas em vez de três: a **Parábola** é a Bezier com os três pontos no sítio certo, medido a `5,5e-17`. ⇒ a §7.3 fecha, e o que resta da fila são as **três** do catálogo 3D.
 

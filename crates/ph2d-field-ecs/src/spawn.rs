@@ -47,6 +47,8 @@ pub fn shape_name(shape: &NodeShape) -> &'static str {
             Primitive::Octahedron { .. } => "Octahedron",
             Primitive::RoundCone { .. } => "Round Cone",
             Primitive::CutSphere { .. } => "Cut Sphere",
+            Primitive::CrateredSphere { .. } => "Cratered Sphere",
+            Primitive::Lens { .. } => "Lens",
             Primitive::HollowDome { .. } => "Hollow Dome",
             Primitive::Link { .. } => "Chain Link",
             Primitive::SolidAngle { .. } => "Solid Angle",

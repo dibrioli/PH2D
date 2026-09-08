@@ -117,6 +117,14 @@ pub fn bounding_half_extents(p: &Primitive) -> [f32; 3] {
         // ⭐ **A única forma cuja caixa é EXACTA por eixo** — e é por isso que ela existe.
         Primitive::Ellipsoid { radii } => *radii,
         Primitive::Octahedron { radius, .. } | Primitive::CutSphere { radius, .. } => [*radius; 3],
+        // ⚠️ **A cratera só TIRA** — a caixa da peça é a da bola inteira.
+        Primitive::CrateredSphere { radius, .. } => [*radius; 3],
+        // ⚠️ **A lente é mais larga que alta**: o aro fica a `√(r² − off²)` do eixo e o polo a
+        // `r − off`. ⛔ Usar o `radius` daria uma caixa que a peça nunca enche.
+        Primitive::Lens { radius, offset, .. } => {
+            let w = (radius * radius - offset * offset).max(0.0).sqrt();
+            [w, w, radius - offset]
+        }
         Primitive::SolidAngle { radius, .. } => [*radius; 3],
         Primitive::HollowDome {
             radius, thickness, ..

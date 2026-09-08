@@ -407,3 +407,65 @@ pub(crate) fn cena_30() -> Result<FieldDoc, ph2d_field::FieldError> {
         NodeId(4),
     )
 }
+
+/// ⭐⭐⭐ **A cena `=31`: AS DUAS ÚLTIMAS FORMAS DO CATÁLOGO** (W139) — e cada uma mostrada pelo
+/// controlo que a define.
+///
+/// ⚠️ **Três cópias de cada, e não uma.** A cratera é o `depth` (raso · fundo · quase a atravessar)
+/// e a lente é o `offset` (gorda · canónica · fina), que são os únicos números que as separam de
+/// uma esfera. *Um gate no representante deixa o CURSO do controlo por medir, e uma cena com uma
+/// cópia só faz o mesmo ao olho.*
+pub(crate) fn cena_31() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 31 — AS DUAS ULTIMAS: em cima, a ESFERA COM CRATERA com a mordida a \
+         0,25 / 0,50 / 0,80 do raio; em baixo, a LENTE com os centros a 0,25 / 0,50 / 0,80 do raio \
+         (mais afastados = mais fina). Cada uma e' UMA peca na Hierarquia."
+    );
+    let r = 0.22_f32;
+    let em = |p: Primitive, x: f32, y: f32| {
+        leaf(
+            p,
+            Xform {
+                translation: [x, y, 0.0],
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    let cratera = |k: f32, x: f32| {
+        em(
+            Primitive::CrateredSphere {
+                radius: r,
+                crater: r * 0.75,
+                depth: r * k,
+                round: r * 0.04,
+                chamfer: 0.0,
+            },
+            x,
+            0.32,
+        )
+    };
+    let lente = |k: f32, x: f32| {
+        em(
+            Primitive::Lens {
+                radius: r,
+                offset: r * k,
+                round: r * 0.04,
+                chamfer: 0.0,
+            },
+            x,
+            -0.32,
+        )
+    };
+    FieldDoc::new(
+        vec![
+            cratera(0.25, -0.62),
+            cratera(0.50, 0.0),
+            cratera(0.80, 0.62),
+            lente(0.25, -0.62),
+            lente(0.50, 0.0),
+            lente(0.80, 0.62),
+            combine(Op::Union(Blend::Sharp), (0..6).map(NodeId).collect()),
+        ],
+        NodeId(6),
+    )
+}

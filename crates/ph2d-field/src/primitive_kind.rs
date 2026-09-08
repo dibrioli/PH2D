@@ -43,6 +43,8 @@ pub enum PrimitiveKind {
     Octahedron,
     RoundCone,
     CutSphere,
+    CrateredSphere,
+    Lens,
     HollowDome,
     Link,
     SolidAngle,
@@ -101,7 +103,7 @@ pub enum PrimitiveKind {
 
 impl PrimitiveKind {
     /// **A fonte da contagem** — quem quiser saber *«que formas o motor sabe fazer?»* pergunta aqui.
-    pub const ALL: [PrimitiveKind; 60] = [
+    pub const ALL: [PrimitiveKind; 62] = [
         PrimitiveKind::Box,
         PrimitiveKind::Sphere,
         PrimitiveKind::Cylinder,
@@ -119,6 +121,8 @@ impl PrimitiveKind {
         PrimitiveKind::Octahedron,
         PrimitiveKind::RoundCone,
         PrimitiveKind::CutSphere,
+        PrimitiveKind::CrateredSphere,
+        PrimitiveKind::Lens,
         PrimitiveKind::HollowDome,
         PrimitiveKind::Link,
         PrimitiveKind::SolidAngle,
@@ -185,6 +189,8 @@ impl PrimitiveKind {
             PrimitiveKind::Octahedron => "octahedron",
             PrimitiveKind::RoundCone => "round_cone",
             PrimitiveKind::CutSphere => "cut_sphere",
+            PrimitiveKind::CrateredSphere => "cratered_sphere",
+            PrimitiveKind::Lens => "lens",
             PrimitiveKind::HollowDome => "hollow_dome",
             PrimitiveKind::Link => "link",
             PrimitiveKind::SolidAngle => "solid_angle",

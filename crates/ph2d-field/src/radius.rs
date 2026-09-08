@@ -29,6 +29,8 @@ impl FieldDoc {
                 | Primitive::BoxFrame { round, .. }
                 | Primitive::Octahedron { round, .. }
                 | Primitive::CutSphere { round, .. }
+                | Primitive::CrateredSphere { round, .. }
+                | Primitive::Lens { round, .. }
                 | Primitive::HollowDome { round, .. }
                 | Primitive::SolidAngle { round, .. }
                 | Primitive::Gear { round, .. }
@@ -187,6 +189,8 @@ impl NodeShape {
                 | Primitive::BoxFrame { round, .. }
                 | Primitive::Octahedron { round, .. }
                 | Primitive::CutSphere { round, .. }
+                | Primitive::CrateredSphere { round, .. }
+                | Primitive::Lens { round, .. }
                 | Primitive::HollowDome { round, .. }
                 | Primitive::SolidAngle { round, .. }
                 | Primitive::Gear { round, .. }
@@ -309,6 +313,8 @@ pub fn set_shape_radius(shape: &mut NodeShape, node: u32, radius: f32) -> Result
                 | Primitive::BoxFrame { round, .. }
                 | Primitive::Octahedron { round, .. }
                 | Primitive::CutSphere { round, .. }
+                | Primitive::CrateredSphere { round, .. }
+                | Primitive::Lens { round, .. }
                 | Primitive::HollowDome { round, .. }
                 | Primitive::SolidAngle { round, .. }
                 | Primitive::Gear { round, .. }
@@ -515,6 +521,8 @@ pub fn fillet_inflates(p: &Primitive) -> bool {
         | Primitive::Star { .. }
         | Primitive::Octahedron { .. }
         | Primitive::CutSphere { .. }
+        | Primitive::CrateredSphere { .. }
+        | Primitive::Lens { .. }
         | Primitive::HollowDome { .. }
         | Primitive::SolidAngle { .. }
         | Primitive::Gear { .. }

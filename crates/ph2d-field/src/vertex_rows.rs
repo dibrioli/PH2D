@@ -100,6 +100,8 @@ pub fn vertex_rows(p: &Primitive) -> Option<VertexRows> {
         | Primitive::Pie { .. }
         | Primitive::Trapezoid { .. }
         | Primitive::Vesica { .. }
+        | Primitive::CrateredSphere { .. }
+        | Primitive::Lens { .. }
         | Primitive::Arrow { .. }
         | Primitive::Chevron { .. }
         | Primitive::BentArrow { .. }

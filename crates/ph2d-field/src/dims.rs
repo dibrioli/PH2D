@@ -255,6 +255,9 @@ pub struct Dim {
 /// ⭐ A metade de **escrita** — ver [`dims_write`].
 #[path = "dims_write.rs"]
 mod dims_write;
+/// ⭐ **As leis de COERÇÃO** — encostar a uma parede, a um piso, e achar as arestas na lista.
+#[path = "dims_write_coerce.rs"]
+mod dims_write_coerce;
 
 /// ⭐ E os DOIS RECUOS de uma aresta, do lado da escrita — ver [`dims_write_edge`].
 #[path = "dims_write_edge.rs"]

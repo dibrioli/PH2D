@@ -102,6 +102,14 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
             half_height,
         } => bottom.max(*top).min(*half_height + bottom.max(*top)),
         Primitive::CutSphere { radius, cut, .. } => (radius - cut).min(*radius),
+        // ⚠️ **A MENOR medida que define a forma** — a mordida na cratera, a espessura na lente.
+        Primitive::CrateredSphere {
+            radius,
+            crater,
+            depth,
+            ..
+        } => depth.min(*crater).min(*radius),
+        Primitive::Lens { radius, offset, .. } => (radius - offset).max(radius * 0.1),
         Primitive::HollowDome { thickness, .. } => *thickness,
         Primitive::Link { minor, .. } => *minor,
         Primitive::SolidAngle { radius, angle, .. } => radius * angle.sin().abs().max(0.05),

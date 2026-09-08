@@ -11,7 +11,8 @@
 //! ⚠️ O `pub use` no [`super`] mantém `ph2d_field::set_dim` e `ph2d_field::scale_primitive` — cortar
 //! um arquivo não pode custar uma reescrita em cada sítio que o chamava.
 
-use super::dims_write_edge::{ROUND_MARGIN, set_chamfer, set_round};
+use super::dims_write_coerce::{chamfer_index, keep_above, keep_below, round_index};
+use super::dims_write_edge::{set_chamfer, set_round};
 use super::{Span, dims};
 use crate::{FieldError, Primitive};
 
@@ -187,6 +188,19 @@ pub(super) fn write_dim(
         (Primitive::Trapezoid { half_width, .. }, 2) => *half_width = half,
         (Primitive::Trapezoid { half_height, .. }, 3) => *half_height = half,
         (Primitive::Vesica { radius, offset, .. }, 1) => *offset = keep_below(value, *radius),
+        // ─────────────────────────── W139 ───────────────────────────
+        // ⚠️ **A ORDEM é o ÍNDICE** — ela tem de bater com a do `dims_table.rs`, linha a linha.
+        (Primitive::CrateredSphere { radius, .. }, 0) | (Primitive::Lens { radius, .. }, 0) => {
+            *radius = value;
+        }
+        (Primitive::CrateredSphere { crater, .. }, 1) => *crater = value,
+        // ⚠️ **A parede é `2·radius`, e ela COAGE** — acima dela a esfera que morde contém a bola e
+        // a peça fica vazia. É a lei do vale da estrela: o slider pára ali, e um valor de fora só
+        // chega por um arrasto do OUTRO controlo.
+        (Primitive::CrateredSphere { radius, depth, .. }, 2) => {
+            *depth = keep_below(value, *radius * 2.0);
+        }
+        (Primitive::Lens { radius, offset, .. }, 1) => *offset = keep_below(value, *radius),
         // ─────────────────────────── W119 ───────────────────────────
         // ⚠️ **A ORDEM tem de bater com a do `dims_table.rs`** — o índice É a linha.
         (Primitive::Arrow { heads, .. }, 0) => {
@@ -619,6 +633,8 @@ pub(super) fn write_dim(
             | Primitive::BoxFrame { .. }
             | Primitive::Octahedron { .. }
             | Primitive::CutSphere { .. }
+            | Primitive::CrateredSphere { .. }
+            | Primitive::Lens { .. }
             | Primitive::HollowDome { .. }
             | Primitive::SolidAngle { .. }
             | Primitive::Gear { .. }
@@ -672,29 +688,4 @@ pub(super) fn write_dim(
         _ => return Err(bad("dim")),
     }
     Ok(())
-}
-
-/// `value`, mantido **estritamente abaixo** de `ceiling` — a folga é uma fração do próprio tecto,
-/// pela razão do [`ROUND_MARGIN`] (num alvo de `0,01` um épsilon fixo seria o tecto inteiro).
-pub(super) fn keep_below(value: f32, ceiling: f32) -> f32 {
-    value.min(ceiling * (1.0 - ROUND_MARGIN))
-}
-
-/// `value`, mantido **estritamente acima** de `floor` — a irmã do [`keep_below`].
-pub(super) fn keep_above(value: f32, floor: f32) -> f32 {
-    value.max(floor / (1.0 - ROUND_MARGIN))
-}
-
-/// Onde fica o filete na lista desta forma, se ela tiver um.
-fn round_index(p: &Primitive) -> Option<usize> {
-    dims(p).iter().position(|d| d.key == "field.dim.round")
-}
-
-/// Onde fica o **chanfro**, se ela tiver um.
-///
-/// ⭐ **A pergunta é feita à [`dims`], e não a uma lista escrita à mão** — é isso que faz uma forma
-/// nova receber o slider sem uma linha aqui, e é a razão de este arquivo não ter uma segunda
-/// enumeração das 21 primitivas com aresta.
-fn chamfer_index(p: &Primitive) -> Option<usize> {
-    dims(p).iter().position(|d| d.key == "field.dim.chamfer")
 }

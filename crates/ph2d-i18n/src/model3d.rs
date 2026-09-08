@@ -134,6 +134,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.add.bezier" => "Bezier Curve",
         "panel.model3d.add.parabola" => "Parabola",
         "panel.model3d.add.circle_wave" => "Circle Wave",
+        // ⭐⭐ **AS DUAS ÚLTIMAS FORMAS DO CATÁLOGO** (W139).
+        //
+        // ⚠️ **"Cratered Sphere" e não o nome que a literatura de SDF lhe dá.** A fórmula publicada
+        // chama-se `sdDeathStar`, e esse nome é uma marca registada de outra gente — um rótulo de
+        // produto não é uma citação bibliográfica. O que fica diz o que a peça É, que é também o
+        // que o §0.8 pede: quem nunca a viu sabe o que vai receber.
+        "panel.model3d.add.cratered_sphere" => "Cratered Sphere",
+        // ⚠️ **"Lens" e não "Vesica Segment"**: a `add.vesica` já existe e é uma CHAPA (a lente 2D
+        // puxada em Z), e esta é o sólido de revolução. Dois rótulos que começassem pela mesma
+        // palavra fariam a busca da paleta devolver os dois para a mesma intenção — e é justamente
+        // a forma que o artista NÃO quer que ele escolheria primeiro.
+        "panel.model3d.add.lens" => "Lens",
         "panel.model3d.add.bolt" => "Lightning Bolt",
         "panel.model3d.add.shield" => "Shield",
         "panel.model3d.add.tag" => "Tag",
@@ -285,6 +297,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.dim.width" => "Width",
         "field.dim.height" => "Height",
         "field.dim.depth" => "Depth",
+        // ⭐ **A LARGURA da tigela** (W139) — para a mesma profundidade, uma esfera maior cava um
+        // prato raso e larguíssimo e uma pequena cava um poço. ⚠️ "Crater" e não "Bite radius": o
+        // nome diz a COISA que o artista vê, não o número que a fórmula usa.
+        "field.dim.crater" => "Crater",
         "field.dim.radius" => "Radius",
         "field.dim.thickness" => "Thickness",
         // ⭐ AS DIMENSÕES DA W101. ⚠️ "Bottom"/"Top" e não "R1"/"R2": o artista vê a peça e sabe

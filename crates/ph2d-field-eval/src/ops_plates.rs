@@ -486,6 +486,14 @@ pub fn sd_rhombus(
 ///
 /// ⚠️ **O furo NUNCA toca o bordo** (são concêntricos), então o par `(fora, dentro)` não é uma
 /// aresta — declará-lo poria um plano de corte onde não há quina.
+/// # ⚠️ A cerca do furo (prosa vinda do [`ph2d_field::Primitive::Tube`], W139)
+///
+/// `angle` é a **meia-abertura** do sector, e em `π` (o nascimento do tubo e da anilha) o corte
+/// **não existe** — o anel fecha. ⚠️ **`inner > 0` é obrigatório, e a cerca é o que impede a segunda
+/// fórmula**: sem furo isto seria a [`ph2d_field::Primitive::Pie`], e duas primitivas para a mesma
+/// superfície é o defeito que o cone evita desde a W101. *Um tubo tem furo por definição; sem furo é
+/// uma fatia.* ⚠️ E **três portas da paleta, uma primitiva** — tubo, anilha e arco de anel diferem
+/// só nos números com que nascem.
 pub fn sd_tube(
     outer: f64,
     inner: f64,

@@ -337,6 +337,29 @@ pub(crate) fn a_trapezoid(r: f32) -> Primitive {
     }
 }
 
+// ─────────────────────────── W139 ───────────────────────────
+// ⭐ **As duas nascem no sítio em que ELAS SÃO ELAS** (doc 06 §128): uma cratera rasa é uma esfera e
+// uma lente com os centros juntos também. ⚠️ O `round` de nascimento cabe no tecto das duas — o da
+// cratera é `min(depth, crater)/2` e o da lente `(radius − offset)/2`.
+pub(crate) fn a_cratered_sphere(r: f32) -> Primitive {
+    Primitive::CrateredSphere {
+        radius: r,
+        crater: r * 0.75,
+        depth: r * 0.55,
+        round: round_of(r) * 0.5,
+        chamfer: 0.0,
+    }
+}
+
+pub(crate) fn a_lens(r: f32) -> Primitive {
+    Primitive::Lens {
+        radius: r,
+        offset: r * 0.5,
+        round: round_of(r) * 0.5,
+        chamfer: 0.0,
+    }
+}
+
 pub(crate) fn a_vesica(r: f32) -> Primitive {
     Primitive::Vesica {
         radius: r,

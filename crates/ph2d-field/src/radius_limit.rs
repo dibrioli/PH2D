@@ -104,6 +104,14 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
         Primitive::CutSphere { radius, cut, .. } => {
             Some((radius - cut).min((radius * radius - cut * cut).max(0.0).sqrt()))
         }
+        // ─────────────────────────── W139 ───────────────────────────
+        // ⚠️ **O aro da cratera é uma aresta CÔNCAVA, e ali o filete ENCHE** (a lei da rosca, W135):
+        // o que ele come não é parede, é a **tigela**. ⇒ o tecto é a metade da mordida — acima disso
+        // o filete tapa o prato e o controlo passa a não mostrar nada.
+        Primitive::CrateredSphere { crater, depth, .. } => Some(depth.min(*crater) * 0.5),
+        // ⚠️ **A MEIA-ESPESSURA da lente** (`radius − offset`), não o raio: ela é fina de propósito,
+        // e é a espessura dela que o filete come — a mesma lei da chapa [`Primitive::Vesica`].
+        Primitive::Lens { radius, offset, .. } => Some((radius - offset).max(0.0) * 0.5),
         // ⚠️ **A PAREDE, não a esfera**: a casca tem `thickness` de espessura, e um filete acima de
         // metade dela atravessa-a de lado a lado.
         Primitive::HollowDome { thickness, .. } => Some(*thickness * 0.5),

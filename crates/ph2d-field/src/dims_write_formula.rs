@@ -11,7 +11,7 @@
 //! ⚠️ **A ordem dos índices É a identidade da linha** (o painel manda o ÍNDICE), e a tabela que a
 //! fixa é a [`super::dims_table_flow::dims_exact`].
 
-use super::dims_write::keep_below;
+use super::dims_write_coerce::keep_below;
 use crate::{FieldError, Primitive};
 
 /// As arms de escrita das três — ver [`super::set_dim`], que é a porta.

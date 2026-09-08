@@ -103,14 +103,7 @@ pub enum Primitive {
         chamfer: f32,
     },
     /// ⭐⭐ **Cunha: uma caixa cortada por um plano inclinado** — cheia em `−x`, a zero em `+x`.
-    ///
-    /// ⚠️ **Não é composição, e o motivo é a ausência de um PLANO**: cortar uma caixa com outra
-    /// caixa gigante rodada dá a forma certa e deixa na peça um objecto que não é a peça, com um
-    /// tamanho que não quer dizer nada. *Uma equivalência que exige uma terceira entidade não é uma
-    /// equivalência.*
-    ///
-    /// ⭐ O plano do corte passa pela **origem** — ele liga `(−hx, +hz)` a `(+hx, −hz)`, e o ponto
-    /// médio desses dois é o centro do nó.
+    /// Mecanismo e por que ela não é composição: [`ph2d_field_eval::ops::sd_wedge`].
     Wedge {
         half: [f32; 3],
         round: f32,
@@ -292,17 +285,8 @@ pub enum Primitive {
         round: f32,
         chamfer: f32,
     },
-    /// ⭐⭐ **SETA no eixo +X, com UMA ponta ou DUAS** (W119) — a haste de meia-espessura `shaft`
-    /// unida a uma ponta de meia-largura `head` e comprimento `head_length`.
-    ///
-    /// ⚠️ **Uma seta e uma seta dupla são a MESMA forma**, e por isso são a mesma primitiva: com
-    /// `heads = 2` o contorno é dobrado por `|x|` e a segunda ponta sai de graça. Duas variantes
-    /// dariam duas fórmulas para a mesma superfície — a lei do [`Primitive::Cone`], e a segunda é a
-    /// que envelhece. ⛔ **E ela não é «um `Mirror` sobre uma seta»**: o critério de entrada de uma
-    /// paleta é o ALCANCE, e uma forma que exige montagem é uma forma que não está no menu.
-    ///
-    /// ⚠️ `head` tem de ser **maior** que `shaft`, senão não há farpa e a peça é um retângulo com um
-    /// bico — o documento recusa.
+    /// ⭐⭐ **SETA no eixo +X, com UMA ponta ou DUAS** (W119) — a haste `shaft` com uma ponta de
+    /// meia-largura `head`. Por que as duas são a MESMA primitiva: [`ph2d_field_eval::ops_arrows::sd_arrow`].
     Arrow {
         heads: u32,
         half_length: f32,
@@ -353,16 +337,8 @@ pub enum Primitive {
         round: f32,
         chamfer: f32,
     },
-    /// ⭐⭐ **TUBO / anel — a coroa circular puxada em Z, com SECTOR opcional** (W119).
-    ///
-    /// `outer` e `inner` são os dois raios; `angle` é a **meia-abertura** do sector, e em `π` (o
-    /// nascimento do tubo e da anilha) o corte **não existe** — o anel fecha.
-    ///
-    /// ⚠️ **`inner > 0` é obrigatório, e a cerca é o que impede a segunda fórmula**: sem furo isto
-    /// seria a [`Primitive::Pie`], e duas primitivas para a mesma superfície é o defeito que a
-    /// [`Primitive::Cone`] evita desde a W101. *Um tubo tem furo por definição; sem furo é uma
-    /// fatia.* ⚠️ E **três portas da paleta, uma primitiva** — tubo, anilha e arco de anel diferem
-    /// só nos números com que nascem.
+    /// ⭐⭐ **TUBO / anel — a coroa circular puxada em Z, com SECTOR opcional** (W119). Os dois
+    /// raios, a meia-abertura e a cerca do furo: [`ph2d_field_eval::ops_plates::sd_tube`].
     Tube {
         outer: f32,
         inner: f32,
@@ -693,5 +669,25 @@ pub enum Primitive {
         side_n1: f32,
         side_n2: f32,
         side_n3: f32,
+    },
+    // ─────────────────────────── W139 ───────────────────────────
+    /// ⭐⭐ **BOLA COM CRATERA** — a tigela cavada no polo `+Z`. `depth` é o quanto a mordida entra
+    /// a partir da superfície, e `crater` é a largura dela. ⚠️ **`depth < 2·radius` é cerca de
+    /// EXISTÊNCIA**, e o mecanismo vive em [`ph2d_field_eval::ops_solids::sd_cratered_sphere`].
+    CrateredSphere {
+        radius: f32,
+        crater: f32,
+        depth: f32,
+        round: f32,
+        chamfer: f32,
+    },
+    /// ⭐⭐ **LENTE** — o sólido de duas esferas iguais, com o eixo em `Z`. ⚠️ **Não é a
+    /// [`Primitive::Vesica`]**, que é a CHAPA (a mesma lente 2D puxada em Z): ver
+    /// [`ph2d_field_eval::ops_solids::sd_lens`].
+    Lens {
+        radius: f32,
+        offset: f32,
+        round: f32,
+        chamfer: f32,
     },
 }

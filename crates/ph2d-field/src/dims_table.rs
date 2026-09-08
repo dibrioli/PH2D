@@ -387,6 +387,56 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 span: Span::Floor((bottom - top).abs()),
             },
         ],
+        // ─────────────────────────── W139 ───────────────────────────
+        // ⚠️ **A ORDEM é o ÍNDICE** — ela tem de bater com a do `dims_write.rs`, linha a linha.
+        Primitive::CrateredSphere {
+            radius,
+            crater,
+            depth,
+            round,
+            chamfer,
+        } => vec![
+            Dim {
+                key: "field.dim.radius",
+                value: *radius,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.crater",
+                value: *crater,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.depth",
+                value: *depth,
+                // ⚠️ **A parede é `2·radius`, e é onde a peça DEIXA DE EXISTIR** — a esfera que
+                // morde passa a conter a bola inteira. A faixa acaba onde a forma acaba.
+                span: Span::Wall(radius * 2.0),
+            },
+            chamfer_dim(*chamfer),
+            round_dim(*round),
+        ],
+        Primitive::Lens {
+            radius,
+            offset,
+            round,
+            chamfer,
+        } => vec![
+            Dim {
+                key: "field.dim.radius",
+                value: *radius,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.offset",
+                value: *offset,
+                // ⚠️ A MESMA parede da chapa [`Primitive::Vesica`]: com os centros a mais de um
+                // raio as duas esferas não se tocam.
+                span: Span::Wall(*radius),
+            },
+            chamfer_dim(*chamfer),
+            round_dim(*round),
+        ],
         Primitive::CutSphere {
             radius,
             cut,

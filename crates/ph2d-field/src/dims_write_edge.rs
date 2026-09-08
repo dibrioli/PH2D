@@ -54,6 +54,8 @@ pub(super) fn set_chamfer(p: &mut Primitive, node: u32, value: f32) -> Result<()
         | Primitive::BoxFrame { chamfer, .. }
         | Primitive::Octahedron { chamfer, .. }
         | Primitive::CutSphere { chamfer, .. }
+        | Primitive::CrateredSphere { chamfer, .. }
+        | Primitive::Lens { chamfer, .. }
         | Primitive::HollowDome { chamfer, .. }
         | Primitive::SolidAngle { chamfer, .. }
         | Primitive::Gear { chamfer, .. }
@@ -140,6 +142,8 @@ pub(super) fn set_round(p: &mut Primitive, node: u32, value: f32) -> Result<(), 
         | Primitive::BoxFrame { round, .. }
         | Primitive::Octahedron { round, .. }
         | Primitive::CutSphere { round, .. }
+        | Primitive::CrateredSphere { round, .. }
+        | Primitive::Lens { round, .. }
         | Primitive::HollowDome { round, .. }
         | Primitive::SolidAngle { round, .. }
         | Primitive::Gear { round, .. }
@@ -229,6 +233,8 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
         | Primitive::Pie { round, chamfer, .. }
         | Primitive::Trapezoid { round, chamfer, .. }
         | Primitive::Vesica { round, chamfer, .. }
+        | Primitive::CrateredSphere { round, chamfer, .. }
+        | Primitive::Lens { round, chamfer, .. }
         | Primitive::Arrow { round, chamfer, .. }
         | Primitive::Chevron { round, chamfer, .. }
         | Primitive::BentArrow { round, chamfer, .. }

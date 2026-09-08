@@ -164,6 +164,12 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
             half_height,
         } => half_height + bottom.max(*top),
         Primitive::CutSphere { radius, .. } => *radius,
+        Primitive::CrateredSphere { radius, .. } => *radius,
+        // ⚠️ **O ponto mais afastado da lente é o ARO**, e não o polo — `√(r² − off²)` é sempre
+        // maior que `r − off` para `0 < off < r`.
+        Primitive::Lens { radius, offset, .. } => {
+            (radius * radius - offset * offset).max(0.0).sqrt()
+        }
         Primitive::HollowDome {
             radius, thickness, ..
         } => radius + thickness * 0.5,

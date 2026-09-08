@@ -36,6 +36,8 @@ impl Primitive {
             Primitive::Octahedron { .. } => PrimitiveKind::Octahedron,
             Primitive::RoundCone { .. } => PrimitiveKind::RoundCone,
             Primitive::CutSphere { .. } => PrimitiveKind::CutSphere,
+            Primitive::CrateredSphere { .. } => PrimitiveKind::CrateredSphere,
+            Primitive::Lens { .. } => PrimitiveKind::Lens,
             Primitive::HollowDome { .. } => PrimitiveKind::HollowDome,
             Primitive::Link { .. } => PrimitiveKind::Link,
             Primitive::SolidAngle { .. } => PrimitiveKind::SolidAngle,

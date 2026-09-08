@@ -257,16 +257,46 @@ pub(crate) fn hover(
         {
             alcas.push((h, BonePart::Influence));
         }
-        if let Some(arc) = crate::bone_limit::arc(sim, Entity::from_bits(f), px_to_world) {
-            alcas.push((arc.handle_min, BonePart::LimitMin));
-            alcas.push((arc.handle_max, BonePart::LimitMax));
-        }
-        let perto = alcas
+        let mut perto = alcas
             .into_iter()
             .map(|(p, q)| ((p[0] - world[0]).hypot(p[1] - world[1]), q))
-            .filter(|&(d, _)| d <= BONE_HIT_PX * px_to_world)
+            .collect::<Vec<_>>();
+        // ⭐⭐⭐ **A PAREDE INTEIRA é agarrável, e não só o triângulo na ponta dela.**
+        //
+        // ⛔⛔ **Report do dono (2026-09-08): *«não consigo mover os gizmos dos ângulos»*.** Depois
+        // de a alça sair para fora do alcance do osso, o único alvo ficou a `17 px` ALÉM da borda
+        // do setor — e é a borda do setor que se lê como *«a parede»*. O artista mirava no que via
+        // e não havia alvo nenhum ali: um triângulo de `5 px` a `17 px` do sítio para onde a mão
+        // vai. *Um alvo que não está onde a coisa PARECE estar é um alvo ausente.*
+        //
+        // ⇒ o alvo é o **SEGMENTO** do vértice até a alça, que é exactamente o traço desenhado.
+        // Ele é grande, está debaixo do que o artista vê, e passa pelo triângulo por construção.
+        if let Some(arc) = crate::bone_limit::arc(sim, Entity::from_bits(f), px_to_world) {
+            for (e, q) in [
+                (arc.handle_min, BonePart::LimitMin),
+                (arc.handle_max, BonePart::LimitMax),
+            ] {
+                perto.push((
+                    ph2d_skeleton::dist2_to_segment(world, arc.apex, e).sqrt(),
+                    q,
+                ));
+            }
+        }
+        // ⚠️ **E o OSSO entra na mesma competição.** As paredes cruzam o osso sempre que ele está
+        // perto de uma delas, então sem isto a cura de cima devolveria o defeito anterior ao
+        // contrário: a parede roubaria o gesto de girar em toda a faixa. *Ganha o que está mais
+        // perto do dedo* — a regra que não escolhe uma vítima, agora sobre todos os alvos do osso.
+        let d_osso = crate::skeleton_live::bone_segments(sim)
+            .into_iter()
+            .find(|(x, _, _)| *x == f)
+            .map_or(f64::INFINITY, |(_, a, b)| {
+                ph2d_skeleton::dist2_to_segment(world, a, b).sqrt()
+            });
+        let melhor = perto
+            .into_iter()
+            .filter(|&(d, _)| d <= BONE_HIT_PX * px_to_world && d < d_osso)
             .min_by(|a, b| a.0.total_cmp(&b.0));
-        if let Some((_, part)) = perto {
+        if let Some((_, part)) = melhor {
             return Some(BoneHover { bone: f, part });
         }
     }
@@ -445,10 +475,35 @@ impl crate::App {
         // ⚠️ O osso em FOCO entra: a alça da força só existe onde ela se desenha, e o que a desenha
         // é a selecção. Sem ele o dedo procuraria uma alça que não está na tela.
         let foco = self.selected_bone_bits();
+        let antes = self.bone_hover;
         self.bone_hover = self
             .gfx
             .as_ref()
             .and_then(|gfx| hover(&gfx.sim, world, px_to_world, foco));
+        // ⭐⭐⭐ **A SONDA DO DEDO** (`PH2D_BONE_LOG=1`) — o que está sob o ponteiro, e por quê.
+        //
+        // ⚠️ Ela imprime **só quando muda**, senão são 60 linhas por segundo. E imprime as três
+        // grandezas que separam as hipóteses de *«não consigo agarrar»*: o osso em FOCO (sem ele o
+        // dedo nem procura as alças), o ZOOM (a folga das alças é uma grandeza de tela), e a
+        // DISTÂNCIA do ponteiro a cada alça — se ela for maior que a tolerância, o alvo está onde o
+        // artista não está a clicar.
+        if antes != self.bone_hover && std::env::var_os("PH2D_BONE_LOG").is_some() {
+            let d = self.gfx.as_ref().and_then(|gfx| {
+                let f = foco?;
+                let arc = crate::bone_limit::arc(&gfx.sim, Entity::from_bits(f), px_to_world)?;
+                Some((
+                    (arc.handle_min[0] - world[0]).hypot(arc.handle_min[1] - world[1]),
+                    (arc.handle_max[0] - world[0]).hypot(arc.handle_max[1] - world[1]),
+                ))
+            });
+            eprintln!(
+                "[bone] dedo em ({:.3},{:.3}) foco={foco:?} zoom={px_to_world:.5}                  tolerancia={:.4} sob_o_dedo={:?} dist_as_paredes={d:?}",
+                world[0],
+                world[1],
+                BONE_HIT_PX * px_to_world,
+                self.bone_hover.map(|h| h.part),
+            );
+        }
         // ⭐ E o osso que está a NASCER, pela mesma leitura do ponteiro.
         self.bone_preview = self
             .vec_bone_drag

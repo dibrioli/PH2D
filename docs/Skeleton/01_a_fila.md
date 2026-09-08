@@ -494,6 +494,34 @@ correcto — o arco é a imagem do caminho da ponta, que sob um afim não-confor
 tem escala). Fica aqui porque um rig escalado num eixo é coisa que um artista faz.
 
 
+---
+
+### F4-e — ✅ *«não consigo mover os gizmos dos ângulos»* (regressão MINHA, 2026-09-08)
+
+⛔⛔ **A cura do F4-c causou-a.** Ao empurrar a alça para **fora** do alcance do osso, o único alvo
+ficou a `17 px` ALÉM da borda do setor — e é a **borda** que se lê como *«a parede»*. O artista
+mirava no que via e não havia alvo nenhum ali: um triângulo de `5 px` a `17 px` do sítio para onde a
+mão vai. *Um alvo que não está onde a coisa PARECE estar é um alvo ausente.*
+
+⇒ **o alvo passa a ser o SEGMENTO inteiro** do vértice até a alça, que é exactamente o traço
+desenhado: grande, debaixo do que o artista vê, e passa pelo triângulo por construção.
+
+⚠️ **E o OSSO entra na mesma competição de proximidade**, senão a cura devolvia o F4-c ao contrário
+— as paredes **cruzam** o osso sempre que ele se aproxima de uma delas, e sem isso a parede roubaria
+o gesto de girar em toda a faixa. *Ganha o que está mais perto do dedo*, agora sobre **todos** os
+alvos do osso em foco (a força, as duas paredes e o próprio osso). É a terceira vez nesta wave que a
+resposta é a proximidade e não a ordem.
+
+⭐ **E ficou uma SONDA no produto:** `PH2D_BONE_LOG=1` passa a imprimir, quando o realce muda, o que
+está sob o dedo, o osso em foco, o zoom e a **distância a cada parede**. As três hipóteses que a
+lógica não distingue (*não vejo* · *não alcanço* · *agarro outra coisa*) separam-se numa corrida.
+
+⚠️ **A lei do limite esteve CERTA nos três reports** — o que falhou foi sempre o gizmo. Por isso os
+gates estão agora cortados em dois ficheiros: `skeleton_limit_tests` (a lei) e
+`skeleton_limit_gizmo_tests` (o que o dedo apanha). *As duas perguntas falham de maneiras
+diferentes.*
+
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 | O quê | Por quê | Onde |

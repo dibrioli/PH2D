@@ -288,11 +288,17 @@ fn reopening_restores_the_width_the_column_had_before_the_drag() {
     let at_start = h.store.dock_width_choice(DockSide::Right);
     assert_eq!(at_start, Some(420.0));
 
-    // O arrasto, a caminho do degrau: cada pixel escreve, e a porta clampa no mínimo.
-    h.store.set_dock_width(DockSide::Right, 200.0);
+    // O arrasto, a caminho do degrau: cada pixel escreve, e a porta clampa no PISO.
+    //
+    // ⚠️ **O piso é o degrau do fecho desde 2026-09-08, e não o mínimo do painel** — foi essa a cura
+    //    dos 22 px de arrasto mudo (*«o painel lateral não é recolhido mais»*, ver
+    //    `the_border_follows_the_finger_until_the_column_closes`). O que este gate mede não mudou:
+    //    o arrasto deixa o PISO gravado muito antes de o degrau disparar, logo ler o store no
+    //    instante do fecho devolveria o piso e não os 420 do artista.
+    h.store.set_dock_width(DockSide::Right, 100.0);
     assert_eq!(
         h.store.dock_width_choice(DockSide::Right),
-        Some(ph2d_editor_core::interaction::WidgetStore::DOCK_W_MIN)
+        Some(ph2d_editor_core::interaction::WidgetStore::DOCK_W_COLLAPSE)
     );
 
     dock_columns::close(&mut h, DockSide::Right, at_start);
@@ -386,20 +392,13 @@ fn the_selected_tab_is_painted_even_when_they_do_not_all_fit() {
     assert!(bar.h > 0.0, "sem faixa de abas nao ha' o que medir");
 
     let front = slot_tabs::chosen(&h, Slot::RightTop);
-    // ⚠️⚠️ **A faixa é ESPREMIDA de propósito, e a razão é uma medição de 2026-09-08.** Desde que
-    //    uma aba tem PISO de largura (nunca mais estreita do que alta), cinco ocupantes cabem
-    //    todos na coluna de fábrica — `5 × 22 = 110` contra `296` px úteis. *A coluna real deixou
-    //    de produzir o fenómeno que este gate mede*, e alimentá-la aqui deixaria a asserção a
-    //    passar sobre um caso que já não existe. O sujeito é a função, e a geometria é dela.
-    let tight = ph2d_editor_core::zones::Rect::new(bar.x, bar.y, 100.0, bar.h);
-    let painted =
-        slot_tabs::tab_layout(&occ, front, tight, &mut TextSystem::without_system_fonts());
+    let painted = slot_tabs::tab_layout(&occ, front, bar, &mut TextSystem::without_system_fonts());
     assert!(
         painted.len() < occ.len(),
         "controlo partido: {} ocupantes cabem todos em {} px, entao nao ha' transbordo e este teste \
          nao mede nada",
         occ.len(),
-        tight.w
+        bar.w
     );
 
     let selected = occ.last().map(|o| o.node).expect("ha' ocupantes");
@@ -427,4 +426,61 @@ fn both_halves_of_a_column_are_swept() {
         "a coluna da direita deixou de ter duas metades"
     );
     let _ = h;
+}
+
+/// ⭐⭐⭐ **A BORDA SEGUE O DEDO ATÉ A COLUNA FECHAR — não há faixa muda.**
+///
+/// > *«ao apertar … o painel lateral não é recolhido mais»* — Enio, 2026-09-08.
+///
+/// ⛔⛔ O degrau do fecho está **uma linha abaixo** do mínimo do painel, e o piso da largura era o
+/// **mínimo** ⇒ entre um e outro a borda parava de seguir o rato e nada no ecrã mudava. Medido
+/// antes da cura: o cursor viajava `16 px` com a coluna congelada em `220`, e só ao fim é que ela
+/// fechava. *O único sinal daquele gesto era a coisa que tinha deixado de se mexer* — quem larga
+/// onde a borda parou conclui que o fecho deixou de existir.
+///
+/// ⚠️ **A cerca do degrau não se mexeu, e não devia:** continuam a ser precisos 22 px para além do
+/// mínimo para fechar (*«chegar ao mínimo é um objectivo legítimo do artista»*). O que este gate
+/// afirma é que esses 22 px **se vêem**.
+///
+/// ⚠️ **A simulação é a da shell, passo a passo:** o layout do quadro ANTERIOR decide a largura, ela
+/// é escrita, e o quadro seguinte é pintado — que é exactamente o que o `dock_seam_move` faz.
+#[test]
+fn the_border_follows_the_finger_until_the_column_closes() {
+    use ph2d_editor_core::interaction::WidgetStore;
+
+    let mut h = settled(&["inspector", "audio_mixer", "audio_editor"]);
+    h.store.set_dock_width(DockSide::Right, 304.0);
+    paint(&mut h, 3);
+    let seam = h.last_layout.expect("layout").dock_seam(DockSide::Right);
+    assert!(seam.w > 0.0, "sem costura não há gesto para medir");
+
+    let mut x = seam.x + seam.w * 0.5;
+    let mut frozen: Vec<String> = Vec::new();
+    let mut closed = false;
+    for _ in 0..60 {
+        let l = h.last_layout.expect("layout");
+        let want = l.dock_width_for(DockSide::Right, x);
+        if want < WidgetStore::DOCK_W_COLLAPSE {
+            closed = dock_columns::close(&mut h, DockSide::Right, Some(304.0));
+            break;
+        }
+        h.store.set_dock_width(DockSide::Right, want);
+        paint(&mut h, 2);
+        let got = h.last_layout.expect("layout").inspector.w;
+        if (got - want).abs() > 0.5 {
+            frozen.push(format!(
+                "com o dedo em x={x:.0} a coluna devia ter {want:.1} px e tem {got:.1}"
+            ));
+        }
+        x += 4.0;
+    }
+
+    assert!(closed, "o gesto nunca chegou a fechar a coluna");
+    assert!(
+        frozen.is_empty(),
+        "a borda parou de seguir o dedo em {} passos antes de fechar — é o report de 2026-09-08:\
+         \n  {}",
+        frozen.len(),
+        frozen.join("\n  ")
+    );
 }

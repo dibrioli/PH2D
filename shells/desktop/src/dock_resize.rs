@@ -194,8 +194,28 @@ impl crate::App {
     }
 
     /// Release: fecha o arrasto. `true` se havia um.
+    ///
+    /// ⭐⭐ **E devolve ao mínimo quem largou na faixa do degrau.** Desde 2026-09-08 a borda segue o
+    /// dedo até [`WidgetStore::DOCK_W_COLLAPSE`] — é isso que torna os últimos 22 px do gesto
+    /// visíveis (ver o doc de `set_dock_width`). Mas uma largura entre o degrau e o mínimo é um
+    /// estado de **gesto**: abaixo do mínimo o cabeçalho e uma linha do painel deixam de caber
+    /// juntos, e a persistência grava exactamente o que o store tem.
+    ///
+    /// ⇒ largar ali não fecha (o dedo não passou o degrau) **e não deixa a coluna estreita demais**:
+    /// ela assenta no mínimo. *O gesto tem três fins — mais larga, no mínimo, ou fechada — e nunca
+    /// um quarto.*
     pub(crate) fn dock_seam_up(&mut self) -> bool {
-        self.dock_seam_drag.take().is_some()
+        let Some(drag) = self.dock_seam_drag.take() else {
+            return false;
+        };
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            let w = hero.store.dock_width(drag.side);
+            if w < ph2d_editor::interaction::WidgetStore::DOCK_W_MIN {
+                hero.store
+                    .set_dock_width(drag.side, ph2d_editor::interaction::WidgetStore::DOCK_W_MIN);
+            }
+        }
+        true
     }
 }
 

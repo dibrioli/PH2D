@@ -26,7 +26,12 @@ impl WidgetStore {
             DockSide::Left => ChromeBands::DEFAULT.left_dock_w,
             DockSide::Right => ChromeBands::DEFAULT.right_dock_w,
         };
-        crate::math::safe_clamp(stored.unwrap_or(base), Self::DOCK_W_MIN, Self::DOCK_W_MAX)
+        // ⚠️ **O piso de leitura é o do FECHO, não o do painel** — ver [`Self::set_dock_width`].
+        crate::math::safe_clamp(
+            stored.unwrap_or(base),
+            Self::DOCK_W_COLLAPSE,
+            Self::DOCK_W_MAX,
+        )
     }
 
     /// ⭐ **A ESCOLHA do artista, ou `None`** — o irmão de [`Self::dock_width`], que devolve
@@ -44,8 +49,29 @@ impl WidgetStore {
     }
 
     /// Escreve a largura de uma coluna, já clampada.
+    ///
+    /// ⭐⭐⭐ **O PISO É O DEGRAU DO FECHO ([`Self::DOCK_W_COLLAPSE`]), e não o mínimo do painel.**
+    ///
+    /// > *«ao apertar … o painel lateral não é recolhido mais»* — Enio, 2026-09-08.
+    ///
+    /// ⛔⛔ Com o piso no **mínimo** havia **22 px de arrasto MUDO**: o degrau do fecho está uma
+    /// linha abaixo do mínimo, logo entre um e outro a borda **parava de seguir o rato** e nada no
+    /// ecrã mudava. Medido: o cursor viaja de `x = 1149` a `1165` com a coluna congelada em `220`,
+    /// e só em `1169` ela fecha. *O único sinal daquele gesto era a coisa que tinha deixado de se
+    /// mexer* — quem larga onde a borda parou conclui que o fecho deixou de existir, que é
+    /// exactamente o que o dono reportou.
+    ///
+    /// ⇒ a borda segue o dedo até ao degrau, e o fecho acontece **onde o movimento acaba**.
+    ///
+    /// ⚠️ **A cerca do degrau NÃO se mexeu, e não devia:** *«chegar ao mínimo é um objectivo
+    /// legítimo do artista, logo tocar-lhe não pode fechar nada»*. Continuam a ser precisos 22 px
+    /// **para além** do mínimo para fechar — o que muda é que agora eles se VÊEM.
+    ///
+    /// ⚠️ **Uma largura entre o degrau e o mínimo é um estado de GESTO, nunca de repouso:** quem
+    /// larga ali é devolvido ao mínimo por quem acaba o arrasto (`App::dock_seam_up`). Sem essa
+    /// metade, a persistência gravaria uma coluna mais estreita do que o painel sabe desenhar.
     pub fn set_dock_width(&mut self, side: crate::screens::layout::DockSide, w: f32) {
-        let w = crate::math::safe_clamp(w, Self::DOCK_W_MIN, Self::DOCK_W_MAX);
+        let w = crate::math::safe_clamp(w, Self::DOCK_W_COLLAPSE, Self::DOCK_W_MAX);
         match side {
             crate::screens::layout::DockSide::Left => self.dock_w_left = Some(w),
             crate::screens::layout::DockSide::Right => self.dock_w_right = Some(w),

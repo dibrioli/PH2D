@@ -512,9 +512,12 @@ o gesto de girar em toda a faixa. *Ganha o que está mais perto do dedo*, agora 
 alvos do osso em foco (a força, as duas paredes e o próprio osso). É a terceira vez nesta wave que a
 resposta é a proximidade e não a ordem.
 
-⭐ **E ficou uma SONDA no produto:** `PH2D_BONE_LOG=1` passa a imprimir, quando o realce muda, o que
-está sob o dedo, o osso em foco, o zoom e a **distância a cada parede**. As três hipóteses que a
-lógica não distingue (*não vejo* · *não alcanço* · *agarro outra coisa*) separam-se numa corrida.
+⚠️ **A sonda do dedo foi RETIRADA depois do smoke aprovado** (ordem do dono, 2026-09-08): ela
+imprimia a cada mudança de realce, que num rato a mexer são dezenas de linhas por segundo. ⭐ O que
+ela mediu está aqui: as três hipóteses que a lógica não distingue — *não vejo* · *não alcanço* ·
+*agarro outra coisa* — separam-se pela **distância do ponteiro a cada alça** contra a tolerância do
+dedo (`12 px × px_to_world`), e é essa a linha a reconstruir se o report voltar. ⛔ O `PH2D_BONE_LOG`
+em si **fica**: ele é anterior a esta wave e serve o diagnóstico da pele e o do laço da âncora.
 
 ⚠️ **A lei do limite esteve CERTA nos três reports** — o que falhou foi sempre o gizmo. Por isso os
 gates estão agora cortados em dois ficheiros: `skeleton_limit_tests` (a lei) e

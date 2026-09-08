@@ -475,35 +475,10 @@ impl crate::App {
         // ⚠️ O osso em FOCO entra: a alça da força só existe onde ela se desenha, e o que a desenha
         // é a selecção. Sem ele o dedo procuraria uma alça que não está na tela.
         let foco = self.selected_bone_bits();
-        let antes = self.bone_hover;
         self.bone_hover = self
             .gfx
             .as_ref()
             .and_then(|gfx| hover(&gfx.sim, world, px_to_world, foco));
-        // ⭐⭐⭐ **A SONDA DO DEDO** (`PH2D_BONE_LOG=1`) — o que está sob o ponteiro, e por quê.
-        //
-        // ⚠️ Ela imprime **só quando muda**, senão são 60 linhas por segundo. E imprime as três
-        // grandezas que separam as hipóteses de *«não consigo agarrar»*: o osso em FOCO (sem ele o
-        // dedo nem procura as alças), o ZOOM (a folga das alças é uma grandeza de tela), e a
-        // DISTÂNCIA do ponteiro a cada alça — se ela for maior que a tolerância, o alvo está onde o
-        // artista não está a clicar.
-        if antes != self.bone_hover && std::env::var_os("PH2D_BONE_LOG").is_some() {
-            let d = self.gfx.as_ref().and_then(|gfx| {
-                let f = foco?;
-                let arc = crate::bone_limit::arc(&gfx.sim, Entity::from_bits(f), px_to_world)?;
-                Some((
-                    (arc.handle_min[0] - world[0]).hypot(arc.handle_min[1] - world[1]),
-                    (arc.handle_max[0] - world[0]).hypot(arc.handle_max[1] - world[1]),
-                ))
-            });
-            eprintln!(
-                "[bone] dedo em ({:.3},{:.3}) foco={foco:?} zoom={px_to_world:.5}                  tolerancia={:.4} sob_o_dedo={:?} dist_as_paredes={d:?}",
-                world[0],
-                world[1],
-                BONE_HIT_PX * px_to_world,
-                self.bone_hover.map(|h| h.part),
-            );
-        }
         // ⭐ E o osso que está a NASCER, pela mesma leitura do ponteiro.
         self.bone_preview = self
             .vec_bone_drag

@@ -71,13 +71,21 @@ impl App {
         {
             return false;
         }
-        let pos = self.last_pointer;
         let Some(scene) = self.gfx.as_mut().and_then(|g| g.sculpt3d.as_mut()) else {
             return false;
         };
-        // ⚠️ **Mesma guarda de ponteiro das irmãs do vizinho**: sem barro na tela,
-        // ou com o cursor fora do canvas 3D, a tecla é de outra pessoa.
-        if !scene.clay_on_screen() || scene.vp_at(pos.0, pos.1).is_none() {
+        // ⚠️⚠️ **SEM guarda de PONTEIRO, ao contrário da irmã do vizinho — e a
+        // diferença é deliberada.** Lá ela existe porque aquele canvas convive
+        // com outras superfícies que reclamam a mesma tecla; aqui **nenhuma**
+        // das ~30 teclas deste módulo pergunta onde o rato está: quem decide é
+        // o `sculpt3d_keys_live` (*o barro está na tela?*), e só ele.
+        //
+        // ⛔ Copiar a guarda junto com a tecla criaria a única tecla da
+        // escultura que falha por causa de onde o cursor calhou de estar — e o
+        // caso mais provável é o pior: o artista acabou de clicar num chip do
+        // painel, o rato ficou lá, e a tecla não faz nada. *Herda-se a tecla,
+        // não a moldura de quem a emprestou.*
+        if !scene.clay_on_screen() {
             return false;
         }
         let aberta = scene.toggle_split();

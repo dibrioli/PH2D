@@ -61,7 +61,7 @@ pub(crate) fn announce() {
          [sculpt3d]        a rodasse com a mao.\n\
          [sculpt3d]\n\
          [sculpt3d]    -- (b) AS QUATRO JANELAS --\n\
-         [sculpt3d]    (4) Aperte Ctrl+Alt+Q, com o rato SOBRE a peca. A area parte-se\n\
+         [sculpt3d]    (4) Aperte Ctrl+Alt+Q (a mesma tecla do modelador 3D). A area parte-se\n\
          [sculpt3d]        em QUATRO. Tres delas tem um rotulo no canto ({vistas}).\n\
          [sculpt3d]    (5) Clique dentro de uma: ela ganha uma MOLDURA -- e' a activa. Pinte nela.\n\
          [sculpt3d]        So' ela recebe o pincel; as outras mostram a mesma peca de outro angulo.\n\

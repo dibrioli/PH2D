@@ -9,11 +9,25 @@ use super::{Family, Make, SHAPES, available, shape_at, slot_of};
 /// família de features inteira, completa e invisível. A corrente é
 /// `Primitive` novo ⇒ erro de compilação em `Primitive::kind` ⇒ variante nova em `PrimitiveKind`
 /// ⇒ `PrimitiveKind::ALL` não compila sem ela ⇒ **este laço reprova até haver a linha**.
+///
+/// # ⛔⛔ E a régua dele era uma CONVENÇÃO DE NOME, que o gate IRMÃO já tinha abandonado
+///
+/// Ele perguntava `s.key.ends_with(k.key())` — e o doc-comment do
+/// [`every_primitive_the_engine_can_make_has_a_button`](crate::field3d_scene::profile_reach_tests)
+/// **já explica, com todas as letras**, por que essa pergunta é a errada: uma régua de string
+/// *«reprova sobre um catálogo correto e, pior, **aprova** uma chave que calhe de acabar bem sem
+/// construir nada daquilo»*. A W101 partiu-a lá (o `add.cone_truncated` constrói um
+/// [`ph2d_field::PrimitiveKind::Cone`] e não acaba em «cone») e curou **um** dos dois — este ficou
+/// com a régua velha, num ficheiro ao lado.
+///
+/// ⚠️ **Uma chave nova que acabe no nome de uma primitiva satisfaz sozinha a exigência dela**, e o
+/// catálogo pode perder o botão verdadeiro sem que este gate diga nada. *Duas respostas à mesma
+/// pergunta, e a que envelhece é a que ninguém volta a ler.*
 #[test]
 fn every_primitive_the_engine_can_make_is_in_the_catalogue() {
     for k in ph2d_field::PrimitiveKind::ALL {
         assert!(
-            SHAPES.iter().any(|s| s.key.ends_with(k.key())),
+            SHAPES.iter().any(|s| s.make.builds() == Some(k)),
             "a primitiva {k:?} não tem linha no catálogo - ela é inalcançável pela paleta"
         );
     }

@@ -32,7 +32,7 @@ pub(crate) struct BodyFrame {
 }
 
 pub(crate) fn open_body(
-    layout: &ph2d_editor_core::screens::hero::HeroLayout,
+    rect: ph2d_editor_core::zones::Rect,
     scene: &mut ph2d_vector::VectorScene,
     text_system: &mut ph2d_text::TextSystem,
     theme: ph2d_tokens::Theme,
@@ -42,7 +42,6 @@ pub(crate) fn open_body(
     use ph2d_editor_core::widget::panel_chrome::paint_panel_surface;
     use ph2d_editor_core::widget::section_cards::begin_section_cards;
     use ph2d_tokens::Spacing;
-    let rect = layout.inspector;
     paint_panel_surface(rect, scene, theme);
     // ⛔ **A ALÇA DE ARRASTO E AS DUAS DE RESIZE SAÍRAM** (2026-08-30): esta coluna é ANCORADA,
     // e o rect dela vem do `HeroLayout` sem passar por offset nenhum. Elas saíram **em par** com

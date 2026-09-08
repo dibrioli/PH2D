@@ -92,6 +92,11 @@ mod pre_dispatch;
 /// ⭐⭐⭐ **A BARRA DO MODO de edição de receita** — o nome, quantas cópias seguem, e a SAÍDA.
 pub mod prefab_bar;
 pub mod slot_tabs;
+/// ⭐ **O gesto que move uma aba** — irmão do [`slot_tabs`], cortado dele pelo tecto de LOC em
+/// 2026-09-08. ⚠️ Os itens dele são **re-exportados pelo `slot_tabs`**, que continua a ser o
+/// endereço único da feature: um corte por tecto não pode obrigar 30 chamadores a aprender uma
+/// segunda morada.
+pub mod slot_tabs_drag;
 pub mod variant_axes;
 // ⚠️ Re-exportado para o gate `every_registered_panel_is_reachable_by_the_z_order_walk`: uma
 // lista que um teste não consegue ler é uma lista que ninguém confere — e esta já custou

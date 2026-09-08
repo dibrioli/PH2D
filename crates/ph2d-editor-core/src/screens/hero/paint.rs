@@ -459,21 +459,32 @@ pub fn paint_hero_screen(
             &hero.motion,
         );
     }
-    // Publish Inspector + Hierarchy panel rects so wheel-event
-    // dispatch can route to them. Both are static (no drag offset).
-    // When a panel is hidden via its left-rail toggle we DROP the
-    // published rect so dispatch's "inside panel" tests don't match
-    // a stale geometry.
-    if hero.is_panel_visible("inspector") {
-        hero.store.set_panel_rect(ids::INSP_PANEL, layout.inspector);
-    } else {
-        hero.store.clear_panel_rect(ids::INSP_PANEL);
-    }
-    if hero.is_panel_visible("hierarchy") {
-        hero.store.set_panel_rect(ids::HIER_PANEL, layout.hierarchy);
-    } else {
-        hero.store.clear_panel_rect(ids::HIER_PANEL);
-    }
+    // ⛔⛔⛔ **A SEGUNDA PORTA DO RECT DO INSPECTOR E DA HIERARQUIA SAIU DAQUI (2026-09-08).**
+    //
+    // > *«se arrastar um para a área da Hierarquia e colapsar a hierarquia (puxando para
+    // > esquerda) as abas do painel esquerdo ficam travadas»* — Enio, no smoke da wave 34b.
+    //
+    // Este bloco publicava os dois rects **de fora**, com `layout.inspector` / `layout.hierarchy`
+    // — isto é, *a coluna da direita* e *a coluna da esquerda* **por nome**. Os outros 20 painéis
+    // publicam o próprio `ctx.slot`, que é o encaixe RESOLVIDO (`slot_of` honra o encaixe que o
+    // artista arrumou por cima do declarado).
+    //
+    // ⇒ arrastar a aba de um destes dois para a outra coluna movia a **aba** e deixava o **corpo**
+    // onde sempre esteve. E como o [`crate::screens::dock_sides::DockSides::from_published`]
+    // responde *«esta coluna está ocupada?»* cruzando os rects PUBLICADOS com o rect da coluna, a
+    // coluna de destino lia-se **vazia**: a fila de abas ficava a flutuar sobre a área de desenho,
+    // com a alça de reabertura armada por baixo dela — abas que se vêem, se clicam, e não trazem
+    // corpo nenhum.
+    //
+    // ⚠️ **A metade que este bloco fazia bem — largar o rect ao ficar invisível — foi PARA DENTRO
+    // dos dois painéis**, que é onde as outras 20 crates a fazem. Ela continua a correr todo
+    // quadro porque os dois estão no [`PANEL_Z_ORDER_FALLBACK`]: o `panel_walk` caminha-os mesmo
+    // invisíveis, e o `paint` deles no-opa depois de limpar.
+    //
+    // ⛔ O censo que o prova é `every_docked_panel_paints_where_its_tab_says`
+    // (`ph2d-panel-registry-init/tests/`): ele MOVE cada painel para cada encaixe que ele permite
+    // e compara o rect publicado com o do encaixe. Antes desta cura acusava estes dois, e só
+    // estes dois, em 4 células.
     // Mirror the global picker's current value into the target
     // widget's `widget_colors` slot before either panel paints so
     // color circles inside the Inspector see this frame's value.

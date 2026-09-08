@@ -16,8 +16,9 @@ use crate::{InspectorPanel, sections};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
-use ph2d_editor_core::screens::{HeroLayout, HeroSelection};
+use ph2d_editor_core::screens::HeroSelection;
 use ph2d_editor_core::widget::section_cards::close_section;
+use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 use ph2d_vector::VectorScene;
@@ -27,8 +28,15 @@ const SECTION_HEAD_H: f32 = ROW_H_PX;
 
 pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(InspectorPanel::ID) {
+        ctx.host.store_mut().clear_panel_rect(ids::INSP_PANEL);
         return;
     }
+    // ⭐⭐⭐ **O RECT PUBLICADO É O DO ENCAIXE** — ver o irmão em `ph2d-panel-hierarchy/src/paint.rs`,
+    // que traz o mecanismo inteiro. Este painel e a Hierarquia eram os dois únicos cujo rect era
+    // publicado de FORA (`hero::paint`, com `layout.inspector`); os outros 20 publicam `ctx.slot`.
+    ctx.host
+        .store_mut()
+        .set_panel_rect(ids::INSP_PANEL, ctx.slot);
     sync_inspector_from_snapshots(inspector_state, ctx.host);
     let display_unit = ctx.host.project().display_unit;
     let ppm = ctx.host.project().pixels_per_meter;
@@ -49,7 +57,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
         let selection_clone: Option<HeroSelection> = ctx.host.selection().cloned();
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         paint_inspector(
-            ctx.layout,
+            ctx.slot,
             selection_clone.as_ref(),
             ctx.scene,
             ctx.text_system,
@@ -90,7 +98,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
 /// - `anim_selected` — §11: qual animação está aberta no editor. Mesmo contrato.
 /// - `editing_value` — qual eixo do cartão de propriedades está a ser **reescrito**; ver
 fn paint_inspector(
-    layout: &HeroLayout,
+    slot: Rect,
     selection: Option<&HeroSelection>,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -111,7 +119,7 @@ fn paint_inspector(
         inner_x,
         inner_w,
         body_top_y,
-    } = crate::paint_body::open_body(layout, scene, text_system, theme, hit_index, store);
+    } = crate::paint_body::open_body(slot, scene, text_system, theme, hit_index, store);
     let mut section_tops_y: Vec<f32> = Vec::with_capacity(4);
     // Os treze snapshots e o `any_section`, numa pergunta só. Ver `paint_frame::LiveSnapshots`.
     let crate::paint_frame::LiveSnapshots {

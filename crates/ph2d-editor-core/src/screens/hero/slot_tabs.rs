@@ -28,10 +28,16 @@
 //! o último a aparecer no topo»*.
 
 use super::HeroScreen;
-use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{
-    fill_rounded_rect, fill_rounded_rect_radii, paint_text_centered, rect_to_vello, resolve,
+
+// ⭐ **O gesto de arrastar uma aba vive no irmão [`super::slot_tabs_drag`]** (corte por tecto de
+// LOC, 2026-09-08) e é re-exportado AQUI: `slot_tabs` continua a ser o endereço único da feature.
+// ⛔ Sem esta linha, um corte por tamanho obrigaria trinta chamadores a aprender uma segunda
+// morada — e o tecto de um ficheiro não é um facto sobre a API dele.
+pub use super::slot_tabs_drag::{
+    drop_targets, paint_drag_overlay, resolve_tab_drop, tab_drop_caret,
 };
+use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
+use crate::paint::{fill_rounded_rect_radii, paint_text_centered, rect_to_vello, resolve};
 use crate::screens::slot::{Slot, SlotSet};
 use crate::widget::ButtonState;
 use crate::zones::Rect;
@@ -56,14 +62,6 @@ pub const TAB_BAR_H: f32 = ROW_H_PX;
 fn tab_pad_x() -> f32 {
     Spacing::Md.px()
 }
-
-/// Espessura do contorno do encaixe sob o dedo.
-const DROP_OUTLINE_PX: f32 = 2.0; // LITERAL-PX-OK: contorno da zona de largada (chrome)
-
-/// Largura da etiqueta fantasma que segue o dedo. ⚠️ Fixa, e não a largura da aba de origem: ela
-/// atravessa encaixes de larguras diferentes, e uma etiqueta que muda de tamanho a meio do gesto
-/// lê-se como o app a decidir alguma coisa que ele não decidiu.
-const DRAG_LABEL_W: f32 = 120.0; // LITERAL-PX-OK: etiqueta fantasma do arrasto (chrome)
 
 /// ⛔ **O salto que separa o id de uma ABA do id do PAINEL que ela escolhe.**
 ///
@@ -162,6 +160,23 @@ pub fn occupants(hero: &HeroScreen, slot: Slot) -> Vec<Occupant> {
                 title: m.title,
             });
         }
+    });
+    // ⭐⭐⭐ **A ordem é a ARRUMADA por cima da do registo** (report do dono, 2026-09-08: *«não é
+    // possível reordenar as abas arrastando com o mouse»*).
+    //
+    // ⚠️ `sort_by_key` é **estável**: quem o artista nunca arrumou fica onde o registo o pôs, e
+    // vem depois de quem ele arrumou. É isso que faz um app acabado de instalar ter a ordem do
+    // registo sem uma linha de semente.
+    //
+    // ⛔ E é aqui, e só aqui, que a ordem se decide — a ordem z continua a responder **apenas**
+    // *quem está à frente* ([`chosen`]). As duas perguntas separaram-se em 2026-09-07 e não
+    // voltam a juntar-se.
+    let order = hero.store.panel_tab_order();
+    found.sort_by_key(|o| {
+        order
+            .iter()
+            .position(|n| *n == o.node)
+            .unwrap_or(usize::MAX)
     });
     found
 }
@@ -509,66 +524,6 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     false
 }
 
-/// ⭐⭐⭐ **AS ZONAS DE LARGADA de um arrasto em curso** — e é aqui que a **D1** deixa de ser uma
-/// verificação e passa a ser um `Constraint`.
-///
-/// > *«O erro não é detectado, é **inexprimível**.»* — `00_DECISOES_DO_ENIO.md`, D4
-///
-/// Um encaixe que o painel **não** permite simplesmente **não é oferecido**: não se pinta, não se
-/// testa, não existe para este gesto. ⛔ A alternativa — aceitar a largada e depois recusá-la — é a
-/// forma que o Enio nomeou como errada: *o artista faz o gesto, vê a resposta, e não sabe porquê.*
-///
-/// ⚠️ **O encaixe de ONDE ele veio é oferecido também**, e de propósito: largar de volta é como se
-/// desiste de um arrasto sem precisar de saber que a tecla `Esc` existe.
-///
-/// Devolve `(encaixe, rect)` para cada destino legal, na ordem de [`Slot::ALL`].
-#[must_use]
-pub fn drop_targets(hero: &HeroScreen, panel: NodeId) -> Vec<(Slot, Rect)> {
-    let Some(layout) = hero.last_layout else {
-        return Vec::new();
-    };
-    let allowed = crate::panel::with_registry_opt(|reg| {
-        reg.panels()
-            .iter()
-            .find(|p| p.manifest.panel_node_id == panel)
-            .map(|p| p.manifest.allowed_slots)
-    })
-    .flatten();
-    let Some(allowed) = allowed else {
-        return Vec::new();
-    };
-    let rects = layout.slot_rects(occupied(hero));
-    allowed
-        .iter()
-        .filter_map(|slot| {
-            let r = rects.get(slot);
-            (r.w > 0.0 && r.h > 0.0).then_some((slot, r))
-        })
-        .collect()
-}
-
-/// ⭐⭐ **RESOLVE a largada** — corre no início do quadro, e consome o pedido uma vez só.
-///
-/// ⚠️ **Ele julga contra o layout do quadro ANTERIOR, e isso é o correcto**, não um compromisso: a
-/// largada tem de ser medida contra a geometria que o artista estava a ver quando largou. Julgá-la
-/// contra um layout já reconstruído com o painel movido seria perguntar ao futuro.
-pub fn resolve_tab_drop(hero: &mut HeroScreen) {
-    let Some((panel, (x, y))) = hero.store.take_tab_drop() else {
-        return;
-    };
-    for (slot, r) in drop_targets(hero, panel) {
-        if r.contains(x, y) {
-            hero.store.set_panel_slot(panel, slot);
-            // ⭐ E o painel largado fica à FRENTE no encaixe novo — senão ele desaparece atrás de
-            // quem já lá estava, e o artista conclui que o gesto falhou.
-            hero.store.bump_panel_z(panel);
-            return;
-        }
-    }
-    // ⚠️ Largar fora de todo destino legal **não faz nada**, e não é um erro: é a forma de
-    // desistir. ⛔ Nenhuma mensagem — um aviso por cada gesto abandonado seria ruído.
-}
-
 /// ⭐⭐ **REPÕE A ARRUMAÇÃO DE FÁBRICA** — a porta do *Reset Panel Layout*.
 ///
 /// > *«Precisamos da opção de resetar.»* — Enio, 2026-08-30
@@ -595,70 +550,6 @@ pub fn reset(hero: &mut HeroScreen) {
                 .insert(p.manifest.id, p.manifest.default_visible);
         }
     });
-}
-
-/// Pinta as zonas de largada e a etiqueta que segue o dedo. No-op sem arrasto em curso.
-#[allow(clippy::too_many_arguments)]
-pub fn paint_drag_overlay(
-    hero: &HeroScreen,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-) {
-    let Some((panel, cursor)) = hero.store.tab_being_dragged() else {
-        return;
-    };
-    let title = crate::panel::with_registry_opt(|reg| {
-        reg.panels()
-            .iter()
-            .find(|p| p.manifest.panel_node_id == panel)
-            .map(|p| p.manifest.title)
-    })
-    .flatten()
-    .unwrap_or("");
-
-    for (_, r) in drop_targets(hero, panel) {
-        let under = r.contains(cursor.0, cursor.1);
-        let token = if under {
-            ColorToken::AccentSoft
-        } else {
-            ColorToken::BgElev
-        };
-        fill_rounded_rect(
-            scene,
-            r,
-            crate::paint::frame_radius(theme, Radius::Sm.px()),
-            resolve(token, theme),
-        );
-        if under {
-            // FRAME-RAW-OK: o contorno da aba DESTINO enquanto se arrasta outra: a mensagem, nao moldura de repouso
-            crate::paint::stroke_rounded_rect(
-                scene,
-                r,
-                crate::paint::frame_radius(theme, Radius::Sm.px()),
-                DROP_OUTLINE_PX,
-                resolve(ColorToken::Accent, theme),
-            );
-        }
-    }
-
-    // A etiqueta segue o dedo — é o que diz *o que* está a ser movido.
-    let w = DRAG_LABEL_W;
-    let ghost = Rect::new(cursor.0 - w * 0.5, cursor.1 - TAB_BAR_H * 0.5, w, TAB_BAR_H);
-    fill_rounded_rect(
-        scene,
-        ghost,
-        crate::paint::frame_radius(theme, Radius::Sm.px()),
-        resolve(ColorToken::Bg2, theme),
-    );
-    paint_text_centered(
-        text_system,
-        scene,
-        title,
-        ghost,
-        TypeToken::Sm.px(),
-        resolve(ColorToken::Text1, theme),
-    );
 }
 
 #[cfg(test)]

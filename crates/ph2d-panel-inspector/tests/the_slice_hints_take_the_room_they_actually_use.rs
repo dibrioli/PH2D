@@ -61,6 +61,17 @@ fn simple_slice() -> InspectorSliceInfo {
 /// largura FIXA: alargar o viewport só afasta o canvas, e a primeira versão deste gate media
 /// 55,56 px nas duas pontas — não porque a altura estivesse certa, mas porque as duas corridas
 /// eram o mesmo layout. *Um gate cuja variável independente não varia mede o silêncio.*
+///
+/// ⛔⛔ **E ele voltou a medir silêncio em 2026-09-08, por outra razão — a MESMA frase, outro
+/// mecanismo.** Desde que o painel lê o encaixe RESOLVIDO (`ctx.slot`) em vez de `layout.inspector`
+/// — a cura do report *«as abas do painel esquerdo ficam travadas»* —, quem decide a largura é o
+/// `slot_rects`. E ele identifica as colunas **pela ordem em `x`** (`side_columns`): pôr o
+/// Inspector em `x = 0`, como esta função fazia, tornava-o a coluna da **ESQUERDA**, e a banda
+/// medida passava a ser a da Hierarquia, de largura fixa — `55,04` nas duas pontas.
+///
+/// ⇒ o rect é agora **ancorado à direita**, e há um **controlo** logo a seguir a exigir que o
+/// encaixe que o painel vai receber tenha de facto esta largura. *A variável independente prova
+/// que variou, senão o gate afirma sobre o layout errado sem uma palavra.*
 fn hint_gap(width: f32) -> f32 {
     set_current_inspector_slice(Some(simple_slice()));
     let mut host = MockPanelHost::with_panel_and_shared_chrome::<InspectorPanel>();
@@ -74,11 +85,23 @@ fn hint_gap(width: f32) -> f32 {
     };
     let mut layout = ph2d_editor_core::screens::layout::HeroLayout::for_viewport(viewport);
     layout.inspector = Rect {
-        x: 0.0,
+        x: viewport.w - width,
         y: 0.0,
         w: width,
         h: 8000.0,
     };
+    // ⛔ **O controlo da variável independente** — ver o doc acima.
+    let slot = layout
+        .slot_rects(ph2d_editor_core::screens::slot::SlotSet::of(
+            ph2d_editor_core::screens::slot::Slot::RightTop,
+        ))
+        .get(ph2d_editor_core::screens::slot::Slot::RightTop);
+    assert!(
+        (slot.w - width).abs() < 1.0,
+        "o encaixe que o painel vai receber tem {} px e o gate queria {width} — a alavanca deste \
+         teste não é a que o painel lê, e as duas corridas mediriam o mesmo layout",
+        slot.w
+    );
     let rects = host.paint_with_layout::<InspectorPanel>(&mut state, layout, viewport);
     let find = |id| {
         rects

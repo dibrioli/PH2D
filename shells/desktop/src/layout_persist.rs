@@ -47,6 +47,16 @@ pub struct Layout {
     pub open: Vec<String>,
     /// `(Panel::ID, encaixe)`, ordenado pelo id — a ordem é o que torna o hash estável.
     pub slots: Vec<(String, Slot)>,
+    /// ⭐⭐ **A ORDEM em que as abas se sentam** — os `Panel::ID` das filas que o artista arrumou.
+    ///
+    /// ⚠️⚠️ **Esta é a única lista do ficheiro que NÃO se ordena, e a ausência da ordenação é o
+    /// dado.** As outras são ordenadas para o hash ser estável; aqui a sequência **é** a
+    /// informação, e ordená-la apagaria exactamente o que o artista fez.
+    ///
+    /// ⚠️ Vazia enquanto ninguém arrastar uma aba — vale a ordem do registo. É a mesma lei das
+    /// outras listas: guarda-se a **excepção**, e um painel que nasce amanhã não precisa de
+    /// migração.
+    pub tab_order: Vec<String>,
     pub dock_w_left: Option<f32>,
     pub dock_w_right: Option<f32>,
     /// ⭐ A altura AUTORADA da faixa do fundo — a irmã VERTICAL das duas de cima (a costura do
@@ -146,6 +156,12 @@ pub fn serialize_section(l: &Layout) -> String {
     for (id, slot) in &l.slots {
         let _ = writeln!(s, "slot.{id}={}", slot.wire());
     }
+    // ⚠️ **Uma linha só, com a sequência inteira** — e não `taborder.<id>=<n>` por painel: um
+    //    índice por linha admite ficheiros com buracos e repetições, e a leitura teria de decidir
+    //    o que fazer com eles. Uma lista é a sua própria validação.
+    if !l.tab_order.is_empty() {
+        let _ = writeln!(s, "tab_order={}", l.tab_order.join(","));
+    }
     s
 }
 
@@ -187,6 +203,14 @@ pub fn parse(text: &str) -> Layout {
             "dock_w_left" => l.dock_w_left = value.parse().ok(),
             "dock_w_right" => l.dock_w_right = value.parse().ok(),
             "dock_h_bottom" => l.dock_h_bottom = value.parse().ok(),
+            "tab_order" => {
+                l.tab_order = value
+                    .split(',')
+                    .map(str::trim)
+                    .filter(|t| !t.is_empty())
+                    .map(str::to_string)
+                    .collect();
+            }
             _ => {
                 if let Some(id) = key.strip_prefix("slot.")
                     && let Some(slot) = Slot::from_wire(value)
@@ -254,6 +278,13 @@ pub fn hash(l: &Layout) -> u64 {
         }
         feed(0);
     }
+    feed(0xfe); // fronteira: a ordem das abas não se confunde com a lista de encaixes
+    for id in &l.tab_order {
+        for &b in id.as_bytes() {
+            feed(b);
+        }
+        feed(0);
+    }
     // ⚠️ As larguras entram pelos BITS do `f32`, não por um arredondamento: arrastar a divisória
     // meio pixel é uma mudança que o artista fez, e um hash que a ignorasse gravaria com atraso.
     for w in [l.dock_w_left, l.dock_w_right, l.dock_h_bottom] {
@@ -309,11 +340,23 @@ pub fn current(hero: &ph2d_editor::HeroScreen) -> Layout {
     use ph2d_editor::screens::layout::DockSide;
     let mut slots: Vec<(String, Slot)> = Vec::new();
     let mut open: Vec<String> = Vec::new();
+    // ⚠️ `(posição na lista, Panel::ID)` — a varredura do registo NÃO está na ordem das abas, e a
+    //    projecção é pelo `Panel::ID` e nunca pelo `NodeId`: o id é o nome estável entre builds, o
+    //    nó é um hash que uma renomeação move.
+    let mut tab_order: Vec<(usize, String)> = Vec::new();
     ph2d_editor::panel::with_registry_opt(|reg| {
         for p in reg.panels() {
             let m = &p.manifest;
             if let Some(s) = hero.store.panel_slot(m.panel_node_id) {
                 slots.push((m.id.to_string(), s));
+            }
+            if let Some(i) = hero
+                .store
+                .panel_tab_order()
+                .iter()
+                .position(|n| *n == m.panel_node_id)
+            {
+                tab_order.push((i, m.id.to_string()));
             }
             // ⚠️ Só a DIFERENÇA do que o painel declara — ver `Layout::open`.
             if hero.is_panel_visible(m.id) != m.default_visible {
@@ -323,9 +366,14 @@ pub fn current(hero: &ph2d_editor::HeroScreen) -> Layout {
     });
     slots.sort();
     open.sort();
+    // ⚠️ **Ordena pelo ÍNDICE, e é a única lista deste ficheiro que não se ordena pelo nome** — a
+    //    sequência é o dado. Ordenar por id gravaria uma arrumação que ninguém fez.
+    tab_order.sort_by_key(|(i, _)| *i);
+    let tab_order: Vec<String> = tab_order.into_iter().map(|(_, id)| id).collect();
     Layout {
         open,
         slots,
+        tab_order,
         // ⚠️ `dock_width` devolve sempre um número (o default quando ninguém arrastou), então
         // gravá-lo directamente escreveria o default como se fosse uma escolha. O que se grava é a
         // escolha — e ela existe só quando difere do que o layout daria sozinho.
@@ -375,6 +423,20 @@ pub fn install(hero: &mut ph2d_editor::HeroScreen, l: &Layout) {
             }
             hero.store.set_panel_slot(p.manifest.panel_node_id, *slot);
         }
+        // ⭐ **A ordem das abas** — um id que já não existe nesta build é saltado, como nos
+        //    encaixes. ⚠️ Um id REPETIDO no ficheiro entraria duas vezes e o `position()` do
+        //    `slot_tabs::occupants` leria sempre a primeira: filtra-se aqui, na leitura, porque
+        //    *o ficheiro pode ser mais velho que a regra*.
+        let mut order: Vec<ph2d_editor::NodeId> = Vec::new();
+        for id in &l.tab_order {
+            let Some(p) = reg.panels().iter().find(|p| p.manifest.id == id.as_str()) else {
+                continue;
+            };
+            if !order.contains(&p.manifest.panel_node_id) {
+                order.push(p.manifest.panel_node_id);
+            }
+        }
+        hero.store.set_panel_tab_order(order);
     });
     for (id, visible) in to_open {
         hero.panel_visibility.insert(id, visible);

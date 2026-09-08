@@ -9,6 +9,9 @@ fn sample() -> Layout {
             ("audio_mixer".into(), Slot::LeftTop),
             ("physics".into(), Slot::RightBottom),
         ],
+        // ⚠️ **Fora de ordem alfabética de propósito** — esta lista é a única do ficheiro cuja
+        //    SEQUÊNCIA é o dado, e uma amostra já ordenada passaria por cima de um `sort()` a mais.
+        tab_order: vec!["physics".into(), "audio_mixer".into()],
         dock_w_left: Some(280.0),
         dock_w_right: Some(320.5),
         dock_h_bottom: Some(196.0),
@@ -38,6 +41,21 @@ fn every_field_moves_the_hash() {
     let mut moved = base.clone();
     moved.dock_w_right = None;
     assert_ne!(hash(&moved), h, "desistir de uma largura não moveu o hash");
+    // ⭐⭐ **E a PERMUTAÇÃO**, que é o caso próprio desta lista: os mesmos ids, noutra ordem.
+    //
+    // ⛔ Um hash que os somasse — ou que os ordenasse, como faz com as outras duas listas — daria o
+    //    MESMO número, o `save_if_changed` não escreveria nada, e arrastar uma aba morreria no fecho
+    //    do app sem uma linha de erro. *A sequência é o dado; um hash que a normaliza apaga-a.*
+    let mut moved = base.clone();
+    moved.tab_order.reverse();
+    assert_ne!(
+        hash(&moved),
+        h,
+        "reordenar as abas não moveu o hash — a arrumação não chegaria ao ficheiro"
+    );
+    let mut moved = base.clone();
+    moved.tab_order.clear();
+    assert_ne!(hash(&moved), h, "desarrumar a fila não moveu o hash");
 }
 
 /// ⚠️ **Uma linha que não se entende é SALTADA, e o resto do ficheiro sobrevive.**
@@ -134,6 +152,8 @@ fn a_saved_arrangement_comes_back_but_a_forbidden_slot_does_not() {
                 // Um painel que não existe nesta build.
                 ("um_painel_de_2030".into(), Slot::RightTop),
             ],
+            // ⚠️ Um id que já não existe nesta build é saltado aqui pela mesma lei dos encaixes.
+            tab_order: vec!["um_painel_de_2030".into(), "audio_mixer".into()],
             dock_h_bottom: None,
             dock_w_left: Some(281.0),
             dock_w_right: None,
@@ -178,6 +198,10 @@ fn what_is_installed_is_what_gets_written_back() {
     let before = Layout {
         open: vec!["audio_mixer".into()],
         slots: vec![("audio_mixer".into(), Slot::LeftTop)],
+        // ⭐⭐ **A ordem das abas volta pela mesma porta** — e em ordem NÃO alfabética, senão a
+        //    volta passaria com um `sort()` a mais no caminho. Era metade do report de 2026-09-08:
+        //    *uma arrumação que guarda ONDE sem guardar em que ORDEM está meio guardada.*
+        tab_order: vec!["inspector".into(), "audio_mixer".into()],
         dock_w_left: Some(281.0),
         dock_w_right: Some(333.0),
         dock_h_bottom: Some(210.0),

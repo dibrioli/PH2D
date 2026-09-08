@@ -188,6 +188,20 @@ pub struct WidgetStore {
     /// ⭐⭐ **AS EXCEPÇÕES de onde cada painel está** (decisão D4) — só quem o artista MOVEU. Quem
     /// não está aqui responde pelo `Panel::DEFAULT_SLOT`. Ver `state::slot_ops`.
     pub(super) panel_slot: std::collections::BTreeMap<NodeId, crate::screens::slot::Slot>,
+    /// ⭐⭐⭐ **A ORDEM em que as abas se sentam** — as filas que o artista ARRUMOU, e só elas.
+    ///
+    /// > *«não é possível reordenar as abas arrastando com o mouse»* — Enio, 2026-09-08.
+    ///
+    /// ⚠️ **É uma lista só para todas as filas, e não uma por encaixe**, porque um painel está em
+    /// exactamente um encaixe de cada vez: `slot_tabs::occupants` filtra pelo encaixe e ordena por
+    /// **posição nesta lista**, então o que decide é a ordem RELATIVA dos membros de cada fila —
+    /// as outras não interferem. Uma lista por encaixe teria de ser migrada sempre que um painel
+    /// mudasse de lado.
+    ///
+    /// ⚠️ Quem não está aqui vem **depois**, na ordem do registo (a ordenação é *estável*). ⛔ E é
+    /// por isso que um arrasto escreve a **fila inteira**, nunca só a aba movida: com um membro
+    /// só, «arrumado» leria como *primeiro* e largar no fim seria inexprimível.
+    pub(super) panel_tab_order: Vec<NodeId>,
     /// Arrasto de uma aba em curso — ver [`TabDragAnchor`]. O início fica guardado porque é a
     /// distância a ele que separa um **clique** (trocar de aba) de um **arrasto** (mudar de
     /// encaixe).

@@ -71,10 +71,42 @@ impl WidgetStore {
         self.dock_h_bottom = None;
     }
 
-    /// Só os encaixes. ⚠️ **A largura fica**, e a distinção é o que trocar de layout precisa: ela é
-    /// a medida da MÃO de quem usa o ecrã, não da tarefa — ver `hero::layout_switch`.
+    /// Só os encaixes — **e a ordem das abas com eles**. ⚠️ **A largura fica**, e a distinção é o
+    /// que trocar de layout precisa: ela é a medida da MÃO de quem usa o ecrã, não da tarefa —
+    /// ver `hero::layout_switch`.
+    ///
+    /// ⚠️ **A ordem vai junto com os encaixes, e não com a largura**, porque ela é a mesma espécie
+    /// de facto: *onde as coisas estão*. Uma fila arrumada cujos membros voltaram todos ao encaixe
+    /// de fábrica descreve uma disposição que já não existe.
     pub fn reset_panel_slots(&mut self) {
         self.panel_slot.clear();
+        self.panel_tab_order.clear();
+    }
+
+    /// **A ordem que o artista arrumou** — ver [`WidgetStore::panel_tab_order`] o campo.
+    #[must_use]
+    pub fn panel_tab_order(&self) -> &[NodeId] {
+        &self.panel_tab_order
+    }
+
+    /// ⭐⭐ **Escreve a ordem de uma FILA INTEIRA** — a porta que o arrasto de uma aba usa.
+    ///
+    /// Os membros de `row` saem de onde estavam e voltam, nesta ordem, no fim da lista. ⚠️ **As
+    /// outras filas não se mexem**: o que `slot_tabs::occupants` lê é a posição *relativa* dos
+    /// membros do encaixe dela, e reanexar um bloco inteiro não altera a ordem relativa de mais
+    /// ninguém.
+    ///
+    /// ⛔ **Nunca escreva só a aba movida.** Um membro só faz o `unwrap_or(usize::MAX)` do
+    /// `occupants` pôr os restantes atrás dele, e o artista que largou uma aba no FIM da fila
+    /// vê-la-ia saltar para o princípio.
+    pub fn set_tab_row_order(&mut self, row: &[NodeId]) {
+        self.panel_tab_order.retain(|n| !row.contains(n));
+        self.panel_tab_order.extend_from_slice(row);
+    }
+
+    /// Reposição directa da lista — a porta que a persistência usa ao carregar o ficheiro.
+    pub fn set_panel_tab_order(&mut self, order: Vec<NodeId>) {
+        self.panel_tab_order = order;
     }
 
     /// **Qual layout por tarefa está activo** (decisão D7).

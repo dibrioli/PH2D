@@ -347,3 +347,151 @@ fn every_docked_layout_rect_is_pushed_by_a_tab_bar() {
         under.join("\n  ")
     );
 }
+
+/// A fila, pelos ids, na ordem em que ela é vista.
+fn row(h: &HeroScreen, slot: Slot) -> Vec<&'static str> {
+    slot_tabs::occupants(h, slot).iter().map(|o| o.id).collect()
+}
+
+/// **Arrasta a aba de `panel` até `to_x`, dentro da fila do encaixe, e larga.**
+///
+/// ⚠️ O percurso é o REAL: `begin` no centro da aba (que é onde o `pointer_down` a arma), `update`
+/// até ao alvo, `end`. Escrever o `tab_drop` à mão saltaria o limiar — e é ele que separa um clique
+/// de um arrasto, logo um gate que o salte não mede o gesto.
+fn drag_tab(h: &mut HeroScreen, panel: &str, slot: Slot, to_x: f32) {
+    let node = node_of(panel);
+    let bar = h.last_layout.expect("layout").slot_tabs[slot as usize];
+    let from = h
+        .hit_index
+        .rect_for(slot_tabs::tab_node_id(node))
+        .unwrap_or_else(|| panic!("a aba de {panel} não foi pintada — o gate mediria o nada"));
+    let y = bar.y + bar.h * 0.5;
+    h.store.begin_tab_drag(node, from.x + from.w * 0.5, y);
+    h.store.update_tab_drag(to_x, y);
+    h.store.end_tab_drag();
+    paint(h, 3);
+}
+
+/// ⭐⭐⭐ **ARRASTAR UMA ABA MOVE-A NA FILA** — o report de 2026-09-08.
+///
+/// > *«não é possível reordenar as abas arrastando com o mouse»* — Enio.
+///
+/// A largada só sabia responder *«que ENCAIXE?»*, então arrastar dentro da própria fila era um
+/// no-op silencioso: o painel já estava naquele encaixe. A ordem passou a ser um dado — ver
+/// `WidgetStore::set_tab_row_order`.
+#[test]
+fn dragging_a_tab_within_its_row_moves_it() {
+    let mut h = settled(&["audio_mixer", "audio_editor", "inspector"]);
+    let before = row(&h, Slot::RightTop);
+    assert!(
+        before.len() >= 3,
+        "a fixtura precisa de três abas para uma reordenação ser observável: {before:?}"
+    );
+
+    // A ÚLTIMA da fila, largada sobre a metade esquerda da PRIMEIRA ⇒ ela passa a ser a primeira.
+    let last = before[before.len() - 1];
+    let first_rect = h
+        .hit_index
+        .rect_for(slot_tabs::tab_node_id(node_of(before[0])))
+        .expect("a primeira aba foi pintada");
+    drag_tab(&mut h, last, Slot::RightTop, first_rect.x + 1.0);
+
+    let after = row(&h, Slot::RightTop);
+    let mut want = vec![last];
+    want.extend(before.iter().copied().filter(|id| *id != last));
+    assert_eq!(
+        after, want,
+        "arrastar «{last}» para o início da fila não a moveu — era o report do dono \
+         (antes {before:?})"
+    );
+
+    // ⚠️ **O controlo do lado oposto:** um arrasto que acaba onde ele já estava não pode mexer em
+    //    nada. Sem ele, um código que embaralhasse a fila a cada largada passaria na metade de cima.
+    let settled_row = row(&h, Slot::RightTop);
+    let own = h
+        .hit_index
+        .rect_for(slot_tabs::tab_node_id(node_of(last)))
+        .expect("a aba arrastada continua pintada");
+    drag_tab(&mut h, last, Slot::RightTop, own.x + 1.0);
+    assert_eq!(
+        row(&h, Slot::RightTop),
+        settled_row,
+        "largar uma aba no lugar dela própria reordenou a fila"
+    );
+}
+
+/// ⭐⭐ **E a ordem arrumada SOBREVIVE a fechar e reabrir a coluna** — a involução do
+/// `dock_columns` devolve os painéis, e a fila tem de os devolver na ordem que o artista deixou.
+///
+/// ⛔ Sem isto, o gesto de retracção desfazia a arrumação em silêncio — o defeito que o report de
+/// 2026-09-08 juntava ao outro, e que só se vê quando as duas features existem ao mesmo tempo.
+#[test]
+fn the_row_the_artist_arranged_survives_the_column_closing() {
+    use ph2d_editor_core::screens::hero::dock_columns;
+    use ph2d_editor_core::screens::layout::DockSide;
+
+    let mut h = settled(&["audio_mixer", "audio_editor", "inspector"]);
+    let before = row(&h, Slot::RightTop);
+    let last = before[before.len() - 1];
+    let first_rect = h
+        .hit_index
+        .rect_for(slot_tabs::tab_node_id(node_of(before[0])))
+        .expect("a primeira aba foi pintada");
+    drag_tab(&mut h, last, Slot::RightTop, first_rect.x + 1.0);
+    let arranged = row(&h, Slot::RightTop);
+    assert_ne!(
+        arranged, before,
+        "controlo partido: o arrasto não arrumou nada, logo o resto do gate não mede a arrumação"
+    );
+
+    assert!(dock_columns::close(&mut h, DockSide::Right, Some(300.0)));
+    paint(&mut h, 3);
+    assert!(dock_columns::open(&mut h, DockSide::Right));
+    paint(&mut h, 3);
+
+    assert_eq!(
+        row(&h, Slot::RightTop),
+        arranged,
+        "fechar e reabrir a coluna desfez a ordem que o artista tinha arrumado"
+    );
+}
+
+/// ⭐⭐ **A MARCA diz o lugar, e ela cai na fronteira onde a aba vai entrar.**
+///
+/// ⛔ As zonas de largada realçam a COLUNA; num arrasto dentro da própria fila a coluna realçada é
+/// a mesma antes e depois de atravessar a vizinha — sem esta marca o artista larga às cegas.
+#[test]
+fn the_drop_mark_sits_where_the_tab_will_land() {
+    let h = settled(&["audio_mixer", "audio_editor", "inspector"]);
+    let r = row(&h, Slot::RightTop);
+    assert!(r.len() >= 3, "a fixtura precisa de três abas: {r:?}");
+
+    let first = h
+        .hit_index
+        .rect_for(slot_tabs::tab_node_id(node_of(r[0])))
+        .expect("a primeira aba foi pintada");
+    let last = node_of(r[r.len() - 1]);
+    let bar = h.last_layout.expect("layout").slot_tabs[Slot::RightTop as usize];
+    let y = bar.y + bar.h * 0.5;
+
+    // Sobre a metade ESQUERDA da primeira aba ⇒ a marca fica na borda esquerda dela.
+    let caret = slot_tabs::tab_drop_caret(&h, last, (first.x + 1.0, y))
+        .expect("o dedo está sobre a fila — tem de haver marca");
+    assert!(
+        (caret.x + caret.w * 0.5 - first.x).abs() < 2.0,
+        "a marca ficou em x={:.1} e a aba de destino começa em x={:.1}",
+        caret.x + caret.w * 0.5,
+        first.x
+    );
+    assert!(
+        (caret.y - bar.y).abs() < 0.5 && (caret.h - bar.h).abs() < 0.5,
+        "a marca não tem a altura da fila: {caret:?} contra {bar:?}"
+    );
+
+    // ⚠️ **O controlo:** fora da fila não há marca — senão o gate acima passaria sobre uma marca
+    //    que é pintada sempre, em qualquer sítio.
+    assert!(
+        slot_tabs::tab_drop_caret(&h, last, (first.x + 1.0, bar.y + bar.h + 200.0)).is_none(),
+        "há marca com o dedo FORA da fila de abas"
+    );
+}

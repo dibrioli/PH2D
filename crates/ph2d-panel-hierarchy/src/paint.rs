@@ -18,7 +18,6 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
-use ph2d_editor_core::screens::HeroLayout;
 use ph2d_editor_core::screens::hero::fixture;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_surface, paint_panel_title,
@@ -46,14 +45,29 @@ const HIER_ROW_H: f32 = ROW_H_PX;
 
 pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(HierarchyPanel::ID) {
+        ctx.host.store_mut().clear_panel_rect(ids::HIER_PANEL);
         return;
     }
+    // ⭐⭐⭐ **O RECT PUBLICADO É O DO ENCAIXE, e quem o publica é o painel** — as duas metades do
+    // report de 2026-09-08 (*«as abas do painel esquerdo ficam travadas»*).
+    //
+    // ⛔ Até aqui quem publicava era o `hero::paint`, de fora, com `layout.hierarchy` — a coluna
+    // da esquerda **por nome**. Este painel e o Inspector eram os dois únicos assim; os outros 20
+    // publicam o próprio `ctx.slot`. ⇒ arrastar a aba deste painel para a outra coluna movia a
+    // ABA e deixava o corpo onde estava, e como o `DockSides::from_published` responde
+    // *«esta coluna está ocupada?»* cruzando os rects publicados com a coluna, a coluna de destino
+    // lia-se **vazia**: a fila de abas ficava a flutuar sobre a área de desenho, com a alça de
+    // reabertura armada por baixo dela. *Uma segunda porta para o mesmo facto, e era a de fora que
+    // ganhava.*
+    ctx.host
+        .store_mut()
+        .set_panel_rect(ids::HIER_PANEL, ctx.slot);
     let theme = ctx.host.theme();
     let rename_target = state.rename_target_row;
     let row_set = {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         paint_hierarchy_body(
-            ctx.layout,
+            ctx.slot,
             ctx.scene,
             ctx.text_system,
             theme,
@@ -249,7 +263,7 @@ fn paint_drop_indicator(
 }
 
 fn paint_hierarchy_body(
-    layout: &HeroLayout,
+    rect: Rect,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -257,7 +271,6 @@ fn paint_hierarchy_body(
     store: &WidgetStore,
     rename_target: Option<ph2d_a11y::NodeId>,
 ) -> std::collections::BTreeSet<ph2d_a11y::NodeId> {
-    let rect = layout.hierarchy;
     paint_panel_surface(rect, scene, theme);
     // ⛔ **A ALÇA DE ARRASTO E AS DUAS DE RESIZE SAÍRAM** (2026-08-30): esta coluna é ANCORADA.
     // Saíram **em par** com o `InteractiveState::BlenderHit` do `pre_populate.rs` — ver o irmão

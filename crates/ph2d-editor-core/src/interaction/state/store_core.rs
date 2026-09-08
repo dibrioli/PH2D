@@ -38,6 +38,7 @@ impl WidgetStore {
             panel_resize_anchor: None,
             panel_resize_anchor_bl: None,
             panel_slot: std::collections::BTreeMap::new(),
+            panel_tab_order: Vec::new(),
             tab_drag: None,
             tab_drop: None,
             active_layout: crate::screens::task_layout::TaskLayout::default(),

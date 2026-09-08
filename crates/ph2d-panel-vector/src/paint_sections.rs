@@ -84,8 +84,12 @@ mod blend;
 mod envelope;
 
 /// ⭐ A seção **Skeleton** (estudo 42 item 5) — módulo irmão (teto de 600 LOC).
+///
+/// ⚠️ `pub(crate)` porque o **popover** do selector de acção é pintado no passe DIFERIDO do
+/// `paint.rs`, como o do Morph e o da mistura de filtro: a seção rola, e uma lista pintada dentro
+/// dela seria cortada na borda.
 #[path = "paint_bone.rs"]
-mod bone;
+pub(crate) mod bone;
 
 /// A seção **Text on Path** (plano 22) — módulo irmão (teto de 600 LOC).
 #[path = "paint_textpath.rs"]

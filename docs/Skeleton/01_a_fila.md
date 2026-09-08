@@ -572,6 +572,59 @@ este painel uma **linha de texto de leitura**, e construí-la é wave própria. 
 gesto. *Uma dívida nomeada e um controlo mudo leem-se igual na tela; a diferença é esta linha
 existir.*
 
+
+### F3-b — ✅ *«não há meios de selecionar nem o objeto alvo nem a animação»* (report, 2026-09-08)
+
+⛔⛔ **A dívida nomeada acima NÃO era uma dívida: era o defeito.** O dono correu o smoke e leu a
+feature como avariada — e tinha razão nas três metades, cada uma invisível sozinha:
+
+| o que faltava | como se lia na tela | medido em |
+|---|---|---|
+| o painel não NOMEIA a acção ligada | dois campos de graus **sem sujeito** | `paint_bone::smart_rows` — `Remove` + 2 números, nada mais |
+| o gesto adoptava o clip **ABERTO** | todo osso casava com a animação principal, calado | `TimelineDoc::new()` tem **um** clip, `"Main"` |
+| a timeline nasce **FECHADA** | não havia onde gravar a acção | `TimelinePanel::DEFAULT_VISIBLE = false` |
+
+⇒ *um controlo cujo sujeito é invisível lê-se exactamente como um controlo morto*, e a única
+resposta que a casa dava era um `eprintln!` que o artista nunca vê.
+
+⭐⭐⭐ **A cura são três portas, e as referências dão as duas metades:**
+
+1. **O gesto CRIA a acção** com o nome do osso (`fresh_action_name` — *«Bone 7 Action»*, *«… 2»* se
+   estiver tomado), torna-a activa e **abre a timeline**. É o *Create Smart Bone Action* do Moho.
+   ⛔ Nunca adoptar a aberta.
+2. **O selector `Action`** na secção Skeleton lista os clips do documento e troca o ligado — o
+   botão **New** + o *datablock* do *Action Constraint* do Blender. Ele é o **readout e o gesto**:
+   o rótulo do chip é o nome da acção, então *«qual é?»* responde-se sem abrir nada.
+3. **`TimelineIntent::AddNamedClip`** — o clip nasce pela MESMA porta que o `+` (`a_clip_is_born`:
+   4 s de duração e `set_active`), só o nome difere. ⛔ `AddClip` + `RenameClip` obrigaria o
+   chamador a adivinhar `clips().len()`, que é errado à primeira intenção enfileirada à frente.
+
+⭐⭐ **E a construção revelou um quarto defeito, que torna a feature inutilizável e não é uma
+nicety: um controlo NÃO pode percorrer a acção que está ABERTA.** Ali o artista está a gravá-la; os
+dois escrevem o mesmo objecto no mesmo quadro e o passe do controlo corre **depois** do da timeline
+⇒ arrastar o playhead não move nada (o ângulo repõe sempre o mesmo instante) e a pose acabada de pôr
+é reposta antes de ser vista. ⚠️ E o **autokey corre ainda mais tarde** (`autokey_pass` na linha
+~12 862, contra ~9 780 do controlo): com o objecto seleccionado ele leria a saída do próprio
+controlo como *«o artista mexeu»* e cunharia chaves a partir dela — um laço fechado. ⇒ a lei é a do
+Moho: **dentro de uma acção o relógio é o do editor**.
+
+⚠️ **A cena de smoke passou a trazer uma acção PRONTA** (`"Leaf Rises"`, a folha roxa sobe `3` em
+`2 s`, semeada por `vec_bone_smoke::seed_demo_action` e deixada **fechada**). Sem ela o único caminho
+para provar um osso inteligente era gravar uma animação primeiro, e o smoke passava a testar a
+timeline em vez do osso — *uma cena que só produz o fenómeno depois de o artista acertar OUTRO gesto
+não prova nada quando esse gesto falha*.
+
+⛔ **Uma linha nova na catraca do `the_painted_control_reaches_a_consumer`**, com o motivo medido: o
+chip `VECTOR_BONE_SMART_CLIP` é vivo pelo despacho **genérico** de `Dropdown`, que não nomeia id
+nenhum. ⚠️ **É a TERCEIRA ocorrência dessa família e a mais instrutiva** — os chips irmãos (mistura
+de filtro, tecla de forma do Morph) escapam à régua **por acidente de FORMA** (os ids deles são
+gerados por função, e ela lê `ids::LITERAL`), não por estarem ligados. ⛔ Por isso a cura não é
+dar-lhe um id gerado: seria esconder o controlo em vez de o ligar.
+
+⚠️ **E o `cargo fmt` re-expandiu o `reach_tests.rs` para 735 linhas** (teto 700) — curado por
+**corte por responsabilidade** em `reach_limit_tests.rs` (a parede de uma junta) e
+`reach_action_tests.rs` (o instante que um ângulo pede), ⛔ nunca por isenção.
+
 ⚠️ **`PROJECT_SCHEMA` 125 → 126** (componente registado novo; o registo do esqueleto vai de **5 para
 6** e o catálogo idem — conte o delta). ⚠️ E o gate `every_registered_component_has_a_descriptor`
 apanhou-me a registar sem descrever: *o Inspector e o registo são duas listas, e o gate é o que as

@@ -15,6 +15,12 @@
 //! ele age sobre a seleção, e recusar em voz alta é mais honesto que esconder a porta de entrada.
 
 use super::*;
+use ph2d_editor_core::interaction::InteractiveState;
+use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::widget::{
+    DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, paint_dropdown_chip,
+    paint_dropdown_popover_scrolled, scrollbar_is_needed, scrollbar_track_rect,
+};
 
 impl BodyCtx<'_> {
     /// Seção **SKELETON** — prender ao esqueleto, as duas saídas, e o osso em foco.
@@ -117,8 +123,14 @@ impl BodyCtx<'_> {
             y,
         );
         let campos: [(ph2d_a11y::NodeId, &str); 2] = [
-            (ids::VECTOR_BONE_LIMIT_MIN, tr("panel.vector.bone.limit.min")),
-            (ids::VECTOR_BONE_LIMIT_MAX, tr("panel.vector.bone.limit.max")),
+            (
+                ids::VECTOR_BONE_LIMIT_MIN,
+                tr("panel.vector.bone.limit.min"),
+            ),
+            (
+                ids::VECTOR_BONE_LIMIT_MAX,
+                tr("panel.vector.bone.limit.max"),
+            ),
         ];
         for (id, label) in campos {
             y = self.labeled_number_field(label, id, ANGLE_STEP, y);
@@ -128,11 +140,14 @@ impl BodyCtx<'_> {
 
     /// ⭐⭐⭐ **O OSSO INTELIGENTE** — girar este osso percorre uma acção inteira.
     ///
-    /// ⚠️ **Dívida NOMEADA:** o painel não diz **qual** acção está ligada — falta a este painel uma
-    /// linha de texto de leitura, e construí-la é wave própria. Quem responde é o log do gesto
-    /// (`[ph2d-vec] osso inteligente: accao "<nome>"`), e o gesto em si é o clip **aberto** na
-    /// timeline. *Uma dívida nomeada e um controlo mudo leem-se igual na tela; a diferença é esta
-    /// linha existir.*
+    /// ⚠️⚠️ **A linha *Action* vem PRIMEIRO, e ela é a wave de 2026-09-08.** Até esse dia esta
+    /// função pintava *Remove* mais dois números e mais nada — o dono carregava em *Add Smart Bone*
+    /// e ficava com dois campos de graus **sem sujeito** (report: *«não há meios de selecionar nem o
+    /// objeto alvo nem a animação»*). *Um controlo cujo sujeito é invisível lê-se exactamente como
+    /// um controlo morto*, e a única resposta na casa era um `eprintln!` que o artista nunca vê.
+    ///
+    /// ⇒ o chip é o **readout e o gesto**: ele diz o nome da acção ligada e abre a lista das que o
+    /// documento tem.
     fn smart_rows(&mut self, y: f32) -> f32 {
         let Some(_) = state::current_bone_smart() else {
             return self.action_button(
@@ -141,19 +156,70 @@ impl BodyCtx<'_> {
                 y,
             );
         };
-        let mut y = self.action_button(
+        let mut y = self.smart_action_row(y);
+        y = self.action_button(
             ids::VECTOR_BONE_SMART_REMOVE,
             tr("panel.vector.bone.smart.remove"),
             y,
         );
         let campos: [(ph2d_a11y::NodeId, &str); 2] = [
-            (ids::VECTOR_BONE_SMART_FROM, tr("panel.vector.bone.smart.from")),
+            (
+                ids::VECTOR_BONE_SMART_FROM,
+                tr("panel.vector.bone.smart.from"),
+            ),
             (ids::VECTOR_BONE_SMART_TO, tr("panel.vector.bone.smart.to")),
         ];
         for (id, label) in campos {
             y = self.labeled_number_field(label, id, ANGLE_STEP, y);
         }
         y
+    }
+
+    /// ⭐⭐⭐ **QUAL ACÇÃO** — o chip que a nomeia e abre a lista. Espelho exacto da linha de mistura
+    /// de um degrau de filtro (`paint_filters::filter_blend_row`).
+    ///
+    /// ⚠️ **Vazio mostra o traço**, e não uma cadeia vazia: uma célula em branco lê-se como um
+    /// controlo por carregar, e o traço diz *«nenhuma»* em voz alta — a mesma lei da tecla de uma
+    /// forma do Morph.
+    fn smart_action_row(&mut self, y: f32) -> f32 {
+        let gap = Spacing::Xs.px();
+        let id = ids::VECTOR_BONE_SMART_CLIP;
+        paint_text(
+            self.text_system,
+            self.scene,
+            tr("panel.vector.bone.smart.action"),
+            self.inner_x,
+            y + (self.row_h - self.font) * 0.5,
+            self.font,
+            LABEL_COL_W,
+            resolve(ColorToken::Text1, self.theme),
+        );
+        let ligada = state::current_bone_smart_clip();
+        let rotulo = if ligada.is_empty() {
+            tr("panel.vector.bone.smart.none")
+        } else {
+            ligada.as_str()
+        };
+        let chip = Rect::new(
+            self.inner_x + LABEL_COL_W + gap,
+            y,
+            (self.inner_w - LABEL_COL_W - gap).max(1.0),
+            self.row_h,
+        );
+        let open = matches!(
+            self.store.get(id),
+            Some(InteractiveState::Dropdown { open: true, .. })
+        );
+        let dd = Dropdown::new(id, "", vec![DropdownOption::new(id, (), rotulo)])
+            .selected(())
+            .open(open)
+            .visual(self.store.dropdown_visual(id));
+        paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
+        self.hit_index.register(id, chip);
+        if open {
+            state::set_pending_bone_action_dd(Some(chip));
+        }
+        y + self.row_h + self.row_gap
     }
 
     /// ⭐⭐⭐ **A ÂNCORA DE IK** do osso em foco — a porta de entrada, ou os três números dela.
@@ -232,3 +298,79 @@ const ANGLE_STEP: f64 = 5.0; // LITERAL-PX-OK: passo no domínio do documento, n
 
 /// Passo da CORRENTE — ela conta ossos, então o passo é **um osso**.
 const CHAIN_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do documento, não medida de design
+
+/// ⭐⭐⭐ **A LISTA DAS ACÇÕES** do osso inteligente — pintada no passe DIFERIDO de `paint.rs`, POR
+/// CIMA de todas as seções. Espelho exacto do `paint_filters_blend::paint_blend_popover`.
+///
+/// ⚠️ **A seção ROLA**, então sem o passe diferido a lista seria cortada na borda dela — foi o que
+/// obrigou o Morph e a mistura de filtro a fazerem o mesmo.
+///
+/// ⚠️ **As acções saem da lista PUBLICADA pela shell**, nunca de uma leitura do painel: elas são
+/// conteúdo do documento, e uma segunda leitura aqui envelheceria na primeira que ele criasse.
+///
+/// ⚠️ **O corte é o POOL de ids** ([`ids::VECTOR_BONE_SMART_CLIP_IDS`]) e não um número escrito
+/// aqui: o chrome não cunha um id em tempo de execução, e uma opção sem id nasceria **morta sob o
+/// dedo**. O gate da shell mantém o pool do tamanho do tecto do documento.
+pub(crate) fn paint_action_popover(ctx: &mut PaintCtx, chip: Rect, theme: Theme) {
+    let id = ids::VECTOR_BONE_SMART_CLIP;
+    let nomes = state::bone_actions();
+    let n = nomes.len().min(ids::VECTOR_BONE_SMART_CLIP_IDS.len());
+    if n == 0 {
+        return;
+    }
+    let ligada = state::current_bone_smart_clip();
+    let sel = nomes.iter().take(n).position(|c| *c == ligada).unwrap_or(0);
+    let options: Vec<DropdownOption<usize>> = nomes
+        .iter()
+        .take(n)
+        .enumerate()
+        .map(|(i, nome)| DropdownOption::new(ids::VECTOR_BONE_SMART_CLIP_IDS[i], i, nome.as_str()))
+        .collect();
+    let dd = Dropdown::new(id, "", options).selected(sel).open(true);
+
+    let panel = dd.popover_rect_clamped(chip, ctx.layout.popover_region());
+    let content_h = dd.content_height(chip.h);
+    let visible_h = panel.h;
+    let max_scroll = (content_h - visible_h).max(0.0);
+    {
+        let store = ctx.host.store_mut();
+        store.set_dropdown_popover(id, panel);
+        store.set_panel_content_h(id, content_h);
+        store.set_panel_visible_h(id, visible_h);
+        if store.panel_scroll(id) > max_scroll {
+            store.set_panel_scroll(id, max_scroll);
+        }
+    }
+    let scroll = ctx.host.store().panel_scroll(id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
+    paint_dropdown_popover_scrolled(
+        &dd,
+        chip,
+        panel,
+        scroll,
+        ctx.host
+            .store()
+            .scrollbar_visual_for(DROPDOWN_SCROLLBAR_ID, Some(id)),
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+
+    // Hit-register só a parte VISÍVEL de cada linha (a barra de rolagem é o alvo do arrasto).
+    let hit_index = ctx.host.hit_index_mut();
+    for i in 0..n {
+        let r = dd.option_rect_in_scrolled(chip, panel, i, scroll);
+        let top = r.y.max(panel.y);
+        let bot = (r.y + r.h).min(panel.y + panel.h);
+        if bot - top >= 1.0 {
+            hit_index.register(
+                ids::VECTOR_BONE_SMART_CLIP_IDS[i],
+                Rect::new(r.x, top, r.w, bot - top),
+            );
+        }
+    }
+    if scrollbar_is_needed(content_h, visible_h) {
+        ctx.host
+            .hit_index_mut()
+            .register(DROPDOWN_SCROLLBAR_ID, scrollbar_track_rect(panel));
+    }
+}

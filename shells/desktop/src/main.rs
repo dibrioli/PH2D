@@ -94,8 +94,6 @@ mod bone_gesture;
 mod bone_limit;
 /// ⭐ **O que a MÃO faz a um osso** — irmão do `bone_gesture`, cortado por responsabilidade.
 mod bone_pose;
-/// ⭐ **Os OSSOS INTELIGENTES** — girar um osso percorre uma animação inteira.
-mod skeleton_smart;
 /// ⭐⭐⭐ **A sonda do UNDO da âncora** (`PH2D_BONE_UNDO_PROBE=1`) — o gesto REAL sobre o *Add IK*, e
 /// o que ele deixa na fila de desfazer.
 mod bone_undo_probe;
@@ -630,6 +628,8 @@ mod sizing_smoke;
 mod skeleton_goal;
 /// ⭐⭐⭐ **O ESQUELETO, vivo** (estudo 42 item 5): a forma presa aos ossos, re-cozida por quadro.
 mod skeleton_live;
+/// ⭐ **Os OSSOS INTELIGENTES** — girar um osso percorre uma animação inteira.
+mod skeleton_smart;
 /// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
 mod sketch_hatch_smoke;
 /// **9-slice, lado a lado com o que ele conserta** (`PH2D_SLICE_SMOKE=1`).

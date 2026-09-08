@@ -55,6 +55,8 @@ fn limpa() {
     state::set_current_skinned(false);
     state::set_current_bone(None);
     state::set_current_bone_ik(None);
+    state::set_current_bone_smart(None, "");
+    state::set_current_bone_actions(Vec::new());
 }
 
 /// **O gesto REAL sobre um retângulo pintado**, e o que ele deixa no barramento.
@@ -169,9 +171,12 @@ fn estado_de(id: ph2d_a11y::NodeId) {
         || id == ids::VECTOR_BONE_IK_SOFTNESS
         || id == ids::VECTOR_BONE_IK_CHAIN
         || ids::VECTOR_BONE_BEND_IDS.contains(&id);
-    state::set_current_bone_ik(
-        precisa_de_ancora.then_some((1.0, 0.0, 2.0, ph2d_skeleton::BendSide::Keep)),
-    );
+    state::set_current_bone_ik(precisa_de_ancora.then_some((
+        1.0,
+        0.0,
+        2.0,
+        ph2d_skeleton::BendSide::Keep,
+    )));
     // ⚠️ O limite tem a MESMA forma de exclusão que a âncora: *Add* só existe sem ele, *Remove* e
     // os dois extremos só com ele. Um controlo fora deste `if` reprova a dizer «não foi PINTADO»,
     // que é a pergunta certa a fazer a quem o acrescentou.
@@ -179,12 +184,97 @@ fn estado_de(id: ph2d_a11y::NodeId) {
         || id == ids::VECTOR_BONE_LIMIT_MIN
         || id == ids::VECTOR_BONE_LIMIT_MAX;
     state::set_current_bone_limit(precisa_de_limite.then_some((-45.0, 45.0)));
-    // ⚠️ O osso inteligente tem a MESMA forma de exclusão: *Add* só sem acção, *Remove* e os dois
-    // ângulos só com ela.
+    // ⚠️ O osso inteligente tem a MESMA forma de exclusão: *Add* só sem acção, *Remove*, o selector
+    // e os dois ângulos só com ela.
     let precisa_de_accao = id == ids::VECTOR_BONE_SMART_REMOVE
+        || id == ids::VECTOR_BONE_SMART_CLIP
         || id == ids::VECTOR_BONE_SMART_FROM
-        || id == ids::VECTOR_BONE_SMART_TO;
-    state::set_current_bone_smart(precisa_de_accao.then_some((0.0, 90.0)));
+        || id == ids::VECTOR_BONE_SMART_TO
+        || ids::VECTOR_BONE_SMART_CLIP_IDS.contains(&id);
+    state::set_current_bone_smart(precisa_de_accao.then_some((0.0, 90.0)), "Bone 7 Action");
+    state::set_current_bone_actions(if precisa_de_accao {
+        vec!["Main".to_string(), "Bone 7 Action".to_string()]
+    } else {
+        Vec::new()
+    });
+}
+
+/// ⭐⭐⭐ **O SELECTOR DE ACÇÃO existe, lista o documento, e a escolha CHEGA AO BARRAMENTO.**
+///
+/// ⚠️⚠️ **Ele nasce de um report do dono** (2026-09-08: *«não há meios de selecionar nem o objeto
+/// alvo nem a animação»*). Até esse dia a seção pintava *Remove* mais dois campos de graus e nada
+/// que dissesse a que animação o osso ficara preso — e o gesto amarrava-o, calado, à única acção que
+/// um documento novo tem (`"Main"`). *Um controlo cujo sujeito é invisível lê-se exactamente como um
+/// controlo morto.*
+///
+/// ⚠️ **O gesto é REAL, e as DUAS metades importam**: o chip tem de ABRIR (ele é `Dropdown` no
+/// store e botão na tela — registá-lo como `Button` fá-lo-ia acender e nunca abrir lista nenhuma) e
+/// a opção de dentro tem de virar `Click` que ATRAVESSA. Um `Click` sintético passa com o chip
+/// morto sob o ponteiro, que é a cicatriz dos quatro chips da booleana.
+#[test]
+fn the_action_picker_lists_the_document_and_the_choice_reaches_the_bus() {
+    estado_de(ids::VECTOR_BONE_SMART_CLIP);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    let chip = host
+        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP)
+        .expect("o chip da acção não foi PINTADO — o osso inteligente volta a não ter sujeito");
+    // Abrir a lista.
+    host.dispatch_pointer_event(pointer(PointerKind::Down, chip.x + 2.0, chip.y + 2.0, SEC));
+    let evs = host.dispatch_pointer_event(pointer(
+        PointerKind::Up,
+        chip.x + 2.0,
+        chip.y + 2.0,
+        SEC + SEC / 100,
+    ));
+    for ev in evs {
+        host.apply_panel_event::<VectorPanel>(&mut st, ev);
+    }
+    // A 2.ª opção é a acção do osso — escolher a 1.ª (`Main`) é o gesto que o report pedia.
+    let opt = ids::VECTOR_BONE_SMART_CLIP_IDS[0];
+    let r = host
+        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, opt)
+        .expect("com a lista ABERTA a acção tem de ser pintada — senão não é escolhível");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, 2 * SEC));
+    let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, 2 * SEC + SEC / 100));
+    assert!(
+        evs.iter()
+            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == opt)),
+        "a opção da lista está desenhada e MORTA sob o ponteiro"
+    );
+    for ev in evs {
+        host.apply_panel_event::<VectorPanel>(&mut st, ev);
+    }
+    assert!(
+        host.drained_actions().into_iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == opt
+        )),
+        "o Click da opção não chegou ao barramento — escolher a animação não escreveria no mundo \
+         (falta `VECTOR_BONE_SMART_CLIP_IDS` na allowlist do `event_clicks`)"
+    );
+    limpa();
+}
+
+/// ⭐ **SEM ACÇÃO não há selector** — a outra metade da lei do controlo morto.
+///
+/// ⚠️ Um chip que liste as animações do documento sobre um osso que não percorre nenhuma é um
+/// controlo que só sabe escrever num componente que não existe.
+#[test]
+fn a_bone_without_an_action_is_offered_no_picker() {
+    publica_tudo();
+    state::set_current_bone_smart(None, "");
+    state::set_current_bone_actions(Vec::new());
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP)
+            .is_none(),
+        "o selector de acção foi pintado num osso sem acção — ele só saberia escrever num \
+         componente ausente"
+    );
+    limpa();
 }
 
 /// ⭐⭐⭐ **TODO SEGMENTO DO LADO DA DOBRA É TAMBÉM UM VERBO DA SHELL** — o censo que liga as duas

@@ -272,6 +272,10 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || ids::VECTOR_BONE_VERBS.contains(&id)
         // ⭐ A fileira do lado da dobra escreve um campo de um componente ⇒ o clique é da SHELL.
         || ids::VECTOR_BONE_BEND_IDS.contains(&id)
+        // ⭐⭐⭐ **As opções do selector de ACÇÃO** do osso inteligente (2026-09-08). Elas escrevem
+        // o nome do clip no componente ⇒ o clique é da shell. ⚠️ **O CHIP não entra**: ele é um
+        // `Dropdown`, e abrir/fechar é do dispatch genérico — a mesma divisão da mistura de filtro.
+        || ids::VECTOR_BONE_SMART_CLIP_IDS.contains(&id)
         || binds_a_shape_to_something(id)
         // Filters (a pilha de FX raster, plano 24): Add / ✕ / ↑ / ↓ / 👁 e a swatch de cor. O
         // drain da shell os traduz em edições do `VecFilter`. Fora daqui pintariam e estariam

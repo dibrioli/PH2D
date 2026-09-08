@@ -67,8 +67,7 @@ mod strip_edge_edit;
 pub mod track_values;
 
 pub use apply::{
-    apply_from_doc, apply_from_doc_except, apply_scene, clip_playhead, key_home,
-    key_time,
+    apply_from_doc, apply_from_doc_except, apply_scene, clip_playhead, key_home, key_time,
     remapped_time,
 };
 pub use apply_views::{apply_active_clip, apply_container};

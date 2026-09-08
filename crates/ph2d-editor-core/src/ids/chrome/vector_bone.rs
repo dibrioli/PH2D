@@ -125,12 +125,17 @@ pub const VECTOR_BONE_LIMIT_MIN: NodeId = hash_node_id("vector.bone.limit.min");
 /// **Limit Max** — o extremo anti-horário, em graus. Ver [`VECTOR_BONE_LIMIT_MIN`].
 pub const VECTOR_BONE_LIMIT_MAX: NodeId = hash_node_id("vector.bone.limit.max");
 
-/// ⭐⭐⭐ **Add Smart Bone** — este osso passa a PERCORRER a acção que está aberta na timeline.
+/// ⭐⭐⭐ **Add Smart Bone** — este osso ganha uma acção PRÓPRIA, com o nome dele.
 ///
-/// ⚠️ **O clip vem do que está ABERTO, e não de um campo de texto** — é o gesto de duas mãos que
-/// esta casa usa no *Bind* e na arte de um pincel: o artista escolhe a acção onde ele já trabalha,
-/// escolhe o osso, e carrega. ⛔ Digitar o nome seria a quarta superfície a poder discordar da
-/// timeline.
+/// ⚠️⚠️ **Ele CRIA a acção; ⛔ não adopta a que está aberta** — e a diferença foi um report do dono
+/// (*«não há meios de selecionar nem o objeto alvo nem a animação»*, 2026-09-08). Um documento novo
+/// nasce com **uma** acção chamada `"Main"`, então *adoptar a aberta* casava **todo** osso
+/// inteligente com a animação principal da cena, em silêncio e sem nada na tela a dizê-lo — que é
+/// exactamente o contrário do que uma acção é. É também a lei do Moho (*Create Smart Bone Action*
+/// nasce com o nome do osso) e a do Blender (*Action Constraint* tem o botão **New**).
+///
+/// ⇒ quem escolhe outra acção é o [`VECTOR_BONE_SMART_CLIP`], que é onde *«qual animação?»* passou
+/// a ter resposta na tela.
 pub const VECTOR_BONE_SMART_ADD: NodeId = hash_node_id("vector.bone.smart.add");
 
 /// **Remove Smart Bone** — o osso volta a ser um osso.
@@ -141,6 +146,50 @@ pub const VECTOR_BONE_SMART_FROM: NodeId = hash_node_id("vector.bone.smart.from"
 
 /// **Action To** — ... e no fim. ⚠️ `To < From` percorre a acção ao contrário, e é legítimo.
 pub const VECTOR_BONE_SMART_TO: NodeId = hash_node_id("vector.bone.smart.to");
+
+/// ⭐⭐⭐ **Action** — QUAL acção este osso percorre. O chip que abre a lista das acções da timeline.
+///
+/// ⚠️ **É o READOUT e o gesto ao mesmo tempo** (o idioma da tecla de uma forma do Morph): o rótulo
+/// do chip é o nome da acção ligada, então *«qual é?»* responde-se sem abrir nada. Um rótulo fixo
+/// tipo *"Choose…"* obrigaria a abrir a lista para saber o que lá está — e foi precisamente a
+/// AUSÊNCIA desta linha que fez o dono ler o osso inteligente como avariado.
+///
+/// ⚠️ **Registado como `Dropdown`, pintado como botão** — abrir/fechar é do dispatch genérico, e
+/// registá-lo como `Button` faria o clique acender e nunca abrir lista nenhuma.
+pub const VECTOR_BONE_SMART_CLIP: NodeId = hash_node_id("vector.bone.smart.clip");
+
+/// ⭐ **Quantas acções o selector alcança** — o pool de ids é fixo porque o chrome **não cunha um
+/// id em tempo de execução**.
+///
+/// ⚠️ **O recurso é o `ph2d_timeline::MAX_CLIPS`** (o tecto do próprio documento), e não um número
+/// escolhido aqui: um pool menor esconderia acções que EXISTEM, e o artista veria uma lista que
+/// mente. O gate `the_action_picker_reaches_every_clip_the_document_can_hold` mede a igualdade — e
+/// vive na shell, que é a única que vê as duas crates.
+pub const MAX_SMART_CLIPS: usize = 16;
+
+/// As opções do selector de acção — uma por clip que o documento pode ter ([`MAX_SMART_CLIPS`]).
+///
+/// ⚠️ **Uma TABELA, não uma função de índice**, pelo mesmo motivo da [`VECTOR_BONE_BEND_IDS`]: o
+/// `populate` que as regista, o `paint` que as desenha e o encaminhamento que as deixa passar
+/// percorrem esta MESMA lista. Três listas escritas à mão é como um chip nasce morto sob o dedo.
+pub const VECTOR_BONE_SMART_CLIP_IDS: [NodeId; MAX_SMART_CLIPS] = [
+    hash_node_id("vector.bone.smart.clip_opt_0"),
+    hash_node_id("vector.bone.smart.clip_opt_1"),
+    hash_node_id("vector.bone.smart.clip_opt_2"),
+    hash_node_id("vector.bone.smart.clip_opt_3"),
+    hash_node_id("vector.bone.smart.clip_opt_4"),
+    hash_node_id("vector.bone.smart.clip_opt_5"),
+    hash_node_id("vector.bone.smart.clip_opt_6"),
+    hash_node_id("vector.bone.smart.clip_opt_7"),
+    hash_node_id("vector.bone.smart.clip_opt_8"),
+    hash_node_id("vector.bone.smart.clip_opt_9"),
+    hash_node_id("vector.bone.smart.clip_opt_10"),
+    hash_node_id("vector.bone.smart.clip_opt_11"),
+    hash_node_id("vector.bone.smart.clip_opt_12"),
+    hash_node_id("vector.bone.smart.clip_opt_13"),
+    hash_node_id("vector.bone.smart.clip_opt_14"),
+    hash_node_id("vector.bone.smart.clip_opt_15"),
+];
 
 /// ⭐⭐⭐ **OS VERBOS DA SEÇÃO SKELETON — uma tabela, dois consumidores.**
 ///

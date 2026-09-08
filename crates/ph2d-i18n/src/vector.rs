@@ -315,6 +315,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bone.limit.max" => "Limit Max",
         "panel.vector.bone.smart.add" => "Add Smart Bone",
         "panel.vector.bone.smart.remove" => "Remove Smart Bone",
+        "panel.vector.bone.smart.action" => "Action",
+        "panel.vector.bone.smart.none" => "\u{2014}",
         "panel.vector.bone.smart.from" => "Action From",
         "panel.vector.bone.smart.to" => "Action To",
         "panel.vector.bool.union" => "Union",

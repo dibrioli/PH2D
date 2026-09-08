@@ -42,6 +42,24 @@ pub(super) fn populate_bone(store: &mut WidgetStore) {
     for id in ids::VECTOR_BONE_BEND_IDS {
         button(store, id);
     }
+    // ⭐⭐⭐ **O SELECTOR DE ACÇÃO do osso inteligente** — o chip que responde *«qual animação?»*.
+    //
+    // ⚠️ **`Dropdown` no store, botão na tela**: é o `InteractiveState::Dropdown` que faz o dispatch
+    // genérico alternar o `open` (e fechar o dos outros). Registá-lo como `Button` faria o clique
+    // acender e **nunca abrir lista nenhuma** — a cicatriz da swatch dos tokens, a dos dois números
+    // do Input Map, e a da tecla de forma do Morph.
+    store.register(
+        ids::VECTOR_BONE_SMART_CLIP,
+        ph2d_editor_core::interaction::InteractiveState::Dropdown {
+            state: ph2d_editor_core::widget::DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
+    // As opções, pela MESMA tabela que o `paint` percorre e que o encaminhamento deixa passar.
+    for id in ids::VECTOR_BONE_SMART_CLIP_IDS {
+        button(store, id);
+    }
     // ⚠️ **Pela porta do MUNDO** (`world_number_field`, sem `set_number_range`): o comprimento de um
     // osso vive nas unidades do documento, e emprestar-lhe a faixa de outro recurso é exactamente
     // o defeito que o `CLAUDE.md` §0.0 nomeia — a v21 já o pagou com a largura de traço a limitar

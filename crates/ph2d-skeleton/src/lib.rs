@@ -230,6 +230,16 @@ pub fn dist2_to_segment(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
 }
 
 mod reach;
+/// ⭐ Os gates do **osso inteligente** — o mesmo corte: *que instante de uma acção este ângulo
+/// pede* é a lei do Smart Bone, não a do alcance.
+#[cfg(test)]
+#[path = "reach_action_tests.rs"]
+mod reach_action_tests;
+/// ⭐ Os gates da **parede de uma junta** — irmão do [`reach_tests`] pelo teto de LOC, cortado por
+/// RESPONSABILIDADE: *até onde este osso dobra* não é uma pergunta sobre alcance.
+#[cfg(test)]
+#[path = "reach_limit_tests.rs"]
+mod reach_limit_tests;
 #[cfg(test)]
 #[path = "reach_tests.rs"]
 mod reach_tests;

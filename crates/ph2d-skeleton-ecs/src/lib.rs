@@ -154,6 +154,22 @@ impl SimComponent for BoneLimit {}
 /// É a lei desta casa (*referência durável entre objectos é o NOME*): reordenar ou apagar clips
 /// mexe em todos os índices, e um índice guardado passaria a apontar para a animação do vizinho —
 /// em silêncio, que é o pior modo de falha.
+///
+/// # ⚠️⚠️ O gesto CRIA a acção, e o painel deixa TROCÁ-LA (2026-09-08)
+///
+/// *Add Smart Bone* faz um clip **novo com o nome do osso** e abre a timeline nele; o selector
+/// **Action** da secção Skeleton troca-o por qualquer outro do documento. ⛔ **Adoptar o clip
+/// ABERTO foi o desenho até esse dia, e era o defeito inteiro de um report do dono** (*«não há
+/// meios de selecionar nem o objeto alvo nem a animação»*): um documento novo tem **uma** acção
+/// chamada `"Main"`, o painel da timeline nasce fechado, e nada na secção dizia a que acção o osso
+/// ficara preso ⇒ todo controlo casava com a animação principal da cena, calado.
+///
+/// # ⚠️ E um controlo NÃO percorre a acção que está ABERTA
+///
+/// Ali o artista está a **gravá-la**. Os dois escreveriam o mesmo objecto no mesmo quadro, e o
+/// passe do controlo corre **depois** do da timeline ⇒ arrastar o playhead não moveria nada e a
+/// pose acabada de pôr seria reposta antes de ser vista. É a lei do Moho — dentro de uma acção o
+/// relógio é o do editor, não o ângulo do osso.
 #[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SmartBone {
     /// O nome do clip que este osso percorre. Vazio ⇒ inerte (o osso é um osso normal).

@@ -4,9 +4,7 @@
 
 use super::{BonePart, INFLUENCE_HANDLE_R_PX, LINE_PX};
 use ph2d_tokens::{ColorToken, Theme};
-use ph2d_vector::{
-    Affine, BezPath, Brush, Color as VelloColor, Fill, Point, Stroke, VectorScene,
-};
+use ph2d_vector::{Affine, BezPath, Brush, Color as VelloColor, Fill, Point, Stroke, VectorScene};
 
 /// ⭐⭐⭐ **O ARCO DE LIMITE de uma junta** — o setor por onde a ponta do osso pode passar, já em
 /// MUNDO.

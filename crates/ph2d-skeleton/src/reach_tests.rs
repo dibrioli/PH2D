@@ -453,14 +453,24 @@ fn the_locked_side_is_the_one_that_was_asked_for_in_both_laws() {
             #[expect(clippy::cast_precision_loss, reason = "n é um punhado de ossos")]
             let alcance = n as f64 * 10.0;
             let alvo = [alcance * 0.4, alcance * 0.25];
-            reach(&mut j, &l, alvo, Reach {
-                bend: side.flipped(),
-                ..Reach::default()
-            });
-            reach(&mut j, &l, alvo, Reach {
-                bend: side,
-                ..Reach::default()
-            });
+            reach(
+                &mut j,
+                &l,
+                alvo,
+                Reach {
+                    bend: side.flipped(),
+                    ..Reach::default()
+                },
+            );
+            reach(
+                &mut j,
+                &l,
+                alvo,
+                Reach {
+                    bend: side,
+                    ..Reach::default()
+                },
+            );
             let deu = dominant_side(&j, alvo);
             assert!(
                 deu.signum() == quero.signum(),
@@ -478,10 +488,15 @@ fn locking_the_side_never_stretches_a_bone() {
         for side in [BendSide::Keep, BendSide::Ccw, BendSide::Cw] {
             let (mut j, l) = corrente(n, 10.0);
             for alvo in [[15.0, 22.0], [-30.0, 4.0], [1e4, 1e4], [0.5, 0.0]] {
-                reach(&mut j, &l, alvo, Reach {
-                    bend: side,
-                    ..Reach::default()
-                });
+                reach(
+                    &mut j,
+                    &l,
+                    alvo,
+                    Reach {
+                        bend: side,
+                        ..Reach::default()
+                    },
+                );
                 for (i, (saiu, pedido)) in comprimentos(&j).iter().zip(&l).enumerate() {
                     assert!(
                         (saiu - pedido).abs() < 1e-9 * pedido,
@@ -504,11 +519,19 @@ fn keep_is_the_default_and_it_is_bit_identical_to_having_no_side_at_all() {
             let (mut a, l) = corrente(n, 10.0);
             let mut b = a.clone();
             reach(&mut a, &l, alvo, Reach::default());
-            reach(&mut b, &l, alvo, Reach {
-                bend: BendSide::Keep,
-                ..Reach::default()
-            });
-            assert_eq!(a, b, "com {n} ossos e alvo {alvo:?} o `Keep` divergiu do default");
+            reach(
+                &mut b,
+                &l,
+                alvo,
+                Reach {
+                    bend: BendSide::Keep,
+                    ..Reach::default()
+                },
+            );
+            assert_eq!(
+                a, b,
+                "com {n} ossos e alvo {alvo:?} o `Keep` divergiu do default"
+            );
         }
     }
 }
@@ -564,125 +587,5 @@ fn a_locked_side_is_stable_not_a_flip_flop() {
                  {ultimo}): a pose está a divergir em vez de assentar"
             );
         }
-    }
-}
-
-/// ⭐ **UM LIMITE LARGO NÃO APARA NADA** — a lei da casa (*todo motor novo é no-op no ponto
-/// neutro*), e aqui ela é exacta: uma faixa de uma volta inteira contém todo ângulo.
-#[test]
-fn a_limit_as_wide_as_the_circle_changes_nothing() {
-    for k in -30..=30 {
-        let r = f64::from(k) * 0.21;
-        let saiu = clamp_to_limit(r, -FULL_TURN / 2.0, FULL_TURN / 2.0);
-        assert!(
-            (saiu - r).abs() < 1e-12,
-            "o limite da volta inteira moveu {r} para {saiu}"
-        );
-    }
-}
-
-/// ⭐⭐ **O LIMITE APARA, e apara para o extremo MAIS PRÓXIMO.**
-#[test]
-fn a_joint_stops_at_the_edge_it_is_pushed_against() {
-    let (min, max) = (-0.5, 1.0);
-    assert!((clamp_to_limit(0.3, min, max) - 0.3).abs() < 1e-12, "dentro");
-    assert!((clamp_to_limit(2.0, min, max) - max).abs() < 1e-12, "acima");
-    assert!((clamp_to_limit(-1.2, min, max) - min).abs() < 1e-12, "abaixo");
-}
-
-/// ⭐⭐⭐ **UM INTERVALO QUE ATRAVESSA A MEIA-VOLTA FUNCIONA** — e é aqui que um `clamp` cru estaria
-/// errado.
-///
-/// ⚠️ Com `min = 170°` e `max = −170°` a faixa é de **20°** em torno de `±π`. Um `rot.clamp(min,
-/// max)` com `min > max` entra em **pânico** em Rust; e mesmo trocando-os ele devolveria um dos
-/// extremos para todo ângulo do meio do círculo, que é o oposto da faixa pedida.
-#[test]
-fn a_range_that_crosses_the_half_turn_still_holds() {
-    use std::f64::consts::PI;
-    let (min, max) = (PI - 0.17, PI + 0.17); // 20° a cavalo do ±π
-    // Um ângulo DENTRO da faixa, escrito do outro lado do embrulho, fica onde está.
-    let dentro = -PI + 0.10;
-    let saiu = clamp_to_limit(dentro, min, max);
-    assert!(
-        wrap_pi(saiu - dentro).abs() < 1e-12,
-        "um ângulo dentro da faixa foi movido: {dentro} -> {saiu}"
-    );
-    // E um bem fora dela é trazido para a borda, não para o meio do círculo.
-    let fora = 0.0;
-    let saiu = clamp_to_limit(fora, min, max);
-    assert!(
-        wrap_pi(saiu - min).abs() < 1e-12 || wrap_pi(saiu - max).abs() < 1e-12,
-        "um ângulo fora da faixa parou em {saiu}, que não é nenhuma das duas bordas"
-    );
-}
-
-/// ⛔ **Um intervalo INVERTIDO trava no centro em vez de entrar em pânico.**
-///
-/// ⚠️ `f64::clamp` com `min > max` **aborta o processo**. Um `.ph2dproj` editado à mão, ou um degrau
-/// de migração com os campos trocados, chegaria aqui — e a diferença entre *«a junta ficou presa»* e
-/// *«o app fechou»* é a diferença entre um defeito e uma perda de trabalho.
-#[test]
-fn an_inverted_range_locks_at_the_centre_instead_of_panicking() {
-    let saiu = clamp_to_limit(3.0, 1.0, -1.0);
-    assert!((saiu - 0.0).abs() < 1e-12, "devia travar no centro, deu {saiu}");
-}
-
-/// ⭐⭐ **APARAR DUAS VEZES DÁ O MESMO** — a lei é idempotente, e tem de ser: o solver re-resolve
-/// todo quadro a partir da própria saída, e uma aparadela que continuasse a mover a pose poria a
-/// junta a **deslizar** para o centro, um pouco por quadro.
-#[test]
-fn clamping_twice_is_the_same_as_clamping_once() {
-    for k in -40..=40 {
-        for (min, max) in [(-0.5, 1.0), (2.9, 3.4), (-3.0, 3.0)] {
-            let r = f64::from(k) * 0.19;
-            let uma = clamp_to_limit(r, min, max);
-            let duas = clamp_to_limit(uma, min, max);
-            assert!(
-                (uma - duas).abs() < 1e-12,
-                "aparar {r} deu {uma} e depois {duas} — a lei não é idempotente"
-            );
-        }
-    }
-}
-
-/// ⭐⭐⭐ **O ÂNGULO PERCORRE A ACÇÃO, e APARA nos extremos.**
-#[test]
-fn the_action_runs_from_end_to_end_and_stops_there() {
-    let (from, to, dur) = (0.0, 1.0, 4.0);
-    assert!((action_time(0.0, from, to, dur) - 0.0).abs() < 1e-12, "no princípio");
-    assert!((action_time(0.5, from, to, dur) - 2.0).abs() < 1e-12, "a meio");
-    assert!((action_time(1.0, from, to, dur) - 4.0).abs() < 1e-12, "no fim");
-    // ⛔ Passar do fim FICA no fim — não embrulha nem continua.
-    assert!((action_time(9.0, from, to, dur) - 4.0).abs() < 1e-12, "muito além");
-    assert!((action_time(-9.0, from, to, dur) - 0.0).abs() < 1e-12, "muito aquém");
-}
-
-/// ⭐⭐ **Uma faixa INVERTIDA percorre a acção ao contrário** — é o controlo que gira para o outro
-/// lado, não um erro a corrigir.
-#[test]
-fn a_reversed_range_runs_the_action_backwards() {
-    let (from, to, dur) = (1.0, 0.0, 4.0);
-    assert!((action_time(1.0, from, to, dur) - 0.0).abs() < 1e-12);
-    assert!((action_time(0.5, from, to, dur) - 2.0).abs() < 1e-12);
-    assert!((action_time(0.0, from, to, dur) - 4.0).abs() < 1e-12);
-}
-
-/// ⛔ **Faixa NULA, duração negativa e valores não-finitos devolvem o PRINCÍPIO** — nunca um `NaN`.
-///
-/// ⚠️ Um `NaN` daqui viajaria para dentro do `sample` do clip e levaria a pose inteira com ele: a
-/// forma desaparece e nada diz porquê. *Uma lei que pode receber lixo de um ficheiro devolve a
-/// resposta inerte, não a propaga.*
-#[test]
-fn a_null_range_or_garbage_returns_the_start_never_a_nan() {
-    for (r, f, t, d) in [
-        (0.5, 1.0, 1.0, 4.0),
-        (0.5, 0.0, 1.0, -3.0),
-        (f64::NAN, 0.0, 1.0, 4.0),
-        (0.5, f64::INFINITY, 1.0, 4.0),
-        (0.5, 0.0, 1.0, f64::NAN),
-    ] {
-        let v = action_time(r, f, t, d);
-        assert!(v.is_finite(), "action_time({r},{f},{t},{d}) = {v}");
-        assert!(v >= 0.0, "o tempo de uma acção nunca é negativo: {v}");
     }
 }

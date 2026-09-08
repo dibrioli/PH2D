@@ -70,6 +70,52 @@ const _: () = {
     assert!(TENTACLE_LIMITED_BONE >= 1);
 };
 
+/// ⭐⭐⭐ **A ACÇÃO QUE A CENA JÁ TRAZ** — o nome que aparece no selector *Action* do painel.
+///
+/// ⚠️⚠️ **Ela existe por causa do report do dono de 2026-09-08** (*«não há meios de selecionar nem
+/// o objeto alvo nem a animação»*): sem uma acção com CONTEÚDO na cena, o único caminho para provar
+/// um osso inteligente era o artista gravar uma animação primeiro — e o smoke passava a testar a
+/// timeline em vez do osso. *Uma cena que só produz o fenómeno depois de o artista acertar OUTRO
+/// gesto não prova nada quando esse gesto falha* (`CLAUDE.md` §5.0).
+pub(crate) const DEMO_ACTION: &str = "Leaf Rises";
+
+/// Quanto a folha sobe ao longo da acção da cena, nas unidades do documento.
+///
+/// ⚠️ Grande o suficiente para o percurso se ler numa forma que mede ~2 de altura: uma subida de
+/// meia forma leria-se como tremor, e o smoke ficaria mudo sobre um motor correcto.
+const DEMO_RISE: f32 = 3.0; // LITERAL-PX-OK: distância do documento, não medida de UI
+
+/// A duração da acção da cena, em segundos. ⚠️ **Ela é o que o `clamp` do `action_time` divide**,
+/// e não uma escolha estética: o giro do osso mapeia-se nesta faixa inteira.
+const DEMO_SECONDS: f64 = 2.0;
+
+/// ⭐⭐⭐ **SEMEIA A ACÇÃO DA CENA** no documento — a folha `bits` sobe [`DEMO_RISE`] ao longo de
+/// [`DEMO_SECONDS`].
+///
+/// ⚠️⚠️ **Ela DEVOLVE o documento à acção que estava aberta**, e isso é load-bearing, não arrumação:
+/// o `insert_key` escreve no clip **activo**, e um controlo **não percorre a acção aberta** (ali o
+/// artista está a gravá-la). Deixá-la aberta faria o osso inteligente nascer inerte na própria cena
+/// que existe para o demonstrar — *uma cena que ensina o contrário do que acontece é pior que uma
+/// cena ausente* (`CLAUDE.md` §5.0).
+///
+/// ⭐ Vive **fora** do `bone_smoke_bind` para o gate a poder correr: aquela função precisa do `gfx`,
+/// que segura uma surface de janela real.
+pub(crate) fn seed_demo_action(doc: &mut ph2d_timeline::TimelineDoc, bits: u64) {
+    let antes = doc.active_index();
+    let i = doc.add_clip(DEMO_ACTION.to_string());
+    doc.set_active(i);
+    for (t, v) in [(0.0, 0.0_f32), (DEMO_SECONDS, DEMO_RISE)] {
+        doc.insert_key(
+            bits,
+            ph2d_timeline::PropKind::TranslationY,
+            ph2d_anim::RationalTime::from_seconds(t),
+            ph2d_anim::AnimValue::Float(v),
+            ph2d_anim::Interp::Linear,
+        );
+    }
+    doc.set_active(antes);
+}
+
 /// Uma cadeia de `n` ossos de `a` a `b` (mundo), o 1.º sem pai. Devolve a RAIZ.
 pub(crate) fn cadeia(
     sim: &mut ph2d_ecs::SimWorld,
@@ -288,6 +334,24 @@ impl crate::App {
             .map(|raiz| ponta_da_cadeia(&gfx.sim, raiz))
             .and_then(|ponta| gfx.sim.world().get::<ph2d_skeleton_ecs::IkGoal>(ponta))
             .map_or(ph2d_skeleton::BendSide::Keep, |g| g.bend);
+        // ⭐⭐⭐ **A ACÇÃO PRONTA**, para o osso inteligente ter o que percorrer sem o artista ter de
+        // gravar uma animação primeiro. A folha roxa sobe ao longo dela.
+        //
+        // ⚠️ **A acção fica FECHADA** (o clip activo continua a ser o `"Main"`): um controlo não
+        // percorre a acção que está aberta na timeline — ali o artista está a gravá-la. Abrir esta
+        // deixaria o osso inteligente inerte e o smoke a ensinar o contrário do que o app faz.
+        let folha_bits = pecas
+            .get(2)
+            .and_then(|(id, _)| self.vec_entities.get(id).copied());
+        if let Some(bits) = folha_bits {
+            seed_demo_action(&mut self.timeline.doc, bits);
+            eprintln!(
+                "[vec-bone-smoke] a cena traz a accao \"{DEMO_ACTION}\" (a FOLHA roxa sobe {DEMO_RISE} \
+                 em {DEMO_SECONDS}s). Escolha um osso, carregue em `Add Smart Bone` e ponha \
+                 \"{DEMO_ACTION}\" no selector `Action` -- girar esse osso passa a percorrer a \
+                 animacao inteira."
+            );
+        }
         eprintln!(
             "[vec-bone-smoke] {presas} forma(s) presa(s): o BRACO (3 ossos, COTOVELO DOBRADO, com \
              ANCORA DE IK: {ancorado}, lado capturado: {lado:?}) e o TENTACULO (6, ja' CURVADO \

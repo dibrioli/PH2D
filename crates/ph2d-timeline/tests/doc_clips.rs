@@ -327,3 +327,71 @@ fn loop_and_ping_pong_cannot_both_be_on() {
     );
     assert_eq!(on(&st), (false, false), "both off = no loop");
 }
+
+/// ⭐⭐⭐ **UM CLIP NOMEADO NASCE COMO QUALQUER OUTRO** — o nome é a ÚNICA diferença.
+///
+/// ⚠️⚠️ **Os dois braços partilham a porta `a_clip_is_born` de propósito.** A duração de 4 s e o
+/// `set_active` são o que *nascer* significa nesta casa; escritos duas vezes, divergiriam no
+/// primeiro que alguém afinasse — e o sintoma seria um **osso inteligente** a percorrer uma faixa
+/// de tempo diferente conforme quem criou a acção (o `action_time` multiplica pelo
+/// `clip_end_seconds`, que lê este override).
+///
+/// (Mutação: dar ao braço `AddNamedClip` um corpo próprio sem o `set_clip_length_override` ⇒ o
+/// override RED.)
+#[test]
+fn a_named_clip_is_born_like_any_other_only_its_name_differs() {
+    use ph2d_timeline::DEFAULT_DURATION_SECONDS;
+    let (mut st, mut ph) = state();
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::AddNamedClip {
+            name: "Bone 7 Action".into(),
+        },
+    );
+    let n = st.doc.clips().len() - 1;
+    assert_eq!(
+        st.doc.clips()[n].name,
+        "Bone 7 Action",
+        "o nome DADO é o nome"
+    );
+    assert_eq!(
+        st.doc.active_index(),
+        n,
+        "o clip nomeado também vira o ativo"
+    );
+    assert_eq!(
+        st.doc.clip_length_override(n),
+        Some(DEFAULT_DURATION_SECONDS),
+        "um clip nomeado abriu com outra duração que um anónimo — os dois braços divergiram"
+    );
+}
+
+/// **E ele é recusado no mesmo tecto** — [`MAX_CLIPS`] é do documento, não do gesto que o pede.
+#[test]
+fn a_named_clip_is_refused_past_the_ceiling_like_an_anonymous_one() {
+    let (mut st, mut ph) = state();
+    for i in 2..=MAX_CLIPS {
+        apply_intent(
+            &mut st,
+            &mut ph,
+            I::AddNamedClip {
+                name: format!("A{i}"),
+            },
+        );
+    }
+    assert_eq!(st.doc.clips().len(), MAX_CLIPS);
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::AddNamedClip {
+            name: "de mais".into(),
+        },
+    );
+    assert_eq!(
+        st.doc.clips().len(),
+        MAX_CLIPS,
+        "o tecto do documento foi ultrapassado por um clip NOMEADO — o selector do osso \
+         inteligente tem pool fixo e a acção nasceria inalcançável"
+    );
+}

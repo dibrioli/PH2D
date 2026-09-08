@@ -539,4 +539,9 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     if let Some((row, chip_rect)) = state::take_pending_morph_key_dd() {
         crate::paint_sections::morph_arrows::paint_when_popover(ctx, row, chip_rect, theme);
     }
+    // ⭐⭐⭐ E a lista das ACÇÕES de um osso inteligente (2026-09-08), pela mesma razão: a seção
+    // Skeleton rola, e sem isto a lista morreria na borda dela.
+    if let Some(chip_rect) = state::take_pending_bone_action_dd() {
+        crate::paint_sections::bone::paint_action_popover(ctx, chip_rect, theme);
+    }
 }

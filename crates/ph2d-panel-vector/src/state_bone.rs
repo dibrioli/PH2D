@@ -5,7 +5,8 @@
 //! ⚠️ **O painel não vê o `ph2d-ecs`** (a UI vive de snapshots publicados, nunca do mundo), então o
 //! que atravessa são NÚMEROS e não componentes.
 
-use std::cell::Cell;
+use ph2d_editor_core::zones::Rect;
+use std::cell::{Cell, RefCell};
 
 thread_local! {
     /// A seleção contém pelo menos uma forma PRESA a um esqueleto? Decide se as duas saídas
@@ -73,6 +74,37 @@ thread_local! {
     static CURRENT_LIMIT: Cell<Option<(f64, f64)>> = const { Cell::new(None) };
     /// ⭐ A faixa do OSSO INTELIGENTE em foco, em GRAUS. `None` ⇒ ele não percorre acção nenhuma.
     static CURRENT_SMART: Cell<Option<(f64, f64)>> = const { Cell::new(None) };
+    /// ⭐⭐⭐ **QUAL acção o osso em foco percorre** — o nome, que é a referência durável desta casa.
+    ///
+    /// ⚠️ **Sem isto o painel mostrava dois números sem sujeito**, e o dono leu a feature como
+    /// avariada (report de 2026-09-08). *Um controlo cujo sujeito é invisível lê-se exactamente
+    /// como um controlo morto.*
+    static CURRENT_SMART_CLIP: RefCell<String> = const { RefCell::new(String::new()) };
+    /// ⭐ **As acções que o DOCUMENTO tem** — a lista que o selector mostra, publicada pela shell.
+    ///
+    /// ⚠️ Ela é do documento e não do osso: dois ossos inteligentes escolhem de entre as mesmas
+    /// acções, e uma segunda leitura no painel envelheceria no primeiro clip que ele criasse.
+    static CURRENT_ACTIONS: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
+    /// **O selector de acção que está ABERTO** — irmão do `PENDING_KEY_DD` do Morph, e pela mesma
+    /// razão: a seção rola, e sem o passe diferido a lista seria cortada na borda dela.
+    static PENDING_ACTION_DD: Cell<Option<Rect>> = const { Cell::new(None) };
+}
+
+/// **As acções do documento** (shell → painel, todo quadro em que a seção vive).
+pub fn set_current_bone_actions(names: Vec<String>) {
+    CURRENT_ACTIONS.with(|c| *c.borrow_mut() = names);
+}
+
+pub(crate) fn bone_actions() -> Vec<String> {
+    CURRENT_ACTIONS.with(|c| c.borrow().clone())
+}
+
+pub(crate) fn set_pending_bone_action_dd(chip: Option<Rect>) {
+    PENDING_ACTION_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_bone_action_dd() -> Option<Rect> {
+    PENDING_ACTION_DD.with(Cell::take)
 }
 
 /// A âncora do osso em foco e os três números dela (`mix`, `softness`, `chain`). `None` ⇒ ele não
@@ -106,16 +138,30 @@ pub(crate) fn current_bone_limit() -> Option<(f64, f64)> {
     CURRENT_LIMIT.with(Cell::get)
 }
 
-/// A faixa do osso inteligente em foco, em GRAUS (`from`, `to`). `None` ⇒ ele não tem acção.
+/// A faixa do osso inteligente em foco, em GRAUS (`from`, `to`), e o NOME da acção que ele
+/// percorre. `None` ⇒ ele não tem acção.
 ///
 /// ⚠️ **Graus e não radianos**, pela mesma razão do limite: o documento guarda o ângulo no espaço
 /// do `Transform` e o artista pensa em graus. A conversão vive na SHELL.
-pub fn set_current_bone_smart(v: Option<(f64, f64)>) {
+///
+/// ⚠️⚠️ **Os três números e o nome entram pela MESMA porta, de propósito.** Publicá-los por duas
+/// funções deixaria um quadro em que a faixa é de um osso e o nome é do anterior — e o defeito
+/// seria invisível, porque as duas leituras são individualmente correctas.
+pub fn set_current_bone_smart(v: Option<(f64, f64)>, clip: &str) {
     CURRENT_SMART.with(|c| c.set(v));
+    CURRENT_SMART_CLIP.with(|c| {
+        let mut s = c.borrow_mut();
+        s.clear();
+        s.push_str(clip);
+    });
 }
 
 pub(crate) fn current_bone_smart() -> Option<(f64, f64)> {
     CURRENT_SMART.with(Cell::get)
+}
+
+pub(crate) fn current_bone_smart_clip() -> String {
+    CURRENT_SMART_CLIP.with(|c| c.borrow().clone())
 }
 
 pub(crate) fn current_bone_ik() -> Option<(f64, f64, f64, usize)> {

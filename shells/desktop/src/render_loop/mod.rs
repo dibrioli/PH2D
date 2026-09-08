@@ -3415,6 +3415,9 @@ impl crate::App {
             let mut pending_smart_add = false;
             let mut pending_smart_remove = false;
             let mut pending_smart_knob: Option<(bool, f64)> = None;
+            // A acção escolhida no selector do osso inteligente — o ÍNDICE na lista de clips que o
+            // painel pinta; o que se guarda no componente é o NOME dela.
+            let mut pending_smart_clip: Option<usize> = None;
             // ⚠️ **O osso seleccionado lê-se AQUI, antes de o mundo ser emprestado mutável** — os
             // verbos lá em baixo já seguram `sim`, e uma leitura de `self` no meio deles não
             // compila. O valor é do QUADRO, e é o mesmo que o gesto e o overlay usam.
@@ -3611,6 +3614,9 @@ impl crate::App {
             // possuídos, e aqui dentro o `self` já está emprestado.
             let mut apply_to_level: Option<(u64, u64)> = None;
             let mut open_asset_browser = false;
+            // ⭐ *Add Smart Bone* abre a TIMELINE — a acção nasce com ele e é lá que se grava nela.
+            // O painel dela nasce fechado, e era essa metade que fazia o gesto parecer inerte.
+            let mut open_timeline = false;
             // ⭐ O pedido de renomear o VALOR de uma propriedade — `(receita, chave, valor)`.
             // ⭐ A entidade cujo campo de nome fechou neste quadro.
             let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
@@ -3717,6 +3723,13 @@ impl crate::App {
                                 pending_smart_add = true;
                             } else if *id == ph2d_editor::ids::VECTOR_BONE_SMART_REMOVE {
                                 pending_smart_remove = true;
+                            } else if let Some(i) = ph2d_editor::ids::VECTOR_BONE_SMART_CLIP_IDS
+                                .iter()
+                                .position(|x| x == id)
+                            {
+                                // ⭐⭐⭐ **QUAL acção** — a posição na tabela É o índice do clip, e é
+                                // ela que impede a lista pintada e a lista honrada de divergirem.
+                                pending_smart_clip = Some(i);
                             } else if let Some(i) = ph2d_editor::ids::VECTOR_BONE_BEND_IDS
                                 .iter()
                                 .position(|x| x == id)
@@ -6340,26 +6353,49 @@ impl crate::App {
                 if pending_limit_remove {
                     crate::bone_limit::remove_limit(sim, osso);
                 }
-                // ⭐⭐⭐ **O OSSO INTELIGENTE** — a acção que ele percorre é a que está ABERTA na
-                // timeline, e não um nome digitado: o mesmo gesto de duas mãos do *Bind*.
+                // ⭐⭐⭐ **O OSSO INTELIGENTE** — ele ganha uma acção PRÓPRIA, com o nome dele, e a
+                // timeline abre-se nela.
+                //
+                // ⚠️⚠️ **Até 2026-09-08 isto ADOPTAVA o clip aberto, e era o defeito inteiro do
+                // report do dono** (*«não há meios de selecionar nem o objeto alvo nem a
+                // animação»*): um documento novo tem **uma** acção chamada `"Main"`, o painel da
+                // timeline nasce **fechado**, e a seção Skeleton não pintava nada que dissesse a
+                // que acção o osso ficara preso ⇒ todo osso inteligente casava com a animação
+                // principal da cena, calado. É a lei do Moho (*Create Smart Bone Action*) e o
+                // botão **New** do *Action Constraint* do Blender.
+                //
+                // ⚠️ **O clip nasce no quadro SEGUINTE** (o dreno da timeline corre antes daqui),
+                // e o componente já leva o nome: um nome que ainda não existe deixa o osso
+                // **inerte**, que é exactamente o que o `drive` já faz e documenta.
                 if pending_smart_add {
-                    let nome = self
-                        .timeline
-                        .doc
-                        .clips()
-                        .get(self.timeline.doc.active_index())
-                        .map(|c| c.name.clone())
-                        .unwrap_or_default();
-                    if nome.is_empty() {
+                    let nome_osso = sim
+                        .world()
+                        .get::<ph2d_ecs::Name>(osso)
+                        .map(|n| n.as_str().to_string())
+                        .unwrap_or_else(|| format!("Bone {}", osso.index()));
+                    if self.timeline.doc.clips().len() >= ph2d_timeline::MAX_CLIPS {
                         eprintln!(
-                            "[ph2d-vec] osso inteligente: nao ha accao aberta na timeline -- crie \
-                             ou escolha um clip antes"
+                            "[ph2d-vec] osso inteligente: a timeline ja' tem {} accoes -- apague \
+                             uma antes",
+                            ph2d_timeline::MAX_CLIPS
                         );
                     } else {
-                        eprintln!(
-                            "[ph2d-vec] osso inteligente: accao \"{nome}\" ligada -- gire este osso \
-                             e ela corre"
+                        let nome = crate::skeleton_smart::fresh_action_name(
+                            &self.timeline.doc,
+                            &nome_osso,
                         );
+                        eprintln!(
+                            "[ph2d-vec] osso inteligente: accao \"{nome}\" criada e ligada -- \
+                             grave nela e gire este osso"
+                        );
+                        self.timeline_intents
+                            .push(ph2d_timeline::TimelineIntent::AddNamedClip {
+                                name: nome.clone(),
+                            });
+                        // ⭐ E a timeline ABRE-SE: sem isto o artista fica com uma acção que só
+                        // existe no ficheiro. O painel nasce fechado (`DEFAULT_VISIBLE = false`),
+                        // e é essa metade que fazia o gesto parecer inerte.
+                        open_timeline = true;
                         sim.world_mut()
                             .entity_mut(osso)
                             .insert(ph2d_skeleton_ecs::SmartBone {
@@ -6367,6 +6403,17 @@ impl crate::App {
                                 ..ph2d_skeleton_ecs::SmartBone::default()
                             });
                     }
+                }
+                // ⭐⭐⭐ **TROCAR A ACÇÃO** pelo selector — o índice vem da MESMA lista que o painel
+                // pinta, e o que se guarda é o NOME (a referência durável). ⛔ Guardar o índice
+                // faria apagar um clip renomear silenciosamente a acção de todo osso abaixo dele.
+                if let Some(i) = pending_smart_clip
+                    && let Some(nome) = self.timeline.doc.clips().get(i).map(|c| c.name.clone())
+                    && let Some(mut sb) = sim
+                        .world_mut()
+                        .get_mut::<ph2d_skeleton_ecs::SmartBone>(osso)
+                {
+                    sb.clip = nome;
                 }
                 if pending_smart_remove {
                     sim.world_mut()
@@ -9123,12 +9170,34 @@ impl crate::App {
                         .get::<ph2d_skeleton_ecs::BoneLimit>(ph2d_ecs::Entity::from_bits(b))
                         .map(|l| (l.min.to_degrees(), l.max.to_degrees()))
                 }));
-                // ⭐ A faixa do osso inteligente em foco, em GRAUS.
-                ph2d_panel_vector::set_current_bone_smart(osso_em_foco.and_then(|b| {
+                // ⭐ A faixa do osso inteligente em foco, em GRAUS, **e o nome da acção que ele
+                // percorre** — pela mesma porta, senão haveria um quadro em que a faixa é de um
+                // osso e o nome é do anterior.
+                let smart = osso_em_foco.and_then(|b| {
                     sim.world()
                         .get::<ph2d_skeleton_ecs::SmartBone>(ph2d_ecs::Entity::from_bits(b))
-                        .map(|s| (s.from.to_degrees(), s.to.to_degrees()))
-                }));
+                        .cloned()
+                });
+                ph2d_panel_vector::set_current_bone_smart(
+                    smart
+                        .as_ref()
+                        .map(|s| (s.from.to_degrees(), s.to.to_degrees())),
+                    smart.as_ref().map_or("", |s| s.clip.as_str()),
+                );
+                // ⭐⭐⭐ **A lista de ACÇÕES do documento** — é ela que responde *«qual animação?»*
+                // na tela. ⚠️ Publicada **só** quando há um osso inteligente em foco: sem sujeito
+                // ela seria um selector sem nada para escolher, que é a classe de controlo morto
+                // que o §5.0 nomeia.
+                ph2d_panel_vector::set_current_bone_actions(if smart.is_some() {
+                    self.timeline
+                        .doc
+                        .clips()
+                        .iter()
+                        .map(|c| c.name.clone())
+                        .collect()
+                } else {
+                    Vec::new()
+                });
                 ph2d_panel_vector::set_current_bone_ik(osso_em_foco.and_then(|b| {
                     sim.world()
                         .get::<ph2d_skeleton_ecs::IkGoal>(ph2d_ecs::Entity::from_bits(b))
@@ -11908,6 +11977,19 @@ impl crate::App {
                 <_ as ph2d_editor::panel::PanelHostInternal>::set_panel_visible(
                     hero,
                     ph2d_panel_asset_browser::PANEL_ID,
+                    true,
+                );
+            }
+            // ⭐⭐⭐ E a TIMELINE, pela mesma porta, quando um osso inteligente acaba de criar a
+            // acção dele: *«crie uma animação e ligue-a»* sem a superfície onde ela se grava é
+            // meia coisa — o painel dela tem `DEFAULT_VISIBLE = false`.
+            if open_timeline {
+                <_ as ph2d_editor::panel::PanelHostInternal>::set_panel_visible(
+                    hero,
+                    // ⚠️ O id vem do trait (`Panel::ID`), nunca de uma string escrita aqui: uma
+                    // segunda cópia de `"timeline"` abriria um painel que não existe se ele um dia
+                    // se renomear, e sem erro nenhum.
+                    <ph2d_panel_timeline::TimelinePanel as ph2d_editor::panel::Panel>::ID,
                     true,
                 );
             }

@@ -48,12 +48,9 @@ pub const DESCS: &[D] = &[
     // pele sem a fonte autorada dentro não é uma pele, é uma forma prestes a sumir.
     D::intrinsic("ph2d::skeleton::Skin", "Skin", C::Skeleton, &[]),
     // ⭐ O OSSO INTELIGENTE — `intrinsic` pela mesma razão da âncora e da pele: ele chega com o
-    // GESTO (*Add Smart Bone*), que lê qual acção está aberta na timeline. Pendurá-lo por paleta
-    // daria um controlo sem acção — inerte, e sem caminho pelo qual o artista o completasse.
-    D::intrinsic(
-        "ph2d::skeleton::SmartBone",
-        "Smart Bone",
-        C::Skeleton,
-        &[],
-    ),
+    // GESTO (*Add Smart Bone*), que **cria** a acção com o nome do osso e abre a timeline nela.
+    // Pendurá-lo por paleta daria um controlo sem acção — inerte, e sem caminho pelo qual o artista
+    // o completasse. ⚠️ A nota antiga dizia *«lê qual acção está aberta»*, que era o desenho até
+    // 2026-09-08 e o defeito inteiro de um report do dono (ver o doc do tipo).
+    D::intrinsic("ph2d::skeleton::SmartBone", "Smart Bone", C::Skeleton, &[]),
 ];

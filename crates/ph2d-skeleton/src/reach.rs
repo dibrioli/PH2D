@@ -360,7 +360,11 @@ pub fn bend_side_of(joints: &[[f64; 2]], goal: [f64; 2], reach: f64) -> BendSide
     if !desvio.is_finite() || desvio.abs() <= BOW * reach {
         return BendSide::Keep;
     }
-    if desvio > 0.0 { BendSide::Ccw } else { BendSide::Cw }
+    if desvio > 0.0 {
+        BendSide::Ccw
+    } else {
+        BendSide::Cw
+    }
 }
 
 /// Arqueia uma corrente RECTA para o FABRIK ter um lado para onde cair — para o lado PEDIDO, se

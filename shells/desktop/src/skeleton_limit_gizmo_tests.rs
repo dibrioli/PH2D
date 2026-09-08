@@ -263,7 +263,9 @@ fn a_wall_handle_never_sits_where_the_bone_can_reach() {
     assert!(
         !matches!(
             pego,
-            Some(ph2d_skeleton_render::BonePart::LimitMin | ph2d_skeleton_render::BonePart::LimitMax)
+            Some(
+                ph2d_skeleton_render::BonePart::LimitMin | ph2d_skeleton_render::BonePart::LimitMax
+            )
         ),
         "ao tocar na ponta do osso encostado na parede apanhou-se {pego:?} — o artista arrastaria a \
          parede a pensar que gira o osso"
@@ -311,7 +313,11 @@ fn the_finger_and_the_drawing_ask_for_the_same_bone() {
     // Uma FORMA (um objecto sem `Bone`) que o artista escolheu primeiro — é o gesto do *Bind*.
     let forma = sim
         .world_mut()
-        .spawn((Transform::IDENTITY, ph2d_ecs::Name::new("Shape"), ph2d_ecs::RootOrder(0)))
+        .spawn((
+            Transform::IDENTITY,
+            ph2d_ecs::Name::new("Shape"),
+            ph2d_ecs::RootOrder(0),
+        ))
         .id();
     let selecao = [forma.to_bits(), ombro.to_bits()];
 
@@ -345,7 +351,6 @@ fn the_finger_and_the_drawing_ask_for_the_same_bone() {
         "pela porta do dedo, o arco existe"
     );
 }
-
 
 /// ⭐⭐⭐ **E O CANVAS TEM DE CHAMAR ESSA PORTA** — o gate acima mede a porta, este mede o CHAMADOR.
 ///
@@ -387,7 +392,11 @@ fn the_wall_at_the_bones_own_angle_lands_on_its_tip() {
     while let Some(f) = sim
         .world()
         .get::<ph2d_ecs::Children>(*ossos.last().expect("há raiz"))
-        .and_then(|c| c.iter().find(|c| sim.world().get::<Bone>(**c).is_some()).copied())
+        .and_then(|c| {
+            c.iter()
+                .find(|c| sim.world().get::<Bone>(**c).is_some())
+                .copied()
+        })
     {
         ossos.push(f);
     }

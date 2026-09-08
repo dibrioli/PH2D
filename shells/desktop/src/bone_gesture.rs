@@ -454,7 +454,6 @@ pub(crate) fn test_chain(sim: &mut SimWorld, n: usize) -> Vec<u64> {
 #[path = "bone_gesture_tests.rs"]
 mod tests;
 
-
 impl crate::App {
     /// **Resolve a metade de osso sob o ponteiro**, uma vez por quadro
     /// ([`crate::App::bone_hover`]).

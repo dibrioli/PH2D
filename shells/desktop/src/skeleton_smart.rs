@@ -30,6 +30,33 @@ use ph2d_timeline::TimelineDoc;
 
 use crate::preview_drive::PreviewDrive;
 
+/// ⭐⭐⭐ **O NOME DA ACÇÃO DE UM OSSO** — *«Bone 7 Action»*, e *«Bone 7 Action 2»* se aquele já
+/// existir.
+///
+/// ⚠️⚠️ **Ela existe porque *Add Smart Bone* CRIA a acção, e não adopta a aberta** (report do dono,
+/// 2026-09-08: *«não há meios de selecionar nem o objeto alvo nem a animação»*). Um documento novo
+/// nasce com **uma** acção chamada `"Main"` ⇒ adoptar a aberta casava todo osso inteligente com a
+/// animação principal da cena, em silêncio. É a lei do Moho (*Create Smart Bone Action* nasce com o
+/// nome do osso) — e o nome é a referência durável desta casa, logo ele tem de ser **único**: dois
+/// clips homónimos seriam o mesmo sujeito para o `drive`, que os procura por nome.
+///
+/// ⚠️ O sufixo começa em `2` porque o primeiro **não** o leva: *«Bone 7 Action»* e *«Bone 7 Action
+/// 1»* lado a lado leem-se como uma lista que perdeu o zero.
+#[must_use]
+pub(crate) fn fresh_action_name(doc: &TimelineDoc, bone: &str) -> String {
+    let base = format!("{bone} Action");
+    let tomado = |n: &str| doc.clips().iter().any(|c| c.name == n);
+    if !tomado(&base) {
+        return base;
+    }
+    // ⚠️ O tecto é o `MAX_CLIPS + 2` e não um número solto: acima dele o documento já recusa o
+    // clip, então procurar mais longe seria escolher um nome que ninguém vai poder usar.
+    (2..=ph2d_timeline::MAX_CLIPS + 2)
+        .map(|i| format!("{base} {i}"))
+        .find(|n| !tomado(n))
+        .unwrap_or(base)
+}
+
 /// **Os ossos inteligentes da cena**, em ordem determinística.
 ///
 /// ⚠️ **A ordem é o [`StableId`], nunca o `to_bits`** — dois controlos que percorram acções que
@@ -71,7 +98,11 @@ pub(crate) fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut Preview
     let antes = crate::timeline_preview::state_of_bindings(sim.world(), doc);
     let mut feitas = 0;
     for (_, e, sb) in ossos {
-        let Some(t) = sim.world().get::<Transform>(e).map(|t| f64::from(t.rotation)) else {
+        let Some(t) = sim
+            .world()
+            .get::<Transform>(e)
+            .map(|t| f64::from(t.rotation))
+        else {
             continue;
         };
         // ⚠️ **O clip é achado pelo NOME** — a lei da referência durável desta casa. Um clip
@@ -86,6 +117,26 @@ pub(crate) fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut Preview
             }
             continue;
         };
+        // ⭐⭐⭐ **UM CONTROLO NÃO PERCORRE A ACÇÃO QUE ESTÁ ABERTA** — ali o artista está a
+        // GRAVÁ-LA, e não a vê-la correr. É a lei do Moho: dentro de uma *smart bone action* o
+        // relógio é o do editor, não o ângulo do osso.
+        //
+        // ⛔⛔ **Sem isto a feature é inutilizável, e não é uma nicety:** os dois escrevem o mesmo
+        // objecto no mesmo quadro e o controlo corre DEPOIS do passe da timeline ⇒ arrastar o
+        // playhead não move nada (o ângulo repõe sempre o mesmo instante) e a pose que o artista
+        // acabou de pôr é reposta antes de ele a ver. ⚠️ E o autokey corre ainda mais tarde: com o
+        // objecto seleccionado, ele leria a saída do próprio controlo como *«o artista mexeu»* e
+        // cunharia chaves a partir dela — um laço fechado.
+        if i == doc.active_index() {
+            if log {
+                eprintln!(
+                    "[bone] osso inteligente de {e:?}: a accao \"{}\" esta' ABERTA na timeline -- \
+                     em edicao, logo inerte",
+                    sb.clip
+                );
+            }
+            continue;
+        }
         // ⚠️⚠️ **`clip_end_seconds`, e NUNCA o `duration()` cru.** Um clip acabado de criar nasce
         // com `duration = 0` e o artista grava as chaves sem lhe tocar: multiplicar por esse zero
         // deixa a acção presa no instante `0` para todo ângulo — o controlo pinta, o gate de

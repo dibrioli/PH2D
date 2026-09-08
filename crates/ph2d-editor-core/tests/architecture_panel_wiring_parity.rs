@@ -359,25 +359,172 @@ fn hit_indexed_ids_are_registered() {
 /// «só encolhe» deste gate disse que **duas** delas não descreviam nada — a minha sonda de
 /// varredura era mais larga que a regra que ficou. *Uma lista de dívida sem quem a confira
 /// enche-se de dívida que não existe.*
+/// ⭐⭐⭐ **A CATRACA DESCEU DE 9 PARA 5 POR MEDIÇÃO (2026-09-08), e nenhuma desceu por decreto.**
+///
+/// A lista de 2026-08-27 declarava-se *«dívida com endereço»* e nunca foi conferida — que é
+/// exactamente o que o `CLAUDE.md` §5.0 diz que acontece a **toda** catraca desta casa. Auditada
+/// tabela a tabela, **quatro** eram dívida que não existia e **uma quinta** não é um alvo de clique:
+///
+/// | tabela | veredito MEDIDO |
+/// |---|---|
+/// | `CEQ_POSTERIZE_LEVELS` | ⛔ `[u32; 7] = [0,2,3,4,6,8,16]` — os NÍVEIS de posterização |
+/// | `CEQ_QUANTIZE_COLORS` | ⛔ `[u32; 8]` — as CONTAGENS de cor |
+/// | `PAINTER_WETPAINT_TOOL_IDS` | ✅ registada por `PAINTER_WETPAINT_CLICKS` (`populate.rs:460`) |
+/// | `PAINTER_WATERCOLOR_PAPER_PARAMS` | ✅ registada por `PAINTER_WATERCOLOR_FIELDS` (`:147`) |
+/// | `INSP_JOINT_AXIS_GROUP` | ⛔ **nunca chega ao hit index** — ver abaixo |
+///
+/// As duas primeiras famílias são agora **derivadas** por [`control_tables`] e não voltam a ser
+/// acusadas; foi a própria metade *«só encolhe»* deste gate que nomeou as quatro, no minuto em que
+/// a régua aprendeu a ver o tipo e a composição.
 const TABLE_PARITY_PENDING: &[(&str, &str)] = &[
-    // Medidos em 2026-08-27 pela `line/components`. ⛔ Não acrescente linhas aqui para passar um
-    // chip novo — a lista é do que já estava por registar nesse dia.
-    ("ph2d-panel-bgremoval", "BGR_SWATCHES"),
-    ("ph2d-panel-color-equalization", "CEQ_POSTERIZE_LEVELS"),
-    ("ph2d-panel-color-equalization", "CEQ_QUANTIZE_COLORS"),
+    // ⛔⛔ **A ÚNICA que sobra, e ELA NÃO É DÍVIDA.**
+    //
+    // `INSP_JOINT_AXIS_GROUP` é o `group_id` de um `SegmentedAdaptive`
+    // (`ph2d-panel-inspector/src/sections/joint_custom.rs:54`) — a CHAVE do widget, e **nunca chega
+    // ao `hit_index`**. Os alvos de clique são as opções (`INSP_JOINT_AXIS_MODE`), registadas em
+    // `populate_physics.rs:50`. ⚠️ **Os nove irmãos individuais dele** (`INSP_JOINT_KIND_GROUP`,
+    // `_LIMITS_`, `_MOTOR_`, `_BREAK_`, …) têm exactamente a mesma forma e nunca foram acusados —
+    // *a acusação é sobre a declaração ser um array, não sobre o papel do id.*
+    //
+    // ⛔ **A régua que a tiraria foi desenhada, medida contra o corpus e RECUSADA:** *«esta tabela
+    // chega ao hit index?»* branquearia `PAINTER_BRUSH_RANDOMIZE_SLIDERS`/`_CHIPS`, cujo
+    // hit-registo acontece **dentro** do helper `paint_slider_chip_row` — invisível a qualquer
+    // varredura que siga o laço. *Uma régua que apaga uma entrada falsa e duas verdadeiras é pior
+    // que a entrada falsa.*
     ("ph2d-panel-inspector", "INSP_JOINT_AXIS_GROUP"),
-    ("ph2d-panel-painter-layers", "PAINTER_BRUSH_RANDOMIZE_CHIPS"),
-    (
-        "ph2d-panel-painter-layers",
-        "PAINTER_BRUSH_RANDOMIZE_SLIDERS",
-    ),
-    ("ph2d-panel-painter-layers", "PAINTER_BRUSH_SYMMETRY_AXES"),
-    (
-        "ph2d-panel-painter-layers",
-        "PAINTER_WATERCOLOR_PAPER_PARAMS",
-    ),
-    ("ph2d-panel-painter-layers", "PAINTER_WETPAINT_TOOL_IDS"),
 ];
+
+/// Os identificadores SCREAMING_CASE do corpo de uma declaração, partidos em **`(com índice, nus)`**
+/// — sem o prefixo `ids::`, porque dentro de uma tabela os membros escrevem-se nus.
+///
+/// ⚠️ **As duas metades são duas formas de compor uma fileira, e cada uma cobre casos que a outra
+/// não vê**: `PAINTER_WETPAINT_CLICKS` lista `PAINTER_WETPAINT_TOOL_IDS[0..6]` (índice), e
+/// `PAINTER_BRUSH_SYMMETRY_AXES` lista `PAINTER_BRUSH_SYMMETRY_AXIS_X/_Y/_CUSTOM` (nus). *Ler só
+/// uma delas fabrica metade de uma lista de dívida.*
+fn screaming_members(body: &str) -> (BTreeSet<String>, BTreeSet<String>) {
+    let (mut indexados, mut nus) = (BTreeSet::new(), BTreeSet::new());
+    let bytes = body.as_bytes();
+    let mut i = 0usize;
+    while i < bytes.len() {
+        let c = bytes[i] as char;
+        if c.is_ascii_uppercase() {
+            let inicio = i;
+            while i < bytes.len() && {
+                let d = bytes[i] as char;
+                d.is_ascii_uppercase() || d.is_ascii_digit() || d == '_'
+            } {
+                i += 1;
+            }
+            if i - inicio > 1 {
+                if i < bytes.len() && bytes[i] == b'[' {
+                    indexados.insert(body[inicio..i].to_string());
+                } else {
+                    nus.insert(body[inicio..i].to_string());
+                }
+            }
+        } else {
+            i += 1;
+        }
+    }
+    (indexados, nus)
+}
+
+/// ⭐⭐⭐ **Os ficheiros que DECLARAM ids** — todo `.rs` cujo caminho passa por um `ids`.
+///
+/// ⚠️ Não é só o `ph2d-editor-core/src/ids/`: uma tool pode declarar as suas
+/// (`ph2d-tool-color-equalization/src/ids.rs`), e foi exactamente lá que a sonda apanhou duas
+/// constantes que não são controlos nenhuns.
+fn id_declaration_sources(root: &Path) -> String {
+    let mut out = String::new();
+    let mut stack: Vec<PathBuf> = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let Ok(rd) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                if p.file_name().and_then(|n| n.to_str()) != Some("target") {
+                    stack.push(p);
+                }
+            } else if p.extension().and_then(|s| s.to_str()) == Some("rs")
+                && p.to_string_lossy().contains("ids")
+                && let Ok(s) = std::fs::read_to_string(&p)
+            {
+                out.push_str(&s);
+                out.push('\n');
+            }
+        }
+    }
+    out
+}
+
+/// ⭐⭐⭐ **O universo das tabelas de CONTROLOS, e quem contém quem.**
+///
+/// Devolve `(tabelas_de_NodeId, membro → agregadoras)`, lido das declarações.
+///
+/// # ⛔ As duas cegueiras que esta função cura (medidas em 2026-09-08)
+///
+/// A sonda de [`indexed_id_tables`] vê `ids::IDENT` seguido de `[`/`.get(`/`.iter()` e mais nada —
+/// não vê o **tipo** nem a **composição**. Auditada a catraca dela, **5 das 9** entradas não eram
+/// dívida:
+///
+/// - **`CEQ_POSTERIZE_LEVELS`** é `[u32; 7] = [0, 2, 3, 4, 6, 8, 16]` e **`CEQ_QUANTIZE_COLORS`** é
+///   `[u32; 8]` — os NÍVEIS de posterização e as CONTAGENS de cor, não ids. Elas vivem num módulo
+///   chamado `ids` e são indexadas ⇒ a sonda acusava-as. *A cura de «registar um `u32` como
+///   widget» é inexprimível, e uma dívida inexprimível vira allowlist.*
+/// - **`PAINTER_WETPAINT_TOOL_IDS`** e **`PAINTER_WATERCOLOR_PAPER_PARAMS`** são membros de
+///   `PAINTER_WETPAINT_CLICKS` e `PAINTER_WATERCOLOR_FIELDS`, e são essas que o `populate.rs`
+///   percorre (linhas 460 e 147). A fileira **está registada**; o que faltava era a sonda saber
+///   que uma tabela se regista pela AGREGADORA que a contém.
+///
+/// ⚠️ **A composição só se lê na DECLARAÇÃO** — no sítio da pintura os dois nomes não se tocam.
+type TableIndex = (
+    BTreeSet<String>,
+    std::collections::BTreeMap<String, BTreeSet<String>>,
+    std::collections::BTreeMap<String, BTreeSet<String>>,
+);
+
+fn control_tables(root: &Path) -> TableIndex {
+    let src = id_declaration_sources(root);
+    let mut tabelas = BTreeSet::new();
+    let mut dentro_de: std::collections::BTreeMap<String, BTreeSet<String>> =
+        std::collections::BTreeMap::new();
+    let mut membros: std::collections::BTreeMap<String, BTreeSet<String>> =
+        std::collections::BTreeMap::new();
+    let needle = "pub const ";
+    let mut rest = src.as_str();
+    while let Some(pos) = rest.find(needle) {
+        let tail = &rest[pos + needle.len()..];
+        let end = tail
+            .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+            .unwrap_or(tail.len());
+        let (ident, after) = (&tail[..end], &tail[end..]);
+        // `IDENT: [NodeId; N] = [ … ];` — só o tipo de CONTROLO conta.
+        let e_tabela = after.starts_with(": [NodeId;");
+        if e_tabela {
+            tabelas.insert(ident.to_string());
+            // O corpo, até ao `];` que fecha a declaração: quem for mencionado com índice aqui é
+            // MEMBRO desta tabela, e herda o registo dela.
+            if let Some(abre) = after.find("= [") {
+                let corpo = &after[abre..];
+                let fim = corpo.find("];").unwrap_or(corpo.len());
+                let (indexados, nus) = screaming_members(&corpo[..fim]);
+                for membro in indexados {
+                    dentro_de
+                        .entry(membro)
+                        .or_default()
+                        .insert(ident.to_string());
+                }
+                if !nus.is_empty() {
+                    membros.insert(ident.to_string(), nus);
+                }
+            }
+        }
+        rest = after;
+    }
+    (tabelas, dentro_de, membros)
+}
 
 /// As tabelas `ids::<IDENT>` que `src` **indexa** (`.get(i)`, `[i]`, `.iter()`).
 ///
@@ -414,6 +561,7 @@ fn indexed_id_tables(src: &str) -> BTreeSet<String> {
 fn table_driven_chips_are_registered_too() {
     let root = crates_root();
     let pending: BTreeSet<(&str, &str)> = TABLE_PARITY_PENDING.iter().copied().collect();
+    let (control_tables, inside, members) = control_tables(&root);
 
     let mut global_registered: BTreeSet<String> = BTreeSet::new();
     for rel in GLOBAL_REGISTRATION_FILES {
@@ -456,8 +604,52 @@ fn table_driven_chips_are_registered_too() {
         }
         let mut registered = referenced_ids(&reg_src);
         registered.extend(global_registered.iter().cloned());
+        // ⭐⭐ **O registo DESCE aos membros, e é transitivo.** Percorrer
+        // `PAINTER_BRUSH_SYMMETRY_CLICKABLE` no `populate.rs` regista os oito ids que ela lista —
+        // entre eles os três que `PAINTER_BRUSH_SYMMETRY_AXES` também nomeia. ⚠️ Sem este fecho a
+        // sonda vê só o nome que o populate escreveu, e acusa o alias que fala dos MESMOS ids por
+        // outro nome.
+        loop {
+            let antes = registered.len();
+            let novos: BTreeSet<String> = registered
+                .iter()
+                .filter_map(|tab| members.get(tab))
+                .flatten()
+                .cloned()
+                .collect();
+            registered.extend(novos);
+            if registered.len() == antes {
+                break;
+            }
+        }
         for table in indexed_id_tables(&paint_src) {
-            if registered.contains(&table) {
+            // ⛔ **Só TABELAS DE CONTROLO.** Uma `[u32; 7]` de níveis de posterização vive num
+            // módulo `ids` e indexa-se igual — e não há como registá-la.
+            if !control_tables.contains(&table) {
+                continue;
+            }
+            // ⛔⛔ **A isenção do gate irmão vale aqui, e não a honrar ERA o defeito.**
+            // `BGR_SWATCHES` está no [`HIT_PARITY_ALLOW`] desde que ele existe, com o mecanismo
+            // escrito — *swatch de picker, registada em runtime e despachada pelo caminho do hit*
+            // (medido: `shells/desktop/src/input_dispatch/eyedropper.rs:132` lê o `hit_index` e
+            // resolve o índice por `ids::bgr_swatch_index`, sem passar pelo `WidgetStore`).
+            // ⇒ o MESMO ficheiro dava **dois vereditos opostos sobre a mesma tabela**: uma lista
+            // isentava-a com a razão, a outra acusava-a de estar morta sob o dedo.
+            if HIT_PARITY_ALLOW.contains(&(name.as_str(), table.as_str())) {
+                continue;
+            }
+            // ⭐ **Uma tabela regista-se pela AGREGADORA que a contém** (`PAINTER_WETPAINT_CLICKS`
+            // percorrida no populate cobre os `PAINTER_WETPAINT_TOOL_IDS` que a compõem).
+            let coberta_por_agregadora = inside
+                .get(&table)
+                .is_some_and(|donas| donas.iter().any(|d| registered.contains(d)));
+            // ⭐ **Registar a fileira É registar cada id dela.** Uma tabela que é um ALIAS de ids
+            // individuais (`PAINTER_BRUSH_SYMMETRY_AXES = [AXIS_X, AXIS_Y, AXIS_CUSTOM]`) está
+            // coberta quando os membros estão — e eles estão, por nome, noutra agregadora.
+            let membros_todos_registados = members
+                .get(&table)
+                .is_some_and(|m| !m.is_empty() && m.iter().all(|id| registered.contains(id)));
+            if registered.contains(&table) || coberta_por_agregadora || membros_todos_registados {
                 continue;
             }
             seen.insert((name.clone(), table.clone()));

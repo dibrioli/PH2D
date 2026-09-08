@@ -23,7 +23,7 @@
 | F1 | `StableId` + `SiblingOrder` + snapshot v2 + **a 1ª migração** + corte da Sprite | ✅ 2026-08-25 |
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
-| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ✅ **FECHADA 2026-09-07** — F4.1–F4.5 ✅ · F4.6a/b ✅ · F4.7 ✅ (os 3 smoke-gates) · **F4.6c ✅**: o motor de instância **do vetor** saiu (`VecInstance`/`VecComponentMain` e satélites, **−5 170 LOC líquidas** em 44 ficheiros), o `PROJECT_SCHEMA` subiu **123 → 124** e os **três** contadores desceram de `79`/`80`/`80` para `77`/`78`/`78`. O bloqueio era **prático** — a `line/Vector` viva — e dissolveu-se no dia em que ela integrou (§F4.6c-fecho) · **F4.6d ✅** (2026-09-08): os outros verbos tardios foram MEDIDOS — apagar e duplicar **produzem** o fantasma —, e a cura é uma **rede** antes da captura, que pelo caminho achou dois tetos QUADRÁTICOS que já se pagavam por quadro (§F4.6d) |
+| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ✅ **FECHADA 2026-09-07** — F4.1–F4.5 ✅ · F4.6a/b ✅ · F4.7 ✅ (os 3 smoke-gates) · **F4.6c ✅**: o motor de instância **do vetor** saiu (`VecInstance`/`VecComponentMain` e satélites, **−5 170 LOC líquidas** em 44 ficheiros), o `PROJECT_SCHEMA` subiu **123 → 124** e os **três** contadores desceram de `79`/`80`/`80` para `77`/`78`/`78`. O bloqueio era **prático** — a `line/Vector` viva — e dissolveu-se no dia em que ela integrou (§F4.6c-fecho) · **F4.6d ✅** (2026-09-08): os outros verbos tardios foram MEDIDOS — apagar e duplicar **produzem** o fantasma —, e a cura é uma **rede** antes da captura, que pelo caminho achou dois tetos QUADRÁTICOS que já se pagavam por quadro (§F4.6d) · **F4.6e ✅** (2026-09-08): a catraca das tabelas era **dívida que não existia** — as 9 entradas eram falsos positivos, e a cura foi a RÉGUA aprender quatro derivações, não riscar as linhas (§F4.6e) |
 | F5 | Aninhamento + variantes + Overrides sem alvo + **a FORMA de uma cópia** | ✅ **FECHADA 2026-09-06** — **F5.1** aninhamento ✅ · **F5.3/F5.6** os órfãos são NOMEADOS e largam-se um a um ✅ (critério 3) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · **critério 4 — a escada do *Aplicar* ✅ 2026-09-04** (§F5.5) · **troca por mestre NÃO aparentado ✅ 2026-09-05** (3 modos + relatório, §F5.8) · **F5.9** a lista de órfãos fica accionável ✅ · **F5.10 — a peça RECUSADA ✅ 2026-09-06** (*Removed GameObject*, `PROJECT_SCHEMA` 115→116) · **F5.11 — a peça ACRESCENTADA ✅ 2026-09-06** (*Added GameObject*, **derivada**, schema intocado) · **F5.12 — mover uma peça na receita move-a em TODAS as cópias ✅ 2026-09-06** (a 3.ª metade da forma) · **F5.13/F5.14** as cenas de smoke corrigidas ✅ (3 passos impossíveis + 1 que pedia o gesto que a guarda não apanha) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ✅ 2026-08-30 (996 LOC + a taxonomia) |
 | F7 | O painel Asset Browser + o arrasto único | ✅ 2026-08-30 — etapas **A–D** do [plano 07](07_plano_do_navegador_de_assets.md); `DragPayload` com as duas famílias |
@@ -2759,3 +2759,76 @@ e não o valor absoluto.
   acrescente ao `render_loop` e esqueça aqui só é apanhado se o arnês o tiver.
 - ⏳ O **`build_hierarchy_snapshot`** é agora a peça mais cara da rede (`0,291 ms` de `1,002` a
   5 000 formas) e **não foi atacado**.
+
+---
+
+### ✅ §F4.6e — **A CATRACA DAS TABELAS ERA DÍVIDA QUE NÃO EXISTIA: 9 → 1** (2026-09-08)
+
+A `line/components` escreveu em 2026-08-27 o gate `table_driven_chips_are_registered_too` e, com ele,
+uma catraca de **9 tabelas por registar em 4 painéis**, declarada *«dívida com endereço»* e *«só
+encolhe»*. Ela nunca desceu — e o `CLAUDE.md` §5.0 diz exactamente porquê: *uma catraca sem censo de
+obsolescência não desce, ela vira LICENÇA.* Auditada tabela a tabela, **as nove eram falsos
+positivos**, cada uma por um mecanismo diferente:
+
+| tabela | veredito MEDIDO |
+|---|---|
+| `CEQ_POSTERIZE_LEVELS` | ⛔ `[u32; 7] = [0,2,3,4,6,8,16]` — os NÍVEIS de posterização |
+| `CEQ_QUANTIZE_COLORS` | ⛔ `[u32; 8]` — as CONTAGENS de cor |
+| `PAINTER_WETPAINT_TOOL_IDS` | ✅ dentro de `PAINTER_WETPAINT_CLICKS` (`populate.rs:460`) |
+| `PAINTER_WATERCOLOR_PAPER_PARAMS` | ✅ dentro de `PAINTER_WATERCOLOR_FIELDS` (`:147`) |
+| `PAINTER_BRUSH_SYMMETRY_AXES` | ✅ alias de `AXIS_X/_Y/_CUSTOM`, os três em `..._CLICKABLE` (`:431`) |
+| `PAINTER_BRUSH_RANDOMIZE_CHIPS` | ✅ alias; os membros em `populate_brush_chips.rs:32` |
+| `PAINTER_BRUSH_RANDOMIZE_SLIDERS` | ✅ idem |
+| `BGR_SWATCHES` | ✅ **já isenta no `HIT_PARITY_ALLOW` do MESMO ficheiro** |
+| `INSP_JOINT_AXIS_GROUP` | ⛔ `group_id` de um segmented — nunca chega ao `hit_index` |
+
+⭐⭐⭐ **O achado maior é o do `BGR_SWATCHES`: o mesmo ficheiro dava dois vereditos opostos sobre a
+mesma tabela** — o `HIT_PARITY_ALLOW` isentava-a com o mecanismo escrito (*swatch de picker,
+registada em runtime, despachada pelo caminho do hit*) e a catraca acusava-a de estar morta sob o
+dedo. *Duas listas de dívida sobre o mesmo id, e nenhuma sabia da outra.* A rota está medida:
+`shells/desktop/src/input_dispatch/eyedropper.rs:132` lê o `hit_index` e resolve o índice por
+`ids::bgr_swatch_index` — sem passar pelo `WidgetStore`, logo `is_focusable` é irrelevante.
+
+#### A cura é a RÉGUA, nunca riscar as linhas
+
+Apagar as 9 à mão deixaria o gate **vermelho** — a sonda continua a vê-las. Ela aprendeu **quatro**
+derivações, todas exactas e todas provadas por mutação:
+
+1. **O TIPO** — só `pub const IDENT: [NodeId; N]` conta. Uma `[u32; 7]` vive num módulo `ids` e
+   indexa-se igual; *a cura de «registar um `u32` como widget» é inexprimível, e uma dívida
+   inexprimível vira allowlist.*
+2. **A COMPOSIÇÃO por índice** — `PAINTER_WETPAINT_CLICKS` lista `..._TOOL_IDS[0..6]`. ⚠️ Só se lê
+   na DECLARAÇÃO: no sítio da pintura os dois nomes não se tocam.
+3. **A COMPOSIÇÃO por nome** — `PAINTER_BRUSH_SYMMETRY_AXES = [AXIS_X, AXIS_Y, AXIS_CUSTOM]`.
+   ⚠️ **Ler só uma das duas formas fabrica metade de uma lista de dívida.**
+4. **O fecho TRANSITIVO** — registar uma agregadora regista os ids que ela lista, e isso desce em
+   cadeia. Mais a **isenção partilhada**: o que o `HIT_PARITY_ALLOW` isenta não é acusado aqui.
+
+#### ⛔ Uma quinta régua foi desenhada, MEDIDA contra o corpus e RECUSADA
+
+*«Esta tabela chega ao `hit_index`?»* tiraria a última entrada — e branquearia
+`PAINTER_BRUSH_RANDOMIZE_SLIDERS`/`_CHIPS`, cujo hit-registo acontece **dentro** do helper
+`paint_slider_chip_row`, invisível a qualquer varredura que siga o laço. *Uma régua que apaga uma
+entrada falsa e duas verdadeiras é pior que a entrada falsa.* ⇒ o `INSP_JOINT_AXIS_GROUP` fica, com
+o veredito e o limite escritos ao lado.
+
+#### ⚠️ E DUAS medições minhas foram refutadas pela seguinte
+
+- *«o `bgr_swatch_index` não tem consumidor nenhum»* — tinha, na shell. **O meu próprio `grep -v
+  "ids"`, escrito para tirar ruído, filtrou a única linha que o chamava** (`ph2d_editor::ids::…`).
+  *Um filtro de exclusão pode apagar exactamente o que se procura.*
+- *«os eixos da simetria são dívida real»* — são um alias de três ids já registados por nome.
+
+#### Provas de mutação (6 de 6 mortas)
+
+| mutação | resultado |
+|---|---|
+| tirar o filtro do tipo `[NodeId; N]` | vermelho |
+| tirar a cobertura por agregadora | vermelho |
+| tirar o fecho transitivo aos membros | vermelho |
+| tirar a isenção partilhada com o gate irmão | vermelho |
+| tirar uma entrada da catraca (quando ainda havia dívida) | vermelho |
+| ⭐ **matar de facto o registo dos eixos no produto** (`populate.rs:431` a iterar vazio) | **vermelho** |
+
+⚠️ A última é a que importa: ela prova que a régua nova **ainda vê um chip morto de verdade**, e não
+se limitou a branquear a lista.

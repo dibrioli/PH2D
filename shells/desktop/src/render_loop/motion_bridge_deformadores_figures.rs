@@ -231,8 +231,22 @@ static FIGS: &[Fig] = &[
     Fig {
         file: "def_spline_wrap",
         node: "motion.spline_wrap",
-        // A cúbica dos oito params (o S de omissão), com a folha a embrulhar-se nela.
-        params: &[("height_scale", 1.0)],
+        // ⚠️ **A curva é ESCRITA aqui desde 2026-09-08.** Este nó passou a nascer INERTE (ordem
+        // do dono: *«melhor nascer inerte com um botão para selecionar um path»*), e a figura
+        // dele saiu **`0,00` de deslocamento** na primeira corrida depois disso — a régua deste
+        // ficheiro apanhou-a antes de ela chegar ao PDF. *Uma fixtura que herda um default mede
+        // o default, e um default que muda leva a figura com ele.*
+        params: &[
+            ("height_scale", 1.0),
+            ("p0x", -3.0),
+            ("p0y", -1.5),
+            ("p1x", -1.0),
+            ("p1y", 2.0),
+            ("p2x", 1.0),
+            ("p2y", -2.0),
+            ("p3x", 3.0),
+            ("p3y", 1.5),
+        ],
         como: Como::Emparelha,
     },
 ];

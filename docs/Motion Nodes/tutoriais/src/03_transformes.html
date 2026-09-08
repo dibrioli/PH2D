@@ -267,7 +267,7 @@ entrou.</p>
   <figure class="fig"><img src="../fig/def_four_point_warp.svg" alt="folha em keystone"><b>4-Point Warp</b>
     <figcaption>puxa os quatro cantos</figcaption></figure>
   <figure class="fig"><img src="../fig/def_spline_wrap.svg" alt="folha embrulhada numa curva"><b>Spline Wrap</b>
-    <figcaption>embrulha numa curva</figcaption></figure>
+    <figcaption>embrulha num caminho que <em>você</em> desenha</figcaption></figure>
   <figure class="fig"><img src="../fig/def_bezier_warp.svg" alt="folha com o topo arqueado"><b>Bezier Warp</b>
     <figcaption>e as bordas <em>curvas</em></figcaption></figure>
 </div>
@@ -282,6 +282,29 @@ objeto, e ele diz para onde o objeto aponta e quão grande ele é.</div>
 <b>cantos</b>: as bordas dele ficam sempre <b>retas</b>. O <b>Bezier Warp</b> tem os cantos
 <em>e</em> duas alças por borda, então as bordas <b>arqueiam</b> — que é o que a figura dele
 mostra no topo. Se você quer uma bandeira, é o segundo.</p>
+
+<h3>O Spline Wrap nasce vazio, e isso é de propósito</h3>
+
+<p>Ele é o único do grupo que <b>não faz nada quando você o larga</b>, e o cartão diz porquê: um
+<b>⚠</b> aparece no nó enquanto ele não tiver um caminho. É que a curva dele não é um punhado de
+números num painel — é um <b>desenho seu</b>.</p>
+
+<ol class="steps">
+  <li><b>Desenhe uma curva</b> com as ferramentas de vetor e <b>dê um nome a ela</b> na
+      Hierarquia (um caminho sem nome o nó não consegue encontrar).</li>
+  <li><b>Selecione a curva</b> — no canvas ou clicando na linha dela na Hierarquia.</li>
+  <li>No cartão <b>Spline Wrap</b>, clique em <b><code>Use Selected Path</code></b>.
+      <div class="out">O ⚠ some, a linha <code>Shape</code> passa a mostrar o nome da sua curva, e
+      a folha embrulha-se nela.</div>
+      <div class="bad">Se aparecer um aviso a pedir que selecione um desenho, é porque nada está
+      selecionado — ou porque a forma selecionada não tem nome, ou é um ponto só.</div></li>
+  <li>Se preferir escolher pelo nome, a linha <code>Shape</code> faz o mesmo: clique nela e a
+      lista dos seus desenhos abre.</li>
+</ol>
+
+<div class="note"><b>E se você quiser mesmo digitar a curva?</b> Os oito números continuam lá, na
+seção <b>Curve</b> do cartão — ela nasce <b>fechada</b>, e o cabeçalho dela diz quantas linhas
+esconde. Um clique abre.</div>
 
 <h2>7 · O que cada botão faz</h2>
 
@@ -350,6 +373,9 @@ não tem como receber um desenho. Enquanto isso não existir, pô-lo a rodar lá
   <tr><td>O <code>Reindex</code> do Mirror não muda nada</td><td>ele renumera a fila, e uma
       renumeração <b>nunca</b> muda a imagem sozinha: só se vê com um degradê depois dele —
       cena <code>=69</code>, par rosa</td></tr>
+  <tr><td>O <b>Spline Wrap</b> não faz nada e tem um ⚠</td><td>ele ainda não tem caminho: ou
+      clique em <code>Use Selected Path</code> com um desenho selecionado, ou escolha um pela
+      linha <code>Shape</code></td></tr>
   <tr><td>A cena engasga com muitos objetos</td><td>o <b>Spline Wrap</b> é o único dos treze que
       nunca roda na placa; com ele na cadeia, tudo volta para o processador. O <b>Look At</b>
       roda — mas <em>só</em> enquanto o alvo dele vier por fio: digitar um

@@ -801,3 +801,65 @@ que ele não faz nada não é um passo*** — e o report que ele produziu foi ex
 ⭐ **E a cena que os mostra já existia:** a `=69` (a família Transform da conferência) tem o **par
 verde** (`/// ///` contra `/// \\\`) e o **par rosa** (o degradé que recomeça em cada fatia contra
 o que atravessa as seis). O tutorial passa a levar lá, com o comando.
+
+---
+
+### ✅ O TERCEIRO REPORT — o `motion.spline_wrap` nasce INERTE (08/09)
+
+> *«Em vez de nascer com uma curva default com pontos no painel, melhor nascer inerte com um botão
+> para selecionar um path no canvas ou na hierarchy. Até que o path esteja selecionado, um sinal de
+> alerta fica visível no nó.»*
+
+⚠️ **É a SEGUNDA METADE de um pedido de 2026-08-12** que está citado **verbatim** no fonte deste nó
+— *«pontos e alças em sliders num painel. Absurdo! … um botão no painel do nó para o usuário
+desenhar sua curva no canvas»*. A primeira metade (a row `Shape`) shipou nesse dia; a cúbica ficou
+a ser o estado de **nascimento**.
+
+O cartão passa de `Shape · Follow Curve · … · P0 X · P0 Y · … · P3 Y` para:
+
+```
+Shape · Use Selected Path · Follow Curve · … · Size Profile
+  > secções: Curve@12 (FECHADA)
+```
+
+#### O que foi feito, em três peças
+
+| peça | mecanismo |
+|---|---|
+| **nasce sem curva** | os oito pontos nascem na origem, e o `eval` ganha um ramo que devolve a folha **verbatim** |
+| **o ⚠** | `Deficit::MissingChoice` no diagnoser, por um canal novo: `register_required_text_params` — o **irmão de TEXTO** do `register_required_inputs` |
+| **o botão** | `ParamWidget::PickSelection` → `ClickDoes` → `GraphIntent` → a shell, que é quem tem o mundo |
+
+⛔⛔ **O ramo inerte é obrigatório, não uma optimização.** Com uma cúbica de comprimento zero o
+`frame_at` devolve a origem e a tangente `(0,0)` para todo elemento: a folha **COLAPSA num ponto**.
+*Um default inerte que destrói o layout é pior que o default que ele substitui.*
+
+⚠️ **Os oito pontos FICAM, e a razão é medida:** as **quatro** cenas da conferência que usam este
+nó escrevem os oito valores à mão, então mudar o default não lhes custa nada e apagá-los custaria
+as quatro. Eles saem do **nascimento**, não da existência — a secção `Curve` passa a nascer
+**fechada** (`ParamGroup::folded`, que já existia), que é a explicação que o censo
+`every_param_the_card_hides_has_a_declared_reason` aceita e que os deixa a **um clique**.
+
+#### ⛔⛔ Três defeitos MEUS que os portões apanharam antes do dono
+
+1. **O censo do `Deficit::ALL`**: sem braço próprio no `explain`, o variante novo caía no
+   catch-all e o artista recebia *«este nó produz dados que ninguém consome»* — uma frase sobre
+   outro defeito. *Era exactamente para isso que aquela lista existe.*
+2. **O portão de fecho**: a primeira regra só olhava o texto, e acusava de inertes as quatro cenas
+   da conferência — que embrulham com a curva escrita à mão. *Um ⚠ sobre um nó que funciona ensina
+   o artista a ignorar o ⚠.* ⇒ o `RequiredTextParam` ganhou um `only_when` (a forma do
+   `GpuKernel::applicable`) que faz a **mesma pergunta que o `eval`**: há curva?
+3. **A régua das figuras do tutorial**: a figura do `def_spline_wrap` saiu a **`0,00`** de
+   deslocamento na primeira corrida depois da mudança, e o gerador recusou-se a escrevê-la. *Uma
+   fixtura que herda um default mede o default, e um default que muda leva a figura com ele.*
+
+#### ⛔⛔ E havia um `_ => ClickDoes::Nothing` no mapa widget → gesto
+
+Com ele, o `PickSelection` atravessou o `cargo check --workspace --all-targets` **inteiro sem um
+aviso** e o botão teria nascido **morto sob o dedo** — a espécie do §5.0 do `CLAUDE.md` (*«um
+handler cujo braço não cobre a variante»*), que sobrevive a todo gate de registo. O catch-all
+morreu; esquecer passou a ser erro de compilação.
+
+⭐⭐ **E o nome da forma seleccionada sai do MESMO passe que publica as formas** — não de uma
+segunda varredura. O filtro que decide o que o grafo consegue ver (tem nome · não é reservado · tem
+arco) é o mesmo que decide esta, então o botão nunca pode ligar o nó a algo que o grafo não vê.

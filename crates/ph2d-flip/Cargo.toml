@@ -29,5 +29,8 @@ ph2d-anim = { path = "../ph2d-anim" }
 libm = { version = "=0.2.16", default-features = false }
 # Modelo puro serializável: undo por snapshot + save (mesma disciplina do
 # ph2d-vec-scene). postcard = wire format canônico do repo.
-serde = { version = "1", features = ["derive"] }
+# ⚠️ **`rc` é load-bearing** (F8.3): o `FlipObject` guarda `Vec<Arc<FlipDrawing>>` para partilhar
+# os desenhos entre passos de undo, e sem esta feature isso não serializa. ⛔ Depender da
+# unificação de features da workspace (a shell já a liga) partiria `cargo test -p ph2d-flip`.
+serde = { version = "1", features = ["derive", "rc"] }
 postcard = { version = "1", features = ["alloc"] }

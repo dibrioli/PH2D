@@ -285,7 +285,7 @@ mod tests {
             color: Rgba::BLACK,
         });
         obj.drawing_mut(d).unwrap().strokes.push(s);
-        let drawings_before = obj.drawings().len();
+        let drawings_before = obj.drawing_count();
 
         let mut active = Some(b);
         assert!(apply_panel_event(
@@ -300,7 +300,7 @@ mod tests {
         assert_ne!(active, Some(b), "a cópia vira a ativa");
         assert!(active.is_some());
         assert_eq!(
-            obj.drawings().len(),
+            obj.drawing_count(),
             drawings_before + 1,
             "a cópia leva a ARTE (um desenho novo), não é uma camada vazia"
         );

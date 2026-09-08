@@ -124,7 +124,7 @@ mod tests {
         for policy in [AutokeyPolicy::Blank, AutokeyPolicy::Duplicate] {
             let (mut o, l, d0) = obj();
             assert_eq!(o.ensure_key(l, 0, policy), Some(d0));
-            assert_eq!(o.drawings().len(), 1, "{policy:?} criou desenho à toa");
+            assert_eq!(o.drawing_count(), 1, "{policy:?} criou desenho à toa");
         }
     }
 

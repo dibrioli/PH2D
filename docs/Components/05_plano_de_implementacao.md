@@ -27,7 +27,7 @@
 | F5 | Aninhamento + variantes + Overrides sem alvo + **a FORMA de uma cópia** | ✅ **FECHADA 2026-09-06** — **F5.1** aninhamento ✅ · **F5.3/F5.6** os órfãos são NOMEADOS e largam-se um a um ✅ (critério 3) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · **critério 4 — a escada do *Aplicar* ✅ 2026-09-04** (§F5.5) · **troca por mestre NÃO aparentado ✅ 2026-09-05** (3 modos + relatório, §F5.8) · **F5.9** a lista de órfãos fica accionável ✅ · **F5.10 — a peça RECUSADA ✅ 2026-09-06** (*Removed GameObject*, `PROJECT_SCHEMA` 115→116) · **F5.11 — a peça ACRESCENTADA ✅ 2026-09-06** (*Added GameObject*, **derivada**, schema intocado) · **F5.12 — mover uma peça na receita move-a em TODAS as cópias ✅ 2026-09-06** (a 3.ª metade da forma) · **F5.13/F5.14** as cenas de smoke corrigidas ✅ (3 passos impossíveis + 1 que pedia o gesto que a guarda não apanha) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ✅ 2026-08-30 (996 LOC + a taxonomia) |
 | F7 | O painel Asset Browser + o arrasto único | ✅ 2026-08-30 — etapas **A–D** do [plano 07](07_plano_do_navegador_de_assets.md); `DragPayload` com as duas famílias |
-| F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | ✅ **FECHADA 2026-09-07** — ⛔ **a premissa do RELÓGIO foi REFUTADA por medição** (§F8.0: o restauro custa `1,81 ms` uma vez por Ctrl+Z, e *uma fase inteira apontava para a metade que não dói*) · a partilha da `VecScene` ✅ 02/09 · **a do `FlipDoc` ✅ 07/09**, e a medição irmã achou o número PIOR da fase: **`228 MB` de pilha por UM SEGUNDO de animação** (§F8.2) |
+| F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | ✅ **FECHADA 2026-09-07** — ⛔ **a premissa do RELÓGIO foi REFUTADA por medição** (§F8.0: o restauro custa `1,81 ms` uma vez por Ctrl+Z, e *uma fase inteira apontava para a metade que não dói*) · a partilha da `VecScene` ✅ 02/09 · **a do `FlipDoc` ✅ 07/09**, e a medição irmã achou o número PIOR da fase: **`228 MB` de pilha por UM SEGUNDO de animação** (§F8.2) · **F8.3 ✅** (2026-09-08): **a partilha por DESENHO** — o resíduo que a F8.2 nomeou. `99,0 %` do que cada passo copiava era desperdício; a pilha passou de `912 MB` a **`9,5 MB` CONSTANTE**, e o teto de `1 GB` foi de ~108 quadros para **~27 595 passos** (§F8.3) |
 
 > ⚠️ **Este placar esteve DESACTUALIZADO** (conferido contra o código em 2026-08-30): a F6 e a F7
 > diziam ⬜ com a crate e o painel construídos e smokados. *O §5.0 manda auditar a lista antes de
@@ -3010,3 +3010,61 @@ candidatos a escritor foram seguidos um a um:
 
 ⇒ *uma auditoria que confirma a ausência de buraco vale tanto como uma cura* — e esta fecha a
 pergunta que o §F4.6d abriu, sem fabricar uma linha de dívida que não existe.
+
+---
+
+### ✅ §F8.3 — **A PARTILHA POR DESENHO: a pilha de undo deixa de crescer com a animação** (2026-09-08)
+
+O §F8.2 partilhou o `FlipDoc` **inteiro** e nomeou o resíduo com todas as letras: *numa sessão de
+desenho **cada passo muda o documento**, e aí o custo volta ao de hoje* — que é precisamente o caso
+comum do módulo, porque **desenhar é o gesto dele**. A cura de fundo proposta era `Arc` por DESENHO.
+
+#### A medição veio ANTES, e é ela que autoriza a wave
+
+| quadros | o doc INTEIRO | UM desenho | desperdício | pilha (×256) |
+|---|---|---|---|---|
+| 12 | `467 020` | `38 996` | `91,7 %` | `114,0` → **`9,5 MB`** |
+| 24 | `933 952` | `38 996` | `95,8 %` | `228,0` → **`9,5 MB`** |
+| 96 | `3 735 576` | `38 996` | **`99,0 %`** | `912,0` → **`9,5 MB`** |
+| 240 | `9 339 018` | `38 996` | **`99,6 %`** | `2 280,0` → **`9,5 MB`** |
+
+⇒ e o resultado medido depois: o clone que a captura faz caiu de **`0,137 ms` para `0,001`** a 96
+quadros, e o teto de memória passou de **`1 GB` a ~108 quadros desenhados** para **`1 GB` a ~27 595
+PASSOS** — *a residência deixou de depender de quão longa a animação é.*
+
+#### O desenho, e o que ele custou
+
+`FlipObject::drawings` passou a `Vec<Arc<FlipDrawing>>`. ⚠️ **O `DrawingId` continua a ser o
+índice** — o `Arc` não move um id. Escrever passa por `Arc::make_mut` (copy-on-write): quem tem o
+desenho só para si escreve no sítio; quem o partilha com um passo antigo paga **uma** cópia,
+**daquele** desenho.
+
+- ⛔ **`drawings() -> &[FlipDrawing]` morreu**, porque a fatia passou a ser de `Arc`: devolvê-la
+  convidaria quem chama a segurar um clone e a fazer a próxima escrita pagar por um leitor que já a
+  largou. Os **dez** chamadores só queriam a contagem ⇒ `drawing_count()`.
+- ⚠️ **A feature `rc` do serde é load-bearing e entrou no `Cargo.toml` da CRATE.** Ela estava só na
+  shell, e depender da unificação de features da workspace partiria `cargo test -p ph2d-flip` — a
+  família *«`-p <crate>` sozinho usa as features pobres»*.
+- ⚠️ **O formato não moveu um byte**, e a prova é uma impressão digital medida **antes** da wave na
+  mesma árvore (`8591` bytes, soma `454 572`), hoje um gate. Sem ele, embrulhar o campo seria uma
+  mudança de formato **silenciosa** — o postcard é posicional.
+
+#### ⭐⭐⭐ DUAS mutações sobreviveram, e cada uma escreveu um gate que faltava
+
+| mutação | 1.ª leitura | o que ela revelou |
+|---|---|---|
+| `Arc::make_mut` → `Arc::new(clone)` **incondicional** | **sobreviveu** | *os gates mediam a TOPOLOGIA, não o custo* — o desenho tocado muda de ponteiro na mesma, e os outros nem são tocados ⇒ `writing_to_an_unshared_drawing_copies_nothing` |
+| `recompute_users` escreve `users` **sempre** | **sobreviveu** | ele corre em toda remoção de camada e **desfaria a partilha em silêncio**, num gesto que não tocou arte ⇒ a guarda `if d.users() != c` e `removing_a_layer_keeps_the_untouched_drawings_shared` |
+
+⚠️ **E a terceira mutação nem compilou, o que é prova MAIS forte que um gate:** tirar a feature `rc`
+faz o `Vec<Arc<FlipDrawing>>` deixar de serializar — *erro de compilação, não teste vermelho*.
+
+#### ⛔⛔ E a wave fez as PRÓPRIAS SONDAS envelhecerem — curadas no mesmo commit
+
+O `measure_doc_clone` dizia, no doc: *«o tamanho serializado serve porque o `FlipDoc` **não partilha
+nada**»*. Era verdade, e **esta wave refutou-a**. Depois dela o `to_bytes()` continua a escrever a
+animação inteira enquanto o clone já não copia arte nenhuma ⇒ as colunas de residência mediriam a
+massa de um mundo que já não existe. Hoje elas dizem as **duas** coisas — *o que o SAVE pesa* e *o
+que a PILHA ocupa* — e a pergunta da sonda irmã mudou de sujeito, de *«quantos QUADROS»* para
+*«quantos PASSOS»*. ⚠️ §0.0 à letra: **quem move o número que tornava algo verdadeiro tem de
+reconferir a nota.**

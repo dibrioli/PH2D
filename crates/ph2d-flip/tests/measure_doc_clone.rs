@@ -27,10 +27,19 @@
 //! - **A RESIDÊNCIA** (`UNDO_CAP = 256` estados, cada um com um documento inteiro): foi o que a
 //!   condenou — `303 MB` a 5 000 formas.
 //!
-//! ⚠️ **O tamanho SERIALIZADO é o piso honesto da residência, e não a residência.** Ele é cego à
-//! partilha (`Arc`) por construção — e foi exactamente essa cegueira que fez a 1.ª medição da F8
-//! responder à pergunta errada com um número grande e plausível. Aqui ele serve porque o `FlipDoc`
-//! **não partilha nada**: cada clone é memória nova, e a serialização mede a mesma massa.
+//! ⛔⛔ **A PREMISSA DESTE FICHEIRO CAIU EM 2026-09-08, e quem a derrubou foi a própria medição.**
+//!
+//! Ele dizia: *«o tamanho SERIALIZADO é o piso honesto da residência … aqui ele serve porque o
+//! `FlipDoc` **não partilha nada**: cada clone é memória nova»*. Era verdade — e a F8.3 pôs um
+//! `Arc` **por DESENHO** precisamente porque a coluna do desperdício mostrou `99,0 %` a 96 quadros.
+//! ⇒ *quem move o número que tornava algo verdadeiro tem de reconferir a nota* (§0.0).
+//!
+//! Hoje o clone do documento **não copia arte nenhuma** (só ponteiros), e o `to_bytes()` continua a
+//! escrever a animação inteira. ⚠️ **As colunas de RESIDÊNCIA abaixo mediriam a massa de um mundo
+//! que já não existe** — por isso elas passaram a dizer as DUAS coisas: o que o formato pesa (o
+//! piso de um SAVE) e o que a pilha de facto ocupa (um desenho por passo). *O tamanho serializado é
+//! cego à partilha por construção, e essa cegueira já respondeu à pergunta errada uma vez nesta
+//! fase.*
 //!
 //! # A fixtura é uma ANIMAÇÃO, não um número escolhido
 //!
@@ -105,7 +114,7 @@ fn cloning_the_flip_doc_costs_the_animation_and_this_is_the_number() {
     println!("  fixtura: {STROKES} tracos x {POINTS} pontos por quadro (uma figura simples)");
     println!("  ┌─────────┬──────────┬────────────────┬───────────────┬──────────────────────┐");
     println!(
-        "  │ quadros │  clone   │ % de um quadro │ bytes/estado  │ x{UNDO_CAP} na pilha      │"
+        "  │ quadros │  clone   │ % de um quadro │ o SAVE pesa   │ a PILHA ocupa (x{UNDO_CAP}) │"
     );
     println!("  ├─────────┼──────────┼────────────────┼───────────────┼──────────────────────┤");
     for frames in [1u32, 12, 24, 96] {
@@ -119,7 +128,15 @@ fn cloning_the_flip_doc_costs_the_animation_and_this_is_the_number() {
         }
         let ms = median(samples);
         let bytes = doc.to_bytes().map(|v| v.len()).unwrap_or(0);
-        let mb = (bytes * UNDO_CAP) as f64 / (1024.0 * 1024.0);
+        // ⚠️ **A pilha ocupa UM DESENHO por passo, não o documento** — desde a F8.3 o clone
+        // partilha tudo o que o passo não tocou, e a residência deixou de crescer com a animação.
+        let base = FlipDoc::new().to_bytes().map(|v| v.len()).unwrap_or(0);
+        let desenho = animation_of(1)
+            .to_bytes()
+            .map(|v| v.len())
+            .unwrap_or(0)
+            .saturating_sub(base);
+        let mb = (desenho * UNDO_CAP) as f64 / (1024.0 * 1024.0);
         println!(
             "  │ {frames:>7} │ {ms:>6.3} ms │ {:>13.1} % │ {bytes:>13} │ {mb:>17.1} MB │",
             ms / 16.7 * 100.0
@@ -130,11 +147,16 @@ fn cloning_the_flip_doc_costs_the_animation_and_this_is_the_number() {
     println!("  (o restauro inteiro, que a F8 apontava: 1,81 ms uma vez por Ctrl+Z — F8.0)\n");
 }
 
-/// ⭐⭐ **A pergunta que o relógio não faz: quantos quadros até a pilha comer a RAM?**
+/// ⭐⭐ **A pergunta que o relógio não faz: quantos PASSOS até a pilha comer a RAM?**
 ///
-/// ⚠️ **Ela é derivada da própria medição**, e não de um número escrito à mão: a residência por
-/// quadro sai da fixtura, e o limite é o que a máquina do dono tem. *Um teto escrito de memória é
-/// um palpite; este diz de que recurso é.*
+/// ⛔⛔ **A pergunta mudou de sujeito em 2026-09-08, e a mudança é o resultado da F8.3.** Ela era
+/// *«quantos QUADROS DESENHADOS»* — porque cada passo copiava a animação inteira, e a residência
+/// crescia com o tamanho dela (`1 GB` a ~108 quadros). Com a partilha por desenho, o que enche a
+/// pilha é o número de **PASSOS**, e cada um custa **um desenho**: a residência deixou de depender
+/// de quão longa a animação é.
+///
+/// ⚠️ **Ela é derivada da própria medição**, e não de um número escrito à mão. *Um teto escrito de
+/// memória é um palpite; este diz de que recurso é.*
 #[test]
 #[ignore = "mede memoria; irmao do de cima"]
 fn the_undo_stack_holds_this_many_frames_of_animation() {
@@ -143,19 +165,71 @@ fn the_undo_stack_holds_this_many_frames_of_animation() {
     let por_quadro = (doze.to_bytes().map(|v| v.len()).unwrap_or(0) as f64
         - um.to_bytes().map(|v| v.len()).unwrap_or(0) as f64)
         / 11.0;
-    let por_estado_mb = por_quadro / (1024.0 * 1024.0);
+    let por_passo_mb = por_quadro / (1024.0 * 1024.0);
     println!(
-        "\n  um quadro de animacao custa {:.0} B; {UNDO_CAP} estados custam {:.2} MB por quadro desenhado",
+        "\n  um PASSO custa um desenho ({:.0} B); {UNDO_CAP} passos custam {:.2} MB — e o numero NAO",
         por_quadro,
-        por_estado_mb * UNDO_CAP as f64
+        por_passo_mb * UNDO_CAP as f64
     );
+    println!("  cresce com o tamanho da animacao (F8.3: era o documento INTEIRO por passo)");
     for gb in [1.0_f64, 4.0] {
-        let quadros = gb * 1024.0 / (por_estado_mb * UNDO_CAP as f64);
-        println!("  a pilha cheia chega a {gb:.0} GB com ~{quadros:.0} quadros desenhados");
+        let passos = gb * 1024.0 / por_passo_mb;
+        println!("  a pilha so' chegaria a {gb:.0} GB com ~{passos:.0} passos de desenho");
     }
     println!();
     assert!(
         por_quadro > 0.0,
         "a fixtura nao cresce com os quadros — ela nao esta' a medir uma animacao"
     );
+}
+
+/// ⭐⭐⭐ **O QUE UM PASSO DE DESENHO DE FACTO MUDA** — a pergunta que a F8.2 deixou aberta.
+///
+/// ```text
+/// cargo test -p ph2d-flip --release --test measure_doc_clone -- --ignored --nocapture
+/// ```
+///
+/// # Porque ela é a pergunta certa
+///
+/// A F8.1 pôs um `Arc` no **documento inteiro**: dois passos que não tocam o Flip partilham um
+/// documento e a captura não move um byte. ⚠️ **E o próprio handoff nomeou o resíduo:** *numa
+/// sessão de desenho **cada passo muda o documento**, e aí o custo volta ao de hoje* — que é
+/// precisamente o caso comum do módulo, porque desenhar **é** o gesto dele.
+///
+/// A cura de fundo proposta era `Arc` **por DESENHO** (o grão que o mundo usa desde a F2). Antes de
+/// a construir, o §0.0 manda medir **o que ela pouparia**: se o desenho tocado for a maior parte do
+/// documento, não há nada a partilhar e a resposta é uma **recusa medida**.
+///
+/// ⚠️ **A régua é o tamanho SERIALIZADO**, e aqui ele é honesto pela mesma razão da medição irmã: o
+/// `FlipDoc` de hoje **não partilha nada**, logo cada byte do formato é um byte de memória nova.
+#[test]
+#[ignore = "mede memoria; irmao dos de cima"]
+fn only_the_touched_drawing_needs_to_be_new() {
+    println!("\n  o que um PASSO de desenho muda, contra o que ele CLONA hoje");
+    println!("  fixtura: {STROKES} tracos x {POINTS} pontos por quadro (uma figura simples)");
+    println!("  ┌─────────┬───────────────┬───────────────┬──────────────┬──────────────────────┐");
+    println!(
+        "  │ quadros │ o doc INTEIRO │ UM desenho    │ desperdicio  │ x{UNDO_CAP} na pilha      │"
+    );
+    println!("  ├─────────┼───────────────┼───────────────┼──────────────┼──────────────────────┤");
+    for frames in [12u32, 24, 96, 240] {
+        let doc = animation_of(frames);
+        let inteiro = doc.to_bytes().map(|v| v.len()).unwrap_or(0);
+        // Um desenho só: a mesma fixtura com UM quadro é o piso do que um passo tem de ser novo.
+        let um = animation_of(1).to_bytes().map(|v| v.len()).unwrap_or(0);
+        let base = FlipDoc::new().to_bytes().map(|v| v.len()).unwrap_or(0);
+        let desenho = um.saturating_sub(base);
+        let pct = if inteiro > 0 {
+            100.0 - (desenho as f64 / inteiro as f64) * 100.0
+        } else {
+            0.0
+        };
+        let mb_hoje = (inteiro * UNDO_CAP) as f64 / (1024.0 * 1024.0);
+        let mb_partilhado = (desenho * UNDO_CAP) as f64 / (1024.0 * 1024.0);
+        println!(
+            "  │ {frames:>7} │ {inteiro:>13} │ {desenho:>13} │ {pct:>11.1} % │ {mb_hoje:>7.1} → {mb_partilhado:>6.1} MB │"
+        );
+    }
+    println!("  └─────────┴───────────────┴───────────────┴──────────────┴──────────────────────┘");
+    println!("  (a coluna do desperdicio e' o que a partilha por DESENHO evitaria copiar)\n");
 }

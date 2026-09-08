@@ -19,6 +19,7 @@ use crate::onion::OnionSettings;
 use crate::pose::Pose;
 use ph2d_core::{Playhead, Vec2};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 /// FPS default de um objeto Flip — 24 (padrão de cinema; a espessura de hold é
 /// função dele: o quadro N aparece em `N/fps` segundos).
@@ -45,7 +46,20 @@ pub struct FlipObject {
     /// Camadas, em ordem de z (índice 0 = fundo). O reorder é do painel (W2).
     layers: Vec<FlipLayer>,
     /// O array de desenhos. `DrawingId` é o índice AQUI (posicional).
-    drawings: Vec<FlipDrawing>,
+    ///
+    /// ⭐⭐⭐ **Cada desenho é PARTILHADO entre passos de undo** (F8.3, 2026-09-08). A captura clona
+    /// o `FlipObject`, e sem o `Arc` isso copiava **a animação inteira** a cada passo — medido:
+    /// numa animação de 96 quadros, **`99,0 %`** do que cada passo copiava era desperdício, e a
+    /// pilha de `256` estados custava **`912 MB`**. Com a partilha ela custa **`9,5 MB` e deixa de
+    /// crescer com o tamanho da animação**.
+    ///
+    /// ⚠️ **O grão é o DESENHO porque é ele que um traço muda** — é o mesmo grão que o mundo usa
+    /// desde a F2, e o `DrawingId` continua a ser o índice: o `Arc` não move um id.
+    /// ⚠️ **Escrever passa por [`Arc::make_mut`]** (copy-on-write): quem tem o desenho só para si
+    /// escreve no sítio; quem o partilha com um passo antigo paga UMA cópia, daquele desenho.
+    /// ⚠️ **Não move um byte do formato** — `serde` com a feature `rc` escreve `Arc<T>` como `T`,
+    /// e há gate (`sharing_a_drawing_does_not_move_a_byte_of_the_format`).
+    drawings: Vec<Arc<FlipDrawing>>,
     /// Ghost Frames.
     pub onion: OnionSettings,
     /// Quadros por segundo (mapeia número de quadro ↔ tempo).
@@ -154,9 +168,9 @@ impl FlipObject {
         let mut map: BTreeMap<DrawingId, DrawingId> = BTreeMap::new();
         for (&old, &users) in &counts {
             let new_id = DrawingId(self.drawings.len() as u32);
-            let mut clone = self.drawings[old.0 as usize].clone();
+            let mut clone = (*self.drawings[old.0 as usize]).clone();
             clone.set_users(users);
-            self.drawings.push(clone);
+            self.drawings.push(Arc::new(clone));
             map.insert(old, new_id);
         }
         // A camada nova: clona a original (frames/poses/props exatos), troca id+nome e
@@ -205,19 +219,29 @@ impl FlipObject {
 
     // ── desenhos ─────────────────────────────────────────────────────────────
 
-    /// Todos os desenhos (indexados por `DrawingId`).
+    /// Quantos desenhos o objecto tem (o `DrawingId` vai de `0` a este número).
+    ///
+    /// ⚠️ **Substituiu um `drawings() -> &[FlipDrawing]`**: com a partilha, a fatia é de
+    /// `Arc<FlipDrawing>`, e devolvê-la convidaria quem chama a segurar um clone do `Arc` — o que
+    /// faria a próxima escrita pagar uma cópia por um leitor que já a largou. *Todos os chamadores
+    /// só queriam a contagem.*
     #[must_use]
-    pub fn drawings(&self) -> &[FlipDrawing] {
-        &self.drawings
+    pub fn drawing_count(&self) -> usize {
+        self.drawings.len()
     }
 
+    /// Um desenho, para LER. O `Arc` não aparece: quem lê não precisa de saber que ele é partilhado.
     #[must_use]
     pub fn drawing(&self, id: DrawingId) -> Option<&FlipDrawing> {
-        self.drawings.get(id.0 as usize)
+        self.drawings.get(id.0 as usize).map(|d| &**d)
     }
 
+    /// Um desenho, para ESCREVER — **e é aqui que a cópia acontece, se acontecer**.
+    ///
+    /// ⚠️ [`Arc::make_mut`] copia **só quando o desenho está partilhado** com um passo de undo
+    /// antigo. Num traço sobre um desenho que só este documento tem, ele não copia nada.
     pub fn drawing_mut(&mut self, id: DrawingId) -> Option<&mut FlipDrawing> {
-        self.drawings.get_mut(id.0 as usize)
+        self.drawings.get_mut(id.0 as usize).map(Arc::make_mut)
     }
 
     // ── pose / bounds (ADR-0111 parity: o objeto tem Transform + geometria LOCAL) ─
@@ -298,7 +322,7 @@ impl FlipObject {
             p.y = (m[1] * x + m[3] * y + m[5]) as f32;
         };
         for d in &mut self.drawings {
-            for s in &mut d.strokes {
+            for s in &mut Arc::make_mut(d).strokes {
                 for p in s.positions_mut() {
                     apply(p);
                 }
@@ -330,8 +354,9 @@ impl FlipObject {
         if !self.layers[li].add_frame(key, Some(new_id), kind, hold) {
             return None; // colisão — nenhum desenho foi alocado
         }
-        self.drawings.push(FlipDrawing::new());
-        self.drawings[new_id.0 as usize].add_user();
+        let mut novo = FlipDrawing::new();
+        novo.add_user();
+        self.drawings.push(Arc::new(novo));
         Some(new_id)
     }
 
@@ -373,16 +398,16 @@ impl FlipObject {
                 if !self.layers[li].add_frame(dst, Some(src_id), src_kind, hold) {
                     return false;
                 }
-                self.drawings[src_id.0 as usize].add_user();
+                Arc::make_mut(&mut self.drawings[src_id.0 as usize]).add_user();
             }
             DupMode::Deep => {
                 let new_id = DrawingId(self.drawings.len() as u32);
                 if !self.layers[li].add_frame(dst, Some(new_id), src_kind, hold) {
                     return false;
                 }
-                let mut clone = self.drawings[src_id.0 as usize].clone();
+                let mut clone = (*self.drawings[src_id.0 as usize]).clone();
                 clone.set_users(1);
-                self.drawings.push(clone);
+                self.drawings.push(Arc::new(clone));
             }
         }
         self.layers[li].set_frame_pose(dst, src_pose);
@@ -467,10 +492,10 @@ impl FlipObject {
             return false; // já é só dela
         }
         let new_id = DrawingId(self.drawings.len() as u32);
-        let mut clone = self.drawings[src_id.0 as usize].clone();
+        let mut clone = (*self.drawings[src_id.0 as usize]).clone();
         clone.set_users(1);
-        self.drawings.push(clone);
-        self.drawings[src_id.0 as usize].remove_user();
+        self.drawings.push(Arc::new(clone));
+        Arc::make_mut(&mut self.drawings[src_id.0 as usize]).remove_user();
         self.layers[li].set_frame_drawing(key, new_id)
     }
 
@@ -486,7 +511,7 @@ impl FlipObject {
             None => false,
             Some(unref) => {
                 if let Some(DrawingId(i)) = unref {
-                    self.drawings[i as usize].remove_user();
+                    Arc::make_mut(&mut self.drawings[i as usize]).remove_user();
                 }
                 true
             }
@@ -520,7 +545,12 @@ impl FlipObject {
             }
         }
         for (d, c) in self.drawings.iter_mut().zip(counts) {
-            d.set_users(c);
+            // ⚠️ **Só copia quem de facto muda de contagem** — o `recompute_users` corre em toda
+            // remoção de camada, e reescrever `users` num desenho partilhado sem necessidade
+            // desfaria a partilha que a F8.3 comprou.
+            if d.users() != c {
+                Arc::make_mut(d).set_users(c);
+            }
         }
     }
 
@@ -533,7 +563,7 @@ impl FlipObject {
         self.recompute_users();
         // new_index[old] = Some(novo) para os mantidos; None para os reclamados.
         let mut new_index: Vec<Option<u32>> = vec![None; self.drawings.len()];
-        let mut kept: Vec<FlipDrawing> = Vec::new();
+        let mut kept: Vec<Arc<FlipDrawing>> = Vec::new();
         for (old, d) in std::mem::take(&mut self.drawings).into_iter().enumerate() {
             if d.has_users() {
                 new_index[old] = Some(kept.len() as u32);
@@ -612,4 +642,10 @@ impl FlipObject {
 
 #[cfg(test)]
 #[path = "object_tests.rs"]
-mod tests;
+mod object_tests;
+
+/// ⭐⭐⭐ **Os gates da PARTILHA POR DESENHO** — irmão pelo teto de 700 LOC e por ASSUNTO: ali
+/// medem-se as ops do objecto, aqui o que a captura do undo paga por elas.
+#[cfg(test)]
+#[path = "object_sharing_tests.rs"]
+mod object_sharing_tests;

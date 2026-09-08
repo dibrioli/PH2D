@@ -5,7 +5,7 @@
 use super::*;
 
 /// Um objeto com uma camada e um desenho não-vazio no quadro 0.
-fn object_with_one_frame() -> (FlipObject, LayerId, DrawingId) {
+pub(super) fn object_with_one_frame() -> (FlipObject, LayerId, DrawingId) {
     let mut o = FlipObject::new(FlipObjectId(1), "Obj");
     let l = o.add_layer("Layer 1");
     let d = o
@@ -18,7 +18,7 @@ fn object_with_one_frame() -> (FlipObject, LayerId, DrawingId) {
 fn insert_frame_allocates_a_drawing_with_one_user() {
     let (o, l, d) = object_with_one_frame();
     assert_eq!(d, DrawingId(0));
-    assert_eq!(o.drawings().len(), 1);
+    assert_eq!(o.drawing_count(), 1);
     assert_eq!(o.drawing(d).unwrap().users(), 1);
     assert_eq!(o.drawing_at(l, 0), Some(d));
     assert_eq!(o.drawing_at(l, 5), Some(d), "segura");
@@ -87,7 +87,7 @@ fn insert_frame_collision_allocates_no_drawing() {
         o.insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe),
         None
     );
-    assert_eq!(o.drawings().len(), 1, "não vazou um desenho órfão");
+    assert_eq!(o.drawing_count(), 1, "não vazou um desenho órfão");
 }
 
 /// T0.4 espelhado a nível de objeto: duplicar-como-instância compartilha o
@@ -111,7 +111,7 @@ fn deep_duplicate_copies_the_drawing() {
     // Põe conteúdo no d0 para provar a cópia profunda.
     o.drawing_mut(d0).unwrap().strokes.push(Default::default());
     assert!(o.duplicate_frame(l, 0, 10, DupMode::Deep));
-    assert_eq!(o.drawings().len(), 2);
+    assert_eq!(o.drawing_count(), 2);
     let d1 = o.drawing_at(l, 10).unwrap();
     assert_ne!(d1, d0, "desenho NOVO");
     assert_eq!(o.drawing(d1).unwrap().users(), 1);
@@ -142,7 +142,7 @@ fn remove_unused_drawings_compacts_and_remaps() {
 
     o.remove_unused_drawings();
     // d1 sumiu; d2 foi remapeado de 2 → 1.
-    assert_eq!(o.drawings().len(), 2);
+    assert_eq!(o.drawing_count(), 2);
     // Os frames restantes ainda resolvem para desenhos válidos e distintos.
     let at0 = o.drawing_at(l, 0).unwrap();
     let at10 = o.drawing_at(l, 10).unwrap();
@@ -172,7 +172,7 @@ fn remove_layer_drops_its_drawings_users() {
     assert_eq!(o.layers().len(), 0);
     assert_eq!(o.drawing(d0).unwrap().users(), 0, "sem camada, sem user");
     o.remove_unused_drawings();
-    assert_eq!(o.drawings().len(), 0);
+    assert_eq!(o.drawing_count(), 0);
 }
 
 /// T0.12: amostragem por playhead. FPS 24: t=0.25s → quadro 6.
@@ -298,9 +298,9 @@ fn unlinking_a_key_gives_it_art_of_its_own() {
 #[test]
 fn unlinking_an_exclusive_drawing_is_a_no_op() {
     let (mut o, l, _d) = object_with_one_frame();
-    let n = o.drawings().len();
+    let n = o.drawing_count();
     assert!(!o.make_single_user(l, 0));
-    assert_eq!(o.drawings().len(), n, "criou um desenho a toa");
+    assert_eq!(o.drawing_count(), n, "criou um desenho a toa");
 }
 
 /// **`posed_bbox` mede a arte COMO ELA APARECE; `geometry_bbox`, onde os pontos
